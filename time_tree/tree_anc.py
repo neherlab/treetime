@@ -8,6 +8,49 @@ from Bio import Phylo
 from Bio import AlignIO
 import numpy as np
 
+def _seq2idx(x, alph):
+    """
+    Get alphabet index of a character.
+    Args:
+     - x(char): character in the alphabet
+     - alph(numpy.array): alphabet
+    Returns:
+     - idx(int): position of the x in the alph
+    Throws:
+     - ValueError: if the character was not found in the alphabet
+    """
+    if x not in alph:
+        raise ValueError("character %s not found in the specified alphabet %s"
+            % (x, alph))
+    return (x == alph).argmax()
+
+seq2idx = np.vectorize(_seq2idx)
+seq2idx.excluded.add(1)
+
+class GTR(object):
+    """
+    Defines General tme reversible model of character evolution.
+    """
+    def __init__(self, alphabet):
+        """
+        Initialize evolutionary model.
+        Args:
+         - alphabet (numpy.array): alphabet of the sequence.
+        """
+        self.alphabet = alphabet
+        # general rate matrix
+        self.W = np.zeros((alphabet.shape[0], alphabet.shape[0]))
+        # stationary states of the characters
+        self.Pi = np.zeros((alphabet.shape[0], alphabet.shape[0]))
+        # mutation rate, scaling factor
+        self.mu = 1.0
+        # eigendecomposition of the GTR matrix
+        # Pi.dot(W) = v.dot(eigenmat).dot(v_inv)
+        tm.v = np.zeros((alphabet.shape[0], alphabet.shape[0]))
+        tm.v_inv = np.zeros((alphabet.shape[0], alphabet.shape[0]))
+        tm.eigenmat = np.zeros((alphabet.shape[0], alphabet.shape[0]))
+
+
 class TreeAnc(object):
     def __init__(self, tree):
         self.tree = tree
@@ -29,6 +72,7 @@ class TreeAnc(object):
         tanc = cls(tree)
         return tanc
 
+    # FIXME
     @classmethod
     def _from_json(cls, inf):
         raise NotImplementedError("This functionality is under development")
@@ -60,6 +104,7 @@ class TreeAnc(object):
                     break
         return failed_leaves
 
+    # FIXME
     def reconstruct_anc(self, method, **kwargs):
         """
         Reconstruct ancestral states
@@ -129,15 +174,16 @@ class TreeAnc(object):
         shift = N-1
         return aux[aux[shift:] == aux[:-shift]]
 
+    # FIXME
     def _ml_anc(self, model):
         pass
 
-    # FIXME
+    # TODO testing
     def optimize_branch_len(self, model):
         """
-        Perform ML optimization for the tree branch length
+        Perform ML optimization for the tree branch length. **Note** this method assumes that each node stores information about its sequence as numpy.array object (variable node.sequence). Therefore, before calling this method, sequence reconstruction with either of the available models must be performed.
         Args:
-         - model(TMat): evolutionary model
+         - model(GTR): evolutionary model
         KWargs:
          - verbose (int): output detalization
          - store_old (bool): if True, the old lenths will be saved in node.old_dist parameter.
@@ -158,19 +204,18 @@ class TreeAnc(object):
 
         for node in self.tree.get_nonterminals(order='postorder'):
             parent = node.up
-            if parent is None: continue
+            if parent is None: continue # this is the root
             seq_p = parent.sequence
             seq_ch = node.sequence
-            old_len = node.dist
 
             if (seq_p!=seq_ch).sum() == 0:
                 if store_old_dist:
-                    node.old_dist = node.dist
-                node.dist = 0
+                    node.old_length = node.branch_length
+                node.branch_length = 0
                 if verbose > 5:
                     print ("Parent and child sequences are equal, setting branch len = 0")
             else:
-                opt = optimize.minimize_scalar(_neg_prob, bounds=[0,2],
+                opt = optimize.minimize_scalar(self._neg_prob, bounds=[0,2],
                     method='Bounded',
                     args=(seq_p, seq_ch, tm))
 
@@ -178,35 +223,44 @@ class TreeAnc(object):
 
                 if verbose > 5:
                     print ("Optimization results: old_len=%.4f, new_len=%.4f. "
-                    " Updating branch length..." %(node.dist, new_len))
+                    " Updating branch length..." %(node.branch_length, new_len))
 
                 if store_old_dist:
-                    node.old_dist = node.dist
+                    node.old_length = node.branch_length
 
                 if new_len > 1.8 or opt["message"] != "Solution found.":
                     if verbose > 0:
-                        print ("Cannot optiimize tree branch, minimization failed. Skipping")
+                        print ("Cannot optimize branch length, minimization failed. Skipping")
                     continue
                 else:
-                    node.dist = new_len
+                    node.branch_length = new_len
         return
 
-    # FIXME
-    def _neg_prob(self, _time, seq_p, seq_ch, tm):
+    # TODO testing
+    def _neg_prob(self, t, parent, child, tm):
         """
-        Probability to observe child given the the parent state, transition matrix
-        and the time of evolution
+        Probability to observe child given the the parent state, transition matrix and the time of evolution (branch length).
+
+        Args:
+         - t(double): branch length
+         - parent (numpy.array): parent sequence
+         - child(numpy.array): child sequence
+         - tm (GTR): model of evolution
+
+        Returns:
+         - prob(double): negative probability of the two given sequences to be separated by the time t.
         """
-        L = len(seq_p)
-        eQT = np.array([np.diagflat(
-                            np.exp(tm._mu[pos]*_time*tm._EigVals[pos, :]))
-                        for pos in xrange(tm._EigVals.shape[0])])
 
-        P_all = np.einsum('ijk,ikl,ilm->ijm', tm._V, eQT, tm._Vinv)
+        L = len(parent)
+        if len(parent) != len(child):
+            raise ValueError("Sequence lengths do not match!")
 
-        irow = seq2idx(seq_ch, tm.alphabet)
-        icol = seq2idx(seq_p, tm.alphabet)
-        ipos = np.arange(tm.L)
+        eQT = np.exp(tm.mu * t * tm.eigenmat)
+        P_all = (tm.v).dot(eQT).dot(tm.v_inv)
+
+        irow = seq2idx(child, tm.alphabet) # child states
+        icol = seq2idx(parent, tm.alphabet) # parent states
+        ipos = np.arange(tm.L) # each sequence position
         prob = np.prod(P_all[ipos, irow, icol])
         return -prob
 
