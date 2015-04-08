@@ -1,12 +1,8 @@
-"""
-Class defines simple tree object with basic interface methdos: reading and
-saving from/to files, initializing leaves with sequences from the alignment,
-making ancestral state inferrence
-"""
-
 from Bio import Phylo
 from Bio import AlignIO
 import numpy as np
+
+# FIXME when reading the tree, scale all teh branches so that the maximal branch length is not more than some arbitrary value (needed for branch length optimization, not to make the brent algorithm crazy)
 
 def _seq2idx(x, alph):
     """
@@ -27,13 +23,27 @@ def _seq2idx(x, alph):
 seq2idx = np.vectorize(_seq2idx)
 seq2idx.excluded.add(1)
 
+def seq2prof(x,alph):
+    """
+    Convert the given character into the profile.
+    Args:
+     - x(char): character in the alphabet
+     - alph(numpy.array): alphabet
+    Returns:
+     - idx(numpy.array): profile for the character, zero array if the character not found
+    """
+    prof = np.zeros((alph.shape[0], x.shape[0]))
+    for pos,char in enumerate(alph):
+        prof[pos, :] = x==char
+    return prof
+
 class GTR(object):
     """
     Defines General tme reversible model of character evolution.
     """
     def __init__(self, alphabet):
         """
-        Initialize evolutionary model.
+        Initialize empty evolutionary model.
         Args:
          - alphabet (numpy.array): alphabet of the sequence.
         """
@@ -46,12 +56,47 @@ class GTR(object):
         self.mu = 1.0
         # eigendecomposition of the GTR matrix
         # Pi.dot(W) = v.dot(eigenmat).dot(v_inv)
-        tm.v = np.zeros((alphabet.shape[0], alphabet.shape[0]))
-        tm.v_inv = np.zeros((alphabet.shape[0], alphabet.shape[0]))
-        tm.eigenmat = np.zeros((alphabet.shape[0], alphabet.shape[0]))
+        self.v = np.zeros((alphabet.shape[0], alphabet.shape[0]))
+        self.v_inv = np.zeros((alphabet.shape[0], alphabet.shape[0]))
+        self.eigenmat = np.zeros((alphabet.shape[0], alphabet.shape[0]))
 
+    @classmethod
+    def standard(cls, model='Jukes-Cantor', **kwargs):
+        if model=='Jukes-Cantor':
+            # read kwargs
+            if 'alphabet' in kwargs:
+                 alphabet = kwargs['alphabet']
+            else:
+                alphabet = np.array(['A', 'C', 'G', 'T'])
+            if 'mu' in kwargs:
+                mu = kwargs['mu']
+            else:
+                mu = 1.0
+
+            gtr = cls(alphabet)
+            gtr.W = np.ones((alphabet.shape[0], alphabet.shape[0]))
+            np.fill_diagonal(gtr.W, - ((gtr.W).sum(0) - 1))
+            gtr.Pi = np.zeros(gtr.W.shape)
+            np.fill_diagonal(gtr.Pi, 0.25)
+            sqrtPi = np.sqrt(gtr.Pi)
+            sqrtPi_inv = np.linalg.inv(sqrtPi)
+            W = (sqrtPi.dot(((gtr.Pi).dot(gtr.W)))).dot(sqrtPi_inv)
+            eigvals, eigvecs = np.linalg.eig(W)
+            gtr.v = sqrtPi.dot(eigvecs)
+            gtr.v_inv = np.linalg.inv(gtr.v)
+            gtr.eigenmat = np.diagflat(eigvals)
+            gtr.mu = mu
+            return gtr
+        else:
+            raise NotImplementedError("The specified evolutionary model is unsupported!")
 
 class TreeAnc(object):
+    """
+    Class defines simple tree object with basic interface methdos: reading and
+    saving from/to files, initializing leaves with sequences from the
+    alignment, making ancestral state inferrence
+    """
+
     def __init__(self, tree):
         self.tree = tree
         self._set_links_to_parent()
@@ -115,7 +160,7 @@ class TreeAnc(object):
         """
         pass
 
-    def _fitch_anc(self):
+    def _fitch_anc(self, **kwargs):
         """
         Reconstruct ancestral states using Fitch algorithm
         """
@@ -174,12 +219,79 @@ class TreeAnc(object):
         shift = N-1
         return aux[aux[shift:] == aux[:-shift]]
 
-    # FIXME
-    def _ml_anc(self, model):
-        pass
+    def _ml_anc(self, model, **kwargs):
+        """
+        Perform ML reconstruction for the ancestral states
+        """
+        store_lh = False # store intermediate computations in the tree
+        verbose = 1 # how verbose to be at the output
+        if 'store_lh' in kwargs:
+            store_lh = kwargs['store_lh'] == True
+        if 'verbose' in kwargs:
+            try:
+                verbose = int(kwargs['verbose'])
+            except:
+                print ("ML ERROR in input: verbose param must be int")
+                verbose = 5
+
+        L = self.tree.get_terminals()[0].sequence.shape[0]
+        alphabet = model.alphabet
+
+        if verbose > 2:
+            print ("Walking up the tree, computing joint likelihoods...")
+
+        for leaf in self.tree.get_terminals():
+
+            leaf.lh = np.ones((L, alphabet.shape[0]))
+            leaf.pre = np.zeros(L)
+            leaf.c = -1*np.ones((L, alphabet.shape[0]),dtype=int) # state of the node
+            for pos,char in enumerate(alphabet):
+                # FIXME should be index of the character everywhere
+                leaf.c[leaf.sequence == alphabet[pos], :] = pos
+            leaf.c[leaf.c.sum(1)==-4] = np.arange(alphabet.shape[0])
+
+            eQT = np.diagflat(np.diag(np.exp(model.mu * leaf.branch_length * model.eigenmat)))
+            P_all = (model.v).dot(eQT).dot(model.v_inv)
+            leaf.lh[:] = P_all[leaf.c[:, 0], :]
+
+
+        prob_profile = np.zeros((L, alphabet.shape[0], alphabet.shape[0]))
+        for node in self.tree.get_nonterminals(order='postorder'): #leaves -> root
+
+            node.lh = np.ones((L, alphabet.shape[0]))
+            node.pre = np.zeros(L)
+            node.c = np.zeros((L, alphabet.shape[0]),dtype=int) # state of the node
+            if node.up is None: # we are at the root
+                node.lh[:, :] = 1
+                for ch in node.clades:
+                    node.lh[:, :] *= ch.lh
+
+            else: # internal node
+
+                eQT = np.diagflat(np.diag(np.exp(model.mu * node.branch_length * model.eigenmat)))
+                # probability to be in state i conditional on parent
+                P_all = (model.v).dot(eQT).dot(model.v_inv)
+                prob_profile[:] = P_all.T
+                for ch in node.clades:
+                    prob_profile *= ch.lh.reshape((L, len(alphabet), 1))
+                node.lh[:, :] = prob_profile.max(1)
+                node.c[:, :] = prob_profile.argmax(1)
+
+
+        if (verbose > 2):
+            print ("Walking down the tree, computing maximum likelihood     sequences...")
+
+        self.tree.root.state = self.tree.root.lh.argmax(-1)
+        self.tree.root.sequence = alphabet[self.tree.root.state]
+        l_idx = np.arange(L)
+
+        for node in self.tree.find_clades(order='preorder'):
+            if node.up != None: # not root
+                node.state = node.c[np.arange(L), node.up.state]
+                node.sequence = alphabet[node.state]
 
     # TODO testing
-    def optimize_branch_len(self, model):
+    def optimize_branch_len(self, model, **kwargs):
         """
         Perform ML optimization for the tree branch length. **Note** this method assumes that each node stores information about its sequence as numpy.array object (variable node.sequence). Therefore, before calling this method, sequence reconstruction with either of the available models must be performed.
         Args:
@@ -215,9 +327,15 @@ class TreeAnc(object):
                 if verbose > 5:
                     print ("Parent and child sequences are equal, setting branch len = 0")
             else:
-                opt = optimize.minimize_scalar(self._neg_prob, bounds=[0,2],
-                    method='Bounded',
-                    args=(seq_p, seq_ch, tm))
+                try:
+                    opt = optimize.minimize_scalar(self._neg_prob,
+                        bounds=[0,2],
+                        method='Bounded',
+                        args=(seq_p, seq_ch, model))
+                except:
+                    # FIXME error is caused by the unknown characters
+                    # Introduce characters in the alphabet as profiles
+                    continue
 
                 new_len = opt["x"]
 
@@ -236,7 +354,6 @@ class TreeAnc(object):
                     node.branch_length = new_len
         return
 
-    # TODO testing
     def _neg_prob(self, t, parent, child, tm):
         """
         Probability to observe child given the the parent state, transition matrix and the time of evolution (branch length).
@@ -255,13 +372,12 @@ class TreeAnc(object):
         if len(parent) != len(child):
             raise ValueError("Sequence lengths do not match!")
 
-        eQT = np.exp(tm.mu * t * tm.eigenmat)
+        eQT = np.diagflat(np.diag(np.exp(tm.mu * t * tm.eigenmat)))
         P_all = (tm.v).dot(eQT).dot(tm.v_inv)
 
         irow = seq2idx(child, tm.alphabet) # child states
         icol = seq2idx(parent, tm.alphabet) # parent states
-        ipos = np.arange(tm.L) # each sequence position
-        prob = np.prod(P_all[ipos, irow, icol])
+        prob = P_all[irow, icol].prod()
         return -prob
 
 
