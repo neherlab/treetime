@@ -14,7 +14,7 @@ class TestTreeAnc(unittest.TestCase):
         anc_t = tree_anc.TreeAnc.from_file(resources_dir+'PR.B.100.nwk', 'newick')
         assert len(anc_t.tree.get_terminals()) == 100 #  tree read successfully
 
-    def test_set_links_to_parent(self):
+    def test_add_node_params(self):
         #  up-link installed succesfully
         anc_t = tree_anc.TreeAnc.from_file(resources_dir+'PR.B.100.nwk', 'newick')
         for node in anc_t.tree.get_nonterminals():

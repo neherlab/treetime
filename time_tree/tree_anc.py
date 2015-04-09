@@ -99,7 +99,7 @@ class TreeAnc(object):
 
     def __init__(self, tree):
         self.tree = tree
-        self._set_links_to_parent()
+        self._add_node_params()
 
     # input stuff
     @classmethod
@@ -123,18 +123,32 @@ class TreeAnc(object):
         raise NotImplementedError("This functionality is under development")
         pass
 
-    def _set_links_to_parent(self):
+    def _add_node_params(self):
         """
-        set link to parent for all tree nodes
+        Set link to parent and net distance to root for all tree nodes
         """
         self.tree.root.up = None
+        self.tree.root.dist2root = 0.0
         for clade in self.tree.get_nonterminals(order='preorder'): # parents first
             for c in clade.clades:
                 c.up = clade
+                c.dist2root = c.up.dist2root + c.branch_length
         return
 
     # ancestral state reconstruction
     def set_seqs_to_leaves(self, aln):
+        """
+        Set sequences from the alignment to the leaves of the tree.
+
+        Args:
+         - aln(Bio.MultipleSequenceAlignment): alignment ogbject
+
+        Returns:
+         - failed_leaves(int): number of leaves which could not be assigned with sequences.
+
+        Note:
+         - If there are more than 100 leaves failed to get sequences, the function breaks, returning 100.
+        """
         failed_leaves= 0
         dic_aln = {k.name: np.array(k.seq) for k in aln} #
         for l in self.tree.get_terminals():
@@ -149,7 +163,6 @@ class TreeAnc(object):
                     break
         return failed_leaves
 
-    # FIXME
     def reconstruct_anc(self, method, **kwargs):
         """
         Reconstruct ancestral states
@@ -158,7 +171,17 @@ class TreeAnc(object):
         KWargs:
          - model(TMat): model to use. required for maximum-likelihood ("ml")
         """
-        pass
+        if method == 'fitch':
+            self._fitch_anc(**kwargs)
+        elif method == 'ml':
+            if ('model' not in kwargs):
+                print("Warning: You chose Maximum-likelihood reconstruction,"
+                    " but did not specified any model. Jukes-Cantor will be used as default.")
+                kwargs['model'] = GTR.standard(model='Jukes-Cantor')
+
+            self._ml_anc(**kwargs)
+        else:
+            raise NotImplementedError("The reconstruction method %s is not supported. " % method)
 
     def _fitch_anc(self, **kwargs):
         """
@@ -222,6 +245,11 @@ class TreeAnc(object):
     def _ml_anc(self, model, **kwargs):
         """
         Perform ML reconstruction for the ancestral states
+        Args:
+         - model (GTR): General time-reversible model of evolution.
+        KWargs:
+         - store_lh (bool): if True, all likelihoods will be stored for all nodes. Useful for testing, diagnostics and if special post-processing is required.
+         - verbose (int): how verbose the output should be
         """
         store_lh = False # store intermediate computations in the tree
         verbose = 1 # how verbose to be at the output
@@ -294,11 +322,14 @@ class TreeAnc(object):
     def optimize_branch_len(self, model, **kwargs):
         """
         Perform ML optimization for the tree branch length. **Note** this method assumes that each node stores information about its sequence as numpy.array object (variable node.sequence). Therefore, before calling this method, sequence reconstruction with either of the available models must be performed.
+
         Args:
          - model(GTR): evolutionary model
+
         KWargs:
          - verbose (int): output detalization
-         - store_old (bool): if True, the old lenths will be saved in node.old_dist parameter.
+         - store_old (bool): if True, the old lenths will be saved in node.old_dist parameter. Useful for testing, and special post-processing.
+
         Returns:
          - None
         """
@@ -352,6 +383,8 @@ class TreeAnc(object):
                     continue
                 else:
                     node.branch_length = new_len
+        # as branch lengths changed, the params must be fixed
+        self._add_node_params()
         return
 
     def _neg_prob(self, t, parent, child, tm):
@@ -359,7 +392,7 @@ class TreeAnc(object):
         Probability to observe child given the the parent state, transition matrix and the time of evolution (branch length).
 
         Args:
-         - t(double): branch length
+         - t(double): branch length (time between sequences)
          - parent (numpy.array): parent sequence
          - child(numpy.array): child sequence
          - tm (GTR): model of evolution
