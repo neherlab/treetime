@@ -1,7 +1,7 @@
 from Bio import Phylo
 from Bio import AlignIO
 import numpy as np
-
+import scipy
 # FIXME when reading the tree, scale all teh branches so that the maximal branch length is not more than some arbitrary value (needed for branch length optimization, not to make the brent algorithm crazy)
 
 def _seq2idx(x, alph):
@@ -333,7 +333,7 @@ class TreeAnc(object):
         Returns:
          - None
         """
-        from  scipy import optimize
+
         verbose = 1
         store_old_dist = False
 
@@ -345,7 +345,7 @@ class TreeAnc(object):
         if verbose > 3:
             print ("Walking up the tree, computing likelihood distrubutions")
 
-        for node in self.tree.get_nonterminals(order='postorder'):
+        for node in self.tree.find_clades(order='postorder'):
             parent = node.up
             if parent is None: continue # this is the root
             seq_p = parent.sequence
@@ -358,34 +358,33 @@ class TreeAnc(object):
                 if verbose > 5:
                     print ("Parent and child sequences are equal, setting branch len = 0")
             else:
-                try:
-                    opt = optimize.minimize_scalar(self._neg_prob,
-                        bounds=[0,2],
-                        method='Bounded',
-                        args=(seq_p, seq_ch, model))
-                except:
-                    # FIXME error is caused by the unknown characters
-                    # Introduce characters in the alphabet as profiles
-                    continue
+                new_len = self._opt_len(seq_p, seq_ch, model)
+                if new_len > 0:
+                    if verbose > 5:
+                        print ("Optimization results: old_len=%.4f, new_len=%.4f. "
+                                " Updating branch length..." %(node.branch_length, new_len))
 
-                new_len = opt["x"]
-
-                if verbose > 5:
-                    print ("Optimization results: old_len=%.4f, new_len=%.4f. "
-                    " Updating branch length..." %(node.branch_length, new_len))
-
-                if store_old_dist:
-                    node.old_length = node.branch_length
-
-                if new_len > 1.8 or opt["message"] != "Solution found.":
-                    if verbose > 0:
-                        print ("Cannot optimize branch length, minimization failed. Skipping")
-                    continue
-                else:
+                    if store_old_dist:
+                        node.old_length = node.branch_length
                     node.branch_length = new_len
         # as branch lengths changed, the params must be fixed
         self._add_node_params()
         return
+
+    def _opt_len(self, seq_p, seq_ch, gtr, verbose=10):
+        opt = scipy.optimize.minimize_scalar(self._neg_prob,
+                bounds=[0,2],
+                method='Bounded',
+                args=(seq_p, seq_ch, gtr))
+
+        new_len = opt["x"]
+
+        if new_len > 1.8 or opt["success"] != True:
+            if verbose > 0:
+                print ("Cannot optimize branch length, minimization failed.")
+            return -1.0
+        else:
+            return  new_len
 
     def _neg_prob(self, t, parent, child, tm):
         """

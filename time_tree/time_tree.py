@@ -152,6 +152,73 @@ class TreeTime(TreeAnc):
         self.date2dist.pi,\
         self.date2dist.sigma =  stats.linregress(d[:, 0], d[:, 1])
 
+
+
+    def _ml_t_init(self):
+        """
+        Initialize the tree nodes for ML computations with temporal constraints.
+        Set the absolute positions for the nodes, init grid and constraints
+        """
+        if self.date2dist is None:
+            print ("error")
+            return
+
+        for n in self.tree.find_clades():
+            #  set absolute times in ML dimensions to all internal nodes
+            if n.date is not None:
+                n.abs_t = n.date * self.date2dist.k + self.date2dist.b
+                # constraints mean that the probability distribution is delta-function, so we do not need big grid
+                n.grid = np.array([n.abs_t])
+                n.prob = np.array([1])
+            else:
+                n.abs_t = n.dist2root # not corrected!
+                # if there are no constraints - grid will be set on-the-fly
+                n.grid = None
+                n.prob = None
+
+
+
+    def _ml_t_msgup(self, gtr):
+        """
+        Propagate up- messages for ML computations with temporal constraints.
+        To each node, sets the grid and the likelihood distribution on the grid
+
+        Args:
+         - gtr(GTR): evolutionary model
+        """
+        for n in self.tree.find_clades(order='postorder'): # down->up
+            if n.is_terminal():
+                pass
+            else:
+
+                if n.prob is not None: # we already have processed the node
+                    continue
+                # children nodes with constraints
+                clades = [k for k in n.clades if k.prob is not None]
+                if len(clades) < 1: # we need at least one constrainted
+                    continue
+
+                max_t = np.min([k.abs_t for k in clades]) # maximal grid node
+
+                # minimal grid node requires a bit more computations:
+                opt_l = {k: self._opt_len(n.sequence, k.sequence, gtr)
+                    for k in clades}
+                if True in [k < 0 for k in opt_l.values()]:
+                    print ("Some minimization failed, using initial branch lengths for these cases.")
+                for k in opt_l:
+                    if opt_l[k] < 0: opt_l[k] = k.branch_length
+
+                min_t = np.min([k.abs_t - 2 * opt_l[k] for k in opt_l])
+
+
+                n.grid = np.arange(min_t, max_t, abs(min_t-max_t)/100.0)
+                # find probabilites in the grid:
+
+                for c in clades:
+                    import ipdb; ipdb.set_trace()
+                    n.prob += np.log(np.array([np.sum([ - c.prob[i] * self._neg_prob((c.grid[i] - n.grid[k]), n.sequence, c.sequence, gtr) for i in xrange(c.grid.shape[0])]) for k in xrange(n.grid.shape[0])]))
+
+
     def date2dist_plot(self):
         """
         Plot the dependence between the node depth in the tree and the given node date information.
