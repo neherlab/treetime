@@ -152,18 +152,20 @@ class TreeTime(TreeAnc):
         self.date2dist.pi,\
         self.date2dist.sigma =  stats.linregress(d[:, 0], d[:, 1])
 
-
-
-    def _ml_t_init(self):
+    def _ml_t_init(self, gtr):
         """
         Initialize the tree nodes for ML computations with temporal constraints.
-        Set the absolute positions for the nodes, init grid and constraints
+        Set the absolute positions for the nodes, init grid and constraints, set sequence profiles to the nodes.
+
+        Args:
+         - gtr(GTR): Evolutionary model, required to compute some node parameters.
         """
         if self.date2dist is None:
             print ("error")
             return
 
         for n in self.tree.find_clades():
+            self._set_seq_to_node(n, n.sequence, gtr)
             #  set absolute times in ML dimensions to all internal nodes
             if n.date is not None:
                 n.abs_t = n.date * self.date2dist.k + self.date2dist.b
@@ -175,8 +177,6 @@ class TreeTime(TreeAnc):
                 # if there are no constraints - grid will be set on-the-fly
                 n.grid = None
                 n.prob = None
-
-
 
     def _ml_t_msgup(self, gtr):
         """
@@ -216,8 +216,43 @@ class TreeTime(TreeAnc):
 
                 for c in clades:
                     import ipdb; ipdb.set_trace()
-                    n.prob += np.log(np.array([np.sum([ - c.prob[i] * self._neg_prob((c.grid[i] - n.grid[k]), n.sequence, c.sequence, gtr) for i in xrange(c.grid.shape[0])]) for k in xrange(n.grid.shape[0])]))
+                    n.prob += [np.sum([ - c.prob[i] * self._neg_prob((c.grid[i] - n.grid[k]), n.sequence, c.sequence, gtr) for i in xrange(c.grid.shape[0])]) for k in xrange(n.grid.shape[0])]
 
+    def _ml_t_grid_prob(self, p_parent, p_child, grid, gtr, res=None, out_prob=None):
+        """
+        Compute probability for 2D grid of times
+
+        Args:
+
+         - p_parent(numpy.array): parent profile (left profile). Shape: axL (a - alphabet size, L - sequence length)
+
+         - p_child(numpy.array): child profile (right profile). Shape: axL (a - alphabet size, L - sequence length)
+
+         - grid(numpy.array): prepared grid of times (branch lengths) to compute the probabilites for double-gridded nodes. The grid must have shape of (Lc, Lp, L), where Lc is the length of child grid, Lp is the length of the parent grid and L is the length of the sequence.
+
+         - gtr(GTR): model of evolution.
+
+         - res(numpy.array, default None): array to store results of the probability computations in order to avoid the construction of big arrays. Must have the same dimensions as grid. If set to none, the array will be constructed.
+
+         - out_prob(numpy.array, default None): output probability. If specified, should have the shape of (Lc, Lp). If None or shape mismatch, will be constructed.
+        """
+
+        if res is None or res.shape != grid.shape:
+            res = np.zeros(grid.shape)
+        else:
+            res[:,:,:] = 0.0
+
+        if out_prob is None or out_prob.shape != grid.shape[:2]:
+            out_prob = np.zeros(grid.shape[:2])
+        else:
+            out_prob[:, :] = 0.0
+
+        for state in xrange(gtr.alphabet.shape[0]):
+            res[:, :, :] += p_parent[state, :] * p_child[state, :] * np.exp(gtr.eigenmat[state,state] * grid)
+
+        out_prob[:, :] = res.prod(axis=-1)
+
+        return out_prob
 
     def date2dist_plot(self):
         """
@@ -252,7 +287,14 @@ class TreeTime(TreeAnc):
         plt.title ("Dependence between the node depth\nand the given date time constraints of the node.\n Tree file: %s" % self.tree_file)
         plt.legend()
 
-
+    def _set_seq_to_node(self, node, seq, gtr):
+        """
+        Set sequence and its profiles in the eigenspace of the transition matrix.
+        """
+        node.seq = seq
+        node.prf = seq2prof(seq, gtr.alphabet)
+        node.pr = np.einsum('ik, ij->kj', prf, gtr.v)
+        node.pl = np.einsum('ij, jk->ik', gtr.v_inv, prf)
 
 
 

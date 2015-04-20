@@ -4,50 +4,83 @@ import numpy as np
 import scipy
 # FIXME when reading the tree, scale all teh branches so that the maximal branch length is not more than some arbitrary value (needed for branch length optimization, not to make the brent algorithm crazy)
 
-def _seq2idx(x, alph):
+
+alphabets = {
+"nuc": np.array(['A', 'C', 'G', 'T', '-']),
+"aa": np.array(['-'])
+}
+
+_full_nc_profile = {
+    'A':np.array([1,0,0,0,0],dtype='float'),
+    'C':np.array([0,1,0,0,0],dtype='float'),
+    'G':np.array([0,0,1,0,0],dtype='float'),
+    'T':np.array([0,0,0,1,0],dtype='float'),
+    '-':np.array([0,0,0,0,1],dtype='float'),
+    'N':np.array([1,1,1,1,1],dtype='float'),
+    'R':np.array([1,0,1,0,0],dtype='float'),
+    'Y':np.array([0,1,0,1,0],dtype='float'),
+    'S':np.array([0,1,1,0,0],dtype='float'),
+    'W':np.array([1,0,0,0,1],dtype='float'),
+    'K':np.array([0,0,0,1,1],dtype='float'),
+    'M':np.array([1,1,0,0,0],dtype='float'),
+    'D':np.array([1,0,1,1,0],dtype='float'),
+    'H':np.array([1,1,0,1,0],dtype='float'),
+    'B':np.array([0,1,1,1,0],dtype='float'),
+    'V':np.array([1,1,1,0,0],dtype='float')}
+
+def prepare_seq(seq):
     """
-    Get alphabet index of a character.
     Args:
-     - x(char): character in the alphabet
-     - alph(numpy.array): alphabet
+     - seq:  sequence as an object of SeqRecord, string or iterable
     Returns:
-     - idx(int): position of the x in the alph
-    Throws:
-     - ValueError: if the character was not found in the alphabet
+     - sequence as numpy array
     """
-    if x not in alph:
-        raise ValueError("character %s not found in the specified alphabet %s"
-            % (x, alph))
-    return (x == alph).argmax()
+    try:
+        s = ''.join(seq)
+    except:
+        s = seq
+    s = s.upper()
 
-seq2idx = np.vectorize(_seq2idx)
-seq2idx.excluded.add(1)
+    return np.array(list(s))
 
-def seq2prof(x,alph):
+def seq2prof(x,aln_type='nuc'):
     """
     Convert the given character into the profile.
     Args:
-     - x(char): character in the alphabet
-     - alph(numpy.array): alphabet
+     - x(numpy.array): sequence to be converted to the profile
+     - alph(str): alphabet type. Can be either 'nuc' for nucleotide alphabet, or 'aa' for amino acid alphabet
     Returns:
      - idx(numpy.array): profile for the character, zero array if the character not found
     """
-    prof = np.zeros((alph.shape[0], x.shape[0]))
-    for pos,char in enumerate(alph):
-        prof[pos, :] = x==char
+    if aln_type=='nuc':
+        prof = np.array([_full_nc_profile[k]
+            if k in _full_nc_profile else _full_nc_profile['N'] for k in x])
+        err = ((prof == 0.2).sum(1) != 0).sum()
+        if err>0:
+            print ("Seq2Profile: %d of %d characters were not identified or"
+                    " not sequenced." % (err, prof.shape[0]))
+    elif aln_type=='aa':
+        raise NotImplementedError("Amino-acid alphabet is under development.")
+    else:
+        raise TypeError("Alignment type cane be either 'nuc' or 'aa'")
     return prof
 
 class GTR(object):
     """
     Defines General tme reversible model of character evolution.
     """
-    def __init__(self, alphabet):
+    def __init__(self, alphabet_type):
         """
         Initialize empty evolutionary model.
         Args:
          - alphabet (numpy.array): alphabet of the sequence.
         """
-        self.alphabet = alphabet
+        if not (alphabets.has_key(alphabet_type)):
+            raise AttributeError("Unknown alphabet type specified")
+
+        self.alphabet_type = alphabet_type
+        alphabet = alphabets[alphabet_type]
+
         # general rate matrix
         self.W = np.zeros((alphabet.shape[0], alphabet.shape[0]))
         # stationary states of the characters
@@ -58,37 +91,157 @@ class GTR(object):
         # Pi.dot(W) = v.dot(eigenmat).dot(v_inv)
         self.v = np.zeros((alphabet.shape[0], alphabet.shape[0]))
         self.v_inv = np.zeros((alphabet.shape[0], alphabet.shape[0]))
-        self.eigenmat = np.zeros((alphabet.shape[0], alphabet.shape[0]))
+        self.eigenmat = np.zeros(alphabet.shape[0])
 
     @classmethod
     def standard(cls, model='Jukes-Cantor', **kwargs):
+        if 'alphabet' in kwargs and alphabet in alphabets.keys():
+            alphabet = kwargs['alphabet']
+
+        else:
+            print ("No alphabet specified. Using default nucleotide.")
+            alphabet = 'nuc'
+
+        if 'mu' in kwargs:
+            mu = kwargs['mu']
+        else:
+            mu = 1.0
+
         if model=='Jukes-Cantor':
-            # read kwargs
-            if 'alphabet' in kwargs:
-                 alphabet = kwargs['alphabet']
-            else:
-                alphabet = np.array(['A', 'C', 'G', 'T'])
-            if 'mu' in kwargs:
-                mu = kwargs['mu']
-            else:
-                mu = 1.0
 
             gtr = cls(alphabet)
+            gtr.mu = mu
+
+            # flow matrix
             gtr.W = np.ones((alphabet.shape[0], alphabet.shape[0]))
             np.fill_diagonal(gtr.W, - ((gtr.W).sum(0) - 1))
+
+            # equilibrium concentrations matrix
             gtr.Pi = np.zeros(gtr.W.shape)
             np.fill_diagonal(gtr.Pi, 0.25)
-            sqrtPi = np.sqrt(gtr.Pi)
-            sqrtPi_inv = np.linalg.inv(sqrtPi)
-            W = (sqrtPi.dot(((gtr.Pi).dot(gtr.W)))).dot(sqrtPi_inv)
-            eigvals, eigvecs = np.linalg.eig(W)
-            gtr.v = sqrtPi.dot(eigvecs)
-            gtr.v_inv = np.linalg.inv(gtr.v)
-            gtr.eigenmat = np.diagflat(eigvals)
+
+            gtr._check_fix_Q() # make sure the main diagonal is correct
+            gtr._eig() # eigendecompose the rate matrix
+            return gtr
+
+        elif model=='random':
+            gtr = cls(alphabet)
+            a = alphabets[alphabet].shape[0]
+
             gtr.mu = mu
+
+            Pi = 1.0*np.random.randint(0,100,size=(a))
+            Pi /= Pi.sum()
+            gtr.Pi = np.diagflat(Pi)
+
+            W = 1.0*np.random.randint(0,100,size=(a,a)) # with gaps
+            gtr.W = W+W.T
+
+            gtr._check_fix_Q()
+            gtr._eig()
             return gtr
         else:
             raise NotImplementedError("The specified evolutionary model is unsupported!")
+
+    def _check_fix_Q(self):
+        """
+        Check the main diagonal of Q and fix it in case it does not corresond the definition of Q.
+        """
+        Q = self.Pi.dot(self.W)
+        if (Q.sum(0) < 1e-10).sum() < self.alphabet.shape[0]: # at least one rate is wrong
+            # fix Q
+            self.Pi /= self.Pi.sum() # correct the Pi manually
+            # fix W
+            np.fill_diagonal(self.W, 0)
+            Wdiag = -((self.W.T*np.diagonal(self.Pi)).T).sum(0)/ \
+                    np.diagonal(self.Pi)
+            np.fill_diagonal(self.W, Wdiag)
+            Q1 = self.Pi.dot(self.W)
+            if (Q1.sum(0) < 1e-10).sum() <  self.alphabet.shape[0]: # fix failed
+                raise ArithmeticError("Cannot fix the diagonal of the GTR rate matrix.")
+        return
+
+    def _eig(self):
+        """
+        Perform eigendecompositon of the rate matrix
+        """
+        # eigendecomposition of the rate matrix
+        eigvals, eigvecs = np.linalg.eig(self.Pi.dot(self.W))
+        self.v = eigvecs
+        self.v_inv = np.linalg.inv(self.v)
+        self.eigenmat = eigvals
+        return
+
+    def prob_t(self, profile_p, profile_ch, t, rotated=False, return_log=False):
+        """
+        Compute the probability of the two profiles to be separated by the time t.
+        Args:
+         - profile_p(np.array): parent profile of shape (L, a), where L - length of the sequence, a - alpphabet size.
+
+         - profile_ch(np.array): child profile of shape (L, a), where L - length of the sequence, a - alpphabet size.
+
+         - t (double): time (branch len), separating the profiles.
+
+         - rotated (bool, default False): if True, assume that the supplied profiles are already rotated.
+
+         - return_log(bool, default False): whether return log-probability.
+
+        Returns:
+         - prob(np.array): resulting probability.
+        """
+
+        L = profile_p.shape[0]
+        if L != profile_ch.shape[0]:
+            raise ValueError("Sequence lengths do not match!")
+        eLambdaT = self._exp_lt(t)
+        if not rotated: # we need to rotate first
+            p1 = profile_p.dot(self.v) # (L x a).dot(a x a) = (L x a) - prof in eigenspace
+            p2 = profile_ch.dot(self.v_inv) # (L x a).dot(a x a) = (L x a) - prof in eigenspace
+            prob = (p1*eLambdaT*p2).sum(1) # sum_i (p1_i * exp(l_i*t) * p_2_i) result = vector lenght L
+        else:
+            prob = (profile_p*eLambdaT*profile_ch).sum(1) # sum over the alphabet
+        if (return_log):
+            prob = (np.log(prob)).sum() # sum all sites
+        else:
+            prob = prob.prod() # prod of all sites
+        return prob
+
+    def propagate_profile(self, profile, t, rotated=False, return_log=False):
+        """
+        Compute the probability of the sequence state (profile) at time (t+t0), given the sequence state (profile) at time t0.
+        Args:
+         - profile(numpy.array): sequence profile. Shape = (L, a), where L - sequence length, a - alphabet size.
+
+         - t(doble): time to propagate
+
+         - rotated(bool default False): whether the supplied profile is in the GTR matrix eigenspace
+
+         - return log (bool, default False): whether to return log-probability
+
+        Returns:
+         - res(np.array): profile of the sequence after time t. Shape = (L, a), where L - sequence length, a - alphabet size.
+        """
+        eLambdaT = self._exp_lt(t) # vector lenght = a
+
+        if not rotated:
+            eQT = self.v.dot(eLambdaT).dot(self.v_inv)
+            res = (eQT.dot(profile.T)).T
+
+        else:
+            res = (self.v.dot((eLambdaT * profile).T)).T
+
+        if not return_log:
+            return res
+
+        else:
+            return np.log(res)
+
+    def _exp_lt(self, t):
+        """
+        Returns:
+         - exp_lt(numpy.array): array of values exp(lambda(i) * t), where (i) - alphabet index (the eigenvalue number).
+        """
+        return np.exp(self.mu * t * self.eigenmat)
 
 class TreeAnc(object):
     """
@@ -122,6 +275,9 @@ class TreeAnc(object):
     def _from_json(cls, inf):
         raise NotImplementedError("This functionality is under development")
         pass
+
+    def has_attr(self, node, attr):
+        return node.__dict__.has_key(attr)
 
     def _add_node_params(self):
         """
@@ -242,7 +398,7 @@ class TreeAnc(object):
         shift = N-1
         return aux[aux[shift:] == aux[:-shift]]
 
-    def _ml_anc(self, model, **kwargs):
+    def _ml_anc(self, gtr, **kwargs):
         """
         Perform ML reconstruction for the ancestral states
         Args:
@@ -251,8 +407,8 @@ class TreeAnc(object):
          - store_lh (bool): if True, all likelihoods will be stored for all nodes. Useful for testing, diagnostics and if special post-processing is required.
          - verbose (int): how verbose the output should be
         """
-        store_lh = False # store intermediate computations in the tree
-        verbose = 1 # how verbose to be at the output
+
+        verbose = 0 # how verbose to be at the output
         if 'store_lh' in kwargs:
             store_lh = kwargs['store_lh'] == True
         if 'verbose' in kwargs:
@@ -263,60 +419,48 @@ class TreeAnc(object):
                 verbose = 5
 
         L = self.tree.get_terminals()[0].sequence.shape[0]
-        alphabet = model.alphabet
+        a = gtr.alphabet.shape[0]
 
         if verbose > 2:
             print ("Walking up the tree, computing joint likelihoods...")
 
         for leaf in self.tree.get_terminals():
 
-            leaf.lh = np.ones((L, alphabet.shape[0]))
-            leaf.pre = np.zeros(L)
-            leaf.c = -1*np.ones((L, alphabet.shape[0]),dtype=int) # state of the node
-            for pos,char in enumerate(alphabet):
-                # FIXME should be index of the character everywhere
-                leaf.c[leaf.sequence == alphabet[pos], :] = pos
-            leaf.c[leaf.c.sum(1)==-4] = np.arange(alphabet.shape[0])
+            if not self.has_attr(leaf, "profile") or leaf.profile is None:
+                leaf.profile = seq2prof(leaf.sequence, gtr.alphabet)
+                leaf.lh_prefactor = np.zeros(L)
 
-            eQT = np.diagflat(np.diag(np.exp(model.mu * leaf.branch_length * model.eigenmat)))
-            P_all = (model.v).dot(eQT).dot(model.v_inv)
-            leaf.lh[:] = P_all[leaf.c[:, 0], :]
-
-
-        prob_profile = np.zeros((L, alphabet.shape[0], alphabet.shape[0]))
         for node in self.tree.get_nonterminals(order='postorder'): #leaves -> root
+            # regardless of what was before, set the profile to zeros
+            node.profile = np.ones((L, a)) # we will multiply it
+            node.lh_prefactor = np.zeros(L)
 
-            node.lh = np.ones((L, alphabet.shape[0]))
-            node.pre = np.zeros(L)
-            node.c = np.zeros((L, alphabet.shape[0]),dtype=int) # state of the node
-            if node.up is None: # we are at the root
-                node.lh[:, :] = 1
-                for ch in node.clades:
-                    node.lh[:, :] *= ch.lh
+            for ch in node.clades:
 
-            else: # internal node
+                node.profile *= gtr.propagate_profile(ch.profile,
+                    ch.branch_length,
+                    rotated=False, # use unrotated
+                    return_log=False) # raw prob to transfer prob up
+                node.lh_prefactor += ch.lh_prefactor
 
-                eQT = np.diagflat(np.diag(np.exp(model.mu * node.branch_length * model.eigenmat)))
-                # probability to be in state i conditional on parent
-                P_all = (model.v).dot(eQT).dot(model.v_inv)
-                prob_profile[:] = P_all.T
-                for ch in node.clades:
-                    prob_profile *= ch.lh.reshape((L, len(alphabet), 1))
-                node.lh[:, :] = prob_profile.max(1)
-                node.c[:, :] = prob_profile.argmax(1)
+            pre = node.profile.sum(1)
 
+            node.profile /= pre.reshape((pre.shape[0], 1)) # normalize so that the sum is 1
+            node.lh_prefactor += np.log(pre) # and store log-prefactor
 
         if (verbose > 2):
             print ("Walking down the tree, computing maximum likelihood     sequences...")
 
-        self.tree.root.state = self.tree.root.lh.argmax(-1)
-        self.tree.root.sequence = alphabet[self.tree.root.state]
-        l_idx = np.arange(L)
-
+        self.tree.root.profile *= np.diag(gtr.Pi) # enable time-reversibility
+        self.tree.root.sequence = gtr.alphabet[node.profile.argmax(1)] # maximal LH over the alphabet
         for node in self.tree.find_clades(order='preorder'):
             if node.up != None: # not root
-                node.state = node.c[np.arange(L), node.up.state]
-                node.sequence = alphabet[node.state]
+                node.profile *= gtr.propagate_profile(node.up.profile,
+                                node.branch_length,
+                                rotated=False, # use unrotated
+                                return_log=False)
+                # actually, infer sequence
+                node.sequence = gtr.alphabet[node.profile.argmax(1)] # maximal LH over the alphabet
 
     # TODO testing
     def optimize_branch_len(self, model, **kwargs):
@@ -348,10 +492,10 @@ class TreeAnc(object):
         for node in self.tree.find_clades(order='postorder'):
             parent = node.up
             if parent is None: continue # this is the root
-            seq_p = parent.sequence
-            seq_ch = node.sequence
-
-            if (seq_p!=seq_ch).sum() == 0:
+            prof_p = parent.profile
+            prof_ch = node.profile
+            ## FIXME
+            if (seq_p !=  seq_ch).sum() == 0:
                 if store_old_dist:
                     node.old_length = node.branch_length
                 node.branch_length = 0
@@ -386,7 +530,7 @@ class TreeAnc(object):
         else:
             return  new_len
 
-    def _neg_prob(self, t, parent, child, tm):
+    def _neg_prob(self, t, parent, child, gtr):
         """
         Probability to observe child given the the parent state, transition matrix and the time of evolution (branch length).
 
@@ -399,19 +543,4 @@ class TreeAnc(object):
         Returns:
          - prob(double): negative probability of the two given sequences to be separated by the time t.
         """
-
-        L = len(parent)
-        if len(parent) != len(child):
-            raise ValueError("Sequence lengths do not match!")
-
-        eQT = np.diagflat(np.diag(np.exp(tm.mu * t * tm.eigenmat)))
-        P_all = (tm.v).dot(eQT).dot(tm.v_inv)
-
-        irow = seq2idx(child, tm.alphabet) # child states
-        icol = seq2idx(parent, tm.alphabet) # parent states
-        prob = P_all[irow, icol].prod()
-        return -prob
-
-
-
-
+        return - gtr.prob(parent, child, t, rotated=False, return_log=False)

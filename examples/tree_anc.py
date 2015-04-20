@@ -57,7 +57,4 @@ if __name__=='__main__':
     print ("Distance to the root : %.3f" % root.dist2root) # depth of the node
     print ("Initial branch length (before the optimization): %.6f" %root.clades[0].old_length)
     print ("node sequence: %s " % str(root.sequence)) # sequence as numpy array
-    print ("most likely state of the node (given the parent state as index) %s  " % str(root.c))
-    print ("Likelihood of the most-likely node state: %s " % str(root.lh))
-
     # in principle, now the tree is prepared to further processing of the datetime information, which is done by the inherited TimeTree class
