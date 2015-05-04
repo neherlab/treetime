@@ -1,8 +1,14 @@
 """
-Script shows basic functionality of reading the tree and doing the ML optimization given the datetime constraints of the nodes.
-To perform the optimization, a special class TimeTree was created. This example script shows howe to use this class.
+Script shows basic functionality of reading the tree and doing the ML
+optimization given the datetime constraints of the nodes.
+To perform the optimization, a special class TimeTree was created. This
+example script shows howe to use this class.
 
-**NOTE** this script shows only the examples for  TimeTree class, which is supposed to do **only** the ML optimization with constraints (+ necessary preparation). For basic functionality, reading-writing, inferring ancestral states, see tree_anc.py example and refer to TreeAnc class (base class of TimeTree) and corresponding example.
+**NOTE** this script shows only the examples for  TimeTree class, which is
+supposed to do **only** the ML optimization with constraints (+ necessary
+preparation). For basic functionality, reading-writing, inferring
+ancestral states, see tree_anc.py example and refer to TreeAnc class (base
+class of TimeTree) and corresponding example.
 """
 
 from __future__ import print_function, division
@@ -15,6 +21,62 @@ from Bio import AlignIO, Phylo
 from time_tree import tree_anc as ta
 from time_tree import time_tree as tt
 import os
+import datetime
+resources_dir = os.path.join(os.path.dirname(__file__), '../data/')
+
+def str2date_time(instr):
+        """
+        Convert input string to datetime object.
+
+        Args:
+         - instr (str): input string. Accepts one of the formats:
+         {MM.DD.YYYY, MM.YYYY, MM/DD/YYYY, MM/YYYY, YYYY}.
+
+        Returns:
+         - date (datetime.datetime): parsed date object. If the parsing failed, None is returned
+        """
+
+        instr = instr.replace('/', '.')
+        #import ipdb; ipdb.set_trace()
+        try:
+            date  = datetime.datetime.strptime(instr,  "%m.%d.%Y")
+        except ValueError:
+            date = None
+        if date is not None:
+            return date
+
+        try:
+            date  = datetime.datetime.strptime(instr,  "%m.%Y")
+        except ValueError:
+            date = None
+
+        if date is not None:
+            return date
+
+        try:
+            date  = datetime.datetime.strptime(instr,  "%Y")
+        except ValueError:
+            date = None
+        return date
+
+def flu_fasta_to_dates():
+    """
+    Convert fasta file with the flu data into the name,date input csv file.
+    Applicable for this given format of the annotation.
+    """
+    ainf = os.path.join(resources_dir, 'flu.HA.fasta')  # input fasta alignment
+    dinf = os.path.join(resources_dir, 'flu.HA.yrs')  # csv dates output
+
+    outstr = []
+    aln = AlignIO.read(ainf, 'fasta')
+    for a in aln:
+        dt = str2date_time(a.name.split('|')[2].strip())
+        if dt is not None:
+            outstr.append(a.name + ',' +
+                    datetime.datetime.strftime(dt, "%Y.%m.%d"))
+
+        with open (dinf, 'w') as outf:
+            outf.write('\n'.join(outstr))
 
 
 if __name__ == '__main__':
@@ -54,11 +116,8 @@ if __name__ == '__main__':
         k_old.append((n.dist2root, n.abs_t))
     k_old = np.array(k_old)
 
-    #  propagate messages up
-    t._ml_t_msgup(gtr)
-
-    #  propagate messages down - reconstruct node positions
-    t._ml_t_msgdwn(gtr)
+    # main method, performs the optimization with time constraints of the nodes
+    t.ml_t(gtr)
 
     k_new = []
     dates = []

@@ -86,6 +86,40 @@ class TreeTime(TreeAnc, object):
             return
         self._set_dates_to_all_nodes(d_dic)
 
+    def _str_to_date(self, instr):
+        """
+        Convert input string to datetime object.
+
+        Args:
+         - instr (str): input string. Accepts one of the formats:
+         {YYYY.MM.DD, YYYY.MM, YYYY}.
+
+        Returns:
+         - date (datetime.datetime): parsed date object. If the parsing failed, None is returned
+        """
+        #import ipdb; ipdb.set_trace()
+        try:
+            date  = datetime.datetime.strptime(instr,  "%Y.%m.%d")
+        except ValueError:
+            date = None
+        if date is not None:
+            return date
+
+        try:
+            date  = datetime.datetime.strptime(instr,  "%Y.%m")
+        except ValueError:
+            date = None
+
+        if date is not None:
+            return date
+
+        try:
+            date  = datetime.datetime.strptime(instr,  "%Y")
+        except ValueError:
+            date = None
+
+        return date
+
     def _read_dates_file(self, inf, **kwargs):
         """
         Read dates from the file into python dictionary. The input file should be in csv format 'node name, date'. The date will be converted to the datetime object and added to the dictionary {node name: datetime}
@@ -103,7 +137,8 @@ class TreeTime(TreeAnc, object):
         if verbose > 5:
             print ("Loaded %d lines form dates file" % len(ss))
         try:
-            d = {s.split(',')[0]: datetime.datetime(int(s.split(',')[1].strip()), 1, 1) for s in ss}
+            d = {s.split(',')[0]: self._str_to_date(s.split(',')[1].strip())
+                    for s in ss if not s.startswith("#")}
             if verbose > 3:
                 print ("Parsed data in %d lines of %d input, %d corrupted"
                     % (len(d), len(ss), len(ss) - len(d)))
@@ -124,7 +159,8 @@ class TreeTime(TreeAnc, object):
         now = datetime.datetime.now()
 
         for node in self.tree.find_clades(order='preorder'):
-            if dates_dic.has_key(node.name):
+            if dates_dic.has_key(node.name) \
+                    and dates_dic[node.name] is not None:
                 days_before_present = (now - dates_dic[node.name]).days
                 if (days_before_present < 0):
                     print ("Cannot set the date ")
@@ -349,6 +385,14 @@ class TreeTime(TreeAnc, object):
         # out_prob[~idx] = 0.0
 
         return out_prob
+
+    def ml_t(self, gtr):
+        #  propagate messages up
+        self._ml_t_msgup(gtr)
+
+        #  propagate messages down - reconstruct node positions
+        self._ml_t_msgdwn(gtr)
+
 
     def date2dist_plot(self):
         """
