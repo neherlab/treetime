@@ -1,7 +1,7 @@
 from Bio import Phylo
 from Bio import AlignIO
 import numpy as np
-import scipy
+from scipy import optimize as sciopt
 # FIXME when reading the tree, scale all teh branches so that the maximal branch length is not more than some arbitrary value (needed for branch length optimization, not to make the brent algorithm crazy)
 
 
@@ -80,6 +80,7 @@ class GTR(object):
 
         self.alphabet_type = alphabet_type
         alphabet = alphabets[alphabet_type]
+        self.alphabet = alphabet
 
         # general rate matrix
         self.W = np.zeros((alphabet.shape[0], alphabet.shape[0]))
@@ -97,11 +98,9 @@ class GTR(object):
     def standard(cls, model='Jukes-Cantor', **kwargs):
         if 'alphabet' in kwargs and alphabet in alphabets.keys():
             alphabet = kwargs['alphabet']
-
         else:
             print ("No alphabet specified. Using default nucleotide.")
             alphabet = 'nuc'
-
         if 'mu' in kwargs:
             mu = kwargs['mu']
         else:
@@ -109,16 +108,17 @@ class GTR(object):
 
         if model=='Jukes-Cantor':
 
-            gtr = cls(alphabet)
+            gtr = cls('nuc')
             gtr.mu = mu
+            a = gtr.alphabet.shape[0]
 
             # flow matrix
-            gtr.W = np.ones((alphabet.shape[0], alphabet.shape[0]))
+            gtr.W = np.ones((a,a))
             np.fill_diagonal(gtr.W, - ((gtr.W).sum(0) - 1))
 
             # equilibrium concentrations matrix
             gtr.Pi = np.zeros(gtr.W.shape)
-            np.fill_diagonal(gtr.Pi, 0.25)
+            np.fill_diagonal(gtr.Pi, 1.0/a)
 
             gtr._check_fix_Q() # make sure the main diagonal is correct
             gtr._eig() # eigendecompose the rate matrix
@@ -126,7 +126,7 @@ class GTR(object):
 
         elif model=='random':
             gtr = cls(alphabet)
-            a = alphabets[alphabet].shape[0]
+            a = gtr.alphabet.shape[0]
 
             gtr.mu = mu
 
@@ -196,10 +196,14 @@ class GTR(object):
         eLambdaT = self._exp_lt(t)
         if not rotated: # we need to rotate first
             p1 = profile_p.dot(self.v) # (L x a).dot(a x a) = (L x a) - prof in eigenspace
-            p2 = profile_ch.dot(self.v_inv) # (L x a).dot(a x a) = (L x a) - prof in eigenspace
-            prob = (p1*eLambdaT*p2).sum(1) # sum_i (p1_i * exp(l_i*t) * p_2_i) result = vector lenght L
+            p2 = (self.v_inv.dot(profile_ch.T)).T # (L x a).dot(a x a) = (L x a) - prof in eigenspace
         else:
-            prob = (profile_p*eLambdaT*profile_ch).sum(1) # sum over the alphabet
+            p1 = profile_p
+            p2 = profile_ch
+            #prob = (profile_p*eLambdaT*profile_ch).sum(1) # sum over the alphabet
+
+        prob = (p1*eLambdaT*p2).sum(1) # sum_i (p1_i * exp(l_i*t) * p_2_i) result = vector lenght L
+
         if (return_log):
             prob = (np.log(prob)).sum() # sum all sites
         else:
@@ -224,11 +228,12 @@ class GTR(object):
         eLambdaT = self._exp_lt(t) # vector lenght = a
 
         if not rotated:
-            eQT = self.v.dot(eLambdaT).dot(self.v_inv)
-            res = (eQT.dot(profile.T)).T
-
+            # rotate
+            p = self.v_inv.dot(profile.T).T
         else:
-            res = (self.v.dot((eLambdaT * profile).T)).T
+            p = profile
+
+        res = (self.v.dot((eLambdaT * p).T)).T
 
         if not return_log:
             return res
@@ -276,8 +281,8 @@ class TreeAnc(object):
         raise NotImplementedError("This functionality is under development")
         pass
 
-    def has_attr(self, node, attr):
-        return node.__dict__.has_key(attr)
+    #def has_attr(self, node, attr):
+    #    return node.__dict__.has_key(attr)
 
     def _add_node_params(self):
         """
@@ -285,7 +290,7 @@ class TreeAnc(object):
         """
         self.tree.root.up = None
         self.tree.root.dist2root = 0.0
-        for clade in self.tree.get_nonterminals(order='preorder'): # parents first
+        for clade in self.tree.get_nonterminals(order='preorder'): # up->down
             for c in clade.clades:
                 c.up = clade
                 c.dist2root = c.up.dist2root + c.branch_length
@@ -330,12 +335,15 @@ class TreeAnc(object):
         if method == 'fitch':
             self._fitch_anc(**kwargs)
         elif method == 'ml':
+
             if ('model' not in kwargs):
                 print("Warning: You chose Maximum-likelihood reconstruction,"
                     " but did not specified any model. Jukes-Cantor will be used as default.")
-                kwargs['model'] = GTR.standard(model='Jukes-Cantor')
+                gtr = GTR.standard(model='Jukes-Cantor')
+            else:
+                gtr = kwargs.pop('model')
 
-            self._ml_anc(**kwargs)
+            self._ml_anc(gtr, **kwargs)
         else:
             raise NotImplementedError("The reconstruction method %s is not supported. " % method)
 
@@ -426,9 +434,9 @@ class TreeAnc(object):
 
         for leaf in self.tree.get_terminals():
 
-            if not self.has_attr(leaf, "profile") or leaf.profile is None:
-                leaf.profile = seq2prof(leaf.sequence, gtr.alphabet)
-                leaf.lh_prefactor = np.zeros(L)
+            # in any case, set the profile
+            leaf.profile = seq2prof(leaf.sequence, gtr.alphabet_type)
+            leaf.lh_prefactor = np.zeros(L)
 
         for node in self.tree.get_nonterminals(order='postorder'): #leaves -> root
             # regardless of what was before, set the profile to zeros
@@ -441,6 +449,7 @@ class TreeAnc(object):
                     ch.branch_length,
                     rotated=False, # use unrotated
                     return_log=False) # raw prob to transfer prob up
+
                 node.lh_prefactor += ch.lh_prefactor
 
             pre = node.profile.sum(1)
@@ -452,7 +461,9 @@ class TreeAnc(object):
             print ("Walking down the tree, computing maximum likelihood     sequences...")
 
         self.tree.root.profile *= np.diag(gtr.Pi) # enable time-reversibility
-        self.tree.root.sequence = gtr.alphabet[node.profile.argmax(1)] # maximal LH over the alphabet
+        self.tree.root.sequence, self.tree.root.profile = \
+            self._prof_to_seq(self.tree.root.profile, gtr, True)
+
         for node in self.tree.find_clades(order='preorder'):
             if node.up != None: # not root
                 node.profile *= gtr.propagate_profile(node.up.profile,
@@ -460,8 +471,15 @@ class TreeAnc(object):
                                 rotated=False, # use unrotated
                                 return_log=False)
                 # actually, infer sequence
-                node.sequence = gtr.alphabet[node.profile.argmax(1)] # maximal LH over the alphabet
+                node.sequence,node.profile=self._prof_to_seq(node.profile,gtr)
 
+    def _prof_to_seq(self, profile, gtr, correct_prof=True):
+        seq = gtr.alphabet[profile.argmax(1)] # max LH over the alphabet
+        if correct_prof: # max profile value to one, others - zeros
+            am = profile.argmax(1)
+            profile[:, :] = 0.0
+            profile[xrange(profile.shape[0]), am] = 1.0
+        return seq, profile
     # TODO testing
     def optimize_branch_len(self, model, **kwargs):
         """
@@ -494,38 +512,40 @@ class TreeAnc(object):
             if parent is None: continue # this is the root
             prof_p = parent.profile
             prof_ch = node.profile
-            ## FIXME
-            if (seq_p !=  seq_ch).sum() == 0:
-                if store_old_dist:
-                    node.old_length = node.branch_length
-                node.branch_length = 0
-                if verbose > 5:
-                    print ("Parent and child sequences are equal, setting branch len = 0")
-            else:
-                new_len = self._opt_len(seq_p, seq_ch, model)
-                if new_len > 0:
-                    if verbose > 5:
-                        print ("Optimization results: old_len=%.4f, new_len=%.4f. "
-                                " Updating branch length..." %(node.branch_length, new_len))
 
-                    if store_old_dist:
-                        node.old_length = node.branch_length
-                    node.branch_length = new_len
+            if store_old_dist:
+                node.old_length = node.branch_length
+
+            # optimization method
+            #import ipdb; ipdb.set_trace()
+            new_len = self._opt_len(prof_p, prof_ch, model)
+
+            if new_len < 0:
+                continue
+
+            if verbose > 5:
+                print ("Optimization results: old_len=%.4f, new_len=%.4f "
+                        " Updating branch length..."
+                        %(node.branch_length, new_len))
+
+            node.branch_length = new_len
+
         # as branch lengths changed, the params must be fixed
         self._add_node_params()
         return
 
     def _opt_len(self, seq_p, seq_ch, gtr, verbose=10):
-        opt = scipy.optimize.minimize_scalar(self._neg_prob,
-                bounds=[0,2],
+        opt = sciopt.minimize_scalar(self._neg_prob,
+                bounds=[0,.2],
                 method='Bounded',
                 args=(seq_p, seq_ch, gtr))
 
         new_len = opt["x"]
 
-        if new_len > 1.8 or opt["success"] != True:
+        if new_len > .18 or opt["success"] != True:
             if verbose > 0:
                 print ("Cannot optimize branch length, minimization failed.")
+            import ipdb; ipdb.set_trace()
             return -1.0
         else:
             return  new_len
@@ -543,4 +563,4 @@ class TreeAnc(object):
         Returns:
          - prob(double): negative probability of the two given sequences to be separated by the time t.
         """
-        return - gtr.prob(parent, child, t, rotated=False, return_log=False)
+        return - gtr.prob_t (parent, child, t, rotated=False, return_log=False)

@@ -10,8 +10,6 @@ from time_tree import tree_anc as ta
 
 class TestGTR(unittest.TestCase):
 
-
-
     def _random_Q(self):
         self.gtr = ta.GTR(ta.alphabets['nuc'])
 
@@ -36,6 +34,31 @@ class TestGTR(unittest.TestCase):
         self.gtr.
     def test_reversibility(self):
         pass
+
+    def test_jc(self):
+        # can instantiate
+        gtr = ta.GTR.standard('Jukes-Cantor')
+        #concentrations are assigned correctly
+        assert (gtr.Pi.sum() == 1.0)
+        # the matrix is the rate matrix
+        assert abs((gtr.Pi.dot(gtr.W)).sum(0).sum() < 1e-15)
+        # eigendecomposition is made correctly
+        a = gtr.v.shape(0)
+        assert abs((gtr.v.dot(gtr.v_inv) - np.identity(a)).sum() < 1e-10)
+        assert gtr.v.sum() > 1e-10 # **and** v is not zero
+
+    def test_random(self):
+        # can instantiate
+        gtr = ta.GTR.standard('random')
+        #concentrations are assigned correctly
+        assert (gtr.Pi.sum() == 1.0)
+        # the matrix is the rate matrix
+        assert abs((gtr.Pi.dot(gtr.W)).sum(0).sum() < 1e-15)
+        # eigendecomposition is made correctly
+        a = gtr.v.shape(0)
+        assert abs((gtr.v.dot(gtr.v_inv) - np.identity(a)).sum() < 1e-10)
+        assert gtr.v.sum() > 1e-10 # **and** v is not zero
+
 
 if __name__ == '__main__':
 

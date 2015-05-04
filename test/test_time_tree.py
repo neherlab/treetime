@@ -28,6 +28,9 @@ class TestTreeAnc(unittest.TestCase):
         err = anc_t.set_seqs_to_leaves(aln)
         assert (err==0) # all sequencs were set up successfully
 
+    def test_optimize_(self):
+        pass
+
 
 
 
