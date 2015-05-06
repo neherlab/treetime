@@ -2,31 +2,29 @@ from Bio import Phylo
 from Bio import AlignIO
 import numpy as np
 from scipy import optimize as sciopt
-# FIXME when reading the tree, scale all teh branches so that the maximal branch length is not more than some arbitrary value (needed for branch length optimization, not to make the brent algorithm crazy)
-
 
 alphabets = {
-"nuc": np.array(['A', 'C', 'G', 'T', '-']),
-"aa": np.array(['-'])
-}
+            "nuc": np.array(['A', 'C', 'G', 'T', '-']),
+            "aa": np.array(['-'])}
 
 _full_nc_profile = {
-    'A':np.array([1,0,0,0,0],dtype='float'),
-    'C':np.array([0,1,0,0,0],dtype='float'),
-    'G':np.array([0,0,1,0,0],dtype='float'),
-    'T':np.array([0,0,0,1,0],dtype='float'),
-    '-':np.array([0,0,0,0,1],dtype='float'),
-    'N':np.array([1,1,1,1,1],dtype='float'),
-    'R':np.array([1,0,1,0,0],dtype='float'),
-    'Y':np.array([0,1,0,1,0],dtype='float'),
-    'S':np.array([0,1,1,0,0],dtype='float'),
-    'W':np.array([1,0,0,0,1],dtype='float'),
-    'K':np.array([0,0,0,1,1],dtype='float'),
-    'M':np.array([1,1,0,0,0],dtype='float'),
-    'D':np.array([1,0,1,1,0],dtype='float'),
-    'H':np.array([1,1,0,1,0],dtype='float'),
-    'B':np.array([0,1,1,1,0],dtype='float'),
-    'V':np.array([1,1,1,0,0],dtype='float')}
+    'A': np.array([1, 0, 0, 0, 0], dtype='float'),
+    'C': np.array([0, 1, 0, 0, 0], dtype='float'),
+    'G': np.array([0, 0, 1, 0, 0], dtype='float'),
+    'T': np.array([0, 0, 0, 1, 0], dtype='float'),
+    '-': np.array([0, 0, 0, 0, 1], dtype='float'),
+    'N': np.array([1, 1, 1, 1, 1], dtype='float'),
+    'R': np.array([1, 0, 1, 0, 0], dtype='float'),
+    'Y': np.array([0, 1, 0, 1, 0], dtype='float'),
+    'S': np.array([0, 1, 1, 0, 0], dtype='float'),
+    'W': np.array([1, 0, 0, 0, 1], dtype='float'),
+    'K': np.array([0, 0, 0, 1, 1], dtype='float'),
+    'M': np.array([1, 1, 0, 0, 0], dtype='float'),
+    'D': np.array([1, 0, 1, 1, 0], dtype='float'),
+    'H': np.array([1, 1, 0, 1, 0], dtype='float'),
+    'B': np.array([0, 1, 1, 1, 0], dtype='float'),
+    'V': np.array([1, 1, 1, 0, 0], dtype='float')}
+
 
 def prepare_seq(seq):
     """
@@ -36,14 +34,15 @@ def prepare_seq(seq):
      - sequence as numpy array
     """
     try:
-        s = ''.join(seq)
-    except:
-        s = seq
-    s = s.upper()
+        sequence = ''.join(seq)
+    except TypeError:
+        sequence = seq
+    sequence = sequence.upper()
 
-    return np.array(list(s))
+    return np.array(list(sequence))
 
-def seq2prof(x,aln_type='nuc'):
+
+def seq2prof(x, aln_type='nuc'):
     """
     Convert the given character into the profile.
     Args:
@@ -65,6 +64,7 @@ def seq2prof(x,aln_type='nuc'):
         raise TypeError("Alignment type cane be either 'nuc' or 'aa'")
     return prof
 
+
 class GTR(object):
     """
     Defines General tme reversible model of character evolution.
@@ -75,7 +75,7 @@ class GTR(object):
         Args:
          - alphabet (numpy.array): alphabet of the sequence.
         """
-        if not (alphabets.has_key(alphabet_type)):
+        if not alphabet_type in alphabets:
             raise AttributeError("Unknown alphabet type specified")
 
         self.alphabet_type = alphabet_type
@@ -248,6 +248,7 @@ class GTR(object):
         """
         return np.exp(self.mu * t * self.eigenmat)
 
+
 class TreeAnc(object):
     """
     Class defines simple tree object with basic interface methdos: reading and
@@ -281,7 +282,7 @@ class TreeAnc(object):
         raise NotImplementedError("This functionality is under development")
         pass
 
-    #def has_attr(self, node, attr):
+    # def has_attr(self, node, attr):
     #    return node.__dict__.has_key(attr)
 
     def _add_node_params(self):
@@ -313,7 +314,7 @@ class TreeAnc(object):
         failed_leaves= 0
         dic_aln = {k.name: np.array(k.seq) for k in aln} #
         for l in self.tree.get_terminals():
-            if dic_aln.has_key(l.name):
+            if l.name in dic_aln:
                 l.sequence = dic_aln[l.name]
             else:
                 print ("Cannot find sequence for leaf: %s" % l.name)
@@ -358,9 +359,9 @@ class TreeAnc(object):
 
         print ("Walking up the tree, creating the Fitch profiles")
         for node in self.tree.get_nonterminals(order='postorder'):
-            node.state = [self._fitch_state(node, k) for k in xrange(L)]
+            node.state = [self._fitch_state(node, k) for k in range(L)]
 
-        ambs = [i for i in xrange(L) if len(self.tree.root.state[i])>1]
+        ambs = [i for i in range(L) if len(self.tree.root.state[i])>1]
         if len(ambs) > 0:
             for amb in ambs:
                 print ("Ambiguous state of the root sequence "
@@ -377,7 +378,7 @@ class TreeAnc(object):
             if node.up != None: # not root
                node.sequence =  np.array([node.up.sequence[i]
                        if node.up.sequence[i] in node.state[i]
-                       else node.state[i][0] for i in xrange(L)])
+                       else node.state[i][0] for i in range(L)])
             #if np.sum([k not in alphabet for k in node.sequence]) > 0:
             #    import ipdb; ipdb.set_trace()
             del node.state # no need to store Fitch states
@@ -474,13 +475,13 @@ class TreeAnc(object):
                 node.sequence,node.profile=self._prof_to_seq(node.profile,gtr)
 
     def _prof_to_seq(self, profile, gtr, correct_prof=True):
-        seq = gtr.alphabet[profile.argmax(1)] # max LH over the alphabet
-        if correct_prof: # max profile value to one, others - zeros
+        seq = gtr.alphabet[profile.argmax(1)]  # max LH over the alphabet
+        if correct_prof:  # max profile value to one, others - zeros
             am = profile.argmax(1)
             profile[:, :] = 0.0
-            profile[xrange(profile.shape[0]), am] = 1.0
+            profile[range(profile.shape[0]), am] = 1.0
         return seq, profile
-    # TODO testing
+
     def optimize_branch_len(self, model, **kwargs):
         """
         Perform ML optimization for the tree branch length. **Note** this method assumes that each node stores information about its sequence as numpy.array object (variable node.sequence). Therefore, before calling this method, sequence reconstruction with either of the available models must be performed.

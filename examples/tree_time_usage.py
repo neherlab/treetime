@@ -13,70 +13,19 @@ class of TimeTree) and corresponding example.
 
 from __future__ import print_function, division
 
-import sys
-sys.path += ['/home/pavel/university/projects/time_tree']
+#import sys
+#sys.path += ['/home/pavel/university/projects']
 
+#from .read_tree import W
+
+#sys.exit(0)
 import numpy as np
 from Bio import AlignIO, Phylo
-from time_tree import tree_anc as ta
-from time_tree import time_tree as tt
+from tree_time.tree_time import tree_anc as ta
+from tree_time.tree_time import tree_time as tt
 import os
 import datetime
 resources_dir = os.path.join(os.path.dirname(__file__), '../data/')
-
-def str2date_time(instr):
-        """
-        Convert input string to datetime object.
-
-        Args:
-         - instr (str): input string. Accepts one of the formats:
-         {MM.DD.YYYY, MM.YYYY, MM/DD/YYYY, MM/YYYY, YYYY}.
-
-        Returns:
-         - date (datetime.datetime): parsed date object. If the parsing failed, None is returned
-        """
-
-        instr = instr.replace('/', '.')
-        #import ipdb; ipdb.set_trace()
-        try:
-            date  = datetime.datetime.strptime(instr,  "%m.%d.%Y")
-        except ValueError:
-            date = None
-        if date is not None:
-            return date
-
-        try:
-            date  = datetime.datetime.strptime(instr,  "%m.%Y")
-        except ValueError:
-            date = None
-
-        if date is not None:
-            return date
-
-        try:
-            date  = datetime.datetime.strptime(instr,  "%Y")
-        except ValueError:
-            date = None
-        return date
-
-def flu_fasta_to_dates():
-    """
-    Convert fasta file with the flu data into the name,date input csv file.
-    Applicable for this given format of the annotation.
-    """
-    ainf = os.path.join(resources_dir, 'flu.HA.fasta')  # input fasta alignment
-    dinf = os.path.join(resources_dir, 'flu.HA.yrs')  # csv dates output
-
-    outstr = []
-    aln = AlignIO.read(ainf, 'fasta')
-    for a in aln:
-        dt = str2date_time(a.name.split('|')[2].strip())
-        if dt is not None:
-            outstr.append(a.name + ',' +
-                    datetime.datetime.strftime(dt, "%Y.%m.%d"))
-
-        with open (dinf, 'w') as outf:
-            outf.write('\n'.join(outstr))
 
 
 if __name__ == '__main__':
@@ -87,8 +36,9 @@ if __name__ == '__main__':
     dinf = os.path.join(resources_dir, 'flu.HA.yrs')  # csv dates
 
     # first, we need to read the tree from files.
-    # There is a shortcut function, which loads data from all three files at once:
-    t = tt.TreeTime.from_files(tinf, ainf, dinf, 'newick', 'fasta')
+    # There is a shortcut function, which loads data from all three files at
+    # once:
+    t = tt.TreeTime.from_files(tinf, ainf, dates_file=dinf)
 
     # we can of course do everything manually (just as an example)
     # _t = tt.TreeTime.from_file(tinf, 'newick')

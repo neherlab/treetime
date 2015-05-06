@@ -59,6 +59,7 @@ def flu_fasta_to_dates():
                      datetime.datetime.strftime(dt, "%Y.%m.%d"))
         with open(dinf, 'w') as outf:
             outf.write('\n'.join(outstr))
+    
 
 if __name__ == '__main__':
     pass
