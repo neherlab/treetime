@@ -28,6 +28,27 @@ class DateConversion(object):
         self.pi_val = 0
         self.sigma = 0
 
+    @classmethod
+    def from_tree(cls, t):
+        
+
+        dates = []
+        for node in self.tree.find_clades():
+            if node.date is not None:
+                dates.append((node.date, node.dist2root))
+        dates = np.array(dates)
+        cls.slope,\
+            cls.intersect,\
+            cls.r_val,\
+            cls.pi_val,\
+            cls.sigma = stats.linregress(dates[:, 0], dates[:, 1])
+        return cls
+
+        # set dates to the internal nodes
+
+        self._ml_t_init(gtr)
+
+
     def get_branch_len(self, date1, date2):
         """
         Compute branch length given the dates of the two nodes.
@@ -42,7 +63,7 @@ class DateConversion(object):
         """
         return abs(date1 - date2) * self.slope
 
-    def get_date(self, node):
+    def get_date(self, abs_t):
         """
         Get the approximate date of the tree node, assuming that the
         dependence between the node date and the node depth int the tree is
@@ -54,7 +75,7 @@ class DateConversion(object):
             dist2root).
 
         """
-        year = (self.intersect - node.dist2root) / self.slope
+        year = (self.intersect - abs_t) / self.slope
         if year < 0:
             print ("Warning: got the negative date! Returning the inverse.")
             year = abs(year)

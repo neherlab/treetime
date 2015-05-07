@@ -77,10 +77,6 @@ target/
 sftp-config.json 
 
 #data files other resources
-*.nwk
-*.fasta
 *.svg
-*.np
-*.npy
 
 !data/
