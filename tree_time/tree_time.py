@@ -282,6 +282,7 @@ class TreeTime(TreeAnc, object):
             print ("error")
             return
 
+        self._make_interpolator(gtr)
         for node in self.tree.find_clades():
             node.ml_t_prefactor = 0.0
             self._set_rotated_profiles(node, gtr)
@@ -341,11 +342,12 @@ class TreeTime(TreeAnc, object):
                 grid[:, :] -= node.grid
                 grid[:, :] = (grid.T + clade.grid).T
 
-                _prob = self._ml_t_grid_prob(
-                    node.prf_r,
-                    clade.prf_l,
-                    grid,
-                    gtr)
+#                _prob = self._ml_t_grid_prob(
+#                    node.prf_r,
+#                    clade.prf_l,
+#                    grid,
+#                    gtr)
+                _prob = np.exp(n.branch_log_prob(grid))                # sum over the child grid to get conditional on terminal
                 # sum over the child grid to get conditional on terminal
                 _prob[:, :] = (_prob.T * clade.prob).T
 

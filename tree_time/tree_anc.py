@@ -565,3 +565,24 @@ class TreeAnc(object):
          - prob(double): negative probability of the two given sequences to be separated by the time t.
         """
         return - gtr.prob_t (parent, child, t, rotated=False, return_log=False)
+
+
+    def _make_interpolator(self, gtr, n=10):
+        """
+        makes an interpolation object for propability of branch length
+        requires previous branch_length optimization
+        """
+        from scipy.interpolate import interp1d
+        for node in self.tree.find_clades(order='postorder'):
+            parent = node.up
+            if parent is None: continue # this is the root
+            prof_p = parent.profile
+            prof_ch = node.profile
+            grid = np.concatenate([[-100000, -1e-10]+ 
+                                  node.branch_length*(1-np.linspace(1-1e-5,0.0,n)**2), 
+                                  node.branch_length + (1.0-node.branch_length)*(1-np.linspace(1.0,0.0,n)**2)[1:]+[1000000]])
+
+            logprob = np.concatenate([[0,0], np.log([self._neg_prob(t, prof_p, prof_ch, gtr) for t in grid[2:-1]]), [0]])
+            logprob[((0,1,-1),)] = np.min(logprob)-200            
+            node.branch_logprob = interp1d(grid, logprob, mode='linear')
+
