@@ -30,8 +30,6 @@ class DateConversion(object):
 
     @classmethod
     def from_tree(cls, t):
-        
-
         dates = []
         for node in t.find_clades():
             if node.raw_date is not None:
@@ -355,10 +353,14 @@ class TreeTime(TreeAnc, object):
                 
 
     def _min_interp(self, interp_object):
-        opt_ = sciopt.minimize_scalar(interp_object, 
-            bounds=[-2 * self.max_node_abs_t, 2 * self.max_node_abs_t],
-            method='brent')
-        return opt_.x
+        
+        #import ipdb; ipdb.set_trace()
+
+        return interp_object.x[interp_object(interp_object.x).argmin()]
+        #opt_ = sciopt.minimize_scalar(interp_object, 
+        #    bounds=[-2 * self.max_node_abs_t, 2 * self.max_node_abs_t],
+        #    method='brent')
+        #return opt_.x
         #if opt_.success != True:
         #    return None
         
@@ -399,13 +401,14 @@ class TreeTime(TreeAnc, object):
         approximate position of the target node. Make the grid for the target 
         node, and for each point of this newly generated grid, compute the 
         convolution over all possible positions of the source node. 
+        
         Args:
          
-         - src_neglogprob (scipy.interpolate.interp1d): inverse log-LH 
+        - src_neglogprob (scipy.interpolate.interp1d): inverse log-LH 
          distribution of the node to be integrated, represented as scipy 
          interpolation object
          
-         - src_branch_neglogprob(scipy.interpolate.interp1d): inverse log-LH 
+        - src_branch_neglogprob(scipy.interpolate.interp1d): inverse log-LH 
          distribution of the branch lenghts between the two nodes, represented 
          as scipy interpolation object
 
@@ -550,14 +553,22 @@ class TreeTime(TreeAnc, object):
         
         ml_t_prefactor = np.sum(prefactors)
 
-        opts = [self._min_interp(k) for k in interps]
-        opts = [k for k in opts if k is not None]
-        scale = 2 * np.max(
-            [abs((np.max(opts) - np.min(opts))), 
-            0.01]
-            ) / self.max_node_abs_t
-        node_grid = self._make_node_grid(np.mean(opts), grid_size, scale)
-        node_prob = np.sum([k(node_grid) for k in interps], axis=0)
+        min_grid_size = np.min([len(k.x) for k in interps])
+        # correction for delta-functions distribution of terminal nodes
+        if min_grid_size < 10: # just combine the two grids
+            grid = np.concatenate([k.x for k in interps])
+            grid = np.unique(grid) # exclude repetitive points (terminals)
+        else: # create new grid from combination of two
+
+            opts = [self._min_interp(k) for k in interps]
+            opts = [k for k in opts if k is not None]
+            scale = 2 * np.max(
+                [abs((np.max(opts) - np.min(opts))), 
+                0.01]
+                ) / self.max_node_abs_t
+            grid = self._make_node_grid(np.mean(opts), grid_size, scale)
+        
+        node_prob = np.sum([k(grid) for k in interps], axis=0)
         
         pre =  node_prob.min() 
         node_prob -= pre
@@ -567,7 +578,7 @@ class TreeTime(TreeAnc, object):
         node_prob[((0,-1),)] = -1 * self.MIN_LOG # +1000
         node_prob[((1,-2),)] = -1 * self.MIN_LOG / 2 # +500           
 
-        interp = interp1d(node_grid, node_prob, kind='linear')
+        interp = interp1d(grid, node_prob, kind='linear')
         return interp, ml_t_prefactor
     
     def _ml_t_leaves_root(self, grid_size=100):
@@ -589,23 +600,19 @@ class TreeTime(TreeAnc, object):
             clades = [k for k in node.clades if k.neg_log_prob is not None]
             if len(clades) < 1:  # we need at least one constrainted
                 continue
-            neg_log_prob = []
-
-            # iterate all children
-            for clade in clades:
-                neg_log_prob.append(
-                    self._convolve(clade.neg_log_prob, 
-                                   clade.branch_neg_log_prob, 
-                                   inverse_time=True, 
-                                   grid_size=grid_size
-                                   )
-                    )
-            node.ml_t_prefactor += clade.ml_t_prefactor
+            neg_log_prob = [self._convolve(clade.neg_log_prob, 
+                               clade.branch_neg_log_prob, 
+                               inverse_time=True, 
+                               grid_size=grid_size
+                               )
+                for clade in clades]
             
-            node.neg_log_prob, node.ml_t_prefactor = self._multiply_dists(
+            new_neglogprob, prefactor = self._multiply_dists(
                 neg_log_prob, 
                 [k.ml_t_prefactor for k in node.clades],
                 grid_size)
+            node.neg_log_prob = new_neglogprob
+            node.ml_t_prefactor += prefactor
 
             #import ipdb; ipdb.set_trace()
                         
@@ -616,7 +623,6 @@ class TreeTime(TreeAnc, object):
             # x1 = log1.x
             # plt.plot(x0, log0(x0) - log0(x0).min(), 'o--')
             # plt.plot(x1, log1(x1) - log1(x1).min(), 'o--')
-
 
     def _ml_t_root_leaves(self, grid_size=100):
         """
@@ -632,11 +638,14 @@ class TreeTime(TreeAnc, object):
                 print ("ERROR: node has no log-prob interpolation object! "
                     "Aborting.")
             if node.up is None:  # root node
-                node.abs_t = self._min_interp(node.neg_log_prob)
-                self._set_final_date(node)
+                self._set_final_date(node)  
+                continue               
+            
+            if node.neg_log_prob is not None: # aconstrained terminal 
+                                              # and all internal nodes
+                #if node.is_terminal():
+                #    import ipdb; ipdb.set_trace()
 
-            else: # all other nodes
-                #import ipdb; ipdb.set_trace()
                 msg_from_root = self._convolve(node.up.neg_log_prob, 
                                                   node.branch_neg_log_prob,
                                                   inverse_time=False, 
@@ -656,7 +665,18 @@ class TreeTime(TreeAnc, object):
                 
                 node.neg_log_prob = final_prob
                 node.ml_t_prefactor = final_pre
-                self._set_final_date(node)
+                
+            else: # unconstrained terminal nodes
+                msg_from_root = self._convolve(node.up.neg_log_prob, 
+                                                  node.branch_neg_log_prob,
+                                                  inverse_time=False, 
+                                                  grid_size=grid_size
+                                                  )
+               
+                node.neg_log_prob = msg_from_root
+                node.ml_t_prefactor = node.up.ml_t_prefactor
+            
+            self._set_final_date(node)                
 
     def _set_final_date(self, node):
         """
@@ -671,9 +691,7 @@ class TreeTime(TreeAnc, object):
             node.dist2root = 0.0
 
         node.date = (
-                    node.abs_t - self.date2dist.intersect) / self.date2dist.slope
-
-
+                    node.dist2root - self.date2dist.intersect) / self.date2dist.slope
 
     def _ml_t_grid_prob(self, p_parent, p_child, grid, gtr):
         """
