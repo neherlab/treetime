@@ -9,8 +9,9 @@ import numpy as np
 from Bio import AlignIO
 import datetime
 from scipy import stats
+from scipy.interpolate import interp1d
 import matplotlib.pyplot as plt
-
+from scipy import optimize as sciopt
 
 class DateConversion(object):
 
@@ -19,7 +20,6 @@ class DateConversion(object):
     as it is used in ML computations and the dates of the nodes.
     It is assumed that the conversion formula is 'length = k*date + b'
     """
-
     def __init__(self):
 
         self.slope = 0
@@ -33,9 +33,9 @@ class DateConversion(object):
         
 
         dates = []
-        for node in self.tree.find_clades():
-            if node.date is not None:
-                dates.append((node.date, node.dist2root))
+        for node in t.find_clades():
+            if node.raw_date is not None:
+                dates.append((node.raw_date, node.dist2root))
         dates = np.array(dates)
         cls.slope,\
             cls.intersect,\
@@ -47,7 +47,6 @@ class DateConversion(object):
         # set dates to the internal nodes
 
         self._ml_t_init(gtr)
-
 
     def get_branch_len(self, date1, date2):
         """
@@ -90,10 +89,15 @@ class TreeTime(TreeAnc, object):
     To se how to use it, please refer to the examples section.
     """
 
+    MIN_T = -1e5
+    MAX_T = 1e5
+    MIN_LOG = -1000
+
     def __init__(self, tree):
         super(TreeTime, self).__init__(tree)
         self.date2dist = None  # we do not know anything about the conversion
         self.tree_file = ""
+        self.max_node_abs_t = 0.0
 
     @classmethod
     def from_files(cls, tree_file, aln_file, **kwargs):
@@ -123,58 +127,56 @@ class TreeTime(TreeAnc, object):
             tree._set_dates_to_all_nodes(d_dic)
         return tree
 
-    def load_dates(self, dates_file):
-        """
-        Args:
-         - dates_file(str): path to file containing timing info about the tree
-         nodes. File should be in csv format: 'nodeName,year'
-        """
-        d_dic = self._read_dates_file(dates_file)
-        if (len(d_dic)) < 1:
-            return
-        self._set_dates_to_all_nodes(d_dic)
-
-    def _str_to_date(self, instr):
-        """
-        Convert input string to datetime object.
-
-        Args:
-         - instr (str): input string. Accepts one of the formats:
-         {YYYY.MM.DD, YYYY.MM, YYYY}.
-
-        Returns:
-         - date (datetime.datetime): parsed date object. If the parsing
-         failed, None is returned
-        """
-        # import ipdb; ipdb.set_trace()
-        try:
-            date = datetime.datetime.strptime(instr, "%Y.%m.%d")
-        except ValueError:
-            date = None
-        if date is not None:
-            return date
-
-        try:
-            date = datetime.datetime.strptime(instr, "%Y.%m")
-        except ValueError:
-            date = None
-
-        if date is not None:
-            return date
-
-        try:
-            date = datetime.datetime.strptime(instr, "%Y")
-        except ValueError:
-            date = None
-
-        return date
-
     def _read_dates_file(self, inf, **kwargs):
         """
         Read dates from the file into python dictionary. The input file should
         be in csv format 'node name, date'. The date will be converted to the
         datetime object and added to the dictionary {node name: datetime}
+
+        Args:
+         - inf(str): path to input file
+
+        KWargs:
+         - verbose(int): how verbose should the output be
+
+        Returns:
+         - dic(dic): dictionary  {NodeName: Date as datetime object}
         """
+
+        def str_to_date(instr):
+            """
+            Convert input string to datetime object.
+    
+            Args:
+             - instr (str): input string. Accepts one of the formats:
+             {YYYY.MM.DD, YYYY.MM, YYYY}.
+    
+            Returns:
+             - date (datetime.datetime): parsed date object. If the parsing
+             failed, None is returned
+            """
+            # import ipdb; ipdb.set_trace()
+            try:
+                date = datetime.datetime.strptime(instr, "%Y.%m.%d")
+            except ValueError:
+                date = None
+            if date is not None:
+                return date
+    
+            try:
+                date = datetime.datetime.strptime(instr, "%Y.%m")
+            except ValueError:
+                date = None
+    
+            if date is not None:
+                return date
+    
+            try:
+                date = datetime.datetime.strptime(instr, "%Y")
+            except ValueError:
+                date = None
+    
+            return dates_file
 
         if 'verbose' in kwargs:
             verbose = kwargs['verbose']
@@ -188,7 +190,7 @@ class TreeTime(TreeAnc, object):
         if verbose > 5:
             print ("Loaded %d lines form dates file" % len(all_ss))
         try:
-            dic = {s.split(',')[0]: self._str_to_date(s.split(',')[1].strip())
+            dic = {s.split(',')[0]: str_to_date(s.split(',')[1].strip())
                    for s in all_ss if not s.startswith("#")}
             if verbose > 3:
                 print ("Parsed data in %d lines of %d input, %d corrupted"
@@ -200,7 +202,7 @@ class TreeTime(TreeAnc, object):
                    "corrupted. Return empty dictionary.")
             return {}
 
-    def _set_dates_to_all_nodes(self, dates_dic):
+    def _set_dates_to_all_nodes(self, dates_dic, reroot=True):
         """
         Set the time information to all nodes.
         Gets the datetime object of the nodes specified, calculate the time
@@ -210,6 +212,9 @@ class TreeTime(TreeAnc, object):
          - dates_dic(dic): dictionary with datetime informationfor nodes.
          Format: {node name: datetime object}
 
+         -reroot(bool, defalut True): whether to reroot to the oldest branch 
+         after the dates are assigned to al nodes
+
         """
         now = datetime.datetime.now()
 
@@ -218,11 +223,12 @@ class TreeTime(TreeAnc, object):
                     and dates_dic[node.name] is not None:
                 days_before_present = (now - dates_dic[node.name]).days
                 if days_before_present < 0:
-                    print ("Cannot set the date ")
+                    print ("Cannot set the date! the specified date is later "
+                        " than today")
                     continue
-                node.date = days_before_present
+                node.raw_date = days_before_present
             else:
-                node.date = None
+                node.raw_date = None
         self.reroot_to_oldest()
 
     def reroot_to_oldest(self):
@@ -233,8 +239,8 @@ class TreeTime(TreeAnc, object):
         # it should be done in a cleverer way.
 
         self.tree.root_with_outgroup(sorted(self.tree.get_terminals(),
-                                            key=lambda x: x.date)[-1])
-        self.tree.root.date = None
+                                            key=lambda x: x.raw_date)[-1])
+        self.tree.root.raw_date = None
         # fix tree lengths, etc
         self._add_node_params()
 
@@ -250,22 +256,48 @@ class TreeTime(TreeAnc, object):
         function. (The latter is accomplished by calling load_dates func).
         """
 
-        self.date2dist = DateConversion()
-
-        dates = []
-        for node in self.tree.find_clades():
-            if node.date is not None:
-                dates.append((node.date, node.dist2root))
-        dates = np.array(dates)
-        self.date2dist.slope,\
-            self.date2dist.intersect,\
-            self.date2dist.r_val,\
-            self.date2dist.pi_val,\
-            self.date2dist.sigma = stats.linregress(dates[:, 0], dates[:, 1])
+        self.date2dist = DateConversion.from_tree(self.tree)
 
         # set dates to the internal nodes
 
         self._ml_t_init(gtr)
+
+    def _make_branch_len_interpolator(self, node, gtr, n=10):
+        """
+        makes an interpolation object for propability of branch length
+        requires previous branch_length optimization and initialization of the 
+        temporal constraints to account for short branches.
+        """
+        
+        if node.up is None: return None
+
+        parent = node.up
+        prof_p = parent.profile
+        prof_ch = node.profile
+        
+        if node.branch_length < 1e-5:
+            # protection against zero value in the tree depth. 
+            # if so, use 0.01 which is (roughly) 1% diff between sequences
+            sigma = np.max([0.01, 0.1 * self.max_node_abs_t])
+            # allow variation up to 10% of the max tree depth
+            grid = sigma * (np.linspace(0.0, 1.0 , n)**2)
+        else:
+            grid_left = node.branch_length * (1 - np.linspace(1, 0.0, n / 2)**2)
+            grid_right = node.branch_length + (
+                    3 * node.branch_length * (np.linspace(0, 1, n / 2) ** 2) )
+            grid = np.concatenate((grid_left,grid_right))
+            
+        grid = np.concatenate(([self.MIN_T, -1e-30], 
+                              grid,
+                              [self.MAX_T])
+                             )
+        logprob = np.concatenate([[0, 0], [gtr.prob_t(prof_p, prof_ch, t_, return_log=True) for t_ in grid[2:-1]], [0]])
+        logprob[((0,-1),)] = self.MIN_LOG
+        logprob[((1,-2),)] = self.MIN_LOG / 2
+        logprob *= -1.0
+        
+
+        node.branch_neg_log_prob = interp1d(grid, logprob, kind='linear')
 
     def _ml_t_init(self, gtr):
         """
@@ -281,86 +313,312 @@ class TreeTime(TreeAnc, object):
         if self.date2dist is None:
             print ("error")
             return
-
-        self._make_interpolator(gtr)
         for node in self.tree.find_clades():
-            node.ml_t_prefactor = 0.0
-            self._set_rotated_profiles(node, gtr)
-            if node.date is not None:
-                node.abs_t = node.date * self.date2dist.slope + \
+            # node is constrained
+            if node.raw_date is not None:
+             
+                # set the absolute time according to the date info
+                node.abs_t = node.raw_date * self.date2dist.slope + \
                     self.date2dist.intersect
-                # constraints mean that the probability distribution is
-                # delta-function, so we do not need big grid
-                node.grid = np.array([node.abs_t])
-                node.prob = np.array([1])
+                
+                # probability is the delta-function
+                grid = np.concatenate(([self.MIN_T], 
+                    node.abs_t * np.array([1 - 1e-10, 1, 1 + 1e-10]), 
+                    [self.MAX_T]))
+                
+                node.neg_log_prob = interp1d(grid, 
+                    -1 * np.array([self.MIN_LOG, 
+                            self.MIN_LOG / 2, 
+                            np.log(1e10), 
+                            self.MIN_LOG/2, 
+                            self.MIN_LOG]), kind='linear')
+                
+            # unconstrained node 
             else:
                 node.abs_t = node.dist2root  # not corrected!
-                # if there are no constraints - grid will be set on-the-fly
-                node.grid = None
-                node.prob = None
+                # if there are no constraints - log_prob will be set on-the-fly
+                node.neg_log_prob = None
 
-    def _ml_t_msgup(self, gtr):
+            # set max tree depth
+            if node.abs_t > self.max_node_abs_t:
+                self.max_node_abs_t = node.abs_t
+            
+            # make interpolation object for branch lengths 
+            self._make_branch_len_interpolator(node, gtr, n=25)
+
+            # log-scale likelihood prefactor
+            node.ml_t_prefactor = 0.0
+            # set the profiles in the eigenspace of the GTR matrix
+            # in the following, we only use the prf_l and prf_r (left and right 
+            # profiles in the matrix eigenspace)
+            self._set_rotated_profiles(node, gtr)
+                
+
+    def _min_interp(self, interp_object):
+        opt_ = sciopt.minimize_scalar(interp_object, 
+            bounds=[-2 * self.max_node_abs_t, 2 * self.max_node_abs_t],
+            method='brent')
+        return opt_.x
+        #if opt_.success != True:
+        #    return None
+        
+        #else:
+        #    return opt_.x
+
+    def _find_node_opt_pos(self, node):
+        if not hasattr(node, "neg_log_prob") or node.neg_log_prob is None:
+            return None
+        return self._min_interp(node.neg_log_prob)
+    
+    def _make_node_grid(self, 
+                opt, 
+                grid_size=100, 
+                variance=0.25):
+        scale = self.max_node_abs_t * variance
+        # quadratic grid - fine around opt, sparse at the edges
+        grid_root = opt - scale * (np.linspace(1, 1e-5, grid_size / 2 - 1)**2)
+        grid_leaves = opt + scale * (np.linspace(0, 1, grid_size / 2)**2)
+
+        grid = np.concatenate(([self.MIN_T],
+            grid_root,
+            grid_leaves,
+            [self.MAX_T]))
+
+        return grid
+
+    def _convolve(self, 
+                     src_neglogprob, 
+                     src_branch_neglogprob, 
+                     inverse_time,
+                     grid_size=100):
+        """
+        Compute the convolution of parent (target) and child (source) 
+        nodes inverse log-likelihood distributions. 
+        Take the source node log-LH distribution, extracts its grid. Based on 
+        the brach length probability distrribution (also inverse log-LH), find 
+        approximate position of the target node. Make the grid for the target 
+        node, and for each point of this newly generated grid, compute the 
+        convolution over all possible positions of the source node. 
+        Args:
+         
+         - src_neglogprob (scipy.interpolate.interp1d): inverse log-LH 
+         distribution of the node to be integrated, represented as scipy 
+         interpolation object
+         
+         - src_branch_neglogprob(scipy.interpolate.interp1d): inverse log-LH 
+         distribution of the branch lenghts between the two nodes, represented 
+         as scipy interpolation object
+
+         - inverse_time (bool): Whether the time should be inversed. 
+         True if we go from leaves to root (against absolute time scale), and 
+         the convolution is computed over positions of the child node. 
+         False if the messages are propagated from root towards leaves (the same 
+         direction as the absolute time axis), and the convolution is being 
+         computed over the position of the parent node
+
+         - grid_size (int): size of the grid for the target node positions.
+        """
+        opt_source_pos = self._min_interp(src_neglogprob)
+        opt_branch_len = sciopt.minimize_scalar(src_branch_neglogprob,
+            bounds=[0.0, 2 * self.max_node_abs_t],
+            method='bounded')
+        if opt_branch_len.success != True:
+            opt_branch_len = 0.0
+        else:
+            opt_branch_len = opt_branch_len.x
+
+        # either we have assessed the node optimal position 
+        # and can make suggestions about parent opt position,
+        # or both positions remain undefined
+        if opt_source_pos is not None:
+            opt_target_pos = opt_source_pos - opt_branch_len
+        else:
+            opt_target_pos = None
+        source_grid = src_neglogprob.x 
+        target_grid = self._make_node_grid(opt_target_pos, 
+                grid_size, 
+                variance=0.25) #parent_var / self.max_node_abs_t)
+        grid2D = source_grid[:, None] - target_grid
+        
+        # if we go along the time axis, the scr node will be earlier in time, 
+        # so to get the positive branch lengths in the right direction, 
+        # we should inverse the grid
+        if inverse_time == False:
+            grid2D *= -1.0
+
+        grid2D[grid2D<self.MIN_T] = self.MIN_T
+        grid2D[grid2D>self.MAX_T] = self.MAX_T
+        
+        logprob2D = src_branch_neglogprob(grid2D)
+        logprob2D[:,((1,-2),)] = -1 * self.MIN_LOG / 2
+        logprob2D[((1,-2),), :] = -1 * self.MIN_LOG / 2
+        logprob2D[:,((0,-1),)] = -1 * self.MIN_LOG 
+        logprob2D[((0,-1),), :] = -1 * self.MIN_LOG
+
+        prob2D = np.exp(-1 * logprob2D) # real probabilities
+
+        # compute convolution
+        dx = np.diff(source_grid, axis=0)
+        prob_source = np.exp(-1 * src_neglogprob(source_grid))
+        d_conv = (prob2D.T * prob_source)
+        conv = (0.5 * (d_conv[:, 1:] + d_conv[:, :-1]) * dx).sum(1)
+        
+        p_logprob = np.log(conv + 1e-100) # grid already contains  far points
+        p_logprob[((0,-1),)] = self.MIN_LOG
+        p_logprob[((1,-2),)] = self.MIN_LOG / 2
+        
+        target_neglogprob = interp1d(target_grid, -1 * p_logprob, kind='linear')
+        return target_neglogprob
+
+    def _parent_neg_log_prob(self, node, grid_size=100):
+        opt_node_pos = self._find_node_opt_pos(node)
+        opt_branch_len = sciopt.minimize_scalar(node.branch_neg_log_prob,
+            bounds=[0.0, 2 * self.max_node_abs_t],
+            method='bounded')
+
+        if opt_branch_len.success != True:
+            opt_branch_len = 0.0
+        else:
+            opt_branch_len = opt_branch_len.x
+
+        # either we have assessed the node optimal position 
+        # and can make suggestions about parent opt position,
+        # or both positions remain undefined
+        if opt_node_pos is not None:
+            opt_parent_pos = opt_node_pos - opt_branch_len
+        else:
+            opt_parent_pos = None
+
+        node_grid = node.neg_log_prob.x #self._make_node_grid(opt_node_pos, grid_size)
+        #parent_var = node_grid[-2] + 5 * opt_branch_len - node_grid[1]
+        
+        parent_grid = self._make_node_grid(opt_parent_pos, 
+                grid_size, 
+                variance=0.25) #parent_var / self.max_node_abs_t)
+        
+
+        grid2D = node_grid[:, None] - parent_grid
+        grid2D[grid2D<self.MIN_T] = self.MIN_T
+        grid2D[grid2D>self.MAX_T] = self.MAX_T
+        
+        logprob2D = node.branch_neg_log_prob(grid2D)
+        logprob2D[:,((1,-2),)] = -1 * self.MIN_LOG / 2
+        logprob2D[((1,-2),), :] = -1 * self.MIN_LOG / 2
+        logprob2D[:,((0,-1),)] = -1 * self.MIN_LOG 
+        logprob2D[((0,-1),), :] = -1 * self.MIN_LOG
+
+        prob2D = np.exp(-1 * logprob2D) # real probabilities
+
+        # compute convolution
+        dx = np.diff(node_grid, axis=0)
+        prob_node = np.exp(-1 * node.neg_log_prob(node_grid))
+        d_conv = (prob2D.T * prob_node)
+        conv = (0.5 * (d_conv[:, 1:] + d_conv[:, :-1]) * dx).sum(1)
+        
+        p_logprob = np.log(conv + 1e-100) # grid already contains  far points
+        p_logprob[((0,-1),)] = self.MIN_LOG
+        p_logprob[((1,-2),)] = self.MIN_LOG / 2
+        
+        parent_neg_log_prob = interp1d(parent_grid, -1 * p_logprob, kind='linear')
+        return parent_neg_log_prob
+
+    def _multiply_dists(self, interps, prefactors, grid_size=100):
+        """
+        Multiply two distributions of inverse log-likelihoods, 
+        represented as interpolation objects. Takes array of interpolation objects, 
+        extracts the grid, builds the new grid for the resulting distribution, 
+        performs multiplication on a new grid.
+        Args:
+         
+         - interps (iterable): Itarable of interpolation objects for -log(LH)
+         distributions. 
+
+         - prefactors (iterable): scaling factors of hte distributions. Each 
+         distribution is (arbitrarly) scaled so that the max value is 1, hence
+         min(-log(LH(x))) = 0. The prefactors will be summed, the new prefactor 
+         will be added and the result will be returned as the prefactor for the 
+         resulting distribution
+
+         - grid_size (int, default 100): The number of nodes in the interpolation 
+         object X-scale. 
+
+        Returns:
+         - interp: Resulting interpolation object for the -log(LH) distribution  
+
+         - pre(double): distribution pre-factor
+        """
+        
+        ml_t_prefactor = np.sum(prefactors)
+
+        opts = [self._min_interp(k) for k in interps]
+        opts = [k for k in opts if k is not None]
+        scale = 2 * np.max(
+            [abs((np.max(opts) - np.min(opts))), 
+            0.01]
+            ) / self.max_node_abs_t
+        node_grid = self._make_node_grid(np.mean(opts), grid_size, scale)
+        node_prob = np.sum([k(node_grid) for k in interps], axis=0)
+        
+        pre =  node_prob.min() 
+        node_prob -= pre
+        
+        ml_t_prefactor += pre
+        
+        node_prob[((0,-1),)] = -1 * self.MIN_LOG # +1000
+        node_prob[((1,-2),)] = -1 * self.MIN_LOG / 2 # +500           
+
+        interp = interp1d(node_grid, node_prob, kind='linear')
+        return interp, ml_t_prefactor
+    
+    def _ml_t_leaves_root(self, grid_size=100):
         """
         Propagate up- messages for ML computations with temporal constraints.
         To each node, sets the grid and the likelihood distribution on the grid
-
-        Args:
-         - gtr(GTR): evolutionary model
         """
 
         for node in self.tree.find_clades(order='postorder'):  # down->up
+            
             if node.is_terminal():
-                continue
+                continue # either have constraints, or will be optimized freely on the way back
 
             # we already have processed the node
-            if hasattr(
-                    node,
-                    "prob") and node.prob is not None:
+            if hasattr(node, "neg_log_prob") and node.neg_log_prob is not None:
                 continue
 
             # children nodes with constraints
-            clades = [k for k in node.clades if k.prob is not None]
+            clades = [k for k in node.clades if k.neg_log_prob is not None]
             if len(clades) < 1:  # we need at least one constrainted
                 continue
-
-            max_t = np.min([_c.grid.max()
-                            for _c in clades])  # maximal grid node
-            min_t = max_t - 1 * np.max([c_.grid.max() - c_.grid.min()
-                                        for c_ in clades] + [2 * c_.branch_length for c_ in clades])
-
-            node.grid = np.linspace(min_t, max_t, 100)
-
-            # find probabilites in the grid:
-
-            node.prob = np.ones(node.grid.shape)
+            neg_log_prob = []
 
             # iterate all children
             for clade in clades:
-                # grid shape can changfe when we go from internal nodes
-                # to terminal and back. So, we create the array every time.
-                grid = np.zeros((clade.grid.shape[0], node.grid.shape[0]))
-                grid[:, :] -= node.grid
-                grid[:, :] = (grid.T + clade.grid).T
+                neg_log_prob.append(
+                    self._convolve(clade.neg_log_prob, 
+                                   clade.branch_neg_log_prob, 
+                                   inverse_time=True, 
+                                   grid_size=grid_size
+                                   )
+                    )
+            node.ml_t_prefactor += clade.ml_t_prefactor
+            
+            node.neg_log_prob, node.ml_t_prefactor = self._multiply_dists(
+                neg_log_prob, 
+                [k.ml_t_prefactor for k in node.clades],
+                grid_size)
 
-#                _prob = self._ml_t_grid_prob(
-#                    node.prf_r,
-#                    clade.prf_l,
-#                    grid,
-#                    gtr)
-                _prob = np.exp(n.branch_log_prob(grid))                # sum over the child grid to get conditional on terminal
-                # sum over the child grid to get conditional on terminal
-                _prob[:, :] = (_prob.T * clade.prob).T
+            #import ipdb; ipdb.set_trace()
+                        
+            # plt.plot(node.neg_log_prob.x,node.neg_log_prob(node.neg_log_prob.x), 'o-' ); plt.xlim(0.2, 0.22)
+            # log0 = neg_log_prob [0]
+            # log1 = neg_log_prob [1]
+            # x0 = log0.x
+            # x1 = log1.x
+            # plt.plot(x0, log0(x0) - log0(x0).min(), 'o--')
+            # plt.plot(x1, log1(x1) - log1(x1).min(), 'o--')
 
-                node.prob *= _prob.sum(0)
-                node.ml_t_prefactor += clade.ml_t_prefactor
-            # import ipdb; ipdb.set_trace()
-            pre = node.prob.sum()
 
-            node.prob /= pre
-
-            node.ml_t_prefactor += np.log(pre)  # and store log-prefactor
-
-    def _ml_t_msgdwn(self, gtr):
+    def _ml_t_root_leaves(self, grid_size=100):
         """
         Propagate down- messages for ML computations with temporal constraints.
         for each node, set the grid and the likelihood distribution of the
@@ -370,34 +628,52 @@ class TreeTime(TreeAnc, object):
          - gtr(GTR): evolutionary model
         """
         for node in self.tree.find_clades(order='preorder'):  # up->down
+            if not hasattr(node, "neg_log_prob"):
+                print ("ERROR: node has no log-prob interpolation object! "
+                    "Aborting.")
             if node.up is None:  # root node
-                node.abs_t = node.grid[node.prob.argmax()]
+                node.abs_t = self._min_interp(node.neg_log_prob)
+                self._set_final_date(node)
 
-                node.dist2root = 0.0
-                node.date = self.date2dist.intersect
+            else: # all other nodes
+                #import ipdb; ipdb.set_trace()
+                msg_from_root = self._convolve(node.up.neg_log_prob, 
+                                                  node.branch_neg_log_prob,
+                                                  inverse_time=False, 
+                                                  grid_size=grid_size
+                                                  )
+                final_prob, final_pre = self._multiply_dists(
+                            (
+                                msg_from_root, 
+                                node.neg_log_prob
+                            ), 
+                            (
+                                node.ml_t_prefactor,
+                                node.up.ml_t_prefactor
+                            ), 
+                            grid_size
+                        )
+                
+                node.neg_log_prob = final_prob
+                node.ml_t_prefactor = final_pre
+                self._set_final_date(node)
 
-            else:
-                grid = (node.grid - node.up.abs_t)
-                idx = (grid > 0)
+    def _set_final_date(self, node):
+        """
+        Set the final date and branch length parameters to a node. 
+        """
+        node.abs_t = self._min_interp(node.neg_log_prob)
+        if node.up is not None:
+            node.branch_length = node.abs_t - node.up.abs_t
+            node.dist2root = node.up.dist2root + node.branch_length
+        else:
+            node.branch_length = 1.0
+            node.dist2root = 0.0
 
-                if idx.sum() == 0:
-                    print ("Warning! all desired branch lengths are negative!"
-                           " Ignoring the messages from upside node")
-                    prob_corr = np.ones(node.prob.shape)
+        node.date = (
+                    node.abs_t - self.date2dist.intersect) / self.date2dist.slope
 
-                else:
-                    prob_corr = np.array(
-                        [-1 * self._neg_prob(t_, node.up.profile, node.profile, gtr) for t_ in grid])
 
-                    prob_corr[~idx] = 0
-
-                node.prob *= prob_corr
-                node.abs_t = node.grid[node.prob.argmax()]
-
-                node.branch_length = node.abs_t - node.up.abs_t
-                node.dist2root = node.up.dist2root + node.branch_length
-                node.date = (
-                    node.dist2root - self.date2dist.intersect) / self.date2dist.slope
 
     def _ml_t_grid_prob(self, p_parent, p_child, grid, gtr):
         """
@@ -458,10 +734,10 @@ class TreeTime(TreeAnc, object):
         Perform tree optimization with temporal constarints.
         """
         #  propagate messages up
-        self._ml_t_msgup(gtr)
+        self._ml_t_leaves_root()
 
         #  propagate messages down - reconstruct node positions
-        self._ml_t_msgdwn(gtr)
+        self._ml_t_root_leaves()
 
     def date2dist_plot(self):
         """

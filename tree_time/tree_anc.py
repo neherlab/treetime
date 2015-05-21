@@ -189,6 +189,12 @@ class GTR(object):
         Returns:
          - prob(np.array): resulting probability.
         """
+        
+        if t < 0:
+            if return_log:
+                return -500
+            else:
+                return 0.0
 
         L = profile_p.shape[0]
         if L != profile_ch.shape[0]:
@@ -203,9 +209,10 @@ class GTR(object):
             #prob = (profile_p*eLambdaT*profile_ch).sum(1) # sum over the alphabet
 
         prob = (p1*eLambdaT*p2).sum(1) # sum_i (p1_i * exp(l_i*t) * p_2_i) result = vector lenght L
+        prob[prob<0] = 0.0 # avoid rounding instability
 
-        if (return_log):
-            prob = (np.log(prob)).sum() # sum all sites
+        if return_log:
+            prob = (np.log(prob + 1e-50)).sum() # sum all sites
         else:
             prob = prob.prod() # prod of all sites
         return prob
@@ -520,7 +527,6 @@ class TreeAnc(object):
             # optimization method
             #import ipdb; ipdb.set_trace()
             new_len = self._opt_len(prof_p, prof_ch, model)
-
             if new_len < 0:
                 continue
 
@@ -546,7 +552,7 @@ class TreeAnc(object):
         if new_len > .18 or opt["success"] != True:
             if verbose > 0:
                 print ("Cannot optimize branch length, minimization failed.")
-            import ipdb; ipdb.set_trace()
+            
             return -1.0
         else:
             return  new_len
@@ -566,23 +572,4 @@ class TreeAnc(object):
         """
         return - gtr.prob_t (parent, child, t, rotated=False, return_log=False)
 
-
-    def _make_interpolator(self, gtr, n=10):
-        """
-        makes an interpolation object for propability of branch length
-        requires previous branch_length optimization
-        """
-        from scipy.interpolate import interp1d
-        for node in self.tree.find_clades(order='postorder'):
-            parent = node.up
-            if parent is None: continue # this is the root
-            prof_p = parent.profile
-            prof_ch = node.profile
-            grid = np.concatenate([[-100000, -1e-10]+ 
-                                  node.branch_length*(1-np.linspace(1-1e-5,0.0,n)**2), 
-                                  node.branch_length + (1.0-node.branch_length)*(1-np.linspace(1.0,0.0,n)**2)[1:]+[1000000]])
-
-            logprob = np.concatenate([[0,0], np.log([self._neg_prob(t, prof_p, prof_ch, gtr) for t in grid[2:-1]]), [0]])
-            logprob[((0,1,-1),)] = np.min(logprob)-200            
-            node.branch_logprob = interp1d(grid, logprob, mode='linear')
 
