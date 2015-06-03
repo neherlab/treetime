@@ -283,14 +283,10 @@ class TreeAnc(object):
         tanc = cls(tree)
         return tanc
 
-    # FIXME
     @classmethod
     def _from_json(cls, inf):
         raise NotImplementedError("This functionality is under development")
         pass
-
-    # def has_attr(self, node, attr):
-    #    return node.__dict__.has_key(attr)
 
     def _add_node_params(self):
         """
@@ -379,7 +375,7 @@ class TreeAnc(object):
 
 
         print ("Walking down the self.tree, generating sequences from the "
-                         "Fitch profiles and filling the transition matrix.")
+                         "Fitch profiles.")
         n0 = 0
         for node in self.tree.get_nonterminals(order='preorder'):
             if node.up != None: # not root
@@ -572,4 +568,22 @@ class TreeAnc(object):
         """
         return - gtr.prob_t (parent, child, t, rotated=False, return_log=False)
 
+    def prune_short_branches(self, min_branch_len=1e-5):
+        """
+        If the branch length is less than the minimal value, remove the branch 
+        from the tree. requires the branach length optimization procedure to be run 
+        first. 
+        """   
+        for node in self.tree.find_clades():
+            if node.up is None:
+                continue
+            if node.branch_length < min_branch_len:
+                if node.is_terminal(): # leaf stays as is
+                    continue
+                # re-wire the node children directly to its parent
+                node.up.clades = [k for k in node.up.clades if k != node] + node.clades
+                node.up.lh_prefactor += node.lh_prefactor
+                for clade in node.clades:
+                    clade.up = node.up
 
+                

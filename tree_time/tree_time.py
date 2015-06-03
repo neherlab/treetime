@@ -97,6 +97,14 @@ class TreeTime(TreeAnc, object):
         self.tree_file = ""
         self.max_node_abs_t = 0.0
 
+
+    @property
+    def average_branch_len(self):
+        tot_branches = (self.tree.count_terminals() -1)* 2
+        tot_len = self.tree.total_branch_length ()      
+        return tot_len/tot_branches
+    
+
     @classmethod
     def from_files(cls, tree_file, aln_file, **kwargs):
         """
@@ -174,7 +182,7 @@ class TreeTime(TreeAnc, object):
             except ValueError:
                 date = None
     
-            return dates_file
+            return date
 
         if 'verbose' in kwargs:
             verbose = kwargs['verbose']
@@ -267,7 +275,9 @@ class TreeTime(TreeAnc, object):
         temporal constraints to account for short branches.
         """
         
-        if node.up is None: return None
+        if node.up is None:
+            node.branch_neg_log_prob = None
+            return None
 
         parent = node.up
         prof_p = parent.profile
@@ -280,9 +290,12 @@ class TreeTime(TreeAnc, object):
             # allow variation up to 10% of the max tree depth
             grid = sigma * (np.linspace(0.0, 1.0 , n)**2)
         else:
+            
+            sigma = np.max([self.average_branch_len, node.branch_length])
+            
             grid_left = node.branch_length * (1 - np.linspace(1, 0.0, n / 2)**2)
             grid_right = node.branch_length + (
-                    3 * node.branch_length * (np.linspace(0, 1, n / 2) ** 2) )
+                    3 * sigma * (np.linspace(0, 1, n / 2) ** 2) )
             grid = np.concatenate((grid_left,grid_right))
             
         grid = np.concatenate(([self.MIN_T, -1e-30], 
@@ -292,8 +305,7 @@ class TreeTime(TreeAnc, object):
         logprob = np.concatenate([[0, 0], [gtr.prob_t(prof_p, prof_ch, t_, return_log=True) for t_ in grid[2:-1]], [0]])
         logprob[((0,-1),)] = self.MIN_LOG
         logprob[((1,-2),)] = self.MIN_LOG / 2
-        logprob *= -1.0
-        
+        logprob *= -1.0        
 
         node.branch_neg_log_prob = interp1d(grid, logprob, kind='linear')
 
@@ -317,7 +329,7 @@ class TreeTime(TreeAnc, object):
              
                 # set the absolute time according to the date info
                 node.abs_t = node.raw_date * self.date2dist.slope + \
-                    self.date2dist.intersect
+                    self.date2dist.intersect          
                 
                 # probability is the delta-function
                 grid = np.concatenate(([self.MIN_T], 
@@ -336,7 +348,7 @@ class TreeTime(TreeAnc, object):
                 node.abs_t = node.dist2root  # not corrected!
                 # if there are no constraints - log_prob will be set on-the-fly
                 node.neg_log_prob = None
-
+            
             # set max tree depth
             if node.abs_t > self.max_node_abs_t:
                 self.max_node_abs_t = node.abs_t
@@ -614,6 +626,8 @@ class TreeTime(TreeAnc, object):
             node.neg_log_prob = new_neglogprob
             node.ml_t_prefactor += prefactor
 
+            
+
             #import ipdb; ipdb.set_trace()
                         
             # plt.plot(node.neg_log_prob.x,node.neg_log_prob(node.neg_log_prob.x), 'o-' ); plt.xlim(0.2, 0.22)
@@ -629,16 +643,14 @@ class TreeTime(TreeAnc, object):
         Propagate down- messages for ML computations with temporal constraints.
         for each node, set the grid and the likelihood distribution of the
         position on the on the grid
-
-        Args:
-         - gtr(GTR): evolutionary model
         """
         for node in self.tree.find_clades(order='preorder'):  # up->down
             if not hasattr(node, "neg_log_prob"):
                 print ("ERROR: node has no log-prob interpolation object! "
                     "Aborting.")
             if node.up is None:  # root node
-                self._set_final_date(node)  
+                self._set_final_date(node) 
+                
                 continue               
             
             if node.neg_log_prob is not None: # aconstrained terminal 
@@ -663,6 +675,8 @@ class TreeTime(TreeAnc, object):
                             grid_size
                         )
                 
+                if self._min_interp(final_prob) < self._min_interp(node.up.neg_log_prob):
+                    import ipdb; ipdb.set_trace()
                 node.neg_log_prob = final_prob
                 node.ml_t_prefactor = final_pre
                 
@@ -676,8 +690,21 @@ class TreeTime(TreeAnc, object):
                 node.neg_log_prob = msg_from_root
                 node.ml_t_prefactor = node.up.ml_t_prefactor
             
-            self._set_final_date(node)                
+            
+            #node.abs_t = self._min_interp(node.neg_log_prob)
+            #node.branch_length = node.abs_t - node.up.abs_t
+            #if node.branch_length < 0:
+            #    import ipdb; ipdb.set_trace()
 
+            self._set_final_date(node)            
+            
+    def _ml_t_root_leaves_tmp(self):
+        for node in self.tree.find_clades(order='preorder'):  # up->down
+            if not hasattr(node, "neg_log_prob"):
+                print ("ERROR: node has no log-prob interpolation object! "
+                    "Aborting.")
+            self._set_final_date(node)
+            
     def _set_final_date(self, node):
         """
         Set the final date and branch length parameters to a node. 
@@ -691,7 +718,7 @@ class TreeTime(TreeAnc, object):
             node.dist2root = 0.0
 
         node.date = (
-                    node.dist2root - self.date2dist.intersect) / self.date2dist.slope
+                    node.abs_t - self.date2dist.intersect) / self.date2dist.slope
 
     def _ml_t_grid_prob(self, p_parent, p_child, grid, gtr):
         """
@@ -755,6 +782,7 @@ class TreeTime(TreeAnc, object):
         self._ml_t_leaves_root()
 
         #  propagate messages down - reconstruct node positions
+        # self._ml_t_root_leaves_tmp()
         self._ml_t_root_leaves()
 
     def date2dist_plot(self):
@@ -801,3 +829,54 @@ class TreeTime(TreeAnc, object):
         """
         node.prf_r = node.profile.dot(gtr.v)
         node.prf_l = (gtr.v_inv.dot(node.profile.T)).T
+
+    def _score_branches(self, set_color=True):
+        """
+        Set score to the branch. The score is how far is the branch length from 
+        its optimal value
+        """
+        import matplotlib as mpl
+        cmap = mpl.cm.get_cmap ()
+        def dev(n):
+            if not hasattr(n, 'branch_neg_log_prob') or\
+               n.branch_neg_log_prob is None: # root node or missing
+                return 0.0
+            
+            return abs(sciopt.minimize_scalar(n.branch_neg_log_prob).x - 
+                       n.branch_length)
+
+        # define maximal deviation from the optimal branch_length 
+        max_dev = np.max([dev(n) for n in self.tree.find_clades()])
+        
+        if max_dev == 0.0: # branch length optimization failed everywhere
+            return 
+
+        # set score to each node and assign color according to the score
+        for n in self.tree.find_clades():
+            if n.branch_length is None or n.branch_length < 0:
+                n.score = 1.0
+            else:
+                n.score = dev(n) / max_dev
+            color = tuple(map(int, np.array(cmap(n.score)[:-1]) * 255))
+            n.color = color
+            #node.color = map(int, np.array(cmap((transform(node.__getattribute__(attribute))-vmin)/(vmax-vmin))[:-1])*255)
+
+    def _nni(self, node):
+        """
+        Perform nearest-neighbour-interchange procedure, 
+        choose the best local configuration
+        """
+        if node.up is None: # root node
+            return 
+        
+        children = node.clades
+        sisters = [k for k in node.up.clades]
+        for child_pos, child in enumerate(children):
+            for sister_pos, sister in enumerate(sisters):
+                # exclude node from iteration:
+                if sister == node:
+                    continue
+                # exchange 
+                node.up.clades[sister_pos] = child
+                node.clades[child_pos] = sister
+                # compute new likelihood for the branch

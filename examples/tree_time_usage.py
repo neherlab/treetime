@@ -27,6 +27,27 @@ import os
 import datetime
 resources_dir = os.path.join(os.path.dirname(__file__), '../data/')
 
+def n_name(node):
+    s_l = ''
+    s_r = ''
+    s_b = ''
+    s_opt = ''
+    if hasattr(node, 'branch_neg_log_prob') and node.branch_neg_log_prob is not None:
+        log = node.neg_log_prob
+        x = node.abs_t
+        s_l = '%.0f' % ((log(x) - log(x - 1e-5)) / 1e-5)
+        s_r = '%.0f' % ((log(x + 1e-5) - log(x)) / 1e-5)
+        
+        x1 = node.branch_length
+        s_opt = '%.0f' % ((log(x1+1e-5) - log(x1-1e-5)) / 2e-5)
+        log = node.branch_neg_log_prob
+        s_b = '%.4f' % (log.x[log(log.x).argmin()] - node.branch_length)
+    if node.up is None:
+        s2 = ''
+    else:
+        s2 = str(node.profile.shape[0] - (node.profile * node.up.profile).sum())
+    return s_opt +'//' + s_l + '//' +  s_r + '//' + s_b + '//' + s2
+
 
 if __name__ == '__main__':
 
@@ -59,11 +80,13 @@ if __name__ == '__main__':
 
     # now we are ready to make the tree optimization with time constraints
 
+    t.prune_short_branches()
     # get conversion between dates and
     t.init_date_constraints(gtr)
     k_old = []
     for n in t.tree.find_clades(order='postorder'):
-        k_old.append((n.dist2root, n.abs_t))
+        if hasattr(n, 'raw_date') and n.raw_date is not None:
+            k_old.append((n.raw_date, n.dist2root))
     k_old = np.array(k_old)
 
     # main method, performs the optimization with time constraints of the nodes
@@ -72,7 +95,7 @@ if __name__ == '__main__':
     k_new = []
     dates = []
     for n in t.tree.find_clades(order='postorder'):
-        k_new.append((n.dist2root, n.abs_t))
+        k_new.append((n.date, n.abs_t))
         dates.append((n.dist2root, n.date))
     k_new = np.array(k_new)
     dates = np.array(dates)
