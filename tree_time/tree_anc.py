@@ -2,6 +2,7 @@ from Bio import Phylo
 from Bio import AlignIO
 import numpy as np
 from scipy import optimize as sciopt
+import json 
 
 alphabets = {
             "nuc": np.array(['A', 'C', 'G', 'T', '-']),
@@ -14,6 +15,7 @@ _full_nc_profile = {
     'T': np.array([0, 0, 0, 1, 0], dtype='float'),
     '-': np.array([0, 0, 0, 0, 1], dtype='float'),
     'N': np.array([1, 1, 1, 1, 1], dtype='float'),
+    'X': np.array([1, 1, 1, 1, 1], dtype='float'),
     'R': np.array([1, 0, 1, 0, 0], dtype='float'),
     'Y': np.array([0, 1, 0, 1, 0], dtype='float'),
     'S': np.array([0, 1, 1, 0, 0], dtype='float'),
@@ -24,6 +26,24 @@ _full_nc_profile = {
     'H': np.array([1, 1, 0, 1, 0], dtype='float'),
     'B': np.array([0, 1, 1, 1, 0], dtype='float'),
     'V': np.array([1, 1, 1, 0, 0], dtype='float')}
+
+
+
+def read_json_tree(node, json_clade, data_keys, date_func):
+    
+    if "date" in json_clade:
+        node.raw_date = date_func(json_clade["date"])
+    
+    if "branch_len" in data_keys and data_keys["branch_len"] in json_clade:
+        node.branch_length = json_clade[data_keys["branch_len"]]
+    else:
+        node.branch_length = 1.0
+
+    if "children" in json_clade:
+        for json_child in json_clade["children"]:
+            c = Phylo.BaseTree.Clade()
+            node.clades.append(c)
+            read_json_tree(c, json_child, data_keys, date_func)
 
 
 def prepare_seq(seq):
@@ -39,7 +59,11 @@ def prepare_seq(seq):
         sequence = seq
     sequence = sequence.upper()
 
-    return np.array(list(sequence))
+    sequence = np.array(list(sequence))
+    # substitute overhanging unsequenced tails
+    sequence [:np.where(sequence != '-')[0][0]] = 'N'
+    sequence [np.where(sequence != '-')[0][-1]+1:] = 'N'
+    return sequence
 
 
 def seq2prof(x, aln_type='nuc'):
@@ -255,7 +279,6 @@ class GTR(object):
         """
         return np.exp(self.mu * t * self.eigenmat)
 
-
 class TreeAnc(object):
     """
     Class defines simple tree object with basic interface methdos: reading and
@@ -284,9 +307,17 @@ class TreeAnc(object):
         return tanc
 
     @classmethod
-    def _from_json(cls, inf):
-        raise NotImplementedError("This functionality is under development")
-        pass
+    def _from_json(cls, inf, date_func):
+        with open (inf) as json_file:
+            data = json.load(json_file)
+        
+        if len(data) < 1 or 'children' not in data:
+            raise IOError("Wrong format of json file")
+
+        t = Phylo.BaseTree.Tree()
+       
+        return cls
+
 
     def _add_node_params(self):
         """
@@ -315,7 +346,7 @@ class TreeAnc(object):
          - If there are more than 100 leaves failed to get sequences, the function breaks, returning 100.
         """
         failed_leaves= 0
-        dic_aln = {k.name: np.array(k.seq) for k in aln} #
+        dic_aln = {k.name: prepare_seq(k.seq) for k in aln} #
         for l in self.tree.get_terminals():
             if l.name in dic_aln:
                 l.sequence = dic_aln[l.name]
@@ -379,13 +410,16 @@ class TreeAnc(object):
         n0 = 0
         for node in self.tree.get_nonterminals(order='preorder'):
             if node.up != None: # not root
-               node.sequence =  np.array([node.up.sequence[i]
-                       if node.up.sequence[i] in node.state[i]
-                       else node.state[i][0] for i in range(L)])
+                node.sequence =  np.array([node.up.sequence[i]
+                        if node.up.sequence[i] in node.state[i]
+                        else node.state[i][0] for i in range(L)])
+            node.profile = seq2prof(node.sequence)
             #if np.sum([k not in alphabet for k in node.sequence]) > 0:
             #    import ipdb; ipdb.set_trace()
             del node.state # no need to store Fitch states
         print ("Done ancestral state reconstruction")
+        for node in self.tree.get_terminals():
+            node.profile = seq2prof(node.sequence)
         return
 
     def _fitch_state(self, node, pos):
@@ -548,7 +582,7 @@ class TreeAnc(object):
         if new_len > .18 or opt["success"] != True:
             if verbose > 0:
                 print ("Cannot optimize branch length, minimization failed.")
-            
+            import ipdb; ipdb.set_trace()
             return -1.0
         else:
             return  new_len
@@ -566,7 +600,7 @@ class TreeAnc(object):
         Returns:
          - prob(double): negative probability of the two given sequences to be separated by the time t.
         """
-        return - gtr.prob_t (parent, child, t, rotated=False, return_log=False)
+        return - gtr.prob_t (parent, child, t, rotated=False, return_log=True)
 
     def prune_short_branches(self, min_branch_len=1e-5):
         """
@@ -584,6 +618,4 @@ class TreeAnc(object):
                 node.up.clades = [k for k in node.up.clades if k != node] + node.clades
                 node.up.lh_prefactor += node.lh_prefactor
                 for clade in node.clades:
-                    clade.up = node.up
-
-                
+                    clade.up = node.up            
