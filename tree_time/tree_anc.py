@@ -29,22 +29,6 @@ _full_nc_profile = {
 
 
 
-def read_json_tree(node, json_clade, data_keys, date_func):
-    
-    if "date" in json_clade:
-        node.raw_date = date_func(json_clade["date"])
-    
-    if "branch_len" in data_keys and data_keys["branch_len"] in json_clade:
-        node.branch_length = json_clade[data_keys["branch_len"]]
-    else:
-        node.branch_length = 1.0
-
-    if "children" in json_clade:
-        for json_child in json_clade["children"]:
-            c = Phylo.BaseTree.Clade()
-            node.clades.append(c)
-            read_json_tree(c, json_child, data_keys, date_func)
-
 
 def prepare_seq(seq):
     """
@@ -290,34 +274,14 @@ class TreeAnc(object):
         self.tree = tree
         self._add_node_params()
 
-    # input stuff
     @classmethod
-    def from_file(cls, inf, fmt='newick'):
-        if fmt == 'newick':
-            return cls._from_newick(inf)
-        elif fmt == 'json':
-            return cls._from_json(inf)
-        else:
-            raise NotImplementedError("The specified format is unsupported")
-
-    @classmethod
-    def _from_newick(cls, inf):
+    def from_newick(cls, inf):
+        """
+        Load phylogenetic tree from newick file
+        """
         tree = Phylo.read(inf, 'newick')
         tanc = cls(tree)
         return tanc
-
-    @classmethod
-    def _from_json(cls, inf, date_func):
-        with open (inf) as json_file:
-            data = json.load(json_file)
-        
-        if len(data) < 1 or 'children' not in data:
-            raise IOError("Wrong format of json file")
-
-        t = Phylo.BaseTree.Tree()
-       
-        return cls
-
 
     def _add_node_params(self):
         """
@@ -331,8 +295,7 @@ class TreeAnc(object):
                 c.dist2root = c.up.dist2root + c.branch_length
         return
 
-    # ancestral state reconstruction
-    def set_seqs_to_leaves(self, aln):
+    def load_aln(self, aln):
         """
         Set sequences from the alignment to the leaves of the tree.
 
@@ -366,9 +329,13 @@ class TreeAnc(object):
          - method(str): method to use. Supported values are "fitch" and "ml"
         KWargs:
          - model(TMat): model to use. required for maximum-likelihood ("ml")
+
+        Returns: 
+         - N_diff(int): number of nucleotides different from the previous 
+         reconstruction. If there were no pre-set sequences, returns N*L
         """
         if method == 'fitch':
-            self._fitch_anc(**kwargs)
+            N_diff = self._fitch_anc(**kwargs)
         elif method == 'ml':
 
             if ('model' not in kwargs):
@@ -378,9 +345,11 @@ class TreeAnc(object):
             else:
                 gtr = kwargs.pop('model')
 
-            self._ml_anc(gtr, **kwargs)
+            N_diff = self._ml_anc(gtr, **kwargs)
         else:
             raise NotImplementedError("The reconstruction method %s is not supported. " % method)
+
+        return N_diff
 
     def _fitch_anc(self, **kwargs):
         """
@@ -405,14 +374,21 @@ class TreeAnc(object):
         self.tree.root.sequence = np.array([k[0] for k in self.tree.root.state])
 
 
+
         print ("Walking down the self.tree, generating sequences from the "
                          "Fitch profiles.")
-        n0 = 0
+        N_diff = 0
         for node in self.tree.get_nonterminals(order='preorder'):
             if node.up != None: # not root
-                node.sequence =  np.array([node.up.sequence[i]
+                sequence =  np.array([node.up.sequence[i]
                         if node.up.sequence[i] in node.state[i]
                         else node.state[i][0] for i in range(L)])
+                if hasattr(node, 'sequence'):
+                    N_diff += (sequence!=node.sequence).sum()
+                else:
+                    N_diff += len(sequence)
+                node.sequence = sequence
+
             node.profile = seq2prof(node.sequence)
             #if np.sum([k not in alphabet for k in node.sequence]) > 0:
             #    import ipdb; ipdb.set_trace()
@@ -420,7 +396,7 @@ class TreeAnc(object):
         print ("Done ancestral state reconstruction")
         for node in self.tree.get_terminals():
             node.profile = seq2prof(node.sequence)
-        return
+        return N_diff
 
     def _fitch_state(self, node, pos):
         state = self._fitch_intersect([k.state[pos] for k in node.clades])
@@ -453,6 +429,8 @@ class TreeAnc(object):
          - store_lh (bool): if True, all likelihoods will be stored for all nodes. Useful for testing, diagnostics and if special post-processing is required.
          - verbose (int): how verbose the output should be
         """
+        # number of nucleotides changed from prev reconstruction
+        N_diff = 0
 
         verbose = 0 # how verbose to be at the output
         if 'store_lh' in kwargs:
@@ -509,7 +487,14 @@ class TreeAnc(object):
                                 rotated=False, # use unrotated
                                 return_log=False)
                 # actually, infer sequence
-                node.sequence,node.profile=self._prof_to_seq(node.profile,gtr)
+                sequence,profile=self._prof_to_seq(node.profile,gtr)
+                if hasattr(node, 'sequence'):
+                    N_diff += (sequence!=node.sequence).sum()
+                else:
+                    N_diff += len(sequence)
+                node.sequence = sequence
+                node.profile = profile
+        return N_diff
 
     def _prof_to_seq(self, profile, gtr, correct_prof=True):
         seq = gtr.alphabet[profile.argmax(1)]  # max LH over the alphabet
@@ -602,20 +587,50 @@ class TreeAnc(object):
         """
         return - gtr.prob_t (parent, child, t, rotated=False, return_log=True)
 
-    def prune_short_branches(self, min_branch_len=1e-5):
+    def prune_short_branches(self,gtr):
         """
         If the branch length is less than the minimal value, remove the branch 
-        from the tree. requires the branach length optimization procedure to be run 
-        first. 
+        from the tree. **Requires** the ancestral seequence reconstruction 
         """   
         for node in self.tree.find_clades():
             if node.up is None:
                 continue
-            if node.branch_length < min_branch_len:
+            # probability of the two seqs separated by zero time is not sero
+            if gtr.prob_t(node.up.profile, node.profile, 0.0) > 0.1:
                 if node.is_terminal(): # leaf stays as is
                     continue
                 # re-wire the node children directly to its parent
                 node.up.clades = [k for k in node.up.clades if k != node] + node.clades
-                node.up.lh_prefactor += node.lh_prefactor
+                if hasattr(node, "lh_prefactor"):
+                    node.up.lh_prefactor += node.lh_prefactor
                 for clade in node.clades:
-                    clade.up = node.up            
+                    clade.up = node.up
+
+    def optimize_seq_and_branch_len(self,gtr):
+        """
+        Iteratively set branch lengths and reconstruct ancestral sequences until
+        the values of either former or latter do not change. The algorithm assumes 
+        knowing only the topology of the tree, and requires the  sequences assigned 
+        to all leaves of the tree. The first step is to pre-reconstruct ancestral 
+        states using Fitch reconstruction algorithm. Then, optimize branch lengths
+        and re-do reconstruction until convergence using ML method.
+        Args:
+
+         - gtr(GTR): general time-reversible model to be used by every ML algorithm
+        """
+        
+        N_diff = self.reconstruct_anc(method='fitch')
+        n = 0
+        while (N_diff > 1):
+            self.optimize_branch_len(gtr, verbose=0, store_old=False)
+            self.prune_short_branches(gtr)
+            N_diff = self.reconstruct_anc('ml', model=gtr)
+            n += 1
+            print ("Optimizing ancestral states and branch lengths. Round %d."
+                   " #Nuc changed since prev reconstructions: %d" %(n, N_diff))
+        
+        self._add_node_params() # fix dist2root and up-links after reconstruction
+
+            
+
+        return         

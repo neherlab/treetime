@@ -12,8 +12,12 @@ from scipy import stats
 from scipy.interpolate import interp1d
 import matplotlib.pyplot as plt
 import matplotlib as mpl
+import json
+from Bio import Phylo
 
 from scipy import optimize as sciopt
+
+
 
 class DateConversion(object):
 
@@ -80,7 +84,6 @@ class DateConversion(object):
             year = abs(year)
         return year
 
-
 class TreeTime(TreeAnc, object):
 
     """
@@ -106,34 +109,129 @@ class TreeTime(TreeAnc, object):
         tot_len = self.tree.total_branch_length ()      
         return tot_len/tot_branches
     
-
+    
     @classmethod
-    def from_files(cls, tree_file, aln_file, **kwargs):
+    def from_json(cls, inf, json_keys={"branch_len":"xvalue"}, date_func=lambda x: None):
         """
+        Load tree from json file. 
+
+        Args:
+         - inf(str): pth to the input file
+
+         - json_keys(dic): names of the parameters in the json file. The names 
+         for the following parameters should be specified: 
+         {"date": ..., "branch_len": ...}
+
+         - date_func(callable): function to convert the date representation from 
+         json parameter string to datetime object (will be assigned as raw_date)
+
+        Returns:
+         - TreeTime object 
         """
-        # parsing kwargs:
-        if 'tree_fmt' in kwargs:
-            tree_fmt = kwargs['tree_fmt']
-        else:
-            print ("Trying to read tree using default tree format")
-            tree_fmt = 'newick'
-        if 'aln_fmt' in kwargs:
-            aln_fmt = kwargs['aln_fmt']
-        else:
-            print ("Trying to read alignment using default format (fasta)")
-            aln_fmt = 'fasta'
+        with open (inf) as json_file:
+            data = json.load(json_file)
+        
+        if len(data) < 1 or 'children' not in data:
+            raise IOError("Wrong format of json file")
 
-        tree = cls.from_file(tree_file, tree_fmt)
-        tree.tree_file = tree_file
+        t = Phylo.BaseTree.Tree()
+        ttime = cls(t)       
+        
+        ttime.read_json_tree(t.root, data, json_keys, date_func)
+               
+        return ttime
 
-        aln = AlignIO.read(aln_file, aln_fmt)
-        tree.set_seqs_to_leaves(aln)
+    def to_json(self, node, **kwargs):
+        
+        save_dist = False
+        if 'save_dist' in kwargs:
+            save_dist = bool(kwargs['save_dist'])
+        json = {}
+        if hasattr(node, 'clade'):
+            json['clade'] = node.clade
+        if node.name:
+            json['strain'] = str(node.name).replace("'", '')
+        if hasattr(node, 'branch_length'):
+            json['branch_length'] = round(node.branch_length, 5)
+        if hasattr(node, 'xvalue'):
+            json['xvalue'] = round(node.xvalue, 5)
+        if hasattr(node, 'yvalue'):
+            json['yvalue'] = round(node.yvalue, 5)
+        if hasattr(node, 'date'):
+            json['days_before_present'] = int(node.date)
+        if hasattr(node, 'sequence'):
+            json['seq'] = ''.join(node.sequence)
+        if hasattr(node, 'lh_prefactor') and hasattr(node, 'ml_t_prefactor'):
+            json['logLH'] = self.log_lh(node)
+        if save_dist and hasattr(node, 'neg_log_prob'):
+            json['dist_DBP'] = ','.join(map(lambda x: str(int((x-t.date2dist.intersect) / t.date2dist.slope)), node.neg_log_prob.x))
+            json['dist_logLH'] = ','.join(map(lambda x: '%10.5E' % x, node.neg_log_prob(node.neg_log_prob.x)))
+        if len(node.clades):
+            json["children"] = []
+            for ch in node.clades:
+                json["children"].append(self.to_json(ch))
+        return json
+    
+    def _read_json_tree(node, json_clade, data_keys, date_func):
+        """
+        recursive function to populate tree from the json strcture
+        Args:
+         - json_clade(dic): the data for the tree node represented as dictionary
 
-        if 'dates_file' in kwargs:
-            dates_file = kwargs['dates_file']
-            d_dic = tree._read_dates_file(dates_file)
-            tree._set_dates_to_all_nodes(d_dic)
-        return tree
+         - data_keys(dic): dictionary to convert (some) data keys into the internal 
+         tree_time notification
+
+         - date_func(callable): function to convert string date in the json into 
+         the datetime object of the tree node
+        """
+    
+        clade_key = 'clade' if 'clade' not in data_keys else  data_keys['clade']
+        if clade_key in json_clade:
+            node.clade = json_clade[clade_key]
+
+        name_key = 'name' if 'name' not in data_keys else  data_keys['name']
+        if name_key in json_clade:
+            node.name = json_clade[name_key]
+
+        strain_key = 'strain' if 'strain' not in data_keys else data_keys['strain']
+        if strain_key in json_clade:
+            node.strain = json_clade[strain_key]
+
+        f_key = 'branch_length' if 'branch_length' not in data_keys else data_keys['branch_length']
+
+        if f_key in json_clade:
+            node.branch_length = float(json_clade[f_key])
+
+        
+        f_key = 'xvalue' if 'xvalue' not in data_keys else data_keys['xvalue']
+
+        if f_key in json_clade:
+            node.xvalue = float(json_clade[f_key])
+        
+        f_key = 'yvalue' if 'yvalue' not in data_keys else data_keys['yvalue']
+        if f_key in json_clade:
+            node.yvalue = float(json_clade[f_key])
+
+        f_key = 'days_before_present' if 'days_before_present' not in data_keys else data_keys['days_before_present']
+        if f_key in json_clade:
+            node.date=float(json_clade[f_key])
+
+        f_key = 'seq' if 'seq' not in data_keys else data_keys['seq']
+        if f_key in json_clade:
+            node.sequence = np.array(list(json_clade[f_key]))
+
+        f_key = 'yvalue' if 'yvalue' not in data_keys else data_keys['yvalue']
+        if f_key in json_clade:
+            node.yvalue = float(json_clade[f_key])
+
+        f_key = 'logLH' if 'logLH' not in data_keys else data_keys['logLH']
+        if f_key in json_clade:
+            node.logLH = float(json_clade[f_key])
+
+        if len(node.clades):
+            json["children"] = []
+            for ch in node.clades:
+                json["children"].append(self.to_json(ch))
 
     def _read_dates_file(self, inf, **kwargs):
         """
@@ -210,7 +308,7 @@ class TreeTime(TreeAnc, object):
                    "corrupted. Return empty dictionary.")
             return {}
 
-    def set_dates_to_nodes(self, date_func):
+    def set_node_dates_from_names(self, date_func):
         """
         Args:
          - date_func (callable): function to extract date time from node name, 
@@ -409,7 +507,6 @@ class TreeTime(TreeAnc, object):
             # in the following, we only use the prf_l and prf_r (left and right 
             # profiles in the matrix eigenspace)
             self._set_rotated_profiles(node, gtr)
-                
 
     def _min_interp(self, interp_object):
         
@@ -646,6 +743,8 @@ class TreeTime(TreeAnc, object):
         To each node, sets the grid and the likelihood distribution on the grid
         """
 
+        print("Maximum likelihood tree optimization with temporal constraints:"
+            " Propagating leaves -> root...")
         for node in self.tree.find_clades(order='postorder'):  # down->up
             
             if node.is_terminal():
@@ -691,6 +790,8 @@ class TreeTime(TreeAnc, object):
         for each node, set the grid and the likelihood distribution of the
         position on the on the grid
         """
+        print("Maximum likelihood tree optimization with temporal constraints:"
+            " Propagating root -> leaves...")
         for node in self.tree.find_clades(order='preorder'):  # up->down
             if not hasattr(node, "neg_log_prob"):
                 print ("ERROR: node has no log-prob interpolation object! "
@@ -768,8 +869,7 @@ class TreeTime(TreeAnc, object):
             node.branch_length = 1.0
             node.dist2root = 0.0
 
-        node.date = (
-                    node.abs_t - self.date2dist.intersect) / self.date2dist.slope
+        node.date = (node.abs_t-self.date2dist.intersect) / self.date2dist.slope
 
     def _ml_t_grid_prob(self, p_parent, p_child, grid, gtr):
         """
@@ -835,6 +935,7 @@ class TreeTime(TreeAnc, object):
         #  propagate messages down - reconstruct node positions
         # self._ml_t_root_leaves_tmp()
         self._ml_t_root_leaves()
+        print ("Done tree optimization.")
 
     def date2dist_plot(self):
         """
@@ -929,3 +1030,37 @@ class TreeTime(TreeAnc, object):
                 node.up.clades[sister_pos] = child
                 node.clades[child_pos] = sister
                 # compute new likelihood for the branch
+
+    def log_lh(self, node):
+        if hasattr(node, 'lh_prefactor') and hasattr(node, 'ml_t_prefactor'):
+            return -node.root.ml_t_prefactor + node.lh_prefactor.sum()
+        else:
+            return -10000000
+
+    def to_json(self, node, **kwargs):
+        save_dist = True
+        json = {}
+        if hasattr(node, 'clade'):
+            json['clade'] = node.clade
+        if node.name:
+            json['strain'] = str(node.name).replace("'", '')
+        if hasattr(node, 'branch_length'):
+            json['branch_length'] = round(node.branch_length, 5)
+        if hasattr(node, 'xvalue'):
+            json['xvalue'] = round(node.xvalue, 5)
+        if hasattr(node, 'yvalue'):
+            json['yvalue'] = round(node.yvalue, 5)
+        if hasattr(node, 'date'):
+            json['days_before_present'] = int(node.date)
+        if hasattr(node, 'sequence'):
+            json['seq'] = ''.join(node.sequence)
+        if hasattr(node, 'lh_prefactor') and hasattr(node, 'ml_t_prefactor'):
+            json['logLH'] = self.log_lh(node)
+        if save_dist and hasattr(node, 'neg_log_prob'):
+            json['dist_DBP'] = ','.join(map(lambda x: str(int((x-t.date2dist.intersect) / t.date2dist.slope)), node.neg_log_prob.x))
+            json['dist_logLH'] = ','.join(map(lambda x: '%10.5E' % x, node.neg_log_prob(node.neg_log_prob.x)))
+        if len(node.clades):
+            json["children"] = []
+            for ch in node.clades:
+                json["children"].append(self.to_json(ch))
+        return json

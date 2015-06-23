@@ -59,13 +59,14 @@ if __name__ == '__main__':
     # first, we need to read the tree from files.
     # There is a shortcut function, which loads data from all three files at
     # once:
-    t = tt.TreeTime.from_files(tinf, ainf, dates_file=dinf)
+    #t = tt.TreeTime.from_files(tinf, ainf, dates_file=dinf)
+    t = tt.TreeTime.from_newick(tinf)
 
     # we can of course do everything manually (just as an example)
     # _t = tt.TreeTime.from_file(tinf, 'newick')
     # note we call function in parent class (TreeAnc) from chld class (TreeTime)
     # _aln = AlignIO.read(ainf, 'fasta')
-    # _t.set_seqs_to_leaves(_aln)  # load sequences from alignment
+    # _t.load_aln(_aln)  # load sequences from alignment
     # _t.load_dates(dinf)  # load dates from csv file
     # now, we need preparation. for details, see tree_anc.py example.
     # normally, we start with Fitch reconstruction,
@@ -82,14 +83,16 @@ if __name__ == '__main__':
 
     t.prune_short_branches()
     # get conversion between dates and
+    
     t.init_date_constraints(gtr)
-    k_old = []
-    for n in t.tree.find_clades(order='postorder'):
-        if hasattr(n, 'raw_date') and n.raw_date is not None:
-            k_old.append((n.raw_date, n.dist2root))
-    k_old = np.array(k_old)
+    #k_old = []
+    #for n in t.tree.find_clades(order='postorder'):
+    #    if hasattr(n, 'raw_date') and n.raw_date is not None:
+    #        k_old.append((n.raw_date, n.dist2root))
+    #k_old = np.array(k_old)
 
     # main method, performs the optimization with time constraints of the nodes
+    
     t.ml_t(gtr)
 
     k_new = []
