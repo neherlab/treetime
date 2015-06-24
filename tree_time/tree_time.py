@@ -377,6 +377,10 @@ class TreeTime(TreeAnc, object):
             return node.raw_date
 
         self.tree.root_with_outgroup(sorted(self.tree.get_terminals(), key=raw_date)[-1])
+        self.tree.ladderize()
+        og = self.tree.root.clades[0]
+        self.tree.root.clades[1].branch_length += og.branch_length
+        og.branch_length = 0
         self.tree.root.raw_date = None
         # fix tree lengths, etc
         self._add_node_params()
