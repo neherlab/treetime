@@ -18,7 +18,6 @@ from Bio import Phylo
 from scipy import optimize as sciopt
 
 
-
 class DateConversion(object):
 
     """
