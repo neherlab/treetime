@@ -293,6 +293,7 @@ class TreeAnc(object):
             for c in clade.clades:
                 c.up = clade
                 c.dist2root = c.up.dist2root + c.branch_length
+                c.opt_branch_length = c.branch_length
         return
 
     def load_aln(self, aln):

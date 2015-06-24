@@ -319,13 +319,11 @@ class TreeTime(TreeAnc, object):
         """
         now = datetime.datetime.now()
         for node in self.tree.find_clades():
-            try:
-                
+            try:                
                 node_date = date_func(node.name)
                 if node_date is None:
                     node.raw_date = None
-                    continue
-                
+                    continue                
                 days_before_present = (now - node_date).days
                 if days_before_present < 0:
                     print ("Cannot set the date! the specified date is later "
@@ -1038,7 +1036,7 @@ class TreeTime(TreeAnc, object):
             return -10000000
 
     def to_json(self, node, **kwargs):
-        save_dist = True
+        save_dist = False
         json = {}
         if hasattr(node, 'clade'):
             json['clade'] = node.clade
@@ -1046,6 +1044,8 @@ class TreeTime(TreeAnc, object):
             json['strain'] = str(node.name).replace("'", '')
         if hasattr(node, 'branch_length'):
             json['branch_length'] = round(node.branch_length, 5)
+        if hasattr(node, 'opt_branch_length'):
+            json['opt_branch_length'] = round(node.opt_branch_length, 5)
         if hasattr(node, 'xvalue'):
             json['xvalue'] = round(node.xvalue, 5)
         if hasattr(node, 'yvalue'):
@@ -1057,7 +1057,7 @@ class TreeTime(TreeAnc, object):
         if hasattr(node, 'lh_prefactor') and hasattr(node, 'ml_t_prefactor'):
             json['logLH'] = self.log_lh(node)
         if save_dist and hasattr(node, 'neg_log_prob'):
-            json['dist_DBP'] = ','.join(map(lambda x: str(int((x-t.date2dist.intersect) / t.date2dist.slope)), node.neg_log_prob.x))
+            json['dist_DBP'] = ','.join(map(lambda x: str(int((x-self.date2dist.intersect) / self.date2dist.slope)), node.neg_log_prob.x))
             json['dist_logLH'] = ','.join(map(lambda x: '%10.5E' % x, node.neg_log_prob(node.neg_log_prob.x)))
         if len(node.clades):
             json["children"] = []
