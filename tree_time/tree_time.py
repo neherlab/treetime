@@ -93,7 +93,7 @@ class TreeTime(TreeAnc, object):
 
     MIN_T = -1e5
     MAX_T = 1e5
-    MIN_LOG = -1e5
+    MIN_LOG = -1e8
 
     def __init__(self, tree):
         super(TreeTime, self).__init__(tree)
