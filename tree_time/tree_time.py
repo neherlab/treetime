@@ -318,13 +318,11 @@ class TreeTime(TreeAnc, object):
         """
         now = datetime.datetime.now()
         for node in self.tree.find_clades():
-            try:
-                
+            try:                
                 node_date = date_func(node.name)
                 if node_date is None:
                     node.raw_date = None
-                    continue
-                
+                    continue                
                 days_before_present = (now - node_date).days
                 if days_before_present < 0:
                     print ("Cannot set the date! the specified date is later "
@@ -378,6 +376,10 @@ class TreeTime(TreeAnc, object):
             return node.raw_date
 
         self.tree.root_with_outgroup(sorted(self.tree.get_terminals(), key=raw_date)[-1])
+        self.tree.ladderize()
+        og = self.tree.root.clades[0]
+        self.tree.root.clades[1].branch_length += og.branch_length
+        og.branch_length = 0
         self.tree.root.raw_date = None
         # fix tree lengths, etc
         self._add_node_params()
@@ -576,6 +578,18 @@ class TreeTime(TreeAnc, object):
 
          - grid_size (int): size of the grid for the target node positions.
         """
+        
+        pre_b = np.min(src_branch_neglogprob.y)
+        pre_n = np.min(src_neglogprob.y)
+
+        src_branch_neglogprob.y -= pre_b
+        src_neglogprob.y -= pre_n
+
+        assert (np.min(src_neglogprob.y) == 0)
+        assert (np.min(src_branch_neglogprob.y) == 0)
+
+
+
         opt_source_pos = self._min_interp(src_neglogprob)
         opt_branch_len = sciopt.minimize_scalar(src_branch_neglogprob,
             bounds=[0.0, 2 * self.max_node_abs_t],
@@ -626,6 +640,14 @@ class TreeTime(TreeAnc, object):
         p_logprob[((1,-2),)] = self.MIN_LOG / 2
         
         target_neglogprob = interp1d(target_grid, -1 * p_logprob, kind='linear')
+        
+        # return the source distributions to their initial states 
+        src_branch_neglogprob.y += pre_b
+        src_neglogprob.y += pre_n
+        # scale the resulting distribution
+        target_neglogprob.y += pre_b
+        target_neglogprob.y += pre_n
+
         return target_neglogprob
 
     def _parent_neg_log_prob(self, node, grid_size=100):
@@ -1038,7 +1060,7 @@ class TreeTime(TreeAnc, object):
             return -10000000
 
     def to_json(self, node, **kwargs):
-        save_dist = True
+        save_dist = False
         json = {}
         if hasattr(node, 'clade'):
             json['clade'] = node.clade
@@ -1046,6 +1068,8 @@ class TreeTime(TreeAnc, object):
             json['strain'] = str(node.name).replace("'", '')
         if hasattr(node, 'branch_length'):
             json['branch_length'] = round(node.branch_length, 5)
+        if hasattr(node, 'opt_branch_length'):
+            json['opt_branch_length'] = round(node.opt_branch_length, 5)
         if hasattr(node, 'xvalue'):
             json['xvalue'] = round(node.xvalue, 5)
         if hasattr(node, 'yvalue'):
@@ -1057,7 +1081,7 @@ class TreeTime(TreeAnc, object):
         if hasattr(node, 'lh_prefactor') and hasattr(node, 'ml_t_prefactor'):
             json['logLH'] = self.log_lh(node)
         if save_dist and hasattr(node, 'neg_log_prob'):
-            json['dist_DBP'] = ','.join(map(lambda x: str(int((x-t.date2dist.intersect) / t.date2dist.slope)), node.neg_log_prob.x))
+            json['dist_DBP'] = ','.join(map(lambda x: str(int((x-self.date2dist.intersect) / self.date2dist.slope)), node.neg_log_prob.x))
             json['dist_logLH'] = ','.join(map(lambda x: '%10.5E' % x, node.neg_log_prob(node.neg_log_prob.x)))
         if len(node.clades):
             json["children"] = []

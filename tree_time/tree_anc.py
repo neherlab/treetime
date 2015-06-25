@@ -293,6 +293,7 @@ class TreeAnc(object):
             for c in clade.clades:
                 c.up = clade
                 c.dist2root = c.up.dist2root + c.branch_length
+                c.opt_branch_length = c.branch_length
         return
 
     def load_aln(self, aln):
@@ -371,7 +372,8 @@ class TreeAnc(object):
                                     "in the position %d: %s, "
                                     "choosing %s" % (amb, str(self.tree.root.state[amb]),
                                                      self.tree.root.state[amb][0]))
-        self.tree.root.sequence = np.array([k[0] for k in self.tree.root.state])
+        self.tree.root.sequence = np.array([k[np.random.randint(len(k)) if len(k)>1 else 0] 
+                                           for k in self.tree.root.state])
 
 
 
@@ -597,7 +599,7 @@ class TreeAnc(object):
                 continue
             # probability of the two seqs separated by zero time is not sero
             if gtr.prob_t(node.up.profile, node.profile, 0.0) > 0.1:
-                if node.is_terminal(): # leaf stays as is
+                if node.is_terminal() or (node.up == self.tree.root): # leaf stays as is
                     continue
                 # re-wire the node children directly to its parent
                 node.up.clades = [k for k in node.up.clades if k != node] + node.clades
@@ -606,7 +608,7 @@ class TreeAnc(object):
                 for clade in node.clades:
                     clade.up = node.up
 
-    def optimize_seq_and_branch_len(self,gtr):
+    def optimize_seq_and_branch_len(self,gtr,reuse_branch_len=True):
         """
         Iteratively set branch lengths and reconstruct ancestral sequences until
         the values of either former or latter do not change. The algorithm assumes 
@@ -618,8 +620,10 @@ class TreeAnc(object):
 
          - gtr(GTR): general time-reversible model to be used by every ML algorithm
         """
-        
-        N_diff = self.reconstruct_anc(method='fitch')
+        if reuse_branch_len:
+            N_diff = self.reconstruct_anc('ml', model=gtr)
+        else:
+            N_diff = self.reconstruct_anc(method='fitch')
         n = 0
         while (N_diff > 1):
             self.optimize_branch_len(gtr, verbose=0, store_old=False)
@@ -630,7 +634,4 @@ class TreeAnc(object):
                    " #Nuc changed since prev reconstructions: %d" %(n, N_diff))
         
         self._add_node_params() # fix dist2root and up-links after reconstruction
-
-            
-
-        return         
+        return
