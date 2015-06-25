@@ -16,7 +16,7 @@ import json
 from Bio import Phylo
 
 from scipy import optimize as sciopt
-
+ 
 
 class DateConversion(object):
 
@@ -93,7 +93,7 @@ class TreeTime(TreeAnc, object):
 
     MIN_T = -1e5
     MAX_T = 1e5
-    MIN_LOG = -1000
+    MIN_LOG = -1e8
 
     def __init__(self, tree):
         super(TreeTime, self).__init__(tree)
@@ -260,7 +260,6 @@ class TreeTime(TreeAnc, object):
              - date (datetime.datetime): parsed date object. If the parsing
              failed, None is returned
             """
-            # import ipdb; ipdb.set_trace()
             try:
                 date = datetime.datetime.strptime(instr, "%Y.%m.%d")
             except ValueError:
@@ -511,8 +510,6 @@ class TreeTime(TreeAnc, object):
 
     def _min_interp(self, interp_object):
         
-        #import ipdb; ipdb.set_trace()
-
         return interp_object.x[interp_object(interp_object.x).argmin()]
         #opt_ = sciopt.minimize_scalar(interp_object, 
         #    bounds=[-2 * self.max_node_abs_t, 2 * self.max_node_abs_t],
@@ -578,6 +575,18 @@ class TreeTime(TreeAnc, object):
 
          - grid_size (int): size of the grid for the target node positions.
         """
+        
+        pre_b = np.min(src_branch_neglogprob.y)
+        pre_n = np.min(src_neglogprob.y)
+
+        src_branch_neglogprob.y -= pre_b
+        src_neglogprob.y -= pre_n
+
+        assert (np.min(src_neglogprob.y) == 0)
+        assert (np.min(src_branch_neglogprob.y) == 0)
+
+
+
         opt_source_pos = self._min_interp(src_neglogprob)
         opt_branch_len = sciopt.minimize_scalar(src_branch_neglogprob,
             bounds=[0.0, 2 * self.max_node_abs_t],
@@ -587,13 +596,11 @@ class TreeTime(TreeAnc, object):
         else:
             opt_branch_len = opt_branch_len.x
 
-        # either we have assessed the node optimal position 
-        # and can make suggestions about parent opt position,
-        # or both positions remain undefined
-        if opt_source_pos is not None:
+        if inverse_time:
             opt_target_pos = opt_source_pos - opt_branch_len
         else:
-            opt_target_pos = None
+            opt_target_pos = opt_source_pos + opt_branch_len
+        
         source_grid = src_neglogprob.x 
         target_grid = self._make_node_grid(opt_target_pos, 
                 grid_size, 
@@ -623,11 +630,20 @@ class TreeTime(TreeAnc, object):
         d_conv = (prob2D.T * prob_source)
         conv = (0.5 * (d_conv[:, 1:] + d_conv[:, :-1]) * dx).sum(1)
         
-        p_logprob = np.log(conv + 1e-100) # grid already contains  far points
+        p_logprob = np.log(conv) # grid already contains  far points
+        p_logprob[np.isinf(p_logprob )] = self.MIN_LOG
         p_logprob[((0,-1),)] = self.MIN_LOG
         p_logprob[((1,-2),)] = self.MIN_LOG / 2
         
         target_neglogprob = interp1d(target_grid, -1 * p_logprob, kind='linear')
+        
+        # return the source distributions to their initial states 
+        src_branch_neglogprob.y += pre_b
+        src_neglogprob.y += pre_n
+        # scale the resulting distribution
+        target_neglogprob.y += pre_b
+        target_neglogprob.y += pre_n
+
         return target_neglogprob
 
     def _parent_neg_log_prob(self, node, grid_size=100):
@@ -772,10 +788,6 @@ class TreeTime(TreeAnc, object):
                 grid_size)
             node.neg_log_prob = new_neglogprob
             node.ml_t_prefactor += prefactor
-
-            
-
-            #import ipdb; ipdb.set_trace()
                         
             # plt.plot(node.neg_log_prob.x,node.neg_log_prob(node.neg_log_prob.x), 'o-' ); plt.xlim(0.2, 0.22)
             # log0 = neg_log_prob [0]
@@ -811,6 +823,7 @@ class TreeTime(TreeAnc, object):
                                                   inverse_time=False, 
                                                   grid_size=grid_size
                                                   )
+                import ipdb; ipdb.set_trace()
                 final_prob, final_pre = self._multiply_dists(
                             (
                                 msg_from_root, 
@@ -822,7 +835,6 @@ class TreeTime(TreeAnc, object):
                             ), 
                             grid_size
                         )
-                
                 if self._min_interp(final_prob) < node.up.abs_t:
                     import ipdb; ipdb.set_trace()
                     node.neg_log_prob = self._log_delta(node.up.abs_t)
@@ -842,12 +854,6 @@ class TreeTime(TreeAnc, object):
                
                 node.neg_log_prob = msg_from_root
                 node.ml_t_prefactor = node.up.ml_t_prefactor
-            
-            
-            #node.abs_t = self._min_interp(node.neg_log_prob)
-            #node.branch_length = node.abs_t - node.up.abs_t
-            #if node.branch_length < 0:
-            #    import ipdb; ipdb.set_trace()
 
             self._set_final_date(node)            
             
@@ -1067,3 +1073,4 @@ class TreeTime(TreeAnc, object):
             for ch in node.clades:
                 json["children"].append(self.to_json(ch))
         return json
+        
