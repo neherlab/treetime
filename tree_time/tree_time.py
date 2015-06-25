@@ -579,6 +579,18 @@ class TreeTime(TreeAnc, object):
 
          - grid_size (int): size of the grid for the target node positions.
         """
+        
+        pre_b = np.min(src_branch_neglogprob.y)
+        pre_n = np.min(src_neglogprob.y)
+
+        src_branch_neglogprob.y -= pre_b
+        src_neglogprob.y -= pre_n
+
+        assert (np.min(src_neglogprob.y) == 0)
+        assert (np.min(src_branch_neglogprob.y) == 0)
+
+
+
         opt_source_pos = self._min_interp(src_neglogprob)
         opt_branch_len = sciopt.minimize_scalar(src_branch_neglogprob,
             bounds=[0.0, 2 * self.max_node_abs_t],
@@ -629,6 +641,14 @@ class TreeTime(TreeAnc, object):
         p_logprob[((1,-2),)] = self.MIN_LOG / 2
         
         target_neglogprob = interp1d(target_grid, -1 * p_logprob, kind='linear')
+        
+        # return the source distributions to their initial states 
+        src_branch_neglogprob.y += pre_b
+        src_neglogprob.y += pre_n
+        # scale the resulting distribution
+        target_neglogprob.y += pre_b
+        target_neglogprob.y += pre_n
+
         return target_neglogprob
 
     def _parent_neg_log_prob(self, node, grid_size=100):
