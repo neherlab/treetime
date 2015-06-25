@@ -16,7 +16,7 @@ import json
 from Bio import Phylo
 
 from scipy import optimize as sciopt
-
+ 
 
 class DateConversion(object):
 
@@ -93,7 +93,7 @@ class TreeTime(TreeAnc, object):
 
     MIN_T = -1e5
     MAX_T = 1e5
-    MIN_LOG = -1000
+    MIN_LOG = -1e5
 
     def __init__(self, tree):
         super(TreeTime, self).__init__(tree)
@@ -809,6 +809,7 @@ class TreeTime(TreeAnc, object):
                                                   inverse_time=False, 
                                                   grid_size=grid_size
                                                   )
+                import ipdb; ipdb.set_trace()
                 final_prob, final_pre = self._multiply_dists(
                             (
                                 msg_from_root, 
@@ -1063,3 +1064,4 @@ class TreeTime(TreeAnc, object):
             for ch in node.clades:
                 json["children"].append(self.to_json(ch))
         return json
+        
