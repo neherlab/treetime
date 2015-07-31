@@ -1180,7 +1180,14 @@ class TreeTime(TreeAnc, object):
 
         return parent, nodes_list 
 
-    def ladderize_polytomies(self, node, gtr):
+    def ladderize_polytomies(self, gtr):
+        for n in self.tree.find_clades():
+            self.ladderize_node_polytomies(n, gtr)
+
+        self.ml_t(None)
+        t.tree.ladderize()
+
+    def ladderize_node_polytomies(self, node, gtr):
         
         ls = [k for k in node.clades]
         if len(ls) < 3: return
@@ -1223,7 +1230,7 @@ class TreeTime(TreeAnc, object):
         for clade in dic_clades:
             clade.clades = dic_clades[clade]
 
-        self.ml_t(None)
+        
 
     def optimize_brute(self, n, gtr):
         # parent + all terminals of the local tree
