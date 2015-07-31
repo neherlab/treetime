@@ -25,7 +25,7 @@ class TestTreeAnc(unittest.TestCase):
         anc_t = tree_anc.TreeAnc.from_file(resources_dir+'PR.B.100.nwk', 'newick')
         aln = AlignIO.read(resources_dir+'PR.B.100.fasta', 'fasta')
 
-        err = anc_t.set_seqs_to_leaves(aln)
+        err = anc_t.load_aln(aln)
         assert (err==0) # all sequencs were set up successfully
 
     def test_optimize_(self):
