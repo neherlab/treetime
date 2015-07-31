@@ -33,7 +33,7 @@ def n_name(node):
     s_b = ''
     s_opt = ''
     if hasattr(node, 'branch_neg_log_prob') and node.branch_neg_log_prob is not None:
-        log = node.neg_log_prob
+        log = node.msg_to_parent
         x = node.abs_t
         s_l = '%.0f' % ((log(x) - log(x - 1e-5)) / 1e-5)
         s_r = '%.0f' % ((log(x + 1e-5) - log(x)) / 1e-5)
@@ -61,6 +61,9 @@ if __name__ == '__main__':
     # once:
     #t = tt.TreeTime.from_files(tinf, ainf, dates_file=dinf)
     t = tt.TreeTime.from_newick(tinf)
+    aln = AlignIO.read(ainf, 'fasta')
+    t.load_aln(aln)
+    t.load_dates()
 
     # we can of course do everything manually (just as an example)
     # _t = tt.TreeTime.from_file(tinf, 'newick')

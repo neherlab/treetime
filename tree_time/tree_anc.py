@@ -102,6 +102,9 @@ class GTR(object):
         self.v_inv = np.zeros((alphabet.shape[0], alphabet.shape[0]))
         self.eigenmat = np.zeros(alphabet.shape[0])
 
+        # distance matrix (needed for topology optimization and for NJ)
+        self.dm = None
+
     @classmethod
     def standard(cls, model='Jukes-Cantor', **kwargs):
         if 'alphabet' in kwargs and alphabet in alphabets.keys():
@@ -200,7 +203,7 @@ class GTR(object):
         
         if t < 0:
             if return_log:
-                return -500
+                return -1e10
             else:
                 return 0.0
 
@@ -224,6 +227,41 @@ class GTR(object):
         else:
             prob = prob.prod() # prod of all sites
         return prob
+
+    def optimal_t(self, profile_p, profile_ch, rotated=False, return_log=False):
+        """
+        Find the optimal distance between the two profiles
+        """
+        
+        def _neg_prob(t, parent, child):
+            """
+            Probability to observe child given the the parent state, transition matrix and the time of evolution (branch length).
+    
+            Args:
+             - t(double): branch length (time between sequences)
+             - parent (numpy.array): parent sequence
+             - child(numpy.array): child sequence
+             - tm (GTR): model of evolution
+    
+            Returns:
+             - prob(double): negative probability of the two given sequences to be separated by the time t.
+            """
+            return -1*self.prob_t (parent, child, t, rotated=False, return_log=True)
+    
+        opt = sciopt.minimize_scalar(_neg_prob,
+                bounds=[0,1],
+                method='Bounded',
+                args=(profile_p, profile_ch))
+
+        new_len = opt["x"]
+
+        if new_len > .8 or opt["success"] != True:
+            if verbose > 0:
+                print ("Cannot optimize branch length, minimization failed.")
+            import ipdb; ipdb.set_trace()
+            return -1.0
+        else:
+            return  new_len
 
     def propagate_profile(self, profile, t, rotated=False, return_log=False):
         """
@@ -263,6 +301,20 @@ class GTR(object):
         """
         return np.exp(self.mu * t * self.eigenmat)
 
+    def create_dm(self, profiles):
+        self.dm = np.zeros(self.Pi.shape)
+        
+        T = np.array([[self.optimal_t(p1,p2) for p1 in profiles] for p2 in profiles])
+
+        
+    def dm_dist(self, p1,p2):
+        """
+        Distance between two prfiles based on the pre-computed
+        distance matrix
+        """
+        pass
+
+
 class TreeAnc(object):
     """
     Class defines simple tree object with basic interface methdos: reading and
@@ -272,7 +324,8 @@ class TreeAnc(object):
 
     def __init__(self, tree):
         self.tree = tree
-        self._add_node_params()
+       
+        self._set_tree_params()
 
     @classmethod
     def from_newick(cls, inf):
@@ -283,13 +336,21 @@ class TreeAnc(object):
         tanc = cls(tree)
         return tanc
 
-    def _add_node_params(self):
+    def _set_tree_params(self):
         """
         Set link to parent and net distance to root for all tree nodes
         """
         self.tree.root.up = None
         self.tree.root.dist2root = 0.0
-        for clade in self.tree.get_nonterminals(order='preorder'): # up->down
+        self._set_each_node_params()
+        
+
+    def _set_each_node_params(self, tree=None):
+
+        if tree is None:
+            tree = self.tree
+        
+        for clade in tree.get_nonterminals(order='preorder'): # up->down
             for c in clade.clades:
                 c.up = clade
                 c.dist2root = c.up.dist2root + c.branch_length
@@ -422,7 +483,7 @@ class TreeAnc(object):
         shift = N-1
         return aux[aux[shift:] == aux[:-shift]]
 
-    def _ml_anc(self, gtr, **kwargs):
+    def _ml_anc(self, gtr, tree=None, **kwargs):
         """
         Perform ML reconstruction for the ancestral states
         Args:
@@ -431,6 +492,10 @@ class TreeAnc(object):
          - store_lh (bool): if True, all likelihoods will be stored for all nodes. Useful for testing, diagnostics and if special post-processing is required.
          - verbose (int): how verbose the output should be
         """
+
+        if tree is None:
+            tree = self.tree
+
         # number of nucleotides changed from prev reconstruction
         N_diff = 0
 
@@ -444,19 +509,19 @@ class TreeAnc(object):
                 print ("ML ERROR in input: verbose param must be int")
                 verbose = 5
 
-        L = self.tree.get_terminals()[0].sequence.shape[0]
+        L = tree.get_terminals()[0].sequence.shape[0]
         a = gtr.alphabet.shape[0]
 
         if verbose > 2:
             print ("Walking up the tree, computing joint likelihoods...")
 
-        for leaf in self.tree.get_terminals():
+        for leaf in tree.get_terminals():
 
             # in any case, set the profile
             leaf.profile = seq2prof(leaf.sequence, gtr.alphabet_type)
             leaf.lh_prefactor = np.zeros(L)
 
-        for node in self.tree.get_nonterminals(order='postorder'): #leaves -> root
+        for node in tree.get_nonterminals(order='postorder'): #leaves -> root
             # regardless of what was before, set the profile to zeros
             node.profile = np.ones((L, a)) # we will multiply it
             node.lh_prefactor = np.zeros(L)
@@ -478,11 +543,11 @@ class TreeAnc(object):
         if (verbose > 2):
             print ("Walking down the tree, computing maximum likelihood     sequences...")
 
-        self.tree.root.profile *= np.diag(gtr.Pi) # enable time-reversibility
-        self.tree.root.sequence, self.tree.root.profile = \
-            self._prof_to_seq(self.tree.root.profile, gtr, True)
+        tree.root.profile *= np.diag(gtr.Pi) # enable time-reversibility
+        tree.root.sequence, tree.root.profile = \
+            self._prof_to_seq(tree.root.profile, gtr, True)
 
-        for node in self.tree.find_clades(order='preorder'):
+        for node in tree.find_clades(order='preorder'):
             if node.up != None: # not root
                 node.profile *= gtr.propagate_profile(node.up.profile,
                                 node.branch_length,
@@ -555,7 +620,9 @@ class TreeAnc(object):
             node.branch_length = new_len
 
         # as branch lengths changed, the params must be fixed
-        self._add_node_params()
+        self.tree.root.up = None
+        self.tree.root.dist2root = 0.0
+        self._set_tree_params()
         return
 
     def _opt_len(self, seq_p, seq_ch, gtr, verbose=10):
@@ -608,7 +675,7 @@ class TreeAnc(object):
                 for clade in node.clades:
                     clade.up = node.up
 
-    def optimize_seq_and_branch_len(self,gtr,reuse_branch_len=True):
+    def optimize_seq_and_branch_len(self,gtr,reuse_branch_len=True,prune_short=True):
         """
         Iteratively set branch lengths and reconstruct ancestral sequences until
         the values of either former or latter do not change. The algorithm assumes 
@@ -627,11 +694,12 @@ class TreeAnc(object):
         n = 0
         while (N_diff > 1):
             self.optimize_branch_len(gtr, verbose=0, store_old=False)
-            self.prune_short_branches(gtr)
+            if prune_short:
+                self.prune_short_branches(gtr)
             N_diff = self.reconstruct_anc('ml', model=gtr)
             n += 1
             print ("Optimizing ancestral states and branch lengths. Round %d."
                    " #Nuc changed since prev reconstructions: %d" %(n, N_diff))
         
-        self._add_node_params() # fix dist2root and up-links after reconstruction
+        self._set_tree_params() # fix dist2root and up-links after reconstruction
         return
