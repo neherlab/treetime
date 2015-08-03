@@ -1184,7 +1184,9 @@ class TreeTime(TreeAnc, object):
         for n in self.tree.find_clades():
             self.ladderize_node_polytomies(n, gtr)
 
+        self.optimize_branch_len(gtr)
         self.optimize_seq_and_branch_len(gtr, prune_short=False)
+        self._ml_t_init(gtr)
         self.ml_t(None)
         self.tree.ladderize()
 
@@ -1209,14 +1211,14 @@ class TreeTime(TreeAnc, object):
             new_n = Phylo.BaseTree.Clade()
             #new_n.__dict__ = copy.deepcopy(n2.__dict__) # all attributes
             
-            new_n.branch_length = n2.branch_length
+            new_n.branch_length = 1.0 / len(node.sequence)
             new_n.sequence = copy.copy(node.sequence)
             new_n.profile = copy.copy(node.profile)
             new_n.clades.append(n1)
             new_n.clades.append(n2)
             new_n.name = "L" + str(len(lss))
-            n1.branch_length = n1.branch_length - n2.branch_length
-            n2.branch_length = 0.0
+            n1.branch_length = n1.branch_length
+            n2.branch_length = n2.branch_length
             lss.append(new_n)
 
         assert(len(lss)) == 2
@@ -1224,10 +1226,7 @@ class TreeTime(TreeAnc, object):
         node.clades.append(lss[1])
         
         self._set_each_node_params(node)
-        
-        #self._ml_anc(gtr,tree=node) #re-infer anc states + set seqs and profs
-        self._ml_t_init(gtr, node) # set dates + r-l profs + br_len_interpolator
-
+ 
         # restore the original tree 
         for clade in dic_clades:
             clade.clades = dic_clades[clade]
