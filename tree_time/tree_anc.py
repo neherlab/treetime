@@ -384,7 +384,7 @@ class TreeAnc(object):
                     break
         return failed_leaves
 
-    def reconstruct_anc(self, method, **kwargs):
+    def reconstruct_anc(self, method, tree=None, **kwargs):
         """
         Reconstruct ancestral states
         Args:
@@ -407,7 +407,7 @@ class TreeAnc(object):
             else:
                 gtr = kwargs.pop('model')
 
-            N_diff = self._ml_anc(gtr, **kwargs)
+            N_diff = self._ml_anc(gtr, tree, **kwargs)
         else:
             raise NotImplementedError("The reconstruction method %s is not supported. " % method)
 
@@ -571,7 +571,7 @@ class TreeAnc(object):
             profile[range(profile.shape[0]), am] = 1.0
         return seq, profile
 
-    def optimize_branch_len(self, model, **kwargs):
+    def optimize_branch_len(self, model, tree=None, **kwargs):
         """
         Perform ML optimization for the tree branch length. **Note** this method assumes that each node stores information about its sequence as numpy.array object (variable node.sequence). Therefore, before calling this method, sequence reconstruction with either of the available models must be performed.
 
@@ -597,7 +597,10 @@ class TreeAnc(object):
         if verbose > 3:
             print ("Walking up the tree, computing likelihood distrubutions")
 
-        for node in self.tree.find_clades(order='postorder'):
+        if tree is None:
+            tree = self.tree
+
+        for node in tree.find_clades(order='postorder'):
             parent = node.up
             if parent is None: continue # this is the root
             prof_p = parent.profile
@@ -620,9 +623,9 @@ class TreeAnc(object):
             node.branch_length = new_len
 
         # as branch lengths changed, the params must be fixed
-        self.tree.root.up = None
-        self.tree.root.dist2root = 0.0
-        self._set_tree_params()
+        tree.root.up = None
+        tree.root.dist2root = 0.0
+        self._set_each_node_params(tree)
         return
 
     def _opt_len(self, seq_p, seq_ch, gtr, verbose=10):
@@ -675,7 +678,7 @@ class TreeAnc(object):
                 for clade in node.clades:
                     clade.up = node.up
 
-    def optimize_seq_and_branch_len(self,gtr,reuse_branch_len=True,prune_short=True):
+    def optimize_seq_and_branch_len(self,gtr,tree=None,reuse_branch_len=True,prune_short=True):
         """
         Iteratively set branch lengths and reconstruct ancestral sequences until
         the values of either former or latter do not change. The algorithm assumes 
@@ -687,13 +690,16 @@ class TreeAnc(object):
 
          - gtr(GTR): general time-reversible model to be used by every ML algorithm
         """
+        
+        
+
         if reuse_branch_len:
-            N_diff = self.reconstruct_anc('ml', model=gtr)
+            N_diff = self.reconstruct_anc('ml', model=gtr, tree=tree)
         else:
-            N_diff = self.reconstruct_anc(method='fitch')
+            N_diff = self.reconstruct_anc(method='fitch', tree=tree)
         n = 0
         while (N_diff > 1):
-            self.optimize_branch_len(gtr, verbose=0, store_old=False)
+            self.optimize_branch_len(gtr, tree=tree, verbose=0, store_old=False)
             if prune_short:
                 self.prune_short_branches(gtr)
             N_diff = self.reconstruct_anc('ml', model=gtr)
@@ -701,5 +707,5 @@ class TreeAnc(object):
             print ("Optimizing ancestral states and branch lengths. Round %d."
                    " #Nuc changed since prev reconstructions: %d" %(n, N_diff))
         
-        self._set_tree_params() # fix dist2root and up-links after reconstruction
+        self._set_each_node_params(tree=tree) # fix dist2root and up-links after reconstruction
         return

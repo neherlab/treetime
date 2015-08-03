@@ -1184,18 +1184,17 @@ class TreeTime(TreeAnc, object):
         for n in self.tree.find_clades():
             self.ladderize_node_polytomies(n, gtr)
 
+        self.optimize_seq_and_branch_len(gtr, prune_short=False)
         self.ml_t(None)
-        t.tree.ladderize()
+        self.tree.ladderize()
 
     def ladderize_node_polytomies(self, node, gtr):
         
         ls = [k for k in node.clades]
         if len(ls) < 3: return
-        print (node)
-        print (len(ls))
-        lss = sorted(ls, key=lambda x: x.branch_length)
+        lss = sorted(ls, key=lambda x: x.branch_length - self._min_interp(x.branch_neg_log_prob))
 
-         # temporarily remove the hanging tree - work with the small tree only
+         # temporarily remove the hanging tree - work with the sub-tree only
         dic_clades = {}
         for clade in lss:
             dic_clades[clade] = clade.clades
@@ -1211,6 +1210,8 @@ class TreeTime(TreeAnc, object):
             #new_n.__dict__ = copy.deepcopy(n2.__dict__) # all attributes
             
             new_n.branch_length = n2.branch_length
+            new_n.sequence = copy.copy(node.sequence)
+            new_n.profile = copy.copy(node.profile)
             new_n.clades.append(n1)
             new_n.clades.append(n2)
             new_n.name = "L" + str(len(lss))
@@ -1223,13 +1224,13 @@ class TreeTime(TreeAnc, object):
         node.clades.append(lss[1])
         
         self._set_each_node_params(node)
-        self._ml_anc(gtr,tree=node) #re-infer anc states + set seqs and profs
+        
+        #self._ml_anc(gtr,tree=node) #re-infer anc states + set seqs and profs
         self._ml_t_init(gtr, node) # set dates + r-l profs + br_len_interpolator
 
-        # restore the hanging tree 
+        # restore the original tree 
         for clade in dic_clades:
             clade.clades = dic_clades[clade]
-
         
 
     def optimize_brute(self, n, gtr):
