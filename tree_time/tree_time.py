@@ -301,7 +301,7 @@ class TreeTime(TreeAnc, object):
             # unable to read all dates, the file is corrupted - go one by one
             print ("Unable to perform parsing of the dates file, file is "
                    "corrupted. Return empty dictionary.")
-            return {}
+            return 1
 
     def set_node_dates_from_names(self, date_func):
         """
@@ -979,18 +979,16 @@ class TreeTime(TreeAnc, object):
     def _score_branch(self, node, bins, colors):
         cmap = mpl.cm.get_cmap ()
         def dev(n):
-            if not hasattr(n, 'msg_to_parent') or\
-               n.msg_to_parent is None: # root node or missing
-                return 0.0
-            
-            return abs(self._min_interp(node.msg_to_parent) - node.abs_t)
+            if not hasattr(n, "opt_branch_length"):
+                opt_bl = self._min_interp(n.branch_neg_log_prob)
+            else:
+                opt_bl = n.opt_branch_length
+
+            return abs(n.branch_neg_log_prob(n.opt_branch_length) - n.branch_neg_log_prob(n.branch_length))
         
-        if node.branch_length < 0: 
-            node.score = 1.0
-        else:
-            clr = colors[(bins > abs(dev(node) / self.average_branch_len)).argmax()]
-            node.score = clr
-        color = tuple(map(int, np.array(cmap(node.score)[:-1]) * 255))
+        clr = colors[(bins > abs(dev(node) / self.average_branch_len)).argmax()]
+        node._score = clr
+        color = tuple(map(int, np.array(cmap(node._score)[:-1]) * 255))
         node.color = color
 
     def _score_branches(self, bins, set_color=True):
@@ -1002,7 +1000,8 @@ class TreeTime(TreeAnc, object):
         colors = np.linspace(0,1,len(bins))
        
         for n in self.tree.find_clades():
-            self._score_branch(n, bins, colors)
+            if n.up is not None:
+                self._score_branch(n, bins, colors)
        
     def _nni(self, node):
         """
@@ -1106,6 +1105,7 @@ class TreeTime(TreeAnc, object):
             
             new_clade.clades[0].branch_length = dist_i
             new_clade.clades[1].branch_length = dist_j
+
             # protect against negative branch lengths
             if new_clade.clades[0].branch_length < 0:
                 new_clade.clades[1].branch_length -= new_clade.clades[0].branch_length
@@ -1179,15 +1179,31 @@ class TreeTime(TreeAnc, object):
         fill_nodes_list_recursively(nodes_list, 0, parent, max_level)
 
         return parent, nodes_list 
+ 
+    def resolve_polytomies(self, gtr, opt, opt_args):
+        """
+        Resolve the polytomies on the tree given the joining algorithm opt. 
+        The function scans the tree, resolves polytomies in case there are any, 
+        and re-optimizes the tree with new topology.
 
-    def ladderize_polytomies(self, gtr):
+        Args:
+         - gtr(TreeAnc.GTR): evolutionary model
+
+         - opt(callable): function, which converts the node with polytomies into 
+         the binary tree. Use one of the standard functions (e.g. 
+         ladderize_node_polytomies or optimize_node_polytomies), or provide 
+         your own
+
+         - opt_args(tuple): argumants for the optimization algorithm opt.        
+        """
         for n in self.tree.find_clades():
-            self.ladderize_node_polytomies(n, gtr)
+            opt(n, *opt_args)
 
         self.optimize_branch_len(gtr)
         self.optimize_seq_and_branch_len(gtr, prune_short=False)
         self._ml_t_init(gtr)
         self.ml_t(None)
+        self._ml_anc(gtr)
         self.tree.ladderize()
 
     def ladderize_node_polytomies(self, node, gtr):
@@ -1196,7 +1212,7 @@ class TreeTime(TreeAnc, object):
         if len(ls) < 3: return
         lss = sorted(ls, key=lambda x: x.branch_length - self._min_interp(x.branch_neg_log_prob))
 
-         # temporarily remove the hanging tree - work with the sub-tree only
+        # temporarily remove the hanging tree - work with the sub-tree only
         dic_clades = {}
         for clade in lss:
             dic_clades[clade] = clade.clades
@@ -1230,6 +1246,57 @@ class TreeTime(TreeAnc, object):
         # restore the original tree 
         for clade in dic_clades:
             clade.clades = dic_clades[clade]
+
+    
+    def optimize_node_polytomies(self, node, cost_fun, cost_fun_args):
+        """
+        Build the tree using NJ algorithm using the 
+        user-defined cost function as the distance function. 
+
+        Args:
+
+         - node(Phylo.Clade): node to resolve polytomies for. If number of children 
+         is less than 3, nothing happens.
+
+         - cost_fun(callable): distance function to build distance matrix. It 
+         computes the cost of each node in respect to the polytomic parent position
+         first. Then, it build distance matrix by summing square of the costs 
+         for each sequence pair. 
+
+         - cost_fun_args(tuple): args of the distance function cost_fun
+        """
+
+        ls = [k for k in node.clades]
+        if len(ls) < 3: return
+
+        # temporarily remove the hanging tree - work with the sub-tree only
+        dic_clades = {}
+        for clade in ls:
+            dic_clades[clade] = clade.clades
+            clade.clades = []
+
+        costs = np.array([cost_fun(l, *cost_fun_args) for l in ls])
+        if (costs.min() < 0):
+            costs -= costs.min()
+
+        DM = np.array([[ 1.0/(i+j)**2 for i in costs] for j in costs])
+        
+        np.fill_diagonal(DM, 1e20)
+
+        self.local_nj(DM, node, ls)
+        
+        for n in node.find_clades():
+            # set all sequences to the parent sequence
+            n.branch_length = 1.0 / len(node.sequence)
+            n.sequence = copy.copy(node.sequence)
+            n.profile = copy.copy(node.profile)
+
+        self._set_each_node_params(node)
+
+        # restore the original tree 
+        for clade in dic_clades:
+            clade.clades = dic_clades[clade]
+
         
 
     def optimize_brute(self, n, gtr):
