@@ -34,6 +34,7 @@ class DateConversion(object):
         self.pi_val = 0
         self.sigma = 0
 
+
     @classmethod
     def from_tree(cls, t):
         dates = []
@@ -97,6 +98,7 @@ class TreeTime(TreeAnc, object):
         self.date2dist = None  # we do not know anything about the conversion
         self.tree_file = ""
         self.max_node_abs_t = 0.0
+        self._penalty = 0.0
 
 
     @property
@@ -438,10 +440,10 @@ class TreeTime(TreeAnc, object):
                               grid,
                               [self.MAX_T])
                              )
-        logprob = np.concatenate([[0, 0], [gtr.prob_t(prof_p, prof_ch, t_, return_log=True) for t_ in grid[2:-1]], [0]])
+        logprob = np.concatenate([[0, 0], [gtr.prob_t(prof_p, prof_ch, t_, return_log=True) for t_ in grid[2:-1]], [0]]) - self._penalty * grid
         logprob[((0,-1),)] = self.MIN_LOG
         logprob[((1,-2),)] = self.MIN_LOG / 2
-        logprob *= -1.0        
+        logprob *= -1.0
 
         node.branch_neg_log_prob = interp1d(grid, logprob, kind='linear')
 
@@ -1194,7 +1196,7 @@ class TreeTime(TreeAnc, object):
          ladderize_node_polytomies or optimize_node_polytomies), or provide 
          your own
 
-         - opt_args(tuple): argumants for the optimization algorithm opt.        
+         - opt_args(tuple): arguments for the optimization algorithm opt.        
         """
         for n in self.tree.find_clades():
             opt(n, *opt_args)
@@ -1276,8 +1278,8 @@ class TreeTime(TreeAnc, object):
             clade.clades = []
 
         costs = np.array([cost_fun(l, *cost_fun_args) for l in ls])
-        if (costs.min() < 0):
-            costs -= costs.min()
+        #if (costs.min() < 0):
+        #    costs -= costs.min()
 
         DM = np.array([[ 1.0/(i+j)**2 for i in costs] for j in costs])
         
