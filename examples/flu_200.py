@@ -58,11 +58,9 @@ def binstr(x):
     else:
         return '<%.2f' % x
 
-
 def cost_fun(n):
     sign = np.sign(n.branch_length - t.opt_branch_length(n))
     return sign * (n.branch_neg_log_prob(t.opt_branch_length(n)) - n.branch_neg_log_prob(n.branch_length))
-
 
 
 if __name__=='__main__':
@@ -71,8 +69,8 @@ if __name__=='__main__':
     gtr = ta.GTR.standard()
 
     root_dir = os.path.dirname(os.path.realpath(__file__)) 
-    fasta = os.path.join(root_dir, 'H3N2_NA_allyears_NA.500.fasta')
-    nwk = os.path.join(root_dir, 'H3N2_NA_allyears_NA.500.nwk')
+    fasta = os.path.join(root_dir, 'H3N2_NA_allyears_NA.200.fasta')
+    nwk = os.path.join(root_dir, 'H3N2_NA_allyears_NA.200.nwk')
 
     # read tree from file
     t = tt.TreeTime.from_newick(nwk)
@@ -86,8 +84,7 @@ if __name__=='__main__':
     
     t.reroot_to_oldest()
 
-
-    t.optimize_seq_and_branch_len(gtr)
+    t.optimize_seq_and_branch_len(gtr) 
     #import ipdb; ipdb.set_trace()
 
     rds = []
@@ -96,12 +93,12 @@ if __name__=='__main__':
             rds.append((n.dist2root, n.raw_date ))
 
     
-    t.init_date_constraints(gtr)
+    t.init_date_constraints(gtr, slope=None)
     t.ml_t(gtr)
 
     # plotting the results
-    bins = np.array([0, 0.1, 0.3, 0.5, 1.0, 1.5, 2.0, 5, 10, 20])
-    t._score_branches(bins)
+    
+    t._score_branches()
     #scores = []
     ##for n in t.tree.find_clades():
     ##    scores.append(n.score)
@@ -118,11 +115,10 @@ if __name__=='__main__':
     #
     t.tree.ladderize()
     Phylo.draw(t.tree, label_func = lambda x:'', show_confidence=False, branch_labels='')
-
-    t.resolve_polytomies(gtr, t.ladderize_node_polytomies, (gtr,))
-    t._score_branches(bins,True)
-    Phylo.draw(t.tree, label_func = lambda x:'', show_confidence=False, branch_labels='')
+    t.print_lh()
     
-
-
+    t.resolve_polytomies(gtr, t.ladderize_node_polytomies, (gtr,))
+    t._score_branches()
+    Phylo.draw(t.tree, label_func = lambda x:'', show_confidence=False, branch_labels='')
+    t.print_lh()
     
