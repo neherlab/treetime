@@ -75,11 +75,11 @@ class DateConversion(object):
             dist2root).
 
         """
-        year = (self.intersect - abs_t) / self.slope
-        if year < 0:
+        days = (self.intersect - abs_t) / self.slope
+        if days < 0:
             print ("Warning: got the negative date! Returning the inverse.")
-            year = abs(year)
-        return year
+            days = abs(days)
+        return days
 
 class TreeTime(TreeAnc, object):
 
@@ -98,7 +98,7 @@ class TreeTime(TreeAnc, object):
         self.date2dist = None  # we do not know anything about the conversion
         self.tree_file = ""
         self.max_node_abs_t = 0.0
-        self._penalty = 0.0
+        self._penalty = 0.0 
 
 
     @property
@@ -107,6 +107,8 @@ class TreeTime(TreeAnc, object):
         tot_len = self.tree.total_branch_length ()      
         return tot_len/tot_branches
     
+    def opt_branch_len(self, node):
+        return self._min_interp(node.branch_neg_log_prob)    
     
     @classmethod
     def from_json(cls, inf, json_keys={"branch_len":"xvalue"}, date_func=lambda x: None):
@@ -382,7 +384,7 @@ class TreeTime(TreeAnc, object):
         # fix tree lengths, etc
         self._set_tree_params()
 
-    def init_date_constraints(self, gtr):
+    def init_date_constraints(self, gtr, slope=None):
         """
         Get the conversion coefficients between the dates and the branch
         lengths as they are used in ML computations. The conversion formula is
@@ -393,8 +395,32 @@ class TreeTime(TreeAnc, object):
         Note: that tree must have dates set to all nodes before calling this
         function. (The latter is accomplished by calling load_dates func).
         """
+        if slope is None:
+            self.date2dist = DateConversion.from_tree(self.tree)
+        else:
+            dc = DateConversion()
+            dc.slope = slope
+            min_raw_date = 1e10
+            max_diam = 0.0
+            for t in self.tree.get_terminals():
+                if hasattr(t, 'raw_date') and t.raw_date is not None and t.raw_date < min_raw_date:
+                    min_raw_date = t.raw_date
+                    max_diam = t.dist2root
 
-        self.date2dist = DateConversion.from_tree(self.tree)
+            if min_raw_date == 1e10:
+                print ("Warn! cannot set the minimal raw date. using today")
+                min_raw_date = 0.0
+
+
+            if max_diam == 0.0:
+                print ("error! cannot set the intersect for the date2dist conversion!"
+                    "Cannot read tree diameter")
+                return
+
+            dc.intersect = max_diam - slope * min_raw_date
+
+            # set the dc as an attribute to the object
+            self.date2dist = dc
 
         # set dates to the internal nodes
 
@@ -477,7 +503,7 @@ class TreeTime(TreeAnc, object):
             tree = self.tree
 
         if self.date2dist is None:
-            print ("error")
+            print ("error - no date 2 dist conversion set. Run init_date_constraints and try once more.")
             return
         for node in tree.find_clades():
             # node is constrained
@@ -978,32 +1004,36 @@ class TreeTime(TreeAnc, object):
         node.prf_r = node.profile.dot(gtr.v)
         node.prf_l = (gtr.v_inv.dot(node.profile.T)).T
 
-    def _score_branch(self, node, bins, colors):
+    def _score_branch(self, node):
         cmap = mpl.cm.get_cmap ()
         def dev(n):
-            if not hasattr(n, "opt_branch_length"):
-                opt_bl = self._min_interp(n.branch_neg_log_prob)
-            else:
-                opt_bl = n.opt_branch_length
+            opt_bl = self.opt_branch_len(n)
+            
+            tmp_eps = 0.0000001
+            return (n.branch_neg_log_prob(tmp_eps+n.branch_length) - n.branch_neg_log_prob(n.branch_length))/tmp_eps
+    
+        node._score = dev(node)
 
-            return abs(n.branch_neg_log_prob(n.opt_branch_length) - n.branch_neg_log_prob(n.branch_length))
-        
-        clr = colors[(bins > abs(dev(node) / self.average_branch_len)).argmax()]
-        node._score = clr
-        color = tuple(map(int, np.array(cmap(node._score)[:-1]) * 255))
-        node.color = color
-
-    def _score_branches(self, bins, set_color=True):
+    def _score_branches(self):
         """
-        Set score to the branch. The score is how far is the branch length from 
+        Set score to the branch. The score is how far is the branch length from
         its optimal value
         """
-        #bins=np.array([0.01, 0.1, 0.5, 1.0, 2.0, 3.0, 5.0, 8.0, 10.0, 1000.0])
-        colors = np.linspace(0,1,len(bins))
-       
+        
+
+        all_scores = []
         for n in self.tree.find_clades():
             if n.up is not None:
-                self._score_branch(n, bins, colors)
+                self._score_branch(n)
+                all_scores.append(n._score)
+
+        score_min, score_max = min(all_scores), max(all_scores)
+        abs_max = max(np.abs(all_scores))
+        from matplotlib import cm
+        for n in self.tree.find_clades():
+            if n.up is not None:
+                n.color = list(map(lambda x:int(255*x), cm.jet((n._score+abs_max)/(2*score_max))[:3]))
+
        
     def _nni(self, node):
         """
@@ -1248,7 +1278,6 @@ class TreeTime(TreeAnc, object):
         # restore the original tree 
         for clade in dic_clades:
             clade.clades = dic_clades[clade]
-
     
     def optimize_node_polytomies(self, node, cost_fun, cost_fun_args):
         """
@@ -1298,8 +1327,7 @@ class TreeTime(TreeAnc, object):
         # restore the original tree 
         for clade in dic_clades:
             clade.clades = dic_clades[clade]
-
-        
+    
 
     def optimize_brute(self, n, gtr):
         # parent + all terminals of the local tree
@@ -1325,4 +1353,12 @@ class TreeTime(TreeAnc, object):
         self.tree.ladderize()
 
 
+    def print_lh(self):
+        s_lh = -1 * self.tree.root.lh_prefactor.sum()
+        t_lh = self.tree.root.msg_to_parent.y.min()
 
+        print ("###  Tree Likelihood  ###\n"
+                " Seq log-LH:      {0}\n"
+                " Temp.Pos log-LH: {1}\n"
+                " Total log-LH:    {2}\n"
+               "#########################".format(s_lh, t_lh, s_lh+t_lh))
