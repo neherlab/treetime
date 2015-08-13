@@ -60,8 +60,8 @@ def binstr(x):
 
 
 def cost_fun(n):
-    sign = np.sign(n.branch_length - n.opt_branch_length)
-    return sign * (n.branch_neg_log_prob(n.opt_branch_length) - n.branch_neg_log_prob(n.branch_length))
+    sign = np.sign(n.branch_length - t.opt_branch_length(n))
+    return sign * (n.branch_neg_log_prob(t.opt_branch_length(n)) - n.branch_neg_log_prob(n.branch_length))
 
 
 

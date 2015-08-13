@@ -354,7 +354,6 @@ class TreeAnc(object):
             for c in clade.clades:
                 c.up = clade
                 c.dist2root = c.up.dist2root + c.branch_length
-                c.opt_branch_length = c.branch_length
         return
 
     def load_aln(self, aln):
@@ -544,8 +543,16 @@ class TreeAnc(object):
             print ("Walking down the tree, computing maximum likelihood     sequences...")
 
         tree.root.profile *= np.diag(gtr.Pi) # enable time-reversibility
+        
+        # extract the likelihood from the profile 
+        
+
+        tree.root.lh_prefactor += np.log(tree.root.profile.max(axis=1))
+        
+        # reset profile to 0-1 and set the seequence
         tree.root.sequence, tree.root.profile = \
             self._prof_to_seq(tree.root.profile, gtr, True)
+
 
         for node in tree.find_clades(order='preorder'):
             if node.up != None: # not root
@@ -553,7 +560,10 @@ class TreeAnc(object):
                                 node.branch_length,
                                 rotated=False, # use unrotated
                                 return_log=False)
-                # actually, infer sequence
+                
+                # update the likelihood
+                node.lh_prefactor += np.log(node.profile.max(axis=1))
+                # reset the profile to 0-1 andd  set the sequence 
                 sequence,profile=self._prof_to_seq(node.profile,gtr)
                 if hasattr(node, 'sequence'):
                     N_diff += (sequence!=node.sequence).sum()
@@ -709,3 +719,4 @@ class TreeAnc(object):
         
         self._set_each_node_params(tree=tree) # fix dist2root and up-links after reconstruction
         return
+
