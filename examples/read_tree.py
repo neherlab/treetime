@@ -25,7 +25,7 @@ if __name__ == '__main__':
 
     t = tree_anc.TreeAnc.from_file('../data/PR.B.100.nwk', 'newick')
     aln = AlignIO.read('../data/PR.B.100.fasta', 'fasta')
-    t.set_seqs_to_leaves(aln)
+    t.load_aln(aln)
 
 
 

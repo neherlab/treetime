@@ -30,7 +30,7 @@ if __name__=='__main__':
 
 
     # first step is always to set sequences to leaves:
-    err = t.set_seqs_to_leaves(aln) # err - number of failed leaves
+    err = t.load_aln(aln) # err - number of failed leaves
 
 
     # As we rely on the tree provided by users, it can be built using any method/programming tool/etc., we cannot rely on the branch lengths in the input tree. they can be set in years, number of mutations, Hamming dist and what not. For us, only topology is relevant, so we want to unify all branch lengths.
