@@ -287,7 +287,8 @@ class TreeTime(TreeAnc, object):
         self.tree.ladderize()
         og = self.tree.root.clades[0]
         self.tree.root.clades[1].branch_length += og.branch_length
-        og.branch_length = 0
+        og.branch_length = self.one_mutation
+        self.tree.root.branch_length = self.one_mutation
         self.tree.root.raw_date = None
         # fix tree lengths, etc
         self._set_tree_params()
@@ -354,7 +355,7 @@ class TreeTime(TreeAnc, object):
         if node.branch_length < 1e-5:
             # protection against zero value in the tree depth.
             # if so, use 0.01 which is (roughly) 1% diff between sequences
-            sigma = np.max([0.01, 0.3 * self.max_node_abs_t])
+            sigma = np.max([0.01, 10*self.one_mutation])
             # allow variation up to 10% of the max tree depth
             grid = sigma * (np.linspace(0.0, 1.0 , n)**2)
         else:
@@ -381,7 +382,12 @@ class TreeTime(TreeAnc, object):
         logprob[((1,-2),)] = self.MIN_LOG / 2
         logprob *= -1.0
 
-        node.branch_neg_log_prob = interp1d(grid, logprob, kind='linear')
+        dt = np.diff(grid)
+        tmp_prob = np.exp(-logprob)
+        integral = np.sum(0.5*(tmp_prob[1:]+tmp_prob[:-1])*dt)
+
+        node.branch_neg_log_prob = interp1d(grid, logprob+np.log(integral), 
+                                            kind='linear')
 
     def _log_delta(self, pos):
         # probability is the delta-function
@@ -463,8 +469,10 @@ class TreeTime(TreeAnc, object):
                 variance=1.0):
         scale = self.max_node_abs_t * variance
         # quadratic grid - fine around opt, sparse at the edges
-        grid_root = opt - scale * (np.linspace(1, 1e-5, grid_size / 2 - 1)**2)
-        grid_leaves = opt + scale * (np.linspace(0, 1, grid_size / 2)**2)
+        grid_root = opt - scale * (np.linspace(1, 1e-5, grid_size / 3 - 1)**2)
+        grid_leaves = opt + scale * (np.linspace(0, 1, grid_size / 3)**2)
+        grid_leaves = opt + 0.25*MAX_BRANCH_LENGTH*np.sign(np.linspace(-1, 1, grid_size / 3))\
+                            *(np.linspace(-1, 1, grid_size / 3)**2)
 
         grid = np.concatenate(([self.MIN_T],
             grid_root,
@@ -785,7 +793,7 @@ class TreeTime(TreeAnc, object):
             node.branch_length = node.abs_t - node.up.abs_t
             node.dist2root = node.up.dist2root + node.branch_length
         else:
-            node.branch_length = 1.0
+            node.branch_length = self.one_mutation
             node.dist2root = 0.0
 
         node.date = (node.abs_t-self.date2dist.intersect) / self.date2dist.slope
@@ -854,6 +862,7 @@ class TreeTime(TreeAnc, object):
         #  propagate messages down - reconstruct node positions
         # self._ml_t_root_leaves_tmp()
         self._ml_t_root_leaves()
+        self._ml_anc(gtr)
         print ("Done tree optimization.")
 
     def date2dist_plot(self):
@@ -1101,7 +1110,7 @@ class TreeTime(TreeAnc, object):
         self.optimize_branch_len(gtr)
         self.optimize_seq_and_branch_len(gtr, prune_short=False)
         self._ml_t_init(gtr)
-        self.ml_t(None)
+        self.ml_t(gtr)
         self._ml_anc(gtr)
         self.tree.ladderize()
 
@@ -1126,7 +1135,7 @@ class TreeTime(TreeAnc, object):
             new_n = Phylo.BaseTree.Clade()
             #new_n.__dict__ = copy.deepcopy(n2.__dict__) # all attributes
 
-            new_n.branch_length = 1.0 / len(node.sequence)
+            new_n.branch_length = self.one_mutation
             new_n.sequence = copy.copy(node.sequence)
             new_n.profile = copy.copy(node.profile)
             new_n.clades.append(n1)
@@ -1178,14 +1187,16 @@ class TreeTime(TreeAnc, object):
         #    costs -= costs.min()
 
         DM = np.array([[ 1.0/(i+j)**2 for i in costs] for j in costs])
+        print([n.name for n in ls])
+        print(DM)
 
         np.fill_diagonal(DM, 1e20)
 
         self.local_nj(DM, node, ls)
 
-        for n in node.find_clades():
+        for n in node.get_nonterminals():
             # set all sequences to the parent sequence
-            n.branch_length = 1.0 / len(node.sequence)
+            n.branch_length = self.one_mutation
             n.sequence = copy.copy(node.sequence)
             n.profile = copy.copy(node.profile)
 
@@ -1221,7 +1232,7 @@ class TreeTime(TreeAnc, object):
 
 
     def print_lh(self):
-        s_lh = -1 * self.tree.root.lh_prefactor.sum()
+        s_lh = -self.tree.sequence_LH
         t_lh = self.tree.root.msg_to_parent.y.min()
 
         print ("###  Tree Likelihood  ###\n"
@@ -1229,3 +1240,8 @@ class TreeTime(TreeAnc, object):
                 " Temp.Pos log-LH: {1}\n"
                 " Total log-LH:    {2}\n"
                "#########################".format(s_lh, t_lh, s_lh+t_lh))
+
+    def total_LH(self):
+        s_lh = self.tree.sequence_LH
+        t_lh = -self.tree.root.msg_to_parent.y.min()
+        return s_lh+t_lh

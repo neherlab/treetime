@@ -383,6 +383,9 @@ class TreeAnc(object):
                     print ("Error: cannot set sequences to the terminal nodes.\n"
                         "Are you sure the alignment belongs to the tree?")
                     break
+        self.L = aln.get_alignment_length()
+        self.one_mutation = 1.0/self.L
+        self.tree.root.branch_length = self.one_mutation
         return failed_leaves
 
     def reconstruct_anc(self, method, tree=None, **kwargs):
@@ -419,7 +422,6 @@ class TreeAnc(object):
         Reconstruct ancestral states using Fitch algorithm
         """
         # set fitch profiiles to each terminal node
-        L = len(self.tree.get_terminals()[0].sequence)
         for l in self.tree.get_terminals():
             l.state = [[k] for k in l.sequence]
 
@@ -427,7 +429,7 @@ class TreeAnc(object):
         for node in self.tree.get_nonterminals(order='postorder'):
             node.state = [self._fitch_state(node, k) for k in range(L)]
 
-        ambs = [i for i in range(L) if len(self.tree.root.state[i])>1]
+        ambs = [i for i in range(self.L) if len(self.tree.root.state[i])>1]
         if len(ambs) > 0:
             for amb in ambs:
                 print ("Ambiguous state of the root sequence "
@@ -450,7 +452,7 @@ class TreeAnc(object):
                 if hasattr(node, 'sequence'):
                     N_diff += (sequence!=node.sequence).sum()
                 else:
-                    N_diff += len(sequence)
+                    N_diff += self.L
                 node.sequence = sequence
 
             node.profile = seq2prof(node.sequence)
@@ -528,10 +530,12 @@ class TreeAnc(object):
             node.lh_prefactor = np.zeros(L)
 
             for ch in node.clades:
-                node.profile *= gtr.propagate_profile(ch.profile,
+                ch.seq_msg_to_parent = gtr.propagate_profile(ch.profile,
                     ch.branch_length,
                     rotated=False, # use unrotated
                     return_log=False) # raw prob to transfer prob up
+
+                node.profile *= ch.seq_msg_to_parent
 
                 node.lh_prefactor += ch.lh_prefactor
 
@@ -547,8 +551,8 @@ class TreeAnc(object):
 
         # extract the likelihood from the profile
         tree.root.lh_prefactor += np.log(tree.root.profile.max(axis=1))
-        tree.sequence_LH = tree.root.lh_prefactor.sum()
-
+        tree.anc_LH = tree.root.lh_prefactor.sum()
+        tree.sequence_LH = 0
         # reset profile to 0-1 and set the sequence
         tree.root.sequence, tree.root.profile = \
             self._prof_to_seq(tree.root.profile, gtr, True)
@@ -557,19 +561,25 @@ class TreeAnc(object):
         for node in tree.find_clades(order='preorder'):
             if node.up is None: # skip if node is root
                 continue
-            node.profile *= gtr.propagate_profile(node.up.profile,
+            # integrate the information coming from parents with the information
+            # of all children my multiplying it to the prev computed profile
+            node.seq_msg_from_parent = gtr.propagate_profile(node.up.profile,
                             node.branch_length,
                             rotated=False, # use unrotated
                             return_log=False)
+            node.profile *= node.seq_msg_from_parent
 
             # reset the profile to 0-1 andd  set the sequence
             sequence, profile = self._prof_to_seq(node.profile, gtr)
             node.mutations = [(anc, pos, der) for pos, (anc, der) in
                             enumerate(izip(node.up.sequence, sequence)) if anc!=der]
+
+            tree.sequence_LH += np.sum(np.log(node.seq_msg_from_parent[profile>0.9]))
+
             if hasattr(node, 'sequence'):
                 N_diff += (sequence!=node.sequence).sum()
             else:
-                N_diff += len(sequence)
+                N_diff += self.L
             node.sequence = sequence
             node.profile = profile
         return N_diff
@@ -719,5 +729,6 @@ class TreeAnc(object):
                    " #Nuc changed since prev reconstructions: %d" %(n, N_diff))
 
         self._set_each_node_params(tree=tree) # fix dist2root and up-links after reconstruction
+        print("Unconstrained sequence LH:",self.tree.sequence_LH)
         return
 
