@@ -395,7 +395,12 @@ class TreeTime(TreeAnc, object):
         grid = np.concatenate(([self.MIN_T],
             pos * np.array([1 - width, 1, 1 + width]),
             [self.MAX_T]))
-        vals = np.array([self.MIN_LOG,0.5*self.MIN_LOG,np.log(np.abs(pos/width)),0.5*self.MIN_LOG,self.MIN_LOG])
+        vals = np.array([
+            self.MIN_LOG,
+            0.5*self.MIN_LOG,
+            0.0,#np.log(np.abs(pos/width)),
+            0.5*self.MIN_LOG,
+            self.MIN_LOG])
         log_delta = interp1d(grid, -vals, kind='linear')
         return log_delta
 

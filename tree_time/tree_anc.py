@@ -2,7 +2,10 @@ from Bio import Phylo
 from Bio import AlignIO
 import numpy as np
 from scipy import optimize as sciopt
-from itertools import izip
+try:
+    from itertools import izip
+except ImportError:  #python3.x
+    izip = zip
 import json
 
 alphabets = {
@@ -268,7 +271,8 @@ class GTR(object):
 
     def propagate_profile(self, profile, t, rotated=False, return_log=False):
         """
-        Compute the probability of the sequence state (profile) at time (t+t0), given the sequence state (profile) at time t0.
+        Compute the probability of the sequence state (profile) at time (t+t0), 
+        given the sequence state (profile) at time t0.
         Args:
          - profile(numpy.array): sequence profile. Shape = (L, a), where L - sequence length, a - alphabet size.
 
@@ -569,7 +573,7 @@ class TreeAnc(object):
                             return_log=False)
             node.profile *= node.seq_msg_from_parent
 
-            # reset the profile to 0-1 andd  set the sequence
+            # reset the profile to 0-1 and  set the sequence
             sequence, profile = self._prof_to_seq(node.profile, gtr)
             node.mutations = [(anc, pos, der) for pos, (anc, der) in
                             enumerate(izip(node.up.sequence, sequence)) if anc!=der]
