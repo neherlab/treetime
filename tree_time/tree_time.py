@@ -171,25 +171,19 @@ class TreeTime(TreeAnc, object):
          - gtr(GTR): Evolutionary model, required to compute some node
          parameters.
         """
-
-
         tree = self.tree
 
         if self.date2dist is None:
             print ("error - no date to dist conversion set. Run init_date_constraints and try once more.")
             return
         for node in tree.find_clades():
-
             # node is constrained
             if hasattr(node, 'raw_date') and node.raw_date is not None:
-
                 # set the absolute time in branch length units
                 # the abs_t zero is today, and the direction is to the past
                 node.abs_t = node.raw_date * abs(self.date2dist.slope)
                 # * self.date2dist.slope + \ self.date2dist.intersept
-
                 node.msg_to_parent = utils.delta_fun(node.abs_t, return_log=True, normalized=False)
-
             # unconstrained node
             else:
                 node.raw_date = None
@@ -198,7 +192,6 @@ class TreeTime(TreeAnc, object):
                 node.msg_to_parent = None
             # make interpolation object for branch lengths
             self._make_branch_len_interpolator(node, gtr, n=36)
-
             # log-scale likelihood prefactor
             #node.msg_to_parent_prefactor = 0.0
             # set the profiles in the eigenspace of the GTR matrix
@@ -206,10 +199,7 @@ class TreeTime(TreeAnc, object):
             # profiles in the matrix eigenspace)
             self._set_rotated_profiles(node, gtr)
 
-    def _convolve(self,
-                     src_neglogprob,
-                     src_branch_neglogprob,
-                     inverse_time):
+    def _convolve(self, src_neglogprob, src_branch_neglogprob, inverse_time):
         """
         Compute the convolution of parent (target) and child (source)
         nodes inverse log-likelihood distributions.
@@ -241,7 +231,6 @@ class TreeTime(TreeAnc, object):
 
         opt_source_pos = utils.min_interp(src_neglogprob)
         opt_branch_len = utils.min_interp(src_branch_neglogprob)
-
         if inverse_time:
             opt_target_pos = opt_source_pos + opt_branch_len # abs_t
         else:
@@ -249,34 +238,23 @@ class TreeTime(TreeAnc, object):
 
         # T
         target_grid = utils.make_node_grid(opt_target_pos)
-
-        target_grid.sort()
-
+        target_grid.sort() # redundant
         if hasattr(src_neglogprob, 'delta_pos'): # convolve with delta-fun
-
             x_axis = target_grid - src_neglogprob.delta_pos
             x_axis[x_axis < ttconf.MIN_T] = ttconf.MIN_T
             x_axis[x_axis > ttconf.MAX_T] = ttconf.MAX_T
             res_y = src_branch_neglogprob(x_axis)
             res = interp1d(target_grid, res_y, kind='linear')
-
-
         else: # convolve two different distributions
-
             pre_b = np.min(src_branch_neglogprob.y)
             pre_n = np.min(src_neglogprob.y)
-
             src_branch_neglogprob.y -= pre_b
             src_neglogprob.y -= pre_n
-
             res = utils.convolve(target_grid, src_neglogprob, src_branch_neglogprob)
-
             src_branch_neglogprob.y += pre_b
             src_neglogprob.y += pre_n
             res.y += pre_b
             res.y += pre_n
-
-        # here we should have the result of hte convolution
         return res
 
     def _ml_t_leaves_root(self):
