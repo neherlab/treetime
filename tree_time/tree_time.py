@@ -3,9 +3,11 @@ Class, which contains methods to optimize branch lengths given the time
 constraints set to leaves
 """
 from __future__ import print_function, division
-from tree_time.tree_time.tree_anc import TreeAnc
-from tree_time.tree_time import utils
-from tree_time.tree_time import config as ttconf
+
+from tree_anc import TreeAnc
+import utils
+import config as ttconf
+
 import numpy as np
 from Bio import AlignIO, Phylo
 import datetime

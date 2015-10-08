@@ -1,8 +1,8 @@
 from Bio import Phylo
 from Bio import AlignIO
 import   numpy as np
-from tree_time.tree_time.gtr import GTR
-from tree_time.tree_time import seq_utils
+from gtr import GTR
+import seq_utils
 try:
     from itertools import izip
 except ImportError:  #python3.x

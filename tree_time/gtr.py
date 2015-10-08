@@ -1,7 +1,7 @@
 import numpy as np
 from scipy import optimize as sciopt
-from tree_time.tree_time import config as ttconf
-from tree_time.tree_time.seq_utils import alphabets
+import config as ttconf
+from seq_utils import alphabets
 class GTR(object):
     """
     Defines General-Time-Reversible model of character evolution.

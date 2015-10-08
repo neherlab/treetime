@@ -1,8 +1,8 @@
 from Bio import Phylo
 import numpy as np
 import json, copy, datetime
-from tree_time.tree_time.tree_time import TreeTime
-from tree_time.tree_time import seq_utils
+from tree_time import TreeTime
+import seq_utils
 
 def treetime_from_newick(infile):
     """

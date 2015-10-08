@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.interpolate import interp1d
-import tree_time.tree_time.config as ttconf
+import config as ttconf
 from scipy.integrate import quad
 from scipy import stats
 import matplotlib.pyplot as plt
