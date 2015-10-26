@@ -24,13 +24,18 @@ class TreeAnc(object):
 
     def set_additional_tree_params(self):
         """
-        Set link to parent and net distance to root for all tree nodes
+        Set link to parent and net distance to root for all tree nodes.
+        Should be run once the tree is read and after every tree topology or branch
+        lengths optimizations.
         """
         self.tree.root.up = None
         self.tree.root.dist2root = 0.0
         self._set_each_node_params()
 
     def _set_each_node_params(self):
+        """
+        Set auxilliary parameters to every node of the tree.
+        """
         for clade in self.tree.get_nonterminals(order='preorder'): # up->down
             for c in clade.clades:
                 c.up = clade
@@ -69,7 +74,21 @@ class TreeAnc(object):
 
     def _fitch_anc(self, **kwargs):
         """
-        Reconstruct ancestral states using Fitch algorithm
+        Reconstruct ancestral states using Fitch algorithm. The method reequires
+        the leaves sequences to be assigned. It implements the iteration from
+        leaves to the root constructing the Fitch profiles for each character of
+        the sequence, and then by propagating from the root to the leaves,
+        reconstructs the sequences of the internal nodes.
+
+        KWargs:
+         -
+
+        Returns:
+         - Ndiff (int): number of the nodes changed since the previous
+         reconstruction. These changes are deermined from the pre-set sequence attributes
+         of the nodes. If there are no sequences available (i.e., no reconstruction
+         has been made before), returns the total number of characters in the tree.
+
         """
         # set fitch profiiles to each terminal node
         for l in self.tree.get_terminals():
@@ -115,6 +134,22 @@ class TreeAnc(object):
         return N_diff
 
     def _fitch_state(self, node, pos):
+        """
+        Determine the Fitch porfile for a single checracter of the node's sequence.
+        The profile is essentially the  intersection between  the children's
+        profiles or, if the former is empty, the union of the profiles.
+
+        Args:
+         - node (Phylo.Node) internal node which the profiles are to be
+         determined
+
+         - pos (int): position in the node's sequence which the profiles should
+         be determinedf for.
+
+        Return:
+         - state(numpy array): Fitch profile for the character at position pos
+         of the given node.
+        """
         state = self._fitch_intersept([k.state[pos] for k in node.clades])
         if len(state) == 0:
             state = np.concatenate([k.state[pos] for k in node.clades])
@@ -295,7 +330,7 @@ class TreeAnc(object):
                 #FIXME: Why don't allow merging with the root?
                 if node.is_terminal(): # or (node.up == self.tree.root): # leaf stays as is
                     continue
-                # re-wire the node children directly to its parent
+                # re-assign the node children directly to its parent
                 node.up.clades = [k for k in node.up.clades if k != node] + node.clades
                 if hasattr(node, "lh_prefactor"):
                     node.up.lh_prefactor += node.lh_prefactor
