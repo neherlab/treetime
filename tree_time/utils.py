@@ -68,33 +68,45 @@ class DateConversion(object):
         return days
 
 def delta_fun(pos, return_log=True, normalized=False, width=ttconf.WIDTH_DELTA):
-        grid = np.concatenate(([ttconf.MIN_T],
-            pos * np.array([1 - width,1 - width*0.5, 1 + width*0.5, 1 + width]),
-            [ttconf.MAX_T]))
-        if return_log:
-            vals = np.array([
-                ttconf.MIN_LOG,
-                ttconf.MIN_LOG,
-                0.0,
-                0.0,#np.log(np.abs(pos/width)),
-                ttconf.MIN_LOG,
-                ttconf.MIN_LOG])
-            if normalized:
-                vals[2,3] = -np.log(width/1.5)
-        else:
-            vals = np.array([
-                0.0,
-                0.0,
-                1.0,
-                1.0,#np.log(np.abs(pos/width)),
-                0.0,
-                0.0])
-            if normalized:
-                vals[2,3] = 1.5 / width
+    """
+    Create the interpolation object for delta function
+    Args:
 
-        delta = interp1d(grid, -vals, kind='linear')
-        delta.delta_pos=pos
-        return delta
+     - pos(double): position of the delta function maximum
+     
+     - return_log(bool): whether to return logarithm or pure delta-fun.
+     
+     - normalized(bool): If True, set the amplitude so that the integral of the 
+     delta function is 1.
+
+     - width(double): width of the delta function. 
+    """        
+    grid = np.concatenate(([ttconf.MIN_T],
+        pos * np.array([1 - width,1 - width*0.5, 1 + width*0.5, 1 + width]),
+        [ttconf.MAX_T]))
+    if return_log:
+        vals = np.array([
+            ttconf.MIN_LOG,
+            ttconf.MIN_LOG,
+            0.0,
+            0.0,#np.log(np.abs(pos/width)),
+            ttconf.MIN_LOG,
+            ttconf.MIN_LOG])
+        if normalized:
+            vals[2,3] = -np.log(width/1.5)
+    else:
+        vals = np.array([
+            0.0,
+            0.0,
+            1.0,
+            1.0,#np.log(np.abs(pos/width)),
+            0.0,
+            0.0])
+        if normalized:
+            vals[2,3] = 1.5 / width
+    delta = interp1d(grid, -vals, kind='linear')
+    delta.delta_pos=pos
+    return delta
 
 def min_interp(interp_object):
     """
