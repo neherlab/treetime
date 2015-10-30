@@ -25,10 +25,14 @@ full_nc_profile = {
 
 def prepare_seq(seq):
     """
+    Take the raw sequence, substitute the "overhanging" gaps with 'N' (missequenced)
+    convert the sequence to the numpy array of uppercase chars. 
+    
     Args:
      - seq:  sequence as an object of SeqRecord, string or iterable
+    
     Returns:
-     - sequence as numpy array
+     - sequence(np.array): sequence as 1D numpy array of chars
     """
     try:
         sequence = ''.join(seq)
@@ -44,13 +48,20 @@ def prepare_seq(seq):
 
 def seq2prof(x, aln_type='nuc'):
     """
-    Convert the given character into the profile.
+    Convert the given character sequence into the profileaccording to the alphabet specified.
+    
     Args:
+     
      - x(numpy.array): sequence to be converted to the profile
-     - alph(str): alphabet type. Can be either 'nuc' for nucleotide alphabet, or 'aa' for amino acid alphabet
+     
+     - alph(str): alphabet type. Can be either 'nuc' for nucleotide alphabet, 
+     or 'aa' for amino acid alphabet
+    
     Returns:
+     
      - idx(numpy.array): profile for the character, zero array if the character not found
     """
+    
     if aln_type=='nuc':
         prof = np.array([full_nc_profile[k]
             if k in full_nc_profile else full_nc_profile['N'] for k in x])

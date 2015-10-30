@@ -1,6 +1,6 @@
 """
 Optimizing branch lengths of a given tree given the time stamp constraints of 
-(all) leaves
+(some) leaves
 Author: Dr. R.Neher's lab
 """
 import os

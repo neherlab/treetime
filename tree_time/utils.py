@@ -22,6 +22,9 @@ class DateConversion(object):
 
     @classmethod
     def from_tree(cls, t):
+        """
+        Create the conversin object automatically from the tree
+        """
         dc = cls()
         dates = []
         for node in t.find_clades():
@@ -110,24 +113,16 @@ def delta_fun(pos, return_log=True, normalized=False, width=ttconf.WIDTH_DELTA):
 
 def min_interp(interp_object):
     """
-    Find the global minimum of the interpolated function
+    Find the global minimum of the function represented as an interpolation 
+    object. 
     """
     return interp_object.x[interp_object(interp_object.x).argmin()]
-    #opt_ = sciopt.minimize_scalar(interp_object,
-    #    bounds=[-2 * self.max_diam, 2 * self.max_diam],
-    #    method='brent')
-    #return opt_.x
-    #if opt_.success != True:
-    #    return None
 
-    #else:
-    #    return opt_.x
 
 def convolve(t, f, g, cutoff=100, n_integral=100):
     """
-    Slow convolution algorithm
-
-    f,g - logarithms!
+    Compute convolution of the functions f, g:
+    (f*g)(t) = int {f(t-tau) g(tau) d_tau}. 
     """
 
     # get the support ranges for the raw functions
@@ -160,19 +155,56 @@ def convolve(t, f, g, cutoff=100, n_integral=100):
     return res
 
 def opt_branch_len(node):
+    """
+    Find optimal branch length for a node. 
+    Args:
+     
+     - node: Tree node. **NOTE** the node should store the branch lenght probability \
+     as an interpolation object as the branch_neg_log_prob attribute. 
+
+    Returns:
+     
+     - opt_len(double): optimal branch length. In case of error - 0.0. 
+    """
     if not hasattr(node, "branch_neg_log_prob") or node.branch_neg_log_prob is None:
         return 0.0
     return min_interp(node.branch_neg_log_prob)
 
 def find_node_opt_pos(node):
+    """
+    Given the probability distribution of the node location, find the optimal node 
+    position. 
+
+    Args: 
+
+     - node (Phylo.Clade): tree node. **NOTE** the node should store the location 
+     probability distribution as the mas_to_parent attribute. 
+
+    Returns:
+
+     - opt_pos(double, None): in cas eof the error, None is returned. Otherwise, 
+     the position as double, in the branch length units.   
+    """
     if not hasattr(node, "msg_to_parent") or node.msg_to_parent is None:
         return None
     return min_interp(node.msg_to_parent)
 
 def make_node_grid(opt, grid_size=ttconf.NODE_GRID_SIZE, variance=ttconf.NODE_GRID_VAR):
-    # quadratic grid - fine around opt, sparse at the edges
-    #grid_root = opt - scale * (np.linspace(1, 1e-5, grid_size / 3 - 1)**2)
-    #grid_leaves = opt + scale * (np.linspace(0, 1, grid_size / 3)**2)
+    """
+    Create grid for the node location distribution. 
+
+    Args:
+     - opt(double): Estimate for the optimal node position. The grid will be set 
+     arround this value. 
+
+     - grid_size(int): number of pointes in the grid
+
+     - variance (double): the grid "width" as the ratio of the tree diameter. 
+
+    Returns: 
+
+     - grid(np.array): the grid as 1D numpy  array 
+    """
     grid_leaves = opt + ttconf.MAX_BRANCH_LENGTH * np.sign(np.linspace(-1, 1, grid_size))\
                         *(np.linspace(-1, 1, grid_size)**2)
     grid = np.concatenate(([ttconf.MIN_T],
@@ -226,6 +258,35 @@ def multiply_dists(interps):
 
     interp = interp1d(grid, node_prob, kind='linear')
     return interp
+
+    def _nni(self, node):
+        """
+        Perform nearest-neighbour-interchange procedure,
+        choose the best local configuration
+        """
+        if node.up is None: # root node
+            return
+
+        children = node.clades
+        sisters = [k for k in node.up.clades]
+        for child_pos, child in enumerate(children):
+            for sister_pos, sister in enumerate(sisters):
+                # exclude node from iteration:
+                if sister == node:
+                    continue
+                # exchange
+                node.up.clades[sister_pos] = child
+                node.clades[child_pos] = sister
+                # compute new likelihood for the branch
+
+def build_DM(self, nodes, gtr):
+        """
+        Build distance matrix for local rewiring
+        """
+        DM = np.array([[(k.sequence!=j.sequence).mean() for k in nodes]
+            for  j in nodes])
+        np.fill_diagonal(DM, 1e10)
+        return DM
 
 if __name__ == '__main__':
     pass

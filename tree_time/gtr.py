@@ -36,6 +36,24 @@ class GTR(object):
 
     @classmethod
     def standard(cls, model='Jukes-Cantor', **kwargs):
+        """
+        Create one of the standard GTR models. 
+
+        Args:
+
+         - model (str): type of the model. Currently supported models are:
+         Jukes-Cantor. 
+
+        KWargs:
+         
+         - alphabet(str): specify alphabet when applicable. If the alphabet specification 
+         is requred, but no alphabet specified, the nucleotide will be used as default. 
+
+         - mu(double): general mutation rate. **NOTE** that the mutation rate is the 
+         only object which sets the time-scale to the GTR model. 
+         In other words, the unit of branch length and the unit of time are 
+         connected through this variable. By default set to 1.
+        """
         if 'alphabet' in kwargs and alphabet in alphabets.keys():
             alphabet = kwargs['alphabet']
         else:
@@ -85,7 +103,9 @@ class GTR(object):
 
     def _check_fix_Q(self):
         """
-        Check the main diagonal of Q and fix it in case it does not corresond the definition of Q.
+        Check the main diagonal of Q and fix it in case it does not corresond 
+        the definition of the rate matrix. Should be run every time when creating
+        custom GTR model.
         """
         Q = self.Pi.dot(self.W)
         if (Q.sum(0) < 1e-10).sum() < self.alphabet.shape[0]: # at least one rate is wrong
@@ -103,7 +123,9 @@ class GTR(object):
 
     def _eig(self):
         """
-        Perform eigendecompositon of the rate matrix
+        Perform eigendecompositon of the rate matrix and stores the left- and rigth-
+        matrices to convert the sequence profiles to the GTR matrix eigenspace
+        and hence to speed-up the computations. 
         """
         # eigendecomposition of the rate matrix
         eigvals, eigvecs = np.linalg.eig(self.Pi.dot(self.W))
@@ -116,13 +138,16 @@ class GTR(object):
         """
         Compute the probability of the two profiles to be separated by the time t.
         Args:
-         - profile_p(np.array): parent profile of shape (L, a), where L - length of the sequence, a - alpphabet size.
+         - profile_p(np.array): parent profile of shape (L, a), where 
+         L - length of the sequence, a - alpphabet size.
 
-         - profile_ch(np.array): child profile of shape (L, a), where L - length of the sequence, a - alpphabet size.
+         - profile_ch(np.array): child profile of shape (L, a), where 
+         L - length of the sequence, a - alpphabet size.
 
          - t (double): time (branch len), separating the profiles.
 
-         - rotated (bool, default False): if True, assume that the supplied profiles are already rotated.
+         - rotated (bool, default False): if True, assume that the supplied 
+         profiles are already rotated.
 
          - return_log(bool, default False): whether return log-probability.
 
@@ -199,16 +224,19 @@ class GTR(object):
         Compute the probability of the sequence state (profile) at time (t+t0),
         given the sequence state (profile) at time t0.
         Args:
-         - profile(numpy.array): sequence profile. Shape = (L, a), where L - sequence length, a - alphabet size.
+         - profile(numpy.array): sequence profile. Shape = (L, a), 
+         where L - sequence length, a - alphabet size.
 
          - t(doble): time to propagate
 
-         - rotated(bool default False): whether the supplied profile is in the GTR matrix eigenspace
+         - rotated(bool default False): whether the supplied profile is in the 
+         GTR matrix eigenspace
 
          - return log (bool, default False): whether to return log-probability
 
         Returns:
-         - res(np.array): profile of the sequence after time t. Shape = (L, a), where L - sequence length, a - alphabet size.
+         - res(np.array): profile of the sequence after time t. 
+         Shape = (L, a), where L - sequence length, a - alphabet size.
         """
         eLambdaT = self._exp_lt(t) # vector lenght = a
 
@@ -228,22 +256,11 @@ class GTR(object):
     def _exp_lt(self, t):
         """
         Returns:
-         - exp_lt(numpy.array): array of values exp(lambda(i) * t), where (i) - alphabet index (the eigenvalue number).
+         - exp_lt(numpy.array): array of values exp(lambda(i) * t), 
+         where (i) - alphabet index (the eigenvalue number).
         """
         return np.exp(self.mu * t * self.eigenmat)
 
-    def create_dm(self, profiles):
-        self.dm = np.zeros(self.Pi.shape)
-
-        T = np.array([[self.optimal_t(p1,p2) for p1 in profiles] for p2 in profiles])
-
-
-    def dm_dist(self, p1,p2):
-        """
-        Distance between two prfiles based on the pre-computed
-        distance matrix
-        """
-        pass
-
+    
 if __name__ == "__main__":
      pass
