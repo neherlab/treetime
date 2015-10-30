@@ -379,11 +379,13 @@ class TreeTime(TreeAnc, object):
 
                 final_prob = utils.multiply_dists((node.msg_from_root, node.msg_to_parent))
 
-                if utils.min_interp(final_prob) > node.up.abs_t:
+                if utils.min_interp(final_prob) > node.up.abs_t + 1e-9:
                     # must never happen, just for security
                     node.total_prob = utils.delta_fun(node.up.abs_t, return_log=True, normalized=False)
-                    print ("Error in the node probability distribution: the "
-                        "node's location is earlier than previous!. ")
+                    print ("Warn: the child node wants to be {0} earlier than "
+                        "the parent node. Setting the child location to the parent's "
+                        "one.".format((utils.min_interp(final_prob) - node.up.abs_t)))
+
                 else:
                     node.total_prob = utils.delta_fun(utils.min_interp(final_prob),
                         return_log=True, normalized=False)
