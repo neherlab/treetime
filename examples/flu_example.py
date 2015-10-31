@@ -4,6 +4,7 @@ from tree_time.tree_time import tree_anc as ta
 from tree_time.tree_time import tree_time as tt
 from tree_time.tree_time.gtr import GTR
 from tree_time.tree_time import io
+from tree_time.tree_time.merger_models import coalescent
 import datetime
 import os,sys,copy
 from Bio import Phylo, AlignIO
@@ -73,6 +74,7 @@ if __name__=='__main__':
     # plotting the results
     t._score_branches()
     t.tree.ladderize()
+    coalescent(t.tree, Tc=0.1)
     #Phylo.draw(t.tree, label_func = lambda x:'', show_confidence=False, branch_labels='')
     t1 = copy.deepcopy(t)
     t1.resolve_polytomies(gtr)
