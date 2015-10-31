@@ -29,5 +29,7 @@ def coalescent(tree, Tc=None):
 			continue
 		lw = branch_times.searchsorted(n.abs_t)
 		up = branch_times.searchsorted(n.up.abs_t)
+		if lw==up:
+			lw = min(lw,up-1)
 		n.merger_rate = merger_rates[lw:up].mean()
 
