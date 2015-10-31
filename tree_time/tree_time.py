@@ -43,16 +43,10 @@ class TreeTime(TreeAnc, object):
     @property
     def average_branch_len(self):
         """
-        Compute the average branch length of the binary tree.
-        **NOTE** There is no check for the tree to be binary, sofor real trees 
-        this is only an approximation (due to the possible multiple
-        mergers). However, we need this value only to estimate the scale 
-        of the branch-lenghts, so in every reals situation, the precision is 
-        enough.
+        Compute the average branch length of the tree.
+        Used to estimate the scale  of the branch-lenghts
         """
-        tot_branches = (self.tree.count_terminals() -1)* 2 # for binary tree !
-        tot_len = self.tree.total_branch_length ()
-        return tot_len/tot_branches
+        return np.mean([n.branch_length for n in self.tree.find_clades()])
 
     def reroot_to_oldest(self):
         """
@@ -116,11 +110,11 @@ class TreeTime(TreeAnc, object):
 
     def _make_branch_len_interpolator(self, node, gtr, n=ttconf.BRANCH_GRID_SIZE):
         """
-        Makes an interpolation object for propability of branch length. Builds 
-        an adaptive grid with n points, fine arround the optimal branch lengths, 
+        Makes an interpolation object for probability of branch length. Builds 
+        an adaptive grid with n points, fine around the optimal branch length, 
         and more sparse at the tails. This method does **not**  require the 
-        branch lengths to be at their optimal values, as it computes the optimal 
-        lengths itself. The method, however **requires** the knowledge of the 
+        branch length to be at their optimal value, as it computes the optimal 
+        length itself. The method, however **requires** the knowledge of the 
         sequences and/or sequence profiles for the node and its parent in order
         to cpmpute distance probability in the scope of the GTR models
         
@@ -132,7 +126,7 @@ class TreeTime(TreeAnc, object):
          of the  two given sequences to be separated by time t (i.e. the branch 
         length have length t)
         
-         - n(int): numbe of points in the branch length grid. 
+         - n(int): number of points in the branch length grid. 
 
         Returns: 
          - None. The node gets new attribute - the linear interpolation object 
@@ -225,7 +219,7 @@ class TreeTime(TreeAnc, object):
                 # if there are no constraints - log_prob will be set on-the-fly
                 node.msg_to_parent = None
             if not hasattr(node, 'merger_rate'):
-                node.merger_rate=0.0
+                node.merger_rate=ttconf.BRANCH_LEN_PENALTY
 
             # make interpolation object for branch lengths
             self._make_branch_len_interpolator(node, gtr, n=ttconf.BRANCH_GRID_SIZE)
