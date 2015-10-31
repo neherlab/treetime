@@ -177,7 +177,7 @@ class TreeTime(TreeAnc, object):
         logprob = np.concatenate([
             [0., 0.],
             [gtr.prob_t(prof_p, prof_ch, t_, return_log=True) for t_ in grid[2:-2]],
-            [0., 0.]]) - ttconf.BRANCH_LEN_PENALTY * grid
+            [0., 0.]]) - node.merger_rate * grid
 
         logprob[((0,1,-2,-1),)] = ttconf.MIN_LOG
         logprob *= -1.0
@@ -224,6 +224,9 @@ class TreeTime(TreeAnc, object):
                 node.abs_t = None 
                 # if there are no constraints - log_prob will be set on-the-fly
                 node.msg_to_parent = None
+            if not hasattr(node, 'merger_rate'):
+                node.merger_rate=0.0
+
             # make interpolation object for branch lengths
             self._make_branch_len_interpolator(node, gtr, n=ttconf.BRANCH_GRID_SIZE)
             # set the profiles in the eigenspace of the GTR matrix
@@ -611,6 +614,7 @@ class TreeTime(TreeAnc, object):
             new_node.sequence = clade.sequence
             new_node.profile = clade.profile
             new_node.mutations = []
+            new_node.merger_rate = clade.merger_rate
             self._make_branch_len_interpolator(new_node, gtr, n=36)
             clade.clades.remove(n1)
             clade.clades.remove(n2)
