@@ -33,3 +33,34 @@ def coalescent(tree, Tc=None):
 			lw = min(lw,up-1)
 		n.merger_rate = merger_rates[lw:up].mean()
 
+
+def traveling_wave(tree, Tc=None, tau=None):
+	'''
+	assigns coalescent merger rates to all branches in the tree
+	'''
+	#
+	if tau is None:
+		tau = Tc/8.0   # 8 is roughly the factor between total coalescence and expansion rate in realistic populations 
+	# determine the msg to parents
+	for n in tree.find_clades(order='postorder'):
+		n._polarizer_to_parent = np.sum([c._polarizer_to_parent for c in n.clades])
+		n._polarizer_to_parent*= np.exp(-n.branch_length/tau)
+		n._polarizer_to_parent+=(1-np.exp(-n.branch_length/tau))*tau
+
+	# determine the msg to children
+	tree.root._polarizer_from_parent = 0.0
+	for n in tree.get_nonterminals(order='preorder'):
+		tmp = np.sum([c._polarizer_to_parent for c in n.clades]) + n._polarizer_from_parent
+		for c in n.clades:
+			c._polarizer_from_parent = tmp-c._polarizer_to_parent
+			c._polarizer_from_parent*= np.exp(-c.branch_length/tau)
+			c._polarizer_from_parent+=(1-np.exp(-c.branch_length/tau))*tau
+
+	# determine the msg to parents
+	for n in tree.find_clades(order='postorder'):
+		n.lbi = n._polarizer_from_parent + np.sum([c._polarizer_to_parent for c in n.clades])
+
+	# assign those rates to all nodes in the tree
+	for n in tree.find_clades():
+		n.merger_rate = n.lbi/tau
+
