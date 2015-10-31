@@ -62,5 +62,5 @@ def traveling_wave(tree, Tc=None, tau=None):
 
 	# assign those rates to all nodes in the tree
 	for n in tree.find_clades():
-		n.merger_rate = n.lbi/tau
+		n.merger_rate = n.lbi/tau/Tc
 
