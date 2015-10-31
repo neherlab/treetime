@@ -21,7 +21,7 @@ def coalescent(tree, Tc=None):
 		branch_counts[lw:up]+=1
 
 	# calculate the merger rates in each interval
-	merger_rates = branch_counts*(branch_counts-1.0)*0.5/Tc
+	merger_rates = (branch_counts-1.0)*0.5/Tc
 
 	# assign those rates to all nodes in the tree
 	for n in tree.find_clades():
