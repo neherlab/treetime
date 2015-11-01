@@ -456,11 +456,6 @@ class TreeTime(TreeAnc, object):
         # of no coalescence time scale is provided, use half the root time
         if Tc is None:
             Tc = 0.5*self.tree.root.abs_t
-        coalescent(self.tree, Tc=Tc)
-        self._update_branch_len_interpolators()
-        self._ml_t_leaves_root()
-        self._ml_t_root_leaves()
-
         # if desired, optimize the coalescence time scale
         if optimize_Tc:
             def tmpTotalLH(Tc):
@@ -477,11 +472,13 @@ class TreeTime(TreeAnc, object):
                 self.Tc_opt = sol['x']
                 print('coalescent time scale optimization successful, Tc_opt=',self.Tc_opt)
                 # final run with optimal Tc
-                coalescent(self.tree, Tc=self.Tc_opt)
-                self._ml_t_leaves_root()
-                self._ml_t_root_leaves()
+                Tc = self.Tc_opt
             else:
                 print('coalescent time scale optimization failed')
+        coalescent(self.tree, Tc=Tc)
+        self._update_branch_len_interpolators()
+        self._ml_t_leaves_root()
+        self._ml_t_root_leaves()
         self._ml_anc(gtr)
 
 
