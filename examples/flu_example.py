@@ -83,8 +83,9 @@ if __name__=='__main__':
     t1.print_lh()
     print ("Posterior branch len: {0}".format((t1.tree.total_branch_length())))
 
-    traveling_wave(t1.tree, Tc=0.005)
-    t1.init_date_constraints(gtr, slope=slope)
-    t1.ml_t(gtr)
+    #traveling_wave(t1.tree, Tc=0.005)
+    #t1.init_date_constraints(gtr, slope=slope)
+    #t1.ml_t(gtr)
+    t1.coalescent_model(gtr, optimize_Tc=True)
     t1.print_lh()
     print ("coalescent model branch len: {0}".format((t1.tree.total_branch_length())))

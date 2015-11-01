@@ -1,3 +1,4 @@
+from __future__ import print_function, division
 from Bio import Phylo
 from Bio import AlignIO
 import   numpy as np

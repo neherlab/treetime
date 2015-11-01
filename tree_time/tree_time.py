@@ -171,7 +171,7 @@ class TreeTime(TreeAnc, object):
         logprob = np.concatenate([
             [0., 0.],
             [gtr.prob_t(prof_p, prof_ch, t_, return_log=True) for t_ in grid[2:-2]],
-            [0., 0.]]) - node.merger_rate * grid
+            [0., 0.]]) 
 
         logprob[((0,1,-2,-1),)] = ttconf.MIN_LOG
         logprob *= -1.0
@@ -181,11 +181,30 @@ class TreeTime(TreeAnc, object):
         tmp_prob = np.exp(-logprob)
         integral = np.sum(0.5*(tmp_prob[1:]+tmp_prob[:-1])*dt)
 
-        node.branch_neg_log_prob = interp1d(grid, logprob+np.log(integral),
+        node.raw_branch_neg_log_prob = interp1d(grid, logprob+np.log(integral),
                                             kind='linear')
         
+        tmp_prob = np.exp(-logprob - node.merger_rate * grid)
+        integral = np.sum(0.5*(tmp_prob[1:]+tmp_prob[:-1])*dt)
+        node.branch_neg_log_prob = interp1d(grid, logprob+np.log(integral) + node.merger_rate * grid,
+                                            kind='linear')
         # node gets new attribute
         return None
+
+    def _update_branch_len_interpolators(self):
+        """
+        reassign interpolator object for branch length after changing the merger_rate
+        """
+        for node in self.tree.find_clades():
+            if node.up is None:
+                continue
+            grid,y = node.raw_branch_neg_log_prob.x, node.raw_branch_neg_log_prob.y
+            y+=node.merger_rate * grid
+            dt = np.diff(grid)
+            tmp_prob = np.exp(-y)
+            integral = np.sum(0.5*(tmp_prob[1:]+tmp_prob[:-1])*dt)
+            node.branch_neg_log_prob = interp1d(grid, y + np.log(integral), kind='linear')
+
 
     def _ml_t_init(self, gtr):
         """
@@ -421,6 +440,51 @@ class TreeTime(TreeAnc, object):
 
         node.date = self.date2dist.get_date(node.abs_t)
 
+    def coalescent_model(self, gtr, Tc=None, optimize_Tc = False):
+        """
+        optimize the position of internal and otherwise unconstrained nodes using
+        a coalescent model prior 
+        """
+        from merger_models import coalescent
+        #  propagate messages up and down and reconstruct ancestral states
+        self._ml_t_leaves_root()
+        self._ml_t_root_leaves()
+        self._ml_anc(gtr)
+        # resolve polytomies if there are any
+        self.resolve_polytomies(gtr)
+
+        # of no coalescence time scale is provided, use half the root time
+        if Tc is None:
+            Tc = 0.5*self.tree.root.abs_t
+        coalescent(self.tree, Tc=Tc)
+        self._update_branch_len_interpolators()
+        self._ml_t_leaves_root()
+        self._ml_t_root_leaves()
+
+        # if desired, optimize the coalescence time scale
+        if optimize_Tc:
+            def tmpTotalLH(Tc):
+                coalescent(self.tree, Tc=Tc)
+                self._update_branch_len_interpolators()
+                self._ml_t_leaves_root()
+                self._ml_t_root_leaves()
+                self._ml_anc(gtr)
+                print("Tc:",Tc)
+                self.print_lh()
+                return -self.total_LH()
+            sol = sciopt.minimize_scalar(tmpTotalLH, bounds=[0, Tc*5], method='bounded')            
+            if sol['success']:
+                self.Tc_opt = sol['x']
+                print('coalescent time scale optimization successful, Tc_opt=',self.Tc_opt)
+                # final run with optimal Tc
+                coalescent(self.tree, Tc=self.Tc_opt)
+                self._ml_t_leaves_root()
+                self._ml_t_root_leaves()
+            else:
+                print('coalescent time scale optimization failed')
+        self._ml_anc(gtr)
+
+
     def ml_t(self, gtr):
         """
         Perform the maximum-likelihood -- based optimization of the tree with temporal 
@@ -428,11 +492,11 @@ class TreeTime(TreeAnc, object):
         
         Args: 
 
-         - gtr(GTR): general time-revesible model, which is required for the post-
-         optimization of the ancestral sequences. NOTE that GTR is not required 
-         in theprocess of the optimization itself, since all the distance-based 
-         parameters are pre-set at the preparation steps (namely, the branch lengths 
-        interpolation objects).
+         - gtr(GTR): general time-reversible model, which is required for the post-
+           optimization of the ancestral sequences. NOTE that GTR is not required 
+           in the process of the optimization itself, since all the distance-based 
+           parameters are pre-set at the preparation steps (namely, the branch length 
+           interpolation objects).
         
         Returns: 
 
