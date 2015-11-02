@@ -184,10 +184,10 @@ class TreeTime(TreeAnc, object):
         node.raw_branch_neg_log_prob = interp1d(grid, logprob+np.log(integral),
                                             kind='linear')
 
-        tmp_prob = np.exp(-logprob - node.merger_rate * grid)
+        logprob += node.merger_rate * np.minimum(ttconf.MAX_BRANCH_LENGTH, np.maximum(0,grid))
+        tmp_prob = np.exp(-logprob)
         integral = np.sum(0.5*(tmp_prob[1:]+tmp_prob[:-1])*dt)
-        node.branch_neg_log_prob = interp1d(grid, logprob+np.log(integral) + node.merger_rate * grid,
-                                            kind='linear')
+        node.branch_neg_log_prob = interp1d(grid, logprob+np.log(integral), kind='linear')
         # node gets new attribute
         return None
 
@@ -450,12 +450,16 @@ class TreeTime(TreeAnc, object):
         self._ml_t_leaves_root()
         self._ml_t_root_leaves()
         self._ml_anc(gtr)
-        # resolve polytomies if there are any
-        self.resolve_polytomies(gtr)
 
         # of no coalescence time scale is provided, use half the root time
         if Tc is None:
             Tc = 0.5*self.tree.root.abs_t
+
+        # resolve polytomies if there are any
+        coalescent(self.tree, Tc=Tc)
+        self._update_branch_len_interpolators()
+        self.resolve_polytomies(gtr)
+
         # if desired, optimize the coalescence time scale
         if optimize_Tc:
             def tmpTotalLH(Tc):
@@ -475,8 +479,6 @@ class TreeTime(TreeAnc, object):
                 Tc = self.Tc_opt
             else:
                 print('coalescent time scale optimization failed')
-        coalescent(self.tree, Tc=Tc)
-        self._update_branch_len_interpolators()
         self._ml_t_leaves_root()
         self._ml_t_root_leaves()
         self._ml_anc(gtr)
