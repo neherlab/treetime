@@ -633,17 +633,18 @@ class TreeTime(TreeAnc, object):
             print (stretched)
 
         LH = 0.0
+        if len(stretched)==1:
+            return LH
 
+        merger_candidates = np.array([[cost_gain(n1,n2, clade) for n1 in stretched]for n2 in stretched])
         while len(stretched) > 1:
             print (len(stretched))
 
             # max possible gains of the cost when connecting the nodes:
             # this is only a rough approximation because it assumes the new node positions
             # to be optimal
-            cost_gains = np.array([[cost_gain(n1,n2, clade) for n1 in stretched]for n2 in stretched])
-            new_positions = cost_gains[:,:,0]
-            cost_gains = cost_gains[:,:,1]
-
+            new_positions = merger_candidates[:,:,0]
+            cost_gains = merger_candidates[:,:,1]
             np.fill_diagonal(cost_gains, 0.0)
 
             idxs = np.unravel_index(cost_gains.argmax(),cost_gains.shape)
@@ -676,10 +677,27 @@ class TreeTime(TreeAnc, object):
             clade.clades.append(new_node)
 
             # and modify stretched array for the next loop
-            # because stretched  == clade.clades, we do not need this
-            stretched.remove(n1)
-            stretched.remove(n2)
-            stretched.append(new_node)
+            if len(stretched)>3: # if more than 3 nodes in polytomy, replace row/column
+                for ii in np.sort(idxs)[::-1]:
+                    tmp_ind = np.arange(merger_candidates.shape[0])!=ii
+                    merger_candidates = merger_candidates[tmp_ind].swapaxes(0,1)
+                    merger_candidates = merger_candidates[tmp_ind].swapaxes(0,1)
+
+                stretched.remove(n1)
+                stretched.remove(n2)
+                new_gains = np.array([[cost_gain(n1,new_node, clade) for n1 in stretched]])
+                merger_candidates = np.vstack((merger_candidates, new_gains)).swapaxes(0,1)
+
+                stretched.append(new_node)
+                new_gains = np.array([[cost_gain(n1,new_node, clade) for n1 in stretched]])
+                merger_candidates = np.vstack((merger_candidates, new_gains)).swapaxes(0,1)
+            else: # otherwise just recalculate matrix
+                stretched.remove(n1)
+                stretched.remove(n2)
+                stretched.append(new_node)
+                merger_candidates = np.array([[cost_gain(n1,n2, clade) for n1 in stretched] for n2 in stretched])
+
+
 
         return LH
 
