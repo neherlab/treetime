@@ -22,16 +22,16 @@ class TreeTime(TreeAnc, object):
     """
     TreeTime is the main class to perform the optimization of the node
     positions  given the temporal constraints of (some) nodes and leaves.
-    
-    The optimization workflow includes the inferrence of the ancestral sequencres 
-    using Fitch method or maximum-likelihood (ML), followed by the free optimization 
-    of the branch lengths with maximum-likelihood method. After the optimization 
-    is done, the nodes with date-time information are arranged along the time axis, 
+
+    The optimization workflow includes the inferrence of the ancestral sequencres
+    using Fitch method or maximum-likelihood (ML), followed by the free optimization
+    of the branch lengths with maximum-likelihood method. After the optimization
+    is done, the nodes with date-time information are arranged along the time axis,
     the appropriate conversion btween the branch lengths units and the date-time units
     is found. Then, for each internal node, we compute the the probability distribution
-    of the node's location conditional on the fixed location of the leaves, which 
-    have temporal information. In the end, the most probable location of the internal nodes 
-    is converted to the time of the internal node. 
+    of the node's location conditional on the fixed location of the leaves, which
+    have temporal information. In the end, the most probable location of the internal nodes
+    is converted to the time of the internal node.
     """
 
     def __init__(self):
@@ -43,20 +43,14 @@ class TreeTime(TreeAnc, object):
     @property
     def average_branch_len(self):
         """
-        Compute the average branch length of the binary tree.
-        **NOTE** There is no check for the tree to be binary, sofor real trees 
-        this is only an approximation (due to the possible multiple
-        mergers). However, we need this value only to estimate the scale 
-        of the branch-lenghts, so in every reals situation, the precision is 
-        enough.
+        Compute the average branch length of the tree.
+        Used to estimate the scale  of the branch-lenghts
         """
-        tot_branches = (self.tree.count_terminals() -1)* 2 # for binary tree !
-        tot_len = self.tree.total_branch_length ()
-        return tot_len/tot_branches
+        return np.mean([n.branch_length for n in self.tree.find_clades()])
 
     def reroot_to_oldest(self):
         """
-        Set the root of the tree to the oldest node. 
+        Set the root of the tree to the oldest node.
         """
         def raw_date(node):
             if not hasattr(node, 'raw_date') or node.raw_date is None:
@@ -110,33 +104,33 @@ class TreeTime(TreeAnc, object):
                 return
             dc.intersept = self.max_diam - slope * min_raw_date
             self.date2dist = dc
-        # set the None  for the date-related attributes in the internal nodes. 
+        # set the None  for the date-related attributes in the internal nodes.
         # make interpolation objects for the branches
         self._ml_t_init(gtr)
 
     def _make_branch_len_interpolator(self, node, gtr, n=ttconf.BRANCH_GRID_SIZE):
         """
-        Makes an interpolation object for propability of branch length. Builds 
-        an adaptive grid with n points, fine arround the optimal branch lengths, 
-        and more sparse at the tails. This method does **not**  require the 
-        branch lengths to be at their optimal values, as it computes the optimal 
-        lengths itself. The method, however **requires** the knowledge of the 
+        Makes an interpolation object for probability of branch length. Builds
+        an adaptive grid with n points, fine around the optimal branch length,
+        and more sparse at the tails. This method does **not**  require the
+        branch length to be at their optimal value, as it computes the optimal
+        length itself. The method, however **requires** the knowledge of the
         sequences and/or sequence profiles for the node and its parent in order
         to cpmpute distance probability in the scope of the GTR models
-        
+
         Args:
-         - node(Phylo.Clade): tree node. The probability distribution fro the branch 
+         - node(Phylo.Clade): tree node. The probability distribution fro the branch
          from the node to its parent is to be  computed
 
-         - gtr(GTR): GTR model of evolution. required to determine the probability 
-         of the  two given sequences to be separated by time t (i.e. the branch 
+         - gtr(GTR): GTR model of evolution. required to determine the probability
+         of the  two given sequences to be separated by time t (i.e. the branch
         length have length t)
-        
-         - n(int): numbe of points in the branch length grid. 
 
-        Returns: 
-         - None. The node gets new attribute - the linear interpolation object 
-         of the branch length probability distribution. 
+         - n(int): number of points in the branch length grid.
+
+        Returns:
+         - None. The node gets new attribute - the linear interpolation object
+         of the branch length probability distribution.
 
         """
         # no need to optimize the root branch length
@@ -158,15 +152,15 @@ class TreeTime(TreeAnc, object):
         else: # branch length is not zero
 
             sigma = obl #np.max([self.average_branch_len, obl])
-            # from zero to optimal branch length 
+            # from zero to optimal branch length
             grid_left = obl * (1 - np.linspace(1, 0.0, n)**2)
-            # from optimal branch length to the right (--> 3*branch lengths), 
+            # from optimal branch length to the right (--> 3*branch lengths),
             grid_right = obl + obl/100 + (3*sigma*(np.linspace(0, 1, n)**2))
             # far to the right (3*branch length ---> MAX_LEN), very sparse
             far_grid = grid_right.max() + obl/2 + ttconf.MAX_BRANCH_LENGTH*np.linspace(0, 1, n)**2
 
             grid = np.concatenate((grid_left,grid_right,far_grid))
-            grid.sort() # just for safety 
+            grid.sort() # just for safety
 
         grid = np.concatenate((
             [ttconf.MIN_T, -ttconf.TINY_NUMBER],
@@ -177,7 +171,7 @@ class TreeTime(TreeAnc, object):
         logprob = np.concatenate([
             [0., 0.],
             [gtr.prob_t(prof_p, prof_ch, t_, return_log=True) for t_ in grid[2:-2]],
-            [0., 0.]]) - ttconf.BRANCH_LEN_PENALTY * grid
+            [0., 0.]])
 
         logprob[((0,1,-2,-1),)] = ttconf.MIN_LOG
         logprob *= -1.0
@@ -187,24 +181,43 @@ class TreeTime(TreeAnc, object):
         tmp_prob = np.exp(-logprob)
         integral = np.sum(0.5*(tmp_prob[1:]+tmp_prob[:-1])*dt)
 
-        node.branch_neg_log_prob = interp1d(grid, logprob+np.log(integral),
+        node.raw_branch_neg_log_prob = interp1d(grid, logprob+np.log(integral),
                                             kind='linear')
-        
+
+        logprob += node.merger_rate * np.minimum(ttconf.MAX_BRANCH_LENGTH, np.maximum(0,grid))
+        tmp_prob = np.exp(-logprob)
+        integral = np.sum(0.5*(tmp_prob[1:]+tmp_prob[:-1])*dt)
+        node.branch_neg_log_prob = interp1d(grid, logprob+np.log(integral), kind='linear')
         # node gets new attribute
         return None
 
+    def _update_branch_len_interpolators(self):
+        """
+        reassign interpolator object for branch length after changing the merger_rate
+        """
+        for node in self.tree.find_clades():
+            if node.up is None:
+                continue
+            grid,y = node.raw_branch_neg_log_prob.x, node.raw_branch_neg_log_prob.y
+            y+=node.merger_rate * np.minimum(ttconf.MAX_BRANCH_LENGTH, np.maximum(0,grid))
+            dt = np.diff(grid)
+            tmp_prob = np.exp(-y)
+            integral = np.sum(0.5*(tmp_prob[1:]+tmp_prob[:-1])*dt)
+            node.branch_neg_log_prob = interp1d(grid, y + np.log(integral), kind='linear')
+
+
     def _ml_t_init(self, gtr):
         """
-        Initialize the necessary attributes in all tree nodes, which are required 
+        Initialize the necessary attributes in all tree nodes, which are required
         by the ML algorithm to compute the probablility distribution of hte nodes
-        locations. These attributes include the distance from the nodes postions 
-        to the present (in branch-lengths units), branch-lenghts interpolation 
-        objects, and the probability distributions for the nodes which have the 
-        date-time information (these are going to be delta-functions), and 
+        locations. These attributes include the distance from the nodes postions
+        to the present (in branch-lengths units), branch-lenghts interpolation
+        objects, and the probability distributions for the nodes which have the
+        date-time information (these are going to be delta-functions), and
         set the sequence profiles in the eigenspace of the used GTR matrix.
 
         Args:
-         - gtr(GTR): Evolutionary model. 
+         - gtr(GTR): Evolutionary model.
         """
         tree = self.tree
 
@@ -221,9 +234,12 @@ class TreeTime(TreeAnc, object):
             # unconstrained node
             else:
                 node.raw_date = None
-                node.abs_t = None 
+                node.abs_t = None
                 # if there are no constraints - log_prob will be set on-the-fly
                 node.msg_to_parent = None
+            if not hasattr(node, 'merger_rate'):
+                node.merger_rate=ttconf.BRANCH_LEN_PENALTY
+
             # make interpolation object for branch lengths
             self._make_branch_len_interpolator(node, gtr, n=ttconf.BRANCH_GRID_SIZE)
             # set the profiles in the eigenspace of the GTR matrix
@@ -290,25 +306,25 @@ class TreeTime(TreeAnc, object):
 
     def _ml_t_leaves_root(self):
         """
-        Compute the probability distribution of the internal nodes positions by 
-        propagating from the tree leaves towards the root. Note the result of 
-        this opeation is the probability distributions of each internal node,  
+        Compute the probability distribution of the internal nodes positions by
+        propagating from the tree leaves towards the root. Note the result of
+        this opeation is the probability distributions of each internal node,
         conditional on the leaves constraint of the subtree of the node. The exception
-        is the root of the tree, as its subtree includes all the constrained leaves. 
-        To compute the location probability distribution of the internal nodes, 
-        the back-propagation is needed. 
-        
+        is the root of the tree, as its subtree includes all the constrained leaves.
+        To compute the location probability distribution of the internal nodes,
+        the back-propagation is needed.
+
         Args:
-        
-         - None: all requered parameters are pre-set as the node atributes at the 
+
+         - None: all requered parameters are pre-set as the node atributes at the
          preparation step
 
-        Returns: 
-        
-         - None: Every internal node is assigned the probability distribution as 
-         the interpolation object and sends this distribution further towards the 
-         root. 
-        
+        Returns:
+
+         - None: Every internal node is assigned the probability distribution as
+         the interpolation object and sends this distribution further towards the
+         root.
+
         """
 
         print("Maximum likelihood tree optimization with temporal constraints:"
@@ -331,22 +347,22 @@ class TreeTime(TreeAnc, object):
 
     def _ml_t_root_leaves(self):
         """
-        Given the location probability distribution, computed by the propagation 
-        from leaves to root, set the root most-likely location. Estimate the 
+        Given the location probability distribution, computed by the propagation
+        from leaves to root, set the root most-likely location. Estimate the
         tree likelihood. Report the root location  probability distribution
-        message towards the leaves. For each internal node, compute the final 
-        location probability distribution based on the pair of messages (from the 
-        leaves and from the root), and find the most likely position of the 
+        message towards the leaves. For each internal node, compute the final
+        location probability distribution based on the pair of messages (from the
+        leaves and from the root), and find the most likely position of the
         internal nodes and finally, convert it to the date-time information
-        
+
         Args:
 
-        - None: all the requires parameters are pre-set in the previous steps. 
+        - None: all the requires parameters are pre-set in the previous steps.
 
         Returns:
          - None: all the internal nodes are assigned with the date-time information
-         the probability distribution of their locations. The branch lengths are 
-         being corrected according to the nodes locations. 
+         the probability distribution of their locations. The branch lengths are
+         being corrected according to the nodes locations.
 
         """
 
@@ -405,13 +421,13 @@ class TreeTime(TreeAnc, object):
 
     def _set_final_date(self, node):
         """
-        Given the location of the node in branch lengths units, convert it to the 
-        date-time information. 
+        Given the location of the node in branch lengths units, convert it to the
+        date-time information.
 
         Args:
-         - node(Phylo.Clade): tree node. NOTE the node should have the abs_t attribute 
-         to have a valid value. This is automatically taken care of in the 
-         procedure to get the node location probability distribution. 
+         - node(Phylo.Clade): tree node. NOTE the node should have the abs_t attribute
+         to have a valid value. This is automatically taken care of in the
+         procedure to get the node location probability distribution.
 
         """
         node.abs_t = utils.min_interp(node.total_prob)
@@ -424,23 +440,67 @@ class TreeTime(TreeAnc, object):
 
         node.date = self.date2dist.get_date(node.abs_t)
 
+    def coalescent_model(self, gtr, Tc=None, optimize_Tc = False):
+        """
+        optimize the position of internal and otherwise unconstrained nodes using
+        a coalescent model prior
+        """
+        from merger_models import coalescent
+        #  propagate messages up and down and reconstruct ancestral states
+        self._ml_t_leaves_root()
+        self._ml_t_root_leaves()
+        self._ml_anc(gtr)
+
+        # of no coalescence time scale is provided, use half the root time
+        if Tc is None:
+            Tc = 0.5*self.tree.root.abs_t
+
+        # resolve polytomies if there are any
+        coalescent(self.tree, Tc=Tc)
+        self._update_branch_len_interpolators()
+        self.resolve_polytomies(gtr)
+
+        # if desired, optimize the coalescence time scale
+        if optimize_Tc:
+            def tmpTotalLH(Tc):
+                coalescent(self.tree, Tc=Tc)
+                self._update_branch_len_interpolators()
+                self._ml_t_leaves_root()
+                self._ml_t_root_leaves()
+                self._ml_anc(gtr)
+                print("Tc:",Tc)
+                self.print_lh()
+                return -self.total_LH()
+            sol = sciopt.minimize_scalar(tmpTotalLH, bounds=[0, Tc*5], method='bounded')
+            if sol['success']:
+                self.Tc_opt = sol['x']
+                print('coalescent time scale optimization successful, Tc_opt=',self.Tc_opt)
+                # final run with optimal Tc
+                Tc = self.Tc_opt
+            else:
+                print('coalescent time scale optimization failed')
+        self._ml_t_leaves_root()
+        self._ml_t_root_leaves()
+        self._ml_anc(gtr)
+
+
     def ml_t(self, gtr):
         """
-        Perform the maximum-likelihood -- based optimization of the tree with temporal 
-        constraints of (some) internal nodes. 
-        
-        Args: 
+        Perform the maximum-likelihood -- based optimization of the tree with temporal
+        constraints of (some) internal nodes.
 
-         - gtr(GTR): general time-revesible model, which is required for the post-
-         optimization of the ancestral sequences. NOTE that GTR is not required 
-         in theprocess of the optimization itself, since all the distance-based 
-         parameters are pre-set at the preparation steps (namely, the branch lengths 
-        interpolation objects).
-        
-        Returns: 
+        Args:
+
+         - gtr(GTR): general time-reversible model, which is required for the post-
+           optimization of the ancestral sequences. NOTE that GTR is not required
+           in the process of the optimization itself, since all the distance-based
+           parameters are pre-set at the preparation steps (namely, the branch length
+           interpolation objects).
+
+        Returns:
 
          - None: Updates the tree, its branch lengths and information about the
-         internal nodes. 
+         internal nodes.
         """
         #  propagate messages up
         self._ml_t_leaves_root()
@@ -461,7 +521,7 @@ class TreeTime(TreeAnc, object):
 
     def _score_branch(self, node):
         """
-        Auxilliary function to see how well is the particular branch optimized 
+        Auxilliary function to see how well is the particular branch optimized
         (how far it is from its roptimal value)
         """
         cmap = mpl.cm.get_cmap ()
@@ -533,13 +593,13 @@ class TreeTime(TreeAnc, object):
     def _poly(self, clade, gtr, verbose=10):
 
         """
-        Function to resolve polytomies for a given parent node. If the number of the 
-        direct decendants is less than three (not a polytomy), does nothing. 
-        Otherwise, for each pair of nodes, assess the possible LH increase which could be 
-        gained by merging the two nodes. The increase in the LH is basically the 
-        tradeoff between the gain of the LH due to the changing the branch lenghts towardsthe optimal 
+        Function to resolve polytomies for a given parent node. If the number of the
+        direct decendants is less than three (not a polytomy), does nothing.
+        Otherwise, for each pair of nodes, assess the possible LH increase which could be
+        gained by merging the two nodes. The increase in the LH is basically the
+        tradeoff between the gain of the LH due to the changing the branch lenghts towardsthe optimal
         values and the decrease due to the introduction of the new branch with zero
-        optimal length. After the cost gains been determined, 
+        optimal length. After the cost gains been determined,
         """
 
         # TODO coefficient fromt the gtr
@@ -575,17 +635,18 @@ class TreeTime(TreeAnc, object):
             print (stretched)
 
         LH = 0.0
+        if len(stretched)==1:
+            return LH
 
+        merger_candidates = np.array([[cost_gain(n1,n2, clade) for n1 in stretched]for n2 in stretched])
         while len(stretched) > 1:
             print (len(stretched))
 
             # max possible gains of the cost when connecting the nodes:
             # this is only a rough approximation because it assumes the new node positions
             # to be optimal
-            cost_gains = np.array([[cost_gain(n1,n2, clade) for n1 in stretched]for n2 in stretched])
-            new_positions = cost_gains[:,:,0]
-            cost_gains = cost_gains[:,:,1]
-
+            new_positions = merger_candidates[:,:,0]
+            cost_gains = merger_candidates[:,:,1]
             np.fill_diagonal(cost_gains, 0.0)
 
             idxs = np.unravel_index(cost_gains.argmax(),cost_gains.shape)
@@ -611,16 +672,34 @@ class TreeTime(TreeAnc, object):
             new_node.sequence = clade.sequence
             new_node.profile = clade.profile
             new_node.mutations = []
+            new_node.merger_rate = clade.merger_rate
             self._make_branch_len_interpolator(new_node, gtr, n=36)
             clade.clades.remove(n1)
             clade.clades.remove(n2)
             clade.clades.append(new_node)
 
             # and modify stretched array for the next loop
-            # because stretched  == clade.clades, we do not need this
-            stretched.remove(n1)
-            stretched.remove(n2)
-            stretched.append(new_node)
+            if len(stretched)>3: # if more than 3 nodes in polytomy, replace row/column
+                for ii in np.sort(idxs)[::-1]:
+                    tmp_ind = np.arange(merger_candidates.shape[0])!=ii
+                    merger_candidates = merger_candidates[tmp_ind].swapaxes(0,1)
+                    merger_candidates = merger_candidates[tmp_ind].swapaxes(0,1)
+
+                stretched.remove(n1)
+                stretched.remove(n2)
+                new_gains = np.array([[cost_gain(n1,new_node, clade) for n1 in stretched]])
+                merger_candidates = np.vstack((merger_candidates, new_gains)).swapaxes(0,1)
+
+                stretched.append(new_node)
+                new_gains = np.array([[cost_gain(n1,new_node, clade) for n1 in stretched]])
+                merger_candidates = np.vstack((merger_candidates, new_gains)).swapaxes(0,1)
+            else: # otherwise just recalculate matrix
+                stretched.remove(n1)
+                stretched.remove(n2)
+                stretched.append(new_node)
+                merger_candidates = np.array([[cost_gain(n1,n2, clade) for n1 in stretched] for n2 in stretched])
+
+
 
         return LH
 
