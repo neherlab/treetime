@@ -1,10 +1,10 @@
 from __future__ import print_function, division
 import numpy as np
-from tree_time.tree_time import tree_anc as ta
-from tree_time.tree_time import tree_time as tt
-from tree_time.tree_time.gtr import GTR
-from tree_time.tree_time import io
-from tree_time.tree_time.merger_models import coalescent, traveling_wave
+from treetime.treetime import treeanc as ta
+from treetime.treetime import treetime as tt
+from treetime.treetime.gtr import GTR
+from treetime.treetime import io
+from treetime.treetime.merger_models import coalescent, traveling_wave
 import datetime
 import os,sys,copy
 from Bio import Phylo, AlignIO

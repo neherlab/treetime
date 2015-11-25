@@ -1,7 +1,7 @@
 from Bio import Phylo
 import numpy as np
 import json, copy, datetime
-from tree_time import TreeTime
+from treetime import TreeTime
 import seq_utils
 
 def treetime_from_newick(infile):
@@ -137,7 +137,35 @@ def set_node_dates_from_dic(tree, dates_dic):
     Returns:
      - None, tree is being modified in-place
     """
-    raise NotImplementedError("This feature is currently under development")
+    
+    err_ = 0
+    num_ = 0 
+    now = datetime.datetime.now()
+    for node in tree.tree.find_clades():
+        
+        if node.name is None or not node.name in dates_dic:
+            node.raw_date = None
+            continue
+
+        n_date = dates_dic[node.name]
+        try:
+            days_before_present = (now - n_date).days
+            
+            if days_before_present < 0:
+                print ("Cannot set the date! the specified date is later "
+                    " than today! cannot assign node date, skipping")
+                node.raw_date = None
+                err_+=1
+                continue
+            else:
+                node.raw_date = days_before_present
+                num_ += 1
+        except:
+            node.raw_date = None
+            err_ += 1
+    tu = (num_, err_)
+    print ("Assigned ddates to {0} nodes, {1} errors".format(*tu))
+
 
 def set_node_dates_from_names(tree, date_func):
     """

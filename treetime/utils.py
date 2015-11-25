@@ -288,5 +288,20 @@ def build_DM(self, nodes, gtr):
         np.fill_diagonal(DM, 1e10)
         return DM
 
+def numeric_date(dt):
+    """
+    Convert datetime object to the numeric date.
+    The numeric date format is YYYY.F, where F is the fraction of the year passed 
+    """
+    if dt is None:
+        return 0.00
+    
+    try:
+        res = dt.year + dt.timetuple().tm_yday / 365.25 
+    except:
+        res = 0.0
+    
+    return res
+
 if __name__ == '__main__':
     pass

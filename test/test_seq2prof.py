@@ -6,7 +6,7 @@ import unittest,os,sys
 from Bio import AlignIO
 import numpy as np
 import matplotlib.pyplot as plt
-from time_tree import tree_anc as ta
+from treetime import treeanc as ta
 
 class TestSeq2Prof(unittest.TestCase):
 

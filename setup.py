@@ -6,7 +6,7 @@ import os
 from setuptools import setup
 
 setup(
-        name = "tree_time",
+        name = "treetime",
         version = "0.1",
         author = "Pavel Sagulenko and Richard Neher",
         author_email = "pavel.sagulenko@tuebingen.mpg.de",

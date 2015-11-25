@@ -4,7 +4,7 @@ constraints set to leaves
 """
 from __future__ import print_function, division
 
-from tree_anc import TreeAnc
+from treeanc import TreeAnc
 import utils
 import config as ttconf
 
@@ -205,7 +205,6 @@ class TreeTime(TreeAnc, object):
             integral = np.sum(0.5*(tmp_prob[1:]+tmp_prob[:-1])*dt)
             node.branch_neg_log_prob = interp1d(grid, y + np.log(integral), kind='linear')
 
-
     def _ml_t_init(self, gtr):
         """
         Initialize the necessary attributes in all tree nodes, which are required
@@ -222,7 +221,8 @@ class TreeTime(TreeAnc, object):
         tree = self.tree
 
         if self.date2dist is None:
-            print ("error - no date to dist conversion set. Run init_date_constraints and try once more.")
+            print ("error - no date to dist conversion set. "
+                "Run init_date_constraints and try once more.")
             return
         for node in tree.find_clades():
             # node is constrained
@@ -410,9 +410,10 @@ class TreeTime(TreeAnc, object):
                 node_grid = node.up.total_prob.delta_pos - node.branch_neg_log_prob.x
                 node_grid[node_grid < ttconf.MIN_T/2] = ttconf.MIN_T
                 node_grid[node_grid > ttconf.MAX_T/2] = ttconf.MAX_T
+                
                 node.msg_from_root = interp1d(node_grid, node.branch_neg_log_prob.y, kind='linear')
-                final_prob = utils.multiply_dists((node.msg_from_root, node.msg_to_parent))
-                node.msg_from_root = msg_from_root
+                #final_prob = utils.multiply_dists((node.msg_from_root, node.msg_to_parent))
+                #node.msg_from_root = msg_from_root
 
                 node.total_prob = utils.delta_fun(utils.min_interp(node.msg_from_root),
                         return_log=True, normalized=False)
@@ -438,7 +439,14 @@ class TreeTime(TreeAnc, object):
             node.branch_length = self.one_mutation
             node.dist2root = 0.0
 
-        node.date = self.date2dist.get_date(node.abs_t)
+        
+
+        node.days_bp = self.date2dist.get_date(node.abs_t)
+        
+        n_date = (datetime.datetime.now() - datetime.timedelta(days=node.days_bp))
+
+        node.numdate = utils.numeric_date(n_date)
+        node.date = datetime.datetime.strftime(n_date, "%Y-%m-%d")
 
     def coalescent_model(self, gtr, Tc=None, optimize_Tc = False):
         """
@@ -482,7 +490,6 @@ class TreeTime(TreeAnc, object):
         self._ml_t_leaves_root()
         self._ml_t_root_leaves()
         self._ml_anc(gtr)
-
 
     def ml_t(self, gtr):
         """
@@ -562,7 +569,6 @@ class TreeTime(TreeAnc, object):
             return -node.root.msg_to_parent_prefactor + node.lh_prefactor.sum()
         else:
             return ttconf.MIN_LOG
-
 
     def resolve_polytomies(self, gtr):
         """
