@@ -188,6 +188,8 @@ def set_node_dates_from_names(tree, date_func):
         try:
             node_date = date_func(node.name)
             if node_date is None:
+                #print ("Cannot parse the date from name: " + str(node.name) +
+                #    " Setting node raw date to None")
                 node.raw_date = None # cannot extract the date from name - set None
                 continue
             days_before_present = (now - node_date).days
@@ -198,6 +200,7 @@ def set_node_dates_from_names(tree, date_func):
                 continue
             node.raw_date = days_before_present
         except:
+            print ("Exception caught when parsing the dates.")
             node.raw_date = None
     return
 

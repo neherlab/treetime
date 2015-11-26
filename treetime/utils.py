@@ -27,15 +27,23 @@ class DateConversion(object):
         """
         dc = cls()
         dates = []
+        #import ipdb; ipdb.set_trace()
         for node in t.find_clades():
             if hasattr(node, "raw_date" ) and node.raw_date is not None:
                 dates.append((node.raw_date, node.dist2root))
+        
+        if len(dates) < 5:
+            raise(RuntimeError("There are no dates set at the leaves of the tree."
+                " Cannot make the conversion function. Aborting."))
+        
         dates = np.array(dates)
+
         dc.slope,\
             dc.intersept,\
             dc.r_val,\
             dc.pi_val,\
             dc.sigma = stats.linregress(dates[:, 0], dates[:, 1])
+        
         return dc
 
     def get_branch_len(self, date1, date2):
@@ -66,8 +74,11 @@ class DateConversion(object):
         """
         days = abs_t / abs(self.slope)  #(self.intersept - abs_t) / self.slope
         if days < 0:
-            print ("Warning: got the negative date! Returning the inverse.")
-            days = abs(days)
+            raise ArithmeticError("The inferred date of the node is "
+                "later than today, which indicates a serios error in the "
+                "likelihood optimization.")
+            #print ("Warning: got the negative date! Returning the inverse.")
+            #days = abs(days)
         return days
 
 def delta_fun(pos, return_log=True, normalized=False, width=ttconf.WIDTH_DELTA):
@@ -126,10 +137,23 @@ def convolve(t, f, g, cutoff=100, n_integral=100):
     """
 
     # get the support ranges for the raw functions
-    fx_min = f.x[(f.y - f.y.min()) < cutoff].min()
-    fx_max = f.x[(f.y - f.y.min()) < cutoff].max()
-    gx_min = g.x[(g.y - g.y.min()) < cutoff].min()
-    gx_max = g.x[(g.y - g.y.min()) < cutoff].max()
+    frange = [(f.y - f.y.min()) < cutoff]
+    grange = [(g.y - g.y.min()) < cutoff]
+    while np.sum(frange) < 5 or np.sum(grange) < 5:
+        print ("Warning in Utils.convolve. The functions are too shrap to convolve."
+            " Increasing the cutoff.")
+        cutoff = cutoff * 10
+        if cutoff > 1e7:
+            raise ArithmeticError("Cannot perform convolution. "
+                "The functions either have no defined values or they are too sharp.")
+        else:
+            frange = [(f.y - f.y.min()) < cutoff]
+            grange = [(g.y - g.y.min()) < cutoff]
+
+    fx_min = f.x[frange].min()
+    fx_max = f.x[frange].max()
+    gx_min = g.x[grange].min()
+    gx_max = g.x[grange].max()
 
     # resulting convolution
     res = np.zeros(t.shape[0])
