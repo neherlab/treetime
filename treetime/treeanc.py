@@ -254,7 +254,7 @@ class TreeAnc(object):
             node.profile = profile
         return N_diff
 
-    def optimize_branch_len(self, model, tree=None, **kwargs):
+    def optimize_branch_len(self, model, **kwargs):
         """
         Perform ML optimization for the branch lengths of the whole tree or any
         subtree. **Note** this method assumes that each node stores information
@@ -287,10 +287,7 @@ class TreeAnc(object):
         if verbose > 3:
             print ("Walking up the tree, computing likelihood distrubutions")
 
-        if tree is None:
-            tree = self.tree
-
-        for node in tree.find_clades(order='postorder'):
+        for node in self.tree.find_clades(order='postorder'):
             parent = node.up
             if parent is None: continue # this is the root
             prof_p = parent.profile
@@ -313,8 +310,8 @@ class TreeAnc(object):
             node.branch_length = new_len
 
         # as branch lengths changed, the params must be fixed
-        tree.root.up = None
-        tree.root.dist2root = 0.0
+        self.tree.root.up = None
+        self.tree.root.dist2root = 0.0
         self._set_each_node_params()
         return
 
@@ -338,7 +335,7 @@ class TreeAnc(object):
                 for clade in node.clades:
                     clade.up = node.up
 
-    def optimize_seq_and_branch_len(self,gtr,tree=None,reuse_branch_len=True,prune_short=True):
+    def optimize_seq_and_branch_len(self,gtr,reuse_branch_len=True,prune_short=True):
         """
         Iteratively set branch lengths and reconstruct ancestral sequences until
         the values of either former or latter do not change. The algorithm assumes
@@ -348,7 +345,18 @@ class TreeAnc(object):
         and re-do reconstruction until convergence using ML method.
         Args:
 
-         - gtr(GTR): general time-reversible model to be used by every ML algorithm
+         - gtr (GTR): general time-reversible model to be used by every ML algorithm
+         
+         - reuse_branch_len(bool, default True): if True, rely on the initial 
+         branch lenghts, and start from the Maximum-likelihood ancestral sequence
+         inferrence, which takes into account topology and the branch lenghts. 
+         Otherwise, run first-time ancestral states inferrence with Fithc algorithm,
+         which accounts only for tree topology.
+
+         - prune_short (bool, default True): If True, the branches with zero 
+         optimal lenght will be pruned from the tree hence creating polytomies.
+         The polytomies could be further processde using resolve_ppolytomies from 
+         the TreeTime class. 
         """
 
         if reuse_branch_len:
@@ -360,7 +368,7 @@ class TreeAnc(object):
 
             n += 1
 
-            self.optimize_branch_len(gtr, tree=tree, verbose=0, store_old=False)
+            self.optimize_branch_len(gtr, verbose=0, store_old=False)
             if prune_short:
                 self.prune_short_branches(gtr)
             N_diff = self.reconstruct_anc('ml', model=gtr)
@@ -374,6 +382,7 @@ class TreeAnc(object):
             if n > 100:
                 print ("sequences and branch lengths optimization did not"
                        "converge in 100 cycles, aborting.")
+                break
 
         self._set_each_node_params() # fix dist2root and up-links after reconstruction
         print("Unconstrained sequence LH:",self.tree.sequence_LH)

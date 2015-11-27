@@ -147,15 +147,15 @@ class TreeTime(TreeAnc, object):
 
         if obl < np.min((1e-5, 0.1*self.one_mutation)): # zero-length
 
-            grid = ttconf.MAX_BRANCH_LENGTH * (np.linspace(0, 1.0 , n)**2)
+            grid = ttconf.MAX_BRANCH_LENGTH * (np.linspace(0, 1.0 , n/3)**2)
 
         else: # branch length is not zero
 
             sigma = obl #np.max([self.average_branch_len, obl])
             # from zero to optimal branch length
-            grid_left = obl * (1 - np.linspace(1, 0.0, n)**2)
+            grid_left = obl * (1 - np.linspace(1, 0.0, n/3)**2)
             # from optimal branch length to the right (--> 3*branch lengths),
-            grid_right = obl + obl/100 + (3*sigma*(np.linspace(0, 1, n)**2))
+            grid_right = obl + obl/100 + (3*sigma*(np.linspace(0, 1, n/3)**2))
             # far to the right (3*branch length ---> MAX_LEN), very sparse
             far_grid = grid_right.max() + obl/2 + ttconf.MAX_BRANCH_LENGTH*np.linspace(0, 1, n)**2
 
@@ -176,18 +176,32 @@ class TreeTime(TreeAnc, object):
         logprob[((0,1,-2,-1),)] = ttconf.MIN_LOG
         logprob *= -1.0
 
+        
+        logprob += node.merger_rate * np.minimum(ttconf.MAX_BRANCH_LENGTH, np.maximum(0,grid))
+
         # normalize the branch lengths prob distribution
+        min_prob = np.min(logprob)
+        if np.exp(-1*min_prob) == 0:
+            print ("!!Warning!! the branch length probability iz zero. "
+                "Are the branches and sequences correct?")
+            # setting bad branch flag
+            node.bad_branch = True
+        
+        logprob -= min_prob
         dt = np.diff(grid)
         tmp_prob = np.exp(-logprob)
         integral = np.sum(0.5*(tmp_prob[1:]+tmp_prob[:-1])*dt)
-
-        node.raw_branch_neg_log_prob = interp1d(grid, logprob+np.log(integral),
-                                            kind='linear')
-
-        logprob += node.merger_rate * np.minimum(ttconf.MAX_BRANCH_LENGTH, np.maximum(0,grid))
-        tmp_prob = np.exp(-logprob)
-        integral = np.sum(0.5*(tmp_prob[1:]+tmp_prob[:-1])*dt)
-        node.branch_neg_log_prob = interp1d(grid, logprob+np.log(integral), kind='linear')
+    
+        if integral < 1e-200:
+            print ("!!WARNING!! Node branch length probability distribution "
+                "integral is ZERO. Setting bad_branch flag..."
+                "Not accounting for the normalization, coalescence theory.")
+            node.bad_branch = True
+            node.branch_neg_log_prob = interp1d(grid, logprob, kind='linear')
+        
+        else:
+            node.branch_neg_log_prob = interp1d(grid, logprob+np.log(integral), kind='linear')
+        
         # node gets new attribute
         return None
 
@@ -224,19 +238,9 @@ class TreeTime(TreeAnc, object):
             print ("error - no date to dist conversion set. "
                 "Run init_date_constraints and try once more.")
             return
+        
         for node in tree.find_clades():
-            # node is constrained
-            if hasattr(node, 'raw_date') and node.raw_date is not None:
-                # set the absolute time in branch length units
-                # the abs_t zero is today, and the direction is to the past
-                node.abs_t = node.raw_date * abs(self.date2dist.slope)
-                node.msg_to_parent = utils.delta_fun(node.abs_t, return_log=True, normalized=False)
-            # unconstrained node
-            else:
-                node.raw_date = None
-                node.abs_t = None
-                # if there are no constraints - log_prob will be set on-the-fly
-                node.msg_to_parent = None
+            
             if not hasattr(node, 'merger_rate'):
                 node.merger_rate=ttconf.BRANCH_LEN_PENALTY
 
@@ -246,6 +250,28 @@ class TreeTime(TreeAnc, object):
             # in the following, we only use the prf_l and prf_r (left and right
             # profiles in the matrix eigenspace)
             self._set_rotated_profiles(node, gtr)
+            
+            # node is constrained
+            if hasattr(node, 'raw_date') and node.raw_date is not None:
+                if hasattr(node, 'bad_branch') and node.bad_branch==True:
+                    print ("Branch is marked as bad, excluding it from the optimization process"
+                        " Will be optimizaed freely")
+                    node.raw_date = None
+                    node.abs_t = None
+                    #    if there are no constraints - log_prob will be set on-the-fly
+                    node.msg_to_parent = None
+                else:
+                    # set the absolute time in branch length units
+                    # the abs_t zero is today, and the direction is to the past
+                    node.abs_t = node.raw_date * abs(self.date2dist.slope)
+                    node.msg_to_parent = utils.delta_fun(node.abs_t, return_log=True, normalized=False)
+            # unconstrained node
+            else:
+                node.raw_date = None
+                node.abs_t = None
+                # if there are no constraints - log_prob will be set on-the-fly
+                node.msg_to_parent = None
+            
 
     def _convolve(self, src_neglogprob, src_branch_neglogprob, inverse_time):
         """
@@ -442,6 +468,14 @@ class TreeTime(TreeAnc, object):
         
 
         node.days_bp = self.date2dist.get_date(node.abs_t)
+        if node.days_bp < 0:
+            if not hasattr(node, "bad_branch") or node.bad_branch==False:
+                raise ArithmeticError("The node is later than today, but it is not"
+                    "marked as \"BAD\", which indicates the error in the "
+                    "likelihood optimization.")
+            else:
+                print ("Warning! node, which is marked as \"BAD\" optimized "
+                    "later than present day")
         
         n_date = (datetime.datetime.now() - datetime.timedelta(days=node.days_bp))
 
