@@ -93,7 +93,7 @@ The purpose for this package is to provide better, more realistic phylogenetic t
 
 ## Comparable Tools
 
-There are few other tools which perform date inferrence for the internal nodes. Worth noting [Beast](http://beast.bio.ed.ac.uk/). This tool relies on the MCMC-type algorithm, which makes its rather slow, though it allows for bigger functionality and more thorough results. 
+There are few other tools which perform date inference for the internal nodes. Worth noting [Beast](http://beast.bio.ed.ac.uk/). This tool relies on the MCMC-type algorithm, which makes its rather slow, though it allows for bigger functionality and more thorough results. 
 Another tool is recently appeared [Least-Square-Dating](http://www.atgc-montpellier.fr/LSD/), which is the opposite to BEAST: it is extremely fast (also scales as O(N) as **TreeTime**), but is poorly extendable. We provide the trade-off between the two implementing the fast algorithm, which allows for any type of extending.
 
 

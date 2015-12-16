@@ -604,7 +604,7 @@ class TreeTime(TreeAnc, object):
         else:
             return ttconf.MIN_LOG
 
-    def resolve_polytomies(self, gtr):
+    def resolve_polytomies(self, gtr,merge_compressed=False):
         """
         Resolve the polytomies on the tree given the joining algorithm opt.
         The function scans the tree, resolves polytomies in case there are any,
@@ -621,7 +621,7 @@ class TreeTime(TreeAnc, object):
          - opt_args(tuple): arguments for the optimization algorithm opt.
         """
         for n in self.tree.find_clades():
-            if len(n.clades) > 3: self._poly(n, gtr)
+            if len(n.clades) > 3: self._poly(n, gtr, merge_compressed)
 
         self.optimize_branch_len(gtr)
         self.optimize_seq_and_branch_len(gtr, prune_short=False)
@@ -630,7 +630,7 @@ class TreeTime(TreeAnc, object):
         self._ml_anc(gtr)
         self.tree.ladderize()
 
-    def _poly(self, clade, gtr, verbose=10):
+    def _poly(self, clade, gtr, merge_compressed, verbose=10):
 
         """
         Function to resolve polytomies for a given parent node. If the number of the
@@ -661,85 +661,97 @@ class TreeTime(TreeAnc, object):
 
         def cost_gain(n1, n2, parent):
             """
-            cost gained if teh two nodes would have been connected.
+            cost gained if the two nodes would have been connected.
             """
             cg = sciopt.minimize_scalar(_c_gain,
                     bounds=[np.max(n1.abs_t,n2.abs_t), parent.abs_t],
                     method='Bounded',args=(n1,n2, parent))
             return cg['x'], - cg['fun']
 
+        def merge_nodes(source_arr):
+            
+            mergers = np.array([[cost_gain(n1,n2, clade) for n1 in source_arr]for n2 in source_arr])
+            while len(source_arr) > 1:
+                #import ipdb; ipdb.set_trace()
+                print (len(source_arr))
+
+                LH = 0
+    
+                # max possible gains of the cost when connecting the nodes:
+                # this is only a rough approximation because it assumes the new node positions
+                # to be optimal
+                new_positions = mergers[:,:,0]
+                cost_gains = mergers[:,:,1]
+                np.fill_diagonal(cost_gains, -1e9)
+    
+                idxs = np.unravel_index(cost_gains.argmax(),cost_gains.shape)
+                try:
+                    assert (idxs[0] != idxs[1])
+                except:
+                    import ipdb; ipdb.set_trace()
+                n1, n2 = source_arr[idxs[0]], source_arr[idxs[1]]
+                print (n1,n2)
+                print ("Delta-LH = " + str(cost_gains[idxs].round(3)))
+                LH += cost_gains[idxs]
+    
+                new_node = Phylo.BaseTree.Clade()
+    
+                # fix positions and branch lengths
+                new_node.abs_t = new_positions[idxs] # (n1.abs_t + tree.opt_branch_len(n1) + n2.abs_t + tree.opt_branch_len(n2))/2
+                new_node.branch_length = clade.abs_t - new_node.abs_t
+                new_node.clades = [n1,n2]
+                n1.branch_length = new_node.abs_t - n1.abs_t
+                n2.branch_length = new_node.abs_t - n2.abs_t
+    
+                # set parameters for the new node
+                new_node.up = clade
+                n1.up = new_node
+                n2.up = new_node
+                new_node.sequence = clade.sequence
+                new_node.profile = clade.profile
+                new_node.mutations = []
+                new_node.merger_rate = clade.merger_rate
+                self._make_branch_len_interpolator(new_node, gtr, n=36)
+                clade.clades.remove(n1)
+                clade.clades.remove(n2)
+                clade.clades.append(new_node)
+    
+                # and modify source_arr array for the next loop
+                if len(source_arr)>3: # if more than 3 nodes in polytomy, replace row/column
+                    for ii in np.sort(idxs)[::-1]:
+                        tmp_ind = np.arange(mergers.shape[0])!=ii
+                        mergers = mergers[tmp_ind].swapaxes(0,1)
+                        mergers = mergers[tmp_ind].swapaxes(0,1)
+    
+                    source_arr.remove(n1)
+                    source_arr.remove(n2)
+                    new_gains = np.array([[cost_gain(n1,new_node, clade) for n1 in source_arr]])
+                    mergers = np.vstack((mergers, new_gains)).swapaxes(0,1)
+    
+                    source_arr.append(new_node)
+                    new_gains = np.array([[cost_gain(n1,new_node, clade) for n1 in source_arr]])
+                    mergers = np.vstack((mergers, new_gains)).swapaxes(0,1)
+                else: # otherwise just recalculate matrix
+                    source_arr.remove(n1)
+                    source_arr.remove(n2)
+                    source_arr.append(new_node)
+                    mergers = np.array([[cost_gain(n1,n2, clade) for n1 in source_arr] for n2 in source_arr])
+
+            return LH
+
         stretched = [c for c  in clade.clades if utils.opt_branch_len(c) < c.branch_length]
         compressed = [c for c in clade.clades if c not in stretched]
 
         if verbose>5:
             print (stretched)
-
         LH = 0.0
+
         if len(stretched)==1:
             return LH
-
-        merger_candidates = np.array([[cost_gain(n1,n2, clade) for n1 in stretched]for n2 in stretched])
-        while len(stretched) > 1:
-            print (len(stretched))
-
-            # max possible gains of the cost when connecting the nodes:
-            # this is only a rough approximation because it assumes the new node positions
-            # to be optimal
-            new_positions = merger_candidates[:,:,0]
-            cost_gains = merger_candidates[:,:,1]
-            np.fill_diagonal(cost_gains, 0.0)
-
-            idxs = np.unravel_index(cost_gains.argmax(),cost_gains.shape)
-            assert (idxs[0] != idxs[1])
-            n1, n2 = stretched[idxs[0]], stretched[idxs[1]]
-            print (n1,n2)
-            print ("Delta-LH = " + str(cost_gains[idxs].round(3)))
-            LH += cost_gains[idxs]
-
-            new_node = Phylo.BaseTree.Clade()
-
-            # fix positions and branch lengths
-            new_node.abs_t = new_positions[idxs] # (n1.abs_t + tree.opt_branch_len(n1) + n2.abs_t + tree.opt_branch_len(n2))/2
-            new_node.branch_length = clade.abs_t - new_node.abs_t
-            new_node.clades = [n1,n2]
-            n1.branch_length = new_node.abs_t - n1.abs_t
-            n2.branch_length = new_node.abs_t - n2.abs_t
-
-            # set parameters for the new node
-            new_node.up = clade
-            n1.up = new_node
-            n2.up = new_node
-            new_node.sequence = clade.sequence
-            new_node.profile = clade.profile
-            new_node.mutations = []
-            new_node.merger_rate = clade.merger_rate
-            self._make_branch_len_interpolator(new_node, gtr, n=36)
-            clade.clades.remove(n1)
-            clade.clades.remove(n2)
-            clade.clades.append(new_node)
-
-            # and modify stretched array for the next loop
-            if len(stretched)>3: # if more than 3 nodes in polytomy, replace row/column
-                for ii in np.sort(idxs)[::-1]:
-                    tmp_ind = np.arange(merger_candidates.shape[0])!=ii
-                    merger_candidates = merger_candidates[tmp_ind].swapaxes(0,1)
-                    merger_candidates = merger_candidates[tmp_ind].swapaxes(0,1)
-
-                stretched.remove(n1)
-                stretched.remove(n2)
-                new_gains = np.array([[cost_gain(n1,new_node, clade) for n1 in stretched]])
-                merger_candidates = np.vstack((merger_candidates, new_gains)).swapaxes(0,1)
-
-                stretched.append(new_node)
-                new_gains = np.array([[cost_gain(n1,new_node, clade) for n1 in stretched]])
-                merger_candidates = np.vstack((merger_candidates, new_gains)).swapaxes(0,1)
-            else: # otherwise just recalculate matrix
-                stretched.remove(n1)
-                stretched.remove(n2)
-                stretched.append(new_node)
-                merger_candidates = np.array([[cost_gain(n1,n2, clade) for n1 in stretched] for n2 in stretched])
-
-
+       
+        merge_nodes(stretched)
+        if merge_compressed:
+            merge_nodes(compressed)
 
         return LH
 
