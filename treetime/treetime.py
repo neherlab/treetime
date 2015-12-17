@@ -176,13 +176,30 @@ class TreeTime(TreeAnc, object):
         logprob[((0,1,-2,-1),)] = ttconf.MIN_LOG
         logprob *= -1.0
 
+        dt = np.diff(grid)
+        tmp_prob = np.exp(-logprob)
+        integral = np.sum(0.5*(tmp_prob[1:]+tmp_prob[:-1])*dt)
+
+        # save raw branch length interpolators without coalescent contribution
+        # TODO: better criterion to catch bad branch
+        if integral < 1e-200:
+            print ("!!WARNING!! Node branch length probability distribution "
+                "integral is ZERO. Setting bad_branch flag..."
+                "Not accounting for the normalization, coalescence theory.")
+            node.bad_branch = True
+            node.raw_branch_neg_log_prob = interp1d(grid, logprob, kind='linear')
         
+        else:
+            node.raw_branch_neg_log_prob = interp1d(grid, logprob+np.log(integral), kind='linear')
+
+
+        # add merger rate cobtribution to the raw branch length
         logprob += node.merger_rate * np.minimum(ttconf.MAX_BRANCH_LENGTH, np.maximum(0,grid))
 
         # normalize the branch lengths prob distribution
         min_prob = np.min(logprob)
         if np.exp(-1*min_prob) == 0:
-            print ("!!Warning!! the branch length probability iz zero. "
+            print ("!!Warning!! the branch length probability is zero. "
                 "Are the branches and sequences correct?")
             # setting bad branch flag
             node.bad_branch = True
@@ -202,6 +219,7 @@ class TreeTime(TreeAnc, object):
         else:
             node.branch_neg_log_prob = interp1d(grid, logprob+np.log(integral), kind='linear')
         
+
         # node gets new attribute
         return None
 
@@ -212,7 +230,8 @@ class TreeTime(TreeAnc, object):
         for node in self.tree.find_clades():
             if node.up is None:
                 continue
-            grid,y = node.raw_branch_neg_log_prob.x, node.raw_branch_neg_log_prob.y
+            # make sure to copy raw_branch_neg_log_prob.y -> otherwise only referenced and modified
+            grid,y = node.raw_branch_neg_log_prob.x, np.array(node.raw_branch_neg_log_prob.y)
             y+=node.merger_rate * np.minimum(ttconf.MAX_BRANCH_LENGTH, np.maximum(0,grid))
             dt = np.diff(grid)
             tmp_prob = np.exp(-y)
