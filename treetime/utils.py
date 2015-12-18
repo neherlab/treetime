@@ -31,11 +31,11 @@ class DateConversion(object):
         for node in t.find_clades():
             if hasattr(node, "raw_date" ) and node.raw_date is not None:
                 dates.append((node.raw_date, node.dist2root))
-        
+
         if len(dates) < 5:
             raise(RuntimeError("There are no dates set at the leaves of the tree."
                 " Cannot make the conversion function. Aborting."))
-        
+
         dates = np.array(dates)
 
         dc.slope,\
@@ -43,7 +43,7 @@ class DateConversion(object):
             dc.r_val,\
             dc.pi_val,\
             dc.sigma = stats.linregress(dates[:, 0], dates[:, 1])
-        
+
         return dc
 
     def get_branch_len(self, date1, date2):
@@ -86,14 +86,14 @@ def delta_fun(pos, return_log=True, normalized=False, width=ttconf.WIDTH_DELTA):
     Args:
 
      - pos(double): position of the delta function maximum
-     
+
      - return_log(bool): whether to return logarithm or pure delta-fun.
-     
-     - normalized(bool): If True, set the amplitude so that the integral of the 
+
+     - normalized(bool): If True, set the amplitude so that the integral of the
      delta function is 1.
 
-     - width(double): width of the delta function. 
-    """        
+     - width(double): width of the delta function.
+    """
     grid = np.concatenate(([ttconf.MIN_T],
         pos * np.array([1 - width,1 - width*0.5, 1 + width*0.5, 1 + width]),
         [ttconf.MAX_T]))
@@ -123,16 +123,28 @@ def delta_fun(pos, return_log=True, normalized=False, width=ttconf.WIDTH_DELTA):
 
 def min_interp(interp_object):
     """
-    Find the global minimum of the function represented as an interpolation 
-    object. 
+    Find the global minimum of the function represented as an interpolation
+    object.
     """
     return interp_object.x[interp_object(interp_object.x).argmin()]
+
+
+def median_interp(interp_object):
+    """
+    Find the median of the function represented as an interpolation object.
+    """
+    new_grid = np.sort(np.concatenate([interp_object.x[:-1] + 0.1*ii*np.diff(interp_object.x) for ii in range(10)]).flatten())
+
+    tmp_prop = np.exp(-(interp_object(new_grid)-interp_object.y.min()))
+    tmp_cumsum = np.cumsum(0.5*(tmp_prop[1:]+tmp_prop[:-1])*np.diff(new_grid))
+    median_index = min(len(tmp_cumsum)-3, max(2,np.searchsorted(tmp_cumsum, tmp_cumsum[-1]*0.5)-1))
+    return new_grid[median_index]
 
 
 def convolve(t, f, g, cutoff=10000, n_integral=100):
     """
     Compute convolution of the functions f, g:
-    (f*g)(t) = int {f(t-tau) g(tau) d_tau}. 
+    (f*g)(t) = int {f(t-tau) g(tau) d_tau}.
     """
 
     # get the support ranges for the raw functions
@@ -182,15 +194,15 @@ def convolve(t, f, g, cutoff=10000, n_integral=100):
 
 def opt_branch_len(node):
     """
-    Find optimal branch length for a node. 
+    Find optimal branch length for a node.
     Args:
-     
+
      - node: Tree node. **NOTE** the node should store the branch lenght probability \
-     as an interpolation object as the branch_neg_log_prob attribute. 
+     as an interpolation object as the branch_neg_log_prob attribute.
 
     Returns:
-     
-     - opt_len(double): optimal branch length. In case of error - 0.0. 
+
+     - opt_len(double): optimal branch length. In case of error - 0.0.
     """
     if not hasattr(node, "branch_neg_log_prob") or node.branch_neg_log_prob is None:
         return 0.0
@@ -198,18 +210,18 @@ def opt_branch_len(node):
 
 def find_node_opt_pos(node):
     """
-    Given the probability distribution of the node location, find the optimal node 
-    position. 
+    Given the probability distribution of the node location, find the optimal node
+    position.
 
-    Args: 
+    Args:
 
-     - node (Phylo.Clade): tree node. **NOTE** the node should store the location 
-     probability distribution as the mas_to_parent attribute. 
+     - node (Phylo.Clade): tree node. **NOTE** the node should store the location
+     probability distribution as the mas_to_parent attribute.
 
     Returns:
 
-     - opt_pos(double, None): in cas eof the error, None is returned. Otherwise, 
-     the position as double, in the branch length units.   
+     - opt_pos(double, None): in cas eof the error, None is returned. Otherwise,
+     the position as double, in the branch length units.
     """
     if not hasattr(node, "msg_to_parent") or node.msg_to_parent is None:
         return None
@@ -217,24 +229,24 @@ def find_node_opt_pos(node):
 
 def make_node_grid(opt, grid_size=ttconf.NODE_GRID_SIZE, variance=ttconf.NODE_GRID_VAR):
     """
-    Create grid for the node location distribution. 
+    Create grid for the node location distribution.
 
     Args:
-     - opt(double): Estimate for the optimal node position. The grid will be set 
-     arround this value. 
+     - opt(double): Estimate for the optimal node position. The grid will be set
+     arround this value.
 
      - grid_size(int): number of pointes in the grid
 
-     - variance (double): the grid "width" as the ratio of the tree diameter. 
+     - variance (double): the grid "width" as the ratio of the tree diameter.
 
-    Returns: 
+    Returns:
 
-     - grid(np.array): the grid as 1D numpy  array 
+     - grid(np.array): the grid as 1D numpy  array
     """
-    
+
     grid_leaves = opt + ttconf.MAX_BRANCH_LENGTH * np.sign(np.linspace(-1, 1, grid_size))\
                         *(np.linspace(-1, 1, grid_size)**2)
-    
+
     grid = np.concatenate(([ttconf.MIN_T],
         grid_leaves,
         [ttconf.MAX_T]))
@@ -323,16 +335,16 @@ def build_DM(self, nodes, gtr):
 def numeric_date(dt):
     """
     Convert datetime object to the numeric date.
-    The numeric date format is YYYY.F, where F is the fraction of the year passed 
+    The numeric date format is YYYY.F, where F is the fraction of the year passed
     """
     if dt is None:
         return 0.00
-    
+
     try:
-        res = dt.year + dt.timetuple().tm_yday / 365.25 
+        res = dt.year + dt.timetuple().tm_yday / 365.25
     except:
         res = 0.0
-    
+
     return res
 
 if __name__ == '__main__':
