@@ -176,32 +176,50 @@ class TreeTime(TreeAnc, object):
         logprob[((0,1,-2,-1),)] = ttconf.MIN_LOG
         logprob *= -1.0
 
-        
+        dt = np.diff(grid)
+        tmp_prob = np.exp(-logprob)
+        integral = np.sum(0.5*(tmp_prob[1:]+tmp_prob[:-1])*dt)
+
+        # save raw branch length interpolators without coalescent contribution
+        # TODO: better criterion to catch bad branch
+        if integral < 1e-200:
+            print ("!!WARNING!! Node branch length probability distribution "
+                "integral is ZERO. Setting bad_branch flag..."
+                "Not accounting for the normalization, coalescence theory.")
+            node.bad_branch = True
+            node.raw_branch_neg_log_prob = interp1d(grid, logprob, kind='linear')
+
+        else:
+            node.raw_branch_neg_log_prob = interp1d(grid, logprob+np.log(integral), kind='linear')
+
+
+        # add merger rate cobtribution to the raw branch length
         logprob += node.merger_rate * np.minimum(ttconf.MAX_BRANCH_LENGTH, np.maximum(0,grid))
 
         # normalize the branch lengths prob distribution
         min_prob = np.min(logprob)
         if np.exp(-1*min_prob) == 0:
-            print ("!!Warning!! the branch length probability iz zero. "
+            print ("!!Warning!! the branch length probability is zero. "
                 "Are the branches and sequences correct?")
             # setting bad branch flag
             node.bad_branch = True
-        
+
         logprob -= min_prob
         dt = np.diff(grid)
         tmp_prob = np.exp(-logprob)
         integral = np.sum(0.5*(tmp_prob[1:]+tmp_prob[:-1])*dt)
-    
+
         if integral < 1e-200:
             print ("!!WARNING!! Node branch length probability distribution "
                 "integral is ZERO. Setting bad_branch flag..."
                 "Not accounting for the normalization, coalescence theory.")
             node.bad_branch = True
             node.branch_neg_log_prob = interp1d(grid, logprob, kind='linear')
-        
+
         else:
             node.branch_neg_log_prob = interp1d(grid, logprob+np.log(integral), kind='linear')
-        
+
+
         # node gets new attribute
         return None
 
@@ -212,7 +230,8 @@ class TreeTime(TreeAnc, object):
         for node in self.tree.find_clades():
             if node.up is None:
                 continue
-            grid,y = node.raw_branch_neg_log_prob.x, node.raw_branch_neg_log_prob.y
+            # make sure to copy raw_branch_neg_log_prob.y -> otherwise only referenced and modified
+            grid,y = node.raw_branch_neg_log_prob.x, np.array(node.raw_branch_neg_log_prob.y)
             y+=node.merger_rate * np.minimum(ttconf.MAX_BRANCH_LENGTH, np.maximum(0,grid))
             dt = np.diff(grid)
             tmp_prob = np.exp(-y)
@@ -238,9 +257,9 @@ class TreeTime(TreeAnc, object):
             print ("error - no date to dist conversion set. "
                 "Run init_date_constraints and try once more.")
             return
-        
+
         for node in tree.find_clades():
-            
+
             if not hasattr(node, 'merger_rate'):
                 node.merger_rate=ttconf.BRANCH_LEN_PENALTY
 
@@ -250,7 +269,7 @@ class TreeTime(TreeAnc, object):
             # in the following, we only use the prf_l and prf_r (left and right
             # profiles in the matrix eigenspace)
             self._set_rotated_profiles(node, gtr)
-            
+
             # node is constrained
             if hasattr(node, 'raw_date') and node.raw_date is not None:
                 if hasattr(node, 'bad_branch') and node.bad_branch==True:
@@ -271,7 +290,7 @@ class TreeTime(TreeAnc, object):
                 node.abs_t = None
                 # if there are no constraints - log_prob will be set on-the-fly
                 node.msg_to_parent = None
-            
+
 
     def _convolve(self, src_neglogprob, src_branch_neglogprob, inverse_time):
         """
@@ -398,10 +417,12 @@ class TreeTime(TreeAnc, object):
             if not hasattr(node, "msg_to_parent"):
                 print ("ERROR: node has no log-prob interpolation object! "
                     "Aborting.")
+            collapse_func = utils.median_interp
             if node.up is None:  # root node
-                node.total_prob = utils.delta_fun(utils.min_interp(node.msg_to_parent),return_log=True,normalized=False)
+                node.total_prob = utils.delta_fun(collapse_func(node.msg_to_parent),
+                                                  return_log=True,normalized=False)
                 #node.total_prefactor = node.msg_to_parent_prefactor
-                #node.msg_from_root_prefactor = 0
+                #node.msg_from_parent_prefactor = 0
                 self._set_final_date(node)
                 continue
 
@@ -417,31 +438,32 @@ class TreeTime(TreeAnc, object):
                 node_grid = node.up.total_prob.delta_pos - node.branch_neg_log_prob.x
                 node_grid[node_grid < ttconf.MIN_T/2] = ttconf.MIN_T
                 node_grid[node_grid > ttconf.MAX_T/2] = ttconf.MAX_T
-                node.msg_from_root = interp1d(node_grid, node.branch_neg_log_prob.y, kind='linear')
+                node.msg_from_parent = interp1d(node_grid, node.branch_neg_log_prob.y, kind='linear')
 
-                final_prob = utils.multiply_dists((node.msg_from_root, node.msg_to_parent))
+                final_prob = utils.multiply_dists((node.msg_from_parent, node.msg_to_parent))
 
-                if utils.min_interp(final_prob) > node.up.abs_t + 1e-9:
+                if collapse_func(final_prob) > node.up.abs_t + 1e-9:
                     # must never happen, just for security
+                    import ipdb; ipdb.set_trace()
                     node.total_prob = utils.delta_fun(node.up.abs_t, return_log=True, normalized=False)
                     print ("Warn: the child node wants to be {0} earlier than "
                         "the parent node. Setting the child location to the parent's "
-                        "one.".format((utils.min_interp(final_prob) - node.up.abs_t)))
+                        "one.".format((collapse_func(final_prob) - node.up.abs_t)))
 
                 else:
-                    node.total_prob = utils.delta_fun(utils.min_interp(final_prob),
+                    node.total_prob = utils.delta_fun(collapse_func(final_prob),
                         return_log=True, normalized=False)
 
             else: # unconstrained terminal nodes
                 node_grid = node.up.total_prob.delta_pos - node.branch_neg_log_prob.x
                 node_grid[node_grid < ttconf.MIN_T/2] = ttconf.MIN_T
                 node_grid[node_grid > ttconf.MAX_T/2] = ttconf.MAX_T
-                
-                node.msg_from_root = interp1d(node_grid, node.branch_neg_log_prob.y, kind='linear')
-                #final_prob = utils.multiply_dists((node.msg_from_root, node.msg_to_parent))
-                #node.msg_from_root = msg_from_root
 
-                node.total_prob = utils.delta_fun(utils.min_interp(node.msg_from_root),
+                node.msg_from_parent = interp1d(node_grid, node.branch_neg_log_prob.y, kind='linear')
+                #final_prob = utils.multiply_dists((node.msg_from_parent, node.msg_to_parent))
+                #node.msg_from_parent = msg_from_parent
+
+                node.total_prob = utils.delta_fun(collapse_func(node.msg_from_parent),
                         return_log=True, normalized=False)
 
             self._set_final_date(node)
@@ -465,7 +487,7 @@ class TreeTime(TreeAnc, object):
             node.branch_length = self.one_mutation
             node.dist2root = 0.0
 
-        
+
 
         node.days_bp = self.date2dist.get_date(node.abs_t)
         if node.days_bp < 0:
@@ -476,7 +498,7 @@ class TreeTime(TreeAnc, object):
             else:
                 print ("Warning! node, which is marked as \"BAD\" optimized "
                     "later than present day")
-        
+
         n_date = (datetime.datetime.now() - datetime.timedelta(days=node.days_bp))
 
         node.numdate = utils.numeric_date(n_date)
@@ -669,21 +691,21 @@ class TreeTime(TreeAnc, object):
             return cg['x'], - cg['fun']
 
         def merge_nodes(source_arr):
-            
+
             mergers = np.array([[cost_gain(n1,n2, clade) for n1 in source_arr]for n2 in source_arr])
             while len(source_arr) > 1:
                 #import ipdb; ipdb.set_trace()
                 print (len(source_arr))
 
                 LH = 0
-    
+
                 # max possible gains of the cost when connecting the nodes:
                 # this is only a rough approximation because it assumes the new node positions
                 # to be optimal
                 new_positions = mergers[:,:,0]
                 cost_gains = mergers[:,:,1]
                 np.fill_diagonal(cost_gains, -1e9)
-    
+
                 idxs = np.unravel_index(cost_gains.argmax(),cost_gains.shape)
                 try:
                     assert (idxs[0] != idxs[1])
@@ -693,16 +715,16 @@ class TreeTime(TreeAnc, object):
                 print (n1,n2)
                 print ("Delta-LH = " + str(cost_gains[idxs].round(3)))
                 LH += cost_gains[idxs]
-    
+
                 new_node = Phylo.BaseTree.Clade()
-    
+
                 # fix positions and branch lengths
                 new_node.abs_t = new_positions[idxs] # (n1.abs_t + tree.opt_branch_len(n1) + n2.abs_t + tree.opt_branch_len(n2))/2
                 new_node.branch_length = clade.abs_t - new_node.abs_t
                 new_node.clades = [n1,n2]
                 n1.branch_length = new_node.abs_t - n1.abs_t
                 n2.branch_length = new_node.abs_t - n2.abs_t
-    
+
                 # set parameters for the new node
                 new_node.up = clade
                 n1.up = new_node
@@ -715,19 +737,19 @@ class TreeTime(TreeAnc, object):
                 clade.clades.remove(n1)
                 clade.clades.remove(n2)
                 clade.clades.append(new_node)
-    
+
                 # and modify source_arr array for the next loop
                 if len(source_arr)>3: # if more than 3 nodes in polytomy, replace row/column
                     for ii in np.sort(idxs)[::-1]:
                         tmp_ind = np.arange(mergers.shape[0])!=ii
                         mergers = mergers[tmp_ind].swapaxes(0,1)
                         mergers = mergers[tmp_ind].swapaxes(0,1)
-    
+
                     source_arr.remove(n1)
                     source_arr.remove(n2)
                     new_gains = np.array([[cost_gain(n1,new_node, clade) for n1 in source_arr]])
                     mergers = np.vstack((mergers, new_gains)).swapaxes(0,1)
-    
+
                     source_arr.append(new_node)
                     new_gains = np.array([[cost_gain(n1,new_node, clade) for n1 in source_arr]])
                     mergers = np.vstack((mergers, new_gains)).swapaxes(0,1)
@@ -748,7 +770,7 @@ class TreeTime(TreeAnc, object):
 
         if len(stretched)==1:
             return LH
-       
+
         merge_nodes(stretched)
         if merge_compressed:
             merge_nodes(compressed)
