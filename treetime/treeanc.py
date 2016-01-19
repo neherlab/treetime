@@ -19,8 +19,14 @@ class TreeAnc(object):
     alignment, making ancestral state inferrence
     """
 
+    @property
+    def leaves_lookup(self):
+        return self._leaves_lookup
+
+    
     def __init__(self):
         self.tree = None
+        self._leaves_lookup = {}
         # self.set_additional_tree_params()
 
     def set_additional_tree_params(self):
@@ -32,15 +38,65 @@ class TreeAnc(object):
         self.tree.root.up = None
         self.tree.root.dist2root = 0.0
         self._set_each_node_params()
+        self._leaves_lookup = {node.name:node for node in self.tree.get_terminals()}
+
+
+    def set_metadata_to_node(self, node, **metadata):
+        """
+        Set the metadata to the given tree node from the given dictionary.
+
+        Args:
+         - node(Phylo.Clade): node the metadata should be assigned to 
+
+        KWargs:
+         - metadata: dictionary for the values to be set as attributes.
+
+        Returns:
+         - None
+        """
+
+        if isinstance(node, Phylo.BaseTree.Clade):
+            
+            for key in metadata:
+                if key != "name": #  filter name node if any  (must be already set)
+                    setattr(node, key, metadata[key])
+        
+        elif isinstance(node, str):
+            if node not in  self._leaves_lookup:
+                print ("Cannot set metadata to the node: node not found")        
+                return 
+            
+            node = self._leaves_lookup[node]
+            for key in metadata:
+                if key != "name": #  filter name node if any  (must be already set)
+                    setattr(node, key, metadata[key])
+        
+        else:
+            print ("Cannot set metadata to node. Input node must be "
+                "either tree node instance, or name of the ")
+
+    def set_metadata(self, **all_metadata):
+        """
+        Set metadata from dictionary to all nodes
+        """
+        for node_key in all_metadata:
+            if node_key not in self._leaves_lookup:
+                print ("Cannot set metadata to the tree node: node name not found")
+                print (node_key)
+                continue
+            self.set_metadata_to_node(node_key, **all_metadata[node_key])
 
     def _set_each_node_params(self):
+        
         """
         Set auxilliary parameters to every node of the tree.
         """
+        self.tree.root.dist2root_0 = 0.0
         for clade in self.tree.get_nonterminals(order='preorder'): # up->down
             for c in clade.clades:
                 c.up = clade
                 c.dist2root = c.up.dist2root + c.branch_length
+                c.dist2root_0 = c.dist2root #  store the values used later for date-branchLen conversion
         return
 
     def reconstruct_anc(self, method, **kwargs):

@@ -50,23 +50,27 @@ def str2date_time(instr):
 def date_from_seq_name(name):
 
     date = str2date_time(name.split('|')[2].strip())
+    return date.year + date.timetuple().tm_yday / 365.25
 
-    return date
 
 if __name__=='__main__':
     gtr = GTR.standard()
     root_dir = os.path.dirname(os.path.realpath(__file__))
-    fasta = os.path.join(root_dir, '../data/H3N2_NA_allyears_NA.200.fasta')
-    nwk = os.path.join(root_dir, '../data/H3N2_NA_allyears_NA.200.nwk')
+    fasta = os.path.join(root_dir, '../data/H3N2_NA_allyears_NA.20.fasta')
+    nwk = os.path.join(root_dir, '../data/H3N2_NA_allyears_NA.20.nwk')
+    mdf = os.path.join(root_dir, '../data/H3N2_NA_allyears_NA.20.metadata.csv')
     #fasta = os.path.join(root_dir, 'flu_trivial.fasta')
     #nwk = os.path.join(root_dir, 'flu_trivial.nwk')
-    slope = -1.1505574145108622e-05
+    slope = 1.1505574145108622e-05 * 365.25
     # read tree from file
     t = io.treetime_from_newick(nwk)
     # set alignment to the tree
     io.set_seqs_to_leaves(t, AlignIO.read(fasta, 'fasta'))
+    io.read_metadata(t, mdf)
+    
+    
     # set dates from the node names
-    io.set_node_dates_from_names(t, date_from_seq_name)
+    #io.set_node_dates_from_names(t, date_from_seq_name)
     t.reroot_to_oldest()
     t.optimize_seq_and_branch_len(gtr)
     t.init_date_constraints(gtr, slope=slope)
@@ -74,6 +78,7 @@ if __name__=='__main__':
     # plotting the results
     t._score_branches()
     t.tree.ladderize()
+    sys.exit(1)
     #Phylo.draw(t.tree, label_func = lambda x:'', show_confidence=False, branch_labels='')
     t1 = copy.deepcopy(t)
     t1.resolve_polytomies(gtr)

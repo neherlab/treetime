@@ -1,8 +1,12 @@
-from Bio import Phylo
+import Bio
+from Bio import Phylo, Align, AlignIO
 import numpy as np
 import json, copy, datetime
 from treetime import TreeTime
+import utils 
 import seq_utils
+import pandas 
+import pandas
 
 def treetime_from_newick(infile):
     """
@@ -17,6 +21,37 @@ def treetime_from_newick(infile):
     tanc.tree = Phylo.read(infile, 'newick')
     tanc.set_additional_tree_params()
     return tanc
+
+def save_newick_tree(outfile):
+    pass
+
+def save_timetree_results(tree, outfile_prefix):
+    """
+    First, it scans the tree and assigns the namesto every node with no name
+    then, it saves the information as the csv table 
+    """
+    df = pandas.DataFrame(columns=["Given_date", "Initial_root_dist", "Inferred_date"])
+    aln = Align.MultipleSeqAlignment([])
+    
+    for node in tree.tree.find_clades():
+        
+        if node.name is None:
+            if node.up is None:
+                node.name = "ROOT"
+            else:
+                node.name = "node_" + str(np.random.randint(1e8))
+        
+        #  alignment
+        aln.append(Bio.SeqRecord.SeqRecord(Align.Seq(''.join(node.sequence)), node.name))
+        #  metadata
+        df.loc[node.name] = [node.numdate_given, node.dist2root_0, node.numdate]
+
+
+    # save everything
+    df.to_csv(outfile_prefix + ".meta.csv")
+    Phylo.write(tree.tree, outfile_prefix + ".tree.nwk", "newick")
+    AlignIO.write(aln, outfile_prefix + ".aln.fasta", "fasta")
+    pass 
 
 def set_seqs_to_leaves(tree, aln):
     """
@@ -140,69 +175,98 @@ def set_node_dates_from_dic(tree, dates_dic):
     
     err_ = 0
     num_ = 0 
-    now = datetime.datetime.now()
+    now = utils.numdate(datetime.datetime.now())
     for node in tree.tree.find_clades():
         
         if node.name is None or not node.name in dates_dic:
-            node.raw_date = None
+            node.numdate_given = None
             continue
 
-        n_date = dates_dic[node.name]
+        n_date = dates_dic[node.name] # assume the dictionary contains the numdate 
+        if not isinstance(n_date, float) and not isinstance(n_date, int): #  sanity check
+            print ("Cannot set the numeric date tot the node. Float or int expected")
+            continue
+
         try:
-            days_before_present = (now - n_date).days
             
-            if days_before_present < 0:
+            if n_date > now:
                 print ("Cannot set the date! the specified date is later "
                     " than today! cannot assign node date, skipping")
-                node.raw_date = None
+                node.numdate_given = None
                 err_+=1
                 continue
             else:
-                node.raw_date = days_before_present
+                node.numdate_given = n_date
                 num_ += 1
+        
         except:
-            node.raw_date = None
+            print ("Cannot assign date to the node: exception caught")
+            node.numdate_given = None
             err_ += 1
+    
     tu = (num_, err_)
+    
     print ("Assigned ddates to {0} nodes, {1} errors".format(*tu))
-
 
 def set_node_dates_from_names(tree, date_func):
     """
     Read names of the leaves of the tree, extract the dates of the leaves from the
-    names and asign the date to the nodes. After this function call, each node of
-    the tree gets the raw_date attribute. If the date was extracted from name
-    successfully, the raw_date will be the days-before-present (int) value.
-    Otherwise (either no node name, or date reading failed), the raw_date will be
+    names and asign the date to the nodes.
+    Assumes that the dates are given in some human-readable format 
+    and are converted into the numericaldate (YYYY.F).
+    After this function call, each node of
+    the tree gets the numdate_given attribute. If the date was extracted from name
+    successfully, the 'numdate_given' will be the days-before-present (int) value.
+    Otherwise (either no node name, or date reading failed), the 'numdate_given' will be
     set to None.
     Args:
      - tree (TreeTime): instance of the tree time object with phylogenetic tree
      loaded.
      - date_func (callable): function to extract date and time from node name,
-     should return datetime object
+     should return float 
     Returns:
      - None, tree is being modified in-place
     """
-    now = datetime.datetime.now()
-    for node in tree.tree.find_clades():
+    #now = datetime.datetime.now() 
+    ## NOTE we do not rely on the datetime objects 
+    now = utils.numeric_date(datetime.datetime.now())
+    for node in tree.tree.get_terminals():
         try:
             node_date = date_func(node.name)
-            if node_date is None:
-                #print ("Cannot parse the date from name: " + str(node.name) +
-                #    " Setting node raw date to None")
-                node.raw_date = None # cannot extract the date from name - set None
-                continue
-            days_before_present = (now - node_date).days
-            if days_before_present < 0:
-                print ("Cannot set the date! the specified date is later "
-                    " than today")
-                node.raw_date = None
-                continue
-            node.raw_date = days_before_present
         except:
-            print ("Exception caught when parsing the dates.")
-            node.raw_date = None
+            print ("Cannot extract numdate from the node name. Exception caugth.")
+            node.numdate_given = None
+            continue
+        if node_date is None:
+            #print ("Cannot parse the date from name: " + str(node.name) +
+            #    " Setting node raw date to None")
+            node.numdate_given = None # cannot extract the date from name - set None
+        
+        elif node_date > now:
+            print ("Cannot set the date! the specified date is later "
+                " than today")
+            node.numdate_given = None
+        else:
+            node.numdate_given = node_date
+        
     return
+
+def read_metadata(tree, infile):
+    
+    try:
+        
+        df = pandas.read_csv(infile, index_col=0)
+        if df.index.name != "name" and df.index.name != "#name":
+            print ("Cannot read metadata: first columns should be leaves name")
+            return
+        dic = df.to_dict(orient='index')
+    except:
+
+        print ("Cannot read the metadata using psndas library. "
+            "pandas is outdated or missing. trying to read plain csv...")
+
+    tree.set_metadata(**dic)    
+
 
 if __name__=='__main__':
     pass

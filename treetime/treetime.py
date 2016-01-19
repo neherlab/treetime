@@ -52,18 +52,18 @@ class TreeTime(TreeAnc, object):
         """
         Set the root of the tree to the oldest node.
         """
-        def raw_date(node):
-            if not hasattr(node, 'raw_date') or node.raw_date is None:
+        def numdate_given(node):
+            if not hasattr(node, 'numdate_given') or node.numdate_given is None:
                 return 0
-            return node.raw_date
+            return node.numdate_given
 
-        self.tree.root_with_outgroup(sorted(self.tree.get_terminals(), key=raw_date)[-1])
+        self.tree.root_with_outgroup(sorted(self.tree.get_terminals(), key=numdate_given)[0])
         self.tree.ladderize()
         og = self.tree.root.clades[0]
         self.tree.root.clades[1].branch_length += og.branch_length
         og.branch_length = self.one_mutation
         self.tree.root.branch_length = self.one_mutation
-        self.tree.root.raw_date = None
+        self.tree.root.numdate_given = None
         # fix tree lengths, etc
         self.set_additional_tree_params()
 
@@ -71,39 +71,16 @@ class TreeTime(TreeAnc, object):
         """
         Get the conversion coefficients between the dates and the branch
         lengths as they are used in ML computations. The conversion formula is
-        assumed to be 'length = k*raw_date + b'. For convenience, these
+        assumed to be 'length = k*numdate_given + b'. For convenience, these
         coefficients as well as regression parameters are stored in the
         dates2dist object.
 
         Note: that tree must have dates set to all nodes before calling this
         function. (This is accomplished by calling load_dates func).
         """
-        if slope is None:
-            self.date2dist = utils.DateConversion.from_tree(self.tree)
-            self.max_diam = self.date2dist.intersept
-        else:
-            dc = utils.DateConversion()
-            dc.slope = slope
-            min_raw_date = ttconf.BIG_NUMBER
-            max_raw_date = -ttconf.BIG_NUMBER
-            self.max_diam = 0.0
-            for t in self.tree.get_terminals():
-                # NOTE: raw_date is time before present in days
-                if hasattr(t, 'raw_date') and t.raw_date is not None:
-                    if t.raw_date < min_raw_date:
-                        min_raw_date = t.raw_date
-                    if t.raw_date > max_raw_date:
-                        max_raw_date = t.raw_date
-                        self.max_diam = t.dist2root
-            if min_raw_date == ttconf.BIG_NUMBER:
-                print ("Warning! cannot set the minimal raw date. using today")
-                min_raw_date = 0.0
-            if self.max_diam == 0.0:
-                print ("Error! cannot set the intersept for the date2dist conversion!"
-                    "Cannot read tree diameter")
-                return
-            dc.intersept = self.max_diam - slope * min_raw_date
-            self.date2dist = dc
+        self.date2dist = utils.DateConversion.from_tree(self.tree, slope)
+        self.max_diam = self.date2dist.intersept
+
         # set the None  for the date-related attributes in the internal nodes.
         # make interpolation objects for the branches
         self._ml_t_init(gtr)
@@ -271,22 +248,25 @@ class TreeTime(TreeAnc, object):
             self._set_rotated_profiles(node, gtr)
 
             # node is constrained
-            if hasattr(node, 'raw_date') and node.raw_date is not None:
+            if hasattr(node, 'numdate_given') and node.numdate_given is not None:
                 if hasattr(node, 'bad_branch') and node.bad_branch==True:
                     print ("Branch is marked as bad, excluding it from the optimization process"
                         " Will be optimizaed freely")
-                    node.raw_date = None
+                    node.numdate_given = None
                     node.abs_t = None
                     #    if there are no constraints - log_prob will be set on-the-fly
                     node.msg_to_parent = None
                 else:
+                    
                     # set the absolute time in branch length units
                     # the abs_t zero is today, and the direction is to the past
-                    node.abs_t = node.raw_date * abs(self.date2dist.slope)
+                    
+                    # this is the conversion between the branch-len and the years
+                    node.abs_t = (utils.numeric_date() - node.numdate_given) * abs(self.date2dist.slope)
                     node.msg_to_parent = utils.delta_fun(node.abs_t, return_log=True, normalized=False)
             # unconstrained node
             else:
-                node.raw_date = None
+                node.numdate_given = None
                 node.abs_t = None
                 # if there are no constraints - log_prob will be set on-the-fly
                 node.msg_to_parent = None
@@ -499,10 +479,18 @@ class TreeTime(TreeAnc, object):
                 print ("Warning! node, which is marked as \"BAD\" optimized "
                     "later than present day")
 
-        n_date = (datetime.datetime.now() - datetime.timedelta(days=node.days_bp))
-
-        node.numdate = utils.numeric_date(n_date)
-        node.date = datetime.datetime.strftime(n_date, "%Y-%m-%d")
+        now = utils.numeric_date()
+        node.numdate = now - node.days_bp #  FIXME this is already years before present 
+        
+        # set the human-readable date         
+        days = 365.25 * (node.numdate - int(node.numdate))
+        year = int(node.numdate)
+        try:
+            n_date = datetime.datetime(year, 1, 1) + datetime.timedelta(days=days)
+            node.date = datetime.datetime.strftime(n_date, "%Y-%m-%d")
+        except:
+            # this is the approximation
+            node.date = str(year) + "-" + str( int(days / 30)) + "-" + str(int(days % 30))
 
     def coalescent_model(self, gtr, Tc=None, optimize_Tc = False):
         """

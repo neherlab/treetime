@@ -4,6 +4,7 @@ import config as ttconf
 from scipy.integrate import quad
 from scipy import stats
 import matplotlib.pyplot as plt
+import datetime
 
 class DateConversion(object):
     """
@@ -21,30 +22,60 @@ class DateConversion(object):
 
 
     @classmethod
-    def from_tree(cls, t):
+    def from_tree(cls, t, slope=None):
         """
         Create the conversin object automatically from the tree
         """
-        dc = cls()
-        dates = []
-        #import ipdb; ipdb.set_trace()
-        for node in t.find_clades():
-            if hasattr(node, "raw_date" ) and node.raw_date is not None:
-                dates.append((node.raw_date, node.dist2root))
+        if slope is None:
+            dc = cls()
+            dates = []
+        
+            for node in t.find_clades():
+                if hasattr(node, "numdate_given" ) and node.numdate_given is not None:
+                    dates.append((node.numdate_given, node.dist2root))
+    
+            if len(dates) < 5:
+                raise(RuntimeError("There are no dates set at the leaves of the tree."
+                    " Cannot make the conversion function. Aborting."))
+    
+            dates = np.array(dates)
+    
+            dc.slope,\
+                dc.intersept,\
+                dc.r_val,\
+                dc.pi_val,\
+                dc.sigma = stats.linregress(dates[:, 0], dates[:, 1])
+    
+            return dc
+        
+        else:
 
-        if len(dates) < 5:
-            raise(RuntimeError("There are no dates set at the leaves of the tree."
-                " Cannot make the conversion function. Aborting."))
+            dc = cls()
+            dc.slope = slope
+            min_numdate_given = ttconf.BIG_NUMBER
+            max_numdate_given = -ttconf.BIG_NUMBER
+            max_diam = 0.0
+            for node in t.get_terminals():
+                # NOTE:  raw_date is time before present in days
+                if hasattr(node, 'numdate_given') and node.numdate_given is not None:
+                    if node.numdate_given < min_numdate_given:
+                        min_numdate_given = node.numdate_given
+                    if node.numdate_given > max_numdate_given:
+                        max_numdate_given = node.numdate_given
+                        max_diam = node.dist2root
+            
+            if max_numdate_given == ttconf.BIG_NUMBER:
+                print ("Warning! cannot set the minimal raw date. using today")
+                max_numdate_given = 0.0
+            
+            if max_diam == 0.0:
+                print ("Error! cannot set the intersept for the date2dist conversion!"
+                    "Cannot read tree diameter")
+                return
+            
+            dc.intersept = max_diam - slope * max_numdate_given
 
-        dates = np.array(dates)
-
-        dc.slope,\
-            dc.intersept,\
-            dc.r_val,\
-            dc.pi_val,\
-            dc.sigma = stats.linregress(dates[:, 0], dates[:, 1])
-
-        return dc
+            return dc
 
     def get_branch_len(self, date1, date2):
         """
@@ -74,8 +105,7 @@ class DateConversion(object):
         """
         days = abs_t / abs(self.slope)  #(self.intersept - abs_t) / self.slope
         if days < 0:
-            print ("The inferred date of the node is "
-                "later than today!")
+            print ("The inferred date of the node is later than today!")
             #print ("Warning: got the negative date! Returning the inverse.")
             #days = abs(days)
         return days
@@ -332,13 +362,15 @@ def build_DM(self, nodes, gtr):
         np.fill_diagonal(DM, 1e10)
         return DM
 
-def numeric_date(dt):
+def numeric_date(dt=None):
     """
     Convert datetime object to the numeric date.
     The numeric date format is YYYY.F, where F is the fraction of the year passed
+    Args:
+     - dt: (datetime.datetime) date of to be convrted. if None, assume today
     """
     if dt is None:
-        return 0.00
+        dt = datetime.datetime.now()
 
     try:
         res = dt.year + dt.timetuple().tm_yday / 365.25
