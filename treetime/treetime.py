@@ -34,8 +34,8 @@ class TreeTime(TreeAnc, object):
     is converted to the time of the internal node.
     """
 
-    def __init__(self):
-        super(TreeTime, self).__init__()
+    def __init__(self, gtr):
+        super(TreeTime, self).__init__(gtr)
         self.date2dist = None  # we do not know anything about the conversion
         self.tree_file = ""
         self.max_diam = 0.0
@@ -67,7 +67,7 @@ class TreeTime(TreeAnc, object):
         # fix tree lengths, etc
         self.set_additional_tree_params()
 
-    def init_date_constraints(self, gtr, slope=None):
+    def init_date_constraints(self, slope=None):
         """
         Get the conversion coefficients between the dates and the branch
         lengths as they are used in ML computations. The conversion formula is
@@ -83,9 +83,9 @@ class TreeTime(TreeAnc, object):
 
         # set the None  for the date-related attributes in the internal nodes.
         # make interpolation objects for the branches
-        self._ml_t_init(gtr)
+        self._ml_t_init()
 
-    def _make_branch_len_interpolator(self, node, gtr, n=ttconf.BRANCH_GRID_SIZE):
+    def _make_branch_len_interpolator(self, node, n=ttconf.BRANCH_GRID_SIZE):
         """
         Makes an interpolation object for probability of branch length. Builds
         an adaptive grid with n points, fine around the optimal branch length,
@@ -98,10 +98,6 @@ class TreeTime(TreeAnc, object):
         Args:
          - node(Phylo.Clade): tree node. The probability distribution fro the branch
          from the node to its parent is to be  computed
-
-         - gtr(GTR): GTR model of evolution. required to determine the probability
-         of the  two given sequences to be separated by time t (i.e. the branch
-        length have length t)
 
          - n(int): number of points in the branch length grid.
 
@@ -120,7 +116,7 @@ class TreeTime(TreeAnc, object):
         prof_ch = node.profile
 
         # optimal branch length
-        obl = gtr.optimal_t(node.up.profile, node.profile) # not rotated profiles!
+        obl = self.gtr.optimal_t(node.up.profile, node.profile) # not rotated profiles!
 
         if obl < np.min((1e-5, 0.1*self.one_mutation)): # zero-length
 
@@ -147,7 +143,7 @@ class TreeTime(TreeAnc, object):
         # log-probability of the branch len to be at this value
         logprob = np.concatenate([
             [0., 0.],
-            [gtr.prob_t(prof_p, prof_ch, t_, return_log=True) for t_ in grid[2:-2]],
+            [self.gtr.prob_t(prof_p, prof_ch, t_, return_log=True) for t_ in grid[2:-2]],
             [0., 0.]])
 
         logprob[((0,1,-2,-1),)] = ttconf.MIN_LOG
@@ -215,7 +211,7 @@ class TreeTime(TreeAnc, object):
             integral = np.sum(0.5*(tmp_prob[1:]+tmp_prob[:-1])*dt)
             node.branch_neg_log_prob = interp1d(grid, y + np.log(integral), kind='linear')
 
-    def _ml_t_init(self, gtr):
+    def _ml_t_init(self):
         """
         Initialize the necessary attributes in all tree nodes, which are required
         by the ML algorithm to compute the probablility distribution of hte nodes
@@ -225,8 +221,6 @@ class TreeTime(TreeAnc, object):
         date-time information (these are going to be delta-functions), and
         set the sequence profiles in the eigenspace of the used GTR matrix.
 
-        Args:
-         - gtr(GTR): Evolutionary model.
         """
         tree = self.tree
 
@@ -241,11 +235,11 @@ class TreeTime(TreeAnc, object):
                 node.merger_rate=ttconf.BRANCH_LEN_PENALTY
 
             # make interpolation object for branch lengths
-            self._make_branch_len_interpolator(node, gtr, n=ttconf.BRANCH_GRID_SIZE)
+            self._make_branch_len_interpolator(node, n=ttconf.BRANCH_GRID_SIZE)
             # set the profiles in the eigenspace of the GTR matrix
             # in the following, we only use the prf_l and prf_r (left and right
             # profiles in the matrix eigenspace)
-            self._set_rotated_profiles(node, gtr)
+            self._set_rotated_profiles(node)
 
             # node is constrained
             if hasattr(node, 'numdate_given') and node.numdate_given is not None:
@@ -444,6 +438,7 @@ class TreeTime(TreeAnc, object):
                 #node.msg_from_parent = msg_from_parent
 
                 node.total_prob = utils.delta_fun(collapse_func(node.msg_from_parent),
+    
                         return_log=True, normalized=False)
 
             self._set_final_date(node)
@@ -492,7 +487,7 @@ class TreeTime(TreeAnc, object):
             # this is the approximation
             node.date = str(year) + "-" + str( int(days / 30)) + "-" + str(int(days % 30))
 
-    def coalescent_model(self, gtr, Tc=None, optimize_Tc = False):
+    def coalescent_model(self, Tc=None, optimize_Tc = False):
         """
         optimize the position of internal and otherwise unconstrained nodes using
         a coalescent model prior
@@ -501,7 +496,7 @@ class TreeTime(TreeAnc, object):
         #  propagate messages up and down and reconstruct ancestral states
         self._ml_t_leaves_root()
         self._ml_t_root_leaves()
-        self._ml_anc(gtr)
+        self._ml_anc()
 
         # of no coalescence time scale is provided, use half the root time
         if Tc is None:
@@ -510,7 +505,7 @@ class TreeTime(TreeAnc, object):
         # resolve polytomies if there are any
         coalescent(self.tree, Tc=Tc)
         self._update_branch_len_interpolators()
-        self.resolve_polytomies(gtr)
+        self.resolve_polytomies()
 
         # if desired, optimize the coalescence time scale
         if optimize_Tc:
@@ -519,7 +514,7 @@ class TreeTime(TreeAnc, object):
                 self._update_branch_len_interpolators()
                 self._ml_t_leaves_root()
                 self._ml_t_root_leaves()
-                self._ml_anc(gtr)
+                self._ml_anc()
                 print("Tc:",Tc)
                 self.print_lh()
                 return -self.total_LH()
@@ -533,20 +528,14 @@ class TreeTime(TreeAnc, object):
                 print('coalescent time scale optimization failed')
         self._ml_t_leaves_root()
         self._ml_t_root_leaves()
-        self._ml_anc(gtr)
+        self._ml_anc()
 
-    def ml_t(self, gtr):
+    def ml_t(self):
         """
         Perform the maximum-likelihood -- based optimization of the tree with temporal
         constraints of (some) internal nodes.
 
         Args:
-
-         - gtr(GTR): general time-reversible model, which is required for the post-
-           optimization of the ancestral sequences. NOTE that GTR is not required
-           in the process of the optimization itself, since all the distance-based
-           parameters are pre-set at the preparation steps (namely, the branch length
-           interpolation objects).
 
         Returns:
 
@@ -559,16 +548,16 @@ class TreeTime(TreeAnc, object):
         #  propagate messages down - reconstruct node positions
         # self._ml_t_root_leaves_tmp()
         self._ml_t_root_leaves()
-        self._ml_anc(gtr)
+        self._ml_anc()
         print ("Done tree optimization.")
 
-    def _set_rotated_profiles(self, node, gtr):
+    def _set_rotated_profiles(self, node):
         """
         Set sequence and its profiles in the eigenspace of the transition
         matrix.
         """
-        node.prf_r = node.profile.dot(gtr.v)
-        node.prf_l = (gtr.v_inv.dot(node.profile.T)).T
+        node.prf_r = node.profile.dot(self.gtr.v)
+        node.prf_l = (self.gtr.v_inv.dot(node.profile.T)).T
 
     def _score_branch(self, node):
         """
@@ -614,14 +603,11 @@ class TreeTime(TreeAnc, object):
         else:
             return ttconf.MIN_LOG
 
-    def resolve_polytomies(self, gtr,merge_compressed=False):
+    def resolve_polytomies(self,merge_compressed=False):
         """
         Resolve the polytomies on the tree given the joining algorithm opt.
         The function scans the tree, resolves polytomies in case there are any,
         and re-optimizes the tree with new topology.
-
-        Args:
-         - gtr(TreeAnc.GTR): evolutionary model
 
          - opt(callable): function, which converts the node with polytomies into
          the binary tree. Use one of the standard functions (e.g.
@@ -631,16 +617,16 @@ class TreeTime(TreeAnc, object):
          - opt_args(tuple): arguments for the optimization algorithm opt.
         """
         for n in self.tree.find_clades():
-            if len(n.clades) > 3: self._poly(n, gtr, merge_compressed)
+            if len(n.clades) > 3: self._poly(n, merge_compressed)
 
-        self.optimize_branch_len(gtr)
-        self.optimize_seq_and_branch_len(gtr, prune_short=False)
-        self._ml_t_init(gtr)
-        self.ml_t(gtr)
-        self._ml_anc(gtr)
+        self.optimize_branch_len()
+        self.optimize_seq_and_branch_len(prune_short=False)
+        self._ml_t_init()
+        self.ml_t()
+        self._ml_anc()
         self.tree.ladderize()
 
-    def _poly(self, clade, gtr, merge_compressed, verbose=10):
+    def _poly(self, clade, merge_compressed, verbose=10):
 
         """
         Function to resolve polytomies for a given parent node. If the number of the
@@ -721,7 +707,7 @@ class TreeTime(TreeAnc, object):
                 new_node.profile = clade.profile
                 new_node.mutations = []
                 new_node.merger_rate = clade.merger_rate
-                self._make_branch_len_interpolator(new_node, gtr, n=36)
+                self._make_branch_len_interpolator(new_node, n=36)
                 clade.clades.remove(n1)
                 clade.clades.remove(n2)
                 clade.clades.append(new_node)
@@ -782,3 +768,61 @@ class TreeTime(TreeAnc, object):
         s_lh = self.tree.sequence_LH
         t_lh = -self.tree.root.msg_to_parent.y.min()
         return s_lh+t_lh
+
+   
+    def find_best_root_and_regression(self):
+
+        sum_ti = np.sum([node.numdate_given for node in self.tree.get_terminals() if node.numdate_given is not None])
+        sum_ti2 = np.sum([node.numdate_given ** 2 for node in self.tree.get_terminals() if node.numdate_given is not None])
+        N = len(self.tree.get_terminals())
+
+        #  fill regression terms for one of the two subtrees
+        for node in self.tree.find_clades(order='postorder'):  # children first, msg to parents 
+            if node.is_terminal():  # skip leaves
+                #  will not rely on the standard func - count terminals directly 
+                node._st_n_leaves = 1
+                node._st_sum_di = 0.0
+                node._st_sum_diti = 0.0
+                node._st_sum_di2 = 0.0
+                if node.numdate_given is not None:
+                    node._st_sum_ti = node.numdate_given
+                else:
+                    node._st_sum_ti = 0.0
+                node._sum_ti = sum_ti
+                node._sum_ti2 = sum_ti2
+                continue
+
+            #  theese all account for subtree only (except root, which collects whole tree)
+            node._st_sum_ti = np.sum([k._st_sum_ti for k in node.clades])
+            node._st_n_leaves = np.sum([k._st_n_leaves for k in node.clades])
+            node._st_sum_di   = np.sum([k._st_sum_di + k._st_n_leaves * k.branch_length for k in node.clades])
+            node._st_sum_diti = np.sum([k._st_sum_diti + k.branch_length * k._st_sum_ti for k in node.clades])
+            node._st_sum_di2  = np.sum([k._st_sum_di2 + k._st_sum_di * 2 * k.branch_length + k._st_n_leaves * k.branch_length ** 2 for k in node.clades])
+            
+            node._sum_ti = sum_ti
+            node._sum_ti2 = sum_ti2
+
+        best_root = self.tree.root
+
+        for node in self.tree.find_clades(order='preorder'):  # root first
+
+            if node.up is None:
+                # assign the values for the root node
+                node._sum_di   = node._st_sum_di   
+                node._sum_diti = node._st_sum_diti 
+                node._sum_di2  = node._st_sum_di2  
+
+            else:
+                node._sum_di = node.up._sum_di + (1.0*N-2.0*node._st_n_leaves) * node.branch_length
+                node._sum_di2 = node.up._sum_di2 - 4.0*node.branch_length*node._st_sum_di + 2.0 * node.branch_length * node._sum_di + (1.0*N - 2.0 * node._st_n_leaves) * node.branch_length**2 
+                node._sum_diti = node.up._sum_diti + node.branch_length * (sum_ti - 2.0 * node._st_sum_ti)
+            
+            node._R2 = ((1.0*N * node._sum_diti - sum_ti * node._sum_di) / (np.sqrt((1.0*N * sum_ti2 - node._sum_ti**2)*(1.0*N * node._sum_di2 - node._sum_di**2))))**2
+            if node._R2 > best_root._R2:
+                best_root = node
+                node._beta = ( 1.0 * N * node._sum_diti - sum_ti * node._sum_di ) / (1.0*N*sum_ti2 - sum_ti**2)
+                node._alpha = 1.0 / N *node._sum_di - 1.0 / N * node._beta * sum_ti
+
+        return best_root, best_root._alpha, best_root._beta
+
+

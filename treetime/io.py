@@ -8,7 +8,7 @@ import seq_utils
 import pandas 
 import pandas
 
-def treetime_from_newick(infile):
+def treetime_from_newick(gtr, infile):
     """
     Create TreeTime object and load phylogenetic tree from newick file
     Args:
@@ -17,7 +17,7 @@ def treetime_from_newick(infile):
      - tanc(TreeTime): tree time object with phylogenetic tree set and required
      parameters assigned to the nodes.
     """
-    tanc = TreeTime()
+    tanc = TreeTime(gtr)
     tanc.tree = Phylo.read(infile, 'newick')
     tanc.set_additional_tree_params()
     return tanc
@@ -33,13 +33,14 @@ def save_timetree_results(tree, outfile_prefix):
     df = pandas.DataFrame(columns=["Given_date", "Initial_root_dist", "Inferred_date"])
     aln = Align.MultipleSeqAlignment([])
     
+    i = 0
     for node in tree.tree.find_clades():
-        
+        i += 1
         if node.name is None:
             if node.up is None:
                 node.name = "ROOT"
             else:
-                node.name = "node_" + str(np.random.randint(1e8))
+                node.name = "node_" + format(i, '07d') #  str(np.random.randint(1e8))
         
         #  alignment
         aln.append(Bio.SeqRecord.SeqRecord(Align.Seq(''.join(node.sequence)), node.name))
@@ -49,9 +50,32 @@ def save_timetree_results(tree, outfile_prefix):
 
     # save everything
     df.to_csv(outfile_prefix + ".meta.csv")
+    #  TODO save variance to the metadata
     Phylo.write(tree.tree, outfile_prefix + ".tree.nwk", "newick")
     AlignIO.write(aln, outfile_prefix + ".aln.fasta", "fasta")
-    pass 
+    
+    # save root distibution 
+    mtp = tree.tree.root.msg_to_parent
+    threshold = mtp.y.min() + 1000
+    idxs = [mtp.y < threshold]
+    mtpy = mtp.y[idxs]
+    mtpx = utils.numeric_date() -  np.array(map(tree.date2dist.get_date, mtp.x[idxs]))
+    mtpy[0] = threshold
+    mtpy[-1] = threshold
+
+    np.savetxt(outfile_prefix + ".root_dist.csv", 
+        np.hstack((mtpx[:, None], mtpy[:, None])),
+        header="Root date,-log(LH)", delimiter=',')
+    
+    # zip results to one file
+    import zipfile
+    outzip = outfile_prefix + ".zip"
+    zipf = zipfile.ZipFile(outzip, 'w')
+    zipf.write(outfile_prefix + ".meta.csv")
+    zipf.write(outfile_prefix + ".aln.fasta")
+    zipf.write(outfile_prefix + ".tree.nwk")
+    zipf.write(outfile_prefix + ".root_dist.csv")
+
 
 def set_seqs_to_leaves(tree, aln):
     """
@@ -159,6 +183,7 @@ def read_dates_file(self, inf, **kwargs):
                    "corrupted. Return empty dictionary.")
             return {}
 
+#  FIXME make consistent with metadata dictionary
 def set_node_dates_from_dic(tree, dates_dic):
     """
     Read names of the leaves of the tree, mathc them with the provided dictionary
@@ -175,7 +200,7 @@ def set_node_dates_from_dic(tree, dates_dic):
     
     err_ = 0
     num_ = 0 
-    now = utils.numdate(datetime.datetime.now())
+    now = utils.numeric_date(datetime.datetime.now())
     for node in tree.tree.find_clades():
         
         if node.name is None or not node.name in dates_dic:

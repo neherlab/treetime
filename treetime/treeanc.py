@@ -23,8 +23,13 @@ class TreeAnc(object):
     def leaves_lookup(self):
         return self._leaves_lookup
 
+    @property
+    def gtr(self):
+        return self._gtr
     
-    def __init__(self):
+    def __init__(self, gtr):
+        assert(isinstance(gtr, GTR))
+        self._gtr = gtr
         self.tree = None
         self._leaves_lookup = {}
         # self.set_additional_tree_params()
@@ -92,9 +97,13 @@ class TreeAnc(object):
         Set auxilliary parameters to every node of the tree.
         """
         self.tree.root.dist2root_0 = 0.0
+        i = 0
         for clade in self.tree.get_nonterminals(order='preorder'): # up->down
             for c in clade.clades:
                 c.up = clade
+                if c.up.name is None:
+                    c.up.name = "NODE_" + format(i, '07d')
+                    i += 1
                 c.dist2root = c.up.dist2root + c.branch_length
                 c.dist2root_0 = c.dist2root #  store the values used later for date-branchLen conversion
         return
@@ -115,18 +124,9 @@ class TreeAnc(object):
         if method == 'fitch':
             N_diff = self._fitch_anc(**kwargs)
         elif method == 'ml':
-
-            if ('model' not in kwargs):
-                print("Warning: You chose Maximum-likelihood reconstruction,"
-                    " but did not specified any model. Jukes-Cantor will be used as default.")
-                gtr = GTR.standard(model='Jukes-Cantor')
-            else:
-                gtr = kwargs.pop('model')
-
-            N_diff = self._ml_anc(gtr, **kwargs)
+            N_diff = self._ml_anc(**kwargs)
         else:
             raise NotImplementedError("The reconstruction method %s is not supported. " % method)
-
         return N_diff
 
     def _fitch_anc(self, **kwargs):
@@ -228,7 +228,7 @@ class TreeAnc(object):
         shift = N-1
         return aux[aux[shift:] == aux[:-shift]]
 
-    def _ml_anc(self, gtr, **kwargs):
+    def _ml_anc(self, **kwargs):
         """
         Perform ML reconstruction for the ancestral states
         Args:
@@ -249,19 +249,19 @@ class TreeAnc(object):
             except:
                 print ("ML ERROR in input: verbose param must be int")
         L = tree.get_terminals()[0].sequence.shape[0]
-        a = gtr.alphabet.shape[0]
+        a = self.gtr.alphabet.shape[0]
         if verbose > 2:
             print ("Walking up the tree, computing joint likelihoods...")
         for leaf in tree.get_terminals():
             # in any case, set the profile
-            leaf.profile = seq_utils.seq2prof(leaf.sequence, gtr.alphabet_type)
+            leaf.profile = seq_utils.seq2prof(leaf.sequence, self.gtr.alphabet_type)
             leaf.lh_prefactor = np.zeros(L)
         for node in tree.get_nonterminals(order='postorder'): #leaves -> root
             # regardless of what was before, set the profile to ones
             node.lh_prefactor = np.zeros(L)
             node.profile = np.ones((L, a)) # we will multiply it
             for ch in node.clades:
-                ch.seq_msg_to_parent = gtr.propagate_profile(ch.profile,
+                ch.seq_msg_to_parent = self.gtr.propagate_profile(ch.profile,
                     ch.branch_length,
                     rotated=False, # use unrotated
                     return_log=False) # raw prob to transfer prob up
@@ -273,7 +273,7 @@ class TreeAnc(object):
             node.lh_prefactor += np.log(pre) # and store log-prefactor
         if (verbose > 2):
             print ("Walking down the tree, computing maximum likelihood     sequences...")
-        tree.root.profile *= np.diag(gtr.Pi) # Msg to the root from the distant part (equ frequcies)
+        tree.root.profile *= np.diag(self.gtr.Pi) # Msg to the root from the distant part (equ frequcies)
 
         # extract the likelihood from the profile
         tree.root.lh_prefactor += np.log(tree.root.profile.max(axis=1))
@@ -281,7 +281,7 @@ class TreeAnc(object):
         tree.sequence_LH = 0
         # reset profile to 0-1 and set the sequence
         tree.root.sequence, tree.root.profile = \
-            seq_utils.prof2seq(tree.root.profile, gtr, True)
+            seq_utils.prof2seq(tree.root.profile, self.gtr, True)
 
 
         for node in tree.find_clades(order='preorder'):
@@ -289,14 +289,14 @@ class TreeAnc(object):
                 continue
             # integrate the information coming from parents with the information
             # of all children my multiplying it to the prev computed profile
-            node.seq_msg_from_parent = gtr.propagate_profile(node.up.profile,
+            node.seq_msg_from_parent = self.gtr.propagate_profile(node.up.profile,
                             node.branch_length,
                             rotated=False, # use unrotated
                             return_log=False)
             node.profile *= node.seq_msg_from_parent
 
             # reset the profile to 0-1 and  set the sequence
-            sequence, profile = seq_utils.prof2seq(node.profile, gtr, True)
+            sequence, profile = seq_utils.prof2seq(node.profile, self.gtr, True)
             node.mutations = [(anc, pos, der) for pos, (anc, der) in
                             enumerate(izip(node.up.sequence, sequence)) if anc!=der]
 
@@ -310,7 +310,7 @@ class TreeAnc(object):
             node.profile = profile
         return N_diff
 
-    def optimize_branch_len(self, model, **kwargs):
+    def optimize_branch_len(self, **kwargs):
         """
         Perform ML optimization for the branch lengths of the whole tree or any
         subtree. **Note** this method assumes that each node stores information
@@ -354,7 +354,7 @@ class TreeAnc(object):
 
             # optimization method
             #import ipdb; ipdb.set_trace()
-            new_len = model.optimal_t(prof_p, prof_ch) # not rotated profiles!
+            new_len = self.gtr.optimal_t(prof_p, prof_ch) # not rotated profiles!
             if new_len < 0:
                 continue
 
@@ -371,7 +371,7 @@ class TreeAnc(object):
         self._set_each_node_params()
         return
 
-    def prune_short_branches(self,gtr):
+    def prune_short_branches(self):
         """
         If the branch length is less than the minimal value, remove the branch
         from the tree. **Requires** the ancestral seequence reconstruction
@@ -380,7 +380,7 @@ class TreeAnc(object):
             if node.up is None:
                 continue
             # probability of the two seqs separated by zero time is not zero
-            if gtr.prob_t(node.up.profile, node.profile, 0.0) > 0.1:
+            if self.gtr.prob_t(node.up.profile, node.profile, 0.0) > 0.1:
                 #FIXME: Why don't allow merging with the root?
                 if node.is_terminal(): # or (node.up == self.tree.root): # leaf stays as is
                     continue
@@ -391,7 +391,7 @@ class TreeAnc(object):
                 for clade in node.clades:
                     clade.up = node.up
 
-    def optimize_seq_and_branch_len(self,gtr,reuse_branch_len=True,prune_short=True):
+    def optimize_seq_and_branch_len(self,reuse_branch_len=True,prune_short=True):
         """
         Iteratively set branch lengths and reconstruct ancestral sequences until
         the values of either former or latter do not change. The algorithm assumes
@@ -401,8 +401,7 @@ class TreeAnc(object):
         and re-do reconstruction until convergence using ML method.
         Args:
 
-         - gtr (GTR): general time-reversible model to be used by every ML algorithm
-         
+                 
          - reuse_branch_len(bool, default True): if True, rely on the initial 
          branch lenghts, and start from the Maximum-likelihood ancestral sequence
          inferrence, which takes into account topology and the branch lenghts. 
@@ -416,7 +415,7 @@ class TreeAnc(object):
         """
 
         if reuse_branch_len:
-            N_diff = self.reconstruct_anc('ml', model=gtr)
+            N_diff = self.reconstruct_anc('ml')
         else:
             N_diff = self.reconstruct_anc(method='fitch')
         n = 0
@@ -424,10 +423,10 @@ class TreeAnc(object):
 
             n += 1
 
-            self.optimize_branch_len(gtr, verbose=0, store_old=False)
+            self.optimize_branch_len(verbose=0, store_old=False)
             if prune_short:
-                self.prune_short_branches(gtr)
-            N_diff = self.reconstruct_anc('ml', model=gtr)
+                self.prune_short_branches()
+            N_diff = self.reconstruct_anc('ml')
 
             print ("Optimizing ancestral states and branch lengths. Round %d."
                    " #Nuc changed since prev reconstructions: %d" %(n, N_diff))
