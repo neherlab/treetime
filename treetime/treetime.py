@@ -771,6 +771,12 @@ class TreeTime(TreeAnc, object):
 
    
     def find_best_root_and_regression(self):
+        """
+        Find the best root for the tree in linear time, given the timestamps of 
+        the leaves. The branch lengths should be optimized prio to the run;
+        the terminal nodes should have the timestamps assigned as numdate_given
+        attribute. 
+        """
 
         sum_ti = np.sum([node.numdate_given for node in self.tree.get_terminals() if node.numdate_given is not None])
         sum_ti2 = np.sum([node.numdate_given ** 2 for node in self.tree.get_terminals() if node.numdate_given is not None])
@@ -792,7 +798,7 @@ class TreeTime(TreeAnc, object):
                 node._sum_ti2 = sum_ti2
                 continue
 
-            #  theese all account for subtree only (except root, which collects whole tree)
+            #  theese all account for subtree only (except for the root, which collects whole tree)
             node._st_sum_ti = np.sum([k._st_sum_ti for k in node.clades])
             node._st_n_leaves = np.sum([k._st_n_leaves for k in node.clades])
             node._st_sum_di   = np.sum([k._st_sum_di + k._st_n_leaves * k.branch_length for k in node.clades])
@@ -812,7 +818,8 @@ class TreeTime(TreeAnc, object):
                 node._sum_diti = node._st_sum_diti 
                 node._sum_di2  = node._st_sum_di2  
 
-            else:
+            else: # basing on the parent, compute the values for regression 
+                #  NOTE order of the values computation matters
                 node._sum_di = node.up._sum_di + (1.0*N-2.0*node._st_n_leaves) * node.branch_length
                 node._sum_di2 = node.up._sum_di2 - 4.0*node.branch_length*node._st_sum_di + 2.0 * node.branch_length * node._sum_di + (1.0*N - 2.0 * node._st_n_leaves) * node.branch_length**2 
                 node._sum_diti = node.up._sum_diti + node.branch_length * (sum_ti - 2.0 * node._st_sum_ti)
@@ -820,6 +827,7 @@ class TreeTime(TreeAnc, object):
             node._R2 = ((1.0*N * node._sum_diti - sum_ti * node._sum_di) / (np.sqrt((1.0*N * sum_ti2 - node._sum_ti**2)*(1.0*N * node._sum_di2 - node._sum_di**2))))**2
             if node._R2 > best_root._R2:
                 best_root = node
+                # regression terms (only for the node better than current root)
                 node._beta = ( 1.0 * N * node._sum_diti - sum_ti * node._sum_di ) / (1.0*N*sum_ti2 - sum_ti**2)
                 node._alpha = 1.0 / N *node._sum_di - 1.0 / N * node._beta * sum_ti
 
