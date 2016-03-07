@@ -769,6 +769,39 @@ class TreeTime(TreeAnc, object):
         t_lh = -self.tree.root.msg_to_parent.y.min()
         return s_lh+t_lh
 
+    # def autocorr_molecular_clock(self):
+    #     """
+    #     Define the mutation rates for each branch
+    #     """
+        
+    #     def get_mu_avg():
+    #         return 1.0
+
+
+    #     def mu(mu_avg, node, *children):
+    #         # fixme 
+    #         if node.up is None:
+    #             return mu_avg
+    #         mu_parent = node.up.mu
+    #         t = node.branch_length # time
+    #         n = (node.up.sequence != node.sequence).sum()
+    #         nom = ttconf.MU_ALPHA * mu_avg + ttconf.MU_BETA * mu_parent - 1.0*n/t
+    #         denom = ttconf.MU_ALPHA + ttconf.MU_BETA - 1
+    #         return nom / denom
+
+    #     mu_avg = get_mu_avg()
+
+    #     for node in self.tree.find_clades(order='postorder'): # root first 
+            
+    #         # node.mu = mu(mu_avg, node)
+
+    #     for node in self.tree.find_clades(order='preorder'): # root first 
+    #         node.mu = mu(mu_avg, node)
+
+    #     return
+
+
+
    
     def find_best_root_and_regression(self):
         """
@@ -793,10 +826,7 @@ class TreeTime(TreeAnc, object):
                 if node.numdate_given is not None:
                     node._st_sum_ti = node.numdate_given
                 else:
-                    node._st_sum_ti = 0.0
-                node._sum_ti = sum_ti
-                node._sum_ti2 = sum_ti2
-                continue
+                    continue
 
             #  theese all account for subtree only (except for the root, which collects whole tree)
             node._st_sum_ti = np.sum([k._st_sum_ti for k in node.clades])

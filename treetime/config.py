@@ -16,3 +16,7 @@ NODE_GRID_SIZE = 210
 NODE_GRID_VAR = 0.5 # branch grid covers up to this ratio of the tree depth
 
 BAD_BRANCHES_FREE = True # if the branch is suspicious -> exclude from the tree optimization.
+
+# autocorrelated molecular clock coefficients
+MU_ALPHA = 1.0
+MU_BETA = 0.01

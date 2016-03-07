@@ -68,7 +68,7 @@ if __name__=='__main__':
     io.set_seqs_to_leaves(t, AlignIO.read(fasta, 'fasta'))
     io.read_metadata(t, mdf)
     a,b,c = t.find_best_root_and_regression()
-    sys.exit(1)
+   
     
     # set dates from the node names
     #io.set_node_dates_from_names(t, date_from_seq_name)
@@ -79,7 +79,7 @@ if __name__=='__main__':
     # plotting the results
     t._score_branches()
     t.tree.ladderize()
-    sys.exit(1)
+   
     #Phylo.draw(t.tree, label_func = lambda x:'', show_confidence=False, branch_labels='')
     t1 = copy.deepcopy(t)
     t1.resolve_polytomies()
