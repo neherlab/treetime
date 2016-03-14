@@ -769,40 +769,82 @@ class TreeTime(TreeAnc, object):
         t_lh = -self.tree.root.msg_to_parent.y.min()
         return s_lh+t_lh
 
-    # def autocorr_molecular_clock(self):
-    #     """
-    #     Define the mutation rates for each branch
-    #     """
+    def autocorr_molecular_clock(self):
+        """
+        Relax the molecular clock for the tree. the method computes the auto-correlated 
+        mutattion rates. The variation for the mutation rates on each branch is 
+        constrained by those on the parent and children branches. The 
+        values of the mutation rates compse the system of linear equations, 
+        which is solved by the iterative sheme. 
+        """
+       
+        def opt_mu(node):
+            if node.up is None: return 0.0
+            mu = (node.up.sequence!=node.sequence).sum()/(node.numdate-node.up.numdate)/node.sequence.shape[0]
+            #print (mu)
+            return mu
+
+        def get_mu_avg():
+            muts = 0.0
+            years = 0.0
+            L = self.tree.get_terminals()[0].sequence.shape[0]
+            for node in self.tree.find_clades(order="preorder"):
+                if node.up is None: continue
+                muts +=    (node.up.sequence!=node.sequence).sum()
+                years += node.numdate-node.up.numdate
+
+            return muts/years/L
         
-    #     def get_mu_avg():
-    #         return 1.0
+        mu_0 = get_mu_avg()
+        MAX_N = 1000
+        D_MU = 1e-10
 
+        def init_iterative():
+            for node in self.tree.find_clades(order="preorder"):
+                denom = 1 + ttconf.MU_ALPHA + ttconf.MU_BETA * (1 + len(node.clades))
+                node._Cn = (opt_mu(node) + ttconf.MU_ALPHA * mu_0) / denom
+                node._Bn = ttconf.MU_BETA / denom
+                node._mu_n = mu_0
+                node._mu_n1 = 0.0
 
-    #     def mu(mu_avg, node, *children):
-    #         # fixme 
-    #         if node.up is None:
-    #             return mu_avg
-    #         mu_parent = node.up.mu
-    #         t = node.branch_length # time
-    #         n = (node.up.sequence != node.sequence).sum()
-    #         nom = ttconf.MU_ALPHA * mu_avg + ttconf.MU_BETA * mu_parent - 1.0*n/t
-    #         denom = ttconf.MU_ALPHA + ttconf.MU_BETA - 1
-    #         return nom / denom
-
-    #     mu_avg = get_mu_avg()
-
-    #     for node in self.tree.find_clades(order='postorder'): # root first 
+        init_iterative()
+        converged = False
+        N = 0
+        while not converged:
+            delta_mu = 0.0
             
-    #         # node.mu = mu(mu_avg, node)
+            # first pass, we set the mu values at N+1 step
+            for node in self.tree.find_clades(order="preorder"):
+                if node.up is None: continue
+                node._mu_n1 = node._Cn + node._Bn * node.up._mu_n + node._Bn * np.sum([0.0] + [k._mu_n for k in node.clades])
+                delta_mu += (node._mu_n1 - node._mu_n)**2
 
-    #     for node in self.tree.find_clades(order='preorder'): # root first 
-    #         node.mu = mu(mu_avg, node)
+            # update the Nth mu value
+            for node in self.tree.find_clades(order="preorder"):
+                node._mu_n = node._mu_n1
 
-    #     return
+            N += 1
 
+            if N > MAX_N:
+                print ("The autocorrelated molecular clock failed to converge.")
+                break
 
+            converged = delta_mu < D_MU
 
-   
+        if converged: 
+            print ("Autocorrelated molecular clock was computed in " + str(N+1) 
+                + " steps")
+        else:
+            print ("Autocorrelated molecular clock computation has not converged "
+                "after " + str(N) + "steps. Computation failed. The mutation rates will be purged now...")
+            
+            for node in self.tree.find_clades(order="preorder"):
+                denom = 1 + ttconf.MU_ALPHA + ttconf.MU_BETA * (1 + len(node.clades))
+                del(node._Cn)
+                del(node._Bn)
+                del(node._mu_n  )
+                del(node._mu_n1 )
+
     def find_best_root_and_regression(self):
         """
         Find the best root for the tree in linear time, given the timestamps of 
@@ -855,6 +897,9 @@ class TreeTime(TreeAnc, object):
                 node._sum_diti = node.up._sum_diti + node.branch_length * (sum_ti - 2.0 * node._st_sum_ti)
             
             node._R2 = ((1.0*N * node._sum_diti - sum_ti * node._sum_di) / (np.sqrt((1.0*N * sum_ti2 - node._sum_ti**2)*(1.0*N * node._sum_di2 - node._sum_di**2))))**2
+            node._beta = ( 1.0 * N * node._sum_diti - sum_ti * node._sum_di ) / (1.0*N*sum_ti2 - sum_ti**2)
+            node._alpha = 1.0 / N *node._sum_di - 1.0 / N * node._beta * sum_ti
+            
             if node._R2 > best_root._R2:
                 best_root = node
                 # regression terms (only for the node better than current root)
