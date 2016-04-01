@@ -18,5 +18,5 @@ NODE_GRID_VAR = 0.5 # branch grid covers up to this ratio of the tree depth
 BAD_BRANCHES_FREE = True # if the branch is suspicious -> exclude from the tree optimization.
 
 # autocorrelated molecular clock coefficients
-MU_ALPHA = 100000
-MU_BETA = 10
+MU_ALPHA = 100
+MU_BETA = 100

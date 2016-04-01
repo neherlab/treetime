@@ -321,10 +321,10 @@ def multiply_dists(interps):
         opts = [k for k in opts if k is not None]
         grid = np.unique(np.concatenate ((opts, make_node_grid(np.mean(opts)))))
 
-    try:
-        node_prob = np.sum([k(grid) for k in interps], axis=0)
-    except:
-        import ipdb; ipdb.set_trace()
+    #try:
+    node_prob = np.sum([k(grid) for k in interps], axis=0)
+    #except:
+    #    import ipdb; ipdb.set_trace()
 
 
     node_prob[((0,-1),)] = -1 * ttconf.MIN_LOG # +1000

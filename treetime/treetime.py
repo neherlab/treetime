@@ -117,6 +117,8 @@ class TreeTime(TreeAnc, object):
 
         # optimal branch length
         obl = self.gtr.optimal_t(node.up.profile, node.profile) # not rotated profiles!
+        
+        node.opt_branch_length = obl #  need for some computations 
 
         if obl < np.min((1e-5, 0.1*self.one_mutation)): # zero-length
 
@@ -834,6 +836,11 @@ class TreeTime(TreeAnc, object):
         if converged: 
             print ("Autocorrelated molecular clock was computed in " + str(N+1) 
                 + " steps")
+            
+            for node in self.tree.find_clades(order="preorder"):
+                denom = 1 + ttconf.MU_ALPHA + ttconf.MU_BETA * (1 + len(node.clades))
+                node._mu_n1 /= mu_0
+
         else:
             print ("Autocorrelated molecular clock computation has not converged "
                 "after " + str(N) + "steps. Computation failed. The mutation rates will be purged now...")
@@ -852,7 +859,7 @@ class TreeTime(TreeAnc, object):
         the terminal nodes should have the timestamps assigned as numdate_given
         attribute. 
         """
-
+        
         sum_ti = np.sum([node.numdate_given for node in self.tree.get_terminals() if node.numdate_given is not None])
         sum_ti2 = np.sum([node.numdate_given ** 2 for node in self.tree.get_terminals() if node.numdate_given is not None])
         N = len(self.tree.get_terminals())
@@ -865,10 +872,14 @@ class TreeTime(TreeAnc, object):
                 node._st_sum_di = 0.0
                 node._st_sum_diti = 0.0
                 node._st_sum_di2 = 0.0
+                
                 if node.numdate_given is not None:
                     node._st_sum_ti = node.numdate_given
-                else:
-                    continue
+                
+                node._sum_ti = sum_ti
+                node._sum_ti2 = sum_ti2
+
+                continue
 
             #  theese all account for subtree only (except for the root, which collects whole tree)
             node._st_sum_ti = np.sum([k._st_sum_ti for k in node.clades])
@@ -880,6 +891,7 @@ class TreeTime(TreeAnc, object):
             node._sum_ti = sum_ti
             node._sum_ti2 = sum_ti2
 
+        
         best_root = self.tree.root
 
         for node in self.tree.find_clades(order='preorder'):  # root first
@@ -907,5 +919,25 @@ class TreeTime(TreeAnc, object):
                 node._alpha = 1.0 / N *node._sum_di - 1.0 / N * node._beta * sum_ti
 
         return best_root, best_root._alpha, best_root._beta
+
+    def reroot_to_best_root(self):
+        
+        best_root, a, b = self.find_best_root_and_regression()
+        # first, re-root the tree
+        self.tree.root_with_outgroup(best_root)
+        # set the date2dist params
+        self.date2dist = utils.DateConversion()
+        self.date2dist.slope = best_root._beta
+        self.date2dist.intersept = best_root._alpha
+        self.date2dist.r_val = best_root._R2
+        # finally, re-compute the basic tree params as we changed the root 
+        self.tree.ladderize()
+        self.tree.root.branch_length = self.one_mutation
+        self.tree.root.numdate_given = None
+        # fix tree lengths, etc
+        self.set_additional_tree_params()
+        self.max_diam = self.date2dist.intersept
+        self._ml_t_init() # this is essential as it sets all the interpolation objects
+
 
 

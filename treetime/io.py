@@ -6,7 +6,6 @@ from treetime import TreeTime
 import utils 
 import seq_utils
 import pandas 
-import pandas
 
 def treetime_from_newick(gtr, infile):
     """
@@ -22,8 +21,137 @@ def treetime_from_newick(gtr, infile):
     tanc.set_additional_tree_params()
     return tanc
 
-def save_newick_tree(outfile):
-    pass
+def treetime_to_newick(tt, outf):
+    Phylo.write(tt.tree, outf, 'newick')
+
+def _layout(tree):
+    """Add clade, xvalue, yvalue, mutation and trunk attributes to all nodes in tree"""
+    tree.root.branch_length = 0.01
+    clade = 0
+    yvalue = 0
+    for node in tree.find_clades(order="preorder"):
+        # set mutations 
+        if node.up is not None:
+            node.muts = ' '.join([node.up.sequence[p] + str(p) + node.sequence[p] 
+                for p in np.where(node.up.sequence != node.sequence)[0]])
+        # set clade No
+        node.clade = clade
+        clade += 1
+        if node.up is not None: #try:
+            # Set xValue, tValue, yValue
+            node.xvalue = node.up.xvalue+node.opt_branch_length
+            node.tvalue = node.numdate - tree.root.numdate
+        else:
+            node.xvalue = 0.0
+            node.tvalue = 0.0
+        if node.is_terminal():
+            node.yvalue = yvalue
+            yvalue += 1
+        # check numdate
+        if not hasattr(node, 'numdate'):
+            node.numdate = 0.0
+    for node in tree.get_nonterminals(order="postorder"):
+        node.yvalue = np.mean([x.yvalue for x in node.clades])
+
+def treetime_to_json(tt, outf):
+
+    def _node_to_json(node):
+        
+        tree_json = {}
+        str_attr = ['country','region','clade','strain', 'date', 'muts']
+        num_attr = ['xvalue', 'yvalue', 'tvalue', 'numdate']
+        
+        if hasattr(node, 'name'):
+            tree_json['strain'] = node.name
+            tree_json['name'] = node.name
+    
+        for prop in str_attr:
+            if hasattr(node, prop):
+                tree_json[prop] = node.__getattribute__(prop)
+        for prop in num_attr:
+            if hasattr(node, prop):
+                try:
+                    tree_json[prop] = round(node.__getattribute__(prop),5)
+                except:
+                    print "cannot round:", node.__getattribute__(prop), "assigned as is"
+                    tree_json[prop] = node.__getattribute__(prop)
+    
+        #for prop in extra_attr:
+        #    if len(prop)==2 and callable(prop[1]):
+        #        if hasattr(node, prop[0]):
+        #            tree_json[prop] = prop[1](node.__getattribute__(prop[0]))
+        #    else:
+        #        if hasattr(node, prop):
+        #            tree_json[prop] = node.__getattribute__(prop)
+    
+        if node.clades:
+            tree_json["children"] = []
+            for ch in node.clades:
+                tree_json["children"].append(_node_to_json(ch))
+        
+        return tree_json
+
+    _layout(tt.tree)
+    tree_json = _node_to_json(tt.tree.root)
+    with open (outf,'w') as of:
+        json.dump(tree_json, of, indent=False)
+
+def tips_data_to_json(tt, outf):
+    
+    if not hasattr(tt.tree.get_terminals()[0], 'xvalue'):
+        _layout(tt.tree);
+
+    arr = [
+    {
+        'name': k.name,
+        'strain':k.name,
+        'numdate_given': k.numdate_given if hasattr(k, 'numdate_given') else 0.0,
+        'numdate': k.numdate if hasattr(k, 'numdate') else 0.0,
+        'xValue': k.xvalue if hasattr(k, 'xvalue') else 0.0,
+
+    } for k in tt.tree.get_terminals()]
+    
+    with open (outf,'w') as of:
+        json.dump(arr, of, indent=True)
+
+def root_lh_to_json(tt, outf):
+    
+    mtp = tt.tree.root.msg_to_parent
+    mtp_min = mtp.y.min()
+    
+    mtpy = np.array([np.exp(-k+mtp_min) for k in mtp.y])
+    mtpx = mtp.x
+
+    # cut and center
+    maxy_idx = mtpy.argmax()
+    val_right = (mtpy[maxy_idx:] > 1e-50)
+    if (val_right.sum() == 0):
+        right_dist = 0
+    else:
+        # left, actually (time is in the opposite direction)
+        right_dist = - mtpx[maxy_idx] + mtpx[maxy_idx + val_right.argmin()] 
+
+    val_left = mtpy[:maxy_idx] > 1e-50
+    if (val_left.sum() == 0):
+        left_dist = 0.0
+    else:
+        left_dist =  mtpx[maxy_idx] - mtpx[maxy_idx - val_left.argmax()] 
+
+
+    dist = np.max((left_dist, right_dist))
+    center = mtpx[maxy_idx]
+    
+    # final x-y scatter
+    
+    raw_x = np.unique(np.concatenate(([center-dist], [center], [center+dist], mtpx[(mtpx < dist + center) & (mtpx > center-dist)])))
+    
+
+    x = utils.numeric_date() -  np.array(map(tt.date2dist.get_date, raw_x))
+    y = np.exp(-(mtp(raw_x) - mtp_min))
+    arr = [{"x":f, "y":b} for f, b in zip(x, y)]
+
+    with open (outf,'w') as of:
+        json.dump(arr, of, indent=True)
 
 def save_timetree_results(tree, outfile_prefix):
     """
@@ -34,19 +162,6 @@ def save_timetree_results(tree, outfile_prefix):
     aln = Align.MultipleSeqAlignment([])
     
     i = 0
-    for node in tree.tree.find_clades():
-        i += 1
-        if node.name is None:
-            if node.up is None:
-                node.name = "ROOT"
-            else:
-                node.name = "node_" + format(i, '07d') #  str(np.random.randint(1e8))
-        
-        #  alignment
-        aln.append(Bio.SeqRecord.SeqRecord(Align.Seq(''.join(node.sequence)), node.name))
-        #  metadata
-        df.loc[node.name] = [node.numdate_given, node.dist2root_0, node.numdate]
-
 
     # save everything
     df.to_csv(outfile_prefix + ".meta.csv")
@@ -75,7 +190,6 @@ def save_timetree_results(tree, outfile_prefix):
     zipf.write(outfile_prefix + ".aln.fasta")
     zipf.write(outfile_prefix + ".tree.nwk")
     zipf.write(outfile_prefix + ".root_dist.csv")
-
 
 def set_seqs_to_leaves(tree, aln):
     """

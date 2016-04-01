@@ -67,12 +67,12 @@ if __name__=='__main__':
     # set alignment to the tree
     io.set_seqs_to_leaves(t, AlignIO.read(fasta, 'fasta'))
     io.read_metadata(t, mdf)
-    a,b,c = t.find_best_root_and_regression()
 
     # set dates from the node names
     #io.set_node_dates_from_names(t, date_from_seq_name)
     #t.reroot_to_oldest()
     t.optimize_seq_and_branch_len()
+    a,b,c = t.find_best_root_and_regression()
     t.init_date_constraints(slope=slope)
     t.ml_t()
     sys.exit(1)
