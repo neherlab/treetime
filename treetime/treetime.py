@@ -768,17 +768,18 @@ class TreeTime(TreeAnc, object):
         t_lh = -self.tree.root.msg_to_parent.y.min()
         return s_lh+t_lh
 
-    def autocorr_molecular_clock(self):
+    def autocorr_molecular_clock(self, slack=None, coupling=None):
         """
         Allow the mutation rate to vary on the tree (relaxed molecular clock).
         Changes of the mutation rates from one branch to another are penalized.
         In addition, deviations of the mutation rate from the mean rate are
         penalized.
         """
-
+        if slack is None: slack=ttconf.MU_ALPHA
+        if coupling is None: coupling=ttconf.MU_BETA
         def opt_mu(node):
-            if node.up is None: return 0.0
-            mu = (node.up.sequence!=node.sequence).sum()/(node.numdate-node.up.numdate)/node.sequence.shape[0]
+            if node.up is None: return mu_0
+            mu = (node.up.sequence!=node.sequence).mean()/(node.numdate-node.up.numdate)
             #print (mu)
             return mu
 
@@ -799,9 +800,9 @@ class TreeTime(TreeAnc, object):
 
         def init_iterative():
             for node in self.tree.find_clades(order="preorder"):
-                denom = 1 + ttconf.MU_ALPHA + ttconf.MU_BETA * (1 + len(node.clades))
-                node._Cn = (opt_mu(node) + ttconf.MU_ALPHA * mu_0) / denom
-                node._Bn = ttconf.MU_BETA / denom
+                denom = 1 + slack + coupling * (1 + len(node.clades))
+                node._Cn = (opt_mu(node) + slack * mu_0) / denom
+                node._Bn = coupling / denom
                 node._mu_n = mu_0
                 node._mu_n1 = 0.0
 
@@ -834,7 +835,7 @@ class TreeTime(TreeAnc, object):
                 + " steps")
 
             for node in self.tree.find_clades(order="preorder"):
-                denom = 1 + ttconf.MU_ALPHA + ttconf.MU_BETA * (1 + len(node.clades))
+                denom = 1 + slack + coupling * (1 + len(node.clades))
                 node._mu_n1 /= mu_0
 
         else:
@@ -842,7 +843,7 @@ class TreeTime(TreeAnc, object):
                 "after " + str(N) + "steps. Computation failed. The mutation rates will be purged now...")
 
             for node in self.tree.find_clades(order="preorder"):
-                denom = 1 + ttconf.MU_ALPHA + ttconf.MU_BETA * (1 + len(node.clades))
+                denom = 1 + slack + coupling * (1 + len(node.clades))
                 del(node._Cn)
                 del(node._Bn)
                 del(node._mu_n  )
