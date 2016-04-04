@@ -15,7 +15,7 @@ class DateConversion(object):
     def __init__(self):
 
         self.slope = 0
-        self.intersept = 0
+        self.intercept = 0
         self.r_val = 0
         self.pi_val = 0
         self.sigma = 0
@@ -24,30 +24,30 @@ class DateConversion(object):
     @classmethod
     def from_tree(cls, t, slope=None):
         """
-        Create the conversin object automatically from the tree
+        Create the conversion object automatically from the tree
         """
         if slope is None:
             dc = cls()
             dates = []
-        
+
             for node in t.find_clades():
                 if hasattr(node, "numdate_given" ) and node.numdate_given is not None:
                     dates.append((node.numdate_given, node.dist2root))
-    
+
             if len(dates) < 5:
                 raise(RuntimeError("There are no dates set at the leaves of the tree."
                     " Cannot make the conversion function. Aborting."))
-    
+
             dates = np.array(dates)
-    
+
             dc.slope,\
-                dc.intersept,\
+                dc.intercept,\
                 dc.r_val,\
                 dc.pi_val,\
                 dc.sigma = stats.linregress(dates[:, 0], dates[:, 1])
-    
+
             return dc
-        
+
         else:
 
             dc = cls()
@@ -63,17 +63,17 @@ class DateConversion(object):
                     if node.numdate_given > max_numdate_given:
                         max_numdate_given = node.numdate_given
                         max_diam = node.dist2root
-            
+
             if max_numdate_given == ttconf.BIG_NUMBER:
                 print ("Warning! cannot set the minimal raw date. using today")
                 max_numdate_given = 0.0
-            
+
             if max_diam == 0.0:
-                print ("Error! cannot set the intersept for the date2dist conversion!"
+                print ("Error! cannot set the intercept for the date2dist conversion!"
                     "Cannot read tree diameter")
                 return
-            
-            dc.intersept = max_diam - slope * max_numdate_given
+
+            dc.intercept = max_diam - slope * max_numdate_given
 
             return dc
 
@@ -103,7 +103,7 @@ class DateConversion(object):
             dist2root).
 
         """
-        days = abs_t / abs(self.slope)  #(self.intersept - abs_t) / self.slope
+        days = abs_t / abs(self.slope)  #(self.intercept - abs_t) / self.slope
         if days < 0:
             print ("The inferred date of the node is later than today!")
             #print ("Warning: got the negative date! Returning the inverse.")
@@ -112,7 +112,7 @@ class DateConversion(object):
 
 def delta_fun(pos, return_log=True, normalized=False, width=ttconf.WIDTH_DELTA):
     """
-    Create the interpolation object for delta function
+    Create an interpolation object for delta function
     Args:
 
      - pos(double): position of the delta function maximum
@@ -153,8 +153,7 @@ def delta_fun(pos, return_log=True, normalized=False, width=ttconf.WIDTH_DELTA):
 
 def min_interp(interp_object):
     """
-    Find the global minimum of the function represented as an interpolation
-    object.
+    Find the global minimum of a function represented as an interpolation object.
     """
     return interp_object.x[interp_object(interp_object.x).argmin()]
 
@@ -163,7 +162,8 @@ def median_interp(interp_object):
     """
     Find the median of the function represented as an interpolation object.
     """
-    new_grid = np.sort(np.concatenate([interp_object.x[:-1] + 0.1*ii*np.diff(interp_object.x) for ii in range(10)]).flatten())
+    new_grid = np.sort(np.concatenate([interp_object.x[:-1] + 0.1*ii*np.diff(interp_object.x)
+                                       for ii in range(10)]).flatten())
 
     tmp_prop = np.exp(-(interp_object(new_grid)-interp_object.y.min()))
     tmp_cumsum = np.cumsum(0.5*(tmp_prop[1:]+tmp_prop[:-1])*np.diff(new_grid))
@@ -227,7 +227,7 @@ def opt_branch_len(node):
     Find optimal branch length for a node.
     Args:
 
-     - node: Tree node. **NOTE** the node should store the branch lenght probability \
+     - node: Tree node. **NOTE** the node should store the branch length probability \
      as an interpolation object as the branch_neg_log_prob attribute.
 
     Returns:
@@ -290,10 +290,10 @@ def multiply_dists(interps):
     performs multiplication on a new grid.
     Args:
 
-     - interps (iterable): Itarable of interpolation objects for -log(LH)
+     - interps (iterable): Iterable of interpolation objects for -log(LH)
      distributions.
 
-     - prefactors (iterable): scaling factors of hte distributions. Each
+     - prefactors (iterable): scaling factors of the distributions. Each
      distribution is (arbitrarly) scaled so that the max value is 1, hence
      min(-log(LH(x))) = 0. The prefactors will be summed, the new prefactor
      will be added and the result will be returned as the prefactor for the
@@ -333,41 +333,42 @@ def multiply_dists(interps):
     interp = interp1d(grid, node_prob, kind='linear')
     return interp
 
-    def _nni(self, node):
-        """
-        Perform nearest-neighbour-interchange procedure,
-        choose the best local configuration
-        """
-        if node.up is None: # root node
-            return
+#FIXME: ARE TWO FUNCTION BELOW USED
+def _nni(self, node):
+    """
+    Perform nearest-neighbour-interchange procedure,
+    choose the best local configuration
+    """
+    if node.up is None: # root node
+        return
 
-        children = node.clades
-        sisters = [k for k in node.up.clades]
-        for child_pos, child in enumerate(children):
-            for sister_pos, sister in enumerate(sisters):
-                # exclude node from iteration:
-                if sister == node:
-                    continue
-                # exchange
-                node.up.clades[sister_pos] = child
-                node.clades[child_pos] = sister
-                # compute new likelihood for the branch
+    children = node.clades
+    sisters = [k for k in node.up.clades]
+    for child_pos, child in enumerate(children):
+        for sister_pos, sister in enumerate(sisters):
+            # exclude node from iteration:
+            if sister == node:
+                continue
+            # exchange
+            node.up.clades[sister_pos] = child
+            node.clades[child_pos] = sister
+            # compute new likelihood for the branch
 
 def build_DM(self, nodes, gtr):
-        """
-        Build distance matrix for local rewiring
-        """
-        DM = np.array([[(k.sequence!=j.sequence).mean() for k in nodes]
-            for  j in nodes])
-        np.fill_diagonal(DM, 1e10)
-        return DM
+    """
+    Build distance matrix for local rewiring
+    """
+    DM = np.array([[(k.sequence!=j.sequence).mean() for k in nodes]
+        for  j in nodes])
+    np.fill_diagonal(DM, 1e10)
+    return DM
 
 def numeric_date(dt=None):
     """
     Convert datetime object to the numeric date.
     The numeric date format is YYYY.F, where F is the fraction of the year passed
     Args:
-     - dt: (datetime.datetime) date of to be convrted. if None, assume today
+     - dt: (datetime.datetime) date of to be converted. if None, assume today
     """
     if dt is None:
         dt = datetime.datetime.now()

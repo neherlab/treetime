@@ -1,10 +1,9 @@
 from __future__ import print_function, division
 import numpy as np
-from treetime.treetime import treeanc as ta
-from treetime.treetime import treetime as tt
-from treetime.treetime.gtr import GTR
-from treetime.treetime import io
-from treetime.treetime.merger_models import coalescent, traveling_wave
+from treetime.treetime import TreeAnc as ta
+from treetime.treetime import TreeTime as tt
+from treetime.gtr import  GTR
+from treetime import io
 import datetime
 import os,sys,copy
 from Bio import Phylo, AlignIO
@@ -56,9 +55,9 @@ def date_from_seq_name(name):
 if __name__=='__main__':
     gtr = GTR.standard()
     root_dir = os.path.dirname(os.path.realpath(__file__))
-    fasta = os.path.join(root_dir, '../data/H3N2_NA_allyears_NA.20.fasta')
-    nwk = os.path.join(root_dir, '../data/H3N2_NA_allyears_NA.20.nwk')
-    mdf = os.path.join(root_dir, '../data/H3N2_NA_allyears_NA.20.metadata.csv')
+    fasta = os.path.join(root_dir, '../data/H3N2_NA_allyears_NA.200.fasta')
+    nwk = os.path.join(root_dir, '../data/H3N2_NA_allyears_NA.200.nwk')
+    mdf = os.path.join(root_dir, '../data/H3N2_NA_allyears_NA.200.metadata.csv')
     #fasta = os.path.join(root_dir, 'flu_trivial.fasta')
     #nwk = os.path.join(root_dir, 'flu_trivial.nwk')
     slope = 1.1505574145108622e-05 * 365.25
@@ -72,14 +71,14 @@ if __name__=='__main__':
     #io.set_node_dates_from_names(t, date_from_seq_name)
     #t.reroot_to_oldest()
     t.optimize_seq_and_branch_len()
-    a,b,c = t.find_best_root_and_regression()
     t.init_date_constraints(slope=slope)
+    #a,b,c = t.find_best_root_and_regression()
+    t.reroot_to_best_root()
     t.ml_t()
-    sys.exit(1)
     # plotting the results
     t._score_branches()
     t.tree.ladderize()
-   
+
     #Phylo.draw(t.tree, label_func = lambda x:'', show_confidence=False, branch_labels='')
     t1 = copy.deepcopy(t)
     t1.resolve_polytomies()

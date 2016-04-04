@@ -14,7 +14,7 @@ setup(
         license = "MIT",
         keywords = "Time-stamped phylogenies, evolution",
         url = "https://github.com/neherlab/treetime",
-        packages=['time_tree'],
+        packages=['treetime'],
         classifiers=[
             "Development Status :: 3 - Alpha",
             "Topic :: Science",

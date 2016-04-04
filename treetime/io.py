@@ -3,9 +3,10 @@ from Bio import Phylo, Align, AlignIO
 import numpy as np
 import json, copy, datetime
 from treetime import TreeTime
-import utils 
+import utils
 import seq_utils
-import pandas 
+import pandas
+import os
 
 def treetime_from_newick(gtr, infile):
     """
@@ -30,9 +31,9 @@ def _layout(tree):
     clade = 0
     yvalue = 0
     for node in tree.find_clades(order="preorder"):
-        # set mutations 
+        # set mutations
         if node.up is not None:
-            node.muts = ' '.join([node.up.sequence[p] + str(p) + node.sequence[p] 
+            node.muts = ' '.join([node.up.sequence[p] + str(p) + node.sequence[p]
                 for p in np.where(node.up.sequence != node.sequence)[0]])
         # set clade No
         node.clade = clade
@@ -56,15 +57,15 @@ def _layout(tree):
 def treetime_to_json(tt, outf):
 
     def _node_to_json(node):
-        
+
         tree_json = {}
         str_attr = ['country','region','clade','strain', 'date', 'muts']
         num_attr = ['xvalue', 'yvalue', 'tvalue', 'numdate']
-        
+
         if hasattr(node, 'name'):
             tree_json['strain'] = node.name
             tree_json['name'] = node.name
-    
+
         for prop in str_attr:
             if hasattr(node, prop):
                 tree_json[prop] = node.__getattribute__(prop)
@@ -75,7 +76,7 @@ def treetime_to_json(tt, outf):
                 except:
                     print "cannot round:", node.__getattribute__(prop), "assigned as is"
                     tree_json[prop] = node.__getattribute__(prop)
-    
+
         #for prop in extra_attr:
         #    if len(prop)==2 and callable(prop[1]):
         #        if hasattr(node, prop[0]):
@@ -83,12 +84,12 @@ def treetime_to_json(tt, outf):
         #    else:
         #        if hasattr(node, prop):
         #            tree_json[prop] = node.__getattribute__(prop)
-    
+
         if node.clades:
             tree_json["children"] = []
             for ch in node.clades:
                 tree_json["children"].append(_node_to_json(ch))
-        
+
         return tree_json
 
     _layout(tt.tree)
@@ -97,7 +98,7 @@ def treetime_to_json(tt, outf):
         json.dump(tree_json, of, indent=False)
 
 def tips_data_to_json(tt, outf):
-    
+
     if not hasattr(tt.tree.get_terminals()[0], 'xvalue'):
         _layout(tt.tree);
 
@@ -110,15 +111,15 @@ def tips_data_to_json(tt, outf):
         'xValue': k.xvalue if hasattr(k, 'xvalue') else 0.0,
 
     } for k in tt.tree.get_terminals()]
-    
+
     with open (outf,'w') as of:
         json.dump(arr, of, indent=True)
 
 def root_lh_to_json(tt, outf):
-    
+
     mtp = tt.tree.root.msg_to_parent
     mtp_min = mtp.y.min()
-    
+
     mtpy = np.array([np.exp(-k+mtp_min) for k in mtp.y])
     mtpx = mtp.x
 
@@ -129,22 +130,22 @@ def root_lh_to_json(tt, outf):
         right_dist = 0
     else:
         # left, actually (time is in the opposite direction)
-        right_dist = - mtpx[maxy_idx] + mtpx[maxy_idx + val_right.argmin()] 
+        right_dist = - mtpx[maxy_idx] + mtpx[maxy_idx + val_right.argmin()]
 
     val_left = mtpy[:maxy_idx] > 1e-50
     if (val_left.sum() == 0):
         left_dist = 0.0
     else:
-        left_dist =  mtpx[maxy_idx] - mtpx[maxy_idx - val_left.argmax()] 
+        left_dist =  mtpx[maxy_idx] - mtpx[maxy_idx - val_left.argmax()]
 
 
     dist = np.max((left_dist, right_dist))
     center = mtpx[maxy_idx]
-    
+
     # final x-y scatter
-    
+
     raw_x = np.unique(np.concatenate(([center-dist], [center], [center+dist], mtpx[(mtpx < dist + center) & (mtpx > center-dist)])))
-    
+
 
     x = utils.numeric_date() -  np.array(map(tt.date2dist.get_date, raw_x))
     y = np.exp(-(mtp(raw_x) - mtp_min))
@@ -156,11 +157,11 @@ def root_lh_to_json(tt, outf):
 def save_timetree_results(tree, outfile_prefix):
     """
     First, it scans the tree and assigns the namesto every node with no name
-    then, it saves the information as the csv table 
+    then, it saves the information as the csv table
     """
     df = pandas.DataFrame(columns=["Given_date", "Initial_root_dist", "Inferred_date"])
     aln = Align.MultipleSeqAlignment([])
-    
+
     i = 0
 
     # save everything
@@ -168,8 +169,8 @@ def save_timetree_results(tree, outfile_prefix):
     #  TODO save variance to the metadata
     Phylo.write(tree.tree, outfile_prefix + ".tree.nwk", "newick")
     AlignIO.write(aln, outfile_prefix + ".aln.fasta", "fasta")
-    
-    # save root distibution 
+
+    # save root distibution
     mtp = tree.tree.root.msg_to_parent
     threshold = mtp.y.min() + 1000
     idxs = [mtp.y < threshold]
@@ -178,10 +179,10 @@ def save_timetree_results(tree, outfile_prefix):
     mtpy[0] = threshold
     mtpy[-1] = threshold
 
-    np.savetxt(outfile_prefix + ".root_dist.csv", 
+    np.savetxt(outfile_prefix + ".root_dist.csv",
         np.hstack((mtpx[:, None], mtpy[:, None])),
         header="Root date,-log(LH)", delimiter=',')
-    
+
     # zip results to one file
     import zipfile
     outzip = outfile_prefix + ".zip"
@@ -311,23 +312,23 @@ def set_node_dates_from_dic(tree, dates_dic):
     Returns:
      - None, tree is being modified in-place
     """
-    
+
     err_ = 0
-    num_ = 0 
+    num_ = 0
     now = utils.numeric_date(datetime.datetime.now())
     for node in tree.tree.find_clades():
-        
+
         if node.name is None or not node.name in dates_dic:
             node.numdate_given = None
             continue
 
-        n_date = dates_dic[node.name] # assume the dictionary contains the numdate 
+        n_date = dates_dic[node.name] # assume the dictionary contains the numdate
         if not isinstance(n_date, float) and not isinstance(n_date, int): #  sanity check
             print ("Cannot set the numeric date tot the node. Float or int expected")
             continue
 
         try:
-            
+
             if n_date > now:
                 print ("Cannot set the date! the specified date is later "
                     " than today! cannot assign node date, skipping")
@@ -337,21 +338,21 @@ def set_node_dates_from_dic(tree, dates_dic):
             else:
                 node.numdate_given = n_date
                 num_ += 1
-        
+
         except:
             print ("Cannot assign date to the node: exception caught")
             node.numdate_given = None
             err_ += 1
-    
+
     tu = (num_, err_)
-    
+
     print ("Assigned ddates to {0} nodes, {1} errors".format(*tu))
 
 def set_node_dates_from_names(tree, date_func):
     """
     Read names of the leaves of the tree, extract the dates of the leaves from the
     names and asign the date to the nodes.
-    Assumes that the dates are given in some human-readable format 
+    Assumes that the dates are given in some human-readable format
     and are converted into the numericaldate (YYYY.F).
     After this function call, each node of
     the tree gets the numdate_given attribute. If the date was extracted from name
@@ -362,12 +363,12 @@ def set_node_dates_from_names(tree, date_func):
      - tree (TreeTime): instance of the tree time object with phylogenetic tree
      loaded.
      - date_func (callable): function to extract date and time from node name,
-     should return float 
+     should return float
     Returns:
      - None, tree is being modified in-place
     """
-    #now = datetime.datetime.now() 
-    ## NOTE we do not rely on the datetime objects 
+    #now = datetime.datetime.now()
+    ## NOTE we do not rely on the datetime objects
     now = utils.numeric_date(datetime.datetime.now())
     for node in tree.tree.get_terminals():
         try:
@@ -380,31 +381,31 @@ def set_node_dates_from_names(tree, date_func):
             #print ("Cannot parse the date from name: " + str(node.name) +
             #    " Setting node raw date to None")
             node.numdate_given = None # cannot extract the date from name - set None
-        
+
         elif node_date > now:
             print ("Cannot set the date! the specified date is later "
                 " than today")
             node.numdate_given = None
         else:
             node.numdate_given = node_date
-        
+
     return
 
 def read_metadata(tree, infile):
-    
-    try:
-        
-        df = pandas.read_csv(infile, index_col=0)
-        if df.index.name != "name" and df.index.name != "#name":
-            print ("Cannot read metadata: first columns should be leaves name")
-            return
-        dic = df.to_dict(orient='index')
-    except:
+    if os.path.isfile(infile):
+        try:
+            df = pandas.read_csv(infile, index_col=0)
+            if df.index.name != "name" and df.index.name != "#name":
+                print ("Cannot read metadata: first columns should be leaves name")
+                return
+            dic = df.to_dict(orient='index')
+        except:
+            print ("Cannot read the metadata using the pandas library. "
+                "pandas is outdated or missing. trying to read plain csv...")
 
-        print ("Cannot read the metadata using psndas library. "
-            "pandas is outdated or missing. trying to read plain csv...")
-
-    tree.set_metadata(**dic)    
+        tree.set_metadata(**dic)
+    else:
+        print("meta data file not found!")
 
 
 if __name__=='__main__':

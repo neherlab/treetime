@@ -14,7 +14,7 @@ import json
 
 class TreeAnc(object):
     """
-    Class defines simple tree object with basic interface methdos: reading and
+    Class defines simple tree object with basic interface methods: reading and
     saving from/to files, initializing leaves with sequences from the
     alignment, making ancestral state inferrence
     """
@@ -26,7 +26,7 @@ class TreeAnc(object):
     @property
     def gtr(self):
         return self._gtr
-    
+
     def __init__(self, gtr):
         assert(isinstance(gtr, GTR))
         self._gtr = gtr
@@ -51,7 +51,7 @@ class TreeAnc(object):
         Set the metadata to the given tree node from the given dictionary.
 
         Args:
-         - node(Phylo.Clade): node the metadata should be assigned to 
+         - node(Phylo.Clade): node the metadata should be assigned to
 
         KWargs:
          - metadata: dictionary for the values to be set as attributes.
@@ -61,24 +61,24 @@ class TreeAnc(object):
         """
 
         if isinstance(node, Phylo.BaseTree.Clade):
-            
+
             for key in metadata:
                 if key != "name": #  filter name node if any  (must be already set)
                     setattr(node, key, metadata[key])
-        
+
         elif isinstance(node, str):
             if node not in  self._leaves_lookup:
-                print ("Cannot set metadata to the node: node not found")        
-                return 
-            
+                print ("Cannot set metadata to the node: node not found")
+                return
+
             node = self._leaves_lookup[node]
             for key in metadata:
                 if key != "name": #  filter name node if any  (must be already set)
                     setattr(node, key, metadata[key])
-        
+
         else:
             print ("Cannot set metadata to node. Input node must be "
-                "either tree node instance, or name of the ")
+                "either tree node instance, or name of a node.")
 
     def set_metadata(self, **all_metadata):
         """
@@ -92,7 +92,7 @@ class TreeAnc(object):
             self.set_metadata_to_node(node_key, **all_metadata[node_key])
 
     def _set_each_node_params(self):
-        
+
         """
         Set auxilliary parameters to every node of the tree.
         """
@@ -129,10 +129,11 @@ class TreeAnc(object):
             raise NotImplementedError("The reconstruction method %s is not supported. " % method)
         return N_diff
 
+
     def _fitch_anc(self, **kwargs):
         """
-        Reconstruct ancestral states using Fitch algorithm. The method reequires
-        the leaves sequences to be assigned. It implements the iteration from
+        Reconstruct ancestral states using Fitch's algorithm. The method requires
+        sequences to be assigned to leaves. It implements the iteration from
         leaves to the root constructing the Fitch profiles for each character of
         the sequence, and then by propagating from the root to the leaves,
         reconstructs the sequences of the internal nodes.
@@ -141,8 +142,8 @@ class TreeAnc(object):
          -
 
         Returns:
-         - Ndiff (int): number of the nodes changed since the previous
-         reconstruction. These changes are deermined from the pre-set sequence attributes
+         - Ndiff (int): number of the characters that changed since the previous
+         reconstruction. These changes are determined from the pre-set sequence attributes
          of the nodes. If there are no sequences available (i.e., no reconstruction
          has been made before), returns the total number of characters in the tree.
 
@@ -182,8 +183,6 @@ class TreeAnc(object):
                 node.sequence = sequence
 
             node.profile = seq_utils.seq2prof(node.sequence)
-            #if np.sum([k not in alphabet for k in node.sequence]) > 0:
-            #    import ipdb; ipdb.set_trace()
             del node.state # no need to store Fitch states
         print ("Done ancestral state reconstruction")
         for node in self.tree.get_terminals():
@@ -192,8 +191,8 @@ class TreeAnc(object):
 
     def _fitch_state(self, node, pos):
         """
-        Determine the Fitch porfile for a single checracter of the node's sequence.
-        The profile is essentially the  intersection between  the children's
+        Determine the Fitch profile for a single character of the node's sequence.
+        The profile is essentially the intersection between the children's
         profiles or, if the former is empty, the union of the profiles.
 
         Args:
@@ -207,16 +206,16 @@ class TreeAnc(object):
          - state(numpy array): Fitch profile for the character at position pos
          of the given node.
         """
-        state = self._fitch_intersept([k.state[pos] for k in node.clades])
+        state = self._fitch_intersect([k.state[pos] for k in node.clades])
         if len(state) == 0:
             state = np.concatenate([k.state[pos] for k in node.clades])
         return state
 
-    def _fitch_intersept(self, arrays, assume_unique=False):
+    def _fitch_intersect(self, arrays, assume_unique=False):
         """
-        Find the interseption of any number of 1D arrays.
+        Find the intersection of any number of 1D arrays.
         Return the sorted, unique values that are in all of the input arrays.
-        Adapted from numpy.lib.arraysetops.intersept1d
+        Adapted from numpy.lib.arraysetops.intersect1d
         """
         N = len(arrays)
         arrays = list(arrays) # allow assignment
@@ -226,15 +225,17 @@ class TreeAnc(object):
         aux = np.concatenate(arrays) # one long 1D array
         aux.sort() # sorted
         shift = N-1
+        # if an element is in all N arrays, is shows up N consecutive times in the sorted
+        # concatenation. those elements can be found by comparing the array shifted by N-1
+        # since the initital arrays are unique, only the correct elements are found this way.
         return aux[aux[shift:] == aux[:-shift]]
 
     def _ml_anc(self, **kwargs):
         """
-        Perform ML reconstruction for the ancestral states
-        Args:
-         - model (GTR): General time-reversible model of evolution.
+        Perform ML reconstruction of the ancestral states
         KWargs:
-         - store_lh (bool): if True, all likelihoods will be stored for all nodes. Useful for testing, diagnostics and if special post-processing is required.
+         - store_lh (bool): if True, all likelihoods will be stored for all nodes.
+           Useful for testing, diagnostics and if special post-processing is required.
          - verbose (int): how verbose the output should be
         """
         tree = self.tree
@@ -272,8 +273,8 @@ class TreeAnc(object):
             node.profile = (node.profile.T/pre).T # normalize so that the sum is 1
             node.lh_prefactor += np.log(pre) # and store log-prefactor
         if (verbose > 2):
-            print ("Walking down the tree, computing maximum likelihood     sequences...")
-        tree.root.profile *= np.diag(self.gtr.Pi) # Msg to the root from the distant part (equ frequcies)
+            print ("Walking down the tree, computing maximum likelihood sequences...")
+        tree.root.profile *= np.diag(self.gtr.Pi) # Msg to the root from the distant part (equ frequencies)
 
         # extract the likelihood from the profile
         tree.root.lh_prefactor += np.log(tree.root.profile.max(axis=1))
@@ -318,12 +319,6 @@ class TreeAnc(object):
         Therefore, before calling this method, sequence reconstruction with
         either of the available models must be performed.
 
-        Args:
-         - model(GTR): evolutionary model to be used for ML optimization of the
-         branch lengths.
-         - tree(None or Phylo.Clade): the root of the subtree to be optimized.
-         if None, the optimization is being performed for the whole tree.
-
         KWargs:
          - verbose (int): output detalization
          - store_old (bool): if True, the old lenths will be saved in
@@ -341,7 +336,7 @@ class TreeAnc(object):
             store_old_dist = kwargs['store_old'] == True
 
         if verbose > 3:
-            print ("Walking up the tree, computing likelihood distrubutions")
+            print ("Walking up the tree, computing likelihood distributions")
 
         for node in self.tree.find_clades(order='postorder'):
             parent = node.up
@@ -374,15 +369,14 @@ class TreeAnc(object):
     def prune_short_branches(self):
         """
         If the branch length is less than the minimal value, remove the branch
-        from the tree. **Requires** the ancestral seequence reconstruction
+        from the tree. **Requires** the ancestral sequence reconstruction
         """
         for node in self.tree.find_clades():
             if node.up is None:
                 continue
             # probability of the two seqs separated by zero time is not zero
             if self.gtr.prob_t(node.up.profile, node.profile, 0.0) > 0.1:
-                #FIXME: Why don't allow merging with the root?
-                if node.is_terminal(): # or (node.up == self.tree.root): # leaf stays as is
+                if node.is_terminal(): # leaf stays as is
                     continue
                 # re-assign the node children directly to its parent
                 node.up.clades = [k for k in node.up.clades if k != node] + node.clades
@@ -395,23 +389,23 @@ class TreeAnc(object):
         """
         Iteratively set branch lengths and reconstruct ancestral sequences until
         the values of either former or latter do not change. The algorithm assumes
-        knowing only the topology of the tree, and requires the  sequences assigned
+        knowing only the topology of the tree, and requires that sequences are assigned
         to all leaves of the tree. The first step is to pre-reconstruct ancestral
-        states using Fitch reconstruction algorithm. Then, optimize branch lengths
-        and re-do reconstruction until convergence using ML method.
+        states using Fitch reconstruction algorithm or ML using existing branch length
+        estimates. Then, optimize branch lengths and re-do reconstruction until
+        convergence using ML method.
+
         Args:
+         - reuse_branch_len(bool, default True): if True, rely on the initial
+         branch lenghts, and start with the Maximum-likelihood ancestral sequence
+         inference using existing branch lengths.
+         Otherwise, initial reconstruction of ancestral states with Fitch algorithm,
+         which uses only the tree topology.
 
-                 
-         - reuse_branch_len(bool, default True): if True, rely on the initial 
-         branch lenghts, and start from the Maximum-likelihood ancestral sequence
-         inferrence, which takes into account topology and the branch lenghts. 
-         Otherwise, run first-time ancestral states inferrence with Fithc algorithm,
-         which accounts only for tree topology.
-
-         - prune_short (bool, default True): If True, the branches with zero 
-         optimal lenght will be pruned from the tree hence creating polytomies.
-         The polytomies could be further processde using resolve_ppolytomies from 
-         the TreeTime class. 
+         - prune_short (bool, default True): If True, the branches with zero
+         optimal length will be pruned from the tree hence creating polytomies.
+         The polytomies could be further processde using resolve_polytomies from
+         the TreeTime class.
         """
 
         if reuse_branch_len:
