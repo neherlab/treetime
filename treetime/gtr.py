@@ -193,7 +193,7 @@ class GTR(object):
             pi_old = np.copy(pi)
             W_ij = 0.5*(nij+nij.T)/mu/((pi*Ti).sum()+ttconf.TINY_NUMBER)
             W_ij = W_ij/np.sum(W_ij)
-            pi = (np.sum(nij,axis=1)+root_states)/(mu*np.dot(W_ij,Ti)+Lambda)
+            pi = (np.sum(nij,axis=1)+pi)/(mu*np.dot(W_ij,Ti)+1)
             mu = nij.sum()/(ttconf.TINY_NUMBER + np.sum(pi * (W_ij.dot(Ti))))
 
         if count >= Nit:
