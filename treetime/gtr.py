@@ -163,14 +163,51 @@ class GTR(object):
         Args:
          - nij (nxn matrix): the number of times a change in character state is observed
             between state i and j
-         - Ti (v vector): the time spent in each character state
+         - Ti (n vector): the time spent in each character state
 
         KWargs:
          - alphabet(str): specify alphabet when applicable. If the alphabet specification
          is requred, but no alphabet specified, the nucleotide will be used as default.
         """
-        pass
+        if 'alphabet' in kwargs and alphabet in alphabets.keys():
+            alphabet = kwargs['alphabet']
+        else:
+            print ("No alphabet specified. Using default nucleotide.")
+            alphabet = 'nuc'
+        gtr = cls('nuc')
 
+        from scipy import linalg as LA
+        count = 0
+        pi_old = np.zeros_like(Ti)
+        pi = np.ones_like(Ti)
+        pi/=pi.sum()
+        W_ij = np.ones_like(nij)
+        W_ij -= np.diag(W_ij.sum(axis=1))
+        W_ij /= W_ij.sum()
+        mu = nij.sum()/Ti.sum()
+
+        while LA.norm(pi_old-pi) > dp and count < Nit:
+            count += 1
+            pi_old = np.copy(pi)
+            W_ij = 0.5*(nij+nij.T)/mu/((pi*Ti).sum()+ttconf.TINY_NUMBER)
+            W_ij = W_ij/np.sum(W_ij)
+            pi = (np.sum(n_ij,axis=1)+root_states)/(mu*np.dot(W_ij,T_i)+Lambda)
+            mu = nij.sum()/(ttconf.TINY_NUMBER + np.sum(pi * (W_ij.dot(Ti))))
+
+        if count >= Nit:
+            print ('WARNING: maximum number of iterations has been reached in GTR inference')
+            np.min(p_ia.sum(axis=0)), np.max(p_ia.sum(axis=0))
+            if LA.norm(p_ia_old-p_ia) > dp:
+                print ('    the iterative scheme has not converged')
+            elif np.abs(1-np.max(p_ia.sum(axis=0))) > dp:
+                print ('    the iterative scheme has converged, but proper normalization was not reached')
+
+        gtr.W = W_ij
+        gtr.Pi = pi
+        gtr.mu=mu
+        gtr._check_fix_Q()
+        gtr._eig()
+        return gtr
 
     def _check_fix_Q(self):
         """
