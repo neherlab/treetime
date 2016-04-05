@@ -175,6 +175,8 @@ class GTR(object):
             print ("No alphabet specified. Using default nucleotide.")
             alphabet = 'nuc'
         gtr = cls('nuc')
+        dp = 1e-5
+        Nit = 10
 
         from scipy import linalg as LA
         count = 0
