@@ -88,15 +88,16 @@ if __name__=='__main__':
     io.set_seqs_to_leaves(t2, AlignIO.read(fasta, 'fasta'))
     io.read_metadata(t2, mdf)
 
+    co=1990
     for leaf in t2.tree.get_terminals():
-        if leaf.numdate_given>2000:
-            leaf.numdate_given = 2000 + 0.5*(leaf.numdate_given-2000)
+        if leaf.numdate_given>co:
+            leaf.numdate_given = co + 0.5*(leaf.numdate_given-co)
 
     t2.reroot_to_best_root()
     t2.init_date_constraints()
     t2.ml_t()
     t2.tree.ladderize()
-    t2.relaxed_clock(slack=1, coupling=1)
+    t2.relaxed_clock(slack=.1, coupling=10)
 
     from matplotlib.cm import jet as cmap
     for n in t2.tree.find_clades():

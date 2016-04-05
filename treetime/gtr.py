@@ -37,6 +37,57 @@ class GTR(object):
         self.dm = None
 
     @classmethod
+    def custom(cls, mu=1.0, pi=None, W=None, **kwargs):
+        """
+        Create a GTR model by specifying the matrix explicitly
+
+        Args:
+         - mu (float): mutation rate
+         - W (nxn matrix): mutation matrix
+         - pi (n vector): equilibrium frequencies
+
+        KWargs:
+         - alphabet(str): specify alphabet when applicable. If the alphabet specification
+         is requred, but no alphabet specified, the nucleotide will be used as default.
+        """
+        if 'alphabet' in kwargs and alphabet in alphabets.keys():
+            alphabet = kwargs['alphabet']
+        else:
+            if Pi is not None and len(Pi) in [20,21]:
+                print ("No alphabet specified. Using default amino acid.")
+                alphabet = 'aa'
+            else:
+                print ("No alphabet specified. Using default nucleotide.")
+                alphabet = 'nuc'
+
+        gtr = cls(alphabet)
+        n = gtr.alphabet.shape[0]
+
+        gtr.mu = mu
+        if pi is not None and len(pi)==n:
+            Pi = pi
+        else:
+            if Pi is not None and len(pi)!=n:
+                print("length of equilibrium frequency vector does not match alphabet length"
+                      "Ignoring input equilibrium frequencies")
+            Pi = np.ones(size=(n))
+        Pi /= Pi.sum()
+        gtr.Pi = np.diagflat(Pi)
+
+        if W is None or W.shape!=(n,n):
+            if W.shape!=(n,n):
+                print("Mutation matrix size does not match alphabet size"
+                      "Ignoring input mutation matrix")
+            # flow matrix
+            gtr.W = np.ones((a,a))
+            np.fill_diagonal(gtr.W, - ((gtr.W).sum(axis=0) - 1))
+
+        gtr.W = 0.5*(W+W.T)
+        gtr._check_fix_Q()
+        gtr._eig()
+        return gtr
+
+    @classmethod
     def standard(cls, model='Jukes-Cantor', **kwargs):
         """
         Create one of the standard GTR models.
@@ -44,7 +95,7 @@ class GTR(object):
         Args:
 
          - model (str): type of the model. Currently supported models are:
-         Jukes-Cantor.
+         Jukes-Cantor, random.
 
         KWargs:
 
@@ -74,7 +125,7 @@ class GTR(object):
 
             # flow matrix
             gtr.W = np.ones((a,a))
-            np.fill_diagonal(gtr.W, - ((gtr.W).sum(0) - 1))
+            np.fill_diagonal(gtr.W, - ((gtr.W).sum(axis=0) - 1))
 
             # equilibrium concentrations matrix
             gtr.Pi = np.zeros(gtr.W.shape)
@@ -103,6 +154,24 @@ class GTR(object):
         else:
             raise NotImplementedError("The specified evolutionary model is unsupported!")
 
+    @classmethod
+    def infer(cls, nij, Ti, **kwargs):
+        """
+        Infer a GTR model by specifying the number of transitions and time spent in each
+        character
+
+        Args:
+         - nij (nxn matrix): the number of times a change in character state is observed
+            between state i and j
+         - Ti (v vector): the time spent in each character state
+
+        KWargs:
+         - alphabet(str): specify alphabet when applicable. If the alphabet specification
+         is requred, but no alphabet specified, the nucleotide will be used as default.
+        """
+        pass
+
+
     def _check_fix_Q(self):
         """
         Check the main diagonal of Q and fix it in case it does not corresond
@@ -110,22 +179,22 @@ class GTR(object):
         custom GTR model.
         """
         Q = self.Pi.dot(self.W)
-        if (Q.sum(0) < 1e-10).sum() < self.alphabet.shape[0]: # at least one rate is wrong
+        if (Q.sum(axis=0) < 1e-10).sum() < self.alphabet.shape[0]: # at least one rate is wrong
             # fix Q
             self.Pi /= self.Pi.sum() # correct the Pi manually
             # fix W
             np.fill_diagonal(self.W, 0)
-            Wdiag = -((self.W.T*np.diagonal(self.Pi)).T).sum(0)/ \
+            Wdiag = -((self.W.T*np.diagonal(self.Pi)).T).sum(axis=0)/ \
                     np.diagonal(self.Pi)
             np.fill_diagonal(self.W, Wdiag)
             Q1 = self.Pi.dot(self.W)
-            if (Q1.sum(0) < 1e-10).sum() <  self.alphabet.shape[0]: # fix failed
+            if (Q1.sum(axis=0) < 1e-10).sum() <  self.alphabet.shape[0]: # fix failed
                 raise ArithmeticError("Cannot fix the diagonal of the GTR rate matrix.")
         return
 
     def _eig(self):
         """
-        Perform eigendecompositon of the rate matrix and stores the left- and rigth-
+        Perform eigendecompositon of the rate matrix and stores the left- and right-
         matrices to convert the sequence profiles to the GTR matrix eigenspace
         and hence to speed-up the computations.
         """
@@ -229,7 +298,7 @@ class GTR(object):
          - profile(numpy.array): sequence profile. Shape = (L, a),
          where L - sequence length, a - alphabet size.
 
-         - t(doble): time to propagate
+         - t(double): time to propagate
 
          - rotated(bool default False): whether the supplied profile is in the
          GTR matrix eigenspace

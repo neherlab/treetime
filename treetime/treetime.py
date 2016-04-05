@@ -110,6 +110,8 @@ class TreeTime(TreeAnc, object):
         if node.up is None:
             node.branch_neg_log_prob = None
             return None
+        if not hasattr(node, 'gamma'):
+            node.gamma = 1.0
 
         parent = node.up
         prof_p = parent.profile
@@ -145,7 +147,7 @@ class TreeTime(TreeAnc, object):
         # log-probability of the branch len to be at this value
         logprob = np.concatenate([
             [0., 0.],
-            [self.gtr.prob_t(prof_p, prof_ch, t_, return_log=True) for t_ in grid[2:-2]],
+            [self.gtr.prob_t(prof_p, prof_ch, node.gamma*t_, return_log=True) for t_ in grid[2:-2]],
             [0., 0.]])
 
         logprob[((0,1,-2,-1),)] = ttconf.MIN_LOG
@@ -467,8 +469,8 @@ class TreeTime(TreeAnc, object):
 
 
 
-        node.days_bp = self.date2dist.get_date(node.abs_t)
-        if node.days_bp < 0:
+        node.years_bp = self.date2dist.get_date(node.abs_t)
+        if node.years_bp < 0:
             if not hasattr(node, "bad_branch") or node.bad_branch==False:
                 raise ArithmeticError("The node is later than today, but it is not"
                     "marked as \"BAD\", which indicates the error in the "
@@ -478,7 +480,7 @@ class TreeTime(TreeAnc, object):
                     "later than present day")
 
         now = utils.numeric_date()
-        node.numdate = now - node.days_bp #  FIXME this is already years before present
+        node.numdate = now - node.years_bp
 
         # set the human-readable date
         days = 365.25 * (node.numdate - int(node.numdate))
@@ -706,7 +708,7 @@ class TreeTime(TreeAnc, object):
                 new_node.profile = clade.profile
                 new_node.mutations = []
                 new_node.merger_rate = clade.merger_rate
-                self._make_branch_len_interpolator(new_node, n=36)
+                self._make_branch_len_interpolator(new_node, n=ttconf.BRANCH_GRID_SIZE)
                 clade.clades.remove(n1)
                 clade.clades.remove(n2)
                 clade.clades.append(new_node)
@@ -730,7 +732,8 @@ class TreeTime(TreeAnc, object):
                     source_arr.remove(n1)
                     source_arr.remove(n2)
                     source_arr.append(new_node)
-                    mergers = np.array([[cost_gain(n1,n2, clade) for n1 in source_arr] for n2 in source_arr])
+                    mergers = np.array([[cost_gain(n1,n2, clade) for n1 in source_arr]
+                                       for n2 in source_arr])
 
             return LH
 
