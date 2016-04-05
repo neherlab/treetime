@@ -203,9 +203,9 @@ class GTR(object):
                 print ('    the iterative scheme has not converged')
             elif np.abs(1-np.max(pi.sum(axis=0))) > dp:
                 print ('    the iterative scheme has converged, but proper normalization was not reached')
-
+        print('W:',W_ij, 'Pi:',pi)
         gtr.W = W_ij
-        gtr.Pi = pi
+        gtr.Pi = np.diag(pi)
         gtr.mu=mu
         gtr._check_fix_Q()
         gtr._eig()
