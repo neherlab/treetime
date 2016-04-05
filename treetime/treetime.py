@@ -115,6 +115,9 @@ class TreeTime(TreeAnc, object):
         prof_p = parent.profile
         prof_ch = node.profile
 
+        if not hasattr(node, 'gamma'):
+            node.gamma = 1.0
+
         # optimal branch length
         obl = self.gtr.optimal_t(node.up.profile, node.profile) # not rotated profiles!
 
@@ -145,7 +148,7 @@ class TreeTime(TreeAnc, object):
         # log-probability of the branch len to be at this value
         logprob = np.concatenate([
             [0., 0.],
-            [self.gtr.prob_t(prof_p, prof_ch, t_, return_log=True) for t_ in grid[2:-2]],
+            [self.gtr.prob_t(prof_p, prof_ch, t_*node.gamma, return_log=True) for t_ in grid[2:-2]],
             [0., 0.]])
 
         logprob[((0,1,-2,-1),)] = ttconf.MIN_LOG
