@@ -194,6 +194,7 @@ class GTR(object):
             W_ij = 0.5*(nij+nij.T)/mu/((pi*Ti).sum()+ttconf.TINY_NUMBER)
             W_ij = W_ij/np.sum(W_ij)
             pi = (np.sum(nij,axis=1)+pi)/(mu*np.dot(W_ij,Ti)+1)
+            pi /= pi.sum()
             mu = nij.sum()/(ttconf.TINY_NUMBER + np.sum(pi * (W_ij.dot(Ti))))
 
         if count >= Nit:
@@ -203,7 +204,6 @@ class GTR(object):
                 print ('    the iterative scheme has not converged')
             elif np.abs(1-np.max(pi.sum(axis=0))) > dp:
                 print ('    the iterative scheme has converged, but proper normalization was not reached')
-        print('W:',W_ij, 'Pi:',pi)
         gtr.W = W_ij
         gtr.Pi = np.diag(pi)
         gtr.mu=mu
