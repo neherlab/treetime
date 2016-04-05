@@ -25,25 +25,13 @@ def str2date_time(instr):
 
     instr = instr.replace('/', '.')
     # import ipdb; ipdb.set_trace()
-    try:
-        date = datetime.datetime.strptime(instr, "%m.%d.%Y")
-    except ValueError:
-        date = None
-    if date is not None:
-        return date
-
-    try:
-        date = datetime.datetime.strptime(instr, "%m.%Y")
-    except ValueError:
-        date = None
-
-    if date is not None:
-        return date
-
-    try:
-        date = datetime.datetime.strptime(instr, "%Y")
-    except ValueError:
-        date = None
+    for fmt in ["%m.%d.%Y", "%m.%Y", "%Y"]:
+        try:
+            date = datetime.datetime.strptime(instr, fmt)
+        except ValueError:
+            date = None
+        if date is not None:
+            break
     return date
 
 def date_from_seq_name(name):
@@ -108,4 +96,10 @@ if __name__=='__main__':
     t2.init_date_constraints()
     t2.ml_t()
     t2.tree.ladderize()
+    t2.relaxed_clock(slack=1, coupling=1)
+
+    from matplotlib.cm import jet as cmap
+    for n in t2.tree.find_clades():
+        n.color = [int(x*255) for x in cmap(max(0, min(0.5*n.gamma, 1.0)))[:3]]
+
     Phylo.draw(t2.tree, label_func = lambda x:'', show_confidence=False, branch_labels='')

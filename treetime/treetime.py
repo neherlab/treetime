@@ -768,6 +768,46 @@ class TreeTime(TreeAnc, object):
         t_lh = -self.tree.root.msg_to_parent.y.min()
         return s_lh+t_lh
 
+
+    def relaxed_clock(self, slack=None, coupling=None):
+        """
+        Allow the mutation rate to vary on the tree (relaxed molecular clock).
+        Changes of the mutation rates from one branch to another are penalized.
+        In addition, deviations of the mutation rate from the mean rate are
+        penalized.
+        """
+        if slack is None: slack=ttconf.MU_ALPHA
+        if coupling is None: coupling=ttconf.MU_BETA
+        stiffness = (self.tree.count_terminals()/self.tree.total_branch_length())**2
+        for node in self.tree.find_clades(order='postorder'):
+            if node.up is None:
+                opt_len = node.branch_length
+            else:
+                opt_len = self.gtr.optimal_t(node.profile, node.up.profile)
+                #opt_len = 1.0*len(node.mutations)/node.profile.shape[0]
+            # contact term: stiffness*(g*bl - bl_opt)^2 + slack(g-1)^2 =
+            #               (slack+bl^2) g^2 - 2 (bl*bl_opt+1) g + C= k2 g^2 + k1 g + C
+            node._k2 = slack + stiffness*node.branch_length**2
+            node._k1 = -2*(stiffness*node.branch_length*opt_len + slack)
+            # coupling term: \sum_c coupling*(g-g_c)^2 + Cost_c(g_c|g)
+            # given g, g_c needs to be optimal-> 2*coupling*(g-g_c) = 2*child.k2 g_c  + child.k1
+            # hence g_c = (coupling*g - 0.5*child.k1)/(coupling+child.k2)
+            # substituting yields
+            for child in node.clades:
+                denom = coupling+child._k2
+                node._k2 += coupling*(1.0-coupling/denom)**2 + child._k2*coupling**2/denom**2
+                node._k1 += (coupling*(1.0-coupling/denom)*child._k1/denom \
+                            - coupling*child._k1*child._k2/denom**2 \
+                            + coupling*child._k1/denom)
+
+
+        for node in self.tree.find_clades(order='preorder'):
+            if node.up is None:
+                node.gamma = - 0.5*node._k1/node._k2
+            else:
+                node.gamma = (coupling*node.up.gamma - 0.5*node._k1)/(coupling+node._k2)
+
+
     def autocorr_molecular_clock(self, slack=None, coupling=None):
         """
         Allow the mutation rate to vary on the tree (relaxed molecular clock).
