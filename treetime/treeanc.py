@@ -34,6 +34,26 @@ class TreeAnc(object):
         self._leaves_lookup = {}
         # self.set_additional_tree_params()
 
+    def infer_gtr(self, alphabet_type='nuc'):
+        self.reconstruct_anc('ml')
+        if alphabet_type in seq_utils.alphabets:
+            alpha = "".join(seq_utils.alphabets[alphabet_type])
+        n=len(alpha)
+        nij = np.zeros((n,n))
+        Ti = np.zeros(n)
+        for node in self.tree.find_clades():
+            if hasattr(node,'mutations'):
+                for a,pos, d in node.mutations:
+                    i,j = alpha.index(a), alpha.index(d)
+                    nij[i,j]+=1
+                    Ti[i] += 0.5*node.branch_length
+                    Ti[j] -= 0.5*node.branch_length
+                for nuc in node.sequence:
+                    i = alpha.index(nuc)
+                    Ti[i]+=node.branch_length
+        root_state = np.array([np.sum(self.tree.root.sequence==nuc) for nuc in alpha])
+        self._gtr = GTR.infer(nij, Ti, root_state, pc=5.0)
+
     def set_additional_tree_params(self):
         """
         Set link to parent and net distance to root for all tree nodes.

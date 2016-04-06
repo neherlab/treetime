@@ -1,3 +1,4 @@
+from __future__ import division, print_function
 import numpy as np
 from scipy import optimize as sciopt
 import config as ttconf
@@ -155,7 +156,7 @@ class GTR(object):
             raise NotImplementedError("The specified evolutionary model is unsupported!")
 
     @classmethod
-    def infer(cls, nij, Ti, **kwargs):
+    def infer(cls, nij, Ti, root_state, pc=5.0, **kwargs):
         """
         Infer a GTR model by specifying the number of transitions and time spent in each
         character
@@ -176,25 +177,24 @@ class GTR(object):
             alphabet = 'nuc'
         gtr = cls('nuc')
         dp = 1e-5
-        Nit = 10
-
+        Nit = 20
+        pc_mat = pc*np.ones_like(nij)
+        pc_mat -= np.diag(np.diag(pc_mat))
         from scipy import linalg as LA
         count = 0
         pi_old = np.zeros_like(Ti)
         pi = np.ones_like(Ti)
         pi/=pi.sum()
         W_ij = np.ones_like(nij)
-        W_ij -= np.diag(W_ij.sum(axis=1))
-        W_ij /= W_ij.sum()
         mu = nij.sum()/Ti.sum()
-
         while LA.norm(pi_old-pi) > dp and count < Nit:
+            print('GTR inference iteration ',count,'change:',LA.norm(pi_old-pi))
             count += 1
             pi_old = np.copy(pi)
-            W_ij = 0.5*(nij+nij.T)/mu/((pi*Ti).sum()+ttconf.TINY_NUMBER)
+            W_ij = (nij+nij.T+2*pc_mat)/mu/(np.outer(pi,Ti) + np.outer(Ti,pi)
+                                                    + ttconf.TINY_NUMBER + 2*pc_mat)
             W_ij = W_ij/np.sum(W_ij)
-            pi = (np.sum(nij,axis=1)+pi)/(mu*np.dot(W_ij,Ti)+1)
-            pi /= pi.sum()
+            pi = (np.sum(nij+pc_mat,axis=1)+root_state)/(mu*np.dot(W_ij,Ti)+root_state.sum()+np.sum(pc_mat, axis=1))
             mu = nij.sum()/(ttconf.TINY_NUMBER + np.sum(pi * (W_ij.dot(Ti))))
 
         if count >= Nit:
@@ -206,7 +206,6 @@ class GTR(object):
                 print ('    the iterative scheme has converged, but proper normalization was not reached')
         gtr.W = W_ij
         gtr.Pi = np.diag(pi)
-        gtr.mu=mu
         gtr._check_fix_Q()
         gtr._eig()
         return gtr
@@ -217,19 +216,23 @@ class GTR(object):
         the definition of the rate matrix. Should be run every time when creating
         custom GTR model.
         """
-        Q = self.Pi.dot(self.W)
-        if (Q.sum(axis=0) < 1e-10).sum() < self.alphabet.shape[0]: # at least one rate is wrong
-            # fix Q
-            self.Pi /= self.Pi.sum() # correct the Pi manually
-            # fix W
-            np.fill_diagonal(self.W, 0)
-            Wdiag = -((self.W.T*np.diagonal(self.Pi)).T).sum(axis=0)/ \
-                    np.diagonal(self.Pi)
-            np.fill_diagonal(self.W, Wdiag)
-            Q1 = self.Pi.dot(self.W)
-            if (Q1.sum(axis=0) < 1e-10).sum() <  self.alphabet.shape[0]: # fix failed
-                raise ArithmeticError("Cannot fix the diagonal of the GTR rate matrix.")
-        return
+        # fix Q
+        self.Pi /= self.Pi.sum() # correct the Pi manually
+        break_degen = np.random.random(size=self.W.shape)*0.0001
+        self.W += break_degen + break_degen.T
+        # fix W
+        np.fill_diagonal(self.W, 0)
+        Wdiag = -((self.W.T*np.diagonal(self.Pi)).T).sum(axis=0)/ \
+                np.diagonal(self.Pi)
+        np.fill_diagonal(self.W, Wdiag)
+        Q1 = self.Pi.dot(self.W)
+        #import ipdb; ipdb.set_trace()
+        self.W /= -np.sum(np.diagonal(Q1*self.Pi))
+        self.mu=1.0
+        Q1 = self.Pi.dot(self.W)
+        if (Q1.sum(axis=0) < 1e-10).sum() <  self.alphabet.shape[0]: # fix failed
+            raise ArithmeticError("Cannot fix the diagonal of the GTR rate matrix.")
+
 
     def _eig(self):
         """

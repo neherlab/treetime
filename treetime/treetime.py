@@ -779,9 +779,10 @@ class TreeTime(TreeAnc, object):
         In addition, deviations of the mutation rate from the mean rate are
         penalized.
         """
+        c=1.0
         if slack is None: slack=ttconf.MU_ALPHA
         if coupling is None: coupling=ttconf.MU_BETA
-        stiffness = (self.tree.count_terminals()/self.tree.total_branch_length())**2
+        stiffness = (self.tree.count_terminals()/self.tree.total_branch_length())
         for node in self.tree.find_clades(order='postorder'):
             if node.up is None:
                 opt_len = node.branch_length
@@ -790,8 +791,8 @@ class TreeTime(TreeAnc, object):
                 #opt_len = 1.0*len(node.mutations)/node.profile.shape[0]
             # contact term: stiffness*(g*bl - bl_opt)^2 + slack(g-1)^2 =
             #               (slack+bl^2) g^2 - 2 (bl*bl_opt+1) g + C= k2 g^2 + k1 g + C
-            node._k2 = slack + stiffness*node.branch_length**2
-            node._k1 = -2*(stiffness*node.branch_length*opt_len + slack)
+            node._k2 = slack + stiffness*node.branch_length**2/(c*opt_len+self.one_mutation)
+            node._k1 = -2*(stiffness*node.branch_length*opt_len/(c*opt_len+self.one_mutation) + slack)
             # coupling term: \sum_c coupling*(g-g_c)^2 + Cost_c(g_c|g)
             # given g, g_c needs to be optimal-> 2*coupling*(g-g_c) = 2*child.k2 g_c  + child.k1
             # hence g_c = (coupling*g - 0.5*child.k1)/(coupling+child.k2)
@@ -804,12 +805,20 @@ class TreeTime(TreeAnc, object):
                             + coupling*child._k1/denom)
 
 
+        all_gammas = []
         for node in self.tree.find_clades(order='preorder'):
             if node.up is None:
                 node.gamma = - 0.5*node._k1/node._k2
             else:
                 node.gamma = (coupling*node.up.gamma - 0.5*node._k1)/(coupling+node._k2)
+            all_gammas.append(node.gamma)
+        # normalize avg gamma values to avoid drift in overall mutation rate.
+        avg_gamma = np.mean(all_gammas)
+        for node in self.tree.find_clades(order='preorder'):
+            node.gamma/=avg_gamma
 
+        print('reevaluating branch length interpolators')
+        self._ml_t_init()
 
     def autocorr_molecular_clock(self, slack=None, coupling=None):
         """

@@ -41,7 +41,6 @@ def date_from_seq_name(name):
 
 
 if __name__=='__main__':
-    gtr = GTR.standard()
     root_dir = os.path.dirname(os.path.realpath(__file__))
     fasta = os.path.join(root_dir, '../data/H3N2_NA_allyears_NA.200.fasta')
     nwk = os.path.join(root_dir, '../data/H3N2_NA_allyears_NA.200.nwk')
@@ -83,21 +82,19 @@ if __name__=='__main__':
 #    t1.print_lh()
 #    print ("coalescent model branch len: {0}".format((t1.tree.total_branch_length())))
 
+    gtr = GTR.standard()
     t2 = io.treetime_from_newick(gtr, nwk)
     # set alignment to the tree
     io.set_seqs_to_leaves(t2, AlignIO.read(fasta, 'fasta'))
     io.read_metadata(t2, mdf)
-
-    co=1990
-    for leaf in t2.tree.get_terminals():
-        if leaf.numdate_given>co:
-            leaf.numdate_given = co + 0.5*(leaf.numdate_given-co)
+    t2.infer_gtr()
 
     t2.reroot_to_best_root()
     t2.init_date_constraints()
     t2.ml_t()
     t2.tree.ladderize()
-    t2.relaxed_clock(slack=.1, coupling=10)
+    t2.relaxed_clock(slack=.1, coupling=1)
+    t2.ml_t()
 
     from matplotlib.cm import jet as cmap
     for n in t2.tree.find_clades():
