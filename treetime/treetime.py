@@ -959,7 +959,6 @@ class TreeTime(TreeAnc, object):
 
 
         best_root = self.tree.root
-
         for node in self.tree.find_clades(order='preorder'):  # root first
 
             if node.up is None:
@@ -977,6 +976,8 @@ class TreeTime(TreeAnc, object):
             node._R2 = ((1.0*N * node._sum_diti - sum_ti * node._sum_di) / (np.sqrt((1.0*N * sum_ti2 - node._sum_ti**2)*(1.0*N * node._sum_di2 - node._sum_di**2))))**2
             node._beta = ( 1.0 * N * node._sum_diti - sum_ti * node._sum_di ) / (1.0*N*sum_ti2 - sum_ti**2)
             node._alpha = 1.0 / N *node._sum_di - 1.0 / N * node._beta * sum_ti
+            if node.up is None:
+                print("Initial root: R2:", best_root._R2, " slope:", best_root._beta)
 
             if (node._R2 > best_root._R2 and node._beta>0) or best_root._beta<0:
                 best_root = node
