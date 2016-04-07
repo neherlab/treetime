@@ -425,7 +425,7 @@ class TreeTime(TreeAnc, object):
                 if collapse_func(final_prob) > node.up.abs_t + 1e-9:
                     # must never happen, just for security
                     # I think this can sometimes happen when using median collapsing
-                    if debug: import ipdb; ipdb.set_trace()
+                    if self.debug: import ipdb; ipdb.set_trace()
                     node.total_prob = utils.delta_fun(node.up.abs_t, return_log=True, normalized=False)
                     print ("Warn: the child node wants to be {0} earlier than "
                         "the parent node. Setting the child location to the parent's "
@@ -688,12 +688,12 @@ class TreeTime(TreeAnc, object):
                 try:
                     assert (idxs[0] != idxs[1])
                 except:
-                    if debug:
+                    if self.debug:
                         import ipdb; ipdb.set_trace()
                     else:
                         print("problem merging nodes")
                 n1, n2 = source_arr[idxs[0]], source_arr[idxs[1]]
-                if debug:
+                if self.debug:
                     print (n1,n2)
                     print ("Delta-LH = " + str(cost_gains[idxs].round(3)))
                 LH += cost_gains[idxs]
