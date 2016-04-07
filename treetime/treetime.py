@@ -44,7 +44,7 @@ class TreeTime(TreeAnc, object):
     def average_branch_len(self):
         """
         Compute the average branch length of the tree.
-        Used to estimate the scale  of the branch-lenghts
+        Used to estimate the scale  of the branch-lengths
         """
         return np.mean([n.branch_length for n in self.tree.find_clades()])
 
@@ -215,7 +215,7 @@ class TreeTime(TreeAnc, object):
             integral = np.sum(0.5*(tmp_prob[1:]+tmp_prob[:-1])*dt)
             node.branch_neg_log_prob = interp1d(grid, y + np.log(integral), kind='linear')
 
-    def _ml_t_init(self):
+    def _ml_t_init(self,**kwarks):
         """
         Initialize the attributes in all tree nodes that are required
         by the ML algorithm to compute the probablility distribution of the node
@@ -227,7 +227,8 @@ class TreeTime(TreeAnc, object):
 
         """
         tree = self.tree
-
+        self.optimize_seq_and_branch_len(**kwarks)
+        print('Initializing branch length interpolation object')
         if self.date2dist is None:
             print ("error - no date to dist conversion set. "
                 "Run init_date_constraints and try once more.")
@@ -249,7 +250,7 @@ class TreeTime(TreeAnc, object):
             if hasattr(node, 'numdate_given') and node.numdate_given is not None:
                 if hasattr(node, 'bad_branch') and node.bad_branch==True:
                     print ("Branch is marked as bad, excluding it from the optimization process"
-                        " Will be optimizaed freely")
+                        " Will be optimized freely")
                     node.numdate_given = None
                     node.abs_t = None
                     #    if there are no constraints - log_prob will be set on-the-fly
@@ -493,7 +494,7 @@ class TreeTime(TreeAnc, object):
             node.date = str(year) + "-" + str( int(days / 30)) + "-" + str(int(days % 30))
 
 
-    def coalescent_model(self, Tc=None, optimize_Tc = False):
+    def coalescent_model(self, Tc=None, optimize_Tc = False,**kwarks):
         """
         This is a wrapper function doing the full inference of node placing and
         ancestral sequences. In addition to standard branch length probabilie,
@@ -511,11 +512,9 @@ class TreeTime(TreeAnc, object):
         """
         from merger_models import coalescent
         #  propagate messages up and down and reconstruct ancestral states
-        self._ml_t_leaves_root()
-        self._ml_t_root_leaves()
-        self._ml_anc()
+        self.ml_t(**kwarks)
 
-        # of no coalescence time scale is provided, use half the root time
+        # if no coalescence time scale is provided, use half the root time
         if Tc is None:
             Tc = 0.5*self.tree.root.abs_t
 
@@ -529,9 +528,7 @@ class TreeTime(TreeAnc, object):
             def tmpTotalLH(Tc):
                 coalescent(self.tree, Tc=Tc)
                 self._update_branch_len_interpolators()
-                self._ml_t_leaves_root()
-                self._ml_t_root_leaves()
-                self._ml_anc()
+                self.ml_t()
                 print("Tc:",Tc)
                 self.print_lh()
                 return -self.total_LH()
@@ -543,11 +540,9 @@ class TreeTime(TreeAnc, object):
                 Tc = self.Tc_opt
             else:
                 print('coalescent time scale optimization failed')
-        self._ml_t_leaves_root()
-        self._ml_t_root_leaves()
-        self._ml_anc()
 
-    def ml_t(self):
+
+    def ml_t(self, max_iter = 3):
         """
         Perform the maximum-likelihood -- based optimization of the tree with temporal
         constraints of (some) internal nodes.
@@ -560,11 +555,19 @@ class TreeTime(TreeAnc, object):
         """
         #  propagate messages up
         self._ml_t_leaves_root()
-
         #  propagate messages down - reconstruct node positions
         self._ml_t_root_leaves()
-        self._ml_anc()
-        print ("Done tree optimization.")
+        Ndiff = self.reconstruct_anc(method='ml')
+
+        niter=0
+        while Ndiff>0 and niter<max_iter:
+            print('rerunning treetime inference iteration', niter+1, 'number of state changes observed:',Ndiff)
+            self._ml_t_init()
+            self._ml_t_leaves_root()
+            self._ml_t_root_leaves()
+            Ndiff = self.reconstruct_anc(method='ml')
+            niter+=1
+        print ("Done tree optimization after",niter+1,"iterations, final state changes:",Ndiff)
 
     def _set_rotated_profiles(self, node):
         """
@@ -617,6 +620,7 @@ class TreeTime(TreeAnc, object):
             - merge_compressed(bool): whether to keep compressed branches as
               polytomies or return a strictly binary tree.
         """
+        print('resolving polytomies')
         for n in self.tree.find_clades():
             if len(n.clades) > 3: self._poly(n, merge_compressed)
 
@@ -625,7 +629,6 @@ class TreeTime(TreeAnc, object):
         self.optimize_seq_and_branch_len(prune_short=False)
         self._ml_t_init()
         self.ml_t()
-        self._ml_anc()
         self.tree.ladderize()
 
 
@@ -963,18 +966,15 @@ class TreeTime(TreeAnc, object):
 
             if (node._R2 > best_root._R2 and node._beta>0) or best_root._beta<0:
                 best_root = node
-                # regression terms (only for the node better than current root)
-                node._beta = ( 1.0 * N * node._sum_diti - sum_ti * node._sum_di ) / (1.0*N*sum_ti2 - sum_ti**2)
-                node._alpha = 1.0 / N *node._sum_di - 1.0 / N * node._beta * sum_ti
+                print("Better root found: R2:", best_root._R2, " slope:", best_root._beta)
 
         return best_root, best_root._alpha, best_root._beta
 
-    def reroot_to_best_root(self):
+    def reroot_to_best_root(self,infer_gtr = False, **kwarks):
         '''
         determine the node that, when the tree is rooted on this node, results
         in the best regression of temporal constraints and root to tip distances
         '''
-
         best_root, a, b = self.find_best_root_and_regression()
         # first, re-root the tree
         self.tree.root_with_outgroup(best_root)
@@ -989,9 +989,9 @@ class TreeTime(TreeAnc, object):
         self.tree.root.numdate_given = None
         # fix tree lengths, etc
         self.set_additional_tree_params()
-        self.max_diam = self.date2dist.intercept
-        self._ml_anc()
-        self._ml_t_init() # this is essential as it sets all the interpolation objects
+        if infer_gtr:
+            self.infer_gtr()
+        self.init_date_constraints()
 
 
 

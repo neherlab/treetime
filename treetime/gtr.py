@@ -175,7 +175,7 @@ class GTR(object):
         else:
             print ("No alphabet specified. Using default nucleotide.")
             alphabet = 'nuc'
-        gtr = cls('nuc')
+        gtr = cls(alphabet)
         dp = 1e-5
         Nit = 20
         pc_mat = pc*np.ones_like(nij)
@@ -226,7 +226,6 @@ class GTR(object):
                 np.diagonal(self.Pi)
         np.fill_diagonal(self.W, Wdiag)
         Q1 = self.Pi.dot(self.W)
-        #import ipdb; ipdb.set_trace()
         self.W /= -np.sum(np.diagonal(Q1*self.Pi))
         self.mu=1.0
         Q1 = self.Pi.dot(self.W)

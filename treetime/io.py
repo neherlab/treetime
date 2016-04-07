@@ -346,7 +346,7 @@ def set_node_dates_from_dic(tree, dates_dic):
 
     tu = (num_, err_)
 
-    print ("Assigned ddates to {0} nodes, {1} errors".format(*tu))
+    print ("Assigned dates to {0} nodes, {1} errors".format(*tu))
 
 def set_node_dates_from_names(tree, date_func):
     """
