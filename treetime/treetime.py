@@ -230,7 +230,7 @@ class TreeTime(TreeAnc, object):
         tree = self.tree
         if ancestral_inference:
             self.optimize_seq_and_branch_len(**kwarks)
-        print('Initializing branch length interpolation object')
+        print('Initializing branch length interpolation objects')
         if self.date2dist is None:
             print ("error - no date to dist conversion set. "
                 "Run init_date_constraints and try once more.")
@@ -523,7 +523,11 @@ class TreeTime(TreeAnc, object):
         # resolve polytomies if there are any
         coalescent(self.tree, Tc=Tc)
         self._update_branch_len_interpolators()
-        self.resolve_polytomies()
+        self.resolve_polytomies(rerun=False)
+        self.optimize_branch_len()
+        self.optimize_seq_and_branch_len(prune_short=False)
+        self.init_date_constraints(ancestral_inference=False)
+        self.ml_t()
 
         # if desired, optimize the coalescence time scale
         if optimize_Tc:
@@ -613,7 +617,7 @@ class TreeTime(TreeAnc, object):
             return ttconf.MIN_LOG
 
 
-    def resolve_polytomies(self, merge_compressed=False):
+    def resolve_polytomies(self, merge_compressed=False, rerun=True):
         """
         Resolve the polytomies on the tree.
         The function scans the tree, resolves polytomies in case there are any,
@@ -623,14 +627,19 @@ class TreeTime(TreeAnc, object):
               polytomies or return a strictly binary tree.
         """
         print('resolving polytomies')
+        poly_found=False
         for n in self.tree.find_clades():
-            if len(n.clades) > 3: self._poly(n, merge_compressed)
+            if len(n.clades) > 3:
+                self._poly(n, merge_compressed)
+                poly_found=True
 
         # reoptimize branch length and sequences after topology changes
-        self.optimize_branch_len()
-        self.optimize_seq_and_branch_len(prune_short=False)
-        self._ml_t_init()
-        self.ml_t()
+        if rerun and poly_found:
+            print("topology of the tree has changed, will rerun inference...")
+            self.optimize_branch_len()
+            self.optimize_seq_and_branch_len(prune_short=False)
+            self.init_date_constraints(ancestral_inference=False)
+            self.ml_t()
         self.tree.ladderize()
 
 

@@ -77,14 +77,6 @@ def treetime_to_json(tt, outf):
                     print "cannot round:", node.__getattribute__(prop), "assigned as is"
                     tree_json[prop] = node.__getattribute__(prop)
 
-        #for prop in extra_attr:
-        #    if len(prop)==2 and callable(prop[1]):
-        #        if hasattr(node, prop[0]):
-        #            tree_json[prop] = prop[1](node.__getattribute__(prop[0]))
-        #    else:
-        #        if hasattr(node, prop):
-        #            tree_json[prop] = node.__getattribute__(prop)
-
         if node.clades:
             tree_json["children"] = []
             for ch in node.clades:
