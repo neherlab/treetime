@@ -39,6 +39,7 @@ class TreeTime(TreeAnc, object):
         self.date2dist = None  # we do not know anything about the conversion
         self.tree_file = ""
         self.max_diam = 0.0
+        self.debug=False
 
     @property
     def average_branch_len(self):
@@ -424,7 +425,7 @@ class TreeTime(TreeAnc, object):
                 if collapse_func(final_prob) > node.up.abs_t + 1e-9:
                     # must never happen, just for security
                     # I think this can sometimes happen when using median collapsing
-                    import ipdb; ipdb.set_trace()
+                    if debug: import ipdb; ipdb.set_trace()
                     node.total_prob = utils.delta_fun(node.up.abs_t, return_log=True, normalized=False)
                     print ("Warn: the child node wants to be {0} earlier than "
                         "the parent node. Setting the child location to the parent's "
@@ -672,7 +673,6 @@ class TreeTime(TreeAnc, object):
         def merge_nodes(source_arr):
             mergers = np.array([[cost_gain(n1,n2, clade) for n1 in source_arr]for n2 in source_arr])
             while len(source_arr) > 1:
-                #import ipdb; ipdb.set_trace()
                 print (len(source_arr))
 
                 LH = 0
@@ -688,10 +688,14 @@ class TreeTime(TreeAnc, object):
                 try:
                     assert (idxs[0] != idxs[1])
                 except:
-                    import ipdb; ipdb.set_trace()
+                    if debug:
+                        import ipdb; ipdb.set_trace()
+                    else:
+                        print("problem merging nodes")
                 n1, n2 = source_arr[idxs[0]], source_arr[idxs[1]]
-                print (n1,n2)
-                print ("Delta-LH = " + str(cost_gains[idxs].round(3)))
+                if debug:
+                    print (n1,n2)
+                    print ("Delta-LH = " + str(cost_gains[idxs].round(3)))
                 LH += cost_gains[idxs]
 
                 new_node = Phylo.BaseTree.Clade()
@@ -821,7 +825,7 @@ class TreeTime(TreeAnc, object):
             node.gamma/=avg_gamma
 
         print('reevaluating branch length interpolators')
-        self._ml_t_init()
+        self.init_date_constraints()
 
     def autocorr_molecular_clock(self, slack=None, coupling=None):
         """
