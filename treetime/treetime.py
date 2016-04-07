@@ -633,7 +633,7 @@ class TreeTime(TreeAnc, object):
         self.tree.ladderize()
 
 
-    def _poly(self, clade, merge_compressed, verbose=10):
+    def _poly(self, clade, merge_compressed, verbose=1):
         """
         Function to resolve polytomies for a given parent node. If the number of the
         direct decendants is less than three (not a polytomy), does nothing.
@@ -673,7 +673,7 @@ class TreeTime(TreeAnc, object):
         def merge_nodes(source_arr):
             mergers = np.array([[cost_gain(n1,n2, clade) for n1 in source_arr]for n2 in source_arr])
             while len(source_arr) > 1:
-                print (len(source_arr))
+                #print (len(source_arr))
 
                 LH = 0
 
