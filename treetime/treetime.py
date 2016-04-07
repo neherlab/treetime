@@ -68,7 +68,7 @@ class TreeTime(TreeAnc, object):
         # fix tree lengths, etc
         self.set_additional_tree_params()
 
-    def init_date_constraints(self, slope=None):
+    def init_date_constraints(self, slope=None, ancestral_inference=True):
         """
         Get the conversion coefficients between the dates and the branch
         lengths as they are used in ML computations. The conversion formula is
@@ -84,7 +84,7 @@ class TreeTime(TreeAnc, object):
 
         # set the None  for the date-related attributes in the internal nodes.
         # make interpolation objects for the branches
-        self._ml_t_init()
+        self._ml_t_init(ancestral_inference=ancestral_inference)
 
     def _make_branch_len_interpolator(self, node, n=ttconf.BRANCH_GRID_SIZE):
         """
@@ -826,7 +826,7 @@ class TreeTime(TreeAnc, object):
             node.gamma/=avg_gamma
 
         print('reevaluating branch length interpolators')
-        self.init_date_constraints()
+        self.init_date_constraints(ancestral_inference=False)
 
     def autocorr_molecular_clock(self, slack=None, coupling=None):
         """
@@ -996,7 +996,7 @@ class TreeTime(TreeAnc, object):
         self.set_additional_tree_params()
         if infer_gtr:
             self.infer_gtr()
-        self.init_date_constraints()
+        self.init_date_constraints(ancestral_inference=False)
 
 
 
