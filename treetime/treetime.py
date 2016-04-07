@@ -216,7 +216,7 @@ class TreeTime(TreeAnc, object):
             integral = np.sum(0.5*(tmp_prob[1:]+tmp_prob[:-1])*dt)
             node.branch_neg_log_prob = interp1d(grid, y + np.log(integral), kind='linear')
 
-    def _ml_t_init(self,**kwarks):
+    def _ml_t_init(self,ancestral_inference=True, **kwarks):
         """
         Initialize the attributes in all tree nodes that are required
         by the ML algorithm to compute the probablility distribution of the node
@@ -228,7 +228,8 @@ class TreeTime(TreeAnc, object):
 
         """
         tree = self.tree
-        self.optimize_seq_and_branch_len(**kwarks)
+        if ancestral_inference:
+            self.optimize_seq_and_branch_len(**kwarks)
         print('Initializing branch length interpolation object')
         if self.date2dist is None:
             print ("error - no date to dist conversion set. "
@@ -563,7 +564,7 @@ class TreeTime(TreeAnc, object):
         niter=0
         while Ndiff>0 and niter<max_iter:
             print('rerunning treetime inference iteration', niter+1, 'number of state changes observed:',Ndiff)
-            self._ml_t_init()
+            self._ml_t_init(ancestral_inference=False)
             self._ml_t_leaves_root()
             self._ml_t_root_leaves()
             Ndiff = self.reconstruct_anc(method='ml')
