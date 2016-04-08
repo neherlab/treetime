@@ -526,6 +526,7 @@ class TreeTime(TreeAnc, object):
         self.resolve_polytomies(rerun=False)
         self.optimize_branch_len()
         self.optimize_seq_and_branch_len(prune_short=False)
+        self.reroot_to_best_root()
         self.init_date_constraints(ancestral_inference=False)
         self.ml_t()
 
@@ -927,59 +928,60 @@ class TreeTime(TreeAnc, object):
         """
 
         sum_ti = np.sum([node.numdate_given for node in self.tree.get_terminals() if node.numdate_given is not None])
-        sum_ti2 = np.sum([node.numdate_given ** 2 for node in self.tree.get_terminals() if node.numdate_given is not None])
-        N = len(self.tree.get_terminals())
+        sum_ti2 = np.sum([node.numdate_given**2 for node in self.tree.get_terminals() if node.numdate_given is not None])
+        N = 1.0*len([x for x in self.tree.get_terminals() if x.numdate_given is not None])
+        Ninv = 1.0/N
+        time_variance = (N*sum_ti2 - sum_ti**2)*Ninv**2
 
         #  fill regression terms for one of the two subtrees
         for node in self.tree.find_clades(order='postorder'):  # children first, msg to parents
-            if node.is_terminal():  # skip leaves
+            if node.is_terminal():  # inititalize the leaves
                 #  will not rely on the standard func - count terminals directly
-                node._st_n_leaves = 1
-                node._st_sum_di = 0.0
-                node._st_sum_diti = 0.0
-                node._st_sum_di2 = 0.0
+                node._st_n_leaves = 0 if node.numdate_given is None else 1
+                node._st_di = 0.0
+                node._st_diti = 0.0
+                node._st_di2 = 0.0
 
                 if node.numdate_given is not None:
-                    node._st_sum_ti = node.numdate_given
+                    node._st_ti = node.numdate_given
 
-                node._sum_ti = sum_ti
-                node._sum_ti2 = sum_ti2
-
-                continue
-
-            #  theese all account for subtree only (except for the root, which collects whole tree)
-            node._st_sum_ti = np.sum([k._st_sum_ti for k in node.clades])
-            node._st_n_leaves = np.sum([k._st_n_leaves for k in node.clades])
-            node._st_sum_di   = np.sum([k._st_sum_di + k._st_n_leaves * k.branch_length for k in node.clades])
-            node._st_sum_diti = np.sum([k._st_sum_diti + k.branch_length * k._st_sum_ti for k in node.clades])
-            node._st_sum_di2  = np.sum([k._st_sum_di2 + k._st_sum_di * 2 * k.branch_length + k._st_n_leaves * k.branch_length ** 2 for k in node.clades])
-
-            node._sum_ti = sum_ti
-            node._sum_ti2 = sum_ti2
+                node._ti = sum_ti
+            else:
+                #  for non-terminal nodes,
+                node._st_ti = np.sum([k._st_ti for k in node.clades])
+                node._st_n_leaves = np.sum([k._st_n_leaves for k in node.clades])
+                node._st_di   = np.sum([k._st_di + k._st_n_leaves*k.branch_length for k in node.clades])
+                node._st_diti = np.sum([k._st_diti + k.branch_length*k._st_ti for k in node.clades])
+                node._st_di2  = np.sum([k._st_di2 + 2*k._st_di*k.branch_length + k._st_n_leaves*k.branch_length**2 for k in node.clades])
+                node._ti = sum_ti
 
 
         best_root = self.tree.root
         for node in self.tree.find_clades(order='preorder'):  # root first
-
             if node.up is None:
                 # assign the values for the root node
-                node._sum_di   = node._st_sum_di
-                node._sum_diti = node._st_sum_diti
-                node._sum_di2  = node._st_sum_di2
-
+                node._di   = node._st_di
+                node._diti = node._st_diti
+                node._di2  = node._st_di2
             else: # basing on the parent, compute the values for regression
                 #  NOTE order of the values computation matters
-                node._sum_di = node.up._sum_di + (1.0*N-2.0*node._st_n_leaves) * node.branch_length
-                node._sum_di2 = node.up._sum_di2 - 4.0*node.branch_length*node._st_sum_di + 2.0 * node.branch_length * node._sum_di + (1.0*N - 2.0 * node._st_n_leaves) * node.branch_length**2
-                node._sum_diti = node.up._sum_diti + node.branch_length * (sum_ti - 2.0 * node._st_sum_ti)
+                n_up = N-node._st_n_leaves
+                n_down = node._st_n_leaves
+                node._di = node.up._di + (n_up-n_down)*node.branch_length
+                node._di2 = (node.up._di2 + 2*node.branch_length*node.up._di - 4*node.branch_length*node._st_di
+                              + (N - 4*n_down)*node.branch_length**2)
+                node._diti = node.up._diti + node.branch_length*(sum_ti - 2*node._st_ti)
+            node._dist_variance = (N*node._di2 - node._di**2)*(Ninv**2)
+            node._disttime_cov = (N*node._diti - sum_ti*node._di)*(Ninv**2)
 
-            node._R2 = ((1.0*N * node._sum_diti - sum_ti * node._sum_di) / (np.sqrt((1.0*N * sum_ti2 - node._sum_ti**2)*(1.0*N * node._sum_di2 - node._sum_di**2))))**2
-            node._beta = ( 1.0 * N * node._sum_diti - sum_ti * node._sum_di ) / (1.0*N*sum_ti2 - sum_ti**2)
-            node._alpha = 1.0 / N *node._sum_di - 1.0 / N * node._beta * sum_ti
+            node._beta = node._disttime_cov/time_variance
+            node._alpha = (node._di - node._beta*sum_ti)/N
+            node._R2 = node._disttime_cov**2/(time_variance*node._dist_variance)
             if node.up is None:
                 print("Initial root: R2:", best_root._R2, " slope:", best_root._beta)
 
-            if (node._R2 > best_root._R2 and node._beta>0) or best_root._beta<0:
+            if (node._R2>best_root._R2 and node._beta>0) or best_root._beta<0:
+            #if (node._beta>best_root._beta and node._beta>0) or best_root._beta<0:
                 best_root = node
                 print("Better root found: R2:", best_root._R2, " slope:", best_root._beta)
 
@@ -1006,7 +1008,7 @@ class TreeTime(TreeAnc, object):
         self.set_additional_tree_params()
         if infer_gtr:
             self.infer_gtr()
-        self.init_date_constraints(ancestral_inference=False)
+        self.init_date_constraints(ancestral_inference=True)
 
 
 
