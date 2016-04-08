@@ -159,13 +159,23 @@ class GTR(object):
     def infer(cls, nij, Ti, root_state, pc=5.0, **kwargs):
         """
         Infer a GTR model by specifying the number of transitions and time spent in each
-        character
+        character. The basic equation that is being solved is
+            n_ij = pi_i W_ij T_j
+        where n_ij are the transitions, pi_i are the equilibrium state frequencies,
+        W_ij is the "mutation attempt matrix", while T_i is the time on the tree
+        spent in character state i. To regularize the process, we add pseudocounts and
+        also need to account for the fact that the root of the tree is in a particular
+        state. the modified equation is
+            n_ij + pc = pi_i W_ij (T_j+pc+root_state)
 
         Args:
          - nij (nxn matrix): the number of times a change in character state is observed
             between state i and j
          - Ti (n vector): the time spent in each character state
-
+         - root_state( n vector): the number of characters in state i in the sequence
+            of the root node.
+         - pc (float): pseudocounts, this determines the lower cutoff on the rate when
+            no mutation are observed
         KWargs:
          - alphabet(str): specify alphabet when applicable. If the alphabet specification
          is requred, but no alphabet specified, the nucleotide will be used as default.
