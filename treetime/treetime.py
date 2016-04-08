@@ -968,8 +968,9 @@ class TreeTime(TreeAnc, object):
                 n_up = N-node._st_n_leaves
                 n_down = node._st_n_leaves
                 node._di = node.up._di + (n_up-n_down)*node.branch_length
-                node._di2 = (node.up._di2 + 2*node.branch_length*node.up._di - 4*node.branch_length*node._st_di
-                              + (N - 4*n_down)*node.branch_length**2)
+                node._di2 = (node.up._di2 + 2*node.branch_length*node.up._di
+                            - 4*(node.branch_length*(node._st_di + n_down*node.branch_length))
+                            + N*node.branch_length**2)
                 node._diti = node.up._diti + node.branch_length*(sum_ti - 2*node._st_ti)
             node._dist_variance = (N*node._di2 - node._di**2)*(Ninv**2)
             node._disttime_cov = (N*node._diti - sum_ti*node._di)*(Ninv**2)
