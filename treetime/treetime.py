@@ -524,10 +524,7 @@ class TreeTime(TreeAnc, object):
         coalescent(self.tree, Tc=Tc)
         self._update_branch_len_interpolators()
         self.resolve_polytomies(rerun=False)
-        self.optimize_branch_len()
-        self.optimize_seq_and_branch_len(prune_short=False)
-        self.reroot_to_best_root()
-        self.init_date_constraints(ancestral_inference=False)
+        self.init_date_constraints(ancestral_inference=True)
         self.ml_t()
 
         # if desired, optimize the coalescence time scale
