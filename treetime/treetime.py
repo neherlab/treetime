@@ -944,6 +944,8 @@ class TreeTime(TreeAnc, object):
 
                 if node.numdate_given is not None:
                     node._st_ti = node.numdate_given
+                else:
+                    node._st_ti = 0
 
                 node._ti = sum_ti
             else:
@@ -954,7 +956,6 @@ class TreeTime(TreeAnc, object):
                 node._st_diti = np.sum([k._st_diti + k.branch_length*k._st_ti for k in node.clades])
                 node._st_di2  = np.sum([k._st_di2 + 2*k._st_di*k.branch_length + k._st_n_leaves*k.branch_length**2 for k in node.clades])
                 node._ti = sum_ti
-
 
         best_root = self.tree.root
         for node in self.tree.find_clades(order='preorder'):  # root first
@@ -974,6 +975,7 @@ class TreeTime(TreeAnc, object):
                 node._diti = node.up._diti + node.branch_length*(sum_ti - 2*node._st_ti)
             node._dist_variance = (N*node._di2 - node._di**2)*(Ninv**2)
             node._disttime_cov = (N*node._diti - sum_ti*node._di)*(Ninv**2)
+            node._time_variance = time_variance
 
             node._beta = node._disttime_cov/time_variance
             node._alpha = (node._di - node._beta*sum_ti)/N
