@@ -326,10 +326,13 @@ class TreeAnc(object):
                             enumerate(izip(node.up.sequence, sequence)) if anc!=der]
 
             tree.sequence_LH += np.sum(np.log(node.seq_msg_from_parent[profile>0.9]))
-            if hasattr(node, 'sequence'):
-                N_diff += (sequence!=node.sequence).sum()
+            if hasattr(node, 'sequence') and node.sequence is not None:
+                try:
+                    N_diff += (sequence!=node.sequence).sum()
+                except:
+                    import ipdb; ipdb.set_trace()
             else:
-                N_diff += self.L
+                N_diff += L
             node.sequence = sequence
             node.profile = profile
         return N_diff
