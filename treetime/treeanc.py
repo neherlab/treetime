@@ -34,10 +34,9 @@ class TreeAnc(object):
         self._leaves_lookup = {}
         # self.set_additional_tree_params()
 
-    def infer_gtr(self, alphabet_type='nuc', **kwargs):
+    def infer_gtr(self, **kwargs):
         self._ml_anc(**kwargs)
-        if alphabet_type in seq_utils.alphabets:
-            alpha = "".join(seq_utils.alphabets[alphabet_type])
+        alpha = list(self.gtr.alphabet)
         n=len(alpha)
         nij = np.zeros((n,n))
         Ti = np.zeros(n)
@@ -52,7 +51,7 @@ class TreeAnc(object):
                     i = alpha.index(nuc)
                     Ti[i]+=node.branch_length
         root_state = np.array([np.sum(self.tree.root.sequence==nuc) for nuc in alpha])
-        self._gtr = GTR.infer(nij, Ti, root_state, pc=5.0)
+        self._gtr = GTR.infer(nij, Ti, root_state, pc=5.0, alphabet=self.gtr.alphabet)
         return self._gtr
 
     def set_additional_tree_params(self):
@@ -207,11 +206,11 @@ class TreeAnc(object):
                     N_diff += self.L
                 node.sequence = sequence
 
-            node.profile = seq_utils.seq2prof(node.sequence)
+            node.profile = seq_utils.seq2prof(node.sequence, self.gtr.profile_map)
             del node.state # no need to store Fitch states
         print ("Done ancestral state reconstruction")
         for node in self.tree.get_terminals():
-            node.profile = seq_utils.seq2prof(node.sequence)
+            node.profile = seq_utils.seq2prof(node.sequence, self.gtr.profile_map)
         return N_diff
 
     def _fitch_state(self, node, pos):
@@ -275,17 +274,17 @@ class TreeAnc(object):
             except:
                 print ("ML ERROR in input: verbose param must be int")
         L = tree.get_terminals()[0].sequence.shape[0]
-        a = self.gtr.alphabet.shape[0]
+        n_states = self.gtr.alphabet.shape[0]
         if verbose > 2:
             print ("Walking up the tree, computing joint likelihoods...")
         for leaf in tree.get_terminals():
             # in any case, set the profile
-            leaf.profile = seq_utils.seq2prof(leaf.sequence, self.gtr.alphabet_type)
+            leaf.profile = seq_utils.seq2prof(leaf.sequence, self.gtr.profile_map)
             leaf.lh_prefactor = np.zeros(L)
         for node in tree.get_nonterminals(order='postorder'): #leaves -> root
             # regardless of what was before, set the profile to ones
             node.lh_prefactor = np.zeros(L)
-            node.profile = np.ones((L, a)) # we will multiply it
+            node.profile = np.ones((L, n_states)) # we will multiply it
             for ch in node.clades:
                 ch.seq_msg_to_parent = self.gtr.propagate_profile(ch.profile,
                     ch.branch_length,
@@ -327,7 +326,6 @@ class TreeAnc(object):
                             enumerate(izip(node.up.sequence, sequence)) if anc!=der]
 
             tree.sequence_LH += np.sum(np.log(node.seq_msg_from_parent[profile>0.9]))
-
             if hasattr(node, 'sequence'):
                 N_diff += (sequence!=node.sequence).sum()
             else:

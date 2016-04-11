@@ -4,7 +4,7 @@ alphabets = {
             "nuc": np.array(['A', 'C', 'G', 'T', '-']),
             "aa": np.array(['-'])}
 
-full_nc_profile = {
+profile_maps = {'nuc':{
     'A': np.array([1, 0, 0, 0, 0], dtype='float'),
     'C': np.array([0, 1, 0, 0, 0], dtype='float'),
     'G': np.array([0, 0, 1, 0, 0], dtype='float'),
@@ -22,15 +22,16 @@ full_nc_profile = {
     'H': np.array([1, 1, 0, 1, 0], dtype='float'),
     'B': np.array([0, 1, 1, 1, 0], dtype='float'),
     'V': np.array([1, 1, 1, 0, 0], dtype='float')}
+    }
 
 def prepare_seq(seq):
     """
     Take the raw sequence, substitute the "overhanging" gaps with 'N' (missequenced)
-    convert the sequence to the numpy array of uppercase chars. 
-    
+    convert the sequence to the numpy array of uppercase chars.
+
     Args:
      - seq:  sequence as an object of SeqRecord, string or iterable
-    
+
     Returns:
      - sequence(np.array): sequence as 1D numpy array of chars
     """
@@ -46,33 +47,24 @@ def prepare_seq(seq):
     sequence [np.where(sequence != '-')[0][-1]+1:] = 'N'
     return sequence
 
-def seq2prof(x, aln_type='nuc'):
+def seq2prof(x, profile_map):
     """
     Convert the given character sequence into the profileaccording to the alphabet specified.
-    
+
     Args:
-     
+
      - x(numpy.array): sequence to be converted to the profile
-     
-     - alph(str): alphabet type. Can be either 'nuc' for nucleotide alphabet, 
-     or 'aa' for amino acid alphabet
-    
+
+     - profile map mapping valid characters to profiles
+
     Returns:
-     
+
      - idx(numpy.array): profile for the character, zero array if the character not found
     """
-    
-    if aln_type=='nuc':
-        prof = np.array([full_nc_profile[k]
-            if k in full_nc_profile else full_nc_profile['N'] for k in x])
-        err = ((prof == 0.2).sum(1) != 0).sum()
-        if err>0:
-            print ("Seq2Profile: %d of %d characters were not identified or"
-                    " not sequenced." % (err, prof.shape[0]))
-    elif aln_type=='aa':
-        raise NotImplementedError("Amino-acid alphabet is under development.")
-    else:
-        raise TypeError("Alignment type cane be either 'nuc' or 'aa'")
+    n_states = len(profile_map.values()[0])
+    prof = np.array([profile_map[k] if k in profile_map
+                    else np.ones(n_states) for k in x ])
+
     return prof
 
 def prof2seq(profile, gtr, correct_prof=True):

@@ -2,37 +2,45 @@ from __future__ import division, print_function
 import numpy as np
 from scipy import optimize as sciopt
 import config as ttconf
-from seq_utils import alphabets
+from seq_utils import alphabets, profile_maps
 
 
 class GTR(object):
     """
     Defines General-Time-Reversible model of character evolution.
     """
-    def __init__(self, alphabet_type):
+    def __init__(self, alphabet='nuc', prof_map=None):
         """
         Initialize empty evolutionary model.
         Args:
          - alphabet (numpy.array): alphabet of the sequence.
         """
-        if not alphabet_type in alphabets:
-            raise AttributeError("Unknown alphabet type specified")
-
-        self.alphabet_type = alphabet_type
-        alphabet = alphabets[alphabet_type]
-        self.alphabet = alphabet
+        if type(alphabet)==str:
+            if (alphabet not in alphabets):
+                raise AttributeError("Unknown alphabet type specified")
+            else:
+                self.alphabet = alphabets[alphabet]
+                self.profile_map = profile_maps[alphabet]
+        else:
+            self.alphabet = alphabet
+            if prof_map is None:
+                self.profile_map = {s:x for s,x in zip(self.alphabet, np.eye(len(self.alphabet)))}
+            else:
+                self.profile_map = prof_map
+        n_states = len(self.alphabet)
 
         # general rate matrix
-        self.W = np.zeros((alphabet.shape[0], alphabet.shape[0]))
+        self.W = np.zeros((n_states, n_states))
         # stationary states of the characters
-        self.Pi = np.zeros((alphabet.shape[0], alphabet.shape[0]))
+        self.Pi = np.zeros((n_states, n_states))
+
         # mutation rate, scaling factor
         self.mu = 1.0
         # eigendecomposition of the GTR matrix
         # Pi.dot(W) = v.dot(eigenmat).dot(v_inv)
-        self.v = np.zeros((alphabet.shape[0], alphabet.shape[0]))
-        self.v_inv = np.zeros((alphabet.shape[0], alphabet.shape[0]))
-        self.eigenmat = np.zeros(alphabet.shape[0])
+        self.v = np.zeros((n_states, n_states))
+        self.v_inv = np.zeros((n_states, n_states))
+        self.eigenmat = np.zeros(n_states)
 
         # distance matrix (needed for topology optimization and for NJ)
         self.dm = None
@@ -40,17 +48,17 @@ class GTR(object):
     def __str__(self):
         eq_freq_str = "Equilibrium frequencies (pi_i):\n"
         for a,p in zip(self.alphabet, np.diagonal(self.Pi)):
-            eq_freq_str+=a+': '+str(np.round(p,4))+'\n'
+            eq_freq_str+=str(a)+': '+str(np.round(p,4))+'\n'
 
         W_str = "\nSymmetrized rates from j->i (W_ij):\n"
-        W_str+='\t'+'\t'.join(list(self.alphabet))+'\n'
+        W_str+='\t'+'\t'.join(map(str, self.alphabet))+'\n'
         for a,Wi in zip(self.alphabet, self.W):
-            W_str+=a+'\t'+'\t'.join([str(np.round(max(0,p),4)) for p in Wi])+'\n'
+            W_str+=str(a)+'\t'+'\t'.join([str(np.round(max(0,p),4)) for p in Wi])+'\n'
 
         Q_str = "\nActual rates from j->i (Q_ij):\n"
-        Q_str+='\t'+'\t'.join(list(self.alphabet))+'\n'
+        Q_str+='\t'+'\t'.join(map(str, self.alphabet))+'\n'
         for a,Qi in zip(self.alphabet, self.Pi.dot(self.W)):
-            Q_str+=a+'\t'+'\t'.join([str(np.round(max(0,p),4)) for p in Qi])+'\n'
+            Q_str+=str(a)+'\t'+'\t'.join([str(np.round(max(0,p),4)) for p in Qi])+'\n'
 
         return eq_freq_str + W_str + Q_str
 
@@ -68,24 +76,14 @@ class GTR(object):
          - alphabet(str): specify alphabet when applicable. If the alphabet specification
          is requred, but no alphabet specified, the nucleotide will be used as default.
         """
-        if 'alphabet' in kwargs and alphabet in alphabets.keys():
-            alphabet = kwargs['alphabet']
-        else:
-            if Pi is not None and len(Pi) in [20,21]:
-                print ("No alphabet specified. Using default amino acid.")
-                alphabet = 'aa'
-            else:
-                print ("No alphabet specified. Using default nucleotide.")
-                alphabet = 'nuc'
-
-        gtr = cls(alphabet)
+        gtr = cls(**kwargs)
         n = gtr.alphabet.shape[0]
 
         gtr.mu = mu
         if pi is not None and len(pi)==n:
             Pi = pi
         else:
-            if Pi is not None and len(pi)!=n:
+            if pi is not None and len(pi)!=n:
                 print("length of equilibrium frequency vector does not match alphabet length"
                       "Ignoring input equilibrium frequencies")
             Pi = np.ones(size=(n))
@@ -197,12 +195,7 @@ class GTR(object):
          - alphabet(str): specify alphabet when applicable. If the alphabet specification
          is requred, but no alphabet specified, the nucleotide will be used as default.
         """
-        if 'alphabet' in kwargs and alphabet in alphabets.keys():
-            alphabet = kwargs['alphabet']
-        else:
-            print ("No alphabet specified. Using default nucleotide.")
-            alphabet = 'nuc'
-        gtr = cls(alphabet)
+        gtr = cls(**kwargs)
         dp = 1e-5
         Nit = 20
         pc_mat = pc*np.ones_like(nij)
@@ -257,6 +250,7 @@ class GTR(object):
         self.mu=1.0
         Q1 = self.Pi.dot(self.W)
         if (Q1.sum(axis=0) < 1e-10).sum() <  self.alphabet.shape[0]: # fix failed
+            import ipdb; ipdb.set_trace()
             raise ArithmeticError("Cannot fix the diagonal of the GTR rate matrix.")
 
 

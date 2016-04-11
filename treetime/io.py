@@ -203,7 +203,8 @@ def set_seqs_to_leaves(tree, aln):
     dic_aln = {k.name: seq_utils.prepare_seq(k.seq) for k in aln} #
     for l in tree.tree.get_terminals():
         if l.name in dic_aln:
-            l.sequence = dic_aln[l.name]
+            l.state_seq = dic_aln[l.name]
+            l.sequence=l.state_seq
         else:
             print ("Cannot find sequence for leaf: %s" % l.name)
             failed_leaves += 1
