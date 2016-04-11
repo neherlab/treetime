@@ -115,8 +115,12 @@ class TreeTime(TreeAnc, object):
         prof_p = parent.profile
         prof_ch = node.profile
 
+
         if not hasattr(node, 'gamma'):
             node.gamma = 1.0
+        
+        if not hasattr(node, 'merger_rate') or node.merger_rate is None:
+            node.merger_rate = ttconf.BRANCH_LEN_PENALTY
 
         # optimal branch length
         obl = self.gtr.optimal_t(node.up.profile, node.profile) # not rotated profiles!
@@ -174,6 +178,7 @@ class TreeTime(TreeAnc, object):
         # add merger rate contribution to the raw branch length
         logprob += node.merger_rate * np.minimum(ttconf.MAX_BRANCH_LENGTH, np.maximum(0,grid))
 
+
         # normalize the branch lengths prob distribution
         min_prob = np.min(logprob)
         if np.exp(-1*min_prob) == 0:
@@ -228,6 +233,9 @@ class TreeTime(TreeAnc, object):
 
         """
         tree = self.tree
+
+        if ttconf.BRANCH_LEN_PENALTY is None:
+            ttconf.BRANCH_LEN_PENALTY = 0.0
 
         if self.date2dist is None:
             print ("error - no date to dist conversion set. "
@@ -566,6 +574,7 @@ class TreeTime(TreeAnc, object):
         self._ml_t_root_leaves()
         self._ml_anc()
         print ("Done tree optimization.")
+
 
     def _set_rotated_profiles(self, node):
         """
