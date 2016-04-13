@@ -151,7 +151,7 @@ def root_lh_to_json(tt, outf):
     print (', '.join([str(k) for k in x]))
     print (', '.join([str(k) for k in y]))
 
-    import ipdb; ipdb.set_trace()
+    #import ipdb; ipdb.set_trace()
 
 
 def save_timetree_results(tree, outfile_prefix):
