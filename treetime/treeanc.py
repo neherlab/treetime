@@ -34,6 +34,27 @@ class TreeAnc(object):
         self._leaves_lookup = {}
         # self.set_additional_tree_params()
 
+    def infer_gtr(self, alphabet_type='nuc', **kwargs):
+        self._ml_anc(**kwargs)
+        if alphabet_type in seq_utils.alphabets:
+            alpha = "".join(seq_utils.alphabets[alphabet_type])
+        n=len(alpha)
+        nij = np.zeros((n,n))
+        Ti = np.zeros(n)
+        for node in self.tree.find_clades():
+            if hasattr(node,'mutations'):
+                for a,pos, d in node.mutations:
+                    i,j = alpha.index(a), alpha.index(d)
+                    nij[i,j]+=1
+                    Ti[i] += 0.5*node.branch_length
+                    Ti[j] -= 0.5*node.branch_length
+                for nuc in node.sequence:
+                    i = alpha.index(nuc)
+                    Ti[i]+=node.branch_length
+        root_state = np.array([np.sum(self.tree.root.sequence==nuc) for nuc in alpha])
+        self._gtr = GTR.infer(nij, Ti, root_state, pc=5.0)
+        return self._gtr
+
     def set_additional_tree_params(self):
         """
         Set link to parent and net distance to root for all tree nodes.
@@ -108,7 +129,7 @@ class TreeAnc(object):
                 c.dist2root_0 = c.dist2root #  store the values used later for date-branchLen conversion
         return
 
-    def reconstruct_anc(self, method, **kwargs):
+    def reconstruct_anc(self, method, infer_gtr=False, **kwargs):
         """
         Reconstruct ancestral states
         Args:
@@ -121,12 +142,16 @@ class TreeAnc(object):
          reconstruction. If there were no pre-set sequences, returns N*L
 
         """
-        if method == 'fitch':
-            N_diff = self._fitch_anc(**kwargs)
-        elif method == 'ml':
+        if infer_gtr:
+            self.infer_gtr(**kwargs)
             N_diff = self._ml_anc(**kwargs)
         else:
-            raise NotImplementedError("The reconstruction method %s is not supported. " % method)
+            if method == 'fitch':
+                N_diff = self._fitch_anc(**kwargs)
+            elif method == 'ml':
+                N_diff = self._ml_anc(**kwargs)
+            else:
+                raise NotImplementedError("The reconstruction method %s is not supported. " % method)
         return N_diff
 
 
@@ -385,7 +410,7 @@ class TreeAnc(object):
                 for clade in node.clades:
                     clade.up = node.up
 
-    def optimize_seq_and_branch_len(self,reuse_branch_len=True,prune_short=True):
+    def optimize_seq_and_branch_len(self,reuse_branch_len=True,prune_short=True, **kwargs):
         """
         Iteratively set branch lengths and reconstruct ancestral sequences until
         the values of either former or latter do not change. The algorithm assumes
@@ -409,9 +434,9 @@ class TreeAnc(object):
         """
 
         if reuse_branch_len:
-            N_diff = self.reconstruct_anc('ml')
+            N_diff = self.reconstruct_anc('ml', **kwargs)
         else:
-            N_diff = self.reconstruct_anc(method='fitch')
+            N_diff = self.reconstruct_anc(method='fitch', **kwargs)
         n = 0
         while True: # at least one cycle must be done
 

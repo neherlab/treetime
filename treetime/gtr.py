@@ -1,3 +1,4 @@
+from __future__ import division, print_function
 import numpy as np
 from scipy import optimize as sciopt
 import config as ttconf
@@ -36,6 +37,74 @@ class GTR(object):
         # distance matrix (needed for topology optimization and for NJ)
         self.dm = None
 
+    def __str__(self):
+        eq_freq_str = "Equilibrium frequencies (pi_i):\n"
+        for a,p in zip(self.alphabet, np.diagonal(self.Pi)):
+            eq_freq_str+=a+': '+str(np.round(p,4))+'\n'
+
+        W_str = "\nSymmetrized rates from j->i (W_ij):\n"
+        W_str+='\t'+'\t'.join(list(self.alphabet))+'\n'
+        for a,Wi in zip(self.alphabet, self.W):
+            W_str+=a+'\t'+'\t'.join([str(np.round(max(0,p),4)) for p in Wi])+'\n'
+
+        Q_str = "\nActual rates from j->i (Q_ij):\n"
+        Q_str+='\t'+'\t'.join(list(self.alphabet))+'\n'
+        for a,Qi in zip(self.alphabet, self.Pi.dot(self.W)):
+            Q_str+=a+'\t'+'\t'.join([str(np.round(max(0,p),4)) for p in Qi])+'\n'
+
+        return eq_freq_str + W_str + Q_str
+
+    @classmethod
+    def custom(cls, mu=1.0, pi=None, W=None, **kwargs):
+        """
+        Create a GTR model by specifying the matrix explicitly
+
+        Args:
+         - mu (float): mutation rate
+         - W (nxn matrix): mutation matrix
+         - pi (n vector): equilibrium frequencies
+
+        KWargs:
+         - alphabet(str): specify alphabet when applicable. If the alphabet specification
+         is requred, but no alphabet specified, the nucleotide will be used as default.
+        """
+        if 'alphabet' in kwargs and alphabet in alphabets.keys():
+            alphabet = kwargs['alphabet']
+        else:
+            if Pi is not None and len(Pi) in [20,21]:
+                print ("No alphabet specified. Using default amino acid.")
+                alphabet = 'aa'
+            else:
+                print ("No alphabet specified. Using default nucleotide.")
+                alphabet = 'nuc'
+
+        gtr = cls(alphabet)
+        n = gtr.alphabet.shape[0]
+
+        gtr.mu = mu
+        if pi is not None and len(pi)==n:
+            Pi = pi
+        else:
+            if Pi is not None and len(pi)!=n:
+                print("length of equilibrium frequency vector does not match alphabet length"
+                      "Ignoring input equilibrium frequencies")
+            Pi = np.ones(size=(n))
+        Pi /= Pi.sum()
+        gtr.Pi = np.diagflat(Pi)
+
+        if W is None or W.shape!=(n,n):
+            if W.shape!=(n,n):
+                print("Mutation matrix size does not match alphabet size"
+                      "Ignoring input mutation matrix")
+            # flow matrix
+            gtr.W = np.ones((a,a))
+            np.fill_diagonal(gtr.W, - ((gtr.W).sum(axis=0) - 1))
+
+        gtr.W = 0.5*(W+W.T)
+        gtr._check_fix_Q()
+        gtr._eig()
+        return gtr
+
     @classmethod
     def standard(cls, model='Jukes-Cantor', **kwargs):
         """
@@ -44,7 +113,7 @@ class GTR(object):
         Args:
 
          - model (str): type of the model. Currently supported models are:
-         Jukes-Cantor.
+         Jukes-Cantor, random.
 
         KWargs:
 
@@ -74,7 +143,7 @@ class GTR(object):
 
             # flow matrix
             gtr.W = np.ones((a,a))
-            np.fill_diagonal(gtr.W, - ((gtr.W).sum(0) - 1))
+            np.fill_diagonal(gtr.W, - ((gtr.W).sum(axis=0) - 1))
 
             # equilibrium concentrations matrix
             gtr.Pi = np.zeros(gtr.W.shape)
@@ -103,29 +172,97 @@ class GTR(object):
         else:
             raise NotImplementedError("The specified evolutionary model is unsupported!")
 
+    @classmethod
+    def infer(cls, nij, Ti, root_state, pc=5.0, **kwargs):
+        """
+        Infer a GTR model by specifying the number of transitions and time spent in each
+        character. The basic equation that is being solved is
+            n_ij = pi_i W_ij T_j
+        where n_ij are the transitions, pi_i are the equilibrium state frequencies,
+        W_ij is the "mutation attempt matrix", while T_i is the time on the tree
+        spent in character state i. To regularize the process, we add pseudocounts and
+        also need to account for the fact that the root of the tree is in a particular
+        state. the modified equation is
+            n_ij + pc = pi_i W_ij (T_j+pc+root_state)
+
+        Args:
+         - nij (nxn matrix): the number of times a change in character state is observed
+            between state i and j
+         - Ti (n vector): the time spent in each character state
+         - root_state( n vector): the number of characters in state i in the sequence
+            of the root node.
+         - pc (float): pseudocounts, this determines the lower cutoff on the rate when
+            no mutation are observed
+        KWargs:
+         - alphabet(str): specify alphabet when applicable. If the alphabet specification
+         is requred, but no alphabet specified, the nucleotide will be used as default.
+        """
+        if 'alphabet' in kwargs and alphabet in alphabets.keys():
+            alphabet = kwargs['alphabet']
+        else:
+            print ("No alphabet specified. Using default nucleotide.")
+            alphabet = 'nuc'
+        gtr = cls(alphabet)
+        dp = 1e-5
+        Nit = 20
+        pc_mat = pc*np.ones_like(nij)
+        pc_mat -= np.diag(np.diag(pc_mat))
+        from scipy import linalg as LA
+        count = 0
+        pi_old = np.zeros_like(Ti)
+        pi = np.ones_like(Ti)
+        pi/=pi.sum()
+        W_ij = np.ones_like(nij)
+        mu = nij.sum()/Ti.sum()
+        while LA.norm(pi_old-pi) > dp and count < Nit:
+            print('GTR inference iteration ',count,'change:',LA.norm(pi_old-pi))
+            count += 1
+            pi_old = np.copy(pi)
+            W_ij = (nij+nij.T+2*pc_mat)/mu/(np.outer(pi,Ti) + np.outer(Ti,pi)
+                                                    + ttconf.TINY_NUMBER + 2*pc_mat)
+            W_ij = W_ij/np.sum(W_ij)
+            pi = (np.sum(nij+pc_mat,axis=1)+root_state)/(mu*np.dot(W_ij,Ti)+root_state.sum()+np.sum(pc_mat, axis=1))
+            mu = nij.sum()/(ttconf.TINY_NUMBER + np.sum(pi * (W_ij.dot(Ti))))
+
+        if count >= Nit:
+            print ('WARNING: maximum number of iterations has been reached in GTR inference')
+            np.min(pi.sum(axis=0)), np.max(pi.sum(axis=0))
+            if LA.norm(pi_old-pi) > dp:
+                print ('    the iterative scheme has not converged')
+            elif np.abs(1-np.max(pi.sum(axis=0))) > dp:
+                print ('    the iterative scheme has converged, but proper normalization was not reached')
+        gtr.W = W_ij
+        gtr.Pi = np.diag(pi)
+        gtr._check_fix_Q()
+        gtr._eig()
+        return gtr
+
     def _check_fix_Q(self):
         """
         Check the main diagonal of Q and fix it in case it does not corresond
         the definition of the rate matrix. Should be run every time when creating
         custom GTR model.
         """
-        Q = self.Pi.dot(self.W)
-        if (Q.sum(0) < 1e-10).sum() < self.alphabet.shape[0]: # at least one rate is wrong
-            # fix Q
-            self.Pi /= self.Pi.sum() # correct the Pi manually
-            # fix W
-            np.fill_diagonal(self.W, 0)
-            Wdiag = -((self.W.T*np.diagonal(self.Pi)).T).sum(0)/ \
-                    np.diagonal(self.Pi)
-            np.fill_diagonal(self.W, Wdiag)
-            Q1 = self.Pi.dot(self.W)
-            if (Q1.sum(0) < 1e-10).sum() <  self.alphabet.shape[0]: # fix failed
-                raise ArithmeticError("Cannot fix the diagonal of the GTR rate matrix.")
-        return
+        # fix Q
+        self.Pi /= self.Pi.sum() # correct the Pi manually
+        break_degen = np.random.random(size=self.W.shape)*0.0001
+        self.W += break_degen + break_degen.T
+        # fix W
+        np.fill_diagonal(self.W, 0)
+        Wdiag = -((self.W.T*np.diagonal(self.Pi)).T).sum(axis=0)/ \
+                np.diagonal(self.Pi)
+        np.fill_diagonal(self.W, Wdiag)
+        Q1 = self.Pi.dot(self.W)
+        self.W /= -np.sum(np.diagonal(Q1*self.Pi))
+        self.mu=1.0
+        Q1 = self.Pi.dot(self.W)
+        if (Q1.sum(axis=0) < 1e-10).sum() <  self.alphabet.shape[0]: # fix failed
+            raise ArithmeticError("Cannot fix the diagonal of the GTR rate matrix.")
+
 
     def _eig(self):
         """
-        Perform eigendecompositon of the rate matrix and stores the left- and rigth-
+        Perform eigendecompositon of the rate matrix and stores the left- and right-
         matrices to convert the sequence profiles to the GTR matrix eigenspace
         and hence to speed-up the computations.
         """
@@ -229,7 +366,7 @@ class GTR(object):
          - profile(numpy.array): sequence profile. Shape = (L, a),
          where L - sequence length, a - alphabet size.
 
-         - t(doble): time to propagate
+         - t(double): time to propagate
 
          - rotated(bool default False): whether the supplied profile is in the
          GTR matrix eigenspace
