@@ -8,6 +8,7 @@ before_install:
   - sudo apt-get install -qq python-numpy python-scipy
 install:
   - pip install biopython
+  - pip install pandas
   - python setup.py build
   - python setup.py install
 # command to run tests
