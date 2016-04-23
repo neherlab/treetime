@@ -343,6 +343,7 @@ class GTR(object):
                     bounds=[0,ttconf.MAX_BRANCH_LENGTH],
                     method='Bounded',
                     args=(profile_p, profile_ch))
+            new_len = opt["x"]
         except:
             import scipy
             print('legacy scipy', scipy.__version__)
@@ -350,9 +351,8 @@ class GTR(object):
             opt = fminbound(_neg_prob,
                     0,ttconf.MAX_BRANCH_LENGTH,
                     args=(profile_p, profile_ch))
+            new_len = opt
 
-
-        new_len = opt["x"]
 
         if new_len > .9 * ttconf.MAX_BRANCH_LENGTH or opt["success"] != True:
             if verbose > 0:
