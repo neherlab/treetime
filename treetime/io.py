@@ -109,6 +109,8 @@ def tips_data_to_json(tt, outf):
 
 def root_lh_to_json(tt, outf):
 
+    cutoff = 1e-3
+
     mtp = tt.tree.root.msg_to_parent
     mtp_min = mtp.y.min()
 
@@ -117,25 +119,25 @@ def root_lh_to_json(tt, outf):
 
     # cut and center
     maxy_idx = mtpy.argmax()
-    val_right = (mtpy[maxy_idx:] > 1e-50)
+    val_right = (mtpy[maxy_idx:] > cutoff)
     if (val_right.sum() == 0):
         right_dist = 0
     else:
         # left, actually (time is in the opposite direction)
         right_dist = - mtpx[maxy_idx] + mtpx[maxy_idx + val_right.argmin()]
 
-    val_left = mtpy[:maxy_idx] > 1e-50
+    val_left = mtpy[:maxy_idx] > cutoff
     if (val_left.sum() == 0):
         left_dist = 0.0
     else:
-        left_dist =  mtpx[maxy_idx] - mtpx[maxy_idx - val_left.argmax()]
+        left_dist =  mtpx[maxy_idx] - mtpx[maxy_idx - (maxy_idx - val_left.argmax())]
 
 
     dist = np.max((left_dist, right_dist))
     center = mtpx[maxy_idx]
 
     # final x-y scatter
-
+    #import ipdb; ipdb.set_trace()
     raw_x = np.unique(np.concatenate(([center-dist], [center], [center+dist], mtpx[(mtpx < dist + center) & (mtpx > center-dist)])))
 
 
@@ -145,6 +147,12 @@ def root_lh_to_json(tt, outf):
 
     with open (outf,'w') as of:
         json.dump(arr, of, indent=True)
+
+    print (', '.join([str(k) for k in x]))
+    print (', '.join([str(k) for k in y]))
+
+    #import ipdb; ipdb.set_trace()
+
 
 def save_timetree_results(tree, outfile_prefix):
     """

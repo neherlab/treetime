@@ -118,6 +118,13 @@ class TreeTime(TreeAnc, object):
         prof_p = parent.profile
         prof_ch = node.profile
 
+
+        if not hasattr(node, 'gamma'):
+            node.gamma = 1.0
+        
+        if not hasattr(node, 'merger_rate') or node.merger_rate is None:
+            node.merger_rate = ttconf.BRANCH_LEN_PENALTY
+
         # optimal branch length
         obl = self.gtr.optimal_t(node.up.profile, node.profile) # not rotated profiles!
 
@@ -174,6 +181,7 @@ class TreeTime(TreeAnc, object):
         # add merger rate contribution to the raw branch length
         logprob += node.merger_rate * np.minimum(ttconf.MAX_BRANCH_LENGTH, np.maximum(0,grid))
 
+
         # normalize the branch lengths prob distribution
         min_prob = np.min(logprob)
         if np.exp(-1*min_prob) == 0:
@@ -228,8 +236,13 @@ class TreeTime(TreeAnc, object):
 
         """
         tree = self.tree
+
+        if ttconf.BRANCH_LEN_PENALTY is None:
+            ttconf.BRANCH_LEN_PENALTY = 0.0
+
         if ancestral_inference:
             self.optimize_seq_and_branch_len(**kwarks)
+        
         print('Initializing branch length interpolation objects')
         if self.date2dist is None:
             print ("error - no date to dist conversion set. "
@@ -573,6 +586,7 @@ class TreeTime(TreeAnc, object):
             niter+=1
         print ("Done tree optimization after",niter+1,"iterations, final state changes:",Ndiff)
 
+
     def _set_rotated_profiles(self, node):
         """
         Set sequence and its profiles in the eigenspace of the transition
@@ -627,7 +641,7 @@ class TreeTime(TreeAnc, object):
         print('resolving polytomies')
         poly_found=False
         for n in self.tree.find_clades():
-            if len(n.clades) > 3:
+            if len(n.clades) > 2:
                 self._poly(n, merge_compressed)
                 poly_found=True
 
@@ -729,7 +743,7 @@ class TreeTime(TreeAnc, object):
                 clade.clades.append(new_node)
 
                 # and modify source_arr array for the next loop
-                if len(source_arr)>3: # if more than 3 nodes in polytomy, replace row/column
+                if len(source_arr)>2: # if more than 3 nodes in polytomy, replace row/column
                     for ii in np.sort(idxs)[::-1]:
                         tmp_ind = np.arange(mergers.shape[0])!=ii
                         mergers = mergers[tmp_ind].swapaxes(0,1)
