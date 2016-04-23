@@ -1,6 +1,5 @@
 from __future__ import division, print_function
 import numpy as np
-from scipy import optimize as sciopt
 import config as ttconf
 from seq_utils import alphabets, profile_maps
 
@@ -337,7 +336,8 @@ class GTR(object):
             """
             return -1*self.prob_t (parent, child, t, rotated=False, return_log=True)
 
-        opt = sciopt.minimize_scalar(_neg_prob,
+        from scipy.optimize import minimize_scalar
+        opt = minimize_scalar(_neg_prob,
                 bounds=[0,ttconf.MAX_BRANCH_LENGTH],
                 method='Bounded',
                 args=(profile_p, profile_ch))
