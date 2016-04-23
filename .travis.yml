@@ -6,4 +6,5 @@ before_install:
     - sudo apt-get install -qq python-numpy python-scipy
 install: "pip install biopython"
 # command to run tests
-script: .travis_test.sh
+script:
+    - bash .travis_test.sh
