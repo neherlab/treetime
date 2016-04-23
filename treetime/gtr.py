@@ -68,7 +68,7 @@ class GTR(object):
          - alphabet(str): specify alphabet when applicable. If the alphabet specification
          is requred, but no alphabet specified, the nucleotide will be used as default.
         """
-        if 'alphabet' in kwargs and alphabet in alphabets.keys():
+        if 'alphabet' in kwargs and kwargs['alphabet'] in alphabets.keys():
             alphabet = kwargs['alphabet']
         else:
             if Pi is not None and len(Pi) in [20,21]:
