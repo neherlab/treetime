@@ -348,10 +348,10 @@ class GTR(object):
             import scipy
             print('legacy scipy', scipy.__version__)
             from scipy.optimize import fminbound
-            opt = fminbound(_neg_prob,
+            new_len = fminbound(_neg_prob,
                     0,ttconf.MAX_BRANCH_LENGTH,
                     args=(profile_p, profile_ch))
-            new_len = opt
+            opt={'success':True}
 
 
         if new_len > .9 * ttconf.MAX_BRANCH_LENGTH or opt["success"] != True:
