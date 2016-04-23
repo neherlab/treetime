@@ -336,11 +336,21 @@ class GTR(object):
             """
             return -1*self.prob_t (parent, child, t, rotated=False, return_log=True)
 
-        from scipy.optimize import minimize_scalar
-        opt = minimize_scalar(_neg_prob,
-                bounds=[0,ttconf.MAX_BRANCH_LENGTH],
-                method='Bounded',
-                args=(profile_p, profile_ch))
+
+        try:
+            from scipy.optimize import minimize_scalar
+            opt = minimize_scalar(_neg_prob,
+                    bounds=[0,ttconf.MAX_BRANCH_LENGTH],
+                    method='Bounded',
+                    args=(profile_p, profile_ch))
+        except:
+            import scipy
+            print('legacy scipy', scipy.__version__)
+            from scipy.optimize import fminbound
+            opt = fminbound(_neg_prob,
+                    0,ttconf.MAX_BRANCH_LENGTH,
+                    args=(profile_p, profile_ch))
+
 
         new_len = opt["x"]
 

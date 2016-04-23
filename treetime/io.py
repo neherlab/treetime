@@ -405,7 +405,14 @@ def read_metadata(tree, infile):
         except:
             print ("Cannot read the metadata using the pandas library. "
                 "pandas is outdated or missing.")
-            raise ImportError
+            import csv
+            dic = {}
+            with open(infile) as ifile:
+                for row in csv.dictReader(ifile):
+                    dic[row['name']]=row
+                    if 'numdate_given' in row:
+                        dic[row['name']]['numdate_given'] = float(dic[row['name']]['numdate_given'])
+            tree.set_metadata(**dic)
     else:
         print("meta data file not found!")
 
