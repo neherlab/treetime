@@ -1,10 +1,17 @@
+sudo: false
 language: python
 python:
   - "2.7"
 # command to install dependencies
-before_install:
-    - sudo apt-get install -qq python-numpy python-scipy
-install: "pip install biopython"
+cache: apt
+addons:
+  apt:
+    packages:
+    - libatlas-dev
+    - libatlas-base-dev
+    - liblapack-dev
+    - gfortran
+install: "pip install -r requirements.txt"
 # command to run tests
 script:
     - bash .travis_test.sh
