@@ -401,11 +401,11 @@ def read_metadata(tree, infile):
                 print ("Cannot read metadata: first columns should be leaves name")
                 return
             dic = df.to_dict(orient='index')
+            tree.set_metadata(**dic)
         except:
             print ("Cannot read the metadata using the pandas library. "
-                "pandas is outdated or missing. trying to read plain csv...")
-
-        tree.set_metadata(**dic)
+                "pandas is outdated or missing.")
+            raise ImportError
     else:
         print("meta data file not found!")
 
