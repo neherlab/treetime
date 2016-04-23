@@ -8,7 +8,8 @@ before_install:
   - sudo apt-get install -qq python-numpy python-scipy
 install:
   - pip install biopython
-  - python setup.py install
+  - python setup.py build
+  - python setup.py install --install-lib test
 # command to run tests
 script:
     - bash .travis_test.sh
