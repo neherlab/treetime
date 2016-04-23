@@ -33,6 +33,7 @@ def test_GTR():
 
 
 def test_TreeTime():
+    import os
     root_dir = os.path.dirname(os.path.realpath(__file__))
     fasta = os.path.join(root_dir, '../data/H3N2_NA_allyears_NA.20.fasta')
     nwk = os.path.join(root_dir, '../data/H3N2_NA_allyears_NA.20.nwk')
