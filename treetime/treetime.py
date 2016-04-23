@@ -12,8 +12,6 @@ import numpy as np
 from Bio import AlignIO, Phylo
 import datetime
 from scipy.interpolate import interp1d
-import matplotlib.pyplot as plt
-import matplotlib as mpl
 import json
 import copy
 from scipy import optimize as sciopt
@@ -121,7 +119,7 @@ class TreeTime(TreeAnc, object):
 
         if not hasattr(node, 'gamma'):
             node.gamma = 1.0
-        
+
         if not hasattr(node, 'merger_rate') or node.merger_rate is None:
             node.merger_rate = ttconf.BRANCH_LEN_PENALTY
 
@@ -242,7 +240,7 @@ class TreeTime(TreeAnc, object):
 
         if ancestral_inference:
             self.optimize_seq_and_branch_len(**kwarks)
-        
+
         print('Initializing branch length interpolation objects')
         if self.date2dist is None:
             print ("error - no date to dist conversion set. "
@@ -600,7 +598,8 @@ class TreeTime(TreeAnc, object):
         Auxilliary function to see how well is the particular branch optimized
         (how far it is from its optimal value)
         """
-        cmap = mpl.cm.get_cmap ()
+        from matplotlib import cm
+        cmap = cm.get_cmap ()
         def dev(n):
             sign = np.sign(node.branch_length - utils.opt_branch_len(node))
             opt_bl = sign * abs(node.branch_neg_log_prob(utils.opt_branch_len(n))

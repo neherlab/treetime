@@ -5,7 +5,6 @@ import json, copy, datetime
 from treetime import TreeTime
 import utils
 import seq_utils
-import pandas
 import os
 
 def treetime_from_newick(gtr, infile):
@@ -159,6 +158,7 @@ def save_timetree_results(tree, outfile_prefix):
     First, it scans the tree and assigns the namesto every node with no name
     then, it saves the information as the csv table
     """
+    import pandas
     df = pandas.DataFrame(columns=["Given_date", "Initial_root_dist", "Inferred_date"])
     aln = Align.MultipleSeqAlignment([])
 
@@ -395,6 +395,7 @@ def set_node_dates_from_names(tree, date_func):
 def read_metadata(tree, infile):
     if os.path.isfile(infile):
         try:
+            import pandas
             df = pandas.read_csv(infile, index_col=0)
             if df.index.name != "name" and df.index.name != "#name":
                 print ("Cannot read metadata: first columns should be leaves name")

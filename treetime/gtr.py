@@ -123,7 +123,7 @@ class GTR(object):
          In other words, the unit of branch length and the unit of time are
          connected through this variable. By default set to 1.
         """
-        if 'alphabet' in kwargs and alphabet in alphabets.keys():
+        if 'alphabet' in kwargs and kwargs['alphabet'] in alphabets.keys():
             alphabet = kwargs['alphabet']
         else:
             print ("No alphabet specified. Using default nucleotide.")
