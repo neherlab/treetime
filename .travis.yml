@@ -9,7 +9,7 @@ before_install:
 install:
   - pip install biopython
   - python setup.py build
-  - python setup.py install --install-lib test
+  - python setup.py install
 # command to run tests
 script:
     - bash .travis_test.sh
