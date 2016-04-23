@@ -4,14 +4,21 @@ from __future__ import print_function
 # Tests
 def import_test():
     print("testing imports")
-    from treetime.gtr import GTR
-    from treetime.treetime import TreeTime
-    from treetime.treeanc import TreeAnc
-    from treetime import io, utils
+    from treetime.treetime.gtr import GTR
+    from treetime.treetime.treetime import TreeTime
+    from treetime.treetime.treeanc import TreeAnc
+    from treetime.treetime import io, utils
+
+# Tests
+def import_test():
+    print("testing short imports")
+    from treetime import GTR
+    from treetime import TreeTime
+    from treetime import TreeAnc
 
 
 def test_GTR():
-    from treetime.gtr import GTR
+    from treetime.treetime.gtr import GTR
     import numpy as np
     for model in ['Jukes-Cantor', 'random']:
         print('testing GTR, model:',model)
