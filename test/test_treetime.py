@@ -23,6 +23,7 @@ def test_GTR():
     for model in ['Jukes-Cantor', 'random']:
         print('testing GTR, model:',model)
         myGTR = GTR.standard(model, alphabet='nuc')
+        print('Frequency sum:', myGTR.Pi.sum())
         assert (myGTR.Pi.sum() == 1.0)
         # the matrix is the rate matrix
         assert abs((myGTR.Pi.dot(myGTR.W)).sum(0).sum() < 1e-15)
