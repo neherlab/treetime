@@ -34,7 +34,7 @@ class TreeAnc(object):
         self._leaves_lookup = {}
         # self.set_additional_tree_params()
 
-    def infer_gtr(self, **kwargs):
+    def infer_gtr(self, print_raw=False, **kwargs):
         self._ml_anc(**kwargs)
         alpha = list(self.gtr.alphabet)
         n=len(alpha)
@@ -50,6 +50,10 @@ class TreeAnc(object):
                 for nuc in node.sequence:
                     i = alpha.index(nuc)
                     Ti[i]+=node.branch_length
+        if print_raw:
+            print('alphabet:',alpha)
+            print('n_ij:', nij)
+            print('T_i:', Ti)
         root_state = np.array([np.sum(self.tree.root.sequence==nuc) for nuc in alpha])
         self._gtr = GTR.infer(nij, Ti, root_state, pc=5.0, alphabet=self.gtr.alphabet)
         return self._gtr

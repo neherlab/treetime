@@ -90,7 +90,7 @@ class GTR(object):
         gtr.Pi = np.diagflat(Pi)
 
         if W is None or W.shape!=(n,n):
-            if W.shape!=(n,n):
+            if (W is not None) and W.shape!=(n,n):
                 print("Mutation matrix size does not match alphabet size"
                       "Ignoring input mutation matrix")
             # flow matrix
@@ -196,7 +196,7 @@ class GTR(object):
         """
         gtr = cls(**kwargs)
         dp = 1e-5
-        Nit = 20
+        Nit = 40
         pc_mat = pc*np.ones_like(nij)
         pc_mat -= np.diag(np.diag(pc_mat))
         from scipy import linalg as LA
