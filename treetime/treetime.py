@@ -525,7 +525,7 @@ class TreeTime(TreeAnc, object):
         """
         from merger_models import coalescent
         #  propagate messages up and down and reconstruct ancestral states
-        self.ml_t(**kwarks)
+        self.ml_t(max_iter=1, **kwarks)
 
         # if no coalescence time scale is provided, use half the root time
         if Tc is None:
@@ -536,14 +536,14 @@ class TreeTime(TreeAnc, object):
         self._update_branch_len_interpolators()
         self.resolve_polytomies(rerun=False)
         self.init_date_constraints(ancestral_inference=True, prune_short=False)
-        self.ml_t()
+        self.ml_t(max_iter=1)
 
         # if desired, optimize the coalescence time scale
         if optimize_Tc:
             def tmpTotalLH(Tc):
                 coalescent(self.tree, Tc=Tc)
                 self._update_branch_len_interpolators()
-                self.ml_t()
+                self.ml_t(max_iter=1)
                 print("Tc:",Tc)
                 self.print_lh()
                 return -self.total_LH()
@@ -574,7 +574,7 @@ class TreeTime(TreeAnc, object):
         self._ml_t_root_leaves()
         Ndiff = self.reconstruct_anc(method='ml')
 
-        niter=0
+        niter=1
         while Ndiff>0 and niter<max_iter:
             print('rerunning treetime inference iteration', niter+1, 'number of state changes observed:',Ndiff)
             self._ml_t_init(ancestral_inference=False)
