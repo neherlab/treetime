@@ -3,7 +3,6 @@ import numpy as np
 import config as ttconf
 from seq_utils import alphabets, profile_maps
 
-
 class GTR(object):
     """
     Defines General-Time-Reversible model of character evolution.
@@ -355,8 +354,7 @@ class GTR(object):
 
 
         if new_len > .9 * ttconf.MAX_BRANCH_LENGTH or opt["success"] != True:
-            if verbose > 0:
-                print ("Cannot optimize branch length, minimization failed.")
+            print ("Cannot optimize branch length, minimization failed.")
             import ipdb; ipdb.set_trace()
             return -1.0
         else:
