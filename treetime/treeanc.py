@@ -401,6 +401,7 @@ class TreeAnc(object):
         If the branch length is less than the minimal value, remove the branch
         from the tree. **Requires** the ancestral sequence reconstruction
         """
+        print("pruning short branches (max prob at zero)")
         for node in self.tree.find_clades():
             if node.up is None:
                 continue
