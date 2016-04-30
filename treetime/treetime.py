@@ -66,7 +66,7 @@ class TreeTime(TreeAnc, object):
         # fix tree lengths, etc
         self.set_additional_tree_params()
 
-    def init_date_constraints(self, slope=None, ancestral_inference=True):
+    def init_date_constraints(self, slope=None, **kwarks):
         """
         Get the conversion coefficients between the dates and the branch
         lengths as they are used in ML computations. The conversion formula is
@@ -82,7 +82,7 @@ class TreeTime(TreeAnc, object):
 
         # set the None  for the date-related attributes in the internal nodes.
         # make interpolation objects for the branches
-        self._ml_t_init(ancestral_inference=ancestral_inference)
+        self._ml_t_init(**kwarks)
 
     def _make_branch_len_interpolator(self, node, n=ttconf.BRANCH_GRID_SIZE):
         """
@@ -535,7 +535,7 @@ class TreeTime(TreeAnc, object):
         coalescent(self.tree, Tc=Tc)
         self._update_branch_len_interpolators()
         self.resolve_polytomies(rerun=False)
-        self.init_date_constraints(ancestral_inference=True)
+        self.init_date_constraints(ancestral_inference=True, prune_short=False)
         self.ml_t()
 
         # if desired, optimize the coalescence time scale
