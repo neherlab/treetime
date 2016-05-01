@@ -270,10 +270,10 @@ class GTR(object):
         Compute the probability of the two profiles to be separated by the time t.
         Args:
          - profile_p(np.array): parent profile of shape (L, a), where
-         L - length of the sequence, a - alpphabet size.
+         L - length of the sequence, a - alphabet size.
 
          - profile_ch(np.array): child profile of shape (L, a), where
-         L - length of the sequence, a - alpphabet size.
+         L - length of the sequence, a - alphabet size.
 
          - t (double): time (branch len), separating the profiles.
 
@@ -285,7 +285,6 @@ class GTR(object):
         Returns:
          - prob(np.array): resulting probability.
         """
-
         if t < 0:
             if return_log:
                 return -BIG_NUMBER
@@ -304,14 +303,13 @@ class GTR(object):
             p2 = profile_ch
             #prob = (profile_p*eLambdaT*profile_ch).sum(1) # sum over the alphabet
 
-        prob = (p1*eLambdaT*p2).sum(1) # sum_i (p1_i * exp(l_i*t) * p_2_i) result = vector lenght L
-        prob[prob<0] = 0.0 # avoid rounding instability
-
+        prob = np.maximum(0,(p1*eLambdaT*p2).sum(axis=1)) # sum_i (p1_i * exp(l_i*t) * p_2_i) result = vector length L
         if return_log:
-            prob = (np.log(prob + ttconf.TINY_NUMBER)).sum() # sum all sites
+            total_prob = (np.log(prob + ttconf.TINY_NUMBER)).sum() # sum all sites
         else:
-            prob = prob.prod() # prod of all sites
-        return prob
+            total_prob = prob.prod() # prod of all sites
+        del eLambdaT, prob
+        return total_prob
 
     def optimal_t(self, profile_p, profile_ch, rotated=False, return_log=False):
         """
