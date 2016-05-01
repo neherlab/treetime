@@ -122,7 +122,7 @@ class TreeAnc(object):
         """
         self.tree.root.dist2root_0 = 0.0
         i = 0
-        for clade in self.tree.get_nonterminals(order='preorder'): # up->down
+        for clade in self.tree.get_nonterminals(order='preorder'): # parents first
             for c in clade.clades:
                 c.up = clade
                 if c.up.name is None:

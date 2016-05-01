@@ -180,7 +180,7 @@ def convolve(t, f, g, cutoff=10000, n_integral=100):
     frange = [(f.y - f.y.min()) < cutoff]
     grange = [(g.y - g.y.min()) < cutoff]
     while np.sum(frange) < 5 or np.sum(grange) < 5:
-        print ("Warning in Utils.convolve. The functions are too shrap to convolve."
+        print ("Warning in Utils.convolve. The functions are too sharp to convolve."
             " Increasing the cutoff.")
         cutoff = cutoff * 10
         if cutoff > 1e7:

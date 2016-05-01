@@ -405,11 +405,11 @@ class TreeTime(TreeAnc, object):
 
         print("Maximum likelihood tree optimization with temporal constraints:"
             " Propagating root -> leaves...")
+        collapse_func = utils.median_interp
         for node in self.tree.find_clades(order='preorder'):  # ancestors first, msg to children
             if not hasattr(node, "msg_to_parent"):
                 print ("ERROR: node has no log-prob interpolation object! "
                     "Aborting.")
-            collapse_func = utils.median_interp
             if node.up is None:  # root node
                 node.total_prob = utils.delta_fun(collapse_func(node.msg_to_parent),
                                                   return_log=True,normalized=False)
@@ -419,9 +419,7 @@ class TreeTime(TreeAnc, object):
                 continue
 
             if node.msg_to_parent is not None: # constrained terminal
-                                              # and all internal nodes
-
-
+                                               # and all internal nodes
                 if not hasattr(node.up.total_prob ,'delta_pos'):
                     print ("Cannot infer the position of the node: the position "
                            "of the parent is not delta function")
@@ -434,18 +432,19 @@ class TreeTime(TreeAnc, object):
 
                 final_prob = utils.multiply_dists((node.msg_from_parent, node.msg_to_parent))
 
-                if collapse_func(final_prob) > node.up.abs_t + 1e-9:
+                child_time = collapse_func(final_prob)
+
+                if child_time > node.up.abs_t + 1e-9:
                     # must never happen, just for security
                     # I think this can sometimes happen when using median collapsing
                     if self.debug: import ipdb; ipdb.set_trace()
                     node.total_prob = utils.delta_fun(node.up.abs_t, return_log=True, normalized=False)
                     print ("Warn: the child node wants to be {0} earlier than "
                         "the parent node. Setting the child location to the parent's "
-                        "one.".format((collapse_func(final_prob) - node.up.abs_t)))
+                        "one.".format((child_time - node.up.abs_t)))
 
                 else:
-                    node.total_prob = utils.delta_fun(collapse_func(final_prob),
-                        return_log=True, normalized=False)
+                    node.total_prob = utils.delta_fun(child_time, return_log=True, normalized=False)
 
             else: # unconstrained terminal nodes
                 node_grid = node.up.total_prob.delta_pos - node.branch_neg_log_prob.x
@@ -457,8 +456,7 @@ class TreeTime(TreeAnc, object):
                 #node.msg_from_parent = msg_from_parent
 
                 node.total_prob = utils.delta_fun(collapse_func(node.msg_from_parent),
-
-                        return_log=True, normalized=False)
+                                                  return_log=True, normalized=False)
 
             self._set_final_date(node)
 
@@ -480,8 +478,6 @@ class TreeTime(TreeAnc, object):
         else:
             node.branch_length = self.one_mutation
             node.dist2root = 0.0
-
-
 
         node.years_bp = self.date2dist.get_date(node.abs_t)
         if node.years_bp < 0:
