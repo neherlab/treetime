@@ -996,7 +996,7 @@ class TreeTime(TreeAnc, object):
 
         return best_root, best_root._alpha, best_root._beta
 
-    def reroot_to_best_root(self,infer_gtr = False, **kwarks):
+    def reroot_to_best_root(self,infer_gtr = False, n_iqd = None, **kwarks):
         '''
         determine the node that, when the tree is rooted on this node, results
         in the best regression of temporal constraints and root to tip distances
@@ -1004,6 +1004,23 @@ class TreeTime(TreeAnc, object):
         best_root, a, b = self.find_best_root_and_regression()
         # first, re-root the tree
         self.tree.root_with_outgroup(best_root)
+        if n_iqd is not None:
+            root_to_tip = self.tree.depths()
+            res = {}
+            for node in self.tree.get_terminals():
+                if hasattr(node, 'numdate_given') and node.numdate_given is not None:
+                    res[node] = root_to_tip[node] - best_root._beta*node.numdate_given - best_root._alpha
+            residuals = np.array(res.values())
+            iqd = np.percentile(residuals,75) - np.percentile(residuals,25)
+            for node,r in res.iteritems():
+                if r>n_iqd*iqd:
+                    node.bad_branch=True
+                    node.numdate_given = None
+            # redo root estimation after outlier removal
+            best_root, a, b = self.find_best_root_and_regression()
+            # first, re-root the tree
+            self.tree.root_with_outgroup(best_root)
+
         # set the date2dist params
         self.date2dist = utils.DateConversion()
         self.date2dist.slope = best_root._beta
