@@ -166,9 +166,8 @@ class TreeTime(TreeAnc, object):
         # save raw branch length interpolators without coalescent contribution
         # TODO: better criterion to catch bad branch
         if integral < 1e-200:
-            print ("!!WARNING!! Node branch length probability distribution "
-                "integral is ZERO. Setting bad_branch flag..."
-                "Not accounting for the normalization, coalescence theory.")
+            print ("!!WARNING!!", node.name, " branch length probability distribution",
+                "integral is ZERO. Setting bad_branch flag...")
             node.bad_branch = True
             node.raw_branch_neg_log_prob = interp1d(grid, logprob, kind='linear')
 
@@ -553,7 +552,7 @@ class TreeTime(TreeAnc, object):
                 print('coalescent time scale optimization failed')
 
 
-    def ml_t(self, max_iter = 3):
+    def ml_t(self, max_iter = 3,**kwarks):
         """
         Perform the maximum-likelihood -- based optimization of the tree with temporal
         constraints of (some) internal nodes.
@@ -640,6 +639,12 @@ class TreeTime(TreeAnc, object):
                 self._poly(n, merge_compressed)
                 poly_found=True
 
+
+        print('Checking for obsolete nodes')
+        obsolete_nodes = [n for n in self.tree.find_clades() if len(n.clades)==1]
+        for node in obsolete_nodes:
+            print('remove obsolete node',node.name)
+            self.tree.collapse(node)
         # reoptimize branch length and sequences after topology changes
         if rerun and poly_found:
             print("topology of the tree has changed, will rerun inference...")
@@ -1006,6 +1011,8 @@ class TreeTime(TreeAnc, object):
         self.tree.root_with_outgroup(best_root)
         if n_iqd is not None:
             root_to_tip = self.tree.depths()
+            self.tree.root.up=None
+            self.tree.root.branch_length = self.one_mutation
             res = {}
             for node in self.tree.get_terminals():
                 if hasattr(node, 'numdate_given') and node.numdate_given is not None:
@@ -1014,12 +1021,18 @@ class TreeTime(TreeAnc, object):
             iqd = np.percentile(residuals,75) - np.percentile(residuals,25)
             for node,r in res.iteritems():
                 if r>n_iqd*iqd:
+                    print('marking',node.name,'as outlier, residual',r/iqd, 'interquartile distances')
                     node.bad_branch=True
                     node.numdate_given = None
             # redo root estimation after outlier removal
             best_root, a, b = self.find_best_root_and_regression()
             # first, re-root the tree
             self.tree.root_with_outgroup(best_root)
+        print('Checking for obsolete nodes')
+        obsolete_nodes = [n for n in self.tree.find_clades() if len(n.clades)==1]
+        for node in obsolete_nodes:
+            print('remove obsolete node',node.name)
+            self.tree.collapse(node)
 
         # set the date2dist params
         self.date2dist = utils.DateConversion()
