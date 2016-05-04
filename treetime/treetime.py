@@ -12,8 +12,6 @@ import numpy as np
 from Bio import AlignIO, Phylo
 import datetime
 from scipy.interpolate import interp1d
-import matplotlib.pyplot as plt
-import matplotlib as mpl
 import json
 import copy
 from scipy import optimize as sciopt
@@ -68,7 +66,7 @@ class TreeTime(TreeAnc, object):
         # fix tree lengths, etc
         self.set_additional_tree_params()
 
-    def init_date_constraints(self, slope=None, ancestral_inference=True):
+    def init_date_constraints(self, slope=None, **kwarks):
         """
         Get the conversion coefficients between the dates and the branch
         lengths as they are used in ML computations. The conversion formula is
@@ -84,7 +82,7 @@ class TreeTime(TreeAnc, object):
 
         # set the None  for the date-related attributes in the internal nodes.
         # make interpolation objects for the branches
-        self._ml_t_init(ancestral_inference=ancestral_inference)
+        self._ml_t_init(**kwarks)
 
     def _make_branch_len_interpolator(self, node, n=ttconf.BRANCH_GRID_SIZE):
         """
@@ -121,7 +119,7 @@ class TreeTime(TreeAnc, object):
 
         if not hasattr(node, 'gamma'):
             node.gamma = 1.0
-        
+
         if not hasattr(node, 'merger_rate') or node.merger_rate is None:
             node.merger_rate = ttconf.BRANCH_LEN_PENALTY
 
@@ -242,7 +240,7 @@ class TreeTime(TreeAnc, object):
 
         if ancestral_inference:
             self.optimize_seq_and_branch_len(**kwarks)
-        
+
         print('Initializing branch length interpolation objects')
         if self.date2dist is None:
             print ("error - no date to dist conversion set. "
@@ -407,11 +405,11 @@ class TreeTime(TreeAnc, object):
 
         print("Maximum likelihood tree optimization with temporal constraints:"
             " Propagating root -> leaves...")
+        collapse_func = utils.median_interp
         for node in self.tree.find_clades(order='preorder'):  # ancestors first, msg to children
             if not hasattr(node, "msg_to_parent"):
                 print ("ERROR: node has no log-prob interpolation object! "
                     "Aborting.")
-            collapse_func = utils.median_interp
             if node.up is None:  # root node
                 node.total_prob = utils.delta_fun(collapse_func(node.msg_to_parent),
                                                   return_log=True,normalized=False)
@@ -421,9 +419,7 @@ class TreeTime(TreeAnc, object):
                 continue
 
             if node.msg_to_parent is not None: # constrained terminal
-                                              # and all internal nodes
-
-
+                                               # and all internal nodes
                 if not hasattr(node.up.total_prob ,'delta_pos'):
                     print ("Cannot infer the position of the node: the position "
                            "of the parent is not delta function")
@@ -436,18 +432,19 @@ class TreeTime(TreeAnc, object):
 
                 final_prob = utils.multiply_dists((node.msg_from_parent, node.msg_to_parent))
 
-                if collapse_func(final_prob) > node.up.abs_t + 1e-9:
+                child_time = collapse_func(final_prob)
+
+                if child_time > node.up.abs_t + 1e-9:
                     # must never happen, just for security
                     # I think this can sometimes happen when using median collapsing
                     if self.debug: import ipdb; ipdb.set_trace()
                     node.total_prob = utils.delta_fun(node.up.abs_t, return_log=True, normalized=False)
                     print ("Warn: the child node wants to be {0} earlier than "
                         "the parent node. Setting the child location to the parent's "
-                        "one.".format((collapse_func(final_prob) - node.up.abs_t)))
+                        "one.".format((child_time - node.up.abs_t)))
 
                 else:
-                    node.total_prob = utils.delta_fun(collapse_func(final_prob),
-                        return_log=True, normalized=False)
+                    node.total_prob = utils.delta_fun(child_time, return_log=True, normalized=False)
 
             else: # unconstrained terminal nodes
                 node_grid = node.up.total_prob.delta_pos - node.branch_neg_log_prob.x
@@ -459,8 +456,7 @@ class TreeTime(TreeAnc, object):
                 #node.msg_from_parent = msg_from_parent
 
                 node.total_prob = utils.delta_fun(collapse_func(node.msg_from_parent),
-
-                        return_log=True, normalized=False)
+                                                  return_log=True, normalized=False)
 
             self._set_final_date(node)
 
@@ -482,8 +478,6 @@ class TreeTime(TreeAnc, object):
         else:
             node.branch_length = self.one_mutation
             node.dist2root = 0.0
-
-
 
         node.years_bp = self.date2dist.get_date(node.abs_t)
         if node.years_bp < 0:
@@ -527,7 +521,7 @@ class TreeTime(TreeAnc, object):
         """
         from merger_models import coalescent
         #  propagate messages up and down and reconstruct ancestral states
-        self.ml_t(**kwarks)
+        self.ml_t(max_iter=1, **kwarks)
 
         # if no coalescence time scale is provided, use half the root time
         if Tc is None:
@@ -537,15 +531,15 @@ class TreeTime(TreeAnc, object):
         coalescent(self.tree, Tc=Tc)
         self._update_branch_len_interpolators()
         self.resolve_polytomies(rerun=False)
-        self.init_date_constraints(ancestral_inference=True)
-        self.ml_t()
+        self.init_date_constraints(ancestral_inference=True, prune_short=False)
+        self.ml_t(max_iter=1)
 
         # if desired, optimize the coalescence time scale
         if optimize_Tc:
             def tmpTotalLH(Tc):
                 coalescent(self.tree, Tc=Tc)
                 self._update_branch_len_interpolators()
-                self.ml_t()
+                self.ml_t(max_iter=1)
                 print("Tc:",Tc)
                 self.print_lh()
                 return -self.total_LH()
@@ -576,7 +570,7 @@ class TreeTime(TreeAnc, object):
         self._ml_t_root_leaves()
         Ndiff = self.reconstruct_anc(method='ml')
 
-        niter=0
+        niter=1
         while Ndiff>0 and niter<max_iter:
             print('rerunning treetime inference iteration', niter+1, 'number of state changes observed:',Ndiff)
             self._ml_t_init(ancestral_inference=False)
@@ -600,7 +594,8 @@ class TreeTime(TreeAnc, object):
         Auxilliary function to see how well is the particular branch optimized
         (how far it is from its optimal value)
         """
-        cmap = mpl.cm.get_cmap ()
+        from matplotlib import cm
+        cmap = cm.get_cmap ()
         def dev(n):
             sign = np.sign(node.branch_length - utils.opt_branch_len(node))
             opt_bl = sign * abs(node.branch_neg_log_prob(utils.opt_branch_len(n))

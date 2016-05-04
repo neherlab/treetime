@@ -3,7 +3,6 @@ from scipy.interpolate import interp1d
 import config as ttconf
 from scipy.integrate import quad
 from scipy import stats
-import matplotlib.pyplot as plt
 import datetime
 
 class DateConversion(object):
@@ -181,7 +180,7 @@ def convolve(t, f, g, cutoff=10000, n_integral=100):
     frange = [(f.y - f.y.min()) < cutoff]
     grange = [(g.y - g.y.min()) < cutoff]
     while np.sum(frange) < 5 or np.sum(grange) < 5:
-        print ("Warning in Utils.convolve. The functions are too shrap to convolve."
+        print ("Warning in Utils.convolve. The functions are too sharp to convolve."
             " Increasing the cutoff.")
         cutoff = cutoff * 10
         if cutoff > 1e7:

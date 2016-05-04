@@ -5,7 +5,6 @@ import json, copy, datetime
 from treetime import TreeTime
 import utils
 import seq_utils
-import pandas
 import os
 
 def treetime_from_newick(gtr, infile):
@@ -163,6 +162,7 @@ def save_timetree_results(tree, outfile_prefix):
     First, it scans the tree and assigns the namesto every node with no name
     then, it saves the information as the csv table
     """
+    import pandas
     df = pandas.DataFrame(columns=["Given_date", "Initial_root_dist", "Inferred_date"])
     aln = Align.MultipleSeqAlignment([])
 
@@ -215,7 +215,8 @@ def set_seqs_to_leaves(tree, aln):
     dic_aln = {k.name: seq_utils.prepare_seq(k.seq) for k in aln} #
     for l in tree.tree.get_terminals():
         if l.name in dic_aln:
-            l.sequence = dic_aln[l.name]
+            l.state_seq = dic_aln[l.name]
+            l.sequence=l.state_seq
         else:
             print ("Cannot find sequence for leaf: %s" % l.name)
             failed_leaves += 1
@@ -398,16 +399,24 @@ def set_node_dates_from_names(tree, date_func):
 def read_metadata(tree, infile):
     if os.path.isfile(infile):
         try:
+            import pandas
             df = pandas.read_csv(infile, index_col=0)
             if df.index.name != "name" and df.index.name != "#name":
                 print ("Cannot read metadata: first columns should be leaves name")
                 return
             dic = df.to_dict(orient='index')
+            tree.set_metadata(**dic)
         except:
             print ("Cannot read the metadata using the pandas library. "
-                "pandas is outdated or missing. trying to read plain csv...")
-
-        tree.set_metadata(**dic)
+                "pandas is outdated or missing., reading csv directly")
+            import csv
+            dic = {}
+            with open(infile) as ifile:
+                for row in csv.DictReader(ifile):
+                    dic[row['name']]=row
+                    if 'numdate_given' in row:
+                        dic[row['name']]['numdate_given'] = float(dic[row['name']]['numdate_given'])
+            tree.set_metadata(**dic)
     else:
         print("meta data file not found!")
 

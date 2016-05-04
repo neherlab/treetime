@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/neherlab/treetime.svg?branch=master)](https://travis-ci.org/neherlab/treetime)
+
 # TreeTime: Maximum-Likelihood dating and ancestral inference for phylogenetic trees
 
 **treetime is currently in alpha status -- expect changes in the API**
