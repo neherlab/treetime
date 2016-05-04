@@ -33,8 +33,12 @@ def _layout(tree):
     for node in tree.find_clades(order="preorder"):
         # set mutations
         if node.up is not None:
-            node.muts = ' '.join([node.up.sequence[p] + str(p) + node.sequence[p]
+            node.muts = ', '.join([node.up.sequence[p] + str(p) + node.sequence[p]
                 for p in np.where(node.up.sequence != node.sequence)[0]])
+
+        # set sequences
+        node.strseq = "".join(node.sequence)
+
         # set clade No
         node.clade = clade
         clade += 1
@@ -59,7 +63,7 @@ def treetime_to_json(tt, outf):
     def _node_to_json(node):
 
         tree_json = {}
-        str_attr = ['country','region','clade','strain', 'date', 'muts']
+        str_attr = ['country','region','clade','strain', 'date', 'muts', 'strseq']
         num_attr = ['xvalue', 'yvalue', 'tvalue', 'numdate']
 
         if hasattr(node, 'name'):
