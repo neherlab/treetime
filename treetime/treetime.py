@@ -652,6 +652,10 @@ class TreeTime(TreeAnc, object):
             self.optimize_seq_and_branch_len(prune_short=False)
             self.init_date_constraints(ancestral_inference=False)
             self.ml_t()
+        
+        else:
+            self._set_each_node_params() # set node info to the new nodes 
+        
         self.tree.ladderize()
 
 
