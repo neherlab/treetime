@@ -19,6 +19,32 @@ class TreeAnc(object):
     alignment, making ancestral state inferrence
     """
 
+    class DisplayAttr(object):
+        
+        def __init__(self, name, attr):
+            self._name = name
+            self._attr = attr
+        
+        @property 
+        def name(self):
+            return self._name
+        
+        def attr(self, node):
+            
+            if callable(self._attr):
+                try:
+                    return self._attr(node)
+                except:
+                    return ""
+            elif isinstance(self._attr, str):
+                if hasattr(node, self._attr):
+                    return node.__dict__[self._attr]
+                else:
+                    return ""
+            else: 
+                return  ""
+        
+
     @property
     def leaves_lookup(self):
         return self._leaves_lookup
@@ -29,9 +55,18 @@ class TreeAnc(object):
 
     def __init__(self, gtr):
         assert(isinstance(gtr, GTR))
+        self._max_node_num = 0
         self._gtr = gtr
         self.tree = None
         self._leaves_lookup = {}
+        self._internal_metadata_names = [
+                    self.DisplayAttr("numdate", "numdate"),
+                    self.DisplayAttr("mutation_rate/avg", "gamma"),
+                    self.DisplayAttr("branch_len/opt", lambda n: (n.branch_length / n.branch_neg_log_prob.x[(n.branch_neg_log_prob.y.argmin())])),
+                    self.DisplayAttr("time_since_MRCA (yr)", "tvalue")
+                ]
+        self._terminal_metadata_names = self._internal_metadata_names
+
         # self.set_additional_tree_params()
 
     def infer_gtr(self, print_raw=False, **kwargs):
@@ -90,7 +125,10 @@ class TreeAnc(object):
                 if key != "name": #  filter name node if any  (must be already set)
                     setattr(node, key, metadata[key])
 
+            
+
         elif isinstance(node, str):
+            
             if node not in  self._leaves_lookup:
                 print ("Cannot set metadata to the node: node not found")
                 return
@@ -99,6 +137,9 @@ class TreeAnc(object):
             for key in metadata:
                 if key != "name": #  filter name node if any  (must be already set)
                     setattr(node, key, metadata[key])
+            
+            
+
 
         else:
             print ("Cannot set metadata to node. Input node must be "
@@ -108,12 +149,23 @@ class TreeAnc(object):
         """
         Set metadata from dictionary to all nodes
         """
+        
+        metadata_list_set = False
+        
         for node_key in all_metadata:
             if node_key not in self._leaves_lookup:
                 print ("Cannot set metadata to the tree node: node name not found")
                 print (node_key)
                 continue
+            
             self.set_metadata_to_node(node_key, **all_metadata[node_key])
+            if not metadata_list_set:
+                self._terminal_metadata_names = [
+                        self.DisplayAttr(k, k) for k in all_metadata[node_key]
+                    ]
+                metadata_list_set = True
+
+
 
     def _set_each_node_params(self):
 
@@ -121,13 +173,13 @@ class TreeAnc(object):
         Set auxilliary parameters to every node of the tree.
         """
         self.tree.root.dist2root_0 = 0.0
-        i = 0
+        
         for clade in self.tree.get_nonterminals(order='preorder'): # parents first
             for c in clade.clades:
                 c.up = clade
                 if c.up.name is None:
-                    c.up.name = "NODE_" + format(i, '07d')
-                    i += 1
+                    c.up.name = "NODE_" + format(self._max_node_num, '07d')
+                    self._max_node_num += 1
                 c.dist2root = c.up.dist2root + c.branch_length
                 c.dist2root_0 = c.dist2root #  store the values used later for date-branchLen conversion
         return

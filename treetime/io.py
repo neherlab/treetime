@@ -62,7 +62,7 @@ def treetime_to_json(tt, outf):
     def _node_to_json(node):
 
         tree_json = {}
-        str_attr = ['country','region','clade','strain', 'date', 'muts', 'strseq']
+        str_attr = ['clade','strain', 'date', 'muts', 'strseq']
         num_attr = ['xvalue', 'yvalue', 'tvalue', 'numdate']
 
         if hasattr(node, 'name'):
@@ -80,10 +80,15 @@ def treetime_to_json(tt, outf):
                     print "cannot round:", node.__getattribute__(prop), "assigned as is"
                     tree_json[prop] = node.__getattribute__(prop)
 
-        if node.clades:
+        if node.clades: # node is internal 
+            tree_json["internal_metadata"] = [{'name': k.name, 'value': k.attr(node)} for k in tt._internal_metadata_names]
             tree_json["children"] = []
             for ch in node.clades:
                 tree_json["children"].append(_node_to_json(ch))
+        else:
+            # node is terminal, set both terminal and internal metadata
+            tree_json["internal_metadata"] = [{'name': k.name, 'value': k.attr(node)} for k in tt._internal_metadata_names]
+            tree_json["terminal_metadata"] = [{'name': k.name, 'value': k.attr(node)} for k in tt._terminal_metadata_names]
 
         return tree_json
 
@@ -156,6 +161,14 @@ def root_lh_to_json(tt, outf):
 
     #import ipdb; ipdb.set_trace()
 
+def save_all_nodes_metadata(tt, outfile):
+
+    import pandas
+    metadata = tt._internal_metadata_names + tt._terminal_metadata_names
+    d = [[k.attr(n) for k in metadata] for n in tt.tree.find_clades()]
+    df = pandas.DataFrame(d, index=[k.name for k in tt.tree.find_clades()], columns=[k.name for k in metadata])
+    df.sort_index(inplace=True)
+    df.to_csv(outfile)
 
 def save_timetree_results(tree, outfile_prefix):
     """
@@ -419,7 +432,6 @@ def read_metadata(tree, infile):
             tree.set_metadata(**dic)
     else:
         print("meta data file not found!")
-
 
 if __name__=='__main__':
     pass

@@ -351,12 +351,14 @@ class GTR(object):
             opt={'success':True}
 
 
-        if new_len > .9 * ttconf.MAX_BRANCH_LENGTH or opt["success"] != True:
-            print ("Cannot optimize branch length, minimization failed.")
-            import ipdb; ipdb.set_trace()
-            return -1.0
-        else:
-            return  new_len
+        if new_len > .9 * ttconf.MAX_BRANCH_LENGTH:
+            print ("WARNING: The branch length seems to be very long!")
+
+        if opt["success"] != True:
+            print ("Cannot optimize branch length, minimization failed. Return Hamming distance")
+            new_len =  1 - np.all(profile_ch == profile_p, axis=1).mean()
+            
+        return  new_len
 
     def propagate_profile(self, profile, t, rotated=False, return_log=False):
         """
