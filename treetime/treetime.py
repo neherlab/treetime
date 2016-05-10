@@ -160,6 +160,9 @@ class TreeTime(TreeAnc, object):
         logprob *= -1.0
 
         dt = np.diff(grid)
+        min_prob = np.min(logprob)
+        logprob -= min_prob
+
         tmp_prob = np.exp(-logprob)
         integral = np.sum(0.5*(tmp_prob[1:]+tmp_prob[:-1])*dt)
 
@@ -167,8 +170,7 @@ class TreeTime(TreeAnc, object):
         # TODO: better criterion to catch bad branch
         if integral < 1e-200:
             print ("!!WARNING!! Node branch length probability distribution "
-                "integral is ZERO. Setting bad_branch flag..."
-                "Not accounting for the normalization, coalescence theory.")
+                "integral is ZERO. Setting bad_branch flag...")
             node.bad_branch = True
             node.raw_branch_neg_log_prob = interp1d(grid, logprob, kind='linear')
 
@@ -178,31 +180,19 @@ class TreeTime(TreeAnc, object):
 
         # add merger rate contribution to the raw branch length
         logprob += node.merger_rate * np.minimum(ttconf.MAX_BRANCH_LENGTH, np.maximum(0,grid))
-
-
-        # normalize the branch lengths prob distribution
-        min_prob = np.min(logprob)
-        if np.exp(-1*min_prob) == 0:
-            print ("!!Warning!! the branch length probability is zero. "
-                   "Are the branches and sequences correct?")
-            # setting bad branch flag
-            node.bad_branch = True
-
-        logprob -= min_prob
-        dt = np.diff(grid)
+        
+        # compute the branch neg log prob to account for the merger rates 
         tmp_prob = np.exp(-logprob)
         integral = np.sum(0.5*(tmp_prob[1:]+tmp_prob[:-1])*dt)
 
         if integral < 1e-200:
             print ("!!WARNING!! Node branch length probability distribution "
-                "integral is ZERO. Setting bad_branch flag..."
-                "Not accounting for the normalization, coalescence theory.")
+                "integral is ZERO. Setting bad_branch flag...")
             node.bad_branch = True
             node.branch_neg_log_prob = interp1d(grid, logprob, kind='linear')
 
         else:
             node.branch_neg_log_prob = interp1d(grid, logprob+np.log(integral), kind='linear')
-
 
         # node gets new attribute
         return None
