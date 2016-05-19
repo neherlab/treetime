@@ -402,6 +402,22 @@ class GTR(object):
         """
         return np.exp(self.mu * t * self.eigenmat)
 
+    def save_to_npz(self, outfile):
+        full_gtr = self.mu * np.dot(self.Pi, self.W)
+        desc=np.array(["GTR matrix description\n", "Mutation rate: " + str(self.mu)])
+        np.savez(outfile,   description=desc,
+                            full_gtr=full_gtr, 
+                            char_dist=self.Pi, 
+                            flow_matrix=self.W)
+    
+    def save_to_json(self, zip):
+        d = {
+        "full_gtr": self.mu * np.dot(self.Pi, self.W),
+        "Mutation rate" : mu,
+        "Equilibrium character composition": self.Pi,
+        "Flow rate matrix": self.W
+        }
+
 
 if __name__ == "__main__":
      pass

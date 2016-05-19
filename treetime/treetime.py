@@ -631,7 +631,7 @@ class TreeTime(TreeAnc, object):
 
 
         print('Checking for obsolete nodes')
-        obsolete_nodes = [n for n in self.tree.find_clades() if len(n.clades)==1]
+        obsolete_nodes = [n for n in self.tree.find_clades() if len(n.clades)==1 and n.up is not None]
         for node in obsolete_nodes:
             print('remove obsolete node',node.name)
             self.tree.collapse(node)
@@ -1041,7 +1041,7 @@ class TreeTime(TreeAnc, object):
         self.set_additional_tree_params()
         if infer_gtr:
             self.infer_gtr()
-        self.init_date_constraints(ancestral_inference=True)
+        self.init_date_constraints(ancestral_inference=True, **kwarks)
 
 
 
