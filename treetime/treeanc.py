@@ -20,17 +20,17 @@ class TreeAnc(object):
     """
 
     class DisplayAttr(object):
-        
+
         def __init__(self, name, attr):
             self._name = name
             self._attr = attr
-        
-        @property 
+
+        @property
         def name(self):
             return self._name
-        
+
         def attr(self, node):
-            
+
             if callable(self._attr):
                 try:
                     return self._attr(node)
@@ -41,9 +41,9 @@ class TreeAnc(object):
                     return node.__dict__[self._attr]
                 else:
                     return ""
-            else: 
+            else:
                 return  ""
-        
+
 
     @property
     def leaves_lookup(self):
@@ -125,10 +125,10 @@ class TreeAnc(object):
                 if key != "name": #  filter name node if any  (must be already set)
                     setattr(node, key, metadata[key])
 
-            
+
 
         elif isinstance(node, str):
-            
+
             if node not in  self._leaves_lookup:
                 print ("Cannot set metadata to the node: node not found")
                 return
@@ -137,8 +137,8 @@ class TreeAnc(object):
             for key in metadata:
                 if key != "name": #  filter name node if any  (must be already set)
                     setattr(node, key, metadata[key])
-            
-            
+
+
 
 
         else:
@@ -149,15 +149,15 @@ class TreeAnc(object):
         """
         Set metadata from dictionary to all nodes
         """
-        
+
         metadata_list_set = False
-        
+
         for node_key in all_metadata:
             if node_key not in self._leaves_lookup:
                 print ("Cannot set metadata to the tree node: node name not found")
                 print (node_key)
                 continue
-            
+
             self.set_metadata_to_node(node_key, **all_metadata[node_key])
             if not metadata_list_set:
                 self._terminal_metadata_names = [
@@ -173,7 +173,7 @@ class TreeAnc(object):
         Set auxilliary parameters to every node of the tree.
         """
         self.tree.root.dist2root_0 = 0.0
-        
+
         for clade in self.tree.get_nonterminals(order='preorder'): # parents first
             for c in clade.clades:
                 c.up = clade
@@ -310,7 +310,7 @@ class TreeAnc(object):
         # since the initital arrays are unique, only the correct elements are found this way.
         return aux[aux[shift:] == aux[:-shift]]
 
-    def _ml_anc(self, **kwargs):
+    def _ml_anc(self, marginal=False, verbose=0, **kwargs):
         """
         Perform ML reconstruction of the ancestral states
         KWargs:
@@ -321,7 +321,6 @@ class TreeAnc(object):
         tree = self.tree
         # number of nucleotides changed from prev reconstruction
         N_diff = 0
-        verbose = 0 # how verbose to be at the output
         if 'store_lh' in kwargs:
             store_lh = kwargs['store_lh'] == True
         if 'verbose' in kwargs:
@@ -332,7 +331,7 @@ class TreeAnc(object):
         L = tree.get_terminals()[0].sequence.shape[0]
         n_states = self.gtr.alphabet.shape[0]
         if verbose > 2:
-            print ("Walking up the tree, computing joint likelihoods...")
+            print ("Walking up the tree, computing likelihoods...", 'marginal:',marginal)
         for leaf in tree.get_terminals():
             # in any case, set the profile
             leaf.profile = seq_utils.seq2prof(leaf.sequence, self.gtr.profile_map)
@@ -354,33 +353,46 @@ class TreeAnc(object):
             node.lh_prefactor += np.log(pre) # and store log-prefactor
         if (verbose > 2):
             print ("Walking down the tree, computing maximum likelihood sequences...")
-        tree.root.profile *= np.diag(self.gtr.Pi) # Msg to the root from the distant part (equ frequencies)
 
         # extract the likelihood from the profile
         tree.root.lh_prefactor += np.log(tree.root.profile.max(axis=1))
         tree.anc_LH = tree.root.lh_prefactor.sum()
         tree.sequence_LH = 0
         # reset profile to 0-1 and set the sequence
+        if marginal==False:
+            tree.root.profile *= np.diag(self.gtr.Pi) # Msg to the root from the distant part (equ frequencies)
         tree.root.sequence, tree.root.profile = \
-            seq_utils.prof2seq(tree.root.profile, self.gtr, True)
-
+            seq_utils.prof2seq(tree.root.profile, self.gtr, correct_prof=not marginal)
+        tree.root.seq_msg_from_parent = np.repeat([self.gtr.Pi.diagonal()], len(tree.root.sequence), axis=0)
 
         for node in tree.find_clades(order='preorder'):
             if node.up is None: # skip if node is root
                 continue
             # integrate the information coming from parents with the information
             # of all children my multiplying it to the prev computed profile
-            node.seq_msg_from_parent = self.gtr.propagate_profile(node.up.profile,
+            if marginal:
+                tmp_msg = np.copy(node.up.seq_msg_from_parent)
+                for c in node.up.clades:
+                    if c != node:
+                        tmp_msg*=c.seq_msg_to_parent
+                node.seq_msg_from_parent = self.gtr.propagate_profile(tmp_msg,
                             node.branch_length,
                             rotated=False, # use unrotated
                             return_log=False)
-            node.profile *= node.seq_msg_from_parent
+                node.profile *= node.seq_msg_from_parent
+            else:
+                node.seq_msg_from_parent = self.gtr.propagate_profile(node.up.profile,
+                            node.branch_length,
+                            rotated=False, # use unrotated
+                            return_log=False)
+                node.profile *= node.seq_msg_from_parent
 
             # reset the profile to 0-1 and  set the sequence
-            sequence, profile = seq_utils.prof2seq(node.profile, self.gtr, True)
+            sequence, profile = seq_utils.prof2seq(node.profile, self.gtr, correct_prof=not marginal)
             node.mutations = [(anc, pos, der) for pos, (anc, der) in
                             enumerate(izip(node.up.sequence, sequence)) if anc!=der]
 
+            # this needs fixing for marginal reconstruction
             tree.sequence_LH += np.sum(np.log(node.seq_msg_from_parent[profile>0.9]))
             if hasattr(node, 'sequence') and node.sequence is not None:
                 try:
