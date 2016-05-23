@@ -419,7 +419,19 @@ class TreeTime(TreeAnc, object):
                 node_grid[node_grid > ttconf.MAX_T/2] = ttconf.MAX_T
                 node.msg_from_parent = interp1d(node_grid, node.branch_neg_log_prob.y, kind='linear')
 
-                final_prob = utils.multiply_dists((node.msg_from_parent, node.msg_to_parent))
+                try:
+                
+                    final_prob = utils.multiply_dists((node.msg_from_parent, node.msg_to_parent))
+                
+                except Exception, e:
+                    s = "Cannot multiply distributions. D1.x =  " + "\t".join(map(str, node.msg_from_parent.x)) + \
+                    "\nD1.y = " + "\t".join(map(str, node.msg_from_parent.y)) + \
+                    "\nD2.x = " + "\t".join(map(str, node.msg_to_parent.x)) + \
+                    "\nD2.y = " + "\t".join(map(str, node.msg_to_parent.y)) 
+                    print (s)
+                    print (repr(e))
+                    raise RuntimeError(s + repr(e))
+
 
                 child_time = collapse_func(final_prob)
 

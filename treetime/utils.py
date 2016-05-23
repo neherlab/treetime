@@ -154,7 +154,13 @@ def min_interp(interp_object):
     """
     Find the global minimum of a function represented as an interpolation object.
     """
-    return interp_object.x[interp_object(interp_object.x).argmin()]
+    try:
+        return interp_object.x[interp_object(interp_object.x).argmin()]    
+    except Exception, e:
+        s = "Cannot find minimum of tthe interpolation object" + str(interp_object.x) + \
+        "Minimal x: " + str(interp_object.x.min()) + "Maximal x: " + str(interp_object.x.max())
+        raise e
+    
 
 
 def median_interp(interp_object):
@@ -184,7 +190,7 @@ def convolve(t, f, g, cutoff=10000, n_integral=100):
             " Increasing the cutoff.")
         cutoff = cutoff * 10
         if cutoff > 1e7:
-            import ipdb; ipdb.set_trace()
+            
             raise ArithmeticError("Cannot perform convolution. "
                 "The functions either have no defined values or they are too sharp.")
         else:
@@ -215,7 +221,8 @@ def convolve(t, f, g, cutoff=10000, n_integral=100):
         #res[i] = quad(F, 0, 1, args=(ti,))[0]
 
     if (np.sum(res) < 1e-200):
-        import ipdb; ipdb.set_trace()
+        raise ArithmeticError("Cannot convolve the input distributions: the integral is zero!")
+
     res = -1*np.log(res)
     res[np.isinf (res)] = -1*ttconf.MIN_LOG
     res = interp1d(t, res, kind='linear')
@@ -320,17 +327,14 @@ def multiply_dists(interps):
         opts = [k for k in opts if k is not None]
         grid = np.unique(np.concatenate ((opts, make_node_grid(np.mean(opts)))))
 
-    #try:
     node_prob = np.sum([k(grid) for k in interps], axis=0)
-    #except:
-    #    import ipdb; ipdb.set_trace()
-
 
     node_prob[((0,-1),)] = -1 * ttconf.MIN_LOG # +1000
     node_prob[((1,-2),)] = -1 * ttconf.MIN_LOG / 2 # +500
 
     interp = interp1d(grid, node_prob, kind='linear')
     return interp
+    
 
 #FIXME: ARE TWO FUNCTION BELOW USED
 def _nni(self, node):

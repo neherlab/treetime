@@ -18,7 +18,8 @@ relax_mu = True  #  Relax mutation rate?
 slack = 0.0  # How much we allow for variation between parents and children (from 0 to 1)
 coupling = 0.0  # How much we allow for variation between sister branches (from 0 to 1) 
 
-root = os.path.join(__dirname__ , "../data/") #  where to get data from
+#root = os.path.join(__dirname__ , "../data/") #  where to get data from
+root = "../data" #= os.path.join(__dirname__ , "../data/") #  where to get data from
 
 # specify filenames
 nwk = os.path.join(root, "H3N2_NA_allyears_NA.20.nwk")
