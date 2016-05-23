@@ -634,7 +634,8 @@ class TreeTime(TreeAnc, object):
         obsolete_nodes = [n for n in self.tree.find_clades() if len(n.clades)==1]
         for node in obsolete_nodes:
             print('remove obsolete node',node.name)
-            self.tree.collapse(node)
+            if node.up is not None:
+                self.tree.collapse(node)
         # reoptimize branch length and sequences after topology changes
         if rerun and poly_found:
             print("topology of the tree has changed, will rerun inference...")
@@ -642,10 +643,10 @@ class TreeTime(TreeAnc, object):
             self.optimize_seq_and_branch_len(prune_short=False)
             self.init_date_constraints(ancestral_inference=False)
             self.ml_t()
-        
+
         else:
-            self._set_each_node_params() # set node info to the new nodes 
-        
+            self._set_each_node_params() # set node info to the new nodes
+
         self.tree.ladderize()
 
 
