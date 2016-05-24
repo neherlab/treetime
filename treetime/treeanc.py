@@ -401,6 +401,26 @@ class TreeAnc(object):
             node.profile = profile
         return N_diff
 
+
+    def calc_branch_twopoint_functions(self):
+        def get_two_point_func(p1,p2,T):
+            tmp = np.outer(p1, p2)*T
+            tmp/=tmp.sum()
+            return tmp
+
+        for node in self.tree.get_nonterminals():
+            for child in node:
+                transition_matrix = self.gtr.v.dot(np.dot(self.gtr._exp_lt(child.branch_length), self.gtr.v_inv))
+                if child.is_terminal():
+                    from_children=child.profile
+                else:
+                    from_children = np.prod([c.seq_msg_to_parent for c in child], axis=0)
+                to_parent = np.prod([node.seq_msg_from_parent] +
+                                [c.seq_msg_to_parent for c in node if c!=child], axis=0)
+
+                child.mutation_matrix=np.array([get_two_point_func(upmsg, downmsg, transition_matrix)
+                                          for upmsg, downmsg in zip(to_parent,from_children)])
+
     def optimize_branch_len(self, **kwargs):
         """
         Perform ML optimization for the branch lengths of the whole tree or any
