@@ -403,6 +403,11 @@ class TreeAnc(object):
 
 
     def calc_branch_twopoint_functions(self):
+        '''
+        attaches L x n x n (L sequence length, n alphabet size) to each branch containing
+        the two-node profile, i.e. the probability that the parent node is in state
+        s1 and the child node is in state s2. This allows probabilistic counting of mutations.
+        '''
         def get_two_point_func(p1,p2,T):
             tmp = np.outer(p1, p2)*T
             tmp/=tmp.sum()
