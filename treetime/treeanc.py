@@ -323,15 +323,11 @@ class TreeAnc(object):
         N_diff = 0
         if 'store_lh' in kwargs:
             store_lh = kwargs['store_lh'] == True
-        if 'verbose' in kwargs:
-            try:
-                verbose = int(kwargs['verbose'])
-            except:
-                print ("ML ERROR in input: verbose param must be int")
+
         L = tree.get_terminals()[0].sequence.shape[0]
         n_states = self.gtr.alphabet.shape[0]
         if verbose > 2:
-            print ("Walking up the tree, computing likelihoods...", 'marginal:',marginal)
+            print ("Walking up the tree, computing likelihoods... type of reconstruction:", 'marginal' if marginal else "joint")
         for leaf in tree.get_terminals():
             # in any case, set the profile
             leaf.profile = seq_utils.seq2prof(leaf.sequence, self.gtr.profile_map)
@@ -359,8 +355,7 @@ class TreeAnc(object):
         tree.anc_LH = tree.root.lh_prefactor.sum()
         tree.sequence_LH = 0
         # reset profile to 0-1 and set the sequence
-        if marginal==False:
-            tree.root.profile *= np.diag(self.gtr.Pi) # Msg to the root from the distant part (equ frequencies)
+        tree.root.profile *= np.diag(self.gtr.Pi) # Msg to the root from the distant part (equ frequencies)
         tree.root.sequence, tree.root.profile = \
             seq_utils.prof2seq(tree.root.profile, self.gtr, correct_prof=not marginal)
         tree.root.seq_msg_from_parent = np.repeat([self.gtr.Pi.diagonal()], len(tree.root.sequence), axis=0)
@@ -393,7 +388,8 @@ class TreeAnc(object):
                             enumerate(izip(node.up.sequence, sequence)) if anc!=der]
 
             # this needs fixing for marginal reconstruction
-            tree.sequence_LH += np.sum(np.log(node.seq_msg_from_parent[profile>0.9]))
+            if not marginal:
+                tree.sequence_LH += np.sum(np.log(node.seq_msg_from_parent[profile>0.9]))
             if hasattr(node, 'sequence') and node.sequence is not None:
                 try:
                     N_diff += (sequence!=node.sequence).sum()
