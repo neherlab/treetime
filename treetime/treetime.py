@@ -628,6 +628,7 @@ class TreeTime(TreeAnc, object):
             if len(n.clades) > 2:
                 self._poly(n, merge_compressed)
                 poly_found=True
+                #import ipdb; ipdb.set_trace()
 
 
         print('Checking for obsolete nodes')
@@ -687,11 +688,9 @@ class TreeTime(TreeAnc, object):
                     method='Bounded',args=(n1,n2, parent))
             return cg['x'], - cg['fun']
 
-        def merge_nodes(source_arr):
+        def merge_nodes(source_arr, isall=False):
             mergers = np.array([[cost_gain(n1,n2, clade) for n1 in source_arr]for n2 in source_arr])
-            while len(source_arr) > 1:
-                #print (len(source_arr))
-
+            while len(source_arr) > 1 + int(isall):
                 LH = 0
 
                 # max possible gains of the cost when connecting the nodes:
@@ -768,12 +767,12 @@ class TreeTime(TreeAnc, object):
             print (stretched)
         LH = 0.0
 
-        if len(stretched)==1:
+        if len(stretched)==1 and merge_compressed==False:
             return LH
 
-        merge_nodes(stretched)
-        if merge_compressed:
-            merge_nodes(compressed)
+        merge_nodes(stretched, isall=len(stretched)==len(clade.clades))
+        if merge_compressed and len(compressed)>1:
+            merge_nodes(compressed, isall=len(compressed)==len(clade.clades))
 
         return LH
 
