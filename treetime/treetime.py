@@ -632,13 +632,15 @@ class TreeTime(TreeAnc, object):
             if len(n.clades) > 2:
                 self._poly(n, merge_compressed)
                 poly_found=True
+                #import ipdb; ipdb.set_trace()
 
 
         print('Checking for obsolete nodes')
         obsolete_nodes = [n for n in self.tree.find_clades() if len(n.clades)==1 and n.up is not None]
         for node in obsolete_nodes:
             print('remove obsolete node',node.name)
-            self.tree.collapse(node)
+            if node.up is not None:
+                self.tree.collapse(node)
         # reoptimize branch length and sequences after topology changes
         if rerun and poly_found:
             print("topology of the tree has changed, will rerun inference...")
@@ -646,10 +648,10 @@ class TreeTime(TreeAnc, object):
             self.optimize_seq_and_branch_len(prune_short=False)
             self.init_date_constraints(ancestral_inference=False)
             self.ml_t()
-        
+
         else:
-            self._set_each_node_params() # set node info to the new nodes 
-        
+            self._set_each_node_params() # set node info to the new nodes
+
         self.tree.ladderize()
 
 
@@ -690,11 +692,9 @@ class TreeTime(TreeAnc, object):
                     method='Bounded',args=(n1,n2, parent))
             return cg['x'], - cg['fun']
 
-        def merge_nodes(source_arr):
+        def merge_nodes(source_arr, isall=False):
             mergers = np.array([[cost_gain(n1,n2, clade) for n1 in source_arr]for n2 in source_arr])
-            while len(source_arr) > 1:
-                #print (len(source_arr))
-
+            while len(source_arr) > 1 + int(isall):
                 LH = 0
 
                 # max possible gains of the cost when connecting the nodes:
@@ -771,12 +771,12 @@ class TreeTime(TreeAnc, object):
             print (stretched)
         LH = 0.0
 
-        if len(stretched)==1:
+        if len(stretched)==1 and merge_compressed==False:
             return LH
 
-        merge_nodes(stretched)
-        if merge_compressed:
-            merge_nodes(compressed)
+        merge_nodes(stretched, isall=len(stretched)==len(clade.clades))
+        if merge_compressed and len(compressed)>1:
+            merge_nodes(compressed, isall=len(compressed)==len(clade.clades))
 
         return LH
 

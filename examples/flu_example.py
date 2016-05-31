@@ -10,6 +10,8 @@ from Bio import Phylo, AlignIO
 import matplotlib.pyplot as plt
 plt.ion()
 
+polytomies = True
+
 def str2date_time(instr):
     """
     Convert input string to datetime object.
@@ -42,9 +44,10 @@ def date_from_seq_name(name):
 
 if __name__=='__main__':
     root_dir = os.path.dirname(os.path.realpath(__file__))
-    fasta = os.path.join(root_dir, '../data/H3N2_NA_allyears_NA.20.fasta')
-    nwk = os.path.join(root_dir, '../data/H3N2_NA_allyears_NA.20.nwk')
-    mdf = os.path.join(root_dir, '../data/H3N2_NA_allyears_NA.20.metadata.csv')
+    file_base = '../data/H3N2_NA_allyears_NA.200'
+    fasta = os.path.join(root_dir, file_base+'.fasta')
+    nwk = os.path.join(root_dir, file_base+'.nwk')
+    mdf = os.path.join(root_dir, file_base+'.metadata.csv')
 
     # read tree from file
     gtr = GTR.standard()
@@ -59,36 +62,37 @@ if __name__=='__main__':
     t._score_branches()
     t.tree.ladderize()
 
-    #Phylo.draw(t.tree, label_func = lambda x:'', show_confidence=False, branch_labels='')
-    t1 = copy.deepcopy(t)
-    t1.resolve_polytomies()
-    t1.tree.ladderize()
-    t.print_lh()
-    print ("Prior branch len: {0}".format((t.tree.total_branch_length())))
-    t1.print_lh()
-    print ("Posterior branch len: {0}".format((t1.tree.total_branch_length())))
+    if polytomies:
+        #Phylo.draw(t.tree, label_func = lambda x:'', show_confidence=False, branch_labels='')
+        t1 = copy.deepcopy(t)
+        t1.resolve_polytomies()
+        t1.tree.ladderize()
+        t.print_lh()
+        print ("Prior branch len: {0}".format((t.tree.total_branch_length())))
+        t1.print_lh()
+        print ("Posterior branch len: {0}".format((t1.tree.total_branch_length())))
 
-    #traveling_wave(t1.tree, Tc=0.005)
-    #t1.init_date_constraints(gtr, slope=slope)
-    #t1.ml_t(gtr)
-    t1.coalescent_model(optimize_Tc=True)
-    t1.print_lh()
-    print ("coalescent model branch len: {0}".format((t1.tree.total_branch_length())))
+        #traveling_wave(t1.tree, Tc=0.005)
+        #t1.init_date_constraints(gtr, slope=slope)
+        #t1.ml_t(gtr)
+        t1.coalescent_model(optimize_Tc=True)
+        t1.print_lh()
+        print ("coalescent model branch len: {0}".format((t1.tree.total_branch_length())))
 
-    gtr = GTR.standard()
-    t2 = io.treetime_from_newick(gtr, nwk)
-    # set alignment to the tree
-    io.set_seqs_to_leaves(t2, AlignIO.read(fasta, 'fasta'))
-    io.read_metadata(t2, mdf)
-    t2.reroot_to_best_root(infer_gtr=True)
-    t2.init_date_constraints()
-    t2.ml_t()
-    t2.tree.ladderize()
-    t2.relaxed_clock(slack=.1, coupling=1)
-    t2.ml_t()
+        gtr = GTR.standard()
+        t2 = io.treetime_from_newick(gtr, nwk)
+        # set alignment to the tree
+        io.set_seqs_to_leaves(t2, AlignIO.read(fasta, 'fasta'))
+        io.read_metadata(t2, mdf)
+        t2.reroot_to_best_root(infer_gtr=True)
+        t2.init_date_constraints()
+        t2.ml_t()
+        t2.tree.ladderize()
+        t2.relaxed_clock(slack=.1, coupling=1)
+        t2.ml_t()
 
-    from matplotlib.cm import jet as cmap
-    for n in t2.tree.find_clades():
-        n.color = [int(x*255) for x in cmap(max(0, min(0.5*n.gamma, 1.0)))[:3]]
+        from matplotlib.cm import jet as cmap
+        for n in t2.tree.find_clades():
+            n.color = [int(x*255) for x in cmap(max(0, min(0.5*n.gamma, 1.0)))[:3]]
 
-    Phylo.draw(t2.tree, label_func = lambda x:'', show_confidence=False, branch_labels='')
+        Phylo.draw(t2.tree, label_func = lambda x:'', show_confidence=False, branch_labels='')

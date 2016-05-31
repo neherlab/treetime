@@ -77,7 +77,7 @@ def prof2seq(profile, gtr, correct_prof=True):
      - profile(numpy 2D array): profile. Shape of the profile should be
      (L x a), where L - sequence length, a - alphabet size.
      - gtr (gtr.GTR) instance of teh GTR class to supply the sequence alphabet
-     - corerct_prof(bool, default True): whether to conver t the profile to the
+     - correct_prof(bool, default True): whether to convert the profile to the
      delta-function
 
     Returns:
@@ -89,4 +89,6 @@ def prof2seq(profile, gtr, correct_prof=True):
         am = profile.argmax(axis=1)
         profile[:, :] = 0.0
         profile[np.arange(profile.shape[0]), am] = 1.0
+    else: # only normalize
+        profile=(profile.T/profile.sum(axis=1)).T
     return seq, profile
