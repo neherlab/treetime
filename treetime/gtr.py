@@ -301,7 +301,7 @@ class GTR(object):
             except:
                 ind = np.ones(L, dtype=bool)
             else:
-                ind = (self.profile_p.argmax(axis=1)!=gap_index)&(self.profile_ch.argmax(axis=1)!=gap_index)
+                ind = (profile_p.argmax(axis=1)!=gap_index)&(profile_ch.argmax(axis=1)!=gap_index)
         else:
                 ind = np.ones(L, dtype=bool)
 
