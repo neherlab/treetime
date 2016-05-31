@@ -373,7 +373,7 @@ class TreeTime(TreeAnc, object):
             cutoff = 1e5
             w = new_neglogprob.x[((new_neglogprob.y - new_neglogprob.y.min()) < cutoff)][-1] - new_neglogprob.x[((new_neglogprob.y - new_neglogprob.y.min()) < cutoff)][0]
             print ("Distribution width: "  + str(w))
-            
+
     def _ml_t_root_leaves(self):
         """
         Given the location probability distribution, computed by the propagation
@@ -423,13 +423,12 @@ class TreeTime(TreeAnc, object):
                 node.msg_from_parent = interp1d(node_grid, node.branch_neg_log_prob.y, kind='linear')
 
                 final_prob = utils.multiply_dists((node.msg_from_parent, node.msg_to_parent))
-                
+
                 child_time = collapse_func(final_prob)
 
                 if child_time > node.up.abs_t + 1e-9:
                     # must never happen, just for security
                     # I think this can sometimes happen when using median collapsing
-                    import ipdb; ipdb.set_trace()
                     if self.debug: import ipdb; ipdb.set_trace()
                     node.total_prob = utils.delta_fun(node.up.abs_t, return_log=True, normalized=False)
                     print ("Warn: the child node wants to be {0} earlier than "

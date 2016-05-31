@@ -156,12 +156,12 @@ def min_interp(interp_object):
     Find the global minimum of a function represented as an interpolation object.
     """
     try:
-        return interp_object.x[interp_object(interp_object.x).argmin()]    
+        return interp_object.x[interp_object(interp_object.x).argmin()]
     except Exception, e:
         s = "Cannot find minimum of tthe interpolation object" + str(interp_object.x) + \
         "Minimal x: " + str(interp_object.x.min()) + "Maximal x: " + str(interp_object.x.max())
         raise e
-    
+
 
 
 def median_interp(interp_object):
@@ -190,7 +190,7 @@ def convolve(t, f, g, cutoff=1e7, n_integral=100):
 
     # nothing to convolve, one of the distribution is flat zero
     if (frange.sum() == 0 or grange.sum() == 0):
-        # we lost the probability 
+        # we lost the probability
         # NOTE binary_dilation does not extend the False array
         print ("Function F values: \n" + "\t".join(map(str,f.y)) + "\n")
         print ("Function G values: \n" + "\t".join(map(str,g.y)) + "\n")
@@ -204,10 +204,10 @@ def convolve(t, f, g, cutoff=1e7, n_integral=100):
 
     # resulting convolution
     res = np.ones(t.shape[0]) * 1e8
-    
+
     for i, ti in enumerate(t):
 
-        print (i, ti)
+        #print (i, ti)
 
         tau_min = np.max((ti-fx_max, gx_min))
         tau_max = np.min((ti-fx_min, gx_max))
@@ -218,12 +218,12 @@ def convolve(t, f, g, cutoff=1e7, n_integral=100):
         tau = np.unique(np.concatenate((ti-f.x[frange], g.x[grange])))
         tau.sort() # redundant because np.unique sorts
         tau = tau[(tau > tau_min) & (tau < tau_max)]
-        
 
-        if len(tau) < 2: 
+
+        if len(tau) < 2:
             #print "Cannot convolve the distributions: functions do not overlap!"
             continue
-        
+
         dtau = np.diff(tau)
         #tau = np.linspace(tau_min, tau_max, n_integral)
         fg = f(ti-tau) + g(tau)
@@ -231,7 +231,7 @@ def convolve(t, f, g, cutoff=1e7, n_integral=100):
         expfg = np.exp(-1*(fg-min_fg))
 
         integral = (0.5*(expfg[1:]+expfg[:-1])*dtau).sum()
-        print min_fg, integral, np.log(integral) 
+        #print min_fg, integral, np.log(integral)
 
         res[i] = min_fg + np.log(integral)
 
@@ -245,13 +245,13 @@ def convolve(t, f, g, cutoff=1e7, n_integral=100):
 
     res[-1] = 1e8
     res[-2] = 1e8
-    
+
     #res = -1*np.log(res)
     #res[np.isinf (res)] = -1*ttconf.MIN_LOG
     res = interp1d(t, res, kind='linear')
-    
-    
-    
+
+
+
     return res
 
 def opt_branch_len(node):
@@ -360,7 +360,7 @@ def multiply_dists(interps):
 
     interp = interp1d(grid, node_prob, kind='linear')
     return interp
-    
+
 
 #FIXME: ARE TWO FUNCTION BELOW USED
 def _nni(self, node):
