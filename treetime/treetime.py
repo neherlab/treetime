@@ -312,13 +312,13 @@ class TreeTime(TreeAnc, object):
         # T
         target_grid = utils.make_node_grid(opt_target_pos)
         target_grid.sort() # redundant
-        if hasattr(src_neglogprob, 'delta_pos'): # convolve with delta-fun
+        if hasattr(src_neglogprob, 'delta_pos'): # convolve distribution  with delta-fun
             x_axis = target_grid - src_neglogprob.delta_pos
             x_axis[x_axis < ttconf.MIN_T] = ttconf.MIN_T
             x_axis[x_axis > ttconf.MAX_T] = ttconf.MAX_T
             res_y = src_branch_neglogprob(x_axis)
             res = interp1d(target_grid, res_y, kind='linear')
-        else: # convolve two different distributions
+        else: # convolve two distributions
             pre_b = np.min(src_branch_neglogprob.y)
             pre_n = np.min(src_neglogprob.y)
             src_branch_neglogprob.y -= pre_b
@@ -370,7 +370,7 @@ class TreeTime(TreeAnc, object):
 
             new_neglogprob = utils.multiply_dists(msgs_from_clades)
             node.msg_to_parent = new_neglogprob
-
+            
     def _ml_t_root_leaves(self):
         """
         Given the location probability distribution, computed by the propagation
@@ -419,25 +419,14 @@ class TreeTime(TreeAnc, object):
                 node_grid[node_grid > ttconf.MAX_T/2] = ttconf.MAX_T
                 node.msg_from_parent = interp1d(node_grid, node.branch_neg_log_prob.y, kind='linear')
 
-                try:
+                final_prob = utils.multiply_dists((node.msg_from_parent, node.msg_to_parent))
                 
-                    final_prob = utils.multiply_dists((node.msg_from_parent, node.msg_to_parent))
-                
-                except Exception, e:
-                    s = "Cannot multiply distributions. D1.x =  " + "\t".join(map(str, node.msg_from_parent.x)) + \
-                    "\nD1.y = " + "\t".join(map(str, node.msg_from_parent.y)) + \
-                    "\nD2.x = " + "\t".join(map(str, node.msg_to_parent.x)) + \
-                    "\nD2.y = " + "\t".join(map(str, node.msg_to_parent.y)) 
-                    print (s)
-                    print (repr(e))
-                    raise RuntimeError(s + repr(e))
-
-
                 child_time = collapse_func(final_prob)
 
                 if child_time > node.up.abs_t + 1e-9:
                     # must never happen, just for security
                     # I think this can sometimes happen when using median collapsing
+                    import ipdb; ipdb.set_trace()
                     if self.debug: import ipdb; ipdb.set_trace()
                     node.total_prob = utils.delta_fun(node.up.abs_t, return_log=True, normalized=False)
                     print ("Warn: the child node wants to be {0} earlier than "
@@ -483,6 +472,7 @@ class TreeTime(TreeAnc, object):
         node.years_bp = self.date2dist.get_date(node.abs_t)
         if node.years_bp < 0:
             if not hasattr(node, "bad_branch") or node.bad_branch==False:
+                import ipdb; ipdb.set_trace()
                 raise ArithmeticError("The node is later than today, but it is not"
                     "marked as \"BAD\", which indicates the error in the "
                     "likelihood optimization.")
