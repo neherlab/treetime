@@ -370,9 +370,6 @@ class TreeTime(TreeAnc, object):
 
             new_neglogprob = utils.multiply_dists(msgs_from_clades)
             node.msg_to_parent = new_neglogprob
-            cutoff = 1e5
-            w = new_neglogprob.x[((new_neglogprob.y - new_neglogprob.y.min()) < cutoff)][-1] - new_neglogprob.x[((new_neglogprob.y - new_neglogprob.y.min()) < cutoff)][0]
-            print ("Distribution width: "  + str(w))
             
     def _ml_t_root_leaves(self):
         """
@@ -475,6 +472,7 @@ class TreeTime(TreeAnc, object):
         node.years_bp = self.date2dist.get_date(node.abs_t)
         if node.years_bp < 0:
             if not hasattr(node, "bad_branch") or node.bad_branch==False:
+                import ipdb; ipdb.set_trace()
                 raise ArithmeticError("The node is later than today, but it is not"
                     "marked as \"BAD\", which indicates the error in the "
                     "likelihood optimization.")

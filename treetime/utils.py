@@ -173,7 +173,7 @@ def median_interp(interp_object):
 
     tmp_prop = np.exp(-(interp_object(new_grid)-interp_object.y.min()))
     tmp_cumsum = np.cumsum(0.5*(tmp_prop[1:]+tmp_prop[:-1])*np.diff(new_grid))
-    median_index = min(len(tmp_cumsum)-3, max(2,np.searchsorted(tmp_cumsum, tmp_cumsum[-1]*0.5)-1))
+    median_index = min(len(tmp_cumsum)-3, max(2,np.searchsorted(tmp_cumsum, tmp_cumsum[-1]*0.5)+1))
     return new_grid[median_index]
 
 
@@ -206,39 +206,32 @@ def convolve(t, f, g, cutoff=1e7, n_integral=100):
     res = np.ones(t.shape[0]) * 1e8
     
     for i, ti in enumerate(t):
-
-        print (i, ti)
-
         tau_min = np.max((ti-fx_max, gx_min))
         tau_max = np.min((ti-fx_min, gx_max))
         if (tau_min > tau_max):
             # functions not overlap
             continue
 
-        tau = np.unique(np.concatenate((ti-f.x[frange], g.x[grange])))
-        tau.sort() # redundant because np.unique sorts
-        tau = tau[(tau > tau_min) & (tau < tau_max)]
+        # get the step for the grid 
+        dtau = np.min((
+            (f.x[frange][-1] - f.x[frange][0]) / 10, # if f sharp - at least 10 points cover f range 
+            (g.x[grange][-1] - g.x[grange][0]) / 10, # if g sharp - at least 10 points cover g range
+            (tau_max - tau_min) / 100.0)) # normal situation, regular grid of 100 points
         
+        tau = np.arange(tau_min, tau_max, dtau)        
 
         if len(tau) < 2: 
             #print "Cannot convolve the distributions: functions do not overlap!"
             continue
         
-        dtau = np.diff(tau)
+        #dtau = np.diff(tau)
         #tau = np.linspace(tau_min, tau_max, n_integral)
         fg = f(ti-tau) + g(tau)
         min_fg = fg.min() # exponent pre-factor
         expfg = np.exp(-1*(fg-min_fg))
 
         integral = (0.5*(expfg[1:]+expfg[:-1])*dtau).sum()
-        print min_fg, integral, np.log(integral) 
-
         res[i] = min_fg + np.log(integral)
-
-
-
-        # integrate f(t-tau)g(tau)dtau
-        #res[i] = quad(F, 0, 1, args=(ti,))[0]
 
     #if np.sum(res) < 1e-200:
     #    raise ArithmeticError("Cannot convolve the input distributions: the integral is zero!")
@@ -248,10 +241,8 @@ def convolve(t, f, g, cutoff=1e7, n_integral=100):
     
     #res = -1*np.log(res)
     #res[np.isinf (res)] = -1*ttconf.MIN_LOG
-    res = interp1d(t, res, kind='linear')
-    
-    
-    
+    res = interp1d(t, res, kind='linear')   
+
     return res
 
 def opt_branch_len(node):
