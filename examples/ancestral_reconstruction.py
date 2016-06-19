@@ -10,10 +10,14 @@ from Bio.SeqRecord import SeqRecord
 if __name__=="__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(description='Reconstruct ancestral sequences and map mutations to tree')
+    parser = argparse.ArgumentParser(
+            description='Reconstruct ancestral sequences and map mutations to the tree.'
+                        ' The ancestral sequences will be written to a file "aln_base"_ancestral.fasta'
+                        ' A tree in newick format with mutations as _A45G_... appended'
+                        ' appended to node names will be written to a file "treebase"_mutation.newick')
     parser.add_argument('--aln', required = True, type = str,  help ="fasta file with input sequences")
     parser.add_argument('--tree', required = True, type = str,  help ="newick file with tree")
-    parser.add_argument('--marginal', default = False, action='store_true', help='marginal instead of join ML reconstruction')
+    parser.add_argument('--marginal', default = False, action='store_true', help='marginal instead of joint ML reconstruction')
     parser.add_argument('--infer_gtr', default = False, action='store_true', help='infer substitution model')
 
     params = parser.parse_args()
