@@ -4,6 +4,7 @@ import config as ttconf
 from scipy.integrate import quad
 from scipy import stats
 import datetime
+from scipy.ndimage import binary_dilation
 
 class DateConversion(object):
     """
@@ -154,7 +155,13 @@ def min_interp(interp_object):
     """
     Find the global minimum of a function represented as an interpolation object.
     """
-    return interp_object.x[interp_object(interp_object.x).argmin()]
+    try:
+        return interp_object.x[interp_object(interp_object.x).argmin()]
+    except Exception, e:
+        s = "Cannot find minimum of tthe interpolation object" + str(interp_object.x) + \
+        "Minimal x: " + str(interp_object.x.min()) + "Maximal x: " + str(interp_object.x.max())
+        raise e
+
 
 
 def median_interp(interp_object):
@@ -166,30 +173,29 @@ def median_interp(interp_object):
 
     tmp_prop = np.exp(-(interp_object(new_grid)-interp_object.y.min()))
     tmp_cumsum = np.cumsum(0.5*(tmp_prop[1:]+tmp_prop[:-1])*np.diff(new_grid))
-    median_index = min(len(tmp_cumsum)-3, max(2,np.searchsorted(tmp_cumsum, tmp_cumsum[-1]*0.5)-1))
+    median_index = min(len(tmp_cumsum)-3, max(2,np.searchsorted(tmp_cumsum, tmp_cumsum[-1]*0.5)+1))
     return new_grid[median_index]
 
 
-def convolve(t, f, g, cutoff=10000, n_integral=100):
+def convolve(t, f, g, cutoff=1e7, n_integral=100):
     """
     Compute convolution of the functions f, g:
-    (f*g)(t) = int {f(t-tau) g(tau) d_tau}.
+    (f*g)(t) = integral {f(t-tau) g(tau) d_tau}.
     """
 
     # get the support ranges for the raw functions
-    frange = [(f.y - f.y.min()) < cutoff]
-    grange = [(g.y - g.y.min()) < cutoff]
-    while np.sum(frange) < 5 or np.sum(grange) < 5:
-        print ("Warning in Utils.convolve. The functions are too sharp to convolve."
-            " Increasing the cutoff.")
-        cutoff = cutoff * 10
-        if cutoff > 1e7:
-            import ipdb; ipdb.set_trace()
-            raise ArithmeticError("Cannot perform convolution. "
-                "The functions either have no defined values or they are too sharp.")
-        else:
-            frange = [(f.y - f.y.min()) < cutoff]
-            grange = [(g.y - g.y.min()) < cutoff]
+    #include first points below the cutoff to have at least three points in the integration region
+    frange = binary_dilation((f.y - f.y.min()) < cutoff)
+    grange = binary_dilation((g.y - g.y.min()) < cutoff)
+
+    # nothing to convolve, one of the distribution is flat zero
+    if (frange.sum() == 0 or grange.sum() == 0):
+        # we lost the probability
+        # NOTE binary_dilation does not extend the False array
+        print ("Function F values: \n" + "\t".join(map(str,f.y)) + "\n")
+        print ("Function G values: \n" + "\t".join(map(str,g.y)) + "\n")
+        raise ArithmeticError("Cannot convolve functions. At least one of the "
+                              "probability distributions has been lost!")
 
     fx_min = f.x[frange].min()
     fx_max = f.x[frange].max()
@@ -197,28 +203,46 @@ def convolve(t, f, g, cutoff=10000, n_integral=100):
     gx_max = g.x[grange].max()
 
     # resulting convolution
-    res = np.zeros(t.shape[0])
+    res = np.ones(t.shape[0]) * 1e8
 
-    #def F(x,ti):
-    #    return f(ti-x)*g(x)
-    #
     for i, ti in enumerate(t):
-
         tau_min = np.max((ti-fx_max, gx_min))
         tau_max = np.min((ti-fx_min, gx_max))
         if (tau_min > tau_max):
+            # functions not overlap
             continue
-        tau = np.linspace(tau_min, tau_max, n_integral)
-        fg = np.exp(-1*(f(ti-tau) + g(tau)))
-        res[i] = (0.5*(fg[1:]+fg[:-1])*(tau_max-tau_min)/n_integral).sum()
-        # integrate f(t-tau)g(tau)dtau
-        #res[i] = quad(F, 0, 1, args=(ti,))[0]
 
-    if (np.sum(res) < 1e-200):
-        import ipdb; ipdb.set_trace()
-    res = -1*np.log(res)
-    res[np.isinf (res)] = -1*ttconf.MIN_LOG
+        # get the step for the grid
+        dtau = np.min((
+            (f.x[frange][-1] - f.x[frange][0]) / 10, # if f sharp - at least 10 points cover f range
+            (g.x[grange][-1] - g.x[grange][0]) / 10, # if g sharp - at least 10 points cover g range
+            (tau_max - tau_min) / 100.0)) # normal situation, regular grid of 100 points
+
+        tau = np.arange(tau_min, tau_max, dtau)
+
+        if len(tau) < 2:
+            #print "Cannot convolve the distributions: functions do not overlap!"
+            continue
+
+        dtau = np.diff(tau)
+        #tau = np.linspace(tau_min, tau_max, n_integral)
+        fg = f(ti-tau) + g(tau)
+        min_fg = fg.min() # exponent pre-factor
+        expfg = np.exp(-1*(fg-min_fg))
+
+        integral = (0.5*(expfg[1:]+expfg[:-1])*dtau).sum()
+        res[i] = min_fg + np.log(integral)
+
+    #if np.sum(res) < 1e-200:
+    #    raise ArithmeticError("Cannot convolve the input distributions: the integral is zero!")
+
+    res[-1] = 1e8
+    res[-2] = 1e8
+
+    #res = -1*np.log(res)
+    #res[np.isinf (res)] = -1*ttconf.MIN_LOG
     res = interp1d(t, res, kind='linear')
+
     return res
 
 def opt_branch_len(node):
@@ -320,17 +344,14 @@ def multiply_dists(interps):
         opts = [k for k in opts if k is not None]
         grid = np.unique(np.concatenate ((opts, make_node_grid(np.mean(opts)))))
 
-    #try:
     node_prob = np.sum([k(grid) for k in interps], axis=0)
-    #except:
-    #    import ipdb; ipdb.set_trace()
-
 
     node_prob[((0,-1),)] = -1 * ttconf.MIN_LOG # +1000
     node_prob[((1,-2),)] = -1 * ttconf.MIN_LOG / 2 # +500
 
     interp = interp1d(grid, node_prob, kind='linear')
     return interp
+
 
 #FIXME: ARE TWO FUNCTION BELOW USED
 def _nni(self, node):

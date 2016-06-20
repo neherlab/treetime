@@ -55,6 +55,7 @@ class TreeAnc(object):
 
     def __init__(self, gtr):
         assert(isinstance(gtr, GTR))
+        self.one_mutation = 1.0
         self._max_node_num = 0
         self._gtr = gtr
         self.tree = None
@@ -62,7 +63,7 @@ class TreeAnc(object):
         self._internal_metadata_names = [
                     self.DisplayAttr("numdate", "numdate"),
                     self.DisplayAttr("mutation_rate/avg", "gamma"),
-                    self.DisplayAttr("branch_len/opt", lambda n: (n.branch_length / n.branch_neg_log_prob.x[(n.branch_neg_log_prob.y.argmin())])),
+                    self.DisplayAttr("branch_len/opt", lambda n: (abs(n.branch_length - n.branch_neg_log_prob.x[(n.branch_neg_log_prob.y.argmin())]) / self.one_mutation)),
                     self.DisplayAttr("time_since_MRCA (yr)", "tvalue")
                 ]
         self._terminal_metadata_names = self._internal_metadata_names

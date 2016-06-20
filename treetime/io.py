@@ -6,6 +6,8 @@ from treetime import TreeTime
 import utils
 import seq_utils
 import os
+import StringIO
+
 
 def treetime_from_newick(gtr, infile):
     """
@@ -115,11 +117,9 @@ def tips_data_to_json(tt, outf):
     with open (outf,'w') as of:
         json.dump(arr, of, indent=True)
 
-def root_lh_to_json(tt, outf):
+def root_pos_lh_to_human_readable(tt, cutoff=1e-4):
 
-    cutoff = 1e-3
-
-    mtp = tt.tree.root.msg_to_parent
+    mtp = mtp = tt.tree.root.msg_to_parent
     mtp_min = mtp.y.min()
 
     mtpy = np.array([np.exp(-k+mtp_min) for k in mtp.y])
@@ -148,9 +148,13 @@ def root_lh_to_json(tt, outf):
     #import ipdb; ipdb.set_trace()
     raw_x = np.unique(np.concatenate(([center-dist], [center], [center+dist], mtpx[(mtpx < dist + center) & (mtpx > center-dist)])))
 
-
     x = utils.numeric_date() -  np.array(map(tt.date2dist.get_date, raw_x))
     y = np.exp(-(mtp(raw_x) - mtp_min))
+    return x, y
+
+def root_lh_to_json(tt, outf):
+
+    x,y = root_pos_lh_to_human_readable(tt)
     arr = [{"x":f, "y":b} for f, b in zip(x, y)]
 
     with open (outf,'w') as of:
@@ -160,6 +164,15 @@ def root_lh_to_json(tt, outf):
     print (', '.join([str(k) for k in y]))
 
     #import ipdb; ipdb.set_trace()
+def root_lh_to_csv(tt, outf):
+    """Save node position likelihood distribution to CSV file"""
+    x,y = root_pos_lh_to_human_readable(tt)
+    arr = np.zeros((x.shape[0], 2))
+    arr[:, 0] = x[:]
+    arr[:, 1] = y[:]
+    np.savetxt(outf, arr, delimiter=",",header="#Numdate,Likelihood_normalized")
+
+
 
 def save_all_nodes_metadata(tt, outfile):
 
@@ -432,6 +445,25 @@ def read_metadata(tree, infile):
             tree.set_metadata(**dic)
     else:
         print("meta data file not found!")
+
+
+def save_gtr_to_file(gtr, outfile):
+
+    
+    with open(outfile, 'w') as of:
+        of.write("#GTR alphabet\n" + ','.join(gtr.alphabet)+'\n')
+    
+    with open (outfile,'a') as of:
+        of.write("#Mutation rate:\n" + str(gtr.mu) + '\n')
+
+    with open(outfile, 'a') as of:
+        np.savetxt(of, gtr.mu * np.dot(gtr.Pi, gtr.W), header="Full GTR matrix", delimiter=",")
+
+    with open(outfile, 'a') as of:
+        np.savetxt(of, np.diag(gtr.Pi), delimiter=",", header="Equilibrium character composition")
+    
+    with open(outfile, 'a') as of:
+        np.savetxt(of, gtr.W, delimiter=",", header="Flow rate matrix")
 
 if __name__=='__main__':
     pass

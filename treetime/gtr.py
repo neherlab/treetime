@@ -265,7 +265,7 @@ class GTR(object):
         self.eigenmat = eigvals
         return
 
-    def prob_t(self, profile_p, profile_ch, t, rotated=False, return_log=False):
+    def prob_t(self, profile_p, profile_ch, t, rotated=False, return_log=False, ignore_gap=True):
         """
         Compute the probability of the two profiles to be separated by the time t.
         Args:
@@ -294,6 +294,17 @@ class GTR(object):
         L = profile_p.shape[0]
         if L != profile_ch.shape[0]:
             raise ValueError("Sequence lengths do not match!")
+
+        if ignore_gap:
+            try:
+                gap_index = np.where(self.alphabet=='-')[0][0]
+            except:
+                ind = np.ones(L, dtype=bool)
+            else:
+                ind = (profile_p.argmax(axis=1)!=gap_index)&(profile_ch.argmax(axis=1)!=gap_index)
+        else:
+                ind = np.ones(L, dtype=bool)
+
         eLambdaT = self._exp_lt(t)
         if not rotated: # we need to rotate first
             p1 = profile_p.dot(self.v) # (L x a).dot(a x a) = (L x a) - prof in eigenspace
@@ -305,13 +316,13 @@ class GTR(object):
 
         prob = np.maximum(0,(p1*eLambdaT*p2).sum(axis=1)) # sum_i (p1_i * exp(l_i*t) * p_2_i) result = vector length L
         if return_log:
-            total_prob = (np.log(prob + ttconf.TINY_NUMBER)).sum() # sum all sites
+            total_prob = (np.log(prob[ind] + ttconf.TINY_NUMBER)).sum() # sum all sites
         else:
-            total_prob = prob.prod() # prod of all sites
+            total_prob = prob[ind].prod() # prod of all sites
         del eLambdaT, prob
         return total_prob
 
-    def optimal_t(self, profile_p, profile_ch, rotated=False, return_log=False):
+    def optimal_t(self, profile_p, profile_ch, rotated=False, return_log=False, ignore_gap=True):
         """
         Find the optimal distance between the two profiles
         """
@@ -331,8 +342,7 @@ class GTR(object):
              - prob(double): negative probability of the two given sequences
                to be separated by the time t.
             """
-            return -1*self.prob_t (parent, child, t, rotated=False, return_log=True)
-
+            return -1*self.prob_t (parent, child, t, rotated=False, return_log=True, ignore_gap=ignore_gap)
 
         try:
             from scipy.optimize import minimize_scalar
@@ -357,7 +367,7 @@ class GTR(object):
         if opt["success"] != True:
             print ("Cannot optimize branch length, minimization failed. Return Hamming distance")
             new_len =  1 - np.all(profile_ch == profile_p, axis=1).mean()
-            
+
         return  new_len
 
     def propagate_profile(self, profile, t, rotated=False, return_log=False):
@@ -401,6 +411,22 @@ class GTR(object):
          where (i) - alphabet index (the eigenvalue number).
         """
         return np.exp(self.mu * t * self.eigenmat)
+
+    def save_to_npz(self, outfile):
+        full_gtr = self.mu * np.dot(self.Pi, self.W)
+        desc=np.array(["GTR matrix description\n", "Mutation rate: " + str(self.mu)])
+        np.savez(outfile,   description=desc,
+                            full_gtr=full_gtr,
+                            char_dist=self.Pi,
+                            flow_matrix=self.W)
+
+    def save_to_json(self, zip):
+        d = {
+        "full_gtr": self.mu * np.dot(self.Pi, self.W),
+        "Mutation rate" : mu,
+        "Equilibrium character composition": self.Pi,
+        "Flow rate matrix": self.W
+        }
 
 
 if __name__ == "__main__":
