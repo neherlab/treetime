@@ -361,17 +361,15 @@ class TreeTime(TreeAnc, object):
                 continue # either have constraints, or will be optimized freely on the way back
 
             # children nodes with constraints
-            msgs_from_clades = [self._convolve(clade.msg_to_parent,
+            node.msgs_from_leaves = [self._convolve(clade.msg_to_parent,
                                clade.branch_neg_log_prob,
                                inverse_time=True)
                                for clade in node.clades if clade.msg_to_parent is not None]
-            if len(msgs_from_clades) < 1:  # we need at least one constraint
+            if len(node.msgs_from_leaves) < 1:  # we need at least one constraint
                 continue
-
-            new_neglogprob = utils.multiply_dists(msgs_from_clades)
-            node.msg_to_parent = new_neglogprob
-
-
+            
+            node.msg_to_parent = utils.multiply_dists(node.msgs_from_leaves)
+            
     def _ml_t_root_leaves(self):
         """
         Given the location probability distribution, computed by the propagation
@@ -396,18 +394,22 @@ class TreeTime(TreeAnc, object):
         print("Maximum likelihood tree optimization with temporal constraints:"
             " Propagating root -> leaves...")
         collapse_func = utils.median_interp
+        
         for node in self.tree.find_clades(order='preorder'):  # ancestors first, msg to children
             if not hasattr(node, "msg_to_parent"):
                 print ("ERROR: node has no log-prob interpolation object! "
                     "Aborting.")
-            if node.up is None:  # root node
+            
+            ## This is the root node
+            if node.up is None:  
+                node.marginal_lh = node.msg_to_parent
+                
                 node.total_prob = utils.delta_fun(collapse_func(node.msg_to_parent),
                                                   return_log=True,normalized=False)
-                #node.total_prefactor = node.msg_to_parent_prefactor
-                #node.msg_from_parent_prefactor = 0
                 self._set_final_date(node)
                 continue
 
+            ## All other nodes 
             if node.msg_to_parent is not None: # constrained terminal
                                                # and all internal nodes
                 if not hasattr(node.up.total_prob ,'delta_pos'):
