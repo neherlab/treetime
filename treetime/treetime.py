@@ -608,7 +608,13 @@ class TreeTime(TreeAnc, object):
 
             # compute the jont LH pos
             joint_msg_from_parent = _back_convolve(node.up.joint_lh_pos, node.branch_neg_log_prob)
-            node.joint_lh = utils.multiply_dists((joint_msg_from_parent, node.msg_to_parent))
+
+            if node.msg_to_parent is not None:
+                node.joint_lh = utils.multiply_dists((joint_msg_from_parent, node.msg_to_parent))
+            else: #unconstrained terminal node
+                node.joint_lh = joint_msg_from_parent
+
+
             # median/mean of LH dist is the node's date
             node_date = collapse_func(node.joint_lh)
 
@@ -643,8 +649,13 @@ class TreeTime(TreeAnc, object):
                 msg_parent_to_node = utils.multiply_dists(complementary_msgs)
             # propagate the message from the parent to the node:
             node.msg_from_parent = _back_convolve(msg_parent_to_node, node.branch_neg_log_prob)
+
             # finally, set the node marginal LH distribution:
-            node.marginal_lh = utils.multiply_dists((node.msg_from_parent, node.msg_to_parent))
+
+            if node.msg_to_parent is not None:
+                node.marginal_lh = utils.multiply_dists((node.msg_from_parent, node.msg_to_parent))
+            else: # terminal node without constraints
+                node.marginal_lh = node.msg_from_parent
 
 
         # Main method - propagate from root to the leaves and set the LH distributions
@@ -663,25 +674,9 @@ class TreeTime(TreeAnc, object):
                 self._set_final_date(node)
                 continue
 
-            ## All other nodes
-            if node.msg_to_parent is not None: # constrained terminal
-                                               # and all internal nodes
 
-                _set_joint_lh_pos(node)
-                _set_marginal_lh_dist(node)
-
-            else: # unconstrained terminal nodes
-                node_grid = node.up.total_prob.delta_pos - node.branch_neg_log_prob.x
-                node_grid[node_grid < ttconf.MIN_T/2] = ttconf.MIN_T
-                node_grid[node_grid > ttconf.MAX_T/2] = ttconf.MAX_T
-
-                node.msg_from_parent = interp1d(node_grid, node.branch_neg_log_prob.y, kind='linear')
-                #final_prob = utils.multiply_dists((node.msg_from_parent, node.msg_to_parent))
-                #node.msg_from_parent = msg_from_parent
-
-                node.total_prob = utils.delta_fun(collapse_func(node.msg_from_parent),
-                                                  return_log=True, normalized=False)
-
+            _set_joint_lh_pos(node)
+            _set_marginal_lh_dist(node)
             self._set_final_date(node)
 
     def _set_final_date(self, node):
