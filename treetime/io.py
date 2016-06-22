@@ -82,7 +82,7 @@ def treetime_to_json(tt, outf):
                     print "cannot round:", node.__getattribute__(prop), "assigned as is"
                     tree_json[prop] = node.__getattribute__(prop)
 
-        if node.clades: # node is internal 
+        if node.clades: # node is internal
             tree_json["internal_metadata"] = [{'name': k.name, 'value': k.attr(node)} for k in tt._internal_metadata_names]
             tree_json["children"] = []
             for ch in node.clades:
@@ -449,10 +449,10 @@ def read_metadata(tree, infile):
 
 def save_gtr_to_file(gtr, outfile):
 
-    
+
     with open(outfile, 'w') as of:
         of.write("#GTR alphabet\n" + ','.join(gtr.alphabet)+'\n')
-    
+
     with open (outfile,'a') as of:
         of.write("#Mutation rate:\n" + str(gtr.mu) + '\n')
 
@@ -461,7 +461,7 @@ def save_gtr_to_file(gtr, outfile):
 
     with open(outfile, 'a') as of:
         np.savetxt(of, np.diag(gtr.Pi), delimiter=",", header="Equilibrium character composition")
-    
+
     with open(outfile, 'a') as of:
         np.savetxt(of, gtr.W, delimiter=",", header="Flow rate matrix")
 

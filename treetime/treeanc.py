@@ -10,6 +10,39 @@ except ImportError:  #python3.x
     izip = zip
 
 import json
+from weakref import WeakKeyDictionary
+from scipy.interpolate import interp1d
+
+
+class _Descriptor_PhyloTree(object):
+    """
+    Descriptor to manage the Phylo.Tree object of the TreeTime class.
+    When reading the new tree, it prepares the general properties of the tree for
+    the further use. In particular, it sets the descriptors to the Clade object
+    to manipulate some sensible properties, which depend on each other.
+    """
+    def __init__(self, default=Phylo.BaseTree.Tree()):
+        self.default = default
+        self.data = WeakKeyDictionary()
+
+    def __get__(self, instance, owner):
+        # we get here when someone calls treetime.tree and tree is a Descriptor instance
+        # instance = treetime (real object)
+        # owner = type(treetime) (should be TreeTime)
+        return self.data.get(instance, self.default) # if the data not present - default will be returned
+
+    def __set__(self, instance, value):
+        # we get here when someone calls x.d = val, and d is a Descriptor instance
+        # instance = x
+        # value = val
+        if value is None:
+            self.data[instance] = self.default
+            return
+
+        if not isinstance(value, Phylo.BaseTree.Tree):
+            raise TypeError("The TreeTime object can only assign the BioPython.BaseTree objects.")
+
+        self.data[instance] = value
 
 
 class TreeAnc(object):
@@ -18,6 +51,8 @@ class TreeAnc(object):
     saving from/to files, initializing leaves with sequences from the
     alignment, making ancestral state inferrence
     """
+
+    tree = _Descriptor_PhyloTree() # Always set the descriptors at the class level
 
     class DisplayAttr(object):
 
@@ -52,6 +87,12 @@ class TreeAnc(object):
     @property
     def gtr(self):
         return self._gtr
+
+    @gtr.setter
+    def gtr_setter(self, value):
+        pass
+
+
 
     def __init__(self, gtr):
         assert(isinstance(gtr, GTR))

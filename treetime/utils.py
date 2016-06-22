@@ -26,37 +26,36 @@ class DateConversion(object):
         """
         Create the conversion object automatically from the tree
         """
-        if slope is None:
-            dc = cls()
-            dates = []
+        dates = []
+        for node in t.find_clades():
+            if hasattr(node, "numdate_given" ) and node.numdate_given is not None:
+                dates.append((node.numdate_given, node.dist2root))
 
-            for node in t.find_clades():
-                if hasattr(node, "numdate_given" ) and node.numdate_given is not None:
-                    dates.append((node.numdate_given, node.dist2root))
+        if len(dates) == 0:
+            raise RuntimeError("Cannot proceed with the TreeTime computations: "
+                "No date has been assigned to the terminal nodes!")
+        dates = np.array(dates)
+        dc = cls()
+
+        if slope is None:
 
             if len(dates) < 5:
                 raise(RuntimeError("There are no dates set at the leaves of the tree."
                     " Cannot make the conversion function. Aborting."))
-
-            dates = np.array(dates)
-
+            # simple regression
             dc.slope,\
                 dc.intercept,\
                 dc.r_val,\
                 dc.pi_val,\
                 dc.sigma = stats.linregress(dates[:, 0], dates[:, 1])
-
-            return dc
-
         else:
 
-            dc = cls()
-            dc.slope = slope
+            dc.slope = slope # slope is given
             min_numdate_given = ttconf.BIG_NUMBER
             max_numdate_given = -ttconf.BIG_NUMBER
             max_diam = 0.0
             for node in t.get_terminals():
-                # NOTE:  raw_date is time before present in days
+                # NOTE:  raw_date is time before present in years
                 if hasattr(node, 'numdate_given') and node.numdate_given is not None:
                     if node.numdate_given < min_numdate_given:
                         min_numdate_given = node.numdate_given
@@ -64,18 +63,19 @@ class DateConversion(object):
                         max_numdate_given = node.numdate_given
                         max_diam = node.dist2root
 
-            if max_numdate_given == ttconf.BIG_NUMBER:
+            if max_numdate_given == -ttconf.BIG_NUMBER:
                 print ("Warning! cannot set the minimal raw date. using today")
                 max_numdate_given = 0.0
 
             if max_diam == 0.0:
                 print ("Error! cannot set the intercept for the date2dist conversion!"
                     "Cannot read tree diameter")
-                return
 
             dc.intercept = max_diam - slope * max_numdate_given
 
-            return dc
+        # set the root-mean-square deviation:
+        dc.rms = np.sqrt(np.sum((dates[:, 1] - (dc.intercept + dc.slope * dates[:, 0]))**2) / dates.shape[0])
+        return dc
 
     def get_branch_len(self, date1, date2):
         """
@@ -90,6 +90,13 @@ class DateConversion(object):
          between the node date and the node depth in the the tree is linear.
         """
         return abs(date1 - date2) * self.slope
+
+    def get_abs_t(self, numdate):
+        """
+        Convert the numeric date to the branch-len scale
+        """
+        abs_t = (numeric_date() - numdate) * abs(self.slope)
+        return abs_t
 
     def get_date(self, abs_t):
         """
