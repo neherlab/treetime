@@ -368,9 +368,9 @@ class TreeTime(TreeAnc, object):
                 res = interp1d(target_grid, node.branch_neg_log_prob.y, kind='linear')
             else: # convolve two distributions
                 target_grid =  self._conv_grid(node.msg_to_parent, node.branch_neg_log_prob,
-                    node.msg_to_parent_sigma, node.branch_len_sigma, True)
+                    node.msg_to_parent_sigma, node.branch_len_sigma, inverse_time = True)
                     #self._conv_grid(node)
-                res = self._convolve(target_grid, node.msg_to_parent, node.branch_neg_log_prob, True)
+                res = self._convolve(target_grid, node.msg_to_parent, node.branch_neg_log_prob, inverse_time=True)
             return res
 
         print("Maximum likelihood tree optimization with temporal constraints:"
@@ -387,7 +387,8 @@ class TreeTime(TreeAnc, object):
             # save all messages from the children nodes with constraints
             # store as dictionary to exclude nodes from the set when necessary
             # (see below)
-            node.msgs_from_leaves = {clade: _send_message(clade) for clade in node.clades if clade.msg_to_parent is not None}
+            node.msgs_from_leaves = {clade: _send_message(clade) for clade in node.clades
+                                            if clade.msg_to_parent is not None}
 
             if len(node.msgs_from_leaves) < 1:  # we need at least one constraint
                 continue
@@ -396,7 +397,7 @@ class TreeTime(TreeAnc, object):
             node_grid = self._make_node_grid(node)
             node.msg_to_parent = self._multiply_dists(node.msgs_from_leaves.values(), node_grid)
 
-    def _convolve(self, time, f_func, g_func, inverse_time, cutoff=1e7, n_integral=100):
+    def _convolve(self, time, f_func, g_func, inverse_time=None, cutoff=1e7, n_integral=100):
 
         """
         Compute convolution of the functions f, g:= backwards and forward in time:
@@ -405,6 +406,8 @@ class TreeTime(TreeAnc, object):
         Otherwise, the result  is the "adapted" convolution to account the backwards message passing:
             F(t) = integral {f(t+tau) g(tau) d_tau}.
         """
+        if inverse_time is None:
+            raise RunTimeError("temporal direction of convolution not specified")
 
         # get the support ranges for the raw functions
         #include first points below the cutoff to have at least three points in the integration region
@@ -465,21 +468,15 @@ class TreeTime(TreeAnc, object):
         res = interp1d(time, res, kind='linear')
         return res
 
-    def _conv_grid(self, base_dist, propagator, inverse_time, base_s=None, prop_s=None, **kwargs):
+    def _conv_grid(self, base_dist, propagator, inverse_time = None, base_s=None,
+                   prop_s=None, sigma_factor=6, n_points=400, **kwargs):
 
         """
         Make the grid for the two convolving functions
+        # NOTE! n_points largely defines the smoothness of the final distribution
         """
-
-        if 'sigma_factor' in kwargs:
-            sigma_factor = kwargs['sigma_factor']
-        else:
-            sigma_factor = 6
-
-        if 'n_points' in kwargs:
-            n_points = kwargs['n_points']
-        else:
-            n_points = 400  # NOTE! largerly defines the smoothness of the final distribution
+        if inverse_time is None:
+            raise RunTimeError("temporal direction of convolution not specified")
 
         ##  compute the width of the message from parent
         if base_s is None:
@@ -504,21 +501,11 @@ class TreeTime(TreeAnc, object):
         # we do not need the symmetric grid in this case
         return self._make_grid(T0, T_sigma, n_points)
 
-    def _make_node_grid(self, node, **kwargs):
 
-        if 'sigma_factor' in kwargs:
-            sigma_factor = kwargs['sigma_factor']
-        else:
-            sigma_factor = 6
-
-        if 'n_points' in kwargs:
-            n_points = kwargs['n_points']
-        else:
-            n_points = 200
-
+    def _make_node_grid(self, node, sigma_factor=6, n_points=400, **kwargs):
         pos, sigma = self._opt_node_pos(node)
-
         return self._make_grid(pos, sigma * sigma_factor, n_points)
+
 
     def _opt_node_pos(self, node):
         """
@@ -602,8 +589,9 @@ class TreeTime(TreeAnc, object):
 
             else: # all other cases
                 # make the grid for the node
-                target_grid = self._conv_grid(msg_parent_to_node, branch_lh, msg_parent_s, branch_lh_s, False)
-                res = self._convolve(target_grid, msg_parent_to_node, branch_lh, False)
+                target_grid = self._conv_grid(msg_parent_to_node, branch_lh,
+                                msg_parent_s, branch_lh_s, inverse_time = False)
+                res = self._convolve(target_grid, msg_parent_to_node, branch_lh, inverse_time = False)
 
             return res
 
@@ -626,7 +614,7 @@ class TreeTime(TreeAnc, object):
 
             if node.msg_to_parent is not None:
                 node.joint_lh = self._multiply_dists((joint_msg_from_parent, node.msg_to_parent),
-                    node.msg_to_parent.x)
+                                                    node.msg_to_parent.x)
             else: #unconstrained terminal node
                 node.joint_lh = joint_msg_from_parent
 
