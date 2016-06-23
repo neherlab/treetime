@@ -521,8 +521,13 @@ class TreeTime(TreeAnc, object):
         return opt_pos, sigma
 
     def _make_grid(self, center, sigma, N):
+        alpha=1.0
+        grid_center = center + sigma * np.sign(np.linspace(-1, 1, N/2)) * np.abs(np.linspace(-1, 1, N/2)**alpha)
+        # derivatives and values of node grid position as a function of grid index
+        center_deriv = grid_center[-1]-grid_center[-2]
+        start_point = grid_center[-1]
+        end_point = ttconf.MAX_BRANCH_LENGTH
 
-        grid_center = center + sigma * np.sign(np.linspace(-1, 1, N/2)) * (np.linspace(-1, 1, N/2)**2)
         grid_wings_r = center + sigma + ttconf.MAX_BRANCH_LENGTH * (np.linspace(0, 1, N/2)**2) [1:]
         grid_wings_l = center - sigma - ttconf.MAX_BRANCH_LENGTH * (np.linspace(0, 1, N/2)**2) [1:]
 
