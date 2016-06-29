@@ -67,6 +67,7 @@ class _Descriptor_Distribution(object):
         real_prob = np.exp(-(logprob.y-ymin))
         xs = logprob.x[real_prob > (real_prob.max() - real_prob.min()) / 2]
         return xs.max() - xs.min()
+
 ##  set the necessary descriptors to the Phylo.Clade objects
 ##  (NOTE all descriptors assigned at object level)
 Phylo.BaseTree.Clade.branch_neg_log_prob = _Descriptor_Distribution("branch_len_sigma")
@@ -368,7 +369,7 @@ class TreeTime(TreeAnc, object):
                 res = interp1d(target_grid, node.branch_neg_log_prob.y, kind='linear')
             else: # convolve two distributions
                 target_grid =  self._conv_grid(node.msg_to_parent, node.branch_neg_log_prob,
-                    node.msg_to_parent_sigma, node.branch_len_sigma, inverse_time = True)
+                    base_s=node.msg_to_parent_sigma, prop_s=node.branch_len_sigma, inverse_time=True)
                     #self._conv_grid(node)
                 res = self._convolve(target_grid, node.msg_to_parent, node.branch_neg_log_prob, inverse_time=True)
             return res
@@ -390,12 +391,14 @@ class TreeTime(TreeAnc, object):
             node.msgs_from_leaves = {clade: _send_message(clade) for clade in node.clades
                                             if clade.msg_to_parent is not None}
 
+
             if len(node.msgs_from_leaves) < 1:  # we need at least one constraint
                 continue
 
             # this is what the node sends to the parent
             node_grid = self._make_node_grid(node)
             node.msg_to_parent = self._multiply_dists(node.msgs_from_leaves.values(), node_grid)
+
 
     def _convolve(self, time, f_func, g_func, inverse_time=None, cutoff=1e7, n_integral=100):
 
@@ -468,9 +471,9 @@ class TreeTime(TreeAnc, object):
         res = interp1d(time, res, kind='linear')
         return res
 
-    def _conv_grid(self, base_dist, propagator, inverse_time = None, base_s=None,
-                   prop_s=None, sigma_factor=6, n_points=400, **kwargs):
 
+    def _conv_grid(self, base_dist, propagator, base_s=None, prop_s=None,
+                    inverse_time=None, sigma_factor=4, n_points=600, **kwargs):
         """
         Make the grid for the two convolving functions
         # NOTE! n_points largely defines the smoothness of the final distribution
@@ -502,9 +505,34 @@ class TreeTime(TreeAnc, object):
         return self._make_grid(T0, T_sigma, n_points)
 
 
-    def _make_node_grid(self, node, sigma_factor=6, n_points=400, **kwargs):
-        pos, sigma = self._opt_node_pos(node)
-        return self._make_grid(pos, sigma * sigma_factor, n_points)
+    def _make_node_grid(self, node, sigma_factor=6, n_points=300, **kwargs):
+
+        if hasattr(node, 'msgs_from_leaves'):
+            pos = np.array([utils.min_interp(msg) for msg in node.msgs_from_leaves.values()])
+            sigmas = np.array([_Descriptor_Distribution._logprob_sigma(msg) for msg in node.msgs_from_leaves.values()])
+            steps = np.array([sigmas[i] / ((msg.x > pos[i] -sigmas[i]) & (msg.x < pos[i] + sigmas[i])).sum()
+                        for i,msg in enumerate(node.msgs_from_leaves.values())])
+
+        else:
+            pos = np.array([])
+            sigmas = np.array([])
+            densities = np.array([])
+
+        # account for the node position, which has bee inferred from the molecular clock
+        _pos, _sigma = self._opt_node_pos(node)
+        pos = np.concatenate((pos, [_pos]))
+        sigmas = np.concatenate((sigmas,[_sigma]))
+        steps = np.concatenate((steps, [_sigma * sigma_factor / n_points]))
+        steps = steps[steps>0]
+
+
+        # choose the finest grid in the selected region
+        extreme_pos = np.concatenate((pos-sigmas, pos+sigmas))
+
+        Npoints = (extreme_pos.max() - extreme_pos.min())/steps.min()
+        print (Npoints)
+        return self._make_grid((extreme_pos.max() + extreme_pos.min()) / 2,
+           (extreme_pos.max() - extreme_pos.min()) , Npoints)
 
 
     def _opt_node_pos(self, node):
@@ -521,15 +549,29 @@ class TreeTime(TreeAnc, object):
         return opt_pos, sigma
 
     def _make_grid(self, center, sigma, N):
+
         alpha=1.0
         grid_center = center + sigma * np.sign(np.linspace(-1, 1, N/2)) * np.abs(np.linspace(-1, 1, N/2)**alpha)
-        # derivatives and values of node grid position as a function of grid index
-        center_deriv = grid_center[-1]-grid_center[-2]
-        start_point = grid_center[-1]
-        end_point = ttconf.MAX_BRANCH_LENGTH
 
-        grid_wings_r = center + sigma + ttconf.MAX_BRANCH_LENGTH * (np.linspace(0, 1, N/2)**2) [1:]
-        grid_wings_l = center - sigma - ttconf.MAX_BRANCH_LENGTH * (np.linspace(0, 1, N/2)**2) [1:]
+        # points for the "wings" grid
+        pts = np.arange(0, int(N/2))
+        N_pts = pts.shape[0]
+
+
+        # derivatives and values of node grid position as a function of grid index
+        center_deriv_r = grid_center[-1]-grid_center[-2]
+        start_point_r = grid_center[-1]
+        end_point_r = ttconf.MAX_BRANCH_LENGTH
+
+        center_deriv_l = grid_center[1]-grid_center[0]
+        start_point_l = grid_center[0]
+        end_point_l =  - ttconf.MAX_BRANCH_LENGTH
+
+        grid_wings_r = pts**2 * (end_point_r - center_deriv_r*N_pts - start_point_r) / N_pts**2 + center_deriv_r * pts + start_point_r
+        grid_wings_l = pts**2 * (end_point_l - center_deriv_l*N_pts - start_point_l) / N_pts**2 + center_deriv_l * pts + start_point_l
+
+        #grid_wings_r = center + sigma + ttconf.MAX_BRANCH_LENGTH * (np.linspace(0, 1, N/2)**2) [1:]
+        #grid_wings_l = center - sigma - ttconf.MAX_BRANCH_LENGTH * (np.linspace(0, 1, N/2)**2) [1:]
 
         grid = np.unique(np.concatenate( # unique will also sort the array
             ([ttconf.MIN_T],
@@ -571,7 +613,7 @@ class TreeTime(TreeAnc, object):
 
         print("Maximum likelihood tree optimization with temporal constraints:"
             " Propagating root -> leaves...")
-
+        import ipdb; ipdb.set_trace()
         collapse_func = utils.median_interp
 
         def _send_message(msg_parent_to_node, branch_lh, msg_parent_s=None, branch_lh_s=None, **kwargs):
@@ -595,7 +637,7 @@ class TreeTime(TreeAnc, object):
             else: # all other cases
                 # make the grid for the node
                 target_grid = self._conv_grid(msg_parent_to_node, branch_lh,
-                                msg_parent_s, branch_lh_s, inverse_time = False)
+                                msg_parent_s, branch_lh_s, inverse_time=False)
                 res = self._convolve(target_grid, msg_parent_to_node, branch_lh, inverse_time = False)
 
             return res
@@ -687,12 +729,9 @@ class TreeTime(TreeAnc, object):
                 node.msg_from_parent = None # nothing beyond the root
                 node.joint_lh_pos = utils.delta_fun(collapse_func(node.marginal_lh),
                                                   return_log=True,normalized=False)
-                self._set_final_date(node)
-                continue
-
-
-            _set_joint_lh_pos(node)
-            _set_marginal_lh_dist(node)
+            else:
+                _set_joint_lh_pos(node)
+                _set_marginal_lh_dist(node)
             self._set_final_date(node)
 
     def _set_final_date(self, node):
@@ -717,8 +756,8 @@ class TreeTime(TreeAnc, object):
         node.years_bp = self.date2dist.get_date(node.abs_t)
         if node.years_bp < 0:
             if not hasattr(node, "bad_branch") or node.bad_branch==False:
-                import ipdb; ipdb.set_trace()
-                raise ArithmeticError("The node is later than today, but it is not"
+                #import ipdb; ipdb.set_trace()
+                print("ERROR: The node is later than today, but it is not"
                     "marked as \"BAD\", which indicates the error in the "
                     "likelihood optimization.")
             else:
