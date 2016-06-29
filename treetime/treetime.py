@@ -15,6 +15,62 @@ from scipy.interpolate import interp1d
 import json
 import copy
 from scipy import optimize as sciopt
+from scipy.ndimage import binary_dilation
+from weakref import WeakKeyDictionary
+
+class _Descriptor_Distribution(object):
+    """
+    Descriptor to manage the settings, common for the LH distributions of different types
+    (Branch lengths, messages, LH distributions for the positions, etc)
+    It controls the values of the distributions, and, when setting the distribution
+    as the attribute to the node, it automatically assigns some additional parameters
+    to the same node (incl the sigma)
+    """
+    def __init__(self, sigma_name, default=None):
+        self.default = default
+        self._sigma_name = sigma_name
+        self.data = WeakKeyDictionary()
+
+    def __get__(self, instance, owner):
+        # we get here when someone calls x.d, and d is a NonNegative instance
+        # instance = x
+        # owner = type(x)
+        return self.data.get(instance, self.default)
+
+    def __set__(self, instance, value):
+        # we get here when someone calls x.d = val, and d is a NonNegative instance
+        # instance = x
+        # value = val
+        if value is None:
+            self.data[instance] = self.default
+            return
+
+        if not isinstance(value, interp1d):
+            raise TypeError("Cannot set the branch length LH distribution property."
+                "The interpolation object is expected")
+
+        self.data[instance] = value
+        # compute the connected parameters:
+        instance.__setattr__(self._sigma_name, _Descriptor_Distribution._logprob_sigma(value))
+
+    @staticmethod
+    def _logprob_sigma(logprob):
+        """
+        Assess the width of the probability distribution.
+        """
+        if logprob is None: return 0.0
+
+        if not isinstance(logprob, interp1d):
+            raise TypeError("Error in computing the sigma for the branch length LH distribution."
+                "Interpolation object expected")
+        ymin = logprob.y.min()
+        real_prob = np.exp(-(logprob.y-ymin))
+        xs = logprob.x[real_prob > (real_prob.max() - real_prob.min()) / 2]
+        return xs.max() - xs.min()
+##  set the necessary descriptors to the Phylo.Clade objects
+##  (NOTE all descriptors assigned at object level)
+Phylo.BaseTree.Clade.branch_neg_log_prob = _Descriptor_Distribution("branch_len_sigma")
+Phylo.BaseTree.Clade.msg_to_parent = _Descriptor_Distribution("msg_to_parent_sigma")
 
 class TreeTime(TreeAnc, object):
     """
@@ -159,12 +215,11 @@ class TreeTime(TreeAnc, object):
         logprob[((0,1,-2,-1),)] = ttconf.MIN_LOG
         logprob *= -1.0
 
-        dt = np.diff(grid)
         min_prob = np.min(logprob)
         logprob -= min_prob
 
         tmp_prob = np.exp(-logprob)
-        integral = np.sum(0.5*(tmp_prob[1:]+tmp_prob[:-1])*dt)
+        integral = self._integral(grid, tmp_prob)
 
         # save raw branch length interpolators without coalescent contribution
         # TODO: better criterion to catch bad branch
@@ -182,7 +237,7 @@ class TreeTime(TreeAnc, object):
         logprob += node.merger_rate * np.minimum(ttconf.MAX_BRANCH_LENGTH, np.maximum(0,grid))
 
         tmp_prob = np.exp(-logprob)
-        integral = np.sum(0.5*(tmp_prob[1:]+tmp_prob[:-1])*dt)
+        integral = self._integral(grid, tmp_prob)
 
         if integral < 1e-200:
             print ("!!WARNING!! Node branch length probability distribution "
@@ -272,62 +327,12 @@ class TreeTime(TreeAnc, object):
                 # if there are no constraints - log_prob will be set on-the-fly
                 node.msg_to_parent = None
 
-
-    def _convolve(self, src_neglogprob, src_branch_neglogprob, inverse_time):
+    def _integral(self, x, y):
         """
-        Compute the convolution of parent (target) and child (source)
-        nodes negative log-likelihood distributions.
-        Take the source node log-LH distribution, extracts its grid. Based on
-        the branch length probability distribution (also neg log-LH), find
-        approximate position of the target node. Make the grid for the target
-        node, and for each point of this newly generated grid, compute the
-        convolution over all possible positions of the source node.
-
-        Args:
-
-        - src_neglogprob (scipy.interpolate.interp1d): neg log-LH
-         distribution of the node to be integrated, represented as scipy
-         interpolation object
-
-        - src_branch_neglogprob(scipy.interpolate.interp1d): neg log-LH
-         distribution of the branch lenghts between the two nodes, represented
-         as scipy interpolation object
-
-         - inverse_time (bool): Whether the time should be inversed.
-         True if we go from leaves to root (against absolute time scale), and
-         the convolution is computed over positions of the child node.
-         False if the messages are propagated from root towards leaves (the same
-         direction as the absolute time axis), and the convolution is being
-         computed over the position of the parent node
-
+        compute the integral of y(x) value over all range of x
         """
-
-        opt_source_pos = utils.min_interp(src_neglogprob)
-        opt_branch_len = utils.min_interp(src_branch_neglogprob)
-        if inverse_time:
-            opt_target_pos = opt_source_pos + opt_branch_len # abs_t
-        else:
-            opt_target_pos = opt_source_pos - opt_branch_len
-
-        # T
-        target_grid = utils.make_node_grid(opt_target_pos)
-        target_grid.sort() # redundant
-        if hasattr(src_neglogprob, 'delta_pos'): # convolve distribution  with delta-fun
-            x_axis = target_grid - src_neglogprob.delta_pos
-            x_axis[x_axis < ttconf.MIN_T] = ttconf.MIN_T
-            x_axis[x_axis > ttconf.MAX_T] = ttconf.MAX_T
-            res_y = src_branch_neglogprob(x_axis)
-            res = interp1d(target_grid, res_y, kind='linear')
-        else: # convolve two distributions
-            pre_b = np.min(src_branch_neglogprob.y)
-            pre_n = np.min(src_neglogprob.y)
-            src_branch_neglogprob.y -= pre_b
-            src_neglogprob.y -= pre_n
-            res = utils.convolve(target_grid, src_neglogprob, src_branch_neglogprob)
-            src_branch_neglogprob.y += pre_b
-            src_neglogprob.y += pre_n
-            res.y += pre_b
-            res.y += pre_n
+        dx = np.diff(x)
+        res = (0.5*(y[1:]+y[:-1])*dx).sum()
         return res
 
     def _ml_t_leaves_root(self):
@@ -352,25 +357,196 @@ class TreeTime(TreeAnc, object):
            root.
 
         """
+        def _send_message(node, **kwargs):
+            """
+            Calc the desired LH distribution of the parent
+            """
+            if hasattr(node.msg_to_parent, 'delta_pos'): # convolve distribution  with delta-fun
+                target_grid = node.branch_neg_log_prob.x + node.msg_to_parent.delta_pos
+                target_grid[target_grid < ttconf.MIN_T/2] = ttconf.MIN_T
+                target_grid[target_grid > ttconf.MAX_T/2] = ttconf.MAX_T
+                res = interp1d(target_grid, node.branch_neg_log_prob.y, kind='linear')
+            else: # convolve two distributions
+                target_grid =  self._conv_grid(node.msg_to_parent, node.branch_neg_log_prob,
+                    node.msg_to_parent_sigma, node.branch_len_sigma, inverse_time = True)
+                    #self._conv_grid(node)
+                res = self._convolve(target_grid, node.msg_to_parent, node.branch_neg_log_prob, inverse_time=True)
+            return res
 
         print("Maximum likelihood tree optimization with temporal constraints:"
             " Propagating leaves -> root...")
+
+
+        # go through the nodes from leaves towards the root:
         for node in self.tree.find_clades(order='postorder'):  # children first, msg to parents
 
             if node.is_terminal():
+                node.msgs_from_leaves = {}
                 continue # either have constraints, or will be optimized freely on the way back
 
-            # children nodes with constraints
-            msgs_from_clades = [self._convolve(clade.msg_to_parent,
-                               clade.branch_neg_log_prob,
-                               inverse_time=True)
-                               for clade in node.clades if clade.msg_to_parent is not None]
-            if len(msgs_from_clades) < 1:  # we need at least one constraint
+            # save all messages from the children nodes with constraints
+            # store as dictionary to exclude nodes from the set when necessary
+            # (see below)
+            node.msgs_from_leaves = {clade: _send_message(clade) for clade in node.clades
+                                            if clade.msg_to_parent is not None}
+
+            if len(node.msgs_from_leaves) < 1:  # we need at least one constraint
                 continue
 
-            new_neglogprob = utils.multiply_dists(msgs_from_clades)
-            node.msg_to_parent = new_neglogprob
+            # this is what the node sends to the parent
+            node_grid = self._make_node_grid(node)
+            node.msg_to_parent = self._multiply_dists(node.msgs_from_leaves.values(), node_grid)
 
+    def _convolve(self, time, f_func, g_func, inverse_time=None, cutoff=1e7, n_integral=100):
+
+        """
+        Compute convolution of the functions f, g:= backwards and forward in time:
+        if inverse_time is False, then the function computes  the proper convolution:
+            F(t) = (f*g) = integral {f(t-tau) g(tau) d_tau}.
+        Otherwise, the result  is the "adapted" convolution to account the backwards message passing:
+            F(t) = integral {f(t+tau) g(tau) d_tau}.
+        """
+        if inverse_time is None:
+            raise RunTimeError("temporal direction of convolution not specified")
+
+        # get the support ranges for the raw functions
+        #include first points below the cutoff to have at least three points in the integration region
+        frange = binary_dilation((f_func.y - f_func.y.min()) < cutoff)
+        grange = binary_dilation((g_func.y - g_func.y.min()) < cutoff)
+        # nothing to convolve, one of the distribution is flat zero
+        if (frange.sum() == 0 or grange.sum() == 0):
+            # we lost the probability
+            # NOTE binary_dilation does not extend the False array
+            print ("Function F values: \n" + "\t".join(map(str,f.y)) + "\n")
+            print ("Function G values: \n" + "\t".join(map(str,g.y)) + "\n")
+            raise ArithmeticError("Cannot convolve functions. At least one of the "
+                                  "probability distributions has been lost!")
+        fx_min = f_func.x[frange].min()
+        fx_max = f_func.x[frange].max()
+        gx_min = g_func.x[grange].min()
+        gx_max = g_func.x[grange].max()
+        # resulting convolution
+        res = np.ones(time.shape[0]) * 1e8
+        for idx, ti in enumerate(time):
+            if inverse_time:
+                tau_min = np.max((ti-fx_max, gx_min))
+                tau_max = np.min((ti-fx_min, gx_max))
+            else:
+                tau_min = np.max((fx_min - ti, gx_min))
+                tau_max = np.min((fx_max - ti, gx_max))
+            if (tau_min > tau_max):
+                # functions not overlap
+                continue
+            # get the step for the grid
+            dtau = np.min((
+                (f_func.x[frange][-1] - f_func.x[frange][0]) / 10, # if f sharp - at least 10 points cover f range
+                (g_func.x[grange][-1] - g_func.x[grange][0]) / 10, # if g sharp - at least 10 points cover g range
+                (tau_max - tau_min) / 100.0)) # normal situation, regular grid of 100 points
+
+            tau = np.arange(tau_min, tau_max, dtau)
+            # include the distributions extremum positions to the grid to avoid round error:
+            #tau = np.concatenate(((f_func.x[f_func.y.argmin()], g_func.x[g_func.y.argmin()]), tau))
+            # make sure the values are unique (NOTE unique method also sorts in-place)
+            #tau = np.unique(tau)
+
+            if len(tau) < 2:
+                #print "Cannot convolve the distributions: functions do not overlap!"
+                continue
+            if inverse_time:
+                fg = f_func(ti-tau) + g_func(tau)
+            else:
+                fg = f_func(ti+tau) + g_func(tau)
+
+            min_fg = fg.min() # exponent pre-factor
+            expfg = np.exp(-1*(fg-min_fg))
+            dtau = np.diff(tau)
+            integral = (0.5*(expfg[1:]+expfg[:-1])*dtau).sum()
+            res[idx] = -np.log(integral) + min_fg
+
+        res[-1] = 1e8
+        res[-2] = 1e8
+        res = interp1d(time, res, kind='linear')
+        return res
+
+    def _conv_grid(self, base_dist, propagator, inverse_time = None, base_s=None,
+                   prop_s=None, sigma_factor=6, n_points=400, **kwargs):
+
+        """
+        Make the grid for the two convolving functions
+        # NOTE! n_points largely defines the smoothness of the final distribution
+        """
+        if inverse_time is None:
+            raise RunTimeError("temporal direction of convolution not specified")
+
+        ##  compute the width of the message from parent
+        if base_s is None:
+            base_s = _Descriptor_Distribution._logprob_sigma(base_dist)
+        if prop_s is None:
+            prop_s = _Descriptor_Distribution._logprob_sigma(propagator)
+
+        # FIXME not min of the dist, but average (especially for two zero-max dists)
+        T0_base  = utils.min_interp(base_dist)
+        T0_prop = utils.min_interp(propagator)
+
+        # rough estimate for the convolution maximum (max overlap of the distributions)
+        if inverse_time: # we move towards the root, but the time values (years before present) increase
+            T0 = T0_base + T0_prop
+        else: # we move towards leaves (years before present decrease)
+            T0 = T0_base - T0_prop
+
+        # rough estimate for the convolution width (sum of dists widths)
+        T_sigma = sigma_factor * (base_s + prop_s)
+
+        # TODO sometimes, the distribution is "cut" from one side,
+        # we do not need the symmetric grid in this case
+        return self._make_grid(T0, T_sigma, n_points)
+
+
+    def _make_node_grid(self, node, sigma_factor=6, n_points=400, **kwargs):
+        pos, sigma = self._opt_node_pos(node)
+        return self._make_grid(pos, sigma * sigma_factor, n_points)
+
+
+    def _opt_node_pos(self, node):
+        """
+        Make a guess about the optimal position of a node.
+        Returns:
+         - opt_pos: guess for the optimal position
+         - sigma: guess for the opt_pos RMSE
+        """
+
+        numdate = (node.dist2root - self.date2dist.intercept) / self.date2dist.slope
+        opt_pos = self.date2dist.get_abs_t(numdate)
+        sigma = self.date2dist.rms
+        return opt_pos, sigma
+
+    def _make_grid(self, center, sigma, N):
+        alpha=1.0
+        grid_center = center + sigma * np.sign(np.linspace(-1, 1, N/2)) * np.abs(np.linspace(-1, 1, N/2)**alpha)
+        # derivatives and values of node grid position as a function of grid index
+        center_deriv = grid_center[-1]-grid_center[-2]
+        start_point = grid_center[-1]
+        end_point = ttconf.MAX_BRANCH_LENGTH
+
+        grid_wings_r = center + sigma + ttconf.MAX_BRANCH_LENGTH * (np.linspace(0, 1, N/2)**2) [1:]
+        grid_wings_l = center - sigma - ttconf.MAX_BRANCH_LENGTH * (np.linspace(0, 1, N/2)**2) [1:]
+
+        grid = np.unique(np.concatenate( # unique will also sort the array
+            ([ttconf.MIN_T],
+             grid_center,
+             grid_wings_r,
+             grid_wings_l,
+             [ttconf.MAX_T])))
+
+        return grid
+
+    def _multiply_dists(self, dists, grid):
+
+        res = np.sum((k(grid) for k in dists))
+        res[((0,-1),)] = -1 * ttconf.MIN_LOG
+        res[((1,-2),)] = -1 * ttconf.MIN_LOG / 2
+        interp = interp1d(grid, res, kind='linear')
+        return interp
 
     def _ml_t_root_leaves(self):
         """
@@ -395,59 +571,128 @@ class TreeTime(TreeAnc, object):
 
         print("Maximum likelihood tree optimization with temporal constraints:"
             " Propagating root -> leaves...")
+
         collapse_func = utils.median_interp
+
+        def _send_message(msg_parent_to_node, branch_lh, msg_parent_s=None, branch_lh_s=None, **kwargs):
+
+            """
+            Compute the 'back-convolution' when propagating from the root to the leaves.
+            The message from the parent to the child node is the
+            $$
+            Pr(T_c | comp_tips_pos) = \int_{d\tau} Pr(L = \tau) Pr(T_p = T_c + \tau)
+            $$
+
+            """
+            if hasattr(msg_parent_to_node, 'delta_pos'): # convolve distribution  with delta-fun
+
+                #grid will be same as for the branch len
+                target_grid = msg_parent_to_node.delta_pos - branch_lh.x
+                target_grid[target_grid < ttconf.MIN_T/2] = ttconf.MIN_T
+                target_grid[target_grid > ttconf.MAX_T/2] = ttconf.MAX_T
+                res = interp1d(target_grid, branch_lh.y, kind='linear')
+
+            else: # all other cases
+                # make the grid for the node
+                target_grid = self._conv_grid(msg_parent_to_node, branch_lh,
+                                msg_parent_s, branch_lh_s, inverse_time = False)
+                res = self._convolve(target_grid, msg_parent_to_node, branch_lh, inverse_time = False)
+
+            return res
+
+        def _set_joint_lh_pos(node):
+            """
+            Compute the joint LH distribution and collapse it to the delta-function,
+            which is later will be converted to the node's position
+            """
+            if not hasattr(node.up, 'joint_lh_pos') or \
+               not hasattr(node.up.joint_lh_pos ,'delta_pos'):
+               #  the joint lh is missing in the parent node, or it is not the delta function
+                print ("Cannot infer the joint distribution of the node: {0}. "
+                       "The position "
+                       "of the parent is not delta function").format(node.name)
+                node.joint_lh_pos =  utils.delta_fun(node.up.abs_t, return_log=True, normalized=False)
+                return;
+
+            # compute the jont LH pos
+            joint_msg_from_parent = _send_message(node.up.joint_lh_pos, node.branch_neg_log_prob)
+
+            if node.msg_to_parent is not None:
+                node.joint_lh = self._multiply_dists((joint_msg_from_parent, node.msg_to_parent),
+                                                    node.msg_to_parent.x)
+            else: #unconstrained terminal node
+                node.joint_lh = joint_msg_from_parent
+
+
+            # median/mean of LH dist is the node's date
+            node_date = collapse_func(node.joint_lh)
+
+            if node_date > node.up.abs_t + 1e-9:
+                if self.debug: import ipdb; ipdb.set_trace()
+                # collapse to the parent's position
+                node.joint_lh_pos = utils.delta_fun(node.up.abs_t, return_log=True, normalized=False)
+                print ("Warn: the child node wants to be {0} earlier than "
+                    "the parent node. Setting the child location to the parent's "
+                    "one. Node name: {1}".format(node_date - node.up.abs_t, node.name))
+            else:
+                node.joint_lh_pos = utils.delta_fun(node_date, return_log=True, normalized=False)
+
+            return;
+
+        def _set_marginal_lh_dist(node):
+            # Compute the marginal distribution for the internal node
+            # set the node's distribution
+            parent = node.up
+            assert (parent is not None)
+
+            # get the set of the messages from the complementary subtree of the node
+            # these messages are ready-to-use (already convolved with the branch lengths)
+            complementary_msgs = [parent.msgs_from_leaves[k]
+                for k in parent.msgs_from_leaves
+                if k != node]
+
+            # prepare the message that will be sent from the root to the node
+            if parent.msg_from_parent is not None: # the parent is not root => got something from the parent
+                complementary_msgs += [parent.msg_from_parent]
+
+            # prepare the message, which will be propagated to the child.
+            # NOTE the message is created on the parental grid
+            # we reuse the msg_to_parent grid to save some computations
+            msg_parent_to_node = self._multiply_dists(complementary_msgs, parent.msg_to_parent.x)
+
+            # propagate the message from the parent to the node:
+            node.msg_from_parent = _send_message(msg_parent_to_node, node.branch_neg_log_prob, None, node.branch_len_sigma)
+
+            # finally, set the node marginal LH distribution:
+
+            if node.msg_to_parent is not None:
+                # we again reuse the msg_to_parent grid
+                node.marginal_lh =  self._multiply_dists((node.msg_from_parent, node.msg_to_parent), node.msg_to_parent.x)
+            else: # terminal node without constraints
+                # the smoothness of the dist is defined by the grid of the message,
+                # no need to create new grid
+                node.marginal_lh = node.msg_from_parent
+
+
+        # Main method - propagate from root to the leaves and set the LH distributions
+        # to each node
         for node in self.tree.find_clades(order='preorder'):  # ancestors first, msg to children
             if not hasattr(node, "msg_to_parent"):
                 print ("ERROR: node has no log-prob interpolation object! "
                     "Aborting.")
-            if node.up is None:  # root node
-                node.total_prob = utils.delta_fun(collapse_func(node.msg_to_parent),
+
+            ## This is the root node
+            if node.up is None:
+                node.marginal_lh = node.msg_to_parent
+                node.msg_from_parent = None # nothing beyond the root
+                node.joint_lh_pos = utils.delta_fun(collapse_func(node.marginal_lh),
                                                   return_log=True,normalized=False)
-                #node.total_prefactor = node.msg_to_parent_prefactor
-                #node.msg_from_parent_prefactor = 0
                 self._set_final_date(node)
                 continue
 
-            if node.msg_to_parent is not None: # constrained terminal
-                                               # and all internal nodes
-                if not hasattr(node.up.total_prob ,'delta_pos'):
-                    print ("Cannot infer the position of the node: the position "
-                           "of the parent is not delta function")
-                    continue
 
-                node_grid = node.up.total_prob.delta_pos - node.branch_neg_log_prob.x
-                node_grid[node_grid < ttconf.MIN_T/2] = ttconf.MIN_T
-                node_grid[node_grid > ttconf.MAX_T/2] = ttconf.MAX_T
-                node.msg_from_parent = interp1d(node_grid, node.branch_neg_log_prob.y, kind='linear')
-
-                final_prob = utils.multiply_dists((node.msg_from_parent, node.msg_to_parent))
-
-                child_time = collapse_func(final_prob)
-
-                if child_time > node.up.abs_t + 1e-9:
-                    # must never happen, just for security
-                    # I think this can sometimes happen when using median collapsing
-                    if self.debug: import ipdb; ipdb.set_trace()
-                    node.total_prob = utils.delta_fun(node.up.abs_t, return_log=True, normalized=False)
-                    print ("Warn: the child node wants to be {0} earlier than "
-                        "the parent node. Setting the child location to the parent's "
-                        "one.".format((child_time - node.up.abs_t)))
-
-                else:
-                    node.total_prob = utils.delta_fun(child_time, return_log=True, normalized=False)
-
-            else: # unconstrained terminal nodes
-                node_grid = node.up.total_prob.delta_pos - node.branch_neg_log_prob.x
-                node_grid[node_grid < ttconf.MIN_T/2] = ttconf.MIN_T
-                node_grid[node_grid > ttconf.MAX_T/2] = ttconf.MAX_T
-
-                node.msg_from_parent = interp1d(node_grid, node.branch_neg_log_prob.y, kind='linear')
-                #final_prob = utils.multiply_dists((node.msg_from_parent, node.msg_to_parent))
-                #node.msg_from_parent = msg_from_parent
-
-                node.total_prob = utils.delta_fun(collapse_func(node.msg_from_parent),
-                                                  return_log=True, normalized=False)
-
+            _set_joint_lh_pos(node)
+            _set_marginal_lh_dist(node)
             self._set_final_date(node)
 
     def _set_final_date(self, node):
@@ -461,7 +706,7 @@ class TreeTime(TreeAnc, object):
          procedure to get the node location probability distribution.
 
         """
-        node.abs_t = utils.min_interp(node.total_prob)
+        node.abs_t = utils.min_interp(node.joint_lh_pos)
         if node.up is not None:
             node.branch_length = node.up.abs_t - node.abs_t
             node.dist2root = node.up.dist2root + node.branch_length
@@ -492,7 +737,6 @@ class TreeTime(TreeAnc, object):
         except:
             # this is the approximation
             node.date = str(year) + "-" + str( int(days / 30)) + "-" + str(int(days % 30))
-
 
     def coalescent_model(self, Tc=None, optimize_Tc = False,**kwarks):
         """
@@ -543,7 +787,6 @@ class TreeTime(TreeAnc, object):
             else:
                 print('coalescent time scale optimization failed')
 
-
     def ml_t(self, max_iter = 3,**kwarks):
         """
         Perform the maximum-likelihood -- based optimization of the tree with temporal
@@ -570,7 +813,6 @@ class TreeTime(TreeAnc, object):
             Ndiff = self.reconstruct_anc(method='ml')
             niter+=1
         print ("Done tree optimization after",niter+1,"iterations, final state changes:",Ndiff)
-
 
     def _set_rotated_profiles(self, node):
         """
@@ -614,7 +856,6 @@ class TreeTime(TreeAnc, object):
         else:
             return ttconf.MIN_LOG
 
-
     def resolve_polytomies(self, merge_compressed=False, rerun=True):
         """
         Resolve the polytomies on the tree.
@@ -651,7 +892,6 @@ class TreeTime(TreeAnc, object):
             self._set_each_node_params() # set node info to the new nodes
 
         self.tree.ladderize()
-
 
     def _poly(self, clade, merge_compressed, verbose=1):
         """
@@ -795,7 +1035,6 @@ class TreeTime(TreeAnc, object):
         s_lh = self.tree.sequence_LH
         t_lh = -self.tree.root.msg_to_parent.y.min()
         return s_lh+t_lh
-
 
     def relaxed_clock(self, slack=None, coupling=None):
         """

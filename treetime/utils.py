@@ -26,37 +26,36 @@ class DateConversion(object):
         """
         Create the conversion object automatically from the tree
         """
-        if slope is None:
-            dc = cls()
-            dates = []
+        dates = []
+        for node in t.find_clades():
+            if hasattr(node, "numdate_given" ) and node.numdate_given is not None:
+                dates.append((node.numdate_given, node.dist2root))
 
-            for node in t.find_clades():
-                if hasattr(node, "numdate_given" ) and node.numdate_given is not None:
-                    dates.append((node.numdate_given, node.dist2root))
+        if len(dates) == 0:
+            raise RuntimeError("Cannot proceed with the TreeTime computations: "
+                "No date has been assigned to the terminal nodes!")
+        dates = np.array(dates)
+        dc = cls()
+
+        if slope is None:
 
             if len(dates) < 5:
                 raise(RuntimeError("There are no dates set at the leaves of the tree."
                     " Cannot make the conversion function. Aborting."))
-
-            dates = np.array(dates)
-
+            # simple regression
             dc.slope,\
                 dc.intercept,\
                 dc.r_val,\
                 dc.pi_val,\
                 dc.sigma = stats.linregress(dates[:, 0], dates[:, 1])
-
-            return dc
-
         else:
 
-            dc = cls()
-            dc.slope = slope
+            dc.slope = slope # slope is given
             min_numdate_given = ttconf.BIG_NUMBER
             max_numdate_given = -ttconf.BIG_NUMBER
             max_diam = 0.0
             for node in t.get_terminals():
-                # NOTE:  raw_date is time before present in days
+                # NOTE:  raw_date is time before present in years
                 if hasattr(node, 'numdate_given') and node.numdate_given is not None:
                     if node.numdate_given < min_numdate_given:
                         min_numdate_given = node.numdate_given
@@ -64,18 +63,19 @@ class DateConversion(object):
                         max_numdate_given = node.numdate_given
                         max_diam = node.dist2root
 
-            if max_numdate_given == ttconf.BIG_NUMBER:
+            if max_numdate_given == -ttconf.BIG_NUMBER:
                 print ("Warning! cannot set the minimal raw date. using today")
                 max_numdate_given = 0.0
 
             if max_diam == 0.0:
                 print ("Error! cannot set the intercept for the date2dist conversion!"
                     "Cannot read tree diameter")
-                return
 
             dc.intercept = max_diam - slope * max_numdate_given
 
-            return dc
+        # set the root-mean-square deviation:
+        dc.rms = np.sqrt(np.sum((dates[:, 1] - (dc.intercept + dc.slope * dates[:, 0]))**2) / dates.shape[0])
+        return dc
 
     def get_branch_len(self, date1, date2):
         """
@@ -90,6 +90,13 @@ class DateConversion(object):
          between the node date and the node depth in the the tree is linear.
         """
         return abs(date1 - date2) * self.slope
+
+    def get_abs_t(self, numdate):
+        """
+        Convert the numeric date to the branch-len scale
+        """
+        abs_t = (numeric_date() - numdate) * abs(self.slope)
+        return abs_t
 
     def get_date(self, abs_t):
         """
@@ -175,75 +182,6 @@ def median_interp(interp_object):
     tmp_cumsum = np.cumsum(0.5*(tmp_prop[1:]+tmp_prop[:-1])*np.diff(new_grid))
     median_index = min(len(tmp_cumsum)-3, max(2,np.searchsorted(tmp_cumsum, tmp_cumsum[-1]*0.5)+1))
     return new_grid[median_index]
-
-
-def convolve(t, f, g, cutoff=1e7, n_integral=100):
-    """
-    Compute convolution of the functions f, g:
-    (f*g)(t) = integral {f(t-tau) g(tau) d_tau}.
-    """
-
-    # get the support ranges for the raw functions
-    #include first points below the cutoff to have at least three points in the integration region
-    frange = binary_dilation((f.y - f.y.min()) < cutoff)
-    grange = binary_dilation((g.y - g.y.min()) < cutoff)
-
-    # nothing to convolve, one of the distribution is flat zero
-    if (frange.sum() == 0 or grange.sum() == 0):
-        # we lost the probability
-        # NOTE binary_dilation does not extend the False array
-        print ("Function F values: \n" + "\t".join(map(str,f.y)) + "\n")
-        print ("Function G values: \n" + "\t".join(map(str,g.y)) + "\n")
-        raise ArithmeticError("Cannot convolve functions. At least one of the "
-                              "probability distributions has been lost!")
-
-    fx_min = f.x[frange].min()
-    fx_max = f.x[frange].max()
-    gx_min = g.x[grange].min()
-    gx_max = g.x[grange].max()
-
-    # resulting convolution
-    res = np.ones(t.shape[0]) * 1e8
-
-    for i, ti in enumerate(t):
-        tau_min = np.max((ti-fx_max, gx_min))
-        tau_max = np.min((ti-fx_min, gx_max))
-        if (tau_min > tau_max):
-            # functions not overlap
-            continue
-
-        # get the step for the grid
-        dtau = np.min((
-            (f.x[frange][-1] - f.x[frange][0]) / 10, # if f sharp - at least 10 points cover f range
-            (g.x[grange][-1] - g.x[grange][0]) / 10, # if g sharp - at least 10 points cover g range
-            (tau_max - tau_min) / 100.0)) # normal situation, regular grid of 100 points
-
-        tau = np.arange(tau_min, tau_max, dtau)
-
-        if len(tau) < 2:
-            #print "Cannot convolve the distributions: functions do not overlap!"
-            continue
-
-        dtau = np.diff(tau)
-        #tau = np.linspace(tau_min, tau_max, n_integral)
-        fg = f(ti-tau) + g(tau)
-        min_fg = fg.min() # exponent pre-factor
-        expfg = np.exp(-1*(fg-min_fg))
-
-        integral = (0.5*(expfg[1:]+expfg[:-1])*dtau).sum()
-        res[i] = min_fg + np.log(integral)
-
-    #if np.sum(res) < 1e-200:
-    #    raise ArithmeticError("Cannot convolve the input distributions: the integral is zero!")
-
-    res[-1] = 1e8
-    res[-2] = 1e8
-
-    #res = -1*np.log(res)
-    #res[np.isinf (res)] = -1*ttconf.MIN_LOG
-    res = interp1d(t, res, kind='linear')
-
-    return res
 
 def opt_branch_len(node):
     """
