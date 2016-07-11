@@ -505,15 +505,21 @@ class TreeTime(TreeAnc, object):
         return self._make_grid(T0, T_sigma, n_points)
 
 
-    def _make_node_grid(self, node, sigma_factor=6, n_points=300, **kwargs):
+    def _make_node_grid(self, node, sigma_factor=6, n_points=300, cutoff=1e7, **kwargs):
 
         if hasattr(node, 'msgs_from_leaves'):
+
+            xmin = np.max([scx.x[binary_dilation(scx.y < cutoff).argmax()] for scx in node.msgs_from_leaves.values()])
+
             pos = np.array([utils.min_interp(msg) for msg in node.msgs_from_leaves.values()])
             sigmas = np.array([_Descriptor_Distribution._logprob_sigma(msg) for msg in node.msgs_from_leaves.values()])
             steps = np.array([sigmas[i] / ((msg.x > pos[i] -sigmas[i]) & (msg.x < pos[i] + sigmas[i])).sum()
                         for i,msg in enumerate(node.msgs_from_leaves.values())])
 
         else:
+
+            xmin = None
+
             pos = np.array([])
             sigmas = np.array([])
             densities = np.array([])
@@ -532,8 +538,7 @@ class TreeTime(TreeAnc, object):
         Npoints = (extreme_pos.max() - extreme_pos.min())/steps.min()
         print (Npoints)
         return self._make_grid((extreme_pos.max() + extreme_pos.min()) / 2,
-           (extreme_pos.max() - extreme_pos.min()) , Npoints)
-
+           (extreme_pos.max() - extreme_pos.min()) , Npoints, xmin)
 
     def _opt_node_pos(self, node):
         """
@@ -548,7 +553,7 @@ class TreeTime(TreeAnc, object):
         sigma = self.date2dist.rms
         return opt_pos, sigma
 
-    def _make_grid(self, center, sigma, N):
+    def _make_grid(self, center, sigma, N, xmin=None, xmax=None):
 
         alpha=1.0
         grid_center = center + sigma * np.sign(np.linspace(-1, 1, N/2)) * np.abs(np.linspace(-1, 1, N/2)**alpha)
@@ -569,6 +574,16 @@ class TreeTime(TreeAnc, object):
 
         grid_wings_r = pts**2 * (end_point_r - center_deriv_r*N_pts - start_point_r) / N_pts**2 + center_deriv_r * pts + start_point_r
         grid_wings_l = pts**2 * (end_point_l - center_deriv_l*N_pts - start_point_l) / N_pts**2 + center_deriv_l * pts + start_point_l
+
+        if xmin is not None:
+            grid_center = grid_center[grid_center > xmin]
+            grid_wings_r = grid_wings_r[grid_wings_r > xmin]
+            grid_wings_l = grid_wings_l[grid_wings_l > xmin]
+
+        if xmax is not None:
+            grid_center = grid_center[grid_center < xmax]
+            grid_wings_r = grid_wings_r[grid_wings_r < xmax]
+            grid_wings_l = grid_wings_l[grid_wings_l < xmax]
 
         #grid_wings_r = center + sigma + ttconf.MAX_BRANCH_LENGTH * (np.linspace(0, 1, N/2)**2) [1:]
         #grid_wings_l = center - sigma - ttconf.MAX_BRANCH_LENGTH * (np.linspace(0, 1, N/2)**2) [1:]
@@ -613,7 +628,7 @@ class TreeTime(TreeAnc, object):
 
         print("Maximum likelihood tree optimization with temporal constraints:"
             " Propagating root -> leaves...")
-        import ipdb; ipdb.set_trace()
+
         collapse_func = utils.median_interp
 
         def _send_message(msg_parent_to_node, branch_lh, msg_parent_s=None, branch_lh_s=None, **kwargs):
