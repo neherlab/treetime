@@ -17,7 +17,9 @@ import copy
 from scipy import optimize as sciopt
 from scipy.ndimage import binary_dilation
 from weakref import WeakKeyDictionary
-
+import matplotlib.pyplot as plt
+plt.ion()
+plt.show()
 class _Descriptor_Distribution(object):
     """
     Descriptor to manage the settings, common for the LH distributions of different types
@@ -536,7 +538,7 @@ class TreeTime(TreeAnc, object):
         extreme_pos = np.concatenate((pos-sigmas, pos+sigmas))
 
         Npoints = (extreme_pos.max() - extreme_pos.min())/steps.min()
-        print (Npoints)
+
         return self._make_grid((extreme_pos.max() + extreme_pos.min()) / 2,
            (extreme_pos.max() - extreme_pos.min()) , Npoints, xmin)
 
@@ -1259,34 +1261,105 @@ class TreeTime(TreeAnc, object):
 
         best_root = self.tree.root
         for node in self.tree.find_clades(order='preorder'):  # root first
+
             if node.up is None:
                 # assign the values for the root node
                 node._di   = node._st_di
                 node._diti = node._st_diti
                 node._di2  = node._st_di2
-            else: # basing on the parent, compute the values for regression
+
+                # TODO
+                dist_variance = (N*node._di2 - node._di**2)*(Ninv**2)
+                disttime_cov = (N*node._diti - sum_ti*node._di)*(Ninv**2)
+                time_variance = time_variance
+
+                node._beta = disttime_cov/time_variance
+                node._alpha = (node._di - node._beta*sum_ti)/N
+                node._R2 = disttime_cov**2/(time_variance*dist_variance)
+                node._R2_delta_x = 0 # there is no branch to move the root
+
+            else: # based on the parent, compute the values for regression
                 #  NOTE order of the values computation matters
-                n_up = N-node._st_n_leaves
+                n_up = N - node._st_n_leaves
                 n_down = node._st_n_leaves
                 node._di = node.up._di + (n_up-n_down)*node.branch_length
                 node._di2 = (node.up._di2 + 2*node.branch_length*node.up._di
                             - 4*(node.branch_length*(node._st_di + n_down*node.branch_length))
                             + N*node.branch_length**2)
                 node._diti = node.up._diti + node.branch_length*(sum_ti - 2*node._st_ti)
-            node._dist_variance = (N*node._di2 - node._di**2)*(Ninv**2)
-            node._disttime_cov = (N*node._diti - sum_ti*node._di)*(Ninv**2)
-            node._time_variance = time_variance
 
-            node._beta = node._disttime_cov/time_variance
-            node._alpha = (node._di - node._beta*sum_ti)/N
-            node._R2 = node._disttime_cov**2/(time_variance*node._dist_variance)
+                L = node.branch_length
+
+                ## Express Node's sum_Di as the function of parent's sum_Di
+                # and **displacement from parent's node x** :
+                # sum_Di = A1 + A2 * x
+                A1 = node.up._di
+                A2 = n_up - node._st_n_leaves
+
+                ## Express Node's sum_Di**2 as the function of parent's params
+                # and **displacement from parent's node x** :
+                # sum_Di = B1 + B2 * x + B3 * x**2
+                B1 = node.up._di2
+                B2 = 2 * (node.up._di - 2 * node._st_di - 2 * node.branch_length * node._st_n_leaves )
+                B3 = N
+
+                ## Express Node's sum_DiTi as the function of parent's params
+                # and **displacement from parent's node x** :
+                # sum_DiTi = C1 + C2 * x
+                C1 = node.up._diti
+                C2 = sum_ti - 2 * node._st_ti
+
+                ## Substituting Ai, Bi, Ci to the expression for R2, and
+                ## making all the algebra, we get the R2 as the function of the
+                ## displacement from the parent's node x:
+                # R2(x) = CONST * (alpha * x**2 + beta * x+ gamma) / (mu * x**2 + nu * x + delta)
+                # Expressions for alpha, beta, etc through Ai, Bi, Ci:
+                alpha = (N * C2 - sum_ti * A2)**2
+                beta = 2 * (N*C2 - sum_ti*A2) * (N*C1 - sum_ti*A1)
+                gamma = (N*C1 - sum_ti*A1)**2
+                mu = N * B3 - A2**2
+                nu = N * B2 - 2 * A1 * A2
+                delta = N * B1 - A1**2
+
+                # Search for the maximum of R2 in the middle of the branch.
+                # Eq: dR2/dx = 0 -> square equation:
+                # x**2*(alpha*nu - beta *  mu) + 2x*(alpha*delta-mu*gamma) + (beta*delta - nu*gamma) = 0
+                # look for the root(s):
+                # Determinant is
+                D2 =  (alpha * delta - mu * gamma) ** 2 - (alpha * nu - beta * mu) * (beta * delta - nu * gamma)
+
+                if D2 < 0:
+                    # somehow there is no extremum for the R2(x) function
+                    x1 = -1 # any arbitrary value out of range [0, L], see below
+                    x2 = -1
+                else:
+                    # actual roots - the exremums for the R2(x) function
+                    x1 = (-1 * (alpha * delta - mu * gamma) + D2 **0.5) / (alpha * nu - beta * mu)
+                    x2 = (-1 * (alpha * delta - mu * gamma) - D2 **0.5) / (alpha * nu - beta * mu)
+
+                # possible positions, where the new root can possibly be located
+                # (restrict to the branch length)
+                max_points = [k for k in (x1,x2,L) if k >= 0 and k <= L]
+                # values of the R2 at these positions
+                R2s = [(alpha * x**2 + beta * x + gamma) / (mu * x**2 + nu * x + delta) / time_variance / N**2 for x in max_points]
+                # choose the best R2
+                node._R2 = np.max(R2s)
+                # and set the position for the best R2 value
+                node._R2_delta_x = L - max_points[np.argmax(R2s)]
+
+                # for this position, define the slope and intercept:
+                node._beta = ((L - node._R2_delta_x) * (N * C2 - sum_ti * A2) + (N*C1-sum_ti*A1)) / time_variance / N**2
+                node._alpha = (L - node._R2_delta_x) * A2 / N  + (A1 - node._beta * sum_ti) / N
+
             if node.up is None:
                 print("Initial root: R2:", best_root._R2, " slope:", best_root._beta)
 
-            if (node._R2>best_root._R2 and node._beta>0) or best_root._beta<0:
+            if (node._R2 > best_root._R2 and node._beta>0) or best_root._beta<0:
             #if (node._beta>best_root._beta and node._beta>0) or best_root._beta<0:
                 best_root = node
-                print("Better root found: R2:", best_root._R2, " slope:", best_root._beta)
+                print("Better root found: R2:", best_root._R2,
+                    " slope:", best_root._beta,
+                    " branch_displacement: ", (best_root._R2_delta_x + self.one_mutation) / ( node.branch_length + self.one_mutation))
 
         return best_root, best_root._alpha, best_root._beta
 
@@ -1297,7 +1370,20 @@ class TreeTime(TreeAnc, object):
         '''
         best_root, a, b = self.find_best_root_and_regression()
         # first, re-root the tree
-        self.tree.root_with_outgroup(best_root)
+
+        if hasattr(best_root, "_R2_delta_x") and  best_root._R2_delta_x > 0 and best_root.up is not None:
+            # create new node in the branch and root the tree to it
+            new_node = copy.copy(best_root)
+            new_node.clades = [best_root]
+            new_node.branch_length = best_root.branch_length - best_root._R2_delta_x
+            best_root.branch_length = best_root._R2_delta_x
+            best_root.up.clades = [k if k != best_root else new_node for k in best_root.up.clades]
+            self.tree.root_with_outgroup(new_node)
+
+        else:
+            # simply use the existing node as the new root
+            self.tree.root_with_outgroup(best_root)
+
         if n_iqd is not None:
             root_to_tip = self.tree.depths()
             self.tree.root.up=None
