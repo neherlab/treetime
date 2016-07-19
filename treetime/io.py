@@ -426,10 +426,22 @@ def read_metadata(tree, infile):
     if os.path.isfile(infile):
         try:
             import pandas
-            df = pandas.read_csv(infile, index_col=0)
+            df = pandas.read_csv(infile, index_col=0, sep=r'\s*,\s*')
             if df.index.name != "name" and df.index.name != "#name":
                 print ("Cannot read metadata: first columns should be leaves name")
                 return
+            potential_date_columns = []
+            for ci,col in enumerate(df.columns):
+                if 'date' in col.lower():
+                    try: #avoid date parsing when can be parsed as float
+                        tmp = float(df.iloc([0,ci]))
+                        # TODO: use this as numdate
+                    except: #otherwise add as potential date column
+                        potential_date_columns.append((ci, col))
+            # if a potential date column was found
+            if len(potential_date_columns)>=1:
+                df = pandas.read_csv(infile, index_col=0, sep=r'\s*,\s*', parse_dates=[potential_date_columns[0][0]])
+            #TODO: convert to numdate
             dic = df.to_dict(orient='index')
             tree.set_metadata(**dic)
         except:
