@@ -232,6 +232,7 @@ class GTR(object):
                 print ('    the iterative scheme has not converged')
             elif np.abs(1-np.max(pi.sum(axis=0))) > dp:
                 print ('    the iterative scheme has converged, but proper normalization was not reached')
+        gtr.mu = mu
         gtr.W = W_ij
         gtr.Pi = np.diag(pi)
         gtr._check_fix_Q()
