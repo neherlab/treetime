@@ -67,7 +67,7 @@ def seq2prof(x, profile_map):
 
     return prof
 
-def prof2seq(profile, gtr, correct_prof=True):
+def prof2seq(profile, gtr, sample_from_prof=True, correct_prof=False):
     """
     Convert profile to sequence and, if requested, set the profile values (LH of
     the characters) to zeros and ones essentially converting the character
@@ -84,11 +84,20 @@ def prof2seq(profile, gtr, correct_prof=True):
      -seq (numpy array of length L): sequence
      - profile(numpy 2D array of Lxa shape): the resulting profile.
     """
-    seq = gtr.alphabet[profile.argmax(axis=1)]  # max LH over the alphabet
+
+
     if correct_prof:  # max profile value to one, others - zeros
         am = profile.argmax(axis=1)
         profile[:, :] = 0.0
         profile[np.arange(profile.shape[0]), am] = 1.0
     else: # only normalize
         profile=(profile.T/profile.sum(axis=1)).T
+
+    if sample_from_prof:
+        cumdis = profile.cumsum(axis=1).T
+        randnum = np.random.random(size=cumdis.shape[1])
+        seq = gtr.alphabet[np.argmax(cumdis>=randnum, axis=0)]
+    else:
+        seq = gtr.alphabet[profile.argmax(axis=1)]  # max LH over the alphabet
+
     return seq, profile

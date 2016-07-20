@@ -39,6 +39,8 @@ class GTR(object):
         self.v = np.zeros((n_states, n_states))
         self.v_inv = np.zeros((n_states, n_states))
         self.eigenmat = np.zeros(n_states)
+        # NEEDED TO BREAK RATE MATRIX DEGENERACY AND FORCE NP TO RETURN REAL ORTHONORMAL EIGENVECTORS
+        self.break_degen = np.random.random(size=self.W.shape)*0.0001
 
         # distance matrix (needed for topology optimization and for NJ)
         self.dm = None
@@ -211,10 +213,18 @@ class GTR(object):
             pi_old = np.copy(pi)
             W_ij = (nij+nij.T+2*pc_mat)/mu/(np.outer(pi,Ti) + np.outer(Ti,pi)
                                                     + ttconf.TINY_NUMBER + 2*pc_mat)
-            W_ij = W_ij/np.sum(W_ij)
-            pi = (np.sum(nij+pc_mat,axis=1)+root_state)/(mu*np.dot(W_ij,Ti)+root_state.sum()+np.sum(pc_mat, axis=1))
-            mu = nij.sum()/(ttconf.TINY_NUMBER + np.sum(pi * (W_ij.dot(Ti))))
 
+            np.fill_diagonal(W_ij, 0)
+            Wdiag = ((W_ij.T*pi).T).sum(axis=0)/pi
+            np.fill_diagonal(W_ij, Wdiag)
+            Q1 = np.diag(pi).dot(W_ij)
+            scale_factor = np.sum(np.diagonal(Q1*np.diag(pi)))
+            np.fill_diagonal(W_ij, 0)
+
+            W_ij = W_ij/scale_factor
+            pi = (np.sum(nij+pc_mat,axis=1)+root_state)/(mu*np.dot(W_ij,Ti)+root_state.sum()+np.sum(pc_mat, axis=1))
+            pi /= pi.sum()
+            mu = nij.sum()/(ttconf.TINY_NUMBER + np.sum(pi * (W_ij.dot(Ti))))
         if count >= Nit:
             print ('WARNING: maximum number of iterations has been reached in GTR inference')
             np.min(pi.sum(axis=0)), np.max(pi.sum(axis=0))
@@ -222,6 +232,7 @@ class GTR(object):
                 print ('    the iterative scheme has not converged')
             elif np.abs(1-np.max(pi.sum(axis=0))) > dp:
                 print ('    the iterative scheme has converged, but proper normalization was not reached')
+        gtr.mu = mu
         gtr.W = W_ij
         gtr.Pi = np.diag(pi)
         gtr._check_fix_Q()
@@ -236,16 +247,17 @@ class GTR(object):
         """
         # fix Q
         self.Pi /= self.Pi.sum() # correct the Pi manually
-        break_degen = np.random.random(size=self.W.shape)*0.0001
-        self.W += break_degen + break_degen.T
+        # NEEDED TO BREAK RATE MATRIX DEGENERACY AND FORCE NP TO RETURN REAL ORTHONORMAL EIGENVECTORS
+        self.W += self.break_degen + self.break_degen.T
         # fix W
         np.fill_diagonal(self.W, 0)
         Wdiag = -((self.W.T*np.diagonal(self.Pi)).T).sum(axis=0)/ \
                 np.diagonal(self.Pi)
         np.fill_diagonal(self.W, Wdiag)
         Q1 = self.Pi.dot(self.W)
-        self.W /= -np.sum(np.diagonal(Q1*self.Pi))
-        self.mu=1.0
+        scale_factor = -np.sum(np.diagonal(Q1*self.Pi))
+        self.W /= scale_factor
+        self.mu *= scale_factor
         Q1 = self.Pi.dot(self.W)
         if (Q1.sum(axis=0) < 1e-10).sum() <  self.alphabet.shape[0]: # fix failed
             import ipdb; ipdb.set_trace()
@@ -260,9 +272,9 @@ class GTR(object):
         """
         # eigendecomposition of the rate matrix
         eigvals, eigvecs = np.linalg.eig(self.Pi.dot(self.W))
-        self.v = eigvecs
+        self.v = np.real(eigvecs)
         self.v_inv = np.linalg.inv(self.v)
-        self.eigenmat = eigvals
+        self.eigenmat = np.real(eigvals)
         return
 
     def prob_t(self, profile_p, profile_ch, t, rotated=False, return_log=False, ignore_gap=True):
