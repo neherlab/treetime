@@ -17,9 +17,7 @@ import copy
 from scipy import optimize as sciopt
 from scipy.ndimage import binary_dilation
 from weakref import WeakKeyDictionary
-import matplotlib.pyplot as plt
-plt.ion()
-plt.show()
+
 class _Descriptor_Distribution(object):
     """
     Descriptor to manage the settings, common for the LH distributions of different types
