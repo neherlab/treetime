@@ -442,13 +442,14 @@ class TreeTime(TreeAnc, object):
             if (tau_min > tau_max):
                 # functions not overlap
                 continue
-            # get the step for the grid
-            dtau = np.min((
-                (f_func.x[frange][-1] - f_func.x[frange][0]) / 10, # if f sharp - at least 10 points cover f range
-                (g_func.x[grange][-1] - g_func.x[grange][0]) / 10, # if g sharp - at least 10 points cover g range
-                (tau_max - tau_min) / 100.0)) # normal situation, regular grid of 100 points
 
-            tau = np.arange(tau_min, tau_max, dtau)
+            # get the step for the grid
+            #dtau = np.min((
+            #    (f_func.x[frange][-1] - f_func.x[frange][0]) / 10, # if f sharp - at least 10 points cover f range
+            #    (g_func.x[grange][-1] - g_func.x[grange][0]) / 10, # if g sharp - at least 10 points cover g range
+            #    (tau_max - tau_min) / 100.0)) # normal situation, regular grid of 100 points
+
+            tau = np.linspace(tau_min, tau_max, n_integral)
             # include the distributions extremum positions to the grid to avoid round error:
             #tau = np.concatenate(((f_func.x[f_func.y.argmin()], g_func.x[g_func.y.argmin()]), tau))
             # make sure the values are unique (NOTE unique method also sorts in-place)
@@ -1333,7 +1334,7 @@ class TreeTime(TreeAnc, object):
                     x1 = -1 # any arbitrary value out of range [0, L], see below
                     x2 = -1
                 else:
-                    # actual roots - the exremums for the R2(x) function
+                    # actual roots - the extrema for the R2(x) function
                     x1 = (-1 * (alpha * delta - mu * gamma) + D2 **0.5) / (alpha * nu - beta * mu)
                     x2 = (-1 * (alpha * delta - mu * gamma) - D2 **0.5) / (alpha * nu - beta * mu)
 
@@ -1359,7 +1360,7 @@ class TreeTime(TreeAnc, object):
                 best_root = node
                 print("Better root found: R2:", best_root._R2,
                     " slope:", best_root._beta,
-                    " branch_displacement: ", (best_root._R2_delta_x + self.one_mutation) / ( node.branch_length + self.one_mutation))
+                    " branch_displacement: ", (best_root._R2_delta_x) / ( node.branch_length + self.one_mutation))
 
         return best_root, best_root._alpha, best_root._beta
 
