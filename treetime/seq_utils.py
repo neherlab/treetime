@@ -94,7 +94,9 @@ def prof2seq(profile, gtr, sample_from_prof=True, correct_prof=False):
         profile=(profile.T/profile.sum(axis=1)).T
 
     if sample_from_prof:
-        seq = np.array( [np.random.choice(gtr.alphabet, p=profile[i, :]) for i in np.arange(profile.shape[0])])
+        cumdis = profile.cumsum(axis=1).T
+        randnum = np.random.random(size=cumdis.shape[1])
+        seq = gtr.alphabet[np.argmax(cumdis>=randnum, axis=0)]
     else:
         seq = gtr.alphabet[profile.argmax(axis=1)]  # max LH over the alphabet
 
