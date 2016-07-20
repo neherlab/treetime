@@ -428,20 +428,46 @@ def read_metadata(tree, infile):
             import pandas
             df = pandas.read_csv(infile, index_col=0, sep=r'\s*,\s*')
             if df.index.name != "name" and df.index.name != "#name":
-                print ("Cannot read metadata: first columns should be leaves name")
+                print ("Cannot read metadata: first column should contain the leaves names")
                 return
+
             potential_date_columns = []
+            potential_numdate_columns = []
+
             for ci,col in enumerate(df.columns):
                 if 'date' in col.lower():
                     try: #avoid date parsing when can be parsed as float
-                        tmp = float(df.iloc([0,ci]))
-                        # TODO: use this as numdate
+                        tmp = float(df.iloc[0,ci])
+                        potential_numdate_columns.append((ci, col))
                     except: #otherwise add as potential date column
                         potential_date_columns.append((ci, col))
+
+
             # if a potential date column was found
-            if len(potential_date_columns)>=1:
-                df = pandas.read_csv(infile, index_col=0, sep=r'\s*,\s*', parse_dates=[potential_date_columns[0][0]])
-            #TODO: convert to numdate
+            if len(potential_numdate_columns)>=1:
+                # use the first numdate column
+                #idx = potential_numdate_columns[0][0]
+                name = potential_numdate_columns[0][1]
+                # Use this column as numdate_given
+                df.rename_axis({name:"numdate_given"}, axis=1, inplace=True)
+
+            elif len(potential_date_columns)>=1:
+
+                #try to parse the csv file with dates in the idx column:
+                idx = potential_date_columns[0][0]
+                name = potential_date_columns[0][1]
+
+                # NOTE as the 0th column is the index, we should parse the dates
+                # for the column idx + 1
+                df = pandas.read_csv(infile, index_col=0, sep=r'\s*,\s*', parse_dates=[1+idx])
+                #convert to numdate
+                df[name] = map (utils.numeric_date, df[name])
+                # use this column as the numeric date:
+                df.rename_axis({name:"numdate_given"}, axis=1, inplace=True)
+
+            else:
+                print ("Metadata file has nothing which looks like a sampling date!")
+
             dic = df.to_dict(orient='index')
             tree.set_metadata(**dic)
         except:
