@@ -225,7 +225,6 @@ class GTR(object):
             pi = (np.sum(nij+pc_mat,axis=1)+root_state)/(mu*np.dot(W_ij,Ti)+root_state.sum()+np.sum(pc_mat, axis=1))
             pi /= pi.sum()
             mu = nij.sum()/(ttconf.TINY_NUMBER + np.sum(pi * (W_ij.dot(Ti))))
-            print('mu:',mu, pi)
         if count >= Nit:
             print ('WARNING: maximum number of iterations has been reached in GTR inference')
             np.min(pi.sum(axis=0)), np.max(pi.sum(axis=0))
