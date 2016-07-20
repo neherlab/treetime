@@ -231,8 +231,6 @@ class TreeAnc(object):
         Reconstruct ancestral states
         Args:
          - method(str): method to use. Supported values are "fitch" and "ml"
-        KWargs:
-         - model(TMat): model to use. required for maximum-likelihood ("ml")
 
         Returns:
          - N_diff(int): number of nucleotides different from the previous
