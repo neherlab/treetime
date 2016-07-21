@@ -101,14 +101,12 @@ class TreeAnc(object):
         self._gtr = gtr
         self.tree = None
         self._leaves_lookup = {}
-        self._internal_metadata_names = [
+        self._terminal_metadata_names = [
                     self.DisplayAttr("numdate", "numdate"),
                     self.DisplayAttr("mutation_rate/avg", "gamma"),
-                    self.DisplayAttr("branch_len/opt", lambda n: (abs(n.branch_length - n.branch_neg_log_prob.x[(n.branch_neg_log_prob.y.argmin())]) / self.one_mutation)),
+                    self.DisplayAttr("branch_len/opt", lambda n: abs(n.branch_length / (n.branch_neg_log_prob.x[(n.branch_neg_log_prob.y.argmin())] + 0.1*self.one_mutation))),
                     self.DisplayAttr("time_since_MRCA (yr)", "tvalue")
                 ]
-        self._terminal_metadata_names = self._internal_metadata_names
-
         # self.set_additional_tree_params()
 
     def infer_gtr(self, print_raw=False, **kwargs):
@@ -202,7 +200,7 @@ class TreeAnc(object):
 
             self.set_metadata_to_node(node_key, **all_metadata[node_key])
             if not metadata_list_set:
-                self._terminal_metadata_names = [
+                self._terminal_metadata_names += [
                         self.DisplayAttr(k, k) for k in all_metadata[node_key]
                     ]
                 metadata_list_set = True

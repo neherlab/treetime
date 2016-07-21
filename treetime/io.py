@@ -83,13 +83,11 @@ def treetime_to_json(tt, outf):
                     tree_json[prop] = node.__getattribute__(prop)
 
         if node.clades: # node is internal
-            tree_json["internal_metadata"] = [{'name': k.name, 'value': k.attr(node)} for k in tt._internal_metadata_names]
             tree_json["children"] = []
             for ch in node.clades:
                 tree_json["children"].append(_node_to_json(ch))
         else:
             # node is terminal, set both terminal and internal metadata
-            tree_json["internal_metadata"] = [{'name': k.name, 'value': k.attr(node)} for k in tt._internal_metadata_names]
             tree_json["terminal_metadata"] = [{'name': k.name, 'value': k.attr(node)} for k in tt._terminal_metadata_names]
 
         return tree_json
@@ -177,7 +175,7 @@ def root_lh_to_csv(tt, outf):
 def save_all_nodes_metadata(tt, outfile):
 
     import pandas
-    metadata = tt._internal_metadata_names + tt._terminal_metadata_names
+    metadata = tt._terminal_metadata_names
     d = [[k.attr(n) for k in metadata] for n in tt.tree.find_clades()]
     df = pandas.DataFrame(d, index=[k.name for k in tt.tree.find_clades()], columns=[k.name for k in metadata])
     df.sort_index(inplace=True)
