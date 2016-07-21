@@ -13,7 +13,7 @@ import json
 from weakref import WeakKeyDictionary
 from scipy.interpolate import interp1d
 
-min_branch_length = 1e-10
+min_branch_length = 1e-3
 
 class _Descriptor_PhyloTree(object):
     """
@@ -379,7 +379,7 @@ class TreeAnc(object):
             node.profile = np.ones((L, n_states)) # we will multiply it
             for ch in node.clades:
                 ch.seq_msg_to_parent = self.gtr.propagate_profile(ch.profile,
-                    max(ch.branch_length, min_branch_length),
+                    max(ch.branch_length, min_branch_length*self.one_mutation),
                     rotated=False, # use unrotated
                     return_log=False) # raw prob to transfer prob up
                 node.profile *= ch.seq_msg_to_parent
@@ -412,13 +412,13 @@ class TreeAnc(object):
                     if c != node:
                         tmp_msg*=c.seq_msg_to_parent
                 node.seq_msg_from_parent = self.gtr.propagate_profile(tmp_msg,
-                            max(node.branch_length, min_branch_length),
+                            max(node.branch_length, min_branch_length*self.one_mutation),
                             rotated=False, # use unrotated
                             return_log=False)
                 node.profile *= node.seq_msg_from_parent
             else:
                 node.seq_msg_from_parent = self.gtr.propagate_profile(node.up.profile,
-                            max(node.branch_length, min_branch_length),
+                            max(node.branch_length, min_branch_length*self.one_mutation),
                             rotated=False, # use unrotated
                             return_log=False)
                 node.profile *= node.seq_msg_from_parent
