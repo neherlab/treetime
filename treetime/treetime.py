@@ -17,9 +17,7 @@ import copy
 from scipy import optimize as sciopt
 from scipy.ndimage import binary_dilation
 from weakref import WeakKeyDictionary
-import matplotlib.pyplot as plt
-plt.ion()
-plt.show()
+
 class _Descriptor_Distribution(object):
     """
     Descriptor to manage the settings, common for the LH distributions of different types
@@ -49,7 +47,7 @@ class _Descriptor_Distribution(object):
 
         if not isinstance(value, interp1d):
             raise TypeError("Cannot set the branch length LH distribution property."
-                "The interpolation object is expected")
+                "An interpolation object is expected")
 
         self.data[instance] = value
         # compute the connected parameters:
@@ -58,7 +56,7 @@ class _Descriptor_Distribution(object):
     @staticmethod
     def _logprob_sigma(logprob):
         """
-        Assess the width of the probability distribution.
+        Assess the width of the probability distribution. This returns full-width-half-max
         """
         if logprob is None: return 0.0
 
@@ -538,7 +536,7 @@ class TreeTime(TreeAnc, object):
         # choose the finest grid in the selected region
         extreme_pos = np.concatenate((pos-sigmas, pos+sigmas))
 
-        Npoints = (extreme_pos.max() - extreme_pos.min())/steps.min()
+        Npoints = int(min(600,(extreme_pos.max() - extreme_pos.min())/steps.min()))
 
         return self._make_grid((extreme_pos.max() + extreme_pos.min()) / 2,
            (extreme_pos.max() - extreme_pos.min()) , Npoints, xmin)
