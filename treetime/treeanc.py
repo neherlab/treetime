@@ -386,6 +386,8 @@ class TreeAnc(object):
 
             node.profile = (node.profile.T/pre).T # normalize so that the sum is 1
             node.lh_prefactor += np.log(pre) # and store log-prefactor
+
+
         if (verbose > 2):
             print ("Walking down the tree, computing maximum likelihood sequences...")
 
@@ -396,7 +398,7 @@ class TreeAnc(object):
         # reset profile to 0-1 and set the sequence
         tree.root.profile *= np.diag(self.gtr.Pi) # Msg to the root from the distant part (equ frequencies)
         tree.root.sequence, tree.root.profile = \
-            seq_utils.prof2seq(tree.root.profile, self.gtr, sample_from_prof=True, collapse_prof=False)
+            seq_utils.prof2seq(tree.root.profile, self.gtr, sample_from_prof=True, collapse_prof=not marginal)
         tree.root.seq_msg_from_parent = np.repeat([self.gtr.Pi.diagonal()], len(tree.root.sequence), axis=0)
 
 
@@ -438,6 +440,7 @@ class TreeAnc(object):
 
             node.sequence = sequence
             node.profile = profile
+        # note that the root doesn't contribute to N_diff (intended, since root sequence is often ambiguous)
         return N_diff
 
 
@@ -495,7 +498,7 @@ class TreeAnc(object):
         for node in self.tree.find_clades(order='postorder'):
             if node.up is None: continue # this is the root
             if store_old_dist:
-                node._old_length = node.branch_length
+                BFode._old_length = node.branch_length
 
             new_len = self.optimal_branch_length(node)
 
@@ -516,7 +519,10 @@ class TreeAnc(object):
         return
 
     def optimal_branch_length(self, node):
-
+        '''
+        calculate optimal branch length given the sequences of node and parent
+        IMPORTANTLY: this needs to use sequences and 0-1 profiles!
+        '''
         if node.up is None:
             return self.one_mutation
         parent = node.up
@@ -548,6 +554,7 @@ class TreeAnc(object):
                 for clade in node.clades:
                     clade.up = node.up
 
+
     def optimize_seq_and_branch_len(self,reuse_branch_len=True,prune_short=True, precision=1e-3, **kwargs):
         """
         Iteratively set branch lengths and reconstruct ancestral sequences until
@@ -576,8 +583,8 @@ class TreeAnc(object):
         else:
             N_diff = self.reconstruct_anc(method='fitch', **kwargs)
         n = 0
-        while True: # at least one cycle must be done
 
+        while True: # at least one cycle must be done
             n += 1
 
             self.optimize_branch_len(verbose=0, store_old=False)
@@ -592,9 +599,9 @@ class TreeAnc(object):
             #if N_diff / (2 * self.tree.count_terminals() * self.tree.root.sequence.shape[0]) < precision:
                 break
 
-            if n > 100:
+            if n > 10:
                 print ("sequences and branch lengths optimization did not"
-                       "converge in 100 cycles, aborting.")
+                       "converge in 10 cycles, aborting.")
                 break
 
         self._set_each_node_params() # fix dist2root and up-links after reconstruction

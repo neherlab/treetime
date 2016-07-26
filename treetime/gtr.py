@@ -382,6 +382,7 @@ class GTR(object):
 
         return  new_len
 
+
     def propagate_profile(self, profile, t, rotated=False, return_log=False):
         """
         Compute the probability of the sequence state (profile) at time (t+t0),

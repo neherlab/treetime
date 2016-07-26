@@ -183,11 +183,6 @@ class TreeTime(TreeAnc, object):
         if not hasattr(node, 'gamma'):
             node.gamma = 1.0
 
-        parent  = node.up
-        prof_p = seq_utils.seq2prof(parent.sequence, self.gtr.profile_map) # parent.profile
-        prof_ch = seq_utils.seq2prof(node.sequence, self.gtr.profile_map)
-
-
         if not hasattr(node, 'gamma'):
             node.gamma = 1.0
 
@@ -195,12 +190,13 @@ class TreeTime(TreeAnc, object):
             node.merger_rate = ttconf.BRANCH_LEN_PENALTY
 
         # optimal branch length
-        obl = self.gtr.optimal_t(prof_p, prof_ch) # not rotated profiles!
-
+        obl = self.optimal_branch_length(node)
         node.opt_branch_length = obl #  need for some computations
+        parent  = node.up
+        prof_p = seq_utils.seq2prof(parent.sequence, self.gtr.profile_map) # parent.profile
+        prof_ch = seq_utils.seq2prof(node.sequence, self.gtr.profile_map)
 
         if obl < np.min((1e-5, 0.1*self.one_mutation)): # zero-length
-
             grid = ttconf.MAX_BRANCH_LENGTH * (np.linspace(0, 1.0 , n/3)**2)
 
         else: # branch length is not zero

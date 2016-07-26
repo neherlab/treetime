@@ -85,14 +85,11 @@ def prof2seq(profile, gtr, sample_from_prof=False, collapse_prof=False):
      - profile(numpy 2D array of Lxa shape): the resulting profile.
     """
 
-    if collapse_prof:  # max profile value to one, others - zeros
-        #import ipdb; ipdb.set_trace()
-        am = profile.argmax(axis=1)
-        profile[:, :] = 0.0
-        profile[np.arange(profile.shape[0]), am] = 1.0
-    else: # only normalize
-        profile=(profile.T/profile.sum(axis=1)).T
+    # normalize profile such that probabilities at each site sum to one
+    profile=(profile.T/profile.sum(axis=1)).T
 
+    # sample sequence according to the probabilities in the profile
+    # (sampling from cumulative distribution over the different states)
     if sample_from_prof:
         cumdis = profile.cumsum(axis=1).T
         randnum = np.random.random(size=cumdis.shape[1])
@@ -100,5 +97,9 @@ def prof2seq(profile, gtr, sample_from_prof=False, collapse_prof=False):
         seq = gtr.alphabet[idx]
     else:
         seq = gtr.alphabet[profile.argmax(axis=1)]  # max LH over the alphabet
+
+    # set profile as 0-1 matrix corresponding to sequence
+    if collapse_prof:
+        profile = seq2prof(seq, gtr.profile_map)
 
     return seq, profile

@@ -61,9 +61,10 @@ if __name__=='__main__':
     # plotting the results
     t._score_branches()
     t.tree.ladderize()
+    Phylo.draw(t.tree, label_func = lambda x:'', show_confidence=False)
+    plt.title("Tree where zero-length branches are collapsed into polytomies")
 
     if polytomies:
-        #Phylo.draw(t.tree, label_func = lambda x:'', show_confidence=False, branch_labels='')
         t1 = io.treetime_from_newick(gtr, nwk)
         # set alignment to the tree
         io.set_seqs_to_leaves(t1, AlignIO.read(fasta, 'fasta'))
@@ -72,6 +73,9 @@ if __name__=='__main__':
         t1.init_date_constraints()
         t1.ml_t()
         t1.resolve_polytomies()
+
+        Phylo.draw(t1.tree, label_func = lambda x:'', show_confidence=False)
+        plt.title("Tree with polytomies resolved")
 
         t.print_lh()
         print ("Prior branch len: {0}".format((t.tree.total_branch_length())))
