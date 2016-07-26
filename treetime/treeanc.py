@@ -105,7 +105,7 @@ class TreeAnc(object):
         self._terminal_metadata_names = [
                     self.DisplayAttr("numdate", "numdate"),
                     self.DisplayAttr("mutation_rate/avg", "gamma"),
-                    self.DisplayAttr("branch_len/opt", lambda n: abs(n.branch_length / (n.branch_neg_log_prob.x[(n.branch_neg_log_prob.y.argmin())] + 0.1*self.one_mutation))),
+                    self.DisplayAttr("branch_len/opt", lambda n: (n.branch_length / (n.branch_neg_log_prob.x[(n.branch_neg_log_prob.y.argmin())] + 0.1*self.one_mutation))),
                     self.DisplayAttr("time_since_MRCA (yr)", "tvalue")
                 ]
         # self.set_additional_tree_params()
@@ -396,8 +396,9 @@ class TreeAnc(object):
         # reset profile to 0-1 and set the sequence
         tree.root.profile *= np.diag(self.gtr.Pi) # Msg to the root from the distant part (equ frequencies)
         tree.root.sequence, tree.root.profile = \
-            seq_utils.prof2seq(tree.root.profile, self.gtr, correct_prof=not marginal)
+            seq_utils.prof2seq(tree.root.profile, self.gtr, sample_from_prof=True, collapse_prof=False)
         tree.root.seq_msg_from_parent = np.repeat([self.gtr.Pi.diagonal()], len(tree.root.sequence), axis=0)
+
 
         for node in tree.find_clades(order='preorder'):
             if node.up is None: # skip if node is root
@@ -422,20 +423,19 @@ class TreeAnc(object):
                 node.profile *= node.seq_msg_from_parent
 
             # reset the profile to 0-1 and  set the sequence
-            sequence, profile = seq_utils.prof2seq(node.profile, self.gtr, correct_prof=not marginal)
+            sequence, profile = seq_utils.prof2seq(node.profile, self.gtr, sample_from_prof=False, collapse_prof=not marginal)
             node.mutations = [(anc, pos, der) for pos, (anc, der) in
                             enumerate(izip(node.up.sequence, sequence)) if anc!=der]
 
             # this needs fixing for marginal reconstruction
             if not marginal:
                 tree.sequence_LH += np.sum(np.log(node.seq_msg_from_parent[profile>0.9]))
+
             if hasattr(node, 'sequence') and node.sequence is not None:
-                try:
-                    N_diff += (sequence!=node.sequence).sum()
-                except:
-                    import ipdb; ipdb.set_trace()
+                N_diff += (sequence!=node.sequence).sum()
             else:
                 N_diff += L
+
             node.sequence = sequence
             node.profile = profile
         return N_diff
@@ -493,17 +493,12 @@ class TreeAnc(object):
             print ("Walking up the tree, computing likelihood distributions")
 
         for node in self.tree.find_clades(order='postorder'):
-            parent = node.up
-            if parent is None: continue # this is the root
-            prof_p = parent.profile
-            prof_ch = node.profile
-
+            if node.up is None: continue # this is the root
             if store_old_dist:
                 node._old_length = node.branch_length
 
-            # optimization method
-            #import ipdb; ipdb.set_trace()
-            new_len = self.gtr.optimal_t(prof_p, prof_ch) # not rotated profiles!
+            new_len = self.optimal_branch_length(node)
+
             if new_len < 0:
                 continue
 
@@ -519,6 +514,19 @@ class TreeAnc(object):
         self.tree.root.dist2root = 0.0
         self._set_each_node_params()
         return
+
+    def optimal_branch_length(self, node):
+
+        if node.up is None:
+            return self.one_mutation
+        parent = node.up
+        prof_p =  seq_utils.seq2prof(parent.sequence, self.gtr.profile_map) # parent.profile
+        prof_ch = seq_utils.seq2prof(node.sequence, self.gtr.profile_map)
+
+        new_len = self.gtr.optimal_t(prof_p, prof_ch) # not rotated profiles!
+
+        return new_len
+
 
     def prune_short_branches(self):
         """
@@ -540,7 +548,7 @@ class TreeAnc(object):
                 for clade in node.clades:
                     clade.up = node.up
 
-    def optimize_seq_and_branch_len(self,reuse_branch_len=True,prune_short=True, **kwargs):
+    def optimize_seq_and_branch_len(self,reuse_branch_len=True,prune_short=True, precision=1e-3, **kwargs):
         """
         Iteratively set branch lengths and reconstruct ancestral sequences until
         the values of either former or latter do not change. The algorithm assumes
@@ -581,6 +589,7 @@ class TreeAnc(object):
                    " #Nuc changed since prev reconstructions: %d" %(n, N_diff))
 
             if N_diff < 1:
+            #if N_diff / (2 * self.tree.count_terminals() * self.tree.root.sequence.shape[0]) < precision:
                 break
 
             if n > 100:

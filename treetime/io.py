@@ -45,7 +45,7 @@ def _layout(tree):
         clade += 1
         if node.up is not None: #try:
             # Set xValue, tValue, yValue
-            node.xvalue = node.up.xvalue+node.opt_branch_length
+            node.xvalue = node.up.xvalue + node.opt_branch_length
             node.tvalue = node.numdate - tree.root.numdate
         else:
             node.xvalue = 0.0
@@ -464,7 +464,7 @@ def read_metadata(tree, infile):
                 df.rename_axis({name:"numdate_given"}, axis=1, inplace=True)
 
             else:
-                print ("Metadata file has nothing which looks like a sampling date!")
+                print ("Metadata file has no column which looks like a sampling date!")
 
             dic = df.to_dict(orient='index')
             tree.set_metadata(**dic)

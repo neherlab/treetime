@@ -17,6 +17,7 @@ import copy
 from scipy import optimize as sciopt
 from scipy.ndimage import binary_dilation
 from weakref import WeakKeyDictionary
+import seq_utils
 
 class _Descriptor_Distribution(object):
     """
@@ -104,6 +105,19 @@ class TreeTime(TreeAnc, object):
         """
         return np.mean([n.branch_length for n in self.tree.find_clades()])
 
+    @property
+    def date2dist(self):
+        return self._date2dist
+
+    @date2dist.setter
+    def date2dist(self, val):
+        if val is None:
+            self._date2dist = None
+            return
+        else:
+            print ("Setting new Date2Dist value. new R2=%.4f"%val.r_val)
+            self._date2dist = val
+
     def reroot_to_oldest(self):
         """
         Set the root of the tree to the oldest node.
@@ -169,9 +183,9 @@ class TreeTime(TreeAnc, object):
         if not hasattr(node, 'gamma'):
             node.gamma = 1.0
 
-        parent = node.up
-        prof_p = parent.profile
-        prof_ch = node.profile
+        parent  = node.up
+        prof_p = seq_utils.seq2prof(parent.sequence, self.gtr.profile_map) # parent.profile
+        prof_ch = seq_utils.seq2prof(node.sequence, self.gtr.profile_map)
 
 
         if not hasattr(node, 'gamma'):
@@ -181,7 +195,7 @@ class TreeTime(TreeAnc, object):
             node.merger_rate = ttconf.BRANCH_LEN_PENALTY
 
         # optimal branch length
-        obl = self.gtr.optimal_t(node.up.profile, node.profile) # not rotated profiles!
+        obl = self.gtr.optimal_t(prof_p, prof_ch) # not rotated profiles!
 
         node.opt_branch_length = obl #  need for some computations
 
@@ -1103,11 +1117,10 @@ class TreeTime(TreeAnc, object):
         if coupling is None: coupling=ttconf.MU_BETA
         stiffness = (self.tree.count_terminals()/self.tree.total_branch_length())
         for node in self.tree.find_clades(order='postorder'):
-            if node.up is None:
-                opt_len = node.branch_length
-            else:
-                opt_len = self.gtr.optimal_t(node.profile, node.up.profile)
-                #opt_len = 1.0*len(node.mutations)/node.profile.shape[0]
+
+            opt_len = self.optimal_branch_length(node)
+
+            #opt_len = 1.0*len(node.mutations)/node.profile.shape[0]
             # contact term: stiffness*(g*bl - bl_opt)^2 + slack(g-1)^2 =
             #               (slack+bl^2) g^2 - 2 (bl*bl_opt+1) g + C= k2 g^2 + k1 g + C
             node._k2 = slack + stiffness*node.branch_length**2/(c*opt_len+self.one_mutation)
@@ -1371,12 +1384,18 @@ class TreeTime(TreeAnc, object):
         # first, re-root the tree
 
         if hasattr(best_root, "_R2_delta_x") and  best_root._R2_delta_x > 0 and best_root.up is not None:
+
             # create new node in the branch and root the tree to it
-            new_node = copy.copy(best_root)
+            new_node = Phylo.BaseTree.Clade()
+
+            # insert the new node in the middle of the branch
+            # by simple re-wiring the links on the both sides of the branch
+            # and fix the branch lengths
             new_node.clades = [best_root]
             new_node.branch_length = best_root.branch_length - best_root._R2_delta_x
             best_root.branch_length = best_root._R2_delta_x
             best_root.up.clades = [k if k != best_root else new_node for k in best_root.up.clades]
+
             self.tree.root_with_outgroup(new_node)
 
         else:
@@ -1409,10 +1428,11 @@ class TreeTime(TreeAnc, object):
             self.tree.collapse(node)
 
         # set the date2dist params
-        self.date2dist = utils.DateConversion()
-        self.date2dist.slope = best_root._beta
-        self.date2dist.intercept = best_root._alpha
-        self.date2dist.r_val = best_root._R2
+        dc =  utils.DateConversion()
+        dc.slope = best_root._beta
+        dc.intercept = best_root._alpha
+        dc.r_val = best_root._R2
+        self.date2dist = dc
         # finally, re-compute the basic tree params as we changed the root
         self.tree.ladderize()
         self.tree.root.branch_length = self.one_mutation
