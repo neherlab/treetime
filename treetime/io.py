@@ -7,6 +7,8 @@ import utils
 import seq_utils
 import os
 import StringIO
+from scipy.ndimage import binary_dilation
+
 
 
 def treetime_from_newick(gtr, infile):
@@ -86,9 +88,8 @@ def treetime_to_json(tt, outf):
             tree_json["children"] = []
             for ch in node.clades:
                 tree_json["children"].append(_node_to_json(ch))
-        else:
-            # node is terminal, set both terminal and internal metadata
-            tree_json["terminal_metadata"] = [{'name': k.name, 'value': k.attr(node)} for k in tt._terminal_metadata_names]
+
+        tree_json["metadata"] = [{'name': k.name, 'value': k.attr(node)} for k in tt._metadata_names]
 
         return tree_json
 
@@ -115,9 +116,9 @@ def tips_data_to_json(tt, outf):
     with open (outf,'w') as of:
         json.dump(arr, of, indent=True)
 
-def root_pos_lh_to_human_readable(tt, cutoff=1e-4):
+def root_pos_lh_to_human_readable(tt, node, cutoff=1e-4):
 
-    mtp = mtp = tt.tree.root.msg_to_parent
+    mtp = mtp = node.marginal_lh
     mtp_min = mtp.y.min()
 
     mtpy = np.array([np.exp(-k+mtp_min) for k in mtp.y])
@@ -125,14 +126,14 @@ def root_pos_lh_to_human_readable(tt, cutoff=1e-4):
 
     # cut and center
     maxy_idx = mtpy.argmax()
-    val_right = (mtpy[maxy_idx:] > cutoff)
+    val_right = binary_dilation(mtpy[maxy_idx:] > cutoff)
     if (val_right.sum() == 0):
         right_dist = 0
     else:
         # left, actually (time is in the opposite direction)
         right_dist = - mtpx[maxy_idx] + mtpx[maxy_idx + val_right.argmin()]
 
-    val_left = mtpy[:maxy_idx] > cutoff
+    val_left = binary_dilation(mtpy[:maxy_idx] > cutoff)
     if (val_left.sum() == 0):
         left_dist = 0.0
     else:
@@ -152,19 +153,27 @@ def root_pos_lh_to_human_readable(tt, cutoff=1e-4):
 
 def root_lh_to_json(tt, outf):
 
-    x,y = root_pos_lh_to_human_readable(tt)
-    arr = [{"x":f, "y":b} for f, b in zip(x, y)]
+    out_dic = {}
+    for node in tt.tree.find_clades():
+        x,y = root_pos_lh_to_human_readable(tt, node)
+        arr = [{"x":f, "y":b} for f, b in zip(x, y)]
+        out_dic[node.name] = arr
+        # numpy arrays are not JSON-serializable, so we need to convert to list
+        #out_dic[node.name]['x'] = list(x)
+        #out_dic[node.name]['y'] = list(y)
+
+
 
     with open (outf,'w') as of:
-        json.dump(arr, of, indent=True)
+        json.dump(out_dic, of, indent=True)
 
     print (', '.join([str(k) for k in x]))
     print (', '.join([str(k) for k in y]))
 
-    #import ipdb; ipdb.set_trace()
+
 def root_lh_to_csv(tt, outf):
     """Save node position likelihood distribution to CSV file"""
-    x,y = root_pos_lh_to_human_readable(tt)
+    x,y = root_pos_lh_to_human_readable(tt, tt.tree.root)
     arr = np.zeros((x.shape[0], 2))
     arr[:, 0] = x[:]
     arr[:, 1] = y[:]
@@ -175,7 +184,7 @@ def root_lh_to_csv(tt, outf):
 def save_all_nodes_metadata(tt, outfile):
 
     import pandas
-    metadata = tt._terminal_metadata_names
+    metadata = tt._metadata_names
     d = [[k.attr(n) for k in metadata] for n in tt.tree.find_clades()]
     df = pandas.DataFrame(d, index=[k.name for k in tt.tree.find_clades()], columns=[k.name for k in metadata])
     df.sort_index(inplace=True)

@@ -46,6 +46,8 @@ class _Descriptor_PhyloTree(object):
         self.data[instance] = value
 
 
+
+
 class TreeAnc(object):
     """
     Class defines simple tree object with basic interface methods: reading and
@@ -102,30 +104,45 @@ class TreeAnc(object):
         self._gtr = gtr
         self.tree = None
         self._leaves_lookup = {}
-        self._terminal_metadata_names = [
+        self._metadata_names = [
                     self.DisplayAttr("numdate", "numdate"),
                     self.DisplayAttr("mutation_rate/avg", "gamma"),
-                    self.DisplayAttr("branch_len/opt", lambda n: (n.branch_length / (n.branch_neg_log_prob.x[(n.branch_neg_log_prob.y.argmin())] + 0.1*self.one_mutation))),
+                    self.DisplayAttr("branch_len/opt", self.branch_len_to_opt),
                     self.DisplayAttr("time_since_MRCA (yr)", "tvalue")
                 ]
         # self.set_additional_tree_params()
 
+    def branch_len_to_opt(self, node):
+        ratio = node.branch_length / ( self.optimal_branch_length(node) + 0.01*self.one_mutation)
+        if ratio >= 2.:
+            return 2.
+        elif ratio <=0.01:
+            return 0.01
+        else:
+            return ratio
+
     def infer_gtr(self, print_raw=False, **kwargs):
+
+        print ("\n---- TreeAnc inferring the GTR model from the tree...")
         self._ml_anc(**kwargs)
         alpha = list(self.gtr.alphabet)
         n=len(alpha)
         nij = np.zeros((n,n))
         Ti = np.zeros(n)
         for node in self.tree.find_clades():
+
+            if not hasattr(node, 'gamma'):
+                node.gamma = 1.0
+
             if hasattr(node,'mutations'):
                 for a,pos, d in node.mutations:
                     i,j = alpha.index(a), alpha.index(d)
                     nij[i,j]+=1
-                    Ti[i] += 0.5*node.branch_length
-                    Ti[j] -= 0.5*node.branch_length
+                    Ti[i] += 0.5*node.branch_length * node.gamma
+                    Ti[j] -= 0.5*node.branch_length * node.gamma
                 for nuc in node.sequence:
                     i = alpha.index(nuc)
-                    Ti[i]+=node.branch_length
+                    Ti[i] += node.branch_length * node.gamma
         if print_raw:
             print('alphabet:',alpha)
             print('n_ij:', nij)
@@ -201,7 +218,7 @@ class TreeAnc(object):
 
             self.set_metadata_to_node(node_key, **all_metadata[node_key])
             if not metadata_list_set:
-                self._terminal_metadata_names += [
+                self._metadata_names += [
                         self.DisplayAttr(k, k) for k in all_metadata[node_key]
                     ]
                 metadata_list_set = True
@@ -236,6 +253,9 @@ class TreeAnc(object):
          reconstruction. If there were no pre-set sequences, returns N*L
 
         """
+
+        print ("\n---- TreeAnc reconstructing ancestral states...")
+
         if infer_gtr:
             self.infer_gtr(**kwargs)
             N_diff = self._ml_anc(**kwargs)
@@ -247,7 +267,6 @@ class TreeAnc(object):
             else:
                 raise NotImplementedError("The reconstruction method %s is not supported. " % method)
         return N_diff
-
 
     def _fitch_anc(self, **kwargs):
         """
@@ -376,8 +395,13 @@ class TreeAnc(object):
             node.lh_prefactor = np.zeros(L)
             node.profile = np.ones((L, n_states)) # we will multiply it
             for ch in node.clades:
+
+                if not hasattr(ch, 'gamma'):
+                    ch.gamma = 1.0
+
                 ch.seq_msg_to_parent = self.gtr.propagate_profile(ch.profile,
                     max(ch.branch_length, min_branch_length*self.one_mutation),
+                    mu_prefactor = ch.gamma,
                     rotated=False, # use unrotated
                     return_log=False) # raw prob to transfer prob up
                 node.profile *= ch.seq_msg_to_parent
@@ -414,12 +438,14 @@ class TreeAnc(object):
                         tmp_msg*=c.seq_msg_to_parent
                 node.seq_msg_from_parent = self.gtr.propagate_profile(tmp_msg,
                             max(node.branch_length, min_branch_length*self.one_mutation),
+
                             rotated=False, # use unrotated
                             return_log=False)
                 node.profile *= node.seq_msg_from_parent
             else:
                 node.seq_msg_from_parent = self.gtr.propagate_profile(node.up.profile,
                             max(node.branch_length, min_branch_length*self.one_mutation),
+                            mu_prefactor=node.gamma,
                             rotated=False, # use unrotated
                             return_log=False)
                 node.profile *= node.seq_msg_from_parent
@@ -443,13 +469,13 @@ class TreeAnc(object):
         # note that the root doesn't contribute to N_diff (intended, since root sequence is often ambiguous)
         return N_diff
 
-
     def calc_branch_twopoint_functions(self):
         '''
         attaches L x n x n (L sequence length, n alphabet size) to each branch containing
         the two-node profile, i.e. the probability that the parent node is in state
         s1 and the child node is in state s2. This allows probabilistic counting of mutations.
         '''
+        # FIXME the gtr._exp_lt should get correction on the node.gamma (mutation rate prefactor)
         def get_two_point_func(p1,p2,T):
             tmp = np.outer(p1, p2)*T
             tmp/=tmp.sum()
@@ -483,6 +509,9 @@ class TreeAnc(object):
         Returns:
          - None, the phylogenetic tree is modified in-place.
         """
+
+
+        print ("\n---- TreeAnc running branch lengths optimization...")
 
         verbose = 0
         store_old_dist = False
@@ -525,11 +554,15 @@ class TreeAnc(object):
         '''
         if node.up is None:
             return self.one_mutation
+        # mutation rate pre-factor
+        if not hasattr(node, 'gamma'):
+            node.gamma = 1.0
+
         parent = node.up
         prof_p =  seq_utils.seq2prof(parent.sequence, self.gtr.profile_map) # parent.profile
         prof_ch = seq_utils.seq2prof(node.sequence, self.gtr.profile_map)
 
-        new_len = self.gtr.optimal_t(prof_p, prof_ch) # not rotated profiles!
+        new_len = self.gtr.optimal_t(prof_p, prof_ch, mu_prefactor=node.gamma) # not rotated profiles!
 
         return new_len
 
@@ -539,7 +572,7 @@ class TreeAnc(object):
         If the branch length is less than the minimal value, remove the branch
         from the tree. **Requires** the ancestral sequence reconstruction
         """
-        print("pruning short branches (max prob at zero)")
+        print("\n---- TreeAnc pruning short branches (max prob at zero)...")
         for node in self.tree.find_clades():
             if node.up is None:
                 continue
@@ -592,7 +625,7 @@ class TreeAnc(object):
                 self.prune_short_branches()
             N_diff = self.reconstruct_anc('ml')
 
-            print ("Optimizing ancestral states and branch lengths. Round %d."
+            print ("\n---- TreeAnc optimizing ancestral states and branch lengths. Round %d."
                    " #Nuc changed since prev reconstructions: %d" %(n, N_diff))
 
             if N_diff < 1:

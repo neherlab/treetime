@@ -127,6 +127,7 @@ class TreeTime(TreeAnc, object):
                 return 0
             return node.numdate_given
 
+        print ("\n---- Tree is being re-rooted to the oldest node")
         self.tree.root_with_outgroup(sorted(self.tree.get_terminals(), key=numdate_given)[0])
         self.tree.ladderize()
         og = self.tree.root.clades[0]
@@ -148,6 +149,7 @@ class TreeTime(TreeAnc, object):
         Note: that tree must have dates set to all nodes before calling this
         function. (This is accomplished by calling load_dates func).
         """
+        print ("\n---- TreeTime initializing the date constraints...")
         self.date2dist = utils.DateConversion.from_tree(self.tree, slope)
         self.max_diam = self.date2dist.intercept
 
@@ -177,11 +179,10 @@ class TreeTime(TreeAnc, object):
 
         """
         # no need to optimize the root branch length
+
         if node.up is None:
             node.branch_neg_log_prob = None
             return None
-        if not hasattr(node, 'gamma'):
-            node.gamma = 1.0
 
         if not hasattr(node, 'gamma'):
             node.gamma = 1.0
@@ -190,7 +191,7 @@ class TreeTime(TreeAnc, object):
             node.merger_rate = ttconf.BRANCH_LEN_PENALTY
 
         # optimal branch length
-        obl = self.optimal_branch_length(node)
+        obl = self.optimal_branch_length(node) # NOTE gamma taken into account inside
         node.opt_branch_length = obl #  need for some computations
         parent  = node.up
         prof_p = seq_utils.seq2prof(parent.sequence, self.gtr.profile_map) # parent.profile
@@ -220,7 +221,7 @@ class TreeTime(TreeAnc, object):
         # log-probability of the branch len to be at this value
         logprob = np.concatenate([
             [0., 0.],
-            [self.gtr.prob_t(prof_p, prof_ch, node.gamma*t_, return_log=True) for t_ in grid[2:-2]],
+            [self.gtr.prob_t(prof_p, prof_ch, t_, mu_prefactor=node.gamma, return_log=True) for t_ in grid[2:-2]],
             [0., 0.]])
 
         logprob[((0,1,-2,-1),)] = ttconf.MIN_LOG
@@ -266,16 +267,17 @@ class TreeTime(TreeAnc, object):
         """
         reassign interpolator object for branch length after changing the merger_rate
         """
+
         for node in self.tree.find_clades():
-            if node.up is None:
-                continue
-            # make sure to copy raw_branch_neg_log_prob.y -> otherwise only referenced and modified
-            grid,y = node.raw_branch_neg_log_prob.x, np.array(node.raw_branch_neg_log_prob.y)
-            y+=node.merger_rate * np.minimum(ttconf.MAX_BRANCH_LENGTH, np.maximum(0,grid))
-            dt = np.diff(grid)
-            tmp_prob = np.exp(-y)
-            integral = np.sum(0.5*(tmp_prob[1:]+tmp_prob[:-1])*dt)
-            node.branch_neg_log_prob = interp1d(grid, y + np.log(integral), kind='linear')
+           if node.up is None:
+               continue
+           # make sure to copy raw_branch_neg_log_prob.y -> otherwise only referenced and modified
+           grid,y = node.raw_branch_neg_log_prob.x, np.array(node.raw_branch_neg_log_prob.y)
+           y+=node.merger_rate * np.minimum(ttconf.MAX_BRANCH_LENGTH, np.maximum(0,grid))
+           dt = np.diff(grid)
+           tmp_prob = np.exp(-y)
+           integral = np.sum(0.5*(tmp_prob[1:]+tmp_prob[:-1])*dt)
+           node.branch_neg_log_prob = interp1d(grid, y + np.log(integral), kind='linear')
 
     def _ml_t_init(self,ancestral_inference=True, **kwarks):
         """
@@ -288,6 +290,8 @@ class TreeTime(TreeAnc, object):
         set the sequence profiles in the eigenspace of the GTR matrix.
 
         """
+
+
         tree = self.tree
 
         if ttconf.BRANCH_LEN_PENALTY is None:
@@ -296,7 +300,7 @@ class TreeTime(TreeAnc, object):
         if ancestral_inference:
             self.optimize_seq_and_branch_len(**kwarks)
 
-        print('Initializing branch length interpolation objects')
+        print('\n----- Initializing branch length interpolation objects...\n')
         if self.date2dist is None:
             print ("error - no date to dist conversion set. "
                 "Run init_date_constraints and try once more.")
@@ -481,7 +485,6 @@ class TreeTime(TreeAnc, object):
         res[-2] = 1e8
         res = interp1d(time, res, kind='linear')
         return res
-
 
     def _conv_grid(self, base_dist, propagator, base_s=None, prop_s=None,
                     inverse_time=None, sigma_factor=4, n_points=600, **kwargs):
@@ -863,6 +866,9 @@ class TreeTime(TreeAnc, object):
          - None: Updates the tree, its branch lengths and information about the
          internal nodes.
         """
+
+        print ("\n---- TreeTime running ML optimization...")
+
         #  propagate messages up
         self._ml_t_leaves_root()
         #  propagate messages down - reconstruct node positions
@@ -930,7 +936,8 @@ class TreeTime(TreeAnc, object):
             - merge_compressed(bool): whether to keep compressed branches as
               polytomies or return a strictly binary tree.
         """
-        print('resolving polytomies')
+        print ("\n---- TreeTime resolving multiple mergers...")
+
         poly_found=False
         for n in self.tree.find_clades():
             if len(n.clades) > 2:
@@ -1108,12 +1115,16 @@ class TreeTime(TreeAnc, object):
         In addition, deviations of the mutation rate from the mean rate are
         penalized.
         """
+
+        print ("\n---- TreeTime relaxing molecular clock...")
+
         c=1.0
         if slack is None: slack=ttconf.MU_ALPHA
         if coupling is None: coupling=ttconf.MU_BETA
         stiffness = (self.tree.count_terminals()/self.tree.total_branch_length())
         for node in self.tree.find_clades(order='postorder'):
-
+            if not hasattr(node, 'gamma'):
+                node.gamma=1.0
             opt_len = self.optimal_branch_length(node)
 
             #opt_len = 1.0*len(node.mutations)/node.profile.shape[0]
@@ -1136,17 +1147,19 @@ class TreeTime(TreeAnc, object):
         all_gammas = []
         for node in self.tree.find_clades(order='preorder'):
             if node.up is None:
-                node.gamma = - 0.5*node._k1/node._k2
+                node.gamma *= - 0.5*node._k1/node._k2
             else:
-                node.gamma = (coupling*node.up.gamma - 0.5*node._k1)/(coupling+node._k2)
+                node.gamma *= (coupling*node.up.gamma - 0.5*node._k1)/(coupling+node._k2)
             all_gammas.append(node.gamma)
         # normalize avg gamma values to avoid drift in overall mutation rate.
         avg_gamma = np.mean(all_gammas)
         for node in self.tree.find_clades(order='preorder'):
             node.gamma/=avg_gamma
+        self.gtr.mu*=avg_gamma
 
         print('reevaluating branch length interpolators')
         self.init_date_constraints(ancestral_inference=False)
+
 
     def autocorr_molecular_clock(self, slack=None, coupling=None):
         """
@@ -1236,6 +1249,8 @@ class TreeTime(TreeAnc, object):
         the terminal nodes should have the timestamps assigned as numdate_given
         attribute.
         """
+
+
 
         sum_ti = np.sum([node.numdate_given for node in self.tree.get_terminals() if node.numdate_given is not None])
         sum_ti2 = np.sum([node.numdate_given**2 for node in self.tree.get_terminals() if node.numdate_given is not None])
@@ -1376,6 +1391,10 @@ class TreeTime(TreeAnc, object):
         determine the node that, when the tree is rooted on this node, results
         in the best regression of temporal constraints and root to tip distances
         '''
+
+
+        print ("\n---- TreeTime searching for the best root position...")
+
         best_root, a, b = self.find_best_root_and_regression()
         # first, re-root the tree
 

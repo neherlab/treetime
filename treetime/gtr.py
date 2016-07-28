@@ -277,7 +277,7 @@ class GTR(object):
         self.eigenmat = np.real(eigvals)
         return
 
-    def prob_t(self, profile_p, profile_ch, t, rotated=False, return_log=False, ignore_gap=True):
+    def prob_t(self, profile_p, profile_ch, t, mu_prefactor=1.0, rotated=False, return_log=False, ignore_gap=True):
         """
         Compute the probability of the two profiles to be separated by the time t.
         Args:
@@ -317,7 +317,7 @@ class GTR(object):
         else:
                 ind = np.ones(L, dtype=bool)
 
-        eLambdaT = self._exp_lt(t)
+        eLambdaT = self._exp_lt(t, mu_prefactor=mu_prefactor)
         if not rotated: # we need to rotate first
             p1 = profile_p.dot(self.v) # (L x a).dot(a x a) = (L x a) - prof in eigenspace
             p2 = (self.v_inv.dot(profile_ch.T)).T # (L x a).dot(a x a) = (L x a) - prof in eigenspace
@@ -334,12 +334,12 @@ class GTR(object):
         del eLambdaT, prob
         return total_prob
 
-    def optimal_t(self, profile_p, profile_ch, rotated=False, return_log=False, ignore_gap=True):
+    def optimal_t(self, profile_p, profile_ch, mu_prefactor=1.0, rotated=False, return_log=False, ignore_gap=True):
         """
         Find the optimal distance between the two profiles
         """
 
-        def _neg_prob(t, parent, child):
+        def _neg_prob(t, parent, child, mu_prefactor):
             """
             Probability to observe child given the the parent state, transition
             matrix and the time of evolution (branch length).
@@ -354,14 +354,14 @@ class GTR(object):
              - prob(double): negative probability of the two given sequences
                to be separated by the time t.
             """
-            return -1*self.prob_t (parent, child, t, rotated=False, return_log=True, ignore_gap=ignore_gap)
+            return -1*self.prob_t (parent, child, t, mu_prefactor, rotated=False, return_log=True, ignore_gap=ignore_gap)
 
         try:
             from scipy.optimize import minimize_scalar
             opt = minimize_scalar(_neg_prob,
                     bounds=[0,ttconf.MAX_BRANCH_LENGTH],
                     method='Bounded',
-                    args=(profile_p, profile_ch))
+                    args=(profile_p, profile_ch, mu_prefactor))
             new_len = opt["x"]
         except:
             import scipy
@@ -369,7 +369,7 @@ class GTR(object):
             from scipy.optimize import fminbound
             new_len = fminbound(_neg_prob,
                     0,ttconf.MAX_BRANCH_LENGTH,
-                    args=(profile_p, profile_ch))
+                    args=(profile_p, profile_ch, mu_prefactor))
             opt={'success':True}
 
 
@@ -382,8 +382,7 @@ class GTR(object):
 
         return  new_len
 
-
-    def propagate_profile(self, profile, t, rotated=False, return_log=False):
+    def propagate_profile(self, profile, t, mu_prefactor=1.0, rotated=False, return_log=False):
         """
         Compute the probability of the sequence state (profile) at time (t+t0),
         given the sequence state (profile) at time t0.
@@ -402,7 +401,7 @@ class GTR(object):
          - res(np.array): profile of the sequence after time t.
          Shape = (L, a), where L - sequence length, a - alphabet size.
         """
-        eLambdaT = self._exp_lt(t) # vector lenght = a
+        eLambdaT = self._exp_lt(t, mu_prefactor) # vector lenght = a
 
         if not rotated:
             # rotate
@@ -417,13 +416,13 @@ class GTR(object):
         else:
             return np.log(res)
 
-    def _exp_lt(self, t):
+    def _exp_lt(self, t, mu_prefactor=1.0):
         """
         Returns:
          - exp_lt(numpy.array): array of values exp(lambda(i) * t),
          where (i) - alphabet index (the eigenvalue number).
         """
-        return np.exp(self.mu * t * self.eigenmat)
+        return np.exp(self.mu * t * mu_prefactor * self.eigenmat)
 
     def save_to_npz(self, outfile):
         full_gtr = self.mu * np.dot(self.Pi, self.W)
