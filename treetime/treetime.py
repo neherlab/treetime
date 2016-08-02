@@ -204,9 +204,9 @@ class TreeTime(TreeAnc, object):
 
             sigma = obl #np.max([self.average_branch_len, obl])
             # from zero to optimal branch length
-            grid_left = obl * (1 - np.linspace(1, 0.0, n/3)**2)
+            grid_left = obl * (1 - np.linspace(1, 0.0, n/3)**1.0)
             # from optimal branch length to the right (--> 3*branch lengths),
-            grid_right = obl + obl/100 + (3*sigma*(np.linspace(0, 1, n/3)**2))
+            grid_right = obl + 0.01*self.one_mutation + (3*sigma*(np.linspace(0, 1, n/3)**2))
             # far to the right (3*branch length ---> MAX_LEN), very sparse
             far_grid = grid_right.max() + obl/2 + ttconf.MAX_BRANCH_LENGTH*np.linspace(0, 1, n)**2
 
@@ -442,8 +442,38 @@ class TreeTime(TreeAnc, object):
         fx_max = f_func.x[frange].max()
         gx_min = g_func.x[grange].min()
         gx_max = g_func.x[grange].max()
-        # resulting convolution
+
+
+#        tau = g_func.x[(g_func.x > gx_min) & (g_func.x < gx_max)]
+#
+#        assert (tau.shape[0] > 2)
+#
+#        while tau.shape[0] < n_integral:
+#            tau = np.unique(np.concatenate((tau, (tau[1:] + tau[:-1]) / 2)))
+#
+#        dtau = np.diff(tau)
+
+
         res = np.ones(time.shape[0]) * 1e8
+#        for i, ti in enumerate(time):
+#
+#            # will integrate f(x)g(ti-x)dx
+#            g_xaxis = ti - f_func.x
+#
+#            if not inverse_time:
+#                g_xaxis *= -1
+#
+#            # make sure we are within the interpolation limits
+#            idxs = (g_xaxis>-1e5) & (g_xaxis < 1e5)
+#            if idxs.sum() < 5: continue
+#            gx = g_xaxis[idxs]
+#            fx = f_func.x[idxs]
+#            fg = f_func(fx) + g_func(gx)
+#            min_fg = fg.min()
+#            expfg = np.exp(-1*(fg-min_fg))
+#            integral = (0.5*(expfg[1:]+expfg[:-1])*np.diff(fx)).sum()
+#            res[i] = -np.log(integral) + min_fg
+
         for idx, ti in enumerate(time):
             if inverse_time:
                 tau_min = np.max((ti-fx_max, gx_min))
@@ -461,23 +491,25 @@ class TreeTime(TreeAnc, object):
             #    (g_func.x[grange][-1] - g_func.x[grange][0]) / 10, # if g sharp - at least 10 points cover g range
             #    (tau_max - tau_min) / 100.0)) # normal situation, regular grid of 100 points
 
-            tau = np.linspace(tau_min, tau_max, n_integral)
+            dtau = np.min((self.one_mutation, (tau_max - tau_min) / n_integral))
+
+            tau = np.arange(tau_min, tau_max, dtau)
+
             # include the distributions extremum positions to the grid to avoid round error:
             #tau = np.concatenate(((f_func.x[f_func.y.argmin()], g_func.x[g_func.y.argmin()]), tau))
             # make sure the values are unique (NOTE unique method also sorts in-place)
             #tau = np.unique(tau)
 
-            if len(tau) < 2:
-                #print "Cannot convolve the distributions: functions do not overlap!"
-                continue
             if inverse_time:
-                fg = f_func(ti-tau) + g_func(tau)
+                fg = f_func(ti-tau) + g_func(tau) # f,g - log probabilities
             else:
                 fg = f_func(ti+tau) + g_func(tau)
 
             min_fg = fg.min() # exponent pre-factor
             expfg = np.exp(-1*(fg-min_fg))
-            dtau = np.diff(tau)
+
+            #res [:, idx]  = (0.5*(expfg[1:]+expfg[:-1])*dtau)
+
             integral = (0.5*(expfg[1:]+expfg[:-1])*dtau).sum()
             res[idx] = -np.log(integral) + min_fg
 
@@ -685,7 +717,7 @@ class TreeTime(TreeAnc, object):
                 node.joint_lh_pos =  utils.delta_fun(node.up.abs_t, return_log=True, normalized=False)
                 return;
 
-            # compute the jont LH pos
+            # compute the joint LH pos
             joint_msg_from_parent = _send_message(node.up.joint_lh_pos, node.branch_neg_log_prob)
 
             if node.msg_to_parent is not None:
@@ -729,6 +761,9 @@ class TreeTime(TreeAnc, object):
             # prepare the message, which will be propagated to the child.
             # NOTE the message is created on the parental grid
             # we reuse the msg_to_parent grid to save some computations
+            # FIXME
+            grid = np.unique(np.concatenate((np.concatenate([cm.x for cm in complementary_msgs]), parent.msg_to_parent.x)))
+            #msg_parent_to_node = self._multiply_dists(complementary_msgs, parent.msg_to_parent.x)
             msg_parent_to_node = self._multiply_dists(complementary_msgs, parent.msg_to_parent.x)
 
             # propagate the message from the parent to the node:
@@ -737,7 +772,8 @@ class TreeTime(TreeAnc, object):
             # finally, set the node marginal LH distribution:
 
             if node.msg_to_parent is not None:
-                # we again reuse the msg_to_parent grid
+
+                grid = np.unique(np.concatenate((node.msg_to_parent.x, node.msg_from_parent.x)))
                 node.marginal_lh =  self._multiply_dists((node.msg_from_parent, node.msg_to_parent), node.msg_to_parent.x)
             else: # terminal node without constraints
                 # the smoothness of the dist is defined by the grid of the message,
@@ -1152,10 +1188,10 @@ class TreeTime(TreeAnc, object):
                 node.gamma *= (coupling*node.up.gamma - 0.5*node._k1)/(coupling+node._k2)
             all_gammas.append(node.gamma)
         # normalize avg gamma values to avoid drift in overall mutation rate.
-        avg_gamma = np.mean(all_gammas)
-        for node in self.tree.find_clades(order='preorder'):
-            node.gamma/=avg_gamma
-        self.gtr.mu*=avg_gamma
+        #avg_gamma = np.mean(all_gammas)
+        #for node in self.tree.find_clades(order='preorder'):
+        #    node.gamma/=avg_gamma
+        #self.gtr.mu*=avg_gamma
 
         print('reevaluating branch length interpolators')
         self.init_date_constraints(ancestral_inference=False)

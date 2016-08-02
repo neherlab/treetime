@@ -11,7 +11,7 @@ MAX_T =  1e5
 WIDTH_DELTA = 1e-10 # width of the delta function
 MIN_LOG = -1e8 # minimal log value
 
-BRANCH_GRID_SIZE = 75
+BRANCH_GRID_SIZE = 150
 NODE_GRID_SIZE = 210
 NODE_GRID_VAR = 0.5 # branch grid covers up to this ratio of the tree depth
 
