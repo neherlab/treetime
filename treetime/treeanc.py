@@ -592,7 +592,7 @@ class TreeAnc(object):
         # as branch lengths changed, the params must be fixed
         self.tree.root.up = None
         self.tree.root.dist2root = 0.0
-        self._set_each_node_params()
+        self._prepare_nodes()
         return
 
     def optimal_branch_length(self, node):
@@ -683,6 +683,6 @@ class TreeAnc(object):
                        "converge in 10 cycles, aborting.")
                 break
 
-        self._set_each_node_params() # fix dist2root and up-links after reconstruction
+        self._prepare_nodes() # fix dist2root and up-links after reconstruction
         print("Unconstrained sequence LH:",self.tree.sequence_LH)
         return

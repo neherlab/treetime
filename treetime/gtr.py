@@ -448,10 +448,10 @@ class GTR(object):
         Qt = self.expQt(t)
         res = profile.dot(Qt)
 
-        if not return_log:
-            return res
-        else:
+        if return_log:
             return np.log(res)
+        else:
+            return res
 
 
     def _exp_lt(self, t, mu_prefactor=1.0):
