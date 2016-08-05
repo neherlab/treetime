@@ -103,9 +103,6 @@ class TreeAnc(object):
             logger('TreeAnc: could not load tree! input was '+in_tree,1)
             self._tree = None
             return
-        for node in self._tree.find_clades():
-            node.original_length = node.branch_length
-            node.mutation_length = node.branch_length
         self.prepare_tree()
 
     @property
@@ -151,6 +148,10 @@ class TreeAnc(object):
         Should be run once the tree is read and after every tree topology or branch
         lengths optimizations.
         """
+        for node in self._tree.find_clades():
+            node.original_length = node.branch_length
+            node.mutation_length = node.branch_length
+        self.tree.ladderize()
         self.tree.root.up = None
         self.tree.root.dist2root = 0.0
         self._prepare_nodes()

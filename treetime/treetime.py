@@ -18,6 +18,7 @@ from scipy import optimize as sciopt
 from scipy.ndimage import binary_dilation
 from weakref import WeakKeyDictionary
 import seq_utils
+from utils import logger
 
 class _Descriptor_Distribution(object):
     """
@@ -90,10 +91,9 @@ class TreeTime(TreeAnc, object):
     is converted to the time of the internal node.
     """
 
-    def __init__(self, gtr):
-        super(TreeTime, self).__init__(gtr)
+    def __init__(self, *args,**kwargs):
+        super(TreeTime, self).__init__(*args, **kwargs)
         self.date2dist = None  # we do not know anything about the conversion
-        self.tree_file = ""
         self.max_diam = 0.0
         self.debug=False
 
@@ -115,28 +115,8 @@ class TreeTime(TreeAnc, object):
             self._date2dist = None
             return
         else:
-            print ("Setting new Date2Dist value. new R2=%.4f"%val.r_val)
+            logger("TreeTime.date2dist: Setting new date to branchlength conversion. slope=%f, R2=%.4f"%(val.slope, val.r_val), 2)
             self._date2dist = val
-
-    def reroot_to_oldest(self):
-        """
-        Set the root of the tree to the oldest node.
-        """
-        def numdate_given(node):
-            if not hasattr(node, 'numdate_given') or node.numdate_given is None:
-                return 0
-            return node.numdate_given
-
-        print ("\n---- Tree is being re-rooted to the oldest node")
-        self.tree.root_with_outgroup(sorted(self.tree.get_terminals(), key=numdate_given)[0])
-        self.tree.ladderize()
-        og = self.tree.root.clades[0]
-        self.tree.root.clades[1].branch_length += og.branch_length
-        og.branch_length = self.one_mutation
-        self.tree.root.branch_length = self.one_mutation
-        self.tree.root.numdate_given = None
-        # fix tree lengths, etc
-        self.set_additional_tree_params()
 
     def init_date_constraints(self, slope=None, **kwarks):
         """
@@ -149,7 +129,7 @@ class TreeTime(TreeAnc, object):
         Note: that tree must have dates set to all nodes before calling this
         function. (This is accomplished by calling load_dates func).
         """
-        print ("\n---- TreeTime initializing the date constraints...")
+        logger("TreeTime.init_date_constraints...",2)
         self.date2dist = utils.DateConversion.from_tree(self.tree, slope)
         self.max_diam = self.date2dist.intercept
 
@@ -1278,6 +1258,10 @@ class TreeTime(TreeAnc, object):
                 del(node._mu_n  )
                 del(node._mu_n1 )
 
+
+###############################################################################
+### rerooting
+###############################################################################
     def find_best_root_and_regression(self):
         """
         Find the best root for the tree in linear time, given the timestamps of
@@ -1285,9 +1269,6 @@ class TreeTime(TreeAnc, object):
         the terminal nodes should have the timestamps assigned as numdate_given
         attribute.
         """
-
-
-
         sum_ti = np.sum([node.numdate_given for node in self.tree.get_terminals() if node.numdate_given is not None])
         sum_ti2 = np.sum([node.numdate_given**2 for node in self.tree.get_terminals() if node.numdate_given is not None])
         N = 1.0*len([x for x in self.tree.get_terminals() if x.numdate_given is not None])
@@ -1493,6 +1474,27 @@ class TreeTime(TreeAnc, object):
         if infer_gtr:
             self.infer_gtr()
         self.init_date_constraints(ancestral_inference=True, **kwarks)
+
+
+    def reroot_to_oldest(self):
+        """
+        Set the root of the tree to the oldest node.
+        """
+        def numdate_given(node):
+            if not hasattr(node, 'numdate_given') or node.numdate_given is None:
+                return ttconf.BIG_NUMBER
+            else:
+                return node.numdate_given
+
+        logger("TreeTime.reroot_to_oldest: Tree is being re-rooted to the oldest node", 2)
+        self.tree.root_with_outgroup(sorted(self.tree.get_terminals(), key=numdate_given)[0])
+        og = self.tree.root.clades[0]
+        self.tree.root.clades[1].branch_length += og.branch_length-self.one_mutation
+        og.branch_length = self.one_mutation
+        self.tree.root.branch_length = self.one_mutation
+        self.tree.root.numdate_given = None
+        self.prepare_tree()
+
 
 
 
