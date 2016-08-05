@@ -11,20 +11,6 @@ from scipy.ndimage import binary_dilation
 
 
 
-def treetime_from_newick(gtr, infile):
-    """
-    Create TreeTime object and load phylogenetic tree from newick file
-    Args:
-     - infile(str): path to the newick file.
-    Returns:
-     - tanc(TreeTime): tree time object with phylogenetic tree set and required
-     parameters assigned to the nodes.
-    """
-    tanc = TreeTime(gtr)
-    tanc.tree = Phylo.read(infile, 'newick')
-    tanc.set_additional_tree_params()
-    return tanc
-
 def treetime_to_newick(tt, outf):
     Phylo.write(tt.tree, outf, 'newick')
 
@@ -228,39 +214,6 @@ def save_timetree_results(tree, outfile_prefix):
     zipf.write(outfile_prefix + ".aln.fasta")
     zipf.write(outfile_prefix + ".tree.nwk")
     zipf.write(outfile_prefix + ".root_dist.csv")
-
-def set_seqs_to_leaves(tree, aln):
-    """
-    Set sequences from the alignment to the leaves of the tree of the TreeAnc class.
-    Args:
-     - tree (TreeAnc): instance of the treeAnc class with the tree loaded. The
-     names of the tree leaves must match exactly with those of the alignment
-     sequences.
-     - aln(Bio.MultipleSequenceAlignment): alignment ogbject
-    Returns:
-     - failed_leaves(int): number of leaves which could not be assigned with
-     sequences.
-    Note:
-     - If there are more than 100 leaves failed to get sequences, the function
-     breaks, returning 100.
-    """
-    failed_leaves= 0
-    dic_aln = {k.name: seq_utils.prepare_seq(k.seq) for k in aln} #
-    for l in tree.tree.get_terminals():
-        if l.name in dic_aln:
-            l.state_seq = dic_aln[l.name]
-            l.sequence=l.state_seq
-        else:
-            print ("Cannot find sequence for leaf: %s" % l.name)
-            failed_leaves += 1
-            if failed_leaves == 100:
-                print ("Error: cannot set sequences to the terminal nodes.\n"
-                    "Are you sure the alignment belongs to the tree?")
-                break
-    tree.L = aln.get_alignment_length()
-    tree.one_mutation = 1.0/tree.L
-    tree.tree.root.branch_length = tree.one_mutation
-    return failed_leaves
 
 def read_dates_file(self, inf, **kwargs):
         """
@@ -493,7 +446,6 @@ def read_metadata(tree, infile):
 
 
 def save_gtr_to_file(gtr, outfile):
-
 
     with open(outfile, 'w') as of:
         of.write("#GTR alphabet\n" + ','.join(gtr.alphabet)+'\n')
