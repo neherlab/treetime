@@ -26,7 +26,11 @@ class GTR(object):
             else:
                 self.profile_map = prof_map
         n_states = len(self.alphabet)
-
+        try:
+            self.gap_index = list(self.alphabet).index('-')
+        except:
+            print("---- GTR: no gap symbol!")
+            self.gap_index=-1
         # general rate matrix
         self.W = np.zeros((n_states, n_states))
         # stationary states of the characters
@@ -308,7 +312,7 @@ class GTR(object):
                       as indices in the alphabet
           - multiplicity: number of times a particular pair is observed
         '''
-        from collections import defaultdict
+        from collections import Counter
         if seq_ch.shape != seq_ch.shape:
             raise ValueError("--- GTR.compress_sequence_pair: Sequence lengths do not match!")
 
@@ -318,14 +322,14 @@ class GTR(object):
             for ni,nuc in enumerate(self.alphabet):
                 tmp[seq==nuc] = ni
             num_seqs.append(tmp)
-        pair_count = defaultdict(int)
-        for p,c in zip(num_seqs[0], num_seqs[1]):
-            if (not ignore_gaps) or (c!='-' and p!='-'):
-                pair_count[(p,c)]+=1
+        if ignore_gaps:
+            pair_count = Counter([x for x in zip(num_seqs[0], num_seqs[1])
+                                  if (self.gap_index not in x)])
+        else:
+            pair_count = Counter(zip(num_seqs[0], num_seqs[1]))
         pair_count = pair_count.items()
         return (np.array([x[0] for x in pair_count], dtype=int),    # [(child_nuc, parent_nuc),()...]
                np.array([x[1] for x in pair_count], dtype=int))     # multiplicity of each parent/child nuc pair
-
 
 ########################################################################
 ### evolution functions
