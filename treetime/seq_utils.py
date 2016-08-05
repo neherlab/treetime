@@ -24,7 +24,7 @@ profile_maps = {'nuc':{
     'V': np.array([1, 1, 1, 0, 0], dtype='float')}
     }
 
-def prepare_seq(seq):
+def seq2array(seq):
     """
     Take the raw sequence, substitute the "overhanging" gaps with 'N' (missequenced)
     convert the sequence to the numpy array of uppercase chars.
