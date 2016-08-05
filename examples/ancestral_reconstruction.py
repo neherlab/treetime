@@ -1,7 +1,6 @@
 from __future__ import print_function, division
 import numpy as np
 from treetime import TreeAnc
-from treetime.gtr import  GTR
 from Bio import Phylo, AlignIO
 from Bio.Align import MultipleSeqAlignment
 from Bio.Seq import Seq
@@ -25,6 +24,7 @@ if __name__=="__main__":
     treeanc = TreeAnc(params.tree, aln=params.aln, gtr='Jukes-Cantor')
     treeanc.tree.ladderize()
     treeanc.reconstruct_anc('ml', infer_gtr=params.infer_gtr, marginal=params.marginal)
+
     if params.infer_gtr:
         print('Inferred GTR model:')
         print(treeanc.gtr)
