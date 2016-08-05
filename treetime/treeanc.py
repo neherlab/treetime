@@ -402,12 +402,11 @@ class TreeAnc(object):
                 ch.seq_msg_to_parent = self.gtr.propagate_profile(ch.profile,
                     max(ch.branch_length, min_branch_length*self.one_mutation),
                     mu_prefactor = ch.gamma,
-                    rotated=False, # use unrotated
                     return_log=False) # raw prob to transfer prob up
                 node.profile *= ch.seq_msg_to_parent
                 node.lh_prefactor += ch.lh_prefactor
-            pre = node.profile.sum(axis=1) #sum over nucleotide states
 
+            pre = node.profile.max(axis=1) #sum over nucleotide states
             node.profile = (node.profile.T/pre).T # normalize so that the sum is 1
             node.lh_prefactor += np.log(pre) # and store log-prefactor
 
@@ -416,11 +415,14 @@ class TreeAnc(object):
             print ("Walking down the tree, computing maximum likelihood sequences...")
 
         # extract the likelihood from the profile
-        tree.root.lh_prefactor += np.log(tree.root.profile.max(axis=1))
+        tree.root.profile *= np.diag(self.gtr.Pi) # Msg to the root from the distant part (equ frequencies)
+        pre=tree.root.profile.sum(axis=1)
+        tree.root.profile = (tree.root.profile.T/pre).T
+        tree.root.lh_prefactor += np.log(pre)
+
         tree.anc_LH = tree.root.lh_prefactor.sum()
         tree.sequence_LH = 0
         # reset profile to 0-1 and set the sequence
-        tree.root.profile *= np.diag(self.gtr.Pi) # Msg to the root from the distant part (equ frequencies)
         tree.root.sequence, tree.root.profile = \
             seq_utils.prof2seq(tree.root.profile, self.gtr, sample_from_prof=True, collapse_prof=not marginal)
         tree.root.seq_msg_from_parent = np.repeat([self.gtr.Pi.diagonal()], len(tree.root.sequence), axis=0)
@@ -438,15 +440,12 @@ class TreeAnc(object):
                         tmp_msg*=c.seq_msg_to_parent
                 node.seq_msg_from_parent = self.gtr.propagate_profile(tmp_msg,
                             max(node.branch_length, min_branch_length*self.one_mutation),
-
-                            rotated=False, # use unrotated
                             return_log=False)
                 node.profile *= node.seq_msg_from_parent
             else:
                 node.seq_msg_from_parent = self.gtr.propagate_profile(node.up.profile,
                             max(node.branch_length, min_branch_length*self.one_mutation),
                             mu_prefactor=node.gamma,
-                            rotated=False, # use unrotated
                             return_log=False)
                 node.profile *= node.seq_msg_from_parent
 
@@ -562,7 +561,7 @@ class TreeAnc(object):
         prof_p =  seq_utils.seq2prof(parent.sequence, self.gtr.profile_map) # parent.profile
         prof_ch = seq_utils.seq2prof(node.sequence, self.gtr.profile_map)
 
-        new_len = self.gtr.optimal_t(prof_p, prof_ch, mu_prefactor=node.gamma) # not rotated profiles!
+        new_len = self.gtr.optimal_t(prof_p, prof_ch, mu_prefactor=node.gamma)
 
         return new_len
 

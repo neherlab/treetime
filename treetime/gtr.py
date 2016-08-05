@@ -35,10 +35,10 @@ class GTR(object):
         # mutation rate, scaling factor
         self.mu = 1.0
         # eigendecomposition of the GTR matrix
-        # Pi.dot(W) = v.dot(eigenmat).dot(v_inv)
+        # Pi.dot(W) = v.dot(eigenvals).dot(v_inv)
         self.v = np.zeros((n_states, n_states))
         self.v_inv = np.zeros((n_states, n_states))
-        self.eigenmat = np.zeros(n_states)
+        self.eigenvals = np.zeros(n_states)
         # NEEDED TO BREAK RATE MATRIX DEGENERACY AND FORCE NP TO RETURN REAL ORTHONORMAL EIGENVECTORS
         self.break_degen = np.random.random(size=self.W.shape)*0.0001
 
@@ -95,7 +95,7 @@ class GTR(object):
                 print("Mutation matrix size does not match alphabet size"
                       "Ignoring input mutation matrix")
             # flow matrix
-            gtr.W = np.ones((a,a))
+            gtr.W = np.ones((n,n))
             np.fill_diagonal(gtr.W, - ((gtr.W).sum(axis=0) - 1))
 
         gtr.W = 0.5*(W+W.T)
@@ -239,6 +239,7 @@ class GTR(object):
         gtr._eig()
         return gtr
 
+
     def _check_fix_Q(self):
         """
         Check the main diagonal of Q and fix it in case it does not corresond
@@ -274,12 +275,41 @@ class GTR(object):
         eigvals, eigvecs = np.linalg.eig(self.Pi.dot(self.W))
         self.v = np.real(eigvecs)
         self.v_inv = np.linalg.inv(self.v)
-        self.eigenmat = np.real(eigvals)
+        self.eigenvals = np.real(eigvals)
         return
 
-    def prob_t(self, profile_p, profile_ch, t, mu_prefactor=1.0, rotated=False, return_log=False, ignore_gap=True):
+
+    def prob_t_compressed(self, seq_pair, multiplicity, t, return_log=False):
+        if (t<0):
+            logP = -BIG_NUMBER
+        else:
+            logQt = np.log(self.expQt(t))
+            logP = np.sum(logQt[seq_pair[:,1], seq_pair[:,0]]*multiplicity)
+            if return_log:
+                return logP
+            else:
+                return np.exp(logP)
+
+
+    def compress_sequence_pair(self, seq_p, seq_ch):
+        from collections import defaultdict
+        num_seqs = []
+        for seq in [seq_p, seq_ch]:
+            tmp = np.ones_like(seq, dtype=int)
+            for ni,nuc in enumerate(self.alphabet):
+                tmp[seq==nuc] = ni
+            num_seqs.append(tmp)
+        pair_count = defaultdict(int)
+        for p,c in zip(num_seqs[0], num_seqs[1]):
+            pair_count[(p,c)]+=1
+        pair_count = pair_count.items()
+        return (np.array([x[0] for x in pair_count], dtype=int),    # [(child_nuc, parent_nuc),()...]
+               np.array([x[1] for x in pair_count], dtype=int))     # multiplicity of each parent/child nuc pair
+
+
+    def prob_t(self, seq_p, seq_ch, t, mu_prefactor=1.0, return_log=False, ignore_gap=True):
         """
-        Compute the probability of the two profiles to be separated by the time t.
+        Compute the probability to observe seq_ch after time t starting from seq_p.
         Args:
          - profile_p(np.array): parent profile of shape (L, a), where
          L - length of the sequence, a - alphabet size.
@@ -289,19 +319,11 @@ class GTR(object):
 
          - t (double): time (branch len), separating the profiles.
 
-         - rotated (bool, default False): if True, assume that the supplied
-         profiles are already rotated.
-
          - return_log(bool, default False): whether return log-probability.
 
         Returns:
          - prob(np.array): resulting probability.
         """
-        if t < 0:
-            if return_log:
-                return -BIG_NUMBER
-            else:
-                return 0.0
 
         L = profile_p.shape[0]
         if L != profile_ch.shape[0]:
@@ -392,24 +414,14 @@ class GTR(object):
 
          - t(double): time to propagate
 
-         - rotated(bool default False): whether the supplied profile is in the
-         GTR matrix eigenspace
-
          - return log (bool, default False): whether to return log-probability
 
         Returns:
          - res(np.array): profile of the sequence after time t.
          Shape = (L, a), where L - sequence length, a - alphabet size.
         """
-        eLambdaT = self._exp_lt(t, mu_prefactor) # vector lenght = a
-
-        if not rotated:
-            # rotate
-            p = self.v_inv.dot(profile.T).T
-        else:
-            p = profile
-
-        res = (self.v.dot((eLambdaT * p).T)).T
+        Qt = self.expQt(t*mu_prefactor)
+        res = profile.dot(Qt)
 
         if not return_log:
             return res
@@ -422,7 +434,12 @@ class GTR(object):
          - exp_lt(numpy.array): array of values exp(lambda(i) * t),
          where (i) - alphabet index (the eigenvalue number).
         """
-        return np.exp(self.mu * t * mu_prefactor * self.eigenmat)
+        return np.exp(self.mu * t * self.eigenvals)
+
+    def expQT(self, t):
+        eLambdaT = np.diag(self._exp_lt(t)) # vector lenght = a
+        Qt = self.v.dot(eLambdaT.dot(self.v_inv))   # This is P(nuc1 | given nuc_2)
+
 
     def save_to_npz(self, outfile):
         full_gtr = self.mu * np.dot(self.Pi, self.W)
