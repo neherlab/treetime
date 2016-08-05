@@ -20,3 +20,5 @@ BAD_BRANCHES_FREE = True # if the branch is suspicious -> exclude from the tree 
 # autocorrelated molecular clock coefficients
 MU_ALPHA = 1
 MU_BETA = 1
+
+VERBOSE = 6

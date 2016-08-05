@@ -1,6 +1,7 @@
 from __future__ import division, print_function
 import numpy as np
 import config as ttconf
+from utils import logger
 from seq_utils import alphabets, profile_maps
 
 class GTR(object):
@@ -26,10 +27,11 @@ class GTR(object):
             else:
                 self.profile_map = prof_map
         n_states = len(self.alphabet)
+        logger("GTR: with alphabet"+str(self.alphabet),1)
         try:
             self.gap_index = list(self.alphabet).index('-')
         except:
-            print("---- GTR: no gap symbol!")
+            logger("GTR: no gap symbol!", 4, warn=True)
             self.gap_index=-1
         # general rate matrix
         self.W = np.zeros((n_states, n_states))
@@ -98,16 +100,16 @@ class GTR(object):
             Pi = pi
         else:
             if pi is not None and len(pi)!=n:
-                print("length of equilibrium frequency vector does not match alphabet length"
-                      "Ignoring input equilibrium frequencies")
+                logger("length of equilibrium frequency vector does not match alphabet length", 4, warn=True)
+                logger("Ignoring input equilibrium frequencies", 4, warn=True)
             Pi = np.ones(size=(n))
         Pi /= Pi.sum()
         gtr.Pi = np.diagflat(Pi)
 
         if W is None or W.shape!=(n,n):
             if (W is not None) and W.shape!=(n,n):
-                print("Mutation matrix size does not match alphabet size"
-                      "Ignoring input mutation matrix")
+                logger("Mutation matrix size does not match alphabet size", 4, warn=True)
+                logger("Ignoring input mutation matrix", 4, warn=True)
             # flow matrix
             gtr.W = np.ones((n,n))
             np.fill_diagonal(gtr.W, - ((gtr.W).sum(axis=0) - 1))
@@ -138,10 +140,11 @@ class GTR(object):
          In other words, the unit of branch length and the unit of time are
          connected through this variable. By default set to 1.
         """
+        logger("GTR: initializing model "+model,1)
         if 'alphabet' in kwargs and kwargs['alphabet'] in alphabets.keys():
             alphabet = kwargs['alphabet']
         else:
-            print ("No alphabet specified. Using default nucleotide.")
+            logger("No alphabet specified. Using default nucleotide.", 4, warn=True)
             alphabet = 'nuc'
         if 'mu' in kwargs:
             mu = kwargs['mu']
@@ -211,6 +214,7 @@ class GTR(object):
          - alphabet(str): specify alphabet when applicable. If the alphabet specification
          is requred, but no alphabet specified, the nucleotide will be used as default.
         """
+        logger("GTR: model inference ",1)
         gtr = cls(**kwargs)
         dp = 1e-5
         Nit = 40
@@ -224,7 +228,7 @@ class GTR(object):
         W_ij = np.ones_like(nij)
         mu = nij.sum()/Ti.sum()
         while LA.norm(pi_old-pi) > dp and count < Nit:
-            print('GTR inference iteration ',count,'change:',LA.norm(pi_old-pi))
+            logger('GTR inference iteration ',count,'change:',LA.norm(pi_old-pi), 3)
             count += 1
             pi_old = np.copy(pi)
             W_ij = (nij+nij.T+2*pc_mat)/mu/(np.outer(pi,Ti) + np.outer(Ti,pi)
@@ -242,12 +246,12 @@ class GTR(object):
             pi /= pi.sum()
             mu = nij.sum()/(ttconf.TINY_NUMBER + np.sum(pi * (W_ij.dot(Ti))))
         if count >= Nit:
-            print ('WARNING: maximum number of iterations has been reached in GTR inference')
+            logger('WARNING: maximum number of iterations has been reached in GTR inference',3, warn=True)
             np.min(pi.sum(axis=0)), np.max(pi.sum(axis=0))
             if LA.norm(pi_old-pi) > dp:
-                print ('    the iterative scheme has not converged')
+                logger('the iterative scheme has not converged',3,warn=True)
             elif np.abs(1-np.max(pi.sum(axis=0))) > dp:
-                print ('    the iterative scheme has converged, but proper normalization was not reached')
+                logger('the iterative scheme has converged, but proper normalization was not reached',3,warn=True)
         gtr.mu = mu
         gtr.W = W_ij
         gtr.Pi = np.diag(pi)
@@ -314,7 +318,7 @@ class GTR(object):
         '''
         from collections import Counter
         if seq_ch.shape != seq_ch.shape:
-            raise ValueError("--- GTR.compress_sequence_pair: Sequence lengths do not match!")
+            raise ValueError("GTR.compress_sequence_pair: Sequence lengths do not match!")
 
         num_seqs = []
         for seq in [seq_p, seq_ch]:
@@ -424,7 +428,7 @@ class GTR(object):
             opt={'success':True}
 
         if new_len > .9 * ttconf.MAX_BRANCH_LENGTH:
-            print ("WARNING: The branch length seems to be very long!")
+            logger("WARNING: GTR.optimal_t_compressed -- The branch length seems to be very long!", 4, warn=True)
 
         if opt["success"] != True:
             # return hamming distance: number of state pairs where state differs/all pairs

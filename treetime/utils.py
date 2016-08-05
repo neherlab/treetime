@@ -1,3 +1,4 @@
+from __future__ import division, print_function
 import numpy as np
 from scipy.interpolate import interp1d
 import config as ttconf
@@ -5,6 +6,13 @@ from scipy.integrate import quad
 from scipy import stats
 import datetime
 from scipy.ndimage import binary_dilation
+
+def logger(msg, level, warn=False):
+    if level<ttconf.VERBOSE or warn:
+        outstr = '\n' if level<2 else ''
+        outstr+= level*'-'
+        outstr+=msg
+        print(outstr)
 
 class DateConversion(object):
     """
