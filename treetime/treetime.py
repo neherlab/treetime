@@ -18,7 +18,7 @@ from scipy import optimize as sciopt
 from scipy.ndimage import binary_dilation
 from weakref import WeakKeyDictionary
 import seq_utils
-from utils import logger
+
 
 class _Descriptor_Distribution(object):
     """
@@ -115,7 +115,7 @@ class TreeTime(TreeAnc, object):
             self._date2dist = None
             return
         else:
-            logger("TreeTime.date2dist: Setting new date to branchlength conversion. slope=%f, R2=%.4f"%(val.slope, val.r_val), 2)
+            self.logger("TreeTime.date2dist: Setting new date to branchlength conversion. slope=%f, R2=%.4f"%(val.slope, val.r_val), 2)
             self._date2dist = val
 
     def init_date_constraints(self, slope=None, **kwarks):
@@ -129,7 +129,7 @@ class TreeTime(TreeAnc, object):
         Note: that tree must have dates set to all nodes before calling this
         function. (This is accomplished by calling load_dates func).
         """
-        logger("TreeTime.init_date_constraints...",2)
+        self.logger("TreeTime.init_date_constraints...",2)
         self.date2dist = utils.DateConversion.from_tree(self.tree, slope)
         self.max_diam = self.date2dist.intercept
 
@@ -1486,7 +1486,7 @@ class TreeTime(TreeAnc, object):
             else:
                 return node.numdate_given
 
-        logger("TreeTime.reroot_to_oldest: Tree is being re-rooted to the oldest node", 2)
+        self.logger("TreeTime.reroot_to_oldest: Tree is being re-rooted to the oldest node", 2)
         self.tree.root_with_outgroup(sorted(self.tree.get_terminals(), key=numdate_given)[0])
         og = self.tree.root.clades[0]
         self.tree.root.clades[1].branch_length += og.branch_length-self.one_mutation

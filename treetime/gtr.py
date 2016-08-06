@@ -1,14 +1,13 @@
 from __future__ import division, print_function
 import numpy as np
 import config as ttconf
-from utils import logger
 from seq_utils import alphabets, profile_maps
 
 class GTR(object):
     """
     Defines General-Time-Reversible model of character evolution.
     """
-    def __init__(self, alphabet='nuc', prof_map=None):
+    def __init__(self, alphabet='nuc', prof_map=None, logger=None):
         """
         Initialize empty evolutionary model.
         Args:
@@ -26,12 +25,18 @@ class GTR(object):
                 self.profile_map = {s:x for s,x in zip(self.alphabet, np.eye(len(self.alphabet)))}
             else:
                 self.profile_map = prof_map
+        if logger is None:
+            def logger(*args,**kwargs):
+                print(*args)
+            self.logger = logger
+        else:
+            self.logger = logger
         n_states = len(self.alphabet)
-        logger("GTR: with alphabet"+str(self.alphabet),1)
+        self.logger("GTR: with alphabet: "+str(self.alphabet),1)
         try:
             self.gap_index = list(self.alphabet).index('-')
         except:
-            logger("GTR: no gap symbol!", 4, warn=True)
+            self.logger("GTR: no gap symbol!", 4, warn=True)
             self.gap_index=-1
         # general rate matrix
         self.W = np.zeros((n_states, n_states))
@@ -77,9 +82,34 @@ class GTR(object):
 
         return eq_freq_str + W_str + Q_str
 
+    def assign_rates(self, mu=1.0, pi=None, W=None):
+        n = len(self.alphabet)
+        self.mu = mu
+        if pi is not None and len(pi)==n:
+            Pi = pi
+        else:
+            if pi is not None and len(pi)!=n:
+                self.logger("length of equilibrium frequency vector does not match alphabet length", 4, warn=True)
+                self.logger("Ignoring input equilibrium frequencies", 4, warn=True)
+            Pi = np.ones(size=(n))
+        Pi /= Pi.sum()
+        self.Pi = np.diagflat(Pi)
+
+        if W is None or W.shape!=(n,n):
+            if (W is not None) and W.shape!=(n,n):
+                self.logger("Mutation matrix size does not match alphabet size", 4, warn=True)
+                self.logger("Ignoring input mutation matrix", 4, warn=True)
+            # flow matrix
+            self.W = np.ones((n,n))
+            np.fill_diagonal(self.W, - ((self.W).sum(axis=0) - 1))
+
+        self.W = 0.5*(W+W.T)
+        self._check_fix_Q()
+        self._eig()
+
 
     @classmethod
-    def custom(cls, mu=1.0, pi=None, W=None, **kwargs):
+    def custom(cls,mu=1.0, pi=None, W=None, **kwargs):
         """
         Create a GTR model by specifying the matrix explicitly
 
@@ -90,33 +120,10 @@ class GTR(object):
 
         KWargs:
          - alphabet(str): specify alphabet when applicable. If the alphabet specification
-         is requred, but no alphabet specified, the nucleotide will be used as default.
+         is required, but no alphabet specified, the nucleotide will be used as default.
         """
         gtr = cls(**kwargs)
-        n = gtr.alphabet.shape[0]
-
-        gtr.mu = mu
-        if pi is not None and len(pi)==n:
-            Pi = pi
-        else:
-            if pi is not None and len(pi)!=n:
-                logger("length of equilibrium frequency vector does not match alphabet length", 4, warn=True)
-                logger("Ignoring input equilibrium frequencies", 4, warn=True)
-            Pi = np.ones(size=(n))
-        Pi /= Pi.sum()
-        gtr.Pi = np.diagflat(Pi)
-
-        if W is None or W.shape!=(n,n):
-            if (W is not None) and W.shape!=(n,n):
-                logger("Mutation matrix size does not match alphabet size", 4, warn=True)
-                logger("Ignoring input mutation matrix", 4, warn=True)
-            # flow matrix
-            gtr.W = np.ones((n,n))
-            np.fill_diagonal(gtr.W, - ((gtr.W).sum(axis=0) - 1))
-
-        gtr.W = 0.5*(W+W.T)
-        gtr._check_fix_Q()
-        gtr._eig()
+        gtr.assign_rates(mu=mu, pi=pi, W=W)
         return gtr
 
 
@@ -140,11 +147,9 @@ class GTR(object):
          In other words, the unit of branch length and the unit of time are
          connected through this variable. By default set to 1.
         """
-        logger("GTR: initializing model "+model,1)
         if 'alphabet' in kwargs and kwargs['alphabet'] in alphabets.keys():
             alphabet = kwargs['alphabet']
         else:
-            logger("No alphabet specified. Using default nucleotide.", 4, warn=True)
             alphabet = 'nuc'
         if 'mu' in kwargs:
             mu = kwargs['mu']
@@ -152,42 +157,18 @@ class GTR(object):
             mu = 1.0
 
         if model=='Jukes-Cantor':
-
             gtr = cls('nuc')
-            gtr.mu = mu
-            a = gtr.alphabet.shape[0]
-
-            # flow matrix
-            gtr.W = np.ones((a,a))
-            np.fill_diagonal(gtr.W, - ((gtr.W).sum(axis=0) - 1))
-
-            # equilibrium concentrations matrix
-            gtr.Pi = np.zeros(gtr.W.shape)
-            np.fill_diagonal(gtr.Pi, 1.0/a)
-
-            gtr._check_fix_Q() # make sure the main diagonal is correct
-            gtr._eig() # eigendecompose the rate matrix
-            return gtr
-
+            n = gtr.alphabet.shape[0]
+            W, pi = np.ones((n,n)), np.ones(n)
         elif model=='random':
             gtr = cls(alphabet)
-            a = gtr.alphabet.shape[0]
-
-            gtr.mu = mu
-
-            Pi = 1.0*np.random.randint(0,100,size=(a))
-            Pi /= Pi.sum()
-            gtr.Pi = np.diagflat(Pi)
-
-            W = 1.0*np.random.randint(0,100,size=(a,a)) # with gaps
-            gtr.W = W+W.T
-
-            gtr._check_fix_Q()
-            gtr._eig()
-            return gtr
+            n = gtr.alphabet.shape[0]
+            Pi = 1.0*np.random.randint(0,100,size=(n))
+            W = 1.0*np.random.randint(0,100,size=(n,n)) # with gaps
         else:
             raise NotImplementedError("The specified evolutionary model is unsupported!")
-
+        gtr.assign_rates(mu=mu, pi=pi, W=W)
+        return gtr
 
     @classmethod
     def infer(cls, nij, Ti, root_state, pc=5.0, **kwargs):
@@ -212,10 +193,10 @@ class GTR(object):
             no mutation are observed
         KWargs:
          - alphabet(str): specify alphabet when applicable. If the alphabet specification
-         is requred, but no alphabet specified, the nucleotide will be used as default.
+           is required, but no alphabet specified, the nucleotide will be used as default.
         """
-        logger("GTR: model inference ",1)
         gtr = cls(**kwargs)
+        gtr.logger("GTR: model inference ",1)
         dp = 1e-5
         Nit = 40
         pc_mat = pc*np.ones_like(nij)
@@ -228,7 +209,7 @@ class GTR(object):
         W_ij = np.ones_like(nij)
         mu = nij.sum()/Ti.sum()
         while LA.norm(pi_old-pi) > dp and count < Nit:
-            logger('GTR inference iteration ',count,'change:',LA.norm(pi_old-pi), 3)
+            gtr.logger(' '.join(map(str, ['GTR inference iteration',count,'change:',LA.norm(pi_old-pi)])), 3)
             count += 1
             pi_old = np.copy(pi)
             W_ij = (nij+nij.T+2*pc_mat)/mu/(np.outer(pi,Ti) + np.outer(Ti,pi)
@@ -246,17 +227,14 @@ class GTR(object):
             pi /= pi.sum()
             mu = nij.sum()/(ttconf.TINY_NUMBER + np.sum(pi * (W_ij.dot(Ti))))
         if count >= Nit:
-            logger('WARNING: maximum number of iterations has been reached in GTR inference',3, warn=True)
+            gtr.logger('WARNING: maximum number of iterations has been reached in GTR inference',3, warn=True)
             np.min(pi.sum(axis=0)), np.max(pi.sum(axis=0))
             if LA.norm(pi_old-pi) > dp:
-                logger('the iterative scheme has not converged',3,warn=True)
+                gtr.logger('the iterative scheme has not converged',3,warn=True)
             elif np.abs(1-np.max(pi.sum(axis=0))) > dp:
-                logger('the iterative scheme has converged, but proper normalization was not reached',3,warn=True)
-        gtr.mu = mu
-        gtr.W = W_ij
-        gtr.Pi = np.diag(pi)
-        gtr._check_fix_Q()
-        gtr._eig()
+                gtr.logger('the iterative scheme has converged, but proper normalization was not reached',3,warn=True)
+
+        gtr.assign_rates(mu=mu, W=W_ij, pi=pi)
         return gtr
 
 ########################################################################
@@ -428,7 +406,7 @@ class GTR(object):
             opt={'success':True}
 
         if new_len > .9 * ttconf.MAX_BRANCH_LENGTH:
-            logger("WARNING: GTR.optimal_t_compressed -- The branch length seems to be very long!", 4, warn=True)
+            self.logger("WARNING: GTR.optimal_t_compressed -- The branch length seems to be very long!", 4, warn=True)
 
         if opt["success"] != True:
             # return hamming distance: number of state pairs where state differs/all pairs
