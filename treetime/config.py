@@ -21,4 +21,4 @@ BAD_BRANCHES_FREE = True # if the branch is suspicious -> exclude from the tree 
 MU_ALPHA = 1
 MU_BETA = 1
 
-VERBOSE = 6
+VERBOSE = 3
