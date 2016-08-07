@@ -9,6 +9,9 @@ from Bio.SeqRecord import SeqRecord
 if __name__=="__main__":
     import argparse
 
+    ###########################################################################
+    ### parameter parsing
+    ###########################################################################
     parser = argparse.ArgumentParser(
             description='Reconstruct ancestral sequences and map mutations to the tree.'
                         ' The ancestral sequences will be written to a file "aln_base"_ancestral.fasta'
@@ -18,29 +21,35 @@ if __name__=="__main__":
     parser.add_argument('--tree', required = True, type = str,  help ="newick file with tree")
     parser.add_argument('--marginal', default = False, action='store_true', help='marginal instead of joint ML reconstruction')
     parser.add_argument('--infer_gtr', default = False, action='store_true', help='infer substitution model')
-
     params = parser.parse_args()
 
-    treeanc = TreeAnc(params.tree, aln=params.aln, gtr='Jukes-Cantor')
-    treeanc.tree.ladderize()
+    ###########################################################################
+    ### ANCESTRAL RECONSTRUCTION
+    ###########################################################################
+    treeanc = TreeAnc(params.tree, aln=params.aln, gtr='Jukes-Cantor', verbose=4)
     treeanc.reconstruct_anc('ml', infer_gtr=params.infer_gtr, marginal=params.marginal)
 
+    ###########################################################################
+    ### OUTPUT and saving of results
+    ###########################################################################
     if params.infer_gtr:
-        print('Inferred GTR model:')
+        print('\nInferred GTR model:')
         print(treeanc.gtr)
 
-
+    # save alignment of reconstructed sequences
     new_aln = MultipleSeqAlignment([SeqRecord(id=n.name, seq=Seq("".join(n.sequence)),
                                               description="")
                                     for n in treeanc.tree.find_clades()])
     outaln_name = '.'.join(params.aln.split('/')[-1].split('.')[:-1])+'_ancestral.fasta'
     AlignIO.write(new_aln, outaln_name, 'fasta')
 
+    # decorate tree with inferred mutations
     for n in treeanc.tree.find_clades():
         if n.up is None:
             continue
         if len(n.mutations):
             n.name+='_'+'_'.join([a+str(pos)+d for (a,pos, d) in n.mutations])
 
+    # write tree to file
     outtree_name = '.'.join(params.tree.split('/')[-1].split('.')[:-1])+'_mutation.newick'
     Phylo.write(treeanc.tree, outtree_name, 'newick')
