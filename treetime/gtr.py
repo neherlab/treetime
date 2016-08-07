@@ -163,7 +163,7 @@ class GTR(object):
         elif model=='random':
             gtr = cls(alphabet)
             n = gtr.alphabet.shape[0]
-            Pi = 1.0*np.random.randint(0,100,size=(n))
+            pi = 1.0*np.random.randint(0,100,size=(n))
             W = 1.0*np.random.randint(0,100,size=(n,n)) # with gaps
         else:
             raise NotImplementedError("The specified evolutionary model is unsupported!")

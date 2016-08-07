@@ -7,11 +7,10 @@ from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 
 if __name__=="__main__":
-    import argparse
-
     ###########################################################################
     ### parameter parsing
     ###########################################################################
+    import argparse
     parser = argparse.ArgumentParser(
             description='Reconstruct ancestral sequences and map mutations to the tree.'
                         ' The ancestral sequences will be written to a file "aln_base"_ancestral.fasta'
