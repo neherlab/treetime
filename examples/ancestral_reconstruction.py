@@ -2,9 +2,6 @@ from __future__ import print_function, division
 import numpy as np
 from treetime import TreeAnc
 from Bio import Phylo, AlignIO
-from Bio.Align import MultipleSeqAlignment
-from Bio.Seq import Seq
-from Bio.SeqRecord import SeqRecord
 
 if __name__=="__main__":
     ###########################################################################
@@ -35,12 +32,8 @@ if __name__=="__main__":
         print('\nInferred GTR model:')
         print(treeanc.gtr)
 
-    # save alignment of reconstructed sequences
-    new_aln = MultipleSeqAlignment([SeqRecord(id=n.name, seq=Seq("".join(n.sequence)),
-                                              description="")
-                                    for n in treeanc.tree.find_clades()])
     outaln_name = '.'.join(params.aln.split('/')[-1].split('.')[:-1])+'_ancestral.fasta'
-    AlignIO.write(new_aln, outaln_name, 'fasta')
+    AlignIO.write(treeanc.get_reconstructed_alignment(), outaln_name, 'fasta')
 
     # decorate tree with inferred mutations
     for n in treeanc.tree.find_clades():

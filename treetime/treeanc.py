@@ -21,32 +21,6 @@ class TreeAnc(object):
     alignment, making ancestral state inferrence
     """
 
-    class DisplayAttr(object):
-
-        def __init__(self, name, attr):
-            self._name = name
-            self._attr = attr
-
-        @property
-        def name(self):
-            return self._name
-
-        def attr(self, node):
-
-            if callable(self._attr):
-                try:
-                    return self._attr(node)
-                except:
-                    return ""
-            elif isinstance(self._attr, str):
-                if hasattr(node, self._attr):
-                    return node.__dict__[self._attr]
-                else:
-                    return ""
-            else:
-                return  ""
-
-
     def __init__(self, tree, aln=None, gtr=None, verbose = ttconf.VERBOSE):
         self.t_start = time.time()
         self.verbose = verbose
@@ -66,12 +40,7 @@ class TreeAnc(object):
         if aln is not None:
             self.attach_sequences_to_nodes()
         self._leaves_lookup = {}
-        self._metadata_names = [
-                    self.DisplayAttr("numdate", "numdate"),
-                    self.DisplayAttr("mutation_rate/avg", "gamma"),
-                    self.DisplayAttr("branch_len/opt", self.branch_len_to_opt),
-                    self.DisplayAttr("time_since_MRCA (yr)", "tvalue")
-                ]
+
     def logger(self, msg, level, warn=False):
         if level<self.verbose or warn:
             dt = time.time() - self.t_start
@@ -185,66 +154,6 @@ class TreeAnc(object):
                 c.dist2root = c.up.dist2root + c.branch_length
                 c.dist2root_0 = c.dist2root #  store the values used later for date-branchLen conversion
         return
-
-    def set_metadata_to_node(self, node, **metadata):
-        """
-        Set the metadata to the given tree node from the given dictionary.
-
-        Args:
-         - node(Phylo.Clade): node the metadata should be assigned to
-
-        KWargs:
-         - metadata: dictionary for the values to be set as attributes.
-
-        Returns:
-         - None
-        """
-
-        if isinstance(node, Phylo.BaseTree.Clade):
-
-            for key in metadata:
-                if key != "name": #  filter name node if any  (must be already set)
-                    setattr(node, key, metadata[key])
-
-
-
-        elif isinstance(node, str):
-
-            if node not in  self._leaves_lookup:
-                print ("Cannot set metadata to the node: node not found")
-                return
-
-            node = self._leaves_lookup[node]
-            for key in metadata:
-                if key != "name": #  filter name node if any  (must be already set)
-                    setattr(node, key, metadata[key])
-
-
-
-
-        else:
-            print ("Cannot set metadata to node. Input node must be "
-                "either tree node instance, or name of a node.")
-
-    def set_metadata(self, **all_metadata):
-        """
-        Set metadata from dictionary to all nodes
-        """
-
-        metadata_list_set = False
-
-        for node_key in all_metadata:
-            if node_key not in self._leaves_lookup:
-                print ("Cannot set metadata to the tree node: node name not found")
-                print (node_key)
-                continue
-
-            self.set_metadata_to_node(node_key, **all_metadata[node_key])
-            if not metadata_list_set:
-                self._metadata_names += [
-                        self.DisplayAttr(k, k) for k in all_metadata[node_key]
-                    ]
-                metadata_list_set = True
 
 
 ####################################################################
@@ -650,7 +559,7 @@ class TreeAnc(object):
                     clade.up = node.up
 
 
-    def optimize_seq_and_branch_len(self,reuse_branch_len=True,prune_short=True, precision=1e-3, **kwargs):
+    def optimize_seq_and_branch_len(self,reuse_branch_len=True,prune_short=True, **kwargs):
         """
         Iteratively set branch lengths and reconstruct ancestral sequences until
         the values of either former or latter do not change. The algorithm assumes
@@ -692,10 +601,8 @@ class TreeAnc(object):
                    " #Nuc changed since prev reconstructions: %d" %(n, N_diff), 2)
 
             if N_diff < 1:
-            #if N_diff / (2 * self.tree.count_terminals() * self.tree.root.sequence.shape[0]) < precision:
                 break
-
-            if n > 10:
+            elif n > 10:
                 self.logger("sequences and branch lengths optimization did not"
                        "converge in 10 cycles, aborting.", 4, warn=True)
                 break
@@ -704,6 +611,22 @@ class TreeAnc(object):
         self.logger("TreeAnc.optimize_seq_and_branch_len: Unconstrained sequence LH:%f"%self.tree.sequence_LH, 1)
         return
 
+###############################################################################
+### Utility functions
+###############################################################################
+    def get_reconstructed_alignment(self):
+        from Bio.Align import MultipleSeqAlignment
+        from Bio.Seq import Seq
+        from Bio.SeqRecord import SeqRecord
+        self.logger("TreeAnc.reconstructed_alignment ...",2)
+        if not hasattr(self.tree.root, 'sequence'):
+            self.logger("TreeAnc.reconstructed_alignment... reconstruction not yet done",3)
+            self.reconstruct_anc('ml')
+
+        new_aln = MultipleSeqAlignment([SeqRecord(id=n.name, seq=Seq("".join(n.sequence)), description="")
+                                        for n in self.tree.find_clades()])
+
+        return new_aln
 
 if __name__=="__main__":
     pass
