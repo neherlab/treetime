@@ -1,44 +1,194 @@
 from __future__ import division, print_function
 import numpy as np
 from scipy.interpolate import interp1d
-from config import WIDTH_DELTA,BIG_NUMBER,MIN_LOG
-
+from config import WIDTH_DELTA, BIG_NUMBER, MIN_LOG
+from collections import Iterable
+from copy import deepcopy as make_copy
 
 class Distribution(object):
     """docstring for Distribution"""
-    def __init__(self, x, y=1.0, is_log=False, kind='linear'):
-        super(Distribution, self).__init__()
-        if np.isscalar(x):
-            self.kind='delta'
-            self.delta_pos = x
-            self.weight = y
+
+    @staticmethod
+    def calc_fwhm(distribution, is_log=True):
+        """
+        Assess the width of the probability distribution. This returns full-width-half-max
+        """
+
+        if isinstance(distribution, interp1d):
+
+            if is_log:
+                ymin = distribution.y.min()
+                real_prob = np.exp(-(distribution.y-ymin))
+            else:
+                real_prob = distribution.y
+
+            xvals = distribution.x
+
+        elif isinstance(distribution, Distribution):
+            # Distribution always stores log-prob
+            yvals = distribution._func.y
+            real_prob = np.exp(-1 * yvals)
+            xvals = distribution._func.x
+
         else:
-            self.kind=kind
-            xvals, yvals = np.array(sorted(zip(x,y))).T
-            if not is_log:
-                yvals = -np.log(yvals)
+            raise TypeError("Error in computing the FWHM for the distribution. "
+                " The input should be either Distribution or interpolation object");
 
-            # remember range
-            self.xmin, self.xmax = xvals[0], xvals[-1]
-            self.support = self.xmax - self.xmin
+        xs = xvals[real_prob > (real_prob.max() - real_prob.min()) / 2]
+        return xs.max() - xs.min()
 
-            # extract peak
-            self.peak_val = yvals.min()
-            yvals -= self.peak_val
-            self.ymax = yvals.max()
-            self.func= interp1d(xvals, yvals, kind=kind, fill_value=BIG_NUMBER, bounds_error=False)
+
+    @classmethod
+    def delta_function(cls, x_pos, normalized=True):
+        """
+        Create delta function distribution.
+        """
+
+        x = [x_pos - 0.5 * WIDTH_DELTA, x_pos + 0.5 * WIDTH_DELTA]
+        if normalized:
+            y = [-np.log(1. / WIDTH_DELTA), -np.log(1. / WIDTH_DELTA)]
+        else:
+            y = [0.0, 0.0]
+
+        distribution = cls(x,y,is_log=True)
+        distribution._delta = True
+        distribution._peak_pos = x_pos
+        distribution._fwhm = WIDTH_DELTA
+        return distribution
+
+    @classmethod
+    def shifted_x(cls, distribution, delta_x):
+        res = make_copy(distribution)
+        res._func.x += delta_x
+        res.xmin += delta_x
+        res.xmax += delta_x
+        return res
+
+    def __init__(self, x, y, is_log=True, kind='linear'):
+
+        """
+        Create Distribution instance
+        """
+
+        if not isinstance(x, Iterable) or not isinstance (y, Iterable):
+            raise TypeError("Wrong type of x or y values. Both X and Y should   be iterable")
+
+        self._delta = False # NOTE in classmethod this value is set explicitly to True.
+
+        xvals, yvals = np.array(sorted(zip(x,y))).T
+        # first, prepare x, y values
+        if not is_log:
+            yvals = -np.log(yvals)
+        # just for safety
+        yvals [np.isnan(yvals)] = BIG_NUMBER
+
+        # set the properties
+        self._kind=kind
+        # remember range
+        self._xmin, self._xmax = xvals[0], xvals[-1]
+        self._support = self._xmax - self._xmin
+
+        # extract peak
+        self._peak_val = yvals.min()
+        self._peak_pos = xvals[yvals.argmin()]
+        yvals -= self._peak_val
+        self._ymax = yvals.max()
+        # store the interpolation object
+        self._func= interp1d(xvals, yvals, kind=kind, fill_value=BIG_NUMBER, bounds_error=False)
+        self._fwhm = Distribution.calc_fwhm(self)
+
+    @property
+    def is_delta(self):
+        return self._delta
+
+    @property
+    def peak_val(self):
+        return self._peak_val
+
+    @property
+    def peak_pos(self):
+        return self._peak_pos
+
+    @property
+    def support(self):
+        return self._support
+
+    @property
+    def fwhm(self):
+        return self._fwhm
+
+    @property
+    def x(self):
+        return self._func.x
+
+    @property
+    def y(self):
+        return self._peak_val + self._func.y
+
+    @property
+    def xmin(self):
+        return self._xmin
+
+    @property
+    def xmax(self):
+        return self._xmax
+
+
+    def __call__(self, x):
+
+        if isinstance(x, Iterable):
+            valid_idxs = (x >= self._xmin) & (x <= self._xmax)
+            return np.concatenate((np.repeat(BIG_NUMBER, (x<self._xmin).sum()),
+                self._peak_val + self._func(x[valid_idxs]),
+                np.repeat(BIG_NUMBER, (x>self._xmax).sum())
+                ))
+
+        else:
+            try:
+                x = float(x)
+                if x < self._xmin or x > self._xmax:
+                    return BIG_NUMBER
+                # x is within interpolation range
+                if self._delta == True:
+                    return self._peak_val
+                else:
+                    return self._peak_val + self._func(x)
+            except:
+                raise TypeError("Wrong type: should be float or array")
+
+
+    def __mul__(self, other):
+
+        if  not isinstance(other, Distribution):
+            raise NotImplementedError("Can only multiply distributions or "
+                "scale it  by multiplying with float number")
+
+        if all([k.is_delta for k in [self, other]]):
+            raise ArithmeticError("Cannot multiply two delta functions!")
+
+        elif any([k.is_delta for k in [self, other]]):
+            if self.is_delta:
+                new_xpos = self.peak_pos
+                yfactor  = other.__call__(new_xpos) + self._peak_val
+            else:
+                new_xpos = other.peak_pos
+                yfactor  = self.__call__(new_xpos) + other._peak_val
+            res = Distribution.delta_function(new_xpos, normalized=False)
+            res._peak_val = yfactor
+            return res
+
+        else:
+            new_xmin = np.max([self.xmin, other.xmin])
+            new_xmax = np.min([self.xmax, other.xmax])
+            x_vals = np.unique(np.concatenate([self.x, other.x]))
+            x_vals = x_vals[(x_vals>=new_xmin)&(x_vals<=new_xmax)]
+            y_vals = self.__call__(x_vals) + other.__call__(x_vals)
+            res = Distribution(x_vals, y_vals, is_log=True, kind='linear')
+            return res
 
     def prob(self,x):
-        if self.kind=='delta':
-            return x==self.delta_pos
-        else:
-            return np.exp(-self.neg_log(x))
+        return np.exp(-1 * self.__call__(x))
 
-    def neg_log(self,x):
-        if self.kind=='delta':
-            return (x!=self.delta_pos)*BIG_NUMBER
-        else:
-            return self.peak_val + self.func(x)
 
     def x_rescale(self, factor):
         self.func.x*=factor
@@ -58,7 +208,9 @@ class Distribution(object):
         return mult*np.sum(dx*(y[:-1] + y[1:]))
 
 
-    def integrate_simpson(self, a, b, n):
+    def integrate_simpson(self, a,b,n):
+        if n % 2 == 0:
+            n += 1
         mult = 1.0/6
         if a>b:
             b,a = a,b

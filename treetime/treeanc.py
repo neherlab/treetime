@@ -545,12 +545,11 @@ class TreeAnc(object):
         """
         self.logger("TreeAnc.prune_short_branches: pruning short branches (max prob at zero)...", 1)
         for node in self.tree.find_clades():
-            if node.up is None:
+            if node.up is None or node.is_terminal():
                 continue
+
             # probability of the two seqs separated by zero time is not zero
-            if self.gtr.prob_t(node.up.profile, node.profile, 0.0) > 0.1:
-                if node.is_terminal(): # leaf stays as is
-                    continue
+            if self.gtr.prob_t(node.up.sequence, node.sequence, 0.0) > 0.1:
                 # re-assign the node children directly to its parent
                 node.up.clades = [k for k in node.up.clades if k != node] + node.clades
                 if hasattr(node, "lh_prefactor"):
