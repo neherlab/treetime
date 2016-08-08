@@ -7,6 +7,7 @@ from __future__ import print_function, division
 from treeanc import TreeAnc
 import utils
 import config as ttconf
+from distribution import Distribution
 
 import numpy as np
 from Bio import AlignIO, Phylo
@@ -19,61 +20,6 @@ from scipy.ndimage import binary_dilation
 from weakref import WeakKeyDictionary
 import seq_utils
 
-
-class _Descriptor_Distribution(object):
-    """
-    Descriptor to manage the settings, common for the LH distributions of different types
-    (Branch lengths, messages, LH distributions for the positions, etc)
-    It controls the values of the distributions, and, when setting the distribution
-    as the attribute to the node, it automatically assigns some additional parameters
-    to the same node (incl the sigma)
-    """
-    def __init__(self, sigma_name, default=None):
-        self.default = default
-        self._sigma_name = sigma_name
-        self.data = WeakKeyDictionary()
-
-    def __get__(self, instance, owner):
-        # we get here when someone calls x.d, and d is a NonNegative instance
-        # instance = x
-        # owner = type(x)
-        return self.data.get(instance, self.default)
-
-    def __set__(self, instance, value):
-        # we get here when someone calls x.d = val, and d is a NonNegative instance
-        # instance = x
-        # value = val
-        if value is None:
-            self.data[instance] = self.default
-            return
-
-        if not isinstance(value, interp1d):
-            raise TypeError("Cannot set the branch length LH distribution property."
-                "An interpolation object is expected")
-
-        self.data[instance] = value
-        # compute the connected parameters:
-        instance.__setattr__(self._sigma_name, _Descriptor_Distribution._logprob_sigma(value))
-
-    @staticmethod
-    def _logprob_sigma(logprob):
-        """
-        Assess the width of the probability distribution. This returns full-width-half-max
-        """
-        if logprob is None: return 0.0
-
-        if not isinstance(logprob, interp1d):
-            raise TypeError("Error in computing the sigma for the branch length LH distribution."
-                "Interpolation object expected")
-        ymin = logprob.y.min()
-        real_prob = np.exp(-(logprob.y-ymin))
-        xs = logprob.x[real_prob > (real_prob.max() - real_prob.min()) / 2]
-        return xs.max() - xs.min()
-
-##  set the necessary descriptors to the Phylo.Clade objects
-##  (NOTE all descriptors assigned at object level)
-Phylo.BaseTree.Clade.branch_neg_log_prob = _Descriptor_Distribution("branch_len_sigma")
-Phylo.BaseTree.Clade.msg_to_parent = _Descriptor_Distribution("msg_to_parent_sigma")
 
 class TreeTime(TreeAnc, object):
     """
@@ -137,7 +83,7 @@ class TreeTime(TreeAnc, object):
         # make interpolation objects for the branches
         self._ml_t_init(**kwarks)
 
-    def _make_branch_len_interpolator(self, node, n=ttconf.BRANCH_GRID_SIZE):
+    def _make_branch_len_interpolator(self, node, n=ttconf.BRANCH_GRID_SIZE, ignore_gaps=False):
         """
         Makes an interpolation object for probability of branch length. Builds
         an adaptive grid with n points, fine around the optimal branch length,
@@ -171,47 +117,42 @@ class TreeTime(TreeAnc, object):
             node.merger_rate = ttconf.BRANCH_LEN_PENALTY
 
         # optimal branch length
-        obl = self.optimal_branch_length(node) # NOTE gamma taken into account inside
-        node.opt_branch_length = obl #  need for some computations
-        parent  = node.up
-        prof_p = seq_utils.seq2prof(parent.sequence, self.gtr.profile_map) # parent.profile
-        prof_ch = seq_utils.seq2prof(node.sequence, self.gtr.profile_map)
+        mutation_length = node.mutation_length
 
-        if obl < np.min((1e-5, 0.1*self.one_mutation)): # zero-length
-            grid = ttconf.MAX_BRANCH_LENGTH * (np.linspace(0, 1.0 , n/3)**2)
+        if mutation_length < np.min((1e-5, 0.1*self.one_mutation)): # zero-length
+            grid = ttconf.MAX_BRANCH_LENGTH * (np.linspace(0, 1.0 , n)**2)
 
         else: # branch length is not zero
 
-            sigma = obl #np.max([self.average_branch_len, obl])
+            sigma = mutation_length #np.max([self.average_branch_len, mutation_length])
             # from zero to optimal branch length
-            grid_left = obl * (1 - np.linspace(1, 0.0, n/3)**1.0)
+            grid_left = mutation_length * (1 - np.linspace(1, 0.0, n/3)**2.0)
             # from optimal branch length to the right (--> 3*branch lengths),
-            grid_right = obl + 0.01*self.one_mutation + (3*sigma*(np.linspace(0, 1, n/3)**2))
+            grid_right = mutation_length + 1e-3 * self.one_mutation + (3*sigma*(np.linspace(0, 1, n/3)**2))
             # far to the right (3*branch length ---> MAX_LEN), very sparse
-            far_grid = grid_right.max() + obl/2 + ttconf.MAX_BRANCH_LENGTH*np.linspace(0, 1, n)**2
+            far_grid = grid_right.max() + mutation_length/2 + ttconf.MAX_BRANCH_LENGTH*np.linspace(0, 1, n/3)**2
 
             grid = np.concatenate((grid_left,grid_right,far_grid))
             grid.sort() # just for safety
 
-        grid = np.concatenate((
-            [ttconf.MIN_T, -ttconf.TINY_NUMBER],
-            grid,
-            [ttconf.MAX_T]))
 
-        # log-probability of the branch len to be at this value
-        logprob = np.concatenate([
-            [0., 0.],
-            [self.gtr.prob_t(prof_p, prof_ch, t_, mu_prefactor=node.gamma, return_log=True) for t_ in grid[2:-2]],
-            [0., 0.]])
+        if hasattr(node, 'compressed_sequence'):
+            log_prob = np.array([-self.gtr.prob_t_compressed(node.compressed_sequence['pair'],
+                                                node.compressed_sequence['multiplicity'],
+                                                k,
+                                                return_log=True)
+                    for k in grid])
+        else:
+            log_prob = np.array([-self.gtr.prob_t(node.sequence,
+                                     node.up.sequence,
+                                     k,
+                                     return_log=True,
+                                     ignore_gaps=self.ignore_gaps)
+                    for k in grid])
 
-        logprob[((0,1,-2,-1),)] = ttconf.MIN_LOG
-        logprob *= -1.0
-
-        min_prob = np.min(logprob)
-        logprob -= min_prob
-
-        tmp_prob = np.exp(-logprob)
-        integral = self._integral(grid, tmp_prob)
+        log_prob [np.isnan(log_prob)] = ttconf.BIG_NUMBER
+        tmp_log_prob = np.exp(-log_prob)
+        integral = self._integral(grid, tmp_log_prob)
 
         # save raw branch length interpolators without coalescent contribution
         # TODO: better criterion to catch bad branch
@@ -219,26 +160,25 @@ class TreeTime(TreeAnc, object):
             print ("!!WARNING!!", node.name, " branch length probability distribution",
                 "integral is ZERO. Setting bad_branch flag...")
             node.bad_branch = True
-            node.raw_branch_neg_log_prob = interp1d(grid, logprob, kind='linear')
+            node.raw_branch_neg_log_prob = Distribution(grid, log_prob, is_log=True, kind='linear')
 
         else:
-            node.raw_branch_neg_log_prob = interp1d(grid, logprob+np.log(integral), kind='linear')
-
+            node.raw_branch_neg_log_prob = Distribution(grid, log_prob+np.log(integral), is_log=True, kind='linear')
 
         # add merger rate contribution to the raw branch length
-        logprob += node.merger_rate * np.minimum(ttconf.MAX_BRANCH_LENGTH, np.maximum(0,grid))
+        log_prob += node.merger_rate * np.minimum(ttconf.MAX_BRANCH_LENGTH, np.maximum(0,grid))
 
-        tmp_prob = np.exp(-logprob)
-        integral = self._integral(grid, tmp_prob)
+        tmp_log_prob = np.exp(-log_prob)
+        integral = self._integral(grid, tmp_log_prob)
 
         if integral < 1e-200:
             print ("!!WARNING!! Node branch length probability distribution "
                 "integral is ZERO. Setting bad_branch flag...")
             node.bad_branch = True
-            node.branch_neg_log_prob = interp1d(grid, logprob, kind='linear')
+            node.branch_neg_log_prob = Distribution(grid, log_prob, is_log=True, kind='linear')
 
         else:
-            node.branch_neg_log_prob = interp1d(grid, logprob+np.log(integral), kind='linear')
+            node.branch_neg_log_prob = Distribution(grid, log_prob+np.log(integral), is_log=True, kind='linear')
 
         # node gets new attribute
         return None
@@ -257,7 +197,7 @@ class TreeTime(TreeAnc, object):
            dt = np.diff(grid)
            tmp_prob = np.exp(-y)
            integral = np.sum(0.5*(tmp_prob[1:]+tmp_prob[:-1])*dt)
-           node.branch_neg_log_prob = interp1d(grid, y + np.log(integral), kind='linear')
+           node.branch_neg_log_prob = Distribution(grid, y + np.log(integral), is_log=True, kind='linear')
 
     def _ml_t_init(self,ancestral_inference=True, **kwarks):
         """
