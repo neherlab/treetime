@@ -332,6 +332,7 @@ class GTR(object):
             logP = -BIG_NUMBER
         else:
             logQt = np.log(self.expQt(t))
+            logQt[np.isnan(logQt) | np.isinf(logQt)] = -BIG_NUMBER
             logP = np.sum(logQt[seq_pair[:,1], seq_pair[:,0]]*multiplicity)
             if return_log:
                 return logP
@@ -451,7 +452,7 @@ class GTR(object):
     def expQt(self, t):
         eLambdaT = np.diag(self._exp_lt(t)) # vector length = a
         Qt = self.v.dot(eLambdaT.dot(self.v_inv))   # This is P(nuc1 | given nuc_2)
-        return Qt
+        return np.maximum(0,Qt)
 
     def save_to_npz(self, outfile):
         full_gtr = self.mu * np.dot(self.Pi, self.W)
