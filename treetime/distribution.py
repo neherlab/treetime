@@ -26,9 +26,8 @@ class Distribution(object):
 
         elif isinstance(distribution, Distribution):
             # Distribution always stores log-prob
-            yvals = distribution._func.y
-            real_prob = np.exp(-1 * yvals)
             xvals = distribution._func.x
+            real_prob = distribution.prob(xvals)
 
         else:
             raise TypeError("Error in computing the FWHM for the distribution. "
@@ -39,30 +38,18 @@ class Distribution(object):
 
 
     @classmethod
-    def delta_function(cls, x_pos, normalized=True):
+    def delta_function(cls, x_pos, weight=1.):
         """
         Create delta function distribution.
         """
 
-        x = [x_pos - 0.5 * WIDTH_DELTA, x_pos + 0.5 * WIDTH_DELTA]
-        if normalized:
-            y = [-np.log(1. / WIDTH_DELTA), -np.log(1. / WIDTH_DELTA)]
-        else:
-            y = [0.0, 0.0]
-
-        distribution = cls(x,y,is_log=True)
-        distribution._delta = True
-        distribution._peak_pos = x_pos
-        distribution._fwhm = WIDTH_DELTA
+        distribution = cls(x_pos,0.,is_log=True)
+        distribution.weight  = weight
         return distribution
 
     @classmethod
-    def shifted_x(cls, distribution, delta_x):
-        res = make_copy(distribution)
-        res._func.x += delta_x
-        res.xmin += delta_x
-        res.xmax += delta_x
-        return res
+    def shifted_x(cls, dist, delta_x):
+        return Distribution(dist.x+delta_x, dist.y, kind=dist.kind)
 
     def __init__(self, x, y, is_log=True, kind='linear'):
 
@@ -70,32 +57,47 @@ class Distribution(object):
         Create Distribution instance
         """
 
-        if not isinstance(x, Iterable) or not isinstance (y, Iterable):
-            raise TypeError("Wrong type of x or y values. Both X and Y should   be iterable")
+            x = float(x)
+        if isinstance(x, Iterable) or not isinstance (y, Iterable):
 
-        self._delta = False # NOTE in classmethod this value is set explicitly to True.
+            self._delta = False # NOTE in classmethod this value is set explicitly to True.
+            xvals, yvals = np.array(sorted(zip(x,y))).T
+            # first, prepare x, y values
+            if not is_log:
+                yvals = -np.log(yvals)
+            # just for safety
+            yvals [np.isnan(yvals)] = BIG_NUMBER
+            # set the properties
+            self._kind=kind
+            # remember range
+            self._xmin, self._xmax = xvals[0], xvals[-1]
+            self._support = self._xmax - self._xmin
+            # extract peak
+            self._peak_val = yvals.min()
+            self._peak_pos = xvals[yvals.argmin()]
+            yvals -= self._peak_val
+            self._ymax = yvals.max()
+            # store the interpolation object
+            self._func= interp1d(xvals, yvals, kind=kind, fill_value=BIG_NUMBER, bounds_error=False)
+            self._fwhm = Distribution.calc_fwhm(self)
 
-        xvals, yvals = np.array(sorted(zip(x,y))).T
-        # first, prepare x, y values
-        if not is_log:
-            yvals = -np.log(yvals)
-        # just for safety
-        yvals [np.isnan(yvals)] = BIG_NUMBER
+        elif is np.isscalar(x):
+            assert (isscalar(y) or y is None)
+            self._delta = True
+            self._peak_pos = x
+            self._fwhm = 0
+            if y is None:
+                self._peak_val = np.inf
+            else:
+                self._peak_val = y
 
-        # set the properties
-        self._kind=kind
-        # remember range
-        self._xmin, self._xmax = xvals[0], xvals[-1]
-        self._support = self._xmax - self._xmin
+            self._xmin, self._xmax = x, x
+            self._support = 0.
+            self._func = lambda x : (x==self.peak_pos)*self.peak_val
+        else:
+            raise TypeError("Cannot create Distribution: "
+                "Input arguments should be scalars or iterables!")
 
-        # extract peak
-        self._peak_val = yvals.min()
-        self._peak_pos = xvals[yvals.argmin()]
-        yvals -= self._peak_val
-        self._ymax = yvals.max()
-        # store the interpolation object
-        self._func= interp1d(xvals, yvals, kind=kind, fill_value=BIG_NUMBER, bounds_error=False)
-        self._fwhm = Distribution.calc_fwhm(self)
 
     @property
     def is_delta(self):
@@ -119,11 +121,17 @@ class Distribution(object):
 
     @property
     def x(self):
-        return self._func.x
+        if self.is_delta:
+            return [self._peak_pos]
+        else:
+            return self._func.x
 
     @property
     def y(self):
-        return self._peak_val + self._func.y
+        if self.is_delta:
+            return [self.peak_val]
+        else:
+            return self._peak_val + self._func.y
 
     @property
     def xmin(self):
@@ -138,23 +146,20 @@ class Distribution(object):
 
         if isinstance(x, Iterable):
             valid_idxs = (x >= self._xmin) & (x <= self._xmax)
-            return np.concatenate((np.repeat(BIG_NUMBER, (x<self._xmin).sum()),
-                self._peak_val + self._func(x[valid_idxs]),
-                np.repeat(BIG_NUMBER, (x>self._xmax).sum())
-                ))
+            res = np.ones_like (x, dtype=float) * BIG_NUMBER
+            res[valid_idxs] = self._peak_val + self._func(x[valid_idxs])
+            return res
 
+        elif np.isreal(x):
+            if x < self._xmin or x > self._xmax:
+                return BIG_NUMBER
+            # x is within interpolation range
+            elif self._delta == True:
+                return self._peak_val
+            else:
+                return self._peak_val + self._func(x)
         else:
-            try:
-                x = float(x)
-                if x < self._xmin or x > self._xmax:
-                    return BIG_NUMBER
-                # x is within interpolation range
-                if self._delta == True:
-                    return self._peak_val
-                else:
-                    return self._peak_val + self._func(x)
-            except:
-                raise TypeError("Wrong type: should be float or array")
+            raise TypeError("Wrong type: should be float or array")
 
 
     def __mul__(self, other):
@@ -169,18 +174,18 @@ class Distribution(object):
         elif any([k.is_delta for k in [self, other]]):
             if self.is_delta:
                 new_xpos = self.peak_pos
-                yfactor  = other.__call__(new_xpos) + self._peak_val
+                new_weight  = other.prob(new_xpos) * self.weight
             else:
                 new_xpos = other.peak_pos
-                yfactor  = self.__call__(new_xpos) + other._peak_val
-            res = Distribution.delta_function(new_xpos, normalized=False)
-            res._peak_val = yfactor
+                new_weight  = self.prob(new_xpos) * other.weight
+            res = Distribution.delta_function(new_xpos, weight = new_weight)
             return res
 
         else:
             new_xmin = np.max([self.xmin, other.xmin])
             new_xmax = np.min([self.xmax, other.xmax])
-            x_vals = np.unique(np.concatenate([self.x, other.x]))
+            #TODO
+            x_vals = np.unique(np.concatenate([self.x, other.x]))[::2]
             x_vals = x_vals[(x_vals>=new_xmin)&(x_vals<=new_xmax)]
             y_vals = self.__call__(x_vals) + other.__call__(x_vals)
             res = Distribution(x_vals, y_vals, is_log=True, kind='linear')
@@ -220,106 +225,6 @@ class Distribution(object):
         y = self.prob(x)
         print(x.shape, dx.shape)
         return mult*(dx[0]*y[0]+ np.sum(4*dx*y[1:-1:2]) + np.sum((dx[:-1]+dx[1:])*y[2:-1:2]) + dx[-1]*y[-1])
-
-
-    def integrate_piecewise(self, a, b):
-        mult = 1.0
-        if a>b:
-            b,a = a,b
-            mult=-1.0
-        ind = (self.func.x>a)&(self.func.x<b)
-        x = np.concatenate(([a], self.func.x[ind], [b]))
-        dx = np.diff(x)
-        y = self.neg_log(x)
-        yexp = self.prob(x)
-        slope = -np.diff(y)/dx
-
-        return mult*np.sum(yexp[:-1]*np.abs((1-np.exp(slope*dx))/slope))
-
-    def integrate_piecewise_gaussian(self, a, b):
-        from scipy.special import erf
-        from scipy.interpolate import spleval
-        mult = 0.5*np.sqrt(np.pi)
-        if a>b:
-            b,a = a,b
-            mult=-mult
-        ind = (self.func.x>a)&(self.func.x<b)
-        x = np.concatenate(([a], self.func.x[ind], [b]))
-        dx = np.diff(x)
-        y = self.neg_log(x)
-        yexp = self.prob(x)
-        cslope =    np.squeeze(spleval(self.func._spline,x,deriv=1))[1:-1]
-        curvature = 0.5*np.squeeze(spleval(self.func._spline,x,deriv=2))[1:-1]
-        slope=cslope
-        #slope = np.diff(y)/dx
-        #curvature = np.diff(slope)/(dx[:1]+dx[1:])*2
-        #cslope = (y[2:]-y[:-2])/(dx[:1]+dx[1:])*2
-
-        y0 = yexp[1:-1]*np.exp(cslope**2/4.0/curvature)
-        t1 = np.sqrt(curvature)*(cslope/2.0/curvature-dx[:-1]*0.5)
-        t2 = np.sqrt(curvature)*(cslope/2.0/curvature +dx[1:]*0.5)
-        ind = (curvature>0)&(np.abs(cslope**2/4.0/curvature)<200)
-        #print(y,'X', t1[ind], t2[ind])
-        #print(curvature[ind], slope[ind])
-        i1 = np.sum(y0[ind]*(erf(t2[ind]) - erf(t1[ind]))/np.sqrt(curvature[ind]))
-
-        return mult*i1
-
-
-
-class quadratic_interpolator(object):
-    """docstring for quadratic_interpolator"""
-    def __init__(self, x,y):
-        super(quadratic_interpolator, self).__init__()
-        if len(x)%2==0:
-            x = np.concatenate((x[:2],[x[-1]]))
-            y = np.concatenate((y[:2],[y[-1]]))
-        self.x = x[::2]
-        self.xa = x[1::2]
-        self.y = y[::2]
-        self.ya = y[1::2]
-        self.set_up()
-
-    def set_up(self):
-        x1 = self.x[:-1]
-        x2 = self.xa
-        x3 = self.x[1:]
-        x1sq = x1**2
-        x2sq = x2**2
-        x3sq = x3**2
-        dx12 = x1 - x2
-        dx23 = x2 - x3
-        y1 = self.y[:-1]
-        y2 = self.ya
-        y3 = self.y[1:]
-        dy12 = y1 - y2
-        dy23 = y2 - y3
-
-        a = (dy12/dx12 - dy23/dx23)/((x1sq-x2sq)/dx12 - (x2sq-x3sq)/dx23)
-        b = (dy12 - a*(x1sq-x2sq))/dx12
-        c = y1 - a*x1sq - b*x1
-
-        self.a = a
-        self.b = b
-        self.c = c
-
-    def __call__(self, x):
-        ii = np.minimum(np.maximum(self.x.searchsorted(x)-1,0), self.a.shape[0]-1)
-        return self.a[ii]*x**2 + self.b[ii]*x + self.c[ii]
-
-
-
-def multiply_distributions(dists):
-    if any([d.kind=='delta' for d in dists]):
-        print("can't multiply delta functions")
-        return None
-    else:
-        new_xmin = np.max([d.xmin for d in dists])
-        new_xmax = np.min([d.xmax for d in dists])
-        x_vals = np.concatenate([d.func.x for x in dists])
-        x_vals = xvals[(xvals>=new_xmin)&(xvals<=new_xmax)]
-        y_vals = np.sum([d.neg_log(xvals) for d in dists], axis=0)
-        return Distribution(x_vals, y_vals, is_log=True, kind='linear')
 
 
 if __name__=="__main__":
