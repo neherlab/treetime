@@ -178,7 +178,8 @@ class Distribution(object):
     @property
     def y(self):
         if self.is_delta:
-            return [self.peak_val]
+            print("THIS SHOULDN'T BE CALLED ON A DELTA FUNCTION")
+            return [self.weight]
         else:
             return self._peak_val + self._func.y
 
@@ -226,15 +227,28 @@ class Distribution(object):
         return np.exp(-1 * (self.__call__(x)-self.peak_val))
 
     def x_rescale(self, factor):
-        self.func.x*=factor
-        self.xmax*=factor
-        self.xmax*=factor
+        self._func.x*=factor
+        if factor>=0:
+            self._xmin*=factor
+            self._xmax*=factor
+        else:
+            tmp = self.xmin
+            self._xmin = factor*self.xmax
+            self._xmax = factor*tmp
 
-    def integrate(self, **kwargs):
+
+    def integrate(self, return_log=False ,**kwargs):
         if self.is_delta:
             return self.weight
         else:
-            return self.integrate_simpson(**kwargs)
+            integral_result = self.integrate_simpson(**kwargs)
+            if return_log:
+                if integral_result==0:
+                    return -self.peak_val -BIG_NUMBER
+                else:
+                    return -self.peak_val + max(-BIG_NUMBER, np.log(integral_result))
+            else:
+                return np.exp(-self.peak_val)*integral_result
 
     def integrate_trapez(self, a, b,n):
         mult = 0.5
@@ -244,7 +258,7 @@ class Distribution(object):
 
         x = np.linspace(a,b,n)
         dx = np.diff(x)
-        y = self.prob(x)
+        y = self.prob_relative(x)
         return mult*np.sum(dx*(y[:-1] + y[1:]))
 
 
@@ -257,9 +271,9 @@ class Distribution(object):
             mult=-1.0/6
         x = np.linspace(a,b,n)
         dx = np.diff(x[::2])
-        y = self.prob(x)
-        print(x.shape, dx.shape)
-        return mult*(dx[0]*y[0]+ np.sum(4*dx*y[1:-1:2]) + np.sum((dx[:-1]+dx[1:])*y[2:-1:2]) + dx[-1]*y[-1])
+        y = self.prob_relative(x)
+        return mult*(dx[0]*y[0]+ np.sum(4*dx*y[1:-1:2])
+                    + np.sum((dx[:-1]+dx[1:])*y[2:-1:2]) + dx[-1]*y[-1])
 
 
 if __name__=="__main__":

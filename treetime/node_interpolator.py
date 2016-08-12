@@ -1,74 +1,94 @@
 import numpy as np
 from distribution import Distribution
 import numpy  as np
-from config import BIG_NUMBER
+import config as ttconf
 
 def _create_initial_grid(node_dist, branch_dist):
     pass
 
-def _convolution_in_point(node_interp, branch_interp, t_val, n_integral = 100, inverse_time=None, return_log=False):
-
+def _convolution_in_point(t_val,f, g,  n_integral = 100, inverse_time=None, return_log=False):
+    '''
+    evaluates int_tau f(t+tau)g(tau) or int_tau f(t-tau)g(tau) if inverse time is TRUE
+    '''
     if inverse_time is None:
         raise Exception("Inverse time argument must be set!")
 
-    # functions overlap region
-    tau_min = np.max((t_val - node_interp.xmax, branch_interp.xmin))
-    tau_max = np.min((t_val - node_interp.xmin, branch_interp.xmax))
+    # determine integration boundaries:
+    if inverse_time:
+        ## tau>g.xmin and t-tau<f.xmax
+        tau_min = max(t_val - f.xmax, g.xmin)
+        ## tau<g.xmax and t-tau>f.xmin
+        tau_max = min(t_val - f.xmin, g.xmax)
+    else:
+        ## tau>g.xmin and t+tau>f.xmin
+        tau_min = max(f.xmin-t_val, g.xmin)
+        ## tau<g.xmax and t+tau<f.xmax
+        tau_max = min(f.xmax-t_val, g.xmax)
 
     if tau_max <= tau_min :
-        res = 0.0 #  functions do not overlap
-
+        if return_log:
+            return ttconf.BIG_NUMBER
+        else:
+            return 0.0 #  functions do not overlap
     else:
         # create the tau-grid for the interpolation object in the overlap region
         tau = np.linspace(tau_min, tau_max, n_integral)
         # create the interpolation object on this grid
-        if inverse_time:
-            fg = node_interp(t_val - tau) + branch_interp(tau)
+        if inverse_time: # add negative logarithms
+            fg = f(t_val - tau) + g(tau)
         else:
-            fg = node_interp(t_val + tau) + branch_interp(tau)
+            fg = f(t_val + tau) + g(tau)
 
-        FG = Distribution(tau, fg)
-        #integrate the interpolation object
-        res = FG.integrate(a=FG.xmin, b=FG.xmax, n=n_integral)
+        FG = Distribution(tau, fg, is_log=True)
+        #integrate the interpolation object, return log, make neg_log
+        res = -FG.integrate(a=FG.xmin, b=FG.xmax, n=n_integral, return_log=True)
 
-    if not return_log:
-        return res
-
-    elif res <= 0.:
-        return BIG_NUMBER
-
-    else:
-        return np.log(res)
+        if return_log:
+            return res
+        else:
+            return np.exp(-res)
 
 class NodeInterpolator (Distribution):
 
     @classmethod
     def convolve(cls, node_interp, branch_interp, n_integral=100, inverse_time=True):
+        '''
+        calculate H(t) = \int_tau f(t-tau)g(tau) if inverse_time=True
+                  H(t) = \int_tau f(t+tau)g(tau) if inverse_time=False
 
+        This function determines the time points of the grid of the result to
+        ensure an accurate approximation.
+        '''
         # create coarse grid (5 points)
-        import ipdb; ipdb.set_trace()
         joint_fwhm  = 0.5 * (node_interp.fwhm+ branch_interp.fwhm)
         new_peak_pos = node_interp.peak_pos + branch_interp.peak_pos
 
-        initial_times = np.unique([2 * branch_interp.xmin,
-                                   new_peak_pos - joint_fwhm,
-                                   new_peak_pos,
-                                   new_peak_pos + joint_fwhm,
-                                   2 * branch_interp.xmax])
+        # determine support of the resulting convolution
+        # in order to be positive, the flipped support of f, shifted by t and g need to overlap
+        if inverse_time:
+            tmin = node_interp.xmin+branch_interp.xmin
+            tmax = node_interp.xmax+branch_interp.xmax
+        else:
+            tmin = node_interp.xmin - branch_interp.xmax
+            tmax = node_interp.xmax - branch_interp.xmin
 
+        # make initial node grid
+        n_grid_points = ttconf.NODE_GRID_SIZE
+        grid_left =  tmin + (new_peak_pos-tmin) * (1 - np.linspace(1, 0.0, n_grid_points/2)**2.0)
+        grid_right = tmin+new_peak_pos + (tmax-tmin-new_peak_pos)*(np.linspace(0, 1, n_grid_points/2)**2)
 
+        initial_times = np.concatenate([grid_left, grid_right[1:]])
         res = np.ones_like(initial_times)
 
         for t_idx, t_val in enumerate(initial_times):
 
-            res[t_idx] = _convolution_in_point(t_val, node_interp, branch_interp)
+            res[t_idx] = _convolution_in_point(t_val, node_interp, branch_interp,
+                                               n_integral=n_integral, return_log=True,
+                                               inverse_time = inverse_time)
+        # TODO refine
 
-        #res = -np.log(res)
-        res = cls(initial_times, res, is_log=False)
-        # ad
+        res = cls(initial_times, res, is_log=True)
         return res
-        # compute the F(t) = integral[f(t-tau) g(tau) dtau] on these 5 points
-        # while the curvature is less than the threshold, insert the points in between:
 
 if __name__ == '__main__':
 
