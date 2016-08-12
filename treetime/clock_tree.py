@@ -41,6 +41,7 @@ class ClockTree(TreeAnc):
             self.logger("TreeTime.date2dist: Setting new date to branchlength conversion. slope=%f, R2=%.4f"%(val.slope, val.r_val), 2)
             self._date2dist = val
 
+
     def init_date_constraints(self, ancestral_inference=True, slope=None, **kwarks):
         """
         Get the conversion coefficients between the dates and the branch
@@ -131,7 +132,6 @@ class ClockTree(TreeAnc):
                 res = Distribution.shifted_x(node.branch_length_interpolator, node.msg_to_parent.peak_pos)
             else: # convolve two distributions
                 res =  NodeInterpolator.convolve(node.msg_to_parent, node.branch_length_interpolator)
-                # TODO deal with grid size explosion
             return res
 
         self.logger("ClockTree: Maximum likelihood tree optimization with temporal constraints:",1)
@@ -151,6 +151,7 @@ class ClockTree(TreeAnc):
                     continue
                 # this is what the node sends to the parent
                 node.msg_to_parent = NodeInterpolator.multiply(node.msgs_from_leaves.values())
+                # TODO deal with grid size explosion
 
 
     def _ml_t_root_leaves(self):
@@ -276,7 +277,7 @@ if __name__=="__main__":
     import matplotlib.pyplot as plt
     plt.ion()
 
-    with open('data/H3N2_NA_allyears_NA.20.metadata.csv') as date_file:
+    with open('data/H3N2_NA_allyears_NA.200.metadata.csv') as date_file:
         dates = {}
         for line in date_file:
             try:
@@ -286,11 +287,12 @@ if __name__=="__main__":
                 continue
 
     from Bio import Phylo
-    tree = Phylo.read("data/H3N2_NA_allyears_NA.20.nwk", 'newick')
+    tree = Phylo.read("data/H3N2_NA_allyears_NA.200.nwk", 'newick')
     tree.root_with_outgroup([n for n in tree.get_terminals()
-                              if n.name=='A/New_York/182/2000|CY001279|02/18/2000|USA|99_00|H3N2/1-1409'][0])
+                              if n.name=='A/Hong_Kong/JY2/1968|CY147440|1968|Hong_Kong||H3N2/8-1416'][0])
+#                              if n.name=='A/New_York/182/2000|CY001279|02/18/2000|USA|99_00|H3N2/1-1409'][0])
     myTree = ClockTree(gtr='Jukes-Cantor', tree = tree,
-                        aln = 'data/H3N2_NA_allyears_NA.20.fasta', verbose = 6, dates = dates)
+                        aln = 'data/H3N2_NA_allyears_NA.200.fasta', verbose = 6, dates = dates)
 
     myTree.optimize_seq_and_branch_len(prune_short=True)
     myTree.init_date_constraints()
@@ -309,7 +311,7 @@ if __name__=="__main__":
     for node in myTree.tree.find_clades():
         if (not node.is_terminal()):
             #print(node.branch_length_interpolator.peak_val)
-            print(node.date)
+            print(node.date, node.numdate, node.marginal_lh.x.shape)
             plt.plot(x, node.marginal_lh.prob_relative(x), '-')
             plt.plot(x, node.joint_lh.prob_relative(x), '--')
 #    plt.yscale('log')

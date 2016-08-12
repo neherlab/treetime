@@ -32,14 +32,24 @@ def _convolution_in_point(t_val,f, g,  n_integral = 100, inverse_time=None, retu
             return 0.0 #  functions do not overlap
     else:
         # create the tau-grid for the interpolation object in the overlap region
-        tau = np.linspace(tau_min, tau_max, n_integral)
+        # TODO: make clever grid
+
         # create the interpolation object on this grid
+        if inverse_time: # add negative logarithms
+            tau = np.unique(np.concatenate((g.x, t_val-f.x)))
+        else:
+            tau = np.unique(np.concatenate((g.x, f.x-t_val)))
+        tau = tau[(tau>=tau_min)&(tau<tau_max)]
+        if len(tau)<50:
+            tau = np.linspace(tau_min, tau_max, 50)
+
         if inverse_time: # add negative logarithms
             fg = f(t_val - tau) + g(tau)
         else:
             fg = f(t_val + tau) + g(tau)
 
-        FG = Distribution(tau, fg, is_log=True)
+        # TODO: break into segments: peak and tails
+        FG = Distribution(tau, fg, is_log=True, kind='linear')
         #integrate the interpolation object, return log, make neg_log
         res = -FG.integrate(a=FG.xmin, b=FG.xmax, n=n_integral, return_log=True)
 
@@ -87,7 +97,7 @@ class NodeInterpolator (Distribution):
                                                inverse_time = inverse_time)
         # TODO refine
 
-        res = cls(initial_times, res, is_log=True)
+        res = cls(initial_times, res, is_log=True, kind='linear')
         return res
 
 if __name__ == '__main__':

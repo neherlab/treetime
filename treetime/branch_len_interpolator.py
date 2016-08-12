@@ -57,7 +57,7 @@ class BranchLenInterpolator (Distribution):
                     for k in grid])
 
 
-        super(BranchLenInterpolator, self).__init__(grid, log_prob, is_log=True)
+        super(BranchLenInterpolator, self).__init__(grid, log_prob, is_log=True, kind='linear')
 
 
 
