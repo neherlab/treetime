@@ -275,9 +275,12 @@ class ClockTree(TreeAnc):
 
 if __name__=="__main__":
     import matplotlib.pyplot as plt
+    import seaborn as sns
     plt.ion()
-
-    with open('data/H3N2_NA_allyears_NA.200.metadata.csv') as date_file:
+    base_name = 'data/H3N2_NA_allyears_NA.20'
+    #root_name = 'A/Hong_Kong/JY2/1968|CY147440|1968|Hong_Kong||H3N2/8-1416'
+    root_name = 'A/New_York/182/2000|CY001279|02/18/2000|USA|99_00|H3N2/1-1409'
+    with open(base_name+'.metadata.csv') as date_file:
         dates = {}
         for line in date_file:
             try:
@@ -287,12 +290,10 @@ if __name__=="__main__":
                 continue
 
     from Bio import Phylo
-    tree = Phylo.read("data/H3N2_NA_allyears_NA.200.nwk", 'newick')
-    tree.root_with_outgroup([n for n in tree.get_terminals()
-                              if n.name=='A/Hong_Kong/JY2/1968|CY147440|1968|Hong_Kong||H3N2/8-1416'][0])
-#                              if n.name=='A/New_York/182/2000|CY001279|02/18/2000|USA|99_00|H3N2/1-1409'][0])
+    tree = Phylo.read(base_name + ".nwk", 'newick')
+    tree.root_with_outgroup([n for n in tree.get_terminals() if n.name==root_name][0])
     myTree = ClockTree(gtr='Jukes-Cantor', tree = tree,
-                        aln = 'data/H3N2_NA_allyears_NA.200.fasta', verbose = 6, dates = dates)
+                        aln = base_name+'.fasta', verbose = 6, dates = dates)
 
     myTree.optimize_seq_and_branch_len(prune_short=True)
     myTree.init_date_constraints()
@@ -306,13 +307,19 @@ if __name__=="__main__":
             plt.plot(x, node.branch_length_interpolator.prob(x))
     plt.yscale('log')
 
-    plt.figure()
+    fig, axs = plt.subplots(2,1, sharex=True, figsize=(8,12))
     x = np.linspace(0,0.2,1000)
-    for node in myTree.tree.find_clades():
+    Phylo.draw(tree, axes=axs[0])
+    offset = myTree.tree.root.time_before_present + myTree.tree.root.branch_length
+    cols = sns.color_palette()
+    for ni,node in enumerate(myTree.tree.find_clades()):
         if (not node.is_terminal()):
             #print(node.branch_length_interpolator.peak_val)
             print(node.date, node.numdate, node.marginal_lh.x.shape)
-            plt.plot(x, node.marginal_lh.prob_relative(x), '-')
-            plt.plot(x, node.joint_lh.prob_relative(x), '--')
-#    plt.yscale('log')
+            axs[1].plot(offset-x, node.marginal_lh.prob_relative(x), '-', c=cols[ni%len(cols)])
+            axs[1].plot(offset-x, node.joint_lh.prob_relative(x), '--', c=cols[ni%len(cols)])
+    axs[1].set_yscale('log')
+    axs[1].set_ylim([0.0001,1])
+    axs[0].set_xlabel('')
+    plt.tight_layout()
 
