@@ -301,23 +301,33 @@ if __name__=="__main__":
 
     plt.figure()
     x = np.linspace(0,0.05,100)
-    for node in myTree.tree.find_clades():
+    leaf_count=0
+    for node in myTree.tree.find_clades(order='postorder'):
         if node.up is not None:
             print(node.branch_length_interpolator.peak_val, node.mutations)
             plt.plot(x, node.branch_length_interpolator.prob(x))
+        if node.is_terminal():
+            leaf_count+=1
+            node.ypos = leaf_count
+        else:
+            node.ypos = np.mean([c.ypos for c in node.clades])
     plt.yscale('log')
 
     fig, axs = plt.subplots(2,1, sharex=True, figsize=(8,12))
     x = np.linspace(0,0.2,1000)
-    Phylo.draw(tree, axes=axs[0])
+    Phylo.draw(tree, axes=axs[0], show_confidence=False)
     offset = myTree.tree.root.time_before_present + myTree.tree.root.branch_length
     cols = sns.color_palette()
+    depth = myTree.tree.depths()
     for ni,node in enumerate(myTree.tree.find_clades()):
         if (not node.is_terminal()):
             #print(node.branch_length_interpolator.peak_val)
             print(node.date, node.numdate, node.marginal_lh.x.shape)
             axs[1].plot(offset-x, node.marginal_lh.prob_relative(x), '-', c=cols[ni%len(cols)])
             axs[1].plot(offset-x, node.joint_lh.prob_relative(x), '--', c=cols[ni%len(cols)])
+        if node.up is not None:
+            x_branch = np.linspace(depth[node]-2*node.branch_length-0.005,depth[node],100)
+            axs[0].plot(x_branch, node.ypos - 0.7*node.branch_length_interpolator.prob_relative(depth[node]-x_branch), '-', c=cols[ni%len(cols)])
     axs[1].set_yscale('log')
     axs[1].set_ylim([0.0001,1])
     axs[0].set_xlabel('')
