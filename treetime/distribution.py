@@ -28,18 +28,15 @@ class Distribution(object):
         elif isinstance(distribution, Distribution):
             # Distribution always stores log-prob
             xvals = distribution._func.x
-            real_prob = distribution.prob(xvals)
-
+            real_prob = distribution.prob_relative(xvals)
         else:
             raise TypeError("Error in computing the FWHM for the distribution. "
                 " The input should be either Distribution or interpolation object");
 
-        x_idxs = binary_dilation(real_prob > (real_prob.max() - real_prob.min()) / 2)
-        print (x_idxs)
-        print (real_prob)
+        x_idxs = binary_dilation(real_prob > 0.5*(real_prob.max() - real_prob.min()), iterations=1)
         xs = xvals[x_idxs]
         if xs.shape[0] < 2:
-            print ("Mot enough points to compute FWHM: returning zero")
+            print ("Not enough points to compute FWHM: returning zero")
             return 0.
         else:
             return xs.max() - xs.min()
@@ -61,10 +58,11 @@ class Distribution(object):
 
     @staticmethod
     def multiply(dists):
-
+        '''
+        multiplies a list of Distribution objects
+        '''
         if  not all([isinstance(k, Distribution) for k in dists]):
-            raise NotImplementedError("Can only multiply distributions or "
-                "scale it  by multiplying with float number")
+            raise NotImplementedError("Can only multiply Distribution objects")
 
         n_delta = np.sum([k.is_delta for k in dists])
         if n_delta>1:
@@ -75,25 +73,23 @@ class Distribution(object):
             new_xpos = delta_dist.peak_pos
             new_weight  = np.prod([k.prob(new_xpos) for k in dists if k!=delta_dist] * delta_dist.weight)
             res = Distribution.delta_function(new_xpos, weight = new_weight)
-            return res
-
         else:
             new_xmin = np.max([k.xmin for k in dists])
             new_xmax = np.min([k.xmax for k in dists])
-            #TODO
             x_vals = np.unique(np.concatenate([k.x for k in dists]))
             x_vals = x_vals[(x_vals>=new_xmin)&(x_vals<=new_xmax)]
             if x_vals.shape[0] == 0:
                 print ("ERROR in distribution multiplication: Distributions do not overlap")
                 x_vals = [0,1]
                 y_vals = [BIG_NUMBER,BIG_NUMBER]
-                return Distribution(x_vals, y_vals, is_log=True, kind='linear')
+                res = Distribution(x_vals, y_vals, is_log=True, kind='linear')
             elif x_vals.shape[0] == 1:
-                return Distribution.delta_function(x_vals[0])
+                res = Distribution.delta_function(x_vals[0])
             else:
                 y_vals = np.sum([k.__call__(x_vals) for k in dists], axis=0)
                 res = Distribution(x_vals, y_vals, is_log=True, kind='linear')
-                return res
+
+        return res
 
 
     def __init__(self, x, y, is_log=True, kind='linear'):
@@ -149,6 +145,10 @@ class Distribution(object):
         return self._delta
 
     @property
+    def kind(self):
+        return self._kind
+
+    @property
     def peak_val(self):
         return self._peak_val
 
@@ -195,13 +195,13 @@ class Distribution(object):
 
         if isinstance(x, Iterable):
             valid_idxs = (x >= self._xmin) & (x <= self._xmax)
-            res = np.ones_like (x, dtype=float) * BIG_NUMBER
+            res = np.ones_like (x, dtype=float) * (BIG_NUMBER+self.peak_val)
             res[valid_idxs] = self._peak_val + self._func(x[valid_idxs])
             return res
 
         elif np.isreal(x):
             if x < self._xmin or x > self._xmax:
-                return BIG_NUMBER
+                return BIG_NUMBER+self.peak_val
             # x is within interpolation range
             elif self._delta == True:
                 return self._peak_val
@@ -222,6 +222,8 @@ class Distribution(object):
     def prob(self,x):
         return np.exp(-1 * self.__call__(x))
 
+    def prob_relative(self,x):
+        return np.exp(-1 * (self.__call__(x)-self.peak_val))
 
     def x_rescale(self, factor):
         self.func.x*=factor

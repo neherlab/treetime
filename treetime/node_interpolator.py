@@ -1,3 +1,4 @@
+import numpy as np
 from distribution import Distribution
 
 import numpy  as np
@@ -6,6 +7,7 @@ class NodeInterpolator (Distribution):
     @classmethod
     def convolve(cls, node_interp, branch_interp, n_integral=100, inverse_time=True):
         # create coarse grid (5 points)
+        import ipdb; ipdb.set_trace()
         joint_fwhm  = 0.5 * (node_interp.fwhm+ branch_interp.fwhm)
         new_peak_pos = node_interp.peak_pos + branch_interp.peak_pos
         initial_times = np.unique([2 * branch_interp.xmin,

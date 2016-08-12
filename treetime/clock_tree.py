@@ -1,19 +1,32 @@
 import utils
-
+import numpy as np
 import config as ttconf
 from treeanc import TreeAnc
 from distribution import Distribution
+from branch_len_interpolator import BranchLenInterpolator
+from node_interpolator import NodeInterpolator
+
 
 class ClockTree(TreeAnc):
     """
     Class to produce molecular clock trees.
     """
 
-    def __init__(self, *args,**kwargs):
-        super(TreeTime, self).__init__(*args, **kwargs)
+    def __init__(self,  dates=None,*args, **kwargs):
+        super(ClockTree, self).__init__(*args, **kwargs)
+        if dates is None:
+            raise("ClockTree requires date contraints!")
+        self.date_dict = dates
         self.date2dist = None  # we do not know anything about the conversion
         self.max_diam = 0.0
         self.debug=False
+
+        for node in self.tree.find_clades():
+            if node.name in self.date_dict:
+                node.numdate_given = self.date_dict[node.name]
+            else:
+                node.numdate_given = None
+
 
     @property
     def date2dist(self):
@@ -28,7 +41,7 @@ class ClockTree(TreeAnc):
             self.logger("TreeTime.date2dist: Setting new date to branchlength conversion. slope=%f, R2=%.4f"%(val.slope, val.r_val), 2)
             self._date2dist = val
 
-        def init_date_constraints(self, slope=None, **kwarks):
+    def init_date_constraints(self, ancestral_inference=True, slope=None, **kwarks):
         """
         Get the conversion coefficients between the dates and the branch
         lengths as they are used in ML computations. The conversion formula is
@@ -39,136 +52,22 @@ class ClockTree(TreeAnc):
         Note: that tree must have dates set to all nodes before calling this
         function. (This is accomplished by calling load_dates func).
         """
-        self.logger("TreeTime.init_date_constraints...",2)
-        self.date2dist = utils.DateConversion.from_tree(self.tree, slope)
-        self.max_diam = self.date2dist.intercept
+        self.logger("ClockTree.init_date_constraints...",2)
+
+        if ancestral_inference or (not hasattr(self.tree.root, 'sequence')):
+            self.optimize_seq_and_branch_len(**kwarks)
 
         # set the None  for the date-related attributes in the internal nodes.
         # make interpolation objects for the branches
-        self._ml_t_init(**kwarks)
-
-    def _make_branch_len_interpolator(self, node, n=ttconf.BRANCH_GRID_SIZE, ignore_gaps=False):
-        """
-        Makes an interpolation object for probability of branch length. Builds
-        an adaptive grid with n points, fine around the optimal branch length,
-        and more sparse at the tails. This method does **not**  require the
-        branch length to be at their optimal value, as it computes the optimal
-        length itself. The method, however **requires** the knowledge of the
-        sequences and/or sequence profiles for the node and its parent in order
-        to compute distance probability in the scope of the GTR models
-
-        Args:
-         - node(Phylo.Clade): tree node. The probability distribution of the branch
-           length from the node to its parent will be computed
-
-         - n(int): number of points in the branch length grid.
-
-        Returns:
-         - None. The node gets new attribute - the linear interpolation object
-           of the branch length probability distribution.
-
-        """
-        # no need to optimize the root branch length
-
-        if node.up is None:
-            node.branch_neg_log_prob = None
-            return None
-
-        if not hasattr(node, 'gamma'):
-            node.gamma = 1.0
-
-        if not hasattr(node, 'merger_rate') or node.merger_rate is None:
-            node.merger_rate = ttconf.BRANCH_LEN_PENALTY
-
-        # optimal branch length
-        mutation_length = node.mutation_length
-
-        if mutation_length < np.min((1e-5, 0.1*self.one_mutation)): # zero-length
-            grid = ttconf.MAX_BRANCH_LENGTH * (np.linspace(0, 1.0 , n)**2)
-
-        else: # branch length is not zero
-
-            sigma = mutation_length #np.max([self.average_branch_len, mutation_length])
-            # from zero to optimal branch length
-            grid_left = mutation_length * (1 - np.linspace(1, 0.0, n/3)**2.0)
-            # from optimal branch length to the right (--> 3*branch lengths),
-            grid_right = mutation_length + (3*sigma*(np.linspace(0, 1, n/3)**2))
-            # far to the right (3*branch length ---> MAX_LEN), very sparse
-            far_grid = grid_right.max() + ttconf.MAX_BRANCH_LENGTH*np.linspace(0, 1, n/3)**2
-
-            grid = np.concatenate((grid_left,grid_right[1:],far_grid[1:])
-            grid.sort() # just for safety
-
-
-        if not hasattr(node, 'compressed_sequence'):
-            seq_pairs, multiplicity = self.gtr.compress_sequence_pair(node.up.sequence,
-                                                                      node.sequence,
-                                                                      ignore_gaps = self.ignore_gaps)
-            node.compressed_sequence = {'pair':seq_pairs, 'multiplicity':multiplicity}
-
-        log_prob = np.array([-self.gtr.prob_t_compressed(node.compressed_sequence['pair'],
-                                                node.compressed_sequence['multiplicity'],
-                                                k,
-                                                return_log=True)
-                    for k in grid])
-
-        node.raw_branch_neg_log_prob = Distribution(grid, log_prob, is_log=True, kind='linear')
-
-        # add merger rate contribution to the raw branch length
-        log_prob += node.merger_rate * np.minimum(ttconf.MAX_BRANCH_LENGTH, np.maximum(0,grid))
-        node.branch_neg_log_prob = Distribution(grid, log_prob, is_log=True, kind='linear')
-
-        # node gets new attribute
-        return None
-
-    def _update_branch_len_interpolators(self):
-        """
-        reassign interpolator object for branch length after changing the merger_rate
-        """
-
-        for node in self.tree.find_clades():
-           if node.up is None:
-               continue
-           # make sure to copy raw_branch_neg_log_prob.y -> otherwise only referenced and modified
-           grid,y = node.raw_branch_neg_log_prob.x, np.array(node.raw_branch_neg_log_prob.y)
-           y += node.merger_rate * np.minimum(ttconf.MAX_BRANCH_LENGTH, np.maximum(0,grid))
-           node.branch_neg_log_prob = Distribution(grid, y, is_log=True, kind='linear')
-
-    def _ml_t_init(self,ancestral_inference=True, **kwarks):
-        """
-        Initialize the attributes in all tree nodes that are required
-        by the ML algorithm to compute the probablility distribution of the node
-        locations. These attributes include the distance from the node postions
-        to the present (in branch length units), branch length interpolation
-        objects, and the probability distributions for the nodes which have the
-        date-time information (these are going to be delta-functions), and
-        set the sequence profiles in the eigenspace of the GTR matrix.
-
-        """
-
-
-        tree = self.tree
-
-        if ttconf.BRANCH_LEN_PENALTY is None:
-            ttconf.BRANCH_LEN_PENALTY = 0.0
-
-        if ancestral_inference:
-            self.optimize_seq_and_branch_len(**kwarks)
-
         print('\n----- Initializing branch length interpolation objects...\n')
-        if self.date2dist is None:
-            print ("error - no date to dist conversion set. "
-                "Run init_date_constraints and try once more.")
-            return
+        for node in self.tree.find_clades():
+            node.branch_length_interpolator = BranchLenInterpolator(node, self.gtr, one_mutation=self.one_mutation)
 
-        for node in tree.find_clades():
+        self.date2dist = utils.DateConversion.from_tree(self.tree, slope)
+        self.max_diam = self.date2dist.intercept
 
-            if not hasattr(node, 'merger_rate'):
-                node.merger_rate=ttconf.BRANCH_LEN_PENALTY
-
-            # make interpolation object for branch lengths
-            self._make_branch_len_interpolator(node, n=ttconf.BRANCH_GRID_SIZE)
-
+        # make node distribution objects
+        for node in self.tree.find_clades():
             # node is constrained
             if hasattr(node, 'numdate_given') and node.numdate_given is not None:
                 if hasattr(node, 'bad_branch') and node.bad_branch==True:
@@ -181,7 +80,7 @@ class ClockTree(TreeAnc):
                 else:
                     # set the absolute time before present in branch length units
                     node.abs_t = (utils.numeric_date() - node.numdate_given) * abs(self.date2dist.slope)
-                    node.msg_to_parent = Distribution.delta_function(node.abs_t, weight=1)
+                    node.msg_to_parent = NodeInterpolator.delta_function(node.abs_t, weight=1)
 
             else: # node without sampling date set
                 node.numdate_given = None
@@ -216,102 +115,31 @@ class ClockTree(TreeAnc):
             """
             Calc the desired LH distribution of the parent
             """
-
             if node.msg_to_parent.is_delta:
-                res = Distribution.shifted_x(node.branch_neg_log_prob, node.msg_to_parent.peak_pos)
-
+                res = Distribution.shifted_x(node.branch_length_interpolator, node.msg_to_parent.peak_pos)
             else: # convolve two distributions
-                target_grid =  self._conv_grid(node.msg_to_parent, node.branch_neg_log_prob,
-                    base_s=node.msg_to_parent_sigma, prop_s=node.branch_len_sigma, inverse_time=True)
-                    #self._conv_grid(node)
-                res = self._convolve(target_grid, node.msg_to_parent, node.branch_neg_log_prob, inverse_time=True)
+                res =  NodeInterpolator.convolve(node.msg_to_parent, node.branch_length_interpolator)
+                # TODO deal with grid size explosion
             return res
 
-        print("Maximum likelihood tree optimization with temporal constraints:"
-            " Propagating leaves -> root...")
-
-
+        self.logger("ClockTree: Maximum likelihood tree optimization with temporal constraints:",1)
+        self.logger("ClockTree: Propagating leaves -> root...", 2)
         # go through the nodes from leaves towards the root:
         for node in self.tree.find_clades(order='postorder'):  # children first, msg to parents
-
             if node.is_terminal():
                 node.msgs_from_leaves = {}
-                continue # either have constraints, or will be optimized freely on the way back
-
-            # save all messages from the children nodes with constraints
-            # store as dictionary to exclude nodes from the set when necessary
-            # (see below)
-            node.msgs_from_leaves = {clade: _send_message(clade) for clade in node.clades
-                                            if clade.msg_to_parent is not None}
-
-
-            if len(node.msgs_from_leaves) < 1:  # we need at least one constraint
-                continue
-
-            # this is what the node sends to the parent
-            #node_grid = self._make_node_grid(node)
-            node.msg_to_parent = np.prod(node.msgs_from_leaves.values())
-
-
-    def _convolve(self, time, f_func, g_func, inverse_time=None, n_integral=100):
-
-        """
-        Compute convolution of the functions f, g:= backwards and forward in time:
-        if inverse_time is False, then the function computes  the proper convolution:
-            F(t) = (f*g) = integral {f(t-tau) g(tau) d_tau}.
-        Otherwise, the result  is the "adapted" convolution to account the backwards message passing:
-            F(t) = integral {f(t+tau) g(tau) d_tau}.
-        """
-        if inverse_time is None:
-            raise RunTimeError("temporal direction of convolution not specified")
-
-        tau = g_func.x
-        res = np.ones_like (time) * ttconf.BIG_NUMBER
-        for t_idx, t_val in enumerate(time):
-
-            if inverse_time:
-                F = Distribution(t_val - tau, f_func.y)
             else:
-                F = Distribution(t_val + tau, f_func.y)
+                # save all messages from the children nodes with constraints
+                # store as dictionary to exclude nodes from the set when necessary
+                # (see below)
+                node.msgs_from_leaves = {clade: _send_message(clade) for clade in node.clades
+                                                if clade.msg_to_parent is not None}
 
-            FG = F * g_func
-            res[t_idx] = FG.integrate(FG.xmin, FG.xmax, n_integral)
+                if len(node.msgs_from_leaves) < 1:  # we need at least one constraint
+                    continue
+                # this is what the node sends to the parent
+                node.msg_to_parent = NodeInterpolator.multiply(node.msgs_from_leaves.values())
 
-        res = Distribution(time, res, is_log=False, kind=f_func.kind)
-
-        return res
-
-    def _conv_grid(self, base_dist, propagator, base_s=None, prop_s=None,
-                    inverse_time=None, sigma_factor=4, n_points=600, **kwargs):
-        """
-        Make the grid for the two convolving functions
-        # NOTE! n_points largely defines the smoothness of the final distribution
-        """
-        if inverse_time is None:
-            raise RunTimeError("temporal direction of convolution not specified")
-
-        ##  compute the width of the message from parent
-        if base_s is None:
-            base_s = _Descriptor_Distribution._logprob_sigma(base_dist)
-        if prop_s is None:
-            prop_s = _Descriptor_Distribution._logprob_sigma(propagator)
-
-        # FIXME not min of the dist, but average (especially for two zero-max dists)
-        T0_base  = utils.min_interp(base_dist)
-        T0_prop = utils.min_interp(propagator)
-
-        # rough estimate for the convolution maximum (max overlap of the distributions)
-        if inverse_time: # we move towards the root, but the time values (years before present) increase
-            T0 = T0_base + T0_prop
-        else: # we move towards leaves (years before present decrease)
-            T0 = T0_base - T0_prop
-
-        # rough estimate for the convolution width (sum of dists widths)
-        T_sigma = sigma_factor * (base_s + prop_s)
-
-        # TODO sometimes, the distribution is "cut" from one side,
-        # we do not need the symmetric grid in this case
-        return self._make_grid(T0, T_sigma, n_points)
 
 
     def _make_node_grid(self, node, sigma_factor=6, n_points=300, cutoff=1e7, **kwargs):
@@ -596,3 +424,44 @@ class ClockTree(TreeAnc):
         except:
             # this is the approximation
             node.date = str(year) + "-" + str( int(days / 30)) + "-" + str(int(days % 30))
+
+
+if __name__=="__main__":
+    import matplotlib.pyplot as plt
+    plt.ion()
+
+    with open('data/H3N2_NA_allyears_NA.20.metadata.csv') as date_file:
+        dates = {}
+        for line in date_file:
+            try:
+                name, date = line.strip().split(',')
+                dates[name] = float(date)
+            except:
+                continue
+
+    from Bio import Phylo
+    tree = Phylo.read("data/H3N2_NA_allyears_NA.20.nwk", 'newick')
+    tree.root_with_outgroup([n for n in tree.get_terminals()
+                              if n.name=='A/New_York/182/2000|CY001279|02/18/2000|USA|99_00|H3N2/1-1409'][0])
+    myTree = ClockTree(gtr='Jukes-Cantor', tree = tree,
+                        aln = 'data/H3N2_NA_allyears_NA.20.fasta', verbose = 6, dates = dates)
+
+    myTree.init_date_constraints()
+    myTree._ml_t_leaves_root()
+
+    plt.figure()
+    x = np.linspace(0,0.05,100)
+    for node in myTree.tree.find_clades():
+        if node.up is not None:
+            print(node.branch_length_interpolator.peak_val, node.mutations)
+            plt.plot(x, node.branch_length_interpolator.prob(x))
+    plt.yscale('log')
+
+    plt.figure()
+    x = np.linspace(0,0.2,100)
+    for node in myTree.tree.find_clades():
+        if node.up is not None:
+            print(node.branch_length_interpolator.peak_val, node.mutations)
+            plt.plot(x, node.msg_to_parent.prob_relative(x))
+    #plt.yscale('log')
+

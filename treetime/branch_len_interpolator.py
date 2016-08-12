@@ -1,3 +1,5 @@
+import numpy as np
+import config as ttconf
 from distribution import Distribution
 
 class BranchLenInterpolator (Distribution):
@@ -5,7 +7,7 @@ class BranchLenInterpolator (Distribution):
     """
     """
 
-    def __init__(self, node):
+    def __init__(self, node, gtr, one_mutation = None):
         """
         @brief      { constructor_description }
 
@@ -14,35 +16,33 @@ class BranchLenInterpolator (Distribution):
 
         """
         self.node = node
+        self.gtr = gtr
         if node.up is None:
             node.branch_neg_log_prob = None
             return None
 
-        if not hasattr(node, 'gamma'):
-            self.gamma = 1.0
+        self._gamma = 1.0
 
-        if not hasattr(node, 'merger_rate') or node.merger_rate is None:
-            self.merger_rate = ttconf.BRANCH_LEN_PENALTY
-
+        self._merger_rate = ttconf.BRANCH_LEN_PENALTY
+        if one_mutation is None:
+            one_mutation = 1.0/node.sequence.shape[0]
         # optimal branch length
         mutation_length = node.mutation_length
-
-        if mutation_length < np.min((1e-5, 0.1*self.one_mutation)): # zero-length
-            grid = ttconf.MAX_BRANCH_LENGTH * (np.linspace(0, 1.0 , n)**2)
+        n_grid_points = ttconf.BRANCH_GRID_SIZE
+        if mutation_length < np.min((1e-5, 0.1*one_mutation)): # zero-length
+            grid = ttconf.MAX_BRANCH_LENGTH * (np.linspace(0, 1.0 , n_grid_points)**2)
 
         else: # branch length is not zero
-
             sigma = mutation_length #np.max([self.average_branch_len, mutation_length])
             # from zero to optimal branch length
-            grid_left = mutation_length * (1 - np.linspace(1, 0.0, n/3)**2.0)
+            grid_left = mutation_length * (1 - np.linspace(1, 0.0, n_grid_points/3)**2.0)
             # from optimal branch length to the right (--> 3*branch lengths),
-            grid_right = mutation_length + (3*sigma*(np.linspace(0, 1, n/3)**2))
+            grid_right = mutation_length + (3*sigma*(np.linspace(0, 1, n_grid_points/3)**2))
             # far to the right (3*branch length ---> MAX_LEN), very sparse
-            far_grid = grid_right.max() + ttconf.MAX_BRANCH_LENGTH*np.linspace(0, 1, n/3)**2
+            far_grid = grid_right.max() + ttconf.MAX_BRANCH_LENGTH*np.linspace(0, 1, n_grid_points/3)**2
 
-            grid = np.concatenate((grid_left,grid_right[1:],far_grid[1:])
+            grid = np.concatenate((grid_left,grid_right[1:],far_grid[1:]))
             grid.sort() # just for safety
-
 
         if not hasattr(node, 'compressed_sequence'):
             seq_pairs, multiplicity = self.gtr.compress_sequence_pair(node.up.sequence,
@@ -57,32 +57,31 @@ class BranchLenInterpolator (Distribution):
                     for k in grid])
 
 
-        super(BranchLenInterpolator, self).__init__(grid, log_prob)
+        super(BranchLenInterpolator, self).__init__(grid, log_prob, is_log=True)
+
 
     @property
     def gamma(self):
-        if hasattr(self.node, 'gamma'):
-           return self.node.gamma
-        else:
-           return 1.0
+       return self._gamma
 
     @gamma.setter
     def gamma(self, value):
-        # rescale the interpolator
-        #
-        #
+        self._gamma = value
+
+    @property
+    def merger_rate(self):
+       return self._merger_rate
+
+    @merger_rate.setter
+    def merger_rate(self, value):
+        self._gamma = value
 
     def __call__(self, x):
         res = self.merger_rate*x
-        res += super.__call__(x/self.gamma)
+        res += super(BranchLenInterpolator, self).__call__(x/self.gamma)
+        return res
 
     def __mul__(self, other):
-
         res = BranchLenInterpolator(super(BranchLenInterpolator, self).__mul__(other))
-
-
-
-
-
 
 
