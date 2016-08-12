@@ -1,3 +1,8 @@
+import utils
+
+import config as ttconf
+from treeanc import TreeAnc
+from distribution import Distribution
 
 class ClockTree(TreeAnc):
     """
@@ -87,57 +92,31 @@ class ClockTree(TreeAnc):
             # from zero to optimal branch length
             grid_left = mutation_length * (1 - np.linspace(1, 0.0, n/3)**2.0)
             # from optimal branch length to the right (--> 3*branch lengths),
-            grid_right = mutation_length + 1e-3 * self.one_mutation + (3*sigma*(np.linspace(0, 1, n/3)**2))
+            grid_right = mutation_length + (3*sigma*(np.linspace(0, 1, n/3)**2))
             # far to the right (3*branch length ---> MAX_LEN), very sparse
-            far_grid = grid_right.max() + mutation_length/2 + ttconf.MAX_BRANCH_LENGTH*np.linspace(0, 1, n/3)**2
+            far_grid = grid_right.max() + ttconf.MAX_BRANCH_LENGTH*np.linspace(0, 1, n/3)**2
 
-            grid = np.concatenate((grid_left,grid_right,far_grid))
+            grid = np.concatenate((grid_left,grid_right[1:],far_grid[1:])
             grid.sort() # just for safety
 
 
-        if hasattr(node, 'compressed_sequence'):
-            log_prob = np.array([-self.gtr.prob_t_compressed(node.compressed_sequence['pair'],
+        if not hasattr(node, 'compressed_sequence'):
+            seq_pairs, multiplicity = self.gtr.compress_sequence_pair(node.up.sequence,
+                                                                      node.sequence,
+                                                                      ignore_gaps = self.ignore_gaps)
+            node.compressed_sequence = {'pair':seq_pairs, 'multiplicity':multiplicity}
+
+        log_prob = np.array([-self.gtr.prob_t_compressed(node.compressed_sequence['pair'],
                                                 node.compressed_sequence['multiplicity'],
                                                 k,
                                                 return_log=True)
                     for k in grid])
-        else:
-            log_prob = np.array([-self.gtr.prob_t(node.sequence,
-                                     node.up.sequence,
-                                     k,
-                                     return_log=True,
-                                     ignore_gaps=self.ignore_gaps)
-                    for k in grid])
 
-        log_prob [np.isnan(log_prob)] = ttconf.BIG_NUMBER
-        tmp_log_prob = np.exp(-log_prob)
-        integral = self._integral(grid, tmp_log_prob)
-
-        # save raw branch length interpolators without coalescent contribution
-        # TODO: better criterion to catch bad branch
-        if integral < 1e-200:
-            print ("!!WARNING!!", node.name, " branch length probability distribution",
-                "integral is ZERO. Setting bad_branch flag...")
-            node.bad_branch = True
-            node.raw_branch_neg_log_prob = Distribution(grid, log_prob, is_log=True, kind='linear')
-
-        else:
-            node.raw_branch_neg_log_prob = Distribution(grid, log_prob+np.log(integral), is_log=True, kind='linear')
+        node.raw_branch_neg_log_prob = Distribution(grid, log_prob, is_log=True, kind='linear')
 
         # add merger rate contribution to the raw branch length
         log_prob += node.merger_rate * np.minimum(ttconf.MAX_BRANCH_LENGTH, np.maximum(0,grid))
-
-        tmp_log_prob = np.exp(-log_prob)
-        integral = self._integral(grid, tmp_log_prob)
-
-        if integral < 1e-200:
-            print ("!!WARNING!! Node branch length probability distribution "
-                "integral is ZERO. Setting bad_branch flag...")
-            node.bad_branch = True
-            node.branch_neg_log_prob = Distribution(grid, log_prob, is_log=True, kind='linear')
-
-        else:
-            node.branch_neg_log_prob = Distribution(grid, log_prob+np.log(integral), is_log=True, kind='linear')
+        node.branch_neg_log_prob = Distribution(grid, log_prob, is_log=True, kind='linear')
 
         # node gets new attribute
         return None
@@ -152,11 +131,9 @@ class ClockTree(TreeAnc):
                continue
            # make sure to copy raw_branch_neg_log_prob.y -> otherwise only referenced and modified
            grid,y = node.raw_branch_neg_log_prob.x, np.array(node.raw_branch_neg_log_prob.y)
-           y+=node.merger_rate * np.minimum(ttconf.MAX_BRANCH_LENGTH, np.maximum(0,grid))
-           dt = np.diff(grid)
-           tmp_prob = np.exp(-y)
-           integral = np.sum(0.5*(tmp_prob[1:]+tmp_prob[:-1])*dt)
-           node.branch_neg_log_prob = Distribution(grid, y + np.log(integral), is_log=True, kind='linear')
+           y += node.merger_rate * np.minimum(ttconf.MAX_BRANCH_LENGTH, np.maximum(0,grid))
+           node.branch_neg_log_prob = Distribution(grid, y, is_log=True, kind='linear')
+
     def _ml_t_init(self,ancestral_inference=True, **kwarks):
         """
         Initialize the attributes in all tree nodes that are required
@@ -191,10 +168,6 @@ class ClockTree(TreeAnc):
 
             # make interpolation object for branch lengths
             self._make_branch_len_interpolator(node, n=ttconf.BRANCH_GRID_SIZE)
-            # set the profiles in the eigenspace of the GTR matrix
-            # in the following, we only use the prf_l and prf_r (left and right
-            # profiles in the matrix eigenspace)
-            self._set_rotated_profiles(node)
 
             # node is constrained
             if hasattr(node, 'numdate_given') and node.numdate_given is not None:
@@ -203,31 +176,19 @@ class ClockTree(TreeAnc):
                         " Will be optimized freely")
                     node.numdate_given = None
                     node.abs_t = None
-                    #    if there are no constraints - log_prob will be set on-the-fly
+                    # if there are no constraints - log_prob will be set on-the-fly
                     node.msg_to_parent = None
                 else:
-
-                    # set the absolute time in branch length units
-                    # the abs_t zero is today, and the direction is to the past
-
-                    # this is the conversion between the branch-len and the years
+                    # set the absolute time before present in branch length units
                     node.abs_t = (utils.numeric_date() - node.numdate_given) * abs(self.date2dist.slope)
-                    node.msg_to_parent = Distribution.delta_function(node.abs_t, normalized=False)
+                    node.msg_to_parent = Distribution.delta_function(node.abs_t, weight=1)
 
-            # unconstrained node
-            else:
+            else: # node without sampling date set
                 node.numdate_given = None
                 node.abs_t = None
                 # if there are no constraints - log_prob will be set on-the-fly
                 node.msg_to_parent = None
 
-    def _integral(self, x, y):
-        """
-        compute the integral of y(x) value over all range of x
-        """
-        dx = np.diff(x)
-        res = (0.5*(y[1:]+y[:-1])*dx).sum()
-        return res
 
     def _ml_t_leaves_root(self):
         """
@@ -288,11 +249,11 @@ class ClockTree(TreeAnc):
                 continue
 
             # this is what the node sends to the parent
-            node_grid = self._make_node_grid(node)
-            node.msg_to_parent = self._multiply_dists(node.msgs_from_leaves.values(), node_grid)
+            #node_grid = self._make_node_grid(node)
+            node.msg_to_parent = np.prod(node.msgs_from_leaves.values())
 
 
-    def _convolve(self, time, f_func, g_func, inverse_time=None, cutoff=1e7, n_integral=100):
+    def _convolve(self, time, f_func, g_func, inverse_time=None, n_integral=100):
 
         """
         Compute convolution of the functions f, g:= backwards and forward in time:
@@ -305,59 +266,19 @@ class ClockTree(TreeAnc):
             raise RunTimeError("temporal direction of convolution not specified")
 
         tau = g_func.x
+        res = np.ones_like (time) * ttconf.BIG_NUMBER
         for t_idx, t_val in enumerate(time):
-            F = Distribution(t_val - tau, f_func.y)
+
+            if inverse_time:
+                F = Distribution(t_val - tau, f_func.y)
+            else:
+                F = Distribution(t_val + tau, f_func.y)
+
             FG = F * g_func
-            res[t_idx] = FG.integrate(tau.min(), tau.max(), n_integral)
+            res[t_idx] = FG.integrate(FG.xmin, FG.xmax, n_integral)
 
-        # get the support ranges for the raw functions
-        #include first points below the cutoff to have at least three points in the integration region
-        frange = binary_dilation((f_func.y - f_func.y.min()) < cutoff)
-        grange = binary_dilation((g_func.y - g_func.y.min()) < cutoff)
-        # nothing to convolve, one of the distribution is flat zero
-        if (frange.sum() == 0 or grange.sum() == 0):
-            # we lost the probability
-            # NOTE binary_dilation does not extend the False array
-            print ("Function F values: \n" + "\t".join(map(str,f.y)) + "\n")
-            print ("Function G values: \n" + "\t".join(map(str,g.y)) + "\n")
-            raise ArithmeticError("Cannot convolve functions. At least one of the "
-                                  "probability distributions has been lost!")
-        fx_min = f_func.x[frange].min()
-        fx_max = f_func.x[frange].max()
-        gx_min = g_func.x[grange].min()
-        gx_max = g_func.x[grange].max()
+        res = Distribution(time, res, is_log=False, kind=f_func.kind)
 
-        res = np.ones(time.shape[0]) * 1e8
-
-        for idx, ti in enumerate(time):
-            if inverse_time:
-                tau_min = np.max((ti-fx_max, gx_min))
-                tau_max = np.min((ti-fx_min, gx_max))
-            else:
-                tau_min = np.max((fx_min - ti, gx_min))
-                tau_max = np.min((fx_max - ti, gx_max))
-            if (tau_min > tau_max):
-                # functions not overlap
-                continue
-
-            dtau = np.min((self.one_mutation, (tau_max - tau_min) / n_integral))
-
-            tau = np.arange(tau_min, tau_max, dtau)
-
-            if inverse_time:
-                fg = f_func(ti-tau) + g_func(tau) # f,g - log probabilities
-            else:
-                fg = f_func(ti+tau) + g_func(tau)
-
-            min_fg = fg.min() # exponent pre-factor
-            expfg = np.exp(-1*(fg-min_fg))
-
-            integral = (0.5*(expfg[1:]+expfg[:-1])*dtau).sum()
-            res[idx] = -np.log(integral) + min_fg
-
-        res[-1] = 1e8
-        res[-2] = 1e8
-        res = interp1d(time, res, kind='linear')
         return res
 
     def _conv_grid(self, base_dist, propagator, base_s=None, prop_s=None,
@@ -484,14 +405,6 @@ class ClockTree(TreeAnc):
              [ttconf.MAX_T])))
 
         return grid
-
-    def _multiply_dists(self, dists, grid):
-
-        res = np.sum((k(grid) for k in dists))
-        res[((0,-1),)] = -1 * ttconf.MIN_LOG
-        res[((1,-2),)] = -1 * ttconf.MIN_LOG / 2
-        interp = interp1d(grid, res, kind='linear')
-        return interp
 
     def _ml_t_root_leaves(self):
         """

@@ -4,6 +4,7 @@ from scipy.interpolate import interp1d
 from config import WIDTH_DELTA, BIG_NUMBER, MIN_LOG
 from collections import Iterable
 from copy import deepcopy as make_copy
+from scipy.ndimage import binary_dilation
 
 class Distribution(object):
     """docstring for Distribution"""
@@ -33,8 +34,15 @@ class Distribution(object):
             raise TypeError("Error in computing the FWHM for the distribution. "
                 " The input should be either Distribution or interpolation object");
 
-        xs = xvals[real_prob > (real_prob.max() - real_prob.min()) / 2]
-        return xs.max() - xs.min()
+        x_idxs = binary_dilation(real_prob > (real_prob.max() - real_prob.min()) / 2)
+        print (x_idxs)
+        print (real_prob)
+        xs = xvals[x_idxs]
+        if xs.shape[0] < 2:
+            print ("Mot enough points to compute FWHM: returning zero")
+            return 0.
+        else:
+            return xs.max() - xs.min()
 
 
     @classmethod
@@ -51,14 +59,50 @@ class Distribution(object):
     def shifted_x(cls, dist, delta_x):
         return Distribution(dist.x+delta_x, dist.y, kind=dist.kind)
 
+    @staticmethod
+    def multiply(dists):
+
+        if  not all([isinstance(k, Distribution) for k in dists]):
+            raise NotImplementedError("Can only multiply distributions or "
+                "scale it  by multiplying with float number")
+
+        n_delta = np.sum([k.is_delta for k in dists])
+        if n_delta>1:
+            raise ArithmeticError("Cannot multiply two delta functions!")
+        elif n_delta==1:
+            delta_dist_ii = np.where([k.is_delta for k in dists])[0][0]
+            delta_dist = dists[delta_dist_ii]
+            new_xpos = delta_dist.peak_pos
+            new_weight  = np.prod([k.prob(new_xpos) for k in dists if k!=delta_dist] * delta_dist.weight)
+            res = Distribution.delta_function(new_xpos, weight = new_weight)
+            return res
+
+        else:
+            new_xmin = np.max([k.xmin for k in dists])
+            new_xmax = np.min([k.xmax for k in dists])
+            #TODO
+            x_vals = np.unique(np.concatenate([k.x for k in dists]))
+            x_vals = x_vals[(x_vals>=new_xmin)&(x_vals<=new_xmax)]
+            if x_vals.shape[0] == 0:
+                print ("ERROR in distribution multiplication: Distributions do not overlap")
+                x_vals = [0,1]
+                y_vals = [BIG_NUMBER,BIG_NUMBER]
+                return Distribution(x_vals, y_vals, is_log=True, kind='linear')
+            elif x_vals.shape[0] == 1:
+                return Distribution.delta_function(x_vals[0])
+            else:
+                y_vals = np.sum([k.__call__(x_vals) for k in dists], axis=0)
+                res = Distribution(x_vals, y_vals, is_log=True, kind='linear')
+                return res
+
+
     def __init__(self, x, y, is_log=True, kind='linear'):
 
         """
         Create Distribution instance
         """
 
-            x = float(x)
-        if isinstance(x, Iterable) or not isinstance (y, Iterable):
+        if isinstance(x, Iterable) and isinstance (y, Iterable):
 
             self._delta = False # NOTE in classmethod this value is set explicitly to True.
             xvals, yvals = np.array(sorted(zip(x,y))).T
@@ -73,16 +117,17 @@ class Distribution(object):
             self._xmin, self._xmax = xvals[0], xvals[-1]
             self._support = self._xmax - self._xmin
             # extract peak
+            self._peak_idx = yvals.argmin()
             self._peak_val = yvals.min()
-            self._peak_pos = xvals[yvals.argmin()]
+            self._peak_pos = xvals[self._peak_idx]
             yvals -= self._peak_val
             self._ymax = yvals.max()
             # store the interpolation object
             self._func= interp1d(xvals, yvals, kind=kind, fill_value=BIG_NUMBER, bounds_error=False)
             self._fwhm = Distribution.calc_fwhm(self)
 
-        elif is np.isscalar(x):
-            assert (isscalar(y) or y is None)
+        elif np.isscalar(x):
+            assert (np.isscalar(y) or y is None)
             self._delta = True
             self._peak_pos = x
             self._fwhm = 0
@@ -110,6 +155,10 @@ class Distribution(object):
     @property
     def peak_pos(self):
         return self._peak_pos
+
+    @property
+    def peak_idx(self):
+        return self._peak_idx
 
     @property
     def support(self):
@@ -163,33 +212,12 @@ class Distribution(object):
 
 
     def __mul__(self, other):
+        return Distribution.multiply((self, other))
 
-        if  not isinstance(other, Distribution):
-            raise NotImplementedError("Can only multiply distributions or "
-                "scale it  by multiplying with float number")
 
-        if all([k.is_delta for k in [self, other]]):
-            raise ArithmeticError("Cannot multiply two delta functions!")
+    def _adjust_grid(self):
+        pass
 
-        elif any([k.is_delta for k in [self, other]]):
-            if self.is_delta:
-                new_xpos = self.peak_pos
-                new_weight  = other.prob(new_xpos) * self.weight
-            else:
-                new_xpos = other.peak_pos
-                new_weight  = self.prob(new_xpos) * other.weight
-            res = Distribution.delta_function(new_xpos, weight = new_weight)
-            return res
-
-        else:
-            new_xmin = np.max([self.xmin, other.xmin])
-            new_xmax = np.min([self.xmax, other.xmax])
-            #TODO
-            x_vals = np.unique(np.concatenate([self.x, other.x]))[::2]
-            x_vals = x_vals[(x_vals>=new_xmin)&(x_vals<=new_xmax)]
-            y_vals = self.__call__(x_vals) + other.__call__(x_vals)
-            res = Distribution(x_vals, y_vals, is_log=True, kind='linear')
-            return res
 
     def prob(self,x):
         return np.exp(-1 * self.__call__(x))
@@ -200,6 +228,11 @@ class Distribution(object):
         self.xmax*=factor
         self.xmax*=factor
 
+    def integrate(self, **kwargs):
+        if self.is_delta:
+            return self.weight
+        else:
+            return self.integrate_simpson(**kwargs)
 
     def integrate_trapez(self, a, b,n):
         mult = 0.5
@@ -228,8 +261,13 @@ class Distribution(object):
 
 
 if __name__=="__main__":
+
     from matplotlib import pyplot as plt
     plt.ion()
+
+    x = [-1e-10,  0.,    1.,  2.,    2.+1e-10]
+    y = [  1e-10, 1e-10, 10., 1e-10, 1e-10]
+    d1 = Distribution(x, y,is_log=False)
 
     def f(x):
         #return (x-5)**2+np.abs(x)**3

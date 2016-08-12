@@ -329,10 +329,10 @@ class GTR(object):
           - return_log:   whether or not to exponentiate the result
         '''
         if (t<0):
-            logP = -BIG_NUMBER
+            logP = -ttconf.BIG_NUMBER
         else:
             logQt = np.log(self.expQt(t))
-            logQt[np.isnan(logQt) | np.isinf(logQt)] = -BIG_NUMBER
+            logQt[np.isnan(logQt) | np.isinf(logQt)] = -ttconf.BIG_NUMBER
             logP = np.sum(logQt[seq_pair[:,1], seq_pair[:,0]]*multiplicity)
             if return_log:
                 return logP
