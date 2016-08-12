@@ -60,7 +60,7 @@ class ClockTree(TreeAnc):
 
         # set the None  for the date-related attributes in the internal nodes.
         # make interpolation objects for the branches
-        print('\n----- Initializing branch length interpolation objects...\n')
+        self.logger('Initializing branch length interpolation objects...',2)
         for node in self.tree.find_clades():
             if node.up is not None:
                 node.branch_length_interpolator = BranchLenInterpolator(node, self.gtr, one_mutation=self.one_mutation)
@@ -277,9 +277,9 @@ if __name__=="__main__":
     import matplotlib.pyplot as plt
     import seaborn as sns
     plt.ion()
-    base_name = 'data/H3N2_NA_allyears_NA.20'
-    #root_name = 'A/Hong_Kong/JY2/1968|CY147440|1968|Hong_Kong||H3N2/8-1416'
-    root_name = 'A/New_York/182/2000|CY001279|02/18/2000|USA|99_00|H3N2/1-1409'
+    base_name = 'data/H3N2_NA_allyears_NA.200'
+    root_name = 'A/Hong_Kong/JY2/1968|CY147440|1968|Hong_Kong||H3N2/8-1416'
+    #root_name = 'A/New_York/182/2000|CY001279|02/18/2000|USA|99_00|H3N2/1-1409'
     with open(base_name+'.metadata.csv') as date_file:
         dates = {}
         for line in date_file:
