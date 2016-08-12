@@ -15,11 +15,11 @@ class BranchLenInterpolator (Distribution):
         @param      node  The node
 
         """
+
         self.node = node
         self.gtr = gtr
         if node.up is None:
-            node.branch_neg_log_prob = None
-            return None
+            raise Exception("Cannot create branch length interpolator for the root node.")
 
         self._gamma = 1.0
 
@@ -58,6 +58,7 @@ class BranchLenInterpolator (Distribution):
 
 
         super(BranchLenInterpolator, self).__init__(grid, log_prob, is_log=True)
+
 
 
     @property

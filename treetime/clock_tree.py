@@ -61,8 +61,10 @@ class ClockTree(TreeAnc):
         # make interpolation objects for the branches
         print('\n----- Initializing branch length interpolation objects...\n')
         for node in self.tree.find_clades():
-            node.branch_length_interpolator = BranchLenInterpolator(node, self.gtr, one_mutation=self.one_mutation)
-
+            if node.up is not None:
+                node.branch_length_interpolator = BranchLenInterpolator(node, self.gtr, one_mutation=self.one_mutation)
+            else:
+                node.branch_length_interpolator = None
         self.date2dist = utils.DateConversion.from_tree(self.tree, slope)
         self.max_diam = self.date2dist.intercept
 
