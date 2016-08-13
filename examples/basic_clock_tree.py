@@ -9,11 +9,11 @@ if __name__=="__main__":
     ###########################################################################
     import argparse
     parser = argparse.ArgumentParser(
-            description='Reconstruct ancestral sequences, set dates to tree, and infer a time scaled tree.'
+            description="Reconstruct ancestral sequences, set dates to tree, and infer a time scaled tree."
                         "The tree needs to be properly rooted -- other than branch length the tree won't be modified"
-                        ' The ancestral sequences will be written to a file "aln_base"_ancestral.fasta'
-                        ' A tree in newick format with mutations as _A45G_... appended'
-                        ' appended to node names will be written to a file "treebase"_mutation.newick')
+                        " The ancestral sequences will be written to a file ending on _ancestral.fasta"
+                        " A tree in newick format with mutations as _A45G_... appended"
+                        " appended to node names will be written to a file ending on _mutation.newick")
     parser.add_argument('--aln', required = True, type = str,  help ="fasta file with input sequences")
     parser.add_argument('--tree', required = True, type = str,  help ="newick file with tree")
     parser.add_argument('--dates', required = True, type = str,  help ="csv with dates (float as in 2012.15) for nodes")
