@@ -4,10 +4,9 @@ constraints set to leaves
 """
 from __future__ import print_function, division
 
-from treeanc import TreeAnc
+from clock_tree import ClockTree
 import utils
 import config as ttconf
-from distribution import Distribution
 
 import numpy as np
 from Bio import AlignIO, Phylo
@@ -16,53 +15,18 @@ from scipy.interpolate import interp1d
 import json
 import copy
 from scipy import optimize as sciopt
-from scipy.ndimage import binary_dilation
-from weakref import WeakKeyDictionary
 import seq_utils
 
 
-class TreeTime(TreeAnc, object):
+class TreeTime(ClockTree):
     """
-    TreeTime is the main class to perform the optimization of the node
-    positions given the temporal constraints of (some) nodes and leaves.
-
-    The optimization workflow includes the inferrence of the ancestral sequences
-    using Fitch's method or maximum-likelihood (ML), followed by the unconstrained optimization
-    of the branch lengths with maximum-likelihood method. After the optimization
-    is done, the nodes with date-time information are arranged along the time axis,
-    the appropriate conversion btween the branch lengths units and the date-time units
-    is found. Then, for each internal node, we compute the the probability distribution
-    of the node's location conditional on the fixed location of the leaves, which
-    have temporal information. In the end, the most probable location of the internal nodes
-    is converted to the time of the internal node.
+    TreeTime is a wrapper class to ClockTree that adds additional functionality
+    such as reroot, detection and exclusion of outliers, resolution of polytomies
+    using temporal information, and relaxed molecular clock models
     """
-
     def __init__(self, *args,**kwargs):
-        super(TreeTime, self).__init__(*args, **kwargs)
-        self.date2dist = None  # we do not know anything about the conversion
-        self.max_diam = 0.0
-        self.debug=False
+        super(ClockTree, self).__init__(*args, **kwargs)
 
-    @property
-    def average_branch_len(self):
-        """
-        Compute the average branch length of the tree.
-        Used to estimate the scale  of the branch-lengths
-        """
-        return np.mean([n.branch_length for n in self.tree.find_clades()])
-
-    @property
-    def date2dist(self):
-        return self._date2dist
-
-    @date2dist.setter
-    def date2dist(self, val):
-        if val is None:
-            self._date2dist = None
-            return
-        else:
-            self.logger("TreeTime.date2dist: Setting new date to branchlength conversion. slope=%f, R2=%.4f"%(val.slope, val.r_val), 2)
-            self._date2dist = val
 
     def init_date_constraints(self, slope=None, **kwarks):
         """

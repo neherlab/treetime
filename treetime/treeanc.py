@@ -21,7 +21,9 @@ class TreeAnc(object):
     alignment, making ancestral state inferrence
     """
 
-    def __init__(self, tree, aln=None, gtr=None, verbose = ttconf.VERBOSE):
+    def __init__(self, tree=None, aln=None, gtr=None, verbose = ttconf.VERBOSE):
+        if tree is None:
+            raise("TreeAnc requires a tree!")
         self.t_start = time.time()
         self.verbose = verbose
         self.logger("TreeAnc: set-up",1)
