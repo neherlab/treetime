@@ -18,8 +18,13 @@ class DateConversion(object):
         self.slope = 0
         self.intercept = 0
         self.r_val = 0
-        self.pi_val = 0
+        self.p_val = 0
         self.sigma = 0
+
+    def __str__(self):
+        outstr = ('Root-Tip-Regression:\n --slope:\t%f\n --intercept:\t%f\n --R^2:\t\t%f\n'
+                  %(self.slope, self.intercept, self.r_val))
+        return outstr
 
 
     @classmethod
@@ -46,7 +51,7 @@ class DateConversion(object):
             dc.slope,\
                 dc.intercept,\
                 dc.r_val,\
-                dc.pi_val,\
+                dc.p_val,\
                 dc.sigma = stats.linregress(dates[:, 0], dates[:, 1])
         else:
             # TODO this seems awkward
