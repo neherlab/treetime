@@ -9,7 +9,17 @@ from node_interpolator import NodeInterpolator
 
 class ClockTree(TreeAnc):
     """
-    Class to produce molecular clock trees.
+    ClockTree is the main class to perform the optimization of the node
+    positions given the temporal constraints of (some) leaves.
+
+    The optimization workflow includes the inference of the ancestral sequences
+    and branch length optimization using TreeAnc. After the optimization
+    is done, the nodes with date-time information are arranged along the time axis,
+    the conversion between the branch lengths units and the date-time units
+    is determined. Then, for each internal node, we compute the the probability distribution
+    of the node's location conditional on the fixed location of the leaves, which
+    have temporal information. In the end, the most probable location of the internal nodes
+    is converted to the most likely time of the internal nodes.
     """
 
     def __init__(self,  dates=None,*args, **kwargs):
@@ -52,6 +62,11 @@ class ClockTree(TreeAnc):
 
         Note: that tree must have dates set to all nodes before calling this
         function. (This is accomplished by calling load_dates func).
+
+        Params:
+            ancestral_inference: bool -- whether or not to reinfer ancestral sequences
+                                 done by default when ancestral sequences are missing
+
         """
         self.logger("ClockTree.init_date_constraints...",2)
 
@@ -77,17 +92,17 @@ class ClockTree(TreeAnc):
                     print ("Branch is marked as bad, excluding it from the optimization process"
                         " Will be optimized freely")
                     node.numdate_given = None
-                    node.abs_t = None
+                    node.time_before_present = None
                     # if there are no constraints - log_prob will be set on-the-fly
                     node.msg_to_parent = None
                 else:
                     # set the absolute time before present in branch length units
-                    node.abs_t = (utils.numeric_date() - node.numdate_given) * abs(self.date2dist.slope)
-                    node.msg_to_parent = NodeInterpolator.delta_function(node.abs_t, weight=1)
+                    node.time_before_present = self.date2dist.get_time_before_present(node.numdate_given)
+                    node.msg_to_parent = NodeInterpolator.delta_function(node.time_before_present, weight=1)
 
             else: # node without sampling date set
                 node.numdate_given = None
-                node.abs_t = None
+                node.time_before_present = None
                 # if there are no constraints - log_prob will be set on-the-fly
                 node.msg_to_parent = None
 
@@ -304,14 +319,14 @@ if __name__=="__main__":
     leaf_count=0
     for node in myTree.tree.find_clades(order='postorder'):
         if node.up is not None:
-            print(node.branch_length_interpolator.peak_val, node.mutations)
-            plt.plot(x, node.branch_length_interpolator.prob(x))
+            plt.plot(x, node.branch_length_interpolator.prob_relative(x))
         if node.is_terminal():
             leaf_count+=1
             node.ypos = leaf_count
         else:
             node.ypos = np.mean([c.ypos for c in node.clades])
     plt.yscale('log')
+    plt.ylim([0.01,1.2])
 
     fig, axs = plt.subplots(2,1, sharex=True, figsize=(8,12))
     x = np.linspace(0,0.2,1000)
@@ -321,15 +336,13 @@ if __name__=="__main__":
     depth = myTree.tree.depths()
     for ni,node in enumerate(myTree.tree.find_clades()):
         if (not node.is_terminal()):
-            #print(node.branch_length_interpolator.peak_val)
-            print(node.date, node.numdate, node.marginal_lh.x.shape)
             axs[1].plot(offset-x, node.marginal_lh.prob_relative(x), '-', c=cols[ni%len(cols)])
             axs[1].plot(offset-x, node.joint_lh.prob_relative(x), '--', c=cols[ni%len(cols)])
         if node.up is not None:
             x_branch = np.linspace(depth[node]-2*node.branch_length-0.005,depth[node],100)
             axs[0].plot(x_branch, node.ypos - 0.7*node.branch_length_interpolator.prob_relative(depth[node]-x_branch), '-', c=cols[ni%len(cols)])
     axs[1].set_yscale('log')
-    axs[1].set_ylim([0.0001,1])
+    axs[1].set_ylim([0.01,1.2])
     axs[0].set_xlabel('')
     plt.tight_layout()
 
