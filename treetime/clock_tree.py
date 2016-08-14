@@ -166,7 +166,6 @@ class ClockTree(TreeAnc):
                     continue
                 # this is what the node sends to the parent
                 node.msg_to_parent = NodeInterpolator.multiply(node.msgs_from_leaves.values())
-                # TODO deal with grid size explosion
 
 
     def _ml_t_root_leaves(self):
@@ -267,11 +266,11 @@ class ClockTree(TreeAnc):
             years_bp = self.date2dist.get_date(node.time_before_present)
             if years_bp < 0:
                 if not hasattr(node, "bad_branch") or node.bad_branch==False:
-                    self.logger("ClockTree.convert_dates: ERROR: The node is later than today, but it is not"
+                    self.logger("ClockTree.convert_dates -- WARNING: The node is later than today, but it is not"
                         "marked as \"BAD\", which indicates the error in the "
                         "likelihood optimization.",4 , warn=True)
                 else:
-                    self.logger("ClockTree.convert_dates: Warning! node, which is marked as \"BAD\" optimized "
+                    self.logger("ClockTree.convert_dates -- WARNING: node which is marked as \"BAD\" optimized "
                         "later than present day",4 , warn=True)
 
             node.numdate = now - years_bp
@@ -292,15 +291,15 @@ if __name__=="__main__":
     import matplotlib.pyplot as plt
     import seaborn as sns
     plt.ion()
-    base_name = 'data/H3N2_NA_allyears_NA.200'
-    root_name = 'A/Hong_Kong/JY2/1968|CY147440|1968|Hong_Kong||H3N2/8-1416'
-    #root_name = 'A/New_York/182/2000|CY001279|02/18/2000|USA|99_00|H3N2/1-1409'
+    base_name = 'data/H3N2_NA_allyears_NA.20'
+    #root_name = 'A/Hong_Kong/JY2/1968|CY147440|1968|Hong_Kong||H3N2/8-1416'
+    root_name = 'A/New_York/182/2000|CY001279|02/18/2000|USA|99_00|H3N2/1-1409'
     with open(base_name+'.metadata.csv') as date_file:
         dates = {}
         for line in date_file:
             try:
                 name, date = line.strip().split(',')
-                dates[name] = float(date)
+                dates[name] = float(date)+100000
             except:
                 continue
 
@@ -329,7 +328,7 @@ if __name__=="__main__":
     plt.ylim([0.01,1.2])
 
     fig, axs = plt.subplots(2,1, sharex=True, figsize=(8,12))
-    x = np.linspace(0,0.2,1000)
+    x = np.linspace(-0.1,0.05,1000)+ myTree.tree.root.time_before_present
     Phylo.draw(tree, axes=axs[0], show_confidence=False)
     offset = myTree.tree.root.time_before_present + myTree.tree.root.branch_length
     cols = sns.color_palette()

@@ -85,18 +85,17 @@ class NodeInterpolator (Distribution):
         # make initial node grid
         n_grid_points = ttconf.NODE_GRID_SIZE
         grid_left =  tmin + (new_peak_pos-tmin) * (1 - np.linspace(1, 0.0, n_grid_points/2)**2.0)
-        grid_right = tmin+new_peak_pos + (tmax-tmin-new_peak_pos)*(np.linspace(0, 1, n_grid_points/2)**2)
+        grid_right = new_peak_pos + (tmax-new_peak_pos)*(np.linspace(0, 1, n_grid_points/2)**2)
 
         initial_times = np.concatenate([grid_left, grid_right[1:]])
         res = np.ones_like(initial_times)
 
         for t_idx, t_val in enumerate(initial_times):
-
             res[t_idx] = _convolution_in_point(t_val, node_interp, branch_interp,
                                                n_integral=n_integral, return_log=True,
                                                inverse_time = inverse_time)
-        # TODO refine
 
+        # TODO refine
         res = cls(initial_times, res, is_log=True, kind='linear')
         return res
 
