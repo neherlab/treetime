@@ -135,8 +135,6 @@ class TreeAnc(object):
             node.original_length = node.branch_length
             node.mutation_length = node.branch_length
         self.tree.ladderize()
-        self.tree.root.up = None
-        self.tree.root.dist2root = 0.0
         self._prepare_nodes()
         self._leaves_lookup = {node.name:node for node in self.tree.get_terminals()}
 
@@ -145,6 +143,8 @@ class TreeAnc(object):
         """
         Set auxilliary parameters to every node of the tree.
         """
+        self.tree.root.up = None
+        self.tree.root.dist2root = 0.0
         self.tree.root.dist2root_0 = 0.0
         for clade in self.tree.get_nonterminals(order='preorder'): # parents first
             for c in clade.clades:
@@ -152,7 +152,7 @@ class TreeAnc(object):
                 if c.up.name is None:
                     c.up.name = "NODE_" + format(self._internal_node_count, '07d')
                     self._internal_node_count += 1
-                c.dist2root = c.up.dist2root + c.branch_length
+                c.dist2root = c.up.dist2root + c.mutation_length
                 c.dist2root_0 = c.dist2root #  store the values used later for date-branchLen conversion
         return
 

@@ -676,8 +676,8 @@ if __name__=="__main__":
     myTree = TreeTime(gtr='Jukes-Cantor', tree = base_name+'.nwk',
                         aln = base_name+'.fasta', verbose = 6, dates = dates)
 
-    myTree.reroot()
     myTree.optimize_seq_and_branch_len(prune_short=True)
+    myTree.reroot()
     myTree.init_date_constraints()
     myTree.make_time_tree()
 
