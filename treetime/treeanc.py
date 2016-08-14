@@ -161,15 +161,6 @@ class TreeAnc(object):
 ## END SET-UP
 ####################################################################
 
-    def branch_len_to_opt(self, node):
-        ratio = node.branch_length / ( self.optimal_branch_length(node) + 0.01*self.one_mutation)
-        if ratio >= 2.:
-            return 2.
-        elif ratio <=0.01:
-            return 0.01
-        else:
-            return ratio
-
     def infer_gtr(self, print_raw=False, **kwargs):
 
         self.logger("TreeAnc inferring the GTR model from the tree...", 1)

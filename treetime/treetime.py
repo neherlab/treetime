@@ -27,6 +27,35 @@ class TreeTime(ClockTree):
     def __init__(self, *args,**kwargs):
         super(TreeTime, self).__init__(*args, **kwargs)
 
+    def run(self, root='best', infer_gtr=True, relaxed_clock=False, resolve_polytomies=True, max_iter=0):
+
+        self.optimize_seq_and_branch_len(infer_gtr=infer_gtr, prune_short=True)
+
+        if not ((root is None) or (root==False)):
+            self.reroot(root=root)
+
+        self.init_date_constraints()
+        self.make_time_tree()
+        if resolve_polytomies:
+            self.resolve_polytomies()
+            self.prepare_tree()
+            self.optimize_seq_and_branch_len(prune_short=False)
+            if not ((root is None) or (root==False)):
+                self.reroot(root=root)
+            self.init_date_constraints()
+            self.make_time_tree()
+
+        niter = 0
+        while niter<max_iter:
+            ndiff = self.reconstruct_anc()
+            if ndiff==0:
+                break
+            self.init_date_constraints()
+            self.make_time_tree()
+            niter+=1
+
+
+
 
     def reroot(self,root='best'):
         if isinstance(root,Phylo.BaseTree.Clade):
@@ -145,9 +174,9 @@ class TreeTime(ClockTree):
         from matplotlib import cm
         cmap = cm.get_cmap ()
         def dev(n):
-            sign = np.sign(node.branch_length - utils.opt_branch_len(node))
-            opt_bl = sign * abs(node.branch_neg_log_prob(utils.opt_branch_len(n))
-                                - node.branch_neg_log_prob(node.branch_length))
+            sign = np.sign(node.clock_length - node.mutation_length)
+            opt_bl = sign * abs(node.branch_length_interpolator(node.mutation_length)
+                                - node.branch_length_interpolator(node.clock_length))
             return opt_bl
 
         node._score = dev(node)
@@ -180,7 +209,7 @@ class TreeTime(ClockTree):
             - merge_compressed(bool): whether to keep compressed branches as
               polytomies or return a strictly binary tree.
         """
-        print ("\n---- TreeTime resolving multiple mergers...")
+        self.logger("TreeTime.resolve_polytomies: resolving multiple mergers...",2)
 
         poly_found=False
         for n in self.tree.find_clades():
@@ -190,24 +219,12 @@ class TreeTime(ClockTree):
                 #import ipdb; ipdb.set_trace()
 
 
-        print('Checking for obsolete nodes')
         obsolete_nodes = [n for n in self.tree.find_clades() if len(n.clades)==1 and n.up is not None]
         for node in obsolete_nodes:
-            print('remove obsolete node',node.name)
+            self.logger('TreeTime.resolve_polytomies: remove obsolete node '+node.name,4)
             if node.up is not None:
                 self.tree.collapse(node)
-        # reoptimize branch length and sequences after topology changes
-        if rerun and poly_found:
-            print("topology of the tree has changed, will rerun inference...")
-            self.optimize_branch_len()
-            self.optimize_seq_and_branch_len(prune_short=False)
-            self.init_date_constraints(ancestral_inference=False)
-            self.ml_t()
 
-        else:
-            self._set_each_node_params() # set node info to the new nodes
-
-        self.tree.ladderize()
 
     def _poly(self, clade, merge_compressed, verbose=1):
         """
@@ -219,7 +236,7 @@ class TreeTime(ClockTree):
         values and the decrease due to the introduction of the new branch with zero
         optimal length. After the cost gains been determined,
         """
-
+        from branch_len_interpolator import BranchLenInterpolator
         # TODO coefficient from the gtr
         zero_branch_slope = self.one_mutation / 0.8
 
@@ -232,9 +249,9 @@ class TreeTime(ClockTree):
                       approx.= LH(branch_len(now)) - LH (branch_len(t))
 
             """
-            cg2 = n2.branch_neg_log_prob(parent.abs_t - n2.abs_t ) - n2.branch_neg_log_prob (t - n2.abs_t)
-            cg1 = n1.branch_neg_log_prob(parent.abs_t - n1.abs_t ) - n1.branch_neg_log_prob (t - n1.abs_t)
-            cg_new = - zero_branch_slope * (parent.abs_t - t) # loss in LH due to the new branch
+            cg2 = n2.branch_length_interpolator(parent.time_before_present - n2.time_before_present) - n2.branch_length_interpolator(t - n2.time_before_present)
+            cg1 = n1.branch_length_interpolator(parent.time_before_present - n1.time_before_present) - n1.branch_length_interpolator(t - n1.time_before_present)
+            cg_new = - zero_branch_slope * (parent.time_before_present - t) # loss in LH due to the new branch
             return -(cg2+cg1+cg_new)
 
         def cost_gain(n1, n2, parent):
@@ -242,15 +259,14 @@ class TreeTime(ClockTree):
             cost gained if the two nodes would have been connected.
             """
             cg = sciopt.minimize_scalar(_c_gain,
-                    bounds=[np.max(n1.abs_t,n2.abs_t), parent.abs_t],
+                    bounds=[np.max(n1.time_before_present,n2.time_before_present), parent.time_before_present],
                     method='Bounded',args=(n1,n2, parent))
             return cg['x'], - cg['fun']
 
         def merge_nodes(source_arr, isall=False):
             mergers = np.array([[cost_gain(n1,n2, clade) for n1 in source_arr]for n2 in source_arr])
+            LH = 0
             while len(source_arr) > 1 + int(isall):
-                LH = 0
-
                 # max possible gains of the cost when connecting the nodes:
                 # this is only a rough approximation because it assumes the new node positions
                 # to be optimal
@@ -275,11 +291,11 @@ class TreeTime(ClockTree):
                 new_node = Phylo.BaseTree.Clade()
 
                 # fix positions and branch lengths
-                new_node.abs_t = new_positions[idxs] # (n1.abs_t + tree.opt_branch_len(n1) + n2.abs_t + tree.opt_branch_len(n2))/2
-                new_node.branch_length = clade.abs_t - new_node.abs_t
+                new_node.time_before_present = new_positions[idxs] # (n1.time_before_present + tree.opt_branch_len(n1) + n2.time_before_present + tree.opt_branch_len(n2))/2
+                new_node.branch_length = clade.time_before_present - new_node.time_before_present
                 new_node.clades = [n1,n2]
-                n1.branch_length = new_node.abs_t - n1.abs_t
-                n2.branch_length = new_node.abs_t - n2.abs_t
+                n1.branch_length = new_node.time_before_present - n1.time_before_present
+                n2.branch_length = new_node.time_before_present - n2.time_before_present
 
                 # set parameters for the new node
                 new_node.up = clade
@@ -287,13 +303,18 @@ class TreeTime(ClockTree):
                 n2.up = new_node
                 new_node.sequence = clade.sequence
                 new_node.profile = clade.profile
+                seq_pairs, multiplicity = self.gtr.compress_sequence_pair(clade.sequence,
+                                                                      new_node.sequence,
+                                                                      ignore_gaps = self.ignore_gaps)
+                new_node.compressed_sequence = {'pair':seq_pairs, 'multiplicity':multiplicity}
+
                 new_node.mutations = []
-                new_node.merger_rate = clade.merger_rate
-                self._make_branch_len_interpolator(new_node, n=ttconf.BRANCH_GRID_SIZE)
+                new_node.mutation_length = new_node.branch_length
+                new_node.branch_length_interpolator = BranchLenInterpolator(new_node, self.gtr, one_mutation=self.one_mutation)
                 clade.clades.remove(n1)
                 clade.clades.remove(n2)
                 clade.clades.append(new_node)
-
+                self.logger('TreeTime._poly: creating new node as child of '+clade.name,3)
                 # and modify source_arr array for the next loop
                 if len(source_arr)>2: # if more than 3 nodes in polytomy, replace row/column
                     for ii in np.sort(idxs)[::-1]:
@@ -318,7 +339,7 @@ class TreeTime(ClockTree):
 
             return LH
 
-        stretched = [c for c  in clade.clades if utils.opt_branch_len(c) < c.branch_length]
+        stretched = [c for c  in clade.clades if c.mutation_length < c.clock_length]
         compressed = [c for c in clade.clades if c not in stretched]
 
         if verbose>5:
@@ -623,9 +644,11 @@ class TreeTime(ClockTree):
                 self.logger("TreeTime.find_best_root_and_regression: Initial root: R2:%f\tslope:%f"%(best_root._R2, best_root._beta),3)
             elif (node._R2 > best_root._R2 and node._beta>0) or best_root._beta<0:
                 best_root = node
-                self.logger("TreeTime.find_best_root_and_regression: Better root found: R2:%f\tslope:%f\t:branch_displacement:%f"
-                            %(best_root._R2, best_root._beta, (best_root._R2_delta_x) / ( node.mutation_length + self.one_mutation)),4)
+                self.logger("TreeTime.find_best_root_and_regression: Better root found: R2:%f\tslope:%f\tbranch_displacement:%f"
+                            %(best_root._R2, best_root._beta, (best_root._R2_delta_x) / ( best_root.mutation_length + self.one_mutation)),4)
 
+        self.logger("TreeTime.find_best_root_and_regression: Best root: R2:%f\tslope:%f\tbranch_displacement:%f"
+                    %(best_root._R2, best_root._beta, (best_root._R2_delta_x) / ( best_root.mutation_length + self.one_mutation)),3)
         return best_root, best_root._alpha, best_root._beta
 
     def reroot_to_best_root(self,infer_gtr = False, n_iqd = None, **kwarks):
@@ -635,7 +658,7 @@ class TreeTime(ClockTree):
         '''
 
 
-        print ("\n---- TreeTime searching for the best root position...")
+        self.logger("TreeTime.reroot_to_best_root: searching for the best root position...",2)
 
         best_root, a, b = self.find_best_root_and_regression()
         # first, re-root the tree
@@ -663,7 +686,7 @@ if __name__=="__main__":
     import seaborn as sns
     from Bio import Phylo
     plt.ion()
-    base_name = 'data/H3N2_NA_allyears_NA.20'
+    base_name = 'data/H3N2_NA_allyears_NA.200'
     with open(base_name+'.metadata.csv') as date_file:
         dates = {}
         for line in date_file:
@@ -674,12 +697,9 @@ if __name__=="__main__":
                 continue
 
     myTree = TreeTime(gtr='Jukes-Cantor', tree = base_name+'.nwk',
-                        aln = base_name+'.fasta', verbose = 6, dates = dates)
+                        aln = base_name+'.fasta', verbose = 4, dates = dates)
 
-    myTree.optimize_seq_and_branch_len(prune_short=True)
-    myTree.reroot()
-    myTree.init_date_constraints()
-    myTree.make_time_tree()
+    myTree.run()
 
     plt.figure()
     x = np.linspace(0,0.05,100)
