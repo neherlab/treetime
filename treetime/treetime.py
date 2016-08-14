@@ -128,68 +128,6 @@ class TreeTime(ClockTree):
             else:
                 print('coalescent time scale optimization failed')
 
-    def ml_t(self, max_iter = 3,**kwarks):
-        """
-        Perform the maximum-likelihood -- based optimization of the tree with temporal
-        constraints of (some) internal nodes.
-
-        Args:
-         - None
-        Returns:
-         - None: Updates the tree, its branch lengths and information about the
-         internal nodes.
-        """
-
-        print ("\n---- TreeTime running ML optimization...")
-
-        #  propagate messages up
-        self._ml_t_leaves_root()
-        #  propagate messages down - reconstruct node positions
-        self._ml_t_root_leaves()
-        Ndiff = self.reconstruct_anc(method='ml')
-
-        niter=1
-        while Ndiff>0 and niter<max_iter:
-            print('rerunning treetime inference iteration', niter+1, 'number of state changes observed:',Ndiff)
-            self._ml_t_init(ancestral_inference=False)
-            self._ml_t_leaves_root()
-            self._ml_t_root_leaves()
-            Ndiff = self.reconstruct_anc(method='ml')
-            niter+=1
-        print ("Done tree optimization after",niter+1,"iterations, final state changes:",Ndiff)
-
-    def _set_rotated_profiles(self, node):
-        """
-        Set sequence and its profiles in the eigenspace of the transition
-        matrix.
-        """
-        node.prf_r = node.profile.dot(self.gtr.v)
-        node.prf_l = (self.gtr.v_inv.dot(node.profile.T)).T
-
-    def _score_branch(self, node):
-        """
-        Auxilliary function to see how well is the particular branch optimized
-        (how far it is from its optimal value)
-        """
-        from matplotlib import cm
-        cmap = cm.get_cmap ()
-        def dev(n):
-            sign = np.sign(node.clock_length - node.mutation_length)
-            opt_bl = sign * abs(node.branch_length_interpolator(node.mutation_length)
-                                - node.branch_length_interpolator(node.clock_length))
-            return opt_bl
-
-        node._score = dev(node)
-        return None
-
-    def _score_branches(self):
-        """
-        Set score to the branch. The score is how far is the branch length from
-        its optimal value
-        """
-        for n in self.tree.find_clades():
-            if n.up is not None:
-                self._score_branch(n)
 
     def log_lh(self, node):
         """
@@ -303,10 +241,7 @@ class TreeTime(ClockTree):
                 n2.up = new_node
                 new_node.sequence = clade.sequence
                 new_node.profile = clade.profile
-                seq_pairs, multiplicity = self.gtr.compress_sequence_pair(clade.sequence,
-                                                                      new_node.sequence,
-                                                                      ignore_gaps = self.ignore_gaps)
-                new_node.compressed_sequence = {'pair':seq_pairs, 'multiplicity':multiplicity}
+                self.store_compressed_sequence_to_node(new_node)
 
                 new_node.mutations = []
                 new_node.mutation_length = new_node.branch_length
@@ -656,8 +591,6 @@ class TreeTime(ClockTree):
         determine the node that, when the tree is rooted on this node, results
         in the best regression of temporal constraints and root to tip distances
         '''
-
-
         self.logger("TreeTime.reroot_to_best_root: searching for the best root position...",2)
 
         best_root, a, b = self.find_best_root_and_regression()
@@ -686,7 +619,7 @@ if __name__=="__main__":
     import seaborn as sns
     from Bio import Phylo
     plt.ion()
-    base_name = 'data/H3N2_NA_allyears_NA.200'
+    base_name = 'data/H3N2_NA_allyears_NA.20'
     with open(base_name+'.metadata.csv') as date_file:
         dates = {}
         for line in date_file:

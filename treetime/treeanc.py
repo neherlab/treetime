@@ -423,16 +423,18 @@ class TreeAnc(object):
         self.store_compressed_sequence_pairs()
         return N_diff
 
+    def store_compressed_sequence_to_node(self, node):
+            seq_pairs, multiplicity = self.gtr.compress_sequence_pair(node.up.sequence,
+                                                                      node.sequence,
+                                                                      ignore_gaps = self.ignore_gaps)
+            node.compressed_sequence = {'pair':seq_pairs, 'multiplicity':multiplicity}
+
     def store_compressed_sequence_pairs(self):
         self.logger("TreeAnc.store_compressed_sequence_pairs...",2)
         for node in self.tree.find_clades():
             if node.up is None:
                 continue
-
-            seq_pairs, multiplicity = self.gtr.compress_sequence_pair(node.up.sequence,
-                                                                      node.sequence,
-                                                                      ignore_gaps = self.ignore_gaps)
-            node.compressed_sequence = {'pair':seq_pairs, 'multiplicity':multiplicity}
+            self.store_compressed_sequence_to_node(node)
 
 
     def calc_branch_twopoint_functions(self):
