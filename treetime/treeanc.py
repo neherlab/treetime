@@ -41,7 +41,6 @@ class TreeAnc(object):
             return
         if aln is not None:
             self.attach_sequences_to_nodes()
-        self._leaves_lookup = {}
 
     def logger(self, msg, level, warn=False):
         if level<self.verbose or warn:

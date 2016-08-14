@@ -111,10 +111,10 @@ class ClockTree(TreeAnc):
         use the date constraints to calculate the most likely positions of
         unconstraint nodes.
         '''
-        myTree._ml_t_leaves_root()
-        myTree._ml_t_root_leaves()
-        myTree._set_final_dates()
-        myTree.convert_dates()
+        self._ml_t_leaves_root()
+        self._ml_t_root_leaves()
+        self._set_final_dates()
+        self.convert_dates()
 
 
     def _ml_t_leaves_root(self):
@@ -299,7 +299,7 @@ if __name__=="__main__":
         for line in date_file:
             try:
                 name, date = line.strip().split(',')
-                dates[name] = float(date)+100000
+                dates[name] = float(date)
             except:
                 continue
 
