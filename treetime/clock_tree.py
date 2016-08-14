@@ -48,7 +48,7 @@ class ClockTree(TreeAnc):
             self._date2dist = None
             return
         else:
-            self.logger("TreeTime.date2dist: Setting new date to branchlength conversion. slope=%f, R2=%.4f"%(val.slope, val.r_val), 2)
+            self.logger("ClockTime.date2dist: Setting new date to branchlength conversion. slope=%f, R2=%.4f"%(val.slope, val.r_val), 2)
             self._date2dist = val
 
 
@@ -75,7 +75,7 @@ class ClockTree(TreeAnc):
 
         # set the None  for the date-related attributes in the internal nodes.
         # make interpolation objects for the branches
-        self.logger('Initializing branch length interpolation objects...',2)
+        self.logger('ClockTree.init_date_constraints: Initializing branch length interpolation objects...',2)
         for node in self.tree.find_clades():
             if node.up is not None:
                 node.branch_length_interpolator = BranchLenInterpolator(node, self.gtr, one_mutation=self.one_mutation)
@@ -89,8 +89,9 @@ class ClockTree(TreeAnc):
             # node is constrained
             if hasattr(node, 'numdate_given') and node.numdate_given is not None:
                 if hasattr(node, 'bad_branch') and node.bad_branch==True:
-                    print ("Branch is marked as bad, excluding it from the optimization process"
-                        " Will be optimized freely")
+                    self.logger("ClockTree.init_date_constraints -- WARNING: Branch is marked as bad"
+                                ", excluding it from the optimization process"
+                                " Will be optimized freely", 4, warn=True)
                     node.numdate_given = None
                     node.time_before_present = None
                     # if there are no constraints - log_prob will be set on-the-fly
@@ -111,6 +112,7 @@ class ClockTree(TreeAnc):
         use the date constraints to calculate the most likely positions of
         unconstraint nodes.
         '''
+        self.logger("ClockTree: Maximum likelihood tree optimization with temporal constraints:",1)
         self._ml_t_leaves_root()
         self._ml_t_root_leaves()
         self._set_final_dates()
@@ -149,7 +151,6 @@ class ClockTree(TreeAnc):
                 res =  NodeInterpolator.convolve(node.msg_to_parent, node.branch_length_interpolator)
             return res
 
-        self.logger("ClockTree: Maximum likelihood tree optimization with temporal constraints:",1)
         self.logger("ClockTree: Propagating leaves -> root...", 2)
         # go through the nodes from leaves towards the root:
         for node in self.tree.find_clades(order='postorder'):  # children first, msg to parents

@@ -522,9 +522,9 @@ class TreeTime(ClockTree):
                 #  for non-terminal nodes,
                 node._st_ti = np.sum([k._st_ti for k in node.clades])
                 node._st_n_leaves = np.sum([k._st_n_leaves for k in node.clades])
-                node._st_di   = np.sum([k._st_di + k._st_n_leaves*k.branch_length for k in node.clades])
-                node._st_diti = np.sum([k._st_diti + k.branch_length*k._st_ti for k in node.clades])
-                node._st_di2  = np.sum([k._st_di2 + 2*k._st_di*k.branch_length + k._st_n_leaves*k.branch_length**2 for k in node.clades])
+                node._st_di   = np.sum([k._st_di + k._st_n_leaves*k.mutation_length for k in node.clades])
+                node._st_diti = np.sum([k._st_diti + k.mutation_length*k._st_ti for k in node.clades])
+                node._st_di2  = np.sum([k._st_di2 + 2*k._st_di*k.mutation_length + k._st_n_leaves*k.mutation_length**2 for k in node.clades])
                 node._ti = sum_ti
 
         best_root = self.tree.root
@@ -550,13 +550,13 @@ class TreeTime(ClockTree):
                 #  NOTE order of the values computation matters
                 n_up = N - node._st_n_leaves
                 n_down = node._st_n_leaves
-                node._di = node.up._di + (n_up-n_down)*node.branch_length
-                node._di2 = (node.up._di2 + 2*node.branch_length*node.up._di
-                            - 4*(node.branch_length*(node._st_di + n_down*node.branch_length))
-                            + N*node.branch_length**2)
-                node._diti = node.up._diti + node.branch_length*(sum_ti - 2*node._st_ti)
+                node._di = node.up._di + (n_up-n_down)*node.mutation_length
+                node._di2 = (node.up._di2 + 2*node.mutation_length*node.up._di
+                            - 4*(node.mutation_length*(node._st_di + n_down*node.mutation_length))
+                            + N*node.mutation_length**2)
+                node._diti = node.up._diti + node.mutation_length*(sum_ti - 2*node._st_ti)
 
-                L = node.branch_length
+                L = node.mutation_length
 
                 ## Express Node's sum_Di as the function of parent's sum_Di
                 # and **displacement from parent's node x** :
@@ -568,7 +568,7 @@ class TreeTime(ClockTree):
                 # and **displacement from parent's node x** :
                 # sum_Di = B1 + B2 * x + B3 * x**2
                 B1 = node.up._di2
-                B2 = 2 * (node.up._di - 2 * node._st_di - 2 * node.branch_length * node._st_n_leaves )
+                B2 = 2 * (node.up._di - 2 * node._st_di - 2 * node.mutation_length * node._st_n_leaves )
                 B3 = N
 
                 ## Express Node's sum_DiTi as the function of parent's params
@@ -624,7 +624,7 @@ class TreeTime(ClockTree):
             elif (node._R2 > best_root._R2 and node._beta>0) or best_root._beta<0:
                 best_root = node
                 self.logger("TreeTime.find_best_root_and_regression: Better root found: R2:%f\tslope:%f\t:branch_displacement:%f"
-                            %(best_root._R2, best_root._beta, (best_root._R2_delta_x) / ( node.branch_length + self.one_mutation)),4)
+                            %(best_root._R2, best_root._beta, (best_root._R2_delta_x) / ( node.mutation_length + self.one_mutation)),4)
 
         return best_root, best_root._alpha, best_root._beta
 
@@ -649,10 +649,10 @@ class TreeTime(ClockTree):
             # by simple re-wiring the links on the both sides of the branch
             # and fix the branch lengths
             new_node.clades = [best_root]
-            new_node.branch_length = best_root.branch_length - best_root._R2_delta_x
-            best_root.branch_length = best_root._R2_delta_x
+            new_node.mutation_length = best_root.mutation_length - best_root._R2_delta_x
+            best_root.mutation_length = best_root._R2_delta_x
             best_root.up.clades = [k if k != best_root else new_node for k in best_root.up.clades]
-
+            new_node.branch_length = new_node.mutation_length
             return new_node
         else:
             # simply use the existing node as the new root
@@ -696,7 +696,7 @@ if __name__=="__main__":
     plt.ylim([0.01,1.2])
 
     fig, axs = plt.subplots(2,1, sharex=True, figsize=(8,12))
-    x = np.linspace(-0.1,0.05,1000)+ myTree.tree.root.time_before_present
+    x = np.linspace(-0.2,0.5,1000)+ myTree.tree.root.time_before_present
     Phylo.draw(myTree.tree, axes=axs[0], show_confidence=False)
     offset = myTree.tree.root.time_before_present + myTree.tree.root.branch_length
     cols = sns.color_palette()
