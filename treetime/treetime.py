@@ -54,9 +54,6 @@ class TreeTime(ClockTree):
             self.make_time_tree()
             niter+=1
 
-
-
-
     def reroot(self,root='best'):
         if isinstance(root,Phylo.BaseTree.Clade):
             new_root = root
@@ -77,7 +74,6 @@ class TreeTime(ClockTree):
         self.tree.root.branch_length = self.one_mutation
         self.tree.root.numdate_given = None
         self.prepare_tree()
-
 
     def coalescent_model(self, Tc=None, optimize_Tc = False,**kwarks):
         """
@@ -128,7 +124,6 @@ class TreeTime(ClockTree):
             else:
                 print('coalescent time scale optimization failed')
 
-
     def log_lh(self, node):
         """
         Get log-likelihood of the tree given the constrained leaves.
@@ -162,7 +157,6 @@ class TreeTime(ClockTree):
             self.logger('TreeTime.resolve_polytomies: remove obsolete node '+node.name,4)
             if node.up is not None:
                 self.tree.collapse(node)
-
 
     def _poly(self, clade, merge_compressed, verbose=1):
         """
@@ -359,7 +353,6 @@ class TreeTime(ClockTree):
 
         print('reevaluating branch length interpolators')
         self.init_date_constraints(ancestral_inference=False)
-
 
     def autocorr_molecular_clock(self, slack=None, coupling=None):
         """
