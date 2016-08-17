@@ -177,6 +177,7 @@ class TreeTime(ClockTree):
         optimal length. After the cost gains been determined,
         """
         from branch_len_interpolator import BranchLenInterpolator
+        from Bio import Phylo
         # TODO coefficient from the gtr
         zero_branch_slope = self.one_mutation / 0.8
 
@@ -502,6 +503,7 @@ class TreeTime(ClockTree):
         determine the node that, when the tree is rooted on this node, results
         in the best regression of temporal constraints and root to tip distances
         '''
+        from Bio import Phylo
         self.logger("TreeTime.reroot_to_best_root: searching for the best root position...",2)
 
         best_root, a, b = self.find_best_root_and_regression()
