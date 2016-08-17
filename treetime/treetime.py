@@ -69,7 +69,8 @@ class TreeTime(ClockTree):
         elif root=='best':
             new_root = self.reroot_to_best_root()
         else:
-            self.logger('TreeTime.reroot -- WARNING: unsupported rooting mechanisms of root not found',2,warn=True)
+            self.logger('TreeTime.reroot -- WARNING: unsupported rooting mechanisms or root not found',2,warn=True)
+            return
 
         self.logger("TreeTime.reroot: Tree is being re-rooted to node "
                     +('new_node' if new_root.name is None else new_root.name), 2)
