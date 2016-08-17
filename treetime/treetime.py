@@ -57,6 +57,7 @@ class TreeTime(ClockTree):
 
 
     def reroot(self,root='best'):
+        from Bio import Phylo
         if isinstance(root,Phylo.BaseTree.Clade):
             new_root = root
         elif root in self._leaves_lookup:
