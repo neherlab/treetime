@@ -538,7 +538,7 @@ if __name__=="__main__":
     sns.set_style('whitegrid')
     from Bio import Phylo
     plt.ion()
-    base_name = 'data/H3N2_NA_allyears_NA.20'
+    base_name = 'data/H3N2_NA_allyears_NA.200'
     with open(base_name+'.metadata.csv') as date_file:
         dates = {}
         for line in date_file:
@@ -551,7 +551,7 @@ if __name__=="__main__":
     myTree = TreeTime(gtr='Jukes-Cantor', tree = base_name+'.nwk',
                         aln = base_name+'.fasta', verbose = 4, dates = dates)
 
-    myTree.run(root='best', relaxed_clock=(1.0,1.0), max_iter=1)
+    myTree.run(root='best', relaxed_clock=(1.0,1.0), max_iter=1, resolve_polytomies=True) #(1.0,1.0), max_iter=1)
 
     plt.figure()
     x = np.linspace(0,0.05,100)
@@ -569,7 +569,7 @@ if __name__=="__main__":
 
     from matplotlib import cm
     fig, axs = plt.subplots(2,1, sharex=True, figsize=(8,12))
-    x = np.linspace(-0.2,0.5,1000)+ myTree.tree.root.time_before_present
+    x = np.linspace(-0.25,0.05,10000)+ myTree.tree.root.time_before_present
     for n in myTree.tree.find_clades():
         if n.up is None:
             g = n.gamma

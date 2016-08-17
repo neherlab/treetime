@@ -63,7 +63,7 @@ def _convolution_in_point(t_val,f, g,  n_integral = 100, inverse_time=None, retu
 class NodeInterpolator (Distribution):
 
     @classmethod
-    def convolve(cls, node_interp, branch_interp, n_integral=1000, inverse_time=True):
+    def convolve(cls, node_interp, branch_interp, n_integral=100, inverse_time=True, rel_tol=0.05, yc=10):
 
         '''
         calculate H(t) = \int_tau f(t-tau)g(tau) if inverse_time=True
@@ -73,9 +73,7 @@ class NodeInterpolator (Distribution):
         ensure an accurate approximation.
         '''
 
-        import matplotlib.pyplot as plt
-
-        # create coarse grid (5 points)
+        # estimate peak and width
         joint_fwhm  = (node_interp.fwhm + branch_interp.fwhm)
         new_peak_pos = node_interp.peak_pos + branch_interp.peak_pos
 
@@ -88,30 +86,31 @@ class NodeInterpolator (Distribution):
             tmin = node_interp.xmin - branch_interp.xmax
             tmax = node_interp.xmax - branch_interp.xmin
 
-        # make initial node grid
+        # make initial node grid consisting of linearly spaced points around
+        # the center and quadratically spaced points at either end
         n_grid_points = ttconf.NODE_GRID_SIZE
         n = n_grid_points/3
         center_width = 3*joint_fwhm
         grid_center = new_peak_pos + np.linspace(-1, 1, n)*center_width
 
-        dx = grid_center[1]-grid_center[0]
+        # add the right and left grid if it is needed
         right_range = (tmax - grid_center[-1])
-
-        if right_range>center_width:
+        if right_range>2*center_width:
             grid_right = grid_center[-1] + right_range*(np.linspace(0, 1, n)**2.0)
-        elif right_range>0:
+        elif right_range>0: # use linear grid the right_range is comparable to center_width
             grid_right = grid_center[-1] + right_range*np.linspace(0,1,n)
         else:
             grid_right =[]
 
         left_range = grid_center[0]-tmin
-        if left_range>center_width:
+        if left_range>2*center_width:
             grid_left = tmin - left_range*(np.linspace(0, 1, n)**2.0)
         elif left_range>0:
             grid_left = tmin + left_range*np.linspace(0,1,n)
         else:
             grid_left =[]
 
+        # make grid and calculate convolution
         t_grid_0 = np.concatenate([grid_left[:-1], grid_center, grid_right[1:]])
         t_grid_0 = t_grid_0[(t_grid_0 > tmin) & (t_grid_0 < tmax)]
         res_0 = np.array([_convolution_in_point(t_val, node_interp, branch_interp,
@@ -119,39 +118,30 @@ class NodeInterpolator (Distribution):
                                                inverse_time = inverse_time)
                         for t_val in t_grid_0])
 
-        # (determine the threshold error value)
-        step = 0
-        print ("Refine grid for node convolution, step: " + str(step))
-        while step < 1:
-            step += 1
-            interp_error = np.abs(res_0[3:-1]+res_0[1:-3]-2*res_0[2:-2])
-            dy = (res_0[2:-2]-res_0.min())
-            yc = 10
-            rel_tol = 0.01
-            refine_factor = np.array(np.floor(np.sqrt(interp_error/(rel_tol*(1+(dy/yc)**4)))), dtype=int)
-            insert_point_idx = np.zeros(interp_error.shape[0]+1, dtype=int)
-            insert_point_idx[1:] = refine_factor
-            insert_point_idx[:-1] += refine_factor
-            if np.sum(insert_point_idx):
-                add_x = np.concatenate([np.linspace(t1,t2,n+2)[1:-1] for t1,t2,n in
-                                   zip(t_grid_0[1:-2], t_grid_0[2:-1], insert_point_idx) if n>0])
-            else:
-                break
-            # additional points
+        # refine grid as necessary and add new points
+        # calculate interpolation error at all internal points [2:-2] bc end points are sometime off scale
+        interp_error = np.abs(res_0[3:-1]+res_0[1:-3]-2*res_0[2:-2])
+        # determine the number of extra points needed, criterion depends on distance from peak dy
+        dy = (res_0[2:-2]-res_0.min())
+        refine_factor = np.array(np.floor(np.sqrt(interp_error/(rel_tol*(1+(dy/yc)**4)))), dtype=int)
+        insert_point_idx = np.zeros(interp_error.shape[0]+1, dtype=int)
+        insert_point_idx[1:] = refine_factor
+        insert_point_idx[:-1] += refine_factor
+        # add additional points if there are any to add
+        if np.sum(insert_point_idx):
+            add_x = np.concatenate([np.linspace(t1,t2,n+2)[1:-1] for t1,t2,n in
+                               zip(t_grid_0[1:-2], t_grid_0[2:-1], insert_point_idx) if n>0])
+            # calculate convolution at these points
             add_y = np.array([_convolution_in_point(t_val, node_interp, branch_interp,
-                                                    n_integral=1000, return_log=True,
+                                                    n_integral=n_integral, return_log=True,
                                                     inverse_time = inverse_time)
                              for t_val in add_x])
 
-            n_x = np.concatenate((t_grid_0, add_x)) #[insert_point_idx]))
-            n_y = np.concatenate ((res_0, add_y)) #[insert_point_idx]))
-            n_x, n_y = np.array(sorted(zip(n_x, n_y))).T
-            t_grid_0 = n_x
-            res_0 = n_y
-        print ("final grid: " , len(res_0))
+            t_grid_0 = np.concatenate((t_grid_0, add_x))
+            res_0 = np.concatenate ((res_0, add_y))
 
+        # instantiate the new interpolation object and return
         res = cls(t_grid_0, res_0, is_log=True, kind='linear')
-
         return res
 
 if __name__ == '__main__':

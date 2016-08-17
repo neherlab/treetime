@@ -61,6 +61,7 @@ class BranchLenInterpolator (Distribution):
 
 
 
+
     @property
     def gamma(self):
        return self._gamma
@@ -76,6 +77,18 @@ class BranchLenInterpolator (Distribution):
     @merger_rate.setter
     def merger_rate(self, value):
         self._gamma = value
+
+    @property
+    def peak_pos(self):
+        return super(BranchLenInterpolator,self).peak_pos/self.gamma
+
+    @property
+    def support(self):
+        return self._support/self.gamma
+
+    @property
+    def fwhm(self):
+        return super(BranchLenInterpolator,self).fwhm/self.gamma
 
     def __call__(self, x):
         res = self.merger_rate*x

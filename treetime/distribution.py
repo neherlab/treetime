@@ -266,14 +266,18 @@ class Distribution(object):
         if n % 2 == 0:
             n += 1
         mult = 1.0/6
-        if a>b:
-            b,a = a,b
-            mult=-1.0/6
-        x = np.linspace(a,b,n)
-        dx = np.diff(x[::2])
-        y = self.prob_relative(x)
-        return mult*(dx[0]*y[0]+ np.sum(4*dx*y[1:-1:2])
-                    + np.sum((dx[:-1]+dx[1:])*y[2:-1:2]) + dx[-1]*y[-1])
+        threshold = np.array([a,self.peak_pos-5*self.fwhm, self.peak_pos+5*self.fwhm,b])
+        threshold = threshold[(threshold>=a)&(threshold<=b)]
+        threshold.sort()
+        res = []
+        for lw, up in zip(threshold[:-1], threshold[1:]):
+            x = np.linspace(lw,up,n)
+            dx = np.diff(x[::2])
+            y = self.prob_relative(x)
+            res.append(mult*(dx[0]*y[0]+ np.sum(4*dx*y[1:-1:2])
+                    + np.sum((dx[:-1]+dx[1:])*y[2:-1:2]) + dx[-1]*y[-1]))
+
+        return np.sum(res)
 
 
 if __name__=="__main__":
