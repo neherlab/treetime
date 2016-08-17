@@ -7,21 +7,21 @@ import utils
 import seq_utils
 import os
 import StringIO
+from scipy.ndimage import binary_dilation
 
-
-def treetime_from_newick(gtr, infile):
-    """
-    Create TreeTime object and load phylogenetic tree from newick file
-    Args:
-     - infile(str): path to the newick file.
-    Returns:
-     - tanc(TreeTime): tree time object with phylogenetic tree set and required
-     parameters assigned to the nodes.
-    """
-    tanc = TreeTime(gtr)
-    tanc.tree = Phylo.read(infile, 'newick')
-    tanc.set_additional_tree_params()
-    return tanc
+def plot_vs_years(my_clocktree, **kwargs):
+    my_clocktree.branch_length_to_years()
+    Phylo.draw(my_clocktree.tree, **kwargs)
+    offset = my_clocktree.tree.root.numdate - my_clocktree.tree.root.branch_length
+    ax = plt.gca()
+    xticks = ax.get_xticks()
+    dtick = xticks[1]-xticks[0]
+    shift = offset - dtick*(offset//dtick)
+    ax.set_xticks(xticks - shift)
+    ax.set_xticklabels(map(str, [x+offset-shift for x in xticks]))
+    ax.set_xlabel('year')
+    ax.set_ylabel('')
+    ax.set_xlim(0)
 
 def treetime_to_newick(tt, outf):
     Phylo.write(tt.tree, outf, 'newick')
@@ -45,7 +45,7 @@ def _layout(tree):
         clade += 1
         if node.up is not None: #try:
             # Set xValue, tValue, yValue
-            node.xvalue = node.up.xvalue+node.opt_branch_length
+            node.xvalue = node.up.xvalue + node.opt_branch_length
             node.tvalue = node.numdate - tree.root.numdate
         else:
             node.xvalue = 0.0
@@ -83,14 +83,11 @@ def treetime_to_json(tt, outf):
                     tree_json[prop] = node.__getattribute__(prop)
 
         if node.clades: # node is internal
-            tree_json["internal_metadata"] = [{'name': k.name, 'value': k.attr(node)} for k in tt._internal_metadata_names]
             tree_json["children"] = []
             for ch in node.clades:
                 tree_json["children"].append(_node_to_json(ch))
-        else:
-            # node is terminal, set both terminal and internal metadata
-            tree_json["internal_metadata"] = [{'name': k.name, 'value': k.attr(node)} for k in tt._internal_metadata_names]
-            tree_json["terminal_metadata"] = [{'name': k.name, 'value': k.attr(node)} for k in tt._terminal_metadata_names]
+
+        tree_json["metadata"] = [{'name': k.name, 'value': k.attr(node)} for k in tt._metadata_names]
 
         return tree_json
 
@@ -117,9 +114,9 @@ def tips_data_to_json(tt, outf):
     with open (outf,'w') as of:
         json.dump(arr, of, indent=True)
 
-def root_pos_lh_to_human_readable(tt, cutoff=1e-4):
+def root_pos_lh_to_human_readable(tt, node, cutoff=1e-4):
 
-    mtp = mtp = tt.tree.root.msg_to_parent
+    mtp = mtp = node.marginal_lh
     mtp_min = mtp.y.min()
 
     mtpy = np.array([np.exp(-k+mtp_min) for k in mtp.y])
@@ -127,14 +124,14 @@ def root_pos_lh_to_human_readable(tt, cutoff=1e-4):
 
     # cut and center
     maxy_idx = mtpy.argmax()
-    val_right = (mtpy[maxy_idx:] > cutoff)
+    val_right = binary_dilation(mtpy[maxy_idx:] > cutoff)
     if (val_right.sum() == 0):
         right_dist = 0
     else:
         # left, actually (time is in the opposite direction)
         right_dist = - mtpx[maxy_idx] + mtpx[maxy_idx + val_right.argmin()]
 
-    val_left = mtpy[:maxy_idx] > cutoff
+    val_left = binary_dilation(mtpy[:maxy_idx] > cutoff)
     if (val_left.sum() == 0):
         left_dist = 0.0
     else:
@@ -154,19 +151,27 @@ def root_pos_lh_to_human_readable(tt, cutoff=1e-4):
 
 def root_lh_to_json(tt, outf):
 
-    x,y = root_pos_lh_to_human_readable(tt)
-    arr = [{"x":f, "y":b} for f, b in zip(x, y)]
+    out_dic = {}
+    for node in tt.tree.find_clades():
+        x,y = root_pos_lh_to_human_readable(tt, node)
+        arr = [{"x":f, "y":b} for f, b in zip(x, y)]
+        out_dic[node.name] = arr
+        # numpy arrays are not JSON-serializable, so we need to convert to list
+        #out_dic[node.name]['x'] = list(x)
+        #out_dic[node.name]['y'] = list(y)
+
+
 
     with open (outf,'w') as of:
-        json.dump(arr, of, indent=True)
+        json.dump(out_dic, of, indent=True)
 
     print (', '.join([str(k) for k in x]))
     print (', '.join([str(k) for k in y]))
 
-    #import ipdb; ipdb.set_trace()
+
 def root_lh_to_csv(tt, outf):
     """Save node position likelihood distribution to CSV file"""
-    x,y = root_pos_lh_to_human_readable(tt)
+    x,y = root_pos_lh_to_human_readable(tt, tt.tree.root)
     arr = np.zeros((x.shape[0], 2))
     arr[:, 0] = x[:]
     arr[:, 1] = y[:]
@@ -177,7 +182,7 @@ def root_lh_to_csv(tt, outf):
 def save_all_nodes_metadata(tt, outfile):
 
     import pandas
-    metadata = tt._internal_metadata_names + tt._terminal_metadata_names
+    metadata = tt._metadata_names
     d = [[k.attr(n) for k in metadata] for n in tt.tree.find_clades()]
     df = pandas.DataFrame(d, index=[k.name for k in tt.tree.find_clades()], columns=[k.name for k in metadata])
     df.sort_index(inplace=True)
@@ -221,39 +226,6 @@ def save_timetree_results(tree, outfile_prefix):
     zipf.write(outfile_prefix + ".aln.fasta")
     zipf.write(outfile_prefix + ".tree.nwk")
     zipf.write(outfile_prefix + ".root_dist.csv")
-
-def set_seqs_to_leaves(tree, aln):
-    """
-    Set sequences from the alignment to the leaves of the tree of the TreeAnc class.
-    Args:
-     - tree (TreeAnc): instance of the treeAnc class with the tree loaded. The
-     names of the tree leaves must match exactly with those of the alignment
-     sequences.
-     - aln(Bio.MultipleSequenceAlignment): alignment ogbject
-    Returns:
-     - failed_leaves(int): number of leaves which could not be assigned with
-     sequences.
-    Note:
-     - If there are more than 100 leaves failed to get sequences, the function
-     breaks, returning 100.
-    """
-    failed_leaves= 0
-    dic_aln = {k.name: seq_utils.prepare_seq(k.seq) for k in aln} #
-    for l in tree.tree.get_terminals():
-        if l.name in dic_aln:
-            l.state_seq = dic_aln[l.name]
-            l.sequence=l.state_seq
-        else:
-            print ("Cannot find sequence for leaf: %s" % l.name)
-            failed_leaves += 1
-            if failed_leaves == 100:
-                print ("Error: cannot set sequences to the terminal nodes.\n"
-                    "Are you sure the alignment belongs to the tree?")
-                break
-    tree.L = aln.get_alignment_length()
-    tree.one_mutation = 1.0/tree.L
-    tree.tree.root.branch_length = tree.one_mutation
-    return failed_leaves
 
 def read_dates_file(self, inf, **kwargs):
         """
@@ -426,10 +398,48 @@ def read_metadata(tree, infile):
     if os.path.isfile(infile):
         try:
             import pandas
-            df = pandas.read_csv(infile, index_col=0)
+            df = pandas.read_csv(infile, index_col=0, sep=r'\s*,\s*')
             if df.index.name != "name" and df.index.name != "#name":
-                print ("Cannot read metadata: first columns should be leaves name")
+                print ("Cannot read metadata: first column should contain the leaves names")
                 return
+
+            potential_date_columns = []
+            potential_numdate_columns = []
+
+            for ci,col in enumerate(df.columns):
+                if 'date' in col.lower():
+                    try: #avoid date parsing when can be parsed as float
+                        tmp = float(df.iloc[0,ci])
+                        potential_numdate_columns.append((ci, col))
+                    except: #otherwise add as potential date column
+                        potential_date_columns.append((ci, col))
+
+
+            # if a potential date column was found
+            if len(potential_numdate_columns)>=1:
+                # use the first numdate column
+                #idx = potential_numdate_columns[0][0]
+                name = potential_numdate_columns[0][1]
+                # Use this column as numdate_given
+                df.rename_axis({name:"numdate_given"}, axis=1, inplace=True)
+
+            elif len(potential_date_columns)>=1:
+
+                #try to parse the csv file with dates in the idx column:
+                idx = potential_date_columns[0][0]
+                name = potential_date_columns[0][1]
+
+                # NOTE as the 0th column is the index, we should parse the dates
+                # for the column idx + 1
+                df = pandas.read_csv(infile, index_col=0, sep=r'\s*,\s*', parse_dates=[1+idx])
+                #convert to numdate
+                df[name] = map (utils.numeric_date, df[name])
+                # use this column as the numeric date:
+                df.rename_axis({name:"numdate_given"}, axis=1, inplace=True)
+
+            else:
+                print ("Metadata file has no column which looks like a sampling date!")
+
             dic = df.to_dict(orient='index')
             tree.set_metadata(**dic)
         except:
@@ -448,7 +458,6 @@ def read_metadata(tree, infile):
 
 
 def save_gtr_to_file(gtr, outfile):
-
 
     with open(outfile, 'w') as of:
         of.write("#GTR alphabet\n" + ','.join(gtr.alphabet)+'\n')

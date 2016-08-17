@@ -1,3 +1,4 @@
+from __future__ import division, print_function
 import numpy as np
 from scipy.interpolate import interp1d
 import config as ttconf
@@ -17,8 +18,13 @@ class DateConversion(object):
         self.slope = 0
         self.intercept = 0
         self.r_val = 0
-        self.pi_val = 0
+        self.p_val = 0
         self.sigma = 0
+
+    def __str__(self):
+        outstr = ('Root-Tip-Regression:\n --slope:\t%f\n --intercept:\t%f\n --R^2:\t\t%f\n'
+                  %(self.slope, self.intercept, self.r_val))
+        return outstr
 
 
     @classmethod
@@ -38,18 +44,17 @@ class DateConversion(object):
         dc = cls()
 
         if slope is None:
-
-            if len(dates) < 5:
-                raise(RuntimeError("There are no dates set at the leaves of the tree."
+            if len(dates) < 3:
+                raise(RuntimeError("There are to few dates set at the leaves of the tree."
                     " Cannot make the conversion function. Aborting."))
             # simple regression
             dc.slope,\
                 dc.intercept,\
                 dc.r_val,\
-                dc.pi_val,\
+                dc.p_val,\
                 dc.sigma = stats.linregress(dates[:, 0], dates[:, 1])
         else:
-
+            # TODO this seems awkward
             dc.slope = slope # slope is given
             min_numdate_given = ttconf.BIG_NUMBER
             max_numdate_given = -ttconf.BIG_NUMBER
@@ -91,12 +96,11 @@ class DateConversion(object):
         """
         return abs(date1 - date2) * self.slope
 
-    def get_abs_t(self, numdate):
+    def get_time_before_present(self, numdate):
         """
         Convert the numeric date to the branch-len scale
         """
-        abs_t = (numeric_date() - numdate) * abs(self.slope)
-        return abs_t
+        return (numeric_date() - numdate) * abs(self.slope)
 
     def get_date(self, abs_t):
         """
@@ -117,46 +121,6 @@ class DateConversion(object):
             #days = abs(days)
         return days
 
-def delta_fun(pos, return_log=True, normalized=False, width=ttconf.WIDTH_DELTA):
-    """
-    Create an interpolation object for delta function
-    Args:
-
-     - pos(double): position of the delta function maximum
-
-     - return_log(bool): whether to return logarithm or pure delta-fun.
-
-     - normalized(bool): If True, set the amplitude so that the integral of the
-     delta function is 1.
-
-     - width(double): width of the delta function.
-    """
-    grid = np.concatenate(([ttconf.MIN_T],
-        pos * np.array([1 - width,1 - width*0.5, 1 + width*0.5, 1 + width]),
-        [ttconf.MAX_T]))
-    if return_log:
-        vals = np.array([
-            ttconf.MIN_LOG,
-            ttconf.MIN_LOG,
-            0.0,
-            0.0,#np.log(np.abs(pos/width)),
-            ttconf.MIN_LOG,
-            ttconf.MIN_LOG])
-        if normalized:
-            vals[2,3] = -np.log(width/1.5)
-    else:
-        vals = np.array([
-            0.0,
-            0.0,
-            1.0,
-            1.0,#np.log(np.abs(pos/width)),
-            0.0,
-            0.0])
-        if normalized:
-            vals[2,3] = 1.5 / width
-    delta = interp1d(grid, -vals, kind='linear')
-    delta.delta_pos=pos
-    return delta
 
 def min_interp(interp_object):
     """
@@ -168,7 +132,6 @@ def min_interp(interp_object):
         s = "Cannot find minimum of tthe interpolation object" + str(interp_object.x) + \
         "Minimal x: " + str(interp_object.x.min()) + "Maximal x: " + str(interp_object.x.max())
         raise e
-
 
 
 def median_interp(interp_object):
@@ -183,143 +146,6 @@ def median_interp(interp_object):
     median_index = min(len(tmp_cumsum)-3, max(2,np.searchsorted(tmp_cumsum, tmp_cumsum[-1]*0.5)+1))
     return new_grid[median_index]
 
-def opt_branch_len(node):
-    """
-    Find optimal branch length for a node.
-    Args:
-
-     - node: Tree node. **NOTE** the node should store the branch length probability \
-     as an interpolation object as the branch_neg_log_prob attribute.
-
-    Returns:
-
-     - opt_len(double): optimal branch length. In case of error - 0.0.
-    """
-    if not hasattr(node, "branch_neg_log_prob") or node.branch_neg_log_prob is None:
-        return 0.0
-    return min_interp(node.branch_neg_log_prob)
-
-def find_node_opt_pos(node):
-    """
-    Given the probability distribution of the node location, find the optimal node
-    position.
-
-    Args:
-
-     - node (Phylo.Clade): tree node. **NOTE** the node should store the location
-     probability distribution as the mas_to_parent attribute.
-
-    Returns:
-
-     - opt_pos(double, None): in cas eof the error, None is returned. Otherwise,
-     the position as double, in the branch length units.
-    """
-    if not hasattr(node, "msg_to_parent") or node.msg_to_parent is None:
-        return None
-    return min_interp(node.msg_to_parent)
-
-def make_node_grid(opt, grid_size=ttconf.NODE_GRID_SIZE, variance=ttconf.NODE_GRID_VAR):
-    """
-    Create grid for the node location distribution.
-
-    Args:
-     - opt(double): Estimate for the optimal node position. The grid will be set
-     arround this value.
-
-     - grid_size(int): number of pointes in the grid
-
-     - variance (double): the grid "width" as the ratio of the tree diameter.
-
-    Returns:
-
-     - grid(np.array): the grid as 1D numpy  array
-    """
-
-    grid_leaves = opt + ttconf.MAX_BRANCH_LENGTH * np.sign(np.linspace(-1, 1, grid_size))\
-                        *(np.linspace(-1, 1, grid_size)**2)
-
-    grid = np.concatenate(([ttconf.MIN_T],
-        grid_leaves,
-        [ttconf.MAX_T]))
-    return grid
-
-def multiply_dists(interps):
-    """
-    Multiply two distributions of inverse log-likelihoods,
-    represented as interpolation objects. Takes array of interpolation objects,
-    extracts the grid, builds the new grid for the resulting distribution,
-    performs multiplication on a new grid.
-    Args:
-
-     - interps (iterable): Iterable of interpolation objects for -log(LH)
-     distributions.
-
-     - prefactors (iterable): scaling factors of the distributions. Each
-     distribution is (arbitrarly) scaled so that the max value is 1, hence
-     min(-log(LH(x))) = 0. The prefactors will be summed, the new prefactor
-     will be added and the result will be returned as the prefactor for the
-     resulting distribution
-
-     - grid_size (int, default 100): The number of nodes in the interpolation
-     object X-scale.
-
-    Returns:
-     - interp: Resulting interpolation object for the -log(LH) distribution
-
-     - pre(double): distribution pre-factor
-    """
-
-    #prefactor = np.sum(prefactors)
-    grid_size = ttconf.NODE_GRID_SIZE
-    min_grid_size = np.min([len(k.x) for k in interps])
-    # correction for delta-functions distribution of terminal nodes
-    if min_grid_size < 10: # just combine the two grids
-        grid = np.concatenate([k.x for k in interps])
-        grid = np.unique(grid) # exclude repetitive points (terminals)
-    else: # create new grid from combination of two
-
-        opts = [min_interp(k) for k in interps]
-        opts = [k for k in opts if k is not None]
-        grid = np.unique(np.concatenate ((opts, make_node_grid(np.mean(opts)))))
-
-    node_prob = np.sum([k(grid) for k in interps], axis=0)
-
-    node_prob[((0,-1),)] = -1 * ttconf.MIN_LOG # +1000
-    node_prob[((1,-2),)] = -1 * ttconf.MIN_LOG / 2 # +500
-
-    interp = interp1d(grid, node_prob, kind='linear')
-    return interp
-
-
-#FIXME: ARE TWO FUNCTION BELOW USED
-def _nni(self, node):
-    """
-    Perform nearest-neighbour-interchange procedure,
-    choose the best local configuration
-    """
-    if node.up is None: # root node
-        return
-
-    children = node.clades
-    sisters = [k for k in node.up.clades]
-    for child_pos, child in enumerate(children):
-        for sister_pos, sister in enumerate(sisters):
-            # exclude node from iteration:
-            if sister == node:
-                continue
-            # exchange
-            node.up.clades[sister_pos] = child
-            node.clades[child_pos] = sister
-            # compute new likelihood for the branch
-
-def build_DM(self, nodes, gtr):
-    """
-    Build distance matrix for local rewiring
-    """
-    DM = np.array([[(k.sequence!=j.sequence).mean() for k in nodes]
-        for  j in nodes])
-    np.fill_diagonal(DM, 1e10)
-    return DM
 
 def numeric_date(dt=None):
     """

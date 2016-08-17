@@ -7,7 +7,7 @@ class GTR(object):
     """
     Defines General-Time-Reversible model of character evolution.
     """
-    def __init__(self, alphabet='nuc', prof_map=None):
+    def __init__(self, alphabet='nuc', prof_map=None, logger=None):
         """
         Initialize empty evolutionary model.
         Args:
@@ -25,8 +25,19 @@ class GTR(object):
                 self.profile_map = {s:x for s,x in zip(self.alphabet, np.eye(len(self.alphabet)))}
             else:
                 self.profile_map = prof_map
+        if logger is None:
+            def logger(*args,**kwargs):
+                print(*args)
+            self.logger = logger
+        else:
+            self.logger = logger
         n_states = len(self.alphabet)
-
+        self.logger("GTR: with alphabet: "+str(self.alphabet),1)
+        try:
+            self.gap_index = list(self.alphabet).index('-')
+        except:
+            self.logger("GTR: no gap symbol!", 4, warn=True)
+            self.gap_index=-1
         # general rate matrix
         self.W = np.zeros((n_states, n_states))
         # stationary states of the characters
@@ -35,16 +46,28 @@ class GTR(object):
         # mutation rate, scaling factor
         self.mu = 1.0
         # eigendecomposition of the GTR matrix
-        # Pi.dot(W) = v.dot(eigenmat).dot(v_inv)
+        # Pi.dot(W) = v.dot(eigenvals).dot(v_inv)
         self.v = np.zeros((n_states, n_states))
         self.v_inv = np.zeros((n_states, n_states))
-        self.eigenmat = np.zeros(n_states)
+        self.eigenvals = np.zeros(n_states)
+        # NEEDED TO BREAK RATE MATRIX DEGENERACY AND FORCE NP TO RETURN REAL ORTHONORMAL EIGENVECTORS
+        np.random.seed(12345)
+        self.break_degen = np.random.random(size=self.W.shape)*0.0001
 
         # distance matrix (needed for topology optimization and for NJ)
         self.dm = None
 
+######################################################################
+## constructor methods
+######################################################################
+
     def __str__(self):
-        eq_freq_str = "Equilibrium frequencies (pi_i):\n"
+        '''
+        string representation of the GTR model for pretty printing
+        '''
+        eq_freq_str = "Mutation rate (mu): "+str(np.round(self.mu,6))+'\n'
+
+        eq_freq_str += "\nEquilibrium frequencies (pi_i):\n"
         for a,p in zip(self.alphabet, np.diagonal(self.Pi)):
             eq_freq_str+=str(a)+': '+str(np.round(p,4))+'\n'
 
@@ -60,8 +83,34 @@ class GTR(object):
 
         return eq_freq_str + W_str + Q_str
 
+    def assign_rates(self, mu=1.0, pi=None, W=None):
+        n = len(self.alphabet)
+        self.mu = mu
+        if pi is not None and len(pi)==n:
+            Pi = pi
+        else:
+            if pi is not None and len(pi)!=n:
+                self.logger("length of equilibrium frequency vector does not match alphabet length", 4, warn=True)
+                self.logger("Ignoring input equilibrium frequencies", 4, warn=True)
+            Pi = np.ones(size=(n))
+        Pi /= Pi.sum()
+        self.Pi = np.diagflat(Pi)
+
+        if W is None or W.shape!=(n,n):
+            if (W is not None) and W.shape!=(n,n):
+                self.logger("Mutation matrix size does not match alphabet size", 4, warn=True)
+                self.logger("Ignoring input mutation matrix", 4, warn=True)
+            # flow matrix
+            self.W = np.ones((n,n))
+            np.fill_diagonal(self.W, - ((self.W).sum(axis=0) - 1))
+
+        self.W = 0.5*(W+W.T)
+        self._check_fix_Q()
+        self._eig()
+
+
     @classmethod
-    def custom(cls, mu=1.0, pi=None, W=None, **kwargs):
+    def custom(cls,mu=1.0, pi=None, W=None, **kwargs):
         """
         Create a GTR model by specifying the matrix explicitly
 
@@ -72,34 +121,12 @@ class GTR(object):
 
         KWargs:
          - alphabet(str): specify alphabet when applicable. If the alphabet specification
-         is requred, but no alphabet specified, the nucleotide will be used as default.
+         is required, but no alphabet specified, the nucleotide will be used as default.
         """
         gtr = cls(**kwargs)
-        n = gtr.alphabet.shape[0]
-
-        gtr.mu = mu
-        if pi is not None and len(pi)==n:
-            Pi = pi
-        else:
-            if pi is not None and len(pi)!=n:
-                print("length of equilibrium frequency vector does not match alphabet length"
-                      "Ignoring input equilibrium frequencies")
-            Pi = np.ones(size=(n))
-        Pi /= Pi.sum()
-        gtr.Pi = np.diagflat(Pi)
-
-        if W is None or W.shape!=(n,n):
-            if (W is not None) and W.shape!=(n,n):
-                print("Mutation matrix size does not match alphabet size"
-                      "Ignoring input mutation matrix")
-            # flow matrix
-            gtr.W = np.ones((a,a))
-            np.fill_diagonal(gtr.W, - ((gtr.W).sum(axis=0) - 1))
-
-        gtr.W = 0.5*(W+W.T)
-        gtr._check_fix_Q()
-        gtr._eig()
+        gtr.assign_rates(mu=mu, pi=pi, W=W)
         return gtr
+
 
     @classmethod
     def standard(cls, model='Jukes-Cantor', **kwargs):
@@ -124,7 +151,6 @@ class GTR(object):
         if 'alphabet' in kwargs and kwargs['alphabet'] in alphabets.keys():
             alphabet = kwargs['alphabet']
         else:
-            print ("No alphabet specified. Using default nucleotide.")
             alphabet = 'nuc'
         if 'mu' in kwargs:
             mu = kwargs['mu']
@@ -132,41 +158,18 @@ class GTR(object):
             mu = 1.0
 
         if model=='Jukes-Cantor':
-
             gtr = cls('nuc')
-            gtr.mu = mu
-            a = gtr.alphabet.shape[0]
-
-            # flow matrix
-            gtr.W = np.ones((a,a))
-            np.fill_diagonal(gtr.W, - ((gtr.W).sum(axis=0) - 1))
-
-            # equilibrium concentrations matrix
-            gtr.Pi = np.zeros(gtr.W.shape)
-            np.fill_diagonal(gtr.Pi, 1.0/a)
-
-            gtr._check_fix_Q() # make sure the main diagonal is correct
-            gtr._eig() # eigendecompose the rate matrix
-            return gtr
-
+            n = gtr.alphabet.shape[0]
+            W, pi = np.ones((n,n)), np.ones(n)
         elif model=='random':
             gtr = cls(alphabet)
-            a = gtr.alphabet.shape[0]
-
-            gtr.mu = mu
-
-            Pi = 1.0*np.random.randint(0,100,size=(a))
-            Pi /= Pi.sum()
-            gtr.Pi = np.diagflat(Pi)
-
-            W = 1.0*np.random.randint(0,100,size=(a,a)) # with gaps
-            gtr.W = W+W.T
-
-            gtr._check_fix_Q()
-            gtr._eig()
-            return gtr
+            n = gtr.alphabet.shape[0]
+            pi = 1.0*np.random.randint(0,100,size=(n))
+            W = 1.0*np.random.randint(0,100,size=(n,n)) # with gaps
         else:
             raise NotImplementedError("The specified evolutionary model is unsupported!")
+        gtr.assign_rates(mu=mu, pi=pi, W=W)
+        return gtr
 
     @classmethod
     def infer(cls, nij, Ti, root_state, pc=5.0, **kwargs):
@@ -191,9 +194,10 @@ class GTR(object):
             no mutation are observed
         KWargs:
          - alphabet(str): specify alphabet when applicable. If the alphabet specification
-         is requred, but no alphabet specified, the nucleotide will be used as default.
+           is required, but no alphabet specified, the nucleotide will be used as default.
         """
         gtr = cls(**kwargs)
+        gtr.logger("GTR: model inference ",1)
         dp = 1e-5
         Nit = 40
         pc_mat = pc*np.ones_like(nij)
@@ -206,28 +210,37 @@ class GTR(object):
         W_ij = np.ones_like(nij)
         mu = nij.sum()/Ti.sum()
         while LA.norm(pi_old-pi) > dp and count < Nit:
-            print('GTR inference iteration ',count,'change:',LA.norm(pi_old-pi))
+            gtr.logger(' '.join(map(str, ['GTR inference iteration',count,'change:',LA.norm(pi_old-pi)])), 3)
             count += 1
             pi_old = np.copy(pi)
             W_ij = (nij+nij.T+2*pc_mat)/mu/(np.outer(pi,Ti) + np.outer(Ti,pi)
                                                     + ttconf.TINY_NUMBER + 2*pc_mat)
-            W_ij = W_ij/np.sum(W_ij)
-            pi = (np.sum(nij+pc_mat,axis=1)+root_state)/(mu*np.dot(W_ij,Ti)+root_state.sum()+np.sum(pc_mat, axis=1))
-            mu = nij.sum()/(ttconf.TINY_NUMBER + np.sum(pi * (W_ij.dot(Ti))))
 
+            np.fill_diagonal(W_ij, 0)
+            Wdiag = ((W_ij.T*pi).T).sum(axis=0)/pi
+            np.fill_diagonal(W_ij, Wdiag)
+            Q1 = np.diag(pi).dot(W_ij)
+            scale_factor = np.sum(np.diagonal(Q1*np.diag(pi)))
+            np.fill_diagonal(W_ij, 0)
+
+            W_ij = W_ij/scale_factor
+            pi = (np.sum(nij+pc_mat,axis=1)+root_state)/(mu*np.dot(W_ij,Ti)+root_state.sum()+np.sum(pc_mat, axis=1))
+            pi /= pi.sum()
+            mu = nij.sum()/(ttconf.TINY_NUMBER + np.sum(pi * (W_ij.dot(Ti))))
         if count >= Nit:
-            print ('WARNING: maximum number of iterations has been reached in GTR inference')
+            gtr.logger('WARNING: maximum number of iterations has been reached in GTR inference',3, warn=True)
             np.min(pi.sum(axis=0)), np.max(pi.sum(axis=0))
             if LA.norm(pi_old-pi) > dp:
-                print ('    the iterative scheme has not converged')
+                gtr.logger('the iterative scheme has not converged',3,warn=True)
             elif np.abs(1-np.max(pi.sum(axis=0))) > dp:
-                print ('    the iterative scheme has converged, but proper normalization was not reached')
-        gtr.W = W_ij
-        gtr.Pi = np.diag(pi)
-        gtr._check_fix_Q()
-        gtr._eig()
+                gtr.logger('the iterative scheme has converged, but proper normalization was not reached',3,warn=True)
+
+        gtr.assign_rates(mu=mu, W=W_ij, pi=pi)
         return gtr
 
+########################################################################
+### prepare model
+########################################################################
     def _check_fix_Q(self):
         """
         Check the main diagonal of Q and fix it in case it does not corresond
@@ -236,16 +249,17 @@ class GTR(object):
         """
         # fix Q
         self.Pi /= self.Pi.sum() # correct the Pi manually
-        break_degen = np.random.random(size=self.W.shape)*0.0001
-        self.W += break_degen + break_degen.T
+        # NEEDED TO BREAK RATE MATRIX DEGENERACY AND FORCE NP TO RETURN REAL ORTHONORMAL EIGENVECTORS
+        self.W += self.break_degen + self.break_degen.T
         # fix W
         np.fill_diagonal(self.W, 0)
         Wdiag = -((self.W.T*np.diagonal(self.Pi)).T).sum(axis=0)/ \
                 np.diagonal(self.Pi)
         np.fill_diagonal(self.W, Wdiag)
         Q1 = self.Pi.dot(self.W)
-        self.W /= -np.sum(np.diagonal(Q1*self.Pi))
-        self.mu=1.0
+        scale_factor = -np.sum(np.diagonal(Q1*self.Pi))
+        self.W /= scale_factor
+        self.mu *= scale_factor
         Q1 = self.Pi.dot(self.W)
         if (Q1.sum(axis=0) < 1e-10).sum() <  self.alphabet.shape[0]: # fix failed
             import ipdb; ipdb.set_trace()
@@ -260,14 +274,75 @@ class GTR(object):
         """
         # eigendecomposition of the rate matrix
         eigvals, eigvecs = np.linalg.eig(self.Pi.dot(self.W))
-        self.v = eigvecs
+        self.v = np.real(eigvecs)
         self.v_inv = np.linalg.inv(self.v)
-        self.eigenmat = eigvals
+        self.eigenvals = np.real(eigvals)
         return
 
-    def prob_t(self, profile_p, profile_ch, t, rotated=False, return_log=False, ignore_gap=True):
+
+    def compress_sequence_pair(self, seq_p, seq_ch, ignore_gaps=False):
+        '''
+        make a compressed representation of a pair of sequences only counting
+        the number of times a particular pair of states (e.g. (A,T)) is observed
+        the the aligned sequences of parent and child
+        Args:
+          - seq_p:  parent sequence as numpy array
+          - seq_ch: child sequence as numpy array
+          - ignore_gap: whether or not to include gapped positions of the alignment
+                        in the multiplicity count
+        Returns:
+          - seq_pair: [(0,1), (2,2), (3,4)] list of parent_child state pairs
+                      as indices in the alphabet
+          - multiplicity: number of times a particular pair is observed
+        '''
+        from collections import Counter
+        if seq_ch.shape != seq_ch.shape:
+            raise ValueError("GTR.compress_sequence_pair: Sequence lengths do not match!")
+
+        num_seqs = []
+        for seq in [seq_p, seq_ch]:
+            tmp = np.ones_like(seq, dtype=int)
+            for ni,nuc in enumerate(self.alphabet):
+                tmp[seq==nuc] = ni
+            num_seqs.append(tmp)
+        if ignore_gaps:
+            pair_count = Counter([x for x in zip(num_seqs[0], num_seqs[1])
+                                  if (self.gap_index not in x)])
+        else:
+            pair_count = Counter(zip(num_seqs[0], num_seqs[1]))
+        pair_count = pair_count.items()
+        return (np.array([x[0] for x in pair_count], dtype=int),    # [(child_nuc, parent_nuc),()...]
+               np.array([x[1] for x in pair_count], dtype=int))     # multiplicity of each parent/child nuc pair
+
+########################################################################
+### evolution functions
+########################################################################
+    def prob_t_compressed(self, seq_pair, multiplicity, t, return_log=False):
+        '''
+        calculate the probability of observing a sequence pair at a distance t
+        Args:
+          - seq_pair:     np.array([(0,1), (2,2), ()..]) as indicies of
+                pairs of aligned positions. (e.g. 'A'==0, 'C'==1 etc)
+                this only lists all occuring parent-child state pairs, order is irrelevant
+          - multiplicity: the number of times a parent-child state pair is observed
+                this allows to compress the sequence representation
+          - t:            length of the branch separating parent and child
+          - return_log:   whether or not to exponentiate the result
+        '''
+        if (t<0):
+            logP = -ttconf.BIG_NUMBER
+        else:
+            logQt = np.log(self.expQt(t))
+            logQt[np.isnan(logQt) | np.isinf(logQt)] = -ttconf.BIG_NUMBER
+            logP = np.sum(logQt[seq_pair[:,1], seq_pair[:,0]]*multiplicity)
+            if return_log:
+                return logP
+            else:
+                return np.exp(logP)
+
+    def prob_t(self, seq_p, seq_ch, t, return_log=False, ignore_gaps=True):
         """
-        Compute the probability of the two profiles to be separated by the time t.
+        Compute the probability to observe seq_ch after time t starting from seq_p.
         Args:
          - profile_p(np.array): parent profile of shape (L, a), where
          L - length of the sequence, a - alphabet size.
@@ -277,57 +352,29 @@ class GTR(object):
 
          - t (double): time (branch len), separating the profiles.
 
-         - rotated (bool, default False): if True, assume that the supplied
-         profiles are already rotated.
-
          - return_log(bool, default False): whether return log-probability.
 
         Returns:
          - prob(np.array): resulting probability.
         """
-        if t < 0:
-            if return_log:
-                return -BIG_NUMBER
-            else:
-                return 0.0
+        seq_pair, multiplicity = self.compress_sequence_pair(seq_p, seq_ch, ignore_gaps=ignore_gaps)
+        return self.prob_t_compressed(seq_pair, multiplicity, t, return_log=return_log)
 
-        L = profile_p.shape[0]
-        if L != profile_ch.shape[0]:
-            raise ValueError("Sequence lengths do not match!")
 
-        if ignore_gap:
-            try:
-                gap_index = np.where(self.alphabet=='-')[0][0]
-            except:
-                ind = np.ones(L, dtype=bool)
-            else:
-                ind = (profile_p.argmax(axis=1)!=gap_index)&(profile_ch.argmax(axis=1)!=gap_index)
-        else:
-                ind = np.ones(L, dtype=bool)
+    def optimal_t(self, seq_p, seq_ch, ignore_gaps=False):
+        '''
+        Find the optimal distance between the two sequences
+        '''
+        seq_pair, multiplicity = self.compress_sequence_pair(seq_p, seq_ch, ignore_gaps=ignore_gaps)
+        return self.optimal_t_compressed(seq_pair, multiplicity)
 
-        eLambdaT = self._exp_lt(t)
-        if not rotated: # we need to rotate first
-            p1 = profile_p.dot(self.v) # (L x a).dot(a x a) = (L x a) - prof in eigenspace
-            p2 = (self.v_inv.dot(profile_ch.T)).T # (L x a).dot(a x a) = (L x a) - prof in eigenspace
-        else:
-            p1 = profile_p
-            p2 = profile_ch
-            #prob = (profile_p*eLambdaT*profile_ch).sum(1) # sum over the alphabet
 
-        prob = np.maximum(0,(p1*eLambdaT*p2).sum(axis=1)) # sum_i (p1_i * exp(l_i*t) * p_2_i) result = vector length L
-        if return_log:
-            total_prob = (np.log(prob[ind] + ttconf.TINY_NUMBER)).sum() # sum all sites
-        else:
-            total_prob = prob[ind].prod() # prod of all sites
-        del eLambdaT, prob
-        return total_prob
-
-    def optimal_t(self, profile_p, profile_ch, rotated=False, return_log=False, ignore_gap=True):
+    def optimal_t_compressed(self, seq_pair, multiplicity):
         """
-        Find the optimal distance between the two profiles
+        Find the optimal distance between the two sequences
         """
 
-        def _neg_prob(t, parent, child):
+        def _neg_prob(t, seq_pair, multiplicity):
             """
             Probability to observe child given the the parent state, transition
             matrix and the time of evolution (branch length).
@@ -342,14 +389,14 @@ class GTR(object):
              - prob(double): negative probability of the two given sequences
                to be separated by the time t.
             """
-            return -1*self.prob_t (parent, child, t, rotated=False, return_log=True, ignore_gap=ignore_gap)
+            return -1.0*self.prob_t_compressed(seq_pair, multiplicity,t, return_log=True)
 
         try:
             from scipy.optimize import minimize_scalar
             opt = minimize_scalar(_neg_prob,
                     bounds=[0,ttconf.MAX_BRANCH_LENGTH],
                     method='Bounded',
-                    args=(profile_p, profile_ch))
+                    args=(seq_pair, multiplicity))
             new_len = opt["x"]
         except:
             import scipy
@@ -357,20 +404,20 @@ class GTR(object):
             from scipy.optimize import fminbound
             new_len = fminbound(_neg_prob,
                     0,ttconf.MAX_BRANCH_LENGTH,
-                    args=(profile_p, profile_ch))
+                    args=(seq_pair, multiplicity))
             opt={'success':True}
 
-
         if new_len > .9 * ttconf.MAX_BRANCH_LENGTH:
-            print ("WARNING: The branch length seems to be very long!")
+            self.logger("WARNING: GTR.optimal_t_compressed -- The branch length seems to be very long!", 4, warn=True)
 
         if opt["success"] != True:
-            print ("Cannot optimize branch length, minimization failed. Return Hamming distance")
-            new_len =  1 - np.all(profile_ch == profile_p, axis=1).mean()
+            # return hamming distance: number of state pairs where state differs/all pairs
+            new_len =  np.sum(multiplicity[seq_pair[:,1]!=seq_pair[:,0]])/np.sum(multiplicity)
 
-        return  new_len
+        return new_len
 
-    def propagate_profile(self, profile, t, rotated=False, return_log=False):
+
+    def propagate_profile(self, profile, t, return_log=False):
         """
         Compute the probability of the sequence state (profile) at time (t+t0),
         given the sequence state (profile) at time t0.
@@ -380,37 +427,33 @@ class GTR(object):
 
          - t(double): time to propagate
 
-         - rotated(bool default False): whether the supplied profile is in the
-         GTR matrix eigenspace
-
          - return log (bool, default False): whether to return log-probability
 
         Returns:
          - res(np.array): profile of the sequence after time t.
          Shape = (L, a), where L - sequence length, a - alphabet size.
         """
-        eLambdaT = self._exp_lt(t) # vector lenght = a
+        Qt = self.expQt(t)
+        res = profile.dot(Qt)
 
-        if not rotated:
-            # rotate
-            p = self.v_inv.dot(profile.T).T
-        else:
-            p = profile
-
-        res = (self.v.dot((eLambdaT * p).T)).T
-
-        if not return_log:
-            return res
-        else:
+        if return_log:
             return np.log(res)
+        else:
+            return res
 
-    def _exp_lt(self, t):
+
+    def _exp_lt(self, t, mu_prefactor=1.0):
         """
         Returns:
          - exp_lt(numpy.array): array of values exp(lambda(i) * t),
          where (i) - alphabet index (the eigenvalue number).
         """
-        return np.exp(self.mu * t * self.eigenmat)
+        return np.exp(self.mu * t * self.eigenvals)
+
+    def expQt(self, t):
+        eLambdaT = np.diag(self._exp_lt(t)) # vector length = a
+        Qt = self.v.dot(eLambdaT.dot(self.v_inv))   # This is P(nuc1 | given nuc_2)
+        return np.maximum(0,Qt)
 
     def save_to_npz(self, outfile):
         full_gtr = self.mu * np.dot(self.Pi, self.W)

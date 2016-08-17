@@ -1,7 +1,9 @@
 from __future__ import print_function, division
+import time
+import config as ttconf
 from Bio import Phylo
 from Bio import AlignIO
-import   numpy as np
+import numpy as np
 from gtr import GTR
 import seq_utils
 try:
@@ -9,40 +11,7 @@ try:
 except ImportError:  #python3.x
     izip = zip
 
-import json
-from weakref import WeakKeyDictionary
-from scipy.interpolate import interp1d
-
-
-class _Descriptor_PhyloTree(object):
-    """
-    Descriptor to manage the Phylo.Tree object of the TreeTime class.
-    When reading the new tree, it prepares the general properties of the tree for
-    the further use. In particular, it sets the descriptors to the Clade object
-    to manipulate some sensible properties, which depend on each other.
-    """
-    def __init__(self, default=Phylo.BaseTree.Tree()):
-        self.default = default
-        self.data = WeakKeyDictionary()
-
-    def __get__(self, instance, owner):
-        # we get here when someone calls treetime.tree and tree is a Descriptor instance
-        # instance = treetime (real object)
-        # owner = type(treetime) (should be TreeTime)
-        return self.data.get(instance, self.default) # if the data not present - default will be returned
-
-    def __set__(self, instance, value):
-        # we get here when someone calls x.d = val, and d is a Descriptor instance
-        # instance = x
-        # value = val
-        if value is None:
-            self.data[instance] = self.default
-            return
-
-        if not isinstance(value, Phylo.BaseTree.Tree):
-            raise TypeError("The TreeTime object can only assign the BioPython.BaseTree objects.")
-
-        self.data[instance] = value
+min_branch_length = 1e-3
 
 
 class TreeAnc(object):
@@ -52,34 +21,40 @@ class TreeAnc(object):
     alignment, making ancestral state inferrence
     """
 
-    tree = _Descriptor_PhyloTree() # Always set the descriptors at the class level
+    def __init__(self, tree=None, aln=None, gtr=None, verbose = ttconf.VERBOSE):
+        if tree is None:
+            raise("TreeAnc requires a tree!")
+        self.t_start = time.time()
+        self.verbose = verbose
+        self.logger("TreeAnc: set-up",1)
+        self._internal_node_count = 0
+        self.one_mutation = None
+        # TODO: set explicitly
+        self.ignore_gaps = True
+        if gtr is not None:
+            self.gtr = gtr
+        if aln is not None:
+            self.aln = aln
+        self.tree = tree
+        if self.tree is None:
+            self.logger("TreeAnc: tree loading failed! exiting",0)
+            return
+        if aln is not None:
+            self.attach_sequences_to_nodes()
 
-    class DisplayAttr(object):
-
-        def __init__(self, name, attr):
-            self._name = name
-            self._attr = attr
-
-        @property
-        def name(self):
-            return self._name
-
-        def attr(self, node):
-
-            if callable(self._attr):
-                try:
-                    return self._attr(node)
-                except:
-                    return ""
-            elif isinstance(self._attr, str):
-                if hasattr(node, self._attr):
-                    return node.__dict__[self._attr]
-                else:
-                    return ""
-            else:
-                return  ""
+    def logger(self, msg, level, warn=False):
+        if level<self.verbose or warn:
+            dt = time.time() - self.t_start
+            outstr = '\n' if level<2 else ''
+            outstr+=format(dt, '4.2f')+'\t'
+            outstr+= level*'-'
+            outstr+=msg
+            print(outstr)
 
 
+####################################################################
+## SET-UP
+####################################################################
     @property
     def leaves_lookup(self):
         return self._leaves_lookup
@@ -87,158 +62,150 @@ class TreeAnc(object):
     @property
     def gtr(self):
         return self._gtr
-
     @gtr.setter
-    def gtr_setter(self, value):
-        pass
+    def gtr(self, in_gtr):
+        if type(in_gtr)==str:
+            self._gtr = GTR.standard(model=in_gtr, logger=self.logger)
+        elif isinstance(in_gtr, GTR):
+            self._gtr = in_gtr
+            self._gtr.logger=self.logger
+        else:
+            self.logger("TreeAnc.gtr_setter: can't interpret GTR model", 1, warn=True)
+
+    @property
+    def tree(self):
+        return self._tree
+    @tree.setter
+    def tree(self, in_tree):
+        from os.path import isfile
+        if isinstance(in_tree, Phylo.BaseTree.Tree):
+            self._tree = in_tree
+        elif type(in_tree)==str and isfile(in_tree):
+            self._tree=Phylo.read(in_tree, 'newick')
+        else:
+            self.logger('TreeAnc: could not load tree! input was '+in_tree,1)
+            self._tree = None
+            return
+        self.prepare_tree()
+
+    @property
+    def aln(self):
+        return self._aln
+    @aln.setter
+    def aln(self,in_aln):
+        # load alignment from file if necessary
+        from os.path import isfile
+        from Bio.Align import MultipleSeqAlignment
+        if isinstance(in_aln, MultipleSeqAlignment):
+            self._aln = in_aln
+        elif type(in_aln)==str and isfile(in_aln):
+            self._aln=AlignIO.read(in_aln, 'fasta')
+
+        if hasattr(self, '_tree'):
+            self.attach_sequences_to_nodes()
+        else:
+            self.logger("TreeAnc.aln: sequences not yet attached to tree",3,warn=True)
+
+    def attach_sequences_to_nodes(self):
+        # loop over tree,
+        failed_leaves= 0
+        dic_aln = {k.name: seq_utils.seq2array(k.seq) for k in self.aln} #
+        for l in self.tree.get_terminals():
+            if l.name in dic_aln:
+                l.state_seq = dic_aln[l.name]
+                l.sequence=l.state_seq
+            else:
+                self.logger("TreeAnc.attach_sequences_to_nodes: Cannot find sequence for leaf: %s" % l.name, 4, warn=True)
+                failed_leaves += 1
+                if failed_leaves == 100:
+                    self.logger("Error: cannot set sequences to the terminal nodes.\n", 2, warn=True)
+                    self.logger("Are you sure the alignment belongs to the tree?", 2, warn=True)
+                    break
+        self.seq_len = self.aln.get_alignment_length()
+        self.one_mutation = 1.0/self.seq_len
 
 
+    def prepare_tree(self):
+        """
+        Set link to parent and net distance to root for all tree nodes.
+        Should be run once the tree is read and after every tree topology or branch
+        lengths optimizations.
+        """
+        for node in self._tree.find_clades():
+            node.original_length = node.branch_length
+            node.mutation_length = node.branch_length
+        self.tree.ladderize()
+        self._prepare_nodes()
+        self._leaves_lookup = {node.name:node for node in self.tree.get_terminals()}
 
-    def __init__(self, gtr):
-        assert(isinstance(gtr, GTR))
-        self.one_mutation = 1.0
-        self._max_node_num = 0
-        self._gtr = gtr
-        self.tree = None
-        self._leaves_lookup = {}
-        self._internal_metadata_names = [
-                    self.DisplayAttr("numdate", "numdate"),
-                    self.DisplayAttr("mutation_rate/avg", "gamma"),
-                    self.DisplayAttr("branch_len/opt", lambda n: (abs(n.branch_length - n.branch_neg_log_prob.x[(n.branch_neg_log_prob.y.argmin())]) / self.one_mutation)),
-                    self.DisplayAttr("time_since_MRCA (yr)", "tvalue")
-                ]
-        self._terminal_metadata_names = self._internal_metadata_names
 
-        # self.set_additional_tree_params()
+    def _prepare_nodes(self):
+        """
+        Set auxilliary parameters to every node of the tree.
+        """
+        self.tree.root.up = None
+        self.tree.root.dist2root = 0.0
+        self.tree.root.dist2root_0 = 0.0
+        for clade in self.tree.get_nonterminals(order='preorder'): # parents first
+            for c in clade.clades:
+                c.up = clade
+                if c.up.name is None:
+                    c.up.name = "NODE_" + format(self._internal_node_count, '07d')
+                    self._internal_node_count += 1
+                c.dist2root = c.up.dist2root + c.mutation_length
+                c.dist2root_0 = c.dist2root #  store the values used later for date-branchLen conversion
+        return
+
+
+####################################################################
+## END SET-UP
+####################################################################
 
     def infer_gtr(self, print_raw=False, **kwargs):
+
+        self.logger("TreeAnc inferring the GTR model from the tree...", 1)
         self._ml_anc(**kwargs)
         alpha = list(self.gtr.alphabet)
         n=len(alpha)
         nij = np.zeros((n,n))
         Ti = np.zeros(n)
         for node in self.tree.find_clades():
+
             if hasattr(node,'mutations'):
                 for a,pos, d in node.mutations:
                     i,j = alpha.index(a), alpha.index(d)
                     nij[i,j]+=1
-                    Ti[i] += 0.5*node.branch_length
-                    Ti[j] -= 0.5*node.branch_length
+                    Ti[i] += 0.5*node.mutation_length
+                    Ti[j] -= 0.5*node.mutation_length
                 for nuc in node.sequence:
                     i = alpha.index(nuc)
-                    Ti[i]+=node.branch_length
+                    Ti[i] += node.mutation_length
         if print_raw:
             print('alphabet:',alpha)
             print('n_ij:', nij)
             print('T_i:', Ti)
         root_state = np.array([np.sum(self.tree.root.sequence==nuc) for nuc in alpha])
-        self._gtr = GTR.infer(nij, Ti, root_state, pc=5.0, alphabet=self.gtr.alphabet)
+        self._gtr = GTR.infer(nij, Ti, root_state, pc=5.0, alphabet=self.gtr.alphabet, logger=self.logger)
         return self._gtr
 
-    def set_additional_tree_params(self):
-        """
-        Set link to parent and net distance to root for all tree nodes.
-        Should be run once the tree is read and after every tree topology or branch
-        lengths optimizations.
-        """
-        self.tree.root.up = None
-        self.tree.root.dist2root = 0.0
-        self._set_each_node_params()
-        self._leaves_lookup = {node.name:node for node in self.tree.get_terminals()}
 
-
-    def set_metadata_to_node(self, node, **metadata):
-        """
-        Set the metadata to the given tree node from the given dictionary.
-
-        Args:
-         - node(Phylo.Clade): node the metadata should be assigned to
-
-        KWargs:
-         - metadata: dictionary for the values to be set as attributes.
-
-        Returns:
-         - None
-        """
-
-        if isinstance(node, Phylo.BaseTree.Clade):
-
-            for key in metadata:
-                if key != "name": #  filter name node if any  (must be already set)
-                    setattr(node, key, metadata[key])
-
-
-
-        elif isinstance(node, str):
-
-            if node not in  self._leaves_lookup:
-                print ("Cannot set metadata to the node: node not found")
-                return
-
-            node = self._leaves_lookup[node]
-            for key in metadata:
-                if key != "name": #  filter name node if any  (must be already set)
-                    setattr(node, key, metadata[key])
-
-
-
-
-        else:
-            print ("Cannot set metadata to node. Input node must be "
-                "either tree node instance, or name of a node.")
-
-    def set_metadata(self, **all_metadata):
-        """
-        Set metadata from dictionary to all nodes
-        """
-
-        metadata_list_set = False
-
-        for node_key in all_metadata:
-            if node_key not in self._leaves_lookup:
-                print ("Cannot set metadata to the tree node: node name not found")
-                print (node_key)
-                continue
-
-            self.set_metadata_to_node(node_key, **all_metadata[node_key])
-            if not metadata_list_set:
-                self._terminal_metadata_names = [
-                        self.DisplayAttr(k, k) for k in all_metadata[node_key]
-                    ]
-                metadata_list_set = True
-
-
-
-    def _set_each_node_params(self):
-
-        """
-        Set auxilliary parameters to every node of the tree.
-        """
-        self.tree.root.dist2root_0 = 0.0
-
-        for clade in self.tree.get_nonterminals(order='preorder'): # parents first
-            for c in clade.clades:
-                c.up = clade
-                if c.up.name is None:
-                    c.up.name = "NODE_" + format(self._max_node_num, '07d')
-                    self._max_node_num += 1
-                c.dist2root = c.up.dist2root + c.branch_length
-                c.dist2root_0 = c.dist2root #  store the values used later for date-branchLen conversion
-        return
-
+###################################################################
+### ancestral reconstruction
+###################################################################
     def reconstruct_anc(self, method, infer_gtr=False, **kwargs):
         """
         Reconstruct ancestral states
         Args:
          - method(str): method to use. Supported values are "fitch" and "ml"
-        KWargs:
-         - model(TMat): model to use. required for maximum-likelihood ("ml")
 
         Returns:
          - N_diff(int): number of nucleotides different from the previous
          reconstruction. If there were no pre-set sequences, returns N*L
 
         """
+
+        self.logger("TreeAnc reconstructing ancestral states with method: "+method,1)
+
         if infer_gtr:
             self.infer_gtr(**kwargs)
             N_diff = self._ml_anc(**kwargs)
@@ -252,6 +219,9 @@ class TreeAnc(object):
         return N_diff
 
 
+###################################################################
+### FITCH
+###################################################################
     def _fitch_anc(self, **kwargs):
         """
         Reconstruct ancestral states using Fitch's algorithm. The method requires
@@ -274,24 +244,24 @@ class TreeAnc(object):
         for l in self.tree.get_terminals():
             l.state = [[k] for k in l.sequence]
 
-        print ("Walking up the tree, creating the Fitch profiles")
+        self.logger("TreeAnc._fitch_anc: Walking up the tree, creating the Fitch profiles",2)
         for node in self.tree.get_nonterminals(order='postorder'):
             node.state = [self._fitch_state(node, k) for k in range(self.L)]
 
         ambs = [i for i in range(self.L) if len(self.tree.root.state[i])>1]
         if len(ambs) > 0:
             for amb in ambs:
-                print ("Ambiguous state of the root sequence "
+                self.logger("Ambiguous state of the root sequence "
                                     "in the position %d: %s, "
                                     "choosing %s" % (amb, str(self.tree.root.state[amb]),
-                                                     self.tree.root.state[amb][0]))
+                                                     self.tree.root.state[amb][0]), 4)
         self.tree.root.sequence = np.array([k[np.random.randint(len(k)) if len(k)>1 else 0]
                                            for k in self.tree.root.state])
 
 
 
-        print ("Walking down the self.tree, generating sequences from the "
-                         "Fitch profiles.")
+        self.logger("TreeAnc._fitch_anc: Walking down the self.tree, generating sequences from the "
+                         "Fitch profiles.", 2)
         N_diff = 0
         for node in self.tree.get_nonterminals(order='preorder'):
             if node.up != None: # not root
@@ -306,7 +276,7 @@ class TreeAnc(object):
 
             node.profile = seq_utils.seq2prof(node.sequence, self.gtr.profile_map)
             del node.state # no need to store Fitch states
-        print ("Done ancestral state reconstruction")
+        self.logger("Done ancestral state reconstruction",3)
         for node in self.tree.get_terminals():
             node.profile = seq_utils.seq2prof(node.sequence, self.gtr.profile_map)
         return N_diff
@@ -352,6 +322,13 @@ class TreeAnc(object):
         # since the initital arrays are unique, only the correct elements are found this way.
         return aux[aux[shift:] == aux[:-shift]]
 
+
+###################################################################
+### Maximum Likelihood
+###################################################################
+    def branch_length_to_gtr(self, node):
+        return max(min_branch_length*self.one_mutation, node.mutation_length)
+
     def _ml_anc(self, marginal=False, verbose=0, **kwargs):
         """
         Perform ML reconstruction of the ancestral states
@@ -360,6 +337,7 @@ class TreeAnc(object):
            Useful for testing, diagnostics and if special post-processing is required.
          - verbose (int): how verbose the output should be
         """
+
         tree = self.tree
         # number of nucleotides changed from prev reconstruction
         N_diff = 0
@@ -368,8 +346,8 @@ class TreeAnc(object):
 
         L = tree.get_terminals()[0].sequence.shape[0]
         n_states = self.gtr.alphabet.shape[0]
-        if verbose > 2:
-            print ("Walking up the tree, computing likelihoods... type of reconstruction:", 'marginal' if marginal else "joint")
+        self.logger("TreeAnc._ml_anc: type of reconstruction:"+ ('marginal' if marginal else "joint"), 2)
+        self.logger("Walking up the tree, computing likelihoods... ", 3)
         for leaf in tree.get_terminals():
             # in any case, set the profile
             leaf.profile = seq_utils.seq2prof(leaf.sequence, self.gtr.profile_map)
@@ -380,27 +358,30 @@ class TreeAnc(object):
             node.profile = np.ones((L, n_states)) # we will multiply it
             for ch in node.clades:
                 ch.seq_msg_to_parent = self.gtr.propagate_profile(ch.profile,
-                    ch.branch_length,
-                    rotated=False, # use unrotated
-                    return_log=False) # raw prob to transfer prob up
+                    self.branch_length_to_gtr(node), return_log=False) # raw prob to transfer prob up
                 node.profile *= ch.seq_msg_to_parent
                 node.lh_prefactor += ch.lh_prefactor
-            pre = node.profile.sum(axis=1) #sum over nucleotide states
 
+            pre = node.profile.max(axis=1) #sum over nucleotide states
             node.profile = (node.profile.T/pre).T # normalize so that the sum is 1
             node.lh_prefactor += np.log(pre) # and store log-prefactor
-        if (verbose > 2):
-            print ("Walking down the tree, computing maximum likelihood sequences...")
+
+
+        self.logger("Walking down the tree, computing maximum likelihood sequences...",3)
 
         # extract the likelihood from the profile
-        tree.root.lh_prefactor += np.log(tree.root.profile.max(axis=1))
+        tree.root.profile *= np.diag(self.gtr.Pi) # Msg to the root from the distant part (equ frequencies)
+        pre=tree.root.profile.sum(axis=1)
+        tree.root.profile = (tree.root.profile.T/pre).T
+        tree.root.lh_prefactor += np.log(pre)
+
         tree.anc_LH = tree.root.lh_prefactor.sum()
         tree.sequence_LH = 0
         # reset profile to 0-1 and set the sequence
-        tree.root.profile *= np.diag(self.gtr.Pi) # Msg to the root from the distant part (equ frequencies)
         tree.root.sequence, tree.root.profile = \
-            seq_utils.prof2seq(tree.root.profile, self.gtr, correct_prof=not marginal)
+            seq_utils.prof2seq(tree.root.profile, self.gtr, sample_from_prof=True, collapse_prof=not marginal)
         tree.root.seq_msg_from_parent = np.repeat([self.gtr.Pi.diagonal()], len(tree.root.sequence), axis=0)
+
 
         for node in tree.find_clades(order='preorder'):
             if node.up is None: # skip if node is root
@@ -413,35 +394,47 @@ class TreeAnc(object):
                     if c != node:
                         tmp_msg*=c.seq_msg_to_parent
                 node.seq_msg_from_parent = self.gtr.propagate_profile(tmp_msg,
-                            node.branch_length,
-                            rotated=False, # use unrotated
-                            return_log=False)
+                                                self.branch_length_to_gtr(node), return_log=False)
                 node.profile *= node.seq_msg_from_parent
             else:
                 node.seq_msg_from_parent = self.gtr.propagate_profile(node.up.profile,
-                            node.branch_length,
-                            rotated=False, # use unrotated
-                            return_log=False)
+                                                self.branch_length_to_gtr(node), return_log=False)
                 node.profile *= node.seq_msg_from_parent
 
             # reset the profile to 0-1 and  set the sequence
-            sequence, profile = seq_utils.prof2seq(node.profile, self.gtr, correct_prof=not marginal)
+            sequence, profile = seq_utils.prof2seq(node.profile, self.gtr, sample_from_prof=False, collapse_prof=not marginal)
             node.mutations = [(anc, pos, der) for pos, (anc, der) in
                             enumerate(izip(node.up.sequence, sequence)) if anc!=der]
 
             # this needs fixing for marginal reconstruction
             if not marginal:
                 tree.sequence_LH += np.sum(np.log(node.seq_msg_from_parent[profile>0.9]))
+
             if hasattr(node, 'sequence') and node.sequence is not None:
-                try:
-                    N_diff += (sequence!=node.sequence).sum()
-                except:
-                    import ipdb; ipdb.set_trace()
+                N_diff += (sequence!=node.sequence).sum()
             else:
                 N_diff += L
+
             node.sequence = sequence
             node.profile = profile
+
+        # note that the root doesn't contribute to N_diff (intended, since root sequence is often ambiguous)
+        self.logger("Done ancestral state reconstruction",3)
+        self.store_compressed_sequence_pairs()
         return N_diff
+
+    def store_compressed_sequence_to_node(self, node):
+            seq_pairs, multiplicity = self.gtr.compress_sequence_pair(node.up.sequence,
+                                                                      node.sequence,
+                                                                      ignore_gaps = self.ignore_gaps)
+            node.compressed_sequence = {'pair':seq_pairs, 'multiplicity':multiplicity}
+
+    def store_compressed_sequence_pairs(self):
+        self.logger("TreeAnc.store_compressed_sequence_pairs...",2)
+        for node in self.tree.find_clades():
+            if node.up is None:
+                continue
+            self.store_compressed_sequence_to_node(node)
 
 
     def calc_branch_twopoint_functions(self):
@@ -457,7 +450,7 @@ class TreeAnc(object):
 
         for node in self.tree.get_nonterminals():
             for child in node:
-                transition_matrix = self.gtr.v.dot(np.dot(self.gtr._exp_lt(child.branch_length), self.gtr.v_inv))
+                transition_matrix = self.gtr.expQt(self.branch_length_to_gtr(child))
                 if child.is_terminal():
                     from_children=child.profile
                 else:
@@ -468,6 +461,10 @@ class TreeAnc(object):
                 child.mutation_matrix=np.array([get_two_point_func(upmsg, downmsg, transition_matrix)
                                           for upmsg, downmsg in zip(to_parent,from_children)])
 
+
+###################################################################
+### Branch length
+###################################################################
     def optimize_branch_len(self, **kwargs):
         """
         Perform ML optimization for the branch lengths of the whole tree or any
@@ -484,6 +481,9 @@ class TreeAnc(object):
          - None, the phylogenetic tree is modified in-place.
         """
 
+
+        self.logger("TreeAnc.optimize_branch_length: running branch lengths optimization...",1)
+
         verbose = 0
         store_old_dist = False
 
@@ -492,56 +492,65 @@ class TreeAnc(object):
         if 'store_old' in kwargs:
             store_old_dist = kwargs['store_old'] == True
 
-        if verbose > 3:
-            print ("Walking up the tree, computing likelihood distributions")
-
         for node in self.tree.find_clades(order='postorder'):
-            parent = node.up
-            if parent is None: continue # this is the root
-            prof_p = parent.profile
-            prof_ch = node.profile
-
+            if node.up is None: continue # this is the root
             if store_old_dist:
                 node._old_length = node.branch_length
 
-            # optimization method
-            #import ipdb; ipdb.set_trace()
-            new_len = self.gtr.optimal_t(prof_p, prof_ch) # not rotated profiles!
+            new_len = self.optimal_branch_length(node)
+
             if new_len < 0:
                 continue
 
-            if verbose > 5:
-                print ("Optimization results: old_len=%.4f, new_len=%.4f "
-                        " Updating branch length..."
-                        %(node.branch_length, new_len))
+            self.logger("Optimization results: old_len=%.4f, new_len=%.4f "
+                   " Updating branch length..."%(node.branch_length, new_len), 5)
 
             node.branch_length = new_len
+            node.mutation_length=new_len
 
         # as branch lengths changed, the params must be fixed
         self.tree.root.up = None
         self.tree.root.dist2root = 0.0
-        self._set_each_node_params()
+        self._prepare_nodes()
         return
+
+    def optimal_branch_length(self, node):
+        '''
+        calculate optimal branch length given the sequences of node and parent
+        IMPORTANTLY: this needs to use sequences and 0-1 profiles!
+        '''
+        if node.up is None:
+            return self.one_mutation
+
+        parent = node.up
+        if hasattr(node, 'compressed_sequence'):
+            new_len = self.gtr.optimal_t_compressed(node.compressed_sequence['pair'],
+                                                    node.compressed_sequence['multiplicity'])
+        else:
+            new_len = self.gtr.optimal_t(parent.sequence, node.sequence,
+                                         ignore_gaps=self.ignore_gaps)
+        return new_len
+
 
     def prune_short_branches(self):
         """
         If the branch length is less than the minimal value, remove the branch
         from the tree. **Requires** the ancestral sequence reconstruction
         """
-        print("pruning short branches (max prob at zero)")
+        self.logger("TreeAnc.prune_short_branches: pruning short branches (max prob at zero)...", 1)
         for node in self.tree.find_clades():
-            if node.up is None:
+            if node.up is None or node.is_terminal():
                 continue
+
             # probability of the two seqs separated by zero time is not zero
-            if self.gtr.prob_t(node.up.profile, node.profile, 0.0) > 0.1:
-                if node.is_terminal(): # leaf stays as is
-                    continue
+            if self.gtr.prob_t(node.up.sequence, node.sequence, 0.0) > 0.1:
                 # re-assign the node children directly to its parent
                 node.up.clades = [k for k in node.up.clades if k != node] + node.clades
                 if hasattr(node, "lh_prefactor"):
                     node.up.lh_prefactor += node.lh_prefactor
                 for clade in node.clades:
                     clade.up = node.up
+
 
     def optimize_seq_and_branch_len(self,reuse_branch_len=True,prune_short=True, **kwargs):
         """
@@ -571,8 +580,9 @@ class TreeAnc(object):
         else:
             N_diff = self.reconstruct_anc(method='fitch', **kwargs)
         n = 0
-        while True: # at least one cycle must be done
 
+        self.logger("TreeAnc.optimize_seq_and_branch_len: ...", 1)
+        while True: # at least one cycle must be done
             n += 1
 
             self.optimize_branch_len(verbose=0, store_old=False)
@@ -580,17 +590,36 @@ class TreeAnc(object):
                 self.prune_short_branches()
             N_diff = self.reconstruct_anc('ml')
 
-            print ("Optimizing ancestral states and branch lengths. Round %d."
-                   " #Nuc changed since prev reconstructions: %d" %(n, N_diff))
+            self.logger("TreeAnc.optimize_seq_branch_length: Iteration %d."
+                   " #Nuc changed since prev reconstructions: %d" %(n, N_diff), 2)
 
             if N_diff < 1:
                 break
-
-            if n > 100:
-                print ("sequences and branch lengths optimization did not"
-                       "converge in 100 cycles, aborting.")
+            elif n > 10:
+                self.logger("sequences and branch lengths optimization did not"
+                       "converge in 10 cycles, aborting.", 4, warn=True)
                 break
 
-        self._set_each_node_params() # fix dist2root and up-links after reconstruction
-        print("Unconstrained sequence LH:",self.tree.sequence_LH)
+        self._prepare_nodes() # fix dist2root and up-links after reconstruction
+        self.logger("TreeAnc.optimize_seq_and_branch_len: Unconstrained sequence LH:%f"%self.tree.sequence_LH, 1)
         return
+
+###############################################################################
+### Utility functions
+###############################################################################
+    def get_reconstructed_alignment(self):
+        from Bio.Align import MultipleSeqAlignment
+        from Bio.Seq import Seq
+        from Bio.SeqRecord import SeqRecord
+        self.logger("TreeAnc.reconstructed_alignment ...",2)
+        if not hasattr(self.tree.root, 'sequence'):
+            self.logger("TreeAnc.reconstructed_alignment... reconstruction not yet done",3)
+            self.reconstruct_anc('ml')
+
+        new_aln = MultipleSeqAlignment([SeqRecord(id=n.name, seq=Seq("".join(n.sequence)), description="")
+                                        for n in self.tree.find_clades()])
+
+        return new_aln
+
+if __name__=="__main__":
+    pass

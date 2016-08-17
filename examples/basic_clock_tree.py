@@ -1,6 +1,6 @@
 from __future__ import print_function, division
 import numpy as np
-from treetime import TreeAnc
+from treetime.clock_tree import ClockTree
 from Bio import Phylo, AlignIO
 
 if __name__=="__main__":
@@ -9,34 +9,49 @@ if __name__=="__main__":
     ###########################################################################
     import argparse
     parser = argparse.ArgumentParser(
-            description='Reconstruct ancestral sequences and map mutations to the tree.'
-                        ' The ancestral sequences will be written to a file "aln_base"_ancestral.fasta'
-                        ' A tree in newick format with mutations as _A45G_... appended'
-                        ' appended to node names will be written to a file "treebase"_mutation.newick')
+            description="Reconstruct ancestral sequences, set dates to tree, and infer a time scaled tree."
+                        "The tree needs to be properly rooted -- other than branch length the tree won't be modified"
+                        " The ancestral sequences will be written to a file ending on _ancestral.fasta"
+                        " A tree in newick format with mutations as _A45G_... appended"
+                        " appended to node names will be written to a file ending on _mutation.newick")
     parser.add_argument('--aln', required = True, type = str,  help ="fasta file with input sequences")
     parser.add_argument('--tree', required = True, type = str,  help ="newick file with tree")
-    parser.add_argument('--marginal', default = False, action='store_true', help='marginal instead of joint ML reconstruction')
+    parser.add_argument('--dates', required = True, type = str,  help ="csv with dates (float as in 2012.15) for nodes")
     parser.add_argument('--infer_gtr', default = False, action='store_true', help='infer substitution model')
     params = parser.parse_args()
 
     ###########################################################################
-    ### ANCESTRAL RECONSTRUCTION
+    ### PARSING DATES
     ###########################################################################
-    treeanc = TreeAnc(params.tree, aln=params.aln, gtr='Jukes-Cantor', verbose=4)
-    treeanc.reconstruct_anc('ml', infer_gtr=params.infer_gtr, marginal=params.marginal)
+    with open(params.dates) as date_file:
+        dates = {}
+        for line in date_file:
+            try:
+                name, date = line.strip().split(',')
+                dates[name] = float(date)
+            except:
+                continue
+
+    ###########################################################################
+    ### ANCESTRAL RECONSTRUCTION AND SET-UP
+    ###########################################################################
+    myTree = ClockTree(dates, params.tree, aln=params.aln, gtr='Jukes-Cantor', verbose=4)
+    myTree.init_date_constraints(infer_gtr=params.infer_gtr)
 
     ###########################################################################
     ### OUTPUT and saving of results
     ###########################################################################
     if params.infer_gtr:
         print('\nInferred GTR model:')
-        print(treeanc.gtr)
+        print(myTree.gtr)
+
+    print(myTree.date2dist)
 
     outaln_name = '.'.join(params.aln.split('/')[-1].split('.')[:-1])+'_ancestral.fasta'
-    AlignIO.write(treeanc.get_reconstructed_alignment(), outaln_name, 'fasta')
+    AlignIO.write(myTree.get_reconstructed_alignment(), outaln_name, 'fasta')
 
     # decorate tree with inferred mutations
-    for n in treeanc.tree.find_clades():
+    for n in myTree.tree.find_clades():
         if n.up is None:
             continue
         if len(n.mutations):
@@ -44,4 +59,4 @@ if __name__=="__main__":
 
     # write tree to file
     outtree_name = '.'.join(params.tree.split('/')[-1].split('.')[:-1])+'_mutation.newick'
-    Phylo.write(treeanc.tree, outtree_name, 'newick')
+    Phylo.write(myTree.tree, outtree_name, 'newick')

@@ -10,7 +10,7 @@ from Bio import Phylo, AlignIO
 import matplotlib.pyplot as plt
 plt.ion()
 
-polytomies = True
+polytomies = False
 
 def str2date_time(instr):
     """
@@ -61,16 +61,26 @@ if __name__=='__main__':
     # plotting the results
     t._score_branches()
     t.tree.ladderize()
+    Phylo.draw(t.tree, label_func = lambda x:'', show_confidence=False)
+    plt.title("Tree where zero-length branches are collapsed into polytomies")
 
     if polytomies:
-        #Phylo.draw(t.tree, label_func = lambda x:'', show_confidence=False, branch_labels='')
-        t1 = copy.deepcopy(t)
+        t1 = io.treetime_from_newick(gtr, nwk)
+        # set alignment to the tree
+        io.set_seqs_to_leaves(t1, AlignIO.read(fasta, 'fasta'))
+        io.read_metadata(t1, mdf)
+        t1.reroot_to_best_root(infer_gtr=True)
+        t1.init_date_constraints()
+        t1.ml_t()
         t1.resolve_polytomies()
-        t1.tree.ladderize()
+
+        Phylo.draw(t1.tree, label_func = lambda x:'', show_confidence=False)
+        plt.title("Tree with polytomies resolved")
+
         t.print_lh()
         print ("Prior branch len: {0}".format((t.tree.total_branch_length())))
         t1.print_lh()
-        print ("Posterior branch len: {0}".format((t1.tree.total_branch_length())))
+        print ("Branch len after resolution: {0}".format((t1.tree.total_branch_length())))
 
         #traveling_wave(t1.tree, Tc=0.005)
         #t1.init_date_constraints(gtr, slope=slope)

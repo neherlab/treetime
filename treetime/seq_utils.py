@@ -24,7 +24,7 @@ profile_maps = {'nuc':{
     'V': np.array([1, 1, 1, 0, 0], dtype='float')}
     }
 
-def prepare_seq(seq):
+def seq2array(seq):
     """
     Take the raw sequence, substitute the "overhanging" gaps with 'N' (missequenced)
     convert the sequence to the numpy array of uppercase chars.
@@ -67,7 +67,7 @@ def seq2prof(x, profile_map):
 
     return prof
 
-def prof2seq(profile, gtr, correct_prof=True):
+def prof2seq(profile, gtr, sample_from_prof=False, collapse_prof=False):
     """
     Convert profile to sequence and, if requested, set the profile values (LH of
     the characters) to zeros and ones essentially converting the character
@@ -77,18 +77,29 @@ def prof2seq(profile, gtr, correct_prof=True):
      - profile(numpy 2D array): profile. Shape of the profile should be
      (L x a), where L - sequence length, a - alphabet size.
      - gtr (gtr.GTR) instance of teh GTR class to supply the sequence alphabet
-     - correct_prof(bool, default True): whether to convert the profile to the
+     - collapse_prof(bool, default True): whether to convert the profile to the
      delta-function
 
     Returns:
      -seq (numpy array of length L): sequence
      - profile(numpy 2D array of Lxa shape): the resulting profile.
     """
-    seq = gtr.alphabet[profile.argmax(axis=1)]  # max LH over the alphabet
-    if correct_prof:  # max profile value to one, others - zeros
-        am = profile.argmax(axis=1)
-        profile[:, :] = 0.0
-        profile[np.arange(profile.shape[0]), am] = 1.0
-    else: # only normalize
-        profile=(profile.T/profile.sum(axis=1)).T
+
+    # normalize profile such that probabilities at each site sum to one
+    profile=(profile.T/profile.sum(axis=1)).T
+
+    # sample sequence according to the probabilities in the profile
+    # (sampling from cumulative distribution over the different states)
+    if sample_from_prof:
+        cumdis = profile.cumsum(axis=1).T
+        randnum = np.random.random(size=cumdis.shape[1])
+        idx = np.argmax(cumdis>=randnum, axis=0)
+        seq = gtr.alphabet[idx]
+    else:
+        seq = gtr.alphabet[profile.argmax(axis=1)]  # max LH over the alphabet
+
+    # set profile as 0-1 matrix corresponding to sequence
+    if collapse_prof:
+        profile = seq2prof(seq, gtr.profile_map)
+
     return seq, profile
