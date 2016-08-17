@@ -200,7 +200,7 @@ class TreeTime(ClockTree):
             cost gained if the two nodes would have been connected.
             """
             cg = sciopt.minimize_scalar(_c_gain,
-                    bounds=[np.max(n1.time_before_present,n2.time_before_present), parent.time_before_present],
+                    bounds=[max(n1.time_before_present,n2.time_before_present), parent.time_before_present],
                     method='Bounded',args=(n1,n2, parent))
             return cg['x'], - cg['fun']
 
@@ -213,7 +213,7 @@ class TreeTime(ClockTree):
                 # to be optimal
                 new_positions = mergers[:,:,0]
                 cost_gains = mergers[:,:,1]
-                np.fill_diagonal(cost_gains, -1e9)
+                np.fill_diagonal(cost_gains, -1e11)
 
                 idxs = np.unravel_index(cost_gains.argmax(),cost_gains.shape)
                 try:
@@ -223,6 +223,8 @@ class TreeTime(ClockTree):
                         import ipdb; ipdb.set_trace()
                     else:
                         print("problem merging nodes")
+                if self.debug and cost_gains.max()<0:
+                    import ipdb; ipdb.set_trace()
                 n1, n2 = source_arr[idxs[0]], source_arr[idxs[1]]
                 if self.debug:
                     print (n1,n2)
@@ -533,7 +535,7 @@ if __name__=="__main__":
     sns.set_style('whitegrid')
     from Bio import Phylo
     plt.ion()
-    base_name = 'data/H3N2_NA_allyears_NA.200'
+    base_name = 'data/H3N2_NA_allyears_NA.20'
     with open(base_name+'.metadata.csv') as date_file:
         dates = {}
         for line in date_file:

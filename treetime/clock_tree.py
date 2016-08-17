@@ -52,7 +52,7 @@ class ClockTree(TreeAnc):
             self._date2dist = val
 
 
-    def init_date_constraints(self, ancestral_inference=True, slope=None, **kwarks):
+    def init_date_constraints(self, ancestral_inference=False, slope=None, **kwarks):
         """
         Get the conversion coefficients between the dates and the branch
         lengths as they are used in ML computations. The conversion formula is
