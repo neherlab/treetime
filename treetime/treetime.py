@@ -3,19 +3,10 @@ Class, which contains methods to optimize branch lengths given the time
 constraints set to leaves
 """
 from __future__ import print_function, division
-
 from clock_tree import ClockTree
-import utils
 import config as ttconf
-
 import numpy as np
-from Bio import AlignIO, Phylo
-import datetime
-from scipy.interpolate import interp1d
-import json
-import copy
 from scipy import optimize as sciopt
-import seq_utils
 
 
 class TreeTime(ClockTree):
