@@ -113,6 +113,7 @@ class ClockTree(TreeAnc):
         unconstraint nodes.
         '''
         self.logger("ClockTree: Maximum likelihood tree optimization with temporal constraints:",1)
+        self.init_date_constraints()
         self._ml_t_leaves_root()
         self._ml_t_root_leaves()
         self._set_final_dates()
@@ -287,6 +288,15 @@ class ClockTree(TreeAnc):
                 n_date = datetime(1900, 1, 1) + timedelta(days=days)
                 node.date = str(year) + "-" + str(n_date.month) + "-" + str(n_date.day)
 
+    def branch_length_to_years(self):
+        self.logger('ClockTree.branch_length_to_years: setting node positions in unites of years', 2)
+        if not hasattr(self.tree.root, 'numdate'):
+            self.logger('ClockTree.branch_length_to_years: infer ClockTree first', 2,warn=True)
+        self.tree.root.branch_length = 1.0
+        for n in self.tree.find_clades(order='preorder'):
+            if n.up is not None:
+                n.branch_length = n.numdate - n.up.numdate
+
 
 if __name__=="__main__":
     import matplotlib.pyplot as plt
@@ -346,3 +356,7 @@ if __name__=="__main__":
     axs[0].set_xlabel('')
     plt.tight_layout()
 
+    myTree.branch_length_to_years()
+    Phylo.draw(myTree.tree)
+    plt.xlim(myTree.tree.root.numdate-1,
+             np.max([x.numdate for x in myTree.tree.get_terminals()])+1)

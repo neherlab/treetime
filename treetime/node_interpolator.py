@@ -109,7 +109,7 @@ class NodeInterpolator (Distribution):
         refine_idx[-1]=False
 
         step = 0
-        while step < 25:
+        while step < 5:
 
             step += 1
 
@@ -117,8 +117,8 @@ class NodeInterpolator (Distribution):
             if refine_idx.sum() < 2:
                 break
 
-            if step >= 10:
-                import ipdb; ipdb.set_trace()
+            # if step >= 10:
+            #     import ipdb; ipdb.set_trace()
 
             # additional points
             add_x = 0.5*(t_grid_0[refine_idx] + t_grid_0[np.roll(refine_idx, 1)])

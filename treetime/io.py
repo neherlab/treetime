@@ -9,7 +9,19 @@ import os
 import StringIO
 from scipy.ndimage import binary_dilation
 
-
+def plot_vs_years(my_clocktree, **kwargs):
+    my_clocktree.branch_length_to_years()
+    Phylo.draw(my_clocktree.tree, **kwargs)
+    offset = my_clocktree.tree.root.numdate - my_clocktree.tree.root.branch_length
+    ax = plt.gca()
+    xticks = ax.get_xticks()
+    dtick = xticks[1]-xticks[0]
+    shift = offset - dtick*(offset//dtick)
+    ax.set_xticks(xticks - shift)
+    ax.set_xticklabels(map(str, [x+offset-shift for x in xticks]))
+    ax.set_xlabel('year')
+    ax.set_ylabel('')
+    ax.set_xlim(0)
 
 def treetime_to_newick(tt, outf):
     Phylo.write(tt.tree, outf, 'newick')

@@ -27,32 +27,43 @@ class TreeTime(ClockTree):
     def __init__(self, *args,**kwargs):
         super(TreeTime, self).__init__(*args, **kwargs)
 
-    def run(self, root='best', infer_gtr=True, relaxed_clock=False, resolve_polytomies=True, max_iter=0):
 
+    def run(self, root=None, infer_gtr=True, relaxed_clock=False, resolve_polytomies=True, max_iter=0):
+        # initially, infer ancestral sequences and infer gtr model if desired
         self.optimize_seq_and_branch_len(infer_gtr=infer_gtr, prune_short=True)
 
-        if not ((root is None) or (root==False)):
+        # optionally reroot the tree either by oldest, best regression or with a specific leaf
+        if root is not None:
             self.reroot(root=root)
 
-        self.init_date_constraints()
+        # infer time tree and optionally resolve polytomies
         self.make_time_tree()
         if resolve_polytomies:
-            self.resolve_polytomies()
-            self.prepare_tree()
-            self.optimize_seq_and_branch_len(prune_short=False)
-            if not ((root is None) or (root==False)):
-                self.reroot(root=root)
-            self.init_date_constraints()
-            self.make_time_tree()
+            # if polytomies are found, rerun the entire procedure
+            if self.resolve_polytomies():
+                self.prepare_tree()
+                self.optimize_seq_and_branch_len(prune_short=False)
+                if root=='best':
+                    self.reroot(root=root)
+                self.make_time_tree()
 
+        if relaxed_clock  and len(relaxed_clock)==2:
+            slack, coupling = relaxed_clock
+        # iteratively reconstruct ancestral sequences and re-infer
+        # time tree to ensure convergence.
         niter = 0
         while niter<max_iter:
-            ndiff = self.reconstruct_anc()
+            if self.relaxed_clock:
+                # estimate a relaxed molecular clock
+                self.relaxed_clock(slack=slack, coupling=coupling)
+
+            ndiff = self.reconstruct_anc('ml')
             if ndiff==0:
                 break
-            self.init_date_constraints()
             self.make_time_tree()
             niter+=1
+
+
 
     def reroot(self,root='best'):
         if isinstance(root,Phylo.BaseTree.Clade):
@@ -74,6 +85,7 @@ class TreeTime(ClockTree):
         self.tree.root.branch_length = self.one_mutation
         self.tree.root.numdate_given = None
         self.prepare_tree()
+
 
     def coalescent_model(self, Tc=None, optimize_Tc = False,**kwarks):
         """
@@ -157,6 +169,9 @@ class TreeTime(ClockTree):
             self.logger('TreeTime.resolve_polytomies: remove obsolete node '+node.name,4)
             if node.up is not None:
                 self.tree.collapse(node)
+
+        return poly_found
+
 
     def _poly(self, clade, merge_compressed, verbose=1):
         """
@@ -312,20 +327,17 @@ class TreeTime(ClockTree):
 
         print ("\n---- TreeTime relaxing molecular clock...")
 
-        c=1.0
+        c=1.0/self.one_mutation
         if slack is None: slack=ttconf.MU_ALPHA
         if coupling is None: coupling=ttconf.MU_BETA
-        stiffness = (self.tree.count_terminals()/self.tree.total_branch_length())
         for node in self.tree.find_clades(order='postorder'):
-            if not hasattr(node, 'gamma'):
-                node.gamma=1.0
-            opt_len = self.optimal_branch_length(node)
+            opt_len = node.mutation_length
 
             #opt_len = 1.0*len(node.mutations)/node.profile.shape[0]
             # contact term: stiffness*(g*bl - bl_opt)^2 + slack(g-1)^2 =
             #               (slack+bl^2) g^2 - 2 (bl*bl_opt+1) g + C= k2 g^2 + k1 g + C
-            node._k2 = slack + stiffness*node.branch_length**2/(c*opt_len+self.one_mutation)
-            node._k1 = -2*(stiffness*node.branch_length*opt_len/(c*opt_len+self.one_mutation) + slack)
+            node._k2 = slack + c*node.branch_length**2/(opt_len+self.one_mutation)
+            node._k1 = -2*(c*node.branch_length*opt_len/(opt_len+self.one_mutation) + slack)
             # coupling term: \sum_c coupling*(g-g_c)^2 + Cost_c(g_c|g)
             # given g, g_c needs to be optimal-> 2*coupling*(g-g_c) = 2*child.k2 g_c  + child.k1
             # hence g_c = (coupling*g - 0.5*child.k1)/(coupling+child.k2)
@@ -338,102 +350,15 @@ class TreeTime(ClockTree):
                             + coupling*child._k1/denom)
 
 
-        all_gammas = []
         for node in self.tree.find_clades(order='preorder'):
             if node.up is None:
-                node.gamma *= - 0.5*node._k1/node._k2
+                node.gamma =- 0.5*node._k1/node._k2
             else:
-                node.gamma *= (coupling*node.up.gamma - 0.5*node._k1)/(coupling+node._k2)
-            all_gammas.append(node.gamma)
-        # normalize avg gamma values to avoid drift in overall mutation rate.
-        #avg_gamma = np.mean(all_gammas)
-        #for node in self.tree.find_clades(order='preorder'):
-        #    node.gamma/=avg_gamma
-        #self.gtr.mu*=avg_gamma
-
-        print('reevaluating branch length interpolators')
-        self.init_date_constraints(ancestral_inference=False)
-
-    def autocorr_molecular_clock(self, slack=None, coupling=None):
-        """
-        Allow the mutation rate to vary on the tree (relaxed molecular clock).
-        Changes of the mutation rates from one branch to another are penalized.
-        In addition, deviations of the mutation rate from the mean rate are
-        penalized.
-        """
-        if slack is None: slack=ttconf.MU_ALPHA
-        if coupling is None: coupling=ttconf.MU_BETA
-        def opt_mu(node):
-            if node.up is None: return mu_0
-            mu = (node.up.sequence!=node.sequence).mean()/(node.numdate-node.up.numdate)
-            #print (mu)
-            return mu
-
-        def get_mu_avg():
-            muts = 0.0
-            years = 0.0
-            L = self.tree.get_terminals()[0].sequence.shape[0]
-            for node in self.tree.find_clades(order="preorder"):
-                if node.up is None: continue
-                muts +=    (node.up.sequence!=node.sequence).sum()
-                years += node.numdate-node.up.numdate
-
-            return muts/years/L
-
-        mu_0 = get_mu_avg()
-        MAX_N = 1000
-        D_MU = 1e-10
-
-        def init_iterative():
-            for node in self.tree.find_clades(order="preorder"):
-                denom = 1 + slack + coupling * (1 + len(node.clades))
-                node._Cn = (opt_mu(node) + slack * mu_0) / denom
-                node._Bn = coupling / denom
-                node._mu_n = mu_0
-                node._mu_n1 = 0.0
-
-        init_iterative()
-        converged = False
-        N = 0
-        while not converged:
-            delta_mu = 0.0
-
-            # first pass, we set the mu values at N+1 step
-            for node in self.tree.find_clades(order="preorder"):
-                if node.up is None: continue
-                node._mu_n1 = node._Cn + node._Bn * node.up._mu_n + node._Bn * np.sum([0.0] + [k._mu_n for k in node.clades])
-                delta_mu += (node._mu_n1 - node._mu_n)**2
-
-            # update the Nth mu value
-            for node in self.tree.find_clades(order="preorder"):
-                node._mu_n = node._mu_n1
-
-            N += 1
-
-            if N > MAX_N:
-                print ("The autocorrelated molecular clock failed to converge.")
-                break
-
-            converged = delta_mu < D_MU
-
-        if converged:
-            print ("Autocorrelated molecular clock was computed in " + str(N+1)
-                + " steps")
-
-            for node in self.tree.find_clades(order="preorder"):
-                denom = 1 + slack + coupling * (1 + len(node.clades))
-                node._mu_n1 /= mu_0
-
-        else:
-            print ("Autocorrelated molecular clock computation has not converged "
-                "after " + str(N) + "steps. Computation failed. The mutation rates will be purged now...")
-
-            for node in self.tree.find_clades(order="preorder"):
-                denom = 1 + slack + coupling * (1 + len(node.clades))
-                del(node._Cn)
-                del(node._Bn)
-                del(node._mu_n  )
-                del(node._mu_n1 )
+                if node.up.up is None:
+                    g_up = node.up.gamma
+                else:
+                    g_up = node.up.branch_length_interpolator.gamma
+                node.branch_length_interpolator.gamma = (coupling*g_up - 0.5*node._k1)/(coupling+node._k2)
 
 
 ###############################################################################
@@ -610,9 +535,10 @@ class TreeTime(ClockTree):
 if __name__=="__main__":
     import matplotlib.pyplot as plt
     import seaborn as sns
+    sns.set_style('whitegrid')
     from Bio import Phylo
     plt.ion()
-    base_name = 'data/H3N2_NA_allyears_NA.20'
+    base_name = 'data/H3N2_NA_allyears_NA.200'
     with open(base_name+'.metadata.csv') as date_file:
         dates = {}
         for line in date_file:
@@ -625,7 +551,7 @@ if __name__=="__main__":
     myTree = TreeTime(gtr='Jukes-Cantor', tree = base_name+'.nwk',
                         aln = base_name+'.fasta', verbose = 4, dates = dates)
 
-    myTree.run()
+    myTree.run(root='best', relaxed_clock=(1.0,1.0), max_iter=1)
 
     plt.figure()
     x = np.linspace(0,0.05,100)
@@ -641,8 +567,16 @@ if __name__=="__main__":
     plt.yscale('log')
     plt.ylim([0.01,1.2])
 
+    from matplotlib import cm
     fig, axs = plt.subplots(2,1, sharex=True, figsize=(8,12))
     x = np.linspace(-0.2,0.5,1000)+ myTree.tree.root.time_before_present
+    for n in myTree.tree.find_clades():
+        if n.up is None:
+            g = n.gamma
+        else:
+            g = n.branch_length_interpolator.gamma
+        n.color = [int(_x*255) for _x in cm.coolwarm(max(0,min(1,(g-1)+0.5)))[:3]]
+
     Phylo.draw(myTree.tree, axes=axs[0], show_confidence=False)
     offset = myTree.tree.root.time_before_present + myTree.tree.root.branch_length
     cols = sns.color_palette()

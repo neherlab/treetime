@@ -79,7 +79,7 @@ class BranchLenInterpolator (Distribution):
 
     def __call__(self, x):
         res = self.merger_rate*x
-        res += super(BranchLenInterpolator, self).__call__(x/self.gamma)
+        res += super(BranchLenInterpolator, self).__call__(x*self.gamma)
         return res
 
     def __mul__(self, other):
