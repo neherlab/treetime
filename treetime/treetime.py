@@ -538,7 +538,7 @@ if __name__=="__main__":
     sns.set_style('whitegrid')
     from Bio import Phylo
     plt.ion()
-    base_name = 'data/H3N2_NA_allyears_NA.200'
+    base_name = 'data/H3N2_NA_allyears_NA.20'
     with open(base_name+'.metadata.csv') as date_file:
         dates = {}
         for line in date_file:

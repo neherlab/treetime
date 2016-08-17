@@ -42,8 +42,8 @@ def _convolution_in_point(t_val,f, g,  n_integral = 100, inverse_time=None, retu
         else:
             tau = np.unique(np.concatenate((g.x, f.x-t_val)))
         tau = tau[(tau>=tau_min)&(tau<tau_max)]
-        if len(tau)<50:
-            tau = np.linspace(tau_min, tau_max, 50)
+        if len(tau)<200:
+            tau = np.linspace(tau_min, tau_max, 150)
 
         if inverse_time: # add negative logarithms
             fg = f(t_val - tau) + g(tau)
@@ -76,7 +76,7 @@ class NodeInterpolator (Distribution):
         import matplotlib.pyplot as plt
 
         # create coarse grid (5 points)
-        joint_fwhm  = 0.5 * (node_interp.fwhm+ branch_interp.fwhm)
+        joint_fwhm  = (node_interp.fwhm + branch_interp.fwhm)
         new_peak_pos = node_interp.peak_pos + branch_interp.peak_pos
 
         # determine support of the resulting convolution
@@ -90,78 +90,65 @@ class NodeInterpolator (Distribution):
 
         # make initial node grid
         n_grid_points = ttconf.NODE_GRID_SIZE
-        grid_left =  tmin + (new_peak_pos-tmin) * (1 - np.linspace(1, 0.0, n_grid_points/2)**2.0)
-        grid_right = new_peak_pos + (tmax-new_peak_pos)*(np.linspace(0, 1, n_grid_points/2)**2)
+        n = n_grid_points/3
+        center_width = 3*joint_fwhm
+        grid_center = new_peak_pos + np.linspace(-1, 1, n)*center_width
 
-        t_grid_0 = np.concatenate([grid_left, grid_right[1:]])
+        dx = grid_center[1]-grid_center[0]
+        right_range = (tmax - grid_center[-1])
+
+        if right_range>center_width:
+            grid_right = grid_center[-1] + right_range*(np.linspace(0, 1, n)**2.0)
+        elif right_range>0:
+            grid_right = grid_center[-1] + right_range*np.linspace(0,1,n)
+        else:
+            grid_right =[]
+
+        left_range = grid_center[0]-tmin
+        if left_range>center_width:
+            grid_left = tmin - left_range*(np.linspace(0, 1, n)**2.0)
+        elif left_range>0:
+            grid_left = tmin + left_range*np.linspace(0,1,n)
+        else:
+            grid_left =[]
+
+        t_grid_0 = np.concatenate([grid_left[:-1], grid_center, grid_right[1:]])
+        t_grid_0 = t_grid_0[(t_grid_0 > tmin) & (t_grid_0 < tmax)]
         res_0 = np.array([_convolution_in_point(t_val, node_interp, branch_interp,
                                                n_integral=n_integral, return_log=True,
                                                inverse_time = inverse_time)
                         for t_val in t_grid_0])
 
-        #res_0 = Distribution(t_grid_0, res_0)
-
-        # refine grid
-        # TODO estimate error and stop when error is lower than some value
         # (determine the threshold error value)
-
-        refine_idx = np.ones_like(t_grid_0, dtype=bool)
-        refine_idx[-1]=False
-
         step = 0
-        while step < 5:
-
+        print ("Refine grid for node convolution, step: " + str(step))
+        while step < 1:
             step += 1
-
-            print ("Refine grid for node convolution, step: " + str(step))
-            if refine_idx.sum() < 2:
+            interp_error = np.abs(res_0[3:-1]+res_0[1:-3]-2*res_0[2:-2])
+            dy = (res_0[2:-2]-res_0.min())
+            yc = 10
+            rel_tol = 0.01
+            refine_factor = np.array(np.floor(np.sqrt(interp_error/(rel_tol*(1+(dy/yc)**4)))), dtype=int)
+            insert_point_idx = np.zeros(interp_error.shape[0]+1, dtype=int)
+            insert_point_idx[1:] = refine_factor
+            insert_point_idx[:-1] += refine_factor
+            if np.sum(insert_point_idx):
+                add_x = np.concatenate([np.linspace(t1,t2,n+2)[1:-1] for t1,t2,n in
+                                   zip(t_grid_0[1:-2], t_grid_0[2:-1], insert_point_idx) if n>0])
+            else:
                 break
-
-            # if step >= 10:
-            #     import ipdb; ipdb.set_trace()
-
             # additional points
-            add_x = 0.5*(t_grid_0[refine_idx] + t_grid_0[np.roll(refine_idx, 1)])
             add_y = np.array([_convolution_in_point(t_val, node_interp, branch_interp,
-                                               n_integral=1000, return_log=True,
-                                               inverse_time = inverse_time)
-                        for t_val in add_x])
+                                                    n_integral=1000, return_log=True,
+                                                    inverse_time = inverse_time)
+                             for t_val in add_x])
 
-            tan_0 = abs((res_0[np.roll(refine_idx, 1)] - res_0[refine_idx]) / \
-                    (t_grid_0[np.roll(refine_idx, 1)] - t_grid_0[refine_idx]))
-
-            tan_1 = abs((add_y - res_0[refine_idx]) / (add_x - t_grid_0[refine_idx]))
-
-            tan_delta = abs((tan_1 - tan_0) / (1 + tan_1 * tan_0))
-            insert_point_idx = tan_delta > 1e-3
-
-            plt.plot(add_x, tan_delta, label = str(step))
-
-
-            # new grid and make new refine idxs:
-            n_x = np.concatenate((t_grid_0, add_x[insert_point_idx]))
-            n_y = np.concatenate ((res_0, add_y[insert_point_idx]))
-
-            try:
-                # For the next refinement, only leave those indexes,
-                # where we have inserted additional points
-                refine_idx[np.where(refine_idx)] = insert_point_idx
-            except:
-                import ipdb; ipdb.set_trace()
-
-            n_idx = np.concatenate((refine_idx,
-                np.ones_like(add_y[insert_point_idx], dtype=bool)))
-
-            # sort and prepare for the next iteration:
-            n_x, n_y, n_idx = np.array(sorted(zip(n_x, n_y, n_idx))).T
-
-            print ("Inserted " + str(insert_point_idx.sum()) + " points to the grid."
-                "Points left to refine: " + str(n_idx.sum()) )
-
-            refine_idx = n_idx.astype (bool)
-            refine_idx[-1] = False
+            n_x = np.concatenate((t_grid_0, add_x)) #[insert_point_idx]))
+            n_y = np.concatenate ((res_0, add_y)) #[insert_point_idx]))
+            n_x, n_y = np.array(sorted(zip(n_x, n_y))).T
             t_grid_0 = n_x
             res_0 = n_y
+        print ("final grid: " , len(res_0))
 
         res = cls(t_grid_0, res_0, is_log=True, kind='linear')
 

@@ -107,6 +107,7 @@ class ClockTree(TreeAnc):
                 # if there are no constraints - log_prob will be set on-the-fly
                 node.msg_to_parent = None
 
+
     def make_time_tree(self):
         '''
         use the date constraints to calculate the most likely positions of
@@ -260,7 +261,6 @@ class ClockTree(TreeAnc):
             node.clock_length = node.branch_length
 
 
-
     def convert_dates(self):
         from datetime import datetime, timedelta
         now = utils.numeric_date()
@@ -287,6 +287,7 @@ class ClockTree(TreeAnc):
                 # this is the approximation
                 n_date = datetime(1900, 1, 1) + timedelta(days=days)
                 node.date = str(year) + "-" + str(n_date.month) + "-" + str(n_date.day)
+
 
     def branch_length_to_years(self):
         self.logger('ClockTree.branch_length_to_years: setting node positions in unites of years', 2)
