@@ -145,7 +145,6 @@ class TreeAnc(object):
         """
         self.tree.root.up = None
         self.tree.root.dist2root = 0.0
-        self.tree.root.dist2root_0 = 0.0
         for clade in self.tree.get_nonterminals(order='preorder'): # parents first
             for c in clade.clades:
                 c.up = clade
@@ -153,7 +152,6 @@ class TreeAnc(object):
                     c.up.name = "NODE_" + format(self._internal_node_count, '07d')
                     self._internal_node_count += 1
                 c.dist2root = c.up.dist2root + c.mutation_length
-                c.dist2root_0 = c.dist2root #  store the values used later for date-branchLen conversion
         return
 
 

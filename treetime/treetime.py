@@ -170,7 +170,7 @@ class TreeTime(ClockTree):
                         import ipdb; ipdb.set_trace()
                     else:
                         self.logger("TreeTime._poly.merge_nodes: problem merging child nodes of "+clade.name,4,warn=True)
-                        continue
+                        return LH
 
                 n1, n2 = source_arr[idxs[0]], source_arr[idxs[1]]
                 LH += cost_gains[idxs]
@@ -193,7 +193,7 @@ class TreeTime(ClockTree):
                 self.store_compressed_sequence_to_node(new_node)
 
                 new_node.mutations = []
-                new_node.mutation_length = new_node.branch_length
+                new_node.mutation_length = 0.0
                 new_node.branch_length_interpolator = BranchLenInterpolator(new_node, self.gtr, one_mutation=self.one_mutation)
                 clade.clades.remove(n1)
                 clade.clades.remove(n2)

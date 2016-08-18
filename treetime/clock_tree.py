@@ -28,7 +28,6 @@ class ClockTree(TreeAnc):
             raise("ClockTree requires date contraints!")
         self.date_dict = dates
         self.date2dist = None  # we do not know anything about the conversion
-        self.max_diam = 0.0
         self.debug=False
 
         for node in self.tree.find_clades():
@@ -91,7 +90,6 @@ class ClockTree(TreeAnc):
             else:
                 node.branch_length_interpolator = None
         self.date2dist = utils.DateConversion.from_tree(self.tree, slope)
-        self.max_diam = self.date2dist.intercept
 
         # make node distribution objects
         for node in self.tree.find_clades():
