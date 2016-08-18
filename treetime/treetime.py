@@ -18,7 +18,8 @@ class TreeTime(ClockTree):
     def __init__(self, *args,**kwargs):
         super(TreeTime, self).__init__(*args, **kwargs)
 
-    def run(self, root=None, infer_gtr=True, relaxed_clock=False, resolve_polytomies=True, max_iter=0):
+
+    def run(self, root=None, infer_gtr=True, relaxed_clock=False, resolve_polytomies=True, max_iter=0, Tc=None):
         # set root.gamma bc root doesn't have a branch_length_interpolator but gamma is needed
         if not hasattr(self.tree.root, 'gamma'):
             self.tree.root.gamma = 1.0
@@ -40,6 +41,13 @@ class TreeTime(ClockTree):
                     self.reroot(root=root)
                 self.make_time_tree()
 
+        # add coalescent prior
+        if Tc is not None:
+            from merger_models import coalescent
+            self.logger('TreeTime.run: adding coalescent prior',2)
+            coalescent(self.tree, Tc=Tc)
+            self.make_time_tree()
+
         if relaxed_clock  and len(relaxed_clock)==2:
             slack, coupling = relaxed_clock
         # iteratively reconstruct ancestral sequences and re-infer
@@ -55,7 +63,6 @@ class TreeTime(ClockTree):
                 break
             self.make_time_tree()
             niter+=1
-
 
 
     def reroot(self,root='best'):
@@ -81,64 +88,6 @@ class TreeTime(ClockTree):
         self.tree.root.numdate_given = None
         self.prepare_tree()
 
-
-    def coalescent_model(self, Tc=None, optimize_Tc = False,**kwarks):
-        """
-        This is a wrapper function doing the full inference of node placing and
-        ancestral sequences. In addition to standard branch length probabilie,
-        a coalescent model prior is used. The branch length probabilities are adjusted to
-        reflect the number of concurrent branches with which the branch could
-        potentially merge.
-        Args:
-            - Tc(float): coalescent time scale, if None, half the depth of the
-              tree is used. This is expected to be accurate when the tree is not
-              ladder like
-            - optimize_Tc(bool):  adjust the coalescence time scale to optimize the
-              likelihood.
-        Returns:
-            - None. attributes are added to the nodes
-        """
-        from merger_models import coalescent
-        #  propagate messages up and down and reconstruct ancestral states
-        self.ml_t(max_iter=1, **kwarks)
-
-        # if no coalescence time scale is provided, use half the root time
-        if Tc is None:
-            Tc = 0.5*self.tree.root.abs_t
-
-        # resolve polytomies if there are any
-        coalescent(self.tree, Tc=Tc)
-        self._update_branch_len_interpolators()
-        self.resolve_polytomies(rerun=False)
-        self.init_date_constraints(ancestral_inference=True, prune_short=False)
-        self.ml_t(max_iter=1)
-
-        # if desired, optimize the coalescence time scale
-        if optimize_Tc:
-            def tmpTotalLH(Tc):
-                coalescent(self.tree, Tc=Tc)
-                self._update_branch_len_interpolators()
-                self.ml_t(max_iter=1)
-                print("Tc:",Tc)
-                self.print_lh()
-                return -self.total_LH()
-            sol = sciopt.minimize_scalar(tmpTotalLH, bounds=[0, Tc*5], method='bounded')
-            if sol['success']:
-                self.Tc_opt = sol['x']
-                print('coalescent time scale optimization successful, Tc_opt=',self.Tc_opt)
-                # final run with optimal Tc
-                Tc = self.Tc_opt
-            else:
-                print('coalescent time scale optimization failed')
-
-    def log_lh(self, node):
-        """
-        Get log-likelihood of the tree given the constrained leaves.
-        """
-        if hasattr(node, 'lh_prefactor') and hasattr(node, 'msg_to_parent_prefactor'):
-            return -node.root.msg_to_parent_prefactor + node.lh_prefactor.sum()
-        else:
-            return ttconf.MIN_LOG
 
     def resolve_polytomies(self, merge_compressed=False, rerun=True):
         """
@@ -529,7 +478,7 @@ if __name__=="__main__":
     sns.set_style('whitegrid')
     from Bio import Phylo
     plt.ion()
-    base_name = 'data/H3N2_NA_allyears_NA.20'
+    base_name = 'data/H3N2_NA_allyears_NA.200'
     with open(base_name+'.metadata.csv') as date_file:
         dates = {}
         for line in date_file:
@@ -542,7 +491,7 @@ if __name__=="__main__":
     myTree = TreeTime(gtr='Jukes-Cantor', tree = base_name+'.nwk',
                         aln = base_name+'.fasta', verbose = 4, dates = dates)
 
-    myTree.run(root='best', relaxed_clock=(1.0,1.0), max_iter=1, resolve_polytomies=True) #(1.0,1.0), max_iter=1)
+    myTree.run(root='best', relaxed_clock=(1.0,1.0), max_iter=1, resolve_polytomies=True, Tc=0.01) #(1.0,1.0), max_iter=1)
 
     plt.figure()
     x = np.linspace(0,0.05,100)
@@ -583,4 +532,13 @@ if __name__=="__main__":
     axs[1].set_ylim([0.01,1.2])
     axs[0].set_xlabel('')
     plt.tight_layout()
+
+    r2tip = np.array([[n.numdate, n.dist2root] for n in myTree.tree.get_terminals()])
+    r2int = np.array([[n.numdate, n.dist2root] for n in myTree.tree.get_nonterminals()])
+    plt.figure()
+    plt.scatter(r2tip[:,0], r2tip[:,1], c='g', label='terminal nodes', s=30)
+    plt.scatter(r2int[:,0], r2int[:,1], c='b', label='internal nodes', s=30)
+    plt.ylabel('root to node distance')
+    plt.xlabel('date')
+    plt.legend(loc=2)
 

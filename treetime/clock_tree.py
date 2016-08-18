@@ -78,7 +78,16 @@ class ClockTree(TreeAnc):
         self.logger('ClockTree.init_date_constraints: Initializing branch length interpolation objects...',2)
         for node in self.tree.find_clades():
             if node.up is not None:
+                # copy the merger rate and gamma if they are set
+                if hasattr(node,'branch_length_interpolator'):
+                    gamma = node.branch_length_interpolator.gamma
+                    merger_rate = node.branch_length_interpolator.merger_rate
+                else:
+                    gamma = 1.0
+                    merger_rate = ttconf.BRANCH_LEN_PENALTY
                 node.branch_length_interpolator = BranchLenInterpolator(node, self.gtr, one_mutation=self.one_mutation)
+                node.branch_length_interpolator.merger_rate = merger_rate
+                node.branch_length_interpolator.gamma = gamma
             else:
                 node.branch_length_interpolator = None
         self.date2dist = utils.DateConversion.from_tree(self.tree, slope)

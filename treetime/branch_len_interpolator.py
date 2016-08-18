@@ -76,7 +76,7 @@ class BranchLenInterpolator (Distribution):
 
     @merger_rate.setter
     def merger_rate(self, value):
-        self._gamma = value
+        self._merger_rate = value
 
     @property
     def peak_pos(self):
