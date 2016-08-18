@@ -358,7 +358,7 @@ class TreeAnc(object):
             node.profile = np.ones((L, n_states)) # we will multiply it
             for ch in node.clades:
                 ch.seq_msg_to_parent = self.gtr.propagate_profile(ch.profile,
-                    self.branch_length_to_gtr(node), return_log=False) # raw prob to transfer prob up
+                    self.branch_length_to_gtr(ch), return_log=False) # raw prob to transfer prob up
                 node.profile *= ch.seq_msg_to_parent
                 node.lh_prefactor += ch.lh_prefactor
 
