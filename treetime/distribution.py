@@ -36,6 +36,7 @@ class Distribution(object):
         x_idxs = binary_dilation(real_prob > 0.5*(real_prob.max() - real_prob.min()), iterations=1)
         xs = xvals[x_idxs]
         if xs.shape[0] < 2:
+            import ipdb; ipdb.set_trace()
             print ("Not enough points to compute FWHM: returning zero")
             return 0.
         else:

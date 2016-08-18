@@ -26,7 +26,7 @@ def _convolution_in_point(t_val,f, g,  n_integral = 100, inverse_time=None, retu
         tau_max = min(f.xmax-t_val, g.xmax)
 
 
-    if tau_max <= tau_min :
+    if tau_max <= tau_min + ttconf.TINY_NUMBER:
         if return_log:
             return ttconf.BIG_NUMBER
         else:
@@ -34,23 +34,20 @@ def _convolution_in_point(t_val,f, g,  n_integral = 100, inverse_time=None, retu
 
     else:
         # create the tau-grid for the interpolation object in the overlap region
-        # TODO: make clever grid
-
-        # create the interpolation object on this grid
-        if inverse_time: # add negative logarithms
+        if inverse_time:
             tau = np.unique(np.concatenate((g.x, t_val-f.x)))
         else:
             tau = np.unique(np.concatenate((g.x, f.x-t_val)))
         tau = tau[(tau>=tau_min)&(tau<tau_max)]
-        if len(tau)<200:
-            tau = np.linspace(tau_min, tau_max, 150)
+        if len(tau)<10:
+            tau = np.linspace(tau_min, tau_max, 10)
 
         if inverse_time: # add negative logarithms
             fg = f(t_val - tau) + g(tau)
         else:
             fg = f(t_val + tau) + g(tau)
 
-        # TODO: break into segments: peak and tails
+        # create the interpolation object on this grid
         FG = Distribution(tau, fg, is_log=True, kind='linear')
         #integrate the interpolation object, return log, make neg_log
         res = -FG.integrate(a=FG.xmin, b=FG.xmax, n=n_integral, return_log=True)
@@ -59,6 +56,7 @@ def _convolution_in_point(t_val,f, g,  n_integral = 100, inverse_time=None, retu
             return res
         else:
             return np.exp(-res)
+
 
 class NodeInterpolator (Distribution):
 
@@ -76,7 +74,6 @@ class NodeInterpolator (Distribution):
         # estimate peak and width
         joint_fwhm  = (node_interp.fwhm + branch_interp.fwhm)
         new_peak_pos = node_interp.peak_pos + branch_interp.peak_pos
-
         # determine support of the resulting convolution
         # in order to be positive, the flipped support of f, shifted by t and g need to overlap
         if inverse_time:
@@ -123,7 +120,10 @@ class NodeInterpolator (Distribution):
         interp_error = np.abs(res_0[3:-1]+res_0[1:-3]-2*res_0[2:-2])
         # determine the number of extra points needed, criterion depends on distance from peak dy
         dy = (res_0[2:-2]-res_0.min())
-        refine_factor = np.array(np.floor(np.sqrt(interp_error/(rel_tol*(1+(dy/yc)**4)))), dtype=int)
+        dx = np.diff(t_grid_0)
+        refine_factor = np.minimum(np.array(np.floor(np.sqrt(interp_error/(rel_tol*(1+(dy/yc)**4)))), dtype=int),
+                                   np.array(100*(dx[1:-2]+dx[2:-1])/joint_fwhm, dtype=int))
+
         insert_point_idx = np.zeros(interp_error.shape[0]+1, dtype=int)
         insert_point_idx[1:] = refine_factor
         insert_point_idx[:-1] += refine_factor
