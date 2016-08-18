@@ -18,8 +18,10 @@ class TreeTime(ClockTree):
     def __init__(self, *args,**kwargs):
         super(TreeTime, self).__init__(*args, **kwargs)
 
-
     def run(self, root=None, infer_gtr=True, relaxed_clock=False, resolve_polytomies=True, max_iter=0):
+        # set root.gamma bc root doesn't have a branch_length_interpolator but gamma is needed
+        if not hasattr(self.tree.root, 'gamma'):
+            self.tree.root.gamma = 1.0
         # initially, infer ancestral sequences and infer gtr model if desired
         self.optimize_seq_and_branch_len(infer_gtr=infer_gtr, prune_short=True)
 
@@ -154,8 +156,6 @@ class TreeTime(ClockTree):
             if len(n.clades) > 2:
                 self._poly(n, merge_compressed)
                 poly_found=True
-                #import ipdb; ipdb.set_trace()
-
 
         obsolete_nodes = [n for n in self.tree.find_clades() if len(n.clades)==1 and n.up is not None]
         for node in obsolete_nodes:
@@ -216,25 +216,20 @@ class TreeTime(ClockTree):
                 np.fill_diagonal(cost_gains, -1e11)
 
                 idxs = np.unravel_index(cost_gains.argmax(),cost_gains.shape)
-                try:
-                    assert (idxs[0] != idxs[1])
-                except:
+                if (idxs[0] == idxs[1]) or cost_gains.max()<0:
                     if self.debug:
                         import ipdb; ipdb.set_trace()
                     else:
-                        print("problem merging nodes")
-                if self.debug and cost_gains.max()<0:
-                    import ipdb; ipdb.set_trace()
+                        self.logger("TreeTime._poly.merge_nodes: problem merging child nodes of "+clade.name,4,warn=True)
+                        continue
+
                 n1, n2 = source_arr[idxs[0]], source_arr[idxs[1]]
-                if self.debug:
-                    print (n1,n2)
-                    print ("Delta-LH = " + str(cost_gains[idxs].round(3)))
                 LH += cost_gains[idxs]
 
                 new_node = Phylo.BaseTree.Clade()
 
                 # fix positions and branch lengths
-                new_node.time_before_present = new_positions[idxs] # (n1.time_before_present + tree.opt_branch_len(n1) + n2.time_before_present + tree.opt_branch_len(n2))/2
+                new_node.time_before_present = new_positions[idxs]
                 new_node.branch_length = clade.time_before_present - new_node.time_before_present
                 new_node.clades = [n1,n2]
                 n1.branch_length = new_node.time_before_present - n1.time_before_present
@@ -254,7 +249,9 @@ class TreeTime(ClockTree):
                 clade.clades.remove(n1)
                 clade.clades.remove(n2)
                 clade.clades.append(new_node)
-                self.logger('TreeTime._poly: creating new node as child of '+clade.name,3)
+                self.logger('TreeTime._poly.merge_nodes: creating new node as child of '+clade.name,3)
+                self.logger("TreeTime._poly.merge_nodes: Delta-LH = " + str(cost_gains[idxs].round(3)), 3)
+
                 # and modify source_arr array for the next loop
                 if len(source_arr)>2: # if more than 3 nodes in polytomy, replace row/column
                     for ii in np.sort(idxs)[::-1]:
@@ -282,8 +279,6 @@ class TreeTime(ClockTree):
         stretched = [c for c  in clade.clades if c.mutation_length < c.clock_length]
         compressed = [c for c in clade.clades if c not in stretched]
 
-        if verbose>5:
-            print (stretched)
         LH = 0.0
 
         if len(stretched)==1 and merge_compressed==False:
@@ -300,7 +295,7 @@ class TreeTime(ClockTree):
         Print the total likelihood of the tree given the constrained leaves
         """
         s_lh = -self.tree.sequence_LH
-        t_lh = self.tree.root.msg_to_parent.y.min()
+        t_lh = self.tree.root.msg_to_parent.peak_val
 
         print ("###  Tree Likelihood  ###\n"
                 " Seq log-LH:      {0}\n"
@@ -313,6 +308,7 @@ class TreeTime(ClockTree):
         t_lh = -self.tree.root.msg_to_parent.y.min()
         return s_lh+t_lh
 
+
     def relaxed_clock(self, slack=None, coupling=None):
         """
         Allow the mutation rate to vary on the tree (relaxed molecular clock).
@@ -320,12 +316,11 @@ class TreeTime(ClockTree):
         In addition, deviations of the mutation rate from the mean rate are
         penalized.
         """
-
-        print ("\n---- TreeTime relaxing molecular clock...")
-
-        c=1.0/self.one_mutation
         if slack is None: slack=ttconf.MU_ALPHA
         if coupling is None: coupling=ttconf.MU_BETA
+        self.logger("TreeTime.relaxed_clock: slack=%f, coupling=%f"%(slack, coupling),2)
+
+        c=1.0/self.one_mutation
         for node in self.tree.find_clades(order='postorder'):
             opt_len = node.mutation_length
 
@@ -344,7 +339,6 @@ class TreeTime(ClockTree):
                 node._k1 += (coupling*(1.0-coupling/denom)*child._k1/denom \
                             - coupling*child._k1*child._k2/denom**2 \
                             + coupling*child._k1/denom)
-
 
         for node in self.tree.find_clades(order='preorder'):
             if node.up is None:
