@@ -42,12 +42,13 @@ You might need root privileges for system wide installation. Alternatively, you 
 ### Basic usage
 
 * Ancestral sequence reconstruction:
-    ```python
-        from treetime import TreeAnc
-        ta = TreeAnc(tree='my_tree.nwk', aln='my_seqs.nwk', gtr='Jukes-Cantor')
-        ta.reconstruct_anc('ml')
+
     ```
-Every node of `ta.tree` now has a `node.sequence` attached. Optimal arguments to 'reconstruct_anc' include `infer_gtr=True`, `marginal=True`, and 'prune_short=True'.
+    from treetime import TreeAnc
+    ta = TreeAnc(tree='my_tree.nwk', aln='my_seqs.nwk', gtr='Jukes-Cantor')
+    ta.reconstruct_anc('ml')
+    ```
+  Every node of `ta.tree` now has a `node.sequence` attached. Optimal arguments to 'reconstruct_anc' include `infer_gtr=True`, `marginal=True`, and 'prune_short=True'.
 
 
 
