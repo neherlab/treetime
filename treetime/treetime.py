@@ -20,9 +20,6 @@ class TreeTime(ClockTree):
 
 
     def run(self, root=None, infer_gtr=True, relaxed_clock=False, resolve_polytomies=True, max_iter=0, Tc=None):
-        # set root.gamma bc root doesn't have a branch_length_interpolator but gamma is needed
-        if not hasattr(self.tree.root, 'gamma'):
-            self.tree.root.gamma = 1.0
         # initially, infer ancestral sequences and infer gtr model if desired
         self.optimize_seq_and_branch_len(infer_gtr=infer_gtr, prune_short=True)
 
@@ -41,6 +38,9 @@ class TreeTime(ClockTree):
                     self.reroot(root=root)
                 self.make_time_tree()
 
+        # set root.gamma bc root doesn't have a branch_length_interpolator but gamma is needed
+        if not hasattr(self.tree.root, 'gamma'):
+            self.tree.root.gamma = 1.0
         # add coalescent prior
         if Tc is not None:
             from merger_models import coalescent
@@ -54,7 +54,7 @@ class TreeTime(ClockTree):
         # time tree to ensure convergence.
         niter = 0
         while niter<max_iter:
-            if self.relaxed_clock:
+            if relaxed_clock:
                 # estimate a relaxed molecular clock
                 self.relaxed_clock(slack=slack, coupling=coupling)
 
@@ -478,7 +478,7 @@ if __name__=="__main__":
     sns.set_style('whitegrid')
     from Bio import Phylo
     plt.ion()
-    base_name = 'data/H3N2_NA_allyears_NA.200'
+    base_name = 'data/H3N2_NA_allyears_NA.20'
     with open(base_name+'.metadata.csv') as date_file:
         dates = {}
         for line in date_file:
@@ -491,7 +491,7 @@ if __name__=="__main__":
     myTree = TreeTime(gtr='Jukes-Cantor', tree = base_name+'.nwk',
                         aln = base_name+'.fasta', verbose = 4, dates = dates)
 
-    myTree.run(root='best', relaxed_clock=(1.0,1.0), max_iter=1, resolve_polytomies=True, Tc=0.01) #(1.0,1.0), max_iter=1)
+    myTree.run(root='best', relaxed_clock=False, max_iter=1, resolve_polytomies=True, Tc=0.01) #(1.0,1.0), max_iter=1)
 
     plt.figure()
     x = np.linspace(0,0.05,100)

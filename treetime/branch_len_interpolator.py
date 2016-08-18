@@ -56,10 +56,7 @@ class BranchLenInterpolator (Distribution):
                                                 return_log=True)
                     for k in grid])
 
-
         super(BranchLenInterpolator, self).__init__(grid, log_prob, is_log=True, kind='linear')
-
-
 
 
     @property
@@ -77,6 +74,9 @@ class BranchLenInterpolator (Distribution):
     @merger_rate.setter
     def merger_rate(self, value):
         self._merger_rate = value
+        self._peak_idx = np.argmin(self.__call__(self.x))
+        self._peak_pos = self.x[self._peak_idx]
+        self._peak_val = self.__call__(self.peak_pos)
 
     @property
     def peak_pos(self):
