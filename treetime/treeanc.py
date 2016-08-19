@@ -86,6 +86,10 @@ class TreeAnc(object):
             self.logger('TreeAnc: could not load tree! input was '+in_tree,1)
             self._tree = None
             return
+
+        for node in self._tree.find_clades():
+            node.original_length = node.branch_length
+            node.mutation_length = node.branch_length
         self.prepare_tree()
 
     @property
@@ -131,9 +135,11 @@ class TreeAnc(object):
         Should be run once the tree is read and after every tree topology or branch
         lengths optimizations.
         """
-        for node in self._tree.find_clades():
-            node.original_length = node.branch_length
-            node.mutation_length = node.branch_length
+        if self.one_mutation is None:
+            self.tree.root.branch_length = 0.001
+        else:
+            self.tree.root.branch_length = self.one_mutation
+        self.tree.root.mutation_length = self.tree.root.branch_length
         self.tree.ladderize()
         self._prepare_nodes()
         self._leaves_lookup = {node.name:node for node in self.tree.get_terminals()}
@@ -151,9 +157,9 @@ class TreeAnc(object):
                 self._internal_node_count += 1
             for c in clade.clades:
                 c.up = clade
+                if not hasattr(c, 'mutation_length'):
+                    c.mutation_length=c.branch_length
                 c.dist2root = c.up.dist2root + c.mutation_length
-        return
-
 
 ####################################################################
 ## END SET-UP
@@ -190,7 +196,7 @@ class TreeAnc(object):
 ###################################################################
 ### ancestral reconstruction
 ###################################################################
-    def reconstruct_anc(self, method, infer_gtr=False, **kwargs):
+    def reconstruct_anc(self, method='ml', infer_gtr=False, **kwargs):
         """
         Reconstruct ancestral states
         Args:
@@ -510,7 +516,7 @@ class TreeAnc(object):
         self.tree.root.up = None
         self.tree.root.dist2root = 0.0
         self._prepare_nodes()
-        return
+
 
     def optimal_branch_length(self, node):
         '''
@@ -572,21 +578,19 @@ class TreeAnc(object):
          The polytomies could be further processde using resolve_polytomies from
          the TreeTime class.
         """
-
+        self.logger("TreeAnc.optimize_seq_and_branch_len: ...", 1)
         if reuse_branch_len:
-            N_diff = self.reconstruct_anc('ml', **kwargs)
+            N_diff = self.reconstruct_anc(method='ml', **kwargs)
         else:
             N_diff = self.reconstruct_anc(method='fitch', **kwargs)
         n = 0
-
-        self.logger("TreeAnc.optimize_seq_and_branch_len: ...", 1)
         while True: # at least one cycle must be done
             n += 1
 
             self.optimize_branch_len(verbose=0, store_old=False)
             if prune_short:
                 self.prune_short_branches()
-            N_diff = self.reconstruct_anc('ml')
+            N_diff = self.reconstruct_anc(method='ml')
 
             self.logger("TreeAnc.optimize_seq_branch_length: Iteration %d."
                    " #Nuc changed since prev reconstructions: %d" %(n, N_diff), 2)
@@ -599,7 +603,7 @@ class TreeAnc(object):
                 break
 
         self._prepare_nodes() # fix dist2root and up-links after reconstruction
-        self.logger("TreeAnc.optimize_seq_and_branch_len: Unconstrained sequence LH:%f"%self.tree.sequence_LH, 1)
+        self.logger("TreeAnc.optimize_seq_and_branch_len: Unconstrained sequence LH:%f"%self.tree.sequence_LH, 2)
         return
 
 ###############################################################################
@@ -609,7 +613,7 @@ class TreeAnc(object):
         from Bio.Align import MultipleSeqAlignment
         from Bio.Seq import Seq
         from Bio.SeqRecord import SeqRecord
-        self.logger("TreeAnc.reconstructed_alignment ...",2)
+        self.logger("TreeAnc.get_reconstructed_alignment ...",2)
         if not hasattr(self.tree.root, 'sequence'):
             self.logger("TreeAnc.reconstructed_alignment... reconstruction not yet done",3)
             self.reconstruct_anc('ml')

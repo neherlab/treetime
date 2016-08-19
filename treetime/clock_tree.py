@@ -46,7 +46,7 @@ class ClockTree(TreeAnc):
         if val is None:
             self._date2dist = None
         else:
-            self.logger("ClockTime.date2dist: Setting new date to branchlength conversion. slope=%f, R2=%.4f"%(val.slope, val.r_val), 2)
+            self.logger("ClockTime.date2dist: Setting new date to branchlength conversion. slope=%f, R^2=%.4f"%(val.slope, val.r_val**2), 2)
             self._date2dist = val
 
 

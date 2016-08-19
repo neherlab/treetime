@@ -44,7 +44,7 @@ class TreeTime(ClockTree):
         # add coalescent prior
         if Tc is not None:
             from merger_models import coalescent
-            self.logger('TreeTime.run: adding coalescent prior',2)
+            self.logger('TreeTime.run: adding coalescent prior',1)
             coalescent(self.tree, Tc=Tc)
             self.make_time_tree()
 
@@ -66,6 +66,9 @@ class TreeTime(ClockTree):
 
 
     def reroot(self,root='best'):
+        self.logger("TreeTime.reroot: with method or node: %s"%root,1)
+        for n in self.tree.find_clades():
+            n.branch_length=n.mutation_length
         from Bio import Phylo
         if isinstance(root,Phylo.BaseTree.Clade):
             new_root = root
@@ -85,6 +88,8 @@ class TreeTime(ClockTree):
                     +('new_node' if new_root.name is None else new_root.name), 2)
         self.tree.root_with_outgroup(new_root)
         self.tree.root.branch_length = self.one_mutation
+        for n in self.tree.find_clades():
+            n.mutation_length=n.branch_length
         self.tree.root.numdate_given = None
         self.prepare_tree()
 
@@ -335,9 +340,10 @@ class TreeTime(ClockTree):
                 #  for non-terminal nodes,
                 node._st_ti = np.sum([k._st_ti for k in node.clades])
                 node._st_n_leaves = np.sum([k._st_n_leaves for k in node.clades])
-                node._st_di   = np.sum([k._st_di + k._st_n_leaves*k.mutation_length for k in node.clades])
-                node._st_diti = np.sum([k._st_diti + k.mutation_length*k._st_ti for k in node.clades])
-                node._st_di2  = np.sum([k._st_di2 + 2*k._st_di*k.mutation_length + k._st_n_leaves*k.mutation_length**2 for k in node.clades])
+                node._st_di   = np.sum([k._st_di + k._st_n_leaves*k.branch_length for k in node.clades])
+                node._st_diti = np.sum([k._st_diti + k.branch_length*k._st_ti for k in node.clades])
+                node._st_di2  = np.sum([k._st_di2 + 2*k._st_di*k.branch_length + k._st_n_leaves*k.branch_length**2
+                                       for k in node.clades])
                 node._ti = sum_ti
 
         best_root = self.tree.root
@@ -349,7 +355,6 @@ class TreeTime(ClockTree):
                 node._diti = node._st_diti
                 node._di2  = node._st_di2
 
-                # TODO
                 dist_variance = (N*node._di2 - node._di**2)*(Ninv**2)
                 disttime_cov = (N*node._diti - sum_ti*node._di)*(Ninv**2)
                 time_variance = time_variance
@@ -363,13 +368,13 @@ class TreeTime(ClockTree):
                 #  NOTE order of the values computation matters
                 n_up = N - node._st_n_leaves
                 n_down = node._st_n_leaves
-                node._di = node.up._di + (n_up-n_down)*node.mutation_length
-                node._di2 = (node.up._di2 + 2*node.mutation_length*node.up._di
-                            - 4*(node.mutation_length*(node._st_di + n_down*node.mutation_length))
-                            + N*node.mutation_length**2)
-                node._diti = node.up._diti + node.mutation_length*(sum_ti - 2*node._st_ti)
+                node._di = node.up._di + (n_up-n_down)*node.branch_length
+                node._di2 = (node.up._di2 + 2*node.branch_length*node.up._di
+                            - 4*(node.branch_length*(node._st_di + n_down*node.branch_length))
+                            + N*node.branch_length**2)
+                node._diti = node.up._diti + node.branch_length*(sum_ti - 2*node._st_ti)
 
-                L = node.mutation_length
+                L = node.branch_length
 
                 ## Express Node's sum_Di as the function of parent's sum_Di
                 # and **displacement from parent's node x** :
@@ -381,7 +386,7 @@ class TreeTime(ClockTree):
                 # and **displacement from parent's node x** :
                 # sum_Di = B1 + B2 * x + B3 * x**2
                 B1 = node.up._di2
-                B2 = 2 * (node.up._di - 2 * node._st_di - 2 * node.mutation_length * node._st_n_leaves )
+                B2 = 2 * (node.up._di - 2 * node._st_di - 2 * node.branch_length * node._st_n_leaves )
                 B3 = N
 
                 ## Express Node's sum_DiTi as the function of parent's params
@@ -437,10 +442,10 @@ class TreeTime(ClockTree):
             elif (node._R2 > best_root._R2 and node._beta>0) or best_root._beta<0:
                 best_root = node
                 self.logger("TreeTime.find_best_root_and_regression: Better root found: R2:%f\tslope:%f\tbranch_displacement:%f"
-                            %(best_root._R2, best_root._beta, (best_root._R2_delta_x) / ( best_root.mutation_length + self.one_mutation)),4)
+                            %(best_root._R2, best_root._beta, (best_root._R2_delta_x) / ( best_root.branch_length + self.one_mutation)),4)
 
         self.logger("TreeTime.find_best_root_and_regression: Best root: R2:%f\tslope:%f\tbranch_displacement:%f"
-                    %(best_root._R2, best_root._beta, (best_root._R2_delta_x) / ( best_root.mutation_length + self.one_mutation)),3)
+                    %(best_root._R2, best_root._beta, (best_root._R2_delta_x) / ( best_root.branch_length + self.one_mutation)),3)
         return best_root, best_root._alpha, best_root._beta
 
     def reroot_to_best_root(self,infer_gtr = False, n_iqd = None, **kwarks):
@@ -450,7 +455,6 @@ class TreeTime(ClockTree):
         '''
         from Bio import Phylo
         self.logger("TreeTime.reroot_to_best_root: searching for the best root position...",2)
-
         best_root, a, b = self.find_best_root_and_regression()
         # first, re-root the tree
 
@@ -462,11 +466,13 @@ class TreeTime(ClockTree):
             # insert the new node in the middle of the branch
             # by simple re-wiring the links on the both sides of the branch
             # and fix the branch lengths
+            new_node.branch_length = best_root.branch_length - best_root._R2_delta_x
+            new_node.up = best_root.up
             new_node.clades = [best_root]
-            new_node.mutation_length = best_root.mutation_length - best_root._R2_delta_x
-            best_root.mutation_length = best_root._R2_delta_x
-            best_root.up.clades = [k if k != best_root else new_node for k in best_root.up.clades]
-            new_node.branch_length = new_node.mutation_length
+            new_node.up.clades = [k if k != best_root else new_node for k in best_root.up.clades]
+
+            best_root.branch_length = best_root._R2_delta_x
+            best_root.up = new_node
             return new_node
         else:
             # simply use the existing node as the new root
@@ -479,10 +485,19 @@ if __name__=="__main__":
     from Bio import Phylo
     plt.ion()
     base_name = 'data/H3N2_NA_allyears_NA.200'
-    with open(base_name+'.metadata.csv') as date_file:
+    #base_name = 'zika'
+    import datetime
+    from utils import numeric_date
+    with open(base_name+'.csv') as date_file:
         dates = {}
         for line in date_file:
+            if line[0]=='#':
+                continue
             try:
+                # entries = line.strip().split(',')
+                # name = entries[0]
+                # date = datetime.datetime.strptime(entries[3], '%Y-%m-%d')
+                # dates[name] = numeric_date(date)
                 name, date = line.strip().split(',')
                 dates[name] = float(date)
             except:
