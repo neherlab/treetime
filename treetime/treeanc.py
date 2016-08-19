@@ -140,6 +140,7 @@ class TreeAnc(object):
         else:
             self.tree.root.branch_length = self.one_mutation
         self.tree.root.mutation_length = self.tree.root.branch_length
+        self.tree.root.mutation = []
         self.tree.ladderize()
         self._prepare_nodes()
         self._leaves_lookup = {node.name:node for node in self.tree.get_terminals()}
@@ -333,7 +334,7 @@ class TreeAnc(object):
     def branch_length_to_gtr(self, node):
         return max(min_branch_length*self.one_mutation, node.mutation_length)
 
-    def _ml_anc(self, marginal=False, verbose=0, **kwargs):
+    def _ml_anc(self, marginal=False, verbose=0, store_compressed=True, **kwargs):
         """
         Perform ML reconstruction of the ancestral states
         KWargs:
@@ -423,8 +424,9 @@ class TreeAnc(object):
             node.profile = profile
 
         # note that the root doesn't contribute to N_diff (intended, since root sequence is often ambiguous)
-        self.logger("Done ancestral state reconstruction",3)
-        self.store_compressed_sequence_pairs()
+        self.logger("TreeAnc._ml_anc: ...done",3)
+        if store_compressed:
+            self.store_compressed_sequence_pairs()
         return N_diff
 
     def store_compressed_sequence_to_node(self, node):

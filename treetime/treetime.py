@@ -20,6 +20,9 @@ class TreeTime(ClockTree):
 
 
     def run(self, root=None, infer_gtr=True, relaxed_clock=False, resolve_polytomies=True, max_iter=0, Tc=None):
+        if relaxed_clock  and len(relaxed_clock)==2:
+            slack, coupling = relaxed_clock
+
         # initially, infer ancestral sequences and infer gtr model if desired
         self.optimize_seq_and_branch_len(infer_gtr=infer_gtr, prune_short=True)
 
@@ -29,31 +32,26 @@ class TreeTime(ClockTree):
 
         # infer time tree and optionally resolve polytomies
         self.make_time_tree()
-        if resolve_polytomies:
-            # if polytomies are found, rerun the entire procedure
-            if self.resolve_polytomies():
-                self.prepare_tree()
-                self.optimize_seq_and_branch_len(prune_short=False)
-                if root=='best':
-                    self.reroot(root=root)
-                self.make_time_tree()
-
-        # set root.gamma bc root doesn't have a branch_length_interpolator but gamma is needed
-        if not hasattr(self.tree.root, 'gamma'):
-            self.tree.root.gamma = 1.0
-        # add coalescent prior
-        if Tc is not None:
-            from merger_models import coalescent
-            self.logger('TreeTime.run: adding coalescent prior',1)
-            coalescent(self.tree, Tc=Tc)
-            self.make_time_tree()
-
-        if relaxed_clock  and len(relaxed_clock)==2:
-            slack, coupling = relaxed_clock
         # iteratively reconstruct ancestral sequences and re-infer
         # time tree to ensure convergence.
         niter = 0
         while niter<max_iter:
+            if resolve_polytomies:
+                # if polytomies are found, rerun the entire procedure
+                if self.resolve_polytomies():
+                    self.prepare_tree()
+                    self.optimize_seq_and_branch_len(prune_short=False)
+                    if root=='best':
+                        self.reroot(root=root)
+                    self.make_time_tree()
+
+            # add coalescent prior
+            if Tc is not None:
+                from merger_models import coalescent
+                self.logger('TreeTime.run: adding coalescent prior',1)
+                coalescent(self.tree, Tc=Tc)
+                self.make_time_tree()
+
             if relaxed_clock:
                 # estimate a relaxed molecular clock
                 self.relaxed_clock(slack=slack, coupling=coupling)
@@ -91,6 +89,9 @@ class TreeTime(ClockTree):
         for n in self.tree.find_clades():
             n.mutation_length=n.branch_length
         self.tree.root.numdate_given = None
+        # set root.gamma bc root doesn't have a branch_length_interpolator but gamma is needed
+        if not hasattr(self.tree.root, 'gamma'):
+            self.tree.root.gamma = 1.0
         self.prepare_tree()
 
 
@@ -534,7 +535,7 @@ if __name__=="__main__":
             g = n.branch_length_interpolator.gamma
         n.color = [int(_x*255) for _x in cm.coolwarm(max(0,min(1,(g-1)+0.5)))[:3]]
 
-    Phylo.draw(myTree.tree, axes=axs[0], show_confidence=False)
+    Phylo.draw(myTree.tree, axes=axs[0], show_confidence=False, label_func = lambda x:'')
     offset = myTree.tree.root.time_before_present + myTree.tree.root.branch_length
     cols = sns.color_palette()
     depth = myTree.tree.depths()

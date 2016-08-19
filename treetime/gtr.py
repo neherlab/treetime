@@ -157,7 +157,7 @@ class GTR(object):
         else:
             mu = 1.0
 
-        if model=='Jukes-Cantor':
+        if model in ['Jukes-Cantor', 'JC69']:
             gtr = cls('nuc')
             n = gtr.alphabet.shape[0]
             W, pi = np.ones((n,n)), np.ones(n)

@@ -43,14 +43,22 @@ You might need root privileges for system wide installation. Alternatively, you 
 
 * Ancestral sequence reconstruction:
 
-    ```
+    ```python
     from treetime import TreeAnc
-    ta = TreeAnc(tree='my_tree.nwk', aln='my_seqs.nwk', gtr='Jukes-Cantor')
-    ta.reconstruct_anc('ml')
+    ta = TreeAnc(tree='my_tree.nwk', aln='my_seqs.nwk', gtr='JC69')
+    ta.reconstruct_anc(method = 'ml', infer_gtr=True, marginal=False)
     ```
-  Every node of `ta.tree` now has a `node.sequence` attached. Optimal arguments to 'reconstruct_anc' include `infer_gtr=True`, `marginal=True`, and 'prune_short=True'.
+  Every node of `ta.tree` now has a `node.sequence` attached. With the Optimal arguments to `infer_gtr=True`, a maximum likelihood GTR model is inferred and overwrites the initial one, the option `marginal=True` can be used to construct a marginal rather than joint maximum likelihood reconstruction, and 'prune_short=False' can be used to avoid collapsing of zero length branches into polytomies.
 
+  The tree and alignment arguments can be either file names (newick and fasta) or Biopython tree and alignent objects.
 
+* Molecular clock phylogenies
+    ```python
+    from treetime import TreeTime
+    tt = TreeTime(dates=mydates, 'my_tree.nwk', aln='my_seqs.nwk', gtr='JC69')
+    tt.run(root='best', infer_gtr=True, relaxed_clock=(1.0,1.0), resolve_polytomies=True, max_iter=2)
+    ```
+  Every node of tt.tree will be assigned a `numdate` and `time_before_present` attribute. The additional attribute `resolve_polytomies` specifies whether TreeTime will attempt to resolve multiple mergers using the temporal constraints on leaves. Autocorrelated relaxed clocks can be fit by passing a tuple of two numbers `(slack, coupling)`. `slack` is the strength of the normal prior on rate variation, coupling penalizes rate variation between parents and children.
 
 ## Comparable Tools
 
