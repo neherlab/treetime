@@ -140,7 +140,7 @@ class TreeAnc(object):
         else:
             self.tree.root.branch_length = self.one_mutation
         self.tree.root.mutation_length = self.tree.root.branch_length
-        self.tree.root.mutation = []
+        self.tree.root.mutations = []
         self.tree.ladderize()
         self._prepare_nodes()
         self._leaves_lookup = {node.name:node for node in self.tree.get_terminals()}
