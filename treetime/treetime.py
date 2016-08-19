@@ -485,21 +485,23 @@ if __name__=="__main__":
     from Bio import Phylo
     plt.ion()
     base_name = 'data/H3N2_NA_allyears_NA.200'
+    base_name = 'data/H3N2_NA_500'
     #base_name = 'zika'
     import datetime
     from utils import numeric_date
-    with open(base_name+'.csv') as date_file:
+    with open(base_name+'.metadata.csv') as date_file:
         dates = {}
         for line in date_file:
             if line[0]=='#':
                 continue
             try:
-                # entries = line.strip().split(',')
-                # name = entries[0]
+                entries = line.strip().split(',')
+                name = entries[0]
+                dates[name] = float(entries[-2])
                 # date = datetime.datetime.strptime(entries[3], '%Y-%m-%d')
                 # dates[name] = numeric_date(date)
-                name, date = line.strip().split(',')
-                dates[name] = float(date)
+                # name, date = line.strip().split(',')
+                # dates[name] = float(date)
             except:
                 continue
 
