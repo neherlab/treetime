@@ -146,11 +146,11 @@ class TreeAnc(object):
         self.tree.root.up = None
         self.tree.root.dist2root = 0.0
         for clade in self.tree.get_nonterminals(order='preorder'): # parents first
+            if clade.name is None:
+                clade.name = "NODE_" + format(self._internal_node_count, '07d')
+                self._internal_node_count += 1
             for c in clade.clades:
                 c.up = clade
-                if c.up.name is None:
-                    c.up.name = "NODE_" + format(self._internal_node_count, '07d')
-                    self._internal_node_count += 1
                 c.dist2root = c.up.dist2root + c.mutation_length
         return
 

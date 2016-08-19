@@ -45,7 +45,6 @@ class ClockTree(TreeAnc):
     def date2dist(self, val):
         if val is None:
             self._date2dist = None
-            return
         else:
             self.logger("ClockTime.date2dist: Setting new date to branchlength conversion. slope=%f, R2=%.4f"%(val.slope, val.r_val), 2)
             self._date2dist = val
@@ -74,9 +73,11 @@ class ClockTree(TreeAnc):
 
         # set the None  for the date-related attributes in the internal nodes.
         # make interpolation objects for the branches
-        self.logger('ClockTree.init_date_constraints: Initializing branch length interpolation objects...',2)
+        self.logger('ClockTree.init_date_constraints: Initializing branch length interpolation objects...',3)
         for node in self.tree.find_clades():
-            if node.up is not None:
+            if node.up is None:
+                node.branch_length_interpolator = None
+            else:
                 # copy the merger rate and gamma if they are set
                 if hasattr(node,'branch_length_interpolator'):
                     gamma = node.branch_length_interpolator.gamma
@@ -87,8 +88,6 @@ class ClockTree(TreeAnc):
                 node.branch_length_interpolator = BranchLenInterpolator(node, self.gtr, one_mutation=self.one_mutation)
                 node.branch_length_interpolator.merger_rate = merger_rate
                 node.branch_length_interpolator.gamma = gamma
-            else:
-                node.branch_length_interpolator = None
         self.date2dist = utils.DateConversion.from_tree(self.tree, slope)
 
         # make node distribution objects
