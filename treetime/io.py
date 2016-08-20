@@ -12,12 +12,13 @@ from scipy.ndimage import binary_dilation
 def plot_vs_years(my_clocktree, years = 1, **kwargs):
     import matplotlib.pyplot as plt
     my_clocktree.branch_length_to_years()
+    fig = plt.figure()
+    ax = plt.subplot(111)
     # draw tree
-    Phylo.draw(my_clocktree.tree, **kwargs)
+    Phylo.draw(my_clocktree.tree, axes=ax, **kwargs)
 
     # set axis labels
     offset = my_clocktree.tree.root.numdate - my_clocktree.tree.root.branch_length
-    ax = plt.gca()
     xticks = ax.get_xticks()
     dtick = xticks[1]-xticks[0]
     shift = offset - dtick*(offset//dtick)

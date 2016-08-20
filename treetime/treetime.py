@@ -1,7 +1,3 @@
-"""
-Class, which contains methods to optimize branch lengths given the time
-constraints set to leaves
-"""
 from __future__ import print_function, division
 from clock_tree import ClockTree
 import config as ttconf
@@ -48,7 +44,7 @@ class TreeTime(ClockTree):
                     self.make_time_tree()
 
             # add coalescent prior
-            if Tc is not None:
+            if Tc and (Tc is not None):
                 from merger_models import coalescent
                 self.logger('TreeTime.run: adding coalescent prior',1)
                 coalescent(self.tree, Tc=Tc)
