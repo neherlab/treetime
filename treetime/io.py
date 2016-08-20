@@ -40,11 +40,11 @@ def plot_vs_years(my_clocktree, years = 1, **kwargs):
             pos = year - offset
             r = Rectangle((pos, ylim[1]-5),
                           dyear, ylim[0]-ylim[1]+10,
-                          facecolor=[0.5+0.2*(1+yi%2)] * 3,
+                          facecolor=[0.7+0.1*(1+yi%2)] * 3,
                           edgecolor=[1,1,1])
             ax.add_patch(r)
             if year in tick_vals and pos>xlim[0] and pos<xlim[1]:
-                ax.text(pos,ylim[0]-0.05*(ylim[1]-ylim[0]),str(int(year)),
+                ax.text(pos,ylim[0]-0.04*(ylim[1]-ylim[0]),str(int(year)),
                         horizontalalignment='center')
         ax.set_axis_off()
 

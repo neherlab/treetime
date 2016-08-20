@@ -17,6 +17,7 @@ The package is designed to be used as a stand-alone tool as well as a module plu
 * rerooting to obtain best root-to-tip regression
 * auto-correlated relaxed molecular clock (with normal prior)
 
+![Molecular clock phylogeny of 200 NA sequences of influenza A H3N2](doc/flu_200.png)
 
 ## Getting started
 
@@ -40,19 +41,79 @@ You might need root privileges for system wide installation. Alternatively, you 
 
 
 ### Basic usage
+TreeTime can be used as part of python programs that create and interact tree time objects. How this could look like for the two principal applications (ancestral sequence reconstruction and molecular clock phylogenies is shown below.)
+
+In addition, we provide scripts that can be run from the command line with arguments specifying data files and parameters.
+
 
 * Ancestral sequence reconstruction:
+  To perform ancestral sequence reconstruction, use the script `ancestral_inference.py`.
+  ```
+  usage: ancestral_reconstruction.py [-h] --aln ALN --tree TREE [--marginal]
+                                     [--infer_gtr]
 
+  Reconstruct ancestral sequences and map mutations to the tree. The ancestral
+  sequences will be written to a file "aln_base"_ancestral.fasta A tree in
+  newick format with mutations appended to node names as _A45G_... will be
+  written to a file "treebase"_mutation.newick
+
+  optional arguments:
+    -h, --help   show this help message and exit
+    --aln ALN    fasta file with input sequences
+    --tree TREE  newick file with tree
+    --marginal   marginal instead of joint ML reconstruction
+    --infer_gtr  infer substitution model
+  ```
+
+  Alteratively, directly interact with the class TreeAnc from treetime as follows
     ```python
     from treetime import TreeAnc
     ta = TreeAnc(tree='my_tree.nwk', aln='my_seqs.nwk', gtr='JC69')
     ta.infer_ancestral_sequences(method = 'ml', infer_gtr=True, marginal=False)
     ```
-  Every node of `ta.tree` now has a `node.sequence` attached. With the Optimal arguments to `infer_gtr=True`, a maximum likelihood GTR model is inferred and overwrites the initial one, the option `marginal=True` can be used to construct a marginal rather than joint maximum likelihood reconstruction, and 'prune_short=False' can be used to avoid collapsing of zero length branches into polytomies.
+  Every node of `ta.tree` now has a `node.sequence` attached. With the optional argument `infer_gtr=True`, a maximum likelihood GTR model is inferred and overwrites the initial one, the option `marginal=True` can be used to construct a marginal rather than joint maximum likelihood reconstruction, and 'prune_short=False' can be used to avoid collapsing of zero length branches into polytomies.
 
   The tree and alignment arguments can be either file names (newick and fasta) or Biopython tree and alignent objects.
 
 * Molecular clock phylogenies
+  To infer molecular clock phylogenies, use the script `timetree_inference.py`:
+  ```
+    usage: timetree_inference.py [-h] --aln ALN --tree TREE --dates DATES
+                               [--infer_gtr] [--reroot REROOT]
+                               [--resolve_polytomies]
+                               [--relax [RELAX [RELAX ...]]]
+                               [--max_iter MAX_ITER] [--verbose VERBOSE]
+                               [--Tc TC] [--plot]
+
+  Reconstruct ancestral sequences, set dates to tree, and infer a time scaled
+  tree. The ancestral sequences will be written to a file ending on
+  _ancestral.fasta A tree in newick format with mutations as _A45G_... appended
+  appended to node names will be written to a file ending on _mutation.newick
+
+  optional arguments:
+    -h, --help            show this help message and exit
+    --aln ALN             fasta file with input sequences
+    --tree TREE           newick file with tree
+    --dates DATES         csv with dates for nodes with 'node_name, date' where
+                          date is float (as in 2012.15)
+    --infer_gtr           infer substitution model
+    --reroot REROOT       reroot the tree. Valid arguments are 'best',
+                          'midpoint', or a node name
+    --resolve_polytomies  resolve polytomies using temporal information
+    --relax [RELAX [RELAX ...]]
+                          autocorrelated molecular clock with prior strength and
+                          coupling of parent and offspring rates
+    --max_iter MAX_ITER   maximal number of iterations the inference cycle is
+                          run
+    --verbose VERBOSE     verbosity of output 0-6
+    --Tc TC               coalescent time scale -- sensible values are on the
+                          order of the average hamming distance of
+                          contemporaneous sequences
+    --plot                plot the tree on a time axis
+
+  ```
+  Alternatively, you can interact directly with the TreeTime class from within a script.
+
     ```python
     from treetime import TreeTime
     tt = TreeTime(dates=mydates, 'my_tree.nwk', aln='my_seqs.nwk', gtr='JC69')

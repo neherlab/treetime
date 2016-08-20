@@ -11,8 +11,8 @@ if __name__=="__main__":
     parser = argparse.ArgumentParser(
             description="Reconstruct ancestral sequences, set dates to tree, and infer a time scaled tree."
                         " The ancestral sequences will be written to a file ending on _ancestral.fasta"
-                        " A tree in newick format with mutations as _A45G_... appended"
-                        " appended to node names will be written to a file ending on _mutation.newick")
+                        " A tree in newick format with mutations appended to node names"
+                        " as _A45G_... will be written to a file ending on _mutation.newick")
     parser.add_argument('--aln', required = True, type = str,  help ="fasta file with input sequences")
     parser.add_argument('--tree', required = True, type = str,  help ="newick file with tree")
     parser.add_argument('--dates', required = True, type = str,
@@ -32,7 +32,7 @@ if __name__=="__main__":
                         help='coalescent time scale -- sensible values are on the order of the average '
                              'hamming distance of contemporaneous sequences')
     parser.add_argument('--plot', default = False, action='store_true',
-                        help='plot the tree with a time axis')
+                        help='plot the tree on a time axis')
     params = parser.parse_args()
     if params.relax==[]:
         params.relax=True
