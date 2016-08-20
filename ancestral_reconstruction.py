@@ -9,10 +9,10 @@ if __name__=="__main__":
     ###########################################################################
     import argparse
     parser = argparse.ArgumentParser(
-            description='Reconstruct ancestral sequences and map mutations to the tree.'
-                        ' The ancestral sequences will be written to a file "aln_base"_ancestral.fasta'
-                        ' A tree in newick format with mutations appended to node names'
-                        ' as _A45G_... will be written to a file "treebase"_mutation.newick')
+            description='Reconstructs ancestral sequences and maps mutations to the tree.'
+                        ' The output consists of a file ending with _ancestral.fasta with ancestral sequences'
+                        ' and a tree ending with _mutation.newick with mutations appended to node names'
+                        ' as _A45G_... The inferred GTR model is written to stdout')
     parser.add_argument('--aln', required = True, type = str,  help ="fasta file with input sequences")
     parser.add_argument('--tree', required = True, type = str,  help ="newick file with tree")
     parser.add_argument('--marginal', default = False, action='store_true', help='marginal instead of joint ML reconstruction')

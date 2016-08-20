@@ -52,10 +52,10 @@ In addition, we provide scripts that can be run from the command line with argum
   usage: ancestral_reconstruction.py [-h] --aln ALN --tree TREE [--marginal]
                                      [--infer_gtr]
 
-  Reconstruct ancestral sequences and map mutations to the tree. The ancestral
-  sequences will be written to a file "aln_base"_ancestral.fasta A tree in
-  newick format with mutations appended to node names as _A45G_... will be
-  written to a file "treebase"_mutation.newick
+  Reconstructs ancestral sequences and maps mutations to the tree. The output
+  consists of a file ending with _ancestral.fasta with ancestral sequences and a
+  tree ending with _mutation.newick with mutations appended to node names as
+  _A45G_... The inferred GTR model is written to stdout
 
   optional arguments:
     -h, --help   show this help message and exit
@@ -78,17 +78,19 @@ In addition, we provide scripts that can be run from the command line with argum
 * Molecular clock phylogenies
   To infer molecular clock phylogenies, use the script `timetree_inference.py`:
   ```
-    usage: timetree_inference.py [-h] --aln ALN --tree TREE --dates DATES
+  usage: timetree_inference.py [-h] --aln ALN --tree TREE --dates DATES
                                [--infer_gtr] [--reroot REROOT]
                                [--resolve_polytomies]
                                [--relax [RELAX [RELAX ...]]]
                                [--max_iter MAX_ITER] [--verbose VERBOSE]
                                [--Tc TC] [--plot]
 
-  Reconstruct ancestral sequences, set dates to tree, and infer a time scaled
-  tree. The ancestral sequences will be written to a file ending on
-  _ancestral.fasta A tree in newick format with mutations as _A45G_... appended
-  appended to node names will be written to a file ending on _mutation.newick
+  Reconstructs ancestral sequences and infers a molecular clock tree. The output
+  consists of a file ending with _ancestral.fasta with ancestral sequences and a
+  tree ending with _mutation.newick with mutations appended to node names as
+  _A45G_.... The branches of this tree are scaled such that branch length
+  correspond to times in units of the molecular clock. The molecular clock,
+  along with the inferred GTR model, is written to stdout
 
   optional arguments:
     -h, --help            show this help message and exit
@@ -99,10 +101,11 @@ In addition, we provide scripts that can be run from the command line with argum
     --infer_gtr           infer substitution model
     --reroot REROOT       reroot the tree. Valid arguments are 'best',
                           'midpoint', or a node name
-    --resolve_polytomies  resolve polytomies using temporal information
+    --resolve_polytomies  resolve polytomies using temporal information.
     --relax [RELAX [RELAX ...]]
-                          autocorrelated molecular clock with prior strength and
-                          coupling of parent and offspring rates
+                          use an autocorrelated molecular clock. Prior strength
+                          and coupling of parent and offspring rates can be
+                          specified e.g. as --relax 1.0 0.5
     --max_iter MAX_ITER   maximal number of iterations the inference cycle is
                           run
     --verbose VERBOSE     verbosity of output 0-6
@@ -110,7 +113,6 @@ In addition, we provide scripts that can be run from the command line with argum
                           order of the average hamming distance of
                           contemporaneous sequences
     --plot                plot the tree on a time axis
-
   ```
   Alternatively, you can interact directly with the TreeTime class from within a script.
 

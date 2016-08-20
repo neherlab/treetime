@@ -76,7 +76,10 @@ class BranchLenInterpolator (Distribution):
         self._merger_rate = value
         self._peak_idx = np.argmin(self.__call__(self.x))
         self._peak_pos = self.x[self._peak_idx]
-        self._peak_val = self.__call__(self.peak_pos)
+        if self.kind=='linear': # can't mess like this with non-linear interpolation
+            deltay = self.__call__(self.peak_pos) - self._peak_val
+            self._peak_val += deltay
+            self._func.y -= deltay
 
     @property
     def peak_pos(self):

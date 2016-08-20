@@ -9,10 +9,12 @@ if __name__=="__main__":
     ###########################################################################
     import argparse
     parser = argparse.ArgumentParser(
-            description="Reconstruct ancestral sequences, set dates to tree, and infer a time scaled tree."
-                        " The ancestral sequences will be written to a file ending on _ancestral.fasta"
-                        " A tree in newick format with mutations appended to node names"
-                        " as _A45G_... will be written to a file ending on _mutation.newick")
+            description="Reconstructs ancestral sequences and infers a molecular clock tree."
+                        ' The output consists of a file ending with _ancestral.fasta with ancestral sequences'
+                        ' and a tree ending with _mutation.newick with mutations appended to node names'
+                        ' as _A45G_.... The branches of this tree are scaled such that branch length'
+                        ' correspond to times in units of the molecular clock. The molecular clock,'
+                        ' along with the inferred GTR model, is written to stdout')
     parser.add_argument('--aln', required = True, type = str,  help ="fasta file with input sequences")
     parser.add_argument('--tree', required = True, type = str,  help ="newick file with tree")
     parser.add_argument('--dates', required = True, type = str,
@@ -21,9 +23,9 @@ if __name__=="__main__":
     parser.add_argument('--reroot', required = False, type = str, default='best',
                         help ="reroot the tree. Valid arguments are 'best', 'midpoint', or a node name")
     parser.add_argument('--resolve_polytomies', default = True, action='store_true',
-                        help='resolve polytomies using temporal information')
+                        help='resolve polytomies using temporal information.')
     parser.add_argument('--relax',nargs='*', default = False,
-                        help='autocorrelated molecular clock with prior strength and coupling of parent and offspring rates')
+                        help='use an autocorrelated molecular clock. Prior strength and coupling of parent and offspring rates can be specified e.g. as --relax 1.0 0.5')
     parser.add_argument('--max_iter', default = 2, type=int,
                         help='maximal number of iterations the inference cycle is run')
     parser.add_argument('--verbose', default = 3, type=int,
