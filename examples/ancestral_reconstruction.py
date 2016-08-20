@@ -23,7 +23,8 @@ if __name__=="__main__":
     ### ANCESTRAL RECONSTRUCTION
     ###########################################################################
     treeanc = TreeAnc(params.tree, aln=params.aln, gtr='Jukes-Cantor', verbose=4)
-    treeanc.reconstruct_anc('ml', infer_gtr=params.infer_gtr, marginal=params.marginal)
+    treeanc.infer_ancestral_sequences('ml', infer_gtr=params.infer_gtr,
+                                       marginal=params.marginal)
 
     ###########################################################################
     ### OUTPUT and saving of results

@@ -27,7 +27,7 @@ if __name__=="__main__":
         dates = {}
         for line in date_file:
             try:
-                name, date = line.strip().split(',')
+                name, date = line.strip().split(',')[:2]
                 dates[name] = float(date)
             except:
                 continue
@@ -35,8 +35,9 @@ if __name__=="__main__":
     ###########################################################################
     ### ANCESTRAL RECONSTRUCTION AND SET-UP
     ###########################################################################
-    myTree = ClockTree(dates, params.tree, aln=params.aln, gtr='Jukes-Cantor', verbose=4)
-    myTree.init_date_constraints(infer_gtr=params.infer_gtr)
+    myTree = ClockTree(dates=dates, tree=params.tree,
+                       aln=params.aln, gtr='JC69', verbose=4)
+    myTree.make_time_tree(infer_gtr=params.infer_gtr)
 
     ###########################################################################
     ### OUTPUT and saving of results
@@ -57,6 +58,7 @@ if __name__=="__main__":
         if len(n.mutations):
             n.name+='_'+'_'.join([a+str(pos)+d for (a,pos, d) in n.mutations])
 
-    # write tree to file
+    # write tree to file. Branch length will now be scaled such that node
+    # positions correspond to sampling times.
     outtree_name = '.'.join(params.tree.split('/')[-1].split('.')[:-1])+'_mutation.newick'
     Phylo.write(myTree.tree, outtree_name, 'newick')
