@@ -73,11 +73,12 @@ if __name__=="__main__":
     if params.plot:
         from treetime.io import plot_vs_years
         import matplotlib.pyplot as plt
+        plt.ion()
         leaf_count = myTree.tree.count_terminals()
-        label_func = lambda x: x.name[:20] if leaf_count<30 else ''
+        label_func = lambda x: x.name[:20] if (leaf_count<30 & x.is_terminal()) else ''
         branch_label_func = lambda x: (','.join([a+str(pos)+d for a,pos, d in x.mutations[:10]])
                                        +('...' if  len(x.mutations)>10 else '')) if leaf_count<30 else ''
-        plot_vs_years(myTree, show_confidence=False, label_func = label_func, branch_labels=branch_label_func)
+        plot_vs_years(myTree, show_confidence=False, label_func = label_func) #, branch_labels=branch_label_func)
         plt.savefig(base_name+'_tree.pdf')
 
 
