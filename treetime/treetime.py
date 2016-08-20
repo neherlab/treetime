@@ -35,14 +35,6 @@ class TreeTime(ClockTree):
         niter = 0
         while niter<max_iter:
             self.logger("###TreeTime.run: ITERATION %d out of %d iterations"%(niter+1,max_iter),0)
-            if resolve_polytomies:
-                # if polytomies are found, rerun the entire procedure
-                n_resolved = self.resolve_polytomies()
-                if n_resolved:
-                    self.prepare_tree()
-                    self.optimize_sequences_and_branch_length(prune_short=False, max_iter=0)
-                    self.make_time_tree()
-
             # add coalescent prior
             if Tc and (Tc is not None):
                 from merger_models import coalescent
@@ -52,10 +44,16 @@ class TreeTime(ClockTree):
                 # estimate a relaxed molecular clock
                 self.relaxed_clock(slack=slack, coupling=coupling)
 
-            if (Tc is not None) or relaxed_clock: # need new timetree first
+            if resolve_polytomies:
+                # if polytomies are found, rerun the entire procedure
+                n_resolved = self.resolve_polytomies()
+                if n_resolved:
+                    self.prepare_tree()
+                    self.optimize_sequences_and_branch_length(prune_short=False, max_iter=0)
+                    self.make_time_tree()
+                    ndiff = self.infer_ancestral_sequences('ml')
+            elif (Tc and (Tc is not None)) or relaxed_clock: # need new timetree first
                 self.make_time_tree()
-                ndiff = self.infer_ancestral_sequences('ml')
-            elif resolve_polytomies and n_resolved: # time tree is up-to-date
                 ndiff = self.infer_ancestral_sequences('ml')
             else: # no refinements, just iterate
                 ndiff = self.infer_ancestral_sequences('ml')
