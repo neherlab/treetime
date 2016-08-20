@@ -92,18 +92,18 @@ class NodeInterpolator (Distribution):
 
         # add the right and left grid if it is needed
         right_range = (tmax - grid_center[-1])
-        if right_range>2*center_width:
+        if right_range>4*center_width:
             grid_right = grid_center[-1] + right_range*(np.linspace(0, 1, n)**2.0)
         elif right_range>0: # use linear grid the right_range is comparable to center_width
-            grid_right = grid_center[-1] + right_range*np.linspace(0,1,n)
+            grid_right = grid_center[-1] + right_range*np.linspace(0,1, int(min(n,1+0.5*n*right_range/center_width)))
         else:
             grid_right =[]
 
         left_range = grid_center[0]-tmin
-        if left_range>2*center_width:
+        if left_range>4*center_width:
             grid_left = tmin - left_range*(np.linspace(0, 1, n)**2.0)
         elif left_range>0:
-            grid_left = tmin + left_range*np.linspace(0,1,n)
+            grid_left = tmin + left_range*np.linspace(0,1, int(min(n,1+0.5*n*left_range/center_width)))
         else:
             grid_left =[]
 
@@ -121,8 +121,8 @@ class NodeInterpolator (Distribution):
         # determine the number of extra points needed, criterion depends on distance from peak dy
         dy = (res_0[2:-2]-res_0.min())
         dx = np.diff(t_grid_0)
-        refine_factor = np.minimum(np.array(np.floor(np.sqrt(interp_error/(rel_tol*(1+(dy/yc)**4)))), dtype=int),
-                                   np.array(100*(dx[1:-2]+dx[2:-1])/joint_fwhm, dtype=int))
+        refine_factor = np.minimum(np.minimum(np.array(np.floor(np.sqrt(interp_error/(rel_tol*(1+(dy/yc)**4)))), dtype=int),
+                                   np.array(100*(dx[1:-2]+dx[2:-1])/joint_fwhm, dtype=int)), 10)
 
         insert_point_idx = np.zeros(interp_error.shape[0]+1, dtype=int)
         insert_point_idx[1:] = refine_factor

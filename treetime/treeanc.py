@@ -197,6 +197,8 @@ class TreeAnc(object):
 ###################################################################
 ### ancestral reconstruction
 ###################################################################
+    def infer_ancestral_sequences(self,*args, **kwargs):
+        self.reconstruct_anc(*args,**kwargs)
     def reconstruct_anc(self, method='ml', infer_gtr=False, **kwargs):
         """
         Reconstruct ancestral states
@@ -209,7 +211,7 @@ class TreeAnc(object):
 
         """
 
-        self.logger("TreeAnc reconstructing ancestral states with method: "+method,1)
+        self.logger("TreeAnc.infer_ancestral_sequences: method: "+method,1)
 
         if infer_gtr:
             self.infer_gtr(**kwargs)
@@ -331,7 +333,7 @@ class TreeAnc(object):
 ###################################################################
 ### Maximum Likelihood
 ###################################################################
-    def branch_length_to_gtr(self, node):
+    def _branch_length_to_gtr(self, node):
         return max(min_branch_length*self.one_mutation, node.mutation_length)
 
     def _ml_anc(self, marginal=False, verbose=0, store_compressed=True, **kwargs):
@@ -363,7 +365,7 @@ class TreeAnc(object):
             node.profile = np.ones((L, n_states)) # we will multiply it
             for ch in node.clades:
                 ch.seq_msg_to_parent = self.gtr.propagate_profile(ch.profile,
-                    self.branch_length_to_gtr(ch), return_log=False) # raw prob to transfer prob up
+                    self._branch_length_to_gtr(ch), return_log=False) # raw prob to transfer prob up
                 node.profile *= ch.seq_msg_to_parent
                 node.lh_prefactor += ch.lh_prefactor
 
@@ -399,11 +401,11 @@ class TreeAnc(object):
                     if c != node:
                         tmp_msg*=c.seq_msg_to_parent
                 node.seq_msg_from_parent = self.gtr.propagate_profile(tmp_msg,
-                                                self.branch_length_to_gtr(node), return_log=False)
+                                                self._branch_length_to_gtr(node), return_log=False)
                 node.profile *= node.seq_msg_from_parent
             else:
                 node.seq_msg_from_parent = self.gtr.propagate_profile(node.up.profile,
-                                                self.branch_length_to_gtr(node), return_log=False)
+                                                self._branch_length_to_gtr(node), return_log=False)
                 node.profile *= node.seq_msg_from_parent
 
             # reset the profile to 0-1 and  set the sequence
@@ -456,7 +458,7 @@ class TreeAnc(object):
 
         for node in self.tree.get_nonterminals():
             for child in node:
-                transition_matrix = self.gtr.expQt(self.branch_length_to_gtr(child))
+                transition_matrix = self.gtr.expQt(self._branch_length_to_gtr(child))
                 if child.is_terminal():
                     from_children=child.profile
                 else:
@@ -472,6 +474,8 @@ class TreeAnc(object):
 ### Branch length
 ###################################################################
     def optimize_branch_len(self, **kwargs):
+        self.optimize_branch_length(**kwargs)
+    def optimize_branch_length(self, **kwargs):
         """
         Perform ML optimization for the branch lengths of the whole tree or any
         subtree. **Note** this method assumes that each node stores information
@@ -523,7 +527,6 @@ class TreeAnc(object):
     def optimal_branch_length(self, node):
         '''
         calculate optimal branch length given the sequences of node and parent
-        IMPORTANTLY: this needs to use sequences and 0-1 profiles!
         '''
         if node.up is None:
             return self.one_mutation
@@ -557,8 +560,10 @@ class TreeAnc(object):
                 for clade in node.clades:
                     clade.up = node.up
 
-
-    def optimize_seq_and_branch_len(self,reuse_branch_len=True,prune_short=True, **kwargs):
+    def optimize_sequences_and_branch_length(self,*args, **kwargs):
+        self.optimize_seq_and_branch_len(*args,**kwargs)
+    def optimize_seq_and_branch_len(self,reuse_branch_len=True,prune_short=True,
+                                    max_iter=5, **kwargs):
         """
         Iteratively set branch lengths and reconstruct ancestral sequences until
         the values of either former or latter do not change. The algorithm assumes
@@ -580,32 +585,29 @@ class TreeAnc(object):
          The polytomies could be further processde using resolve_polytomies from
          the TreeTime class.
         """
-        self.logger("TreeAnc.optimize_seq_and_branch_len: ...", 1)
+        self.logger("TreeAnc.optimize_sequences_and_branch_length: ...", 1)
         if reuse_branch_len:
             N_diff = self.reconstruct_anc(method='ml', **kwargs)
         else:
             N_diff = self.reconstruct_anc(method='fitch', **kwargs)
-        n = 0
-        while True: # at least one cycle must be done
-            n += 1
+        self.optimize_branch_len(verbose=0, store_old=False)
 
-            self.optimize_branch_len(verbose=0, store_old=False)
+        n = 0
+        while n<max_iter:
+            n += 1
             if prune_short:
                 self.prune_short_branches()
             N_diff = self.reconstruct_anc(method='ml')
 
-            self.logger("TreeAnc.optimize_seq_branch_length: Iteration %d."
+            self.logger("TreeAnc.optimize_sequences_and_branch_length: Iteration %d."
                    " #Nuc changed since prev reconstructions: %d" %(n, N_diff), 2)
 
             if N_diff < 1:
                 break
-            elif n > 10:
-                self.logger("sequences and branch lengths optimization did not"
-                       "converge in 10 cycles, aborting.", 4, warn=True)
-                break
+            self.optimize_branch_len(verbose=0, store_old=False)
 
         self._prepare_nodes() # fix dist2root and up-links after reconstruction
-        self.logger("TreeAnc.optimize_seq_and_branch_len: Unconstrained sequence LH:%f"%self.tree.sequence_LH, 2)
+        self.logger("TreeAnc.optimize_sequences_and_branch_length: Unconstrained sequence LH:%f"%self.tree.sequence_LH, 2)
         return
 
 ###############################################################################

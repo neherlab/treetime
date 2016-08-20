@@ -24,25 +24,27 @@ class TreeTime(ClockTree):
             slack, coupling = relaxed_clock
 
         # initially, infer ancestral sequences and infer gtr model if desired
-        self.optimize_seq_and_branch_len(infer_gtr=infer_gtr, prune_short=True)
+        self.optimize_sequences_and_branch_length(infer_gtr=infer_gtr,
+                                                  prune_short=True)
 
         # optionally reroot the tree either by oldest, best regression or with a specific leaf
         if root is not None:
             self.reroot(root=root)
 
         # infer time tree and optionally resolve polytomies
+        self.logger("###TreeTime.run: INITIAL ROUND",0)
         self.make_time_tree()
         # iteratively reconstruct ancestral sequences and re-infer
         # time tree to ensure convergence.
         niter = 0
         while niter<max_iter:
+            self.logger("###TreeTime.run: ITERATION %d out of %d iterations"%(niter+1,max_iter),0)
             if resolve_polytomies:
                 # if polytomies are found, rerun the entire procedure
-                if self.resolve_polytomies():
+                n_resolved = self.resolve_polytomies()
+                if n_resolved:
                     self.prepare_tree()
-                    self.optimize_seq_and_branch_len(prune_short=False)
-                    if root=='best':
-                        self.reroot(root=root)
+                    self.optimize_sequences_and_branch_length(prune_short=False, max_iter=0)
                     self.make_time_tree()
 
             # add coalescent prior
@@ -50,16 +52,22 @@ class TreeTime(ClockTree):
                 from merger_models import coalescent
                 self.logger('TreeTime.run: adding coalescent prior',1)
                 coalescent(self.tree, Tc=Tc)
-                self.make_time_tree()
-
             if relaxed_clock:
                 # estimate a relaxed molecular clock
                 self.relaxed_clock(slack=slack, coupling=coupling)
 
-            ndiff = self.reconstruct_anc('ml')
-            if ndiff==0:
+            if (Tc is not None) or relaxed_clock: # need new timetree first
+                self.make_time_tree()
+                ndiff = self.infer_ancestral_sequences('ml')
+            elif resolve_polytomies and n_resolved: # time tree is up-to-date
+                ndiff = self.infer_ancestral_sequences('ml')
+            else: # no refinements, just iterate
+                ndiff = self.infer_ancestral_sequences('ml')
+                self.make_time_tree()
+
+            if ndiff==0 & n_resolved==0:
+                self.logger("###TreeTime.run: CONVERGED",0)
                 break
-            self.make_time_tree()
             niter+=1
 
 
@@ -104,13 +112,14 @@ class TreeTime(ClockTree):
             - merge_compressed(bool): whether to keep compressed branches as
               polytomies or return a strictly binary tree.
         """
-        self.logger("TreeTime.resolve_polytomies: resolving multiple mergers...",2)
+        self.logger("TreeTime.resolve_polytomies: resolving multiple mergers...",1)
 
-        poly_found=False
+        poly_found=0
         for n in self.tree.find_clades():
             if len(n.clades) > 2:
+                proir_n_clades = len(n.clades)
                 self._poly(n, merge_compressed)
-                poly_found=True
+                poly_found+=proir_n_clades - len(n.clades)
 
         obsolete_nodes = [n for n in self.tree.find_clades() if len(n.clades)==1 and n.up is not None]
         for node in obsolete_nodes:
@@ -118,6 +127,10 @@ class TreeTime(ClockTree):
             if node.up is not None:
                 self.tree.collapse(node)
 
+        if poly_found:
+            self.logger('TreeTime.resolve_polytomies: introduces %d new nodes'%poly_found,3)
+        else:
+            self.logger('TreeTime.resolve_polytomies: No more polytomies to resolve',3)
         return poly_found
 
 
@@ -485,7 +498,7 @@ if __name__=="__main__":
     sns.set_style('whitegrid')
     from Bio import Phylo
     plt.ion()
-    base_name = 'data/H3N2_NA_allyears_NA.200'
+    base_name = 'data/H3N2_NA_allyears_NA.20'
     #base_name = 'data/H3N2_NA_500'
     #base_name = 'zika'
     import datetime

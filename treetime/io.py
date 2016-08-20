@@ -9,20 +9,43 @@ import os
 import StringIO
 from scipy.ndimage import binary_dilation
 
-def plot_vs_years(my_clocktree, **kwargs):
+def plot_vs_years(my_clocktree, years = 1, **kwargs):
     import matplotlib.pyplot as plt
     my_clocktree.branch_length_to_years()
+    # draw tree
     Phylo.draw(my_clocktree.tree, **kwargs)
+
+    # set axis labels
     offset = my_clocktree.tree.root.numdate - my_clocktree.tree.root.branch_length
     ax = plt.gca()
     xticks = ax.get_xticks()
     dtick = xticks[1]-xticks[0]
     shift = offset - dtick*(offset//dtick)
     ax.set_xticks(xticks - shift)
-    ax.set_xticklabels(map(str, [x+offset-shift for x in xticks]))
+    tick_vals = [x+offset-shift for x in xticks]
+    ax.set_xticklabels(map(str, tick_vals))
     ax.set_xlabel('year')
     ax.set_ylabel('')
-    ax.set_xlim(0)
+    ax.set_xlim((0,np.max([n.numdate for n in my_clocktree.tree.get_terminals()])+2-offset))
+
+    # put shaded boxes to delineate years
+    if years:
+        ylim = ax.get_ylim()
+        xlim = ax.get_xlim()
+        if type(years)==int:
+            dyear=years
+        from matplotlib.patches import Rectangle
+        for yi,year in enumerate(np.arange(tick_vals[0], tick_vals[-1],dyear)):
+            pos = year - offset
+            r = Rectangle((pos, ylim[1]-5),
+                          dyear, ylim[0]-ylim[1]+10,
+                          facecolor=[0.5+0.2*(1+yi%2)] * 3,
+                          edgecolor=[1,1,1])
+            ax.add_patch(r)
+            if year in tick_vals and pos>xlim[0] and pos<xlim[1]:
+                ax.text(pos,ylim[0]-0.05*(ylim[1]-ylim[0]),str(int(year)),
+                        horizontalalignment='center')
+        ax.set_axis_off()
 
 def treetime_to_newick(tt, outf):
     Phylo.write(tt.tree, outf, 'newick')

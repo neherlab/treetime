@@ -46,7 +46,7 @@ You might need root privileges for system wide installation. Alternatively, you 
     ```python
     from treetime import TreeAnc
     ta = TreeAnc(tree='my_tree.nwk', aln='my_seqs.nwk', gtr='JC69')
-    ta.reconstruct_anc(method = 'ml', infer_gtr=True, marginal=False)
+    ta.infer_ancestral_sequences(method = 'ml', infer_gtr=True, marginal=False)
     ```
   Every node of `ta.tree` now has a `node.sequence` attached. With the Optimal arguments to `infer_gtr=True`, a maximum likelihood GTR model is inferred and overwrites the initial one, the option `marginal=True` can be used to construct a marginal rather than joint maximum likelihood reconstruction, and 'prune_short=False' can be used to avoid collapsing of zero length branches into polytomies.
 
@@ -62,8 +62,9 @@ You might need root privileges for system wide installation. Alternatively, you 
 
 ## Comparable Tools
 
-There are several other tools which perform date inference for the internal nodes. [Beast](http://beast.bio.ed.ac.uk/) relies on the MCMC-type sampling of trees and is hence rather slow for large numbers of sequences. But BEAST allows the flexible inclusion of prior distributions, complex evolutionary models, and estimation of parameters.
-Another tool that was recently published is [Least-Square-Dating](http://www.atgc-montpellier.fr/LSD/). LSD emphasises speed (also scales as O(N) as **TreeTime**), but provides limited scope for customization. **TreeTime** tries to achieve a good compromise betwee implementing a fast heuristic but accurate algorithm, which allows is readily extendable and customizable.
+There are several other tools which perform date inference for the internal nodes.
+* [Beast](http://beast.bio.ed.ac.uk/) relies on the MCMC-type sampling of trees. It and is hence rather slow for large data sets. But BEAST allows the flexible inclusion of prior distributions, complex evolutionary models, and estimation of parameters.
+* [Least-Square-Dating](http://www.atgc-montpellier.fr/LSD/) (LSD) emphasises speed (it scales as O(N) as **TreeTime**), but provides limited scope for customization.
 
 
 ## Developer info

@@ -69,7 +69,7 @@ class ClockTree(TreeAnc):
         self.logger("ClockTree.init_date_constraints...",2)
 
         if ancestral_inference or (not hasattr(self.tree.root, 'sequence')):
-            self.reconstruct_anc('ml',**kwarks)
+            self.infer_ancestral_sequences('ml',**kwarks)
 
         # set the None  for the date-related attributes in the internal nodes.
         # make interpolation objects for the branches
@@ -300,7 +300,7 @@ class ClockTree(TreeAnc):
 
 
     def branch_length_to_years(self):
-        self.logger('ClockTree.branch_length_to_years: setting node positions in unites of years', 2)
+        self.logger('ClockTree.branch_length_to_years: setting node positions in units of years', 2)
         if not hasattr(self.tree.root, 'numdate'):
             self.logger('ClockTree.branch_length_to_years: infer ClockTree first', 2,warn=True)
         self.tree.root.branch_length = 1.0
