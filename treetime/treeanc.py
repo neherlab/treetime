@@ -28,6 +28,7 @@ class TreeAnc(object):
         self.verbose = verbose
         self.logger("TreeAnc: set-up",1)
         self._internal_node_count = 0
+        self.use_mutation_length=True
         self.one_mutation = None
         # TODO: set explicitly
         self.ignore_gaps = True
@@ -180,11 +181,11 @@ class TreeAnc(object):
                 for a,pos, d in node.mutations:
                     i,j = alpha.index(a), alpha.index(d)
                     nij[i,j]+=1
-                    Ti[i] += 0.5*node.mutation_length
-                    Ti[j] -= 0.5*node.mutation_length
+                    Ti[i] += 0.5*self._branch_length_to_gtr(node)
+                    Ti[j] -= 0.5*self._branch_length_to_gtr(node)
                 for nuc in node.sequence:
                     i = alpha.index(nuc)
-                    Ti[i] += node.mutation_length
+                    Ti[i] += self._branch_length_to_gtr(node)
         if print_raw:
             print('alphabet:',alpha)
             print('n_ij:', nij)
@@ -334,7 +335,10 @@ class TreeAnc(object):
 ### Maximum Likelihood
 ###################################################################
     def _branch_length_to_gtr(self, node):
-        return max(min_branch_length*self.one_mutation, node.mutation_length)
+        if self.use_mutation_length:
+            return max(min_branch_length*self.one_mutation, node.mutation_length)
+        else:
+            return max(min_branch_length*self.one_mutation, node.branch_length)
 
     def _ml_anc(self, marginal=False, verbose=0, store_compressed=True, sample_from_profile=False, **kwargs):
         """
