@@ -21,6 +21,7 @@ class TreeTime(ClockTree):
 
         # initially, infer ancestral sequences and infer gtr model if desired
         self.optimize_sequences_and_branch_length(infer_gtr=infer_gtr,
+                                                  sample_from_profile='root',
                                                   prune_short=True)
 
         # optionally reroot the tree either by oldest, best regression or with a specific leaf
@@ -49,14 +50,15 @@ class TreeTime(ClockTree):
                 n_resolved = self.resolve_polytomies()
                 if n_resolved:
                     self.prepare_tree()
-                    self.optimize_sequences_and_branch_length(prune_short=False, max_iter=0)
+                    self.optimize_sequences_and_branch_length(prune_short=False,
+                                            max_iter=0,sample_from_profile='root')
                     self.make_time_tree()
-                    ndiff = self.infer_ancestral_sequences('ml')
+                    ndiff = self.infer_ancestral_sequences('ml',sample_from_profile='root')
             elif (Tc and (Tc is not None)) or relaxed_clock: # need new timetree first
                 self.make_time_tree()
-                ndiff = self.infer_ancestral_sequences('ml')
+                ndiff = self.infer_ancestral_sequences('ml',sample_from_profile='root')
             else: # no refinements, just iterate
-                ndiff = self.infer_ancestral_sequences('ml')
+                ndiff = self.infer_ancestral_sequences('ml',sample_from_profile='root')
                 self.make_time_tree()
 
             if ndiff==0 & n_resolved==0:

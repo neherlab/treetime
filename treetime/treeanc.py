@@ -336,7 +336,7 @@ class TreeAnc(object):
     def _branch_length_to_gtr(self, node):
         return max(min_branch_length*self.one_mutation, node.mutation_length)
 
-    def _ml_anc(self, marginal=False, verbose=0, store_compressed=True, **kwargs):
+    def _ml_anc(self, marginal=False, verbose=0, store_compressed=True, sample_from_profile=False, **kwargs):
         """
         Perform ML reconstruction of the ancestral states
         KWargs:
@@ -385,10 +385,12 @@ class TreeAnc(object):
         tree.anc_LH = tree.root.lh_prefactor.sum()
         tree.sequence_LH = 0
         # reset profile to 0-1 and set the sequence
+        tmp_sample = True if sample_from_profile=='root' else sample_from_profile
         tree.root.sequence, tree.root.profile = \
-            seq_utils.prof2seq(tree.root.profile, self.gtr, sample_from_prof=True, collapse_prof=not marginal)
+            seq_utils.prof2seq(tree.root.profile, self.gtr, sample_from_prof=tmp_sample, collapse_prof=not marginal)
         tree.root.seq_msg_from_parent = np.repeat([self.gtr.Pi.diagonal()], len(tree.root.sequence), axis=0)
 
+        tmp_sample = False if sample_from_profile=='root' else sample_from_profile
 
         for node in tree.find_clades(order='preorder'):
             if node.up is None: # skip if node is root
@@ -409,7 +411,7 @@ class TreeAnc(object):
                 node.profile *= node.seq_msg_from_parent
 
             # reset the profile to 0-1 and  set the sequence
-            sequence, profile = seq_utils.prof2seq(node.profile, self.gtr, sample_from_prof=False, collapse_prof=not marginal)
+            sequence, profile = seq_utils.prof2seq(node.profile, self.gtr, sample_from_prof=tmp_sample, collapse_prof=not marginal)
             node.mutations = [(anc, pos, der) for pos, (anc, der) in
                             enumerate(izip(node.up.sequence, sequence)) if anc!=der]
 
@@ -563,7 +565,7 @@ class TreeAnc(object):
     def optimize_sequences_and_branch_length(self,*args, **kwargs):
         self.optimize_seq_and_branch_len(*args,**kwargs)
     def optimize_seq_and_branch_len(self,reuse_branch_len=True,prune_short=True,
-                                    max_iter=5, **kwargs):
+                                    max_iter=5, infer_gtr=False, **kwargs):
         """
         Iteratively set branch lengths and reconstruct ancestral sequences until
         the values of either former or latter do not change. The algorithm assumes
@@ -587,9 +589,9 @@ class TreeAnc(object):
         """
         self.logger("TreeAnc.optimize_sequences_and_branch_length: ...", 1)
         if reuse_branch_len:
-            N_diff = self.reconstruct_anc(method='ml', **kwargs)
+            N_diff = self.reconstruct_anc(method='ml', infer_gtr=infer_gtr, **kwargs)
         else:
-            N_diff = self.reconstruct_anc(method='fitch', **kwargs)
+            N_diff = self.reconstruct_anc(method='fitch', infer_gtr=infer_gtr, **kwargs)
         self.optimize_branch_len(verbose=0, store_old=False)
 
         n = 0
@@ -597,7 +599,7 @@ class TreeAnc(object):
             n += 1
             if prune_short:
                 self.prune_short_branches()
-            N_diff = self.reconstruct_anc(method='ml')
+            N_diff = self.reconstruct_anc(method='ml', infer_gtr=False,**kwargs)
 
             self.logger("TreeAnc.optimize_sequences_and_branch_length: Iteration %d."
                    " #Nuc changed since prev reconstructions: %d" %(n, N_diff), 2)
