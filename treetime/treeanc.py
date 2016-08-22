@@ -28,7 +28,7 @@ class TreeAnc(object):
         self.verbose = verbose
         self.logger("TreeAnc: set-up",1)
         self._internal_node_count = 0
-        self.use_mutation_length=True
+        self.use_mutation_length=False
         self.one_mutation = None
         # TODO: set explicitly
         self.ignore_gaps = True
