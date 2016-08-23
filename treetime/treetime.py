@@ -497,7 +497,7 @@ if __name__=="__main__":
     plt.ion()
     base_name = 'data/H3N2_NA_allyears_NA.20'
     #base_name = 'data/H3N2_NA_500'
-    base_name = 'zika'
+    base_name = 'data/zika'
     import datetime
     from utils import numeric_date
     with open(base_name+'.csv') as date_file:
@@ -509,7 +509,7 @@ if __name__=="__main__":
                 entries = line.strip().split(',')
                 name = entries[0]
                 #dates[name] = float(entries[-2])
-                date = datetime.datetime.strptime(entries[-1], '%Y-%m-%d')
+                date = datetime.datetime.strptime(entries[3], '%Y-%m-%d')
                 dates[name] = numeric_date(date)
                 #name, date = line.strip().split(',')
                 #dates[name] = float(date)

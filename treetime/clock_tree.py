@@ -216,19 +216,24 @@ class ClockTree(TreeAnc):
                     complementary_msgs.append(parent.msg_from_parent)
 
                 msg_parent_to_node = NodeInterpolator.multiply(complementary_msgs)
-                res = NodeInterpolator.convolve(msg_parent_to_node, node.branch_length_interpolator,inverse_time=False, n_integral=100)
-                tmp = np.diff(res.y-res.peak_val)
-                nsign_changed = np.sum((tmp[1:]*tmp[:-1]<0)&(res.y[1:-1]-res.peak_val<500))
-                self.logger('ClockTree._ml_t_root_to_leaves: computed convolution'
-                            ' with %d points at node %s, sign changes %d'%(len(res.x),node.name, nsign_changed),4)
+                res = NodeInterpolator.convolve(msg_parent_to_node, node.branch_length_interpolator,
+                                                inverse_time=False, n_integral=200)
                 node.msg_from_parent = res
-                if nsign_changed>1:
-                    import matplotlib.pyplot as plt
-                    plt.ion()
-                    plt.plot(res.x, res.y-res.peak_val)
-                    plt.ylim(0,100)
-                    plt.xlim(-0.01, 0.01)
-                    import ipdb; ipdb.set_trace()
+                self.logger('ClockTree._ml_t_root_to_leaves: computed convolution'
+                            ' with %d points at node %s'%(len(res.x),node.name),4)
+                if self.debug:
+                    tmp = np.diff(res.y-res.peak_val)
+                    nsign_changed = np.sum((tmp[1:]*tmp[:-1]<0)&(res.y[1:-1]-res.peak_val<500))
+                    if nsign_changed>1:
+                        import matplotlib.pyplot as plt
+                        plt.ion()
+                        plt.plot(res.x, res.y-res.peak_val, '-o')
+                        plt.plot(res.peak_pos - node.branch_length_interpolator.x,
+                                 node.branch_length_interpolator.y-node.branch_length_interpolator.peak_val, '-o')
+                        plt.plot(msg_parent_to_node.x,msg_parent_to_node.y-msg_parent_to_node.peak_val, '-o')
+                        plt.ylim(0,100)
+                        plt.xlim(-0.01, 0.01)
+                        import ipdb; ipdb.set_trace()
 
 
     def _set_final_dates(self):
