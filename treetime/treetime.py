@@ -45,6 +45,7 @@ class TreeTime(ClockTree):
                 # estimate a relaxed molecular clock
                 self.relaxed_clock(slack=slack, coupling=coupling)
 
+            n_resolved=0
             if resolve_polytomies:
                 # if polytomies are found, rerun the entire procedure
                 n_resolved = self.resolve_polytomies()
@@ -496,32 +497,32 @@ if __name__=="__main__":
     plt.ion()
     base_name = 'data/H3N2_NA_allyears_NA.20'
     #base_name = 'data/H3N2_NA_500'
-    #base_name = 'zika'
+    base_name = 'zika'
     import datetime
     from utils import numeric_date
-    with open(base_name+'.metadata.csv') as date_file:
+    with open(base_name+'.csv') as date_file:
         dates = {}
         for line in date_file:
             if line[0]=='#':
                 continue
             try:
-                #entries = line.strip().split(',')
-                #name = entries[0]
+                entries = line.strip().split(',')
+                name = entries[0]
                 #dates[name] = float(entries[-2])
-                # date = datetime.datetime.strptime(entries[3], '%Y-%m-%d')
-                # dates[name] = numeric_date(date)
-                name, date = line.strip().split(',')
-                dates[name] = float(date)
+                date = datetime.datetime.strptime(entries[-1], '%Y-%m-%d')
+                dates[name] = numeric_date(date)
+                #name, date = line.strip().split(',')
+                #dates[name] = float(date)
             except:
                 continue
 
     myTree = TreeTime(gtr='Jukes-Cantor', tree = base_name+'.nwk',
-                        aln = base_name+'.fasta', verbose = 4, dates = dates)
+                        aln = base_name+'.fasta', verbose = 6, dates = dates)
 
-    myTree.run(root='best', relaxed_clock=False, max_iter=1, resolve_polytomies=True, Tc=0.01) #(1.0,1.0), max_iter=1)
+    myTree.run(root='best', relaxed_clock=False, max_iter=2, resolve_polytomies=True, Tc=0.001) #(1.0,1.0), max_iter=1)
 
     plt.figure()
-    x = np.linspace(0,0.05,100)
+    x = np.linspace(0,0.005,1000)
     leaf_count=0
     for node in myTree.tree.find_clades(order='postorder'):
         if node.up is not None:
@@ -536,7 +537,7 @@ if __name__=="__main__":
 
     from matplotlib import cm
     fig, axs = plt.subplots(2,1, sharex=True, figsize=(8,12))
-    x = np.linspace(-0.25,0.05,10000)+ myTree.tree.root.time_before_present
+    x = np.linspace(-0.25,0.005,10000)+ myTree.tree.root.time_before_present
     for n in myTree.tree.find_clades():
         if n.up is None:
             g = n.gamma

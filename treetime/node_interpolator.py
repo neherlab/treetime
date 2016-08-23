@@ -24,6 +24,7 @@ def _convolution_in_point(t_val,f, g,  n_integral = 100, inverse_time=None, retu
         tau_min = max(f.xmin-t_val, g.xmin)
         ## tau<g.xmax and t+tau<f.xmax
         tau_max = min(f.xmax-t_val, g.xmax)
+        #print(tau_min, tau_max)
 
 
     if tau_max <= tau_min + ttconf.TINY_NUMBER:
@@ -35,10 +36,10 @@ def _convolution_in_point(t_val,f, g,  n_integral = 100, inverse_time=None, retu
     else:
         # create the tau-grid for the interpolation object in the overlap region
         if inverse_time:
-            tau = np.unique(np.concatenate((g.x, t_val-f.x)))
+            tau = np.unique(np.concatenate((g.x, t_val-f.x,[tau_min,tau_max])))
         else:
-            tau = np.unique(np.concatenate((g.x, f.x-t_val)))
-        tau = tau[(tau>=tau_min)&(tau<tau_max)]
+            tau = np.unique(np.concatenate((g.x, f.x-t_val,[tau_min,tau_max])))
+        tau = tau[(tau>tau_min-ttconf.TINY_NUMBER)&(tau<tau_max+ttconf.TINY_NUMBER)]
         if len(tau)<10:
             tau = np.linspace(tau_min, tau_max, 10)
 
@@ -50,6 +51,7 @@ def _convolution_in_point(t_val,f, g,  n_integral = 100, inverse_time=None, retu
         # create the interpolation object on this grid
         FG = Distribution(tau, fg, is_log=True, kind='linear')
         #integrate the interpolation object, return log, make neg_log
+        #print('FG:',FG.xmin, FG.xmax, FG(FG.xmin), FG(FG.xmax))
         res = -FG.integrate(a=FG.xmin, b=FG.xmax, n=n_integral, return_log=True)
 
         if return_log:
@@ -61,7 +63,7 @@ def _convolution_in_point(t_val,f, g,  n_integral = 100, inverse_time=None, retu
 class NodeInterpolator (Distribution):
 
     @classmethod
-    def convolve(cls, node_interp, branch_interp, n_integral=100, inverse_time=True, rel_tol=0.05, yc=10):
+    def convolve(cls, node_interp, branch_interp, n_integral=1000, inverse_time=True, rel_tol=0.05, yc=10):
 
         '''
         calculate H(t) = \int_tau f(t-tau)g(tau) if inverse_time=True
@@ -73,13 +75,15 @@ class NodeInterpolator (Distribution):
 
         # estimate peak and width
         joint_fwhm  = (node_interp.fwhm + branch_interp.fwhm)
-        new_peak_pos = node_interp.peak_pos + branch_interp.peak_pos
+        min_fwhm  = min(node_interp.fwhm, branch_interp.fwhm)
         # determine support of the resulting convolution
         # in order to be positive, the flipped support of f, shifted by t and g need to overlap
         if inverse_time:
+            new_peak_pos = node_interp.peak_pos + branch_interp.peak_pos
             tmin = node_interp.xmin+branch_interp.xmin
             tmax = node_interp.xmax+branch_interp.xmax
         else:
+            new_peak_pos = node_interp.peak_pos - branch_interp.peak_pos
             tmin = node_interp.xmin - branch_interp.xmax
             tmax = node_interp.xmax - branch_interp.xmin
 
@@ -101,7 +105,7 @@ class NodeInterpolator (Distribution):
 
         left_range = grid_center[0]-tmin
         if left_range>4*center_width:
-            grid_left = tmin - left_range*(np.linspace(0, 1, n)**2.0)
+            grid_left = tmin + left_range*(np.linspace(0, 1, n)**2.0)
         elif left_range>0:
             grid_left = tmin + left_range*np.linspace(0,1, int(min(n,1+0.5*n*left_range/center_width)))
         else:
@@ -109,7 +113,7 @@ class NodeInterpolator (Distribution):
 
         # make grid and calculate convolution
         t_grid_0 = np.concatenate([grid_left[:-1], grid_center, grid_right[1:]])
-        t_grid_0 = t_grid_0[(t_grid_0 > tmin) & (t_grid_0 < tmax)]
+        t_grid_0 = t_grid_0[(t_grid_0 > tmin-ttconf.TINY_NUMBER) & (t_grid_0 < tmax+ttconf.TINY_NUMBER)]
         res_0 = np.array([_convolution_in_point(t_val, node_interp, branch_interp,
                                                n_integral=n_integral, return_log=True,
                                                inverse_time = inverse_time)
@@ -122,7 +126,7 @@ class NodeInterpolator (Distribution):
         dy = (res_0[2:-2]-res_0.min())
         dx = np.diff(t_grid_0)
         refine_factor = np.minimum(np.minimum(np.array(np.floor(np.sqrt(interp_error/(rel_tol*(1+(dy/yc)**4)))), dtype=int),
-                                   np.array(100*(dx[1:-2]+dx[2:-1])/joint_fwhm, dtype=int)), 10)
+                                   np.array(100*(dx[1:-2]+dx[2:-1])/min_fwhm, dtype=int)), 100)
 
         insert_point_idx = np.zeros(interp_error.shape[0]+1, dtype=int)
         insert_point_idx[1:] = refine_factor

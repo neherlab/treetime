@@ -1,7 +1,7 @@
 from __future__ import division, print_function
 import numpy as np
 from scipy.interpolate import interp1d
-from config import WIDTH_DELTA, BIG_NUMBER, MIN_LOG
+from config import WIDTH_DELTA, BIG_NUMBER, MIN_LOG, MIN_INTEGRATION_PEAK, TINY_NUMBER
 from collections import Iterable
 from copy import deepcopy as make_copy
 from scipy.ndimage import binary_dilation
@@ -36,9 +36,9 @@ class Distribution(object):
         x_idxs = binary_dilation(real_prob > 0.5*(real_prob.max() - real_prob.min()), iterations=1)
         xs = xvals[x_idxs]
         if xs.shape[0] < 2:
-            import ipdb; ipdb.set_trace()
+            #import ipdb; ipdb.set_trace()
             print ("Not enough points to compute FWHM: returning zero")
-            return 0.
+            return distribution.xmax - distribution.xmin
         else:
             return xs.max() - xs.min()
 
@@ -78,7 +78,7 @@ class Distribution(object):
             new_xmin = np.max([k.xmin for k in dists])
             new_xmax = np.min([k.xmax for k in dists])
             x_vals = np.unique(np.concatenate([k.x for k in dists]))
-            x_vals = x_vals[(x_vals>=new_xmin)&(x_vals<=new_xmax)]
+            x_vals = x_vals[(x_vals>new_xmin-TINY_NUMBER)&(x_vals<new_xmax+TINY_NUMBER)]
             if x_vals.shape[0] == 0:
                 print ("ERROR in distribution multiplication: Distributions do not overlap")
                 x_vals = [0,1]
@@ -196,9 +196,12 @@ class Distribution(object):
     def __call__(self, x):
 
         if isinstance(x, Iterable):
-            valid_idxs = (x >= self._xmin) & (x <= self._xmax)
+            valid_idxs = (x > self._xmin-TINY_NUMBER) & (x < self._xmax+TINY_NUMBER)
             res = np.ones_like (x, dtype=float) * (BIG_NUMBER+self.peak_val)
-            res[valid_idxs] = self._peak_val + self._func(x[valid_idxs])
+            tmp_x = np.copy(x[valid_idxs])
+            tmp_x[tmp_x<self._xmin+TINY_NUMBER] = self._xmin+TINY_NUMBER
+            tmp_x[tmp_x>self._xmax-TINY_NUMBER] = self._xmax-TINY_NUMBER
+            res[valid_idxs] = self._peak_val + self._func(tmp_x)
             return res
 
         elif np.isreal(x):
@@ -245,7 +248,7 @@ class Distribution(object):
             integral_result = self.integrate_simpson(**kwargs)
             if return_log:
                 if integral_result==0:
-                    return -self.peak_val -BIG_NUMBER
+                    return -self.peak_val - BIG_NUMBER
                 else:
                     return -self.peak_val + max(-BIG_NUMBER, np.log(integral_result))
             else:
@@ -267,7 +270,8 @@ class Distribution(object):
         if n % 2 == 0:
             n += 1
         mult = 1.0/6
-        threshold = np.array([a,self.peak_pos-5*self.fwhm, self.peak_pos+5*self.fwhm,b])
+        dpeak = max(5*self.fwhm, MIN_INTEGRATION_PEAK)
+        threshold = np.array([a,self.peak_pos-dpeak, self.peak_pos+dpeak,b])
         threshold = threshold[(threshold>=a)&(threshold<=b)]
         threshold.sort()
         res = []
