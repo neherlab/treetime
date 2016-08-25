@@ -16,9 +16,9 @@ def test_GTR():
         print('testing GTR, model:',model)
         myGTR = GTR.standard(model, alphabet='nuc')
         print('Frequency sum:', myGTR.Pi.sum())
-        assert (myGTR.Pi.sum() - 1.0)**2<1e-15
+        assert (myGTR.Pi.sum() - 1.0)**2<1e-14
         # the matrix is the rate matrix
-        assert abs((myGTR.Pi.dot(myGTR.W)).sum(0).sum() < 1e-15)
+        assert abs(myGTR.Q.sum(0)).sum() < 1e-14
         # eigendecomposition is made correctly
         n_states = myGTR.v.shape[0]
         assert abs((myGTR.v.dot(myGTR.v_inv) - np.identity(n_states)).sum() < 1e-10)

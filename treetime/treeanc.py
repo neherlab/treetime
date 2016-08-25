@@ -381,7 +381,7 @@ class TreeAnc(object):
         self.logger("Walking down the tree, computing maximum likelihood sequences...",3)
 
         # extract the likelihood from the profile
-        tree.root.profile *= np.diag(self.gtr.Pi) # Msg to the root from the distant part (equ frequencies)
+        tree.root.profile *= self.gtr.Pi # Msg to the root from the distant part (equ frequencies)
         pre=tree.root.profile.sum(axis=1)
         tree.root.profile = (tree.root.profile.T/pre).T
         tree.root.lh_prefactor += np.log(pre)
@@ -392,7 +392,7 @@ class TreeAnc(object):
         tmp_sample = True if sample_from_profile=='root' else sample_from_profile
         tree.root.sequence, tree.root.profile = \
             seq_utils.prof2seq(tree.root.profile, self.gtr, sample_from_prof=tmp_sample, collapse_prof=not marginal)
-        tree.root.seq_msg_from_parent = np.repeat([self.gtr.Pi.diagonal()], len(tree.root.sequence), axis=0)
+        tree.root.seq_msg_from_parent = np.repeat([self.gtr.Pi], len(tree.root.sequence), axis=0)
 
         tmp_sample = False if sample_from_profile=='root' else sample_from_profile
 
