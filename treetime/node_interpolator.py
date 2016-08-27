@@ -63,7 +63,7 @@ def _convolution_in_point(t_val,f, g,  n_integral = 100, inverse_time=None, retu
 class NodeInterpolator (Distribution):
 
     @classmethod
-    def convolve(cls, node_interp, branch_interp, n_integral=1000, inverse_time=True, rel_tol=0.05, yc=10):
+    def convolve(cls, node_interp, branch_interp, n_integral=100, inverse_time=True, rel_tol=0.05, yc=10):
 
         '''
         calculate H(t) = \int_tau f(t-tau)g(tau) if inverse_time=True
