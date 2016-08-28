@@ -177,6 +177,7 @@ class ClockTree(TreeAnc):
                     continue
                 # this is what the node sends to the parent
                 node.msg_to_parent = NodeInterpolator.multiply(node.msgs_from_leaves.values())
+                node.msg_to_parent._adjust_grid()
 
 
     def _ml_t_root_leaves(self):
@@ -216,6 +217,7 @@ class ClockTree(TreeAnc):
                     complementary_msgs.append(parent.msg_from_parent)
 
                 msg_parent_to_node = NodeInterpolator.multiply(complementary_msgs)
+                msg_parent_to_node._adjust_grid()
                 res = NodeInterpolator.convolve(msg_parent_to_node, node.branch_length_interpolator,
                                                 inverse_time=False, n_integral=200)
                 node.msg_from_parent = res

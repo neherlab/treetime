@@ -495,24 +495,24 @@ if __name__=="__main__":
     sns.set_style('whitegrid')
     from Bio import Phylo
     plt.ion()
-    base_name = 'data/H3N2_NA_allyears_NA.20'
+    base_name = 'data/H3N2_NA_allyears_NA.200'
     #base_name = 'data/H3N2_NA_500'
-    base_name = 'data/zika'
+    #base_name = 'data/zika'
     import datetime
     from utils import numeric_date
-    with open(base_name+'.csv') as date_file:
+    with open(base_name+'.metadata.csv') as date_file:
         dates = {}
         for line in date_file:
             if line[0]=='#':
                 continue
             try:
-                entries = line.strip().split(',')
-                name = entries[0]
-                #dates[name] = float(entries[-2])
-                date = datetime.datetime.strptime(entries[3], '%Y-%m-%d')
-                dates[name] = numeric_date(date)
-                #name, date = line.strip().split(',')
-                #dates[name] = float(date)
+                #entries = line.strip().split(',')
+                #name = entries[0]
+                #ates[name] = float(entries[-2])
+                #date = datetime.datetime.strptime(entries[1], '%Y-%m-%d')
+                #dates[name] = numeric_date(date)
+                name, date = line.strip().split(',')
+                dates[name] = float(date)
             except:
                 continue
 
@@ -522,7 +522,7 @@ if __name__=="__main__":
     myTree.run(root='best', relaxed_clock=False, max_iter=2, resolve_polytomies=True, Tc=0.001) #(1.0,1.0), max_iter=1)
 
     plt.figure()
-    x = np.linspace(0,0.005,1000)
+    x = np.linspace(0,0.05,1000)
     leaf_count=0
     for node in myTree.tree.find_clades(order='postorder'):
         if node.up is not None:

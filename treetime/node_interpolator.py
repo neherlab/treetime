@@ -126,7 +126,7 @@ class NodeInterpolator (Distribution):
         dy = (res_0[2:-2]-res_0.min())
         dx = np.diff(t_grid_0)
         refine_factor = np.minimum(np.minimum(np.array(np.floor(np.sqrt(interp_error/(rel_tol*(1+(dy/yc)**4)))), dtype=int),
-                                   np.array(100*(dx[1:-2]+dx[2:-1])/min_fwhm, dtype=int)), 100)
+                                   np.array(100*(dx[1:-2]+dx[2:-1])/min_fwhm, dtype=int)), 10)
 
         insert_point_idx = np.zeros(interp_error.shape[0]+1, dtype=int)
         insert_point_idx[1:] = refine_factor
