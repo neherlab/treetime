@@ -207,6 +207,8 @@ class ClockTree(TreeAnc):
             ## This is the root node
             if node.up is None:
                 node.msg_from_parent = None # nothing beyond the root
+            elif node.msg_to_parent.is_delta:
+                node.msg_from_parent = None
             else:
                 parent = node.up
                 complementary_msgs = [parent.msgs_from_leaves[k]
@@ -261,6 +263,8 @@ class ClockTree(TreeAnc):
             # set marginal distribution
             ## This is the root node
             if node.up is None:
+                node.marginal_lh = node.msg_to_parent
+            elif node.msg_to_parent.is_delta:
                 node.marginal_lh = node.msg_to_parent
             else:
                 node.marginal_lh = NodeInterpolator.multiply((node.msg_from_parent, node.msg_to_parent))
