@@ -495,7 +495,7 @@ if __name__=="__main__":
     sns.set_style('whitegrid')
     from Bio import Phylo
     plt.ion()
-    base_name = 'data/H3N2_NA_allyears_NA.200'
+    base_name = 'data/H3N2_NA_allyears_NA.20'
     #base_name = 'data/H3N2_NA_500'
     #base_name = 'data/zika'
     import datetime
@@ -517,7 +517,7 @@ if __name__=="__main__":
                 continue
 
     myTree = TreeTime(gtr='Jukes-Cantor', tree = base_name+'.nwk',
-                        aln = base_name+'.fasta', verbose = 6, dates = dates)
+                        aln = base_name+'.fasta', verbose = 4, dates = dates)
 
     myTree.run(root='best', relaxed_clock=False, max_iter=2, resolve_polytomies=True, Tc=0.001) #(1.0,1.0), max_iter=1)
 

@@ -156,7 +156,8 @@ class ClockTree(TreeAnc):
             if node.msg_to_parent.is_delta:
                 res = Distribution.shifted_x(node.branch_length_interpolator, node.msg_to_parent.peak_pos)
             else: # convolve two distributions
-                res =  NodeInterpolator.convolve(node.msg_to_parent, node.branch_length_interpolator)
+                res =  NodeInterpolator.convolve(node.msg_to_parent,
+                            node.branch_length_interpolator, n_integral=ttconf.NINTEGRAL)
             self.logger("ClockTree._ml_t_leaves_root._send_message: "
                         "computed convolution with %d points at node %s"%(len(res.x),node.name),4)
             return res
@@ -221,7 +222,7 @@ class ClockTree(TreeAnc):
                 msg_parent_to_node = NodeInterpolator.multiply(complementary_msgs)
                 msg_parent_to_node._adjust_grid()
                 res = NodeInterpolator.convolve(msg_parent_to_node, node.branch_length_interpolator,
-                                                inverse_time=False, n_integral=200)
+                                                inverse_time=False, n_integral=ttconf.NINTEGRAL)
                 node.msg_from_parent = res
                 self.logger('ClockTree._ml_t_root_to_leaves: computed convolution'
                             ' with %d points at node %s'%(len(res.x),node.name),4)
