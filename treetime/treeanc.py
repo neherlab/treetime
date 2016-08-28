@@ -30,6 +30,7 @@ class TreeAnc(object):
         self._internal_node_count = 0
         self.use_mutation_length=False
         self.one_mutation = None
+
         # TODO: set explicitly
         self.ignore_gaps = True
         if gtr is not None:
