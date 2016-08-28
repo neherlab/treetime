@@ -157,7 +157,8 @@ class ClockTree(TreeAnc):
                 res = Distribution.shifted_x(node.branch_length_interpolator, node.msg_to_parent.peak_pos)
             else: # convolve two distributions
                 res =  NodeInterpolator.convolve(node.msg_to_parent,
-                            node.branch_length_interpolator, n_integral=ttconf.NINTEGRAL)
+                            node.branch_length_interpolator, n_integral=ttconf.NINTEGRAL,
+                            rel_tol=ttconf.REL_TOL_REFINE)
             self.logger("ClockTree._ml_t_leaves_root._send_message: "
                         "computed convolution with %d points at node %s"%(len(res.x),node.name),4)
             return res
@@ -178,7 +179,7 @@ class ClockTree(TreeAnc):
                     continue
                 # this is what the node sends to the parent
                 node.msg_to_parent = NodeInterpolator.multiply(node.msgs_from_leaves.values())
-                node.msg_to_parent._adjust_grid()
+                node.msg_to_parent._adjust_grid(rel_tol=ttconf.REL_TOL_PRUNE)
 
 
     def _ml_t_root_leaves(self):
@@ -220,9 +221,10 @@ class ClockTree(TreeAnc):
                     complementary_msgs.append(parent.msg_from_parent)
 
                 msg_parent_to_node = NodeInterpolator.multiply(complementary_msgs)
-                msg_parent_to_node._adjust_grid()
+                msg_parent_to_node._adjust_grid(rel_tol=ttconf.REL_TOL_PRUNE)
                 res = NodeInterpolator.convolve(msg_parent_to_node, node.branch_length_interpolator,
-                                                inverse_time=False, n_integral=ttconf.NINTEGRAL)
+                                                inverse_time=False, n_integral=ttconf.NINTEGRAL,
+                                                rel_tol=ttconf.REL_TOL_REFINE)
                 node.msg_from_parent = res
                 self.logger('ClockTree._ml_t_root_to_leaves: computed convolution'
                             ' with %d points at node %s'%(len(res.x),node.name),4)
