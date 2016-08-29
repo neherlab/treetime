@@ -15,6 +15,7 @@ MAX_BRANCH_LENGTH = 1.5
 NINTEGRAL = 300
 REL_TOL_PRUNE = 0.01
 REL_TOL_REFINE = 0.05
+NIQD = 3
 
 # treetime
 # autocorrelated molecular clock coefficients
