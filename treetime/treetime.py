@@ -13,7 +13,7 @@ class TreeTime(ClockTree):
     """
     def __init__(self, *args,**kwargs):
         super(TreeTime, self).__init__(*args, **kwargs)
-
+        self.n_iqd = ttconf.NIQD
 
     def run(self, root=None, infer_gtr=True, relaxed_clock=False, resolve_polytomies=True, max_iter=0, Tc=None):
         if relaxed_clock  and len(relaxed_clock)==2:
@@ -66,6 +66,29 @@ class TreeTime(ClockTree):
                 self.logger("###TreeTime.run: CONVERGED",0)
                 break
             niter+=1
+
+
+    def clock_filter(self, reroot='best', n_iqd=None):
+        if n_iqd is None:
+            n_iqd = self.n_iqd
+
+        if reroot:
+            self.reroot(root=reroot)
+
+        res = {}
+        for node in self.tree.get_terminals():
+            if hasattr(node, 'numdate_given') and node.numdate_given is not None:
+                res[node] = node.dist2root - self.date2dist.slope*node.numdate_given - self.date2dist.intercept
+        residuals = np.array(res.values())
+        iqd = np.percentile(residuals,75) - np.percentile(residuals,25)
+        for node,r in res.iteritems():
+            if r>n_iqd*iqd and node.up.up is not None:
+                self.logger('TreeTime.ClockFilter: marking %s as outlier, residual %f interquartile distances'%(node.name,r/iqd))
+                node.bad_branch=True
+                node.numdate_given = None
+        # redo root estimation after outlier removal
+        if reroot:
+            self.reroot(root=reroot)
 
 
     def reroot(self,root='best'):
@@ -459,7 +482,7 @@ class TreeTime(ClockTree):
                     %(best_root._R2, best_root._beta, (best_root._R2_delta_x) / ( best_root.branch_length + self.one_mutation)),3)
         return best_root, best_root._alpha, best_root._beta
 
-    def reroot_to_best_root(self,infer_gtr = False, n_iqd = None, **kwarks):
+    def reroot_to_best_root(self,infer_gtr = False, **kwarks):
         '''
         determine the node that, when the tree is rooted on this node, results
         in the best regression of temporal constraints and root to tip distances
