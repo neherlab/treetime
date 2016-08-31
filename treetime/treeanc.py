@@ -30,6 +30,7 @@ class TreeAnc(object):
         self._internal_node_count = 0
         self.use_mutation_length=False
         self.one_mutation = None
+
         # TODO: set explicitly
         self.ignore_gaps = True
         if gtr is not None:
@@ -357,7 +358,8 @@ class TreeAnc(object):
 
         L = tree.get_terminals()[0].sequence.shape[0]
         n_states = self.gtr.alphabet.shape[0]
-        self.logger("TreeAnc._ml_anc: type of reconstruction:"+ ('marginal' if marginal else "joint"), 2)
+        self.logger("TreeAnc._ml_anc: type of reconstruction:"
+                     + ('marginal' if marginal else "joint"), 2)
         self.logger("Walking up the tree, computing likelihoods... ", 3)
         for leaf in tree.get_terminals():
             # in any case, set the profile
@@ -381,7 +383,7 @@ class TreeAnc(object):
         self.logger("Walking down the tree, computing maximum likelihood sequences...",3)
 
         # extract the likelihood from the profile
-        tree.root.profile *= np.diag(self.gtr.Pi) # Msg to the root from the distant part (equ frequencies)
+        tree.root.profile *= self.gtr.Pi # Msg to the root from the distant part (equ frequencies)
         pre=tree.root.profile.sum(axis=1)
         tree.root.profile = (tree.root.profile.T/pre).T
         tree.root.lh_prefactor += np.log(pre)
@@ -391,8 +393,9 @@ class TreeAnc(object):
         # reset profile to 0-1 and set the sequence
         tmp_sample = True if sample_from_profile=='root' else sample_from_profile
         tree.root.sequence, tree.root.profile = \
-            seq_utils.prof2seq(tree.root.profile, self.gtr, sample_from_prof=tmp_sample, collapse_prof=not marginal)
-        tree.root.seq_msg_from_parent = np.repeat([self.gtr.Pi.diagonal()], len(tree.root.sequence), axis=0)
+            seq_utils.prof2seq(tree.root.profile, self.gtr, sample_from_prof=tmp_sample,
+                               collapse_prof=not marginal)
+        tree.root.seq_msg_from_parent = np.repeat([self.gtr.Pi], len(tree.root.sequence), axis=0)
 
         tmp_sample = False if sample_from_profile=='root' else sample_from_profile
 
@@ -415,7 +418,8 @@ class TreeAnc(object):
                 node.profile *= node.seq_msg_from_parent
 
             # reset the profile to 0-1 and  set the sequence
-            sequence, profile = seq_utils.prof2seq(node.profile, self.gtr, sample_from_prof=tmp_sample, collapse_prof=not marginal)
+            sequence, profile = seq_utils.prof2seq(node.profile, self.gtr,
+                sample_from_prof=tmp_sample, collapse_prof=not marginal)
             node.mutations = [(anc, pos, der) for pos, (anc, der) in
                             enumerate(izip(node.up.sequence, sequence)) if anc!=der]
 

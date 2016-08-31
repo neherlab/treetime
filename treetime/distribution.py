@@ -1,7 +1,7 @@
 from __future__ import division, print_function
 import numpy as np
 from scipy.interpolate import interp1d
-from config import WIDTH_DELTA, BIG_NUMBER, MIN_LOG, MIN_INTEGRATION_PEAK, TINY_NUMBER
+from config import BIG_NUMBER, MIN_LOG, MIN_INTEGRATION_PEAK, TINY_NUMBER
 from collections import Iterable
 from copy import deepcopy as make_copy
 from scipy.ndimage import binary_dilation
@@ -37,7 +37,7 @@ class Distribution(object):
         xs = xvals[x_idxs]
         if xs.shape[0] < 2:
             print ("Not enough points to compute FWHM: returning zero")
-            return min(ttconf.TINY_NUMBER,distribution.xmax - distribution.xmin)
+            return min(TINY_NUMBER,distribution.xmax - distribution.xmin)
         else:
             return xs.max() - xs.min()
 
@@ -219,8 +219,23 @@ class Distribution(object):
         return Distribution.multiply((self, other))
 
 
-    def _adjust_grid(self):
-        pass
+    def _adjust_grid(self, rel_tol=0.01, yc=10):
+        updated = True
+        n_iter=0
+        while len(self.y)>200 and updated and n_iter<5:
+            interp_err = 2*self.y[1:-1] - self.y[2:] - self.y[:-2]
+            ind = np.ones_like(self.y, dtype=bool)
+            dy = self.y-self.peak_val
+            prune = interp_err[::2] > rel_tol*(1+ (dy[1:-1:2]/yc)**4)
+            ind[1:-1:2] = prune
+            if np.mean(prune)<1.0:
+                self._func.y = self._func.y[ind]
+                self._func.x = self._func.x[ind]
+                updated=True
+                n_iter+=1
+            else:
+                updated=False
+                n_iter+=1
 
 
     def prob(self,x):

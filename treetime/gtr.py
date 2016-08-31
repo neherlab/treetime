@@ -41,7 +41,7 @@ class GTR(object):
         # general rate matrix
         self.W = np.zeros((n_states, n_states))
         # stationary states of the characters
-        self.Pi = np.zeros((n_states, n_states))
+        self.Pi = np.zeros(n_states)
 
         # mutation rate, scaling factor
         self.mu = 1.0
@@ -57,6 +57,11 @@ class GTR(object):
         # distance matrix (needed for topology optimization and for NJ)
         self.dm = None
 
+    @property
+    def Q(self):
+        return (self.W*self.Pi).T
+
+
 ######################################################################
 ## constructor methods
 ######################################################################
@@ -68,7 +73,7 @@ class GTR(object):
         eq_freq_str = "Mutation rate (mu): "+str(np.round(self.mu,6))+'\n'
 
         eq_freq_str += "\nEquilibrium frequencies (pi_i):\n"
-        for a,p in zip(self.alphabet, np.diagonal(self.Pi)):
+        for a,p in zip(self.alphabet, self.Pi):
             eq_freq_str+=str(a)+': '+str(np.round(p,4))+'\n'
 
         W_str = "\nSymmetrized rates from j->i (W_ij):\n"
@@ -78,7 +83,7 @@ class GTR(object):
 
         Q_str = "\nActual rates from j->i (Q_ij):\n"
         Q_str+='\t'+'\t'.join(map(str, self.alphabet))+'\n'
-        for a,Qi in zip(self.alphabet, self.Pi.dot(self.W)):
+        for a,Qi in zip(self.alphabet, self.Q):
             Q_str+=str(a)+'\t'+'\t'.join([str(np.round(max(0,p),4)) for p in Qi])+'\n'
 
         return eq_freq_str + W_str + Q_str
@@ -93,8 +98,7 @@ class GTR(object):
                 self.logger("length of equilibrium frequency vector does not match alphabet length", 4, warn=True)
                 self.logger("Ignoring input equilibrium frequencies", 4, warn=True)
             Pi = np.ones(size=(n))
-        Pi /= Pi.sum()
-        self.Pi = np.diagflat(Pi)
+        self.Pi = Pi/Pi.sum()
 
         if W is None or W.shape!=(n,n):
             if (W is not None) and W.shape!=(n,n):
@@ -253,15 +257,12 @@ class GTR(object):
         self.W += self.break_degen + self.break_degen.T
         # fix W
         np.fill_diagonal(self.W, 0)
-        Wdiag = -((self.W.T*np.diagonal(self.Pi)).T).sum(axis=0)/ \
-                np.diagonal(self.Pi)
+        Wdiag = -(self.Q).sum(axis=0)/self.Pi
         np.fill_diagonal(self.W, Wdiag)
-        Q1 = self.Pi.dot(self.W)
-        scale_factor = -np.sum(np.diagonal(Q1*self.Pi))
+        scale_factor = -np.sum(np.diagonal(self.Q)*self.Pi)
         self.W /= scale_factor
         self.mu *= scale_factor
-        Q1 = self.Pi.dot(self.W)
-        if (Q1.sum(axis=0) < 1e-10).sum() <  self.alphabet.shape[0]: # fix failed
+        if (self.Q.sum(axis=0) < 1e-10).sum() <  self.alphabet.shape[0]: # fix failed
             import ipdb; ipdb.set_trace()
             raise ArithmeticError("Cannot fix the diagonal of the GTR rate matrix.")
 
@@ -273,7 +274,7 @@ class GTR(object):
         and hence to speed-up the computations.
         """
         # eigendecomposition of the rate matrix
-        eigvals, eigvecs = np.linalg.eig(self.Pi.dot(self.W))
+        eigvals, eigvecs = np.linalg.eig(self.Q)
         self.v = np.real(eigvecs)
         self.v_inv = np.linalg.inv(self.v)
         self.eigenvals = np.real(eigvals)
