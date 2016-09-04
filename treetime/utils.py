@@ -34,8 +34,9 @@ class DateConversion(object):
         """
         dates = []
         for node in t.find_clades():
-            if hasattr(node, "numdate_given" ) and node.numdate_given is not None:
-                dates.append((node.numdate_given, node.dist2root))
+            if hasattr(node, "numdate_given" )
+                and node.numdate_given is not None.
+                dates.append((np.mean(node.numdate_given), node.dist2root))
 
         if len(dates) == 0:
             raise RuntimeError("Cannot proceed with the TreeTime computations: "
