@@ -39,7 +39,8 @@ class ClockTree(TreeAnc):
                 node.numdate_given = self.date_dict[node.name]
                 node.bad_branch = False
             else:
-                node.bad_branch = True
+                if node.is_terminal():
+                    node.bad_branch = True
                 node.numdate_given = None
 
 
