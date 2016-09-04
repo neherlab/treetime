@@ -37,7 +37,9 @@ class ClockTree(TreeAnc):
         for node in self.tree.find_clades():
             if node.name in self.date_dict:
                 node.numdate_given = self.date_dict[node.name]
+                node.bad_branch = False
             else:
+                node.bad_branch = True
                 node.numdate_given = None
 
 
@@ -102,8 +104,7 @@ class ClockTree(TreeAnc):
                     self.logger("ClockTree.init_date_constraints -- WARNING: Branch is marked as bad"
                                 ", excluding it from the optimization process"
                                 " Will be optimized freely", 4, warn=True)
-                    node.numdate_given = None
-                    node.time_before_present = None
+                    node.time_before_present = self.date2dist.get_time_before_present(node.numdate_given)
                     # if there are no constraints - log_prob will be set on-the-fly
                     node.msg_to_parent = None
                 else:
@@ -213,7 +214,7 @@ class ClockTree(TreeAnc):
             ## This is the root node
             if node.up is None:
                 node.msg_from_parent = None # nothing beyond the root
-            elif node.msg_to_parent.is_delta:
+            elif (node.msg_to_parent is not None) and node.msg_to_parent.is_delta:
                 node.msg_from_parent = None
             else:
                 parent = node.up
@@ -271,6 +272,8 @@ class ClockTree(TreeAnc):
             ## This is the root node
             if node.up is None:
                 node.marginal_lh = node.msg_to_parent
+            elif node.msg_to_parent is None:
+                node.marginal_lh = node.msg_from_parent
             elif node.msg_to_parent.is_delta:
                 node.marginal_lh = node.msg_to_parent
             else:
