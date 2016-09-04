@@ -13,9 +13,10 @@ class TreeTime(ClockTree):
     """
     def __init__(self, *args,**kwargs):
         super(TreeTime, self).__init__(*args, **kwargs)
+        self.n_iqd = ttconf.NIQD
 
-
-    def run(self, root=None, infer_gtr=True, relaxed_clock=False, resolve_polytomies=True, max_iter=0, Tc=None):
+    def run(self, root=None, infer_gtr=True, relaxed_clock=False, n_iqd = None,
+            resolve_polytomies=True, max_iter=0, Tc=None):
         if relaxed_clock  and len(relaxed_clock)==2:
             slack, coupling = relaxed_clock
 
@@ -25,7 +26,9 @@ class TreeTime(ClockTree):
                                                   prune_short=True)
 
         # optionally reroot the tree either by oldest, best regression or with a specific leaf
-        if root is not None:
+        if n_iqd or root=='clock_filter':
+            self.clock_filter(reroot='best' if root=='clock_filter' else root, n_iqd=n_iqd, plot=True)
+        elif root is not None:
             self.reroot(root=root)
 
         # infer time tree and optionally resolve polytomies
@@ -68,6 +71,52 @@ class TreeTime(ClockTree):
             niter+=1
 
 
+    def clock_filter(self, reroot='best', n_iqd=None, plot=False):
+        '''
+        labels outlier branches that don't seem to follow a molecular clock
+        and excludes them from subsequent the molecular clock estimate and
+        the timetree propagation
+        '''
+        if n_iqd is None:
+            n_iqd = self.n_iqd
+
+        terminals = self.tree.get_terminals()
+        if reroot:
+            self.reroot(root=reroot)
+            icpt, slope = self.tree.root._alpha, self.tree.root._beta
+        else:
+            tmp_date2dist = utils.DateConversion.from_tree(self.tree)
+            icpt, slope = tmp_date2dist.intercept, tmp_date2dist.slope
+
+        res = {}
+        for node in terminals:
+            if hasattr(node, 'numdate_given') and  (node.numdate_given is not None):
+                res[node] = node.dist2root - slope*np.mean(node.numdate_given) - icpt
+        residuals = np.array(res.values())
+        iqd = np.percentile(residuals,75) - np.percentile(residuals,25)
+        for node,r in res.iteritems():
+            if r>n_iqd*iqd and node.up.up is not None:
+                self.logger('TreeTime.ClockFilter: marking %s as outlier, residual %f interquartile distances'%(node.name,r/iqd), 3)
+                node.bad_branch=True
+            else:
+                node.bad_branch=False
+        if plot:
+            import matplotlib.pyplot as plt
+            plt.figure()
+            dates = np.array([np.mean(n.numdate_given) for n in terminals])
+            dist = np.array([n.dist2root for n in terminals])
+            ind = np.array([n.bad_branch for n in terminals])
+            plt.plot(dates, dates*slope+icpt)
+            plt.scatter(dates[ind], dist[ind], c='r')
+            plt.scatter(dates[~ind], dist[~ind], c='g')
+            plt.ylabel('root-to-tip distance')
+            plt.xlabel('date')
+
+        # redo root estimation after outlier removal
+        if reroot:
+            self.reroot(root=reroot)
+
+
     def reroot(self,root='best'):
         self.logger("TreeTime.reroot: with method or node: %s"%root,1)
         for n in self.tree.find_clades():
@@ -80,7 +129,7 @@ class TreeTime(ClockTree):
         elif root=='oldest':
             new_root = sorted([n for n in self.tree.get_terminals()
                                if n.numdate_given is not None],
-                               key=lambda x:x.numdate_given)[0]
+                               key=lambda x:np.mean(x.numdate_given))[0]
         elif root=='best':
             new_root = self.reroot_to_best_root()
         else:
@@ -326,9 +375,9 @@ class TreeTime(ClockTree):
         the terminal nodes should have the timestamps assigned as numdate_given
         attribute.
         """
-        sum_ti = np.sum([node.numdate_given for node in self.tree.get_terminals() if node.numdate_given is not None])
-        sum_ti2 = np.sum([node.numdate_given**2 for node in self.tree.get_terminals() if node.numdate_given is not None])
-        N = 1.0*len([x for x in self.tree.get_terminals() if x.numdate_given is not None])
+        sum_ti =  np.sum([np.mean(node.numdate_given) for node in self.tree.get_terminals() if (not node.bad_branch)])
+        sum_ti2 = np.sum([np.mean(node.numdate_given)**2 for node in self.tree.get_terminals() if (not node.bad_branch)])
+        N = 1.0*len([x for x in self.tree.get_terminals() if not x.bad_branch])
         Ninv = 1.0/N
         time_variance = (N*sum_ti2 - sum_ti**2)*Ninv**2
 
@@ -336,15 +385,15 @@ class TreeTime(ClockTree):
         for node in self.tree.find_clades(order='postorder'):  # children first, msg to parents
             if node.is_terminal():  # inititalize the leaves
                 #  will not rely on the standard func - count terminals directly
-                node._st_n_leaves = 0 if node.numdate_given is None else 1
+                node._st_n_leaves = 0 if node.bad_branch else 1
                 node._st_di = 0.0
                 node._st_diti = 0.0
                 node._st_di2 = 0.0
 
-                if node.numdate_given is not None:
-                    node._st_ti = node.numdate_given
-                else:
+                if node.bad_branch:
                     node._st_ti = 0
+                else:
+                    node._st_ti = np.mean(node.numdate_given)
 
                 node._ti = sum_ti
             else:
@@ -459,7 +508,7 @@ class TreeTime(ClockTree):
                     %(best_root._R2, best_root._beta, (best_root._R2_delta_x) / ( best_root.branch_length + self.one_mutation)),3)
         return best_root, best_root._alpha, best_root._beta
 
-    def reroot_to_best_root(self,infer_gtr = False, n_iqd = None, **kwarks):
+    def reroot_to_best_root(self,infer_gtr = False, **kwarks):
         '''
         determine the node that, when the tree is rooted on this node, results
         in the best regression of temporal constraints and root to tip distances
@@ -479,6 +528,8 @@ class TreeTime(ClockTree):
             # and fix the branch lengths
             new_node.branch_length = best_root.branch_length - best_root._R2_delta_x
             new_node.up = best_root.up
+            new_node._alpha = a
+            new_node._beta = b
             new_node.clades = [best_root]
             new_node.up.clades = [k if k != best_root else new_node for k in best_root.up.clades]
 
@@ -495,9 +546,9 @@ if __name__=="__main__":
     sns.set_style('whitegrid')
     from Bio import Phylo
     plt.ion()
-    base_name = 'data/H3N2_NA_allyears_NA.20'
+    base_name = 'data/H3N2_NA_allyears_NA.200'
     #base_name = 'data/H3N2_NA_500'
-    #base_name = 'data/zika'
+    #base_name = 'data/Zika'
     import datetime
     from utils import numeric_date
     with open(base_name+'.metadata.csv') as date_file:
@@ -508,7 +559,7 @@ if __name__=="__main__":
             try:
                 #entries = line.strip().split(',')
                 #name = entries[0]
-                #ates[name] = float(entries[-2])
+                #dates[name] = float(entries[-2])
                 #date = datetime.datetime.strptime(entries[1], '%Y-%m-%d')
                 #dates[name] = numeric_date(date)
                 name, date = line.strip().split(',')
@@ -519,10 +570,10 @@ if __name__=="__main__":
     myTree = TreeTime(gtr='Jukes-Cantor', tree = base_name+'.nwk',
                         aln = base_name+'.fasta', verbose = 4, dates = dates)
 
-    myTree.run(root='best', relaxed_clock=False, max_iter=2, resolve_polytomies=True, Tc=0.001) #(1.0,1.0), max_iter=1)
+    myTree.run(root='clock_filter', relaxed_clock=False, max_iter=2, resolve_polytomies=True, Tc=0.01, n_iqd=2) #(1.0,1.0), max_iter=1)
 
     plt.figure()
-    x = np.linspace(0,0.05,1000)
+    x = np.linspace(0,0.005,1000)
     leaf_count=0
     for node in myTree.tree.find_clades(order='postorder'):
         if node.up is not None:
@@ -543,7 +594,7 @@ if __name__=="__main__":
             g = n.gamma
         else:
             g = n.branch_length_interpolator.gamma
-        n.color = [int(_x*255) for _x in cm.coolwarm(max(0,min(1,(g-1)+0.5)))[:3]]
+        #n.color = [int(_x*255) for _x in cm.coolwarm(max(0,min(1,(g-1)+0.5)))[:3]]
 
     Phylo.draw(myTree.tree, axes=axs[0], show_confidence=False, label_func = lambda x:'')
     offset = myTree.tree.root.time_before_present + myTree.tree.root.branch_length
