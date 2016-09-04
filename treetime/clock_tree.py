@@ -100,17 +100,22 @@ class ClockTree(TreeAnc):
         for node in self.tree.find_clades():
             # node is constrained
             if hasattr(node, 'numdate_given') and node.numdate_given is not None:
+                # set the absolute time before present in branch length units
+                if not np.isscalar(node.numdate_given):
+                    node.numdate_given = np.array(node.numdate_given)
+                node.time_before_present = self.date2dist.get_time_before_present(node.numdate_given)
                 if hasattr(node, 'bad_branch') and node.bad_branch==True:
                     self.logger("ClockTree.init_date_constraints -- WARNING: Branch is marked as bad"
                                 ", excluding it from the optimization process"
                                 " Will be optimized freely", 4, warn=True)
-                    node.time_before_present = self.date2dist.get_time_before_present(node.numdate_given)
                     # if there are no constraints - log_prob will be set on-the-fly
                     node.msg_to_parent = None
                 else:
-                    # set the absolute time before present in branch length units
-                    node.time_before_present = self.date2dist.get_time_before_present(node.numdate_given)
-                    node.msg_to_parent = NodeInterpolator.delta_function(node.time_before_present, weight=1)
+                    if np.isscalar(node.numdate_given):
+                        node.msg_to_parent = NodeInterpolator.delta_function(node.time_before_present, weight=1)
+                    else:
+                        node.msg_to_parent = NodeInterpolator(node.time_before_present,
+                                                              np.ones_like(node.time_before_present), is_log=False)
 
             else: # node without sampling date set
                 node.numdate_given = None

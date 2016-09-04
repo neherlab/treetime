@@ -246,6 +246,7 @@ class Distribution(object):
 
     def x_rescale(self, factor):
         self._func.x*=factor
+        self._peak_pos*=factor
         if factor>=0:
             self._xmin*=factor
             self._xmax*=factor
@@ -253,6 +254,8 @@ class Distribution(object):
             tmp = self.xmin
             self._xmin = factor*self.xmax
             self._xmax = factor*tmp
+            self._func.x = self._func.x[::-1]
+            self._func.y = self._func.y[::-1]
 
 
     def integrate(self, return_log=False ,**kwargs):

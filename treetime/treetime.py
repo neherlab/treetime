@@ -91,7 +91,7 @@ class TreeTime(ClockTree):
         res = {}
         for node in terminals:
             if hasattr(node, 'numdate_given') and  (node.numdate_given is not None):
-                res[node] = node.dist2root - slope*node.numdate_given - icpt
+                res[node] = node.dist2root - slope*np.mean(node.numdate_given) - icpt
         residuals = np.array(res.values())
         iqd = np.percentile(residuals,75) - np.percentile(residuals,25)
         for node,r in res.iteritems():
@@ -103,12 +103,12 @@ class TreeTime(ClockTree):
         if plot:
             import matplotlib.pyplot as plt
             plt.figure()
-            dates = np.array([n.numdate_given for n in terminals])
+            dates = np.array([np.mean(n.numdate_given) for n in terminals])
+            dist = np.array([n.dist2root for n in terminals])
+            ind = np.array([n.bad_branch for n in terminals])
             plt.plot(dates, dates*slope+icpt)
-            plt.scatter([n.numdate_given for n in terminals if n.bad_branch],
-                        [n.dist2root for n in terminals if n.bad_branch], c='r')
-            plt.scatter([n.numdate_given for n in terminals if not n.bad_branch],
-                        [n.dist2root for n in terminals if not n.bad_branch], c='g')
+            plt.scatter(dates[ind], dist[ind], c='r')
+            plt.scatter(dates[~ind], dist[~ind], c='g')
             plt.ylabel('root-to-tip distance')
             plt.xlabel('date')
 
@@ -129,7 +129,7 @@ class TreeTime(ClockTree):
         elif root=='oldest':
             new_root = sorted([n for n in self.tree.get_terminals()
                                if n.numdate_given is not None],
-                               key=lambda x:x.numdate_given)[0]
+                               key=lambda x:np.mean(x.numdate_given))[0]
         elif root=='best':
             new_root = self.reroot_to_best_root()
         else:
@@ -375,8 +375,8 @@ class TreeTime(ClockTree):
         the terminal nodes should have the timestamps assigned as numdate_given
         attribute.
         """
-        sum_ti = np.sum([node.numdate_given for node in self.tree.get_terminals() if (not node.bad_branch)])
-        sum_ti2 = np.sum([node.numdate_given**2 for node in self.tree.get_terminals() if (not node.bad_branch)])
+        sum_ti =  np.sum([np.mean(node.numdate_given) for node in self.tree.get_terminals() if (not node.bad_branch)])
+        sum_ti2 = np.sum([np.mean(node.numdate_given)**2 for node in self.tree.get_terminals() if (not node.bad_branch)])
         N = 1.0*len([x for x in self.tree.get_terminals() if not x.bad_branch])
         Ninv = 1.0/N
         time_variance = (N*sum_ti2 - sum_ti**2)*Ninv**2
@@ -393,7 +393,7 @@ class TreeTime(ClockTree):
                 if node.bad_branch:
                     node._st_ti = 0
                 else:
-                    node._st_ti = node.numdate_given
+                    node._st_ti = np.mean(node.numdate_given)
 
                 node._ti = sum_ti
             else:
@@ -546,31 +546,31 @@ if __name__=="__main__":
     sns.set_style('whitegrid')
     from Bio import Phylo
     plt.ion()
-    base_name = 'data/H3N2_NA_allyears_NA.20'
+    base_name = 'data/H3N2_NA_allyears_NA.200'
     #base_name = 'data/H3N2_NA_500'
-    base_name = 'data/Zika'
+    #base_name = 'data/Zika'
     import datetime
     from utils import numeric_date
-    with open(base_name+'_metadata.csv') as date_file:
+    with open(base_name+'.metadata.csv') as date_file:
         dates = {}
         for line in date_file:
             if line[0]=='#':
                 continue
             try:
-                entries = line.strip().split(',')
-                name = entries[0]
+                #entries = line.strip().split(',')
+                #name = entries[0]
                 #dates[name] = float(entries[-2])
-                date = datetime.datetime.strptime(entries[1], '%Y-%m-%d')
-                dates[name] = numeric_date(date)
-                # name, date = line.strip().split(',')
-                # dates[name] = float(date)
+                #date = datetime.datetime.strptime(entries[1], '%Y-%m-%d')
+                #dates[name] = numeric_date(date)
+                name, date = line.strip().split(',')
+                dates[name] = float(date)
             except:
                 continue
 
-    myTree = TreeTime(gtr='Jukes-Cantor', tree = base_name+'_tree.newick',
-                        aln = base_name+'_align.fasta', verbose = 4, dates = dates)
+    myTree = TreeTime(gtr='Jukes-Cantor', tree = base_name+'.nwk',
+                        aln = base_name+'.fasta', verbose = 4, dates = dates)
 
-    myTree.run(root='clock_filter', relaxed_clock=False, max_iter=2, resolve_polytomies=True, Tc=0.001, n_iqd=2) #(1.0,1.0), max_iter=1)
+    myTree.run(root='clock_filter', relaxed_clock=False, max_iter=2, resolve_polytomies=True, Tc=0.01, n_iqd=2) #(1.0,1.0), max_iter=1)
 
     plt.figure()
     x = np.linspace(0,0.005,1000)
@@ -605,7 +605,7 @@ if __name__=="__main__":
             axs[1].plot(offset-x, node.marginal_lh.prob_relative(x), '-', c=cols[ni%len(cols)])
             axs[1].plot(offset-x, node.joint_lh.prob_relative(x), '--', c=cols[ni%len(cols)])
         if node.up is not None:
-            x_branch = np.linspace(depth[node]-2*node.branch_length-0.0005,depth[node],100)
+            x_branch = np.linspace(depth[node]-2*node.branch_length-0.005,depth[node],100)
             axs[0].plot(x_branch, node.ypos - 0.7*node.branch_length_interpolator.prob_relative(depth[node]-x_branch), '-', c=cols[ni%len(cols)])
     axs[1].set_yscale('log')
     axs[1].set_ylim([0.01,1.2])
