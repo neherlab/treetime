@@ -95,7 +95,7 @@ class TreeTime(ClockTree):
         residuals = np.array(res.values())
         iqd = np.percentile(residuals,75) - np.percentile(residuals,25)
         for node,r in res.iteritems():
-            if r>n_iqd*iqd and node.up.up is not None:
+            if abs(r)>n_iqd*iqd and node.up.up is not None:
                 self.logger('TreeTime.ClockFilter: marking %s as outlier, residual %f interquartile distances'%(node.name,r/iqd), 3)
                 node.bad_branch=True
             else:
