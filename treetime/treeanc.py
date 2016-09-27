@@ -441,6 +441,110 @@ class TreeAnc(object):
             self.store_compressed_sequence_pairs()
         return N_diff
 
+    def _ml_anc_joint(self, sample_from_profile=False):
+        """
+        Make joint ML reconstruction of the ancestral sequences. 
+        """
+        
+        n_states = self.gtr.alphabet.shape[0]
+        seq_length = self.tree.get_terminals()[0].sequence.shape[0]
+
+        def cond_likelihood(node):
+            """
+            Compute the likelihood profile of the node conditional of the parent state.
+            Assuming the uniform distribution of the parent node sequence, compute the likelihood distribution
+            of the node sequence states. 
+            """
+            
+            parent_profile = np.array([np.identity(n_states)]*seq_length)
+            node_profile = np.array([np.zeros((n_states, n_states))]*seq_length)
+            
+            # assuming the nucleotides in the parent sequence are in states __state__, 
+            # compute the likelihoods to observe certain states in the child node __node__
+            for state in xrange(n_states):
+                node_profile[:, :, state] = self.gtr.propagate_profile(parent_profile[:,:,state], 
+                    self._branch_length_to_gtr(node), 
+                    return_log=False)
+
+            #  node_profile is the 3D matrix  of shape (L, a, a), where the first two dimensions
+            # correspond to the likelihood profile of the node sequence given the state of the 
+            # parent node sequence defined by the indices of the third dimensions of the matrix
+            return node_profile
+
+
+        #  assign the initial likelihood profiles and states to the leaves
+        for leaf in self.tree.get_terminals():
+
+            # convert sequence to the profile:
+            seq_profile = seq_utils.seq2prof(leaf.sequence, self.gtr.profile_map)
+            
+            #  get the 3D profile
+            leaf_profile = cond_likelihood(leaf)
+
+            #  The likelihood to observe the sequence given the parent states:
+            conditional_LH = leaf_profile[:, :, :] * seq_profile[:, :, np.newaxis]
+
+            #  reduce it to the 2D profile by choosing the maxLH states 
+            leaf.seq_profile_joint = conditional_LH.max(axis=1)
+            leaf.seq_states_joint = conditional_LH.argmax(axis=1)
+
+        #  propagate leaves->root, set the joint profiles
+        for node in self.tree.get_nonterminals(order='postorder'):
+            if node.up is None: 
+                #  we reached the root node, nothing to do 
+                #  (the values for the root will be set separately)
+                break 
+            
+            #  node LH profile of share (L, a, a), 
+            #  where the first two dimensions are the LH for the node state conditional 
+            #  on the parent state given by  the third dimensions indices
+            conditional_LH = cond_likelihood(leaf)
+
+            #  multiply by the likelihood of each child subtree:
+            for child in node.clades:
+                conditional_LH *= child.seq_profile_joint[:, :, np.newaxis]
+
+            # and now, collapse it to the 2D profile of shape (L, a)
+            # Each row of the profile is the maximal likelihood of the subtree 
+            # given the parent state (second dimension index)
+            node.seq_profile_joint = conditional_LH.max(axis=1)
+
+            # and assign the sequence states conditional on the parent sequence
+            node.seq_states_joint = conditional_LH.argmax(axis=1)
+
+        #  at the root node, choose the optimal sequence: 
+        self.tree.root.seq_profile_joint = np.prod([k.seq_profile_joint for k in self.tree.root.clades], axis=0) * self.gtr.Pi
+        self.tree.root.seq_states_joint = self.tree.root.seq_profile_joint.argmax(axis=1)
+
+        # and assign the sequence states conditional on the parent sequence
+        tmp_sample = False if sample_from_profile==False else True
+        self.tree.root.sequence, _ = \
+            seq_utils.prof2seq(self.tree.root.seq_profile_joint, self.gtr, sample_from_prof=tmp_sample,
+                               collapse_prof=False) # NOTE we do not collapse the profile
+
+        #  iterate the tree root --->>> leaves, reconstruct the maximal Likelihood sequences
+        for node in self.tree.get_nonterminals(order='preorder'):
+            
+            if node.up is None: 
+                continue
+
+            #  get the sequence states first
+            #  we have the states of the parent sequence (cup):
+            cup = node.up.seq_states_joint
+
+            #  and we need to choose from the array of the conditional states (cij) the proper values
+            #  provided we already know the state of the parent node
+            cij = node.seq_states_joint
+
+            #  just replace the array as we do not need the 2D conditional version any more
+            node.seq_states_joint = np.array([cij[i, cup[i]] for i in np.arange(cup.shape[0])])
+
+            # and reconstruct the sequence of the internal node: 
+            node.sequence = np.array([self.gtr.alphabet[k] for k in node.seq_states_joint])
+
+            print ("Node: " + node.name)
+            print ("Mutations: " + str((node.sequence != node.up.sequence).sum()))
+
     def store_compressed_sequence_to_node(self, node):
             seq_pairs, multiplicity = self.gtr.compress_sequence_pair(node.up.sequence,
                                                                       node.sequence,
@@ -453,7 +557,6 @@ class TreeAnc(object):
             if node.up is None:
                 continue
             self.store_compressed_sequence_to_node(node)
-
 
     def calc_branch_twopoint_functions(self):
         '''
