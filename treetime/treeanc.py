@@ -361,10 +361,14 @@ class TreeAnc(object):
         self.logger("TreeAnc._ml_anc: type of reconstruction:"
                      + ('marginal' if marginal else "joint"), 2)
         self.logger("Walking up the tree, computing likelihoods... ", 3)
+        
+        #  set the leaves profiles
         for leaf in tree.get_terminals():
             # in any case, set the profile
             leaf.profile = seq_utils.seq2prof(leaf.sequence, self.gtr.profile_map)
             leaf.lh_prefactor = np.zeros(L)
+        
+        # propagate leaves -->> root, set the marginal-likelihood messages
         for node in tree.get_nonterminals(order='postorder'): #leaves -> root
             # regardless of what was before, set the profile to ones
             node.lh_prefactor = np.zeros(L)
@@ -382,7 +386,7 @@ class TreeAnc(object):
 
         self.logger("Walking down the tree, computing maximum likelihood sequences...",3)
 
-        # extract the likelihood from the profile
+        # reconstruct the root node sequence
         tree.root.profile *= self.gtr.Pi # Msg to the root from the distant part (equ frequencies)
         pre=tree.root.profile.sum(axis=1)
         tree.root.profile = (tree.root.profile.T/pre).T
@@ -399,6 +403,8 @@ class TreeAnc(object):
 
         tmp_sample = False if sample_from_profile=='root' else sample_from_profile
 
+        # propagate root -->> leaves, reconstruct the internal node sequences
+        # provided the upstream message + the message from the complementary subtree
         for node in tree.find_clades(order='preorder'):
             if node.up is None: # skip if node is root
                 continue
@@ -436,7 +442,7 @@ class TreeAnc(object):
             node.profile = profile
 
         # note that the root doesn't contribute to N_diff (intended, since root sequence is often ambiguous)
-        self.logger("TreeAnc._ml_anc: ...done",3)
+        self.logger("TreeAnc._ml_anc: ...done", 3)
         if store_compressed:
             self.store_compressed_sequence_pairs()
         return N_diff
@@ -456,13 +462,17 @@ class TreeAnc(object):
             of the node sequence states. 
             """
             
+            # matrix of shape (L,a,a), which contains all possible profiles of the 
+            # parent node
             parent_profile = np.array([np.identity(n_states)]*seq_length)
+            
+
             node_profile = np.array([np.zeros((n_states, n_states))]*seq_length)
             
             # assuming the nucleotides in the parent sequence are in states __state__, 
             # compute the likelihoods to observe certain states in the child node __node__
             for state in xrange(n_states):
-                node_profile[:, :, state] = self.gtr.propagate_profile(parent_profile[:,:,state], 
+                node_profile[:, state, :] = self.gtr.propagate_profile(parent_profile[:,:,state], 
                     self._branch_length_to_gtr(node), 
                     return_log=False)
 
@@ -481,7 +491,12 @@ class TreeAnc(object):
             #  get the 3D profile
             leaf_profile = cond_likelihood(leaf)
 
-            #  The likelihood to observe the sequence given the parent states:
+            # Matrix of shape (L, a), showing the likelihood to observe the 
+            # paricular states of the tree leaves 
+            # given that the parent is set to the state of the index of the second 
+            # dimension of the matrix. E.g., the column (L, 2) means the 
+            # likelihood of the leaf sequence given all states of the parent are at 
+            # state 2.
             conditional_LH = leaf_profile[:, :, :] * seq_profile[:, :, np.newaxis]
 
             #  reduce it to the 2D profile by choosing the maxLH states 
@@ -504,9 +519,11 @@ class TreeAnc(object):
             for child in node.clades:
                 conditional_LH *= child.seq_profile_joint[:, :, np.newaxis]
 
-            # and now, collapse it to the 2D profile of shape (L, a)
-            # Each row of the profile is the maximal likelihood of the subtree 
-            # given the parent state (second dimension index)
+            # Matrix of shape (L,a). Each cell of the matrix is the likelihood 
+            # of the subtree conditional on that the parent state is 
+            # that defined by the index of the second dimension. 
+            # It is assumed that all the states of the downstream subtree are set 
+            # to their optimal values
             node.seq_profile_joint = conditional_LH.max(axis=1)
 
             # and assign the sequence states conditional on the parent sequence
@@ -521,6 +538,11 @@ class TreeAnc(object):
         self.tree.root.sequence, _ = \
             seq_utils.prof2seq(self.tree.root.seq_profile_joint, self.gtr, sample_from_prof=tmp_sample,
                                collapse_prof=False) # NOTE we do not collapse the profile
+
+
+        # #different nucleotides relative to the previuos reconstruction.
+        # inferred by comparing newly reconstructed sequence with that from the previous reconstruction
+        N_diff = 0
 
         #  iterate the tree root --->>> leaves, reconstruct the maximal Likelihood sequences
         for node in self.tree.get_nonterminals(order='preorder'):
@@ -544,6 +566,13 @@ class TreeAnc(object):
 
             print ("Node: " + node.name)
             print ("Mutations: " + str((node.sequence != node.up.sequence).sum()))
+        
+        self.logger("TreeAnc._ml_anc_joint: ...done", 3)
+        if store_compressed:
+            self.store_compressed_sequence_pairs()
+        
+        return N_diff
+
 
     def store_compressed_sequence_to_node(self, node):
             seq_pairs, multiplicity = self.gtr.compress_sequence_pair(node.up.sequence,
@@ -741,4 +770,41 @@ class TreeAnc(object):
         return new_aln
 
 if __name__=="__main__":
-    pass
+    
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+    sns.set_style('whitegrid')
+    from Bio import Phylo
+    plt.ion()
+    base_name = 'data/H3N2_NA_allyears_NA.20'
+    #base_name = 'data/H3N2_NA_500'
+    #base_name = 'data/Zika'
+    import datetime
+    from utils import numeric_date
+    with open(base_name+'.metadata.csv') as date_file:
+        dates = {}
+        for line in date_file:
+            if line[0]=='#':
+                continue
+            try:
+                #entries = line.strip().split(',')
+                #name = entries[0]
+                #dates[name] = float(entries[-2])
+                #date = datetime.datetime.strptime(entries[1], '%Y-%m-%d')
+                #dates[name] = numeric_date(date)
+                name, date = line.strip().split(',')
+                dates[name] = float(date)
+            except:
+                continue
+
+    myTree = TreeAnc(gtr='Jukes-Cantor', tree = base_name+'.nwk',
+                        aln = base_name+'.fasta', verbose = 4)
+
+    myTree.reconstruct_anc()
+    root = myTree.tree.root
+    seq1 = root.sequence
+
+    myTree._ml_anc_joint()
+    seq2 = root.sequence    
+
+    print ("Sequence reconstruction difference (joint vs marginal): " + str((seq1 != seq2).sum()))
