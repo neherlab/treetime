@@ -33,7 +33,7 @@ class Distribution(object):
             raise TypeError("Error in computing the FWHM for the distribution. "
                 " The input should be either Distribution or interpolation object");
 
-        x_idxs = binary_dilation(real_prob > 0.5*(real_prob.max() - real_prob.min()), iterations=1)
+        x_idxs = binary_dilation(real_prob >= 0.4*(real_prob.max() - real_prob.min()), iterations=1)
         xs = xvals[x_idxs]
         if xs.shape[0] < 2:
             print ("Not enough points to compute FWHM: returning zero")
