@@ -397,7 +397,7 @@ class GTR(object):
             opt = minimize_scalar(_neg_prob,
                     bounds=[0,ttconf.MAX_BRANCH_LENGTH],
                     method='Bounded',
-                    args=(seq_pair, multiplicity))
+                    args=(seq_pair, multiplicity), tol=1e-8)
             new_len = opt["x"]
         except:
             import scipy

@@ -19,25 +19,25 @@ class Distribution(object):
 
             if is_log:
                 ymin = distribution.y.min()
-                real_prob = np.exp(-(distribution.y-ymin))
+                prob = np.exp(-(distribution.y-ymin))
             else:
-                real_prob = distribution.y
+                prob = distribution.y
 
             xvals = distribution.x
 
         elif isinstance(distribution, Distribution):
             # Distribution always stores log-prob
             xvals = distribution._func.x
-            real_prob = distribution.prob_relative(xvals)
+            prob = distribution.prob_relative(xvals)
         else:
             raise TypeError("Error in computing the FWHM for the distribution. "
                 " The input should be either Distribution or interpolation object");
 
-        x_idxs = binary_dilation(real_prob >= 0.4*(real_prob.max() - real_prob.min()), iterations=1)
+        x_idxs = binary_dilation(prob >= 0.4*(prob.max() - prob.min())+prob.min(), iterations=1)
         xs = xvals[x_idxs]
         if xs.shape[0] < 2:
             print ("Not enough points to compute FWHM: returning zero")
-            return min(TINY_NUMBER,distribution.xmax - distribution.xmin)
+            return min(TINY_NUMBER, distribution.xmax - distribution.xmin)
         else:
             return xs.max() - xs.min()
 

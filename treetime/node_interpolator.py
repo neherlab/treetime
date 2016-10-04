@@ -112,7 +112,7 @@ class NodeInterpolator (Distribution):
             grid_left =[]
 
         # make grid and calculate convolution
-        t_grid_0 = np.sort(np.concatenate([grid_left[:-1], grid_center, grid_right[1:], [tmin, tmax]]))
+        t_grid_0 = np.unique(np.concatenate([grid_left[:-1], grid_center, grid_right[1:], [tmin, tmax]]))
         t_grid_0 = t_grid_0[(t_grid_0 > tmin-ttconf.TINY_NUMBER) & (t_grid_0 < tmax+ttconf.TINY_NUMBER)]
         res_0 = np.array([_convolution_in_point(t_val, node_interp, branch_interp,
                                                n_integral=n_integral, return_log=True,
