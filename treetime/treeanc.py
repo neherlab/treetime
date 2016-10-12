@@ -116,7 +116,7 @@ class TreeAnc(object):
         # loop over tree,
         failed_leaves= 0
         dic_aln = {k.name: seq_utils.seq2array(k.seq) for k in self.aln} #
-        for l in self.tree.get_terminals():
+        for l in self.tree.find_clades():
             if l.name in dic_aln:
                 l.state_seq = dic_aln[l.name]
                 l.sequence=l.state_seq
@@ -447,132 +447,260 @@ class TreeAnc(object):
             self.store_compressed_sequence_pairs()
         return N_diff
 
-    def _ml_anc_joint(self, sample_from_profile=False):
+
+    def ancestral_likelihood(self):
+        """
+        Calculate the likelihood of the given realization of the sequences in 
+        the tree
+        """
+        log_lh = np.zeros(self.tree.root.sequence.shape[0])
+        for node in self.tree.find_clades(order='postorder'):
+
+            if node.up is None: #  root node
+                # 0-1 profile
+                profile = seq_utils.seq2prof(node.sequence, self.gtr.profile_map)
+                # get the probabilities to observe each nucleotide 
+                profile *= self.gtr.Pi
+                profile = profile.sum(axis=1)
+                log_lh += np.log(profile) # product over all characters
+                continue
+
+            t = node.branch_length
+
+            indices = np.array([(np.argmax(self.gtr.alphabet==a), 
+                        np.argmax(self.gtr.alphabet==b)) for a, b in izip(node.up.sequence, node.sequence)])
+
+            logQt = np.log(self.gtr.expQt(t))
+            lh = logQt[indices[:, 1], indices[:, 0]]
+            log_lh += lh
+
+        return log_lh
+
+    def _ml_anc_joint(self, sample_from_profile='root'):
         """
         Make joint ML reconstruction of the ancestral sequences. 
         """
         
         n_states = self.gtr.alphabet.shape[0]
-        seq_length = self.tree.get_terminals()[0].sequence.shape[0]
-
-        def cond_likelihood(node):
-            """
-            Compute the likelihood profile of the node conditional of the parent state.
-            Assuming the uniform distribution of the parent node sequence, compute the likelihood distribution
-            of the node sequence states. 
-            """
-            
-            # matrix of shape (L,a,a), which contains all possible profiles of the 
-            # parent node
-            parent_profile = np.array([np.identity(n_states)]*seq_length)
-            
-
-            node_profile = np.array([np.zeros((n_states, n_states))]*seq_length)
-            
-            # assuming the nucleotides in the parent sequence are in states __state__, 
-            # compute the likelihoods to observe certain states in the child node __node__
-            for state in xrange(n_states):
-                node_profile[:, state, :] = self.gtr.propagate_profile(parent_profile[:,:,state], 
-                    self._branch_length_to_gtr(node), 
-                    return_log=False)
-
-            #  node_profile is the 3D matrix  of shape (L, a, a), where the first two dimensions
-            # correspond to the likelihood profile of the node sequence given the state of the 
-            # parent node sequence defined by the indices of the third dimensions of the matrix
-            return node_profile
-
-
-        #  assign the initial likelihood profiles and states to the leaves
-        for leaf in self.tree.get_terminals():
-
-            # convert sequence to the profile:
-            seq_profile = seq_utils.seq2prof(leaf.sequence, self.gtr.profile_map)
-            
-            #  get the 3D profile
-            leaf_profile = cond_likelihood(leaf)
-
-            # Matrix of shape (L, a), showing the likelihood to observe the 
-            # paricular states of the tree leaves 
-            # given that the parent is set to the state of the index of the second 
-            # dimension of the matrix. E.g., the column (L, 2) means the 
-            # likelihood of the leaf sequence given all states of the parent are at 
-            # state 2.
-            conditional_LH = leaf_profile[:, :, :] * seq_profile[:, :, np.newaxis]
-
-            #  reduce it to the 2D profile by choosing the maxLH states 
-            leaf.seq_profile_joint = conditional_LH.max(axis=1)
-            leaf.seq_states_joint = conditional_LH.argmax(axis=1)
-
-        #  propagate leaves->root, set the joint profiles
-        for node in self.tree.get_nonterminals(order='postorder'):
-            if node.up is None: 
-                #  we reached the root node, nothing to do 
-                #  (the values for the root will be set separately)
-                break 
-            
-            #  node LH profile of share (L, a, a), 
-            #  where the first two dimensions are the LH for the node state conditional 
-            #  on the parent state given by  the third dimensions indices
-            conditional_LH = cond_likelihood(leaf)
-
-            #  multiply by the likelihood of each child subtree:
-            for child in node.clades:
-                conditional_LH *= child.seq_profile_joint[:, :, np.newaxis]
-
-            # Matrix of shape (L,a). Each cell of the matrix is the likelihood 
-            # of the subtree conditional on that the parent state is 
-            # that defined by the index of the second dimension. 
-            # It is assumed that all the states of the downstream subtree are set 
-            # to their optimal values
-            node.seq_profile_joint = conditional_LH.max(axis=1)
-
-            # and assign the sequence states conditional on the parent sequence
-            node.seq_states_joint = conditional_LH.argmax(axis=1)
-
-        #  at the root node, choose the optimal sequence: 
-        self.tree.root.seq_profile_joint = np.prod([k.seq_profile_joint for k in self.tree.root.clades], axis=0) * self.gtr.Pi
-        self.tree.root.seq_states_joint = self.tree.root.seq_profile_joint.argmax(axis=1)
-
-        # and assign the sequence states conditional on the parent sequence
-        tmp_sample = False if sample_from_profile==False else True
-        self.tree.root.sequence, _ = \
-            seq_utils.prof2seq(self.tree.root.seq_profile_joint, self.gtr, sample_from_prof=tmp_sample,
-                               collapse_prof=False) # NOTE we do not collapse the profile
-
-
-        # #different nucleotides relative to the previuos reconstruction.
-        # inferred by comparing newly reconstructed sequence with that from the previous reconstruction
+        L = self.tree.get_terminals()[0].sequence.shape[0]
         N_diff = 0
 
-        #  iterate the tree root --->>> leaves, reconstruct the maximal Likelihood sequences
-        for node in self.tree.get_nonterminals(order='preorder'):
+        def propagate_profile(p, t, return_log=True):
+            """
+            Similar to the propagate profile in GTR class. The difference is that 
+            instead of dot product, 
+            the value of profile[i,j] = np.max_k(p[i, k]*Q[k, j])
+            """
+            eQT = self.gtr.expQt(t)
+            new_p = np.array([(p[i, :] * eQT[:, j]).max() 
+                for i in np.arange(p.shape[0]) 
+                for j in np.arange(eQT.shape[1])]).reshape(p.shape)
             
-            if node.up is None: 
+            if return_log:
+                return np.log(new_p)
+            else:
+                return new_p
+
+        #  set the leaves profiles
+        for leaf in self.tree.get_terminals():
+            # in any case, set the profile
+            # as 0-1 matrix
+            leaf.joint_seq_profile = seq_utils.seq2prof(leaf.sequence, self.gtr.profile_map)
+            leaf.joint_seq_lh_prefactor = np.zeros(L)
+        
+        # propagate leaves -->> root, set the joint-likelihood messages
+        for node in self.tree.get_nonterminals(order='postorder'): 
+            # regardless of what was before, set the profile to ones
+            node.joint_seq_lh_prefactor = np.zeros(L)
+            node.joint_seq_profile = np.ones((L, n_states)) # we will multiply it
+            for ch in node.clades:
+                # we do the same thing as for the marginal, but substitute the function 
+                # propagate profile from GTR to the overriden nested one
+                ch.seq_msg_to_parent = propagate_profile(ch.joint_seq_profile,
+                    self._branch_length_to_gtr(ch), return_log=False) # raw prob to transfer prob up
+                node.joint_seq_profile *= ch.seq_msg_to_parent
+                node.joint_seq_lh_prefactor += ch.joint_seq_lh_prefactor
+
+            pre = node.joint_seq_profile.max(axis=1) #sum over nucleotide states
+            node.joint_seq_profile = (node.joint_seq_profile.T/pre).T # normalize so that the sum is 1
+            node.joint_seq_lh_prefactor += np.log(pre) # and store log-prefactor
+
+
+        self.logger("ML reconstruction-joint: Walking down the tree, computing "
+            "maximum likelihood sequences...",3)
+
+        # reconstruct the root node sequence
+        self.tree.root.joint_seq_profile *= self.gtr.Pi # Msg to the root from the distant part (equ frequencies)
+        pre=self.tree.root.joint_seq_profile.sum(axis=1)
+        self.tree.root.joint_seq_profile = (self.tree.root.joint_seq_profile.T/pre).T
+        self.tree.root.joint_seq_lh_prefactor += np.log(pre)
+
+        
+        # reset profile to 0-1 and set the sequence
+        tmp_sample = True if sample_from_profile=='root' else sample_from_profile
+        self.tree.root.sequence, profile = \
+            seq_utils.prof2seq(self.tree.root.joint_seq_profile, self.gtr, 
+                               sample_from_prof=tmp_sample,
+                               collapse_prof=True)
+
+        self.tree.root.seq_msg_from_parent = np.repeat([self.gtr.Pi], L, axis=0)
+        
+        self.tree.joint_seq_LH = self.tree.root.joint_seq_lh_prefactor.sum() + \
+            np.log((self.tree.root.joint_seq_profile * profile).sum(1)).sum()
+
+
+        tmp_sample = False if sample_from_profile=='root' else sample_from_profile
+        # propagate root -->> leaves, reconstruct the internal node sequences
+        for node in self.tree.find_clades(order='preorder'):
+            if node.up is None: # skip if node is root
                 continue
+            
+            node.seq_msg_from_parent = propagate_profile(node.up.joint_seq_profile,
+                                            self._branch_length_to_gtr(node), 
+                                            return_log=False)
+            
+            
+            node.joint_seq_profile *= node.seq_msg_from_parent
+            
+            # reset the profile to 0-1 and  set the sequence
+            sequence, profile = seq_utils.prof2seq(node.joint_seq_profile, self.gtr,
+                sample_from_prof=tmp_sample, collapse_prof=True)
 
-            #  get the sequence states first
-            #  we have the states of the parent sequence (cup):
-            cup = node.up.seq_states_joint
+            node.mutations = [(anc, pos, der) for pos, (anc, der) in
+                            enumerate(izip(node.up.sequence, sequence)) if anc!=der]
 
-            #  and we need to choose from the array of the conditional states (cij) the proper values
-            #  provided we already know the state of the parent node
-            cij = node.seq_states_joint
+            
 
-            #  just replace the array as we do not need the 2D conditional version any more
-            node.seq_states_joint = np.array([cij[i, cup[i]] for i in np.arange(cup.shape[0])])
+            if hasattr(node, 'sequence') and node.sequence is not None:
+                N_diff += (sequence!=node.sequence).sum()
+            else:
+                N_diff += L
 
-            # and reconstruct the sequence of the internal node: 
-            node.sequence = np.array([self.gtr.alphabet[k] for k in node.seq_states_joint])
+            node.sequence = sequence
+            
 
-            print ("Node: " + node.name)
-            print ("Mutations: " + str((node.sequence != node.up.sequence).sum()))
-        
+        # note that the root doesn't contribute to N_diff (intended, since root sequence is often ambiguous)
         self.logger("TreeAnc._ml_anc_joint: ...done", 3)
-        if store_compressed:
-            self.store_compressed_sequence_pairs()
-        
+        #if store_compressed:
+        #    self.store_compressed_sequence_pairs()
         return N_diff
+        # def cond_likelihood(node):
+        #     """
+        #     Compute the likelihood profile of the node conditional of the parent state.
+        #     Assuming the uniform distribution of the parent node sequence, compute the likelihood distribution
+        #     of the node sequence states. 
+        #     """
+            
+        #     # matrix of shape (L,a,a), which contains all possible profiles of the 
+        #     # parent node
+        #     parent_profile = np.array([np.identity(n_states)]*seq_length)
+            
 
+        #     node_profile = np.array([np.zeros((n_states, n_states))]*seq_length)
+            
+        #     # assuming the nucleotides in the parent sequence are in states __state__, 
+        #     # compute the likelihoods to observe certain states in the child node __node__
+        #     for state in xrange(n_states):
+        #         node_profile[:, state, :] = self.gtr.propagate_profile(parent_profile[:,:,state], 
+        #             self._branch_length_to_gtr(node), 
+        #             return_log=False)
+
+        #     #  node_profile is the 3D matrix  of shape (L, a, a), where the first two dimensions
+        #     # correspond to the likelihood profile of the node sequence given the state of the 
+        #     # parent node sequence defined by the indices of the third dimensions of the matrix
+        #     return node_profile
+
+
+        # #  assign the initial likelihood profiles and states to the leaves
+        # for leaf in self.tree.get_terminals():
+
+        #     # convert sequence to the profile:
+        #     seq_profile = seq_utils.seq2prof(leaf.sequence, self.gtr.profile_map)
+            
+        #     #  get the 3D profile
+        #     leaf_profile = cond_likelihood(leaf)
+
+        #     # Matrix of shape (L, a), showing the likelihood to observe the 
+        #     # paricular states of the tree leaves 
+        #     # given that the parent is set to the state of the index of the second 
+        #     # dimension of the matrix. E.g., the column (L, 2) means the 
+        #     # likelihood of the leaf sequence given all states of the parent are at 
+        #     # state 2.
+        #     conditional_LH = leaf_profile[:, :, :] * seq_profile[:, :, np.newaxis]
+
+        #     #  reduce it to the 2D profile by choosing the maxLH states 
+        #     leaf.seq_profile_joint = conditional_LH.max(axis=1)
+        #     leaf.seq_states_joint = conditional_LH.argmax(axis=1)
+
+        # #  propagate leaves->root, set the joint profiles
+        # for node in self.tree.get_nonterminals(order='postorder'):
+        #     if node.up is None: 
+        #         #  we reached the root node, nothing to do 
+        #         #  (the values for the root will be set separately)
+        #         break 
+            
+        #     #  node LH profile of share (L, a, a), 
+        #     #  where the first two dimensions are the LH for the node state conditional 
+        #     #  on the parent state given by  the third dimensions indices
+        #     conditional_LH = cond_likelihood(leaf)
+
+        #     #  multiply by the likelihood of each child subtree:
+        #     for child in node.clades:
+        #         conditional_LH *= child.seq_profile_joint[:, :, np.newaxis]
+
+        #     # Matrix of shape (L,a). Each cell of the matrix is the likelihood 
+        #     # of the subtree conditional on that the parent state is 
+        #     # that defined by the index of the second dimension. 
+        #     # It is assumed that all the states of the downstream subtree are set 
+        #     # to their optimal values
+        #     node.seq_profile_joint = conditional_LH.max(axis=1)
+
+        #     # and assign the sequence states conditional on the parent sequence
+        #     node.seq_states_joint = conditional_LH.argmax(axis=1)
+
+        # #  at the root node, choose the optimal sequence: 
+        # self.tree.root.seq_profile_joint = np.prod([k.seq_profile_joint for k in self.tree.root.clades], axis=0) * self.gtr.Pi
+        # self.tree.root.seq_states_joint = self.tree.root.seq_profile_joint.argmax(axis=1)
+
+        # # and assign the sequence states conditional on the parent sequence
+        # tmp_sample = False if sample_from_profile==False else True
+        # self.tree.root.sequence, _ = \
+        #     seq_utils.prof2seq(self.tree.root.seq_profile_joint, self.gtr, sample_from_prof=tmp_sample,
+        #                        collapse_prof=False) # NOTE we do not collapse the profile
+
+
+        # # #different nucleotides relative to the previuos reconstruction.
+        # # inferred by comparing newly reconstructed sequence with that from the previous reconstruction
+        # N_diff = 0
+
+        # #  iterate the tree root --->>> leaves, reconstruct the maximal Likelihood sequences
+        # for node in self.tree.get_nonterminals(order='preorder'):
+            
+        #     if node.up is None: 
+        #         continue
+
+        #     #  get the sequence states first
+        #     #  we have the states of the parent sequence (cup):
+        #     cup = node.up.seq_states_joint
+
+        #     #  and we need to choose from the array of the conditional states (cij) the proper values
+        #     #  provided we already know the state of the parent node
+        #     cij = node.seq_states_joint
+
+        #     #  just replace the array as we do not need the 2D conditional version any more
+        #     node.seq_states_joint = np.array([cij[i, cup[i]] for i in np.arange(cup.shape[0])])
+
+        #     # and reconstruct the sequence of the internal node: 
+        #     node.sequence = np.array([self.gtr.alphabet[k] for k in node.seq_states_joint])
+
+        #     print ("Node: " + node.name)
+        #     print ("Mutations: " + str((node.sequence != node.up.sequence).sum()))
+        
+        # self.logger("TreeAnc._ml_anc_joint: ...done", 3)
+        # if store_compressed:
+        #     self.store_compressed_sequence_pairs()
+        
+        # return N_diff
 
     def store_compressed_sequence_to_node(self, node):
             seq_pairs, multiplicity = self.gtr.compress_sequence_pair(node.up.sequence,
@@ -704,6 +832,7 @@ class TreeAnc(object):
 
     def optimize_sequences_and_branch_length(self,*args, **kwargs):
         self.optimize_seq_and_branch_len(*args,**kwargs)
+    
     def optimize_seq_and_branch_len(self,reuse_branch_len=True,prune_short=True,
                                     max_iter=5, infer_gtr=False, **kwargs):
         """
@@ -771,40 +900,29 @@ class TreeAnc(object):
 
 if __name__=="__main__":
     
+
     import matplotlib.pyplot as plt
     import seaborn as sns
     sns.set_style('whitegrid')
     from Bio import Phylo
     plt.ion()
-    base_name = 'data/H3N2_NA_allyears_NA.20'
-    #base_name = 'data/H3N2_NA_500'
-    #base_name = 'data/Zika'
-    import datetime
-    from utils import numeric_date
-    with open(base_name+'.metadata.csv') as date_file:
-        dates = {}
-        for line in date_file:
-            if line[0]=='#':
-                continue
-            try:
-                #entries = line.strip().split(',')
-                #name = entries[0]
-                #dates[name] = float(entries[-2])
-                #date = datetime.datetime.strptime(entries[1], '%Y-%m-%d')
-                #dates[name] = numeric_date(date)
-                name, date = line.strip().split(',')
-                dates[name] = float(date)
-            except:
-                continue
+    
+    from StringIO import StringIO
+    from Bio import Phylo,AlignIO
 
-    myTree = TreeAnc(gtr='Jukes-Cantor', tree = base_name+'.nwk',
-                        aln = base_name+'.fasta', verbose = 4)
+    tiny_tree = Phylo.read(StringIO("((A:.0060,B:.30)C:.030,D:.020)E:.004;"), 'newick')
+    tiny_aln = AlignIO.read(StringIO(">A\nAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT\n"
+                                     ">B\nAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT\n"
+                                     ">C\nAAAAAAAAAAAAAAAACCCCCCCCCCCCCCCCGGGGGGGGGGGGGGGGTTTTTTTTTTTTTTTTAAAAAAAAAAAAAAAACCCCCCCCCCCCCCCCGGGGGGGGGGGGGGGGTTTTTTTTTTTTTTTTAAAAAAAAAAAAAAAACCCCCCCCCCCCCCCCGGGGGGGGGGGGGGGGTTTTTTTTTTTTTTTTAAAAAAAAAAAAAAAACCCCCCCCCCCCCCCCGGGGGGGGGGGGGGGGTTTTTTTTTTTTTTTTAAAAAAAAAAAAAAAACCCCCCCCCCCCCCCCGGGGGGGGGGGGGGGGTTTTTTTTTTTTTTTTAAAAAAAAAAAAAAAACCCCCCCCCCCCCCCCGGGGGGGGGGGGGGGGTTTTTTTTTTTTTTTTAAAAAAAAAAAAAAAACCCCCCCCCCCCCCCCGGGGGGGGGGGGGGGGTTTTTTTTTTTTTTTTAAAAAAAAAAAAAAAACCCCCCCCCCCCCCCCGGGGGGGGGGGGGGGGTTTTTTTTTTTTTTTTAAAAAAAAAAAAAAAACCCCCCCCCCCCCCCCGGGGGGGGGGGGGGGGTTTTTTTTTTTTTTTTAAAAAAAAAAAAAAAACCCCCCCCCCCCCCCCGGGGGGGGGGGGGGGGTTTTTTTTTTTTTTTTAAAAAAAAAAAAAAAACCCCCCCCCCCCCCCCGGGGGGGGGGGGGGGGTTTTTTTTTTTTTTTTAAAAAAAAAAAAAAAACCCCCCCCCCCCCCCCGGGGGGGGGGGGGGGGTTTTTTTTTTTTTTTTAAAAAAAAAAAAAAAACCCCCCCCCCCCCCCCGGGGGGGGGGGGGGGGTTTTTTTTTTTTTTTTAAAAAAAAAAAAAAAACCCCCCCCCCCCCCCCGGGGGGGGGGGGGGGGTTTTTTTTTTTTTTTTAAAAAAAAAAAAAAAACCCCCCCCCCCCCCCCGGGGGGGGGGGGGGGGTTTTTTTTTTTTTTTTAAAAAAAAAAAAAAAACCCCCCCCCCCCCCCCGGGGGGGGGGGGGGGGTTTTTTTTTTTTTTTT\n"
+                                     ">D\nAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTT\n"
+                                     ">E\nACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT\n"), 'fasta')
 
-    myTree.reconstruct_anc()
-    root = myTree.tree.root
-    seq1 = root.sequence
+    mygtr = GTR.custom(alphabet = np.array(['A', 'C', 'G', 'T']), pi = np.array([0.25, 0.25, 0.25, 0.25]), W=np.ones((4,4)))
 
-    myTree._ml_anc_joint()
-    seq2 = root.sequence    
+    myTree = TreeAnc(gtr=mygtr, tree = tiny_tree,
+                        aln =tiny_aln, verbose = 4)
 
-    print ("Sequence reconstruction difference (joint vs marginal): " + str((seq1 != seq2).sum()))
+    logLH = myTree.ancestral_likelihood()
+    LH = np.exp(logLH)
+    print ("Net probability (for all possible realizations): " + str(np.exp(logLH).sum()))
+    print (np.exp(logLH))
