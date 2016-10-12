@@ -570,10 +570,10 @@ if __name__=="__main__":
     myTree = TreeTime(gtr='Jukes-Cantor', tree = base_name+'.nwk',
                         aln = base_name+'.fasta', verbose = 4, dates = dates)
 
-    myTree.run(root='clock_filter', relaxed_clock=False, max_iter=2, resolve_polytomies=True, Tc=0.01, n_iqd=2) #(1.0,1.0), max_iter=1)
+    myTree.run(root='clock_filter', relaxed_clock=False, max_iter=2, resolve_polytomies=True, Tc=0.01, n_iqd=2)
 
     plt.figure()
-    x = np.linspace(0,0.005,1000)
+    x = np.linspace(0,0.02,1000)
     leaf_count=0
     for node in myTree.tree.find_clades(order='postorder'):
         if node.up is not None:
@@ -588,7 +588,7 @@ if __name__=="__main__":
 
     from matplotlib import cm
     fig, axs = plt.subplots(2,1, sharex=True, figsize=(8,12))
-    x = np.linspace(-0.25,0.005,10000)+ myTree.tree.root.time_before_present
+    x = np.linspace(-0.25,0.01,10000)+ myTree.tree.root.time_before_present
     for n in myTree.tree.find_clades():
         if n.up is None:
             g = n.gamma
