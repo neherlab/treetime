@@ -139,6 +139,10 @@ class TreeTime(ClockTree):
         self.logger("TreeTime.reroot: Tree is being re-rooted to node "
                     +('new_node' if new_root.name is None else new_root.name), 2)
         self.tree.root_with_outgroup(new_root)
+        # new nodes are produced when rooting with a terminal node, copy this clock info
+        if new_root.is_terminal():
+            self.tree.root._alpha = new_root._alpha
+            self.tree.root._beta = new_root._beta
         self.tree.root.branch_length = self.one_mutation
         for n in self.tree.find_clades():
             n.mutation_length=n.branch_length
