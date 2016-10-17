@@ -1,5 +1,6 @@
 from __future__ import print_function, division
 from clock_tree import ClockTree
+from utils import *
 import config as ttconf
 import numpy as np
 from scipy import optimize as sciopt
