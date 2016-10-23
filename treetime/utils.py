@@ -54,29 +54,9 @@ class DateConversion(object):
                 dc.p_val,\
                 dc.sigma = stats.linregress(dates[:, 0], dates[:, 1])
         else:
-            # TODO this seems awkward
             dc.slope = slope # slope is given
-            min_numdate_given = ttconf.BIG_NUMBER
-            max_numdate_given = -ttconf.BIG_NUMBER
-            max_diam = 0.0
-            for node in t.get_terminals():
-                # NOTE:  raw_date is time before present in years
-                if hasattr(node, 'numdate_given') and node.numdate_given is not None:
-                    if node.numdate_given < min_numdate_given:
-                        min_numdate_given = node.numdate_given
-                    if node.numdate_given > max_numdate_given:
-                        max_numdate_given = node.numdate_given
-                        max_diam = node.dist2root
-
-            if max_numdate_given == -ttconf.BIG_NUMBER:
-                print ("Warning! cannot set the minimal raw date. using today")
-                max_numdate_given = 0.0
-
-            if max_diam == 0.0:
-                print ("Error! cannot set the intercept for the date2dist conversion!"
-                    "Cannot read tree diameter")
-
-            dc.intercept = max_diam - slope * max_numdate_given
+            dc.intercept = np.mean(dates[:,1]) - slope * np.mean(dates[:,0])
+            dc.r_val = np.corrcoef(dates[:,1], dates[:,0])[0,1]
 
         # set the root-mean-square deviation:
         dc.rms = np.sqrt(np.sum((dates[:, 1] - (dc.intercept + dc.slope * dates[:, 0]))**2) / dates.shape[0])

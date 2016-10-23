@@ -17,7 +17,7 @@ class TreeTime(ClockTree):
         self.n_iqd = ttconf.NIQD
 
     def run(self, root=None, infer_gtr=True, relaxed_clock=False, n_iqd = None,
-            resolve_polytomies=True, max_iter=0, Tc=None):
+            resolve_polytomies=True, max_iter=0, Tc=None, fixed_slope=None):
         if relaxed_clock  and len(relaxed_clock)==2:
             slack, coupling = relaxed_clock
 
@@ -34,7 +34,7 @@ class TreeTime(ClockTree):
 
         # infer time tree and optionally resolve polytomies
         self.logger("###TreeTime.run: INITIAL ROUND",0)
-        self.make_time_tree()
+        self.make_time_tree(slope=fixed_slope)
         # iteratively reconstruct ancestral sequences and re-infer
         # time tree to ensure convergence.
         niter = 0
@@ -57,14 +57,14 @@ class TreeTime(ClockTree):
                     self.prepare_tree()
                     self.optimize_sequences_and_branch_length(prune_short=False,
                                             max_iter=0,sample_from_profile='root')
-                    self.make_time_tree()
+                    self.make_time_tree(slope=fixed_slope)
                     ndiff = self.infer_ancestral_sequences('ml',sample_from_profile='root')
             elif (Tc and (Tc is not None)) or relaxed_clock: # need new timetree first
-                self.make_time_tree()
+                self.make_time_tree(slope=fixed_slope)
                 ndiff = self.infer_ancestral_sequences('ml',sample_from_profile='root')
             else: # no refinements, just iterate
                 ndiff = self.infer_ancestral_sequences('ml',sample_from_profile='root')
-                self.make_time_tree()
+                self.make_time_tree(slope=fixed_slope)
 
             if ndiff==0 & n_resolved==0:
                 self.logger("###TreeTime.run: CONVERGED",0)
@@ -445,13 +445,13 @@ class TreeTime(ClockTree):
                 # and **displacement from parent's node x** :
                 # sum_Di = A1 + A2 * x
                 A1 = node.up._di
-                A2 = n_up - node._st_n_leaves
+                A2 = n_up - n_down
 
                 ## Express Node's sum_Di**2 as the function of parent's params
                 # and **displacement from parent's node x** :
-                # sum_Di = B1 + B2 * x + B3 * x**2
+                # sum_Di2 = B1 + B2 * x + B3 * x**2
                 B1 = node.up._di2
-                B2 = 2 * (node.up._di - 2 * node._st_di - 2 * node.branch_length * node._st_n_leaves )
+                B2 = 2 * (node.up._di - 2 * node._st_di - 2 * node.branch_length * n_down )
                 B3 = N
 
                 ## Express Node's sum_DiTi as the function of parent's params
@@ -575,7 +575,8 @@ if __name__=="__main__":
     myTree = TreeTime(gtr='Jukes-Cantor', tree = base_name+'.nwk',
                         aln = base_name+'.fasta', verbose = 4, dates = dates)
 
-    myTree.run(root='clock_filter', relaxed_clock=False, max_iter=2, resolve_polytomies=True, Tc=0.01, n_iqd=2)
+    myTree.run(root='clock_filter', relaxed_clock=False, max_iter=2,
+               resolve_polytomies=True, Tc=0.01, n_iqd=2, fixed_slope=0.003)
 
     plt.figure()
     x = np.linspace(0,0.02,1000)
