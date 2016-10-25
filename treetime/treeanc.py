@@ -488,7 +488,7 @@ class TreeAnc(object):
         for leaf in self.tree.get_terminals():
             branch_len = self._branch_length_to_gtr(leaf)
             # we do not use profiles, just string of indices -- to save space
-            characters = seq_utils.seq2prof(leaf.sequence, self.gtr.profile_map).argmax(1) # indices
+            characters = seq_utils.seq2prof(leaf.sequence, self.gtr.profile_map).argmax(axis = 1) # indices
             # get the transition matrix
             eQt = np.log(self.gtr.expQt(branch_len))
             # compute the likelihood of having the "characters"  states at the terminal node
@@ -496,7 +496,7 @@ class TreeAnc(object):
             # NOTE eQT is transposed, see definition in gtr class
             leaf.joint_Lx = (eQt.T [:, characters]).T
             # the reconstructed sequences will be the observed ones regardless on the
-            # conditioning - addign them right now.
+            # conditioning - adding them right now.
             leaf.joint_Cx = characters
 
         # for the internal nodes, scan over all states j of this node, maximize the likelihood
@@ -520,14 +520,15 @@ class TreeAnc(object):
             # for every possible state of the parent node,
             # get the best state of the current node
             # and compute the likelihood of this state
+            a=[]
             for char_i, char in enumerate(self.gtr.alphabet):
                 # Pij(i) * L_ch(i) for given parent state j
                 msg_to_parent = (eQt.T[char_i, :] + msg_from_children)
                 # For this parent state, choose the best state of the current node:
-                node.joint_Cx[:, char_i] = msg_to_parent.argmax(1)
+                node.joint_Cx[:, char_i] = msg_to_parent.argmax(axis = 1)
                 # compute the likelihood of the best state of the current node
                 # given the state of the parent (char_i)
-                node.joint_Lx[:, char_i] = msg_to_parent.max(1)
+                node.joint_Lx[:, char_i] = msg_to_parent.max(axis = 1)
 
         # root node profile = likelihood of the total tree
         msg_from_children = np.sum(np.stack([c.joint_Lx for c in self.tree.root.clades], axis = 0), axis=0)
@@ -535,9 +536,9 @@ class TreeAnc(object):
         self.tree.root.joint_Lx = msg_from_children + np.log(self.gtr.Pi)
 
         # compute the likelihood of the most probable root sequence
-        self.tree.root.seq_LH = self.tree.root.joint_Lx.max(1)
+        self.tree.root.seq_LH = self.tree.root.joint_Lx.max(axis = 1)
         # and get this sequence
-        self.tree.root.seq_idx = self.tree.root.joint_Lx.argmax(1)
+        self.tree.root.seq_idx = self.tree.root.joint_Lx.argmax(axis = 1)
         self.tree.root.sequence = np.choose(self.tree.root.seq_idx, self.gtr.alphabet)
 
 
@@ -558,11 +559,10 @@ class TreeAnc(object):
             # choose the value of the Cx(i), corresponding to the state of the
             # parent node i. This is the state of the current node
             node.seq_idx = np.choose(node.up.seq_idx, node.joint_Cx.T)
-
             # reconstruct seq, etc
             tmp_sequence = np.choose(node.seq_idx, self.gtr.alphabet)
             if hasattr(node, 'sequence') and node.sequence is not None:
-                N_diff += (sequence!=node.sequence).sum()
+                N_diff += (tmp_sequence!=node.sequence).sum()
             else:
                 N_diff += L
 
