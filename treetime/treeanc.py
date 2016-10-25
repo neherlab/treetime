@@ -356,18 +356,19 @@ class TreeAnc(object):
         if 'store_lh' in kwargs:
             store_lh = kwargs['store_lh'] == True
 
-        L = tree.get_terminals()[0].sequence.shape[0]
+
+        L = self.tree.get_terminals()[0].sequence.shape[0]
         n_states = self.gtr.alphabet.shape[0]
         self.logger("TreeAnc._ml_anc: type of reconstruction:"
                      + ('marginal' if marginal else "joint"), 2)
         self.logger("Walking up the tree, computing likelihoods... ", 3)
-        
+
         #  set the leaves profiles
         for leaf in tree.get_terminals():
             # in any case, set the profile
             leaf.profile = seq_utils.seq2prof(leaf.sequence, self.gtr.profile_map)
             leaf.lh_prefactor = np.zeros(L)
-        
+
         # propagate leaves -->> root, set the marginal-likelihood messages
         for node in tree.get_nonterminals(order='postorder'): #leaves -> root
             # regardless of what was before, set the profile to ones
@@ -450,7 +451,7 @@ class TreeAnc(object):
 
     def ancestral_likelihood(self):
         """
-        Calculate the likelihood of the given realization of the sequences in 
+        Calculate the likelihood of the given realization of the sequences in
         the tree
         """
         log_lh = np.zeros(self.tree.root.sequence.shape[0])
@@ -459,7 +460,7 @@ class TreeAnc(object):
             if node.up is None: #  root node
                 # 0-1 profile
                 profile = seq_utils.seq2prof(node.sequence, self.gtr.profile_map)
-                # get the probabilities to observe each nucleotide 
+                # get the probabilities to observe each nucleotide
                 profile *= self.gtr.Pi
                 profile = profile.sum(axis=1)
                 log_lh += np.log(profile) # product over all characters
@@ -467,124 +468,110 @@ class TreeAnc(object):
 
             t = node.branch_length
 
-            indices = np.array([(np.argmax(self.gtr.alphabet==a), 
+            indices = np.array([(np.argmax(self.gtr.alphabet==a),
                         np.argmax(self.gtr.alphabet==b)) for a, b in izip(node.up.sequence, node.sequence)])
 
             logQt = np.log(self.gtr.expQt(t))
+            import ipdb; ipdb.set_trace()
             lh = logQt[indices[:, 1], indices[:, 0]]
             log_lh += lh
 
         return log_lh
 
-    def _ml_anc_joint(self, sample_from_profile='root'):
-        """
-        Make joint ML reconstruction of the ancestral sequences. 
-        """
-        
-        n_states = self.gtr.alphabet.shape[0]
+    def _ml_anc_joint(self):
+
+        N_diff = 0 # number of sites differ from perv reconstruction
         L = self.tree.get_terminals()[0].sequence.shape[0]
-        N_diff = 0
+        n_states = self.gtr.alphabet.shape[0]
 
-        def propagate_profile(p, t, return_log=True):
-            """
-            Similar to the propagate profile in GTR class. The difference is that 
-            instead of dot product, 
-            the value of profile[i,j] = np.max_k(p[i, k]*Q[k, j])
-            """
-            eQT = self.gtr.expQt(t)
-            new_p = np.array([(p[i, :] * eQT[:, j]).max() 
-                for i in np.arange(p.shape[0]) 
-                for j in np.arange(eQT.shape[1])]).reshape(p.shape)
-            
-            if return_log:
-                return np.log(new_p)
-            else:
-                return new_p
-
-        #  set the leaves profiles
+        # at the leaves, just set the probability that state i mutated into observed state j
         for leaf in self.tree.get_terminals():
-            # in any case, set the profile
-            # as 0-1 matrix
-            leaf.joint_seq_profile = seq_utils.seq2prof(leaf.sequence, self.gtr.profile_map)
-            leaf.joint_seq_lh_prefactor = np.zeros(L)
-        
-        # propagate leaves -->> root, set the joint-likelihood messages
-        for node in self.tree.get_nonterminals(order='postorder'): 
-            # regardless of what was before, set the profile to ones
-            node.joint_seq_lh_prefactor = np.zeros(L)
-            node.joint_seq_profile = np.ones((L, n_states)) # we will multiply it
-            for ch in node.clades:
-                # we do the same thing as for the marginal, but substitute the function 
-                # propagate profile from GTR to the overriden nested one
-                ch.seq_msg_to_parent = propagate_profile(ch.joint_seq_profile,
-                    self._branch_length_to_gtr(ch), return_log=False) # raw prob to transfer prob up
-                node.joint_seq_profile *= ch.seq_msg_to_parent
-                node.joint_seq_lh_prefactor += ch.joint_seq_lh_prefactor
+            branch_len = self._branch_length_to_gtr(leaf)
+            # we do not use profiles, just string of indices -- to save space
+            characters = seq_utils.seq2prof(leaf.sequence, self.gtr.profile_map).argmax(1) # indices
+            # get the transition matrix
+            eQt = np.log(self.gtr.expQt(branch_len))
+            # compute the likelihood of having the "characters"  states at the terminal node
+            # conditional on the parental state.
+            # NOTE eQT is transposed, see definition in gtr class
+            leaf.joint_Lx = (eQt.T [:, characters]).T
+            # the reconstructed sequences will be the observed ones regardless on the
+            # conditioning - addign them right now.
+            leaf.joint_Cx = characters
 
-            pre = node.joint_seq_profile.max(axis=1) #sum over nucleotide states
-            node.joint_seq_profile = (node.joint_seq_profile.T/pre).T # normalize so that the sum is 1
-            node.joint_seq_lh_prefactor += np.log(pre) # and store log-prefactor
+        # for the internal nodes, scan over all states j of this node, maximize the likelihood
+        for node in self.tree.find_clades(order='postorder'):
+            if node.is_terminal(): continue # already done
+            if node.up is None: continue # root processed after
+
+            #  all internal nodes
+            # preallocate storage
+            node.joint_Lx = np.zeros((L, n_states))
+            node.joint_Cx = np.zeros((L, n_states), dtype=int)
+            branch_len = self._branch_length_to_gtr(node)
+            # transition matrix from parent states to the current node states.
+            # denoted as Pij(i), where j - parent state, i - node state
+            eQt = np.log(self.gtr.expQt(branch_len))
+
+            # Product (sum-Log) over all child subtree likelihoods.
+            # this is prod_ch L_x(i)
+            msg_from_children = np.sum(np.stack([c.joint_Lx for c in node.clades], axis = 0), axis=0)
+
+            # for every possible state of the parent node,
+            # get the best state of the current node
+            # and compute the likelihood of this state
+            for char_i, char in enumerate(self.gtr.alphabet):
+                # Pij(i) * L_ch(i) for given parent state j
+                msg_to_parent = (eQt.T[char_i, :] + msg_from_children)
+                # For this parent state, choose the best state of the current node:
+                node.joint_Cx[:, char_i] = msg_to_parent.argmax(1)
+                # compute the likelihood of the best state of the current node
+                # given the state of the parent (char_i)
+                node.joint_Lx[:, char_i] = msg_to_parent.max(1)
+
+        # root node profile = likelihood of the total tree
+        msg_from_children = np.sum(np.stack([c.joint_Lx for c in self.tree.root.clades], axis = 0), axis=0)
+        # Pi(i) * Prod_ch Lch(i)
+        self.tree.root.joint_Lx = msg_from_children + np.log(self.gtr.Pi)
+
+        # compute the likelihood of the most probable root sequence
+        self.tree.root.seq_LH = self.tree.root.joint_Lx.max(1)
+        # and get this sequence
+        self.tree.root.seq_idx = self.tree.root.joint_Lx.argmax(1)
+        self.tree.root.sequence = np.choose(self.tree.root.seq_idx, self.gtr.alphabet)
 
 
-        self.logger("ML reconstruction-joint: Walking down the tree, computing "
-            "maximum likelihood sequences...",3)
-
-        # reconstruct the root node sequence
-        self.tree.root.joint_seq_profile *= self.gtr.Pi # Msg to the root from the distant part (equ frequencies)
-        pre=self.tree.root.joint_seq_profile.sum(axis=1)
-        self.tree.root.joint_seq_profile = (self.tree.root.joint_seq_profile.T/pre).T
-        self.tree.root.joint_seq_lh_prefactor += np.log(pre)
-
-        
-        # reset profile to 0-1 and set the sequence
-        tmp_sample = True if sample_from_profile=='root' else sample_from_profile
-        self.tree.root.sequence, profile = \
-            seq_utils.prof2seq(self.tree.root.joint_seq_profile, self.gtr, 
-                               sample_from_prof=tmp_sample,
-                               collapse_prof=True)
-
-        self.tree.root.seq_msg_from_parent = np.repeat([self.gtr.Pi], L, axis=0)
-        
-        self.tree.joint_seq_LH = self.tree.root.joint_seq_lh_prefactor.sum() + \
-            np.log((self.tree.root.joint_seq_profile * profile).sum(1)).sum()
-
-
-        tmp_sample = False if sample_from_profile=='root' else sample_from_profile
-        # propagate root -->> leaves, reconstruct the internal node sequences
+        # for each node, resolve the conditioning on the parent node
         for node in self.tree.find_clades(order='preorder'):
-            if node.up is None: # skip if node is root
+
+            # root node has no mutations, everything else has been alread y set
+            if node.up is None:
+                node.mutations = []
                 continue
-            
-            node.seq_msg_from_parent = propagate_profile(node.up.joint_seq_profile,
-                                            self._branch_length_to_gtr(node), 
-                                            return_log=False)
-            
-            
-            node.joint_seq_profile *= node.seq_msg_from_parent
-            
-            # reset the profile to 0-1 and  set the sequence
-            sequence, profile = seq_utils.prof2seq(node.joint_seq_profile, self.gtr,
-                sample_from_prof=tmp_sample, collapse_prof=True)
 
-            node.mutations = [(anc, pos, der) for pos, (anc, der) in
-                            enumerate(izip(node.up.sequence, sequence)) if anc!=der]
+            # set mutations of the terminal nodes, nothing else
+            if node.is_terminal():
+                node.mutations = [(anc, pos, der) for pos, (anc, der) in
+                            enumerate(izip(node.up.sequence, node.sequence)) if anc!=der]
+                continue
 
-            
+            # choose the value of the Cx(i), corresponding to the state of the
+            # parent node i. This is the state of the current node
+            node.seq_idx = np.choose(node.up.seq_idx, node.joint_Cx.T)
 
+            # reconstruct seq, etc
+            tmp_sequence = np.choose(node.seq_idx, self.gtr.alphabet)
             if hasattr(node, 'sequence') and node.sequence is not None:
                 N_diff += (sequence!=node.sequence).sum()
             else:
                 N_diff += L
 
-            node.sequence = sequence
-            
+            node.sequence = tmp_sequence
+            node.mutations = [(anc, pos, der) for pos, (anc, der) in
+                            enumerate(izip(node.up.sequence, node.sequence)) if anc!=der]
 
-        # note that the root doesn't contribute to N_diff (intended, since root sequence is often ambiguous)
-        self.logger("TreeAnc._ml_anc_joint: ...done", 3)
-        #if store_compressed:
-        #    self.store_compressed_sequence_pairs()
+
         return N_diff
-        
 
     def store_compressed_sequence_to_node(self, node):
             seq_pairs, multiplicity = self.gtr.compress_sequence_pair(node.up.sequence,
@@ -716,7 +703,7 @@ class TreeAnc(object):
 
     def optimize_sequences_and_branch_length(self,*args, **kwargs):
         self.optimize_seq_and_branch_len(*args,**kwargs)
-    
+
     def optimize_seq_and_branch_len(self,reuse_branch_len=True,prune_short=True,
                                     max_iter=5, infer_gtr=False, **kwargs):
         """
@@ -783,14 +770,14 @@ class TreeAnc(object):
         return new_aln
 
 if __name__=="__main__":
-    
+
 
     import matplotlib.pyplot as plt
     import seaborn as sns
     sns.set_style('whitegrid')
     from Bio import Phylo
     plt.ion()
-    
+
     from StringIO import StringIO
     from Bio import Phylo,AlignIO
 
@@ -801,7 +788,7 @@ if __name__=="__main__":
                                      ">D\nAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTT\n"
                                      ">E\nACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT\n"), 'fasta')
 
-    mygtr = GTR.custom(alphabet = np.array(['A', 'C', 'G', 'T']), pi = np.array([0.25, 0.25, 0.25, 0.25]), W=np.ones((4,4)))
+    mygtr = GTR.custom(alphabet = np.array(['A', 'C', 'G', 'T']), pi = np.array([0.25, 0.95, 0.005, 0.05]), W=np.ones((4,4)))
 
     myTree = TreeAnc(gtr=mygtr, tree = tiny_tree,
                         aln =tiny_aln, verbose = 4)
