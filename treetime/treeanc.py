@@ -550,8 +550,7 @@ class TreeAnc(object):
         msg_from_children = np.sum(np.stack([c.joint_Lx for c in self.tree.root.clades], axis = 0), axis=0)
         # Pi(i) * Prod_ch Lch(i)
         self.tree.root.joint_Lx = msg_from_children + np.log(self.gtr.Pi)
-        normalized_profile = self.tree.root.joint_Lx - self.tree.root.joint_Lx.max(axis=1)
-
+        normalized_profile = (self.tree.root.joint_Lx.T - self.tree.root.joint_Lx.max(axis=1)).T
 
         seq, anc_lh_vals, idxs = seq_utils.prof2seq(np.exp(normalized_profile), self.gtr, sample_from_profile)
         # compute the likelihood of the most probable root sequence
