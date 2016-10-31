@@ -114,19 +114,22 @@ class TreeAnc(object):
 
     def attach_sequences_to_nodes(self):
         # loop over tree,
-        failed_leaves= 0
+        failed_leaves = 0
         dic_aln = {k.name: seq_utils.seq2array(k.seq) for k in self.aln} #
         for l in self.tree.find_clades():
             if l.name in dic_aln:
                 l.state_seq = dic_aln[l.name]
                 l.sequence=l.state_seq
-            else:
+            elif l.is_terminal():
                 self.logger("TreeAnc.attach_sequences_to_nodes: Cannot find sequence for leaf: %s" % l.name, 4, warn=True)
                 failed_leaves += 1
-                if failed_leaves == 100:
-                    self.logger("Error: cannot set sequences to the terminal nodes.\n", 2, warn=True)
+                if failed_leaves > self.tree.count_terminals() / 3:
+                    self.logger("Error: At least 30\\% terminal nodes cannot be assigned with a sequence!\n", 2, warn=True)
                     self.logger("Are you sure the alignment belongs to the tree?", 2, warn=True)
                     break
+            else: # could not assign sequence for internal node - is OK
+                pass
+
         self.seq_len = self.aln.get_alignment_length()
         self.one_mutation = 1.0/self.seq_len
 
@@ -168,20 +171,14 @@ class TreeAnc(object):
 ## END SET-UP
 ####################################################################
 
-    def infer_gtr(self, print_raw=False, **kwargs):
+    def infer_gtr(self, print_raw=False, marginal=False, **kwargs):
 
         # decide which type of the Maximum-likelihood reconstruction use
         # (marginal) or (joint)
-        if 'type' not in kwargs:
-            self.logger("TreeAnc.infer_gtr: Type of Maximum-likelihood seequence reconstruction "
-                    "not specified ('marginal' or 'joint')"
-                    ". Using default 'marginal'")
+        if marginal:
             _ml_anc = self._ml_anc_marginal
-        elif kwargs['type'] == 'marginal':
-            _ml_anc = self._ml_anc_marginal
-        elif kwargs['type'] == 'joint':
+        else:
             _ml_anc = self._ml_anc_joint
-
 
         self.logger("TreeAnc inferring the GTR model from the tree...", 1)
         _ml_anc(**kwargs) # call one of the reconstruction types
@@ -215,7 +212,7 @@ class TreeAnc(object):
     def infer_ancestral_sequences(self,*args, **kwargs):
         self.reconstruct_anc(*args,**kwargs)
 
-    def reconstruct_anc(self, method='ml', infer_gtr=False, **kwargs):
+    def reconstruct_anc(self, method='ml', infer_gtr=False, marginal=False, **kwargs):
         """
         Reconstruct ancestral states
         Args:
@@ -229,29 +226,15 @@ class TreeAnc(object):
         self.logger("TreeAnc.infer_ancestral_sequences: method: " + method, 1)
 
         if method == 'ml':
-            if 'type' not in kwargs:
-                self.logger("TreeAnc.infer_ancestral_sequences: ML method requested, but  "
-                    "type of reconstruction not specified ('marginal' or 'joint')"
-                    ". Using default 'marginal'", 1, warn=True)
-                rec_type = 'marginal'
+            if marginal:
                 _ml_anc = self._ml_anc_marginal
-
-            elif kwargs['type'] == 'marginal':
-                rec_type = 'marginal'
-                _ml_anc = self._ml_anc_marginal
-
-            elif kwargs['type'] == 'joint':
-                rec_type = 'joint'
-                _ml_anc = self._ml_anc_joint
             else:
-                raise Exception("Unknown ML reconstruction type. Expected "
-                    "'marginal' or 'joint', got " + str(kwargs['type']))
+                _ml_anc = self._ml_anc_joint
         else:
             _ml_anc = self._fitch_anc
 
-
         if infer_gtr:
-            self.infer_gtr(**kwargs)
+            self.infer_gtr(marginal=marginal, **kwargs)
             N_diff = _ml_anc(**kwargs)
         else:
             N_diff = _ml_anc(**kwargs)
@@ -559,25 +542,12 @@ class TreeAnc(object):
         # Pi(i) * Prod_ch Lch(i)
         self.tree.root.joint_Lx = msg_from_children + np.log(self.gtr.Pi)
 
+
+        seq, anc_lh_vals, idxs = seq_utils.prof2seq(np.exp(self.tree.root.joint_Lx), self.gtr, sample_from_profile)
         # compute the likelihood of the most probable root sequence
-        self.tree.sequence_LH = self.tree.root.joint_Lx.max(axis = 1)
-
-        # assign  sequence to the root node
-        if sample_from_profile: # value could be either 'root' or True
-
-            profile = self.tree.root.joint_Lx
-            cumdis = profile.cumsum(axis=1).T
-            randnum = np.random.random(size=cumdis.shape[1])
-            idx = np.argmax(cumdis>=randnum, axis=0) # random sample indices
-            # assign sequence to the root node
-            self.tree.root.sequence = self.gtr.alphabet[idx]
-
-        else: # use argmax
-            # compute the likelihood of the most probable root sequence
-            self.tree.sequence_LH = self.tree.root.joint_Lx.max(axis = 1)
-            # get the most probable states from the LH-profile and assign the sequence to the root node
-            self.tree.root.seq_idx = self.tree.root.joint_Lx.argmax(axis = 1)
-            self.tree.root.sequence = np.choose(self.tree.root.seq_idx, self.gtr.alphabet)
+        self.tree.sequence_LH = anc_lh_vals
+        self.tree.root.sequence = seq
+        self.tree.root.seq_idx = idxs
 
         self.logger("TreeAnc._ml_anc_joint: Walking down the tree, computing maximum likelihood sequences...",3)
         # for each node, resolve the conditioning on the parent node
@@ -602,9 +572,6 @@ class TreeAnc(object):
             node.mutations = [(anc, pos, der) for pos, (anc, der) in
                             enumerate(izip(node.up.sequence, node.sequence)) if anc!=der]
 
-            #clean-up
-            del node.joint_Lx
-            del node.joint_Cx
 
         if store_compressed:
             self.store_compressed_sequence_pairs()
@@ -613,6 +580,7 @@ class TreeAnc(object):
         if not debug:
             del node.joint_Lx
             del node.joint_Cx
+            del node.seq_idx
 
         return N_diff
 
@@ -790,7 +758,7 @@ class TreeAnc(object):
             self.optimize_branch_len(verbose=0, store_old=False)
 
         self._prepare_nodes() # fix dist2root and up-links after reconstruction
-        self.logger("TreeAnc.optimize_sequences_and_branch_length: Unconstrained sequence LH:%f"%self.tree.sequence_LH, 2)
+        self.logger("TreeAnc.optimize_sequences_and_branch_length: Unconstrained sequence LH:%f" % self.tree.sequence_LH.sum() , 2)
         return
 
 ###############################################################################
