@@ -34,13 +34,12 @@ def test_ancestral():
     fasta = str(os.path.join(root_dir, '../data/H3N2_NA_allyears_NA.20.fasta'))
     nwk = str(os.path.join(root_dir, '../data/H3N2_NA_allyears_NA.20.nwk'))
 
-    print('loading flu example')
-    t = TreeAnc(gtr='Jukes-Cantor', tree=nwk, aln=fasta)
-
-    print('ancestral reconstruction')
-    t.reconstruct_anc(method='ml')
-
-    assert "".join(t.tree.root.sequence) == 'ATGAATCCAAATCAAAAGATAATAACGATTGGCTCTGTTTCTCTCACCATTTCCACAATATGCTTCTTCATGCAAATTGCCATCTTGATAACTACTGTAACATTGCATTTCAAGCAATATGAATTCAACTCCCCCCCAAACAACCAAGTGATGCTGTGTGAACCAACAATAATAGAAAGAAACATAACAGAGATAGTGTATCTGACCAACACCACCATAGAGAAGGAAATATGCCCCAAACCAGCAGAATACAGAAATTGGTCAAAACCGCAATGTGGCATTACAGGATTTGCACCTTTCTCTAAGGACAATTCGATTAGGCTTTCCGCTGGTGGGGACATCTGGGTGACAAGAGAACCTTATGTGTCATGCGATCCTGACAAGTGTTATCAATTTGCCCTTGGACAGGGAACAACACTAAACAACGTGCATTCAAATAACACAGTACGTGATAGGACCCCTTATCGGACTCTATTGATGAATGAGTTGGGTGTTCCTTTTCATCTGGGGACCAAGCAAGTGTGCATAGCATGGTCCAGCTCAAGTTGTCACGATGGAAAAGCATGGCTGCATGTTTGTATAACGGGGGATGATAAAAATGCAACTGCTAGCTTCATTTACAATGGGAGGCTTGTAGATAGTGTTGTTTCATGGTCCAAAGAAATTCTCAGGACCCAGGAGTCAGAATGCGTTTGTATCAATGGAACTTGTACAGTAGTAATGACTGATGGAAGTGCTTCAGGAAAAGCTGATACTAAAATACTATTCATTGAGGAGGGGAAAATCGTTCATACTAGCACATTGTCAGGAAGTGCTCAGCATGTCGAAGAGTGCTCTTGCTATCCTCGATATCCTGGTGTCAGATGTGTCTGCAGAGACAACTGGAAAGGCTCCAATCGGCCCATCGTAGATATAAACATAAAGGATCATAGCATTGTTTCCAGTTATGTGTGTTCAGGACTTGTTGGAGACACACCCAGAAAAAACGACAGCTCCAGCAGTAGCCATTGTTTGGATCCTAACAATGAAGAAGGTGGTCATGGAGTGAAAGGCTGGGCCTTTGATGATGGAAATGACGTGTGGATGGGAAGAACAATCAACGAGACGTCACGCTTAGGGTATGAAACCTTCAAAGTCATTGAAGGCTGGTCCAACCCTAAGTCCAAATTGCAGATAAATAGGCAAGTCATAGTTGACAGAGGTGATAGGTCCGGTTATTCTGGTATTTTCTCTGTTGAAGGCAAAAGCTGCATCAATCGGTGCTTTTATGTGGAGTTGATTAGGGGAAGAAAAGAGGAAACTGAAGTCTTGTGGACCTCAAACAGTATTGTTGTGTTTTGTGGCACCTCAGGTACATATGGAACAGGCTCATGGCCTGATGGGGCGGACCTCAATCTCATGCCTATA'
+    for marginal in [True, False]:
+        print('loading flu example')
+        t = TreeAnc(gtr='Jukes-Cantor', tree=nwk, aln=fasta)
+        print('ancestral reconstruction' + ("marginal" if marginal else "joint"))
+        t.reconstruct_anc(method='ml', marginal=marginal)
+        assert "".join(t.tree.root.sequence) == 'ATGAATCCAAATCAAAAGATAATAACGATTGGCTCTGTTTCTCTCACCATTTCCACAATATGCTTCTTCATGCAAATTGCCATCTTGATAACTACTGTAACATTGCATTTCAAGCAATATGAATTCAACTCCCCCCCAAACAACCAAGTGATGCTGTGTGAACCAACAATAATAGAAAGAAACATAACAGAGATAGTGTATCTGACCAACACCACCATAGAGAAGGAAATATGCCCCAAACCAGCAGAATACAGAAATTGGTCAAAACCGCAATGTGGCATTACAGGATTTGCACCTTTCTCTAAGGACAATTCGATTAGGCTTTCCGCTGGTGGGGACATCTGGGTGACAAGAGAACCTTATGTGTCATGCGATCCTGACAAGTGTTATCAATTTGCCCTTGGACAGGGAACAACACTAAACAACGTGCATTCAAATAACACAGTACGTGATAGGACCCCTTATCGGACTCTATTGATGAATGAGTTGGGTGTTCCTTTTCATCTGGGGACCAAGCAAGTGTGCATAGCATGGTCCAGCTCAAGTTGTCACGATGGAAAAGCATGGCTGCATGTTTGTATAACGGGGGATGATAAAAATGCAACTGCTAGCTTCATTTACAATGGGAGGCTTGTAGATAGTGTTGTTTCATGGTCCAAAGAAATTCTCAGGACCCAGGAGTCAGAATGCGTTTGTATCAATGGAACTTGTACAGTAGTAATGACTGATGGAAGTGCTTCAGGAAAAGCTGATACTAAAATACTATTCATTGAGGAGGGGAAAATCGTTCATACTAGCACATTGTCAGGAAGTGCTCAGCATGTCGAAGAGTGCTCTTGCTATCCTCGATATCCTGGTGTCAGATGTGTCTGCAGAGACAACTGGAAAGGCTCCAATCGGCCCATCGTAGATATAAACATAAAGGATCATAGCATTGTTTCCAGTTATGTGTGTTCAGGACTTGTTGGAGACACACCCAGAAAAAACGACAGCTCCAGCAGTAGCCATTGTTTGGATCCTAACAATGAAGAAGGTGGTCATGGAGTGAAAGGCTGGGCCTTTGATGATGGAAATGACGTGTGGATGGGAAGAACAATCAACGAGACGTCACGCTTAGGGTATGAAACCTTCAAAGTCATTGAAGGCTGGTCCAACCCTAAGTCCAAATTGCAGATAAATAGGCAAGTCATAGTTGACAGAGGTGATAGGTCCGGTTATTCTGGTATTTTCTCTGTTGAAGGCAAAAGCTGCATCAATCGGTGCTTTTATGTGGAGTTGATTAGGGGAAGAAAAGAGGAAACTGAAGTCTTGTGGACCTCAAACAGTATTGTTGTGTTTTGTGGCACCTCAGGTACATATGGAACAGGCTCATGGCCTGATGGGGCGGACCTCAATCTCATGCCTATA'
 
     print('testing LH normalization')
     from StringIO import StringIO
@@ -52,8 +51,8 @@ def test_ancestral():
 
     mygtr = GTR.custom(alphabet = np.array(['A', 'C', 'G', 'T']), pi = np.array([0.9, 0.06, 0.02, 0.02]), W=np.ones((4,4)))
     t = TreeAnc(gtr=mygtr, tree=tiny_tree, aln=tiny_aln)
-    t.reconstruct_anc('ml', marginal=True, debug=True, type='marginal')
-    lhsum =  ((t.tree.root.marginal_Lx).sum(axis=1) * np.exp(t.tree.root.marginal_Lx_prefactor)).sum()
+    t.reconstruct_anc('ml', marginal=True, debug=True)
+    lhsum =  (t.tree.root.marginal_profile.sum(axis=1) * np.exp(t.tree.root.marginal_subtree_LH_prefactor)).sum()
     print (lhsum)
     assert(np.abs(lhsum-1.0)<1e-6)
 
@@ -83,7 +82,8 @@ def test_seq_joint_reconstruction_correct():
         return list(set(a) - set(b))
 
     tiny_tree = Phylo.read(StringIO("((A:.060,B:.01200)C:.060,D:.0050)E:.004;"), 'newick')
-    mygtr = GTR.custom(alphabet = np.array(['A', 'C', 'G', 'T']), pi = np.array([0.15, 0.95, 0.05, 0.3]), W=np.ones((4,4)))
+    mygtr = GTR.custom(alphabet = np.array(['A', 'C', 'G', 'T']),
+                       pi = np.array([0.15, 0.95, 0.05, 0.3]), W=np.ones((4,4)))
     seq = np.random.choice(mygtr.alphabet, p=mygtr.Pi, size=400)
 
 
@@ -102,20 +102,17 @@ def test_seq_joint_reconstruction_correct():
         p = mygtr.propagate_profile( seq_utils.seq2prof(node.up.ref_seq, mygtr.profile_map), t)
         # normalie profile
         p=(p.T/p.sum(axis=1)).T
-        # smaple mutations randomly
+        # sample mutations randomly
         ref_seq_idxs = np.array([int(np.random.choice(np.arange(p.shape[1]), p=p[k])) for k in np.arange(p.shape[0])])
-        # sample by most-likely
-        ref_seq_idxs_ref = p.argmax(axis = 1)
 
-        ref_seq = np.array([mygtr.alphabet[k] for k in ref_seq_idxs_ref])
-        node.ref_seq = ref_seq
+        node.ref_seq = np.array([mygtr.alphabet[k] for k in ref_seq_idxs])
 
         node.ref_mutations = [(anc, pos, der) for pos, (anc, der) in
-                            enumerate(izip(node.up.ref_seq, ref_seq)) if anc!=der]
+                            enumerate(izip(node.up.ref_seq, node.ref_seq)) if anc!=der]
 
         print (node.name, len(node.ref_mutations), node.ref_mutations)
 
-    # set as the starting sequencees to the terminal nodes:
+    # set as the starting sequences to the terminal nodes:
     alnstr = ""
     i = 1
     for leaf in tree.get_terminals():
@@ -128,23 +125,17 @@ def test_seq_joint_reconstruction_correct():
     myTree._ml_anc_joint(debug=True)
 
     for node in myTree.tree.find_clades():
+        if node.up is not None:
+            assert np.sum(node.sequence != node.ref_seq)==0
         print (node.name, str(np.sum(node.sequence != node.ref_seq)), len(node.mutations), node.mutations)
 
     # prove the likelihood valu calculation is correct
     LH = myTree.ancestral_likelihood()
     LH_p = (myTree.tree.sequence_LH)
 
-    print ((LH - LH_p).sum())
-    #print(abs(LH.sum() - myTree.tree.joint_seq_LH) )
+    print ("Difference between reference and inferred LH:", (LH - LH_p).sum())
+    assert ((LH - LH_p).sum())<1e-9
 
-
-    #muts = [(anc, pos, der) for pos, (anc, der) in
-    #    enumerate(izip(dn.sequence, cn.sequence)) if anc!=der]
-#
-#    #ref = [(anc, pos, der) for pos, (anc, der) in
-#    #    enumerate(izip(dn.ref_seq, cn.ref_seq)) if anc!=der]
-#
-    Phylo.draw(tiny_tree)
     return myTree
 
 
@@ -188,7 +179,7 @@ def test_seq_joint_lh_is_max():
                                          ">E\nACGTACGTACGTACGT\n"), 'fasta')
 
         myTree = TreeAnc(gtr=mygtr, tree = tiny_tree,
-                            aln =tiny_aln, verbose = 4)
+                         aln =tiny_aln, verbose = 4)
 
         logLH_ref = myTree.ancestral_likelihood()
 
@@ -207,7 +198,7 @@ def test_seq_joint_lh_is_max():
         myTree_1 = TreeAnc(gtr=mygtr, tree = tiny_tree,
                             aln=tiny_aln_1, verbose = 4)
 
-        myTree_1.reconstruct_anc(method='ml', type='joint', debug=True)
+        myTree_1.reconstruct_anc(method='ml', marginal=False, debug=True)
         logLH = myTree_1.tree.sequence_LH
         return logLH
 
