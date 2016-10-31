@@ -435,18 +435,23 @@ class TreeAnc(object):
         tree.root.marginal_profile = (tree.root.marginal_subtree_LH.T/pre).T
         tree.root.marginal_subtree_LH_prefactor += np.log(pre)
 
-        # choose sequence characters from this profile
+        # choose sequence characters from this profile.
+        # treat root node differently to avoid piling up mutations on the longer branch
+        if sample_from_profile=='root':
+            root_sample_from_profile = True
+            other_sample_from_profile = False
+        elif isinstance(sample_from_profile, bool):
+            root_sample_from_profile = sample_from_profile
+            other_sample_from_profile = sample_from_profile
+
         seq, prof_vals, idxs = seq_utils.prof2seq(tree.root.marginal_profile,
-                                                  self.gtr, sample_from_prof=bool(sample_from_profile))
+                                                  self.gtr, sample_from_prof=root_sample_from_profile)
 
         self.tree.sequence_LH = np.log(prof_vals) + tree.root.marginal_subtree_LH_prefactor
         self.tree.root.sequence = seq
 
-        # need this fake msg to account for the complemntary subtree when traversing tree back
+        # need this fake msg to account for the complementary subtree when traversing tree back
         tree.root.seq_msg_from_parent = np.repeat([self.gtr.Pi], len(tree.root.sequence), axis=0)
-
-        # bool and True, otherwise - False (sample=='root' should be False)
-        tmp_sample = sample_from_profile and isinstance(sample_from_profile, bool)
 
         self.logger("Walking down the tree, computing maximum likelihood sequences...",3)
         # propagate root -->> leaves, reconstruct the internal node sequences
@@ -454,9 +459,9 @@ class TreeAnc(object):
         for node in tree.find_clades(order='preorder'):
             if node.up is None: # skip if node is root
                 continue
+
             # integrate the information coming from parents with the information
             # of all children my multiplying it to the prev computed profile
-
             tmp_msg = np.copy(node.up.seq_msg_from_parent)
             for c in node.up.clades:
                 if c != node:
@@ -465,8 +470,9 @@ class TreeAnc(object):
                                             self._branch_length_to_gtr(node), return_log=False)
             node.marginal_profile = node.marginal_subtree_LH * node.seq_msg_from_parent
 
-            # reset the profile to 0-1 and  set the sequence
-            seq, prof_vals, idxs = seq_utils.prof2seq(node.marginal_profile, self.gtr, sample_from_prof=tmp_sample)
+            # choose sequence based maximal marginal LH. THIS NORMALIZES marginal_profile in place
+            seq, prof_vals, idxs = seq_utils.prof2seq(node.marginal_profile, self.gtr,
+                                                      sample_from_prof=other_sample_from_profile)
             node.mutations = [(anc, pos, der) for pos, (anc, der) in
                             enumerate(izip(node.up.sequence, seq)) if anc!=der]
 
@@ -474,14 +480,13 @@ class TreeAnc(object):
                 N_diff += (seq!=node.sequence).sum()
             else:
                 N_diff += L
-
+            #assign new sequence
             node.sequence = seq
 
         # note that the root doesn't contribute to N_diff (intended, since root sequence is often ambiguous)
         self.logger("TreeAnc._ml_anc_marginal: ...done", 3)
         if store_compressed:
             self.store_compressed_sequence_pairs()
-
 
         # do clean-up:
         if not debug:
@@ -552,7 +557,16 @@ class TreeAnc(object):
         self.tree.root.joint_Lx = msg_from_children + np.log(self.gtr.Pi)
         normalized_profile = (self.tree.root.joint_Lx.T - self.tree.root.joint_Lx.max(axis=1)).T
 
-        seq, anc_lh_vals, idxs = seq_utils.prof2seq(np.exp(normalized_profile), self.gtr, sample_from_profile)
+        # choose sequence characters from this profile.
+        # treat root node differently to avoid piling up mutations on the longer branch
+        if sample_from_profile=='root':
+            root_sample_from_profile = True
+        elif isinstance(sample_from_profile, bool):
+            root_sample_from_profile = sample_from_profile
+
+        seq, anc_lh_vals, idxs = seq_utils.prof2seq(np.exp(normalized_profile),
+                                                    self.gtr, root_sample_from_profile)
+
         # compute the likelihood of the most probable root sequence
         self.tree.sequence_LH = np.choose(idxs, self.tree.root.joint_Lx.T)
         self.tree.root.sequence = seq

@@ -69,9 +69,7 @@ def seq2prof(x, profile_map):
 
 def prof2seq(profile, gtr, sample_from_prof=False):
     """
-    Convert profile to sequence and, if requested, set the profile values (LH of
-    the characters) to zeros and ones essentially converting the character
-    distribution to the delta-function.
+    Convert profile to sequence and normalize profile across sites.
 
     Args:
      - profile(numpy 2D array): profile. Shape of the profile should be
