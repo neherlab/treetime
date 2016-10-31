@@ -125,13 +125,13 @@ class ClockTree(TreeAnc):
                 node.msg_to_parent = None
 
 
-    def make_time_tree(self):
+    def make_time_tree(self, **kwargs):
         '''
         use the date constraints to calculate the most likely positions of
         unconstraint nodes.
         '''
         self.logger("ClockTree: Maximum likelihood tree optimization with temporal constraints:",1)
-        self.init_date_constraints()
+        self.init_date_constraints(**kwargs)
         self._ml_t_leaves_root()
         self._ml_t_root_leaves()
         self._set_final_dates()
@@ -367,8 +367,8 @@ if __name__=="__main__":
                         aln = base_name+'.fasta', verbose = 6, dates = dates)
 
     myTree.optimize_seq_and_branch_len(prune_short=True)
-    myTree.init_date_constraints()
-    myTree.make_time_tree()
+    # fix slope -- to test
+    myTree.make_time_tree(slope=0.003)
 
     plt.figure()
     x = np.linspace(0,0.05,100)
