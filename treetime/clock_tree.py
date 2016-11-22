@@ -5,7 +5,7 @@ from treeanc import TreeAnc
 from distribution import Distribution
 from branch_len_interpolator import BranchLenInterpolator
 from node_interpolator import NodeInterpolator
-
+import collections
 
 class ClockTree(TreeAnc):
     """
@@ -110,35 +110,39 @@ class ClockTree(TreeAnc):
                                 ", excluding it from the optimization process"
                                 " Will be optimized freely", 4, warn=True)
                     # if there are no constraints - log_prob will be set on-the-fly
-                    node.msg_to_parent = None
+                    node.msg_from_children = None
                 else:
                     if np.isscalar(node.numdate_given):
-                        node.msg_to_parent = NodeInterpolator.delta_function(node.time_before_present, weight=1)
+                        node.msg_from_children = NodeInterpolator.delta_function(node.time_before_present, weight=1)
                     else:
-                        node.msg_to_parent = NodeInterpolator(node.time_before_present,
+                        node.msg_from_children = NodeInterpolator(node.time_before_present,
                                                               np.ones_like(node.time_before_present), is_log=False)
 
             else: # node without sampling date set
                 node.numdate_given = None
                 node.time_before_present = None
                 # if there are no constraints - log_prob will be set on-the-fly
-                node.msg_to_parent = None
+                node.msg_from_children = None
 
 
-    def make_time_tree(self, **kwargs):
+    def make_time_tree(self, do_marginal=False, **kwargs):
         '''
         use the date constraints to calculate the most likely positions of
         unconstraint nodes.
         '''
         self.logger("ClockTree: Maximum likelihood tree optimization with temporal constraints:",1)
         self.init_date_constraints(**kwargs)
-        self._ml_t_leaves_root()
-        self._ml_t_root_leaves()
-        self._set_final_dates()
+
+        self._ml_t_joint()
+
+        if do_marginal:
+            self._ml_t_marginal()
+
+        #self._set_final_dates()
         self.convert_dates()
 
 
-    def _ml_t_leaves_root(self):
+    def _ml_t_joint(self):
         """
         Compute the probability distribution of the internal nodes positions by
         propagating from the tree leaves towards the root. The result of
@@ -160,40 +164,101 @@ class ClockTree(TreeAnc):
            root.
 
         """
-        def _send_message(node, **kwargs):
-            """
-            Calc the desired LH distribution of the parent
-            """
-            if node.msg_to_parent.is_delta:
-                res = Distribution.shifted_x(node.branch_length_interpolator, node.msg_to_parent.peak_pos)
-            else: # convolve two distributions
-                res =  NodeInterpolator.convolve(node.msg_to_parent,
-                            node.branch_length_interpolator, n_integral=self.n_integral,
-                            rel_tol=self.rel_tol_refine)
-            self.logger("ClockTree._ml_t_leaves_root._send_message: "
-                        "computed convolution with %d points at node %s"%(len(res.x),node.name),4)
-            return res
 
         self.logger("ClockTree: Propagating leaves -> root...", 2)
         # go through the nodes from leaves towards the root:
         for node in self.tree.find_clades(order='postorder'):  # children first, msg to parents
-            if node.is_terminal():
-                node.msgs_from_leaves = {}
-            else:
-                # save all messages from the children nodes with constraints
-                # store as dictionary to exclude nodes from the set when necessary
-                # (see below)
-                node.msgs_from_leaves = {clade: _send_message(clade) for clade in node.clades
-                                                if clade.msg_to_parent is not None}
 
-                if len(node.msgs_from_leaves) < 1:  # we need at least one constraint
-                    continue
-                # this is what the node sends to the parent
-                node.msg_to_parent = NodeInterpolator.multiply(node.msgs_from_leaves.values())
-                node.msg_to_parent._adjust_grid(rel_tol=self.rel_tol_prune)
+            if node.is_terminal(): # terminal nodes
+
+                # initialize the Lx for the terminal nodes:
+                if node.msg_from_children.is_delta: # there is a time contraint
+                    # subtree probability given the position of the parent node
+                    # position of the parent node is given by the Lx.x
+                    # probablity of the subtree (consiting of one terminal node)
+                    # is given by the Lx.y
+                    node.joint_pos_Lx = Distribution.shifted_x(node.branch_length_interpolator, node.msg_from_children.peak_pos)
+                    node.joint_Cx = Distribution (node.msg_from_children.peak_pos + node.branch_length_interpolator.x, node.branch_length_interpolator.x) # only one value
+
+                else:
+                    # node send "No message" - its position is assumed from the
+                    # position of the parent node
+                    node.joint_pos_Lx = None
+                    node.joint_Cx = None
+
+            elif node.up is not None: # all internal nodes, except root
+
+                # subtree likelihood given the node's position Ta:
+                msg_from_children = Distribution.multiply([child.joint_pos_Lx for child in node.clades
+                                                        if child.joint_pos_Lx is not None])
+
+                res, res_t = NodeInterpolator.convolve(msg_from_children,
+                                node.branch_length_interpolator,
+                                max_or_integral='max',
+                                inverse_time=True,
+                                n_integral=self.n_integral,
+                                rel_tol=self.rel_tol_refine)
+
+                res._adjust_grid(rel_tol=self.rel_tol_prune)
+
+                node.joint_pos_Lx = res
+                node.joint_Cx = res_t
+
+            else: # root node is processed separately (has no condition on the parent)
+
+                # probability of the subtree given the root position is defined by the
+                # msg_from_children.x
+                msg_from_children = Distribution.multiply([child.joint_pos_Lx for child in node.clades
+                                                        if child.joint_pos_Lx is not None])
+
+                msg_from_children._adjust_grid(rel_tol=self.rel_tol_prune)
+
+                root_pos = msg_from_children.peak_pos
+                joint_tree_LH = msg_from_children.peak_val
+
+                # set root position and joint likelihood of the tree
+                self.tree.positional_LH = joint_tree_LH
+                self.tree.root.time_before_present = root_pos
+                self.tree.root.joint_pos_Lx = msg_from_children
+
+        #import ipdb; ipdb.set_trace()
+        # go through the nodes from leaves towards the root:
+        for node in self.tree.find_clades(order='preorder'):  # children first, msg to parents
 
 
-    def _ml_t_root_leaves(self):
+            if node.up is None: # root node
+
+                continue # the position is already set on the previuos step
+
+            if node.joint_Cx is None:# no constraints or branch is bad - reconstruct from the branch len interpolator
+                node.time_before_present = node.up.time_before_present - node.branch_length_interpolator.peak_pos
+                node.branch_length = node.branch_length_interpolator.peak_pos
+
+            elif isinstance(node.joint_Cx, Distribution): # Cx is the array, so we reconstruct the position from the information passed
+                   # by parent
+                # NOTE the Lx distribution is the likelihood, given the position of the parent
+                # (Lx.x = parent position, Lx.y = LH of the node_pos given Lx.x,
+                # the value of the node_pos is given by the node.Cx array)
+                subtree_LH = node.joint_pos_Lx(node.up.time_before_present)
+                node.branch_length = node.joint_Cx(node.up.time_before_present)
+                node.time_before_present = node.up.time_before_present - node.branch_length
+                node.clock_length = node.branch_length
+
+            else: # node positions has "delta-function" constaraint
+                subtree_LH = node.joint_pos_Lx(node.up.time_before_present)
+                node.branch_length = node.joint_Cx
+                node.time_before_present = node.time_before_present = node.up.time_before_present - node.joint_Cx
+
+            # set the branch length
+            #node.branch_length = node.up.time_before_present - node.time_before_present
+            #node.clock_length = node.branch_length
+            if node.branch_length < 0 or node.time_before_present < 0:
+                print (node.time_before_present, node.branch_length)
+                import ipdb; ipdb.set_trace()
+
+
+
+    def _ml_t_marginal(self):
         """
         Given the location probability distribution, computed by the propagation
         from leaves to root, set the root most-likely location. Estimate the
@@ -213,33 +278,138 @@ class ClockTree(TreeAnc):
            likely node locations.
 
         """
-        self.logger("ClockTree: Propagating root -> leaves...", 2)
-        # Main method - propagate from root to the leaves and set the LH distributions
-        # to each node
-        for node in self.tree.find_clades(order='preorder'):  # ancestors first, msg to children
-            ## This is the root node
+
+        def collapse_func(dist):
+            if dist.is_delta:
+                return dist.peak_pos
+            else:
+                return dist.peak_pos
+
+            for node in self.tree.find_clades(order='preorder'):  # ancestors first, msg to children
+                if node.up is None:
+                    pass
+
+        def _cleanup():
+            for node in self.tree.find_clades():
+                pass
+                #del node.marginal_pos_Lx
+                #del node.marginal_pos_LH
+
+
+        self.logger("ClockTree: Propagating leaves -> root...", 2)
+        # go through the nodes from leaves towards the root:
+        for node in self.tree.find_clades(order='postorder'):  # children first, msg to parents
+
+            if node.is_terminal(): # terminal nodes
+
+                # initialize the Lx for the terminal nodes:
+                if node.msg_from_children.is_delta: # there is a time contraint
+                    # subtree probability given the position of the parent node
+                    # position of the parent node is given by the Lx.x
+                    # probablity of the subtree (consiting of one terminal node)
+                    # is given by the Lx.y
+                    node.marginal_pos_Lx = Distribution.shifted_x(node.branch_length_interpolator, node.msg_from_children.peak_pos)
+
+
+                else:
+                    # node send "No message" - its position is assumed from the
+                    # position of the parent node
+                    node.marginal_pos_Lx = None
+
+            elif node.up is not None: # all internal nodes, except root
+
+                # subtree likelihood given the node's position Ta:
+                msg_from_children = Distribution.multiply([child.marginal_pos_Lx for child in node.clades
+                                                        if child.marginal_pos_Lx is not None])
+
+                res, res_t = NodeInterpolator.convolve(msg_from_children,
+                                node.branch_length_interpolator,
+                                max_or_integral='max',
+                                n_integral=self.n_integral,
+                                rel_tol=self.rel_tol_refine)
+
+                res._adjust_grid(rel_tol=self.rel_tol_prune)
+
+                node.marginal_pos_Lx = res
+
+            else: # root node is processed separately (has no condition on the parent)
+
+
+                # probability of the subtree given the root position is defined by the
+                # msg_from_children.x
+                msg_from_children = Distribution.multiply([child.marginal_pos_Lx for child in node.clades
+                                                        if child.marginal_pos_Lx is not None])
+
+                msg_from_children._adjust_grid(rel_tol=self.rel_tol_prune)
+
+                root_pos = msg_from_children.peak_pos
+                marginal_tree_LH = msg_from_children.peak_val
+
+                node.marginal_pos_Lx = msg_from_children
+                node.marginal_pos_LH = msg_from_children # there is no msgs from parent and complementary subtree
+                self.tree.positional_LH = marginal_tree_LH
+
+
+        for node in self.tree.find_clades(order='preorder'):
+
+            ## The root node
             if node.up is None:
                 node.msg_from_parent = None # nothing beyond the root
-            elif (node.msg_to_parent is not None) and node.msg_to_parent.is_delta:
-                node.msg_from_parent = None
-            else:
-                parent = node.up
-                complementary_msgs = [parent.msgs_from_leaves[k]
-                                      for k in parent.msgs_from_leaves
-                                      if k != node]
 
-                if parent.msg_from_parent is not None: # the parent is not root => got something from the parent
+                # set the date-time information
+                #node.time_before_present = collapse_func(node.marginal_pos_LH)
+                #node.branch_length = self.one_mutation
+                #node.clock_length = node.branch_length
+
+                continue
+
+            # unconstrained terminal node. Set the position to the optimal branch length
+            if node.marginal_pos_Lx is None:
+                node.msg_from_parent = None
+                parent = node.up
+
+                # branch length is optimal
+                #node.branch_length = node.branch_length_interpolator.peak_pos
+                #node.time_before_present = node.up.time_before_present - node.branch_length
+                #ode.clock_length = node.branch_length
+                continue
+
+            # all other cases (All internal nodes + unconstrained terminals)
+            parent = node.up
+            # messages from the complementary subtree (iterate over all sister nodes)
+            complementary_msgs = [sister.marginal_pos_Lx for sister in parent.clades
+                                        if sister != node]
+
+            # if parent itself got smth from the root node, include it
+            if parent.msg_from_parent is not None:
                     complementary_msgs.append(parent.msg_from_parent)
 
-                msg_parent_to_node = NodeInterpolator.multiply(complementary_msgs)
-                msg_parent_to_node._adjust_grid(rel_tol=self.rel_tol_prune)
-                res = NodeInterpolator.convolve(msg_parent_to_node, node.branch_length_interpolator,
+            msg_parent_to_node = NodeInterpolator.multiply(complementary_msgs)
+            msg_parent_to_node._adjust_grid(rel_tol=self.rel_tol_prune)
+
+            # integral message, which delievers to the node the positional information
+            # from the complementary subtree
+
+            res, res_t = NodeInterpolator.convolve(msg_parent_to_node, node.branch_length_interpolator,
+                                                max_or_integral='integral',
                                                 inverse_time=False, n_integral=self.n_integral,
                                                 rel_tol=self.rel_tol_refine)
-                node.msg_from_parent = res
-                self.logger('ClockTree._ml_t_root_to_leaves: computed convolution'
+
+
+
+            node.msg_from_parent = res
+
+            node.marginal_pos_LH = NodeInterpolator.multiply((node.msg_from_parent, node.marginal_pos_Lx))
+
+            # set the date-time information
+            #node.time_before_present = collapse_func(node.marginal_pos_LH)
+            #node.branch_length = node.up.time_before_present - node.time_before_present
+            #ode.clock_length = node.branch_length
+
+            self.logger('ClockTree._ml_t_root_to_leaves: computed convolution'
                             ' with %d points at node %s'%(len(res.x),node.name),4)
-                if self.debug:
+
+            if self.debug:
                     tmp = np.diff(res.y-res.peak_val)
                     nsign_changed = np.sum((tmp[1:]*tmp[:-1]<0)&(res.y[1:-1]-res.peak_val<500))
                     if nsign_changed>1:
@@ -253,57 +423,11 @@ class ClockTree(TreeAnc):
                         plt.xlim(-0.01, 0.01)
                         import ipdb; ipdb.set_trace()
 
+        if not self.debug:
+            pass
+            _cleanup()
 
-    def _set_final_dates(self):
-        """
-        Given the location of the node in branch length units, convert it to the
-        date-time information.
-
-        Args:
-         - node(Phylo.Clade): tree node. NOTE the node should have the abs_t attribute
-         to have a valid value. This is automatically taken care of in the
-         procedure to get the node location probability distribution.
-
-        """
-        self.logger("ClockTree: Setting dates and node distributions...", 2)
-        def collapse_func(dist):
-            if dist.is_delta:
-                return dist.peak_pos
-            else:
-                return dist.peak_pos
-
-
-        for node in self.tree.find_clades(order='preorder'):  # ancestors first, msg to children
-            # set marginal distribution
-            ## This is the root node
-            if node.up is None:
-                node.marginal_lh = node.msg_to_parent
-            elif node.msg_to_parent is None:
-                node.marginal_lh = node.msg_from_parent
-            elif node.msg_to_parent.is_delta:
-                node.marginal_lh = node.msg_to_parent
-            else:
-                node.marginal_lh = NodeInterpolator.multiply((node.msg_from_parent, node.msg_to_parent))
-
-            if node.up is None:
-                node.joint_lh = node.msg_to_parent
-                node.time_before_present = collapse_func(node.joint_lh)
-                node.branch_length = self.one_mutation
-            else:
-                # shift position of parent node (time_before_present) by the branch length
-                # towards the present. To do so, add branch length to negative time_before_present
-                # and rescale the resulting distribution by -1.0
-                res = Distribution.shifted_x(node.branch_length_interpolator, -node.up.time_before_present)
-                res.x_rescale(-1.0)
-                # multiply distribution from parent with those from children and determine peak
-                if node.msg_to_parent is not None:
-                    node.joint_lh = NodeInterpolator.multiply((node.msg_to_parent, res))
-                else:
-                    node.joint_lh = res
-                node.time_before_present = collapse_func(node.joint_lh)
-
-                node.branch_length = node.up.time_before_present - node.time_before_present
-            node.clock_length = node.branch_length
+        return
 
 
     def convert_dates(self):

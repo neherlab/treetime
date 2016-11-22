@@ -66,7 +66,7 @@ class Distribution(object):
 
         n_delta = np.sum([k.is_delta for k in dists])
         if n_delta>1:
-            raise ArithmeticError("Cannot multiply two delta functions!")
+            raise ArithmeticError("Cannot multiply more than one delta functions!")
         elif n_delta==1:
             delta_dist_ii = np.where([k.is_delta for k in dists])[0][0]
             delta_dist = dists[delta_dist_ii]

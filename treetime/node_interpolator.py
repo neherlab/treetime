@@ -6,7 +6,7 @@ import config as ttconf
 def _create_initial_grid(node_dist, branch_dist):
     pass
 
-def _convolution_in_point(t_val,f, g,  n_integral = 100, inverse_time=None, return_log=False):
+def _distribution_convolution_in_point(t_val, f, g, inverse_time=None, return_log=False):
     '''
     evaluates int_tau f(t+tau)g(tau) or int_tau f(t-tau)g(tau) if inverse time is TRUE
     '''
@@ -50,20 +50,59 @@ def _convolution_in_point(t_val,f, g,  n_integral = 100, inverse_time=None, retu
 
         # create the interpolation object on this grid
         FG = Distribution(tau, fg, is_log=True, kind='linear')
-        #integrate the interpolation object, return log, make neg_log
+        return FG
+
+
+
+def _max_convolution_in_point(t_val, f, g, inverse_time=None, return_log=False):
+
+    # return log is always True
+    FG = _distribution_convolution_in_point(t_val, f, g, inverse_time, return_log=True)
+
+    if FG == ttconf.BIG_NUMBER:
+        res = ttconf.BIG_NUMBER, 0
+
+    else:
+
+        # TODO use minimize_scalar here !!
+        X = FG.x[FG.y.argmin()]
+        Y = FG.y.min()
+        res =  Y, X
+
+        #import matplotlib.pyplot as plt
+        #plt.figure(11)
+        #plt.plot(FG.x, FG.y)
+        #plt.vlines(res[1], -1e3, Y)
+
+    if not return_log:
+        res[0] = np.log(res[0])
+
+
+    return res
+
+def _integral_convolution_in_point(t_val, f, g,  n_integral = 100, inverse_time=None, return_log=False):
+
+
+    FG = _distribution_convolution_in_point(t_val, f, g, inverse_time, return_log)
+
+    #integrate the interpolation object, return log, make neg_log
         #print('FG:',FG.xmin, FG.xmax, FG(FG.xmin), FG(FG.xmax))
+    if (return_log and FG == ttconf.BIG_NUMBER) or \
+        (not return_log and FG == 0.0): # distributions do not overlap
+        res = ttconf.BIG_NUMBER # we integrate log funcitons
+    else:
         res = -FG.integrate(a=FG.xmin, b=FG.xmax, n=n_integral, return_log=True)
 
-        if return_log:
-            return res
-        else:
-            return np.exp(-res)
+    if return_log:
+        return res, -1
+    else:
+        return np.exp(-res), -1
 
 
 class NodeInterpolator (Distribution):
 
     @classmethod
-    def convolve(cls, node_interp, branch_interp, n_integral=100, inverse_time=True, rel_tol=0.05, yc=10):
+    def convolve(cls, node_interp, branch_interp, max_or_integral='integral', n_integral=100, inverse_time=True, rel_tol=0.05, yc=10):
 
         '''
         calculate H(t) = \int_tau f(t-tau)g(tau) if inverse_time=True
@@ -72,6 +111,20 @@ class NodeInterpolator (Distribution):
         This function determines the time points of the grid of the result to
         ensure an accurate approximation.
         '''
+
+        if max_or_integral not in ['max', 'integral']:
+            raise Exception("Max_or_integral expected to be 'max' or 'integral', got " + str(max_or_integral)  + " instead.")
+
+        def conv_in_point(time_point):
+
+            if max_or_integral == 'integral': # compute integral of the convolution
+                return _integral_convolution_in_point(time_point, node_interp, branch_interp,
+                                               n_integral=n_integral, return_log=True,
+                                               inverse_time = inverse_time)
+
+            else: # compute max of the convolution
+                return _max_convolution_in_point(time_point, node_interp, branch_interp,
+                                               return_log=True, inverse_time = inverse_time)
 
         # estimate peak and width
         joint_fwhm  = (node_interp.fwhm + branch_interp.fwhm)
@@ -114,10 +167,11 @@ class NodeInterpolator (Distribution):
         # make grid and calculate convolution
         t_grid_0 = np.unique(np.concatenate([grid_left[:-1], grid_center, grid_right[1:], [tmin, tmax]]))
         t_grid_0 = t_grid_0[(t_grid_0 > tmin-ttconf.TINY_NUMBER) & (t_grid_0 < tmax+ttconf.TINY_NUMBER)]
-        res_0 = np.array([_convolution_in_point(t_val, node_interp, branch_interp,
-                                               n_integral=n_integral, return_log=True,
-                                               inverse_time = inverse_time)
-                        for t_val in t_grid_0])
+
+        # res0 - the values of the convolution (integral or max)
+        # t_0 - the value, at which the res0 achieves maximum (for 'max' type  of convolution)
+        # for 'itegral' type t_0 is -1, without any meaning
+        res_0, t_0 = np.array([conv_in_point(t_val) for t_val in t_grid_0]).T
 
         # refine grid as necessary and add new points
         # calculate interpolation error at all internal points [2:-2] bc end points are sometime off scale
@@ -132,21 +186,35 @@ class NodeInterpolator (Distribution):
         insert_point_idx[1:] = refine_factor
         insert_point_idx[:-1] += refine_factor
         # add additional points if there are any to add
+
         if np.sum(insert_point_idx):
             add_x = np.concatenate([np.linspace(t1,t2,n+2)[1:-1] for t1,t2,n in
                                zip(t_grid_0[1:-2], t_grid_0[2:-1], insert_point_idx) if n>0])
             # calculate convolution at these points
-            add_y = np.array([_convolution_in_point(t_val, node_interp, branch_interp,
-                                                    n_integral=n_integral, return_log=True,
-                                                    inverse_time = inverse_time)
-                             for t_val in add_x])
+            add_y, add_t = np.array([conv_in_point(t_val) for t_val in add_x]).T
 
             t_grid_0 = np.concatenate((t_grid_0, add_x))
             res_0 = np.concatenate ((res_0, add_y))
+            t_0 = np.concatenate ((t_0, add_t))
 
         # instantiate the new interpolation object and return
-        res = cls(t_grid_0, res_0, is_log=True, kind='linear')
-        return res
+        res_y = cls(t_grid_0, res_0, is_log=True, kind='linear')
+
+        # the interpolation object,  which is used to store the value of the
+        # grid, which maximizes the convolution (for 'max' option),
+        # or flat -1 distribution (for 'integral' option)
+        res_t = Distribution(t_grid_0, t_0, is_log=True, kind='linear')
+
+        # the convolution and the values of the 'tau' grid, which maximize the
+        # convolution values in the 'max' regime
+
+        #import matplotlib.pyplot as plt
+        #plt.figure(1)
+        #plt.plot(res_y.x, res_y.y)
+        #plt.figure(2)
+        #plt.plot(res_y.x, t_0)
+        #import ipdb; ipdb.set_trace()
+        return res_y, res_t
 
 if __name__ == '__main__':
 
