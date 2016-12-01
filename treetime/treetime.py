@@ -17,7 +17,7 @@ class TreeTime(ClockTree):
         self.n_iqd = ttconf.NIQD
 
     def run(self, root=None, infer_gtr=True, relaxed_clock=False, n_iqd = None,
-            resolve_polytomies=True, max_iter=0, Tc=None, fixed_slope=None, **kwargs):
+            resolve_polytomies=True, max_iter=0, Tc=None, fixed_slope=None, do_marginal=False, **kwargs):
         if relaxed_clock  and len(relaxed_clock)==2:
             slack, coupling = relaxed_clock
 
@@ -34,11 +34,13 @@ class TreeTime(ClockTree):
 
         # infer time tree and optionally resolve polytomies
         self.logger("###TreeTime.run: INITIAL ROUND",0)
-        self.make_time_tree(slope=fixed_slope, **kwargs)
+        self.make_time_tree(slope=fixed_slope, do_marginal=False, **kwargs)
+
         # iteratively reconstruct ancestral sequences and re-infer
         # time tree to ensure convergence.
         niter = 0
-        while niter<max_iter:
+        while niter < max_iter:
+
             self.logger("###TreeTime.run: ITERATION %d out of %d iterations"%(niter+1,max_iter),0)
             # add coalescent prior
             if Tc and (Tc is not None):
@@ -57,19 +59,28 @@ class TreeTime(ClockTree):
                     self.prepare_tree()
                     self.optimize_sequences_and_branch_length(prune_short=False,
                                             max_iter=0,sample_from_profile='root')
-                    self.make_time_tree(slope=fixed_slope, **kwargs)
+                    self.make_time_tree(slope=fixed_slope, do_marginal=False, **kwargs)
                     ndiff = self.infer_ancestral_sequences('ml',sample_from_profile='root')
             elif (Tc and (Tc is not None)) or relaxed_clock: # need new timetree first
-                self.make_time_tree(slope=fixed_slope, **kwargs)
+                self.make_time_tree(slope=fixed_slope, do_marginal=False, **kwargs)
                 ndiff = self.infer_ancestral_sequences('ml',sample_from_profile='root')
             else: # no refinements, just iterate
                 ndiff = self.infer_ancestral_sequences('ml',sample_from_profile='root')
-                self.make_time_tree(slope=fixed_slope, **kwargs)
+                self.make_time_tree(slope=fixed_slope, do_marginal=False, **kwargs)
 
             if ndiff==0 & n_resolved==0:
                 self.logger("###TreeTime.run: CONVERGED",0)
                 break
+
             niter+=1
+
+        # if marginal reconstruction requested, make one more round with marginal=True
+        # this will set marginal_pos_LH, which to be used as error bar estimations
+        if do_marginal:
+            self.logger("###TreeTime.run: FINAL ROUND - Error bars estimation", 0)
+            self.make_time_tree(slope=fixed_slope, do_marginal=True, **kwargs)
+
+
 
 
     def clock_filter(self, reroot='best', n_iqd=None, plot=False):
@@ -572,7 +583,7 @@ if __name__=="__main__":
                 continue
 
     myTree = TreeTime(gtr='Jukes-Cantor', tree = base_name+'.nwk',
-                        aln = base_name+'.fasta', verbose = 4, dates = dates)
+                        aln = base_name+'.fasta', verbose = 4, dates = dates, debug=True)
 
     myTree.run(root='clock_filter', relaxed_clock=False, max_iter=2,
                resolve_polytomies=True, Tc=0.01, n_iqd=2, fixed_slope=0.003, do_marginal=True)

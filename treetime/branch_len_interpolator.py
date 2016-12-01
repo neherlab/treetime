@@ -7,7 +7,7 @@ class BranchLenInterpolator (Distribution):
     """
     """
 
-    def __init__(self, node, gtr, one_mutation = None):
+    def __init__(self, node, gtr, one_mutation=None, ignore_gaps=True):
         """
         @brief      { constructor_description }
 
@@ -49,7 +49,7 @@ class BranchLenInterpolator (Distribution):
         if not hasattr(node, 'compressed_sequence'):
             seq_pairs, multiplicity = self.gtr.compress_sequence_pair(node.up.sequence,
                                                                       node.sequence,
-                                                                      ignore_gaps = self.ignore_gaps)
+                                                                      ignore_gaps=ignore_gaps)
             node.compressed_sequence = {'pair':seq_pairs, 'multiplicity':multiplicity}
 
         log_prob = np.array([-self.gtr.prob_t_compressed(node.compressed_sequence['pair'],
