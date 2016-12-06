@@ -28,7 +28,11 @@ class TreeTime(ClockTree):
 
         # optionally reroot the tree either by oldest, best regression or with a specific leaf
         if n_iqd or root=='clock_filter':
-            self.clock_filter(reroot='best' if root=='clock_filter' else root, n_iqd=n_iqd, plot=True)
+            if "plot_rtt" in kwargs and kwargs["plot_rtt"]:
+                plot_rtt=True
+            else:
+                plot_rtt=False
+            self.clock_filter(reroot='best' if root=='clock_filter' else root, n_iqd=n_iqd, plot=plot_rtt)
         elif root is not None:
             self.reroot(root=root)
 
@@ -562,8 +566,6 @@ if __name__=="__main__":
     from Bio import Phylo
     plt.ion()
     base_name = 'data/H3N2_NA_allyears_NA.200'
-    #base_name = 'data/H3N2_NA_500'
-    #base_name = 'data/Zika'
     import datetime
     from utils import numeric_date
     with open(base_name+'.metadata.csv') as date_file:
@@ -572,11 +574,6 @@ if __name__=="__main__":
             if line[0]=='#':
                 continue
             try:
-                #entries = line.strip().split(',')
-                #name = entries[0]
-                #dates[name] = float(entries[-2])
-                #date = datetime.datetime.strptime(entries[1], '%Y-%m-%d')
-                #dates[name] = numeric_date(date)
                 name, date = line.strip().split(',')
                 dates[name] = float(date)
             except:
@@ -588,6 +585,7 @@ if __name__=="__main__":
     myTree.run(root='clock_filter', relaxed_clock=False, max_iter=2,
                resolve_polytomies=True, Tc=0.01, n_iqd=2, fixed_slope=0.003, do_marginal=True)
 
+    # figure with branch length distributions
     plt.figure()
     x = np.linspace(0,0.02,1000)
     leaf_count=0
@@ -602,25 +600,20 @@ if __name__=="__main__":
     plt.yscale('log')
     plt.ylim([0.01,1.2])
 
-    from matplotlib import cm
-    fig, axs = plt.subplots(2,1, sharex=True, figsize=(8,12))
-    x = np.linspace(-0.25,0.01,10000)+ myTree.tree.root.time_before_present
-    for n in myTree.tree.find_clades():
-        if n.up is None:
-            g = n.gamma
-        else:
-            g = n.branch_length_interpolator.gamma
-        #n.color = [int(_x*255) for _x in cm.coolwarm(max(0,min(1,(g-1)+0.5)))[:3]]
 
+    # draw phylogenetic tree in one panel, marginal distributions in the other
+    fig, axs = plt.subplots(2,1, sharex=True, figsize=(8,12))
     Phylo.draw(myTree.tree, axes=axs[0], show_confidence=False, label_func = lambda x:'')
     offset = myTree.tree.root.time_before_present + myTree.tree.root.branch_length
     cols = sns.color_palette()
     depth = myTree.tree.depths()
+    x = np.linspace(-0.01, .2,1000)
     for ni,node in enumerate(myTree.tree.find_clades()):
         if (not node.is_terminal()):
+            # plot marginal distributions of node positions
             axs[1].plot(offset-x, node.marginal_pos_LH.prob_relative(x), '-', c=cols[ni%len(cols)])
-            axs[1].plot(offset-x, node.joint_pos_Lx.prob_relative(x), '--', c=cols[ni%len(cols)])
         if node.up is not None:
+            # add branch length distributions to tree
             x_branch = np.linspace(depth[node]-2*node.branch_length-0.005,depth[node],100)
             axs[0].plot(x_branch, node.ypos - 0.7*node.branch_length_interpolator.prob_relative(depth[node]-x_branch), '-', c=cols[ni%len(cols)])
     axs[1].set_yscale('log')
@@ -628,6 +621,7 @@ if __name__=="__main__":
     axs[0].set_xlabel('')
     plt.tight_layout()
 
+    # make root to tip plot
     r2tip = np.array([[n.numdate, n.dist2root] for n in myTree.tree.get_terminals()])
     r2int = np.array([[n.numdate, n.dist2root] for n in myTree.tree.get_nonterminals()])
     plt.figure()
