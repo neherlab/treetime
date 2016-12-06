@@ -56,8 +56,10 @@ class BranchLenInterpolator (Distribution):
                                                 node.compressed_sequence['multiplicity'],
                                                 k,
                                                 return_log=True)
-                    for k in grid])
+                            for k in grid])
 
+        # tmp_dis = Distribution(grid, log_prob, is_log=True, kind='linear')
+        # norm = tmp_dis.integrate(a=tmp_dis.xmin, b=tmp_dis.xmax, n=200)
         super(BranchLenInterpolator, self).__init__(grid, log_prob, is_log=True, kind='linear')
 
 

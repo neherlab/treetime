@@ -240,12 +240,9 @@ class ClockTree(TreeAnc):
 
                 msg_from_children._adjust_grid(rel_tol=self.rel_tol_prune)
 
-                root_pos = msg_from_children.peak_pos
-                joint_pos_LH = msg_from_children.peak_val
-
                 # set root position and joint likelihood of the tree
-                self.tree.joint_pos_LH = joint_pos_LH
-                node.time_before_present = root_pos
+                self.tree.positional_joint_LH = -msg_from_children.peak_val
+                node.time_before_present = msg_from_children.peak_pos
                 node.joint_pos_Lx = msg_from_children
                 node.joint_pos_Cx = None
 
@@ -368,7 +365,7 @@ class ClockTree(TreeAnc):
 
                 node.marginal_pos_Lx = msg_from_children
                 node.marginal_pos_LH = msg_from_children
-                self.tree.positional_LH = msg_from_children.peak_val
+                self.tree.positional_marginal_LH = -msg_from_children.peak_val
 
         self.logger("ClockTree - Marginal reconstruction:  Propagating root -> leaves...", 2)
         for node in self.tree.find_clades(order='preorder'):

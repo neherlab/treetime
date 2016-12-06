@@ -271,7 +271,7 @@ class Distribution(object):
             else:
                 return np.exp(-self.peak_val)*integral_result
 
-    def integrate_trapez(self, a, b,n):
+    def integrate_trapez(self, a=None, b=None,n=None):
         mult = 0.5
         if a>b:
             b,a = a,b
@@ -283,7 +283,7 @@ class Distribution(object):
         return mult*np.sum(dx*(y[:-1] + y[1:]))
 
 
-    def integrate_simpson(self, a,b,n):
+    def integrate_simpson(self, a=None,b=None,n=None):
         if n % 2 == 0:
             n += 1
         mult = 1.0/6

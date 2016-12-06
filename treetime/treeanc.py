@@ -448,6 +448,7 @@ class TreeAnc(object):
                                                   self.gtr, sample_from_prof=root_sample_from_profile)
 
         self.tree.sequence_LH = np.log(prof_vals) + tree.root.marginal_subtree_LH_prefactor
+        self.tree.sequence_marginal_LH = self.tree.sequence_LH.sum()
         self.tree.root.sequence = seq
 
         # need this fake msg to account for the complementary subtree when traversing tree back
@@ -569,6 +570,7 @@ class TreeAnc(object):
 
         # compute the likelihood of the most probable root sequence
         self.tree.sequence_LH = np.choose(idxs, self.tree.root.joint_Lx.T)
+        self.tree.sequence_joint_LH = self.tree.sequence_LH.sum()
         self.tree.root.sequence = seq
         self.tree.root.seq_idx = idxs
 

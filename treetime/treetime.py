@@ -17,7 +17,8 @@ class TreeTime(ClockTree):
         self.n_iqd = ttconf.NIQD
 
     def run(self, root=None, infer_gtr=True, relaxed_clock=False, n_iqd = None,
-            resolve_polytomies=True, max_iter=0, Tc=None, fixed_slope=None, do_marginal=False, **kwargs):
+            resolve_polytomies=True, max_iter=0, Tc=None, fixed_slope=None,
+            do_marginal=False, **kwargs):
         if relaxed_clock  and len(relaxed_clock)==2:
             slack, coupling = relaxed_clock
 
@@ -32,7 +33,8 @@ class TreeTime(ClockTree):
                 plot_rtt=True
             else:
                 plot_rtt=False
-            self.clock_filter(reroot='best' if root=='clock_filter' else root, n_iqd=n_iqd, plot=plot_rtt)
+            self.clock_filter(reroot='best' if root=='clock_filter' else root,
+                              n_iqd=n_iqd, plot=plot_rtt)
         elif root is not None:
             self.reroot(root=root)
 
@@ -81,7 +83,7 @@ class TreeTime(ClockTree):
         # if marginal reconstruction requested, make one more round with marginal=True
         # this will set marginal_pos_LH, which to be used as error bar estimations
         if do_marginal:
-            self.logger("###TreeTime.run: FINAL ROUND - Error bars estimation", 0)
+            self.logger("###TreeTime.run: FINAL ROUND - confidence estimation via marginal reconstruction", 0)
             self.make_time_tree(slope=fixed_slope, do_marginal=True, **kwargs)
 
 
@@ -201,28 +203,26 @@ class TreeTime(ClockTree):
 
 
     def _poly(self, clade, merge_compressed, verbose=1):
+
         """
-        Function to resolve polytomies for a given parent node. If the number of the
-        direct decendants is less than three (not a polytomy), does nothing.
-        Otherwise, for each pair of nodes, assess the possible LH increase which could be
-        gained by merging the two nodes. The increase in the LH is basically the
-        tradeoff between the gain of the LH due to the changing the branch lenghts towardsthe optimal
-        values and the decrease due to the introduction of the new branch with zero
-        optimal length. After the cost gains been determined,
+        Function to resolve polytomies for a given parent node. If the
+        number of the direct decendants is less than three (not a polytomy), does
+        nothing. Otherwise, for each pair of nodes, assess the possible LH increase
+        which could be gained by merging the two nodes. The increase in the LH is
+        basically the tradeoff between the gain of the LH due to the changing the
+        branch lenghts towards the optimal values and the decrease due to the
+        introduction of the new branch with zero optimal length.
         """
+
         from branch_len_interpolator import BranchLenInterpolator
         from Bio import Phylo
-        # TODO coefficient from the gtr
-        zero_branch_slope = self.one_mutation / 0.8
+
+        zero_branch_slope = self.gtr.mu*self.seq_len
 
         def _c_gain(t, n1, n2, parent):
             """
             cost gain if nodes n1, n2 are joined and their parent is placed at time t
-
             cost gain = (LH loss now) - (LH loss when placed at time t)
-                      = [LH(opt) - LH(now)] - [LH(opt) - LH(t)] approx.=
-                      approx.= LH(branch_len(now)) - LH (branch_len(t))
-
             """
             cg2 = n2.branch_length_interpolator(parent.time_before_present - n2.time_before_present) - n2.branch_length_interpolator(t - n2.time_before_present)
             cg1 = n1.branch_length_interpolator(parent.time_before_present - n1.time_before_present) - n1.branch_length_interpolator(t - n1.time_before_present)
@@ -239,7 +239,9 @@ class TreeTime(ClockTree):
             return cg['x'], - cg['fun']
 
         def merge_nodes(source_arr, isall=False):
-            mergers = np.array([[cost_gain(n1,n2, clade) for n1 in source_arr]for n2 in source_arr])
+            mergers = np.array([[cost_gain(n1,n2, clade) if i1<i2 else (0.0,-1.0)
+                                    for i1,n1 in enumerate(source_arr)]
+                                for i2, n2 in enumerate(source_arr)])
             LH = 0
             while len(source_arr) > 1 + int(isall):
                 # max possible gains of the cost when connecting the nodes:
@@ -247,15 +249,12 @@ class TreeTime(ClockTree):
                 # to be optimal
                 new_positions = mergers[:,:,0]
                 cost_gains = mergers[:,:,1]
+                # set zero to large negative value and find optimal pair
                 np.fill_diagonal(cost_gains, -1e11)
-
                 idxs = np.unravel_index(cost_gains.argmax(),cost_gains.shape)
                 if (idxs[0] == idxs[1]) or cost_gains.max()<0:
-                    if self.debug:
-                        import ipdb; ipdb.set_trace()
-                    else:
-                        self.logger("TreeTime._poly.merge_nodes: problem merging child nodes of "+clade.name,4,warn=True)
-                        return LH
+                    self.logger("TreeTime._poly.merge_nodes: node is not fully resolved "+clade.name,4,warn=True)
+                    return LH
 
                 n1, n2 = source_arr[idxs[0]], source_arr[idxs[1]]
                 LH += cost_gains[idxs]
@@ -312,29 +311,35 @@ class TreeTime(ClockTree):
         stretched = [c for c  in clade.clades if c.mutation_length < c.clock_length]
         compressed = [c for c in clade.clades if c not in stretched]
 
-        LH = 0.0
-
         if len(stretched)==1 and merge_compressed==False:
-            return LH
+            return 0.0
 
-        merge_nodes(stretched, isall=len(stretched)==len(clade.clades))
+        LH = merge_nodes(stretched, isall=len(stretched)==len(clade.clades))
         if merge_compressed and len(compressed)>1:
-            merge_nodes(compressed, isall=len(compressed)==len(clade.clades))
+            LH += merge_nodes(compressed, isall=len(compressed)==len(clade.clades))
 
         return LH
 
-    def print_lh(self):
+
+    def print_lh(self, joint=True):
         """
         Print the total likelihood of the tree given the constrained leaves
         """
-        s_lh = -self.tree.sequence_LH
-        t_lh = self.tree.root.msg_to_parent.peak_val
+        try:
+            if joint:
+                s_lh = self.tree.sequence_joint_LH
+                t_lh = self.tree.positional_joint_LH
+            else:
+                s_lh = self.tree.sequence_marginal_LH
+                t_lh = self.tree.positional_marginal_LH
 
-        print ("###  Tree Likelihood  ###\n"
-                " Seq log-LH:      {0}\n"
-                " Temp.Pos log-LH: {1}\n"
-                " Total log-LH:    {2}\n"
-               "#########################".format(s_lh, t_lh, s_lh+t_lh))
+            print ("###  Tree Log-Likelihood  ###\n"
+                " Sequence log-LH:  \t{0}\n"
+                " Positional log-LH:\t{1}\n"
+                " Total log-LH:     \t{2}\n"
+               "#########################".format(s_lh,t_lh, s_lh+t_lh))
+        except:
+            print("ERROR. Did you run the corresponding inference (joint/marginal)?")
 
     def total_LH(self):
         s_lh = self.tree.sequence_LH
