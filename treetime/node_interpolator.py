@@ -6,7 +6,7 @@ import config as ttconf
 def _create_initial_grid(node_dist, branch_dist):
     pass
 
-def _distribution_convolution_in_point(t_val, f, g, inverse_time=None, return_log=False):
+def _convolution_integrand(t_val, f, g, inverse_time=None, return_log=False):
     '''
     evaluates int_tau f(t+tau)g(tau) or int_tau f(t-tau)g(tau) if inverse time is TRUE
     '''
@@ -54,10 +54,10 @@ def _distribution_convolution_in_point(t_val, f, g, inverse_time=None, return_lo
 
 
 
-def _max_convolution_in_point(t_val, f, g, inverse_time=None, return_log=False):
+def _max_of_integrand(t_val, f, g, inverse_time=None, return_log=False):
 
     # return log is always True
-    FG = _distribution_convolution_in_point(t_val, f, g, inverse_time, return_log=True)
+    FG = _convolution_integrand(t_val, f, g, inverse_time, return_log=True)
 
     if FG == ttconf.BIG_NUMBER:
         res = ttconf.BIG_NUMBER, 0
@@ -80,10 +80,10 @@ def _max_convolution_in_point(t_val, f, g, inverse_time=None, return_log=False):
 
     return res
 
-def _integral_convolution_in_point(t_val, f, g,  n_integral = 100, inverse_time=None, return_log=False):
+def _evaluate_convolution(t_val, f, g,  n_integral = 100, inverse_time=None, return_log=False):
 
 
-    FG = _distribution_convolution_in_point(t_val, f, g, inverse_time, return_log)
+    FG = _convolution_integrand(t_val, f, g, inverse_time, return_log)
 
     #integrate the interpolation object, return log, make neg_log
         #print('FG:',FG.xmin, FG.xmax, FG(FG.xmin), FG(FG.xmax))
@@ -102,7 +102,8 @@ def _integral_convolution_in_point(t_val, f, g,  n_integral = 100, inverse_time=
 class NodeInterpolator (Distribution):
 
     @classmethod
-    def convolve(cls, node_interp, branch_interp, max_or_integral='integral', n_integral=100, inverse_time=True, rel_tol=0.05, yc=10):
+    def convolve(cls, node_interp, branch_interp, max_or_integral='integral',
+                 n_integral=100, inverse_time=True, rel_tol=0.05, yc=10):
 
         '''
         calculate H(t) = \int_tau f(t-tau)g(tau) if inverse_time=True
@@ -113,17 +114,18 @@ class NodeInterpolator (Distribution):
         '''
 
         if max_or_integral not in ['max', 'integral']:
-            raise Exception("Max_or_integral expected to be 'max' or 'integral', got " + str(max_or_integral)  + " instead.")
+            raise Exception("Max_or_integral expected to be 'max' or 'integral', got "
+                            + str(max_or_integral)  + " instead.")
 
         def conv_in_point(time_point):
 
             if max_or_integral == 'integral': # compute integral of the convolution
-                return _integral_convolution_in_point(time_point, node_interp, branch_interp,
+                return _evaluate_convolution(time_point, node_interp, branch_interp,
                                                n_integral=n_integral, return_log=True,
                                                inverse_time = inverse_time)
 
             else: # compute max of the convolution
-                return _max_convolution_in_point(time_point, node_interp, branch_interp,
+                return _max_of_integrand(time_point, node_interp, branch_interp,
                                                return_log=True, inverse_time = inverse_time)
 
         # estimate peak and width

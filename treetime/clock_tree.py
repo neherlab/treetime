@@ -261,14 +261,16 @@ class ClockTree(TreeAnc):
                 # (Lx.x = parent position, Lx.y = LH of the node_pos given Lx.x,
                 # the length of the branch corresponding to the most likely subtree is node.Cx(node.time_before_present))
                 subtree_LH = node.joint_pos_Lx(node.up.time_before_present)
-                node.branch_length = node.joint_pos_Cx(node.up.time_before_present)
+                node.branch_length = node.joint_pos_Cx(max(node.joint_pos_Cx.xmin, node.up.time_before_present)+ttconf.TINY_NUMBER)
 
             node.time_before_present = node.up.time_before_present - node.branch_length
             node.clock_length = node.branch_length
 
             # just sanity check, should never happen:
             if node.branch_length < 0 or node.time_before_present < 0:
-                print (node.time_before_present, node.branch_length)
+                if node.branch_length<0 and node.branch_length>-ttconf.TINY_NUMBER:
+                    self.logger("ClockTree - Joint reconstruction: correcting rounding error of %s"%node.name, 4)
+                    node.branch_length = 0
                 if self.debug:
                     import ipdb; ipdb.set_trace()
 

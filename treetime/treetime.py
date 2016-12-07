@@ -218,6 +218,8 @@ class TreeTime(ClockTree):
         from Bio import Phylo
 
         zero_branch_slope = self.gtr.mu*self.seq_len
+        if clade.name == "NODE_0000107":
+            import ipdb; ipdb.set_trace()
 
         def _c_gain(t, n1, n2, parent):
             """
@@ -429,6 +431,7 @@ class TreeTime(ClockTree):
                 node._st_di2  = np.sum([k._st_di2 + 2*k._st_di*k.branch_length + k._st_n_leaves*k.branch_length**2
                                        for k in node.clades])
                 node._ti = sum_ti
+                node.bad_branch = np.all([x.bad_branch for x in node])
 
         best_root = self.tree.root
         for node in self.tree.find_clades(order='preorder'):  # root first
@@ -446,7 +449,12 @@ class TreeTime(ClockTree):
                 node._beta = disttime_cov/time_variance
                 node._alpha = (node._di - node._beta*sum_ti)/N
                 node._R2 = disttime_cov**2/(time_variance*dist_variance)
-                node._R2_delta_x = 0 # there is no branch to move the root
+                node._R2_delta_x = 0.0 # there is no branch to move the root
+            elif node.bad_branch:
+                node._beta = np.nan
+                node._alpha = np.nan
+                node._R2 = 0.0
+                node._R2_delta_x = 0.0
 
             else: # based on the parent, compute the values for regression
                 #  NOTE order of the values computation matters
@@ -500,12 +508,16 @@ class TreeTime(ClockTree):
 
                 if D2 < 0:
                     # somehow there is no extremum for the R2(x) function
-                    x1 = -1 # any arbitrary value out of range [0, L], see below
-                    x2 = -1
+                    x1 = -1.0 # any arbitrary value out of range [0, L], see below
+                    x2 = -1.0
                 else:
                     # actual roots - the extrema for the R2(x) function
-                    x1 = (-1 * (alpha * delta - mu * gamma) + D2 **0.5) / (alpha * nu - beta * mu)
-                    x2 = (-1 * (alpha * delta - mu * gamma) - D2 **0.5) / (alpha * nu - beta * mu)
+                    if np.abs(alpha * nu - beta * mu)>0:
+                        x1 = (-1 * (alpha * delta - mu * gamma) + D2**0.5) / (alpha * nu - beta * mu)
+                        x2 = (-1 * (alpha * delta - mu * gamma) - D2**0.5) / (alpha * nu - beta * mu)
+                    else:
+                        x1 = -(beta*delta - nu*gamma)/(alpha * delta - mu * gamma)
+                        x2 = x1
 
                 # possible positions, where the new root can possibly be located
                 # (restrict to the branch length)

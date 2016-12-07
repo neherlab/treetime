@@ -333,8 +333,10 @@ class GTR(object):
         if (t<0):
             logP = -ttconf.BIG_NUMBER
         else:
-            logQt = np.log(self.expQt(t))
-            logQt[np.isnan(logQt) | np.isinf(logQt)] = -ttconf.BIG_NUMBER
+            tmp_eQT = self.expQt(t)
+            bad_indices=(tmp_eQT==0)
+            logQt = np.log(tmp_eQT + ttconf.TINY_NUMBER*(bad_indices))
+            logQt[np.isnan(logQt) | np.isinf(logQt) | bad_indices] = -ttconf.BIG_NUMBER
             logP = np.sum(logQt[seq_pair[:,1], seq_pair[:,0]]*multiplicity)
             if return_log:
                 return logP
