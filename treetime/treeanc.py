@@ -186,8 +186,9 @@ class TreeAnc(object):
         n=len(alpha)
         nij = np.zeros((n,n))
         Ti = np.zeros(n)
-        for node in self.tree.find_clades():
 
+        self.logger("TreeAnc.infer_gtr: counting mutations...", 2)
+        for node in self.tree.find_clades():
             if hasattr(node,'mutations'):
                 for a,pos, d in node.mutations:
                     i,j = alpha.index(a), alpha.index(d)
@@ -197,6 +198,7 @@ class TreeAnc(object):
                 for nuc in node.sequence:
                     i = alpha.index(nuc)
                     Ti[i] += self._branch_length_to_gtr(node)
+        self.logger("TreeAnc.infer_gtr: counting mutations...done", 3)
         if print_raw:
             print('alphabet:',alpha)
             print('n_ij:', nij)
@@ -625,6 +627,7 @@ class TreeAnc(object):
             if node.up is None:
                 continue
             self.store_compressed_sequence_to_node(node)
+        self.logger("TreeAnc.store_compressed_sequence_pairs...done",3)
 
 
 ###################################################################
@@ -741,11 +744,12 @@ class TreeAnc(object):
          The polytomies could be further processde using resolve_polytomies from
          the TreeTime class.
         """
-        self.logger("TreeAnc.optimize_sequences_and_branch_length: ...", 1)
+        self.logger("TreeAnc.optimize_sequences_and_branch_length: sequences...", 1)
         if reuse_branch_len:
             N_diff = self.reconstruct_anc(method='ml', infer_gtr=infer_gtr, **kwargs)
         else:
             N_diff = self.reconstruct_anc(method='fitch', infer_gtr=infer_gtr, **kwargs)
+
         self.optimize_branch_len(verbose=0, store_old=False)
 
         n = 0
