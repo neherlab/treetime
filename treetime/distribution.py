@@ -71,7 +71,7 @@ class Distribution(object):
             delta_dist_ii = np.where([k.is_delta for k in dists])[0][0]
             delta_dist = dists[delta_dist_ii]
             new_xpos = delta_dist.peak_pos
-            new_weight  = np.prod([k.prob(new_xpos) for k in dists if k!=delta_dist] * delta_dist.weight)
+            new_weight  = np.prod([k.prob(new_xpos) for k in dists if k!=delta_dist_ii]) * delta_dist.weight
             res = Distribution.delta_function(new_xpos, weight = new_weight)
         else:
             new_xmin = np.max([k.xmin for k in dists])
