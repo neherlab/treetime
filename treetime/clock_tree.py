@@ -178,8 +178,11 @@ class ClockTree(TreeAnc):
         for node in self.tree.find_clades(order='postorder'):  # children first, msg to parents
             # Lx is the maximal likelihood of a subtree given the parent position
             # Cx is the branch length corresponding to the maximally likely subtree
-
-            if node.is_terminal(): # terminal nodes
+            if node.bad_branch:
+                # no information at the node
+                node.joint_pos_Lx = None
+                node.joint_pos_Cx = None
+            elif node.is_terminal(): # terminal nodes
                 # initialize the Lx for the terminal nodes:
                 if node.msg_from_children.is_delta: # there is a time contraint
                     # subtree probability given the position of the parent node
@@ -206,12 +209,6 @@ class ClockTree(TreeAnc):
 
                     node.joint_pos_Lx = res
                     node.joint_pos_Cx = res_t
-
-                else:
-                    # node send "No message" - its position is assumed from the
-                    # position of the parent node
-                    node.joint_pos_Lx = None
-                    node.joint_pos_Cx = None
 
             elif node.up is not None: # all internal nodes, except root
 
@@ -311,8 +308,10 @@ class ClockTree(TreeAnc):
         self.logger("ClockTree - Marginal reconstruction:  Propagating leaves -> root...", 2)
         # go through the nodes from leaves towards the root:
         for node in self.tree.find_clades(order='postorder'):  # children first, msg to parents
-
-            if node.is_terminal(): # terminal nodes
+            if node.bad_branch:
+                # no information
+                node.marginal_pos_Lx = None
+            elif node.is_terminal(): # terminal nodes
                 # note that for terminal nodes, msg_from_children is the date constraint from data
                 # initialize the Lx for the terminal nodes:
                 if node.msg_from_children.is_delta: # there is a time contraint
@@ -332,12 +331,6 @@ class ClockTree(TreeAnc):
                     res._adjust_grid(rel_tol=self.rel_tol_prune)
 
                     node.marginal_pos_Lx = res
-
-                else:
-                    # node send "No message" - its position is assumed from the
-                    # position of the parent node
-                    node.marginal_pos_Lx = None
-
             elif node.up is not None: # all internal nodes, except root
 
                 # subtree likelihood given the product of child LH given parent position ...

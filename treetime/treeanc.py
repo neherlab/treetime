@@ -157,11 +157,14 @@ class TreeAnc(object):
         """
         self.tree.root.up = None
         self.tree.root.dist2root = 0.0
+        self.tree.root.bad_branch=False
         for clade in self.tree.get_nonterminals(order='preorder'): # parents first
+            clade.bad_branch=False
             if clade.name is None:
                 clade.name = "NODE_" + format(self._internal_node_count, '07d')
                 self._internal_node_count += 1
             for c in clade.clades:
+                c.bad_branch=False
                 c.up = clade
                 if not hasattr(c, 'mutation_length'):
                     c.mutation_length=c.branch_length
