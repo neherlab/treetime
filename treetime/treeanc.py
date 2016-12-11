@@ -158,7 +158,9 @@ class TreeAnc(object):
         self.tree.root.up = None
         self.tree.root.dist2root = 0.0
         self.tree.root.bad_branch=self.tree.root.bad_branch if hasattr(self.tree.root, 'bad_branch') else False
+        internal_node_count = 0
         for clade in self.tree.get_nonterminals(order='preorder'): # parents first
+            internal_node_count+=1
             clade.bad_branch=False
             if clade.name is None:
                 clade.name = "NODE_" + format(self._internal_node_count, '07d')
@@ -169,6 +171,7 @@ class TreeAnc(object):
                 if not hasattr(c, 'mutation_length'):
                     c.mutation_length=c.branch_length
                 c.dist2root = c.up.dist2root + c.mutation_length
+        self._internal_node_count = max(internal_node_count, self._internal_node_count)
 
 ####################################################################
 ## END SET-UP

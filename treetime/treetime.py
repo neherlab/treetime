@@ -218,8 +218,6 @@ class TreeTime(ClockTree):
         from Bio import Phylo
 
         zero_branch_slope = self.gtr.mu*self.seq_len
-        if clade.name == "NODE_0000107":
-            import ipdb; ipdb.set_trace()
 
         def _c_gain(t, n1, n2, parent):
             """

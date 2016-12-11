@@ -301,7 +301,6 @@ class Distribution(object):
 
         return np.sum(res)
 
-
 if __name__=="__main__":
 
     from matplotlib import pyplot as plt
