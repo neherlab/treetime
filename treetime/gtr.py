@@ -300,21 +300,37 @@ class GTR(object):
         if seq_ch.shape != seq_ch.shape:
             raise ValueError("GTR.compress_sequence_pair: Sequence lengths do not match!")
 
-        bool_seqs_p = []
-        bool_seqs_ch = []
-        for seq, bs in [(seq_p,bool_seqs_p), (seq_ch, bool_seqs_ch)]:
-            for ni,nuc in enumerate(self.alphabet):
-                bs.append(seq==nuc)
+        if len(self.alphabet)<10: # for small alphabet, repeatedly check array for all state pairs
+            pair_count = []
+            bool_seqs_p = []
+            bool_seqs_ch = []
+            for seq, bs in [(seq_p,bool_seqs_p), (seq_ch, bool_seqs_ch)]:
+                for ni,nuc in enumerate(self.alphabet):
+                    bs.append(seq==nuc)
 
-        pair_count = []
-        for n1,nuc1 in enumerate(self.alphabet):
-            if (n1!=self.gap_index or (not ignore_gaps)):
-                for n2,nuc2 in enumerate(self.alphabet):
-                    if (n2!=self.gap_index or (not ignore_gaps)):
-                        count = (bool_seqs_p[n1]&bool_seqs_ch[n2]).sum()
-                        if count: pair_count.append(((n1,n2), count))
+            for n1,nuc1 in enumerate(self.alphabet):
+                if (n1!=self.gap_index or (not ignore_gaps)):
+                    for n2,nuc2 in enumerate(self.alphabet):
+                        if (n2!=self.gap_index or (not ignore_gaps)):
+                            count = (bool_seqs_p[n1]&bool_seqs_ch[n2]).sum()
+                            if count: pair_count.append(((n1,n2), count))
+        else: # enumerate state pairs of the sequence for large alphabets
+            num_seqs = []
+            for seq in [seq_p, seq_ch]:
+                tmp = np.ones_like(seq, dtype=int)
+                for ni,nuc in enumerate(self.alphabet):
+                    tmp[seq==nuc] = ni
+                    num_seqs.append(tmp)
+                    if ignore_gaps:
+                        pair_count = Counter([x for x in zip(num_seqs[0], num_seqs[1])
+                                              if (self.gap_index not in x)])
+                    else:
+                        pair_count = Counter(zip(num_seqs[0], num_seqs[1]))
+            pair_count = pair_count.items()
+
         return (np.array([x[0] for x in pair_count], dtype=int),    # [(child_nuc, parent_nuc),()...]
-               np.array([x[1] for x in pair_count], dtype=int))     # multiplicity of each parent/child nuc pair
+                np.array([x[1] for x in pair_count], dtype=int))    # multiplicity of each parent/child nuc pair
+
 
 ########################################################################
 ### evolution functions

@@ -138,7 +138,7 @@ class TreeAnc(object):
         """
         Set link to parent and net distance to root for all tree nodes.
         Should be run once the tree is read and after every tree topology or branch
-        lengths optimizations.
+        length optimizations.
         """
         if self.one_mutation is None:
             self.tree.root.branch_length = 0.001
@@ -157,14 +157,14 @@ class TreeAnc(object):
         """
         self.tree.root.up = None
         self.tree.root.dist2root = 0.0
-        self.tree.root.bad_branch=False
+        self.tree.root.bad_branch=self.tree.root.bad_branch if hasattr(self.tree.root, 'bad_branch') else False
         for clade in self.tree.get_nonterminals(order='preorder'): # parents first
             clade.bad_branch=False
             if clade.name is None:
                 clade.name = "NODE_" + format(self._internal_node_count, '07d')
                 self._internal_node_count += 1
             for c in clade.clades:
-                c.bad_branch=False
+                c.bad_branch=c.bad_branch if hasattr(c, 'bad_branch') else False
                 c.up = clade
                 if not hasattr(c, 'mutation_length'):
                     c.mutation_length=c.branch_length
@@ -174,7 +174,7 @@ class TreeAnc(object):
 ## END SET-UP
 ####################################################################
 
-    def infer_gtr(self, print_raw=False, marginal=False, **kwargs):
+    def infer_gtr(self, print_raw=False, marginal=False, normalized_rate=True, **kwargs):
 
         # decide which type of the Maximum-likelihood reconstruction use
         # (marginal) or (joint)
@@ -208,6 +208,9 @@ class TreeAnc(object):
             print('T_i:', Ti)
         root_state = np.array([np.sum(self.tree.root.sequence==nuc) for nuc in alpha])
         self._gtr = GTR.infer(nij, Ti, root_state, pc=5.0, alphabet=self.gtr.alphabet, logger=self.logger)
+        if normalized_rate:
+            self.logger("TreeAnc.infer_gtr: setting overall rate to 1.0...", 2)
+            self._gtr.mu=1.0
         return self._gtr
 
 
@@ -655,7 +658,7 @@ class TreeAnc(object):
         """
 
 
-        self.logger("TreeAnc.optimize_branch_length: running branch lengths optimization...",1)
+        self.logger("TreeAnc.optimize_branch_length: running branch length optimization...",1)
 
         verbose = 0
         store_old_dist = False
