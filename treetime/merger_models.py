@@ -5,7 +5,6 @@ from __future__ import print_function, division
 import numpy as np
 from Bio import AlignIO, Phylo
 from scipy.interpolate import interp1d
-from distribution import Distribution
 
 class Coalescent(object):
     """docstring for Coalescent"""
@@ -32,10 +31,26 @@ class Coalescent(object):
         self.nbranches = interp1d(-tvals, nbranches, kind='linear')
         self.cost_func = interp1d(-tvals, 0.5*cost/self.Tc, kind='linear')
 
+        # calculate merger rates
+        mergers = np.array(sorted([(-n.time_before_present, len(n.clades)-1)
+                                for n in self.tree.get_nonterminals()], key=lambda x:x[0]))
+
+        events_t = -mergers[:,0]
+        nlin = self.nbranches(events_t)
+        events = 2.0*mergers[:,1]/(nlin*(nlin-1))
+        self.merger_density = interp1d(events_t, events, kind='linear')
+
+        dt = 0.1*(events_t[0]-events_t[-1])
+        windows = np.linspace(events_t[-1], events_t[0]-dt, 100)
+        self.Teff = interp1d(windows+0.5*dt,
+                        [np.sum(events[(events_t>=w) & (events_t<w+dt)])/dt for w in windows])
+
+
     def cost(self, t_node, branch_length):
         # return the cost associated with a branch starting at t_node
         # t_node is time before present, the branch goes back in time
         return self.cost_func(t_node) - self.cost_func(t_node+branch_length)
+
 
 
 

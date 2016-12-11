@@ -372,7 +372,7 @@ class ClockTree(TreeAnc):
                                  node.branch_length_interpolator.y-node.branch_length_interpolator.peak_val, '-o')
                         plt.plot(msg_parent_to_node.x,msg_parent_to_node.y-msg_parent_to_node.peak_val, '-o')
                         plt.ylim(0,100)
-                        plt.xlim(-0.01, 0.01)
+                        plt.xlim(-0.05, 0.05)
                         import ipdb; ipdb.set_trace()
 
         if not self.debug:
@@ -385,7 +385,7 @@ class ClockTree(TreeAnc):
         from datetime import datetime, timedelta
         now = utils.numeric_date()
         for node in self.tree.find_clades():
-            years_bp = self.date2dist.get_date(node.time_before_present)
+            years_bp = self.date2dist.to_years(node.time_before_present)
             if years_bp < 0:
                 if not hasattr(node, "bad_branch") or node.bad_branch==False:
                     self.logger("ClockTree.convert_dates -- WARNING: The node is later than today, but it is not"

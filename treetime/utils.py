@@ -82,24 +82,19 @@ class DateConversion(object):
         """
         return (numeric_date() - numdate) * abs(self.slope)
 
-    def get_date(self, abs_t):
+    def to_years(self, abs_t):
         """
-        Get the approximate date of the tree node, assuming that the
-        dependence between the node date and the node depth int the tree is
-        linear.
-
-        Args:
-         - node(Phylo.Tree.Clade): node of the tree. Must be from the TreeAnc
-         class (or its derivative), to contain the necessary attributes (
-            dist2root).
+        Convert the time before present measured in branch length units to years
 
         """
-        days = abs_t / abs(self.slope)  #(self.intercept - abs_t) / self.slope
-        if days < 0:
-            print ("The inferred date of the node is later than today!")
-            #print ("Warning: got the negative date! Returning the inverse.")
-            #days = abs(days)
-        return days
+        return abs_t / abs(self.slope)
+
+    def to_numdate(self, tbp):
+        """
+        Convert the numeric date to the branch-len scale
+        """
+        return numeric_date() - self.to_years(tbp)
+
 
 
 def min_interp(interp_object):
