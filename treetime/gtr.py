@@ -25,6 +25,7 @@ class GTR(object):
                 self.profile_map = {s:x for s,x in zip(self.alphabet, np.eye(len(self.alphabet)))}
             else:
                 self.profile_map = prof_map
+
         if logger is None:
             def logger(*args,**kwargs):
                 print(*args)
@@ -32,7 +33,13 @@ class GTR(object):
         else:
             self.logger = logger
         n_states = len(self.alphabet)
+
         self.logger("GTR: with alphabet: "+str(self.alphabet),1)
+        if any([x.sum()==n_states for x in self.profile_map.values()]):
+            self.ambiguous = [c for c,x in self.profile_map.iteritems() if x.sum()==n_states][0]
+            self.logger("GTR: ambiguous character: "+self.ambiguous,2)
+        else:
+            self.ambiguous=None
         try:
             self.gap_index = list(self.alphabet).index('-')
         except:
@@ -154,20 +161,23 @@ class GTR(object):
         """
         if 'alphabet' in kwargs and kwargs['alphabet'] in alphabets.keys():
             alphabet = kwargs['alphabet']
+        elif model in ['aa', 'prot']:
+            alphabet='aa'
         else:
             alphabet = 'nuc'
+
         if 'mu' in kwargs:
             mu = kwargs['mu']
         else:
             mu = 1.0
 
-        if model in ['Jukes-Cantor', 'JC69']:
-            gtr = cls('nuc')
+        gtr = cls(alphabet)
+        n = gtr.alphabet.shape[0]
+
+        if model in ['Jukes-Cantor', 'JC69', 'aa', 'prot']:
             n = gtr.alphabet.shape[0]
             W, pi = np.ones((n,n)), np.ones(n)
         elif model=='random':
-            gtr = cls(alphabet)
-            n = gtr.alphabet.shape[0]
             pi = 1.0*np.random.randint(0,100,size=(n))
             W = 1.0*np.random.randint(0,100,size=(n,n)) # with gaps
         else:
