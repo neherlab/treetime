@@ -12,9 +12,9 @@ class Coalescent(object):
         super(Coalescent, self).__init__()
         self.tree = tree
         self.Tc = Tc
-        self.count_concurrent_branches()
+        self.make_skyline()
 
-    def count_concurrent_branches(self):
+    def make_skyline(self):
         # collect all node locations and difference in branch count at that point
         # this is sorted by negative time before present, i.e.the root is first
         tmp = np.array(sorted([(-n.time_before_present, len(n.clades)-1)
@@ -40,10 +40,11 @@ class Coalescent(object):
         events = 2.0*mergers[:,1]/(nlin*(nlin-1))
         self.merger_density = interp1d(events_t, events, kind='linear')
 
-        dt = 0.1*(events_t[0]-events_t[-1])
+        dt = 0.05*(events_t[0]-events_t[-1])
         windows = np.linspace(events_t[-1], events_t[0]-dt, 100)
-        self.Teff = interp1d(windows+0.5*dt,
-                        [np.sum(events[(events_t>=w) & (events_t<w+dt)])/dt for w in windows])
+        smoothing_kernel = lambda x: np.exp(-x**2/2.0/dt**2)/np.sqrt(2.0*np.pi)/dt
+        self.Tc_inv = interp1d(windows,
+                        [np.sum(smoothing_kernel(events_t-w)*events) for w in windows])
 
 
     def cost(self, t_node, branch_length):
