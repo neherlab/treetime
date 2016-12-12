@@ -40,10 +40,17 @@ class ClockTree(TreeAnc):
             if node.name in self.date_dict:
                 node.numdate_given = self.date_dict[node.name]
                 node.bad_branch = False
-            else:
-                if node.is_terminal():
-                    node.bad_branch = True
+            else: # nodes without date contraints
+
                 node.numdate_given = None
+
+                if node.is_terminal():
+                    # Terminal branches without date constraints marked as 'bad'
+                    node.bad_branch = True
+                else:
+                    # If all branches dowstream are 'bad', and there is no date constraint for
+                    # this node, the branch is marked as 'bad'
+                    node.bad_branch = np.all([x.bad_branch for x in node])
 
 
     @property
