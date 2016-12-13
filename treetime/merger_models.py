@@ -31,6 +31,7 @@ class Coalescent(object):
         # make interpolation objects for the branch count and its integral
         # the latter is scales by 0.5/Tc
         self.nbranches = interp1d(-tvals, nbranches, kind='linear')
+        # need to add extra point at very large time before present to prevent 'out of interpolation range' errors
         self.cost_func = interp1d(np.concatenate((-tvals,[ttconf.BIG_NUMBER])),
                                   np.concatenate((cost,[cost[-0]]))*0.5/self.Tc, kind='linear')
 
@@ -41,13 +42,15 @@ class Coalescent(object):
         events_t = -mergers[:,0]
         nlin = self.nbranches(events_t)
         events = 2.0*mergers[:,1]/(nlin*(nlin-1))
-        self.merger_density = interp1d(events_t, events, kind='linear')
+        self.normalized_mergers = np.array((events_t, events))
 
+        # smooth this with a Gaussian kernel and add 0.01 of average to fill long gaps
         dt = 0.05*(events_t[0]-events_t[-1])
         windows = np.linspace(events_t[-1], events_t[0]-dt, 100)
+        avg = np.sum(events)/np.abs(events_t[0]-events_t[-1])
         smoothing_kernel = lambda x: np.exp(-x**2/2.0/dt**2)/np.sqrt(2.0*np.pi)/dt
         self.Tc_inv = interp1d(windows,
-                        [np.sum(smoothing_kernel(events_t-w)*events) for w in windows])
+                        [0.01*avg+0.99*np.sum(smoothing_kernel(events_t-w)*events) for w in windows])
 
 
     def cost(self, t_node, branch_length):
