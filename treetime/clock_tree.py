@@ -34,7 +34,6 @@ class ClockTree(TreeAnc):
         self.n_integral = ttconf.NINTEGRAL
         self.rel_tol_prune = ttconf.REL_TOL_PRUNE
         self.rel_tol_refine = ttconf.REL_TOL_REFINE
-        self.merger_rate_default = ttconf.BRANCH_LEN_PENALTY
 
         for node in self.tree.find_clades():
             if node.name in self.date_dict:
@@ -97,12 +96,12 @@ class ClockTree(TreeAnc):
                 # copy the merger rate and gamma if they are set
                 if hasattr(node,'branch_length_interpolator') and node.branch_length_interpolator is not None:
                     gamma = node.branch_length_interpolator.gamma
-                    merger_rate = node.branch_length_interpolator.merger_rate
+                    merger_cost = node.branch_length_interpolator.merger_cost
                 else:
                     gamma = 1.0
-                    merger_rate = self.merger_rate_default
+                    merger_cost = None
                 node.branch_length_interpolator = BranchLenInterpolator(node, self.gtr, one_mutation=self.one_mutation)
-                node.branch_length_interpolator.merger_rate = merger_rate
+                node.branch_length_interpolator.merger_cost = merger_cost
                 node.branch_length_interpolator.gamma = gamma
         self.date2dist = utils.DateConversion.from_tree(self.tree, slope)
 

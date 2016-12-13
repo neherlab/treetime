@@ -50,9 +50,10 @@ class TreeTime(ClockTree):
             self.logger("###TreeTime.run: ITERATION %d out of %d iterations"%(niter+1,max_iter),0)
             # add coalescent prior
             if Tc and (Tc is not None):
-                from merger_models import coalescent
+                from merger_models import Coalescent
                 self.logger('TreeTime.run: adding coalescent prior',1)
-                coalescent(self.tree, Tc=Tc)
+                self.merger_model = Coalescent(self.tree, Tc=Tc)
+                self.merger_model.attach_to_tree()
             if relaxed_clock:
                 # estimate a relaxed molecular clock
                 self.relaxed_clock(slack=slack, coupling=coupling)

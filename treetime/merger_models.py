@@ -5,6 +5,8 @@ from __future__ import print_function, division
 import numpy as np
 from Bio import AlignIO, Phylo
 from scipy.interpolate import interp1d
+import config as ttconf
+
 
 class Coalescent(object):
     """docstring for Coalescent"""
@@ -29,7 +31,8 @@ class Coalescent(object):
         # make interpolation objects for the branch count and its integral
         # the latter is scales by 0.5/Tc
         self.nbranches = interp1d(-tvals, nbranches, kind='linear')
-        self.cost_func = interp1d(-tvals, 0.5*cost/self.Tc, kind='linear')
+        self.cost_func = interp1d(np.concatenate((-tvals,[ttconf.BIG_NUMBER])),
+                                  np.concatenate((cost,[cost[-0]]))*0.5/self.Tc, kind='linear')
 
         # calculate merger rates
         mergers = np.array(sorted([(-n.time_before_present, len(n.clades)-1)
@@ -52,35 +55,12 @@ class Coalescent(object):
         # t_node is time before present, the branch goes back in time
         return self.cost_func(t_node) - self.cost_func(t_node+branch_length)
 
+    def attach_to_tree(self):
+        for clade in self.tree.find_clades():
+            if clade.up is not None:
+                clade.branch_length_interpolator.merger_cost = self.cost
 
 
-
-def coalescent(tree, Tc=None):
-    '''
-    assigns coalescent merger rates to all branches in the tree
-    '''
-    # determine the time intervals with constant merger rates
-    branch_times = np.sort(np.unique([n.time_before_present for n in tree.find_clades()]))
-    branch_counts = np.zeros_like(branch_times, dtype=int)
-    for n in tree.find_clades():
-        if n.up  is None:
-            continue
-        lw = branch_times.searchsorted(n.time_before_present)
-        up = branch_times.searchsorted(n.up.time_before_present)
-        branch_counts[lw:up]+=1
-
-    # calculate the merger rates in each interval
-    merger_rates = (branch_counts-1.0)*0.5/Tc
-
-    # assign those rates to all nodes in the tree
-    for n in tree.find_clades():
-        if n.up  is None:
-            continue
-        lw = branch_times.searchsorted(n.time_before_present)
-        up = branch_times.searchsorted(n.up.time_before_present)
-        if lw==up:
-            lw = min(lw,up-1)
-        n.branch_length_interpolator.merger_rate = merger_rates[lw:up].mean()
 
 def traveling_wave(tree, Tc=None, tau=None):
     '''

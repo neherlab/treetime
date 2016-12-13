@@ -23,7 +23,7 @@ class BranchLenInterpolator (Distribution):
 
         self._gamma = 1.0
 
-        self._merger_rate = ttconf.BRANCH_LEN_PENALTY
+        self._merger_cost = None
         if one_mutation is None:
             one_mutation = 1.0/node.sequence.shape[0]
         # optimal branch length
@@ -72,12 +72,12 @@ class BranchLenInterpolator (Distribution):
         self._gamma = value
 
     @property
-    def merger_rate(self):
-       return self._merger_rate
+    def merger_cost(self):
+       return self._merger_cost
 
-    @merger_rate.setter
-    def merger_rate(self, value):
-        self._merger_rate = value
+    @merger_cost.setter
+    def merger_cost(self, cost_func):
+        self._merger_cost = cost_func
         self._peak_idx = np.argmin(self.__call__(self.x))
         self._peak_pos = self.x[self._peak_idx]
         if self.kind=='linear': # can't mess like this with non-linear interpolation
@@ -98,8 +98,9 @@ class BranchLenInterpolator (Distribution):
         return super(BranchLenInterpolator,self).fwhm/self.gamma
 
     def __call__(self, x):
-        res = self.merger_rate*x
-        res += super(BranchLenInterpolator, self).__call__(x*self.gamma)
+        res = super(BranchLenInterpolator, self).__call__(x*self.gamma)
+        if self.merger_cost is not None:
+            res += self.merger_cost(self.node.time_before_present, x)
         return res
 
     def __mul__(self, other):
