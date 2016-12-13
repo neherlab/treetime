@@ -21,7 +21,7 @@ class TreeAnc(object):
     alignment, making ancestral state inferrence
     """
 
-    def __init__(self, tree=None, aln=None, gtr=None, verbose = ttconf.VERBOSE):
+    def __init__(self, tree=None, aln=None, gtr=None, fill_overhangs=True, verbose = ttconf.VERBOSE):
         if tree is None:
             raise("TreeAnc requires a tree!")
         self.t_start = time.time()
@@ -30,6 +30,7 @@ class TreeAnc(object):
         self._internal_node_count = 0
         self.use_mutation_length=False
         self.one_mutation = None
+        self.fill_overhangs = fill_overhangs
 
         # TODO: set explicitly
         self.ignore_gaps = True
@@ -73,6 +74,8 @@ class TreeAnc(object):
             self._gtr.logger=self.logger
         else:
             self.logger("TreeAnc.gtr_setter: can't interpret GTR model", 1, warn=True)
+        if self._gtr.ambiguous is None:
+            self.fill_overhangs=False
 
     @property
     def tree(self):
@@ -114,8 +117,10 @@ class TreeAnc(object):
 
     def attach_sequences_to_nodes(self):
         # loop over tree,
-        failed_leaves = 0
-        dic_aln = {k.name: seq_utils.seq2array(k.seq) for k in self.aln} #
+        failed_leaves= 0
+        dic_aln = {k.name: seq_utils.seq2array(k.seq, fill_overhangs=self.fill_overhangs,
+                                               ambiguous_character=self.gtr.ambiguous)
+                            for k in self.aln} #
         for l in self.tree.find_clades():
             if l.name in dic_aln:
                 l.state_seq = dic_aln[l.name]

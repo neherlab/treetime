@@ -11,18 +11,21 @@ if __name__=="__main__":
     parser = argparse.ArgumentParser(
             description='Reconstructs ancestral sequences and maps mutations to the tree.'
                         ' The output consists of a file ending with _ancestral.fasta with ancestral sequences'
-                        ' and a tree ending with _mutation.newick with mutations appended to node names'
-                        ' as _A45G_... The inferred GTR model is written to stdout')
+                        ' and a tree ending with _mutation.nexus with mutations added as comments'
+                        ' like _A45G_... The inferred GTR model is written to stdout')
     parser.add_argument('--aln', required = True, type = str,  help ="fasta file with input sequences")
     parser.add_argument('--tree', required = True, type = str,  help ="newick file with tree")
+    parser.add_argument('--prot', default = False, action="store_true", help ="protein alignment")
     parser.add_argument('--marginal', default = False, action='store_true', help='marginal instead of joint ML reconstruction')
     parser.add_argument('--infer_gtr', default = False, action='store_true', help='infer substitution model')
+    parser.add_argument('--keep_overhangs', default = False, action='store_true', help='do not fill terminal gaps')
     params = parser.parse_args()
 
     ###########################################################################
     ### ANCESTRAL RECONSTRUCTION
     ###########################################################################
-    treeanc = TreeAnc(params.tree, aln=params.aln, gtr='Jukes-Cantor', verbose=4)
+    model = 'aa' if params.prot else 'Jukes-Cantor'
+    treeanc = TreeAnc(params.tree, aln=params.aln, gtr=model, verbose=4, fill_overhangs=not params.keep_overhangs)
     treeanc.infer_ancestral_sequences('ml', infer_gtr=params.infer_gtr,
                                        marginal=params.marginal)
 
@@ -37,12 +40,17 @@ if __name__=="__main__":
     AlignIO.write(treeanc.get_reconstructed_alignment(), outaln_name, 'fasta')
 
     # decorate tree with inferred mutations
+    terminal_count = 0
     for n in treeanc.tree.find_clades():
         if n.up is None:
             continue
+        n.confidence=None
+        if n.is_terminal() and len(n.name)>40:
+            n.name = n.name[:35]+'_%03d'%terminal_count
+            terminal_count+=1
         if len(n.mutations):
-            n.name+='_'+'_'.join([a+str(pos)+d for (a,pos, d) in n.mutations])
+            n.comment= '&mutations="' + '_'.join([a+str(pos)+d for (a,pos, d) in n.mutations])+'"'
 
     # write tree to file
-    outtree_name = '.'.join(params.tree.split('/')[-1].split('.')[:-1])+'_mutation.newick'
-    Phylo.write(treeanc.tree, outtree_name, 'newick')
+    outtree_name = '.'.join(params.tree.split('/')[-1].split('.')[:-1])+'_mutation.nexus'
+    Phylo.write(treeanc.tree, outtree_name, 'nexus')
