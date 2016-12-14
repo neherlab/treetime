@@ -64,6 +64,20 @@ class Coalescent(object):
                 clade.branch_length_interpolator.merger_cost = self.cost
 
 
+    def skyline(self, gen=1.0, to_numdate=None):
+        '''
+        return the skyline, i.e., an estimate of the inverse rate of coalesence
+        parameters:
+            gen -- number of generations per unit of time. Unit of time is branch length,
+                   hence this needs to be the inverse substitution rate per generation
+            to_numdate -- function to convert time before present to numerical dates
+        '''
+        if to_numdate is None:
+            to_numdate =lambda x:x
+
+        return interp1d(to_numdate(self.Tc_inv.x), gen/self.Tc_inv.y)
+
+
 
 def traveling_wave(tree, Tc=None, tau=None):
     '''

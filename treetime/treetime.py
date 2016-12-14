@@ -119,21 +119,36 @@ class TreeTime(ClockTree):
                 node.bad_branch=True
             else:
                 node.bad_branch=False
+
         if plot:
-            import matplotlib.pyplot as plt
-            plt.figure()
-            dates = np.array([np.mean(n.numdate_given) for n in terminals])
-            dist = np.array([n.dist2root for n in terminals])
-            ind = np.array([n.bad_branch for n in terminals])
-            plt.plot(dates, dates*slope+icpt)
-            plt.scatter(dates[ind], dist[ind], c='r')
-            plt.scatter(dates[~ind], dist[~ind], c='g')
-            plt.ylabel('root-to-tip distance')
-            plt.xlabel('date')
+            self.plot_root_to_tip()
 
         # redo root estimation after outlier removal
         if reroot:
             self.reroot(root=reroot)
+
+
+    def plot_root_to_tip(self, add_internal=False, **kwargs):
+        import matplotlib.pyplot as plt
+        tips = self.tree.get_terminals()
+        internal = self.tree.get_nonterminals()
+        plt.figure()
+        dates = np.array([np.mean(n.numdate_given) for n in tips])
+        dist = np.array([n.dist2root for n in tips])
+        ind = np.array([n.bad_branch for n in tips])
+        # plot tips
+        plt.scatter(dates[ind], dist[ind]  , c='r', label="bad tips" , **kwargs)
+        plt.scatter(dates[~ind], dist[~ind], c='g', label="good tips", **kwargs)
+        if add_internal and hasattr(self.tree.root, "numdate"):
+            dates = np.array([n.numdate for n in internal])
+            dist = np.array([n.dist2root for n in internal])
+            ind = np.array([n.bad_branch for n in internal])
+            # plot internal
+            plt.scatter(dates[~ind], dist[~ind], c='b', marker='<', label="internal", **kwargs)
+
+        plt.legend(loc=2)
+        plt.ylabel('root-to-tip distance')
+        plt.xlabel('date')
 
 
     def reroot(self,root='best'):
@@ -598,24 +613,8 @@ if __name__=="__main__":
     myTree = TreeTime(gtr='Jukes-Cantor', tree = base_name+'.nwk',
                         aln = base_name+'.fasta', verbose = 4, dates = dates, debug=True)
 
-    myTree.run(root='clock_filter', relaxed_clock=False, max_iter=2,
+    myTree.run(root='clock_filter', relaxed_clock=False, max_iter=2, plot_rtt=True,
                resolve_polytomies=True, Tc=0.01, n_iqd=2, fixed_slope=0.003, do_marginal=True)
-
-    # figure with branch length distributions
-    plt.figure()
-    x = np.linspace(0,0.02,1000)
-    leaf_count=0
-    for node in myTree.tree.find_clades(order='postorder'):
-        if node.up is not None:
-            plt.plot(x, node.branch_length_interpolator.prob_relative(x))
-        if node.is_terminal():
-            leaf_count+=1
-            node.ypos = leaf_count
-        else:
-            node.ypos = np.mean([c.ypos for c in node.clades])
-    plt.yscale('log')
-    plt.ylim([0.01,1.2])
-
 
     # draw phylogenetic tree in one panel, marginal distributions in the other
     fig, axs = plt.subplots(2,1, sharex=True, figsize=(8,12))
@@ -624,26 +623,30 @@ if __name__=="__main__":
     cols = sns.color_palette()
     depth = myTree.tree.depths()
     x = np.linspace(-0.01, .2,1000)
-    for ni,node in enumerate(myTree.tree.find_clades()):
-        if (not node.is_terminal()):
+    leaf_count=0
+    for ni,node in enumerate(myTree.tree.find_clades(order="postorder")):
+        if node.is_terminal():
             # plot marginal distributions of node positions
+            node.ypos=leaf_count
+            leaf_count+=1
+        else:
+            node.ypos=np.mean([c.ypos for c in node])
             axs[1].plot(offset-x, node.marginal_pos_LH.prob_relative(x), '-', c=cols[ni%len(cols)])
         if node.up is not None:
             # add branch length distributions to tree
             x_branch = np.linspace(depth[node]-2*node.branch_length-0.005,depth[node],100)
             axs[0].plot(x_branch, node.ypos - 0.7*node.branch_length_interpolator.prob_relative(depth[node]-x_branch), '-', c=cols[ni%len(cols)])
     axs[1].set_yscale('log')
-    axs[1].set_ylim([0.01,1.2])
+    axs[1].set_ylim([0.05,1.2])
     axs[0].set_xlabel('')
     plt.tight_layout()
 
     # make root to tip plot
-    r2tip = np.array([[n.numdate, n.dist2root] for n in myTree.tree.get_terminals()])
-    r2int = np.array([[n.numdate, n.dist2root] for n in myTree.tree.get_nonterminals()])
+    myTree.plot_root_to_tip(add_internal=True, s=30)
+
+    # plot skyline, i.e. inverse coalescent rate
     plt.figure()
-    plt.scatter(r2tip[:,0], r2tip[:,1], c='g', label='terminal nodes', s=30)
-    plt.scatter(r2int[:,0], r2int[:,1], c='b', label='internal nodes', s=30)
-    plt.ylabel('root to node distance')
-    plt.xlabel('date')
-    plt.legend(loc=2)
+    skyline = myTree.merger_model.skyline(gen = 50/myTree.date2dist.slope,
+                                          to_numdate = myTree.date2dist.to_numdate)
+    plt.plot(skyline.x, skyline.y)
 
