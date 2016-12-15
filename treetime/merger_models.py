@@ -3,6 +3,7 @@ methods to calculate merger models for a time tree
 """
 from __future__ import print_function, division
 import numpy as np
+import scipy.special as sf
 from Bio import AlignIO, Phylo
 from scipy.interpolate import interp1d
 import config as ttconf
@@ -48,7 +49,7 @@ class Coalescent(object):
         dt = 0.05*(events_t[0]-events_t[-1])
         windows = np.linspace(events_t[-1], events_t[0]-dt, 100)
         avg = np.sum(events)/np.abs(events_t[0]-events_t[-1])
-        smoothing_kernel = lambda x: np.exp(-x**2/2.0/dt**2)/np.sqrt(2.0*np.pi)/dt
+        smoothing_kernel = lambda x: np.exp(-x**2/2.0/dt**2)/np.sqrt(2.0*np.pi)/dt/(sf.erf(x.max()/dt)-sf.erf(x.min()/dt))*2.0
         self.Tc_inv = interp1d(windows,
                         [0.01*avg+0.99*np.sum(smoothing_kernel(events_t-w)*events) for w in windows])
 

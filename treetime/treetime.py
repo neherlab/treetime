@@ -614,7 +614,7 @@ if __name__=="__main__":
                         aln = base_name+'.fasta', verbose = 4, dates = dates, debug=True)
 
     myTree.run(root='clock_filter', relaxed_clock=False, max_iter=2, plot_rtt=True,
-               resolve_polytomies=True, Tc=0.01, n_iqd=2, fixed_slope=0.003, do_marginal=True)
+               resolve_polytomies=True, Tc=0.05, n_iqd=2, fixed_slope=0.003, do_marginal=True)
 
     # draw phylogenetic tree in one panel, marginal distributions in the other
     fig, axs = plt.subplots(2,1, sharex=True, figsize=(8,12))
