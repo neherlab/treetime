@@ -32,8 +32,8 @@ class Coalescent(object):
         # the latter is scales by 0.5/Tc
         self.nbranches = interp1d(-tvals, nbranches, kind='linear')
         # need to add extra point at very large time before present to prevent 'out of interpolation range' errors
-        self.cost_func = interp1d(np.concatenate((-tvals,[ttconf.BIG_NUMBER])),
-                                  np.concatenate((cost,[cost[-0]]))*0.5/self.Tc, kind='linear')
+        self.cost_func = interp1d(np.concatenate(([-ttconf.BIG_NUMBER], -tvals,[ttconf.BIG_NUMBER])),
+                                  np.concatenate(([cost[-1]], cost,[cost[0]]))*0.5/self.Tc, kind='linear')
 
         # calculate merger rates
         mergers = np.array(sorted([(-n.time_before_present, len(n.clades)-1)

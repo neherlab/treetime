@@ -97,10 +97,12 @@ class BranchLenInterpolator (Distribution):
     def fwhm(self):
         return super(BranchLenInterpolator,self).fwhm/self.gamma
 
-    def __call__(self, x):
+    def __call__(self, x, tnode=None):
         res = super(BranchLenInterpolator, self).__call__(x*self.gamma)
         if self.merger_cost is not None:
-            res += self.merger_cost(self.node.time_before_present, x)
+            if tnode is None:
+                tnode = self.node.time_before_present
+            res += self.merger_cost(tnode, x)
         return res
 
     def __mul__(self, other):

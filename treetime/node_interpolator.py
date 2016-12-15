@@ -44,9 +44,10 @@ def _convolution_integrand(t_val, f, g, inverse_time=None, return_log=False):
             tau = np.linspace(tau_min, tau_max, 10)
 
         if inverse_time: # add negative logarithms
-            fg = f(t_val - tau) + g(tau)
+            tnode = t_val - tau
+            fg = f(tnode) + g(tau, tnode=tnode)
         else:
-            fg = f(t_val + tau) + g(tau)
+            fg = f(t_val + tau) + g(tau, tnode=t_val)
 
         # create the interpolation object on this grid
         FG = Distribution(tau, fg, is_log=True, kind='linear')

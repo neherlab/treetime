@@ -187,8 +187,10 @@ class ClockTree(TreeAnc):
                     # position of the parent node is given by the Lx.x
                     # probablity of the subtree (consiting of one terminal node)
                     # is given by the Lx.y
-                    node.joint_pos_Lx = Distribution.shifted_x(node.branch_length_interpolator,
-                                                               node.date_constraint.peak_pos)
+                    # node.joint_pos_Lx = Distribution.shifted_x(node.branch_length_interpolator,
+                    #                                            node.date_constraint.peak_pos)
+                    x = node.branch_length_interpolator.x + node.date_constraint.peak_pos
+                    node.joint_pos_Lx = Distribution(x, node.branch_length_interpolator(x), is_log=True)
                     node.joint_pos_Cx = Distribution (node.date_constraint.peak_pos
                                                       + node.branch_length_interpolator.x,
                                                       node.branch_length_interpolator.x) # only one value
@@ -246,11 +248,11 @@ class ClockTree(TreeAnc):
 
             # just sanity check, should never happen:
             if node.branch_length < 0 or node.time_before_present < 0:
+                if self.debug:
+                    import ipdb; ipdb.set_trace()
                 if node.branch_length<0 and node.branch_length>-ttconf.TINY_NUMBER:
                     self.logger("ClockTree - Joint reconstruction: correcting rounding error of %s"%node.name, 4)
                     node.branch_length = 0
-                if self.debug:
-                    import ipdb; ipdb.set_trace()
 
         # cleanup, if required
         if not self.debug:
@@ -299,8 +301,8 @@ class ClockTree(TreeAnc):
                     # position of the parent node is given by the branch length
                     # distribution attached to the child node position
                     node.subtree_distribution = node.date_constraint
-                    node.marginal_pos_Lx = Distribution.shifted_x(node.branch_length_interpolator,
-                                                                      node.date_constraint.peak_pos)
+                    x = node.branch_length_interpolator.x + node.date_constraint.peak_pos
+                    node.marginal_pos_Lx = Distribution(x, node.branch_length_interpolator(x), is_log=True)
 
                 else: # all nodes without precise constraint but positional information
                       # subtree likelihood given the node's constraint and child msg:
@@ -353,7 +355,7 @@ class ClockTree(TreeAnc):
                 msg_parent_to_node = NodeInterpolator.multiply(complementary_msgs)
                 msg_parent_to_node._adjust_grid(rel_tol=self.rel_tol_prune)
 
-                # integral message, which delievers to the node the positional information
+                # integral message, which delivers to the node the positional information
                 # from the complementary subtree
                 res, res_t = NodeInterpolator.convolve(msg_parent_to_node, node.branch_length_interpolator,
                                                     max_or_integral='integral',
