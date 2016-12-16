@@ -87,7 +87,9 @@ class Distribution(object):
                 res = Distribution.delta_function(x_vals[0])
             else:
                 y_vals = np.sum([k.__call__(x_vals) for k in dists], axis=0)
-                res = Distribution(x_vals, y_vals, is_log=True, kind='linear')
+                peak = y_vals.min()
+                ind = (y_vals-peak)<BIG_NUMBER/1000
+                res = Distribution(x_vals[ind], y_vals[ind], is_log=True, kind='linear')
 
         return res
 

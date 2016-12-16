@@ -377,7 +377,7 @@ class ClockTree(TreeAnc):
                         plt.ion()
                         plt.plot(res.x, res.y-res.peak_val, '-o')
                         plt.plot(res.peak_pos - node.branch_length_interpolator.x,
-                                 node.branch_length_interpolator.y-node.branch_length_interpolator.peak_val, '-o')
+                                 node.branch_length_interpolator(node.branch_length_interpolator.x)-node.branch_length_interpolator.peak_val, '-o')
                         plt.plot(msg_parent_to_node.x,msg_parent_to_node.y-msg_parent_to_node.peak_val, '-o')
                         plt.ylim(0,100)
                         plt.xlim(-0.05, 0.05)
