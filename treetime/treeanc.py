@@ -280,14 +280,17 @@ class TreeAnc(object):
 
         """
         # set fitch profiiles to each terminal node
+
         for l in self.tree.get_terminals():
             l.state = [[k] for k in l.sequence]
 
+        L = len(self.tree.get_terminals()[0].sequence)
+
         self.logger("TreeAnc._fitch_anc: Walking up the tree, creating the Fitch profiles",2)
         for node in self.tree.get_nonterminals(order='postorder'):
-            node.state = [self._fitch_state(node, k) for k in range(self.L)]
+            node.state = [self._fitch_state(node, k) for k in range(L)]
 
-        ambs = [i for i in range(self.L) if len(self.tree.root.state[i])>1]
+        ambs = [i for i in range(L) if len(self.tree.root.state[i])>1]
         if len(ambs) > 0:
             for amb in ambs:
                 self.logger("Ambiguous state of the root sequence "
@@ -306,11 +309,11 @@ class TreeAnc(object):
             if node.up != None: # not root
                 sequence =  np.array([node.up.sequence[i]
                         if node.up.sequence[i] in node.state[i]
-                        else node.state[i][0] for i in range(self.L)])
+                        else node.state[i][0] for i in range(L)])
                 if hasattr(node, 'sequence'):
                     N_diff += (sequence!=node.sequence).sum()
                 else:
-                    N_diff += self.L
+                    N_diff += L
                 node.sequence = sequence
 
             node.profile = seq_utils.seq2prof(node.sequence, self.gtr.profile_map)
@@ -348,18 +351,35 @@ class TreeAnc(object):
         Return the sorted, unique values that are in all of the input arrays.
         Adapted from numpy.lib.arraysetops.intersect1d
         """
-        N = len(arrays)
+        def pairwise_intersect(arr1, arr2):
+            s2 = set(arr2)
+            b3 = [val for val in arr1 if val in s2]
+            return b3
+
         arrays = list(arrays) # allow assignment
-        if not assume_unique:
-            for i, arr in enumerate(arrays):
-                arrays[i] = np.unique(arr)
-        aux = np.concatenate(arrays) # one long 1D array
-        aux.sort() # sorted
-        shift = N-1
-        # if an element is in all N arrays, is shows up N consecutive times in the sorted
-        # concatenation. those elements can be found by comparing the array shifted by N-1
-        # since the initital arrays are unique, only the correct elements are found this way.
-        return aux[aux[shift:] == aux[:-shift]]
+        N = len(arrays)
+        while N > 1:
+            arr1 = arrays.pop()
+            arr2 = arrays.pop()
+            arr = pairwise_intersect(arr1, arr2)
+            arrays.append(arr)
+            N = len(arrays)
+
+        return arrays[0]
+
+        #
+        #if not assume_unique:
+        #    for i, arr in enumerate(arrays):
+        #        arrays[i] = np.unique(arr)
+        #aux = np.concatenate(arrays) # one long 1D array
+        #aux.sort() # sorted
+        #shift = N-1
+        ## if an element is in all N arrays, is shows up N consecutive times in the sorted
+        ## concatenation. those elements can be found by comparing the array shifted by N-1
+        ## since the initital arrays are unique, only the correct elements are found this way.
+        #import ipdb; ipdb.set_trace()
+        #return aux[aux[shift:] == aux[:-shift]]
+
 
 
 ###################################################################

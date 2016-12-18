@@ -307,8 +307,8 @@ class ClockTree(TreeAnc):
                 else: # all nodes without precise constraint but positional information
                       # subtree likelihood given the node's constraint and child msg:
                     msgs_to_multiply = [node.date_constraint] if node.date_constraint is not None else []
-                    msgs_to_multiply.extend([child.joint_pos_Lx for child in node.clades
-                                             if child.joint_pos_Lx is not None])
+                    msgs_to_multiply.extend([child.marginal_pos_Lx for child in node.clades
+                                             if child.marginal_pos_Lx is not None])
                     if len(msgs_to_multiply)>1: # combine the different msgs and constraints
                         node.subtree_distribution = Distribution.multiply(msgs_to_multiply)
                     else:
