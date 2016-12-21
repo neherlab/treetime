@@ -27,7 +27,7 @@ def _convolution_integrand(t_val, f, g, inverse_time=None, return_log=False):
         #print(tau_min, tau_max)
 
 
-    if tau_max <= tau_min + ttconf.TINY_NUMBER:
+    if tau_max <= tau_min:
         if return_log:
             return ttconf.BIG_NUMBER
         else:
@@ -167,13 +167,23 @@ class NodeInterpolator (Distribution):
         else:
             grid_left =[]
 
+
+        if tmin>-1:
+            grid_zero_left = tmin + (tmax-tmin)*np.linspace(0,0.01,11)**2
+        else:
+            grid_zero_left = [tmin]
+        if tmax<1:
+            grid_zero_right = tmax - (tmax-tmin)*np.linspace(0,0.01,11)**2
+        else:
+            grid_zero_right = [tmax]
+
         # make grid and calculate convolution
-        t_grid_0 = np.unique(np.concatenate([grid_left[:-1], grid_center, grid_right[1:], [tmin, tmax]]))
+        t_grid_0 = np.unique(np.concatenate([grid_zero_left, grid_left[:-1], grid_center, grid_right[1:], grid_zero_right]))
         t_grid_0 = t_grid_0[(t_grid_0 > tmin-ttconf.TINY_NUMBER) & (t_grid_0 < tmax+ttconf.TINY_NUMBER)]
 
         # res0 - the values of the convolution (integral or max)
-        # t_0 - the value, at which the res0 achieves maximum (for 'max' type  of convolution)
-        # for 'itegral' type t_0 is -1, without any meaning
+        # t_0  - the value, at which the res0 achieves maximum
+        #        (when determining the maximum of the integrand, otherwise meaningless)
         res_0, t_0 = np.array([conv_in_point(t_val) for t_val in t_grid_0]).T
 
         # refine grid as necessary and add new points
@@ -203,20 +213,12 @@ class NodeInterpolator (Distribution):
         # instantiate the new interpolation object and return
         res_y = cls(t_grid_0, res_0, is_log=True, kind='linear')
 
-        # the interpolation object,  which is used to store the value of the
+        # the interpolation object, which is used to store the value of the
         # grid, which maximizes the convolution (for 'max' option),
         # or flat -1 distribution (for 'integral' option)
+        # this grid is the optimal branch length
         res_t = Distribution(t_grid_0, t_0, is_log=True, kind='linear')
 
-        # the convolution and the values of the 'tau' grid, which maximize the
-        # convolution values in the 'max' regime
-
-        #import matplotlib.pyplot as plt
-        #plt.figure(1)
-        #plt.plot(res_y.x, res_y.y)
-        #plt.figure(2)
-        #plt.plot(res_y.x, t_0)
-        #import ipdb; ipdb.set_trace()
         return res_y, res_t
 
 if __name__ == '__main__':

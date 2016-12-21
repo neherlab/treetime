@@ -78,17 +78,18 @@ class Distribution(object):
             new_xmax = np.min([k.xmax for k in dists])
             x_vals = np.unique(np.concatenate([k.x for k in dists]))
             x_vals = x_vals[(x_vals>new_xmin-TINY_NUMBER)&(x_vals<new_xmax+TINY_NUMBER)]
-            if x_vals.shape[0] == 0:
+            y_vals = np.sum([k.__call__(x_vals) for k in dists], axis=0)
+            peak = y_vals.min()
+            ind = (y_vals-peak)<BIG_NUMBER/1000
+            n_points = ind.sum()
+            if n_points == 0:
                 print ("ERROR in distribution multiplication: Distributions do not overlap")
                 x_vals = [0,1]
                 y_vals = [BIG_NUMBER,BIG_NUMBER]
                 res = Distribution(x_vals, y_vals, is_log=True, kind='linear')
-            elif x_vals.shape[0] == 1:
+            elif n_points == 1:
                 res = Distribution.delta_function(x_vals[0])
             else:
-                y_vals = np.sum([k.__call__(x_vals) for k in dists], axis=0)
-                peak = y_vals.min()
-                ind = (y_vals-peak)<BIG_NUMBER/1000
                 res = Distribution(x_vals[ind], y_vals[ind], is_log=True, kind='linear')
 
         return res

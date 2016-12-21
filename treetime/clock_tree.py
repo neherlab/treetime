@@ -155,8 +155,8 @@ class ClockTree(TreeAnc):
 
         Args:
 
-         - None: all required parameters are pre-set as the node attributes during
-           tree preparation
+         - None: all required parameters are pre-set as node attributes during
+                 tree preparation
 
         Returns:
 
@@ -184,22 +184,18 @@ class ClockTree(TreeAnc):
             else: # all other nodes
                 if node.date_constraint is not None and node.date_constraint.is_delta: # there is a time constraint
                     # subtree probability given the position of the parent node
-                    # position of the parent node is given by the Lx.x
-                    # probablity of the subtree (consiting of one terminal node)
-                    # is given by the Lx.y
-                    # node.joint_pos_Lx = Distribution.shifted_x(node.branch_length_interpolator,
-                    #                                            node.date_constraint.peak_pos)
-                    x = node.branch_length_interpolator.x + node.date_constraint.peak_pos
-                    node.joint_pos_Lx = Distribution(x, node.branch_length_interpolator(x), is_log=True)
-                    node.joint_pos_Cx = Distribution (node.date_constraint.peak_pos
-                                                      + node.branch_length_interpolator.x,
-                                                      node.branch_length_interpolator.x) # only one value
-
+                    # Lx.x is the position of the parent node
+                    # Lx.y is the probablity of the subtree (consisting of one terminal node in this case)
+                    # Cx.y is the branch length corresponding the optimal subtree
+                    bl = node.branch_length_interpolator.x
+                    x = bl + node.date_constraint.peak_pos
+                    node.joint_pos_Lx = Distribution(x, node.branch_length_interpolator(bl), is_log=True)
+                    node.joint_pos_Cx = Distribution(x, bl) # map back to the branch length
                 else: # all nodes without precise constraint but positional information
-                    # subtree likelihood given the node's contraint and child msg:
                     msgs_to_multiply = [node.date_constraint] if node.date_constraint is not None else []
                     msgs_to_multiply.extend([child.joint_pos_Lx for child in node.clades
                                              if child.joint_pos_Lx is not None])
+                    # subtree likelihood given the node's constraint and child messages
                     if len(msgs_to_multiply)>1: # combine the different msgs and constraints
                         subtree_distribution = Distribution.multiply(msgs_to_multiply)
                     else:
@@ -301,8 +297,9 @@ class ClockTree(TreeAnc):
                     # position of the parent node is given by the branch length
                     # distribution attached to the child node position
                     node.subtree_distribution = node.date_constraint
-                    x = node.branch_length_interpolator.x + node.date_constraint.peak_pos
-                    node.marginal_pos_Lx = Distribution(x, node.branch_length_interpolator(x), is_log=True)
+                    bl = node.branch_length_interpolator.x
+                    x = bl + node.date_constraint.peak_pos
+                    node.marginal_pos_Lx = Distribution(x, node.branch_length_interpolator(bl), is_log=True)
 
                 else: # all nodes without precise constraint but positional information
                       # subtree likelihood given the node's constraint and child msg:
