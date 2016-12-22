@@ -17,7 +17,8 @@ class TreeTime(ClockTree):
         self.n_iqd = ttconf.NIQD
 
     def run(self, root=None, infer_gtr=True, relaxed_clock=False, n_iqd = None,
-            resolve_polytomies=True, max_iter=0, Tc=None, fixed_slope=None):
+            resolve_polytomies=True, max_iter=0, Tc=None, fixed_slope=None,
+            do_marginal=False, **kwargs):
         if relaxed_clock  and len(relaxed_clock)==2:
             slack, coupling = relaxed_clock
 
@@ -28,23 +29,31 @@ class TreeTime(ClockTree):
 
         # optionally reroot the tree either by oldest, best regression or with a specific leaf
         if n_iqd or root=='clock_filter':
-            self.clock_filter(reroot='best' if root=='clock_filter' else root, n_iqd=n_iqd, plot=True)
+            if "plot_rtt" in kwargs and kwargs["plot_rtt"]:
+                plot_rtt=True
+            else:
+                plot_rtt=False
+            self.clock_filter(reroot='best' if root=='clock_filter' else root,
+                              n_iqd=n_iqd, plot=plot_rtt)
         elif root is not None:
             self.reroot(root=root)
 
         # infer time tree and optionally resolve polytomies
         self.logger("###TreeTime.run: INITIAL ROUND",0)
-        self.make_time_tree(slope=fixed_slope)
+        self.make_time_tree(slope=fixed_slope, do_marginal=False, **kwargs)
+
         # iteratively reconstruct ancestral sequences and re-infer
         # time tree to ensure convergence.
         niter = 0
-        while niter<max_iter:
+        while niter < max_iter:
+
             self.logger("###TreeTime.run: ITERATION %d out of %d iterations"%(niter+1,max_iter),0)
             # add coalescent prior
             if Tc and (Tc is not None):
-                from merger_models import coalescent
+                from merger_models import Coalescent
                 self.logger('TreeTime.run: adding coalescent prior',1)
-                coalescent(self.tree, Tc=Tc)
+                self.merger_model = Coalescent(self.tree, Tc=Tc)
+                self.merger_model.attach_to_tree()
             if relaxed_clock:
                 # estimate a relaxed molecular clock
                 self.relaxed_clock(slack=slack, coupling=coupling)
@@ -57,19 +66,28 @@ class TreeTime(ClockTree):
                     self.prepare_tree()
                     self.optimize_sequences_and_branch_length(prune_short=False,
                                             max_iter=0,sample_from_profile='root')
-                    self.make_time_tree(slope=fixed_slope)
+                    self.make_time_tree(slope=fixed_slope, do_marginal=False, **kwargs)
                     ndiff = self.infer_ancestral_sequences('ml',sample_from_profile='root')
             elif (Tc and (Tc is not None)) or relaxed_clock: # need new timetree first
-                self.make_time_tree(slope=fixed_slope)
+                self.make_time_tree(slope=fixed_slope, do_marginal=False, **kwargs)
                 ndiff = self.infer_ancestral_sequences('ml',sample_from_profile='root')
             else: # no refinements, just iterate
                 ndiff = self.infer_ancestral_sequences('ml',sample_from_profile='root')
-                self.make_time_tree(slope=fixed_slope)
+                self.make_time_tree(slope=fixed_slope, do_marginal=False, **kwargs)
 
             if ndiff==0 & n_resolved==0:
                 self.logger("###TreeTime.run: CONVERGED",0)
                 break
+
             niter+=1
+
+        # if marginal reconstruction requested, make one more round with marginal=True
+        # this will set marginal_pos_LH, which to be used as error bar estimations
+        if do_marginal:
+            self.logger("###TreeTime.run: FINAL ROUND - confidence estimation via marginal reconstruction", 0)
+            self.make_time_tree(slope=fixed_slope, do_marginal=True, **kwargs)
+
+
 
 
     def clock_filter(self, reroot='best', n_iqd=None, plot=False):
@@ -101,22 +119,38 @@ class TreeTime(ClockTree):
                 node.bad_branch=True
             else:
                 node.bad_branch=False
+
         if plot:
-            import matplotlib.pyplot as plt
-            plt.figure()
-            dates = np.array([np.mean(n.numdate_given) for n in terminals])
-            dist = np.array([n.dist2root for n in terminals])
-            ind = np.array([n.bad_branch for n in terminals])
-            plt.plot(dates, dates*slope+icpt)
-            plt.scatter(dates[ind], dist[ind], c='r')
-            plt.scatter(dates[~ind], dist[~ind], c='g')
-            plt.ylabel('root-to-tip distance')
-            plt.xlabel('date')
+            self.plot_root_to_tip()
 
         # redo root estimation after outlier removal
         if reroot:
             self.reroot(root=reroot)
 
+
+    def plot_root_to_tip(self, add_internal=False, label=True, **kwargs):
+        import matplotlib.pyplot as plt
+        tips = self.tree.get_terminals()
+        internal = self.tree.get_nonterminals()
+        plt.figure()
+        dates = np.array([np.mean(n.numdate_given) for n in tips])
+        dist = np.array([n.dist2root for n in tips])
+        ind = np.array([n.bad_branch for n in tips])
+        # plot tips
+        plt.scatter(dates[ind], dist[ind]  , c='r', label="bad tips" if label else "" , **kwargs)
+        plt.scatter(dates[~ind], dist[~ind], c='g', label="good tips" if label else "", **kwargs)
+        if add_internal and hasattr(self.tree.root, "numdate"):
+            dates = np.array([n.numdate for n in internal])
+            dist = np.array([n.dist2root for n in internal])
+            ind = np.array([n.bad_branch for n in internal])
+            # plot internal
+            plt.scatter(dates[~ind], dist[~ind], c='b', marker='<', label="internal" if label else "", **kwargs)
+
+        if label:
+            plt.legend(loc=2)
+        plt.ylabel('root-to-tip distance')
+        plt.xlabel('date')
+        plt.tight_layout()
 
     def reroot(self,root='best'):
         self.logger("TreeTime.reroot: with method or node: %s"%root,1)
@@ -186,28 +220,26 @@ class TreeTime(ClockTree):
 
 
     def _poly(self, clade, merge_compressed, verbose=1):
+
         """
-        Function to resolve polytomies for a given parent node. If the number of the
-        direct decendants is less than three (not a polytomy), does nothing.
-        Otherwise, for each pair of nodes, assess the possible LH increase which could be
-        gained by merging the two nodes. The increase in the LH is basically the
-        tradeoff between the gain of the LH due to the changing the branch lenghts towardsthe optimal
-        values and the decrease due to the introduction of the new branch with zero
-        optimal length. After the cost gains been determined,
+        Function to resolve polytomies for a given parent node. If the
+        number of the direct decendants is less than three (not a polytomy), does
+        nothing. Otherwise, for each pair of nodes, assess the possible LH increase
+        which could be gained by merging the two nodes. The increase in the LH is
+        basically the tradeoff between the gain of the LH due to the changing the
+        branch lenghts towards the optimal values and the decrease due to the
+        introduction of the new branch with zero optimal length.
         """
+
         from branch_len_interpolator import BranchLenInterpolator
         from Bio import Phylo
-        # TODO coefficient from the gtr
-        zero_branch_slope = self.one_mutation / 0.8
+
+        zero_branch_slope = self.gtr.mu*self.seq_len
 
         def _c_gain(t, n1, n2, parent):
             """
             cost gain if nodes n1, n2 are joined and their parent is placed at time t
-
             cost gain = (LH loss now) - (LH loss when placed at time t)
-                      = [LH(opt) - LH(now)] - [LH(opt) - LH(t)] approx.=
-                      approx.= LH(branch_len(now)) - LH (branch_len(t))
-
             """
             cg2 = n2.branch_length_interpolator(parent.time_before_present - n2.time_before_present) - n2.branch_length_interpolator(t - n2.time_before_present)
             cg1 = n1.branch_length_interpolator(parent.time_before_present - n1.time_before_present) - n1.branch_length_interpolator(t - n1.time_before_present)
@@ -224,7 +256,9 @@ class TreeTime(ClockTree):
             return cg['x'], - cg['fun']
 
         def merge_nodes(source_arr, isall=False):
-            mergers = np.array([[cost_gain(n1,n2, clade) for n1 in source_arr]for n2 in source_arr])
+            mergers = np.array([[cost_gain(n1,n2, clade) if i1<i2 else (0.0,-1.0)
+                                    for i1,n1 in enumerate(source_arr)]
+                                for i2, n2 in enumerate(source_arr)])
             LH = 0
             while len(source_arr) > 1 + int(isall):
                 # max possible gains of the cost when connecting the nodes:
@@ -232,15 +266,12 @@ class TreeTime(ClockTree):
                 # to be optimal
                 new_positions = mergers[:,:,0]
                 cost_gains = mergers[:,:,1]
+                # set zero to large negative value and find optimal pair
                 np.fill_diagonal(cost_gains, -1e11)
-
                 idxs = np.unravel_index(cost_gains.argmax(),cost_gains.shape)
                 if (idxs[0] == idxs[1]) or cost_gains.max()<0:
-                    if self.debug:
-                        import ipdb; ipdb.set_trace()
-                    else:
-                        self.logger("TreeTime._poly.merge_nodes: problem merging child nodes of "+clade.name,4,warn=True)
-                        return LH
+                    self.logger("TreeTime._poly.merge_nodes: node is not fully resolved "+clade.name,4,warn=True)
+                    return LH
 
                 n1, n2 = source_arr[idxs[0]], source_arr[idxs[1]]
                 LH += cost_gains[idxs]
@@ -259,7 +290,6 @@ class TreeTime(ClockTree):
                 n1.up = new_node
                 n2.up = new_node
                 new_node.sequence = clade.sequence
-                new_node.profile = clade.profile
                 self.store_compressed_sequence_to_node(new_node)
 
                 new_node.mutations = []
@@ -298,29 +328,35 @@ class TreeTime(ClockTree):
         stretched = [c for c  in clade.clades if c.mutation_length < c.clock_length]
         compressed = [c for c in clade.clades if c not in stretched]
 
-        LH = 0.0
-
         if len(stretched)==1 and merge_compressed==False:
-            return LH
+            return 0.0
 
-        merge_nodes(stretched, isall=len(stretched)==len(clade.clades))
+        LH = merge_nodes(stretched, isall=len(stretched)==len(clade.clades))
         if merge_compressed and len(compressed)>1:
-            merge_nodes(compressed, isall=len(compressed)==len(clade.clades))
+            LH += merge_nodes(compressed, isall=len(compressed)==len(clade.clades))
 
         return LH
 
-    def print_lh(self):
+
+    def print_lh(self, joint=True):
         """
         Print the total likelihood of the tree given the constrained leaves
         """
-        s_lh = -self.tree.sequence_LH
-        t_lh = self.tree.root.msg_to_parent.peak_val
+        try:
+            if joint:
+                s_lh = self.tree.sequence_joint_LH
+                t_lh = self.tree.positional_joint_LH
+            else:
+                s_lh = self.tree.sequence_marginal_LH
+                t_lh = self.tree.positional_marginal_LH
 
-        print ("###  Tree Likelihood  ###\n"
-                " Seq log-LH:      {0}\n"
-                " Temp.Pos log-LH: {1}\n"
-                " Total log-LH:    {2}\n"
-               "#########################".format(s_lh, t_lh, s_lh+t_lh))
+            print ("###  Tree Log-Likelihood  ###\n"
+                " Sequence log-LH:  \t{0}\n"
+                " Positional log-LH:\t{1}\n"
+                " Total log-LH:     \t{2}\n"
+               "#########################".format(s_lh,t_lh, s_lh+t_lh))
+        except:
+            print("ERROR. Did you run the corresponding inference (joint/marginal)?")
 
     def total_LH(self):
         s_lh = self.tree.sequence_LH
@@ -410,6 +446,7 @@ class TreeTime(ClockTree):
                 node._st_di2  = np.sum([k._st_di2 + 2*k._st_di*k.branch_length + k._st_n_leaves*k.branch_length**2
                                        for k in node.clades])
                 node._ti = sum_ti
+                node.bad_branch = np.all([x.bad_branch for x in node])
 
         best_root = self.tree.root
         for node in self.tree.find_clades(order='preorder'):  # root first
@@ -427,7 +464,12 @@ class TreeTime(ClockTree):
                 node._beta = disttime_cov/time_variance
                 node._alpha = (node._di - node._beta*sum_ti)/N
                 node._R2 = disttime_cov**2/(time_variance*dist_variance)
-                node._R2_delta_x = 0 # there is no branch to move the root
+                node._R2_delta_x = 0.0 # there is no branch to move the root
+            elif node.bad_branch:
+                node._beta = np.nan
+                node._alpha = np.nan
+                node._R2 = 0.0
+                node._R2_delta_x = 0.0
 
             else: # based on the parent, compute the values for regression
                 #  NOTE order of the values computation matters
@@ -481,12 +523,16 @@ class TreeTime(ClockTree):
 
                 if D2 < 0:
                     # somehow there is no extremum for the R2(x) function
-                    x1 = -1 # any arbitrary value out of range [0, L], see below
-                    x2 = -1
+                    x1 = -1.0 # any arbitrary value out of range [0, L], see below
+                    x2 = -1.0
                 else:
                     # actual roots - the extrema for the R2(x) function
-                    x1 = (-1 * (alpha * delta - mu * gamma) + D2 **0.5) / (alpha * nu - beta * mu)
-                    x2 = (-1 * (alpha * delta - mu * gamma) - D2 **0.5) / (alpha * nu - beta * mu)
+                    if np.abs(alpha * nu - beta * mu)>0:
+                        x1 = (-1 * (alpha * delta - mu * gamma) + D2**0.5) / (alpha * nu - beta * mu)
+                        x2 = (-1 * (alpha * delta - mu * gamma) - D2**0.5) / (alpha * nu - beta * mu)
+                    else:
+                        x1 = -(beta*delta - nu*gamma)/(alpha * delta - mu * gamma)
+                        x2 = x1
 
                 # possible positions, where the new root can possibly be located
                 # (restrict to the branch length)
@@ -551,9 +597,7 @@ if __name__=="__main__":
     sns.set_style('whitegrid')
     from Bio import Phylo
     plt.ion()
-    base_name = 'data/H3N2_NA_allyears_NA.20'
-    #base_name = 'data/H3N2_NA_500'
-    #base_name = 'data/Zika'
+    base_name = 'data/H3N2_NA_allyears_NA.200'
     import datetime
     from utils import numeric_date
     with open(base_name+'.metadata.csv') as date_file:
@@ -562,68 +606,48 @@ if __name__=="__main__":
             if line[0]=='#':
                 continue
             try:
-                #entries = line.strip().split(',')
-                #name = entries[0]
-                #dates[name] = float(entries[-2])
-                #date = datetime.datetime.strptime(entries[1], '%Y-%m-%d')
-                #dates[name] = numeric_date(date)
                 name, date = line.strip().split(',')
                 dates[name] = float(date)
             except:
                 continue
 
     myTree = TreeTime(gtr='Jukes-Cantor', tree = base_name+'.nwk',
-                        aln = base_name+'.fasta', verbose = 4, dates = dates)
+                        aln = base_name+'.fasta', verbose = 4, dates = dates, debug=True)
 
-    myTree.run(root='clock_filter', relaxed_clock=False, max_iter=2,
-               resolve_polytomies=True, Tc=0.01, n_iqd=2, fixed_slope=0.003)
+    myTree.run(root='clock_filter', relaxed_clock=False, max_iter=2, plot_rtt=True,
+               resolve_polytomies=True, Tc=0.05, n_iqd=2, fixed_slope=0.003, do_marginal=True)
 
-    plt.figure()
-    x = np.linspace(0,0.02,1000)
-    leaf_count=0
-    for node in myTree.tree.find_clades(order='postorder'):
-        if node.up is not None:
-            plt.plot(x, node.branch_length_interpolator.prob_relative(x))
-        if node.is_terminal():
-            leaf_count+=1
-            node.ypos = leaf_count
-        else:
-            node.ypos = np.mean([c.ypos for c in node.clades])
-    plt.yscale('log')
-    plt.ylim([0.01,1.2])
-
-    from matplotlib import cm
+    # draw phylogenetic tree in one panel, marginal distributions in the other
     fig, axs = plt.subplots(2,1, sharex=True, figsize=(8,12))
-    x = np.linspace(-0.25,0.01,10000)+ myTree.tree.root.time_before_present
-    for n in myTree.tree.find_clades():
-        if n.up is None:
-            g = n.gamma
-        else:
-            g = n.branch_length_interpolator.gamma
-        #n.color = [int(_x*255) for _x in cm.coolwarm(max(0,min(1,(g-1)+0.5)))[:3]]
-
     Phylo.draw(myTree.tree, axes=axs[0], show_confidence=False, label_func = lambda x:'')
     offset = myTree.tree.root.time_before_present + myTree.tree.root.branch_length
     cols = sns.color_palette()
     depth = myTree.tree.depths()
-    for ni,node in enumerate(myTree.tree.find_clades()):
-        if (not node.is_terminal()):
-            axs[1].plot(offset-x, node.marginal_lh.prob_relative(x), '-', c=cols[ni%len(cols)])
-            axs[1].plot(offset-x, node.joint_lh.prob_relative(x), '--', c=cols[ni%len(cols)])
+    x = np.linspace(-0.01, .2,1000)
+    leaf_count=0
+    for ni,node in enumerate(myTree.tree.find_clades(order="postorder")):
+        if node.is_terminal():
+            # plot marginal distributions of node positions
+            node.ypos=leaf_count
+            leaf_count+=1
+        else:
+            node.ypos=np.mean([c.ypos for c in node])
+            axs[1].plot(offset-x, node.marginal_pos_LH.prob_relative(x), '-', c=cols[ni%len(cols)])
         if node.up is not None:
+            # add branch length distributions to tree
             x_branch = np.linspace(depth[node]-2*node.branch_length-0.005,depth[node],100)
             axs[0].plot(x_branch, node.ypos - 0.7*node.branch_length_interpolator.prob_relative(depth[node]-x_branch), '-', c=cols[ni%len(cols)])
     axs[1].set_yscale('log')
-    axs[1].set_ylim([0.01,1.2])
+    axs[1].set_ylim([0.05,1.2])
     axs[0].set_xlabel('')
     plt.tight_layout()
 
-    r2tip = np.array([[n.numdate, n.dist2root] for n in myTree.tree.get_terminals()])
-    r2int = np.array([[n.numdate, n.dist2root] for n in myTree.tree.get_nonterminals()])
+    # make root to tip plot
+    myTree.plot_root_to_tip(add_internal=True, s=30)
+
+    # plot skyline, i.e. inverse coalescent rate
     plt.figure()
-    plt.scatter(r2tip[:,0], r2tip[:,1], c='g', label='terminal nodes', s=30)
-    plt.scatter(r2int[:,0], r2int[:,1], c='b', label='internal nodes', s=30)
-    plt.ylabel('root to node distance')
-    plt.xlabel('date')
-    plt.legend(loc=2)
+    skyline = myTree.merger_model.skyline(gen = 50/myTree.date2dist.slope,
+                                          to_numdate = myTree.date2dist.to_numdate)
+    plt.plot(skyline.x, skyline.y)
 

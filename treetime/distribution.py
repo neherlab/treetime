@@ -66,28 +66,31 @@ class Distribution(object):
 
         n_delta = np.sum([k.is_delta for k in dists])
         if n_delta>1:
-            raise ArithmeticError("Cannot multiply two delta functions!")
+            raise ArithmeticError("Cannot multiply more than one delta functions!")
         elif n_delta==1:
             delta_dist_ii = np.where([k.is_delta for k in dists])[0][0]
             delta_dist = dists[delta_dist_ii]
             new_xpos = delta_dist.peak_pos
-            new_weight  = np.prod([k.prob(new_xpos) for k in dists if k!=delta_dist] * delta_dist.weight)
+            new_weight  = np.prod([k.prob(new_xpos) for k in dists if k!=delta_dist_ii]) * delta_dist.weight
             res = Distribution.delta_function(new_xpos, weight = new_weight)
         else:
             new_xmin = np.max([k.xmin for k in dists])
             new_xmax = np.min([k.xmax for k in dists])
             x_vals = np.unique(np.concatenate([k.x for k in dists]))
             x_vals = x_vals[(x_vals>new_xmin-TINY_NUMBER)&(x_vals<new_xmax+TINY_NUMBER)]
-            if x_vals.shape[0] == 0:
+            y_vals = np.sum([k.__call__(x_vals) for k in dists], axis=0)
+            peak = y_vals.min()
+            ind = (y_vals-peak)<BIG_NUMBER/1000
+            n_points = ind.sum()
+            if n_points == 0:
                 print ("ERROR in distribution multiplication: Distributions do not overlap")
                 x_vals = [0,1]
                 y_vals = [BIG_NUMBER,BIG_NUMBER]
                 res = Distribution(x_vals, y_vals, is_log=True, kind='linear')
-            elif x_vals.shape[0] == 1:
+            elif n_points == 1:
                 res = Distribution.delta_function(x_vals[0])
             else:
-                y_vals = np.sum([k.__call__(x_vals) for k in dists], axis=0)
-                res = Distribution(x_vals, y_vals, is_log=True, kind='linear')
+                res = Distribution(x_vals[ind], y_vals[ind], is_log=True, kind='linear')
 
         return res
 
@@ -271,7 +274,7 @@ class Distribution(object):
             else:
                 return np.exp(-self.peak_val)*integral_result
 
-    def integrate_trapez(self, a, b,n):
+    def integrate_trapez(self, a=None, b=None,n=None):
         mult = 0.5
         if a>b:
             b,a = a,b
@@ -283,7 +286,7 @@ class Distribution(object):
         return mult*np.sum(dx*(y[:-1] + y[1:]))
 
 
-    def integrate_simpson(self, a,b,n):
+    def integrate_simpson(self, a=None,b=None,n=None):
         if n % 2 == 0:
             n += 1
         mult = 1.0/6
@@ -300,7 +303,6 @@ class Distribution(object):
                     + np.sum((dx[:-1]+dx[1:])*y[2:-1:2]) + dx[-1]*y[-1]))
 
         return np.sum(res)
-
 
 if __name__=="__main__":
 

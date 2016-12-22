@@ -121,17 +121,20 @@ class TreeAnc(object):
         dic_aln = {k.name: seq_utils.seq2array(k.seq, fill_overhangs=self.fill_overhangs,
                                                ambiguous_character=self.gtr.ambiguous)
                             for k in self.aln} #
-        for l in self.tree.get_terminals():
+        for l in self.tree.find_clades():
             if l.name in dic_aln:
                 l.state_seq = dic_aln[l.name]
                 l.sequence=l.state_seq
-            else:
+            elif l.is_terminal():
                 self.logger("TreeAnc.attach_sequences_to_nodes: Cannot find sequence for leaf: %s" % l.name, 4, warn=True)
                 failed_leaves += 1
-                if failed_leaves == 100:
-                    self.logger("Error: cannot set sequences to the terminal nodes.\n", 2, warn=True)
+                if failed_leaves > self.tree.count_terminals() / 3:
+                    self.logger("Error: At least 30\\% terminal nodes cannot be assigned with a sequence!\n", 2, warn=True)
                     self.logger("Are you sure the alignment belongs to the tree?", 2, warn=True)
                     break
+            else: # could not assign sequence for internal node - is OK
+                pass
+
         self.seq_len = self.aln.get_alignment_length()
         self.one_mutation = 1.0/self.seq_len
 
@@ -140,7 +143,7 @@ class TreeAnc(object):
         """
         Set link to parent and net distance to root for all tree nodes.
         Should be run once the tree is read and after every tree topology or branch
-        lengths optimizations.
+        length optimizations.
         """
         if self.one_mutation is None:
             self.tree.root.branch_length = 0.001
@@ -159,30 +162,44 @@ class TreeAnc(object):
         """
         self.tree.root.up = None
         self.tree.root.dist2root = 0.0
+        self.tree.root.bad_branch=self.tree.root.bad_branch if hasattr(self.tree.root, 'bad_branch') else False
+        internal_node_count = 0
         for clade in self.tree.get_nonterminals(order='preorder'): # parents first
+            internal_node_count+=1
+            clade.bad_branch=False
             if clade.name is None:
                 clade.name = "NODE_" + format(self._internal_node_count, '07d')
                 self._internal_node_count += 1
             for c in clade.clades:
+                c.bad_branch=c.bad_branch if hasattr(c, 'bad_branch') else False
                 c.up = clade
                 if not hasattr(c, 'mutation_length'):
                     c.mutation_length=c.branch_length
                 c.dist2root = c.up.dist2root + c.mutation_length
+        self._internal_node_count = max(internal_node_count, self._internal_node_count)
 
 ####################################################################
 ## END SET-UP
 ####################################################################
 
-    def infer_gtr(self, print_raw=False, **kwargs):
+    def infer_gtr(self, print_raw=False, marginal=False, normalized_rate=True, **kwargs):
+
+        # decide which type of the Maximum-likelihood reconstruction use
+        # (marginal) or (joint)
+        if marginal:
+            _ml_anc = self._ml_anc_marginal
+        else:
+            _ml_anc = self._ml_anc_joint
 
         self.logger("TreeAnc inferring the GTR model from the tree...", 1)
-        self._ml_anc(**kwargs)
+        _ml_anc(**kwargs) # call one of the reconstruction types
         alpha = list(self.gtr.alphabet)
         n=len(alpha)
         nij = np.zeros((n,n))
         Ti = np.zeros(n)
-        for node in self.tree.find_clades():
 
+        self.logger("TreeAnc.infer_gtr: counting mutations...", 2)
+        for node in self.tree.find_clades():
             if hasattr(node,'mutations'):
                 for a,pos, d in node.mutations:
                     i,j = alpha.index(a), alpha.index(d)
@@ -192,12 +209,16 @@ class TreeAnc(object):
                 for nuc in node.sequence:
                     i = alpha.index(nuc)
                     Ti[i] += self._branch_length_to_gtr(node)
+        self.logger("TreeAnc.infer_gtr: counting mutations...done", 3)
         if print_raw:
             print('alphabet:',alpha)
             print('n_ij:', nij)
             print('T_i:', Ti)
         root_state = np.array([np.sum(self.tree.root.sequence==nuc) for nuc in alpha])
         self._gtr = GTR.infer(nij, Ti, root_state, pc=5.0, alphabet=self.gtr.alphabet, logger=self.logger)
+        if normalized_rate:
+            self.logger("TreeAnc.infer_gtr: setting overall rate to 1.0...", 2)
+            self._gtr.mu=1.0
         return self._gtr
 
 
@@ -206,7 +227,8 @@ class TreeAnc(object):
 ###################################################################
     def infer_ancestral_sequences(self,*args, **kwargs):
         self.reconstruct_anc(*args,**kwargs)
-    def reconstruct_anc(self, method='ml', infer_gtr=False, **kwargs):
+
+    def reconstruct_anc(self, method='ml', infer_gtr=False, marginal=False, **kwargs):
         """
         Reconstruct ancestral states
         Args:
@@ -217,19 +239,22 @@ class TreeAnc(object):
          reconstruction. If there were no pre-set sequences, returns N*L
 
         """
+        self.logger("TreeAnc.infer_ancestral_sequences: method: " + method, 1)
 
-        self.logger("TreeAnc.infer_ancestral_sequences: method: "+method,1)
+        if method == 'ml':
+            if marginal:
+                _ml_anc = self._ml_anc_marginal
+            else:
+                _ml_anc = self._ml_anc_joint
+        else:
+            _ml_anc = self._fitch_anc
 
         if infer_gtr:
-            self.infer_gtr(**kwargs)
-            N_diff = self._ml_anc(**kwargs)
+            self.infer_gtr(marginal=marginal, **kwargs)
+            N_diff = _ml_anc(**kwargs)
         else:
-            if method == 'fitch':
-                N_diff = self._fitch_anc(**kwargs)
-            elif method == 'ml':
-                N_diff = self._ml_anc(**kwargs)
-            else:
-                raise NotImplementedError("The reconstruction method %s is not supported. " % method)
+            N_diff = _ml_anc(**kwargs)
+
         return N_diff
 
 
@@ -255,14 +280,17 @@ class TreeAnc(object):
 
         """
         # set fitch profiiles to each terminal node
+
         for l in self.tree.get_terminals():
             l.state = [[k] for k in l.sequence]
 
+        L = len(self.tree.get_terminals()[0].sequence)
+
         self.logger("TreeAnc._fitch_anc: Walking up the tree, creating the Fitch profiles",2)
         for node in self.tree.get_nonterminals(order='postorder'):
-            node.state = [self._fitch_state(node, k) for k in range(self.L)]
+            node.state = [self._fitch_state(node, k) for k in range(L)]
 
-        ambs = [i for i in range(self.L) if len(self.tree.root.state[i])>1]
+        ambs = [i for i in range(L) if len(self.tree.root.state[i])>1]
         if len(ambs) > 0:
             for amb in ambs:
                 self.logger("Ambiguous state of the root sequence "
@@ -281,11 +309,11 @@ class TreeAnc(object):
             if node.up != None: # not root
                 sequence =  np.array([node.up.sequence[i]
                         if node.up.sequence[i] in node.state[i]
-                        else node.state[i][0] for i in range(self.L)])
+                        else node.state[i][0] for i in range(L)])
                 if hasattr(node, 'sequence'):
                     N_diff += (sequence!=node.sequence).sum()
                 else:
-                    N_diff += self.L
+                    N_diff += L
                 node.sequence = sequence
 
             node.profile = seq_utils.seq2prof(node.sequence, self.gtr.profile_map)
@@ -323,32 +351,83 @@ class TreeAnc(object):
         Return the sorted, unique values that are in all of the input arrays.
         Adapted from numpy.lib.arraysetops.intersect1d
         """
-        N = len(arrays)
+        def pairwise_intersect(arr1, arr2):
+            s2 = set(arr2)
+            b3 = [val for val in arr1 if val in s2]
+            return b3
+
         arrays = list(arrays) # allow assignment
-        if not assume_unique:
-            for i, arr in enumerate(arrays):
-                arrays[i] = np.unique(arr)
-        aux = np.concatenate(arrays) # one long 1D array
-        aux.sort() # sorted
-        shift = N-1
-        # if an element is in all N arrays, is shows up N consecutive times in the sorted
-        # concatenation. those elements can be found by comparing the array shifted by N-1
-        # since the initital arrays are unique, only the correct elements are found this way.
-        return aux[aux[shift:] == aux[:-shift]]
+        N = len(arrays)
+        while N > 1:
+            arr1 = arrays.pop()
+            arr2 = arrays.pop()
+            arr = pairwise_intersect(arr1, arr2)
+            arrays.append(arr)
+            N = len(arrays)
+
+        return arrays[0]
+
+        #
+        #if not assume_unique:
+        #    for i, arr in enumerate(arrays):
+        #        arrays[i] = np.unique(arr)
+        #aux = np.concatenate(arrays) # one long 1D array
+        #aux.sort() # sorted
+        #shift = N-1
+        ## if an element is in all N arrays, is shows up N consecutive times in the sorted
+        ## concatenation. those elements can be found by comparing the array shifted by N-1
+        ## since the initital arrays are unique, only the correct elements are found this way.
+        #import ipdb; ipdb.set_trace()
+        #return aux[aux[shift:] == aux[:-shift]]
+
 
 
 ###################################################################
 ### Maximum Likelihood
 ###################################################################
+
+    def ancestral_likelihood(self):
+        """
+        Calculate the likelihood of the given realization of the sequences in
+        the tree
+        """
+        log_lh = np.zeros(self.tree.root.sequence.shape[0])
+        for node in self.tree.find_clades(order='postorder'):
+
+            if node.up is None: #  root node
+                # 0-1 profile
+                profile = seq_utils.seq2prof(node.sequence, self.gtr.profile_map)
+                # get the probabilities to observe each nucleotide
+                profile *= self.gtr.Pi
+                profile = profile.sum(axis=1)
+                log_lh += np.log(profile) # product over all characters
+                continue
+
+            t = node.branch_length
+
+            indices = np.array([(np.argmax(self.gtr.alphabet==a),
+                        np.argmax(self.gtr.alphabet==b)) for a, b in izip(node.up.sequence, node.sequence)])
+
+            logQt = np.log(self.gtr.expQt(t))
+            lh = logQt[indices[:, 1], indices[:, 0]]
+            log_lh += lh
+
+        return log_lh
+
     def _branch_length_to_gtr(self, node):
         if self.use_mutation_length:
             return max(min_branch_length*self.one_mutation, node.mutation_length)
         else:
             return max(min_branch_length*self.one_mutation, node.branch_length)
 
-    def _ml_anc(self, marginal=False, verbose=0, store_compressed=True, sample_from_profile=False, **kwargs):
+
+    def _ml_anc_marginal(self, verbose=0, store_compressed=True,
+                                            sample_from_profile=False,
+                                            debug=False, **kwargs):
         """
-        Perform ML reconstruction of the ancestral states
+        Perform marginal ML reconstruction of the ancestral states. In contrast to
+        joint reconstructions, this needs to access the probabilities rather than only
+        log probabilities and is hence handled by a separate function.
         KWargs:
          - store_lh (bool): if True, all likelihoods will be stored for all nodes.
            Useful for testing, diagnostics and if special post-processing is required.
@@ -358,93 +437,216 @@ class TreeAnc(object):
         tree = self.tree
         # number of nucleotides changed from prev reconstruction
         N_diff = 0
-        if 'store_lh' in kwargs:
-            store_lh = kwargs['store_lh'] == True
 
-        L = tree.get_terminals()[0].sequence.shape[0]
+        L = self.tree.get_terminals()[0].sequence.shape[0]
         n_states = self.gtr.alphabet.shape[0]
-        self.logger("TreeAnc._ml_anc: type of reconstruction:"
-                     + ('marginal' if marginal else "joint"), 2)
+        self.logger("TreeAnc._ml_anc_marginal: type of reconstruction: Marginal", 2)
+
         self.logger("Walking up the tree, computing likelihoods... ", 3)
+        #  set the leaves profiles
         for leaf in tree.get_terminals():
             # in any case, set the profile
-            leaf.profile = seq_utils.seq2prof(leaf.sequence, self.gtr.profile_map)
-            leaf.lh_prefactor = np.zeros(L)
+            leaf.marginal_subtree_LH = seq_utils.seq2prof(leaf.sequence, self.gtr.profile_map)
+            leaf.marginal_subtree_LH_prefactor = np.zeros(L)
+
+        # propagate leaves -->> root, set the marginal-likelihood messages
         for node in tree.get_nonterminals(order='postorder'): #leaves -> root
             # regardless of what was before, set the profile to ones
-            node.lh_prefactor = np.zeros(L)
-            node.profile = np.ones((L, n_states)) # we will multiply it
+            node.marginal_subtree_LH_prefactor = np.zeros(L)
+            node.marginal_subtree_LH = np.ones((L, n_states)) # we will multiply it
             for ch in node.clades:
-                ch.seq_msg_to_parent = self.gtr.propagate_profile(ch.profile,
+                ch.marginal_Lx = self.gtr.propagate_profile(ch.marginal_subtree_LH,
                     self._branch_length_to_gtr(ch), return_log=False) # raw prob to transfer prob up
-                node.profile *= ch.seq_msg_to_parent
-                node.lh_prefactor += ch.lh_prefactor
+                node.marginal_subtree_LH *= ch.marginal_Lx
+                node.marginal_subtree_LH_prefactor += ch.marginal_subtree_LH_prefactor
 
-            pre = node.profile.max(axis=1) #sum over nucleotide states
-            node.profile = (node.profile.T/pre).T # normalize so that the sum is 1
-            node.lh_prefactor += np.log(pre) # and store log-prefactor
+            pre = node.marginal_subtree_LH.sum(axis=1) #sum over nucleotide states
+            node.marginal_subtree_LH = (node.marginal_subtree_LH.T/pre).T # normalize so that the sum is 1
+            node.marginal_subtree_LH_prefactor += np.log(pre) # and store log-prefactor
 
+        self.logger("Computing root node sequence and total tree likelihood...",3)
+        # reconstruct the root node sequence
+        tree.root.marginal_subtree_LH *= self.gtr.Pi # Msg to the root from the distant part (equ frequencies)
+        pre=tree.root.marginal_subtree_LH.sum(axis=1)
+        tree.root.marginal_profile = (tree.root.marginal_subtree_LH.T/pre).T
+        tree.root.marginal_subtree_LH_prefactor += np.log(pre)
 
-        self.logger("Walking down the tree, computing maximum likelihood sequences...",3)
+        # choose sequence characters from this profile.
+        # treat root node differently to avoid piling up mutations on the longer branch
+        if sample_from_profile=='root':
+            root_sample_from_profile = True
+            other_sample_from_profile = False
+        elif isinstance(sample_from_profile, bool):
+            root_sample_from_profile = sample_from_profile
+            other_sample_from_profile = sample_from_profile
 
-        # extract the likelihood from the profile
-        tree.root.profile *= self.gtr.Pi # Msg to the root from the distant part (equ frequencies)
-        pre=tree.root.profile.sum(axis=1)
-        tree.root.profile = (tree.root.profile.T/pre).T
-        tree.root.lh_prefactor += np.log(pre)
+        seq, prof_vals, idxs = seq_utils.prof2seq(tree.root.marginal_profile,
+                                                  self.gtr, sample_from_prof=root_sample_from_profile)
 
-        tree.anc_LH = tree.root.lh_prefactor.sum()
-        tree.sequence_LH = 0
-        # reset profile to 0-1 and set the sequence
-        tmp_sample = True if sample_from_profile=='root' else sample_from_profile
-        tree.root.sequence, tree.root.profile = \
-            seq_utils.prof2seq(tree.root.profile, self.gtr, sample_from_prof=tmp_sample,
-                               collapse_prof=not marginal)
+        self.tree.sequence_LH = np.log(prof_vals) + tree.root.marginal_subtree_LH_prefactor
+        self.tree.sequence_marginal_LH = self.tree.sequence_LH.sum()
+        self.tree.root.sequence = seq
+
+        # need this fake msg to account for the complementary subtree when traversing tree back
         tree.root.seq_msg_from_parent = np.repeat([self.gtr.Pi], len(tree.root.sequence), axis=0)
 
-        tmp_sample = False if sample_from_profile=='root' else sample_from_profile
-
+        self.logger("Walking down the tree, computing maximum likelihood sequences...",3)
+        # propagate root -->> leaves, reconstruct the internal node sequences
+        # provided the upstream message + the message from the complementary subtree
         for node in tree.find_clades(order='preorder'):
             if node.up is None: # skip if node is root
                 continue
+
             # integrate the information coming from parents with the information
             # of all children my multiplying it to the prev computed profile
-            if marginal:
-                tmp_msg = np.copy(node.up.seq_msg_from_parent)
-                for c in node.up.clades:
-                    if c != node:
-                        tmp_msg*=c.seq_msg_to_parent
-                node.seq_msg_from_parent = self.gtr.propagate_profile(tmp_msg,
-                                                self._branch_length_to_gtr(node), return_log=False)
-                node.profile *= node.seq_msg_from_parent
-            else:
-                node.seq_msg_from_parent = self.gtr.propagate_profile(node.up.profile,
-                                                self._branch_length_to_gtr(node), return_log=False)
-                node.profile *= node.seq_msg_from_parent
+            tmp_msg = np.copy(node.up.seq_msg_from_parent)
+            for c in node.up.clades:
+                if c != node:
+                    tmp_msg*=c.marginal_Lx
+            node.seq_msg_from_parent = self.gtr.propagate_profile(tmp_msg,
+                                            self._branch_length_to_gtr(node), return_log=False)
+            node.marginal_profile = node.marginal_subtree_LH * node.seq_msg_from_parent
 
-            # reset the profile to 0-1 and  set the sequence
-            sequence, profile = seq_utils.prof2seq(node.profile, self.gtr,
-                sample_from_prof=tmp_sample, collapse_prof=not marginal)
+            # choose sequence based maximal marginal LH. THIS NORMALIZES marginal_profile in place
+            seq, prof_vals, idxs = seq_utils.prof2seq(node.marginal_profile, self.gtr,
+                                                      sample_from_prof=other_sample_from_profile)
             node.mutations = [(anc, pos, der) for pos, (anc, der) in
-                            enumerate(izip(node.up.sequence, sequence)) if anc!=der]
-
-            # this needs fixing for marginal reconstruction
-            if not marginal:
-                tree.sequence_LH += np.sum(np.log(node.seq_msg_from_parent[profile>0.9]))
+                            enumerate(izip(node.up.sequence, seq)) if anc!=der]
 
             if hasattr(node, 'sequence') and node.sequence is not None:
-                N_diff += (sequence!=node.sequence).sum()
+                N_diff += (seq!=node.sequence).sum()
+            else:
+                N_diff += L
+            #assign new sequence
+            node.sequence = seq
+
+        # note that the root doesn't contribute to N_diff (intended, since root sequence is often ambiguous)
+        self.logger("TreeAnc._ml_anc_marginal: ...done", 3)
+        if store_compressed:
+            self.store_compressed_sequence_pairs()
+
+        # do clean-up:
+        if not debug:
+            for node in self.tree.find_clades():
+                del node.marginal_subtree_LH
+                del node.marginal_subtree_LH_prefactor
+                del node.seq_msg_from_parent
+
+        return N_diff
+
+
+    def _ml_anc_joint(self, verbose=0, store_compressed=True,
+                                        sample_from_profile=False,
+                                        debug=False, **kwargs):
+
+        """
+        Perform joint ML reconstruction of the ancestral states. In contrast to
+        marginal reconstructions, this only needs to compare and multiply LH and
+        can hence operate in log space.
+        KWargs:
+         - store_lh (bool): if True, all likelihoods will be stored for all nodes.
+           Useful for testing, diagnostics and if special post-processing is required.
+         - verbose (int): how verbose the output should be
+        """
+        N_diff = 0 # number of sites differ from perv reconstruction
+        L = self.tree.get_terminals()[0].sequence.shape[0]
+        n_states = self.gtr.alphabet.shape[0]
+
+        self.logger("TreeAnc._ml_anc_joint: type of reconstruction: Joint", 2)
+
+        self.logger("TreeAnc._ml_anc_joint: Walking up the tree, computing likelihoods... ", 3)
+        # for the internal nodes, scan over all states j of this node, maximize the likelihood
+        for node in self.tree.find_clades(order='postorder'):
+            if node.up is None:
+                node.joint_Cx=None # not needed for root
+
+            # preallocate storage
+            node.joint_Lx = np.zeros((L, n_states))             # likelihood array
+            node.joint_Cx = np.zeros((L, n_states), dtype=int)  # max LH indices
+            branch_len = self._branch_length_to_gtr(node)
+            # transition matrix from parent states to the current node states.
+            # denoted as Pij(i), where j - parent state, i - node state
+            log_transitions = np.log(self.gtr.expQt(branch_len))
+
+            if node.is_terminal():
+                msg_from_children = np.log(np.maximum(seq_utils.seq2prof(node.sequence, self.gtr.profile_map), ttconf.TINY_NUMBER))
+                msg_from_children[np.isnan(msg_from_children) | np.isinf(msg_from_children)] = -ttconf.BIG_NUMBER
+            else:
+                # Product (sum-Log) over all child subtree likelihoods.
+                # this is prod_ch L_x(i)
+                msg_from_children = np.sum(np.stack([c.joint_Lx for c in node.clades], axis=0), axis=0)
+
+            # for every possible state of the parent node,
+            # get the best state of the current node
+            # and compute the likelihood of this state
+            for char_i, char in enumerate(self.gtr.alphabet):
+                # Pij(i) * L_ch(i) for given parent state j
+                msg_to_parent = (log_transitions.T[char_i, :] + msg_from_children)
+                # For this parent state, choose the best state of the current node:
+                node.joint_Cx[:, char_i] = msg_to_parent.argmax(axis=1)
+                # compute the likelihood of the best state of the current node
+                # given the state of the parent (char_i)
+                node.joint_Lx[:, char_i] = msg_to_parent.max(axis=1)
+
+        # root node profile = likelihood of the total tree
+        msg_from_children = np.sum(np.stack([c.joint_Lx for c in self.tree.root.clades], axis = 0), axis=0)
+        # Pi(i) * Prod_ch Lch(i)
+        self.tree.root.joint_Lx = msg_from_children + np.log(self.gtr.Pi)
+        normalized_profile = (self.tree.root.joint_Lx.T - self.tree.root.joint_Lx.max(axis=1)).T
+
+        # choose sequence characters from this profile.
+        # treat root node differently to avoid piling up mutations on the longer branch
+        if sample_from_profile=='root':
+            root_sample_from_profile = True
+        elif isinstance(sample_from_profile, bool):
+            root_sample_from_profile = sample_from_profile
+
+        seq, anc_lh_vals, idxs = seq_utils.prof2seq(np.exp(normalized_profile),
+                                    self.gtr, sample_from_prof = root_sample_from_profile)
+
+        # compute the likelihood of the most probable root sequence
+        self.tree.sequence_LH = np.choose(idxs, self.tree.root.joint_Lx.T)
+        self.tree.sequence_joint_LH = self.tree.sequence_LH.sum()
+        self.tree.root.sequence = seq
+        self.tree.root.seq_idx = idxs
+
+        self.logger("TreeAnc._ml_anc_joint: Walking down the tree, computing maximum likelihood sequences...",3)
+        # for each node, resolve the conditioning on the parent node
+        for node in self.tree.find_clades(order='preorder'):
+
+            # root node has no mutations, everything else has been alread y set
+            if node.up is None:
+                node.mutations = []
+                continue
+
+            # choose the value of the Cx(i), corresponding to the state of the
+            # parent node i. This is the state of the current node
+            node.seq_idx = np.choose(node.up.seq_idx, node.joint_Cx.T)
+            # reconstruct seq, etc
+            tmp_sequence = np.choose(node.seq_idx, self.gtr.alphabet)
+            if hasattr(node, 'sequence') and node.sequence is not None:
+                N_diff += (tmp_sequence!=node.sequence).sum()
             else:
                 N_diff += L
 
-            node.sequence = sequence
-            node.profile = profile
+            node.sequence = tmp_sequence
+            node.mutations = [(anc, pos, der) for pos, (anc, der) in
+                            enumerate(izip(node.up.sequence, node.sequence)) if anc!=der]
 
-        # note that the root doesn't contribute to N_diff (intended, since root sequence is often ambiguous)
-        self.logger("TreeAnc._ml_anc: ...done",3)
+
+        self.logger("TreeAnc._ml_anc_joint: ...done", 3)
         if store_compressed:
             self.store_compressed_sequence_pairs()
+
+        # do clean-up
+        if not debug:
+            for node in self.tree.find_clades(order='preorder'):
+                del node.joint_Lx
+                del node.joint_Cx
+                del node.seq_idx
+
         return N_diff
+
 
     def store_compressed_sequence_to_node(self, node):
             seq_pairs, multiplicity = self.gtr.compress_sequence_pair(node.up.sequence,
@@ -452,37 +654,14 @@ class TreeAnc(object):
                                                                       ignore_gaps = self.ignore_gaps)
             node.compressed_sequence = {'pair':seq_pairs, 'multiplicity':multiplicity}
 
+
     def store_compressed_sequence_pairs(self):
         self.logger("TreeAnc.store_compressed_sequence_pairs...",2)
         for node in self.tree.find_clades():
             if node.up is None:
                 continue
             self.store_compressed_sequence_to_node(node)
-
-
-    def calc_branch_twopoint_functions(self):
-        '''
-        attaches L x n x n (L sequence length, n alphabet size) to each branch containing
-        the two-node profile, i.e. the probability that the parent node is in state
-        s1 and the child node is in state s2. This allows probabilistic counting of mutations.
-        '''
-        def get_two_point_func(p1,p2,T):
-            tmp = np.outer(p1, p2)*T
-            tmp/=tmp.sum()
-            return tmp
-
-        for node in self.tree.get_nonterminals():
-            for child in node:
-                transition_matrix = self.gtr.expQt(self._branch_length_to_gtr(child))
-                if child.is_terminal():
-                    from_children=child.profile
-                else:
-                    from_children = np.prod([c.seq_msg_to_parent for c in child], axis=0)
-                to_parent = np.prod([node.seq_msg_from_parent] +
-                                [c.seq_msg_to_parent for c in node if c!=child], axis=0)
-
-                child.mutation_matrix=np.array([get_two_point_func(upmsg, downmsg, transition_matrix)
-                                          for upmsg, downmsg in zip(to_parent,from_children)])
+        self.logger("TreeAnc.store_compressed_sequence_pairs...done",3)
 
 
 ###################################################################
@@ -507,7 +686,7 @@ class TreeAnc(object):
         """
 
 
-        self.logger("TreeAnc.optimize_branch_length: running branch lengths optimization...",1)
+        self.logger("TreeAnc.optimize_branch_length: running branch length optimization...",1)
 
         verbose = 0
         store_old_dist = False
@@ -570,13 +749,12 @@ class TreeAnc(object):
             if self.gtr.prob_t(node.up.sequence, node.sequence, 0.0) > 0.1:
                 # re-assign the node children directly to its parent
                 node.up.clades = [k for k in node.up.clades if k != node] + node.clades
-                if hasattr(node, "lh_prefactor"):
-                    node.up.lh_prefactor += node.lh_prefactor
                 for clade in node.clades:
                     clade.up = node.up
 
     def optimize_sequences_and_branch_length(self,*args, **kwargs):
         self.optimize_seq_and_branch_len(*args,**kwargs)
+
     def optimize_seq_and_branch_len(self,reuse_branch_len=True,prune_short=True,
                                     max_iter=5, infer_gtr=False, **kwargs):
         """
@@ -600,11 +778,12 @@ class TreeAnc(object):
          The polytomies could be further processde using resolve_polytomies from
          the TreeTime class.
         """
-        self.logger("TreeAnc.optimize_sequences_and_branch_length: ...", 1)
+        self.logger("TreeAnc.optimize_sequences_and_branch_length: sequences...", 1)
         if reuse_branch_len:
             N_diff = self.reconstruct_anc(method='ml', infer_gtr=infer_gtr, **kwargs)
         else:
             N_diff = self.reconstruct_anc(method='fitch', infer_gtr=infer_gtr, **kwargs)
+
         self.optimize_branch_len(verbose=0, store_old=False)
 
         n = 0
@@ -622,7 +801,7 @@ class TreeAnc(object):
             self.optimize_branch_len(verbose=0, store_old=False)
 
         self._prepare_nodes() # fix dist2root and up-links after reconstruction
-        self.logger("TreeAnc.optimize_sequences_and_branch_length: Unconstrained sequence LH:%f"%self.tree.sequence_LH, 2)
+        self.logger("TreeAnc.optimize_sequences_and_branch_length: Unconstrained sequence LH:%f" % self.tree.sequence_LH.sum() , 2)
         return
 
 ###############################################################################
@@ -643,4 +822,24 @@ class TreeAnc(object):
         return new_aln
 
 if __name__=="__main__":
-    pass
+    from Bio import Phylo
+    from StringIO import StringIO
+    from Bio import Phylo,AlignIO
+
+    tiny_tree = Phylo.read(StringIO("((A:.0060,B:.30)C:.030,D:.020)E:.004;"), 'newick')
+    tiny_aln = AlignIO.read(StringIO(">A\nAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT\n"
+                                     ">B\nAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT\n"
+                                     ">C\nAAAAAAAAAAAAAAAACCCCCCCCCCCCCCCCGGGGGGGGGGGGGGGGTTTTTTTTTTTTTTTTAAAAAAAAAAAAAAAACCCCCCCCCCCCCCCCGGGGGGGGGGGGGGGGTTTTTTTTTTTTTTTTAAAAAAAAAAAAAAAACCCCCCCCCCCCCCCCGGGGGGGGGGGGGGGGTTTTTTTTTTTTTTTTAAAAAAAAAAAAAAAACCCCCCCCCCCCCCCCGGGGGGGGGGGGGGGGTTTTTTTTTTTTTTTTAAAAAAAAAAAAAAAACCCCCCCCCCCCCCCCGGGGGGGGGGGGGGGGTTTTTTTTTTTTTTTTAAAAAAAAAAAAAAAACCCCCCCCCCCCCCCCGGGGGGGGGGGGGGGGTTTTTTTTTTTTTTTTAAAAAAAAAAAAAAAACCCCCCCCCCCCCCCCGGGGGGGGGGGGGGGGTTTTTTTTTTTTTTTTAAAAAAAAAAAAAAAACCCCCCCCCCCCCCCCGGGGGGGGGGGGGGGGTTTTTTTTTTTTTTTTAAAAAAAAAAAAAAAACCCCCCCCCCCCCCCCGGGGGGGGGGGGGGGGTTTTTTTTTTTTTTTTAAAAAAAAAAAAAAAACCCCCCCCCCCCCCCCGGGGGGGGGGGGGGGGTTTTTTTTTTTTTTTTAAAAAAAAAAAAAAAACCCCCCCCCCCCCCCCGGGGGGGGGGGGGGGGTTTTTTTTTTTTTTTTAAAAAAAAAAAAAAAACCCCCCCCCCCCCCCCGGGGGGGGGGGGGGGGTTTTTTTTTTTTTTTTAAAAAAAAAAAAAAAACCCCCCCCCCCCCCCCGGGGGGGGGGGGGGGGTTTTTTTTTTTTTTTTAAAAAAAAAAAAAAAACCCCCCCCCCCCCCCCGGGGGGGGGGGGGGGGTTTTTTTTTTTTTTTTAAAAAAAAAAAAAAAACCCCCCCCCCCCCCCCGGGGGGGGGGGGGGGGTTTTTTTTTTTTTTTTAAAAAAAAAAAAAAAACCCCCCCCCCCCCCCCGGGGGGGGGGGGGGGGTTTTTTTTTTTTTTTT\n"
+                                     ">D\nAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTT\n"
+                                     ">E\nACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT\n"), 'fasta')
+
+    mygtr = GTR.custom(alphabet = np.array(['A', 'C', 'G', 'T']),
+                       pi = np.array([0.25, 0.95, 0.005, 0.05]), W=np.ones((4,4)))
+
+    myTree = TreeAnc(gtr=mygtr, tree = tiny_tree,
+                        aln =tiny_aln, verbose = 4)
+
+    logLH = myTree.ancestral_likelihood()
+    LH = np.exp(logLH)
+    print ("Net probability (for all possible realizations): " + str(np.exp(logLH).sum()))
+    print (np.exp(logLH))

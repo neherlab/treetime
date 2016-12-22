@@ -7,7 +7,7 @@ class BranchLenInterpolator (Distribution):
     """
     """
 
-    def __init__(self, node, gtr, one_mutation = None):
+    def __init__(self, node, gtr, one_mutation=None, ignore_gaps=True):
         """
         @brief      { constructor_description }
 
@@ -23,7 +23,7 @@ class BranchLenInterpolator (Distribution):
 
         self._gamma = 1.0
 
-        self._merger_rate = ttconf.BRANCH_LEN_PENALTY
+        self._merger_cost = None
         if one_mutation is None:
             one_mutation = 1.0/node.sequence.shape[0]
         # optimal branch length
@@ -49,15 +49,17 @@ class BranchLenInterpolator (Distribution):
         if not hasattr(node, 'compressed_sequence'):
             seq_pairs, multiplicity = self.gtr.compress_sequence_pair(node.up.sequence,
                                                                       node.sequence,
-                                                                      ignore_gaps = self.ignore_gaps)
+                                                                      ignore_gaps=ignore_gaps)
             node.compressed_sequence = {'pair':seq_pairs, 'multiplicity':multiplicity}
 
         log_prob = np.array([-self.gtr.prob_t_compressed(node.compressed_sequence['pair'],
                                                 node.compressed_sequence['multiplicity'],
                                                 k,
                                                 return_log=True)
-                    for k in grid])
+                            for k in grid])
 
+        # tmp_dis = Distribution(grid, log_prob, is_log=True, kind='linear')
+        # norm = tmp_dis.integrate(a=tmp_dis.xmin, b=tmp_dis.xmax, n=200)
         super(BranchLenInterpolator, self).__init__(grid, log_prob, is_log=True, kind='linear')
 
 
@@ -70,12 +72,12 @@ class BranchLenInterpolator (Distribution):
         self._gamma = value
 
     @property
-    def merger_rate(self):
-       return self._merger_rate
+    def merger_cost(self):
+       return self._merger_cost
 
-    @merger_rate.setter
-    def merger_rate(self, value):
-        self._merger_rate = value
+    @merger_cost.setter
+    def merger_cost(self, cost_func):
+        self._merger_cost = cost_func
         self._peak_idx = np.argmin(self.__call__(self.x))
         self._peak_pos = self.x[self._peak_idx]
         if self.kind=='linear': # can't mess like this with non-linear interpolation
@@ -95,9 +97,12 @@ class BranchLenInterpolator (Distribution):
     def fwhm(self):
         return super(BranchLenInterpolator,self).fwhm/self.gamma
 
-    def __call__(self, x):
-        res = self.merger_rate*x
-        res += super(BranchLenInterpolator, self).__call__(x*self.gamma)
+    def __call__(self, x, tnode=None):
+        res = super(BranchLenInterpolator, self).__call__(x*self.gamma)
+        if self.merger_cost is not None:
+            if tnode is None:
+                tnode = self.node.time_before_present
+            res += self.merger_cost(tnode, x)
         return res
 
     def __mul__(self, other):

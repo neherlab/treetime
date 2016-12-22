@@ -13,6 +13,7 @@ class GTR(object):
         Args:
          - alphabet (numpy.array): alphabet of the sequence.
         """
+        self.debug=False
         if type(alphabet)==str:
             if (alphabet not in alphabets):
                 raise AttributeError("Unknown alphabet type specified")
@@ -28,7 +29,8 @@ class GTR(object):
 
         if logger is None:
             def logger(*args,**kwargs):
-                print(*args)
+                if self.debug:
+                    print(*args)
             self.logger = logger
         else:
             self.logger = logger
@@ -310,20 +312,37 @@ class GTR(object):
         if seq_ch.shape != seq_ch.shape:
             raise ValueError("GTR.compress_sequence_pair: Sequence lengths do not match!")
 
-        num_seqs = []
-        for seq in [seq_p, seq_ch]:
-            tmp = np.ones_like(seq, dtype=int)
-            for ni,nuc in enumerate(self.alphabet):
-                tmp[seq==nuc] = ni
-            num_seqs.append(tmp)
-        if ignore_gaps:
-            pair_count = Counter([x for x in zip(num_seqs[0], num_seqs[1])
-                                  if (self.gap_index not in x)])
-        else:
-            pair_count = Counter(zip(num_seqs[0], num_seqs[1]))
-        pair_count = pair_count.items()
+        if len(self.alphabet)<10: # for small alphabet, repeatedly check array for all state pairs
+            pair_count = []
+            bool_seqs_p = []
+            bool_seqs_ch = []
+            for seq, bs in [(seq_p,bool_seqs_p), (seq_ch, bool_seqs_ch)]:
+                for ni,nuc in enumerate(self.alphabet):
+                    bs.append(seq==nuc)
+
+            for n1,nuc1 in enumerate(self.alphabet):
+                if (n1!=self.gap_index or (not ignore_gaps)):
+                    for n2,nuc2 in enumerate(self.alphabet):
+                        if (n2!=self.gap_index or (not ignore_gaps)):
+                            count = (bool_seqs_p[n1]&bool_seqs_ch[n2]).sum()
+                            if count: pair_count.append(((n1,n2), count))
+        else: # enumerate state pairs of the sequence for large alphabets
+            num_seqs = []
+            for seq in [seq_p, seq_ch]:
+                tmp = np.ones_like(seq, dtype=int)
+                for ni,nuc in enumerate(self.alphabet):
+                    tmp[seq==nuc] = ni
+                    num_seqs.append(tmp)
+                    if ignore_gaps:
+                        pair_count = Counter([x for x in zip(num_seqs[0], num_seqs[1])
+                                              if (self.gap_index not in x)])
+                    else:
+                        pair_count = Counter(zip(num_seqs[0], num_seqs[1]))
+            pair_count = pair_count.items()
+
         return (np.array([x[0] for x in pair_count], dtype=int),    # [(child_nuc, parent_nuc),()...]
-               np.array([x[1] for x in pair_count], dtype=int))     # multiplicity of each parent/child nuc pair
+                np.array([x[1] for x in pair_count], dtype=int))    # multiplicity of each parent/child nuc pair
+
 
 ########################################################################
 ### evolution functions
@@ -343,8 +362,10 @@ class GTR(object):
         if (t<0):
             logP = -ttconf.BIG_NUMBER
         else:
-            logQt = np.log(self.expQt(t))
-            logQt[np.isnan(logQt) | np.isinf(logQt)] = -ttconf.BIG_NUMBER
+            tmp_eQT = self.expQt(t)
+            bad_indices=(tmp_eQT==0)
+            logQt = np.log(tmp_eQT + ttconf.TINY_NUMBER*(bad_indices))
+            logQt[np.isnan(logQt) | np.isinf(logQt) | bad_indices] = -ttconf.BIG_NUMBER
             logP = np.sum(logQt[seq_pair[:,1], seq_pair[:,0]]*multiplicity)
             if return_log:
                 return logP
@@ -406,8 +427,8 @@ class GTR(object):
             from scipy.optimize import minimize_scalar
             opt = minimize_scalar(_neg_prob,
                     bounds=[0,ttconf.MAX_BRANCH_LENGTH],
-                    method='Bounded',
-                    args=(seq_pair, multiplicity), tol=1e-8)
+                    method='bounded',
+                    args=(seq_pair, multiplicity), options={'xatol':1e-8})
             new_len = opt["x"]
         except:
             import scipy

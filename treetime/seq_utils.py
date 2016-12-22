@@ -99,11 +99,9 @@ def seq2prof(x, profile_map):
 
     return prof
 
-def prof2seq(profile, gtr, sample_from_prof=False, collapse_prof=False):
+def prof2seq(profile, gtr, sample_from_prof=False):
     """
-    Convert profile to sequence and, if requested, set the profile values (LH of
-    the characters) to zeros and ones essentially converting the character
-    distribution to the delta-function.
+    Convert profile to sequence and normalize profile across sites.
 
     Args:
      - profile(numpy 2D array): profile. Shape of the profile should be
@@ -114,7 +112,8 @@ def prof2seq(profile, gtr, sample_from_prof=False, collapse_prof=False):
 
     Returns:
      -seq (numpy array of length L): sequence
-     - profile(numpy 2D array of Lxa shape): the resulting profile.
+     - prof_values (numpy array of length L): values of the profile for the chosen sequence characters
+     - idx (numpy array of length L): inidces chosen form profile
     """
 
     # normalize profile such that probabilities at each site sum to one
@@ -127,11 +126,11 @@ def prof2seq(profile, gtr, sample_from_prof=False, collapse_prof=False):
         randnum = np.random.random(size=cumdis.shape[1])
         idx = np.argmax(cumdis>=randnum, axis=0)
         seq = gtr.alphabet[idx]
+
     else:
-        seq = gtr.alphabet[profile.argmax(axis=1)]  # max LH over the alphabet
+        idx = profile.argmax(axis=1)
+        seq = gtr.alphabet[idx]  # max LH over the alphabet
 
-    # set profile as 0-1 matrix corresponding to sequence
-    if collapse_prof:
-        profile = seq2prof(seq, gtr.profile_map)
+    prof_values = profile[np.arange(profile.shape[0]), idx]
 
-    return seq, profile
+    return seq, prof_values, idx

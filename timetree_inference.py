@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 from __future__ import print_function, division
 import numpy as np
 from treetime import TreeTime
@@ -25,7 +26,8 @@ if __name__=="__main__":
     parser.add_argument('--resolve_polytomies', default = True, action='store_true',
                         help='resolve polytomies using temporal information.')
     parser.add_argument('--relax',nargs='*', default = False,
-                        help='use an autocorrelated molecular clock. Prior strength and coupling of parent and offspring rates can be specified e.g. as --relax 1.0 0.5')
+                        help='use an autocorrelated molecular clock. Prior strength and coupling of parent '
+                             'and offspring rates can be specified e.g. as --relax 1.0 0.5')
     parser.add_argument('--max_iter', default = 2, type=int,
                         help='maximal number of iterations the inference cycle is run')
     parser.add_argument('--verbose', default = 3, type=int,
@@ -82,7 +84,9 @@ if __name__=="__main__":
                                        +('...' if  len(x.mutations)>10 else '')) if leaf_count<30 else ''
         plot_vs_years(myTree, show_confidence=False, label_func = label_func) #, branch_labels=branch_label_func)
         plt.savefig(base_name+'_tree.pdf')
-
+    else:
+        # convert branch length to years (this is implicit in the above plot)
+        myTree.branch_length_to_years()
 
     # decorate tree with inferred mutations
     outaln_name = base_name+'_ancestral.fasta'
