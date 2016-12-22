@@ -188,7 +188,7 @@ class GTR(object):
         return gtr
 
     @classmethod
-    def infer(cls, nij, Ti, root_state, pc=5.0, **kwargs):
+    def infer(cls, nij, Ti, root_state, fixed_pi=None, pc=5.0, **kwargs):
         """
         Infer a GTR model by specifying the number of transitions and time spent in each
         character. The basic equation that is being solved is
@@ -221,10 +221,14 @@ class GTR(object):
         from scipy import linalg as LA
         count = 0
         pi_old = np.zeros_like(Ti)
-        pi = np.ones_like(Ti)
+        if fixed_pi is None:
+            pi = np.ones_like(Ti)
+        else:
+            pi = np.copy(fixed_pi)
         pi/=pi.sum()
         W_ij = np.ones_like(nij)
         mu = nij.sum()/Ti.sum()
+        # if pi is fixed, this will immediately converge
         while LA.norm(pi_old-pi) > dp and count < Nit:
             gtr.logger(' '.join(map(str, ['GTR inference iteration',count,'change:',LA.norm(pi_old-pi)])), 3)
             count += 1
@@ -240,8 +244,9 @@ class GTR(object):
             np.fill_diagonal(W_ij, 0)
 
             W_ij = W_ij/scale_factor
-            pi = (np.sum(nij+pc_mat,axis=1)+root_state)/(mu*np.dot(W_ij,Ti)+root_state.sum()+np.sum(pc_mat, axis=1))
-            pi /= pi.sum()
+            if fixed_pi is None:
+                pi = (np.sum(nij+pc_mat,axis=1)+root_state)/(mu*np.dot(W_ij,Ti)+root_state.sum()+np.sum(pc_mat, axis=1))
+                pi /= pi.sum()
             mu = nij.sum()/(ttconf.TINY_NUMBER + np.sum(pi * (W_ij.dot(Ti))))
         if count >= Nit:
             gtr.logger('WARNING: maximum number of iterations has been reached in GTR inference',3, warn=True)

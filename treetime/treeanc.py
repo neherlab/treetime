@@ -182,7 +182,8 @@ class TreeAnc(object):
 ## END SET-UP
 ####################################################################
 
-    def infer_gtr(self, print_raw=False, marginal=False, normalized_rate=True, **kwargs):
+    def infer_gtr(self, print_raw=False, marginal=False, normalized_rate=True,
+                  fixed_pi=None, **kwargs):
 
         # decide which type of the Maximum-likelihood reconstruction use
         # (marginal) or (joint)
@@ -215,7 +216,8 @@ class TreeAnc(object):
             print('n_ij:', nij)
             print('T_i:', Ti)
         root_state = np.array([np.sum(self.tree.root.sequence==nuc) for nuc in alpha])
-        self._gtr = GTR.infer(nij, Ti, root_state, pc=5.0, alphabet=self.gtr.alphabet, logger=self.logger)
+        self._gtr = GTR.infer(nij, Ti, root_state, fixed_pi=fixed_pi, pc=5.0,
+                              alphabet=self.gtr.alphabet, logger=self.logger)
         if normalized_rate:
             self.logger("TreeAnc.infer_gtr: setting overall rate to 1.0...", 2)
             self._gtr.mu=1.0
