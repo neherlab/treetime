@@ -13,6 +13,7 @@ class GTR(object):
         Args:
          - alphabet (numpy.array): alphabet of the sequence.
         """
+        self.debug=False
         if type(alphabet)==str:
             if (alphabet not in alphabets):
                 raise AttributeError("Unknown alphabet type specified")
@@ -28,7 +29,8 @@ class GTR(object):
 
         if logger is None:
             def logger(*args,**kwargs):
-                print(*args)
+                if self.debug:
+                    print(*args)
             self.logger = logger
         else:
             self.logger = logger

@@ -128,7 +128,7 @@ class TreeTime(ClockTree):
             self.reroot(root=reroot)
 
 
-    def plot_root_to_tip(self, add_internal=False, **kwargs):
+    def plot_root_to_tip(self, add_internal=False, label=True, **kwargs):
         import matplotlib.pyplot as plt
         tips = self.tree.get_terminals()
         internal = self.tree.get_nonterminals()
@@ -137,19 +137,20 @@ class TreeTime(ClockTree):
         dist = np.array([n.dist2root for n in tips])
         ind = np.array([n.bad_branch for n in tips])
         # plot tips
-        plt.scatter(dates[ind], dist[ind]  , c='r', label="bad tips" , **kwargs)
-        plt.scatter(dates[~ind], dist[~ind], c='g', label="good tips", **kwargs)
+        plt.scatter(dates[ind], dist[ind]  , c='r', label="bad tips" if label else "" , **kwargs)
+        plt.scatter(dates[~ind], dist[~ind], c='g', label="good tips" if label else "", **kwargs)
         if add_internal and hasattr(self.tree.root, "numdate"):
             dates = np.array([n.numdate for n in internal])
             dist = np.array([n.dist2root for n in internal])
             ind = np.array([n.bad_branch for n in internal])
             # plot internal
-            plt.scatter(dates[~ind], dist[~ind], c='b', marker='<', label="internal", **kwargs)
+            plt.scatter(dates[~ind], dist[~ind], c='b', marker='<', label="internal" if label else "", **kwargs)
 
-        plt.legend(loc=2)
+        if label:
+            plt.legend(loc=2)
         plt.ylabel('root-to-tip distance')
         plt.xlabel('date')
-
+        plt.tight_layout()
 
     def reroot(self,root='best'):
         self.logger("TreeTime.reroot: with method or node: %s"%root,1)

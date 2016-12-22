@@ -20,7 +20,7 @@ if __name__=="__main__":
     parser.add_argument('--reroot', required = False, action="store_true", default=False,
                         help ="reroot the tree to maximize the correlation of root-to-tip distannce with sampling time")
     parser.add_argument('--plot', required = False, action="store_true", default=False,)
-    parser.add_argument('--verbose', default = 3, type=int,
+    parser.add_argument('--verbose', default = 0, type=int,
                         help='verbosity of output 0-6')
     params = parser.parse_args()
 
@@ -70,7 +70,7 @@ if __name__=="__main__":
     ###########################################################################
     if params.plot:
         import matplotlib.pyplot as plt
-        myTree.plot_root_to_tip()
+        myTree.plot_root_to_tip(label=False)
         t = np.array([np.min(dates.values()), np.max(dates.values())])
         plt.plot(t, t*d2d.slope+d2d.intercept,
                  label='y=%1.4f+%1.5ft, r^2=%1.2f'%(d2d.intercept, d2d.slope, d2d.r_val**2))
