@@ -19,7 +19,7 @@ if __name__=="__main__":
                         help ="csv with dates for nodes with 'node_name, date' where date is float (as in 2012.15)")
     parser.add_argument('--infer_gtr', default = False, action='store_true', help='infer substitution model')
     parser.add_argument('--reroot', required = False, action="store_true", default=False,
-                        help ="reroot the tree to maximize the correlation of root-to-tip distannce with sampling time")
+                        help ="reroot the tree to maximize the correlation of root-to-tip distance with sampling time")
     parser.add_argument('--plot', required = False, action="store_true", default=False,)
     parser.add_argument('--verbose', default = 0, type=int,
                         help='verbosity of output 0-6')
@@ -30,13 +30,18 @@ if __name__=="__main__":
     ###########################################################################
     with open(params.dates) as date_file:
         dates = {}
+        failed_dates = 0
         for line in date_file:
             try:
                 name, date = line.strip().split(',')[:2]
                 dates[name] = float(date)
             except:
-                continue
-
+                failed_dates+=1
+                print("couldn't parse date from:",line.strip(),"\n\texpecting float in second column")
+        if len(dates)<failed_dates:
+            print("\n\nDATE PARSING FAILED, ABORTING...")
+            import sys
+            sys.exit(1)
 
     ###########################################################################
     ### FAKING ALIGMENT IF NONE GIVEN
