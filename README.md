@@ -7,7 +7,8 @@
 TreeTime provides routines for ancestral sequence reconstruction and the inference of molecular-clock phylogenies, i.e., a tree where all branches are scaled such that the locations of terminal nodes correspond to their sampling times and internal nodes are placed at the most likely time of divergence.
 
 TreeTime aims at being a compromise between sophisticated probabilistic models of evolution and fast heuristics. It implements GTR models of ancestral inference and branch length optimization, but takes the tree topology as given.
-The only topology optimization are resolution of polytomies in a way that is most (approximately) consistent with the sampling time constraints on the tree.
+To optimize the likelihood of time-scaled phylogenies, treetime uses an interative approach that first infers ancestral sequences given the branch length of the tree, then optimizes the positions of unconstrained nodes on the time axis, and then repeats this cycle.
+The only topology optimization are (optional) resolution of polytomies in a way that is most (approximately) consistent with the sampling time constraints on the tree.
 The package is designed to be used as a stand-alone tool or as a library used in larger phylogenetic analysis workflows.
 
 #### Features
@@ -27,9 +28,11 @@ The package is designed to be used as a stand-alone tool or as a library used in
     - numpy, SciPy: for all kind of mathematical operations as matrix operations, numerical integration, interpolation, minimization, etc.
 
     - BioPython: for parsing multiple sequence alignments and all phylogenetic functionality
+
+    - matplotlib: optional dependency for plotting
   If you do not have these libraries, you can install them by typing in the terminal:
     ```bash
-    $pip install numpy scipy biopython
+    $pip install numpy scipy biopython matplotlib
     ```
 
 * To install the package, run `setup.py` script from the terminal:
@@ -118,7 +121,7 @@ In addition, we provide scripts that can be run from the command line with argum
 
     ```python
     from treetime import TreeTime
-    tt = TreeTime(dates=mydates, 'my_tree.nwk', aln='my_seqs.nwk', gtr='JC69')
+    tt = TreeTime(dates=mydates, tree='my_tree.nwk', aln='my_seqs.nwk', gtr='JC69')
     tt.run(root='best', infer_gtr=True, relaxed_clock=(1.0,1.0), resolve_polytomies=True, max_iter=2)
     ```
   Every node of tt.tree will be assigned a `numdate` and `time_before_present` attribute. The additional attribute `resolve_polytomies` specifies whether TreeTime will attempt to resolve multiple mergers using the temporal constraints on leaves. Autocorrelated relaxed clocks can be fit by passing a tuple of two numbers `(slack, coupling)`. `slack` is the strength of the normal prior on rate variation, coupling penalizes rate variation between parents and children.
