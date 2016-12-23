@@ -36,13 +36,13 @@ class TreeAnc(object):
         self.ignore_gaps = True
         if gtr is not None:
             self.gtr = gtr
-        if aln is not None:
-            self.aln = aln
-        self.tree = tree
-        if self.tree is None:
+        if tree is None:
             self.logger("TreeAnc: tree loading failed! exiting",0)
             return
+        else:
+            self.tree = tree
         if aln is not None:
+            self.aln = aln
             self.attach_sequences_to_nodes()
 
     def logger(self, msg, level, warn=False):

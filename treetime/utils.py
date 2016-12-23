@@ -22,8 +22,8 @@ class DateConversion(object):
         self.sigma = 0
 
     def __str__(self):
-        outstr = ('Root-Tip-Regression:\n --slope:\t%f\n --intercept:\t%f\n --R^2:\t\t%f\n'
-                  %(self.slope, self.intercept, self.r_val**2))
+        outstr = ('Root-Tip-Regression:\n --rate:\t%f\n --R^2:\t\t%f\n'
+                  %(self.slope, self.r_val**2))
         return outstr
 
 

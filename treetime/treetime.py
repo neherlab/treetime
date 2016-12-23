@@ -614,6 +614,7 @@ if __name__=="__main__":
     myTree = TreeTime(gtr='Jukes-Cantor', tree = base_name+'.nwk',
                         aln = base_name+'.fasta', verbose = 4, dates = dates, debug=True)
 
+    # this example uses a fixed clock rate of 0.003
     myTree.run(root='clock_filter', relaxed_clock=False, max_iter=2, plot_rtt=True,
                resolve_polytomies=True, Tc=0.05, n_iqd=2, fixed_slope=0.003, do_marginal=True)
 
