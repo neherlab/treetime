@@ -13,10 +13,10 @@ if __name__=="__main__":
     parser = argparse.ArgumentParser(
             description="Calculates the root-to-tip regression and quantifies the 'clock-i-ness' of the tree. "
                         "It will optionally reroot the tree to maximize the clock-like signal and recalculate branch length.")
-    parser.add_argument('--aln', required = False, type = str,  help ="fasta file with input sequences")
     parser.add_argument('--tree', required = True, type = str,  help ="newick file with tree")
     parser.add_argument('--dates', required = True, type = str,
                         help ="csv with dates for nodes with 'node_name, date' where date is float (as in 2012.15)")
+    parser.add_argument('--aln', required = False, type = str,  help ="fasta file with input sequences")
     parser.add_argument('--infer_gtr', default = False, action='store_true', help='infer substitution model')
     parser.add_argument('--reroot', required = False, action="store_true", default=False,
                         help ="reroot the tree to maximize the correlation of root-to-tip distance with sampling time")

@@ -8,7 +8,7 @@ TreeTime provides routines for ancestral sequence reconstruction and the inferen
 
 TreeTime aims at being a compromise between sophisticated probabilistic models of evolution and fast heuristics. It implements GTR models of ancestral inference and branch length optimization, but takes the tree topology as given.
 The only topology optimization are resolution of polytomies in a way that is most (approximately) consistent with the sampling time constraints on the tree.
-The package is designed to be used as a stand-alone tool as well as a module plugged in a bigger phylogenetic tool.
+The package is designed to be used as a stand-alone tool or as a library used in larger phylogenetic analysis workflows.
 
 #### Features
 * ancestral sequence reconstruction (marginal and joint maximum likelihood)
@@ -41,9 +41,9 @@ You might need root privileges for system wide installation. Alternatively, you 
 
 
 ### Basic usage
-TreeTime can be used as part of python programs that create and interact tree time objects. How this could look like for the two principal applications (ancestral sequence reconstruction and molecular clock phylogenies is shown below.)
+TreeTime can be used as part of python programs that create and interact with tree time objects. The interface to treetime and its basic functionality are given below.
 
-In addition, we provide scripts that can be run from the command line with arguments specifying data files and parameters.
+In addition, we provide scripts that can be run from the command line with arguments specifying input data and parameters.
 
 
 * Ancestral sequence reconstruction:
@@ -123,10 +123,36 @@ In addition, we provide scripts that can be run from the command line with argum
     ```
   Every node of tt.tree will be assigned a `numdate` and `time_before_present` attribute. The additional attribute `resolve_polytomies` specifies whether TreeTime will attempt to resolve multiple mergers using the temporal constraints on leaves. Autocorrelated relaxed clocks can be fit by passing a tuple of two numbers `(slack, coupling)`. `slack` is the strength of the normal prior on rate variation, coupling penalizes rate variation between parents and children.
 
+
+* Quantify temporal signal in phylogenies and reroot to the maximize "clock-i-ness"
+  The script `temporal_signal.py` provides functionality analogous to TempEst by Andrew Rambaut.
+    ```
+      usage: temporal_signal.py [-h] --tree TREE --dates DATES [--aln ALN]
+                                [--infer_gtr] [--reroot] [--plot]
+                                [--verbose VERBOSE]
+
+      Calculates the root-to-tip regression and quantifies the 'clock-i-ness' of the
+      tree. It will optionally reroot the tree to maximize the clock-like signal and
+      recalculate branch length.
+
+      optional arguments:
+        -h, --help         show this help message and exit
+        --tree TREE        newick file with tree
+        --dates DATES      csv with dates for nodes with 'node_name, date' where
+                           date is float (as in 2012.15)
+        --aln ALN          fasta file with input sequences
+        --infer_gtr        infer substitution model
+        --reroot           reroot the tree to maximize the correlation of root-to-
+                           tip distance with sampling time
+        --plot
+        --verbose VERBOSE  verbosity of output 0-6
+    ```
+  The slope of the regression of root-to-tip distance vs sampling date will be printed to stdout along with the fraction of variance explained by the linear regression. By passing the flag `--reroot`, treetime will search for the root that maximizes the correlation of root-to-tip distance with time and reroot the tree. The option `--plot` will produce a scatter plot with the best regression and save it to file.
+
 ## Comparable Tools
 
-There are several other tools which perform date inference for the internal nodes.
-* [Beast](http://beast.bio.ed.ac.uk/) relies on the MCMC-type sampling of trees. It and is hence rather slow for large data sets. But BEAST allows the flexible inclusion of prior distributions, complex evolutionary models, and estimation of parameters.
+There are several other tools which estimate molecular clock phylogenies.
+* [Beast](http://beast.bio.ed.ac.uk/) relies on the MCMC-type sampling of trees. It is hence rather slow for large data sets. But BEAST allows the flexible inclusion of prior distributions, complex evolutionary models, and estimation of parameters.
 * [Least-Square-Dating](http://www.atgc-montpellier.fr/LSD/) (LSD) emphasises speed (it scales as O(N) as **TreeTime**), but provides limited scope for customization.
 
 
