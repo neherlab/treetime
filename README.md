@@ -50,6 +50,7 @@ In addition, we provide scripts that can be run from the command line with argum
 
 
 * Ancestral sequence reconstruction:
+
   To perform ancestral sequence reconstruction, use the script `ancestral_inference.py`.
   ```
   usage: ancestral_reconstruction.py [-h] --aln ALN --tree TREE [--marginal]
@@ -79,6 +80,7 @@ In addition, we provide scripts that can be run from the command line with argum
   The tree and alignment arguments can be either file names (newick and fasta) or Biopython tree and alignent objects.
 
 * Molecular clock phylogenies
+
   To infer molecular clock phylogenies, use the script `timetree_inference.py`:
   ```
   usage: timetree_inference.py [-h] --aln ALN --tree TREE --dates DATES
@@ -128,6 +130,7 @@ In addition, we provide scripts that can be run from the command line with argum
 
 
 * Quantify temporal signal in phylogenies and reroot to the maximize "clock-i-ness"
+
   The script `temporal_signal.py` provides functionality analogous to TempEst by Andrew Rambaut.
     ```
       usage: temporal_signal.py [-h] --tree TREE --dates DATES [--aln ALN]
