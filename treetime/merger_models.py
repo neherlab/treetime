@@ -4,6 +4,7 @@ methods to calculate merger models for a time tree
 from __future__ import print_function, division
 import numpy as np
 import scipy.special as sf
+from scipy.interpolate import interp1d
 from Bio import AlignIO, Phylo
 from scipy.interpolate import interp1d
 import config as ttconf
@@ -45,13 +46,6 @@ class Coalescent(object):
         events = 2.0*mergers[:,1]/(nlin*(nlin-1))
         self.normalized_mergers = np.array((events_t, events))
 
-        # smooth this with a Gaussian kernel and add 0.01 of average to fill long gaps
-        dt = 0.05*(events_t[0]-events_t[-1])
-        windows = np.linspace(events_t[-1], events_t[0]-dt, 100)
-        avg = np.sum(events)/np.abs(events_t[0]-events_t[-1])
-        smoothing_kernel = lambda x: np.exp(-x**2/2.0/dt**2)/np.sqrt(2.0*np.pi)/dt/(sf.erf(x.max()/dt)-sf.erf(x.min()/dt))*2.0
-        self.Tc_inv = interp1d(windows,
-                        [0.01*avg+0.99*np.sum(smoothing_kernel(events_t-w)*events) for w in windows])
 
 
     def cost(self, t_node, branch_length):
@@ -65,7 +59,7 @@ class Coalescent(object):
                 clade.branch_length_interpolator.merger_cost = self.cost
 
 
-    def skyline(self, gen=1.0, to_numdate=None):
+    def skyline(self, gen=1.0, to_numdate=None, n_points = 20):
         '''
         return the skyline, i.e., an estimate of the inverse rate of coalesence
         parameters:
@@ -75,6 +69,24 @@ class Coalescent(object):
         '''
         if to_numdate is None:
             to_numdate =lambda x:x
+
+        et, ev = self.normalized_mergers
+
+        # smooth this with a Gaussian kernel and add 0.01 of average to fill long gaps
+        avg = np.sum(ev)/np.abs(et[0]-et[-1])
+        dt = 0.2*(et[0]-et[-1])
+        windows = np.linspace(et[-1], et[0]-dt, 100)
+        smoothing_kernel = lambda x: np.exp(-x**2/2.0/dt**2)/np.sqrt(2.0*np.pi)/dt/(sf.erf(x.max()/dt)-sf.erf(x.min()/dt))*2.0
+        self.Tc_inv = interp1d(windows,
+                        [0.01*avg+0.99*np.sum(smoothing_kernel(et-w)*ev) for w in windows])
+
+        # smooth this with a Gaussian kernel and add 0.01 of average to fill long gaps
+        mid_points = np.concatenate(([et[0]-0.5*(et[1]-et[0])],
+                                      0.5*(et[1:] + et[:-1]),
+                                     [et[-1]+0.5*(et[-1]-et[-2])]))
+        self.Tc_inv = interp1d(mid_points[n_points:-n_points],
+                        [0.01*avg+0.99*np.sum(ev[(et>=l)&(et<u)])/(u-l)
+                        for u,l in zip(mid_points[:-2*n_points],mid_points[2*n_points:])])
 
         return interp1d(to_numdate(self.Tc_inv.x), gen/self.Tc_inv.y)
 
