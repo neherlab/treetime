@@ -9,11 +9,12 @@ import os
 import StringIO
 from scipy.ndimage import binary_dilation
 
-def plot_vs_years(my_clocktree, years = 1, **kwargs):
+def plot_vs_years(my_clocktree, years = 1, ax=None, **kwargs):
     import matplotlib.pyplot as plt
     my_clocktree.branch_length_to_years()
-    fig = plt.figure()
-    ax = plt.subplot(111)
+    if ax is None:
+        fig = plt.figure()
+        ax = plt.subplot(111)
     # draw tree
     Phylo.draw(my_clocktree.tree, axes=ax, **kwargs)
 
@@ -48,8 +49,10 @@ def plot_vs_years(my_clocktree, years = 1, **kwargs):
                         horizontalalignment='center')
         ax.set_axis_off()
 
+
 def treetime_to_newick(tt, outf):
     Phylo.write(tt.tree, outf, 'newick')
+
 
 def _layout(tree):
     """Add clade, xvalue, yvalue, mutation and trunk attributes to all nodes in tree"""

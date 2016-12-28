@@ -66,6 +66,9 @@ class TreeTime(ClockTree):
                                             max_iter=0,sample_from_profile='root')
                     self.make_time_tree(slope=fixed_slope, do_marginal=False, **kwargs)
                     ndiff = self.infer_ancestral_sequences('ml',sample_from_profile='root')
+                else:
+                    ndiff = self.infer_ancestral_sequences('ml',sample_from_profile='root')
+                    self.make_time_tree(slope=fixed_slope, do_marginal=False, **kwargs)
             elif (Tc and (Tc is not None)) or relaxed_clock: # need new timetree first
                 self.make_time_tree(slope=fixed_slope, do_marginal=False, **kwargs)
                 ndiff = self.infer_ancestral_sequences('ml',sample_from_profile='root')
@@ -127,29 +130,33 @@ class TreeTime(ClockTree):
             self.reroot(root=reroot)
 
 
-    def plot_root_to_tip(self, add_internal=False, label=True, **kwargs):
+    def plot_root_to_tip(self, add_internal=False, label=True, ax=None, **kwargs):
         import matplotlib.pyplot as plt
         tips = self.tree.get_terminals()
         internal = self.tree.get_nonterminals()
-        plt.figure()
+        if ax is None:
+            plt.figure()
+            ax=plt.subplot(111)
         dates = np.array([np.mean(n.numdate_given) for n in tips])
         dist = np.array([n.dist2root for n in tips])
         ind = np.array([n.bad_branch for n in tips])
         # plot tips
-        plt.scatter(dates[ind], dist[ind]  , c='r', label="bad tips" if label else "" , **kwargs)
-        plt.scatter(dates[~ind], dist[~ind], c='g', label="good tips" if label else "", **kwargs)
+        ax.scatter(dates[ind], dist[ind]  , c='r', label="bad tips" if label else "" , **kwargs)
+        ax.scatter(dates[~ind], dist[~ind], c='g', label="good tips" if label else "", **kwargs)
         if add_internal and hasattr(self.tree.root, "numdate"):
             dates = np.array([n.numdate for n in internal])
             dist = np.array([n.dist2root for n in internal])
             ind = np.array([n.bad_branch for n in internal])
             # plot internal
-            plt.scatter(dates[~ind], dist[~ind], c='b', marker='<', label="internal" if label else "", **kwargs)
+            ax.scatter(dates[~ind], dist[~ind], c='b', marker='<', label="internal" if label else "", **kwargs)
 
         if label:
-            plt.legend(loc=2)
-        plt.ylabel('root-to-tip distance')
-        plt.xlabel('date')
+            ax.legend(loc=2)
+        ax.set_ylabel('root-to-tip distance')
+        ax.set_xlabel('date')
+        ax.ticklabel_format(useOffset=False)
         plt.tight_layout()
+
 
     def reroot(self,root='best'):
         self.logger("TreeTime.reroot: with method or node: %s"%root,1)

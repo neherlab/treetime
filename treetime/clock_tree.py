@@ -418,7 +418,7 @@ class ClockTree(TreeAnc):
         self.logger('ClockTree.branch_length_to_years: setting node positions in units of years', 2)
         if not hasattr(self.tree.root, 'numdate'):
             self.logger('ClockTree.branch_length_to_years: infer ClockTree first', 2,warn=True)
-        self.tree.root.branch_length = 1.0
+        self.tree.root.branch_length = 0.1
         for n in self.tree.find_clades(order='preorder'):
             if n.up is not None:
                 n.branch_length = n.numdate - n.up.numdate
