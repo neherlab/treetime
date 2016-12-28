@@ -5,17 +5,17 @@ from scipy import optimize as sciopt
 
 if __name__ == '__main__':
 
-    # load data
+    # load data and parse dates
     import matplotlib.pyplot as plt
     from matplotlib import cm
     import seaborn as sns
     sns.set_style('whitegrid')
     from Bio import Phylo
     plt.ion()
-    base_name = 'data/ebola'
+    base_name = 'data/H3N2_NA_allyears_NA.20'
     import datetime
     from treetime.utils import numeric_date
-    with open(base_name+'.csv') as date_file:
+    with open(base_name+'.metadata.csv') as date_file:
         dates = {}
         for line in date_file:
             if line[0]=='#':
@@ -26,36 +26,28 @@ if __name__ == '__main__':
             except:
                 continue
 
+    # instantiate treetime
     tt_relaxed = TreeTime(gtr='Jukes-Cantor', tree = base_name+'.nwk',
-                        aln = base_name+'.fasta', verbose = 4, dates = dates, debug=True)
+                        aln = base_name+'.fasta', verbose = 4, dates = dates)
 
     # this example uses an autocorrelated molecular clock with normal prior and parent-child coupling
-    tt_relaxed.run(root='best', relaxed_clock={"slack":5.0, "coupling":1.0}, max_iter=1,
+    # the parameter slack penalizes rate deviations from the average rate
+    # couplings penalize rate changes between parent and child nodes.
+    tt_relaxed.run(root='best', relaxed_clock={"slack":5.0, "coupling":1.0}, max_iter=3,
                resolve_polytomies=True, Tc=0, do_marginal=False)
 
-    tt_strict = TreeTime(gtr='Jukes-Cantor', tree = base_name+'.nwk',
-                        aln = base_name+'.fasta', verbose = 4, dates = dates, debug=True)
-
-    # this example uses an autocorrelated molecular clock with location prior
-    tt_strict.run(root='best', relaxed_clock=False, max_iter=1,
-               resolve_polytomies=True, Tc=0, do_marginal=False)
-
-    # draw trees inferred with relaxed and strict model
-    fig, axs = plt.subplots(1,2, sharex=True, sharey=True, figsize=(12,8))
-    vmin=0
-    vmax=2.0
+    # draw trees inferred with the relaxed model
+    fig = plt.figure()
+    ax = plt.subplot(111)
+    vmin, vmax = 0.5, 1.5 # color branches according to the rate deviation
     for n in tt_relaxed.tree.find_clades():
         if n.up:
             n.color = [int(x*255) for x in cm.cool((min(max(vmin, n.branch_length_interpolator.gamma),vmax)-vmin)/(vmax-vmin))[:3]]
         else:
             n.color = [200,200,200]
-    for n in tt_strict.tree.find_clades():
-        n.color = [200,200,200]
 
-    axs[0].set_title("relaxed clock")
-    Phylo.draw(tt_strict.tree, axes=axs[1], show_confidence=False, label_func = lambda x:'')
-    axs[1].set_title("strict clock")
-    Phylo.draw(tt_relaxed.tree, axes=axs[0], show_confidence=False, label_func = lambda x:"")
+    ax.set_title("relaxed clock")
+    Phylo.draw(tt_relaxed.tree, axes=ax, show_confidence=False, label_func = lambda x:'')
 
     # Scatter branch stretch against the rate multiplier of the branch.
     # this is expected to have a positive relationship
