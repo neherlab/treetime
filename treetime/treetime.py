@@ -19,9 +19,6 @@ class TreeTime(ClockTree):
     def run(self, root=None, infer_gtr=True, relaxed_clock=False, n_iqd = None,
             resolve_polytomies=True, max_iter=0, Tc=None, fixed_slope=None,
             do_marginal=False, **kwargs):
-        if relaxed_clock  and len(relaxed_clock)==2:
-            slack, coupling = relaxed_clock
-
         # initially, infer ancestral sequences and infer gtr model if desired
         self.optimize_sequences_and_branch_length(infer_gtr=infer_gtr,
                                                   sample_from_profile='root',
@@ -41,6 +38,7 @@ class TreeTime(ClockTree):
         # infer time tree and optionally resolve polytomies
         self.logger("###TreeTime.run: INITIAL ROUND",0)
         self.make_time_tree(slope=fixed_slope, do_marginal=False, **kwargs)
+        self.LH = [[self.tree.sequence_joint_LH, self.tree.positional_joint_LH]]
 
         # iteratively reconstruct ancestral sequences and re-infer
         # time tree to ensure convergence.
@@ -56,7 +54,7 @@ class TreeTime(ClockTree):
                 self.merger_model.attach_to_tree()
             if relaxed_clock:
                 # estimate a relaxed molecular clock
-                self.relaxed_clock(slack=slack, coupling=coupling)
+                self.relaxed_clock(**relaxed_clock)
 
             n_resolved=0
             if resolve_polytomies:
@@ -79,6 +77,7 @@ class TreeTime(ClockTree):
                 self.logger("###TreeTime.run: CONVERGED",0)
                 break
 
+            self.LH.append([self.tree.sequence_joint_LH, self.tree.positional_joint_LH])
             niter+=1
 
         # if marginal reconstruction requested, make one more round with marginal=True
@@ -379,7 +378,7 @@ class TreeTime(ClockTree):
         for node in self.tree.find_clades(order='postorder'):
             opt_len = node.mutation_length
 
-            #opt_len = 1.0*len(node.mutations)/node.profile.shape[0]
+            # opt_len \approx 1.0*len(node.mutations)/node.profile.shape[0] but calculated via gtr model
             # contact term: stiffness*(g*bl - bl_opt)^2 + slack(g-1)^2 =
             #               (slack+bl^2) g^2 - 2 (bl*bl_opt+1) g + C= k2 g^2 + k1 g + C
             node._k2 = slack + c*node.branch_length**2/(opt_len+self.one_mutation)

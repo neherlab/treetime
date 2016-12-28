@@ -166,7 +166,6 @@ class TreeAnc(object):
         internal_node_count = 0
         for clade in self.tree.get_nonterminals(order='preorder'): # parents first
             internal_node_count+=1
-            clade.bad_branch=False
             if clade.name is None:
                 clade.name = "NODE_" + format(self._internal_node_count, '07d')
                 self._internal_node_count += 1
