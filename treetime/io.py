@@ -2,14 +2,14 @@ import Bio
 from Bio import Phylo, Align, AlignIO
 import numpy as np
 import json, copy, datetime
-from treetime import TreeTime
 import utils
 import seq_utils
 import os
 import StringIO
 from scipy.ndimage import binary_dilation
 
-def plot_vs_years(my_clocktree, years = 1, ax=None, **kwargs):
+
+def plot_vs_years(my_clocktree, years = 1, ax=None, confidence=None, **kwargs):
     import matplotlib.pyplot as plt
     my_clocktree.branch_length_to_years()
     if ax is None:
@@ -48,6 +48,19 @@ def plot_vs_years(my_clocktree, years = 1, ax=None, **kwargs):
                 ax.text(pos,ylim[0]-0.04*(ylim[1]-ylim[0]),str(int(year)),
                         horizontalalignment='center')
         ax.set_axis_off()
+
+    if confidence:
+        utils.tree_layout(my_clocktree.tree)
+        if not hasattr(my_clocktree.tree.root, "marginal_inverse_cdf"):
+            print("marginal time tree reconstruction required for confidence intervals")
+        elif len(confidence)!=2:
+            print("expected confidence interval as in (0.05, 0.95)")
+        else:
+            for n in my_clocktree.tree.find_clades():
+                if n.marginal_inverse_cdf=="delta":
+                    continue
+                pos = my_clocktree.date2dist.to_numdate(n.marginal_inverse_cdf(np.array(confidence)))
+                ax.plot(pos-offset, np.ones(len(pos))*n.ypos, lw=3, c=(0.5,0.5,0.5))
 
 
 def treetime_to_newick(tt, outf):

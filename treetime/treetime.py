@@ -2,6 +2,7 @@ from __future__ import print_function, division
 from clock_tree import ClockTree
 from utils import *
 import config as ttconf
+import io as tt_io
 import numpy as np
 from scipy import optimize as sciopt
 
@@ -276,7 +277,7 @@ class TreeTime(ClockTree):
                 np.fill_diagonal(cost_gains, -1e11)
                 idxs = np.unravel_index(cost_gains.argmax(),cost_gains.shape)
                 if (idxs[0] == idxs[1]) or cost_gains.max()<0:
-                    self.logger("TreeTime._poly.merge_nodes: node is not fully resolved "+clade.name,4,warn=True)
+                    self.logger("TreeTime._poly.merge_nodes: node is not fully resolved "+clade.name,4)
                     return LH
 
                 n1, n2 = source_arr[idxs[0]], source_arr[idxs[1]]
@@ -478,16 +479,16 @@ class TreeTime(ClockTree):
                 node._R2_delta_x = 0.0
 
             else: # based on the parent, compute the values for regression
-                #  NOTE order of the values computation matters
+                #  NOTE order of these computation matters
                 n_up = N - node._st_n_leaves
                 n_down = node._st_n_leaves
-                node._di = node.up._di + (n_up-n_down)*node.branch_length
-                node._di2 = (node.up._di2 + 2*node.branch_length*node.up._di
-                            - 4*(node.branch_length*(node._st_di + n_down*node.branch_length))
-                            + N*node.branch_length**2)
-                node._diti = node.up._diti + node.branch_length*(sum_ti - 2*node._st_ti)
-
                 L = node.branch_length
+                node._di = node.up._di + (n_up-n_down)*L
+                node._di2 = (node.up._di2 + 2*L*node.up._di
+                            - 4*(L*(node._st_di + n_down*L))
+                            + N*L**2)
+                node._diti = node.up._diti + L*(sum_ti - 2*node._st_ti)
+
 
                 ## Express Node's sum_Di as the function of parent's sum_Di
                 # and **displacement from parent's node x** :
@@ -499,7 +500,7 @@ class TreeTime(ClockTree):
                 # and **displacement from parent's node x** :
                 # sum_Di2 = B1 + B2 * x + B3 * x**2
                 B1 = node.up._di2
-                B2 = 2 * (node.up._di - 2 * node._st_di - 2 * node.branch_length * n_down )
+                B2 = 2 * (node.up._di - 2 * node._st_di - 2 * L * n_down )
                 B3 = N
 
                 ## Express Node's sum_DiTi as the function of parent's params
@@ -603,7 +604,7 @@ if __name__=="__main__":
     sns.set_style('whitegrid')
     from Bio import Phylo
     plt.ion()
-    base_name = 'data/H3N2_NA_allyears_NA.200'
+    base_name = 'data/H3N2_NA_allyears_NA.20'
     import datetime
     from utils import numeric_date
     with open(base_name+'.metadata.csv') as date_file:
@@ -625,21 +626,15 @@ if __name__=="__main__":
                resolve_polytomies=True, Tc=0.05, n_iqd=2, fixed_slope=0.003, do_marginal=True)
 
     # draw phylogenetic tree in one panel, marginal distributions in the other
+    tree_layout(myTree.tree)
     fig, axs = plt.subplots(2,1, sharex=True, figsize=(8,12))
     Phylo.draw(myTree.tree, axes=axs[0], show_confidence=False, label_func = lambda x:'')
     offset = myTree.tree.root.time_before_present + myTree.tree.root.branch_length
     cols = sns.color_palette()
     depth = myTree.tree.depths()
     x = np.linspace(-0.01, .2,1000)
-    leaf_count=0
     for ni,node in enumerate(myTree.tree.find_clades(order="postorder")):
-        if node.is_terminal():
-            # plot marginal distributions of node positions
-            node.ypos=leaf_count
-            leaf_count+=1
-        else:
-            node.ypos=np.mean([c.ypos for c in node])
-            axs[1].plot(offset-x, node.marginal_pos_LH.prob_relative(x), '-', c=cols[ni%len(cols)])
+        axs[1].plot(offset-x, node.marginal_pos_LH.prob_relative(x), '-', c=cols[ni%len(cols)])
         if node.up is not None:
             # add branch length distributions to tree
             x_branch = np.linspace(depth[node]-2*node.branch_length-0.005,depth[node],100)

@@ -139,5 +139,16 @@ def numeric_date(dt=None):
 
     return res
 
+def tree_layout(tree):
+    leaf_count=0
+    for ni,node in enumerate(tree.find_clades(order="postorder")):
+        if node.is_terminal():
+            leaf_count+=1
+            node.ypos=leaf_count
+        else:
+            tmp = np.array([c.ypos for c in node])
+            node.ypos=0.5*(np.max(tmp) + np.min(tmp))
+
 if __name__ == '__main__':
     pass
+

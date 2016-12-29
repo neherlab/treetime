@@ -326,24 +326,18 @@ class ClockTree(TreeAnc):
                         node.marginal_pos_Lx = res
 
         self.logger("ClockTree - Marginal reconstruction:  Propagating root -> leaves...", 2)
+        from scipy.interpolate import interp1d
         for node in self.tree.find_clades(order='preorder'):
 
             ## The root node
             if node.up is None:
                 node.msg_from_parent = None # nothing beyond the root
-                continue
-
-            # unconstrained terminal node. Set the position from the optimal branch length
-            elif node.marginal_pos_Lx is None:
-                node.msg_from_parent = None
-                continue
-
             # all other cases (All internal nodes + unconstrained terminals)
             else:
                 parent = node.up
                 # messages from the complementary subtree (iterate over all sister nodes)
                 complementary_msgs = [sister.marginal_pos_Lx for sister in parent.clades
-                                            if sister != node]
+                                            if (sister != node) and (sister.marginal_pos_Lx is not None)]
 
                 # if parent itself got smth from the root node, include it
                 if parent.msg_from_parent is not None:
@@ -361,7 +355,10 @@ class ClockTree(TreeAnc):
                                                     rel_tol=self.rel_tol_refine)
 
                 node.msg_from_parent = res
-                node.marginal_pos_LH = NodeInterpolator.multiply((node.msg_from_parent, node.subtree_distribution))
+                if node.marginal_pos_Lx is None:
+                    node.marginal_pos_LH = node.msg_from_parent
+                else:
+                    node.marginal_pos_LH = NodeInterpolator.multiply((node.msg_from_parent, node.subtree_distribution))
 
                 self.logger('ClockTree._ml_t_root_to_leaves: computed convolution'
                                 ' with %d points at node %s'%(len(res.x),node.name),4)
@@ -379,6 +376,15 @@ class ClockTree(TreeAnc):
                         plt.ylim(0,100)
                         plt.xlim(-0.05, 0.05)
                         import ipdb; ipdb.set_trace()
+            # construct the inverse cumulant distribution to evaluate confidence intervals
+            if node.marginal_pos_LH.is_delta:
+                node.marginal_inverse_cdf=interp1d([0,1], node.marginal_pos_LH.peak_pos*np.ones(2), kind="linear")
+            else:
+                dt = np.diff(node.marginal_pos_LH.x)
+                y = node.marginal_pos_LH.prob_relative(node.marginal_pos_LH.x)
+                int_y = np.concatenate(([0], np.cumsum(dt*(y[1:]+y[:-1])/2.0)))
+                int_y/=int_y[-1]
+                node.marginal_inverse_cdf = interp1d(int_y, node.marginal_pos_LH.x, kind="linear")
 
         if not self.debug:
             _cleanup()

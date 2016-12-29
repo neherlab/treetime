@@ -71,6 +71,8 @@ class Coalescent(object):
             to_numdate =lambda x:x
 
         et, ev = self.normalized_mergers
+        if 2*n_points>len(ev):
+            n_points = len(ev)//4
 
         # smooth this with a Gaussian kernel and add 0.01 of average to fill long gaps
         avg = np.sum(ev)/np.abs(et[0]-et[-1])
