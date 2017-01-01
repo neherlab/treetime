@@ -208,6 +208,7 @@ class ClockTree(TreeAnc):
                         node.time_before_present = subtree_distribution.peak_pos
                         node.joint_pos_Lx = subtree_distribution
                         node.joint_pos_Cx = None
+                        node.clock_length = node.branch_length
                     else: # otherwise propagate to parent
                         res, res_t = NodeInterpolator.convolve(subtree_distribution,
                                         node.branch_length_interpolator,

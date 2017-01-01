@@ -39,7 +39,7 @@ if __name__ == '__main__':
 
     # infer an ebola time tree while rerooting and resolving polytomies
     ebola.run(root='best', relaxed_clock=False, max_iter=2,
-              resolve_polytomies=True, Tc=0.002, do_marginal=False)
+              resolve_polytomies=True, Tc=0.001, do_marginal=True)
 
     # scatter root to tip divergence vs sampling date
     ebola.plot_root_to_tip(add_internal=True)
@@ -51,7 +51,7 @@ if __name__ == '__main__':
     # rescale branch length to years and plot in axis 0
     from treetime.io import plot_vs_years
     fig, axs = plt.subplots(1,2, sharey=True, figsize=(12,8))
-    plot_vs_years(ebola, years=1, ax=axs[0], label_func = lambda x:"")
+    plot_vs_years(ebola, years=1, ax=axs[0], confidence=(0.05,0.95), label_func = lambda x:"")
     axs[0].set_xlim(0, 2.5)
     axs[0].set_title("time tree")
 
@@ -64,7 +64,8 @@ if __name__ == '__main__':
 
     # reset branch length to time (in substitution rate units)
     for n in ebola.tree.find_clades():
-        n.branch_length=n.clock_length
+        if n.up:
+            n.branch_length=n.clock_length
 
 
     # OUTPUT the GTR model
