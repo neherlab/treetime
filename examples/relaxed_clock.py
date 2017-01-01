@@ -2,15 +2,18 @@ from __future__ import print_function, division
 from treetime import TreeTime
 import numpy as np
 from scipy import optimize as sciopt
+import matplotlib.pyplot as plt
+from matplotlib import cm
+from Bio import Phylo
+try:
+    import seaborn as sns
+    sns.set_style('whitegrid')
+except:
+    pass
 
 if __name__ == '__main__':
 
     # load data and parse dates
-    import matplotlib.pyplot as plt
-    from matplotlib import cm
-    import seaborn as sns
-    sns.set_style('whitegrid')
-    from Bio import Phylo
     plt.ion()
     base_name = 'data/H3N2_NA_allyears_NA.20'
     import datetime
@@ -50,15 +53,18 @@ if __name__ == '__main__':
     Phylo.draw(tt_relaxed.tree, axes=ax, show_confidence=False, label_func = lambda x:'')
 
     # Scatter branch stretch against the rate multiplier of the branch.
-    # this is expected to have a positive relationship
+    # they are expected to have a positive correlation
+    # 1) collect the optimal branch lenght (called mutation_length),
+    #    the timetree branch length (clock_length) and the inferred rate multiplier gamma
     branch_lengths = []
     for n in tt_relaxed.tree.find_clades():
         if n.up:
             branch_lengths.append((n.mutation_length, n.clock_length, n.branch_length_interpolator.gamma))
 
-    branch_lengths = np.array(branch_lengths)
 
+    # 2) plot the difference between optimal and timetree branch length vs the rate multiplier
     plt.figure()
+    branch_lengths = np.array(branch_lengths)
     plt.scatter(branch_lengths[:,0]-branch_lengths[:,1], branch_lengths[:,2])
     plt.xlabel("stretch")
     plt.ylabel("rate multiplier")
