@@ -156,6 +156,11 @@ In addition, we provide scripts that can be run from the command line with argum
   The slope of the regression of root-to-tip distance vs sampling date will be printed to stdout along with the fraction of variance explained by the linear regression. By passing the flag `--reroot`, treetime will search for the root that maximizes the correlation of root-to-tip distance with time and reroot the tree. The option `--plot` will produce a scatter plot with the best regression and save it to file.
 
 ### Example scripts
+The following scripts illustrate how treetime can be used to solve common problem with short python scripts. They are meant to be used in an interactive ipython enviroment and run as `run examples/ancestral_inference.py`.
+ * [`ancestral_inference.py`](https://github.com/neherlab/treetime/blob/master/examples/ancestral_inference.py) illustrates how ancestral sequences are inferred and likely mutations are assinged to branches in the tree
+ * [`relaxed_clock.py`](https://github.com/neherlab/treetime/blob/master/examples/relaxed_clock.py) walks the user through the usage of relaxed molecular clock models
+ * [`ebola.py`](https://github.com/neherlab/treetime/blob/master/examples/ebola.py) uses about 300 sequences from the 2014-2015 Ebola virus outbreak to infer a timetree. This example takes a few minutes to run.
+
 
 ### Comparable Tools
 
