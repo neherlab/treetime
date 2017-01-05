@@ -77,12 +77,15 @@ class TreeTime(ClockTree):
                 ndiff = self.infer_ancestral_sequences('ml',sample_from_profile='root')
                 self.make_time_tree(slope=fixed_slope, do_marginal=False, **kwargs)
 
+            if Tc:
+                self.tree.coalescent_joint_LH = self.merger_model.total_LH()
+
+            self.LH.append([self.tree.sequence_joint_LH, self.tree.positional_joint_LH, self.tree.coalescent_joint_LH])
+            niter+=1
+
             if ndiff==0 & n_resolved==0:
                 self.logger("###TreeTime.run: CONVERGED",0)
                 break
-
-            self.LH.append([self.tree.sequence_joint_LH, self.tree.positional_joint_LH])
-            niter+=1
 
         # if marginal reconstruction requested, make one more round with marginal=True
         # this will set marginal_pos_LH, which to be used as error bar estimations
@@ -361,7 +364,7 @@ class TreeTime(ClockTree):
                 c_ls = 0
 
             print ("###  Tree Log-Likelihood  ###\n"
-                " Sequence log-LH without contraints:  \t%1.3f\n"
+                " Sequence log-LH without constraints: \t%1.3f\n"
                 " Sequence log-LH with constraints:    \t%1.3f\n"
                 " TreeTime sequence log-LH:            \t%1.3f\n"
                 " Coalescent log-LH:                   \t%1.3f\n"

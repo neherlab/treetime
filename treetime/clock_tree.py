@@ -82,7 +82,7 @@ class ClockTree(TreeAnc):
 
         """
         self.logger("ClockTree.init_date_constraints...",2)
-
+        self.tree.coalescent_joint_LH = 0
         if ancestral_inference or (not hasattr(self.tree.root, 'sequence')):
             self.infer_ancestral_sequences('ml',sample_from_profile='root',**kwarks)
 
@@ -224,8 +224,6 @@ class ClockTree(TreeAnc):
 
         # go through the nodes from root towards the leaves:
         self.logger("ClockTree - Joint reconstruction:  Propagating root -> leaves...", 2)
-        tmp_LH = 0
-        coal_tmp_LH = 0
         for node in self.tree.find_clades(order='preorder'):  # children first, msg to parents
 
             if node.up is None: # root node
@@ -251,16 +249,21 @@ class ClockTree(TreeAnc):
                 if node.branch_length<0 and node.branch_length>-ttconf.TINY_NUMBER:
                     self.logger("ClockTree - Joint reconstruction: correcting rounding error of %s"%node.name, 4)
                     node.branch_length = 0
-            tmp_LH -= node.branch_length_interpolator(node.branch_length)
-            if node.branch_length_interpolator.merger_cost:
-                coal_tmp_LH -= node.branch_length_interpolator.merger_cost(
-                                    node.time_before_present, node.branch_length)
 
-        self.tree.positional_joint_LH = tmp_LH + self.gtr.sequence_logLH(self.tree.root.sequence)
-        self.tree.coalescent_joint_LH = coal_tmp_LH
+        self.tree.positional_joint_LH = self.evalutate_likelihood()
         # cleanup, if required
         if not self.debug:
             _cleanup()
+
+
+    def evalutate_likelihood(self):
+        LH = 0
+        for node in self.tree.find_clades(order='preorder'):  # children first, msg to parents
+            if node.up is None: # root node
+                continue
+            LH -= node.branch_length_interpolator(node.branch_length)
+
+        return LH + self.gtr.sequence_logLH(self.tree.root.sequence)
 
 
     def _ml_t_marginal(self):

@@ -7,6 +7,7 @@ import scipy.special as sf
 from scipy.interpolate import interp1d
 from Bio import AlignIO, Phylo
 from scipy.interpolate import interp1d
+from collections import Iterable
 import config as ttconf
 
 
@@ -15,8 +16,21 @@ class Coalescent(object):
     def __init__(self, tree, Tc=0.001):
         super(Coalescent, self).__init__()
         self.tree = tree
-        self.Tc = Tc
+        self.set_Tc(Tc)
+
+    def set_Tc(self, Tc, T=None):
+        if isinstance(Tc, Iterable):
+            if len(Tc)==len(T):
+                x = np.concatenate([-ttconf.BIG_NUMBER], T, [ttconf.BIG_NUMBER])
+                y = np.concatenate([Tc[0]], Tc, [Tc[-1]])
+                self.Tc = interp1d(x,y)
+            else:
+                print("need Tc values and Timepoints of equal length")
+                self.Tc = interp1d([-ttconf.BIG_NUMBER, ttconf.BIG_NUMBER], [1e-5, 1e-5])
+        else:
+            self.Tc = interp1d([-ttconf.BIG_NUMBER, ttconf.BIG_NUMBER], [Tc, Tc])
         self.make_skyline()
+
 
     def make_skyline(self):
         # collect all node locations and difference in branch count at that point
@@ -27,15 +41,17 @@ class Coalescent(object):
         tmp_t, tmp_n = tmp[:,0], np.cumsum(tmp[:,1])+1
         # evaluate the number of branches at unique temporal positions
         tvals = np.unique(tmp_t)
+        Tc_vals = self.Tc(tvals)
+        avg_Tc_vals = 0.5*(Tc_vals[1:] + Tc_vals[:-1])
         nbranches = tmp_n[np.searchsorted(tmp_t, tvals)]
         # integrate the piecewise constant branch count function.
-        cost = np.concatenate(([0],np.cumsum(np.diff(tvals)*nbranches[1:])))
+        cost = np.concatenate(([0],np.cumsum(np.diff(tvals)*nbranches[1:]*0.5/avg_Tc_vals)))
         # make interpolation objects for the branch count and its integral
-        # the latter is scales by 0.5/Tc
+        # the latter is scaled by 0.5/Tc
         self.nbranches = interp1d(-tvals, nbranches, kind='linear')
         # need to add extra point at very large time before present to prevent 'out of interpolation range' errors
         self.cost_func = interp1d(np.concatenate(([-ttconf.BIG_NUMBER], -tvals,[ttconf.BIG_NUMBER])),
-                                  np.concatenate(([cost[-1]], cost,[cost[0]]))*0.5/self.Tc, kind='linear')
+                                  np.concatenate(([cost[-1]], cost,[cost[0]])), kind='linear')
 
         # calculate merger rates
         mergers = np.array(sorted([(-n.time_before_present, len(n.clades)-1)
@@ -47,11 +63,12 @@ class Coalescent(object):
         self.normalized_mergers = np.array((events_t, events))
 
 
-
     def cost(self, t_node, branch_length):
         # return the cost associated with a branch starting at t_node
         # t_node is time before present, the branch goes back in time
-        return self.cost_func(t_node) - self.cost_func(t_node+branch_length)
+        merger_time = t_node+branch_length
+        return self.cost_func(t_node) - self.cost_func(merger_time) + np.log(self.Tc(merger_time))
+
 
     def attach_to_tree(self):
         for clade in self.tree.find_clades():
@@ -92,6 +109,12 @@ class Coalescent(object):
 
         return interp1d(to_numdate(self.Tc_inv.x), gen/self.Tc_inv.y)
 
+    def total_LH(self):
+        LH = 0
+        for node in self.tree.find_clades():
+            if node.up:
+                LH -= self.cost(node.time_before_present, node.branch_length)
+        return LH
 
 
 def traveling_wave(tree, Tc=None, tau=None):
