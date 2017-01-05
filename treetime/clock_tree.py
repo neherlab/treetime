@@ -204,7 +204,6 @@ class ClockTree(TreeAnc):
                         subtree_distribution._adjust_grid(rel_tol=self.rel_tol_prune)
 
                         # set root position and joint likelihood of the tree
-                        self.tree.positional_joint_LH = -subtree_distribution.peak_val
                         node.time_before_present = subtree_distribution.peak_pos
                         node.joint_pos_Lx = subtree_distribution
                         node.joint_pos_Cx = None
@@ -225,6 +224,8 @@ class ClockTree(TreeAnc):
 
         # go through the nodes from root towards the leaves:
         self.logger("ClockTree - Joint reconstruction:  Propagating root -> leaves...", 2)
+        tmp_LH = 0
+        coal_tmp_LH = 0
         for node in self.tree.find_clades(order='preorder'):  # children first, msg to parents
 
             if node.up is None: # root node
@@ -236,21 +237,27 @@ class ClockTree(TreeAnc):
             elif isinstance(node.joint_pos_Cx, Distribution):
                 # NOTE the Lx distribution is the likelihood, given the position of the parent
                 # (Lx.x = parent position, Lx.y = LH of the node_pos given Lx.x,
-                # the length of the branch corresponding to the most likely subtree is node.Cx(node.time_before_present))
+                # the length of the branch corresponding to the most likely
+                # subtree is node.Cx(node.time_before_present))
                 subtree_LH = node.joint_pos_Lx(node.up.time_before_present)
-                node.branch_length = node.joint_pos_Cx(max(node.joint_pos_Cx.xmin, node.up.time_before_present)+ttconf.TINY_NUMBER)
+                node.branch_length = node.joint_pos_Cx(max(node.joint_pos_Cx.xmin,
+                                            node.up.time_before_present)+ttconf.TINY_NUMBER)
 
             node.time_before_present = node.up.time_before_present - node.branch_length
             node.clock_length = node.branch_length
 
             # just sanity check, should never happen:
             if node.branch_length < 0 or node.time_before_present < 0:
-                if self.debug:
-                    import ipdb; ipdb.set_trace()
                 if node.branch_length<0 and node.branch_length>-ttconf.TINY_NUMBER:
                     self.logger("ClockTree - Joint reconstruction: correcting rounding error of %s"%node.name, 4)
                     node.branch_length = 0
+            tmp_LH -= node.branch_length_interpolator(node.branch_length)
+            if node.branch_length_interpolator.merger_cost:
+                coal_tmp_LH -= node.branch_length_interpolator.merger_cost(
+                                    node.time_before_present, node.branch_length)
 
+        self.tree.positional_joint_LH = tmp_LH + self.gtr.sequence_logLH(self.tree.root.sequence)
+        self.tree.coalescent_joint_LH = coal_tmp_LH
         # cleanup, if required
         if not self.debug:
             _cleanup()

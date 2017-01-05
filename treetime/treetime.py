@@ -350,25 +350,24 @@ class TreeTime(ClockTree):
         Print the total likelihood of the tree given the constrained leaves
         """
         try:
+            u_lh = self.tree.unconstrained_sequence_LH
             if joint:
                 s_lh = self.tree.sequence_joint_LH
                 t_lh = self.tree.positional_joint_LH
+                c_lh = self.tree.coalescent_joint_LH
             else:
                 s_lh = self.tree.sequence_marginal_LH
                 t_lh = self.tree.positional_marginal_LH
+                c_ls = 0
 
             print ("###  Tree Log-Likelihood  ###\n"
-                " Sequence log-LH:  \t{0}\n"
-                " Positional log-LH:\t{1}\n"
-                " Total log-LH:     \t{2}\n"
-               "#########################".format(s_lh,t_lh, s_lh+t_lh))
+                " Sequence log-LH without contraints:  \t%1.3f\n"
+                " Sequence log-LH with constraints:    \t%1.3f\n"
+                " TreeTime sequence log-LH:            \t%1.3f\n"
+                " Coalescent log-LH:                   \t%1.3f\n"
+               "#########################"%(u_lh, s_lh,t_lh, c_lh))
         except:
             print("ERROR. Did you run the corresponding inference (joint/marginal)?")
-
-    def total_LH(self):
-        s_lh = self.tree.sequence_LH
-        t_lh = -self.tree.root.msg_to_parent.y.min()
-        return s_lh+t_lh
 
 
     def relaxed_clock(self, slack=None, coupling=None):
