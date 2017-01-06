@@ -16,6 +16,7 @@ class Coalescent(object):
     def __init__(self, tree, Tc=0.001):
         super(Coalescent, self).__init__()
         self.tree = tree
+        self.calc_branch_count()
         self.set_Tc(Tc)
 
     def set_Tc(self, Tc, T=None):
@@ -29,45 +30,59 @@ class Coalescent(object):
                 self.Tc = interp1d([-ttconf.BIG_NUMBER, ttconf.BIG_NUMBER], [1e-5, 1e-5])
         else:
             self.Tc = interp1d([-ttconf.BIG_NUMBER, ttconf.BIG_NUMBER], [Tc, Tc])
-        self.make_skyline()
+        self.calc_integral_merger_rate()
 
 
-    def make_skyline(self):
-        # collect all node locations and difference in branch count at that point
-        # this is sorted by negative time before present, i.e.the root is first
-        tmp = np.array(sorted([(-n.time_before_present, len(n.clades)-1)
-                                for n in self.tree.find_clades()], key=lambda x:x[0]))
+    def calc_branch_count(self):
+        # make a list of (time, merger or loss event) by root first
+        self.tree_events = np.array(sorted([(n.time_before_present, len(n.clades)-1)
+                                for n in self.tree.find_clades()], key=lambda x:-x[0]))
+
+        # collapse multiple events at one time point into sum of changes
+        from collections import defaultdict
+        dn_branch = defaultdict(int)
+        for (t, dn) in self.tree_events:
+            dn_branch[t]+=dn
+        unique_mergers = np.array(sorted(dn_branch.items(), key = lambda x:-x[0]))
+
         # calculate the branch count at each point summing the delta branch counts
-        tmp_t, tmp_n = tmp[:,0], np.cumsum(tmp[:,1])+1
-        # evaluate the number of branches at unique temporal positions
-        tvals = np.unique(tmp_t)
-        Tc_vals = self.Tc(tvals)
-        avg_Tc_vals = 0.5*(Tc_vals[1:] + Tc_vals[:-1])
-        nbranches = tmp_n[np.searchsorted(tmp_t, tvals)]
+        nbranches = [[ttconf.BIG_NUMBER, 1], [unique_mergers[0,0], 1]]
+        for ti, (t, dn) in enumerate(unique_mergers[:-1]):
+            new_n = nbranches[-1][1]+dn
+            next_t = unique_mergers[ti+1,0]
+            nbranches.append([t, new_n])
+            nbranches.append([next_t, new_n])
+
+        new_n += unique_mergers[-1,1]
+        nbranches.append([next_t, new_n])
+        nbranches.append([-ttconf.BIG_NUMBER, new_n])
+        nbranches=np.array(nbranches)
+
+        self.nbranches = interp1d(nbranches[:,0], nbranches[:,1], kind='linear')
+
+
+    def calc_integral_merger_rate(self):
         # integrate the piecewise constant branch count function.
-        cost = np.concatenate(([0],np.cumsum(np.diff(tvals)*nbranches[1:]*0.5/avg_Tc_vals)))
+        tvals = np.unique(self.nbranches.x[1:-1])
+        rate = self.merger_rate(tvals)
+        avg_rate = 0.5*(rate[1:] + rate[:-1])
+        cost = np.concatenate(([0],np.cumsum(np.diff(tvals)*avg_rate)))
         # make interpolation objects for the branch count and its integral
         # the latter is scaled by 0.5/Tc
-        self.nbranches = interp1d(-tvals, nbranches, kind='linear')
         # need to add extra point at very large time before present to prevent 'out of interpolation range' errors
-        self.cost_func = interp1d(np.concatenate(([-ttconf.BIG_NUMBER], -tvals,[ttconf.BIG_NUMBER])),
+        self.integral_merger_rate = interp1d(np.concatenate(([-ttconf.BIG_NUMBER], tvals,[ttconf.BIG_NUMBER])),
                                   np.concatenate(([cost[-1]], cost,[cost[0]])), kind='linear')
 
-        # calculate merger rates
-        mergers = np.array(sorted([(-n.time_before_present, len(n.clades)-1)
-                                for n in self.tree.get_nonterminals()], key=lambda x:x[0]))
-
-        events_t = -mergers[:,0]
-        nlin = self.nbranches(events_t)
-        events = 2.0*mergers[:,1]/(nlin*(nlin-1))
-        self.normalized_mergers = np.array((events_t, events))
+    def merger_rate(self, t):
+        return self.nbranches(t)/self.Tc(t)
 
 
     def cost(self, t_node, branch_length):
         # return the cost associated with a branch starting at t_node
         # t_node is time before present, the branch goes back in time
         merger_time = t_node+branch_length
-        return self.cost_func(t_node) - self.cost_func(merger_time) + np.log(self.Tc(merger_time))
+        return self.integral_merger_rate(merger_time) - self.integral_merger_rate(tvals) \
+               - np.log(self.merger_rate(merger_time))
 
 
     def attach_to_tree(self):
@@ -87,22 +102,23 @@ class Coalescent(object):
         if to_numdate is None:
             to_numdate =lambda x:x
 
-        et, ev = self.normalized_mergers
-        if 2*n_points>len(ev):
+        mergers = self.tree_events[:,1]>0
+        merger_tvals = self.tree_events[mergers,0]
+        nlin = self.nbranches(merger_tvals-ttconf.TINY_NUMBER)
+        expected_merger_density = nlin*(nlin-1)*0.5
+
+        et = merger_tvals
+        ev = 1.0/expected_merger_density
+        if 2*n_points>len(expected_merger_density):
             n_points = len(ev)//4
 
-        # smooth this with a Gaussian kernel and add 0.01 of average to fill long gaps
+        # smoothes with a sliding window over data points
         avg = np.sum(ev)/np.abs(et[0]-et[-1])
         dt = 0.2*(et[0]-et[-1])
-        windows = np.linspace(et[-1], et[0]-dt, 100)
-        smoothing_kernel = lambda x: np.exp(-x**2/2.0/dt**2)/np.sqrt(2.0*np.pi)/dt/(sf.erf(x.max()/dt)-sf.erf(x.min()/dt))*2.0
-        self.Tc_inv = interp1d(windows,
-                        [0.01*avg+0.99*np.sum(smoothing_kernel(et-w)*ev) for w in windows])
-
-        # smooth this with a Gaussian kernel and add 0.01 of average to fill long gaps
         mid_points = np.concatenate(([et[0]-0.5*(et[1]-et[0])],
                                       0.5*(et[1:] + et[:-1]),
                                      [et[-1]+0.5*(et[-1]-et[-2])]))
+
         self.Tc_inv = interp1d(mid_points[n_points:-n_points],
                         [0.01*avg+0.99*np.sum(ev[(et>=l)&(et<u)])/(u-l)
                         for u,l in zip(mid_points[:-2*n_points],mid_points[2*n_points:])])
