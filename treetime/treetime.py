@@ -24,6 +24,7 @@ class TreeTime(ClockTree):
         self.optimize_sequences_and_branch_length(infer_gtr=infer_gtr,
                                                   sample_from_profile='root',
                                                   prune_short=True)
+        avg_root_to_tip = np.mean([x.dist2root for x in self.tree.get_terminals()])
 
         # optionally reroot the tree either by oldest, best regression or with a specific leaf
         if n_iqd or root=='clock_filter':
@@ -50,8 +51,13 @@ class TreeTime(ClockTree):
             # add coalescent prior
             if Tc and (Tc is not None):
                 from merger_models import Coalescent
-                self.logger('TreeTime.run: adding coalescent prior',1)
-                self.merger_model = Coalescent(self.tree, Tc=Tc)
+                self.logger('TreeTime.run: adding coalescent prior with Tc='+str(Tc),1)
+                if Tc=='opt':
+                    self.merger_model = Coalescent(self.tree, Tc=avg_root_to_tip)
+                    self.merger_model.optimize_Tc()
+                    self.logger("optimized Tc to %f"%self.merger_model.Tc.y[0], 2)
+                else:
+                    self.merger_model = Coalescent(self.tree, Tc=Tc)
                 self.merger_model.attach_to_tree()
             if relaxed_clock:
                 # estimate a relaxed molecular clock

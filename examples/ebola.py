@@ -39,13 +39,13 @@ if __name__ == '__main__':
 
     # infer an ebola time tree while rerooting and resolving polytomies
     ebola.run(root='best', relaxed_clock=False, max_iter=2,
-              resolve_polytomies=True, Tc=0.001, do_marginal=True)
+              resolve_polytomies=True, Tc='opt', do_marginal=True)
 
     # scatter root to tip divergence vs sampling date
     ebola.plot_root_to_tip(add_internal=True)
     t=np.array([2014,2016])
     plt.plot(t, t*ebola.date2dist.slope+ ebola.date2dist.intercept,
-             label="y = %1.5f t+%1.3f"%(ebola.date2dist.slope, ebola.date2dist.intercept))
+             label="y = %1.5f t%1.3f"%(ebola.date2dist.slope, ebola.date2dist.intercept))
     plt.legend(loc=2)
 
     # rescale branch length to years and plot in axis 0

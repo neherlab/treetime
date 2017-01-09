@@ -46,10 +46,10 @@ class Coalescent(object):
         unique_mergers = np.array(sorted(dn_branch.items(), key = lambda x:-x[0]))
 
         # calculate the branch count at each point summing the delta branch counts
-        nbranches = [[ttconf.BIG_NUMBER, 1], [unique_mergers[0,0], 1]]
+        nbranches = [[ttconf.BIG_NUMBER, 1], [unique_mergers[0,0]+ttconf.TINY_NUMBER, 1]]
         for ti, (t, dn) in enumerate(unique_mergers[:-1]):
             new_n = nbranches[-1][1]+dn
-            next_t = unique_mergers[ti+1,0]
+            next_t = unique_mergers[ti+1,0]+ttconf.TINY_NUMBER
             nbranches.append([t, new_n])
             nbranches.append([next_t, new_n])
 
@@ -69,19 +69,23 @@ class Coalescent(object):
         cost = np.concatenate(([0],np.cumsum(np.diff(tvals)*avg_rate)))
         # make interpolation objects for the branch count and its integral
         # the latter is scaled by 0.5/Tc
-        # need to add extra point at very large time before present to prevent 'out of interpolation range' errors
+        # need to add extra point at very large time before present to
+        # prevent 'out of interpolation range' errors
         self.integral_merger_rate = interp1d(np.concatenate(([-ttconf.BIG_NUMBER], tvals,[ttconf.BIG_NUMBER])),
-                                  np.concatenate(([cost[-1]], cost,[cost[0]])), kind='linear')
+                                  np.concatenate(([cost[0]], cost,[cost[-1]])), kind='linear')
 
     def merger_rate(self, t):
-        return self.nbranches(t)/self.Tc(t)
+        # not that we always have a positive merger rate by capping the
+        # number of branches at 0.5 from below. in these regions, the
+        # function should only be called if the tree changes.
+        return np.maximum(0.5,self.nbranches(t)-1.0)/self.Tc(t)
 
 
     def cost(self, t_node, branch_length):
         # return the cost associated with a branch starting at t_node
         # t_node is time before present, the branch goes back in time
         merger_time = t_node+branch_length
-        return self.integral_merger_rate(merger_time) - self.integral_merger_rate(tvals) \
+        return self.integral_merger_rate(merger_time) - self.integral_merger_rate(t_node) \
                - np.log(self.merger_rate(merger_time))
 
 
@@ -104,23 +108,26 @@ class Coalescent(object):
 
         mergers = self.tree_events[:,1]>0
         merger_tvals = self.tree_events[mergers,0]
-        nlin = self.nbranches(merger_tvals-ttconf.TINY_NUMBER)
-        expected_merger_density = nlin*(nlin-1)*0.5
+        nlineages = self.nbranches(merger_tvals-ttconf.TINY_NUMBER)
+        expected_merger_density = nlineages*(nlineages-1)*0.5
 
+        nmergers = len(mergers)
         et = merger_tvals
         ev = 1.0/expected_merger_density
+        # reduce the window size if there are few events in the tree
         if 2*n_points>len(expected_merger_density):
             n_points = len(ev)//4
 
         # smoothes with a sliding window over data points
         avg = np.sum(ev)/np.abs(et[0]-et[-1])
-        dt = 0.2*(et[0]-et[-1])
+        dt = et[0]-et[-1]
         mid_points = np.concatenate(([et[0]-0.5*(et[1]-et[0])],
                                       0.5*(et[1:] + et[:-1]),
                                      [et[-1]+0.5*(et[-1]-et[-2])]))
 
+        # this smoothes the ratio of expected and observed merger rate
         self.Tc_inv = interp1d(mid_points[n_points:-n_points],
-                        [0.01*avg+0.99*np.sum(ev[(et>=l)&(et<u)])/(u-l)
+                        [np.sum(ev[(et>=l)&(et<u)])/(u-l+dt/nmergers)
                         for u,l in zip(mid_points[:-2*n_points],mid_points[2*n_points:])])
 
         return interp1d(to_numdate(self.Tc_inv.x), gen/self.Tc_inv.y)
@@ -131,6 +138,20 @@ class Coalescent(object):
             if node.up:
                 LH -= self.cost(node.time_before_present, node.branch_length)
         return LH
+
+    def optimize_Tc(self):
+        from scipy.optimize import minimize_scalar
+        initial_Tc = self.Tc
+        def cost(Tc):
+            self.set_Tc(Tc)
+            return -self.total_LH()
+
+        sol = minimize_scalar(cost, bounds=[ttconf.TINY_NUMBER,10.0])
+        if sol["success"]:
+            self.set_Tc(sol['x'])
+        else:
+            self.set_Tc(initial_Tc.y, T=initial_Tc.x)
+
 
 
 def traveling_wave(tree, Tc=None, tau=None):
