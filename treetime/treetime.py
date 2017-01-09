@@ -52,12 +52,15 @@ class TreeTime(ClockTree):
             if Tc and (Tc is not None):
                 from merger_models import Coalescent
                 self.logger('TreeTime.run: adding coalescent prior with Tc='+str(Tc),1)
+                self.merger_model = Coalescent(self.tree, Tc=avg_root_to_tip)
                 if Tc=='opt':
-                    self.merger_model = Coalescent(self.tree, Tc=avg_root_to_tip)
                     self.merger_model.optimize_Tc()
                     self.logger("optimized Tc to %f"%self.merger_model.Tc.y[0], 2)
                 else:
-                    self.merger_model = Coalescent(self.tree, Tc=Tc)
+                    try:
+                        self.set_Tc(Tc)
+                    except:
+                        pass
                 self.merger_model.attach_to_tree()
             if relaxed_clock:
                 # estimate a relaxed molecular clock

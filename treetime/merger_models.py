@@ -22,8 +22,8 @@ class Coalescent(object):
     def set_Tc(self, Tc, T=None):
         if isinstance(Tc, Iterable):
             if len(Tc)==len(T):
-                x = np.concatenate([-ttconf.BIG_NUMBER], T, [ttconf.BIG_NUMBER])
-                y = np.concatenate([Tc[0]], Tc, [Tc[-1]])
+                x = np.concatenate(([-ttconf.BIG_NUMBER], T, [ttconf.BIG_NUMBER]))
+                y = np.concatenate(([Tc[0]], Tc, [Tc[-1]]))
                 self.Tc = interp1d(x,y)
             else:
                 print("need Tc values and Timepoints of equal length")
@@ -64,7 +64,7 @@ class Coalescent(object):
     def calc_integral_merger_rate(self):
         # integrate the piecewise constant branch count function.
         tvals = np.unique(self.nbranches.x[1:-1])
-        rate = self.merger_rate(tvals)
+        rate = self.branch_merger_rate(tvals)
         avg_rate = 0.5*(rate[1:] + rate[:-1])
         cost = np.concatenate(([0],np.cumsum(np.diff(tvals)*avg_rate)))
         # make interpolation objects for the branch count and its integral
@@ -74,19 +74,26 @@ class Coalescent(object):
         self.integral_merger_rate = interp1d(np.concatenate(([-ttconf.BIG_NUMBER], tvals,[ttconf.BIG_NUMBER])),
                                   np.concatenate(([cost[0]], cost,[cost[-1]])), kind='linear')
 
-    def merger_rate(self, t):
-        # not that we always have a positive merger rate by capping the
+    def branch_merger_rate(self, t):
+        # note that we always have a positive merger rate by capping the
         # number of branches at 0.5 from below. in these regions, the
         # function should only be called if the tree changes.
         return np.maximum(0.5,self.nbranches(t)-1.0)/self.Tc(t)
 
+    def total_merger_rate(self, t):
+        # not that we always have a positive merger rate by capping the
+        # number of branches at 0.5 from below. in these regions, the
+        # function should only be called if the tree changes.
+        nlineages = np.maximum(0.5,self.nbranches(t)-1.0)
+        return nlineages*(nlineages+1)/self.Tc(t)
 
-    def cost(self, t_node, branch_length):
+
+    def cost(self, t_node, branch_length, multiplicity=2.0):
         # return the cost associated with a branch starting at t_node
         # t_node is time before present, the branch goes back in time
         merger_time = t_node+branch_length
-        return self.integral_merger_rate(merger_time) - self.integral_merger_rate(t_node) \
-               - np.log(self.merger_rate(merger_time))
+        return self.integral_merger_rate(merger_time) - self.integral_merger_rate(t_node)\
+                 - np.log(self.total_merger_rate(merger_time))*(multiplicity-1.0)/multiplicity
 
 
     def attach_to_tree(self):
@@ -133,7 +140,7 @@ class Coalescent(object):
         return interp1d(to_numdate(self.Tc_inv.x), gen/self.Tc_inv.y)
 
     def total_LH(self):
-        LH = 0
+        LH = 0.0 #np.log(self.total_merger_rate([node.time_before_present for node in self.tree.get_nonterminals()])).sum()
         for node in self.tree.find_clades():
             if node.up:
                 LH -= self.cost(node.time_before_present, node.branch_length)
