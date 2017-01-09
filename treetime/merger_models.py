@@ -160,6 +160,20 @@ class Coalescent(object):
             self.set_Tc(initial_Tc.y, T=initial_Tc.x)
 
 
+    def optimize_skyline(self, n_points=20, stiffness=2.0):
+        from scipy.optimize import minimize
+        initial_Tc = self.Tc
+        tvals = np.linspace(self.tree_events[0,0], self.tree_events[-1,0], n_points)
+        def cost(logTc):
+            self.set_Tc(np.exp(logTc), tvals)
+            return -self.total_LH() + stiffness*np.sum(np.diff(logTc)**2)
+
+        sol = minimize(cost, np.ones_like(tvals)*np.log(self.Tc.y.mean()), method='Powell')
+        if sol["success"]:
+            cost(sol['x'])
+        else:
+            self.set_Tc(initial_Tc.y, T=initial_Tc.x)
+
 
 def traveling_wave(tree, Tc=None, tau=None):
     '''

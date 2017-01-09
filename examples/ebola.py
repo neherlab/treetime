@@ -51,15 +51,15 @@ if __name__ == '__main__':
     # rescale branch length to years and plot in axis 0
     from treetime.io import plot_vs_years
     fig, axs = plt.subplots(1,2, sharey=True, figsize=(12,8))
-    plot_vs_years(ebola, years=1, ax=axs[0], confidence=(0.05,0.95), label_func = lambda x:"")
-    axs[0].set_xlim(0, 2.5)
-    axs[0].set_title("time tree")
+    plot_vs_years(ebola, years=1, ax=axs[1], confidence=(0.05,0.95), label_func = lambda x:"")
+    axs[1].set_xlim(0, 2.5)
+    axs[1].set_title("time tree")
 
     # assign mutation length to branch length and plot the mutation tree in axs[1]
-    axs[1].set_title("mutation tree")
+    axs[0].set_title("mutation tree")
     for n in ebola.tree.find_clades():
         n.branch_length=n.mutation_length
-    Phylo.draw(ebola.tree, label_func=lambda x:"", axes=axs[1])
+    Phylo.draw(ebola.tree, label_func=lambda x:"", axes=axs[0])
     plt.tight_layout()
 
     # reset branch length to time (in substitution rate units)
