@@ -131,7 +131,7 @@ class Coalescent(object):
 
 
     def optimize_skyline(self, n_points=20, stiffness=2.0, method = 'SLSQP', tol=0.03, **kwarks):
-        self.logger("Coalescent:optimize_skyline:...",2)
+        self.logger("Coalescent:optimize_skyline:... current LH: %f"%self.total_LH(),2)
         from scipy.optimize import minimize
         initial_Tc = self.Tc
         tvals = np.linspace(self.tree_events[0,0], self.tree_events[-1,0], n_points)
@@ -143,7 +143,7 @@ class Coalescent(object):
         sol = minimize(cost, np.ones_like(tvals)*np.log(self.Tc.y.mean()), method=method, tol=tol)
         if sol["success"]:
             cost(sol['x'])
-            self.logger("Coalescent:optimize_skyline:...done",3)
+            self.logger("Coalescent:optimize_skyline:...done. new LH: %f"%self.total_LH(),2)
         else:
             self.set_Tc(initial_Tc.y, T=initial_Tc.x)
             self.logger("Coalescent:optimize_skyline:...failed",2, warn=True)
