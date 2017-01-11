@@ -39,7 +39,7 @@ if __name__ == '__main__':
 
     # infer an ebola time tree while rerooting and resolving polytomies
     ebola.run(root='best', relaxed_clock=False, max_iter=2,
-              resolve_polytomies=True, Tc='auto', do_marginal=True)
+              resolve_polytomies=True, Tc='skyline', do_marginal=True)
 
     # scatter root to tip divergence vs sampling date
     ebola.plot_root_to_tip(add_internal=True)
@@ -70,6 +70,16 @@ if __name__ == '__main__':
 
     # OUTPUT the GTR model
     print(ebola.gtr)
+
+    # plot Skyline
+    skyline = ebola.merger_model.skyline_inferred(gen=50)
+    skyline_empirical = ebola.merger_model.skyline_empirical(gen=50)
+    plt.figure()
+    plt.plot(skyline.x, skyline.y, label='maximum likelihood skyline')
+    plt.plot(skyline_empirical.x, skyline_empirical.y, label='empirical skyline')
+    plt.ticklabel_format(useOffset=False)
+
+
 
 
 

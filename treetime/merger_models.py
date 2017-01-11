@@ -13,11 +13,18 @@ import config as ttconf
 
 class Coalescent(object):
     """docstring for Coalescent"""
-    def __init__(self, tree, Tc=0.001):
+    def __init__(self, tree, Tc=0.001, logger=None, date2dist=None):
         super(Coalescent, self).__init__()
         self.tree = tree
         self.calc_branch_count()
         self.set_Tc(Tc)
+        self.date2dist = date2dist
+        if logger is None:
+            def f(*args):
+                print(*args)
+            self.logger = f
+        else:
+            self.logger = logger
 
     def set_Tc(self, Tc, T=None):
         if isinstance(Tc, Iterable):
@@ -26,7 +33,7 @@ class Coalescent(object):
                 y = np.concatenate(([Tc[0]], Tc, [Tc[-1]]))
                 self.Tc = interp1d(x,y)
             else:
-                print("need Tc values and Timepoints of equal length")
+                self.logger("need Tc values and Timepoints of equal length",2,warn=True)
                 self.Tc = interp1d([-ttconf.BIG_NUMBER, ttconf.BIG_NUMBER], [1e-5, 1e-5])
         else:
             self.Tc = interp1d([-ttconf.BIG_NUMBER, ttconf.BIG_NUMBER], [Tc, Tc])
@@ -102,16 +109,52 @@ class Coalescent(object):
                 clade.branch_length_interpolator.merger_cost = self.cost
 
 
-    def skyline(self, gen=1.0, to_numdate=None, n_points = 20):
+    def total_LH(self):
+        LH = 0.0 #np.log(self.total_merger_rate([node.time_before_present for node in self.tree.get_nonterminals()])).sum()
+        for node in self.tree.find_clades():
+            if node.up:
+                LH -= self.cost(node.time_before_present, node.branch_length)
+        return LH
+
+    def optimize_Tc(self):
+        from scipy.optimize import minimize_scalar
+        initial_Tc = self.Tc
+        def cost(Tc):
+            self.set_Tc(Tc)
+            return -self.total_LH()
+
+        sol = minimize_scalar(cost, bounds=[ttconf.TINY_NUMBER,10.0])
+        if sol["success"]:
+            self.set_Tc(sol['x'])
+        else:
+            self.set_Tc(initial_Tc.y, T=initial_Tc.x)
+
+
+    def optimize_skyline(self, n_points=20, stiffness=2.0, method = 'SLSQP', tol=0.03, **kwarks):
+        self.logger("Coalescent:optimize_skyline:...",2)
+        from scipy.optimize import minimize
+        initial_Tc = self.Tc
+        tvals = np.linspace(self.tree_events[0,0], self.tree_events[-1,0], n_points)
+        def cost(logTc):
+            self.set_Tc(np.exp(logTc), tvals)
+            neglogLH = -self.total_LH() + stiffness*np.sum(np.diff(logTc)**2)
+            return neglogLH
+
+        sol = minimize(cost, np.ones_like(tvals)*np.log(self.Tc.y.mean()), method=method, tol=tol)
+        if sol["success"]:
+            cost(sol['x'])
+            self.logger("Coalescent:optimize_skyline:...done",3)
+        else:
+            self.set_Tc(initial_Tc.y, T=initial_Tc.x)
+            self.logger("Coalescent:optimize_skyline:...failed",2, warn=True)
+
+
+    def skyline_empirical(self, gen=1.0, n_points = 20):
         '''
         return the skyline, i.e., an estimate of the inverse rate of coalesence
         parameters:
-            gen -- number of generations per unit of time. Unit of time is branch length,
-                   hence this needs to be the inverse substitution rate per generation
-            to_numdate -- function to convert time before present to numerical dates
+            gen -- number of generations per year.
         '''
-        if to_numdate is None:
-            to_numdate =lambda x:x
 
         mergers = self.tree_events[:,1]>0
         merger_tvals = self.tree_events[mergers,0]
@@ -137,42 +180,20 @@ class Coalescent(object):
                         [np.sum(ev[(et>=l)&(et<u)])/(u-l+dt/nmergers)
                         for u,l in zip(mid_points[:-2*n_points],mid_points[2*n_points:])])
 
-        return interp1d(to_numdate(self.Tc_inv.x), gen/self.Tc_inv.y)
-
-    def total_LH(self):
-        LH = 0.0 #np.log(self.total_merger_rate([node.time_before_present for node in self.tree.get_nonterminals()])).sum()
-        for node in self.tree.find_clades():
-            if node.up:
-                LH -= self.cost(node.time_before_present, node.branch_length)
-        return LH
-
-    def optimize_Tc(self):
-        from scipy.optimize import minimize_scalar
-        initial_Tc = self.Tc
-        def cost(Tc):
-            self.set_Tc(Tc)
-            return -self.total_LH()
-
-        sol = minimize_scalar(cost, bounds=[ttconf.TINY_NUMBER,10.0])
-        if sol["success"]:
-            self.set_Tc(sol['x'])
-        else:
-            self.set_Tc(initial_Tc.y, T=initial_Tc.x)
+        return interp1d(self.date2dist.to_numdate(self.Tc_inv.x), gen/self.date2dist.slope/self.Tc_inv.y)
 
 
-    def optimize_skyline(self, n_points=20, stiffness=2.0):
-        from scipy.optimize import minimize
-        initial_Tc = self.Tc
-        tvals = np.linspace(self.tree_events[0,0], self.tree_events[-1,0], n_points)
-        def cost(logTc):
-            self.set_Tc(np.exp(logTc), tvals)
-            return -self.total_LH() + stiffness*np.sum(np.diff(logTc)**2)
+    def skyline_inferred(self, gen=1.0):
+        '''
+        return the skyline, i.e., an estimate of the inverse rate of coalesence
+        parameters:
+            gen -- number of generations per year. Unit of time is branch length,
+                   hence this needs to be the inverse substitution rate per generation
+        '''
+        return interp1d(self.date2dist.to_numdate(self.Tc.x[1:-1]), gen/self.date2dist.slope*self.Tc.y[1:-1])
 
-        sol = minimize(cost, np.ones_like(tvals)*np.log(self.Tc.y.mean()), method='Powell')
-        if sol["success"]:
-            cost(sol['x'])
-        else:
-            self.set_Tc(initial_Tc.y, T=initial_Tc.x)
+
+
 
 
 def traveling_wave(tree, Tc=None, tau=None):
