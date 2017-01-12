@@ -134,10 +134,10 @@ class ClockTree(TreeAnc):
         self.logger("ClockTree: Maximum likelihood tree optimization with temporal constraints:",1)
         self.init_date_constraints(**kwargs)
 
-        self._ml_t_joint()
-
         if do_marginal:
-            self._ml_t_marginal()
+            self._ml_t_marginal(assign_dates = do_marginal=="assign")
+        else:
+            self._ml_t_joint()
 
         #self._set_final_dates()
         self.convert_dates()
@@ -266,7 +266,7 @@ class ClockTree(TreeAnc):
         return LH + self.gtr.sequence_logLH(self.tree.root.sequence)
 
 
-    def _ml_t_marginal(self):
+    def _ml_t_marginal(self, assign_dates=False):
         """
         Compute the marginal probability distribution of the internal nodes positions by
         propagating from the tree leaves towards the root. The result of
@@ -387,6 +387,15 @@ class ClockTree(TreeAnc):
                         plt.ylim(0,100)
                         plt.xlim(-0.05, 0.05)
                         import ipdb; ipdb.set_trace()
+
+            # assign positions of nodes and branch length only when desired
+            # since marginal reconstruction can result in negative branch length
+            if assign_dates:
+                node.time_before_present = node.marginal_pos_LH.peak_pos
+                if node.up:
+                    node.clock_length = node.up.time_before_present - node.time_before_present
+                    node.branch_length = node.clock_length
+
             # construct the inverse cumulant distribution to evaluate confidence intervals
             if node.marginal_pos_LH.is_delta:
                 node.marginal_inverse_cdf=interp1d([0,1], node.marginal_pos_LH.peak_pos*np.ones(2), kind="linear")
