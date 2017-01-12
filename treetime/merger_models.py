@@ -130,14 +130,29 @@ class Coalescent(object):
             self.set_Tc(initial_Tc.y, T=initial_Tc.x)
 
 
-    def optimize_skyline(self, n_points=20, stiffness=2.0, method = 'SLSQP', tol=0.03, **kwarks):
+    def optimize_skyline(self, n_points=20, stiffness=2.0, method = 'SLSQP',
+                         tol=0.03, regularization=10.0, **kwarks):
+        '''
+        optimize the trajectory of the merger rate 1./T_c to maximize the
+        coalescent likelihood.
+        parameters:
+            n_points    --  number of pivots of the Tc interpolation object
+            stiffness   --  penalty for rapid changes in log(Tc)
+            methods     --  method used to optimize
+            tol         --  optimization tolerance
+            regularization --  cost of moving logTc outsize of the range [-100,0]
+                               merger rate is measured in branch length units, no
+                               plausible rates should ever be outside this window
+        '''
         self.logger("Coalescent:optimize_skyline:... current LH: %f"%self.total_LH(),2)
         from scipy.optimize import minimize
         initial_Tc = self.Tc
         tvals = np.linspace(self.tree_events[0,0], self.tree_events[-1,0], n_points)
         def cost(logTc):
             self.set_Tc(np.exp(logTc), tvals)
-            neglogLH = -self.total_LH() + stiffness*np.sum(np.diff(logTc)**2)
+            neglogLH = -self.total_LH() + stiffness*np.sum(np.diff(logTc)**2) \
+                       + np.sum((logTc>0)*logTc*regularization)\
+                       - np.sum((logTc<-100)*logTc*regularization)
             return neglogLH
 
         sol = minimize(cost, np.ones_like(tvals)*np.log(self.Tc.y.mean()), method=method, tol=tol)
