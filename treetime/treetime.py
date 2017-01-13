@@ -54,12 +54,13 @@ class TreeTime(ClockTree):
                 self.logger('TreeTime.run: adding coalescent prior with Tc='+str(Tc),1)
                 self.merger_model = Coalescent(self.tree, Tc=avg_root_to_tip,
                                                date2dist=self.date2dist, logger=self.logger)
-                if Tc=='opt':
-                    self.merger_model.optimize_Tc()
-                    self.logger("optimized Tc to %f"%self.merger_model.Tc.y[0], 2)
-                elif Tc=='skyline':
-                    self.merger_model.optimize_skyline(**kwargs)
-                    self.logger("optimized a skyline ", 2)
+                if niter==max_iter-1:
+                    if Tc=='opt':
+                        self.merger_model.optimize_Tc()
+                        self.logger("optimized Tc to %f"%self.merger_model.Tc.y[0], 2)
+                    elif Tc=='skyline':
+                        self.merger_model.optimize_skyline(**kwargs)
+                        self.logger("optimized a skyline ", 2)
                 else:
                     try:
                         self.set_Tc(Tc)
