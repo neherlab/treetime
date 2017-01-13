@@ -104,7 +104,7 @@ class TreeTime(ClockTree):
         # this will set marginal_pos_LH, which to be used as error bar estimations
         if do_marginal:
             self.logger("###TreeTime.run: FINAL ROUND - confidence estimation via marginal reconstruction", 0)
-            self.make_time_tree(slope=fixed_slope, do_marginal=True, **kwargs)
+            self.make_time_tree(slope=fixed_slope, do_marginal=do_marginal, **kwargs)
 
 
 

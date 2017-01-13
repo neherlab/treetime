@@ -142,14 +142,15 @@ class Coalescent(object):
             tol         --  optimization tolerance
             regularization --  cost of moving logTc outsize of the range [-100,0]
                                merger rate is measured in branch length units, no
-                               plausible rates should ever be outside this window
+                               plausible rates should never be outside this window
         '''
         self.logger("Coalescent:optimize_skyline:... current LH: %f"%self.total_LH(),2)
         from scipy.optimize import minimize
         initial_Tc = self.Tc
         tvals = np.linspace(self.tree_events[0,0], self.tree_events[-1,0], n_points)
         def cost(logTc):
-            self.set_Tc(np.exp(logTc), tvals)
+            # cap log Tc to avoid under or overflow and nan in logs
+            self.set_Tc(np.exp(np.maximum(-200,np.minimum(100,logTc))), tvals)
             neglogLH = -self.total_LH() + stiffness*np.sum(np.diff(logTc)**2) \
                        + np.sum((logTc>0)*logTc*regularization)\
                        - np.sum((logTc<-100)*logTc*regularization)
@@ -166,7 +167,9 @@ class Coalescent(object):
 
     def skyline_empirical(self, gen=1.0, n_points = 20):
         '''
-        return the skyline, i.e., an estimate of the inverse rate of coalesence
+        returns the skyline, i.e., an estimate of the inverse rate of coalesence.
+        Here, the skyline is estimated from a sliding window average of the observed
+        mergers, i.e., without reference to the coalescence likelihood.
         parameters:
             gen -- number of generations per year.
         '''
@@ -200,7 +203,10 @@ class Coalescent(object):
 
     def skyline_inferred(self, gen=1.0):
         '''
-        return the skyline, i.e., an estimate of the inverse rate of coalesence
+        return the skyline, i.e., an estimate of the inverse rate of coalesence.
+        This function merely returns the merger rate self.Tc that was set or
+        estimated by other means. If it was determined using self.optimize_skyline,
+        the returned skyline will maximize the coalescent likelihood.
         parameters:
             gen -- number of generations per year. Unit of time is branch length,
                    hence this needs to be the inverse substitution rate per generation
