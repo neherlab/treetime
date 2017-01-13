@@ -39,27 +39,27 @@ if __name__ == '__main__':
 
     # infer an ebola time tree while rerooting and resolving polytomies
     ebola.run(root='best', relaxed_clock=False, max_iter=2,
-              resolve_polytomies=True, Tc=0.001, do_marginal=True)
+              resolve_polytomies=True, Tc='skyline', do_marginal="assign")
 
     # scatter root to tip divergence vs sampling date
     ebola.plot_root_to_tip(add_internal=True)
     t=np.array([2014,2016])
     plt.plot(t, t*ebola.date2dist.slope+ ebola.date2dist.intercept,
-             label="y = %1.5f t+%1.3f"%(ebola.date2dist.slope, ebola.date2dist.intercept))
+             label="y = %1.5f t%1.3f"%(ebola.date2dist.slope, ebola.date2dist.intercept))
     plt.legend(loc=2)
 
     # rescale branch length to years and plot in axis 0
     from treetime.io import plot_vs_years
     fig, axs = plt.subplots(1,2, sharey=True, figsize=(12,8))
-    plot_vs_years(ebola, years=1, ax=axs[0], confidence=(0.05,0.95), label_func = lambda x:"")
-    axs[0].set_xlim(0, 2.5)
-    axs[0].set_title("time tree")
+    plot_vs_years(ebola, years=1, ax=axs[1], confidence=(0.05,0.95), label_func = lambda x:"")
+    axs[1].set_xlim(0, 2.5)
+    axs[1].set_title("time tree")
 
     # assign mutation length to branch length and plot the mutation tree in axs[1]
-    axs[1].set_title("mutation tree")
+    axs[0].set_title("mutation tree")
     for n in ebola.tree.find_clades():
         n.branch_length=n.mutation_length
-    Phylo.draw(ebola.tree, label_func=lambda x:"", axes=axs[1])
+    Phylo.draw(ebola.tree, label_func=lambda x:"", axes=axs[0])
     plt.tight_layout()
 
     # reset branch length to time (in substitution rate units)
@@ -70,6 +70,16 @@ if __name__ == '__main__':
 
     # OUTPUT the GTR model
     print(ebola.gtr)
+
+    # plot Skyline
+    skyline = ebola.merger_model.skyline_inferred(gen=50)
+    skyline_empirical = ebola.merger_model.skyline_empirical(gen=50)
+    plt.figure()
+    plt.plot(skyline.x, skyline.y, label='maximum likelihood skyline')
+    plt.plot(skyline_empirical.x, skyline_empirical.y, label='empirical skyline')
+    plt.ticklabel_format(useOffset=False)
+
+
 
 
 

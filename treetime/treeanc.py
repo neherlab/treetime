@@ -801,8 +801,9 @@ class TreeAnc(object):
                 break
             self.optimize_branch_len(verbose=0, store_old=False)
 
+        self.tree.unconstrained_sequence_LH = self.tree.sequence_LH.sum()
         self._prepare_nodes() # fix dist2root and up-links after reconstruction
-        self.logger("TreeAnc.optimize_sequences_and_branch_length: Unconstrained sequence LH:%f" % self.tree.sequence_LH.sum() , 2)
+        self.logger("TreeAnc.optimize_sequences_and_branch_length: Unconstrained sequence LH:%f" % self.tree.unconstrained_sequence_LH , 2)
         return
 
 ###############################################################################

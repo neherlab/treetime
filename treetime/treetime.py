@@ -24,6 +24,7 @@ class TreeTime(ClockTree):
         self.optimize_sequences_and_branch_length(infer_gtr=infer_gtr,
                                                   sample_from_profile='root',
                                                   prune_short=True)
+        avg_root_to_tip = np.mean([x.dist2root for x in self.tree.get_terminals()])
 
         # optionally reroot the tree either by oldest, best regression or with a specific leaf
         if n_iqd or root=='clock_filter':
@@ -50,8 +51,20 @@ class TreeTime(ClockTree):
             # add coalescent prior
             if Tc and (Tc is not None):
                 from merger_models import Coalescent
-                self.logger('TreeTime.run: adding coalescent prior',1)
-                self.merger_model = Coalescent(self.tree, Tc=Tc)
+                self.logger('TreeTime.run: adding coalescent prior with Tc='+str(Tc),1)
+                self.merger_model = Coalescent(self.tree, Tc=avg_root_to_tip,
+                                               date2dist=self.date2dist, logger=self.logger)
+                if Tc=='opt':
+                    self.merger_model.optimize_Tc()
+                    self.logger("optimized Tc to %f"%self.merger_model.Tc.y[0], 2)
+                elif Tc=='skyline':
+                    self.merger_model.optimize_skyline(**kwargs)
+                    self.logger("optimized a skyline ", 2)
+                else:
+                    try:
+                        self.set_Tc(Tc)
+                    except:
+                        pass
                 self.merger_model.attach_to_tree()
             if relaxed_clock:
                 # estimate a relaxed molecular clock
@@ -77,18 +90,21 @@ class TreeTime(ClockTree):
                 ndiff = self.infer_ancestral_sequences('ml',sample_from_profile='root')
                 self.make_time_tree(slope=fixed_slope, do_marginal=False, **kwargs)
 
+            if Tc:
+                self.tree.coalescent_joint_LH = self.merger_model.total_LH()
+
+            self.LH.append([self.tree.sequence_joint_LH, self.tree.positional_joint_LH, self.tree.coalescent_joint_LH])
+            niter+=1
+
             if ndiff==0 & n_resolved==0:
                 self.logger("###TreeTime.run: CONVERGED",0)
                 break
-
-            self.LH.append([self.tree.sequence_joint_LH, self.tree.positional_joint_LH])
-            niter+=1
 
         # if marginal reconstruction requested, make one more round with marginal=True
         # this will set marginal_pos_LH, which to be used as error bar estimations
         if do_marginal:
             self.logger("###TreeTime.run: FINAL ROUND - confidence estimation via marginal reconstruction", 0)
-            self.make_time_tree(slope=fixed_slope, do_marginal=True, **kwargs)
+            self.make_time_tree(slope=fixed_slope, do_marginal=do_marginal, **kwargs)
 
 
 
@@ -350,25 +366,24 @@ class TreeTime(ClockTree):
         Print the total likelihood of the tree given the constrained leaves
         """
         try:
+            u_lh = self.tree.unconstrained_sequence_LH
             if joint:
                 s_lh = self.tree.sequence_joint_LH
                 t_lh = self.tree.positional_joint_LH
+                c_lh = self.tree.coalescent_joint_LH
             else:
                 s_lh = self.tree.sequence_marginal_LH
                 t_lh = self.tree.positional_marginal_LH
+                c_ls = 0
 
             print ("###  Tree Log-Likelihood  ###\n"
-                " Sequence log-LH:  \t{0}\n"
-                " Positional log-LH:\t{1}\n"
-                " Total log-LH:     \t{2}\n"
-               "#########################".format(s_lh,t_lh, s_lh+t_lh))
+                " Sequence log-LH without constraints: \t%1.3f\n"
+                " Sequence log-LH with constraints:    \t%1.3f\n"
+                " TreeTime sequence log-LH:            \t%1.3f\n"
+                " Coalescent log-LH:                   \t%1.3f\n"
+               "#########################"%(u_lh, s_lh,t_lh, c_lh))
         except:
             print("ERROR. Did you run the corresponding inference (joint/marginal)?")
-
-    def total_LH(self):
-        s_lh = self.tree.sequence_LH
-        t_lh = -self.tree.root.msg_to_parent.y.min()
-        return s_lh+t_lh
 
 
     def relaxed_clock(self, slack=None, coupling=None):

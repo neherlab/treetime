@@ -492,6 +492,15 @@ class GTR(object):
         Qt = self.v.dot(eLambdaT.dot(self.v_inv))   # This is P(nuc1 | given nuc_2)
         return np.maximum(0,Qt)
 
+    def sequence_logLH(self,seq):
+        """
+        returns the loglikelihood of sampling a sequence from equilibrium frequency
+        expects a sequence as numpy array
+        """
+        return np.sum([np.sum((seq==state)*np.log(self.Pi[si]))
+                      for si,state in enumerate(self.alphabet)])
+
+
     def save_to_npz(self, outfile):
         full_gtr = self.mu * np.dot(self.Pi, self.W)
         desc=np.array(["GTR matrix description\n", "Mutation rate: " + str(self.mu)])
