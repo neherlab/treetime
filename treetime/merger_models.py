@@ -158,7 +158,20 @@ class Coalescent(object):
 
         sol = minimize(cost, np.ones_like(tvals)*np.log(self.Tc.y.mean()), method=method, tol=tol)
         if sol["success"]:
-            cost(sol['x'])
+            dlogTc = 0.1
+            opt_logTc = sol['x']
+            dcost = []
+            for ii in range(len(opt_logTc)):
+                tmp = opt_logTc.copy()
+                tmp[ii]+=dlogTc
+                cost_plus = cost(tmp)
+                tmp[ii]-=2*dlogTc
+                cost_minus = cost(tmp)
+                dcost.append([cost_minus, cost_plus])
+
+            dcost = np.array(dcost)
+            optimal_cost = cost(opt_logTc)
+            self.confidence = -dlogTc/(2*optimal_cost - dcost[:,0] - dcost[:,1])
             self.logger("Coalescent:optimize_skyline:...done. new LH: %f"%self.total_LH(),2)
         else:
             self.set_Tc(initial_Tc.y, T=initial_Tc.x)
@@ -201,7 +214,7 @@ class Coalescent(object):
         return interp1d(self.date2dist.to_numdate(self.Tc_inv.x), gen/self.date2dist.slope/self.Tc_inv.y)
 
 
-    def skyline_inferred(self, gen=1.0):
+    def skyline_inferred(self, gen=1.0, confidence=False):
         '''
         return the skyline, i.e., an estimate of the inverse rate of coalesence.
         This function merely returns the merger rate self.Tc that was set or
@@ -210,9 +223,14 @@ class Coalescent(object):
         parameters:
             gen -- number of generations per year. Unit of time is branch length,
                    hence this needs to be the inverse substitution rate per generation
+            confidence -- False, or number of standard deviations of confidence intervals
         '''
-        return interp1d(self.date2dist.to_numdate(self.Tc.x[1:-1]), gen/self.date2dist.slope*self.Tc.y[1:-1])
-
+        skyline = interp1d(self.date2dist.to_numdate(self.Tc.x[1:-1]), gen/self.date2dist.slope*self.Tc.y[1:-1])
+        if confidence and hasattr(self, 'confidence'):
+            conf = [skyline.y*np.exp(-confidence*self.confidence), skyline.y*np.exp(confidence*self.confidence)]
+            return skyline, conf
+        else:
+            return skyline
 
 
 

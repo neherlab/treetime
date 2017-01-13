@@ -72,12 +72,15 @@ if __name__ == '__main__':
     print(ebola.gtr)
 
     # plot Skyline
-    skyline = ebola.merger_model.skyline_inferred(gen=50)
+    skyline, confidence = ebola.merger_model.skyline_inferred(gen=50, confidence=2.0)
     skyline_empirical = ebola.merger_model.skyline_empirical(gen=50)
     plt.figure()
+    plt.fill_between(skyline.x, confidence[0], confidence[1], color=(0.8, 0.8, 0.8))
     plt.plot(skyline.x, skyline.y, label='maximum likelihood skyline')
     plt.plot(skyline_empirical.x, skyline_empirical.y, label='empirical skyline')
-    plt.ticklabel_format(useOffset=False)
+    plt.yscale('log')
+    plt.legend()
+    plt.ticklabel_format(axis='x',useOffset=False)
 
 
 
