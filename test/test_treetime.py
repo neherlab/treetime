@@ -127,7 +127,8 @@ def test_seq_joint_reconstruction_correct():
     for node in myTree.tree.find_clades():
         if node.up is not None:
             assert np.sum(node.sequence != node.ref_seq)==0
-        print (node.name, str(np.sum(node.sequence != node.ref_seq)), len(node.mutations), node.mutations)
+            print("True sequence equals inferred sequence")
+        print (node.name, np.sum(node.sequence != node.ref_seq), len(node.mutations), node.mutations)
 
     # prove the likelihood valu calculation is correct
     LH = myTree.ancestral_likelihood()
