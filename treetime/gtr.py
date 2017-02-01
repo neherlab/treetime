@@ -101,24 +101,26 @@ class GTR(object):
         n = len(self.alphabet)
         self.mu = mu
         if pi is not None and len(pi)==n:
-            Pi = pi
+            Pi = np.array(pi)
         else:
             if pi is not None and len(pi)!=n:
                 self.logger("length of equilibrium frequency vector does not match alphabet length", 4, warn=True)
                 self.logger("Ignoring input equilibrium frequencies", 4, warn=True)
             Pi = np.ones(size=(n))
-        self.Pi = Pi/Pi.sum()
+        self.Pi = Pi/np.sum(Pi)
 
         if W is None or W.shape!=(n,n):
             if (W is not None) and W.shape!=(n,n):
                 self.logger("Mutation matrix size does not match alphabet size", 4, warn=True)
                 self.logger("Ignoring input mutation matrix", 4, warn=True)
             # flow matrix
-            self.W = np.ones((n,n))
+            W = np.ones((n,n))
             np.fill_diagonal(self.W, - ((self.W).sum(axis=0) - 1))
+        else:
+            W=np.array(W)
 
         self.W = 0.5*(W+W.T)
-        self._check_fix_Q()
+        self._check_fix_Q(fixed_mu=True)
         self._eig()
 
 
@@ -262,7 +264,7 @@ class GTR(object):
 ########################################################################
 ### prepare model
 ########################################################################
-    def _check_fix_Q(self):
+    def _check_fix_Q(self, fixed_mu=False):
         """
         Check the main diagonal of Q and fix it in case it does not corresond
         the definition of the rate matrix. Should be run every time when creating
@@ -278,7 +280,8 @@ class GTR(object):
         np.fill_diagonal(self.W, Wdiag)
         scale_factor = -np.sum(np.diagonal(self.Q)*self.Pi)
         self.W /= scale_factor
-        self.mu *= scale_factor
+        if not fixed_mu:
+            self.mu *= scale_factor
         if (self.Q.sum(axis=0) < 1e-10).sum() <  self.alphabet.shape[0]: # fix failed
             import ipdb; ipdb.set_trace()
             raise ArithmeticError("Cannot fix the diagonal of the GTR rate matrix.")
