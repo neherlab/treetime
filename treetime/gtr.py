@@ -60,8 +60,10 @@ class GTR(object):
         self.v_inv = np.zeros((n_states, n_states))
         self.eigenvals = np.zeros(n_states)
         # NEEDED TO BREAK RATE MATRIX DEGENERACY AND FORCE NP TO RETURN REAL ORTHONORMAL EIGENVECTORS
+        tmp_rng_state = np.random.get_state()
         np.random.seed(12345)
         self.break_degen = np.random.random(size=self.W.shape)*0.0001
+        np.random.set_state(tmp_rng_state)
 
         # distance matrix (needed for topology optimization and for NJ)
         self.dm = None
