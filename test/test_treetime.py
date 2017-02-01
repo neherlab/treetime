@@ -92,7 +92,8 @@ def test_seq_joint_reconstruction_correct():
 
     # simulate evolution, set resulting sequence as ref_seq
     tree = myTree.tree
-    tree.root.ref_seq = np.random.choice(mygtr.alphabet, p=mygtr.Pi, size=400)
+    seq_len = 400
+    tree.root.ref_seq = np.random.choice(mygtr.alphabet, p=mygtr.Pi, size=seq_len)
     print ("Root sequence: " + ''.join(tree.root.ref_seq))
     mutation_list = defaultdict(list)
     for node in tree.find_clades():
@@ -128,16 +129,21 @@ def test_seq_joint_reconstruction_correct():
     # reconstruct ancestral sequences:
     myTree._ml_anc_joint(debug=True)
 
+    diff_count = 0
+    mut_count = 0
     for node in myTree.tree.find_clades():
         if node.up is not None:
-            assert np.sum(node.sequence != node.ref_seq)==0
+            mut_count += len(node.ref_mutations)
+            diff_count += np.sum(node.sequence != node.ref_seq)==0
             if np.sum(node.sequence != node.ref_seq):
-                print("ERROR: %s: True sequence does not equal inferred sequence. parent %s"%(node.name, node.up.name))
+                print("%s: True sequence does not equal inferred sequence. parent %s"%(node.name, node.up.name))
             else:
                 print("%s: True sequence equals inferred sequence. parent %s"%(node.name, node.up.name))
         print (node.name, np.sum(node.sequence != node.ref_seq), np.where(node.sequence != node.ref_seq), len(node.mutations), node.mutations)
 
-    # prove the likelihood valu calculation is correct
+    assert diff_count/seq_len<2*(1.0*mut_count/seq_len)**2
+
+    # prove the likelihood value calculation is correct
     LH = myTree.ancestral_likelihood()
     LH_p = (myTree.tree.sequence_LH)
 
