@@ -531,7 +531,7 @@ class TreeAnc(object):
             self.store_compressed_sequence_pairs()
 
         # do clean-up:
-        if not self.debug:
+        if not debug:
             for node in self.tree.find_clades():
                 del node.marginal_subtree_LH
                 del node.marginal_subtree_LH_prefactor
@@ -644,7 +644,7 @@ class TreeAnc(object):
             self.store_compressed_sequence_pairs()
 
         # do clean-up
-        if not self.debug:
+        if not debug:
             for node in self.tree.find_clades(order='preorder'):
                 del node.joint_Lx
                 del node.joint_Cx
