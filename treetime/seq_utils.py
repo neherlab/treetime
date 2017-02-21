@@ -117,20 +117,20 @@ def prof2seq(profile, gtr, sample_from_prof=False):
     """
 
     # normalize profile such that probabilities at each site sum to one
-    profile=(profile.T/profile.sum(axis=1)).T
+    tmp_profile=(profile.T/profile.sum(axis=1)).T
 
     # sample sequence according to the probabilities in the profile
     # (sampling from cumulative distribution over the different states)
     if sample_from_prof:
-        cumdis = profile.cumsum(axis=1).T
+        cumdis = tmp_profile.cumsum(axis=1).T
         randnum = np.random.random(size=cumdis.shape[1])
         idx = np.argmax(cumdis>=randnum, axis=0)
         seq = gtr.alphabet[idx]
 
     else:
-        idx = profile.argmax(axis=1)
+        idx = tmp_profile.argmax(axis=1)
         seq = gtr.alphabet[idx]  # max LH over the alphabet
 
-    prof_values = profile[np.arange(profile.shape[0]), idx]
+    prof_values = tmp_profile[np.arange(tmp_profile.shape[0]), idx]
 
     return seq, prof_values, idx
