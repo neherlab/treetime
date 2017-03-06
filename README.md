@@ -44,7 +44,7 @@ You might need root privileges for system wide installation. Alternatively, you 
 
 
 ### Basic usage
-TreeTime can be used as part of python programs that create and interact with tree time objects. How treetime can be used to address typical questions like ancestral sequence reconstruction, rerooting, timetree inference etc is illustrated by a collection of example scripts described below. 
+TreeTime can be used as part of python programs that create and interact with tree time objects. How treetime can be used to address typical questions like ancestral sequence reconstruction, rerooting, timetree inference etc is illustrated by a collection of example scripts described below.
 
 In addition, we provide scripts that can be run from the command line with arguments specifying input data and parameters.
 
@@ -168,6 +168,9 @@ There are several other tools which estimate molecular clock phylogenies.
 * [Beast](http://beast.bio.ed.ac.uk/) relies on the MCMC-type sampling of trees. It is hence rather slow for large data sets. But BEAST allows the flexible inclusion of prior distributions, complex evolutionary models, and estimation of parameters.
 * [Least-Square-Dating](http://www.atgc-montpellier.fr/LSD/) (LSD) emphasises speed (it scales as O(N) as **TreeTime**), but provides limited scope for customization.
 
+### Projects using treetime
+
+Treetime is an integral part of the [nextstrain.org](http://nextstrain.org) project to track and analyze viral sequence data in real time.
 
 ### Developer info
 
