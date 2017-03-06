@@ -82,7 +82,7 @@ class ClockTree(TreeAnc):
 
         """
         self.logger("ClockTree.init_date_constraints...",2)
-
+        self.tree.coalescent_joint_LH = 0
         if ancestral_inference or (not hasattr(self.tree.root, 'sequence')):
             self.infer_ancestral_sequences('ml',sample_from_profile='root',**kwarks)
 
@@ -134,10 +134,10 @@ class ClockTree(TreeAnc):
         self.logger("ClockTree: Maximum likelihood tree optimization with temporal constraints:",1)
         self.init_date_constraints(**kwargs)
 
-        self._ml_t_joint()
-
         if do_marginal:
-            self._ml_t_marginal()
+            self._ml_t_marginal(assign_dates = do_marginal=="assign")
+        else:
+            self._ml_t_joint()
 
         #self._set_final_dates()
         self.convert_dates()
@@ -204,7 +204,6 @@ class ClockTree(TreeAnc):
                         subtree_distribution._adjust_grid(rel_tol=self.rel_tol_prune)
 
                         # set root position and joint likelihood of the tree
-                        self.tree.positional_joint_LH = -subtree_distribution.peak_val
                         node.time_before_present = subtree_distribution.peak_pos
                         node.joint_pos_Lx = subtree_distribution
                         node.joint_pos_Cx = None
@@ -236,27 +235,38 @@ class ClockTree(TreeAnc):
             elif isinstance(node.joint_pos_Cx, Distribution):
                 # NOTE the Lx distribution is the likelihood, given the position of the parent
                 # (Lx.x = parent position, Lx.y = LH of the node_pos given Lx.x,
-                # the length of the branch corresponding to the most likely subtree is node.Cx(node.time_before_present))
+                # the length of the branch corresponding to the most likely
+                # subtree is node.Cx(node.time_before_present))
                 subtree_LH = node.joint_pos_Lx(node.up.time_before_present)
-                node.branch_length = node.joint_pos_Cx(max(node.joint_pos_Cx.xmin, node.up.time_before_present)+ttconf.TINY_NUMBER)
+                node.branch_length = node.joint_pos_Cx(max(node.joint_pos_Cx.xmin,
+                                            node.up.time_before_present)+ttconf.TINY_NUMBER)
 
             node.time_before_present = node.up.time_before_present - node.branch_length
             node.clock_length = node.branch_length
 
             # just sanity check, should never happen:
             if node.branch_length < 0 or node.time_before_present < 0:
-                if self.debug:
-                    import ipdb; ipdb.set_trace()
                 if node.branch_length<0 and node.branch_length>-ttconf.TINY_NUMBER:
                     self.logger("ClockTree - Joint reconstruction: correcting rounding error of %s"%node.name, 4)
                     node.branch_length = 0
 
+        self.tree.positional_joint_LH = self.evalutate_likelihood()
         # cleanup, if required
         if not self.debug:
             _cleanup()
 
 
-    def _ml_t_marginal(self):
+    def evalutate_likelihood(self):
+        LH = 0
+        for node in self.tree.find_clades(order='preorder'):  # children first, msg to parents
+            if node.up is None: # root node
+                continue
+            LH -= node.branch_length_interpolator(node.branch_length)
+
+        return LH + self.gtr.sequence_logLH(self.tree.root.sequence)
+
+
+    def _ml_t_marginal(self, assign_dates=False):
         """
         Compute the marginal probability distribution of the internal nodes positions by
         propagating from the tree leaves towards the root. The result of
@@ -377,6 +387,15 @@ class ClockTree(TreeAnc):
                         plt.ylim(0,100)
                         plt.xlim(-0.05, 0.05)
                         import ipdb; ipdb.set_trace()
+
+            # assign positions of nodes and branch length only when desired
+            # since marginal reconstruction can result in negative branch length
+            if assign_dates:
+                node.time_before_present = node.marginal_pos_LH.peak_pos
+                if node.up:
+                    node.clock_length = node.up.time_before_present - node.time_before_present
+                    node.branch_length = node.clock_length
+
             # construct the inverse cumulant distribution to evaluate confidence intervals
             if node.marginal_pos_LH.is_delta:
                 node.marginal_inverse_cdf=interp1d([0,1], node.marginal_pos_LH.peak_pos*np.ones(2), kind="linear")

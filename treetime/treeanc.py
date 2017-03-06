@@ -504,11 +504,15 @@ class TreeAnc(object):
             for c in node.up.clades:
                 if c != node:
                     tmp_msg*=c.marginal_Lx
+            norm_vector = tmp_msg.sum(axis=1)
+            tmp_msg=(tmp_msg.T/norm_vector).T
             node.seq_msg_from_parent = self.gtr.propagate_profile(tmp_msg,
                                             self._branch_length_to_gtr(node), return_log=False)
             node.marginal_profile = node.marginal_subtree_LH * node.seq_msg_from_parent
 
-            # choose sequence based maximal marginal LH. THIS NORMALIZES marginal_profile in place
+            norm_vector = node.marginal_profile.sum(axis=1)
+            node.marginal_profile=(node.marginal_profile.T/norm_vector).T
+            # choose sequence based maximal marginal LH.
             seq, prof_vals, idxs = seq_utils.prof2seq(node.marginal_profile, self.gtr,
                                                       sample_from_prof=other_sample_from_profile)
             node.mutations = [(anc, pos, der) for pos, (anc, der) in
@@ -801,8 +805,9 @@ class TreeAnc(object):
                 break
             self.optimize_branch_len(verbose=0, store_old=False)
 
+        self.tree.unconstrained_sequence_LH = self.tree.sequence_LH.sum()
         self._prepare_nodes() # fix dist2root and up-links after reconstruction
-        self.logger("TreeAnc.optimize_sequences_and_branch_length: Unconstrained sequence LH:%f" % self.tree.sequence_LH.sum() , 2)
+        self.logger("TreeAnc.optimize_sequences_and_branch_length: Unconstrained sequence LH:%f" % self.tree.unconstrained_sequence_LH , 2)
         return
 
 ###############################################################################

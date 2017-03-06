@@ -1,13 +1,13 @@
 [![Build Status](https://travis-ci.org/neherlab/treetime.svg?branch=master)](https://travis-ci.org/neherlab/treetime)
 
-# TreeTime: Maximum-Likelihood dating and ancestral inference for phylogenetic trees
+## TreeTime: maximum likelihood dating and ancestral inference for phylogenetic trees
 
-## Overview
+### Overview
 
 TreeTime provides routines for ancestral sequence reconstruction and the inference of molecular-clock phylogenies, i.e., a tree where all branches are scaled such that the locations of terminal nodes correspond to their sampling times and internal nodes are placed at the most likely time of divergence.
 
-TreeTime aims at being a compromise between sophisticated probabilistic models of evolution and fast heuristics. It implements GTR models of ancestral inference and branch length optimization, but takes the tree topology as given.
-To optimize the likelihood of time-scaled phylogenies, treetime uses an interative approach that first infers ancestral sequences given the branch length of the tree, then optimizes the positions of unconstrained nodes on the time axis, and then repeats this cycle.
+TreeTime aims at striking a compromise between sophisticated probabilistic models of evolution and fast heuristics. It implements GTR models of ancestral inference and branch length optimization, but takes the tree topology as given.
+To optimize the likelihood of time-scaled phylogenies, treetime uses an iterative approach that first infers ancestral sequences given the branch length of the tree, then optimizes the positions of unconstrained nodes on the time axis, and then repeats this cycle.
 The only topology optimization are (optional) resolution of polytomies in a way that is most (approximately) consistent with the sampling time constraints on the tree.
 The package is designed to be used as a stand-alone tool or as a library used in larger phylogenetic analysis workflows.
 
@@ -25,7 +25,7 @@ The package is designed to be used as a stand-alone tool or as a library used in
 ### Installation and prerequisites
 
 * The package depends on several python libraries:
-    - numpy, SciPy: for all kind of mathematical operations as matrix operations, numerical integration, interpolation, minimization, etc.
+    - numpy, scipy: for all kind of mathematical operations as matrix operations, numerical integration, interpolation, minimization, etc.
 
     - BioPython: for parsing multiple sequence alignments and all phylogenetic functionality
 
@@ -44,7 +44,7 @@ You might need root privileges for system wide installation. Alternatively, you 
 
 
 ### Basic usage
-TreeTime can be used as part of python programs that create and interact with tree time objects. The interface to treetime and its basic functionality are given below.
+TreeTime can be used as part of python programs that create and interact with tree time objects. How treetime can be used to address typical questions like ancestral sequence reconstruction, rerooting, timetree inference etc is illustrated by a collection of example scripts described below. 
 
 In addition, we provide scripts that can be run from the command line with arguments specifying input data and parameters.
 
@@ -155,14 +155,21 @@ In addition, we provide scripts that can be run from the command line with argum
     ```
   The slope of the regression of root-to-tip distance vs sampling date will be printed to stdout along with the fraction of variance explained by the linear regression. By passing the flag `--reroot`, treetime will search for the root that maximizes the correlation of root-to-tip distance with time and reroot the tree. The option `--plot` will produce a scatter plot with the best regression and save it to file.
 
-## Comparable Tools
+### Example scripts
+The following scripts illustrate how treetime can be used to solve common problem with short python scripts. They are meant to be used in an interactive ipython enviroment and run as `run examples/ancestral_inference.py`.
+ * [`ancestral_inference.py`](https://github.com/neherlab/treetime/blob/master/examples/ancestral_inference.py) illustrates how ancestral sequences are inferred and likely mutations are assinged to branches in the tree
+ * [`relaxed_clock.py`](https://github.com/neherlab/treetime/blob/master/examples/relaxed_clock.py) walks the user through the usage of relaxed molecular clock models
+ * [`ebola.py`](https://github.com/neherlab/treetime/blob/master/examples/ebola.py) uses about 300 sequences from the 2014-2015 Ebola virus outbreak to infer a timetree. This example takes a few minutes to run.
+
+
+### Comparable Tools
 
 There are several other tools which estimate molecular clock phylogenies.
 * [Beast](http://beast.bio.ed.ac.uk/) relies on the MCMC-type sampling of trees. It is hence rather slow for large data sets. But BEAST allows the flexible inclusion of prior distributions, complex evolutionary models, and estimation of parameters.
 * [Least-Square-Dating](http://www.atgc-montpellier.fr/LSD/) (LSD) emphasises speed (it scales as O(N) as **TreeTime**), but provides limited scope for customization.
 
 
-## Developer info
+### Developer info
 
   - Credits -- .
   - Copyright and License: Pavel Sagulenko and Richard Neher, MIT Licence

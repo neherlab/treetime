@@ -75,13 +75,14 @@ def test_seq_joint_reconstruction_correct():
     from StringIO import StringIO
     import numpy as np
     from itertools import izip
+    from collections import defaultdict
     def exclusion(a, b):
         """
         Intersection of two lists
         """
         return list(set(a) - set(b))
 
-    tiny_tree = Phylo.read(StringIO("((A:.060,B:.01200)C:.060,D:.0050)E:.004;"), 'newick')
+    tiny_tree = Phylo.read(StringIO("((A:.060,B:.01200)C:.020,D:.0050)E:.004;"), 'newick')
     mygtr = GTR.custom(alphabet = np.array(['A', 'C', 'G', 'T']),
                        pi = np.array([0.15, 0.95, 0.05, 0.3]), W=np.ones((4,4)))
     seq = np.random.choice(mygtr.alphabet, p=mygtr.Pi, size=400)
@@ -91,8 +92,10 @@ def test_seq_joint_reconstruction_correct():
 
     # simulate evolution, set resulting sequence as ref_seq
     tree = myTree.tree
-    tree.root.ref_seq = np.random.choice(mygtr.alphabet, p=mygtr.Pi, size=400)
+    seq_len = 400
+    tree.root.ref_seq = np.random.choice(mygtr.alphabet, p=mygtr.Pi, size=seq_len)
     print ("Root sequence: " + ''.join(tree.root.ref_seq))
+    mutation_list = defaultdict(list)
     for node in tree.find_clades():
         for c in node.clades:
             c.up = node
@@ -109,7 +112,9 @@ def test_seq_joint_reconstruction_correct():
 
         node.ref_mutations = [(anc, pos, der) for pos, (anc, der) in
                             enumerate(izip(node.up.ref_seq, node.ref_seq)) if anc!=der]
-
+        for anc, pos, der in node.ref_mutations:
+            print(pos)
+            mutation_list[pos].append((node.name, anc, der))
         print (node.name, len(node.ref_mutations), node.ref_mutations)
 
     # set as the starting sequences to the terminal nodes:
@@ -124,12 +129,21 @@ def test_seq_joint_reconstruction_correct():
     # reconstruct ancestral sequences:
     myTree._ml_anc_joint(debug=True)
 
+    diff_count = 0
+    mut_count = 0
     for node in myTree.tree.find_clades():
         if node.up is not None:
-            assert np.sum(node.sequence != node.ref_seq)==0
-        print (node.name, str(np.sum(node.sequence != node.ref_seq)), len(node.mutations), node.mutations)
+            mut_count += len(node.ref_mutations)
+            diff_count += np.sum(node.sequence != node.ref_seq)==0
+            if np.sum(node.sequence != node.ref_seq):
+                print("%s: True sequence does not equal inferred sequence. parent %s"%(node.name, node.up.name))
+            else:
+                print("%s: True sequence equals inferred sequence. parent %s"%(node.name, node.up.name))
+        print (node.name, np.sum(node.sequence != node.ref_seq), np.where(node.sequence != node.ref_seq), len(node.mutations), node.mutations)
 
-    # prove the likelihood valu calculation is correct
+    assert diff_count/seq_len<2*(1.0*mut_count/seq_len)**2
+
+    # prove the likelihood value calculation is correct
     LH = myTree.ancestral_likelihood()
     LH_p = (myTree.tree.sequence_LH)
 

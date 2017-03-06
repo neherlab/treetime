@@ -60,8 +60,10 @@ class GTR(object):
         self.v_inv = np.zeros((n_states, n_states))
         self.eigenvals = np.zeros(n_states)
         # NEEDED TO BREAK RATE MATRIX DEGENERACY AND FORCE NP TO RETURN REAL ORTHONORMAL EIGENVECTORS
+        tmp_rng_state = np.random.get_state()
         np.random.seed(12345)
         self.break_degen = np.random.random(size=self.W.shape)*0.0001
+        np.random.set_state(tmp_rng_state)
 
         # distance matrix (needed for topology optimization and for NJ)
         self.dm = None
@@ -101,24 +103,26 @@ class GTR(object):
         n = len(self.alphabet)
         self.mu = mu
         if pi is not None and len(pi)==n:
-            Pi = pi
+            Pi = np.array(pi)
         else:
             if pi is not None and len(pi)!=n:
                 self.logger("length of equilibrium frequency vector does not match alphabet length", 4, warn=True)
                 self.logger("Ignoring input equilibrium frequencies", 4, warn=True)
             Pi = np.ones(size=(n))
-        self.Pi = Pi/Pi.sum()
+        self.Pi = Pi/np.sum(Pi)
 
         if W is None or W.shape!=(n,n):
             if (W is not None) and W.shape!=(n,n):
                 self.logger("Mutation matrix size does not match alphabet size", 4, warn=True)
                 self.logger("Ignoring input mutation matrix", 4, warn=True)
             # flow matrix
-            self.W = np.ones((n,n))
+            W = np.ones((n,n))
             np.fill_diagonal(self.W, - ((self.W).sum(axis=0) - 1))
+        else:
+            W=np.array(W)
 
         self.W = 0.5*(W+W.T)
-        self._check_fix_Q()
+        self._check_fix_Q(fixed_mu=True)
         self._eig()
 
 
@@ -262,7 +266,7 @@ class GTR(object):
 ########################################################################
 ### prepare model
 ########################################################################
-    def _check_fix_Q(self):
+    def _check_fix_Q(self, fixed_mu=False):
         """
         Check the main diagonal of Q and fix it in case it does not corresond
         the definition of the rate matrix. Should be run every time when creating
@@ -278,7 +282,8 @@ class GTR(object):
         np.fill_diagonal(self.W, Wdiag)
         scale_factor = -np.sum(np.diagonal(self.Q)*self.Pi)
         self.W /= scale_factor
-        self.mu *= scale_factor
+        if not fixed_mu:
+            self.mu *= scale_factor
         if (self.Q.sum(axis=0) < 1e-10).sum() <  self.alphabet.shape[0]: # fix failed
             import ipdb; ipdb.set_trace()
             raise ArithmeticError("Cannot fix the diagonal of the GTR rate matrix.")
@@ -333,16 +338,16 @@ class GTR(object):
                             if count: pair_count.append(((n1,n2), count))
         else: # enumerate state pairs of the sequence for large alphabets
             num_seqs = []
-            for seq in [seq_p, seq_ch]:
+            for seq in [seq_p, seq_ch]: # for each sequence (parent and child) construct a numerical sequence [0,5,3,1,2,3...]
                 tmp = np.ones_like(seq, dtype=int)
                 for ni,nuc in enumerate(self.alphabet):
-                    tmp[seq==nuc] = ni
-                    num_seqs.append(tmp)
-                    if ignore_gaps:
-                        pair_count = Counter([x for x in zip(num_seqs[0], num_seqs[1])
-                                              if (self.gap_index not in x)])
-                    else:
-                        pair_count = Counter(zip(num_seqs[0], num_seqs[1]))
+                    tmp[seq==nuc] = ni  # set each position corresponding to a state to the corresponding index
+                num_seqs.append(tmp)
+            if ignore_gaps:  # if gaps are ingnored skip positions where one or the other sequence is gapped
+                pair_count = Counter([x for x in zip(num_seqs[0], num_seqs[1])
+                                      if (self.gap_index not in x)])
+            else: # otherwise, just count
+                pair_count = Counter(zip(num_seqs[0], num_seqs[1]))
             pair_count = pair_count.items()
 
         return (np.array([x[0] for x in pair_count], dtype=int),    # [(child_nuc, parent_nuc),()...]
@@ -491,6 +496,15 @@ class GTR(object):
         eLambdaT = np.diag(self._exp_lt(t)) # vector length = a
         Qt = self.v.dot(eLambdaT.dot(self.v_inv))   # This is P(nuc1 | given nuc_2)
         return np.maximum(0,Qt)
+
+    def sequence_logLH(self,seq):
+        """
+        returns the loglikelihood of sampling a sequence from equilibrium frequency
+        expects a sequence as numpy array
+        """
+        return np.sum([np.sum((seq==state)*np.log(self.Pi[si]))
+                      for si,state in enumerate(self.alphabet)])
+
 
     def save_to_npz(self, outfile):
         full_gtr = self.mu * np.dot(self.Pi, self.W)
