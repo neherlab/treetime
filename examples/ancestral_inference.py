@@ -1,7 +1,6 @@
 from __future__ import print_function, division
 from treetime import TreeAnc
 import numpy as np
-from scipy import optimize as sciopt
 from Bio import Phylo
 import matplotlib.pyplot as plt
 from Bio import Phylo
@@ -23,23 +22,27 @@ if __name__ == '__main__':
     # lets examine the properties of a node in the tree after ancestral inference
     node = myTree.tree.get_nonterminals()[7]
     # each node now has an inferred sequence
-    print("the inferred sequences is an array of states:", node.sequence)
+    print("\nthe inferred sequences is an array of states:", node.sequence)
 
     # in addition, each node of the tree now has an mutation object attached
     # note that the mutation numbering starts at 0 rather than 1
-    print("mutations of node %s:"%node.name, node.mutations)
+    print("\nmutations of node %s:"%node.name, node.mutations)
 
     # we can readily verify these mutations by checking the inferred sequences
     mut = node.mutations[0]
-    print("mutation %s%d%s corresponds to"%mut,
-          "parent state: %s, child state %s"%(node.up.sequence[mut[1]], node.sequence[mut[1]]))
+    print("\nmutation %s%d%s corresponds to"%mut,
+          "parent state: %s, child state %s\n\n"%(node.up.sequence[mut[1]], node.sequence[mut[1]]))
 
 
     # plot the tree and label branches by mutation
-    plt.figure(figsize=(15,10))
+    plt.figure(figsize=(18,13))
+    plt.title("branches annotated by inferred mutations", fontsize=18)
     ax=plt.subplot(111)
+    ax.set_axis_off()
+    plt.title
     Phylo.draw(myTree.tree, label_func = lambda x:"", axes=ax,
-        branch_labels=lambda x:"_".join(map(lambda m: "%s%d%s"%m, x.mutations)))
+        branch_labels=lambda x:", ".join(map(lambda m: "%s%d%s"%m, x.mutations[:3]))
+                               +('...' if len(x.mutations)>3 else ""))
 
     # finally, we print the inferred GTR model
     print(myTree.gtr)

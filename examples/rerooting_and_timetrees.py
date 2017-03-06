@@ -11,6 +11,14 @@ try:
 except:
     pass
 
+def format_axes(fig, axs):
+    axs[0].set_axis_off()
+    axs[1].tick_params(labelsize=14)
+    axs[1].set_ylabel("root-to-tip distance", fontsize=16)
+    axs[1].set_xlabel("date", fontsize=16)
+    fig.tight_layout()
+
+
 if __name__ == '__main__':
 
     # load data and parse dates
@@ -34,15 +42,21 @@ if __name__ == '__main__':
                           aln = base_name+'.fasta', verbose = 0, dates = dates)
 
     # inititally the root if the tree is a mess:
-    fig, axs = plt.subplots(1,2, figsize=(12,6))
-    Phylo.draw(tt.tree, show_confidence=False, axes=axs[0], label_func =lambda x:x.name.split('|')[0])
+    fig, axs = plt.subplots(1,2, figsize=(18,9))
+    axs[0].set_title("Arbitrarily rooted tree", fontsize=18)
+    axs[1].set_title("Inverse divergence-time relationship", fontsize=18)
+    Phylo.draw(tt.tree, show_confidence=False, axes=axs[0], label_func=lambda x:x.name.split('|')[0] if x.is_terminal() else "")
     tt.plot_root_to_tip(ax=axs[-1])
+    format_axes(fig, axs)
 
     # lets reroot: we now have a positve correlation of root-to-tip distance with sampling date
     tt.reroot(root="best")
-    fig, axs = plt.subplots(1,2, figsize=(12,6))
-    Phylo.draw(tt.tree, show_confidence=False, axes=axs[0], label_func =lambda x:x.name.split('|')[0])
+    fig, axs = plt.subplots(1,2, figsize=(18,9))
+    axs[0].set_title("Tree rerooted by treetime", fontsize=18)
+    axs[1].set_title("Optimal divergence-time relationship", fontsize=18)
+    Phylo.draw(tt.tree, show_confidence=False, axes=axs[0], label_func=lambda x:x.name.split('|')[0] if x.is_terminal() else "")
     tt.plot_root_to_tip(ax=axs[-1])
+    format_axes(fig, axs)
 
     # rerooting can be done along with the tree time inference
     tt.run(root="best")
@@ -54,16 +68,18 @@ if __name__ == '__main__':
     # each node is now at a position that correspond to the given or inferred date
     # the units of branch length are still clock rate.
     print("clock rate: %1.5f"%tt.date2dist.slope)
-    fig, axs = plt.subplots(1,2, figsize=(12,6))
+    fig, axs = plt.subplots(1,2, figsize=(18,9))
     Phylo.draw(tt.tree, label_func=lambda x:'', show_confidence=False, axes=axs[0])
-    axs[1].set_title("units are substitutions")
+    axs[0].set_title("Tree: units are substitutions", fontsize=18)
     # we can convert the branch length to units in years and redraw
     tt.branch_length_to_years()
     Phylo.draw(tt.tree, label_func=lambda x:'', show_confidence=False, axes=axs[1])
-    axs[1].set_title("units are years")
+    axs[1].set_title("Tree: units are years", fontsize=18)
+    axs[0].tick_params(labelsize=14)
+    axs[1].tick_params(labelsize=14)
+    fig.tight_layout()
 
     # treetime implements a convenience function to plot timetrees
     from treetime.io import plot_vs_years
     plot_vs_years(tt, label_func=lambda x:"", show_confidence=False)
-
 
