@@ -338,16 +338,16 @@ class GTR(object):
                             if count: pair_count.append(((n1,n2), count))
         else: # enumerate state pairs of the sequence for large alphabets
             num_seqs = []
-            for seq in [seq_p, seq_ch]:
+            for seq in [seq_p, seq_ch]: # for each sequence (parent and child) construct a numerical sequence [0,5,3,1,2,3...]
                 tmp = np.ones_like(seq, dtype=int)
                 for ni,nuc in enumerate(self.alphabet):
-                    tmp[seq==nuc] = ni
-                    num_seqs.append(tmp)
-                    if ignore_gaps:
-                        pair_count = Counter([x for x in zip(num_seqs[0], num_seqs[1])
-                                              if (self.gap_index not in x)])
-                    else:
-                        pair_count = Counter(zip(num_seqs[0], num_seqs[1]))
+                    tmp[seq==nuc] = ni  # set each position corresponding to a state to the corresponding index
+                num_seqs.append(tmp)
+            if ignore_gaps:  # if gaps are ingnored skip positions where one or the other sequence is gapped
+                pair_count = Counter([x for x in zip(num_seqs[0], num_seqs[1])
+                                      if (self.gap_index not in x)])
+            else: # otherwise, just count
+                pair_count = Counter(zip(num_seqs[0], num_seqs[1]))
             pair_count = pair_count.items()
 
         return (np.array([x[0] for x in pair_count], dtype=int),    # [(child_nuc, parent_nuc),()...]
