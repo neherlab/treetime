@@ -93,6 +93,8 @@ class TreeAnc(object):
             return
 
         for node in self._tree.find_clades():
+            if hasattr(node, "sequence"):
+                node.__delattr__("sequence")
             node.original_length = node.branch_length
             node.mutation_length = node.branch_length
         self.prepare_tree()
