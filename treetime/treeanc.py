@@ -217,8 +217,10 @@ class TreeAnc(object):
             print('n_ij:', nij)
             print('T_i:', Ti)
         root_state = np.array([np.sum(self.tree.root.sequence==nuc) for nuc in alpha])
+
         self._gtr = GTR.infer(nij, Ti, root_state, fixed_pi=fixed_pi, pc=5.0,
-                              alphabet=self.gtr.alphabet, logger=self.logger)
+                              alphabet=self.gtr.alphabet, logger=self.logger,
+                              prof_map = self.gtr.profile_map)
         if normalized_rate:
             self.logger("TreeAnc.infer_gtr: setting overall rate to 1.0...", 2)
             self._gtr.mu=1.0
