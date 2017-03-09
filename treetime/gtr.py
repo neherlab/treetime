@@ -62,7 +62,7 @@ class GTR(object):
         # NEEDED TO BREAK RATE MATRIX DEGENERACY AND FORCE NP TO RETURN REAL ORTHONORMAL EIGENVECTORS
         tmp_rng_state = np.random.get_state()
         np.random.seed(12345)
-        self.break_degen = np.random.random(size=self.W.shape)*0.0001
+        self.break_degen = np.random.random(size=self.W.shape)*1e-7
         np.random.set_state(tmp_rng_state)
 
         # distance matrix (needed for topology optimization and for NJ)
@@ -216,13 +216,13 @@ class GTR(object):
          - alphabet(str): specify alphabet when applicable. If the alphabet specification
            is required, but no alphabet specified, the nucleotide will be used as default.
         """
+        from scipy import linalg as LA
         gtr = cls(**kwargs)
         gtr.logger("GTR: model inference ",1)
         dp = 1e-5
         Nit = 40
         pc_mat = pc*np.ones_like(nij)
-        pc_mat -= np.diag(np.diag(pc_mat))
-        from scipy import linalg as LA
+        np.fill_diagonal(pc_mat, 0.0)
         count = 0
         pi_old = np.zeros_like(Ti)
         if fixed_pi is None:
@@ -241,7 +241,7 @@ class GTR(object):
                                                     + ttconf.TINY_NUMBER + 2*pc_mat)
 
             np.fill_diagonal(W_ij, 0)
-            Wdiag = ((W_ij.T*pi).T).sum(axis=0)/pi
+            Wdiag = (((W_ij.T*pi).T).sum(axis=0)+ttconf.TINY_NUMBER)/(pi+ttconf.TINY_NUMBER)
             np.fill_diagonal(W_ij, Wdiag)
             Q1 = np.diag(pi).dot(W_ij)
             scale_factor = np.sum(np.diagonal(Q1*np.diag(pi)))
@@ -249,7 +249,7 @@ class GTR(object):
 
             W_ij = W_ij/scale_factor
             if fixed_pi is None:
-                pi = (np.sum(nij+pc_mat,axis=1)+root_state)/(mu*np.dot(W_ij,Ti)+root_state.sum()+np.sum(pc_mat, axis=1))
+                pi = (np.sum(nij+pc_mat,axis=1)+root_state)/(ttconf.TINY_NUMBER + mu*np.dot(W_ij,Ti)+root_state.sum()+np.sum(pc_mat, axis=1))
                 pi /= pi.sum()
             mu = nij.sum()/(ttconf.TINY_NUMBER + np.sum(pi * (W_ij.dot(Ti))))
         if count >= Nit:
