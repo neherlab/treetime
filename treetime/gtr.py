@@ -62,7 +62,7 @@ class GTR(object):
         # NEEDED TO BREAK RATE MATRIX DEGENERACY AND FORCE NP TO RETURN REAL ORTHONORMAL EIGENVECTORS
         tmp_rng_state = np.random.get_state()
         np.random.seed(12345)
-        self.break_degen = np.random.random(size=self.W.shape)*1e-7
+        self.break_degen = np.random.random(size=self.W.shape)*1e-6
         np.random.set_state(tmp_rng_state)
 
         # distance matrix (needed for topology optimization and for NJ)
@@ -285,6 +285,7 @@ class GTR(object):
         if not fixed_mu:
             self.mu *= scale_factor
         if (self.Q.sum(axis=0) < 1e-10).sum() <  self.alphabet.shape[0]: # fix failed
+            print ("Cannot fix the diagonal of the GTR rate matrix. Should be all zero", self.Q.sum(axis=0))
             import ipdb; ipdb.set_trace()
             raise ArithmeticError("Cannot fix the diagonal of the GTR rate matrix.")
 
