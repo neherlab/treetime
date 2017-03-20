@@ -320,6 +320,8 @@ class TreeAnc(object):
                 else:
                     N_diff += L
                 node.sequence = sequence
+                node.mutations = [(anc, pos, der) for pos, (anc, der) in
+                            enumerate(izip(node.up.sequence, node.sequence)) if anc!=der]
 
             node.profile = seq_utils.seq2prof(node.sequence, self.gtr.profile_map)
             del node.state # no need to store Fitch states
