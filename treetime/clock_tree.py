@@ -35,7 +35,7 @@ class ClockTree(TreeAnc):
         self.rel_tol_prune = ttconf.REL_TOL_PRUNE
         self.rel_tol_refine = ttconf.REL_TOL_REFINE
 
-        for node in self.tree.find_clades():
+        for node in self.tree.find_clades(order='postorder'):
             if node.name in self.date_dict:
                 node.numdate_given = self.date_dict[node.name]
                 node.bad_branch = False
@@ -195,7 +195,9 @@ class ClockTree(TreeAnc):
                     msgs_to_multiply = [node.date_constraint] if node.date_constraint is not None else []
                     msgs_to_multiply.extend([child.joint_pos_Lx for child in node.clades
                                              if child.joint_pos_Lx is not None])
+
                     # subtree likelihood given the node's constraint and child messages
+                    assert(len(msgs_to_multiply) != 0)
                     if len(msgs_to_multiply)>1: # combine the different msgs and constraints
                         subtree_distribution = Distribution.multiply(msgs_to_multiply)
                     else:
@@ -224,7 +226,7 @@ class ClockTree(TreeAnc):
 
         # go through the nodes from root towards the leaves:
         self.logger("ClockTree - Joint reconstruction:  Propagating root -> leaves...", 2)
-        for node in self.tree.find_clades(order='preorder'):  # children first, msg to parents
+        for node in self.tree.find_clades(order='preorder'):  # root first, msgs to children
 
             if node.up is None: # root node
                 continue # the position was already set on the previous step
