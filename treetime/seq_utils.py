@@ -1,13 +1,14 @@
 import numpy as np
 
 alphabets = {
-            "nuc": np.array(['A', 'C', 'G', 'T', '-']),
+            "nuc": np.array(['A', 'C', 'G', 'T']),
+            "nuc_gap": np.array(['A', 'C', 'G', 'T', '-']),
             "aa": np.array(['A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K',
                             'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V',
                             'W', 'Y', '*', '-'])}
 
 profile_maps = {
-'nuc':{
+'nuc_gap':{
     'A': np.array([1, 0, 0, 0, 0], dtype='float'),
     'C': np.array([0, 1, 0, 0, 0], dtype='float'),
     'G': np.array([0, 0, 1, 0, 0], dtype='float'),
@@ -26,6 +27,27 @@ profile_maps = {
     'B': np.array([0, 1, 1, 1, 0], dtype='float'),
     'V': np.array([1, 1, 1, 0, 0], dtype='float')
     },
+
+'nuc':{
+    'A': np.array([1, 0, 0, 0], dtype='float'),
+    'C': np.array([0, 1, 0, 0], dtype='float'),
+    'G': np.array([0, 0, 1, 0], dtype='float'),
+    'T': np.array([0, 0, 0, 1], dtype='float'),
+    '-': np.array([0, 0, 0, 0], dtype='float'), # gaps are comletely ignored in distance computations
+    'N': np.array([1, 1, 1, 1], dtype='float'),
+    'X': np.array([1, 1, 1, 1], dtype='float'),
+    'R': np.array([1, 0, 1, 0], dtype='float'),
+    'Y': np.array([0, 1, 0, 1], dtype='float'),
+    'S': np.array([0, 1, 1, 0], dtype='float'),
+    'W': np.array([1, 0, 0, 0], dtype='float'),
+    'K': np.array([0, 0, 0, 1], dtype='float'),
+    'M': np.array([1, 1, 0, 0], dtype='float'),
+    'D': np.array([1, 0, 1, 1], dtype='float'),
+    'H': np.array([1, 1, 0, 1], dtype='float'),
+    'B': np.array([0, 1, 1, 1], dtype='float'),
+    'V': np.array([1, 1, 1, 0], dtype='float')
+    },
+
 'aa':{
     'A': np.array([1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], dtype='float'), #Alanine         Ala
     'C': np.array([0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], dtype='float'), #Cysteine        Cys
@@ -134,3 +156,6 @@ def prof2seq(profile, gtr, sample_from_prof=False):
     prof_values = tmp_profile[np.arange(tmp_profile.shape[0]), idx]
 
     return seq, prof_values, idx
+
+
+    
