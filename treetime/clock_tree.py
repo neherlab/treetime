@@ -22,13 +22,13 @@ class ClockTree(TreeAnc):
     is converted to the most likely time of the internal nodes.
     """
 
-    def __init__(self,  dates=None, debug=False, *args, **kwargs):
+    def __init__(self,  dates=None, debug=False, real_dates=True, *args, **kwargs):
         super(ClockTree, self).__init__(*args, **kwargs)
         if dates is None:
             raise("ClockTree requires date constraints!")
 
         self.debug=debug
-
+        self.real_dates = real_dates
         self.date_dict = dates
         self.date2dist = None  # we do not know anything about the conversion
         self.n_integral = ttconf.NINTEGRAL
@@ -419,9 +419,9 @@ class ClockTree(TreeAnc):
         now = utils.numeric_date()
         for node in self.tree.find_clades():
             years_bp = self.date2dist.to_years(node.time_before_present)
-            if years_bp < 0:
+            if years_bp < 0 and self.real_dates:
                 if not hasattr(node, "bad_branch") or node.bad_branch==False:
-                    self.logger("ClockTree.convert_dates -- WARNING: The node is later than today, but it is not"
+                    self.logger("ClockTree.convert_dates -- WARNING: The node is later than today, but it is not "
                         "marked as \"BAD\", which indicates the error in the "
                         "likelihood optimization.",4 , warn=True)
                 else:
