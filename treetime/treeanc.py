@@ -696,7 +696,6 @@ class TreeAnc(object):
          - None, the phylogenetic tree is modified in-place.
         """
 
-
         self.logger("TreeAnc.optimize_branch_length: running branch length optimization...",1)
 
         verbose = 0

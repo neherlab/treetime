@@ -22,7 +22,7 @@ class TreeTime(ClockTree):
             do_marginal=False, long_branch = False, **kwargs):
         # determine how to reconstruct and sample sequences
         seq_kwargs = {"marginal":long_branch,
-                      "sample_from_root":True if long_branch else 'root'}
+                      "sample_from_profile":True if long_branch else 'root'}
 
         # initially, infer ancestral sequences and infer gtr model if desired
         self.optimize_sequences_and_branch_length(infer_gtr=infer_gtr,
@@ -43,7 +43,9 @@ class TreeTime(ClockTree):
         # infer time tree and optionally resolve polytomies
         self.logger("###TreeTime.run: INITIAL ROUND",0)
         self.make_time_tree(slope=fixed_slope, do_marginal=False, **kwargs)
-        self.LH = [[self.tree.sequence_joint_LH, self.tree.positional_joint_LH]]
+
+        self.LH = [[self.tree.sequence_marginal_LH if seq_kwargs['marginal'] else self.tree.sequence_joint_LH,
+                    self.tree.positional_joint_LH, 0.0]]
 
         # iteratively reconstruct ancestral sequences and re-infer
         # time tree to ensure convergence.
@@ -94,10 +96,11 @@ class TreeTime(ClockTree):
                 ndiff = self.infer_ancestral_sequences('ml',**seq_kwargs)
                 self.make_time_tree(slope=fixed_slope, do_marginal=False, **kwargs)
 
-            if Tc:
-                self.tree.coalescent_joint_LH = self.merger_model.total_LH()
+            self.tree.coalescent_joint_LH = self.merger_model.total_LH() if Tc else 0.0
 
-            self.LH.append([self.tree.sequence_joint_LH, self.tree.positional_joint_LH, self.tree.coalescent_joint_LH])
+
+            self.LH.append([self.tree.sequence_marginal_LH if seq_kwargs['marginal'] else self.tree.sequence_joint_LH,
+                            self.tree.positional_joint_LH, self.tree.coalescent_joint_LH])
             niter+=1
 
             if ndiff==0 & n_resolved==0:
