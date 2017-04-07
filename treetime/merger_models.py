@@ -85,14 +85,14 @@ class Coalescent(object):
         # note that we always have a positive merger rate by capping the
         # number of branches at 0.5 from below. in these regions, the
         # function should only be called if the tree changes.
-        return np.maximum(0.5,self.nbranches(t)-1.0)/self.Tc(t)
+        return 0.5*np.maximum(0.5,self.nbranches(t)-1.0)/self.Tc(t)
 
     def total_merger_rate(self, t):
         # not that we always have a positive merger rate by capping the
         # number of branches at 0.5 from below. in these regions, the
         # function should only be called if the tree changes.
         nlineages = np.maximum(0.5,self.nbranches(t)-1.0)
-        return nlineages*(nlineages+1)/self.Tc(t)
+        return 0.5*nlineages*(nlineages+1)/self.Tc(t)
 
 
     def cost(self, t_node, branch_length, multiplicity=2.0):
