@@ -1,14 +1,18 @@
 import numpy as np
 
 alphabets = {
-            "nuc": np.array(['A', 'C', 'G', 'T']),
-            "nuc_gap": np.array(['A', 'C', 'G', 'T', '-']),
-            "aa": np.array(['A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K',
-                            'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V',
-                            'W', 'Y', '*', '-']),
+            "nuc":           np.array(['A', 'C', 'G', 'T', '-']),
+
+            "nuc_simplified":np.array(['A', 'C', 'G', 'T']),
+
+            "aa":            np.array(['A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K',
+                                       'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V',
+                                       'W', 'Y', '*', '-']),
+
             "aa_simplified": np.array(['A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K',
-                            'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V',
-                            'W', 'Y'])}
+                                       'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V',
+                                       'W', 'Y'])
+            }
 
 profile_maps = {
 'nuc':{
