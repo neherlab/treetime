@@ -72,8 +72,9 @@ class TreeTime(ClockTree):
                     except:
                         pass
                 self.merger_model.attach_to_tree()
+
+            # estimate a relaxed molecular clock
             if relaxed_clock:
-                # estimate a relaxed molecular clock
                 self.relaxed_clock(**relaxed_clock)
 
             n_resolved=0
@@ -82,8 +83,11 @@ class TreeTime(ClockTree):
                 n_resolved = self.resolve_polytomies()
                 if n_resolved:
                     self.prepare_tree()
+                    #  NOTE that only the first branch len optimization is done with
+                    # marginal=True. Otherwise, the tree root is pushed back at each
+                    # iteration, which leads to awkward results
                     self.optimize_sequences_and_branch_length(prune_short=False,
-                                            max_iter=0,**seq_kwargs)
+                                            max_iter=0,marginal=False,sample_from_profile='root')
                     self.make_time_tree(slope=fixed_slope, do_marginal=False, **kwargs)
                     ndiff = self.infer_ancestral_sequences('ml',**seq_kwargs)
                 else:
