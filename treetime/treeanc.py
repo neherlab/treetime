@@ -65,15 +65,36 @@ class TreeAnc(object):
     @property
     def gtr(self):
         return self._gtr
-    @gtr.setter
-    def gtr(self, in_gtr):
+
+    def set_gtr(self, in_gtr, **kwargs):
+        """
+        Create new GTR model, if needed, and set the model as the attribute of the
+        TreeAnc class
+
+        Args:
+
+         - in_gtr(str or GTR): the gtr model to be assigned. If string is passed,
+         it is understood as the name of the standard GTR model, and is attempted to
+         be created through GTR.standard() interface. In case GTR instance is passed,
+         it is directly set as the class attribute
+
+        KWargs:
+
+         - All parameters needed for the gtr creation. If none passed, the default assumed.
+         Refer paricular GTR models for the exact parameter values
+        """
         if type(in_gtr)==str:
-            self._gtr = GTR.standard(model=in_gtr, logger=self.logger)
+            self._gtr = GTR.standard(model=in_gtr, **kwargs)
+            self._gtr.logger = self.logger
+
         elif isinstance(in_gtr, GTR):
             self._gtr = in_gtr
             self._gtr.logger=self.logger
         else:
             self.logger("TreeAnc.gtr_setter: can't interpret GTR model", 1, warn=True)
+            raise TypeError("Cannot set GTR model to theh TReeAnc class: GTR or "
+                "string expected")
+
         if self._gtr.ambiguous is None:
             self.fill_overhangs=False
 
