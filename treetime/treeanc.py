@@ -66,6 +66,13 @@ class TreeAnc(object):
     def gtr(self):
         return self._gtr
 
+    @gtr.setter
+    def gtr(self, value):
+        if not isinstance(value, GTR):
+            raise TypeError(" GTR instance expected")
+        self._gtr = value
+
+
     def set_gtr(self, in_gtr, **kwargs):
         """
         Create new GTR model, if needed, and set the model as the attribute of the
