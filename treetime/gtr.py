@@ -106,13 +106,15 @@ class GTR(object):
     def assign_rates(self, mu=1.0, pi=None, W=None):
         n = len(self.alphabet)
         self.mu = mu
+
         if pi is not None and len(pi)==n:
             Pi = np.array(pi)
         else:
             if pi is not None and len(pi)!=n:
                 self.logger("length of equilibrium frequency vector does not match alphabet length", 4, warn=True)
                 self.logger("Ignoring input equilibrium frequencies", 4, warn=True)
-            Pi = np.ones(size=(n))
+            Pi = np.ones(shape=(n,))
+
         self.Pi = Pi/np.sum(Pi)
 
         if W is None or W.shape!=(n,n):
