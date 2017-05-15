@@ -149,7 +149,7 @@ class GTR(object):
         return gtr
 
     @staticmethod
-    def create_standard_model(model, **kwargs):
+    def standard(model, **kwargs):
         """
         Create standard model of molecular evolution.
 
@@ -290,7 +290,7 @@ class GTR(object):
                 "".format(model))
 
     @classmethod
-    def create_random_model(cls, mu=1.0, alphabet='nuc'):
+    def random(cls, mu=1.0, alphabet='nuc'):
 
         alphabet=alphabets[alphabet]
         gtr = cls(alphabet)
@@ -301,51 +301,51 @@ class GTR(object):
         gtr.assign_rates(mu=mu, pi=pi, W=W)
         return gtr
 
-    @classmethod
-    def standard(cls, model='Jukes-Cantor', **kwargs):
-        """
-        Create one of the standard GTR models.
+    # @classmethod
+    # def standard(cls, model='Jukes-Cantor', **kwargs):
+    #     """
+    #     Create one of the standard GTR models.
 
-        Args:
+    #     Args:
 
-         - model (str): type of the model. Currently supported models are:
-         Jukes-Cantor, random.
+    #      - model (str): type of the model. Currently supported models are:
+    #      Jukes-Cantor, random.
 
-        KWargs:
+    #     KWargs:
 
-         - alphabet(str): specify alphabet when applicable. If the alphabet specification
-         is requred, but no alphabet specified, the nucleotide will be used as default.
+    #      - alphabet(str): specify alphabet when applicable. If the alphabet specification
+    #      is requred, but no alphabet specified, the nucleotide will be used as default.
 
-         - mu(double): general mutation rate. **NOTE** that the mutation rate is the
-         only object which sets the time-scale to the GTR model.
-         In other words, the unit of branch length and the unit of time are
-         connected through this variable. By default set to 1.
-        """
-        if 'alphabet' in kwargs and kwargs['alphabet'] in alphabets.keys():
-            alphabet = kwargs['alphabet']
-        elif model in ['aa', 'prot']:
-            alphabet='aa'
-        else:
-            alphabet = 'nuc'
+    #      - mu(double): general mutation rate. **NOTE** that the mutation rate is the
+    #      only object which sets the time-scale to the GTR model.
+    #      In other words, the unit of branch length and the unit of time are
+    #      connected through this variable. By default set to 1.
+    #     """
+    #     if 'alphabet' in kwargs and kwargs['alphabet'] in alphabets.keys():
+    #         alphabet = kwargs['alphabet']
+    #     elif model in ['aa', 'prot']:
+    #         alphabet='aa'
+    #     else:
+    #         alphabet = 'nuc'
 
-        if 'mu' in kwargs:
-            mu = kwargs['mu']
-        else:
-            mu = 1.0
+    #     if 'mu' in kwargs:
+    #         mu = kwargs['mu']
+    #     else:
+    #         mu = 1.0
 
-        gtr = cls(alphabet)
-        n = gtr.alphabet.shape[0]
+    #     gtr = cls(alphabet)
+    #     n = gtr.alphabet.shape[0]
 
-        if model in ['Jukes-Cantor', 'JC69', 'aa', 'prot']:
-            n = gtr.alphabet.shape[0]
-            W, pi = np.ones((n,n)), np.ones(n)
-        elif model=='random':
-            pi = 1.0*np.random.randint(0,100,size=(n))
-            W = 1.0*np.random.randint(0,100,size=(n,n)) # with gaps
-        else:
-            raise NotImplementedError("The specified evolutionary model is unsupported!")
-        gtr.assign_rates(mu=mu, pi=pi, W=W)
-        return gtr
+    #     if model in ['Jukes-Cantor', 'JC69', 'aa', 'prot']:
+    #         n = gtr.alphabet.shape[0]
+    #         W, pi = np.ones((n,n)), np.ones(n)
+    #     elif model=='random':
+    #         pi = 1.0*np.random.randint(0,100,size=(n))
+    #         W = 1.0*np.random.randint(0,100,size=(n,n)) # with gaps
+    #     else:
+    #         raise NotImplementedError("The specified evolutionary model is unsupported!")
+    #     gtr.assign_rates(mu=mu, pi=pi, W=W)
+    #     return gtr
 
     @classmethod
     def infer(cls, nij, Ti, root_state, fixed_pi=None, pc=5.0, **kwargs):
