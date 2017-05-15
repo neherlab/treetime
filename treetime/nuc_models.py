@@ -51,7 +51,7 @@ def K80(mu=1., kappa=0.1, **kwargs):
     gtr.assign_rates(mu=mu, pi=pi, W=W)
     return gtr
 
-def F81(mu=1.0, pi=np.array([0.25, 0.25, 0.25, 0.25]), alphabet="nuc"):
+def F81(mu=1.0, pi=np.array([0.25, 0.25, 0.25, 0.25]), alphabet="nuc", **kwargs):
     """
     Felsenstein 1981 model. Assumes non-equal concentrations across nucleotides,
     but the transition rate between all states is assumed to be equal. See
@@ -84,7 +84,7 @@ def F81(mu=1.0, pi=np.array([0.25, 0.25, 0.25, 0.25]), alphabet="nuc"):
     gtr.assign_rates(mu=mu, pi=pi, W=W)
     return gtr
 
-def HKY85(mu=1.0, pi=np.array([0.25, 0.25, 0.25, 0.25]), kappa=0.1):
+def HKY85(mu=1.0, pi=np.array([0.25, 0.25, 0.25, 0.25]), kappa=0.1, **kwargs):
     """
     Hasegawa, Kishino and Yano 1985 model. Allows different concentrations of the
     nucleotides (as in F81) + distinguishes between transition/transversionmutations
@@ -115,7 +115,7 @@ def HKY85(mu=1.0, pi=np.array([0.25, 0.25, 0.25, 0.25]), kappa=0.1):
     gtr.assign_rates(mu=mu, pi=pi, W=W)
     return gtr
 
-def T92(mu=1.0, pi_GC=0.5, kappa=0.1):
+def T92(mu=1.0, pi_GC=0.5, kappa=0.1, **kwargs):
     """
     Tamura 1992 model. Extending Kimura  (1980) model for the case where a
     G+C-content bias exists. Link:
@@ -144,7 +144,7 @@ def T92(mu=1.0, pi_GC=0.5, kappa=0.1):
     gtr.assign_rates(mu=mu, pi=pi, W=W)
     return gtr
 
-def TN93(mu=1.0, kappa1=1., kappa2=1., pi=np.array([0.25, 0.25, 0.25, 0.25])):
+def TN93(mu=1.0, kappa1=1., kappa2=1., pi=np.array([0.25, 0.25, 0.25, 0.25]), **kwargs):
     """
     Tamura and Nei 1993. The model distinguishes between the two different types of
     transition: (A <-> G) is allowed to have a different rate to (C<->T).
