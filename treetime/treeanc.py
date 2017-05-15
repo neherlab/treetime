@@ -42,9 +42,8 @@ class TreeAnc(object):
         else:
             self.tree = tree
 
-
+        self.aln = aln
         if aln is not None:
-            self.aln = aln
             self.attach_sequences_to_nodes()
 
     def logger(self, msg, level, warn=False):
