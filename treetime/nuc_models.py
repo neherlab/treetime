@@ -44,10 +44,10 @@ def K80(mu=1., kappa=0.1, **kwargs):
     """
 
     from gtr import GTR
-    num_chars = len(alphabets['nuc'])
-    pi = 1./np.ones(len(alphabets['nuc']))
+    num_chars = len(alphabets['nuc_simplified'])
+    pi = 1./np.ones(len(alphabets['nuc_simplified']))
     W = _create_transversion_transition_W(kappa)
-    gtr = GTR(alphabet=alphabets['nuc'])
+    gtr = GTR(alphabet=alphabets['nuc_simplified'])
     gtr.assign_rates(mu=mu, pi=pi, W=W)
     return gtr
 
@@ -104,14 +104,14 @@ def HKY85(mu=1.0, pi=np.array([0.25, 0.25, 0.25, 0.25]), kappa=0.1):
     """
 
     from gtr import GTR
-    num_chars = len(alphabets['nuc'])
+    num_chars = len(alphabets['nuc_simplified'])
     if num_chars != pi.shape[0] :
         raise ValueError("The number of the characters in the alphabet does not match the "
                          "shape of the concentration vector.")
 
     W = _create_transversion_transition_W(kappa)
     pi /= pi.sum()
-    gtr = GTR(alphabet=alphabets['nuc'])
+    gtr = GTR(alphabet=alphabets['nuc_simplified'])
     gtr.assign_rates(mu=mu, pi=pi, W=W)
     return gtr
 
@@ -140,7 +140,7 @@ def T92(mu=1.0, pi_GC=0.5, kappa=0.1):
     if pi_CG >=1.:
         raise ValueError("The relative CG content specified is larger than 1.0!")
     pi = np.array([(1-pi_CG)/2, pi_CG/2, pi_CG/2, (1-pi_CG)/2])
-    gtr = GTR(alphabet=alphabets['nuc'])
+    gtr = GTR(alphabet=alphabets['nuc_simplified'])
     gtr.assign_rates(mu=mu, pi=pi, W=W)
     return gtr
 
@@ -177,7 +177,7 @@ def TN93(mu=1.0, kappa1=1., kappa2=1., pi=np.array([0.25, 0.25, 0.25, 0.25])):
         [kappa1, kappa2, kappa1,  1]])
 
     pi /=pi.sum()
-    num_chars = len(alphabets['nuc'])
+    num_chars = len(alphabets['nuc_simplified'])
     if num_chars != pi.shape[0] :
         raise ValueError("The number of the characters in the alphabet does not match the "
                          "shape of the concentration vector.")
