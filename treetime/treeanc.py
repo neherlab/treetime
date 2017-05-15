@@ -21,7 +21,7 @@ class TreeAnc(object):
     alignment, making ancestral state inferrence
     """
 
-    def __init__(self, tree=None, aln=None, gtr=None, fill_overhangs=True, verbose = ttconf.VERBOSE):
+    def __init__(self, tree=None, aln=None, gtr=None, fill_overhangs=True, verbose = ttconf.VERBOSE, **kwargs):
         if tree is None:
             raise("TreeAnc requires a tree!")
         self.t_start = time.time()
@@ -35,7 +35,7 @@ class TreeAnc(object):
         # TODO: set explicitly
         self.ignore_gaps = True
         if gtr is not None:
-            self.gtr = gtr
+            self.set_gtr(gtr, **kwargs)
         if tree is None:
             self.logger("TreeAnc: tree loading failed! exiting",0)
             return
