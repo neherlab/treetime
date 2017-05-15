@@ -74,13 +74,15 @@ def F81(mu=1.0, pi=np.array([0.2, 0.2, 0.2, 0.2, 0.2]), alphabet="nuc", **kwargs
     from gtr import GTR
     num_chars = len(alphabets[alphabet])
 
-    if num_chars != pi.shape[0] :
+    pi = np.array(pi, dtype=float)
+
+    if num_chars != len(pi) :
         pi = np.ones((num_chars, ))
         print ("GTR: Warning!The number of the characters in the alphabet does not match the "
             "shape of the Pi vector. Pi concentration is set to flat.")
 
     W = np.ones((num_chars,num_chars))
-    pi /= pi.sum()
+    pi /= (1.0 * np.sum(pi))
     gtr = GTR(alphabet=alphabets[alphabet])
     gtr.assign_rates(mu=mu, pi=pi, W=W)
     return gtr
