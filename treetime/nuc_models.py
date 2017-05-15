@@ -51,7 +51,7 @@ def K80(mu=1., kappa=0.1, **kwargs):
     gtr.assign_rates(mu=mu, pi=pi, W=W)
     return gtr
 
-def F81(mu=1.0, pi=np.array([0.25, 0.25, 0.25, 0.25]), alphabet="nuc", **kwargs):
+def F81(mu=1.0, pi=np.array([0.2, 0.2, 0.2, 0.2, 0.2]), alphabet="nuc", **kwargs):
     """
     Felsenstein 1981 model. Assumes non-equal concentrations across nucleotides,
     but the transition rate between all states is assumed to be equal. See
@@ -75,8 +75,9 @@ def F81(mu=1.0, pi=np.array([0.25, 0.25, 0.25, 0.25]), alphabet="nuc", **kwargs)
     num_chars = len(alphabets[alphabet])
 
     if num_chars != pi.shape[0] :
-        raise ValueError("The number of the characters in the alphabet does not match the "
-            "shape of the concentration vector.")
+        pi = np.ones((num_chars, ))
+        print ("GTR: Warning!The number of the characters in the alphabet does not match the "
+            "shape of the Pi vector. Pi concentration is set to flat.")
 
     W = np.ones((num_chars,num_chars))
     pi /= pi.sum()
