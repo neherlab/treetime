@@ -41,6 +41,8 @@ class TreeAnc(object):
             return
         else:
             self.tree = tree
+
+
         if aln is not None:
             self.aln = aln
             self.attach_sequences_to_nodes()
@@ -147,6 +149,9 @@ class TreeAnc(object):
 
     def attach_sequences_to_nodes(self):
         # loop over tree,
+        if not self._tree:
+            self.logger("Failed to attach seqs to leaves: tree is not loaded!", 3, warn=True)
+            return
         failed_leaves= 0
         dic_aln = {k.name: seq_utils.seq2array(k.seq, fill_overhangs=self.fill_overhangs,
                                                ambiguous_character=self.gtr.ambiguous)
