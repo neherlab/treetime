@@ -21,7 +21,7 @@ class TreeAnc(object):
     alignment, making ancestral state inferrence
     """
 
-    def __init__(self, tree=None, aln=None, gtr=None, fill_overhangs=True, verbose = ttconf.VERBOSE):
+    def __init__(self, tree=None, aln=None, gtr=None, fill_overhangs=True, verbose = ttconf.VERBOSE, **kwargs):
         if tree is None:
             raise("TreeAnc requires a tree!")
         self.t_start = time.time()
@@ -35,14 +35,15 @@ class TreeAnc(object):
         # TODO: set explicitly
         self.ignore_gaps = True
         if gtr is not None:
-            self.gtr = gtr
+            self.set_gtr(gtr, **kwargs)
         if tree is None:
             self.logger("TreeAnc: tree loading failed! exiting",0)
             return
         else:
             self.tree = tree
+
+        self.aln = aln
         if aln is not None:
-            self.aln = aln
             self.attach_sequences_to_nodes()
 
     def logger(self, msg, level, warn=False):
@@ -65,15 +66,43 @@ class TreeAnc(object):
     @property
     def gtr(self):
         return self._gtr
+
     @gtr.setter
-    def gtr(self, in_gtr):
+    def gtr(self, value):
+        if not isinstance(value, GTR):
+            raise TypeError(" GTR instance expected")
+        self._gtr = value
+
+
+    def set_gtr(self, in_gtr, **kwargs):
+        """
+        Create new GTR model, if needed, and set the model as the attribute of the
+        TreeAnc class
+
+        Args:
+
+         - in_gtr(str or GTR): the gtr model to be assigned. If string is passed,
+         it is understood as the name of the standard GTR model, and is attempted to
+         be created through GTR.standard() interface. In case GTR instance is passed,
+         it is directly set as the class attribute
+
+        KWargs:
+
+         - All parameters needed for the gtr creation. If none passed, the default assumed.
+         Refer paricular GTR models for the exact parameter values
+        """
         if type(in_gtr)==str:
-            self._gtr = GTR.standard(model=in_gtr, logger=self.logger)
+            self._gtr = GTR.standard(model=in_gtr, **kwargs)
+            self._gtr.logger = self.logger
+
         elif isinstance(in_gtr, GTR):
             self._gtr = in_gtr
             self._gtr.logger=self.logger
         else:
             self.logger("TreeAnc.gtr_setter: can't interpret GTR model", 1, warn=True)
+            raise TypeError("Cannot set GTR model to theh TReeAnc class: GTR or "
+                "string expected")
+
         if self._gtr.ambiguous is None:
             self.fill_overhangs=False
 
@@ -119,6 +148,9 @@ class TreeAnc(object):
 
     def attach_sequences_to_nodes(self):
         # loop over tree,
+        if not self._tree:
+            self.logger("Failed to attach seqs to leaves: tree is not loaded!", 3, warn=True)
+            return
         failed_leaves= 0
         dic_aln = {k.name: seq_utils.seq2array(k.seq, fill_overhangs=self.fill_overhangs,
                                                ambiguous_character=self.gtr.ambiguous)
