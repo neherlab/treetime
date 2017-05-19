@@ -75,7 +75,7 @@ class TreeTime(ClockTree):
 
             # estimate a relaxed molecular clock
             if relaxed_clock:
-                self.relaxed_clock(**relaxed_clock)
+                self.relaxed_clock(**kwargs)
 
             n_resolved=0
             if resolve_polytomies:
@@ -90,14 +90,18 @@ class TreeTime(ClockTree):
                                             max_iter=0,marginal=False,sample_from_profile='root')
                     self.make_time_tree(slope=fixed_slope, do_marginal=False, **kwargs)
                     ndiff = self.infer_ancestral_sequences('ml',**seq_kwargs)
+                    #ndiff = self.infer_ancestral_sequences('ml', sample_from_profile='root')
                 else:
                     ndiff = self.infer_ancestral_sequences('ml',**seq_kwargs)
+                    #ndiff = self.infer_ancestral_sequences('ml',sample_from_profile='root')
                     self.make_time_tree(slope=fixed_slope, do_marginal=False, **kwargs)
             elif (Tc and (Tc is not None)) or relaxed_clock: # need new timetree first
                 self.make_time_tree(slope=fixed_slope, do_marginal=False, **kwargs)
                 ndiff = self.infer_ancestral_sequences('ml',**seq_kwargs)
+                #ndiff = self.infer_ancestral_sequences('ml',sample_from_profile='root')
             else: # no refinements, just iterate
                 ndiff = self.infer_ancestral_sequences('ml',**seq_kwargs)
+                #ndiff = self.infer_ancestral_sequences('ml',sample_from_profile='root')
                 self.make_time_tree(slope=fixed_slope, do_marginal=False, **kwargs)
 
             self.tree.coalescent_joint_LH = self.merger_model.total_LH() if Tc else 0.0
@@ -397,7 +401,7 @@ class TreeTime(ClockTree):
             print("ERROR. Did you run the corresponding inference (joint/marginal)?")
 
 
-    def relaxed_clock(self, slack=None, coupling=None):
+    def relaxed_clock(self, slack=None, coupling=None, **kwargs):
         """
         Allow the mutation rate to vary on the tree (relaxed molecular clock).
         Changes of the mutation rates from one branch to another are penalized.
@@ -437,6 +441,7 @@ class TreeTime(ClockTree):
                 else:
                     g_up = node.up.branch_length_interpolator.gamma
                 node.branch_length_interpolator.gamma = (coupling*g_up - 0.5*node._k1)/(coupling+node._k2)
+
 
 
 ###############################################################################
