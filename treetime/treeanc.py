@@ -197,7 +197,6 @@ class TreeAnc(object):
         self.reduced_alignment = np.array(tmp).T
 
         for p, pos in self.alignment_patterns.values():
-            print(p, pos)
             self.full_to_reduced_sequence_map[np.array(pos)]=p
 
         for p, val in self.reduced_to_full_sequence_map.iteritems():
@@ -336,10 +335,9 @@ class TreeAnc(object):
         for p, (anc, der) in enumerate(izip(node.up.short_sequence, node.short_sequence)):
             pat = self.position_to_pattern[p]
             if anc!=der:
-                print(p, anc, der, self.reduced_to_full_sequence_map[pat])
                 muts.extend([(anc, pos, der) for pos in self.reduced_to_full_sequence_map[pat]])
 
-        node.mutations = muts
+        return sorted(muts, key=lambda x:x[1])
 
 
     def expanded_sequence(self, node):
@@ -392,6 +390,7 @@ class TreeAnc(object):
         self.tree.root.short_sequence = np.array([k[np.random.randint(len(k)) if len(k)>1 else 0]
                                            for k in self.tree.root.state])
 
+        self.tree.root.sequence = self.expanded_sequence(self.tree.root)
 
 
         self.logger("TreeAnc._fitch_anc: Walking down the self.tree, generating sequences from the "
@@ -408,7 +407,7 @@ class TreeAnc(object):
                     N_diff += L
                 node.short_sequence = sequence
                 node.sequence = self.expanded_sequence(node)
-                self.assign_mutations(node)
+                node.mutations = self.get_mutations(node)
 
             node.profile = seq_utils.seq2prof(node.short_sequence, self.gtr.profile_map)
             del node.state # no need to store Fitch states
@@ -580,6 +579,7 @@ class TreeAnc(object):
         self.tree.sequence_LH = np.log(prof_vals) + tree.root.marginal_subtree_LH_prefactor
         self.tree.sequence_marginal_LH = (self.tree.sequence_LH*self.multiplicity).sum()
         self.tree.root.short_sequence = seq
+        self.tree.root.sequence = self.expanded_sequence(self.tree.root)
 
         # need this fake msg to account for the complementary subtree when traversing tree back
         tree.root.seq_msg_from_parent = np.repeat([self.gtr.Pi], len(tree.root.short_sequence), axis=0)
@@ -610,7 +610,7 @@ class TreeAnc(object):
                                                       sample_from_prof=other_sample_from_profile)
 
             node.sequence = self.expanded_sequence(node)
-            self.assign_mutations(node)
+            node.mutations = self.get_mutations(node)
 
             if hasattr(node, 'sequence') and node.short_sequence is not None:
                 N_diff += (seq!=node.short_sequence).sum()
@@ -707,6 +707,7 @@ class TreeAnc(object):
         self.tree.sequence_LH = np.choose(idxs, self.tree.root.joint_Lx.T)
         self.tree.sequence_joint_LH = (self.tree.sequence_LH*self.multiplicity).sum()
         self.tree.root.short_sequence = seq
+        self.tree.root.sequence = self.expanded_sequence(self.tree.root)
         self.tree.root.seq_idx = idxs
 
         self.logger("TreeAnc._ml_anc_joint: Walking down the tree, computing maximum likelihood sequences...",3)
@@ -730,7 +731,7 @@ class TreeAnc(object):
 
             node.short_sequence = tmp_sequence
             node.sequence = self.expanded_sequence(node)
-            self.assign_mutations(node)
+            node.mutations = self.get_mutations(node)
 
 
         self.logger("TreeAnc._ml_anc_joint: ...done", 3)
