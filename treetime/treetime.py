@@ -236,9 +236,9 @@ class TreeTime(ClockTree):
         poly_found=0
         for n in self.tree.find_clades():
             if len(n.clades) > 2:
-                proir_n_clades = len(n.clades)
+                prior_n_clades = len(n.clades)
                 self._poly(n, merge_compressed)
-                poly_found+=proir_n_clades - len(n.clades)
+                poly_found+=prior_n_clades - len(n.clades)
 
         obsolete_nodes = [n for n in self.tree.find_clades() if len(n.clades)==1 and n.up is not None]
         for node in obsolete_nodes:
@@ -323,7 +323,7 @@ class TreeTime(ClockTree):
                 new_node.up = clade
                 n1.up = new_node
                 n2.up = new_node
-                new_node.sequence = clade.sequence
+                new_node.short_sequence = clade.short_sequence
                 self.store_compressed_sequence_to_node(new_node)
 
                 new_node.mutations = []

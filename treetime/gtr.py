@@ -662,12 +662,14 @@ class GTR(object):
         Qt = self.v.dot(eLambdaT.dot(self.v_inv))   # This is P(nuc1 | given nuc_2)
         return np.maximum(0,Qt)
 
-    def sequence_logLH(self,seq):
+    def sequence_logLH(self,seq, pattern_multiplicity=None):
         """
         returns the loglikelihood of sampling a sequence from equilibrium frequency
         expects a sequence as numpy array
         """
-        return np.sum([np.sum((seq==state)*np.log(self.Pi[si]))
+        if pattern_multiplicity is None:
+            pattern_multiplicity = np.ones_like(seq, dtype=float)
+        return np.sum([np.sum((seq==state)*pattern_multiplicity*np.log(self.Pi[si]))
                       for si,state in enumerate(self.alphabet)])
 
 
