@@ -462,7 +462,7 @@ class GTR(object):
         return
 
 
-    def compress_sequence_pair(self, seq_p, seq_ch, ignore_gaps=False):
+    def compress_sequence_pair(self, seq_p, seq_ch, pattern_multiplicity=None, ignore_gaps=False):
         '''
         make a compressed representation of a pair of sequences only counting
         the number of times a particular pair of states (e.g. (A,T)) is observed
@@ -477,6 +477,9 @@ class GTR(object):
                       as indices in the alphabet
           - multiplicity: number of times a particular pair is observed
         '''
+        if pattern_multiplicity is None:
+            pattern_multiplicity = np.ones_like(seq_p, dtype=float)
+
         from collections import Counter
         if seq_ch.shape != seq_ch.shape:
             raise ValueError("GTR.compress_sequence_pair: Sequence lengths do not match!")
@@ -493,7 +496,7 @@ class GTR(object):
                 if (n1!=self.gap_index or (not ignore_gaps)):
                     for n2,nuc2 in enumerate(self.alphabet):
                         if (n2!=self.gap_index or (not ignore_gaps)):
-                            count = (bool_seqs_p[n1]&bool_seqs_ch[n2]).sum()
+                            count = ((bool_seqs_p[n1]&bool_seqs_ch[n2])*pattern_multiplicity).sum()
                             if count: pair_count.append(((n1,n2), count))
         else: # enumerate state pairs of the sequence for large alphabets
             num_seqs = []
@@ -541,7 +544,7 @@ class GTR(object):
             else:
                 return np.exp(logP)
 
-    def prob_t(self, seq_p, seq_ch, t, return_log=False, ignore_gaps=True):
+    def prob_t(self, seq_p, seq_ch, t, pattern_multiplicity = None, return_log=False, ignore_gaps=True):
         """
         Compute the probability to observe seq_ch after time t starting from seq_p.
         Args:
@@ -558,15 +561,18 @@ class GTR(object):
         Returns:
          - prob(np.array): resulting probability.
         """
-        seq_pair, multiplicity = self.compress_sequence_pair(seq_p, seq_ch, ignore_gaps=ignore_gaps)
+        seq_pair, multiplicity = self.compress_sequence_pair(seq_p, seq_ch,
+                                        pattern_multiplicity=pattern_multiplicity, ignore_gaps=ignore_gaps)
         return self.prob_t_compressed(seq_pair, multiplicity, t, return_log=return_log)
 
 
-    def optimal_t(self, seq_p, seq_ch, ignore_gaps=False):
+    def optimal_t(self, seq_p, seq_ch, pattern_multiplicity=None, ignore_gaps=False):
         '''
         Find the optimal distance between the two sequences
         '''
-        seq_pair, multiplicity = self.compress_sequence_pair(seq_p, seq_ch, ignore_gaps=ignore_gaps)
+        seq_pair, multiplicity = self.compress_sequence_pair(seq_p, seq_ch,
+                                                            multiplicity = pattern_multiplicity,
+                                                            ignore_gaps=ignore_gaps)
         return self.optimal_t_compressed(seq_pair, multiplicity)
 
 
