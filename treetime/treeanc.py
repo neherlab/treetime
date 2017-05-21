@@ -172,17 +172,17 @@ class TreeAnc(object):
 
     def make_reduced_alignment(self):
         from collections import defaultdict
+
         self.alignment_patterns = {}
-        self.reduced_to_full_sequence_map = defaultdict(list)
-        self.full_to_reduced_sequence_map = np.zeros(self.aln.get_alignment_length(), dtype=int)
         self.position_to_pattern = {}
+        self.full_to_reduced_sequence_map = np.zeros(self.aln.get_alignment_length(), dtype=int)
+        self.reduced_to_full_sequence_map = {}
+
         tmp = []
         aln_transpose = np.array([n.sequence for n in self.tree.find_clades()
                                   if hasattr(n, 'sequence')]).T
         for pi, pattern in enumerate(aln_transpose):
             str_pat = "".join(pattern)
-            self.reduced_to_full_sequence_map[str_pat].append(pi)
-
             if str_pat in self.alignment_patterns:
                 self.alignment_patterns[str_pat][1].append(pi)
             else:
@@ -199,8 +199,10 @@ class TreeAnc(object):
         for p, pos in self.alignment_patterns.values():
             self.full_to_reduced_sequence_map[np.array(pos)]=p
 
-        for p, val in self.reduced_to_full_sequence_map.iteritems():
-            self.reduced_to_full_sequence_map[p]=np.array(val, dtype=int)
+        for p, val in self.alignment_patterns.iteritems():
+            self.alignment_patterns[p]=(val[0], np.array(val[1], dtype=int))
+            self.reduced_to_full_sequence_map[val[0]]=np.array(val[1], dtype=int)
+
 
         seq_count = 0
         for n in self.tree.find_clades():
@@ -333,9 +335,8 @@ class TreeAnc(object):
     def get_mutations(self, node):
         muts = []
         for p, (anc, der) in enumerate(izip(node.up.cseq, node.cseq)):
-            pat = self.position_to_pattern[p]
             if anc!=der:
-                muts.extend([(anc, pos, der) for pos in self.reduced_to_full_sequence_map[pat]])
+                muts.extend([(anc, pos, der) for pos in self.reduced_to_full_sequence_map[p]])
 
         return sorted(muts, key=lambda x:x[1])
 
