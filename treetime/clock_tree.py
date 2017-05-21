@@ -265,7 +265,7 @@ class ClockTree(TreeAnc):
                 continue
             LH -= node.branch_length_interpolator(node.branch_length)
 
-        return LH + self.gtr.sequence_logLH(self.tree.root.short_sequence, pattern_multiplicity=self.multiplicity)
+        return LH + self.gtr.sequence_logLH(self.tree.root.cseq, pattern_multiplicity=self.multiplicity)
 
 
     def _ml_t_marginal(self, assign_dates=False):
