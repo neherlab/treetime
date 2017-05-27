@@ -114,7 +114,7 @@ class TreeAnc(object):
         from os.path import isfile
         if isinstance(in_tree, Phylo.BaseTree.Tree):
             self._tree = in_tree
-        elif type(in_tree)==str and isfile(in_tree):
+        elif type(in_tree) in [str, unicode] and isfile(in_tree):
             self._tree=Phylo.read(in_tree, 'newick')
         else:
             self.logger('TreeAnc: could not load tree! input was '+in_tree,1)
@@ -138,7 +138,7 @@ class TreeAnc(object):
         from Bio.Align import MultipleSeqAlignment
         if isinstance(in_aln, MultipleSeqAlignment):
             self._aln = in_aln
-        elif type(in_aln)==str and isfile(in_aln):
+        elif type(in_aln) in [str, unicode] and isfile(in_aln):
             self._aln=AlignIO.read(in_aln, 'fasta')
 
         if hasattr(self, '_tree'):
