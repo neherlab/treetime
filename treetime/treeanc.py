@@ -611,6 +611,7 @@ class TreeAnc(object):
             seq, prof_vals, idxs = seq_utils.prof2seq(node.marginal_profile, self.gtr,
                                                       sample_from_prof=other_sample_from_profile)
 
+            node.cseq = seq
             if final:
                 node.sequence = self.expanded_sequence(node)
                 node.mutations = self.get_mutations(node)
