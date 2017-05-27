@@ -140,6 +140,9 @@ class TreeAnc(object):
             self._aln = in_aln
         elif type(in_aln) in [str, unicode] and isfile(in_aln):
             self._aln=AlignIO.read(in_aln, 'fasta')
+        else:
+            self._aln = None
+            return
 
         if hasattr(self, '_tree'):
             self.attach_sequences_to_nodes()
