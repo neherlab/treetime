@@ -284,10 +284,15 @@ class TreeTime(ClockTree):
             """
             cost gained if the two nodes would have been connected.
             """
-            cg = sciopt.minimize_scalar(_c_gain,
+            try:
+                cg = sciopt.minimize_scalar(_c_gain,
                     bounds=[max(n1.time_before_present,n2.time_before_present), parent.time_before_present],
                     method='Bounded',args=(n1,n2, parent))
-            return cg['x'], - cg['fun']
+                return cg['x'], - cg['fun']
+            except e:
+                self.logger("TreeTime._poly.cost_gain: optimization of gain failed", 3, warn=True)
+                return parent.time_before_present, 0.0
+
 
         def merge_nodes(source_arr, isall=False):
             mergers = np.array([[cost_gain(n1,n2, clade) if i1<i2 else (0.0,-1.0)
