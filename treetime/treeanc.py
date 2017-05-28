@@ -186,6 +186,14 @@ class TreeAnc(object):
                                   if hasattr(n, 'sequence')]).T
         for pi, pattern in enumerate(aln_transpose):
             str_pat = "".join(pattern)
+            # if the column contains only one state and ambiguous nucleotides, replace
+            # those with the state in other strains right away
+            if hasattr(self.gtr, "ambiguous"):
+                unique_letters = list(np.unique(pattern))
+                if len(unique_letters)==2 and self.gtr.ambiguous in unique_letters:
+                    other = [c for c in unique_letters if c!=self.gtr.ambiguous][0]
+                    str_pat = str_pat.replace(self.gtr.ambiguous, other)
+
             if str_pat in self.alignment_patterns:
                 self.alignment_patterns[str_pat][1].append(pi)
             else:
