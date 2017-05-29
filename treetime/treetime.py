@@ -19,13 +19,17 @@ class TreeTime(ClockTree):
 
     def run(self, root=None, infer_gtr=True, relaxed_clock=False, n_iqd = None,
             resolve_polytomies=True, max_iter=0, Tc=None, fixed_slope=None,
-            do_marginal=False, long_branch = False, **kwargs):
+            do_marginal=False, use_input_branch_length = False, **kwargs):
         # determine how to reconstruct and sample sequences
-        seq_kwargs = {"marginal":long_branch,
-                      "sample_from_profile":True if long_branch else 'root'}
+        seq_kwargs = {"marginal":True if use_input_branch_length else False,
+                      "sample_from_profile":True if use_input_branch_length else 'root'}
 
         # initially, infer ancestral sequences and infer gtr model if desired
-        self.optimize_sequences_and_branch_length(infer_gtr=infer_gtr,
+        if use_input_branch_length:
+            self.infer_ancestral_sequences(infer_gtr=infer_gtr,
+                                           prune_short=True, **seq_kwargs)
+        else:
+            self.optimize_sequences_and_branch_length(infer_gtr=infer_gtr,
                                                   max_iter=2, prune_short=True, **seq_kwargs)
         avg_root_to_tip = np.mean([x.dist2root for x in self.tree.get_terminals()])
 
@@ -86,8 +90,12 @@ class TreeTime(ClockTree):
                     #  NOTE that only the first branch len optimization is done with
                     # marginal=True. Otherwise, the tree root is pushed back at each
                     # iteration, which leads to awkward results
-                    self.optimize_sequences_and_branch_length(prune_short=False,
+                    if use_input_branch_length:
+                        self.infer_ancestral_sequences(marginal=False,sample_from_profile='root')
+                    else:
+                        self.optimize_sequences_and_branch_length(prune_short=False,
                                             max_iter=0,marginal=False,sample_from_profile='root')
+
                     self.make_time_tree(slope=fixed_slope, do_marginal=False, **kwargs)
                     ndiff = self.infer_ancestral_sequences('ml',**seq_kwargs)
                 else:

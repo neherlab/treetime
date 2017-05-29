@@ -481,7 +481,7 @@ class GTR(object):
             pattern_multiplicity = np.ones_like(seq_p, dtype=float)
 
         from collections import Counter
-        if seq_ch.shape != seq_ch.shape:
+        if seq_ch.shape != seq_p.shape:
             raise ValueError("GTR.compress_sequence_pair: Sequence lengths do not match!")
 
         if len(self.alphabet)<10: # for small alphabet, repeatedly check array for all state pairs
@@ -571,7 +571,7 @@ class GTR(object):
         Find the optimal distance between the two sequences
         '''
         seq_pair, multiplicity = self.compress_sequence_pair(seq_p, seq_ch,
-                                                            multiplicity = pattern_multiplicity,
+                                                            pattern_multiplicity = pattern_multiplicity,
                                                             ignore_gaps=ignore_gaps)
         return self.optimal_t_compressed(seq_pair, multiplicity)
 

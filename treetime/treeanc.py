@@ -244,7 +244,6 @@ class TreeAnc(object):
         Set auxilliary parameters to every node of the tree.
         """
         self.tree.root.up = None
-        self.tree.root.dist2root = 0.0
         self.tree.root.bad_branch=self.tree.root.bad_branch if hasattr(self.tree.root, 'bad_branch') else False
         internal_node_count = 0
         for clade in self.tree.get_nonterminals(order='preorder'): # parents first
@@ -255,10 +254,16 @@ class TreeAnc(object):
             for c in clade.clades:
                 c.bad_branch=c.bad_branch if hasattr(c, 'bad_branch') else False
                 c.up = clade
+        self.calc_dist2root()
+        self._internal_node_count = max(internal_node_count, self._internal_node_count)
+
+    def calc_dist2root(self):
+        self.tree.root.dist2root = 0.0
+        for clade in self.tree.get_nonterminals(order='preorder'): # parents first
+            for c in clade.clades:
                 if not hasattr(c, 'mutation_length'):
                     c.mutation_length=c.branch_length
                 c.dist2root = c.up.dist2root + c.mutation_length
-        self._internal_node_count = max(internal_node_count, self._internal_node_count)
 
 ####################################################################
 ## END SET-UP
@@ -622,17 +627,17 @@ class TreeAnc(object):
             seq, prof_vals, idxs = seq_utils.prof2seq(node.marginal_profile, self.gtr,
                                                       sample_from_prof=other_sample_from_profile)
 
+            if hasattr(node, 'cseq') and node.cseq is not None:
+                N_diff += (seq!=node.cseq).sum()
+            else:
+                N_diff += L
+
+            #assign new sequence
             node.cseq = seq
             if final:
                 node.sequence = self.expanded_sequence(node)
                 node.mutations = self.get_mutations(node)
 
-            if hasattr(node, 'sequence') and node.cseq is not None:
-                N_diff += (seq!=node.cseq).sum()
-            else:
-                N_diff += L
-            #assign new sequence
-            node.cseq = seq
 
         # note that the root doesn't contribute to N_diff (intended, since root sequence is often ambiguous)
         self.logger("TreeAnc._ml_anc_marginal: ...done", 3)
@@ -766,11 +771,11 @@ class TreeAnc(object):
 
 
     def store_compressed_sequence_to_node(self, node):
-            seq_pairs, multiplicity = self.gtr.compress_sequence_pair(node.up.cseq,
-                                                                      node.cseq,
-                                                                      pattern_multiplicity = self.multiplicity,
-                                                                      ignore_gaps = self.ignore_gaps)
-            node.compressed_sequence = {'pair':seq_pairs, 'multiplicity':multiplicity}
+        seq_pairs, multiplicity = self.gtr.compress_sequence_pair(node.up.cseq,
+                                              node.cseq,
+                                              pattern_multiplicity = self.multiplicity,
+                                              ignore_gaps = self.ignore_gaps)
+        node.compressed_sequence = {'pair':seq_pairs, 'multiplicity':multiplicity}
 
 
     def store_compressed_sequence_pairs(self):
