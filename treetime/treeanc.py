@@ -837,7 +837,7 @@ class TreeAnc(object):
         # as branch lengths changed, the params must be fixed
         self.tree.root.up = None
         self.tree.root.dist2root = 0.0
-        self. ()
+        self._prepare_nodes()
 
 
     def optimal_branch_length(self, node):
