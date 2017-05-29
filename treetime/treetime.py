@@ -19,13 +19,17 @@ class TreeTime(ClockTree):
 
     def run(self, root=None, infer_gtr=True, relaxed_clock=False, n_iqd = None,
             resolve_polytomies=True, max_iter=0, Tc=None, fixed_slope=None,
-            do_marginal=False, long_branch = False, **kwargs):
+            do_marginal=False, use_input_branch_length = False, **kwargs):
         # determine how to reconstruct and sample sequences
-        seq_kwargs = {"marginal":long_branch,
-                      "sample_from_profile":True if long_branch else 'root'}
+        seq_kwargs = {"marginal":True if use_input_branch_length else False,
+                      "sample_from_profile":True if use_input_branch_length else 'root'}
 
         # initially, infer ancestral sequences and infer gtr model if desired
-        self.optimize_sequences_and_branch_length(infer_gtr=infer_gtr,
+        if use_input_branch_length:
+            self.infer_ancestral_sequences(infer_gtr=infer_gtr,
+                                           prune_short=True, **seq_kwargs)
+        else:
+            self.optimize_sequences_and_branch_length(infer_gtr=infer_gtr,
                                                   max_iter=2, prune_short=True, **seq_kwargs)
         avg_root_to_tip = np.mean([x.dist2root for x in self.tree.get_terminals()])
 
@@ -86,8 +90,12 @@ class TreeTime(ClockTree):
                     #  NOTE that only the first branch len optimization is done with
                     # marginal=True. Otherwise, the tree root is pushed back at each
                     # iteration, which leads to awkward results
-                    self.optimize_sequences_and_branch_length(prune_short=False,
+                    if use_input_branch_length:
+                        self.infer_ancestral_sequences(marginal=False,sample_from_profile='root')
+                    else:
+                        self.optimize_sequences_and_branch_length(prune_short=False,
                                             max_iter=0,marginal=False,sample_from_profile='root')
+
                     self.make_time_tree(slope=fixed_slope, do_marginal=False, **kwargs)
                     ndiff = self.infer_ancestral_sequences('ml',**seq_kwargs)
                     #ndiff = self.infer_ancestral_sequences('ml', sample_from_profile='root')
@@ -240,9 +248,9 @@ class TreeTime(ClockTree):
         poly_found=0
         for n in self.tree.find_clades():
             if len(n.clades) > 2:
-                proir_n_clades = len(n.clades)
+                prior_n_clades = len(n.clades)
                 self._poly(n, merge_compressed)
-                poly_found+=proir_n_clades - len(n.clades)
+                poly_found+=prior_n_clades - len(n.clades)
 
         obsolete_nodes = [n for n in self.tree.find_clades() if len(n.clades)==1 and n.up is not None]
         for node in obsolete_nodes:
@@ -288,10 +296,15 @@ class TreeTime(ClockTree):
             """
             cost gained if the two nodes would have been connected.
             """
-            cg = sciopt.minimize_scalar(_c_gain,
+            try:
+                cg = sciopt.minimize_scalar(_c_gain,
                     bounds=[max(n1.time_before_present,n2.time_before_present), parent.time_before_present],
                     method='Bounded',args=(n1,n2, parent))
-            return cg['x'], - cg['fun']
+                return cg['x'], - cg['fun']
+            except e:
+                self.logger("TreeTime._poly.cost_gain: optimization of gain failed", 3, warn=True)
+                return parent.time_before_present, 0.0
+
 
         def merge_nodes(source_arr, isall=False):
             mergers = np.array([[cost_gain(n1,n2, clade) if i1<i2 else (0.0,-1.0)
@@ -327,7 +340,7 @@ class TreeTime(ClockTree):
                 new_node.up = clade
                 n1.up = new_node
                 n2.up = new_node
-                new_node.sequence = clade.sequence
+                new_node.cseq = clade.cseq
                 self.store_compressed_sequence_to_node(new_node)
 
                 new_node.mutations = []

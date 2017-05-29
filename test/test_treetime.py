@@ -12,7 +12,7 @@ def import_short_test():
 def test_GTR():
     from treetime import GTR
     import numpy as np
-    for model in ['Jukes-Cantor', 'random']:
+    for model in ['Jukes-Cantor']:
         print('testing GTR, model:',model)
         myGTR = GTR.standard(model, alphabet='nuc')
         print('Frequency sum:', myGTR.Pi.sum())

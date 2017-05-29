@@ -74,9 +74,8 @@ def _layout(tree):
     yvalue = 0
     for node in tree.find_clades(order="preorder"):
         # set mutations
-        if node.up is not None:
-            node.muts = ', '.join([node.up.sequence[p] + str(p) + node.sequence[p]
-                for p in np.where(node.up.sequence != node.sequence)[0]])
+        if node.up is not None and hasattr(node, 'mutations'):
+            node.muts = node.mutations
 
         # set sequences
         node.strseq = "".join(node.sequence)

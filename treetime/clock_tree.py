@@ -84,7 +84,7 @@ class ClockTree(TreeAnc):
         self.logger("ClockTree.init_date_constraints...",2)
         self.tree.coalescent_joint_LH = 0
         if ancestral_inference or (not hasattr(self.tree.root, 'sequence')):
-            self.infer_ancestral_sequences('ml',sample_from_profile='root',**kwarks)
+            self.infer_ancestral_sequences('ml', marginal=False, sample_from_profile='root',**kwarks)
 
         # set the None  for the date-related attributes in the internal nodes.
         # make interpolation objects for the branches
@@ -252,20 +252,20 @@ class ClockTree(TreeAnc):
                     self.logger("ClockTree - Joint reconstruction: correcting rounding error of %s"%node.name, 4)
                     node.branch_length = 0
 
-        self.tree.positional_joint_LH = self.evalutate_likelihood()
+        self.tree.positional_joint_LH = self.evaluate_likelihood()
         # cleanup, if required
         if not self.debug:
             _cleanup()
 
 
-    def evalutate_likelihood(self):
+    def evaluate_likelihood(self):
         LH = 0
         for node in self.tree.find_clades(order='preorder'):  # children first, msg to parents
             if node.up is None: # root node
                 continue
             LH -= node.branch_length_interpolator(node.branch_length)
 
-        return LH + self.gtr.sequence_logLH(self.tree.root.sequence)
+        return LH + self.gtr.sequence_logLH(self.tree.root.cseq, pattern_multiplicity=self.multiplicity)
 
 
     def _ml_t_marginal(self, assign_dates=False):
