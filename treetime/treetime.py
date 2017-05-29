@@ -79,7 +79,7 @@ class TreeTime(ClockTree):
 
             # estimate a relaxed molecular clock
             if relaxed_clock:
-                self.relaxed_clock(**kwargs)
+                self.relaxed_clock(**relaxed_clock)
 
             n_resolved=0
             if resolve_polytomies:
