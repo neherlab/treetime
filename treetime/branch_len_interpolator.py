@@ -47,6 +47,8 @@ class BranchLenInterpolator (Distribution):
             grid.sort() # just for safety
 
         if not hasattr(node, 'compressed_sequence'):
+            #FIXME: this assumes node.sequence is set, but this might not be the case if
+            # ancestral reconstruction is run with final=False
             seq_pairs, multiplicity = self.gtr.compress_sequence_pair(node.up.sequence,
                                                                       node.sequence,
                                                                       ignore_gaps=ignore_gaps)
