@@ -853,7 +853,7 @@ class TreeAnc(object):
                                                     node.compressed_sequence['multiplicity'])
         else:
             new_len = self.gtr.optimal_t(parent.cseq, node.cseq,
-                                         multiplicity = self.multiplicity,
+                                         pattern_multiplicity=self.multiplicity,
                                          ignore_gaps=self.ignore_gaps)
         return new_len
 
