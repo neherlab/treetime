@@ -850,10 +850,11 @@ class TreeAnc(object):
         parent = node.up
         if hasattr(node, 'compressed_sequence'):
             new_len = self.gtr.optimal_t_compressed(node.compressed_sequence['pair'],
-                                                    node.compressed_sequence['multiplicity'])
+                                                    node.compressed_sequence['multiplicity'],
+                                                    multiplicity=self.multiplicity)
         else:
             new_len = self.gtr.optimal_t(parent.cseq, node.cseq,
-                                         multiplicity = self.multiplicity,
+                                         pattern_multiplicity=self.multiplicity,
                                          ignore_gaps=self.ignore_gaps)
         return new_len
 
