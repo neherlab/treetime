@@ -499,6 +499,7 @@ class GTR(object):
                             count = ((bool_seqs_p[n1]&bool_seqs_ch[n2])*pattern_multiplicity).sum()
                             if count: pair_count.append(((n1,n2), count))
         else: # enumerate state pairs of the sequence for large alphabets
+        #FIXME: make this work with pattern_multiplicity
             num_seqs = []
             for seq in [seq_p, seq_ch]: # for each sequence (parent and child) construct a numerical sequence [0,5,3,1,2,3...]
                 tmp = np.ones_like(seq, dtype=int)
