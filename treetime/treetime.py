@@ -18,7 +18,7 @@ class TreeTime(ClockTree):
         self.n_iqd = ttconf.NIQD
 
     def run(self, root=None, infer_gtr=True, relaxed_clock=False, n_iqd = None,
-            resolve_polytomies=True, max_iter=0, Tc=None, fixed_slope=None,
+            resolve_polytomies=True, max_iter=0, Tc=None, fixed_clock_rate=None,
             do_marginal=False, use_input_branch_length = False, **kwargs):
         # determine how to reconstruct and sample sequences
         seq_kwargs = {"marginal":True if use_input_branch_length else False,
@@ -46,7 +46,7 @@ class TreeTime(ClockTree):
 
         # infer time tree and optionally resolve polytomies
         self.logger("###TreeTime.run: INITIAL ROUND",0)
-        self.make_time_tree(slope=fixed_slope, do_marginal=False, **kwargs)
+        self.make_time_tree(clock_rate=fixed_clock_rate, do_marginal=False, **kwargs)
 
         self.LH = [[self.tree.sequence_marginal_LH if seq_kwargs['marginal'] else self.tree.sequence_joint_LH,
                     self.tree.positional_joint_LH, 0.0]]
@@ -96,21 +96,21 @@ class TreeTime(ClockTree):
                         self.optimize_sequences_and_branch_length(prune_short=False,
                                             max_iter=0,marginal=False,sample_from_profile='root')
 
-                    self.make_time_tree(slope=fixed_slope, do_marginal=False, **kwargs)
+                    self.make_time_tree(clock_rate=fixed_clock_rate, do_marginal=False, **kwargs)
                     ndiff = self.infer_ancestral_sequences('ml',**seq_kwargs)
                     #ndiff = self.infer_ancestral_sequences('ml', sample_from_profile='root')
                 else:
                     ndiff = self.infer_ancestral_sequences('ml',**seq_kwargs)
                     #ndiff = self.infer_ancestral_sequences('ml',sample_from_profile='root')
-                    self.make_time_tree(slope=fixed_slope, do_marginal=False, **kwargs)
+                    self.make_time_tree(clock_rate=fixed_clock_rate, do_marginal=False, **kwargs)
             elif (Tc and (Tc is not None)) or relaxed_clock: # need new timetree first
-                self.make_time_tree(slope=fixed_slope, do_marginal=False, **kwargs)
+                self.make_time_tree(clock_rate=fixed_clock_rate, do_marginal=False, **kwargs)
                 ndiff = self.infer_ancestral_sequences('ml',**seq_kwargs)
                 #ndiff = self.infer_ancestral_sequences('ml',sample_from_profile='root')
             else: # no refinements, just iterate
                 ndiff = self.infer_ancestral_sequences('ml',**seq_kwargs)
                 #ndiff = self.infer_ancestral_sequences('ml',sample_from_profile='root')
-                self.make_time_tree(slope=fixed_slope, do_marginal=False, **kwargs)
+                self.make_time_tree(clock_rate=fixed_clock_rate, do_marginal=False, **kwargs)
 
             self.tree.coalescent_joint_LH = self.merger_model.total_LH() if Tc else 0.0
 
@@ -127,7 +127,7 @@ class TreeTime(ClockTree):
         # this will set marginal_pos_LH, which to be used as error bar estimations
         if do_marginal:
             self.logger("###TreeTime.run: FINAL ROUND - confidence estimation via marginal reconstruction", 0)
-            self.make_time_tree(slope=fixed_slope, do_marginal=do_marginal, **kwargs)
+            self.make_time_tree(clock_rate=fixed_clock_rate, do_marginal=do_marginal, **kwargs)
 
 
 
@@ -144,15 +144,15 @@ class TreeTime(ClockTree):
         terminals = self.tree.get_terminals()
         if reroot:
             self.reroot(root=reroot)
-            icpt, slope = self.tree.root._alpha, self.tree.root._beta
+            icpt, clock_rate = self.tree.root._alpha, self.tree.root._beta
         else:
             tmp_date2dist = utils.DateConversion.from_tree(self.tree)
-            icpt, slope = tmp_date2dist.intercept, tmp_date2dist.slope
+            icpt, clock_rate = tmp_date2dist.intercept, tmp_date2dist.clock_rate
 
         res = {}
         for node in terminals:
             if hasattr(node, 'numdate_given') and  (node.numdate_given is not None):
-                res[node] = node.dist2root - slope*np.mean(node.numdate_given) - icpt
+                res[node] = node.dist2root - clock_rate*np.mean(node.numdate_given) - icpt
         residuals = np.array(res.values())
         iqd = np.percentile(residuals,75) - np.percentile(residuals,25)
         for node,r in res.iteritems():
@@ -595,18 +595,18 @@ class TreeTime(ClockTree):
                 # and set the position for the best R2 value
                 node._R2_delta_x = L - max_points[np.argmax(R2s)]
 
-                # for this position, define the slope and intercept:
+                # for this position, define the clock_rate and intercept:
                 node._beta = ((L - node._R2_delta_x) * (N * C2 - sum_ti * A2) + (N*C1-sum_ti*A1)) / time_variance / N**2
                 node._alpha = (L - node._R2_delta_x) * A2 / N  + (A1 - node._beta * sum_ti) / N
 
             if node.up is None:
-                self.logger("TreeTime.find_best_root_and_regression: Initial root: R2:%f\tslope:%f"%(best_root._R2, best_root._beta),3)
+                self.logger("TreeTime.find_best_root_and_regression: Initial root: R2:%f\tclock_rate:%f"%(best_root._R2, best_root._beta),3)
             elif (node._R2 > best_root._R2 and node._beta>0) or best_root._beta<0:
                 best_root = node
-                self.logger("TreeTime.find_best_root_and_regression: Better root found: R2:%f\tslope:%f\tbranch_displacement:%f"
+                self.logger("TreeTime.find_best_root_and_regression: Better root found: R2:%f\tclock_rate:%f\tbranch_displacement:%f"
                             %(best_root._R2, best_root._beta, (best_root._R2_delta_x) / ( best_root.branch_length + self.one_mutation)),4)
 
-        self.logger("TreeTime.find_best_root_and_regression: Best root: R2:%f\tslope:%f\tbranch_displacement:%f"
+        self.logger("TreeTime.find_best_root_and_regression: Best root: R2:%f\tclock_rate:%f\tbranch_displacement:%f"
                     %(best_root._R2, best_root._beta, (best_root._R2_delta_x) / ( best_root.branch_length + self.one_mutation)),3)
         return best_root, best_root._alpha, best_root._beta
 
@@ -667,7 +667,7 @@ if __name__=="__main__":
 
     # this example uses a fixed clock rate of 0.003
     myTree.run(root='clock_filter', relaxed_clock=False, max_iter=2, plot_rtt=True,
-               resolve_polytomies=True, Tc=0.05, n_iqd=2, fixed_slope=0.003, do_marginal=True)
+               resolve_polytomies=True, Tc=0.05, n_iqd=2, fixed_clock_rate=0.003, do_marginal=True)
 
     # draw phylogenetic tree in one panel, marginal distributions in the other
     tree_layout(myTree.tree)
@@ -693,7 +693,7 @@ if __name__=="__main__":
 
     # plot skyline, i.e. inverse coalescent rate
     plt.figure()
-    skyline = myTree.merger_model.skyline(gen = 50/myTree.date2dist.slope,
+    skyline = myTree.merger_model.skyline(gen = 50/myTree.date2dist.clock_rate,
                                           to_numdate = myTree.date2dist.to_numdate)
     plt.plot(skyline.x, skyline.y)
 

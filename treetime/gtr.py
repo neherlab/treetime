@@ -56,7 +56,7 @@ class GTR(object):
         # stationary states of the characters
         self.Pi = np.zeros(n_states)
 
-        # mutation rate, scaling factor
+        # substitution rate, scaling factor
         self.mu = 1.0
         # eigendecomposition of the GTR matrix
         # Pi.dot(W) = v.dot(eigenvals).dot(v_inv)
@@ -85,7 +85,7 @@ class GTR(object):
         '''
         string representation of the GTR model for pretty printing
         '''
-        eq_freq_str = "Mutation rate (mu): "+str(np.round(self.mu,6))+'\n'
+        eq_freq_str = "Substitution rate (mu): "+str(np.round(self.mu,6))+'\n'
 
         eq_freq_str += "\nEquilibrium frequencies (pi_i):\n"
         for a,p in zip(self.alphabet, self.Pi):
@@ -119,8 +119,8 @@ class GTR(object):
 
         if W is None or W.shape!=(n,n):
             if (W is not None) and W.shape!=(n,n):
-                self.logger("Mutation matrix size does not match alphabet size", 4, warn=True)
-                self.logger("Ignoring input mutation matrix", 4, warn=True)
+                self.logger("Substitution matrix size does not match alphabet size", 4, warn=True)
+                self.logger("Ignoring input substitution matrix", 4, warn=True)
             # flow matrix
             W = np.ones((n,n))
             np.fill_diagonal(self.W, - ((self.W).sum(axis=0) - 1))
@@ -138,8 +138,8 @@ class GTR(object):
         Create a GTR model by specifying the matrix explicitly
 
         Args:
-         - mu (float): mutation rate
-         - W (nxn matrix): mutation matrix
+         - mu (float): substitution rate
+         - W (nxn matrix): substitution matrix
          - pi (n vector): equilibrium frequencies
 
         KWargs:
@@ -175,7 +175,7 @@ class GTR(object):
 
             Kwargs:
 
-             - mu(float)  - specify the mutation rate
+             - mu(float)  - specify the substitution rate
 
              - alphabet(str) - alphabet. By default 'nuc' is used (all gaps are ignored).
              specify 'nuc_gap' to treat gaps as characters
@@ -192,7 +192,7 @@ class GTR(object):
 
             Kwargs:
 
-             - mu(float): overall mutation rate
+             - mu(float): overall substitution rate
 
              - kappa(float): ratio of transversion/transition rates
 
@@ -208,7 +208,7 @@ class GTR(object):
 
             Args:
 
-             - mu(float): mutation rate
+             - mu(float): substitution rate
 
              - pi(numpy array): nucleotide concentrations
 
@@ -219,7 +219,7 @@ class GTR(object):
 
          --- HKY85:
             Hasegawa, Kishino and Yano 1985 model. Allows different concentrations of the
-            nucleotides (as in F81) + distinguishes between transition/transversionmutations
+            nucleotides (as in F81) + distinguishes between transition/transversionsubstitutions
             (similar to K80). Link:
             Hasegawa, Kishino, Yano (1985), J. Mol. Evol. 22 (2): 160–174. doi:10.1007/BF02101694
 
@@ -227,11 +227,11 @@ class GTR(object):
 
             Args:
 
-             - mu(float): mutation rate
+             - mu(float): substitution rate
 
              - pi(numpy array): nucleotide concentrations
 
-             - kappa(float): ratio of transversion/transition mutation rates
+             - kappa(float): ratio of transversion/transition substitution rates
 
 
 
@@ -244,7 +244,7 @@ class GTR(object):
 
             Args:
 
-             - mu(float): mutation rate
+             - mu(float): substitution rate
 
              - pi_GC(float): relative GC content
 
@@ -269,7 +269,7 @@ class GTR(object):
 
             Note:
 
-             - Rate of A<-->G mutation is set to one. All other rates (kappa1, kappa2)
+             - Rate of A<-->G substitution is set to one. All other rates (kappa1, kappa2)
             are specified relative to this rate
         """
 
@@ -318,7 +318,7 @@ class GTR(object):
     #      - alphabet(str): specify alphabet when applicable. If the alphabet specification
     #      is requred, but no alphabet specified, the nucleotide will be used as default.
 
-    #      - mu(double): general mutation rate. **NOTE** that the mutation rate is the
+    #      - mu(double): general substitution rate. **NOTE** that the substitution rate is the
     #      only object which sets the time-scale to the GTR model.
     #      In other words, the unit of branch length and the unit of time are
     #      connected through this variable. By default set to 1.
@@ -356,7 +356,7 @@ class GTR(object):
         character. The basic equation that is being solved is
             n_ij = pi_i W_ij T_j
         where n_ij are the transitions, pi_i are the equilibrium state frequencies,
-        W_ij is the "mutation attempt matrix", while T_i is the time on the tree
+        W_ij is the "substitution attempt matrix", while T_i is the time on the tree
         spent in character state i. To regularize the process, we add pseudocounts and
         also need to account for the fact that the root of the tree is in a particular
         state. the modified equation is
@@ -369,7 +369,7 @@ class GTR(object):
          - root_state( n vector): the number of characters in state i in the sequence
             of the root node.
          - pc (float): pseudocounts, this determines the lower cutoff on the rate when
-            no mutation are observed
+            no substitution are observed
         KWargs:
          - alphabet(str): specify alphabet when applicable. If the alphabet specification
            is required, but no alphabet specified, the nucleotide will be used as default.
@@ -676,7 +676,7 @@ class GTR(object):
 
     def save_to_npz(self, outfile):
         full_gtr = self.mu * np.dot(self.Pi, self.W)
-        desc=np.array(["GTR matrix description\n", "Mutation rate: " + str(self.mu)])
+        desc=np.array(["GTR matrix description\n", "Substitution rate: " + str(self.mu)])
         np.savez(outfile,   description=desc,
                             full_gtr=full_gtr,
                             char_dist=self.Pi,
@@ -685,7 +685,7 @@ class GTR(object):
     def save_to_json(self, zip):
         d = {
         "full_gtr": self.mu * np.dot(self.Pi, self.W),
-        "Mutation rate" : mu,
+        "Substitution rate" : mu,
         "Equilibrium character composition": self.Pi,
         "Flow rate matrix": self.W
         }

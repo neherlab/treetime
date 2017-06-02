@@ -61,11 +61,11 @@ class ClockTree(TreeAnc):
         if val is None:
             self._date2dist = None
         else:
-            self.logger("ClockTime.date2dist: Setting new date to branchlength conversion. slope=%f, R^2=%.4f"%(val.slope, val.r_val**2), 2)
+            self.logger("ClockTime.date2dist: Setting new molecular clock. rate=%f, R^2=%.4f"%(val.clock_rate, val.r_val**2), 2)
             self._date2dist = val
 
 
-    def init_date_constraints(self, ancestral_inference=False, slope=None, **kwarks):
+    def init_date_constraints(self, ancestral_inference=False, clock_rate=None, **kwarks):
         """
         Get the conversion coefficients between the dates and the branch
         lengths as they are used in ML computations. The conversion formula is
@@ -103,7 +103,7 @@ class ClockTree(TreeAnc):
                 node.branch_length_interpolator = BranchLenInterpolator(node, self.gtr, one_mutation=self.one_mutation)
                 node.branch_length_interpolator.merger_cost = merger_cost
                 node.branch_length_interpolator.gamma = gamma
-        self.date2dist = utils.DateConversion.from_tree(self.tree, slope)
+        self.date2dist = utils.DateConversion.from_tree(self.tree, clock_rate)
 
         # make node distribution objects
         for node in self.tree.find_clades(order="postorder"):
@@ -475,8 +475,8 @@ if __name__=="__main__":
                         aln = base_name+'.fasta', verbose = 6, dates = dates)
 
     myTree.optimize_seq_and_branch_len(prune_short=True)
-    # fix slope -- to test
-    myTree.make_time_tree(slope=0.003)
+    # fix clock_rate -- to test
+    myTree.make_time_tree(clock_rate=0.003)
 
     plt.figure()
     x = np.linspace(0,0.05,100)

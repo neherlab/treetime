@@ -15,7 +15,7 @@ class DateConversion(object):
     """
     def __init__(self):
 
-        self.slope = 0
+        self.clock_rate = 0
         self.intercept = 0
         self.r_val = 0
         self.p_val = 0
@@ -23,12 +23,12 @@ class DateConversion(object):
 
     def __str__(self):
         outstr = ('Root-Tip-Regression:\n --rate:\t%f\n --R^2:\t\t%f\n'
-                  %(self.slope, self.r_val**2))
+                  %(self.clock_rate, self.r_val**2))
         return outstr
 
 
     @classmethod
-    def from_tree(cls, t, slope=None):
+    def from_tree(cls, t, clock_rate=None):
         """
         Create the conversion object automatically from the tree
         """
@@ -43,23 +43,23 @@ class DateConversion(object):
         dates = np.array(dates)
         dc = cls()
 
-        if slope is None:
+        if clock_rate is None:
             if len(dates) < 3:
                 raise(RuntimeError("There are to few dates set at the leaves of the tree."
                     " Cannot make the conversion function. Aborting."))
             # simple regression
-            dc.slope,\
+            dc.clock_rate,\
                 dc.intercept,\
                 dc.r_val,\
                 dc.p_val,\
                 dc.sigma = stats.linregress(dates[:, 0], dates[:, 1])
         else:
-            dc.slope = slope # slope is given
-            dc.intercept = np.mean(dates[:,1]) - slope * np.mean(dates[:,0])
+            dc.clock_rate = clock_rate # clock_rate is given
+            dc.intercept = np.mean(dates[:,1]) - clock_rate * np.mean(dates[:,0])
             dc.r_val = np.corrcoef(dates[:,1], dates[:,0])[0,1]
 
         # set the root-mean-square deviation:
-        dc.rms = np.sqrt(np.sum((dates[:, 1] - (dc.intercept + dc.slope * dates[:, 0]))**2) / dates.shape[0])
+        dc.rms = np.sqrt(np.sum((dates[:, 1] - (dc.intercept + dc.clock_rate * dates[:, 0]))**2) / dates.shape[0])
         return dc
 
     def get_branch_len(self, date1, date2):
@@ -74,20 +74,20 @@ class DateConversion(object):
          - branch length (double): Branch length, assuming that the dependence
          between the node date and the node depth in the the tree is linear.
         """
-        return abs(date1 - date2) * self.slope
+        return abs(date1 - date2) * self.clock_rate
 
     def get_time_before_present(self, numdate):
         """
         Convert the numeric date to the branch-len scale
         """
-        return (numeric_date() - numdate) * abs(self.slope)
+        return (numeric_date() - numdate) * abs(self.clock_rate)
 
     def to_years(self, abs_t):
         """
         Convert the time before present measured in branch length units to years
 
         """
-        return abs_t / abs(self.slope)
+        return abs_t / abs(self.clock_rate)
 
     def to_numdate(self, tbp):
         """

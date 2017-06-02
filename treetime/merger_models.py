@@ -211,7 +211,7 @@ class Coalescent(object):
                         [np.sum(ev[(et>=l)&(et<u)])/(u-l+dt/nmergers)
                         for u,l in zip(mid_points[:-2*n_points],mid_points[2*n_points:])])
 
-        return interp1d(self.date2dist.to_numdate(self.Tc_inv.x), gen/self.date2dist.slope/self.Tc_inv.y)
+        return interp1d(self.date2dist.to_numdate(self.Tc_inv.x), gen/self.date2dist.clock_rate/self.Tc_inv.y)
 
 
     def skyline_inferred(self, gen=1.0, confidence=False):
@@ -225,7 +225,7 @@ class Coalescent(object):
                    hence this needs to be the inverse substitution rate per generation
             confidence -- False, or number of standard deviations of confidence intervals
         '''
-        skyline = interp1d(self.date2dist.to_numdate(self.Tc.x[1:-1]), gen/self.date2dist.slope*self.Tc.y[1:-1])
+        skyline = interp1d(self.date2dist.to_numdate(self.Tc.x[1:-1]), gen/self.date2dist.clock_rate*self.Tc.y[1:-1])
         if confidence and hasattr(self, 'confidence'):
             conf = [skyline.y*np.exp(-confidence*self.confidence), skyline.y*np.exp(confidence*self.confidence)]
             return skyline, conf

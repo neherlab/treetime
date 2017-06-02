@@ -44,8 +44,8 @@ if __name__ == '__main__':
     # scatter root to tip divergence vs sampling date
     ebola.plot_root_to_tip(add_internal=True)
     t=np.array([2014,2016])
-    plt.plot(t, t*ebola.date2dist.slope+ ebola.date2dist.intercept,
-             label="y = %1.5f t%1.3f"%(ebola.date2dist.slope, ebola.date2dist.intercept))
+    plt.plot(t, t*ebola.date2dist.clock_rate+ ebola.date2dist.intercept,
+             label="y = %1.5f t%1.3f"%(ebola.date2dist.clock_rate, ebola.date2dist.intercept))
     plt.legend(loc=2)
 
     # rescale branch length to years and plot in axis 0

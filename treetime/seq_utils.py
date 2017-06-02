@@ -3,13 +3,13 @@ import numpy as np
 alphabets = {
             "nuc":           np.array(['A', 'C', 'G', 'T', '-']),
 
-            "nuc_simplified":np.array(['A', 'C', 'G', 'T']),
+            "nuc_nogap":np.array(['A', 'C', 'G', 'T']),
 
             "aa":            np.array(['A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K',
                                        'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V',
                                        'W', 'Y', '*', '-']),
 
-            "aa_simplified": np.array(['A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K',
+            "aa_nogap": np.array(['A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K',
                                        'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V',
                                        'W', 'Y'])
             }
@@ -35,7 +35,7 @@ profile_maps = {
     'V': np.array([1, 1, 1, 0, 0], dtype='float')
     },
 
-'nuc_simplified':{
+'nuc_nogap':{
     'A': np.array([1, 0, 0, 0], dtype='float'),
     'C': np.array([0, 1, 0, 0], dtype='float'),
     'G': np.array([0, 0, 1, 0], dtype='float'),
@@ -83,7 +83,7 @@ profile_maps = {
     'Z': np.array([0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0], dtype='float'), #Glutamine/Glutamic Acid     Glx
     },
 
-'aa_simplified':{
+'aa_nogap':{
     'A': np.array([1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], dtype='float'), #Alanine         Ala
     'C': np.array([0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], dtype='float'), #Cysteine        Cys
     'D': np.array([0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], dtype='float'), #Aspartic AciD   Asp

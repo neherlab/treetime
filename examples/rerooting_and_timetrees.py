@@ -67,7 +67,7 @@ if __name__ == '__main__':
 
     # each node is now at a position that correspond to the given or inferred date
     # the units of branch length are still clock rate.
-    print("clock rate: %1.5f"%tt.date2dist.slope)
+    print("clock rate: %1.5f"%tt.date2dist.clock_rate)
     fig, axs = plt.subplots(1,2, figsize=(18,9))
     Phylo.draw(tt.tree, label_func=lambda x:'', show_confidence=False, axes=axs[0])
     axs[0].set_title("Tree: units are substitutions", fontsize=18)
