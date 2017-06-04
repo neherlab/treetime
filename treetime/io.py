@@ -57,9 +57,7 @@ def plot_vs_years(my_clocktree, years = 1, ax=None, confidence=None, **kwargs):
             print("expected confidence interval as in (0.05, 0.95)")
         else:
             for n in my_clocktree.tree.find_clades():
-                if n.marginal_inverse_cdf=="delta":
-                    continue
-                pos = my_clocktree.date2dist.to_numdate(n.marginal_inverse_cdf(np.array(confidence)))
+                pos = my_clocktree.get_confidence(n, confidence)
                 ax.plot(pos-offset, np.ones(len(pos))*n.ypos, lw=3, c=(0.5,0.5,0.5))
 
 

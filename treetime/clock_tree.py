@@ -451,6 +451,14 @@ class ClockTree(TreeAnc):
             if n.up is not None:
                 n.branch_length = n.numdate - n.up.numdate
 
+    def get_confidence(self, node, interval):
+        if hasattr(node, "marginal_inverse_cdf"):
+            if node.marginal_inverse_cdf=="delta":
+                return np.array([node.numdate, node.numdate])
+            else:
+                return self.date2dist.to_numdate(node.marginal_inverse_cdf(np.array(interval)))
+        else:
+            return np.array([np.nan, np.nan])
 
 if __name__=="__main__":
     import matplotlib.pyplot as plt
