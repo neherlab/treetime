@@ -53,17 +53,22 @@ def plot_vs_years(tt, years = 1, ax=None, confidence=None, **kwargs):
                         horizontalalignment='center')
         ax.set_axis_off()
 
+    # add confidence intervals to the tree graph -- grey bars
     if confidence:
         utils.tree_layout(tt.tree)
         if not hasattr(tt.tree.root, "marginal_inverse_cdf"):
             print("marginal time tree reconstruction required for confidence intervals")
-        elif len(confidence)!=2:
-            print("expected confidence interval as in (0.05, 0.95)")
+        elif len(confidence)==2:
+            cfunc = tt.get_confidence_interval
+        elif len(confidence)==1:
+            cfunc = tt.get_max_posterior_region
         else:
-            for n in tt.tree.find_clades():
-                pos = tt.get_confidence_interval(n, confidence)
-                pos = tt.get_max_posterior_region(n, 0.9)
-                ax.plot(pos-offset, np.ones(len(pos))*n.ypos, lw=3, c=(0.5,0.5,0.5))
+            print("confidence needs to be either a float (for max posterior region) or a two numbers specifying lower and upper bounds")
+            return
+
+        for n in tt.tree.find_clades():
+            pos = cfunc(n, confidence)
+            ax.plot(pos-offset, np.ones(len(pos))*n.ypos, lw=3, c=(0.5,0.5,0.5))
 
 
 def treetime_to_newick(tt, outf):
