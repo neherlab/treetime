@@ -27,6 +27,15 @@ class Coalescent(object):
             self.logger = logger
 
     def set_Tc(self, Tc, T=None):
+        '''
+        initialize the merger model with a coalescent time
+
+        Args:
+            - Tc:   a float or an iterable, if iterable another argument T of same shape is required
+            - T:    an array like of same shape as Tc that specifies the time pivots corresponding to Tc
+        Returns:
+            - None
+        '''
         if isinstance(Tc, Iterable):
             if len(Tc)==len(T):
                 x = np.concatenate(([-ttconf.BIG_NUMBER], T, [ttconf.BIG_NUMBER]))
@@ -36,12 +45,18 @@ class Coalescent(object):
                 self.logger("need Tc values and Timepoints of equal length",2,warn=True)
                 self.Tc = interp1d([-ttconf.BIG_NUMBER, ttconf.BIG_NUMBER], [1e-5, 1e-5])
         else:
-            self.Tc = interp1d([-ttconf.BIG_NUMBER, ttconf.BIG_NUMBER], [Tc, Tc])
+            self.Tc = interp1d([-ttconf.BIG_NUMBER, ttconf.BIG_NUMBER],
+                               [Tc+ttconf.TINY_NUMBER, Tc+ttconf.TINY_NUMBER])
         self.calc_integral_merger_rate()
 
 
     def calc_branch_count(self):
-        # make a list of (time, merger or loss event) by root first
+        '''
+        calculates an interpolation object that maps time to the number of
+        concurrent branches in the tree. The result is stored in self.nbranches
+        '''
+
+        # make a list of (time, merger or loss event) by root first iteration
         self.tree_events = np.array(sorted([(n.time_before_present, len(n.clades)-1)
                                 for n in self.tree.find_clades()], key=lambda x:-x[0]))
 
@@ -69,6 +84,11 @@ class Coalescent(object):
 
 
     def calc_integral_merger_rate(self):
+        '''
+        calculates the integral int_0^t (k(t')-1)/2Tc(t') dt' and stores it as
+        self.integral_merger_rate. This differences of this quantity evaluated at
+        different times points are the cost of a branch.
+        '''
         # integrate the piecewise constant branch count function.
         tvals = np.unique(self.nbranches.x[1:-1])
         rate = self.branch_merger_rate(tvals)
@@ -82,12 +102,14 @@ class Coalescent(object):
                                   np.concatenate(([cost[0]], cost,[cost[-1]])), kind='linear')
 
     def branch_merger_rate(self, t):
+        # returns the rate at which one particular branch merges with any other branch
         # note that we always have a positive merger rate by capping the
         # number of branches at 0.5 from below. in these regions, the
         # function should only be called if the tree changes.
         return 0.5*np.maximum(0.5,self.nbranches(t)-1.0)/self.Tc(t)
 
     def total_merger_rate(self, t):
+        # returns the rate at which any branch merges with any other branch
         # not that we always have a positive merger rate by capping the
         # number of branches at 0.5 from below. in these regions, the
         # function should only be called if the tree changes.
@@ -96,14 +118,24 @@ class Coalescent(object):
 
 
     def cost(self, t_node, branch_length, multiplicity=2.0):
-        # return the cost associated with a branch starting at t_node
-        # t_node is time before present, the branch goes back in time
+        '''
+        returns the cost associated with a branch starting at t_node
+        t_node is time before present, the branch goes back in time
+
+        Args:
+            - t_node:           time of the node
+            - branch_length:    branch length, determines when this branch merges with sister
+            - multiplicity:     2 if merger is binary, higher if this is a polytomy
+        '''
         merger_time = t_node+branch_length
         return self.integral_merger_rate(merger_time) - self.integral_merger_rate(t_node)\
                  - np.log(self.total_merger_rate(merger_time))*(multiplicity-1.0)/multiplicity
 
 
     def attach_to_tree(self):
+        '''
+        attaches the the merger cost to each branch length interpolator in the tree.
+        '''
         for clade in self.tree.find_clades():
             if clade.up is not None:
                 clade.branch_length_interpolator.merger_cost = self.cost
@@ -116,7 +148,11 @@ class Coalescent(object):
                 LH -= self.cost(node.time_before_present, node.branch_length)
         return LH
 
+
     def optimize_Tc(self):
+        '''
+        determines the coalescent time scale that optimizes the coalescent likelihood of the tree
+        '''
         from scipy.optimize import minimize_scalar
         initial_Tc = self.Tc
         def cost(Tc):
@@ -231,37 +267,3 @@ class Coalescent(object):
             return skyline, conf
         else:
             return skyline
-
-
-
-
-def traveling_wave(tree, Tc=None, tau=None):
-    '''
-    assigns coalescent merger rates to all branches in the tree
-    '''
-    #
-    if tau is None:
-        tau = Tc/8.0   # 8 is roughly the factor between total coalescence and expansion rate in realistic populations
-    # determine the msg to parents
-    for n in tree.find_clades(order='postorder'):
-        n._polarizer_to_parent = np.sum([c._polarizer_to_parent for c in n.clades])
-        n._polarizer_to_parent*= np.exp(-n.branch_length/tau)
-        n._polarizer_to_parent+=(1-np.exp(-n.branch_length/tau))*tau
-
-    # determine the msg to children
-    tree.root._polarizer_from_parent = 0.0
-    for n in tree.get_nonterminals(order='preorder'):
-        tmp = np.sum([c._polarizer_to_parent for c in n.clades]) + n._polarizer_from_parent
-        for c in n.clades:
-            c._polarizer_from_parent = tmp-c._polarizer_to_parent
-            c._polarizer_from_parent*= np.exp(-c.branch_length/tau)
-            c._polarizer_from_parent+=(1-np.exp(-c.branch_length/tau))*tau
-
-    # determine the msg to parents
-    for n in tree.find_clades(order='postorder'):
-        n.lbi = n._polarizer_from_parent + np.sum([c._polarizer_to_parent for c in n.clades])
-
-    # assign those rates to all nodes in the tree
-    for n in tree.find_clades():
-        n.merger_rate = n.lbi/tau/Tc
-

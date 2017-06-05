@@ -62,18 +62,20 @@ class TreeTime(ClockTree):
                 self.logger('TreeTime.run: adding coalescent prior with Tc='+str(Tc),1)
                 self.merger_model = Coalescent(self.tree, Tc=avg_root_to_tip,
                                                date2dist=self.date2dist, logger=self.logger)
-                if niter==max_iter-1:
-                    if Tc=='opt':
+
+                if Tc=='skyline' and niter==max_iter-1: # restrict skyline model optimization to last iteration
+                    self.merger_model.optimize_skyline(**kwargs)
+                    self.logger("optimized a skyline ", 2)
+                else:
+                    if Tc in ['opt', 'skyline']:
                         self.merger_model.optimize_Tc()
                         self.logger("optimized Tc to %f"%self.merger_model.Tc.y[0], 2)
-                    elif Tc=='skyline':
-                        self.merger_model.optimize_skyline(**kwargs)
-                        self.logger("optimized a skyline ", 2)
-                else:
-                    try:
-                        self.set_Tc(Tc)
-                    except:
-                        pass
+                    else:
+                        try:
+                            self.set_Tc(Tc)
+                        except:
+                            self.logger("setting of coalescent time scale failed")
+
                 self.merger_model.attach_to_tree()
 
             # estimate a relaxed molecular clock

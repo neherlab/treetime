@@ -3,7 +3,7 @@
 from __future__ import division, print_function
 import numpy as np
 import config as ttconf
-from seq_utils import alphabets, profile_maps
+from seq_utils import alphabets, profile_maps, alphabet_synonyms
 from aa_models  import JTT92
 from nuc_models import JC69, K80, F81, HKY85, T92, TN93
 
@@ -19,14 +19,16 @@ class GTR(object):
         """
         self.debug=False
         if type(alphabet)==str:
-            if (alphabet not in alphabets):
+            if (alphabet not in alphabet_synonyms):
                 raise AttributeError("Unknown alphabet type specified")
             else:
-                self.alphabet = alphabets[alphabet]
-                self.profile_map = profile_maps[alphabet]
+                tmp_alphabet = alphabet_synonyms[alphabet]
+                self.alphabet = alphabets[tmp_alphabet]
+                self.profile_map = profile_maps[tmp_alphabet]
         else:
+            # not a predefine alphabet
             self.alphabet = alphabet
-            if prof_map is None:
+            if prof_map is None: # generate trivial unambiguous profile map is none is given
                 self.profile_map = {s:x for s,x in zip(self.alphabet, np.eye(len(self.alphabet)))}
             else:
                 self.profile_map = prof_map
@@ -41,36 +43,32 @@ class GTR(object):
         n_states = len(self.alphabet)
 
         self.logger("GTR: with alphabet: "+str(self.alphabet),1)
+        # determine if a character exists that corresponds to no info, i.e. all one profile
         if any([x.sum()==n_states for x in self.profile_map.values()]):
             self.ambiguous = [c for c,x in self.profile_map.iteritems() if x.sum()==n_states][0]
             self.logger("GTR: ambiguous character: "+self.ambiguous,2)
         else:
             self.ambiguous=None
+
+        # check for a gap symbol
         try:
             self.gap_index = list(self.alphabet).index('-')
         except:
             self.logger("GTR: no gap symbol!", 4, warn=True)
             self.gap_index=-1
-        # general rate matrix
-        self.W = np.zeros((n_states, n_states))
-        # stationary states of the characters
-        self.Pi = np.zeros(n_states)
 
-        # substitution rate, scaling factor
-        self.mu = 1.0
-        # eigendecomposition of the GTR matrix
-        # Pi.dot(W) = v.dot(eigenvals).dot(v_inv)
-        self.v = np.zeros((n_states, n_states))
-        self.v_inv = np.zeros((n_states, n_states))
-        self.eigenvals = np.zeros(n_states)
+
         # NEEDED TO BREAK RATE MATRIX DEGENERACY AND FORCE NP TO RETURN REAL ORTHONORMAL EIGENVECTORS
+        # ugly hack, but works and shouldn't affect results
         tmp_rng_state = np.random.get_state()
         np.random.seed(12345)
-        self.break_degen = np.random.random(size=self.W.shape)*1e-6
+        self.break_degen = np.random.random(size=(n_states, n_states))*1e-6
         np.random.set_state(tmp_rng_state)
 
-        # distance matrix (needed for topology optimization and for NJ)
-        self.dm = None
+        # init all matrices with dummy values
+        self.logger("GTR: init with dummy values!", 3)
+        self.assign_rates()
+
 
     @property
     def Q(self):
@@ -123,7 +121,8 @@ class GTR(object):
                 self.logger("Ignoring input substitution matrix", 4, warn=True)
             # flow matrix
             W = np.ones((n,n))
-            np.fill_diagonal(self.W, - ((self.W).sum(axis=0) - 1))
+            np.fill_diagonal(W, 0.0)
+            np.fill_diagonal(W, - W.sum(axis=0))
         else:
             W=np.array(W)
 
