@@ -21,8 +21,7 @@ class TreeTime(ClockTree):
             resolve_polytomies=True, max_iter=0, Tc=None, fixed_clock_rate=None,
             do_marginal=False, use_input_branch_length = False, **kwargs):
         # determine how to reconstruct and sample sequences
-        seq_kwargs = {"marginal":True if use_input_branch_length else False,
-                      "sample_from_profile":True if use_input_branch_length else 'root'}
+        seq_kwargs = {"marginal":True, "sample_from_profile":"root"}
 
         # initially, infer ancestral sequences and infer gtr model if desired
         if use_input_branch_length:
@@ -87,33 +86,26 @@ class TreeTime(ClockTree):
                 n_resolved = self.resolve_polytomies()
                 if n_resolved:
                     self.prepare_tree()
-                    #  NOTE that only the first branch len optimization is done with
-                    # marginal=True. Otherwise, the tree root is pushed back at each
-                    # iteration, which leads to awkward results
+                    # when using the input branch length, only infer ancestral sequences
                     if use_input_branch_length:
-                        self.infer_ancestral_sequences(marginal=False,sample_from_profile='root')
-                    else:
+                        self.infer_ancestral_sequences(marginal=False, sample_from_profile='root')
+                    else: # otherwise reoptimize branch length while preserving branches without mutations
                         self.optimize_sequences_and_branch_length(prune_short=False,
-                                            max_iter=0,marginal=False,sample_from_profile='root')
+                                                                  max_iter=0, **seq_kwargs)
 
                     self.make_time_tree(clock_rate=fixed_clock_rate, do_marginal=False, **kwargs)
                     ndiff = self.infer_ancestral_sequences('ml',**seq_kwargs)
-                    #ndiff = self.infer_ancestral_sequences('ml', sample_from_profile='root')
                 else:
                     ndiff = self.infer_ancestral_sequences('ml',**seq_kwargs)
-                    #ndiff = self.infer_ancestral_sequences('ml',sample_from_profile='root')
                     self.make_time_tree(clock_rate=fixed_clock_rate, do_marginal=False, **kwargs)
             elif (Tc and (Tc is not None)) or relaxed_clock: # need new timetree first
                 self.make_time_tree(clock_rate=fixed_clock_rate, do_marginal=False, **kwargs)
                 ndiff = self.infer_ancestral_sequences('ml',**seq_kwargs)
-                #ndiff = self.infer_ancestral_sequences('ml',sample_from_profile='root')
             else: # no refinements, just iterate
                 ndiff = self.infer_ancestral_sequences('ml',**seq_kwargs)
-                #ndiff = self.infer_ancestral_sequences('ml',sample_from_profile='root')
                 self.make_time_tree(clock_rate=fixed_clock_rate, do_marginal=False, **kwargs)
 
             self.tree.coalescent_joint_LH = self.merger_model.total_LH() if Tc else 0.0
-
 
             self.LH.append([self.tree.sequence_marginal_LH if seq_kwargs['marginal'] else self.tree.sequence_joint_LH,
                             self.tree.positional_joint_LH, self.tree.coalescent_joint_LH])

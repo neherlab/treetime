@@ -57,7 +57,8 @@ def plot_vs_years(my_clocktree, years = 1, ax=None, confidence=None, **kwargs):
             print("expected confidence interval as in (0.05, 0.95)")
         else:
             for n in my_clocktree.tree.find_clades():
-                pos = my_clocktree.get_confidence(n, confidence)
+                pos = my_clocktree.get_confidence_interval(n, confidence)
+                pos = my_clocktree.get_max_posterior_region(n, 0.9)
                 ax.plot(pos-offset, np.ones(len(pos))*n.ypos, lw=3, c=(0.5,0.5,0.5))
 
 

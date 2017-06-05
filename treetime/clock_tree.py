@@ -69,7 +69,7 @@ class ClockTree(TreeAnc):
         """
         Get the conversion coefficients between the dates and the branch
         lengths as they are used in ML computations. The conversion formula is
-        assumed to be 'length = k*numdate_given + b'. For convenience, these
+        assumed to be 'length = k*numdate + b'. For convenience, these
         coefficients as well as regression parameters are stored in the
         dates2dist object.
 
@@ -129,7 +129,7 @@ class ClockTree(TreeAnc):
     def make_time_tree(self, do_marginal=False, **kwargs):
         '''
         use the date constraints to calculate the most likely positions of
-        unconstraint nodes.
+        unconstrained nodes.
         '''
         self.logger("ClockTree: Maximum likelihood tree optimization with temporal constraints:",1)
         self.init_date_constraints(**kwargs)
@@ -139,15 +139,14 @@ class ClockTree(TreeAnc):
         else:
             self._ml_t_joint()
 
-        #self._set_final_dates()
         self.convert_dates()
 
 
     def _ml_t_joint(self):
         """
-        Compute the joint probability distribution of the internal nodes positions by
-        propagating from the tree leaves towards the root. Given the probability distributions,
-        reconstruct the maximum-likelihood positions of the internal root by propagating
+        Compute the joint maximum likelihood assignment of the internal nodes positions by
+        propagating from the tree leaves towards the root. Given the assignment of parent nodes,
+        reconstruct the maximum-likelihood positions of the child nodes by propagating
         from the root to the leaves. The result of this operation is the time_before_present
         value, which is the position of the node, expressed in the units of the
         branch length, and scaled from the present-day. The value is assigned to the
@@ -224,7 +223,7 @@ class ClockTree(TreeAnc):
                         node.joint_pos_Cx = res_t
 
 
-        # go through the nodes from root towards the leaves:
+        # go through the nodes from root towards the leaves and assign joint ML positions:
         self.logger("ClockTree - Joint reconstruction:  Propagating root -> leaves...", 2)
         for node in self.tree.find_clades(order='preorder'):  # root first, msgs to children
 
@@ -252,19 +251,23 @@ class ClockTree(TreeAnc):
                     self.logger("ClockTree - Joint reconstruction: correcting rounding error of %s"%node.name, 4)
                     node.branch_length = 0
 
-        self.tree.positional_joint_LH = self.evaluate_likelihood()
+        self.tree.positional_joint_LH = self.timetree_likelihood()
         # cleanup, if required
         if not self.debug:
             _cleanup()
 
 
-    def evaluate_likelihood(self):
+    def timetree_likelihood(self):
+        '''
+        return the likelihood of the data given the current branch length in the tree
+        '''
         LH = 0
-        for node in self.tree.find_clades(order='preorder'):  # children first, msg to parents
+        for node in self.tree.find_clades(order='preorder'):  # sum the likelihood contributions of all branches
             if node.up is None: # root node
                 continue
             LH -= node.branch_length_interpolator(node.branch_length)
 
+        # add the root sequence LH and return
         return LH + self.gtr.sequence_logLH(self.tree.root.cseq, pattern_multiplicity=self.multiplicity)
 
 
@@ -407,6 +410,7 @@ class ClockTree(TreeAnc):
                 int_y = np.concatenate(([0], np.cumsum(dt*(y[1:]+y[:-1])/2.0)))
                 int_y/=int_y[-1]
                 node.marginal_inverse_cdf = interp1d(int_y, node.marginal_pos_LH.x, kind="linear")
+                node.marginal_cdf = interp1d(node.marginal_pos_LH.x, int_y, kind="linear")
 
         if not self.debug:
             _cleanup()
@@ -415,6 +419,14 @@ class ClockTree(TreeAnc):
 
 
     def convert_dates(self):
+        '''
+        this fucntion converts the estimated "time_before_present" properties of all nodes
+        to numerical dates stored in the "numdate" attribute. This date is further converted
+        into a human readable date string in format %Y-%m-%d assuming the usual calendar
+
+        Args: None
+        Returns: None -- all manipulations are done in place on the tree
+        '''
         from datetime import datetime, timedelta
         now = utils.numeric_date()
         for node in self.tree.find_clades():
@@ -433,16 +445,23 @@ class ClockTree(TreeAnc):
             # set the human-readable date
             days = 365.25 * (node.numdate - int(node.numdate))
             year = int(node.numdate)
-            try:
+            try:  # datetime will only operate on dates after 1900
                 n_date = datetime(year, 1, 1) + timedelta(days=days)
                 node.date = datetime.strftime(n_date, "%Y-%m-%d")
             except:
-                # this is the approximation
+                # this is the approximation not accounting for gap years etc
                 n_date = datetime(1900, 1, 1) + timedelta(days=days)
                 node.date = str(year) + "-" + str(n_date.month) + "-" + str(n_date.day)
 
 
     def branch_length_to_years(self):
+        '''
+        this function sets branch length to reflect the date differences between parent and child
+        nodes measured in years. Should only be called after convert_dates has been called
+
+        Args: None
+        Returns: None -- all manipulations are done in place on the tree
+        '''
         self.logger('ClockTree.branch_length_to_years: setting node positions in units of years', 2)
         if not hasattr(self.tree.root, 'numdate'):
             self.logger('ClockTree.branch_length_to_years: infer ClockTree first', 2,warn=True)
@@ -451,14 +470,81 @@ class ClockTree(TreeAnc):
             if n.up is not None:
                 n.branch_length = n.numdate - n.up.numdate
 
-    def get_confidence(self, node, interval):
+
+    def get_confidence_interval(self, node, interval = (0.05, 0.95)):
+        '''
+        If temporal reconstruction was done using the marginal ML mode, the entire distribution of
+        times is available. this function here determines the 90%( or other) confidence interval defines as the
+        range where 5% of probability are below and above. Note that this does not necessarily contain
+        the highest probability position.
+
+        Args:
+            - node:     the node for which the confidence interval is to be calculated
+            - interval: array like of length two defining the bounds of the confidence interval
+
+        Returns:
+            - array with two numerical dates delineatingthe confidence interval
+        '''
         if hasattr(node, "marginal_inverse_cdf"):
             if node.marginal_inverse_cdf=="delta":
                 return np.array([node.numdate, node.numdate])
             else:
-                return self.date2dist.to_numdate(node.marginal_inverse_cdf(np.array(interval)))
+                return self.date2dist.to_numdate(node.marginal_inverse_cdf(np.array(interval))[::-1])
         else:
             return np.array([np.nan, np.nan])
+
+
+    def get_max_posterior_region(self, node, fraction = 0.9):
+        '''
+        If temporal reconstruction was done using the marginal ML mode, the entire distribution of
+        times is available. this function here determines the 95% confidence interval defines as the
+        range where 5% of probability are below and above. Note that this does not necessarily contain
+        the highest probability position.
+
+        Args:
+            - node:     the node for which the confidence region is to be calculated
+            - interval: float specifying who much of the posterior probability is
+                        to be contained in the region
+
+        Returns:
+            - array with two numerical dates delineating the high posterior region
+        '''
+        if not hasattr(node, "marginal_inverse_cdf"):
+            return np.array([np.nan, np.nan])
+
+        if node.marginal_inverse_cdf=="delta":
+            return np.array([node.numdate, node.numdate])
+
+        min_max = (node.marginal_pos_LH.xmin, node.marginal_pos_LH.xmax)
+        if node.marginal_pos_LH.peak_pos == min_max[0]: #peak on the left
+            return self.get_confidence_interval(node, (0, fraction))
+        elif node.marginal_pos_LH.peak_pos == min_max[1]: #peak on the right
+            return self.get_confidence_interval(node, (1.0-fraction ,1.0))
+        else: # peak in the center of the distribution
+
+            # construct height to position interpolators left and right of the peak
+            # this assumes there is only one peak --- might fail in odd cases
+            from scipy.interpolate import interp1d
+            from scipy.optimize import minimize_scalar as minimize
+            pidx = np.argmin(node.marginal_pos_LH.y)
+            pval = np.min(node.marginal_pos_LH.y)
+            left =  interp1d(node.marginal_pos_LH.y[:(pidx+1)]-pval, node.marginal_pos_LH.x[:(pidx+1)],
+                            kind='linear', fill_value=min_max[0], bounds_error=False)
+            right = interp1d(node.marginal_pos_LH.y[pidx:]-pval, node.marginal_pos_LH.x[pidx:],
+                            kind='linear', fill_value=min_max[1], bounds_error=False)
+
+            # function to minimize -- squared difference between prob mass and desired fracion
+            def func(x, thres):
+                interval = np.array([left(x), right(x)]).squeeze()
+                return (thres - np.diff(node.marginal_cdf(np.array(interval))))**2
+
+            # minimza and determine success
+            sol = minimize(func, bracket=[0,10], args=(fraction,))
+            if sol['success']:
+                return self.date2dist.to_numdate(np.array([right(sol['x']), left(sol['x'])]).squeeze())
+            else: # on failure, return standard confidence interval
+                return self.get_confidence_interval(node, (0.5*(1-fraction), 1-0.5*(1-fraction)))
+
 
 if __name__=="__main__":
     import matplotlib.pyplot as plt
