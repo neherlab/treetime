@@ -7,6 +7,7 @@ def import_short_test():
     from treetime import GTR
     from treetime import TreeTime
     from treetime import TreeAnc
+    from treetime import seq_utils
 
 
 def test_GTR():
