@@ -2,7 +2,8 @@ import numpy as np
 
 alphabet_synonyms = {'nuc':'nuc', 'nucleotide':'nuc', 'aa':'aa', 'aminoacid':'aa',
                      'nuc_nogap':'nuc_nogap', 'nucleotide_nogap':'nuc_nogap',
-                     'aa_nogap':'aa_nogap', 'aminoacid_nogap':'aa_nogap'}
+                     'aa_nogap':'aa_nogap', 'aminoacid_nogap':'aa_nogap',
+                     'DNA':'nuc', 'DNA_nogap':'nuc_nogap'}
 
 alphabets = {
             "nuc":           np.array(['A', 'C', 'G', 'T', '-']),
