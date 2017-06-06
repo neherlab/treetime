@@ -174,6 +174,29 @@ class TreeAnc(object):
 
 
     def make_reduced_alignment(self):
+        """
+        Create the reduced alignment from the full sequences attached to (some)
+        tree nodes. The methods collects all sequences from the tree nodes, creates
+        the alignment, counts the multiplicity for each column of the alignment
+        ('alignment pattern'), and creates the reduced alignment, where only the
+        unique patterns are present. The reduced alignment and the pattern multiplicity
+        are sufficient for the GTR calculations and allow to save memory on profile
+        instantiation.
+        The maps from full sequence to reduced sequence and back are also stored to allow
+        compressing and expanding the sequences.
+
+        The following attributes are assigned by the method:
+         - full_to_reduced_sequence_map: map to reduce a sequence
+         - reduced_to_full_sequence_map: map to restore sequence from reduced alignment
+         - multiplicity: numpy array, which stores the pattern multiplicity for
+         each position of the reduced alignment.
+         - reduced_alignment: 2D numpy array, representing the alignment. Shape is
+         (N x L'), where N is number of sequences, L' - number of unique alignment patterns
+
+        In addition, each node gets
+          - cseq: compressed sequence (corresponding row of the reduced alignment)
+
+        """
 
         self.logger("TreeAnc: making reduced alignment...", 1)
 
@@ -186,7 +209,6 @@ class TreeAnc(object):
 
         # bind position in reduced sequence to the array of positions in real (expanded) sequence
         self.reduced_to_full_sequence_map = {}
-
 
         # create empty reduced alignment (transposed)
         tmp = []
@@ -225,18 +247,21 @@ class TreeAnc(object):
         for p, pos in alignment_patterns.values():
             self.multiplicity[p]=len(pos)
 
-        # create the reduced alignment
+        # create the reduced alignment as np array
         self.reduced_alignment = np.array(tmp).T
 
-
+        # create map to compress a sequence
         for p, pos in alignment_patterns.values():
             self.full_to_reduced_sequence_map[np.array(pos)]=p
 
+        # create a map to reconstruct full sequence from the reduced (compressed) sequence
         for p, val in alignment_patterns.iteritems():
             alignment_patterns[p]=(val[0], np.array(val[1], dtype=int))
             self.reduced_to_full_sequence_map[val[0]]=np.array(val[1], dtype=int)
 
-
+        # assign compressed sequences to all nodes of the tree, which have sequence assigned
+        # NOTE the order of tree traversal must be the same as above to catch the
+        # index in the reduced alignment correctly
         seq_count = 0
         for n in self.tree.find_clades():
             if hasattr(n, 'sequence'):
@@ -371,6 +396,8 @@ class TreeAnc(object):
         return N_diff
 
     def get_mutations(self, node):
+        """
+        """
         muts = []
         for p, (anc, der) in enumerate(izip(node.up.cseq, node.cseq)):
             if anc!=der:
