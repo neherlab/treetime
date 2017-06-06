@@ -177,13 +177,23 @@ class TreeAnc(object):
         from collections import defaultdict
 
         alignment_patterns = {}
-        position_to_pattern = {}
+
+        # bind positions in real sequence to that of the reduced (compressed) sequence
         self.full_to_reduced_sequence_map = np.zeros(self.aln.get_alignment_length(), dtype=int)
+
+        # bind position in reduced sequence to the array of positions in real (expanded) sequence
         self.reduced_to_full_sequence_map = {}
 
+
+        # create empty reduced alignment (transposed)
         tmp = []
+
+        # transpose real alignment, for ease of iteration
+        # NOTE the order of tree traversal must be the same as below
+        # for assigning the cseq attributes to the nodes.
         aln_transpose = np.array([n.sequence for n in self.tree.find_clades()
                                   if hasattr(n, 'sequence')]).T
+
         for pi, pattern in enumerate(aln_transpose):
             str_pat = "".join(pattern)
             # if the column contains only one state and ambiguous nucleotides, replace
@@ -194,18 +204,27 @@ class TreeAnc(object):
                     other = [c for c in unique_letters if c!=self.gtr.ambiguous][0]
                     str_pat = str_pat.replace(self.gtr.ambiguous, other)
 
-            if str_pat in alignment_patterns:
-                alignment_patterns[str_pat][1].append(pi)
-            else:
-                position_to_pattern[len(tmp)] = str_pat
-                alignment_patterns[str_pat] = (len(tmp), [pi])
-                tmp.append(pattern)
 
+            # if the pattern is not yet seen,
+            if str_pat not in alignment_patterns:
+
+                # bind the index in the reduced aln, index in sequence to the pattern string
+                alignment_patterns[str_pat] = (len(tmp), [pi])
+                # append this pattern to the reduced alignment
+                tmp.append(pattern)
+            else:
+                # if the pattern is alredy seen, append the position in the real
+                # sequence to the reduced aln<->sequence_pos_indexes map
+                alignment_patterns[str_pat][1].append(pi)
+
+        # count how many times each column is repeated in the real alignment
         self.multiplicity = np.zeros(len(alignment_patterns))
         for p, pos in alignment_patterns.values():
             self.multiplicity[p]=len(pos)
 
+        # create the reduced alignment
         self.reduced_alignment = np.array(tmp).T
+
 
         for p, pos in alignment_patterns.values():
             self.full_to_reduced_sequence_map[np.array(pos)]=p
