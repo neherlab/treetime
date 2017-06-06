@@ -397,16 +397,40 @@ class TreeAnc(object):
 
     def get_mutations(self, node):
         """
+        Get the mutations on a tree branch. Take compressed sequences from both sides
+        of the branch (attached to the node), compute mutations between them, and
+        expand these mutations to the positions in the real sequences.
+
+        Args:
+         - node(PhyloTree.Clade): tree node, which is the child node attached to
+         the branch.
+
+        Returns:
+         - muts(list): list of mutations. Each mutation is represented as tuple of
+         (parent_state, position, child_state).
+
         """
         muts = []
         for p, (anc, der) in enumerate(izip(node.up.cseq, node.cseq)):
+            # only if the states in compressed sequences differ:
             if anc!=der:
+                # expand to the positions in real sequence
                 muts.extend([(anc, pos, der) for pos in self.reduced_to_full_sequence_map[p]])
 
+        #sort by position
         return sorted(muts, key=lambda x:x[1])
 
 
     def expanded_sequence(self, node):
+        """
+        Get node's compressed sequence and expand it to the real sequence
+
+        Args:
+         - node: tree node
+
+        Returns:
+         - seq: sequence as np.array of chars
+        """
         seq = np.zeros_like(self.full_to_reduced_sequence_map, dtype='S1')
         for pos, state in enumerate(node.cseq):
             seq[self.reduced_to_full_sequence_map[pos]] = state
