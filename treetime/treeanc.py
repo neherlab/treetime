@@ -174,6 +174,9 @@ class TreeAnc(object):
 
 
     def make_reduced_alignment(self):
+
+        self.logger("TreeAnc: making reduced alignment...", 1)
+
         from collections import defaultdict
 
         alignment_patterns = {}
