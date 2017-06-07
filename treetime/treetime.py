@@ -21,7 +21,7 @@ class TreeTime(ClockTree):
             resolve_polytomies=True, max_iter=0, Tc=None, fixed_clock_rate=None,
             do_marginal=False, use_input_branch_length = False, **kwargs):
         # determine how to reconstruct and sample sequences
-        seq_kwargs = {"marginal":True, "sample_from_profile":"root"}
+        seq_kwargs = {"marginal":False, "sample_from_profile":"root"}
 
         # initially, infer ancestral sequences and infer gtr model if desired
         if use_input_branch_length:
@@ -42,6 +42,11 @@ class TreeTime(ClockTree):
                               n_iqd=n_iqd, plot=plot_rtt)
         elif root is not None:
             self.reroot(root=root)
+
+        if use_input_branch_length:
+            self.infer_ancestral_sequences(prune_short=False, **seq_kwargs)
+        else:
+            self.optimize_sequences_and_branch_length(max_iter=2,**seq_kwargs)
 
         # infer time tree and optionally resolve polytomies
         self.logger("###TreeTime.run: INITIAL ROUND",0)
@@ -90,7 +95,7 @@ class TreeTime(ClockTree):
                     self.prepare_tree()
                     # when using the input branch length, only infer ancestral sequences
                     if use_input_branch_length:
-                        self.infer_ancestral_sequences(marginal=False, sample_from_profile='root')
+                        self.infer_ancestral_sequences(**seq_kwargs)
                     else: # otherwise reoptimize branch length while preserving branches without mutations
                         self.optimize_sequences_and_branch_length(prune_short=False,
                                                                   max_iter=0, **seq_kwargs)

@@ -223,12 +223,17 @@ class TreeAnc(object):
             str_pat = "".join(pattern)
             # if the column contains only one state and ambiguous nucleotides, replace
             # those with the state in other strains right away
+            unique_letters = list(np.unique(pattern))
             if hasattr(self.gtr, "ambiguous"):
-                unique_letters = list(np.unique(pattern))
                 if len(unique_letters)==2 and self.gtr.ambiguous in unique_letters:
                     other = [c for c in unique_letters if c!=self.gtr.ambiguous][0]
                     str_pat = str_pat.replace(self.gtr.ambiguous, other)
-
+                    unique_letters = [other]
+            # if there is a mutation in this column, give it its private pattern
+            # this is required when sampling mutations from reconstructed profiles.
+            # otherwise, all mutations corresponding to the same pattern will be coupled.
+            if len(unique_letters)>1:
+                str_pat += '_%d'%pi
 
             # if the pattern is not yet seen,
             if str_pat not in alignment_patterns:
