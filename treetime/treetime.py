@@ -19,7 +19,7 @@ class TreeTime(ClockTree):
 
     def run(self, root=None, infer_gtr=True, relaxed_clock=False, n_iqd = None,
             resolve_polytomies=True, max_iter=0, Tc=None, fixed_clock_rate=None,
-            do_marginal=False, use_input_branch_length = False, **kwargs):
+            do_marginal=False, use_input_branch_length = True, **kwargs):
         # determine how to reconstruct and sample sequences
         seq_kwargs = {"marginal":False, "sample_from_profile":"root"}
 
