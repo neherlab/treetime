@@ -22,6 +22,8 @@ class TreeTime(ClockTree):
             time_marginal=False, use_input_branch_length = False, **kwargs):
         # determine how to reconstruct and sample sequences
         seq_kwargs = {"marginal":False, "sample_from_profile":"root"}
+        if "do_marginal" in kwargs:
+            time_marginal=kwargs["do_marginal"]
 
         # initially, infer ancestral sequences and infer gtr model if desired
         if use_input_branch_length:
