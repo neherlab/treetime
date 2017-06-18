@@ -261,6 +261,10 @@ class Coalescent(object):
                    hence this needs to be the inverse substitution rate per generation
             confidence -- False, or number of standard deviations of confidence intervals
         '''
+        if len(self.Tc.x)<=2:
+            print("no skyline has been inferred, returning constant population size")
+            return gen/self.date2dist.clock_rate*self.Tc.y[-1]
+
         skyline = interp1d(self.date2dist.to_numdate(self.Tc.x[1:-1]), gen/self.date2dist.clock_rate*self.Tc.y[1:-1])
         if confidence and hasattr(self, 'confidence'):
             conf = [skyline.y*np.exp(-confidence*self.confidence), skyline.y*np.exp(confidence*self.confidence)]

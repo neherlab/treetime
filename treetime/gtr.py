@@ -164,9 +164,10 @@ class GTR(object):
         Available models:
 
          --- JC69:
-            Jukes-Cantor 1969 model. This model assumes equal concentrations
+            Jukes-Cantor 1969 model. This model assumes equal frequencies
             of the nucleotides and equal transition rates between nucleotide states.
-            For more info, see: Jukes and Cantor (1969). Evolution of Protein Molecules. New York: Academic Press. pp. 21–132.
+            For more info, see: Jukes and Cantor (1969). Evolution of Protein Molecules.
+                                                    New York: Academic Press. pp. 21–132.
 
             To create this model, use:
 

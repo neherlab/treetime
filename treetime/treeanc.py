@@ -21,7 +21,8 @@ class TreeAnc(object):
     alignment, making ancestral state inferrence
     """
 
-    def __init__(self, tree=None, aln=None, gtr=None, fill_overhangs=True, verbose = ttconf.VERBOSE, **kwargs):
+    def __init__(self, tree=None, aln=None, gtr=None, fill_overhangs=True,
+                 verbose = ttconf.VERBOSE, **kwargs):
         if tree is None:
             raise("TreeAnc requires a tree!")
         self.t_start = time.time()
@@ -47,7 +48,7 @@ class TreeAnc(object):
             self.attach_sequences_to_nodes()
 
     def logger(self, msg, level, warn=False):
-        if level<self.verbose or warn:
+        if level<self.verbose or (warn and level<=self.verbose):
             dt = time.time() - self.t_start
             outstr = '\n' if level<2 else ''
             outstr+=format(dt, '4.2f')+'\t'
@@ -76,7 +77,7 @@ class TreeAnc(object):
 
     def set_gtr(self, in_gtr, **kwargs):
         """
-        Create new GTR model, if needed, and set the model as the attribute of the
+        Create new GTR model if needed, and set the model as an attribute of the
         TreeAnc class
 
         Args:
@@ -88,8 +89,8 @@ class TreeAnc(object):
 
         KWargs:
 
-         - All parameters needed for the gtr creation. If none passed, the default assumed.
-         Refer paricular GTR models for the exact parameter values
+         - All parameters needed for the gtr creation. If none passed, defaults are assumed.
+           Refer to the particular GTR models for the exact parameter values
         """
         if type(in_gtr)==str:
             self._gtr = GTR.standard(model=in_gtr, **kwargs)
@@ -106,11 +107,16 @@ class TreeAnc(object):
         if self._gtr.ambiguous is None:
             self.fill_overhangs=False
 
+
     @property
     def tree(self):
         return self._tree
     @tree.setter
     def tree(self, in_tree):
+        '''
+        assigns a tree to the internal self._tree variable. The tree is either
+        loaded from file (if in_tree is str) or assigned (if in_tree is a Phylo.tree)
+        '''
         from os.path import isfile
         if isinstance(in_tree, Phylo.BaseTree.Tree):
             self._tree = in_tree
@@ -121,12 +127,14 @@ class TreeAnc(object):
             self._tree = None
             return
 
+        # remove all existing sequence attributes
         for node in self._tree.find_clades():
             if hasattr(node, "sequence"):
                 node.__delattr__("sequence")
             node.original_length = node.branch_length
             node.mutation_length = node.branch_length
         self.prepare_tree()
+
 
     @property
     def aln(self):
@@ -147,14 +155,19 @@ class TreeAnc(object):
         if hasattr(self, '_tree'):
             self.attach_sequences_to_nodes()
         else:
-            self.logger("TreeAnc.aln: sequences not yet attached to tree",3,warn=True)
+            self.logger("TreeAnc.aln: sequences not yet attached to tree", 3, warn=True)
+
 
     def attach_sequences_to_nodes(self):
-        # loop over tree,
+        '''
+        for each node of the tree, check whether there is a sequence available
+        in the alignment and assign this sequence as a character array
+        '''
         failed_leaves= 0
         dic_aln = {k.name: seq_utils.seq2array(k.seq, fill_overhangs=self.fill_overhangs,
                                                ambiguous_character=self.gtr.ambiguous)
                             for k in self.aln} #
+        # loop over tree,
         for l in self.tree.find_clades():
             if l.name in dic_aln:
                 l.sequence= dic_aln[l.name]
@@ -533,7 +546,7 @@ class TreeAnc(object):
             state = np.concatenate([k.state[pos] for k in node.clades])
         return state
 
-    def _fitch_intersect(self, arrays, assume_unique=False):
+    def _fitch_intersect(self, arrays):
         """
         Find the intersection of any number of 1D arrays.
         Return the sorted, unique values that are in all of the input arrays.
@@ -554,19 +567,6 @@ class TreeAnc(object):
             N = len(arrays)
 
         return arrays[0]
-
-        #
-        #if not assume_unique:
-        #    for i, arr in enumerate(arrays):
-        #        arrays[i] = np.unique(arr)
-        #aux = np.concatenate(arrays) # one long 1D array
-        #aux.sort() # sorted
-        #shift = N-1
-        ## if an element is in all N arrays, is shows up N consecutive times in the sorted
-        ## concatenation. those elements can be found by comparing the array shifted by N-1
-        ## since the initital arrays are unique, only the correct elements are found this way.
-        #import ipdb; ipdb.set_trace()
-        #return aux[aux[shift:] == aux[:-shift]]
 
 
 

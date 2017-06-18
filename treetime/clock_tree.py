@@ -126,7 +126,7 @@ class ClockTree(TreeAnc):
                 node.date_constraint = None
 
 
-    def make_time_tree(self, do_marginal=False, **kwargs):
+    def make_time_tree(self, time_marginal=False, **kwargs):
         '''
         use the date constraints to calculate the most likely positions of
         unconstrained nodes.
@@ -134,8 +134,8 @@ class ClockTree(TreeAnc):
         self.logger("ClockTree: Maximum likelihood tree optimization with temporal constraints:",1)
         self.init_date_constraints(**kwargs)
 
-        if do_marginal:
-            self._ml_t_marginal(assign_dates = do_marginal=="assign")
+        if time_marginal:
+            self._ml_t_marginal(assign_dates = time_marginal=="assign")
         else:
             self._ml_t_joint()
 
@@ -569,9 +569,11 @@ if __name__=="__main__":
                         aln = base_name+'.fasta', verbose = 6, dates = dates)
 
     myTree.optimize_seq_and_branch_len(prune_short=True)
-    # fix clock_rate -- to test
-    myTree.make_time_tree(clock_rate=0.003)
+    # fix clock_rate -- to test. Do inference both for joint and marginal reconstruction
+    myTree.make_time_tree(clock_rate=0.003, time_marginal=False)
+    myTree.make_time_tree(clock_rate=0.003, time_marginal=True)
 
+    # make a figure the shows the branch length interpolators for each branch in the tree
     plt.figure()
     x = np.linspace(0,0.05,100)
     leaf_count=0
@@ -584,8 +586,12 @@ if __name__=="__main__":
         else:
             node.ypos = np.mean([c.ypos for c in node.clades])
     plt.yscale('log')
+    plt.xlabel("branch length")
+    plt.xlabel("rel. probability density")
     plt.ylim([0.01,1.2])
 
+    # make a figure that shows the time scaled tree and the probability distributions of the
+    # node positions. In addition, the branch length probabilities are added to the tree.
     fig, axs = plt.subplots(2,1, sharex=True, figsize=(8,12))
     x = np.linspace(-0.1,0.05,1000)+ myTree.tree.root.time_before_present
     Phylo.draw(tree, axes=axs[0], show_confidence=False)
@@ -594,8 +600,7 @@ if __name__=="__main__":
     depth = myTree.tree.depths()
     for ni,node in enumerate(myTree.tree.find_clades()):
         if (not node.is_terminal()):
-            axs[1].plot(offset-x, node.marginal_lh.prob_relative(x), '-', c=cols[ni%len(cols)])
-            axs[1].plot(offset-x, node.joint_lh.prob_relative(x), '--', c=cols[ni%len(cols)])
+            axs[1].plot(offset-x, node.marginal_pos_LH.prob_relative(x), '-', c=cols[ni%len(cols)])
         if node.up is not None:
             x_branch = np.linspace(depth[node]-2*node.branch_length-0.005,depth[node],100)
             axs[0].plot(x_branch, node.ypos - 0.7*node.branch_length_interpolator.prob_relative(depth[node]-x_branch), '-', c=cols[ni%len(cols)])
@@ -603,8 +608,3 @@ if __name__=="__main__":
     axs[1].set_ylim([0.01,1.2])
     axs[0].set_xlabel('')
     plt.tight_layout()
-
-    myTree.branch_length_to_years()
-    Phylo.draw(myTree.tree)
-    plt.xlim(myTree.tree.root.numdate-1,
-             np.max([x.numdate for x in myTree.tree.get_terminals()])+1)

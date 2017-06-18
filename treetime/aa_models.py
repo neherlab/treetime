@@ -5,7 +5,7 @@ from seq_utils import alphabets
 
 def JTT92(mu=1.0):
     from gtr import GTR
-    # stationary concantrations:
+    # stationary concentrations:
     pis = np.array([
         0.07674789,
         0.05169087,

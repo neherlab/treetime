@@ -20,6 +20,9 @@ def plot_vs_years(tt, years = 1, ax=None, confidence=None, **kwargs):
         fig = plt.figure()
         ax = plt.subplot(111)
     # draw tree
+    if "label_func" not in kwargs:
+        nleafs = tt.tree.count_terminals()
+        kwargs["label_func"] = lambda x:x.name if (x.is_terminal() and nleafs<30) else ""
     Phylo.draw(tt.tree, axes=ax, **kwargs)
 
     # set axis labels
