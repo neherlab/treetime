@@ -3,6 +3,7 @@ from __future__ import print_function, division
 import numpy as np
 from treetime import TreeAnc
 from Bio import Phylo, AlignIO
+from Bio import __version__ as bioversion
 
 if __name__=="__main__":
     ###########################################################################
@@ -20,13 +21,15 @@ if __name__=="__main__":
     parser.add_argument('--marginal', default = False, action='store_true', help='marginal instead of joint ML reconstruction')
     parser.add_argument('--infer_gtr', default = False, action='store_true', help='infer substitution model')
     parser.add_argument('--keep_overhangs', default = False, action='store_true', help='do not fill terminal gaps')
+    parser.add_argument('--verbose', default = 1, type=int, help='verbosity of output 0-6')
     params = parser.parse_args()
 
     ###########################################################################
     ### ANCESTRAL RECONSTRUCTION
     ###########################################################################
-    model = 'aa' if params.prot else 'Jukes-Cantor'
-    treeanc = TreeAnc(params.tree, aln=params.aln, gtr=model, verbose=4, fill_overhangs=not params.keep_overhangs)
+    alphabet = 'aa' if params.prot else 'nuc'
+    treeanc = TreeAnc(params.tree, aln=params.aln, gtr="JC69", alphabet=alphabet,
+                      verbose=params.verbose, fill_overhangs=not params.keep_overhangs)
     treeanc.infer_ancestral_sequences('ml', infer_gtr=params.infer_gtr,
                                        marginal=params.marginal)
 
@@ -46,7 +49,9 @@ if __name__=="__main__":
         if n.up is None:
             continue
         n.confidence=None
-        if n.is_terminal() and len(n.name)>40:
+        # due to a bug in older versions of biopython that truncated filenames in nexus export
+        # we truncate them by hand and make them unique.
+        if n.is_terminal() and len(n.name)>40 and bioversion<"1.69":
             n.name = n.name[:35]+'_%03d'%terminal_count
             terminal_count+=1
         if len(n.mutations):
