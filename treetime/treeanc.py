@@ -6,6 +6,7 @@ from Bio import AlignIO
 import numpy as np
 from gtr import GTR
 import seq_utils
+from version import tt_version as __version__
 try:
     from itertools import izip
 except ImportError:  #python3.x
@@ -25,6 +26,7 @@ class TreeAnc(object):
                  verbose = ttconf.VERBOSE, **kwargs):
         if tree is None:
             raise("TreeAnc requires a tree!")
+        self.__version__ = __version__
         self.t_start = time.time()
         self.verbose = verbose
         self.logger("TreeAnc: set-up",1)

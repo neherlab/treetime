@@ -5,6 +5,7 @@ import config as ttconf
 import io as tt_io
 import numpy as np
 from scipy import optimize as sciopt
+from version import tt_version as __version__
 
 
 class TreeTime(ClockTree):
