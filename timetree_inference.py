@@ -3,6 +3,7 @@ from __future__ import print_function, division
 import numpy as np
 from treetime import TreeTime
 from Bio import Phylo, AlignIO
+from Bio import __version__ as bioversion
 
 if __name__=="__main__":
     ###########################################################################
@@ -13,8 +14,8 @@ if __name__=="__main__":
             description=\
 "Reconstructs ancestral sequences and infers a molecular clock tree. The"\
 " script produces an alignment file ending on _ancestral.fasta which contains"\
-" the inferred ancestral sequences and a tree file ending on _mutation.newick."\
-" Inferred mutations are appended to node names as _A45G_.... The molecular clock, along with the inferred"\
+" the inferred ancestral sequences and a tree file ending on _timetree.nexus."\
+" Inferred mutations are included as comments. The molecular clock, along with the inferred"\
 " GTR model, is written to stdout)")
     parser.add_argument('--aln', required = True, type = str,  help ="fasta file with input sequences")
     parser.add_argument('--tree', required = True, type = str,  help ="newick file with tree")
@@ -114,15 +115,22 @@ if __name__=="__main__":
 
     # decorate tree with inferred mutations
     outaln_name = base_name+'_ancestral.fasta'
+
     AlignIO.write(myTree.get_reconstructed_alignment(), outaln_name, 'fasta')
+    terminal_count = 0
     for n in myTree.tree.find_clades():
         if n.up is None:
             continue
+        n.confidence=None
+        # due to a bug in older versions of biopython that truncated filenames in nexus export
+        # we truncate them by hand and make them unique.
+        if n.is_terminal() and len(n.name)>40 and bioversion<"1.69":
+            n.name = n.name[:35]+'_%03d'%terminal_count
+            terminal_count+=1
         if len(n.mutations):
-            n.name+='_'+'_'.join([a+str(pos)+d for (a,pos, d) in n.mutations])
+            n.comment= '&mutations="' + '_'.join([a+str(pos)+d for (a,pos, d) in n.mutations])+'"'
 
-    # write tree to file. Branch length will now be scaled such that node
-    # positions correspond to sampling times.
-    outtree_name = base_name+'_timetree.newick'
-    Phylo.write(myTree.tree, outtree_name, 'newick')
+    # write tree to file
+    outtree_name = '.'.join(params.tree.split('/')[-1].split('.')[:-1])+'_timetree.nexus'
+    Phylo.write(myTree.tree, outtree_name, 'nexus')
 
