@@ -121,7 +121,16 @@ class TreeAnc(object):
         if isinstance(in_tree, Phylo.BaseTree.Tree):
             self._tree = in_tree
         elif type(in_tree) in [str, unicode] and isfile(in_tree):
-            self._tree=Phylo.read(in_tree, 'newick')
+            try:
+                self._tree=Phylo.read(in_tree, 'newick')
+            except:
+                fmt = in_tree.split('.')[-1]
+                if fmt in ['nexus', 'nex']:
+                    self._tree=Phylo.read(in_tree, 'nexus')
+                else:
+                    self.logger('TreeAnc: could not load tree, format needs to be nexus or newick! input was '+in_tree,1)
+                    self._tree = None
+                    return
         else:
             self.logger('TreeAnc: could not load tree! input was '+in_tree,1)
             self._tree = None
