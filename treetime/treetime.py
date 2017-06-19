@@ -27,8 +27,8 @@ class TreeTime(ClockTree):
 
         # initially, infer ancestral sequences and infer gtr model if desired
         if use_input_branch_length:
-            self.infer_ancestral_sequences(infer_gtr=infer_gtr,
-                                           prune_short=True, **seq_kwargs)
+            self.infer_ancestral_sequences(infer_gtr=infer_gtr, **seq_kwargs)
+            self.prune_short_branches()
         else:
             self.optimize_sequences_and_branch_length(infer_gtr=infer_gtr,
                                                   max_iter=2, prune_short=True, **seq_kwargs)
@@ -46,7 +46,7 @@ class TreeTime(ClockTree):
             self.reroot(root=root)
 
         if use_input_branch_length:
-            self.infer_ancestral_sequences(prune_short=False, **seq_kwargs)
+            self.infer_ancestral_sequences(**seq_kwargs)
         else:
             self.optimize_sequences_and_branch_length(max_iter=2,**seq_kwargs)
 
