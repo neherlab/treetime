@@ -67,66 +67,81 @@ In addition, we provide scripts that can be run from the command line with argum
     --tree TREE  newick file with tree
     --marginal   marginal instead of joint ML reconstruction
     --infer_gtr  infer substitution model
+    --keep_overhangs  keep 5' and 3' gaps rather than filling them with ancestral sequence
   ```
 
   Alteratively, directly interact with the class TreeAnc from treetime as follows
     ```python
     from treetime import TreeAnc
     ta = TreeAnc(tree='my_tree.nwk', aln='my_seqs.nwk', gtr='JC69')
-    ta.infer_ancestral_sequences(method = 'ml', infer_gtr=True, marginal=False)
+    ta.infer_ancestral_sequences(infer_gtr=True, marginal=False)
     ```
-  Every node of `ta.tree` now has a `node.sequence` attached. With the optional argument `infer_gtr=True`, a maximum likelihood GTR model is inferred and overwrites the initial one, the option `marginal=True` can be used to construct a marginal rather than joint maximum likelihood reconstruction, and 'prune_short=False' can be used to avoid collapsing of zero length branches into polytomies.
+  Every node of `ta.tree` now has a `node.sequence` attached. With the optional argument `infer_gtr=True`, a maximum likelihood GTR model is inferred and overwrites the initial one, the option `marginal=True` can be used to construct a marginal rather than joint maximum likelihood reconstruction.
 
   The tree and alignment arguments can be either file names (newick and fasta) or Biopython tree and alignent objects.
+
+  After running `ta.infer_ancestral_sequences()`, the each node in the tree
+  will have a `node.sequence` attached and `node.mutations` contains the difference
+  of that sequence to the sequence of the parent node.
+  Other useful options to the constructor include `fill_overhangs`. If `TreeAnc` is
+  initialized with `fill_overhangs=True`, 5' or 3' gaps will be treated as missing data and filled with the sequence of the nearest ancestral node.
 
 * Molecular clock phylogenies
 
   To infer molecular clock phylogenies, use the script `timetree_inference.py`:
   ```
-  usage: timetree_inference.py [-h] --aln ALN --tree TREE --dates DATES
-                               [--infer_gtr] [--reroot REROOT]
-                               [--resolve_polytomies]
-                               [--relax [RELAX [RELAX ...]]]
-                               [--max_iter MAX_ITER] [--verbose VERBOSE]
-                               [--Tc TC] [--plot]
+usage: timetree_inference.py [-h] --aln ALN --tree TREE --dates DATES
+                             [--infer_gtr] [--reroot REROOT]
+                             [--optimize_branch_length] [--keep_polytomies]
+                             [--relax [RELAX [RELAX ...]]]
+                             [--max_iter MAX_ITER] [--verbose VERBOSE]
+                             [--Tc TC] [--plot]
 
-  Reconstructs ancestral sequences and infers a molecular clock tree. The output
-  consists of a file ending with _ancestral.fasta with ancestral sequences and a
-  tree ending with _mutation.newick with mutations appended to node names as
-  _A45G_.... The branches of this tree are scaled such that branch length
-  correspond to times in units of the molecular clock. The molecular clock,
-  along with the inferred GTR model, is written to stdout
+Reconstructs ancestral sequences and infers a molecular clock tree. The script
+produces an alignment file ending on _ancestral.fasta which contains the
+inferred ancestral sequences and a tree file ending on _timetree.nexus.
+Inferred mutations are included as comments. The molecular clock, along with
+the inferred GTR model, is written to stdout)
 
-  optional arguments:
-    -h, --help            show this help message and exit
-    --aln ALN             fasta file with input sequences
-    --tree TREE           newick file with tree
-    --dates DATES         csv with dates for nodes with 'node_name, date' where
-                          date is float (as in 2012.15)
-    --infer_gtr           infer substitution model
-    --reroot REROOT       reroot the tree. Valid arguments are 'best',
-                          'midpoint', or a node name
-    --resolve_polytomies  resolve polytomies using temporal information.
-    --relax [RELAX [RELAX ...]]
-                          use an autocorrelated molecular clock. Prior strength
-                          and coupling of parent and offspring rates can be
-                          specified e.g. as --relax 1.0 0.5
-    --max_iter MAX_ITER   maximal number of iterations the inference cycle is
-                          run
-    --verbose VERBOSE     verbosity of output 0-6
-    --Tc TC               coalescent time scale -- sensible values are on the
-                          order of the average hamming distance of
-                          contemporaneous sequences
-    --plot                plot the tree on a time axis
+optional arguments:
+  -h, --help            show this help message and exit
+  --aln ALN             fasta file with input sequences
+  --tree TREE           newick file with tree
+  --dates DATES         csv with dates for nodes with 'node_name, date' where
+                        date is float (as in 2012.15)
+  --infer_gtr           infer substitution model
+  --reroot REROOT       reroot the tree. Valid arguments are 'best',
+                        'midpoint', or a node name
+  --optimize_branch_length
+                        Reoptimize branch length. Note that branch length
+                        optimized by treetime are only accurate at short
+                        evolutionary distances.
+  --keep_polytomies     Don't resolve polytomies using temporal information.
+  --relax [RELAX [RELAX ...]]
+                        use an autocorrelated molecular clock. Prior strength
+                        and coupling of parent and offspring rates can be
+                        specified e.g. as --relax 1.0 0.5
+  --max_iter MAX_ITER   maximal number of iterations the inference cycle is
+                        run
+  --verbose VERBOSE     verbosity of output 0-6
+  --Tc TC               coalescent time scale -- sensible values are on the
+                        order of the average hamming distance of
+                        contemporaneous sequences. In addition, "opt"
+                        "skyline" are valid options and estimate a constant
+                        coalescent rateor a piecewise linear coalescent rate
+                        history
+  --plot                plot the tree on a time axis and save as pdf
   ```
   Alternatively, you can interact directly with the TreeTime class from within a script.
 
     ```python
     from treetime import TreeTime
     tt = TreeTime(dates=mydates, tree='my_tree.nwk', aln='my_seqs.nwk', gtr='JC69')
-    tt.run(root='best', infer_gtr=True, relaxed_clock=(1.0,1.0), resolve_polytomies=True, max_iter=2)
+    tt.run(root='best', infer_gtr=True, Tc='skyline', resolve_polytomies=True, max_iter=2)
     ```
-  Every node of tt.tree will be assigned a `numdate` and `time_before_present` attribute. The additional attribute `resolve_polytomies` specifies whether TreeTime will attempt to resolve multiple mergers using the temporal constraints on leaves. Autocorrelated relaxed clocks can be fit by passing a tuple of two numbers `(slack, coupling)`. `slack` is the strength of the normal prior on rate variation, coupling penalizes rate variation between parents and children.
+  Every node of tt.tree will be assigned a `numdate` and `time_before_present` attribute. The additional attribute `resolve_polytomies` specifies whether TreeTime will attempt to resolve multiple mergers using the temporal constraints on leaves.
+
+  In addition, an autocorrelated relaxed clocks can be used by passing a tuple of two numbers `(slack, coupling)`. `slack` is the strength of the normal prior on rate variation, coupling penalizes rate variation between parents and children.
 
 
 * Quantify temporal signal in phylogenies and reroot to the maximize "clock-i-ness"
