@@ -18,8 +18,6 @@ The package is designed to be used as a stand-alone tool or as a library used in
 * rerooting to obtain best root-to-tip regression
 * auto-correlated relaxed molecular clock (with normal prior)
 
-![Molecular clock phylogeny of 200 NA sequences of influenza A H3N2](doc/flu_200.png)
-
 ## Table of contents
   * [Installation and prerequisites](#installation-and-prerequisites)
   * [Basic usage](#basic-usage)
@@ -30,6 +28,8 @@ The package is designed to be used as a stand-alone tool or as a library used in
   * [Comparable Tools](#comparable-tools)
   * [Projects using treetime](#projects-using-treetime)
   * [Developer info](#developer-info)
+
+![Molecular clock phylogeny of 200 NA sequences of influenza A H3N2](doc/flu_200.png)
 
 
 ### Installation and prerequisites
