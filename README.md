@@ -139,7 +139,19 @@ In addition, we provide scripts that can be run from the command line with argum
     tt = TreeTime(dates=mydates, tree='my_tree.nwk', aln='my_seqs.nwk', gtr='JC69')
     tt.run(root='best', infer_gtr=True, Tc='skyline', resolve_polytomies=True, max_iter=2)
     ```
-  Every node of tt.tree will be assigned a `numdate` and `time_before_present` attribute. The additional attribute `resolve_polytomies` specifies whether TreeTime will attempt to resolve multiple mergers using the temporal constraints on leaves.
+  Every node of `tt.tree` will be assigned a `numdate` and `time_before_present` attribute.
+  The `mumdate` attribute has units of years, the `time_before_present` attribute has units of (inverse) substitution rate. The molecular clock estimate can be obtained by `print(tt.date2dist)`.
+
+  The additional argument `resolve_polytomies` specifies whether TreeTime will attempt to resolve multiple mergers using the temporal constraints on leaves.
+
+  The optional argument `Tc` specifies if TreeTime will use a coalescent prior. `Tc` can either be a float, which is interpreted as coalescence time scale in units of the inverse clock rate (values similar to average pairwise sequence distance are sensible), or `Tc='opt'` in which case TreeTime will optimize `Tc` to maximize the likelihood. Finally, `Tc='skyline'` will fit a piecewise linear function as coalescent rate history. To access the result, use
+    ```
+    skyline = tt.merger_model.skyline_inferred(gen=50)
+    ```
+  The result will be an interpolation object the return the "effective population size", its pivots are available as `skyline.x` and `skyline.y`.
+  The argument `gen=50` specifies the number of generations per year to convert the rate estimate into population size.
+
+  The optional argument `niqd` takes a float and will activate a filter that marks all nodes that deviate more than `niqd` inter-quartile distance from the molecular clock. This is done via the method `tt.clock_filter` that optionally plots a root-to-tip distance vs time scatter plot.
 
   In addition, an autocorrelated relaxed clocks can be used by passing a tuple of two numbers `(slack, coupling)`. `slack` is the strength of the normal prior on rate variation, coupling penalizes rate variation between parents and children.
 
