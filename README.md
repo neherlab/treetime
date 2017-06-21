@@ -20,6 +20,18 @@ The package is designed to be used as a stand-alone tool or as a library used in
 
 ![Molecular clock phylogeny of 200 NA sequences of influenza A H3N2](doc/flu_200.png)
 
+## Table of contents
+  * [Installation and prerequisites](#installation-and-prerequisites)
+  * [Basic usage](#basic-usage)
+    + [Ancestral sequence reconstruction:](#ancestral-sequence-reconstruction-)
+    + [Molecular clock phylogenies](#molecular-clock-phylogenies)
+    + [Quantify temporal signal in phylogenies and reroot to the maximize "clock-i-ness"](#quantify-temporal-signal-in-phylogenies-and-reroot-to-the-maximize--clock-i-ness-)
+  * [Example scripts](#example-scripts)
+  * [Comparable Tools](#comparable-tools)
+  * [Projects using treetime](#projects-using-treetime)
+  * [Developer info](#developer-info)
+
+
 ### Installation and prerequisites
 
 * The package depends on several python libraries:
@@ -86,7 +98,7 @@ In addition, we provide scripts that can be run from the command line with argum
 
   The inferred substitution model is accessible via `print(tt.gtr)` and the equilibrium character frequencies are stored in `tt.gtr.pi`, the symmetric substitution matrix in `tt.gtr.W`.
 
-  A longer example of the usage in available in [`examples/ancestral_inference.py`](https://github.com/neherlab/treetime/blob/master/examples/ancestral_inference.py)
+  A longer example of the usage is available in [`examples/ancestral_inference.py`](https://github.com/neherlab/treetime/blob/master/examples/ancestral_inference.py)
 
 #### Molecular clock phylogenies
 
@@ -157,7 +169,7 @@ In addition, we provide scripts that can be run from the command line with argum
 
   In addition, an autocorrelated relaxed clocks can be used by passing a tuple of two numbers `(slack, coupling)`. `slack` is the strength of the normal prior on rate variation, coupling penalizes rate variation between parents and children.
 
-  A longer example of the usage in available in [`examples/relaxed_clock.py`](https://github.com/neherlab/treetime/blob/master/examples/relaxed_clock.py), [`examples/rerooting_and_timetrees.py`](https://github.com/neherlab/treetime/blob/master/examples/rerooting_and_timetrees.py) and [`examples/ebola.py`](https://github.com/neherlab/treetime/blob/master/examples/ebola.py).
+  Longer examples of treetime usage are available in the scripts [`examples/relaxed_clock.py`](https://github.com/neherlab/treetime/blob/master/examples/relaxed_clock.py), [`examples/rerooting_and_timetrees.py`](https://github.com/neherlab/treetime/blob/master/examples/rerooting_and_timetrees.py), and [`examples/ebola.py`](https://github.com/neherlab/treetime/blob/master/examples/ebola.py).
 
 
 #### Quantify temporal signal in phylogenies and reroot to the maximize "clock-i-ness"
@@ -188,8 +200,9 @@ In addition, we provide scripts that can be run from the command line with argum
 
 ### Example scripts
 The following scripts illustrate how treetime can be used to solve common problem with short python scripts. They are meant to be used in an interactive ipython environment and run as `run examples/ancestral_inference.py`.
- * [`ancestral_inference.py`](https://github.com/neherlab/treetime/blob/master/examples/ancestral_inference.py) illustrates how ancestral sequences are inferred and likely mutations are assigned to branches in the tree
- * [`relaxed_clock.py`](https://github.com/neherlab/treetime/blob/master/examples/relaxed_clock.py) walks the user through the usage of relaxed molecular clock models
+ * [`ancestral_inference.py`](https://github.com/neherlab/treetime/blob/master/examples/ancestral_inference.py) illustrates how ancestral sequences are inferred and likely mutations are assigned to branches in the tree,
+ * [`relaxed_clock.py`](https://github.com/neherlab/treetime/blob/master/examples/relaxed_clock.py) walks the user through the usage of relaxed molecular clock models.
+ * [`examples/rerooting_and_timetrees.py`](https://github.com/neherlab/treetime/blob/master/examples/rerooting_and_timetrees.py) illustrates the rerooting and root-to-tip regression scatter plots.
  * [`ebola.py`](https://github.com/neherlab/treetime/blob/master/examples/ebola.py) uses about 300 sequences from the 2014-2015 Ebola virus outbreak to infer a timetree. This example takes a few minutes to run.
 
 
