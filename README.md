@@ -70,7 +70,7 @@ In addition, we provide scripts that can be run from the command line with argum
     --keep_overhangs  keep 5' and 3' gaps rather than filling them with ancestral sequence
   ```
 
-  Alteratively, directly interact with the class TreeAnc from treetime as follows
+  Alteratively, directly interact with the class `TreeAnc` from treetime as follows
     ```python
     from treetime import TreeAnc
     ta = TreeAnc(tree='my_tree.nwk', aln='my_seqs.nwk', gtr='JC69')
@@ -85,6 +85,8 @@ In addition, we provide scripts that can be run from the command line with argum
   of that sequence to the sequence of the parent node.
   Other useful options to the constructor include `fill_overhangs`. If `TreeAnc` is
   initialized with `fill_overhangs=True`, 5' or 3' gaps will be treated as missing data and filled with the sequence of the nearest ancestral node.
+
+  The inferred substitution model is accessible via `print(tt.gtr)` and the equilibrium character frequencies are stored in `tt.gtr.pi`, the symmetric substitution matrix in `tt.gtr.W`.
 
 * Molecular clock phylogenies
 
@@ -132,7 +134,7 @@ In addition, we provide scripts that can be run from the command line with argum
                             history
       --plot                plot the tree on a time axis and save as pdf
   ```
-  Alternatively, you can interact directly with the TreeTime class from within a script.
+  Alternatively, you can interact directly with the `TreeTime` class from within a script or the python console. `TreeTime` is a subclass of `TreeAnc`, so all its methods are available.
 
     ```python
     from treetime import TreeTime
