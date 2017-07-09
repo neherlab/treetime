@@ -303,7 +303,7 @@ class TreeTime(ClockTree):
                     bounds=[max(n1.time_before_present,n2.time_before_present), parent.time_before_present],
                     method='Bounded',args=(n1,n2, parent))
                 return cg['x'], - cg['fun']
-            except e:
+            except:
                 self.logger("TreeTime._poly.cost_gain: optimization of gain failed", 3, warn=True)
                 return parent.time_before_present, 0.0
 
