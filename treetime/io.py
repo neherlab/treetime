@@ -3,7 +3,7 @@ import numpy as np
 import utils
 
 
-def plot_vs_years(tt, years = 1, ax=None, confidence=None, **kwargs):
+def plot_vs_years(tt, years = 1, ax=None, confidence=None, ticks=True, **kwargs):
     '''
     converts branch length to years and plots the time tree on a time axis.
     Args:
@@ -20,6 +20,9 @@ def plot_vs_years(tt, years = 1, ax=None, confidence=None, **kwargs):
         fig = plt.figure()
         ax = plt.subplot(111)
     # draw tree
+    if "label_func" not in kwargs:
+        nleafs = tt.tree.count_terminals()
+        kwargs["label_func"] = lambda x:x.name if (x.is_terminal() and nleafs<30) else ""
     Phylo.draw(tt.tree, axes=ax, **kwargs)
 
     # set axis labels
@@ -27,8 +30,8 @@ def plot_vs_years(tt, years = 1, ax=None, confidence=None, **kwargs):
     xticks = ax.get_xticks()
     dtick = xticks[1]-xticks[0]
     shift = offset - dtick*(offset//dtick)
-    ax.set_xticks(xticks - shift)
     tick_vals = [x+offset-shift for x in xticks]
+    ax.set_xticks(xticks - shift)
     ax.set_xticklabels(map(str, tick_vals))
     ax.set_xlabel('year')
     ax.set_ylabel('')
@@ -38,7 +41,7 @@ def plot_vs_years(tt, years = 1, ax=None, confidence=None, **kwargs):
     if years:
         ylim = ax.get_ylim()
         xlim = ax.get_xlim()
-        if type(years)==int:
+        if type(years) in [int, float]:
             dyear=years
         from matplotlib.patches import Rectangle
         for yi,year in enumerate(np.arange(tick_vals[0], tick_vals[-1],dyear)):
@@ -48,7 +51,7 @@ def plot_vs_years(tt, years = 1, ax=None, confidence=None, **kwargs):
                           facecolor=[0.7+0.1*(1+yi%2)] * 3,
                           edgecolor=[1,1,1])
             ax.add_patch(r)
-            if year in tick_vals and pos>xlim[0] and pos<xlim[1]:
+            if year in tick_vals and pos>xlim[0] and pos<xlim[1] and ticks:
                 ax.text(pos,ylim[0]-0.04*(ylim[1]-ylim[0]),str(int(year)),
                         horizontalalignment='center')
         ax.set_axis_off()

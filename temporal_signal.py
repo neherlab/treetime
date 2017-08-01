@@ -37,7 +37,7 @@ if __name__=="__main__":
                 dates[name] = float(date)
             except:
                 failed_dates+=1
-                print("couldn't parse date from:",line.strip(),"\n\texpecting float in second column")
+
         if len(dates)<failed_dates:
             print("\n\nDATE PARSING FAILED, ABORTING...")
             import sys
@@ -62,13 +62,14 @@ if __name__=="__main__":
 
     if params.reroot:
         myTree.reroot('best')
-        # write rerooted tree to file
-        outtree_name = base_name+'_rerooted.newick'
-        Phylo.write(myTree.tree, outtree_name, 'newick')
-
 
     d2d = DateConversion.from_tree(myTree.tree)
     print('\n',d2d)
+    if params.reroot:
+        # write rerooted tree to file
+        outtree_name = base_name+'_rerooted.newick'
+        Phylo.write(myTree.tree, outtree_name, 'newick')
+        print("re-rooted tree written to %s"%outtree_name)
 
 
     ###########################################################################
@@ -78,10 +79,11 @@ if __name__=="__main__":
         import matplotlib.pyplot as plt
         myTree.plot_root_to_tip(label=False)
         t = np.array([np.min(dates.values()), np.max(dates.values())])
-        plt.plot(t, t*d2d.slope+d2d.intercept,
-                 label='y=%1.4f+%1.5ft, r^2=%1.2f'%(d2d.intercept, d2d.slope, d2d.r_val**2))
+        plt.plot(t, t*d2d.clock_rate+d2d.intercept,
+                 label='y=%1.4f+%1.5ft, r^2=%1.2f'%(d2d.intercept, d2d.clock_rate, d2d.r_val**2))
         plt.legend(loc=2)
         plt.savefig(base_name+'_root_to_tip_regression.pdf')
+        print("root-to-tip plot save to %s_root_to_tip_regression.pdf"%base_name)
 
 
 

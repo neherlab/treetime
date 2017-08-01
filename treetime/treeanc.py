@@ -6,6 +6,7 @@ from Bio import AlignIO
 import numpy as np
 from gtr import GTR
 import seq_utils
+from version import tt_version as __version__
 try:
     from itertools import izip
 except ImportError:  #python3.x
@@ -64,6 +65,7 @@ class TreeAnc(object):
         """
         if tree is None:
             raise("TreeAnc requires a tree!")
+        self.__version__ = __version__
         self.t_start = time.time()
         self.verbose = verbose
         self.logger("TreeAnc: set-up",1)
@@ -105,7 +107,7 @@ class TreeAnc(object):
             regardless of its log-level.
 
         """
-        if level<self.verbose or warn:
+         if level<self.verbose or (warn and level<=self.verbose):
             dt = time.time() - self.t_start
             outstr = '\n' if level<2 else ''
             outstr+=format(dt, '4.2f')+'\t'
@@ -150,7 +152,7 @@ class TreeAnc(object):
 
     def set_gtr(self, in_gtr, **kwargs):
         """
-        Create new GTR model, if needed, and set the model as the attribute of the
+        Create new GTR model if needed, and set the model as an attribute of the
         TreeAnc class
 
         Parameters
@@ -161,6 +163,12 @@ class TreeAnc(object):
             it is understood as the name of the standard GTR model, and is
             attempted to be created through GTR.standard() interface. In case
             GTR instance is passed, it is directly set as the class attribute
+
+        Keyword Args
+	------------
+
+         All parameters needed for the gtr creation. If none passed, defaults are assumed.
+           Refer to the particular GTR models for the exact parameter values
 
         """
         if type(in_gtr)==str:
@@ -178,6 +186,7 @@ class TreeAnc(object):
         if self._gtr.ambiguous is None:
             self.fill_overhangs=False
 
+
     @property
     def tree(self):
         """
@@ -187,22 +196,37 @@ class TreeAnc(object):
 
     @tree.setter
     def tree(self, in_tree):
+        '''
+        assigns a tree to the internal self._tree variable. The tree is either
+        loaded from file (if in_tree is str) or assigned (if in_tree is a Phylo.tree)
+        '''
         from os.path import isfile
         if isinstance(in_tree, Phylo.BaseTree.Tree):
             self._tree = in_tree
         elif type(in_tree) in [str, unicode] and isfile(in_tree):
-            self._tree=Phylo.read(in_tree, 'newick')
+            try:
+                self._tree=Phylo.read(in_tree, 'newick')
+            except:
+                fmt = in_tree.split('.')[-1]
+                if fmt in ['nexus', 'nex']:
+                    self._tree=Phylo.read(in_tree, 'nexus')
+                else:
+                    self.logger('TreeAnc: could not load tree, format needs to be nexus or newick! input was '+in_tree,1)
+                    self._tree = None
+                    return
         else:
             self.logger('TreeAnc: could not load tree! input was '+in_tree,1)
             self._tree = None
             return
 
+        # remove all existing sequence attributes
         for node in self._tree.find_clades():
             if hasattr(node, "sequence"):
                 node.__delattr__("sequence")
             node.original_length = node.branch_length
             node.mutation_length = node.branch_length
         self.prepare_tree()
+
 
     @property
     def aln(self):
@@ -227,18 +251,19 @@ class TreeAnc(object):
         if hasattr(self, '_tree'):
             self._attach_sequences_to_nodes()
         else:
-            self.logger("TreeAnc.aln: sequences not yet attached to tree",3,warn=True)
+            self.logger("TreeAnc.aln: sequences not yet attached to tree", 3, warn=True)
 
-    def _attach_sequences_to_nodes(self):
-        """
-        Make reduced alignment, and set compressed sequences to the leaf nodes
-        of the tree
-        """
-        # loop over tree,
+
+    def attach_sequences_to_nodes(self):
+        '''
+        For each node of the tree, check whether there is a sequence available
+        in the alignment and assign this sequence as a character array
+        '''
         failed_leaves= 0
         dic_aln = {k.name: seq_utils.seq2array(k.seq, fill_overhangs=self.fill_overhangs,
                                                ambiguous_character=self.gtr.ambiguous)
                             for k in self.aln} #
+        # loop over tree,
         for l in self.tree.find_clades():
             if l.name in dic_aln:
                 l.sequence= dic_aln[l.name]
@@ -702,7 +727,7 @@ class TreeAnc(object):
             state = np.concatenate([k.state[pos] for k in node.clades])
         return state
 
-    def _fitch_intersect(self, arrays, assume_unique=False):
+    def _fitch_intersect(self, arrays):
         """
         Find the intersection of any number of 1D arrays.
         Return the sorted, unique values that are in all of the input arrays.
@@ -723,19 +748,6 @@ class TreeAnc(object):
             N = len(arrays)
 
         return arrays[0]
-
-        #
-        #if not assume_unique:
-        #    for i, arr in enumerate(arrays):
-        #        arrays[i] = np.unique(arr)
-        #aux = np.concatenate(arrays) # one long 1D array
-        #aux.sort() # sorted
-        #shift = N-1
-        ## if an element is in all N arrays, is shows up N consecutive times in the sorted
-        ## concatenation. those elements can be found by comparing the array shifted by N-1
-        ## since the initital arrays are unique, only the correct elements are found this way.
-        #import ipdb; ipdb.set_trace()
-        #return aux[aux[shift:] == aux[:-shift]]
 
 
 

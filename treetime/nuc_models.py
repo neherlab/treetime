@@ -8,7 +8,8 @@ def JC69 (mu=1.0, alphabet="nuc", **kwargs):
     """
     Jukes-Cantor 1969 model. This model assumes equal concentrations
     of the nucleotides and equal transition rates between nucleotide states.
-    For more info, see: Jukes and Cantor (1969). Evolution of Protein Molecules. New York: Academic Press. pp. 21–132
+    For more info, see: Jukes and Cantor (1969). Evolution of Protein Molecules.
+                        New York: Academic Press. pp. 21–132
 
     Args:
 
@@ -147,7 +148,7 @@ def T92(mu=1.0, pi_GC=0.5, kappa=0.1, **kwargs):
     # A C G T
     if pi_CG >=1.:
         raise ValueError("The relative CG content specified is larger than 1.0!")
-    pi = np.array([(1-pi_CG)/2, pi_CG/2, pi_CG/2, (1-pi_CG)/2])
+    pi = np.array([(1.-pi_CG)*0.5, pi_CG*0.5, pi_CG*0.5, (1-pi_CG)*0.5])
     gtr = GTR(alphabet=alphabets['nuc_nogap'])
     gtr.assign_rates(mu=mu, pi=pi, W=W)
     return gtr
@@ -183,7 +184,7 @@ def TN93(mu=1.0, kappa1=1., kappa2=1., pi=None, **kwargs):
         [1,      kappa1, 1,      kappa1],
         [kappa1, 1,      kappa1, kappa2],
         [1,      kappa1, 1,      kappa1],
-        [kappa1, kappa2, kappa1,  1]])
+        [kappa1, kappa2, kappa1,  1]], dtype=float)
 
     pi /=pi.sum()
     num_chars = len(alphabets['nuc_nogap'])
