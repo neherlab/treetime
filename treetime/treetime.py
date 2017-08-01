@@ -340,7 +340,7 @@ class TreeTime(ClockTree):
                 n1.up = new_node
                 n2.up = new_node
                 new_node.cseq = clade.cseq
-                self.store_compressed_sequence_to_node(new_node)
+                self._store_compressed_sequence_to_node(new_node)
 
                 new_node.mutations = []
                 new_node.mutation_length = 0.0
