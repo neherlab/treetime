@@ -14,13 +14,92 @@ class TreeTime(ClockTree):
     such as reroot, detection and exclusion of outliers, resolution of polytomies
     using temporal information, and relaxed molecular clock models
     """
+
     def __init__(self, *args,**kwargs):
+        """
+        TreeTime constructor
+
+        Args
+        ----
+         Arguments to construct ClockTree
+
+        Keyword Args
+        ------------
+         Kwargs to construct ClockTree
+
+        """
         super(TreeTime, self).__init__(*args, **kwargs)
         self.n_iqd = ttconf.NIQD
 
-    def run(self, root=None, infer_gtr=True, relaxed_clock=False, n_iqd = None,
+    def run(self, root=None, infer_gtr=True, relaxed_clock=None, n_iqd = None,
             resolve_polytomies=True, max_iter=0, Tc=None, fixed_clock_rate=None,
             time_marginal=False, use_input_branch_length = False, **kwargs):
+
+        """
+        Run TreeTime reconstruction. Based on the input parameters, it divides
+        the analysis into semi-independent jobs and conquers them one-by one
+        gradually optimizing the tree given the temporal constarints and leaf
+        nodes sequences.
+
+        Parameters
+        ----------
+
+         root : str, None
+            Try to find better root position on a given tree. If string is passed,
+            the root will be searched according to the specified method. Available
+            reroot methods are: 'best', 'oldest', '<leaf_name>'
+
+            If None, use tree as-is.
+
+         infer_gtr : bool default True
+            Should infer GTR model?
+
+         relaxed_clock : dic, None
+            If not None, use autocorrelated molecular clock model. Specify the
+            clock parameters as {slack:<slack>, coupling:<coupling>} dictionary.
+
+         n_iqd : int, None
+            If not None, filter tree nodes, which do not obey molecular clock
+            for the particular tree. The nodes, which deviate more than
+            :code:`n_iqd` interquantile intervals from the molecular clock
+            regression will be marked as 'BAD' and not account in the TreeTime
+            analysis
+
+         resolve_polytomies : bool
+            Should attempt to resolve multiple mergers?
+
+         max_iter : int
+            Maximum number of iterations to optimize the tree
+
+         Tc : float, str, None
+            If not None, use coalescent model to correct the branch lengths by
+            introducing merger costs.
+
+            If Tc is float, it is interpreted as the coalescence time scale
+
+            If Tc is str, it should be one of (:code:`opt`, :code:`skyline`)
+
+         fixed_clock_rate : float, None
+            If None, infer clock rate from the molecular clock
+
+            If float, use this rate
+
+         time_marginal : bool default False
+            Should perform marginal reconstruction of the node's positions?
+
+         use_input_branch_length : bool
+            If True, rely on the branch lengths in the imput tree and skip directly
+            to the maximum-likelihood ancestral sequence reconstruction.
+            Otherwise, perform preliminary sequence reconstruction using parsimony
+            algorithm and do branch length optimization
+
+        Keyword Args
+        ------------
+
+         Additional arguments needed by the dowstream funcitons
+
+
+        """
         # determine how to reconstruct and sample sequences
         seq_kwargs = {"marginal":False, "sample_from_profile":"root"}
         if "do_marginal" in kwargs:
@@ -136,9 +215,25 @@ class TreeTime(ClockTree):
 
     def clock_filter(self, reroot='best', n_iqd=None, plot=False):
         '''
-        labels outlier branches that don't seem to follow a molecular clock
+        Labels outlier branches that don't seem to follow a molecular clock
         and excludes them from subsequent the molecular clock estimate and
         the timetree propagation
+
+        Parameters
+        ----------
+         reroot : str, None
+            Method to find the best root in the tree.
+
+         n_iqd : int, None
+            Number of iqd intervals. The outlier nodes are those which do not fall
+            into :math:`IQD\cdot n_iqd` interval (:math:`IQD` is the interval between
+            75 and 25 percentiles)
+
+            if None, the default (3) assumed
+
+         plot : bool
+            Should plot the reults?
+
         '''
         if n_iqd is None:
             n_iqd = self.n_iqd
@@ -173,6 +268,26 @@ class TreeTime(ClockTree):
 
 
     def plot_root_to_tip(self, add_internal=False, label=True, ax=None, **kwargs):
+        """
+        Plot root-to-tip regression
+
+        Parameters
+        ----------
+
+         add_internal : bool
+            Should plot internal node positoins?
+
+         label : bool
+            Should label the plots?
+
+         ax: matplotlib axes, None
+            If not None, use the provided matplotlib axes to plot the results
+
+        Keyword Args
+        ------------
+         Additional arguments for matplotlib.pyplot.scatter function
+
+        """
         import matplotlib.pyplot as plt
         tips = self.tree.get_terminals()
         internal = self.tree.get_nonterminals()
@@ -201,6 +316,22 @@ class TreeTime(ClockTree):
 
 
     def reroot(self,root='best'):
+        """
+        Find best root and re-root the tree to the new root
+
+        Parameters
+        ----------
+
+         root : str
+            Which method shoudl use to find the best root. Available methods are:
+
+            :code:`best` - maximize root-to-tip regression coefficient
+
+            :code:`oldest` - choose the oldest node
+
+            :code:`<node_name>` - reroot to the node with name :code:`<node_name>`
+
+        """
         self.logger("TreeTime.reroot: with method or node: %s"%root,1)
         for n in self.tree.find_clades():
             n.branch_length=n.mutation_length
@@ -241,9 +372,13 @@ class TreeTime(ClockTree):
         Resolve the polytomies on the tree.
         The function scans the tree, resolves polytomies in case there are any,
         and re-optimizes the tree with new topology.
-        Args:
-            - merge_compressed(bool): whether to keep compressed branches as
-              polytomies or return a strictly binary tree.
+
+        Parameters
+        ----------
+         merge_compressed : bool
+            Whether to keep compressed branches as polytomies or
+            return a strictly binary tree.
+
         """
         self.logger("TreeTime.resolve_polytomies: resolving multiple mergers...",1)
 
@@ -394,6 +529,13 @@ class TreeTime(ClockTree):
     def print_lh(self, joint=True):
         """
         Print the total likelihood of the tree given the constrained leaves
+
+        Parameters
+        ----------
+
+         joint : bool
+            Whether joint or marginal LH should be printed
+
         """
         try:
             u_lh = self.tree.unconstrained_sequence_LH
@@ -422,6 +564,15 @@ class TreeTime(ClockTree):
         Changes of the mutation rates from one branch to another are penalized.
         In addition, deviations of the mutation rate from the mean rate are
         penalized.
+
+        Parameters
+        ----------
+         slack : float
+            Maximum change in substitution rate between parent and child nodes
+
+         coupling : float
+            Maximum difference in substitution rates in sibling nodes
+
         """
         if slack is None: slack=ttconf.MU_ALPHA
         if coupling is None: coupling=ttconf.MU_BETA
@@ -616,6 +767,13 @@ class TreeTime(ClockTree):
         '''
         determine the node that, when the tree is rooted on this node, results
         in the best regression of temporal constraints and root to tip distances
+
+        Parameters
+        ----------
+
+         infer_gtr : bool
+            Should infer new GTR model after re-root?
+
         '''
         from Bio import Phylo
         self.logger("TreeTime.reroot_to_best_root: searching for the best root position...",2)
