@@ -23,6 +23,30 @@ class ClockTree(TreeAnc):
     """
 
     def __init__(self,  dates=None, debug=False, real_dates=True, *args, **kwargs):
+        """
+        ClockTree constructor
+
+        Parameters
+        ----------
+
+         dates : dic, None
+            {leaf_name:leaf_date} dictionary
+
+         debug : bool
+            If True, the debug mode is ON, which means no or less clean-up of
+            obsolete parameters to control program  execution in intermediate
+            states. In debug mode, the python debugger is also allowed to interrupt
+            program execution with intercative shell if an error occurs.
+
+         real_dates : bool
+            If True, some additional checks for the input dates sanity will be
+            performed.
+
+        Keyword Args
+        ------------
+            Kwargs needed to construct parent class (TreeAnc)
+
+        """
         super(ClockTree, self).__init__(*args, **kwargs)
         if dates is None:
             raise("ClockTree requires date constraints!")
@@ -73,12 +97,15 @@ class ClockTree(TreeAnc):
         coefficients as well as regression parameters are stored in the
         dates2dist object.
 
-        Note: that tree must have dates set to all nodes before calling this
+        ..Note:: that tree must have dates set to all nodes before calling this
         function. (This is accomplished by calling load_dates func).
 
-        Params:
-            ancestral_inference: bool -- whether or not to reinfer ancestral sequences
-                                 done by default when ancestral sequences are missing
+        Parameters
+        ----------
+
+         ancestral_inference: bool
+            Whether or not to reinfer ancestral sequences
+            done by default when ancestral sequences are missing
 
         """
         self.logger("ClockTree.init_date_constraints...",2)
@@ -128,8 +155,20 @@ class ClockTree(TreeAnc):
 
     def make_time_tree(self, time_marginal=False, **kwargs):
         '''
-        use the date constraints to calculate the most likely positions of
+        Use the date constraints to calculate the most likely positions of
         unconstrained nodes.
+
+        Parameters
+        ----------
+
+         time_marginal : bool
+            Whether use marginal reconstruction for node positions or not
+
+        Keyword Args
+        ------------
+
+         Kwargs needed to initialize dates constraints
+
         '''
         self.logger("ClockTree: Maximum likelihood tree optimization with temporal constraints:",1)
         self.init_date_constraints(**kwargs)
@@ -152,16 +191,13 @@ class ClockTree(TreeAnc):
         branch length, and scaled from the present-day. The value is assigned to the
         corresponding attribute of each node of the tree.
 
-        Args:
+        Returns
+        -------
 
-         - None: all required parameters are pre-set as node attributes during
-                 tree preparation
-
-        Returns:
-
-         - None: Every internal node is assigned the probability distribution in form
-           of an interpolation object and sends this distribution further towards the
-           root.
+         None
+            Every internal node is assigned the probability distribution in form
+            of an interpolation object and sends this distribution further towards the
+            root.
 
         """
 
@@ -259,7 +295,7 @@ class ClockTree(TreeAnc):
 
     def timetree_likelihood(self):
         '''
-        return the likelihood of the data given the current branch length in the tree
+        Return the likelihood of the data given the current branch length in the tree
         '''
         LH = 0
         for node in self.tree.find_clades(order='preorder'):  # sum the likelihood contributions of all branches
@@ -279,16 +315,23 @@ class ClockTree(TreeAnc):
         conditional on the constraints on all leaves of the tree, which have sampling dates.
         The probability distributions are set as marginal_pos_LH attributes to the nodes.
 
-        Args:
+        Parameters
+        ----------
 
-         - None: all required parameters are pre-set as the node attributes during
-           tree preparation
+         assign_dates : bool, default False
+            If True, the inferred dates will be assigned to the nodes as
+            :code:`time_before_present' attributes, and their branch lengths
+            will be corrected accordingly.
+            .. Note::
+                Normally, the dates are assigned by running joint reconstruction.
 
-        Returns:
+        Returns
+        -------
 
-         - None: Every internal node is assigned the probability distribution in form
-           of an interpolation object and sends this distribution further towards the
-           root.
+         None
+            Every internal node is assigned the probability distribution in form
+            of an interpolation object and sends this distribution further towards the
+            root.
 
         """
 
@@ -424,8 +467,12 @@ class ClockTree(TreeAnc):
         to numerical dates stored in the "numdate" attribute. This date is further converted
         into a human readable date string in format %Y-%m-%d assuming the usual calendar
 
-        Args: None
-        Returns: None -- all manipulations are done in place on the tree
+
+        Returns
+        -------
+         None
+            All manipulations are done in place on the tree
+
         '''
         from datetime import datetime, timedelta
         now = utils.numeric_date()
@@ -456,11 +503,14 @@ class ClockTree(TreeAnc):
 
     def branch_length_to_years(self):
         '''
-        this function sets branch length to reflect the date differences between parent and child
+        This function sets branch length to reflect the date differences between parent and child
         nodes measured in years. Should only be called after convert_dates has been called
 
-        Args: None
-        Returns: None -- all manipulations are done in place on the tree
+        Returns
+        -------
+         None
+            All manipulations are done in place on the tree
+
         '''
         self.logger('ClockTree.branch_length_to_years: setting node positions in units of years', 2)
         if not hasattr(self.tree.root, 'numdate'):
@@ -478,12 +528,21 @@ class ClockTree(TreeAnc):
         range where 5% of probability are below and above. Note that this does not necessarily contain
         the highest probability position.
 
-        Args:
-            - node:     the node for which the confidence interval is to be calculated
-            - interval: array like of length two defining the bounds of the confidence interval
+        Parameters
+        ----------
 
-        Returns:
-            - array with two numerical dates delineatingthe confidence interval
+         node : PhyloTree.Clade
+            The node for which the confidence interval is to be calculated
+
+         interval : tuple, list default=(0.05, 0.95)
+            Array like of length two defining the bounds of the confidence interval
+
+        Returns
+        -------
+
+         confidence_interval : numpy array
+            Array with two numerical dates delineating the confidence interval
+
         '''
         if hasattr(node, "marginal_inverse_cdf"):
             if node.marginal_inverse_cdf=="delta":
@@ -501,13 +560,21 @@ class ClockTree(TreeAnc):
         range where 5% of probability are below and above. Note that this does not necessarily contain
         the highest probability position.
 
-        Args:
-            - node:     the node for which the confidence region is to be calculated
-            - interval: float specifying who much of the posterior probability is
-                        to be contained in the region
+        Parameters
+        ----------
 
-        Returns:
-            - array with two numerical dates delineating the high posterior region
+         node : PhyloTree.Clade
+            The node for which the confidence region is to be calculated
+
+         interval : float
+            Float specifying who much of the posterior probability is
+            to be contained in the region
+
+        Returns
+        -------
+         max_posterior_region : numpy array
+            Array with two numerical dates delineating the high posterior region
+
         '''
         if not hasattr(node, "marginal_inverse_cdf"):
             return np.array([np.nan, np.nan])
