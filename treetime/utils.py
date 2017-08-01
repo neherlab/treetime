@@ -66,13 +66,22 @@ class DateConversion(object):
         """
         Compute branch length given the dates of the two nodes.
 
-        Args:
-         - date1 (int): date of the first node (days before present)
-         - date2 (int): date of the second node (days before present)
+        Parameters
+        -----------
+
+         date1 : int
+            date of the first node (days before present)
+
+         date2 : int
+            date of the second node (days before present)
 
         Returns:
-         - branch length (double): Branch length, assuming that the dependence
-         between the node date and the node depth in the the tree is linear.
+        --------
+
+         branch length : double
+            Branch length, assuming that the dependence
+            between the node date and the node depth in the the tree is linear.
+
         """
         return abs(date1 - date2) * self.clock_rate
 
@@ -126,8 +135,12 @@ def numeric_date(dt=None):
     """
     Convert datetime object to the numeric date.
     The numeric date format is YYYY.F, where F is the fraction of the year passed
-    Args:
-     - dt: (datetime.datetime) date of to be converted. if None, assume today
+
+    Parameters
+    ----------
+     dt:  datetime.datetime, None
+        date of to be converted. if None, assume today
+
     """
     if dt is None:
         dt = datetime.datetime.now()
