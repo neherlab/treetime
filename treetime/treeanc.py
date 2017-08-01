@@ -107,7 +107,7 @@ class TreeAnc(object):
             regardless of its log-level.
 
         """
-         if level<self.verbose or (warn and level<=self.verbose):
+        if level<self.verbose or (warn and level<=self.verbose):
             dt = time.time() - self.t_start
             outstr = '\n' if level<2 else ''
             outstr+=format(dt, '4.2f')+'\t'
@@ -254,7 +254,7 @@ class TreeAnc(object):
             self.logger("TreeAnc.aln: sequences not yet attached to tree", 3, warn=True)
 
 
-    def attach_sequences_to_nodes(self):
+    def _attach_sequences_to_nodes(self):
         '''
         For each node of the tree, check whether there is a sequence available
         in the alignment and assign this sequence as a character array
