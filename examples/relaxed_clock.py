@@ -9,7 +9,7 @@ try:
     import seaborn as sns
     sns.set_style('whitegrid')
 except:
-    pass
+    print ("Seaborn not found. Default style will be used for the plots")
 
 if __name__ == '__main__':
 

@@ -9,7 +9,7 @@ try:
     import seaborn as sns
     sns.set_style('whitegrid')
 except:
-    pass
+    print ("Seaborn not found. Default style will be used for the plots")
 
 def format_axes(fig, axs):
     axs[0].set_axis_off()
@@ -80,6 +80,6 @@ if __name__ == '__main__':
     fig.tight_layout()
 
     # treetime implements a convenience function to plot timetrees
-    from treetime.io import plot_vs_years
+    from treetime.treetime import plot_vs_years
     plot_vs_years(tt, label_func=lambda x:"", show_confidence=False)
 
