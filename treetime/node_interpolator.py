@@ -8,8 +8,36 @@ def _create_initial_grid(node_dist, branch_dist):
 
 def _convolution_integrand(t_val, f, g, inverse_time=None, return_log=False):
     '''
-    evaluates int_tau f(t+tau)g(tau) or int_tau f(t-tau)g(tau) if inverse time is TRUE
+    Evaluates int_tau f(t+tau)*g(tau) or int_tau f(t-tau)g(tau) if inverse time is TRUE
+
+    Parameters
+    -----------
+
+     t_val : double
+        Time point
+
+     f : Interpolation object
+        First multiplier in convolution
+
+     g : Interpolation object
+        Second multiplier in convolution
+
+     inverse_time : bool, None
+        time direction. If True, then the f(t-tau)*g(tau) is calculated, otherwise,
+        f(t+tau)*g(tau)
+
+     return_log : bool
+        If True, the logarithm will be returned
+
+
+    Returns
+    -------
+
+     FG : Distribution
+        The function to be integrated as Distribution object (interpolator)
+
     '''
+
     if inverse_time is None:
         raise Exception("Inverse time argument must be set!")
 
@@ -57,6 +85,36 @@ def _convolution_integrand(t_val, f, g, inverse_time=None, return_log=False):
 
 def _max_of_integrand(t_val, f, g, inverse_time=None, return_log=False):
 
+    '''
+    Evaluates max_tau f(t+tau)*g(tau) or max_tau f(t-tau)g(tau) if inverse time is TRUE
+
+    Parameters
+    -----------
+
+     t_val : double
+        Time point
+
+     f : Interpolation object
+        First multiplier in convolution
+
+     g : Interpolation object
+        Second multiplier in convolution
+
+     inverse_time : bool, None
+        time direction. If True, then the f(t-tau)*g(tau) is calculated, otherwise,
+        f(t+tau)*g(tau)
+
+     return_log : bool
+        If True, the logarithm will be returned
+
+
+    Returns
+    -------
+
+     FG : Distribution
+        The function to be integrated as Distribution object (interpolator)
+
+    '''
     # return log is always True
     FG = _convolution_integrand(t_val, f, g, inverse_time, return_log=True)
 
@@ -82,7 +140,9 @@ def _max_of_integrand(t_val, f, g, inverse_time=None, return_log=False):
     return res
 
 def _evaluate_convolution(t_val, f, g,  n_integral = 100, inverse_time=None, return_log=False):
-
+    """
+    Calculate convolution F(t) = int { f(tau)g(t-tau) } dtau
+    """
 
     FG = _convolution_integrand(t_val, f, g, inverse_time, return_log)
 
@@ -101,6 +161,10 @@ def _evaluate_convolution(t_val, f, g,  n_integral = 100, inverse_time=None, ret
 
 
 class NodeInterpolator (Distribution):
+    """
+    Node's position distribution function. This class extends the distribution
+    class ind implements the convolution constructor.
+    """
 
     @classmethod
     def convolve(cls, node_interp, branch_interp, max_or_integral='integral',

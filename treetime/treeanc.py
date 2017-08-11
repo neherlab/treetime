@@ -1287,6 +1287,7 @@ class TreeAnc(object):
         return new_aln
 
 if __name__=="__main__":
+
     from Bio import Phylo
     from StringIO import StringIO
     from Bio import Phylo,AlignIO

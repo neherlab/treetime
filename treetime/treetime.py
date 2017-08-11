@@ -19,8 +19,8 @@ class TreeTime(ClockTree):
         """
         TreeTime constructor
 
-        Args
-        ----
+        Parameters
+        -----------
          Arguments to construct ClockTree
 
         Keyword Args

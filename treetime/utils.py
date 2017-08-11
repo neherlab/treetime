@@ -31,6 +31,17 @@ class DateConversion(object):
     def from_tree(cls, t, clock_rate=None):
         """
         Create the conversion object automatically from the tree
+
+        Parameters
+        ----------
+
+         t : Phylo.Tree
+            Tree as Biopython object
+
+         clock_rate : float, None
+            Substitution rate, or None. If None, will be inferred from root-to-
+            tip regression in the tree. Otherwise, the value passed will be used
+
         """
         dates = []
         for node in t.find_clades():

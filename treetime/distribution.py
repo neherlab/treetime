@@ -7,12 +7,20 @@ from copy import deepcopy as make_copy
 from scipy.ndimage import binary_dilation
 
 class Distribution(object):
-    """docstring for Distribution"""
+    """
+    Class to implement the probability distribution. This class wraps the scipy
+    linear interpolation object, and implements some additional operations,
+    needed to manipulate distributions for tree nodes positions, branch lengths,
+    etc.
+    This class is callable, so it can be treated similarly to the scipy interpolation
+    object.
+    """
 
     @staticmethod
     def calc_fwhm(distribution, is_log=True):
         """
-        Assess the width of the probability distribution. This returns full-width-half-max
+        Assess the width of the probability distribution. This returns
+        full-width-half-max
         """
 
         if isinstance(distribution, interp1d):
