@@ -14,7 +14,7 @@ except:
 
 if __name__ == '__main__':
 
-    base_name = 'data/H3N2_NA_allyears_NA.200'
+    base_name = 'data/H3N2_NA_allyears_NA.20'
     with open(base_name+'.metadata.csv') as date_file:
         dates = {}
         for line in date_file:
@@ -31,7 +31,7 @@ if __name__ == '__main__':
 
     # this example uses a fixed clock rate of 0.003
     myTree.run(root='clock_filter', relaxed_clock=False, max_iter=2, plot_rtt=True,
-               resolve_polytomies=True, Tc="opt", n_iqd=2, time_marginal=True)
+               resolve_polytomies=True, Tc="skyline", n_iqd=2, time_marginal=True)
 
     # draw phylogenetic tree in one panel, marginal distributions in the other
     tree_layout(myTree.tree)
