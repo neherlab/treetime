@@ -129,7 +129,7 @@ if __name__=="__main__":
     base_name = '.'.join(params.aln.split('/')[-1].split('.')[:-1])
     # plot
     if params.plot:
-        from treetime.io import plot_vs_years
+        from treetime.treetime import plot_vs_years
         import matplotlib.pyplot as plt
         plt.ion()
         leaf_count = myTree.tree.count_terminals()
