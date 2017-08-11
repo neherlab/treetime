@@ -126,7 +126,7 @@ def test_seq_joint_reconstruction_correct():
         i += 1
     print (alnstr)
     myTree.aln = AlignIO.read(StringIO(alnstr), 'fasta')
-    myTree.attach_sequences_to_nodes()
+    myTree._attach_sequences_to_nodes()
     # reconstruct ancestral sequences:
     myTree._ml_anc_joint(debug=True)
 
