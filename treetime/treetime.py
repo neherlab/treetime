@@ -1,10 +1,10 @@
 from __future__ import print_function, division
 from clock_tree import ClockTree
-from utils import *
+import utils as ttutils
 import config as ttconf
-import io as tt_io
 import numpy as np
 from scipy import optimize as sciopt
+from Bio import Phylo
 from version import tt_version as __version__
 
 
@@ -243,7 +243,7 @@ class TreeTime(ClockTree):
             self.reroot(root=reroot)
             icpt, clock_rate = self.tree.root._alpha, self.tree.root._beta
         else:
-            tmp_date2dist = utils.DateConversion.from_tree(self.tree)
+            tmp_date2dist = ttutils.DateConversion.from_tree(self.tree)
             icpt, clock_rate = tmp_date2dist.intercept, tmp_date2dist.clock_rate
 
         res = {}
@@ -608,8 +608,6 @@ class TreeTime(ClockTree):
                     g_up = node.up.branch_length_interpolator.gamma
                 node.branch_length_interpolator.gamma = (coupling*g_up - 0.5*node._k1)/(coupling+node._k2)
 
-
-
 ###############################################################################
 ### rerooting
 ###############################################################################
@@ -802,59 +800,83 @@ class TreeTime(ClockTree):
             # simply use the existing node as the new root
             return best_root
 
-if __name__=="__main__":
+
+def plot_vs_years(tt, years = 1, ax=None, confidence=None, ticks=True, **kwargs):
+    '''
+    converts branch length to years and plots the time tree on a time axis.
+    Args:
+        tt:     treetime object after a time tree is inferred
+        years:  width of shaded boxes indicating blocks of years, default 1
+        ax:     axis object. will create new axis of none specified
+        confidence:     draw confidence intervals. This assumes that marginal
+                        time tree inference was run
+        **kwargs:   arbitrary kew word arguments that are passed down to Phylo.draw
+    '''
     import matplotlib.pyplot as plt
-    import seaborn as sns
-    sns.set_style('whitegrid')
-    from Bio import Phylo
-    plt.ion()
-    base_name = 'data/H3N2_NA_allyears_NA.200'
-    import datetime
-    from utils import numeric_date
-    with open(base_name+'.metadata.csv') as date_file:
-        dates = {}
-        for line in date_file:
-            if line[0]=='#':
-                continue
-            try:
-                name, date = line.strip().split(',')
-                dates[name] = float(date)
-            except:
-                continue
+    tt.branch_length_to_years()
+    if ax is None:
+        fig = plt.figure()
+        ax = plt.subplot(111)
+    # draw tree
+    if "label_func" not in kwargs:
+        nleafs = tt.tree.count_terminals()
+        kwargs["label_func"] = lambda x:x.name if (x.is_terminal() and nleafs<30) else ""
+    Phylo.draw(tt.tree, axes=ax, **kwargs)
 
-    myTree = TreeTime(gtr='Jukes-Cantor', tree = base_name+'.nwk',
-                        aln = base_name+'.fasta', verbose = 4, dates = dates, debug=False)
+    # set axis labels
+    offset = tt.tree.root.numdate - tt.tree.root.branch_length
+    xticks = ax.get_xticks()
+    dtick = xticks[1]-xticks[0]
+    shift = offset - dtick*(offset//dtick)
+    tick_vals = [x+offset-shift for x in xticks]
+    ax.set_xticks(xticks - shift)
+    ax.set_xticklabels(map(str, tick_vals))
+    ax.set_xlabel('year')
+    ax.set_ylabel('')
+    ax.set_xlim((0,np.max([n.numdate for n in tt.tree.get_terminals()])+2-offset))
 
-    # this example uses a fixed clock rate of 0.003
-    myTree.run(root='clock_filter', relaxed_clock=False, max_iter=2, plot_rtt=True,
-               resolve_polytomies=True, Tc="opt", n_iqd=2, time_marginal=True)
+    # put shaded boxes to delineate years
+    if years:
+        ylim = ax.get_ylim()
+        xlim = ax.get_xlim()
+        if type(years) in [int, float]:
+            dyear=years
+        from matplotlib.patches import Rectangle
+        for yi,year in enumerate(np.arange(tick_vals[0], tick_vals[-1],dyear)):
+            pos = year - offset
+            r = Rectangle((pos, ylim[1]-5),
+                          dyear, ylim[0]-ylim[1]+10,
+                          facecolor=[0.7+0.1*(1+yi%2)] * 3,
+                          edgecolor=[1,1,1])
+            ax.add_patch(r)
+            if year in tick_vals and pos>xlim[0] and pos<xlim[1] and ticks:
+                ax.text(pos,ylim[0]-0.04*(ylim[1]-ylim[0]),str(int(year)),
+                        horizontalalignment='center')
+        ax.set_axis_off()
 
-    # draw phylogenetic tree in one panel, marginal distributions in the other
-    tree_layout(myTree.tree)
-    fig, axs = plt.subplots(2,1, sharex=True, figsize=(8,12))
-    Phylo.draw(myTree.tree, axes=axs[0], show_confidence=False, label_func = lambda x:'')
-    offset = myTree.tree.root.time_before_present + myTree.tree.root.branch_length
-    cols = sns.color_palette()
-    depth = myTree.tree.depths()
-    x = np.linspace(-0.01, .2,1000)
-    for ni,node in enumerate(myTree.tree.find_clades(order="postorder")):
-        axs[1].plot(offset-x, node.marginal_pos_LH.prob_relative(x), '-', c=cols[ni%len(cols)])
-        if node.up is not None:
-            # add branch length distributions to tree
-            x_branch = np.linspace(depth[node]-2*node.branch_length-0.005,depth[node],100)
-            axs[0].plot(x_branch, node.ypos - 0.7*node.branch_length_interpolator.prob_relative(depth[node]-x_branch), '-', c=cols[ni%len(cols)])
-    axs[1].set_yscale('log')
-    axs[1].set_ylim([0.05,1.2])
-    axs[0].set_xlabel('')
-    plt.tight_layout()
+    # add confidence intervals to the tree graph -- grey bars
+    if confidence:
+        ttutils.tree_layout(tt.tree)
+        if not hasattr(tt.tree.root, "marginal_inverse_cdf"):
+            print("marginal time tree reconstruction required for confidence intervals")
+        elif len(confidence)==2:
+            cfunc = tt.get_confidence_interval
+        elif len(confidence)==1:
+            cfunc = tt.get_max_posterior_region
+        else:
+            print("confidence needs to be either a float (for max posterior region) or a two numbers specifying lower and upper bounds")
+            return
 
-    # make root to tip plot
-    myTree.plot_root_to_tip(add_internal=True, s=30)
+        for n in tt.tree.find_clades():
+            pos = cfunc(n, confidence)
+            ax.plot(pos-offset, np.ones(len(pos))*n.ypos, lw=3, c=(0.5,0.5,0.5))
 
-    # get skyline, assuming 50 generations per year
-    skyline = myTree.merger_model.skyline_inferred(gen = 50)
 
-    # plot skyline, i.e. inverse coalescent rate
-    plt.figure()
-    plt.plot(skyline.x, skyline.y)
+def treetime_to_newick(tt, outf):
+    Phylo.write(tt.tree, outf, 'newick')
+
+
+if __name__=="__main__":
+    pass
+
 
