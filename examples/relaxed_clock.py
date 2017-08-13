@@ -1,34 +1,24 @@
 from __future__ import print_function, division
 from treetime import TreeTime
 import numpy as np
-from scipy import optimize as sciopt
+from Bio import Phylo
+from rerooting_and_timetrees import read_dates
+
 import matplotlib.pyplot as plt
 from matplotlib import cm
-from Bio import Phylo
 try:
     import seaborn as sns
     sns.set_style('whitegrid')
 except:
     print ("Seaborn not found. Default style will be used for the plots")
 
+
 if __name__ == '__main__':
 
     # load data and parse dates
     plt.ion()
     base_name = 'data/H3N2_NA_allyears_NA.20'
-    import datetime
-    from treetime.utils import numeric_date
-    with open(base_name+'.metadata.csv') as date_file:
-        dates = {}
-        for line in date_file:
-            if line[0]=='#':
-                continue
-            try:
-                name, date = line.strip().split(',')
-                dates[name] = float(date)
-            except:
-                continue
-
+    dates = read_dates(base_name)
     # instantiate treetime
     tt_relaxed = TreeTime(gtr='Jukes-Cantor', tree = base_name+'.nwk',
                         aln = base_name+'.fasta', verbose = 4, dates = dates)
@@ -38,6 +28,12 @@ if __name__ == '__main__':
     # couplings penalize rate changes between parent and child nodes.
     tt_relaxed.run(root='best', relaxed_clock={"slack":5.0, "coupling":1.0}, max_iter=3,
                resolve_polytomies=True, Tc=0, time_marginal=False)
+
+
+
+    ##############
+    # PLOTTING
+    ##############
 
     # draw trees inferred with the relaxed model
     fig = plt.figure()
