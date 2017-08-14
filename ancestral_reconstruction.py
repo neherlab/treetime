@@ -34,31 +34,46 @@ if __name__=="__main__":
     parser.add_argument('--verbose', default = 1, type=int, help='verbosity of output 0-6')
     params = parser.parse_args()
 
-    ###########################################################################
-    ### ANCESTRAL RECONSTRUCTION
-    ###########################################################################
 
-    #  creata GTR model
+
+    ###########################################################################
+    ### GTR SET-UP
+    ###########################################################################
     model = params.gtr
     gtr_params = params.gtr_params
     if model == 'infer':
         gtr = GTR.standard('jc')
         infer_gtr = True
     else:
-        kwargs = {}
-        for param in gtr_params:
-            keyval = param.split('=')
-            if len(keyval)!=2: continue
-            if keyval[0] in ['pis', 'pi', 'Pi', 'Pis']:
-                keyval[1] = map(int, keyval[1].split(','))
-            kwargs[keyval[0]] = keyval[1]
+        try:
+            kwargs = {}
+            if gtr_params is not None:
+                for param in gtr_params:
+                    keyval = param.split('=')
+                    if len(keyval)!=2: continue
+                    if keyval[0] in ['pis', 'pi', 'Pi', 'Pis']:
+                        keyval[1] = map(float, keyval[1].split(','))
+                    elif keyval[0] not in ['alphabet']:
+                        keyval[1] = float(keyval[1])
+                    kwargs[keyval[0]] = keyval[1]
+            else:
+                print ("GTR params are not specified. Creating GTR model with default parameters")
 
-        gtr = GTR.standard(model, **kwargs)
-        infer_gtr = False
 
+            gtr = GTR.standard(model, **kwargs)
+            infer_gtr = False
+        except:
+            print ("Could not create GTR model from input arguments. Using default (Jukes-Cantor 1969)")
+            gtr = GTR.standard('jc')
+            infer_gtr = False
+
+
+    ###########################################################################
+    ### ANCESTRAL RECONSTRUCTION
+    ###########################################################################
     treeanc = TreeAnc(params.tree, aln=params.aln, gtr=gtr, verbose=4, fill_overhangs=not params.keep_overhangs)
     treeanc.infer_ancestral_sequences('ml', infer_gtr=infer_gtr,
-                                       marginal=params.3)
+                                       marginal=params.marginal)
 
     ###########################################################################
     ### OUTPUT and saving of results
