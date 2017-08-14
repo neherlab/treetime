@@ -75,7 +75,10 @@ def test_seq_joint_reconstruction_correct():
     from Bio import Phylo, AlignIO
     from StringIO import StringIO
     import numpy as np
-    from itertools import izip
+    try:
+        from itertools import izip
+    except ImportError:  #python3.x
+        izip = zip
     from collections import defaultdict
     def exclusion(a, b):
         """

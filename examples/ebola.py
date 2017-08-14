@@ -6,15 +6,15 @@ a few minutes to run.
 '''
 
 from __future__ import print_function, division
-from treetime import TreeTime
 import numpy as np
-from scipy import optimize as sciopt
+from Bio import Phylo
+
+from treetime import TreeTime
+from treetime.utils import numeric_date
+from rerooting_and_timetrees import read_dates
 
 import matplotlib.pyplot as plt
 from matplotlib import cm
-import datetime
-from Bio import Phylo
-from treetime.utils import numeric_date
 try:
     import seaborn as sns
     sns.set_style('whitegrid')
@@ -27,17 +27,7 @@ if __name__ == '__main__':
 
     plt.ion()
     base_name = 'data/ebola'
-    with open(base_name+'.csv') as date_file:
-        dates = {}
-        for line in date_file:
-            if line[0]=='#':
-                continue
-            try:
-                name, date = line.strip().split(',')
-                dates[name] = float(date)
-            except:
-                continue
-
+    dates = read_dates(base_name)
     # instantiate treetime
     ebola = TreeTime(gtr='Jukes-Cantor', tree = base_name+'.nwk',
                         aln = base_name+'.fasta', verbose = 4, dates = dates)

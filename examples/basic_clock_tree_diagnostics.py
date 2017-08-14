@@ -1,34 +1,49 @@
 
+'''
+This script illustrates the usage of the basic class 'ClockTree' to estimate time
+scaled phylogenies for a given topology.
+'''
+
 from Bio import Phylo
 import matplotlib.pyplot as plt
 from treetime import ClockTree
+from rerooting_and_timetrees import read_dates
 import numpy as np
-import seaborn as sns
+
+import matplotlib.pyplot as plt
+try:
+    import seaborn as sns
+    sns.set_style('whitegrid')
+except:
+    print ("Seaborn not found. Default style will be used for the plots")
+plt.ion()
+
 
 if __name__ == '__main__':
 
-    plt.ion()
+    # load and root tree
     base_name = 'data/H3N2_NA_allyears_NA.20'
-    #root_name = 'A/Hong_Kong/JY2/1968|CY147440|1968|Hong_Kong||H3N2/8-1416'
     root_name = 'A/New_York/182/2000|CY001279|02/18/2000|USA|99_00|H3N2/1-1409'
-    with open(base_name+'.metadata.csv') as date_file:
-        dates = {}
-        for line in date_file:
-            try:
-                name, date = line.strip().split(',')
-                dates[name] = float(date)
-            except:
-                continue
-
+    dates = read_dates(base_name)
     tree = Phylo.read(base_name + ".nwk", 'newick')
     tree.root_with_outgroup([n for n in tree.get_terminals() if n.name==root_name][0])
+
+
+    # find maximum likelihood branch length given the temporal constraints
     myTree = ClockTree(gtr='Jukes-Cantor', tree = tree,
                         aln = base_name+'.fasta', verbose = 6, dates = dates)
 
     myTree.optimize_seq_and_branch_len(prune_short=True)
-    # fix clock_rate -- to test. Do inference both for joint and marginal reconstruction
+    # Do inference both for joint and marginal reconstruction
+    # in this example the clock_rate is fixed. Otherwise it is estimated from the root-to-tip regression
     myTree.make_time_tree(clock_rate=0.003, time_marginal=False)
     myTree.make_time_tree(clock_rate=0.003, time_marginal=True)
+
+
+
+    ###################
+    ## Plotting
+    ###################
 
     # make a figure the shows the branch length interpolators for each branch in the tree
     plt.figure()
