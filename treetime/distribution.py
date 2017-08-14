@@ -313,7 +313,7 @@ class Distribution(object):
         return np.sum(res)
 
 if __name__=="__main__":
-
+    # code used for debugging and development
     from matplotlib import pyplot as plt
     plt.ion()
 
@@ -322,11 +322,11 @@ if __name__=="__main__":
     d1 = Distribution(x, y,is_log=False)
 
     def f(x):
-        #return (x-5)**2+np.abs(x)**3
         return (x**2-5)**2 #(x-5)**2+np.abs(x)**3
     def g(x):
         return (x-4)**2*(x**(1.0/3)-5)**2
 
+    # measure interpolation accuracy
     plot=False
     error = {}
     for kind in ['linear', 'quadratic', 'cubic', 'Q']:
@@ -373,6 +373,7 @@ if __name__=="__main__":
         plt.yscale('log')
         plt.legend()
 
+    # measure integration accuracy
     integration_error = {'trapez':[], 'simpson':[], 'piecewise':[]}
     npoints = [11,21,31, 41, 51,75,101, 201, 501, 1001]
     xnew = np.linspace(-5,15,1000)
@@ -383,13 +384,11 @@ if __name__=="__main__":
         integration_error['simpson'].append(dist.integrate_simpson(0,10,npoint))
         xtmp = np.linspace(0,10,min(100,npoint))
         disttmp = Distribution(xtmp, g(xtmp), kind='cubic', is_log=True)
-        integration_error['piecewise'].append(disttmp.integrate_piecewise_gaussian(0,10))
 
     plt.figure()
     base_line = integration_error['simpson'][-1]
     plt.plot(npoints, np.abs(integration_error['trapez']-base_line), label='trapez')
     plt.plot(npoints, np.abs(integration_error['simpson']-base_line), label='simpson')
-    plt.plot(npoints, np.abs(integration_error['piecewise']-base_line), label='piecewise')
     plt.xlabel('npoints')
     plt.xscale('log')
     plt.yscale('log')

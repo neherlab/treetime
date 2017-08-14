@@ -218,11 +218,9 @@ def prof2seq(profile, gtr, sample_from_prof=False):
         cumdis = tmp_profile.cumsum(axis=1).T
         randnum = np.random.random(size=cumdis.shape[1])
         idx = np.argmax(cumdis>=randnum, axis=0)
-        seq = gtr.alphabet[idx]
-
     else:
         idx = tmp_profile.argmax(axis=1)
-        seq = gtr.alphabet[idx]  # max LH over the alphabet
+    seq = gtr.alphabet[idx]  # max LH over the alphabet
 
     prof_values = tmp_profile[np.arange(tmp_profile.shape[0]), idx]
 

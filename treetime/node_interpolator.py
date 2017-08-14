@@ -122,16 +122,9 @@ def _max_of_integrand(t_val, f, g, inverse_time=None, return_log=False):
         res = ttconf.BIG_NUMBER, 0
 
     else:
-
-        # TODO use minimize_scalar here !!
         X = FG.x[FG.y.argmin()]
         Y = FG.y.min()
         res =  Y, X
-
-        #import matplotlib.pyplot as plt
-        #plt.figure(11)
-        #plt.plot(FG.x, FG.y)
-        #plt.vlines(res[1], -1e3, Y)
 
     if not return_log:
         res[0] = np.log(res[0])
@@ -284,48 +277,4 @@ class NodeInterpolator (Distribution):
         res_t = Distribution(t_grid_0, t_0, is_log=True, kind='linear')
 
         return res_y, res_t
-
-if __name__ == '__main__':
-
-    import matplotlib.pyplot as plt
-    plt.ion()
-    plt.show()
-
-    print ("NodeInterpolator test")
-
-    for n in [2, 5, 10, 100, 500]:
-
-        xl = np.linspace(0,1,n)
-        xr = np.linspace(1, 2, n)
-        yl = 1e-10 + 10*xl
-        yr = 1e-10 + -10*xr + 20
-
-        x = np.concatenate([xl, xr])
-        y = np.concatenate([yl, yr])
-
-        d1 = Distribution(x, y,is_log=False)
-        d2 = Distribution(x, y,is_log=False)
-
-        ni = NodeInterpolator.convolve(d1, d2, n_integral=1000)
-
-        plt.figure(1)
-        plt.plot(d1.x, np.exp(-d1.y), 'o--', label="# tau points: " + str(n))
-        plt.figure(2)
-        plt.plot(ni.x, ni.y, 'o-' , label="# tau points: " + str(n))
-        plt.figure(3)
-        plt.plot(ni.x, np.exp(-ni.y), 'o-', label="# tau points: " + str(n))
-
-
-
-
-    plt.figure(1)
-    plt.legend()
-    plt.figure(2)
-    plt.legend()
-    plt.figure(3)
-    plt.legend()
-
-
-
-
 

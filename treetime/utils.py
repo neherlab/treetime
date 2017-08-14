@@ -123,7 +123,7 @@ def min_interp(interp_object):
     """
     try:
         return interp_object.x[interp_object(interp_object.x).argmin()]
-    except Exception, e:
+    except Exception as e:
         s = "Cannot find minimum of tthe interpolation object" + str(interp_object.x) + \
         "Minimal x: " + str(interp_object.x.min()) + "Maximal x: " + str(interp_object.x.max())
         raise e
