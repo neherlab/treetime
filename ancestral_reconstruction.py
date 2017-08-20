@@ -18,7 +18,7 @@ if __name__=="__main__":
     parser.add_argument('--aln', required = True, type = str,  help ="fasta file with input sequences")
     parser.add_argument('--tree', required = True, type = str,  help ="newick file with tree")
 
-    parser.add_argument('--gtr', required=True, type = str, help="GTR model to use. "
+    parser.add_argument('--gtr', required=False, type = str, default='infer', help="GTR model to use. "
         " Type 'infer' to infer the model from the data. Or, specify the model type. "
         "Optionally, feed the arguments with the '--gtr_args' option")
 
@@ -28,8 +28,8 @@ if __name__=="__main__":
         " the parameters in the GTR creation methods.")
 
     parser.add_argument('--prot', default = False, action="store_true", help ="protein alignment")
-    parser.add_argument('--marginal', default = False, action='store_true', help='marginal instead of joint ML reconstruction')
-    parser.add_argument('--infer_gtr', default = False, action='store_true', help='infer substitution model')
+    parser.add_argument('--marginal', default = False, action="store_true", help ="protein alignment")
+    parser.add_argument('--zero_based', default = False, action='store_true', help='zero based SNP indexing')
     parser.add_argument('--keep_overhangs', default = False, action='store_true', help='do not fill terminal gaps')
     parser.add_argument('--verbose', default = 1, type=int, help='verbosity of output 0-6')
     params = parser.parse_args()
@@ -80,7 +80,7 @@ if __name__=="__main__":
     ###########################################################################
 
     model = 'aa' if params.prot else 'Jukes-Cantor'
-    if params.infer_gtr:
+    if infer_gtr:
         print('\nInferred GTR model:')
         print(treeanc.gtr)
 
@@ -89,6 +89,7 @@ if __name__=="__main__":
 
     # decorate tree with inferred mutations
     terminal_count = 0
+    offset = 0 if params.zero_based else 1
     for n in treeanc.tree.find_clades():
         if n.up is None:
             continue
@@ -99,7 +100,7 @@ if __name__=="__main__":
             n.name = n.name[:35]+'_%03d'%terminal_count
             terminal_count+=1
         if len(n.mutations):
-            n.comment= '&mutations="' + '_'.join([a+str(pos)+d for (a,pos, d) in n.mutations])+'"'
+            n.comment= '&mutations="' + '_'.join([a+str(pos + offset)+d for (a,pos, d) in n.mutations])+'"'
 
     # write tree to file
     outtree_name = '.'.join(params.tree.split('/')[-1].split('.')[:-1])+'_mutation.nexus'
