@@ -258,7 +258,7 @@ latex_elements = {
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
     (master_doc, 'TreeTime.tex', u'TreeTime Documentation',
-     u'Prof. Dr. Richard Neher and Pavel Sagulenko', 'manual'),
+     u'Pavel Sagulenko and Richard Neher', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
