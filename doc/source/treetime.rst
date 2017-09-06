@@ -6,7 +6,7 @@ TreeTime class documentation
 TreeTime docstring and constructor
 ==================================
 
-.. autoclass:: treetime.treetime.TreeTime
+.. autoclass:: treetime.TreeTime
     :members: __init__
 
 
