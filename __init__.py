@@ -9,3 +9,4 @@ from treetime import seq_utils
 from treetime.merger_models import Coalescent
 import datetime
 import treetime.seq_utils as seq_utils
+from treetime.utils import numeric_date
