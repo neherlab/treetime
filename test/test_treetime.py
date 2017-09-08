@@ -159,7 +159,7 @@ def test_seq_joint_reconstruction_correct():
 
 def test_seq_joint_lh_is_max():
     """
-    For a single-cahr sequence, make the joint ancestracl sequence reconstruction
+    For a single-char sequence, perform joint ancestral sequence reconstruction
     and prove that this reconstruction is the most likely one by comparing to all
     possible reconstruction variants (brute-force).
     """

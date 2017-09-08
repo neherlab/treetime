@@ -14,7 +14,7 @@ There are some examples given to show how to instantiate objects of TreeAnc type
 TreeAnc Docstring
 =================
 
-.. autoclass:: treetime.treetime.TreeAnc
+.. autoclass:: treetime.TreeAnc
     :members: __init__
 
 TreeAnc methods
@@ -23,53 +23,53 @@ TreeAnc methods
 Basic functions, utilities, properties
 --------------------------------------
 
-.. automethod:: treetime.treetime.TreeAnc.prepare_tree
+.. automethod:: treetime.TreeAnc.prepare_tree
 
-.. automethod:: treetime.treetime.TreeAnc.prune_short_branches
+.. automethod:: treetime.TreeAnc.prune_short_branches
 
-.. automethod:: treetime.treetime.TreeAnc.set_gtr
+.. automethod:: treetime.TreeAnc.set_gtr
 
-.. automethod:: treetime.treetime.TreeAnc.logger
+.. automethod:: treetime.TreeAnc.logger
 
-.. automethod:: treetime.treetime.TreeAnc.aln
+.. automethod:: treetime.TreeAnc.aln
 
-.. automethod:: treetime.treetime.TreeAnc.gtr
+.. automethod:: treetime.TreeAnc.gtr
 
-.. automethod:: treetime.treetime.TreeAnc.tree
+.. automethod:: treetime.TreeAnc.tree
 
-.. automethod:: treetime.treetime.TreeAnc.leaves_lookup
+.. automethod:: treetime.TreeAnc.leaves_lookup
 
 
 Sequence and profile manipulation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. automethod:: treetime.treetime.TreeAnc.get_mutations
+.. automethod:: treetime.TreeAnc.get_mutations
 
-.. automethod:: treetime.treetime.TreeAnc.get_reconstructed_alignment
+.. automethod:: treetime.TreeAnc.get_reconstructed_alignment
 
-.. automethod:: treetime.treetime.TreeAnc.make_reduced_alignment
+.. automethod:: treetime.TreeAnc.make_reduced_alignment
 
-.. automethod:: treetime.treetime.TreeAnc.expanded_sequence
+.. automethod:: treetime.TreeAnc.expanded_sequence
 
 
 Ancestral reconstruction and tree optimization
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. automethod:: treetime.treetime.TreeAnc.reconstruct_anc
+.. automethod:: treetime.TreeAnc.reconstruct_anc
 
-.. automethod:: treetime.treetime.TreeAnc.infer_ancestral_sequences
+.. automethod:: treetime.TreeAnc.infer_ancestral_sequences
 
-.. automethod:: treetime.treetime.TreeAnc.ancestral_likelihood
+.. automethod:: treetime.TreeAnc.ancestral_likelihood
 
-.. automethod:: treetime.treetime.TreeAnc.optimal_branch_length
+.. automethod:: treetime.TreeAnc.optimal_branch_length
 
-.. automethod:: treetime.treetime.TreeAnc.optimize_branch_length
+.. automethod:: treetime.TreeAnc.optimize_branch_length
 
-.. automethod:: treetime.treetime.TreeAnc.optimize_seq_and_branch_len
+.. automethod:: treetime.TreeAnc.optimize_seq_and_branch_len
 
-.. automethod:: treetime.treetime.TreeAnc.optimize_sequences_and_branch_length
+.. automethod:: treetime.TreeAnc.optimize_sequences_and_branch_length
 
-.. automethod:: treetime.treetime.TreeAnc.infer_gtr
+.. automethod:: treetime.TreeAnc.infer_gtr
 
 
 
