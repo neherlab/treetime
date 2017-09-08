@@ -52,6 +52,37 @@ The package is designed to be used as a stand-alone tool or as a library used in
 
 You might need root privileges for system wide installation. Alternatively, you can simply use it TreeTime locally without installation. In this case, just download and unpack it, and then add the TreeTime folder to your $PYTHONPATH.
 
+#### Building the documentation
+
+The API documentation for the treetime package is generated created with Sphinx. The source code for the documentaiton is located in doc folder.
+
+##### Requirements
+
+  - sphinx-build to generate static html pages from source. Installed as
+
+  ```bash
+  $pip install Sphinx
+  ```
+
+  - basicstrap Html theme for sphinx:
+
+  ```bash
+  $pip install sphinxjp.themes.basicstrap
+  ```
+
+After required packages are installed, navifgate to doc directory, and build the docs by typing:
+
+```bash
+$make html
+```
+
+Instead of html, another target as `latex` or `epub` can be specified to build the docs in the desired format.
+
+
+##### Requirements
+
+To build the documentation, sphinx-build tool should be installed. The doc pages are using basicstrap html theme to have the same design as the treetime web server. Therefore, the basicstrap theme should be also available in the system
+
 
 ### Basic usage
 TreeTime can be used as part of python programs that create and interact with tree time objects. How treetime can be used to address typical questions like ancestral sequence reconstruction, rerooting, timetree inference etc is illustrated by a collection of example scripts described below.
