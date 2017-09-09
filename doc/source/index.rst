@@ -3,17 +3,18 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to TreeTime's documentation!
+TreeTime documentation
 ====================================
 
-Contents:
+The core of treetime consists of the classes:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. toctree::
    :maxdepth: 2
    :hidden:
 
-   treeanc
    gtr
+   treeanc
    clock_tree
    treetime
 
@@ -21,11 +22,11 @@ Contents:
 .. automodule:: treetime
 
 
-:doc:`TreeAnc class<treeanc>`
-------------------------------
-
 :doc:`GTR class<gtr>`
 ---------------------
+
+:doc:`TreeAnc class<treeanc>`
+------------------------------
 
 :doc:`ClockTree class<clock_tree>`
 ----------------------------------

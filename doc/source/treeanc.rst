@@ -2,13 +2,15 @@
 TreeAnc class documentation
 ***************************
 
-This is the basic class of the TreeTime module. Its purpose to store the phylogenetic tree, and to implement the basic algorithms for sequence manipulation, reconstruction, and branch length optimization.
+This is the core class of the TreeTime module. It stores the phylogenetic tree and implements the basic algorithms for sequence manipulation, sequence reconstruction, and branch length optimization.
 
-The tree is stored as Bio.Phylo object. In order to facilitate the tree operations, each node of the tree gets some additional attributes, which set during the tree preparation. These attributes should be updated properly after tree modifications. The sequences are also attached to the tree nodes. In order to save space, the sequences are stored in the compressed form, so the TreeAnc class has methods to compress and decompress sequences.
+The tree is stored as Bio.Phylo object. In order to facilitate the tree operations, each node of the tree is decorated with additional attributes which are set during the tree preparation. These attributes need to be updated after tree modifications. The sequences are also attached to the tree nodes. In order to save memory, the sequences are stored in the compressed form. The TreeAnc class implements methods to compress and decompress sequences.
 
-On top of that, the TreeAnc class realizes some standard popular algorithms for ancestral sequence reconstruction, maximum-likelihood algorithm to optimize a branch length knowing sequences on each side of the tree branch.
+The main purpose of the TreeAnc class is to implement standard algorithms for ancestral sequence reconstruction.
+Both marginal and joint maximum likelihood reconstructions are possible. The marginal reconstructions computes the entire distribution of the states at a given node after tracing out states at all other nodes.
 
-There are some examples given to show how to instantiate objects of TreeAnc type, and how to run ancestral sequence reconstruction and branch lengths optimization.
+The `example scripts <https://github.com/neherlab/treetime/blob/master/examples/ancestral_inference.py>`_
+illustrate how to instantiate TreeAnc objects.
 
 
 TreeAnc Docstring
