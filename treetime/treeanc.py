@@ -323,13 +323,18 @@ class TreeAnc(object):
         self.reduced_to_full_sequence_map = {}
 
         # create empty reduced alignment (transposed)
-        tmp = []
+        tmp_reduced_aln = []
 
         # transpose real alignment, for ease of iteration
         # NOTE the order of tree traversal must be the same as below
         # for assigning the cseq attributes to the nodes.
-        aln_transpose = np.array([n.sequence for n in self.tree.find_clades()
-                                  if hasattr(n, 'sequence')]).T
+        seqs = [n.sequence for n in self.tree.find_clades() if hasattr(n, 'sequence')]
+        if len(np.unique([len(x) for x in seqs]))>1:
+            self.logger("TreeAnc: Sequences differ in in length! ABORTING",0, warn=True)
+            aln_transpose = None
+            return
+        else:
+            aln_transpose = np.array(seqs).T
 
         for pi, pattern in enumerate(aln_transpose):
             str_pat = "".join(pattern)
@@ -349,13 +354,12 @@ class TreeAnc(object):
 
             # if the pattern is not yet seen,
             if str_pat not in alignment_patterns:
-
                 # bind the index in the reduced aln, index in sequence to the pattern string
-                alignment_patterns[str_pat] = (len(tmp), [pi])
+                alignment_patterns[str_pat] = (len(tmp_reduced_aln), [pi])
                 # append this pattern to the reduced alignment
-                tmp.append(pattern)
+                tmp_reduced_aln.append(pattern)
             else:
-                # if the pattern is alredy seen, append the position in the real
+                # if the pattern is already seen, append the position in the real
                 # sequence to the reduced aln<->sequence_pos_indexes map
                 alignment_patterns[str_pat][1].append(pi)
 
@@ -365,7 +369,7 @@ class TreeAnc(object):
             self.multiplicity[p]=len(pos)
 
         # create the reduced alignment as np array
-        self.reduced_alignment = np.array(tmp).T
+        self.reduced_alignment = np.array(tmp_reduced_aln).T
 
         # create map to compress a sequence
         for p, pos in alignment_patterns.values():
