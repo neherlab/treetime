@@ -1,7 +1,7 @@
 *****************************
 ClockTree class documentation
 *****************************
-
+ClockTree is a class that implements the core algorithms for maximum likelihood time tree inference. It operates on a tree with fixed topology. All operations the reroot or change tree topology are part of the TreeTime class.
 
 .. .. autoclass:: treetime.ClockTree
 ..     :members:

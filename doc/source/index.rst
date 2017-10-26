@@ -6,8 +6,7 @@
 TreeTime documentation
 ====================================
 
-The core of treetime consists of the classes:
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+TreeTime is organized as a hierarchy of classes. The GTR class implements sequence evolution models, TreeAnc does ancestral sequence reconstruction, ClockTree implements time tree inference for a fixed tree topology, while TreeTime provides convenient wrapper functions and additional functionality to manipulate the tree (e.g. rerooting and polytomy resolution).
 
 .. toctree::
    :maxdepth: 2

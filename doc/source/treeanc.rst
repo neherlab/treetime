@@ -13,8 +13,8 @@ The `example scripts <https://github.com/neherlab/treetime/blob/master/examples/
 illustrate how to instantiate TreeAnc objects.
 
 
-TreeAnc Docstring
-=================
+TreeAnc Constructor
+===================
 
 .. autoclass:: treetime.TreeAnc
     :members: __init__

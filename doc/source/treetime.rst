@@ -1,7 +1,7 @@
 ****************************
 TreeTime class documentation
 ****************************
-
+TreeTime is the top-level wrapper class of the time tree inference package. In addition to inferring time trees, TreeTime can reroot your tree, resolve polytomies, mark tips that violate the molecular clock, or infer coalescent models. The core time tree inference is implemented in the class ClockTree.
 
 TreeTime docstring and constructor
 ==================================

@@ -3,9 +3,6 @@ GTR class documentation
 ***********************
 
 
-GTR docstring and construtors
-=============================
-
 .. autoclass::  treetime.GTR
     :members: __init__
 
@@ -24,12 +21,12 @@ GTR docstring and construtors
 
 
 Sequence manipulation
-=====================
+---------------------
 
 .. automethod:: treetime.GTR.compress_sequence_pair
 
 Distance and probability computations
-=====================================
+-------------------------------------
 
 .. automethod:: treetime.GTR.optimal_t
 
