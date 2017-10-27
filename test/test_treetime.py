@@ -145,6 +145,7 @@ def test_seq_joint_reconstruction_correct():
                 print("%s: True sequence equals inferred sequence. parent %s"%(node.name, node.up.name))
         print (node.name, np.sum(node.sequence != node.ref_seq), np.where(node.sequence != node.ref_seq), len(node.mutations), node.mutations)
 
+    # the assignment of mutations to the root node is probabilistic. Hence some differences are expected
     assert diff_count/seq_len<2*(1.0*mut_count/seq_len)**2
 
     # prove the likelihood value calculation is correct
