@@ -7,7 +7,7 @@ from setuptools import setup
 
 setup(
         name = "treetime",
-        version = "0.2.1",
+        version = "0.2.3",
         author = "Pavel Sagulenko and Richard Neher",
         author_email = "pavel.sagulenko@tuebingen.mpg.de",
         description = (""),
