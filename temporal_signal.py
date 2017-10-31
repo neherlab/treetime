@@ -83,8 +83,14 @@ if __name__=="__main__":
     table_fname = base_name+'_rtt.csv'
     with open(table_fname, 'w') as ofile:
         ofile.write("#name, date, root-to-tip distance\n")
+        ofile.write("#Dates of nodes that didn't have a specified date are inferred from the root-to-tip regression.\n")
         for n in myTree.tree.get_terminals():
-            ofile.write("%s, %f, %f\n"%(n.name, n.numdate_given, n.dist2root))
+            if hasattr(n, "numdate_given"):
+                ofile.write("%s, %f, %f\n"%(n.name, n.numdate_given, n.dist2root))
+            else:
+                ofile.write("%s, %f, %f\n"%(n.name, d2d.numdate_from_dist2root(n.dist2root), n.dist2root))
+        for n in myTree.tree.get_nonterminals(order='preorder'):
+            ofile.write("%s, %f, %f\n"%(n.name, d2d.numdate_from_dist2root(n.dist2root), n.dist2root))
         print("--- wrote dates and root-to-tip distances to %s"%table_fname)
 
 

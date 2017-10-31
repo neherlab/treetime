@@ -115,6 +115,12 @@ class DateConversion(object):
         """
         return numeric_date() - self.to_years(tbp)
 
+    def numdate_from_dist2root(self, d2r):
+        """
+        estimate the numerical date based on the distance to root.
+        -> crude dating of internal nodes
+        """
+        return (d2r-self.intercept)/self.clock_rate
 
 
 def min_interp(interp_object):
