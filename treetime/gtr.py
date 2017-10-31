@@ -11,11 +11,22 @@ class GTR(object):
     """
     Defines General-Time-Reversible model of character evolution.
     """
+
     def __init__(self, alphabet='nuc', prof_map=None, logger=None):
         """
         Initialize empty evolutionary model.
-        Args:
-         - alphabet (numpy.array): alphabet of the sequence.
+
+        Parameters
+        ----------
+
+         alphabet : str, numpy.array
+            alphabet of the sequence. If string passed, it is understood as
+            alphabet name. In this case, the alphabet and its profile map pulled
+            from seq_utils.
+
+            If numpy array of characters passed, a new alphabet is constructed,
+            and the default profile map is atached to it.
+
         """
         self.debug=False
         if type(alphabet)==str:
@@ -81,7 +92,7 @@ class GTR(object):
 
     def __str__(self):
         '''
-        string representation of the GTR model for pretty printing
+        String representation of the GTR model for pretty printing
         '''
         eq_freq_str = "Substitution rate (mu): "+str(np.round(self.mu,6))+'\n'
 
@@ -102,6 +113,22 @@ class GTR(object):
         return eq_freq_str + W_str + Q_str
 
     def assign_rates(self, mu=1.0, pi=None, W=None):
+        """
+        Overwrite the GTR model given the provided data
+
+        Parameters
+        ----------
+
+         mu : float
+            Substitution rate
+
+         W : nxn matrix
+            Substitution matrix
+
+         pi : n vector
+            Equilibrium frequencies
+
+        """
         n = len(self.alphabet)
         self.mu = mu
 
@@ -136,14 +163,26 @@ class GTR(object):
         """
         Create a GTR model by specifying the matrix explicitly
 
-        Args:
-         - mu (float): substitution rate
-         - W (nxn matrix): substitution matrix
-         - pi (n vector): equilibrium frequencies
+        Parameters
+        ----------
 
-        KWargs:
-         - alphabet(str): specify alphabet when applicable. If the alphabet specification
-         is required, but no alphabet specified, the nucleotide will be used as default.
+         mu : float
+            Substitution rate
+
+         W : nxn matrix
+            Substitution matrix
+
+         pi : n vector
+            Equilibrium frequencies
+
+        Keyword Args
+        ------------
+
+         alphabet : str
+            Specify alphabet when applicable. If the alphabet specification is
+            required, but no alphabet specified, the nucleotide will be used as
+            default.
+
         """
         gtr = cls(**kwargs)
         gtr.assign_rates(mu=mu, pi=pi, W=W)
@@ -154,123 +193,131 @@ class GTR(object):
         """
         Create standard model of molecular evolution.
 
-        Args:
-         - model(str): model to create. List of the available models is
-         (see description below): ['JC69',
+        Parameters
+        ----------
 
-        Kwargs:
-         - model arguments
+         model : str
+            Model to create. List of the available models is
+            (see description below)
 
-        Available models:
+        Keyword Args
+        ------------
 
-         --- JC69:
-            Jukes-Cantor 1969 model. This model assumes equal frequencies
-            of the nucleotides and equal transition rates between nucleotide states.
-            For more info, see: Jukes and Cantor (1969). Evolution of Protein Molecules.
-                                                    New York: Academic Press. pp. 21–132.
-
-            To create this model, use:
-
-            Args: model='JC69' - keyword to specify the model
-
-            Kwargs:
-
-             - mu(float)  - specify the substitution rate
-
-             - alphabet(str) - alphabet. By default 'nuc' is used (all gaps are ignored).
-             specify 'nuc_gap' to treat gaps as characters
+         model arguments
 
 
-         --- K80:
-            Kimura 1980 model. Assumes equal concentrations across nucleotides, but
-            allows different rates between transitions and transversions. The ratio
-            of the transversion/transition rates is given by kappa parameter.
-            For more info, see
-            Kimura (1980),  J. Mol. Evol. 16 (2): 111–120. doi:10.1007/BF01731581.
+        **Available models**
 
-            Current implementation of the model does not account for the gaps.
+        - JC69:
 
-            Kwargs:
+          Jukes-Cantor 1969 model. This model assumes equal frequencies
+          of the nucleotides and equal transition rates between nucleotide states.
+          For more info, see: Jukes and Cantor (1969).
+          Evolution of Protein Molecules. New York: Academic Press. pp. 21–132.
+          To create this model, use:
 
-             - mu(float): overall substitution rate
+          :code:`mygtr = GTR.standard(model='jc69', mu=<my_mu>, alphabet=<my_alph>)`
 
-             - kappa(float): ratio of transversion/transition rates
+          :code:`my_mu` - substitution rate (float)
 
-
-         --- F81:
-            Felsenstein 1981 model. Assumes non-equal concentrations across nucleotides,
-            but the transition rate between all states is assumed to be equal. See
-            Felsenstein (1981), J. Mol. Evol. 17  (6): 368–376. doi:10.1007/BF01734359
-            for details.
-
-            Current implementation of the model does not account for the gaps (treatment of
-            gaps as characters is possible if specify alphabet='nuc_gap').
-
-            Args:
-
-             - mu(float): substitution rate
-
-             - pi(numpy array): nucleotide concentrations
-
-             - alphabet(str): alphabet to use. Default 'nuc', which discounts al gaps.
-             'nuc-gap' alphabet enables treatmen of gaps as characters.
+          :code:`my_alph` - alphabet (str: :code:`'nuc'` or  :code:`'nuc_gap'`)
 
 
 
-         --- HKY85:
-            Hasegawa, Kishino and Yano 1985 model. Allows different concentrations of the
-            nucleotides (as in F81) + distinguishes between transition/transversionsubstitutions
-            (similar to K80). Link:
-            Hasegawa, Kishino, Yano (1985), J. Mol. Evol. 22 (2): 160–174. doi:10.1007/BF02101694
+        - K80:
 
-            Current implementation of the model does not account for the gaps
-
-            Args:
-
-             - mu(float): substitution rate
-
-             - pi(numpy array): nucleotide concentrations
-
-             - kappa(float): ratio of transversion/transition substitution rates
+          Kimura 1980 model. Assumes equal concentrations across nucleotides, but
+          allows different rates between transitions and transversions. The ratio
+          of the transversion/transition rates is given by kappa parameter.
+          For more info, see
+          Kimura (1980),  J. Mol. Evol. 16 (2): 111–120. doi:10.1007/BF01731581.
+          Current implementation of the model does not account for the gaps.
 
 
+          :code:`mygtr = GTR.standard(model='k80', mu=<my_mu>, kappa=<my_kappa>)`
 
-         --- T92:
-            Tamura 1992 model. Extending Kimura  (1980) model for the case where a
-            G+C-content bias exists. Link:
-            Tamura K (1992),  Mol.  Biol. Evol. 9 (4): 678–687.  DOI: 10.1093/oxfordjournals.molbev.a040752
+          :code:`mu` - overall substitution rate (float)
 
-            Current implementation of the model does not account for the gaps
-
-            Args:
-
-             - mu(float): substitution rate
-
-             - pi_GC(float): relative GC content
-
-             - kappa(float): relative transversion/transition rate
+          :code:`kappa` - ratio of transversion/transition rates (float)
 
 
+        - F81:
 
-         --- TN93:
-            Tamura and Nei 1993. The model distinguishes between the two different types of
-            transition: (A <-> G) is allowed to have a different rate to (C<->T).
-            Transversions have the same rate. The frequencies of the nucleotides are allowed
-            to be different. Link:
-            Tamura, Nei (1993), MolBiol Evol. 10 (3): 512–526. DOI:10.1093/oxfordjournals.molbev.a040023
+          Felsenstein 1981 model. Assumes non-equal concentrations across nucleotides,
+          but the transition rate between all states is assumed to be equal. See
+          Felsenstein (1981), J. Mol. Evol. 17  (6): 368–376. doi:10.1007/BF01734359
+          for details.
 
-            Args:
+          Current implementation of the model does not account for the gaps (treatment of
+          gaps as characters is possible if specify alphabet='nuc_gap').
 
-             - mu(float): mutaion rate
+          :code:`mygtr = GTR.standard(model='F81', mu=<mu>, pi=<pi>, alphabet=<alph>)`
 
-             - kappa1(float): relative A<-->C, A<-->T, T<-->G and G<-->C rates
+          :code:`mu` -  substitution rate  (float)
 
-             - kappa2(float): relative C<-->T rate
+          :code:`pi`  - : nucleotide concentrations (numpy.array)
 
-            Note:
+          :code:`alphabet' -  alphabet to use. (:code:`'nuc'` or  :code:`'nuc_gap'`)
+          Default 'nuc', which discounts  all gaps.
 
-             - Rate of A<-->G substitution is set to one. All other rates (kappa1, kappa2)
-            are specified relative to this rate
+
+
+        - HKY85:
+
+          Hasegawa, Kishino and Yano 1985 model. Allows different concentrations of the
+          nucleotides (as in F81) + distinguishes between transition/transversionsubstitutions
+          (similar to K80). Link:
+          Hasegawa, Kishino, Yano (1985), J. Mol. Evol. 22 (2): 160–174. doi:10.1007/BF02101694
+
+          Current implementation of the model does not account for the gaps
+
+          :code:`mygtr = GTR.standard(model='HKY85', mu=<mu>, pi=<pi>, kappa=<kappa>)`
+
+          :code:`mu` -  substitution rate  (float)
+
+          :code:`pi`  - : nucleotide concentrations (numpy.array)
+
+          :code:`kappa` - ratio of transversion/transition rates (float)
+
+
+
+        - T92:
+
+          Tamura 1992 model. Extending Kimura  (1980) model for the case where a
+          G+C-content bias exists. Link:
+          Tamura K (1992),  Mol.  Biol. Evol. 9 (4): 678–687.  DOI: 10.1093/oxfordjournals.molbev.a040752
+
+          Current implementation of the model does not account for the gaps
+
+          :code:`mygtr = GTR.standard(model='T92', mu=<mu>, pi_GC=<pi_gc>, kappa=<kappa>)`
+
+          :code:`mu` -  substitution rate  (float)
+
+          :code:`pi_GC`  - : relative GC content
+
+          :code:`kappa` - ratio of transversion/transition rates (float)
+
+
+        - TN93:
+
+          Tamura and Nei 1993. The model distinguishes between the two different types of
+          transition: (A <-> G) is allowed to have a different rate to (C<->T).
+          Transversions have the same rate. The frequencies of the nucleotides are allowed
+          to be different. Link: Tamura, Nei (1993), MolBiol Evol. 10 (3): 512–526.
+          DOI:10.1093/oxfordjournals.molbev.a040023
+
+          :code:`mygtr = GTR.standard(model='TN93', mu=<mu>, kappa1=<k1>, kappa2=<k2>)`
+
+          :code:`mu` -  substitution rate  (float)
+
+          :code:`kappa1`  - relative A<-->C, A<-->T, T<-->G and G<-->C rates (float)
+
+          :code:`kappa` - relative C<-->T rate (float)
+
+          .. Note::
+                Rate of A<-->G substitution is set to one. All other rates
+                (kappa1, kappa2) are specified relative to this rate
+
         """
 
         if model.lower() in ['jc', 'jc69', 'jukes-cantor', 'jukes-cantor69', 'jukescantor', 'jukescantor69']:
@@ -293,6 +340,20 @@ class GTR(object):
 
     @classmethod
     def random(cls, mu=1.0, alphabet='nuc'):
+        """
+        Create random GTR model
+
+        Parameters
+        ----------
+
+         mu : float
+            Substitution rate
+
+         alphabet : str
+            Alphabet name (should be standard: 'nuc', 'nuc_gap', 'aa', 'aa_gap')
+
+
+        """
 
         alphabet=alphabets[alphabet]
         gtr = cls(alphabet)
@@ -309,25 +370,41 @@ class GTR(object):
         """
         Infer a GTR model by specifying the number of transitions and time spent in each
         character. The basic equation that is being solved is
-            n_ij = pi_i W_ij T_j
-        where n_ij are the transitions, pi_i are the equilibrium state frequencies,
-        W_ij is the "substitution attempt matrix", while T_i is the time on the tree
-        spent in character state i. To regularize the process, we add pseudocounts and
-        also need to account for the fact that the root of the tree is in a particular
+            :math:`n_{ij} = pi_i W_{ij} T_j`
+        where :math:`n_{ij}` are the transitions, :math:`pi_i` are the equilibrium
+        state frequencies, :math:`W_{ij}` is the "substitution attempt matrix",
+        while :math:`T_i` is the time on the tree spent in character state
+        :math:`i`. To regularize the process, we add pseudocounts and also need
+        to account for the fact that the root of the tree is in a particular
         state. the modified equation is
-            n_ij + pc = pi_i W_ij (T_j+pc+root_state)
 
-        Args:
-         - nij (nxn matrix): the number of times a change in character state is observed
+            :math:`n_{ij} + pc = pi_i W_{ij} (T_j+pc+root\_state)`
+
+        Parameters
+        ----------
+
+         nij : nxn matrix
+            The number of times a change in character state is observed
             between state i and j
-         - Ti (n vector): the time spent in each character state
-         - root_state( n vector): the number of characters in state i in the sequence
+
+         Ti :n vector
+            The time spent in each character state
+
+         root_state : n vector
+            The number of characters in state i in the sequence
             of the root node.
-         - pc (float): pseudocounts, this determines the lower cutoff on the rate when
+
+         pc : float
+            Pseudocounts, this determines the lower cutoff on the rate when
             no substitution are observed
-        KWargs:
-         - alphabet(str): specify alphabet when applicable. If the alphabet specification
-           is required, but no alphabet specified, the nucleotide will be used as default.
+
+        Keyword Args
+        ------------
+
+         alphabet : str
+            Specify alphabet when applicable. If the alphabet specification
+            is required, but no alphabet specified, the nucleotide will be used as default.
+
         """
         from scipy import linalg as LA
         gtr = cls(**kwargs)
@@ -422,15 +499,29 @@ class GTR(object):
         make a compressed representation of a pair of sequences only counting
         the number of times a particular pair of states (e.g. (A,T)) is observed
         the the aligned sequences of parent and child
-        Args:
-          - seq_p:  parent sequence as numpy array
-          - seq_ch: child sequence as numpy array
-          - ignore_gap: whether or not to include gapped positions of the alignment
-                        in the multiplicity count
-        Returns:
-          - seq_pair: [(0,1), (2,2), (3,4)] list of parent_child state pairs
-                      as indices in the alphabet
-          - multiplicity: number of times a particular pair is observed
+
+        Parameters
+        ----------
+
+          seq_p: numpy array
+            Parent sequence as numpy array of chars
+
+          seq_ch: numpy array
+            Child sequence as numpy array of chars
+
+          ignore_gap: bool, default False
+            Whether or not to include gapped positions of the alignment
+            in the multiplicity count
+
+        Returns
+        -------
+          seq_pair : list
+            [(0,1), (2,2), (3,4)] list of parent_child state pairs
+            as indices in the alphabet
+
+          multiplicity : numpy array
+            Number of times a particular pair is observed
+
         '''
         if pattern_multiplicity is None:
             pattern_multiplicity = np.ones_like(seq_p, dtype=float)
@@ -478,14 +569,25 @@ class GTR(object):
     def prob_t_compressed(self, seq_pair, multiplicity, t, return_log=False):
         '''
         calculate the probability of observing a sequence pair at a distance t
-        Args:
-          - seq_pair:     np.array([(0,1), (2,2), ()..]) as indicies of
-                pairs of aligned positions. (e.g. 'A'==0, 'C'==1 etc)
-                this only lists all occuring parent-child state pairs, order is irrelevant
-          - multiplicity: the number of times a parent-child state pair is observed
-                this allows to compress the sequence representation
-          - t:            length of the branch separating parent and child
-          - return_log:   whether or not to exponentiate the result
+
+        Parameters
+        ----------
+
+          seq_pair : numpy array
+            np.array([(0,1), (2,2), ()..]) as indicies of
+            pairs of aligned positions. (e.g. 'A'==0, 'C'==1 etc)
+            this only lists all occuring parent-child state pairs, order is irrelevant
+
+          multiplicity : numpy array
+            The number of times a parent-child state pair is observed
+            this allows to compress the sequence representation
+
+          t : float
+            Length of the branch separating parent and child
+
+          return_log : bool, default False
+            Whether or not to exponentiate the result
+
         '''
         if (t<0):
             logP = -ttconf.BIG_NUMBER
@@ -503,19 +605,29 @@ class GTR(object):
     def prob_t(self, seq_p, seq_ch, t, pattern_multiplicity = None, return_log=False, ignore_gaps=True):
         """
         Compute the probability to observe seq_ch after time t starting from seq_p.
-        Args:
-         - profile_p(np.array): parent profile of shape (L, a), where
-         L - length of the sequence, a - alphabet size.
 
-         - profile_ch(np.array): child profile of shape (L, a), where
-         L - length of the sequence, a - alphabet size.
+        Parameters
+        ----------
 
-         - t (double): time (branch len), separating the profiles.
+         profile_p : np.array
+            Parent profile of shape (L, a), where
+            L - length of the sequence, a - alphabet size.
 
-         - return_log(bool, default False): whether return log-probability.
+         profile_ch : np.array
+            Child profile of shape (L, a), where
+            L - length of the sequence, a - alphabet size.
 
-        Returns:
-         - prob(np.array): resulting probability.
+         t : double
+            Time (branch len), separating the profiles.
+
+         return_log : bool, default False
+            Whether return log-probability.
+
+        Returns
+        -------
+         prob : np.array
+            resulting probability.
+
         """
         seq_pair, multiplicity = self.compress_sequence_pair(seq_p, seq_ch,
                                         pattern_multiplicity=pattern_multiplicity, ignore_gaps=ignore_gaps)
@@ -542,15 +654,27 @@ class GTR(object):
             Probability to observe child given the the parent state, transition
             matrix and the time of evolution (branch length).
 
-            Args:
-             - t(double): branch length (time between sequences)
-             - parent (numpy.array): parent sequence
-             - child(numpy.array): child sequence
-             - tm (GTR): model of evolution
+            Parameters
+            ----------
 
-            Returns:
-             - prob(double): negative probability of the two given sequences
-               to be separated by the time t.
+             t : double
+                Branch length (time between sequences)
+
+             parent :  numpy.array
+                Parent sequence
+
+             child : numpy.array
+                Child sequence
+
+             tm :  GTR
+                Model of evolution
+
+            Returns
+            -------
+
+             prob : double
+                Negative probability of the two given sequences
+                to be separated by the time t.
             """
             return -1.0*self.prob_t_compressed(seq_pair, multiplicity,t, return_log=True)
 
@@ -584,17 +708,27 @@ class GTR(object):
         """
         Compute the probability of the sequence state (profile) at time (t+t0),
         given the sequence state (profile) at time t0.
-        Args:
-         - profile(numpy.array): sequence profile. Shape = (L, a),
-         where L - sequence length, a - alphabet size.
 
-         - t(double): time to propagate
+        Parameters
+        ----------
 
-         - return log (bool, default False): whether to return log-probability
+         profile : numpy.array
+            Sequence profile. Shape = (L, a),
+            where L - sequence length, a - alphabet size.
 
-        Returns:
-         - res(np.array): profile of the sequence after time t.
-         Shape = (L, a), where L - sequence length, a - alphabet size.
+         t : double
+            Time to propagate
+
+         return_log: bool, default False
+            Whether to return log-probability
+
+        Returns
+        -------
+
+         res : np.array
+            Profile of the sequence after time t.
+            Shape = (L, a), where L - sequence length, a - alphabet size.
+
         """
         Qt = self.expQt(t)
         res = profile.dot(Qt)
@@ -607,9 +741,12 @@ class GTR(object):
 
     def _exp_lt(self, t, mu_prefactor=1.0):
         """
-        Returns:
-         - exp_lt(numpy.array): array of values exp(lambda(i) * t),
-         where (i) - alphabet index (the eigenvalue number).
+        Returns
+        --------
+
+         exp_lt : numpy.array
+            Array of values exp(lambda(i) * t),
+            where (i) - alphabet index (the eigenvalue number).
         """
         return np.exp(self.mu * t * self.eigenvals)
 
@@ -620,8 +757,19 @@ class GTR(object):
 
     def sequence_logLH(self,seq, pattern_multiplicity=None):
         """
-        returns the loglikelihood of sampling a sequence from equilibrium frequency
+        Returns the log-likelihood of sampling a sequence from equilibrium frequency
         expects a sequence as numpy array
+
+        Parameters
+        ----------
+
+         seq : numpy array
+            Compressed sequence as array of chars
+
+         pattern_multiplicity : numpy_array, None
+            The number of times each position in sequence is observed in the
+            initial alignment. If None, sequence is assumed to be not compressed
+
         """
         if pattern_multiplicity is None:
             pattern_multiplicity = np.ones_like(seq, dtype=float)

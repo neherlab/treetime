@@ -3,18 +3,13 @@ import config as ttconf
 from distribution import Distribution
 
 class BranchLenInterpolator (Distribution):
-
     """
+    Tjis class defines the methods to manipulate the branch length probability
+    distributions.
+
     """
 
     def __init__(self, node, gtr, one_mutation=None, ignore_gaps=True):
-        """
-        @brief      { constructor_description }
-
-        @param      self  The object
-        @param      node  The node
-
-        """
 
         self.node = node
         self.gtr = gtr

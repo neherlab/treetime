@@ -31,6 +31,17 @@ class DateConversion(object):
     def from_tree(cls, t, clock_rate=None):
         """
         Create the conversion object automatically from the tree
+
+        Parameters
+        ----------
+
+         t : Phylo.Tree
+            Tree as Biopython object
+
+         clock_rate : float, None
+            Substitution rate, or None. If None, will be inferred from root-to-
+            tip regression in the tree. Otherwise, the value passed will be used
+
         """
         dates = []
         for node in t.find_clades():
@@ -66,13 +77,22 @@ class DateConversion(object):
         """
         Compute branch length given the dates of the two nodes.
 
-        Args:
-         - date1 (int): date of the first node (days before present)
-         - date2 (int): date of the second node (days before present)
+        Parameters
+        -----------
+
+         date1 : int
+            date of the first node (days before present)
+
+         date2 : int
+            date of the second node (days before present)
 
         Returns:
-         - branch length (double): Branch length, assuming that the dependence
-         between the node date and the node depth in the the tree is linear.
+        --------
+
+         branch length : double
+            Branch length, assuming that the dependence
+            between the node date and the node depth in the the tree is linear.
+
         """
         return abs(date1 - date2) * self.clock_rate
 
@@ -95,6 +115,12 @@ class DateConversion(object):
         """
         return numeric_date() - self.to_years(tbp)
 
+    def numdate_from_dist2root(self, d2r):
+        """
+        estimate the numerical date based on the distance to root.
+        -> crude dating of internal nodes
+        """
+        return (d2r-self.intercept)/self.clock_rate
 
 
 def min_interp(interp_object):
@@ -103,7 +129,7 @@ def min_interp(interp_object):
     """
     try:
         return interp_object.x[interp_object(interp_object.x).argmin()]
-    except Exception, e:
+    except Exception as e:
         s = "Cannot find minimum of tthe interpolation object" + str(interp_object.x) + \
         "Minimal x: " + str(interp_object.x.min()) + "Maximal x: " + str(interp_object.x.max())
         raise e
@@ -126,8 +152,12 @@ def numeric_date(dt=None):
     """
     Convert datetime object to the numeric date.
     The numeric date format is YYYY.F, where F is the fraction of the year passed
-    Args:
-     - dt: (datetime.datetime) date of to be converted. if None, assume today
+
+    Parameters
+    ----------
+     dt:  datetime.datetime, None
+        date of to be converted. if None, assume today
+
     """
     if dt is None:
         dt = datetime.datetime.now()

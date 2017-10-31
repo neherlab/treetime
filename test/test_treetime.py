@@ -75,7 +75,10 @@ def test_seq_joint_reconstruction_correct():
     from Bio import Phylo, AlignIO
     from StringIO import StringIO
     import numpy as np
-    from itertools import izip
+    try:
+        from itertools import izip
+    except ImportError:  #python3.x
+        izip = zip
     from collections import defaultdict
     def exclusion(a, b):
         """
@@ -126,7 +129,7 @@ def test_seq_joint_reconstruction_correct():
         i += 1
     print (alnstr)
     myTree.aln = AlignIO.read(StringIO(alnstr), 'fasta')
-    myTree.attach_sequences_to_nodes()
+    myTree._attach_sequences_to_nodes()
     # reconstruct ancestral sequences:
     myTree._ml_anc_joint(debug=True)
 
@@ -142,6 +145,7 @@ def test_seq_joint_reconstruction_correct():
                 print("%s: True sequence equals inferred sequence. parent %s"%(node.name, node.up.name))
         print (node.name, np.sum(node.sequence != node.ref_seq), np.where(node.sequence != node.ref_seq), len(node.mutations), node.mutations)
 
+    # the assignment of mutations to the root node is probabilistic. Hence some differences are expected
     assert diff_count/seq_len<2*(1.0*mut_count/seq_len)**2
 
     # prove the likelihood value calculation is correct
@@ -156,7 +160,7 @@ def test_seq_joint_reconstruction_correct():
 
 def test_seq_joint_lh_is_max():
     """
-    For a single-cahr sequence, make the joint ancestracl sequence reconstruction
+    For a single-char sequence, perform joint ancestral sequence reconstruction
     and prove that this reconstruction is the most likely one by comparing to all
     possible reconstruction variants (brute-force).
     """

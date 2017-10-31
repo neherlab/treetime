@@ -22,8 +22,47 @@ class TreeAnc(object):
     alignment, making ancestral state inferrence
     """
 
-    def __init__(self, tree=None, aln=None, gtr=None, fill_overhangs=True,
-                 verbose = ttconf.VERBOSE, **kwargs):
+    def __init__(self, tree=None, aln=None, gtr=None, fill_overhangs=True, verbose = ttconf.VERBOSE, **kwargs):
+        """
+        TreeAnc constructor. It prepares tree, attach sequences to the leaf nodes,
+        and sets some configuration parameters.
+
+        Parameters
+        ----------
+
+         tree : str, Bio.Phylo.Tree
+            Phylogenetic tree. String passed is interpreted as a filename to
+            construct the Biopython tree.
+
+         aln : str, Bio.Align.MultipleSequenceAlignment
+            Sequence alignment. If a string passed, it is interpreted as the
+            filename to read Biopython alignment from.
+
+         gtr : str, GTR
+            gtr model object. If string passed, it is interpreted as the type of
+            the GTR model. A new GTR instance will be created for this type.
+           **Note** some GTR types require additional configuration parameters.
+           If the new GTR is being instantiated, these parameters are expected
+           to be passed as kwargs. If nothing is passed, the default values are
+           used, which might cause unexpected results.
+
+         fill_overhangs : bool
+            In some cases, the missing data on both ends of the alignment is
+            filled with the gap sign('-'). As we suppose that the most
+            appropriate way to deal with the missing data is to assign it to the
+            "unknown" character ('N' for nucleotides, 'X' for aminoacids). If the
+            parameter is set to True, the end-gaps are converted to unknonwn
+            symbols. Otherwise, the alignment is treated as-is
+
+         verbose : int
+            verbosity level as number from 0 (lowest) to 10 (highest).
+
+        Keyword Args
+        ------------
+
+          Keyword arguments to construct GTR model
+
+        """
         if tree is None:
             raise("TreeAnc requires a tree!")
         self.__version__ = __version__
@@ -47,9 +86,27 @@ class TreeAnc(object):
 
         self.aln = aln
         if aln is not None:
-            self.attach_sequences_to_nodes()
+            self._attach_sequences_to_nodes()
 
     def logger(self, msg, level, warn=False):
+        """
+        Print log message *msg* to stdout.
+
+        Parameters
+        -----------
+
+         msg : str
+            string to print on the screen
+
+         level : int
+            log-level. Only the messages with the level higher than the
+            current verbose level will be shown.
+
+         warn : bool
+            warning flag. If True, the message will be displayed
+            regardless of its log-level.
+
+        """
         if level<self.verbose or (warn and level<=self.verbose):
             dt = time.time() - self.t_start
             outstr = '\n' if level<2 else ''
@@ -64,14 +121,30 @@ class TreeAnc(object):
 ####################################################################
     @property
     def leaves_lookup(self):
+        """
+        Leaves lookup is the {leaf-name:leaf-node} dictionary. It enables fast
+        search of a tree leaf object by its name.
+        """
         return self._leaves_lookup
 
     @property
     def gtr(self):
+        """
+        Get GTR object currently used.
+        """
         return self._gtr
 
     @gtr.setter
     def gtr(self, value):
+        """
+        Set a new GTR object
+
+        Parameters
+        -----------
+
+         value :GTR
+            the new GTR object
+        """
         if not isinstance(value, GTR):
             raise TypeError(" GTR instance expected")
         self._gtr = value
@@ -82,17 +155,21 @@ class TreeAnc(object):
         Create new GTR model if needed, and set the model as an attribute of the
         TreeAnc class
 
-        Args:
+        Parameters
+        -----------
 
-         - in_gtr(str or GTR): the gtr model to be assigned. If string is passed,
-         it is understood as the name of the standard GTR model, and is attempted to
-         be created through GTR.standard() interface. In case GTR instance is passed,
-         it is directly set as the class attribute
+         in_gtr : str, GTR
+            The gtr model to be assigned. If string is passed,
+            it is understood as the name of the standard GTR model, and is
+            attempted to be created through GTR.standard() interface. In case
+            GTR instance is passed, it is directly set as the class attribute
 
-        KWargs:
+        Keyword Args
+	------------
 
-         - All parameters needed for the gtr creation. If none passed, defaults are assumed.
+         All parameters needed for the gtr creation. If none passed, defaults are assumed.
            Refer to the particular GTR models for the exact parameter values
+
         """
         if type(in_gtr)==str:
             self._gtr = GTR.standard(model=in_gtr, **kwargs)
@@ -112,7 +189,11 @@ class TreeAnc(object):
 
     @property
     def tree(self):
+        """
+        Get reference to the phylogenetic tree currently used by the TreeAnc.
+        """
         return self._tree
+
     @tree.setter
     def tree(self, in_tree):
         '''
@@ -130,11 +211,11 @@ class TreeAnc(object):
                 if fmt in ['nexus', 'nex']:
                     self._tree=Phylo.read(in_tree, 'nexus')
                 else:
-                    self.logger('TreeAnc: could not load tree, format needs to be nexus or newick! input was '+in_tree,1)
+                    self.logger('TreeAnc: could not load tree, format needs to be nexus or newick! input was '+str(in_tree),1)
                     self._tree = None
                     return
         else:
-            self.logger('TreeAnc: could not load tree! input was '+in_tree,1)
+            self.logger('TreeAnc: could not load tree! input was '+str(in_tree),1)
             self._tree = None
             return
 
@@ -149,7 +230,11 @@ class TreeAnc(object):
 
     @property
     def aln(self):
+        """
+        Get the multiple sequence alignment currently used by the TreeAnc
+        """
         return self._aln
+
     @aln.setter
     def aln(self,in_aln):
         # load alignment from file if necessary
@@ -164,14 +249,14 @@ class TreeAnc(object):
             return
 
         if hasattr(self, '_tree'):
-            self.attach_sequences_to_nodes()
+            self._attach_sequences_to_nodes()
         else:
             self.logger("TreeAnc.aln: sequences not yet attached to tree", 3, warn=True)
 
 
-    def attach_sequences_to_nodes(self):
+    def _attach_sequences_to_nodes(self):
         '''
-        for each node of the tree, check whether there is a sequence available
+        For each node of the tree, check whether there is a sequence available
         in the alignment and assign this sequence as a character array
         '''
         failed_leaves= 0
@@ -183,7 +268,7 @@ class TreeAnc(object):
             if l.name in dic_aln:
                 l.sequence= dic_aln[l.name]
             elif l.is_terminal():
-                self.logger("TreeAnc.attach_sequences_to_nodes: Cannot find sequence for leaf: %s" % l.name, 4, warn=True)
+                self.logger("TreeAnc._attach_sequences_to_nodes: Cannot find sequence for leaf: %s" % l.name, 4, warn=True)
                 failed_leaves += 1
                 if failed_leaves > self.tree.count_terminals() / 3:
                     self.logger("Error: At least 30\\% terminal nodes cannot be assigned with a sequence!\n", 2, warn=True)
@@ -210,14 +295,17 @@ class TreeAnc(object):
         compressing and expanding the sequences.
 
         The following attributes are assigned by the method:
+
          - full_to_reduced_sequence_map: map to reduce a sequence
          - reduced_to_full_sequence_map: map to restore sequence from reduced alignment
          - multiplicity: numpy array, which stores the pattern multiplicity for
-         each position of the reduced alignment.
+           each position of the reduced alignment.
          - reduced_alignment: 2D numpy array, representing the alignment. Shape is
-         (N x L'), where N is number of sequences, L' - number of unique alignment patterns
+           (N x L'), where N is number of sequences, L' - number of unique alignment patterns
+
 
         In addition, each node gets
+
           - cseq: compressed sequence (corresponding row of the reduced alignment)
 
         """
@@ -235,13 +323,18 @@ class TreeAnc(object):
         self.reduced_to_full_sequence_map = {}
 
         # create empty reduced alignment (transposed)
-        tmp = []
+        tmp_reduced_aln = []
 
         # transpose real alignment, for ease of iteration
         # NOTE the order of tree traversal must be the same as below
         # for assigning the cseq attributes to the nodes.
-        aln_transpose = np.array([n.sequence for n in self.tree.find_clades()
-                                  if hasattr(n, 'sequence')]).T
+        seqs = [n.sequence for n in self.tree.find_clades() if hasattr(n, 'sequence')]
+        if len(np.unique([len(x) for x in seqs]))>1:
+            self.logger("TreeAnc: Sequences differ in in length! ABORTING",0, warn=True)
+            aln_transpose = None
+            return
+        else:
+            aln_transpose = np.array(seqs).T
 
         for pi, pattern in enumerate(aln_transpose):
             str_pat = "".join(pattern)
@@ -261,13 +354,12 @@ class TreeAnc(object):
 
             # if the pattern is not yet seen,
             if str_pat not in alignment_patterns:
-
                 # bind the index in the reduced aln, index in sequence to the pattern string
-                alignment_patterns[str_pat] = (len(tmp), [pi])
+                alignment_patterns[str_pat] = (len(tmp_reduced_aln), [pi])
                 # append this pattern to the reduced alignment
-                tmp.append(pattern)
+                tmp_reduced_aln.append(pattern)
             else:
-                # if the pattern is alredy seen, append the position in the real
+                # if the pattern is already seen, append the position in the real
                 # sequence to the reduced aln<->sequence_pos_indexes map
                 alignment_patterns[str_pat][1].append(pi)
 
@@ -277,7 +369,7 @@ class TreeAnc(object):
             self.multiplicity[p]=len(pos)
 
         # create the reduced alignment as np array
-        self.reduced_alignment = np.array(tmp).T
+        self.reduced_alignment = np.array(tmp_reduced_aln).T
 
         # create map to compress a sequence
         for p, pos in alignment_patterns.values():
@@ -330,10 +422,14 @@ class TreeAnc(object):
             for c in clade.clades:
                 c.bad_branch=c.bad_branch if hasattr(c, 'bad_branch') else False
                 c.up = clade
-        self.calc_dist2root()
+        self._calc_dist2root()
         self._internal_node_count = max(internal_node_count, self._internal_node_count)
 
-    def calc_dist2root(self):
+    def _calc_dist2root(self):
+        """
+        For each node in the tree, set its root-to-node distance as dist2root
+        attribute
+        """
         self.tree.root.dist2root = 0.0
         for clade in self.tree.get_nonterminals(order='preorder'): # parents first
             for c in clade.clades:
@@ -347,6 +443,38 @@ class TreeAnc(object):
 
     def infer_gtr(self, print_raw=False, marginal=False, normalized_rate=True,
                   fixed_pi=None, **kwargs):
+        """
+        Calculates GTR model given the multiple sequence alignment and the tree.
+        It performs ancestral sequence inferrence (joint or marginal) followed by
+        the branch lengths optimization. Then, the numbers of mutations are counted
+        in the optimal tree and related to the time within the mutation happened.
+        From this statistics, the relative state transition probabilities are inferred,
+        and the transition matrix is computed.
+        The result is used to construct the new GTR model of type 'custom'.
+        The model is assigned to the TreeAnc and is used in the following analysis.
+
+        Parameters
+        -----------
+
+         print_raw : bool
+            Should print the inferred GTR model?
+
+         marginal : bool
+            Should use marginal sequence reconstruction?
+
+         normalized_rate : bool
+            If True, will set the mutation rate prefactor to 1.0.
+
+         fixed_pi : np.array, None
+            Provide the equilibrium character concentrations.
+            If None is passed, the concentrations will be inferred from scratch.
+
+        Returns
+        -------
+
+         gtr : GTR
+            The inferred GTR model.
+        """
 
         # decide which type of the Maximum-likelihood reconstruction use
         # (marginal) or (joint)
@@ -393,18 +521,44 @@ class TreeAnc(object):
 ### ancestral reconstruction
 ###################################################################
     def infer_ancestral_sequences(self,*args, **kwargs):
+        """Shortcut for :meth:`reconstruct_anc`
+
+        Reconstruct ancestral states
+
+        Parameters
+        -----------
+
+         method : str
+            Method to use. Supported values are "fitch" and "ml"
+
+        Returns
+        -------
+
+         N_diff : int
+            Number of nucleotides different from the previous
+            reconstruction.  If there were no pre-set sequences, returns N*L
+
+        """
         self.reconstruct_anc(*args,**kwargs)
+
 
     def reconstruct_anc(self, method='ml', infer_gtr=False, marginal=False, **kwargs):
         """
+
         Reconstruct ancestral states
-        Args:
-         - method(str): method to use. Supported values are "fitch" and "ml"
 
-        Returns:
-         - N_diff(int): number of nucleotides different from the previous
-         reconstruction. If there were no pre-set sequences, returns N*L
+        Parameters
+        -----------
 
+         method : str
+            Method to use. Supported values are "fitch" and "ml"
+
+        Returns
+        -------
+
+         N_diff : int
+            Number of nucleotides different from the previous
+            reconstruction.  If there were no pre-set sequences, returns N*L
         """
         self.logger("TreeAnc.infer_ancestral_sequences: method: " + method, 1)
 
@@ -430,13 +584,18 @@ class TreeAnc(object):
         of the branch (attached to the node), compute mutations between them, and
         expand these mutations to the positions in the real sequences.
 
-        Args:
-         - node(PhyloTree.Clade): tree node, which is the child node attached to
-         the branch.
+        Parameters
+        ----------
 
-        Returns:
-         - muts(list): list of mutations. Each mutation is represented as tuple of
-         (parent_state, position, child_state).
+         node : PhyloTree.Clade
+            Tree node, which is the child node attached to the branch.
+
+        Returns
+        -------
+
+          muts : list
+            List of mutations. Each mutation is represented as tuple of
+            (parent_state, position, child_state).
 
         """
         muts = []
@@ -454,11 +613,17 @@ class TreeAnc(object):
         """
         Get node's compressed sequence and expand it to the real sequence
 
-        Args:
-         - node: tree node
+        Parameters
+        ----------
 
-        Returns:
-         - seq: sequence as np.array of chars
+         node  : PhyloTree.Clade
+            Tree node
+
+        Returns
+        -------
+
+         seq : np.array
+            Sequence as np.array of chars
         """
         seq = np.zeros_like(self.full_to_reduced_sequence_map, dtype='S1')
         for pos, state in enumerate(node.cseq):
@@ -478,14 +643,19 @@ class TreeAnc(object):
         the sequence, and then by propagating from the root to the leaves,
         reconstructs the sequences of the internal nodes.
 
-        KWargs:
-         -
+        Keyword Args
+        ------------
 
-        Returns:
-         - Ndiff (int): number of the characters that changed since the previous
-         reconstruction. These changes are determined from the pre-set sequence attributes
-         of the nodes. If there are no sequences available (i.e., no reconstruction
-         has been made before), returns the total number of characters in the tree.
+
+        Returns
+        -------
+
+         Ndiff : int
+            Number of the characters that changed since the previous
+            reconstruction. These changes are determined from the pre-set
+            sequence attributes of the nodes. If there are no sequences available
+            (i.e., no reconstruction has been made before), returns the total
+            number of characters in the tree.
 
         """
         # set fitch profiiles to each terminal node
@@ -541,16 +711,20 @@ class TreeAnc(object):
         The profile is essentially the intersection between the children's
         profiles or, if the former is empty, the union of the profiles.
 
-        Args:
-         - node (Phylo.Node) internal node which the profiles are to be
-         determined
+        Parameters
+        ----------
 
-         - pos (int): position in the node's sequence which the profiles should
-         be determinedf for.
+         node : PhyloTree.Clade:
+            Internal node which the profiles are to be determined
 
-        Return:
-         - state(numpy array): Fitch profile for the character at position pos
-         of the given node.
+         pos : int
+            Position in the node's sequence which the profiles should
+            be determinedf for.
+
+        Returns
+        -------
+         state : numpy.array
+            Fitch profile for the character at position pos of the given node.
         """
         state = self._fitch_intersect([k.state[pos] for k in node.clades])
         if len(state) == 0:
@@ -589,6 +763,12 @@ class TreeAnc(object):
         """
         Calculate the likelihood of the given realization of the sequences in
         the tree
+
+        Returns
+        -------
+
+         log_lh : float
+            The tree likelihood given the sequences
         """
         log_lh = np.zeros(self.tree.root.cseq.shape[0])
         for node in self.tree.find_clades(order='postorder'):
@@ -614,6 +794,10 @@ class TreeAnc(object):
         return log_lh
 
     def _branch_length_to_gtr(self, node):
+        """
+        Set branch lengths to either mutation lengths of given branch lengths.
+        The assigend values are to be used in the following ML analysis.
+        """
         if self.use_mutation_length:
             return max(min_branch_length*self.one_mutation, node.mutation_length)
         else:
@@ -627,10 +811,16 @@ class TreeAnc(object):
         Perform marginal ML reconstruction of the ancestral states. In contrast to
         joint reconstructions, this needs to access the probabilities rather than only
         log probabilities and is hence handled by a separate function.
-        KWargs:
-         - store_lh (bool): if True, all likelihoods will be stored for all nodes.
-           Useful for testing, diagnostics and if special post-processing is required.
-         - verbose (int): how verbose the output should be
+
+        Keyword Args
+        ------------
+
+         store_lh : bool
+            If True, all likelihoods will be stored for all nodes. Useful for
+            testing, diagnostics and if special post-processing is required.
+
+         verbose :int
+            How verbose the output should be
         """
 
         tree = self.tree
@@ -731,7 +921,7 @@ class TreeAnc(object):
         # note that the root doesn't contribute to N_diff (intended, since root sequence is often ambiguous)
         self.logger("TreeAnc._ml_anc_marginal: ...done", 3)
         if store_compressed:
-            self.store_compressed_sequence_pairs()
+            self._store_compressed_sequence_pairs()
 
         # do clean-up:
         if not debug:
@@ -751,10 +941,17 @@ class TreeAnc(object):
         Perform joint ML reconstruction of the ancestral states. In contrast to
         marginal reconstructions, this only needs to compare and multiply LH and
         can hence operate in log space.
-        KWargs:
-         - store_lh (bool): if True, all likelihoods will be stored for all nodes.
-           Useful for testing, diagnostics and if special post-processing is required.
-         - verbose (int): how verbose the output should be
+
+        Keyword Args
+        ------------
+
+         store_lh : bool
+            If True, all likelihoods will be stored for all nodes. Useful for
+            testing, diagnostics and if special post-processing is required.
+
+         verbose : int
+            How verbose the output should be
+
         """
         N_diff = 0 # number of sites differ from perv reconstruction
         L = self.tree.get_terminals()[0].cseq.shape[0]
@@ -847,7 +1044,7 @@ class TreeAnc(object):
 
         self.logger("TreeAnc._ml_anc_joint: ...done", 3)
         if store_compressed:
-            self.store_compressed_sequence_pairs()
+            self._store_compressed_sequence_pairs()
 
         # do clean-up
         if not debug:
@@ -859,7 +1056,21 @@ class TreeAnc(object):
         return N_diff
 
 
-    def store_compressed_sequence_to_node(self, node):
+    def _store_compressed_sequence_to_node(self, node):
+        """
+        make a compressed representation of a pair of sequences only counting
+        the number of times a particular pair of states (e.g. (A,T)) is observed
+        the the aligned sequences of parent and child.
+
+        Parameters
+        -----------
+
+         node : PhyloTree.Clade
+            Tree node. **Note** because the method operates
+            on the sequences on both sides of a branch, sequence reconstruction
+            must be performed prior to calling this method.
+
+        """
         seq_pairs, multiplicity = self.gtr.compress_sequence_pair(node.up.cseq,
                                               node.cseq,
                                               pattern_multiplicity = self.multiplicity,
@@ -867,13 +1078,18 @@ class TreeAnc(object):
         node.compressed_sequence = {'pair':seq_pairs, 'multiplicity':multiplicity}
 
 
-    def store_compressed_sequence_pairs(self):
-        self.logger("TreeAnc.store_compressed_sequence_pairs...",2)
+    def _store_compressed_sequence_pairs(self):
+        """
+        Traverse the tree, and for each node store the compressed sequence pair.
+        **Note** sequence reconstruction should be performed prior to calling
+        this method.
+        """
+        self.logger("TreeAnc._store_compressed_sequence_pairs...",2)
         for node in self.tree.find_clades():
             if node.up is None:
                 continue
-            self.store_compressed_sequence_to_node(node)
-        self.logger("TreeAnc.store_compressed_sequence_pairs...done",3)
+            self._store_compressed_sequence_to_node(node)
+        self.logger("TreeAnc._store_compressed_sequence_pairs...done",3)
 
 
 ###################################################################
@@ -881,6 +1097,7 @@ class TreeAnc(object):
 ###################################################################
     def optimize_branch_len(self, **kwargs):
         self.optimize_branch_length(**kwargs)
+
     def optimize_branch_length(self, **kwargs):
         """
         Perform ML optimization for the branch lengths of the whole tree or any
@@ -889,12 +1106,20 @@ class TreeAnc(object):
         Therefore, before calling this method, sequence reconstruction with
         either of the available models must be performed.
 
-        KWargs:
-         - verbose (int): output detalization
-         - store_old (bool): if True, the old lenths will be saved in
-         node._old_dist attribute. Useful for testing, and special post-processing.
-        Returns:
-         - None, the phylogenetic tree is modified in-place.
+        Keyword Args
+        ------------
+
+         verbose : int
+            Output detalization
+
+         store_old : bool
+            If True, the old lenths will be saved in node._old_dist attribute.
+            Useful for testing, and special post-processing.
+
+        Returns
+        -------
+         None, the phylogenetic tree is modified in-place.
+
         """
 
         self.logger("TreeAnc.optimize_branch_length: running branch length optimization...",1)
@@ -931,7 +1156,20 @@ class TreeAnc(object):
 
     def optimal_branch_length(self, node):
         '''
-        calculate optimal branch length given the sequences of node and parent
+        Calculate optimal branch length given the sequences of node and parent
+
+        Parameters
+        -----------
+
+         node : PhyloTree.Clade
+            TreeNode, attached to the branch.
+
+        Returns
+        -------
+
+         new_len : float
+            Optimal length of the given branch
+
         '''
         if node.up is None:
             return self.one_mutation
@@ -966,6 +1204,16 @@ class TreeAnc(object):
                     clade.up = node.up
 
     def optimize_sequences_and_branch_length(self,*args, **kwargs):
+        """This method is a schortcut for :py:meth:`optimize_seq_and_branch_len`
+
+        Iteratively set branch lengths and reconstruct ancestral sequences until
+        the values of either former or latter do not change. The algorithm assumes
+        knowing only the topology of the tree, and requires that sequences are assigned
+        to all leaves of the tree. The first step is to pre-reconstruct ancestral
+        states using Fitch reconstruction algorithm or ML using existing branch length
+        estimates. Then, optimize branch lengths and re-do reconstruction until
+        convergence using ML method.
+        """
         self.optimize_seq_and_branch_len(*args,**kwargs)
 
     def optimize_seq_and_branch_len(self,reuse_branch_len=True,prune_short=True,
@@ -979,17 +1227,20 @@ class TreeAnc(object):
         estimates. Then, optimize branch lengths and re-do reconstruction until
         convergence using ML method.
 
-        Args:
-         - reuse_branch_len(bool, default True): if True, rely on the initial
-         branch lenghts, and start with the Maximum-likelihood ancestral sequence
-         inference using existing branch lengths.
-         Otherwise, initial reconstruction of ancestral states with Fitch algorithm,
-         which uses only the tree topology.
+        Parameters
+        -----------
 
-         - prune_short (bool, default True): If True, the branches with zero
-         optimal length will be pruned from the tree hence creating polytomies.
-         The polytomies could be further processde using resolve_polytomies from
-         the TreeTime class.
+         reuse_branch_len : bool, default True
+            If True, rely on the initial branch lenghts, and start with the
+            Maximum-likelihood ancestral sequence inference using existing branch
+            lengths. Otherwise, initial reconstruction of ancestral states with
+            Fitch algorithm, which uses only the tree topology.
+
+         prune_short : bool, default True
+            If True, the branches with zero optimal length will be pruned from
+            the tree hence creating polytomies. The polytomies could be further
+            processde using resolve_polytomies from the TreeTime class.
+
         """
         self.logger("TreeAnc.optimize_sequences_and_branch_length: sequences...", 1)
         if reuse_branch_len:
@@ -1022,6 +1273,10 @@ class TreeAnc(object):
 ### Utility functions
 ###############################################################################
     def get_reconstructed_alignment(self):
+        """
+        Get the multiple sequence alignment including reconstructed sequences for
+        the internal nodes.
+        """
         from Bio.Align import MultipleSeqAlignment
         from Bio.Seq import Seq
         from Bio.SeqRecord import SeqRecord
@@ -1036,6 +1291,7 @@ class TreeAnc(object):
         return new_aln
 
 if __name__=="__main__":
+
     from Bio import Phylo
     from StringIO import StringIO
     from Bio import Phylo,AlignIO

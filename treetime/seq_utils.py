@@ -122,11 +122,21 @@ def seq2array(seq, fill_overhangs=True, ambiguous_character='N'):
     Take the raw sequence, substitute the "overhanging" gaps with 'N' (missequenced)
     convert the sequence to the numpy array of uppercase chars.
 
-    Args:
-     - seq:  sequence as an object of SeqRecord, string or iterable
+    Parameters
+    ----------
+     seq : Biopython.SeqRecord, str, iterable
+        sequence as an object of SeqRecord, string or iterable
 
-    Returns:
-     - sequence(np.array): sequence as 1D numpy array of chars
+     fill_overhangs : bool
+        should substitute the "overhanging" gaps with ambiguous character symbol?
+
+     ambiguous_character : char
+        Specify the caharcter for ambiguous state ('N' default for nucleotide)
+
+    Returns
+    -------
+     sequence : np.array
+        sequence as 1D numpy array of chars
     """
     try:
         sequence = ''.join(seq)
@@ -143,17 +153,24 @@ def seq2array(seq, fill_overhangs=True, ambiguous_character='N'):
 
 def seq2prof(x, profile_map):
     """
-    Convert the given character sequence into the profileaccording to the alphabet specified.
+    Convert the given character sequence into the profile according to the
+    alphabet specified.
 
-    Args:
+    Parameters
+    ----------
 
-     - x(numpy.array): sequence to be converted to the profile
+     x : numpy.array
+        sequence to be converted to the profile
 
-     - profile map mapping valid characters to profiles
+     profile_map : dic
+        mapping valid characters to profiles
 
-    Returns:
+    Returns
+    -------
 
-     - idx(numpy.array): profile for the character, zero array if the character not found
+     idx : numpy.array
+        profile for the character, zero array if the character not found
+
     """
     n_states = len(profile_map.values()[0])
     prof = np.array([profile_map[k] if k in profile_map
@@ -167,17 +184,29 @@ def prof2seq(profile, gtr, sample_from_prof=False):
     """
     Convert profile to sequence and normalize profile across sites.
 
-    Args:
-     - profile(numpy 2D array): profile. Shape of the profile should be
-     (L x a), where L - sequence length, a - alphabet size.
-     - gtr (gtr.GTR) instance of teh GTR class to supply the sequence alphabet
-     - collapse_prof(bool, default True): whether to convert the profile to the
-     delta-function
+    Parameters
+    ----------
 
-    Returns:
-     -seq (numpy array of length L): sequence
-     - prof_values (numpy array of length L): values of the profile for the chosen sequence characters
-     - idx (numpy array of length L): inidces chosen form profile
+     profile : numpy 2D array
+        profile. Shape of the profile should be (L x a), where L - sequence
+        length, a - alphabet size.
+
+     gtr : gtr.GTR
+        instance of teh GTR class to supply the sequence alphabet
+
+     collapse_prof : bool, default True
+        whether to convert the profile to the delta-function
+
+    Returns
+    -------
+     seq : numpy.array
+        sequence as numpy array of length L
+
+     prof_values :  numpy.array
+        values of the profile for the chosen sequence characters (length L)
+
+     idx : numpy.array
+        inidces chosen form profile as array of length L
     """
 
     # normalize profile such that probabilities at each site sum to one
@@ -189,11 +218,9 @@ def prof2seq(profile, gtr, sample_from_prof=False):
         cumdis = tmp_profile.cumsum(axis=1).T
         randnum = np.random.random(size=cumdis.shape[1])
         idx = np.argmax(cumdis>=randnum, axis=0)
-        seq = gtr.alphabet[idx]
-
     else:
         idx = tmp_profile.argmax(axis=1)
-        seq = gtr.alphabet[idx]  # max LH over the alphabet
+    seq = gtr.alphabet[idx]  # max LH over the alphabet
 
     prof_values = tmp_profile[np.arange(tmp_profile.shape[0]), idx]
 

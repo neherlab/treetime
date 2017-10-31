@@ -8,8 +8,36 @@ def _create_initial_grid(node_dist, branch_dist):
 
 def _convolution_integrand(t_val, f, g, inverse_time=None, return_log=False):
     '''
-    evaluates int_tau f(t+tau)g(tau) or int_tau f(t-tau)g(tau) if inverse time is TRUE
+    Evaluates int_tau f(t+tau)*g(tau) or int_tau f(t-tau)g(tau) if inverse time is TRUE
+
+    Parameters
+    -----------
+
+     t_val : double
+        Time point
+
+     f : Interpolation object
+        First multiplier in convolution
+
+     g : Interpolation object
+        Second multiplier in convolution
+
+     inverse_time : bool, None
+        time direction. If True, then the f(t-tau)*g(tau) is calculated, otherwise,
+        f(t+tau)*g(tau)
+
+     return_log : bool
+        If True, the logarithm will be returned
+
+
+    Returns
+    -------
+
+     FG : Distribution
+        The function to be integrated as Distribution object (interpolator)
+
     '''
+
     if inverse_time is None:
         raise Exception("Inverse time argument must be set!")
 
@@ -57,6 +85,36 @@ def _convolution_integrand(t_val, f, g, inverse_time=None, return_log=False):
 
 def _max_of_integrand(t_val, f, g, inverse_time=None, return_log=False):
 
+    '''
+    Evaluates max_tau f(t+tau)*g(tau) or max_tau f(t-tau)g(tau) if inverse time is TRUE
+
+    Parameters
+    -----------
+
+     t_val : double
+        Time point
+
+     f : Interpolation object
+        First multiplier in convolution
+
+     g : Interpolation object
+        Second multiplier in convolution
+
+     inverse_time : bool, None
+        time direction. If True, then the f(t-tau)*g(tau) is calculated, otherwise,
+        f(t+tau)*g(tau)
+
+     return_log : bool
+        If True, the logarithm will be returned
+
+
+    Returns
+    -------
+
+     FG : Distribution
+        The function to be integrated as Distribution object (interpolator)
+
+    '''
     # return log is always True
     FG = _convolution_integrand(t_val, f, g, inverse_time, return_log=True)
 
@@ -64,16 +122,9 @@ def _max_of_integrand(t_val, f, g, inverse_time=None, return_log=False):
         res = ttconf.BIG_NUMBER, 0
 
     else:
-
-        # TODO use minimize_scalar here !!
         X = FG.x[FG.y.argmin()]
         Y = FG.y.min()
         res =  Y, X
-
-        #import matplotlib.pyplot as plt
-        #plt.figure(11)
-        #plt.plot(FG.x, FG.y)
-        #plt.vlines(res[1], -1e3, Y)
 
     if not return_log:
         res[0] = np.log(res[0])
@@ -82,7 +133,9 @@ def _max_of_integrand(t_val, f, g, inverse_time=None, return_log=False):
     return res
 
 def _evaluate_convolution(t_val, f, g,  n_integral = 100, inverse_time=None, return_log=False):
-
+    """
+    Calculate convolution F(t) = int { f(tau)g(t-tau) } dtau
+    """
 
     FG = _convolution_integrand(t_val, f, g, inverse_time, return_log)
 
@@ -101,6 +154,10 @@ def _evaluate_convolution(t_val, f, g,  n_integral = 100, inverse_time=None, ret
 
 
 class NodeInterpolator (Distribution):
+    """
+    Node's position distribution function. This class extends the distribution
+    class ind implements the convolution constructor.
+    """
 
     @classmethod
     def convolve(cls, node_interp, branch_interp, max_or_integral='integral',
@@ -220,48 +277,4 @@ class NodeInterpolator (Distribution):
         res_t = Distribution(t_grid_0, t_0, is_log=True, kind='linear')
 
         return res_y, res_t
-
-if __name__ == '__main__':
-
-    import matplotlib.pyplot as plt
-    plt.ion()
-    plt.show()
-
-    print ("NodeInterpolator test")
-
-    for n in [2, 5, 10, 100, 500]:
-
-        xl = np.linspace(0,1,n)
-        xr = np.linspace(1, 2, n)
-        yl = 1e-10 + 10*xl
-        yr = 1e-10 + -10*xr + 20
-
-        x = np.concatenate([xl, xr])
-        y = np.concatenate([yl, yr])
-
-        d1 = Distribution(x, y,is_log=False)
-        d2 = Distribution(x, y,is_log=False)
-
-        ni = NodeInterpolator.convolve(d1, d2, n_integral=1000)
-
-        plt.figure(1)
-        plt.plot(d1.x, np.exp(-d1.y), 'o--', label="# tau points: " + str(n))
-        plt.figure(2)
-        plt.plot(ni.x, ni.y, 'o-' , label="# tau points: " + str(n))
-        plt.figure(3)
-        plt.plot(ni.x, np.exp(-ni.y), 'o-', label="# tau points: " + str(n))
-
-
-
-
-    plt.figure(1)
-    plt.legend()
-    plt.figure(2)
-    plt.legend()
-    plt.figure(3)
-    plt.legend()
-
-
-
-
 

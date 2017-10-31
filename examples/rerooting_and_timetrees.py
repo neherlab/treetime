@@ -1,15 +1,27 @@
 from __future__ import print_function, division
-from treetime import TreeTime
 import numpy as np
-from scipy import optimize as sciopt
+from Bio import Phylo
+from treetime import TreeTime
+
 import matplotlib.pyplot as plt
 from matplotlib import cm
-from Bio import Phylo
 try:
     import seaborn as sns
     sns.set_style('whitegrid')
 except:
-    pass
+    print ("Seaborn not found. Default style will be used for the plots")
+
+
+def read_dates(base_name):
+    with open(base_name+'.metadata.csv') as date_file:
+        dates = {}
+        for line in date_file:
+            try:
+                name, date = line.strip().split(',')
+                dates[name] = float(date)
+            except:
+                continue
+    return dates
 
 def format_axes(fig, axs):
     axs[0].set_axis_off()
@@ -24,20 +36,7 @@ if __name__ == '__main__':
     # load data and parse dates
     plt.ion()
     base_name = 'data/H3N2_NA_allyears_NA.20'
-    import datetime
-    from treetime.utils import numeric_date
-    with open(base_name+'.metadata.csv') as date_file:
-        dates = {}
-        for line in date_file:
-            if line[0]=='#':
-                continue
-            try:
-                name, date = line.strip().split(',')
-                dates[name] = float(date)
-            except:
-                continue
-
-    # instantiate treetime
+    dates = read_dates(base_name)
     tt = TreeTime(gtr='Jukes-Cantor', tree = base_name+'.nwk',
                           aln = base_name+'.fasta', verbose = 0, dates = dates)
 
@@ -80,6 +79,6 @@ if __name__ == '__main__':
     fig.tight_layout()
 
     # treetime implements a convenience function to plot timetrees
-    from treetime.io import plot_vs_years
+    from treetime.treetime import plot_vs_years
     plot_vs_years(tt, label_func=lambda x:"", show_confidence=False)
 

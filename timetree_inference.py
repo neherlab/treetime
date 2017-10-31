@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from __future__ import print_function, division
 import numpy as np
-from treetime import TreeTime
+from treetime import TreeTime, GTR
 from Bio import Phylo, AlignIO
 from Bio import __version__ as bioversion
 
@@ -21,7 +21,15 @@ if __name__=="__main__":
     parser.add_argument('--tree', required = True, type = str,  help ="newick file with tree")
     parser.add_argument('--dates', required = True, type = str,
                         help ="csv with dates for nodes with 'node_name, date' where date is float (as in 2012.15)")
-    parser.add_argument('--infer_gtr', default = True, action='store_true', help='infer substitution model')
+    # parser.add_argument('--infer_gtr', default = True, action='store_true', help='infer substitution model')
+    parser.add_argument('--gtr', required=True, type = str, help="GTR model to use. "
+        " Type 'infer' to infer the model from the data. Or, specify the model type. "
+        "Optionally, feed the arguments with the '--gtr_args' option")
+    parser.add_argument('--gtr_params', type=str, nargs='+', help="GTR parameters for the model "
+        "specified by the --gtr argument. The parameters should be feed as 'key=value' list of parameters. "
+        "Example: '--gtr K80 --gtr_params kappa=0.2 pis=0.25,0.25,0.25,0.25'. See the exact definitions of "
+        " the parameters in the GTR creation methods.")
+
     parser.add_argument('--reroot', required = False, type = str, default='best',
                         help ="reroot the tree. Valid arguments are 'best', 'midpoint', or a node name")
     parser.add_argument('--optimize_branch_length', default = False, action='store_true',
@@ -58,6 +66,40 @@ if __name__=="__main__":
             except:
                 continue
 
+
+    ###########################################################################
+    ### GTR SET-UP
+    ###########################################################################
+    model = params.gtr
+    gtr_params = params.gtr_params
+    if model == 'infer':
+        gtr = GTR.standard('jc')
+        infer_gtr = True
+    else:
+        try:
+            kwargs = {}
+            if gtr_params is not None:
+                for param in gtr_params:
+                    keyval = param.split('=')
+                    if len(keyval)!=2: continue
+                    if keyval[0] in ['pis', 'pi', 'Pi', 'Pis']:
+                        keyval[1] = map(float, keyval[1].split(','))
+                    elif keyval[0] not in ['alphabet']:
+                        keyval[1] = float(keyval[1])
+                    kwargs[keyval[0]] = keyval[1]
+            else:
+                print ("GTR params are not specified. Creating GTR model with default parameters")
+
+
+            gtr = GTR.standard(model, **kwargs)
+            infer_gtr = False
+        except:
+            print ("Could not create GTR model from input arguments. Using default (Jukes-Cantor 1969)")
+            gtr = GTR.standard('jc')
+            infer_gtr = False
+
+
+
     ###########################################################################
     # PARSING OPTIONS
     ###########################################################################
@@ -75,7 +117,7 @@ if __name__=="__main__":
     ### SET-UP and RUN
     ###########################################################################
     myTree = TreeTime(dates=dates, tree=params.tree,
-                       aln=params.aln, gtr='JC69', verbose=params.verbose)
+                       aln=params.aln, gtr=gtr, verbose=params.verbose)
     myTree.run(root=params.reroot, relaxed_clock=params.relax,
                resolve_polytomies=(not params.keep_polytomies),
                Tc=Tc, max_iter=params.max_iter,
@@ -84,7 +126,7 @@ if __name__=="__main__":
     ###########################################################################
     ### OUTPUT and saving of results
     ###########################################################################
-    if params.infer_gtr:
+    if infer_gtr:
         print('\nInferred GTR model:')
         print(myTree.gtr)
 
@@ -100,7 +142,7 @@ if __name__=="__main__":
     base_name = '.'.join(params.aln.split('/')[-1].split('.')[:-1])
     # plot
     if params.plot:
-        from treetime.io import plot_vs_years
+        from treetime.treetime import plot_vs_years
         import matplotlib.pyplot as plt
         plt.ion()
         leaf_count = myTree.tree.count_terminals()

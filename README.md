@@ -6,7 +6,7 @@
 
 TreeTime provides routines for ancestral sequence reconstruction and the inference of molecular-clock phylogenies, i.e., a tree where all branches are scaled such that the locations of terminal nodes correspond to their sampling times and internal nodes are placed at the most likely time of divergence.
 
-TreeTime aims at striking a compromise between sophisticated probabilistic models of evolution and fast heuristics. It implements GTR models of ancestral inference and branch length optimization, but takes the tree topology as given.
+TreeTime is implemented in Python 2.7 and aims at striking a compromise between sophisticated probabilistic models of evolution and fast heuristics. It implements GTR models of ancestral inference and branch length optimization, but takes the tree topology as given.
 To optimize the likelihood of time-scaled phylogenies, treetime uses an iterative approach that first infers ancestral sequences given the branch length of the tree, then optimizes the positions of unconstrained nodes on the time axis, and then repeats this cycle.
 The only topology optimization are (optional) resolution of polytomies in a way that is most (approximately) consistent with the sampling time constraints on the tree.
 The package is designed to be used as a stand-alone tool or as a library used in larger phylogenetic analysis work flows.
@@ -33,7 +33,7 @@ The package is designed to be used as a stand-alone tool or as a library used in
 
 
 ### Installation and prerequisites
-
+TreeTime is written in Python 2.7 and currently doesn't support Python 3.
 * The package depends on several python libraries:
     - numpy, scipy: for all kind of mathematical operations as matrix operations, numerical integration, interpolation, minimization, etc.
 
@@ -51,6 +51,37 @@ The package is designed to be used as a stand-alone tool or as a library used in
     ```
 
 You might need root privileges for system wide installation. Alternatively, you can simply use it TreeTime locally without installation. In this case, just download and unpack it, and then add the TreeTime folder to your $PYTHONPATH.
+
+#### Building the documentation
+
+The API documentation for the treetime package is generated created with Sphinx. The source code for the documentaiton is located in doc folder.
+
+##### Requirements
+
+  - sphinx-build to generate static html pages from source. Installed as
+
+  ```bash
+  $pip install Sphinx
+  ```
+
+  - basicstrap Html theme for sphinx:
+
+  ```bash
+  $pip install sphinxjp.themes.basicstrap
+  ```
+
+After required packages are installed, navifgate to doc directory, and build the docs by typing:
+
+```bash
+$make html
+```
+
+Instead of html, another target as `latex` or `epub` can be specified to build the docs in the desired format.
+
+
+##### Requirements
+
+To build the documentation, sphinx-build tool should be installed. The doc pages are using basicstrap html theme to have the same design as the treetime web server. Therefore, the basicstrap theme should be also available in the system
 
 
 ### Basic usage

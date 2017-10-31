@@ -11,14 +11,20 @@ def JC69 (mu=1.0, alphabet="nuc", **kwargs):
     For more info, see: Jukes and Cantor (1969). Evolution of Protein Molecules.
                         New York: Academic Press. pp. 21–132
 
-    Args:
+    Parameters
+    -----------
 
-     - mu(float): substitution rate
+     mu : float
+        substitution rate
 
-     - alphabet(str): specify alphabet to use.
-     Available alphabets are:
-        'nuc' - nucleotides only, gaps ignored
-        'nuc_gap' - nucleotide alphabet with gaps, gaps can be ignored optionally
+     alphabet : str
+        specify alphabet to use.
+        Available alphabets are:
+
+         'nuc' - nucleotides only, gaps ignored
+
+         'nuc_gap' - nucleotide alphabet with gaps, gaps can be ignored optionally
+
     """
     from gtr import GTR
     num_chars = len(alphabets[alphabet])
@@ -37,11 +43,14 @@ def K80(mu=1., kappa=0.1, **kwargs):
 
     Current implementation of the model does not account for the gaps.
 
-    Args:
+    Parameters
+    -----------
 
-     - mu(float): overall substitution rate
+     mu : float
+        Overall substitution rate
 
-     - kappa(float): ratio of transversion/transition rates
+     kappa : float
+        Ratio of transversion/transition rates
     """
 
     from gtr import GTR
@@ -62,14 +71,19 @@ def F81(mu=1.0, pi=None, alphabet="nuc", **kwargs):
     Current implementation of the model does not account for the gaps (treatment of
     gaps as characters is possible if specify alphabet='nuc_gap').
 
-    Args:
+    Parameters
+    -----------
 
-     - mu(float): substitution rate
 
-     - pi(numpy array): nucleotide concentrations
+     mu : float
+        Substitution rate
 
-     - alphabet(str): alphabet to use. Default 'nuc', which discounts al gaps.
-     'nuc-gap' alphabet enables treatmen of gaps as characters.
+     pi : numpy.array
+        Nucleotide concentrations
+
+     alphabet : str
+        Alphabet to use. POsiible values are: ['nuc', 'nuc_gap'] Default 'nuc', which discounts al gaps.
+        'nuc_gap' alphabet enables treatmen of gaps as characters.
     """
 
     from gtr import GTR
@@ -99,13 +113,18 @@ def HKY85(mu=1.0, pi=None, kappa=0.1, **kwargs):
 
     Current implementation of the model does not account for the gaps
 
-    Args:
+    Parameters
+    -----------
 
-     - mu(float): substitution rate
 
-     - pi(numpy array): nucleotide concentrations
+     mu : float
+        Substitution rate
 
-     - kappa(float): ratio of transversion/transition substitution rates
+     pi : numpy.array
+        Nucleotide concentrations
+
+     kappa : float
+        Ratio of transversion/transition substitution rates
 
     """
 
@@ -132,13 +151,17 @@ def T92(mu=1.0, pi_GC=0.5, kappa=0.1, **kwargs):
 
     Current implementation of the model does not account for the gaps
 
-    Args:
+    Parameters
+    -----------
 
-     - mu(float): substitution rate
+     mu : float
+        substitution rate
 
-     - pi_GC(float): relative GC content
+     pi_GC : float
+        relative GC content
 
-     - kappa(float): relative transversion/transition rate
+     kappa : float
+        relative transversion/transition rate
 
     """
 
@@ -161,17 +184,22 @@ def TN93(mu=1.0, kappa1=1., kappa2=1., pi=None, **kwargs):
     to be different. Link:
     Tamura, Nei (1993), MolBiol Evol. 10 (3): 512–526. DOI:10.1093/oxfordjournals.molbev.a040023
 
-    Args:
+    Parameters
+    -----------
 
-     - mu(float): mutaion rate
+     mu : float
+        Substitution rate
 
-     - kappa1(float): relative A<-->C, A<-->T, T<-->G and G<-->C rates
+     kappa1 : float
+        relative A<-->C, A<-->T, T<-->G and G<-->C rates
 
-     - kappa2(float): relative C<-->T rate
+     kappa2 : float
+        relative C<-->T rate
 
-    Note:
+    Note
+    ----
 
-     - Rate of A<-->G substitution is set to one. All other rates (kappa1, kappa2)
+     Rate of A<-->G substitution is set to one. All other rates (kappa1, kappa2)
     are specified relative to this rate
 
     """

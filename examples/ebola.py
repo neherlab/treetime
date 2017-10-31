@@ -6,33 +6,28 @@ a few minutes to run.
 '''
 
 from __future__ import print_function, division
-from treetime import TreeTime
 import numpy as np
-from scipy import optimize as sciopt
+from Bio import Phylo
+
+from treetime import TreeTime
+from treetime.utils import numeric_date
+from rerooting_and_timetrees import read_dates
+
+import matplotlib.pyplot as plt
+from matplotlib import cm
+try:
+    import seaborn as sns
+    sns.set_style('whitegrid')
+except:
+    print ("Seaborn not found. Default style will be used for the plots")
+
 
 if __name__ == '__main__':
 
-    # load data and parse dates
-    import matplotlib.pyplot as plt
-    from matplotlib import cm
-    import seaborn as sns
-    sns.set_style('white')
-    from Bio import Phylo
+
     plt.ion()
     base_name = 'data/ebola'
-    import datetime
-    from treetime.utils import numeric_date
-    with open(base_name+'.csv') as date_file:
-        dates = {}
-        for line in date_file:
-            if line[0]=='#':
-                continue
-            try:
-                name, date = line.strip().split(',')
-                dates[name] = float(date)
-            except:
-                continue
-
+    dates = read_dates(base_name)
     # instantiate treetime
     ebola = TreeTime(gtr='Jukes-Cantor', tree = base_name+'.nwk',
                         aln = base_name+'.fasta', verbose = 4, dates = dates)
@@ -49,7 +44,7 @@ if __name__ == '__main__':
     plt.legend(loc=2)
 
     # rescale branch length to years and plot in axis 0
-    from treetime.io import plot_vs_years
+    from treetime.treetime import plot_vs_years
     fig, axs = plt.subplots(1,2, sharey=True, figsize=(12,8))
     plot_vs_years(ebola, years=1, ax=axs[1], confidence=(0.05,0.95), label_func = lambda x:"")
     axs[1].set_xlim(0, 2.5)
