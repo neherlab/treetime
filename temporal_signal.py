@@ -69,8 +69,8 @@ if __name__=="__main__":
           '\nroot-to-tip distance explained by the temporal sampling.'
           '\nHigher values corresponds more clock-like behavior (max 1.0).')
 
-    print('\nThe rate value is the slope of the best fit of the date'
-          '\nto the root-to-tip distance and provides an estimate of'
+    print('\nThe rate is the slope of the best fit of the date to'
+          '\nthe root-to-tip distance and provides an estimate of'
           '\nthe substitution rate. The rate needs to be positive!'
           '\nNegative rates suggest an inappropriate root.\n\n')
 
