@@ -64,7 +64,7 @@ class TreeAnc(object):
 
         """
         if tree is None:
-            raise("TreeAnc requires a tree!")
+            raise TypeError("TreeAnc requires a tree!")
         self.__version__ = __version__
         self.t_start = time.time()
         self.verbose = verbose
@@ -180,7 +180,7 @@ class TreeAnc(object):
             self._gtr.logger=self.logger
         else:
             self.logger("TreeAnc.gtr_setter: can't interpret GTR model", 1, warn=True)
-            raise TypeError("Cannot set GTR model to theh TReeAnc class: GTR or "
+            raise TypeError("Cannot set GTR model in TreeAnc class: GTR or "
                 "string expected")
 
         if self._gtr.ambiguous is None:
