@@ -928,7 +928,8 @@ class TreeAnc(object):
         # do clean-up:
         if not debug:
             for node in self.tree.find_clades():
-                del node.marginal_subtree_LH
+                #del node.marginal_subtree_LH
+                del node.marginal_Lx
                 del node.marginal_subtree_LH_prefactor
                 del node.seq_msg_from_parent
 
@@ -1134,12 +1135,20 @@ class TreeAnc(object):
         if 'store_old' in kwargs:
             store_old_dist = kwargs['store_old'] == True
 
+        if 'marginal' in kwargs:
+            marginal = kwargs['marginal']
+        else:
+            marginal = False
+
         for node in self.tree.find_clades(order='postorder'):
             if node.up is None: continue # this is the root
             if store_old_dist:
                 node._old_length = node.branch_length
 
-            new_len = self.optimal_branch_length(node)
+            if marginal:
+                new_len = self.optimal_marginal_branch_length(node)
+            else:
+                new_len = self.optimal_branch_length(node)
 
             if new_len < 0:
                 continue
@@ -1185,6 +1194,34 @@ class TreeAnc(object):
                                          pattern_multiplicity=self.multiplicity,
                                          ignore_gaps=self.ignore_gaps)
         return new_len
+
+
+    def optimal_marginal_branch_length(self, node):
+        if node.up is None:
+            return self.one_mutation
+
+        parent = node.up
+        if not hasattr(node, 'compressed_sequence'):
+            print('no compressed')
+            self.logger("marginal branch length only implemented for compressed sequences",3)
+            return node.branch_length
+        if not hasattr(node, 'marginal_Lx'):
+            print('no marginal')
+            self.logger("marginal ancestral inference needs to be performed first", 3)
+            return node.branch_length
+
+        pc = node.marginal_subtree_LH
+        norm_vector = pc.sum(axis=1)
+        pc = (pc.T/norm_vector).T
+
+        pp = np.copy(node.up.seq_msg_from_parent)
+        for c in node.up:
+            if c != node:
+                pp*=c.marginal_Lx
+        norm_vector = pp.sum(axis=1)
+        pp=(pp.T/norm_vector).T
+
+        return self.gtr.optimal_t_compressed((pp, pc), self.multiplicity, profiles=True)
 
 
     def prune_short_branches(self):

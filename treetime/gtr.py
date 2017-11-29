@@ -634,17 +634,17 @@ class GTR(object):
         return self.prob_t_compressed(seq_pair, multiplicity, t, return_log=return_log)
 
 
-    def optimal_t(self, seq_p, seq_ch, pattern_multiplicity=None, ignore_gaps=False):
+    def optimal_t(self, seq_p, seq_ch, pattern_multiplicity=None, ignore_gaps=False, profiles=False):
         '''
         Find the optimal distance between the two sequences
         '''
         seq_pair, multiplicity = self.compress_sequence_pair(seq_p, seq_ch,
                                                             pattern_multiplicity = pattern_multiplicity,
-                                                            ignore_gaps=ignore_gaps)
+                                                            ignore_gaps=ignore_gaps, profiles=profiles)
         return self.optimal_t_compressed(seq_pair, multiplicity)
 
 
-    def optimal_t_compressed(self, seq_pair, multiplicity):
+    def optimal_t_compressed(self, seq_pair, multiplicity, profiles=False):
         """
         Find the optimal distance between the two sequences
         """
@@ -676,7 +676,10 @@ class GTR(object):
                 Negative probability of the two given sequences
                 to be separated by the time t.
             """
-            return -1.0*self.prob_t_compressed(seq_pair, multiplicity,t, return_log=True)
+            if profiles:
+                return -1.0*self.prob_t_profiles(seq_pair, multiplicity,t, return_log=True)
+            else:
+                return -1.0*self.prob_t_compressed(seq_pair, multiplicity,t, return_log=True)
 
         try:
             from scipy.optimize import minimize_scalar
@@ -704,10 +707,46 @@ class GTR(object):
         return new_len
 
 
+    def prob_t_profiles(self, profile_pair, multiplicity, t, return_log=False):
+        '''
+        calculate the probability of observing a node pair at a distance t
+
+        Parameters
+        ----------
+
+          profile_pair: numpy arrays
+            probability distributions of the nucleotides at either
+            end of the branch. pp[0] = parent, pp[1] = child
+
+          multiplicity : numpy array
+            The number of times a parent-child state pair is observed
+            this allows to compress the sequence representation
+
+          t : float
+            Length of the branch separating parent and child
+
+          return_log : bool, default False
+            Whether or not to exponentiate the result
+
+        '''
+        if (t<0):
+            logP = -ttconf.BIG_NUMBER
+        else:
+            Qt = self.expQt(t).T
+            res = profile_pair[0].dot(Qt)
+            overlap = np.sum(res*profile_pair[1], axis=1)
+            logP = np.sum(multiplicity*np.log(overlap))
+            if return_log:
+                return logP
+            else:
+                return np.exp(logP)
+
+
     def propagate_profile(self, profile, t, return_log=False):
         """
-        Compute the probability of the sequence state (profile) at time (t+t0),
-        given the sequence state (profile) at time t0.
+        Compute the probability of the sequence state of the parent
+        at time (t+t0, backwards), given the sequence state of the
+        child (profile) at time t0.
 
         Parameters
         ----------
@@ -726,7 +765,7 @@ class GTR(object):
         -------
 
          res : np.array
-            Profile of the sequence after time t.
+            Profile of the sequence after time t in the past.
             Shape = (L, a), where L - sequence length, a - alphabet size.
 
         """
@@ -750,10 +789,12 @@ class GTR(object):
         """
         return np.exp(self.mu * t * self.eigenvals)
 
+
     def expQt(self, t):
         eLambdaT = np.diag(self._exp_lt(t)) # vector length = a
         Qt = self.v.dot(eLambdaT.dot(self.v_inv))   # This is P(nuc1 | given nuc_2)
         return np.maximum(0,Qt)
+
 
     def sequence_logLH(self,seq, pattern_multiplicity=None):
         """
