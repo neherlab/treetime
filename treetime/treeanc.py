@@ -928,8 +928,6 @@ class TreeAnc(object):
         # do clean-up:
         if not debug:
             for node in self.tree.find_clades():
-                #del node.marginal_subtree_LH
-                del node.marginal_Lx
                 del node.marginal_subtree_LH_prefactor
                 del node.seq_msg_from_parent
 
