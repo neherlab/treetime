@@ -1,7 +1,7 @@
 import numpy as np
-from distribution import Distribution
+from treetime.distribution import Distribution
 import numpy  as np
-import config as ttconf
+from treetime import config as ttconf
 
 def _create_initial_grid(node_dist, branch_dist):
     pass

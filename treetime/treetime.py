@@ -1,11 +1,11 @@
 from __future__ import print_function, division
-from clock_tree import ClockTree
-import utils as ttutils
-import config as ttconf
+from treetime.clock_tree import ClockTree
+from treetime import utils as ttutils
+from  treetime import config as ttconf
 import numpy as np
 from scipy import optimize as sciopt
 from Bio import Phylo
-from version import tt_version as __version__
+from treetime.version import tt_version as __version__
 
 
 class TreeTime(ClockTree):
@@ -145,7 +145,7 @@ class TreeTime(ClockTree):
             self.logger("###TreeTime.run: ITERATION %d out of %d iterations"%(niter+1,max_iter),0)
             # add coalescent prior
             if Tc and (Tc is not None):
-                from merger_models import Coalescent
+                from treetime.merger_models import Coalescent
                 self.logger('TreeTime.run: adding coalescent prior with Tc='+str(Tc),1)
                 self.merger_model = Coalescent(self.tree, Tc=avg_root_to_tip,
                                                date2dist=self.date2dist, logger=self.logger)
@@ -252,7 +252,7 @@ class TreeTime(ClockTree):
                 res[node] = node.dist2root - clock_rate*np.mean(node.numdate_given) - icpt
         residuals = np.array(res.values())
         iqd = np.percentile(residuals,75) - np.percentile(residuals,25)
-        for node,r in res.iteritems():
+        for node,r in res.items():
             if abs(r)>n_iqd*iqd and node.up.up is not None:
                 self.logger('TreeTime.ClockFilter: marking %s as outlier, residual %f interquartile distances'%(node.name,r/iqd), 3)
                 node.bad_branch=True
@@ -414,7 +414,7 @@ class TreeTime(ClockTree):
         introduction of the new branch with zero optimal length.
         """
 
-        from branch_len_interpolator import BranchLenInterpolator
+        from treetime.branch_len_interpolator import BranchLenInterpolator
         from Bio import Phylo
 
         zero_branch_slope = self.gtr.mu*self.seq_len

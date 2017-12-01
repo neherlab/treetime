@@ -1,6 +1,6 @@
 from __future__ import division, print_function
 import numpy as np
-from seq_utils import alphabets
+from treetime.seq_utils import alphabets
 
 
 def JTT92(mu=1.0):

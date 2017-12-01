@@ -1,16 +1,12 @@
 from __future__ import print_function, division
 import time
-import config as ttconf
+from  treetime import config as ttconf
 from Bio import Phylo
 from Bio import AlignIO
 import numpy as np
-from gtr import GTR
-import seq_utils
-from version import tt_version as __version__
-try:
-    from itertools import izip
-except ImportError:  #python3.x
-    izip = zip
+import treetime.seq_utils as seq_utils
+from treetime.gtr import GTR
+from treetime.version import tt_version as __version__
 
 min_branch_length = 1e-3
 
@@ -205,7 +201,7 @@ class TreeAnc(object):
         from os.path import isfile
         if isinstance(in_tree, Phylo.BaseTree.Tree):
             self._tree = in_tree
-        elif type(in_tree) in [str, unicode] and isfile(in_tree):
+        elif type(in_tree)==str and isfile(in_tree):
             try:
                 self._tree=Phylo.read(in_tree, 'newick')
             except:
@@ -244,7 +240,7 @@ class TreeAnc(object):
         from Bio.Align import MultipleSeqAlignment
         if isinstance(in_aln, MultipleSeqAlignment):
             self._aln = in_aln
-        elif type(in_aln) in [str, unicode] and isfile(in_aln):
+        elif type(in_aln)==str and isfile(in_aln):
             self._aln=AlignIO.read(in_aln, 'fasta')
         else:
             self._aln = None
@@ -378,7 +374,7 @@ class TreeAnc(object):
             self.full_to_reduced_sequence_map[np.array(pos)]=p
 
         # create a map to reconstruct full sequence from the reduced (compressed) sequence
-        for p, val in alignment_patterns.iteritems():
+        for p, val in alignment_patterns.items():
             alignment_patterns[p]=(val[0], np.array(val[1], dtype=int))
             self.reduced_to_full_sequence_map[val[0]]=np.array(val[1], dtype=int)
 
@@ -601,7 +597,7 @@ class TreeAnc(object):
 
         """
         muts = []
-        for p, (anc, der) in enumerate(izip(node.up.cseq, node.cseq)):
+        for p, (anc, der) in enumerate(zip(node.up.cseq, node.cseq)):
             # only if the states in compressed sequences differ:
             if anc!=der:
                 # expand to the positions in real sequence
@@ -787,7 +783,7 @@ class TreeAnc(object):
             t = node.branch_length
 
             indices = np.array([(np.argmax(self.gtr.alphabet==a),
-                        np.argmax(self.gtr.alphabet==b)) for a, b in izip(node.up.cseq, node.cseq)])
+                        np.argmax(self.gtr.alphabet==b)) for a, b in zip(node.up.cseq, node.cseq)])
 
             logQt = np.log(self.gtr.expQt(t))
             lh = logQt[indices[:, 1], indices[:, 0]]

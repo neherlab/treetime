@@ -8,7 +8,7 @@ from scipy.interpolate import interp1d
 from Bio import AlignIO, Phylo
 from scipy.interpolate import interp1d
 from collections import Iterable
-import config as ttconf
+from treetime import config as ttconf
 
 
 class Coalescent(object):

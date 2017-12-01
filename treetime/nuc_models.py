@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import division, print_function
 import numpy as np
-from seq_utils import alphabets, profile_maps
+from treetime.seq_utils import alphabets, profile_maps
 
 def JC69 (mu=1.0, alphabet="nuc", **kwargs):
     """
@@ -26,7 +26,7 @@ def JC69 (mu=1.0, alphabet="nuc", **kwargs):
          'nuc_gap' - nucleotide alphabet with gaps, gaps can be ignored optionally
 
     """
-    from gtr import GTR
+    from treetime.gtr import GTR
     num_chars = len(alphabets[alphabet])
     W, pi = np.ones((num_chars,num_chars)), np.ones(num_chars)
     gtr = GTR(alphabet=alphabet)

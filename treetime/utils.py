@@ -1,7 +1,7 @@
 from __future__ import division, print_function
 import numpy as np
 from scipy.interpolate import interp1d
-import config as ttconf
+from treetime import config as ttconf
 from scipy.integrate import quad
 from scipy import stats
 import datetime
