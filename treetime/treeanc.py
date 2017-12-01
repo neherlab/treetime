@@ -623,7 +623,7 @@ class TreeAnc(object):
          seq : np.array
             Sequence as np.array of chars
         """
-        seq = np.zeros_like(self.full_to_reduced_sequence_map, dtype='S1')
+        seq = np.zeros_like(self.full_to_reduced_sequence_map, dtype='U1')
         for pos, state in enumerate(node.cseq):
             seq[self.reduced_to_full_sequence_map[pos]] = state
 
