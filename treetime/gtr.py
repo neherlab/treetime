@@ -545,18 +545,20 @@ class GTR(object):
                             count = ((bool_seqs_p[n1]&bool_seqs_ch[n2])*pattern_multiplicity).sum()
                             if count: pair_count.append(((n1,n2), count))
         else: # enumerate state pairs of the sequence for large alphabets
-        #FIXME: make this work with pattern_multiplicity
             num_seqs = []
             for seq in [seq_p, seq_ch]: # for each sequence (parent and child) construct a numerical sequence [0,5,3,1,2,3...]
                 tmp = np.ones_like(seq, dtype=int)
                 for ni,nuc in enumerate(self.alphabet):
                     tmp[seq==nuc] = ni  # set each position corresponding to a state to the corresponding index
                 num_seqs.append(tmp)
-            if ignore_gaps:  # if gaps are ingnored skip positions where one or the other sequence is gapped
-                pair_count = Counter([x for x in zip(num_seqs[0], num_seqs[1])
-                                      if (self.gap_index not in x)])
+            pair_count = defaultdict(int)
+            if ignore_gaps:  # if gaps are ignored skip positions where one or the other sequence is gapped
+                for i in range(len(seq_p)):
+                    if self.gap_index!=num_seqs[0][i] and self.gap_index!=num_seqs[1][i]:
+                        pair_count[(num_seqs[0][i],num_seqs[1][i])]+=multiplicity[i]
             else: # otherwise, just count
-                pair_count = Counter(zip(num_seqs[0], num_seqs[1]))
+                for i in range(len(seq_p)):
+                    pair_count[(num_seqs[0][i],num_seqs[1][i])]+=multiplicity[i]
             pair_count = pair_count.items()
 
         return (np.array([x[0] for x in pair_count], dtype=int),    # [(child_nuc, parent_nuc),()...]

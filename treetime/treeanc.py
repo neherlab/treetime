@@ -929,7 +929,6 @@ class TreeAnc(object):
         if not debug:
             for node in self.tree.find_clades():
                 del node.marginal_subtree_LH_prefactor
-                del node.seq_msg_from_parent
 
         return N_diff
 
@@ -1135,6 +1134,10 @@ class TreeAnc(object):
 
         if 'marginal' in kwargs:
             marginal = kwargs['marginal']
+            # a marginal ancestral reconstruction is required for
+            # marginal branch length inference
+            if not hasattr(self.tree.root, "marginal_Lx"):
+                self.infer_ancestral_sequences(marginal=True)
         else:
             marginal = False
 
