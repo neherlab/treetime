@@ -772,7 +772,7 @@ class TreeAnc(object):
          log_lh : float
             The tree likelihood given the sequences
         """
-        log_lh = np.zeros(self.tree.root.cseq.shape[0])
+        log_lh = np.zeros(self.multiplicity.shape[0])
         for node in self.tree.find_clades(order='postorder'):
 
             if node.up is None: #  root node
@@ -829,7 +829,7 @@ class TreeAnc(object):
         # number of nucleotides changed from prev reconstruction
         N_diff = 0
 
-        L = self.tree.get_terminals()[0].cseq.shape[0]
+        L = self.multiplicity.shape[0]
         n_states = self.gtr.alphabet.shape[0]
         self.logger("TreeAnc._ml_anc_marginal: type of reconstruction: Marginal", 2)
 
@@ -954,7 +954,7 @@ class TreeAnc(object):
 
         """
         N_diff = 0 # number of sites differ from perv reconstruction
-        L = self.tree.get_terminals()[0].cseq.shape[0]
+        L = self.multiplicity.shape[0]
         n_states = self.gtr.alphabet.shape[0]
 
         self.logger("TreeAnc._ml_anc_joint: type of reconstruction: Joint", 2)
@@ -974,7 +974,10 @@ class TreeAnc(object):
             log_transitions = np.log(self.gtr.expQt(branch_len))
 
             if node.is_terminal():
-                msg_from_children = np.log(np.maximum(seq_utils.seq2prof(node.cseq, self.gtr.profile_map), ttconf.TINY_NUMBER))
+                try:
+                    msg_from_children = np.log(np.maximum(seq_utils.seq2prof(node.cseq, self.gtr.profile_map), ttconf.TINY_NUMBER))
+                except:
+                    raise ValueError("sequence assignment to node "+node.name+" failed")
                 msg_from_children[np.isnan(msg_from_children) | np.isinf(msg_from_children)] = -ttconf.BIG_NUMBER
             else:
                 # Product (sum-Log) over all child subtree likelihoods.
@@ -994,7 +997,7 @@ class TreeAnc(object):
                 node.joint_Lx[:, char_i] = msg_to_parent.max(axis=1)
 
         # root node profile = likelihood of the total tree
-        msg_from_children = np.sum(np.stack([c.joint_Lx for c in self.tree.root.clades], axis = 0), axis=0)
+        msg_from_children = np.sum(np.stack([c.joint_Lx for c in self.tree.root], axis = 0), axis=0)
         # Pi(i) * Prod_ch Lch(i)
         self.tree.root.joint_Lx = msg_from_children + np.log(self.gtr.Pi)
         normalized_profile = (self.tree.root.joint_Lx.T - self.tree.root.joint_Lx.max(axis=1)).T
@@ -1197,19 +1200,30 @@ class TreeAnc(object):
         return new_len
 
 
-    def optimal_marginal_branch_length(self, node):
-        if node.up is None:
-            return self.one_mutation
+    def marginal_branch_profile(self, node):
+        '''
+        calculate the marginal distribution of sequence states on both ends
+        of the branch leading to node,
 
+        Parameters
+        -----------
+         node: PhyloTree.Clade
+            TreeNode, attached to the branch.
+
+
+        Returns
+        --------
+         pp, pc : Pair of vectors (profile parent, pp) and (profile child, pc)
+            that are of shape (L,n) where L is sequence length and n is alphabet size.
+            note that this correspond to the compressed sequences.
+        '''
         parent = node.up
-        if not hasattr(node, 'compressed_sequence'):
-            print('no compressed')
-            self.logger("marginal branch length only implemented for compressed sequences",3)
-            return node.branch_length
+        if parent is None:
+            self.logger("Branch profiles can't be calculated for the root!",3)
+            return None, None
         if not hasattr(node, 'marginal_Lx'):
-            print('no marginal')
             self.logger("marginal ancestral inference needs to be performed first", 3)
-            return node.branch_length
+            return None, None
 
         pc = node.marginal_subtree_LH
         norm_vector = pc.sum(axis=1)
@@ -1221,6 +1235,27 @@ class TreeAnc(object):
                 pp*=c.marginal_Lx
         norm_vector = pp.sum(axis=1)
         pp=(pp.T/norm_vector).T
+        return pp, pc
+
+
+    def optimal_marginal_branch_length(self, node):
+        '''
+        calculate the marginal distribution of sequence states on both ends
+        of the branch leading to node,
+
+        Parameters
+        -----------
+         node: PhyloTree.Clade
+            TreeNode, attached to the branch.
+        Returns
+        --------
+         branch_length : float
+            branch length of the branch leading to the node.
+            note: this can be unstable on iteration
+        '''
+
+        if node.up is None:
+            return self.one_mutation
 
         return self.gtr.optimal_t_compressed((pp, pc), self.multiplicity, profiles=True)
 
@@ -1242,6 +1277,7 @@ class TreeAnc(object):
                 node.up.clades = [k for k in node.up.clades if k != node] + node.clades
                 for clade in node.clades:
                     clade.up = node.up
+
 
     def optimize_sequences_and_branch_length(self,*args, **kwargs):
         """This method is a schortcut for :py:meth:`optimize_seq_and_branch_len`
