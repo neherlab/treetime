@@ -22,7 +22,8 @@ class TreeAnc(object):
     alignment, making ancestral state inferrence
     """
 
-    def __init__(self, tree=None, aln=None, gtr=None, fill_overhangs=True, ref=None, verbose = ttconf.VERBOSE, **kwargs):
+    def __init__(self, tree=None, aln=None, gtr=None, fill_overhangs=True, 
+                ref=None, verbose = ttconf.VERBOSE, ignore_gaps=True, **kwargs):
         """
         TreeAnc constructor. It prepares tree, attach sequences to the leaf nodes,
         and sets some configuration parameters.
@@ -51,8 +52,11 @@ class TreeAnc(object):
             filled with the gap sign('-'). As we suppose that the most
             appropriate way to deal with the missing data is to assign it to the
             "unknown" character ('N' for nucleotides, 'X' for aminoacids). If the
-            parameter is set to True, the end-gaps are converted to unknonwn
+            parameter is set to True, the end-gaps are converted to unknown
             symbols. Otherwise, the alignment is treated as-is
+
+         ignore_gaps: bool
+            ignore gaps in branch length calculations
 
          verbose : int
             verbosity level as number from 0 (lowest) to 10 (highest).
@@ -64,7 +68,7 @@ class TreeAnc(object):
 
         """
         if tree is None:
-            raise("TreeAnc requires a tree!")
+            raise TypeError("TreeAnc requires a tree!")
         self.__version__ = __version__
         self.t_start = time.time()
         self.verbose = verbose
@@ -76,10 +80,8 @@ class TreeAnc(object):
         self.is_vcf = False  #this is set true when aln is set, if aln is dict
         self.var_positions = None #set during seq compression, if aln is dict
 
-        # TODO: set explicitly
-        self.ignore_gaps = True
-        if gtr is not None:
-            self.set_gtr(gtr, **kwargs)
+        self.ignore_gaps = ignore_gaps
+        self.set_gtr(gtr if gtr is not None else 'JC69', **kwargs)
         if tree is None:
             self.logger("TreeAnc: tree loading failed! exiting",0)
             return
@@ -187,7 +189,7 @@ class TreeAnc(object):
             self._gtr.logger=self.logger
         else:
             self.logger("TreeAnc.gtr_setter: can't interpret GTR model", 1, warn=True)
-            raise TypeError("Cannot set GTR model to theh TReeAnc class: GTR or "
+            raise TypeError("Cannot set GTR model in TreeAnc class: GTR or "
                 "string expected")
 
         if self._gtr.ambiguous is None:
