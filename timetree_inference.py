@@ -22,7 +22,7 @@ if __name__=="__main__":
     parser.add_argument('--dates', required = True, type = str,
                         help ="csv with dates for nodes with 'node_name, date' where date is float (as in 2012.15)")
     # parser.add_argument('--infer_gtr', default = True, action='store_true', help='infer substitution model')
-    parser.add_argument('--gtr', required=True, type = str, help="GTR model to use. "
+    parser.add_argument('--gtr', default='infer', type = str, help="GTR model to use. "
         " Type 'infer' to infer the model from the data. Or, specify the model type. "
         "Optionally, feed the arguments with the '--gtr_args' option")
     parser.add_argument('--gtr_params', type=str, nargs='+', help="GTR parameters for the model "
@@ -40,7 +40,7 @@ if __name__=="__main__":
                         help='use an autocorrelated molecular clock. Prior strength and coupling of parent '
                              'and offspring rates can be specified e.g. as --relax 1.0 0.5')
     parser.add_argument('--max_iter', default = 2, type=int,
-                        help='maximal number of iterations the inference cycle is run')
+                        help='maximal number of iterations the inference cycle is run. Note that for polytomy resolution and coalescence models max_iter should be at least 2')
     parser.add_argument('--verbose', default = 1, type=int,
                         help='verbosity of output 0-6')
     parser.add_argument('--Tc', default = "0.0", type=str,
