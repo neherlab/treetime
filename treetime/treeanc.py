@@ -90,10 +90,10 @@ class TreeAnc(object):
 
         if ref is not None:
             self.ref = ref
-            
+
+        # set alignment and attach sequences to tree.
         self.aln = aln
-        if aln is not None:
-            self._attach_sequences_to_nodes()
+
 
             
             
