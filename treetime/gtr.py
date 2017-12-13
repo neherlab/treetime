@@ -1,3 +1,4 @@
+
 #!/usr/local/bin/python
 # -*- coding: utf-8 -*-
 from __future__ import division, print_function
@@ -213,7 +214,7 @@ class GTR(object):
           Jukes-Cantor 1969 model. This model assumes equal frequencies
           of the nucleotides and equal transition rates between nucleotide states.
           For more info, see: Jukes and Cantor (1969).
-          Evolution of Protein Molecules. New York: Academic Press. pp. 21–132.
+          Evolution of Protein Molecules. New York: Academic Press. pp. 21-132.
           To create this model, use:
 
           :code:`mygtr = GTR.standard(model='jc69', mu=<my_mu>, alphabet=<my_alph>)`
@@ -230,7 +231,7 @@ class GTR(object):
           allows different rates between transitions and transversions. The ratio
           of the transversion/transition rates is given by kappa parameter.
           For more info, see
-          Kimura (1980),  J. Mol. Evol. 16 (2): 111–120. doi:10.1007/BF01731581.
+          Kimura (1980),  J. Mol. Evol. 16 (2): 111-120. doi:10.1007/BF01731581.
           Current implementation of the model does not account for the gaps.
 
 
@@ -245,7 +246,7 @@ class GTR(object):
 
           Felsenstein 1981 model. Assumes non-equal concentrations across nucleotides,
           but the transition rate between all states is assumed to be equal. See
-          Felsenstein (1981), J. Mol. Evol. 17  (6): 368–376. doi:10.1007/BF01734359
+          Felsenstein (1981), J. Mol. Evol. 17  (6): 368-376. doi:10.1007/BF01734359
           for details.
 
           Current implementation of the model does not account for the gaps (treatment of
@@ -267,7 +268,7 @@ class GTR(object):
           Hasegawa, Kishino and Yano 1985 model. Allows different concentrations of the
           nucleotides (as in F81) + distinguishes between transition/transversionsubstitutions
           (similar to K80). Link:
-          Hasegawa, Kishino, Yano (1985), J. Mol. Evol. 22 (2): 160–174. doi:10.1007/BF02101694
+          Hasegawa, Kishino, Yano (1985), J. Mol. Evol. 22 (2): 160-174. doi:10.1007/BF02101694
 
           Current implementation of the model does not account for the gaps
 
@@ -285,7 +286,7 @@ class GTR(object):
 
           Tamura 1992 model. Extending Kimura  (1980) model for the case where a
           G+C-content bias exists. Link:
-          Tamura K (1992),  Mol.  Biol. Evol. 9 (4): 678–687.  DOI: 10.1093/oxfordjournals.molbev.a040752
+          Tamura K (1992),  Mol.  Biol. Evol. 9 (4): 678-687.  DOI: 10.1093/oxfordjournals.molbev.a040752
 
           Current implementation of the model does not account for the gaps
 
@@ -303,7 +304,7 @@ class GTR(object):
           Tamura and Nei 1993. The model distinguishes between the two different types of
           transition: (A <-> G) is allowed to have a different rate to (C<->T).
           Transversions have the same rate. The frequencies of the nucleotides are allowed
-          to be different. Link: Tamura, Nei (1993), MolBiol Evol. 10 (3): 512–526.
+          to be different. Link: Tamura, Nei (1993), MolBiol Evol. 10 (3): 512-526.
           DOI:10.1093/oxfordjournals.molbev.a040023
 
           :code:`mygtr = GTR.standard(model='TN93', mu=<mu>, kappa1=<k1>, kappa2=<k2>)`
@@ -568,7 +569,7 @@ class GTR(object):
 ########################################################################
 ### evolution functions
 ########################################################################
-    def prob_t_compressed(self, seq_pair, multiplicity, t, return_log=False):
+    def prob_t_compressed(self, seq_pair, multiplicity, t, return_log=False, derivative=0):
         '''
         calculate the probability of observing a sequence pair at a distance t
 
@@ -679,24 +680,24 @@ class GTR(object):
                 to be separated by the time t.
             """
             if profiles:
-                return -1.0*self.prob_t_profiles(seq_pair, multiplicity,t, return_log=True)
+                return -1.0*self.prob_t_profiles(seq_pair, multiplicity,t**2, return_log=True)
             else:
-                return -1.0*self.prob_t_compressed(seq_pair, multiplicity,t, return_log=True)
+                return -1.0*self.prob_t_compressed(seq_pair, multiplicity,t**2, return_log=True)
 
         try:
             from scipy.optimize import minimize_scalar
             opt = minimize_scalar(_neg_prob,
-                    bounds=[0,ttconf.MAX_BRANCH_LENGTH],
-                    method='bounded',
+                    bounds=[-np.sqrt(ttconf.MAX_BRANCH_LENGTH),np.sqrt(ttconf.MAX_BRANCH_LENGTH)],
                     args=(seq_pair, multiplicity), options={'xatol':1e-8})
-            new_len = opt["x"]
+            new_len = opt["x"]**2
         except:
             import scipy
             print('legacy scipy', scipy.__version__)
             from scipy.optimize import fminbound
             new_len = fminbound(_neg_prob,
-                    0,ttconf.MAX_BRANCH_LENGTH,
-                    args=(seq_pair, multiplicity))
+                      -np.sqrt(ttconf.MAX_BRANCH_LENGTH),np.sqrt(ttconf.MAX_BRANCH_LENGTH),
+                       args=(seq_pair, multiplicity))
+            new_len = new_len**2
             opt={'success':True}
 
         if new_len > .9 * ttconf.MAX_BRANCH_LENGTH:
@@ -796,6 +797,30 @@ class GTR(object):
         eLambdaT = np.diag(self._exp_lt(t)) # vector length = a
         Qt = self.v.dot(eLambdaT.dot(self.v_inv))   # This is P(nuc1 | given nuc_2)
         return np.maximum(0,Qt)
+
+
+    def expQtdt(self, t):
+        '''
+        Returns
+        -------
+        Qtdt :  Returns V_{ij} \lambda_j e^{\lambda_j t} V^{-1}_{jk}
+                This is the time derivative of the branch probability
+        '''
+        lambda_eLambdaT = np.diag(self._exp_lt(t)*self.eigenvals) # vector length = a
+        Qtdt = self.v.dot(lambda_eLambdaT.dot(self.v_inv))
+        return Qtdt
+
+
+    def expQtdtdt(self, t):
+        '''
+        Returns
+        -------
+        Qtdtdt :  Returns V_{ij} \lambda_j^2 e^{\lambda_j t} V^{-1}_{jk}
+                This is the second derivative of the branch probability wrt time
+        '''
+        lambda_eLambdaT = np.diag(self._exp_lt(t)*self.eigenvals**2) # vector length = a
+        Qtdt = self.v.dot(lambda_eLambdaT.dot(self.v_inv))
+        return Qtdt
 
 
     def sequence_logLH(self,seq, pattern_multiplicity=None):

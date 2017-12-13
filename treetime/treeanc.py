@@ -1256,7 +1256,7 @@ class TreeAnc(object):
 
         if node.up is None:
             return self.one_mutation
-
+        pp, pc = self.marginal_branch_profile(node)
         return self.gtr.optimal_t_compressed((pp, pc), self.multiplicity, profiles=True)
 
 
