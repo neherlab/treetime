@@ -6,7 +6,8 @@
 
 TreeTime provides routines for ancestral sequence reconstruction and the inference of molecular-clock phylogenies, i.e., a tree where all branches are scaled such that the locations of terminal nodes correspond to their sampling times and internal nodes are placed at the most likely time of divergence.
 
-TreeTime is implemented in Python 2.7 and aims at striking a compromise between sophisticated probabilistic models of evolution and fast heuristics. It implements GTR models of ancestral inference and branch length optimization, but takes the tree topology as given.
+TreeTime is implemented in Python 2.7 -- an experimental port to [Python 3 is available in a separate branch](https://github.com/neherlab/treetime/tree/py3).
+TreeTime aims at striking a compromise between sophisticated probabilistic models of evolution and fast heuristics. It implements GTR models of ancestral inference and branch length optimization, but takes the tree topology as given.
 To optimize the likelihood of time-scaled phylogenies, treetime uses an iterative approach that first infers ancestral sequences given the branch length of the tree, then optimizes the positions of unconstrained nodes on the time axis, and then repeats this cycle.
 The only topology optimization are (optional) resolution of polytomies in a way that is most (approximately) consistent with the sampling time constraints on the tree.
 The package is designed to be used as a stand-alone tool or as a library used in larger phylogenetic analysis work flows.
