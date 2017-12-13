@@ -371,7 +371,11 @@ class TreeTime(ClockTree):
         """
         Resolve the polytomies on the tree.
         The function scans the tree, resolves polytomies in case there are any,
-        and re-optimizes the tree with new topology.
+        and re-optimizes the tree with new topology. Note that polytomies are only
+        resolved if that would result in higher likelihood. Sometimes, stretching
+        two or more branches that carry several mutations are less costly than
+        an additional branch with zero mutations (long branches are not stiff,
+        short branches are.)
 
         Parameters
         ----------
