@@ -688,7 +688,7 @@ class GTR(object):
             from scipy.optimize import minimize_scalar
             opt = minimize_scalar(_neg_prob,
                     bounds=[-np.sqrt(ttconf.MAX_BRANCH_LENGTH),np.sqrt(ttconf.MAX_BRANCH_LENGTH)],
-                    args=(seq_pair, multiplicity), options={'xatol':1e-8})
+                    args=(seq_pair, multiplicity), tol=1e-8)
             new_len = opt["x"]**2
         except:
             import scipy
@@ -795,32 +795,39 @@ class GTR(object):
 
     def expQt(self, t):
         eLambdaT = np.diag(self._exp_lt(t)) # vector length = a
-        Qt = self.v.dot(eLambdaT.dot(self.v_inv))   # This is P(nuc1 | given nuc_2)
-        return np.maximum(0,Qt)
+        Qs = self.v.dot(eLambdaT.dot(self.v_inv))   # This is P(nuc1 | given nuc_2)
+        return np.maximum(0,Qs)
+
+    def expQs(self, s):
+        eLambdaT = np.diag(self._exp_lt(s**2)) # vector length = a
+        Qs = self.v.dot(eLambdaT.dot(self.v_inv))   # This is P(nuc1 | given nuc_2)
+        return np.maximum(0,Qs)
 
 
-    def expQtdt(self, t):
+    def expQsds(self, s):
         '''
         Returns
         -------
-        Qtdt :  Returns V_{ij} \lambda_j e^{\lambda_j t} V^{-1}_{jk}
-                This is the time derivative of the branch probability
+        Qtds :  Returns 2 V_{ij} \lambda_j s e^{\lambda_j s**2 } V^{-1}_{jk}
+                This is the derivative of the branch probability with respect to s=\sqrt(t)
         '''
-        lambda_eLambdaT = np.diag(self._exp_lt(t)*self.eigenvals) # vector length = a
-        Qtdt = self.v.dot(lambda_eLambdaT.dot(self.v_inv))
-        return Qtdt
+        lambda_eLambdaT = np.diag(2.0*self._exp_lt(s**2)*self.eigenvals*s) # vector length = a
+        Qsds = self.v.dot(lambda_eLambdaT.dot(self.v_inv))
+        return Qsds
 
 
-    def expQtdtdt(self, t):
+    def expQsdsds(self, t):
         '''
         Returns
         -------
-        Qtdtdt :  Returns V_{ij} \lambda_j^2 e^{\lambda_j t} V^{-1}_{jk}
+        Qtdtdt :  Returns V_{ij} \lambda_j^2 e^{\lambda_j s**2} V^{-1}_{jk}
                 This is the second derivative of the branch probability wrt time
         '''
-        lambda_eLambdaT = np.diag(self._exp_lt(t)*self.eigenvals**2) # vector length = a
-        Qtdt = self.v.dot(lambda_eLambdaT.dot(self.v_inv))
-        return Qtdt
+        t=s**2
+        elt = self._exp_lt(t)
+        lambda_eLambdaT = np.diag(elt*(4.0*t*self.eigenvals**2 + 2.0*self.eigenvals))
+        Qsdsds = self.v.dot(lambda_eLambdaT.dot(self.v_inv))
+        return Qsdsds
 
 
     def sequence_logLH(self,seq, pattern_multiplicity=None):
