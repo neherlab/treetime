@@ -49,7 +49,7 @@ class ClockTree(TreeAnc):
         """
         super(ClockTree, self).__init__(*args, **kwargs)
         if dates is None:
-            raise("ClockTree requires date constraints!")
+            raise ValueError("ClockTree requires date constraints!")
 
         self.debug=debug
         self.real_dates = real_dates
