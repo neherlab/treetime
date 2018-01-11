@@ -337,10 +337,13 @@ class ClockTree(TreeAnc):
 
         def _cleanup():
             for node in self.tree.find_clades():
-                del node.marginal_pos_Lx
-                del node.subtree_distribution
-                del node.msg_from_parent
-                #del node.marginal_pos_LH
+                try:
+                    del node.marginal_pos_Lx
+                    del node.subtree_distribution
+                    del node.msg_from_parent
+                    #del node.marginal_pos_LH
+                except:
+                    pass
 
 
         self.logger("ClockTree - Marginal reconstruction:  Propagating leaves -> root...", 2)
