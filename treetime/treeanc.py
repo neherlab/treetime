@@ -22,8 +22,9 @@ class TreeAnc(object):
     alignment, making ancestral state inferrence
     """
 
-    def __init__(self, tree=None, aln=None, gtr=None, fill_overhangs=True, 
-                ref=None, verbose = ttconf.VERBOSE, ignore_gaps=True, **kwargs):
+    def __init__(self, tree=None, aln=None, gtr=None, fill_overhangs=True,
+                ref=None, verbose = ttconf.VERBOSE, ignore_gaps=True, convert_upper=True,
+                **kwargs):
         """
         TreeAnc constructor. It prepares tree, attach sequences to the leaf nodes,
         and sets some configuration parameters.
@@ -91,12 +92,13 @@ class TreeAnc(object):
         if ref is not None:
             self.ref = ref
 
+        self.convert_upper = convert_upper
         # set alignment and attach sequences to tree.
         self.aln = aln
 
 
-            
-            
+
+
     def logger(self, msg, level, warn=False):
         """
         Print log message *msg* to stdout.
@@ -260,6 +262,19 @@ class TreeAnc(object):
             self._aln = None
             return
 
+        #Convert to uppercase here, rather than in _attach_sequences_to_nodes
+        #(which used to do it through seq2array in seq_utils.py)
+        #so that it is controlled by param convert_upper. This way for
+        #mugration (ancestral reconstruction of non-sequences), you can
+        #NOT convert to uppercase!
+        if not self.is_vcf:
+            if self.convert_upper:
+                temp_aln = [] #MultSeqAlign aren't modifiable, so this not so neat.
+                for seq in self._aln:
+                    temp_aln.append(seq.upper())
+                self._aln = MultipleSeqAlignment(temp_aln)
+
+
         if hasattr(self, '_tree'):
             self._attach_sequences_to_nodes()
         else:
@@ -272,7 +287,7 @@ class TreeAnc(object):
         When having read in from a VCF, this is what variants map to
         """
         return self._ref
-        
+
     @ref.setter
     def ref(self, in_ref):
         self._ref = in_ref
@@ -354,7 +369,7 @@ class TreeAnc(object):
 
         # create empty reduced alignment (transposed)
         tmp_reduced_aln = []
-        
+
         #if is a dict, want to be efficient and not iterate over a bunch of const_sites
         #so pre-load alignment_patterns with the location of const sites!
         #and get the sites that we want to iterate over only!
@@ -368,7 +383,7 @@ class TreeAnc(object):
             #in the same way....
             aln_transpose = positionsAndConst
             seqNames = self.aln.keys() #store seqName order to put back on tree
-        else: 
+        else:
             # transpose real alignment, for ease of iteration
             # NOTE the order of tree traversal must be the same as below
             # for assigning the cseq attributes to the nodes.
@@ -393,7 +408,7 @@ class TreeAnc(object):
                     pattern = [ self.aln[k][pi] if pi in self.aln[k].keys() else self.ref[pi] for k,v in self.aln.iteritems() ]
             else:
                 pattern = aln_transpose[pi]
-            
+
             str_pat = "".join(pattern)
             # if the column contains only one state and ambiguous nucleotides, replace
             # those with the state in other strains right away
@@ -518,28 +533,28 @@ class TreeAnc(object):
         positions = list(set(positions))
         positions.sort()
         self.var_positions = positions
-        
+
         #remove variable sites from Ref to get constant site positions
         refMod = np.array(list(self.ref), 'S1')
         bases = np.unique(refMod)
         refMod[positions] = "."
-        
+
         #find out location of constant sites and store these
         constantLocs = { base:np.where(refMod==base)[0].tolist() for base in bases }
         #Find first occurance of each, this will dictate processing order
-        firstPos = {key:val[0] for key,val in constantLocs.iteritems() }    
+        firstPos = {key:val[0] for key,val in constantLocs.iteritems() }
         #Find out order to process them in
-        bases = [key for key,value in sorted(firstPos.iteritems(), key=lambda(k,v): (v,k)) ] 
+        bases = [key for key,value in sorted(firstPos.iteritems(), key=lambda(k,v): (v,k)) ]
         #Find out where they will be in compressed alignment - once other const sites are removed!
         compressedLoc = {}
         for base in bases:
             newLocations = np.where(refMod==base)[0]   #find out where they are now
             compressedLoc[base] = newLocations[0]   #find first occurance - this is location
             refMod = np.delete(refMod, newLocations[1:])    #delete all other occurances so that subsequent bases are in right place
-        
+
         #This becomes the base of alignment_patterns:
         aln_pattern_start = {base*len(self.aln):(compressedLoc[base], constantLocs[base]) for base in bases}
-        
+
         #Now add the original first occurance to the list of variable positions so we iterate over them too
         #(so they go into reduced alignment)
         #This more complex code avoids sorting positions twice! (>4million length)
@@ -552,13 +567,13 @@ class TreeAnc(object):
             if len(positionsAndConst) == i or positionsAndConst[i] > sortFirstPos[0]:
                 positionsAndConst.insert(i, sortFirstPos.pop(0))
             i+=1
-        
+
         #Invert dict of first constant position so can locate by position
         inv_firstPos = dict([v,k] for k,v in firstPos.iteritems())
-        
+
         return aln_pattern_start, positionsAndConst, inv_firstPos
-        
-        
+
+
 ####################################################################
 ## END SET-UP
 ####################################################################
@@ -757,10 +772,10 @@ class TreeAnc(object):
         """
         For VCF-based TreeAnc objects, we do not want to store the entire
         sequence on every node - not space efficient! Instead, return the dict
-        of mutation locations for this sequence. This is used in place of 
+        of mutation locations for this sequence. This is used in place of
         'expanded_sequence' for VCF-based obj throughout TreeAnc. However, users
         can still call 'expanded_sequence' if they do actually want the whole thing!
-        
+
         Parameters
         ----------
          node  : PhyloTree.Clade
@@ -770,18 +785,18 @@ class TreeAnc(object):
         -------
          seq : dict
             dict where keys are position and value is the mutation
-            
+
         EBH 6 Dec 2017
         """
         seq = {}
-        
+
         for pos in self.var_positions:
             cseqLoc = self.full_to_reduced_sequence_map[pos]
             base = node.cseq[cseqLoc]
             if self.ref[pos] != base:
                 seq[pos] = base
-                
-        return seq 
+
+        return seq
 
 ###################################################################
 ### FITCH
@@ -1458,36 +1473,36 @@ class TreeAnc(object):
                                         for n in self.tree.find_clades()])
 
         return new_aln
-        
+
     def get_tree_dict(self):
         """
-        For VCF-based objects, returns a nested dict with all information required to 
+        For VCF-based objects, returns a nested dict with all information required to
         reconstruct sequences for all nodes (terminal and internal) in the format:
         {'reference':'AGCTCGA..A',
          'sequences': { 'seq1':{4:'A', 7:'-'}, 'seq2':{100:'C'} },
          'positions': [1,4,7,10,100...] }
-        
+
         reference being the reference sequence to which the variable sites are mapped,
-        sequence containing a dict for each sequence with the position and base of 
+        sequence containing a dict for each sequence with the position and base of
         mutations, and positions containing a list of all the variable positions
-        
+
         EBH 7 Dec 2017
         """
         if self.is_vcf:
             tree_dict = {}
             tree_dict['reference'] = self.ref
             tree_dict['positions'] = self.var_positions
-            
+
             tree_aln = {}
             for n in self.tree.find_clades():
                 if hasattr(n, 'sequence'):
-                    tree_aln[n.name] = n.sequence        
+                    tree_aln[n.name] = n.sequence
             tree_dict['sequences'] = tree_aln
-            
+
             return tree_dict
         else:
             raise("A dict can only be returned for trees created with VCF-input!")
-        
+
 
 if __name__=="__main__":
 
