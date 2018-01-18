@@ -213,7 +213,7 @@ class GTR(object):
           Jukes-Cantor 1969 model. This model assumes equal frequencies
           of the nucleotides and equal transition rates between nucleotide states.
           For more info, see: Jukes and Cantor (1969).
-          Evolution of Protein Molecules. New York: Academic Press. pp. 21–132.
+          Evolution of Protein Molecules. New York: Academic Press. pp. 21-132.
           To create this model, use:
 
           :code:`mygtr = GTR.standard(model='jc69', mu=<my_mu>, alphabet=<my_alph>)`
@@ -230,7 +230,7 @@ class GTR(object):
           allows different rates between transitions and transversions. The ratio
           of the transversion/transition rates is given by kappa parameter.
           For more info, see
-          Kimura (1980),  J. Mol. Evol. 16 (2): 111–120. doi:10.1007/BF01731581.
+          Kimura (1980),  J. Mol. Evol. 16 (2): 111-120. doi:10.1007/BF01731581.
           Current implementation of the model does not account for the gaps.
 
 
@@ -245,7 +245,7 @@ class GTR(object):
 
           Felsenstein 1981 model. Assumes non-equal concentrations across nucleotides,
           but the transition rate between all states is assumed to be equal. See
-          Felsenstein (1981), J. Mol. Evol. 17  (6): 368–376. doi:10.1007/BF01734359
+          Felsenstein (1981), J. Mol. Evol. 17  (6): 368-376. doi:10.1007/BF01734359
           for details.
 
           Current implementation of the model does not account for the gaps (treatment of
@@ -267,7 +267,7 @@ class GTR(object):
           Hasegawa, Kishino and Yano 1985 model. Allows different concentrations of the
           nucleotides (as in F81) + distinguishes between transition/transversionsubstitutions
           (similar to K80). Link:
-          Hasegawa, Kishino, Yano (1985), J. Mol. Evol. 22 (2): 160–174. doi:10.1007/BF02101694
+          Hasegawa, Kishino, Yano (1985), J. Mol. Evol. 22 (2): 160-174. doi:10.1007/BF02101694
 
           Current implementation of the model does not account for the gaps
 
@@ -285,7 +285,7 @@ class GTR(object):
 
           Tamura 1992 model. Extending Kimura  (1980) model for the case where a
           G+C-content bias exists. Link:
-          Tamura K (1992),  Mol.  Biol. Evol. 9 (4): 678–687.  DOI: 10.1093/oxfordjournals.molbev.a040752
+          Tamura K (1992),  Mol.  Biol. Evol. 9 (4): 678-687.  DOI: 10.1093/oxfordjournals.molbev.a040752
 
           Current implementation of the model does not account for the gaps
 
@@ -303,7 +303,7 @@ class GTR(object):
           Tamura and Nei 1993. The model distinguishes between the two different types of
           transition: (A <-> G) is allowed to have a different rate to (C<->T).
           Transversions have the same rate. The frequencies of the nucleotides are allowed
-          to be different. Link: Tamura, Nei (1993), MolBiol Evol. 10 (3): 512–526.
+          to be different. Link: Tamura, Nei (1993), MolBiol Evol. 10 (3): 512-526.
           DOI:10.1093/oxfordjournals.molbev.a040023
 
           :code:`mygtr = GTR.standard(model='TN93', mu=<mu>, kappa1=<k1>, kappa2=<k2>)`

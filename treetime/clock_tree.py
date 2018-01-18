@@ -49,7 +49,7 @@ class ClockTree(TreeAnc):
         """
         super(ClockTree, self).__init__(*args, **kwargs)
         if dates is None:
-            raise("ClockTree requires date constraints!")
+            raise ValueError("ClockTree requires date constraints!")
 
         self.debug=debug
         self.real_dates = real_dates
@@ -337,10 +337,13 @@ class ClockTree(TreeAnc):
 
         def _cleanup():
             for node in self.tree.find_clades():
-                del node.marginal_pos_Lx
-                del node.subtree_distribution
-                del node.msg_from_parent
-                #del node.marginal_pos_LH
+                try:
+                    del node.marginal_pos_Lx
+                    del node.subtree_distribution
+                    del node.msg_from_parent
+                    #del node.marginal_pos_LH
+                except:
+                    pass
 
 
         self.logger("ClockTree - Marginal reconstruction:  Propagating leaves -> root...", 2)
