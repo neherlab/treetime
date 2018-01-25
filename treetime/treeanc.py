@@ -256,12 +256,9 @@ class TreeAnc(object):
         #(which used to do it through seq2array in seq_utils.py)
         #so that it is controlled by param convert_upper. This way for
         #mugration (ancestral reconstruction of non-sequences), you can
-        #NOT convert to uppercase!
+        #use upper- and lower case characters for discrete states!
         if self.convert_upper:
-            temp_aln = [] #MultSeqAlign aren't modifiable, so this not so neat.
-            for seq in self._aln:
-                temp_aln.append(seq.upper())
-            self._aln = MultipleSeqAlignment(temp_aln)
+            self._aln = MultipleSeqAlignment([seq.upper() for seq in self._aln])
 
         if hasattr(self, '_tree'):
             self._attach_sequences_to_nodes()
