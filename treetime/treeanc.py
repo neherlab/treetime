@@ -12,8 +12,6 @@ try:
 except ImportError:  #python3.x
     izip = zip
 
-min_branch_length = 1e-3
-
 
 class TreeAnc(object):
     """
@@ -966,9 +964,9 @@ class TreeAnc(object):
         The assigend values are to be used in the following ML analysis.
         """
         if self.use_mutation_length:
-            return max(min_branch_length*self.one_mutation, node.mutation_length)
+            return max(ttconf.MIN_BRANCH_LENGTH*self.one_mutation, node.mutation_length)
         else:
-            return max(min_branch_length*self.one_mutation, node.branch_length)
+            return max(ttconf.MIN_BRANCH_LENGTH*self.one_mutation, node.branch_length)
 
 
     def _ml_anc_marginal(self, verbose=0, store_compressed=True, final=True,
