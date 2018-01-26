@@ -371,10 +371,16 @@ class ClockTree(TreeAnc):
                     msgs_to_multiply = [node.date_constraint] if node.date_constraint is not None else []
                     msgs_to_multiply.extend([child.marginal_pos_Lx for child in node.clades
                                              if child.marginal_pos_Lx is not None])
-                    if len(msgs_to_multiply)>1: # combine the different msgs and constraints
-                        node.subtree_distribution = Distribution.multiply(msgs_to_multiply)
-                    else:
+
+                    # combine the different msgs and constraints
+                    if len(msgs_to_multiply)==0:
+                        # no information
+                        node.marginal_pos_Lx = None
+                        continue
+                    elif len(msgs_to_multiply)==1:
                         node.subtree_distribution = msgs_to_multiply[0]
+                    else: # combine the different msgs and constraints
+                        node.subtree_distribution = Distribution.multiply(msgs_to_multiply)
 
                     if node.up is None: # this is the root, set dates
                         node.subtree_distribution._adjust_grid(rel_tol=self.rel_tol_prune)
