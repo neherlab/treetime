@@ -451,7 +451,7 @@ class TreeAnc(object):
         for p, val in alignment_patterns.iteritems():
             alignment_patterns[p]=(val[0], np.array(val[1], dtype=int))
             self.reduced_to_full_sequence_map[val[0]]=np.array(val[1], dtype=int)
-
+        
         # assign compressed sequences to all nodes of the tree, which have sequence assigned
         # for dict we cannot assume this is in the same order, as it does below!
         # so do it explicitly
@@ -533,11 +533,39 @@ class TreeAnc(object):
         positions = list(set(positions))
         positions.sort()
         self.var_positions = positions
+        
+        #A site can be 'variant' against the reference but invariant
+        #among the samples!! These mess up our calculations on where in
+        #the compressed alignment constant sites will go. So include them
+        #as 'constant' sites here, to get positioning right!
+        #(But exclude sites where all are !=ref, but 2 diff alt bases!)
+        actualVar = []
+        for var in positions:
+            baseOpt = {}
+            for key,val in self.aln.iteritems():
+                try:
+                    baseOpt[self.aln[key][var]]=var
+                except KeyError, e:
+                    actualVar.append(var)
+                    break
+            if len(baseOpt) > 1:
+                actualVar.append(var)
+                
+        secretConst = [x for x in positions if x not in actualVar]
 
         #remove variable sites from Ref to get constant site positions
         refMod = np.array(list(self.ref), 'S1')
+        
+        #For 'hidden' constant sites, replace the base in Ref for now
+        #So that it records them properly.
+        seq1 = self.aln.keys()[0]
+        for pos in secretConst:
+            refMod[pos] = self.aln[seq1][pos]
+        
+        #only remove 'real' variable sites, keep 'hidden' const sites in
         bases = np.unique(refMod)
-        refMod[positions] = "."
+        refMod[actualVar] = "."
+        #refMod[positions] = "."
 
         #find out location of constant sites and store these
         constantLocs = { base:np.where(refMod==base)[0].tolist() for base in bases }
@@ -564,6 +592,9 @@ class TreeAnc(object):
         positionsAndConst = positions[:]
         i = 0
         while len(sortFirstPos) != 0:
+            if sortFirstPos[0] in positions: #don't add if already there (a 'hidden' const site)
+                sortFirstPos.pop(0)
+                continue
             if len(positionsAndConst) == i or positionsAndConst[i] > sortFirstPos[0]:
                 positionsAndConst.insert(i, sortFirstPos.pop(0))
             i+=1
@@ -1216,7 +1247,7 @@ class TreeAnc(object):
                 N_diff += (tmp_sequence!=node.cseq).sum()
             else:
                 N_diff += L
-
+                
             node.cseq = tmp_sequence
             if final:
                 node.mutations = self.get_mutations(node)

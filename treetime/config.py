@@ -1,7 +1,7 @@
 VERBOSE = 3
 
 BIG_NUMBER = 1e10
-TINY_NUMBER = 1e-10
+TINY_NUMBER = 1e-12
 MIN_LOG = -1e8 # minimal log value
 
 # distribution parameters
