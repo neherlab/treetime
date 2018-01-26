@@ -12,8 +12,6 @@ try:
 except ImportError:  #python3.x
     izip = zip
 
-min_branch_length = 1e-3
-
 
 class TreeAnc(object):
     """
@@ -266,14 +264,9 @@ class TreeAnc(object):
         #(which used to do it through seq2array in seq_utils.py)
         #so that it is controlled by param convert_upper. This way for
         #mugration (ancestral reconstruction of non-sequences), you can
-        #NOT convert to uppercase!
-        if not self.is_vcf:
-            if self.convert_upper:
-                temp_aln = [] #MultSeqAlign aren't modifiable, so this not so neat.
-                for seq in self._aln:
-                    temp_aln.append(seq.upper())
-                self._aln = MultipleSeqAlignment(temp_aln)
-
+        #use upper- and lower case characters for discrete states!
+        if (not self.is_vcf) and self.convert_upper:
+            self._aln = MultipleSeqAlignment([seq.upper() for seq in self._aln])
 
         if hasattr(self, '_tree'):
             self._attach_sequences_to_nodes()
@@ -1002,9 +995,9 @@ class TreeAnc(object):
         The assigend values are to be used in the following ML analysis.
         """
         if self.use_mutation_length:
-            return max(min_branch_length*self.one_mutation, node.mutation_length)
+            return max(ttconf.MIN_BRANCH_LENGTH*self.one_mutation, node.mutation_length)
         else:
-            return max(min_branch_length*self.one_mutation, node.branch_length)
+            return max(ttconf.MIN_BRANCH_LENGTH*self.one_mutation, node.branch_length)
 
 
     def _ml_anc_marginal(self, verbose=0, store_compressed=True, final=True,
