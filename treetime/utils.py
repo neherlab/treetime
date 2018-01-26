@@ -56,8 +56,8 @@ class DateConversion(object):
 
         if clock_rate is None:
             if len(dates) < 3:
-                raise(RuntimeError("There are to few dates set at the leaves of the tree."
-                    " Cannot make the conversion function. Aborting."))
+                raise(RuntimeError("There are too few dates set at the leaves of the tree."
+                    " Cannot fit an evolutionary rate. Aborting."))
             # simple regression
             dc.clock_rate,\
                 dc.intercept,\
