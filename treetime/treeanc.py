@@ -23,7 +23,8 @@ class TreeAnc(object):
     """
 
     def __init__(self, tree=None, aln=None, gtr=None, fill_overhangs=True,
-                 verbose = ttconf.VERBOSE, ignore_gaps=True,  **kwargs):
+                 verbose = ttconf.VERBOSE, ignore_gaps=True,  convert_upper=True,
+                 **kwargs):
         """
         TreeAnc constructor. It prepares tree, attach sequences to the leaf nodes,
         and sets some configuration parameters.
@@ -86,6 +87,7 @@ class TreeAnc(object):
         else:
             self.tree = tree
 
+        self.convert_upper = convert_upper
         # set alignment and attach sequences to tree.
         self.aln = aln
 
@@ -249,6 +251,14 @@ class TreeAnc(object):
         else:
             self._aln = None
             return
+
+        #Convert to uppercase here, rather than in _attach_sequences_to_nodes
+        #(which used to do it through seq2array in seq_utils.py)
+        #so that it is controlled by param convert_upper. This way for
+        #mugration (ancestral reconstruction of non-sequences), you can
+        #use upper- and lower case characters for discrete states!
+        if self.convert_upper:
+            self._aln = MultipleSeqAlignment([seq.upper() for seq in self._aln])
 
         if hasattr(self, '_tree'):
             self._attach_sequences_to_nodes()
