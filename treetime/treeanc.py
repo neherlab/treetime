@@ -275,22 +275,27 @@ class TreeAnc(object):
         dic_aln = {k.name: seq_utils.seq2array(k.seq, fill_overhangs=self.fill_overhangs,
                                                ambiguous_character=self.gtr.ambiguous)
                             for k in self.aln} #
+        self.seq_len = self.aln.get_alignment_length()
+        self.one_mutation = 1.0/self.seq_len
+
         # loop over tree,
         for l in self.tree.find_clades():
             if l.name in dic_aln:
                 l.sequence= dic_aln[l.name]
             elif l.is_terminal():
-                self.logger("TreeAnc._attach_sequences_to_nodes: Cannot find sequence for leaf: %s" % l.name, 4, warn=True)
+                self.logger("***WARNING: TreeAnc._attach_sequences_to_nodes: NO SEQUENCE FOR LEAF: %s" % l.name, 0, warn=True)
                 failed_leaves += 1
+                l.sequence = seq_utils.seq2array(self.gtr.ambiguous*self.seq_len, fill_overhangs=self.fill_overhangs,
+                                                 ambiguous_character=self.gtr.ambiguous)
                 if failed_leaves > self.tree.count_terminals() / 3:
-                    self.logger("Error: At least 30\\% terminal nodes cannot be assigned with a sequence!\n", 2, warn=True)
+                    self.logger("ERROR: At least 30\\% terminal nodes cannot be assigned with a sequence!\n", 0, warn=True)
                     self.logger("Are you sure the alignment belongs to the tree?", 2, warn=True)
                     break
             else: # could not assign sequence for internal node - is OK
                 pass
 
-        self.seq_len = self.aln.get_alignment_length()
-        self.one_mutation = 1.0/self.seq_len
+        if failed_leaves:
+            self.logger("***WARNING: TreeAnc: %d nodes don't have a matching sequence in the alignment. POSSIBLE ERROR."%failed_leaves, 0, warn=True)
         self.make_reduced_alignment()
 
 

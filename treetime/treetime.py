@@ -345,7 +345,7 @@ class TreeTime(ClockTree):
                                if n.numdate_given is not None],
                                key=lambda x:np.mean(x.numdate_given))[0]
         elif root=='best':
-            new_root = self.reroot_to_best_root(criterium='rsq')
+            new_root = self.reroot_to_best_root(criterium='residual')
         elif root=='rsq':
             new_root = self.reroot_to_best_root(criterium='rsq')
         elif root=='residual':

@@ -49,7 +49,7 @@ if __name__ == '__main__':
     format_axes(fig, axs)
 
     # lets reroot: we now have a positve correlation of root-to-tip distance with sampling date
-    tt.reroot(root="residual")
+    tt.reroot(root="best")
     fig, axs = plt.subplots(1,2, figsize=(18,9))
     axs[0].set_title("Tree rerooted by treetime", fontsize=18)
     axs[1].set_title("Optimal divergence-time relationship", fontsize=18)
