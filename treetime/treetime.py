@@ -294,9 +294,9 @@ class TreeTime(ClockTree):
         if ax is None:
             plt.figure()
             ax=plt.subplot(111)
-        dates = np.array([np.mean(n.numdate_given) for n in tips])
-        dist = np.array([n.dist2root for n in tips])
-        ind = np.array([n.bad_branch for n in tips])
+        dates = np.array([np.mean(n.numdate_given) for n in tips if n.numdate_given])
+        dist = np.array([n.dist2root for n in tips if n.numdate_given])
+        ind = np.array([n.bad_branch for n in tips if n.numdate_given])
         # plot tips
         ax.scatter(dates[ind], dist[ind]  , c='r', label="bad tips" if label else "" , **kwargs)
         ax.scatter(dates[~ind], dist[~ind], c='g', label="good tips" if label else "", **kwargs)
