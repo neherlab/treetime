@@ -61,8 +61,14 @@ class ClockTree(TreeAnc):
 
         for node in self.tree.find_clades(order='postorder'):
             if node.name in self.date_dict:
-                node.numdate_given = self.date_dict[node.name]
-                node.bad_branch = False
+                try:
+                    tmp = np.mean(self.date_dict[node.name])
+                    node.numdate_given = self.date_dict[node.name]
+                    node.bad_branch = False
+                except:
+                    self.logger("WARNING: ClockTree.init: node %s has a bad date: %s"%(node.name, str(self.date_dict[node.name])), 2, warn=True)
+                    node.numdate_given = None
+                    node.bad_branch = True
             else: # nodes without date contraints
 
                 node.numdate_given = None

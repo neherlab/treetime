@@ -690,6 +690,7 @@ class TreeTime(ClockTree):
                 node._alpha = np.nan
                 node._R2 = 0.0
                 node._R2_delta_x = 0.0
+                node._residual = np.inf
 
             elif criterium=='rsq': # calculate the r^2 of the root to tip regression and pick the best intermediate position on the branch
                 #  NOTE order of these computation matters
