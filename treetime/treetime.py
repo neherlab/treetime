@@ -359,8 +359,10 @@ class TreeTime(ClockTree):
         self.tree.root_with_outgroup(new_root)
         # new nodes are produced when rooting with a terminal node, copy this clock info
         if new_root.is_terminal():
-            self.tree.root._alpha = new_root._alpha
-            self.tree.root._beta = new_root._beta
+            if hasattr(new_root, "_alpha"):
+                self.tree.root._alpha = new_root._alpha
+            if hasattr(new_root, "_beta"):
+                self.tree.root._beta = new_root._beta
         self.tree.root.branch_length = self.one_mutation
         for n in self.tree.find_clades():
             n.mutation_length=n.branch_length
@@ -629,6 +631,11 @@ class TreeTime(ClockTree):
         sum_ti =  np.sum([np.mean(node.numdate_given) for node in self.tree.get_terminals() if (not node.bad_branch)])
         sum_ti2 = np.sum([np.mean(node.numdate_given)**2 for node in self.tree.get_terminals() if (not node.bad_branch)])
         N = 1.0*len([x for x in self.tree.get_terminals() if not x.bad_branch])
+        if N<2:
+            self.logger("****ERROR: TreeTime.find_best_root_and_regression: need at least two dates to reroot!", 0, warn=True)
+            self.logger("****ERROR: only %d tips have valid dates!"%N, 0, warn=True)
+            return selt.tree.root, np.nan, np.nan
+
         Ninv = 1.0/N
         time_variance = (N*sum_ti2 - sum_ti**2)*Ninv**2
 

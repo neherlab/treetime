@@ -24,7 +24,7 @@ class TreeAnc(object):
 
     def __init__(self, tree=None, aln=None, gtr=None, fill_overhangs=True,
                  verbose = ttconf.VERBOSE, ignore_gaps=True,  convert_upper=True,
-                 **kwargs):
+                 log=None, **kwargs):
         """
         TreeAnc constructor. It prepares tree, attach sequences to the leaf nodes,
         and sets some configuration parameters.
@@ -73,6 +73,7 @@ class TreeAnc(object):
         self.__version__ = __version__
         self.t_start = time.time()
         self.verbose = verbose
+        self.log=log
         self.logger("TreeAnc: set-up",1)
         self._internal_node_count = 0
         self.use_mutation_length=False
@@ -117,7 +118,11 @@ class TreeAnc(object):
             outstr+=format(dt, '4.2f')+'\t'
             outstr+= level*'-'
             outstr+=msg
-            print(outstr)
+            try:
+                log.write(outstr+'\n')
+                log.flush()
+            except:
+                print(outstr)
 
 
 ####################################################################
