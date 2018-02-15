@@ -85,7 +85,7 @@ class ClockTree(TreeAnc):
         if val is None:
             self._date2dist = None
         else:
-            self.logger("ClockTime.date2dist: Setting new molecular clock. rate=%f, R^2=%.4f"%(val.clock_rate, val.r_val**2), 2)
+            self.logger("ClockTime.date2dist: Setting new molecular clock. rate=%.8f, R^2=%.4f"%(val.clock_rate, val.r_val**2), 2)
             self._date2dist = val
 
 
