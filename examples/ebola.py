@@ -33,7 +33,7 @@ if __name__ == '__main__':
                         aln = base_name+'.fasta', verbose = 4, dates = dates)
 
     # infer an ebola time tree while rerooting and resolving polytomies
-    ebola.run(root='residual', relaxed_clock=False, max_iter=2,
+    ebola.run(root='best', relaxed_clock=False, max_iter=2,
               resolve_polytomies=True, Tc='skyline', time_marginal="assign")
 
     # scatter root to tip divergence vs sampling date

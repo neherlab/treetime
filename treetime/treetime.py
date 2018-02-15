@@ -345,7 +345,7 @@ class TreeTime(ClockTree):
                                if n.numdate_given is not None],
                                key=lambda x:np.mean(x.numdate_given))[0]
         elif root=='best':
-            new_root = self.reroot_to_best_root(criterium='rsq')
+            new_root = self.reroot_to_best_root(criterium='residual')
         elif root=='rsq':
             new_root = self.reroot_to_best_root(criterium='rsq')
         elif root=='residual':
@@ -358,9 +358,11 @@ class TreeTime(ClockTree):
                     +('new_node' if new_root.name is None else new_root.name), 2)
         self.tree.root_with_outgroup(new_root)
         # new nodes are produced when rooting with a terminal node, copy this clock info
-        if new_root.is_terminal() and root=='best':
-            self.tree.root._alpha = new_root._alpha
-            self.tree.root._beta = new_root._beta
+        if new_root.is_terminal():
+            if hasattr(new_root, "_alpha"):
+                self.tree.root._alpha = new_root._alpha
+            if hasattr(new_root, "_beta"):
+                self.tree.root._beta = new_root._beta
         self.tree.root.branch_length = self.one_mutation
         for n in self.tree.find_clades():
             n.mutation_length=n.branch_length
@@ -629,6 +631,11 @@ class TreeTime(ClockTree):
         sum_ti =  np.sum([np.mean(node.numdate_given) for node in self.tree.get_terminals() if (not node.bad_branch)])
         sum_ti2 = np.sum([np.mean(node.numdate_given)**2 for node in self.tree.get_terminals() if (not node.bad_branch)])
         N = 1.0*len([x for x in self.tree.get_terminals() if not x.bad_branch])
+        if N<2:
+            self.logger("****ERROR: TreeTime.find_best_root_and_regression: need at least two dates to reroot!", 0, warn=True)
+            self.logger("****ERROR: only %d tips have valid dates!"%N, 0, warn=True)
+            return selt.tree.root, np.nan, np.nan
+
         Ninv = 1.0/N
         time_variance = (N*sum_ti2 - sum_ti**2)*Ninv**2
 
@@ -683,6 +690,7 @@ class TreeTime(ClockTree):
                 node._alpha = np.nan
                 node._R2 = 0.0
                 node._R2_delta_x = 0.0
+                node._residual = np.inf
 
             elif criterium=='rsq': # calculate the r^2 of the root to tip regression and pick the best intermediate position on the branch
                 #  NOTE order of these computation matters

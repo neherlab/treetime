@@ -22,7 +22,7 @@ class TreeAnc(object):
 
     def __init__(self, tree=None, aln=None, gtr=None, fill_overhangs=True,
                 ref=None, verbose = ttconf.VERBOSE, ignore_gaps=True, convert_upper=True,
-                **kwargs):
+                log=None, **kwargs):
         """
         TreeAnc constructor. It prepares tree, attach sequences to the leaf nodes,
         and sets some configuration parameters.
@@ -71,6 +71,7 @@ class TreeAnc(object):
         self.__version__ = __version__
         self.t_start = time.time()
         self.verbose = verbose
+        self.log=log
         self.logger("TreeAnc: set-up",1)
         self._internal_node_count = 0
         self.use_mutation_length=False
@@ -122,7 +123,11 @@ class TreeAnc(object):
             outstr+=format(dt, '4.2f')+'\t'
             outstr+= level*'-'
             outstr+=msg
-            print(outstr)
+            try:
+                log.write(outstr+'\n')
+                log.flush()
+            except:
+                print(outstr)
 
 
 ####################################################################
@@ -292,31 +297,47 @@ class TreeAnc(object):
         in the alignment and assign this sequence as a character array
         '''
         failed_leaves= 0
+<<<<<<< HEAD
         if type(self.aln) is dict:
             dic_aln = self.aln
         else:
             dic_aln = {k.name: seq_utils.seq2array(k.seq, fill_overhangs=self.fill_overhangs,
                                                    ambiguous_character=self.gtr.ambiguous)
                                 for k in self.aln} #
+=======
+        dic_aln = {k.name: seq_utils.seq2array(k.seq, fill_overhangs=self.fill_overhangs,
+                                               ambiguous_character=self.gtr.ambiguous)
+                            for k in self.aln} #
+        self.seq_len = self.aln.get_alignment_length()
+        self.one_mutation = 1.0/self.seq_len
+
+>>>>>>> upstream/min_deviation_rooting
         # loop over tree,
         for l in self.tree.find_clades():
             if l.name in dic_aln:
                 l.sequence= dic_aln[l.name]
             elif l.is_terminal():
-                self.logger("TreeAnc._attach_sequences_to_nodes: Cannot find sequence for leaf: %s" % l.name, 4, warn=True)
+                self.logger("***WARNING: TreeAnc._attach_sequences_to_nodes: NO SEQUENCE FOR LEAF: %s" % l.name, 0, warn=True)
                 failed_leaves += 1
+                l.sequence = seq_utils.seq2array(self.gtr.ambiguous*self.seq_len, fill_overhangs=self.fill_overhangs,
+                                                 ambiguous_character=self.gtr.ambiguous)
                 if failed_leaves > self.tree.count_terminals() / 3:
-                    self.logger("Error: At least 30\\% terminal nodes cannot be assigned with a sequence!\n", 2, warn=True)
+                    self.logger("ERROR: At least 30\\% terminal nodes cannot be assigned with a sequence!\n", 0, warn=True)
                     self.logger("Are you sure the alignment belongs to the tree?", 2, warn=True)
                     break
             else: # could not assign sequence for internal node - is OK
                 pass
 
+<<<<<<< HEAD
         if type(self.aln) is dict:
             self.seq_len = len(self.ref)
         else:
             self.seq_len = self.aln.get_alignment_length()
         self.one_mutation = 1.0/self.seq_len
+=======
+        if failed_leaves:
+            self.logger("***WARNING: TreeAnc: %d nodes don't have a matching sequence in the alignment. POSSIBLE ERROR."%failed_leaves, 0, warn=True)
+>>>>>>> upstream/min_deviation_rooting
         self.make_reduced_alignment()
 
 
@@ -444,7 +465,7 @@ class TreeAnc(object):
         for p, val in alignment_patterns.iteritems():
             alignment_patterns[p]=(val[0], np.array(val[1], dtype=int))
             self.reduced_to_full_sequence_map[val[0]]=np.array(val[1], dtype=int)
-        
+
         # assign compressed sequences to all nodes of the tree, which have sequence assigned
         # for dict we cannot assume this is in the same order, as it does below!
         # so do it explicitly
@@ -526,7 +547,7 @@ class TreeAnc(object):
         positions = list(set(positions))
         positions.sort()
         self.var_positions = positions
-        
+
         #A site can be 'variant' against the reference but invariant
         #among the samples!! These mess up our calculations on where in
         #the compressed alignment constant sites will go. So include them
@@ -543,18 +564,18 @@ class TreeAnc(object):
                     break
             if len(baseOpt) > 1:
                 actualVar.append(var)
-                
+
         secretConst = [x for x in positions if x not in actualVar]
 
         #remove variable sites from Ref to get constant site positions
         refMod = np.array(list(self.ref), 'S1')
-        
+
         #For 'hidden' constant sites, replace the base in Ref for now
         #So that it records them properly.
         seq1 = self.aln.keys()[0]
         for pos in secretConst:
             refMod[pos] = self.aln[seq1][pos]
-        
+
         #only remove 'real' variable sites, keep 'hidden' const sites in
         bases = np.unique(refMod)
         refMod[actualVar] = "."
@@ -1240,7 +1261,7 @@ class TreeAnc(object):
                 N_diff += (tmp_sequence!=node.cseq).sum()
             else:
                 N_diff += L
-                
+
             node.cseq = tmp_sequence
             if final:
                 node.mutations = self.get_mutations(node)
