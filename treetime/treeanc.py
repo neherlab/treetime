@@ -297,21 +297,17 @@ class TreeAnc(object):
         in the alignment and assign this sequence as a character array
         '''
         failed_leaves= 0
-<<<<<<< HEAD
         if type(self.aln) is dict:
             dic_aln = self.aln
+            self.seq_len = len(self.ref)
         else:
             dic_aln = {k.name: seq_utils.seq2array(k.seq, fill_overhangs=self.fill_overhangs,
                                                    ambiguous_character=self.gtr.ambiguous)
                                 for k in self.aln} #
-=======
-        dic_aln = {k.name: seq_utils.seq2array(k.seq, fill_overhangs=self.fill_overhangs,
-                                               ambiguous_character=self.gtr.ambiguous)
-                            for k in self.aln} #
-        self.seq_len = self.aln.get_alignment_length()
+            self.seq_len = self.aln.get_alignment_length()
+
         self.one_mutation = 1.0/self.seq_len
 
->>>>>>> upstream/min_deviation_rooting
         # loop over tree,
         for l in self.tree.find_clades():
             if l.name in dic_aln:
@@ -328,16 +324,8 @@ class TreeAnc(object):
             else: # could not assign sequence for internal node - is OK
                 pass
 
-<<<<<<< HEAD
-        if type(self.aln) is dict:
-            self.seq_len = len(self.ref)
-        else:
-            self.seq_len = self.aln.get_alignment_length()
-        self.one_mutation = 1.0/self.seq_len
-=======
         if failed_leaves:
             self.logger("***WARNING: TreeAnc: %d nodes don't have a matching sequence in the alignment. POSSIBLE ERROR."%failed_leaves, 0, warn=True)
->>>>>>> upstream/min_deviation_rooting
         self.make_reduced_alignment()
 
 
