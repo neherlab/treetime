@@ -61,8 +61,14 @@ class ClockTree(TreeAnc):
 
         for node in self.tree.find_clades(order='postorder'):
             if node.name in self.date_dict:
-                node.numdate_given = self.date_dict[node.name]
-                node.bad_branch = False
+                try:
+                    tmp = np.mean(self.date_dict[node.name])
+                    node.numdate_given = self.date_dict[node.name]
+                    node.bad_branch = False
+                except:
+                    self.logger("WARNING: ClockTree.init: node %s has a bad date: %s"%(node.name, str(self.date_dict[node.name])), 2, warn=True)
+                    node.numdate_given = None
+                    node.bad_branch = True
             else: # nodes without date contraints
 
                 node.numdate_given = None
@@ -232,10 +238,13 @@ class ClockTree(TreeAnc):
                                              if child.joint_pos_Lx is not None])
 
                     # subtree likelihood given the node's constraint and child messages
-                    assert(len(msgs_to_multiply) != 0)
-                    if len(msgs_to_multiply)>1: # combine the different msgs and constraints
+                    if len(msgs_to_multiply) == 0: # there are no constraints
+                        node.joint_pos_Lx = None
+                        node.joint_pos_Cx = None
+                        continue
+                    elif len(msgs_to_multiply)>1: # combine the different msgs and constraints
                         subtree_distribution = Distribution.multiply(msgs_to_multiply)
-                    else:
+                    else: # there is exactly one constraint.
                         subtree_distribution = msgs_to_multiply[0]
                     if node.up is None: # this is the root, set dates
                         subtree_distribution._adjust_grid(rel_tol=self.rel_tol_prune)
@@ -368,10 +377,16 @@ class ClockTree(TreeAnc):
                     msgs_to_multiply = [node.date_constraint] if node.date_constraint is not None else []
                     msgs_to_multiply.extend([child.marginal_pos_Lx for child in node.clades
                                              if child.marginal_pos_Lx is not None])
-                    if len(msgs_to_multiply)>1: # combine the different msgs and constraints
-                        node.subtree_distribution = Distribution.multiply(msgs_to_multiply)
-                    else:
+
+                    # combine the different msgs and constraints
+                    if len(msgs_to_multiply)==0:
+                        # no information
+                        node.marginal_pos_Lx = None
+                        continue
+                    elif len(msgs_to_multiply)==1:
                         node.subtree_distribution = msgs_to_multiply[0]
+                    else: # combine the different msgs and constraints
+                        node.subtree_distribution = Distribution.multiply(msgs_to_multiply)
 
                     if node.up is None: # this is the root, set dates
                         node.subtree_distribution._adjust_grid(rel_tol=self.rel_tol_prune)
@@ -404,9 +419,16 @@ class ClockTree(TreeAnc):
                 # if parent itself got smth from the root node, include it
                 if parent.msg_from_parent is not None:
                     complementary_msgs.append(parent.msg_from_parent)
+                elif parent.marginal_pos_Lx is not None:
+                    complementary_msgs.append(parent.marginal_pos_LH)
 
-                msg_parent_to_node = NodeInterpolator.multiply(complementary_msgs)
-                msg_parent_to_node._adjust_grid(rel_tol=self.rel_tol_prune)
+                if len(complementary_msgs):
+                    msg_parent_to_node = NodeInterpolator.multiply(complementary_msgs)
+                    msg_parent_to_node._adjust_grid(rel_tol=self.rel_tol_prune)
+                else:
+                    from utils import numeric_date
+                    x = [parent.numdate, numeric_date()]
+                    msg_parent_to_node = NodeInterpolator(x, [1.0, 1.0])
 
                 # integral message, which delivers to the node the positional information
                 # from the complementary subtree
