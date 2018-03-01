@@ -294,9 +294,9 @@ class TreeTime(ClockTree):
         if ax is None:
             plt.figure()
             ax=plt.subplot(111)
-        dates = np.array([np.mean(n.numdate_given) for n in tips if n.numdate_given])
-        dist = np.array([n.dist2root for n in tips if n.numdate_given])
-        ind = np.array([n.bad_branch for n in tips if n.numdate_given])
+        dates = np.array([np.mean(n.numdate_given) for n in tips if n.numdate_given is not None])
+        dist = np.array([n.dist2root for n in tips if n.numdate_given is not None])
+        ind = np.array([n.bad_branch for n in tips if n.numdate_given is not None])
         # plot tips
         ax.scatter(dates[ind], dist[ind]  , c='r', label="bad tips" if label else "" , **kwargs)
         ax.scatter(dates[~ind], dist[~ind], c='g', label="good tips" if label else "", **kwargs)
@@ -668,6 +668,7 @@ class TreeTime(ClockTree):
                 node.bad_branch = np.all([x.bad_branch for x in node])
 
         best_root = self.tree.root
+        best_root_any = self.tree.root
         for node in self.tree.find_clades(order='preorder'):  # root first
 
             if node.up is None:
@@ -824,26 +825,36 @@ class TreeTime(ClockTree):
 
             if criterium=='rsq':
                 if node.up is None:
-                    self.logger("TreeTime.find_best_root_and_regression: Initial root: R2:%f\tclock_rate:%f"%(best_root._R2, best_root._beta),3)
+                    self.logger("TreeTime.find_best_root_and_regression: Initial root: R2:%f\tclock_rate:%.3e"%(best_root._R2, best_root._beta),3)
+                if  node._R2 > best_root_any._R2:
+                    best_root_any = node
                 if  (node._R2 > best_root._R2 and node._beta>0) or best_root._beta<0:
                     best_root = node
-                    self.logger("TreeTime.find_best_root_and_regression: Better root found: R2:%f\tclock_rate:%f\tbranch_displacement:%f"
+                    self.logger("TreeTime.find_best_root_and_regression: Better root found: R2:%f\tclock_rate:%.3e\tbranch_displacement:%f"
                             %(best_root._R2, best_root._beta, (best_root._R2_delta_x) / ( best_root.branch_length + self.one_mutation)),4)
             elif criterium=='residual':
                 if node.up is None:
-                    self.logger("TreeTime.find_best_root_and_regression: Initial root: residual:%f\tclock_rate:%f"%(best_root._residual, best_root._beta),3)
+                    self.logger("TreeTime.find_best_root_and_regression: Initial root: residual:%.3e\tclock_rate:%.3e"%(best_root._residual, best_root._beta),3)
+                if  node._residual < best_root_any._residual:
+                    best_root_any = node
                 if (node._residual < best_root._residual and node._beta>0) or best_root._beta<0:
                     best_root = node
-                    self.logger("TreeTime.find_best_root_and_regression: Better root found: residual:%f\tclock_rate:%f\tbranch_displacement:%f"
+                    self.logger("TreeTime.find_best_root_and_regression: Better root found: residual:%.3e\tclock_rate:%.3e\tbranch_displacement:%f"
                             %(best_root._residual, best_root._beta, (best_root._R2_delta_x) / ( best_root.branch_length + self.one_mutation)),4)
 
 
         if criterium=='rsq':
-            self.logger("TreeTime.find_best_root_and_regression: Best root: R2:%f\tclock_rate:%f\tbranch_displacement:%f"
-                        %(best_root._R2, best_root._beta, (best_root._R2_delta_x) / ( best_root.branch_length + self.one_mutation)),3)
+            if (best_root_any._R2 > best_root._R2):
+                self.logger("WARNING: TreeTime.find_best_root_and_regression: optimal regression has negative rate: R2:%f\tclock_rate:%.3e"
+                        %(best_root_any._R2, best_root_any._beta), 1)
+            self.logger("TreeTime.find_best_root_and_regression: Best root: R2:%f\tclock_rate:%.3e\tbranch_displacement:%f"
+                        %(best_root._R2, best_root._beta, (best_root._R2_delta_x) / ( best_root.branch_length + 0.001*self.one_mutation)),3)
         elif criterium=='residual':
-            self.logger("TreeTime.find_best_root_and_regression: Best root: residual:%f\tclock_rate:%f\tbranch_displacement:%f"
-                        %(best_root._residual, best_root._beta, (best_root._R2_delta_x) / ( best_root.branch_length + self.one_mutation)),3)
+            if (best_root_any._residual < best_root._residual):
+                self.logger("WARNING: TreeTime.find_best_root_and_regression: optimal regression has negative rate: residual:%.3e\tclock_rate:%.3e"
+                        %(best_root_any._residual, best_root_any._beta), 1)
+            self.logger("TreeTime.find_best_root_an_R2_delta_xd_regression: Best root: residual:%.3e\tclock_rate:%.3e\tbranch_displacement:%f"
+                        %(best_root._residual, best_root._beta, (best_root._R2_delta_x) / ( best_root.branch_length + 0.001*self.one_mutation)),3)
         return best_root, best_root._alpha, best_root._beta
 
 
@@ -877,10 +888,15 @@ class TreeTime(ClockTree):
             new_node._alpha = a
             new_node._beta = b
             new_node.clades = [best_root]
-            new_node.up.clades = [k if k != best_root else new_node for k in best_root.up.clades]
+            new_node.up.clades = [k if k != best_root else new_node
+                                  for k in best_root.up.clades]
 
             best_root.branch_length = best_root._R2_delta_x
             best_root.up = new_node
+            self.logger("TreeTime.reroot_to_best_root:"
+                        " branch length of children of new root:"
+                        " %.3e, %.3e"%(best_root.branch_length,
+                                       new_node.branch_length),2)
             return new_node
         else:
             # simply use the existing node as the new root
