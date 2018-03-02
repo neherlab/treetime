@@ -84,6 +84,7 @@ class Distribution(object):
         else:
             new_xmin = np.max([k.xmin for k in dists])
             new_xmax = np.min([k.xmax for k in dists])
+
             x_vals = np.unique(np.concatenate([k.x for k in dists]))
             x_vals = x_vals[(x_vals>new_xmin-TINY_NUMBER)&(x_vals<new_xmax+TINY_NUMBER)]
             y_vals = np.sum([k.__call__(x_vals) for k in dists], axis=0)

@@ -690,6 +690,10 @@ class GTR(object):
                     bounds=[-np.sqrt(ttconf.MAX_BRANCH_LENGTH),np.sqrt(ttconf.MAX_BRANCH_LENGTH)],
                     args=(seq_pair, multiplicity), tol=1e-8)
             new_len = opt["x"]**2
+                    bounds=[0,ttconf.MAX_BRANCH_LENGTH],
+                    method='bounded',
+                    args=(seq_pair, multiplicity), options={'xatol':1e-10})
+            new_len = opt["x"]
         except:
             import scipy
             print('legacy scipy', scipy.__version__)
