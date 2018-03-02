@@ -630,9 +630,9 @@ class TreeTime(ClockTree):
         the terminal nodes should have the timestamps assigned as numdate_given
         attribute.
         """
-        sum_ti =  np.sum([np.mean(node.numdate_given) for node in self.tree.get_terminals() if (not node.bad_branch)])
-        sum_ti2 = np.sum([np.mean(node.numdate_given)**2 for node in self.tree.get_terminals() if (not node.bad_branch)])
-        N = 1.0*len([x for x in self.tree.get_terminals() if not x.bad_branch])
+        sum_ti =  np.sum([np.mean(node.numdate_given)*node.count for node in self.tree.get_terminals() if (not node.bad_branch)])
+        sum_ti2 = np.sum([np.mean(node.numdate_given)**2*node.count for node in self.tree.get_terminals() if (not node.bad_branch)])
+        N = 1.0*np.sum([node.count for node in self.tree.get_terminals() if not node.bad_branch])
         if N<2:
             self.logger("****ERROR: TreeTime.find_best_root_and_regression: need at least two dates to reroot!", 0, warn=True)
             self.logger("****ERROR: only %d tips have valid dates!"%N, 0, warn=True)
@@ -645,7 +645,7 @@ class TreeTime(ClockTree):
         for node in self.tree.find_clades(order='postorder'):  # children first, msg to parents
             if node.is_terminal():  # inititalize the leaves
                 #  will not rely on the standard func - count terminals directly
-                node._st_n_leaves = 0 if node.bad_branch else 1
+                node._st_n_leaves = 0 if node.bad_branch else node.count
                 node._st_di = 0.0
                 node._st_diti = 0.0
                 node._st_di2 = 0.0
@@ -653,7 +653,7 @@ class TreeTime(ClockTree):
                 if node.bad_branch:
                     node._st_ti = 0
                 else:
-                    node._st_ti = np.mean(node.numdate_given)
+                    node._st_ti = np.mean(node.numdate_given)*node.count
 
                 node._ti = sum_ti
             else:
