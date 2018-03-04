@@ -364,6 +364,10 @@ class TreeTime(ClockTree):
                 self.tree.root._alpha = new_root._alpha
             if hasattr(new_root, "_beta"):
                 self.tree.root._beta = new_root._beta
+            if hasattr(new_root, "_R2"):
+                self.tree.root._R2 = new_root._R2
+            if hasattr(new_root, "_residual"):
+                self.tree.root._residual = new_root._residual
 
         self.tree.root.branch_length = self.one_mutation
         for n in self.tree.find_clades():
@@ -633,7 +637,8 @@ class TreeTime(ClockTree):
         sum_ti =  np.sum([np.mean(node.numdate_given)*node.count for node in self.tree.get_terminals() if (not node.bad_branch)])
         sum_ti2 = np.sum([np.mean(node.numdate_given)**2*node.count for node in self.tree.get_terminals() if (not node.bad_branch)])
         N = 1.0*np.sum([node.count for node in self.tree.get_terminals() if not node.bad_branch])
-        if N<2:
+        tip_count = 1.0*np.sum([1.0 for node in self.tree.get_terminals() if not node.bad_branch])
+        if tip_count<2:
             self.logger("****ERROR: TreeTime.find_best_root_and_regression: need at least two dates to reroot!", 0, warn=True)
             self.logger("****ERROR: only %d tips have valid dates!"%N, 0, warn=True)
             return selt.tree.root, np.nan, np.nan
@@ -888,6 +893,10 @@ class TreeTime(ClockTree):
             new_node._alpha = a
             new_node._beta = b
             new_node.clades = [best_root]
+            if hasattr(best_root, "_R2"):
+                new_node._R2 = best_root._R2
+            if hasattr(best_root, "_residual"):
+                new_node._residual = best_root._residual
             new_node.up.clades = [k if k != best_root else new_node
                                   for k in best_root.up.clades]
 
