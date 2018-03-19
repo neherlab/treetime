@@ -688,12 +688,8 @@ class GTR(object):
             from scipy.optimize import minimize_scalar
             opt = minimize_scalar(_neg_prob,
                     bounds=[-np.sqrt(ttconf.MAX_BRANCH_LENGTH),np.sqrt(ttconf.MAX_BRANCH_LENGTH)],
-                    args=(seq_pair, multiplicity), tol=1e-8)
+                    args=(seq_pair, multiplicity), tol=1e-10)
             new_len = opt["x"]**2
-                    bounds=[0,ttconf.MAX_BRANCH_LENGTH],
-                    method='bounded',
-                    args=(seq_pair, multiplicity), options={'xatol':1e-10})
-            new_len = opt["x"]
         except:
             import scipy
             print('legacy scipy', scipy.__version__)

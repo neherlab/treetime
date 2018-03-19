@@ -22,7 +22,8 @@ class ClockTree(TreeAnc):
     is converted to the most likely time of the internal nodes.
     """
 
-    def __init__(self,  dates=None, debug=False, real_dates=True, *args, **kwargs):
+    def __init__(self,  dates=None, debug=False, real_dates=True,
+                 long_branch_mode=False, *args, **kwargs):
         """
         ClockTree constructor
 
@@ -58,6 +59,7 @@ class ClockTree(TreeAnc):
         self.n_integral = ttconf.NINTEGRAL
         self.rel_tol_prune = ttconf.REL_TOL_PRUNE
         self.rel_tol_refine = ttconf.REL_TOL_REFINE
+        self.long_branch_mode = long_branch_mode
 
         for node in self.tree.find_clades(order='postorder'):
             if node.name in self.date_dict:
@@ -133,7 +135,12 @@ class ClockTree(TreeAnc):
                 else:
                     gamma = 1.0
                     merger_cost = None
-                node.branch_length_interpolator = BranchLenInterpolator(node, self.gtr, one_mutation=self.one_mutation)
+                if self.long_branch_mode:
+                    node.profile_pair = self.marginal_branch_profile(node)
+
+                node.branch_length_interpolator = BranchLenInterpolator(node, self.gtr,
+                            pattern_multiplicity = self.multiplicity,
+                            one_mutation=self.one_mutation, marginal_branchlength = self.long_branch_mode)
                 node.branch_length_interpolator.merger_cost = merger_cost
                 node.branch_length_interpolator.gamma = gamma
         self.date2dist = utils.DateConversion.from_tree(self.tree, clock_rate)
@@ -177,6 +184,9 @@ class ClockTree(TreeAnc):
 
         '''
         self.logger("ClockTree: Maximum likelihood tree optimization with temporal constraints:",1)
+        if 'long_branch_mode' in kwargs:
+            self.long_branch_mode = kwargs['long_branch_mode']
+
         self.init_date_constraints(**kwargs)
 
         if time_marginal:

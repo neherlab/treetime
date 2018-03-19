@@ -9,7 +9,8 @@ class BranchLenInterpolator (Distribution):
 
     """
 
-    def __init__(self, node, gtr, one_mutation=None, ignore_gaps=True):
+    def __init__(self, node, gtr, marginal_branchlength = False, pattern_multiplicity = None,
+                 one_mutation=None, ignore_gaps=True):
 
         self.node = node
         self.gtr = gtr
@@ -41,19 +42,34 @@ class BranchLenInterpolator (Distribution):
             grid = np.concatenate((grid_zero,grid_zero2, grid_left,grid_right[1:],far_grid[1:]))
             grid.sort() # just for safety
 
-        if not hasattr(node, 'compressed_sequence'):
-            #FIXME: this assumes node.sequence is set, but this might not be the case if
-            # ancestral reconstruction is run with final=False
-            seq_pairs, multiplicity = self.gtr.compress_sequence_pair(node.up.sequence,
-                                                                      node.sequence,
-                                                                      ignore_gaps=ignore_gaps)
-            node.compressed_sequence = {'pair':seq_pairs, 'multiplicity':multiplicity}
+        if marginal_branchlength:
+            if hasattr(node, 'profile_pair'):
+                log_prob = np.array([-self.gtr.prob_t_profiles(node.profile_pair,
+                                                        pattern_multiplicity,
+                                                        k,
+                                                        return_log=True)
+                                    for k in grid])
+            else:
+                raise Exception("profile pairs need to be assigned to node")
 
-        log_prob = np.array([-self.gtr.prob_t_compressed(node.compressed_sequence['pair'],
-                                                node.compressed_sequence['multiplicity'],
-                                                k,
-                                                return_log=True)
-                            for k in grid])
+
+        else:
+            if not hasattr(node, 'compressed_sequence'):
+                #FIXME: this assumes node.sequence is set, but this might not be the case if
+                # ancestral reconstruction is run with final=False
+                if hasattr(node, 'sequence'):
+                    seq_pairs, multiplicity = self.gtr.compress_sequence_pair(node.up.sequence,
+                                                                          node.sequence,
+                                                                          ignore_gaps=ignore_gaps)
+                    node.compressed_sequence = {'pair':seq_pairs, 'multiplicity':multiplicity}
+                else:
+                    raise Exception("uncompressed sequence need to be assigned to nodes")
+
+            log_prob = np.array([-self.gtr.prob_t_compressed(node.compressed_sequence['pair'],
+                                                    node.compressed_sequence['multiplicity'],
+                                                    k,
+                                                    return_log=True)
+                                for k in grid])
 
         # tmp_dis = Distribution(grid, log_prob, is_log=True, kind='linear')
         # norm = tmp_dis.integrate(a=tmp_dis.xmin, b=tmp_dis.xmax, n=200)

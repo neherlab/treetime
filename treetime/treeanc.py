@@ -1464,7 +1464,7 @@ class TreeAnc(object):
         if parent is None:
             self.logger("Branch profiles can't be calculated for the root!",3)
             return None, None
-        if not hasattr(node, 'marginal_Lx'):
+        if not hasattr(node, 'marginal_outgroup_LH'):
             self.logger("marginal ancestral inference needs to be performed first", 3)
             return None, None
 
@@ -1515,7 +1515,7 @@ class TreeAnc(object):
 
 
     def optimize_sequences_and_branch_length(self,*args, **kwargs):
-        """This method is a schortcut for :py:meth:`optimize_seq_and_branch_len`
+        """This method is a shortcut for :py:meth:`optimize_seq_and_branch_len`
 
         Iteratively set branch lengths and reconstruct ancestral sequences until
         the values of either former or latter do not change. The algorithm assumes
@@ -1527,8 +1527,10 @@ class TreeAnc(object):
         """
         self.optimize_seq_and_branch_len(*args,**kwargs)
 
-    def optimize_seq_and_branch_len(self,reuse_branch_len=True,prune_short=True,
-                                    max_iter=5, infer_gtr=False, **kwargs):
+
+    def optimize_seq_and_branch_len(self,reuse_branch_len=True, prune_short=True,
+                                    marginal_sequences=False, marginal_branchlengths=False,
+                                    max_iter=5, infer_gtr=False, marginal=False, **kwargs):
         """
         Iteratively set branch lengths and reconstruct ancestral sequences until
         the values of either former or latter do not change. The algorithm assumes
@@ -1553,27 +1555,34 @@ class TreeAnc(object):
             processde using resolve_polytomies from the TreeTime class.
 
         """
+        if marginal_branchlengths:
+            marginal_sequences = True
+        if marginal:
+            marginal_sequences = True
         self.logger("TreeAnc.optimize_sequences_and_branch_length: sequences...", 1)
         if reuse_branch_len:
-            N_diff = self.reconstruct_anc(method='ml', infer_gtr=infer_gtr, **kwargs)
+            N_diff = self.reconstruct_anc(method='ml', infer_gtr=infer_gtr,
+                                          marginal=marginal_sequences, **kwargs)
+            self.optimize_branch_len(verbose=0, store_old=False, marginal=marginal_branchlengths)
         else:
             N_diff = self.reconstruct_anc(method='fitch', infer_gtr=infer_gtr, **kwargs)
 
-        self.optimize_branch_len(verbose=0, store_old=False)
+            self.optimize_branch_len(verbose=0, store_old=False, marginal=False)
 
         n = 0
         while n<max_iter:
             n += 1
             if prune_short:
                 self.prune_short_branches()
-            N_diff = self.reconstruct_anc(method='ml', infer_gtr=False,**kwargs)
+            N_diff = self.reconstruct_anc(method='ml', infer_gtr=False,
+                                          marginal=marginal_sequences, **kwargs)
 
             self.logger("TreeAnc.optimize_sequences_and_branch_length: Iteration %d."
                    " #Nuc changed since prev reconstructions: %d" %(n, N_diff), 2)
 
             if N_diff < 1:
                 break
-            self.optimize_branch_len(verbose=0, store_old=False)
+            self.optimize_branch_len(verbose=0, store_old=False, marginal=marginal_branchlengths)
 
         self.tree.unconstrained_sequence_LH = (self.tree.sequence_LH*self.multiplicity).sum()
         self._prepare_nodes() # fix dist2root and up-links after reconstruction
