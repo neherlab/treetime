@@ -27,7 +27,6 @@ if __name__=="__main__":
         " the parameters in the GTR creation methods in treetime/nuc_models.py or treetime/aa_models.py")
 
     parser.add_argument('--prot', default = False, action="store_true", help ="protein alignment")
-    parser.add_argument('--marginal', default = False, action="store_true", help ="protein alignment")
     parser.add_argument('--zero_based', default = False, action='store_true', help='zero based SNP indexing')
     parser.add_argument('--verbose', default = 1, type=int, help='verbosity of output 0-6')
     params = parser.parse_args()
