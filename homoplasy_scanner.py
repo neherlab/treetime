@@ -156,7 +156,7 @@ if __name__=="__main__":
     ### Output the distribution of times mutations at particular positions are observed
     ###########################################################################
     print("\nOf the %d positions in the genome,"%L
-            +"".join(['\n\t - %d were hit %d times (expected %1.2f)'%(n,mi,L*poisson.pmf(mi,corrected_branch_length))
+            +"".join(['\n\t - %d were hit %d times (expected %1.2f)'%(n,mi,L*poisson.pmf(mi,1.0*total_mutations/L))
                       for mi,n in enumerate(multiplicities_positions) if n]))
 
 
