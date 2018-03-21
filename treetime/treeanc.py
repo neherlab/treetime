@@ -312,6 +312,7 @@ class TreeAnc(object):
 
         self.one_mutation = 1.0/self.seq_len
 
+
         # loop over tree,
         for l in self.tree.find_clades():
             if l.name in dic_aln:
@@ -330,6 +331,7 @@ class TreeAnc(object):
 
         if failed_leaves:
             self.logger("***WARNING: TreeAnc: %d nodes don't have a matching sequence in the alignment. POSSIBLE ERROR."%failed_leaves, 0, warn=True)
+
         self.make_reduced_alignment()
 
 
