@@ -22,7 +22,7 @@ class TreeAnc(object):
 
     def __init__(self, tree=None, aln=None, gtr=None, fill_overhangs=True,
                 ref=None, verbose = ttconf.VERBOSE, ignore_gaps=True, convert_upper=True,
-                log=None, preserveAmbig=False, **kwargs):
+                log=None, **kwargs):
         """
         TreeAnc constructor. It prepares tree, attach sequences to the leaf nodes,
         and sets some configuration parameters.
@@ -544,10 +544,6 @@ class TreeAnc(object):
         positions.sort()
         self.var_positions = positions
 
-        import time
-
-        start1 = time.time()
-
         #We need to find all sites that will be considered as 'constant' after compression
         #in make_reduced_alignment. Sites in the VCF (variable sites) may NOT be variable
         #after compression.
@@ -595,48 +591,6 @@ class TreeAnc(object):
                     secretConstN[pos] = self.ref[pos]  #constant site will be ref, but ensure this
                 else:
                     actualVar.append(pos)
-        end1 = time.time()
-
-
-        start2 = time.time()
-        #A site can be 'variant' against the reference but invariant
-        #among the samples!! These mess up our calculations on where in
-        #the compressed alignment constant sites will go. So include them
-        #as 'constant' sites here, to get positioning right!
-        #(But exclude sites where all are !=ref, but 2 diff alt bases!)
-        #
-        #Examples:
-        #   Ref     Alt     Sequence
-        #   G       A       AAAAAAA     Marked as variant but this is 'constant'
-        #   G       A       GGGNNGG     During compression N will be turned to G, so constant
-        #   G       A       AAANNAA     Same as above, but A
-
-        # actualVar1 = []
-        # secretConstN1 = {}
-        # for var in positions:
-            # baseOpt = {}
-            # for key,val in self.aln.iteritems():
-                # try:
-                    # baseOpt[self.aln[key][var]]=var
-                # except KeyError, e:
-                    # baseOpt[self.ref[var]] = var
-                    # #break
-            # #don't count sites where 2 bases but one is 'N' - these will be made constant
-            # #in make_reduced_alignment when processed!
-            # if ('N' in baseOpt and len(baseOpt) > 2) or ('N' not in baseOpt and len(baseOpt) >1):
-            # #if len(baseOpt) > 1 and 'N' not in baseOpt:
-                # actualVar1.append(var)
-            # #For secret constant sites with 'N's, keep track of what the constant base will be
-            # elif 'N' in baseOpt and len(baseOpt) == 2:
-                # secretConstN1[var] = "".join(baseOpt.keys()).replace('N','')
-
-        # secretConst1 = [x for x in positions if x not in actualVar1]
-        # end2 = time.time()
-
-        # print("Method 1 took {} time".format(str(end1-start1)))
-        # print("Method 2 took {} time".format(str(end2-start2)))
-
-        #import ipdb; ipdb.set_trace()
 
         #remove variable sites from Ref to get constant site positions
         refMod = np.array(list(self.ref), 'S1')

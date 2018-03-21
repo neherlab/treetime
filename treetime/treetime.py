@@ -211,8 +211,6 @@ class TreeTime(ClockTree):
             self.logger("###TreeTime.run: FINAL ROUND - confidence estimation via marginal reconstruction", 0)
             self.make_time_tree(clock_rate=fixed_clock_rate, time_marginal=time_marginal, **kwargs)
 
-        #import ipdb; ipdb.set_trace()
-
 
     def clock_filter(self, reroot='best', n_iqd=None, plot=False):
         '''
