@@ -21,8 +21,8 @@ class TreeAnc(object):
     """
 
     def __init__(self, tree=None, aln=None, gtr=None, fill_overhangs=True,
-                ref=None, verbose = ttconf.VERBOSE, ignore_gaps=True, convert_upper=True,
-                log=None, **kwargs):
+                ref=None, verbose = ttconf.VERBOSE, ignore_gaps=True,
+                convert_upper=True, seq_multiplicity=None, log=None, **kwargs):
         """
         TreeAnc constructor. It prepares tree, attach sequences to the leaf nodes,
         and sets some configuration parameters.
@@ -60,6 +60,11 @@ class TreeAnc(object):
          verbose : int
             verbosity level as number from 0 (lowest) to 10 (highest).
 
+         seq_multiplicity: dict
+            if individual nodes in the tree correspond to multiple sampled sequences
+            (i.e. read count in a deep sequencing experiment), these can be
+            specified as a dictionary
+
         Keyword Args
         ------------
 
@@ -79,6 +84,7 @@ class TreeAnc(object):
         self.fill_overhangs = fill_overhangs
         self.is_vcf = False  #this is set true when aln is set, if aln is dict
         self.var_positions = None #set during seq compression, if aln is dict
+        self.seq_multiplicity = {} if seq_multiplicity is None else seq_multiplicity
 
         self.ignore_gaps = ignore_gaps
         self.set_gtr(gtr if gtr is not None else 'JC69', **kwargs)
@@ -308,6 +314,10 @@ class TreeAnc(object):
         for l in self.tree.find_clades():
             if l.name in dic_aln:
                 l.sequence= dic_aln[l.name]
+                if l.name in self.seq_multiplicity:
+                    l.count = self.seq_multiplicity[l.name]
+                else:
+                    l.count = 1.0
             elif l.is_terminal():
                 self.logger("***WARNING: TreeAnc._attach_sequences_to_nodes: NO SEQUENCE FOR LEAF: %s" % l.name, 0, warn=True)
                 failed_leaves += 1
