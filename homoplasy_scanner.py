@@ -4,6 +4,7 @@ import numpy as np
 from treetime import TreeAnc, GTR
 from Bio import Phylo, AlignIO
 from Bio import __version__ as bioversion
+import os
 
 if __name__=="__main__":
     ###########################################################################
@@ -14,8 +15,8 @@ if __name__=="__main__":
             description='Reconstructs ancestral sequences and maps mutations to the tree.'
                         ' The tree is then scanned for homoplasies. An excess number of homoplasies'
                         ' might suggest contamination, recombination, culture adaptation or similar. ')
-    parser.add_argument('--aln', required = True, type = str,  help ="fasta file with input sequences")
-    parser.add_argument('--tree', required = True, type = str,  help ="newick file with tree")
+    parser.add_argument('--aln', required = True, type = str,  help ="fasta file with input nucleotide sequences")
+    parser.add_argument('--tree', type = str,  help ="newick file with tree (optional if tree builders installed)")
     parser.add_argument('--detailed', required = False, action="store_true",  help ="generate a more detailed report")
     parser.add_argument('--gtr', required=False, type = str, default='infer', help="GTR model to use. "
         " Type 'infer' to infer the model from the data. Or, specify the model type. "
@@ -24,7 +25,7 @@ if __name__=="__main__":
     parser.add_argument('--gtr_params', type=str, nargs='+', help="GTR parameters for the model "
         "specified by the --gtr argument. The parameters should be feed as 'key=value' list of parameters. "
         "Example: '--gtr K80 --gtr_params kappa=0.2 pis=0.25,0.25,0.25,0.25'. See the exact definitions of "
-        " the parameters in the GTR creation methods in treetime/nuc_models.py or treetime/aa_models.py")
+        " the parameters in the GTR creation methods in treetime/nuc_models.py. Only nucleotide models supported at present")
 
     parser.add_argument('--prot', default = False, action="store_true", help ="protein alignment")
     parser.add_argument('--zero_based', default = False, action='store_true', help='zero based SNP indexing')
@@ -32,6 +33,33 @@ if __name__=="__main__":
     params = parser.parse_args()
 
 
+    ###########################################################################
+    ### CHECK INPUT FILES
+    ###########################################################################
+    try:
+        from Bio import AlignIO
+        aln = AlignIO.read(params.aln, 'fasta')
+    except:
+        print("ERROR: can't read alignment from file ",params.aln)
+        print("\t expecting fasta.")
+        exit(1)
+
+    ###########################################################################
+    ### CHECK FOR TREE, build if not in place
+    ###########################################################################
+    if params.tree is None:
+        from treetime.utils import tree_inference
+        params.tree = os.path.basename(params.aln)+'.nwk'
+        print("No tree given: inferring tree")
+        tree_inference(params.aln, params.tree, tmp_dir = 'homoplasy_scanner_tmp_files')
+
+    try:
+        from Bio import Phylo
+        T = Phylo.read(params.tree, 'newick')
+    except:
+        print("ERROR: can't read tree from file ",params.tree)
+        print("\t expecting newick.")
+        exit(1)
 
     ###########################################################################
     ### GTR SET-UP
@@ -42,6 +70,7 @@ if __name__=="__main__":
         gtr = GTR.standard('jc')
         infer_gtr = True
     else:
+        infer_gtr = False
         try:
             kwargs = {}
             if gtr_params is not None:
@@ -58,11 +87,9 @@ if __name__=="__main__":
 
 
             gtr = GTR.standard(model, **kwargs)
-            infer_gtr = False
         except:
             print ("Could not create GTR model from input arguments. Using default (Jukes-Cantor 1969)")
             gtr = GTR.standard('jc')
-            infer_gtr = False
 
 
     ###########################################################################
