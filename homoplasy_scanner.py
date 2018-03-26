@@ -34,17 +34,6 @@ if __name__=="__main__":
 
 
     ###########################################################################
-    ### CHECK INPUT FILES
-    ###########################################################################
-    try:
-        from Bio import AlignIO
-        aln = AlignIO.read(params.aln, 'fasta')
-    except:
-        print("ERROR: can't read alignment from file ",params.aln)
-        print("\t expecting fasta.")
-        exit(1)
-
-    ###########################################################################
     ### CHECK FOR TREE, build if not in place
     ###########################################################################
     if params.tree is None:
@@ -53,13 +42,6 @@ if __name__=="__main__":
         print("No tree given: inferring tree")
         tree_inference(params.aln, params.tree, tmp_dir = 'homoplasy_scanner_tmp_files')
 
-    try:
-        from Bio import Phylo
-        T = Phylo.read(params.tree, 'newick')
-    except:
-        print("ERROR: can't read tree from file ",params.tree)
-        print("\t expecting newick.")
-        exit(1)
 
     ###########################################################################
     ### GTR SET-UP

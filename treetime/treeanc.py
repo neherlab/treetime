@@ -88,11 +88,11 @@ class TreeAnc(object):
 
         self.ignore_gaps = ignore_gaps
         self.set_gtr(gtr if gtr is not None else 'JC69', **kwargs)
+
+        self.tree = tree
         if tree is None:
             self.logger("TreeAnc: tree loading failed! exiting",0)
             return
-        else:
-            self.tree = tree
 
         if ref is not None:
             self.ref = ref
@@ -185,7 +185,7 @@ class TreeAnc(object):
             GTR instance is passed, it is directly set as the class attribute
 
         Keyword Args
-	------------
+    ------------
 
          All parameters needed for the gtr creation. If none passed, defaults are assumed.
            Refer to the particular GTR models for the exact parameter values
@@ -260,15 +260,22 @@ class TreeAnc(object):
         # load alignment from file if necessary
         from os.path import isfile
         from Bio.Align import MultipleSeqAlignment
+        self._aln = None
         if isinstance(in_aln, MultipleSeqAlignment):
             self._aln = in_aln
         elif type(in_aln) in [str, unicode] and isfile(in_aln):
-            self._aln=AlignIO.read(in_aln, 'fasta')
+            for fmt in ['fasta', 'phylip-relaxed', 'nexus']:
+                try:
+                    self._aln=AlignIO.read(in_aln, 'fasta')
+                    break
+                except:
+                    continue
         elif type(in_aln) is dict:  #if is read in from VCF file
             self._aln = in_aln
             self.is_vcf = True
-        else:
-            self._aln = None
+
+        if self._aln is None:
+            self.logger("TreeAnc: loading alignment failed... exiting")
             return
 
         #Convert to uppercase here, rather than in _attach_sequences_to_nodes
