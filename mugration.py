@@ -20,14 +20,15 @@ if __name__=="__main__":
                         'geographic location, host, or similar.')
     parser.add_argument('--tree', required = True, type=str, help ="newick file with tree")
     parser.add_argument('--attribute', type=str, help ="attribute to reconstruct, e.g. country")
-    parser.add_argument('--states', required = True, type=str, help ="csv or tsv file with discrete characters.")
-    parser.add_argument('--prob', type=str, help="csv or tsv file with probabilities of that a randomly sampled "
-                        "sequence has a particular state. E.g. population of different continents or countries."
-                        "\n#name,country,continent\ntaxon1,micronesia,oceania\n...")
-    parser.add_argument('--migration', type=str, help="csv or tsv file with symmetric migration/transition rates "
-                        "between states. For example passenger flow.")
-    parser.add_argument('--infer_gtr', action="store_true", help="infer GTR model from tree. "
-                                    "Ignored when prop or migration is specified.")
+    parser.add_argument('--states', required = True, type=str, help ="csv or tsv file with discrete characters."
+                                    "\n#name,country,continent\ntaxon1,micronesia,oceania\n...")
+    parser.add_argument('--weights', type=str, help="csv or tsv file with probabilities of that a randomly sampled "
+                        "sequence has a particular state. E.g. population of different continents or countries. E.g.:"
+                        "\n#country,weight\nmicronesia,0.1\n...")
+    # parser.add_argument('--migration', type=str, help="csv or tsv file with symmetric migration/transition rates "
+    #                     "between states. For example passenger flow.")
+    # parser.add_argument('--infer_gtr', action="store_true", help="infer GTR model from tree. "
+    #                                 "Ignored when prop or migration is specified.")
     parser.add_argument('--confidence', action="store_true", help="output confidence of mugration inference")
 
     parser.add_argument('--verbose', default = 1, type=int, help='verbosity of output 0-6')
@@ -73,22 +74,21 @@ if __name__=="__main__":
     ###########################################################################
     ### construct gtr model
     ###########################################################################
-    if params.prob:
+    if params.weights:
         params.infer_gtr = True
-        tmp_weights = pd.read_csv(params.prob, sep='\t' if params.states[-3:]=='tsv' else ',',
+        tmp_weights = pd.read_csv(params.weights, sep='\t' if params.states[-3:]=='tsv' else ',',
                              skipinitialspace=True)
         weights = {row[0]:row[1] for ri,row in tmp_weights.iterrows()}
         mean_weight = np.mean(weights.values())
-        prob = np.array([weights[c] if c in weights else mean_weight for c in unique_states], dtype=float)
-        prob/=prob.sum()
+        weights = np.array([weights[c] if c in weights else mean_weight for c in unique_states], dtype=float)
+        weights/=weights.sum()
     else:
-        prob = np.ones(nc, dtype=float)/nc
-    if params.migration:
-        params.infer_gtr = False
-    else:
-        W = np.ones((nc,nc), dtype=float)
+        weights = np.ones(nc, dtype=float)/nc
 
-    mugration_GTR = GTR.custom(pi = prob, W=W, alphabet = np.array(alphabet))
+    # set up dummy matrix
+    W = np.ones((nc,nc), dtype=float)
+
+    mugration_GTR = GTR.custom(pi = weights, W=W, alphabet = np.array(alphabet))
     mugration_GTR.profile_map[missing_char] = np.ones(nc)
     mugration_GTR.ambiguous=missing_char
 
@@ -101,12 +101,21 @@ if __name__=="__main__":
                    for n in treeanc.tree.get_terminals()]
     treeanc.aln = MultipleSeqAlignment(pseudo_seqs)
 
-    treeanc.infer_ancestral_sequences(method='ml', infer_gtr=params.infer_gtr,
-            store_compressed=False, pc=5.0, marginal=True, normalized_rate=False, fixed_pi=prob)
+    treeanc.infer_ancestral_sequences(method='ml', infer_gtr=True,
+            store_compressed=False, pc=5.0, marginal=True, normalized_rate=False,
+            fixed_pi=weights if params.weights else None)
 
-    bname = os.path.basename(params.tree)
-    with open(bname + '.GTR.txt', 'w') as ofile:
+
+    ###########################################################################
+    ### output
+    ###########################################################################
+    print("\nCompleted mugration model inference of attribute '%s' for"%attr,params.tree)
+
+    bname = './'+os.path.basename(params.tree)
+    gtr_name = bname + '.GTR.txt'
+    with open(gtr_name, 'w') as ofile:
         ofile.write(str(treeanc.gtr)+'\n')
+        print("\nSaved inferred mugration model as:", gtr_name)
 
     for n in treeanc.tree.find_clades():
         if n.up is None:
@@ -119,6 +128,15 @@ if __name__=="__main__":
             terminal_count+=1
         n.comment= '&%s="'%attr + letter_to_state[n.sequence[0]] +'"'
 
+    if params.confidence:
+        conf_name = bname+'.confidence.csv'
+        with open(conf_name, 'w') as ofile:
+            ofile.write('#name, '+', '.join(unique_states)+'\n')
+            for n in treeanc.tree.find_clades():
+                ofile.write(n.name + ', '+', '.join([str(x) for x in n.marginal_profile[0]])+'\n')
+        print("Saved table with ancestral state confidences as:", conf_name)
+
     # write tree to file
     outtree_name = bname+'.mugration.nexus'
     Phylo.write(treeanc.tree, outtree_name, 'nexus')
+    print("Saved annotated tree as:",outtree_name)
