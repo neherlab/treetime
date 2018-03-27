@@ -99,9 +99,8 @@ class TreeAnc(object):
 
         self.convert_upper = convert_upper
         # set alignment and attach sequences to tree.
-        self.aln = aln
-
-
+        if aln is not None:
+            self.aln = aln
 
 
     def logger(self, msg, level, warn=False):
@@ -275,7 +274,7 @@ class TreeAnc(object):
             self.is_vcf = True
 
         if self._aln is None:
-            self.logger("TreeAnc: loading alignment failed... exiting")
+            self.logger("TreeAnc: loading alignment failed... ",1, warn=True)
             return
 
         #Convert to uppercase here, rather than in _attach_sequences_to_nodes
@@ -309,6 +308,12 @@ class TreeAnc(object):
         For each node of the tree, check whether there is a sequence available
         in the alignment and assign this sequence as a character array
         '''
+        if type(self.aln) is dict:
+            self.seq_len = len(self.ref)
+        else:
+            self.seq_len = self.aln.get_alignment_length()
+        self.one_mutation = 1.0/self.seq_len
+
         failed_leaves= 0
         if type(self.aln) is dict:
             dic_aln = self.aln
@@ -336,12 +341,6 @@ class TreeAnc(object):
                     break
             else: # could not assign sequence for internal node - is OK
                 pass
-
-        if type(self.aln) is dict:
-            self.seq_len = len(self.ref)
-        else:
-            self.seq_len = self.aln.get_alignment_length()
-        self.one_mutation = 1.0/self.seq_len
 
         if failed_leaves:
             self.logger("***WARNING: TreeAnc: %d nodes don't have a matching sequence in the alignment. POSSIBLE ERROR."%failed_leaves, 0, warn=True)
