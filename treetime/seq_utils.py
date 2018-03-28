@@ -120,7 +120,7 @@ profile_maps = {
 def seq2array(seq, fill_overhangs=True, ambiguous_character='N'):
     """
     Take the raw sequence, substitute the "overhanging" gaps with 'N' (missequenced)
-    convert the sequence to the numpy array of uppercase chars.
+    convert the sequence to the numpy array of chars.
 
     Parameters
     ----------
@@ -142,7 +142,6 @@ def seq2array(seq, fill_overhangs=True, ambiguous_character='N'):
         sequence = ''.join(seq)
     except TypeError:
         sequence = seq
-    sequence = sequence.upper()
 
     sequence = np.array(list(sequence))
     # substitute overhanging unsequenced tails

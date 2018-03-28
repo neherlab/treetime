@@ -160,9 +160,10 @@ class Coalescent(object):
             return -self.total_LH()
 
         sol = minimize_scalar(cost, bounds=[ttconf.TINY_NUMBER,10.0])
-        if sol["success"]:
+        if "success" in sol and sol["success"]:
             self.set_Tc(sol['x'])
         else:
+            self.logger("merger_models:optimze_Tc: optimization of coalescent time scale failed: " + str(sol), 0, warn=True)
             self.set_Tc(initial_Tc.y, T=initial_Tc.x)
 
 
@@ -193,7 +194,7 @@ class Coalescent(object):
             return neglogLH
 
         sol = minimize(cost, np.ones_like(tvals)*np.log(self.Tc.y.mean()), method=method, tol=tol)
-        if sol["success"]:
+        if "success" in sol and sol["success"]:
             dlogTc = 0.1
             opt_logTc = sol['x']
             dcost = []
@@ -211,7 +212,7 @@ class Coalescent(object):
             self.logger("Coalescent:optimize_skyline:...done. new LH: %f"%self.total_LH(),2)
         else:
             self.set_Tc(initial_Tc.y, T=initial_Tc.x)
-            self.logger("Coalescent:optimize_skyline:...failed",2, warn=True)
+            self.logger("Coalescent:optimize_skyline:...failed:"+str(sol),0, warn=True)
 
 
     def skyline_empirical(self, gen=1.0, n_points = 20):

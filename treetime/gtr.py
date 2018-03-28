@@ -213,14 +213,14 @@ class GTR(object):
           Jukes-Cantor 1969 model. This model assumes equal frequencies
           of the nucleotides and equal transition rates between nucleotide states.
           For more info, see: Jukes and Cantor (1969).
-          Evolution of Protein Molecules. New York: Academic Press. pp. 21–132.
+          Evolution of Protein Molecules. New York: Academic Press. pp. 21-132.
           To create this model, use:
 
           :code:`mygtr = GTR.standard(model='jc69', mu=<my_mu>, alphabet=<my_alph>)`
 
           :code:`my_mu` - substitution rate (float)
 
-          :code:`my_alph` - alphabet (str: :code:`'nuc'` or  :code:`'nuc_gap'`)
+          :code:`my_alph` - alphabet (str: :code:`'nuc'` or  :code:`'nuc_nogap'`)
 
 
 
@@ -230,7 +230,7 @@ class GTR(object):
           allows different rates between transitions and transversions. The ratio
           of the transversion/transition rates is given by kappa parameter.
           For more info, see
-          Kimura (1980),  J. Mol. Evol. 16 (2): 111–120. doi:10.1007/BF01731581.
+          Kimura (1980),  J. Mol. Evol. 16 (2): 111-120. doi:10.1007/BF01731581.
           Current implementation of the model does not account for the gaps.
 
 
@@ -245,11 +245,8 @@ class GTR(object):
 
           Felsenstein 1981 model. Assumes non-equal concentrations across nucleotides,
           but the transition rate between all states is assumed to be equal. See
-          Felsenstein (1981), J. Mol. Evol. 17  (6): 368–376. doi:10.1007/BF01734359
+          Felsenstein (1981), J. Mol. Evol. 17  (6): 368-376. doi:10.1007/BF01734359
           for details.
-
-          Current implementation of the model does not account for the gaps (treatment of
-          gaps as characters is possible if specify alphabet='nuc_gap').
 
           :code:`mygtr = GTR.standard(model='F81', mu=<mu>, pi=<pi>, alphabet=<alph>)`
 
@@ -257,17 +254,15 @@ class GTR(object):
 
           :code:`pi`  - : nucleotide concentrations (numpy.array)
 
-          :code:`alphabet' -  alphabet to use. (:code:`'nuc'` or  :code:`'nuc_gap'`)
-          Default 'nuc', which discounts  all gaps.
-
+          :code:`alphabet' -  alphabet to use. (:code:`'nuc'` or  :code:`'nuc_nogap'`)
 
 
         - HKY85:
 
           Hasegawa, Kishino and Yano 1985 model. Allows different concentrations of the
-          nucleotides (as in F81) + distinguishes between transition/transversionsubstitutions
+          nucleotides (as in F81) + distinguishes between transition/transversion substitutions
           (similar to K80). Link:
-          Hasegawa, Kishino, Yano (1985), J. Mol. Evol. 22 (2): 160–174. doi:10.1007/BF02101694
+          Hasegawa, Kishino, Yano (1985), J. Mol. Evol. 22 (2): 160-174. doi:10.1007/BF02101694
 
           Current implementation of the model does not account for the gaps
 
@@ -285,7 +280,7 @@ class GTR(object):
 
           Tamura 1992 model. Extending Kimura  (1980) model for the case where a
           G+C-content bias exists. Link:
-          Tamura K (1992),  Mol.  Biol. Evol. 9 (4): 678–687.  DOI: 10.1093/oxfordjournals.molbev.a040752
+          Tamura K (1992),  Mol.  Biol. Evol. 9 (4): 678-687.  DOI: 10.1093/oxfordjournals.molbev.a040752
 
           Current implementation of the model does not account for the gaps
 
@@ -303,7 +298,7 @@ class GTR(object):
           Tamura and Nei 1993. The model distinguishes between the two different types of
           transition: (A <-> G) is allowed to have a different rate to (C<->T).
           Transversions have the same rate. The frequencies of the nucleotides are allowed
-          to be different. Link: Tamura, Nei (1993), MolBiol Evol. 10 (3): 512–526.
+          to be different. Link: Tamura, Nei (1993), MolBiol Evol. 10 (3): 512-526.
           DOI:10.1093/oxfordjournals.molbev.a040023
 
           :code:`mygtr = GTR.standard(model='TN93', mu=<mu>, kappa1=<k1>, kappa2=<k2>)`
@@ -366,7 +361,7 @@ class GTR(object):
 
 
     @classmethod
-    def infer(cls, nij, Ti, root_state, fixed_pi=None, pc=5.0, **kwargs):
+    def infer(cls, nij, Ti, root_state, fixed_pi=None, pc=5.0, gap_limit=0.01, **kwargs):
         """
         Infer a GTR model by specifying the number of transitions and time spent in each
         character. The basic equation that is being solved is
@@ -396,7 +391,7 @@ class GTR(object):
 
          pc : float
             Pseudocounts, this determines the lower cutoff on the rate when
-            no substitution are observed
+            no substitutions are observed
 
         Keyword Args
         ------------
@@ -449,6 +444,13 @@ class GTR(object):
                 gtr.logger('the iterative scheme has not converged',3,warn=True)
             elif np.abs(1-np.max(pi.sum(axis=0))) > dp:
                 gtr.logger('the iterative scheme has converged, but proper normalization was not reached',3,warn=True)
+        if gtr.gap_index>=0:
+            if pi[gtr.gap_index]<gap_limit:
+              gtr.logger('The model allows for gaps which are estimated to occur at a low fraction of %1.3e'%pi[gtr.gap_index]+
+                       '\n\t\tthis can potentially result in artificats.'+
+                       '\n\t\tgap fraction will be set to %1.4f'%gap_limit,2,warn=True)
+            pi[gtr.gap_index] = gap_limit
+            pi /= pi.sum()
 
         gtr.assign_rates(mu=mu, W=W_ij, pi=pi)
         return gtr
@@ -683,7 +685,7 @@ class GTR(object):
             opt = minimize_scalar(_neg_prob,
                     bounds=[0,ttconf.MAX_BRANCH_LENGTH],
                     method='bounded',
-                    args=(seq_pair, multiplicity), options={'xatol':1e-8})
+                    args=(seq_pair, multiplicity), options={'xatol':1e-10})
             new_len = opt["x"]
         except:
             import scipy
@@ -795,4 +797,4 @@ class GTR(object):
 
 
 if __name__ == "__main__":
-     pass
+    pass
