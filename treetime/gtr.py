@@ -220,7 +220,7 @@ class GTR(object):
 
           :code:`my_mu` - substitution rate (float)
 
-          :code:`my_alph` - alphabet (str: :code:`'nuc'` or  :code:`'nuc_gap'`)
+          :code:`my_alph` - alphabet (str: :code:`'nuc'` or  :code:`'nuc_nogap'`)
 
 
 
@@ -248,24 +248,19 @@ class GTR(object):
           Felsenstein (1981), J. Mol. Evol. 17  (6): 368-376. doi:10.1007/BF01734359
           for details.
 
-          Current implementation of the model does not account for the gaps (treatment of
-          gaps as characters is possible if specify alphabet='nuc_gap').
-
           :code:`mygtr = GTR.standard(model='F81', mu=<mu>, pi=<pi>, alphabet=<alph>)`
 
           :code:`mu` -  substitution rate  (float)
 
           :code:`pi`  - : nucleotide concentrations (numpy.array)
 
-          :code:`alphabet' -  alphabet to use. (:code:`'nuc'` or  :code:`'nuc_gap'`)
-          Default 'nuc', which discounts  all gaps.
-
+          :code:`alphabet' -  alphabet to use. (:code:`'nuc'` or  :code:`'nuc_nogap'`)
 
 
         - HKY85:
 
           Hasegawa, Kishino and Yano 1985 model. Allows different concentrations of the
-          nucleotides (as in F81) + distinguishes between transition/transversionsubstitutions
+          nucleotides (as in F81) + distinguishes between transition/transversion substitutions
           (similar to K80). Link:
           Hasegawa, Kishino, Yano (1985), J. Mol. Evol. 22 (2): 160-174. doi:10.1007/BF02101694
 
