@@ -600,7 +600,7 @@ class TreeAnc(object):
 ####################################################################
 
     def infer_gtr(self, print_raw=False, marginal=False, normalized_rate=True,
-                  fixed_pi=None, **kwargs):
+                  fixed_pi=None, pc=5.0, **kwargs):
         """
         Calculates GTR model given the multiple sequence alignment and the tree.
         It performs ancestral sequence inferrence (joint or marginal) followed by
@@ -626,6 +626,9 @@ class TreeAnc(object):
          fixed_pi : np.array, None
             Provide the equilibrium character concentrations.
             If None is passed, the concentrations will be inferred from scratch.
+
+         pc: float, 5.0
+            Number of pseudo counts to use in gtr inference
 
         Returns
         -------
@@ -666,7 +669,7 @@ class TreeAnc(object):
             print('T_i:', Ti)
         root_state = np.array([np.sum((self.tree.root.cseq==nuc)*self.multiplicity) for nuc in alpha])
 
-        self._gtr = GTR.infer(nij, Ti, root_state, fixed_pi=fixed_pi, pc=5.0,
+        self._gtr = GTR.infer(nij, Ti, root_state, fixed_pi=fixed_pi, pc=pc,
                               alphabet=self.gtr.alphabet, logger=self.logger,
                               prof_map = self.gtr.profile_map)
         if normalized_rate:
