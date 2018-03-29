@@ -323,7 +323,7 @@ class TreeTime(ClockTree):
         ----------
 
          root : str
-            Which method shoudl use to find the best root. Available methods are:
+            Which method should be used to find the best root. Available methods are:
 
             :code:`best` - maximize root-to-tip regression coefficient
 
@@ -331,6 +331,7 @@ class TreeTime(ClockTree):
 
             :code:`<node_name>` - reroot to the node with name :code:`<node_name>`
 
+            :code:`[<node_name1>, <node_name2>, ...]` - reroot to the MRCA of these nodes
         """
         self.logger("TreeTime.reroot: with method or node: %s"%root,1)
         for n in self.tree.find_clades():
@@ -338,6 +339,8 @@ class TreeTime(ClockTree):
         from Bio import Phylo
         if isinstance(root,Phylo.BaseTree.Clade):
             new_root = root
+        elif isinstance(root, list):
+            new_root = self.tree.common_ancestor(*root)
         elif root in self._leaves_lookup:
             new_root = self._leaves_lookup[root]
         elif root=='oldest':
@@ -356,8 +359,14 @@ class TreeTime(ClockTree):
 
         self.logger("TreeTime.reroot: Tree is being re-rooted to node "
                     +('new_node' if new_root.name is None else new_root.name), 2)
-        self.tree.root_with_outgroup(new_root)
-        # new nodes are produced when rooting with a terminal node, copy this clock info
+        if isinstance(root, list):
+            #this forces a bifurcating root, as we want. Branch lengths will be reoptimized anyway.
+            #(Without outgroup_branch_length, gives a trifurcating root, but this will mean
+            #mutations may have to occur multiple times.)
+            self.tree.root_with_outgroup(new_root, outgroup_branch_length=new_root.branch_length/2)
+        else:
+            self.tree.root_with_outgroup(new_root)
+       # new nodes are produced when rooting with a terminal node, copy this clock info
 
         if new_root.is_terminal():
             if hasattr(new_root, "_alpha"):

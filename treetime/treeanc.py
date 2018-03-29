@@ -83,7 +83,6 @@ class TreeAnc(object):
         self.one_mutation = None
         self.fill_overhangs = fill_overhangs
         self.is_vcf = False  #this is set true when aln is set, if aln is dict
-        self.var_positions = None #set during seq compression, if aln is dict
         self.seq_multiplicity = {} if seq_multiplicity is None else seq_multiplicity
 
         self.ignore_gaps = ignore_gaps
@@ -94,13 +93,16 @@ class TreeAnc(object):
             self.logger("TreeAnc: tree loading failed! exiting",0)
             return
 
-        if ref is not None:
-            self.ref = ref
+        # will be None if not set
+        self.ref = ref
 
+        # force all sequences to be upper case letters
+        # (desired for nuc or aa, not for other discrete states)
         self.convert_upper = convert_upper
-        # set alignment and attach sequences to tree.
-        if aln is not None:
-            self.aln = aln
+
+        # set alignment and attach sequences to tree on success.
+        # otherwise self.aln will be None
+        self.aln = aln
 
 
     def logger(self, msg, level, warn=False):
@@ -298,9 +300,11 @@ class TreeAnc(object):
         """
         return self._ref
 
+
     @ref.setter
     def ref(self, in_ref):
         self._ref = in_ref
+
 
     def _attach_sequences_to_nodes(self):
         #print ("inside attach seq to nodes")
@@ -316,8 +320,10 @@ class TreeAnc(object):
 
         failed_leaves= 0
         if type(self.aln) is dict:
+            # if alignment is specified as difference from ref
             dic_aln = self.aln
         else:
+            # if full alignment is specified
             dic_aln = {k.name: seq_utils.seq2array(k.seq, fill_overhangs=self.fill_overhangs,
                                                    ambiguous_character=self.gtr.ambiguous)
                                 for k in self.aln} #
@@ -380,32 +386,22 @@ class TreeAnc(object):
 
         from collections import defaultdict
 
-        alignment_patterns = {}
-
         # bind positions in real sequence to that of the reduced (compressed) sequence
         self.full_to_reduced_sequence_map = np.zeros(self.seq_len, dtype=int)
 
         # bind position in reduced sequence to the array of positions in real (expanded) sequence
         self.reduced_to_full_sequence_map = {}
 
-        # create empty reduced alignment (transposed)
-        tmp_reduced_aln = []
-
         #if is a dict, want to be efficient and not iterate over a bunch of const_sites
         #so pre-load alignment_patterns with the location of const sites!
         #and get the sites that we want to iterate over only!
         if type(self.aln) is dict:
-            aln_pattern_start, positionsAndConst, inv_firstPos = self.pre_load_vcf()
-            alignment_patterns = aln_pattern_start  #(being explicit)
-
-        if type(self.aln) is dict:
-            #This seems nonsensical but after revisions below this is just used for
-            #getting the limits for the for loop! This allows us to loop both
-            #in the same way....
-            aln_transpose = positionsAndConst
+            tmp_reduced_aln, alignment_patterns, positions = self.process_alignment_dict()
             seqNames = self.aln.keys() #store seqName order to put back on tree
         else:
             # transpose real alignment, for ease of iteration
+            alignment_patterns = {}
+            tmp_reduced_aln = []
             # NOTE the order of tree traversal must be the same as below
             # for assigning the cseq attributes to the nodes.
             seqs = [n.sequence for n in self.tree.find_clades() if hasattr(n, 'sequence')]
@@ -415,18 +411,12 @@ class TreeAnc(object):
                 return
             else:
                 aln_transpose = np.array(seqs).T
+                positions = range(self.seq_len)
 
-        for pi in xrange(len(aln_transpose)):
+        for pi in positions:
             if type(self.aln) is dict:
-                pi = aln_transpose[pi]
-                #if it is a constant site, just add it to the reduced alignment!
-                if pi in inv_firstPos:
-                    str_pat = inv_firstPos[pi]*len(self.aln)
-                    pattern = np.array(list(str_pat), 'S1')
-                    tmp_reduced_aln.append(pattern)
-                    continue
-                else:  #it is a variable site, do the normal code
-                    pattern = [ self.aln[k][pi] if pi in self.aln[k].keys() else self.ref[pi] for k,v in self.aln.iteritems() ]
+                pattern = [ self.aln[k][pi] if pi in self.aln[k].keys()
+                            else self.ref[pi] for k,v in self.aln.iteritems() ]
             else:
                 pattern = aln_transpose[pi]
 
@@ -470,14 +460,14 @@ class TreeAnc(object):
 
         # create a map to reconstruct full sequence from the reduced (compressed) sequence
         for p, val in alignment_patterns.iteritems():
-            alignment_patterns[p]=(val[0], np.array(val[1], dtype=int))
             self.reduced_to_full_sequence_map[val[0]]=np.array(val[1], dtype=int)
 
         # assign compressed sequences to all nodes of the tree, which have sequence assigned
         # for dict we cannot assume this is in the same order, as it does below!
         # so do it explicitly
         if type(self.aln) is dict:
-            seq_reduce_align = {seqNames[i]:self.reduced_alignment[i] for i in xrange(len(seqNames)) }
+            seq_reduce_align = {n:self.reduced_alignment[i]
+                                for i, n in enumerate(seqNames)}
             for n in self.tree.find_clades():
                 if hasattr(n, 'sequence'):
                     n.cseq = seq_reduce_align[n.name]
@@ -491,6 +481,82 @@ class TreeAnc(object):
                     seq_count+=1
 
         self.logger("TreeAnc: finished reduced alignment...", 1)
+
+
+    def process_alignment_dict(self):
+        """
+        prepare the dictionary specifying differences from a reference sequence
+        to construct the reduced alignment with variable sites only. NOTE:
+            - sites can be constant but different from the reference
+            - sites can be constant plus a ambiguous sites
+
+        assigns:
+            - self.nonref_positions: at least one sequence is different from ref
+        returns:
+            - reduced_alignment_const: reduced alignment accounting for
+                                       non-variable postitions
+            - alignment_patterns_const:
+                dict pattern -> (pos in reduced alignment, list of pos in full alignment)
+            - variable_positions: list of variable positions needed to construct remaining
+        """
+
+        # number of sequences in alignment
+        nseq = len(self.aln)
+
+        from collections import defaultdict
+        inv_map = defaultdict(list)
+        for k,v in self.aln.iteritems():
+            for pos, bs in v.iteritems():
+                inv_map[pos].append(bs)
+
+        self.nonref_positions = np.sort(inv_map.keys())
+
+        ambiguous_char = self.gtr.ambiguous
+        nonref_const = []
+        nonref_alleles = []
+        ambiguous_const = []
+        variable_pos = []
+        for pos, bs in inv_map.iteritems(): #loop over positions and patterns
+            bases = "".join(np.unique(bs))
+            if len(bs) == nseq:
+                if (len(bases)<=2 and ambiguous_char in bases) or len(bases)==1:
+                    # all sequences different from reference, but only one state
+                    # (other than ambiguous_char) in column
+                    nonref_const.append(pos)
+                    nonref_alleles.append(bases.replace(ambiguous_char, ''))
+                else:
+                    # at least two non-reference alleles
+                    variable_pos.append(pos)
+            else:
+                # not every sequence different from reference
+                if bases==ambiguous_char:
+                    ambiguous_const.append(pos)
+                else:
+                    # at least one non ambiguous non-reference allele not in
+                    # every sequence
+                    variable_pos.append(pos)
+
+        refMod = np.fromstring(self.ref, 'S1')
+        # place constant non reference positions by their respective allele
+        refMod[nonref_const] = nonref_alleles
+        # mask variable positions
+        states = self.gtr.alphabet
+        # maybe states = np.unique(refMod)
+        refMod[variable_pos] = '.'
+
+        # for each base in the gtr, make constant alignment pattern and
+        # assign it to all const positions in the modified reference sequence
+        reduced_alignment_const = []
+        alignment_patterns_const = {}
+        for base in states:
+            p = base*nseq
+            alignment_patterns_const[p] = [len(reduced_alignment_const),
+                                           list(np.where(refMod==base)[0])]
+            reduced_alignment_const.append(list(p))
+
+
+        return reduced_alignment_const, alignment_patterns_const, variable_pos
+
 
     def prepare_tree(self):
         """
@@ -539,60 +605,6 @@ class TreeAnc(object):
                     c.mutation_length=c.branch_length
                 c.dist2root = c.up.dist2root + c.mutation_length
 
-    def pre_load_vcf(self):
-        """
-        If using a VCF file, avoid iterating over all the constant site when
-        creating the compressed sequence by pre-loading all the constant sites
-        into the alignment_patterns object and iterating only over variable sites
-        (plus the first occurance of each const site to include it in compressed alignment)
-        EBH 1 Dec 2017
-        """
-        #get location of variable sites
-        positions = []
-        for key,val in self.aln.iteritems():
-            positions += val.keys()
-        positions = list(set(positions))
-        positions.sort()
-        self.var_positions = positions
-
-        #remove variable sites from Ref to get constant site positions
-        refMod = np.array(list(self.ref), 'S1')
-        bases = np.unique(refMod)
-        refMod[positions] = "."
-
-        #find out location of constant sites and store these
-        constantLocs = { base:np.where(refMod==base)[0].tolist() for base in bases }
-        #Find first occurance of each, this will dictate processing order
-        firstPos = {key:val[0] for key,val in constantLocs.iteritems() }
-        #Find out order to process them in
-        bases = [key for key,value in sorted(firstPos.iteritems(), key=lambda(k,v): (v,k)) ]
-        #Find out where they will be in compressed alignment - once other const sites are removed!
-        compressedLoc = {}
-        for base in bases:
-            newLocations = np.where(refMod==base)[0]   #find out where they are now
-            compressedLoc[base] = newLocations[0]   #find first occurance - this is location
-            refMod = np.delete(refMod, newLocations[1:])    #delete all other occurances so that subsequent bases are in right place
-
-        #This becomes the base of alignment_patterns:
-        aln_pattern_start = {base*len(self.aln):(compressedLoc[base], constantLocs[base]) for base in bases}
-
-        #Now add the original first occurance to the list of variable positions so we iterate over them too
-        #(so they go into reduced alignment)
-        #This more complex code avoids sorting positions twice! (>4million length)
-        #Because assume 1st occurance of const sites is in first few bases
-        sortFirstPos = firstPos.values()
-        sortFirstPos.sort()
-        positionsAndConst = positions[:]
-        i = 0
-        while len(sortFirstPos) != 0:
-            if len(positionsAndConst) == i or positionsAndConst[i] > sortFirstPos[0]:
-                positionsAndConst.insert(i, sortFirstPos.pop(0))
-            i+=1
-
-        #Invert dict of first constant position so can locate by position
-        inv_firstPos = dict([v,k] for k,v in firstPos.iteritems())
-
-        return aln_pattern_start, positionsAndConst, inv_firstPos
 
 
 ####################################################################
@@ -814,7 +826,7 @@ class TreeAnc(object):
         """
         seq = {}
 
-        for pos in self.var_positions:
+        for pos in self.nonref_positions:
             cseqLoc = self.full_to_reduced_sequence_map[pos]
             base = node.cseq[cseqLoc]
             if self.ref[pos] != base:
@@ -1516,7 +1528,7 @@ class TreeAnc(object):
         if self.is_vcf:
             tree_dict = {}
             tree_dict['reference'] = self.ref
-            tree_dict['positions'] = self.var_positions
+            tree_dict['positions'] = self.nonref_positions
 
             tree_aln = {}
             for n in self.tree.find_clades():
