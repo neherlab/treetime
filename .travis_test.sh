@@ -1,1 +1,2 @@
-nosetests test/test_treetime.py
+cd test
+nosetests test_treetime.py
