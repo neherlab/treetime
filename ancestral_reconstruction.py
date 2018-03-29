@@ -100,6 +100,7 @@ if __name__=="__main__":
 
     outaln_name = '.'.join(params.aln.split('/')[-1].split('.')[:-1])+'_ancestral.fasta'
     AlignIO.write(treeanc.get_reconstructed_alignment(), outaln_name, 'fasta')
+    print("--- alignment including ancestral nodes saved as  \n\t %s\n"%outaln_name)
 
     # decorate tree with inferred mutations
     terminal_count = 0
@@ -119,3 +120,4 @@ if __name__=="__main__":
     # write tree to file
     outtree_name = '.'.join(params.tree.split('/')[-1].split('.')[:-1])+'_mutation.nexus'
     Phylo.write(treeanc.tree, outtree_name, 'nexus')
+    print("--- tree saved in nexus format as  \n\t %s\n"%outtree_name)

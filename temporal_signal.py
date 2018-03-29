@@ -44,12 +44,13 @@ if __name__=="__main__":
             import sys
             sys.exit(1)
 
+
     ###########################################################################
     ### FAKING ALIGMENT IF NONE GIVEN
     ###########################################################################
     if params.aln is None:
         from Bio import Seq, SeqRecord, Align
-        aln = Align.MultipleSeqAlignment([SeqRecord.SeqRecord(Seq.Seq("AAA"), id=name, name=name)
+        aln = Align.MultipleSeqAlignment([SeqRecord.SeqRecord(Seq.Seq("AAA"), id=node, name=node)
                                     for node in dates])
 
 
@@ -58,7 +59,7 @@ if __name__=="__main__":
     ###########################################################################
     base_name = '.'.join(params.tree.split('/')[-1].split('.')[:-1])
     myTree = TreeTime(dates=dates, tree=params.tree,
-                      aln=params.aln, gtr='JC69', verbose=params.verbose)
+                      aln=aln, gtr='JC69', verbose=params.verbose)
 
     if not params.keep_root:
         myTree.reroot('best')
@@ -78,7 +79,7 @@ if __name__=="__main__":
         # write rerooted tree to file
         outtree_name = base_name+'_rerooted.newick'
         Phylo.write(myTree.tree, outtree_name, 'newick')
-        print("--- re-rooted tree written to %s"%outtree_name)
+        print("--- re-rooted tree written to \n\t %s\n"%outtree_name)
 
     table_fname = base_name+'_rtt.csv'
     with open(table_fname, 'w') as ofile:
@@ -91,7 +92,7 @@ if __name__=="__main__":
                 ofile.write("%s, %f, %f\n"%(n.name, d2d.numdate_from_dist2root(n.dist2root), n.dist2root))
         for n in myTree.tree.get_nonterminals(order='preorder'):
             ofile.write("%s, %f, %f\n"%(n.name, d2d.numdate_from_dist2root(n.dist2root), n.dist2root))
-        print("--- wrote dates and root-to-tip distances to %s"%table_fname)
+        print("--- wrote dates and root-to-tip distances to \n\t %s\n"%table_fname)
 
 
     ###########################################################################
@@ -105,7 +106,7 @@ if __name__=="__main__":
                  label='y=%1.4f+%1.5ft, r^2=%1.2f'%(d2d.intercept, d2d.clock_rate, d2d.r_val**2))
         plt.legend(loc=2)
         plt.savefig(base_name+'_root_to_tip_regression.pdf')
-        print("--- root-to-tip plot saved to %s_root_to_tip_regression.pdf"%base_name)
+        print("--- root-to-tip plot saved to  \n\t %s_root_to_tip_regression.pdf\n"%base_name)
 
 
 
