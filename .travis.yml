@@ -1,7 +1,7 @@
 language: python
 sudo: true
 python:
-  - "3.6"
+  - "3.5"
 # command to install dependencies
 virtualenv:
   system_site_packages: true
