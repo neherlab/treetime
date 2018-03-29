@@ -4,7 +4,7 @@ import numpy as np
 from treetime import TreeAnc, GTR
 from Bio import Phylo, AlignIO
 from Bio import __version__ as bioversion
-import os
+import os,shutil
 
 if __name__=="__main__":
     ###########################################################################
@@ -40,7 +40,10 @@ if __name__=="__main__":
         from treetime.utils import tree_inference
         params.tree = os.path.basename(params.aln)+'.nwk'
         print("No tree given: inferring tree")
-        tree_inference(params.aln, params.tree, tmp_dir = 'homoplasy_scanner_tmp_files')
+        tmp_dir = 'homoplasy_scanner_tmp_files'
+        tree_inference(params.aln, params.tree, tmp_dir = tmp_dir)
+        if os.path.isdir(tmp_dir):
+            shutil.rmtree(tmp_dir)
 
 
     ###########################################################################
