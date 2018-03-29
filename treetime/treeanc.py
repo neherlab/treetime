@@ -1166,6 +1166,7 @@ class TreeAnc(object):
         for node in self.tree.find_clades(order='postorder'):
             if node.up is None:
                 node.joint_Cx=None # not needed for root
+                continue
 
             # preallocate storage
             node.joint_Lx = np.zeros((L, n_states))             # likelihood array
@@ -1308,7 +1309,7 @@ class TreeAnc(object):
 
     def optimize_branch_length(self, **kwargs):
         """
-        Perform ML optimization for the branch lengths of the whole tree or any
+        Perform optimization for the branch lengths of the whole tree or any
         subtree. **Note** this method assumes that each node stores information
         about its sequence as numpy.array object (node.sequence attribute).
         Therefore, before calling this method, sequence reconstruction with
