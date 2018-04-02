@@ -117,6 +117,7 @@ if __name__=="__main__":
         ofile.write(str(treeanc.gtr)+'\n')
         print("\nSaved inferred mugration model as:", gtr_name)
 
+    terminal_count = 0
     for n in treeanc.tree.find_clades():
         if n.up is None:
             continue

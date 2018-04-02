@@ -29,6 +29,7 @@ if __name__=="__main__":
 
     parser.add_argument('--prot', default = False, action="store_true", help ="protein alignment")
     parser.add_argument('--zero_based', default = False, action='store_true', help='zero based SNP indexing')
+    parser.add_argument('-n', default = 10, type=int, help='number of mutations/nodes that are printed to screen')
     parser.add_argument('--verbose', default = 1, type=int, help='verbosity of output 0-6')
     params = parser.parse_args()
 
@@ -184,7 +185,7 @@ if __name__=="__main__":
     ###########################################################################
     print("\n\nThe ten most homoplasic mutations are:\n\tmut\tmultiplicity")
     mutations_sorted = sorted(mutations.items(), key=lambda x:len(x[1])-0.1*x[0][1]/L, reverse=True)
-    for mut, val in mutations_sorted[:10]:
+    for mut, val in mutations_sorted[:params.n]:
         if len(val)>1:
             print("\t%s%d%s\t%d"%(mut[0], mut[1], mut[2], len(val)))
         else:
@@ -194,7 +195,7 @@ if __name__=="__main__":
     if params.detailed:
         print("\n\nThe ten most homoplasic mutation on terminal branches are:\n\tmut\tmultiplicity")
         terminal_mutations_sorted = sorted(terminal_mutations.items(), key=lambda x:len(x[1])-0.1*x[0][1]/L, reverse=True)
-        for mut, val in terminal_mutations_sorted[:10]:
+        for mut, val in terminal_mutations_sorted[:params.n]:
             if len(val)>1:
                 print("\t%s%d%s\t%d"%(mut[0], mut[1], mut[2], len(val)))
             else:
@@ -207,5 +208,6 @@ if __name__=="__main__":
     if params.detailed:
         print("\n\nTaxons that carry positions that mutated elsewhere in the tree:\n\ttaxon name\t#of homoplasic mutations")
         mutation_by_strain_sorted = sorted(mutation_by_strain.items(), key=lambda x:len(x[1]), reverse=True)
-        for name, val in mutation_by_strain_sorted[:10]:
-            print("\t%s\t%d"%(name, len(val)))
+        for name, val in mutation_by_strain_sorted[:params.n]:
+            if len(val):
+                print("\t%s\t%d"%(name, len(val)))
