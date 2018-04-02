@@ -220,7 +220,7 @@ class GTR(object):
 
           :code:`my_mu` - substitution rate (float)
 
-          :code:`my_alph` - alphabet (str: :code:`'nuc'` or  :code:`'nuc_gap'`)
+          :code:`my_alph` - alphabet (str: :code:`'nuc'` or  :code:`'nuc_nogap'`)
 
 
 
@@ -248,24 +248,19 @@ class GTR(object):
           Felsenstein (1981), J. Mol. Evol. 17  (6): 368-376. doi:10.1007/BF01734359
           for details.
 
-          Current implementation of the model does not account for the gaps (treatment of
-          gaps as characters is possible if specify alphabet='nuc_gap').
-
           :code:`mygtr = GTR.standard(model='F81', mu=<mu>, pi=<pi>, alphabet=<alph>)`
 
           :code:`mu` -  substitution rate  (float)
 
           :code:`pi`  - : nucleotide concentrations (numpy.array)
 
-          :code:`alphabet' -  alphabet to use. (:code:`'nuc'` or  :code:`'nuc_gap'`)
-          Default 'nuc', which discounts  all gaps.
-
+          :code:`alphabet' -  alphabet to use. (:code:`'nuc'` or  :code:`'nuc_nogap'`)
 
 
         - HKY85:
 
           Hasegawa, Kishino and Yano 1985 model. Allows different concentrations of the
-          nucleotides (as in F81) + distinguishes between transition/transversionsubstitutions
+          nucleotides (as in F81) + distinguishes between transition/transversion substitutions
           (similar to K80). Link:
           Hasegawa, Kishino, Yano (1985), J. Mol. Evol. 22 (2): 160-174. doi:10.1007/BF02101694
 
@@ -366,7 +361,7 @@ class GTR(object):
 
 
     @classmethod
-    def infer(cls, nij, Ti, root_state, fixed_pi=None, pc=5.0, **kwargs):
+    def infer(cls, nij, Ti, root_state, fixed_pi=None, pc=5.0, gap_limit=0.01, **kwargs):
         """
         Infer a GTR model by specifying the number of transitions and time spent in each
         character. The basic equation that is being solved is
@@ -396,7 +391,7 @@ class GTR(object):
 
          pc : float
             Pseudocounts, this determines the lower cutoff on the rate when
-            no substitution are observed
+            no substitutions are observed
 
         Keyword Args
         ------------
@@ -449,6 +444,13 @@ class GTR(object):
                 gtr.logger('the iterative scheme has not converged',3,warn=True)
             elif np.abs(1-np.max(pi.sum(axis=0))) > dp:
                 gtr.logger('the iterative scheme has converged, but proper normalization was not reached',3,warn=True)
+        if gtr.gap_index>=0:
+            if pi[gtr.gap_index]<gap_limit:
+              gtr.logger('The model allows for gaps which are estimated to occur at a low fraction of %1.3e'%pi[gtr.gap_index]+
+                       '\n\t\tthis can potentially result in artificats.'+
+                       '\n\t\tgap fraction will be set to %1.4f'%gap_limit,2,warn=True)
+            pi[gtr.gap_index] = gap_limit
+            pi /= pi.sum()
 
         gtr.assign_rates(mu=mu, W=W_ij, pi=pi)
         return gtr
@@ -795,4 +797,4 @@ class GTR(object):
 
 
 if __name__ == "__main__":
-     pass
+    pass

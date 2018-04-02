@@ -21,8 +21,8 @@ class TreeAnc(object):
     """
 
     def __init__(self, tree=None, aln=None, gtr=None, fill_overhangs=True,
-                ref=None, verbose = ttconf.VERBOSE, ignore_gaps=True, convert_upper=True,
-                log=None, **kwargs):
+                ref=None, verbose = ttconf.VERBOSE, ignore_gaps=True,
+                convert_upper=True, seq_multiplicity=None, log=None, **kwargs):
         """
         TreeAnc constructor. It prepares tree, attach sequences to the leaf nodes,
         and sets some configuration parameters.
@@ -60,6 +60,11 @@ class TreeAnc(object):
          verbose : int
             verbosity level as number from 0 (lowest) to 10 (highest).
 
+         seq_multiplicity: dict
+            if individual nodes in the tree correspond to multiple sampled sequences
+            (i.e. read count in a deep sequencing experiment), these can be
+            specified as a dictionary
+
         Keyword Args
         ------------
 
@@ -80,26 +85,25 @@ class TreeAnc(object):
         self.is_vcf = False  #this is set true when aln is set, if aln is dict
         self.var_positions = None #set during seq compression, if aln is dict
         self.inferred_const_sites = [] #keeps track of pos where ambig sites replaced with base
-
         #This preserves original compressed sequence so ambiguous positions can be recovered later
         self.ambigPos = {}
+        self.seq_multiplicity = {} if seq_multiplicity is None else seq_multiplicity
 
         self.ignore_gaps = ignore_gaps
         self.set_gtr(gtr if gtr is not None else 'JC69', **kwargs)
+
+        self.tree = tree
         if tree is None:
             self.logger("TreeAnc: tree loading failed! exiting",0)
             return
-        else:
-            self.tree = tree
 
         if ref is not None:
             self.ref = ref
 
         self.convert_upper = convert_upper
         # set alignment and attach sequences to tree.
-        self.aln = aln
-
-
+        if aln is not None:
+            self.aln = aln
 
 
     def logger(self, msg, level, warn=False):
@@ -183,7 +187,7 @@ class TreeAnc(object):
             GTR instance is passed, it is directly set as the class attribute
 
         Keyword Args
-	------------
+    ------------
 
          All parameters needed for the gtr creation. If none passed, defaults are assumed.
            Refer to the particular GTR models for the exact parameter values
@@ -258,15 +262,22 @@ class TreeAnc(object):
         # load alignment from file if necessary
         from os.path import isfile
         from Bio.Align import MultipleSeqAlignment
+        self._aln = None
         if isinstance(in_aln, MultipleSeqAlignment):
             self._aln = in_aln
         elif type(in_aln) in [str, unicode] and isfile(in_aln):
-            self._aln=AlignIO.read(in_aln, 'fasta')
+            for fmt in ['fasta', 'phylip-relaxed', 'nexus']:
+                try:
+                    self._aln=AlignIO.read(in_aln, 'fasta')
+                    break
+                except:
+                    continue
         elif type(in_aln) is dict:  #if is read in from VCF file
             self._aln = in_aln
             self.is_vcf = True
-        else:
-            self._aln = None
+
+        if self._aln is None:
+            self.logger("TreeAnc: loading alignment failed... ",1, warn=True)
             return
 
         #Convert to uppercase here, rather than in _attach_sequences_to_nodes
@@ -300,6 +311,12 @@ class TreeAnc(object):
         For each node of the tree, check whether there is a sequence available
         in the alignment and assign this sequence as a character array
         '''
+        if type(self.aln) is dict:
+            self.seq_len = len(self.ref)
+        else:
+            self.seq_len = self.aln.get_alignment_length()
+        self.one_mutation = 1.0/self.seq_len
+
         failed_leaves= 0
         if type(self.aln) is dict:
             dic_aln = self.aln
@@ -317,6 +334,10 @@ class TreeAnc(object):
         for l in self.tree.find_clades():
             if l.name in dic_aln:
                 l.sequence= dic_aln[l.name]
+                if l.name in self.seq_multiplicity:
+                    l.count = self.seq_multiplicity[l.name]
+                else:
+                    l.count = 1.0
             elif l.is_terminal():
                 self.logger("***WARNING: TreeAnc._attach_sequences_to_nodes: NO SEQUENCE FOR LEAF: %s" % l.name, 0, warn=True)
                 failed_leaves += 1
@@ -653,7 +674,7 @@ class TreeAnc(object):
 ####################################################################
 
     def infer_gtr(self, print_raw=False, marginal=False, normalized_rate=True,
-                  fixed_pi=None, **kwargs):
+                  fixed_pi=None, pc=5.0, **kwargs):
         """
         Calculates GTR model given the multiple sequence alignment and the tree.
         It performs ancestral sequence inferrence (joint or marginal) followed by
@@ -679,6 +700,9 @@ class TreeAnc(object):
          fixed_pi : np.array, None
             Provide the equilibrium character concentrations.
             If None is passed, the concentrations will be inferred from scratch.
+
+         pc: float, 5.0
+            Number of pseudo counts to use in gtr inference
 
         Returns
         -------
@@ -719,7 +743,7 @@ class TreeAnc(object):
             print('T_i:', Ti)
         root_state = np.array([np.sum((self.tree.root.cseq==nuc)*self.multiplicity) for nuc in alpha])
 
-        self._gtr = GTR.infer(nij, Ti, root_state, fixed_pi=fixed_pi, pc=5.0,
+        self._gtr = GTR.infer(nij, Ti, root_state, fixed_pi=fixed_pi, pc=pc,
                               alphabet=self.gtr.alphabet, logger=self.logger,
                               prof_map = self.gtr.profile_map)
         if normalized_rate:
@@ -1254,6 +1278,7 @@ class TreeAnc(object):
         for node in self.tree.find_clades(order='postorder'):
             if node.up is None:
                 node.joint_Cx=None # not needed for root
+                continue
 
             # preallocate storage
             node.joint_Lx = np.zeros((L, n_states))             # likelihood array
@@ -1397,7 +1422,7 @@ class TreeAnc(object):
 
     def optimize_branch_length(self, **kwargs):
         """
-        Perform ML optimization for the branch lengths of the whole tree or any
+        Perform optimization for the branch lengths of the whole tree or any
         subtree. **Note** this method assumes that each node stores information
         about its sequence as numpy.array object (node.sequence attribute).
         Therefore, before calling this method, sequence reconstruction with

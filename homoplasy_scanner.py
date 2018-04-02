@@ -4,6 +4,7 @@ import numpy as np
 from treetime import TreeAnc, GTR
 from Bio import Phylo, AlignIO
 from Bio import __version__ as bioversion
+import os,shutil
 
 if __name__=="__main__":
     ###########################################################################
@@ -14,8 +15,8 @@ if __name__=="__main__":
             description='Reconstructs ancestral sequences and maps mutations to the tree.'
                         ' The tree is then scanned for homoplasies. An excess number of homoplasies'
                         ' might suggest contamination, recombination, culture adaptation or similar. ')
-    parser.add_argument('--aln', required = True, type = str,  help ="fasta file with input sequences")
-    parser.add_argument('--tree', required = True, type = str,  help ="newick file with tree")
+    parser.add_argument('--aln', required = True, type = str,  help ="fasta file with input nucleotide sequences")
+    parser.add_argument('--tree', type = str,  help ="newick file with tree (optional if tree builders installed)")
     parser.add_argument('--detailed', required = False, action="store_true",  help ="generate a more detailed report")
     parser.add_argument('--gtr', required=False, type = str, default='infer', help="GTR model to use. "
         " Type 'infer' to infer the model from the data. Or, specify the model type. "
@@ -24,13 +25,26 @@ if __name__=="__main__":
     parser.add_argument('--gtr_params', type=str, nargs='+', help="GTR parameters for the model "
         "specified by the --gtr argument. The parameters should be feed as 'key=value' list of parameters. "
         "Example: '--gtr K80 --gtr_params kappa=0.2 pis=0.25,0.25,0.25,0.25'. See the exact definitions of "
-        " the parameters in the GTR creation methods in treetime/nuc_models.py or treetime/aa_models.py")
+        " the parameters in the GTR creation methods in treetime/nuc_models.py. Only nucleotide models supported at present")
 
     parser.add_argument('--prot', default = False, action="store_true", help ="protein alignment")
     parser.add_argument('--zero_based', default = False, action='store_true', help='zero based SNP indexing')
+    parser.add_argument('-n', default = 10, type=int, help='number of mutations/nodes that are printed to screen')
     parser.add_argument('--verbose', default = 1, type=int, help='verbosity of output 0-6')
     params = parser.parse_args()
 
+
+    ###########################################################################
+    ### CHECK FOR TREE, build if not in place
+    ###########################################################################
+    if params.tree is None:
+        from treetime.utils import tree_inference
+        params.tree = os.path.basename(params.aln)+'.nwk'
+        print("No tree given: inferring tree")
+        tmp_dir = 'homoplasy_scanner_tmp_files'
+        tree_inference(params.aln, params.tree, tmp_dir = tmp_dir)
+        if os.path.isdir(tmp_dir):
+            shutil.rmtree(tmp_dir)
 
 
     ###########################################################################
@@ -42,6 +56,7 @@ if __name__=="__main__":
         gtr = GTR.standard('jc')
         infer_gtr = True
     else:
+        infer_gtr = False
         try:
             kwargs = {}
             if gtr_params is not None:
@@ -58,11 +73,9 @@ if __name__=="__main__":
 
 
             gtr = GTR.standard(model, **kwargs)
-            infer_gtr = False
         except:
             print ("Could not create GTR model from input arguments. Using default (Jukes-Cantor 1969)")
             gtr = GTR.standard('jc')
-            infer_gtr = False
 
 
     ###########################################################################
@@ -172,7 +185,7 @@ if __name__=="__main__":
     ###########################################################################
     print("\n\nThe ten most homoplasic mutations are:\n\tmut\tmultiplicity")
     mutations_sorted = sorted(mutations.items(), key=lambda x:len(x[1])-0.1*x[0][1]/L, reverse=True)
-    for mut, val in mutations_sorted[:10]:
+    for mut, val in mutations_sorted[:params.n]:
         if len(val)>1:
             print("\t%s%d%s\t%d"%(mut[0], mut[1], mut[2], len(val)))
         else:
@@ -182,7 +195,7 @@ if __name__=="__main__":
     if params.detailed:
         print("\n\nThe ten most homoplasic mutation on terminal branches are:\n\tmut\tmultiplicity")
         terminal_mutations_sorted = sorted(terminal_mutations.items(), key=lambda x:len(x[1])-0.1*x[0][1]/L, reverse=True)
-        for mut, val in terminal_mutations_sorted[:10]:
+        for mut, val in terminal_mutations_sorted[:params.n]:
             if len(val)>1:
                 print("\t%s%d%s\t%d"%(mut[0], mut[1], mut[2], len(val)))
             else:
@@ -195,5 +208,6 @@ if __name__=="__main__":
     if params.detailed:
         print("\n\nTaxons that carry positions that mutated elsewhere in the tree:\n\ttaxon name\t#of homoplasic mutations")
         mutation_by_strain_sorted = sorted(mutation_by_strain.items(), key=lambda x:len(x[1]), reverse=True)
-        for name, val in mutation_by_strain_sorted[:10]:
-            print("\t%s\t%d"%(name, len(val)))
+        for name, val in mutation_by_strain_sorted[:params.n]:
+            if len(val):
+                print("\t%s\t%d"%(name, len(val)))

@@ -179,6 +179,87 @@ def tree_layout(tree):
             tmp = np.array([c.ypos for c in node])
             node.ypos=0.5*(np.max(tmp) + np.min(tmp))
 
+def tree_inference(aln_fname, tree_fname, tmp_dir=None,
+                   methods = ['iqtree', 'fasttree', 'raxml'], **kwargs):
+    from Bio import Phylo
+    import os,shutil
+    if not os.path.isfile(aln_fname):
+        print("alignment file does not exist")
+
+    cwd = os.getcwd()
+    if tmp_dir:
+        if not os.path.isdir(tmp_dir):
+            try:
+                os.makedirs(tmp_dir)
+            except OSError as e:
+                print("Cannot create run_dir",e)
+        aln_fname_base = os.path.basename(aln_fname)
+        shutil.copyfile(aln_fname,os.path.join(tmp_dir, aln_fname_base))
+        aln_fname = aln_fname_base
+        os.chdir(tmp_dir)
+
+    for method in methods:
+        T = None
+        try:
+            if method.lower()=='iqtree':
+                T = build_newick_iqtree(aln_fname)
+            elif method.lower()=='fasttree':
+                T = build_newick_fasttree(aln_fname, nuc=True)
+            elif method.lower()=='raxml':
+                T = build_newick_raxml(aln_fname)
+            else:
+                print("Method not supported",method)
+            if T:
+                break
+        except:
+            continue
+    os.chdir(cwd)
+    if T is None:
+        print("tree building failed. tried", ", ".join(methods), "but none worked")
+    else:
+        Phylo.write(T, tree_fname, 'newick')
+
+
+def build_newick_fasttree(aln_fname, nuc=True):
+    from Bio import Phylo
+    import os
+    print("Building tree with fasttree")
+    tree_cmd = ["fasttree"]
+    if nuc: tree_cmd.append("-nt")
+
+    tree_cmd.extend([aln_fname,"1>","tmp.nwk", "2>", "fasttree_stderr"])
+    os.system(" ".join(tree_cmd))
+    return Phylo.read("tmp.nwk", 'newick')
+
+
+def build_newick_raxml(aln_fname, nthreads=2, raxml_bin="raxml", **kwargs):
+    from Bio import Phylo, AlignIO
+    import shutil,os
+    AlignIO.write(AlignIO.read(aln_fname, 'fasta'),"temp.phyx", "phylip-relaxed")
+    cmd = raxml_bin + " -f d -T " + str(nthreads) + " -m GTRCAT -c 25 -p 235813 -n tre -s temp.phyx"
+    os.system(cmd)
+    return Phylo.read('RAxML_bestTree.tre', "newick")
+
+
+def build_newick_iqtree(aln_fname, nthreads=2, iqtree_bin="iqtree",
+                        iqmodel="HKY",  **kwargs):
+    from Bio import Phylo, AlignIO
+    import os
+    aln_file = "temp.fasta"
+    with open(aln_fname) as ifile:
+        tmp_seqs = ifile.readlines()
+    with open(aln_file, 'w') as ofile:
+        for line in tmp_seqs:
+            ofile.write(line.replace('/', '_X_X_').replace('|','_Y_Y_'))
+
+    call = ["iqtree", "-nt", str(nthreads),"-fast", "-s", aln_file, ">", "iqtree.log"]
+
+    os.system(" ".join(call))
+    T = Phylo.read(aln_file+".treefile", 'newick')
+    for n in T.get_terminals():
+        n.name = n.name.replace('_X_X_','/').replace('_Y_Y_','|')
+    return T
+
 if __name__ == '__main__':
     pass
 
