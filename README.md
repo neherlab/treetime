@@ -26,8 +26,8 @@ The package is designed to be used as a stand-alone tool or as a library used in
     + [Molecular clock phylogenies](#molecular-clock-phylogenies)
     + [Quantify temporal signal in phylogenies and reroot to the maximize "clock-i-ness"](#quantify-temporal-signal-in-phylogenies-and-reroot-to-the-maximize--clock-i-ness-)
   * [Example scripts](#example-scripts)
-  * [Comparable Tools](#comparable-tools)
-  * [Projects using treetime](#projects-using-treetime)
+  * [Comparable/related Tools](#comparable-tools)
+  * [Projects using TreeTime](#projects-using-treetime)
   * [Developer info](#developer-info)
 
 ![Molecular clock phylogeny of 200 NA sequences of influenza A H3N2](doc/flu_200.png)
@@ -207,7 +207,7 @@ In addition, we provide scripts that can be run from the command line with argum
 #### Quantify temporal signal in phylogenies and reroot to the maximize "clock-i-ness"
 
   The script `temporal_signal.py` provides functionality analogous to TempEst by Andrew Rambaut.
-    ```
+  ```
       usage: temporal_signal.py [-h] --tree TREE --dates DATES [--aln ALN]
                                 [--infer_gtr] [--reroot] [--plot]
                                 [--verbose VERBOSE]
@@ -227,7 +227,7 @@ In addition, we provide scripts that can be run from the command line with argum
                            tip distance with sampling time
         --plot
         --verbose VERBOSE  verbosity of output 0-6
-    ```
+  ```
   The slope of the regression of root-to-tip distance vs sampling date will be printed to stdout along with the fraction of variance explained by the linear regression. By passing the flag `--reroot`, treetime will search for the root that maximizes the correlation of root-to-tip distance with time and reroot the tree. The option `--plot` will produce a scatter plot with the best regression and save it to file.
 
 #### Scan sequences for homoplasies
@@ -268,12 +268,12 @@ In addition, we provide scripts that can be run from the command line with argum
       --zero_based          zero based SNP indexing
       -n N                  number of mutations/nodes that are printed to screen
       --verbose VERBOSE     verbosity of output 0-6
-    ```
+  ```
 
 #### Discrete character reconstruction and "mugration" models
-    Sequences often have discrete characters attached to them, for example `country of isolation`, `continent`, `host` etc.
-    The `mugration.py` script provides functionality to reconstruct ancestral states of such characters.
-    ```
+  Sequences often have discrete characters attached to them, for example `country of isolation`, `continent`, `host` etc.
+  The `mugration.py` script provides functionality to reconstruct ancestral states of such characters.
+  ```
       usage: mugration.py [-h] --tree TREE --states STATES [--attribute ATTRIBUTE]
                           [--weights WEIGHTS] [--confidence] [--verbose VERBOSE]
 
@@ -292,9 +292,9 @@ In addition, we provide scripts that can be run from the command line with argum
                               #country,weight micronesia,0.1 ...
         --confidence          output confidence of mugration inference
         --verbose VERBOSE     verbosity of output 0-6
-    ```
-    The script will save the tree in nexus format with the inferred attribute added as comments to each node (internal and external).
-    In addition, the inferred GTR model and the marginal probability of each state for each node will be written to file.
+  ```
+  The script will save the tree in nexus format with the inferred attribute added as comments to each node (internal and external).
+  In addition, the inferred GTR model and the marginal probability of each state for each node will be written to file.
 
 ### Example scripts
 The following scripts illustrate how treetime can be used to solve common problem with short python scripts. They are meant to be used in an interactive ipython environment and run as `run examples/ancestral_inference.py`.
@@ -311,7 +311,7 @@ There are several other tools which estimate molecular clock phylogenies.
 * [Least-Square-Dating](http://www.atgc-montpellier.fr/LSD/) (LSD) emphasizes speed (it scales as O(N) as **TreeTime**), but provides limited scope for customization.
 * [treedater](https://github.com/emvolz/treedater) by Eric Volz and Simon Frost is an R package that implements time tree estimation and supports relaxed clocks.
 
-### Projects using treetime
+### Projects using TreeTime
 
   * TreeTime is an integral part of the [nextstrain.org](http://nextstrain.org) project to track and analyze viral sequence data in  real time.
   * [panX](http://pangenome.de) uses TreeTime for ancestral reconstructions and inference of gene gain-loss patterns.
