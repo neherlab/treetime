@@ -331,7 +331,6 @@ class TreeTime(ClockTree):
             :code:`<node_name>` - reroot to the node with name :code:`<node_name>`
 
             :code:`[<node_name1>, <node_name2>, ...]` - reroot to the MRCA of these nodes
-
         """
         self.logger("TreeTime.reroot: with method or node: %s"%root,1)
         for n in self.tree.find_clades():
@@ -367,8 +366,8 @@ class TreeTime(ClockTree):
             self.tree.root_with_outgroup(new_root, outgroup_branch_length=new_root.branch_length/2)
         else:
             self.tree.root_with_outgroup(new_root)
-        # new nodes are produced when rooting with a terminal node, copy this clock info
 
+        # new nodes are produced when rooting with a terminal node, copy this clock info
         if new_root.is_terminal():
             if hasattr(new_root, "_alpha"):
                 self.tree.root._alpha = new_root._alpha
