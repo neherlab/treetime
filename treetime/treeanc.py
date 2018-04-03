@@ -541,6 +541,8 @@ class TreeAnc(object):
                     # (other than ambiguous_char) in column
                     nonref_const.append(pos)
                     nonref_alleles.append(bases.replace(ambiguous_char, ''))
+                    if ambiguous_char in bases: #keep track of sites 'made constant'
+                        self.inferred_const_sites.append(pos)
                 else:
                     # at least two non-reference alleles
                     variable_pos.append(pos)
@@ -548,6 +550,7 @@ class TreeAnc(object):
                 # not every sequence different from reference
                 if bases==ambiguous_char:
                     ambiguous_const.append(pos)
+                    self.inferred_const_sites.append(pos) #keep track of sites 'made constant'
                 else:
                     # at least one non ambiguous non-reference allele not in
                     # every sequence
