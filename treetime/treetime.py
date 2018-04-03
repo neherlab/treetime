@@ -103,6 +103,8 @@ class TreeTime(ClockTree):
         """
         # determine how to reconstruct and sample sequences
         seq_kwargs = {"marginal":False, "sample_from_profile":"root"}
+        if "fixed_pi" in kwargs:
+            seq_kwargs["fixed_pi"] = kwargs['fixed_pi']
         if "do_marginal" in kwargs:
             time_marginal=kwargs["do_marginal"]
 
