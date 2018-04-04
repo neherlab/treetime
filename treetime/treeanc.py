@@ -510,6 +510,7 @@ class TreeAnc(object):
                 inv_map[pos].append(bs)
 
         self.nonref_positions = np.sort(inv_map.keys())
+        self.inferred_const_sites = []
 
         ambiguous_char = self.gtr.ambiguous
         nonref_const = []
