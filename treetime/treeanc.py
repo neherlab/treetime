@@ -480,6 +480,10 @@ class TreeAnc(object):
                     n.cseq = self.reduced_alignment[seq_count]
                     seq_count+=1
 
+        # sequences are overwritten during reconstruction and
+        # ambiguous sites change. Keep orgininals for reference
+        self.original_sequences = {n.name:n.cseq for n in self.tree.get_terminals()}
+
         self.logger("TreeAnc: finished reduced alignment...", 1)
 
 
@@ -757,7 +761,21 @@ class TreeAnc(object):
 
         return N_diff
 
-    def get_mutations(self, node):
+
+    def recover_var_ambigs(self):
+        """
+        Recalculates mutations using the original compressed sequence for terminal nodes
+        which will recover ambiguous bases at variable sites. (See 'get_mutations')
+
+        Once this has been run, infer_gtr and other functions which depend on self.gtr.alphabet
+        will not work, as ambiguous bases are not part of that alphabet (only A, C, G, T, -).
+        This is why it's left for the user to choose when to run
+        """
+        for node in self.tree.get_terminals():
+            node.mutations = self.get_mutations(node, keep_var_ambigs=True)
+
+
+    def get_mutations(self, node, keep_var_ambigs=False):
         """
         Get the mutations on a tree branch. Take compressed sequences from both sides
         of the branch (attached to the node), compute mutations between them, and
@@ -769,16 +787,28 @@ class TreeAnc(object):
          node : PhyloTree.Clade
             Tree node, which is the child node attached to the branch.
 
+         keep_var_ambigs : boolean
+            If true, generates mutations based on the *original* _compressed_ sequence, which
+            may include ambiguities. Note sites that only have 1 unambiguous base and ambiguous
+            bases ("AAAAANN") are stripped of ambiguous bases *before* compression, so ambiguous
+            bases will *not* be preserved.
+
         Returns
         -------
 
           muts : list
             List of mutations. Each mutation is represented as tuple of
             (parent_state, position, child_state).
-
         """
+
+        # if ambiguous site are to be restored and node is terminal,
+        # assign original sequence, else reconstructed cseq
+        node_seq = node.cseq
+        if keep_var_ambigs and (node.name in self.original_sequences) and node.is_terminal():
+            node_seq = self.original_sequences[node.name]
+
         muts = []
-        for p, (anc, der) in enumerate(izip(node.up.cseq, node.cseq)):
+        for p, (anc, der) in enumerate(izip(node.up.cseq, node_seq)):
             # only if the states in compressed sequences differ:
             if anc!=der:
                 # expand to the positions in real sequence
@@ -810,7 +840,7 @@ class TreeAnc(object):
 
         return seq
 
-    def dict_sequence(self, node):
+    def dict_sequence(self, node, keep_var_ambigs=False):
         """
         For VCF-based TreeAnc objects, we do not want to store the entire
         sequence on every node - not space efficient! Instead, return the dict
@@ -832,9 +862,13 @@ class TreeAnc(object):
         """
         seq = {}
 
+        node_seq = node.cseq
+        if keep_var_ambigs and (node.name in self.original_sequences) and node.is_terminal():
+            node_seq = self.original_sequences[node.name]
+
         for pos in self.nonref_positions:
             cseqLoc = self.full_to_reduced_sequence_map[pos]
-            base = node.cseq[cseqLoc]
+            base = node_seq[cseqLoc]
             if self.ref[pos] != base:
                 seq[pos] = base
 
@@ -1517,17 +1551,28 @@ class TreeAnc(object):
 
         return new_aln
 
-    def get_tree_dict(self):
+    def get_tree_dict(self, keep_var_ambigs=False):
         """
         For VCF-based objects, returns a nested dict with all information required to
         reconstruct sequences for all nodes (terminal and internal) in the format:
         {'reference':'AGCTCGA..A',
          'sequences': { 'seq1':{4:'A', 7:'-'}, 'seq2':{100:'C'} },
-         'positions': [1,4,7,10,100...] }
+         'positions': [1,4,7,10,100...],
+         'inferred_const_sites': [7,100....]     <this is optional>
+        }
+         self.inferred_const_sites
 
-        reference being the reference sequence to which the variable sites are mapped,
+        Reference being the reference sequence to which the variable sites are mapped;
         sequence containing a dict for each sequence with the position and base of
-        mutations, and positions containing a list of all the variable positions
+        mutations; and positions containing a list of all the variable positions.
+        If included, inferred_const_sites is positions that were constant except
+        ambiguous bases, which were converted into constant sites (ex: 'AAAN' -> 'AAAA')
+
+        keep_var_ambigs : boolean
+            If true, generates dict sequence based on the *original* _compressed_ sequence, which
+            may include ambiguities. Note sites that only have 1 unambiguous base and ambiguous
+            bases ("AAAAANN") are stripped of ambiguous bases *before* compression, so ambiguous
+            bases will *not* be preserved.
 
         EBH 7 Dec 2017
         """
@@ -1539,12 +1584,20 @@ class TreeAnc(object):
             tree_aln = {}
             for n in self.tree.find_clades():
                 if hasattr(n, 'sequence'):
-                    tree_aln[n.name] = n.sequence
+                    if keep_var_ambigs: #regenerate dict to include ambig bases
+                        tree_aln[n.name] = self.dict_sequence(n, keep_var_ambigs)
+                    else:
+                        tree_aln[n.name] = n.sequence
+
             tree_dict['sequences'] = tree_aln
+
+            if len(self.inferred_const_sites) != 0:
+                tree_dict['inferred_const_sites'] = self.inferred_const_sites
 
             return tree_dict
         else:
             raise("A dict can only be returned for trees created with VCF-input!")
+
 
 
 if __name__=="__main__":
