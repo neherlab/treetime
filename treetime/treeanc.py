@@ -554,10 +554,10 @@ class TreeAnc(object):
         alignment_patterns_const = {}
         for base in states:
             p = base*nseq
+            pos = list(np.where(refMod==base)[0])
             #if the alignment doesn't have a const site of this base, don't add! (ex: no '----' site!)
-            if len(np.where(refMod==base)[0]):
-                alignment_patterns_const[p] = [len(reduced_alignment_const),
-                                               list(np.where(refMod==base)[0])]
+            if len(pos):
+                alignment_patterns_const[p] = [len(reduced_alignment_const), pos]
                 reduced_alignment_const.append(list(p))
 
 
