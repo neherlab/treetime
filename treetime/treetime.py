@@ -654,7 +654,7 @@ class TreeTime(ClockTree):
         if tip_count<2:
             self.logger("****ERROR: TreeTime.find_best_root_and_regression: need at least two dates to reroot!", 0, warn=True)
             self.logger("****ERROR: only %d tips have valid dates!"%N, 0, warn=True)
-            return selt.tree.root, np.nan, np.nan
+            return self.tree.root, np.nan, np.nan
 
         Ninv = 1.0/N
         time_variance = (N*sum_ti2 - sum_ti**2)*Ninv**2

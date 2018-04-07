@@ -22,7 +22,7 @@ class DateConversion(object):
         self.sigma = 0
 
     def __str__(self):
-        outstr = ('Root-Tip-Regression:\n --rate:\t%f\n --R^2:\t\t%f\n'
+        outstr = ('Root-Tip-Regression:\n --rate:\t%1.3e\n --R^2:\t\t%f\n'
                   %(self.clock_rate, self.r_val**2))
         return outstr
 

@@ -17,6 +17,8 @@ if __name__=="__main__":
                         ' might suggest contamination, recombination, culture adaptation or similar. ')
     parser.add_argument('--aln', required = True, type = str,  help ="fasta file with input nucleotide sequences")
     parser.add_argument('--tree', type = str,  help ="newick file with tree (optional if tree builders installed)")
+    parser.add_argument('--const', type = int, default=0, help ="number of constant sites not included in alignment")
+    parser.add_argument('--rescale', type = float, default=1.0, help ="rescale branch lengths")
     parser.add_argument('--detailed', required = False, action="store_true",  help ="generate a more detailed report")
     parser.add_argument('--gtr', required=False, type = str, default='infer', help="GTR model to use. "
         " Type 'infer' to infer the model from the data. Or, specify the model type. "
@@ -45,7 +47,6 @@ if __name__=="__main__":
         tree_inference(params.aln, params.tree, tmp_dir = tmp_dir)
         if os.path.isdir(tmp_dir):
             shutil.rmtree(tmp_dir)
-
 
     ###########################################################################
     ### GTR SET-UP
@@ -83,9 +84,13 @@ if __name__=="__main__":
     ###########################################################################
     treeanc = TreeAnc(params.tree, aln=params.aln, gtr=gtr, verbose=1,
                       fill_overhangs=True)
-    L = treeanc.aln.get_alignment_length()
+    L = treeanc.aln.get_alignment_length() + params.const
     N_seq = len(treeanc.aln)
     N_tree = treeanc.tree.count_terminals()
+    if params.rescale!=1.0:
+        for n in treeanc.tree.find_clades():
+            n.branch_length *= params.rescale
+            n.mutation_length = n.branch_length
 
     print("read alignment from file %s with %d sequences of length %d"%(params.aln,N_seq,L))
     print("read tree from file %s with %d leaves"%(params.tree,N_tree))

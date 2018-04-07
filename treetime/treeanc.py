@@ -262,7 +262,9 @@ class TreeAnc(object):
         from os.path import isfile
         from Bio.Align import MultipleSeqAlignment
         self._aln = None
-        if isinstance(in_aln, MultipleSeqAlignment):
+        if in_aln is None:
+            return
+        elif isinstance(in_aln, MultipleSeqAlignment):
             self._aln = in_aln
         elif type(in_aln) in [str, unicode] and isfile(in_aln):
             for fmt in ['fasta', 'phylip-relaxed', 'nexus']:

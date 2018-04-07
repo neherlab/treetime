@@ -17,11 +17,12 @@ if __name__=="__main__":
     parser.add_argument('--tree', required = True, type = str,  help ="newick file with tree")
     parser.add_argument('--dates', required = True, type = str,
                         help ="csv with dates for nodes with 'node_name, date' where date is float (as in 2012.15)")
-    parser.add_argument('--aln', required = False, type = str,  help ="fasta file with input sequences")
     parser.add_argument('--infer_gtr', default = False, action='store_true', help='infer substitution model')
     parser.add_argument('--keep_root', required = False, action="store_true", default=False,
-                        help ="reroot the tree to maximize the correlation of root-to-tip distance with sampling time")
-    parser.add_argument('--plot', required = False, action="store_true", default=False,)
+                        help ="don't reroot the tree. Otherwise, reroot to minimize the "
+                              "the residual of the regression of root-to-tip distance and sampling time")
+    parser.add_argument('--plot', required = False, action="store_true", default=False,
+                        help = "save the root-to-tip regression as a pdf")
     parser.add_argument('--verbose', default = 0, type=int,
                         help='verbosity of output 0-6')
     params = parser.parse_args()
@@ -46,11 +47,10 @@ if __name__=="__main__":
 
 
     ###########################################################################
-    ### FAKING ALIGMENT IF NONE GIVEN
+    ### FAKING ALIGMENT TO APPEASE TREETIME
     ###########################################################################
-    if params.aln is None:
-        from Bio import Seq, SeqRecord, Align
-        aln = Align.MultipleSeqAlignment([SeqRecord.SeqRecord(Seq.Seq("AAA"), id=node, name=node)
+    from Bio import Seq, SeqRecord, Align
+    aln = Align.MultipleSeqAlignment([SeqRecord.SeqRecord(Seq.Seq("AAA"), id=node, name=node)
                                     for node in dates])
 
 
@@ -67,7 +67,7 @@ if __name__=="__main__":
     d2d = DateConversion.from_tree(myTree.tree)
     print('\n',d2d)
     print('The R^2 value indicates the fraction of variation in'
-          '\nroot-to-tip distance explained by the temporal sampling.'
+          '\nroot-to-tip distance explained by the sampling times.'
           '\nHigher values corresponds more clock-like behavior (max 1.0).')
 
     print('\nThe rate is the slope of the best fit of the date to'

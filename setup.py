@@ -7,10 +7,10 @@ from setuptools import setup
 
 setup(
         name = "treetime",
-        version = "0.2.3",
+        version = "0.2.4",
         author = "Pavel Sagulenko and Richard Neher",
-        author_email = "pavel.sagulenko@tuebingen.mpg.de",
-        description = (""),
+        author_email = "richard.neher@unibas.ch",
+        description = ("Maximum-likelihood phylodynamic inference"),
         license = "MIT",
         keywords = "Time-stamped phylogenies, evolution",
         url = "https://github.com/neherlab/treetime",
@@ -20,4 +20,10 @@ setup(
             "Topic :: Science",
             "License :: OSI Approved :: MIT License",
             ],
+        scripts=['bin/mugration.py',
+        		'bin/homoplasy_scanner.py',
+        		'bin/timetree_inference.py',
+        		'bin/temporal_signal.py',
+        		'bin/ancestral_reconstruction.py'
+        ]
         )
