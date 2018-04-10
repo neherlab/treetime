@@ -7,7 +7,7 @@ MIN_BRANCH_LENGTH = 1e-3 # fraction of length 'one_mutation' that is used as low
 
 # distribution parameters
 BRANCH_GRID_SIZE = 250
-NODE_GRID_SIZE = 60
+NODE_GRID_SIZE = 180
 MIN_INTEGRATION_PEAK = 0.001
 
 # clocktree parameters

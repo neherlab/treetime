@@ -25,7 +25,9 @@ class BranchLenInterpolator (Distribution):
         mutation_length = node.mutation_length
         n_grid_points = ttconf.BRANCH_GRID_SIZE
         if mutation_length < np.min((1e-5, 0.1*one_mutation)): # zero-length
-            grid = ttconf.MAX_BRANCH_LENGTH * (np.linspace(0, 1.0 , n_grid_points)**2)
+            short_range = 10*one_mutation
+            grid = np.concatenate([short_range*(np.linspace(0, 1.0 , n_grid_points/2)[:-1]),
+                (short_range + (ttconf.MAX_BRANCH_LENGTH - short_range)*(np.linspace(0, 1.0 , n_grid_points/2+1)**2))])
 
         else: # branch length is not zero
             sigma = mutation_length #np.max([self.average_branch_len, mutation_length])
