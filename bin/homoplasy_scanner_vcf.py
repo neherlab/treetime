@@ -1,0 +1,541 @@
+#!/usr/bin/env python
+from __future__ import print_function, division
+import numpy as np
+from treetime import TreeAnc, GTR
+from Bio import Phylo, AlignIO
+from Bio import __version__ as bioversion
+import os,shutil
+
+def read_in_vcf(vcf_file, ref_file, compressed=True):
+    """
+    Reads in a vcf.gz file (or vcf if compressed is False) and associated
+    reference sequence fasta (to which the VCF file is mapped)
+
+    Parses mutations, insertions, and deletions and stores them in a nested dict
+    with the format:
+    {'reference':'AGCTCGA..A',
+     'sequences': { 'seq1':{4:'A', 7:'-'}, 'seq2':{100:'C'} },
+     'insertions': { 'seq1':{4:'ATT'}, 'seq3':{1:'TT', 10:'CAG'} },
+     'positions': [1,4,7,10,100...] }
+
+    Calls with values 0/1 (or 0/2, etc) are ignored.
+    Positions are stored to correspond the location in the reference sequence
+    in Python (numbering is transformed to start at 0)
+
+    Args
+    ----
+    vcf_file : string
+        Path to the vcf or vcf.gz file to be read in
+    ref_file : string
+        Path to the fasta reference file to be read in
+    compressed : boolean
+        Specify false if VCF file is not compressed (not vcf.gz)
+
+    Returns
+    --------
+    compress_seq : nested dict
+        Contains the following keys:
+
+        references : string
+            String of the reference sequence read from the Fasta
+        sequences : nested dict
+            Dict containing sequence names as keys which map to dicts
+            that have position as key and the single-base mutation (or deletion)
+            as values
+        insertions : nested dict
+            Dict in the same format as the above, which stores insertions and their
+            locations. The first base of the insertion is the same as whatever is
+            currently in that position (Ref if no mutation, mutation in 'sequences'
+            otherwise), so the current base can be replaced by the bases held here
+            without losing that base.
+        positions : list
+            Python list of all positions with a mutation, insertion, or deletion.
+
+    EBH 4 Dec 2017
+    """
+    def getAmbigCode(bp1, bp2, bp3=""):
+        bps = [bp1,bp2,bp3]
+        bps.sort()
+        key = "".join(bps)
+
+        return {
+            'CT': 'Y',
+            'AG': 'R',
+            'AT': 'W',
+            'CG': 'S',
+            'GT': 'K',
+            'AC': 'M',
+            'AGT': 'D',
+            'ACG': 'V',
+            'ACT': 'H',
+            'CGT': 'B'
+        }[key]
+
+
+    #vcf is inefficient for the data we want. House code is *much* faster.
+    import gzip
+    from Bio import SeqIO
+    import numpy as np
+
+    sequences = {}
+    insertions = {}
+    positions = []
+
+    nsamp = 0
+    posLoc = 0
+    refLoc = 0
+    altLoc = 0
+    sampLoc = 9
+
+    if compressed: #must use 2 diff functions depending on compressed or not
+        opn = gzip.open
+    else:
+        opn = open
+
+    #with gzip.open(vcf_file) as f:
+    with opn(vcf_file) as f:
+        for line in f:
+            if line[0] != '#':
+                #actual data - most common so first in 'if-list'!
+                line = line.strip()
+                dat = line.split('\t')
+                POS = int(dat[posLoc])
+                REF = dat[refLoc]
+                ALT = dat[altLoc].split(',')
+                calls = np.array(dat[sampLoc:])
+
+                #get samples that differ from Ref at this site
+                recCalls = {}
+                k=0
+                for sa in calls:
+                    if ':' in sa: #if proper VCF file
+                        gt = sa.split(':')[0]
+                    else: #if 'pseudo' VCF file (nextstrain output)
+                        gt = sa
+                    #if gt != '.' and gt[0] != '.':# and gt[0] != '0':
+                    if '/' in gt and gt != '0/0':
+                        recCalls[samps[k]] = gt
+                    k+=1
+
+                #store the position and the alt
+                for seq, gen in recCalls.iteritems():
+                    if gen[0] != '0' and gen[2] != '0' and gen[0] != '.' and gen[2] != '.':
+                        #if is 0/1 or 1/0, ignore - uncertain call
+                        alt = str(ALT[int(gen[0])-1])   #get the index of the alternate
+                        ref = REF
+                        pos = POS-1     #VCF numbering starts from 1, but Reference seq numbering
+                                        #will be from 0 because it's python!
+
+                        if seq not in sequences.keys():
+                            sequences[seq] = {}
+
+                        #figure out if insertion or deletion
+                        #insertion where there is also deletions (special handling)
+                        if len(ref) > 1 and len(alt)>len(ref):
+                            #print "nonstandard insertion at pos {}".format(record.POS)
+                            if seq not in insertions.keys():
+                                insertions[seq] = {}
+                            for i in xrange(len(ref)):
+                                #if the pos doesn't match, store in sequences
+                                if ref[i] != alt[i]:
+                                    sequences[seq][pos+i] = alt[i]
+                                    #if pos+1 not in positions:
+                                    positions.append(pos+i)
+                                #if about to run out of ref, store rest:
+                                if (i+1) >= len(ref):
+                                    insertions[seq][pos+i] = alt[i:]
+                                    #print "at pos {}, storing {} at pos {}".format(record.POS, alt[i:], (pos+i))
+
+                        #deletion
+                        elif len(ref) > 1:
+                            for i in xrange(len(ref)):
+                                #if ref is longer than alt, these are deletion positions
+                                if i+1 > len(alt):
+                                    sequences[seq][pos+i] = '-'
+                                    #if pos+i not in positions:
+                                    positions.append(pos+i)
+                                #if not, there may be mutations
+                                else:
+                                    if ref[i] != alt[i]:
+                                        if alt[i] == '.':
+                                            sequences[seq][pos+i] = 'N'
+                                        else:
+                                            sequences[seq][pos+i] = alt[i]
+                                        #if pos+i not in positions:
+                                        positions.append(pos+i)
+
+                        #insertion
+                        elif len(alt) > 1:
+                            #keep a record of insertions so can put them in if we want, later
+                            if seq not in insertions.keys():
+                                insertions[seq] = {}
+                            insertions[seq][pos] = alt
+                            #First base of insertions always matches ref, so don't need to store
+
+                        #no indel
+                        else:
+                            sequences[seq][pos] = alt
+                            #if pos not in positions:
+                            positions.append(pos)
+
+                    #if is uncertain call 0/1 or no call ./.
+                    #elif gen[0] == '0' or gen[2] == '0':
+                    else:
+                        pos=POS-1
+                        ref = REF
+
+                        # if deletion
+                        if len(ref) > 1:
+                            #if a hetero call on a deletion, deleted part is Ns
+                            #If no-call on deletion - I guess put N's as well!
+                            if gen[0] == '0' or gen[0] == '.':
+                                if gen[0] == '0':
+                                    alt = str(ALT[int(gen[2])-1])
+                                else: #if no-call, there is no alt, so just put Ns after 1st ref base?
+                                    alt = ref[0]
+                                for i in xrange(len(ref)):
+                                    #if ref is longer than alt, these are deletion positions
+                                    if i+1 > len(alt):
+                                        sequences[seq][pos+i] = 'N'
+                                        #if pos+i not in positions:
+                                        positions.append(pos+i)
+                                    #if not, there may be mutations
+                                    else:
+                                        if ref[i] != alt[i]:
+                                            if alt[i] == '.':
+                                                sequences[seq][pos+i] = 'N'
+                                            else:
+                                                sequences[seq][pos+i] = alt[i]
+                                            #if pos+i not in positions:
+                                            positions.append(pos+i)
+
+                            #elif gen[0] == '.':
+                            #    #if nocall on deletion, note
+                            #    print "No Call delet at position: {}".format(POS)
+
+                        #if het, see if proposed alt is 1bp mutation
+                        elif gen[0] == '0':
+                            alt = str(ALT[int(gen[2])-1])
+                            if len(alt)==1:
+                                #alt = getAmbigCode(ref,alt) #if want to allow ambig
+                                alt = 'N' #if you want to disregard ambig
+                                if seq not in sequences.keys():
+                                    sequences[seq] = {}
+                                sequences[seq][pos] = alt
+                                positions.append(pos)
+                            #else: #else an insertion, so ignore.
+                                #print "insertion at at position: {}, {}".format(POS, gen)
+
+                        #else it's a NC; see if all alts are 1
+                        #Then replace with N
+                        elif len(ALT)==len("".join(ALT)):
+                            alt = 'N'
+                            if seq not in sequences.keys():
+                                sequences[seq] = {}
+                            sequences[seq][pos] = alt
+                            positions.append(pos)
+
+                        #else:  #else is a NC insertion, so ignore.
+                            #print "insertion at at position: {}, {}".format(POS, gen)
+                        #if hetero or NC and alts are > 1, (insertion), ignore
+                        #because first base of an insertion is same.
+
+            elif line[0] == '#' and line[1] == 'C':
+                #header line, get all the information
+                line = line.strip()
+                header = line.split('\t')
+                headNP = np.array(header)
+                posLoc = np.where(headNP=='POS')[0][0]
+                refLoc = np.where(headNP=='REF')[0][0]
+                altLoc = np.where(headNP=='ALT')[0][0]
+                sampLoc = np.where(headNP=='FORMAT')[0][0]+1
+                samps = header[sampLoc:]
+                nsamp = len(samps)
+
+            #else you are a comment line, ignore.
+
+    positions = np.array(positions)
+    positions = np.unique(positions)
+    positions = np.sort(positions)
+
+    if nsamp > len(sequences): #one or more are same as ref! so haven't been 'seen' yet
+        missings = set(samps).difference(sequences.keys())
+        for s in missings:
+            sequences[s] = {}
+
+    refSeq = SeqIO.parse(ref_file, format='fasta').next()
+    refSeqStr = str(refSeq.seq)
+
+    compress_seq = {'reference':refSeqStr,
+                    'sequences': sequences,
+                    'insertions': insertions,
+                    'positions': positions}
+
+    return compress_seq
+
+
+def read_in_DRMs(drm_file):
+    import pandas as pd
+
+    DRMs = {}
+    drmPositions = []
+
+    df = pd.read_csv(drm_file, sep='\t')
+    for mi, m in df.iterrows():
+        pos = m.GENOMIC_POSITION-1+offset #put in correct numbering
+        drmPositions.append(pos)
+
+        if pos in DRMs:
+            DRMs[pos]['alt_base'][m.ALT_BASE] = m.SUBSTITUTION
+        else:
+            DRMs[pos] = {}
+            DRMs[pos]['drug'] = m.DRUG
+            DRMs[pos]['alt_base'] = {}
+            DRMs[pos]['alt_base'][m.ALT_BASE] = m.SUBSTITUTION
+            DRMs[pos]['gene'] = m.GENE
+
+    drmPositions = np.array(drmPositions)
+    drmPositions = np.unique(drmPositions)
+    drmPositions = np.sort(drmPositions)
+
+    DRM_info = {'DRMs': DRMs,
+            'drmPositions': drmPositions}
+
+    return DRM_info
+
+
+if __name__=="__main__":
+    ###########################################################################
+    ### parameter parsing
+    ###########################################################################
+    import argparse
+    parser = argparse.ArgumentParser(
+            description='Reconstructs ancestral sequences and maps mutations to the tree.'
+                        ' The tree is then scanned for homoplasies. An excess number of homoplasies'
+                        ' might suggest contamination, recombination, culture adaptation or similar. ')
+    parser.add_argument('--aln', required = True, type = str,  help ="fasta/vcf file with input nucleotide sequences")
+    parser.add_argument('--ref', required=False, type=str, help ="for VCF files, the reference fasta for the VCF")
+    parser.add_argument('--tree', type = str,  help ="newick file with tree (optional if tree builders installed)")
+    parser.add_argument('--detailed', required = False, action="store_true",  help ="generate a more detailed report")
+    parser.add_argument('--gtr', required=False, type = str, default='infer', help="GTR model to use. "
+        " Type 'infer' to infer the model from the data. Or, specify the model type. "
+        " If the specified model requires additional options, use '--gtr_args' to specify those")
+
+    parser.add_argument('--gtr_params', type=str, nargs='+', help="GTR parameters for the model "
+        "specified by the --gtr argument. The parameters should be feed as 'key=value' list of parameters. "
+        "Example: '--gtr K80 --gtr_params kappa=0.2 pis=0.25,0.25,0.25,0.25'. See the exact definitions of "
+        " the parameters in the GTR creation methods in treetime/nuc_models.py. Only nucleotide models supported at present")
+
+    parser.add_argument('--prot', default = False, action="store_true", help ="protein alignment")
+    parser.add_argument('--zero_based', default = False, action='store_true', help='zero based SNP indexing')
+    parser.add_argument('-n', default = 10, type=int, help='number of mutations/nodes that are printed to screen')
+    parser.add_argument('--verbose', default = 1, type=int, help='verbosity of output 0-6')
+    parser.add_argument('--drm', type=str, help="file with drug resistance mutation information")
+    params = parser.parse_args()
+
+
+    ###########################################################################
+    ### CHECK FOR TREE, build if not in place
+    ### Doubt this will work for VCF files - unchecked.
+    ###########################################################################
+    if params.tree is None:
+        from treetime.utils import tree_inference
+        params.tree = os.path.basename(params.aln)+'.nwk'
+        print("No tree given: inferring tree")
+        tmp_dir = 'homoplasy_scanner_tmp_files'
+        tree_inference(params.aln, params.tree, tmp_dir = tmp_dir)
+        if os.path.isdir(tmp_dir):
+            shutil.rmtree(tmp_dir)
+
+
+    ###########################################################################
+    ### GTR SET-UP
+    ###########################################################################
+    model = params.gtr
+    gtr_params = params.gtr_params
+    if model == 'infer':
+        gtr = GTR.standard('jc')
+        infer_gtr = True
+    else:
+        infer_gtr = False
+        try:
+            kwargs = {}
+            if gtr_params is not None:
+                for param in gtr_params:
+                    keyval = param.split('=')
+                    if len(keyval)!=2: continue
+                    if keyval[0] in ['pis', 'pi', 'Pi', 'Pis']:
+                        keyval[1] = map(float, keyval[1].split(','))
+                    elif keyval[0] not in ['alphabet']:
+                        keyval[1] = float(keyval[1])
+                    kwargs[keyval[0]] = keyval[1]
+            else:
+                print ("GTR params are not specified. Creating GTR model with default parameters")
+
+
+            gtr = GTR.standard(model, **kwargs)
+        except:
+            print ("Could not create GTR model from input arguments. Using default (Jukes-Cantor 1969)")
+            gtr = GTR.standard('jc')
+
+
+    ###########################################################################
+    ### ANCESTRAL RECONSTRUCTION
+    ###########################################################################
+    aln = params.aln
+    ref = params.ref
+    if params.ref:
+        compress_seq = read_in_vcf(params.aln, params.ref)
+        aln = compress_seq['sequences']
+        ref = compress_seq['reference']
+
+    treeanc = TreeAnc(params.tree, aln=aln, ref=ref, gtr=gtr, verbose=1,
+                      fill_overhangs=True)
+    #L = treeanc.aln.get_alignment_length() #won't work for VCF
+    L = treeanc.seq_len
+    N_seq = len(treeanc.aln)
+    N_tree = treeanc.tree.count_terminals()
+
+    print("read alignment from file %s with %d sequences of length %d"%(params.aln,N_seq,L))
+    print("read tree from file %s with %d leaves"%(params.tree,N_tree))
+    print("\ninferring ancestral sequences...")
+
+    pi = None
+    if params.ref:
+        pi = np.array([0.1618, 0.3188, 0.3176, 0.1618, 0.04])
+    treeanc.infer_ancestral_sequences('ml', infer_gtr=infer_gtr, fixed_pi=pi, marginal=False)
+    if params.ref:
+        treeanc.recover_var_ambigs() #put Ns back on tips!
+    print("...done.")
+
+    ###########################################################################
+    ### analysis of reconstruction
+    ###########################################################################
+    from collections import defaultdict
+    from scipy.stats import poisson
+    offset = 0 if params.zero_based else 1
+
+    # construct dictionaries gathering mutations and positions
+    mutations = defaultdict(list)
+    positions = defaultdict(list)
+    terminal_mutations = defaultdict(list)
+    for n in treeanc.tree.find_clades():
+        if n.up is None:
+            continue
+
+        #now doesn't track N's either.
+        if len(n.mutations):
+            for (a,pos, d) in n.mutations:
+                if '-' not in [a,d] and 'N' not in [a,d]:
+                    mutations[(a,pos+offset,d)].append(n)
+                    positions[pos+offset].append(n)
+            if n.is_terminal():
+                for (a,pos, d) in n.mutations:
+                    if '-' not in [a,d] and 'N' not in [a,d]:
+                        terminal_mutations[(a,pos+offset,d)].append(n)
+
+    # gather homoplasic mutations by strain
+    mutation_by_strain = defaultdict(list)
+    for n in treeanc.tree.get_terminals():
+        for a,pos,d in n.mutations:
+            if pos+offset in positions and len(positions[pos+offset])>1:
+                if 'N' not in [a,d]:
+                    mutation_by_strain[n.name].append([(a,pos+offset,d), len(positions[pos+offset])])
+
+
+    # total_branch_length is the expected number of substitutions
+    # corrected_branch_length is the expected number of observable substitutions
+    # (probability of an odd number of substitutions at a particular site)
+    total_branch_length = treeanc.tree.total_branch_length()
+    corrected_branch_length = np.sum([np.exp(-x.branch_length)*np.sinh(x.branch_length)
+                                      for x in treeanc.tree.find_clades()])
+    corrected_terminal_branch_length = np.sum([np.exp(-x.branch_length)*np.sinh(x.branch_length)
+                                      for x in treeanc.tree.get_terminals()])
+    expected_mutations = L*corrected_branch_length
+    expected_terminal_mutations = L*corrected_terminal_branch_length
+
+    # make histograms and sum mutations in different categories
+    multiplicities = np.bincount([len(x) for x in mutations.values()])
+    total_mutations = np.sum([len(x) for x in mutations.values()])
+
+    multiplicities_terminal = np.bincount([len(x) for x in terminal_mutations.values()])
+    terminal_mutation_count = np.sum([len(x) for x in terminal_mutations.values()])
+
+    multiplicities_positions = np.bincount([len(x) for x in positions.values()])
+    multiplicities_positions[0] = L - np.sum(multiplicities_positions)
+
+    ###########################################################################
+    ### Output the distribution of times particular mutations are observed
+    ###########################################################################
+    print("\nThe TOTAL tree length is %1.3e, expecting %1.1f mutations vs an observed %d"
+          %(total_branch_length,expected_mutations,total_mutations))
+    print("Of these %d mutations,"%total_mutations
+            +"".join(['\n\t - %d occur %d times'%(n,mi)
+                      for mi,n in enumerate(multiplicities) if n]))
+    # additional optional output this for terminal mutations only
+    if params.detailed:
+        print("\nThe TERMINAL branch length is %1.3e, expecting %1.1f mutations vs an observed %d"
+              %(corrected_terminal_branch_length,expected_terminal_mutations,terminal_mutation_count))
+        print("Of these %d mutations,"%terminal_mutation_count
+                +"".join(['\n\t - %d occur %d times'%(n,mi)
+                          for mi,n in enumerate(multiplicities_terminal) if n]))
+
+
+    ###########################################################################
+    ### Output the distribution of times mutations at particular positions are observed
+    ###########################################################################
+    print("\nOf the %d positions in the genome,"%L
+            +"".join(['\n\t - %d were hit %d times (expected %1.2f)'%(n,mi,L*poisson.pmf(mi,1.0*total_mutations/L))
+                      for mi,n in enumerate(multiplicities_positions) if n]))
+
+
+    # compare that distribution to a Poisson distribution with the same mean
+    p = poisson.pmf(np.arange(10*multiplicities_positions.max()),1.0*total_mutations/L)
+    print("\nlog-likelihood difference to Poisson distribution with same mean: %1.3e"%(
+            - L*np.sum(p*np.log(p+1e-100))
+            + np.sum(multiplicities_positions*np.log(p[:len(multiplicities_positions)]+1e-100))))
+
+
+
+    ###########################################################################
+    #Read in DRM information if supplied
+    if params.drm:
+        DRM_info = read_in_DRMs(params.drm)
+        drms = DRM_info['DRMs']
+
+
+
+    ###########################################################################
+    ### Output the mutations that are observed most often
+    ###########################################################################
+    print("\n\nThe ten most homoplasic mutations are:\n\tmut\tmultiplicity\tDRM details")
+    mutations_sorted = sorted(mutations.items(), key=lambda x:len(x[1])-0.1*x[0][1]/L, reverse=True)
+    for mut, val in mutations_sorted[:params.n]:
+        if len(val)>1:
+            print("\t%s%d%s\t%d\t%s"%(mut[0], mut[1], mut[2], len(val),
+                " ".join([drms[mut[1]]['gene'], drms[mut[1]]['drug'], drms[mut[1]]['alt_base'][mut[2]]]) if mut[1] in drms else ""))
+        else:
+            break
+
+    # optional output specifically for mutations on terminal branches
+    if params.detailed:
+        print("\n\nThe ten most homoplasic mutation on terminal branches are:\n\tmut\tmultiplicity\tDRM details")
+        terminal_mutations_sorted = sorted(terminal_mutations.items(), key=lambda x:len(x[1])-0.1*x[0][1]/L, reverse=True)
+        for mut, val in terminal_mutations_sorted[:params.n]:
+            if len(val)>1:
+                print("\t%s%d%s\t%d\t%s"%(mut[0], mut[1], mut[2], len(val),
+                    " ".join([drms[mut[1]]['gene'], drms[mut[1]]['drug'], drms[mut[1]]['alt_base'][mut[2]]]) if mut[1] in drms else ""))
+            else:
+                break
+
+    ###########################################################################
+    ### Output strains that have many homoplasic mutations
+    ###########################################################################
+    # TODO: add statistical criterion
+    if params.detailed:
+        print("\n\nTaxons that carry positions that mutated elsewhere in the tree:\n\ttaxon name\t#of homoplasic mutations \t# DRM")
+        mutation_by_strain_sorted = sorted(mutation_by_strain.items(), key=lambda x:len(x[1]), reverse=True)
+        for name, val in mutation_by_strain_sorted[:params.n]:
+            if len(val):
+                print("\t%s\t%d\t%d"%(name, len(val),
+                        len([mut for mut,l in val if mut[1] in drms])))
