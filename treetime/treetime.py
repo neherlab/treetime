@@ -105,7 +105,6 @@ class TreeTime(ClockTree):
         seq_kwargs = {"marginal_sequences":long_branch_mode,
                       "marginal_branchlength":long_branch_mode,
                       "sample_from_profile":"root"}
-        seq_kwargs = {"marginal":False, "sample_from_profile":"root"}
         if "fixed_pi" in kwargs:
             seq_kwargs["fixed_pi"] = kwargs["fixed_pi"]
         if "do_marginal" in kwargs:
