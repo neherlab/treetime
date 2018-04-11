@@ -18,10 +18,10 @@ if __name__=="__main__":
 " Inferred mutations are included as comments. The molecular clock, along with the inferred"\
 " GTR model, is written to stdout)")
     parser.add_argument('--aln', required = True, type = str,  help ="fasta file with input sequences")
-    parser.add_argument('--tree', required = True, type = str,  help ="newick file with tree")
     parser.add_argument('--dates', required = True, type = str,
                         help ="csv with dates for nodes with 'node_name, date' where date is float (as in 2012.15)")
     # parser.add_argument('--infer_gtr', default = True, action='store_true', help='infer substitution model')
+    parser.add_argument('--tree', type = str,  help ="newick file with tree")
     parser.add_argument('--gtr', default='infer', type = str, help="GTR model to use. "
         " Type 'infer' to infer the model from the data. Or, specify the model type. "
         "Optionally, feed the arguments with the '--gtr_args' option")
@@ -65,6 +65,20 @@ if __name__=="__main__":
                 dates[name] = float(date)
             except:
                 continue
+
+
+    ###########################################################################
+    ### CHECK FOR TREE, build if not in place
+    ###########################################################################
+    if params.tree is None:
+        from treetime.utils import tree_inference
+        import os,shutil
+        params.tree = os.path.basename(params.aln)+'.nwk'
+        print("No tree given: inferring tree")
+        tmp_dir = 'timetree_inference_tmp_files'
+        tree_inference(params.aln, params.tree, tmp_dir = tmp_dir)
+        if os.path.isdir(tmp_dir):
+            shutil.rmtree(tmp_dir)
 
 
     ###########################################################################
@@ -151,14 +165,16 @@ if __name__=="__main__":
                                        +('...' if  len(x.mutations)>10 else '')) if leaf_count<30 else ''
         plot_vs_years(myTree, show_confidence=False, label_func = label_func) #, branch_labels=branch_label_func)
         plt.savefig(base_name+'_tree.pdf')
+        print("--- saved tree as pdf in \n\t %s\n"%(base_name+'_tree.pdf'))
     else:
         # convert branch length to years (this is implicit in the above plot)
         myTree.branch_length_to_years()
 
     # decorate tree with inferred mutations
     outaln_name = base_name+'_ancestral.fasta'
-
     AlignIO.write(myTree.get_reconstructed_alignment(), outaln_name, 'fasta')
+    print("--- alignment including ancestral nodes saved as  \n\t %s\n"%outaln_name)
+
     terminal_count = 0
     for n in myTree.tree.find_clades():
         if n.up is None:
@@ -176,3 +192,4 @@ if __name__=="__main__":
     outtree_name = '.'.join(params.tree.split('/')[-1].split('.')[:-1])+'_timetree.nexus'
     Phylo.write(myTree.tree, outtree_name, 'nexus')
 
+    print("--- tree saved in nexus format as  \n\t %s\n"%outtree_name)

@@ -17,9 +17,10 @@ if __name__=="__main__":
                         ' like _A45G_..., number in SNPs used 1-based index by default.'
                         ' The inferred GTR model is written to stdout')
     parser.add_argument('--aln', required = True, type = str,  help ="fasta file with input sequences")
-    parser.add_argument('--tree', required = True, type = str,  help ="newick file with tree")
+    parser.add_argument('--tree', type = str,  help ="newick file with tree, "
+                                                     "will attempt to build tree if none given.")
 
-    parser.add_argument('--gtr', required=False, type = str, default='infer', help="GTR model to use. "
+    parser.add_argument('--gtr', type = str, default='infer', help="GTR model to use. "
         " Type 'infer' to infer the model from the data. Or, specify the model type. "
         " If the specified model requires additional options, use '--gtr_args' to specify those")
 
@@ -29,13 +30,25 @@ if __name__=="__main__":
         " the parameters in the GTR creation methods in treetime/nuc_models.py or treetime/aa_models.py")
 
     parser.add_argument('--prot', default = False, action="store_true", help ="protein alignment")
-    parser.add_argument('--marginal', default = False, action="store_true", help ="protein alignment")
+    parser.add_argument('--marginal', default = False, action="store_true", help ="marginal reconstruction of ancestral sequences")
     parser.add_argument('--zero_based', default = False, action='store_true', help='zero based SNP indexing')
     parser.add_argument('--keep_overhangs', default = False, action='store_true', help='do not fill terminal gaps')
     parser.add_argument('--verbose', default = 1, type=int, help='verbosity of output 0-6')
     params = parser.parse_args()
 
 
+    ###########################################################################
+    ### CHECK FOR TREE, build if not in place
+    ###########################################################################
+    if params.tree is None:
+        from treetime.utils import tree_inference
+        import os,shutil
+        params.tree = os.path.basename(params.aln)+'.nwk'
+        print("No tree given: inferring tree")
+        tmp_dir = 'ancestral_reconstruction_tmp_files'
+        tree_inference(params.aln, params.tree, tmp_dir = tmp_dir)
+        if os.path.isdir(tmp_dir):
+            shutil.rmtree(tmp_dir)
 
     ###########################################################################
     ### GTR SET-UP
@@ -87,6 +100,7 @@ if __name__=="__main__":
 
     outaln_name = '.'.join(params.aln.split('/')[-1].split('.')[:-1])+'_ancestral.fasta'
     AlignIO.write(treeanc.get_reconstructed_alignment(), outaln_name, 'fasta')
+    print("--- alignment including ancestral nodes saved as  \n\t %s\n"%outaln_name)
 
     # decorate tree with inferred mutations
     terminal_count = 0
@@ -106,3 +120,4 @@ if __name__=="__main__":
     # write tree to file
     outtree_name = '.'.join(params.tree.split('/')[-1].split('.')[:-1])+'_mutation.nexus'
     Phylo.write(treeanc.tree, outtree_name, 'nexus')
+    print("--- tree saved in nexus format as  \n\t %s\n"%outtree_name)
