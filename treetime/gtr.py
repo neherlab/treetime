@@ -98,17 +98,17 @@ class GTR(object):
 
         eq_freq_str += "\nEquilibrium frequencies (pi_i):\n"
         for a,p in zip(self.alphabet, self.Pi):
-            eq_freq_str+=str(a)+': '+str(np.round(p,4))+'\n'
+            eq_freq_str+='  '+str(a)+': '+str(np.round(p,4))+'\n'
 
         W_str = "\nSymmetrized rates from j->i (W_ij):\n"
         W_str+='\t'+'\t'.join(map(str, self.alphabet))+'\n'
         for a,Wi in zip(self.alphabet, self.W):
-            W_str+=str(a)+'\t'+'\t'.join([str(np.round(max(0,p),4)) for p in Wi])+'\n'
+            W_str+= '  '+str(a)+'\t'+'\t'.join([str(np.round(max(0,p),4)) for p in Wi])+'\n'
 
         Q_str = "\nActual rates from j->i (Q_ij):\n"
         Q_str+='\t'+'\t'.join(map(str, self.alphabet))+'\n'
         for a,Qi in zip(self.alphabet, self.Q):
-            Q_str+=str(a)+'\t'+'\t'.join([str(np.round(max(0,p),4)) for p in Qi])+'\n'
+            Q_str+= '  '+str(a)+'\t'+'\t'.join([str(np.round(max(0,p),4)) for p in Qi])+'\n'
 
         return eq_freq_str + W_str + Q_str
 

@@ -37,8 +37,8 @@ if __name__ == '__main__':
     plt.ion()
     base_name = 'data/H3N2_NA_allyears_NA.20'
     dates = read_dates(base_name)
-    tt = TreeTime(gtr='Jukes-Cantor', tree = base_name+'.nwk',
-                          aln = base_name+'.fasta', verbose = 1, dates = dates)
+    tt = TreeTime(gtr='Jukes-Cantor', tree = base_name+'.nwk', precision=0,
+                  aln = base_name+'.fasta', verbose = 1, dates = dates)
 
     # inititally the root if the tree is a mess:
     fig, axs = plt.subplots(1,2, figsize=(18,9))

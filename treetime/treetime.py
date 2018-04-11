@@ -102,6 +102,8 @@ class TreeTime(ClockTree):
         """
         # determine how to reconstruct and sample sequences
         seq_kwargs = {"marginal":False, "sample_from_profile":"root"}
+        if "fixed_pi" in kwargs:
+            seq_kwargs["fixed_pi"] = kwargs["fixed_pi"]
         if "do_marginal" in kwargs:
             time_marginal=kwargs["do_marginal"]
 
@@ -323,7 +325,7 @@ class TreeTime(ClockTree):
         ----------
 
          root : str
-            Which method shoudl use to find the best root. Available methods are:
+            Which method should be used to find the best root. Available methods are:
 
             :code:`best` - maximize root-to-tip regression coefficient
 
@@ -331,6 +333,7 @@ class TreeTime(ClockTree):
 
             :code:`<node_name>` - reroot to the node with name :code:`<node_name>`
 
+            :code:`[<node_name1>, <node_name2>, ...]` - reroot to the MRCA of these nodes
         """
         self.logger("TreeTime.reroot: with method or node: %s"%root,1)
         for n in self.tree.find_clades():
@@ -338,6 +341,8 @@ class TreeTime(ClockTree):
         from Bio import Phylo
         if isinstance(root,Phylo.BaseTree.Clade):
             new_root = root
+        elif isinstance(root, list):
+            new_root = self.tree.common_ancestor(*root)
         elif root in self._leaves_lookup:
             new_root = self._leaves_lookup[root]
         elif root=='oldest':
@@ -350,14 +355,22 @@ class TreeTime(ClockTree):
             new_root = self.reroot_to_best_root(criterium='rsq')
         elif root=='residual':
             new_root = self.reroot_to_best_root(criterium='residual')
+        elif root=='min_dev':
+            new_root = self.reroot_to_best_root(criterium='min_dev')
         else:
             self.logger('TreeTime.reroot -- WARNING: unsupported rooting mechanisms or root not found',2,warn=True)
             return
 
         self.logger("TreeTime.reroot: Tree is being re-rooted to node "
                     +('new_node' if new_root.name is None else new_root.name), 2)
-        self.tree.root_with_outgroup(new_root)
-        # new nodes are produced when rooting with a terminal node, copy this clock info
+        if isinstance(root, list):
+            #this forces a bifurcating root, as we want. Branch lengths will be reoptimized anyway.
+            #(Without outgroup_branch_length, gives a trifurcating root, but this will mean
+            #mutations may have to occur multiple times.)
+            self.tree.root_with_outgroup(new_root, outgroup_branch_length=new_root.branch_length/2)
+        else:
+            self.tree.root_with_outgroup(new_root)
+       # new nodes are produced when rooting with a terminal node, copy this clock info
 
         if new_root.is_terminal():
             if hasattr(new_root, "_alpha"):
@@ -641,7 +654,7 @@ class TreeTime(ClockTree):
         if tip_count<2:
             self.logger("****ERROR: TreeTime.find_best_root_and_regression: need at least two dates to reroot!", 0, warn=True)
             self.logger("****ERROR: only %d tips have valid dates!"%N, 0, warn=True)
-            return selt.tree.root, np.nan, np.nan
+            return self.tree.root, np.nan, np.nan
 
         Ninv = 1.0/N
         time_variance = (N*sum_ti2 - sum_ti**2)*Ninv**2
@@ -776,7 +789,7 @@ class TreeTime(ClockTree):
                 # for this position, define the clock_rate and intercept:
                 node._beta = ((L - node._R2_delta_x) * (N * C2 - sum_ti * A2) + (N*C1-sum_ti*A1)) / time_variance / N**2
                 node._alpha = (L - node._R2_delta_x) * A2 / N  + (A1 - node._beta * sum_ti) / N
-            elif criterium=='residual': # calculate the squared residuals and minimize as rooting criterium
+            elif criterium in ['residual', 'min_dev']: # calculate the squared residuals and minimize as rooting criterium
                 L = node.branch_length
                 # number of nodes descendent and outgrouping this node
                 n_up = N - node._st_n_leaves
@@ -837,7 +850,7 @@ class TreeTime(ClockTree):
                     best_root = node
                     self.logger("TreeTime.find_best_root_and_regression: Better root found: R2:%f\tclock_rate:%.3e\tbranch_displacement:%f"
                             %(best_root._R2, best_root._beta, (best_root._R2_delta_x) / ( best_root.branch_length + self.one_mutation)),4)
-            elif criterium=='residual':
+            elif criterium in ['residual', 'min_dev']:
                 if node.up is None:
                     self.logger("TreeTime.find_best_root_and_regression: Initial root: residual:%.3e\tclock_rate:%.3e"%(best_root._residual, best_root._beta),3)
                 if  node._residual < best_root_any._residual:
@@ -860,6 +873,13 @@ class TreeTime(ClockTree):
                         %(best_root_any._residual, best_root_any._beta), 1)
             self.logger("TreeTime.find_best_root_an_R2_delta_xd_regression: Best root: residual:%.3e\tclock_rate:%.3e\tbranch_displacement:%f"
                         %(best_root._residual, best_root._beta, (best_root._R2_delta_x) / ( best_root.branch_length + 0.001*self.one_mutation)),3)
+        elif criterium=='min_dev':
+            if (best_root_any._residual < best_root._residual):
+                self.logger("WARNING: TreeTime.find_best_root_and_regression: optimal regression has negative rate",1)
+                best_root = best_root_any
+            self.logger("TreeTime.find_best_root_an_R2_delta_xd_regression: Best root: residual:%.3e\tclock_rate:%.3e\tbranch_displacement:%f"
+                        %(best_root._residual, best_root._beta, (best_root._R2_delta_x) / ( best_root.branch_length + 0.001*self.one_mutation)),3)
+
         return best_root, best_root._alpha, best_root._beta
 
 

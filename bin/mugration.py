@@ -30,7 +30,7 @@ if __name__=="__main__":
     # parser.add_argument('--infer_gtr', action="store_true", help="infer GTR model from tree. "
     #                                 "Ignored when prop or migration is specified.")
     parser.add_argument('--confidence', action="store_true", help="output confidence of mugration inference")
-
+    parser.add_argument('--pc', type=float, default=1.0, help ="pseudo-counts higher numbers will results in 'flatter' models")
     parser.add_argument('--verbose', default = 1, type=int, help='verbosity of output 0-6')
     params = parser.parse_args()
     missing = "?"
@@ -102,7 +102,7 @@ if __name__=="__main__":
     treeanc.aln = MultipleSeqAlignment(pseudo_seqs)
 
     treeanc.infer_ancestral_sequences(method='ml', infer_gtr=True,
-            store_compressed=False, pc=5.0, marginal=True, normalized_rate=False,
+            store_compressed=False, pc=params.pc, marginal=True, normalized_rate=False,
             fixed_pi=weights if params.weights else None)
 
 
@@ -114,9 +114,13 @@ if __name__=="__main__":
     bname = './'+os.path.basename(params.tree)
     gtr_name = bname + '.GTR.txt'
     with open(gtr_name, 'w') as ofile:
-        ofile.write(str(treeanc.gtr)+'\n')
+        ofile.write('Character to attribute mapping:\n')
+        for state in unique_states:
+            ofile.write('  %s: %s\n'%(reverse_alphabet[state], state))
+        ofile.write('\n\n'+str(treeanc.gtr)+'\n')
         print("\nSaved inferred mugration model as:", gtr_name)
 
+    terminal_count = 0
     for n in treeanc.tree.find_clades():
         if n.up is None:
             continue

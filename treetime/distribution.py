@@ -51,12 +51,12 @@ class Distribution(object):
 
 
     @classmethod
-    def delta_function(cls, x_pos, weight=1.):
+    def delta_function(cls, x_pos, weight=1., min_width=MIN_INTEGRATION_PEAK):
         """
         Create delta function distribution.
         """
 
-        distribution = cls(x_pos,0.,is_log=True)
+        distribution = cls(x_pos,0.,is_log=True, min_width=min_width)
         distribution.weight  = weight
         return distribution
 
@@ -73,6 +73,7 @@ class Distribution(object):
             raise NotImplementedError("Can only multiply Distribution objects")
 
         n_delta = np.sum([k.is_delta for k in dists])
+        min_width = np.max([k.min_width for k in dists])
         if n_delta>1:
             raise ArithmeticError("Cannot multiply more than one delta functions!")
         elif n_delta==1:
@@ -80,7 +81,7 @@ class Distribution(object):
             delta_dist = dists[delta_dist_ii]
             new_xpos = delta_dist.peak_pos
             new_weight  = np.prod([k.prob(new_xpos) for k in dists if k!=delta_dist_ii]) * delta_dist.weight
-            res = Distribution.delta_function(new_xpos, weight = new_weight)
+            res = Distribution.delta_function(new_xpos, weight = new_weight,min_width=min_width)
         else:
             new_xmin = np.max([k.xmin for k in dists])
             new_xmax = np.min([k.xmax for k in dists])
@@ -95,21 +96,24 @@ class Distribution(object):
                 print ("ERROR in distribution multiplication: Distributions do not overlap")
                 x_vals = [0,1]
                 y_vals = [BIG_NUMBER,BIG_NUMBER]
-                res = Distribution(x_vals, y_vals, is_log=True, kind='linear')
+                res = Distribution(x_vals, y_vals, is_log=True,
+                                   min_width=min_width, kind='linear')
             elif n_points == 1:
                 res = Distribution.delta_function(x_vals[0])
             else:
-                res = Distribution(x_vals[ind], y_vals[ind], is_log=True, kind='linear')
+                res = Distribution(x_vals[ind], y_vals[ind], is_log=True,
+                                   min_width=min_width, kind='linear')
 
         return res
 
 
-    def __init__(self, x, y, is_log=True, kind='linear'):
+    def __init__(self, x, y, is_log=True, min_width = MIN_INTEGRATION_PEAK, kind='linear'):
 
         """
         Create Distribution instance
         """
 
+        self.min_width = min_width
         if isinstance(x, Iterable) and isinstance (y, Iterable):
 
             self._delta = False # NOTE in classmethod this value is set explicitly to True.
@@ -299,7 +303,7 @@ class Distribution(object):
         if n % 2 == 0:
             n += 1
         mult = 1.0/6
-        dpeak = max(5*self.fwhm, MIN_INTEGRATION_PEAK)
+        dpeak = max(10*self.fwhm, self.min_width)
         threshold = np.array([a,self.peak_pos-dpeak, self.peak_pos+dpeak,b])
         threshold = threshold[(threshold>=a)&(threshold<=b)]
         threshold.sort()
