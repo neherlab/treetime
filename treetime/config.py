@@ -6,8 +6,22 @@ MIN_LOG = -1e8 # minimal log value
 MIN_BRANCH_LENGTH = 1e-3 # fraction of length 'one_mutation' that is used as lower cut-off for branch lengths in GTR
 
 # distribution parameters
+BRANCH_GRID_SIZE_ROUGH = 200
+NODE_GRID_SIZE_ROUGH = 60
+N_INTEGRAL_ROUGH = 60
+
 BRANCH_GRID_SIZE = 250
-NODE_GRID_SIZE = 60
+NODE_GRID_SIZE = 100
+N_INTEGRAL = 100
+
+BRANCH_GRID_SIZE_FINE = 300
+NODE_GRID_SIZE_FINE = 180
+N_INTEGRAL_FINE = 150
+
+BRANCH_GRID_SIZE_ULTRA = 400
+NODE_GRID_SIZE_ULTRA = 400
+N_INTEGRAL_ULTRA = 250
+
 MIN_INTEGRATION_PEAK = 0.001
 
 # clocktree parameters

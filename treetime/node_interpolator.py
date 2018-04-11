@@ -6,7 +6,8 @@ import config as ttconf
 def _create_initial_grid(node_dist, branch_dist):
     pass
 
-def _convolution_integrand(t_val, f, g, inverse_time=None, return_log=False):
+def _convolution_integrand(t_val, f, g,
+                           inverse_time=None, return_log=False):
     '''
     Evaluates int_tau f(t+tau)*g(tau) or int_tau f(t-tau)g(tau) if inverse time is TRUE
 
@@ -78,7 +79,8 @@ def _convolution_integrand(t_val, f, g, inverse_time=None, return_log=False):
             fg = f(t_val + tau) + g(tau, tnode=t_val)
 
         # create the interpolation object on this grid
-        FG = Distribution(tau, fg, is_log=True, kind='linear')
+        FG = Distribution(tau, fg, is_log=True, min_width = np.max([f.min_width, g.min_width]),
+                          kind='linear')
         return FG
 
 
@@ -161,7 +163,8 @@ class NodeInterpolator (Distribution):
 
     @classmethod
     def convolve(cls, node_interp, branch_interp, max_or_integral='integral',
-                 n_integral=100, inverse_time=True, rel_tol=0.05, yc=10):
+                 n_grid_points = ttconf.NODE_GRID_SIZE, n_integral=ttconf.N_INTEGRAL,
+                 inverse_time=True, rel_tol=0.05, yc=10):
 
         '''
         calculate H(t) = \int_tau f(t-tau)g(tau) if inverse_time=True
@@ -202,7 +205,6 @@ class NodeInterpolator (Distribution):
 
         # make initial node grid consisting of linearly spaced points around
         # the center and quadratically spaced points at either end
-        n_grid_points = ttconf.NODE_GRID_SIZE
         n = n_grid_points/3
         center_width = 3*joint_fwhm
         grid_center = new_peak_pos + np.linspace(-1, 1, n)*center_width
@@ -274,7 +276,8 @@ class NodeInterpolator (Distribution):
         # grid, which maximizes the convolution (for 'max' option),
         # or flat -1 distribution (for 'integral' option)
         # this grid is the optimal branch length
-        res_t = Distribution(t_grid_0, t_0, is_log=True, kind='linear')
+        res_t = Distribution(t_grid_0, t_0, is_log=True,
+                             min_width=node_interp.min_width, kind='linear')
 
         return res_y, res_t
 
