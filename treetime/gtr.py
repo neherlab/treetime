@@ -691,6 +691,9 @@ class GTR(object):
                     bounds=[-np.sqrt(ttconf.MAX_BRANCH_LENGTH),np.sqrt(ttconf.MAX_BRANCH_LENGTH)],
                     args=(seq_pair, multiplicity), tol=1e-10)
             new_len = opt["x"]**2
+            if 'success' not in opt:
+                opt['success'] = True
+                self.logger("WARNING: the optimization result does not contain a 'success' flag:"+str(opt),4, warn=True)
         except:
             import scipy
             print('legacy scipy', scipy.__version__)
