@@ -9,7 +9,8 @@ class BranchLenInterpolator (Distribution):
 
     """
 
-    def __init__(self, node, gtr, one_mutation=None, ignore_gaps=True):
+    def __init__(self, node, gtr, one_mutation=None, min_width=ttconf.MIN_INTEGRATION_PEAK,
+                 n_grid_points = ttconf.BRANCH_GRID_SIZE, ignore_gaps=True):
 
         self.node = node
         self.gtr = gtr
@@ -23,7 +24,6 @@ class BranchLenInterpolator (Distribution):
             one_mutation = 1.0/node.sequence.shape[0]
         # optimal branch length
         mutation_length = node.mutation_length
-        n_grid_points = ttconf.BRANCH_GRID_SIZE
         if mutation_length < np.min((1e-5, 0.1*one_mutation)): # zero-length
             short_range = 10*one_mutation
             grid = np.concatenate([short_range*(np.linspace(0, 1.0 , n_grid_points/2)[:-1]),
@@ -59,7 +59,8 @@ class BranchLenInterpolator (Distribution):
 
         # tmp_dis = Distribution(grid, log_prob, is_log=True, kind='linear')
         # norm = tmp_dis.integrate(a=tmp_dis.xmin, b=tmp_dis.xmax, n=200)
-        super(BranchLenInterpolator, self).__init__(grid, log_prob, is_log=True, kind='linear')
+        super(BranchLenInterpolator, self).__init__(grid, log_prob, is_log=True,
+                                                    kind='linear', min_width=min_width)
 
 
     @property
