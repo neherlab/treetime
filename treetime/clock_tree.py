@@ -42,6 +42,11 @@ class ClockTree(TreeAnc):
             If True, some additional checks for the input dates sanity will be
             performed.
 
+         precision : int
+            precision can be 0 (rough), 1 (default), 2 (fine), or 3 (ultra fine)
+            this parameter determines the number of grid points that are used
+            for the evaluation of the branch length interpolation objects.
+
         Keyword Args
         ------------
             Kwargs needed to construct parent class (TreeAnc)
