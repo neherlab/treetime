@@ -1438,7 +1438,7 @@ class TreeAnc(object):
 
     def optimize_branch_length_global(self, **kwargs):
         """
-
+        EXPERIMENTAL GLOBAL OPTIMIZATION
         """
 
         self.logger("TreeAnc.optimize_branch_length_global: running branch length optimization...",1)
@@ -1485,6 +1485,7 @@ class TreeAnc(object):
         self.tree.root.up = None
         self.tree.root.dist2root = 0.0
         self._prepare_nodes()
+
 
     def optimal_branch_length(self, node):
         '''

@@ -10,7 +10,7 @@ class BranchLenInterpolator (Distribution):
     """
 
     def __init__(self, node, gtr, one_mutation=None, min_width=ttconf.MIN_INTEGRATION_PEAK,
-                 marginal_branchlength = False, pattern_multiplicity = None,
+                 branch_lengths = 'joint', pattern_multiplicity = None,
                  n_grid_points = ttconf.BRANCH_GRID_SIZE, ignore_gaps=True):
 
         self.node = node
@@ -22,7 +22,9 @@ class BranchLenInterpolator (Distribution):
 
         self._merger_cost = None
         if one_mutation is None:
-            one_mutation = 1.0/node.sequence.shape[0]
+            L = node.sequence.shape[0]
+            one_mutation = 1.0/L
+
         # optimal branch length
         mutation_length = node.mutation_length
         if mutation_length < np.min((1e-5, 0.1*one_mutation)): # zero-length
@@ -44,7 +46,18 @@ class BranchLenInterpolator (Distribution):
             grid = np.concatenate((grid_zero,grid_zero2, grid_left,grid_right[1:],far_grid[1:]))
             grid.sort() # just for safety
 
-        if marginal_branchlength:
+        if branch_lengths=='input':
+            variance_scale = one_mutation*ttconf.OVER_DISPERSION
+            if mutation_length<0.05:
+                log_prob = np.array([ k - mutation_length*np.log(k+0.001*one_mutation) for k in grid])/variance_scale
+                log_prob -= log_prob.min()
+            else:
+                # make it a Gaussian
+                sigma_sq = (mutation_length+one_mutation)*variance_scale
+                sigma = np.sqrt(sigma_sq+1e-5)
+                log_prob = np.array(np.min([[ 0.5*(mutation_length-k)**2/sigma_sq for k in grid],
+                                             100 + np.abs([(mutation_length-k)/sigma for k in grid])], axis=0))
+        elif branch_lengths=='marginal':
             if hasattr(node, 'profile_pair'):
                 log_prob = np.array([-self.gtr.prob_t_profiles(node.profile_pair,
                                                         pattern_multiplicity,
@@ -55,7 +68,7 @@ class BranchLenInterpolator (Distribution):
                 raise Exception("profile pairs need to be assigned to node")
 
 
-        else:
+        elif branch_lengths=='joint':
             if not hasattr(node, 'compressed_sequence'):
                 #FIXME: this assumes node.sequence is set, but this might not be the case if
                 # ancestral reconstruction is run with final=False
@@ -72,7 +85,8 @@ class BranchLenInterpolator (Distribution):
                                                     k,
                                                     return_log=True)
                                 for k in grid])
-
+        else:
+            raise Exception("unknown branch length mode!")
         # tmp_dis = Distribution(grid, log_prob, is_log=True, kind='linear')
         # norm = tmp_dis.integrate(a=tmp_dis.xmin, b=tmp_dis.xmax, n=200)
         super(BranchLenInterpolator, self).__init__(grid, log_prob, is_log=True,
