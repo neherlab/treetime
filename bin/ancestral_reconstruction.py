@@ -85,7 +85,8 @@ if __name__=="__main__":
     ###########################################################################
     ### ANCESTRAL RECONSTRUCTION
     ###########################################################################
-    treeanc = TreeAnc(params.tree, aln=params.aln, gtr=gtr, verbose=4, fill_overhangs=not params.keep_overhangs)
+    treeanc = TreeAnc(params.tree, aln=params.aln, gtr=gtr, verbose=4,
+                      fill_overhangs=not params.keep_overhangs)
     treeanc.infer_ancestral_sequences('ml', infer_gtr=infer_gtr,
                                        marginal=params.marginal)
 
