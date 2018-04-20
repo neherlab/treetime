@@ -23,7 +23,7 @@ if __name__=="__main__":
     parser.add_argument('--states', required = True, type=str, help ="csv or tsv file with discrete characters."
                                     "\n#name,country,continent\ntaxon1,micronesia,oceania\n...")
     parser.add_argument('--weights', type=str, help="csv or tsv file with probabilities of that a randomly sampled "
-                        "sequence has a particular state. E.g. population of different continents or countries. E.g.:"
+                        "sequence at equilibrium has a particular state. E.g. population of different continents or countries. E.g.:"
                         "\n#country,weight\nmicronesia,0.1\n...")
     # parser.add_argument('--migration', type=str, help="csv or tsv file with symmetric migration/transition rates "
     #                     "between states. For example passenger flow.")
