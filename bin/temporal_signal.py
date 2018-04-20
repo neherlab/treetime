@@ -75,6 +75,9 @@ if __name__=="__main__":
           '\nthe substitution rate. The rate needs to be positive!'
           '\nNegative rates suggest an inappropriate root.\n\n')
 
+    print('\nThe estimated rate and tree correspond to a root date:\n')
+    print('\n--root-date:\t %3.2f\n\n'%(-d2d.intercept/d2d.clock_rate))
+
     if not params.keep_root:
         # write rerooted tree to file
         outtree_name = base_name+'_rerooted.newick'
