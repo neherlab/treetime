@@ -1387,7 +1387,7 @@ class TreeAnc(object):
 
         """
 
-        self.logger("TreeAnc.optimize_branch_length: running branch length optimization...",1)
+        self.logger("TreeAnc.optimize_branch_length: running branch length optimization in mode %s..."%mode,1)
 
         verbose = 0
         store_old_dist = False
@@ -1410,14 +1410,17 @@ class TreeAnc(object):
 
             if mode=='marginal':
                 new_len = self.optimal_marginal_branch_length(node)
-            else:
+            elif mode=='joint':
                 new_len = self.optimal_branch_length(node)
+            else:
+                self.logger("treeanc.optimize_branch_length: unsupported optimization mode",4, warn=True)
+                new_len = node.branch_length
 
             if new_len < 0:
                 continue
 
-            self.logger("Optimization results: old_len=%.4f, new_len=%.4f "
-                   " Updating branch length..."%(node.branch_length, new_len), 5)
+            self.logger("Optimization results: old_len=%.4e, new_len=%.4e, naive=%.4e"
+                   " Updating branch length..."%(node.branch_length, new_len, len(node.mutations)*self.one_mutation), 5)
 
             node.branch_length = new_len
             node.mutation_length=new_len

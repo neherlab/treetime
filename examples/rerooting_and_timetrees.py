@@ -58,7 +58,7 @@ if __name__ == '__main__':
     format_axes(fig, axs)
 
     # rerooting can be done along with the tree time inference
-    tt.run(root="best")
+    tt.run(root="best", branch_lengths='marginal')
     # if more complicated models (relaxed clocks, coalescent models) are to be used
     # or you want to resolve polytomies, treetime needs to be run for
     # several iterations, for example as

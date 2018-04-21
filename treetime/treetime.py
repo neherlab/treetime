@@ -214,6 +214,7 @@ class TreeTime(ClockTree):
                 self.logger("###TreeTime.run: CONVERGED",0)
                 break
 
+
         # if marginal reconstruction requested, make one more round with marginal=True
         # this will set marginal_pos_LH, which to be used as error bar estimations
         if time_marginal:
@@ -400,7 +401,6 @@ class TreeTime(ClockTree):
         self.prepare_tree()
         for n in self.tree.find_clades():
             n.mutation_length = n.branch_length
-            n.original_length = n.branch_length
 
 
     def resolve_polytomies(self, merge_compressed=False, rerun=True):

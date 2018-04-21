@@ -496,7 +496,8 @@ class GTR(object):
         return
 
 
-    def compress_sequence_pair(self, seq_p, seq_ch, pattern_multiplicity=None, ignore_gaps=False):
+    def compress_sequence_pair(self, seq_p, seq_ch, pattern_multiplicity=None,
+                               ignore_gaps=False):
         '''
         make a compressed representation of a pair of sequences only counting
         the number of times a particular pair of states (e.g. (A,T)) is observed
@@ -714,7 +715,7 @@ class GTR(object):
         return new_len
 
 
-    def prob_t_profiles(self, profile_pair, multiplicity, t, return_log=False):
+    def prob_t_profiles(self, profile_pair, multiplicity, t, return_log=False, ignore_gaps=True):
         '''
         calculate the probability of observing a node pair at a distance t
 
@@ -742,7 +743,12 @@ class GTR(object):
             Qt = self.expQt(t).T
             res = profile_pair[0].dot(Qt)
             overlap = np.sum(res*profile_pair[1], axis=1)
-            logP = np.sum(multiplicity*np.log(overlap))
+            if ignore_gaps:
+                non_gap_frac = (1-profile_pair[0][:,self.gap_index])*(1-profile_pair[1][:,self.gap_index])
+                logP = np.sum(multiplicity*np.log(overlap)*non_gap_frac)
+            else:
+                logP = np.sum(multiplicity*np.log(overlap))
+
             if return_log:
                 return logP
             else:
