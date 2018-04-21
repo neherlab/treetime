@@ -984,7 +984,7 @@ def plot_vs_years(tt, years = 1, ax=None, confidence=None, ticks=True, **kwargs)
         if type(years) in [int, float]:
             dyear=years
         from matplotlib.patches import Rectangle
-        for yi,year in enumerate(np.arange(tick_vals[0], tick_vals[-1],dyear)):
+        for yi,year in enumerate(np.arange(np.floor(tick_vals[0]), tick_vals[-1],dyear)):
             pos = year - offset
             r = Rectangle((pos, ylim[1]-5),
                           dyear, ylim[0]-ylim[1]+10,
