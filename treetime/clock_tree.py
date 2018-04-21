@@ -142,7 +142,7 @@ class ClockTree(TreeAnc):
         self.logger("ClockTree.init_date_constraints...",2)
         self.tree.coalescent_joint_LH = 0
         if ancestral_inference or (not hasattr(self.tree.root, 'sequence')):
-            self.infer_ancestral_sequences('ml', marginal=branch_lengths=='marginal',
+            self.infer_ancestral_sequences('ml', marginal=self.branch_length_mode=='marginal',
                                             sample_from_profile='root',**kwarks)
 
         # set the None  for the date-related attributes in the internal nodes.

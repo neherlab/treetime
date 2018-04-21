@@ -1102,11 +1102,6 @@ class TreeAnc(object):
             marginal_LH_prefactor += np.log(pre) # and store log-prefactor
 
         self.logger("Computing root node sequence and total tree likelihood...",3)
-        # reconstruct the root node sequence
-        pre = tree.root.marginal_subtree_LH.sum(axis=1)
-        tree.root.marginal_subtree_LH = (tree.root.marginal_subtree_LH.T/pre).T
-        marginal_LH_prefactor += np.log(pre)
-
         tree.root.marginal_outgroup_LH = np.repeat([self.gtr.Pi], tree.root.marginal_subtree_LH.shape[0], axis=0)
 
         tree.root.marginal_profile = tree.root.marginal_outgroup_LH*tree.root.marginal_subtree_LH
@@ -1368,7 +1363,7 @@ class TreeAnc(object):
     def optimize_branch_len(self, **kwargs):
         self.optimize_branch_length(**kwargs)
 
-    def optimize_branch_length(self, **kwargs):
+    def optimize_branch_length(self, mode='joint', **kwargs):
         """
         Perform optimization for the branch lengths of the whole tree or any
         subtree. **Note** this method assumes that each node stores information
@@ -1402,21 +1397,18 @@ class TreeAnc(object):
         if 'store_old' in kwargs:
             store_old_dist = kwargs['store_old'] == True
 
-        if 'marginal' in kwargs:
-            marginal = kwargs['marginal']
+        if mode=='marginal':
             # a marginal ancestral reconstruction is required for
             # marginal branch length inference
             if not hasattr(self.tree.root, "marginal_profile"):
                 self.infer_ancestral_sequences(marginal=True)
-        else:
-            marginal = False
 
         for node in self.tree.find_clades(order='postorder'):
             if node.up is None: continue # this is the root
             if store_old_dist:
                 node._old_length = node.branch_length
 
-            if marginal:
+            if mode=='marginal':
                 new_len = self.optimal_marginal_branch_length(node)
             else:
                 new_len = self.optimal_branch_length(node)
@@ -1604,8 +1596,8 @@ class TreeAnc(object):
 
 
     def optimize_seq_and_branch_len(self,reuse_branch_len=True, prune_short=True,
-                                    marginal_sequences=False, marginal_branchlengths=False,
-                                    max_iter=5, infer_gtr=False, marginal=False, **kwargs):
+                                    marginal_sequences=False, branch_lengths='joint',
+                                    max_iter=5, infer_gtr=False, **kwargs):
         """
         Iteratively set branch lengths and reconstruct ancestral sequences until
         the values of either former or latter do not change. The algorithm assumes
@@ -1630,15 +1622,14 @@ class TreeAnc(object):
             processde using resolve_polytomies from the TreeTime class.
 
         """
-        if marginal_branchlengths:
+        if branch_lengths=='marginal':
             marginal_sequences = True
-        if marginal:
-            marginal_sequences = True
+
         self.logger("TreeAnc.optimize_sequences_and_branch_length: sequences...", 1)
         if reuse_branch_len:
             N_diff = self.reconstruct_anc(method='ml', infer_gtr=infer_gtr,
                                           marginal=marginal_sequences, **kwargs)
-            self.optimize_branch_len(verbose=0, store_old=False, marginal=marginal_branchlengths)
+            self.optimize_branch_len(verbose=0, store_old=False, mode=branch_lengths)
         else:
             N_diff = self.reconstruct_anc(method='fitch', infer_gtr=infer_gtr, **kwargs)
 
@@ -1657,7 +1648,7 @@ class TreeAnc(object):
 
             if N_diff < 1:
                 break
-            self.optimize_branch_len(verbose=0, store_old=False, marginal=marginal_branchlengths)
+            self.optimize_branch_len(verbose=0, store_old=False, mode=branch_lengths)
 
         self.tree.unconstrained_sequence_LH = (self.tree.sequence_LH*self.multiplicity).sum()
         self._prepare_nodes() # fix dist2root and up-links after reconstruction
