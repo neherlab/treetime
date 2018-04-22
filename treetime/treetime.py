@@ -33,7 +33,7 @@ class TreeTime(ClockTree):
 
     def run(self, root=None, infer_gtr=True, relaxed_clock=None, n_iqd = None,
             resolve_polytomies=True, max_iter=0, Tc=None, fixed_clock_rate=None,
-            time_marginal=False, sequence_marginal=False, branch_length_mode='joint', **kwargs):
+            time_marginal=False, sequence_marginal=False, branch_length_mode='auto', **kwargs):
 
         """
         Run TreeTime reconstruction. Based on the input parameters, it divides
@@ -100,6 +100,9 @@ class TreeTime(ClockTree):
 
 
         """
+        if branch_length_mode not in ['joint', 'marginal', 'input']:
+            branch_length_mode = self._set_branch_length_mode(branch_length_mode)
+
         # determine how to reconstruct and sample sequences
         seq_kwargs = {"marginal_sequences":sequence_marginal or (branch_length_mode=='marginal'),
                       "branch_length_mode":branch_length_mode,
@@ -222,6 +225,18 @@ class TreeTime(ClockTree):
             self.make_time_tree(clock_rate=fixed_clock_rate, time_marginal=time_marginal,
                                 branch_length_mode=branch_length_mode,**kwargs)
 
+
+    def _set_branch_length_mode(self, branch_length_mode):
+        '''
+        if branch_length mode is not explicitly set, set according to branch length distribution
+        '''
+        bl_dis = [n.branch_length for n in self.tree.find_clades() if n.up]
+        max_bl = np.max(bl_dis)
+        min_bl = np.min(bl_dis)
+        if max_bl>0.05:
+            return 'input'
+        else:
+            return 'joint'
 
 
     def clock_filter(self, reroot='best', n_iqd=None, plot=False):
