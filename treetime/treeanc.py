@@ -1599,7 +1599,7 @@ class TreeAnc(object):
 
 
     def optimize_seq_and_branch_len(self,reuse_branch_len=True, prune_short=True,
-                                    marginal_sequences=False, branch_lengths='joint',
+                                    marginal_sequences=False, branch_length_mode='joint',
                                     max_iter=5, infer_gtr=False, **kwargs):
         """
         Iteratively set branch lengths and reconstruct ancestral sequences until
@@ -1625,14 +1625,14 @@ class TreeAnc(object):
             processde using resolve_polytomies from the TreeTime class.
 
         """
-        if branch_lengths=='marginal':
+        if branch_length_mode=='marginal':
             marginal_sequences = True
 
         self.logger("TreeAnc.optimize_sequences_and_branch_length: sequences...", 1)
         if reuse_branch_len:
             N_diff = self.reconstruct_anc(method='ml', infer_gtr=infer_gtr,
                                           marginal=marginal_sequences, **kwargs)
-            self.optimize_branch_len(verbose=0, store_old=False, mode=branch_lengths)
+            self.optimize_branch_len(verbose=0, store_old=False, mode=branch_length_mode)
         else:
             N_diff = self.reconstruct_anc(method='fitch', infer_gtr=infer_gtr, **kwargs)
 
@@ -1651,7 +1651,7 @@ class TreeAnc(object):
 
             if N_diff < 1:
                 break
-            self.optimize_branch_len(verbose=0, store_old=False, mode=branch_lengths)
+            self.optimize_branch_len(verbose=0, store_old=False, mode=branch_length_mode)
 
         self.tree.unconstrained_sequence_LH = (self.tree.sequence_LH*self.multiplicity).sum()
         self._prepare_nodes() # fix dist2root and up-links after reconstruction

@@ -733,6 +733,9 @@ class GTR(object):
           t : float
             Length of the branch separating parent and child
 
+          ignore_gaps: bool
+            ignore mutations to and from gaps in distance calculations
+
           return_log : bool, default False
             Whether or not to exponentiate the result
 
@@ -743,8 +746,9 @@ class GTR(object):
             Qt = self.expQt(t).T
             res = profile_pair[0].dot(Qt)
             overlap = np.sum(res*profile_pair[1], axis=1)
-            if ignore_gaps:
+            if ignore_gaps: # calculate the probability that neither outgroup/node has a gap
                 non_gap_frac = (1-profile_pair[0][:,self.gap_index])*(1-profile_pair[1][:,self.gap_index])
+                # weigh log LH by the non-gap probability
                 logP = np.sum(multiplicity*np.log(overlap)*non_gap_frac)
             else:
                 logP = np.sum(multiplicity*np.log(overlap))

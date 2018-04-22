@@ -10,7 +10,7 @@ class BranchLenInterpolator (Distribution):
     """
 
     def __init__(self, node, gtr, one_mutation=None, min_width=ttconf.MIN_INTEGRATION_PEAK,
-                 branch_lengths = 'joint', pattern_multiplicity = None,
+                 branch_length_mode = 'joint', pattern_multiplicity = None,
                  n_grid_points = ttconf.BRANCH_GRID_SIZE, ignore_gaps=True):
 
         self.node = node
@@ -46,18 +46,18 @@ class BranchLenInterpolator (Distribution):
             grid = np.concatenate((grid_zero,grid_zero2, grid_left,grid_right[1:],far_grid[1:]))
             grid.sort() # just for safety
 
-        if branch_lengths=='input':
+        if branch_length_mode=='input':
             variance_scale = one_mutation*ttconf.OVER_DISPERSION
             if mutation_length<0.05:
-                log_prob = np.array([ k - mutation_length*np.log(k+0.001*one_mutation) for k in grid])/variance_scale
+                log_prob = np.array([ k - mutation_length*np.log(k+ttconf.MIN_BRANCH_LENGTH*one_mutation) for k in grid])/variance_scale
                 log_prob -= log_prob.min()
             else:
                 # make it a Gaussian
                 sigma_sq = (mutation_length+one_mutation)*variance_scale
-                sigma = np.sqrt(sigma_sq+1e-5)
+                sigma = np.sqrt(sigma_sq+ttconf.MIN_BRANCH_LENGTH*one_mutation)
                 log_prob = np.array(np.min([[ 0.5*(mutation_length-k)**2/sigma_sq for k in grid],
                                              100 + np.abs([(mutation_length-k)/sigma for k in grid])], axis=0))
-        elif branch_lengths=='marginal':
+        elif branch_length_mode=='marginal':
             if hasattr(node, 'profile_pair'):
                 log_prob = np.array([-self.gtr.prob_t_profiles(node.profile_pair,
                                                         pattern_multiplicity,
@@ -68,7 +68,7 @@ class BranchLenInterpolator (Distribution):
                 raise Exception("profile pairs need to be assigned to node")
 
 
-        elif branch_lengths=='joint':
+        elif branch_length_mode=='joint':
             if not hasattr(node, 'compressed_sequence'):
                 #FIXME: this assumes node.sequence is set, but this might not be the case if
                 # ancestral reconstruction is run with final=False

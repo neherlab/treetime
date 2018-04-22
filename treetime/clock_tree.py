@@ -23,7 +23,7 @@ class ClockTree(TreeAnc):
     """
 
     def __init__(self,  dates=None, debug=False, real_dates=True, precision=1,
-                 branch_lengths='joint', *args, **kwargs):
+                 branch_length_mode='joint', *args, **kwargs):
 
         """
         ClockTree constructor
@@ -64,7 +64,7 @@ class ClockTree(TreeAnc):
         self.date2dist = None  # we do not know anything about the conversion
         self.rel_tol_prune = ttconf.REL_TOL_PRUNE
         self.rel_tol_refine = ttconf.REL_TOL_REFINE
-        self.branch_length_mode = branch_lengths
+        self.branch_length_mode = branch_length_mode
         self.min_width = 10*self.one_mutation
         self.precision=precision
         if precision==0:
@@ -165,7 +165,7 @@ class ClockTree(TreeAnc):
 
                 node.branch_length_interpolator = BranchLenInterpolator(node, self.gtr,
                             pattern_multiplicity = self.multiplicity, min_width=self.min_width,
-                            one_mutation=self.one_mutation, branch_lengths=self.branch_length_mode)
+                            one_mutation=self.one_mutation, branch_length_mode=self.branch_length_mode)
 
                 node.branch_length_interpolator.merger_cost = merger_cost
                 node.branch_length_interpolator.gamma = gamma
@@ -210,8 +210,8 @@ class ClockTree(TreeAnc):
 
         '''
         self.logger("ClockTree: Maximum likelihood tree optimization with temporal constraints:",1)
-        if 'branch_lengths' in kwargs:
-            self.branch_length_mode = kwargs['branch_lengths']
+        if 'branch_length_mode' in kwargs:
+            self.branch_length_mode = kwargs['branch_length_mode']
 
         self.init_date_constraints(**kwargs)
 
