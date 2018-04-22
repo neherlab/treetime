@@ -22,7 +22,7 @@ class ClockTree(TreeAnc):
     is converted to the most likely time of the internal nodes.
     """
 
-    def __init__(self,  dates=None, debug=False, real_dates=True, precision=1, *args, **kwargs):
+    def __init__(self,  dates=None, debug=False, real_dates=True, precision='auto', *args, **kwargs):
         """
         ClockTree constructor
 
@@ -46,6 +46,8 @@ class ClockTree(TreeAnc):
             precision can be 0 (rough), 1 (default), 2 (fine), or 3 (ultra fine)
             this parameter determines the number of grid points that are used
             for the evaluation of the branch length interpolation objects.
+            When not specified, this will default to 1 for short sequences and 2
+            for long sequences with L>1e4
 
         Keyword Args
         ------------
@@ -63,23 +65,7 @@ class ClockTree(TreeAnc):
         self.rel_tol_prune = ttconf.REL_TOL_PRUNE
         self.rel_tol_refine = ttconf.REL_TOL_REFINE
         self.min_width = 10*self.one_mutation
-        self.precision=precision
-        if precision==0:
-            self.node_grid_points = ttconf.NODE_GRID_SIZE_ROUGH
-            self.branch_grid_points = ttconf.BRANCH_GRID_SIZE_ROUGH
-            self.n_integral = ttconf.N_INTEGRAL_ROUGH
-        elif precision==2:
-            self.node_grid_points = ttconf.NODE_GRID_SIZE_FINE
-            self.branch_grid_points = ttconf.BRANCH_GRID_SIZE_FINE
-            self.n_integral = ttconf.N_INTEGRAL_FINE
-        elif precision==3:
-            self.node_grid_points = ttconf.NODE_GRID_SIZE_ULTRA
-            self.branch_grid_points = ttconf.BRANCH_GRID_SIZE_ULTRA
-            self.n_integral = ttconf.N_INTEGRAL_ULTRA
-        else:
-            self.node_grid_points = ttconf.NODE_GRID_SIZE
-            self.branch_grid_points = ttconf.BRANCH_GRID_SIZE
-            self.n_integral = ttconf.N_INTEGRAL
+        self._set_precision(precision)
 
         for node in self.tree.find_clades(order='postorder'):
             if node.name in self.date_dict:
@@ -102,6 +88,41 @@ class ClockTree(TreeAnc):
                     # If all branches dowstream are 'bad', and there is no date constraint for
                     # this node, the branch is marked as 'bad'
                     node.bad_branch = np.all([x.bad_branch for x in node])
+
+    def _set_precision(self, precision):
+        '''
+        function that sets precision to an (hopfully) reasonable guess based
+        on the length of the sequence if not explicitly set
+        '''
+        # if precision is explicitly specified, use it.
+        if precision in [0,1,2,3]:
+            self.precision=precision
+        else:
+            # otherwise adjust it depending on the minimal sensible branch length
+            if self.one_mutation:
+                if self.one_mutation>1e-4:
+                    self.precision=1
+                else:
+                    self.precision=2
+            else:
+                self.precision=1
+
+        if self.precision==0:
+            self.node_grid_points = ttconf.NODE_GRID_SIZE_ROUGH
+            self.branch_grid_points = ttconf.BRANCH_GRID_SIZE_ROUGH
+            self.n_integral = ttconf.N_INTEGRAL_ROUGH
+        elif self.precision==2:
+            self.node_grid_points = ttconf.NODE_GRID_SIZE_FINE
+            self.branch_grid_points = ttconf.BRANCH_GRID_SIZE_FINE
+            self.n_integral = ttconf.N_INTEGRAL_FINE
+        elif self.precision==3:
+            self.node_grid_points = ttconf.NODE_GRID_SIZE_ULTRA
+            self.branch_grid_points = ttconf.BRANCH_GRID_SIZE_ULTRA
+            self.n_integral = ttconf.N_INTEGRAL_ULTRA
+        else:
+            self.node_grid_points = ttconf.NODE_GRID_SIZE
+            self.branch_grid_points = ttconf.BRANCH_GRID_SIZE
+            self.n_integral = ttconf.N_INTEGRAL
 
 
     @property
