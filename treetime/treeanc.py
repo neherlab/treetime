@@ -819,6 +819,26 @@ class TreeAnc(object):
         return sorted(muts, key=lambda x:x[1])
 
 
+    def get_branch_mutation_matrix(self, node, full_sequence=False):
+        from itertools import product
+        pp,pc = self.marginal_branch_profile(node)
+        if pp is None or pc is None:
+            return None
+
+        expQt = self.gtr.expQt(self._branch_length_to_gtr(node))
+        mut_matrix_stack = np.zeros((pp.shape[1], pp.shape[1],pp.shape[0]))
+        for i,j in product(range(pp.shape[1]), repeat=2):
+            mut_matrix_stack[i,j,:] = pp[:,i]*pc[:,j]*expQt[j,i]
+
+        normalizer = mut_matrix_stack.sum(axis=1).sum(axis=0)
+        mut_matrix_stack = mut_matrix_stack/normalizer
+        mut_matrix_stack = np.swapaxes(np.swapaxes(mut_matrix_stack, 1,2), 0,1)
+        if full_sequence:
+            return mut_matrix_stack[self.full_to_reduced_sequence_map]
+        else:
+            return mut_matrix_stack
+
+
     def expanded_sequence(self, node):
         """
         Get node's compressed sequence and expand it to the real sequence
