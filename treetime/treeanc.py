@@ -305,7 +305,6 @@ class TreeAnc(object):
 
 
     def _attach_sequences_to_nodes(self):
-        #print ("inside attach seq to nodes")
         '''
         For each node of the tree, check whether there is a sequence available
         in the alignment and assign this sequence as a character array
