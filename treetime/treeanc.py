@@ -1149,7 +1149,7 @@ class TreeAnc(object):
                 if c != node:
                     tmp_msg += c.marginal_log_Lx
 
-            tmp_prefactor = np.min(tmp_msg, axis=1)
+            tmp_prefactor = np.max(tmp_msg, axis=1)
             tmp_msg = np.exp(tmp_msg.T - tmp_prefactor).T
 
             norm_vector = tmp_msg.sum(axis=1)
