@@ -948,6 +948,8 @@ def plot_vs_years(tt, years = 1, ax=None, confidence=None, ticks=True, **kwargs)
     if ax is None:
         fig = plt.figure()
         ax = plt.subplot(111)
+    else:
+        fig = None
     # draw tree
     if "label_func" not in kwargs:
         nleafs = tt.tree.count_terminals()
