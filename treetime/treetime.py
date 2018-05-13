@@ -974,6 +974,8 @@ def plot_vs_years(tt, years = 1, ax=None, confidence=None, ticks=True, **kwargs)
     if ax is None:
         fig = plt.figure()
         ax = plt.subplot(111)
+    else:
+        fig = None
     # draw tree
     if "label_func" not in kwargs:
         nleafs = tt.tree.count_terminals()
@@ -1027,7 +1029,7 @@ def plot_vs_years(tt, years = 1, ax=None, confidence=None, ticks=True, **kwargs)
         for n in tt.tree.find_clades():
             pos = cfunc(n, confidence)
             ax.plot(pos-offset, np.ones(len(pos))*n.ypos, lw=3, c=(0.5,0.5,0.5))
-
+    return fig, ax
 
 def treetime_to_newick(tt, outf):
     Phylo.write(tt.tree, outf, 'newick')

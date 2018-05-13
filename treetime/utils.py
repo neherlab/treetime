@@ -245,9 +245,9 @@ def build_newick_iqtree(aln_fname, nthreads=2, iqtree_bin="iqtree",
                         iqmodel="HKY",  **kwargs):
     from Bio import Phylo, AlignIO
     import os
-    aln_file = "temp.fasta"
     with open(aln_fname) as ifile:
         tmp_seqs = ifile.readlines()
+    aln_file = "temp.fasta"
     with open(aln_file, 'w') as ofile:
         for line in tmp_seqs:
             ofile.write(line.replace('/', '_X_X_').replace('|','_Y_Y_'))

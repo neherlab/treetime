@@ -1106,19 +1106,24 @@ class TreeAnc(object):
         for leaf in tree.get_terminals():
             # in any case, set the profile
             leaf.marginal_subtree_LH = seq_utils.seq2prof(leaf.cseq, self.gtr.profile_map)
+            leaf.marginal_subtree_LH_prefactor = np.zeros(L)
 
-        # propagate leaves -->> root, set the marginal-likelihood messages
+        # propagate leaves --> root, set the marginal-likelihood messages
         for node in tree.get_nonterminals(order='postorder'): #leaves -> root
             # regardless of what was before, set the profile to ones
-            node.marginal_subtree_LH = np.ones((L, n_states)) # we will multiply it
+            tmp_log_subtree_LH = np.zeros((L,n_states))
+            node.marginal_subtree_LH_prefactor = np.zeros(L)
             for ch in node.clades:
-                ch.marginal_Lx = self.gtr.propagate_profile(ch.marginal_subtree_LH,
-                    self._branch_length_to_gtr(ch), return_log=False) # raw prob to transfer prob up
-                node.marginal_subtree_LH *= ch.marginal_Lx
+                ch.marginal_log_Lx = self.gtr.propagate_profile(ch.marginal_subtree_LH,
+                    self._branch_length_to_gtr(ch), return_log=True) # raw prob to transfer prob up
+                tmp_log_subtree_LH += ch.marginal_log_Lx
+                node.marginal_subtree_LH_prefactor += ch.marginal_subtree_LH_prefactor
 
+            tmp_prefactor = np.max(tmp_log_subtree_LH,axis=1)
+            node.marginal_subtree_LH = np.exp(tmp_log_subtree_LH.T-tmp_prefactor).T
             pre = node.marginal_subtree_LH.sum(axis=1) #sum over nucleotide states
             node.marginal_subtree_LH = (node.marginal_subtree_LH.T/pre).T # normalize so that the sum is 1
-            marginal_LH_prefactor += np.log(pre) # and store log-prefactor
+            node.marginal_subtree_LH_prefactor += np.log(pre) + tmp_prefactor # and store log-prefactor
 
         self.logger("Computing root node sequence and total tree likelihood...",3)
         tree.root.marginal_outgroup_LH = np.repeat([self.gtr.Pi], tree.root.marginal_subtree_LH.shape[0], axis=0)
@@ -1160,7 +1165,10 @@ class TreeAnc(object):
 
             # integrate the information coming from parents with the information
             # of all children my multiplying it to the prev computed profile
-            tmp_msg = node.up.marginal_profile/node.marginal_Lx
+            tmp_msg = np.log(node.up.marginal_profile) - node.marginal_log_Lx
+            tmp_prefactor = np.max(tmp_msg, axis=1)
+            tmp_msg = np.exp(tmp_msg.T - tmp_prefactor).T
+
             norm_vector = tmp_msg.sum(axis=1)
             node.marginal_outgroup_LH = (tmp_msg.T/norm_vector).T
             tmp_msg_from_parent = self.gtr.propagate_profile(node.marginal_outgroup_LH,
