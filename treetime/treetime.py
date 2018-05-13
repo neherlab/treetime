@@ -980,6 +980,7 @@ def plot_vs_years(tt, years = 1, ax=None, confidence=None, ticks=True, **kwargs)
                           facecolor=[0.7+0.1*(1+yi%2)] * 3,
                           edgecolor=[1,1,1])
             ax.add_patch(r)
+        for year in tick_vals:
             if year in tick_vals and pos>xlim[0] and pos<xlim[1] and ticks:
                 ax.text(pos,ylim[0]-0.04*(ylim[1]-ylim[0]),str(int(year)),
                         horizontalalignment='center')
@@ -1001,7 +1002,7 @@ def plot_vs_years(tt, years = 1, ax=None, confidence=None, ticks=True, **kwargs)
         for n in tt.tree.find_clades():
             pos = cfunc(n, confidence)
             ax.plot(pos-offset, np.ones(len(pos))*n.ypos, lw=3, c=(0.5,0.5,0.5))
-
+    return fig, ax
 
 def treetime_to_newick(tt, outf):
     Phylo.write(tt.tree, outf, 'newick')
