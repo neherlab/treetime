@@ -22,7 +22,9 @@ class ClockTree(TreeAnc):
     is converted to the most likely time of the internal nodes.
     """
 
-    def __init__(self,  dates=None, debug=False, real_dates=True, precision='auto', *args, **kwargs):
+    def __init__(self,  dates=None, debug=False, real_dates=True, precision='auto',
+                 branch_length_mode='joint', *args, **kwargs):
+
         """
         ClockTree constructor
 
@@ -64,6 +66,7 @@ class ClockTree(TreeAnc):
         self.date2dist = None  # we do not know anything about the conversion
         self.rel_tol_prune = ttconf.REL_TOL_PRUNE
         self.rel_tol_refine = ttconf.REL_TOL_REFINE
+        self.branch_length_mode = branch_length_mode
         self.min_width = 10*self.one_mutation
         self._set_precision(precision)
 
@@ -160,7 +163,8 @@ class ClockTree(TreeAnc):
         self.logger("ClockTree.init_date_constraints...",2)
         self.tree.coalescent_joint_LH = 0
         if ancestral_inference or (not hasattr(self.tree.root, 'sequence')):
-            self.infer_ancestral_sequences('ml', marginal=False, sample_from_profile='root',**kwarks)
+            self.infer_ancestral_sequences('ml', marginal=self.branch_length_mode=='marginal',
+                                            sample_from_profile='root',**kwarks)
 
         # set the None  for the date-related attributes in the internal nodes.
         # make interpolation objects for the branches
@@ -176,9 +180,14 @@ class ClockTree(TreeAnc):
                 else:
                     gamma = 1.0
                     merger_cost = None
+
+                if self.branch_length_mode=='marginal':
+                    node.profile_pair = self.marginal_branch_profile(node)
+
                 node.branch_length_interpolator = BranchLenInterpolator(node, self.gtr,
-                        one_mutation=self.one_mutation, n_grid_points = self.branch_grid_points,
-                        min_width=self.min_width)
+                            pattern_multiplicity = self.multiplicity, min_width=self.min_width,
+                            one_mutation=self.one_mutation, branch_length_mode=self.branch_length_mode)
+
                 node.branch_length_interpolator.merger_cost = merger_cost
                 node.branch_length_interpolator.gamma = gamma
         self.date2dist = utils.DateConversion.from_tree(self.tree, clock_rate)
@@ -222,6 +231,9 @@ class ClockTree(TreeAnc):
 
         '''
         self.logger("ClockTree: Maximum likelihood tree optimization with temporal constraints:",1)
+        if 'branch_length_mode' in kwargs:
+            self.branch_length_mode = kwargs['branch_length_mode']
+
         self.init_date_constraints(**kwargs)
 
         if time_marginal:
