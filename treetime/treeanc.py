@@ -1097,7 +1097,6 @@ class TreeAnc(object):
         N_diff = 0
 
         L = self.multiplicity.shape[0]
-        marginal_LH_prefactor = np.zeros(L)
         n_states = self.gtr.alphabet.shape[0]
         self.logger("TreeAnc._ml_anc_marginal: type of reconstruction: Marginal", 2)
 
@@ -1126,13 +1125,13 @@ class TreeAnc(object):
             node.marginal_subtree_LH_prefactor += np.log(pre) + tmp_prefactor # and store log-prefactor
 
         self.logger("Computing root node sequence and total tree likelihood...",3)
+        # Msg to the root from the distant part (equ frequencies)
         tree.root.marginal_outgroup_LH = np.repeat([self.gtr.Pi], tree.root.marginal_subtree_LH.shape[0], axis=0)
 
         tree.root.marginal_profile = tree.root.marginal_outgroup_LH*tree.root.marginal_subtree_LH
         pre = tree.root.marginal_profile.sum(axis=1)
         tree.root.marginal_profile = (tree.root.marginal_profile.T/pre).T
-        marginal_LH_prefactor += np.log(pre)
-         # Msg to the root from the distant part (equ frequencies)
+        marginal_LH_prefactor = tree.root.marginal_subtree_LH_prefactor + np.log(pre)
 
         # choose sequence characters from this profile.
         # treat root node differently to avoid piling up mutations on the longer branch
