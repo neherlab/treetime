@@ -276,7 +276,7 @@ class TreeTime(ClockTree):
         for node in terminals:
             if hasattr(node, 'numdate_given') and  (node.numdate_given is not None):
                 res[node] = node.dist2root - clock_rate*np.mean(node.numdate_given) - icpt
-        residuals = np.array(res.values())
+        residuals = np.array(list(res.values()))
         iqd = np.percentile(residuals,75) - np.percentile(residuals,25)
         for node,r in res.items():
             if abs(r)>n_iqd*iqd and node.up.up is not None:
