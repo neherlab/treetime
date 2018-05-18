@@ -1,4 +1,3 @@
-from __future__ import print_function
 import numpy as np
 from collections import defaultdict
 
@@ -213,7 +212,7 @@ def read_vcf(vcf_file, ref_file):
                         recCalls[sname] = gt
 
                 #store the position and the alt
-                for seq, gen in recCalls.iteritems():
+                for seq, gen in recCalls.items():
                     ref = REF
                     pos = POS-1     #VCF numbering starts from 1, but Reference seq numbering
                                     #will be from 0 because it's python!
@@ -326,7 +325,7 @@ def write_vcf(tree_dict, file_name):#, compress=False):
             i+=1
             pi = positions[i]
             pattern = []
-            for k,v in sequences.iteritems():
+            for k,v in sequences.items():
                 try:
                     pattern.append(sequences[k][pi])
                 except KeyError, e:
