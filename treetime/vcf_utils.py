@@ -1,5 +1,6 @@
 from __future__ import print_function
 import numpy as np
+from collections import defaultdict
 
 ## Functions to read in and print out VCF files
 
@@ -16,8 +17,8 @@ def read_vcf(vcf_file, ref_file):
      'positions': [1,4,7,10,100...] }
 
     Calls with heterozygous values 0/1, 0/2, etc and no-calls (./.) are
-    replaced with Ns at the associated sites. 
-    
+    replaced with Ns at the associated sites.
+
     Positions are stored to correspond the location in the reference sequence
     in Python (numbering is transformed to start at 0)
 
@@ -56,33 +57,32 @@ def read_vcf(vcf_file, ref_file):
           GC      GCC,G       1/1     2/2
         Insertions formatted differently - don't know how many bp match
         the Ref (unlike simple insert below). Could be mutations, also.
-        
+
     'Deletion'
         Ex:
-          REF     ALT 
-          GC      G   
+          REF     ALT
+          GC      G
         Alt does not have to be 1 bp - any length shorter than Ref.
-        
+
     'Insertion'
         Ex:
-          REF     ALT 
+          REF     ALT
           A       ATT
         First base always matches Ref.
 
     'No indel'
         Ex:
-          REF     ALT 
+          REF     ALT
           A       G
-          
-        
+
+
     EBH 4 Dec 2017
     """
     #define here, so that all sub-functions can access them
-    sequences = {}
-    insertions = {} #Currently not used, but kept in case of future use.
-    positions = []
-    
-    #In future, if TreeTime handles 2-3 base ambig codes, this will allow that.
+    sequences = defaultdict(dict)
+    insertions = defaultdict(dict) #Currently not used, but kept in case of future use.
+
+    #TreeTime handles 2-3 base ambig codes, this will allow that.
     def getAmbigCode(bp1, bp2, bp3=""):
         bps = [bp1,bp2,bp3]
         bps.sort()
@@ -103,41 +103,37 @@ def read_vcf(vcf_file, ref_file):
 
     #Parses a 'normal' (not hetero or no-call) call depending if insertion+deletion, insertion,
     #deletion, or single bp subsitution
-    def parseCall(pos, ref, alt):
-        
+    def parseCall(snps, ins, pos, ref, alt):
+
         #Insertion where there are also deletions (special handling)
         if len(ref) > 1 and len(alt)>len(ref):
-            if seq not in insertions.keys():
-                insertions[seq] = {}
-            for i in xrange(len(ref)):
+            for i in range(len(ref)):
                 #if the pos doesn't match, store in sequences
                 if ref[i] != alt[i]:
-                    sequences[seq][pos+i] = alt[i] if alt[i] != '.' else 'N' #'.' = no-call
+                    snps[pos+i] = alt[i] if alt[i] != '.' else 'N' #'.' = no-call
                 #if about to run out of ref, store rest:
                 if (i+1) >= len(ref):
-                    insertions[seq][pos+i] = alt[i:]
+                    ins[pos+i] = alt[i:]
         #Deletion
         elif len(ref) > 1:
-            for i in xrange(len(ref)):
+            for i in range(len(ref)):
                 #if ref is longer than alt, these are deletion positions
                 if i+1 > len(alt):
-                    sequences[seq][pos+i] = '-'
+                    snps[pos+i] = '-'
                 #if not, there may be mutations
                 else:
                     if ref[i] != alt[i]:
-                        sequences[seq][pos+i] = alt[i] if alt[i] != '.' else 'N' #'.' = no-call
+                        snps[pos+i] = alt[i] if alt[i] != '.' else 'N' #'.' = no-call
         #Insertion
         elif len(alt) > 1:
-            if seq not in insertions.keys():
-                insertions[seq] = {}
-            insertions[seq][pos] = alt
+            ins[pos] = alt
         #No indel
         else:
-            sequences[seq][pos] = alt
-    
-    
+            snps[pos] = alt
+
+
     #Parses a 'bad' (hetero or no-call) call depending on what it is
-    def parseBadCall(pos, ref, ALT):
+    def parseBadCall(snps, ins, pos, ref, ALT):
         #Deletion
         #   REF     ALT     Seq1    Seq2    Seq3
         #   GCC     G       1/1     0/1     ./.
@@ -146,22 +142,19 @@ def read_vcf(vcf_file, ref_file):
         # Seq3 will become 'GNN'
         if len(ref) > 1:
             #Deleted part becomes Ns
-            if seq not in sequences.keys():
-                sequences[seq] = {}
-                
             if gen[0] == '0' or gen[0] == '.':
                 if gen[0] == '0':   #if het, get first bp
                     alt = str(ALT[int(gen[2])-1])
                 else: #if no-call, there is no alt, so just put Ns after 1st ref base
                     alt = ref[0]
-                for i in xrange(len(ref)):
+                for i in range(len(ref)):
                     #if ref is longer than alt, these are deletion positions
                     if i+1 > len(alt):
-                        sequences[seq][pos+i] = 'N'
+                        snps[pos+i] = 'N'
                     #if not, there may be mutations
                     else:
                         if ref[i] != alt[i]:
-                            sequences[seq][pos+i] = alt[i] if alt[i] != '.' else 'N' #'.' = no-call
+                            snps[pos+i] = alt[i] if alt[i] != '.' else 'N' #'.' = no-call
 
         #If not deletion, need to know call type
         #if het, see if proposed alt is 1bp mutation
@@ -170,21 +163,17 @@ def read_vcf(vcf_file, ref_file):
             if len(alt)==1:
                 #alt = getAmbigCode(ref,alt) #if want to allow ambig
                 alt = 'N' #if you want to disregard ambig
-                if seq not in sequences.keys():
-                    sequences[seq] = {}
-                sequences[seq][pos] = alt
+                snps[pos] = alt
             #else a het-call insertion, so ignore.
 
         #else it's a no-call; see if all alts have a length of 1
         #(meaning a simple 1bp mutation)
         elif len(ALT)==len("".join(ALT)):
             alt = 'N'
-            if seq not in sequences.keys():
-                sequences[seq] = {}
-            sequences[seq][pos] = alt
+            snps[pos] = alt
         #else a no-call insertion, so ignore.
- 
-        
+
+
     #House code is *much* faster than pyvcf because we don't care about all info
     #about coverage, quality, counts, etc, which pyvcf goes to effort to parse
     #(and it's not easy as there's no standard ordering). Custom code can completely
@@ -200,7 +189,7 @@ def read_vcf(vcf_file, ref_file):
     sampLoc = 9
 
     #Use different openers depending on whether compressed
-    opn = gzip.open if vcf_file.endswith(('.gz', '.GZ')) else open 
+    opn = gzip.open if vcf_file.endswith(('.gz', '.GZ')) else open
 
     with opn(vcf_file, mode='rt') as f:
         for line in f:
@@ -228,19 +217,19 @@ def read_vcf(vcf_file, ref_file):
                     ref = REF
                     pos = POS-1     #VCF numbering starts from 1, but Reference seq numbering
                                     #will be from 0 because it's python!
-                                    
+
                     #Accepts only calls that are 1/1, 2/2 etc. Rejects hets and no-calls
                     if gen[0] != '0' and gen[2] != '0' and gen[0] != '.' and gen[2] != '.':
                         alt = str(ALT[int(gen[0])-1])   #get the index of the alternate
                         if seq not in sequences.keys():
                             sequences[seq] = {}
-                            
-                        parseCall(pos, ref, alt)
-                        
+
+                        parseCall(sequences[seq],insertions[seq], pos, ref, alt)
+
                     #If is heterozygote call (0/1) or no call (./.)
                     else:
                         #alt will differ here depending on het or no-call, must pass original
-                        parseBadCall(pos, ref, ALT)
+                        parseBadCall(sequences[seq],insertions[seq], pos, ref, ALT)
 
             elif line[0] == '#' and line[1] == 'C':
                 #header line, get all the information
@@ -253,13 +242,14 @@ def read_vcf(vcf_file, ref_file):
                 nsamp = len(samps)
 
             #else you are a comment line, ignore.
-            
-    #Get list of all mutation positions       
-    for seq, muts in sequences.iteritems():
-        positions = positions + list( set(muts.keys()) - set(positions) )
 
-    #One or more seqs are same as ref! (No non-ref calls) So haven't been 'seen' yet   
-    if nsamp > len(sequences): 
+    #Gather all variable positions
+    positions = set()
+    for seq, muts in sequences.items():
+        positions.update(muts.keys())
+
+    #One or more seqs are same as ref! (No non-ref calls) So haven't been 'seen' yet
+    if nsamp > len(sequences):
         missings = set(samps).difference(sequences.keys())
         for s in missings:
             sequences[s] = {}
@@ -270,7 +260,7 @@ def read_vcf(vcf_file, ref_file):
     compress_seq = {'reference':refSeqStr,
                     'sequences': sequences,
                     'insertions': insertions,
-                    'positions': positions}
+                    'positions': sorted(positions)}
 
     return compress_seq
 
@@ -280,29 +270,29 @@ def write_vcf(tree_dict, file_name):#, compress=False):
     Writes out a VCF-style file (which seems to be minimally handleable
     by vcftools and pyvcf) of the alignment from the input of a dict
     in a similar format to what's created from the read_in_vcf function above.
-    
+
     For a sequence like:
     Pos     1 2 3 4 5 6
     Ref     A C T T A C
     Seq1    A C - - - G
-    
+
     In a dict it is stored:
     Seq1:{3:'-', 4:'-', 5:'-', 6:'G'}  (Numbering from 1 for simplicity)
-    
+
     In a VCF it needs to be:
     POS REF     ALT     Seq1
     2   CTTA    C       1/1
     6   C       G       1/1
-    
+
     If a position is deleted (pos 3), need to get invariable position preceeding it
-    
+
     However, in alternative case, the base before a deletion is mutant, so need to check
         that next position isn't a deletion (as otherwise won't be found until after the
         current single bp mutation is written out)
-        
+
     When deleted position found, need to gather up all adjacent mutant positions with deletions,
         but not include adjacent mutant positions that aren't deletions (pos 6)
-        
+
     Don't run off the 'end' of the position list if deletion is the last thing to be included
         in the VCF file
 
@@ -311,7 +301,7 @@ def write_vcf(tree_dict, file_name):#, compress=False):
     sequences = tree_dict['sequences']
     ref = tree_dict['reference']
     positions = tree_dict['positions']
-    
+
     def handleDeletions(i, pi, pos, ref, delete, pattern):
         refb = ref[pi]
         if delete: #Need to get the position before
@@ -321,7 +311,7 @@ def write_vcf(tree_dict, file_name):#, compress=False):
             refb = ref[pi]
             #re-get pattern
             pattern = []
-            for k,v in sequences.iteritems():
+            for k,v in sequences.items():
                 try:
                     pattern.append(sequences[k][pi])
                 except KeyError, e:
@@ -343,7 +333,7 @@ def write_vcf(tree_dict, file_name):#, compress=False):
                     pattern.append(ref[pi])
             pattern = np.array(pattern)
 
-            #Stops 'greedy' behaviour from adding mutations adjacent to deletions 
+            #Stops 'greedy' behaviour from adding mutations adjacent to deletions
             if any(pattern == '-'): #if part of deletion, append
                 sites.append(pattern)
                 refb = refb+ref[pi]
@@ -375,7 +365,7 @@ def write_vcf(tree_dict, file_name):#, compress=False):
 
         return i, pi, pos, refb, pattern
 
-        
+
     #prepare the header of the VCF & write out
     header=["#CHROM","POS","ID","REF","ALT","QUAL","FILTER","INFO","FORMAT"]+sequences.keys()
     with open(file_name, 'w') as the_file:
@@ -394,7 +384,7 @@ def write_vcf(tree_dict, file_name):#, compress=False):
         #Get the 'pattern' of all calls at this position.
         #Look out specifically for current (this pos) or upcoming (next pos) deletions
         #But also distinguish these two, as handled differently.
-        
+
         pi = positions[i]
         pos = pi+1 #change numbering to match VCF, not python, for output
         refb = ref[pi] #reference base at this position
@@ -406,8 +396,8 @@ def write_vcf(tree_dict, file_name):#, compress=False):
         pattern = []
         #pattern2 gets the pattern at next position to check for upcoming deletions
         #it's more efficient to get both here rather than loop through sequences twice!
-        pattern2 = [] 
-        for k,v in sequences.iteritems():
+        pattern2 = []
+        for k,v in sequences.items():
             try:
                 pattern.append(sequences[k][pi])
             except KeyError, e:
@@ -440,7 +430,7 @@ def write_vcf(tree_dict, file_name):#, compress=False):
         if delete or deleteGroup:
             i, pi, pos, refb, pattern = handleDeletions(i, pi, pos, ref, delete, pattern)
         #If no deletion, replace ref with '.', as in VCF format
-        else: 
+        else:
             pattern[pattern==refb] = '.'
 
         #Get the list of ALTs - minus any '.'!
@@ -469,7 +459,7 @@ def write_vcf(tree_dict, file_name):#, compress=False):
 
         #Write it out - Increment positions by 1 so it's in VCF numbering
         #If no longer variable, and explained, don't write it out
-        if printPos:  
+        if printPos:
             output = ["MTB_anc", str(pos), ".", refb, ",".join(uniques), ".", "PASS", ".", "GT"] + calls
             vcfWrite.append("\t".join(output))
 
@@ -499,7 +489,7 @@ def write_vcf(tree_dict, file_name):#, compress=False):
 
     with open(file_name, 'a') as the_file:
         the_file.write("\n".join(vcfWrite))
-    
+
     if file_name.endswith(('.gz', '.GZ')):
         import os
         #must temporarily remove .gz ending, or gzip won't zip it!
