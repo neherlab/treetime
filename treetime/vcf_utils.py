@@ -253,7 +253,7 @@ def read_vcf(vcf_file, ref_file):
         for s in missings:
             sequences[s] = {}
 
-    refSeq = SeqIO.parse(ref_file, format='fasta').next()
+    refSeq = SeqIO.read(ref_file, format='fasta')
     refSeqStr = str(refSeq.seq)
 
     compress_seq = {'reference':refSeqStr,
@@ -313,7 +313,7 @@ def write_vcf(tree_dict, file_name):#, compress=False):
             for k,v in sequences.items():
                 try:
                     pattern.append(sequences[k][pi])
-                except KeyError, e:
+                except KeyError:
                     pattern.append(ref[pi])
             pattern = np.array(pattern)
 
@@ -328,7 +328,7 @@ def write_vcf(tree_dict, file_name):#, compress=False):
             for k,v in sequences.items():
                 try:
                     pattern.append(sequences[k][pi])
-                except KeyError, e:
+                except KeyError:
                     pattern.append(ref[pi])
             pattern = np.array(pattern)
 
@@ -366,7 +366,7 @@ def write_vcf(tree_dict, file_name):#, compress=False):
 
 
     #prepare the header of the VCF & write out
-    header=["#CHROM","POS","ID","REF","ALT","QUAL","FILTER","INFO","FORMAT"]+sequences.keys()
+    header=["#CHROM","POS","ID","REF","ALT","QUAL","FILTER","INFO","FORMAT"]+list(sequences.keys())
     with open(file_name, 'w') as the_file:
         the_file.write( "##fileformat=VCFv4.2\n"+
                         "##source=NextStrain\n"+
@@ -399,12 +399,12 @@ def write_vcf(tree_dict, file_name):#, compress=False):
         for k,v in sequences.items():
             try:
                 pattern.append(sequences[k][pi])
-            except KeyError, e:
+            except KeyError:
                 pattern.append(ref[pi])
 
             try:
                 pattern2.append(sequences[k][pi+1])
-            except KeyError, e:
+            except KeyError:
                 pattern2.append(ref[pi+1])
 
         pattern = np.array(pattern)
