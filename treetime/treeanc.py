@@ -7,7 +7,7 @@ import numpy as np
 import treetime.seq_utils as seq_utils
 from treetime.gtr import GTR
 from treetime.version import tt_version as __version__
-
+from collections import defaultdict
 
 class TreeAnc(object):
     """
@@ -269,7 +269,7 @@ class TreeAnc(object):
                     break
                 except:
                     continue
-        elif type(in_aln) is dict:  #if is read in from VCF file
+        elif type(in_aln) is defaultdict:  #if is read in from VCF file
             self._aln = in_aln
             self.is_vcf = True
 
@@ -309,14 +309,14 @@ class TreeAnc(object):
         For each node of the tree, check whether there is a sequence available
         in the alignment and assign this sequence as a character array
         '''
-        if type(self.aln) is dict:
+        if type(self.aln) is defaultdict:
             self.seq_len = len(self.ref)
         else:
             self.seq_len = self.aln.get_alignment_length()
         self.one_mutation = 1.0/self.seq_len
 
         failed_leaves= 0
-        if type(self.aln) is dict:
+        if type(self.aln) is defaultdict:
             # if alignment is specified as difference from ref
             dic_aln = self.aln
         else:
@@ -381,8 +381,6 @@ class TreeAnc(object):
 
         self.logger("TreeAnc: making reduced alignment...", 1)
 
-        from collections import defaultdict
-
         # bind positions in real sequence to that of the reduced (compressed) sequence
         self.full_to_reduced_sequence_map = np.zeros(self.seq_len, dtype=int)
 
@@ -392,7 +390,7 @@ class TreeAnc(object):
         #if is a dict, want to be efficient and not iterate over a bunch of const_sites
         #so pre-load alignment_patterns with the location of const sites!
         #and get the sites that we want to iterate over only!
-        if type(self.aln) is dict:
+        if type(self.aln) is defaultdict:
             tmp_reduced_aln, alignment_patterns, positions = self.process_alignment_dict()
             seqNames = self.aln.keys() #store seqName order to put back on tree
         else:
@@ -411,7 +409,7 @@ class TreeAnc(object):
                 positions = range(self.seq_len)
 
         for pi in positions:
-            if type(self.aln) is dict:
+            if type(self.aln) is defaultdict:
                 pattern = [ self.aln[k][pi] if pi in self.aln[k].keys()
                             else self.ref[pi] for k,v in self.aln.items() ]
             else:
@@ -462,7 +460,7 @@ class TreeAnc(object):
         # assign compressed sequences to all nodes of the tree, which have sequence assigned
         # for dict we cannot assume this is in the same order, as it does below!
         # so do it explicitly
-        if type(self.aln) is dict:
+        if type(self.aln) is defaultdict:
             seq_reduce_align = {n:self.reduced_alignment[i]
                                 for i, n in enumerate(seqNames)}
             for n in self.tree.find_clades():
@@ -504,13 +502,12 @@ class TreeAnc(object):
         # number of sequences in alignment
         nseq = len(self.aln)
 
-        from collections import defaultdict
         inv_map = defaultdict(list)
         for k,v in self.aln.items():
             for pos, bs in v.items():
                 inv_map[pos].append(bs)
 
-        self.nonref_positions = np.sort(inv_map.keys())
+        self.nonref_positions = np.sort(list(inv_map.keys()))
         self.inferred_const_sites = []
 
         ambiguous_char = self.gtr.ambiguous
