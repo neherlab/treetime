@@ -56,7 +56,7 @@ class GTR(object):
         self.logger("GTR: with alphabet: "+str(self.alphabet),1)
         # determine if a character exists that corresponds to no info, i.e. all one profile
         if any([x.sum()==n_states for x in self.profile_map.values()]):
-            amb_states = [c for c,x in self.profile_map.iteritems() if x.sum()==n_states][0]
+            amb_states = [c for c,x in self.profile_map.iteritems() if x.sum()==n_states]
             self.ambiguous = 'N' if 'N' in amb_states else amb_states[0]
             self.logger("GTR: ambiguous character: "+self.ambiguous,2)
         else:
