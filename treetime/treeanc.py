@@ -538,7 +538,7 @@ class TreeAnc(object):
                     # every sequence
                     variable_pos.append(pos)
 
-        refMod = np.fromstring(self.ref, 'S1')
+        refMod = np.array(list(self.ref))
         # place constant non reference positions by their respective allele
         refMod[nonref_const] = nonref_alleles
         # mask variable positions
