@@ -135,7 +135,7 @@ if __name__=="__main__":
     myTree.run(root=params.reroot, relaxed_clock=params.relax,
                resolve_polytomies=(not params.keep_polytomies),
                Tc=Tc, max_iter=params.max_iter,
-               use_input_branch_length = (not params.optimize_branch_length))
+               branch_lengths = 'joint' if params.optimize_branch_length else 'input')
 
     ###########################################################################
     ### OUTPUT and saving of results

@@ -22,7 +22,9 @@ class ClockTree(TreeAnc):
     is converted to the most likely time of the internal nodes.
     """
 
-    def __init__(self,  dates=None, debug=False, real_dates=True, *args, **kwargs):
+    def __init__(self,  dates=None, debug=False, real_dates=True, precision='auto',
+                 branch_length_mode='joint', *args, **kwargs):
+
         """
         ClockTree constructor
 
@@ -42,6 +44,13 @@ class ClockTree(TreeAnc):
             If True, some additional checks for the input dates sanity will be
             performed.
 
+         precision : int
+            precision can be 0 (rough), 1 (default), 2 (fine), or 3 (ultra fine)
+            this parameter determines the number of grid points that are used
+            for the evaluation of the branch length interpolation objects.
+            When not specified, this will default to 1 for short sequences and 2
+            for long sequences with L>1e4
+
         Keyword Args
         ------------
             Kwargs needed to construct parent class (TreeAnc)
@@ -55,9 +64,11 @@ class ClockTree(TreeAnc):
         self.real_dates = real_dates
         self.date_dict = dates
         self.date2dist = None  # we do not know anything about the conversion
-        self.n_integral = ttconf.NINTEGRAL
         self.rel_tol_prune = ttconf.REL_TOL_PRUNE
         self.rel_tol_refine = ttconf.REL_TOL_REFINE
+        self.branch_length_mode = branch_length_mode
+        self.min_width = 10*self.one_mutation
+        self._set_precision(precision)
 
         for node in self.tree.find_clades(order='postorder'):
             if node.name in self.date_dict:
@@ -80,6 +91,41 @@ class ClockTree(TreeAnc):
                     # If all branches dowstream are 'bad', and there is no date constraint for
                     # this node, the branch is marked as 'bad'
                     node.bad_branch = np.all([x.bad_branch for x in node])
+
+    def _set_precision(self, precision):
+        '''
+        function that sets precision to an (hopfully) reasonable guess based
+        on the length of the sequence if not explicitly set
+        '''
+        # if precision is explicitly specified, use it.
+        if precision in [0,1,2,3]:
+            self.precision=precision
+        else:
+            # otherwise adjust it depending on the minimal sensible branch length
+            if self.one_mutation:
+                if self.one_mutation>1e-4:
+                    self.precision=1
+                else:
+                    self.precision=2
+            else:
+                self.precision=1
+
+        if self.precision==0:
+            self.node_grid_points = ttconf.NODE_GRID_SIZE_ROUGH
+            self.branch_grid_points = ttconf.BRANCH_GRID_SIZE_ROUGH
+            self.n_integral = ttconf.N_INTEGRAL_ROUGH
+        elif self.precision==2:
+            self.node_grid_points = ttconf.NODE_GRID_SIZE_FINE
+            self.branch_grid_points = ttconf.BRANCH_GRID_SIZE_FINE
+            self.n_integral = ttconf.N_INTEGRAL_FINE
+        elif self.precision==3:
+            self.node_grid_points = ttconf.NODE_GRID_SIZE_ULTRA
+            self.branch_grid_points = ttconf.BRANCH_GRID_SIZE_ULTRA
+            self.n_integral = ttconf.N_INTEGRAL_ULTRA
+        else:
+            self.node_grid_points = ttconf.NODE_GRID_SIZE
+            self.branch_grid_points = ttconf.BRANCH_GRID_SIZE
+            self.n_integral = ttconf.N_INTEGRAL
 
 
     @property
@@ -117,7 +163,8 @@ class ClockTree(TreeAnc):
         self.logger("ClockTree.init_date_constraints...",2)
         self.tree.coalescent_joint_LH = 0
         if ancestral_inference or (not hasattr(self.tree.root, 'sequence')):
-            self.infer_ancestral_sequences('ml', marginal=False, sample_from_profile='root',**kwarks)
+            self.infer_ancestral_sequences('ml', marginal=self.branch_length_mode=='marginal',
+                                            sample_from_profile='root',**kwarks)
 
         # set the None  for the date-related attributes in the internal nodes.
         # make interpolation objects for the branches
@@ -133,7 +180,14 @@ class ClockTree(TreeAnc):
                 else:
                     gamma = 1.0
                     merger_cost = None
-                node.branch_length_interpolator = BranchLenInterpolator(node, self.gtr, one_mutation=self.one_mutation)
+
+                if self.branch_length_mode=='marginal':
+                    node.profile_pair = self.marginal_branch_profile(node)
+
+                node.branch_length_interpolator = BranchLenInterpolator(node, self.gtr,
+                            pattern_multiplicity = self.multiplicity, min_width=self.min_width,
+                            one_mutation=self.one_mutation, branch_length_mode=self.branch_length_mode)
+
                 node.branch_length_interpolator.merger_cost = merger_cost
                 node.branch_length_interpolator.gamma = gamma
         self.date2dist = utils.DateConversion.from_tree(self.tree, clock_rate)
@@ -145,10 +199,10 @@ class ClockTree(TreeAnc):
                 # set the absolute time before present in branch length units
                 if np.isscalar(node.numdate_given):
                     tbp = self.date2dist.get_time_before_present(node.numdate_given)
-                    node.date_constraint = Distribution.delta_function(tbp, weight=1.0)
+                    node.date_constraint = Distribution.delta_function(tbp, weight=1.0, min_width=self.min_width)
                 else:
                     tbp = self.date2dist.get_time_before_present(np.array(node.numdate_given))
-                    node.date_constraint = Distribution(tbp, np.ones_like(tbp), is_log=False)
+                    node.date_constraint = Distribution(tbp, np.ones_like(tbp), is_log=False, min_width=self.min_width)
 
                 if hasattr(node, 'bad_branch') and node.bad_branch==True:
                     self.logger("ClockTree.init_date_constraints -- WARNING: Branch is marked as bad"
@@ -177,6 +231,9 @@ class ClockTree(TreeAnc):
 
         '''
         self.logger("ClockTree: Maximum likelihood tree optimization with temporal constraints:",1)
+        if 'branch_length_mode' in kwargs:
+            self.branch_length_mode = kwargs['branch_length_mode']
+
         self.init_date_constraints(**kwargs)
 
         if time_marginal:
@@ -230,8 +287,9 @@ class ClockTree(TreeAnc):
                     # Cx.y is the branch length corresponding the optimal subtree
                     bl = node.branch_length_interpolator.x
                     x = bl + node.date_constraint.peak_pos
-                    node.joint_pos_Lx = Distribution(x, node.branch_length_interpolator(bl), is_log=True)
-                    node.joint_pos_Cx = Distribution(x, bl) # map back to the branch length
+                    node.joint_pos_Lx = Distribution(x, node.branch_length_interpolator(bl),
+                                                     min_width=self.min_width, is_log=True)
+                    node.joint_pos_Cx = Distribution(x, bl, min_width=self.min_width) # map back to the branch length
                 else: # all nodes without precise constraint but positional information
                     msgs_to_multiply = [node.date_constraint] if node.date_constraint is not None else []
                     msgs_to_multiply.extend([child.joint_pos_Lx for child in node.clades
@@ -259,6 +317,7 @@ class ClockTree(TreeAnc):
                                         node.branch_length_interpolator,
                                         max_or_integral='max',
                                         inverse_time=True,
+                                        n_grid_points = self.node_grid_points,
                                         n_integral=self.n_integral,
                                         rel_tol=self.rel_tol_refine)
 
@@ -370,7 +429,8 @@ class ClockTree(TreeAnc):
                     node.subtree_distribution = node.date_constraint
                     bl = node.branch_length_interpolator.x
                     x = bl + node.date_constraint.peak_pos
-                    node.marginal_pos_Lx = Distribution(x, node.branch_length_interpolator(bl), is_log=True)
+                    node.marginal_pos_Lx = Distribution(x, node.branch_length_interpolator(bl),
+                                                        min_width=self.min_width, is_log=True)
 
                 else: # all nodes without precise constraint but positional information
                       # subtree likelihood given the node's constraint and child msg:
@@ -397,6 +457,7 @@ class ClockTree(TreeAnc):
                         res, res_t = NodeInterpolator.convolve(node.subtree_distribution,
                                         node.branch_length_interpolator,
                                         max_or_integral='integral',
+                                        n_grid_points = self.node_grid_points,
                                         n_integral=self.n_integral,
                                         rel_tol=self.rel_tol_refine)
                         res._adjust_grid(rel_tol=self.rel_tol_prune)
@@ -428,13 +489,14 @@ class ClockTree(TreeAnc):
                 else:
                     from utils import numeric_date
                     x = [parent.numdate, numeric_date()]
-                    msg_parent_to_node = NodeInterpolator(x, [1.0, 1.0])
+                    msg_parent_to_node = NodeInterpolator(x, [1.0, 1.0],min_width=self.min_width)
 
                 # integral message, which delivers to the node the positional information
                 # from the complementary subtree
                 res, res_t = NodeInterpolator.convolve(msg_parent_to_node, node.branch_length_interpolator,
                                                     max_or_integral='integral',
                                                     inverse_time=False,
+                                                    n_grid_points = self.node_grid_points,
                                                     n_integral=self.n_integral,
                                                     rel_tol=self.rel_tol_refine)
 

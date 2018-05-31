@@ -38,7 +38,7 @@ if __name__ == '__main__':
     base_name = 'data/H3N2_NA_allyears_NA.20'
     dates = read_dates(base_name)
     tt = TreeTime(gtr='Jukes-Cantor', tree = base_name+'.nwk',
-                          aln = base_name+'.fasta', verbose = 1, dates = dates)
+                  aln = base_name+'.fasta', verbose = 1, dates = dates)
 
     # inititally the root if the tree is a mess:
     fig, axs = plt.subplots(1,2, figsize=(18,9))
@@ -58,7 +58,7 @@ if __name__ == '__main__':
     format_axes(fig, axs)
 
     # rerooting can be done along with the tree time inference
-    tt.run(root="best")
+    tt.run(root="best", branch_length_mode='input')
     # if more complicated models (relaxed clocks, coalescent models) are to be used
     # or you want to resolve polytomies, treetime needs to be run for
     # several iterations, for example as

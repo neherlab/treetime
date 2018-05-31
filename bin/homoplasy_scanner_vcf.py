@@ -5,274 +5,7 @@ from treetime import TreeAnc, GTR
 from Bio import Phylo, AlignIO
 from Bio import __version__ as bioversion
 import os,shutil
-
-def read_in_vcf(vcf_file, ref_file, compressed=True):
-    """
-    Reads in a vcf.gz file (or vcf if compressed is False) and associated
-    reference sequence fasta (to which the VCF file is mapped)
-
-    Parses mutations, insertions, and deletions and stores them in a nested dict
-    with the format:
-    {'reference':'AGCTCGA..A',
-     'sequences': { 'seq1':{4:'A', 7:'-'}, 'seq2':{100:'C'} },
-     'insertions': { 'seq1':{4:'ATT'}, 'seq3':{1:'TT', 10:'CAG'} },
-     'positions': [1,4,7,10,100...] }
-
-    Calls with values 0/1 (or 0/2, etc) are ignored.
-    Positions are stored to correspond the location in the reference sequence
-    in Python (numbering is transformed to start at 0)
-
-    Args
-    ----
-    vcf_file : string
-        Path to the vcf or vcf.gz file to be read in
-    ref_file : string
-        Path to the fasta reference file to be read in
-    compressed : boolean
-        Specify false if VCF file is not compressed (not vcf.gz)
-
-    Returns
-    --------
-    compress_seq : nested dict
-        Contains the following keys:
-
-        references : string
-            String of the reference sequence read from the Fasta
-        sequences : nested dict
-            Dict containing sequence names as keys which map to dicts
-            that have position as key and the single-base mutation (or deletion)
-            as values
-        insertions : nested dict
-            Dict in the same format as the above, which stores insertions and their
-            locations. The first base of the insertion is the same as whatever is
-            currently in that position (Ref if no mutation, mutation in 'sequences'
-            otherwise), so the current base can be replaced by the bases held here
-            without losing that base.
-        positions : list
-            Python list of all positions with a mutation, insertion, or deletion.
-
-    EBH 4 Dec 2017
-    """
-    def getAmbigCode(bp1, bp2, bp3=""):
-        bps = [bp1,bp2,bp3]
-        bps.sort()
-        key = "".join(bps)
-
-        return {
-            'CT': 'Y',
-            'AG': 'R',
-            'AT': 'W',
-            'CG': 'S',
-            'GT': 'K',
-            'AC': 'M',
-            'AGT': 'D',
-            'ACG': 'V',
-            'ACT': 'H',
-            'CGT': 'B'
-        }[key]
-
-
-    #vcf is inefficient for the data we want. House code is *much* faster.
-    import gzip
-    from Bio import SeqIO
-    import numpy as np
-
-    sequences = {}
-    insertions = {}
-    positions = []
-
-    nsamp = 0
-    posLoc = 0
-    refLoc = 0
-    altLoc = 0
-    sampLoc = 9
-
-    if compressed: #must use 2 diff functions depending on compressed or not
-        opn = gzip.open
-    else:
-        opn = open
-
-    #with gzip.open(vcf_file) as f:
-    with opn(vcf_file) as f:
-        for line in f:
-            if line[0] != '#':
-                #actual data - most common so first in 'if-list'!
-                line = line.strip()
-                dat = line.split('\t')
-                POS = int(dat[posLoc])
-                REF = dat[refLoc]
-                ALT = dat[altLoc].split(',')
-                calls = np.array(dat[sampLoc:])
-
-                #get samples that differ from Ref at this site
-                recCalls = {}
-                k=0
-                for sa in calls:
-                    if ':' in sa: #if proper VCF file
-                        gt = sa.split(':')[0]
-                    else: #if 'pseudo' VCF file (nextstrain output)
-                        gt = sa
-                    #if gt != '.' and gt[0] != '.':# and gt[0] != '0':
-                    if '/' in gt and gt != '0/0':
-                        recCalls[samps[k]] = gt
-                    k+=1
-
-                #store the position and the alt
-                for seq, gen in recCalls.iteritems():
-                    if gen[0] != '0' and gen[2] != '0' and gen[0] != '.' and gen[2] != '.':
-                        #if is 0/1 or 1/0, ignore - uncertain call
-                        alt = str(ALT[int(gen[0])-1])   #get the index of the alternate
-                        ref = REF
-                        pos = POS-1     #VCF numbering starts from 1, but Reference seq numbering
-                                        #will be from 0 because it's python!
-
-                        if seq not in sequences.keys():
-                            sequences[seq] = {}
-
-                        #figure out if insertion or deletion
-                        #insertion where there is also deletions (special handling)
-                        if len(ref) > 1 and len(alt)>len(ref):
-                            #print "nonstandard insertion at pos {}".format(record.POS)
-                            if seq not in insertions.keys():
-                                insertions[seq] = {}
-                            for i in xrange(len(ref)):
-                                #if the pos doesn't match, store in sequences
-                                if ref[i] != alt[i]:
-                                    sequences[seq][pos+i] = alt[i]
-                                    #if pos+1 not in positions:
-                                    positions.append(pos+i)
-                                #if about to run out of ref, store rest:
-                                if (i+1) >= len(ref):
-                                    insertions[seq][pos+i] = alt[i:]
-                                    #print "at pos {}, storing {} at pos {}".format(record.POS, alt[i:], (pos+i))
-
-                        #deletion
-                        elif len(ref) > 1:
-                            for i in xrange(len(ref)):
-                                #if ref is longer than alt, these are deletion positions
-                                if i+1 > len(alt):
-                                    sequences[seq][pos+i] = '-'
-                                    #if pos+i not in positions:
-                                    positions.append(pos+i)
-                                #if not, there may be mutations
-                                else:
-                                    if ref[i] != alt[i]:
-                                        if alt[i] == '.':
-                                            sequences[seq][pos+i] = 'N'
-                                        else:
-                                            sequences[seq][pos+i] = alt[i]
-                                        #if pos+i not in positions:
-                                        positions.append(pos+i)
-
-                        #insertion
-                        elif len(alt) > 1:
-                            #keep a record of insertions so can put them in if we want, later
-                            if seq not in insertions.keys():
-                                insertions[seq] = {}
-                            insertions[seq][pos] = alt
-                            #First base of insertions always matches ref, so don't need to store
-
-                        #no indel
-                        else:
-                            sequences[seq][pos] = alt
-                            #if pos not in positions:
-                            positions.append(pos)
-
-                    #if is uncertain call 0/1 or no call ./.
-                    #elif gen[0] == '0' or gen[2] == '0':
-                    else:
-                        pos=POS-1
-                        ref = REF
-
-                        # if deletion
-                        if len(ref) > 1:
-                            #if a hetero call on a deletion, deleted part is Ns
-                            #If no-call on deletion - I guess put N's as well!
-                            if gen[0] == '0' or gen[0] == '.':
-                                if gen[0] == '0':
-                                    alt = str(ALT[int(gen[2])-1])
-                                else: #if no-call, there is no alt, so just put Ns after 1st ref base?
-                                    alt = ref[0]
-                                for i in xrange(len(ref)):
-                                    #if ref is longer than alt, these are deletion positions
-                                    if i+1 > len(alt):
-                                        sequences[seq][pos+i] = 'N'
-                                        #if pos+i not in positions:
-                                        positions.append(pos+i)
-                                    #if not, there may be mutations
-                                    else:
-                                        if ref[i] != alt[i]:
-                                            if alt[i] == '.':
-                                                sequences[seq][pos+i] = 'N'
-                                            else:
-                                                sequences[seq][pos+i] = alt[i]
-                                            #if pos+i not in positions:
-                                            positions.append(pos+i)
-
-                            #elif gen[0] == '.':
-                            #    #if nocall on deletion, note
-                            #    print "No Call delet at position: {}".format(POS)
-
-                        #if het, see if proposed alt is 1bp mutation
-                        elif gen[0] == '0':
-                            alt = str(ALT[int(gen[2])-1])
-                            if len(alt)==1:
-                                #alt = getAmbigCode(ref,alt) #if want to allow ambig
-                                alt = 'N' #if you want to disregard ambig
-                                if seq not in sequences.keys():
-                                    sequences[seq] = {}
-                                sequences[seq][pos] = alt
-                                positions.append(pos)
-                            #else: #else an insertion, so ignore.
-                                #print "insertion at at position: {}, {}".format(POS, gen)
-
-                        #else it's a NC; see if all alts are 1
-                        #Then replace with N
-                        elif len(ALT)==len("".join(ALT)):
-                            alt = 'N'
-                            if seq not in sequences.keys():
-                                sequences[seq] = {}
-                            sequences[seq][pos] = alt
-                            positions.append(pos)
-
-                        #else:  #else is a NC insertion, so ignore.
-                            #print "insertion at at position: {}, {}".format(POS, gen)
-                        #if hetero or NC and alts are > 1, (insertion), ignore
-                        #because first base of an insertion is same.
-
-            elif line[0] == '#' and line[1] == 'C':
-                #header line, get all the information
-                line = line.strip()
-                header = line.split('\t')
-                headNP = np.array(header)
-                posLoc = np.where(headNP=='POS')[0][0]
-                refLoc = np.where(headNP=='REF')[0][0]
-                altLoc = np.where(headNP=='ALT')[0][0]
-                sampLoc = np.where(headNP=='FORMAT')[0][0]+1
-                samps = header[sampLoc:]
-                nsamp = len(samps)
-
-            #else you are a comment line, ignore.
-
-    positions = np.array(positions)
-    positions = np.unique(positions)
-    positions = np.sort(positions)
-
-    if nsamp > len(sequences): #one or more are same as ref! so haven't been 'seen' yet
-        missings = set(samps).difference(sequences.keys())
-        for s in missings:
-            sequences[s] = {}
-
-    refSeq = SeqIO.parse(ref_file, format='fasta').next()
-    refSeqStr = str(refSeq.seq)
-
-    compress_seq = {'reference':refSeqStr,
-                    'sequences': sequences,
-                    'insertions': insertions,
-                    'positions': positions}
-
-    return compress_seq
-
+from treetime.vcf_utils import read_vcf
 
 def read_in_DRMs(drm_file):
     import pandas as pd
@@ -331,6 +64,8 @@ if __name__=="__main__":
     parser.add_argument('-n', default = 10, type=int, help='number of mutations/nodes that are printed to screen')
     parser.add_argument('--verbose', default = 1, type=int, help='verbosity of output 0-6')
     parser.add_argument('--drm', type=str, help="file with drug resistance mutation information")
+    parser.add_argument('--vcf_ann', type=str, help="VCF file with 'ANN' field in INFO column - can be same as input file")
+
     params = parser.parse_args()
 
 
@@ -372,7 +107,6 @@ if __name__=="__main__":
             else:
                 print ("GTR params are not specified. Creating GTR model with default parameters")
 
-
             gtr = GTR.standard(model, **kwargs)
         except:
             print ("Could not create GTR model from input arguments. Using default (Jukes-Cantor 1969)")
@@ -385,14 +119,14 @@ if __name__=="__main__":
     aln = params.aln
     ref = params.ref
     if params.ref:
-        compress_seq = read_in_vcf(params.aln, params.ref)
+        compress_seq = read_vcf(params.aln, params.ref)
         aln = compress_seq['sequences']
         ref = compress_seq['reference']
 
-    treeanc = TreeAnc(params.tree, aln=aln, ref=ref, gtr=gtr, verbose=1,
+    treeanc = TreeAnc(params.tree, aln=aln, ref=ref, gtr=gtr, #verbose=1,
                       fill_overhangs=True)
-    #L = treeanc.aln.get_alignment_length() #won't work for VCF
-    L = treeanc.seq_len
+
+    L = len(ref)
     N_seq = len(treeanc.aln)
     N_tree = treeanc.tree.count_terminals()
 
@@ -400,10 +134,15 @@ if __name__=="__main__":
     print("read tree from file %s with %d leaves"%(params.tree,N_tree))
     print("\ninferring ancestral sequences...")
 
-    pi = None
-    if params.ref:
-        pi = np.array([0.1618, 0.3188, 0.3176, 0.1618, 0.04])
-    treeanc.infer_ancestral_sequences('ml', infer_gtr=infer_gtr, fixed_pi=pi, marginal=False)
+    fixed_pi = None
+    if params.ref: #if VCF, we need to fix pi
+        #otherwise because of sequence length, mutation rate TO gap is overestimated
+        fixed_pi = [ref.count(base)/len(ref) for base in ['A','C','G','T','-']]
+        if fixed_pi[-1] == 0: #if no gaps in ref, set ~4% gaps.. adjust other bases accordingly
+            fixed_pi[-1] = 0.05
+            fixed_pi = [v-0.01 for v in fixed_pi]
+    treeanc.infer_ancestral_sequences('ml', infer_gtr=infer_gtr, fixed_pi=fixed_pi, marginal=False)
+
     if params.ref:
         treeanc.recover_var_ambigs() #put Ns back on tips!
     print("...done.")
@@ -503,39 +242,137 @@ if __name__=="__main__":
         DRM_info = read_in_DRMs(params.drm)
         drms = DRM_info['DRMs']
 
+    #read in vcf with annotations if supplied
+    import vcf
+    vcf_reader = vcf.Reader(filename=params.vcf_ann, compressed=True)
+    byPos = {}
+    for record in vcf_reader:
+        byPos[record.POS] = record#.INFO['ANN']
 
 
     ###########################################################################
     ### Output the mutations that are observed most often
     ###########################################################################
-    print("\n\nThe ten most homoplasic mutations are:\n\tmut\tmultiplicity\tDRM details")
+
+    # print("\n\nThe ten most homoplasic mutations are:\n\tmut\tmultiplicity\tDRM details")
+    # mutations_sorted = sorted(mutations.items(), key=lambda x:len(x[1])-0.1*x[0][1]/L, reverse=True)
+    # for mut, val in mutations_sorted[:params.n]:
+        # if len(val)>1:
+            # print("\t%s%d%s\t%d\t%s"%(mut[0], mut[1], mut[2], len(val),
+                # " ".join([drms[mut[1]]['gene'], drms[mut[1]]['drug'], drms[mut[1]]['alt_base'][mut[2]]]) if mut[1] in drms else ""))
+        # else:
+            # break
+
+    #10 most homoplasic mutations, but with DRM and ANN information!
     mutations_sorted = sorted(mutations.items(), key=lambda x:len(x[1])-0.1*x[0][1]/L, reverse=True)
+    tmp = []
+    i=0
+    annots = {}
     for mut, val in mutations_sorted[:params.n]:
         if len(val)>1:
-            print("\t%s%d%s\t%d\t%s"%(mut[0], mut[1], mut[2], len(val),
-                " ".join([drms[mut[1]]['gene'], drms[mut[1]]['drug'], drms[mut[1]]['alt_base'][mut[2]]]) if mut[1] in drms else ""))
+            deet = [mut[0]+str(mut[1])+mut[2], byPos[mut[1]].REF, len(val)]
+            if mut[1] in drms:
+                deet.extend((drms[mut[1]]['gene'], drms[mut[1]]['drug'], drms[mut[1]]['alt_base'][mut[2]]))
+                deet.append("")
+            else:
+                deet.extend(("","",""))
+                if 'ANN' in byPos[mut[1]].INFO:
+                    i+=1
+                    deet.append(str(i))
+                    annots[i] = byPos[mut[1]].INFO['ANN'][0]
+                else:
+                    deet.append("")
+            tmp.append(deet)
         else:
             break
 
+    print("\n\nThe {} most homoplasic mutations are:".format(params.n))
+    firstTen = np.array(tmp)
+    colN = ["Mutation", "Ref", "Multiplicity", "DRM-gene", "DRM-drug", "DRM-AA", "Annotation"]
+    import pandas as pd
+    print(pd.DataFrame(data=firstTen, columns=colN))
+    print("")
+    for k,v in annots.iteritems():
+        print("%d:\t%s\n"%(k,v))
+
+
+
     # optional output specifically for mutations on terminal branches
+    # if params.detailed:
+        # print("\n\nThe ten most homoplasic mutations on terminal branches are:\n\tmut\tmultiplicity\tDRM details")
+        # terminal_mutations_sorted = sorted(terminal_mutations.items(), key=lambda x:len(x[1])-0.1*x[0][1]/L, reverse=True)
+        # for mut, val in terminal_mutations_sorted[:params.n]:
+            # if len(val)>1:
+                # print("\t%s%d%s\t%d\t%s"%(mut[0], mut[1], mut[2], len(val),
+                    # " ".join([drms[mut[1]]['gene'], drms[mut[1]]['drug'], drms[mut[1]]['alt_base'][mut[2]]]) if mut[1] in drms else ""))
+            # else:
+                # break
+
     if params.detailed:
-        print("\n\nThe ten most homoplasic mutation on terminal branches are:\n\tmut\tmultiplicity\tDRM details")
         terminal_mutations_sorted = sorted(terminal_mutations.items(), key=lambda x:len(x[1])-0.1*x[0][1]/L, reverse=True)
+        tmp = []
+        i=0
+        annots = {}
         for mut, val in terminal_mutations_sorted[:params.n]:
             if len(val)>1:
-                print("\t%s%d%s\t%d\t%s"%(mut[0], mut[1], mut[2], len(val),
-                    " ".join([drms[mut[1]]['gene'], drms[mut[1]]['drug'], drms[mut[1]]['alt_base'][mut[2]]]) if mut[1] in drms else ""))
+                deet = [mut[0]+str(mut[1])+mut[2], byPos[mut[1]].REF, len(val)]
+                if deet[0] in firstTen:
+                    deet.append("Y")
+                else:
+                    deet.append("N")
+                if mut[1] in drms:
+                    deet.extend((drms[mut[1]]['gene'], drms[mut[1]]['drug'], drms[mut[1]]['alt_base'][mut[2]]))
+                    deet.append("")
+                else:
+                    deet.extend(("","",""))
+                    if 'ANN' in byPos[mut[1]].INFO:
+                        i+=1
+                        deet.append(str(i))
+                        annots[i] = byPos[mut[1]].INFO['ANN'][0]
+                    else:
+                        deet.append("")
+                tmp.append(deet)
             else:
                 break
+
+        print("\n\nThe {} most homoplasic mutations on terminal branches are:".format(params.n))
+        secondTen = np.array(tmp)
+        colN = ["Mutation", "Ref", "Multiplicity", "Seen-Above?", "DRM-gene", "DRM-drug", "DRM-AA", "Annotation"]
+        import pandas as pd
+        print(pd.DataFrame(data=secondTen, columns=colN))
+        print("")
+        for k,v in annots.iteritems():
+            print("%d:\t%s\n"%(k,v))
+
 
     ###########################################################################
     ### Output strains that have many homoplasic mutations
     ###########################################################################
     # TODO: add statistical criterion
+
+    # if params.detailed:
+        # print("\n\nTaxons that carry positions that mutated elsewhere in the tree:\n\ttaxon_name\t#of homoplasic mutations \t# DRM")
+        # mutation_by_strain_sorted = sorted(mutation_by_strain.items(), key=lambda x:len(x[1]), reverse=True)
+        # for name, val in mutation_by_strain_sorted[:params.n]:
+            # if len(val):
+                # print("\t%s\t%d\t%d"%(name, len(val),
+                        # len([mut for mut,l in val if mut[1] in drms])))
+
     if params.detailed:
-        print("\n\nTaxons that carry positions that mutated elsewhere in the tree:\n\ttaxon name\t#of homoplasic mutations \t# DRM")
         mutation_by_strain_sorted = sorted(mutation_by_strain.items(), key=lambda x:len(x[1]), reverse=True)
+        tmp = []
+        i=0
         for name, val in mutation_by_strain_sorted[:params.n]:
             if len(val):
-                print("\t%s\t%d\t%d"%(name, len(val),
-                        len([mut for mut,l in val if mut[1] in drms])))
+                deet = [name, len(val), len([mut for mut,l in val if mut[1] in drms])]
+                muts = [mut[0]+str(mut[1])+mut[2] for mut,count in val ]
+                deet.append(",".join(muts))
+                tmp.append(deet)
+
+        print("\n\nTaxons that carry positions that mutated elsewhere in the tree:".format(params.n))
+        secondTen = np.array(tmp)
+        colN = ["TaxonName", "#_of_homoplasic_mutations", "#_of_those_DRM", "Mutations"]
+        import pandas as pd
+        print(pd.DataFrame(data=secondTen, columns=colN))
+
+

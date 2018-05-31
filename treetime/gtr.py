@@ -56,7 +56,8 @@ class GTR(object):
         self.logger("GTR: with alphabet: "+str(self.alphabet),1)
         # determine if a character exists that corresponds to no info, i.e. all one profile
         if any([x.sum()==n_states for x in self.profile_map.values()]):
-            self.ambiguous = [c for c,x in self.profile_map.iteritems() if x.sum()==n_states][0]
+            amb_states = [c for c,x in self.profile_map.iteritems() if x.sum()==n_states]
+            self.ambiguous = 'N' if 'N' in amb_states else amb_states[0]
             self.logger("GTR: ambiguous character: "+self.ambiguous,2)
         else:
             self.ambiguous=None
@@ -496,7 +497,8 @@ class GTR(object):
         return
 
 
-    def compress_sequence_pair(self, seq_p, seq_ch, pattern_multiplicity=None, ignore_gaps=False):
+    def compress_sequence_pair(self, seq_p, seq_ch, pattern_multiplicity=None,
+                               ignore_gaps=False):
         '''
         make a compressed representation of a pair of sequences only counting
         the number of times a particular pair of states (e.g. (A,T)) is observed
@@ -547,18 +549,20 @@ class GTR(object):
                             count = ((bool_seqs_p[n1]&bool_seqs_ch[n2])*pattern_multiplicity).sum()
                             if count: pair_count.append(((n1,n2), count))
         else: # enumerate state pairs of the sequence for large alphabets
-        #FIXME: make this work with pattern_multiplicity
             num_seqs = []
             for seq in [seq_p, seq_ch]: # for each sequence (parent and child) construct a numerical sequence [0,5,3,1,2,3...]
                 tmp = np.ones_like(seq, dtype=int)
                 for ni,nuc in enumerate(self.alphabet):
                     tmp[seq==nuc] = ni  # set each position corresponding to a state to the corresponding index
                 num_seqs.append(tmp)
-            if ignore_gaps:  # if gaps are ingnored skip positions where one or the other sequence is gapped
-                pair_count = Counter([x for x in zip(num_seqs[0], num_seqs[1])
-                                      if (self.gap_index not in x)])
+            pair_count = defaultdict(int)
+            if ignore_gaps:  # if gaps are ignored skip positions where one or the other sequence is gapped
+                for i in range(len(seq_p)):
+                    if self.gap_index!=num_seqs[0][i] and self.gap_index!=num_seqs[1][i]:
+                        pair_count[(num_seqs[0][i],num_seqs[1][i])]+=multiplicity[i]
             else: # otherwise, just count
-                pair_count = Counter(zip(num_seqs[0], num_seqs[1]))
+                for i in range(len(seq_p)):
+                    pair_count[(num_seqs[0][i],num_seqs[1][i])]+=multiplicity[i]
             pair_count = pair_count.items()
 
         return (np.array([x[0] for x in pair_count], dtype=int),    # [(child_nuc, parent_nuc),()...]
@@ -568,7 +572,7 @@ class GTR(object):
 ########################################################################
 ### evolution functions
 ########################################################################
-    def prob_t_compressed(self, seq_pair, multiplicity, t, return_log=False):
+    def prob_t_compressed(self, seq_pair, multiplicity, t, return_log=False, derivative=0):
         '''
         calculate the probability of observing a sequence pair at a distance t
 
@@ -636,17 +640,17 @@ class GTR(object):
         return self.prob_t_compressed(seq_pair, multiplicity, t, return_log=return_log)
 
 
-    def optimal_t(self, seq_p, seq_ch, pattern_multiplicity=None, ignore_gaps=False):
+    def optimal_t(self, seq_p, seq_ch, pattern_multiplicity=None, ignore_gaps=False, profiles=False):
         '''
         Find the optimal distance between the two sequences
         '''
         seq_pair, multiplicity = self.compress_sequence_pair(seq_p, seq_ch,
                                                             pattern_multiplicity = pattern_multiplicity,
-                                                            ignore_gaps=ignore_gaps)
+                                                            ignore_gaps=ignore_gaps, profiles=profiles)
         return self.optimal_t_compressed(seq_pair, multiplicity)
 
 
-    def optimal_t_compressed(self, seq_pair, multiplicity):
+    def optimal_t_compressed(self, seq_pair, multiplicity, profiles=False):
         """
         Find the optimal distance between the two sequences
         """
@@ -678,22 +682,28 @@ class GTR(object):
                 Negative probability of the two given sequences
                 to be separated by the time t.
             """
-            return -1.0*self.prob_t_compressed(seq_pair, multiplicity,t, return_log=True)
+            if profiles:
+                return -1.0*self.prob_t_profiles(seq_pair, multiplicity,t**2, return_log=True)
+            else:
+                return -1.0*self.prob_t_compressed(seq_pair, multiplicity,t**2, return_log=True)
 
         try:
             from scipy.optimize import minimize_scalar
             opt = minimize_scalar(_neg_prob,
-                    bounds=[0,ttconf.MAX_BRANCH_LENGTH],
-                    method='bounded',
-                    args=(seq_pair, multiplicity), options={'xatol':1e-10})
-            new_len = opt["x"]
+                    bounds=[-np.sqrt(ttconf.MAX_BRANCH_LENGTH),np.sqrt(ttconf.MAX_BRANCH_LENGTH)],
+                    args=(seq_pair, multiplicity), tol=1e-10)
+            new_len = opt["x"]**2
+            if 'success' not in opt:
+                opt['success'] = True
+                self.logger("WARNING: the optimization result does not contain a 'success' flag:"+str(opt),4, warn=True)
         except:
             import scipy
             print('legacy scipy', scipy.__version__)
             from scipy.optimize import fminbound
             new_len = fminbound(_neg_prob,
-                    0,ttconf.MAX_BRANCH_LENGTH,
-                    args=(seq_pair, multiplicity))
+                      -np.sqrt(ttconf.MAX_BRANCH_LENGTH),np.sqrt(ttconf.MAX_BRANCH_LENGTH),
+                       args=(seq_pair, multiplicity))
+            new_len = new_len**2
             opt={'success':True}
 
         if new_len > .9 * ttconf.MAX_BRANCH_LENGTH:
@@ -706,10 +716,55 @@ class GTR(object):
         return new_len
 
 
+    def prob_t_profiles(self, profile_pair, multiplicity, t, return_log=False, ignore_gaps=True):
+        '''
+        calculate the probability of observing a node pair at a distance t
+
+        Parameters
+        ----------
+
+          profile_pair: numpy arrays
+            probability distributions of the nucleotides at either
+            end of the branch. pp[0] = parent, pp[1] = child
+
+          multiplicity : numpy array
+            The number of times a parent-child state pair is observed
+            this allows to compress the sequence representation
+
+          t : float
+            Length of the branch separating parent and child
+
+          ignore_gaps: bool
+            ignore mutations to and from gaps in distance calculations
+
+          return_log : bool, default False
+            Whether or not to exponentiate the result
+
+        '''
+        if (t<0):
+            logP = -ttconf.BIG_NUMBER
+        else:
+            Qt = self.expQt(t).T
+            res = profile_pair[0].dot(Qt)
+            overlap = np.sum(res*profile_pair[1], axis=1)
+            if ignore_gaps: # calculate the probability that neither outgroup/node has a gap
+                non_gap_frac = (1-profile_pair[0][:,self.gap_index])*(1-profile_pair[1][:,self.gap_index])
+                # weigh log LH by the non-gap probability
+                logP = np.sum(multiplicity*np.log(overlap)*non_gap_frac)
+            else:
+                logP = np.sum(multiplicity*np.log(overlap))
+
+            if return_log:
+                return logP
+            else:
+                return np.exp(logP)
+
+
     def propagate_profile(self, profile, t, return_log=False):
         """
-        Compute the probability of the sequence state (profile) at time (t+t0),
-        given the sequence state (profile) at time t0.
+        Compute the probability of the sequence state of the parent
+        at time (t+t0, backwards), given the sequence state of the
+        child (profile) at time t0.
 
         Parameters
         ----------
@@ -728,7 +783,7 @@ class GTR(object):
         -------
 
          res : np.array
-            Profile of the sequence after time t.
+            Profile of the sequence after time t in the past.
             Shape = (L, a), where L - sequence length, a - alphabet size.
 
         """
@@ -752,10 +807,43 @@ class GTR(object):
         """
         return np.exp(self.mu * t * self.eigenvals)
 
+
     def expQt(self, t):
         eLambdaT = np.diag(self._exp_lt(t)) # vector length = a
-        Qt = self.v.dot(eLambdaT.dot(self.v_inv))   # This is P(nuc1 | given nuc_2)
-        return np.maximum(0,Qt)
+        Qs = self.v.dot(eLambdaT.dot(self.v_inv))   # This is P(nuc1 | given nuc_2)
+        return np.maximum(0,Qs)
+
+    def expQs(self, s):
+        eLambdaT = np.diag(self._exp_lt(s**2)) # vector length = a
+        Qs = self.v.dot(eLambdaT.dot(self.v_inv))   # This is P(nuc1 | given nuc_2)
+        return np.maximum(0,Qs)
+
+
+    def expQsds(self, s):
+        '''
+        Returns
+        -------
+        Qtds :  Returns 2 V_{ij} \lambda_j s e^{\lambda_j s**2 } V^{-1}_{jk}
+                This is the derivative of the branch probability with respect to s=\sqrt(t)
+        '''
+        lambda_eLambdaT = np.diag(2.0*self._exp_lt(s**2)*self.eigenvals*s) # vector length = a
+        Qsds = self.v.dot(lambda_eLambdaT.dot(self.v_inv))
+        return Qsds
+
+
+    def expQsdsds(self, t):
+        '''
+        Returns
+        -------
+        Qtdtdt :  Returns V_{ij} \lambda_j^2 e^{\lambda_j s**2} V^{-1}_{jk}
+                This is the second derivative of the branch probability wrt time
+        '''
+        t=s**2
+        elt = self._exp_lt(t)
+        lambda_eLambdaT = np.diag(elt*(4.0*t*self.eigenvals**2 + 2.0*self.eigenvals))
+        Qsdsds = self.v.dot(lambda_eLambdaT.dot(self.v_inv))
+        return Qsdsds
+
 
     def sequence_logLH(self,seq, pattern_multiplicity=None):
         """

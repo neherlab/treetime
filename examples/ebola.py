@@ -29,11 +29,11 @@ if __name__ == '__main__':
     base_name = 'data/ebola'
     dates = read_dates(base_name)
     # instantiate treetime
-    ebola = TreeTime(gtr='Jukes-Cantor', tree = base_name+'.nwk',
+    ebola = TreeTime(gtr='Jukes-Cantor', tree = base_name+'.nwk', precision=1,
                         aln = base_name+'.fasta', verbose = 4, dates = dates)
 
     # infer an ebola time tree while rerooting and resolving polytomies
-    ebola.run(root='best', relaxed_clock=False, max_iter=2,
+    ebola.run(root='best', relaxed_clock=False, max_iter=2, branch_length_mode='input',
               resolve_polytomies=True, Tc='skyline', time_marginal="assign")
 
     # scatter root to tip divergence vs sampling date

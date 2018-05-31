@@ -29,7 +29,6 @@ if __name__=="__main__":
         "Example: '--gtr K80 --gtr_params kappa=0.2 pis=0.25,0.25,0.25,0.25'. See the exact definitions of "
         " the parameters in the GTR creation methods in treetime/nuc_models.py. Only nucleotide models supported at present")
 
-    parser.add_argument('--prot', default = False, action="store_true", help ="protein alignment")
     parser.add_argument('--zero_based', default = False, action='store_true', help='zero based SNP indexing')
     parser.add_argument('-n', default = 10, type=int, help='number of mutations/nodes that are printed to screen')
     parser.add_argument('--verbose', default = 1, type=int, help='verbosity of output 0-6')
@@ -39,6 +38,7 @@ if __name__=="__main__":
     ###########################################################################
     ### CHECK FOR TREE, build if not in place
     ###########################################################################
+
     if params.tree is None:
         from treetime.utils import tree_inference
         params.tree = os.path.basename(params.aln)+'.nwk'
@@ -47,6 +47,9 @@ if __name__=="__main__":
         tree_inference(params.aln, params.tree, tmp_dir = tmp_dir)
         if os.path.isdir(tmp_dir):
             shutil.rmtree(tmp_dir)
+    elif not os.path.isfile(params.tree):
+        print("Input tree file does not exist:", params.tree)
+        exit(1)
 
     ###########################################################################
     ### GTR SET-UP
