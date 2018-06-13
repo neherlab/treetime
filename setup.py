@@ -15,6 +15,13 @@ setup(
         keywords = "Time-stamped phylogenies, evolution",
         url = "https://github.com/neherlab/treetime",
         packages=['treetime'],
+        install_requires = [
+            'biopython >=1.66',
+            'matplotlib >=2.0',
+            'numpy >=1.10.4',
+            'pandas >=0.17.1',
+            'scipy >=0.16.1'
+        ],
         classifiers=[
             "Development Status :: 3 - Alpha",
             "Topic :: Science",
