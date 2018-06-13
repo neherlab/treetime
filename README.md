@@ -34,22 +34,23 @@ The package is designed to be used as a stand-alone tool or as a library used in
 
 
 ### Installation and prerequisites
-TreeTime is written in Python 2.7 and currently doesn't support Python 3.
-* The package depends on several python libraries:
-    - numpy, scipy: for all kind of mathematical operations as matrix operations, numerical integration, interpolation, minimization, etc.
 
-    - BioPython: for parsing multiple sequence alignments and all phylogenetic functionality
+TreeTime is written in Python 2.7 and currently doesn't support Python 3.  It
+depends on several Python libraries:
 
-    - matplotlib: optional dependency for plotting
-  If you do not have these libraries, you can install them by typing in the terminal:
-    ```bash
-    $pip install numpy scipy biopython matplotlib
-    ```
+* numpy, scipy, pandas: for all kind of mathematical operations as matrix
+  operations, numerical integration, interpolation, minimization, etc.
 
-* To install the package, run `setup.py` script from the terminal:
-    ```bash
-    $python setup.py install
-    ```
+* BioPython: for parsing multiple sequence alignments and all phylogenetic
+  functionality
+
+* matplotlib: optional dependency for plotting
+
+You may install TreeTime and its dependencies by running
+
+    pip install .
+
+within this repository.
 
 You might need root privileges for system wide installation. Alternatively, you can simply use it TreeTime locally without installation. In this case, just download and unpack it, and then add the TreeTime folder to your $PYTHONPATH.
 
