@@ -220,7 +220,6 @@ def read_vcf(vcf_file, ref_file):
                     ref = REF
                     pos = POS-1     #VCF numbering starts from 1, but Reference seq numbering
                                     #will be from 0 because it's python!
-
                     #Accepts only calls that are 1/1, 2/2 etc. Rejects hets and no-calls
                     if gen[0] != '0' and gen[2] != '0' and gen[0] != '.' and gen[2] != '.':
                         alt = str(ALT[int(gen[0])-1])   #get the index of the alternate
