@@ -208,7 +208,11 @@ def read_vcf(vcf_file, ref_file):
                         gt = sa.split(':')[0]
                     else: #if 'pseudo' VCF file (nextstrain output, or otherwise stripped)
                         gt = sa
-                    if '/' in gt and gt != '0/0':  #ignore if ref call: '.' or '0/0', depending on VCF
+                    if gt == '0' or gt == '1': #for haploid calls in VCF
+                        gt = '0/0' if gt == '0' else '1/1'
+
+                    #ignore if ref call: '.' or '0/0', depending on VCF
+                    if ('/' in gt and gt != '0/0') or ('|' in gt and gt != '0|0'):
                         recCalls[sname] = gt
 
                 #store the position and the alt
@@ -238,6 +242,7 @@ def read_vcf(vcf_file, ref_file):
                 altLoc = header.index('ALT')
                 sampLoc = header.index('FORMAT')+1
                 samps = header[sampLoc:]
+                samps = [ x.strip() for x in samps ] #ensure no leading/trailing spaces
                 nsamp = len(samps)
 
             #else you are a comment line, ignore.
