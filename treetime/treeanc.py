@@ -1422,6 +1422,7 @@ class TreeAnc(object):
             if not hasattr(self.tree.root, "marginal_profile"):
                 self.infer_ancestral_sequences(marginal=True)
 
+        max_bl = 0
         for node in self.tree.find_clades(order='postorder'):
             if node.up is None: continue # this is the root
             if store_old_dist:
@@ -1443,10 +1444,16 @@ class TreeAnc(object):
 
             node.branch_length = new_len
             node.mutation_length=new_len
+            max_bl = max(max_bl, new_len)
 
         # as branch lengths changed, the params must be fixed
         self.tree.root.up = None
         self.tree.root.dist2root = 0.0
+        if max_bl>0.15:
+            self.logger("TreeAnc.optimize_branch_length: THIS TREE HAS LONG BRANCHES."
+                        " \n\t ****TreeTime IS NOT DESIGNED TO OPTIMIZE LONG BRANCHES."
+                        " \n\t ****PLEASE OPTIMIZE BRANCHES WITH ANOTHER TOOL AND RERUN WITH"
+                        " \n\t ****branch_length_mode='input'", 0, warn=True)
         self._prepare_nodes()
 
 

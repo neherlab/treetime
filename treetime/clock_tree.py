@@ -101,6 +101,9 @@ class ClockTree(TreeAnc):
         # if precision is explicitly specified, use it.
         if precision in [0,1,2,3]:
             self.precision=precision
+            if self.one_mutation and self.one_mutation<1e-4 and precision<2:
+                self.logger("ClockTree._set_precision: FOR LONG SEQUENCES (>1e4) precision>=2 IS RECOMMENDED."
+                            " \n\t **** precision%d was specified by the user"%precision)
         else:
             # otherwise adjust it depending on the minimal sensible branch length
             if self.one_mutation:

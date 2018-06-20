@@ -237,7 +237,7 @@ class TreeTime(ClockTree):
             bl_mode = 'input'
         else:
             bl_mode = 'joint'
-        self.logger("TreeTime._set_branch_length_mode: maximum branch length is %1.3e, using branch length mode %s"%(max_bl, bl_mode),2)
+        self.logger("TreeTime._set_branch_length_mode: maximum branch length is %1.3e, using branch length mode %s"%(max_bl, bl_mode),1)
         return bl_mode
 
 
