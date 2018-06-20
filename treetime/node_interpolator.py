@@ -1,3 +1,4 @@
+from __future__ import print_function, division, absolute_import
 import numpy as np
 from treetime.distribution import Distribution
 import numpy  as np

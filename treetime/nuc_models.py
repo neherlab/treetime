@@ -1,6 +1,6 @@
 #!/usr/local/bin/python
 # -*- coding: utf-8 -*-
-from __future__ import division, print_function
+from __future__ import division, print_function, absolute_import
 import numpy as np
 from treetime.seq_utils import alphabets, profile_maps
 

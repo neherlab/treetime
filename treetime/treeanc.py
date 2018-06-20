@@ -1,4 +1,4 @@
-from __future__ import print_function, division
+from __future__ import print_function, division, absolute_import
 import time
 from  treetime import config as ttconf
 from Bio import Phylo

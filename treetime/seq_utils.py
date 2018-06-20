@@ -150,7 +150,7 @@ def seq2array(seq, fill_overhangs=True, ambiguous_character='N'):
         sequence [np.where(sequence != '-')[0][-1]+1:] = ambiguous_character
     return sequence
 
-def seq2prof(x, profile_map):
+def seq2prof(seq, profile_map):
     """
     Convert the given character sequence into the profile according to the
     alphabet specified.
@@ -158,7 +158,7 @@ def seq2prof(x, profile_map):
     Parameters
     ----------
 
-     x : numpy.array
+     seq : numpy.array
         sequence to be converted to the profile
 
      profile_map : dic
@@ -178,7 +178,7 @@ def seq2prof(x, profile_map):
         print("profile contains arrays of different length!")
         return None
     prof = np.array([profile_map[k] if k in profile_map
-                    else np.ones(n_states) for k in x ])
+                    else np.ones(n_states) for k in seq ])
 
 
     bad_indices=(prof.sum(1) < 1e-5)

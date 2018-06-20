@@ -1,4 +1,4 @@
-from __future__ import division, print_function
+from __future__ import division, print_function, absolute_import, absolute_import
 import numpy as np
 from treetime.seq_utils import alphabets
 

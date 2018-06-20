@@ -1,4 +1,4 @@
-from __future__ import print_function, division
+from __future__ import print_function, division, absolute_import
 from treetime.clock_tree import ClockTree
 from treetime import utils as ttutils
 from  treetime import config as ttconf
