@@ -4,7 +4,7 @@ import numpy as np
 from treetime import TreeAnc, GTR
 from Bio import Phylo, AlignIO
 from Bio import __version__ as bioversion
-import os,shutil
+import os,shutil, sys
 
 if __name__=="__main__":
     ###########################################################################
@@ -219,3 +219,6 @@ if __name__=="__main__":
         for name, val in mutation_by_strain_sorted[:params.n]:
             if len(val):
                 print("\t%s\t%d"%(name, len(val)))
+
+
+    sys.exit(0)

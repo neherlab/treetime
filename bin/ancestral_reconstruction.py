@@ -4,6 +4,7 @@ import numpy as np
 from treetime import TreeAnc, GTR
 from Bio import Phylo, AlignIO
 from Bio import __version__ as bioversion
+import sys
 
 if __name__=="__main__":
     ###########################################################################
@@ -122,3 +123,5 @@ if __name__=="__main__":
     outtree_name = '.'.join(params.tree.split('/')[-1].split('.')[:-1])+'_mutation.nexus'
     Phylo.write(treeanc.tree, outtree_name, 'nexus')
     print("--- tree saved in nexus format as  \n\t %s\n"%outtree_name)
+
+    sys.exit(0)

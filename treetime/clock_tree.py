@@ -110,6 +110,7 @@ class ClockTree(TreeAnc):
                     self.precision=2
             else:
                 self.precision=1
+            self.logger("ClockTree: Setting precision to level %s"%self.precision, 2)
 
         if self.precision==0:
             self.node_grid_points = ttconf.NODE_GRID_SIZE_ROUGH

@@ -4,6 +4,7 @@ import numpy as np
 from treetime import TreeTime
 from treetime.utils import DateConversion
 from Bio import Phylo, AlignIO
+import sys
 
 if __name__=="__main__":
     ###########################################################################
@@ -111,6 +112,7 @@ if __name__=="__main__":
         plt.savefig(base_name+'_root_to_tip_regression.pdf')
         print("--- root-to-tip plot saved to  \n\t %s_root_to_tip_regression.pdf\n"%base_name)
 
+    sys.exit(0)
 
 
 

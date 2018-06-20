@@ -234,9 +234,11 @@ class TreeTime(ClockTree):
         max_bl = np.max(bl_dis)
         min_bl = np.min(bl_dis)
         if max_bl>0.05:
-            return 'input'
+            bl_mode = 'input'
         else:
-            return 'joint'
+            bl_mode = 'joint'
+        self.logger("TreeTime._set_branch_length_mode: maximum branch length is %1.3e, using branch length mode %s"%(max_bl, bl_mode),2)
+        return bl_mode
 
 
     def clock_filter(self, reroot='best', n_iqd=None, plot=False):
