@@ -2,7 +2,7 @@
 VCF Utilities
 *************
 
-.. func:: vcf_utils.read_vcf
+.. autofunction:: treetime.vcf_utils.read_vcf
 
-.. func:: vcf_utils.write_vcf
+.. autofunction:: treetime.vcf_utils.write_vcf
 
