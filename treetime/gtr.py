@@ -1,11 +1,11 @@
 #!/usr/local/bin/python
 # -*- coding: utf-8 -*-
-from __future__ import division, print_function
+from __future__ import division, print_function, absolute_import
 import numpy as np
-import config as ttconf
-from seq_utils import alphabets, profile_maps, alphabet_synonyms
-from aa_models  import JTT92
-from nuc_models import JC69, K80, F81, HKY85, T92, TN93
+from  treetime import config as ttconf
+from treetime.seq_utils import alphabets, profile_maps, alphabet_synonyms
+from treetime.aa_models  import JTT92
+from treetime.nuc_models import JC69, K80, F81, HKY85, T92, TN93
 
 class GTR(object):
     """
@@ -56,7 +56,7 @@ class GTR(object):
         self.logger("GTR: with alphabet: "+str(self.alphabet),1)
         # determine if a character exists that corresponds to no info, i.e. all one profile
         if any([x.sum()==n_states for x in self.profile_map.values()]):
-            amb_states = [c for c,x in self.profile_map.iteritems() if x.sum()==n_states]
+            amb_states = [c for c,x in self.profile_map.items() if x.sum()==n_states]
             self.ambiguous = 'N' if 'N' in amb_states else amb_states[0]
             self.logger("GTR: ambiguous character: "+self.ambiguous,2)
         else:

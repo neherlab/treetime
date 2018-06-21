@@ -11,7 +11,8 @@ if __name__ == '__main__':
     # load data
     base_name = 'data/H3N2_NA_allyears_NA.20'
     T = Phylo.read(base_name+".nwk", "newick")
-    T.root_with_outgroup(T.find_clades(lambda x:x.name.startswith('A/Scot')).next())
+    OG = list(T.find_clades(lambda x:x.name.startswith('A/Scot')))[0]
+    T.root_with_outgroup(OG)
 
     # instantiate treetime
     myTree = TreeAnc(gtr='Jukes-Cantor', tree = T, aln = base_name+'.fasta', verbose = 0)

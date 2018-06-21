@@ -1,16 +1,12 @@
-from __future__ import print_function, division
+from __future__ import print_function, division, absolute_import
 import time
-import config as ttconf
+from  treetime import config as ttconf
 from Bio import Phylo
 from Bio import AlignIO
 import numpy as np
-from gtr import GTR
-import seq_utils
-from version import tt_version as __version__
-try:
-    from itertools import izip
-except ImportError:  #python3.x
-    izip = zip
+import treetime.seq_utils as seq_utils
+from treetime.gtr import GTR
+from treetime.version import tt_version as __version__
 from collections import defaultdict
 
 class TreeAnc(object):
@@ -224,7 +220,7 @@ class TreeAnc(object):
         from os.path import isfile
         if isinstance(in_tree, Phylo.BaseTree.Tree):
             self._tree = in_tree
-        elif type(in_tree) in [str, unicode] and isfile(in_tree):
+        elif type(in_tree)==str and isfile(in_tree):
             try:
                 self._tree=Phylo.read(in_tree, 'newick')
             except:
@@ -266,7 +262,7 @@ class TreeAnc(object):
             return
         elif isinstance(in_aln, MultipleSeqAlignment):
             self._aln = in_aln
-        elif type(in_aln) in [str, unicode] and isfile(in_aln):
+        elif type(in_aln)==str and isfile(in_aln):
             for fmt in ['fasta', 'phylip-relaxed', 'nexus']:
                 try:
                     self._aln=AlignIO.read(in_aln, 'fasta')
@@ -415,7 +411,7 @@ class TreeAnc(object):
         for pi in positions:
             if type(self.aln) is defaultdict:
                 pattern = [ self.aln[k][pi] if pi in self.aln[k].keys()
-                            else self.ref[pi] for k,v in self.aln.iteritems() ]
+                            else self.ref[pi] for k,v in self.aln.items() ]
             else:
                 pattern = aln_transpose[pi]
 
@@ -458,7 +454,7 @@ class TreeAnc(object):
             self.full_to_reduced_sequence_map[np.array(pos)]=p
 
         # create a map to reconstruct full sequence from the reduced (compressed) sequence
-        for p, val in alignment_patterns.iteritems():
+        for p, val in alignment_patterns.items():
             self.reduced_to_full_sequence_map[val[0]]=np.array(val[1], dtype=int)
 
         # assign compressed sequences to all nodes of the tree, which have sequence assigned
@@ -507,8 +503,8 @@ class TreeAnc(object):
         nseq = len(self.aln)
 
         inv_map = defaultdict(list)
-        for k,v in self.aln.iteritems():
-            for pos, bs in v.iteritems():
+        for k,v in self.aln.items():
+            for pos, bs in v.items():
                 inv_map[pos].append(bs)
 
         self.nonref_positions = np.sort(list(inv_map.keys()))
@@ -519,7 +515,7 @@ class TreeAnc(object):
         nonref_alleles = []
         ambiguous_const = []
         variable_pos = []
-        for pos, bs in inv_map.iteritems(): #loop over positions and patterns
+        for pos, bs in inv_map.items(): #loop over positions and patterns
             bases = "".join(np.unique(bs))
             if len(bs) == nseq:
                 if (len(bases)<=2 and ambiguous_char in bases) or len(bases)==1:
@@ -542,7 +538,7 @@ class TreeAnc(object):
                     # every sequence
                     variable_pos.append(pos)
 
-        refMod = np.fromstring(self.ref, 'S1')
+        refMod = np.array(list(self.ref))
         # place constant non reference positions by their respective allele
         refMod[nonref_const] = nonref_alleles
         # mask variable positions
@@ -806,7 +802,7 @@ class TreeAnc(object):
             node_seq = self.original_sequences[node.name]
 
         muts = []
-        for p, (anc, der) in enumerate(izip(node.up.cseq, node_seq)):
+        for p, (anc, der) in enumerate(zip(node.up.cseq, node_seq)):
             # only if the states in compressed sequences differ:
             if anc!=der:
                 # expand to the positions in real sequence
@@ -852,7 +848,7 @@ class TreeAnc(object):
          seq : np.array
             Sequence as np.array of chars
         """
-        seq = np.zeros_like(self.full_to_reduced_sequence_map, dtype='S1')
+        seq = np.zeros_like(self.full_to_reduced_sequence_map, dtype='U1')
         for pos, state in enumerate(node.cseq):
             seq[self.reduced_to_full_sequence_map[pos]] = state
 
@@ -1051,7 +1047,7 @@ class TreeAnc(object):
             t = node.branch_length
 
             indices = np.array([(np.argmax(self.gtr.alphabet==a),
-                        np.argmax(self.gtr.alphabet==b)) for a, b in izip(node.up.cseq, node.cseq)])
+                        np.argmax(self.gtr.alphabet==b)) for a, b in zip(node.up.cseq, node.cseq)])
 
             logQt = np.log(self.gtr.expQt(t))
             lh = logQt[indices[:, 1], indices[:, 0]]
@@ -1426,6 +1422,7 @@ class TreeAnc(object):
             if not hasattr(self.tree.root, "marginal_profile"):
                 self.infer_ancestral_sequences(marginal=True)
 
+        max_bl = 0
         for node in self.tree.find_clades(order='postorder'):
             if node.up is None: continue # this is the root
             if store_old_dist:
@@ -1447,10 +1444,16 @@ class TreeAnc(object):
 
             node.branch_length = new_len
             node.mutation_length=new_len
+            max_bl = max(max_bl, new_len)
 
         # as branch lengths changed, the params must be fixed
         self.tree.root.up = None
         self.tree.root.dist2root = 0.0
+        if max_bl>0.15:
+            self.logger("TreeAnc.optimize_branch_length: THIS TREE HAS LONG BRANCHES."
+                        " \n\t ****TreeTime IS NOT DESIGNED TO OPTIMIZE LONG BRANCHES."
+                        " \n\t ****PLEASE OPTIMIZE BRANCHES WITH ANOTHER TOOL AND RERUN WITH"
+                        " \n\t ****branch_length_mode='input'", 0, warn=True)
         self._prepare_nodes()
 
 

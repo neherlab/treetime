@@ -8,7 +8,7 @@ from Bio.Seq import Seq
 from Bio.Align import MultipleSeqAlignment
 from Bio import Phylo, AlignIO
 from Bio import __version__ as bioversion
-import os
+import os,sys
 
 if __name__=="__main__":
     ###########################################################################
@@ -79,7 +79,7 @@ if __name__=="__main__":
         tmp_weights = pd.read_csv(params.weights, sep='\t' if params.states[-3:]=='tsv' else ',',
                              skipinitialspace=True)
         weights = {row[0]:row[1] for ri,row in tmp_weights.iterrows()}
-        mean_weight = np.mean(weights.values())
+        mean_weight = np.mean(list(weights.values()))
         weights = np.array([weights[c] if c in weights else mean_weight for c in unique_states], dtype=float)
         weights/=weights.sum()
     else:
@@ -144,3 +144,5 @@ if __name__=="__main__":
     outtree_name = bname+'.mugration.nexus'
     Phylo.write(treeanc.tree, outtree_name, 'nexus')
     print("Saved annotated tree as:",outtree_name)
+
+    sys.exit(0)

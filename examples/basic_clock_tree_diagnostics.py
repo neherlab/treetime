@@ -68,7 +68,7 @@ if __name__ == '__main__':
     x = np.linspace(-0.1,0.05,1000)+ myTree.tree.root.time_before_present
     Phylo.draw(tree, axes=axs[0], show_confidence=False)
     offset = myTree.tree.root.time_before_present + myTree.tree.root.branch_length
-    cols = sns.color_palette()
+    cols =  ['r', 'g', 'c', 'b', 'm', 'y'] #sns.color_palette()
     depth = myTree.tree.depths()
     for ni,node in enumerate(myTree.tree.find_clades()):
         if (not node.is_terminal()):

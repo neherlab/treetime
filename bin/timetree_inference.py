@@ -4,6 +4,7 @@ import numpy as np
 from treetime import TreeTime, GTR
 from Bio import Phylo, AlignIO
 from Bio import __version__ as bioversion
+import sys
 
 if __name__=="__main__":
     ###########################################################################
@@ -193,3 +194,5 @@ if __name__=="__main__":
     Phylo.write(myTree.tree, outtree_name, 'nexus')
 
     print("--- tree saved in nexus format as  \n\t %s\n"%outtree_name)
+
+    sys.exit(0)

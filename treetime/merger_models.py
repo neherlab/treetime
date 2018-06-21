@@ -1,14 +1,14 @@
 """
 methods to calculate merger models for a time tree
 """
-from __future__ import print_function, division
+from __future__ import print_function, division, absolute_import
 import numpy as np
 import scipy.special as sf
 from scipy.interpolate import interp1d
 from Bio import AlignIO, Phylo
 from scipy.interpolate import interp1d
 from collections import Iterable
-import config as ttconf
+from treetime import config as ttconf
 
 
 class Coalescent(object):

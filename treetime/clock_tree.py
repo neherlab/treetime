@@ -1,10 +1,11 @@
-import utils
+from __future__ import print_function, division, absolute_import
+from treetime import utils
 import numpy as np
-import config as ttconf
-from treeanc import TreeAnc
-from distribution import Distribution
-from branch_len_interpolator import BranchLenInterpolator
-from node_interpolator import NodeInterpolator
+from treetime import config as ttconf
+from treetime.treeanc import TreeAnc
+from treetime.distribution import Distribution
+from treetime.branch_len_interpolator import BranchLenInterpolator
+from treetime.node_interpolator import NodeInterpolator
 import collections
 
 class ClockTree(TreeAnc):
@@ -100,6 +101,9 @@ class ClockTree(TreeAnc):
         # if precision is explicitly specified, use it.
         if precision in [0,1,2,3]:
             self.precision=precision
+            if self.one_mutation and self.one_mutation<1e-4 and precision<2:
+                self.logger("ClockTree._set_precision: FOR LONG SEQUENCES (>1e4) precision>=2 IS RECOMMENDED."
+                            " \n\t **** precision%d was specified by the user"%precision)
         else:
             # otherwise adjust it depending on the minimal sensible branch length
             if self.one_mutation:
@@ -109,6 +113,7 @@ class ClockTree(TreeAnc):
                     self.precision=2
             else:
                 self.precision=1
+            self.logger("ClockTree: Setting precision to level %s"%self.precision, 2)
 
         if self.precision==0:
             self.node_grid_points = ttconf.NODE_GRID_SIZE_ROUGH
