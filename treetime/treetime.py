@@ -96,7 +96,7 @@ class TreeTime(ClockTree):
         Keyword Args
         ------------
 
-         Additional arguments needed by the dowstream funcitons
+         Additional arguments needed by the dowstream functions
 
 
         """

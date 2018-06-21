@@ -30,9 +30,11 @@ class TreeAnc(object):
             Phylogenetic tree. String passed is interpreted as a filename with
             a tree in a standard format that can be parsed by the Biopython Phylo module.
 
-         aln : str, Bio.Align.MultipleSequenceAlignment
+         aln : str, Bio.Align.MultipleSequenceAlignment, dict
             Sequence alignment. If a string passed, it is interpreted as the
-            filename to read Biopython alignment from.
+            filename to read Biopython alignment from. If a dict is given,
+            this is assumed to be the output of vcf_utils.read_vcf which
+            specifies for each sequence the differences from a reference
 
          gtr : str, GTR
             gtr model object. If string passed, it is interpreted as the type of
@@ -270,7 +272,7 @@ class TreeAnc(object):
                     break
                 except:
                     continue
-        elif type(in_aln) is defaultdict:  #if is read in from VCF file
+        elif type(in_aln) in [defaultdict, dict]:  #if is read in from VCF file
             self._aln = in_aln
             self.is_vcf = True
 
@@ -310,14 +312,14 @@ class TreeAnc(object):
         For each node of the tree, check whether there is a sequence available
         in the alignment and assign this sequence as a character array
         '''
-        if type(self.aln) is defaultdict:
+        if self.is_vcf:
             self.seq_len = len(self.ref)
         else:
             self.seq_len = self.aln.get_alignment_length()
         self.one_mutation = 1.0/self.seq_len
 
         failed_leaves= 0
-        if type(self.aln) is defaultdict:
+        if self.is_vcf:
             # if alignment is specified as difference from ref
             dic_aln = self.aln
         else:
@@ -396,7 +398,7 @@ class TreeAnc(object):
         #if is a dict, want to be efficient and not iterate over a bunch of const_sites
         #so pre-load alignment_patterns with the location of const sites!
         #and get the sites that we want to iterate over only!
-        if type(self.aln) is defaultdict:
+        if self.is_vcf:
             tmp_reduced_aln, alignment_patterns, positions = self.process_alignment_dict()
             seqNames = self.aln.keys() #store seqName order to put back on tree
         else:
@@ -415,7 +417,7 @@ class TreeAnc(object):
                 positions = range(self.seq_len)
 
         for pi in positions:
-            if type(self.aln) is defaultdict:
+            if self.is_vcf:
                 pattern = [ self.aln[k][pi] if pi in self.aln[k].keys()
                             else self.ref[pi] for k,v in self.aln.items() ]
             else:
@@ -466,7 +468,7 @@ class TreeAnc(object):
         # assign compressed sequences to all nodes of the tree, which have sequence assigned
         # for dict we cannot assume this is in the same order, as it does below!
         # so do it explicitly
-        if type(self.aln) is defaultdict:
+        if self.is_vcf:
             seq_reduce_align = {n:self.reduced_alignment[i]
                                 for i, n in enumerate(seqNames)}
             for n in self.tree.find_clades():
@@ -570,9 +572,9 @@ class TreeAnc(object):
 
     def prepare_tree(self):
         """
-        Set link to parent and net distance to root for all tree nodes.
-        Should be run once the tree is read and after every tree topology or branch
-        length optimizations.
+        Set link to parent and calculate distance to root for all tree nodes.
+        Should be run once the tree is read and after every rerooting,
+        topology change or branch length optimizations.
         """
         if self.one_mutation is None:
             self.tree.root.branch_length = 0.001
