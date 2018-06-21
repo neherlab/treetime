@@ -27,8 +27,8 @@ class TreeAnc(object):
         ----------
 
          tree : str, Bio.Phylo.Tree
-            Phylogenetic tree. String passed is interpreted as a filename to
-            construct the Biopython tree.
+            Phylogenetic tree. String passed is interpreted as a filename with
+            a tree in a standard format that can be parsed by the Biopython Phylo module.
 
          aln : str, Bio.Align.MultipleSequenceAlignment
             Sequence alignment. If a string passed, it is interpreted as the
@@ -59,7 +59,8 @@ class TreeAnc(object):
          seq_multiplicity: dict
             if individual nodes in the tree correspond to multiple sampled sequences
             (i.e. read count in a deep sequencing experiment), these can be
-            specified as a dictionary
+            specified as a dictionary. This currently only affects rooting and
+            can be used to weigh individual tips by abundance or important during root search.
 
         Keyword Args
         ------------
@@ -159,7 +160,7 @@ class TreeAnc(object):
         Parameters
         -----------
 
-         value :GTR
+         value : GTR
             the new GTR object
         """
         if not isinstance(value, GTR):
@@ -182,7 +183,7 @@ class TreeAnc(object):
             GTR instance is passed, it is directly set as the class attribute
 
         Keyword Args
-    ------------
+        ------------
 
          All parameters needed for the gtr creation. If none passed, defaults are assumed.
            Refer to the particular GTR models for the exact parameter values
@@ -363,19 +364,24 @@ class TreeAnc(object):
         The maps from full sequence to reduced sequence and back are also stored to allow
         compressing and expanding the sequences.
 
-        The following attributes are assigned by the method:
+        Notes
+        -----
 
-         - full_to_reduced_sequence_map: map to reduce a sequence
-         - reduced_to_full_sequence_map: map to restore sequence from reduced alignment
-         - multiplicity: numpy array, which stores the pattern multiplicity for
-           each position of the reduced alignment.
-         - reduced_alignment: 2D numpy array, representing the alignment. Shape is
-           (N x L'), where N is number of sequences, L' - number of unique alignment patterns
+          full_to_reduced_sequence_map : (array)
+             map to reduce a sequence
 
+          reduced_to_full_sequence_map : (dict)
+             map to restore sequence from reduced alignment
 
-        In addition, each node gets
+          multiplicity : (array)
+            numpy array, which stores the pattern multiplicity for each position of the reduced alignment.
 
-          - cseq: compressed sequence (corresponding row of the reduced alignment)
+          reduced_alignment : (2D numpy array)
+            representing the alignment. Shape is (N x L'), where N is number of
+            sequences, L' - number of unique alignment patterns
+
+          cseq : (array)
+            compressed sequence (corresponding row of the reduced alignment) is attached to each node
 
         """
 
@@ -699,22 +705,6 @@ class TreeAnc(object):
 ###################################################################
     def infer_ancestral_sequences(self,*args, **kwargs):
         """Shortcut for :meth:`reconstruct_anc`
-
-        Reconstruct ancestral states
-
-        Parameters
-        -----------
-
-         method : str
-            Method to use. Supported values are "fitch" and "ml"
-
-        Returns
-        -------
-
-         N_diff : int
-            Number of nucleotides different from the previous
-            reconstruction.  If there were no pre-set sequences, returns N*L
-
         """
         self.reconstruct_anc(*args,**kwargs)
 
@@ -730,12 +720,20 @@ class TreeAnc(object):
          method : str
             Method to use. Supported values are "fitch" and "ml"
 
+         infer_gtr : bool, default False
+            Infer a GTR model before reconstructing the sequences
+
+         marginal : bool, default False
+            Assign sequences that are most likely after averaging over all other nodes
+            instead of the jointly most likely sequences.
+
         Returns
         -------
 
          N_diff : int
             Number of nucleotides different from the previous
             reconstruction.  If there were no pre-set sequences, returns N*L
+
         """
         self.logger("TreeAnc.infer_ancestral_sequences: method: " + method, 1)
 
@@ -967,6 +965,7 @@ class TreeAnc(object):
             node.profile = seq_utils.seq2prof(node.cseq, self.gtr.profile_map)
         return N_diff
 
+
     def _fitch_state(self, node, pos):
         """
         Determine the Fitch profile for a single character of the node's sequence.
@@ -1066,23 +1065,28 @@ class TreeAnc(object):
             return max(ttconf.MIN_BRANCH_LENGTH*self.one_mutation, node.branch_length)
 
 
-    def _ml_anc_marginal(self, verbose=0, store_compressed=True, final=True,
-                                            sample_from_profile=False,
-                                            debug=False, **kwargs):
+    def _ml_anc_marginal(self, store_compressed=True, final=True, sample_from_profile=False,
+                         debug=False, **kwargs):
         """
         Perform marginal ML reconstruction of the ancestral states. In contrast to
         joint reconstructions, this needs to access the probabilities rather than only
         log probabilities and is hence handled by a separate function.
 
-        Keyword Args
-        ------------
+        Parameters
+        ----------
 
-         store_lh : bool
-            If True, all likelihoods will be stored for all nodes. Useful for
-            testing, diagnostics and if special post-processing is required.
+         store_compressed : bool, default True
+            attach a reduced representation of sequence changed to each branch
 
-         verbose :int
-            How verbose the output should be
+         final : bool, default True
+            stop full length by expanding sites with identical alignment patterns
+
+         sample_from_profile : bool or str
+            assign sequences probabilistically according to the inferred probabilities
+            of ancestral states instead of to their ML value. This parameter can also
+            take the value 'root' in which case probabilisitic sampling will happen
+            at the root but at no other node.
+
         """
 
         tree = self.tree
@@ -1207,24 +1211,27 @@ class TreeAnc(object):
         return N_diff
 
 
-    def _ml_anc_joint(self, verbose=0, store_compressed=True, final=True,
-                                        sample_from_profile=False,
-                                        debug=False, **kwargs):
+    def _ml_anc_joint(self, store_compressed=True, final=True, sample_from_profile=False,
+                            debug=False, **kwargs):
 
         """
         Perform joint ML reconstruction of the ancestral states. In contrast to
         marginal reconstructions, this only needs to compare and multiply LH and
         can hence operate in log space.
 
-        Keyword Args
-        ------------
+        Parameters
+        ----------
 
-         store_lh : bool
-            If True, all likelihoods will be stored for all nodes. Useful for
-            testing, diagnostics and if special post-processing is required.
+         store_compressed : bool, default True
+            attach a reduced representation of sequence changed to each branch
 
-         verbose : int
-            How verbose the output should be
+         final : bool, default True
+            stop full length by expanding sites with identical alignment patterns
+
+         sample_from_profile : str
+            This parameter can take the value 'root' in which case probabilisitic
+            sampling will happen at the root. otherwise sequences at ALL nodes are
+            set to the value that jointly optimized the likelihood.
 
         """
         N_diff = 0 # number of sites differ from perv reconstruction
@@ -1389,6 +1396,14 @@ class TreeAnc(object):
         about its sequence as numpy.array object (node.sequence attribute).
         Therefore, before calling this method, sequence reconstruction with
         either of the available models must be performed.
+
+        Parameters
+        ----------
+
+         mode : str
+            optimize branch length assuming the joint ML sequence assignment
+            of both ends of the branch, or trace over all possible sequence
+            assignments on both ends of the branch (slower, experimental).
 
         Keyword Args
         ------------
@@ -1648,7 +1663,23 @@ class TreeAnc(object):
          prune_short : bool, default True
             If True, the branches with zero optimal length will be pruned from
             the tree hence creating polytomies. The polytomies could be further
-            processde using resolve_polytomies from the TreeTime class.
+            processed using resolve_polytomies from the TreeTime class.
+
+         marginal_sequences : bool, default False
+            assign sequences to their marginally most likely value, rather than
+            the values that are jointly most likely across all nodes.
+
+         branch_length_mode : str
+            'joint', 'marginal', or 'input'. Branch lengths are left unchanged in case
+            of 'input'. 'joint' and 'marginal' cause branch length optimization
+            while setting sequences to the ML value or tracing over all possible
+            internal sequence states.
+
+         max_iter : int
+            maximal number of times sequence and branch length iteration are optimized
+
+         infer_gtr : bool, default False
+            infer a GTR model from the observed substitutions.
 
         """
         if branch_length_mode=='marginal':
@@ -1691,6 +1722,13 @@ class TreeAnc(object):
         """
         Get the multiple sequence alignment including reconstructed sequences for
         the internal nodes.
+
+        Returns
+        -------
+
+         new_aln : MultipleSeqAlignment
+            Alignment including sequences of all internal nodes
+
         """
         from Bio.Align import MultipleSeqAlignment
         from Bio.Seq import Seq
@@ -1705,28 +1743,36 @@ class TreeAnc(object):
 
         return new_aln
 
+
     def get_tree_dict(self, keep_var_ambigs=False):
         """
         For VCF-based objects, returns a nested dict with all information required to
-        reconstruct sequences for all nodes (terminal and internal) in the format:
-        {'reference':'AGCTCGA..A',
-         'sequences': { 'seq1':{4:'A', 7:'-'}, 'seq2':{100:'C'} },
-         'positions': [1,4,7,10,100...],
-         'inferred_const_sites': [7,100....]     <this is optional>
-        }
-         self.inferred_const_sites
+        reconstruct sequences for all nodes (terminal and internal).
 
-        Reference being the reference sequence to which the variable sites are mapped;
-        sequence containing a dict for each sequence with the position and base of
-        mutations; and positions containing a list of all the variable positions.
-        If included, inferred_const_sites is positions that were constant except
-        ambiguous bases, which were converted into constant sites (ex: 'AAAN' -> 'AAAA')
+        Parameters
+        ----------
 
         keep_var_ambigs : boolean
             If true, generates dict sequence based on the *original* _compressed_ sequence, which
             may include ambiguities. Note sites that only have 1 unambiguous base and ambiguous
             bases ("AAAAANN") are stripped of ambiguous bases *before* compression, so ambiguous
             bases will *not* be preserved.
+
+
+        Returns
+        -------
+
+         tree_dict : dict
+            Format:
+            '{'reference':'AGCTCGA..A',
+            'sequences': { 'seq1':{4:'A', 7:'-'}, 'seq2':{100:'C'} },
+            'positions': [1,4,7,10,100...],
+            'inferred_const_sites': [7,100....]     <this is optional>}'
+            Reference being the reference sequence to which the variable sites are mapped;
+            sequence containing a dict for each sequence with the position and base of
+            mutations; and positions containing a list of all the variable positions.
+            If included, inferred_const_sites is positions that were constant except
+            ambiguous bases, which were converted into constant sites (ex: 'AAAN' -> 'AAAA')
 
         EBH 7 Dec 2017
         """

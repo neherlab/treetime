@@ -1,5 +1,3 @@
-#!/usr/local/bin/python
-# -*- coding: utf-8 -*-
 from __future__ import division, print_function, absolute_import
 import numpy as np
 from  treetime import config as ttconf
@@ -26,6 +24,18 @@ class GTR(object):
 
             If numpy array of characters passed, a new alphabet is constructed,
             and the default profile map is atached to it.
+
+         prof_map : dict
+            dictionary linking characters in the sequence to likelihood
+            of observing characters in the alphabt. This is used to
+            implement ambiguous characters like 'N'=[1,1,1,1] which are
+            equally likely any of the 4 nucleotides. Standard profile_maps
+            are defined in file seq_utils.py. If none is provided, no ambigous
+            characters are supported.
+
+         logger : callable
+            custom logging function that should take arguments (msg, level, warn=False)
+            where msg is a string, level an integer to be compared against verbose.
 
         """
         self.debug=False
@@ -507,13 +517,19 @@ class GTR(object):
         Parameters
         ----------
 
-          seq_p: numpy array
+         seq_p: numpy array
             Parent sequence as numpy array of chars
 
-          seq_ch: numpy array
+         seq_ch: numpy array
             Child sequence as numpy array of chars
 
-          ignore_gap: bool, default False
+         pattern_multiplicity : numpy array, None
+            if sequences are reduced by combining identical alignment patterns,
+            these multplicities need to be accounted for when counting the number
+            of mutations across a branch. If None, all pattern are assumed to
+            occur exactly once.
+
+         ignore_gap: bool, default False
             Whether or not to include gapped positions of the alignment
             in the multiplicity count
 
@@ -626,6 +642,12 @@ class GTR(object):
          t : double
             Time (branch len), separating the profiles.
 
+         pattern_multiplicity : numpy array, None
+            if sequences are reduced by combining identical alignment patterns,
+            these multplicities need to be accounted for when counting the number
+            of mutations across a branch. If None, all pattern are assumed to
+            occur exactly once.
+
          return_log : bool, default False
             Whether return log-probability.
 
@@ -640,19 +662,57 @@ class GTR(object):
         return self.prob_t_compressed(seq_pair, multiplicity, t, return_log=return_log)
 
 
-    def optimal_t(self, seq_p, seq_ch, pattern_multiplicity=None, ignore_gaps=False, profiles=False):
+    def optimal_t(self, seq_p, seq_ch, pattern_multiplicity=None, ignore_gaps=False):
         '''
         Find the optimal distance between the two sequences
+
+        Parameters
+        ----------
+
+         seq_p : character array
+            parent sequence
+
+         seq_c : character array
+            child sequence
+
+         pattern_multiplicity : numpy array, None
+            if sequences are reduced by combining identical alignment patterns,
+            these multplicities need to be accounted for when counting the number
+            of mutations across a branch. If None, all pattern are assumed to
+            occur exactly once.
+
+         ignore_gaps : bool
+            ignore gaps in distance calculations
+
         '''
         seq_pair, multiplicity = self.compress_sequence_pair(seq_p, seq_ch,
                                                             pattern_multiplicity = pattern_multiplicity,
-                                                            ignore_gaps=ignore_gaps, profiles=profiles)
+                                                            ignore_gaps=ignore_gaps)
         return self.optimal_t_compressed(seq_pair, multiplicity)
 
 
     def optimal_t_compressed(self, seq_pair, multiplicity, profiles=False):
         """
         Find the optimal distance between the two sequences
+
+        Parameters
+        ----------
+
+         seq_pair : compressed_sequence_pair
+            compressed representation of sequences along a branch, either
+            as tuple of state pairs or as tuple of profiles.
+
+         multiplicity : array
+            number of times each state pair in seq_pair appears (profile==False)
+            number of times an alignment pattern is observed (profiles==True)
+
+         profiles : bool, default False
+            the standard branch length optimization assumes fixed sequences at
+            either end of the branch. With profiles==True, optimization is performed
+            while summing over all possible states of the nodes at either end of the
+            branch. Note that the meaning/format of seq_pair and multiplicity
+            depend on the value of profiles
+
         """
 
         def _neg_prob(t, seq_pair, multiplicity):
@@ -728,8 +788,7 @@ class GTR(object):
             end of the branch. pp[0] = parent, pp[1] = child
 
           multiplicity : numpy array
-            The number of times a parent-child state pair is observed
-            this allows to compress the sequence representation
+            The number of times a an alignment pattern is observed
 
           t : float
             Length of the branch separating parent and child
@@ -796,8 +855,14 @@ class GTR(object):
             return res
 
 
-    def _exp_lt(self, t, mu_prefactor=1.0):
+    def _exp_lt(self, t):
         """
+        Parameters
+        ----------
+
+         t : float
+            time to propagate
+
         Returns
         --------
 
@@ -809,9 +874,23 @@ class GTR(object):
 
 
     def expQt(self, t):
+        '''
+        Parameters
+        ----------
+
+         t : float
+            time to propagate
+
+        Returns
+        --------
+
+         expQt : numpy.array
+            matrix exponential of exo(Qt)
+        '''
         eLambdaT = np.diag(self._exp_lt(t)) # vector length = a
         Qs = self.v.dot(eLambdaT.dot(self.v_inv))   # This is P(nuc1 | given nuc_2)
         return np.maximum(0,Qs)
+
 
     def expQs(self, s):
         eLambdaT = np.diag(self._exp_lt(s**2)) # vector length = a

@@ -29,7 +29,7 @@ class TreeTime(ClockTree):
 
         """
         super(TreeTime, self).__init__(*args, **kwargs)
-        self.n_iqd = ttconf.NIQD
+
 
     def run(self, root=None, infer_gtr=True, relaxed_clock=None, n_iqd = None,
             resolve_polytomies=True, max_iter=0, Tc=None, fixed_clock_rate=None,
@@ -228,7 +228,15 @@ class TreeTime(ClockTree):
 
     def _set_branch_length_mode(self, branch_length_mode):
         '''
-        if branch_length mode is not explicitly set, set according to branch length distribution
+        if branch_length mode is not explicitly set, set according to
+        empirical branch length distribution in input tree
+
+        Parameters
+        ----------
+
+         branch_length_mode : str, 'input', 'joint', 'marginal'
+            if the maximal branch length in the tree is longer than 0.05, this will
+            default to 'input'. Otherwise set to 'joint'
         '''
         bl_dis = [n.branch_length for n in self.tree.find_clades() if n.up]
         max_bl = np.max(bl_dis)
@@ -264,7 +272,7 @@ class TreeTime(ClockTree):
 
         '''
         if n_iqd is None:
-            n_iqd = self.n_iqd
+            n_iqd = ttconf.NIQD
 
         terminals = self.tree.get_terminals()
         if reroot:
@@ -353,7 +361,11 @@ class TreeTime(ClockTree):
          root : str
             Which method should be used to find the best root. Available methods are:
 
-            :code:`best` - maximize root-to-tip regression coefficient
+            :code:`best`, `res` - minimize squared residual of root-to-tip regression subject to positive slope
+
+            :code:`min_dev` - minimize squared residual of root-to-tip regression regardless of slope
+
+            :code:`rsq` - maximize correlationof root-to-tip distance and time
 
             :code:`oldest` - choose the oldest node
 
@@ -420,7 +432,7 @@ class TreeTime(ClockTree):
             n.mutation_length = n.branch_length
 
 
-    def resolve_polytomies(self, merge_compressed=False, rerun=True):
+    def resolve_polytomies(self, merge_compressed=False):
         """
         Resolve the polytomies on the tree.
         The function scans the tree, resolves polytomies in case there are any,
@@ -459,7 +471,7 @@ class TreeTime(ClockTree):
         return poly_found
 
 
-    def _poly(self, clade, merge_compressed, verbose=1):
+    def _poly(self, clade, merge_compressed):
 
         """
         Function to resolve polytomies for a given parent node. If the
@@ -668,12 +680,19 @@ class TreeTime(ClockTree):
 ###############################################################################
 ### rerooting
 ###############################################################################
-    def find_best_root_and_regression(self, criterium='rsq'):
+    def find_best_root_and_regression(self, criterium='residual'):
         """
         Find the best root for the tree in linear time, given the timestamps of
         the leaves. The branch lengths should be optimized prior to the run;
         the terminal nodes should have the timestamps assigned as numdate_given
         attribute.
+
+        Parameters
+        ----------
+
+         criterium : str
+            criterium used to optimize the root-to-tip vs time regression. This
+            can be one of 'rsq', 'min_dev', 'residual'
         """
         sum_ti =  np.sum([np.mean(node.numdate_given)*node.count for node in self.tree.get_terminals() if (not node.bad_branch)])
         sum_ti2 = np.sum([np.mean(node.numdate_given)**2*node.count for node in self.tree.get_terminals() if (not node.bad_branch)])
@@ -911,7 +930,7 @@ class TreeTime(ClockTree):
         return best_root, best_root._alpha, best_root._beta
 
 
-    def reroot_to_best_root(self,infer_gtr = False, criterium='rsq', **kwarks):
+    def reroot_to_best_root(self,infer_gtr = False, criterium='residual', **kwarks):
         '''
         determine the node that, when the tree is rooted on this node, results
         in the best regression of temporal constraints and root to tip distances
@@ -921,6 +940,9 @@ class TreeTime(ClockTree):
 
          infer_gtr : bool
             Should infer new GTR model after re-root?
+
+         criterium : str
+            criterium used to reroot the tree. One of 'rsq', 'residual', 'min_dev'
 
         '''
         from Bio import Phylo
@@ -963,13 +985,25 @@ class TreeTime(ClockTree):
 def plot_vs_years(tt, years = 1, ax=None, confidence=None, ticks=True, **kwargs):
     '''
     converts branch length to years and plots the time tree on a time axis.
-    Args:
-        tt:     treetime object after a time tree is inferred
-        years:  width of shaded boxes indicating blocks of years, default 1
-        ax:     axis object. will create new axis of none specified
-        confidence:     draw confidence intervals. This assumes that marginal
-                        time tree inference was run
-        **kwargs:   arbitrary kew word arguments that are passed down to Phylo.draw
+
+    Parameters
+    ----------
+     tt : treetime object
+        A treetime instance after a time tree is inferred
+
+     years : int, Default 1
+        width of shaded boxes indicating blocks of years
+
+     ax : matplotlib axis.
+        will create new axis if none specified
+
+     confidence : tuple,float
+        draw confidence intervals. This assumes that marginal time tree inference was run.
+        Confidence intervals are either specified as an interval of the posterior distribution
+        like (0.05, 0.95) or as the weight of the maximal posterior region , e.g. 0.9
+
+     kwargs : dict
+        arbitrary kew word arguments that are passed down to Phylo.draw
     '''
     import matplotlib.pyplot as plt
     tt.branch_length_to_years()

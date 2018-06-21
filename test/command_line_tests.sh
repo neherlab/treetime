@@ -45,7 +45,6 @@ else
 	echo "mugration failed $retval"
 fi
 
-echo "$all_tests"
 if [ "$all_tests" == 0 ];then
 	echo "All tests passed"
 	exit 0

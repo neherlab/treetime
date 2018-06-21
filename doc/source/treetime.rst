@@ -34,3 +34,6 @@ Additional functionality
 .. automethod:: treetime.TreeTime.plot_root_to_tip
 
 .. automethod:: treetime.TreeTime.print_lh
+
+.. automethod:: treetime.plot_vs_years
+
