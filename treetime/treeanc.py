@@ -1,5 +1,5 @@
 from __future__ import print_function, division, absolute_import
-import time
+import time, sys
 from  treetime import config as ttconf
 from Bio import Phylo
 from Bio import AlignIO
@@ -8,6 +8,8 @@ import treetime.seq_utils as seq_utils
 from treetime.gtr import GTR
 from treetime.version import tt_version as __version__
 from collections import defaultdict
+
+string_types = [str] if sys.version_info[0]==3 else [str, unicode]
 
 class TreeAnc(object):
     """
@@ -220,10 +222,11 @@ class TreeAnc(object):
         assigns a tree to the internal self._tree variable. The tree is either
         loaded from file (if in_tree is str) or assigned (if in_tree is a Phylo.tree)
         '''
+
         from os.path import isfile
         if isinstance(in_tree, Phylo.BaseTree.Tree):
             self._tree = in_tree
-        elif type(in_tree)==str and isfile(in_tree):
+        elif type(in_tree) in string_types and isfile(in_tree):
             try:
                 self._tree=Phylo.read(in_tree, 'newick')
             except:
@@ -265,7 +268,7 @@ class TreeAnc(object):
             return
         elif isinstance(in_aln, MultipleSeqAlignment):
             self._aln = in_aln
-        elif type(in_aln)==str and isfile(in_aln):
+        elif type(in_aln) in string_types and isfile(in_aln):
             for fmt in ['fasta', 'phylip-relaxed', 'nexus']:
                 try:
                     self._aln=AlignIO.read(in_aln, 'fasta')
