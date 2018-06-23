@@ -155,7 +155,7 @@ class ClockTree(TreeAnc):
         dates2dist object.
 
         ..Note:: that tree must have dates set to all nodes before calling this
-        function. (This is accomplished by calling load_dates func).
+        function.
 
         Parameters
         ----------
@@ -163,6 +163,10 @@ class ClockTree(TreeAnc):
          ancestral_inference: bool
             Whether or not to reinfer ancestral sequences
             done by default when ancestral sequences are missing
+
+         clock_rate: float, None
+            if specified, timetree optimization will be done assuming a
+            fixed clock rate
 
         """
         self.logger("ClockTree.init_date_constraints...",2)

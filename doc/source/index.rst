@@ -16,6 +16,7 @@ TreeTime is organized as a hierarchy of classes. The GTR class implements sequen
    treeanc
    clock_tree
    treetime
+   vcf_utils
 
 
 .. automodule:: treetime
@@ -32,6 +33,36 @@ TreeTime is organized as a hierarchy of classes. The GTR class implements sequen
 
 :doc:`TreeTime class<treetime>`
 -------------------------------
+
+
+Utility code
+============
+
+:doc:`VCF tools<vcf_utils>`
+-------------------------------
+
+
+Command-line functions
+======================
+TreeTime is designed to be part of python workflows, but for a number of standard
+tasks we have implemented scripts that can be called from the command line like
+regular linux programs.
+
+homoplasy_scanner
+-----------------
+
+ancestral_reconstruction
+------------------------
+
+temporal_signal
+---------------
+
+timetree_inference
+------------------
+
+mugration
+---------
+
 
 
 Indices and tables

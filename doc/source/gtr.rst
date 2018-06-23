@@ -36,6 +36,10 @@ Distance and probability computations
 
 .. automethod:: treetime.GTR.prob_t_compressed
 
+.. automethod:: treetime.GTR.prob_t_profiles
+
 .. automethod:: treetime.GTR.propagate_profile
 
 .. automethod:: treetime.GTR.sequence_logLH
+
+.. automethod:: treetime.GTR.expQt

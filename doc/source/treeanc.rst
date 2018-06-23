@@ -73,7 +73,9 @@ Ancestral reconstruction and tree optimization
 
 .. automethod:: treetime.TreeAnc.infer_gtr
 
+.. automethod:: treetime.TreeAnc.get_reconstructed_alignment
 
+.. automethod:: treetime.TreeAnc.get_tree_dict
 
 
 
