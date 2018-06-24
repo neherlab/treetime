@@ -48,13 +48,31 @@ class BranchLenInterpolator (Distribution):
             grid.sort() # just for safety
 
         if branch_length_mode=='input':
-            variance_scale = one_mutation*ttconf.OVER_DISPERSION
+            # APPROXIMATE HANDLING OF BRANCH LENGTH PROPAGATOR WHEN USING INPUT BRANCH LENGTH
+            # branch length are estimated from as those maximizing the likelihood and the
+            # sensitivity of the likelihood depends on the branch length (gets soft for long branches)
+            # observed differences scale as p = p_0 (1-exp(-l/p_0)) where p_0 is the distance of random sequence
+            # (3/4 for nucleotides, more like 0.9 for amino acids). The number of observable
+            # substitutions fluctuates by dp = \sqrt{p(1-p)/L} which corresponds to fluctuation
+            # in branch length of dp = dl exp(-l/p0). A Gaussian approximation for the branch length would
+            # therefore have variance p(1-p)e^{2l/p0}/L. Substituting p results in
+            # p_0(1-exp(-l/p0))(1-p_0(1-exp(-l/p0)))e^{2l/p0}/L which can be slightly rearranged to
+            # p_0(exp(l/p0)-1)(exp(l/p0)-p_0(exp(l/p0)-1))/L
+
+            p0 = 1.0-np.sum(self.gtr.pi**2)
+            # variance_scale = one_mutation*ttconf.OVER_DISPERSION
             if mutation_length<0.05:
-                log_prob = np.array([ k - mutation_length*np.log(k+ttconf.MIN_BRANCH_LENGTH*one_mutation) for k in grid])/variance_scale
+                # for short branches, the number of mutations is poissonian. the prob of a branch to have l=mutation_length*L
+                # mutations when its length is k, is therefor e^{-kL}(kL)^(Ll)/(Ll)!. Ignoring constants, the log is
+                # -kL + lL\log(k)
+                log_prob = np.array([ k - mutation_length*np.log(k+ttconf.MIN_BRANCH_LENGTH*one_mutation) for k in grid])/one_mutation
                 log_prob -= log_prob.min()
             else:
                 # make it a Gaussian
-                sigma_sq = (mutation_length+one_mutation)*variance_scale
+                #sigma_sq = (mutation_length+one_mutation)*variance_scale
+                l = (mutation_length+one_mutation)
+                nm_inv = np.exp(l/p0)
+                sigma_sq = p0*(nm_inv-1)*(nm_inv - p0*(nm_inv-1))*one_mutation
                 sigma = np.sqrt(sigma_sq+ttconf.MIN_BRANCH_LENGTH*one_mutation)
                 log_prob = np.array(np.min([[ 0.5*(mutation_length-k)**2/sigma_sq for k in grid],
                                              100 + np.abs([(mutation_length-k)/sigma for k in grid])], axis=0))
