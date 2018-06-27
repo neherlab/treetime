@@ -322,5 +322,5 @@ There are several other tools which estimate molecular clock phylogenies.
   - Copyright and License: Pavel Sagulenko and Richard Neher, MIT Licence
   - References
     * [TreeTime: Maximum-likelihood phylodynamic analysis](https://academic.oup.com/ve/article/4/1/vex042/4794731) by Pavel Sagulenko Vadim Puller Richard A Neher. Virus Evolution.
-    * [NextStrain: real-time tracking of pathogen evolution](https://www.biorxiv.org/content/early/2017/11/22/224048) by James Hadfield et al. bioRxiv.
+    * [NextStrain: real-time tracking of pathogen evolution](https://academic.oup.com/bioinformatics/advance-article/doi/10.1093/bioinformatics/bty407/5001388) by James Hadfield et al. Bioinformatics.
 
