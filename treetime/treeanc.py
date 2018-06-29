@@ -331,14 +331,18 @@ class TreeAnc(object):
                                                    ambiguous_character=self.gtr.ambiguous)
                                 for k in self.aln} #
 
-        # loop over tree,
+        # loop over leaves and assign multiplicities of leaves (e.g. number of identical reads)
+        for l in self.tree.get_terminals():
+            if l.name in self.seq_multiplicity:
+                l.count = self.seq_multiplicity[l.name]
+            else:
+                l.count = 1.0
+
+            
+        # loop over tree, and assign sequences
         for l in self.tree.find_clades():
             if l.name in dic_aln:
                 l.sequence= dic_aln[l.name]
-                if l.name in self.seq_multiplicity:
-                    l.count = self.seq_multiplicity[l.name]
-                else:
-                    l.count = 1.0
             elif l.is_terminal():
                 self.logger("***WARNING: TreeAnc._attach_sequences_to_nodes: NO SEQUENCE FOR LEAF: %s" % l.name, 0, warn=True)
                 failed_leaves += 1

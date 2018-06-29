@@ -59,7 +59,7 @@ class BranchLenInterpolator (Distribution):
             # p_0(1-exp(-l/p0))(1-p_0(1-exp(-l/p0)))e^{2l/p0}/L which can be slightly rearranged to
             # p_0(exp(l/p0)-1)(exp(l/p0)-p_0(exp(l/p0)-1))/L
 
-            p0 = 1.0-np.sum(self.gtr.pi**2)
+            p0 = 1.0-np.sum(self.gtr.Pi**2)
             # variance_scale = one_mutation*ttconf.OVER_DISPERSION
             if mutation_length<0.05:
                 # for short branches, the number of mutations is poissonian. the prob of a branch to have l=mutation_length*L
