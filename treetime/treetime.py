@@ -241,7 +241,7 @@ class TreeTime(ClockTree):
         bl_dis = [n.branch_length for n in self.tree.find_clades() if n.up]
         max_bl = np.max(bl_dis)
         min_bl = np.min(bl_dis)
-        if max_bl>0.05:
+        if max_bl>0.1:
             bl_mode = 'input'
         else:
             bl_mode = 'joint'
