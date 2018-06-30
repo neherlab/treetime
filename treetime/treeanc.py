@@ -338,7 +338,7 @@ class TreeAnc(object):
             else:
                 l.count = 1.0
 
-            
+
         # loop over tree, and assign sequences
         for l in self.tree.find_clades():
             if l.name in dic_aln:
@@ -481,6 +481,7 @@ class TreeAnc(object):
             for n in self.tree.find_clades():
                 if hasattr(n, 'sequence'):
                     n.cseq = seq_reduce_align[n.name]
+                    n.orig_cseq = np.copy(self.reduced_alignment[seq_count])
         else:
             # NOTE the order of tree traversal must be the same as above to catch the
             # index in the reduced alignment correctly
@@ -488,11 +489,12 @@ class TreeAnc(object):
             for n in self.tree.find_clades():
                 if hasattr(n, 'sequence'):
                     n.cseq = self.reduced_alignment[seq_count]
+                    n.orig_cseq = np.copy(self.reduced_alignment[seq_count])
                     seq_count+=1
 
         # sequences are overwritten during reconstruction and
         # ambiguous sites change. Keep orgininals for reference
-        self.original_sequences = {n.name:n.cseq for n in self.tree.get_terminals()}
+        self.original_sequences = {n.name:n.orig_cseq for n in self.tree.get_terminals()}
 
         self.logger("TreeAnc: finished reduced alignment...", 1)
 
@@ -971,7 +973,7 @@ class TreeAnc(object):
             del node.state # no need to store Fitch states
         self.logger("Done ancestral state reconstruction",3)
         for node in self.tree.get_terminals():
-            node.profile = seq_utils.seq2prof(node.cseq, self.gtr.profile_map)
+            node.profile = seq_utils.seq2prof(node.orig_cseq, self.gtr.profile_map)
         return N_diff
 
 
@@ -1110,7 +1112,7 @@ class TreeAnc(object):
         #  set the leaves profiles
         for leaf in tree.get_terminals():
             # in any case, set the profile
-            leaf.marginal_subtree_LH = seq_utils.seq2prof(leaf.cseq, self.gtr.profile_map)
+            leaf.marginal_subtree_LH = seq_utils.seq2prof(leaf.orig_cseq, self.gtr.profile_map)
             leaf.marginal_subtree_LH_prefactor = np.zeros(L)
 
         # propagate leaves --> root, set the marginal-likelihood messages
@@ -1266,7 +1268,7 @@ class TreeAnc(object):
 
             if node.is_terminal():
                 try:
-                    msg_from_children = np.log(np.maximum(seq_utils.seq2prof(node.cseq, self.gtr.profile_map), ttconf.TINY_NUMBER))
+                    msg_from_children = np.log(np.maximum(seq_utils.seq2prof(node.orig_cseq, self.gtr.profile_map), ttconf.TINY_NUMBER))
                 except:
                     raise ValueError("sequence assignment to node "+node.name+" failed")
                 msg_from_children[np.isnan(msg_from_children) | np.isinf(msg_from_children)] = -ttconf.BIG_NUMBER
