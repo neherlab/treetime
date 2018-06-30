@@ -68,7 +68,7 @@ if __name__=="__main__":
     alphabet = [chr(65+i) for i,state in enumerate(unique_states)]
     missing_char = chr(65+nc)
     letter_to_state = {a:unique_states[i] for i,a in enumerate(alphabet)}
-    letter_to_state[missing_char]=missing
+    letter_to_state[missing_char]=params.missing_data
     reverse_alphabet = {v:k for k,v in letter_to_state.items()}
 
     ###########################################################################
