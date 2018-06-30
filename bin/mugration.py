@@ -52,7 +52,7 @@ if __name__=="__main__":
         attr = states.columns[1]
 
     leaf_to_attr = {x[taxon_name]:x[attr] for xi, x in states.iterrows()
-                    if x[attr]!=args.missing_data}
+                    if x[attr]!=params.missing_data}
     unique_states = sorted(set(leaf_to_attr.values()))
     nc = len(unique_states)
     if nc>180:
