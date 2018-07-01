@@ -475,28 +475,27 @@ class TreeAnc(object):
         # assign compressed sequences to all nodes of the tree, which have sequence assigned
         # for dict we cannot assume this is in the same order, as it does below!
         # so do it explicitly
+        #
+        # sequences are overwritten during reconstruction and
+        # ambiguous sites change. Keep orgininals for reference
         if self.is_vcf:
             seq_reduce_align = {n:self.reduced_alignment[i]
                                 for i, n in enumerate(seqNames)}
             for n in self.tree.find_clades():
                 if hasattr(n, 'sequence'):
-                    n.cseq = seq_reduce_align[n.name]
-                    n.orig_cseq = np.copy(self.reduced_alignment[seq_count])
+                    n.original_cseq = seq_reduce_align[n.name]
+                    n.cseq = np.copy(n.original_cseq)
         else:
             # NOTE the order of tree traversal must be the same as above to catch the
             # index in the reduced alignment correctly
             seq_count = 0
             for n in self.tree.find_clades():
                 if hasattr(n, 'sequence'):
-                    n.cseq = self.reduced_alignment[seq_count]
-                    n.orig_cseq = np.copy(self.reduced_alignment[seq_count])
+                    n.original_cseq = self.reduced_alignment[seq_count]
+                    n.cseq = np.copy(n.original_cseq)
                     seq_count+=1
 
-        # sequences are overwritten during reconstruction and
-        # ambiguous sites change. Keep orgininals for reference
-        self.original_sequences = {n.name:n.orig_cseq for n in self.tree.get_terminals()}
-
-        self.logger("TreeAnc: finished reduced alignment...", 1)
+        self.logger("TreeAnc: constructed reduced alignment...", 1)
 
 
     def process_alignment_dict(self):
@@ -807,8 +806,8 @@ class TreeAnc(object):
         # if ambiguous site are to be restored and node is terminal,
         # assign original sequence, else reconstructed cseq
         node_seq = node.cseq
-        if keep_var_ambigs and (node.name in self.original_sequences) and node.is_terminal():
-            node_seq = self.original_sequences[node.name]
+        if keep_var_ambigs and hasattr(node, "orig_seq") and node.is_terminal():
+            node_seq = node.original_cseq
 
         muts = []
         for p, (anc, der) in enumerate(zip(node.up.cseq, node_seq)):
@@ -886,8 +885,8 @@ class TreeAnc(object):
         seq = {}
 
         node_seq = node.cseq
-        if keep_var_ambigs and (node.name in self.original_sequences) and node.is_terminal():
-            node_seq = self.original_sequences[node.name]
+        if keep_var_ambigs and hasattr(node, "orig_seq") and node.is_terminal():
+            node_seq = node.original_cseq
 
         for pos in self.nonref_positions:
             cseqLoc = self.full_to_reduced_sequence_map[pos]
@@ -973,7 +972,7 @@ class TreeAnc(object):
             del node.state # no need to store Fitch states
         self.logger("Done ancestral state reconstruction",3)
         for node in self.tree.get_terminals():
-            node.profile = seq_utils.seq2prof(node.orig_cseq, self.gtr.profile_map)
+            node.profile = seq_utils.seq2prof(node.original_cseq, self.gtr.profile_map)
         return N_diff
 
 
@@ -1112,7 +1111,7 @@ class TreeAnc(object):
         #  set the leaves profiles
         for leaf in tree.get_terminals():
             # in any case, set the profile
-            leaf.marginal_subtree_LH = seq_utils.seq2prof(leaf.orig_cseq, self.gtr.profile_map)
+            leaf.marginal_subtree_LH = seq_utils.seq2prof(leaf.original_cseq, self.gtr.profile_map)
             leaf.marginal_subtree_LH_prefactor = np.zeros(L)
 
         # propagate leaves --> root, set the marginal-likelihood messages
@@ -1268,7 +1267,7 @@ class TreeAnc(object):
 
             if node.is_terminal():
                 try:
-                    msg_from_children = np.log(np.maximum(seq_utils.seq2prof(node.orig_cseq, self.gtr.profile_map), ttconf.TINY_NUMBER))
+                    msg_from_children = np.log(np.maximum(seq_utils.seq2prof(node.original_cseq, self.gtr.profile_map), ttconf.TINY_NUMBER))
                 except:
                     raise ValueError("sequence assignment to node "+node.name+" failed")
                 msg_from_children[np.isnan(msg_from_children) | np.isinf(msg_from_children)] = -ttconf.BIG_NUMBER

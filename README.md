@@ -1,4 +1,5 @@
 [![Build Status](https://travis-ci.org/neherlab/treetime.svg?branch=master)](https://travis-ci.org/neherlab/treetime)
+[![anaconda](https://anaconda.org/bioconda/treetime/badges/installer/conda.svg)](https://anaconda.org/bioconda/treetime)
 
 ## TreeTime: maximum likelihood dating and ancestral inference for phylogenetic trees
 
