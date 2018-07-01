@@ -7,12 +7,12 @@ from setuptools import setup
 
 setup(
         name = "treetime",
-        version = "0.4.0",
+        version = "0.4.1",
         author = "Pavel Sagulenko and Richard Neher",
         author_email = "richard.neher@unibas.ch",
         description = ("Maximum-likelihood phylodynamic inference"),
         license = "MIT",
-        keywords = "Time-stamped phylogenies, evolution",
+        keywords = "Time-stamped phylogenies, phylogeography, virus evolution",
         url = "https://github.com/neherlab/treetime",
         packages=['treetime'],
         install_requires = [
@@ -33,4 +33,4 @@ setup(
         		'bin/temporal_signal.py',
         		'bin/ancestral_reconstruction.py'
         ]
-        )
+    )
