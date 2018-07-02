@@ -271,7 +271,7 @@ class TreeAnc(object):
         elif type(in_aln) in string_types and isfile(in_aln):
             for fmt in ['fasta', 'phylip-relaxed', 'nexus']:
                 try:
-                    self._aln=AlignIO.read(in_aln, 'fasta')
+                    self._aln=AlignIO.read(in_aln, fmt)
                     break
                 except:
                     continue
@@ -806,7 +806,7 @@ class TreeAnc(object):
         # if ambiguous site are to be restored and node is terminal,
         # assign original sequence, else reconstructed cseq
         node_seq = node.cseq
-        if keep_var_ambigs and hasattr(node, "orig_seq") and node.is_terminal():
+        if keep_var_ambigs and hasattr(node, "original_cseq") and node.is_terminal():
             node_seq = node.original_cseq
 
         muts = []
@@ -885,7 +885,7 @@ class TreeAnc(object):
         seq = {}
 
         node_seq = node.cseq
-        if keep_var_ambigs and hasattr(node, "orig_seq") and node.is_terminal():
+        if keep_var_ambigs and hasattr(node, "original_cseq") and node.is_terminal():
             node_seq = node.original_cseq
 
         for pos in self.nonref_positions:
