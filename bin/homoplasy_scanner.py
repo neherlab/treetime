@@ -92,6 +92,7 @@ if __name__=="__main__":
         sys.exit(1)
 
     L = treeanc.aln.get_alignment_length() + params.const
+    treeanc.one_mutation = 1.0/L
     N_seq = len(treeanc.aln)
     N_tree = treeanc.tree.count_terminals()
     if params.rescale!=1.0:

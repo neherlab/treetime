@@ -96,7 +96,7 @@ if __name__=="__main__":
     ###########################################################################
     ### set up treeanc
     ###########################################################################
-    treeanc = TreeAnc(params.tree, gtr=mugration_GTR, verbose=params.verbose)
+    treeanc = TreeAnc(params.tree, gtr=mugration_GTR, verbose=params.verbose, one_mutation=0.001)
     pseudo_seqs = [SeqRecord(id=n.name,name=n.name,
                    seq=Seq(reverse_alphabet[leaf_to_attr[n.name]] if n.name in leaf_to_attr else missing_char))
                    for n in treeanc.tree.get_terminals()]

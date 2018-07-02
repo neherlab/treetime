@@ -81,13 +81,14 @@ class TreeAnc(object):
         self.logger("TreeAnc: set-up",1)
         self._internal_node_count = 0
         self.use_mutation_length=False
-        self.one_mutation = None
+        # if not specified, this will be set as 1/alignment_length
+        self.one_mutation = kwargs['one_mutation'] if 'one_mutation' in kwargs else None
         self.fill_overhangs = fill_overhangs
         self.is_vcf = False  #this is set true when aln is set, if aln is dict
         self.seq_multiplicity = {} if seq_multiplicity is None else seq_multiplicity
 
         self.ignore_gaps = ignore_gaps
-        self.set_gtr(gtr if gtr is not None else 'JC69', **kwargs)
+        self.set_gtr(gtr or 'JC69', **kwargs)
 
         self.tree = tree
         if tree is None:
@@ -296,7 +297,9 @@ class TreeAnc(object):
             self.seq_len = len(self.ref)
         else:
             self.seq_len = self.aln.get_alignment_length()
-        self.one_mutation = 1.0/self.seq_len
+
+        if self.one_mutation is None:
+            self.one_mutation = 1.0/self.seq_len
 
         if hasattr(self, '_tree') and (self.tree is not None):
             self._attach_sequences_to_nodes()
