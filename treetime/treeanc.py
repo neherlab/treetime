@@ -81,18 +81,19 @@ class TreeAnc(object):
         self.logger("TreeAnc: set-up",1)
         self._internal_node_count = 0
         self.use_mutation_length=False
-        self.one_mutation = None
+        # if not specified, this will be set as 1/alignment_length
+        self.one_mutation = kwargs['one_mutation'] if 'one_mutation' in kwargs else None
         self.fill_overhangs = fill_overhangs
         self.is_vcf = False  #this is set true when aln is set, if aln is dict
         self.seq_multiplicity = {} if seq_multiplicity is None else seq_multiplicity
 
         self.ignore_gaps = ignore_gaps
-        self.set_gtr(gtr if gtr is not None else 'JC69', **kwargs)
+        self.set_gtr(gtr or 'JC69', **kwargs)
 
         self.tree = tree
         if tree is None:
             self.logger("TreeAnc: tree loading failed! exiting",0)
-            return
+            return ttconf.ERROR
 
         # will be None if not set
         self.ref = ref
@@ -236,11 +237,11 @@ class TreeAnc(object):
                 else:
                     self.logger('TreeAnc: could not load tree, format needs to be nexus or newick! input was '+str(in_tree),1)
                     self._tree = None
-                    return
+                    return ttconf.ERROR
         else:
-            self.logger('TreeAnc: could not load tree! input was '+str(in_tree),1)
+            self.logger('TreeAnc: could not load tree! input was '+str(in_tree),0)
             self._tree = None
-            return
+            return ttconf.ERROR
 
         # remove all existing sequence attributes
         for node in self._tree.find_clades():
@@ -249,6 +250,7 @@ class TreeAnc(object):
             node.original_length = node.branch_length
             node.mutation_length = node.branch_length
         self.prepare_tree()
+        return ttconf.SUCCESS
 
 
     @property
@@ -281,7 +283,7 @@ class TreeAnc(object):
 
         if self._aln is None:
             self.logger("TreeAnc: loading alignment failed... ",1, warn=True)
-            return
+            return ttconf.ERROR
 
         #Convert to uppercase here, rather than in _attach_sequences_to_nodes
         #(which used to do it through seq2array in seq_utils.py)
@@ -291,7 +293,15 @@ class TreeAnc(object):
         if (not self.is_vcf) and self.convert_upper:
             self._aln = MultipleSeqAlignment([seq.upper() for seq in self._aln])
 
-        if hasattr(self, '_tree'):
+        if self.is_vcf:
+            self.seq_len = len(self.ref)
+        else:
+            self.seq_len = self.aln.get_alignment_length()
+
+        if self.one_mutation is None:
+            self.one_mutation = 1.0/self.seq_len
+
+        if hasattr(self, '_tree') and (self.tree is not None):
             self._attach_sequences_to_nodes()
         else:
             self.logger("TreeAnc.aln: sequences not yet attached to tree", 3, warn=True)
@@ -315,12 +325,6 @@ class TreeAnc(object):
         For each node of the tree, check whether there is a sequence available
         in the alignment and assign this sequence as a character array
         '''
-        if self.is_vcf:
-            self.seq_len = len(self.ref)
-        else:
-            self.seq_len = self.aln.get_alignment_length()
-        self.one_mutation = 1.0/self.seq_len
-
         failed_leaves= 0
         if self.is_vcf:
             # if alignment is specified as difference from ref
@@ -358,7 +362,7 @@ class TreeAnc(object):
         if failed_leaves:
             self.logger("***WARNING: TreeAnc: %d nodes don't have a matching sequence in the alignment. POSSIBLE ERROR."%failed_leaves, 0, warn=True)
 
-        self.make_reduced_alignment()
+        return self.make_reduced_alignment()
 
 
     def make_reduced_alignment(self):
@@ -496,6 +500,7 @@ class TreeAnc(object):
                     seq_count+=1
 
         self.logger("TreeAnc: constructed reduced alignment...", 1)
+        return ttconf.SUCCESS
 
 
     def process_alignment_dict(self):
@@ -676,7 +681,11 @@ class TreeAnc(object):
         else:
             _ml_anc = self._ml_anc_joint
 
-        self.logger("TreeAnc inferring the GTR model from the tree...", 1)
+        self.logger("TreeAnc.infer_gtr: inferring the GTR model from the tree...", 1)
+        if (self.tree is None) or (self.aln is None):
+            self.logger("TreeAnc.infer_gtr: ERROR, alignment or tree are missing", 0)
+            return ttconf.ERROR
+
         _ml_anc(final=True, **kwargs) # call one of the reconstruction types
         alpha = list(self.gtr.alphabet)
         n=len(alpha)
@@ -716,7 +725,7 @@ class TreeAnc(object):
     def infer_ancestral_sequences(self,*args, **kwargs):
         """Shortcut for :meth:`reconstruct_anc`
         """
-        self.reconstruct_anc(*args,**kwargs)
+        return self.reconstruct_anc(*args,**kwargs)
 
 
     def reconstruct_anc(self, method='ml', infer_gtr=False, marginal=False, **kwargs):
@@ -746,6 +755,9 @@ class TreeAnc(object):
 
         """
         self.logger("TreeAnc.infer_ancestral_sequences: method: " + method, 1)
+        if (self.tree is None) or (self.aln is None):
+            self.logger("TreeAnc.infer_ancestral_sequences: ERROR, alignment or tree are missing", 0)
+            return ttconf.ERROR
 
         if method == 'ml':
             if marginal:
@@ -756,7 +768,9 @@ class TreeAnc(object):
             _ml_anc = self._fitch_anc
 
         if infer_gtr:
-            self.infer_gtr(marginal=marginal, **kwargs)
+            tmp = self.infer_gtr(marginal=marginal, **kwargs)
+            if tmp==ttconf.ERROR:
+                return tmp
             N_diff = _ml_anc(**kwargs)
         else:
             N_diff = _ml_anc(**kwargs)
@@ -1397,7 +1411,7 @@ class TreeAnc(object):
 ### Branch length
 ###################################################################
     def optimize_branch_len(self, **kwargs):
-        self.optimize_branch_length(**kwargs)
+        return self.optimize_branch_length(**kwargs)
 
     def optimize_branch_length(self, mode='joint', **kwargs):
         """
@@ -1432,6 +1446,10 @@ class TreeAnc(object):
         """
 
         self.logger("TreeAnc.optimize_branch_length: running branch length optimization in mode %s..."%mode,1)
+        if (self.tree is None) or (self.aln is None):
+            self.logger("TreeAnc.optimize_branch_length: ERROR, alignment or tree are missing", 0)
+            return ttconf.ERROR
+
 
         verbose = 0
         store_old_dist = False
@@ -1480,6 +1498,7 @@ class TreeAnc(object):
                         " \n\t ****PLEASE OPTIMIZE BRANCHES WITH ANOTHER TOOL AND RERUN WITH"
                         " \n\t ****branch_length_mode='input'", 0, warn=True)
         self._prepare_nodes()
+        return ttconf.SUCCESS
 
 
     def optimize_branch_length_global(self, **kwargs):
@@ -1723,7 +1742,7 @@ class TreeAnc(object):
         self.tree.unconstrained_sequence_LH = (self.tree.sequence_LH*self.multiplicity).sum()
         self._prepare_nodes() # fix dist2root and up-links after reconstruction
         self.logger("TreeAnc.optimize_sequences_and_branch_length: Unconstrained sequence LH:%f" % self.tree.unconstrained_sequence_LH , 2)
-        return
+        return ttconf.SUCCESS
 
 ###############################################################################
 ### Utility functions

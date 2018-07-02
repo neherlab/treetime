@@ -3,6 +3,7 @@ from __future__ import print_function, division
 import numpy as np
 import pandas as pd
 from treetime import TreeAnc, GTR
+from treetime import config as ttconf
 from Bio.SeqRecord import SeqRecord
 from Bio.Seq import Seq
 from Bio.Align import MultipleSeqAlignment
@@ -95,15 +96,17 @@ if __name__=="__main__":
     ###########################################################################
     ### set up treeanc
     ###########################################################################
-    treeanc = TreeAnc(params.tree, gtr=mugration_GTR, verbose=params.verbose)
+    treeanc = TreeAnc(params.tree, gtr=mugration_GTR, verbose=params.verbose, one_mutation=0.001)
     pseudo_seqs = [SeqRecord(id=n.name,name=n.name,
                    seq=Seq(reverse_alphabet[leaf_to_attr[n.name]] if n.name in leaf_to_attr else missing_char))
                    for n in treeanc.tree.get_terminals()]
     treeanc.aln = MultipleSeqAlignment(pseudo_seqs)
 
-    treeanc.infer_ancestral_sequences(method='ml', infer_gtr=True,
+    ndiff = treeanc.infer_ancestral_sequences(method='ml', infer_gtr=True,
             store_compressed=False, pc=params.pc, marginal=True, normalized_rate=False,
             fixed_pi=weights if params.weights else None)
+    if ndiff==ttconf.ERROR: # if reconstruction failed, exit
+        sys.exit(1)
 
 
     ###########################################################################

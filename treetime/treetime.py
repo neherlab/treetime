@@ -1,7 +1,7 @@
 from __future__ import print_function, division, absolute_import
 from treetime.clock_tree import ClockTree
 from treetime import utils as ttutils
-from  treetime import config as ttconf
+from treetime import config as ttconf
 import numpy as np
 from scipy import optimize as sciopt
 from Bio import Phylo
@@ -100,6 +100,11 @@ class TreeTime(ClockTree):
 
 
         """
+
+        if (self.tree is None) or (self.aln is None):
+            self.logger("TreeTime.run: ERROR, alignment or tree are missing", 0)
+            return ttconf.ERROR
+
         if branch_length_mode not in ['joint', 'marginal', 'input']:
             branch_length_mode = self._set_branch_length_mode(branch_length_mode)
 
@@ -224,6 +229,7 @@ class TreeTime(ClockTree):
             self.logger("###TreeTime.run: FINAL ROUND - confidence estimation via marginal reconstruction", 0)
             self.make_time_tree(clock_rate=fixed_clock_rate, time_marginal=time_marginal,
                                 branch_length_mode=branch_length_mode,**kwargs)
+        return ttconf.SUCCESS
 
 
     def _set_branch_length_mode(self, branch_length_mode):
@@ -301,7 +307,7 @@ class TreeTime(ClockTree):
         # redo root estimation after outlier removal
         if reroot:
             self.reroot(root=reroot)
-
+        return ttconf.SUCCESS
 
     def plot_root_to_tip(self, add_internal=False, label=True, ax=None, **kwargs):
         """
@@ -397,7 +403,7 @@ class TreeTime(ClockTree):
             new_root = self.reroot_to_best_root(criterium='min_dev')
         else:
             self.logger('TreeTime.reroot -- WARNING: unsupported rooting mechanisms or root not found',2,warn=True)
-            return
+            return ttconf.ERROR
 
         self.logger("TreeTime.reroot: Tree is being re-rooted to node "
                     +('new_node' if new_root.name is None else new_root.name), 2)
@@ -1060,7 +1066,7 @@ def plot_vs_years(tt, years = 1, ax=None, confidence=None, ticks=True, **kwargs)
             cfunc = tt.get_max_posterior_region
         else:
             print("confidence needs to be either a float (for max posterior region) or a two numbers specifying lower and upper bounds")
-            return
+            return ttconf.ERROR
 
         for n in tt.tree.find_clades():
             pos = cfunc(n, confidence)

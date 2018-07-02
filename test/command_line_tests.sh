@@ -9,7 +9,7 @@ else
 	((all_tests++))
 fi
 
-ancestral_reconstruction.py --aln ../data/H3N2_NA_allyears_NA.20.fasta --tree ../data/H3N2_NA_allyears_NA.20.nwk
+ancestral_reconstruction.py --aln ../data/H3N2_NA_allyears_NA.20.phylip --tree ../data/H3N2_NA_allyears_NA.20.nwk
 retval="$?"
 if [ "$retval" == 0 ]; then
 	echo "ancestral_reconstruction ok"
@@ -18,7 +18,7 @@ else
 	echo "ancestral_reconstruction failed $retval"
 fi
 
-temporal_signal.py --tree ../data/H3N2_NA_allyears_NA.20.nwk --dates ../data/H3N2_NA_allyears_NA.20.metadata.csv
+temporal_signal.py --tree ../data/H3N2_NA_allyears_NA.20.nex --dates ../data/H3N2_NA_allyears_NA.20.metadata.csv
 retval="$?"
 if [ "$retval" == 0 ]; then
 	echo "temporal_signal ok"
