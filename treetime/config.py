@@ -33,6 +33,10 @@ REL_TOL_PRUNE = 0.01
 REL_TOL_REFINE = 0.05
 NIQD = 3
 
+#
+SUCCESS = "success"
+ERROR = "error"
+
 # treetime
 # autocorrelated molecular clock coefficients
 MU_ALPHA = 1

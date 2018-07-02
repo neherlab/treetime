@@ -68,8 +68,14 @@ class ClockTree(TreeAnc):
         self.rel_tol_prune = ttconf.REL_TOL_PRUNE
         self.rel_tol_refine = ttconf.REL_TOL_REFINE
         self.branch_length_mode = branch_length_mode
-        self.min_width = 10*self.one_mutation
         self._set_precision(precision)
+        self._assign_dates()
+
+
+    def _assign_dates(self):
+        if self.tree is None:
+            self.logger("ClockTree._assign_dates: tree is not set, can't assign dates", 0)
+            return ttconf.ERROR
 
         for node in self.tree.find_clades(order='postorder'):
             if node.name in self.date_dict:
@@ -99,6 +105,7 @@ class ClockTree(TreeAnc):
         on the length of the sequence if not explicitly set
         '''
         # if precision is explicitly specified, use it.
+
         if precision in [0,1,2,3]:
             self.precision=precision
             if self.one_mutation and self.one_mutation<1e-4 and precision<2:
@@ -107,12 +114,14 @@ class ClockTree(TreeAnc):
         else:
             # otherwise adjust it depending on the minimal sensible branch length
             if self.one_mutation:
+                self.min_width = 10*self.one_mutation
                 if self.one_mutation>1e-4:
                     self.precision=1
                 else:
                     self.precision=2
             else:
                 self.precision=1
+                self.min_width = 0.001
             self.logger("ClockTree: Setting precision to level %s"%self.precision, 2)
 
         if self.precision==0:
@@ -131,7 +140,6 @@ class ClockTree(TreeAnc):
             self.node_grid_points = ttconf.NODE_GRID_SIZE
             self.branch_grid_points = ttconf.BRANCH_GRID_SIZE
             self.n_integral = ttconf.N_INTEGRAL
-
 
     @property
     def date2dist(self):

@@ -3,6 +3,7 @@ from __future__ import print_function, division
 import numpy as np
 import pandas as pd
 from treetime import TreeAnc, GTR
+from treetime import config as ttconf
 from Bio.SeqRecord import SeqRecord
 from Bio.Seq import Seq
 from Bio.Align import MultipleSeqAlignment
@@ -101,9 +102,11 @@ if __name__=="__main__":
                    for n in treeanc.tree.get_terminals()]
     treeanc.aln = MultipleSeqAlignment(pseudo_seqs)
 
-    treeanc.infer_ancestral_sequences(method='ml', infer_gtr=True,
+    ndiff = treeanc.infer_ancestral_sequences(method='ml', infer_gtr=True,
             store_compressed=False, pc=params.pc, marginal=True, normalized_rate=False,
             fixed_pi=weights if params.weights else None)
+    if ndiff==ttconf.ERROR: # if reconstruction failed, exit
+        sys.exit(1)
 
 
     ###########################################################################

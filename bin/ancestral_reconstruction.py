@@ -2,6 +2,7 @@
 from __future__ import print_function, division
 import numpy as np
 from treetime import TreeAnc, GTR
+from treetime import config as ttconf
 from Bio import Phylo, AlignIO
 from Bio import __version__ as bioversion
 import sys
@@ -88,8 +89,10 @@ if __name__=="__main__":
     ###########################################################################
     treeanc = TreeAnc(params.tree, aln=params.aln, gtr=gtr, verbose=4,
                       fill_overhangs=not params.keep_overhangs)
-    treeanc.infer_ancestral_sequences('ml', infer_gtr=infer_gtr,
+    ndiff = treeanc.infer_ancestral_sequences('ml', infer_gtr=infer_gtr,
                                        marginal=params.marginal)
+    if ndiff==ttconf.ERROR: # if reconstruction failed, exit
+        sys.exit(1)
 
     ###########################################################################
     ### OUTPUT and saving of results

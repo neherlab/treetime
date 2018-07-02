@@ -61,6 +61,9 @@ if __name__=="__main__":
     base_name = '.'.join(params.tree.split('/')[-1].split('.')[:-1])
     myTree = TreeTime(dates=dates, tree=params.tree,
                       aln=aln, gtr='JC69', verbose=params.verbose)
+    if myTree.tree is None:
+        print("ERROR: tree loading failed. exiting...")
+        sys.exit(1)
 
     if not params.keep_root:
         myTree.reroot('best')
