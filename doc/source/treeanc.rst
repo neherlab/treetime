@@ -9,8 +9,7 @@ The tree is stored as Bio.Phylo object. In order to facilitate the tree operatio
 The main purpose of the TreeAnc class is to implement standard algorithms for ancestral sequence reconstruction.
 Both marginal and joint maximum likelihood reconstructions are possible. The marginal reconstructions computes the entire distribution of the states at a given node after tracing out states at all other nodes.
 
-The `example scripts <https://github.com/neherlab/treetime/blob/master/examples/ancestral_inference.py>`_
-illustrate how to instantiate TreeAnc objects.
+The `example scripts <https://github.com/neherlab/treetime/blob/master/examples/ancestral_inference.py>`_ illustrate how to instantiate TreeAnc objects.
 
 
 TreeAnc Constructor
@@ -33,17 +32,17 @@ Basic functions, utilities, properties
 
 .. automethod:: treetime.TreeAnc.logger
 
-.. automethod:: treetime.TreeAnc.aln
+.. automethod:: treetime.TreeAnc.aln()
 
-.. automethod:: treetime.TreeAnc.gtr
+.. automethod:: treetime.TreeAnc.gtr()
 
-.. automethod:: treetime.TreeAnc.tree
+.. automethod:: treetime.TreeAnc.tree()
 
-.. automethod:: treetime.TreeAnc.leaves_lookup
+.. automethod:: treetime.TreeAnc.leaves_lookup()
 
 
 Sequence and profile manipulation
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+--------------------------------------
 
 .. automethod:: treetime.TreeAnc.get_mutations
 
@@ -53,9 +52,11 @@ Sequence and profile manipulation
 
 .. automethod:: treetime.TreeAnc.expanded_sequence
 
+.. automethod:: treetime.TreeAnc.dict_sequence
+
 
 Ancestral reconstruction and tree optimization
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+-------------------------------------------------
 
 .. automethod:: treetime.TreeAnc.reconstruct_anc
 

@@ -18,24 +18,24 @@ class GTR(object):
         ----------
 
          alphabet : str, numpy.array
-            alphabet of the sequence. If string passed, it is understood as
-            alphabet name. In this case, the alphabet and its profile map pulled
-            from seq_utils.
+            Alphabet of the sequence. If a string is passed, it is understood as
+            an alphabet name. In this case, the alphabet and its profile map are pulled
+            from :py:obj:`treetime.seq_utils`.
 
-            If numpy array of characters passed, a new alphabet is constructed,
+            If a numpy array of characters is passed, a new alphabet is constructed,
             and the default profile map is atached to it.
 
          prof_map : dict
-            dictionary linking characters in the sequence to likelihood
-            of observing characters in the alphabt. This is used to
+            Dictionary linking characters in the sequence to the likelihood
+            of observing characters in the alphabet. This is used to
             implement ambiguous characters like 'N'=[1,1,1,1] which are
-            equally likely any of the 4 nucleotides. Standard profile_maps
-            are defined in file seq_utils.py. If none is provided, no ambigous
+            equally likely to be any of the 4 nucleotides. Standard profile_maps
+            are defined in file seq_utils.py. If None is provided, no ambigous
             characters are supported.
 
          logger : callable
-            custom logging function that should take arguments (msg, level, warn=False)
-            where msg is a string, level an integer to be compared against verbose.
+            Custom logging function that should take arguments (msg, level, warn=False),
+            where msg is a string and level an integer to be compared against verbose.
 
         """
         self.debug=False
@@ -186,12 +186,15 @@ class GTR(object):
          pi : n vector
             Equilibrium frequencies
 
+         **kwargs:
+            Key word arguments to be passed
+
         Keyword Args
         ------------
 
          alphabet : str
             Specify alphabet when applicable. If the alphabet specification is
-            required, but no alphabet specified, the nucleotide will be used as
+            required, but no alphabet is specified, the nucleotide alphabet will be used as
             default.
 
         """
@@ -208,13 +211,9 @@ class GTR(object):
         ----------
 
          model : str
-            Model to create. List of the available models is
-            (see description below)
-
-        Keyword Args
-        ------------
-
-         model arguments
+            Model to create. See list of available models below
+         **kwargs:
+            Key word arguments to be passed to the model
 
 
         **Available models**
@@ -347,7 +346,7 @@ class GTR(object):
     @classmethod
     def random(cls, mu=1.0, alphabet='nuc'):
         """
-        Create random GTR model
+        Creates a random GTR model
 
         Parameters
         ----------
@@ -376,7 +375,9 @@ class GTR(object):
         """
         Infer a GTR model by specifying the number of transitions and time spent in each
         character. The basic equation that is being solved is
-            :math:`n_{ij} = pi_i W_{ij} T_j`
+
+        :math:`n_{ij} = pi_i W_{ij} T_j`
+
         where :math:`n_{ij}` are the transitions, :math:`pi_i` are the equilibrium
         state frequencies, :math:`W_{ij}` is the "substitution attempt matrix",
         while :math:`T_i` is the time on the tree spent in character state
@@ -384,7 +385,7 @@ class GTR(object):
         to account for the fact that the root of the tree is in a particular
         state. the modified equation is
 
-            :math:`n_{ij} + pc = pi_i W_{ij} (T_j+pc+root\_state)`
+        :math:`n_{ij} + pc = pi_i W_{ij} (T_j+pc+root\_state)`
 
         Parameters
         ----------
@@ -404,12 +405,15 @@ class GTR(object):
             Pseudocounts, this determines the lower cutoff on the rate when
             no substitutions are observed
 
+         **kwargs:
+            Key word arguments to be passed
+
         Keyword Args
         ------------
 
          alphabet : str
             Specify alphabet when applicable. If the alphabet specification
-            is required, but no alphabet specified, the nucleotide will be used as default.
+            is required, but no alphabet is specified, the nucleotide alphabet will be used as default.
 
         """
         from scipy import linalg as LA
@@ -510,9 +514,9 @@ class GTR(object):
     def compress_sequence_pair(self, seq_p, seq_ch, pattern_multiplicity=None,
                                ignore_gaps=False):
         '''
-        make a compressed representation of a pair of sequences only counting
+        Make a compressed representation of a pair of sequences, only counting
         the number of times a particular pair of states (e.g. (A,T)) is observed
-        the the aligned sequences of parent and child
+        in the aligned sequences of parent and child.
 
         Parameters
         ----------
@@ -523,20 +527,20 @@ class GTR(object):
          seq_ch: numpy array
             Child sequence as numpy array of chars
 
-         pattern_multiplicity : numpy array, None
-            if sequences are reduced by combining identical alignment patterns,
+         pattern_multiplicity : numpy array
+            If sequences are reduced by combining identical alignment patterns,
             these multplicities need to be accounted for when counting the number
             of mutations across a branch. If None, all pattern are assumed to
             occur exactly once.
 
-         ignore_gap: bool, default False
+         ignore_gap: bool
             Whether or not to include gapped positions of the alignment
             in the multiplicity count
 
         Returns
         -------
           seq_pair : list
-            [(0,1), (2,2), (3,4)] list of parent_child state pairs
+            :code:`[(0,1), (2,2), (3,4)]` list of parent_child state pairs
             as indices in the alphabet
 
           multiplicity : numpy array
@@ -590,24 +594,25 @@ class GTR(object):
 ########################################################################
     def prob_t_compressed(self, seq_pair, multiplicity, t, return_log=False, derivative=0):
         '''
-        calculate the probability of observing a sequence pair at a distance t
+        Calculate the probability of observing a sequence pair at a distance t,
+        for compressed sequences
 
         Parameters
         ----------
 
           seq_pair : numpy array
-            np.array([(0,1), (2,2), ()..]) as indicies of
-            pairs of aligned positions. (e.g. 'A'==0, 'C'==1 etc)
-            this only lists all occuring parent-child state pairs, order is irrelevant
+            :code:`np.array([(0,1), (2,2), ()..])` as indicies of
+            pairs of aligned positions. (e.g. 'A'==0, 'C'==1 etc).
+            This only lists all occuring parent-child state pairs, order is irrelevant
 
           multiplicity : numpy array
-            The number of times a parent-child state pair is observed
-            this allows to compress the sequence representation
+            The number of times a parent-child state pair is observed.
+            This allows compression of the sequence representation
 
           t : float
             Length of the branch separating parent and child
 
-          return_log : bool, default False
+          return_log : bool
             Whether or not to exponentiate the result
 
         '''
@@ -626,35 +631,34 @@ class GTR(object):
 
     def prob_t(self, seq_p, seq_ch, t, pattern_multiplicity = None, return_log=False, ignore_gaps=True):
         """
-        Compute the probability to observe seq_ch after time t starting from seq_p.
+        Compute the probability to observe seq_ch (child sequence) after time t starting from seq_p
+        (parent sequence).
 
         Parameters
         ----------
 
-         profile_p : np.array
-            Parent profile of shape (L, a), where
-            L - length of the sequence, a - alphabet size.
+         seq_p : character array
+            Parent sequence
 
-         profile_ch : np.array
-            Child profile of shape (L, a), where
-            L - length of the sequence, a - alphabet size.
+         seq_c : character array
+            Child sequence
 
          t : double
-            Time (branch len), separating the profiles.
+            Time (branch len) separating the profiles.
 
-         pattern_multiplicity : numpy array, None
-            if sequences are reduced by combining identical alignment patterns,
+         pattern_multiplicity : numpy array
+            If sequences are reduced by combining identical alignment patterns,
             these multplicities need to be accounted for when counting the number
             of mutations across a branch. If None, all pattern are assumed to
             occur exactly once.
 
-         return_log : bool, default False
-            Whether return log-probability.
+         return_log : bool
+            It True, return log-probability.
 
         Returns
         -------
          prob : np.array
-            resulting probability.
+            Resulting probability
 
         """
         seq_pair, multiplicity = self.compress_sequence_pair(seq_p, seq_ch,
@@ -670,19 +674,19 @@ class GTR(object):
         ----------
 
          seq_p : character array
-            parent sequence
+            Parent sequence
 
          seq_c : character array
-            child sequence
+            Child sequence
 
-         pattern_multiplicity : numpy array, None
-            if sequences are reduced by combining identical alignment patterns,
+         pattern_multiplicity : numpy array
+            If sequences are reduced by combining identical alignment patterns,
             these multplicities need to be accounted for when counting the number
             of mutations across a branch. If None, all pattern are assumed to
             occur exactly once.
 
          ignore_gaps : bool
-            ignore gaps in distance calculations
+            If True, ignore gaps in distance calculations
 
         '''
         seq_pair, multiplicity = self.compress_sequence_pair(seq_p, seq_ch,
@@ -693,32 +697,33 @@ class GTR(object):
 
     def optimal_t_compressed(self, seq_pair, multiplicity, profiles=False):
         """
-        Find the optimal distance between the two sequences
+        Find the optimal distance between the two sequences, for compressed sequences
 
         Parameters
         ----------
 
          seq_pair : compressed_sequence_pair
-            compressed representation of sequences along a branch, either
+            Compressed representation of sequences along a branch, either
             as tuple of state pairs or as tuple of profiles.
 
          multiplicity : array
-            number of times each state pair in seq_pair appears (profile==False)
-            number of times an alignment pattern is observed (profiles==True)
+            Number of times each state pair in seq_pair appears (if profile==False)
+
+            Number of times an alignment pattern is observed (if profiles==True)
 
          profiles : bool, default False
-            the standard branch length optimization assumes fixed sequences at
+            The standard branch length optimization assumes fixed sequences at
             either end of the branch. With profiles==True, optimization is performed
             while summing over all possible states of the nodes at either end of the
             branch. Note that the meaning/format of seq_pair and multiplicity
-            depend on the value of profiles
+            depend on the value of profiles.
 
         """
 
         def _neg_prob(t, seq_pair, multiplicity):
             """
-            Probability to observe child given the the parent state, transition
-            matrix and the time of evolution (branch length).
+            Probability to observe a child given the the parent state, transition
+            matrix, and the time of evolution (branch length).
 
             Parameters
             ----------
@@ -778,25 +783,25 @@ class GTR(object):
 
     def prob_t_profiles(self, profile_pair, multiplicity, t, return_log=False, ignore_gaps=True):
         '''
-        calculate the probability of observing a node pair at a distance t
+        Calculate the probability of observing a node pair at a distance t
 
         Parameters
         ----------
 
           profile_pair: numpy arrays
-            probability distributions of the nucleotides at either
+            Probability distributions of the nucleotides at either
             end of the branch. pp[0] = parent, pp[1] = child
 
           multiplicity : numpy array
-            The number of times a an alignment pattern is observed
+            The number of times an alignment pattern is observed
 
           t : float
             Length of the branch separating parent and child
 
           ignore_gaps: bool
-            ignore mutations to and from gaps in distance calculations
+            If True, ignore mutations to and from gaps in distance calculations
 
-          return_log : bool, default False
+          return_log : bool
             Whether or not to exponentiate the result
 
         '''
@@ -835,8 +840,8 @@ class GTR(object):
          t : double
             Time to propagate
 
-         return_log: bool, default False
-            Whether to return log-probability
+         return_log: bool
+            If True, return log-probability
 
         Returns
         -------
@@ -879,13 +884,13 @@ class GTR(object):
         ----------
 
          t : float
-            time to propagate
+            Time to propagate
 
         Returns
         --------
 
          expQt : numpy.array
-            matrix exponential of exo(Qt)
+            Matrix exponential of exo(Qt)
         '''
         eLambdaT = np.diag(self._exp_lt(t)) # vector length = a
         Qs = self.v.dot(eLambdaT.dot(self.v_inv))   # This is P(nuc1 | given nuc_2)
@@ -926,16 +931,16 @@ class GTR(object):
 
     def sequence_logLH(self,seq, pattern_multiplicity=None):
         """
-        Returns the log-likelihood of sampling a sequence from equilibrium frequency
-        expects a sequence as numpy array
+        Returns the log-likelihood of sampling a sequence from equilibrium frequency.
+        Expects a sequence as numpy array
 
         Parameters
         ----------
 
          seq : numpy array
-            Compressed sequence as array of chars
+            Compressed sequence as an array of chars
 
-         pattern_multiplicity : numpy_array, None
+         pattern_multiplicity : numpy_array
             The number of times each position in sequence is observed in the
             initial alignment. If None, sequence is assumed to be not compressed
 
