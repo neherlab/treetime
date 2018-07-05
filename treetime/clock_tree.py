@@ -32,12 +32,12 @@ class ClockTree(TreeAnc):
         Parameters
         ----------
 
-         dates : dic, None
-            {leaf_name:leaf_date} dictionary
+         dates : dict
+            :code:`{leaf_name:leaf_date}` dictionary
 
          debug : bool
             If True, the debug mode is ON, which means no or less clean-up of
-            obsolete parameters to control program  execution in intermediate
+            obsolete parameters to control program execution in intermediate
             states. In debug mode, the python debugger is also allowed to interrupt
             program execution with intercative shell if an error occurs.
 
@@ -46,15 +46,14 @@ class ClockTree(TreeAnc):
             performed.
 
          precision : int
-            precision can be 0 (rough), 1 (default), 2 (fine), or 3 (ultra fine)
-            this parameter determines the number of grid points that are used
+            Precision can be 0 (rough), 1 (default), 2 (fine), or 3 (ultra fine).
+            This parameter determines the number of grid points that are used
             for the evaluation of the branch length interpolation objects.
             When not specified, this will default to 1 for short sequences and 2
             for long sequences with L>1e4
 
-        Keyword Args
-        ------------
-            Kwargs needed to construct parent class (TreeAnc)
+         **kwargs:
+            Key word argments needed to construct parent class (TreeAnc)
 
         """
         super(ClockTree, self).__init__(*args, **kwargs)
@@ -160,21 +159,22 @@ class ClockTree(TreeAnc):
         lengths as they are used in ML computations. The conversion formula is
         assumed to be 'length = k*numdate + b'. For convenience, these
         coefficients as well as regression parameters are stored in the
-        dates2dist object.
+        'dates2dist' object.
 
-        ..Note:: that tree must have dates set to all nodes before calling this
-        function.
+        .. Note::
+            The tree must have dates set to all nodes before calling this
+            function.
 
         Parameters
         ----------
 
          ancestral_inference: bool
-            Whether or not to reinfer ancestral sequences
-            done by default when ancestral sequences are missing
+            If True, reinfer ancestral sequences
+            when ancestral sequences are missing
 
-         clock_rate: float, None
-            if specified, timetree optimization will be done assuming a
-            fixed clock rate
+         clock_rate: float
+            If specified, timetree optimization will be done assuming a
+            fixed clock rate as specified
 
         """
         self.logger("ClockTree.init_date_constraints...",2)
@@ -239,12 +239,10 @@ class ClockTree(TreeAnc):
         ----------
 
          time_marginal : bool
-            Whether use marginal reconstruction for node positions or not
+            If true, use marginal reconstruction for node positions
 
-        Keyword Args
-        ------------
-
-         Kwargs needed to initialize dates constraints
+         **kwargs
+            Key word arguments to initialize dates constraints
 
         '''
         self.logger("ClockTree: Maximum likelihood tree optimization with temporal constraints:",1)
@@ -567,10 +565,9 @@ class ClockTree(TreeAnc):
 
     def convert_dates(self):
         '''
-        this fucntion converts the estimated "time_before_present" properties of all nodes
+        This function converts the estimated "time_before_present" properties of all nodes
         to numerical dates stored in the "numdate" attribute. This date is further converted
-        into a human readable date string in format %Y-%m-%d assuming the usual calendar
-
+        into a human readable date string in format %Y-%m-%d assuming the usual calendar.
 
         Returns
         -------
@@ -608,7 +605,7 @@ class ClockTree(TreeAnc):
     def branch_length_to_years(self):
         '''
         This function sets branch length to reflect the date differences between parent and child
-        nodes measured in years. Should only be called after convert_dates has been called
+        nodes measured in years. Should only be called after :py:meth:`timetree.ClockTree.convert_dates` has been called.
 
         Returns
         -------
@@ -628,8 +625,8 @@ class ClockTree(TreeAnc):
     def get_confidence_interval(self, node, interval = (0.05, 0.95)):
         '''
         If temporal reconstruction was done using the marginal ML mode, the entire distribution of
-        times is available. this function here determines the 90%( or other) confidence interval defines as the
-        range where 5% of probability are below and above. Note that this does not necessarily contain
+        times is available. This function determines the 90% (or other) confidence interval, defined as the
+        range where 5% of probability is below and above. Note that this does not necessarily contain
         the highest probability position.
 
         Parameters
@@ -638,8 +635,8 @@ class ClockTree(TreeAnc):
          node : PhyloTree.Clade
             The node for which the confidence interval is to be calculated
 
-         interval : tuple, list default=(0.05, 0.95)
-            Array like of length two defining the bounds of the confidence interval
+         interval : tuple, list
+            Array of length two, or tuple, defining the bounds of the confidence interval
 
         Returns
         -------
@@ -660,7 +657,7 @@ class ClockTree(TreeAnc):
     def get_max_posterior_region(self, node, fraction = 0.9):
         '''
         If temporal reconstruction was done using the marginal ML mode, the entire distribution of
-        times is available. this function here determines the 95% confidence interval defines as the
+        times is available. This function determines the 95% confidence interval defines as the
         range where 5% of probability are below and above. Note that this does not necessarily contain
         the highest probability position.
 
@@ -668,7 +665,7 @@ class ClockTree(TreeAnc):
         ----------
 
          node : PhyloTree.Clade
-            The node for which the confidence region is to be calculated
+            The node for which the posterior region is to be calculated
 
          interval : float
             Float specifying who much of the posterior probability is

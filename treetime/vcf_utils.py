@@ -6,14 +6,10 @@ from collections import defaultdict
 def read_vcf(vcf_file, ref_file):
     """
     Reads in a vcf/vcf.gz file and associated
-    reference sequence fasta (to which the VCF file is mapped)
+    reference sequence fasta (to which the VCF file is mapped).
 
-    Parses mutations, insertions, and deletions and stores them in a nested dict
-    with the format:
-    {'reference':'AGCTCGA..A',
-     'sequences': { 'seq1':{4:'A', 7:'-'}, 'seq2':{100:'C'} },
-     'insertions': { 'seq1':{4:'ATT'}, 'seq3':{1:'TT', 10:'CAG'} },
-     'positions': [1,4,7,10,100...] }
+    Parses mutations, insertions, and deletions and stores them in a nested dict,
+    see 'returns' for the dict structure.
 
     Calls with heterozygous values 0/1, 0/2, etc and no-calls (./.) are
     replaced with Ns at the associated sites.
@@ -21,8 +17,8 @@ def read_vcf(vcf_file, ref_file):
     Positions are stored to correspond the location in the reference sequence
     in Python (numbering is transformed to start at 0)
 
-    Args
-    ----
+    Parameters
+    ----------
     vcf_file : string
         Path to the vcf or vcf.gz file to be read in
     ref_file : string
@@ -31,10 +27,18 @@ def read_vcf(vcf_file, ref_file):
     Returns
     --------
     compress_seq : nested dict
-        Contains the following keys:
+        In the format: ::
+
+            {
+            'reference':'AGCTCGA..A',
+            'sequences': { 'seq1':{4:'A', 7:'-'}, 'seq2':{100:'C'} },
+            'insertions': { 'seq1':{4:'ATT'}, 'seq3':{1:'TT', 10:'CAG'} },
+            'positions': [1,4,7,10,100...]
+            }
 
         references : string
-            String of the reference sequence read from the Fasta
+            String of the reference sequence read from the Fasta, to which
+            the variable sites are mapped
         sequences : nested dict
             Dict containing sequence names as keys which map to dicts
             that have position as key and the single-base mutation (or deletion)
@@ -43,40 +47,36 @@ def read_vcf(vcf_file, ref_file):
             Dict in the same format as the above, which stores insertions and their
             locations. The first base of the insertion is the same as whatever is
             currently in that position (Ref if no mutation, mutation in 'sequences'
-            otherwise), so the current base can be replaced by the bases held here
-            without losing that base.
+            otherwise), so the current base can be directly replaced by the bases held here.
         positions : list
             Python list of all positions with a mutation, insertion, or deletion.
 
-    Note on VCF Format
-    -------------------
-    'Insertion where there are also deletions' (special handling)
-        Ex:
-          REF     ALT         Seq1    Seq2
-          GC      GCC,G       1/1     2/2
-        Insertions formatted differently - don't know how many bp match
-        the Ref (unlike simple insert below). Could be mutations, also.
-
-    'Deletion'
-        Ex:
-          REF     ALT
-          GC      G
-        Alt does not have to be 1 bp - any length shorter than Ref.
-
-    'Insertion'
-        Ex:
-          REF     ALT
-          A       ATT
-        First base always matches Ref.
-
-    'No indel'
-        Ex:
-          REF     ALT
-          A       G
-
-
-    EBH 4 Dec 2017
     """
+
+    #Programming Note:
+    # Note on VCF Format
+    # -------------------
+    # 'Insertion where there are also deletions' (special handling)
+    #     Ex:
+    #       REF     ALT         Seq1    Seq2
+    #       GC      GCC,G       1/1     2/2
+    #     Insertions formatted differently - don't know how many bp match
+    #     the Ref (unlike simple insert below). Could be mutations, also.
+    # 'Deletion'
+    #     Ex:
+    #       REF     ALT
+    #       GC      G
+    #     Alt does not have to be 1 bp - any length shorter than Ref.
+    # 'Insertion'
+    #     Ex:
+    #       REF     ALT
+    #       A       ATT
+    #     First base always matches Ref.
+    # 'No indel'
+    #     Ex:
+    #       REF     ALT
+    #       A       G
+
     #define here, so that all sub-functions can access them
     sequences = defaultdict(dict)
     insertions = defaultdict(dict) #Currently not used, but kept in case of future use.
@@ -271,36 +271,51 @@ def read_vcf(vcf_file, ref_file):
 def write_vcf(tree_dict, file_name):#, compress=False):
     """
     Writes out a VCF-style file (which seems to be minimally handleable
-    by vcftools and pyvcf) of the alignment from the input of a dict
-    in a similar format to what's created from the read_in_vcf function above.
+    by vcftools and pyvcf) of the alignment. This is created from a dict
+    in a similar format to what's created by :py:meth:`treetime.vcf_utils.read_vcf`
 
-    For a sequence like:
-    Pos     1 2 3 4 5 6
-    Ref     A C T T A C
-    Seq1    A C - - - G
+    Positions of variable sites are transformed to start at 1 to match
+    VCF convention.
 
-    In a dict it is stored:
-    Seq1:{3:'-', 4:'-', 5:'-', 6:'G'}  (Numbering from 1 for simplicity)
+    Parameters
+    ----------
+     tree_dict: nested dict
+        A nested dict with keys 'sequence' 'reference' and 'positions',
+        as is created by :py:meth:`treetime.TreeAnc.get_tree_dict`
 
-    In a VCF it needs to be:
-    POS REF     ALT     Seq1
-    2   CTTA    C       1/1
-    6   C       G       1/1
+     file_name: str
+        File to which the new VCF should be written out. File names ending with
+        '.gz' will result in the VCF automatically being gzipped.
 
-    If a position is deleted (pos 3), need to get invariable position preceeding it
-
-    However, in alternative case, the base before a deletion is mutant, so need to check
-        that next position isn't a deletion (as otherwise won't be found until after the
-        current single bp mutation is written out)
-
-    When deleted position found, need to gather up all adjacent mutant positions with deletions,
-        but not include adjacent mutant positions that aren't deletions (pos 6)
-
-    Don't run off the 'end' of the position list if deletion is the last thing to be included
-        in the VCF file
-
-    EBH 7 Dec 2017
     """
+
+#   Programming Logic Note:
+#
+#    For a sequence like:
+#    Pos     1 2 3 4 5 6
+#    Ref     A C T T A C
+#    Seq1    A C - - - G
+#
+#    In a dict it is stored:
+#    Seq1:{3:'-', 4:'-', 5:'-', 6:'G'}  (Numbering from 1 for simplicity)
+#
+#    In a VCF it needs to be:
+#    POS REF     ALT     Seq1
+#    2   CTTA    C       1/1
+#    6   C       G       1/1
+#
+#    If a position is deleted (pos 3), need to get invariable position preceeding it
+#
+#    However, in alternative case, the base before a deletion is mutant, so need to check
+#        that next position isn't a deletion (as otherwise won't be found until after the
+#        current single bp mutation is written out)
+#
+#    When deleted position found, need to gather up all adjacent mutant positions with deletions,
+#        but not include adjacent mutant positions that aren't deletions (pos 6)
+#
+#    Don't run off the 'end' of the position list if deletion is the last thing to be included
+#        in the VCF file
+
     sequences = tree_dict['sequences']
     ref = tree_dict['reference']
     positions = tree_dict['positions']

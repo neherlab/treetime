@@ -119,24 +119,25 @@ profile_maps = {
 
 def seq2array(seq, fill_overhangs=True, ambiguous_character='N'):
     """
-    Take the raw sequence, substitute the "overhanging" gaps with 'N' (missequenced)
-    convert the sequence to the numpy array of chars.
+    Take the raw sequence, substitute the "overhanging" gaps with 'N' (missequenced),
+    and convert the sequence to the numpy array of chars.
 
     Parameters
     ----------
      seq : Biopython.SeqRecord, str, iterable
-        sequence as an object of SeqRecord, string or iterable
+        Sequence as an object of SeqRecord, string or iterable
 
      fill_overhangs : bool
-        should substitute the "overhanging" gaps with ambiguous character symbol?
+        If True, substitute the "overhanging" gaps with ambiguous character symbol
 
      ambiguous_character : char
-        Specify the caharcter for ambiguous state ('N' default for nucleotide)
+        Specify the character for ambiguous state ('N' default for nucleotide)
 
     Returns
     -------
      sequence : np.array
-        sequence as 1D numpy array of chars
+        Sequence as 1D numpy array of chars
+
     """
     try:
         sequence = ''.join(seq)
@@ -159,16 +160,16 @@ def seq2prof(seq, profile_map):
     ----------
 
      seq : numpy.array
-        sequence to be converted to the profile
+        Sequence to be converted to the profile
 
      profile_map : dic
-        mapping valid characters to profiles
+        Mapping valid characters to profiles
 
     Returns
     -------
 
      idx : numpy.array
-        profile for the character, zero array if the character not found
+        Profile for the character. Zero array if the character not found
 
     """
     plength = np.unique([len(x) for x in profile_map.values()])
@@ -192,25 +193,25 @@ def prof2seq(profile, gtr, sample_from_prof=False):
     ----------
 
      profile : numpy 2D array
-        profile. Shape of the profile should be (L x a), where L - sequence
+        Profile. Shape of the profile should be (L x a), where L - sequence
         length, a - alphabet size.
 
      gtr : gtr.GTR
-        instance of teh GTR class to supply the sequence alphabet
+        Instance of the GTR class to supply the sequence alphabet
 
-     collapse_prof : bool, default True
-        whether to convert the profile to the delta-function
+     collapse_prof : bool
+        Whether to convert the profile to the delta-function
 
     Returns
     -------
      seq : numpy.array
-        sequence as numpy array of length L
+        Sequence as numpy array of length L
 
      prof_values :  numpy.array
-        values of the profile for the chosen sequence characters (length L)
+        Values of the profile for the chosen sequence characters (length L)
 
      idx : numpy.array
-        inidces chosen form profile as array of length L
+        Indices chosen from profile as array of length L
     """
 
     # normalize profile such that probabilities at each site sum to one

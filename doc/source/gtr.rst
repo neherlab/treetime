@@ -17,7 +17,7 @@ GTR class documentation
 .. automethod:: treetime.GTR.assign_rates
 
 .. Note::
-    GTR object can be modified in-place by calling :func:`assign_rates`
+    GTR object can be modified in-place by calling :py:func:`treetime.GTR.assign_rates`
 
 
 Sequence manipulation
