@@ -67,6 +67,7 @@ class ClockTree(TreeAnc):
         self.rel_tol_prune = ttconf.REL_TOL_PRUNE
         self.rel_tol_refine = ttconf.REL_TOL_REFINE
         self.branch_length_mode = branch_length_mode
+        self.clock_model=None
         self._set_precision(precision)
         self._assign_dates()
 
@@ -105,22 +106,24 @@ class ClockTree(TreeAnc):
         '''
         # if precision is explicitly specified, use it.
 
+        if self.one_mutation:
+            self.min_width = 10*self.one_mutation
+        else:
+            self.min_width = 0.001
         if precision in [0,1,2,3]:
             self.precision=precision
             if self.one_mutation and self.one_mutation<1e-4 and precision<2:
                 self.logger("ClockTree._set_precision: FOR LONG SEQUENCES (>1e4) precision>=2 IS RECOMMENDED."
-                            " \n\t **** precision%d was specified by the user"%precision)
+                            " \n\t **** precision %d was specified by the user"%precision, level=0)
         else:
             # otherwise adjust it depending on the minimal sensible branch length
             if self.one_mutation:
-                self.min_width = 10*self.one_mutation
                 if self.one_mutation>1e-4:
                     self.precision=1
                 else:
                     self.precision=2
             else:
                 self.precision=1
-                self.min_width = 0.001
             self.logger("ClockTree: Setting precision to level %s"%self.precision, 2)
 
         if self.precision==0:
@@ -149,7 +152,8 @@ class ClockTree(TreeAnc):
         if val is None:
             self._date2dist = None
         else:
-            self.logger("ClockTime.date2dist: Setting new molecular clock. rate=%.3e, R^2=%.4f"%(val.clock_rate, val.r_val**2), 2)
+            self.logger("ClockTree.date2dist: Setting new molecular clock."
+                        " rate=%.3e, R^2=%.4f"%(val.clock_rate, val.r_val**2), 2)
             self._date2dist = val
 
 
@@ -207,7 +211,7 @@ class ClockTree(TreeAnc):
 
                 node.branch_length_interpolator.merger_cost = merger_cost
                 node.branch_length_interpolator.gamma = gamma
-        self.date2dist = utils.DateConversion.from_tree(self.tree, clock_rate)
+        self.date2dist = utils.DateConversion.from_regression(self.clock_model)
 
         # make node distribution objects
         for node in self.tree.find_clades(order="postorder"):
