@@ -284,7 +284,7 @@ class TreeTime(ClockTree):
             self.reroot(root=reroot)
             icpt, clock_rate = self.tree.root._alpha, self.tree.root._beta
         else:
-            Treg = ttutils.get_Treg_class(self, covariation=False)
+            Treg = self.setup_TreeRegression(covariation=False)
             self.clock_model = Treg.regression()
 
         clock_rate = self.clock_model['slope']
@@ -331,7 +331,7 @@ class TreeTime(ClockTree):
             Keyword arguments to be passed to :py:meth:`matplotlib.pyplot.scatter` function
 
         """
-        Treg = ttutils.get_Treg_class(self, covariation=True)
+        Treg = self.setup_TreeRegression(covariation=True)
         Treg.clock_plot(n_sigma=2, add_internal=add_internal, ax=ax, reg=self.clock_model)
 
 
@@ -380,7 +380,7 @@ class TreeTime(ClockTree):
             #(Without outgroup_branch_length, gives a trifurcating root, but this will mean
             #mutations may have to occur multiple times.)
             self.tree.root_with_outgroup(new_root, outgroup_branch_length=new_root.branch_length/2)
-            Treg = ttutils.get_Treg_class(self, covariation=True)
+            Treg = self.setup_TreeRegression(covariation=True)
             self.clock_model = Treg.regression()
 
         if new_root == ttconf.ERROR:
@@ -676,7 +676,7 @@ class TreeTime(ClockTree):
         for n in self.tree.find_clades():
             n.branch_length=n.mutation_length
         self.logger("TreeTime.reroot_to_best_root: searching for the best root position...",2)
-        Treg = ttutils.get_Treg_class(self, covariation=criterium in ["best", "chisq", "min_dev"])
+        Treg = self.setup_TreeRegression(covariation=criterium in ["best", "chisq", "min_dev"])
         self.clock_model = Treg.optimal_reroot(force_positive=not criterium.startswith("min_dev"))
 
         return self.clock_model['node']

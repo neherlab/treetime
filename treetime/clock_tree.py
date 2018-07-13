@@ -157,6 +157,20 @@ class ClockTree(TreeAnc):
             self._date2dist = val
 
 
+    def setup_TreeRegression(self, covariation=True):
+        from .treeregression import TreeRegression
+        tip_value = lambda x:np.mean(x.numdate_given) if x.is_terminal() and x.bad_branch==False else None
+        branch_value = lambda x:x.mutation_length
+        if covariation:
+            om = self.one_mutation
+            branch_variance = lambda x:(x.mutation_length+(ttconf.OVER_DISPERSION*om if x.is_terminal() else 0.0))*om
+        else:
+            branch_variance = lambda x:1.0 if x.is_terminal() else 0.0
+
+        return TreeRegression(self.tree, tip_value=tip_value,
+                             branch_value=branch_value, branch_variance=branch_variance)
+
+
     def init_date_constraints(self, ancestral_inference=False, clock_rate=None, **kwarks):
         """
         Get the conversion coefficients between the dates and the branch

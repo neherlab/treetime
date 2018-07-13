@@ -16,10 +16,12 @@ if __name__=="__main__":
                         "It will reroot the tree to maximize the clock-like "
                         "signal and recalculate branch length unless run with --keep_root.")
     parser.add_argument('--tree', required = True, type = str,  help ="newick file with tree")
+    parser.add_argument('--sequence-length', required = True, type=int, help="length of the sequence,"
+                                        " used to calculate expected variation in root distances")
     parser.add_argument('--dates', required = True, type = str,
                         help ="csv with dates for nodes with 'node_name, date' where date is float (as in 2012.15)")
-    parser.add_argument('--infer_gtr', default = False, action='store_true', help='infer substitution model')
-    parser.add_argument('--keep_root', required = False, action="store_true", default=False,
+    parser.add_argument('--infer-gtr', default = False, action='store_true', help='infer substitution model')
+    parser.add_argument('--keep-root', required = False, action="store_true", default=False,
                         help ="don't reroot the tree. Otherwise, reroot to minimize the "
                               "the residual of the regression of root-to-tip distance and sampling time")
     parser.add_argument('--plot', required = False, action="store_true", default=False,
@@ -51,7 +53,7 @@ if __name__=="__main__":
     ### FAKING ALIGMENT TO APPEASE TREETIME
     ###########################################################################
     from Bio import Seq, SeqRecord, Align
-    aln = Align.MultipleSeqAlignment([SeqRecord.SeqRecord(Seq.Seq("AAA"), id=node, name=node)
+    aln = Align.MultipleSeqAlignment([SeqRecord.SeqRecord(Seq.Seq("AAAA"), id=node, name=node)
                                     for node in dates])
 
 
@@ -60,15 +62,18 @@ if __name__=="__main__":
     ###########################################################################
     base_name = '.'.join(params.tree.split('/')[-1].split('.')[:-1])
     myTree = TreeTime(dates=dates, tree=params.tree, aln=aln, gtr='JC69',
-                      verbose=params.verbose, one_mutation=0.0001)
+                      verbose=params.verbose, seq_len=params.sequence_length)
     if myTree.tree is None:
         print("ERROR: tree loading failed. exiting...")
         sys.exit(1)
 
     if not params.keep_root:
         myTree.reroot('best')
+    else:
+        Treg = myTree.setup_TreeRegression(covariation=False)
+        myTree.clock_model = Treg.regression()
 
-    d2d = DateConversion.from_tree(myTree.tree)
+    d2d = DateConversion.from_regression(myTree.clock_model)
     print('\n',d2d)
     print('The R^2 value indicates the fraction of variation in'
           '\nroot-to-tip distance explained by the sampling times.'

@@ -7,14 +7,14 @@ from scipy import stats
 import datetime
 from scipy.ndimage import binary_dilation
 
-def get_Treg_class(tt, covariation=True):
+def setup_TreeRegr(tt, covariation=True):
     from .treeregression import TreeRegression
 
     tip_value = lambda x:np.mean(x.numdate_given) if x.is_terminal() and x.bad_branch==False else None
     branch_value = lambda x:x.mutation_length
     if covariation:
         om = tt.one_mutation
-        branch_variance = lambda x:(x.mutation_length+(5*om if x.is_terminal() else 0.0))*om
+        branch_variance = lambda x:(x.mutation_length+(ttconf.OVER_DISPERSION*om if x.is_terminal() else 0.0))*om
     else:
         branch_variance = lambda x:1.0 if x.is_terminal() else 0.0
 
@@ -38,7 +38,7 @@ class DateConversion(object):
 
     def __str__(self):
         # TODO: fix the chi^2 vs r^2 output
-        outstr = ('Root-Tip-Regression:\n --rate:\t%1.3e\n --chi^2:\t\t%f\n'
+        outstr = ('Root-Tip-Regression:\n --rate:\t%1.3e\n --chi^2:\t%f\n'
                   %(self.clock_rate, self.chisq**2))
         return outstr
 

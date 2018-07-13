@@ -18,7 +18,7 @@ else
 	echo "ancestral_reconstruction failed $retval"
 fi
 
-temporal_signal.py --tree ../data/H3N2_NA_allyears_NA.20.nex --dates ../data/H3N2_NA_allyears_NA.20.metadata.csv
+temporal_signal.py --tree ../data/H3N2_NA_allyears_NA.20.nex --dates ../data/H3N2_NA_allyears_NA.20.metadata.csv --sequence-length 1400
 retval="$?"
 if [ "$retval" == 0 ]; then
 	echo "temporal_signal ok"

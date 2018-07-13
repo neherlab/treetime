@@ -4,7 +4,7 @@ BIG_NUMBER = 1e10
 TINY_NUMBER = 1e-12
 MIN_LOG = -1e8 # minimal log value
 MIN_BRANCH_LENGTH = 1e-3 # fraction of length 'one_mutation' that is used as lower cut-off for branch lengths in GTR
-OVER_DISPERSION = 1
+OVER_DISPERSION = 3
 
 # distribution parameters
 BRANCH_GRID_SIZE_ROUGH = 200

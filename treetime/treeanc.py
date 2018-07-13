@@ -86,7 +86,7 @@ class TreeAnc(object):
         self._internal_node_count = 0
         self.use_mutation_length=False
         # if not specified, this will be set as 1/alignment_length
-        self.one_mutation = kwargs['one_mutation'] if 'one_mutation' in kwargs else None
+        self.seq_len = kwargs['seq_len'] if 'seq_len' in kwargs else None
         self.fill_overhangs = fill_overhangs
         self.is_vcf = False  #this is set true when aln is set, if aln is dict
         self.seq_multiplicity = {} if seq_multiplicity is None else seq_multiplicity
@@ -325,13 +325,32 @@ class TreeAnc(object):
         else:
             self.seq_len = self.aln.get_alignment_length()
 
-        if self.one_mutation is None:
-            self.one_mutation = 1.0/self.seq_len
-
         if hasattr(self, '_tree') and (self.tree is not None):
             self._attach_sequences_to_nodes()
         else:
             self.logger("TreeAnc.aln: sequences not yet attached to tree", 3, warn=True)
+
+    @property
+    def seq_len(self):
+        return self._seq_len
+
+    @seq_len.setter
+    def seq_len(self,L):
+        if (not hasattr(self, '_seq_len')) or self._seq_len is None:
+            if L:
+                self._seq_len = int(L)
+                self._one_mutation = 1.0/self._seq_len
+        else:
+            self.logger("TreeAnc: one_mutation and sequence length can't be reset",1)
+
+    @property
+    def one_mutation(self):
+        return self._one_mutation
+
+    @one_mutation.setter
+    def one_mutation(self,om):
+        self.logger("TreeAnc: one_mutation can't be set",1)
+
 
     @property
     def ref(self):
@@ -621,10 +640,7 @@ class TreeAnc(object):
         Should be run once the tree is read and after every rerooting,
         topology change or branch length optimizations.
         """
-        if self.one_mutation is None:
-            self.tree.root.branch_length = 0.001
-        else:
-            self.tree.root.branch_length = self.one_mutation
+        self.tree.root.branch_length = 0.001
         self.tree.root.mutation_length = self.tree.root.branch_length
         self.tree.root.mutations = []
         self.tree.ladderize()
