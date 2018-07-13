@@ -1,16 +1,59 @@
 #!/usr/bin/env python
 from __future__ import print_function, division, absolute_import
-import sys, argparse
-from homoplasy_scanner import scan_homoplasies
+import sys, argparse, os
+from treetime.wrappers import *
 
 if __name__ == '__main__':
 
-    parser = argparse.ArgumentParser(description = "TreeTime: Maximum Likelihood Phylodynamics")
+    ## TIMETREE
+    parser = argparse.ArgumentParser(description = "TreeTime: Maximum Likelihood Phylodynamics\n\n"
+        "Reconstructs ancestral sequences and infers a molecular clock tree. The"
+        " script produces an alignment file ending on _ancestral.fasta which contains"
+        " the inferred ancestral sequences and a tree file ending on _timetree.nexus."
+        " Inferred mutations are included as comments. The molecular clock, along with the inferred"
+        " GTR model, is written to stdout)\n\n"
+        " In addition, treetime can infer ancestral sequences, mugration models"
+        " for discrete tip states, scan a tree for homoplasic mutations, and"
+        " estimate molecular clock models and reroot the tree to maximize the"
+        " the temporal signal in the data. These functions are availlable as"
+        " subcommands 'ancestral', 'mugration', 'homoplasy', 'clock'")
+
+    parser.add_argument('--tree', required = True, type = str,  help ="newick file with tree")
+    parser.add_argument('--aln', required = True, type = str,  help ="fasta file with input nucleotide sequences")
+    parser.add_argument('--dates', required = True, type = str,
+                        help ="csv with dates for nodes with 'node_name, date' where date is float (as in 2012.15)")
+    parser.add_argument('--infer-gtr', default = False, action='store_true', help='infer substitution model')
+    parser.add_argument('--keep-root', required = False, action="store_true", default=False,
+                        help ="don't reroot the tree. Otherwise, reroot to minimize the "
+                              "the residual of the regression of root-to-tip distance and sampling time")
+    parser.add_argument('--reroot', required = False, type = str, default='best',
+                        help ="reroot the tree. Valid choices are 'chisq', 'residual', 'res', 'midpoint' or"
+                        " a node name to be used as outgroup")
+    parser.add_argument('--optimize-branch-length', default = False, action='store_true',
+                        help="Reoptimize branch length. Note that branch length optimized by treetime are only accurate at short evolutionary distances.")
+    parser.add_argument('--keep-polytomies', default = False, action='store_true',
+                        help="Don't resolve polytomies using temporal information.")
+    parser.add_argument('--relax',nargs='*', default = False,
+                        help='use an autocorrelated molecular clock. Prior strength and coupling of parent '
+                             'and offspring rates can be specified e.g. as --relax 1.0 0.5')
+    parser.add_argument('--max-iter', default = 2, type=int,
+                        help='maximal number of iterations the inference cycle is run. Note that for polytomy resolution and coalescence models max_iter should be at least 2')
+    parser.add_argument('--verbose', default = 1, type=int,
+                        help='verbosity of output 0-6')
+    parser.add_argument('--Tc', default = "0.0", type=str,
+                        help='coalescent time scale -- sensible values are on the order of the average '
+                             'hamming distance of contemporaneous sequences. In addition, "opt" '
+                             '"skyline" are valid options and estimate a constant coalescent rate'
+                             'or a piecewise linear coalescent rate history')
+    parser.add_argument('--plot', default = False, action='store_true',
+                        help='plot the tree on a time axis and save as pdf')
+
+    parser.set_defaults(func=timetree)
 
     subparsers = parser.add_subparsers()
 
     ## HOMOPLASY SCANNER
-    h_parser = subparsers.add_parser('homoplasies', formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    h_parser = subparsers.add_parser('homoplasy', formatter_class=argparse.ArgumentDefaultsHelpFormatter,
                 description='Reconstructs ancestral sequences and maps mutations to the tree.'
                             ' The tree is then scanned for homoplasies. An excess number of homoplasies'
                             ' might suggest contamination, recombination, culture adaptation or similar. ')
@@ -22,20 +65,20 @@ if __name__ == '__main__':
     h_parser.add_argument('--detailed', required = False, action="store_true",  help ="generate a more detailed report")
     h_parser.add_argument('--gtr', required=False, type = str, default='infer', help="GTR model to use. "
         " Type 'infer' to infer the model from the data. Or, specify the model type. "
-        " If the specified model requires additional options, use '--gtr_args' to specify those")
+        " If the specified model requires additional options, use '--gtr-parmas' to specify those")
 
     h_parser.add_argument('--gtr-params', type=str, nargs='+', help="GTR parameters for the model "
         "specified by the --gtr argument. The parameters should be feed as 'key=value' list of parameters. "
         "Example: '--gtr K80 --gtr-params kappa=0.2 pis=0.25,0.25,0.25,0.25'. See the exact definitions of "
         " the parameters in the GTR creation methods in treetime/nuc_models.py. Only nucleotide models supported at present")
 
-    h_parser.add_argument('--zero-based', default = False, action='store_true', help='zero based SNP indexing')
+    h_parser.add_argument('--zero-based', default = False, action='store_true', help='zero based mutation indexing')
     h_parser.add_argument('-n', default = 10, type=int, help='number of mutations/nodes that are printed to screen')
     h_parser.add_argument('--verbose', default = 1, type=int, help='verbosity of output 0-6')
     h_parser.set_defaults(func=scan_homoplasies)
 
     ## ANCESTRAL RECONSTRUCTION
-    a_parser = add_subparsers.add_parser('ancestral',  formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    a_parser = subparsers.add_parser('ancestral',  formatter_class=argparse.ArgumentDefaultsHelpFormatter,
             description='Reconstructs ancestral sequences and maps mutations to the tree.'
                         ' The output consists of a file ending with _ancestral.fasta with ancestral sequences'
                         ' and a tree ending with _mutation.nexus with mutations added as comments'
@@ -47,7 +90,7 @@ if __name__ == '__main__':
 
     a_parser.add_argument('--gtr', type = str, default='infer', help="GTR model to use. "
         " Type 'infer' to infer the model from the data. Or, specify the model type. "
-        " If the specified model requires additional options, use '--gtr_args' to specify those")
+        " If the specified model requires additional options, use '--gtr-params' to specify those")
 
     a_parser.add_argument('--gtr-params', type=str, nargs='+', help="GTR parameters for the model "
         "specified by the --gtr argument. The parameters should be feed as 'key=value' list of parameters. "
@@ -56,18 +99,65 @@ if __name__ == '__main__':
 
     a_parser.add_argument('--prot', default = False, action="store_true", help ="protein alignment")
     a_parser.add_argument('--marginal', default = False, action="store_true", help ="marginal reconstruction of ancestral sequences")
-    a_parser.add_argument('--zero_based', default = False, action='store_true', help='zero based SNP indexing')
+    a_parser.add_argument('--zero-based', default = False, action='store_true', help='zero based mutation indexing')
     a_parser.add_argument('--keep-overhangs', default = False, action='store_true', help='do not fill terminal gaps')
     a_parser.add_argument('--verbose', default = 1, type=int, help='verbosity of output 0-6')
+    a_parser.set_defaults(func=ancestral_reconstruction)
 
     ## MUGRATION
+    m_parser = subparsers.add_parser('mugration',
+            description='Reconstructs discrete ancestral states, for example '
+                        'geographic location, host, or similar.')
+    m_parser.add_argument('--tree', required = True, type=str, help ="newick file with tree")
+    m_parser.add_argument('--attribute', type=str, help ="attribute to reconstruct, e.g. country")
+    m_parser.add_argument('--states', required = True, type=str, help ="csv or tsv file with discrete characters."
+                                    "\n#name,country,continent\ntaxon1,micronesia,oceania\n...")
+    m_parser.add_argument('--weights', type=str, help="csv or tsv file with probabilities of that a randomly sampled "
+                        "sequence at equilibrium has a particular state. E.g. population of different continents or countries. E.g.:"
+                        "\n#country,weight\nmicronesia,0.1\n...")
+    # m_parser.add_argument('--migration', type=str, help="csv or tsv file with symmetric migration/transition rates "
+    #                     "between states. For example passenger flow.")
+    # m_parser.add_argument('--infer_gtr', action="store_true", help="infer GTR model from tree. "
+    #                                 "Ignored when prop or migration is specified.")
+    m_parser.add_argument('--confidence', action="store_true", help="output confidence of mugration inference")
+    m_parser.add_argument('--pc', type=float, default=1.0, help ="pseudo-counts higher numbers will results in 'flatter' models")
+    m_parser.add_argument('--missing-data', type=str, default='?', help ="string indicating missing data")
+    m_parser.add_argument('--verbose', default = 1, type=int, help='verbosity of output 0-6')
+    a_parser.set_defaults(func=mugration)
 
 
     ## CLOCKSIGNAL
-
-
-    ## TIMETREE
-
+    c_parser = subparsers.add_parser('clock',
+            description="Calculates the root-to-tip regression and quantifies the 'clock-i-ness' of the tree. "
+                        "It will reroot the tree to maximize the clock-like "
+                        "signal and recalculate branch length unless run with --keep_root.")
+    c_parser.add_argument('--tree', required = True, type = str,  help ="newick file with tree")
+    seq_group_ex = c_parser.add_mutually_exclusive_group()
+    seq_group_ex.add_argument('--sequence-length', type=int, help="length of the sequence,"
+                             " used to calculate expected variation in root distances")
+    seq_group_ex.add_argument('--aln',  type=str, help="file name of the sequence alignment,"
+                             " only the length of the sequences is used to calculate expected variation in root distances")
+    c_parser.add_argument('--dates', required = True, type = str,
+                        help ="csv with dates for nodes with 'node_name, date' where date is float (as in 2012.15)")
+    c_parser.add_argument('--model', default = "chisq", type=str, choices=['res', 'residual', 'chisq'],
+                          help="if model=='chisq', the covariance structure of the tree will be accounted for."
+                                " This requires the length of the alignment which can either be provided directly"
+                                " or read from the alignment file. model='residual' will minimize fit residuals"
+                                " treating data points as independent. No confidence intervals can be computed in this case.")
+    c_parser.add_argument('--allow-negative-rate', required = False, action="store_true", default=False,
+                          help="By default, rates are forced to be positive. For trees with little temporal"
+                               " signal it is advisable to remove this restriction to achieve essentially mid-point rooting.")
+    c_parser.add_argument('--keep-root', required = False, action="store_true", default=False,
+                        help ="don't reroot the tree. Otherwise, reroot to minimize the "
+                              "the residual of the regression of root-to-tip distance and sampling time")
+    c_parser.add_argument('--plot', required = False, action="store_true", default=False,
+                        help = "save the root-to-tip regression graph")
+    c_parser.add_argument('--output', required = False, type=str,
+                         help = "filename to save the plot to. Suffix will determine format"
+                                " (choices pdf, png, svg, default=pdf)")
+    c_parser.add_argument('--verbose', default = 0, type=int,
+                        help='verbosity of output 0-6')
+    c_parser.set_defaults(func=estimate_clock_model)
 
     ## call the relevant function and return
     params = parser.parse_args()
