@@ -30,10 +30,5 @@ setup(
             "Programming Language :: Python :: 3.5",
             "Programming Language :: Python :: 3.6"
             ],
-        scripts=['bin/mugration.py',
-        		'bin/homoplasy_scanner.py',
-        		'bin/timetree_inference.py',
-        		'bin/temporal_signal.py',
-        		'bin/ancestral_reconstruction.py'
-        ]
+        scripts=['bin/treetime']
     )

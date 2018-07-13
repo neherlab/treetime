@@ -1,9 +1,11 @@
 from __future__ import division, print_function, absolute_import
+from collections import defaultdict
 import numpy as np
-from  treetime import config as ttconf
+from treetime import config as ttconf
 from treetime.seq_utils import alphabets, profile_maps, alphabet_synonyms
 from treetime.aa_models  import JTT92
 from treetime.nuc_models import JC69, K80, F81, HKY85, T92, TN93
+
 
 class GTR(object):
     """
@@ -40,7 +42,7 @@ class GTR(object):
         """
         self.debug=False
         if type(alphabet)==str:
-            if (alphabet not in alphabet_synonyms):
+            if alphabet not in alphabet_synonyms:
                 raise AttributeError("Unknown alphabet type specified")
             else:
                 tmp_alphabet = alphabet_synonyms[alphabet]
@@ -56,6 +58,7 @@ class GTR(object):
 
         if logger is None:
             def logger(*args,**kwargs):
+                """standard logging function if none provided"""
                 if self.debug:
                     print(*args)
             self.logger = logger
@@ -94,6 +97,10 @@ class GTR(object):
 
     @property
     def Q(self):
+        """function that return the product of the transtiion matrix
+           and the equilibrium frequencies to option the rate matrix
+           of the GTR model
+        """
         return (self.W*self.Pi).T
 
 
@@ -454,7 +461,6 @@ class GTR(object):
             mu = nij.sum()/(ttconf.TINY_NUMBER + np.sum(pi * (W_ij.dot(Ti))))
         if count >= Nit:
             gtr.logger('WARNING: maximum number of iterations has been reached in GTR inference',3, warn=True)
-            np.min(pi.sum(axis=0)), np.max(pi.sum(axis=0))
             if LA.norm(pi_old-pi) > dp:
                 gtr.logger('the iterative scheme has not converged',3,warn=True)
             elif np.abs(1-np.max(pi.sum(axis=0))) > dp:
@@ -579,10 +585,10 @@ class GTR(object):
             if ignore_gaps:  # if gaps are ignored skip positions where one or the other sequence is gapped
                 for i in range(len(seq_p)):
                     if self.gap_index!=num_seqs[0][i] and self.gap_index!=num_seqs[1][i]:
-                        pair_count[(num_seqs[0][i],num_seqs[1][i])]+=multiplicity[i]
+                        pair_count[(num_seqs[0][i],num_seqs[1][i])]+=pattern_multiplicity[i]
             else: # otherwise, just count
                 for i in range(len(seq_p)):
-                    pair_count[(num_seqs[0][i],num_seqs[1][i])]+=multiplicity[i]
+                    pair_count[(num_seqs[0][i],num_seqs[1][i])]+=pattern_multiplicity[i]
             pair_count = pair_count.items()
 
         return (np.array([x[0] for x in pair_count], dtype=int),    # [(child_nuc, parent_nuc),()...]
@@ -915,7 +921,7 @@ class GTR(object):
         return Qsds
 
 
-    def expQsdsds(self, t):
+    def expQsdsds(self, s):
         '''
         Returns
         -------
@@ -962,7 +968,7 @@ class GTR(object):
     def save_to_json(self, zip):
         d = {
         "full_gtr": self.mu * np.dot(self.Pi, self.W),
-        "Substitution rate" : mu,
+        "Substitution rate" : self.mu,
         "Equilibrium character composition": self.Pi,
         "Flow rate matrix": self.W
         }
