@@ -1,12 +1,13 @@
 from __future__ import print_function, division, absolute_import
 from treetime.clock_tree import ClockTree
 from treetime import utils as ttutils
-from  treetime import config as ttconf
+from treetime import config as ttconf
 import numpy as np
 from scipy import optimize as sciopt
 from Bio import Phylo
 from treetime.version import tt_version as __version__
 
+rerooting_mechanisms = ["min_dev", "best", "residual", "chisq"]
 
 class TreeTime(ClockTree):
     """
@@ -21,11 +22,11 @@ class TreeTime(ClockTree):
 
         Parameters
         -----------
-         Arguments to construct ClockTree
+         *args
+            Arguments to construct ClockTree
 
-        Keyword Args
-        ------------
-         Kwargs to construct ClockTree
+         **kwargs
+            Keyword arguments to construct the GTR model
 
         """
         super(TreeTime, self).__init__(*args, **kwargs)
@@ -37,41 +38,41 @@ class TreeTime(ClockTree):
 
         """
         Run TreeTime reconstruction. Based on the input parameters, it divides
-        the analysis into semi-independent jobs and conquers them one-by one
+        the analysis into semi-independent jobs and conquers them one-by-one,
         gradually optimizing the tree given the temporal constarints and leaf
-        nodes sequences.
+        node sequences.
 
         Parameters
         ----------
 
-         root : str, None
+         root : str
             Try to find better root position on a given tree. If string is passed,
-            the root will be searched according to the specified method. Available
-            reroot methods are: 'best', 'oldest', '<leaf_name>'
+            the root will be searched according to the specified method. If none,
+            use tree as-is.
 
-            If None, use tree as-is.
+            See :py:meth:`treetime.TreeTime.reroot` for available rooting methods.
 
-         infer_gtr : bool default True
-            Should infer GTR model?
+         infer_gtr : bool
+            If True, infer GTR model
 
-         relaxed_clock : dic, None
+         relaxed_clock : dic
             If not None, use autocorrelated molecular clock model. Specify the
-            clock parameters as {slack:<slack>, coupling:<coupling>} dictionary.
+            clock parameters as :code:`{slack:<slack>, coupling:<coupling>}` dictionary.
 
-         n_iqd : int, None
-            If not None, filter tree nodes, which do not obey molecular clock
+         n_iqd : int
+            If not None, filter tree nodes which do not obey the molecular clock
             for the particular tree. The nodes, which deviate more than
             :code:`n_iqd` interquantile intervals from the molecular clock
-            regression will be marked as 'BAD' and not account in the TreeTime
+            regression will be marked as 'BAD' and not used in the TreeTime
             analysis
 
          resolve_polytomies : bool
-            Should attempt to resolve multiple mergers?
+            If True, attempt to resolve multiple mergers
 
          max_iter : int
             Maximum number of iterations to optimize the tree
 
-         Tc : float, str, None
+         Tc : float, str
             If not None, use coalescent model to correct the branch lengths by
             introducing merger costs.
 
@@ -79,27 +80,30 @@ class TreeTime(ClockTree):
 
             If Tc is str, it should be one of (:code:`opt`, :code:`skyline`)
 
-         fixed_clock_rate : float, None
-            If None, infer clock rate from the molecular clock
+         fixed_clock_rate : float
+            Fixed clock rate to be used. If None, infer clock rate from the molecular clock.
 
-            If float, use this rate
+         time_marginal : bool
+            If True, perform a final round of marginal reconstruction of the node's positions.
 
-         time_marginal : bool default False
-            Should perform marginal reconstruction of the node's positions?
+         branch_length_mode : str
+            Should be one of: :code:`joint`, :code:`marginal`, :code:`input`.
 
-         branch_length_mode : 'joint', 'marginal', 'input'
-            If 'input', rely on the branch lengths in the imput tree and skip directly
+            If 'input', rely on the branch lengths in the input tree and skip directly
             to the maximum-likelihood ancestral sequence reconstruction.
             Otherwise, perform preliminary sequence reconstruction using parsimony
             algorithm and do branch length optimization
 
-        Keyword Args
-        ------------
-
-         Additional arguments needed by the dowstream functions
+         **kwargs
+            Keyword arguments needed by the dowstream functions
 
 
         """
+
+        if (self.tree is None) or (self.aln is None):
+            self.logger("TreeTime.run: ERROR, alignment or tree are missing", 0)
+            return ttconf.ERROR
+
         if branch_length_mode not in ['joint', 'marginal', 'input']:
             branch_length_mode = self._set_branch_length_mode(branch_length_mode)
 
@@ -224,6 +228,7 @@ class TreeTime(ClockTree):
             self.logger("###TreeTime.run: FINAL ROUND - confidence estimation via marginal reconstruction", 0)
             self.make_time_tree(clock_rate=fixed_clock_rate, time_marginal=time_marginal,
                                 branch_length_mode=branch_length_mode,**kwargs)
+        return ttconf.SUCCESS
 
 
     def _set_branch_length_mode(self, branch_length_mode):
@@ -241,7 +246,7 @@ class TreeTime(ClockTree):
         bl_dis = [n.branch_length for n in self.tree.find_clades() if n.up]
         max_bl = np.max(bl_dis)
         min_bl = np.min(bl_dis)
-        if max_bl>0.05:
+        if max_bl>0.1:
             bl_mode = 'input'
         else:
             bl_mode = 'joint'
@@ -252,23 +257,23 @@ class TreeTime(ClockTree):
     def clock_filter(self, reroot='best', n_iqd=None, plot=False):
         '''
         Labels outlier branches that don't seem to follow a molecular clock
-        and excludes them from subsequent the molecular clock estimate and
-        the timetree propagation
+        and excludes them from subsequent molecular clock estimation and
+        the timetree propagation.
 
         Parameters
         ----------
-         reroot : str, None
-            Method to find the best root in the tree.
+         reroot : str
+            Method to find the best root in the tree (see :py:meth:`treetime.TreeTime.reroot` for options)
 
-         n_iqd : int, None
+         n_iqd : int
             Number of iqd intervals. The outlier nodes are those which do not fall
             into :math:`IQD\cdot n_iqd` interval (:math:`IQD` is the interval between
-            75 and 25 percentiles)
+            75\ :sup:`th` and 25\ :sup:`th` percentiles)
 
-            if None, the default (3) assumed
+            If None, the default (3) assumed
 
          plot : bool
-            Should plot the reults?
+            If True, plot the results
 
         '''
         if n_iqd is None:
@@ -279,8 +284,11 @@ class TreeTime(ClockTree):
             self.reroot(root=reroot)
             icpt, clock_rate = self.tree.root._alpha, self.tree.root._beta
         else:
-            tmp_date2dist = ttutils.DateConversion.from_tree(self.tree)
-            icpt, clock_rate = tmp_date2dist.intercept, tmp_date2dist.clock_rate
+            Treg = self.setup_TreeRegression(covariation=False)
+            self.clock_model = Treg.regression()
+
+        clock_rate = self.clock_model['slope']
+        icpt = self.clock_model['intercept']
 
         res = {}
         for node in terminals:
@@ -301,7 +309,7 @@ class TreeTime(ClockTree):
         # redo root estimation after outlier removal
         if reroot:
             self.reroot(root=reroot)
-
+        return ttconf.SUCCESS
 
     def plot_root_to_tip(self, add_internal=False, label=True, ax=None, **kwargs):
         """
@@ -311,44 +319,20 @@ class TreeTime(ClockTree):
         ----------
 
          add_internal : bool
-            Should plot internal node positoins?
+            If true, plot internal node positions
 
          label : bool
-            Should label the plots?
+            If true, label the plots
 
-         ax: matplotlib axes, None
+         ax: matplotlib axes
             If not None, use the provided matplotlib axes to plot the results
 
-        Keyword Args
-        ------------
-         Additional arguments for matplotlib.pyplot.scatter function
+         **kwargs:
+            Keyword arguments to be passed to :py:meth:`matplotlib.pyplot.scatter` function
 
         """
-        import matplotlib.pyplot as plt
-        tips = self.tree.get_terminals()
-        internal = self.tree.get_nonterminals()
-        if ax is None:
-            plt.figure()
-            ax=plt.subplot(111)
-        dates = np.array([np.mean(n.numdate_given) for n in tips if n.numdate_given is not None])
-        dist = np.array([n.dist2root for n in tips if n.numdate_given is not None])
-        ind = np.array([n.bad_branch for n in tips if n.numdate_given is not None])
-        # plot tips
-        ax.scatter(dates[ind], dist[ind]  , c='r', label="bad tips" if label else "" , **kwargs)
-        ax.scatter(dates[~ind], dist[~ind], c='g', label="good tips" if label else "", **kwargs)
-        if add_internal and hasattr(self.tree.root, "numdate"):
-            dates = np.array([n.numdate for n in internal])
-            dist = np.array([n.dist2root for n in internal])
-            ind = np.array([n.bad_branch for n in internal])
-            # plot internal
-            ax.scatter(dates[~ind], dist[~ind], c='b', marker='<', label="internal" if label else "", **kwargs)
-
-        if label:
-            ax.legend(loc=2)
-        ax.set_ylabel('root-to-tip distance')
-        ax.set_xlabel('date')
-        ax.ticklabel_format(useOffset=False)
-        plt.tight_layout()
+        Treg = self.setup_TreeRegression(covariation=True)
+        Treg.clock_plot(n_sigma=2, add_internal=add_internal, ax=ax, reg=self.clock_model)
 
 
     def reroot(self,root='best'):
@@ -361,7 +345,7 @@ class TreeTime(ClockTree):
          root : str
             Which method should be used to find the best root. Available methods are:
 
-            :code:`best`, `res` - minimize squared residual of root-to-tip regression subject to positive slope
+            :code:`best`, `residual` - minimize squared residual of root-to-tip regression subject to positive slope
 
             :code:`min_dev` - minimize squared residual of root-to-tip regression regardless of slope
 
@@ -376,53 +360,36 @@ class TreeTime(ClockTree):
         self.logger("TreeTime.reroot: with method or node: %s"%root,1)
         for n in self.tree.find_clades():
             n.branch_length=n.mutation_length
-        from Bio import Phylo
-        if isinstance(root,Phylo.BaseTree.Clade):
-            new_root = root
-        elif isinstance(root, list):
-            new_root = self.tree.common_ancestor(*root)
-        elif root in self._leaves_lookup:
-            new_root = self._leaves_lookup[root]
-        elif root=='oldest':
-            new_root = sorted([n for n in self.tree.get_terminals()
-                               if n.numdate_given is not None],
-                               key=lambda x:np.mean(x.numdate_given))[0]
-        elif root=='best':
-            new_root = self.reroot_to_best_root(criterium='residual')
-        elif root=='rsq':
-            new_root = self.reroot_to_best_root(criterium='rsq')
-        elif root=='residual':
-            new_root = self.reroot_to_best_root(criterium='residual')
-        elif root=='min_dev':
-            new_root = self.reroot_to_best_root(criterium='min_dev')
-        else:
-            self.logger('TreeTime.reroot -- WARNING: unsupported rooting mechanisms or root not found',2,warn=True)
-            return
 
-        self.logger("TreeTime.reroot: Tree is being re-rooted to node "
-                    +('new_node' if new_root.name is None else new_root.name), 2)
-        if isinstance(root, list):
+        if root in rerooting_mechanisms:
+            new_root = self.reroot_to_best_root(criterium=root)
+        else:
+            from Bio import Phylo
+            if isinstance(root,Phylo.BaseTree.Clade):
+                new_root = root
+            elif isinstance(root, list):
+                new_root = self.tree.common_ancestor(*root)
+            elif root in self._leaves_lookup:
+                new_root = self._leaves_lookup[root]
+            elif root=='oldest':
+                new_root = sorted([n for n in self.tree.get_terminals()
+                                   if n.numdate_given is not None],
+                                   key=lambda x:np.mean(x.numdate_given))[0]
+
             #this forces a bifurcating root, as we want. Branch lengths will be reoptimized anyway.
             #(Without outgroup_branch_length, gives a trifurcating root, but this will mean
             #mutations may have to occur multiple times.)
             self.tree.root_with_outgroup(new_root, outgroup_branch_length=new_root.branch_length/2)
-        else:
-            self.tree.root_with_outgroup(new_root)
-        # new nodes are produced when rooting with a terminal node, copy this clock info
+            Treg = self.setup_TreeRegression(covariation=True)
+            self.clock_model = Treg.regression()
 
-        if new_root.is_terminal():
-            if hasattr(new_root, "_alpha"):
-                self.tree.root._alpha = new_root._alpha
-            if hasattr(new_root, "_beta"):
-                self.tree.root._beta = new_root._beta
-            if hasattr(new_root, "_R2"):
-                self.tree.root._R2 = new_root._R2
-            if hasattr(new_root, "_residual"):
-                self.tree.root._residual = new_root._residual
+        if new_root == ttconf.ERROR:
+            return ttconf.ERROR
+
+        self.logger("TreeTime.reroot: Tree was re-rooted to node "
+                    +('new_node' if new_root.name is None else new_root.name), 2)
 
         self.tree.root.branch_length = self.one_mutation
-        for n in self.tree.find_clades():
-            n.mutation_length=n.branch_length
         self.tree.root.numdate_given = None
         # set root.gamma bc root doesn't have a branch_length_interpolator but gamma is needed
         if not hasattr(self.tree.root, 'gamma'):
@@ -435,18 +402,24 @@ class TreeTime(ClockTree):
     def resolve_polytomies(self, merge_compressed=False):
         """
         Resolve the polytomies on the tree.
-        The function scans the tree, resolves polytomies in case there are any,
+
+        The function scans the tree, resolves polytomies if present,
         and re-optimizes the tree with new topology. Note that polytomies are only
         resolved if that would result in higher likelihood. Sometimes, stretching
-        two or more branches that carry several mutations are less costly than
+        two or more branches that carry several mutations is less costly than
         an additional branch with zero mutations (long branches are not stiff,
-        short branches are.)
+        short branches are).
 
         Parameters
         ----------
          merge_compressed : bool
-            Whether to keep compressed branches as polytomies or
+            If True, keep compressed branches as polytomies. If False,
             return a strictly binary tree.
+
+        Returns
+        --------
+         poly_found : int
+            The number of polytomies found
 
         """
         self.logger("TreeTime.resolve_polytomies: resolving multiple mergers...",1)
@@ -603,7 +576,7 @@ class TreeTime(ClockTree):
         ----------
 
          joint : bool
-            Whether joint or marginal LH should be printed
+            If true, print joint LH, else print marginal LH
 
         """
         try:
@@ -631,7 +604,7 @@ class TreeTime(ClockTree):
         """
         Allow the mutation rate to vary on the tree (relaxed molecular clock).
         Changes of the mutation rates from one branch to another are penalized.
-        In addition, deviation of the mutation rate from the mean rate are
+        In addition, deviation of the mutation rate from the mean rate is
         penalized.
 
         Parameters
@@ -680,330 +653,58 @@ class TreeTime(ClockTree):
 ###############################################################################
 ### rerooting
 ###############################################################################
-    def find_best_root_and_regression(self, criterium='residual'):
-        """
-        Find the best root for the tree in linear time, given the timestamps of
-        the leaves. The branch lengths should be optimized prior to the run;
-        the terminal nodes should have the timestamps assigned as numdate_given
-        attribute.
-
-        Parameters
-        ----------
-
-         criterium : str
-            criterium used to optimize the root-to-tip vs time regression. This
-            can be one of 'rsq', 'min_dev', 'residual'
-        """
-        sum_ti =  np.sum([np.mean(node.numdate_given)*node.count for node in self.tree.get_terminals() if (not node.bad_branch)])
-        sum_ti2 = np.sum([np.mean(node.numdate_given)**2*node.count for node in self.tree.get_terminals() if (not node.bad_branch)])
-        N = 1.0*np.sum([node.count for node in self.tree.get_terminals() if not node.bad_branch])
-        tip_count = 1.0*np.sum([1.0 for node in self.tree.get_terminals() if not node.bad_branch])
-        if tip_count<2:
-            self.logger("****ERROR: TreeTime.find_best_root_and_regression: need at least two dates to reroot!", 0, warn=True)
-            self.logger("****ERROR: only %d tips have valid dates!"%N, 0, warn=True)
-            return self.tree.root, np.nan, np.nan
-
-        Ninv = 1.0/N
-        time_variance = (N*sum_ti2 - sum_ti**2)*Ninv**2
-
-        #  fill regression terms for one of the two subtrees
-        for node in self.tree.find_clades(order='postorder'):  # children first, msg to parents
-            if node.is_terminal():  # inititalize the leaves
-                #  will not rely on the standard func - count terminals directly
-                node._st_n_leaves = 0 if node.bad_branch else node.count
-                node._st_di = 0.0
-                node._st_diti = 0.0
-                node._st_di2 = 0.0
-
-                if node.bad_branch:
-                    node._st_ti = 0
-                else:
-                    node._st_ti = np.mean(node.numdate_given)*node.count
-
-                node._ti = sum_ti
-            else:
-                #  for non-terminal nodes,
-                node._st_ti = np.sum([k._st_ti for k in node.clades])
-                node._st_n_leaves = np.sum([k._st_n_leaves for k in node.clades])
-                node._st_di   = np.sum([k._st_di + k._st_n_leaves*k.branch_length for k in node.clades])
-                node._st_diti = np.sum([k._st_diti + k.branch_length*k._st_ti for k in node.clades])
-                node._st_di2  = np.sum([k._st_di2 + 2*k._st_di*k.branch_length + k._st_n_leaves*k.branch_length**2
-                                       for k in node.clades])
-                node._ti = sum_ti
-                node.bad_branch = np.all([x.bad_branch for x in node])
-
-        best_root = self.tree.root
-        best_root_any = self.tree.root
-        for node in self.tree.find_clades(order='preorder'):  # root first
-
-            if node.up is None:
-                # assign the values for the root node
-                node._di   = node._st_di
-                node._diti = node._st_diti
-                node._di2  = node._st_di2
-
-                dist_variance = (N*node._di2 - node._di**2)*(Ninv**2)
-                disttime_cov = (N*node._diti - sum_ti*node._di)*(Ninv**2)
-                time_variance = time_variance
-
-                node._beta = disttime_cov/time_variance
-                node._alpha = (node._di - node._beta*sum_ti)/N
-                node._residual = (node._di2 - 2*node._beta*node._diti - 2*node._alpha*node._di
-                                   + node._beta**2*sum_ti2 + 2*node._alpha*node._beta*sum_ti + node._alpha**2*N)
-
-                node._R2 = disttime_cov**2/(time_variance*dist_variance)
-                node._R2_delta_x = 0.0 # there is no branch to move the root
-            elif node.bad_branch:
-                node._beta = np.nan
-                node._alpha = np.nan
-                node._R2 = 0.0
-                node._R2_delta_x = 0.0
-                node._residual = np.inf
-
-            elif criterium=='rsq': # calculate the r^2 of the root to tip regression and pick the best intermediate position on the branch
-                #  NOTE order of these computation matters
-                n_up = N - node._st_n_leaves
-                n_down = node._st_n_leaves
-                L = node.branch_length
-                node._di = node.up._di + (n_up-n_down)*L
-                node._di2 = (node.up._di2 + 2*L*node.up._di
-                            - 4*(L*(node._st_di + n_down*L))
-                            + N*L**2)
-                node._diti = node.up._diti + L*(sum_ti - 2*node._st_ti)
-
-
-                ## Express Node's sum_Di as the function of parent's sum_Di
-                # and **displacement from parent's node x** :
-                # sum_Di = A1 + A2 * x
-                A1 = node.up._di
-                A2 = n_up - n_down
-
-                ## Express Node's sum_Di**2 as the function of parent's params
-                # and **displacement from parent's node x** :
-                # sum_Di2 = B1 + B2 * x + B3 * x**2
-                B1 = node.up._di2
-                B2 = 2 * (node.up._di - 2 * node._st_di - 2 * L * n_down )
-                B3 = N
-
-                ## Express Node's sum_DiTi as the function of parent's params
-                # and **displacement from parent's node x** :
-                # sum_DiTi = C1 + C2 * x
-                C1 = node.up._diti
-                C2 = sum_ti - 2 * node._st_ti
-
-                ## Substituting Ai, Bi, Ci to the expression for R2, and
-                ## making all the algebra, we get the R2 as the function of the
-                ## displacement from the parent's node x:
-                # R2(x) = CONST * (alpha * x**2 + beta * x+ gamma) / (mu * x**2 + nu * x + delta)
-                # Expressions for alpha, beta, etc through Ai, Bi, Ci:
-                alpha = (N * C2 - sum_ti * A2)**2
-                beta = 2 * (N*C2 - sum_ti*A2) * (N*C1 - sum_ti*A1)
-                gamma = (N*C1 - sum_ti*A1)**2
-                mu = N * B3 - A2**2
-                nu = N * B2 - 2 * A1 * A2
-                delta = N * B1 - A1**2
-
-                # Search for the maximum of R2 in the middle of the branch.
-                # Eq: dR2/dx = 0 -> square equation:
-                # x**2*(alpha*nu - beta *  mu) + 2x*(alpha*delta-mu*gamma) + (beta*delta - nu*gamma) = 0
-                # look for the root(s):
-                # Determinant is
-                D2 =  (alpha * delta - mu * gamma) ** 2 - (alpha * nu - beta * mu) * (beta * delta - nu * gamma)
-
-                if D2 < 0:
-                    # somehow there is no extremum for the R2(x) function
-                    x1 = -1.0 # any arbitrary value out of range [0, L], see below
-                    x2 = -1.0
-                else:
-                    # actual roots - the extrema for the R2(x) function
-                    if np.abs(alpha * nu - beta * mu)>0:
-                        x1 = (-1 * (alpha * delta - mu * gamma) + D2**0.5) / (alpha * nu - beta * mu)
-                        x2 = (-1 * (alpha * delta - mu * gamma) - D2**0.5) / (alpha * nu - beta * mu)
-                    else:
-                        x1 = -(beta*delta - nu*gamma)/(alpha * delta - mu * gamma)
-                        x2 = x1
-
-                # possible positions, where the new root can possibly be located
-                # (restrict to the branch length)
-                max_points = [k for k in (x1,x2,L) if k >= 0 and k <= L]
-                # values of the R2 at these positions
-                R2s = [(alpha * x**2 + beta * x + gamma) / (mu * x**2 + nu * x + delta) / time_variance / N**2 for x in max_points]
-                # choose the best R2
-                node._R2 = np.max(R2s)
-                # and set the position for the best R2 value
-                node._R2_delta_x = L - max_points[np.argmax(R2s)]
-
-                # for this position, define the clock_rate and intercept:
-                node._beta = ((L - node._R2_delta_x) * (N * C2 - sum_ti * A2) + (N*C1-sum_ti*A1)) / time_variance / N**2
-                node._alpha = (L - node._R2_delta_x) * A2 / N  + (A1 - node._beta * sum_ti) / N
-            elif criterium in ['residual', 'min_dev']: # calculate the squared residuals and minimize as rooting criterium
-                L = node.branch_length
-                # number of nodes descendent and outgrouping this node
-                n_up = N - node._st_n_leaves
-                n_down = node._st_n_leaves
-                # sum of branch length of the descendent tree and the outgrouping one
-                node._di = node.up._di + (n_up-n_down)*L
-                nd_down = node._st_di
-                nd_up = node._di - node._st_di
-                # sum of times of descendent tips and outgrouping ones
-                nt_down = node._st_ti
-                nt_up = sum_ti - node._st_ti
-
-                # sum of squared branch length of the descendent tree and the outgrouping one
-                node._di2 = (node.up._di2 + 2*L*node.up._di
-                            - 4*(L*(node._st_di + n_down*L))
-                            + N*L**2)
-                nd2_down = node._st_di2
-                nd2_up = node._di2 - node._st_di2
-
-                # sum of timexbranch length of the descendent tree and the outgrouping one
-                node._diti = node.up._diti + L*(sum_ti - 2*node._st_ti)
-                ndt_down = node._st_diti
-                ndt_up = node._diti - node._st_diti
-
-                disttime_cov = (N*node._diti - sum_ti*node._di)*(Ninv**2)
-
-                # decompose expression for alpha and beta into parts independent and linear in epsilon
-                # where epsilon is the shift in root position along the branch
-                beta_0 = disttime_cov/time_variance
-                b = L*(nt_down - nt_up - (n_down-n_up)*sum_ti*Ninv)*Ninv/time_variance
-                alpha_0 = (node._di - beta_0*sum_ti)*Ninv
-                a = (-b*sum_ti + L*(n_down-n_up))*Ninv
-                eps = -(((nd_down - beta_0*nt_down - n_down*alpha_0) - (nd_up - beta_0*nt_up - n_up*alpha_0))/
-                      ((n_down*L - b*nt_down  - a*n_down) - (-n_up*L - b*nt_up - a*n_up)))
-
-                # only shifts between 0 and 1 are admissible (where 0 is the node itself and 1 is the parent)
-                eps = min(1,max(0,eps))
-                beta = beta_0 + eps*b
-                alpha = alpha_0 + eps*a
-
-                # calculate the residual and assign the regression coefficients
-                node._residual = (node._di2 - 2*beta*node._diti - 2*alpha*node._di
-                                   + beta**2*sum_ti2 + 2*alpha*beta*sum_ti + alpha**2*N)
-                node._residual += N*(L*eps)**2
-                node._residual += 2*eps*L*(nd_down - beta*nt_down - n_down*alpha) - 2*eps*L*(nd_up - beta*nt_up - n_up*alpha)
-                node._alpha = alpha
-                node._beta = beta
-                node._R2_delta_x = eps*L
-            else:
-                self.logger("TreeTime.find_best_root_and_regression: unknown criterium",0)
-
-            if criterium=='rsq':
-                if node.up is None:
-                    self.logger("TreeTime.find_best_root_and_regression: Initial root: R2:%f\tclock_rate:%.3e"%(best_root._R2, best_root._beta),3)
-                if  node._R2 > best_root_any._R2:
-                    best_root_any = node
-                if  (node._R2 > best_root._R2 and node._beta>0) or best_root._beta<0:
-                    best_root = node
-                    self.logger("TreeTime.find_best_root_and_regression: Better root found: R2:%f\tclock_rate:%.3e\tbranch_displacement:%f"
-                            %(best_root._R2, best_root._beta, (best_root._R2_delta_x) / ( best_root.branch_length + self.one_mutation)),4)
-            elif criterium in ['residual', 'min_dev']:
-                if node.up is None:
-                    self.logger("TreeTime.find_best_root_and_regression: Initial root: residual:%.3e\tclock_rate:%.3e"%(best_root._residual, best_root._beta),3)
-                if  node._residual < best_root_any._residual:
-                    best_root_any = node
-                if (node._residual < best_root._residual and node._beta>0) or best_root._beta<0:
-                    best_root = node
-                    self.logger("TreeTime.find_best_root_and_regression: Better root found: residual:%.3e\tclock_rate:%.3e\tbranch_displacement:%f"
-                            %(best_root._residual, best_root._beta, (best_root._R2_delta_x) / ( best_root.branch_length + self.one_mutation)),4)
-
-
-        if criterium=='rsq':
-            if (best_root_any._R2 > best_root._R2):
-                self.logger("WARNING: TreeTime.find_best_root_and_regression: optimal regression has negative rate: R2:%f\tclock_rate:%.3e"
-                        %(best_root_any._R2, best_root_any._beta), 1)
-            self.logger("TreeTime.find_best_root_and_regression: Best root: R2:%f\tclock_rate:%.3e\tbranch_displacement:%f"
-                        %(best_root._R2, best_root._beta, (best_root._R2_delta_x) / ( best_root.branch_length + 0.001*self.one_mutation)),3)
-        elif criterium=='residual':
-            if (best_root_any._residual < best_root._residual):
-                self.logger("WARNING: TreeTime.find_best_root_and_regression: optimal regression has negative rate: residual:%.3e\tclock_rate:%.3e"
-                        %(best_root_any._residual, best_root_any._beta), 1)
-            self.logger("TreeTime.find_best_root_an_R2_delta_xd_regression: Best root: residual:%.3e\tclock_rate:%.3e\tbranch_displacement:%f"
-                        %(best_root._residual, best_root._beta, (best_root._R2_delta_x) / ( best_root.branch_length + 0.001*self.one_mutation)),3)
-        elif criterium=='min_dev':
-            if (best_root_any._residual < best_root._residual):
-                self.logger("WARNING: TreeTime.find_best_root_and_regression: optimal regression has negative rate",1)
-                best_root = best_root_any
-            self.logger("TreeTime.find_best_root_an_R2_delta_xd_regression: Best root: residual:%.3e\tclock_rate:%.3e\tbranch_displacement:%f"
-                        %(best_root._residual, best_root._beta, (best_root._R2_delta_x) / ( best_root.branch_length + 0.001*self.one_mutation)),3)
-
-        return best_root, best_root._alpha, best_root._beta
-
 
     def reroot_to_best_root(self,infer_gtr = False, criterium='residual', **kwarks):
         '''
-        determine the node that, when the tree is rooted on this node, results
-        in the best regression of temporal constraints and root to tip distances
+        Determine the node that, when the tree is rooted on this node, results
+        in the best regression of temporal constraints and root to tip distances.
 
         Parameters
         ----------
 
          infer_gtr : bool
-            Should infer new GTR model after re-root?
+            If True, infer new GTR model after re-root
 
          criterium : str
-            criterium used to reroot the tree. One of 'rsq', 'residual', 'min_dev'
+            Criterium used to reroot the tree. One of 'rsq', 'residual', 'min_dev'
 
         '''
-        from Bio import Phylo
+        if criterium not in rerooting_mechanisms:
+            self.logger('TreeTime.reroot -- WARNING: unsupported rooting mechanisms or root not found',2,warn=True)
+            return ttconf.ERROR
+
+        for n in self.tree.find_clades():
+            n.branch_length=n.mutation_length
         self.logger("TreeTime.reroot_to_best_root: searching for the best root position...",2)
-        best_root, a, b = self.find_best_root_and_regression(criterium=criterium)
-        # first, re-root the tree
+        Treg = self.setup_TreeRegression(covariation=criterium in ["best", "chisq", "min_dev"])
+        self.clock_model = Treg.optimal_reroot(force_positive=not criterium.startswith("min_dev"))
 
-        if hasattr(best_root, "_R2_delta_x") and  best_root._R2_delta_x > 0 and best_root.up is not None:
-
-            # create new node in the branch and root the tree to it
-            new_node = Phylo.BaseTree.Clade()
-
-            # insert the new node in the middle of the branch
-            # by simple re-wiring the links on the both sides of the branch
-            # and fix the branch lengths
-            new_node.branch_length = best_root.branch_length - best_root._R2_delta_x
-            new_node.up = best_root.up
-            new_node._alpha = a
-            new_node._beta = b
-            new_node.clades = [best_root]
-            if hasattr(best_root, "_R2"):
-                new_node._R2 = best_root._R2
-            if hasattr(best_root, "_residual"):
-                new_node._residual = best_root._residual
-            new_node.up.clades = [k if k != best_root else new_node
-                                  for k in best_root.up.clades]
-
-            best_root.branch_length = best_root._R2_delta_x
-            best_root.up = new_node
-            self.logger("TreeTime.reroot_to_best_root:"
-                        " branch length of children of new root:"
-                        " %.3e, %.3e"%(best_root.branch_length,
-                                       new_node.branch_length),2)
-            return new_node
-        else:
-            # simply use the existing node as the new root
-            return best_root
+        return self.clock_model['node']
 
 
 def plot_vs_years(tt, years = 1, ax=None, confidence=None, ticks=True, **kwargs):
     '''
-    converts branch length to years and plots the time tree on a time axis.
+    Converts branch length to years and plots the time tree on a time axis.
 
     Parameters
     ----------
-     tt : treetime object
-        A treetime instance after a time tree is inferred
+     tt : TreeTime object
+        A TreeTime instance after a time tree is inferred
 
-     years : int, Default 1
-        width of shaded boxes indicating blocks of years
+     years : int
+        Width of shaded boxes indicating blocks of years
 
-     ax : matplotlib axis.
-        will create new axis if none specified
+     ax : matplotlib axes
+        Axes to be used to plot, will create new axis if None
 
-     confidence : tuple,float
-        draw confidence intervals. This assumes that marginal time tree inference was run.
+     confidence : tuple, float
+        Draw confidence intervals. This assumes that marginal time tree inference was run.
         Confidence intervals are either specified as an interval of the posterior distribution
         like (0.05, 0.95) or as the weight of the maximal posterior region , e.g. 0.9
 
-     kwargs : dict
-        arbitrary kew word arguments that are passed down to Phylo.draw
+     **kwargs : dict
+        Key word arguments that are passed down to Phylo.draw
+
     '''
     import matplotlib.pyplot as plt
     tt.branch_length_to_years()
@@ -1054,13 +755,14 @@ def plot_vs_years(tt, years = 1, ax=None, confidence=None, ticks=True, **kwargs)
         ttutils.tree_layout(tt.tree)
         if not hasattr(tt.tree.root, "marginal_inverse_cdf"):
             print("marginal time tree reconstruction required for confidence intervals")
+            return ttconf.ERROR
         elif len(confidence)==2:
             cfunc = tt.get_confidence_interval
         elif len(confidence)==1:
             cfunc = tt.get_max_posterior_region
         else:
             print("confidence needs to be either a float (for max posterior region) or a two numbers specifying lower and upper bounds")
-            return
+            return ttconf.ERROR
 
         for n in tt.tree.find_clades():
             pos = cfunc(n, confidence)

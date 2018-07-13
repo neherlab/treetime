@@ -2,9 +2,10 @@
 from __future__ import print_function, division
 import numpy as np
 from treetime import TreeTime, GTR
+from  treetime import config as ttconf
 from Bio import Phylo, AlignIO
 from Bio import __version__ as bioversion
-import sys
+import sys, os
 
 if __name__=="__main__":
     ###########################################################################
@@ -58,6 +59,10 @@ if __name__=="__main__":
     ###########################################################################
     ### PARSING DATES
     ###########################################################################
+    if not os.path.isfile(params.dates):
+        print("\n ERROR: file %s does not exist, exiting..."%params.dates)
+        sys.exit(1)
+
     with open(params.dates) as date_file:
         dates = {}
         for line in date_file:
@@ -133,10 +138,12 @@ if __name__=="__main__":
     ###########################################################################
     myTree = TreeTime(dates=dates, tree=params.tree,
                        aln=params.aln, gtr=gtr, verbose=params.verbose)
-    myTree.run(root=params.reroot, relaxed_clock=params.relax,
+    success = myTree.run(root=params.reroot, relaxed_clock=params.relax,
                resolve_polytomies=(not params.keep_polytomies),
                Tc=Tc, max_iter=params.max_iter,
                branch_lengths = 'joint' if params.optimize_branch_length else 'input')
+    if success==ttconf.ERROR: # if TreeTime.run failed, exit
+        sys.exit(1)
 
     ###########################################################################
     ### OUTPUT and saving of results

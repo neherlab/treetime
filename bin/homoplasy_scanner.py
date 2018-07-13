@@ -3,6 +3,7 @@ from __future__ import print_function, division
 import numpy as np
 from treetime import TreeAnc, GTR
 from utils import assure_tree, create_gtr
+from treetime import config as ttconf
 from Bio import Phylo, AlignIO
 from Bio import __version__ as bioversion
 import os,shutil, sys
@@ -24,7 +25,11 @@ def scan_homoplasies(params):
     ###########################################################################
     treeanc = TreeAnc(params.tree, aln=params.aln, gtr=gtr, verbose=1,
                       fill_overhangs=True)
+    if treeanc.aln is None: # if alignment didn't load, exit
+        sys.exit(1)
+
     L = treeanc.aln.get_alignment_length() + params.const
+    treeanc.one_mutation = 1.0/L
     N_seq = len(treeanc.aln)
     N_tree = treeanc.tree.count_terminals()
     if params.rescale!=1.0:
@@ -36,9 +41,13 @@ def scan_homoplasies(params):
     print("read tree from file %s with %d leaves"%(params.tree,N_tree))
     print("\ninferring ancestral sequences...")
 
-    treeanc.infer_ancestral_sequences('ml', infer_gtr=params.gtr=='infer',
+    ndiff = treeanc.infer_ancestral_sequences('ml', infer_gtr=params.gtr=='infer',
                                       marginal=False)
     print("...done.")
+    if ndiff==ttconf.ERROR: # if reconstruction failed, exit
+        sys.exit(1)
+    else:
+        print("...done.")
 
     ###########################################################################
     ### analysis of reconstruction

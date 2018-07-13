@@ -3,6 +3,7 @@ from __future__ import print_function, division
 import numpy as np
 import pandas as pd
 from treetime import TreeAnc, GTR
+from treetime import config as ttconf
 from Bio.SeqRecord import SeqRecord
 from Bio.Seq import Seq
 from Bio.Align import MultipleSeqAlignment
@@ -31,9 +32,9 @@ if __name__=="__main__":
     #                                 "Ignored when prop or migration is specified.")
     parser.add_argument('--confidence', action="store_true", help="output confidence of mugration inference")
     parser.add_argument('--pc', type=float, default=1.0, help ="pseudo-counts higher numbers will results in 'flatter' models")
+    parser.add_argument('--missing_data', type=str, default='?', help ="string indicating missing data")
     parser.add_argument('--verbose', default = 1, type=int, help='verbosity of output 0-6')
     params = parser.parse_args()
-    missing = "?"
 
     ###########################################################################
     ### Parse states
@@ -52,7 +53,7 @@ if __name__=="__main__":
         attr = states.columns[1]
 
     leaf_to_attr = {x[taxon_name]:x[attr] for xi, x in states.iterrows()
-                    if x[attr]!=missing}
+                    if x[attr]!=params.missing_data}
     unique_states = sorted(set(leaf_to_attr.values()))
     nc = len(unique_states)
     if nc>180:
@@ -68,7 +69,7 @@ if __name__=="__main__":
     alphabet = [chr(65+i) for i,state in enumerate(unique_states)]
     missing_char = chr(65+nc)
     letter_to_state = {a:unique_states[i] for i,a in enumerate(alphabet)}
-    letter_to_state[missing_char]=missing
+    letter_to_state[missing_char]=params.missing_data
     reverse_alphabet = {v:k for k,v in letter_to_state.items()}
 
     ###########################################################################
@@ -95,15 +96,19 @@ if __name__=="__main__":
     ###########################################################################
     ### set up treeanc
     ###########################################################################
-    treeanc = TreeAnc(params.tree, gtr=mugration_GTR, verbose=params.verbose)
+    treeanc = TreeAnc(params.tree, gtr=mugration_GTR, verbose=params.verbose,
+                      convert_upper=False, one_mutation=0.001)
     pseudo_seqs = [SeqRecord(id=n.name,name=n.name,
-                   seq=Seq(reverse_alphabet[leaf_to_attr[n.name]] if n.name in leaf_to_attr else missing))
+                   seq=Seq(reverse_alphabet[leaf_to_attr[n.name]]
+                           if n.name in leaf_to_attr else missing_char))
                    for n in treeanc.tree.get_terminals()]
     treeanc.aln = MultipleSeqAlignment(pseudo_seqs)
 
-    treeanc.infer_ancestral_sequences(method='ml', infer_gtr=True,
+    ndiff = treeanc.infer_ancestral_sequences(method='ml', infer_gtr=True,
             store_compressed=False, pc=params.pc, marginal=True, normalized_rate=False,
             fixed_pi=weights if params.weights else None)
+    if ndiff==ttconf.ERROR: # if reconstruction failed, exit
+        sys.exit(1)
 
 
     ###########################################################################

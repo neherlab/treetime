@@ -1,5 +1,5 @@
 from __future__ import print_function, division, absolute_import
-import time
+import time, sys
 from  treetime import config as ttconf
 from Bio import Phylo
 from Bio import AlignIO
@@ -8,6 +8,8 @@ import treetime.seq_utils as seq_utils
 from treetime.gtr import GTR
 from treetime.version import tt_version as __version__
 from collections import defaultdict
+
+string_types = [str] if sys.version_info[0]==3 else [str, unicode]
 
 class TreeAnc(object):
     """
@@ -20,7 +22,7 @@ class TreeAnc(object):
                 ref=None, verbose = ttconf.VERBOSE, ignore_gaps=True,
                 convert_upper=True, seq_multiplicity=None, log=None, **kwargs):
         """
-        TreeAnc constructor. It prepares tree, attach sequences to the leaf nodes,
+        TreeAnc constructor. It prepares the tree, attaches sequences to the leaf nodes,
         and sets some configuration parameters.
 
         Parameters
@@ -37,37 +39,41 @@ class TreeAnc(object):
             specifies for each sequence the differences from a reference
 
          gtr : str, GTR
-            gtr model object. If string passed, it is interpreted as the type of
+            GTR model object. If string passed, it is interpreted as the type of
             the GTR model. A new GTR instance will be created for this type.
-           **Note** some GTR types require additional configuration parameters.
-           If the new GTR is being instantiated, these parameters are expected
-           to be passed as kwargs. If nothing is passed, the default values are
-           used, which might cause unexpected results.
 
          fill_overhangs : bool
             In some cases, the missing data on both ends of the alignment is
-            filled with the gap sign('-'). As we suppose that the most
-            appropriate way to deal with the missing data is to assign it to the
-            "unknown" character ('N' for nucleotides, 'X' for aminoacids). If the
-            parameter is set to True, the end-gaps are converted to unknown
-            symbols. Otherwise, the alignment is treated as-is
+            filled with the gap sign('-'). If set to True, the end-gaps are converted to "unknown"
+            characters ('N' for nucleotides, 'X' for aminoacids). Otherwise, the alignment is treated as-is
 
          ignore_gaps: bool
-            ignore gaps in branch length calculations
+            Ignore gaps in branch length calculations
 
          verbose : int
-            verbosity level as number from 0 (lowest) to 10 (highest).
+            Verbosity level as number from 0 (lowest) to 10 (highest).
 
          seq_multiplicity: dict
-            if individual nodes in the tree correspond to multiple sampled sequences
+            If individual nodes in the tree correspond to multiple sampled sequences
             (i.e. read count in a deep sequencing experiment), these can be
             specified as a dictionary. This currently only affects rooting and
             can be used to weigh individual tips by abundance or important during root search.
 
-        Keyword Args
-        ------------
+         **kwargs
+            Keyword arguments to construct the GTR model
 
-          Keyword arguments to construct GTR model
+          .. Note::
+                Some GTR types require additional configuration parameters.
+                If the new GTR is being instantiated, these parameters are expected
+                to be passed as kwargs. If nothing is passed, the default values are
+                used, which might cause unexpected results.
+
+        Raises
+        ----------
+
+         TypeError
+            If a tree is not passed in
+
 
         """
         if tree is None:
@@ -79,18 +85,19 @@ class TreeAnc(object):
         self.logger("TreeAnc: set-up",1)
         self._internal_node_count = 0
         self.use_mutation_length=False
-        self.one_mutation = None
+        # if not specified, this will be set as 1/alignment_length
+        self.seq_len = kwargs['seq_len'] if 'seq_len' in kwargs else None
         self.fill_overhangs = fill_overhangs
         self.is_vcf = False  #this is set true when aln is set, if aln is dict
         self.seq_multiplicity = {} if seq_multiplicity is None else seq_multiplicity
 
         self.ignore_gaps = ignore_gaps
-        self.set_gtr(gtr if gtr is not None else 'JC69', **kwargs)
+        self.set_gtr(gtr or 'JC69', **kwargs)
 
         self.tree = tree
         if tree is None:
             self.logger("TreeAnc: tree loading failed! exiting",0)
-            return
+            return ttconf.ERROR
 
         # will be None if not set
         self.ref = ref
@@ -112,14 +119,14 @@ class TreeAnc(object):
         -----------
 
          msg : str
-            string to print on the screen
+            String to print on the screen
 
          level : int
-            log-level. Only the messages with the level higher than the
+            Log-level. Only the messages with a level higher than the
             current verbose level will be shown.
 
          warn : bool
-            warning flag. If True, the message will be displayed
+            Warning flag. If True, the message will be displayed
             regardless of its log-level.
 
         """
@@ -142,7 +149,7 @@ class TreeAnc(object):
     @property
     def leaves_lookup(self):
         """
-        Leaves lookup is the {leaf-name:leaf-node} dictionary. It enables fast
+        The :code:`{leaf-name:leaf-node}` dictionary. It enables fast
         search of a tree leaf object by its name.
         """
         return self._leaves_lookup
@@ -150,7 +157,11 @@ class TreeAnc(object):
     @property
     def gtr(self):
         """
-        Get GTR object currently used.
+        The current GTR object.
+
+        :setter: Sets the GTR object passed in
+        :getter: Returns the current GTR object
+
         """
         return self._gtr
 
@@ -180,15 +191,13 @@ class TreeAnc(object):
 
          in_gtr : str, GTR
             The gtr model to be assigned. If string is passed,
-            it is understood as the name of the standard GTR model, and is
-            attempted to be created through GTR.standard() interface. In case
-            GTR instance is passed, it is directly set as the class attribute
+            it is taken as the name of a standard GTR model, and is
+            attempted to be created through :code:`GTR.standard()` interface. If a
+            GTR instance is passed, it is set directly .
 
-        Keyword Args
-        ------------
-
-         All parameters needed for the gtr creation. If none passed, defaults are assumed.
-           Refer to the particular GTR models for the exact parameter values
+         **kwargs
+            Keyword arguments to construct the GTR model. If none are passed, defaults
+            are assumed.
 
         """
         if type(in_gtr)==str:
@@ -210,7 +219,12 @@ class TreeAnc(object):
     @property
     def tree(self):
         """
-        Get reference to the phylogenetic tree currently used by the TreeAnc.
+        The phylogenetic tree currently used by the TreeAnc.
+
+        :setter: Sets the tree. Directly if passed as Phylo.Tree, or by reading from \
+        file if passed as a str.
+        :getter: Returns the tree as a Phylo.Tree object
+
         """
         return self._tree
 
@@ -220,10 +234,11 @@ class TreeAnc(object):
         assigns a tree to the internal self._tree variable. The tree is either
         loaded from file (if in_tree is str) or assigned (if in_tree is a Phylo.tree)
         '''
+
         from os.path import isfile
         if isinstance(in_tree, Phylo.BaseTree.Tree):
             self._tree = in_tree
-        elif type(in_tree)==str and isfile(in_tree):
+        elif type(in_tree) in string_types and isfile(in_tree):
             try:
                 self._tree=Phylo.read(in_tree, 'newick')
             except:
@@ -233,11 +248,11 @@ class TreeAnc(object):
                 else:
                     self.logger('TreeAnc: could not load tree, format needs to be nexus or newick! input was '+str(in_tree),1)
                     self._tree = None
-                    return
+                    return ttconf.ERROR
         else:
-            self.logger('TreeAnc: could not load tree! input was '+str(in_tree),1)
+            self.logger('TreeAnc: could not load tree! input was '+str(in_tree),0)
             self._tree = None
-            return
+            return ttconf.ERROR
 
         # remove all existing sequence attributes
         for node in self._tree.find_clades():
@@ -246,17 +261,34 @@ class TreeAnc(object):
             node.original_length = node.branch_length
             node.mutation_length = node.branch_length
         self.prepare_tree()
+        return ttconf.SUCCESS
 
 
     @property
     def aln(self):
         """
-        Get the multiple sequence alignment currently used by the TreeAnc
+        The multiple sequence alignment currently used by the TreeAnc
+
+        :setter: Takes in alignment as MultipleSeqAlignment, str, or dict/defaultdict \
+        and attaches sequences to tree nodes.
+        :getter: Returns alignment as MultipleSeqAlignment or dict/defaultdict
+
         """
         return self._aln
 
     @aln.setter
     def aln(self,in_aln):
+        """
+        Reads in the alignment (from a dict, MultipleSeqAlignment, or file,
+        as necessary), sets tree-related parameters, and attaches sequences
+        to the tree nodes.
+
+        Parameters
+        ----------
+        in_aln : MultipleSeqAlignment, str, dict/defaultdict
+            The alignment to be read in
+
+        """
         # load alignment from file if necessary
         from os.path import isfile
         from Bio.Align import MultipleSeqAlignment
@@ -265,10 +297,10 @@ class TreeAnc(object):
             return
         elif isinstance(in_aln, MultipleSeqAlignment):
             self._aln = in_aln
-        elif type(in_aln)==str and isfile(in_aln):
+        elif type(in_aln) in string_types and isfile(in_aln):
             for fmt in ['fasta', 'phylip-relaxed', 'nexus']:
                 try:
-                    self._aln=AlignIO.read(in_aln, 'fasta')
+                    self._aln=AlignIO.read(in_aln, fmt)
                     break
                 except:
                     continue
@@ -278,7 +310,7 @@ class TreeAnc(object):
 
         if self._aln is None:
             self.logger("TreeAnc: loading alignment failed... ",1, warn=True)
-            return
+            return ttconf.ERROR
 
         #Convert to uppercase here, rather than in _attach_sequences_to_nodes
         #(which used to do it through seq2array in seq_utils.py)
@@ -288,16 +320,47 @@ class TreeAnc(object):
         if (not self.is_vcf) and self.convert_upper:
             self._aln = MultipleSeqAlignment([seq.upper() for seq in self._aln])
 
-        if hasattr(self, '_tree'):
+        if self.is_vcf:
+            self.seq_len = len(self.ref)
+        else:
+            self.seq_len = self.aln.get_alignment_length()
+
+        if hasattr(self, '_tree') and (self.tree is not None):
             self._attach_sequences_to_nodes()
         else:
             self.logger("TreeAnc.aln: sequences not yet attached to tree", 3, warn=True)
 
     @property
+    def seq_len(self):
+        return self._seq_len
+
+    @seq_len.setter
+    def seq_len(self,L):
+        if (not hasattr(self, '_seq_len')) or self._seq_len is None:
+            if L:
+                self._seq_len = int(L)
+                self._one_mutation = 1.0/self._seq_len
+        else:
+            self.logger("TreeAnc: one_mutation and sequence length can't be reset",1)
+
+    @property
+    def one_mutation(self):
+        return self._one_mutation
+
+    @one_mutation.setter
+    def one_mutation(self,om):
+        self.logger("TreeAnc: one_mutation can't be set",1)
+
+
+    @property
     def ref(self):
         """
-        Get the str reference nucleotide sequence currently used by TreeAnc
-        When having read in from a VCF, this is what variants map to
+        Get the str reference nucleotide sequence currently used by TreeAnc.
+        When having read alignment in from a VCF, this is what variants map to.
+
+        :setter: Sets the string reference sequence
+        :getter: Returns the string reference sequence
+
         """
         return self._ref
 
@@ -312,12 +375,6 @@ class TreeAnc(object):
         For each node of the tree, check whether there is a sequence available
         in the alignment and assign this sequence as a character array
         '''
-        if self.is_vcf:
-            self.seq_len = len(self.ref)
-        else:
-            self.seq_len = self.aln.get_alignment_length()
-        self.one_mutation = 1.0/self.seq_len
-
         failed_leaves= 0
         if self.is_vcf:
             # if alignment is specified as difference from ref
@@ -328,14 +385,18 @@ class TreeAnc(object):
                                                    ambiguous_character=self.gtr.ambiguous)
                                 for k in self.aln} #
 
-        # loop over tree,
+        # loop over leaves and assign multiplicities of leaves (e.g. number of identical reads)
+        for l in self.tree.get_terminals():
+            if l.name in self.seq_multiplicity:
+                l.count = self.seq_multiplicity[l.name]
+            else:
+                l.count = 1.0
+
+
+        # loop over tree, and assign sequences
         for l in self.tree.find_clades():
             if l.name in dic_aln:
                 l.sequence= dic_aln[l.name]
-                if l.name in self.seq_multiplicity:
-                    l.count = self.seq_multiplicity[l.name]
-                else:
-                    l.count = 1.0
             elif l.is_terminal():
                 self.logger("***WARNING: TreeAnc._attach_sequences_to_nodes: NO SEQUENCE FOR LEAF: %s" % l.name, 0, warn=True)
                 failed_leaves += 1
@@ -351,7 +412,7 @@ class TreeAnc(object):
         if failed_leaves:
             self.logger("***WARNING: TreeAnc: %d nodes don't have a matching sequence in the alignment. POSSIBLE ERROR."%failed_leaves, 0, warn=True)
 
-        self.make_reduced_alignment()
+        return self.make_reduced_alignment()
 
 
     def make_reduced_alignment(self):
@@ -363,6 +424,7 @@ class TreeAnc(object):
         unique patterns are present. The reduced alignment and the pattern multiplicity
         are sufficient for the GTR calculations and allow to save memory on profile
         instantiation.
+
         The maps from full sequence to reduced sequence and back are also stored to allow
         compressing and expanding the sequences.
 
@@ -370,20 +432,20 @@ class TreeAnc(object):
         -----
 
           full_to_reduced_sequence_map : (array)
-             map to reduce a sequence
+             Map to reduce a sequence
 
           reduced_to_full_sequence_map : (dict)
-             map to restore sequence from reduced alignment
+             Map to restore sequence from reduced alignment
 
           multiplicity : (array)
-            numpy array, which stores the pattern multiplicity for each position of the reduced alignment.
+            Numpy array, which stores the pattern multiplicity for each position of the reduced alignment.
 
           reduced_alignment : (2D numpy array)
-            representing the alignment. Shape is (N x L'), where N is number of
+            The reduced alignment. Shape is (N x L'), where N is number of
             sequences, L' - number of unique alignment patterns
 
           cseq : (array)
-            compressed sequence (corresponding row of the reduced alignment) is attached to each node
+            The compressed sequence (corresponding row of the reduced alignment) attached to each node
 
         """
 
@@ -468,26 +530,28 @@ class TreeAnc(object):
         # assign compressed sequences to all nodes of the tree, which have sequence assigned
         # for dict we cannot assume this is in the same order, as it does below!
         # so do it explicitly
+        #
+        # sequences are overwritten during reconstruction and
+        # ambiguous sites change. Keep orgininals for reference
         if self.is_vcf:
             seq_reduce_align = {n:self.reduced_alignment[i]
                                 for i, n in enumerate(seqNames)}
             for n in self.tree.find_clades():
                 if hasattr(n, 'sequence'):
-                    n.cseq = seq_reduce_align[n.name]
+                    n.original_cseq = seq_reduce_align[n.name]
+                    n.cseq = np.copy(n.original_cseq)
         else:
             # NOTE the order of tree traversal must be the same as above to catch the
             # index in the reduced alignment correctly
             seq_count = 0
             for n in self.tree.find_clades():
                 if hasattr(n, 'sequence'):
-                    n.cseq = self.reduced_alignment[seq_count]
+                    n.original_cseq = self.reduced_alignment[seq_count]
+                    n.cseq = np.copy(n.original_cseq)
                     seq_count+=1
 
-        # sequences are overwritten during reconstruction and
-        # ambiguous sites change. Keep orgininals for reference
-        self.original_sequences = {n.name:n.cseq for n in self.tree.get_terminals()}
-
-        self.logger("TreeAnc: finished reduced alignment...", 1)
+        self.logger("TreeAnc: constructed reduced alignment...", 1)
+        return ttconf.SUCCESS
 
 
     def process_alignment_dict(self):
@@ -576,10 +640,7 @@ class TreeAnc(object):
         Should be run once the tree is read and after every rerooting,
         topology change or branch length optimizations.
         """
-        if self.one_mutation is None:
-            self.tree.root.branch_length = 0.001
-        else:
-            self.tree.root.branch_length = self.one_mutation
+        self.tree.root.branch_length = 0.001
         self.tree.root.mutation_length = self.tree.root.branch_length
         self.tree.root.mutations = []
         self.tree.ladderize()
@@ -626,39 +687,40 @@ class TreeAnc(object):
     def infer_gtr(self, print_raw=False, marginal=False, normalized_rate=True,
                   fixed_pi=None, pc=5.0, **kwargs):
         """
-        Calculates GTR model given the multiple sequence alignment and the tree.
-        It performs ancestral sequence inferrence (joint or marginal) followed by
+        Calculates a GTR model given the multiple sequence alignment and the tree.
+        It performs ancestral sequence inferrence (joint or marginal), followed by
         the branch lengths optimization. Then, the numbers of mutations are counted
         in the optimal tree and related to the time within the mutation happened.
-        From this statistics, the relative state transition probabilities are inferred,
+        From these statistics, the relative state transition probabilities are inferred,
         and the transition matrix is computed.
+
         The result is used to construct the new GTR model of type 'custom'.
-        The model is assigned to the TreeAnc and is used in the following analysis.
+        The model is assigned to the TreeAnc and is used in subsequent analysis.
 
         Parameters
         -----------
 
          print_raw : bool
-            Should print the inferred GTR model?
+            If True, print the inferred GTR model
 
          marginal : bool
-            Should use marginal sequence reconstruction?
+            If True, use marginal sequence reconstruction
 
          normalized_rate : bool
-            If True, will set the mutation rate prefactor to 1.0.
+            If True, sets the mutation rate prefactor to 1.0.
 
-         fixed_pi : np.array, None
+         fixed_pi : np.array
             Provide the equilibrium character concentrations.
-            If None is passed, the concentrations will be inferred from scratch.
+            If None is passed, the concentrations will be inferred from the alignment.
 
-         pc: float, 5.0
+         pc: float
             Number of pseudo counts to use in gtr inference
 
         Returns
         -------
 
          gtr : GTR
-            The inferred GTR model.
+            The inferred GTR model
         """
 
         # decide which type of the Maximum-likelihood reconstruction use
@@ -668,7 +730,11 @@ class TreeAnc(object):
         else:
             _ml_anc = self._ml_anc_joint
 
-        self.logger("TreeAnc inferring the GTR model from the tree...", 1)
+        self.logger("TreeAnc.infer_gtr: inferring the GTR model from the tree...", 1)
+        if (self.tree is None) or (self.aln is None):
+            self.logger("TreeAnc.infer_gtr: ERROR, alignment or tree are missing", 0)
+            return ttconf.ERROR
+
         _ml_anc(final=True, **kwargs) # call one of the reconstruction types
         alpha = list(self.gtr.alphabet)
         n=len(alpha)
@@ -706,9 +772,9 @@ class TreeAnc(object):
 ### ancestral reconstruction
 ###################################################################
     def infer_ancestral_sequences(self,*args, **kwargs):
-        """Shortcut for :meth:`reconstruct_anc`
+        """Shortcut for :py:meth:`treetime.TreeAnc.reconstruct_anc`
         """
-        self.reconstruct_anc(*args,**kwargs)
+        return self.reconstruct_anc(*args,**kwargs)
 
 
     def reconstruct_anc(self, method='ml', infer_gtr=False, marginal=False, **kwargs):
@@ -722,10 +788,10 @@ class TreeAnc(object):
          method : str
             Method to use. Supported values are "fitch" and "ml"
 
-         infer_gtr : bool, default False
+         infer_gtr : bool
             Infer a GTR model before reconstructing the sequences
 
-         marginal : bool, default False
+         marginal : bool
             Assign sequences that are most likely after averaging over all other nodes
             instead of the jointly most likely sequences.
 
@@ -738,6 +804,9 @@ class TreeAnc(object):
 
         """
         self.logger("TreeAnc.infer_ancestral_sequences: method: " + method, 1)
+        if (self.tree is None) or (self.aln is None):
+            self.logger("TreeAnc.infer_ancestral_sequences: ERROR, alignment or tree are missing", 0)
+            return ttconf.ERROR
 
         if method == 'ml':
             if marginal:
@@ -748,7 +817,9 @@ class TreeAnc(object):
             _ml_anc = self._fitch_anc
 
         if infer_gtr:
-            self.infer_gtr(marginal=marginal, **kwargs)
+            tmp = self.infer_gtr(marginal=marginal, **kwargs)
+            if tmp==ttconf.ERROR:
+                return tmp
             N_diff = _ml_anc(**kwargs)
         else:
             N_diff = _ml_anc(**kwargs)
@@ -782,24 +853,24 @@ class TreeAnc(object):
             Tree node, which is the child node attached to the branch.
 
          keep_var_ambigs : boolean
-            If true, generates mutations based on the *original* _compressed_ sequence, which
+            If true, generates mutations based on the *original* compressed sequence, which
             may include ambiguities. Note sites that only have 1 unambiguous base and ambiguous
             bases ("AAAAANN") are stripped of ambiguous bases *before* compression, so ambiguous
-            bases will *not* be preserved.
+            bases will **not** be preserved.
 
         Returns
         -------
 
           muts : list
             List of mutations. Each mutation is represented as tuple of
-            (parent_state, position, child_state).
+            :code:`(parent_state, position, child_state)`.
         """
 
         # if ambiguous site are to be restored and node is terminal,
         # assign original sequence, else reconstructed cseq
         node_seq = node.cseq
-        if keep_var_ambigs and (node.name in self.original_sequences) and node.is_terminal():
-            node_seq = self.original_sequences[node.name]
+        if keep_var_ambigs and hasattr(node, "original_cseq") and node.is_terminal():
+            node_seq = node.original_cseq
 
         muts = []
         for p, (anc, der) in enumerate(zip(node.up.cseq, node_seq)):
@@ -857,10 +928,10 @@ class TreeAnc(object):
     def dict_sequence(self, node, keep_var_ambigs=False):
         """
         For VCF-based TreeAnc objects, we do not want to store the entire
-        sequence on every node - not space efficient! Instead, return the dict
-        of mutation locations for this sequence. This is used in place of
-        'expanded_sequence' for VCF-based obj throughout TreeAnc. However, users
-        can still call 'expanded_sequence' if they do actually want the whole thing!
+        sequence on every node, as they could be large. Instead, this returns the dict
+        of variants & their positions for this sequence. This is used in place of
+        :py:meth:`treetime.TreeAnc.expanded_sequence` for VCF-based objects throughout TreeAnc. However, users can still
+        call :py:meth:`expanded_sequence` if they require the full sequence.
 
         Parameters
         ----------
@@ -870,15 +941,14 @@ class TreeAnc(object):
         Returns
         -------
          seq : dict
-            dict where keys are position and value is the mutation
+            dict where keys are the basepair position (numbering from 0) and value is the variant call
 
-        EBH 6 Dec 2017
         """
         seq = {}
 
         node_seq = node.cseq
-        if keep_var_ambigs and (node.name in self.original_sequences) and node.is_terminal():
-            node_seq = self.original_sequences[node.name]
+        if keep_var_ambigs and hasattr(node, "original_cseq") and node.is_terminal():
+            node_seq = node.original_cseq
 
         for pos in self.nonref_positions:
             cseqLoc = self.full_to_reduced_sequence_map[pos]
@@ -964,7 +1034,7 @@ class TreeAnc(object):
             del node.state # no need to store Fitch states
         self.logger("Done ancestral state reconstruction",3)
         for node in self.tree.get_terminals():
-            node.profile = seq_utils.seq2prof(node.cseq, self.gtr.profile_map)
+            node.profile = seq_utils.seq2prof(node.original_cseq, self.gtr.profile_map)
         return N_diff
 
 
@@ -1103,7 +1173,7 @@ class TreeAnc(object):
         #  set the leaves profiles
         for leaf in tree.get_terminals():
             # in any case, set the profile
-            leaf.marginal_subtree_LH = seq_utils.seq2prof(leaf.cseq, self.gtr.profile_map)
+            leaf.marginal_subtree_LH = seq_utils.seq2prof(leaf.original_cseq, self.gtr.profile_map)
             leaf.marginal_subtree_LH_prefactor = np.zeros(L)
 
         # propagate leaves --> root, set the marginal-likelihood messages
@@ -1259,7 +1329,7 @@ class TreeAnc(object):
 
             if node.is_terminal():
                 try:
-                    msg_from_children = np.log(np.maximum(seq_utils.seq2prof(node.cseq, self.gtr.profile_map), ttconf.TINY_NUMBER))
+                    msg_from_children = np.log(np.maximum(seq_utils.seq2prof(node.original_cseq, self.gtr.profile_map), ttconf.TINY_NUMBER))
                 except:
                     raise ValueError("sequence assignment to node "+node.name+" failed")
                 msg_from_children[np.isnan(msg_from_children) | np.isinf(msg_from_children)] = -ttconf.BIG_NUMBER
@@ -1389,12 +1459,14 @@ class TreeAnc(object):
 ### Branch length
 ###################################################################
     def optimize_branch_len(self, **kwargs):
-        self.optimize_branch_length(**kwargs)
+        return self.optimize_branch_length(**kwargs)
 
     def optimize_branch_length(self, mode='joint', **kwargs):
         """
         Perform optimization for the branch lengths of the whole tree or any
-        subtree. **Note** this method assumes that each node stores information
+        subtree.
+
+        **Note** this method assumes that each node stores information
         about its sequence as numpy.array object (node.sequence attribute).
         Therefore, before calling this method, sequence reconstruction with
         either of the available models must be performed.
@@ -1403,27 +1475,31 @@ class TreeAnc(object):
         ----------
 
          mode : str
-            optimize branch length assuming the joint ML sequence assignment
-            of both ends of the branch, or trace over all possible sequence
-            assignments on both ends of the branch (slower, experimental).
+            Optimize branch length assuming the joint ML sequence assignment
+            of both ends of the branch (:code:`joint`), or trace over all possible sequence
+            assignments on both ends of the branch (:code:`marginal`) (slower, experimental).
+
+         **kwargs :
+            Keyword arguments
 
         Keyword Args
         ------------
 
          verbose : int
-            Output detalization
+            Output level
 
          store_old : bool
-            If True, the old lenths will be saved in node._old_dist attribute.
+            If True, the old lengths will be saved in :code:`node._old_dist` attribute.
             Useful for testing, and special post-processing.
 
-        Returns
-        -------
-         None, the phylogenetic tree is modified in-place.
 
         """
 
         self.logger("TreeAnc.optimize_branch_length: running branch length optimization in mode %s..."%mode,1)
+        if (self.tree is None) or (self.aln is None):
+            self.logger("TreeAnc.optimize_branch_length: ERROR, alignment or tree are missing", 0)
+            return ttconf.ERROR
+
 
         verbose = 0
         store_old_dist = False
@@ -1472,6 +1548,7 @@ class TreeAnc(object):
                         " \n\t ****PLEASE OPTIMIZE BRANCHES WITH ANOTHER TOOL AND RERUN WITH"
                         " \n\t ****branch_length_mode='input'", 0, warn=True)
         self._prepare_nodes()
+        return ttconf.SUCCESS
 
 
     def optimize_branch_length_global(self, **kwargs):
@@ -1611,7 +1688,7 @@ class TreeAnc(object):
     def prune_short_branches(self):
         """
         If the branch length is less than the minimal value, remove the branch
-        from the tree. **Requires** the ancestral sequence reconstruction
+        from the tree. **Requires** ancestral sequence reconstruction
         """
         self.logger("TreeAnc.prune_short_branches: pruning short branches (max prob at zero)...", 1)
         for node in self.tree.find_clades():
@@ -1628,15 +1705,8 @@ class TreeAnc(object):
 
 
     def optimize_sequences_and_branch_length(self,*args, **kwargs):
-        """This method is a shortcut for :py:meth:`optimize_seq_and_branch_len`
+        """This method is a shortcut for :py:meth:`treetime.TreeAnc.optimize_seq_and_branch_len`
 
-        Iteratively set branch lengths and reconstruct ancestral sequences until
-        the values of either former or latter do not change. The algorithm assumes
-        knowing only the topology of the tree, and requires that sequences are assigned
-        to all leaves of the tree. The first step is to pre-reconstruct ancestral
-        states using Fitch reconstruction algorithm or ML using existing branch length
-        estimates. Then, optimize branch lengths and re-do reconstruction until
-        convergence using ML method.
         """
         self.optimize_seq_and_branch_len(*args,**kwargs)
 
@@ -1648,7 +1718,9 @@ class TreeAnc(object):
         Iteratively set branch lengths and reconstruct ancestral sequences until
         the values of either former or latter do not change. The algorithm assumes
         knowing only the topology of the tree, and requires that sequences are assigned
-        to all leaves of the tree. The first step is to pre-reconstruct ancestral
+        to all leaves of the tree.
+
+        The first step is to pre-reconstruct ancestral
         states using Fitch reconstruction algorithm or ML using existing branch length
         estimates. Then, optimize branch lengths and re-do reconstruction until
         convergence using ML method.
@@ -1656,19 +1728,19 @@ class TreeAnc(object):
         Parameters
         -----------
 
-         reuse_branch_len : bool, default True
-            If True, rely on the initial branch lenghts, and start with the
-            Maximum-likelihood ancestral sequence inference using existing branch
-            lengths. Otherwise, initial reconstruction of ancestral states with
+         reuse_branch_len : bool
+            If True, rely on the initial branch lengths, and start with the
+            maximum-likelihood ancestral sequence inference using existing branch
+            lengths. Otherwise, do initial reconstruction of ancestral states with
             Fitch algorithm, which uses only the tree topology.
 
-         prune_short : bool, default True
+         prune_short : bool
             If True, the branches with zero optimal length will be pruned from
-            the tree hence creating polytomies. The polytomies could be further
-            processed using resolve_polytomies from the TreeTime class.
+            the tree, creating polytomies. The polytomies could be further
+            processed using :py:meth:`treetime.TreeTime.resolve_polytomies` from the TreeTime class.
 
-         marginal_sequences : bool, default False
-            assign sequences to their marginally most likely value, rather than
+         marginal_sequences : bool
+            Assign sequences to their marginally most likely value, rather than
             the values that are jointly most likely across all nodes.
 
          branch_length_mode : str
@@ -1678,10 +1750,10 @@ class TreeAnc(object):
             internal sequence states.
 
          max_iter : int
-            maximal number of times sequence and branch length iteration are optimized
+            Maximal number of times sequence and branch length iteration are optimized
 
-         infer_gtr : bool, default False
-            infer a GTR model from the observed substitutions.
+         infer_gtr : bool
+            Infer a GTR model from the observed substitutions.
 
         """
         if branch_length_mode=='marginal':
@@ -1715,14 +1787,14 @@ class TreeAnc(object):
         self.tree.unconstrained_sequence_LH = (self.tree.sequence_LH*self.multiplicity).sum()
         self._prepare_nodes() # fix dist2root and up-links after reconstruction
         self.logger("TreeAnc.optimize_sequences_and_branch_length: Unconstrained sequence LH:%f" % self.tree.unconstrained_sequence_LH , 2)
-        return
+        return ttconf.SUCCESS
 
 ###############################################################################
 ### Utility functions
 ###############################################################################
     def get_reconstructed_alignment(self):
         """
-        Get the multiple sequence alignment including reconstructed sequences for
+        Get the multiple sequence alignment, including reconstructed sequences for
         the internal nodes.
 
         Returns
@@ -1748,35 +1820,42 @@ class TreeAnc(object):
 
     def get_tree_dict(self, keep_var_ambigs=False):
         """
-        For VCF-based objects, returns a nested dict with all information required to
+        For VCF-based objects, returns a nested dict with all the information required to
         reconstruct sequences for all nodes (terminal and internal).
 
         Parameters
         ----------
 
         keep_var_ambigs : boolean
-            If true, generates dict sequence based on the *original* _compressed_ sequence, which
+            If true, generates dict sequences based on the *original* compressed sequences, which
             may include ambiguities. Note sites that only have 1 unambiguous base and ambiguous
             bases ("AAAAANN") are stripped of ambiguous bases *before* compression, so ambiguous
-            bases will *not* be preserved.
+            bases at this sites will *not* be preserved.
 
 
         Returns
         -------
 
          tree_dict : dict
-            Format:
-            '{'reference':'AGCTCGA..A',
-            'sequences': { 'seq1':{4:'A', 7:'-'}, 'seq2':{100:'C'} },
-            'positions': [1,4,7,10,100...],
-            'inferred_const_sites': [7,100....]     <this is optional>}'
-            Reference being the reference sequence to which the variable sites are mapped;
-            sequence containing a dict for each sequence with the position and base of
-            mutations; and positions containing a list of all the variable positions.
-            If included, inferred_const_sites is positions that were constant except
-            ambiguous bases, which were converted into constant sites (ex: 'AAAN' -> 'AAAA')
+            Format: ::
 
-        EBH 7 Dec 2017
+                {
+                'reference':'AGCTCGA...A',
+                'sequences': { 'seq1':{4:'A', 7:'-'}, 'seq2':{100:'C'} },
+                'positions': [1,4,7,10,100...],
+                'inferred_const_sites': [7,100....]
+                }
+
+            reference: str
+                The reference sequence to which the variable sites are mapped
+            sequences: nested dict
+                A dict for each sequence with the position and alternative call for each variant
+            positions: list
+                All variable positions in the alignment
+            inferred_cost_sites: list
+                *(optional)* Positions that were constant except ambiguous bases, which were
+                converted into constant sites by TreeAnc (ex: 'AAAN' -> 'AAAA')
+
         """
         if self.is_vcf:
             tree_dict = {}

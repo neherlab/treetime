@@ -7,6 +7,21 @@ from scipy import stats
 import datetime
 from scipy.ndimage import binary_dilation
 
+def setup_TreeRegr(tt, covariation=True):
+    from .treeregression import TreeRegression
+
+    tip_value = lambda x:np.mean(x.numdate_given) if x.is_terminal() and x.bad_branch==False else None
+    branch_value = lambda x:x.mutation_length
+    if covariation:
+        om = tt.one_mutation
+        branch_variance = lambda x:(x.mutation_length+(ttconf.OVER_DISPERSION*om if x.is_terminal() else 0.0))*om
+    else:
+        branch_variance = lambda x:1.0 if x.is_terminal() else 0.0
+
+    return TreeRegression(tt.tree, tip_value=tip_value,
+                         branch_value=branch_value, branch_variance=branch_variance)
+
+
 class DateConversion(object):
     """
     Small container class to store parameters to convert between branch length
@@ -22,55 +37,30 @@ class DateConversion(object):
         self.sigma = 0
 
     def __str__(self):
-        outstr = ('Root-Tip-Regression:\n --rate:\t%1.3e\n --R^2:\t\t%f\n'
-                  %(self.clock_rate, self.r_val**2))
+        # TODO: fix the chi^2 vs r^2 output
+        outstr = ('Root-Tip-Regression:\n --rate:\t%1.3e\n --chi^2:\t%f\n'
+                  %(self.clock_rate, self.chisq**2))
         return outstr
 
 
     @classmethod
-    def from_tree(cls, t, clock_rate=None):
+    def from_regression(cls, clock_model):
         """
         Create the conversion object automatically from the tree
 
         Parameters
         ----------
 
-         t : Phylo.Tree
-            Tree as Biopython object
-
-         clock_rate : float, None
-            Substitution rate, or None. If None, will be inferred from root-to-
-            tip regression in the tree. Otherwise, the value passed will be used
+         clock_model : dict
+            dictionary as returned from TreeRegression with fields intercept and slope
 
         """
-        dates = []
-        for node in t.find_clades():
-            if hasattr(node, "numdate_given") and node.numdate_given is not None:
-                dates.append((np.mean(node.numdate_given), node.dist2root))
-
-        if len(dates) == 0:
-            raise RuntimeError("Cannot proceed with the TreeTime computations: "
-                "No date has been assigned to the terminal nodes!")
-        dates = np.array(dates)
         dc = cls()
-
-        if clock_rate is None:
-            if len(dates) < 3:
-                raise(RuntimeError("There are too few dates set at the leaves of the tree."
-                    " Cannot fit an evolutionary rate. Aborting."))
-            # simple regression
-            dc.clock_rate,\
-                dc.intercept,\
-                dc.r_val,\
-                dc.p_val,\
-                dc.sigma = stats.linregress(dates[:, 0], dates[:, 1])
-        else:
-            dc.clock_rate = clock_rate # clock_rate is given
-            dc.intercept = np.mean(dates[:,1]) - clock_rate * np.mean(dates[:,0])
-            dc.r_val = np.corrcoef(dates[:,1], dates[:,0])[0,1]
-
-        # set the root-mean-square deviation:
-        dc.rms = np.sqrt(np.sum((dates[:, 1] - (dc.intercept + dc.clock_rate * dates[:, 0]))**2) / dates.shape[0])
+        dc.clock_rate = clock_model['slope']
+        dc.intercept = clock_model['intercept']
+        dc.chisq = clock_model['chisq']
+        dc.cov = clock_model['cov']
+        dc.r_val = clock_model['r_val']
         return dc
 
     def get_branch_len(self, date1, date2):

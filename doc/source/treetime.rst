@@ -35,5 +35,5 @@ Additional functionality
 
 .. automethod:: treetime.TreeTime.print_lh
 
-.. autofunc:: treetime.plot_vs_years
+.. autofunction:: treetime.plot_vs_years
 
