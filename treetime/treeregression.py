@@ -3,6 +3,35 @@ from Bio import Phylo
 
 tavgii, davgii, tsqii, dtavgii, dsqii, sii = 0,1,2,3,4,5
 
+def base_regression(Q, slope=None):
+    """
+    this function calculates the regression coefficients for a
+    given vector containing the averages of tip and branch
+    quantities.
+    """
+    if slope is None:
+        slope = (Q[dtavgii] - Q[tavgii]*Q[davgii]/Q[sii]) \
+                /(Q[tsqii] - Q[tavgii]**2/Q[sii])
+        only_intercept=False
+    else:
+        only_intercept=True
+    intercept = (Q[davgii] - Q[tavgii]*slope)/Q[sii]
+
+    if only_intercept:
+        return {'slope':slope, 'intercept':intercept,
+                'chisq':np.nan}
+
+    chisq = 0.5*(Q[dsqii] - Q[davgii]**2/Q[sii]
+                - (Q[dtavgii] - Q[davgii]*Q[tavgii]/Q[sii])**2/(Q[tsqii]
+                - Q[tavgii]**2/Q[sii]))
+
+    estimator_hessian = np.array([[Q[tsqii], Q[tavgii]], [Q[tavgii], Q[sii]]])
+
+    return {'slope':slope, 'intercept':intercept,
+            'chisq':chisq, 'hessian':estimator_hessian,
+            'cov':np.linalg.inv(estimator_hessian)}
+
+
 class TreeRegression(object):
     """TreeRegression
     This class implements an efficient regression method
@@ -13,7 +42,7 @@ class TreeRegression(object):
     of the data under the assumptions that variance increase
     linearly along branches as well.
     """
-    def __init__(self, T, tip_value = None,
+    def __init__(self, tree_in, tip_value = None,
                  branch_value = None, branch_variance = None):
         """
         Parameters
@@ -36,7 +65,7 @@ class TreeRegression(object):
             the accumulated variance
         """
         super(TreeRegression, self).__init__()
-        self.tree = T
+        self.tree = tree_in
         # prep tree
         self.N = self.tree.count_terminals()
         total_bl = 0
@@ -115,11 +144,12 @@ class TreeRegression(object):
         recursion to calculate inverse covariance matrix
         """
         for n in self.tree.get_nonterminals(order='postorder'):
-            if full_matrix: M = np.zeros((len(n.ii), len(n.ii)))
+            if full_matrix: M = np.zeros((len(n._ii), len(n._ii)))
             r = np.zeros((len(n._ii)))
             c_count = 0
             for c in n:
                 ssq = self.branch_variance(c)
+                nc = len(c._ii)
                 if c.is_terminal():
                     if full_matrix:
                         M[c_count:c_count+nc, c_count:c_count+nc] = 1.0/ssq
@@ -231,7 +261,7 @@ class TreeRegression(object):
 
         return res
 
-    def explained_variance(self, clock_model):
+    def explained_variance(self):
         # calculate standard explained variance
         self.tree.root._v=0
         for n in self.tree.get_nonterminals(order='preorder'):
@@ -245,39 +275,11 @@ class TreeRegression(object):
     def regression(self, slope=None):
         self._calculate_averages()
 
-        clock_model = self._regression(self.tree.root.Q, slope)
-        clock_model['r_val'] = self.explained_variance(clock_model)
+        clock_model = base_regression(self.tree.root.Q, slope)
+        clock_model['r_val'] = self.explained_variance()
 
         return clock_model
 
-
-    def _regression(self, Q, slope=None):
-        """
-        this function calculates the regression coefficients for a
-        given vector containing the averages of tip and branch
-        quantities.
-        """
-        if slope is None:
-            slope = (Q[dtavgii] - Q[tavgii]*Q[davgii]/Q[sii]) \
-                    /(Q[tsqii] - Q[tavgii]**2/Q[sii])
-            only_intercept=False
-        else:
-            only_intercept=True
-        intercept = (Q[davgii] - Q[tavgii]*slope)/Q[sii]
-
-        if only_intercept:
-            return {'slope':slope, 'intercept':intercept,
-                    'chisq':np.nan}
-        else:
-            chisq = 0.5*(Q[dsqii] - Q[davgii]**2/Q[sii]
-                        - (Q[dtavgii] - Q[davgii]*Q[tavgii]/Q[sii])**2/(Q[tsqii]
-                        - Q[tavgii]**2/Q[sii]))
-
-            estimator_hessian = np.array([[Q[tsqii], Q[tavgii]], [Q[tavgii], Q[sii]]])
-
-            return {'slope':slope, 'intercept':intercept,
-                    'chisq':chisq, 'hessian':estimator_hessian,
-                    'cov':np.linalg.inv(estimator_hessian)}
 
 
     def find_best_root(self, force_positive=True):
@@ -305,7 +307,7 @@ class TreeRegression(object):
             if (chisq<best_root["chisq"]):
                 tmpQ = self.propagate_averages(n, tv, bv*x, var*x) \
                      + self.propagate_averages(n, tv, bv*(1-x), var*(1-x), outgroup=True)
-                reg = self._regression(tmpQ)
+                reg = base_regression(tmpQ)
                 if reg["slope"]>0 or (force_positive==False):
                     best_root = {"node":n, "split":x}
                     best_root.update(reg)
@@ -316,7 +318,7 @@ class TreeRegression(object):
             y = min(1.0, max(0.0, best_root["split"]+dx))
             tmpQ = self.propagate_averages(n, tv, bv*y, var*y) \
                  + self.propagate_averages(n, tv, bv*(1-y), var*(1-y), outgroup=True)
-            reg = self._regression(tmpQ)
+            reg = base_regression(tmpQ)
             deriv.append([y,reg['chisq'], tmpQ[tavgii], tmpQ[davgii]])
 
         estimator_hessian = np.zeros((3,3))
@@ -328,7 +330,7 @@ class TreeRegression(object):
         estimator_hessian[1,2] = estimator_hessian[2,1]
         best_root['hessian'] = estimator_hessian
         best_root['cov'] = np.linalg.inv(estimator_hessian)
-        best_root['r_val'] = self.explained_variance(best_root)
+        best_root['r_val'] = self.explained_variance()
 
         return best_root
 
@@ -338,10 +340,10 @@ class TreeRegression(object):
         def chisq(x):
             tmpQ = self.propagate_averages(n, tv, bv*x, var*x) \
                  + self.propagate_averages(n, tv, bv*(1-x), var*(1-x), outgroup=True)
-            return self._regression(tmpQ)['chisq']
+            return base_regression(tmpQ)['chisq']
 
-        chisq_prox = np.inf if n.is_terminal() else self._regression(n.Qtot)['chisq']
-        chisq_dist = np.inf if n==self.tree.root else self._regression(n.up.Qtot)['chisq']
+        chisq_prox = np.inf if n.is_terminal() else base_regression(n.Qtot)['chisq']
+        chisq_dist = np.inf if n==self.tree.root else base_regression(n.up.Qtot)['chisq']
 
         grid = np.linspace(0.001,0.999,6)
         chisq_grid = np.array([chisq(x) for x in grid])
