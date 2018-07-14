@@ -114,7 +114,7 @@ class BranchLenInterpolator (Distribution):
 
     @property
     def gamma(self):
-       return self._gamma
+        return self._gamma
 
     @gamma.setter
     def gamma(self, value):
@@ -122,7 +122,7 @@ class BranchLenInterpolator (Distribution):
 
     @property
     def merger_cost(self):
-       return self._merger_cost
+        return self._merger_cost
 
     @merger_cost.setter
     def merger_cost(self, cost_func):
@@ -158,5 +158,6 @@ class BranchLenInterpolator (Distribution):
 
     def __mul__(self, other):
         res = BranchLenInterpolator(super(BranchLenInterpolator, self).__mul__(other))
+        return res
 
 

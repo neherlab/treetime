@@ -1,7 +1,6 @@
 from __future__ import print_function, division, absolute_import
 import numpy as np
 from treetime.distribution import Distribution
-import numpy  as np
 from treetime import config as ttconf
 
 def _create_initial_grid(node_dist, branch_dist):

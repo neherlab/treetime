@@ -1,16 +1,16 @@
 from __future__ import division, print_function, absolute_import
+import datetime
 import numpy as np
 from scipy.interpolate import interp1d
-from treetime import config as ttconf
 from scipy.integrate import quad
 from scipy import stats
-import datetime
 from scipy.ndimage import binary_dilation
+from treetime import config as ttconf
 
 def setup_TreeRegr(tt, covariation=True):
     from .treeregression import TreeRegression
 
-    tip_value = lambda x:np.mean(x.numdate_given) if x.is_terminal() and x.bad_branch==False else None
+    tip_value = lambda x:np.mean(x.numdate_given) if (x.is_terminal() and x.bad_branch is False) else None
     branch_value = lambda x:x.mutation_length
     if covariation:
         om = tt.one_mutation
@@ -32,13 +32,15 @@ class DateConversion(object):
 
         self.clock_rate = 0
         self.intercept = 0
+        self.chisq = 0
         self.r_val = 0
+        self.cov = 0
         self.sigma = 0
 
     def __str__(self):
         # TODO: fix the chi^2 vs r^2 output
-        outstr = ('Root-Tip-Regression:\n --rate:\t%1.3e\n --chi^2:\t%f\n'
-                  %(self.clock_rate, self.chisq**2))
+        outstr = ('Root-Tip-Regression:\n --rate:\t%1.3e\n --chi^2:\t%1.2f\n\n --r^2:\t%1.2f\n'
+                  %(self.clock_rate, self.chisq**2, self.r_val**2))
         return outstr
 
 
@@ -120,7 +122,7 @@ def min_interp(interp_object):
     try:
         return interp_object.x[interp_object(interp_object.x).argmin()]
     except Exception as e:
-        s = "Cannot find minimum of tthe interpolation object" + str(interp_object.x) + \
+        s = "Cannot find minimum of the interpolation object" + str(interp_object.x) + \
         "Minimal x: " + str(interp_object.x.min()) + "Maximal x: " + str(interp_object.x.max())
         raise e
 
@@ -171,8 +173,8 @@ def tree_layout(tree):
 
 def tree_inference(aln_fname, tree_fname, tmp_dir=None,
                    methods = ['iqtree', 'fasttree', 'raxml'], **kwargs):
-    from Bio import Phylo
     import os,shutil
+    from Bio import Phylo
     if not os.path.isfile(aln_fname):
         print("alignment file does not exist")
 
@@ -211,8 +213,8 @@ def tree_inference(aln_fname, tree_fname, tmp_dir=None,
 
 
 def build_newick_fasttree(aln_fname, nuc=True):
-    from Bio import Phylo
     import os
+    from Bio import Phylo
     print("Building tree with fasttree")
     tree_cmd = ["fasttree"]
     if nuc: tree_cmd.append("-nt")
@@ -223,8 +225,8 @@ def build_newick_fasttree(aln_fname, nuc=True):
 
 
 def build_newick_raxml(aln_fname, nthreads=2, raxml_bin="raxml", **kwargs):
-    from Bio import Phylo, AlignIO
     import shutil,os
+    from Bio import Phylo, AlignIO
     AlignIO.write(AlignIO.read(aln_fname, 'fasta'),"temp.phyx", "phylip-relaxed")
     cmd = raxml_bin + " -f d -T " + str(nthreads) + " -m GTRCAT -c 25 -p 235813 -n tre -s temp.phyx"
     os.system(cmd)
@@ -233,8 +235,8 @@ def build_newick_raxml(aln_fname, nthreads=2, raxml_bin="raxml", **kwargs):
 
 def build_newick_iqtree(aln_fname, nthreads=2, iqtree_bin="iqtree",
                         iqmodel="HKY",  **kwargs):
-    from Bio import Phylo, AlignIO
     import os
+    from Bio import Phylo, AlignIO
     with open(aln_fname) as ifile:
         tmp_seqs = ifile.readlines()
     aln_file = "temp.fasta"
@@ -242,7 +244,14 @@ def build_newick_iqtree(aln_fname, nthreads=2, iqtree_bin="iqtree",
         for line in tmp_seqs:
             ofile.write(line.replace('/', '_X_X_').replace('|','_Y_Y_'))
 
-    call = ["iqtree", "-nt", str(nthreads),"-fast", "-s", aln_file, ">", "iqtree.log"]
+    fast_opts = [
+        "-ninit", "2",
+        "-n",     "2",
+        "-me",    "0.05"
+    ]
+
+    call = ["iqtree", *fast_opts, "-nt", str(nthreads), "-s", aln_file, "-m", iqmodel,
+            ">", "iqtree.log"]
 
     os.system(" ".join(call))
     T = Phylo.read(aln_file+".treefile", 'newick')

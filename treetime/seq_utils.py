@@ -231,5 +231,3 @@ def prof2seq(profile, gtr, sample_from_prof=False):
 
     return seq, prof_values, idx
 
-
-

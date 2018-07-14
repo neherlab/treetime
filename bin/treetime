@@ -12,7 +12,10 @@ treetime_description = \
     "\t tree\t\testimate a time scaled phylogeny.\n"\
     "\t mugration\tmap discrete character such as host or country to the tree.\n\n"\
     "To print help and arguments for the individual sub-commands, type:\n\n"\
-    "\t treetime <subcommand> -h\n"
+    "\t treetime <subcommand> -h\n\n"\
+    "If you use results from treetime in a publication, please cite:"\
+    "\n\n\tSagulenko et al. TreeTime: Maximum-likelihood phylodynamic analysis"\
+    "\n\tVirus Evolution, vol 4, https://academic.oup.com/ve/article/4/1/vex042/4794731\n"
 
 timetree_description=\
     "The subcommand tree infers a time scaled phylogeny given a tree topology, an alignment, "\
