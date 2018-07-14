@@ -41,7 +41,7 @@ class GTR(object):
 
         """
         self.debug=False
-        if type(alphabet)==str:
+        if isinstance(alphabet, str):
             if alphabet not in alphabet_synonyms:
                 raise AttributeError("Unknown alphabet type specified")
             else:
@@ -57,11 +57,11 @@ class GTR(object):
                 self.profile_map = prof_map
 
         if logger is None:
-            def logger(*args,**kwargs):
+            def logger_default(*args,**kwargs):
                 """standard logging function if none provided"""
                 if self.debug:
                     print(*args)
-            self.logger = logger
+            self.logger = logger_default
         else:
             self.logger = logger
         n_states = len(self.alphabet)
@@ -92,6 +92,9 @@ class GTR(object):
 
         # init all matrices with dummy values
         self.logger("GTR: init with dummy values!", 3)
+        self.v = None # right eigenvectors
+        self.v_inv = None # left eigenvectors
+        self.eigenvals =None # eigenvalues
         self.assign_rates()
 
 
@@ -467,7 +470,7 @@ class GTR(object):
                 gtr.logger('the iterative scheme has converged, but proper normalization was not reached',3,warn=True)
         if gtr.gap_index>=0:
             if pi[gtr.gap_index]<gap_limit:
-              gtr.logger('The model allows for gaps which are estimated to occur at a low fraction of %1.3e'%pi[gtr.gap_index]+
+                gtr.logger('The model allows for gaps which are estimated to occur at a low fraction of %1.3e'%pi[gtr.gap_index]+
                        '\n\t\tthis can potentially result in artificats.'+
                        '\n\t\tgap fraction will be set to %1.4f'%gap_limit,2,warn=True)
             pi[gtr.gap_index] = gap_limit
@@ -598,7 +601,7 @@ class GTR(object):
 ########################################################################
 ### evolution functions
 ########################################################################
-    def prob_t_compressed(self, seq_pair, multiplicity, t, return_log=False, derivative=0):
+    def prob_t_compressed(self, seq_pair, multiplicity, t, return_log=False):
         '''
         Calculate the probability of observing a sequence pair at a distance t,
         for compressed sequences
@@ -622,7 +625,7 @@ class GTR(object):
             Whether or not to exponentiate the result
 
         '''
-        if (t<0):
+        if t<0:
             logP = -ttconf.BIG_NUMBER
         else:
             tmp_eQT = self.expQt(t)
@@ -630,10 +633,9 @@ class GTR(object):
             logQt = np.log(tmp_eQT + ttconf.TINY_NUMBER*(bad_indices))
             logQt[np.isnan(logQt) | np.isinf(logQt) | bad_indices] = -ttconf.BIG_NUMBER
             logP = np.sum(logQt[seq_pair[:,1], seq_pair[:,0]]*multiplicity)
-            if return_log:
-                return logP
-            else:
-                return np.exp(logP)
+
+        return logP if return_log else np.exp(logP)
+
 
     def prob_t(self, seq_p, seq_ch, t, pattern_multiplicity = None, return_log=False, ignore_gaps=True):
         """
@@ -811,7 +813,7 @@ class GTR(object):
             Whether or not to exponentiate the result
 
         '''
-        if (t<0):
+        if t<0:
             logP = -ttconf.BIG_NUMBER
         else:
             Qt = self.expQt(t).T
@@ -824,10 +826,7 @@ class GTR(object):
             else:
                 logP = np.sum(multiplicity*np.log(overlap))
 
-            if return_log:
-                return logP
-            else:
-                return np.exp(logP)
+        return logP if return_log else np.exp(logP)
 
 
     def propagate_profile(self, profile, t, return_log=False):
@@ -860,10 +859,7 @@ class GTR(object):
         Qt = self.expQt(t)
         res = profile.dot(Qt)
 
-        if return_log:
-            return np.log(res)
-        else:
-            return res
+        return np.log(res) if return_log else res
 
 
     def _exp_lt(self, t):

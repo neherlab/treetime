@@ -99,7 +99,7 @@ class TreeAnc(object):
         self._tree = None
         self.tree = tree
         if tree is None:
-            raise("TreeAnc: tree loading failed! exiting")
+            raise ArgumentError("TreeAnc: tree loading failed! exiting")
 
         # will be None if not set
         self.ref = ref
