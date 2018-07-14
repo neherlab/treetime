@@ -2,20 +2,24 @@ from __future__ import print_function, division, absolute_import
 import os, shutil
 import numpy as np
 import pandas as pd
-from treetime import TreeAnc, GTR, TreeTime
-from treetime import config as ttconf
-from treetime import utils
 from Bio.SeqRecord import SeqRecord
 from Bio.Seq import Seq
 from Bio.Align import MultipleSeqAlignment
 from Bio import Phylo, AlignIO
 from Bio import __version__ as bioversion
+from treetime import TreeAnc, GTR, TreeTime
+from treetime import config as ttconf
+from treetime import utils
 
 def assure_tree(params, tmp_dir='treetime_tmp'):
+    """
+    Function that attempts to load a tree and build it from the alignment
+    if no tree is provided.
+    """
     if params.tree is None:
         params.tree = os.path.basename(params.aln)+'.nwk'
         print("No tree given: inferring tree")
-        utilstree_inference(params.aln, params.tree, tmp_dir = tmp_dir)
+        utils.tree_inference(params.aln, params.tree, tmp_dir = tmp_dir)
 
     if os.path.isdir(tmp_dir):
         shutil.rmtree(tmp_dir)
@@ -28,11 +32,13 @@ def assure_tree(params, tmp_dir='treetime_tmp'):
     return 0
 
 def create_gtr(params):
+    """
+    parse the arguments referring to the GTR model and return a GTR structure
+    """
     model = params.gtr
     gtr_params = params.gtr_params
     if model == 'infer':
         gtr = GTR.standard('jc')
-        infer_gtr = True
     else:
         try:
             kwargs = {}
@@ -58,6 +64,10 @@ def create_gtr(params):
     return gtr
 
 def parse_dates(params):
+    """
+    parse dates from the arguments and return a dictionary mapping
+    taxon names to numerical dates.
+    """
     dates = {}
     if not os.path.isfile(params.dates):
         print("\n ERROR: file %s does not exist, exiting..."%params.dates)
@@ -77,15 +87,12 @@ def parse_dates(params):
     return dates
 
 def scan_homoplasies(params):
-    ###########################################################################
-    ### CHECK FOR TREE, build if not in place
-    ###########################################################################
+    """
+    the function implementing treetime homoplasies
+    """
     if assure_tree(params, tmp_dir='homoplasy_tmp'):
         return 1
 
-    ###########################################################################
-    ### GTR SET-UP
-    ###########################################################################
     gtr = create_gtr(params)
 
     ###########################################################################
@@ -94,7 +101,7 @@ def scan_homoplasies(params):
     treeanc = TreeAnc(params.tree, aln=params.aln, gtr=gtr, verbose=1,
                       fill_overhangs=True)
     if treeanc.aln is None: # if alignment didn't load, exit
-        sys.exit(1)
+        return 1
 
     # FIXME: resetting one_mutation is no longer possible
     L = treeanc.aln.get_alignment_length() + params.const
@@ -114,7 +121,7 @@ def scan_homoplasies(params):
                                       marginal=False)
     print("...done.")
     if ndiff==ttconf.ERROR: # if reconstruction failed, exit
-        sys.exit(1)
+        return 1
     else:
         print("...done.")
 
@@ -241,26 +248,19 @@ def scan_homoplasies(params):
 
 
 def timetree(params):
-
+    """
+    implementeing treetime tree
+    """
     if params.relax==[]:
         params.relax=True
 
-    ###########################################################################
-    ### PARSING DATES
-    ###########################################################################
     dates = parse_dates(params)
     if len(dates)==0:
         return 1
 
-    ###########################################################################
-    ### CHECK FOR TREE, build if not in place
-    ###########################################################################
     if assure_tree(params, tmp_dir='timetree_tmp'):
         return 1
 
-    ###########################################################################
-    ### GTR SET-UP
-    ###########################################################################
     gtr = create_gtr(params)
     infer_gtr = params.gtr=='infer'
 
@@ -315,7 +315,7 @@ def timetree(params):
         label_func = lambda x: x.name[:20] if (leaf_count<30 & x.is_terminal()) else ''
         branch_label_func = lambda x: (','.join([a+str(pos)+d for a,pos, d in x.mutations[:10]])
                                        +('...' if  len(x.mutations)>10 else '')) if leaf_count<30 else ''
-        plot_vs_years(myTree, show_confidence=False, label_func = label_func) #, branch_labels=branch_label_func)
+        plot_vs_years(myTree, show_confidence=False, label_func = label_func, branch_labels=branch_label_func)
         plt.savefig(base_name+'_tree.pdf')
         print("--- saved tree as pdf in \n\t %s\n"%(base_name+'_tree.pdf'))
     else:
@@ -349,20 +349,16 @@ def timetree(params):
 
 
 def ancestral_reconstruction(params):
-    ###########################################################################
-    ### CHECK FOR TREE, build if not in place
-    ###########################################################################
+    """
+    implementing treetime ancestral
+    """
+
+    # set up
     if assure_tree(params, tmp_dir='ancestral_tmp'):
         return 1
 
-    ###########################################################################
-    ### GTR SET-UP
-    ###########################################################################
     gtr = create_gtr(params)
 
-    ###########################################################################
-    ### ANCESTRAL RECONSTRUCTION
-    ###########################################################################
     treeanc = TreeAnc(params.tree, aln=params.aln, gtr=gtr, verbose=1,
                       fill_overhangs=not params.keep_overhangs)
     ndiff =treeanc.infer_ancestral_sequences('ml', infer_gtr=params.gtr=='infer',
@@ -404,6 +400,10 @@ def ancestral_reconstruction(params):
     return 0
 
 def mugration(params):
+    """
+    implementing treetime mugration
+    """
+
     ###########################################################################
     ### Parse states
     ###########################################################################
@@ -412,7 +412,7 @@ def mugration(params):
                              skipinitialspace=True)
     else:
         print("file with states does not exist")
-        exit(1)
+        return 1
 
     taxon_name = 'name' if 'name' in states.columns else states.columns[0]
     if params.attribute and params.attribute in states.columns:
@@ -521,6 +521,10 @@ def mugration(params):
     return 0
 
 def estimate_clock_model(params):
+    """
+    implementing treetime clock
+    """
+
     if assure_tree(params, tmp_dir='clock_model_tmp'):
         return 1
     dates = parse_dates(params)
@@ -592,6 +596,3 @@ def estimate_clock_model(params):
         print("--- root-to-tip plot saved to  \n\t %s_root_to_tip_regression.pdf\n"%base_name)
 
     return 0
-
-
-
