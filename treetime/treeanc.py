@@ -1,13 +1,13 @@
 from __future__ import print_function, division, absolute_import
 import time, sys
-from  treetime import config as ttconf
+from collections import defaultdict
+import numpy as np
 from Bio import Phylo
 from Bio import AlignIO
-import numpy as np
-import treetime.seq_utils as seq_utils
-from treetime.gtr import GTR
-from treetime.version import tt_version as __version__
-from collections import defaultdict
+from treetime import config as ttconf
+from treetime import seq_utils as seq_utils
+from .gtr import GTR
+from .version import tt_version as __version__
 
 string_types = [str] if sys.version_info[0]==3 else [str, unicode]
 
@@ -86,18 +86,20 @@ class TreeAnc(object):
         self._internal_node_count = 0
         self.use_mutation_length=False
         # if not specified, this will be set as 1/alignment_length
+        self._seq_len = None
         self.seq_len = kwargs['seq_len'] if 'seq_len' in kwargs else None
         self.fill_overhangs = fill_overhangs
         self.is_vcf = False  #this is set true when aln is set, if aln is dict
         self.seq_multiplicity = {} if seq_multiplicity is None else seq_multiplicity
 
         self.ignore_gaps = ignore_gaps
+        self._gtr = None
         self.set_gtr(gtr or 'JC69', **kwargs)
 
+        self._tree = None
         self.tree = tree
         if tree is None:
-            self.logger("TreeAnc: tree loading failed! exiting",0)
-            return ttconf.ERROR
+            raise("TreeAnc: tree loading failed! exiting")
 
         # will be None if not set
         self.ref = ref
@@ -108,8 +110,9 @@ class TreeAnc(object):
 
         # set alignment and attach sequences to tree on success.
         # otherwise self.aln will be None
+        self._aln = None
+        self.reduced_to_full_sequence_map = None
         self.aln = aln
-
 
     def logger(self, msg, level, warn=False):
         """
@@ -136,11 +139,7 @@ class TreeAnc(object):
             outstr+=format(dt, '4.2f')+'\t'
             outstr+= level*'-'
             outstr+=msg
-            try:
-                log.write(outstr+'\n')
-                log.flush()
-            except:
-                print(outstr)
+            print(outstr, file=sys.stdout)
 
 
 ####################################################################
@@ -200,7 +199,7 @@ class TreeAnc(object):
             are assumed.
 
         """
-        if type(in_gtr)==str:
+        if isinstance(in_gtr, str):
             self._gtr = GTR.standard(model=in_gtr, **kwargs)
             self._gtr.logger = self.logger
 
@@ -1500,14 +1499,12 @@ class TreeAnc(object):
             self.logger("TreeAnc.optimize_branch_length: ERROR, alignment or tree are missing", 0)
             return ttconf.ERROR
 
-
-        verbose = 0
         store_old_dist = False
 
         if 'verbose' in kwargs:
             verbose = int(kwargs['verbose'])
         if 'store_old' in kwargs:
-            store_old_dist = kwargs['store_old'] == True
+            store_old_dist = kwargs['store_old']
 
         if mode=='marginal':
             # a marginal ancestral reconstruction is required for
@@ -1583,7 +1580,7 @@ class TreeAnc(object):
                     gradient.append(2*(si**2-0.001))
 
             print(-self.tree.sequence_marginal_LH)
-            return (-self.tree.sequence_marginal_LH + (s[0]**2-0.001)**2, -np.array(gradient))
+            return (-self.tree.sequence_marginal_LH + (s[0]**2-0.001)**2, -1.0*np.array(gradient))
 
         from scipy.optimize import minimize
         x0 = np.sqrt([n.branch_length for n in self.tree.find_clades(order='preorder')])
@@ -1883,9 +1880,7 @@ class TreeAnc(object):
 
 if __name__=="__main__":
 
-    from Bio import Phylo
     from StringIO import StringIO
-    from Bio import Phylo,AlignIO
 
     tiny_tree = Phylo.read(StringIO("((A:.0060,B:.30)C:.030,D:.020)E:.004;"), 'newick')
     tiny_aln = AlignIO.read(StringIO(">A\nAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT\n"
