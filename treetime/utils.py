@@ -250,7 +250,7 @@ def build_newick_iqtree(aln_fname, nthreads=2, iqtree_bin="iqtree",
         "-me",    "0.05"
     ]
 
-    call = ["iqtree", *fast_opts, "-nt", str(nthreads), "-s", aln_file, "-m", iqmodel,
+    call = ["iqtree"] + fast_opts +["-nt", str(nthreads), "-s", aln_file, "-m", iqmodel,
             ">", "iqtree.log"]
 
     os.system(" ".join(call))
