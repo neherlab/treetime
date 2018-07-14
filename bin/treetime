@@ -4,21 +4,23 @@ import sys, argparse, os
 from treetime.wrappers import ancestral_reconstruction, mugration, scan_homoplasies, timetree, estimate_clock_model
 
 treetime_description = \
-    "TreeTime: Maximum Likelihood Phylodynamics\n\n"\
+    "TreeTime: Maximum Likelihood Phylodynamics\n\n"
+subcommand_description = \
     "Available sub-commands are:\n\n"\
     "\t ancestral\tinfer ancestral sequences maximizing the joint or marginal likelihood.\n"\
     "\t homoplasy\tanalyze patterns of recurrent mutations aka homoplasies.\n"\
     "\t clock\t\testimate molecular clock parameters and reroot the tree.\n"\
-    "\t tree\t\testimate a time scaled phylogeny.\n"\
+    "\t date\t\tdate internal nodes and estimate a time scaled phylogeny.\n"\
     "\t mugration\tmap discrete character such as host or country to the tree.\n\n"\
-    "To print help and arguments for the individual sub-commands, type:\n\n"\
-    "\t treetime <subcommand> -h\n\n"\
+    "To print a description and argument list of the individual sub-commands, type:\n\n"\
+    "\t treetime <subcommand> -h\n\n"
+ref_msg = \
     "If you use results from treetime in a publication, please cite:"\
     "\n\n\tSagulenko et al. TreeTime: Maximum-likelihood phylodynamic analysis"\
     "\n\tVirus Evolution, vol 4, https://academic.oup.com/ve/article/4/1/vex042/4794731\n"
 
 timetree_description=\
-    "The subcommand tree infers a time scaled phylogeny given a tree topology, an alignment, "\
+    "The subcommand 'date' infers a time scaled phylogeny given a tree topology, an alignment, "\
     "and tip dates. Reconstructs ancestral sequences and infers a molecular clock tree. "\
     "TreeTime will reroot the tree and resolve polytomies by default. "\
     "In addition, treetime will infer ancestral sequences and a GTR substitution model. "\
@@ -93,12 +95,12 @@ def add_gtr_arguments(parser):
 
 if __name__ == '__main__':
     ## TIMETREE
-    parser = argparse.ArgumentParser(description = treetime_description)
-    parser.set_defaults(func=lambda x:print(treetime_description))
+    parser = argparse.ArgumentParser(description = treetime_description, usage=treetime_description)
+    parser.set_defaults(func=lambda x:print(treetime_description+subcommand_description+ref_msg))
 
     subparsers = parser.add_subparsers()
 
-    t_parser = subparsers.add_parser('tree', description=timetree_description)
+    t_parser = subparsers.add_parser('date', description=timetree_description)
     t_parser.add_argument('--tree', required=True, type=str,  help=tree_description)
     add_seq_len_aln_group(t_parser)
     t_parser.add_argument('--dates', required=True, type=str, help=dates_description)
