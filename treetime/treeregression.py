@@ -394,7 +394,7 @@ class TreeRegression(object):
         return best_root
 
 
-    def clock_plot(self, n_sigma = 2, add_internal=False, ax=None, reg=None, fs=16):
+    def clock_plot(self, n_sigma = 2, add_internal=False, ax=None, reg=None, confidence=True, fs=14):
         import matplotlib.pyplot as plt
         if ax is None:
             plt.figure()
@@ -429,28 +429,34 @@ class TreeRegression(object):
                 x_vals = np.array([max(np.min(xi[~ind]), t_mrca) - 0.1*time_span, np.max(xi[~ind]+0.05*time_span)])
 
             # plot confidence interval
-            x_vals = np.linspace(x_vals[0], x_vals[1], 100)
-            y_vals = reg['slope']*x_vals + reg['intercept']
-            dev = n_sigma*np.array([np.sqrt(reg['cov'][:2,:2].dot(np.array([x, 1])).dot(np.array([x,1]))) for x in x_vals])
-            ax.fill_between(x_vals, y_vals-dev, y_vals+dev, alpha=0.2)
-            dp = np.array([reg['intercept']/reg['slope']**2,-1./reg['slope']])
-            dev_rtt = n_sigma*np.sqrt(reg['cov'][:2,:2].dot(dp).dot(dp))
+            if confidence and 'cov' in reg:
+                x_vals = np.linspace(x_vals[0], x_vals[1], 100)
+                y_vals = reg['slope']*x_vals + reg['intercept']
+                dev = n_sigma*np.array([np.sqrt(reg['cov'][:2,:2].dot(np.array([x, 1])).dot(np.array([x,1]))) for x in x_vals])
+                ax.fill_between(x_vals, y_vals-dev, y_vals+dev, alpha=0.2)
+                dp = np.array([reg['intercept']/reg['slope']**2,-1./reg['slope']])
+                dev_rtt = n_sigma*np.sqrt(reg['cov'][:2,:2].dot(dp).dot(dp))
+
+            else:
+                dev_rtt = None
 
             ax.plot(x_vals, reg['slope']*x_vals + reg['intercept'],
-                    label = r"$y=\alpha + \beta t,\ \alpha=%1.3e,\ \beta=%1.3e$"%(reg["intercept"], reg["slope"]))
+                    label = r"$y=\alpha + \beta t$"+"\n"+
+                            r"$\alpha=%1.1e,\ \beta=%1.1e$"%(reg["intercept"], reg["slope"]) + "\n" +
+                            "root date: %1.1f"%(-reg['intercept']/reg['slope']) +
+                            ("+/- %1.2f"%dev_rtt if dev_rtt else ""))
 
-            print("Root date: %1.1f +/- %1.2f"%(-reg['intercept']/reg['slope'],dev_rtt))
 
-        ax.scatter(xi[~ind], yi[~ind], label="tips")
+        ax.scatter(xi[~ind], yi[~ind], label=("tips" if add_internal else None))
         if add_internal:
             ax.scatter(xi_int[~ind_int], yi_int[~ind_int], label="internal nodes")
-        ax.set_ylabel('root-to-tip distance')
-        ax.set_xlabel('date')
+        ax.set_ylabel('root-to-tip distance', fontsize=fs)
+        ax.set_xlabel('date', fontsize=fs)
         ax.ticklabel_format(useOffset=False)
         ax.tick_params(labelsize=fs*0.8)
         ax.set_ylim([0, 1.1*np.max(yi)])
         plt.tight_layout()
-        plt.legend(loc=2, fontsize=fs)
+        plt.legend(fontsize=fs*0.8)
 
 
 if __name__ == '__main__':

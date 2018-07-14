@@ -6,7 +6,6 @@ from treetime.treeanc import TreeAnc
 from treetime.distribution import Distribution
 from treetime.branch_len_interpolator import BranchLenInterpolator
 from treetime.node_interpolator import NodeInterpolator
-import collections
 
 class ClockTree(TreeAnc):
     """
@@ -63,7 +62,7 @@ class ClockTree(TreeAnc):
         self.debug=debug
         self.real_dates = real_dates
         self.date_dict = dates
-        self.date2dist = None  # we do not know anything about the conversion
+        self._date2dist = None  # we do not know anything about the conversion
         self.rel_tol_prune = ttconf.REL_TOL_PRUNE
         self.rel_tol_refine = ttconf.REL_TOL_REFINE
         self.branch_length_mode = branch_length_mode
@@ -98,6 +97,9 @@ class ClockTree(TreeAnc):
                     # If all branches dowstream are 'bad', and there is no date constraint for
                     # this node, the branch is marked as 'bad'
                     node.bad_branch = np.all([x.bad_branch for x in node])
+
+        return ttconf.SUCCESS
+
 
     def _set_precision(self, precision):
         '''
@@ -159,7 +161,7 @@ class ClockTree(TreeAnc):
 
     def setup_TreeRegression(self, covariation=True):
         from .treeregression import TreeRegression
-        tip_value = lambda x:np.mean(x.numdate_given) if x.is_terminal() and x.bad_branch==False else None
+        tip_value = lambda x:np.mean(x.numdate_given) if (x.is_terminal() and (x.bad_branch is False)) else None
         branch_value = lambda x:x.mutation_length
         if covariation:
             om = self.one_mutation
@@ -171,7 +173,7 @@ class ClockTree(TreeAnc):
                              branch_value=branch_value, branch_variance=branch_variance)
 
 
-    def init_date_constraints(self, ancestral_inference=False, clock_rate=None, **kwarks):
+    def init_date_constraints(self, ancestral_inference=False, **kwarks):
         """
         Get the conversion coefficients between the dates and the branch
         lengths as they are used in ML computations. The conversion formula is
@@ -239,7 +241,7 @@ class ClockTree(TreeAnc):
                     tbp = self.date2dist.get_time_before_present(np.array(node.numdate_given))
                     node.date_constraint = Distribution(tbp, np.ones_like(tbp), is_log=False, min_width=self.min_width)
 
-                if hasattr(node, 'bad_branch') and node.bad_branch==True:
+                if hasattr(node, 'bad_branch') and node.bad_branch is True:
                     self.logger("ClockTree.init_date_constraints -- WARNING: Branch is marked as bad"
                                 ", excluding it from the optimization process"
                                 " Will be optimized freely", 4, warn=True)
@@ -598,7 +600,7 @@ class ClockTree(TreeAnc):
         for node in self.tree.find_clades():
             years_bp = self.date2dist.to_years(node.time_before_present)
             if years_bp < 0 and self.real_dates:
-                if not hasattr(node, "bad_branch") or node.bad_branch==False:
+                if not hasattr(node, "bad_branch") or node.bad_branch is False:
                     self.logger("ClockTree.convert_dates -- WARNING: The node is later than today, but it is not "
                         "marked as \"BAD\", which indicates the error in the "
                         "likelihood optimization.",4 , warn=True)

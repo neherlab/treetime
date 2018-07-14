@@ -1,11 +1,10 @@
 from __future__ import print_function, division, absolute_import
-from treetime.clock_tree import ClockTree
-from treetime import utils as ttutils
-from treetime import config as ttconf
 import numpy as np
 from scipy import optimize as sciopt
 from Bio import Phylo
-from treetime.version import tt_version as __version__
+from treetime.clock_tree import ClockTree
+from treetime import utils as ttutils
+from treetime import config as ttconf
 
 rerooting_mechanisms = ["min_dev", "best", "residual", "chisq", "res"]
 
@@ -245,7 +244,6 @@ class TreeTime(ClockTree):
         '''
         bl_dis = [n.branch_length for n in self.tree.find_clades() if n.up]
         max_bl = np.max(bl_dis)
-        min_bl = np.min(bl_dis)
         if max_bl>0.1:
             bl_mode = 'input'
         else:
@@ -332,7 +330,8 @@ class TreeTime(ClockTree):
 
         """
         Treg = self.setup_TreeRegression(covariation=True)
-        Treg.clock_plot(n_sigma=2, add_internal=add_internal, ax=ax, reg=self.clock_model)
+        cf = self.clock_model['covariation'] is True
+        Treg.clock_plot(n_sigma=2, add_internal=add_internal, ax=ax, confidence=cf, reg=self.clock_model)
 
 
     def reroot(self, root='best', force_positive=True):
@@ -401,6 +400,8 @@ class TreeTime(ClockTree):
         for n in self.tree.find_clades():
             n.mutation_length = n.branch_length
 
+        return ttconf.SUCCESS
+
 
     def resolve_polytomies(self, merge_compressed=False):
         """
@@ -460,7 +461,6 @@ class TreeTime(ClockTree):
         """
 
         from treetime.branch_len_interpolator import BranchLenInterpolator
-        from Bio import Phylo
 
         zero_branch_slope = self.gtr.mu*self.seq_len
 
@@ -561,7 +561,7 @@ class TreeTime(ClockTree):
         stretched = [c for c  in clade.clades if c.mutation_length < c.clock_length]
         compressed = [c for c in clade.clades if c not in stretched]
 
-        if len(stretched)==1 and merge_compressed==False:
+        if len(stretched)==1 and merge_compressed is False:
             return 0.0
 
         LH = merge_nodes(stretched, isall=len(stretched)==len(clade.clades))
@@ -591,7 +591,7 @@ class TreeTime(ClockTree):
             else:
                 s_lh = self.tree.sequence_marginal_LH
                 t_lh = self.tree.positional_marginal_LH
-                c_ls = 0
+                c_lh = 0
 
             print ("###  Tree Log-Likelihood  ###\n"
                 " Sequence log-LH without constraints: \t%1.3f\n"
@@ -657,8 +657,7 @@ class TreeTime(ClockTree):
 ### rerooting
 ###############################################################################
 
-    def reroot_to_best_root(self,infer_gtr = False, covariation=True,
-                            force_positive=True, **kwarks):
+    def reroot_to_best_root(self, covariation=True, force_positive=True, **kwarks):
         '''
         Determine the node that, when the tree is rooted on this node, results
         in the best regression of temporal constraints and root to tip distances.
@@ -679,9 +678,9 @@ class TreeTime(ClockTree):
         for n in self.tree.find_clades():
             n.branch_length=n.mutation_length
         self.logger("TreeTime.reroot_to_best_root: searching for the best root position...",2)
-        Treg = self.setup_TreeRegression(covariation=True)
+        Treg = self.setup_TreeRegression(covariation=covariation)
         self.clock_model = Treg.optimal_reroot(force_positive=force_positive)
-
+        self.clock_model['covariation'] = covariation
         return self.clock_model['node']
 
 

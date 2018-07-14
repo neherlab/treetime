@@ -587,12 +587,12 @@ def estimate_clock_model(params):
     ###########################################################################
     if params.plot:
         import matplotlib.pyplot as plt
-        myTree.plot_root_to_tip(label=False)
-        t = np.array([np.min(dates.values()), np.max(dates.values())])
-        plt.plot(t, t*d2d.clock_rate+d2d.intercept,
-                 label='y=%1.4f+%1.5ft, r^2=%1.2f'%(d2d.intercept, d2d.clock_rate, d2d.r_val**2))
-        plt.legend(loc=2)
-        plt.savefig(base_name+'_root_to_tip_regression.pdf')
-        print("--- root-to-tip plot saved to  \n\t %s_root_to_tip_regression.pdf\n"%base_name)
+        myTree.plot_root_to_tip()
+        if params.output:
+            fname = params.output
+        else:
+            fname = base_name+'_root_to_tip_regression.pdf'
+        plt.savefig(fname)
+        print("--- root-to-tip plot saved to  \n\t"+fname)
 
     return 0
