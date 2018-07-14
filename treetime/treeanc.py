@@ -7,7 +7,6 @@ from Bio import AlignIO
 from treetime import config as ttconf
 from .seq_utils import seq2prof,seq2array,prof2seq
 from .gtr import GTR
-from .version import tt_version as __version__
 
 string_types = [str] if sys.version_info[0]==3 else [str, unicode]
 
@@ -78,7 +77,6 @@ class TreeAnc(object):
         """
         if tree is None:
             raise TypeError("TreeAnc requires a tree!")
-        self.__version__ = __version__
         self.t_start = time.time()
         self.verbose = verbose
         self.log=log

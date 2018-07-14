@@ -5,9 +5,18 @@ Author: Pavel Sagulenko and Richard Neher
 import os
 from setuptools import setup
 
+def get_version():
+    v = "0.0.0"
+    with open('treetime/__init__.py') as ifile:
+        for line in ifile:
+            if line[:7]=='version':
+                v = line.split('=')[-1].strip()[1:-1]
+                break
+    return v
+
 setup(
         name = "treetime",
-        version = "0.5.0",
+        version = get_version(),
         author = "Pavel Sagulenko and Richard Neher",
         author_email = "richard.neher@unibas.ch",
         description = ("Maximum-likelihood phylodynamic inference"),
