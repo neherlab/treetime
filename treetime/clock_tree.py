@@ -173,7 +173,7 @@ class ClockTree(TreeAnc):
                              branch_value=branch_value, branch_variance=branch_variance)
 
 
-    def init_date_constraints(self, ancestral_inference=False, **kwarks):
+    def init_date_constraints(self, ancestral_inference=False, clock_rate=None, **kwarks):
         """
         Get the conversion coefficients between the dates and the branch
         lengths as they are used in ML computations. The conversion formula is
@@ -227,6 +227,9 @@ class ClockTree(TreeAnc):
 
                 node.branch_length_interpolator.merger_cost = merger_cost
                 node.branch_length_interpolator.gamma = gamma
+
+        Treg = self.setup_TreeRegression(covariation=True)
+        self.clock_model = Treg.regression(slope=clock_rate)
         self.date2dist = utils.DateConversion.from_regression(self.clock_model)
 
         # make node distribution objects
@@ -250,7 +253,7 @@ class ClockTree(TreeAnc):
                 node.date_constraint = None
 
 
-    def make_time_tree(self, time_marginal=False, **kwargs):
+    def make_time_tree(self, time_marginal=False, clock_rate=None, **kwargs):
         '''
         Use the date constraints to calculate the most likely positions of
         unconstrained nodes.
@@ -269,7 +272,7 @@ class ClockTree(TreeAnc):
         if 'branch_length_mode' in kwargs:
             self.branch_length_mode = kwargs['branch_length_mode']
 
-        self.init_date_constraints(**kwargs)
+        self.init_date_constraints(clock_rate=clock_rate, **kwargs)
 
         if time_marginal:
             self._ml_t_marginal(assign_dates = time_marginal=="assign")

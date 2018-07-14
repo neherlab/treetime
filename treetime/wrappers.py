@@ -282,9 +282,11 @@ def timetree(params):
     ###########################################################################
     myTree = TreeTime(dates=dates, tree=params.tree,
                        aln=params.aln, gtr=gtr, verbose=params.verbose)
-    success = myTree.run(root=params.reroot, relaxed_clock=params.relax,
+    root = None if params.keep_root else params.reroot
+    success = myTree.run(root=root, relaxed_clock=params.relax,
                resolve_polytomies=(not params.keep_polytomies),
                Tc=Tc, max_iter=params.max_iter,
+               fixed_clock_rate=params.clock_rate,
                branch_length_mode = params.branch_length_mode)
     if success==ttconf.ERROR: # if TreeTime.run failed, exit
         return 1
@@ -313,9 +315,9 @@ def timetree(params):
         plt.ion()
         leaf_count = myTree.tree.count_terminals()
         label_func = lambda x: x.name[:20] if (leaf_count<30 & x.is_terminal()) else ''
-        branch_label_func = lambda x: (','.join([a+str(pos)+d for a,pos, d in x.mutations[:10]])
-                                       +('...' if  len(x.mutations)>10 else '')) if leaf_count<30 else ''
-        plot_vs_years(myTree, show_confidence=False, label_func = label_func, branch_labels=branch_label_func)
+        # branch_label_func = lambda x: (','.join([a+str(pos)+d for a,pos, d in x.mutations[:10]])
+        #                                +('...' if  len(x.mutations)>10 else '')) if leaf_count<30 else ''
+        plot_vs_years(myTree, show_confidence=False, label_func = label_func) #, branch_labels=branch_label_func)
         plt.savefig(base_name+'_tree.pdf')
         print("--- saved tree as pdf in \n\t %s\n"%(base_name+'_tree.pdf'))
     else:

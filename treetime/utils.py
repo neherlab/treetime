@@ -33,7 +33,6 @@ class DateConversion(object):
         self.clock_rate = 0
         self.intercept = 0
         self.r_val = 0
-        self.p_val = 0
         self.sigma = 0
 
     def __str__(self):
@@ -59,7 +58,8 @@ class DateConversion(object):
         dc.clock_rate = clock_model['slope']
         dc.intercept = clock_model['intercept']
         dc.chisq = clock_model['chisq']
-        dc.cov = clock_model['cov']
+        if 'cov' in clock_model:
+            dc.cov = clock_model['cov']
         dc.r_val = clock_model['r_val']
         return dc
 

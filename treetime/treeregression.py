@@ -260,19 +260,24 @@ class TreeRegression(object):
         if slope is None:
             slope = (Q[dtavgii] - Q[tavgii]*Q[davgii]/Q[sii]) \
                     /(Q[tsqii] - Q[tavgii]**2/Q[sii])
+            only_intercept=False
+        else:
+            only_intercept=True
         intercept = (Q[davgii] - Q[tavgii]*slope)/Q[sii]
 
-        ## TODO: This makes sense only for the optimal slope
-        ## but we might still want to do min_deviation rooting in this case
-        chisq = 0.5*(Q[dsqii] - Q[davgii]**2/Q[sii]
-                    - (Q[dtavgii] - Q[davgii]*Q[tavgii]/Q[sii])**2/(Q[tsqii]
-                    - Q[tavgii]**2/Q[sii]))
+        if only_intercept:
+            return {'slope':slope, 'intercept':intercept,
+                    'chisq':np.nan}
+        else:
+            chisq = 0.5*(Q[dsqii] - Q[davgii]**2/Q[sii]
+                        - (Q[dtavgii] - Q[davgii]*Q[tavgii]/Q[sii])**2/(Q[tsqii]
+                        - Q[tavgii]**2/Q[sii]))
 
-        estimator_hessian = np.array([[Q[tsqii], Q[tavgii]], [Q[tavgii], Q[sii]]])
+            estimator_hessian = np.array([[Q[tsqii], Q[tavgii]], [Q[tavgii], Q[sii]]])
 
-        return {'slope':slope, 'intercept':intercept,
-                'chisq':chisq, 'hessian':estimator_hessian,
-                'cov':np.linalg.inv(estimator_hessian)}
+            return {'slope':slope, 'intercept':intercept,
+                    'chisq':chisq, 'hessian':estimator_hessian,
+                    'cov':np.linalg.inv(estimator_hessian)}
 
 
     def find_best_root(self, force_positive=True):
