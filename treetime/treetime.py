@@ -7,7 +7,7 @@ from scipy import optimize as sciopt
 from Bio import Phylo
 from treetime.version import tt_version as __version__
 
-rerooting_mechanisms = ["min_dev", "best", "residual", "chisq"]
+rerooting_mechanisms = ["min_dev", "best", "residual", "chisq", "res"]
 
 class TreeTime(ClockTree):
     """
@@ -335,7 +335,7 @@ class TreeTime(ClockTree):
         Treg.clock_plot(n_sigma=2, add_internal=add_internal, ax=ax, reg=self.clock_model)
 
 
-    def reroot(self,root='best'):
+    def reroot(self, root='best', force_positive=True):
         """
         Find best root and re-root the tree to the new root
 
@@ -345,24 +345,24 @@ class TreeTime(ClockTree):
          root : str
             Which method should be used to find the best root. Available methods are:
 
-            :code:`best`, `residual` - minimize squared residual of root-to-tip regression subject to positive slope
-
-            :code:`min_dev` - minimize squared residual of root-to-tip regression regardless of slope
-
-            :code:`rsq` - maximize correlationof root-to-tip distance and time
+            :code:`best`, `residual`, `chisq` - minimize squared residual or chisq of root-to-tip regression
 
             :code:`oldest` - choose the oldest node
 
             :code:`<node_name>` - reroot to the node with name :code:`<node_name>`
 
             :code:`[<node_name1>, <node_name2>, ...]` - reroot to the MRCA of these nodes
+
+          force_positive : bool
+            only consider positive rates when searching for the optimal root
         """
         self.logger("TreeTime.reroot: with method or node: %s"%root,1)
         for n in self.tree.find_clades():
             n.branch_length=n.mutation_length
 
         if root in rerooting_mechanisms:
-            new_root = self.reroot_to_best_root(criterium=root)
+            new_root = self.reroot_to_best_root(covariation=root in ["best", "chisq", "min_dev"],
+                                                force_positive=force_positive and (root!='min_dev'))
         else:
             from Bio import Phylo
             if isinstance(root,Phylo.BaseTree.Clade):
@@ -375,6 +375,9 @@ class TreeTime(ClockTree):
                 new_root = sorted([n for n in self.tree.get_terminals()
                                    if n.numdate_given is not None],
                                    key=lambda x:np.mean(x.numdate_given))[0]
+            else:
+                self.logger('TreeTime.reroot -- WARNING: unsupported rooting mechanisms or root not found',2,warn=True)
+                return ttconf.ERROR
 
             #this forces a bifurcating root, as we want. Branch lengths will be reoptimized anyway.
             #(Without outgroup_branch_length, gives a trifurcating root, but this will mean
@@ -654,7 +657,8 @@ class TreeTime(ClockTree):
 ### rerooting
 ###############################################################################
 
-    def reroot_to_best_root(self,infer_gtr = False, criterium='residual', **kwarks):
+    def reroot_to_best_root(self,infer_gtr = False, covariation=True,
+                            force_positive=True, **kwarks):
         '''
         Determine the node that, when the tree is rooted on this node, results
         in the best regression of temporal constraints and root to tip distances.
@@ -666,18 +670,17 @@ class TreeTime(ClockTree):
             If True, infer new GTR model after re-root
 
          criterium : str
-            Criterium used to reroot the tree. One of 'rsq', 'residual', 'min_dev'
+            Criterium used to reroot the tree. One of 'rsq', 'residual', 'chi_seq', min_dev'
+
+         force_positive : bool
+            only accept positive evolutionary rate estimates when rerooting the tree
 
         '''
-        if criterium not in rerooting_mechanisms:
-            self.logger('TreeTime.reroot -- WARNING: unsupported rooting mechanisms or root not found',2,warn=True)
-            return ttconf.ERROR
-
         for n in self.tree.find_clades():
             n.branch_length=n.mutation_length
         self.logger("TreeTime.reroot_to_best_root: searching for the best root position...",2)
-        Treg = self.setup_TreeRegression(covariation=criterium in ["best", "chisq", "min_dev"])
-        self.clock_model = Treg.optimal_reroot(force_positive=not criterium.startswith("min_dev"))
+        Treg = self.setup_TreeRegression(covariation=True)
+        self.clock_model = Treg.optimal_reroot(force_positive=force_positive)
 
         return self.clock_model['node']
 

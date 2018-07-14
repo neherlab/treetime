@@ -2,7 +2,7 @@ from __future__ import print_function, division, absolute_import
 import os, shutil
 import numpy as np
 import pandas as pd
-from treetime import TreeAnc, GTR
+from treetime import TreeAnc, GTR, TreeTime
 from treetime import config as ttconf
 from treetime import utils
 from Bio.SeqRecord import SeqRecord
@@ -11,11 +11,76 @@ from Bio.Align import MultipleSeqAlignment
 from Bio import Phylo, AlignIO
 from Bio import __version__ as bioversion
 
+def assure_tree(params, tmp_dir='treetime_tmp'):
+    if params.tree is None:
+        params.tree = os.path.basename(params.aln)+'.nwk'
+        print("No tree given: inferring tree")
+        utilstree_inference(params.aln, params.tree, tmp_dir = tmp_dir)
+
+    if os.path.isdir(tmp_dir):
+        shutil.rmtree(tmp_dir)
+
+    try:
+        tt = TreeAnc(params.tree)
+    except:
+        print("Tree loading/building failed.")
+        return 1
+    return 0
+
+def create_gtr(params):
+    model = params.gtr
+    gtr_params = params.gtr_params
+    if model == 'infer':
+        gtr = GTR.standard('jc')
+        infer_gtr = True
+    else:
+        try:
+            kwargs = {}
+            if gtr_params is not None:
+                for param in gtr_params:
+                    keyval = param.split('=')
+                    if len(keyval)!=2: continue
+                    if keyval[0] in ['pis', 'pi', 'Pi', 'Pis']:
+                        keyval[1] = map(float, keyval[1].split(','))
+                    elif keyval[0] not in ['alphabet']:
+                        keyval[1] = float(keyval[1])
+                    kwargs[keyval[0]] = keyval[1]
+            else:
+                print ("GTR params are not specified. Creating GTR model with default parameters")
+
+
+            gtr = GTR.standard(model, **kwargs)
+            infer_gtr = False
+        except:
+            print ("Could not create GTR model from input arguments. Using default (Jukes-Cantor 1969)")
+            gtr = GTR.standard('jc')
+            infer_gtr = False
+    return gtr
+
+def parse_dates(params):
+    dates = {}
+    if not os.path.isfile(params.dates):
+        print("\n ERROR: file %s does not exist, exiting..."%params.dates)
+        return dates
+    with open(params.dates) as date_file:
+        failed_dates = 0
+        for line in date_file:
+            try:
+                name, date = line.strip().split(',')[:2]
+                dates[name] = float(date)
+            except:
+                failed_dates+=1
+
+        if len(dates)<failed_dates:
+            print("\n\nDATE PARSING FAILED, ABORTING...")
+
+    return dates
+
 def scan_homoplasies(params):
     ###########################################################################
     ### CHECK FOR TREE, build if not in place
     ###########################################################################
-    if assure_tree(params.tree, tmp_dir='homoplasy_tmp'):
+    if assure_tree(params, tmp_dir='homoplasy_tmp'):
         return 1
 
     ###########################################################################
@@ -31,6 +96,7 @@ def scan_homoplasies(params):
     if treeanc.aln is None: # if alignment didn't load, exit
         sys.exit(1)
 
+    # FIXME: resetting one_mutation is no longer possible
     L = treeanc.aln.get_alignment_length() + params.const
     treeanc.one_mutation = 1.0/L
     N_seq = len(treeanc.aln)
@@ -57,7 +123,7 @@ def scan_homoplasies(params):
     ###########################################################################
     from collections import defaultdict
     from scipy.stats import poisson
-    offset = 0 if params["zero-based"] else 1
+    offset = 0 if params.zero_based else 1
 
     # construct dictionaries gathering mutations and positions
     mutations = defaultdict(list)
@@ -182,65 +248,21 @@ def timetree(params):
     ###########################################################################
     ### PARSING DATES
     ###########################################################################
-    if not os.path.isfile(params.dates):
-        print("\n ERROR: file %s does not exist, exiting..."%params.dates)
+    dates = parse_dates(params)
+    if len(dates)==0:
         return 1
-
-    with open(params.dates) as date_file:
-        dates = {}
-        for line in date_file:
-            try:
-                name, date = line.strip().split(',')[:2]
-                dates[name] = float(date)
-            except:
-                continue
-
 
     ###########################################################################
     ### CHECK FOR TREE, build if not in place
     ###########################################################################
-    if params.tree is None:
-        from treetime.utils import tree_inference
-        params.tree = os.path.basename(params.aln)+'.nwk'
-        print("No tree given: inferring tree")
-        tmp_dir = 'timetree_inference_tmp_files'
-        tree_inference(params.aln, params.tree, tmp_dir = tmp_dir)
-        if os.path.isdir(tmp_dir):
-            shutil.rmtree(tmp_dir)
-
+    if assure_tree(params, tmp_dir='timetree_tmp'):
+        return 1
 
     ###########################################################################
     ### GTR SET-UP
     ###########################################################################
-    model = params.gtr
-    gtr_params = params.gtr_params
-    if model == 'infer':
-        gtr = GTR.standard('jc')
-        infer_gtr = True
-    else:
-        try:
-            kwargs = {}
-            if gtr_params is not None:
-                for param in gtr_params:
-                    keyval = param.split('=')
-                    if len(keyval)!=2: continue
-                    if keyval[0] in ['pis', 'pi', 'Pi', 'Pis']:
-                        keyval[1] = map(float, keyval[1].split(','))
-                    elif keyval[0] not in ['alphabet']:
-                        keyval[1] = float(keyval[1])
-                    kwargs[keyval[0]] = keyval[1]
-            else:
-                print ("GTR params are not specified. Creating GTR model with default parameters")
-
-
-            gtr = GTR.standard(model, **kwargs)
-            infer_gtr = False
-        except:
-            print ("Could not create GTR model from input arguments. Using default (Jukes-Cantor 1969)")
-            gtr = GTR.standard('jc')
-            infer_gtr = False
-
-
+    gtr = create_gtr(params)
+    infer_gtr = params.gtr=='infer'
 
     ###########################################################################
     # PARSING OPTIONS
@@ -263,7 +285,7 @@ def timetree(params):
     success = myTree.run(root=params.reroot, relaxed_clock=params.relax,
                resolve_polytomies=(not params.keep_polytomies),
                Tc=Tc, max_iter=params.max_iter,
-               branch_lengths = 'joint' if params.optimize_branch_length else 'input')
+               branch_length_mode = params.branch_length_mode)
     if success==ttconf.ERROR: # if TreeTime.run failed, exit
         return 1
 
@@ -330,7 +352,7 @@ def ancestral_reconstruction(params):
     ###########################################################################
     ### CHECK FOR TREE, build if not in place
     ###########################################################################
-    if assure_tree(params.tree, tmp_dir='homoplasy_tmp'):
+    if assure_tree(params, tmp_dir='ancestral_tmp'):
         return 1
 
     ###########################################################################
@@ -341,19 +363,17 @@ def ancestral_reconstruction(params):
     ###########################################################################
     ### ANCESTRAL RECONSTRUCTION
     ###########################################################################
-    treeanc = TreeAnc(params.tree, aln=params.aln, gtr=gtr, verbose=4,
+    treeanc = TreeAnc(params.tree, aln=params.aln, gtr=gtr, verbose=1,
                       fill_overhangs=not params.keep_overhangs)
     ndiff =treeanc.infer_ancestral_sequences('ml', infer_gtr=params.gtr=='infer',
                                              marginal=params.marginal)
     if ndiff==ttconf.ERROR: # if reconstruction failed, exit
-        sys.exit(1)
+        return 1
 
     ###########################################################################
     ### OUTPUT and saving of results
     ###########################################################################
-
-    model = 'aa' if params.prot else 'Jukes-Cantor'
-    if infer_gtr:
+    if params.gtr=="infer":
         print('\nInferred GTR model:')
         print(treeanc.gtr)
 
@@ -501,50 +521,30 @@ def mugration(params):
     return 0
 
 def estimate_clock_model(params):
-    ###########################################################################
-    ### PARSING DATES
-    ###########################################################################
-    with open(params.dates) as date_file:
-        dates = {}
-        failed_dates = 0
-        for line in date_file:
-            try:
-                name, date = line.strip().split(',')[:2]
-                dates[name] = float(date)
-            except:
-                failed_dates+=1
-
-        if len(dates)<failed_dates:
-            print("\n\nDATE PARSING FAILED, ABORTING...")
-            import sys
-            return 1
-
-
-    ###########################################################################
-    ### FAKING ALIGMENT TO APPEASE TREETIME
-    ###########################################################################
-    from Bio import Seq, SeqRecord, Align
-    aln = Align.MultipleSeqAlignment([SeqRecord.SeqRecord(Seq.Seq("AAAA"), id=node, name=node)
-                                    for node in dates])
-
+    if assure_tree(params, tmp_dir='clock_model_tmp'):
+        return 1
+    dates = parse_dates(params)
+    if len(dates)==0:
+        return 1
 
     ###########################################################################
     ### ESTIMATE ROOT (if requested) AND DETERMINE TEMPORAL SIGNAL
     ###########################################################################
     base_name = '.'.join(params.tree.split('/')[-1].split('.')[:-1])
-    myTree = TreeTime(dates=dates, tree=params.tree, aln=aln, gtr='JC69',
+    myTree = TreeTime(dates=dates, tree=params.tree, aln=params.aln, gtr='JC69',
                       verbose=params.verbose, seq_len=params.sequence_length)
     if myTree.tree is None:
         print("ERROR: tree loading failed. exiting...")
         return 1
 
     if not params.keep_root:
-        myTree.reroot('best')
+        # reroot to optimal root, this assigns clock_model to myTree
+        myTree.reroot(params.reroot, force_positive=not params.allow_negative_rate)
     else:
-        Treg = myTree.setup_TreeRegression(covariation=False)
+        Treg = myTree.setup_TreeRegression(covariation=True)
         myTree.clock_model = Treg.regression()
 
-    d2d = DateConversion.from_regression(myTree.clock_model)
+    d2d = utils.DateConversion.from_regression(myTree.clock_model)
     print('\n',d2d)
     print('The R^2 value indicates the fraction of variation in'
           '\nroot-to-tip distance explained by the sampling times.'
