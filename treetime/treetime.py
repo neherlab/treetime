@@ -329,8 +329,11 @@ class TreeTime(ClockTree):
             Keyword arguments to be passed to :py:meth:`matplotlib.pyplot.scatter` function
 
         """
-        Treg = self.setup_TreeRegression(covariation=True)
-        cf = self.clock_model['covariation'] is True
+        Treg = self.setup_TreeRegression()
+        if self.clock_model:
+            cf = self.clock_model['covariation'] is True
+        else:
+            cf = False
         Treg.clock_plot(n_sigma=2, add_internal=add_internal, ax=ax, confidence=cf, reg=self.clock_model)
 
 

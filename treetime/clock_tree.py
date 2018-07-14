@@ -230,6 +230,7 @@ class ClockTree(TreeAnc):
 
         Treg = self.setup_TreeRegression(covariation=True)
         self.clock_model = Treg.regression(slope=clock_rate)
+        self.clock_model['covariation'] = True
         self.date2dist = utils.DateConversion.from_regression(self.clock_model)
 
         # make node distribution objects
