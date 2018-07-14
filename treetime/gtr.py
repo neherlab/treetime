@@ -2,9 +2,8 @@ from __future__ import division, print_function, absolute_import
 from collections import defaultdict
 import numpy as np
 from treetime import config as ttconf
-from treetime.seq_utils import alphabets, profile_maps, alphabet_synonyms
-from treetime.aa_models  import JTT92
-from treetime.nuc_models import JC69, K80, F81, HKY85, T92, TN93
+from .seq_utils import alphabets, profile_maps, alphabet_synonyms
+from .aa_models  import JTT92
 
 
 class GTR(object):
@@ -334,6 +333,7 @@ class GTR(object):
                 (kappa1, kappa2) are specified relative to this rate
 
         """
+        from .nuc_models import JC69, K80, F81, HKY85, T92, TN93
 
         if model.lower() in ['jc', 'jc69', 'jukes-cantor', 'jukes-cantor69', 'jukescantor', 'jukescantor69']:
             return JC69(**kwargs)

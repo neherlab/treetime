@@ -7,7 +7,7 @@ from setuptools import setup
 
 setup(
         name = "treetime",
-        version = "0.4.1",
+        version = "0.5.0",
         author = "Pavel Sagulenko and Richard Neher",
         author_email = "richard.neher@unibas.ch",
         description = ("Maximum-likelihood phylodynamic inference"),

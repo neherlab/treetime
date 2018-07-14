@@ -2,9 +2,9 @@ from __future__ import print_function, division, absolute_import
 import numpy as np
 from scipy import optimize as sciopt
 from Bio import Phylo
-from treetime.clock_tree import ClockTree
-from treetime import utils as ttutils
 from treetime import config as ttconf
+from .utils import tree_layout
+from .clock_tree import ClockTree
 
 rerooting_mechanisms = ["min_dev", "best", "residual", "chisq", "res"]
 
@@ -157,7 +157,7 @@ class TreeTime(ClockTree):
             self.logger("###TreeTime.run: ITERATION %d out of %d iterations"%(niter+1,max_iter),0)
             # add coalescent prior
             if Tc and (Tc is not None):
-                from treetime.merger_models import Coalescent
+                from .merger_models import Coalescent
                 self.logger('TreeTime.run: adding coalescent prior with Tc='+str(Tc),1)
                 self.merger_model = Coalescent(self.tree, Tc=avg_root_to_tip,
                                                date2dist=self.date2dist, logger=self.logger)
@@ -463,7 +463,7 @@ class TreeTime(ClockTree):
         introduction of the new branch with zero optimal length.
         """
 
-        from treetime.branch_len_interpolator import BranchLenInterpolator
+        from .branch_len_interpolator import BranchLenInterpolator
 
         zero_branch_slope = self.gtr.mu*self.seq_len
 
@@ -757,7 +757,7 @@ def plot_vs_years(tt, years = 1, ax=None, confidence=None, ticks=True, **kwargs)
 
     # add confidence intervals to the tree graph -- grey bars
     if confidence:
-        ttutils.tree_layout(tt.tree)
+        tree_layout(tt.tree)
         if not hasattr(tt.tree.root, "marginal_inverse_cdf"):
             print("marginal time tree reconstruction required for confidence intervals")
             return ttconf.ERROR

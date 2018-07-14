@@ -310,8 +310,8 @@ def timetree(params):
     base_name = '.'.join(params.aln.split('/')[-1].split('.')[:-1])
     # plot
     if params.plot:
-        from treetime.treetime import plot_vs_years
         import matplotlib.pyplot as plt
+        from .treetime import plot_vs_years
         plt.ion()
         leaf_count = myTree.tree.count_terminals()
         label_func = lambda x: x.name[:20] if (leaf_count<30 & x.is_terminal()) else ''

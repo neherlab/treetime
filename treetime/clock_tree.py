@@ -2,10 +2,10 @@ from __future__ import print_function, division, absolute_import
 from treetime import utils
 import numpy as np
 from treetime import config as ttconf
-from treetime.treeanc import TreeAnc
-from treetime.distribution import Distribution
-from treetime.branch_len_interpolator import BranchLenInterpolator
-from treetime.node_interpolator import NodeInterpolator
+from .treeanc import TreeAnc
+from .distribution import Distribution
+from .branch_len_interpolator import BranchLenInterpolator
+from .node_interpolator import NodeInterpolator
 
 class ClockTree(TreeAnc):
     """

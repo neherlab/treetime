@@ -1,7 +1,7 @@
 from __future__ import print_function, division, absolute_import
 import numpy as np
 from treetime import config as ttconf
-from treetime.distribution import Distribution
+from .distribution import Distribution
 
 class BranchLenInterpolator (Distribution):
     """

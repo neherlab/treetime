@@ -5,7 +5,7 @@ import numpy as np
 from Bio import Phylo
 from Bio import AlignIO
 from treetime import config as ttconf
-from treetime import seq_utils as seq_utils
+from .seq_utils import seq2prof,seq2array,prof2seq
 from .gtr import GTR
 from .version import tt_version as __version__
 
@@ -380,7 +380,7 @@ class TreeAnc(object):
             dic_aln = self.aln
         else:
             # if full alignment is specified
-            dic_aln = {k.name: seq_utils.seq2array(k.seq, fill_overhangs=self.fill_overhangs,
+            dic_aln = {k.name: seq2array(k.seq, fill_overhangs=self.fill_overhangs,
                                                    ambiguous_character=self.gtr.ambiguous)
                                 for k in self.aln} #
 
@@ -1029,7 +1029,7 @@ class TreeAnc(object):
                     node.sequence = self.expanded_sequence(node)
                 node.mutations = self.get_mutations(node)
 
-            node.profile = seq_utils.seq2prof(node.cseq, self.gtr.profile_map)
+            node.profile = seq2prof(node.cseq, self.gtr.profile_map)
             del node.state # no need to store Fitch states
         self.logger("Done ancestral state reconstruction",3)
         for node in self.tree.get_terminals():
@@ -1107,7 +1107,7 @@ class TreeAnc(object):
 
             if node.up is None: #  root node
                 # 0-1 profile
-                profile = seq_utils.seq2prof(node.cseq, self.gtr.profile_map)
+                profile = seq2prof(node.cseq, self.gtr.profile_map)
                 # get the probabilities to observe each nucleotide
                 profile *= self.gtr.Pi
                 profile = profile.sum(axis=1)
@@ -1172,7 +1172,7 @@ class TreeAnc(object):
         #  set the leaves profiles
         for leaf in tree.get_terminals():
             # in any case, set the profile
-            leaf.marginal_subtree_LH = seq_utils.seq2prof(leaf.original_cseq, self.gtr.profile_map)
+            leaf.marginal_subtree_LH = seq2prof(leaf.original_cseq, self.gtr.profile_map)
             leaf.marginal_subtree_LH_prefactor = np.zeros(L)
 
         # propagate leaves --> root, set the marginal-likelihood messages
@@ -1210,7 +1210,7 @@ class TreeAnc(object):
             root_sample_from_profile = sample_from_profile
             other_sample_from_profile = sample_from_profile
 
-        seq, prof_vals, idxs = seq_utils.prof2seq(tree.root.marginal_profile,
+        seq, prof_vals, idxs = prof2seq(tree.root.marginal_profile,
                                                   self.gtr, sample_from_prof=root_sample_from_profile)
 
         self.tree.sequence_LH = np.log(prof_vals) + marginal_LH_prefactor
@@ -1246,7 +1246,7 @@ class TreeAnc(object):
             node.marginal_profile=(node.marginal_profile.T/norm_vector).T
 
             # choose sequence based maximal marginal LH.
-            seq, prof_vals, idxs = seq_utils.prof2seq(node.marginal_profile, self.gtr,
+            seq, prof_vals, idxs = prof2seq(node.marginal_profile, self.gtr,
                                                       sample_from_prof=other_sample_from_profile)
 
             if hasattr(node, 'cseq') and node.cseq is not None:
@@ -1328,7 +1328,7 @@ class TreeAnc(object):
 
             if node.is_terminal():
                 try:
-                    msg_from_children = np.log(np.maximum(seq_utils.seq2prof(node.original_cseq, self.gtr.profile_map), ttconf.TINY_NUMBER))
+                    msg_from_children = np.log(np.maximum(seq2prof(node.original_cseq, self.gtr.profile_map), ttconf.TINY_NUMBER))
                 except:
                     raise ValueError("sequence assignment to node "+node.name+" failed")
                 msg_from_children[np.isnan(msg_from_children) | np.isinf(msg_from_children)] = -ttconf.BIG_NUMBER
@@ -1362,7 +1362,7 @@ class TreeAnc(object):
         elif isinstance(sample_from_profile, bool):
             root_sample_from_profile = sample_from_profile
 
-        seq, anc_lh_vals, idxs = seq_utils.prof2seq(np.exp(normalized_profile),
+        seq, anc_lh_vals, idxs = prof2seq(np.exp(normalized_profile),
                                     self.gtr, sample_from_prof = root_sample_from_profile)
 
         # compute the likelihood of the most probable root sequence
