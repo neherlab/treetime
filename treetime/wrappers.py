@@ -10,6 +10,7 @@ from Bio import __version__ as bioversion
 from treetime import TreeAnc, GTR, TreeTime
 from treetime import config as ttconf
 from treetime import utils
+from treetime.vcf_utils import read_vcf, write_vcf
 
 def assure_tree(params, tmp_dir='treetime_tmp'):
     """
@@ -47,13 +48,13 @@ def create_gtr(params):
                     keyval = param.split('=')
                     if len(keyval)!=2: continue
                     if keyval[0] in ['pis', 'pi', 'Pi', 'Pis']:
-                        keyval[1] = map(float, keyval[1].split(','))
+                        keyval[0] = 'pi'
+                        keyval[1] = list(map(float, keyval[1].split(',')))
                     elif keyval[0] not in ['alphabet']:
                         keyval[1] = float(keyval[1])
                     kwargs[keyval[0]] = keyval[1]
             else:
                 print ("GTR params are not specified. Creating GTR model with default parameters")
-
 
             gtr = GTR.standard(model, **kwargs)
             infer_gtr = False
@@ -85,6 +86,30 @@ def parse_dates(params):
             print("\n\nDATE PARSING FAILED, ABORTING...")
 
     return dates
+
+def read_if_vcf(params):
+    """
+    Checks if input is VCF and reads in appropriately if it is
+    """
+    ref = None
+    aln = params.aln
+    fixed_pi = None
+    if any([params.aln.lower().endswith(x) for x in ['.vcf', '.vcf.gz']]):
+        if not params.vcf_reference:
+            print("ERROR: a reference Fasta is required with VCF-format alignments")
+            return -1
+        compress_seq = read_vcf(params.aln, params.vcf_reference)
+        sequences = compress_seq['sequences']
+        ref = compress_seq['reference']
+        aln = sequences
+
+        if params.gtr=="infer": #if not specified, set it:
+            fixed_pi = [ref.count(base)/len(ref) for base in ['A','C','G','T','-']]
+            if fixed_pi[-1] == 0:
+                fixed_pi[-1] = 0.05
+                fixed_pi = [v-0.01 for v in fixed_pi]
+
+    return aln, ref, fixed_pi
 
 def scan_homoplasies(params):
     """
@@ -278,16 +303,24 @@ def timetree(params):
             Tc = None
 
     ###########################################################################
+    ### READ IN VCF
+    ###########################################################################
+    #sets ref and fixed_pi to None if not VCF
+    aln, ref, fixed_pi = read_if_vcf(params)
+    is_vcf = True if ref is not None else False
+
+    ###########################################################################
     ### SET-UP and RUN
     ###########################################################################
-    myTree = TreeTime(dates=dates, tree=params.tree,
-                       aln=params.aln, gtr=gtr, verbose=params.verbose)
+    myTree = TreeTime(dates=dates, tree=params.tree, ref=ref,
+                       aln=aln, gtr=gtr, verbose=params.verbose)
     root = None if params.keep_root else params.reroot
     success = myTree.run(root=root, relaxed_clock=params.relax,
                resolve_polytomies=(not params.keep_polytomies),
                Tc=Tc, max_iter=params.max_iter,
                fixed_clock_rate=params.clock_rate,
-               branch_length_mode = params.branch_length_mode)
+               branch_length_mode = params.branch_length_mode,
+               fixed_pi=fixed_pi)
     if success==ttconf.ERROR: # if TreeTime.run failed, exit
         return 1
 
@@ -325,8 +358,12 @@ def timetree(params):
         myTree.branch_length_to_years()
 
     # decorate tree with inferred mutations
-    outaln_name = base_name+'_ancestral.fasta'
-    AlignIO.write(myTree.get_reconstructed_alignment(), outaln_name, 'fasta')
+    if is_vcf:
+        outaln_name = base_name+'_ancestral.vcf'
+        write_vcf(myTree.get_tree_dict(keep_var_ambigs=True), outaln_name)
+    else:
+        outaln_name = base_name+'_ancestral.fasta'
+        AlignIO.write(myTree.get_reconstructed_alignment(), outaln_name, 'fasta')
     print("--- alignment including ancestral nodes saved as  \n\t %s\n"%outaln_name)
 
     terminal_count = 0

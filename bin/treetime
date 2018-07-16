@@ -90,7 +90,7 @@ def add_reroot_group(parser):
 
 def add_gtr_arguments(parser):
     parser.add_argument('--gtr', default='infer', help=gtr_description)
-    parser.add_argument('--gtr-params', help=gtr_params_description)
+    parser.add_argument('--gtr-params', nargs='+', help=gtr_params_description)
 
 
 if __name__ == '__main__':
@@ -123,6 +123,7 @@ if __name__ == '__main__':
                           help=coalescent_description)
     t_parser.add_argument('--plot', default=False, action='store_true',
                           help='plot the tree on a time axis and save as pdf')
+    t_parser.add_argument('--vcf-reference', type=str, help='fasta file of the sequence the VCF was mapped to')
 
     t_parser.set_defaults(func=timetree)
 
