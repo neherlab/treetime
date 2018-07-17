@@ -151,6 +151,7 @@ if __name__ == '__main__':
     a_parser.add_argument('--zero-based', default = False, action='store_true', help='zero based mutation indexing')
     a_parser.add_argument('--keep-overhangs', default = False, action='store_true', help='do not fill terminal gaps')
     a_parser.add_argument('--verbose', default = 1, type=int, help='verbosity of output 0-6')
+    a_parser.add_argument('--vcf-reference', type=str, help='fasta file of the sequence the VCF was mapped to')
     a_parser.set_defaults(func=ancestral_reconstruction)
 
     ## MUGRATION

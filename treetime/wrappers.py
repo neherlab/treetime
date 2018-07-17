@@ -398,7 +398,14 @@ def ancestral_reconstruction(params):
 
     gtr = create_gtr(params)
 
-    treeanc = TreeAnc(params.tree, aln=params.aln, gtr=gtr, verbose=1,
+    ###########################################################################
+    ### READ IN VCF
+    ###########################################################################
+    #sets ref and fixed_pi to None if not VCF
+    aln, ref, fixed_pi = read_if_vcf(params)
+    is_vcf = True if ref is not None else False
+
+    treeanc = TreeAnc(params.tree, aln=aln, ref=ref, gtr=gtr, verbose=1,
                       fill_overhangs=not params.keep_overhangs)
     ndiff =treeanc.infer_ancestral_sequences('ml', infer_gtr=params.gtr=='infer',
                                              marginal=params.marginal)
@@ -412,8 +419,12 @@ def ancestral_reconstruction(params):
         print('\nInferred GTR model:')
         print(treeanc.gtr)
 
-    outaln_name = '.'.join(params.aln.split('/')[-1].split('.')[:-1])+'_ancestral.fasta'
-    AlignIO.write(treeanc.get_reconstructed_alignment(), outaln_name, 'fasta')
+    if is_vcf:
+        outaln_name = '.'.join(params.aln.split('/')[-1].split('.')[:-1])+'_ancestral.vcf'
+        write_vcf(treeanc.get_tree_dict(keep_var_ambigs=True), outaln_name)
+    else:
+        outaln_name = '.'.join(params.aln.split('/')[-1].split('.')[:-1])+'_ancestral.fasta'
+        AlignIO.write(treeanc.get_reconstructed_alignment(), outaln_name, 'fasta')
     print("--- alignment including ancestral nodes saved as  \n\t %s\n"%outaln_name)
 
     # decorate tree with inferred mutations
