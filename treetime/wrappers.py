@@ -103,7 +103,7 @@ def read_if_vcf(params):
         ref = compress_seq['reference']
         aln = sequences
 
-        if params.gtr=="infer": #if not specified, set it:
+        if not hasattr(params, 'gtr') or params.gtr=="infer": #if not specified, set it:
             fixed_pi = [ref.count(base)/len(ref) for base in ['A','C','G','T','-']]
             if fixed_pi[-1] == 0:
                 fixed_pi[-1] = 0.05
@@ -582,11 +582,19 @@ def estimate_clock_model(params):
         return 1
 
     ###########################################################################
+    ### READ IN VCF
+    ###########################################################################
+    #sets ref and fixed_pi to None if not VCF
+    aln, ref, fixed_pi = read_if_vcf(params)
+    is_vcf = True if ref is not None else False
+
+    ###########################################################################
     ### ESTIMATE ROOT (if requested) AND DETERMINE TEMPORAL SIGNAL
     ###########################################################################
     base_name = '.'.join(params.tree.split('/')[-1].split('.')[:-1])
-    myTree = TreeTime(dates=dates, tree=params.tree, aln=params.aln, gtr='JC69',
-                      verbose=params.verbose, seq_len=params.sequence_length)
+    myTree = TreeTime(dates=dates, tree=params.tree, aln=aln, gtr='JC69',
+                      verbose=params.verbose, seq_len=params.sequence_length,
+                      ref=ref)
     if myTree.tree is None:
         print("ERROR: tree loading failed. exiting...")
         return 1

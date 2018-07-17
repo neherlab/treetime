@@ -198,6 +198,7 @@ if __name__ == '__main__':
                                 " (choices pdf, png, svg, default=pdf)")
     c_parser.add_argument('--verbose', default = 0, type=int,
                         help='verbosity of output 0-6')
+    c_parser.add_argument('--vcf-reference', type=str, help='fasta file of the sequence the VCF was mapped to')
     c_parser.set_defaults(func=estimate_clock_model)
 
     ## call the relevant function and return
