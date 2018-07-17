@@ -123,20 +123,21 @@ def read_if_vcf(params):
     ref = None
     aln = params.aln
     fixed_pi = None
-    if any([params.aln.lower().endswith(x) for x in ['.vcf', '.vcf.gz']]):
-        if not params.vcf_reference:
-            print("ERROR: a reference Fasta is required with VCF-format alignments")
-            return -1
-        compress_seq = read_vcf(params.aln, params.vcf_reference)
-        sequences = compress_seq['sequences']
-        ref = compress_seq['reference']
-        aln = sequences
+    if hasattr(params, 'aln') and params.aln is not None:
+        if any([params.aln.lower().endswith(x) for x in ['.vcf', '.vcf.gz']]):
+            if not params.vcf_reference:
+                print("ERROR: a reference Fasta is required with VCF-format alignments")
+                return -1
+            compress_seq = read_vcf(params.aln, params.vcf_reference)
+            sequences = compress_seq['sequences']
+            ref = compress_seq['reference']
+            aln = sequences
 
-        if not hasattr(params, 'gtr') or params.gtr=="infer": #if not specified, set it:
-            fixed_pi = [ref.count(base)/len(ref) for base in ['A','C','G','T','-']]
-            if fixed_pi[-1] == 0:
-                fixed_pi[-1] = 0.05
-                fixed_pi = [v-0.01 for v in fixed_pi]
+            if not hasattr(params, 'gtr') or params.gtr=="infer": #if not specified, set it:
+                fixed_pi = [ref.count(base)/len(ref) for base in ['A','C','G','T','-']]
+                if fixed_pi[-1] == 0:
+                    fixed_pi[-1] = 0.05
+                    fixed_pi = [v-0.01 for v in fixed_pi]
 
     return aln, ref, fixed_pi
 
