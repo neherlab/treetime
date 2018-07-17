@@ -64,6 +64,35 @@ def create_gtr(params):
             infer_gtr = False
     return gtr
 
+def read_in_DRMs(drm_file, offset):
+    import pandas as pd
+
+    DRMs = {}
+    drmPositions = []
+
+    df = pd.read_csv(drm_file, sep='\t')
+    for mi, m in df.iterrows():
+        pos = m.GENOMIC_POSITION-1+offset #put in correct numbering
+        drmPositions.append(pos)
+
+        if pos in DRMs:
+            DRMs[pos]['alt_base'][m.ALT_BASE] = m.SUBSTITUTION
+        else:
+            DRMs[pos] = {}
+            DRMs[pos]['drug'] = m.DRUG
+            DRMs[pos]['alt_base'] = {}
+            DRMs[pos]['alt_base'][m.ALT_BASE] = m.SUBSTITUTION
+            DRMs[pos]['gene'] = m.GENE
+
+    drmPositions = np.array(drmPositions)
+    drmPositions = np.unique(drmPositions)
+    drmPositions = np.sort(drmPositions)
+
+    DRM_info = {'DRMs': DRMs,
+            'drmPositions': drmPositions}
+
+    return DRM_info
+
 def parse_dates(params):
     """
     parse dates from the arguments and return a dictionary mapping
@@ -121,15 +150,25 @@ def scan_homoplasies(params):
     gtr = create_gtr(params)
 
     ###########################################################################
+    ### READ IN VCF
+    ###########################################################################
+    #sets ref and fixed_pi to None if not VCF
+    aln, ref, fixed_pi = read_if_vcf(params)
+    is_vcf = True if ref is not None else False
+
+    ###########################################################################
     ### ANCESTRAL RECONSTRUCTION
     ###########################################################################
-    treeanc = TreeAnc(params.tree, aln=params.aln, gtr=gtr, verbose=1,
+    treeanc = TreeAnc(params.tree, aln=aln, ref=ref, gtr=gtr, verbose=1,
                       fill_overhangs=True)
     if treeanc.aln is None: # if alignment didn't load, exit
         return 1
 
     # FIXME: resetting one_mutation is no longer possible
-    L = treeanc.aln.get_alignment_length() + params.const
+    if is_vcf:
+        L = len(ref) + params.const
+    else:
+        L = treeanc.aln.get_alignment_length() + params.const
     treeanc.one_mutation = 1.0/L
     N_seq = len(treeanc.aln)
     N_tree = treeanc.tree.count_terminals()
@@ -143,12 +182,15 @@ def scan_homoplasies(params):
     print("\ninferring ancestral sequences...")
 
     ndiff = treeanc.infer_ancestral_sequences('ml', infer_gtr=params.gtr=='infer',
-                                      marginal=False)
+                                      marginal=False, fixed_pi=fixed_pi)
     print("...done.")
     if ndiff==ttconf.ERROR: # if reconstruction failed, exit
         return 1
     else:
         print("...done.")
+
+    if is_vcf:
+        treeanc.recover_var_ambigs()
 
     ###########################################################################
     ### analysis of reconstruction
@@ -156,6 +198,10 @@ def scan_homoplasies(params):
     from collections import defaultdict
     from scipy.stats import poisson
     offset = 0 if params.zero_based else 1
+
+    if params.drms:
+        DRM_info = read_in_DRMs(params.drms, offset)
+        drms = DRM_info['DRMs']
 
     # construct dictionaries gathering mutations and positions
     mutations = defaultdict(list)
@@ -167,20 +213,21 @@ def scan_homoplasies(params):
 
         if len(n.mutations):
             for (a,pos, d) in n.mutations:
-                if '-' not in [a,d]:
+                if '-' not in [a,d] and 'N' not in [a,d]:
                     mutations[(a,pos+offset,d)].append(n)
                     positions[pos+offset].append(n)
             if n.is_terminal():
                 for (a,pos, d) in n.mutations:
-                    if '-' not in [a,d]:
+                    if '-' not in [a,d] and 'N' not in [a,d]:
                         terminal_mutations[(a,pos+offset,d)].append(n)
 
     # gather homoplasic mutations by strain
     mutation_by_strain = defaultdict(list)
     for n in treeanc.tree.get_terminals():
         for a,pos,d in n.mutations:
-            if pos in positions and len(positions[pos])>1:
-                mutation_by_strain[n.name].append([(a,pos+offset,d), len(positions[pos])])
+            if pos+offset in positions and len(positions[pos+offset])>1:
+                if 'N' not in [a,d]:
+                    mutation_by_strain[n.name].append([(a,pos+offset,d), len(positions[pos])])
 
 
     # total_branch_length is the expected number of substitutions
@@ -239,34 +286,62 @@ def scan_homoplasies(params):
     ###########################################################################
     ### Output the mutations that are observed most often
     ###########################################################################
-    print("\n\nThe ten most homoplasic mutations are:\n\tmut\tmultiplicity")
-    mutations_sorted = sorted(mutations.items(), key=lambda x:len(x[1])-0.1*x[0][1]/L, reverse=True)
-    for mut, val in mutations_sorted[:params.n]:
-        if len(val)>1:
-            print("\t%s%d%s\t%d"%(mut[0], mut[1], mut[2], len(val)))
-        else:
-            break
-
-    # optional output specifically for mutations on terminal branches
-    if params.detailed:
-        print("\n\nThe ten most homoplasic mutation on terminal branches are:\n\tmut\tmultiplicity")
-        terminal_mutations_sorted = sorted(terminal_mutations.items(), key=lambda x:len(x[1])-0.1*x[0][1]/L, reverse=True)
-        for mut, val in terminal_mutations_sorted[:params.n]:
+    if params.drms:
+        print("\n\nThe ten most homoplasic mutations are:\n\tmut\tmultiplicity\tDRM details (gene drug AAmut)")
+        mutations_sorted = sorted(mutations.items(), key=lambda x:len(x[1])-0.1*x[0][1]/L, reverse=True)
+        for mut, val in mutations_sorted[:params.n]:
+            if len(val)>1:
+                print("\t%s%d%s\t%d\t%s"%(mut[0], mut[1], mut[2], len(val),
+                    " ".join([drms[mut[1]]['gene'], drms[mut[1]]['drug'], drms[mut[1]]['alt_base'][mut[2]]]) if mut[1] in drms else ""))
+            else:
+                break
+    else:
+        print("\n\nThe ten most homoplasic mutations are:\n\tmut\tmultiplicity")
+        mutations_sorted = sorted(mutations.items(), key=lambda x:len(x[1])-0.1*x[0][1]/L, reverse=True)
+        for mut, val in mutations_sorted[:params.n]:
             if len(val)>1:
                 print("\t%s%d%s\t%d"%(mut[0], mut[1], mut[2], len(val)))
             else:
                 break
+
+    # optional output specifically for mutations on terminal branches
+    if params.detailed:
+        if params.drms:
+            print("\n\nThe ten most homoplasic mutation on terminal branches are:\n\tmut\tmultiplicity\tDRM details (gene drug AAmut)")
+            terminal_mutations_sorted = sorted(terminal_mutations.items(), key=lambda x:len(x[1])-0.1*x[0][1]/L, reverse=True)
+            for mut, val in terminal_mutations_sorted[:params.n]:
+                if len(val)>1:
+                    print("\t%s%d%s\t%d\t%s"%(mut[0], mut[1], mut[2], len(val),
+                        " ".join([drms[mut[1]]['gene'], drms[mut[1]]['drug'], drms[mut[1]]['alt_base'][mut[2]]]) if mut[1] in drms else ""))
+                else:
+                    break
+        else:
+            print("\n\nThe ten most homoplasic mutation on terminal branches are:\n\tmut\tmultiplicity")
+            terminal_mutations_sorted = sorted(terminal_mutations.items(), key=lambda x:len(x[1])-0.1*x[0][1]/L, reverse=True)
+            for mut, val in terminal_mutations_sorted[:params.n]:
+                if len(val)>1:
+                    print("\t%s%d%s\t%d"%(mut[0], mut[1], mut[2], len(val)))
+                else:
+                    break
 
     ###########################################################################
     ### Output strains that have many homoplasic mutations
     ###########################################################################
     # TODO: add statistical criterion
     if params.detailed:
-        print("\n\nTaxons that carry positions that mutated elsewhere in the tree:\n\ttaxon name\t#of homoplasic mutations")
-        mutation_by_strain_sorted = sorted(mutation_by_strain.items(), key=lambda x:len(x[1]), reverse=True)
-        for name, val in mutation_by_strain_sorted[:params.n]:
-            if len(val):
-                print("\t%s\t%d"%(name, len(val)))
+        if params.drms:
+            print("\n\nTaxons that carry positions that mutated elsewhere in the tree:\n\ttaxon name\t#of homoplasic mutations\t# DRM")
+            mutation_by_strain_sorted = sorted(mutation_by_strain.items(), key=lambda x:len(x[1]), reverse=True)
+            for name, val in mutation_by_strain_sorted[:params.n]:
+                if len(val):
+                    print("\t%s\t%d\t%d"%(name, len(val),
+                        len([mut for mut,l in val if mut[1] in drms])))
+        else:
+            print("\n\nTaxons that carry positions that mutated elsewhere in the tree:\n\ttaxon name\t#of homoplasic mutations")
+            mutation_by_strain_sorted = sorted(mutation_by_strain.items(), key=lambda x:len(x[1]), reverse=True)
+            for name, val in mutation_by_strain_sorted[:params.n]:
+                if len(val):
+                    print("\t%s\t%d"%(name, len(val)))
 
 
     return 0
@@ -363,6 +438,7 @@ def timetree(params):
 
     # decorate tree with inferred mutations
     if is_vcf:
+        myTree.recover_var_ambigs()
         outaln_name = base_name+'_ancestral.vcf'
         write_vcf(myTree.get_tree_dict(keep_var_ambigs=True), outaln_name)
     else:
@@ -412,7 +488,7 @@ def ancestral_reconstruction(params):
     treeanc = TreeAnc(params.tree, aln=aln, ref=ref, gtr=gtr, verbose=1,
                       fill_overhangs=not params.keep_overhangs)
     ndiff =treeanc.infer_ancestral_sequences('ml', infer_gtr=params.gtr=='infer',
-                                             marginal=params.marginal)
+                                             marginal=params.marginal, fixed_pi=fixed_pi)
     if ndiff==ttconf.ERROR: # if reconstruction failed, exit
         return 1
 
@@ -424,6 +500,7 @@ def ancestral_reconstruction(params):
         print(treeanc.gtr)
 
     if is_vcf:
+        treeanc.recover_var_ambigs()
         outaln_name = '.'.join(params.aln.split('/')[-1].split('.')[:-1])+'_ancestral.vcf'
         write_vcf(treeanc.get_tree_dict(keep_var_ambigs=True), outaln_name)
     else:

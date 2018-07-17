@@ -140,6 +140,8 @@ if __name__ == '__main__':
     h_parser.add_argument('--zero-based', default = False, action='store_true', help='zero based mutation indexing')
     h_parser.add_argument('-n', default = 10, type=int, help='number of mutations/nodes that are printed to screen')
     h_parser.add_argument('--verbose', default = 1, type=int, help='verbosity of output 0-6')
+    h_parser.add_argument('--vcf-reference', type=str, help='fasta file of the sequence the VCF was mapped to')
+    h_parser.add_argument('--drms', type=str, help='TSV file containing DRM info. columns headers: GENOMIC_POSITION, ALT_BASE, DRUG, GENE, SUBSTITUTION')
     h_parser.set_defaults(func=scan_homoplasies)
 
     ## ANCESTRAL RECONSTRUCTION
