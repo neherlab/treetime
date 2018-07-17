@@ -495,14 +495,15 @@ def write_vcf(tree_dict, file_name):#, compress=False):
         print ( "Sites that were constant except for ambiguous bases were made constant by TreeTime. This happened {} times. These sites are now excluded from the VCF.".format(explainedErrors))
 
     if len(errorPositions) != 0:
-        print ("\n***UNEXPECTED ERROR!! util.py: write_VCF_style_alignment"
+        print ("\n***WARNING: vcf_utils.py"
             "\n{} sites were found that had no alternative bases. If this data has been "
             "run through TreeTime and contains ambiguous bases, try calling get_tree_dict with "
             "var_ambigs=True to see if this clears the error."
-            "\nIf it does not, or if the data hasn't come from TreeTime, something unexpected "
-            "is happening and you should debug. In TreeTime, this can be caused by overwriting "
-            "variants in tips with small branch lengths."
-            "\nThese are the positions affected (numbering starts at 0):".format(str(len(errorPositions))))
+            "\n\nAlternative causes:"
+            "\n- Not all sequences in your alignment are in the tree (if you are running TreeTime via commandline "
+            "this is most likely)"
+            "\n- In TreeTime, can be caused by overwriting variants in tips with small branch lengths (debug)"
+            "\n\nThese are the positions affected (numbering starts at 0):".format(str(len(errorPositions))))
         print (",".join(errorPositions))
 
     with open(file_name, 'a') as the_file:
