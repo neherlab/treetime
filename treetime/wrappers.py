@@ -308,6 +308,10 @@ def timetree(params):
     #sets ref and fixed_pi to None if not VCF
     aln, ref, fixed_pi = read_if_vcf(params)
     is_vcf = True if ref is not None else False
+    branch_length_mode = params.branch_length_mode
+    if is_vcf: #variable-site-only trees can have big branch lengths, setting this wrong.
+        if branch_length_mode == 'auto':
+            branch_length_mode = 'joint'
 
     ###########################################################################
     ### SET-UP and RUN
@@ -319,7 +323,7 @@ def timetree(params):
                resolve_polytomies=(not params.keep_polytomies),
                Tc=Tc, max_iter=params.max_iter,
                fixed_clock_rate=params.clock_rate,
-               branch_length_mode = params.branch_length_mode,
+               branch_length_mode = branch_length_mode,
                fixed_pi=fixed_pi)
     if success==ttconf.ERROR: # if TreeTime.run failed, exit
         return 1
