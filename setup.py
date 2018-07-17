@@ -7,7 +7,7 @@ with open("README.md", "r") as fh:
 setup(
         name = "phylo-treetime",
         version = "0.4.1",
-        author = "Pavel Sagulenko and Richard Neher",
+        author = "Pavel Sagulenko, Emma Hodcroft, and Richard Neher",
         author_email = "richard.neher@unibas.ch",
         description = ("Maximum-likelihood phylodynamic inference"),
         long_description = long_description,
