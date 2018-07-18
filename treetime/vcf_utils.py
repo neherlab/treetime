@@ -502,7 +502,7 @@ def write_vcf(tree_dict, file_name):#, compress=False):
             "\nIf it does not, or if the data hasn't come from TreeTime, something unexpected "
             "is happening and you should debug. In TreeTime, this can be caused by overwriting "
             "variants in tips with small branch lengths."
-            "\nThese are the positions affected (numbering starts at 0):").format(str(len(errorPositions)))
+            "\nThese are the positions affected (numbering starts at 0):".format(str(len(errorPositions))))
         print (",".join(errorPositions))
 
     with open(file_name, 'a') as the_file:

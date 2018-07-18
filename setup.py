@@ -1,7 +1,3 @@
-"""
-Construct time-stamped phylogenies from a precomputed trees
-Author: Pavel Sagulenko and Richard Neher
-"""
 import os
 from setuptools import setup
 
@@ -14,12 +10,17 @@ def get_version():
                 break
     return v
 
+with open("README.md", "r") as fh:
+    long_description = fh.read()
+
 setup(
-        name = "treetime",
+        name = "phylo-treetime",
         version = get_version(),
-        author = "Pavel Sagulenko and Richard Neher",
+        author = "Pavel Sagulenko, Emma Hodcroft, and Richard Neher",
         author_email = "richard.neher@unibas.ch",
         description = ("Maximum-likelihood phylodynamic inference"),
+        long_description = long_description,
+        long_description_content_type="text/markdown",
         license = "MIT",
         keywords = "Time-stamped phylogenies, phylogeography, virus evolution",
         url = "https://github.com/neherlab/treetime",

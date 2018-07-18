@@ -30,7 +30,7 @@ The package is designed to be used as a stand-alone tool or as a library used in
   * [Projects using TreeTime](#projects-using-treetime)
   * [Developer info](#developer-info)
 
-![Molecular clock phylogeny of 200 NA sequences of influenza A H3N2](doc/flu_200.png)
+![Molecular clock phylogeny of 200 NA sequences of influenza A H3N2](https://raw.githubusercontent.com/neherlab/treetime/master/doc/flu_200.png)
 
 
 ### Installation and prerequisites
