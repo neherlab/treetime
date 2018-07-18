@@ -111,6 +111,9 @@ class TreeAnc(object):
         self._aln = None
         self.reduced_to_full_sequence_map = None
         self.aln = aln
+        if self.aln and self.tree:
+            if len(self.tree.get_terminals()) != len(self.aln):
+                print("**WARNING: Number of sequences in tree differs from number of sequences in alignment!**")
 
     def logger(self, msg, level, warn=False):
         """
