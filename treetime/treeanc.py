@@ -97,7 +97,7 @@ class TreeAnc(object):
         self._tree = None
         self.tree = tree
         if tree is None:
-            raise ArgumentError("TreeAnc: tree loading failed! exiting")
+            raise AttributeError("TreeAnc: tree loading failed! exiting")
 
         # will be None if not set
         self.ref = ref
@@ -1875,8 +1875,7 @@ class TreeAnc(object):
 
             return tree_dict
         else:
-            raise("A dict can only be returned for trees created with VCF-input!")
-
+            raise TypeError("A dict can only be returned for trees created with VCF-input!")
 
 
 if __name__=="__main__":
