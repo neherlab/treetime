@@ -402,6 +402,9 @@ class TreeTime(ClockTree):
         for n in self.tree.find_clades():
             n.mutation_length = n.branch_length
 
+        Treg = self.setup_TreeRegression(covariation=True)
+        self.clock_model['r_val'] = Treg.explained_variance()
+
         return ttconf.SUCCESS
 
 

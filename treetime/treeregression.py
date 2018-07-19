@@ -393,7 +393,6 @@ class TreeRegression(object):
 
         new_node.rtt_regression = best_root
         self.tree.root_with_outgroup(new_node)
-        best_root['r_val'] = self.explained_variance()
 
         self.tree.ladderize()
         for n in self.tree.get_nonterminals(order='postorder'):
@@ -408,11 +407,10 @@ class TreeRegression(object):
             plt.figure()
             ax=plt.subplot(111)
 
-        if not hasattr(self.tree.root, '_v'):
-            self.tree.root._v=0
-            for n in self.tree.get_nonterminals(order='preorder'):
-                for c in n:
-                    c._v = n._v + self.branch_value(c)
+        self.tree.root._v=0
+        for n in self.tree.get_nonterminals(order='preorder'):
+            for c in n:
+                c._v = n._v + self.branch_value(c)
 
         tips = self.tree.get_terminals()
         internal = self.tree.get_nonterminals()
