@@ -330,8 +330,6 @@ class TreeRegression(object):
         estimator_hessian[1,2] = estimator_hessian[2,1]
         best_root['hessian'] = estimator_hessian
         best_root['cov'] = np.linalg.inv(estimator_hessian)
-        best_root['r_val'] = self.explained_variance()
-
         return best_root
 
 
@@ -371,6 +369,7 @@ class TreeRegression(object):
         """
         best_root = self.find_best_root(force_positive=force_positive)
         best_node = best_root["node"]
+
         x = best_root["split"]
         if x<1e-5:
             new_node = best_node
@@ -394,6 +393,8 @@ class TreeRegression(object):
 
         new_node.rtt_regression = best_root
         self.tree.root_with_outgroup(new_node)
+        best_root['r_val'] = self.explained_variance()
+
         self.tree.ladderize()
         for n in self.tree.get_nonterminals(order='postorder'):
             for c in n:

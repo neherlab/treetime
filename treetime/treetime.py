@@ -280,7 +280,6 @@ class TreeTime(ClockTree):
         terminals = self.tree.get_terminals()
         if reroot:
             self.reroot(root=reroot)
-            icpt, clock_rate = self.tree.root._alpha, self.tree.root._beta
         else:
             Treg = self.setup_TreeRegression(covariation=False)
             self.clock_model = Treg.regression()
