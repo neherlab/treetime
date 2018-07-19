@@ -385,10 +385,10 @@ class TreeRegression(object):
             new_node.branch_length = best_node.branch_length*(1-x)
             new_node.up = best_node.up
             new_node.clades = [best_node]
-            new_node.up.clades = [k if k != best_node else new_node
+            new_node.up.clades = [k if k!=best_node else new_node
                                   for k in best_node.up.clades]
 
-            best_node.branch_length*(1-x)
+            best_node.branch_length *= x
             best_node.up = new_node
 
         new_node.rtt_regression = best_root
