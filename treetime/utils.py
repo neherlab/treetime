@@ -45,11 +45,11 @@ class DateConversion(object):
         dc = cls()
         dc.clock_rate = clock_model['slope']
         dc.intercept = clock_model['intercept']
-        dc.chisq = clock_model['chisq']
-        if 'cov' in clock_model:
-            dc.cov = clock_model['cov']
+        dc.chisq = clock_model['chisq'] if 'chisq' in clock_model else None
+        dc.cov = clock_model['cov'] if 'cov' in clock_model else None
         dc.r_val = clock_model['r_val']
         return dc
+
 
     def get_branch_len(self, date1, date2):
         """
@@ -74,11 +74,13 @@ class DateConversion(object):
         """
         return abs(date1 - date2) * self.clock_rate
 
+
     def get_time_before_present(self, numdate):
         """
         Convert the numeric date to the branch-len scale
         """
         return (numeric_date() - numdate) * abs(self.clock_rate)
+
 
     def to_years(self, abs_t):
         """
@@ -87,11 +89,13 @@ class DateConversion(object):
         """
         return abs_t / abs(self.clock_rate)
 
+
     def to_numdate(self, tbp):
         """
         Convert the numeric date to the branch-len scale
         """
         return numeric_date() - self.to_years(tbp)
+
 
     def numdate_from_dist2root(self, d2r):
         """

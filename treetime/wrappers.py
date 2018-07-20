@@ -1,5 +1,5 @@
 from __future__ import print_function, division, absolute_import
-import os, shutil
+import os, shutil, sys
 import numpy as np
 import pandas as pd
 from Bio.SeqRecord import SeqRecord
@@ -102,19 +102,62 @@ def parse_dates(params):
     if not os.path.isfile(params.dates):
         print("\n ERROR: file %s does not exist, exiting..."%params.dates)
         return dates
-    with open(params.dates) as date_file:
-        failed_dates = 0
-        for line in date_file:
-            try:
-                name, date = line.strip().split(',')[:2]
-                dates[name] = float(date)
-            except:
-                failed_dates+=1
 
-        if len(dates)<failed_dates:
-            print("\n\nDATE PARSING FAILED, ABORTING...")
+    sep = '\t' if params.dates.endswith('.tsv') else ','
+    full_sep = r'\s*'+sep+r'\s*'
 
-    return dates
+    try:
+        # read the metadata file into pandas dataframe.
+        df = pandas.read_csv(infile, index_col=0, sep=full_sep, engine='python')
+        # check the metadata has strain names in the first column
+        # look for the column containing sampling dates
+        # We assume that the dates might be given either in human-readable format
+        # (e.g. ISO dates), or be already converted to the numeric format.
+        if 'name' not in df.index.name.lower():
+            print("Cannot read metadata: first column should contain the names of the strains", file=log)
+            return
+        potential_date_columns = []
+        potential_numdate_columns = []
+        # Scan the dataframe columns and find ones which likely to store the
+        # dates
+        for ci,col in enumerate(df.columns):
+            d = df.iloc[0,ci]
+            if type(d)==str and d[0] in ['"', "'"] and d[-1] in ['"', "'"]:
+                for i,tmp_d in enumerate(df.iloc[:,ci]):
+                    df.iloc[i,ci] = tmp_d.strip(d[0])
+            if 'date' in col.lower():
+                try: #  avoid date parsing when can be parsed as float
+                    tmp = float(df.iloc[0,ci])
+                    potential_numdate_columns.append((ci, col))
+                except: #  otherwise add as potential date column
+                    potential_date_columns.append((ci, col))
+        # if a potential numeric date column was found, use it
+        # (use the first, if there are more than one)
+        if len(potential_numdate_columns)>=1:
+            name = potential_numdate_columns[0][1]
+            # Use this column as numdate_given
+            dates = df[name].to_dict()
+            for k, val in dates.items():
+                try:
+                    dates[k] = float(val)
+                except:
+                    dates[k] = None
+
+        elif len(potential_date_columns)>=1:
+            #try to parse the csv file with dates in the idx column:
+            idx = potential_date_columns[0][0]
+            name = potential_date_columns[0][1]
+            # NOTE as the 0th column is the index, we should parse the dates
+            # for the column idx + 1
+            df = pandas.read_csv(infile, index_col=0, sep=full_sep, parse_dates=[1+idx], engine='python')
+            dates = {k: numeric_date(df.loc[k, name]) for k in df.index}
+        else:
+            print("Metadata file has no column which looks like a sampling date!", file=sys.stderr)
+
+        return dates
+    except:
+        print("Cannot read the metadata file!", file=sys.stderr)
+        return {}
 
 def read_if_vcf(params):
     """
