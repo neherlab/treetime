@@ -413,14 +413,14 @@ def timetree(params):
     # PARSING OPTIONS
     ###########################################################################
     try:
-        Tc = float(params.Tc)
-        if Tc<1e-5:
-            Tc = None
+        coalescent = float(params.coalescent)
+        if coalescent<1e-5:
+            coalescent = None
     except:
-        if params.Tc in ['opt', 'skyline']:
-            Tc = params.Tc
+        if params.coalescent in ['opt', 'skyline']:
+            coalescent = params.coalescent
         else:
-            Tc = None
+            coalescent = None
 
     ###########################################################################
     ### READ IN VCF
@@ -441,7 +441,7 @@ def timetree(params):
     root = None if params.keep_root else params.reroot
     success = myTree.run(root=root, relaxed_clock=params.relax,
                resolve_polytomies=(not params.keep_polytomies),
-               Tc=Tc, max_iter=params.max_iter,
+               Tc=coalescent, max_iter=params.max_iter,
                fixed_clock_rate=params.clock_rate,
                branch_length_mode = branch_length_mode,
                fixed_pi=fixed_pi)
@@ -457,7 +457,7 @@ def timetree(params):
 
     print(myTree.date2dist)
 
-    if Tc=='skyline':
+    if coalescent=='skyline':
         skyline = myTree.merger_model.skyline_inferred(gen=50)
         print("inferred skyline assuming 50 generations per year:")
         for (x,y) in zip(skyline.x, skyline.y):

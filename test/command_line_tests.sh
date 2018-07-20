@@ -27,7 +27,7 @@ else
 	echo "temporal_signal failed $retval"
 fi
 
-treetime date --aln ../data/H3N2_NA_allyears_NA.20.fasta --tree ../data/H3N2_NA_allyears_NA.20.nwk --dates ../data/H3N2_NA_allyears_NA.20.metadata.csv
+treetime --aln ../data/H3N2_NA_allyears_NA.20.fasta --tree ../data/H3N2_NA_allyears_NA.20.nwk --dates ../data/H3N2_NA_allyears_NA.20.metadata.csv
 retval="$?"
 if [ "$retval" == 0 ]; then
 	echo "timetree_inference ok"

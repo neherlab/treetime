@@ -6,11 +6,10 @@ from treetime.wrappers import ancestral_reconstruction, mugration, scan_homoplas
 treetime_description = \
     "TreeTime: Maximum Likelihood Phylodynamics\n\n"
 subcommand_description = \
-    "Available sub-commands are:\n\n"\
+    "In addition, TreeTime implements several sub-commands:\n\n"\
     "\t ancestral\tinfer ancestral sequences maximizing the joint or marginal likelihood.\n"\
     "\t homoplasy\tanalyze patterns of recurrent mutations aka homoplasies.\n"\
     "\t clock\t\testimate molecular clock parameters and reroot the tree.\n"\
-    "\t date\t\tdate internal nodes and estimate a time scaled phylogeny.\n"\
     "\t mugration\tmap discrete character such as host or country to the tree.\n\n"\
     "To print a description and argument list of the individual sub-commands, type:\n\n"\
     "\t treetime <subcommand> -h\n\n"
@@ -20,7 +19,7 @@ ref_msg = \
     "\n\tVirus Evolution, vol 4, https://academic.oup.com/ve/article/4/1/vex042/4794731\n"
 
 timetree_description=\
-    "The subcommand 'date' infers a time scaled phylogeny given a tree topology, an alignment, "\
+    "TreeTime infers a time scaled phylogeny given a tree topology, an alignment, "\
     "and tip dates. Reconstructs ancestral sequences and infers a molecular clock tree. "\
     "TreeTime will reroot the tree and resolve polytomies by default. "\
     "In addition, treetime will infer ancestral sequences and a GTR substitution model. "\
@@ -103,35 +102,42 @@ def add_common_args(parser):
 
 if __name__ == '__main__':
     ## TIMETREE
-    parser = argparse.ArgumentParser(description = treetime_description, usage=treetime_description)
-    parser.set_defaults(func=lambda x:print(treetime_description+subcommand_description+ref_msg))
+    parser = argparse.ArgumentParser(description = "",
+                                     usage=treetime_description+timetree_description+subcommand_description)
 
     subparsers = parser.add_subparsers()
 
-    t_parser = subparsers.add_parser('date', description=timetree_description)
-    t_parser.add_argument('--tree', required=True, type=str,  help=tree_description)
-    add_seq_len_aln_group(t_parser)
-    t_parser.add_argument('--dates', required=True, type=str, help=dates_description)
-    add_reroot_group(t_parser)
-    add_gtr_arguments(t_parser)
-    t_parser.add_argument('--clock-rate', type=float, help="if specified, the rate of the molecular clock won't be optimized.")
-    t_parser.add_argument('--branch-length-mode', default='auto', type=str, choices=['auto', 'input', 'joint', 'marginal'],
+    # t_parser = subparsers.add_parser('date', description=timetree_description)
+    parser.add_argument('--tree', type=str,  help=tree_description)
+    add_seq_len_aln_group(parser)
+    parser.add_argument('--dates', type=str, help=dates_description)
+    add_reroot_group(parser)
+    add_gtr_arguments(parser)
+    parser.add_argument('--clock-rate', type=float, help="if specified, the rate of the molecular clock won't be optimized.")
+    parser.add_argument('--branch-length-mode', default='auto', type=str, choices=['auto', 'input', 'joint', 'marginal'],
                         help="If set to 'input', the provided branch length will be used without modification. "
                              "Note that branch lengths optimized by treetime are only accurate at short evolutionary distances.")
-    t_parser.add_argument('--keep-polytomies', default=False, action='store_true',
+    parser.add_argument('--keep-polytomies', default=False, action='store_true',
                         help="Don't resolve polytomies using temporal information.")
-    t_parser.add_argument('--relax',nargs='*', default=False,
+    parser.add_argument('--relax',nargs='*', default=False,
                         help='use an autocorrelated molecular clock. Prior strength and coupling of parent '
                              'and offspring rates can be specified e.g. as --relax 1.0 0.5')
-    t_parser.add_argument('--max-iter', default=2, type=int,
+    parser.add_argument('--max-iter', default=2, type=int,
                         help='maximal number of iterations the inference cycle is run. Note that for polytomy resolution and coalescence models max_iter should be at least 2')
-    t_parser.add_argument('--Tc', default="0.0", type=str,
+    parser.add_argument('--coalescent', default="0.0", type=str,
                           help=coalescent_description)
-    t_parser.add_argument('--plot', default=False, action='store_true',
+    parser.add_argument('--plot', default=False, action='store_true',
                           help='plot the tree on a time axis and save as pdf')
-    add_common_args(t_parser)
+    add_common_args(parser)
+    def toplevel(params):
+        if (params.aln or params.tree) and params.dates:
+            timetree(params)
+        else:
+            print(treetime_description+timetree_description+
+                  "'--dates' and '--aln' or '--tree' are REQUIRED inputs, type 'treetime -h' for a full list of arguments.\n\n"
+                  +subcommand_description)
 
-    t_parser.set_defaults(func=timetree)
+    parser.set_defaults(func=toplevel)
 
 
     ## HOMOPLASY SCANNER
