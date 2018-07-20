@@ -39,7 +39,7 @@ gtr_params_description =  "GTR parameters for the model specified by "\
 
 reroot_description = "reroot the tree. Valid choices are "\
     "'chisq', 'residual', 'res', 'midpoint' or a node name "\
-    " to be used as outgroup. Use none to keep the current root."
+    " to be used as outgroup. Use --keep-root to keep the current root."
 
 tree_description = "Name of file containing the tree in "\
     "newick, nexus, or phylip format. If none is provided, "\
@@ -188,7 +188,8 @@ if __name__ == '__main__':
                           help="if model=='chisq', the covariance structure of the tree will be accounted for. "
                                "This requires the length of the alignment which can either be provided directly "
                                "or read from the alignment file. model='residual' will minimize fit residuals "
-                               "treating data points as independent. No confidence intervals can be computed in this case.")
+                               "treating data points as independent. "
+                               "No confidence intervals can be computed in this case.")
     add_reroot_group(c_parser)
     c_parser.add_argument('--allow-negative-rate', required = False, action="store_true", default=False,
                           help="By default, rates are forced to be positive. For trees with little temporal "
@@ -198,7 +199,7 @@ if __name__ == '__main__':
     c_parser.add_argument('--output', required = False, type=str,
                          help = "filename to save the plot to. Suffix will determine format"
                                 " (choices pdf, png, svg, default=pdf)")
-    c_parser.add_argument('--verbose', default = 0, type=int,
+    c_parser.add_argument('--verbose', default = 1, type=int,
                         help='verbosity of output 0-6')
     c_parser.add_argument('--vcf-reference', type=str, help='fasta file of the sequence the VCF was mapped to')
     c_parser.set_defaults(func=estimate_clock_model)

@@ -618,7 +618,7 @@ class ClockTree(TreeAnc):
             node.numdate = now - years_bp
 
             # set the human-readable date
-            year = int(np.floor(node.numdate))
+            year = np.floor(node.numdate)
             days = max(0,365.25 * (node.numdate - year)-1)
             try:  # datetime will only operate on dates after 1900
                 n_date = datetime(year, 1, 1) + timedelta(days=days)
@@ -626,7 +626,7 @@ class ClockTree(TreeAnc):
             except:
                 # this is the approximation not accounting for gap years etc
                 n_date = datetime(1900, 1, 1) + timedelta(days=days)
-                node.date = str(year) + "-" + str(n_date.month) + "-" + str(n_date.day)
+                node.date = "%04d-%02d-%02d"%(year, n_date.month, n_date.day)
 
 
     def branch_length_to_years(self):

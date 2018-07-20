@@ -171,6 +171,7 @@ def tree_layout(tree):
             tmp = np.array([c.ypos for c in node])
             node.ypos=0.5*(np.max(tmp) + np.min(tmp))
 
+
 def tree_inference(aln_fname, tree_fname, tmp_dir=None,
                    methods = ['iqtree', 'fasttree', 'raxml'], **kwargs):
     import os,shutil

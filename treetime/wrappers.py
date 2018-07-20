@@ -683,6 +683,8 @@ def estimate_clock_model(params):
 
     if not params.keep_root:
         # reroot to optimal root, this assigns clock_model to myTree
+        if params.model=='chisq':
+            myTree.run(root=params.reroot, max_iter=2)
         myTree.reroot(params.reroot, force_positive=not params.allow_negative_rate)
     else:
         Treg = myTree.setup_TreeRegression(covariation=True)
