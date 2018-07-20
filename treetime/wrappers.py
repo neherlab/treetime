@@ -108,7 +108,7 @@ def parse_dates(params):
 
     try:
         # read the metadata file into pandas dataframe.
-        df = pandas.read_csv(infile, index_col=0, sep=full_sep, engine='python')
+        df = pd.read_csv(params.dates, index_col=0, sep=full_sep, engine='python')
         # check the metadata has strain names in the first column
         # look for the column containing sampling dates
         # We assume that the dates might be given either in human-readable format
@@ -149,8 +149,8 @@ def parse_dates(params):
             name = potential_date_columns[0][1]
             # NOTE as the 0th column is the index, we should parse the dates
             # for the column idx + 1
-            df = pandas.read_csv(infile, index_col=0, sep=full_sep, parse_dates=[1+idx], engine='python')
-            dates = {k: numeric_date(df.loc[k, name]) for k in df.index}
+            df = pd.read_csv(params.dates, index_col=0, sep=full_sep, parse_dates=[1+idx], engine='python')
+            dates = {k: utils.numeric_date(df.loc[k, name]) for k in df.index}
         else:
             print("Metadata file has no column which looks like a sampling date!", file=sys.stderr)
 
@@ -158,6 +158,7 @@ def parse_dates(params):
     except:
         print("Cannot read the metadata file!", file=sys.stderr)
         return {}
+
 
 def read_if_vcf(params):
     """
@@ -565,7 +566,11 @@ def ancestral_reconstruction(params):
             n.name = n.name[:35]+'_%03d'%terminal_count
             terminal_count+=1
         if len(n.mutations):
-            n.comment= '&mutations="' + '_'.join([a+str(pos + offset)+d for (a,pos, d) in n.mutations])+'"'
+            if params.report_ambiguous:
+                n.comment= '&mutations="' + ','.join([a+str(pos + offset)+d for (a,pos, d) in n.mutations])+'"'
+            else:
+                n.comment= '&mutations="' + ','.join([a+str(pos + offset)+d for (a,pos, d) in n.mutations
+                                                      if treeanc.gtr.ambiguous not in [a,d]])+'"'
 
     # write tree to file
     outtree_name = '.'.join(params.tree.split('/')[-1].split('.')[:-1])+'_mutation.nexus'

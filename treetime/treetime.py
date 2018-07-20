@@ -137,7 +137,9 @@ class TreeTime(ClockTree):
             self.clock_filter(reroot='best' if root=='clock_filter' else root,
                               n_iqd=n_iqd, plot=plot_rtt)
         elif root is not None:
-            self.reroot(root=root)
+            if self.reroot(root=root)==ttconf.ERROR:
+                return ttconf.ERROR
+
 
         if branch_length_mode=='input':
             if self.aln:
@@ -154,6 +156,10 @@ class TreeTime(ClockTree):
         if self.aln:
             seq_LH = self.tree.sequence_marginal_LH if seq_kwargs['marginal_sequences'] else self.tree.sequence_joint_LH
         self.LH =[[seq_LH, self.tree.positional_joint_LH, 0]]
+
+        if root is not None:
+            if self.reroot(root=root)==ttconf.ERROR:
+                return ttconf.ERROR
 
         # iteratively reconstruct ancestral sequences and re-infer
         # time tree to ensure convergence.

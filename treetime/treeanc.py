@@ -401,9 +401,9 @@ class TreeAnc(object):
             elif l.is_terminal():
                 self.logger("***WARNING: TreeAnc._attach_sequences_to_nodes: NO SEQUENCE FOR LEAF: %s" % l.name, 0, warn=True)
                 failed_leaves += 1
-                l.sequence = seq_utils.seq2array(self.gtr.ambiguous*self.seq_len, fill_overhangs=self.fill_overhangs,
+                l.sequence = seq2array(self.gtr.ambiguous*self.seq_len, fill_overhangs=self.fill_overhangs,
                                                  ambiguous_character=self.gtr.ambiguous)
-                if failed_leaves > self.tree.count_terminals() / 3:
+                if failed_leaves > self.tree.count_terminals()/3:
                     self.logger("ERROR: At least 30\\% terminal nodes cannot be assigned with a sequence!\n", 0, warn=True)
                     self.logger("Are you sure the alignment belongs to the tree?", 2, warn=True)
                     break
@@ -411,7 +411,8 @@ class TreeAnc(object):
                 pass
 
         if failed_leaves:
-            self.logger("***WARNING: TreeAnc: %d nodes don't have a matching sequence in the alignment. POSSIBLE ERROR."%failed_leaves, 0, warn=True)
+            self.logger("***WARNING: TreeAnc: %d nodes don't have a matching sequence in the alignment."
+                        " POSSIBLE ERROR."%failed_leaves, 0, warn=True)
 
         return self.make_reduced_alignment()
 

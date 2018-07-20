@@ -78,7 +78,12 @@ def add_seq_len_aln_group(parser):
     seq_group_ex.add_argument('--sequence-length', type=int, help="length of the sequence, "
                               "used to calculate expected variation in branch length. "
                               "Not required if alignment is provided.")
-    seq_group_ex.add_argument('--aln',  type=str, help=aln_description)
+    add_aln_group(seq_group_ex, required=False)
+    # seq_group_ex.add_argument('--aln',  type=str, help=aln_description)
+
+def add_aln_group(parser, required=True):
+    parser.add_argument('--aln', required=required, type=str, help=aln_description)
+    parser.add_argument('--vcf-reference', type=str, help='only for vcf input: fasta file of the sequence the VCF was mapped to.')
 
 
 def add_reroot_group(parser):
@@ -91,6 +96,9 @@ def add_reroot_group(parser):
 def add_gtr_arguments(parser):
     parser.add_argument('--gtr', default='infer', help=gtr_description)
     parser.add_argument('--gtr-params', nargs='+', help=gtr_params_description)
+
+def add_common_args(parser):
+    parser.add_argument('--verbose', default=1, type=int,  help='verbosity of output 0-6')
 
 
 if __name__ == '__main__':
@@ -117,21 +125,18 @@ if __name__ == '__main__':
                              'and offspring rates can be specified e.g. as --relax 1.0 0.5')
     t_parser.add_argument('--max-iter', default=2, type=int,
                         help='maximal number of iterations the inference cycle is run. Note that for polytomy resolution and coalescence models max_iter should be at least 2')
-    t_parser.add_argument('--verbose', default=1, type=int,
-                        help='verbosity of output 0-6')
     t_parser.add_argument('--Tc', default="0.0", type=str,
                           help=coalescent_description)
     t_parser.add_argument('--plot', default=False, action='store_true',
                           help='plot the tree on a time axis and save as pdf')
-    t_parser.add_argument('--vcf-reference', type=str, help='fasta file of the sequence the VCF was mapped to')
+    add_common_args(t_parser)
 
     t_parser.set_defaults(func=timetree)
 
 
     ## HOMOPLASY SCANNER
     h_parser = subparsers.add_parser('homoplasy', description=homoplasy_description)
-
-    h_parser.add_argument('--aln', required = True, type = str,  help=aln_description)
+    add_aln_group(h_parser)
     h_parser.add_argument('--tree', type = str,  help=tree_description)
     h_parser.add_argument('--const', type = int, default=0, help ="number of constant sites not included in alignment")
     h_parser.add_argument('--rescale', type = float, default=1.0, help ="rescale branch lengths")
@@ -139,21 +144,20 @@ if __name__ == '__main__':
     add_gtr_arguments(h_parser)
     h_parser.add_argument('--zero-based', default = False, action='store_true', help='zero based mutation indexing')
     h_parser.add_argument('-n', default = 10, type=int, help='number of mutations/nodes that are printed to screen')
-    h_parser.add_argument('--verbose', default = 1, type=int, help='verbosity of output 0-6')
-    h_parser.add_argument('--vcf-reference', type=str, help='fasta file of the sequence the VCF was mapped to')
     h_parser.add_argument('--drms', type=str, help='TSV file containing DRM info. columns headers: GENOMIC_POSITION, ALT_BASE, DRUG, GENE, SUBSTITUTION')
+    add_common_args(h_parser)
     h_parser.set_defaults(func=scan_homoplasies)
 
     ## ANCESTRAL RECONSTRUCTION
     a_parser = subparsers.add_parser('ancestral', description=ancestral_description)
-    a_parser.add_argument('--aln', required = True, type = str,  help ="fasta file with input sequences")
+    add_aln_group(a_parser)
     a_parser.add_argument('--tree', type = str,  help =tree_description)
     add_gtr_arguments(a_parser)
     a_parser.add_argument('--marginal', default = False, action="store_true", help ="marginal reconstruction of ancestral sequences")
     a_parser.add_argument('--zero-based', default = False, action='store_true', help='zero based mutation indexing')
     a_parser.add_argument('--keep-overhangs', default = False, action='store_true', help='do not fill terminal gaps')
-    a_parser.add_argument('--verbose', default = 1, type=int, help='verbosity of output 0-6')
-    a_parser.add_argument('--vcf-reference', type=str, help='fasta file of the sequence the VCF was mapped to')
+    a_parser.add_argument('--report-ambiguous', default=False, action="store_true", help='include transitions involving ambiguous states')
+    add_common_args(a_parser)
     a_parser.set_defaults(func=ancestral_reconstruction)
 
     ## MUGRATION
@@ -165,14 +169,10 @@ if __name__ == '__main__':
     m_parser.add_argument('--weights', type=str, help="csv or tsv file with probabilities of that a randomly sampled "
                         "sequence at equilibrium has a particular state. E.g. population of different continents or countries. E.g.:"
                         "\n#country,weight\nmicronesia,0.1\n...")
-    # m_parser.add_argument('--migration', type=str, help="csv or tsv file with symmetric migration/transition rates "
-    #                     "between states. For example passenger flow.")
-    # m_parser.add_argument('--infer_gtr', action="store_true", help="infer GTR model from tree. "
-    #                                 "Ignored when prop or migration is specified.")
     m_parser.add_argument('--confidence', action="store_true", help="output confidence of mugration inference")
     m_parser.add_argument('--pc', type=float, default=1.0, help ="pseudo-counts higher numbers will results in 'flatter' models")
     m_parser.add_argument('--missing-data', type=str, default='?', help ="string indicating missing data")
-    m_parser.add_argument('--verbose', default = 1, type=int, help='verbosity of output 0-6')
+    add_common_args(m_parser)
     m_parser.set_defaults(func=mugration)
 
 
@@ -199,9 +199,7 @@ if __name__ == '__main__':
     c_parser.add_argument('--output', required = False, type=str,
                          help = "filename to save the plot to. Suffix will determine format"
                                 " (choices pdf, png, svg, default=pdf)")
-    c_parser.add_argument('--verbose', default = 1, type=int,
-                        help='verbosity of output 0-6')
-    c_parser.add_argument('--vcf-reference', type=str, help='fasta file of the sequence the VCF was mapped to')
+    add_common_args(c_parser)
     c_parser.set_defaults(func=estimate_clock_model)
 
     ## call the relevant function and return
