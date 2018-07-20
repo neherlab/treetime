@@ -89,6 +89,7 @@ class TreeAnc(object):
         self.fill_overhangs = fill_overhangs
         self.is_vcf = False  #this is set true when aln is set, if aln is dict
         self.seq_multiplicity = {} if seq_multiplicity is None else seq_multiplicity
+        self.multiplicity = None
 
         self.ignore_gaps = ignore_gaps
         self._gtr = None

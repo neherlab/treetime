@@ -99,9 +99,11 @@ class TreeTime(ClockTree):
 
         """
 
-        if (self.tree is None) or (self.aln is None):
+        if (self.tree is None) or (self.aln is None and self.seq_len is None):
             self.logger("TreeTime.run: ERROR, alignment or tree are missing", 0)
             return ttconf.ERROR
+        if (self.aln is None):
+            branch_length_mode='input'
 
         if branch_length_mode not in ['joint', 'marginal', 'input']:
             branch_length_mode = self._set_branch_length_mode(branch_length_mode)
@@ -110,6 +112,7 @@ class TreeTime(ClockTree):
         seq_kwargs = {"marginal_sequences":sequence_marginal or (branch_length_mode=='marginal'),
                       "branch_length_mode":branch_length_mode,
                       "sample_from_profile":"root"}
+        seq_LH = 0
         if "fixed_pi" in kwargs:
             seq_kwargs["fixed_pi"] = kwargs["fixed_pi"]
         if "do_marginal" in kwargs:
@@ -117,8 +120,9 @@ class TreeTime(ClockTree):
 
         # initially, infer ancestral sequences and infer gtr model if desired
         if branch_length_mode=='input':
-            self.infer_ancestral_sequences(infer_gtr=infer_gtr, **seq_kwargs)
-            self.prune_short_branches()
+            if self.aln:
+                self.infer_ancestral_sequences(infer_gtr=infer_gtr, **seq_kwargs)
+                self.prune_short_branches()
         else:
             self.optimize_sequences_and_branch_length(infer_gtr=infer_gtr,
                                                   max_iter=1, prune_short=True, **seq_kwargs)
@@ -136,7 +140,8 @@ class TreeTime(ClockTree):
             self.reroot(root=root)
 
         if branch_length_mode=='input':
-            self.infer_ancestral_sequences(**seq_kwargs)
+            if self.aln:
+                self.infer_ancestral_sequences(**seq_kwargs)
         else:
             self.optimize_sequences_and_branch_length(max_iter=1, prune_short=False,
                                                       **seq_kwargs)
@@ -146,12 +151,14 @@ class TreeTime(ClockTree):
         self.make_time_tree(clock_rate=fixed_clock_rate, time_marginal=False,
                             branch_length_mode=branch_length_mode,**kwargs)
 
-        self.LH = [[self.tree.sequence_marginal_LH if seq_kwargs['marginal_sequences'] else self.tree.sequence_joint_LH,
-                    self.tree.positional_joint_LH, 0.0]]
+        if self.aln:
+            seq_LH = self.tree.sequence_marginal_LH if seq_kwargs['marginal_sequences'] else self.tree.sequence_joint_LH
+        self.LH =[[seq_LH, self.tree.positional_joint_LH, 0]]
 
         # iteratively reconstruct ancestral sequences and re-infer
         # time tree to ensure convergence.
         niter = 0
+        ndiff = 0
         while niter < max_iter:
 
             self.logger("###TreeTime.run: ITERATION %d out of %d iterations"%(niter+1,max_iter),0)
@@ -189,31 +196,37 @@ class TreeTime(ClockTree):
                     self.prepare_tree()
                     # when using the input branch length, only infer ancestral sequences
                     if branch_length_mode=='input':
-                        self.infer_ancestral_sequences(**seq_kwargs)
+                        if self.aln:
+                            self.infer_ancestral_sequences(**seq_kwargs)
                     else: # otherwise reoptimize branch length while preserving branches without mutations
                         self.optimize_sequences_and_branch_length(prune_short=False,
                                                                   max_iter=0, **seq_kwargs)
 
                     self.make_time_tree(clock_rate=fixed_clock_rate, time_marginal=False,
                                         branch_length_mode=branch_length_mode, **kwargs)
-                    ndiff = self.infer_ancestral_sequences('ml',**seq_kwargs)
+                    if self.aln:
+                        ndiff = self.infer_ancestral_sequences('ml',**seq_kwargs)
                 else:
-                    ndiff = self.infer_ancestral_sequences('ml',**seq_kwargs)
+                    if self.aln:
+                        ndiff = self.infer_ancestral_sequences('ml',**seq_kwargs)
                     self.make_time_tree(clock_rate=fixed_clock_rate, time_marginal=False,
                                         branch_length_mode=branch_length_mode,**kwargs)
             elif (Tc and (Tc is not None)) or relaxed_clock: # need new timetree first
                 self.make_time_tree(clock_rate=fixed_clock_rate, time_marginal=False,
                                     branch_length_mode=branch_length_mode,**kwargs)
-                ndiff = self.infer_ancestral_sequences('ml',**seq_kwargs)
+                if self.aln:
+                    ndiff = self.infer_ancestral_sequences('ml',**seq_kwargs)
             else: # no refinements, just iterate
-                ndiff = self.infer_ancestral_sequences('ml',**seq_kwargs)
+                if self.aln:
+                    ndiff = self.infer_ancestral_sequences('ml',**seq_kwargs)
                 self.make_time_tree(clock_rate=fixed_clock_rate, time_marginal=False,
                                     branch_length_mode=branch_length_mode,**kwargs)
 
             self.tree.coalescent_joint_LH = self.merger_model.total_LH() if Tc else 0.0
 
-            self.LH.append([self.tree.sequence_marginal_LH if seq_kwargs['marginal_sequences'] else self.tree.sequence_joint_LH,
-                            self.tree.positional_joint_LH, self.tree.coalescent_joint_LH])
+            if self.aln:
+                seq_LH = self.tree.sequence_marginal_LH if seq_kwargs['marginal_sequences'] else self.tree.sequence_joint_LH
+            self.LH.append([seq_LH, self.tree.positional_joint_LH, self.tree.coalescent_joint_LH])
             niter+=1
 
             if ndiff==0 & n_resolved==0:
@@ -432,8 +445,8 @@ class TreeTime(ClockTree):
 
         """
         self.logger("TreeTime.resolve_polytomies: resolving multiple mergers...",1)
-
         poly_found=0
+
         for n in self.tree.find_clades():
             if len(n.clades) > 2:
                 prior_n_clades = len(n.clades)

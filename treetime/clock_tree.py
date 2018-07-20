@@ -165,7 +165,8 @@ class ClockTree(TreeAnc):
         branch_value = lambda x:x.mutation_length
         if covariation:
             om = self.one_mutation
-            branch_variance = lambda x:(x.mutation_length+(ttconf.OVER_DISPERSION*om if x.is_terminal() else 0.0))*om
+            branch_variance = lambda x:((x.clock_length if hasattr(x,'clock_length') else x.mutation_length)
+                                        +(ttconf.OVER_DISPERSION*om if x.is_terminal() else 0.0))*om
         else:
             branch_variance = lambda x:1.0 if x.is_terminal() else 0.0
 
@@ -199,7 +200,7 @@ class ClockTree(TreeAnc):
         """
         self.logger("ClockTree.init_date_constraints...",2)
         self.tree.coalescent_joint_LH = 0
-        if ancestral_inference or (not hasattr(self.tree.root, 'sequence')):
+        if self.aln and (ancestral_inference or (not hasattr(self.tree.root, 'sequence'))):
             self.infer_ancestral_sequences('ml', marginal=self.branch_length_mode=='marginal',
                                             sample_from_profile='root',**kwarks)
 
@@ -411,7 +412,9 @@ class ClockTree(TreeAnc):
             LH -= node.branch_length_interpolator(node.branch_length)
 
         # add the root sequence LH and return
-        return LH + self.gtr.sequence_logLH(self.tree.root.cseq, pattern_multiplicity=self.multiplicity)
+        if self.aln:
+            LH += self.gtr.sequence_logLH(self.tree.root.cseq, pattern_multiplicity=self.multiplicity)
+        return LH
 
 
     def _ml_t_marginal(self, assign_dates=False):
