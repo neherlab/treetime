@@ -7,20 +7,6 @@ from scipy import stats
 from scipy.ndimage import binary_dilation
 from treetime import config as ttconf
 
-def setup_TreeRegr(tt, covariation=True):
-    from .treeregression import TreeRegression
-
-    tip_value = lambda x:np.mean(x.numdate_given) if (x.is_terminal() and x.bad_branch is False) else None
-    branch_value = lambda x:x.mutation_length
-    if covariation:
-        om = tt.one_mutation
-        branch_variance = lambda x:(x.mutation_length+(ttconf.OVER_DISPERSION*om if x.is_terminal() else 0.0))*om
-    else:
-        branch_variance = lambda x:1.0 if x.is_terminal() else 0.0
-
-    return TreeRegression(tt.tree, tip_value=tip_value,
-                         branch_value=branch_value, branch_variance=branch_variance)
-
 
 class DateConversion(object):
     """
