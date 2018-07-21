@@ -5,6 +5,8 @@ from treetime.wrappers import ancestral_reconstruction, mugration, scan_homoplas
 import matplotlib
 matplotlib.use('AGG')
 
+py2 = sys.version_info.major==2
+
 def set_default_subparser(self, name, args=None, positional_args=0):
     """default subparser selection. Call after setup, just before parse_args()
     name: is the name of the subparser to call by default
@@ -14,8 +16,6 @@ def set_default_subparser(self, name, args=None, positional_args=0):
     subparser_found = False
     if len(sys.argv)==1:
         sys.argv.append('-h')
-    elif sys.argv[1] in ['-h', '--help']:  # global help if no subparser
-        return
     else:
         for x in self._subparsers._actions:
             if not isinstance(x, argparse._SubParsersAction):
@@ -31,7 +31,8 @@ def set_default_subparser(self, name, args=None, positional_args=0):
                 args.insert(1, name)
 
 
-argparse.ArgumentParser.set_default_subparser = set_default_subparser
+if py2:
+    argparse.ArgumentParser.set_default_subparser = set_default_subparser
 
 
 treetime_description = \
@@ -42,6 +43,7 @@ subcommand_description = \
     "\t homoplasy\tanalyze patterns of recurrent mutations aka homoplasies.\n"\
     "\t clock\t\testimate molecular clock parameters and reroot the tree.\n"\
     "\t mugration\tmap discrete character such as host or country to the tree.\n\n"\
+    "(note that 'tt' is a default subcommand in python2 that doesn't need to be specified).\n"\
     "To print a description and argument list of the individual sub-commands, type:\n\n"\
     "\t treetime <subcommand> -h\n\n"
 
@@ -139,10 +141,13 @@ if __name__ == '__main__':
 
     subparsers = parser.add_subparsers()
 
-    t_parser = subparsers.add_parser('date', description=timetree_description)
+    if py2:
+        t_parser = subparsers.add_parser('tt', description=timetree_description)
+    else:
+        t_parser = parser
     t_parser.add_argument('--tree', type=str, help=tree_description)
     add_seq_len_aln_group(t_parser)
-    t_parser.add_argument('--dates', type=str, required=True, help=dates_description)
+    t_parser.add_argument('--dates', type=str, help=dates_description)
     add_reroot_group(t_parser)
     add_gtr_arguments(t_parser)
     t_parser.add_argument('--clock-rate', type=float, help="if specified, the rate of the molecular clock won't be optimized.")
@@ -166,9 +171,8 @@ if __name__ == '__main__':
         if (params.aln or params.tree) and params.dates:
             timetree(params)
         else:
-            print(treetime_description+timetree_description+
-                  "'--dates' and '--aln' or '--tree' are REQUIRED inputs, type 'treetime -h' for a full list of arguments.\n\n"
-                  +subcommand_description)
+            print(treetime_description+timetree_description+subcommand_description+
+                  "'--dates' and '--aln' or '--tree' are REQUIRED inputs, type 'treetime -h' for a full list of arguments.\n")
 
     t_parser.set_defaults(func=toplevel)
 
@@ -235,7 +239,8 @@ if __name__ == '__main__':
     c_parser.set_defaults(func=estimate_clock_model)
 
     ## call the relevant function and return
-    parser.set_default_subparser('date')
+    if py2:
+        parser.set_default_subparser('tt')
     params = parser.parse_args()
     return_code = params.func(params)
 
