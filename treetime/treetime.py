@@ -6,7 +6,7 @@ from treetime import config as ttconf
 from .utils import tree_layout
 from .clock_tree import ClockTree
 
-rerooting_mechanisms = ["min_dev", "best", "residual", "chisq", "res"]
+rerooting_mechanisms = ["min_dev", "best", "least-squares", "chisq"]
 
 class TreeTime(ClockTree):
     """
@@ -134,10 +134,10 @@ class TreeTime(ClockTree):
                 plot_rtt=True
             else:
                 plot_rtt=False
-            self.clock_filter(reroot='best' if root=='clock_filter' else root,
+            self.clock_filter(reroot='least-squares' if root=='clock_filter' else root,
                               n_iqd=n_iqd, plot=plot_rtt)
         elif root is not None:
-            if self.reroot(root=root)==ttconf.ERROR:
+            if self.reroot(root='least-squares')==ttconf.ERROR:
                 return ttconf.ERROR
 
 
@@ -158,7 +158,7 @@ class TreeTime(ClockTree):
         self.LH =[[seq_LH, self.tree.positional_joint_LH, 0]]
 
         if root is not None:
-            if self.reroot(root=root)==ttconf.ERROR:
+            if self.reroot(root='least-squares' if root=='clock_filter' else root)==ttconf.ERROR:
                 return ttconf.ERROR
 
         # iteratively reconstruct ancestral sequences and re-infer
@@ -365,7 +365,7 @@ class TreeTime(ClockTree):
          root : str
             Which method should be used to find the best root. Available methods are:
 
-            :code:`best`, `residual`, `chisq` - minimize squared residual or chisq of root-to-tip regression
+            :code:`best`, `least-squares`, `chisq` - minimize squared residual or chisq of root-to-tip regression
 
             :code:`oldest` - choose the oldest node
 
@@ -692,8 +692,8 @@ class TreeTime(ClockTree):
          infer_gtr : bool
             If True, infer new GTR model after re-root
 
-         criterium : str
-            Criterium used to reroot the tree. One of 'rsq', 'residual', 'chi_seq', min_dev'
+         covariation : bool
+            account for covariation structure when rerooting the tree
 
          force_positive : bool
             only accept positive evolutionary rate estimates when rerooting the tree

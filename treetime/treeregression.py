@@ -439,17 +439,20 @@ class TreeRegression(object):
                 x_vals = np.linspace(x_vals[0], x_vals[1], 100)
                 y_vals = reg['slope']*x_vals + reg['intercept']
                 dev = n_sigma*np.array([np.sqrt(reg['cov'][:2,:2].dot(np.array([x, 1])).dot(np.array([x,1]))) for x in x_vals])
+                dev_slope = n_sigma*np.sqrt(reg['cov'][0,0])
                 ax.fill_between(x_vals, y_vals-dev, y_vals+dev, alpha=0.2)
                 dp = np.array([reg['intercept']/reg['slope']**2,-1./reg['slope']])
                 dev_rtt = n_sigma*np.sqrt(reg['cov'][:2,:2].dot(dp).dot(dp))
 
             else:
                 dev_rtt = None
+                dev_slope = None
 
             ax.plot(x_vals, reg['slope']*x_vals + reg['intercept'],
                     label = r"$y=\alpha + \beta t$"+"\n"+
-                            r"$\alpha=%1.1e,\ \beta=%1.1e$"%(reg["intercept"], reg["slope"]) + "\n" +
-                            "root date: %1.1f"%(-reg['intercept']/reg['slope']) +
+                            r"$\beta=$%1.2e"%(reg["slope"])
+                            + ("+/- %1.e"%dev_slope if dev_slope else "") +
+                            "\nroot date: %1.1f"%(-reg['intercept']/reg['slope']) +
                             ("+/- %1.2f"%dev_rtt if dev_rtt else ""))
 
 

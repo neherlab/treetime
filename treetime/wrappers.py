@@ -64,6 +64,32 @@ def create_gtr(params):
             infer_gtr = False
     return gtr
 
+def get_outdir(params, suffix='_treetime'):
+    if params.outdir:
+        if os.path.exists(params.outdir):
+            if os.path.isdir(params.outdir):
+                return params.outdir.rstrip('/') + '/'
+            else:
+                print("designated output location %s is not a directory"%params.outdir, file=stderr)
+        else:
+            os.makedirs(params.outdir)
+            return params.outdir.rstrip('/') + '/'
+
+    from datetime import datetime
+    outdir = datetime.now().date().isoformat()+suffix.rstrip('/') + '/'
+    if not os.path.exists(outdir):
+        os.makedirs(outdir)
+    return outdir
+
+def get_basename(params, outdir):
+    if params.aln:
+        basename = outdir + '.'.join(params.aln.split('/')[-1].split('.')[:-1])
+    elif params.tree:
+        basename = outdir + '.'.join(params.tree.split('/')[-1].split('.')[:-1])
+    else:
+        basename = outdir + 'results'
+    return basename
+
 def read_in_DRMs(drm_file, offset):
     import pandas as pd
 
@@ -209,12 +235,11 @@ def scan_homoplasies(params):
     if treeanc.aln is None: # if alignment didn't load, exit
         return 1
 
-    # FIXME: resetting one_mutation is no longer possible
     if is_vcf:
         L = len(ref) + params.const
     else:
         L = treeanc.aln.get_alignment_length() + params.const
-    treeanc.one_mutation = 1.0/L
+
     N_seq = len(treeanc.aln)
     N_tree = treeanc.tree.count_terminals()
     if params.rescale!=1.0:
@@ -271,7 +296,7 @@ def scan_homoplasies(params):
     for n in treeanc.tree.get_terminals():
         for a,pos,d in n.mutations:
             if pos+offset in positions and len(positions[pos+offset])>1:
-                if 'N' not in [a,d]:
+                if '-' not in [a,d] and 'N' not in [a,d]:
                     mutation_by_strain[n.name].append([(a,pos+offset,d), len(positions[pos])])
 
 
@@ -299,15 +324,15 @@ def scan_homoplasies(params):
     ###########################################################################
     ### Output the distribution of times particular mutations are observed
     ###########################################################################
-    print("\nThe TOTAL tree length is %1.3e, expecting %1.1f mutations vs an observed %d"
-          %(total_branch_length,expected_mutations,total_mutations))
+    print("\nThe TOTAL tree length is %1.3e and %d mutations were observed."
+          %(total_branch_length,total_mutations))
     print("Of these %d mutations,"%total_mutations
             +"".join(['\n\t - %d occur %d times'%(n,mi)
                       for mi,n in enumerate(multiplicities) if n]))
     # additional optional output this for terminal mutations only
     if params.detailed:
-        print("\nThe TERMINAL branch length is %1.3e, expecting %1.1f mutations vs an observed %d"
-              %(corrected_terminal_branch_length,expected_terminal_mutations,terminal_mutation_count))
+        print("\nThe TERMINAL branch length is %1.3e and %d mutations were observed."
+              %(corrected_terminal_branch_length,terminal_mutation_count))
         print("Of these %d mutations,"%terminal_mutation_count
                 +"".join(['\n\t - %d occur %d times'%(n,mi)
                           for mi,n in enumerate(multiplicities_terminal) if n]))
@@ -406,6 +431,8 @@ def timetree(params):
     if assure_tree(params, tmp_dir='timetree_tmp'):
         return 1
 
+    outdir = get_outdir(params, '_treetime')
+
     gtr = create_gtr(params)
     infer_gtr = params.gtr=='infer'
 
@@ -436,8 +463,12 @@ def timetree(params):
     ###########################################################################
     ### SET-UP and RUN
     ###########################################################################
+    if params.aln is None and params.sequence_length is None:
+        print("one of arguments '--aln' and '--sequence-length' is required.")
+        return 1
     myTree = TreeTime(dates=dates, tree=params.tree, ref=ref,
-                       aln=aln, gtr=gtr, verbose=params.verbose)
+                      aln=aln, gtr=gtr, seq_len=params.sequence_length,
+                      verbose=params.verbose)
     root = None if params.keep_root else params.reroot
     success = myTree.run(root=root, relaxed_clock=params.relax,
                resolve_polytomies=(not params.keep_polytomies),
@@ -463,8 +494,7 @@ def timetree(params):
         for (x,y) in zip(skyline.x, skyline.y):
             print("%1.3f\t%1.3f"%(x,y))
 
-
-    base_name = '.'.join(params.aln.split('/')[-1].split('.')[:-1])
+    basename = get_basename(params, outdir)
     # plot
     if params.plot:
         import matplotlib.pyplot as plt
@@ -475,21 +505,22 @@ def timetree(params):
         # branch_label_func = lambda x: (','.join([a+str(pos)+d for a,pos, d in x.mutations[:10]])
         #                                +('...' if  len(x.mutations)>10 else '')) if leaf_count<30 else ''
         plot_vs_years(myTree, show_confidence=False, label_func = label_func) #, branch_labels=branch_label_func)
-        plt.savefig(base_name+'_tree.pdf')
-        print("--- saved tree as pdf in \n\t %s\n"%(base_name+'_tree.pdf'))
+        plt.savefig(basename+'_tree.pdf')
+        print("--- saved tree as pdf in \n\t %s\n"%(basename+'_tree.pdf'))
     else:
         # convert branch length to years (this is implicit in the above plot)
         myTree.branch_length_to_years()
 
     # decorate tree with inferred mutations
-    if is_vcf:
-        myTree.recover_var_ambigs()
-        outaln_name = base_name+'_ancestral.vcf'
-        write_vcf(myTree.get_tree_dict(keep_var_ambigs=True), outaln_name)
-    else:
-        outaln_name = base_name+'_ancestral.fasta'
-        AlignIO.write(myTree.get_reconstructed_alignment(), outaln_name, 'fasta')
-    print("--- alignment including ancestral nodes saved as  \n\t %s\n"%outaln_name)
+    if params.aln:
+        if is_vcf:
+            myTree.recover_var_ambigs()
+            outaln_name = basename+'_ancestral.vcf'
+            write_vcf(myTree.get_tree_dict(keep_var_ambigs=True), outaln_name)
+        else:
+            outaln_name = basename+'_ancestral.fasta'
+            AlignIO.write(myTree.get_reconstructed_alignment(), outaln_name, 'fasta')
+        print("--- alignment including ancestral nodes saved as  \n\t %s\n"%outaln_name)
 
     terminal_count = 0
     for n in myTree.tree.find_clades():
@@ -501,11 +532,12 @@ def timetree(params):
         if n.is_terminal() and len(n.name)>40 and bioversion<"1.69":
             n.name = n.name[:35]+'_%03d'%terminal_count
             terminal_count+=1
-        if len(n.mutations):
-            n.comment= '&mutations="' + '_'.join([a+str(pos)+d for (a,pos, d) in n.mutations])+'"'
+        if params.aln:
+            if len(n.mutations):
+                n.comment= '&mutations="' + '_'.join([a+str(pos)+d for (a,pos, d) in n.mutations])+'"'
 
     # write tree to file
-    outtree_name = '.'.join(params.tree.split('/')[-1].split('.')[:-1])+'_timetree.nexus'
+    outtree_name = basename + '_timetree.nexus'
     Phylo.write(myTree.tree, outtree_name, 'nexus')
 
     print("--- tree saved in nexus format as  \n\t %s\n"%outtree_name)
@@ -520,6 +552,9 @@ def ancestral_reconstruction(params):
     # set up
     if assure_tree(params, tmp_dir='ancestral_tmp'):
         return 1
+
+    outdir = get_outdir(params, '_ancestral')
+    basename = get_basename(params, outdir)
 
     gtr = create_gtr(params)
 
@@ -546,10 +581,10 @@ def ancestral_reconstruction(params):
 
     if is_vcf:
         treeanc.recover_var_ambigs()
-        outaln_name = '.'.join(params.aln.split('/')[-1].split('.')[:-1])+'_ancestral.vcf'
+        outaln_name = basename + '_ancestral.vcf'
         write_vcf(treeanc.get_tree_dict(keep_var_ambigs=True), outaln_name)
     else:
-        outaln_name = '.'.join(params.aln.split('/')[-1].split('.')[:-1])+'_ancestral.fasta'
+        outaln_name = basename + '_ancestral.fasta'
         AlignIO.write(treeanc.get_reconstructed_alignment(), outaln_name, 'fasta')
     print("--- alignment including ancestral nodes saved as  \n\t %s\n"%outaln_name)
 
@@ -573,7 +608,7 @@ def ancestral_reconstruction(params):
                                                       if treeanc.gtr.ambiguous not in [a,d]])+'"'
 
     # write tree to file
-    outtree_name = '.'.join(params.tree.split('/')[-1].split('.')[:-1])+'_mutation.nexus'
+    outtree_name = basename + '_mutation.nexus'
     Phylo.write(treeanc.tree, outtree_name, 'nexus')
     print("--- tree saved in nexus format as  \n\t %s\n"%outtree_name)
 
@@ -593,6 +628,8 @@ def mugration(params):
     else:
         print("file with states does not exist")
         return 1
+
+    outdir = get_outdir(params, '_mugration')
 
     taxon_name = 'name' if 'name' in states.columns else states.columns[0]
     if params.attribute and params.attribute in states.columns:
@@ -664,8 +701,8 @@ def mugration(params):
     ###########################################################################
     print("\nCompleted mugration model inference of attribute '%s' for"%attr,params.tree)
 
-    bname = './'+os.path.basename(params.tree)
-    gtr_name = bname + '.GTR.txt'
+    bname = outdir+os.path.basename(params.tree)
+    gtr_name = bname + '_GTR.txt'
     with open(gtr_name, 'w') as ofile:
         ofile.write('Character to attribute mapping:\n')
         for state in unique_states:
@@ -686,7 +723,7 @@ def mugration(params):
         n.comment= '&%s="'%attr + letter_to_state[n.sequence[0]] +'"'
 
     if params.confidence:
-        conf_name = bname+'.confidence.csv'
+        conf_name = bname+'_confidence.csv'
         with open(conf_name, 'w') as ofile:
             ofile.write('#name, '+', '.join(unique_states)+'\n')
             for n in treeanc.tree.find_clades():
@@ -694,7 +731,7 @@ def mugration(params):
         print("Saved table with ancestral state confidences as:", conf_name)
 
     # write tree to file
-    outtree_name = bname+'.mugration.nexus'
+    outtree_name = bname+'_mugration.nexus'
     Phylo.write(treeanc.tree, outtree_name, 'nexus')
     print("Saved annotated tree as:",outtree_name)
 
@@ -711,6 +748,8 @@ def estimate_clock_model(params):
     if len(dates)==0:
         return 1
 
+    outdir = get_outdir(params, '_clock')
+
     ###########################################################################
     ### READ IN VCF
     ###########################################################################
@@ -721,7 +760,7 @@ def estimate_clock_model(params):
     ###########################################################################
     ### ESTIMATE ROOT (if requested) AND DETERMINE TEMPORAL SIGNAL
     ###########################################################################
-    base_name = '.'.join(params.tree.split('/')[-1].split('.')[:-1])
+    basename = get_basename(params, outdir)
     myTree = TreeTime(dates=dates, tree=params.tree, aln=aln, gtr='JC69',
                       verbose=params.verbose, seq_len=params.sequence_length,
                       ref=ref)
@@ -731,9 +770,14 @@ def estimate_clock_model(params):
 
     if not params.keep_root:
         # reroot to optimal root, this assigns clock_model to myTree
-        if params.model=='chisq':
+        if params.reroot in ['chisq', 'best']:
             myTree.run(root=params.reroot, max_iter=2)
-        myTree.reroot(params.reroot, force_positive=not params.allow_negative_rate)
+        res = myTree.reroot("chisq" if params.reroot.startswith('chisq') else params.reroot,
+                      force_positive=not params.allow_negative_rate)
+        if res==ttconf.ERROR:
+            print("ERROR: unknown root or rooting mechanism!\n"
+                  "\tvalid choices are 'least-squares', 'chisq', and 'chisq-rough'")
+            return 1
     else:
         Treg = myTree.setup_TreeRegression(covariation=True)
         myTree.clock_model = Treg.regression()
@@ -754,11 +798,11 @@ def estimate_clock_model(params):
 
     if not params.keep_root:
         # write rerooted tree to file
-        outtree_name = base_name+'_rerooted.newick'
+        outtree_name = basename+'_rerooted.newick'
         Phylo.write(myTree.tree, outtree_name, 'newick')
-        print("--- re-rooted tree written to \n\t %s\n"%outtree_name)
+        print("--- re-rooted tree written to \n\t%s\n"%outtree_name)
 
-    table_fname = base_name+'_rtt.csv'
+    table_fname = basename+'_rtt.csv'
     with open(table_fname, 'w') as ofile:
         ofile.write("#name, date, root-to-tip distance\n")
         ofile.write("#Dates of nodes that didn't have a specified date are inferred from the root-to-tip regression.\n")
@@ -769,20 +813,17 @@ def estimate_clock_model(params):
                 ofile.write("%s, %f, %f\n"%(n.name, d2d.numdate_from_dist2root(n.dist2root), n.dist2root))
         for n in myTree.tree.get_nonterminals(order='preorder'):
             ofile.write("%s, %f, %f\n"%(n.name, d2d.numdate_from_dist2root(n.dist2root), n.dist2root))
-        print("--- wrote dates and root-to-tip distances to \n\t %s\n"%table_fname)
+        print("--- wrote dates and root-to-tip distances to \n\t%s\n"%table_fname)
 
 
     ###########################################################################
     ### PLOT AND SAVE RESULT
     ###########################################################################
-    if params.plot:
-        import matplotlib.pyplot as plt
-        myTree.plot_root_to_tip()
-        if params.output:
-            fname = params.output
-        else:
-            fname = base_name+'_root_to_tip_regression.pdf'
-        plt.savefig(fname)
-        print("--- root-to-tip plot saved to  \n\t"+fname)
+    myTree.plot_root_to_tip()
+
+    fname = outdir+params.plot
+    from matplotlib import pyplot as plt
+    plt.savefig(fname)
+    print("--- root-to-tip plot saved to  \n\t"+fname)
 
     return 0
