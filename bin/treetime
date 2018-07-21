@@ -2,6 +2,8 @@
 from __future__ import print_function, division, absolute_import
 import sys, argparse, os
 from treetime.wrappers import ancestral_reconstruction, mugration, scan_homoplasies, timetree, estimate_clock_model
+import matplotlib
+matplotlib.use('AGG')
 
 def set_default_subparser(self, name, args=None, positional_args=0):
     """default subparser selection. Call after setup, just before parse_args()
