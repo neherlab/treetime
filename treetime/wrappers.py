@@ -140,8 +140,8 @@ def parse_dates(params):
         # We assume that the dates might be given either in human-readable format
         # (e.g. ISO dates), or be already converted to the numeric format.
         if 'name' not in df.index.name.lower():
-            print("Cannot read metadata: first column should contain the names of the strains", file=log)
-            return
+            print("Cannot read metadata: first column should contain the names of the strains", file=sys.stderr)
+            return {}
         potential_date_columns = []
         potential_numdate_columns = []
         # Scan the dataframe columns and find ones which likely to store the
