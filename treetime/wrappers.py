@@ -180,6 +180,9 @@ def parse_dates(params):
         else:
             print("Metadata file has no column which looks like a sampling date!", file=sys.stderr)
 
+        if all(v == 0 for v in dates.values()):
+            print("Cannot parse dates correctly! Check date format.")
+            return {}
         return dates
     except:
         print("Cannot read the metadata file!", file=sys.stderr)
