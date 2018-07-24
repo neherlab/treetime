@@ -71,7 +71,7 @@ gtr_params_description =  "GTR parameters for the model specified by "\
     "or treetime/aa_models.py"
 
 reroot_description = "reroot the tree. Valid choices are "\
-    "'chisq', 'chisq-rough', 'least-squares', 'midpoint' or a node name "\
+    "'ML', 'ML-rough', 'least-squares', 'min_dev', 'midpoint' or a node name "\
     " to be used as outgroup. Use --keep-root to keep the current root."
 
 tree_description = "Name of file containing the tree in "\

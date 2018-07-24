@@ -6,7 +6,7 @@ from treetime import config as ttconf
 from .utils import tree_layout
 from .clock_tree import ClockTree
 
-rerooting_mechanisms = ["min_dev", "best", "least-squares", "chisq"]
+rerooting_mechanisms = ["min_dev","min_dev_ML", "best", "least-squares", "ML"]
 
 class TreeTime(ClockTree):
     """
@@ -365,7 +365,7 @@ class TreeTime(ClockTree):
          root : str
             Which method should be used to find the best root. Available methods are:
 
-            :code:`best`, `least-squares`, `chisq` - minimize squared residual or chisq of root-to-tip regression
+            :code:`best`, `least-squares`, `ML` - minimize squared residual or likelihood of root-to-tip regression
 
             :code:`oldest` - choose the oldest node
 
@@ -381,8 +381,8 @@ class TreeTime(ClockTree):
             n.branch_length=n.mutation_length
 
         if root in rerooting_mechanisms:
-            new_root = self.reroot_to_best_root(covariation=root in ["best", "chisq", "min_dev"],
-                                                force_positive=force_positive and (root!='min_dev'))
+            new_root = self.reroot_to_best_root(covariation=root in ["best", "ML", "min_dev_ML"],
+                                                force_positive=force_positive and (not root.startswith('min_dev')))
         else:
             from Bio import Phylo
             if isinstance(root,Phylo.BaseTree.Clade):

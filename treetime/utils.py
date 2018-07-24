@@ -147,7 +147,7 @@ def numeric_date(dt=None):
     try:
         res = dt.year + dt.timetuple().tm_yday / 365.25
     except:
-        res = 0.0
+        res = None
 
     return res
 
