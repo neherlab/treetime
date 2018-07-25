@@ -525,7 +525,7 @@ class TreeRegression(object):
         if ind.sum():
             try:
                 # note: this is treetime specific
-                tmp_x = np.array([np.mean(n.numdate_given) if n.numdate_given else None
+                tmp_x = np.array([np.mean(n.raw_date_constraint) if n.raw_date_constraint else None
                                   for n in self.tree.get_terminals()])
                 ax.scatter(tmp_x[ind], yi[ind], label="ignored tips", c='r')
             except:

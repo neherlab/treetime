@@ -309,8 +309,8 @@ class TreeTime(ClockTree):
         icpt = self.clock_model['intercept']
         res = {}
         for node in terminals:
-            if hasattr(node, 'numdate_given') and  (node.numdate_given is not None):
-                res[node] = node.dist2root - clock_rate*np.mean(node.numdate_given) - icpt
+            if hasattr(node, 'raw_date_constraint') and  (node.raw_date_constraint is not None):
+                res[node] = node.dist2root - clock_rate*np.mean(node.raw_date_constraint) - icpt
 
         residuals = np.array(list(res.values()))
         iqd = np.percentile(residuals,75) - np.percentile(residuals,25)
@@ -391,8 +391,8 @@ class TreeTime(ClockTree):
                 new_root = self._leaves_lookup[root]
             elif root=='oldest':
                 new_root = sorted([n for n in self.tree.get_terminals()
-                                   if n.numdate_given is not None],
-                                   key=lambda x:np.mean(x.numdate_given))[0]
+                                   if n.raw_date_constraint is not None],
+                                   key=lambda x:np.mean(x.raw_date_constraint))[0]
             else:
                 self.logger('TreeTime.reroot -- WARNING: unsupported rooting mechanisms or root not found',2,warn=True)
                 return ttconf.ERROR
@@ -411,7 +411,7 @@ class TreeTime(ClockTree):
                     +('new_node' if new_root.name is None else new_root.name), 2)
 
         self.tree.root.branch_length = self.one_mutation
-        self.tree.root.numdate_given = None
+        self.tree.root.raw_date_constraint = None
         # set root.gamma bc root doesn't have a branch_length_interpolator but gamma is needed
         if not hasattr(self.tree.root, 'gamma'):
             self.tree.root.gamma = 1.0

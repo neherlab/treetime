@@ -87,15 +87,15 @@ class ClockTree(TreeAnc):
             if node.name in self.date_dict:
                 try:
                     tmp = np.mean(self.date_dict[node.name])
-                    node.numdate_given = self.date_dict[node.name]
+                    node.raw_date_constraint = self.date_dict[node.name]
                     node.bad_branch = False
                 except:
                     self.logger("WARNING: ClockTree.init: node %s has a bad date: %s"%(node.name, str(self.date_dict[node.name])), 2, warn=True)
-                    node.numdate_given = None
+                    node.raw_date_constraint = None
                     node.bad_branch = True
             else: # nodes without date contraints
 
-                node.numdate_given = None
+                node.raw_date_constraint = None
 
                 if node.is_terminal():
                     # Terminal branches without date constraints marked as 'bad'
@@ -185,7 +185,7 @@ class ClockTree(TreeAnc):
             a TreeRegression instance with self.tree attached as tree.
         """
         from .treeregression import TreeRegression
-        tip_value = lambda x:np.mean(x.numdate_given) if (x.is_terminal() and (x.bad_branch is False)) else None
+        tip_value = lambda x:np.mean(x.raw_date_constraint) if (x.is_terminal() and (x.bad_branch is False)) else None
         branch_value = lambda x:x.mutation_length
         if covariation:
             om = self.one_mutation
@@ -261,13 +261,13 @@ class ClockTree(TreeAnc):
         # make node distribution objects
         for node in self.tree.find_clades(order="postorder"):
             # node is constrained
-            if hasattr(node, 'numdate_given') and node.numdate_given is not None:
+            if hasattr(node, 'raw_date_constraint') and node.raw_date_constraint is not None:
                 # set the absolute time before present in branch length units
-                if np.isscalar(node.numdate_given):
-                    tbp = self.date2dist.get_time_before_present(node.numdate_given)
+                if np.isscalar(node.raw_date_constraint):
+                    tbp = self.date2dist.get_time_before_present(node.raw_date_constraint)
                     node.date_constraint = Distribution.delta_function(tbp, weight=1.0, min_width=self.min_width)
                 else:
-                    tbp = self.date2dist.get_time_before_present(np.array(node.numdate_given))
+                    tbp = self.date2dist.get_time_before_present(np.array(node.raw_date_constraint))
                     node.date_constraint = Distribution(tbp, np.ones_like(tbp), is_log=False, min_width=self.min_width)
 
                 if hasattr(node, 'bad_branch') and node.bad_branch is True:
@@ -275,7 +275,7 @@ class ClockTree(TreeAnc):
                                 ", excluding it from the optimization process"
                                 " Will be optimized freely", 4, warn=True)
             else: # node without sampling date set
-                node.numdate_given = None
+                node.raw_date_constraint = None
                 node.date_constraint = None
 
 

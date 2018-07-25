@@ -160,7 +160,7 @@ def parse_dates(params):
         # (use the first, if there are more than one)
         if len(potential_numdate_columns)>=1:
             name = potential_numdate_columns[0][1]
-            # Use this column as numdate_given
+            # Use this column as raw_date_constraint
             dates = df[name].to_dict()
             for k, val in dates.items():
                 try:
@@ -831,8 +831,8 @@ def estimate_clock_model(params):
         ofile.write("#name, date, root-to-tip distance\n")
         ofile.write("#Dates of nodes that didn't have a specified date are inferred from the root-to-tip regression.\n")
         for n in myTree.tree.get_terminals():
-            if hasattr(n, "numdate_given") and (n.numdate_given is not None):
-                ofile.write("%s, %f, %f\n"%(n.name, n.numdate_given, n.dist2root))
+            if hasattr(n, "raw_date_constraint") and (n.raw_date_constraint is not None):
+                ofile.write("%s, %f, %f\n"%(n.name, n.raw_date_constraint, n.dist2root))
             else:
                 ofile.write("%s, %f, %f\n"%(n.name, d2d.numdate_from_dist2root(n.dist2root), n.dist2root))
         for n in myTree.tree.get_nonterminals(order='preorder'):

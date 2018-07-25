@@ -51,7 +51,7 @@ if __name__ == '__main__':
     axs[1].set_title("Optimal divergence-time relationship with weighed nodes", fontsize=18)
     Phylo.draw(tt.tree, show_confidence=False, axes=axs[0], label_func=lambda x:x.name.split('|')[0] if x.is_terminal() else "")
 
-    d = np.array([(n.numdate_given, n.dist2root, n.count) for n in tt.tree.get_terminals()])
+    d = np.array([(n.raw_date_constraint, n.dist2root, n.count) for n in tt.tree.get_terminals()])
     mean_count = d[:,2].mean()
     plt.scatter(d[:,0], d[:,1], s=d[:,2]*30/mean_count)
     format_axes(fig, axs)
