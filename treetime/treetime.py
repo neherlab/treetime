@@ -379,8 +379,8 @@ class TreeTime(ClockTree):
             n.branch_length=n.mutation_length
 
         if root in rerooting_mechanisms:
-            new_root = self.reroot_to_best_root(covariation=root in ["best", "ML", "min_dev_ML"],
-                                                force_positive=force_positive and (not root.startswith('min_dev')))
+            new_root = self._find_best_root(covariation=root in ["best", "ML", "min_dev_ML"],
+                                            force_positive=force_positive and (not root.startswith('min_dev')))
         else:
             from Bio import Phylo
             if isinstance(root,Phylo.BaseTree.Clade):
@@ -412,6 +412,10 @@ class TreeTime(ClockTree):
 
         self.tree.root.branch_length = self.one_mutation
         self.tree.root.raw_date_constraint = None
+        if hasattr(new_root, 'time_before_present'):
+            self.tree.root.time_before_present = new_root.time_before_present
+        if hasattr(new_root, 'numdate'):
+            self.tree.root.numdate = new_root.numdate
         # set root.gamma bc root doesn't have a branch_length_interpolator but gamma is needed
         if not hasattr(self.tree.root, 'gamma'):
             self.tree.root.gamma = 1.0
@@ -679,7 +683,7 @@ class TreeTime(ClockTree):
 ### rerooting
 ###############################################################################
 
-    def reroot_to_best_root(self, covariation=True, force_positive=True, **kwarks):
+    def _find_best_root(self, covariation=True, force_positive=True, **kwarks):
         '''
         Determine the node that, when the tree is rooted on this node, results
         in the best regression of temporal constraints and root to tip distances.
@@ -699,7 +703,7 @@ class TreeTime(ClockTree):
         '''
         for n in self.tree.find_clades():
             n.branch_length=n.mutation_length
-        self.logger("TreeTime.reroot_to_best_root: searching for the best root position...",2)
+        self.logger("TreeTime._find_best_root: searching for the best root position...",2)
         Treg = self.setup_TreeRegression(covariation=covariation)
         self.clock_model = Treg.optimal_reroot(force_positive=force_positive)
         self.clock_model['covariation'] = covariation

@@ -447,7 +447,8 @@ class TreeRegression(object):
         return best_root
 
 
-    def clock_plot(self, add_internal=False, ax=None, regression=None, confidence=True, n_sigma = 2, fs=14):
+    def clock_plot(self, add_internal=False, ax=None, regression=None,
+                   confidence=True, n_sigma = 2, fs=14):
         """Plot root-to-tip distance vs time as a basic time-tree diagnostic
 
         Parameters
@@ -489,35 +490,35 @@ class TreeRegression(object):
             yi_int = np.array([n._v for n in internal])
             ind_int = np.array([n.bad_branch  if hasattr(n, 'bad_branch') else False  for n in internal])
 
-        if reg:
+        if regression:
             # plot regression line
-            t_mrca = -reg['intercept']/reg['slope']
+            t_mrca = -regression['intercept']/regression['slope']
             if add_internal:
-                time_span = np.max(xi[~ind_int]) - np.min(xi_int[~ind_int])
+                time_span = np.max(xi_int[~ind_int]) - np.min(xi_int[~ind_int])
                 x_vals = np.array([max(np.min(xi_int[~ind_int]), t_mrca) - 0.1*time_span, np.max(xi[~ind])+0.05*time_span])
             else:
                 time_span = np.max(xi[~ind]) - np.min(xi[~ind])
                 x_vals = np.array([max(np.min(xi[~ind]), t_mrca) - 0.1*time_span, np.max(xi[~ind]+0.05*time_span)])
 
             # plot confidence interval
-            if confidence and 'cov' in reg:
+            if confidence and 'cov' in regression:
                 x_vals = np.linspace(x_vals[0], x_vals[1], 100)
-                y_vals = reg['slope']*x_vals + reg['intercept']
-                dev = n_sigma*np.array([np.sqrt(reg['cov'][:2,:2].dot(np.array([x, 1])).dot(np.array([x,1]))) for x in x_vals])
-                dev_slope = n_sigma*np.sqrt(reg['cov'][0,0])
+                y_vals = regression['slope']*x_vals + regression['intercept']
+                dev = n_sigma*np.array([np.sqrt(regression['cov'][:2,:2].dot(np.array([x, 1])).dot(np.array([x,1]))) for x in x_vals])
+                dev_slope = n_sigma*np.sqrt(regression['cov'][0,0])
                 ax.fill_between(x_vals, y_vals-dev, y_vals+dev, alpha=0.2)
-                dp = np.array([reg['intercept']/reg['slope']**2,-1./reg['slope']])
-                dev_rtt = n_sigma*np.sqrt(reg['cov'][:2,:2].dot(dp).dot(dp))
+                dp = np.array([regression['intercept']/regression['slope']**2,-1./regression['slope']])
+                dev_rtt = n_sigma*np.sqrt(regression['cov'][:2,:2].dot(dp).dot(dp))
 
             else:
                 dev_rtt = None
                 dev_slope = None
 
-            ax.plot(x_vals, reg['slope']*x_vals + reg['intercept'],
+            ax.plot(x_vals, regression['slope']*x_vals + regression['intercept'],
                     label = r"$y=\alpha + \beta t$"+"\n"+
-                            r"$\beta=$%1.2e"%(reg["slope"])
+                            r"$\beta=$%1.2e"%(regression["slope"])
                             + ("+/- %1.e"%dev_slope if dev_slope else "") +
-                            "\nroot date: %1.1f"%(-reg['intercept']/reg['slope']) +
+                            "\nroot date: %1.1f"%(-regression['intercept']/regression['slope']) +
                             ("+/- %1.2f"%dev_rtt if dev_rtt else ""))
 
 
