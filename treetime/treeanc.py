@@ -116,6 +116,7 @@ class TreeAnc(object):
             if len(self.tree.get_terminals()) != len(self.aln):
                 print("**WARNING: Number of sequences in tree differs from number of sequences in alignment!**")
 
+
     def logger(self, msg, level, warn=False):
         """
         Print log message *msg* to stdout.
@@ -563,14 +564,21 @@ class TreeAnc(object):
             - sites can be constant but different from the reference
             - sites can be constant plus a ambiguous sites
 
-        assigns:
-            - self.nonref_positions: at least one sequence is different from ref
-        returns:
-            - reduced_alignment_const: reduced alignment accounting for
-                                       non-variable postitions
-            - alignment_patterns_const:
-                dict pattern -> (pos in reduced alignment, list of pos in full alignment)
-            - variable_positions: list of variable positions needed to construct remaining
+        assigns
+        -------
+        - self.nonref_positions: at least one sequence is different from ref
+
+        Returns
+        -------
+        reduced_alignment_const
+            reduced alignment accounting for non-variable postitions
+
+        alignment_patterns_const
+            dict pattern -> (pos in reduced alignment, list of pos in full alignment)
+
+        ariable_positions
+            list of variable positions needed to construct remaining
+
         """
 
         # number of sequences in alignment
@@ -780,29 +788,27 @@ class TreeAnc(object):
 
 
     def reconstruct_anc(self, method='ml', infer_gtr=False, marginal=False, **kwargs):
-        """
-
-        Reconstruct ancestral states
+        """Reconstruct ancestral sequences
 
         Parameters
-        -----------
+        ----------
+        method : str
+           Method to use. Supported values are "fitch" and "ml"
 
-         method : str
-            Method to use. Supported values are "fitch" and "ml"
+        infer_gtr : bool
+           Infer a GTR model before reconstructing the sequences
 
-         infer_gtr : bool
-            Infer a GTR model before reconstructing the sequences
-
-         marginal : bool
-            Assign sequences that are most likely after averaging over all other nodes
-            instead of the jointly most likely sequences.
+        marginal : bool
+           Assign sequences that are most likely after averaging over all other nodes
+           instead of the jointly most likely sequences.
+        **kwargs
+            additional keyword arguments that are passed down to :py:meth:`TreeAnc.infer_gtr` and :py:meth:`TreeAnc._ml_anc`
 
         Returns
         -------
-
-         N_diff : int
-            Number of nucleotides different from the previous
-            reconstruction.  If there were no pre-set sequences, returns N*L
+        N_diff : int
+           Number of nucleotides different from the previous
+           reconstruction.  If there were no pre-set sequences, returns N*L
 
         """
         self.logger("TreeAnc.infer_ancestral_sequences: method: " + method, 1)
@@ -850,22 +856,20 @@ class TreeAnc(object):
 
         Parameters
         ----------
+        node : PhyloTree.Clade
+           Tree node, which is the child node attached to the branch.
 
-         node : PhyloTree.Clade
-            Tree node, which is the child node attached to the branch.
-
-         keep_var_ambigs : boolean
-            If true, generates mutations based on the *original* compressed sequence, which
-            may include ambiguities. Note sites that only have 1 unambiguous base and ambiguous
-            bases ("AAAAANN") are stripped of ambiguous bases *before* compression, so ambiguous
-            bases will **not** be preserved.
+        keep_var_ambigs : boolean
+           If true, generates mutations based on the *original* compressed sequence, which
+           may include ambiguities. Note sites that only have 1 unambiguous base and ambiguous
+           bases ("AAAAANN") are stripped of ambiguous bases *before* compression, so ambiguous
+           bases will **not** be preserved.
 
         Returns
         -------
-
-          muts : list
-            List of mutations. Each mutation is represented as tuple of
-            :code:`(parent_state, position, child_state)`.
+        muts : list
+          List of mutations. Each mutation is represented as tuple of
+          :code:`(parent_state, position, child_state)`.
         """
 
         # if ambiguous site are to be restored and node is terminal,
@@ -886,6 +890,23 @@ class TreeAnc(object):
 
 
     def get_branch_mutation_matrix(self, node, full_sequence=False):
+        """uses results from marginal ancesrtal inference to return a joint
+        distribution of the sequence states at both ends of the branch.
+
+        Parameters
+        ----------
+        node : Phylo.clade
+            node of the tree
+        full_sequence : bool, optional
+            expand the sequence to the full sequence, if false (default)
+            the there will be one mutation matrix for each column in the
+            reduced alignment
+
+        Returns
+        -------
+        numpy.array
+            an Lxqxq stack of matrices (q=alphabet size, L (reduced)sequence length)
+        """
         from itertools import product
         pp,pc = self.marginal_branch_profile(node)
         if pp is None or pc is None:
@@ -911,21 +932,20 @@ class TreeAnc(object):
 
         Parameters
         ----------
-
-         node  : PhyloTree.Clade
-            Tree node
+        node : PhyloTree.Clade
+           Tree node
 
         Returns
         -------
-
-         seq : np.array
-            Sequence as np.array of chars
+        seq : np.array
+           Sequence as np.array of chars
         """
         seq = np.zeros_like(self.full_to_reduced_sequence_map, dtype='U1')
         for pos, state in enumerate(node.cseq):
             seq[self.reduced_to_full_sequence_map[pos]] = state
 
         return seq
+
 
     def dict_sequence(self, node, keep_var_ambigs=False):
         """
@@ -974,16 +994,14 @@ class TreeAnc(object):
         Keyword Args
         ------------
 
-
         Returns
         -------
-
-         Ndiff : int
-            Number of the characters that changed since the previous
-            reconstruction. These changes are determined from the pre-set
-            sequence attributes of the nodes. If there are no sequences available
-            (i.e., no reconstruction has been made before), returns the total
-            number of characters in the tree.
+        Ndiff : int
+           Number of the characters that changed since the previous
+           reconstruction. These changes are determined from the pre-set
+           sequence attributes of the nodes. If there are no sequences available
+           (i.e., no reconstruction has been made before), returns the total
+           number of characters in the tree.
 
         """
         # set fitch profiiles to each terminal node
@@ -1093,6 +1111,33 @@ class TreeAnc(object):
 ###################################################################
 ### Maximum Likelihood
 ###################################################################
+    def sequence_LH(self, pos=None, full_sequence=False):
+        """return the likelihood of the observed sequences given the tree
+
+        Parameters
+        ----------
+        pos : int, optional
+            position in the sequence, if none, the sum over all positions will be returned
+        full_sequence : bool, optional
+            does the position refer to the full or compressed sequence, by default compressed sequence is assumed.
+
+        Returns
+        -------
+        float
+            likelihood
+        """
+        if not hasattr(self.tree, "total_sequence_LH"):
+            self.logger("TreeAnc.sequence_LH: you need to run marginal ancestral inference first!", 1)
+            self.infer_ancestral_sequences(marginal=True)
+        if pos is not None:
+            if full_sequence:
+                compressed_pos = self.full_to_reduced_sequence_map[pos]
+            else:
+                compressed_pos = pos
+            return self.tree.sequence_LH[compressed_pos]
+        else:
+            return self.tree.total_sequence_LH
+
 
     def ancestral_likelihood(self):
         """
@@ -1214,12 +1259,12 @@ class TreeAnc(object):
             other_sample_from_profile = sample_from_profile
 
         seq, prof_vals, idxs = prof2seq(tree.root.marginal_profile,
-                                                  self.gtr, sample_from_prof=root_sample_from_profile)
+                                        self.gtr, sample_from_prof=root_sample_from_profile)
 
-        self.tree.sequence_LH = np.log(prof_vals) + marginal_LH_prefactor
-        self.tree.sequence_marginal_LH = (self.tree.sequence_LH*self.multiplicity).sum()
-        self.tree.marginal_LH_prefactor = marginal_LH_prefactor
+        self.tree.sequence_LH = marginal_LH_prefactor
+        self.tree.total_sequence_LH = (self.tree.sequence_LH*self.multiplicity).sum()
         self.tree.root.cseq = seq
+
         if final:
             if self.is_vcf:
                 self.tree.root.sequence = self.dict_sequence(self.tree.root)
@@ -1607,16 +1652,14 @@ class TreeAnc(object):
         Calculate optimal branch length given the sequences of node and parent
 
         Parameters
-        -----------
-
-         node : PhyloTree.Clade
-            TreeNode, attached to the branch.
+        ----------
+        node : PhyloTree.Clade
+           TreeNode, attached to the branch.
 
         Returns
         -------
-
-         new_len : float
-            Optimal length of the given branch
+        new_len : float
+           Optimal length of the given branch
 
         '''
         if node.up is None:
@@ -1639,16 +1682,16 @@ class TreeAnc(object):
         of the branch leading to node,
 
         Parameters
-        -----------
-         node: PhyloTree.Clade
-            TreeNode, attached to the branch.
+        ----------
+        node : PhyloTree.Clade
+           TreeNode, attached to the branch.
 
 
         Returns
-        --------
-         pp, pc : Pair of vectors (profile parent, pp) and (profile child, pc)
-            that are of shape (L,n) where L is sequence length and n is alphabet size.
-            note that this correspond to the compressed sequences.
+        -------
+        pp, pc : Pair of vectors (profile parent, pp) and (profile child, pc)
+           that are of shape (L,n) where L is sequence length and n is alphabet size.
+           note that this correspond to the compressed sequences.
         '''
         parent = node.up
         if parent is None:
@@ -1669,14 +1712,15 @@ class TreeAnc(object):
         of the branch leading to node,
 
         Parameters
-        -----------
-         node: PhyloTree.Clade
-            TreeNode, attached to the branch.
+        ----------
+        node : PhyloTree.Clade
+           TreeNode, attached to the branch.
+
         Returns
-        --------
-         branch_length : float
-            branch length of the branch leading to the node.
-            note: this can be unstable on iteration
+        -------
+        branch_length : float
+           branch length of the branch leading to the node.
+           note: this can be unstable on iteration
         '''
 
         if node.up is None:
@@ -1789,6 +1833,7 @@ class TreeAnc(object):
         self.logger("TreeAnc.optimize_sequences_and_branch_length: Unconstrained sequence LH:%f" % self.tree.unconstrained_sequence_LH , 2)
         return ttconf.SUCCESS
 
+
 ###############################################################################
 ### Utility functions
 ###############################################################################
@@ -1799,9 +1844,8 @@ class TreeAnc(object):
 
         Returns
         -------
-
-         new_aln : MultipleSeqAlignment
-            Alignment including sequences of all internal nodes
+        new_aln : MultipleSeqAlignment
+           Alignment including sequences of all internal nodes
 
         """
         from Bio.Align import MultipleSeqAlignment
@@ -1825,7 +1869,6 @@ class TreeAnc(object):
 
         Parameters
         ----------
-
         keep_var_ambigs : boolean
             If true, generates dict sequences based on the *original* compressed sequences, which
             may include ambiguities. Note sites that only have 1 unambiguous base and ambiguous
@@ -1835,26 +1878,30 @@ class TreeAnc(object):
 
         Returns
         -------
+        tree_dict : dict
+           Format: ::
 
-         tree_dict : dict
-            Format: ::
+               {
+               'reference':'AGCTCGA...A',
+               'sequences': { 'seq1':{4:'A', 7:'-'}, 'seq2':{100:'C'} },
+               'positions': [1,4,7,10,100...],
+               'inferred_const_sites': [7,100....]
+               }
 
-                {
-                'reference':'AGCTCGA...A',
-                'sequences': { 'seq1':{4:'A', 7:'-'}, 'seq2':{100:'C'} },
-                'positions': [1,4,7,10,100...],
-                'inferred_const_sites': [7,100....]
-                }
+           reference: str
+               The reference sequence to which the variable sites are mapped
+           sequences: nested dict
+               A dict for each sequence with the position and alternative call for each variant
+           positions: list
+               All variable positions in the alignment
+           inferred_cost_sites: list
+               *(optional)* Positions that were constant except ambiguous bases, which were
+               converted into constant sites by TreeAnc (ex: 'AAAN' -> 'AAAA')
 
-            reference: str
-                The reference sequence to which the variable sites are mapped
-            sequences: nested dict
-                A dict for each sequence with the position and alternative call for each variant
-            positions: list
-                All variable positions in the alignment
-            inferred_cost_sites: list
-                *(optional)* Positions that were constant except ambiguous bases, which were
-                converted into constant sites by TreeAnc (ex: 'AAAN' -> 'AAAA')
+        Raises
+        ------
+        TypeError
+            Description
 
         """
         if self.is_vcf:

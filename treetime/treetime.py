@@ -329,32 +329,28 @@ class TreeTime(ClockTree):
             self.reroot(root=reroot)
         return ttconf.SUCCESS
 
-    def plot_root_to_tip(self, add_internal=False, label=True, ax=None, **kwargs):
+    def plot_root_to_tip(self, add_internal=False, label=True, ax=None):
         """
         Plot root-to-tip regression
 
         Parameters
         ----------
+        add_internal : bool
+           If true, plot internal node positions
 
-         add_internal : bool
-            If true, plot internal node positions
+        label : bool
+           If true, label the plots
 
-         label : bool
-            If true, label the plots
-
-         ax: matplotlib axes
-            If not None, use the provided matplotlib axes to plot the results
-
-         **kwargs:
-            Keyword arguments to be passed to :py:meth:`matplotlib.pyplot.scatter` function
-
+        ax : matplotlib axes
+           If not None, use the provided matplotlib axes to plot the results
         """
         Treg = self.setup_TreeRegression()
         if self.clock_model:
             cf = self.clock_model['covariation'] is True
         else:
             cf = False
-        Treg.clock_plot(n_sigma=2, add_internal=add_internal, ax=ax, confidence=cf, reg=self.clock_model)
+        Treg.clock_plot(ax=ax, add_internal=add_internal, confidence=cf, n_sigma=2,
+                       regression=self.clock_model)
 
 
     def reroot(self, root='best', force_positive=True):

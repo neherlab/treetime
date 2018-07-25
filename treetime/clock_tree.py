@@ -72,6 +72,13 @@ class ClockTree(TreeAnc):
 
 
     def _assign_dates(self):
+        """assign dates to nodes
+
+        Returns
+        -------
+        TYPE
+            Description
+        """
         if self.tree is None:
             self.logger("ClockTree._assign_dates: tree is not set, can't assign dates", 0)
             return ttconf.ERROR
@@ -160,6 +167,23 @@ class ClockTree(TreeAnc):
 
 
     def setup_TreeRegression(self, covariation=True, tip_slack=ttconf.OVER_DISPERSION):
+        """instantiate a TreeRegression object and set its tip_value and branch_value function
+        to defaults that are sensible for treetime instances.
+
+        Parameters
+        ----------
+        covariation : bool, optional
+            accout for phylogenetic covariation
+        tip_slack : float, optional
+            the excess variation/branch length associated with terminal nodes. Some
+            terminal branch length is necessary to avoid division by zero. This
+            excess branch length is measured in self.one_mutations.
+
+        Returns
+        -------
+        TreeRegression
+            a TreeRegression instance with self.tree attached as tree.
+        """
         from .treeregression import TreeRegression
         tip_value = lambda x:np.mean(x.numdate_given) if (x.is_terminal() and (x.bad_branch is False)) else None
         branch_value = lambda x:x.mutation_length

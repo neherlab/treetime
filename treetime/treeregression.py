@@ -8,6 +8,18 @@ def base_regression(Q, slope=None):
     this function calculates the regression coefficients for a
     given vector containing the averages of tip and branch
     quantities.
+
+    Parameters
+    ----------
+    Q : numpy.array
+        vector with
+    slope : None, optional
+        Description
+
+    Returns
+    -------
+    TYPE
+        Description
     """
     if slope is None:
         slope = (Q[dtavgii] - Q[tavgii]*Q[davgii]/Q[sii]) \
@@ -142,6 +154,11 @@ class TreeRegression(object):
     def recurse(self, full_matrix=False):
         """
         recursion to calculate inverse covariance matrix
+
+        Parameters
+        ----------
+        full_matrix : bool, optional
+            if True, the entire inverse matrix is calculated. otherwise, only the weighing vector.
         """
         for n in self.tree.get_nonterminals(order='postorder'):
             n_leaves = len(n._ii)
@@ -262,7 +279,14 @@ class TreeRegression(object):
         return res
 
     def explained_variance(self):
-        # calculate standard explained variance
+        """calculate standard explained variance
+
+        Returns
+        -------
+        float
+            r-value of the root-to-tip distance and time.
+            independent of regression model, but dependent on root choice
+        """
         self.tree.root._v=0
         for n in self.tree.get_nonterminals(order='preorder'):
             for c in n:
@@ -273,6 +297,18 @@ class TreeRegression(object):
 
 
     def regression(self, slope=None):
+        """regress tip values against branch values
+
+        Parameters
+        ----------
+        slope : None, optional
+            if given, the slope isn't optimized
+
+        Returns
+        -------
+        dict
+            regression parameters
+        """
         self._calculate_averages()
 
         clock_model = base_regression(self.tree.root.Q, slope)
@@ -366,6 +402,16 @@ class TreeRegression(object):
         Note that this can change the parent child relations of the tree
         and values associated with branches rather than nodes
         (e.g. confidence) might need to be re-evaluated afterwards
+
+        Parameters
+        ----------
+        force_positive : bool, optional
+            if True, the search for a root will only consider positive rate estimates
+
+        Returns
+        -------
+        dict
+            regression parameters
         """
         best_root = self.find_best_root(force_positive=force_positive)
         best_node = best_root["node"]
@@ -401,7 +447,26 @@ class TreeRegression(object):
         return best_root
 
 
-    def clock_plot(self, n_sigma = 2, add_internal=False, ax=None, reg=None, confidence=True, fs=14):
+    def clock_plot(self, add_internal=False, ax=None, regression=None, confidence=True, n_sigma = 2, fs=14):
+        """Plot root-to-tip distance vs time as a basic time-tree diagnostic
+
+        Parameters
+        ----------
+        add_internal : bool, optional
+            add internal nodes. this will only work if the tree has been dated already
+        ax : None, optional
+            an matplotlib axis to plot into. if non provided, a new figure is opened
+        regression : None, optional
+            a dict containing parameters of a root-to-tip vs time regression as
+            returned by the function base_regression
+        confidence : bool, optional
+            add confidence area to the regression line
+        n_sigma : int, optional
+            number of standard deviations for the confidence area.
+        fs : int, optional
+            fontsize
+
+        """
         import matplotlib.pyplot as plt
         if ax is None:
             plt.figure()
