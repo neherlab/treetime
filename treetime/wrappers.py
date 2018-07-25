@@ -129,8 +129,7 @@ def parse_dates(params):
         print("\n ERROR: file %s does not exist, exiting..."%params.dates)
         return dates
 
-    sep = '\t' if params.dates.endswith('.tsv') else ','
-    full_sep = r'\s*'+sep+r'\s*'
+    full_sep = '\t' if params.dates.endswith('.tsv') else r'\s*,\s*'
 
     try:
         # read the metadata file into pandas dataframe.
@@ -175,8 +174,20 @@ def parse_dates(params):
             name = potential_date_columns[0][1]
             # NOTE as the 0th column is the index, we should parse the dates
             # for the column idx + 1
-            df = pd.read_csv(params.dates, index_col=0, sep=full_sep, parse_dates=[1+idx], engine='python')
-            dates = {k: utils.numeric_date(df.loc[k, name]) for k in df.index}
+            df = pd.read_csv(params.dates, index_col=0, sep=full_sep, engine='python')
+            dates = {}
+            for k in df.index:
+                try:
+                    dates[k] = float(df.loc[k,name])
+                    continue
+                except:
+                    pass
+                try:
+                    tmp = utils.numeric_date(pd.to_datetime(df.loc[k,name]))
+                    if tmp:
+                        dates[k] = tmp
+                except:
+                    dates[k]=None
         else:
             print("Metadata file has no column which looks like a sampling date!", file=sys.stderr)
 
@@ -477,6 +488,7 @@ def timetree(params):
                resolve_polytomies=(not params.keep_polytomies),
                Tc=coalescent, max_iter=params.max_iter,
                fixed_clock_rate=params.clock_rate,
+               n_iqd=params.clock_filter,
                branch_length_mode = branch_length_mode,
                fixed_pi=fixed_pi)
     if success==ttconf.ERROR: # if TreeTime.run failed, exit
@@ -766,19 +778,29 @@ def estimate_clock_model(params):
     myTree = TreeTime(dates=dates, tree=params.tree, aln=aln, gtr='JC69',
                       verbose=params.verbose, seq_len=params.sequence_length,
                       ref=ref)
+
     if myTree.tree is None:
         print("ERROR: tree loading failed. exiting...")
         return 1
 
+    if params.clock_filter:
+        n_bad = [n.name for n in myTree.tree.get_terminals() if n.bad_branch]
+        myTree.clock_filter(n_iqd=params.clock_filter)
+        n_bad_after = [n.name for n in myTree.tree.get_terminals() if n.bad_branch]
+        if len(n_bad_after)>len(n_bad):
+            print("The following leaves don't follow a loose clock and "
+                  "will be ignored in rate estimation:\n\t"
+                  +"\n\t".join(set(n_bad_after).difference(n_bad)))
+
     if not params.keep_root:
         # reroot to optimal root, this assigns clock_model to myTree
-        if params.reroot in ['chisq', 'best']:
+        if params.reroot in ['ML', 'best']:
             myTree.run(root=params.reroot, max_iter=2)
-        res = myTree.reroot("chisq" if params.reroot.startswith('chisq') else params.reroot,
+        res = myTree.reroot("ML" if params.reroot.startswith('ML') else params.reroot,
                       force_positive=not params.allow_negative_rate)
         if res==ttconf.ERROR:
             print("ERROR: unknown root or rooting mechanism!\n"
-                  "\tvalid choices are 'least-squares', 'chisq', and 'chisq-rough'")
+                  "\tvalid choices are 'least-squares', 'ML', and 'ML-rough'")
             return 1
     else:
         Treg = myTree.setup_TreeRegression(covariation=True)
@@ -809,7 +831,7 @@ def estimate_clock_model(params):
         ofile.write("#name, date, root-to-tip distance\n")
         ofile.write("#Dates of nodes that didn't have a specified date are inferred from the root-to-tip regression.\n")
         for n in myTree.tree.get_terminals():
-            if hasattr(n, "numdate_given"):
+            if hasattr(n, "numdate_given") and (n.numdate_given is not None):
                 ofile.write("%s, %f, %f\n"%(n.name, n.numdate_given, n.dist2root))
             else:
                 ofile.write("%s, %f, %f\n"%(n.name, d2d.numdate_from_dist2root(n.dist2root), n.dist2root))

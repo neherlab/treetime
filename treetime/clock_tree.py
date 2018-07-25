@@ -159,14 +159,14 @@ class ClockTree(TreeAnc):
             self._date2dist = val
 
 
-    def setup_TreeRegression(self, covariation=True):
+    def setup_TreeRegression(self, covariation=True, tip_slack=ttconf.OVER_DISPERSION):
         from .treeregression import TreeRegression
         tip_value = lambda x:np.mean(x.numdate_given) if (x.is_terminal() and (x.bad_branch is False)) else None
         branch_value = lambda x:x.mutation_length
         if covariation:
             om = self.one_mutation
             branch_variance = lambda x:((x.clock_length if hasattr(x,'clock_length') else x.mutation_length)
-                                        +(ttconf.OVER_DISPERSION*om if x.is_terminal() else 0.0))*om
+                                        +(tip_slack*om if x.is_terminal() else 0.0))*om
         else:
             branch_variance = lambda x:1.0 if x.is_terminal() else 0.0
 

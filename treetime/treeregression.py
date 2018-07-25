@@ -156,11 +156,9 @@ class TreeRegression(object):
                         M[c_count, c_count] = 1.0/ssq
                     r[c_count] = 1.0/ssq
                 else:
-                    tmp = c.r/(1.0+ssq*c.s)
-                    r[c_count:c_count+nc] = tmp
-                    tmp *= ssq
                     if full_matrix:
-                        M[c_count:c_count+nc, c_count:c_count+nc] = c.cinv - np.outer(tmp,c.r)
+                        M[c_count:c_count+nc, c_count:c_count+nc] = c.cinv - ssq*np.outer(c.r,c.r)/(1+ssq*c.s)
+                    r[c_count:c_count+nc] = c.r/(1+ssq*c.s)
                 c_count += nc
 
             if full_matrix: n.cinv = M
@@ -179,7 +177,7 @@ class TreeRegression(object):
                 tv = self.tip_value(c)
                 bv = self.branch_value(c)
                 var = self.branch_variance(c)
-                Q+=self.propagate_averages(c, tv, bv, var)
+                Q += self.propagate_averages(c, tv, bv, var)
             n.Q=Q
 
         for n in self.tree.find_clades(order='preorder'):
@@ -236,7 +234,6 @@ class TreeRegression(object):
          Q : (np.array)
             a vector of length 6 containing the updated quantities
         """
-        res = np.zeros(6, dtype=float)
         if n.is_terminal() and outgroup==False:
             if tv is None:
                 res = np.array([0, 0, 0, 0, 0, 0])
@@ -460,8 +457,17 @@ class TreeRegression(object):
 
 
         ax.scatter(xi[~ind], yi[~ind], label=("tips" if add_internal else None))
+        if ind.sum():
+            try:
+                # note: this is treetime specific
+                tmp_x = np.array([np.mean(n.numdate_given) if n.numdate_given else None
+                                  for n in self.tree.get_terminals()])
+                ax.scatter(tmp_x[ind], yi[ind], label="ignored tips", c='r')
+            except:
+                pass
         if add_internal:
             ax.scatter(xi_int[~ind_int], yi_int[~ind_int], label="internal nodes")
+
         ax.set_ylabel('root-to-tip distance', fontsize=fs)
         ax.set_xlabel('date', fontsize=fs)
         ax.ticklabel_format(useOffset=False)

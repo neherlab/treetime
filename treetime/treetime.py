@@ -271,7 +271,7 @@ class TreeTime(ClockTree):
         return bl_mode
 
 
-    def clock_filter(self, reroot='best', n_iqd=None, plot=False):
+    def clock_filter(self, reroot='least-squares', n_iqd=None, plot=False):
         '''
         Labels outlier branches that don't seem to follow a molecular clock
         and excludes them from subsequent molecular clock estimation and
@@ -298,18 +298,20 @@ class TreeTime(ClockTree):
 
         terminals = self.tree.get_terminals()
         if reroot:
-            self.reroot(root=reroot)
+            if reroot.startswith("ML"):
+                self.logger("TreeTime.ClockFilter: filtering with covariance aware methods is not recommended.", 0, warn=True)
+            self.reroot(root='least-squares' if reroot=='best' else reroot)
         else:
             Treg = self.setup_TreeRegression(covariation=False)
             self.clock_model = Treg.regression()
 
         clock_rate = self.clock_model['slope']
         icpt = self.clock_model['intercept']
-
         res = {}
         for node in terminals:
             if hasattr(node, 'numdate_given') and  (node.numdate_given is not None):
                 res[node] = node.dist2root - clock_rate*np.mean(node.numdate_given) - icpt
+
         residuals = np.array(list(res.values()))
         iqd = np.percentile(residuals,75) - np.percentile(residuals,25)
         for node,r in res.items():
@@ -417,9 +419,9 @@ class TreeTime(ClockTree):
         # set root.gamma bc root doesn't have a branch_length_interpolator but gamma is needed
         if not hasattr(self.tree.root, 'gamma'):
             self.tree.root.gamma = 1.0
-        self.prepare_tree()
         for n in self.tree.find_clades():
             n.mutation_length = n.branch_length
+        self.prepare_tree()
 
         Treg = self.setup_TreeRegression(covariation=True)
         self.clock_model['r_val'] = Treg.explained_variance()
