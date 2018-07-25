@@ -57,7 +57,7 @@ def test_ancestral():
     mygtr = GTR.custom(alphabet = np.array(['A', 'C', 'G', 'T']), pi = np.array([0.9, 0.06, 0.02, 0.02]), W=np.ones((4,4)))
     t = TreeAnc(gtr=mygtr, tree=tiny_tree, aln=tiny_aln)
     t.reconstruct_anc('ml', marginal=True, debug=True)
-    lhsum =  (t.tree.root.marginal_profile.sum(axis=1) * np.exp(t.tree.marginal_LH_prefactor)).sum()
+    lhsum =  np.exp(t.sequence_LH(pos=np.arange(4**3))).sum()
     print (lhsum)
     assert(np.abs(lhsum-1.0)<1e-6)
 
