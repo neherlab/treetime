@@ -331,7 +331,7 @@ class TreeAnc(object):
             self._attach_sequences_to_nodes()
         else:
             self.logger("TreeAnc.aln: sequences not yet attached to tree", 3, warn=True)
-        return tt.SUCCESS
+        return ttconf.SUCCESS
 
     @property
     def seq_len(self):
