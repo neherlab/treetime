@@ -260,7 +260,7 @@ class TreeTime(ClockTree):
             if the maximal branch length in the tree is longer than 0.05, this will
             default to 'input'. Otherwise set to 'joint'
         '''
-        if branch_length_mode not in ['joint', 'marginal', 'input']:
+        if branch_length_mode in ['joint', 'marginal', 'input']:
             return branch_length_mode
 
         bl_dis = [n.branch_length for n in self.tree.find_clades() if n.up]
