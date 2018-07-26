@@ -105,8 +105,7 @@ class TreeTime(ClockTree):
         if (self.aln is None):
             branch_length_mode='input'
 
-        if branch_length_mode not in ['joint', 'marginal', 'input']:
-            branch_length_mode = self._set_branch_length_mode(branch_length_mode)
+        branch_length_mode = self._set_branch_length_mode(branch_length_mode)
 
         # determine how to reconstruct and sample sequences
         seq_kwargs = {"marginal_sequences":sequence_marginal or (branch_length_mode=='marginal'),
@@ -261,6 +260,9 @@ class TreeTime(ClockTree):
             if the maximal branch length in the tree is longer than 0.05, this will
             default to 'input'. Otherwise set to 'joint'
         '''
+        if branch_length_mode not in ['joint', 'marginal', 'input']:
+            return branch_length_mode
+
         bl_dis = [n.branch_length for n in self.tree.find_clades() if n.up]
         max_bl = np.max(bl_dis)
         if max_bl>0.1:
@@ -382,7 +384,6 @@ class TreeTime(ClockTree):
             new_root = self._find_best_root(covariation=root in ["best", "ML", "min_dev_ML"],
                                             force_positive=force_positive and (not root.startswith('min_dev')))
         else:
-            from Bio import Phylo
             if isinstance(root,Phylo.BaseTree.Clade):
                 new_root = root
             elif isinstance(root, list):

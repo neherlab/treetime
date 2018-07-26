@@ -1,8 +1,8 @@
 from __future__ import print_function, division, absolute_import
-from treetime import utils
 import numpy as np
 from treetime import config as ttconf
 from .treeanc import TreeAnc
+from .utils import numeric_date, DateConversion
 from .distribution import Distribution
 from .branch_len_interpolator import BranchLenInterpolator
 from .node_interpolator import NodeInterpolator
@@ -256,7 +256,7 @@ class ClockTree(TreeAnc):
         Treg = self.setup_TreeRegression(covariation=True)
         self.clock_model = Treg.regression(slope=clock_rate)
         self.clock_model['covariation'] = True
-        self.date2dist = utils.DateConversion.from_regression(self.clock_model)
+        self.date2dist = DateConversion.from_regression(self.clock_model)
 
         # make node distribution objects
         for node in self.tree.find_clades(order="postorder"):
@@ -553,7 +553,6 @@ class ClockTree(TreeAnc):
                     msg_parent_to_node = NodeInterpolator.multiply(complementary_msgs)
                     msg_parent_to_node._adjust_grid(rel_tol=self.rel_tol_prune)
                 else:
-                    from utils import numeric_date
                     x = [parent.numdate, numeric_date()]
                     msg_parent_to_node = NodeInterpolator(x, [1.0, 1.0],min_width=self.min_width)
 
@@ -627,7 +626,7 @@ class ClockTree(TreeAnc):
 
         '''
         from datetime import datetime, timedelta
-        now = utils.numeric_date()
+        now = numeric_date()
         for node in self.tree.find_clades():
             years_bp = self.date2dist.to_years(node.time_before_present)
             if years_bp < 0 and self.real_dates:
