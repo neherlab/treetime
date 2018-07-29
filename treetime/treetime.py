@@ -156,7 +156,7 @@ class TreeTime(ClockTree):
             seq_LH = self.tree.sequence_marginal_LH if seq_kwargs['marginal_sequences'] else self.tree.sequence_joint_LH
         self.LH =[[seq_LH, self.tree.positional_joint_LH, 0]]
 
-        if root is not None:
+        if root is not None and max_iter:
             if self.reroot(root='least-squares' if root=='clock_filter' else root)==ttconf.ERROR:
                 return ttconf.ERROR
 
@@ -245,6 +245,15 @@ class TreeTime(ClockTree):
             self.logger("###TreeTime.run: FINAL ROUND - confidence estimation via marginal reconstruction", 0)
             self.make_time_tree(clock_rate=fixed_clock_rate, time_marginal=time_marginal,
                                 branch_length_mode=branch_length_mode,**kwargs)
+
+        bad_branches =[n for n in self.tree.get_terminals()
+                       if n.bad_branch and n.raw_date_constraint]
+        if bad_branches:
+            self.logger("TreeTime: The following tips don't fit the clock model, "
+                        "please remove them from the tree. Their dates have been reset:",0,warn=True)
+            for n in bad_branches:
+                self.logger("%s, input date: %1.2f, apparent date: %1.2f"%(n.name, n.raw_date_constraint, n.numdate),0,warn=True)
+
         return ttconf.SUCCESS
 
 
@@ -318,7 +327,7 @@ class TreeTime(ClockTree):
         iqd = np.percentile(residuals,75) - np.percentile(residuals,25)
         for node,r in res.items():
             if abs(r)>n_iqd*iqd and node.up.up is not None:
-                self.logger('TreeTime.ClockFilter: marking %s as outlier, residual %f interquartile distances'%(node.name,r/iqd), 3)
+                self.logger('TreeTime.ClockFilter: marking %s as outlier, residual %f interquartile distances'%(node.name,r/iqd), 3, warn=True)
                 node.bad_branch=True
             else:
                 node.bad_branch=False
@@ -330,6 +339,7 @@ class TreeTime(ClockTree):
         if reroot:
             self.reroot(root=reroot)
         return ttconf.SUCCESS
+
 
     def plot_root_to_tip(self, add_internal=False, label=True, ax=None):
         """
@@ -653,12 +663,13 @@ class TreeTime(ClockTree):
         c=1.0/self.one_mutation
         for node in self.tree.find_clades(order='postorder'):
             opt_len = node.mutation_length
+            act_len = node.clock_length if hasattr(node, 'clock_length') else node.branch_length
 
             # opt_len \approx 1.0*len(node.mutations)/node.profile.shape[0] but calculated via gtr model
             # contact term: stiffness*(g*bl - bl_opt)^2 + slack(g-1)^2 =
             #               (slack+bl^2) g^2 - 2 (bl*bl_opt+1) g + C= k2 g^2 + k1 g + C
-            node._k2 = slack + c*node.branch_length**2/(opt_len+self.one_mutation)
-            node._k1 = -2*(c*node.branch_length*opt_len/(opt_len+self.one_mutation) + slack)
+            node._k2 = slack + c*act_len**2/(opt_len+self.one_mutation)
+            node._k1 = -2*(c*act_len*opt_len/(opt_len+self.one_mutation) + slack)
             # coupling term: \sum_c coupling*(g-g_c)^2 + Cost_c(g_c|g)
             # given g, g_c needs to be optimal-> 2*coupling*(g-g_c) = 2*child.k2 g_c  + child.k1
             # hence g_c = (coupling*g - 0.5*child.k1)/(coupling+child.k2)

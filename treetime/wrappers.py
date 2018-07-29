@@ -119,86 +119,6 @@ def read_in_DRMs(drm_file, offset):
 
     return DRM_info
 
-def parse_dates(params):
-    """
-    parse dates from the arguments and return a dictionary mapping
-    taxon names to numerical dates.
-    """
-    dates = {}
-    if not os.path.isfile(params.dates):
-        print("\n ERROR: file %s does not exist, exiting..."%params.dates)
-        return dates
-
-    full_sep = '\t' if params.dates.endswith('.tsv') else r'\s*,\s*'
-
-    try:
-        # read the metadata file into pandas dataframe.
-        df = pd.read_csv(params.dates, index_col=0, sep=full_sep, engine='python')
-        # check the metadata has strain names in the first column
-        # look for the column containing sampling dates
-        # We assume that the dates might be given either in human-readable format
-        # (e.g. ISO dates), or be already converted to the numeric format.
-        if 'name' not in df.index.name.lower():
-            print("Cannot read metadata: first column should contain the names of the strains", file=sys.stderr)
-            return {}
-        potential_date_columns = []
-        potential_numdate_columns = []
-        # Scan the dataframe columns and find ones which likely to store the
-        # dates
-        for ci,col in enumerate(df.columns):
-            d = df.iloc[0,ci]
-            if type(d)==str and d[0] in ['"', "'"] and d[-1] in ['"', "'"]:
-                for i,tmp_d in enumerate(df.iloc[:,ci]):
-                    df.iloc[i,ci] = tmp_d.strip(d[0])
-            if 'date' in col.lower():
-                try: #  avoid date parsing when can be parsed as float
-                    tmp = float(df.iloc[0,ci])
-                    potential_numdate_columns.append((ci, col))
-                except: #  otherwise add as potential date column
-                    potential_date_columns.append((ci, col))
-        # if a potential numeric date column was found, use it
-        # (use the first, if there are more than one)
-        if len(potential_numdate_columns)>=1:
-            name = potential_numdate_columns[0][1]
-            # Use this column as raw_date_constraint
-            dates = df[name].to_dict()
-            for k, val in dates.items():
-                try:
-                    dates[k] = float(val)
-                except:
-                    dates[k] = None
-
-        elif len(potential_date_columns)>=1:
-            #try to parse the csv file with dates in the idx column:
-            idx = potential_date_columns[0][0]
-            name = potential_date_columns[0][1]
-            # NOTE as the 0th column is the index, we should parse the dates
-            # for the column idx + 1
-            df = pd.read_csv(params.dates, index_col=0, sep=full_sep, engine='python')
-            dates = {}
-            for k in df.index:
-                try:
-                    dates[k] = float(df.loc[k,name])
-                    continue
-                except:
-                    pass
-                try:
-                    tmp = utils.numeric_date(pd.to_datetime(df.loc[k,name]))
-                    if tmp:
-                        dates[k] = tmp
-                except:
-                    dates[k]=None
-        else:
-            print("Metadata file has no column which looks like a sampling date!", file=sys.stderr)
-
-        if all(v is None for v in dates.values()):
-            print("Cannot parse dates correctly! Check date format.")
-            return {}
-        return dates
-    except:
-        print("Cannot read the metadata file!", file=sys.stderr)
-        return {}
-
 
 def read_if_vcf(params):
     """
@@ -438,7 +358,7 @@ def timetree(params):
     if params.relax==[]:
         params.relax=True
 
-    dates = parse_dates(params)
+    dates = utils.parse_dates(params.dates)
     if len(dates)==0:
         return 1
 
@@ -758,7 +678,7 @@ def estimate_clock_model(params):
 
     if assure_tree(params, tmp_dir='clock_model_tmp'):
         return 1
-    dates = parse_dates(params)
+    dates = utils.parse_dates(params.dates)
     if len(dates)==0:
         return 1
 

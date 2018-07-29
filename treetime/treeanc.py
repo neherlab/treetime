@@ -139,9 +139,9 @@ class TreeAnc(object):
         if level<self.verbose or (warn and level<=self.verbose):
             dt = time.time() - self.t_start
             outstr = '\n' if level<2 else ''
-            outstr+=format(dt, '4.2f')+'\t'
-            outstr+= level*'-'
-            outstr+=msg
+            outstr += format(dt, '4.2f')+'\t'
+            outstr += level*'-'
+            outstr += msg
             print(outstr, file=sys.stdout)
 
 
@@ -353,7 +353,6 @@ class TreeAnc(object):
         if (not hasattr(self, '_seq_len')) or self._seq_len is None:
             if L:
                 self._seq_len = int(L)
-                self._one_mutation = 1.0/self._seq_len
         else:
             self.logger("TreeAnc: one_mutation and sequence length can't be reset",1)
 
@@ -365,7 +364,9 @@ class TreeAnc(object):
         float
             inverse of the uncompressed sequene length - length scale for short branches
         """
-        return self._one_mutation
+        L = self.seq_len
+        if L:
+            return 1.0/L
 
     @one_mutation.setter
     def one_mutation(self,om):
@@ -695,10 +696,16 @@ class TreeAnc(object):
                 clade.name = "NODE_" + format(self._internal_node_count, '07d')
                 self._internal_node_count += 1
             for c in clade.clades:
-                c.bad_branch=c.bad_branch if hasattr(c, 'bad_branch') else False
+                if c.is_terminal():
+                    c.bad_branch = c.bad_branch if hasattr(c, 'bad_branch') else False
                 c.up = clade
+
+        for clade in self.tree.get_nonterminals(order='postorder'): # parents first
+            clade.bad_branch = all([c.bad_branch for c in clade]) or c.bad_branch
+
         self._calc_dist2root()
         self._internal_node_count = max(internal_node_count, self._internal_node_count)
+
 
     def _calc_dist2root(self):
         """
@@ -811,7 +818,8 @@ class TreeAnc(object):
         return self.reconstruct_anc(*args,**kwargs)
 
 
-    def reconstruct_anc(self, method='ml', infer_gtr=False, marginal=False, **kwargs):
+    def reconstruct_anc(self, method='probabilistic', infer_gtr=False,
+                        marginal=False, **kwargs):
         """Reconstruct ancestral sequences
 
         Parameters
@@ -835,12 +843,12 @@ class TreeAnc(object):
            reconstruction.  If there were no pre-set sequences, returns N*L
 
         """
-        self.logger("TreeAnc.infer_ancestral_sequences: method: " + method, 1)
+        self.logger("TreeAnc.infer_ancestral_sequences with method: %s, %s"%(method, 'marginal' if marginal else 'joint'), 1)
         if (self.tree is None) or (self.aln is None):
             self.logger("TreeAnc.infer_ancestral_sequences: ERROR, alignment or tree are missing", 0)
             return ttconf.ERROR
 
-        if method == 'ml':
+        if method in ['ml', 'probabilistic']:
             if marginal:
                 _ml_anc = self._ml_anc_marginal
             else:
@@ -1078,7 +1086,7 @@ class TreeAnc(object):
             del node.state # no need to store Fitch states
         self.logger("Done ancestral state reconstruction",3)
         for node in self.tree.get_terminals():
-            node.profile = seq_utils.seq2prof(node.original_cseq, self.gtr.profile_map)
+            node.profile = seq2prof(node.original_cseq, self.gtr.profile_map)
         return N_diff
 
 
@@ -1228,7 +1236,7 @@ class TreeAnc(object):
          sample_from_profile : bool or str
             assign sequences probabilistically according to the inferred probabilities
             of ancestral states instead of to their ML value. This parameter can also
-            take the value 'root' in which case probabilisitic sampling will happen
+            take the value 'root' in which case probabilistic sampling will happen
             at the root but at no other node.
 
         """
@@ -1373,7 +1381,7 @@ class TreeAnc(object):
             stop full length by expanding sites with identical alignment patterns
 
          sample_from_profile : str
-            This parameter can take the value 'root' in which case probabilisitic
+            This parameter can take the value 'root' in which case probabilistic
             sampling will happen at the root. otherwise sequences at ALL nodes are
             set to the value that jointly optimized the likelihood.
 
@@ -1828,7 +1836,7 @@ class TreeAnc(object):
 
         self.logger("TreeAnc.optimize_sequences_and_branch_length: sequences...", 1)
         if reuse_branch_len:
-            N_diff = self.reconstruct_anc(method='ml', infer_gtr=infer_gtr,
+            N_diff = self.reconstruct_anc(method='probabilistic', infer_gtr=infer_gtr,
                                           marginal=marginal_sequences, **kwargs)
             self.optimize_branch_len(verbose=0, store_old=False, mode=branch_length_mode)
         else:
@@ -1841,7 +1849,7 @@ class TreeAnc(object):
             n += 1
             if prune_short:
                 self.prune_short_branches()
-            N_diff = self.reconstruct_anc(method='ml', infer_gtr=False,
+            N_diff = self.reconstruct_anc(method='probabilistic', infer_gtr=False,
                                           marginal=marginal_sequences, **kwargs)
 
             self.logger("TreeAnc.optimize_sequences_and_branch_length: Iteration %d."
@@ -1877,7 +1885,7 @@ class TreeAnc(object):
         self.logger("TreeAnc.get_reconstructed_alignment ...",2)
         if not hasattr(self.tree.root, 'sequence'):
             self.logger("TreeAnc.reconstructed_alignment... reconstruction not yet done",3)
-            self.reconstruct_anc('ml')
+            self.reconstruct_anc('probabilistic')
 
         new_aln = MultipleSeqAlignment([SeqRecord(id=n.name, seq=Seq("".join(n.sequence)), description="")
                                         for n in self.tree.find_clades()])

@@ -225,7 +225,7 @@ class ClockTree(TreeAnc):
         self.logger("ClockTree.init_date_constraints...",2)
         self.tree.coalescent_joint_LH = 0
         if self.aln and (ancestral_inference or (not hasattr(self.tree.root, 'sequence'))):
-            self.infer_ancestral_sequences('ml', marginal=self.branch_length_mode=='marginal',
+            self.infer_ancestral_sequences('probabilistic', marginal=self.branch_length_mode=='marginal',
                                             sample_from_profile='root',**kwarks)
 
         # set the None  for the date-related attributes in the internal nodes.
@@ -272,8 +272,8 @@ class ClockTree(TreeAnc):
 
                 if hasattr(node, 'bad_branch') and node.bad_branch is True:
                     self.logger("ClockTree.init_date_constraints -- WARNING: Branch is marked as bad"
-                                ", excluding it from the optimization process"
-                                " Will be optimized freely", 4, warn=True)
+                                ", excluding it from the optimization process.\n"
+                                "\t\tDate constraint will be ignored!", 4, warn=True)
             else: # node without sampling date set
                 node.raw_date_constraint = None
                 node.date_constraint = None
@@ -368,9 +368,9 @@ class ClockTree(TreeAnc):
                         subtree_distribution = Distribution.multiply(msgs_to_multiply)
                     else: # there is exactly one constraint.
                         subtree_distribution = msgs_to_multiply[0]
+
                     if node.up is None: # this is the root, set dates
                         subtree_distribution._adjust_grid(rel_tol=self.rel_tol_prune)
-
                         # set root position and joint likelihood of the tree
                         node.time_before_present = subtree_distribution.peak_pos
                         node.joint_pos_Lx = subtree_distribution
