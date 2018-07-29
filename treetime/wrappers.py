@@ -676,7 +676,7 @@ def mugration(params):
     ###########################################################################
     print("\nCompleted mugration model inference of attribute '%s' for"%attr,params.tree)
 
-    basename = get_basename(params)
+    basename = get_basename(params, outdir)
     gtr_name = basename + 'GTR.txt'
     with open(gtr_name, 'w') as ofile:
         ofile.write('Character to attribute mapping:\n')
