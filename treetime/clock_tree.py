@@ -295,8 +295,6 @@ class ClockTree(TreeAnc):
 
         '''
         self.logger("ClockTree: Maximum likelihood tree optimization with temporal constraints:",1)
-        if 'branch_length_mode' in kwargs:
-            self.branch_length_mode = kwargs['branch_length_mode']
 
         self.init_date_constraints(clock_rate=clock_rate, **kwargs)
 

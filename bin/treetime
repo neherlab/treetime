@@ -132,6 +132,13 @@ def add_gtr_arguments(parser):
     parser.add_argument('--gtr', default='infer', help=gtr_description)
     parser.add_argument('--gtr-params', nargs='+', help=gtr_params_description)
 
+
+def add_anc_arguments(parser):
+    parser.add_argument('--keep-overhangs', default = False, action='store_true', help='do not fill terminal gaps')
+    parser.add_argument('--zero-based', default = False, action='store_true', help='zero based mutation indexing')
+    parser.add_argument('--report-ambiguous', default=False, action="store_true", help='include transitions involving ambiguous states')
+
+
 def add_common_args(parser):
     parser.add_argument('--verbose', default=1, type=int,  help='verbosity of output 0-6')
     parser.add_argument('--outdir', type=str,  help='directory to write the output to')
@@ -157,6 +164,7 @@ if __name__ == '__main__':
     t_parser.add_argument('--branch-length-mode', default='auto', type=str, choices=['auto', 'input', 'joint', 'marginal'],
                         help="If set to 'input', the provided branch length will be used without modification. "
                              "Note that branch lengths optimized by treetime are only accurate at short evolutionary distances.")
+    t_parser.add_argument('--confidence', action='store_true', help="estimate confidence intervals of divergence times.")
     t_parser.add_argument('--keep-polytomies', default=False, action='store_true',
                         help="Don't resolve polytomies using temporal information.")
     t_parser.add_argument('--relax',nargs='*', default=False,
@@ -166,8 +174,13 @@ if __name__ == '__main__':
                         help='maximal number of iterations the inference cycle is run. Note that for polytomy resolution and coalescence models max_iter should be at least 2')
     t_parser.add_argument('--coalescent', default="0.0", type=str,
                           help=coalescent_description)
-    t_parser.add_argument('--plot', default=False, action='store_true',
-                          help='plot the tree on a time axis and save as pdf')
+    t_parser.add_argument('--plot-tree', default="timetree.pdf",
+                            help = "filename to save the plot to. Suffix will determine format"
+                                   " (choices pdf, png, svg, default=pdf)")
+    t_parser.add_argument('--plot-rtt', default="root_to_tip_regression.pdf",
+                            help = "filename to save the plot to. Suffix will determine format"
+                                   " (choices pdf, png, svg, default=pdf)")
+    add_anc_arguments(t_parser)
     add_common_args(t_parser)
 
     def toplevel(params):
@@ -200,9 +213,7 @@ if __name__ == '__main__':
     a_parser.add_argument('--tree', type = str,  help =tree_description)
     add_gtr_arguments(a_parser)
     a_parser.add_argument('--marginal', default = False, action="store_true", help ="marginal reconstruction of ancestral sequences")
-    a_parser.add_argument('--zero-based', default = False, action='store_true', help='zero based mutation indexing')
-    a_parser.add_argument('--keep-overhangs', default = False, action='store_true', help='do not fill terminal gaps')
-    a_parser.add_argument('--report-ambiguous', default=False, action="store_true", help='include transitions involving ambiguous states')
+    add_anc_arguments(a_parser)
     add_common_args(a_parser)
     a_parser.set_defaults(func=ancestral_reconstruction)
 
@@ -235,7 +246,7 @@ if __name__ == '__main__':
     c_parser.add_argument('--allow-negative-rate', required = False, action="store_true", default=False,
                           help="By default, rates are forced to be positive. For trees with little temporal "
                                "signal it is advisable to remove this restriction to achieve essentially mid-point rooting.")
-    c_parser.add_argument('--plot', default="root_to_tip_regression.pdf",
+    c_parser.add_argument('--plot-rtt', default="root_to_tip_regression.pdf",
                             help = "filename to save the plot to. Suffix will determine format"
                                    " (choices pdf, png, svg, default=pdf)")
     add_common_args(c_parser)

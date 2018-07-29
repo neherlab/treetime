@@ -105,12 +105,15 @@ class TreeTime(ClockTree):
         if (self.aln is None):
             branch_length_mode='input'
 
-        branch_length_mode = self._set_branch_length_mode(branch_length_mode)
+        self._set_branch_length_mode(branch_length_mode)
 
         # determine how to reconstruct and sample sequences
-        seq_kwargs = {"marginal_sequences":sequence_marginal or (branch_length_mode=='marginal'),
-                      "branch_length_mode":branch_length_mode,
+        seq_kwargs = {"marginal_sequences":sequence_marginal or (self.branch_length_mode=='marginal'),
                       "sample_from_profile":"root"}
+
+        tt_kwargs = {'clock_rate':fixed_clock_rate, 'time_marginal':False}
+        tt_kwargs.update(kwargs)
+
         seq_LH = 0
         if "fixed_pi" in kwargs:
             seq_kwargs["fixed_pi"] = kwargs["fixed_pi"]
@@ -118,13 +121,13 @@ class TreeTime(ClockTree):
             time_marginal=kwargs["do_marginal"]
 
         # initially, infer ancestral sequences and infer gtr model if desired
-        if branch_length_mode=='input':
+        if self.branch_length_mode=='input':
             if self.aln:
                 self.infer_ancestral_sequences(infer_gtr=infer_gtr, **seq_kwargs)
                 self.prune_short_branches()
         else:
             self.optimize_sequences_and_branch_length(infer_gtr=infer_gtr,
-                                                  max_iter=1, prune_short=True, **seq_kwargs)
+                                                      max_iter=1, prune_short=True, **seq_kwargs)
         avg_root_to_tip = np.mean([x.dist2root for x in self.tree.get_terminals()])
 
         # optionally reroot the tree either by oldest, best regression or with a specific leaf
@@ -140,7 +143,7 @@ class TreeTime(ClockTree):
                 return ttconf.ERROR
 
 
-        if branch_length_mode=='input':
+        if self.branch_length_mode=='input':
             if self.aln:
                 self.infer_ancestral_sequences(**seq_kwargs)
         else:
@@ -149,8 +152,7 @@ class TreeTime(ClockTree):
 
         # infer time tree and optionally resolve polytomies
         self.logger("###TreeTime.run: INITIAL ROUND",0)
-        self.make_time_tree(clock_rate=fixed_clock_rate, time_marginal=False,
-                            branch_length_mode=branch_length_mode,**kwargs)
+        self.make_time_tree(**tt_kwargs)
 
         if self.aln:
             seq_LH = self.tree.sequence_marginal_LH if seq_kwargs['marginal_sequences'] else self.tree.sequence_joint_LH
@@ -165,7 +167,6 @@ class TreeTime(ClockTree):
         niter = 0
         ndiff = 0
         while niter < max_iter:
-
             self.logger("###TreeTime.run: ITERATION %d out of %d iterations"%(niter+1,max_iter),0)
             # add coalescent prior
             if Tc and (Tc is not None):
@@ -178,7 +179,7 @@ class TreeTime(ClockTree):
                     self.merger_model.optimize_skyline(**kwargs)
                     self.logger("optimized a skyline ", 2)
                 else:
-                    if Tc in ['opt', 'skyline']:
+                    if Tc in ['opt', 'const', 'skyline']:
                         self.merger_model.optimize_Tc()
                         self.logger("optimized Tc to %f"%self.merger_model.Tc.y[0], 2)
                     else:
@@ -200,32 +201,28 @@ class TreeTime(ClockTree):
                 if n_resolved:
                     self.prepare_tree()
                     # when using the input branch length, only infer ancestral sequences
-                    if branch_length_mode=='input':
+                    if self.branch_length_mode=='input':
                         if self.aln:
                             self.infer_ancestral_sequences(**seq_kwargs)
                     else: # otherwise reoptimize branch length while preserving branches without mutations
                         self.optimize_sequences_and_branch_length(prune_short=False,
                                                                   max_iter=0, **seq_kwargs)
 
-                    self.make_time_tree(clock_rate=fixed_clock_rate, time_marginal=False,
-                                        branch_length_mode=branch_length_mode, **kwargs)
+                        self.make_time_tree(**tt_kwargs)
                     if self.aln:
                         ndiff = self.infer_ancestral_sequences('ml',**seq_kwargs)
                 else:
                     if self.aln:
                         ndiff = self.infer_ancestral_sequences('ml',**seq_kwargs)
-                    self.make_time_tree(clock_rate=fixed_clock_rate, time_marginal=False,
-                                        branch_length_mode=branch_length_mode,**kwargs)
+                    self.make_time_tree(**tt_kwargs)
             elif (Tc and (Tc is not None)) or relaxed_clock: # need new timetree first
-                self.make_time_tree(clock_rate=fixed_clock_rate, time_marginal=False,
-                                    branch_length_mode=branch_length_mode,**kwargs)
+                self.make_time_tree(**tt_kwargs)
                 if self.aln:
                     ndiff = self.infer_ancestral_sequences('ml',**seq_kwargs)
             else: # no refinements, just iterate
                 if self.aln:
                     ndiff = self.infer_ancestral_sequences('ml',**seq_kwargs)
-                self.make_time_tree(clock_rate=fixed_clock_rate, time_marginal=False,
-                                    branch_length_mode=branch_length_mode,**kwargs)
+                self.make_time_tree(**tt_kwargs)
 
             self.tree.coalescent_joint_LH = self.merger_model.total_LH() if Tc else 0.0
 
@@ -234,7 +231,7 @@ class TreeTime(ClockTree):
             self.LH.append([seq_LH, self.tree.positional_joint_LH, self.tree.coalescent_joint_LH])
             niter+=1
 
-            if ndiff==0 & n_resolved==0:
+            if ndiff==0 and n_resolved==0 and Tc!='skyline':
                 self.logger("###TreeTime.run: CONVERGED",0)
                 break
 
@@ -243,9 +240,10 @@ class TreeTime(ClockTree):
         # this will set marginal_pos_LH, which to be used as error bar estimations
         if time_marginal:
             self.logger("###TreeTime.run: FINAL ROUND - confidence estimation via marginal reconstruction", 0)
-            self.make_time_tree(clock_rate=fixed_clock_rate, time_marginal=time_marginal,
-                                branch_length_mode=branch_length_mode,**kwargs)
+            tt_kwargs['time_marginal']=time_marginal
+            self.make_time_tree(**tt_kwargs)
 
+        # explicitly print out which branches are bad and whose dates don't correspond to the input dates
         bad_branches =[n for n in self.tree.get_terminals()
                        if n.bad_branch and n.raw_date_constraint]
         if bad_branches:
@@ -270,16 +268,18 @@ class TreeTime(ClockTree):
             default to 'input'. Otherwise set to 'joint'
         '''
         if branch_length_mode in ['joint', 'marginal', 'input']:
-            return branch_length_mode
-
-        bl_dis = [n.branch_length for n in self.tree.find_clades() if n.up]
-        max_bl = np.max(bl_dis)
-        if max_bl>0.1:
-            bl_mode = 'input'
+            self.branch_length_mode = branch_length_mode
+        elif self.aln:
+            bl_dis = [n.branch_length for n in self.tree.find_clades() if n.up]
+            max_bl = np.max(bl_dis)
+            if max_bl>0.1:
+                bl_mode = 'input'
+            else:
+                bl_mode = 'joint'
+            self.logger("TreeTime._set_branch_length_mode: maximum branch length is %1.3e, using branch length mode %s"%(max_bl, bl_mode),1)
+            self.branch_length_mode = bl_mode
         else:
-            bl_mode = 'joint'
-        self.logger("TreeTime._set_branch_length_mode: maximum branch length is %1.3e, using branch length mode %s"%(max_bl, bl_mode),1)
-        return bl_mode
+            self.branch_length_mode = 'input'
 
 
     def clock_filter(self, reroot='least-squares', n_iqd=None, plot=False):
@@ -559,12 +559,14 @@ class TreeTime(ClockTree):
                 new_node.up = clade
                 n1.up = new_node
                 n2.up = new_node
-                new_node.cseq = clade.cseq
-                self._store_compressed_sequence_to_node(new_node)
+                if hasattr(clade, "cseq"):
+                    new_node.cseq = clade.cseq
+                    self._store_compressed_sequence_to_node(new_node)
 
                 new_node.mutations = []
                 new_node.mutation_length = 0.0
-                new_node.branch_length_interpolator = BranchLenInterpolator(new_node, self.gtr, one_mutation=self.one_mutation)
+                new_node.branch_length_interpolator = BranchLenInterpolator(new_node, self.gtr, one_mutation=self.one_mutation,
+                                                                            branch_length_mode = self.branch_length_mode)
                 clade.clades.remove(n1)
                 clade.clades.remove(n2)
                 clade.clades.append(new_node)
@@ -796,10 +798,10 @@ def plot_vs_years(tt, years = 1, ax=None, confidence=None, ticks=True, **kwargs)
         if not hasattr(tt.tree.root, "marginal_inverse_cdf"):
             print("marginal time tree reconstruction required for confidence intervals")
             return ttconf.ERROR
+        elif type(confidence) is float:
+            cfunc = tt.get_max_posterior_region
         elif len(confidence)==2:
             cfunc = tt.get_confidence_interval
-        elif len(confidence)==1:
-            cfunc = tt.get_max_posterior_region
         else:
             print("confidence needs to be either a float (for max posterior region) or a two numbers specifying lower and upper bounds")
             return ttconf.ERROR

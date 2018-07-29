@@ -97,7 +97,7 @@ class BranchLenInterpolator (Distribution):
                                                                           ignore_gaps=ignore_gaps)
                     node.compressed_sequence = {'pair':seq_pairs, 'multiplicity':multiplicity}
                 else:
-                    raise Exception("uncompressed sequence need to be assigned to nodes")
+                    raise Exception("uncompressed sequence needs to be assigned to nodes")
 
             log_prob = np.array([-self.gtr.prob_t_compressed(node.compressed_sequence['pair'],
                                                     node.compressed_sequence['multiplicity'],

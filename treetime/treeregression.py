@@ -27,7 +27,10 @@ def base_regression(Q, slope=None):
         only_intercept=False
     else:
         only_intercept=True
-    intercept = (Q[davgii] - Q[tavgii]*slope)/Q[sii]
+    try:
+        intercept = (Q[davgii] - Q[tavgii]*slope)/Q[sii]
+    except:
+        import ipdb; ipdb.set_trace()
 
     if only_intercept:
         return {'slope':slope, 'intercept':intercept,
