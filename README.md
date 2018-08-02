@@ -1,7 +1,7 @@
 [![Build Status](https://travis-ci.org/neherlab/treetime.svg?branch=master)](https://travis-ci.org/neherlab/treetime)
 [![anaconda](https://anaconda.org/bioconda/treetime/badges/installer/conda.svg)](https://anaconda.org/bioconda/treetime)
 
-## TreeTime: maximum likelihood dating and ancestral inference for phylogenetic trees
+## TreeTime: maximum likelihood dating and ancestral sequence inference
 
 ### Overview
 
@@ -10,6 +10,8 @@ TreeTime provides routines for ancestral sequence reconstruction and inference o
 To optimize the likelihood of time-scaled phylogenies, TreeTime uses an iterative approach that first infers ancestral sequences given the branch length of the tree, then optimizes the positions of unconstrained nodes on the time axis, and then repeats this cycle.
 The only topology optimization are (optional) resolution of polytomies in a way that is most (approximately) consistent with the sampling time constraints on the tree.
 The package is designed to be used as a stand-alone tool on the command-line or as a library used in larger phylogenetic analysis work-flows.
+
+In addition to scripting TreeTime or using it via the command-line, there is also a small web server at [treetime.ch](https://treetime.ch).
 
 ![Molecular clock phylogeny of 200 NA sequences of influenza A H3N2](https://raw.githubusercontent.com/neherlab/treetime_examples/master/figures/tree_and_clock.png)
 
@@ -29,7 +31,7 @@ The package is designed to be used as a stand-alone tool on the command-line or 
     + [Homoplasy analysis](#homoplasy-analysis)
     + [Mugration analysis](#mugration-analysis)
   * [Example scripts](#example-scripts)
-  * [Comparable/related Tools](#comparable-tools)
+  * [Related tools](#related-tools)
   * [Projects using TreeTime](#projects-using-treetime)
   * [Building the documentation](#building-the-documentation)
   * [Developer info](#developer-info)
@@ -91,7 +93,7 @@ will reconstruct ancestral sequences at internal nodes of the input tree.
 The full list if options is available by typing `treetime ancestral -h`.
 A detailed explanation of `treetime ancestral` with examples is available at [treetime_examples/ancestral.md](https://github.com/neherlab/treetime_examples/blob/master/ancestral.md)
 
-#### Homoplasy scan
+#### Homoplasy analysis
 Detecting and quantifying homoplasies or recurrent mutations is useful to check for recombination, putative adaptive sites, or contamination.
 TreeTime provides a simple command to summarize homoplasies in data
 ```bash
@@ -121,7 +123,7 @@ The following scripts illustrate how treetime can be used to solve common proble
 
 HTML documentation of the different classes and function is available at [here](https://treetime.biozentrum.unibas.ch/doc).
 
-### Comparable/related Tools
+### Related tools
 
 There are several other tools which estimate molecular clock phylogenies.
 * [Beast](http://beast.bio.ed.ac.uk/) relies on the MCMC-type sampling of trees. It is hence rather slow for large data sets. But BEAST allows the flexible inclusion of prior distributions, complex evolutionary models, and estimation of parameters.
