@@ -1,12 +1,13 @@
 from __future__ import division, print_function, absolute_import
+import os,sys
 import datetime
+import pandas as pd
 import numpy as np
 from scipy.interpolate import interp1d
 from scipy.integrate import quad
 from scipy import stats
 from scipy.ndimage import binary_dilation
 from treetime import config as ttconf
-
 
 class DateConversion(object):
     """
@@ -157,85 +158,143 @@ def parse_dates(date_file):
     """
     parse dates from the arguments and return a dictionary mapping
     taxon names to numerical dates.
-    """
-    import os
-    import pandas as pd
 
+    Parameters
+    ----------
+    date_file : str
+        name of file to parse meta data from
+
+    Returns
+    -------
+    dict
+        dictionary linking fields in a column interpreted as taxon name
+        (first column that contains 'name', 'strain', 'accession')
+        to a numerical date inferred from a column that contains 'date'.
+        It will first try to parse the column as float, than via
+        pandas.to_datetime and finally as ambiguous date such as 2018-05-XX
+    """
     dates = {}
     if not os.path.isfile(date_file):
         print("\n ERROR: file %s does not exist, exiting..."%date_file)
         return dates
-
+    # separator for the csv/tsv file. If csv, we'll strip extra whitespace around ','
     full_sep = '\t' if date_file.endswith('.tsv') else r'\s*,\s*'
 
     try:
         # read the metadata file into pandas dataframe.
-        df = pd.read_csv(date_file, index_col=0, sep=full_sep, engine='python')
+        df = pd.read_csv(date_file, sep=full_sep, engine='python')
         # check the metadata has strain names in the first column
         # look for the column containing sampling dates
         # We assume that the dates might be given either in human-readable format
         # (e.g. ISO dates), or be already converted to the numeric format.
-        if 'name' not in df.index.name.lower():
-            print("Cannot read metadata: first column should contain the names of the strains", file=sys.stderr)
-            return {}
         potential_date_columns = []
         potential_numdate_columns = []
+        potential_index_columns = []
         # Scan the dataframe columns and find ones which likely to store the
         # dates
         for ci,col in enumerate(df.columns):
             d = df.iloc[0,ci]
+            # strip quotation marks
             if type(d)==str and d[0] in ['"', "'"] and d[-1] in ['"', "'"]:
                 for i,tmp_d in enumerate(df.iloc[:,ci]):
                     df.iloc[i,ci] = tmp_d.strip(d[0])
             if 'date' in col.lower():
-                try: #  avoid date parsing when can be parsed as float
-                    tmp = float(df.iloc[0,ci])
-                    potential_numdate_columns.append((ci, col))
-                except: #  otherwise add as potential date column
-                    potential_date_columns.append((ci, col))
+                potential_date_columns.append((ci, col))
+            if any([x in col.lower() for x in ['name', 'strain', 'accession']]):
+                potential_index_columns.append((ci, col))
         # if a potential numeric date column was found, use it
         # (use the first, if there are more than one)
-        if len(potential_numdate_columns)>=1:
-            name = potential_numdate_columns[0][1]
-            # Use this column as raw_date_constraint
-            dates = df[name].to_dict()
-            for k, val in dates.items():
-                try:
-                    dates[k] = float(val)
-                except:
-                    dates[k] = None
+        if not len(potential_index_columns):
+            print("Cannot read metadata: need at least one column that contains the taxon labels."
+                  " Looking for the first column that contains 'name', 'strain', or 'accession' in the header.", file=sys.stderr)
+            return {}
+        else:
+            index_col = sorted(potential_index_columns)[0][1]
 
-        elif len(potential_date_columns)>=1:
+        if len(potential_date_columns)>=1:
             #try to parse the csv file with dates in the idx column:
             idx = potential_date_columns[0][0]
-            name = potential_date_columns[0][1]
-            # NOTE as the 0th column is the index, we should parse the dates
-            # for the column idx + 1
-            df = pd.read_csv(date_file, index_col=0, sep=full_sep, engine='python')
+            col_name = potential_date_columns[0][1]
             dates = {}
-            for k in df.index:
+            for ri, row in df.iterrows():
+                date_str = row.loc[col_name]
+                k = row.loc[index_col]
                 try:
-                    dates[k] = float(df.loc[k,name])
+                    dates[k] = float(date_str)
                     continue
-                except:
-                    pass
-                try:
-                    tmp = utils.numeric_date(pd.to_datetime(df.loc[k,name]))
-                    if tmp:
-                        dates[k] = tmp
-                except:
-                    dates[k]=None
+                except ValueError:
+                    try:
+                        tmp_date = pd.to_datetime(date_str)
+                        dates[k] = numeric_date(tmp_date)
+                    except ValueError:
+                        lower, upper = ambiguous_date_to_date_range(date_str, '%Y-%m-%d')
+                        if lower is not None:
+                            dates[k] = [numeric_date(x) for x in [lower, upper]]
+
         else:
             print("Metadata file has no column which looks like a sampling date!", file=sys.stderr)
 
         if all(v is None for v in dates.values()):
-            print("Cannot parse dates correctly! Check date format.")
+            print("Cannot parse dates correctly! Check date format.", file=sys.stderr)
             return {}
         return dates
     except:
         print("Cannot read the metadata file!", file=sys.stderr)
         return {}
 
+
+def ambiguous_date_to_date_range(mydate, fmt="%Y-%m-%d", min_max_year=None):
+    """parse an abiguous date such as 2017-XX-XX to [2017,2017.999]
+
+    Parameters
+    ----------
+    mydate : str
+        date string to be parsed
+    fmt : str
+        format descriptor. default is %Y-%m-%d
+    min_max_year : None, optional
+        if date is completely unknown, use this as bounds.
+
+    Returns
+    -------
+    tuple
+        upper and lower bounds on the date. return (None, None) if errors
+    """
+    from datetime import datetime
+    sep = fmt.split('%')[1][-1]
+    min_date, max_date = {}, {}
+    today = datetime.today().date()
+
+    for val, field  in zip(mydate.split(sep), fmt.split(sep+'%')):
+        f = 'year' if 'y' in field.lower() else ('day' if 'd' in field.lower() else 'month')
+        if 'XX' in val:
+            if f=='year':
+                if min_max_year:
+                    min_date[f]=min_max_year[0]
+                    if len(min_max_year)>1:
+                        max_date[f]=min_max_year[1]
+                    elif len(min_max_year)==1:
+                        max_date[f]=4000 #will be replaced by 'today' below.
+                else:
+                    return None, None
+            elif f=='month':
+                min_date[f]=1
+                max_date[f]=12
+            elif f=='day':
+                min_date[f]=1
+                max_date[f]=31
+        else:
+            try:
+                min_date[f]=int(val)
+                max_date[f]=int(val)
+            except ValueError:
+                print("Can't parse date string: "+mydate, file=sys.stderr)
+                return None, None
+    max_date['day'] = min(max_date['day'], 31 if max_date['month'] in [1,3,5,7,8,10,12]
+                                           else 28 if max_date['month']==2 else 30)
+    lower_bound = datetime(year=min_date['year'], month=min_date['month'], day=min_date['day']).date()
+    upper_bound = datetime(year=max_date['year'], month=max_date['month'], day=max_date['day']).date()
+    return (lower_bound, upper_bound if upper_bound<today else today)
 
 
 def tree_layout(tree):
