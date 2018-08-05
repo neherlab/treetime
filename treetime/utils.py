@@ -21,13 +21,19 @@ class DateConversion(object):
         self.intercept = 0
         self.chisq = 0
         self.r_val = 0
-        self.cov = 0
+        self.cov = None
         self.sigma = 0
+        self.valid_confidence = False
 
     def __str__(self):
-        # TODO: fix the chi^2 vs r^2 output
-        outstr = ('Root-Tip-Regression:\n --rate:\t%1.3e\n --chi^2:\t%1.2f\n\n --r^2:\t%1.2f\n'
-                  %(self.clock_rate, self.chisq**2, self.r_val**2))
+        if self.cov is not None and self.valid_confidence:
+            dslope = np.sqrt(self.cov[0,0])
+            outstr = ('Root-Tip-Regression:\n --rate:\t%1.3e +/- %1.2e (one std-dev)\n --chi^2:\t%1.2f\n --r^2:  \t%1.2f\n'
+                  %(self.clock_rate, dslope, self.chisq**2, self.r_val**2))
+        else:
+            outstr = ('Root-Tip-Regression:\n --rate:\t%1.3e\n --r^2:  \t%1.2f\n'
+                  %(self.clock_rate, self.r_val**2))
+
         return outstr
 
 
@@ -47,7 +53,9 @@ class DateConversion(object):
         dc.clock_rate = clock_model['slope']
         dc.intercept = clock_model['intercept']
         dc.chisq = clock_model['chisq'] if 'chisq' in clock_model else None
-        dc.cov = clock_model['cov'] if 'cov' in clock_model else None
+        dc.valid_confidence = clock_model['valid_confidence'] if 'valid_confidence' in clock_model else False
+        if 'cov' in clock_model and dc.valid_confidence:
+            dc.cov = clock_model['cov']
         dc.r_val = clock_model['r_val']
         return dc
 

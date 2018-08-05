@@ -19,7 +19,7 @@ In addition to scripting TreeTime or using it via the command-line, there is als
 * ancestral sequence reconstruction (marginal and joint maximum likelihood)
 * molecular clock tree inference (marginal and joint maximum likelihood)
 * inference of GTR models
-* rerooting to maximimze temporal signal and optimize the root-to-tip distance vs time relationship
+* rerooting to maximize temporal signal and optimize the root-to-tip distance vs time relationship
 * simple phylodynamic analysis such as coalescent model fits
 
 ## Table of contents
@@ -71,7 +71,7 @@ The to infer a timetree, i.e. a phylogenetic tree in which branch length reflect
   treetime --aln <input.fasta> --tree <input.nwk> --dates <dates.csv>
 ```
 This command will infer a time tree, ancestral sequences, a GTR model, and optionally confidence intervals and coalescent models.
-A detailed explanation is of this command with its various options and examples are available at [treetime_examples/timetree.md](https://github.com/neherlab/treetime_examples/blob/master/timetree.md)
+A detailed explanation is of this command with its various options and examples are available at [treetime_examples/timetree.md](http://github.com/neherlab/treetime_examples/blob/master/timetree.md)
 
 
 #### Rerooting and substitution rate estimation
@@ -152,7 +152,7 @@ The API documentation for the TreeTime package is generated created with Sphinx.
   pip install sphinxjp.themes.basicstrap
   ```
 
-After required packages are installed, navifgate to doc directory, and build the docs by typing:
+After required packages are installed, navigate to doc directory, and build the docs by typing:
 
 ```bash
 make html
@@ -163,14 +163,13 @@ Instead of html, another target as `latex` or `epub` can be specified to build t
 
 #### Requirements
 
-To build the documentation, sphinx-build tool should be installed. The doc pages are using basicstrap html theme to have the same design as the TreeTime web server. Therefore, the basicstrap theme should be also available in the system
+To build the documentation, sphinx-build tool should be installed. The doc pages are using basicstrap html theme to have the same design as the TreeTime web server. Therefore, the basicstrap theme should be also available in the system.
 
 
 ### Developer info
 
-  - Credits -- .
   - Copyright and License: Pavel Sagulenko, Emma Hodcroft, and Richard Neher, MIT Licence
   - References
-    * [TreeTime: Maximum-likelihood phylodynamic analysis](https://academic.oup.com/ve/article/4/1/vex042/4794731) by Pavel Sagulenko Vadim Puller Richard A Neher. Virus Evolution.
+    * [TreeTime: Maximum-likelihood phylodynamic analysis](https://academic.oup.com/ve/article/4/1/vex042/4794731) by Pavel Sagulenko, Vadim Puller and Richard A Neher. Virus Evolution.
     * [NextStrain: real-time tracking of pathogen evolution](https://academic.oup.com/bioinformatics/advance-article/doi/10.1093/bioinformatics/bty407/5001388) by James Hadfield et al. Bioinformatics.
 

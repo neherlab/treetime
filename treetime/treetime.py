@@ -250,7 +250,7 @@ class TreeTime(ClockTree):
             self.logger("TreeTime: The following tips don't fit the clock model, "
                         "please remove them from the tree. Their dates have been reset:",0,warn=True)
             for n in bad_branches:
-                self.logger("%s, input date: %1.2f, apparent date: %1.2f"%(n.name, n.raw_date_constraint, n.numdate),0,warn=True)
+                self.logger("%s, input date: %s, apparent date: %1.2f"%(n.name, str(n.raw_date_constraint), n.numdate),0,warn=True)
 
         return ttconf.SUCCESS
 
@@ -313,8 +313,7 @@ class TreeTime(ClockTree):
                 self.logger("TreeTime.ClockFilter: filtering with covariance aware methods is not recommended.", 0, warn=True)
             self.reroot(root='least-squares' if reroot=='best' else reroot)
         else:
-            Treg = self.setup_TreeRegression(covariation=False)
-            self.clock_model = Treg.regression()
+            self.get_clock_model(covariation=False)
 
         clock_rate = self.clock_model['slope']
         icpt = self.clock_model['intercept']
@@ -348,7 +347,7 @@ class TreeTime(ClockTree):
         Parameters
         ----------
         add_internal : bool
-           If true, plot internal node positions
+           If true, plot inte`rnal node positions
 
         label : bool
            If true, label the plots
@@ -357,8 +356,8 @@ class TreeTime(ClockTree):
            If not None, use the provided matplotlib axes to plot the results
         """
         Treg = self.setup_TreeRegression()
-        if self.clock_model:
-            cf = self.clock_model['covariation'] is True
+        if 'cov' in self.clock_model:
+            cf = self.clock_model['valid_confidence']
         else:
             cf = False
         Treg.clock_plot(ax=ax, add_internal=add_internal, confidence=cf, n_sigma=2,
@@ -386,12 +385,15 @@ class TreeTime(ClockTree):
           force_positive : bool
             only consider positive rates when searching for the optimal root
         """
+        if root=='best':
+            root='ML'
+
         self.logger("TreeTime.reroot: with method or node: %s"%root,1)
         for n in self.tree.find_clades():
             n.branch_length=n.mutation_length
 
         if root in rerooting_mechanisms:
-            new_root = self._find_best_root(covariation=root in ["best", "ML", "min_dev_ML"],
+            new_root = self._find_best_root(covariation='ML' in root,
                                             force_positive=force_positive and (not root.startswith('min_dev')))
         else:
             if isinstance(root,Phylo.BaseTree.Clade):
@@ -412,8 +414,8 @@ class TreeTime(ClockTree):
             #(Without outgroup_branch_length, gives a trifurcating root, but this will mean
             #mutations may have to occur multiple times.)
             self.tree.root_with_outgroup(new_root, outgroup_branch_length=new_root.branch_length/2)
-            Treg = self.setup_TreeRegression(covariation=True)
-            self.clock_model = Treg.regression()
+            self.get_clock_model(covariation=True)
+
 
         if new_root == ttconf.ERROR:
             return ttconf.ERROR
@@ -434,8 +436,7 @@ class TreeTime(ClockTree):
             n.mutation_length = n.branch_length
         self.prepare_tree()
 
-        Treg = self.setup_TreeRegression(covariation=True)
-        self.clock_model['r_val'] = Treg.explained_variance()
+        self.get_clock_model(covariation='ML' in root)
 
         return ttconf.SUCCESS
 
@@ -719,12 +720,10 @@ class TreeTime(ClockTree):
             n.branch_length=n.mutation_length
         self.logger("TreeTime._find_best_root: searching for the best root position...",2)
         Treg = self.setup_TreeRegression(covariation=covariation)
-        self.clock_model = Treg.optimal_reroot(force_positive=force_positive)
-        self.clock_model['covariation'] = covariation
-        return self.clock_model['node']
+        return Treg.optimal_reroot(force_positive=force_positive)['node']
 
 
-def plot_vs_years(tt, years = 1, ax=None, confidence=None, ticks=True, **kwargs):
+def plot_vs_years(tt, step = None, ax=None, confidence=None, ticks=True, **kwargs):
     '''
     Converts branch length to years and plots the time tree on a time axis.
 
@@ -733,8 +732,9 @@ def plot_vs_years(tt, years = 1, ax=None, confidence=None, ticks=True, **kwargs)
      tt : TreeTime object
         A TreeTime instance after a time tree is inferred
 
-     years : int
-        Width of shaded boxes indicating blocks of years
+     step : int
+        Width of shaded boxes indicating blocks of years. Will be inferred if not specified.
+        To switch off drawing of boxes, set to 0
 
      ax : matplotlib axes
         Axes to be used to plot, will create new axis if None
@@ -761,29 +761,46 @@ def plot_vs_years(tt, years = 1, ax=None, confidence=None, ticks=True, **kwargs)
         kwargs["label_func"] = lambda x:x.name if (x.is_terminal() and nleafs<30) else ""
     Phylo.draw(tt.tree, axes=ax, **kwargs)
 
-    # set axis labels
     offset = tt.tree.root.numdate - tt.tree.root.branch_length
-    xticks = ax.get_xticks()
-    dtick = xticks[1]-xticks[0]
-    shift = offset - dtick*(offset//dtick)
-    tick_vals = [x+offset-shift for x in xticks]
-    ax.set_xticks(xticks - shift)
+    date_range = np.max([n.numdate for n in tt.tree.get_terminals()])+2-offset
+
+    # estimate year intervals if not explicitly specified
+    if step is None or (step>0 and date_range/step>100):
+        step = 10**np.floor(np.log10(date_range))
+        if date_range/step<2:
+            step/=5
+        elif date_range/step<5:
+            step/=2
+        step = max(1,step)
+
+    # set axis labels
+    if step:
+        dtick = step
+        min_tick = step*(offset//step)
+        xticks = np.arange(min_tick, offset+date_range+dtick,dtick) - offset
+        tick_vals = np.arange(min_tick, min_tick+date_range+dtick, dtick)
+    else:
+        xticks = ax.get_xticks()
+        dtick = xticks[1]-xticks[0]
+        shift = offset - dtick*(offset//dtick)
+        xticks -= shift
+        tick_vals = [x+offset-shift for x in xticks]
+
+    ax.set_xticks(xticks)
     ax.set_xticklabels(map(str, tick_vals))
     ax.set_xlabel('year')
     ax.set_ylabel('')
-    ax.set_xlim((0,np.max([n.numdate for n in tt.tree.get_terminals()])+2-offset))
+    ax.set_xlim((0,date_range))
 
     # put shaded boxes to delineate years
-    if years:
+    if step:
         ylim = ax.get_ylim()
         xlim = ax.get_xlim()
-        if type(years) in [int, float]:
-            dyear=years
         from matplotlib.patches import Rectangle
-        for yi,year in enumerate(np.arange(np.floor(tick_vals[0]), tick_vals[-1],dyear)):
+        for yi,year in enumerate(np.arange(np.floor(tick_vals[0]), tick_vals[-1],step)):
             pos = year - offset
             r = Rectangle((pos, ylim[1]-5),
-                          dyear, ylim[0]-ylim[1]+10,
+                          step, ylim[0]-ylim[1]+10,
                           facecolor=[0.7+0.1*(1+yi%2)] * 3,
                           edgecolor=[1,1,1])
             ax.add_patch(r)

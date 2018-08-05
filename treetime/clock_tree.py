@@ -173,7 +173,7 @@ class ClockTree(TreeAnc):
         Parameters
         ----------
         covariation : bool, optional
-            accout for phylogenetic covariation
+            account for phylogenetic covariation
         tip_slack : float, optional
             the excess variation/branch length associated with terminal nodes. Some
             terminal branch length is necessary to avoid division by zero. This
@@ -194,8 +194,22 @@ class ClockTree(TreeAnc):
         else:
             branch_variance = lambda x:1.0 if x.is_terminal() else 0.0
 
-        return TreeRegression(self.tree, tip_value=tip_value,
+        Treg = TreeRegression(self.tree, tip_value=tip_value,
                              branch_value=branch_value, branch_variance=branch_variance)
+        Treg.valid_confidence = covariation
+        return Treg
+
+
+    def get_clock_model(self, covariation=True, slope=None):
+        Treg = self.setup_TreeRegression(covariation=covariation)
+        self.clock_model = Treg.regression(slope=slope)
+        if not Treg.valid_confidence:
+            self.clock_model.pop('cov')
+            self.clock_model['valid_confidence']=False
+        else:
+            self.clock_model['valid_confidence']=True
+        self.clock_model['r_val'] = Treg.explained_variance()
+        self.date2dist = DateConversion.from_regression(self.clock_model)
 
 
     def init_date_constraints(self, ancestral_inference=False, clock_rate=None, **kwarks):
@@ -253,10 +267,7 @@ class ClockTree(TreeAnc):
                 node.branch_length_interpolator.merger_cost = merger_cost
                 node.branch_length_interpolator.gamma = gamma
 
-        Treg = self.setup_TreeRegression(covariation=True)
-        self.clock_model = Treg.regression(slope=clock_rate)
-        self.clock_model['covariation'] = True
-        self.date2dist = DateConversion.from_regression(self.clock_model)
+        self.get_clock_model(covariation=True, slope=clock_rate)
 
         # make node distribution objects
         for node in self.tree.find_clades(order="postorder"):

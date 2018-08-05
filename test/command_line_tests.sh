@@ -45,6 +45,16 @@ else
 	echo "mugration failed $retval"
 fi
 
+treetime --aln treetime_examples/data/tb/lee_2015.vcf.gz --vcf-reference treetime_examples/data/tb/tb_ref.fasta --tree treetime_examples/data/tb/lee_2015.nwk --clock-rate 1e-7 --dates treetime_examples/data/tb/lee_2015.metadata.tsv
+retval="$?"
+if [ "$retval" == 0 ]; then
+	echo "timetree_inference on vcf data ok"
+else
+	((all_tests++))
+	echo "timetree_inference on vcf data failed $retval"
+fi
+
+
 if [ "$all_tests" == 0 ];then
 	echo "All tests passed"
 	exit 0

@@ -156,6 +156,7 @@ def plot_rtt(tt, fname):
 
 def export_sequences_and_tree(tt, basename, is_vcf=False, zero_based=False,
                               report_ambiguous=False, timetree=False, confidence=False):
+    seq_info = is_vcf or tt.aln
     if is_vcf:
         tt.recover_var_ambigs()
         outaln_name = basename + 'ancestral_sequences.vcf'
@@ -163,7 +164,8 @@ def export_sequences_and_tree(tt, basename, is_vcf=False, zero_based=False,
     elif tt.aln:
         outaln_name = basename + 'ancestral_sequences.fasta'
         AlignIO.write(tt.get_reconstructed_alignment(), outaln_name, 'fasta')
-    print("--- alignment including ancestral nodes saved as  \n\t %s\n"%outaln_name)
+    if seq_info:
+        print("\n--- alignment including ancestral nodes saved as  \n\t %s\n"%outaln_name)
 
     # decorate tree with inferred mutations
     terminal_count = 0
@@ -192,7 +194,7 @@ def export_sequences_and_tree(tt, basename, is_vcf=False, zero_based=False,
             n.name = n.name[:35]+'_%03d'%terminal_count
             terminal_count+=1
         n.comment=''
-        if len(n.mutations):
+        if seq_info and len(n.mutations):
             if report_ambiguous:
                 n.comment= '&mutations="' + ','.join([a+str(pos + offset)+d for (a,pos, d) in n.mutations])+'"'
             else:
@@ -283,6 +285,7 @@ def scan_homoplasies(params):
                                       marginal=False, fixed_pi=fixed_pi)
     print("...done.")
     if ndiff==ttconf.ERROR: # if reconstruction failed, exit
+        print("Something went wrong during ancestral reconstruction, please check your input files.", file=sys.stderr)
         return 1
     else:
         print("...done.")
@@ -479,7 +482,7 @@ def timetree(params):
     ### SET-UP and RUN
     ###########################################################################
     if params.aln is None and params.sequence_length is None:
-        print("one of arguments '--aln' and '--sequence-length' is required.")
+        print("one of arguments '--aln' and '--sequence-length' is required.", file=sys.stderr)
         return 1
     myTree = TreeTime(dates=dates, tree=params.tree, ref=ref,
                       aln=aln, gtr=gtr, seq_len=params.sequence_length,
@@ -607,21 +610,27 @@ def mugration(params):
     outdir = get_outdir(params, '_mugration')
 
     taxon_name = 'name' if 'name' in states.columns else states.columns[0]
-    if params.attribute and params.attribute in states.columns:
-        attr = params.attribute
+    if params.attribute:
+        if params.attribute in states.columns:
+            attr = params.attribute
+        else:
+            print("The specified attribute was not found in the metadata file "+params.states, file=sys.stderr)
+            print("Available columns are: "+", ".join(states.columns), file=sys.stderr)
+            return 1
     else:
         attr = states.columns[1]
+        print("Attribute for mugration inference was not specified. Using "+attr, file=sys.stderr)
 
     leaf_to_attr = {x[taxon_name]:x[attr] for xi, x in states.iterrows()
                     if x[attr]!=params.missing_data}
     unique_states = sorted(set(leaf_to_attr.values()))
     nc = len(unique_states)
     if nc>180:
-        print("mugration: can't have more than 180 states!")
-        exit(1)
+        print("mugration: can't have more than 180 states!", file=sys.stderr)
+        return 1
     elif nc<2:
-        print("mugration: only one or zero states found -- this doesn't make any sense")
-        exit(1)
+        print("mugration: only one or zero states found -- this doesn't make any sense", file=sys.stderr)
+        return 1
 
     ###########################################################################
     ### make a single character alphabet that maps to discrete states
@@ -757,15 +766,16 @@ def estimate_clock_model(params):
         # reroot to optimal root, this assigns clock_model to myTree
         if params.reroot in ['ML', 'best']:
             myTree.run(root=params.reroot, max_iter=1)
+
         res = myTree.reroot("ML" if params.reroot.startswith('ML') else params.reroot,
                       force_positive=not params.allow_negative_rate)
+
         if res==ttconf.ERROR:
             print("ERROR: unknown root or rooting mechanism!\n"
                   "\tvalid choices are 'least-squares', 'ML', and 'ML-rough'")
             return 1
     else:
-        Treg = myTree.setup_TreeRegression(covariation=True)
-        myTree.clock_model = Treg.regression()
+        myTree.get_clock_model(covariation=True)
 
     d2d = utils.DateConversion.from_regression(myTree.clock_model)
     print('\n',d2d)
@@ -776,10 +786,16 @@ def estimate_clock_model(params):
     print('\nThe rate is the slope of the best fit of the date to'
           '\nthe root-to-tip distance and provides an estimate of'
           '\nthe substitution rate. The rate needs to be positive!'
-          '\nNegative rates suggest an inappropriate root.\n\n')
+          '\nNegative rates suggest an inappropriate root.\n')
 
-    print('\nThe estimated rate and tree correspond to a root date:\n')
-    print('\n--root-date:\t %3.2f\n\n'%(-d2d.intercept/d2d.clock_rate))
+    print('\nThe estimated rate and tree correspond to a root date:')
+    if params.reroot in ['ML', 'best', 'ML-rough']:
+        reg = myTree.clock_model
+        dp = np.array([reg['intercept']/reg['slope']**2,-1./reg['slope']])
+        droot = np.sqrt(reg['cov'][:2,:2].dot(dp).dot(dp))
+        print('\n--- root-date:\t %3.2f +/- %1.2f (one std-dev)\n\n'%(-d2d.intercept/d2d.clock_rate, droot))
+    else:
+        print('\n--- root-date:\t %3.2f\n\n'%(-d2d.intercept/d2d.clock_rate))
 
     if not params.keep_root:
         # write rerooted tree to file
