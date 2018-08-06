@@ -142,7 +142,6 @@ class TreeTime(ClockTree):
             if self.reroot(root='least-squares')==ttconf.ERROR:
                 return ttconf.ERROR
 
-
         if self.branch_length_mode=='input':
             if self.aln:
                 self.infer_ancestral_sequences(**seq_kwargs)
@@ -166,33 +165,22 @@ class TreeTime(ClockTree):
         # time tree to ensure convergence.
         niter = 0
         ndiff = 0
+        need_new_time_tree=False
         while niter < max_iter:
             self.logger("###TreeTime.run: ITERATION %d out of %d iterations"%(niter+1,max_iter),0)
             # add coalescent prior
-            if Tc and (Tc is not None):
-                from .merger_models import Coalescent
-                self.logger('TreeTime.run: adding coalescent prior with Tc='+str(Tc),1)
-                self.merger_model = Coalescent(self.tree, Tc=avg_root_to_tip,
-                                               date2dist=self.date2dist, logger=self.logger)
-
-                if Tc=='skyline' and niter==max_iter-1: # restrict skyline model optimization to last iteration
-                    self.merger_model.optimize_skyline(**kwargs)
-                    self.logger("optimized a skyline ", 2)
+            if Tc:
+                if Tc=='skyline' and niter<max_iter-1:
+                    tmpTc='const'
                 else:
-                    if Tc in ['opt', 'const', 'skyline']:
-                        self.merger_model.optimize_Tc()
-                        self.logger("optimized Tc to %f"%self.merger_model.Tc.y[0], 2)
-                    else:
-                        try:
-                            self.merger_model.set_Tc(Tc)
-                        except:
-                            self.logger("setting of coalescent time scale failed", 1, warn=True)
-
-                self.merger_model.attach_to_tree()
+                    tmpTc=Tc
+                self.add_coalescent_model(tmpTc, **kwargs)
+                need_new_time_tree = True
 
             # estimate a relaxed molecular clock
             if relaxed_clock:
                 self.relaxed_clock(**relaxed_clock)
+                need_new_time_tree = True
 
             n_resolved=0
             if resolve_polytomies:
@@ -200,22 +188,13 @@ class TreeTime(ClockTree):
                 n_resolved = self.resolve_polytomies()
                 if n_resolved:
                     self.prepare_tree()
-                    # when using the input branch length, only infer ancestral sequences
-                    if self.branch_length_mode=='input':
-                        if self.aln:
-                            self.infer_ancestral_sequences(**seq_kwargs)
-                    else: # otherwise reoptimize branch length while preserving branches without mutations
+                    if self.branch_length_mode!='input': # otherwise reoptimize branch length while preserving branches without mutations
                         self.optimize_sequences_and_branch_length(prune_short=False,
-                                                                  max_iter=0, **seq_kwargs)
+                                                          max_iter=0, **seq_kwargs)
 
-                        self.make_time_tree(**tt_kwargs)
-                    if self.aln:
-                        ndiff = self.infer_ancestral_sequences('ml',**seq_kwargs)
-                else:
-                    if self.aln:
-                        ndiff = self.infer_ancestral_sequences('ml',**seq_kwargs)
-                    self.make_time_tree(**tt_kwargs)
-            elif (Tc and (Tc is not None)) or relaxed_clock: # need new timetree first
+                    need_new_time_tree = True
+
+            if need_new_time_tree:
                 self.make_time_tree(**tt_kwargs)
                 if self.aln:
                     ndiff = self.infer_ancestral_sequences('ml',**seq_kwargs)
@@ -356,7 +335,7 @@ class TreeTime(ClockTree):
            If not None, use the provided matplotlib axes to plot the results
         """
         Treg = self.setup_TreeRegression()
-        if 'cov' in self.clock_model:
+        if self.clock_model and 'cov' in self.clock_model:
             cf = self.clock_model['valid_confidence']
         else:
             cf = False
@@ -424,6 +403,7 @@ class TreeTime(ClockTree):
                     +('new_node' if new_root.name is None else new_root.name), 2)
 
         self.tree.root.branch_length = self.one_mutation
+        self.tree.root.clock_length = self.one_mutation
         self.tree.root.raw_date_constraint = None
         if hasattr(new_root, 'time_before_present'):
             self.tree.root.time_before_present = new_root.time_before_present
@@ -434,6 +414,8 @@ class TreeTime(ClockTree):
             self.tree.root.gamma = 1.0
         for n in self.tree.find_clades():
             n.mutation_length = n.branch_length
+            if not hasattr(n, 'clock_length'):
+                n.clock_length = n.branch_length
         self.prepare_tree()
 
         self.get_clock_model(covariation='ML' in root)
@@ -643,6 +625,36 @@ class TreeTime(ClockTree):
             print("ERROR. Did you run the corresponding inference (joint/marginal)?")
 
 
+    def add_coalescent_model(self, Tc, **kwargs):
+        """Add a coalescent model to the tree and optionally optimze
+
+        Parameters
+        ----------
+        Tc : float,str
+            If this is a float, it will be interpreted as the inverse merger
+            rate in molecular clock units, if its is a
+        """
+        from .merger_models import Coalescent
+        self.logger('TreeTime.run: adding coalescent prior with Tc='+str(Tc),1)
+        self.merger_model = Coalescent(self.tree,
+                                       date2dist=self.date2dist, logger=self.logger)
+
+        if Tc=='skyline': # restrict skyline model optimization to last iteration
+            self.merger_model.optimize_skyline(**kwargs)
+            self.logger("optimized a skyline ", 2)
+        else:
+            if Tc in ['opt', 'const']:
+                self.merger_model.optimize_Tc()
+                self.logger("optimized Tc to %f"%self.merger_model.Tc.y[0], 2)
+            else:
+                try:
+                    self.merger_model.set_Tc(Tc)
+                except:
+                    self.logger("setting of coalescent time scale failed", 1, warn=True)
+
+        self.merger_model.attach_to_tree()
+
+
     def relaxed_clock(self, slack=None, coupling=None, **kwargs):
         """
         Allow the mutation rate to vary on the tree (relaxed molecular clock).
@@ -777,8 +789,9 @@ def plot_vs_years(tt, step = None, ax=None, confidence=None, ticks=True, **kwarg
     if step:
         dtick = step
         min_tick = step*(offset//step)
-        xticks = np.arange(min_tick, offset+date_range+dtick,dtick) - offset
-        tick_vals = np.arange(min_tick, min_tick+date_range+dtick, dtick)
+        extra = 0 if dtick<date_range else dtick
+        tick_vals = np.arange(min_tick, min_tick+date_range+extra, dtick)
+        xticks = tick_vals - offset
     else:
         xticks = ax.get_xticks()
         dtick = xticks[1]-xticks[0]
@@ -804,7 +817,7 @@ def plot_vs_years(tt, step = None, ax=None, confidence=None, ticks=True, **kwarg
                           facecolor=[0.7+0.1*(1+yi%2)] * 3,
                           edgecolor=[1,1,1])
             ax.add_patch(r)
-            if year in tick_vals and pos>xlim[0] and pos<xlim[1] and ticks:
+            if year in tick_vals and pos>=xlim[0] and pos<=xlim[1] and ticks:
                 ax.text(pos,ylim[0]-0.04*(ylim[1]-ylim[0]),str(int(year)),
                         horizontalalignment='center')
         ax.set_axis_off()
