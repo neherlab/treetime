@@ -63,6 +63,8 @@ class ClockTree(TreeAnc):
         self.real_dates = real_dates
         self.date_dict = dates
         self._date2dist = None  # we do not know anything about the conversion
+        self.tip_slack = ttconf.OVER_DISPERSION  # extra number of mutations added
+                                                 # to terminal branches in covariance calculation
         self.rel_tol_prune = ttconf.REL_TOL_PRUNE
         self.rel_tol_refine = ttconf.REL_TOL_REFINE
         self.branch_length_mode = branch_length_mode
@@ -166,7 +168,7 @@ class ClockTree(TreeAnc):
             self._date2dist = val
 
 
-    def setup_TreeRegression(self, covariation=True, tip_slack=ttconf.OVER_DISPERSION):
+    def setup_TreeRegression(self, covariation=True):
         """instantiate a TreeRegression object and set its tip_value and branch_value function
         to defaults that are sensible for treetime instances.
 
@@ -190,7 +192,7 @@ class ClockTree(TreeAnc):
         if covariation:
             om = self.one_mutation
             branch_variance = lambda x:((x.clock_length if hasattr(x,'clock_length') else x.mutation_length)
-                                        +(tip_slack*om if x.is_terminal() else 0.0))*om
+                                        +(self.tip_slack*om if x.is_terminal() else 0.0))*om
         else:
             branch_variance = lambda x:1.0 if x.is_terminal() else 0.0
 
@@ -204,7 +206,8 @@ class ClockTree(TreeAnc):
         Treg = self.setup_TreeRegression(covariation=covariation)
         self.clock_model = Treg.regression(slope=slope)
         if not Treg.valid_confidence:
-            self.clock_model.pop('cov')
+            if 'cov' in self.clock_model:
+                self.clock_model.pop('cov')
             self.clock_model['valid_confidence']=False
         else:
             self.clock_model['valid_confidence']=True
@@ -245,10 +248,12 @@ class ClockTree(TreeAnc):
         # set the None  for the date-related attributes in the internal nodes.
         # make interpolation objects for the branches
         self.logger('ClockTree.init_date_constraints: Initializing branch length interpolation objects...',3)
+        has_clock_length = []
         for node in self.tree.find_clades(order='postorder'):
             if node.up is None:
                 node.branch_length_interpolator = None
             else:
+                has_clock_length.append(hasattr(node, 'clock_length'))
                 # copy the merger rate and gamma if they are set
                 if hasattr(node,'branch_length_interpolator') and node.branch_length_interpolator is not None:
                     gamma = node.branch_length_interpolator.gamma
@@ -267,7 +272,9 @@ class ClockTree(TreeAnc):
                 node.branch_length_interpolator.merger_cost = merger_cost
                 node.branch_length_interpolator.gamma = gamma
 
-        self.get_clock_model(covariation=True, slope=clock_rate)
+        # use covariance in clock model only after initial timetree estimation is done
+        use_cov = (len(has_clock_length) - np.sum(has_clock_length))<3
+        self.get_clock_model(covariation=use_cov, slope=clock_rate)
 
         # make node distribution objects
         for node in self.tree.find_clades(order="postorder"):

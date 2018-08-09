@@ -27,10 +27,8 @@ def base_regression(Q, slope=None):
         only_intercept=False
     else:
         only_intercept=True
-    try:
-        intercept = (Q[davgii] - Q[tavgii]*slope)/Q[sii]
-    except:
-        import ipdb; ipdb.set_trace()
+
+    intercept = (Q[davgii] - Q[tavgii]*slope)/Q[sii]
 
     if only_intercept:
         return {'slope':slope, 'intercept':intercept,
@@ -82,14 +80,17 @@ class TreeRegression(object):
         super(TreeRegression, self).__init__()
         self.tree = tree_in
         # prep tree
-        self.N = self.tree.count_terminals()
+        for li, l in enumerate(self.tree.get_terminals()):
+            l._ii = np.array([li])
         total_bl = 0
         for n in self.tree.get_nonterminals(order='postorder'):
+            n._ii = np.concatenate([c._ii for c in n])
+            n._ii.sort()
             for c in n:
                 c.up=n
                 total_bl+=c.branch_length
         self.tree.root.up=None
-
+        self.N = self.tree.root._ii.shape[0]
 
         if tip_value is None:
             self.tip_value = lambda x:np.mean(x.numdate) if x.is_terminal() else None
@@ -120,17 +121,6 @@ class TreeRegression(object):
          M : (np.array)
             covariance matrix with tips arranged standard transersal order.
         """
-
-        # gather tip indices
-        for li, l in enumerate(self.tree.get_terminals()):
-            l._ii = np.array([li])
-        for n in self.tree.get_nonterminals(order='postorder'):
-            n._ii = np.concatenate([c._ii for c in n])
-            n._ii.sort()
-            for c in n:
-                c.up=n
-        self.tree.root.up=None
-
         # accumulate the covariance matrix by adding 'squares'
         M = np.zeros((self.N, self.N))
         for n in self.tree.find_clades():

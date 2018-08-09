@@ -701,7 +701,7 @@ class TreeAnc(object):
                 c.up = clade
 
         for clade in self.tree.get_nonterminals(order='postorder'): # parents first
-            clade.bad_branch = all([c.bad_branch for c in clade]) or c.bad_branch
+            clade.bad_branch = all([c.bad_branch for c in clade])
 
         self._calc_dist2root()
         self._internal_node_count = max(internal_node_count, self._internal_node_count)

@@ -764,11 +764,12 @@ def estimate_clock_model(params):
 
     if not params.keep_root:
         # reroot to optimal root, this assigns clock_model to myTree
-        if params.reroot in ['ML', 'best']:
-            myTree.run(root=params.reroot, max_iter=1)
+        if params.reroot in ['ML','best']:
+            myTree.run(root="least-squares", max_iter=0)
 
-        res = myTree.reroot("ML" if params.reroot.startswith('ML') else params.reroot,
+        res = myTree.reroot("least-squares",
                       force_positive=not params.allow_negative_rate)
+        myTree.get_clock_model(covariation=(params.reroot!='least-squares'))
 
         if res==ttconf.ERROR:
             print("ERROR: unknown root or rooting mechanism!\n"

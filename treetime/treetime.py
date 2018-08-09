@@ -136,10 +136,10 @@ class TreeTime(ClockTree):
                 plot_rtt=True
             else:
                 plot_rtt=False
-            self.clock_filter(reroot='least-squares' if root=='clock_filter' else root,
-                              n_iqd=n_iqd, plot=plot_rtt)
+            reroot_mechanism = 'least-squares' if root=='clock_filter' else root
+            self.clock_filter(reroot=reroot_mechanism, n_iqd=n_iqd, plot=plot_rtt)
         elif root is not None:
-            if self.reroot(root='least-squares')==ttconf.ERROR:
+            if self.reroot(root=root)==ttconf.ERROR:
                 return ttconf.ERROR
 
         if self.branch_length_mode=='input':
@@ -310,12 +310,13 @@ class TreeTime(ClockTree):
             else:
                 node.bad_branch=False
 
-        if plot:
-            self.plot_root_to_tip()
-
         # redo root estimation after outlier removal
         if reroot:
             self.reroot(root=reroot)
+
+        if plot:
+            self.plot_root_to_tip()
+
         return ttconf.SUCCESS
 
 
@@ -340,10 +341,10 @@ class TreeTime(ClockTree):
         else:
             cf = False
         Treg.clock_plot(ax=ax, add_internal=add_internal, confidence=cf, n_sigma=2,
-                       regression=self.clock_model)
+                        regression=self.clock_model)
 
 
-    def reroot(self, root='best', force_positive=True):
+    def reroot(self, root='least-squares', force_positive=True):
         """
         Find best root and re-root the tree to the new root
 
@@ -365,7 +366,7 @@ class TreeTime(ClockTree):
             only consider positive rates when searching for the optimal root
         """
         if root=='best':
-            root='ML'
+            root='least-squares'
 
         self.logger("TreeTime.reroot: with method or node: %s"%root,1)
         for n in self.tree.find_clades():
@@ -774,7 +775,7 @@ def plot_vs_years(tt, step = None, ax=None, confidence=None, ticks=True, **kwarg
     Phylo.draw(tt.tree, axes=ax, **kwargs)
 
     offset = tt.tree.root.numdate - tt.tree.root.branch_length
-    date_range = np.max([n.numdate for n in tt.tree.get_terminals()])+2-offset
+    date_range = np.max([n.numdate for n in tt.tree.get_terminals()])-offset
 
     # estimate year intervals if not explicitly specified
     if step is None or (step>0 and date_range/step>100):
@@ -810,7 +811,7 @@ def plot_vs_years(tt, step = None, ax=None, confidence=None, ticks=True, **kwarg
         ylim = ax.get_ylim()
         xlim = ax.get_xlim()
         from matplotlib.patches import Rectangle
-        for yi,year in enumerate(np.arange(np.floor(tick_vals[0]), tick_vals[-1],step)):
+        for yi,year in enumerate(np.arange(np.floor(tick_vals[0]), tick_vals[-1]+.01, step)):
             pos = year - offset
             r = Rectangle((pos, ylim[1]-5),
                           step, ylim[0]-ylim[1]+10,
