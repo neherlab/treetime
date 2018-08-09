@@ -1,12 +1,11 @@
 from __future__ import print_function, division, absolute_import
-from treetime import utils
 import numpy as np
 from treetime import config as ttconf
-from treetime.treeanc import TreeAnc
-from treetime.distribution import Distribution
-from treetime.branch_len_interpolator import BranchLenInterpolator
-from treetime.node_interpolator import NodeInterpolator
-import collections
+from .treeanc import TreeAnc
+from .utils import numeric_date, DateConversion
+from .distribution import Distribution
+from .branch_len_interpolator import BranchLenInterpolator
+from .node_interpolator import NodeInterpolator
 
 class ClockTree(TreeAnc):
     """
@@ -63,15 +62,25 @@ class ClockTree(TreeAnc):
         self.debug=debug
         self.real_dates = real_dates
         self.date_dict = dates
-        self.date2dist = None  # we do not know anything about the conversion
+        self._date2dist = None  # we do not know anything about the conversion
+        self.tip_slack = ttconf.OVER_DISPERSION  # extra number of mutations added
+                                                 # to terminal branches in covariance calculation
         self.rel_tol_prune = ttconf.REL_TOL_PRUNE
         self.rel_tol_refine = ttconf.REL_TOL_REFINE
         self.branch_length_mode = branch_length_mode
+        self.clock_model=None
         self._set_precision(precision)
         self._assign_dates()
 
 
     def _assign_dates(self):
+        """assign dates to nodes
+
+        Returns
+        -------
+        TYPE
+            Description
+        """
         if self.tree is None:
             self.logger("ClockTree._assign_dates: tree is not set, can't assign dates", 0)
             return ttconf.ERROR
@@ -80,15 +89,15 @@ class ClockTree(TreeAnc):
             if node.name in self.date_dict:
                 try:
                     tmp = np.mean(self.date_dict[node.name])
-                    node.numdate_given = self.date_dict[node.name]
+                    node.raw_date_constraint = self.date_dict[node.name]
                     node.bad_branch = False
                 except:
                     self.logger("WARNING: ClockTree.init: node %s has a bad date: %s"%(node.name, str(self.date_dict[node.name])), 2, warn=True)
-                    node.numdate_given = None
+                    node.raw_date_constraint = None
                     node.bad_branch = True
             else: # nodes without date contraints
 
-                node.numdate_given = None
+                node.raw_date_constraint = None
 
                 if node.is_terminal():
                     # Terminal branches without date constraints marked as 'bad'
@@ -98,6 +107,9 @@ class ClockTree(TreeAnc):
                     # this node, the branch is marked as 'bad'
                     node.bad_branch = np.all([x.bad_branch for x in node])
 
+        return ttconf.SUCCESS
+
+
     def _set_precision(self, precision):
         '''
         function that sets precision to an (hopfully) reasonable guess based
@@ -105,22 +117,24 @@ class ClockTree(TreeAnc):
         '''
         # if precision is explicitly specified, use it.
 
+        if self.one_mutation:
+            self.min_width = 10*self.one_mutation
+        else:
+            self.min_width = 0.001
         if precision in [0,1,2,3]:
             self.precision=precision
             if self.one_mutation and self.one_mutation<1e-4 and precision<2:
                 self.logger("ClockTree._set_precision: FOR LONG SEQUENCES (>1e4) precision>=2 IS RECOMMENDED."
-                            " \n\t **** precision%d was specified by the user"%precision)
+                            " \n\t **** precision %d was specified by the user"%precision, level=0)
         else:
             # otherwise adjust it depending on the minimal sensible branch length
             if self.one_mutation:
-                self.min_width = 10*self.one_mutation
                 if self.one_mutation>1e-4:
                     self.precision=1
                 else:
                     self.precision=2
             else:
                 self.precision=1
-                self.min_width = 0.001
             self.logger("ClockTree: Setting precision to level %s"%self.precision, 2)
 
         if self.precision==0:
@@ -149,8 +163,56 @@ class ClockTree(TreeAnc):
         if val is None:
             self._date2dist = None
         else:
-            self.logger("ClockTime.date2dist: Setting new molecular clock. rate=%.3e, R^2=%.4f"%(val.clock_rate, val.r_val**2), 2)
+            self.logger("ClockTree.date2dist: Setting new molecular clock."
+                        " rate=%.3e, R^2=%.4f"%(val.clock_rate, val.r_val**2), 2)
             self._date2dist = val
+
+
+    def setup_TreeRegression(self, covariation=True):
+        """instantiate a TreeRegression object and set its tip_value and branch_value function
+        to defaults that are sensible for treetime instances.
+
+        Parameters
+        ----------
+        covariation : bool, optional
+            account for phylogenetic covariation
+        tip_slack : float, optional
+            the excess variation/branch length associated with terminal nodes. Some
+            terminal branch length is necessary to avoid division by zero. This
+            excess branch length is measured in self.one_mutations.
+
+        Returns
+        -------
+        TreeRegression
+            a TreeRegression instance with self.tree attached as tree.
+        """
+        from .treeregression import TreeRegression
+        tip_value = lambda x:np.mean(x.raw_date_constraint) if (x.is_terminal() and (x.bad_branch is False)) else None
+        branch_value = lambda x:x.mutation_length
+        if covariation:
+            om = self.one_mutation
+            branch_variance = lambda x:((x.clock_length if hasattr(x,'clock_length') else x.mutation_length)
+                                        +(self.tip_slack*om if x.is_terminal() else 0.0))*om
+        else:
+            branch_variance = lambda x:1.0 if x.is_terminal() else 0.0
+
+        Treg = TreeRegression(self.tree, tip_value=tip_value,
+                             branch_value=branch_value, branch_variance=branch_variance)
+        Treg.valid_confidence = covariation
+        return Treg
+
+
+    def get_clock_model(self, covariation=True, slope=None):
+        Treg = self.setup_TreeRegression(covariation=covariation)
+        self.clock_model = Treg.regression(slope=slope)
+        if not Treg.valid_confidence:
+            if 'cov' in self.clock_model:
+                self.clock_model.pop('cov')
+            self.clock_model['valid_confidence']=False
+        else:
+            self.clock_model['valid_confidence']=True
+        self.clock_model['r_val'] = Treg.explained_variance()
+        self.date2dist = DateConversion.from_regression(self.clock_model)
 
 
     def init_date_constraints(self, ancestral_inference=False, clock_rate=None, **kwarks):
@@ -179,17 +241,19 @@ class ClockTree(TreeAnc):
         """
         self.logger("ClockTree.init_date_constraints...",2)
         self.tree.coalescent_joint_LH = 0
-        if ancestral_inference or (not hasattr(self.tree.root, 'sequence')):
-            self.infer_ancestral_sequences('ml', marginal=self.branch_length_mode=='marginal',
+        if self.aln and (ancestral_inference or (not hasattr(self.tree.root, 'sequence'))):
+            self.infer_ancestral_sequences('probabilistic', marginal=self.branch_length_mode=='marginal',
                                             sample_from_profile='root',**kwarks)
 
         # set the None  for the date-related attributes in the internal nodes.
         # make interpolation objects for the branches
         self.logger('ClockTree.init_date_constraints: Initializing branch length interpolation objects...',3)
+        has_clock_length = []
         for node in self.tree.find_clades(order='postorder'):
             if node.up is None:
                 node.branch_length_interpolator = None
             else:
+                has_clock_length.append(hasattr(node, 'clock_length'))
                 # copy the merger rate and gamma if they are set
                 if hasattr(node,'branch_length_interpolator') and node.branch_length_interpolator is not None:
                     gamma = node.branch_length_interpolator.gamma
@@ -207,30 +271,33 @@ class ClockTree(TreeAnc):
 
                 node.branch_length_interpolator.merger_cost = merger_cost
                 node.branch_length_interpolator.gamma = gamma
-        self.date2dist = utils.DateConversion.from_tree(self.tree, clock_rate)
+
+        # use covariance in clock model only after initial timetree estimation is done
+        use_cov = (len(has_clock_length) - np.sum(has_clock_length))<3
+        self.get_clock_model(covariation=use_cov, slope=clock_rate)
 
         # make node distribution objects
         for node in self.tree.find_clades(order="postorder"):
             # node is constrained
-            if hasattr(node, 'numdate_given') and node.numdate_given is not None:
+            if hasattr(node, 'raw_date_constraint') and node.raw_date_constraint is not None:
                 # set the absolute time before present in branch length units
-                if np.isscalar(node.numdate_given):
-                    tbp = self.date2dist.get_time_before_present(node.numdate_given)
+                if np.isscalar(node.raw_date_constraint):
+                    tbp = self.date2dist.get_time_before_present(node.raw_date_constraint)
                     node.date_constraint = Distribution.delta_function(tbp, weight=1.0, min_width=self.min_width)
                 else:
-                    tbp = self.date2dist.get_time_before_present(np.array(node.numdate_given))
+                    tbp = self.date2dist.get_time_before_present(np.array(node.raw_date_constraint))
                     node.date_constraint = Distribution(tbp, np.ones_like(tbp), is_log=False, min_width=self.min_width)
 
-                if hasattr(node, 'bad_branch') and node.bad_branch==True:
+                if hasattr(node, 'bad_branch') and node.bad_branch is True:
                     self.logger("ClockTree.init_date_constraints -- WARNING: Branch is marked as bad"
-                                ", excluding it from the optimization process"
-                                " Will be optimized freely", 4, warn=True)
+                                ", excluding it from the optimization process.\n"
+                                "\t\tDate constraint will be ignored!", 4, warn=True)
             else: # node without sampling date set
-                node.numdate_given = None
+                node.raw_date_constraint = None
                 node.date_constraint = None
 
 
-    def make_time_tree(self, time_marginal=False, **kwargs):
+    def make_time_tree(self, time_marginal=False, clock_rate=None, **kwargs):
         '''
         Use the date constraints to calculate the most likely positions of
         unconstrained nodes.
@@ -246,10 +313,8 @@ class ClockTree(TreeAnc):
 
         '''
         self.logger("ClockTree: Maximum likelihood tree optimization with temporal constraints:",1)
-        if 'branch_length_mode' in kwargs:
-            self.branch_length_mode = kwargs['branch_length_mode']
 
-        self.init_date_constraints(**kwargs)
+        self.init_date_constraints(clock_rate=clock_rate, **kwargs)
 
         if time_marginal:
             self._ml_t_marginal(assign_dates = time_marginal=="assign")
@@ -319,9 +384,9 @@ class ClockTree(TreeAnc):
                         subtree_distribution = Distribution.multiply(msgs_to_multiply)
                     else: # there is exactly one constraint.
                         subtree_distribution = msgs_to_multiply[0]
+
                     if node.up is None: # this is the root, set dates
                         subtree_distribution._adjust_grid(rel_tol=self.rel_tol_prune)
-
                         # set root position and joint likelihood of the tree
                         node.time_before_present = subtree_distribution.peak_pos
                         node.joint_pos_Lx = subtree_distribution
@@ -387,7 +452,9 @@ class ClockTree(TreeAnc):
             LH -= node.branch_length_interpolator(node.branch_length)
 
         # add the root sequence LH and return
-        return LH + self.gtr.sequence_logLH(self.tree.root.cseq, pattern_multiplicity=self.multiplicity)
+        if self.aln:
+            LH += self.gtr.sequence_logLH(self.tree.root.cseq, pattern_multiplicity=self.multiplicity)
+        return LH
 
 
     def _ml_t_marginal(self, assign_dates=False):
@@ -502,7 +569,6 @@ class ClockTree(TreeAnc):
                     msg_parent_to_node = NodeInterpolator.multiply(complementary_msgs)
                     msg_parent_to_node._adjust_grid(rel_tol=self.rel_tol_prune)
                 else:
-                    from utils import numeric_date
                     x = [parent.numdate, numeric_date()]
                     msg_parent_to_node = NodeInterpolator(x, [1.0, 1.0],min_width=self.min_width)
 
@@ -576,11 +642,11 @@ class ClockTree(TreeAnc):
 
         '''
         from datetime import datetime, timedelta
-        now = utils.numeric_date()
+        now = numeric_date()
         for node in self.tree.find_clades():
             years_bp = self.date2dist.to_years(node.time_before_present)
             if years_bp < 0 and self.real_dates:
-                if not hasattr(node, "bad_branch") or node.bad_branch==False:
+                if not hasattr(node, "bad_branch") or node.bad_branch is False:
                     self.logger("ClockTree.convert_dates -- WARNING: The node is later than today, but it is not "
                         "marked as \"BAD\", which indicates the error in the "
                         "likelihood optimization.",4 , warn=True)
@@ -591,15 +657,15 @@ class ClockTree(TreeAnc):
             node.numdate = now - years_bp
 
             # set the human-readable date
-            days = 365.25 * (node.numdate - int(node.numdate))
-            year = int(node.numdate)
+            year = np.floor(node.numdate)
+            days = max(0,365.25 * (node.numdate - year)-1)
             try:  # datetime will only operate on dates after 1900
                 n_date = datetime(year, 1, 1) + timedelta(days=days)
                 node.date = datetime.strftime(n_date, "%Y-%m-%d")
             except:
                 # this is the approximation not accounting for gap years etc
                 n_date = datetime(1900, 1, 1) + timedelta(days=days)
-                node.date = str(year) + "-" + str(n_date.month) + "-" + str(n_date.day)
+                node.date = "%04d-%02d-%02d"%(year, n_date.month, n_date.day)
 
 
     def branch_length_to_years(self):

@@ -1,11 +1,13 @@
 from __future__ import division, print_function, absolute_import
+import os,sys
+import datetime
+import pandas as pd
 import numpy as np
 from scipy.interpolate import interp1d
-from treetime import config as ttconf
 from scipy.integrate import quad
 from scipy import stats
-import datetime
 from scipy.ndimage import binary_dilation
+from treetime import config as ttconf
 
 class DateConversion(object):
     """
@@ -17,61 +19,46 @@ class DateConversion(object):
 
         self.clock_rate = 0
         self.intercept = 0
+        self.chisq = 0
         self.r_val = 0
-        self.p_val = 0
+        self.cov = None
         self.sigma = 0
+        self.valid_confidence = False
 
     def __str__(self):
-        outstr = ('Root-Tip-Regression:\n --rate:\t%1.3e\n --R^2:\t\t%f\n'
+        if self.cov is not None and self.valid_confidence:
+            dslope = np.sqrt(self.cov[0,0])
+            outstr = ('Root-Tip-Regression:\n --rate:\t%1.3e +/- %1.2e (one std-dev)\n --chi^2:\t%1.2f\n --r^2:  \t%1.2f\n'
+                  %(self.clock_rate, dslope, self.chisq**2, self.r_val**2))
+        else:
+            outstr = ('Root-Tip-Regression:\n --rate:\t%1.3e\n --r^2:  \t%1.2f\n'
                   %(self.clock_rate, self.r_val**2))
+
         return outstr
 
 
     @classmethod
-    def from_tree(cls, t, clock_rate=None):
+    def from_regression(cls, clock_model):
         """
         Create the conversion object automatically from the tree
 
         Parameters
         ----------
 
-         t : Phylo.Tree
-            Tree as Biopython object
-
-         clock_rate : float, None
-            Substitution rate, or None. If None, will be inferred from root-to-
-            tip regression in the tree. Otherwise, the value passed will be used
+         clock_model : dict
+            dictionary as returned from TreeRegression with fields intercept and slope
 
         """
-        dates = []
-        for node in t.find_clades():
-            if hasattr(node, "numdate_given") and node.numdate_given is not None:
-                dates.append((np.mean(node.numdate_given), node.dist2root))
-
-        if len(dates) == 0:
-            raise RuntimeError("Cannot proceed with the TreeTime computations: "
-                "No date has been assigned to the terminal nodes!")
-        dates = np.array(dates)
         dc = cls()
-
-        if clock_rate is None:
-            if len(dates) < 3:
-                raise(RuntimeError("There are too few dates set at the leaves of the tree."
-                    " Cannot fit an evolutionary rate. Aborting."))
-            # simple regression
-            dc.clock_rate,\
-                dc.intercept,\
-                dc.r_val,\
-                dc.p_val,\
-                dc.sigma = stats.linregress(dates[:, 0], dates[:, 1])
-        else:
-            dc.clock_rate = clock_rate # clock_rate is given
-            dc.intercept = np.mean(dates[:,1]) - clock_rate * np.mean(dates[:,0])
-            dc.r_val = np.corrcoef(dates[:,1], dates[:,0])[0,1]
-
-        # set the root-mean-square deviation:
-        dc.rms = np.sqrt(np.sum((dates[:, 1] - (dc.intercept + dc.clock_rate * dates[:, 0]))**2) / dates.shape[0])
+        dc.clock_rate = clock_model['slope']
+        dc.intercept = clock_model['intercept']
+        dc.chisq = clock_model['chisq'] if 'chisq' in clock_model else None
+        dc.valid_confidence = clock_model['valid_confidence'] if 'valid_confidence' in clock_model else False
+        if 'cov' in clock_model and dc.valid_confidence:
+            dc.cov = clock_model['cov']
+        dc.r_val = clock_model['r_val']
         return dc
+
 
     def get_branch_len(self, date1, date2):
         """
@@ -96,11 +83,13 @@ class DateConversion(object):
         """
         return abs(date1 - date2) * self.clock_rate
 
+
     def get_time_before_present(self, numdate):
         """
         Convert the numeric date to the branch-len scale
         """
         return (numeric_date() - numdate) * abs(self.clock_rate)
+
 
     def to_years(self, abs_t):
         """
@@ -109,11 +98,13 @@ class DateConversion(object):
         """
         return abs_t / abs(self.clock_rate)
 
+
     def to_numdate(self, tbp):
         """
         Convert the numeric date to the branch-len scale
         """
         return numeric_date() - self.to_years(tbp)
+
 
     def numdate_from_dist2root(self, d2r):
         """
@@ -130,7 +121,7 @@ def min_interp(interp_object):
     try:
         return interp_object.x[interp_object(interp_object.x).argmin()]
     except Exception as e:
-        s = "Cannot find minimum of tthe interpolation object" + str(interp_object.x) + \
+        s = "Cannot find minimum of the interpolation object" + str(interp_object.x) + \
         "Minimal x: " + str(interp_object.x.min()) + "Maximal x: " + str(interp_object.x.max())
         raise e
 
@@ -165,9 +156,154 @@ def numeric_date(dt=None):
     try:
         res = dt.year + dt.timetuple().tm_yday / 365.25
     except:
-        res = 0.0
+        res = None
 
     return res
+
+
+
+def parse_dates(date_file):
+    """
+    parse dates from the arguments and return a dictionary mapping
+    taxon names to numerical dates.
+
+    Parameters
+    ----------
+    date_file : str
+        name of file to parse meta data from
+
+    Returns
+    -------
+    dict
+        dictionary linking fields in a column interpreted as taxon name
+        (first column that contains 'name', 'strain', 'accession')
+        to a numerical date inferred from a column that contains 'date'.
+        It will first try to parse the column as float, than via
+        pandas.to_datetime and finally as ambiguous date such as 2018-05-XX
+    """
+    dates = {}
+    if not os.path.isfile(date_file):
+        print("\n ERROR: file %s does not exist, exiting..."%date_file)
+        return dates
+    # separator for the csv/tsv file. If csv, we'll strip extra whitespace around ','
+    full_sep = '\t' if date_file.endswith('.tsv') else r'\s*,\s*'
+
+    try:
+        # read the metadata file into pandas dataframe.
+        df = pd.read_csv(date_file, sep=full_sep, engine='python')
+        # check the metadata has strain names in the first column
+        # look for the column containing sampling dates
+        # We assume that the dates might be given either in human-readable format
+        # (e.g. ISO dates), or be already converted to the numeric format.
+        potential_date_columns = []
+        potential_numdate_columns = []
+        potential_index_columns = []
+        # Scan the dataframe columns and find ones which likely to store the
+        # dates
+        for ci,col in enumerate(df.columns):
+            d = df.iloc[0,ci]
+            # strip quotation marks
+            if type(d)==str and d[0] in ['"', "'"] and d[-1] in ['"', "'"]:
+                for i,tmp_d in enumerate(df.iloc[:,ci]):
+                    df.iloc[i,ci] = tmp_d.strip(d[0])
+            if 'date' in col.lower():
+                potential_date_columns.append((ci, col))
+            if any([x in col.lower() for x in ['name', 'strain', 'accession']]):
+                potential_index_columns.append((ci, col))
+        # if a potential numeric date column was found, use it
+        # (use the first, if there are more than one)
+        if not len(potential_index_columns):
+            print("Cannot read metadata: need at least one column that contains the taxon labels."
+                  " Looking for the first column that contains 'name', 'strain', or 'accession' in the header.", file=sys.stderr)
+            return {}
+        else:
+            index_col = sorted(potential_index_columns)[0][1]
+
+        if len(potential_date_columns)>=1:
+            #try to parse the csv file with dates in the idx column:
+            idx = potential_date_columns[0][0]
+            col_name = potential_date_columns[0][1]
+            dates = {}
+            for ri, row in df.iterrows():
+                date_str = row.loc[col_name]
+                k = row.loc[index_col]
+                try:
+                    dates[k] = float(date_str)
+                    continue
+                except ValueError:
+                    try:
+                        tmp_date = pd.to_datetime(date_str)
+                        dates[k] = numeric_date(tmp_date)
+                    except ValueError:
+                        lower, upper = ambiguous_date_to_date_range(date_str, '%Y-%m-%d')
+                        if lower is not None:
+                            dates[k] = [numeric_date(x) for x in [lower, upper]]
+
+        else:
+            print("Metadata file has no column which looks like a sampling date!", file=sys.stderr)
+
+        if all(v is None for v in dates.values()):
+            print("Cannot parse dates correctly! Check date format.", file=sys.stderr)
+            return {}
+        return dates
+    except:
+        print("Cannot read the metadata file!", file=sys.stderr)
+        return {}
+
+
+def ambiguous_date_to_date_range(mydate, fmt="%Y-%m-%d", min_max_year=None):
+    """parse an abiguous date such as 2017-XX-XX to [2017,2017.999]
+
+    Parameters
+    ----------
+    mydate : str
+        date string to be parsed
+    fmt : str
+        format descriptor. default is %Y-%m-%d
+    min_max_year : None, optional
+        if date is completely unknown, use this as bounds.
+
+    Returns
+    -------
+    tuple
+        upper and lower bounds on the date. return (None, None) if errors
+    """
+    from datetime import datetime
+    sep = fmt.split('%')[1][-1]
+    min_date, max_date = {}, {}
+    today = datetime.today().date()
+
+    for val, field  in zip(mydate.split(sep), fmt.split(sep+'%')):
+        f = 'year' if 'y' in field.lower() else ('day' if 'd' in field.lower() else 'month')
+        if 'XX' in val:
+            if f=='year':
+                if min_max_year:
+                    min_date[f]=min_max_year[0]
+                    if len(min_max_year)>1:
+                        max_date[f]=min_max_year[1]
+                    elif len(min_max_year)==1:
+                        max_date[f]=4000 #will be replaced by 'today' below.
+                else:
+                    return None, None
+            elif f=='month':
+                min_date[f]=1
+                max_date[f]=12
+            elif f=='day':
+                min_date[f]=1
+                max_date[f]=31
+        else:
+            try:
+                min_date[f]=int(val)
+                max_date[f]=int(val)
+            except ValueError:
+                print("Can't parse date string: "+mydate, file=sys.stderr)
+                return None, None
+    max_date['day'] = min(max_date['day'], 31 if max_date['month'] in [1,3,5,7,8,10,12]
+                                           else 28 if max_date['month']==2 else 30)
+    lower_bound = datetime(year=min_date['year'], month=min_date['month'], day=min_date['day']).date()
+    upper_bound = datetime(year=max_date['year'], month=max_date['month'], day=max_date['day']).date()
+    return (lower_bound, upper_bound if upper_bound<today else today)
+
 
 def tree_layout(tree):
     leaf_count=0
@@ -179,10 +315,11 @@ def tree_layout(tree):
             tmp = np.array([c.ypos for c in node])
             node.ypos=0.5*(np.max(tmp) + np.min(tmp))
 
+
 def tree_inference(aln_fname, tree_fname, tmp_dir=None,
                    methods = ['iqtree', 'fasttree', 'raxml'], **kwargs):
-    from Bio import Phylo
     import os,shutil
+    from Bio import Phylo
     if not os.path.isfile(aln_fname):
         print("alignment file does not exist")
 
@@ -221,8 +358,8 @@ def tree_inference(aln_fname, tree_fname, tmp_dir=None,
 
 
 def build_newick_fasttree(aln_fname, nuc=True):
-    from Bio import Phylo
     import os
+    from Bio import Phylo
     print("Building tree with fasttree")
     tree_cmd = ["fasttree"]
     if nuc: tree_cmd.append("-nt")
@@ -233,8 +370,8 @@ def build_newick_fasttree(aln_fname, nuc=True):
 
 
 def build_newick_raxml(aln_fname, nthreads=2, raxml_bin="raxml", **kwargs):
-    from Bio import Phylo, AlignIO
     import shutil,os
+    from Bio import Phylo, AlignIO
     AlignIO.write(AlignIO.read(aln_fname, 'fasta'),"temp.phyx", "phylip-relaxed")
     cmd = raxml_bin + " -f d -T " + str(nthreads) + " -m GTRCAT -c 25 -p 235813 -n tre -s temp.phyx"
     os.system(cmd)
@@ -243,8 +380,8 @@ def build_newick_raxml(aln_fname, nthreads=2, raxml_bin="raxml", **kwargs):
 
 def build_newick_iqtree(aln_fname, nthreads=2, iqtree_bin="iqtree",
                         iqmodel="HKY",  **kwargs):
-    from Bio import Phylo, AlignIO
     import os
+    from Bio import Phylo, AlignIO
     with open(aln_fname) as ifile:
         tmp_seqs = ifile.readlines()
     aln_file = "temp.fasta"
@@ -252,7 +389,14 @@ def build_newick_iqtree(aln_fname, nthreads=2, iqtree_bin="iqtree",
         for line in tmp_seqs:
             ofile.write(line.replace('/', '_X_X_').replace('|','_Y_Y_'))
 
-    call = ["iqtree", "-nt", str(nthreads),"-fast", "-s", aln_file, ">", "iqtree.log"]
+    fast_opts = [
+        "-ninit", "2",
+        "-n",     "2",
+        "-me",    "0.05"
+    ]
+
+    call = ["iqtree"] + fast_opts +["-nt", str(nthreads), "-s", aln_file, "-m", iqmodel,
+            ">", "iqtree.log"]
 
     os.system(" ".join(call))
     T = Phylo.read(aln_file+".treefile", 'newick')

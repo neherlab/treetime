@@ -1,7 +1,7 @@
 from __future__ import print_function, division, absolute_import
 import numpy as np
 from treetime import config as ttconf
-from treetime.distribution import Distribution
+from .distribution import Distribution
 
 class BranchLenInterpolator (Distribution):
     """
@@ -97,7 +97,7 @@ class BranchLenInterpolator (Distribution):
                                                                           ignore_gaps=ignore_gaps)
                     node.compressed_sequence = {'pair':seq_pairs, 'multiplicity':multiplicity}
                 else:
-                    raise Exception("uncompressed sequence need to be assigned to nodes")
+                    raise Exception("uncompressed sequence needs to be assigned to nodes")
 
             log_prob = np.array([-self.gtr.prob_t_compressed(node.compressed_sequence['pair'],
                                                     node.compressed_sequence['multiplicity'],
@@ -105,7 +105,7 @@ class BranchLenInterpolator (Distribution):
                                                     return_log=True)
                                 for k in grid])
         else:
-            raise Exception("unknown branch length mode!")
+            raise Exception("unknown branch length mode! "+branch_length_mode)
         # tmp_dis = Distribution(grid, log_prob, is_log=True, kind='linear')
         # norm = tmp_dis.integrate(a=tmp_dis.xmin, b=tmp_dis.xmax, n=200)
         super(BranchLenInterpolator, self).__init__(grid, log_prob, is_log=True,
@@ -114,7 +114,7 @@ class BranchLenInterpolator (Distribution):
 
     @property
     def gamma(self):
-       return self._gamma
+        return self._gamma
 
     @gamma.setter
     def gamma(self, value):
@@ -122,7 +122,7 @@ class BranchLenInterpolator (Distribution):
 
     @property
     def merger_cost(self):
-       return self._merger_cost
+        return self._merger_cost
 
     @merger_cost.setter
     def merger_cost(self, cost_func):
@@ -158,5 +158,6 @@ class BranchLenInterpolator (Distribution):
 
     def __mul__(self, other):
         res = BranchLenInterpolator(super(BranchLenInterpolator, self).__mul__(other))
+        return res
 
 

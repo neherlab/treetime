@@ -58,7 +58,8 @@ class Coalescent(object):
 
         # make a list of (time, merger or loss event) by root first iteration
         self.tree_events = np.array(sorted([(n.time_before_present, len(n.clades)-1)
-                                for n in self.tree.find_clades()], key=lambda x:-x[0]))
+                                for n in self.tree.find_clades() if not n.bad_branch],
+                                key=lambda x:-x[0]))
 
         # collapse multiple events at one time point into sum of changes
         from collections import defaultdict

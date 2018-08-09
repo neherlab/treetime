@@ -1,9 +1,10 @@
 from __future__ import division, print_function, absolute_import
+from collections import defaultdict
 import numpy as np
-from  treetime import config as ttconf
-from treetime.seq_utils import alphabets, profile_maps, alphabet_synonyms
-from treetime.aa_models  import JTT92
-from treetime.nuc_models import JC69, K80, F81, HKY85, T92, TN93
+from treetime import config as ttconf
+from .seq_utils import alphabets, profile_maps, alphabet_synonyms
+from .aa_models  import JTT92
+
 
 class GTR(object):
     """
@@ -39,8 +40,8 @@ class GTR(object):
 
         """
         self.debug=False
-        if type(alphabet)==str:
-            if (alphabet not in alphabet_synonyms):
+        if isinstance(alphabet, str):
+            if alphabet not in alphabet_synonyms:
                 raise AttributeError("Unknown alphabet type specified")
             else:
                 tmp_alphabet = alphabet_synonyms[alphabet]
@@ -55,10 +56,11 @@ class GTR(object):
                 self.profile_map = prof_map
 
         if logger is None:
-            def logger(*args,**kwargs):
+            def logger_default(*args,**kwargs):
+                """standard logging function if none provided"""
                 if self.debug:
                     print(*args)
-            self.logger = logger
+            self.logger = logger_default
         else:
             self.logger = logger
         n_states = len(self.alphabet)
@@ -89,11 +91,18 @@ class GTR(object):
 
         # init all matrices with dummy values
         self.logger("GTR: init with dummy values!", 3)
+        self.v = None # right eigenvectors
+        self.v_inv = None # left eigenvectors
+        self.eigenvals =None # eigenvalues
         self.assign_rates()
 
 
     @property
     def Q(self):
+        """function that return the product of the transtiion matrix
+           and the equilibrium frequencies to option the rate matrix
+           of the GTR model
+        """
         return (self.W*self.Pi).T
 
 
@@ -324,6 +333,7 @@ class GTR(object):
                 (kappa1, kappa2) are specified relative to this rate
 
         """
+        from .nuc_models import JC69, K80, F81, HKY85, T92, TN93
 
         if model.lower() in ['jc', 'jc69', 'jukes-cantor', 'jukes-cantor69', 'jukescantor', 'jukescantor69']:
             return JC69(**kwargs)
@@ -454,14 +464,13 @@ class GTR(object):
             mu = nij.sum()/(ttconf.TINY_NUMBER + np.sum(pi * (W_ij.dot(Ti))))
         if count >= Nit:
             gtr.logger('WARNING: maximum number of iterations has been reached in GTR inference',3, warn=True)
-            np.min(pi.sum(axis=0)), np.max(pi.sum(axis=0))
             if LA.norm(pi_old-pi) > dp:
                 gtr.logger('the iterative scheme has not converged',3,warn=True)
             elif np.abs(1-np.max(pi.sum(axis=0))) > dp:
                 gtr.logger('the iterative scheme has converged, but proper normalization was not reached',3,warn=True)
         if gtr.gap_index>=0:
             if pi[gtr.gap_index]<gap_limit:
-              gtr.logger('The model allows for gaps which are estimated to occur at a low fraction of %1.3e'%pi[gtr.gap_index]+
+                gtr.logger('The model allows for gaps which are estimated to occur at a low fraction of %1.3e'%pi[gtr.gap_index]+
                        '\n\t\tthis can potentially result in artificats.'+
                        '\n\t\tgap fraction will be set to %1.4f'%gap_limit,2,warn=True)
             pi[gtr.gap_index] = gap_limit
@@ -579,10 +588,10 @@ class GTR(object):
             if ignore_gaps:  # if gaps are ignored skip positions where one or the other sequence is gapped
                 for i in range(len(seq_p)):
                     if self.gap_index!=num_seqs[0][i] and self.gap_index!=num_seqs[1][i]:
-                        pair_count[(num_seqs[0][i],num_seqs[1][i])]+=multiplicity[i]
+                        pair_count[(num_seqs[0][i],num_seqs[1][i])]+=pattern_multiplicity[i]
             else: # otherwise, just count
                 for i in range(len(seq_p)):
-                    pair_count[(num_seqs[0][i],num_seqs[1][i])]+=multiplicity[i]
+                    pair_count[(num_seqs[0][i],num_seqs[1][i])]+=pattern_multiplicity[i]
             pair_count = pair_count.items()
 
         return (np.array([x[0] for x in pair_count], dtype=int),    # [(child_nuc, parent_nuc),()...]
@@ -592,7 +601,7 @@ class GTR(object):
 ########################################################################
 ### evolution functions
 ########################################################################
-    def prob_t_compressed(self, seq_pair, multiplicity, t, return_log=False, derivative=0):
+    def prob_t_compressed(self, seq_pair, multiplicity, t, return_log=False):
         '''
         Calculate the probability of observing a sequence pair at a distance t,
         for compressed sequences
@@ -616,7 +625,7 @@ class GTR(object):
             Whether or not to exponentiate the result
 
         '''
-        if (t<0):
+        if t<0:
             logP = -ttconf.BIG_NUMBER
         else:
             tmp_eQT = self.expQt(t)
@@ -624,10 +633,9 @@ class GTR(object):
             logQt = np.log(tmp_eQT + ttconf.TINY_NUMBER*(bad_indices))
             logQt[np.isnan(logQt) | np.isinf(logQt) | bad_indices] = -ttconf.BIG_NUMBER
             logP = np.sum(logQt[seq_pair[:,1], seq_pair[:,0]]*multiplicity)
-            if return_log:
-                return logP
-            else:
-                return np.exp(logP)
+
+        return logP if return_log else np.exp(logP)
+
 
     def prob_t(self, seq_p, seq_ch, t, pattern_multiplicity = None, return_log=False, ignore_gaps=True):
         """
@@ -805,7 +813,7 @@ class GTR(object):
             Whether or not to exponentiate the result
 
         '''
-        if (t<0):
+        if t<0:
             logP = -ttconf.BIG_NUMBER
         else:
             Qt = self.expQt(t).T
@@ -818,10 +826,7 @@ class GTR(object):
             else:
                 logP = np.sum(multiplicity*np.log(overlap))
 
-            if return_log:
-                return logP
-            else:
-                return np.exp(logP)
+        return logP if return_log else np.exp(logP)
 
 
     def propagate_profile(self, profile, t, return_log=False):
@@ -854,10 +859,7 @@ class GTR(object):
         Qt = self.expQt(t)
         res = profile.dot(Qt)
 
-        if return_log:
-            return np.log(res)
-        else:
-            return res
+        return np.log(res) if return_log else res
 
 
     def _exp_lt(self, t):
@@ -915,7 +917,7 @@ class GTR(object):
         return Qsds
 
 
-    def expQsdsds(self, t):
+    def expQsdsds(self, s):
         '''
         Returns
         -------
@@ -962,7 +964,7 @@ class GTR(object):
     def save_to_json(self, zip):
         d = {
         "full_gtr": self.mu * np.dot(self.Pi, self.W),
-        "Substitution rate" : mu,
+        "Substitution rate" : self.mu,
         "Equilibrium character composition": self.Pi,
         "Flow rate matrix": self.W
         }

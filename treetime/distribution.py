@@ -1,10 +1,10 @@
 from __future__ import division, print_function, absolute_import
 import numpy as np
 from scipy.interpolate import interp1d
-from treetime.config import BIG_NUMBER, MIN_LOG, MIN_INTEGRATION_PEAK, TINY_NUMBER
 from collections import Iterable
 from copy import deepcopy as make_copy
 from scipy.ndimage import binary_dilation
+from .config import BIG_NUMBER, MIN_LOG, MIN_INTEGRATION_PEAK, TINY_NUMBER
 
 class Distribution(object):
     """

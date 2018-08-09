@@ -2,7 +2,8 @@
 # -*- coding: utf-8 -*-
 from __future__ import division, print_function, absolute_import
 import numpy as np
-from treetime.seq_utils import alphabets, profile_maps
+from .seq_utils import alphabets, profile_maps
+from .gtr import GTR
 
 def JC69 (mu=1.0, alphabet="nuc", **kwargs):
     """
@@ -26,7 +27,6 @@ def JC69 (mu=1.0, alphabet="nuc", **kwargs):
          'nuc_gap' - nucleotide alphabet with gaps, gaps can be ignored optionally
 
     """
-    from treetime.gtr import GTR
     num_chars = len(alphabets[alphabet])
     W, pi = np.ones((num_chars,num_chars)), np.ones(num_chars)
     gtr = GTR(alphabet=alphabet)
@@ -53,7 +53,6 @@ def K80(mu=1., kappa=0.1, **kwargs):
         Ratio of transversion/transition rates
     """
 
-    from gtr import GTR
     num_chars = len(alphabets['nuc_nogap'])
     pi = np.ones(len(alphabets['nuc_nogap']), dtype=float)/len(alphabets['nuc_nogap'])
     W = _create_transversion_transition_W(kappa)
@@ -86,7 +85,6 @@ def F81(mu=1.0, pi=None, alphabet="nuc", **kwargs):
         'nuc_gap' alphabet enables treatmen of gaps as characters.
     """
 
-    from gtr import GTR
     if pi is None:
         pi=0.25*np.ones(4, dtype=float)
     num_chars = len(alphabets[alphabet])
@@ -128,7 +126,6 @@ def HKY85(mu=1.0, pi=None, kappa=0.1, **kwargs):
 
     """
 
-    from gtr import GTR
     if pi is None:
         pi=0.25*np.ones(4, dtype=float)
     num_chars = len(alphabets['nuc_nogap'])
@@ -164,8 +161,6 @@ def T92(mu=1.0, pi_GC=0.5, kappa=0.1, **kwargs):
         relative transversion/transition rate
 
     """
-
-    from gtr import GTR
 
     W = _create_transversion_transition_W(kappa)
     # A C G T
@@ -204,7 +199,6 @@ def TN93(mu=1.0, kappa1=1., kappa2=1., pi=None, **kwargs):
 
     """
 
-    from gtr import GTR
     if pi is None:
         pi=0.25*np.ones(4, dtype=float)
     W = np.ones((4,4))
