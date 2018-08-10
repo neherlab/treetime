@@ -77,7 +77,7 @@ class TreeTime(ClockTree):
 
             If Tc is float, it is interpreted as the coalescence time scale
 
-            If Tc is str, it should be one of (:code:`opt`, :code:`skyline`)
+            If Tc is str, it should be one of (:code:`opt`, :code:`const`, :code:`skyline`)
 
          fixed_clock_rate : float
             Fixed clock rate to be used. If None, infer clock rate from the molecular clock.

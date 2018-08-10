@@ -29,8 +29,6 @@ Additional functionality
 
 .. automethod:: treetime.TreeTime.reroot_to_best_root
 
-.. automethod:: treetime.TreeTime.find_best_root_and_regression
-
 .. automethod:: treetime.TreeTime.plot_root_to_tip
 
 .. automethod:: treetime.TreeTime.print_lh
