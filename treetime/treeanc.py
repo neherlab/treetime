@@ -796,13 +796,14 @@ class TreeAnc(object):
         self.logger("TreeAnc.infer_gtr: counting mutations...done", 3)
         if print_raw:
             print('alphabet:',alpha)
-            print('n_ij:', nij)
-            print('T_i:', Ti)
+            print('n_ij:', nij, nij.sum())
+            print('T_i:', Ti, Ti.sum())
         root_state = np.array([np.sum((self.tree.root.cseq==nuc)*self.multiplicity) for nuc in alpha])
 
         self._gtr = GTR.infer(nij, Ti, root_state, fixed_pi=fixed_pi, pc=pc,
                               alphabet=self.gtr.alphabet, logger=self.logger,
                               prof_map = self.gtr.profile_map)
+
         if normalized_rate:
             self.logger("TreeAnc.infer_gtr: setting overall rate to 1.0...", 2)
             self._gtr.mu=1.0
