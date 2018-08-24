@@ -87,14 +87,20 @@ class ClockTree(TreeAnc):
 
         for node in self.tree.find_clades(order='postorder'):
             if node.name in self.date_dict:
-                try:
-                    tmp = np.mean(self.date_dict[node.name])
-                    node.raw_date_constraint = self.date_dict[node.name]
-                    node.bad_branch = False
-                except:
-                    self.logger("WARNING: ClockTree.init: node %s has a bad date: %s"%(node.name, str(self.date_dict[node.name])), 2, warn=True)
+                tmp_date = self.date_dict[node.name]
+                if np.isscalar(tmp_date) and np.isnan(tmp_date):
+                    self.logger("WARNING: ClockTree.init: node %s has a bad date: %s"%(node.name, str(tmp_date)), 2, warn=True)
                     node.raw_date_constraint = None
                     node.bad_branch = True
+                else:
+                    try:
+                        tmp = np.mean(tmp_date)
+                        node.raw_date_constraint = tmp_date
+                        node.bad_branch = False
+                    except:
+                        self.logger("WARNING: ClockTree.init: node %s has a bad date: %s"%(node.name, str(tmp_date)), 2, warn=True)
+                        node.raw_date_constraint = None
+                        node.bad_branch = True
             else: # nodes without date contraints
 
                 node.raw_date_constraint = None

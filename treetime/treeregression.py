@@ -245,7 +245,7 @@ class TreeRegression(object):
             a vector of length 6 containing the updated quantities
         """
         if n.is_terminal() and outgroup==False:
-            if tv is None:
+            if tv is None or np.isinf(tv) or np.isnan(tv):
                 res = np.array([0, 0, 0, 0, 0, 0])
             elif var==0:
                 res = np.array([np.inf, np.inf, np.inf, np.inf, np.inf, np.inf])
@@ -332,7 +332,6 @@ class TreeRegression(object):
             bv = self.branch_value(n)
             var = self.branch_variance(n)
             x, chisq = self._optimal_root_along_branch(n, tv, bv, var)
-
             if (chisq<best_root["chisq"]):
                 tmpQ = self.propagate_averages(n, tv, bv*x, var*x) \
                      + self.propagate_averages(n, tv, bv*(1-x), var*(1-x), outgroup=True)
@@ -341,8 +340,16 @@ class TreeRegression(object):
                     best_root = {"node":n, "split":x}
                     best_root.update(reg)
 
+        if 'node' not in best_root:
+            print("TreeRegression.find_best_root: Not valid root found!", force_positive)
+            return None
+
         # calculate differentials with respect to x
         deriv = []
+        n = best_root["node"]
+        tv = self.tip_value(n)
+        bv = self.branch_value(n)
+        var = self.branch_variance(n)
         for dx in [-0.001, 0.001]:
             y = min(1.0, max(0.0, best_root["split"]+dx))
             tmpQ = self.propagate_averages(n, tv, bv*y, var*y) \

@@ -501,6 +501,9 @@ def timetree(params):
                   "a float, 'opt', 'const' or 'skyline'")
             coalescent = None
 
+    vary_rate = params.confidence
+    if params.clock_std_dev and params.clock_rate:
+        vary_rate = params.clock_std_dev
 
     root = None if params.keep_root else params.reroot
     success = myTree.run(root=root, relaxed_clock=params.relax,
@@ -509,6 +512,7 @@ def timetree(params):
                fixed_clock_rate=params.clock_rate,
                n_iqd=params.clock_filter,
                time_marginal="assign" if params.confidence else False,
+               vary_rate = vary_rate,
                branch_length_mode = branch_length_mode,
                fixed_pi=fixed_pi)
     if success==ttconf.ERROR: # if TreeTime.run failed, exit
