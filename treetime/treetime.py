@@ -33,7 +33,8 @@ class TreeTime(ClockTree):
 
     def run(self, root=None, infer_gtr=True, relaxed_clock=None, n_iqd = None,
             resolve_polytomies=True, max_iter=0, Tc=None, fixed_clock_rate=None,
-            time_marginal=False, sequence_marginal=False, branch_length_mode='auto', **kwargs):
+            time_marginal=False, sequence_marginal=False, branch_length_mode='auto',
+            vary_rate=False, **kwargs):
 
         """
         Run TreeTime reconstruction. Based on the input parameters, it divides
@@ -43,58 +44,71 @@ class TreeTime(ClockTree):
 
         Parameters
         ----------
+        root : str
+           Try to find better root position on a given tree. If string is passed,
+           the root will be searched according to the specified method. If none,
+           use tree as-is.
 
-         root : str
-            Try to find better root position on a given tree. If string is passed,
-            the root will be searched according to the specified method. If none,
-            use tree as-is.
+           See :py:meth:`treetime.TreeTime.reroot` for available rooting methods.
 
-            See :py:meth:`treetime.TreeTime.reroot` for available rooting methods.
+        infer_gtr : bool
+           If True, infer GTR model
 
-         infer_gtr : bool
-            If True, infer GTR model
+        relaxed_clock : dic
+           If not None, use autocorrelated molecular clock model. Specify the
+           clock parameters as :code:`{slack:<slack>, coupling:<coupling>}` dictionary.
 
-         relaxed_clock : dic
-            If not None, use autocorrelated molecular clock model. Specify the
-            clock parameters as :code:`{slack:<slack>, coupling:<coupling>}` dictionary.
+        n_iqd : int
+           If not None, filter tree nodes which do not obey the molecular clock
+           for the particular tree. The nodes, which deviate more than
+           :code:`n_iqd` interquantile intervals from the molecular clock
+           regression will be marked as 'BAD' and not used in the TreeTime
+           analysis
 
-         n_iqd : int
-            If not None, filter tree nodes which do not obey the molecular clock
-            for the particular tree. The nodes, which deviate more than
-            :code:`n_iqd` interquantile intervals from the molecular clock
-            regression will be marked as 'BAD' and not used in the TreeTime
-            analysis
+        resolve_polytomies : bool
+           If True, attempt to resolve multiple mergers
 
-         resolve_polytomies : bool
-            If True, attempt to resolve multiple mergers
+        max_iter : int
+           Maximum number of iterations to optimize the tree
 
-         max_iter : int
-            Maximum number of iterations to optimize the tree
+        Tc : float, str
+           If not None, use coalescent model to correct the branch lengths by
+           introducing merger costs.
 
-         Tc : float, str
-            If not None, use coalescent model to correct the branch lengths by
-            introducing merger costs.
+           If Tc is float, it is interpreted as the coalescence time scale
 
-            If Tc is float, it is interpreted as the coalescence time scale
+           If Tc is str, it should be one of (:code:`opt`, :code:`const`, :code:`skyline`)
 
-            If Tc is str, it should be one of (:code:`opt`, :code:`const`, :code:`skyline`)
+        fixed_clock_rate : float
+           Fixed clock rate to be used. If None, infer clock rate from the molecular clock.
 
-         fixed_clock_rate : float
-            Fixed clock rate to be used. If None, infer clock rate from the molecular clock.
+        time_marginal : bool
+           If True, perform a final round of marginal reconstruction of the node's positions.
 
-         time_marginal : bool
-            If True, perform a final round of marginal reconstruction of the node's positions.
+        sequence_marginal : bool, optional
+            use marginal reconstruction for ancestral sequences
 
-         branch_length_mode : str
-            Should be one of: :code:`joint`, :code:`marginal`, :code:`input`.
+        branch_length_mode : str
+           Should be one of: :code:`joint`, :code:`marginal`, :code:`input`.
 
-            If 'input', rely on the branch lengths in the input tree and skip directly
-            to the maximum-likelihood ancestral sequence reconstruction.
-            Otherwise, perform preliminary sequence reconstruction using parsimony
-            algorithm and do branch length optimization
+           If 'input', rely on the branch lengths in the input tree and skip directly
+           to the maximum-likelihood ancestral sequence reconstruction.
+           Otherwise, perform preliminary sequence reconstruction using parsimony
+           algorithm and do branch length optimization
 
-         **kwargs
-            Keyword arguments needed by the dowstream functions
+        vary_rate : bool or float, optional
+            redo the time tree estimation for rates +/- one standard deviation.
+            if a float is passed, it is interpreted as standard deviation,
+            otherwise this standard deviation is estimated from the root-to-tip regression
+
+        **kwargs
+           Keyword arguments needed by the dowstream functions
+
+
+        Returns
+        -------
+        TreeTime error/succces code : str
+            return value depending on success or error
 
 
         """
@@ -214,6 +228,18 @@ class TreeTime(ClockTree):
                 self.logger("###TreeTime.run: CONVERGED",0)
                 break
 
+        # if the rate is too be varied and the rate estimate has a valid confidence interval
+        # rerun the estimation for variations of the rate
+        if vary_rate:
+            if type(vary_rate)==float:
+                res = self.calc_rate_susceptibility(rate_std=vary_rate, params=tt_kwargs)
+            elif self.clock_model['valid_confidence']:
+                res = self.calc_rate_susceptibility(params=tt_kwargs)
+            else:
+                res = ttconf.ERROR
+
+            if res==ttconf.ERROR:
+                self.logger("TreeTime.run: rate variation failed and can't be used for confidence estimation", 1, warn=True)
 
         # if marginal reconstruction requested, make one more round with marginal=True
         # this will set marginal_pos_LH, which to be used as error bar estimations

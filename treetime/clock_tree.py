@@ -87,14 +87,20 @@ class ClockTree(TreeAnc):
 
         for node in self.tree.find_clades(order='postorder'):
             if node.name in self.date_dict:
-                try:
-                    tmp = np.mean(self.date_dict[node.name])
-                    node.raw_date_constraint = self.date_dict[node.name]
-                    node.bad_branch = False
-                except:
-                    self.logger("WARNING: ClockTree.init: node %s has a bad date: %s"%(node.name, str(self.date_dict[node.name])), 2, warn=True)
+                tmp_date = self.date_dict[node.name]
+                if np.isscalar(tmp_date) and np.isnan(tmp_date):
+                    self.logger("WARNING: ClockTree.init: node %s has a bad date: %s"%(node.name, str(tmp_date)), 2, warn=True)
                     node.raw_date_constraint = None
                     node.bad_branch = True
+                else:
+                    try:
+                        tmp = np.mean(tmp_date)
+                        node.raw_date_constraint = tmp_date
+                        node.bad_branch = False
+                    except:
+                        self.logger("WARNING: ClockTree.init: node %s has a bad date: %s"%(node.name, str(tmp_date)), 2, warn=True)
+                        node.raw_date_constraint = None
+                        node.bad_branch = True
             else: # nodes without date contraints
 
                 node.raw_date_constraint = None
@@ -273,7 +279,7 @@ class ClockTree(TreeAnc):
                 node.branch_length_interpolator.gamma = gamma
 
         # use covariance in clock model only after initial timetree estimation is done
-        use_cov = (len(has_clock_length) - np.sum(has_clock_length))<3
+        use_cov = np.sum(has_clock_length) > len(has_clock_length)*0.7
         self.get_clock_model(covariation=use_cov, slope=clock_rate)
 
         # make node distribution objects
@@ -312,7 +318,7 @@ class ClockTree(TreeAnc):
             Key word arguments to initialize dates constraints
 
         '''
-        self.logger("ClockTree: Maximum likelihood tree optimization with temporal constraints:",1)
+        self.logger("ClockTree: Maximum likelihood tree optimization with temporal constraints",1)
 
         self.init_date_constraints(clock_rate=clock_rate, **kwargs)
 
@@ -688,12 +694,101 @@ class ClockTree(TreeAnc):
                 n.branch_length = n.numdate - n.up.numdate
 
 
+    def calc_rate_susceptibility(self, rate_std=None, params=None):
+        """return the time tree estimation of evolutionary rates +/- one
+        standard deviation form the ML estimate.
+
+        Returns
+        -------
+        TreeTime.return_code : str
+            success or failure
+        """
+        params = params or {}
+        if rate_std is None:
+            if not self.clock_model['valid_confidence']:
+                self.logger("ClockTree.calc_rate_susceptibility: need valid standard deviation of the clock rate to estimate dating error.", 1, warn=True)
+                return ttconf.ERROR
+            rate_std = np.sqrt(self.clock_model['cov'][0,0])
+
+        current_rate = self.clock_model['slope']
+        upper_rate = self.clock_model['slope'] + rate_std
+        lower_rate = max(0.1*current_rate, self.clock_model['slope'] - rate_std)
+        for n in self.tree.find_clades():
+            if n.up:
+                n.branch_length_interpolator.gamma*=upper_rate/current_rate
+
+        self.logger("###ClockTree.calc_rate_susceptibility: run with upper bound of rate estimate", 1)
+        self.make_time_tree(**params)
+        self.logger("###ClockTree.calc_rate_susceptibility: rate: %f, LH:%f"%(upper_rate, self.tree.positional_joint_LH), 2)
+        for n in self.tree.find_clades():
+            n.numdate_rate_variation = [(upper_rate, n.numdate)]
+            if n.up:
+                n.branch_length_interpolator.gamma*=lower_rate/upper_rate
+
+        self.logger("###ClockTree.calc_rate_susceptibility: run with lower bound of rate estimate", 1)
+        self.make_time_tree(**params)
+        self.logger("###ClockTree.calc_rate_susceptibility: rate: %f, LH:%f"%(lower_rate, self.tree.positional_joint_LH), 2)
+        for n in self.tree.find_clades():
+            n.numdate_rate_variation.append((lower_rate, n.numdate))
+            if n.up:
+                n.branch_length_interpolator.gamma*=current_rate/lower_rate
+
+        self.logger("###ClockTree.calc_rate_susceptibility: run with central rate estimate", 1)
+        self.make_time_tree(**params)
+        self.logger("###ClockTree.calc_rate_susceptibility: rate: %f, LH:%f"%(current_rate, self.tree.positional_joint_LH), 2)
+        for n in self.tree.find_clades():
+            n.numdate_rate_variation.append((current_rate, n.numdate))
+            n.numdate_rate_variation.sort(key=lambda x:x[1]) # sort estimates for different rates by numdate
+
+        return ttconf.SUCCESS
+
+
+    def date_uncertainty_due_to_rate(self, node, interval=(0.05, 0.095)):
+        """use previously calculated variation of the rate to estimate
+        the uncertainty in a particular numdate due to rate variation.
+
+        Parameters
+        ----------
+        node : PhyloTree.Clade
+            node for which the confidence interval is to be calculated
+        interval : tuple, optional
+            Array of length two, or tuple, defining the bounds of the confidence interval
+
+        """
+        if hasattr(node, "numdate_rate_variation"):
+            from scipy.special import erfinv
+            nsig = [np.sqrt(2.0)*erfinv(-1.0 + 2.0*x) if x*(1.0-x) else 0
+                    for x in interval]
+            l,c,u = [x[1] for x in node.numdate_rate_variation]
+            return np.array([c + x*np.abs(y-c) for x,y in zip(nsig, (l,u))])
+
+        else:
+            return None
+
+    def combine_confidence(self, center, limits, c1=None, c2=None):
+        if c1 is None and c2 is None:
+            return np.array(limits)
+        elif c1 is None:
+            min_val,max_val = c2
+        elif c2 is None:
+            min_val,max_val = c1
+        else:
+            min_val = center - np.sqrt((c1[0]-center)**2 + (c2[0]-center)**2)
+            max_val = center + np.sqrt((c1[1]-center)**2 + (c2[1]-center)**2)
+
+        return np.array([max(limits[0], min_val),
+                         min(limits[1], max_val)])
+
+
+
     def get_confidence_interval(self, node, interval = (0.05, 0.95)):
         '''
         If temporal reconstruction was done using the marginal ML mode, the entire distribution of
         times is available. This function determines the 90% (or other) confidence interval, defined as the
         range where 5% of probability is below and above. Note that this does not necessarily contain
         the highest probability position.
+        In absense of marginal reconstruction, it will return uncertainty based on rate
+        variation. If both are present, the wider interval will be returned.
 
         Parameters
         ----------
@@ -711,21 +806,28 @@ class ClockTree(TreeAnc):
             Array with two numerical dates delineating the confidence interval
 
         '''
+        rate_contribution = self.date_uncertainty_due_to_rate(node, interval)
+
         if hasattr(node, "marginal_inverse_cdf"):
+            min_date, max_date = [self.date2dist.to_numdate(x) for x in
+                                  (node.marginal_pos_LH.xmax, node.marginal_pos_LH.xmin)]
             if node.marginal_inverse_cdf=="delta":
                 return np.array([node.numdate, node.numdate])
             else:
-                return self.date2dist.to_numdate(node.marginal_inverse_cdf(np.array(interval))[::-1])
+                mutation_contribution = self.date2dist.to_numdate(node.marginal_inverse_cdf(np.array(interval))[::-1])
         else:
-            return np.array([np.nan, np.nan])
+            min_date, max_date = [-np.inf, np.inf]
 
+        return self.combine_confidence(node.numdate, (min_date, max_date),
+                                  c1=rate_contribution, c2=mutation_contribution)
 
     def get_max_posterior_region(self, node, fraction = 0.9):
         '''
         If temporal reconstruction was done using the marginal ML mode, the entire distribution of
-        times is available. This function determines the 95% confidence interval defines as the
-        range where 5% of probability are below and above. Note that this does not necessarily contain
-        the highest probability position.
+        times is available. This function determines the interval around the highest
+        posterior probability region that contains the specified fraction of the probability mass.
+        In absense of marginal reconstruction, it will return uncertainty based on rate
+        variation. If both are present, the wider interval will be returned.
 
         Parameters
         ----------
@@ -743,18 +845,18 @@ class ClockTree(TreeAnc):
             Array with two numerical dates delineating the high posterior region
 
         '''
-        if not hasattr(node, "marginal_inverse_cdf"):
-            return np.array([np.nan, np.nan])
-
         if node.marginal_inverse_cdf=="delta":
             return np.array([node.numdate, node.numdate])
 
+
         min_max = (node.marginal_pos_LH.xmin, node.marginal_pos_LH.xmax)
+        min_date, max_date = [self.date2dist.to_numdate(x) for x in min_max][::-1]
         if node.marginal_pos_LH.peak_pos == min_max[0]: #peak on the left
             return self.get_confidence_interval(node, (0, fraction))
         elif node.marginal_pos_LH.peak_pos == min_max[1]: #peak on the right
             return self.get_confidence_interval(node, (1.0-fraction ,1.0))
         else: # peak in the center of the distribution
+            rate_contribution = self.date_uncertainty_due_to_rate(node, ((1-fraction)*0.5, 1.0-(1.0-fraction)*0.5))
 
             # construct height to position interpolators left and right of the peak
             # this assumes there is only one peak --- might fail in odd cases
@@ -775,9 +877,12 @@ class ClockTree(TreeAnc):
             # minimza and determine success
             sol = minimize(func, bracket=[0,10], args=(fraction,))
             if sol['success']:
-                return self.date2dist.to_numdate(np.array([right(sol['x']), left(sol['x'])]).squeeze())
+                mutation_contribution = self.date2dist.to_numdate(np.array([right(sol['x']), left(sol['x'])]).squeeze())
             else: # on failure, return standard confidence interval
-                return self.get_confidence_interval(node, (0.5*(1-fraction), 1-0.5*(1-fraction)))
+                mutation_contribution = None
+
+            return self.combine_confidence(node.numdate, (min_date, max_date),
+                                      c1=rate_contribution, c2=mutation_contribution)
 
 
 if __name__=="__main__":

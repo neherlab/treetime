@@ -501,6 +501,9 @@ def timetree(params):
                   "a float, 'opt', 'const' or 'skyline'")
             coalescent = None
 
+    vary_rate = params.confidence
+    if params.clock_std_dev and params.clock_rate:
+        vary_rate = params.clock_std_dev
 
     root = None if params.keep_root else params.reroot
     success = myTree.run(root=root, relaxed_clock=params.relax,
@@ -509,6 +512,7 @@ def timetree(params):
                fixed_clock_rate=params.clock_rate,
                n_iqd=params.clock_filter,
                time_marginal="assign" if params.confidence else False,
+               vary_rate = vary_rate,
                branch_length_mode = branch_length_mode,
                fixed_pi=fixed_pi)
     if success==ttconf.ERROR: # if TreeTime.run failed, exit
@@ -810,7 +814,13 @@ def estimate_clock_model(params):
         ofile.write("#Dates of nodes that didn't have a specified date are inferred from the root-to-tip regression.\n")
         for n in myTree.tree.get_terminals():
             if hasattr(n, "raw_date_constraint") and (n.raw_date_constraint is not None):
-                ofile.write("%s, %f, %f\n"%(n.name, n.raw_date_constraint, n.dist2root))
+                if np.isscalar(n.raw_date_constraint):
+                    tmp_str = str(n.raw_date_constraint)
+                elif len(n.raw_date_constraint):
+                    tmp_str = str(n.raw_date_constraint[0])+'-'+str(n.raw_date_constraint[1])
+                else:
+                    tmp_str = ''
+                ofile.write("%s, %s, %f\n"%(n.name, tmp_str, n.dist2root))
             else:
                 ofile.write("%s, %f, %f\n"%(n.name, d2d.numdate_from_dist2root(n.dist2root), n.dist2root))
         for n in myTree.tree.get_nonterminals(order='preorder'):

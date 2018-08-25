@@ -162,6 +162,7 @@ if __name__ == '__main__':
     add_reroot_group(t_parser)
     add_gtr_arguments(t_parser)
     t_parser.add_argument('--clock-rate', type=float, help="if specified, the rate of the molecular clock won't be optimized.")
+    t_parser.add_argument('--clock-std-dev', type=float, help="standard deviation of the provided clock rate estimate")
     t_parser.add_argument('--branch-length-mode', default='auto', type=str, choices=['auto', 'input', 'joint', 'marginal'],
                         help="If set to 'input', the provided branch length will be used without modification. "
                              "Note that branch lengths optimized by treetime are only accurate at short evolutionary distances.")
