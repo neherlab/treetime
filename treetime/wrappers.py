@@ -814,7 +814,13 @@ def estimate_clock_model(params):
         ofile.write("#Dates of nodes that didn't have a specified date are inferred from the root-to-tip regression.\n")
         for n in myTree.tree.get_terminals():
             if hasattr(n, "raw_date_constraint") and (n.raw_date_constraint is not None):
-                ofile.write("%s, %s, %f\n"%(n.name, str(n.raw_date_constraint).replace(', ','--'), n.dist2root))
+                if np.isscalar(n.raw_date_constraint):
+                    tmp_str = str(n.raw_date_constraint)
+                elif len(n.raw_date_constraint):
+                    tmp_str = str(n.raw_date_constraint[0])+'-'+str(n.raw_date_constraint[1])
+                else:
+                    tmp_str = ''
+                ofile.write("%s, %s, %f\n"%(n.name, tmp_str, n.dist2root))
             else:
                 ofile.write("%s, %f, %f\n"%(n.name, d2d.numdate_from_dist2root(n.dist2root), n.dist2root))
         for n in myTree.tree.get_nonterminals(order='preorder'):
