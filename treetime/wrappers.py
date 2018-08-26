@@ -185,8 +185,7 @@ def export_sequences_and_tree(tt, basename, is_vcf=False, zero_based=False,
                 fh_dates.write('%s\t%s\t%f\t%f\t%f\n'%(n.name, n.date, n.numdate,conf[0], conf[1]))
             else:
                 fh_dates.write('%s\t%s\t%f\n'%(n.name, n.date, n.numdate))
-        if n.up is None:
-            continue
+
         n.confidence=None
         # due to a bug in older versions of biopython that truncated filenames in nexus export
         # we truncate them by hand and make them unique.

@@ -211,7 +211,7 @@ class ClockTree(TreeAnc):
     def get_clock_model(self, covariation=True, slope=None):
         Treg = self.setup_TreeRegression(covariation=covariation)
         self.clock_model = Treg.regression(slope=slope)
-        if not Treg.valid_confidence:
+        if not Treg.valid_confidence or (slope is not None):
             if 'cov' in self.clock_model:
                 self.clock_model.pop('cov')
             self.clock_model['valid_confidence']=False
@@ -705,7 +705,7 @@ class ClockTree(TreeAnc):
         """
         params = params or {}
         if rate_std is None:
-            if not self.clock_model['valid_confidence']:
+            if not (self.clock_model['valid_confidence'] and 'cov' in self.clock_model):
                 self.logger("ClockTree.calc_rate_susceptibility: need valid standard deviation of the clock rate to estimate dating error.", 1, warn=True)
                 return ttconf.ERROR
             rate_std = np.sqrt(self.clock_model['cov'][0,0])
