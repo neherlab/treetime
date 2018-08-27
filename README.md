@@ -15,6 +15,8 @@ In addition to scripting TreeTime or using it via the command-line, there is als
 
 ![Molecular clock phylogeny of 200 NA sequences of influenza A H3N2](https://raw.githubusercontent.com/neherlab/treetime_examples/master/figures/tree_and_clock.png)
 
+Have a look at our [examples and tutorials](https://github.com/neherlab/treetime_examples).
+
 #### Features
 * ancestral sequence reconstruction (marginal and joint maximum likelihood)
 * molecular clock tree inference (marginal and joint maximum likelihood)
@@ -56,6 +58,10 @@ You may install TreeTime and its dependencies by running
   pip install .
 ```
 within this repository.
+You can also install TreeTime from PyPi via
+```bash
+  pip install phylo-treetime
+```
 
 You might need root privileges for system wide installation. Alternatively, you can simply use it TreeTime locally without installation. In this case, just download and unpack it, and then add the TreeTime folder to your $PYTHONPATH.
 
