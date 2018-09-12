@@ -11,7 +11,7 @@ To optimize the likelihood of time-scaled phylogenies, TreeTime uses an iterativ
 The only topology optimization are (optional) resolution of polytomies in a way that is most (approximately) consistent with the sampling time constraints on the tree.
 The package is designed to be used as a stand-alone tool on the command-line or as a library used in larger phylogenetic analysis work-flows.
 
-In addition to scripting TreeTime or using it via the command-line, there is also a small web server at [treetime.ch](https://treetime.ch).
+In addition to scripting TreeTime or using it via the command-line, there is also a small web server at [treetime.ch](https://treetime.biozentrum.unibas.ch/).
 
 ![Molecular clock phylogeny of 200 NA sequences of influenza A H3N2](https://raw.githubusercontent.com/neherlab/treetime_examples/master/figures/tree_and_clock.png)
 
