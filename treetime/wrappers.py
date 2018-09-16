@@ -203,13 +203,22 @@ def export_sequences_and_tree(tt, basename, is_vcf=False, zero_based=False,
             n.comment+=(',' if n.comment else '&') + 'date=%1.2f'%n.numdate
 
     # write tree to file
+    fmt_bl = "%1.6f" if tt.seq_len<1e6 else "%1.4e"
     if timetree:
         outtree_name = basename + 'timetree.nexus'
         print("--- saved divergence times in \n\t %s\n"%dates_fname)
+        Phylo.write(tt.tree, outtree_name, 'nexus')
     else:
         outtree_name = basename + 'annotated_tree.nexus'
-    Phylo.write(tt.tree, outtree_name, 'nexus')
+        Phylo.write(tt.tree, outtree_name, 'nexus', format_branch_length=fmt_bl)
     print("--- tree saved in nexus format as  \n\t %s\n"%outtree_name)
+
+    if timetree:
+        for n in tt.tree.find_clades():
+            n.branch_length = n.mutation_length
+        outtree_name = basename + 'divergence_tree.nexus'
+        Phylo.write(tt.tree, outtree_name, 'nexus', format_branch_length=fmt_bl)
+        print("--- divergence tree saved in nexus format as  \n\t %s\n"%outtree_name)
 
 
 def print_save_plot_skyline(tt, n_std=2.0, screen=True, save='', plot=''):
@@ -473,9 +482,12 @@ def timetree(params):
     aln, ref, fixed_pi = read_if_vcf(params)
     is_vcf = True if ref is not None else False
     branch_length_mode = params.branch_length_mode
-    if is_vcf: #variable-site-only trees can have big branch lengths, setting this wrong.
+    #variable-site-only trees can have big branch lengths, the auto setting won't work.
+    if is_vcf or (params.aln and params.sequence_length):
         if branch_length_mode == 'auto':
             branch_length_mode = 'joint'
+
+
 
     ###########################################################################
     ### SET-UP and RUN

@@ -208,21 +208,23 @@ def parse_dates(date_file):
                     df.iloc[i,ci] = tmp_d.strip(d[0])
             if 'date' in col.lower():
                 potential_date_columns.append((ci, col))
-            if any([x in col.lower() for x in ['name', 'strain', 'accession']]):
+            if any([x==col.lower() for x in ['name', 'strain', 'accession']]):
                 potential_index_columns.append((ci, col))
         # if a potential numeric date column was found, use it
         # (use the first, if there are more than one)
         if not len(potential_index_columns):
             print("Cannot read metadata: need at least one column that contains the taxon labels."
-                  " Looking for the first column that contains 'name', 'strain', or 'accession' in the header.", file=sys.stderr)
+                  " Looking for the first column that equal to 'name', 'strain', or 'accession' in the header.", file=sys.stderr)
             return {}
         else:
             index_col = sorted(potential_index_columns)[0][1]
+            print("Using column '%s' as name. This needs match the taxon names in the tree!!"%index_col)
 
         if len(potential_date_columns)>=1:
             #try to parse the csv file with dates in the idx column:
             idx = potential_date_columns[0][0]
             col_name = potential_date_columns[0][1]
+            print("Using column '%s' as date."%col_name)
             dates = {}
             for ri, row in df.iterrows():
                 date_str = row.loc[col_name]
