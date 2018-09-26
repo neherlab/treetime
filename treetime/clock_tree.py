@@ -70,7 +70,8 @@ class ClockTree(TreeAnc):
         self.branch_length_mode = branch_length_mode
         self.clock_model=None
         self._set_precision(precision)
-        self._assign_dates()
+        if self._assign_dates()==ttconf.ERROR:
+            raise ValueError("ClockTree requires date constraints!")
 
 
     def _assign_dates(self):
@@ -78,13 +79,14 @@ class ClockTree(TreeAnc):
 
         Returns
         -------
-        TYPE
-            Description
+        str
+            success/error code
         """
         if self.tree is None:
             self.logger("ClockTree._assign_dates: tree is not set, can't assign dates", 0)
             return ttconf.ERROR
 
+        bad_branch_counter = 0
         for node in self.tree.find_clades(order='postorder'):
             if node.name in self.date_dict:
                 tmp_date = self.date_dict[node.name]
@@ -112,6 +114,13 @@ class ClockTree(TreeAnc):
                     # If all branches dowstream are 'bad', and there is no date constraint for
                     # this node, the branch is marked as 'bad'
                     node.bad_branch = np.all([x.bad_branch for x in node])
+
+            if node.is_terminal() and node.bad_branch:
+                bad_branch_counter += 1
+
+        if bad_branch_counter>self.tree.count_terminals()-3:
+            self.logger("ERROR: ALMOST NO VALID DATE CONSTRAINTS, EXITING", 1, warn=True)
+            return ttconf.ERROR
 
         return ttconf.SUCCESS
 

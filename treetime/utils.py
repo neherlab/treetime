@@ -210,12 +210,14 @@ def parse_dates(date_file):
                 potential_date_columns.append((ci, col))
             if any([x in col.lower() for x in ['name', 'strain', 'accession']]):
                 potential_index_columns.append((ci, col))
+
+        dates = {}
         # if a potential numeric date column was found, use it
         # (use the first, if there are more than one)
         if not len(potential_index_columns):
             print("Cannot read metadata: need at least one column that contains the taxon labels."
                   " Looking for the first column that contains 'name', 'strain', or 'accession' in the header.", file=sys.stderr)
-            return {}
+            return dates
         else:
             index_col = sorted(potential_index_columns)[0][1]
 
@@ -223,7 +225,6 @@ def parse_dates(date_file):
             #try to parse the csv file with dates in the idx column:
             idx = potential_date_columns[0][0]
             col_name = potential_date_columns[0][1]
-            dates = {}
             for ri, row in df.iterrows():
                 date_str = row.loc[col_name]
                 k = row.loc[index_col]
