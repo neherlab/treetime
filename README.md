@@ -32,6 +32,7 @@ Have a look at our [examples and tutorials](https://github.com/neherlab/treetime
     + [Ancestral sequence reconstruction](#ancestral-sequence-reconstruction)
     + [Homoplasy analysis](#homoplasy-analysis)
     + [Mugration analysis](#mugration-analysis)
+    + [Metadata and date format](#metadata-and-date-format)
   * [Example scripts](#example-scripts)
   * [Related tools](#related-tools)
   * [Projects using TreeTime](#projects-using-treetime)
@@ -69,7 +70,8 @@ You might need root privileges for system wide installation. Alternatively, you 
 ### Command-line usage
 TreeTime can be used as part of python programs that create and interact with tree time objects. How TreeTime can be used to address typical questions like ancestral sequence reconstruction, rerooting, timetree inference etc is illustrated by a collection of example scripts described below.
 
-In addition, we provide scripts that can be run from the command line with arguments specifying input data and parameters.
+In addition, TreeTime can be used from the command line with arguments specifying input data and parameters.
+Trees can be read as newick, nexus and phylip files; fasta and phylip are supported alignment formats; metadata and dates can be provided as csv or tsv files, see [below](#metadata-and-date-format) for details.
 
 #### Timetrees
 The to infer a timetree, i.e. a phylogenetic tree in which branch length reflect time rather than divergence, TreeTime offers implements the command:
@@ -118,6 +120,25 @@ TreeTime GTR model machinery can be used to infer mugration models:
 where `<field>` is the relevant column in the csv file specifying the metadata `states.csv`, e.g. `<field>=country`.
 The full list if options is available by typing `treetime mugration -h`.
 Please see [treetime_examples/mugration.md](https://github.com/neherlab/treetime_examples/blob/master/mugration.md) for examples and more documentation.
+
+#### Metadata and date format
+Several of TreeTime commands require the user to specify a file with dates and/or other meta data.
+TreeTime assumes these files to by either comma (csv) or tab-separated (tsv) files.
+The first line of these files is interpreted as header line specifying the content of the columns.
+Each file needs to have at least one column that is named `name`, `accession`, or `strain`.
+This column needs to contain the names of each sequence and match the names of taxons in the tree if one is provided.
+If more than one of `name`, `accession`, or `strain` is found, TreeTime will use the first.
+
+If the analysis requires dates, at least one column name needs to contain `date` (i.e. `sampling date` is fine).
+Again, if multiple hits are found, TreeTime will use the first.
+TreeTime will attempt to parse dates in the following way and order
+
+| order | type/format | example | description|
+| --- |-------------|---------|------------|
+| 1| float       | 2017.56 | decimal date |
+| 2| [float:float] | [2013.45:2015.56] | decimal date range |
+| 3| %Y-%m-%d    | 2017-08-25 | calendar date in ISO format |
+| 4| %Y-XX-XX    | 2017-XX-XX | calendar date missing month and/or day |
 
 
 ### Example scripts
