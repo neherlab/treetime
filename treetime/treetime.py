@@ -810,7 +810,7 @@ def plot_vs_years(tt, step = None, ax=None, confidence=None, ticks=True, **kwarg
             step/=5
         elif date_range/step<5:
             step/=2
-        step = max(1,step)
+        step = max(.25,step)
 
     # set axis labels
     if step:
@@ -845,7 +845,8 @@ def plot_vs_years(tt, step = None, ax=None, confidence=None, ticks=True, **kwarg
                           edgecolor=[1,1,1])
             ax.add_patch(r)
             if year in tick_vals and pos>=xlim[0] and pos<=xlim[1] and ticks:
-                ax.text(pos,ylim[0]-0.04*(ylim[1]-ylim[0]),str(int(year)),
+                label_str = str(step*(year//step)) if step<1 else  str(int(year))
+                ax.text(pos,ylim[0]-0.04*(ylim[1]-ylim[0]), label_str,
                         horizontalalignment='center')
         ax.set_axis_off()
 
