@@ -203,7 +203,7 @@ def export_sequences_and_tree(tt, basename, is_vcf=False, zero_based=False,
             n.comment+=(',' if n.comment else '&') + 'date=%1.2f'%n.numdate
 
     # write tree to file
-    fmt_bl = "%1.6f" if tt.seq_len<1e6 else "%1.4e"
+    fmt_bl = "%1.6f" if tt.seq_len<1e6 else "%1.8e"
     if timetree:
         outtree_name = basename + 'timetree.nexus'
         print("--- saved divergence times in \n\t %s\n"%dates_fname)
