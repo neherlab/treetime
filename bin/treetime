@@ -132,6 +132,7 @@ def add_reroot_group(parser):
 def add_gtr_arguments(parser):
     parser.add_argument('--gtr', default='infer', help=gtr_description)
     parser.add_argument('--gtr-params', nargs='+', help=gtr_params_description)
+    parser.add_argument('--aa', action='store_true', help="use aminoacid alphabet")
 
 
 def add_anc_arguments(parser):

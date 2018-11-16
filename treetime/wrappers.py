@@ -39,7 +39,7 @@ def create_gtr(params):
     model = params.gtr
     gtr_params = params.gtr_params
     if model == 'infer':
-        gtr = GTR.standard('jc')
+        gtr = GTR.standard('jc', alphabet='aa' if params.aa else 'nuc')
     else:
         try:
             kwargs = {}
