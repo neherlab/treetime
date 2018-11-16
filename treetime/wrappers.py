@@ -552,9 +552,11 @@ def timetree(params):
     import matplotlib.pyplot as plt
     from .treetime import plot_vs_years
     leaf_count = myTree.tree.count_terminals()
-    label_func = lambda x: x.name[:20] if (leaf_count<30 & x.is_terminal()) else ''
+    label_func = lambda x: (x.name if (((leaf_count<30 and x.is_terminal())
+                                        and (not params.no_tip_labels))
+                                      or params.tip_labels) else '')
 
-    plot_vs_years(myTree, show_confidence=False, label_func = label_func,
+    plot_vs_years(myTree, show_confidence=False, label_func=label_func,
                   confidence=0.9 if params.confidence else None)
     tree_fname = (outdir + params.plot_tree)
     plt.savefig(tree_fname)

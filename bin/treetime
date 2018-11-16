@@ -182,6 +182,10 @@ if __name__ == '__main__':
     t_parser.add_argument('--plot-rtt', default="root_to_tip_regression.pdf",
                             help = "filename to save the plot to. Suffix will determine format"
                                    " (choices pdf, png, svg, default=pdf)")
+    t_parser.add_argument('--tip-labels', action='store_true',
+                            help = "add tip labels (default for small trees with <30 leaves)")
+    t_parser.add_argument('--no-tip-labels', action='store_true',
+                            help = "don't show tip labels (default for small trees with >=30 leaves)")
     add_anc_arguments(t_parser)
     add_common_args(t_parser)
 
