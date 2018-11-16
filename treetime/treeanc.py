@@ -82,14 +82,15 @@ class TreeAnc(object):
         self.log=log
         self.logger("TreeAnc: set-up",1)
         self._internal_node_count = 0
+        self.additional_constant_sites = 0 # sites not part of the alignment but assumed constant
         self.use_mutation_length=False
-        # if not specified, this will be set as 1/alignment_length
+        # if not specified, this will be set as the alignment_length or reference length
         self._seq_len = None
         self.seq_len = kwargs['seq_len'] if 'seq_len' in kwargs else None
         self.fill_overhangs = fill_overhangs
         self.is_vcf = False  #this is set true when aln is set, if aln is dict
+        # if sequences represent multiple samples, this can be added as multiplicity here
         self.seq_multiplicity = {} if seq_multiplicity is None else seq_multiplicity
-        self.multiplicity = None
 
         self.ignore_gaps = ignore_gaps
         self._gtr = None
@@ -111,6 +112,7 @@ class TreeAnc(object):
         # otherwise self.aln will be None
         self._aln = None
         self.reduced_to_full_sequence_map = None
+        self.multiplicity = None
         self.aln = aln
         if self.aln and self.tree:
             if len(self.tree.get_terminals()) != len(self.aln):
@@ -322,10 +324,18 @@ class TreeAnc(object):
         if (not self.is_vcf) and self.convert_upper:
             self._aln = MultipleSeqAlignment([seq.upper() for seq in self._aln])
 
-        if self.is_vcf:
-            self.seq_len = len(self.ref)
+        if self.seq_len:
+            if self.is_vcf and self.seq_len!=len(self.ref):
+                self.logger("TreeAnc.aln: specified sequence length doesn't match reference length, ignoring sequence length.", 1, warn=True)
+                self._seq_len = len(self.ref)
+            else:
+                self.logger("TreeAnc.aln: specified sequence length doesn't match alignment length. Treating difference as constant sites.", 2, warn=True)
+                self.additional_constant_sites = max(0, self.seq_len - self.aln.get_alignment_length())
         else:
-            self.seq_len = self.aln.get_alignment_length()
+            if self.is_vcf:
+                self.seq_len = len(self.ref)
+            else:
+                self.seq_len = self.aln.get_alignment_length()
 
         if hasattr(self, '_tree') and (self.tree is not None):
             self._attach_sequences_to_nodes()
@@ -504,7 +514,7 @@ class TreeAnc(object):
                 return
             else:
                 aln_transpose = np.array(seqs).T
-                positions = range(self.seq_len)
+                positions = range(aln_transpose.shape[0])
 
         for pi in positions:
             if self.is_vcf:
@@ -538,6 +548,31 @@ class TreeAnc(object):
                 # if the pattern is already seen, append the position in the real
                 # sequence to the reduced aln<->sequence_pos_indexes map
                 alignment_patterns[str_pat][1].append(pi)
+
+        # add constant alignment column not in the alignment. We don't know where they
+        # are, so just add them to the end. First, determine sequence composition.
+        if self.additional_constant_sites:
+            character_counts = {c:np.sum(aln_transpose==c) for c in self.gtr.alphabet
+                                if c not in [self.gtr.ambiguous, '-']}
+            total = np.sum(list(character_counts.values()))
+            additional_columns = [(c,int(np.round(self.additional_constant_sites*n/total)))
+                                  for c, n in character_counts.items()]
+            columns_left = self.additional_constant_sites
+            pi = len(positions)
+            for c,n in additional_columns:
+                if c==additional_columns[-1][0]:  # make sure all additions add up to the correct number to avoid rounding
+                    n = columns_left
+                str_pat = c*len(self.aln)
+                pos_list = list(range(pi, pi+n))
+
+                if str_pat in alignment_patterns:
+                    alignment_patterns[str_pat][1].extend(pos_list)
+                else:
+                    alignment_patterns[str_pat] = (len(tmp_reduced_aln), pos_list)
+                    tmp_reduced_aln.append(np.array(list(str_pat)))
+                pi += n
+                columns_left -= n
+
 
         # count how many times each column is repeated in the real alignment
         self.multiplicity = np.zeros(len(alignment_patterns))
@@ -959,7 +994,7 @@ class TreeAnc(object):
             return mut_matrix_stack
 
 
-    def expanded_sequence(self, node):
+    def expanded_sequence(self, node, include_additional_constant_sites=False):
         """
         Get node's compressed sequence and expand it to the real sequence
 
@@ -969,13 +1004,18 @@ class TreeAnc(object):
            Tree node
 
         Returns
-        -------
+        -------f
         seq : np.array
            Sequence as np.array of chars
         """
-        seq = np.zeros_like(self.full_to_reduced_sequence_map, dtype='U1')
+        if include_additional_constant_sites:
+            L = self.seq_len
+        else:
+            L = self.seq_len - self.additional_constant_sites
+        seq = np.zeros_like(self.full_to_reduced_sequence_map[:L], dtype='U1')
         for pos, state in enumerate(node.cseq):
-            seq[self.reduced_to_full_sequence_map[pos]] = state
+            full_pos = self.reduced_to_full_sequence_map[pos]
+            seq[full_pos[full_pos<L]] = state
 
         return seq
 

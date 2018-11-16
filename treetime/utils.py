@@ -181,9 +181,10 @@ def parse_dates(date_file):
         It will first try to parse the column as float, than via
         pandas.to_datetime and finally as ambiguous date such as 2018-05-XX
     """
+    print("\nAttempting to parse dates...")
     dates = {}
     if not os.path.isfile(date_file):
-        print("\n ERROR: file %s does not exist, exiting..."%date_file)
+        print("\n\tERROR: file %s does not exist, exiting..."%date_file)
         return dates
     # separator for the csv/tsv file. If csv, we'll strip extra whitespace around ','
     full_sep = '\t' if date_file.endswith('.tsv') else r'\s*,\s*'
@@ -208,47 +209,60 @@ def parse_dates(date_file):
                     df.iloc[i,ci] = tmp_d.strip(d[0])
             if 'date' in col.lower():
                 potential_date_columns.append((ci, col))
-            if any([x in col.lower() for x in ['name', 'strain', 'accession']]):
+            if any([x==col.lower() for x in ['name', 'strain', 'accession']]):
                 potential_index_columns.append((ci, col))
 
         dates = {}
         # if a potential numeric date column was found, use it
         # (use the first, if there are more than one)
         if not len(potential_index_columns):
-            print("Cannot read metadata: need at least one column that contains the taxon labels."
+            print("ERROR: Cannot read metadata: need at least one column that contains the taxon labels."
                   " Looking for the first column that contains 'name', 'strain', or 'accession' in the header.", file=sys.stderr)
             return dates
         else:
+            # use the first column that is either 'name', 'strain', 'accession'
             index_col = sorted(potential_index_columns)[0][1]
+            print("\tUsing column '%s' as name. This needs match the taxon names in the tree!!"%index_col)
 
         if len(potential_date_columns)>=1:
             #try to parse the csv file with dates in the idx column:
             idx = potential_date_columns[0][0]
             col_name = potential_date_columns[0][1]
+            print("\tUsing column '%s' as date."%col_name)
             for ri, row in df.iterrows():
                 date_str = row.loc[col_name]
                 k = row.loc[index_col]
+                # try parsing as a float first
                 try:
                     dates[k] = float(date_str)
                     continue
                 except ValueError:
+                    # try whether the date string can be parsed as [2002.2:2004.3]
+                    # to indicate general ambiguous ranges
+                    if date_str[0]=='[' and date_str[-1]==']' and len(date_str[1:-1].split(':'))==2:
+                        try:
+                            dates[k] = [float(x) for x in date_str[1:-1].split(':')]
+                            continue
+                        except ValueError:
+                            pass
+                    # try date format parsing 2017-08-12
                     try:
                         tmp_date = pd.to_datetime(date_str)
                         dates[k] = numeric_date(tmp_date)
-                    except ValueError:
+                    except ValueError:  # try ambiguous date format parsing 2017-XX-XX
                         lower, upper = ambiguous_date_to_date_range(date_str, '%Y-%m-%d')
                         if lower is not None:
                             dates[k] = [numeric_date(x) for x in [lower, upper]]
 
         else:
-            print("Metadata file has no column which looks like a sampling date!", file=sys.stderr)
+            print("ERROR: Metadata file has no column which looks like a sampling date!", file=sys.stderr)
 
         if all(v is None for v in dates.values()):
-            print("Cannot parse dates correctly! Check date format.", file=sys.stderr)
+            print("ERROR: Cannot parse dates correctly! Check date format.", file=sys.stderr)
             return {}
         return dates
     except:
-        print("Cannot read the metadata file!", file=sys.stderr)
+        print("ERROR: Cannot read the metadata file!", file=sys.stderr)
         return {}
 
 
