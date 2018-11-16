@@ -3,7 +3,6 @@ from collections import defaultdict
 import numpy as np
 from treetime import config as ttconf
 from .seq_utils import alphabets, profile_maps, alphabet_synonyms
-from .aa_models  import JTT92
 
 
 class GTR(object):
@@ -334,6 +333,7 @@ class GTR(object):
 
         """
         from .nuc_models import JC69, K80, F81, HKY85, T92, TN93
+        from .aa_models  import JTT92
 
         if model.lower() in ['jc', 'jc69', 'jukes-cantor', 'jukes-cantor69', 'jukescantor', 'jukescantor69']:
             return JC69(**kwargs)
