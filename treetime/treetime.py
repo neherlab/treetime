@@ -810,7 +810,7 @@ def plot_vs_years(tt, step = None, ax=None, confidence=None, ticks=True, **kwarg
             step/=5
         elif date_range/step<5:
             step/=2
-        step = max(.25,step)
+        step = max(1.0/12,step)
 
     # set axis labels
     if step:
