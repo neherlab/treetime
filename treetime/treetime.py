@@ -816,7 +816,7 @@ def plot_vs_years(tt, step = None, ax=None, confidence=None, ticks=True, **kwarg
     if step:
         dtick = step
         min_tick = step*(offset//step)
-        extra = 0 if dtick<date_range else dtick
+        extra = dtick if dtick<date_range else dtick
         tick_vals = np.arange(min_tick, min_tick+date_range+extra, dtick)
         xticks = tick_vals - offset
     else:
