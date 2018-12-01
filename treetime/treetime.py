@@ -708,6 +708,7 @@ class TreeTime(ClockTree):
             act_len = node.clock_length if hasattr(node, 'clock_length') else node.branch_length
 
             # opt_len \approx 1.0*len(node.mutations)/node.profile.shape[0] but calculated via gtr model
+            # stiffness is the expectation of the inverse variance of branch length (one_mutation/opt_len)
             # contact term: stiffness*(g*bl - bl_opt)^2 + slack(g-1)^2 =
             #               (slack+bl^2) g^2 - 2 (bl*bl_opt+1) g + C= k2 g^2 + k1 g + C
             node._k2 = slack + c*act_len**2/(opt_len+self.one_mutation)
