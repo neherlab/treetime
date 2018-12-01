@@ -789,14 +789,15 @@ def plot_vs_years(tt, step = None, ax=None, confidence=None, ticks=True, **kwarg
     '''
     import matplotlib.pyplot as plt
     tt.branch_length_to_years()
+    nleafs = tt.tree.count_terminals()
+
     if ax is None:
-        fig = plt.figure()
+        fig = plt.figure(figsize=(12,10))
         ax = plt.subplot(111)
     else:
         fig = None
     # draw tree
     if "label_func" not in kwargs:
-        nleafs = tt.tree.count_terminals()
         kwargs["label_func"] = lambda x:x.name if (x.is_terminal() and nleafs<30) else ""
     Phylo.draw(tt.tree, axes=ax, **kwargs)
 

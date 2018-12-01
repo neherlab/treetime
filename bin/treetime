@@ -170,7 +170,7 @@ if __name__ == '__main__':
     t_parser.add_argument('--confidence', action='store_true', help="estimate confidence intervals of divergence times.")
     t_parser.add_argument('--keep-polytomies', default=False, action='store_true',
                         help="Don't resolve polytomies using temporal information.")
-    t_parser.add_argument('--relax',nargs='*', default=False,
+    t_parser.add_argument('--relax',nargs=2, type=float,
                         help='use an autocorrelated molecular clock. Prior strength and coupling of parent '
                              'and offspring rates can be specified e.g. as --relax 1.0 0.5')
     t_parser.add_argument('--max-iter', default=2, type=int,
