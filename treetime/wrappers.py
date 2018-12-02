@@ -504,6 +504,10 @@ def timetree(params):
                       aln=aln, gtr=gtr, seq_len=params.sequence_length,
                       verbose=params.verbose)
 
+    if not myTree.one_mutation:
+        print("TreeTime setup failed, exiting")
+        return 1
+
     # coalescent model options
     try:
         coalescent = float(params.coalescent)
