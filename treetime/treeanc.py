@@ -10,6 +10,7 @@ from .gtr import GTR
 
 string_types = [str] if sys.version_info[0]==3 else [str, unicode]
 
+
 class TreeAnc(object):
     """
     Class defines simple tree object with basic interface methods: reading and
@@ -93,13 +94,15 @@ class TreeAnc(object):
         self.seq_multiplicity = {} if seq_multiplicity is None else seq_multiplicity
 
         self.ignore_gaps = ignore_gaps
-        self._gtr = None
-        self.set_gtr(gtr or 'JC69', **kwargs)
 
         self._tree = None
         self.tree = tree
         if tree is None:
             raise AttributeError("TreeAnc: tree loading failed! exiting")
+
+        # set up GTR model
+        self._gtr = None
+        self.set_gtr(gtr or 'JC69', **kwargs)
 
         # will be None if not set
         self.ref = ref
@@ -114,6 +117,7 @@ class TreeAnc(object):
         self.reduced_to_full_sequence_map = None
         self.multiplicity = None
         self.aln = aln
+
         if self.aln and self.tree:
             if len(self.tree.get_terminals()) != len(self.aln):
                 print("**WARNING: Number of sequences in tree differs from number of sequences in alignment!**")
@@ -337,6 +341,17 @@ class TreeAnc(object):
             else:
                 self.seq_len = self.aln.get_alignment_length()
 
+
+        # check whether the alignment is consistent with a nucleotide alignment.
+        likely_alphabet = self._guess_alphabet()
+        from .seq_utils import alphabets
+        # if likely alignment is not nucleotide but the gtr alignment is, WARN
+        if likely_alphabet=='aa' and len(self.gtr.alphabet)==len(alphabets['nuc']) and np.all(self.gtr.alphabet==alphabets['nuc']):
+            self.logger('WARNING: small fraction of ACGT-N in alignment. Really a nucleotide alignment? if not, rerun with --aa', 1, warn=True)
+        # conversely, warn if alignment is consistent with nucleotide but gtr has a long alphabet
+        if likely_alphabet=='nuc' and len(self.gtr.alphabet)>10:
+            self.logger('WARNING: almost exclusively ACGT-N in alignment. Really a protein alignment?', 1, warn=True)
+
         if hasattr(self, '_tree') and (self.tree is not None):
             self._attach_sequences_to_nodes()
         else:
@@ -405,6 +420,26 @@ class TreeAnc(object):
             reference sequence for the vcf sequence dict as a plain string
         """
         self._ref = in_ref
+
+    def _guess_alphabet(self):
+        if self.aln:
+            if self.is_vcf and self.ref:
+                total=self.seq_len
+                nuc_count = 0
+                for n in 'ACGT-N':
+                    nuc_count += self.ref.upper().count(n)
+            else:
+                total=self.seq_len*len(self.aln)
+                nuc_count = 0
+                for seq in self.aln:
+                    for n in 'ACGT-N':
+                        nuc_count += seq.seq.upper().count(n)
+            if nuc_count>0.9*total:
+                return 'nuc'
+            else:
+                return 'aa'
+        else:
+            return 'nuc'
 
 
     def _attach_sequences_to_nodes(self):

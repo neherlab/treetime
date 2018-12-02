@@ -69,6 +69,7 @@ class ClockTree(TreeAnc):
         self.rel_tol_refine = ttconf.REL_TOL_REFINE
         self.branch_length_mode = branch_length_mode
         self.clock_model=None
+        self.use_covariation=True # if false, covariation will be ignored in rate estimates.
         self._set_precision(precision)
         if self._assign_dates()==ttconf.ERROR:
             raise ValueError("ClockTree requires date constraints!")
@@ -288,7 +289,7 @@ class ClockTree(TreeAnc):
                 node.branch_length_interpolator.gamma = gamma
 
         # use covariance in clock model only after initial timetree estimation is done
-        use_cov = np.sum(has_clock_length) > len(has_clock_length)*0.7
+        use_cov = (np.sum(has_clock_length) > len(has_clock_length)*0.7) and self.use_covariation
         self.get_clock_model(covariation=use_cov, slope=clock_rate)
 
         # make node distribution objects
