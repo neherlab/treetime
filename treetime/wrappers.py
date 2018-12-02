@@ -460,8 +460,13 @@ def timetree(params):
     """
     implementeing treetime tree
     """
-    if params.relax==[]:
-        params.relax=True
+    if params.relax is None:
+        relaxed_clock_params = None
+    elif params.relax==[]:
+        relaxed_clock_params=True
+    elif len(params.relax)==2:
+        relaxed_clock_params={'slack':params.relax[0], 'coupling':params.relax[1]}
+
 
     dates = utils.parse_dates(params.dates)
     if len(dates)==0:
@@ -499,6 +504,10 @@ def timetree(params):
                       aln=aln, gtr=gtr, seq_len=params.sequence_length,
                       verbose=params.verbose)
 
+    if not myTree.one_mutation:
+        print("TreeTime setup failed, exiting")
+        return 1
+
     # coalescent model options
     try:
         coalescent = float(params.coalescent)
@@ -517,7 +526,7 @@ def timetree(params):
         vary_rate = params.clock_std_dev
 
     root = None if params.keep_root else params.reroot
-    success = myTree.run(root=root, relaxed_clock=params.relax,
+    success = myTree.run(root=root, relaxed_clock=relaxed_clock_params,
                resolve_polytomies=(not params.keep_polytomies),
                Tc=coalescent, max_iter=params.max_iter,
                fixed_clock_rate=params.clock_rate,
@@ -539,20 +548,21 @@ def timetree(params):
     print(myTree.date2dist)
 
     basename = get_basename(params, outdir)
-    if coalescent in ['skyline', 'opt']:
+    if coalescent in ['skyline', 'opt', 'const']:
         print("Inferred coalescent model")
-    if coalescent=='skyline':
-        print_save_plot_skyline(myTree, plot=basename+'skyline.pdf', save=basename+'skyline.tsv', screen=True)
-    elif coalescent=='opt':
-        Tc = myTree.merger_model.Tc.y[0]
-        print(" --T_c: \t %1.4f \toptimized inverse merger rate"%Tc)
-        print(" --N_e: \t %1.1f \tcorresponding pop size assument 50 gen/year\n"%(Tc/myTree.date2dist.clock_rate*50))
+        if coalescent=='skyline':
+            print_save_plot_skyline(myTree, plot=basename+'skyline.pdf', save=basename+'skyline.tsv', screen=True)
+        else:
+            Tc = myTree.merger_model.Tc.y[0]
+            print(" --T_c: \t %1.2e \toptimized inverse merger rate in units of substitutions"%Tc)
+            print(" --T_c: \t %1.2e \toptimized inverse merger rate in years"%(Tc/myTree.date2dist.clock_rate))
+            print(" --N_e: \t %1.2e \tcorresponding 'effective population size' assuming 50 gen/year\n"%(Tc/myTree.date2dist.clock_rate*50))
 
     # plot
     import matplotlib.pyplot as plt
     from .treetime import plot_vs_years
     leaf_count = myTree.tree.count_terminals()
-    label_func = lambda x: (x.name if (((leaf_count<30 and x.is_terminal())
+    label_func = lambda x: (x.name if x.is_terminal() and ((leaf_count<30
                                         and (not params.no_tip_labels))
                                       or params.tip_labels) else '')
 
@@ -562,10 +572,21 @@ def timetree(params):
     plt.savefig(tree_fname)
     print("--- saved tree as \n\t %s\n"%tree_fname)
 
+    plot_rtt(myTree, outdir + params.plot_rtt)
+    if params.relax:
+        fname = outdir+'substitution_rates.tsv'
+        print("--- wrote branch specific rates to\n\t %s\n"%fname)
+        with open(fname, 'w') as fh:
+            fh.write("#node\tclock_length\tmutation_length\trate\tfold_change\n")
+            for n in myTree.tree.find_clades(order="preorder"):
+                if n==myTree.tree.root:
+                    continue
+                g = n.branch_length_interpolator.gamma
+                fh.write("%s\t%1.3e\t%1.3e\t%1.3e\t%1.2f\n"%(n.name, n.clock_length, n.mutation_length, myTree.date2dist.clock_rate*g, g))
+
     export_sequences_and_tree(myTree, basename, is_vcf, params.zero_based,
                               timetree=True, confidence=params.confidence)
 
-    plot_rtt(myTree, outdir + params.plot_rtt)
     return 0
 
 

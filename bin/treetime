@@ -170,9 +170,12 @@ if __name__ == '__main__':
     t_parser.add_argument('--confidence', action='store_true', help="estimate confidence intervals of divergence times.")
     t_parser.add_argument('--keep-polytomies', default=False, action='store_true',
                         help="Don't resolve polytomies using temporal information.")
-    t_parser.add_argument('--relax',nargs='*', default=False,
-                        help='use an autocorrelated molecular clock. Prior strength and coupling of parent '
-                             'and offspring rates can be specified e.g. as --relax 1.0 0.5')
+    t_parser.add_argument('--relax',nargs=2, type=float,
+                        help='use an autocorrelated molecular clock. Strength of the gaussian priors on'
+                             ' branch specific rate deviation and the coupling of parent and offspring'
+                             ' rates can be specified e.g. as --relax 1.0 0.5. Values around 1.0 correspond'
+                             ' to weak priors, larger values constrain rate deviations more strongly.'
+                             ' Coupling 0 (--relax 1.0 0) corresponds to an un-correlated clock.')
     t_parser.add_argument('--max-iter', default=2, type=int,
                         help='maximal number of iterations the inference cycle is run. Note that for polytomy resolution and coalescence models max_iter should be at least 2')
     t_parser.add_argument('--coalescent', default="0.0", type=str,

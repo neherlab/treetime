@@ -34,7 +34,7 @@ class TreeTime(ClockTree):
     def run(self, root=None, infer_gtr=True, relaxed_clock=None, n_iqd = None,
             resolve_polytomies=True, max_iter=0, Tc=None, fixed_clock_rate=None,
             time_marginal=False, sequence_marginal=False, branch_length_mode='auto',
-            vary_rate=False, **kwargs):
+            vary_rate=False, use_covariation=True, **kwargs):
 
         """
         Run TreeTime reconstruction. Based on the input parameters, it divides
@@ -101,6 +101,10 @@ class TreeTime(ClockTree):
             if a float is passed, it is interpreted as standard deviation,
             otherwise this standard deviation is estimated from the root-to-tip regression
 
+        use_covariation : bool, optional
+            default True, if False, rate estimates will be performed using simple
+            regression ignoring phylogenetic covaration between nodes.
+
         **kwargs
            Keyword arguments needed by the dowstream functions
 
@@ -112,6 +116,9 @@ class TreeTime(ClockTree):
 
 
         """
+
+        # register the specified covaration mode
+        self.use_covariation = use_covariation
 
         if (self.tree is None) or (self.aln is None and self.seq_len is None):
             self.logger("TreeTime.run: ERROR, alignment or tree are missing", 0)
@@ -420,7 +427,7 @@ class TreeTime(ClockTree):
             #(Without outgroup_branch_length, gives a trifurcating root, but this will mean
             #mutations may have to occur multiple times.)
             self.tree.root_with_outgroup(new_root, outgroup_branch_length=new_root.branch_length/2)
-            self.get_clock_model(covariation=True)
+            self.get_clock_model(covariation=self.use_covariation)
 
 
         if new_root == ttconf.ERROR:
@@ -445,7 +452,7 @@ class TreeTime(ClockTree):
                 n.clock_length = n.branch_length
         self.prepare_tree()
 
-        self.get_clock_model(covariation='ML' in root)
+        self.get_clock_model(covariation=(('ML' in root) and self.use_covariation))
 
         return ttconf.SUCCESS
 
@@ -708,6 +715,7 @@ class TreeTime(ClockTree):
             act_len = node.clock_length if hasattr(node, 'clock_length') else node.branch_length
 
             # opt_len \approx 1.0*len(node.mutations)/node.profile.shape[0] but calculated via gtr model
+            # stiffness is the expectation of the inverse variance of branch length (one_mutation/opt_len)
             # contact term: stiffness*(g*bl - bl_opt)^2 + slack(g-1)^2 =
             #               (slack+bl^2) g^2 - 2 (bl*bl_opt+1) g + C= k2 g^2 + k1 g + C
             node._k2 = slack + c*act_len**2/(opt_len+self.one_mutation)
@@ -789,14 +797,15 @@ def plot_vs_years(tt, step = None, ax=None, confidence=None, ticks=True, **kwarg
     '''
     import matplotlib.pyplot as plt
     tt.branch_length_to_years()
+    nleafs = tt.tree.count_terminals()
+
     if ax is None:
-        fig = plt.figure()
+        fig = plt.figure(figsize=(12,10))
         ax = plt.subplot(111)
     else:
         fig = None
     # draw tree
     if "label_func" not in kwargs:
-        nleafs = tt.tree.count_terminals()
         kwargs["label_func"] = lambda x:x.name if (x.is_terminal() and nleafs<30) else ""
     Phylo.draw(tt.tree, axes=ax, **kwargs)
 
@@ -816,7 +825,7 @@ def plot_vs_years(tt, step = None, ax=None, confidence=None, ticks=True, **kwarg
     if step:
         dtick = step
         min_tick = step*(offset//step)
-        extra = 0 if dtick<date_range else dtick
+        extra = dtick if dtick<date_range else dtick
         tick_vals = np.arange(min_tick, min_tick+date_range+extra, dtick)
         xticks = tick_vals - offset
     else:
