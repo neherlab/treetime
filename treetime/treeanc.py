@@ -426,18 +426,18 @@ class TreeAnc(object):
             if self.is_vcf and self.ref:
                 total=self.seq_len
                 nuc_count = 0
-                for n in 'ATCG-N':
+                for n in 'ACGT-N':
                     nuc_count += self.ref.upper().count(n)
             else:
                 total=self.seq_len*len(self.aln)
                 nuc_count = 0
                 for seq in self.aln:
-                    for n in 'ATCG-N':
+                    for n in 'ACGT-N':
                         nuc_count += seq.seq.upper().count(n)
-                if nuc_count>0.9*total:
-                    return 'nuc'
-                else:
-                    return 'aa'
+            if nuc_count>0.9*total:
+                return 'nuc'
+            else:
+                return 'aa'
         else:
             return 'nuc'
 

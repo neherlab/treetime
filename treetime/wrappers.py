@@ -11,6 +11,7 @@ from treetime import TreeAnc, GTR, TreeTime
 from treetime import config as ttconf
 from treetime import utils
 from treetime.vcf_utils import read_vcf, write_vcf
+from treetime.seq_utils import alphabets
 
 def assure_tree(params, tmp_dir='treetime_tmp'):
     """
@@ -60,7 +61,7 @@ def create_gtr(params):
             infer_gtr = False
         except:
             print ("Could not create GTR model from input arguments. Using default (Jukes-Cantor 1969)")
-            gtr = GTR.standard('jc')
+            gtr = GTR.standard('jc', alphabet='aa' if params.aa else 'nuc')
             infer_gtr = False
     return gtr
 
@@ -138,7 +139,8 @@ def read_if_vcf(params):
             aln = sequences
 
             if not hasattr(params, 'gtr') or params.gtr=="infer": #if not specified, set it:
-                fixed_pi = [ref.count(base)/len(ref) for base in ['A','C','G','T','-']]
+                alpha = alphabets['aa'] if params.aa else alphabets['nuc']
+                fixed_pi = [ref.count(base)/len(ref) for base in alpha]
                 if fixed_pi[-1] == 0:
                     fixed_pi[-1] = 0.05
                     fixed_pi = [v-0.01 for v in fixed_pi]
