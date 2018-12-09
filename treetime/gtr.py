@@ -517,7 +517,23 @@ class GTR(object):
         self.v = np.real(eigvecs)
         self.v_inv = np.linalg.inv(self.v)
         self.eigenvals = np.real(eigvals)
-        return
+
+
+    def _eig_sym(self):
+        """
+        Perform eigendecompositon of the rate matrix and stores the left- and right-
+        matrices to convert the sequence profiles to the GTR matrix eigenspace
+        and hence to speed-up the computations.
+        """
+        # eigendecomposition of the rate matrix
+        tmpp = np.sqrt(self.Pi)
+        symQ = self.W*np.outer(tmpp, tmpp)
+        eigvals, eigvecs = np.linalg.eigh(symQ)
+        tmp_v = eigvecs.T*tmpp
+        one_norm = np.sum(np.abs(tmp_v), axis=1)
+        self.v = tmp_v.T/one_norm
+        self.v_inv = (eigvecs*one_norm).T/tmpp
+        self.eigenvals = eigvals
 
 
     def compress_sequence_pair(self, seq_p, seq_ch, pattern_multiplicity=None,
