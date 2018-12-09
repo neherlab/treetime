@@ -20,7 +20,9 @@ class TreeAnc(object):
 
     def __init__(self, tree=None, aln=None, gtr=None, fill_overhangs=True,
                 ref=None, verbose = ttconf.VERBOSE, ignore_gaps=True,
-                convert_upper=True, seq_multiplicity=None, log=None, **kwargs):
+                convert_upper=True, seq_multiplicity=None, log=None,
+                reduce_alignment=True,
+                **kwargs):
         """
         TreeAnc constructor. It prepares the tree, attaches sequences to the leaf nodes,
         and sets some configuration parameters.
@@ -92,7 +94,7 @@ class TreeAnc(object):
         self.is_vcf = False  #this is set true when aln is set, if aln is dict
         # if sequences represent multiple samples, this can be added as multiplicity here
         self.seq_multiplicity = {} if seq_multiplicity is None else seq_multiplicity
-
+        self.reduce_alignment = reduce_alignment
         self.ignore_gaps = ignore_gaps
 
         self._tree = None
@@ -536,7 +538,7 @@ class TreeAnc(object):
         if self.is_vcf:
             tmp_reduced_aln, alignment_patterns, positions = self.process_alignment_dict()
             seqNames = self.aln.keys() #store seqName order to put back on tree
-        else:
+        elif self.reduce_alignment:
             # transpose real alignment, for ease of iteration
             alignment_patterns = {}
             tmp_reduced_aln = []
@@ -550,6 +552,15 @@ class TreeAnc(object):
             else:
                 aln_transpose = np.array(seqs).T
                 positions = range(aln_transpose.shape[0])
+        else:
+            self.multiplicity = np.ones(self.seq_len, dtype=float)
+            self.full_to_reduced_sequence_map = np.arange(self.seq_len)
+            self.reduced_to_full_sequence_map = {p:np.array([p]) for p in np.arange(self.seq_len)}
+            for n in self.tree.find_clades():
+                if hasattr(n, 'sequence'):
+                    n.original_cseq = np.copy(n.sequence)
+                    n.cseq = np.copy(n.sequence)
+            return ttconf.SUCCESS
 
         for pi in positions:
             if self.is_vcf:
