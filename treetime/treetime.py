@@ -6,7 +6,8 @@ from treetime import config as ttconf
 from .utils import tree_layout
 from .clock_tree import ClockTree
 
-rerooting_mechanisms = ["min_dev","min_dev_ML", "best", "least-squares", "ML"]
+rerooting_mechanisms = ["min_dev", "min_dev_ML", "best", "least-squares", "ML"]
+deprecated_rerooting_mechanisms = {"residual":"least-squares", "res":"least-squares"}
 
 class TreeTime(ClockTree):
     """
@@ -158,7 +159,8 @@ class TreeTime(ClockTree):
             else:
                 plot_rtt=False
             reroot_mechanism = 'least-squares' if root=='clock_filter' else root
-            self.clock_filter(reroot=reroot_mechanism, n_iqd=n_iqd, plot=plot_rtt)
+            if self.clock_filter(reroot=reroot_mechanism, n_iqd=n_iqd, plot=plot_rtt)==ttconf.ERROR:
+                return ttconf.ERROR
         elif root is not None:
             if self.reroot(root=root)==ttconf.ERROR:
                 return ttconf.ERROR
@@ -323,7 +325,8 @@ class TreeTime(ClockTree):
         if reroot:
             if reroot.startswith("ML"):
                 self.logger("TreeTime.ClockFilter: filtering with covariance aware methods is not recommended.", 0, warn=True)
-            self.reroot(root='least-squares' if reroot=='best' else reroot)
+            if self.reroot(root='least-squares' if reroot=='best' else reroot)==ttconf.ERROR:
+                return ttconf.ERROR
         else:
             self.get_clock_model(covariation=False)
 
@@ -344,8 +347,8 @@ class TreeTime(ClockTree):
                 node.bad_branch=False
 
         # redo root estimation after outlier removal
-        if reroot:
-            self.reroot(root=reroot)
+        if reroot and self.reroot(root=reroot)==ttconf.ERROR:
+                return ttconf.ERROR
 
         if plot:
             self.plot_root_to_tip()
@@ -405,7 +408,12 @@ class TreeTime(ClockTree):
         for n in self.tree.find_clades():
             n.branch_length=n.mutation_length
 
-        if root in rerooting_mechanisms:
+        if root in rerooting_mechanisms or root in deprecated_rerooting_mechanisms:
+            if root in deprecated_rerooting_mechanisms:
+                self.logger('TreeTime.reroot: rerooting mechanisms %s has been renamed to %s'
+                             %(root, deprecated_rerooting_mechanisms[root]), 1, warn=True)
+                root = deprecated_rerooting_mechanisms[root]
+
             new_root = self._find_best_root(covariation='ML' in root,
                                             force_positive=force_positive and (not root.startswith('min_dev')))
         else:
@@ -420,7 +428,7 @@ class TreeTime(ClockTree):
                                    if n.raw_date_constraint is not None],
                                    key=lambda x:np.mean(x.raw_date_constraint))[0]
             else:
-                self.logger('TreeTime.reroot -- WARNING: unsupported rooting mechanisms or root not found',2,warn=True)
+                self.logger('TreeTime.reroot -- ERROR: unsupported rooting mechanisms or root not found',0,warn=True)
                 return ttconf.ERROR
 
             #this forces a bifurcating root, as we want. Branch lengths will be reoptimized anyway.
