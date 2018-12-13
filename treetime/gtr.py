@@ -402,7 +402,7 @@ class GTR(object):
 
          nij : nxn matrix
             The number of times a change in character state is observed
-            between state i and j
+            between state j and i
 
          Ti :n vector
             The time spent in each character state

@@ -861,6 +861,7 @@ class TreeAnc(object):
         _ml_anc(final=True, **kwargs) # call one of the reconstruction types
         alpha = list(self.gtr.alphabet)
         n=len(alpha)
+        # matrix of mutations n_{ij}: i = derived state, j=ancestral state
         nij = np.zeros((n,n))
         Ti = np.zeros(n)
 
@@ -868,10 +869,10 @@ class TreeAnc(object):
         for node in self.tree.find_clades():
             if hasattr(node,'mutations'):
                 for a,pos, d in node.mutations:
-                    i,j = alpha.index(a), alpha.index(d)
+                    i,j = alpha.index(d), alpha.index(a)
                     nij[i,j]+=1
-                    Ti[i] += 0.5*self._branch_length_to_gtr(node)
-                    Ti[j] -= 0.5*self._branch_length_to_gtr(node)
+                    Ti[j] += 0.5*self._branch_length_to_gtr(node)
+                    Ti[i] -= 0.5*self._branch_length_to_gtr(node)
                 for ni,nuc in enumerate(node.cseq):
                     i = alpha.index(nuc)
                     Ti[i] += self._branch_length_to_gtr(node)*self.multiplicity[ni]

@@ -538,6 +538,7 @@ def timetree(params):
                branch_length_mode = branch_length_mode,
                fixed_pi=fixed_pi)
     if success==ttconf.ERROR: # if TreeTime.run failed, exit
+        print("\nTreeTime run FAILED: please check above for errors and/or rerun with --verbose 4.\n")
         return 1
 
     ###########################################################################
