@@ -7,6 +7,7 @@ from Bio import AlignIO
 from treetime import config as ttconf
 from .seq_utils import seq2prof,seq2array,prof2seq
 from .gtr import GTR
+from .gtr_site_specific import GTR_site_specific
 
 string_types = [str] if sys.version_info[0]==3 else [str, unicode]
 
@@ -15,7 +16,7 @@ class TreeAnc(object):
     """
     Class defines simple tree object with basic interface methods: reading and
     saving from/to files, initializing leaves with sequences from the
-    alignment, making ancestral state inferrence
+    alignment, making ancestral state inference
     """
 
     def __init__(self, tree=None, aln=None, gtr=None, fill_overhangs=True,
@@ -214,7 +215,7 @@ class TreeAnc(object):
             self._gtr = GTR.standard(model=in_gtr, **kwargs)
             self._gtr.logger = self.logger
 
-        elif isinstance(in_gtr, GTR):
+        elif isinstance(in_gtr, GTR) or isinstance(in_gtr, GTR_site_specific):
             self._gtr = in_gtr
             self._gtr.logger=self.logger
         else:
@@ -1362,7 +1363,11 @@ class TreeAnc(object):
 
         self.logger("Computing root node sequence and total tree likelihood...",3)
         # Msg to the root from the distant part (equ frequencies)
-        tree.root.marginal_outgroup_LH = np.repeat([self.gtr.Pi], tree.root.marginal_subtree_LH.shape[0], axis=0)
+        if len(self.gtr.Pi.shape)==1:
+            tree.root.marginal_outgroup_LH = np.repeat([self.gtr.Pi], tree.root.marginal_subtree_LH.shape[0], axis=0)
+        else:
+            tree.root.marginal_outgroup_LH = self.gtr.Pi.T
+
 
         tree.root.marginal_profile = tree.root.marginal_outgroup_LH*tree.root.marginal_subtree_LH
         pre = tree.root.marginal_profile.sum(axis=1)
@@ -1493,7 +1498,6 @@ class TreeAnc(object):
             # transition matrix from parent states to the current node states.
             # denoted as Pij(i), where j - parent state, i - node state
             log_transitions = np.log(self.gtr.expQt(branch_len))
-
             if node.is_terminal():
                 try:
                     msg_from_children = np.log(np.maximum(seq2prof(node.original_cseq, self.gtr.profile_map), ttconf.TINY_NUMBER))
@@ -1510,7 +1514,7 @@ class TreeAnc(object):
             # and compute the likelihood of this state
             for char_i, char in enumerate(self.gtr.alphabet):
                 # Pij(i) * L_ch(i) for given parent state j
-                msg_to_parent = (log_transitions.T[char_i, :] + msg_from_children)
+                msg_to_parent = (log_transitions[:,char_i].T + msg_from_children)
                 # For this parent state, choose the best state of the current node:
                 node.joint_Cx[:, char_i] = msg_to_parent.argmax(axis=1)
                 # compute the likelihood of the best state of the current node
@@ -1520,7 +1524,7 @@ class TreeAnc(object):
         # root node profile = likelihood of the total tree
         msg_from_children = np.sum(np.stack([c.joint_Lx for c in self.tree.root], axis = 0), axis=0)
         # Pi(i) * Prod_ch Lch(i)
-        self.tree.root.joint_Lx = msg_from_children + np.log(self.gtr.Pi)
+        self.tree.root.joint_Lx = msg_from_children + np.log(self.gtr.Pi).T
         normalized_profile = (self.tree.root.joint_Lx.T - self.tree.root.joint_Lx.max(axis=1)).T
 
         # choose sequence characters from this profile.
