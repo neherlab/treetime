@@ -35,6 +35,7 @@ class GTR_site_specific(GTR):
         self.mu = np.copy(mu)
 
         if pi is not None and pi.shape[0]==n:
+            self.seq_len = pi.shape[-1]
             Pi = np.copy(pi)
         else:
             if pi is not None and len(pi)!=n:
@@ -152,7 +153,7 @@ class GTR_site_specific(GTR):
 
          nija : nxn matrix
             The number of times a change in character state is observed
-            between state i and j at position a
+            between state j and i at position a
 
          Tia :n vector
             The time spent in each character state at position a
@@ -187,7 +188,7 @@ class GTR_site_specific(GTR):
         n_ija[range(q),range(q),:] = 0
         n_ij = n_ija.sum(axis=-1)
 
-        m_ia = np.sum(n_ija,axis=0)+root_state
+        m_ia = np.sum(n_ija,axis=1)+root_state
         n_a = n_ija.sum(axis=1).sum(axis=0)
 
         Lambda = np.sum(root_state,axis=0)
@@ -200,17 +201,17 @@ class GTR_site_specific(GTR):
             n_iter += 1
             p_ia_old = np.copy(p_ia)
             S_ij = np.einsum('a,ia,ja',mu_a, p_ia, T_ia)
-            W_ij = (n_ij + n_ij.T)/(S_ij + S_ij.T + pc)
+            W_ij = (n_ij + n_ij.T + pc)/(S_ij + S_ij.T + pc)
 
             avg_pi = p_ia.mean(axis=-1)
             average_rate = W_ij.dot(avg_pi).dot(avg_pi)
             W_ij = W_ij/average_rate
             mu_a *=average_rate
 
-            p_ia = m_ia/(mu_a*np.dot(W_ij,T_ia)+Lambda+pc)
+            p_ia = (m_ia+pc)/(mu_a*np.dot(W_ij,T_ia)+Lambda+pc)
             p_ia = p_ia/p_ia.sum(axis=0)
 
-            mu_a = n_a/(pc+np.einsum('ia,ij,ja->a', p_ia, W_ij, T_ia))
+            mu_a = (n_a+pc)/(pc+np.einsum('ia,ij,ja->a', p_ia, W_ij, T_ia))
 
         if n_iter >= Nit:
             gtr.logger('WARNING: maximum number of iterations has been reached in GTR inference',3, warn=True)

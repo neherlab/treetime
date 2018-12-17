@@ -1006,7 +1006,7 @@ class TreeAnc(object):
 
 
     def get_branch_mutation_matrix(self, node, full_sequence=False):
-        """uses results from marginal ancesrtal inference to return a joint
+        """uses results from marginal ancestral inference to return a joint
         distribution of the sequence states at both ends of the branch.
 
         Parameters
@@ -1029,13 +1029,13 @@ class TreeAnc(object):
             return None
 
         expQt = self.gtr.expQt(self._branch_length_to_gtr(node))
-        mut_matrix_stack = np.zeros((pp.shape[1], pp.shape[1],pp.shape[0]))
-        for i,j in product(range(pp.shape[1]), repeat=2):
-            mut_matrix_stack[i,j,:] = pp[:,i]*pc[:,j]*expQt[j,i]
+        if len(expQt.shape)==3:
+            mut_matrix_stack = np.einsum('ai,aj,ija->aij', pp, pc, expQt)
+        else:
+            mut_matrix_stack = np.einsum('ai,aj,ij->aij', pp, pc, expQt)
 
-        normalizer = mut_matrix_stack.sum(axis=1).sum(axis=0)
-        mut_matrix_stack = mut_matrix_stack/normalizer
-        mut_matrix_stack = np.swapaxes(np.swapaxes(mut_matrix_stack, 1,2), 0,1)
+        normalizer = mut_matrix_stack.sum(axis=2).sum(axis=1)
+        mut_matrix_stack = np.einsum('aij,a->aij', mut_matrix_stack, 1.0/normalizer)
         if full_sequence:
             return mut_matrix_stack[self.full_to_reduced_sequence_map]
         else:
@@ -1367,7 +1367,7 @@ class TreeAnc(object):
         if len(self.gtr.Pi.shape)==1:
             tree.root.marginal_outgroup_LH = np.repeat([self.gtr.Pi], tree.root.marginal_subtree_LH.shape[0], axis=0)
         else:
-            tree.root.marginal_outgroup_LH = self.gtr.Pi.T
+            tree.root.marginal_outgroup_LH = np.copy(self.gtr.Pi.T)
 
 
         tree.root.marginal_profile = tree.root.marginal_outgroup_LH*tree.root.marginal_subtree_LH
@@ -1498,7 +1498,7 @@ class TreeAnc(object):
             branch_len = self._branch_length_to_gtr(node)
             # transition matrix from parent states to the current node states.
             # denoted as Pij(i), where j - parent state, i - node state
-            log_transitions = np.log(self.gtr.expQt(branch_len))
+            log_transitions = np.log(np.maximum(ttconf.TINY_NUMBER, self.gtr.expQt(branch_len)))
             if node.is_terminal():
                 try:
                     msg_from_children = np.log(np.maximum(seq2prof(node.original_cseq, self.gtr.profile_map), ttconf.TINY_NUMBER))
