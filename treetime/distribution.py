@@ -27,27 +27,31 @@ class Distribution(object):
 
             if is_log:
                 ymin = distribution.y.min()
-                prob = np.exp(-(distribution.y-ymin))
+                log_prob = distribution.y-ymin
             else:
-                prob = distribution.y
+                log_prob = np.log(distribution.y)
 
             xvals = distribution.x
 
         elif isinstance(distribution, Distribution):
             # Distribution always stores log-prob
             xvals = distribution._func.x
-            prob = distribution.prob_relative(xvals)
+            log_prob = distribution._func.y
         else:
             raise TypeError("Error in computing the FWHM for the distribution. "
                 " The input should be either Distribution or interpolation object");
 
-        x_idxs = binary_dilation(prob >= 0.4*(prob.max() - prob.min())+prob.min(), iterations=1)
-        xs = xvals[x_idxs]
-        if xs.shape[0] < 2:
+        L = xvals.shape[0]
+        #x_idxs = binary_dilation(log_prob < 0.69, iterations=1)
+        tmp = np.where(log_prob < 0.69)[0]
+        x_l, x_u = tmp[0], tmp[-1]
+        # xs = xvals[x_idxs]
+        if L < 2:
             print ("Not enough points to compute FWHM: returning zero")
             return min(TINY_NUMBER, distribution.xmax - distribution.xmin)
         else:
-            return xs.max() - xs.min()
+            # return xs.max() - xs.min()
+            return xvals[min(x_u+1,L-1)] - xvals[max(0,x_l-1)]
 
 
     @classmethod
@@ -102,12 +106,12 @@ class Distribution(object):
                 res = Distribution.delta_function(x_vals[0])
             else:
                 res = Distribution(x_vals[ind], y_vals[ind], is_log=True,
-                                   min_width=min_width, kind='linear')
+                                   min_width=min_width, kind='linear', assume_sorted=True)
 
         return res
 
 
-    def __init__(self, x, y, is_log=True, min_width = MIN_INTEGRATION_PEAK, kind='linear'):
+    def __init__(self, x, y, is_log=True, min_width = MIN_INTEGRATION_PEAK, kind='linear', assume_sorted=False):
 
         """
         Create Distribution instance
@@ -117,12 +121,15 @@ class Distribution(object):
         if isinstance(x, Iterable) and isinstance (y, Iterable):
 
             self._delta = False # NOTE in classmethod this value is set explicitly to True.
-            xvals, yvals = np.array(sorted(zip(x,y))).T
             # first, prepare x, y values
+            if assume_sorted:
+                xvals, yvals = x,y
+            else:
+                xvals, yvals = np.array(sorted(zip(x,y))).T
             if not is_log:
                 yvals = -np.log(yvals)
             # just for safety
-            yvals [np.isnan(yvals)] = BIG_NUMBER
+            yvals[np.isnan(yvals)] = BIG_NUMBER
             # set the properties
             self._kind=kind
             # remember range
@@ -135,7 +142,8 @@ class Distribution(object):
             yvals -= self._peak_val
             self._ymax = yvals.max()
             # store the interpolation object
-            self._func= interp1d(xvals, yvals, kind=kind, fill_value=BIG_NUMBER, bounds_error=False)
+            self._func= interp1d(xvals, yvals, kind=kind, fill_value=BIG_NUMBER, bounds_error=False,
+                                 assume_sorted=True)
             self._fwhm = Distribution.calc_fwhm(self)
 
         elif np.isscalar(x):

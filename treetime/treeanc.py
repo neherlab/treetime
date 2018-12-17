@@ -983,11 +983,17 @@ class TreeAnc(object):
             node_seq = node.original_cseq
 
         muts = []
-        for p, (anc, der) in enumerate(zip(node.up.cseq, node_seq)):
-            # only if the states in compressed sequences differ:
-            if anc!=der:
-                # expand to the positions in real sequence
-                muts.extend([(anc, pos, der) for pos in self.reduced_to_full_sequence_map[p]])
+        diff_pos = np.where(node.up.cseq!=node_seq)[0]
+        for p in diff_pos:
+            anc = node.up.cseq[p]
+            der = node_seq[p]
+            # expand to the positions in real sequence
+            muts.extend([(anc, pos, der) for pos in self.reduced_to_full_sequence_map[p]])
+        # for p, (anc, der) in enumerate(zip(node.up.cseq, node_seq)):
+        #     # only if the states in compressed sequences differ:
+        #     if anc!=der:
+        #         # expand to the positions in real sequence
+        #         muts.extend([(anc, pos, der) for pos in self.reduced_to_full_sequence_map[p]])
 
         #sort by position
         return sorted(muts, key=lambda x:x[1])
@@ -1032,7 +1038,7 @@ class TreeAnc(object):
 
     def expanded_sequence(self, node, include_additional_constant_sites=False):
         """
-        Get node's compressed sequence and expand it to the real sequence
+        Expand a nodes compressed sequence into the real sequence
 
         Parameters
         ----------
@@ -1040,7 +1046,7 @@ class TreeAnc(object):
            Tree node
 
         Returns
-        -------f
+        -------
         seq : np.array
            Sequence as np.array of chars
         """
@@ -1048,10 +1054,7 @@ class TreeAnc(object):
             L = self.seq_len
         else:
             L = self.seq_len - self.additional_constant_sites
-        seq = np.zeros_like(self.full_to_reduced_sequence_map[:L], dtype='U1')
-        for pos, state in enumerate(node.cseq):
-            full_pos = self.reduced_to_full_sequence_map[pos]
-            seq[full_pos[full_pos<L]] = state
+        seq = node.cseq[self.full_to_reduced_sequence_map[:L]]
 
         return seq
 
