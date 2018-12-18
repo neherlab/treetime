@@ -989,11 +989,6 @@ class TreeAnc(object):
             der = node_seq[p]
             # expand to the positions in real sequence
             muts.extend([(anc, pos, der) for pos in self.reduced_to_full_sequence_map[p]])
-        # for p, (anc, der) in enumerate(zip(node.up.cseq, node_seq)):
-        #     # only if the states in compressed sequences differ:
-        #     if anc!=der:
-        #         # expand to the positions in real sequence
-        #         muts.extend([(anc, pos, der) for pos in self.reduced_to_full_sequence_map[p]])
 
         #sort by position
         return sorted(muts, key=lambda x:x[1])
@@ -1054,9 +1049,8 @@ class TreeAnc(object):
             L = self.seq_len
         else:
             L = self.seq_len - self.additional_constant_sites
-        seq = node.cseq[self.full_to_reduced_sequence_map[:L]]
 
-        return seq
+        return node.cseq[self.full_to_reduced_sequence_map[:L]]
 
 
     def dict_sequence(self, node, keep_var_ambigs=False):

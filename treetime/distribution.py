@@ -17,7 +17,7 @@ class Distribution(object):
     """
 
     @staticmethod
-    def calc_fwhm(distribution, is_log=True):
+    def calc_fwhm(distribution, is_neg_log=True):
         """
         Assess the width of the probability distribution. This returns
         full-width-half-max
@@ -25,16 +25,17 @@ class Distribution(object):
 
         if isinstance(distribution, interp1d):
 
-            if is_log:
+            if is_neg_log:
                 ymin = distribution.y.min()
                 log_prob = distribution.y-ymin
             else:
-                log_prob = np.log(distribution.y)
+                log_prob = -np.log(distribution.y)
+                log_prob -= log_prob.min()
 
             xvals = distribution.x
 
         elif isinstance(distribution, Distribution):
-            # Distribution always stores log-prob
+            # Distribution always stores neg log-prob with the peak value subtracted
             xvals = distribution._func.x
             log_prob = distribution._func.y
         else:
@@ -42,15 +43,15 @@ class Distribution(object):
                 " The input should be either Distribution or interpolation object");
 
         L = xvals.shape[0]
-        #x_idxs = binary_dilation(log_prob < 0.69, iterations=1)
-        tmp = np.where(log_prob < 0.69)[0]
+        # 0.69... is log(2), there is always one value for which this is true since
+        # the minimum is subtracted
+        tmp = np.where(log_prob < 0.693147)[0]
         x_l, x_u = tmp[0], tmp[-1]
-        # xs = xvals[x_idxs]
         if L < 2:
             print ("Not enough points to compute FWHM: returning zero")
             return min(TINY_NUMBER, distribution.xmax - distribution.xmin)
         else:
-            # return xs.max() - xs.min()
+            # need to guard against out-of-bounds errors
             return xvals[min(x_u+1,L-1)] - xvals[max(0,x_l-1)]
 
 
@@ -64,9 +65,11 @@ class Distribution(object):
         distribution.weight  = weight
         return distribution
 
+
     @classmethod
     def shifted_x(cls, dist, delta_x):
         return Distribution(dist.x+delta_x, dist.y, kind=dist.kind)
+
 
     @staticmethod
     def multiply(dists):
@@ -111,7 +114,8 @@ class Distribution(object):
         return res
 
 
-    def __init__(self, x, y, is_log=True, min_width = MIN_INTEGRATION_PEAK, kind='linear', assume_sorted=False):
+    def __init__(self, x, y, is_log=True, min_width = MIN_INTEGRATION_PEAK,
+                 kind='linear', assume_sorted=False):
 
         """
         Create Distribution instance
@@ -142,8 +146,8 @@ class Distribution(object):
             yvals -= self._peak_val
             self._ymax = yvals.max()
             # store the interpolation object
-            self._func= interp1d(xvals, yvals, kind=kind, fill_value=BIG_NUMBER, bounds_error=False,
-                                 assume_sorted=True)
+            self._func= interp1d(xvals, yvals, kind=kind, fill_value=BIG_NUMBER,
+                                 bounds_error=False, assume_sorted=True)
             self._fwhm = Distribution.calc_fwhm(self)
 
         elif np.isscalar(x):
