@@ -80,7 +80,7 @@ def _convolution_integrand(t_val, f, g,
 
         # create the interpolation object on this grid
         FG = Distribution(tau, fg, is_log=True, min_width = np.max([f.min_width, g.min_width]),
-                          kind='linear')
+                          kind='linear', assume_sorted=True)
         return FG
 
 
