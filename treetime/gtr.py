@@ -999,6 +999,8 @@ class GTR(object):
         return np.sum([np.sum((seq==state)*pattern_multiplicity*np.log(self.Pi[si]))
                       for si,state in enumerate(self.alphabet)])
 
+    def average_rate(self):
+        return -self.mu*np.einsum('i,ii,i',self.Pi, self.W, self.Pi)
 
     def save_to_npz(self, outfile):
         full_gtr = self.mu * np.dot(self.Pi, self.W)

@@ -426,3 +426,6 @@ class GTR_site_specific(GTR):
 
         return logP if return_log else np.exp(logP)
 
+
+    def average_rate(self):
+        return np.einsum('a,ia,ij,ja->a',self.mu, self.Pi, self.W, self.Pi)
