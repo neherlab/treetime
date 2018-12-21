@@ -98,8 +98,8 @@ class GTR(object):
 
     @property
     def Q(self):
-        """function that return the product of the transtiion matrix
-           and the equilibrium frequencies to option the rate matrix
+        """function that return the product of the transition matrix
+           and the equilibrium frequencies to obtain the rate matrix
            of the GTR model
         """
         return (self.W*self.Pi).T

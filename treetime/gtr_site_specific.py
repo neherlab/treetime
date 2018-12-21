@@ -14,6 +14,15 @@ class GTR_site_specific(GTR):
         super(GTR_site_specific, self).__init__(**kwargs)
 
 
+    @property
+    def Q(self):
+        """function that return the product of the transition matrix
+           and the equilibrium frequencies to obtain the rate matrix
+           of the GTR model
+        """
+        return np.einsum('ia,ij->ija', self.Pi, self.W)
+
+
     def assign_rates(self, mu=1.0, pi=None, W=None):
         """
         Overwrite the GTR model given the provided data
