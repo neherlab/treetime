@@ -1043,6 +1043,40 @@ class TreeAnc(object):
             return mut_matrix_stack
 
 
+    def get_effective_mutation_matrix(self, node, full_sequence=False):
+        """uses results from marginal ancestral inference to return an
+        effective mutation count.
+
+        Parameters
+        ----------
+        node : Phylo.clade
+            node of the tree
+        full_sequence : bool, optional
+            expand the sequence to the full sequence, if false (default)
+            the there will be one mutation matrix for each column in the
+            reduced alignment
+
+        Returns
+        -------
+        numpy.array
+            an Lxqxq stack of matrices (q=alphabet size, L (reduced)sequence length)
+        """
+        from itertools import product
+        pp,pc = self.marginal_branch_profile(node)
+        if pp is None or pc is None:
+            return None
+
+        expQt = self.gtr.expQt(self._branch_length_to_gtr(node))
+        if len(expQt.shape)==3:
+            QtexpQt_o_expQt = node.branch_length*np.einsum('ija,jka->ika', self.gtr.Q, expQt)
+            nij_eff = np.einsum('ai,aj,ija->aij',pp,pc,QtexpQt_o_expQt)/np.einsum('ai,aj,ija->aij',pp,pc,expQt)
+        else:
+            QtexpQt_o_expQt = node.branch_length*self.gtr.Q.dot(expQt)
+            nij_eff = np.einsum('ai,aj,ij->aij',pp,pc,QtexpQt_o_expQt)/np.einsum('ai,aj,ij->aij',pp,pc,expQt)
+
+        return nij_eff
+
+
     def expanded_sequence(self, node, include_additional_constant_sites=False):
         """
         Expand a nodes compressed sequence into the real sequence

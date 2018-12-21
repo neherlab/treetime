@@ -20,8 +20,11 @@ class GTR_site_specific(GTR):
            and the equilibrium frequencies to obtain the rate matrix
            of the GTR model
         """
-        return np.einsum('ia,ij->ija', self.Pi, self.W)
-
+        tmp = np.einsum('ia,ij->ija', self.Pi, self.W)
+        diag_vals = np.sum(tmp, axis=0)
+        for x in range(tmp.shape[-1]):
+            np.fill_diagonal(tmp[:,:,x], -diag_vals[:,x])
+        return tmp
 
     def assign_rates(self, mu=1.0, pi=None, W=None):
         """
@@ -73,7 +76,8 @@ class GTR_site_specific(GTR):
 
 
     @classmethod
-    def random(cls, L=1, avg_mu=1.0, alphabet='nuc', pi_dirichlet_alpha=1, W_dirichlet_alpha=3.0, mu_gamma_alpha=3.0):
+    def random(cls, L=1, avg_mu=1.0, alphabet='nuc', pi_dirichlet_alpha=1,
+               W_dirichlet_alpha=3.0, mu_gamma_alpha=3.0):
         """
         Creates a random GTR model
 
@@ -141,7 +145,7 @@ class GTR_site_specific(GTR):
         return gtr
 
     @classmethod
-    def infer(cls, sub_ija, T_ia, root_state, pc=0.01, gap_limit=0.01, Nit=30, dp=1e-5, **kwargs):
+    def infer(cls, sub_ija, T_ia, root_state, bl=None, pc=0.01, gap_limit=0.01, Nit=30, dp=1e-5, **kwargs):
         """
         Infer a GTR model by specifying the number of transitions and time spent in each
         character. The basic equation that is being solved is
@@ -206,6 +210,9 @@ class GTR_site_specific(GTR):
         mu_a = np.ones(L)
         W_ij = np.ones((q,q)) - np.eye(q)
 
+        if bl is not None:
+            bl=np.array(bl)
+
         while (LA.norm(p_ia_old-p_ia)>dp) and n_iter<Nit:
             n_iter += 1
             p_ia_old = np.copy(p_ia)
@@ -221,6 +228,10 @@ class GTR_site_specific(GTR):
             p_ia = p_ia/p_ia.sum(axis=0)
 
             mu_a = (n_a+pc)/(pc+np.einsum('ia,ij,ja->a', p_ia, W_ij, T_ia))
+            if bl is not None:
+                avg_rate = np.einsum('ia,ij,ja->a', p_ia, W_ij, p_ia)
+                correction = np.sum((1.0 - np.exp(-np.outer(bl,avg_rate))), axis=0)/avg_rate/np.sum(bl)
+                mu_a/=correction
 
         if n_iter >= Nit:
             gtr.logger('WARNING: maximum number of iterations has been reached in GTR inference',3, warn=True)
