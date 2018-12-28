@@ -1043,7 +1043,7 @@ class TreeAnc(object):
             return mut_matrix_stack
 
 
-    def get_effective_mutation_matrix(self, node, full_sequence=False):
+    def get_update_matrices(self, node):
         """uses results from marginal ancestral inference to return an
         effective mutation count.
 
@@ -1067,14 +1067,33 @@ class TreeAnc(object):
             return None
 
         expQt = self.gtr.expQt(self._branch_length_to_gtr(node))
-        if len(expQt.shape)==3:
-            QtexpQt_o_expQt = node.branch_length*np.einsum('ija,jka->ika', self.gtr.Q, expQt)
-            nij_eff = np.einsum('ai,aj,ija->aij',pp,pc,QtexpQt_o_expQt)/np.einsum('ai,aj,ija->aij',pp,pc,expQt)
-        else:
-            QtexpQt_o_expQt = node.branch_length*self.gtr.Q.dot(expQt)
-            nij_eff = np.einsum('ai,aj,ij->aij',pp,pc,QtexpQt_o_expQt)/np.einsum('ai,aj,ij->aij',pp,pc,expQt)
+        Q = self.gtr.Q
+        W = self.gtr.W
+        mu = self.gtr.mu
+        p = self.gtr.Pi
+        t = node.branch_length
 
-        return nij_eff
+        if len(expQt.shape)==3:
+            denom = np.einsum('ai,aj,ija->a',pp,pc,expQt)
+            QtexpQt = t*np.einsum('ija,jka->ika', self.gtr.Q, expQt)
+
+            mu_diag = -np.einsum('ai,ai,iia->a', pp, pc, QtexpQt)/denom
+            mu_offdiag = (np.einsum('ai,aj,ija->a', pp, pc, QtexpQt)/denom + mu_diag)
+
+            # p_diag = -t*(-np.einsum('a,ai,is,iia,ai->sa', mu, pp, W, expQt, pc)+np.einsum('a,as,si,iia,ai->sa', mu, pp, W, expQt, pc))/denom
+            # p_offdiag = t*(-np.einsum('a,ai,is,iha,ah->sa', mu, pp, W, expQt, pc)+np.einsum('a,as,si,iha,ah->sa', mu, pp, W, expQt, pc))/denom + p_diag
+            # p_diag = t*np.einsum('a,ai,is,iha,ah->sa', mu, pp, W, expQt, pc)/denom
+            # p_offdiag = t*np.einsum('a,as,si,iha,ah->sa', mu, pp, W, expQt, pc)/denom
+            p_diag = 1
+            p_offdiag = 1
+
+            # W_diag = t*((np.einsum('a,as,ra,sha,ah->rsa', mu, pp, p, expQt, pc) + np.einsum('a,ar,sa,rha,ah->rsa', mu, pp, p, expQt, pc))/denom).sum(axis=-1)
+            # W_offdiag = 0.5*t*((np.einsum('a,ar,ra,sha,ah->rsa', mu, pp, p, expQt, pc) + np.einsum('a,as,sa,rha,ah->rsa', mu, pp, p, expQt, pc))/denom).sum(axis=-1)
+            W_diag = 1
+            W_offdiag = 1
+
+
+        return (mu_diag, mu_offdiag), (p_diag, p_offdiag), (W_diag, W_offdiag)
 
 
     def expanded_sequence(self, node, include_additional_constant_sites=False):
