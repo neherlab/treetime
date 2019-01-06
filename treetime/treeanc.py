@@ -1462,7 +1462,7 @@ class TreeAnc(object):
 
             norm_vector = tmp_msg.sum(axis=1)
             node.marginal_outgroup_LH = (tmp_msg.T/norm_vector).T
-            tmp_msg_from_parent = self.gtr.propagate_profile(node.marginal_outgroup_LH,
+            tmp_msg_from_parent = self.gtr.evolve(node.marginal_outgroup_LH,
                                                  self._branch_length_to_gtr(node), return_log=False)
             node.marginal_profile = node.marginal_subtree_LH * tmp_msg_from_parent
 
