@@ -97,14 +97,23 @@ class GTR_site_specific(GTR):
         gtr = cls(alphabet=alphabet, seq_len=L)
         n = gtr.alphabet.shape[0]
 
-        pi = 1.0*gamma.rvs(pi_dirichlet_alpha, size=(n,L))
-        pi /= pi.sum(axis=0)
+        if pi_dirichlet_alpha:
+            pi = 1.0*gamma.rvs(pi_dirichlet_alpha, size=(n,L))
+        else:
+            pi = np.ones((n,L))
 
-        tmp = 1.0*gamma.rvs(W_dirichlet_alpha, size=(n,n)) # with gaps
+        pi /= pi.sum(axis=0)
+        if W_dirichlet_alpha:
+            tmp = 1.0*gamma.rvs(W_dirichlet_alpha, size=(n,n))
+        else:
+            tmp = np.ones((n,n))
         tmp = np.tril(tmp,k=-1)
         W = tmp + tmp.T
 
-        mu = gamma.rvs(mu_gamma_alpha, size=(L,)) # with gaps
+        if mu_gamma_alpha:
+            mu = gamma.rvs(mu_gamma_alpha, size=(L,))
+        else:
+            mu = np.ones(L)
 
         gtr.assign_rates(mu=mu, pi=pi, W=W)
         gtr.mu *= avg_mu/np.mean(gtr.mu)
