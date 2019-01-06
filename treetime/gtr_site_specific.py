@@ -9,8 +9,8 @@ class GTR_site_specific(GTR):
     """
     Defines General-Time-Reversible model of character evolution.
     """
-    def __init__(self, *args, seq_len=1, **kwargs):
-        self.seq_len = seq_len
+    def __init__(self, *args, **kwargs):
+        self.seq_len = kwargs['seq_len'] if 'seq_len' in kwargs else 1
         super(GTR_site_specific, self).__init__(**kwargs)
 
 
