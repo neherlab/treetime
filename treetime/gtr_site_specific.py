@@ -154,7 +154,7 @@ class GTR_site_specific(GTR):
         return gtr
 
     @classmethod
-    def infer(cls, sub_ija, T_ia, root_state, bl=None, pc=0.01, gap_limit=0.01, Nit=30, dp=1e-5, **kwargs):
+    def infer(cls, sub_ija, T_ia, root_state, pc=0.01, gap_limit=0.01, Nit=30, dp=1e-5, **kwargs):
         """
         Infer a GTR model by specifying the number of transitions and time spent in each
         character. The basic equation that is being solved is
@@ -219,9 +219,6 @@ class GTR_site_specific(GTR):
         mu_a = np.ones(L)
         W_ij = np.ones((q,q)) - np.eye(q)
 
-        if bl is not None:
-            bl=np.array(bl)
-
         while (LA.norm(p_ia_old-p_ia)>dp) and n_iter<Nit:
             n_iter += 1
             p_ia_old = np.copy(p_ia)
@@ -237,10 +234,6 @@ class GTR_site_specific(GTR):
             p_ia = p_ia/p_ia.sum(axis=0)
 
             mu_a = (n_a+pc)/(pc+np.einsum('ia,ij,ja->a', p_ia, W_ij, T_ia))
-            if bl is not None:
-                avg_rate = np.einsum('ia,ij,ja->a', p_ia, W_ij, p_ia)
-                correction = np.sum((1.0 - np.exp(-np.outer(bl,avg_rate))), axis=0)/avg_rate/np.sum(bl)
-                mu_a/=correction
 
         if n_iter >= Nit:
             gtr.logger('WARNING: maximum number of iterations has been reached in GTR inference',3, warn=True)

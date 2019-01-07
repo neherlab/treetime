@@ -1025,26 +1025,29 @@ class TreeAnc(object):
             an Lxqxq stack of matrices (q=alphabet size, L (reduced)sequence length)
         """
         pp,pc = self.marginal_branch_profile(node)
-        if pp is None or pc is None:
-            return None
 
+        # calculate pc_i [e^Qt]_ij pp_j for each site
         expQt = self.gtr.expQt(self._branch_length_to_gtr(node))
-        if len(expQt.shape)==3:
+        if len(expQt.shape)==3: # site specific model
             mut_matrix_stack = np.einsum('ai,aj,ija->aij', pc, pp, expQt)
         else:
             mut_matrix_stack = np.einsum('ai,aj,ij->aij', pc, pp, expQt)
 
+        # normalize this distribution
         normalizer = mut_matrix_stack.sum(axis=2).sum(axis=1)
         mut_matrix_stack = np.einsum('aij,a->aij', mut_matrix_stack, 1.0/normalizer)
+
+        # expand to full sequence if requested
         if full_sequence:
             return mut_matrix_stack[self.full_to_reduced_sequence_map]
         else:
             return mut_matrix_stack
 
 
-    def get_rate_length_updates(self, node):
-        """uses results from marginal ancestral inference to return an
-        effective mutation count.
+    def get_rate_length_updates(self, node, full_sequence=False):
+        """uses results from marginal ancestral inference to calculate the
+        branch specific contributions to the non-linear update rules for the rates
+        and times
 
         Parameters
         ----------
@@ -1057,31 +1060,37 @@ class TreeAnc(object):
 
         Returns
         -------
-        numpy.array
-            an Lxqxq stack of matrices (q=alphabet size, L (reduced)sequence length)
+        tuple :
+            (denominator, numerator), rates, branch_length
+
         """
-        from itertools import product
         pp,pc = self.marginal_branch_profile(node)
-        if pp is None or pc is None:
-            return None
 
         t = self._branch_length_to_gtr(node)
         expQt = self.gtr.expQt(t)
         Q = self.gtr.Q
-        W = self.gtr.W
         mu = self.gtr.mu
-        p = self.gtr.Pi
 
         if len(expQt.shape)==3:
-            # denom = np.einsum('ai,aj,ija->a',pp,pc,expQt)
-            QexpQt_o_expQt = np.einsum('ija,jka->ika', self.gtr.Q, expQt)/expQt
+            QexpQt_o_expQt = np.einsum('ija,jka->ika', Q, expQt)/expQt
 
-            mu_diag = -np.einsum('ai,ai,iia->a', pc, pp, QexpQt_o_expQt)
-            mu_offdiag = (np.einsum('ai,aj,ija->a', pc, pp, QexpQt_o_expQt) + mu_diag)
+            mu_diag = np.einsum('ai,ai,iia->a', pc, pp, QexpQt_o_expQt)
+            mu_offdiag = np.einsum('ai,aj,ija->a', pc, pp, QexpQt_o_expQt) - mu_diag
 
-            return (mu_diag, mu_offdiag), mu, t
+            # expand to full sequence if requested
+            if full_sequence:
+                return (-mu_diag[self.full_to_reduced_sequence_map],
+                        mu_offdiag[self.full_to_reduced_sequence_map]), mu, t
+            else:
+                return (-mu_diag, mu_offdiag), mu, t
         else:
-            return (None, None), mu, t
+            QexpQt_o_expQt = np.einsum('ika,ik->ika', np.einsum('ija,jk->ika', Q, expQt), 1.0/expQt)
+
+            mu_diag = np.einsum('ai,ai,iia', pc, pp, QexpQt_o_expQt)
+            mu_offdiag = np.einsum('ai,aj,ija', pc, pp, QexpQt_o_expQt) - mu_diag
+
+            # expand to full sequence if requested
+            return (-mu_diag, mu_offdiag), mu, t
 
 
     def expanded_sequence(self, node, include_additional_constant_sites=False):
@@ -1856,11 +1865,9 @@ class TreeAnc(object):
         '''
         parent = node.up
         if parent is None:
-            self.logger("Branch profiles can't be calculated for the root!",3)
-            return None, None
+            raise Exception("Branch profiles can't be calculated for the root!")
         if not hasattr(node, 'marginal_outgroup_LH'):
-            self.logger("marginal ancestral inference needs to be performed first", 3)
-            return None, None
+            raise Exception("marginal ancestral inference needs to be performed first!")
 
         pc = node.marginal_subtree_LH
         pp = node.marginal_outgroup_LH
