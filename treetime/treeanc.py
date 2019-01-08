@@ -1073,7 +1073,6 @@ class TreeAnc(object):
 
         if len(expQt.shape)==3:
             QexpQt_o_expQt = np.einsum('ija,jka->ika', Q, expQt)/expQt
-
             mu_diag = np.einsum('ai,ai,iia->a', pc, pp, QexpQt_o_expQt)
             mu_offdiag = np.einsum('ai,aj,ija->a', pc, pp, QexpQt_o_expQt) - mu_diag
 

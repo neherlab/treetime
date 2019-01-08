@@ -154,7 +154,8 @@ class GTR_site_specific(GTR):
         return gtr
 
     @classmethod
-    def infer(cls, sub_ija, T_ia, root_state, pc=0.01, gap_limit=0.01, Nit=30, dp=1e-5, **kwargs):
+    def infer(cls, sub_ija, T_ia, root_state, pc=0.01,
+              gap_limit=0.01, Nit=30, dp=1e-5, **kwargs):
         """
         Infer a GTR model by specifying the number of transitions and time spent in each
         character. The basic equation that is being solved is
@@ -210,13 +211,14 @@ class GTR_site_specific(GTR):
         n_ija[range(q),range(q),:] = 0
         n_ij = n_ija.sum(axis=-1)
 
-        m_ia = np.sum(n_ija,axis=1)+root_state
-        n_a = n_ija.sum(axis=1).sum(axis=0)
+        m_ia = np.sum(n_ija,axis=1) + root_state + pc
+        n_a = n_ija.sum(axis=1).sum(axis=0) + pc
 
-        Lambda = np.sum(root_state,axis=0)
+        Lambda = np.sum(root_state,axis=0) + q*pc
         p_ia_old=np.zeros((q,L))
         p_ia = np.ones((q,L))/q
         mu_a = np.ones(L)
+
         W_ij = np.ones((q,q)) - np.eye(q)
 
         while (LA.norm(p_ia_old-p_ia)>dp) and n_iter<Nit:
@@ -230,10 +232,10 @@ class GTR_site_specific(GTR):
             W_ij = W_ij/average_rate
             mu_a *=average_rate
 
-            p_ia = (m_ia+pc)/(mu_a*np.dot(W_ij,T_ia)+Lambda+pc)
+            p_ia = m_ia/(mu_a*np.dot(W_ij,T_ia)+Lambda)
             p_ia = p_ia/p_ia.sum(axis=0)
 
-            mu_a = (n_a+pc)/(pc+np.einsum('ia,ij,ja->a', p_ia, W_ij, T_ia))
+            mu_a = n_a/(pc+np.einsum('ia,ij,ja->a', p_ia, W_ij, T_ia))
 
         if n_iter >= Nit:
             gtr.logger('WARNING: maximum number of iterations has been reached in GTR inference',3, warn=True)
@@ -290,45 +292,6 @@ class GTR_site_specific(GTR):
 
     def prop_t_compressed(self, seq_pair, multiplicity, t, return_log=False):
         print("NOT IMPEMENTED")
-
-
-    def prob_t_profiles(self, profile_pair, multiplicity, t, return_log=False, ignore_gaps=True):
-        '''
-        Calculate the probability of observing a node pair at a distance t
-
-        Parameters
-        ----------
-
-          profile_pair: numpy arrays
-            Probability distributions of the nucleotides at either
-            end of the branch. pp[0] = parent, pp[1] = child
-
-          multiplicity : numpy array
-            The number of times an alignment pattern is observed
-
-          t : float
-            Length of the branch separating parent and child
-
-          ignore_gaps: bool
-            If True, ignore mutations to and from gaps in distance calculations
-
-          return_log : bool
-            Whether or not to exponentiate the result
-
-        '''
-        if t<0:
-            logP = -ttconf.BIG_NUMBER
-        else:
-            Qt = self.expQt(t)
-            res = np.einsum('ai,ija,aj->a', profile_pair[1], Qt, profile_pair[0])
-            if ignore_gaps: # calculate the probability that neither outgroup/node has a gap
-                non_gap_frac = (1-profile_pair[0][:,self.gap_index])*(1-profile_pair[1][:,self.gap_index])
-                # weigh log LH by the non-gap probability
-                logP = np.sum(multiplicity*np.log(res)*non_gap_frac)
-            else:
-                logP = np.sum(multiplicity*np.log(res))
-
-        return logP if return_log else np.exp(logP)
 
 
     def propagate_profile(self, profile, t, return_log=False):
@@ -396,7 +359,8 @@ class GTR_site_specific(GTR):
         return np.log(res) if return_log else res
 
 
-    def prob_t(self, seq_p, seq_ch, t, pattern_multiplicity = None, return_log=False, ignore_gaps=True):
+    def prob_t(self, seq_p, seq_ch, t, pattern_multiplicity = None,
+               return_log=False, ignore_gaps=True):
         """
         Compute the probability to observe seq_ch (child sequence) after time t starting from seq_p
         (parent sequence).

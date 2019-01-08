@@ -653,7 +653,8 @@ class GTR(object):
         return logP if return_log else np.exp(logP)
 
 
-    def prob_t(self, seq_p, seq_ch, t, pattern_multiplicity = None, return_log=False, ignore_gaps=True):
+    def prob_t(self, seq_p, seq_ch, t, pattern_multiplicity = None,
+               return_log=False, ignore_gaps=True):
         """
         Compute the probability to observe seq_ch (child sequence) after time t starting from seq_p
         (parent sequence).
@@ -772,7 +773,9 @@ class GTR(object):
                 to be separated by the time t.
             """
             if profiles:
-                return -1.0*self.prob_t_profiles(seq_pair, multiplicity,t**2, return_log=True)
+                res = -1.0*self.prob_t_profiles(seq_pair, multiplicity,t**2, return_log=True)
+                print(res, t**2)
+                return res
             else:
                 return -1.0*self.prob_t_compressed(seq_pair, multiplicity,t**2, return_log=True)
 
@@ -805,7 +808,8 @@ class GTR(object):
         return new_len
 
 
-    def prob_t_profiles(self, profile_pair, multiplicity, t, return_log=False, ignore_gaps=True):
+    def prob_t_profiles(self, profile_pair, multiplicity, t,
+                        return_log=False, ignore_gaps=True):
         '''
         Calculate the probability of observing a node pair at a distance t
 
@@ -832,15 +836,17 @@ class GTR(object):
         if t<0:
             logP = -ttconf.BIG_NUMBER
         else:
-            Qt = self.expQt(t).T
-            res = profile_pair[0].dot(Qt)
-            overlap = np.sum(res*profile_pair[1], axis=1)
+            Qt = self.expQt(t)
+            if len(Qt.shape)==3:
+                res = np.einsum('ai,ija,aj->a', profile_pair[1], Qt, profile_pair[0])
+            else:
+                res = np.einsum('ai,ij,aj->a', profile_pair[1], Qt, profile_pair[0])
             if ignore_gaps: # calculate the probability that neither outgroup/node has a gap
                 non_gap_frac = (1-profile_pair[0][:,self.gap_index])*(1-profile_pair[1][:,self.gap_index])
                 # weigh log LH by the non-gap probability
-                logP = np.sum(multiplicity*np.log(overlap)*non_gap_frac)
+                logP = np.sum(multiplicity*np.log(res)*non_gap_frac)
             else:
-                logP = np.sum(multiplicity*np.log(overlap))
+                logP = np.sum(multiplicity*np.log(res))
 
         return logP if return_log else np.exp(logP)
 
