@@ -123,7 +123,7 @@ class TreeAnc(object):
 
         if self.aln and self.tree:
             if len(self.tree.get_terminals()) != len(self.aln):
-                print("**WARNING: Number of sequences in tree differs from number of sequences in alignment!**")
+                self.logger("**WARNING: Number of sequences in tree differs from number of sequences in alignment!**", 3, warn=True)
 
 
     def logger(self, msg, level, warn=False):
