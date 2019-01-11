@@ -187,7 +187,7 @@ class TreeAnc(object):
          value : GTR
             the new GTR object
         """
-        if not isinstance(value, GTR):
+        if not (isinstance(value, GTR) or isinstance(value, GTR_site_specific)):
             raise TypeError(" GTR instance expected")
         self._gtr = value
 
