@@ -1681,8 +1681,8 @@ class TreeAnc(object):
 
     def optimize_branch_length(self, mode='joint', **kwargs):
         """
-        Perform optimization for the branch lengths of the whole tree or any
-        subtree.
+        Perform optimization for the branch lengths of the entire tree.
+        This method only does a single path and needs to be iterated.
 
         **Note** this method assumes that each node stores information
         about its sequence as numpy.array object (node.sequence attribute).
@@ -1756,7 +1756,7 @@ class TreeAnc(object):
         # as branch lengths changed, the params must be fixed
         self.tree.root.up = None
         self.tree.root.dist2root = 0.0
-        if max_bl>0.15:
+        if max_bl>0.15 and mode=='joint':
             self.logger("TreeAnc.optimize_branch_length: THIS TREE HAS LONG BRANCHES."
                         " \n\t ****TreeTime IS NOT DESIGNED TO OPTIMIZE LONG BRANCHES."
                         " \n\t ****PLEASE OPTIMIZE BRANCHES WITH ANOTHER TOOL AND RERUN WITH"
@@ -1873,7 +1873,7 @@ class TreeAnc(object):
         return pp, pc
 
 
-    def optimal_marginal_branch_length(self, node):
+    def optimal_marginal_branch_length(self, node, tol=1e-10):
         '''
         calculate the marginal distribution of sequence states on both ends
         of the branch leading to node,
@@ -1893,7 +1893,7 @@ class TreeAnc(object):
         if node.up is None:
             return self.one_mutation
         pp, pc = self.marginal_branch_profile(node)
-        return self.gtr.optimal_t_compressed((pp, pc), self.multiplicity, profiles=True)
+        return self.gtr.optimal_t_compressed((pp, pc), self.multiplicity, profiles=True, tol=tol)
 
 
     def prune_short_branches(self):

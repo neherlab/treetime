@@ -78,7 +78,7 @@ class GTR(object):
             self.gap_index = list(self.alphabet).index('-')
         except:
             self.logger("GTR: no gap symbol!", 4, warn=True)
-            self.gap_index=-1
+            self.gap_index=None
 
 
         # NEEDED TO BREAK RATE MATRIX DEGENERACY AND FORCE NP TO RETURN REAL ORTHONORMAL EIGENVECTORS
@@ -113,23 +113,31 @@ class GTR(object):
         '''
         String representation of the GTR model for pretty printing
         '''
-        eq_freq_str = "Substitution rate (mu): "+str(np.round(self.mu,6))+'\n'
+        multi_site = len(self.Pi.shape)==2
 
-        eq_freq_str += "\nEquilibrium frequencies (pi_i):\n"
-        for a,p in zip(self.alphabet, self.Pi):
-            eq_freq_str+='  '+str(a)+': '+str(np.round(p,4))+'\n'
+        if multi_site:
+            eq_freq_str = "Average substitution rate (mu): "+str(np.round(self.average_rate,6))+'\n'
+        else:
+            eq_freq_str = "Substitution rate (mu): "+str(np.round(self.mu,6))+'\n'
+
+        if not multi_site:
+            eq_freq_str += "\nEquilibrium frequencies (pi_i):\n"
+            for a,p in zip(self.alphabet, self.Pi):
+                eq_freq_str+='  '+str(a)+': '+str(np.round(p,4))+'\n'
 
         W_str = "\nSymmetrized rates from j->i (W_ij):\n"
         W_str+='\t'+'\t'.join(map(str, self.alphabet))+'\n'
         for a,Wi in zip(self.alphabet, self.W):
             W_str+= '  '+str(a)+'\t'+'\t'.join([str(np.round(max(0,p),4)) for p in Wi])+'\n'
 
-        Q_str = "\nActual rates from j->i (Q_ij):\n"
-        Q_str+='\t'+'\t'.join(map(str, self.alphabet))+'\n'
-        for a,Qi in zip(self.alphabet, self.Q):
-            Q_str+= '  '+str(a)+'\t'+'\t'.join([str(np.round(max(0,p),4)) for p in Qi])+'\n'
+        if not multi_site:
+            Q_str = "\nActual rates from j->i (Q_ij):\n"
+            Q_str+='\t'+'\t'.join(map(str, self.alphabet))+'\n'
+            for a,Qi in zip(self.alphabet, self.Q):
+                Q_str+= '  '+str(a)+'\t'+'\t'.join([str(np.round(max(0,p),4)) for p in Qi])+'\n'
 
         return eq_freq_str + W_str + Q_str
+
 
     def assign_rates(self, mu=1.0, pi=None, W=None):
         """
@@ -468,7 +476,7 @@ class GTR(object):
                 gtr.logger('the iterative scheme has not converged',3,warn=True)
             elif np.abs(1-np.max(pi.sum(axis=0))) > dp:
                 gtr.logger('the iterative scheme has converged, but proper normalization was not reached',3,warn=True)
-        if gtr.gap_index>=0:
+        if gtr.gap_index is not None:
             if pi[gtr.gap_index]<gap_limit:
                 gtr.logger('The model allows for gaps which are estimated to occur at a low fraction of %1.3e'%pi[gtr.gap_index]+
                        '\n\t\tthis can potentially result in artificats.'+
@@ -588,9 +596,9 @@ class GTR(object):
                     bs.append(seq==nuc)
 
             for n1,nuc1 in enumerate(self.alphabet):
-                if (n1!=self.gap_index or (not ignore_gaps)):
+                if (self.gap_index is None) or (not ignore_gaps) or (n1!=self.gap_index):
                     for n2,nuc2 in enumerate(self.alphabet):
-                        if (n2!=self.gap_index or (not ignore_gaps)):
+                        if (self.gap_index is None) or (not ignore_gaps) or (n2!=self.gap_index):
                             count = ((bool_seqs_p[n1]&bool_seqs_ch[n2])*pattern_multiplicity).sum()
                             if count: pair_count.append(((n1,n2), count))
         else: # enumerate state pairs of the sequence for large alphabets
@@ -720,7 +728,7 @@ class GTR(object):
         return self.optimal_t_compressed(seq_pair, multiplicity)
 
 
-    def optimal_t_compressed(self, seq_pair, multiplicity, profiles=False):
+    def optimal_t_compressed(self, seq_pair, multiplicity, profiles=False, tol=1e-10):
         """
         Find the optimal distance between the two sequences, for compressed sequences
 
@@ -774,7 +782,6 @@ class GTR(object):
             """
             if profiles:
                 res = -1.0*self.prob_t_profiles(seq_pair, multiplicity,t**2, return_log=True)
-                print(res, t**2)
                 return res
             else:
                 return -1.0*self.prob_t_compressed(seq_pair, multiplicity,t**2, return_log=True)
@@ -783,7 +790,7 @@ class GTR(object):
             from scipy.optimize import minimize_scalar
             opt = minimize_scalar(_neg_prob,
                     bounds=[-np.sqrt(ttconf.MAX_BRANCH_LENGTH),np.sqrt(ttconf.MAX_BRANCH_LENGTH)],
-                    args=(seq_pair, multiplicity), tol=1e-10)
+                    args=(seq_pair, multiplicity), tol=tol)
             new_len = opt["x"]**2
             if 'success' not in opt:
                 opt['success'] = True
@@ -841,7 +848,7 @@ class GTR(object):
                 res = np.einsum('ai,ija,aj->a', profile_pair[1], Qt, profile_pair[0])
             else:
                 res = np.einsum('ai,ij,aj->a', profile_pair[1], Qt, profile_pair[0])
-            if ignore_gaps: # calculate the probability that neither outgroup/node has a gap
+            if ignore_gaps and (self.gap_index is not None): # calculate the probability that neither outgroup/node has a gap
                 non_gap_frac = (1-profile_pair[0][:,self.gap_index])*(1-profile_pair[1][:,self.gap_index])
                 # weigh log LH by the non-gap probability
                 logP = np.sum(multiplicity*np.log(res)*non_gap_frac)

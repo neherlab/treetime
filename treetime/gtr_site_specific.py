@@ -10,7 +10,11 @@ class GTR_site_specific(GTR):
     Defines General-Time-Reversible model of character evolution.
     """
     def __init__(self, *args, **kwargs):
-        self.seq_len = kwargs['seq_len'] if 'seq_len' in kwargs else 1
+        if 'seq_len' in kwargs:
+            self.seq_len = kwargs['seq_len']
+            kwargs.pop('seq_len')
+        else:
+            self.seq_len = 1
         super(GTR_site_specific, self).__init__(**kwargs)
 
 
@@ -241,7 +245,7 @@ class GTR_site_specific(GTR):
             gtr.logger('WARNING: maximum number of iterations has been reached in GTR inference',3, warn=True)
             if LA.norm(p_ia_old-p_ia) > dp:
                 gtr.logger('the iterative scheme has not converged',3,warn=True)
-        if gtr.gap_index>=0:
+        if gtr.gap_index is not None:
             for p in range(p_ia.shape[-1]):
                 if p_ia[gtr.gap_index,p]<gap_limit:
                     gtr.logger('The model allows for gaps which are estimated to occur at a low fraction of %1.3e'%p_ia[gtr.gap_index]+
@@ -399,11 +403,11 @@ class GTR_site_specific(GTR):
             bad_indices=(tmp_eQT==0)
             logQt = np.log(tmp_eQT + ttconf.TINY_NUMBER*(bad_indices))
             logQt[np.isnan(logQt) | np.isinf(logQt) | bad_indices] = -ttconf.BIG_NUMBER
-            seq_indices_c = np.zeros(len(seq_c), dtype=int)
+            seq_indices_c = np.zeros(len(seq_ch), dtype=int)
             seq_indices_p = np.zeros(len(seq_p), dtype=int)
             for ai, a in self.alphabet:
                 seq_indices_p[seq_p==a] = ai
-                seq_indices_c[seq_c==a] = ai
+                seq_indices_c[seq_ch==a] = ai
 
             if len(logQt.shape)==2:
                 logP = np.sum(logQt[seq_indices_p, seq_indices_c]*pattern_multiplicity)
