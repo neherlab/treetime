@@ -426,7 +426,7 @@ class TreeAnc(object):
     def extend_profile(self):
         if self.aln:
             if self.is_vcf and self.ref:
-                unique_chars = np.unique(np.array(self.ref))
+                unique_chars = np.unique(list(self.ref))
             else:
                 tmp_unique_chars = []
                 for node in self.tree.get_terminals():
