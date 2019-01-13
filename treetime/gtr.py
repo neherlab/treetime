@@ -54,6 +54,7 @@ class GTR(object):
             else:
                 self.profile_map = prof_map
 
+
         if logger is None:
             def logger_default(*args,**kwargs):
                 """standard logging function if none provided"""
@@ -62,8 +63,28 @@ class GTR(object):
             self.logger = logger_default
         else:
             self.logger = logger
-        n_states = len(self.alphabet)
 
+        self.ambiguous = None
+        self.gap_index = None
+        self.n_states = len(self.alphabet)
+        self.assign_gap_and_ambiguous()
+
+        # NEEDED TO BREAK RATE MATRIX DEGENERACY AND FORCE NP TO RETURN REAL ORTHONORMAL EIGENVECTORS
+        # ugly hack, but works and shouldn't affect results
+        tmp_rng_state = np.random.get_state()
+        np.random.seed(12345)
+        self.break_degen = np.random.random(size=(self.n_states, self.n_states))*1e-6
+        np.random.set_state(tmp_rng_state)
+
+        # init all matrices with dummy values
+        self.logger("GTR: init with dummy values!", 3)
+        self.v = None # right eigenvectors
+        self.v_inv = None # left eigenvectors
+        self.eigenvals =None # eigenvalues
+        self.assign_rates()
+
+    def assign_gap_and_ambiguous(self):
+        n_states = len(self.alphabet)
         self.logger("GTR: with alphabet: "+str(self.alphabet),1)
         # determine if a character exists that corresponds to no info, i.e. all one profile
         if any([x.sum()==n_states for x in self.profile_map.values()]):
@@ -79,21 +100,6 @@ class GTR(object):
         except:
             self.logger("GTR: no gap symbol!", 4, warn=True)
             self.gap_index=None
-
-
-        # NEEDED TO BREAK RATE MATRIX DEGENERACY AND FORCE NP TO RETURN REAL ORTHONORMAL EIGENVECTORS
-        # ugly hack, but works and shouldn't affect results
-        tmp_rng_state = np.random.get_state()
-        np.random.seed(12345)
-        self.break_degen = np.random.random(size=(n_states, n_states))*1e-6
-        np.random.set_state(tmp_rng_state)
-
-        # init all matrices with dummy values
-        self.logger("GTR: init with dummy values!", 3)
-        self.v = None # right eigenvectors
-        self.v_inv = None # left eigenvectors
-        self.eigenvals =None # eigenvalues
-        self.assign_rates()
 
 
     @property

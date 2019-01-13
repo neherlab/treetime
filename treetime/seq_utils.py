@@ -170,18 +170,9 @@ def seq2prof(seq, profile_map):
         Profile for the character. Zero array if the character not found
 
     """
-    plength = np.unique([len(x) for x in profile_map.values()])
-    if len(plength)==1:
-        n_states = plength[0]
-    else:
-        print("profile contains arrays of different length!")
-        return None
-    prof = np.array([profile_map[k] if k in profile_map
-                    else np.ones(n_states) for k in seq ])
 
+    return np.array([profile_map[k] for k in seq])
 
-    bad_indices=(prof.sum(1) < 1e-5)
-    return prof[~bad_indices]
 
 def prof2seq(profile, gtr, sample_from_prof=False):
     """

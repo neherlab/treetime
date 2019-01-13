@@ -344,15 +344,14 @@ class TreeAnc(object):
             else:
                 self.seq_len = self.aln.get_alignment_length()
 
-
         # check whether the alignment is consistent with a nucleotide alignment.
         likely_alphabet = self._guess_alphabet()
         from .seq_utils import alphabets
         # if likely alignment is not nucleotide but the gtr alignment is, WARN
-        if likely_alphabet=='aa' and len(self.gtr.alphabet)==len(alphabets['nuc']) and np.all(self.gtr.alphabet==alphabets['nuc']):
+        if likely_alphabet=='aa' and self.gtr.n_states==len(alphabets['nuc']) and np.all(self.gtr.alphabet==alphabets['nuc']):
             self.logger('WARNING: small fraction of ACGT-N in alignment. Really a nucleotide alignment? if not, rerun with --aa', 1, warn=True)
         # conversely, warn if alignment is consistent with nucleotide but gtr has a long alphabet
-        if likely_alphabet=='nuc' and len(self.gtr.alphabet)>10:
+        if likely_alphabet=='nuc' and self.gtr.n_states>10:
             self.logger('WARNING: almost exclusively ACGT-N in alignment. Really a protein alignment?', 1, warn=True)
 
         if hasattr(self, '_tree') and (self.tree is not None):
@@ -424,6 +423,21 @@ class TreeAnc(object):
         """
         self._ref = in_ref
 
+    def extend_profile(self):
+        if self.aln:
+            if self.is_vcf and self.ref:
+                unique_chars = np.unique(np.array(self.ref))
+            else:
+                tmp_unique_chars = []
+                for node in self.tree.get_terminals():
+                    tmp_unique_chars.extend(np.unique(node.sequence))
+                unique_chars = np.unique(tmp_unique_chars)
+            for c in unique_chars:
+                if c not in self.gtr.profile_map:
+                    self.gtr.profile_map[c] = np.ones(self.gtr.n_states)
+                    self.logger("WARNING: character %s is unknown. Treating it as missing information"%c,1,warn=True)
+
+
     def _guess_alphabet(self):
         if self.aln:
             if self.is_vcf and self.ref:
@@ -488,6 +502,8 @@ class TreeAnc(object):
             self.logger("***WARNING: TreeAnc: %d nodes don't have a matching sequence in the alignment."
                         " POSSIBLE ERROR."%failed_leaves, 0, warn=True)
 
+        # extend profile to contain additional unknown characters
+        self.extend_profile()
         return self.make_reduced_alignment()
 
 
