@@ -1,5 +1,6 @@
 from __future__ import print_function, division, absolute_import
 import time, sys
+import gc
 from collections import defaultdict
 import numpy as np
 from Bio import Phylo
@@ -1447,6 +1448,7 @@ class TreeAnc(object):
         self.tree.sequence_LH = marginal_LH_prefactor
         self.tree.total_sequence_LH = (self.tree.sequence_LH*self.multiplicity).sum()
         self.tree.root.cseq = seq
+        gc.collect()
 
         if final:
             if self.is_vcf:
@@ -1502,6 +1504,7 @@ class TreeAnc(object):
                     del node.marginal_subtree_LH_prefactor
                 except:
                     pass
+        gc.collect()
 
         return N_diff
 

@@ -240,16 +240,12 @@ def normalize_profile(in_profile, log=False, return_offset = True):
         normalized profile (fresh np object) and offset (if return_offset==True)
     """
     if log:
-        # determine max to avoid overflow when exponentiating
-        tmp_prefactor = np.max(in_profile, axis=1)
-        tmp_prof = np.exp(in_profile.T - tmp_prefactor)
-        norm_vector = tmp_prof.sum(axis=0)
-        return (np.copy((tmp_prof/norm_vector).T),
-                np.log(norm_vector)+tmp_prefactor if return_offset else None)
+        tmp_prof = np.exp(in_profile) # - tmp_prefactor)
+        norm_vector = tmp_prof.sum(axis=1)
+        return (np.copy(np.einsum('ai,a->ai',tmp_prof,1.0/norm_vector)),
+                np.log(norm_vector) if return_offset else None)
     else:
         norm_vector = in_profile.sum(axis=1)
-        return (np.copy((in_profile.T/norm_vector).T),
+        return (np.copy(np.einsum('ai,a->ai',in_profile,1.0/norm_vector)),
                 np.log(norm_vector) if return_offset else None)
-
-
 
