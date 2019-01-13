@@ -1384,18 +1384,19 @@ class TreeAnc(object):
         n_states = self.gtr.alphabet.shape[0]
         self.logger("TreeAnc._ml_anc_marginal: type of reconstruction: Marginal", 2)
 
-        self.logger("Walking up the tree, computing likelihoods... ", 3)
+        self.logger("Attaching sequence profiles to leafs... ", 3)
         #  set the leaves profiles
         for leaf in tree.get_terminals():
             # in any case, set the profile
             leaf.marginal_subtree_LH = seq2prof(leaf.original_cseq, self.gtr.profile_map)
             leaf.marginal_subtree_LH_prefactor = np.zeros(L)
 
+        self.logger("Walking up the tree, computing likelihoods... ", 3)
         # propagate leaves --> root, set the marginal-likelihood messages
         for node in tree.get_nonterminals(order='postorder'): #leaves -> root
             # regardless of what was before, set the profile to ones
-            tmp_log_subtree_LH = np.zeros((L,n_states))
-            node.marginal_subtree_LH_prefactor = np.zeros(L)
+            tmp_log_subtree_LH = np.zeros((L,n_states), dtype=float)
+            node.marginal_subtree_LH_prefactor = np.zeros(L, dtype=float)
             for ch in node.clades:
                 ch.marginal_log_Lx = self.gtr.propagate_profile(ch.marginal_subtree_LH,
                     self._branch_length_to_gtr(ch), return_log=True) # raw prob to transfer prob up
@@ -1403,9 +1404,9 @@ class TreeAnc(object):
                 node.marginal_subtree_LH_prefactor += ch.marginal_subtree_LH_prefactor
 
             tmp_prefactor = np.max(tmp_log_subtree_LH,axis=1)
-            node.marginal_subtree_LH = np.exp(tmp_log_subtree_LH.T-tmp_prefactor).T
-            pre = node.marginal_subtree_LH.sum(axis=1) #sum over nucleotide states
-            node.marginal_subtree_LH = (node.marginal_subtree_LH.T/pre).T # normalize so that the sum is 1
+            tmp_LH = np.exp(tmp_log_subtree_LH.T-tmp_prefactor)
+            pre = tmp_LH.sum(axis=0) #sum over nucleotide states
+            node.marginal_subtree_LH = np.copy((tmp_LH/pre).T) # normalize so that the sum is 1
             node.marginal_subtree_LH_prefactor += np.log(pre) + tmp_prefactor # and store log-prefactor
 
         self.logger("Computing root node sequence and total tree likelihood...",3)
@@ -1452,18 +1453,18 @@ class TreeAnc(object):
 
             # integrate the information coming from parents with the information
             # of all children my multiplying it to the prev computed profile
-            tmp_msg = np.log(node.up.marginal_profile) - node.marginal_log_Lx
-            tmp_prefactor = np.max(tmp_msg, axis=1)
-            tmp_msg = np.exp(tmp_msg.T - tmp_prefactor).T
+            tmp_msg_log = np.log(node.up.marginal_profile) - node.marginal_log_Lx
+            tmp_prefactor = np.max(tmp_msg_log, axis=1)
+            tmp_msg = np.exp(tmp_msg_log.T - tmp_prefactor)
 
-            norm_vector = tmp_msg.sum(axis=1)
-            node.marginal_outgroup_LH = (tmp_msg.T/norm_vector).T
+            norm_vector = tmp_msg.sum(axis=0)
+            node.marginal_outgroup_LH = np.copy((tmp_msg/norm_vector).T)
             tmp_msg_from_parent = self.gtr.evolve(node.marginal_outgroup_LH,
                                                  self._branch_length_to_gtr(node), return_log=False)
-            node.marginal_profile = node.marginal_subtree_LH * tmp_msg_from_parent
+            tmp_profile = (node.marginal_subtree_LH * tmp_msg_from_parent).T
 
-            norm_vector = node.marginal_profile.sum(axis=1)
-            node.marginal_profile=(node.marginal_profile.T/norm_vector).T
+            norm_vector = tmp_profile.sum(axis=0)
+            node.marginal_profile= np.copy((tmp_profile/norm_vector).T)
 
             # choose sequence based maximal marginal LH.
             seq, prof_vals, idxs = prof2seq(node.marginal_profile, self.gtr,
@@ -1493,9 +1494,8 @@ class TreeAnc(object):
         if not debug:
             for node in self.tree.find_clades():
                 try:
-                    # del node.marginal_profile
-                    # del node.marginal_outgroup_LH
-                    del node.marginal_Lx
+                    del node.marginal_log_Lx
+                    del node.marginal_subtree_LH_prefactor
                 except:
                     pass
 
