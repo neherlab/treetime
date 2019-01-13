@@ -5,7 +5,7 @@ import numpy as np
 from Bio import Phylo
 from Bio import AlignIO
 from treetime import config as ttconf
-from .seq_utils import seq2prof,seq2array,prof2seq
+from .seq_utils import seq2prof,seq2array,prof2seq, normalize_profile
 from .gtr import GTR
 from .gtr_site_specific import GTR_site_specific
 
@@ -1419,11 +1419,8 @@ class TreeAnc(object):
                 tmp_log_subtree_LH += ch.marginal_log_Lx
                 node.marginal_subtree_LH_prefactor += ch.marginal_subtree_LH_prefactor
 
-            tmp_prefactor = np.max(tmp_log_subtree_LH,axis=1)
-            tmp_LH = np.exp(tmp_log_subtree_LH.T-tmp_prefactor)
-            pre = tmp_LH.sum(axis=0) #sum over nucleotide states
-            node.marginal_subtree_LH = np.copy((tmp_LH/pre).T) # normalize so that the sum is 1
-            node.marginal_subtree_LH_prefactor += np.log(pre) + tmp_prefactor # and store log-prefactor
+            node.marginal_subtree_LH, offset = normalize_profile(tmp_log_subtree_LH, log=True)
+            node.marginal_subtree_LH_prefactor += offset # and store log-prefactor
 
         self.logger("Computing root node sequence and total tree likelihood...",3)
         # Msg to the root from the distant part (equ frequencies)
@@ -1432,11 +1429,8 @@ class TreeAnc(object):
         else:
             tree.root.marginal_outgroup_LH = np.copy(self.gtr.Pi.T)
 
-
-        tree.root.marginal_profile = tree.root.marginal_outgroup_LH*tree.root.marginal_subtree_LH
-        pre = tree.root.marginal_profile.sum(axis=1)
-        tree.root.marginal_profile = (tree.root.marginal_profile.T/pre).T
-        marginal_LH_prefactor = tree.root.marginal_subtree_LH_prefactor + np.log(pre)
+        tree.root.marginal_profile, pre = normalize_profile(tree.root.marginal_outgroup_LH*tree.root.marginal_subtree_LH)
+        marginal_LH_prefactor = tree.root.marginal_subtree_LH_prefactor + pre
 
         # choose sequence characters from this profile.
         # treat root node differently to avoid piling up mutations on the longer branch
@@ -1469,18 +1463,12 @@ class TreeAnc(object):
 
             # integrate the information coming from parents with the information
             # of all children my multiplying it to the prev computed profile
-            tmp_msg_log = np.log(node.up.marginal_profile) - node.marginal_log_Lx
-            tmp_prefactor = np.max(tmp_msg_log, axis=1)
-            tmp_msg = np.exp(tmp_msg_log.T - tmp_prefactor)
-
-            norm_vector = tmp_msg.sum(axis=0)
-            node.marginal_outgroup_LH = np.copy((tmp_msg/norm_vector).T)
+            node.marginal_outgroup_LH, pre = normalize_profile(np.log(node.up.marginal_profile) - node.marginal_log_Lx,
+                                                               log=True, return_offset=False)
             tmp_msg_from_parent = self.gtr.evolve(node.marginal_outgroup_LH,
                                                  self._branch_length_to_gtr(node), return_log=False)
-            tmp_profile = (node.marginal_subtree_LH * tmp_msg_from_parent).T
 
-            norm_vector = tmp_profile.sum(axis=0)
-            node.marginal_profile= np.copy((tmp_profile/norm_vector).T)
+            node.marginal_profile, pre = normalize_profile(node.marginal_subtree_LH * tmp_msg_from_parent, return_offset=False)
 
             # choose sequence based maximal marginal LH.
             seq, prof_vals, idxs = prof2seq(node.marginal_profile, self.gtr,

@@ -204,7 +204,8 @@ def prof2seq(profile, gtr, sample_from_prof=False):
     """
 
     # normalize profile such that probabilities at each site sum to one
-    tmp_profile=(profile.T/profile.sum(axis=1)).T
+
+    tmp_profile, pre=normalize_profile(profile, return_offset=False)
 
     # sample sequence according to the probabilities in the profile
     # (sampling from cumulative distribution over the different states)
@@ -219,4 +220,36 @@ def prof2seq(profile, gtr, sample_from_prof=False):
     prof_values = tmp_profile[np.arange(tmp_profile.shape[0]), idx]
 
     return seq, prof_values, idx
+
+
+def normalize_profile(in_profile, log=False, return_offset = True):
+    """return a normalized version of a profile matrix
+
+    Parameters
+    ----------
+    in_profile : np.array
+        shape Lxq, will be normalized to one across each row
+    log : bool, optional
+        treat the input as log probabilities
+    return_offset : bool, optional
+        return the log of the scale factor for each row
+
+    Returns
+    -------
+    tuple
+        normalized profile (fresh np object) and offset (if return_offset==True)
+    """
+    if log:
+        # determine max to avoid overflow when exponentiating
+        tmp_prefactor = np.max(in_profile, axis=1)
+        tmp_prof = np.exp(in_profile.T - tmp_prefactor)
+        norm_vector = tmp_prof.sum(axis=0)
+        return (np.copy((tmp_prof/norm_vector).T),
+                np.log(norm_vector)+tmp_prefactor if return_offset else None)
+    else:
+        norm_vector = in_profile.sum(axis=1)
+        return (np.copy((in_profile.T/norm_vector).T),
+                np.log(norm_vector) if return_offset else None)
+
+
 
