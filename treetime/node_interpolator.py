@@ -258,7 +258,6 @@ class NodeInterpolator (Distribution):
         insert_point_idx[1:] = refine_factor
         insert_point_idx[:-1] += refine_factor
         # add additional points if there are any to add
-
         if np.sum(insert_point_idx):
             add_x = np.concatenate([np.linspace(t1,t2,n+2)[1:-1] for t1,t2,n in
                                zip(t_grid_0[1:-2], t_grid_0[2:-1], insert_point_idx) if n>0])

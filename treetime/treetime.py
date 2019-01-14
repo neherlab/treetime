@@ -202,6 +202,7 @@ class TreeTime(ClockTree):
 
             # estimate a relaxed molecular clock
             if relaxed_clock:
+                print("relaxed_clock", relaxed_clock)
                 self.relaxed_clock(**relaxed_clock)
                 need_new_time_tree = True
 
@@ -741,13 +742,13 @@ class TreeTime(ClockTree):
 
         for node in self.tree.find_clades(order='preorder'):
             if node.up is None:
-                node.gamma =- 0.5*node._k1/node._k2
+                node.gamma = max(0.1, -0.5*node._k1/node._k2)
             else:
                 if node.up.up is None:
                     g_up = node.up.gamma
                 else:
                     g_up = node.up.branch_length_interpolator.gamma
-                node.branch_length_interpolator.gamma = (coupling*g_up - 0.5*node._k1)/(coupling+node._k2)
+                node.branch_length_interpolator.gamma = max(0.1,(coupling*g_up - 0.5*node._k1)/(coupling+node._k2))
 
 ###############################################################################
 ### rerooting

@@ -720,12 +720,13 @@ class ClockTree(TreeAnc):
                 return ttconf.ERROR
             rate_std = np.sqrt(self.clock_model['cov'][0,0])
 
-        current_rate = self.clock_model['slope']
+        current_rate = np.abs(self.clock_model['slope'])
         upper_rate = self.clock_model['slope'] + rate_std
         lower_rate = max(0.1*current_rate, self.clock_model['slope'] - rate_std)
         for n in self.tree.find_clades():
             if n.up:
-                n.branch_length_interpolator.gamma*=upper_rate/current_rate
+                n._orig_gamma = n.branch_length_interpolator.gamma
+                n.branch_length_interpolator.gamma = n._orig_gamma*upper_rate/current_rate
 
         self.logger("###ClockTree.calc_rate_susceptibility: run with upper bound of rate estimate", 1)
         self.make_time_tree(**params)
@@ -733,7 +734,7 @@ class ClockTree(TreeAnc):
         for n in self.tree.find_clades():
             n.numdate_rate_variation = [(upper_rate, n.numdate)]
             if n.up:
-                n.branch_length_interpolator.gamma*=lower_rate/upper_rate
+                n.branch_length_interpolator.gamma = n._orig_gamma*lower_rate/current_rate
 
         self.logger("###ClockTree.calc_rate_susceptibility: run with lower bound of rate estimate", 1)
         self.make_time_tree(**params)
@@ -741,7 +742,7 @@ class ClockTree(TreeAnc):
         for n in self.tree.find_clades():
             n.numdate_rate_variation.append((lower_rate, n.numdate))
             if n.up:
-                n.branch_length_interpolator.gamma*=current_rate/lower_rate
+                n.branch_length_interpolator.gamma  = n._orig_gamma
 
         self.logger("###ClockTree.calc_rate_susceptibility: run with central rate estimate", 1)
         self.make_time_tree(**params)

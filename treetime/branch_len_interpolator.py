@@ -118,7 +118,7 @@ class BranchLenInterpolator (Distribution):
 
     @gamma.setter
     def gamma(self, value):
-        self._gamma = value
+        self._gamma = max(ttconf.TINY_NUMBER, value)
 
     @property
     def merger_cost(self):
