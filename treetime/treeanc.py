@@ -1,11 +1,12 @@
 from __future__ import print_function, division, absolute_import
 import time, sys
+import gc
 from collections import defaultdict
 import numpy as np
 from Bio import Phylo
 from Bio import AlignIO
 from treetime import config as ttconf
-from .seq_utils import seq2prof,seq2array,prof2seq
+from .seq_utils import seq2prof,seq2array,prof2seq, normalize_profile
 from .gtr import GTR
 from .gtr_site_specific import GTR_site_specific
 
@@ -123,7 +124,7 @@ class TreeAnc(object):
 
         if self.aln and self.tree:
             if len(self.tree.get_terminals()) != len(self.aln):
-                print("**WARNING: Number of sequences in tree differs from number of sequences in alignment!**")
+                self.logger("**WARNING: Number of sequences in tree differs from number of sequences in alignment!**", 3, warn=True)
 
 
     def logger(self, msg, level, warn=False):
@@ -187,7 +188,7 @@ class TreeAnc(object):
          value : GTR
             the new GTR object
         """
-        if not isinstance(value, GTR):
+        if not (isinstance(value, GTR) or isinstance(value, GTR_site_specific)):
             raise TypeError(" GTR instance expected")
         self._gtr = value
 
@@ -344,15 +345,14 @@ class TreeAnc(object):
             else:
                 self.seq_len = self.aln.get_alignment_length()
 
-
         # check whether the alignment is consistent with a nucleotide alignment.
         likely_alphabet = self._guess_alphabet()
         from .seq_utils import alphabets
         # if likely alignment is not nucleotide but the gtr alignment is, WARN
-        if likely_alphabet=='aa' and len(self.gtr.alphabet)==len(alphabets['nuc']) and np.all(self.gtr.alphabet==alphabets['nuc']):
+        if likely_alphabet=='aa' and self.gtr.n_states==len(alphabets['nuc']) and np.all(self.gtr.alphabet==alphabets['nuc']):
             self.logger('WARNING: small fraction of ACGT-N in alignment. Really a nucleotide alignment? if not, rerun with --aa', 1, warn=True)
         # conversely, warn if alignment is consistent with nucleotide but gtr has a long alphabet
-        if likely_alphabet=='nuc' and len(self.gtr.alphabet)>10:
+        if likely_alphabet=='nuc' and self.gtr.n_states>10:
             self.logger('WARNING: almost exclusively ACGT-N in alignment. Really a protein alignment?', 1, warn=True)
 
         if hasattr(self, '_tree') and (self.tree is not None):
@@ -424,6 +424,21 @@ class TreeAnc(object):
         """
         self._ref = in_ref
 
+    def extend_profile(self):
+        if self.aln:
+            if self.is_vcf and self.ref:
+                unique_chars = np.unique(list(self.ref))
+            else:
+                tmp_unique_chars = []
+                for node in self.tree.get_terminals():
+                    tmp_unique_chars.extend(np.unique(node.sequence))
+                unique_chars = np.unique(tmp_unique_chars)
+            for c in unique_chars:
+                if c not in self.gtr.profile_map:
+                    self.gtr.profile_map[c] = np.ones(self.gtr.n_states)
+                    self.logger("WARNING: character %s is unknown. Treating it as missing information"%c,1,warn=True)
+
+
     def _guess_alphabet(self):
         if self.aln:
             if self.is_vcf and self.ref:
@@ -488,6 +503,8 @@ class TreeAnc(object):
             self.logger("***WARNING: TreeAnc: %d nodes don't have a matching sequence in the alignment."
                         " POSSIBLE ERROR."%failed_leaves, 0, warn=True)
 
+        # extend profile to contain additional unknown characters
+        self.extend_profile()
         return self.make_reduced_alignment()
 
 
@@ -1024,23 +1041,72 @@ class TreeAnc(object):
         numpy.array
             an Lxqxq stack of matrices (q=alphabet size, L (reduced)sequence length)
         """
-        from itertools import product
         pp,pc = self.marginal_branch_profile(node)
-        if pp is None or pc is None:
-            return None
 
+        # calculate pc_i [e^Qt]_ij pp_j for each site
         expQt = self.gtr.expQt(self._branch_length_to_gtr(node))
-        if len(expQt.shape)==3:
-            mut_matrix_stack = np.einsum('ai,aj,ija->aij', pp, pc, expQt)
+        if len(expQt.shape)==3: # site specific model
+            mut_matrix_stack = np.einsum('ai,aj,ija->aij', pc, pp, expQt)
         else:
-            mut_matrix_stack = np.einsum('ai,aj,ij->aij', pp, pc, expQt)
+            mut_matrix_stack = np.einsum('ai,aj,ij->aij', pc, pp, expQt)
 
+        # normalize this distribution
         normalizer = mut_matrix_stack.sum(axis=2).sum(axis=1)
         mut_matrix_stack = np.einsum('aij,a->aij', mut_matrix_stack, 1.0/normalizer)
+
+        # expand to full sequence if requested
         if full_sequence:
             return mut_matrix_stack[self.full_to_reduced_sequence_map]
         else:
             return mut_matrix_stack
+
+
+    def get_rate_length_updates(self, node, full_sequence=False):
+        """uses results from marginal ancestral inference to calculate the
+        branch specific contributions to the non-linear update rules for the rates
+        and times
+
+        Parameters
+        ----------
+        node : Phylo.clade
+            node of the tree
+        full_sequence : bool, optional
+            expand the sequence to the full sequence, if false (default)
+            the there will be one mutation matrix for each column in the
+            reduced alignment
+
+        Returns
+        -------
+        tuple :
+            (denominator, numerator), rates, branch_length
+
+        """
+        pp,pc = self.marginal_branch_profile(node)
+
+        t = self._branch_length_to_gtr(node)
+        expQt = self.gtr.expQt(t)
+        Q = self.gtr.Q
+        mu = self.gtr.mu
+
+        if len(expQt.shape)==3:
+            QexpQt_o_expQt = np.einsum('ija,jka->ika', Q, expQt)/expQt
+            mu_diag = np.einsum('ai,ai,iia->a', pc, pp, QexpQt_o_expQt)
+            mu_offdiag = np.einsum('ai,aj,ija->a', pc, pp, QexpQt_o_expQt) - mu_diag
+
+            # expand to full sequence if requested
+            if full_sequence:
+                return (-mu_diag[self.full_to_reduced_sequence_map],
+                        mu_offdiag[self.full_to_reduced_sequence_map]), mu, t
+            else:
+                return (-mu_diag, mu_offdiag), mu, t
+        else:
+            QexpQt_o_expQt = np.einsum('ika,ik->ika', np.einsum('ija,jk->ika', Q, expQt), 1.0/expQt)
+
+            mu_diag = np.einsum('ai,ai,iia', pc, pp, QexpQt_o_expQt)
+            mu_offdiag = np.einsum('ai,aj,ija', pc, pp, QexpQt_o_expQt) - mu_diag
+
+            # expand to full sequence if requested
+            return (-mu_diag, mu_offdiag), mu, t
 
 
     def expanded_sequence(self, node, include_additional_constant_sites=False):
@@ -1303,7 +1369,7 @@ class TreeAnc(object):
             return max(ttconf.MIN_BRANCH_LENGTH*self.one_mutation, node.branch_length)
 
 
-    def _ml_anc_marginal(self, store_compressed=True, final=True, sample_from_profile=False,
+    def _ml_anc_marginal(self, store_compressed=False, final=True, sample_from_profile=False,
                          debug=False, **kwargs):
         """
         Perform marginal ML reconstruction of the ancestral states. In contrast to
@@ -1335,29 +1401,27 @@ class TreeAnc(object):
         n_states = self.gtr.alphabet.shape[0]
         self.logger("TreeAnc._ml_anc_marginal: type of reconstruction: Marginal", 2)
 
-        self.logger("Walking up the tree, computing likelihoods... ", 3)
+        self.logger("Attaching sequence profiles to leafs... ", 3)
         #  set the leaves profiles
         for leaf in tree.get_terminals():
             # in any case, set the profile
             leaf.marginal_subtree_LH = seq2prof(leaf.original_cseq, self.gtr.profile_map)
             leaf.marginal_subtree_LH_prefactor = np.zeros(L)
 
+        self.logger("Walking up the tree, computing likelihoods... ", 3)
         # propagate leaves --> root, set the marginal-likelihood messages
         for node in tree.get_nonterminals(order='postorder'): #leaves -> root
             # regardless of what was before, set the profile to ones
-            tmp_log_subtree_LH = np.zeros((L,n_states))
-            node.marginal_subtree_LH_prefactor = np.zeros(L)
+            tmp_log_subtree_LH = np.zeros((L,n_states), dtype=float)
+            node.marginal_subtree_LH_prefactor = np.zeros(L, dtype=float)
             for ch in node.clades:
                 ch.marginal_log_Lx = self.gtr.propagate_profile(ch.marginal_subtree_LH,
                     self._branch_length_to_gtr(ch), return_log=True) # raw prob to transfer prob up
                 tmp_log_subtree_LH += ch.marginal_log_Lx
                 node.marginal_subtree_LH_prefactor += ch.marginal_subtree_LH_prefactor
 
-            tmp_prefactor = np.max(tmp_log_subtree_LH,axis=1)
-            node.marginal_subtree_LH = np.exp(tmp_log_subtree_LH.T-tmp_prefactor).T
-            pre = node.marginal_subtree_LH.sum(axis=1) #sum over nucleotide states
-            node.marginal_subtree_LH = (node.marginal_subtree_LH.T/pre).T # normalize so that the sum is 1
-            node.marginal_subtree_LH_prefactor += np.log(pre) + tmp_prefactor # and store log-prefactor
+            node.marginal_subtree_LH, offset = normalize_profile(tmp_log_subtree_LH, log=True)
+            node.marginal_subtree_LH_prefactor += offset # and store log-prefactor
 
         self.logger("Computing root node sequence and total tree likelihood...",3)
         # Msg to the root from the distant part (equ frequencies)
@@ -1366,11 +1430,8 @@ class TreeAnc(object):
         else:
             tree.root.marginal_outgroup_LH = np.copy(self.gtr.Pi.T)
 
-
-        tree.root.marginal_profile = tree.root.marginal_outgroup_LH*tree.root.marginal_subtree_LH
-        pre = tree.root.marginal_profile.sum(axis=1)
-        tree.root.marginal_profile = (tree.root.marginal_profile.T/pre).T
-        marginal_LH_prefactor = tree.root.marginal_subtree_LH_prefactor + np.log(pre)
+        tree.root.marginal_profile, pre = normalize_profile(tree.root.marginal_outgroup_LH*tree.root.marginal_subtree_LH)
+        marginal_LH_prefactor = tree.root.marginal_subtree_LH_prefactor + pre
 
         # choose sequence characters from this profile.
         # treat root node differently to avoid piling up mutations on the longer branch
@@ -1382,11 +1443,12 @@ class TreeAnc(object):
             other_sample_from_profile = sample_from_profile
 
         seq, prof_vals, idxs = prof2seq(tree.root.marginal_profile,
-                                        self.gtr, sample_from_prof=root_sample_from_profile)
+                                        self.gtr, sample_from_prof=root_sample_from_profile, normalize=False)
 
         self.tree.sequence_LH = marginal_LH_prefactor
         self.tree.total_sequence_LH = (self.tree.sequence_LH*self.multiplicity).sum()
         self.tree.root.cseq = seq
+        gc.collect()
 
         if final:
             if self.is_vcf:
@@ -1403,22 +1465,16 @@ class TreeAnc(object):
 
             # integrate the information coming from parents with the information
             # of all children my multiplying it to the prev computed profile
-            tmp_msg = np.log(node.up.marginal_profile) - node.marginal_log_Lx
-            tmp_prefactor = np.max(tmp_msg, axis=1)
-            tmp_msg = np.exp(tmp_msg.T - tmp_prefactor).T
-
-            norm_vector = tmp_msg.sum(axis=1)
-            node.marginal_outgroup_LH = (tmp_msg.T/norm_vector).T
+            node.marginal_outgroup_LH, pre = normalize_profile(np.log(node.up.marginal_profile) - node.marginal_log_Lx,
+                                                               log=True, return_offset=False)
             tmp_msg_from_parent = self.gtr.evolve(node.marginal_outgroup_LH,
                                                  self._branch_length_to_gtr(node), return_log=False)
-            node.marginal_profile = node.marginal_subtree_LH * tmp_msg_from_parent
 
-            norm_vector = node.marginal_profile.sum(axis=1)
-            node.marginal_profile=(node.marginal_profile.T/norm_vector).T
+            node.marginal_profile, pre = normalize_profile(node.marginal_subtree_LH * tmp_msg_from_parent, return_offset=False)
 
             # choose sequence based maximal marginal LH.
             seq, prof_vals, idxs = prof2seq(node.marginal_profile, self.gtr,
-                                                      sample_from_prof=other_sample_from_profile)
+                                            sample_from_prof=other_sample_from_profile, normalize=False)
 
             if hasattr(node, 'cseq') and node.cseq is not None:
                 N_diff += (seq!=node.cseq).sum()
@@ -1444,11 +1500,11 @@ class TreeAnc(object):
         if not debug:
             for node in self.tree.find_clades():
                 try:
-                    # del node.marginal_profile
-                    # del node.marginal_outgroup_LH
-                    del node.marginal_Lx
+                    del node.marginal_log_Lx
+                    del node.marginal_subtree_LH_prefactor
                 except:
                     pass
+        gc.collect()
 
         return N_diff
 
@@ -1632,8 +1688,8 @@ class TreeAnc(object):
 
     def optimize_branch_length(self, mode='joint', **kwargs):
         """
-        Perform optimization for the branch lengths of the whole tree or any
-        subtree.
+        Perform optimization for the branch lengths of the entire tree.
+        This method only does a single path and needs to be iterated.
 
         **Note** this method assumes that each node stores information
         about its sequence as numpy.array object (node.sequence attribute).
@@ -1707,7 +1763,7 @@ class TreeAnc(object):
         # as branch lengths changed, the params must be fixed
         self.tree.root.up = None
         self.tree.root.dist2root = 0.0
-        if max_bl>0.15:
+        if max_bl>0.15 and mode=='joint':
             self.logger("TreeAnc.optimize_branch_length: THIS TREE HAS LONG BRANCHES."
                         " \n\t ****TreeTime IS NOT DESIGNED TO OPTIMIZE LONG BRANCHES."
                         " \n\t ****PLEASE OPTIMIZE BRANCHES WITH ANOTHER TOOL AND RERUN WITH"
@@ -1815,18 +1871,16 @@ class TreeAnc(object):
         '''
         parent = node.up
         if parent is None:
-            self.logger("Branch profiles can't be calculated for the root!",3)
-            return None, None
+            raise Exception("Branch profiles can't be calculated for the root!")
         if not hasattr(node, 'marginal_outgroup_LH'):
-            self.logger("marginal ancestral inference needs to be performed first", 3)
-            return None, None
+            raise Exception("marginal ancestral inference needs to be performed first!")
 
         pc = node.marginal_subtree_LH
         pp = node.marginal_outgroup_LH
         return pp, pc
 
 
-    def optimal_marginal_branch_length(self, node):
+    def optimal_marginal_branch_length(self, node, tol=1e-10):
         '''
         calculate the marginal distribution of sequence states on both ends
         of the branch leading to node,
@@ -1846,7 +1900,7 @@ class TreeAnc(object):
         if node.up is None:
             return self.one_mutation
         pp, pc = self.marginal_branch_profile(node)
-        return self.gtr.optimal_t_compressed((pp, pc), self.multiplicity, profiles=True)
+        return self.gtr.optimal_t_compressed((pp, pc), self.multiplicity, profiles=True, tol=tol)
 
 
     def prune_short_branches(self):

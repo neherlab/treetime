@@ -27,7 +27,7 @@ MIN_INTEGRATION_PEAK = 0.001
 
 # clocktree parameters
 BRANCH_LEN_PENALTY = 0
-MAX_BRANCH_LENGTH = 1.5          # only relevant for time trees - upper boundary of interpolator objects
+MAX_BRANCH_LENGTH = 4.0          # only relevant for branch length optimization and time trees - upper boundary of interpolator objects
 NINTEGRAL = 300
 REL_TOL_PRUNE = 0.01
 REL_TOL_REFINE = 0.05
