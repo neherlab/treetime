@@ -1369,7 +1369,7 @@ class TreeAnc(object):
             return max(ttconf.MIN_BRANCH_LENGTH*self.one_mutation, node.branch_length)
 
 
-    def _ml_anc_marginal(self, store_compressed=True, final=True, sample_from_profile=False,
+    def _ml_anc_marginal(self, store_compressed=False, final=True, sample_from_profile=False,
                          debug=False, **kwargs):
         """
         Perform marginal ML reconstruction of the ancestral states. In contrast to
@@ -1443,7 +1443,7 @@ class TreeAnc(object):
             other_sample_from_profile = sample_from_profile
 
         seq, prof_vals, idxs = prof2seq(tree.root.marginal_profile,
-                                        self.gtr, sample_from_prof=root_sample_from_profile)
+                                        self.gtr, sample_from_prof=root_sample_from_profile, normalize=False)
 
         self.tree.sequence_LH = marginal_LH_prefactor
         self.tree.total_sequence_LH = (self.tree.sequence_LH*self.multiplicity).sum()
@@ -1474,7 +1474,7 @@ class TreeAnc(object):
 
             # choose sequence based maximal marginal LH.
             seq, prof_vals, idxs = prof2seq(node.marginal_profile, self.gtr,
-                                                      sample_from_prof=other_sample_from_profile)
+                                            sample_from_prof=other_sample_from_profile, normalize=False)
 
             if hasattr(node, 'cseq') and node.cseq is not None:
                 N_diff += (seq!=node.cseq).sum()

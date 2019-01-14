@@ -174,7 +174,7 @@ def seq2prof(seq, profile_map):
     return np.array([profile_map[k] for k in seq])
 
 
-def prof2seq(profile, gtr, sample_from_prof=False):
+def prof2seq(profile, gtr, sample_from_prof=False, normalize=True):
     """
     Convert profile to sequence and normalize profile across sites.
 
@@ -204,8 +204,10 @@ def prof2seq(profile, gtr, sample_from_prof=False):
     """
 
     # normalize profile such that probabilities at each site sum to one
-
-    tmp_profile, pre=normalize_profile(profile, return_offset=False)
+    if normalize:
+        tmp_profile, pre=normalize_profile(profile, return_offset=False)
+    else:
+        tmp_profile = profile
 
     # sample sequence according to the probabilities in the profile
     # (sampling from cumulative distribution over the different states)
@@ -241,11 +243,10 @@ def normalize_profile(in_profile, log=False, return_offset = True):
     """
     if log:
         tmp_prof = np.exp(in_profile) # - tmp_prefactor)
-        norm_vector = tmp_prof.sum(axis=1)
-        return (np.copy(np.einsum('ai,a->ai',tmp_prof,1.0/norm_vector)),
-                np.log(norm_vector) if return_offset else None)
     else:
-        norm_vector = in_profile.sum(axis=1)
-        return (np.copy(np.einsum('ai,a->ai',in_profile,1.0/norm_vector)),
-                np.log(norm_vector) if return_offset else None)
+        tmp_prof = in_profile
+
+    norm_vector = tmp_prof.sum(axis=1)
+    return (np.copy(np.einsum('ai,a->ai',tmp_prof,1.0/norm_vector)),
+            np.log(norm_vector) if return_offset else None)
 
