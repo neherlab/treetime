@@ -83,6 +83,7 @@ class GTR(object):
         self.eigenvals =None # eigenvalues
         self.assign_rates()
 
+
     def assign_gap_and_ambiguous(self):
         n_states = len(self.alphabet)
         self.logger("GTR: with alphabet: "+str(self.alphabet),1)
@@ -465,11 +466,7 @@ class GTR(object):
                                                     + ttconf.TINY_NUMBER + 2*pc_mat)
 
             np.fill_diagonal(W_ij, 0)
-            Wdiag = (((W_ij.T*pi).T).sum(axis=0)+ttconf.TINY_NUMBER)/(pi+ttconf.TINY_NUMBER)
-            np.fill_diagonal(W_ij, Wdiag)
-            Q1 = np.diag(pi).dot(W_ij)
-            scale_factor = np.sum(np.diagonal(Q1*np.diag(pi)))
-            np.fill_diagonal(W_ij, 0)
+            scale_factor = np.einsum('i,ij,j',pi,W_ij,pi)
 
             W_ij = W_ij/scale_factor
             if fixed_pi is None:
@@ -1019,7 +1016,7 @@ class GTR(object):
                       for si,state in enumerate(self.alphabet)])
 
     def average_rate(self):
-        return -self.mu*np.einsum('i,ii,i',self.Pi, self.W, self.Pi)
+        return self.mu*np.einsum('i,ij,j',self.Pi, self.W, self.Pi)
 
     def save_to_npz(self, outfile):
         full_gtr = self.mu * np.dot(self.Pi, self.W)

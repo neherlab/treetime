@@ -1061,54 +1061,6 @@ class TreeAnc(object):
             return mut_matrix_stack
 
 
-    def get_rate_length_updates(self, node, full_sequence=False):
-        """uses results from marginal ancestral inference to calculate the
-        branch specific contributions to the non-linear update rules for the rates
-        and times
-
-        Parameters
-        ----------
-        node : Phylo.clade
-            node of the tree
-        full_sequence : bool, optional
-            expand the sequence to the full sequence, if false (default)
-            the there will be one mutation matrix for each column in the
-            reduced alignment
-
-        Returns
-        -------
-        tuple :
-            (denominator, numerator), rates, branch_length
-
-        """
-        pp,pc = self.marginal_branch_profile(node)
-
-        t = self._branch_length_to_gtr(node)
-        expQt = self.gtr.expQt(t)
-        Q = self.gtr.Q
-        mu = self.gtr.mu
-
-        if len(expQt.shape)==3:
-            QexpQt_o_expQt = np.einsum('ija,jka->ika', Q, expQt)/expQt
-            mu_diag = np.einsum('ai,ai,iia->a', pc, pp, QexpQt_o_expQt)
-            mu_offdiag = np.einsum('ai,aj,ija->a', pc, pp, QexpQt_o_expQt) - mu_diag
-
-            # expand to full sequence if requested
-            if full_sequence:
-                return (-mu_diag[self.full_to_reduced_sequence_map],
-                        mu_offdiag[self.full_to_reduced_sequence_map]), mu, t
-            else:
-                return (-mu_diag, mu_offdiag), mu, t
-        else:
-            QexpQt_o_expQt = np.einsum('ika,ik->ika', np.einsum('ija,jk->ika', Q, expQt), 1.0/expQt)
-
-            mu_diag = np.einsum('ai,ai,iia', pc, pp, QexpQt_o_expQt)
-            mu_offdiag = np.einsum('ai,aj,ija', pc, pp, QexpQt_o_expQt) - mu_diag
-
-            # expand to full sequence if requested
-            return (-mu_diag, mu_offdiag), mu, t
-
-
     def expanded_sequence(self, node, include_additional_constant_sites=False):
         """
         Expand a nodes compressed sequence into the real sequence

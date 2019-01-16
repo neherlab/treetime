@@ -291,7 +291,7 @@ class GTR_site_specific(GTR):
     def expQt(self, t):
         # this is currently very slow.
         eLambdaT = np.exp(self.mu*t*self.eigenvals)
-        return np.einsum('jia,ja,kja->ika',self.v, eLambdaT, self.v_inv)
+        return np.einsum('jia,ja,kja->ika', self.v, eLambdaT, self.v_inv)
 
 
     def prop_t_compressed(self, seq_pair, multiplicity, t, return_log=False):

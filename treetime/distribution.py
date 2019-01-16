@@ -52,7 +52,7 @@ class Distribution(object):
             return min(TINY_NUMBER, distribution.xmax - distribution.xmin)
         else:
             # need to guard against out-of-bounds errors
-            return xvals[min(x_u+1,L-1)] - xvals[max(0,x_l-1)]
+            return max(TINY_NUMBER, xvals[min(x_u+1,L-1)] - xvals[max(0,x_l-1)])
 
 
     @classmethod
