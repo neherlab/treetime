@@ -14,7 +14,7 @@ class GTR_site_specific(GTR):
             self.seq_len = kwargs['seq_len']
             kwargs.pop('seq_len')
         else:
-            self.seq_len = 1
+            self.seq_len = 10
         super(GTR_site_specific, self).__init__(**kwargs)
 
 
@@ -29,6 +29,7 @@ class GTR_site_specific(GTR):
         for x in range(tmp.shape[-1]):
             np.fill_diagonal(tmp[:,:,x], -diag_vals[:,x])
         return tmp
+
 
     def assign_rates(self, mu=1.0, pi=None, W=None):
         """
@@ -48,7 +49,10 @@ class GTR_site_specific(GTR):
 
         """
         n = len(self.alphabet)
-        self.mu = np.copy(mu)
+        if np.isscalar(mu):
+            self.mu = mu*np.ones(self.seq_len)
+        else:
+            self.mu = np.copy(mu)
 
         if pi is not None and pi.shape[0]==n:
             self.seq_len = pi.shape[-1]
@@ -77,6 +81,7 @@ class GTR_site_specific(GTR):
         self.mu *=average_rate
 
         self._eig()
+        self._make_expQt_interpolator()
 
 
     @classmethod
@@ -123,6 +128,7 @@ class GTR_site_specific(GTR):
         gtr.mu *= avg_mu/np.mean(gtr.mu)
 
         return gtr
+
 
     @classmethod
     def custom(cls, mu=1.0, pi=None, W=None, **kwargs):
@@ -287,11 +293,30 @@ class GTR_site_specific(GTR):
         self.v = np.swapaxes(vec,0,-1)
         self.v_inv = np.swapaxes(vec_inv, 0,-1)
 
+    def _make_expQt_interpolator(self):
+        self.rate_scale = self.average_rate().mean()
+        t_grid = (1.0/self.rate_scale)*np.concatenate((np.linspace(0,.1,11)[:-1],
+                                                     np.linspace(.1,1,21)[:-1],
+                                                     np.linspace(1,5,21)[:-1],
+                                                     np.linspace(5,10,11)))
+        stacked_expQT = np.stack([self._expQt(t) for t in t_grid], axis=0)
+
+        from scipy.interpolate import interp1d
+        self.expQt_interpolator = interp1d(t_grid, stacked_expQT, axis=0,
+                                           assume_sorted=True, copy=False, kind='linear')
+
+
+    def _expQt(self, t):
+        # this is currently very slow.
+        eLambdaT = np.exp(t*self.mu*self.eigenvals)
+        return np.einsum('jia,ja,kja->ika', self.v, eLambdaT, self.v_inv)
+
 
     def expQt(self, t):
-        # this is currently very slow.
-        eLambdaT = np.exp(self.mu*t*self.eigenvals)
-        return np.einsum('jia,ja,kja->ika', self.v, eLambdaT, self.v_inv)
+        if t*self.rate_scale<10:
+            return self.expQt_interpolator(t*self.rate_scale)
+        else:
+            return self._expQt(t)
 
 
     def prop_t_compressed(self, seq_pair, multiplicity, t, return_log=False):
@@ -418,4 +443,8 @@ class GTR_site_specific(GTR):
 
 
     def average_rate(self):
-        return np.einsum('a,ia,ij,ja->a',self.mu, self.Pi, self.W, self.Pi)
+        if self.Pi.shape[1]>1:
+            return np.einsum('a,ia,ij,ja->a',self.mu, self.Pi, self.W, self.Pi)
+        else:
+            return self.mu*np.einsum('ia,ij,ja->a',self.Pi, self.W, self.Pi)
+

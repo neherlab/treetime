@@ -80,7 +80,7 @@ class GTR(object):
         self.logger("GTR: init with dummy values!", 3)
         self.v = None # right eigenvectors
         self.v_inv = None # left eigenvectors
-        self.eigenvals =None # eigenvalues
+        self.eigenvals = None # eigenvalues
         self.assign_rates()
 
 
