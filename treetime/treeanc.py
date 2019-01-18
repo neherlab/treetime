@@ -1813,7 +1813,7 @@ class TreeAnc(object):
 
 
     def optimize_tree_marginal(self, max_iter=10, infer_gtr=False, damping=0.5,
-                               LHtol=0.1, site_specific_gtr=False, **kwargs):
+                               LHtol=0.1, site_specific_gtr=False):
         self.infer_ancestral_sequences(marginal=True)
         oldLH = self.sequence_LH()
         self.logger("TreeAnc.optimize_tree_marginal: initial, LH=%1.2f, total branch_length %1.4f"%
@@ -1935,6 +1935,29 @@ class TreeAnc(object):
         self.logger("TreeAnc.optimize_tree: Unconstrained sequence LH:%f" % self.tree.unconstrained_sequence_LH , 2)
         return ttconf.SUCCESS
 
+
+    def infer_gtr_iterative(self, max_iter=10, site_specific=False, LHtol=0.1):
+        self.infer_ancestral_sequences(marginal=True)
+        old_p = np.copy(self.gtr.Pi)
+        old_LH = self.sequence_LH()
+
+        for i in range(max_iter):
+            self.infer_gtr(site_specific=site_specific, marginal=True, normalized_rate=True)
+            self.infer_ancestral_sequences(marginal=True)
+
+            dp = np.abs(self.gtr.Pi - old_p).mean() if self.gtr.Pi.shape==old_p.shape else np.nan
+
+            deltaLH = self.sequence_LH() - old_LH
+
+            old_p = np.copy(self.gtr.Pi)
+            old_LH = self.sequence_LH()
+
+            self.logger("TreeAnc.infer_gtr_iterative: iteration %d, LH=%1.2f (%1.2f), deltaP=%1.4f"%
+                        (i, old_LH, deltaLH, dp), 2)
+            if np.abs(deltaLH)<LHtol:
+                self.logger("TreeAnc.infer_gtr_iterative: deltaLH=%f, stopping iteration."%deltaLH,1)
+                break
+        return ttconf.SUCCESS
 
 ###############################################################################
 ### Utility functions
