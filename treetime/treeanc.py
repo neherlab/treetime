@@ -825,7 +825,7 @@ class TreeAnc(object):
 ####################################################################
 
     def infer_gtr(self, marginal=False, site_specific=False, normalized_rate=True,
-                  fixed_pi=None, pc=1.0, **kwargs):
+                  fixed_pi=None, pc=5.0, **kwargs):
         """
         Calculates a GTR model given the multiple sequence alignment and the tree.
         It performs ancestral sequence inferrence (joint or marginal), followed by
