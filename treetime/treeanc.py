@@ -891,12 +891,13 @@ class TreeAnc(object):
                 elif hasattr(c,'mutations'):
                     for a,pos, d in c.mutations:
                         i,j = alpha.index(d), alpha.index(a)
-                        n_ija[i,j,pos]+=1
-                        T_ia[j,pos] += 0.5*self._branch_length_to_gtr(c)
-                        T_ia[i,pos] -= 0.5*self._branch_length_to_gtr(c)
-                    for ni,nuc in enumerate(c.cseq):
+                        cpos = self.full_to_reduced_sequence_map[pos]
+                        n_ija[i,j,cpos]+=1
+                        T_ia[j,cpos] += 0.5*self._branch_length_to_gtr(c)
+                        T_ia[i,cpos] -= 0.5*self._branch_length_to_gtr(c)
+                    for pos,nuc in enumerate(c.cseq):
                         i = alpha.index(nuc)
-                        T_ia[i,pos] += self._branch_length_to_gtr(c)*self.multiplicity[ni]
+                        T_ia[i,pos] += self._branch_length_to_gtr(c)*self.multiplicity[pos]
 
         self.logger("TreeAnc.infer_gtr: counting mutations...done", 3)
 
@@ -1644,7 +1645,12 @@ class TreeAnc(object):
 ###################################################################
 ### Branch length
 ###################################################################
+    def optimize_branch_len(self, **kwargs):
+        """Deprecated in favor of 'optimize_branch_lengths_joint'"""
+        return self.optimize_branch_lengths_joint(**kwargs)
+
     def optimize_branch_len_joint(self, **kwargs):
+        """Deprecated in favor of 'optimize_branch_lengths_joint'"""
         return self.optimize_branch_lengths_joint(**kwargs)
 
     def optimize_branch_lengths_joint(self, **kwargs):
@@ -1672,7 +1678,7 @@ class TreeAnc(object):
 
         """
 
-        self.logger("TreeAnc.optimize_branch_length: running branch length optimization in mode %s..."%mode,1)
+        self.logger("TreeAnc.optimize_branch_length: running branch length optimization using jointML ancestral sequences",1)
         if (self.tree is None) or (self.aln is None):
             self.logger("TreeAnc.optimize_branch_length: ERROR, alignment or tree are missing", 0)
             return ttconf.ERROR

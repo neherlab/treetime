@@ -148,8 +148,8 @@ class TreeTime(ClockTree):
                 self.infer_ancestral_sequences(infer_gtr=infer_gtr, **seq_kwargs)
                 self.prune_short_branches()
         else:
-            self.optimize_sequences_and_branch_length(infer_gtr=infer_gtr,
-                                                      max_iter=1, prune_short=True, **seq_kwargs)
+            self.optimize_tree(infer_gtr=infer_gtr,
+                               max_iter=1, prune_short=True, **seq_kwargs)
         avg_root_to_tip = np.mean([x.dist2root for x in self.tree.get_terminals()])
 
         # optionally reroot the tree either by oldest, best regression or with a specific leaf
@@ -169,8 +169,7 @@ class TreeTime(ClockTree):
             if self.aln:
                 self.infer_ancestral_sequences(**seq_kwargs)
         else:
-            self.optimize_sequences_and_branch_length(max_iter=1, prune_short=False,
-                                                      **seq_kwargs)
+            self.optimize_tree(max_iter=1, prune_short=False,**seq_kwargs)
 
         # infer time tree and optionally resolve polytomies
         self.logger("###TreeTime.run: INITIAL ROUND",0)
@@ -213,8 +212,7 @@ class TreeTime(ClockTree):
                 if n_resolved:
                     self.prepare_tree()
                     if self.branch_length_mode!='input': # otherwise reoptimize branch length while preserving branches without mutations
-                        self.optimize_sequences_and_branch_length(prune_short=False,
-                                                          max_iter=0, **seq_kwargs)
+                        self.optimize_tree(prune_short=False, max_iter=0, **seq_kwargs)
 
                     need_new_time_tree = True
 
