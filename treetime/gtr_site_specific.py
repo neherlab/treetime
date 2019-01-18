@@ -15,7 +15,15 @@ class GTR_site_specific(GTR):
             kwargs.pop('seq_len')
         else:
             self.seq_len = 10
+
+        if 'approximate' in kwargs:
+            self.approximate = kwargs['approximate']
+            kwargs.pop('approximate')
+        else:
+            self.approximate = True
+
         super(GTR_site_specific, self).__init__(**kwargs)
+
 
 
     @property
@@ -29,7 +37,6 @@ class GTR_site_specific(GTR):
         for x in range(tmp.shape[-1]):
             np.fill_diagonal(tmp[:,:,x], -diag_vals[:,x])
         return tmp
-
 
     def assign_rates(self, mu=1.0, pi=None, W=None):
         """
@@ -50,9 +57,9 @@ class GTR_site_specific(GTR):
         """
         n = len(self.alphabet)
         if np.isscalar(mu):
-            self.mu = mu*np.ones(self.seq_len)
+            self._mu = mu*np.ones(self.seq_len)
         else:
-            self.mu = np.copy(mu)
+            self._mu = np.copy(mu)
 
         if pi is not None and pi.shape[0]==n:
             self.seq_len = pi.shape[-1]
@@ -63,7 +70,7 @@ class GTR_site_specific(GTR):
                 self.logger("Ignoring input equilibrium frequencies", 4, warn=True)
             Pi = np.ones(shape=(n,self.seq_len))
 
-        self.Pi = Pi/np.sum(Pi, axis=0)
+        self._Pi = Pi/np.sum(Pi, axis=0)
 
         if W is None or W.shape!=(n,n):
             if (W is not None) and W.shape!=(n,n):
@@ -77,8 +84,8 @@ class GTR_site_specific(GTR):
         np.fill_diagonal(W,0)
         avg_pi = self.Pi.mean(axis=-1)
         average_rate = W.dot(avg_pi).dot(avg_pi)
-        self.W = W/average_rate
-        self.mu *=average_rate
+        self._W = W/average_rate
+        self._mu *=average_rate
 
         self._eig()
         self._make_expQt_interpolator()

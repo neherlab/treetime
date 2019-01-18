@@ -104,6 +104,31 @@ class GTR(object):
 
 
     @property
+    def mu(self):
+        return self._mu
+
+    @property
+    def Pi(self):
+        return self._Pi
+
+    @property
+    def W(self):
+        return self._W
+
+    @W.setter
+    def W(self, value):
+        self.assign_rates(mu=self.mu, pi=self.Pi, W=value)
+
+    @Pi.setter
+    def Pi(self, value):
+        self.assign_rates(mu=self.mu, pi=value, W=self.W)
+
+    @mu.setter
+    def mu(self, value):
+        self.assign_rates(mu=value, pi=self.Pi, W=self.W)
+
+
+    @property
     def Q(self):
         """function that return the product of the transition matrix
            and the equilibrium frequencies to obtain the rate matrix
@@ -164,7 +189,7 @@ class GTR(object):
 
         """
         n = len(self.alphabet)
-        self.mu = mu
+        self._mu = mu
 
         if pi is not None and len(pi)==n:
             Pi = np.array(pi)
@@ -174,7 +199,7 @@ class GTR(object):
                 self.logger("Ignoring input equilibrium frequencies", 4, warn=True)
             Pi = np.ones(shape=(n,))
 
-        self.Pi = Pi/np.sum(Pi)
+        self._Pi = Pi/np.sum(Pi)
 
         if W is None or W.shape!=(n,n):
             if (W is not None) and W.shape!=(n,n):
@@ -187,7 +212,7 @@ class GTR(object):
         else:
             W=np.array(W)
 
-        self.W = 0.5*(W+W.T)
+        self._W = 0.5*(W+W.T)
         self._check_fix_Q(fixed_mu=True)
         self._eig()
 
@@ -448,6 +473,7 @@ class GTR(object):
         Nit = 40
         pc_mat = pc*np.ones_like(nij)
         np.fill_diagonal(pc_mat, 0.0)
+        np.fill_diagonal(nij, 0.0)
         count = 0
         pi_old = np.zeros_like(Ti)
         if fixed_pi is None:
@@ -499,18 +525,17 @@ class GTR(object):
         the definition of the rate matrix. Should be run every time when creating
         custom GTR model.
         """
-        # fix Q
-        self.Pi /= self.Pi.sum() # correct the Pi manually
+
         # NEEDED TO BREAK RATE MATRIX DEGENERACY AND FORCE NP TO RETURN REAL ORTHONORMAL EIGENVECTORS
-        self.W += self.break_degen + self.break_degen.T
+        self._W += self.break_degen + self.break_degen.T
         # fix W
         np.fill_diagonal(self.W, 0)
         Wdiag = -(self.Q).sum(axis=0)/self.Pi
         np.fill_diagonal(self.W, Wdiag)
         scale_factor = -np.sum(np.diagonal(self.Q)*self.Pi)
-        self.W /= scale_factor
+        self._W /= scale_factor
         if not fixed_mu:
-            self.mu *= scale_factor
+            self._mu *= scale_factor
         if (self.Q.sum(axis=0) < 1e-10).sum() <  self.alphabet.shape[0]: # fix failed
             print ("Cannot fix the diagonal of the GTR rate matrix. Should be all zero", self.Q.sum(axis=0))
             import ipdb; ipdb.set_trace()
@@ -1016,7 +1041,7 @@ class GTR(object):
                       for si,state in enumerate(self.alphabet)])
 
     def average_rate(self):
-        return self.mu*np.einsum('i,ij,j',self.Pi, self.W, self.Pi)
+        return -self.mu*np.einsum('ii,i',self.Q, self.Pi)
 
     def save_to_npz(self, outfile):
         full_gtr = self.mu * np.dot(self.Pi, self.W)
