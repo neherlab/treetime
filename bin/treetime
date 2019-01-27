@@ -128,6 +128,9 @@ def add_reroot_group(parser):
     reroot_group.add_argument('--keep-root', required = False, action="store_true", default=False,
             help ="don't reroot the tree. Otherwise, reroot to minimize the "
                   "the residual of the regression of root-to-tip distance and sampling time")
+    parser.add_argument('--tip-slack', type=float, default=10,
+                              help="excess variance associated with terminal nodes accounting for "
+                                   " overdisperion of the molecular clock")
 
 def add_gtr_arguments(parser):
     parser.add_argument('--gtr', default='infer', help=gtr_description)

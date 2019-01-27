@@ -505,7 +505,7 @@ def timetree(params):
     myTree = TreeTime(dates=dates, tree=params.tree, ref=ref,
                       aln=aln, gtr=gtr, seq_len=params.sequence_length,
                       verbose=params.verbose)
-
+    myTree.tip_slack=params.tip_slack
     if not myTree.one_mutation:
         print("TreeTime setup failed, exiting")
         return 1
@@ -786,10 +786,15 @@ def estimate_clock_model(params):
     ###########################################################################
     ### ESTIMATE ROOT (if requested) AND DETERMINE TEMPORAL SIGNAL
     ###########################################################################
+    if params.aln is None and params.sequence_length is None:
+        print("one of arguments '--aln' and '--sequence-length' is required.", file=sys.stderr)
+        return 1
+
     basename = get_basename(params, outdir)
     myTree = TreeTime(dates=dates, tree=params.tree, aln=aln, gtr='JC69',
                       verbose=params.verbose, seq_len=params.sequence_length,
                       ref=ref)
+    myTree.tip_slack=params.tip_slack
     if myTree.tree is None:
         print("ERROR: tree loading failed. exiting...")
         return 1

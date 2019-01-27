@@ -192,11 +192,6 @@ class ClockTree(TreeAnc):
         ----------
         covariation : bool, optional
             account for phylogenetic covariation
-        tip_slack : float, optional
-            the excess variation/branch length associated with terminal nodes. Some
-            terminal branch length is necessary to avoid division by zero. This
-            excess branch length is measured in self.one_mutations.
-
         Returns
         -------
         TreeRegression
@@ -208,7 +203,7 @@ class ClockTree(TreeAnc):
         if covariation:
             om = self.one_mutation
             branch_variance = lambda x:((x.clock_length if hasattr(x,'clock_length') else x.mutation_length)
-                                        +(self.tip_slack*om if x.is_terminal() else 0.0))*om
+                                        +(self.tip_slack**2*om if x.is_terminal() else 0.0))*om
         else:
             branch_variance = lambda x:1.0 if x.is_terminal() else 0.0
 
