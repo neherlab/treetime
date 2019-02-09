@@ -11,7 +11,7 @@ def get_alphabet(a):
     else:
         try:
             return np.array(a)
-        else:
+        except:
             raise TypeError
 
 

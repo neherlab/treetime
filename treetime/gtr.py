@@ -548,8 +548,10 @@ class GTR(object):
         matrices to convert the sequence profiles to the GTR matrix eigenspace
         and hence to speed-up the computations.
         """
-        # eigendecomposition of the rate matrix
-        self.eigenvals, self.v, self.v_inv = self._eig_single_site(self.W, self.Pi)
+        W_nodiag = np.copy(self.W)
+        np.fill_diagonal(W_nodiag, 0)
+
+        self.eigenvals, self.v, self.v_inv = self._eig_single_site(W_nodiag, self.Pi)
 
 
     def _eig_single_site(self, W, p):
@@ -557,11 +559,13 @@ class GTR(object):
         Perform eigendecompositon of the rate matrix and stores the left- and right-
         matrices to convert the sequence profiles to the GTR matrix eigenspace
         and hence to speed-up the computations.
+        NOTE: this assumes the diagonal of W is all zeros
         """
         # eigendecomposition of the rate matrix
         tmpp = np.sqrt(p)
         symQ = W*np.outer(tmpp, tmpp)
         np.fill_diagonal(symQ, -np.sum(W*p, axis=1))
+
         eigvals, eigvecs = np.linalg.eigh(symQ)
         tmp_v = eigvecs.T*tmpp
         one_norm = np.sum(np.abs(tmp_v), axis=1)
