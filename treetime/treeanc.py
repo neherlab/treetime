@@ -1812,7 +1812,7 @@ class TreeAnc(object):
                     clade.up = node.up
 
 
-    def optimize_tree_marginal(self, max_iter=10, infer_gtr=False, damping=0.5,
+    def optimize_tree_marginal(self, max_iter=10, infer_gtr=False, damping=0.75,
                                LHtol=0.1, site_specific_gtr=False):
         self.infer_ancestral_sequences(marginal=True)
         oldLH = self.sequence_LH()
