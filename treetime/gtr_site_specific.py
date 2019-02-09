@@ -271,16 +271,6 @@ class GTR_site_specific(GTR):
         return gtr
 
 
-    def _eig_single_site(self, W, p):
-        tmpp = np.sqrt(p)
-        symQ = W*np.outer(tmpp, tmpp)
-        np.fill_diagonal(symQ, -np.sum(W*p, axis=1))
-        eigvals, eigvecs = np.linalg.eigh(symQ)
-        tmp_v = eigvecs.T*tmpp
-        one_norm = np.sum(np.abs(tmp_v), axis=1)
-        return eigvals, tmp_v.T/one_norm, (eigvecs*one_norm).T/tmpp
-
-
     def _eig(self):
         eigvals, vec, vec_inv = [], [], []
         for pi in range(self.seq_len):
@@ -299,6 +289,7 @@ class GTR_site_specific(GTR):
         self.eigenvals = np.array(eigvals).T
         self.v = np.swapaxes(vec,0,-1)
         self.v_inv = np.swapaxes(vec_inv, 0,-1)
+
 
     def _make_expQt_interpolator(self):
         self.rate_scale = self.average_rate().mean()

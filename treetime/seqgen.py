@@ -13,10 +13,7 @@ class SeqGen(TreeAnc):
 
 
     def sample_from_profile(self, p):
-        if len(p.shape)==2:
-            cum_p = p.cumsum(axis=1).T
-        else:
-            cum_p = np.repeat([p.cumsum(axis=0)], self.seq_len, axis=0).T
+        cum_p = p.cumsum(axis=1).T
 
         prand = np.random.random(self.seq_len)
         seq = self.gtr.alphabet[np.argmax(cum_p>prand, axis=0)]
@@ -28,7 +25,10 @@ class SeqGen(TreeAnc):
         if root_seq:
             self.tree.root.sequence = seq2array(root_seq)
         else:
-            self.tree.root.sequence = self.sample_from_profile(self.gtr.Pi.T)
+            if len(self.gtr.Pi.shape)==2:
+                self.tree.root.sequence = self.sample_from_profile(self.gtr.Pi.T)
+            else:
+                self.tree.root.sequence = self.sample_from_profile(np.repeat([self.gtr.Pi], self.seq_len, axis=0))
 
         for n in self.tree.get_nonterminals(order='preorder'):
             profile_p = seq2prof(n.sequence, self.gtr.profile_map)
