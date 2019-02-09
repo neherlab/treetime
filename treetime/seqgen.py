@@ -13,8 +13,12 @@ class SeqGen(TreeAnc):
 
 
     def sample_from_profile(self, p):
-        cum_p = p.cumsum(axis=1).T
-        prand = np.random.random(p.shape[0])
+        if len(p.shape)==2:
+            cum_p = p.cumsum(axis=1).T
+        else:
+            cum_p = np.repeat([p.cumsum(axis=0)], self.seq_len, axis=0).T
+
+        prand = np.random.random(self.seq_len)
         seq = self.gtr.alphabet[np.argmax(cum_p>prand, axis=0)]
         return seq
 
