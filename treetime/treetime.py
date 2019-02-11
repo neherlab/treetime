@@ -409,7 +409,8 @@ class TreeTime(ClockTree):
         for n in self.tree.find_clades():
             n.branch_length=n.mutation_length
 
-        if root in rerooting_mechanisms or root in deprecated_rerooting_mechanisms:
+        if (type(root) is str) and \
+           (root in rerooting_mechanisms or root in deprecated_rerooting_mechanisms):
             if root in deprecated_rerooting_mechanisms:
                 self.logger('TreeTime.reroot: rerooting mechanisms %s has been renamed to %s'
                              %(root, deprecated_rerooting_mechanisms[root]), 1, warn=True)

@@ -71,9 +71,12 @@ gtr_params_description =  "GTR parameters for the model specified by "\
     "parameters in the GTR creation methods in treetime/nuc_models.py "\
     "or treetime/aa_models.py"
 
-reroot_description = "reroot the tree. Valid choices are "\
-    "'ML', 'ML-rough', 'least-squares', 'min_dev', 'midpoint' or a node name "\
-    " to be used as outgroup. Use --keep-root to keep the current root."
+reroot_description = "reroot the tree using root-to-tip regression. Valid choices are "\
+    "'min_dev', 'min_dev_ML', 'least-squares', 'ML'. "\
+    "Methods involving 'ML' account for the covariance structure "\
+    "introduced by the tree, 'min_dev' doesn't require a positive rate. "\
+    "Alternatively, you can specify a node name "\
+    "to be used as outgroup. Use --keep-root to keep the current root."
 
 tree_description = "Name of file containing the tree in "\
     "newick, nexus, or phylip format. If none is provided, "\
