@@ -302,6 +302,8 @@ class TreeAnc(object):
 
         """
         # load alignment from file if necessary
+
+
         from os.path import isfile
         from Bio.Align import MultipleSeqAlignment
         self._aln = None
@@ -395,6 +397,8 @@ class TreeAnc(object):
         L = self.seq_len
         if L:
             return 1.0/L
+        else:
+            return np.nan
 
     @one_mutation.setter
     def one_mutation(self,om):
@@ -566,7 +570,7 @@ class TreeAnc(object):
             if len(np.unique([len(x) for x in seqs]))>1:
                 self.logger("TreeAnc: Sequences differ in in length! ABORTING",0, warn=True)
                 aln_transpose = None
-                return
+                raise TypeError
             else:
                 aln_transpose = np.array(seqs).T
                 positions = range(aln_transpose.shape[0])
@@ -676,8 +680,12 @@ class TreeAnc(object):
                     n.original_cseq = self.reduced_alignment[seq_count]
                     n.cseq = np.copy(n.original_cseq)
                     seq_count+=1
+                else:
+                    n.original_cseq = None
+                    n.cseq = None
 
         self.logger("TreeAnc: constructed reduced alignment...", 1)
+
         return ttconf.SUCCESS
 
 
@@ -1354,7 +1362,6 @@ class TreeAnc(object):
             at the root but at no other node.
 
         """
-
         tree = self.tree
         # number of nucleotides changed from prev reconstruction
         N_diff = 0
