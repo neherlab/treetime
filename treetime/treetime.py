@@ -6,8 +6,8 @@ from treetime import config as ttconf
 from .utils import tree_layout
 from .clock_tree import ClockTree
 
-rerooting_mechanisms = ["min_dev", "min_dev_ML", "best", "least-squares", "ML"]
-deprecated_rerooting_mechanisms = {"residual":"least-squares", "res":"least-squares"}
+rerooting_mechanisms = ["min_dev", "best", "least-squares"]
+deprecated_rerooting_mechanisms = {"residual":"least-squares", "res":"least-squares", "min_dev_ML": "min_dev", "ML":"least-squares"}
 
 class TreeTime(ClockTree):
     """
@@ -393,9 +393,9 @@ class TreeTime(ClockTree):
          root : str
             Which method should be used to find the best root. Available methods are:
 
-            :code:`best`, `least-squares`, `ML` - minimize squared residual or likelihood of root-to-tip regression
+            :code:`best`, `least-squares` - minimize squared residual or likelihood of root-to-tip regression
 
-            :code:`min_dev`, `min_dev_ML` - minimize variation of root-to-tip distance (accounting for covariation if called with suffix _ML)
+            :code:`min_dev` - minimize variation of root-to-tip distance
 
             :code:`oldest` - choose the oldest node
 
@@ -405,6 +405,9 @@ class TreeTime(ClockTree):
 
           force_positive : bool
             only consider positive rates when searching for the optimal root
+
+          covariation : bool
+             account for covariation in root-to-tip regression
         """
         if type(root) is list and len(root)==1:
             root=str(root[0])
@@ -421,6 +424,8 @@ class TreeTime(ClockTree):
         if (type(root) is str) and \
            (root in rerooting_mechanisms or root in deprecated_rerooting_mechanisms):
             if root in deprecated_rerooting_mechanisms:
+                if "ML" in root:
+                    use_cov=True
                 self.logger('TreeTime.reroot: rerooting mechanisms %s has been renamed to %s'
                              %(root, deprecated_rerooting_mechanisms[root]), 1, warn=True)
                 root = deprecated_rerooting_mechanisms[root]
