@@ -536,7 +536,8 @@ def timetree(params):
                time_marginal="assign" if params.confidence else False,
                vary_rate = vary_rate,
                branch_length_mode = branch_length_mode,
-               fixed_pi=fixed_pi)
+               fixed_pi=fixed_pi,
+               use_covariation = params.covariation)
     if success==ttconf.ERROR: # if TreeTime.run failed, exit
         print("\nTreeTime run FAILED: please check above for errors and/or rerun with --verbose 4.\n")
         return 1
@@ -810,8 +811,9 @@ def estimate_clock_model(params):
 
     if not params.keep_root:
         # reroot to optimal root, this assigns clock_model to myTree
-        if params.reroot in ['ML','best']:
-            myTree.run(root="least-squares", max_iter=0)
+        if params.covariation: # this requires branch length estimates
+            myTree.run(root="least-squares", max_iter=0,
+                       use_covariation=params.covariation)
 
         res = myTree.reroot(params.reroot,
                       force_positive=not params.allow_negative_rate)

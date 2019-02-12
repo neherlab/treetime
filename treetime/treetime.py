@@ -35,7 +35,7 @@ class TreeTime(ClockTree):
     def run(self, root=None, infer_gtr=True, relaxed_clock=None, n_iqd = None,
             resolve_polytomies=True, max_iter=0, Tc=None, fixed_clock_rate=None,
             time_marginal=False, sequence_marginal=False, branch_length_mode='auto',
-            vary_rate=False, use_covariation=True, **kwargs):
+            vary_rate=False, use_covariation=False, **kwargs):
 
         """
         Run TreeTime reconstruction. Based on the input parameters, it divides
@@ -103,7 +103,7 @@ class TreeTime(ClockTree):
             otherwise this standard deviation is estimated from the root-to-tip regression
 
         use_covariation : bool, optional
-            default True, if False, rate estimates will be performed using simple
+            default False, if False, rate estimates will be performed using simple
             regression ignoring phylogenetic covaration between nodes.
 
         **kwargs
@@ -326,9 +326,9 @@ class TreeTime(ClockTree):
 
         terminals = self.tree.get_terminals()
         if reroot:
-            if type(reroot) is str and reroot.startswith("ML"):
+            if type(reroot) is str:
                 self.logger("TreeTime.ClockFilter: filtering with covariance aware methods is not recommended.", 0, warn=True)
-            if self.reroot(root='least-squares' if reroot=='best' else reroot)==ttconf.ERROR:
+            if self.reroot(root='least-squares' if reroot=='best' else reroot, covariation=False)==ttconf.ERROR:
                 return ttconf.ERROR
         else:
             self.get_clock_model(covariation=False)
@@ -383,7 +383,7 @@ class TreeTime(ClockTree):
                         regression=self.clock_model)
 
 
-    def reroot(self, root='least-squares', force_positive=True):
+    def reroot(self, root='least-squares', force_positive=True, covariation=None):
         """
         Find best root and re-root the tree to the new root
 
@@ -412,6 +412,8 @@ class TreeTime(ClockTree):
         if root=='best':
             root='least-squares'
 
+        use_cov = self.use_covariation if covariation is None else covariation
+
         self.logger("TreeTime.reroot: with method or node: %s"%root,0)
         for n in self.tree.find_clades():
             n.branch_length=n.mutation_length
@@ -423,7 +425,7 @@ class TreeTime(ClockTree):
                              %(root, deprecated_rerooting_mechanisms[root]), 1, warn=True)
                 root = deprecated_rerooting_mechanisms[root]
 
-            new_root = self._find_best_root(covariation='ML' in root,
+            new_root = self._find_best_root(covariation=use_cov,
                                             slope = 0.0 if root.startswith('min_dev') else None,
                                             force_positive=force_positive and (not root.startswith('min_dev')))
         else:
@@ -445,7 +447,7 @@ class TreeTime(ClockTree):
             #(Without outgroup_branch_length, gives a trifurcating root, but this will mean
             #mutations may have to occur multiple times.)
             self.tree.root_with_outgroup(new_root, outgroup_branch_length=new_root.branch_length/2)
-            self.get_clock_model(covariation=self.use_covariation)
+            self.get_clock_model(covariation=use_cov)
 
 
         if new_root == ttconf.ERROR:
@@ -470,7 +472,7 @@ class TreeTime(ClockTree):
                 n.clock_length = n.branch_length
         self.prepare_tree()
 
-        self.get_clock_model(covariation=(('ML' in root) and self.use_covariation))
+        self.get_clock_model(covariation=self.use_covariation)
 
         return ttconf.SUCCESS
 

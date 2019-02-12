@@ -72,9 +72,9 @@ gtr_params_description =  "GTR parameters for the model specified by "\
     "or treetime/aa_models.py"
 
 reroot_description = "reroot the tree using root-to-tip regression. Valid choices are "\
-    "'min_dev', 'min_dev_ML', 'least-squares', 'ML'. "\
-    "Methods involving 'ML' account for the covariance structure "\
-    "introduced by the tree, 'min_dev' doesn't require a positive rate. "\
+    "'min_dev', 'least-squares'. 'least-squares' adjusts the root to "\
+    "minimize residuals of the root-to-tip vs sampling time regression, " \
+    "'min_dev' minimizes variance of root-to-tip distances. "\
     "Alternatively, you can specify a node name or a list of node names "\
     "to be used as outgroup. Use --keep-root to keep the current root."
 
@@ -135,6 +135,8 @@ def add_reroot_group(parser):
     parser.add_argument('--tip-slack', type=float, default=10,
                               help="excess variance associated with terminal nodes accounting for "
                                    " overdisperion of the molecular clock")
+    parser.add_argument('--covariation', action='store_true', help="Account for covariation when estimating rates "
+                        "or rerooting using root-to-tip regression, default False.")
 
 def add_gtr_arguments(parser):
     parser.add_argument('--gtr', default='infer', help=gtr_description)

@@ -23,7 +23,7 @@ class ClockTree(TreeAnc):
     """
 
     def __init__(self,  dates=None, debug=False, real_dates=True, precision='auto',
-                 branch_length_mode='joint', *args, **kwargs):
+                 branch_length_mode='joint', use_covariation=False, *args, **kwargs):
 
         """
         ClockTree constructor
@@ -51,6 +51,14 @@ class ClockTree(TreeAnc):
             When not specified, this will default to 1 for short sequences and 2
             for long sequences with L>1e4
 
+         branch_length_mode : str
+            determines whether branch length are calculated using the 'joint' ML,
+            'marginal' ML, or branch length of the input tree ('input').
+
+         use_covariation : bool
+            determines whether root-to-tip regression accounts for covariance
+            introduced by shared ancestry.
+
          **kwargs:
             Key word argments needed to construct parent class (TreeAnc)
 
@@ -69,7 +77,7 @@ class ClockTree(TreeAnc):
         self.rel_tol_refine = ttconf.REL_TOL_REFINE
         self.branch_length_mode = branch_length_mode
         self.clock_model=None
-        self.use_covariation=True # if false, covariation will be ignored in rate estimates.
+        self.use_covariation=use_covariation # if false, covariation will be ignored in rate estimates.
         self._set_precision(precision)
         if self._assign_dates()==ttconf.ERROR:
             raise ValueError("ClockTree requires date constraints!")
