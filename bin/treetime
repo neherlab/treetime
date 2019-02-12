@@ -75,7 +75,7 @@ reroot_description = "reroot the tree using root-to-tip regression. Valid choice
     "'min_dev', 'min_dev_ML', 'least-squares', 'ML'. "\
     "Methods involving 'ML' account for the covariance structure "\
     "introduced by the tree, 'min_dev' doesn't require a positive rate. "\
-    "Alternatively, you can specify a node name "\
+    "Alternatively, you can specify a node name or a list of node names "\
     "to be used as outgroup. Use --keep-root to keep the current root."
 
 tree_description = "Name of file containing the tree in "\
@@ -125,9 +125,9 @@ def add_aln_group(parser, required=True):
 def add_reroot_group(parser):
     parser.add_argument('--clock-filter', type=float, default=3,
                               help="ignore tips that don't follow a loose clock, "
-                                   "'clock-filter=number of interquartile ranges from regression'")
+                                   "'clock-filter=number of interquartile ranges from regression'. Default=3.0")
     reroot_group = parser.add_mutually_exclusive_group()
-    reroot_group.add_argument('--reroot', type=str, default='best', help=reroot_description)
+    reroot_group.add_argument('--reroot', nargs='+', default='best', help=reroot_description)
     reroot_group.add_argument('--keep-root', required = False, action="store_true", default=False,
             help ="don't reroot the tree. Otherwise, reroot to minimize the "
                   "the residual of the regression of root-to-tip distance and sampling time")

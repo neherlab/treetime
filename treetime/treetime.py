@@ -321,10 +321,12 @@ class TreeTime(ClockTree):
         '''
         if n_iqd is None:
             n_iqd = ttconf.NIQD
+        if type(reroot) is list and len(reroot)==1:
+            reroot=str(reroot[0])
 
         terminals = self.tree.get_terminals()
         if reroot:
-            if reroot.startswith("ML"):
+            if type(reroot) is str and reroot.startswith("ML"):
                 self.logger("TreeTime.ClockFilter: filtering with covariance aware methods is not recommended.", 0, warn=True)
             if self.reroot(root='least-squares' if reroot=='best' else reroot)==ttconf.ERROR:
                 return ttconf.ERROR
@@ -393,6 +395,8 @@ class TreeTime(ClockTree):
 
             :code:`best`, `least-squares`, `ML` - minimize squared residual or likelihood of root-to-tip regression
 
+            :code:`min_dev`, `min_dev_ML` - minimize variation of root-to-tip distance (accounting for covariation if called with suffix _ML)
+
             :code:`oldest` - choose the oldest node
 
             :code:`<node_name>` - reroot to the node with name :code:`<node_name>`
@@ -402,10 +406,13 @@ class TreeTime(ClockTree):
           force_positive : bool
             only consider positive rates when searching for the optimal root
         """
+        if type(root) is list and len(root)==1:
+            root=str(root[0])
+
         if root=='best':
             root='least-squares'
 
-        self.logger("TreeTime.reroot: with method or node: %s"%root,1)
+        self.logger("TreeTime.reroot: with method or node: %s"%root,0)
         for n in self.tree.find_clades():
             n.branch_length=n.mutation_length
 
@@ -417,6 +424,7 @@ class TreeTime(ClockTree):
                 root = deprecated_rerooting_mechanisms[root]
 
             new_root = self._find_best_root(covariation='ML' in root,
+                                            slope = 0.0 if root.startswith('min_dev') else None,
                                             force_positive=force_positive and (not root.startswith('min_dev')))
         else:
             if isinstance(root,Phylo.BaseTree.Clade):
@@ -755,7 +763,7 @@ class TreeTime(ClockTree):
 ### rerooting
 ###############################################################################
 
-    def _find_best_root(self, covariation=True, force_positive=True, **kwarks):
+    def _find_best_root(self, covariation=True, force_positive=True, slope=0, **kwarks):
         '''
         Determine the node that, when the tree is rooted on this node, results
         in the best regression of temporal constraints and root to tip distances.
@@ -777,7 +785,7 @@ class TreeTime(ClockTree):
             n.branch_length=n.mutation_length
         self.logger("TreeTime._find_best_root: searching for the best root position...",2)
         Treg = self.setup_TreeRegression(covariation=covariation)
-        return Treg.optimal_reroot(force_positive=force_positive)['node']
+        return Treg.optimal_reroot(force_positive=force_positive, slope=slope)['node']
 
 
 def plot_vs_years(tt, step = None, ax=None, confidence=None, ticks=True, **kwargs):

@@ -801,7 +801,7 @@ def estimate_clock_model(params):
 
     if params.clock_filter:
         n_bad = [n.name for n in myTree.tree.get_terminals() if n.bad_branch]
-        myTree.clock_filter(n_iqd=params.clock_filter)
+        myTree.clock_filter(n_iqd=params.clock_filter, reroot=params.reroot or 'least-squares')
         n_bad_after = [n.name for n in myTree.tree.get_terminals() if n.bad_branch]
         if len(n_bad_after)>len(n_bad):
             print("The following leaves don't follow a loose clock and "
@@ -813,7 +813,7 @@ def estimate_clock_model(params):
         if params.reroot in ['ML','best']:
             myTree.run(root="least-squares", max_iter=0)
 
-        res = myTree.reroot("least-squares",
+        res = myTree.reroot(params.reroot,
                       force_positive=not params.allow_negative_rate)
         myTree.get_clock_model(covariation=(params.reroot!='least-squares'))
 

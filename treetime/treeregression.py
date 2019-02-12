@@ -32,7 +32,7 @@ def base_regression(Q, slope=None):
 
     if only_intercept:
         return {'slope':slope, 'intercept':intercept,
-                'chisq':np.nan}
+                'chisq': 0.5*(Q[dsqii]/Q[sii] - Q[davgii]**2/Q[sii]**2)}
 
     chisq = 0.5*(Q[dsqii] - Q[davgii]**2/Q[sii]
                 - (Q[dtavgii] - Q[davgii]*Q[tavgii]/Q[sii])**2/(Q[tsqii]
@@ -311,7 +311,7 @@ class TreeRegression(object):
 
 
 
-    def find_best_root(self, force_positive=True):
+    def find_best_root(self, force_positive=True, slope=None):
         """
         determine the position on the tree that minimizes the bilinear
         product of the inverse covariance and the data vectors.
@@ -331,50 +331,53 @@ class TreeRegression(object):
             tv = self.tip_value(n)
             bv = self.branch_value(n)
             var = self.branch_variance(n)
-            x, chisq = self._optimal_root_along_branch(n, tv, bv, var)
+            x, chisq = self._optimal_root_along_branch(n, tv, bv, var, slope=slope)
+
             if (chisq<best_root["chisq"]):
                 tmpQ = self.propagate_averages(n, tv, bv*x, var*x) \
                      + self.propagate_averages(n, tv, bv*(1-x), var*(1-x), outgroup=True)
-                reg = base_regression(tmpQ)
-                if reg["slope"]>0 or (force_positive==False):
+                reg = base_regression(tmpQ, slope=slope)
+                if reg["slope"]>=0 or (force_positive==False):
                     best_root = {"node":n, "split":x}
                     best_root.update(reg)
 
         if 'node' not in best_root:
-            print("TreeRegression.find_best_root: Not valid root found!", force_positive)
+            print("TreeRegression.find_best_root: No valid root found!", force_positive)
             return None
 
-        # calculate differentials with respect to x
-        deriv = []
-        n = best_root["node"]
-        tv = self.tip_value(n)
-        bv = self.branch_value(n)
-        var = self.branch_variance(n)
-        for dx in [-0.001, 0.001]:
-            y = min(1.0, max(0.0, best_root["split"]+dx))
-            tmpQ = self.propagate_averages(n, tv, bv*y, var*y) \
-                 + self.propagate_averages(n, tv, bv*(1-y), var*(1-y), outgroup=True)
-            reg = base_regression(tmpQ)
-            deriv.append([y,reg['chisq'], tmpQ[tavgii], tmpQ[davgii]])
+        if 'hessian' in best_root:
+            # calculate differentials with respect to x
+            deriv = []
+            n = best_root["node"]
+            tv = self.tip_value(n)
+            bv = self.branch_value(n)
+            var = self.branch_variance(n)
+            for dx in [-0.001, 0.001]:
+                y = min(1.0, max(0.0, best_root["split"]+dx))
+                tmpQ = self.propagate_averages(n, tv, bv*y, var*y) \
+                     + self.propagate_averages(n, tv, bv*(1-y), var*(1-y), outgroup=True)
+                reg = base_regression(tmpQ, slope=slope)
+                deriv.append([y,reg['chisq'], tmpQ[tavgii], tmpQ[davgii]])
 
-        estimator_hessian = np.zeros((3,3))
-        estimator_hessian[:2,:2] = best_root['hessian']
-        estimator_hessian[2,2] = (deriv[0][1] + deriv[1][1] - 2.0*best_root['chisq'])/(deriv[0][0] - deriv[1][0])**2
-        # estimator_hessian[2,0] = (deriv[0][2] - deriv[1][2])/(deriv[0][0] - deriv[1][0])
-        # estimator_hessian[2,1] = (deriv[0][3] - deriv[1][3])/(deriv[0][0] - deriv[1][0])
-        estimator_hessian[0,2] = estimator_hessian[2,0]
-        estimator_hessian[1,2] = estimator_hessian[2,1]
-        best_root['hessian'] = estimator_hessian
-        best_root['cov'] = np.linalg.inv(estimator_hessian)
+            estimator_hessian = np.zeros((3,3))
+            estimator_hessian[:2,:2] = best_root['hessian']
+            estimator_hessian[2,2] = (deriv[0][1] + deriv[1][1] - 2.0*best_root['chisq'])/(deriv[0][0] - deriv[1][0])**2
+            # estimator_hessian[2,0] = (deriv[0][2] - deriv[1][2])/(deriv[0][0] - deriv[1][0])
+            # estimator_hessian[2,1] = (deriv[0][3] - deriv[1][3])/(deriv[0][0] - deriv[1][0])
+            estimator_hessian[0,2] = estimator_hessian[2,0]
+            estimator_hessian[1,2] = estimator_hessian[2,1]
+            best_root['hessian'] = estimator_hessian
+            best_root['cov'] = np.linalg.inv(estimator_hessian)
+
         return best_root
 
 
-    def _optimal_root_along_branch(self, n, tv, bv, var):
+    def _optimal_root_along_branch(self, n, tv, bv, var, slope=None):
         from scipy.optimize import minimize_scalar
         def chisq(x):
             tmpQ = self.propagate_averages(n, tv, bv*x, var*x) \
                  + self.propagate_averages(n, tv, bv*(1-x), var*(1-x), outgroup=True)
-            return base_regression(tmpQ)['chisq']
+            return base_regression(tmpQ, slope=slope)['chisq']
 
         chisq_prox = np.inf if n.is_terminal() else base_regression(n.Qtot)['chisq']
         chisq_dist = np.inf if n==self.tree.root else base_regression(n.up.Qtot)['chisq']
@@ -396,7 +399,7 @@ class TreeRegression(object):
                 return np.nan, np.inf
 
 
-    def optimal_reroot(self, force_positive=True):
+    def optimal_reroot(self, force_positive=True, slope=None):
         """
         determine the best root and reroot the tree to this value.
         Note that this can change the parent child relations of the tree
@@ -408,12 +411,16 @@ class TreeRegression(object):
         force_positive : bool, optional
             if True, the search for a root will only consider positive rate estimates
 
+        slope : float, optional
+            if given, it will find the optimal root given a fixed rate. If slope==0, this
+            corresponds to minimal root-to-tip variance rooting (min_dev)
+
         Returns
         -------
         dict
             regression parameters
         """
-        best_root = self.find_best_root(force_positive=force_positive)
+        best_root = self.find_best_root(force_positive=force_positive, slope=slope)
         best_node = best_root["node"]
 
         x = best_root["split"]
