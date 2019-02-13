@@ -7,7 +7,8 @@ from .utils import tree_layout
 from .clock_tree import ClockTree
 
 rerooting_mechanisms = ["min_dev", "best", "least-squares"]
-deprecated_rerooting_mechanisms = {"residual":"least-squares", "res":"least-squares", "min_dev_ML": "min_dev", "ML":"least-squares"}
+deprecated_rerooting_mechanisms = {"residual":"least-squares", "res":"least-squares",
+                                   "min_dev_ML": "min_dev", "ML":"least-squares"}
 
 class TreeTime(ClockTree):
     """
@@ -107,7 +108,7 @@ class TreeTime(ClockTree):
             regression ignoring phylogenetic covaration between nodes.
 
         **kwargs
-           Keyword arguments needed by the dowstream functions
+           Keyword arguments needed by the downstream functions
 
 
         Returns
@@ -326,8 +327,6 @@ class TreeTime(ClockTree):
 
         terminals = self.tree.get_terminals()
         if reroot:
-            if type(reroot) is str:
-                self.logger("TreeTime.ClockFilter: filtering with covariance aware methods is not recommended.", 0, warn=True)
             if self.reroot(root='least-squares' if reroot=='best' else reroot, covariation=False)==ttconf.ERROR:
                 return ttconf.ERROR
         else:
@@ -397,7 +396,7 @@ class TreeTime(ClockTree):
 
             :code:`min_dev` - minimize variation of root-to-tip distance
 
-            :code:`oldest` - choose the oldest node
+            :code:`oldest` - reroot on the oldest node
 
             :code:`<node_name>` - reroot to the node with name :code:`<node_name>`
 
@@ -430,6 +429,7 @@ class TreeTime(ClockTree):
                              %(root, deprecated_rerooting_mechanisms[root]), 1, warn=True)
                 root = deprecated_rerooting_mechanisms[root]
 
+            self.logger("TreeTime.reroot: rerooting will %s covariance and shared ancestry."%("account for" if use_cov else "ignore"),0)
             new_root = self._find_best_root(covariation=use_cov,
                                             slope = 0.0 if root.startswith('min_dev') else None,
                                             force_positive=force_positive and (not root.startswith('min_dev')))
