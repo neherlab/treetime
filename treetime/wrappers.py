@@ -838,7 +838,7 @@ def estimate_clock_model(params):
           '\nNegative rates suggest an inappropriate root.\n')
 
     print('\nThe estimated rate and tree correspond to a root date:')
-    if params.reroot in ['ML', 'best', 'ML-rough']:
+    if params.covariation:
         reg = myTree.clock_model
         dp = np.array([reg['intercept']/reg['slope']**2,-1./reg['slope']])
         droot = np.sqrt(reg['cov'][:2,:2].dot(dp).dot(dp))
