@@ -817,14 +817,14 @@ def estimate_clock_model(params):
 
         res = myTree.reroot(params.reroot,
                       force_positive=not params.allow_negative_rate)
-        myTree.get_clock_model(covariation=(params.reroot!='least-squares'))
+        myTree.get_clock_model(covariation=params.covariation)
 
         if res==ttconf.ERROR:
             print("ERROR: unknown root or rooting mechanism!\n"
                   "\tvalid choices are 'least-squares', 'ML', and 'ML-rough'")
             return 1
     else:
-        myTree.get_clock_model(covariation=True)
+        myTree.get_clock_model(covariation=params.covariation)
 
     d2d = utils.DateConversion.from_regression(myTree.clock_model)
     print('\n',d2d)
