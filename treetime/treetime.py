@@ -6,8 +6,9 @@ from treetime import config as ttconf
 from .utils import tree_layout
 from .clock_tree import ClockTree
 
-rerooting_mechanisms = ["min_dev", "min_dev_ML", "best", "least-squares", "ML"]
-deprecated_rerooting_mechanisms = {"residual":"least-squares", "res":"least-squares"}
+rerooting_mechanisms = ["min_dev", "best", "least-squares"]
+deprecated_rerooting_mechanisms = {"residual":"least-squares", "res":"least-squares",
+                                   "min_dev_ML": "min_dev", "ML":"least-squares"}
 
 class TreeTime(ClockTree):
     """
@@ -35,7 +36,7 @@ class TreeTime(ClockTree):
     def run(self, root=None, infer_gtr=True, relaxed_clock=None, n_iqd = None,
             resolve_polytomies=True, max_iter=0, Tc=None, fixed_clock_rate=None,
             time_marginal=False, sequence_marginal=False, branch_length_mode='auto',
-            vary_rate=False, use_covariation=True, **kwargs):
+            vary_rate=False, use_covariation=False, **kwargs):
 
         """
         Run TreeTime reconstruction. Based on the input parameters, it divides
@@ -103,11 +104,11 @@ class TreeTime(ClockTree):
             otherwise this standard deviation is estimated from the root-to-tip regression
 
         use_covariation : bool, optional
-            default True, if False, rate estimates will be performed using simple
+            default False, if False, rate estimates will be performed using simple
             regression ignoring phylogenetic covaration between nodes.
 
         **kwargs
-           Keyword arguments needed by the dowstream functions
+           Keyword arguments needed by the downstream functions
 
 
         Returns
@@ -319,12 +320,12 @@ class TreeTime(ClockTree):
         '''
         if n_iqd is None:
             n_iqd = ttconf.NIQD
+        if type(reroot) is list and len(reroot)==1:
+            reroot=str(reroot[0])
 
         terminals = self.tree.get_terminals()
         if reroot:
-            if reroot.startswith("ML"):
-                self.logger("TreeTime.ClockFilter: filtering with covariance aware methods is not recommended.", 0, warn=True)
-            if self.reroot(root='least-squares' if reroot=='best' else reroot)==ttconf.ERROR:
+            if self.reroot(root='least-squares' if reroot=='best' else reroot, covariation=False)==ttconf.ERROR:
                 return ttconf.ERROR
         else:
             self.get_clock_model(covariation=False)
@@ -379,7 +380,7 @@ class TreeTime(ClockTree):
                         regression=self.clock_model)
 
 
-    def reroot(self, root='least-squares', force_positive=True):
+    def reroot(self, root='least-squares', force_positive=True, covariation=None):
         """
         Find best root and re-root the tree to the new root
 
@@ -389,9 +390,11 @@ class TreeTime(ClockTree):
          root : str
             Which method should be used to find the best root. Available methods are:
 
-            :code:`best`, `least-squares`, `ML` - minimize squared residual or likelihood of root-to-tip regression
+            :code:`best`, `least-squares` - minimize squared residual or likelihood of root-to-tip regression
 
-            :code:`oldest` - choose the oldest node
+            :code:`min_dev` - minimize variation of root-to-tip distance
+
+            :code:`oldest` - reroot on the oldest node
 
             :code:`<node_name>` - reroot to the node with name :code:`<node_name>`
 
@@ -399,21 +402,34 @@ class TreeTime(ClockTree):
 
           force_positive : bool
             only consider positive rates when searching for the optimal root
+
+          covariation : bool
+             account for covariation in root-to-tip regression
         """
+        if type(root) is list and len(root)==1:
+            root=str(root[0])
+
         if root=='best':
             root='least-squares'
 
-        self.logger("TreeTime.reroot: with method or node: %s"%root,1)
+        use_cov = self.use_covariation if covariation is None else covariation
+
+        self.logger("TreeTime.reroot: with method or node: %s"%root,0)
         for n in self.tree.find_clades():
             n.branch_length=n.mutation_length
 
-        if root in rerooting_mechanisms or root in deprecated_rerooting_mechanisms:
+        if (type(root) is str) and \
+           (root in rerooting_mechanisms or root in deprecated_rerooting_mechanisms):
             if root in deprecated_rerooting_mechanisms:
+                if "ML" in root:
+                    use_cov=True
                 self.logger('TreeTime.reroot: rerooting mechanisms %s has been renamed to %s'
                              %(root, deprecated_rerooting_mechanisms[root]), 1, warn=True)
                 root = deprecated_rerooting_mechanisms[root]
 
-            new_root = self._find_best_root(covariation='ML' in root,
+            self.logger("TreeTime.reroot: rerooting will %s covariance and shared ancestry."%("account for" if use_cov else "ignore"),0)
+            new_root = self._find_best_root(covariation=use_cov,
+                                            slope = 0.0 if root.startswith('min_dev') else None,
                                             force_positive=force_positive and (not root.startswith('min_dev')))
         else:
             if isinstance(root,Phylo.BaseTree.Clade):
@@ -434,7 +450,7 @@ class TreeTime(ClockTree):
             #(Without outgroup_branch_length, gives a trifurcating root, but this will mean
             #mutations may have to occur multiple times.)
             self.tree.root_with_outgroup(new_root, outgroup_branch_length=new_root.branch_length/2)
-            self.get_clock_model(covariation=self.use_covariation)
+            self.get_clock_model(covariation=use_cov)
 
 
         if new_root == ttconf.ERROR:
@@ -459,7 +475,7 @@ class TreeTime(ClockTree):
                 n.clock_length = n.branch_length
         self.prepare_tree()
 
-        self.get_clock_model(covariation=(('ML' in root) and self.use_covariation))
+        self.get_clock_model(covariation=self.use_covariation)
 
         return ttconf.SUCCESS
 
@@ -752,7 +768,7 @@ class TreeTime(ClockTree):
 ### rerooting
 ###############################################################################
 
-    def _find_best_root(self, covariation=True, force_positive=True, **kwarks):
+    def _find_best_root(self, covariation=True, force_positive=True, slope=0, **kwarks):
         '''
         Determine the node that, when the tree is rooted on this node, results
         in the best regression of temporal constraints and root to tip distances.
@@ -774,7 +790,7 @@ class TreeTime(ClockTree):
             n.branch_length=n.mutation_length
         self.logger("TreeTime._find_best_root: searching for the best root position...",2)
         Treg = self.setup_TreeRegression(covariation=covariation)
-        return Treg.optimal_reroot(force_positive=force_positive)['node']
+        return Treg.optimal_reroot(force_positive=force_positive, slope=slope)['node']
 
 
 def plot_vs_years(tt, step = None, ax=None, confidence=None, ticks=True, **kwargs):

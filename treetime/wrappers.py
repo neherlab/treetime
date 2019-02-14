@@ -472,9 +472,11 @@ def timetree(params):
 
     dates = utils.parse_dates(params.dates)
     if len(dates)==0:
+        print("No valid dates -- exiting.")
         return 1
 
     if assure_tree(params, tmp_dir='timetree_tmp'):
+        print("No tree -- exiting.")
         return 1
 
     outdir = get_outdir(params, '_treetime')
@@ -505,7 +507,7 @@ def timetree(params):
     myTree = TreeTime(dates=dates, tree=params.tree, ref=ref,
                       aln=aln, gtr=gtr, seq_len=params.sequence_length,
                       verbose=params.verbose)
-
+    myTree.tip_slack=params.tip_slack
     if not myTree.one_mutation:
         print("TreeTime setup failed, exiting")
         return 1
@@ -520,23 +522,37 @@ def timetree(params):
             coalescent = params.coalescent
         else:
             print("unknown coalescent model specification, has to be either "
-                  "a float, 'opt', 'const' or 'skyline'")
-            coalescent = None
+                  "a float, 'opt', 'const' or 'skyline' -- exiting")
+            return 1
 
-    vary_rate = params.confidence
-    if params.clock_std_dev and params.clock_rate:
-        vary_rate = params.clock_std_dev
+    # determine whether confidence intervals are to be computed and how the
+    # uncertainty in the rate estimate should be treated
+    calc_confidence = params.confidence
+    if params.clock_std_dev:
+        vary_rate = params.clock_std_dev if calc_confidence else False
+    elif params.confidence and params.covariation:
+        vary_rate = True
+    elif params.confidence:
+        print("\nOutside of covariance aware mode TreeTime cannot estimate confidence intervals "
+                "without specified standard deviation of the clock rate Please specify '--clock-std-dev' "
+                "or rerun with '--covariance'. Will proceed without confidence estimation")
+        vary_rate = False
+        calc_confidence = False
+    else:
+        vary_rate = False
 
+    # RUN
     root = None if params.keep_root else params.reroot
     success = myTree.run(root=root, relaxed_clock=relaxed_clock_params,
                resolve_polytomies=(not params.keep_polytomies),
                Tc=coalescent, max_iter=params.max_iter,
                fixed_clock_rate=params.clock_rate,
                n_iqd=params.clock_filter,
-               time_marginal="assign" if params.confidence else False,
+               time_marginal="assign" if calc_confidence else False,
                vary_rate = vary_rate,
                branch_length_mode = branch_length_mode,
-               fixed_pi=fixed_pi)
+               fixed_pi=fixed_pi,
+               use_covariation = params.covariation)
     if success==ttconf.ERROR: # if TreeTime.run failed, exit
         print("\nTreeTime run FAILED: please check above for errors and/or rerun with --verbose 4.\n")
         return 1
@@ -588,7 +604,7 @@ def timetree(params):
                 fh.write("%s\t%1.3e\t%1.3e\t%1.3e\t%1.2f\n"%(n.name, n.clock_length, n.mutation_length, myTree.date2dist.clock_rate*g, g))
 
     export_sequences_and_tree(myTree, basename, is_vcf, params.zero_based,
-                              timetree=True, confidence=params.confidence)
+                              timetree=True, confidence=calc_confidence)
 
     return 0
 
@@ -786,17 +802,22 @@ def estimate_clock_model(params):
     ###########################################################################
     ### ESTIMATE ROOT (if requested) AND DETERMINE TEMPORAL SIGNAL
     ###########################################################################
+    if params.aln is None and params.sequence_length is None:
+        print("one of arguments '--aln' and '--sequence-length' is required.", file=sys.stderr)
+        return 1
+
     basename = get_basename(params, outdir)
     myTree = TreeTime(dates=dates, tree=params.tree, aln=aln, gtr='JC69',
                       verbose=params.verbose, seq_len=params.sequence_length,
                       ref=ref)
+    myTree.tip_slack=params.tip_slack
     if myTree.tree is None:
         print("ERROR: tree loading failed. exiting...")
         return 1
 
     if params.clock_filter:
         n_bad = [n.name for n in myTree.tree.get_terminals() if n.bad_branch]
-        myTree.clock_filter(n_iqd=params.clock_filter)
+        myTree.clock_filter(n_iqd=params.clock_filter, reroot=params.reroot or 'least-squares')
         n_bad_after = [n.name for n in myTree.tree.get_terminals() if n.bad_branch]
         if len(n_bad_after)>len(n_bad):
             print("The following leaves don't follow a loose clock and "
@@ -805,19 +826,20 @@ def estimate_clock_model(params):
 
     if not params.keep_root:
         # reroot to optimal root, this assigns clock_model to myTree
-        if params.reroot in ['ML','best']:
-            myTree.run(root="least-squares", max_iter=0)
+        if params.covariation: # this requires branch length estimates
+            myTree.run(root="least-squares", max_iter=0,
+                       use_covariation=params.covariation)
 
-        res = myTree.reroot("least-squares",
+        res = myTree.reroot(params.reroot,
                       force_positive=not params.allow_negative_rate)
-        myTree.get_clock_model(covariation=(params.reroot!='least-squares'))
+        myTree.get_clock_model(covariation=params.covariation)
 
         if res==ttconf.ERROR:
             print("ERROR: unknown root or rooting mechanism!\n"
                   "\tvalid choices are 'least-squares', 'ML', and 'ML-rough'")
             return 1
     else:
-        myTree.get_clock_model(covariation=True)
+        myTree.get_clock_model(covariation=params.covariation)
 
     d2d = utils.DateConversion.from_regression(myTree.clock_model)
     print('\n',d2d)
@@ -831,7 +853,7 @@ def estimate_clock_model(params):
           '\nNegative rates suggest an inappropriate root.\n')
 
     print('\nThe estimated rate and tree correspond to a root date:')
-    if params.reroot in ['ML', 'best', 'ML-rough']:
+    if params.covariation:
         reg = myTree.clock_model
         dp = np.array([reg['intercept']/reg['slope']**2,-1./reg['slope']])
         droot = np.sqrt(reg['cov'][:2,:2].dot(dp).dot(dp))
