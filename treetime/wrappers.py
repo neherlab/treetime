@@ -472,9 +472,11 @@ def timetree(params):
 
     dates = utils.parse_dates(params.dates)
     if len(dates)==0:
+        print("No valid dates -- exiting.")
         return 1
 
     if assure_tree(params, tmp_dir='timetree_tmp'):
+        print("No tree -- exiting.")
         return 1
 
     outdir = get_outdir(params, '_treetime')
@@ -520,20 +522,33 @@ def timetree(params):
             coalescent = params.coalescent
         else:
             print("unknown coalescent model specification, has to be either "
-                  "a float, 'opt', 'const' or 'skyline'")
-            coalescent = None
+                  "a float, 'opt', 'const' or 'skyline' -- exiting")
+            return 1
 
-    vary_rate = params.confidence
-    if params.clock_std_dev and params.clock_rate:
-        vary_rate = params.clock_std_dev
+    # determine whether confidence intervals are to be computed and how the
+    # uncertainty in the rate estimate should be treated
+    calc_confidence = params.confidence
+    if params.clock_std_dev:
+        vary_rate = params.clock_std_dev if calc_confidence else False
+    elif params.confidence and params.covariation:
+        vary_rate = True
+    elif params.confidence:
+        print("\nOutside of covariance aware mode TreeTime cannot estimate confidence intervals "
+                "without specified standard deviation of the clock rate Please specify '--clock-std-dev' "
+                "or rerun with '--covariance'. Will proceed without confidence estimation")
+        vary_rate = False
+        calc_confidence = False
+    else:
+        vary_rate = False
 
+    # RUN
     root = None if params.keep_root else params.reroot
     success = myTree.run(root=root, relaxed_clock=relaxed_clock_params,
                resolve_polytomies=(not params.keep_polytomies),
                Tc=coalescent, max_iter=params.max_iter,
                fixed_clock_rate=params.clock_rate,
                n_iqd=params.clock_filter,
-               time_marginal="assign" if params.confidence else False,
+               time_marginal="assign" if calc_confidence else False,
                vary_rate = vary_rate,
                branch_length_mode = branch_length_mode,
                fixed_pi=fixed_pi,
@@ -589,7 +604,7 @@ def timetree(params):
                 fh.write("%s\t%1.3e\t%1.3e\t%1.3e\t%1.2f\n"%(n.name, n.clock_length, n.mutation_length, myTree.date2dist.clock_rate*g, g))
 
     export_sequences_and_tree(myTree, basename, is_vcf, params.zero_based,
-                              timetree=True, confidence=params.confidence)
+                              timetree=True, confidence=calc_confidence)
 
     return 0
 
