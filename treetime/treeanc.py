@@ -874,7 +874,7 @@ class TreeAnc(object):
         # if ancestral sequences are not in place, reconstruct them
         if marginal  and (not hasattr(self.tree.root,'marginal_profile')):
             self._ml_anc_marginal(final=True, **kwargs)
-        elif (not hasattr(self.tree.root,'cseq')):
+        elif (not hasattr(self.tree.root,'cseq')) or self.tree.root.cseq is None:
             self._ml_anc_joint(final=True, **kwargs)
 
         if (self.tree is None) or (self.aln is None):
