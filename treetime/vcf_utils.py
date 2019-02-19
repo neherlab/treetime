@@ -258,6 +258,7 @@ def read_vcf(vcf_file, ref_file):
             sequences[s] = {}
 
     refSeq = SeqIO.read(ref_file, format='fasta')
+    refSeq = refSeq.upper() #convert to uppercase to avoid unknown chars later
     refSeqStr = str(refSeq.seq)
 
     compress_seq = {'reference':refSeqStr,
