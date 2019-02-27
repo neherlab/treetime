@@ -1827,7 +1827,7 @@ class TreeAnc(object):
                     clade.up = node.up
 
 
-    def optimize_tree_marginal(self, max_iter=10, infer_gtr=False, damping=0.75,
+    def optimize_tree_marginal(self, max_iter=10, infer_gtr=False, pc=1.0, damping=0.75,
                                LHtol=0.1, site_specific_gtr=False):
         self.infer_ancestral_sequences(marginal=True)
         oldLH = self.sequence_LH()
@@ -1848,7 +1848,7 @@ class TreeAnc(object):
             dbl = np.mean(np.abs(tmp[:,0]-tmp[:,1])/(tmp[:,0]+tmp[:,1]))
 
             if infer_gtr:
-                self.infer_gtr(site_specific=site_specific_gtr, marginal=True, normalized_rate=True)
+                self.infer_gtr(site_specific=site_specific_gtr, marginal=True, normalized_rate=True, pc=pc)
 
             self.infer_ancestral_sequences(marginal=True)
 
@@ -1880,7 +1880,7 @@ class TreeAnc(object):
 
     def optimize_tree(self,prune_short=True,
                       marginal_sequences=False, branch_length_mode='joint',
-                      max_iter=5, infer_gtr=False, **kwargs):
+                      max_iter=5, infer_gtr=False, pc=1.0, **kwargs):
         """
         Iteratively set branch lengths and reconstruct ancestral sequences until
         the values of either former or latter do not change. The algorithm assumes
@@ -1917,16 +1917,16 @@ class TreeAnc(object):
 
         """
         if branch_length_mode=='marginal':
-            return self.optimize_tree_marginal(max_iter=max_iter, infer_gtr=infer_gtr,**kwargs)
+            return self.optimize_tree_marginal(max_iter=max_iter, infer_gtr=infer_gtr, pc=1.0, **kwargs)
         elif branch_length_mode=='input':
-            N_diff = self.reconstruct_anc(method='probabilistic', infer_gtr=infer_gtr,
+            N_diff = self.reconstruct_anc(method='probabilistic', infer_gtr=infer_gtr, pc=1.0,
                                           marginal=marginal_sequences, **kwargs)
             return ttconf.success
         elif branch_length_mode!='joint':
             return ttconf.ERROR
 
         self.logger("TreeAnc.optimize_tree: sequences...", 1)
-        N_diff = self.reconstruct_anc(method='probabilistic', infer_gtr=infer_gtr,
+        N_diff = self.reconstruct_anc(method='probabilistic', infer_gtr=infer_gtr, pc=1.0,
                                       marginal=marginal_sequences, **kwargs)
         self.optimize_branch_len(verbose=0, store_old=False, mode=branch_length_mode)
 
@@ -1951,13 +1951,13 @@ class TreeAnc(object):
         return ttconf.SUCCESS
 
 
-    def infer_gtr_iterative(self, max_iter=10, site_specific=False, LHtol=0.1):
+    def infer_gtr_iterative(self, max_iter=10, site_specific=False, LHtol=0.1, pc=1.0):
         self.infer_ancestral_sequences(marginal=True)
         old_p = np.copy(self.gtr.Pi)
         old_LH = self.sequence_LH()
 
         for i in range(max_iter):
-            self.infer_gtr(site_specific=site_specific, marginal=True, normalized_rate=True)
+            self.infer_gtr(site_specific=site_specific, marginal=True, normalized_rate=True, pc=1.0)
             self.infer_ancestral_sequences(marginal=True)
 
             dp = np.abs(self.gtr.Pi - old_p).mean() if self.gtr.Pi.shape==old_p.shape else np.nan
