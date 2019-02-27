@@ -394,11 +394,7 @@ class TreeAnc(object):
         float
             inverse of the uncompressed sequene length - length scale for short branches
         """
-        L = self.seq_len
-        if L:
-            return 1.0/L
-        else:
-            return np.nan
+        return 1.0/self.seq_len if self.seq_len else np.nan
 
     @one_mutation.setter
     def one_mutation(self,om):
@@ -415,6 +411,7 @@ class TreeAnc(object):
         :getter: Returns the string reference sequence
 
         """
+        # delete previous alignment if reference changes
         return self._ref
 
 
@@ -426,7 +423,11 @@ class TreeAnc(object):
         in_ref : str
             reference sequence for the vcf sequence dict as a plain string
         """
+        self._aln = None
+        self.reduced_to_full_sequence_map = None
+        self.multiplicity = None
         self._ref = in_ref
+
 
     def extend_profile(self):
         if self.aln:
@@ -796,12 +797,19 @@ class TreeAnc(object):
         """
         self.tree.root.up = None
         self.tree.root.bad_branch=self.tree.root.bad_branch if hasattr(self.tree.root, 'bad_branch') else False
+        name_set = set()
         internal_node_count = 0
         for clade in self.tree.get_nonterminals(order='preorder'): # parents first
             internal_node_count+=1
-            if clade.name is None:
-                clade.name = "NODE_" + format(self._internal_node_count, '07d')
-                self._internal_node_count += 1
+            if clade.name is None or clade.name in name_set:
+                if clade.name in name_set:
+                    self.logger("WARNING: name clash: %s already used. Renaming node."%clade.name, 2, warn=True)
+                tmp = "NODE_" + format(internal_node_count, '07d')
+                while tmp in name_set:
+                    internal_node_count += 1
+                    tmp = "NODE_" + format(internal_node_count, '07d')
+                clade.name = tmp
+                name_set.add(tmp)
             for c in clade.clades:
                 if c.is_terminal():
                     c.bad_branch = c.bad_branch if hasattr(c, 'bad_branch') else False

@@ -6,4 +6,4 @@ from .treetime import ttconf as treetime_conf
 from .gtr import GTR
 from .merger_models import Coalescent
 from .treeregression import TreeRegression
-version="0.5.5"
+version="0.6.0"
