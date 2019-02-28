@@ -312,7 +312,7 @@ class GTR_site_specific(GTR):
 
     def expQt(self, t):
         if t*self.rate_scale<10:
-            return self.expQt_interpolator(t*self.rate_scale)
+            return self.expQt_interpolator(t)
         else:
             return self._expQt(t)
 
