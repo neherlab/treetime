@@ -171,7 +171,7 @@ class GTR_site_specific(GTR):
         return gtr
 
     @classmethod
-    def infer(cls, sub_ija, T_ia, root_state, pc=0.01,
+    def infer(cls, sub_ija, T_ia, root_state, pc=1.0,
               gap_limit=0.01, Nit=30, dp=1e-5, **kwargs):
         """
         Infer a GTR model by specifying the number of transitions and time spent in each
