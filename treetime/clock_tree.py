@@ -224,6 +224,9 @@ class ClockTree(TreeAnc):
     def get_clock_model(self, covariation=True, slope=None):
         Treg = self.setup_TreeRegression(covariation=covariation)
         self.clock_model = Treg.regression(slope=slope)
+        if not np.isfinite(self.clock_model['slope']):
+            raise ValueError("Clock rate estimation failed. If your data lacks temporal signal, please specify the rate explicitly!")
+
         if not Treg.valid_confidence or (slope is not None):
             if 'cov' in self.clock_model:
                 self.clock_model.pop('cov')

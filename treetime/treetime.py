@@ -160,10 +160,10 @@ class TreeTime(ClockTree):
             else:
                 plot_rtt=False
             reroot_mechanism = 'least-squares' if root=='clock_filter' else root
-            if self.clock_filter(reroot=reroot_mechanism, n_iqd=n_iqd, plot=plot_rtt)==ttconf.ERROR:
+            if self.clock_filter(reroot=reroot_mechanism, n_iqd=n_iqd, plot=plot_rtt, fixed_clock_rate=fixed_clock_rate)==ttconf.ERROR:
                 return ttconf.ERROR
         elif root is not None:
-            if self.reroot(root=root)==ttconf.ERROR:
+            if self.reroot(root=root, clock_rate=fixed_clock_rate)==ttconf.ERROR:
                 return ttconf.ERROR
 
         if self.branch_length_mode=='input':
@@ -181,7 +181,7 @@ class TreeTime(ClockTree):
         self.LH =[[seq_LH, self.tree.positional_joint_LH, 0]]
 
         if root is not None and max_iter:
-            if self.reroot(root='least-squares' if root=='clock_filter' else root)==ttconf.ERROR:
+            if self.reroot(root='least-squares' if root=='clock_filter' else root, clock_rate=fixed_clock_rate)==ttconf.ERROR:
                 return ttconf.ERROR
 
         # iteratively reconstruct ancestral sequences and re-infer
@@ -296,7 +296,7 @@ class TreeTime(ClockTree):
             self.branch_length_mode = 'input'
 
 
-    def clock_filter(self, reroot='least-squares', n_iqd=None, plot=False):
+    def clock_filter(self, reroot='least-squares', n_iqd=None, plot=False, fixed_clock_rate=None):
         '''
         Labels outlier branches that don't seem to follow a molecular clock
         and excludes them from subsequent molecular clock estimation and
@@ -325,10 +325,10 @@ class TreeTime(ClockTree):
 
         terminals = self.tree.get_terminals()
         if reroot:
-            if self.reroot(root='least-squares' if reroot=='best' else reroot, covariation=False)==ttconf.ERROR:
+            if self.reroot(root='least-squares' if reroot=='best' else reroot, covariation=False, clock_rate=fixed_clock_rate)==ttconf.ERROR:
                 return ttconf.ERROR
         else:
-            self.get_clock_model(covariation=False)
+            self.get_clock_model(covariation=False, slope=fixed_clock_rate)
 
         clock_rate = self.clock_model['slope']
         icpt = self.clock_model['intercept']
@@ -347,7 +347,7 @@ class TreeTime(ClockTree):
                 node.bad_branch=False
 
         # redo root estimation after outlier removal
-        if reroot and self.reroot(root=reroot)==ttconf.ERROR:
+        if reroot and self.reroot(root=reroot, clock_rate=fixed_clock_rate)==ttconf.ERROR:
                 return ttconf.ERROR
 
         if plot:
@@ -380,7 +380,7 @@ class TreeTime(ClockTree):
                         regression=self.clock_model)
 
 
-    def reroot(self, root='least-squares', force_positive=True, covariation=None):
+    def reroot(self, root='least-squares', force_positive=True, covariation=None, clock_rate=None):
         """
         Find best root and re-root the tree to the new root
 
@@ -413,6 +413,7 @@ class TreeTime(ClockTree):
             root='least-squares'
 
         use_cov = self.use_covariation if covariation is None else covariation
+        slope = 0.0 if root.startswith('min_dev') else clock_rate
 
         self.logger("TreeTime.reroot: with method or node: %s"%root,0)
         for n in self.tree.find_clades():
@@ -429,7 +430,7 @@ class TreeTime(ClockTree):
 
             self.logger("TreeTime.reroot: rerooting will %s covariance and shared ancestry."%("account for" if use_cov else "ignore"),0)
             new_root = self._find_best_root(covariation=use_cov,
-                                            slope = 0.0 if root.startswith('min_dev') else None,
+                                            slope = slope,
                                             force_positive=force_positive and (not root.startswith('min_dev')))
         else:
             if isinstance(root,Phylo.BaseTree.Clade):
@@ -450,7 +451,7 @@ class TreeTime(ClockTree):
             #(Without outgroup_branch_length, gives a trifurcating root, but this will mean
             #mutations may have to occur multiple times.)
             self.tree.root_with_outgroup(new_root, outgroup_branch_length=new_root.branch_length/2)
-            self.get_clock_model(covariation=use_cov)
+            self.get_clock_model(covariation=use_cov, slope = slope)
 
 
         if new_root == ttconf.ERROR:
@@ -475,7 +476,7 @@ class TreeTime(ClockTree):
                 n.clock_length = n.branch_length
         self.prepare_tree()
 
-        self.get_clock_model(covariation=self.use_covariation)
+        self.get_clock_model(covariation=self.use_covariation, slope=slope)
 
         return ttconf.SUCCESS
 
@@ -768,7 +769,7 @@ class TreeTime(ClockTree):
 ### rerooting
 ###############################################################################
 
-    def _find_best_root(self, covariation=True, force_positive=True, slope=0, **kwarks):
+    def _find_best_root(self, covariation=True, force_positive=True, slope=None, **kwarks):
         '''
         Determine the node that, when the tree is rooted on this node, results
         in the best regression of temporal constraints and root to tip distances.
