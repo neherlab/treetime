@@ -1442,7 +1442,7 @@ class TreeAnc(object):
 
             # integrate the information coming from parents with the information
             # of all children my multiplying it to the prev computed profile
-            node.marginal_outgroup_LH, pre = normalize_profile(np.log(node.up.marginal_profile) - node.marginal_log_Lx,
+            node.marginal_outgroup_LH, pre = normalize_profile(np.log(np.maximum(ttconf.TINY_NUMBER, node.up.marginal_profile)) - node.marginal_log_Lx,
                                                                log=True, return_offset=False)
             tmp_msg_from_parent = self.gtr.evolve(node.marginal_outgroup_LH,
                                                  self._branch_length_to_gtr(node), return_log=False)

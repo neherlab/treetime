@@ -342,7 +342,7 @@ class GTR_site_specific(GTR):
 
         Returns
         -------
-
+`
          res : np.array
             Profile of the sequence after time t in the past.
             Shape = (L, a), where L - sequence length, a - alphabet size.
@@ -351,7 +351,7 @@ class GTR_site_specific(GTR):
         Qt = self.expQt(t)
         res = np.einsum('ai,ija->aj', profile, Qt)
 
-        return np.log(res) if return_log else res
+        return  np.log(np.maximum(ttconf.TINY_NUMBER,res)) if return_log else np.maximum(0,res)
 
 
     def evolve(self, profile, t, return_log=False):
