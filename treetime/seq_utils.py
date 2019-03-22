@@ -242,11 +242,13 @@ def normalize_profile(in_profile, log=False, return_offset = True):
         normalized profile (fresh np object) and offset (if return_offset==True)
     """
     if log:
-        tmp_prof = np.exp(in_profile) # - tmp_prefactor)
+        tmp_prefactor = in_profile.max(axis=1)
+        tmp_prof = np.exp(in_profile.T - tmp_prefactor).T
     else:
+        tmp_prefactor = 0.0
         tmp_prof = in_profile
 
     norm_vector = tmp_prof.sum(axis=1)
     return (np.copy(np.einsum('ai,a->ai',tmp_prof,1.0/norm_vector)),
-            np.log(norm_vector) if return_offset else None)
+            (np.log(norm_vector) + tmp_prefactor) if return_offset else None)
 
