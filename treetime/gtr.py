@@ -792,14 +792,10 @@ class GTR(object):
              t : double
                 Branch length (time between sequences)
 
-             parent :  numpy.array
-                Parent sequence
+             seq_pair : tuple of profiles
+                parent and child sequences
 
-             child : numpy.array
-                Child sequence
-
-             tm :  GTR
-                Model of evolution
+             multiplicity : vector containing the number of times each alignment pattern is observed
 
             Returns
             -------
@@ -872,7 +868,7 @@ class GTR(object):
             logP = -ttconf.BIG_NUMBER
         else:
             Qt = self.expQt(t)
-            if len(Qt.shape)==3:
+            if len(Qt.shape)==3: # site specific GTR model
                 res = np.einsum('ai,ija,aj->a', profile_pair[1], Qt, profile_pair[0])
             else:
                 res = np.einsum('ai,ij,aj->a', profile_pair[1], Qt, profile_pair[0])
@@ -988,9 +984,7 @@ class GTR(object):
 
 
     def expQs(self, s):
-        eLambdaT = np.diag(self._exp_lt(s**2)) # vector length = a
-        Qs = self.v.dot(eLambdaT.dot(self.v_inv))   # This is P(nuc1 | given nuc_2)
-        return np.maximum(0,Qs)
+        return self.expQt(s**2)
 
 
     def expQsds(self, s):
@@ -1000,23 +994,8 @@ class GTR(object):
         Qtds :  Returns 2 V_{ij} \lambda_j s e^{\lambda_j s**2 } V^{-1}_{jk}
                 This is the derivative of the branch probability with respect to s=\sqrt(t)
         '''
-        lambda_eLambdaT = np.diag(2.0*self._exp_lt(s**2)*self.eigenvals*s) # vector length = a
-        Qsds = self.v.dot(lambda_eLambdaT.dot(self.v_inv))
-        return Qsds
-
-
-    def expQsdsds(self, s):
-        '''
-        Returns
-        -------
-        Qtdtdt :  Returns V_{ij} \lambda_j^2 e^{\lambda_j s**2} V^{-1}_{jk}
-                This is the second derivative of the branch probability wrt time
-        '''
-        t=s**2
-        elt = self._exp_lt(t)
-        lambda_eLambdaT = np.diag(elt*(4.0*t*self.eigenvals**2 + 2.0*self.eigenvals))
-        Qsdsds = self.v.dot(lambda_eLambdaT.dot(self.v_inv))
-        return Qsdsds
+        lambda_eLambdaT = np.diag(2.0*self._exp_lt(s**2)*self.eigenvals*s)
+        return self.v.dot(lambda_eLambdaT.dot(self.v_inv))
 
 
     def sequence_logLH(self,seq, pattern_multiplicity=None):
