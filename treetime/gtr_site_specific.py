@@ -7,23 +7,24 @@ from .gtr import GTR
 
 class GTR_site_specific(GTR):
     """
-    Defines General-Time-Reversible model of character evolution.
+    Defines General-Time-Reversible model of character evolution that
+    allows for different models at different sites in the alignment
     """
-    def __init__(self, *args, **kwargs):
-        if 'seq_len' in kwargs:
-            self.seq_len = kwargs['seq_len']
-            kwargs.pop('seq_len')
-        else:
-            self.seq_len = 10
+    def __init__(self, seq_len=1, approximate=True, **kwargs):
+        """constructor for site specfic GTR models
 
-        if 'approximate' in kwargs:
-            self.approximate = kwargs['approximate']
-            kwargs.pop('approximate')
-        else:
-            self.approximate = True
-
+        Parameters
+        ----------
+        seq_len : int, optional
+            number of sites, determines dimensions of frequency vectors etc
+        approximate : bool, optional
+            use linear interpolation for exponentiated matrices to speed up calcuations
+        **kwargs
+            Description
+        """
+        self.seq_len=seq_len
+        self.approximate = self.approximate
         super(GTR_site_specific, self).__init__(**kwargs)
-
 
 
     @property
@@ -37,6 +38,7 @@ class GTR_site_specific(GTR):
         for x in range(tmp.shape[-1]):
             np.fill_diagonal(tmp[:,:,x], -diag_vals[:,x])
         return tmp
+
 
     def assign_rates(self, mu=1.0, pi=None, W=None):
         """
@@ -66,18 +68,13 @@ class GTR_site_specific(GTR):
             Pi = np.copy(pi)
         else:
             if pi is not None and len(pi)!=n:
-                self.logger("length of equilibrium frequency vector does not match alphabet length", 4, warn=True)
-                self.logger("Ignoring input equilibrium frequencies", 4, warn=True)
-            Pi = np.ones(shape=(n,self.seq_len))
+                raise ArgumentError("GTR_site_specific: length of equilibrium frequency vector does not match alphabet length.")
 
         self._Pi = Pi/np.sum(Pi, axis=0)
 
         if W is None or W.shape!=(n,n):
             if (W is not None) and W.shape!=(n,n):
-                self.logger("Substitution matrix size does not match alphabet size", 4, warn=True)
-                self.logger("Ignoring input substitution matrix", 4, warn=True)
-            # flow matrix
-            W = np.ones((n,n))
+                raise ArgumentError("GTR_site_specific: Size of substitution matrix does not match alphabet length.")
         else:
             W=0.5*(np.copy(W)+np.copy(W).T)
 
@@ -99,15 +96,25 @@ class GTR_site_specific(GTR):
 
         Parameters
         ----------
+        L : int, optional
+            number of sites for which to generate a model
+        avg_mu : float
+           Substitution rate
+        alphabet : str
+           Alphabet name (should be standard: 'nuc', 'nuc_gap', 'aa', 'aa_gap')
+        pi_dirichlet_alpha : float, optional
+            parameter of dirichlet distribution
+        W_dirichlet_alpha : float, optional
+            parameter of dirichlet distribution
+        mu_gamma_alpha : float, optional
+            parameter of dirichlet distribution
 
-         mu : float
-            Substitution rate
-
-         alphabet : str
-            Alphabet name (should be standard: 'nuc', 'nuc_gap', 'aa', 'aa_gap')
-
-
+        Returns
+        -------
+        GTR_site_specific
+            model with randomly sampled frequencies
         """
+
         from scipy.stats import gamma
         alphabet=alphabets[alphabet]
         gtr = cls(alphabet=alphabet, seq_len=L)
@@ -169,6 +176,7 @@ class GTR_site_specific(GTR):
         gtr = cls(**kwargs)
         gtr.assign_rates(mu=mu, pi=pi, W=W)
         return gtr
+
 
     @classmethod
     def infer(cls, sub_ija, T_ia, root_state, pc=1.0,
@@ -292,6 +300,9 @@ class GTR_site_specific(GTR):
 
 
     def _make_expQt_interpolator(self):
+        """Function that evaluates the exponentiated substitution matrix at multiple
+        time points and constructs a linear interpolation object
+        """
         self.rate_scale = self.average_rate().mean()
         t_grid = (1.0/self.rate_scale)*np.concatenate((np.linspace(0,.1,11)[:-1],
                                                      np.linspace(.1,1,21)[:-1],
@@ -305,13 +316,25 @@ class GTR_site_specific(GTR):
 
 
     def _expQt(self, t):
-        # this is currently very slow.
+        """Raw numerical matrix exponentiation using the diagonalized matrix.
+        This is the computational bottleneck in many simulations.
+
+        Parameters
+        ----------
+        t : float
+            time
+
+        Returns
+        -------
+        np.array
+            stack of matrices for each site
+        """
         eLambdaT = np.exp(t*self.mu*self.eigenvals)
         return np.einsum('jia,ja,kja->ika', self.v, eLambdaT, self.v_inv)
 
 
     def expQt(self, t):
-        if t*self.rate_scale<10:
+        if t*self.rate_scale<10 and self.approximate:
             return self.expQt_interpolator(t)
         else:
             return self._expQt(t)
