@@ -533,9 +533,9 @@ def timetree(params):
     elif params.confidence and params.covariation:
         vary_rate = True
     elif params.confidence:
-        print("\nOutside of covariance aware mode TreeTime cannot estimate confidence intervals "
-                "without specified standard deviation of the clock rate Please specify '--clock-std-dev' "
-                "or rerun with '--covariance'. Will proceed without confidence estimation")
+        print("\nOutside of covariation aware mode TreeTime cannot estimate confidence intervals "
+                "without specified standard deviation of the clock rate. \nPlease specify '--clock-std-dev' "
+                "or rerun with '--covariation'. \nWill proceed without confidence estimation")
         vary_rate = False
         calc_confidence = False
     else:

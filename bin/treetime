@@ -178,7 +178,7 @@ if __name__ == '__main__':
     t_parser.add_argument('--clock-std-dev', type=float, help="standard deviation of the provided clock rate estimate")
     t_parser.add_argument('--branch-length-mode', default='auto', type=str, choices=['auto', 'input', 'joint', 'marginal'],
                         help="If set to 'input', the provided branch length will be used without modification. "
-                             "Note that branch lengths optimized by treetime are only accurate at short evolutionary distances.")
+                             "Note that branch lengths optimized in mode `joint` are only accurate when all branches are short.")
     t_parser.add_argument('--confidence', action='store_true', help="estimate confidence intervals of divergence times.")
     t_parser.add_argument('--keep-polytomies', default=False, action='store_true',
                         help="Don't resolve polytomies using temporal information.")
@@ -199,9 +199,9 @@ if __name__ == '__main__':
                             help = "filename to save the plot to. Suffix will determine format"
                                    " (choices pdf, png, svg, default=pdf)")
     t_parser.add_argument('--tip-labels', action='store_true',
-                            help = "add tip labels (default for small trees with <30 leaves)")
+                            help = "add tip labels (default behavior for small trees with <30 leaves)")
     t_parser.add_argument('--no-tip-labels', action='store_true',
-                            help = "don't show tip labels (default for small trees with >=30 leaves)")
+                            help = "don't show tip labels (default behavior for trees with >=30 leaves)")
     add_anc_arguments(t_parser)
     add_common_args(t_parser)
 
