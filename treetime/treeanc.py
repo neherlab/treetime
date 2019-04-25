@@ -797,19 +797,17 @@ class TreeAnc(object):
         """
         self.tree.root.up = None
         self.tree.root.bad_branch=self.tree.root.bad_branch if hasattr(self.tree.root, 'bad_branch') else False
-        name_set = set()
+        name_set = set([n.name for n in self.tree.find_clades() if n.name])
         internal_node_count = 0
         for clade in self.tree.get_nonterminals(order='preorder'): # parents first
-            internal_node_count+=1
-            if clade.name is None or clade.name in name_set:
-                if clade.name in name_set:
-                    self.logger("WARNING: name clash: %s already used. Renaming node."%clade.name, 2, warn=True)
+            if clade.name is None:
                 tmp = "NODE_" + format(internal_node_count, '07d')
                 while tmp in name_set:
                     internal_node_count += 1
                     tmp = "NODE_" + format(internal_node_count, '07d')
                 clade.name = tmp
-                name_set.add(tmp)
+                name_set.add(clade.name)
+            internal_node_count+=1
             for c in clade.clades:
                 if c.is_terminal():
                     c.bad_branch = c.bad_branch if hasattr(c, 'bad_branch') else False
