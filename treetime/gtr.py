@@ -562,6 +562,8 @@ class GTR(object):
         NOTE: this assumes the diagonal of W is all zeros
         """
         # eigendecomposition of the rate matrix
+        assert np.abs(np.diag(W).sum())<1e-10
+
         tmpp = np.sqrt(p)
         symQ = W*np.outer(tmpp, tmpp)
         np.fill_diagonal(symQ, -np.sum(W*p, axis=1))
@@ -819,7 +821,7 @@ class GTR(object):
             if 'success' not in opt:
                 opt['success'] = True
                 self.logger("WARNING: the optimization result does not contain a 'success' flag:"+str(opt),4, warn=True)
-        except:
+        except ImportError:
             import scipy
             print('legacy scipy', scipy.__version__)
             from scipy.optimize import fminbound

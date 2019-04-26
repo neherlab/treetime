@@ -23,7 +23,7 @@ class GTR_site_specific(GTR):
             Description
         """
         self.seq_len=seq_len
-        self.approximate = self.approximate
+        self.approximate = approximate
         super(GTR_site_specific, self).__init__(**kwargs)
 
 
@@ -69,12 +69,16 @@ class GTR_site_specific(GTR):
         else:
             if pi is not None and len(pi)!=n:
                 raise ArgumentError("GTR_site_specific: length of equilibrium frequency vector does not match alphabet length.")
+            Pi = np.ones(shape=(n,self.seq_len))
 
         self._Pi = Pi/np.sum(Pi, axis=0)
 
         if W is None or W.shape!=(n,n):
             if (W is not None) and W.shape!=(n,n):
                 raise ArgumentError("GTR_site_specific: Size of substitution matrix does not match alphabet length.")
+            W = np.ones((n,n))
+            np.fill_diagonal(W, 0.0)
+            np.fill_diagonal(W, - W.sum(axis=0))
         else:
             W=0.5*(np.copy(W)+np.copy(W).T)
 
@@ -270,7 +274,7 @@ class GTR_site_specific(GTR):
             for p in range(p_ia.shape[-1]):
                 if p_ia[gtr.gap_index,p]<gap_limit:
                     gtr.logger('The model allows for gaps which are estimated to occur at a low fraction of %1.3e'%p_ia[gtr.gap_index]+
-                           '\n\t\tthis can potentially result in artificats.'+
+                           '\n\t\tthis can potentially result in artifacts.'+
                            '\n\t\tgap fraction will be set to %1.4f'%gap_limit,2,warn=True)
                 p_ia[gtr.gap_index,p] = gap_limit
                 p_ia[:,p] /= p_ia[:,p].sum()

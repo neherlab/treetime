@@ -147,7 +147,6 @@ class TreeTime(ClockTree):
         if self.branch_length_mode=='input':
             if self.aln:
                 self.infer_ancestral_sequences(infer_gtr=infer_gtr, **seq_kwargs)
-                self.prune_short_branches()
         else:
             self.optimize_tree(infer_gtr=infer_gtr,
                                max_iter=1, prune_short=True, **seq_kwargs)
