@@ -1817,8 +1817,9 @@ class TreeAnc(object):
                 continue
 
             # probability of the two seqs separated by zero time is not zero
-            if self.gtr.prob_t(node.up.cseq, node.cseq, 0.0,
-                               pattern_multiplicity=self.multiplicity) > 0.1:
+            if  ((node.branch_length<0.1*self.one_mutation) and
+                 (self.gtr.prob_t(node.up.cseq, node.cseq, 0.0,
+                                  pattern_multiplicity=self.multiplicity) > 0.1)):
                 # re-assign the node children directly to its parent
                 node.up.clades = [k for k in node.up.clades if k != node] + node.clades
                 for clade in node.clades:
