@@ -916,8 +916,13 @@ class TreeAnc(object):
         self.logger("TreeAnc.infer_gtr: counting mutations...done", 3)
 
         if site_specific:
-            self._gtr = GTR_site_specific.infer(n_ija, T_ia, pc=pc, root_state=self.tree.root.marginal_profile.T,
-                                                alphabet=self.gtr.alphabet)
+            if marginal:
+                root_state = self.tree.root.marginal_profile.T
+            else:
+                root_state = seq2prof(self.tree.root.cseq, self.gtr.profile_map).T
+            self._gtr = GTR_site_specific.infer(n_ija, T_ia, pc=pc,
+                            root_state=root_state,
+                            alphabet=self.gtr.alphabet)
         else:
             root_state = np.array([np.sum((self.tree.root.cseq==nuc)*self.multiplicity) for nuc in alpha])
             n_ij = n_ija.sum(axis=-1)

@@ -210,9 +210,8 @@ class GTR_site_specific(GTR):
          Tia :n vector
             The time spent in each character state at position a
 
-         root_state : n vector
-            The number of characters in state i in the sequence
-            of the root node.
+         root_state : np.array
+            probability that site a is in state i.
 
          pc : float
             Pseudocounts, this determines the lower cutoff on the rate when
