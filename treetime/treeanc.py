@@ -1950,13 +1950,35 @@ class TreeAnc(object):
         return ttconf.SUCCESS
 
 
-    def infer_gtr_iterative(self, max_iter=10, site_specific=False, LHtol=0.1, pc=1.0):
+    def infer_gtr_iterative(self, max_iter=10, site_specific=False, LHtol=0.1,
+                            pc=1.0, normalized_rate=False):
+        """infer GTR model by iteratively estimating ancestral sequences and the GTR model
+
+        Parameters
+        ----------
+        max_iter : int, optional
+            maximal number of iterations
+        site_specific : bool, optional
+            use a site specific model
+        LHtol : float, optional
+            stop iteration when LH improvement falls below this cutoff
+        pc : float, optional
+            pseudocount to use
+        normalized_rate : bool, optional
+            set the overall rate to 1 (makes sense when optimizing branch lengths as well)
+
+        Returns
+        -------
+        str
+            success/failure code
+        """
         self.infer_ancestral_sequences(marginal=True)
         old_p = np.copy(self.gtr.Pi)
         old_LH = self.sequence_LH()
 
         for i in range(max_iter):
-            self.infer_gtr(site_specific=site_specific, marginal=True, normalized_rate=True, pc=pc)
+            self.infer_gtr(site_specific=site_specific, marginal=True,
+                           normalized_rate=normalized_rate, pc=pc)
             self.infer_ancestral_sequences(marginal=True)
 
             dp = np.abs(self.gtr.Pi - old_p).mean() if self.gtr.Pi.shape==old_p.shape else np.nan
