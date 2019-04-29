@@ -1073,7 +1073,7 @@ class TreeAnc(object):
         pp,pc = self.marginal_branch_profile(node)
 
         # calculate pc_i [e^Qt]_ij pp_j for each site
-        expQt = self.gtr.expQt(self._branch_length_to_gtr(node))
+        expQt = self.gtr.expQt(self._branch_length_to_gtr(node)) + ttconf.SUPERTINY_NUMBER
         if len(expQt.shape)==3: # site specific model
             mut_matrix_stack = np.einsum('ai,aj,ija->aij', pc, pp, expQt)
         else:
@@ -1807,8 +1807,17 @@ class TreeAnc(object):
 
         if node.up is None:
             return self.one_mutation
-        pp, pc = self.marginal_branch_profile(node)
-        return self.gtr.optimal_t_compressed((pp, pc), self.multiplicity, profiles=True, tol=tol)
+        if node.up.up is None and len(node.up.clades)==2:
+            # children of a bifurcating root!
+            other = node.up.clades[0] if node==node.up.clades[1] else node.up.clades[1]
+            bl_ratio = node.branch_length/(node.branch_length+other.branch_length)
+            pc = node.marginal_subtree_LH
+            pp = normalize_profile(other.marginal_subtree_LH*self.tree.root.marginal_outgroup_LH)[0]
+            new_bl = self.gtr.optimal_t_compressed((pp, pc), self.multiplicity, profiles=True, tol=tol)
+            return bl_ratio*new_bl
+        else:
+            pp, pc = self.marginal_branch_profile(node)
+            return self.gtr.optimal_t_compressed((pp, pc), self.multiplicity, profiles=True, tol=tol)
 
 
     def prune_short_branches(self):
@@ -1862,7 +1871,7 @@ class TreeAnc(object):
 
             self.logger("TreeAnc.optimize_tree_marginal: iteration %d, LH=%1.2f (%1.2f), delta branch_length=%1.4f, total branch_length %1.4f"%
                         (i, LH, deltaLH, dbl, self.tree.total_branch_length()), 2)
-            if np.abs(deltaLH)<LHtol:
+            if deltaLH<LHtol:
                 self.logger("TreeAnc.optimize_tree_marginal: deltaLH=%f, stopping iteration."%deltaLH,1)
                 break
         return ttconf.SUCCESS
@@ -1995,7 +2004,7 @@ class TreeAnc(object):
 
             self.logger("TreeAnc.infer_gtr_iterative: iteration %d, LH=%1.2f (%1.2f), deltaP=%1.4f"%
                         (i, old_LH, deltaLH, dp), 2)
-            if np.abs(deltaLH)<LHtol:
+            if deltaLH<LHtol:
                 self.logger("TreeAnc.infer_gtr_iterative: deltaLH=%f, stopping iteration."%deltaLH,1)
                 break
         return ttconf.SUCCESS

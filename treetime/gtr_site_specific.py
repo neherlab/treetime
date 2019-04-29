@@ -254,16 +254,17 @@ class GTR_site_specific(GTR):
             p_ia_old = np.copy(p_ia)
             S_ij = np.einsum('a,ia,ja',mu_a, p_ia, T_ia)
             W_ij = (n_ij + n_ij.T + pc)/(S_ij + S_ij.T + pc)
-
+            
             avg_pi = p_ia.mean(axis=-1)
             average_rate = W_ij.dot(avg_pi).dot(avg_pi)
             W_ij = W_ij/average_rate
             mu_a *=average_rate
-
+            
             p_ia = m_ia/(mu_a*np.dot(W_ij,T_ia)+Lambda)
             p_ia = p_ia/p_ia.sum(axis=0)
-
+            
             mu_a = n_a/(pc+np.einsum('ia,ij,ja->a', p_ia, W_ij, T_ia))
+
 
         if n_iter >= Nit:
             gtr.logger('WARNING: maximum number of iterations has been reached in GTR inference',3, warn=True)

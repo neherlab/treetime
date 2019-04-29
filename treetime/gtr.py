@@ -808,7 +808,7 @@ class GTR(object):
             """
             if profiles:
                 res = -1.0*self.prob_t_profiles(seq_pair, multiplicity,t**2, return_log=True)
-                return res
+                return res + np.exp(t**4/10000)
             else:
                 return -1.0*self.prob_t_compressed(seq_pair, multiplicity,t**2, return_log=True)
 
@@ -877,9 +877,9 @@ class GTR(object):
             if ignore_gaps and (self.gap_index is not None): # calculate the probability that neither outgroup/node has a gap
                 non_gap_frac = (1-profile_pair[0][:,self.gap_index])*(1-profile_pair[1][:,self.gap_index])
                 # weigh log LH by the non-gap probability
-                logP = np.sum(multiplicity*np.log(res)*non_gap_frac)
+                logP = np.sum(multiplicity*np.log(res+ttconf.SUPERTINY_NUMBER)*non_gap_frac)
             else:
-                logP = np.sum(multiplicity*np.log(res))
+                logP = np.sum(multiplicity*np.log(res+ttconf.SUPERTINY_NUMBER))
 
         return logP if return_log else np.exp(logP)
 
