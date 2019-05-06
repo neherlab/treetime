@@ -591,10 +591,14 @@ class TreeAnc(object):
             # if the column contains only one state and ambiguous nucleotides, replace
             # those with the state in other strains right away
             unique_letters = list(np.unique(pattern))
+            #create a copy so we don't modify aln_transpose
+            fixed_pattern = np.copy(pattern)
             if hasattr(self.gtr, "ambiguous"):
                 if len(unique_letters)==2 and self.gtr.ambiguous in unique_letters:
                     other = [c for c in unique_letters if c!=self.gtr.ambiguous][0]
                     str_pat = str_pat.replace(self.gtr.ambiguous, other)
+                    #also replace in original pattern!
+                    fixed_pattern[fixed_pattern == self.gtr.ambiguous] = other
                     unique_letters = [other]
             # if there is a mutation in this column, give it its private pattern
             # this is required when sampling mutations from reconstructed profiles.
@@ -607,7 +611,7 @@ class TreeAnc(object):
                 # bind the index in the reduced aln, index in sequence to the pattern string
                 alignment_patterns[str_pat] = (len(tmp_reduced_aln), [pi])
                 # append this pattern to the reduced alignment
-                tmp_reduced_aln.append(pattern)
+                tmp_reduced_aln.append(fixed_pattern)
             else:
                 # if the pattern is already seen, append the position in the real
                 # sequence to the reduced aln<->sequence_pos_indexes map
