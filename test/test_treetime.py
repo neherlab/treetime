@@ -109,7 +109,7 @@ def test_seq_joint_reconstruction_correct():
         if hasattr(node, 'ref_seq'):
             continue
         t = node.branch_length
-        p = mygtr.propagate_profile( seq_utils.seq2prof(node.up.ref_seq, mygtr.profile_map), t)
+        p = mygtr.evolve( seq_utils.seq2prof(node.up.ref_seq, mygtr.profile_map), t)
         # normalie profile
         p=(p.T/p.sum(axis=1)).T
         # sample mutations randomly
@@ -120,7 +120,6 @@ def test_seq_joint_reconstruction_correct():
         node.ref_mutations = [(anc, pos, der) for pos, (anc, der) in
                             enumerate(izip(node.up.ref_seq, node.ref_seq)) if anc!=der]
         for anc, pos, der in node.ref_mutations:
-            print(pos)
             mutation_list[pos].append((node.name, anc, der))
         print (node.name, len(node.ref_mutations), node.ref_mutations)
 

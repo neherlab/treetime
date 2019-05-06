@@ -591,10 +591,14 @@ class TreeAnc(object):
             # if the column contains only one state and ambiguous nucleotides, replace
             # those with the state in other strains right away
             unique_letters = list(np.unique(pattern))
+            #create a copy so we don't modify aln_transpose
+            fixed_pattern = np.copy(pattern)
             if hasattr(self.gtr, "ambiguous"):
                 if len(unique_letters)==2 and self.gtr.ambiguous in unique_letters:
                     other = [c for c in unique_letters if c!=self.gtr.ambiguous][0]
                     str_pat = str_pat.replace(self.gtr.ambiguous, other)
+                    #also replace in original pattern!
+                    fixed_pattern[fixed_pattern == self.gtr.ambiguous] = other
                     unique_letters = [other]
             # if there is a mutation in this column, give it its private pattern
             # this is required when sampling mutations from reconstructed profiles.
@@ -607,7 +611,7 @@ class TreeAnc(object):
                 # bind the index in the reduced aln, index in sequence to the pattern string
                 alignment_patterns[str_pat] = (len(tmp_reduced_aln), [pi])
                 # append this pattern to the reduced alignment
-                tmp_reduced_aln.append(pattern)
+                tmp_reduced_aln.append(fixed_pattern)
             else:
                 # if the pattern is already seen, append the position in the real
                 # sequence to the reduced aln<->sequence_pos_indexes map
@@ -972,6 +976,7 @@ class TreeAnc(object):
         """
         Recalculates mutations using the original compressed sequence for terminal nodes
         which will recover ambiguous bases at variable sites. (See 'get_mutations')
+        For fasta input, also regenerates 'sequence' with original ambig sites
 
         Once this has been run, infer_gtr and other functions which depend on self.gtr.alphabet
         will not work, as ambiguous bases are not part of that alphabet (only A, C, G, T, -).
@@ -979,6 +984,9 @@ class TreeAnc(object):
         """
         for node in self.tree.get_terminals():
             node.mutations = self.get_mutations(node, keep_var_ambigs=True)
+            # If fasta, replace 'sequence' as this is what will be accessed later
+            if not self.is_vcf and hasattr(node, "original_cseq"):
+                node.sequence = self.expanded_sequence(node, keep_var_ambigs=True)
 
 
     def get_mutations(self, node, keep_var_ambigs=False):
@@ -1061,7 +1069,7 @@ class TreeAnc(object):
             return mut_matrix_stack
 
 
-    def expanded_sequence(self, node, include_additional_constant_sites=False):
+    def expanded_sequence(self, node, include_additional_constant_sites=False, keep_var_ambigs=False):
         """
         Expand a nodes compressed sequence into the real sequence
 
@@ -1080,7 +1088,12 @@ class TreeAnc(object):
         else:
             L = self.seq_len - self.additional_constant_sites
 
-        return node.cseq[self.full_to_reduced_sequence_map[:L]]
+        if keep_var_ambigs and hasattr(node, 'original_cseq'):
+            compress_seq = node.original_cseq
+        else:
+            compress_seq = node.cseq
+
+        return compress_seq[self.full_to_reduced_sequence_map[:L]] 
 
 
     def dict_sequence(self, node, keep_var_ambigs=False):
