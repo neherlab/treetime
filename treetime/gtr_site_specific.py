@@ -250,6 +250,7 @@ class GTR_site_specific(GTR):
         W_ij = np.ones((q,q)) - np.eye(q)
 
         while (LA.norm(p_ia_old-p_ia)>dp) and n_iter<Nit:
+            gtr.logger(' '.join(map(str, ['GTR inference iteration',n_iter,'change:',LA.norm(p_ia_old-p_ia)])), 3)
             n_iter += 1
             p_ia_old = np.copy(p_ia)
             S_ij = np.einsum('a,ia,ja',mu_a, p_ia, T_ia)
@@ -273,7 +274,7 @@ class GTR_site_specific(GTR):
         if gtr.gap_index is not None:
             for p in range(p_ia.shape[-1]):
                 if p_ia[gtr.gap_index,p]<gap_limit:
-                    gtr.logger('The model allows for gaps which are estimated to occur at a low fraction of %1.3e'%p_ia[gtr.gap_index]+
+                    gtr.logger('The model allows for gaps which are estimated to occur at a low fraction of %1.3e'%p_ia[gtr.gap_index,p]+
                            '\n\t\tthis can potentially result in artifacts.'+
                            '\n\t\tgap fraction will be set to %1.4f'%gap_limit,2,warn=True)
                 p_ia[gtr.gap_index,p] = gap_limit

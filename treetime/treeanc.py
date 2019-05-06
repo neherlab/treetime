@@ -921,8 +921,8 @@ class TreeAnc(object):
             else:
                 root_state = seq2prof(self.tree.root.cseq, self.gtr.profile_map).T
             self._gtr = GTR_site_specific.infer(n_ija, T_ia, pc=pc,
-                            root_state=root_state,
-                            alphabet=self.gtr.alphabet)
+                                root_state=root_state, logger=self.logger,
+                                alphabet=self.gtr.alphabet, prof_map=self.gtr.profile_map)
         else:
             root_state = np.array([np.sum((self.tree.root.cseq==nuc)*self.multiplicity) for nuc in alpha])
             n_ij = n_ija.sum(axis=-1)
@@ -1848,6 +1848,10 @@ class TreeAnc(object):
                     (oldLH, self.tree.total_branch_length()), 2)
 
         for i in range(max_iter):
+            if infer_gtr:
+                self.infer_gtr(site_specific=site_specific_gtr, marginal=True, normalized_rate=True, pc=pc)
+                self.infer_ancestral_sequences(marginal=True)
+                
             branch_length_changes = []
             for n in self.tree.find_clades():
                 if n.up is None:
@@ -1860,11 +1864,7 @@ class TreeAnc(object):
             tmp = np.array(branch_length_changes)
             dbl = np.mean(np.abs(tmp[:,0]-tmp[:,1])/(tmp[:,0]+tmp[:,1]))
 
-            if infer_gtr:
-                self.infer_gtr(site_specific=site_specific_gtr, marginal=True, normalized_rate=True, pc=pc)
-
             self.infer_ancestral_sequences(marginal=True)
-
             LH = self.sequence_LH()
             deltaLH = LH - oldLH
             oldLH = LH
