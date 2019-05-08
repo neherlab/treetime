@@ -3,83 +3,57 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-TreeTime documentation
-====================================
+TreeTime: maximum likelihood dating and ancestral sequence inference
+====================================================================
 
-TreeTime is organized as a hierarchy of classes. The GTR class implements sequence evolution models, TreeAnc does ancestral sequence reconstruction, ClockTree implements time tree inference for a fixed tree topology, while TreeTime provides convenient wrapper functions and additional functionality to manipulate the tree (e.g. rerooting and polytomy resolution).
+.. image:: https://travis-ci.org/neherlab/treetime.svg?branch=master
+   :target: https://travis-ci.org/neherlab/treetime
+
+.. image:: https://anaconda.org/bioconda/treetime/badges/installer/conda.svg
+   :target: https://anaconda.org/bioconda/treetime
+
+TreeTime provides routines for ancestral sequence reconstruction and inference of molecular-clock phylogenies, i.e., a tree where all branches are scaled such that the positions of terminal nodes correspond to their sampling times and internal nodes are placed at the most likely time of divergence.
+
+To optimize the likelihood of time-scaled phylogenies, TreeTime uses an iterative approach that first infers ancestral sequences given the branch length of the tree, then optimizes the positions of unconstrained nodes on the time axis, and then repeats this cycle.
+The only topology optimization are (optional) resolution of polytomies in a way that is most (approximately) consistent with the sampling time constraints on the tree.
 
 .. toctree::
    :maxdepth: 2
    :hidden:
 
-   gtr
-   treeanc
-   clock_tree
-   treetime
-   vcf_utils
-   seq_utils
+   installation
+   commands
+   tutorials
+   APIdoc
 
 
-.. automodule:: treetime
+.. image:: https://raw.githubusercontent.com/neherlab/treetime_examples/master/figures/tree_and_clock.png
+
+Features
+--------
+
+  * ancestral sequence reconstruction (marginal and joint maximum likelihood)
+
+  * molecular clock tree inference (marginal and joint maximum likelihood)
+
+  * inference of GTR models
+
+  * rerooting to maximize temporal signal and optimize the root-to-tip distance vs time relationship
+
+  * simple phylodynamic analysis such as coalescent model fits
 
 
-:doc:`GTR class<gtr>`
----------------------
+Developer info
+--------------
+  - Source code on github at https://github.com/neherlab/treetime
 
-:doc:`TreeAnc class<treeanc>`
-------------------------------
+  - Copyright and License: Pavel Sagulenko, Emma Hodcroft, and Richard Neher, MIT Licence
 
-:doc:`ClockTree class<clock_tree>`
-----------------------------------
+  - References
 
-:doc:`TreeTime class<treetime>`
--------------------------------
+    * `TreeTime: Maximum-likelihood phylodynamic analysis <https://academic.oup.com/ve/article/4/1/vex042/4794731>`_ by Pavel Sagulenko, Vadim Puller and Richard A Neher. Virus Evolution.
 
-
-Utility code
-============
-
-:doc:`VCF tools<vcf_utils>`
--------------------------------
-
-:doc:`Seq tools<seq_utils>`
--------------------------------
-
-
-Command-line functions
-======================
-TreeTime is designed to be part of python workflows, but we have exposed a number of standard
-tasks via a command-line interface.
-The TreeTime command-line tool is called :code:`treetime`.
-Examples and documentation of the command-line interface can be found in the github repo https://github.com/neherlab/treetime_examples.
-In its standard mode, it will take a tree, an alignment, and file with dates as input and estimate a time-scaled phylogeny.
-The full set of options are available via :code:`treetime -h`.
-
-
-Subcommand :code:`treetime ancestral`
--------------------------------------
-This subcommand reconstructs ancestral sequences and maps mutations to the tree.
-It produces an alignment file containing inferred ancestral sequences and a tree file
-with mutations included as comments. The inferred GTR model is written to stdout.
-
-Subcommand :code:`treetime homoplasy`
--------------------------------------
-Reconstructs ancestral sequences and maps mutations to the tree.
-The tree is then scanned for homoplasies. An excess number of homoplasies
-might suggest contamination, recombination, culture adaptation or similar.
-Results are printed to stdout.
-
-
-Subcommand :code:`treetime clock`
----------------
-Calculates the root-to-tip regression and quantifies the 'clock-i-ness' of the tree.
-It will reroot the tree to maximize the clock-like
-signal and recalculate branch length unless run with :code:`--keep_root`.
-
-Subcommand :code:`treetime mugration`
--------------------------------------
-Reconstructs discrete ancestral states, for example geographic location, host, or similar.
-
+    * `NextStrain: real-time tracking of pathogen evolution <https://academic.oup.com/bioinformatics/advance-article/doi/10.1093/bioinformatics/bty407/5001388>`_ by James Hadfield et al. Bioinformatics.
 
 
 Indices and tables
