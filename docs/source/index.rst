@@ -3,8 +3,8 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-TreeTime: maximum likelihood dating and ancestral sequence inference
-====================================================================
+TreeTime: time-tree and ancestral sequence inference
+====================================================
 
 .. image:: https://travis-ci.org/neherlab/treetime.svg?branch=master
    :target: https://travis-ci.org/neherlab/treetime
