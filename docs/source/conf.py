@@ -78,8 +78,7 @@ author = u'Pavel Sagulenko and Richard Neher'
 # built documents.
 #
 # The short X.Y version.
-from treetime import version
-version = version
+version = '0.6.0'
 # The full version, including alpha/beta/rc tags.
 release = version
 
