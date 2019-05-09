@@ -946,13 +946,13 @@ class TreeAnc(object):
 ###################################################################
 ### ancestral reconstruction
 ###################################################################
-    def infer_ancestral_sequences(self,*args, **kwargs):
-        """Shortcut for :py:meth:`treetime.TreeAnc.reconstruct_anc`
+    def reconstruct_anc(self,*args, **kwargs):
+        """Shortcut for :py:meth:`treetime.TreeAnc.infer_ancestral_sequences`
         """
-        return self.reconstruct_anc(*args,**kwargs)
+        return self.infer_ancestral_sequences(*args,**kwargs)
 
 
-    def reconstruct_anc(self, method='probabilistic', infer_gtr=False,
+    def infer_ancestral_sequences(self, method='probabilistic', infer_gtr=False,
                         marginal=False, **kwargs):
         """Reconstruct ancestral sequences
 
@@ -1122,7 +1122,7 @@ class TreeAnc(object):
         else:
             compress_seq = node.cseq
 
-        return compress_seq[self.full_to_reduced_sequence_map[:L]] 
+        return compress_seq[self.full_to_reduced_sequence_map[:L]]
 
 
     def dict_sequence(self, node, keep_var_ambigs=False):

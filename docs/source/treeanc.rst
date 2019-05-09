@@ -7,7 +7,8 @@ This is the core class of the TreeTime module. It stores the phylogenetic tree a
 The tree is stored as Bio.Phylo object. In order to facilitate the tree operations, each node of the tree is decorated with additional attributes which are set during the tree preparation. These attributes need to be updated after tree modifications. The sequences are also attached to the tree nodes. In order to save memory, the sequences are stored in the compressed form. The TreeAnc class implements methods to compress and decompress sequences.
 
 The main purpose of the TreeAnc class is to implement standard algorithms for ancestral sequence reconstruction.
-Both marginal and joint maximum likelihood reconstructions are possible. The marginal reconstructions computes the entire distribution of the states at a given node after tracing out states at all other nodes.
+Both marginal and joint maximum likelihood reconstructions are possible.
+The marginal reconstructions computes the entire distribution of the states at a given node after tracing out states at all other nodes.
 
 The `example scripts <https://github.com/neherlab/treetime/blob/master/examples/ancestral_inference.py>`_ illustrate how to instantiate TreeAnc objects.
 
@@ -42,7 +43,7 @@ Basic functions, utilities, properties
 
 
 Sequence and profile manipulation
---------------------------------------
+---------------------------------
 
 .. automethod:: treetime.TreeAnc.get_mutations
 
@@ -56,9 +57,7 @@ Sequence and profile manipulation
 
 
 Ancestral reconstruction and tree optimization
--------------------------------------------------
-
-.. automethod:: treetime.TreeAnc.reconstruct_anc
+----------------------------------------------
 
 .. automethod:: treetime.TreeAnc.infer_ancestral_sequences
 

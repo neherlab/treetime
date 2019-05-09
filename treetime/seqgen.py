@@ -8,7 +8,14 @@ from .treeanc import TreeAnc
 
 
 class SeqGen(TreeAnc):
+    '''
+    Evolve sequences along a given tree with a specific GTR model.
+    This class inherits from TreeAnc.
+    '''
+
     def __init__(self, *args, **kwargs):
+        """Instantiate. Mandatory arguments are a tree and GTR model.
+        """
         super(SeqGen, self).__init__(reduce_alignment=False, **kwargs)
 
 
@@ -33,8 +40,9 @@ class SeqGen(TreeAnc):
 
 
     def evolve(self, root_seq=None):
-        """generate sequences of all internal and terminal nodes given the
-        tree and the evolutionary model.
+        """Evolve a root sequences along a tree. If no root sequences
+        is provided, one will be sampled from the equilibrium
+        probabilities of the GTR model
 
         Parameters
         ----------
@@ -69,7 +77,8 @@ class SeqGen(TreeAnc):
 
 
     def get_aln(self, internal=False):
-        """helper function gathering the generated sequences into a Biopython alignment object
+        """assemble a multiple sequence alignment from the evolved
+        sequences. Optionally in clude internal sequences
 
         Parameters
         ----------
@@ -79,7 +88,7 @@ class SeqGen(TreeAnc):
         Returns
         -------
         Bio.Align.MultipleSeqAlignment
-            mutlple sequence alignment
+            multiple sequence alignment
         """
         from Bio import SeqRecord, Seq
         from Bio.Align import MultipleSeqAlignment
