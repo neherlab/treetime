@@ -8,11 +8,30 @@ from .treeanc import TreeAnc
 
 
 class SeqGen(TreeAnc):
+    '''
+    Evolve sequences along a given tree with a specific GTR model.
+    This class inherits from TreeAnc.
+    '''
+
     def __init__(self, *args, **kwargs):
+        """Instantiate. Mandatory arguments are a tree and GTR model.
+        """
         super(SeqGen, self).__init__(reduce_alignment=False, **kwargs)
 
 
     def sample_from_profile(self, p):
+        """sample a sequence from a profile evolved forward by a GTR model
+
+        Parameters
+        ----------
+        p : TYPE
+            Description
+
+        Returns
+        -------
+        TYPE
+            Description
+        """
         cum_p = p.cumsum(axis=1).T
         prand = np.random.random(p.shape[0])
         seq = self.gtr.alphabet[np.argmax(cum_p>prand, axis=0)]
@@ -20,6 +39,15 @@ class SeqGen(TreeAnc):
 
 
     def evolve(self, root_seq=None):
+        """Evolve a root sequences along a tree. If no root sequences
+        is provided, one will be sampled from the equilibrium
+        probabilities of the GTR model
+
+        Parameters
+        ----------
+        root_seq : character array, optional
+            Description
+        """
         self.seq_len = self.gtr.seq_len
         if root_seq:
             self.tree.root.sequence = seq2array(root_seq)
@@ -41,6 +69,19 @@ class SeqGen(TreeAnc):
 
 
     def get_aln(self, internal=False):
+        """assemble a multiple sequence alignment from the evolved
+        sequences. Optionally in clude internal sequences
+
+        Parameters
+        ----------
+        internal : bool, optional
+            Description
+
+        Returns
+        -------
+        Bio.Align.MultipleSeqAlignment
+            sequence alignment
+        """
         from Bio import SeqRecord, Seq
         from Bio.Align import MultipleSeqAlignment
 

@@ -17,13 +17,15 @@ TreeTime provides routines for ancestral sequence reconstruction and inference o
 To optimize the likelihood of time-scaled phylogenies, TreeTime uses an iterative approach that first infers ancestral sequences given the branch length of the tree, then optimizes the positions of unconstrained nodes on the time axis, and then repeats this cycle.
 The only topology optimization are (optional) resolution of polytomies in a way that is most (approximately) consistent with the sampling time constraints on the tree.
 
+The code is hosted on `github.com/neherlab/treetime <https://github.com/neherlab/treetime>`_.
+
 .. toctree::
    :maxdepth: 2
    :hidden:
 
    installation
-   commands
    tutorials
+   commands
    APIdoc
 
 

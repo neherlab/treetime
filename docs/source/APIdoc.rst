@@ -1,23 +1,38 @@
 API documentation
 =================
 
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+
+   treetime
+   clock_tree
+   treeanc
+   seqgen
+   gtr
+
 
 Core classes
 ------------
 
 .. automodule:: treetime
 
-:doc:`GTR class<gtr>`
-~~~~~~~~~~~~~~~~~~~~~
-
-:doc:`TreeAnc class<treeanc>`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+:doc:`TreeTime class<treetime>`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 :doc:`ClockTree class<clock_tree>`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-:doc:`TreeTime class<treetime>`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+:doc:`TreeAnc class<treeanc>`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+:doc:`SeqGen class<seqgen>`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+:doc:`GTR class<gtr>`
+~~~~~~~~~~~~~~~~~~~~~
+
+
 
 
 Utility code
