@@ -5,6 +5,16 @@ import numpy as np
 from .seq_utils import alphabets, profile_maps
 from .gtr import GTR
 
+def get_alphabet(a):
+    if type(a)==str and a in alphabets:
+        return alphabets[a]
+    else:
+        try:
+            return np.array(a)
+        except:
+            raise TypeError
+
+
 def JC69 (mu=1.0, alphabet="nuc", **kwargs):
     """
     Jukes-Cantor 1969 model. This model assumes equal concentrations
@@ -18,16 +28,16 @@ def JC69 (mu=1.0, alphabet="nuc", **kwargs):
      mu : float
         substitution rate
 
-     alphabet : str
+     alphabet : str or character array
         specify alphabet to use.
         Available alphabets are:
 
-         'nuc' - nucleotides only, gaps ignored
+         'nuc_nogap' - nucleotides only, gaps ignored
 
-         'nuc_gap' - nucleotide alphabet with gaps, gaps can be ignored optionally
+         'nuc' - nucleotide alphabet with gaps, gaps can be ignored optionally
 
     """
-    num_chars = len(alphabets[alphabet])
+    num_chars = len(get_alphabet(alphabet))
     W, pi = np.ones((num_chars,num_chars)), np.ones(num_chars)
     gtr = GTR(alphabet=alphabet)
     gtr.assign_rates(mu=mu, pi=pi, W=W)
@@ -87,7 +97,7 @@ def F81(mu=1.0, pi=None, alphabet="nuc", **kwargs):
 
     if pi is None:
         pi=0.25*np.ones(4, dtype=float)
-    num_chars = len(alphabets[alphabet])
+    num_chars = len(get_alphabet(alphabet))
 
     pi = np.array(pi, dtype=float)
 
@@ -98,7 +108,7 @@ def F81(mu=1.0, pi=None, alphabet="nuc", **kwargs):
 
     W = np.ones((num_chars,num_chars))
     pi /= (1.0 * np.sum(pi))
-    gtr = GTR(alphabet=alphabets[alphabet])
+    gtr = GTR(alphabet=get_alphabet(alphabet))
     gtr.assign_rates(mu=mu, pi=pi, W=W)
     return gtr
 

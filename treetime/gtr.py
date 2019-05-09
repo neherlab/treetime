@@ -47,7 +47,7 @@ class GTR(object):
                 self.alphabet = alphabets[tmp_alphabet]
                 self.profile_map = profile_maps[tmp_alphabet]
         else:
-            # not a predefine alphabet
+            # not a predefined alphabet
             self.alphabet = alphabet
             if prof_map is None: # generate trivial unambiguous profile map is none is given
                 self.profile_map = {s:x for s,x in zip(self.alphabet, np.eye(len(self.alphabet)))}
@@ -80,7 +80,7 @@ class GTR(object):
         self.logger("GTR: init with dummy values!", 3)
         self.v = None # right eigenvectors
         self.v_inv = None # left eigenvectors
-        self.eigenvals =None # eigenvalues
+        self.eigenvals = None # eigenvalues
         self.assign_rates()
 
 
@@ -101,6 +101,31 @@ class GTR(object):
         except:
             self.logger("GTR: no gap symbol!", 4, warn=True)
             self.gap_index=None
+
+
+    @property
+    def mu(self):
+        return self._mu
+
+    @property
+    def Pi(self):
+        return self._Pi
+
+    @property
+    def W(self):
+        return self._W
+
+    @W.setter
+    def W(self, value):
+        self.assign_rates(mu=self.mu, pi=self.Pi, W=value)
+
+    @Pi.setter
+    def Pi(self, value):
+        self.assign_rates(mu=self.mu, pi=value, W=self.W)
+
+    @mu.setter
+    def mu(self, value):
+        self.assign_rates(mu=value, pi=self.Pi, W=self.W)
 
 
     @property
@@ -164,7 +189,7 @@ class GTR(object):
 
         """
         n = len(self.alphabet)
-        self.mu = mu
+        self._mu = mu
 
         if pi is not None and len(pi)==n:
             Pi = np.array(pi)
@@ -174,7 +199,7 @@ class GTR(object):
                 self.logger("Ignoring input equilibrium frequencies", 4, warn=True)
             Pi = np.ones(shape=(n,))
 
-        self.Pi = Pi/np.sum(Pi)
+        self._Pi = Pi/np.sum(Pi)
 
         if W is None or W.shape!=(n,n):
             if (W is not None) and W.shape!=(n,n):
@@ -187,7 +212,7 @@ class GTR(object):
         else:
             W=np.array(W)
 
-        self.W = 0.5*(W+W.T)
+        self._W = 0.5*(W+W.T)
         self._check_fix_Q(fixed_mu=True)
         self._eig()
 
@@ -396,7 +421,7 @@ class GTR(object):
 
 
     @classmethod
-    def infer(cls, nij, Ti, root_state, fixed_pi=None, pc=5.0, gap_limit=0.01, **kwargs):
+    def infer(cls, nij, Ti, root_state, fixed_pi=None, pc=1.0, gap_limit=0.01, **kwargs):
         """
         Infer a GTR model by specifying the number of transitions and time spent in each
         character. The basic equation that is being solved is
@@ -448,6 +473,7 @@ class GTR(object):
         Nit = 40
         pc_mat = pc*np.ones_like(nij)
         np.fill_diagonal(pc_mat, 0.0)
+        np.fill_diagonal(nij, 0.0)
         count = 0
         pi_old = np.zeros_like(Ti)
         if fixed_pi is None:
@@ -499,18 +525,17 @@ class GTR(object):
         the definition of the rate matrix. Should be run every time when creating
         custom GTR model.
         """
-        # fix Q
-        self.Pi /= self.Pi.sum() # correct the Pi manually
+
         # NEEDED TO BREAK RATE MATRIX DEGENERACY AND FORCE NP TO RETURN REAL ORTHONORMAL EIGENVECTORS
-        self.W += self.break_degen + self.break_degen.T
+        self._W += self.break_degen + self.break_degen.T
         # fix W
         np.fill_diagonal(self.W, 0)
         Wdiag = -(self.Q).sum(axis=0)/self.Pi
         np.fill_diagonal(self.W, Wdiag)
         scale_factor = -np.sum(np.diagonal(self.Q)*self.Pi)
-        self.W /= scale_factor
+        self._W /= scale_factor
         if not fixed_mu:
-            self.mu *= scale_factor
+            self._mu *= scale_factor
         if (self.Q.sum(axis=0) < 1e-10).sum() <  self.alphabet.shape[0]: # fix failed
             print ("Cannot fix the diagonal of the GTR rate matrix. Should be all zero", self.Q.sum(axis=0))
             import ipdb; ipdb.set_trace()
@@ -523,28 +548,30 @@ class GTR(object):
         matrices to convert the sequence profiles to the GTR matrix eigenspace
         and hence to speed-up the computations.
         """
-        # eigendecomposition of the rate matrix
-        eigvals, eigvecs = np.linalg.eig(self.Q)
-        self.v = np.real(eigvecs)
-        self.v_inv = np.linalg.inv(self.v)
-        self.eigenvals = np.real(eigvals)
+        W_nodiag = np.copy(self.W)
+        np.fill_diagonal(W_nodiag, 0)
+
+        self.eigenvals, self.v, self.v_inv = self._eig_single_site(W_nodiag, self.Pi)
 
 
-    def _eig_sym(self):
+    def _eig_single_site(self, W, p):
         """
         Perform eigendecompositon of the rate matrix and stores the left- and right-
         matrices to convert the sequence profiles to the GTR matrix eigenspace
         and hence to speed-up the computations.
+        NOTE: this assumes the diagonal of W is all zeros
         """
         # eigendecomposition of the rate matrix
-        tmpp = np.sqrt(self.Pi)
-        symQ = self.W*np.outer(tmpp, tmpp)
+        assert np.abs(np.diag(W).sum())<1e-10
+
+        tmpp = np.sqrt(p)
+        symQ = W*np.outer(tmpp, tmpp)
+        np.fill_diagonal(symQ, -np.sum(W*p, axis=1))
+
         eigvals, eigvecs = np.linalg.eigh(symQ)
         tmp_v = eigvecs.T*tmpp
         one_norm = np.sum(np.abs(tmp_v), axis=1)
-        self.v = tmp_v.T/one_norm
-        self.v_inv = (eigvecs*one_norm).T/tmpp
-        self.eigenvals = eigvals
+        return eigvals, tmp_v.T/one_norm, (eigvecs*one_norm).T/tmpp
 
 
     def compress_sequence_pair(self, seq_p, seq_ch, pattern_multiplicity=None,
@@ -767,14 +794,10 @@ class GTR(object):
              t : double
                 Branch length (time between sequences)
 
-             parent :  numpy.array
-                Parent sequence
+             seq_pair : tuple of profiles
+                parent and child sequences
 
-             child : numpy.array
-                Child sequence
-
-             tm :  GTR
-                Model of evolution
+             multiplicity : vector containing the number of times each alignment pattern is observed
 
             Returns
             -------
@@ -785,7 +808,7 @@ class GTR(object):
             """
             if profiles:
                 res = -1.0*self.prob_t_profiles(seq_pair, multiplicity,t**2, return_log=True)
-                return res
+                return res + np.exp(t**4/10000)
             else:
                 return -1.0*self.prob_t_compressed(seq_pair, multiplicity,t**2, return_log=True)
 
@@ -798,7 +821,7 @@ class GTR(object):
             if 'success' not in opt:
                 opt['success'] = True
                 self.logger("WARNING: the optimization result does not contain a 'success' flag:"+str(opt),4, warn=True)
-        except:
+        except ImportError:
             import scipy
             print('legacy scipy', scipy.__version__)
             from scipy.optimize import fminbound
@@ -847,16 +870,16 @@ class GTR(object):
             logP = -ttconf.BIG_NUMBER
         else:
             Qt = self.expQt(t)
-            if len(Qt.shape)==3:
+            if len(Qt.shape)==3: # site specific GTR model
                 res = np.einsum('ai,ija,aj->a', profile_pair[1], Qt, profile_pair[0])
             else:
                 res = np.einsum('ai,ij,aj->a', profile_pair[1], Qt, profile_pair[0])
             if ignore_gaps and (self.gap_index is not None): # calculate the probability that neither outgroup/node has a gap
                 non_gap_frac = (1-profile_pair[0][:,self.gap_index])*(1-profile_pair[1][:,self.gap_index])
                 # weigh log LH by the non-gap probability
-                logP = np.sum(multiplicity*np.log(res)*non_gap_frac)
+                logP = np.sum(multiplicity*np.log(res+ttconf.SUPERTINY_NUMBER)*non_gap_frac)
             else:
-                logP = np.sum(multiplicity*np.log(res))
+                logP = np.sum(multiplicity*np.log(res+ttconf.SUPERTINY_NUMBER))
 
         return logP if return_log else np.exp(logP)
 
@@ -963,9 +986,7 @@ class GTR(object):
 
 
     def expQs(self, s):
-        eLambdaT = np.diag(self._exp_lt(s**2)) # vector length = a
-        Qs = self.v.dot(eLambdaT.dot(self.v_inv))   # This is P(nuc1 | given nuc_2)
-        return np.maximum(0,Qs)
+        return self.expQt(s**2)
 
 
     def expQsds(self, s):
@@ -975,23 +996,8 @@ class GTR(object):
         Qtds :  Returns 2 V_{ij} \lambda_j s e^{\lambda_j s**2 } V^{-1}_{jk}
                 This is the derivative of the branch probability with respect to s=\sqrt(t)
         '''
-        lambda_eLambdaT = np.diag(2.0*self._exp_lt(s**2)*self.eigenvals*s) # vector length = a
-        Qsds = self.v.dot(lambda_eLambdaT.dot(self.v_inv))
-        return Qsds
-
-
-    def expQsdsds(self, s):
-        '''
-        Returns
-        -------
-        Qtdtdt :  Returns V_{ij} \lambda_j^2 e^{\lambda_j s**2} V^{-1}_{jk}
-                This is the second derivative of the branch probability wrt time
-        '''
-        t=s**2
-        elt = self._exp_lt(t)
-        lambda_eLambdaT = np.diag(elt*(4.0*t*self.eigenvals**2 + 2.0*self.eigenvals))
-        Qsdsds = self.v.dot(lambda_eLambdaT.dot(self.v_inv))
-        return Qsdsds
+        lambda_eLambdaT = np.diag(2.0*self._exp_lt(s**2)*self.eigenvals*s)
+        return self.v.dot(lambda_eLambdaT.dot(self.v_inv))
 
 
     def sequence_logLH(self,seq, pattern_multiplicity=None):
@@ -1016,7 +1022,7 @@ class GTR(object):
                       for si,state in enumerate(self.alphabet)])
 
     def average_rate(self):
-        return self.mu*np.einsum('i,ij,j',self.Pi, self.W, self.Pi)
+        return -self.mu*np.einsum('ii,i',self.Q, self.Pi)
 
     def save_to_npz(self, outfile):
         full_gtr = self.mu * np.dot(self.Pi, self.W)

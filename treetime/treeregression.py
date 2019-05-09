@@ -22,21 +22,24 @@ def base_regression(Q, slope=None):
         Description
     """
     if slope is None:
-        slope = (Q[dtavgii] - Q[tavgii]*Q[davgii]/Q[sii]) \
+        if (Q[tsqii] - Q[tavgii]**2/Q[sii])>0:
+            slope = (Q[dtavgii] - Q[tavgii]*Q[davgii]/Q[sii]) \
                 /(Q[tsqii] - Q[tavgii]**2/Q[sii])
+        else:
+            raise ValueError("No variation in sampling dates! Please specify your clock rate explicitly.")
         only_intercept=False
     else:
         only_intercept=True
 
     intercept = (Q[davgii] - Q[tavgii]*slope)/Q[sii]
+    if (Q[tsqii] - Q[tavgii]**2/Q[sii])>0:
+        chisq = 0.5*(Q[dsqii] - Q[davgii]**2/Q[sii] - (Q[dtavgii] - Q[davgii]*Q[tavgii]/Q[sii])**2/(Q[tsqii] - Q[tavgii]**2/Q[sii]))
+    else:
+        chisq = 0.5*(Q[dsqii] - Q[davgii]**2/Q[sii])
 
     if only_intercept:
         return {'slope':slope, 'intercept':intercept,
-                'chisq': 0.5*(Q[dsqii]/Q[sii] - Q[davgii]**2/Q[sii]**2)}
-
-    chisq = 0.5*(Q[dsqii] - Q[davgii]**2/Q[sii]
-                - (Q[dtavgii] - Q[davgii]*Q[tavgii]/Q[sii])**2/(Q[tsqii]
-                - Q[tavgii]**2/Q[sii]))
+                'chisq': chisq}
 
     estimator_hessian = np.array([[Q[tsqii], Q[tavgii]], [Q[tavgii], Q[sii]]])
 
@@ -304,7 +307,7 @@ class TreeRegression(object):
         """
         self._calculate_averages()
 
-        clock_model = base_regression(self.tree.root.Q, slope)
+        clock_model = base_regression(self.tree.root.Q, slope=slope)
         clock_model['r_val'] = self.explained_variance()
 
         return clock_model
@@ -332,7 +335,6 @@ class TreeRegression(object):
             bv = self.branch_value(n)
             var = self.branch_variance(n)
             x, chisq = self._optimal_root_along_branch(n, tv, bv, var, slope=slope)
-
             if (chisq<best_root["chisq"]):
                 tmpQ = self.propagate_averages(n, tv, bv*x, var*x) \
                      + self.propagate_averages(n, tv, bv*(1-x), var*(1-x), outgroup=True)
@@ -379,8 +381,8 @@ class TreeRegression(object):
                  + self.propagate_averages(n, tv, bv*(1-x), var*(1-x), outgroup=True)
             return base_regression(tmpQ, slope=slope)['chisq']
 
-        chisq_prox = np.inf if n.is_terminal() else base_regression(n.Qtot)['chisq']
-        chisq_dist = np.inf if n==self.tree.root else base_regression(n.up.Qtot)['chisq']
+        chisq_prox = np.inf if n.is_terminal() else base_regression(n.Qtot, slope=slope)['chisq']
+        chisq_dist = np.inf if n==self.tree.root else base_regression(n.up.Qtot, slope=slope)['chisq']
 
         grid = np.linspace(0.001,0.999,6)
         chisq_grid = np.array([chisq(x) for x in grid])

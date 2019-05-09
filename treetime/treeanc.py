@@ -302,6 +302,8 @@ class TreeAnc(object):
 
         """
         # load alignment from file if necessary
+
+
         from os.path import isfile
         from Bio.Align import MultipleSeqAlignment
         self._aln = None
@@ -392,9 +394,7 @@ class TreeAnc(object):
         float
             inverse of the uncompressed sequene length - length scale for short branches
         """
-        L = self.seq_len
-        if L:
-            return 1.0/L
+        return 1.0/self.seq_len if self.seq_len else np.nan
 
     @one_mutation.setter
     def one_mutation(self,om):
@@ -411,6 +411,7 @@ class TreeAnc(object):
         :getter: Returns the string reference sequence
 
         """
+        # delete previous alignment if reference changes
         return self._ref
 
 
@@ -422,7 +423,11 @@ class TreeAnc(object):
         in_ref : str
             reference sequence for the vcf sequence dict as a plain string
         """
+        self._aln = None
+        self.reduced_to_full_sequence_map = None
+        self.multiplicity = None
         self._ref = in_ref
+
 
     def extend_profile(self):
         if self.aln:
@@ -566,7 +571,7 @@ class TreeAnc(object):
             if len(np.unique([len(x) for x in seqs]))>1:
                 self.logger("TreeAnc: Sequences differ in in length! ABORTING",0, warn=True)
                 aln_transpose = None
-                return
+                raise TypeError
             else:
                 aln_transpose = np.array(seqs).T
                 positions = range(aln_transpose.shape[0])
@@ -680,8 +685,12 @@ class TreeAnc(object):
                     n.original_cseq = self.reduced_alignment[seq_count]
                     n.cseq = np.copy(n.original_cseq)
                     seq_count+=1
+                else:
+                    n.original_cseq = None
+                    n.cseq = None
 
         self.logger("TreeAnc: constructed reduced alignment...", 1)
+
         return ttconf.SUCCESS
 
 
@@ -792,12 +801,17 @@ class TreeAnc(object):
         """
         self.tree.root.up = None
         self.tree.root.bad_branch=self.tree.root.bad_branch if hasattr(self.tree.root, 'bad_branch') else False
+        name_set = set([n.name for n in self.tree.find_clades() if n.name])
         internal_node_count = 0
         for clade in self.tree.get_nonterminals(order='preorder'): # parents first
-            internal_node_count+=1
             if clade.name is None:
-                clade.name = "NODE_" + format(self._internal_node_count, '07d')
-                self._internal_node_count += 1
+                tmp = "NODE_" + format(internal_node_count, '07d')
+                while tmp in name_set:
+                    internal_node_count += 1
+                    tmp = "NODE_" + format(internal_node_count, '07d')
+                clade.name = tmp
+                name_set.add(clade.name)
+            internal_node_count+=1
             for c in clade.clades:
                 if c.is_terminal():
                     c.bad_branch = c.bad_branch if hasattr(c, 'bad_branch') else False
@@ -828,7 +842,7 @@ class TreeAnc(object):
 ## END SET-UP
 ####################################################################
 
-    def infer_gtr(self, print_raw=False, marginal=False, normalized_rate=True,
+    def infer_gtr(self, marginal=False, site_specific=False, normalized_rate=True,
                   fixed_pi=None, pc=5.0, **kwargs):
         """
         Calculates a GTR model given the multiple sequence alignment and the tree.
@@ -867,63 +881,78 @@ class TreeAnc(object):
             The inferred GTR model
         """
 
-        # decide which type of the Maximum-likelihood reconstruction use
-        # (marginal) or (joint)
-        if marginal:
-            _ml_anc = self._ml_anc_marginal
-        else:
-            _ml_anc = self._ml_anc_joint
+        # if ancestral sequences are not in place, reconstruct them
+        if marginal  and (not hasattr(self.tree.root,'marginal_profile')):
+            self._ml_anc_marginal(final=True, **kwargs)
+        elif (not hasattr(self.tree.root,'cseq')) or self.tree.root.cseq is None:
+            self._ml_anc_joint(final=True, **kwargs)
 
-        self.logger("TreeAnc.infer_gtr: inferring the GTR model from the tree...", 1)
         if (self.tree is None) or (self.aln is None):
             self.logger("TreeAnc.infer_gtr: ERROR, alignment or tree are missing", 0)
             return ttconf.ERROR
 
-        _ml_anc(final=True, **kwargs) # call one of the reconstruction types
         alpha = list(self.gtr.alphabet)
         n=len(alpha)
+        L = len(self.tree.root.cseq)
         # matrix of mutations n_{ij}: i = derived state, j=ancestral state
-        nij = np.zeros((n,n))
-        Ti = np.zeros(n)
+        n_ija = np.zeros((n,n,L))
+        T_ia = np.zeros((n,L))
 
         self.logger("TreeAnc.infer_gtr: counting mutations...", 2)
-        for node in self.tree.find_clades():
-            if hasattr(node,'mutations'):
-                for a,pos, d in node.mutations:
-                    i,j = alpha.index(d), alpha.index(a)
-                    nij[i,j]+=1
-                    Ti[j] += 0.5*self._branch_length_to_gtr(node)
-                    Ti[i] -= 0.5*self._branch_length_to_gtr(node)
-                for ni,nuc in enumerate(node.cseq):
-                    i = alpha.index(nuc)
-                    Ti[i] += self._branch_length_to_gtr(node)*self.multiplicity[ni]
-        self.logger("TreeAnc.infer_gtr: counting mutations...done", 3)
-        if print_raw:
-            print('alphabet:',alpha)
-            print('n_ij:', nij, nij.sum())
-            print('T_i:', Ti, Ti.sum())
-        root_state = np.array([np.sum((self.tree.root.cseq==nuc)*self.multiplicity) for nuc in alpha])
+        for node in self.tree.get_nonterminals():
+            for c in node:
+                if marginal:
+                    mut_stack = np.transpose(self.get_branch_mutation_matrix(c, full_sequence=False), (1,2,0))
+                    T_ia += 0.5*self._branch_length_to_gtr(c) * mut_stack.sum(axis=0) * self.multiplicity
+                    T_ia += 0.5*self._branch_length_to_gtr(c) * mut_stack.sum(axis=1) * self.multiplicity
+                    n_ija += mut_stack * self.multiplicity
+                elif hasattr(c,'mutations'):
+                    for a,pos, d in c.mutations:
+                        i,j = alpha.index(d), alpha.index(a)
+                        cpos = self.full_to_reduced_sequence_map[pos]
+                        n_ija[i,j,cpos]+=1
+                        T_ia[j,cpos] += 0.5*self._branch_length_to_gtr(c)
+                        T_ia[i,cpos] -= 0.5*self._branch_length_to_gtr(c)
+                    for pos,nuc in enumerate(c.cseq):
+                        i = alpha.index(nuc)
+                        T_ia[i,pos] += self._branch_length_to_gtr(c)*self.multiplicity[pos]
 
-        self._gtr = GTR.infer(nij, Ti, root_state, fixed_pi=fixed_pi, pc=pc,
-                              alphabet=self.gtr.alphabet, logger=self.logger,
-                              prof_map = self.gtr.profile_map)
+        self.logger("TreeAnc.infer_gtr: counting mutations...done", 3)
+
+        if site_specific:
+            if marginal:
+                root_state = self.tree.root.marginal_profile.T
+            else:
+                root_state = seq2prof(self.tree.root.cseq, self.gtr.profile_map).T
+            self._gtr = GTR_site_specific.infer(n_ija, T_ia, pc=pc,
+                                root_state=root_state, logger=self.logger,
+                                alphabet=self.gtr.alphabet, prof_map=self.gtr.profile_map)
+        else:
+            root_state = np.array([np.sum((self.tree.root.cseq==nuc)*self.multiplicity) for nuc in alpha])
+            n_ij = n_ija.sum(axis=-1)
+            self._gtr = GTR.infer(n_ij, T_ia.sum(axis=-1), root_state, fixed_pi=fixed_pi, pc=pc,
+                                  alphabet=self.gtr.alphabet, logger=self.logger,
+                                  prof_map = self.gtr.profile_map)
 
         if normalized_rate:
             self.logger("TreeAnc.infer_gtr: setting overall rate to 1.0...", 2)
-            self._gtr.mu=1.0
+            if site_specific:
+                self._gtr.mu /= self._gtr.average_rate().mean()
+            else:
+                self._gtr.mu=1.0
         return self._gtr
 
 
 ###################################################################
 ### ancestral reconstruction
 ###################################################################
-    def infer_ancestral_sequences(self,*args, **kwargs):
-        """Shortcut for :py:meth:`treetime.TreeAnc.reconstruct_anc`
+    def reconstruct_anc(self,*args, **kwargs):
+        """Shortcut for :py:meth:`treetime.TreeAnc.infer_ancestral_sequences`
         """
-        return self.reconstruct_anc(*args,**kwargs)
+        return self.infer_ancestral_sequences(*args,**kwargs)
 
 
-    def reconstruct_anc(self, method='probabilistic', infer_gtr=False,
+    def infer_ancestral_sequences(self, method='probabilistic', infer_gtr=False,
                         marginal=False, **kwargs):
         """Reconstruct ancestral sequences
 
@@ -1052,7 +1081,7 @@ class TreeAnc(object):
         pp,pc = self.marginal_branch_profile(node)
 
         # calculate pc_i [e^Qt]_ij pp_j for each site
-        expQt = self.gtr.expQt(self._branch_length_to_gtr(node))
+        expQt = self.gtr.expQt(self._branch_length_to_gtr(node)) + ttconf.SUPERTINY_NUMBER
         if len(expQt.shape)==3: # site specific model
             mut_matrix_stack = np.einsum('ai,aj,ija->aij', pc, pp, expQt)
         else:
@@ -1093,7 +1122,7 @@ class TreeAnc(object):
         else:
             compress_seq = node.cseq
 
-        return compress_seq[self.full_to_reduced_sequence_map[:L]] 
+        return compress_seq[self.full_to_reduced_sequence_map[:L]]
 
 
     def dict_sequence(self, node, keep_var_ambigs=False):
@@ -1357,7 +1386,6 @@ class TreeAnc(object):
             at the root but at no other node.
 
         """
-
         tree = self.tree
         # number of nucleotides changed from prev reconstruction
         N_diff = 0
@@ -1430,7 +1458,7 @@ class TreeAnc(object):
 
             # integrate the information coming from parents with the information
             # of all children my multiplying it to the prev computed profile
-            node.marginal_outgroup_LH, pre = normalize_profile(np.log(node.up.marginal_profile) - node.marginal_log_Lx,
+            node.marginal_outgroup_LH, pre = normalize_profile(np.log(np.maximum(ttconf.TINY_NUMBER, node.up.marginal_profile)) - node.marginal_log_Lx,
                                                                log=True, return_offset=False)
             tmp_msg_from_parent = self.gtr.evolve(node.marginal_outgroup_LH,
                                                  self._branch_length_to_gtr(node), return_log=False)
@@ -1649,9 +1677,14 @@ class TreeAnc(object):
 ### Branch length
 ###################################################################
     def optimize_branch_len(self, **kwargs):
-        return self.optimize_branch_length(**kwargs)
+        """Deprecated in favor of 'optimize_branch_lengths_joint'"""
+        return self.optimize_branch_lengths_joint(**kwargs)
 
-    def optimize_branch_length(self, mode='joint', **kwargs):
+    def optimize_branch_len_joint(self, **kwargs):
+        """Deprecated in favor of 'optimize_branch_lengths_joint'"""
+        return self.optimize_branch_lengths_joint(**kwargs)
+
+    def optimize_branch_lengths_joint(self, **kwargs):
         """
         Perform optimization for the branch lengths of the entire tree.
         This method only does a single path and needs to be iterated.
@@ -1663,20 +1696,11 @@ class TreeAnc(object):
 
         Parameters
         ----------
-
-         mode : str
-            Optimize branch length assuming the joint ML sequence assignment
-            of both ends of the branch (:code:`joint`), or trace over all possible sequence
-            assignments on both ends of the branch (:code:`marginal`) (slower, experimental).
-
          **kwargs :
             Keyword arguments
 
         Keyword Args
         ------------
-
-         verbose : int
-            Output level
 
          store_old : bool
             If True, the old lengths will be saved in :code:`node._old_dist` attribute.
@@ -1685,21 +1709,12 @@ class TreeAnc(object):
 
         """
 
-        self.logger("TreeAnc.optimize_branch_length: running branch length optimization in mode %s..."%mode,1)
+        self.logger("TreeAnc.optimize_branch_length: running branch length optimization using jointML ancestral sequences",1)
         if (self.tree is None) or (self.aln is None):
             self.logger("TreeAnc.optimize_branch_length: ERROR, alignment or tree are missing", 0)
             return ttconf.ERROR
 
-        store_old_dist = False
-
-        if 'store_old' in kwargs:
-            store_old_dist = kwargs['store_old']
-
-        if mode=='marginal':
-            # a marginal ancestral reconstruction is required for
-            # marginal branch length inference
-            if not hasattr(self.tree.root, "marginal_profile"):
-                self.infer_ancestral_sequences(marginal=True)
+        store_old_dist = kwargs['store_old'] if 'store_old' in kwargs else False
 
         max_bl = 0
         for node in self.tree.find_clades(order='postorder'):
@@ -1707,85 +1722,26 @@ class TreeAnc(object):
             if store_old_dist:
                 node._old_length = node.branch_length
 
-            if mode=='marginal':
-                new_len = self.optimal_marginal_branch_length(node)
-            elif mode=='joint':
-                new_len = self.optimal_branch_length(node)
-            else:
-                self.logger("treeanc.optimize_branch_length: unsupported optimization mode",4, warn=True)
-                new_len = node.branch_length
-
-            if new_len < 0:
-                continue
+            new_len = max(0,self.optimal_branch_length(node))
 
             self.logger("Optimization results: old_len=%.4e, new_len=%.4e, naive=%.4e"
-                   " Updating branch length..."%(node.branch_length, new_len, len(node.mutations)*self.one_mutation), 5)
+                        " Updating branch length..."%(node.branch_length, new_len, len(node.mutations)*self.one_mutation), 5)
 
             node.branch_length = new_len
             node.mutation_length=new_len
             max_bl = max(max_bl, new_len)
 
-        # as branch lengths changed, the params must be fixed
+        if max_bl>0.15:
+            self.logger("TreeAnc.optimize_branch_lengths_joint: THIS TREE HAS LONG BRANCHES."
+                        " \n\t ****TreeTime's JOINT IS NOT DESIGNED TO OPTIMIZE LONG BRANCHES."
+                        " \n\t ****PLEASE OPTIMIZE BRANCHES USING: "
+                        " \n\t ****branch_length_mode='input' or 'marginal'", 0, warn=True)
+
+        # as branch lengths changed, the distance to root etc need to be recalculated
         self.tree.root.up = None
         self.tree.root.dist2root = 0.0
-        if max_bl>0.15 and mode=='joint':
-            self.logger("TreeAnc.optimize_branch_length: THIS TREE HAS LONG BRANCHES."
-                        " \n\t ****TreeTime IS NOT DESIGNED TO OPTIMIZE LONG BRANCHES."
-                        " \n\t ****PLEASE OPTIMIZE BRANCHES WITH ANOTHER TOOL AND RERUN WITH"
-                        " \n\t ****branch_length_mode='input'", 0, warn=True)
         self._prepare_nodes()
         return ttconf.SUCCESS
-
-
-    def optimize_branch_length_global(self, **kwargs):
-        """
-        EXPERIMENTAL GLOBAL OPTIMIZATION
-        """
-
-        self.logger("TreeAnc.optimize_branch_length_global: running branch length optimization...",1)
-
-        def neg_log(s):
-            for si, n in zip(s, self.tree.find_clades(order='preorder')):
-                n.branch_length = si**2
-
-            self.infer_ancestral_sequences(marginal=True)
-
-            gradient = []
-            for si, n in zip(s, self.tree.find_clades(order='preorder')):
-                if n.up:
-                    pp, pc = self.marginal_branch_profile(n)
-                    Qtds = self.gtr.expQsds(si).T
-                    Qt = self.gtr.expQs(si).T
-
-                    res = pp.dot(Qt)
-                    overlap = np.sum(res*pc, axis=1)
-
-                    res_ds = pp.dot(Qtds)
-                    overlap_ds = np.sum(res_ds*pc, axis=1)
-                    logP = np.sum(self.multiplicity*overlap_ds/overlap)
-
-                    gradient.append(logP)
-                else:
-                    gradient.append(2*(si**2-0.001))
-
-            print(-self.tree.sequence_marginal_LH)
-            return (-self.tree.sequence_marginal_LH + (s[0]**2-0.001)**2, -1.0*np.array(gradient))
-
-        from scipy.optimize import minimize
-        x0 = np.sqrt([n.branch_length for n in self.tree.find_clades(order='preorder')])
-        sol = minimize(neg_log, x0, jac=True)
-
-        for new_len, node in zip(sol['x'], self.tree.find_clades()):
-            self.logger("Optimization results: old_len=%.4f, new_len=%.4f "
-                   " Updating branch length..."%(node.branch_length, new_len), 5)
-
-            node.branch_length = new_len**2
-            node.mutation_length=new_len**2
-
-        # as branch lengths changed, the params must be fixed
-        self.tree.root.up = None
-        self.tree.root.dist2root = 0.0
-        self._prepare_nodes()
 
 
     def optimal_branch_length(self, node):
@@ -1864,8 +1820,17 @@ class TreeAnc(object):
 
         if node.up is None:
             return self.one_mutation
-        pp, pc = self.marginal_branch_profile(node)
-        return self.gtr.optimal_t_compressed((pp, pc), self.multiplicity, profiles=True, tol=tol)
+        if node.up.up is None and len(node.up.clades)==2:
+            # children of a bifurcating root!
+            other = node.up.clades[0] if node==node.up.clades[1] else node.up.clades[1]
+            bl_ratio = node.branch_length/(node.branch_length+other.branch_length)
+            pc = node.marginal_subtree_LH
+            pp = normalize_profile(other.marginal_subtree_LH*self.tree.root.marginal_outgroup_LH)[0]
+            new_bl = self.gtr.optimal_t_compressed((pp, pc), self.multiplicity, profiles=True, tol=tol)
+            return bl_ratio*new_bl
+        else:
+            pp, pc = self.marginal_branch_profile(node)
+            return self.gtr.optimal_t_compressed((pp, pc), self.multiplicity, profiles=True, tol=tol)
 
 
     def prune_short_branches(self):
@@ -1879,24 +1844,69 @@ class TreeAnc(object):
                 continue
 
             # probability of the two seqs separated by zero time is not zero
-            if self.gtr.prob_t(node.up.cseq, node.cseq, 0.0,
-                               pattern_multiplicity=self.multiplicity) > 0.1:
+            if  ((node.branch_length<0.1*self.one_mutation) and
+                 (self.gtr.prob_t(node.up.cseq, node.cseq, 0.0,
+                                  pattern_multiplicity=self.multiplicity) > 0.1)):
                 # re-assign the node children directly to its parent
                 node.up.clades = [k for k in node.up.clades if k != node] + node.clades
                 for clade in node.clades:
                     clade.up = node.up
 
 
-    def optimize_sequences_and_branch_length(self,*args, **kwargs):
-        """This method is a shortcut for :py:meth:`treetime.TreeAnc.optimize_seq_and_branch_len`
+    def optimize_tree_marginal(self, max_iter=10, infer_gtr=False, pc=1.0, damping=0.75,
+                               LHtol=0.1, site_specific_gtr=False):
+        self.infer_ancestral_sequences(marginal=True)
+        oldLH = self.sequence_LH()
+        self.logger("TreeAnc.optimize_tree_marginal: initial, LH=%1.2f, total branch_length %1.4f"%
+                    (oldLH, self.tree.total_branch_length()), 2)
 
+        for i in range(max_iter):
+            if infer_gtr:
+                self.infer_gtr(site_specific=site_specific_gtr, marginal=True, normalized_rate=True, pc=pc)
+                self.infer_ancestral_sequences(marginal=True)
+                
+            branch_length_changes = []
+            for n in self.tree.find_clades():
+                if n.up is None:
+                    continue
+                new_val = self.optimal_marginal_branch_length(n, tol=1e-8 + 0.01**(i+1))
+                update_val = new_val*(1-damping**(i+1)) + n.branch_length*damping**(i+1)
+                branch_length_changes.append([n.branch_length, new_val, update_val])
+                n.branch_length = update_val
+
+            tmp = np.array(branch_length_changes)
+            dbl = np.mean(np.abs(tmp[:,0]-tmp[:,1])/(tmp[:,0]+tmp[:,1]))
+
+            self.infer_ancestral_sequences(marginal=True)
+            LH = self.sequence_LH()
+            deltaLH = LH - oldLH
+            oldLH = LH
+
+            self.logger("TreeAnc.optimize_tree_marginal: iteration %d, LH=%1.2f (%1.2f), delta branch_length=%1.4f, total branch_length %1.4f"%
+                        (i, LH, deltaLH, dbl, self.tree.total_branch_length()), 2)
+            if deltaLH<LHtol:
+                self.logger("TreeAnc.optimize_tree_marginal: deltaLH=%f, stopping iteration."%deltaLH,1)
+                break
+        return ttconf.SUCCESS
+
+
+    def optimize_sequences_and_branch_length(self,*args, **kwargs):
+        """This method is a shortcut for :py:meth:`treetime.TreeAnc.optimize_tree`
+        Deprecated in favor of 'optimize_tree'
         """
+        self.logger("Deprecation warning: 'optimize_sequences_and_branch_length' will be removed and replaced by 'optimize_tree'!", 1, warn=True)
         self.optimize_seq_and_branch_len(*args,**kwargs)
 
+    def optimize_seq_and_branch_len(self,*args, **kwargs):
+        """This method is a shortcut for :py:meth:`treetime.TreeAnc.optimize_tree`
+        Deprecated in favor of 'optimize_tree'
+        """
+        self.logger("Deprecation warning: 'optimize_seq_and_branch_len' will be removed and replaced by 'optimize_tree'!", 1, warn=True)
+        self.optimize_tree(*args,**kwargs)
 
-    def optimize_seq_and_branch_len(self,reuse_branch_len=True, prune_short=True,
-                                    marginal_sequences=False, branch_length_mode='joint',
-                                    max_iter=5, infer_gtr=False, **kwargs):
+    def optimize_tree(self,prune_short=True,
+                      marginal_sequences=False, branch_length_mode='joint',
+                      max_iter=5, infer_gtr=False, pc=1.0, **kwargs):
         """
         Iteratively set branch lengths and reconstruct ancestral sequences until
         the values of either former or latter do not change. The algorithm assumes
@@ -1910,13 +1920,6 @@ class TreeAnc(object):
 
         Parameters
         -----------
-
-         reuse_branch_len : bool
-            If True, rely on the initial branch lengths, and start with the
-            maximum-likelihood ancestral sequence inference using existing branch
-            lengths. Otherwise, do initial reconstruction of ancestral states with
-            Fitch algorithm, which uses only the tree topology.
-
          prune_short : bool
             If True, the branches with zero optimal length will be pruned from
             the tree, creating polytomies. The polytomies could be further
@@ -1940,17 +1943,18 @@ class TreeAnc(object):
 
         """
         if branch_length_mode=='marginal':
-            marginal_sequences = True
-
-        self.logger("TreeAnc.optimize_sequences_and_branch_length: sequences...", 1)
-        if reuse_branch_len:
-            N_diff = self.reconstruct_anc(method='probabilistic', infer_gtr=infer_gtr,
+            return self.optimize_tree_marginal(max_iter=max_iter, infer_gtr=infer_gtr, pc=pc, **kwargs)
+        elif branch_length_mode=='input':
+            N_diff = self.reconstruct_anc(method='probabilistic', infer_gtr=infer_gtr, pc=pc,
                                           marginal=marginal_sequences, **kwargs)
-            self.optimize_branch_len(verbose=0, store_old=False, mode=branch_length_mode)
-        else:
-            N_diff = self.reconstruct_anc(method='fitch', infer_gtr=infer_gtr, **kwargs)
+            return ttconf.success
+        elif branch_length_mode!='joint':
+            return ttconf.ERROR
 
-            self.optimize_branch_len(verbose=0, store_old=False, marginal=False)
+        self.logger("TreeAnc.optimize_tree: sequences...", 1)
+        N_diff = self.reconstruct_anc(method='probabilistic', infer_gtr=infer_gtr, pc=pc,
+                                      marginal=marginal_sequences, **kwargs)
+        self.optimize_branch_len(verbose=0, store_old=False, mode=branch_length_mode)
 
         n = 0
         while n<max_iter:
@@ -1960,18 +1964,63 @@ class TreeAnc(object):
             N_diff = self.reconstruct_anc(method='probabilistic', infer_gtr=False,
                                           marginal=marginal_sequences, **kwargs)
 
-            self.logger("TreeAnc.optimize_sequences_and_branch_length: Iteration %d."
+            self.logger("TreeAnc.optimize_tree: Iteration %d."
                    " #Nuc changed since prev reconstructions: %d" %(n, N_diff), 2)
 
             if N_diff < 1:
                 break
-            self.optimize_branch_len(verbose=0, store_old=False, mode=branch_length_mode)
+            self.optimize_branch_lengths_joint(store_old=False)
 
         self.tree.unconstrained_sequence_LH = (self.tree.sequence_LH*self.multiplicity).sum()
         self._prepare_nodes() # fix dist2root and up-links after reconstruction
-        self.logger("TreeAnc.optimize_sequences_and_branch_length: Unconstrained sequence LH:%f" % self.tree.unconstrained_sequence_LH , 2)
+        self.logger("TreeAnc.optimize_tree: Unconstrained sequence LH:%f" % self.tree.unconstrained_sequence_LH , 2)
         return ttconf.SUCCESS
 
+
+    def infer_gtr_iterative(self, max_iter=10, site_specific=False, LHtol=0.1,
+                            pc=1.0, normalized_rate=False):
+        """infer GTR model by iteratively estimating ancestral sequences and the GTR model
+
+        Parameters
+        ----------
+        max_iter : int, optional
+            maximal number of iterations
+        site_specific : bool, optional
+            use a site specific model
+        LHtol : float, optional
+            stop iteration when LH improvement falls below this cutoff
+        pc : float, optional
+            pseudocount to use
+        normalized_rate : bool, optional
+            set the overall rate to 1 (makes sense when optimizing branch lengths as well)
+
+        Returns
+        -------
+        str
+            success/failure code
+        """
+        self.infer_ancestral_sequences(marginal=True)
+        old_p = np.copy(self.gtr.Pi)
+        old_LH = self.sequence_LH()
+
+        for i in range(max_iter):
+            self.infer_gtr(site_specific=site_specific, marginal=True,
+                           normalized_rate=normalized_rate, pc=pc)
+            self.infer_ancestral_sequences(marginal=True)
+
+            dp = np.abs(self.gtr.Pi - old_p).mean() if self.gtr.Pi.shape==old_p.shape else np.nan
+
+            deltaLH = self.sequence_LH() - old_LH
+
+            old_p = np.copy(self.gtr.Pi)
+            old_LH = self.sequence_LH()
+
+            self.logger("TreeAnc.infer_gtr_iterative: iteration %d, LH=%1.2f (%1.2f), deltaP=%1.4f"%
+                        (i, old_LH, deltaLH, dp), 2)
+            if deltaLH<LHtol:
+                self.logger("TreeAnc.infer_gtr_iterative: deltaLH=%f, stopping iteration."%deltaLH,1)
+                break
+        return ttconf.SUCCESS
 
 ###############################################################################
 ### Utility functions
