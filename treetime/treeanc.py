@@ -6,7 +6,8 @@ import numpy as np
 from Bio import Phylo
 from Bio import AlignIO
 from treetime import config as ttconf
-from .seq_utils import seq2prof,seq2array,prof2seq, normalize_profile
+from .seq_utils import seq2prof, seq2array, prof2seq, normalize_profile, extend_profile
+from .vcf_utils import process_alignment_dictionary
 from .gtr import GTR
 from .gtr_site_specific import GTR_site_specific
 
@@ -248,13 +249,13 @@ class TreeAnc(object):
         """
         return self._tree
 
+
     @tree.setter
     def tree(self, in_tree):
         '''
         assigns a tree to the internal self._tree variable. The tree is either
         loaded from file (if in_tree is str) or assigned (if in_tree is a Phylo.tree)
         '''
-
         from os.path import isfile
         if isinstance(in_tree, Phylo.BaseTree.Tree):
             self._tree = in_tree
@@ -356,8 +357,9 @@ class TreeAnc(object):
                 self.seq_len = self.aln.get_alignment_length()
 
         # check whether the alignment is consistent with a nucleotide alignment.
-        likely_alphabet = self._guess_alphabet()
-        from .seq_utils import alphabets
+        from .seq_utils import alphabets, guess_alphabet
+        likely_alphabet = guess_alphabet([self.ref] if self.is_vcf
+                                          else [str(s.seq) for s in self.aln])
         # if likely alignment is not nucleotide but the gtr alignment is, WARN
         if likely_alphabet=='aa' and self.gtr.n_states==len(alphabets['nuc']) and np.all(self.gtr.alphabet==alphabets['nuc']):
             self.logger('WARNING: small fraction of ACGT-N in alignment. Really a nucleotide alignment? if not, rerun with --aa', 1, warn=True)
@@ -437,42 +439,6 @@ class TreeAnc(object):
         self._ref = in_ref
 
 
-    def extend_profile(self):
-        if self.aln:
-            if self.is_vcf and self.ref:
-                unique_chars = np.unique(list(self.ref))
-            else:
-                tmp_unique_chars = []
-                for node in self.tree.get_terminals():
-                    tmp_unique_chars.extend(np.unique(node.sequence))
-                unique_chars = np.unique(tmp_unique_chars)
-            for c in unique_chars:
-                if c not in self.gtr.profile_map:
-                    self.gtr.profile_map[c] = np.ones(self.gtr.n_states)
-                    self.logger("WARNING: character %s is unknown. Treating it as missing information"%c,1,warn=True)
-
-
-    def _guess_alphabet(self):
-        if self.aln:
-            if self.is_vcf and self.ref:
-                total=self.seq_len
-                nuc_count = 0
-                for n in 'ACGT-N':
-                    nuc_count += self.ref.upper().count(n)
-            else:
-                total=self.seq_len*len(self.aln)
-                nuc_count = 0
-                for seq in self.aln:
-                    for n in 'ACGT-N':
-                        nuc_count += seq.seq.upper().count(n)
-            if nuc_count>0.9*total:
-                return 'nuc'
-            else:
-                return 'aa'
-        else:
-            return 'nuc'
-
-
     def _attach_sequences_to_nodes(self):
         '''
         For each node of the tree, check whether there is a sequence available
@@ -517,7 +483,8 @@ class TreeAnc(object):
                         " POSSIBLE ERROR."%failed_leaves, 0, warn=True)
 
         # extend profile to contain additional unknown characters
-        self.extend_profile()
+        extend_profile(self.gtr, [self.ref] if self.is_vcf
+                        else [str(s.seq) for s in self.aln], logger=self.logger)
         return self.make_reduced_alignment()
 
 
@@ -567,7 +534,12 @@ class TreeAnc(object):
         #so pre-load alignment_patterns with the location of const sites!
         #and get the sites that we want to iterate over only!
         if self.is_vcf:
-            tmp_reduced_aln, alignment_patterns, positions = self.process_alignment_dict()
+            tmp = process_alignment_dictionary(self.aln, self.ref, self.gtr)
+            tmp_reduced_aln = tmp["constant_positions"]
+            alignment_patterns = tmp["constant_patterns"]
+            positions = tmp["variable_positions"]
+            self.inferred_const_sites = tmp["constant_up_to_ambiguous"]
+            self.nonref_positions = tmp["nonref_positions"]
             seqNames = self.aln.keys() #store seqName order to put back on tree
         elif self.reduce_alignment:
             # transpose real alignment, for ease of iteration
@@ -700,93 +672,6 @@ class TreeAnc(object):
         self.logger("TreeAnc: constructed reduced alignment...", 1)
 
         return ttconf.SUCCESS
-
-
-    def process_alignment_dict(self):
-        """
-        prepare the dictionary specifying differences from a reference sequence
-        to construct the reduced alignment with variable sites only. NOTE:
-            - sites can be constant but different from the reference
-            - sites can be constant plus a ambiguous sites
-
-        assigns
-        -------
-        - self.nonref_positions: at least one sequence is different from ref
-
-        Returns
-        -------
-        reduced_alignment_const
-            reduced alignment accounting for non-variable postitions
-
-        alignment_patterns_const
-            dict pattern -> (pos in reduced alignment, list of pos in full alignment)
-
-        ariable_positions
-            list of variable positions needed to construct remaining
-
-        """
-
-        # number of sequences in alignment
-        nseq = len(self.aln)
-
-        inv_map = defaultdict(list)
-        for k,v in self.aln.items():
-            for pos, bs in v.items():
-                inv_map[pos].append(bs)
-
-        self.nonref_positions = np.sort(list(inv_map.keys()))
-        self.inferred_const_sites = []
-
-        ambiguous_char = self.gtr.ambiguous
-        nonref_const = []
-        nonref_alleles = []
-        ambiguous_const = []
-        variable_pos = []
-        for pos, bs in inv_map.items(): #loop over positions and patterns
-            bases = "".join(np.unique(bs))
-            if len(bs) == nseq:
-                if (len(bases)<=2 and ambiguous_char in bases) or len(bases)==1:
-                    # all sequences different from reference, but only one state
-                    # (other than ambiguous_char) in column
-                    nonref_const.append(pos)
-                    nonref_alleles.append(bases.replace(ambiguous_char, ''))
-                    if ambiguous_char in bases: #keep track of sites 'made constant'
-                        self.inferred_const_sites.append(pos)
-                else:
-                    # at least two non-reference alleles
-                    variable_pos.append(pos)
-            else:
-                # not every sequence different from reference
-                if bases==ambiguous_char:
-                    ambiguous_const.append(pos)
-                    self.inferred_const_sites.append(pos) #keep track of sites 'made constant'
-                else:
-                    # at least one non ambiguous non-reference allele not in
-                    # every sequence
-                    variable_pos.append(pos)
-
-        refMod = np.array(list(self.ref))
-        # place constant non reference positions by their respective allele
-        refMod[nonref_const] = nonref_alleles
-        # mask variable positions
-        states = self.gtr.alphabet
-        # maybe states = np.unique(refMod)
-        refMod[variable_pos] = '.'
-
-        # for each base in the gtr, make constant alignment pattern and
-        # assign it to all const positions in the modified reference sequence
-        reduced_alignment_const = []
-        alignment_patterns_const = {}
-        for base in states:
-            p = base*nseq
-            pos = list(np.where(refMod==base)[0])
-            #if the alignment doesn't have a const site of this base, don't add! (ex: no '----' site!)
-            if len(pos):
-                alignment_patterns_const[p] = [len(reduced_alignment_const), pos]
-                reduced_alignment_const.append(list(p))
-
-
-        return reduced_alignment_const, alignment_patterns_const, variable_pos
 
 
     def prepare_tree(self):

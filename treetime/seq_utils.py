@@ -115,6 +115,33 @@ profile_maps = {
     }
 }
 
+
+def extend_profile(gtr, aln, logger=None):
+    tmp_unique_chars = []
+    for seq in aln:
+        tmp_unique_chars.extend(np.unique(list(seq)))
+
+    unique_chars = np.unique(tmp_unique_chars)
+    for c in unique_chars:
+        if c not in gtr.profile_map:
+            gtr.profile_map[c] = np.ones(gtr.n_states)
+            if logger:
+                logger("WARNING: character %s is unknown. Treating it as missing information"%c,1,warn=True)
+
+
+def guess_alphabet(aln):
+    total=0
+    nuc_count = 0
+    for seq in aln:
+        total += len(seq)
+        for n in 'ACGT-N':
+            nuc_count += seq.upper().count(n)
+    if nuc_count>0.9*total:
+        return 'nuc'
+    else:
+        return 'aa'
+
+
 def seq2array(seq, fill_overhangs=True, ambiguous_character='N'):
     """
     Take the raw sequence, substitute the "overhanging" gaps with 'N' (missequenced),

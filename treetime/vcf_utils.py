@@ -516,3 +516,96 @@ def write_vcf(tree_dict, file_name):#, compress=False):
         os.rename(file_name, file_name[:-3])
         call = ["gzip", file_name[:-3]]
         os.system(" ".join(call))
+
+
+def process_alignment_dictionary(aln, ref, gtr):
+    """
+    prepare the dictionary specifying differences from a reference sequence
+    to construct the reduced alignment with variable sites only. NOTE:
+        - sites can be constant but different from the reference
+        - sites can be constant plus a ambiguous sites
+
+    assigns
+    -------
+    - self.nonref_positions: at least one sequence is different from ref
+
+    Returns
+    -------
+    reduced_alignment_const
+        reduced alignment accounting for non-variable postitions
+
+    alignment_patterns_const
+        dict pattern -> (pos in reduced alignment, list of pos in full alignment)
+
+    variable_positions
+        list of variable positions needed to construct remaining
+
+    """
+
+    # number of sequences in alignment
+    nseq = len(aln)
+
+    inv_map = defaultdict(list)
+    for k,v in aln.items():
+        for pos, bs in v.items():
+            inv_map[pos].append(bs)
+
+    nonref_positions = np.sort(list(inv_map.keys()))
+    constant_up_to_ambiguous = []
+
+    ambiguous_char = gtr.ambiguous
+    nonref_const = []
+    nonref_alleles = []
+    ambiguous_const = []
+    variable_pos = []
+    for pos, bs in inv_map.items(): #loop over positions and patterns
+        bases = "".join(np.unique(bs))
+        if len(bs) == nseq:
+            if (len(bases)<=2 and ambiguous_char in bases) or len(bases)==1:
+                # all sequences different from reference, but only one state
+                # (other than ambiguous_char) in column
+                nonref_const.append(pos)
+                nonref_alleles.append(bases.replace(ambiguous_char, ''))
+                if ambiguous_char in bases: #keep track of sites 'made constant'
+                    constant_up_to_ambiguous.append(pos)
+            else:
+                # at least two non-reference alleles
+                variable_pos.append(pos)
+        else:
+            # not every sequence different from reference
+            if bases==ambiguous_char:
+                ambiguous_const.append(pos)
+                constant_up_to_ambiguous.append(pos) #keep track of sites 'made constant'
+            else:
+                # at least one non ambiguous non-reference allele not in
+                # every sequence
+                variable_pos.append(pos)
+
+    refMod = np.array(list(ref))
+    # place constant non reference positions by their respective allele
+    refMod[nonref_const] = nonref_alleles
+    # mask variable positions
+    states = gtr.alphabet
+    # maybe states = np.unique(refMod)
+    refMod[variable_pos] = '.'
+
+    # for each base in the gtr, make constant alignment pattern and
+    # assign it to all const positions in the modified reference sequence
+    constant_positions = []
+    constant_patterns = {}
+    for base in states:
+        p = base*nseq
+        pos = list(np.where(refMod==base)[0])
+        #if the alignment doesn't have a const site of this base, don't add! (ex: no '----' site!)
+        if len(pos):
+            constant_patterns[p] = [len(constant_positions), pos]
+            constant_positions.append(list(p))
+
+
+    return {"constant_positions": constant_positions,
+            "constant_patterns": constant_patterns,
+            "variable_positions": variable_pos,
+            "nonref_positions": nonref_positions,
+            "constant_up_to_ambiguous": constant_up_to_ambiguous}
+
+
