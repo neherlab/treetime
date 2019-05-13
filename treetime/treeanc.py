@@ -31,52 +31,60 @@ class TreeAnc(object):
 
         Parameters
         ----------
+        tree : str, Bio.Phylo.Tree
+           Phylogenetic tree. String passed is interpreted as a filename with
+           a tree in a standard format that can be parsed by the Biopython Phylo module.
 
-         tree : str, Bio.Phylo.Tree
-            Phylogenetic tree. String passed is interpreted as a filename with
-            a tree in a standard format that can be parsed by the Biopython Phylo module.
+        aln : str, Bio.Align.MultipleSequenceAlignment, dict
+           Sequence alignment. If a string passed, it is interpreted as the
+           filename to read Biopython alignment from. If a dict is given,
+           this is assumed to be the output of vcf_utils.read_vcf which
+           specifies for each sequence the differences from a reference
 
-         aln : str, Bio.Align.MultipleSequenceAlignment, dict
-            Sequence alignment. If a string passed, it is interpreted as the
-            filename to read Biopython alignment from. If a dict is given,
-            this is assumed to be the output of vcf_utils.read_vcf which
-            specifies for each sequence the differences from a reference
+        gtr : str, GTR
+           GTR model object. If string passed, it is interpreted as the type of
+           the GTR model. A new GTR instance will be created for this type.
 
-         gtr : str, GTR
-            GTR model object. If string passed, it is interpreted as the type of
-            the GTR model. A new GTR instance will be created for this type.
+        fill_overhangs : bool
+           In some cases, the missing data on both ends of the alignment is
+           filled with the gap sign('-'). If set to True, the end-gaps are converted to "unknown"
+           characters ('N' for nucleotides, 'X' for aminoacids). Otherwise, the alignment is treated as-is
 
-         fill_overhangs : bool
-            In some cases, the missing data on both ends of the alignment is
-            filled with the gap sign('-'). If set to True, the end-gaps are converted to "unknown"
-            characters ('N' for nucleotides, 'X' for aminoacids). Otherwise, the alignment is treated as-is
+        ref : None, optional
+            Reference sequence used in VCF mode
 
-         ignore_gaps: bool
-            Ignore gaps in branch length calculations
+        verbose : int
+           Verbosity level as number from 0 (lowest) to 10 (highest).
 
-         verbose : int
-            Verbosity level as number from 0 (lowest) to 10 (highest).
+        ignore_gaps : bool
+           Ignore gaps in branch length calculations
 
-         seq_multiplicity: dict
-            If individual nodes in the tree correspond to multiple sampled sequences
-            (i.e. read count in a deep sequencing experiment), these can be
-            specified as a dictionary. This currently only affects rooting and
-            can be used to weigh individual tips by abundance or important during root search.
+        convert_upper : bool, optional
+            Description
 
-         **kwargs
-            Keyword arguments to construct the GTR model
+        seq_multiplicity : dict
+           If individual nodes in the tree correspond to multiple sampled sequences
+           (i.e. read count in a deep sequencing experiment), these can be
+           specified as a dictionary. This currently only affects rooting and
+           can be used to weigh individual tips by abundance or important during root search.
 
-          .. Note::
-                Some GTR types require additional configuration parameters.
-                If the new GTR is being instantiated, these parameters are expected
-                to be passed as kwargs. If nothing is passed, the default values are
-                used, which might cause unexpected results.
+        reduce_alignment : bool, optional
+            reduce identical alignment columns to one (not useful when
+            inferring site specific GTR models).
+
+        **kwargs
+           Keyword arguments to construct the GTR model
+
+         .. Note::
+               Some GTR types require additional configuration parameters.
+               If the new GTR is being instantiated, these parameters are expected
+               to be passed as kwargs. If nothing is passed, the default values are
+               used, which might cause unexpected results.
 
         Raises
-        ----------
-
-         TypeError
-            If a tree is not passed in
+        ------
+        AttributeError
+            If no tree is passed in
 
 
         """
@@ -1864,7 +1872,7 @@ class TreeAnc(object):
             if infer_gtr:
                 self.infer_gtr(site_specific=site_specific_gtr, marginal=True, normalized_rate=True, pc=pc)
                 self.infer_ancestral_sequences(marginal=True)
-                
+
             branch_length_changes = []
             for n in self.tree.find_clades():
                 if n.up is None:
