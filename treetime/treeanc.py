@@ -461,7 +461,6 @@ class TreeAnc(object):
             else:
                 l.count = 1.0
 
-
         # loop over tree, and assign sequences
         for l in self.tree.find_clades():
             if l.name in dic_aln:

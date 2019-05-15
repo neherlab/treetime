@@ -3,7 +3,7 @@ from collections import defaultdict
 
 ## Functions to read in and print out VCF files
 
-def read_vcf(vcf_file, ref_file):
+def read_vcf(vcf_file, ref_file=None):
     """
     Reads in a vcf/vcf.gz file and associated
     reference sequence fasta (to which the VCF file is mapped).
@@ -88,16 +88,16 @@ def read_vcf(vcf_file, ref_file):
         key = "".join(bps)
 
         return {
-            'CT': 'Y',
-            'AG': 'R',
-            'AT': 'W',
-            'CG': 'S',
-            'GT': 'K',
-            'AC': 'M',
-            'AGT': 'D',
-            'ACG': 'V',
-            'ACT': 'H',
-            'CGT': 'B'
+            'CT': b'Y',
+            'AG': b'R',
+            'AT': b'W',
+            'CG': b'S',
+            'GT': b'K',
+            'AC': b'M',
+            'AGT': b'D',
+            'ACG': b'V',
+            'ACT': b'H',
+            'CGT': b'B'
         }[key]
 
     #Parses a 'normal' (not hetero or no-call) call depending if insertion+deletion, insertion,
@@ -109,26 +109,26 @@ def read_vcf(vcf_file, ref_file):
             for i in range(len(ref)):
                 #if the pos doesn't match, store in sequences
                 if ref[i] != alt[i]:
-                    snps[pos+i] = alt[i] if alt[i] != '.' else 'N' #'.' = no-call
+                    snps[pos+i] = (alt[i] if alt[i] != '.' else 'N').encode() #'.' = no-call
                 #if about to run out of ref, store rest:
                 if (i+1) >= len(ref):
-                    ins[pos+i] = alt[i:]
+                    ins[pos+i] = alt[i:].encode()
         #Deletion
         elif len(ref) > 1:
             for i in range(len(ref)):
                 #if ref is longer than alt, these are deletion positions
                 if i+1 > len(alt):
-                    snps[pos+i] = '-'
+                    snps[pos+i] = b'-'
                 #if not, there may be mutations
                 else:
                     if ref[i] != alt[i]:
-                        snps[pos+i] = alt[i] if alt[i] != '.' else 'N' #'.' = no-call
+                        snps[pos+i] = (alt[i] if alt[i] != '.' else 'N').encode() #'.' = no-call
         #Insertion
         elif len(alt) > 1:
-            ins[pos] = alt
+            ins[pos] = alt.encode()
         #No indel
         else:
-            snps[pos] = alt
+            snps[pos] = alt.encode()
 
 
     #Parses a 'bad' (hetero or no-call) call depending on what it is
@@ -149,11 +149,11 @@ def read_vcf(vcf_file, ref_file):
                 for i in range(len(ref)):
                     #if ref is longer than alt, these are deletion positions
                     if i+1 > len(alt):
-                        snps[pos+i] = 'N'
+                        snps[pos+i] = b'N'
                     #if not, there may be mutations
                     else:
                         if ref[i] != alt[i]:
-                            snps[pos+i] = alt[i] if alt[i] != '.' else 'N' #'.' = no-call
+                            snps[pos+i] = (alt[i] if alt[i] != '.' else 'N').encode() #'.' = no-call
 
         #If not deletion, need to know call type
         #if het, see if proposed alt is 1bp mutation
@@ -162,14 +162,14 @@ def read_vcf(vcf_file, ref_file):
             if len(alt)==1:
                 #alt = getAmbigCode(ref,alt) #if want to allow ambig
                 alt = 'N' #if you want to disregard ambig
-                snps[pos] = alt
+                snps[pos] = alt.encode()
             #else a het-call insertion, so ignore.
 
         #else it's a no-call; see if all alts have a length of 1
         #(meaning a simple 1bp mutation)
         elif len(ALT)==len("".join(ALT)):
             alt = 'N'
-            snps[pos] = alt
+            snps[pos] = alt.encode()
         #else a no-call insertion, so ignore.
 
 
@@ -257,9 +257,12 @@ def read_vcf(vcf_file, ref_file):
         for s in missings:
             sequences[s] = {}
 
-    refSeq = SeqIO.read(ref_file, format='fasta')
-    refSeq = refSeq.upper() #convert to uppercase to avoid unknown chars later
-    refSeqStr = str(refSeq.seq)
+    if ref_file:
+        refSeq = SeqIO.read(ref_file, format='fasta')
+        refSeq = refSeq.upper() #convert to uppercase to avoid unknown chars later
+        refSeqStr = str(refSeq.seq)
+    else:
+        refSeqStr = None
 
     compress_seq = {'reference':refSeqStr,
                     'sequences': sequences,
@@ -518,7 +521,10 @@ def write_vcf(tree_dict, file_name):#, compress=False):
         os.system(" ".join(call))
 
 
-def process_alignment_dictionary(aln, ref, gtr):
+def process_sparse_alignment(aln, ref, ambiguous_char):
+    return process_alignment_dictionary(aln, ref, ambiguous_char)
+
+def process_alignment_dictionary(aln, ref, ambiguous_char):
     """
     prepare the dictionary specifying differences from a reference sequence
     to construct the reduced alignment with variable sites only. NOTE:
@@ -553,27 +559,29 @@ def process_alignment_dictionary(aln, ref, gtr):
     nonref_positions = np.sort(list(inv_map.keys()))
     constant_up_to_ambiguous = []
 
-    ambiguous_char = gtr.ambiguous
     nonref_const = []
     nonref_alleles = []
     ambiguous_const = []
     variable_pos = []
     for pos, bs in inv_map.items(): #loop over positions and patterns
-        bases = "".join(np.unique(bs))
-        if len(bs) == nseq:
+        bases = list(np.unique(bs))
+        if len(bs) == nseq: #every sequence is different from reference
             if (len(bases)<=2 and ambiguous_char in bases) or len(bases)==1:
                 # all sequences different from reference, but only one state
                 # (other than ambiguous_char) in column
                 nonref_const.append(pos)
-                nonref_alleles.append(bases.replace(ambiguous_char, ''))
+                if len(bases)==1:
+                    nonref_alleles.append(bases[0])
+                else:
+                    nonref_alleles.append([x for x in bases if x!=ambiguous_char][0])
+
                 if ambiguous_char in bases: #keep track of sites 'made constant'
                     constant_up_to_ambiguous.append(pos)
             else:
                 # at least two non-reference alleles
                 variable_pos.append(pos)
-        else:
-            # not every sequence different from reference
-            if bases==ambiguous_char:
+        else: # not every sequence different from reference
+            if len(bases)==1 and bases[0]==ambiguous_char:
                 ambiguous_const.append(pos)
                 constant_up_to_ambiguous.append(pos) #keep track of sites 'made constant'
             else:
@@ -581,28 +589,28 @@ def process_alignment_dictionary(aln, ref, gtr):
                 # every sequence
                 variable_pos.append(pos)
 
-    refMod = np.array(list(ref))
+    refMod = np.copy(ref)
     # place constant non reference positions by their respective allele
     refMod[nonref_const] = nonref_alleles
     # mask variable positions
-    states = gtr.alphabet
-    # maybe states = np.unique(refMod)
-    refMod[variable_pos] = '.'
+    states = np.unique(refMod)
+    refMod[variable_pos] = b'.'
 
     # for each base in the gtr, make constant alignment pattern and
     # assign it to all const positions in the modified reference sequence
-    constant_positions = []
+    constant_columns = []
     constant_patterns = {}
     for base in states:
-        p = base*nseq
+        if base==ambiguous_char:
+            continue
+        p = np.repeat(base, nseq)
         pos = list(np.where(refMod==base)[0])
         #if the alignment doesn't have a const site of this base, don't add! (ex: no '----' site!)
         if len(pos):
-            constant_patterns[p] = [len(constant_positions), pos]
-            constant_positions.append(list(p))
+            constant_patterns["".join(p.astype('U'))] = [len(constant_columns), pos]
+            constant_columns.append(p)
 
-
-    return {"constant_positions": constant_positions,
+    return {"constant_columns": constant_columns,
             "constant_patterns": constant_patterns,
             "variable_positions": variable_pos,
             "nonref_positions": nonref_positions,

@@ -1,4 +1,6 @@
 import numpy as np
+from Bio import Seq, SeqRecord
+
 
 alphabet_synonyms = {'nuc':'nuc', 'nucleotide':'nuc', 'aa':'aa', 'aminoacid':'aa',
                      'nuc_nogap':'nuc_nogap', 'nucleotide_nogap':'nuc_nogap',
@@ -6,17 +8,17 @@ alphabet_synonyms = {'nuc':'nuc', 'nucleotide':'nuc', 'aa':'aa', 'aminoacid':'aa
                      'DNA':'nuc', 'DNA_nogap':'nuc_nogap'}
 
 alphabets = {
-            "nuc":           np.array(['A', 'C', 'G', 'T', '-']),
+            "nuc":           np.array(['A', 'C', 'G', 'T', '-'], dtype='S1'),
 
-            "nuc_nogap":np.array(['A', 'C', 'G', 'T']),
+            "nuc_nogap":np.array(['A', 'C', 'G', 'T'], dtype='S1'),
 
             "aa":            np.array(['A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K',
                                        'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V',
-                                       'W', 'Y', '*', '-']),
+                                       'W', 'Y', '*', '-'], dtype='S1'),
 
             "aa_nogap": np.array(['A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K',
                                        'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V',
-                                       'W', 'Y'])
+                                       'W', 'Y'], dtype='S1')
             }
 
 profile_maps = {
@@ -134,15 +136,15 @@ def guess_alphabet(aln):
     nuc_count = 0
     for seq in aln:
         total += len(seq)
-        for n in 'ACGT-N':
-            nuc_count += seq.upper().count(n)
+        for n in np.fromstring('acgtACGT-N', 'S1'):
+            nuc_count += np.sum(seq==n)
     if nuc_count>0.9*total:
         return 'nuc'
     else:
         return 'aa'
 
 
-def seq2array(seq, fill_overhangs=True, ambiguous_character='N'):
+def seq2array(seq, word_length=1, fill_overhangs=False, ambiguous_character='N'):
     """
     Take the raw sequence, substitute the "overhanging" gaps with 'N' (missequenced),
     and convert the sequence to the numpy array of chars.
@@ -164,17 +166,24 @@ def seq2array(seq, fill_overhangs=True, ambiguous_character='N'):
         Sequence as 1D numpy array of chars
 
     """
-    try:
-        sequence = ''.join(seq)
-    except TypeError:
-        sequence = seq
+    if isinstance(seq, str):
+        seq_str = seq
+    elif isinstance(seq, Seq.Seq):
+        seq_str = np.fromstring(str(seq), 'S%d'%word_length)
+    elif isinstance(seq, SeqRecord.SeqRecord):
+        seq_str = str(seq.seq)
+    else:
+        raise TypeError("seq2array: sequence must be Bio.Seq, Bio.SeqRecord, or string, got "+str(seq))
 
-    sequence = np.array(list(sequence))
+    seq_array = np.fromstring(seq_str, 'S%d'%word_length)
+
     # substitute overhanging unsequenced tails
     if fill_overhangs:
-        sequence [:np.where(sequence != '-')[0][0]] = ambiguous_character
-        sequence [np.where(sequence != '-')[0][-1]+1:] = ambiguous_character
-    return sequence
+        gaps = np.where(sequence != '-')[0]
+        seq_array [:gaps[0]] = ambiguous_character
+        seq_array [gaps[-1]+1:] = ambiguous_character
+    return seq_array
+
 
 def seq2prof(seq, profile_map):
     """

@@ -48,7 +48,7 @@ class GTR(object):
                 self.profile_map = profile_maps[tmp_alphabet]
         else:
             # not a predefined alphabet
-            self.alphabet = alphabet
+            self.alphabet = np.array(alphabet, dtype='S')
             if prof_map is None: # generate trivial unambiguous profile map is none is given
                 self.profile_map = {s:x for s,x in zip(self.alphabet, np.eye(len(self.alphabet)))}
             else:
