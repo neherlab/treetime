@@ -338,7 +338,7 @@ def write_vcf(tree_dict, file_name):#, compress=False):
                     pattern.append(sequences[k][pi])
                 except KeyError:
                     pattern.append(ref[pi])
-            pattern = np.array(pattern)
+            pattern = np.array(pattern).astype('U')
 
         sites = []
         sites.append(pattern)
@@ -353,7 +353,7 @@ def write_vcf(tree_dict, file_name):#, compress=False):
                     pattern.append(sequences[k][pi])
                 except KeyError:
                     pattern.append(ref[pi])
-            pattern = np.array(pattern)
+            pattern = np.array(pattern).astype('U')
 
             #Stops 'greedy' behaviour from adding mutations adjacent to deletions
             if any(pattern == '-'): #if part of deletion, append
@@ -430,8 +430,8 @@ def write_vcf(tree_dict, file_name):#, compress=False):
             except KeyError:
                 pattern2.append(ref[pi+1])
 
-        pattern = np.array(pattern)
-        pattern2 = np.array(pattern2)
+        pattern = np.array(pattern).astype('U')
+        pattern2 = np.array(pattern2).astype('U')
 
         #If a deletion here, need to gather up all bases, and position before
         if any(pattern == '-'):
@@ -482,7 +482,7 @@ def write_vcf(tree_dict, file_name):#, compress=False):
         #Write it out - Increment positions by 1 so it's in VCF numbering
         #If no longer variable, and explained, don't write it out
         if printPos:
-            output = ["MTB_anc", str(pos), ".", refb, ",".join(uniques), ".", "PASS", ".", "GT"] + calls
+            output = ["MTB_anc", str(pos), ".", refb.decode(), ",".join(uniques), ".", "PASS", ".", "GT"] + calls
             vcfWrite.append("\t".join(output))
 
         i+=1

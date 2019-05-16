@@ -122,7 +122,7 @@ class TreeTime(ClockTree):
         # register the specified covaration mode
         self.use_covariation = use_covariation
 
-        if (self.tree is None) or (self.aln is None and self.seq_len is None):
+        if (self.tree is None) or (self.aln is None and self.data.full_length is None):
             self.logger("TreeTime.run: ERROR, alignment or tree are missing", 0)
             return ttconf.ERROR
         if (self.aln is None):
@@ -540,7 +540,7 @@ class TreeTime(ClockTree):
 
         from .branch_len_interpolator import BranchLenInterpolator
 
-        zero_branch_slope = self.gtr.mu*self.seq_len
+        zero_branch_slope = self.gtr.mu*self.data.full_length
 
         def _c_gain(t, n1, n2, parent):
             """

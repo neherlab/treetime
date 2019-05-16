@@ -10,6 +10,7 @@ from .seq_utils import seq2prof, seq2array, prof2seq, normalize_profile, extend_
 from .vcf_utils import process_alignment_dictionary
 from .gtr import GTR
 from .gtr_site_specific import GTR_site_specific
+from .sequence_data import SequenceData
 
 string_types = [str] if sys.version_info[0]==3 else [str, unicode]
 
@@ -96,16 +97,7 @@ class TreeAnc(object):
         self.log=log
         self.logger("TreeAnc: set-up",1)
         self._internal_node_count = 0
-        self.additional_constant_sites = 0 # sites not part of the alignment but assumed constant
         self.use_mutation_length=False
-        # if not specified, this will be set as the alignment_length or reference length
-        self._seq_len = None
-        self.seq_len = kwargs['seq_len'] if 'seq_len' in kwargs else None
-        self.fill_overhangs = fill_overhangs
-        self.is_vcf = False  #this is set true when aln is set, if aln is dict
-        # if sequences represent multiple samples, this can be added as multiplicity here
-        self.seq_multiplicity = {} if seq_multiplicity is None else seq_multiplicity
-        self.reduce_alignment = reduce_alignment
         self.ignore_gaps = ignore_gaps
 
         self._tree = None
@@ -117,23 +109,17 @@ class TreeAnc(object):
         self._gtr = None
         self.set_gtr(gtr or 'JC69', **kwargs)
 
-        # will be None if not set
-        self.ref = ref
-
-        # force all sequences to be upper case letters
-        # (desired for nuc or aa, not for other discrete states)
-        self.convert_upper = convert_upper
-
         # set alignment and attach sequences to tree on success.
-        # otherwise self.aln will be None
-        self._aln = None
-        self.reduced_to_full_sequence_map = None
-        self.multiplicity = None
-        self.aln = aln
+        # otherwise self.data.aln will be None
+        self.data = SequenceData(aln, ref=ref, logger=self.logger, reduce_alignment=reduce_alignment,
+                                convert_upper=convert_upper, fill_overhangs=fill_overhangs,
+                                sequence_length=kwargs['seq_len'] if 'seq_len' in kwargs else None)
 
-        if self.aln and self.tree:
-            if len(self.tree.get_terminals()) != len(self.aln):
-                self.logger("**WARNING: Number of sequences in tree differs from number of sequences in alignment!**", 3, warn=True)
+        if self.data.aln and self.tree:
+            if len(self.tree.get_terminals()) != len(self.data.aln):
+                self.logger("**WARNING: Number of tips in tree differs from number of sequences in alignment!**", 3, warn=True)
+
+            self._attach_sequences_to_nodes()
 
 
     def logger(self, msg, level, warn=False):
@@ -236,6 +222,16 @@ class TreeAnc(object):
         if self._gtr.ambiguous is None:
             self.fill_overhangs=False
 
+    @property
+    def aln(self):
+        return self.data.aln
+
+    @aln.setter
+    def aln(self,in_aln):
+        self.data.aln=in_aln
+        if self.data.aln and self.tree:
+            self._attach_sequences_to_nodes()
+
 
     @property
     def tree(self):
@@ -285,116 +281,6 @@ class TreeAnc(object):
         return ttconf.SUCCESS
 
 
-    @property
-    def aln(self):
-        """
-        The multiple sequence alignment currently used by the TreeAnc
-
-        :setter: Takes in alignment as MultipleSeqAlignment, str, or dict/defaultdict \
-        and attaches sequences to tree nodes.
-        :getter: Returns alignment as MultipleSeqAlignment or dict/defaultdict
-
-        """
-        return self._aln
-
-    @aln.setter
-    def aln(self,in_aln):
-        """
-        Reads in the alignment (from a dict, MultipleSeqAlignment, or file,
-        as necessary), sets tree-related parameters, and attaches sequences
-        to the tree nodes.
-
-        Parameters
-        ----------
-        in_aln : MultipleSeqAlignment, str, dict/defaultdict
-            The alignment to be read in
-
-        """
-        # load alignment from file if necessary
-
-
-        from os.path import isfile
-        from Bio.Align import MultipleSeqAlignment
-        self._aln = None
-        if in_aln is None:
-            return
-        elif isinstance(in_aln, MultipleSeqAlignment):
-            self._aln = in_aln
-        elif type(in_aln) in string_types and isfile(in_aln):
-            for fmt in ['fasta', 'phylip-relaxed', 'nexus']:
-                try:
-                    self._aln=AlignIO.read(in_aln, fmt)
-                    break
-                except:
-                    continue
-        elif type(in_aln) in [defaultdict, dict]:  #if is read in from VCF file
-            self._aln = in_aln
-            self.is_vcf = True
-
-        if self._aln is None:
-            self.logger("TreeAnc: loading alignment failed... ",1, warn=True)
-            return ttconf.ERROR
-
-        #Convert to uppercase here, rather than in _attach_sequences_to_nodes
-        #(which used to do it through seq2array in seq_utils.py)
-        #so that it is controlled by param convert_upper. This way for
-        #mugration (ancestral reconstruction of non-sequences), you can
-        #use upper- and lower case characters for discrete states!
-        if (not self.is_vcf) and self.convert_upper:
-            self._aln = MultipleSeqAlignment([seq.upper() for seq in self._aln])
-
-        if self.seq_len:
-            if self.is_vcf and self.seq_len!=len(self.ref):
-                self.logger("TreeAnc.aln: specified sequence length doesn't match reference length, ignoring sequence length.", 1, warn=True)
-                self._seq_len = len(self.ref)
-            else:
-                self.logger("TreeAnc.aln: specified sequence length doesn't match alignment length. Treating difference as constant sites.", 2, warn=True)
-                self.additional_constant_sites = max(0, self.seq_len - self.aln.get_alignment_length())
-        else:
-            if self.is_vcf:
-                self.seq_len = len(self.ref)
-            else:
-                self.seq_len = self.aln.get_alignment_length()
-
-        # check whether the alignment is consistent with a nucleotide alignment.
-        from .seq_utils import alphabets, guess_alphabet
-        likely_alphabet = guess_alphabet([self.ref] if self.is_vcf
-                                          else [str(s.seq) for s in self.aln])
-        # if likely alignment is not nucleotide but the gtr alignment is, WARN
-        if likely_alphabet=='aa' and self.gtr.n_states==len(alphabets['nuc']) and np.all(self.gtr.alphabet==alphabets['nuc']):
-            self.logger('WARNING: small fraction of ACGT-N in alignment. Really a nucleotide alignment? if not, rerun with --aa', 1, warn=True)
-        # conversely, warn if alignment is consistent with nucleotide but gtr has a long alphabet
-        if likely_alphabet=='nuc' and self.gtr.n_states>10:
-            self.logger('WARNING: almost exclusively ACGT-N in alignment. Really a protein alignment?', 1, warn=True)
-
-        if hasattr(self, '_tree') and (self.tree is not None):
-            self._attach_sequences_to_nodes()
-        else:
-            self.logger("TreeAnc.aln: sequences not yet attached to tree", 3, warn=True)
-
-
-    @property
-    def seq_len(self):
-        """length of the uncompressed sequence
-        """
-        return self._seq_len
-
-    @seq_len.setter
-    def seq_len(self,L):
-        """set the length of the uncompressed sequence. its inverse 'one_mutation'
-        is frequently used as a general length scale. This can't be changed once
-        it is set.
-
-        Parameters
-        ----------
-        L : int
-            length of the sequence alignment
-        """
-        if (not hasattr(self, '_seq_len')) or self._seq_len is None:
-            if L:
-                self._seq_len = int(L)
-        else:
-            self.logger("TreeAnc: one_mutation and sequence length can't be reset",1)
 
     @property
     def one_mutation(self):
@@ -404,39 +290,11 @@ class TreeAnc(object):
         float
             inverse of the uncompressed sequene length - length scale for short branches
         """
-        return 1.0/self.seq_len if self.seq_len else np.nan
+        return 1.0/self.data.full_length if self.data.full_length else np.nan
 
     @one_mutation.setter
     def one_mutation(self,om):
         self.logger("TreeAnc: one_mutation can't be set",1)
-
-
-    @property
-    def ref(self):
-        """
-        Get the str reference nucleotide sequence currently used by TreeAnc.
-        When having read alignment in from a VCF, this is what variants map to.
-
-        :setter: Sets the string reference sequence
-        :getter: Returns the string reference sequence
-
-        """
-        # delete previous alignment if reference changes
-        return self._ref
-
-
-    @ref.setter
-    def ref(self, in_ref):
-        """
-        Parameters
-        ----------
-        in_ref : str
-            reference sequence for the vcf sequence dict as a plain string
-        """
-        self._aln = None
-        self.reduced_to_full_sequence_map = None
-        self.multiplicity = None
-        self._ref = in_ref
 
 
     def _attach_sequences_to_nodes(self):
@@ -445,35 +303,27 @@ class TreeAnc(object):
         in the alignment and assign this sequence as a character array
         '''
         failed_leaves= 0
-        if self.is_vcf:
-            # if alignment is specified as difference from ref
-            dic_aln = self.aln
-        else:
-            # if full alignment is specified
-            dic_aln = {k.name: seq2array(k.seq, fill_overhangs=self.fill_overhangs,
-                                                   ambiguous_character=self.gtr.ambiguous)
-                                for k in self.aln} #
 
         # loop over leaves and assign multiplicities of leaves (e.g. number of identical reads)
         for l in self.tree.get_terminals():
-            if l.name in self.seq_multiplicity:
-                l.count = self.seq_multiplicity[l.name]
+            if l.name in self.data.seq_multiplicity:
+                l.count = self.data.seq_multiplicity[l.name]
             else:
                 l.count = 1.0
 
         # loop over tree, and assign sequences
         for l in self.tree.find_clades():
-            if l.name in dic_aln:
-                l.sequence= dic_aln[l.name]
+            if l.name in self.data.reduced_alignment:
+                l.cseq = self.data.reduced_alignment[l.name]
             elif l.is_terminal():
                 self.logger("***WARNING: TreeAnc._attach_sequences_to_nodes: NO SEQUENCE FOR LEAF: %s" % l.name, 0, warn=True)
                 failed_leaves += 1
-                l.sequence = seq2array(self.gtr.ambiguous*self.seq_len, fill_overhangs=self.fill_overhangs,
-                                                 ambiguous_character=self.gtr.ambiguous)
+                l.cseq = np.repeat(self.gtr.ambiguous, self.data.reduced_length)
                 if failed_leaves > self.tree.count_terminals()/3:
-                    self.logger("ERROR: At least 30\\% terminal nodes cannot be assigned with a sequence!\n", 0, warn=True)
+                    self.logger("ERROR: At least 30\\% terminal nodes cannot be assigned a sequence!\n", 0, warn=True)
                     self.logger("Are you sure the alignment belongs to the tree?", 2, warn=True)
-                    break
+                    self.ok = False
+                    return ttconf.ERROR
             else: # could not assign sequence for internal node - is OK
                 pass
 
@@ -482,195 +332,9 @@ class TreeAnc(object):
                         " POSSIBLE ERROR."%failed_leaves, 0, warn=True)
 
         # extend profile to contain additional unknown characters
-        extend_profile(self.gtr, [self.ref] if self.is_vcf
-                        else [str(s.seq) for s in self.aln], logger=self.logger)
-        return self.make_reduced_alignment()
-
-
-    def make_reduced_alignment(self):
-        """
-        Create the reduced alignment from the full sequences attached to (some)
-        tree nodes. The methods collects all sequences from the tree nodes, creates
-        the alignment, counts the multiplicity for each column of the alignment
-        ('alignment pattern'), and creates the reduced alignment, where only the
-        unique patterns are present. The reduced alignment and the pattern multiplicity
-        are sufficient for the GTR calculations and allow to save memory on profile
-        instantiation.
-
-        The maps from full sequence to reduced sequence and back are also stored to allow
-        compressing and expanding the sequences.
-
-        Notes
-        -----
-
-          full_to_reduced_sequence_map : (array)
-             Map to reduce a sequence
-
-          reduced_to_full_sequence_map : (dict)
-             Map to restore sequence from reduced alignment
-
-          multiplicity : (array)
-            Numpy array, which stores the pattern multiplicity for each position of the reduced alignment.
-
-          reduced_alignment : (2D numpy array)
-            The reduced alignment. Shape is (N x L'), where N is number of
-            sequences, L' - number of unique alignment patterns
-
-          cseq : (array)
-            The compressed sequence (corresponding row of the reduced alignment) attached to each node
-
-        """
-
-        self.logger("TreeAnc: making reduced alignment...", 1)
-
-        # bind positions in real sequence to that of the reduced (compressed) sequence
-        self.full_to_reduced_sequence_map = np.zeros(self.seq_len, dtype=int)
-
-        # bind position in reduced sequence to the array of positions in real (expanded) sequence
-        self.reduced_to_full_sequence_map = {}
-
-        #if is a dict, want to be efficient and not iterate over a bunch of const_sites
-        #so pre-load alignment_patterns with the location of const sites!
-        #and get the sites that we want to iterate over only!
-        if self.is_vcf:
-            tmp = process_alignment_dictionary(self.aln, self.ref, self.gtr)
-            tmp_reduced_aln = tmp["constant_positions"]
-            alignment_patterns = tmp["constant_patterns"]
-            positions = tmp["variable_positions"]
-            self.inferred_const_sites = tmp["constant_up_to_ambiguous"]
-            self.nonref_positions = tmp["nonref_positions"]
-            seqNames = self.aln.keys() #store seqName order to put back on tree
-        elif self.reduce_alignment:
-            # transpose real alignment, for ease of iteration
-            alignment_patterns = {}
-            tmp_reduced_aln = []
-            # NOTE the order of tree traversal must be the same as below
-            # for assigning the cseq attributes to the nodes.
-            seqs = [n.sequence for n in self.tree.find_clades() if hasattr(n, 'sequence')]
-            if len(np.unique([len(x) for x in seqs]))>1:
-                self.logger("TreeAnc: Sequences differ in in length! ABORTING",0, warn=True)
-                aln_transpose = None
-                raise TypeError
-            else:
-                aln_transpose = np.array(seqs).T
-                positions = range(aln_transpose.shape[0])
-        else:
-            self.multiplicity = np.ones(self.seq_len, dtype=float)
-            self.full_to_reduced_sequence_map = np.arange(self.seq_len)
-            self.reduced_to_full_sequence_map = {p:np.array([p]) for p in np.arange(self.seq_len)}
-            for n in self.tree.find_clades():
-                if hasattr(n, 'sequence'):
-                    n.original_cseq = np.copy(n.sequence)
-                    n.cseq = np.copy(n.sequence)
-            return ttconf.SUCCESS
-
-        for pi in positions:
-            if self.is_vcf:
-                pattern = [ self.aln[k][pi] if pi in self.aln[k].keys()
-                            else self.ref[pi] for k,v in self.aln.items() ]
-            else:
-                pattern = aln_transpose[pi]
-
-            str_pat = "".join(pattern)
-            # if the column contains only one state and ambiguous nucleotides, replace
-            # those with the state in other strains right away
-            unique_letters = list(np.unique(pattern))
-            #create a copy so we don't modify aln_transpose
-            fixed_pattern = np.copy(pattern)
-            if hasattr(self.gtr, "ambiguous"):
-                if len(unique_letters)==2 and self.gtr.ambiguous in unique_letters:
-                    other = [c for c in unique_letters if c!=self.gtr.ambiguous][0]
-                    str_pat = str_pat.replace(self.gtr.ambiguous, other)
-                    #also replace in original pattern!
-                    fixed_pattern[fixed_pattern == self.gtr.ambiguous] = other
-                    unique_letters = [other]
-            # if there is a mutation in this column, give it its private pattern
-            # this is required when sampling mutations from reconstructed profiles.
-            # otherwise, all mutations corresponding to the same pattern will be coupled.
-            if len(unique_letters)>1:
-                str_pat += '_%d'%pi
-
-            # if the pattern is not yet seen,
-            if str_pat not in alignment_patterns:
-                # bind the index in the reduced aln, index in sequence to the pattern string
-                alignment_patterns[str_pat] = (len(tmp_reduced_aln), [pi])
-                # append this pattern to the reduced alignment
-                tmp_reduced_aln.append(fixed_pattern)
-            else:
-                # if the pattern is already seen, append the position in the real
-                # sequence to the reduced aln<->sequence_pos_indexes map
-                alignment_patterns[str_pat][1].append(pi)
-
-        # add constant alignment column not in the alignment. We don't know where they
-        # are, so just add them to the end. First, determine sequence composition.
-        if self.additional_constant_sites:
-            character_counts = {c:np.sum(aln_transpose==c) for c in self.gtr.alphabet
-                                if c not in [self.gtr.ambiguous, '-']}
-            total = np.sum(list(character_counts.values()))
-            additional_columns = [(c,int(np.round(self.additional_constant_sites*n/total)))
-                                  for c, n in character_counts.items()]
-            columns_left = self.additional_constant_sites
-            pi = len(positions)
-            for c,n in additional_columns:
-                if c==additional_columns[-1][0]:  # make sure all additions add up to the correct number to avoid rounding
-                    n = columns_left
-                str_pat = c*len(self.aln)
-                pos_list = list(range(pi, pi+n))
-
-                if str_pat in alignment_patterns:
-                    alignment_patterns[str_pat][1].extend(pos_list)
-                else:
-                    alignment_patterns[str_pat] = (len(tmp_reduced_aln), pos_list)
-                    tmp_reduced_aln.append(np.array(list(str_pat)))
-                pi += n
-                columns_left -= n
-
-
-        # count how many times each column is repeated in the real alignment
-        self.multiplicity = np.zeros(len(alignment_patterns))
-        for p, pos in alignment_patterns.values():
-            self.multiplicity[p]=len(pos)
-
-        # create the reduced alignment as np array
-        self.reduced_alignment = np.array(tmp_reduced_aln).T
-
-        # create map to compress a sequence
-        for p, pos in alignment_patterns.values():
-            self.full_to_reduced_sequence_map[np.array(pos)]=p
-
-        # create a map to reconstruct full sequence from the reduced (compressed) sequence
-        for p, val in alignment_patterns.items():
-            self.reduced_to_full_sequence_map[val[0]]=np.array(val[1], dtype=int)
-
-        # assign compressed sequences to all nodes of the tree, which have sequence assigned
-        # for dict we cannot assume this is in the same order, as it does below!
-        # so do it explicitly
-        #
-        # sequences are overwritten during reconstruction and
-        # ambiguous sites change. Keep orgininals for reference
-        if self.is_vcf:
-            seq_reduce_align = {n:self.reduced_alignment[i]
-                                for i, n in enumerate(seqNames)}
-            for n in self.tree.find_clades():
-                if hasattr(n, 'sequence'):
-                    n.original_cseq = seq_reduce_align[n.name]
-                    n.cseq = np.copy(n.original_cseq)
-        else:
-            # NOTE the order of tree traversal must be the same as above to catch the
-            # index in the reduced alignment correctly
-            seq_count = 0
-            for n in self.tree.find_clades():
-                if hasattr(n, 'sequence'):
-                    n.original_cseq = self.reduced_alignment[seq_count]
-                    n.cseq = np.copy(n.original_cseq)
-                    seq_count+=1
-                else:
-                    n.original_cseq = None
-                    n.cseq = None
-
-        self.logger("TreeAnc: constructed reduced alignment...", 1)
-
-        return ttconf.SUCCESS
+        extend_profile(self.gtr, [self.data.ref] if self.data.is_sparse
+                        else self.data.aln.values(), logger=self.logger)
+        self.ok = True
 
 
     def prepare_tree(self):
@@ -772,18 +436,17 @@ class TreeAnc(object):
          gtr : GTR
             The inferred GTR model
         """
+        if not self.ok:
+            self.logger("TreeAnc.infer_gtr: ERROR, sequences or tree are missing", 0)
+            return ttconf.ERROR
 
         # if ancestral sequences are not in place, reconstruct them
         if marginal  and (not hasattr(self.tree.root,'marginal_profile')):
-            self._ml_anc_marginal(final=True, **kwargs)
+            self.infer_ancestral_sequences(marginal=True, **kwargs)
         elif (not hasattr(self.tree.root,'cseq')) or self.tree.root.cseq is None:
-            self._ml_anc_joint(final=True, **kwargs)
+            self.infer_ancestral_sequences(marginal=False, **kwargs)
 
-        if (self.tree is None) or (self.aln is None):
-            self.logger("TreeAnc.infer_gtr: ERROR, alignment or tree are missing", 0)
-            return ttconf.ERROR
-
-        alpha = list(self.gtr.alphabet)
+        alpha = [x.decode() for x in self.gtr.alphabet]
         n=len(alpha)
         L = len(self.tree.root.cseq)
         # matrix of mutations n_{ij}: i = derived state, j=ancestral state
@@ -795,19 +458,25 @@ class TreeAnc(object):
             for c in node:
                 if marginal:
                     mut_stack = np.transpose(self.get_branch_mutation_matrix(c, full_sequence=False), (1,2,0))
-                    T_ia += 0.5*self._branch_length_to_gtr(c) * mut_stack.sum(axis=0) * self.multiplicity
-                    T_ia += 0.5*self._branch_length_to_gtr(c) * mut_stack.sum(axis=1) * self.multiplicity
-                    n_ija += mut_stack * self.multiplicity
+                    T_ia += 0.5*self._branch_length_to_gtr(c) * mut_stack.sum(axis=0) * self.data.multiplicity
+                    T_ia += 0.5*self._branch_length_to_gtr(c) * mut_stack.sum(axis=1) * self.data.multiplicity
+                    n_ija += mut_stack * self.data.multiplicity
                 elif hasattr(c,'mutations'):
                     for a,pos, d in c.mutations:
-                        i,j = alpha.index(d), alpha.index(a)
-                        cpos = self.full_to_reduced_sequence_map[pos]
+                        try:
+                            i,j = alpha.index(d), alpha.index(a)
+                        except:
+                            continue
+                        cpos = self.data.full_to_reduced_sequence_map[pos]
                         n_ija[i,j,cpos]+=1
                         T_ia[j,cpos] += 0.5*self._branch_length_to_gtr(c)
                         T_ia[i,cpos] -= 0.5*self._branch_length_to_gtr(c)
-                    for pos,nuc in enumerate(c.cseq):
-                        i = alpha.index(nuc)
-                        T_ia[i,pos] += self._branch_length_to_gtr(c)*self.multiplicity[pos]
+                    for pos,nuc in enumerate(c.cseq.astype('U')):
+                        try:
+                            i = alpha.index(nuc)
+                        except:
+                            continue
+                        T_ia[i,pos] += self._branch_length_to_gtr(c)*self.data.multiplicity[pos]
 
         self.logger("TreeAnc.infer_gtr: counting mutations...done", 3)
 
@@ -820,7 +489,7 @@ class TreeAnc(object):
                                 root_state=root_state, logger=self.logger,
                                 alphabet=self.gtr.alphabet, prof_map=self.gtr.profile_map)
         else:
-            root_state = np.array([np.sum((self.tree.root.cseq==nuc)*self.multiplicity) for nuc in alpha])
+            root_state = np.array([np.sum((self.tree.root.cseq==nuc)*self.data.multiplicity) for nuc in alpha])
             n_ij = n_ija.sum(axis=-1)
             self._gtr = GTR.infer(n_ij, T_ia.sum(axis=-1), root_state, fixed_pi=fixed_pi, pc=pc,
                                   alphabet=self.gtr.alphabet, logger=self.logger,
@@ -845,20 +514,21 @@ class TreeAnc(object):
 
 
     def infer_ancestral_sequences(self, method='probabilistic', infer_gtr=False,
-                        marginal=False, **kwargs):
+                                  marginal=False, reconstruct_leaves=False, **kwargs):
         """Reconstruct ancestral sequences
 
         Parameters
         ----------
         method : str
-           Method to use. Supported values are "fitch" and "ml"
-
+           Method to use. Supported values are "parsimony", "fitch" and "probabilistic"
         infer_gtr : bool
            Infer a GTR model before reconstructing the sequences
-
         marginal : bool
            Assign sequences that are most likely after averaging over all other nodes
            instead of the jointly most likely sequences.
+        reconstruct_leaves : bool, optional
+            Reconstruct sequences of terminal nodes/leaves, thereby replacing ambiguous
+            characters with the inferred base/state. default: False
         **kwargs
             additional keyword arguments that are passed down to :py:meth:`TreeAnc.infer_gtr` and :py:meth:`TreeAnc._ml_anc`
 
@@ -870,8 +540,8 @@ class TreeAnc(object):
 
         """
         self.logger("TreeAnc.infer_ancestral_sequences with method: %s, %s"%(method, 'marginal' if marginal else 'joint'), 1)
-        if (self.tree is None) or (self.aln is None):
-            self.logger("TreeAnc.infer_ancestral_sequences: ERROR, alignment or tree are missing", 0)
+        if not self.ok:
+            self.logger("TreeAnc.infer_ancestral_sequences: ERROR, sequences or tree are missing", 0)
             return ttconf.ERROR
 
         if method in ['ml', 'probabilistic']:
@@ -886,9 +556,17 @@ class TreeAnc(object):
             tmp = self.infer_gtr(marginal=marginal, **kwargs)
             if tmp==ttconf.ERROR:
                 return tmp
-            N_diff = _ml_anc(**kwargs)
+            N_diff = _ml_anc(reconstruct_leaves=reconstruct_leaves, **kwargs)
         else:
-            N_diff = _ml_anc(**kwargs)
+            N_diff = _ml_anc(reconstruct_leaves=reconstruct_leaves, **kwargs)
+
+        for node in self.tree.find_clades(order='preorder'):
+            if node.up:
+                node.mutations = self.get_mutations(node)
+            if self.data.is_sparse:
+                node.sequence = self.data.reduced_to_sparse_sequence(node.cseq)
+            else:
+                node.sequence = self.data.reduced_to_full_sequence(node.cseq)
 
         return N_diff
 
@@ -906,8 +584,8 @@ class TreeAnc(object):
         for node in self.tree.get_terminals():
             node.mutations = self.get_mutations(node, keep_var_ambigs=True)
             # If fasta, replace 'sequence' as this is what will be accessed later
-            if not self.is_vcf and hasattr(node, "original_cseq"):
-                node.sequence = self.expanded_sequence(node, keep_var_ambigs=True)
+            if not self.data.is_sparse and hasattr(node, "original_cseq"):
+                node.sequence = self.data.aln[node.name]
 
 
     def get_mutations(self, node, keep_var_ambigs=False):
@@ -943,10 +621,10 @@ class TreeAnc(object):
         muts = []
         diff_pos = np.where(node.up.cseq!=node_seq)[0]
         for p in diff_pos:
-            anc = node.up.cseq[p]
-            der = node_seq[p]
+            anc = node.up.cseq[p].decode()
+            der = node_seq[p].decode()
             # expand to the positions in real sequence
-            muts.extend([(anc, pos, der) for pos in self.reduced_to_full_sequence_map[p]])
+            muts.extend([(anc, pos, der) for pos in self.data.reduced_to_full_sequence_map[p]])
 
         #sort by position
         return sorted(muts, key=lambda x:x[1])
@@ -989,66 +667,6 @@ class TreeAnc(object):
         else:
             return mut_matrix_stack
 
-
-    def expanded_sequence(self, node, include_additional_constant_sites=False, keep_var_ambigs=False):
-        """
-        Expand a nodes compressed sequence into the real sequence
-
-        Parameters
-        ----------
-        node : PhyloTree.Clade
-           Tree node
-
-        Returns
-        -------
-        seq : np.array
-           Sequence as np.array of chars
-        """
-        if include_additional_constant_sites:
-            L = self.seq_len
-        else:
-            L = self.seq_len - self.additional_constant_sites
-
-        if keep_var_ambigs and hasattr(node, 'original_cseq'):
-            compress_seq = node.original_cseq
-        else:
-            compress_seq = node.cseq
-
-        return compress_seq[self.full_to_reduced_sequence_map[:L]]
-
-
-    def dict_sequence(self, node, keep_var_ambigs=False):
-        """
-        For VCF-based TreeAnc objects, we do not want to store the entire
-        sequence on every node, as they could be large. Instead, this returns the dict
-        of variants & their positions for this sequence. This is used in place of
-        :py:meth:`treetime.TreeAnc.expanded_sequence` for VCF-based objects throughout TreeAnc. However, users can still
-        call :py:meth:`expanded_sequence` if they require the full sequence.
-
-        Parameters
-        ----------
-         node  : PhyloTree.Clade
-            Tree node
-
-        Returns
-        -------
-         seq : dict
-            dict where keys are the basepair position (numbering from 0) and value is the variant call
-
-        """
-        seq = {}
-
-        node_seq = node.cseq
-        if keep_var_ambigs and hasattr(node, "original_cseq") and node.is_terminal():
-            node_seq = node.original_cseq
-
-        for pos in self.nonref_positions:
-            cseqLoc = self.full_to_reduced_sequence_map[pos]
-            base = node_seq[cseqLoc]
-            if self.ref[pos] != base:
-                seq[pos] = base
-
-        return seq
 
 ###################################################################
 ### FITCH
@@ -1221,7 +839,7 @@ class TreeAnc(object):
          log_lh : float
             The tree likelihood given the sequences
         """
-        log_lh = np.zeros(self.multiplicity.shape[0])
+        log_lh = np.zeros(self.data.multiplicity.shape[0])
         for node in self.tree.find_clades(order='postorder'):
 
             if node.up is None: #  root node
@@ -1255,8 +873,8 @@ class TreeAnc(object):
             return max(ttconf.MIN_BRANCH_LENGTH*self.one_mutation, node.branch_length)
 
 
-    def _ml_anc_marginal(self, store_compressed=False, final=True, sample_from_profile=False,
-                         debug=False, **kwargs):
+    def _ml_anc_marginal(self, store_compressed=False, sample_from_profile=False,
+                         reconstruct_leaves=False, debug=False, **kwargs):
         """
         Perform marginal ML reconstruction of the ancestral states. In contrast to
         joint reconstructions, this needs to access the probabilities rather than only
@@ -1282,15 +900,17 @@ class TreeAnc(object):
         # number of nucleotides changed from prev reconstruction
         N_diff = 0
 
-        L = self.multiplicity.shape[0]
+        L = self.data.reduced_length
         n_states = self.gtr.alphabet.shape[0]
         self.logger("TreeAnc._ml_anc_marginal: type of reconstruction: Marginal", 2)
 
         self.logger("Attaching sequence profiles to leafs... ", 3)
         #  set the leaves profiles
         for leaf in tree.get_terminals():
-            # in any case, set the profile
-            leaf.marginal_subtree_LH = seq2prof(leaf.original_cseq, self.gtr.profile_map)
+            if leaf.name in self.data.reduced_alignment:
+                leaf.marginal_subtree_LH = seq2prof(self.data.reduced_alignment[leaf.name], self.gtr.profile_map)
+            else:
+                leaf.marginal_subtree_LH = np.ones((L, n_states))
             leaf.marginal_subtree_LH_prefactor = np.zeros(L)
 
         self.logger("Walking up the tree, computing likelihoods... ", 3)
@@ -1331,19 +951,17 @@ class TreeAnc(object):
                                         self.gtr, sample_from_prof=root_sample_from_profile, normalize=False)
 
         self.tree.sequence_LH = marginal_LH_prefactor
-        self.tree.total_sequence_LH = (self.tree.sequence_LH*self.multiplicity).sum()
+        self.tree.total_sequence_LH = (self.tree.sequence_LH*self.data.multiplicity).sum()
         self.tree.root.cseq = seq
         gc.collect()
-
-        if final:
-            if self.is_vcf:
-                self.tree.root.sequence = self.dict_sequence(self.tree.root)
-            else:
-                self.tree.root.sequence = self.expanded_sequence(self.tree.root)
 
         self.logger("Walking down the tree, computing maximum likelihood sequences...",3)
         # propagate root -->> leaves, reconstruct the internal node sequences
         # provided the upstream message + the message from the complementary subtree
+        nodes_to_reconstruct = tree.get_nonterminals(order='preorder')
+        if reconstruct_leaves:
+            nodes_to_reconstruct += tree.get_terminals()
+
         for node in tree.find_clades(order='preorder'):
             if node.up is None: # skip if node is root
                 continue
@@ -1352,29 +970,21 @@ class TreeAnc(object):
             # of all children my multiplying it to the prev computed profile
             node.marginal_outgroup_LH, pre = normalize_profile(np.log(np.maximum(ttconf.TINY_NUMBER, node.up.marginal_profile)) - node.marginal_log_Lx,
                                                                log=True, return_offset=False)
+            if node.is_terminal() and (not reconstruct_leaves): # skip remainder unless leaves are to be reconstructed
+                continue
+
             tmp_msg_from_parent = self.gtr.evolve(node.marginal_outgroup_LH,
                                                  self._branch_length_to_gtr(node), return_log=False)
-
             node.marginal_profile, pre = normalize_profile(node.marginal_subtree_LH * tmp_msg_from_parent, return_offset=False)
-
             # choose sequence based maximal marginal LH.
             seq, prof_vals, idxs = prof2seq(node.marginal_profile, self.gtr,
                                             sample_from_prof=other_sample_from_profile, normalize=False)
-
             if hasattr(node, 'cseq') and node.cseq is not None:
                 N_diff += (seq!=node.cseq).sum()
             else:
                 N_diff += L
-
             #assign new sequence
             node.cseq = seq
-            if final:
-                if self.is_vcf:
-                    node.sequence = self.dict_sequence(node)
-                else:
-                    node.sequence = self.expanded_sequence(node)
-                node.mutations = self.get_mutations(node)
-
 
         # note that the root doesn't contribute to N_diff (intended, since root sequence is often ambiguous)
         self.logger("TreeAnc._ml_anc_marginal: ...done", 3)
@@ -1394,8 +1004,8 @@ class TreeAnc(object):
         return N_diff
 
 
-    def _ml_anc_joint(self, store_compressed=True, final=True, sample_from_profile=False,
-                            debug=False, **kwargs):
+    def _ml_anc_joint(self, store_compressed=True, sample_from_profile=False,
+                            reconstruct_leaves=False, debug=False, **kwargs):
 
         """
         Perform joint ML reconstruction of the ancestral states. In contrast to
@@ -1418,7 +1028,7 @@ class TreeAnc(object):
 
         """
         N_diff = 0 # number of sites differ from perv reconstruction
-        L = self.multiplicity.shape[0]
+        L = self.data.reduced_length
         n_states = self.gtr.alphabet.shape[0]
 
         self.logger("TreeAnc._ml_anc_joint: type of reconstruction: Joint", 2)
@@ -1438,10 +1048,12 @@ class TreeAnc(object):
             # denoted as Pij(i), where j - parent state, i - node state
             log_transitions = np.log(np.maximum(ttconf.TINY_NUMBER, self.gtr.expQt(branch_len)))
             if node.is_terminal():
-                try:
-                    msg_from_children = np.log(np.maximum(seq2prof(node.original_cseq, self.gtr.profile_map), ttconf.TINY_NUMBER))
-                except:
-                    raise ValueError("sequence assignment to node "+node.name+" failed")
+                if node.name in self.data.reduced_alignment:
+                    tmp_prof = seq2prof(self.data.reduced_alignment[node.name], self.gtr.profile_map)
+                    msg_from_children = np.log(np.maximum(tmp_prof, ttconf.TINY_NUMBER))
+                else:
+                    msg_from_children = np.zeros((L, n_states))
+
                 msg_from_children[np.isnan(msg_from_children) | np.isinf(msg_from_children)] = -ttconf.BIG_NUMBER
             else:
                 # Product (sum-Log) over all child subtree likelihoods.
@@ -1478,19 +1090,17 @@ class TreeAnc(object):
 
         # compute the likelihood of the most probable root sequence
         self.tree.sequence_LH = np.choose(idxs, self.tree.root.joint_Lx.T)
-        self.tree.sequence_joint_LH = (self.tree.sequence_LH*self.multiplicity).sum()
+        self.tree.sequence_joint_LH = (self.tree.sequence_LH*self.data.multiplicity).sum()
         self.tree.root.cseq = seq
         self.tree.root.seq_idx = idxs
-        if final:
-            if self.is_vcf:
-                self.tree.root.sequence = self.dict_sequence(self.tree.root)
-            else:
-                self.tree.root.sequence = self.expanded_sequence(self.tree.root)
 
         self.logger("TreeAnc._ml_anc_joint: Walking down the tree, computing maximum likelihood sequences...",3)
         # for each node, resolve the conditioning on the parent node
-        for node in self.tree.find_clades(order='preorder'):
+        nodes_to_reconstruct = self.tree.get_nonterminals(order='preorder')
+        if reconstruct_leaves:
+            nodes_to_reconstruct += self.tree.get_terminals()
 
+        for node in nodes_to_reconstruct:
             # root node has no mutations, everything else has been alread y set
             if node.up is None:
                 node.mutations = []
@@ -1507,13 +1117,6 @@ class TreeAnc(object):
                 N_diff += L
 
             node.cseq = tmp_sequence
-            if final:
-                node.mutations = self.get_mutations(node)
-                if self.is_vcf:
-                    node.sequence = self.dict_sequence(node)
-                else:
-                    node.sequence = self.expanded_sequence(node)
-
 
         self.logger("TreeAnc._ml_anc_joint: ...done", 3)
         if store_compressed:
@@ -1524,7 +1127,8 @@ class TreeAnc(object):
             for node in self.tree.find_clades(order='preorder'):
                 del node.joint_Lx
                 del node.joint_Cx
-                del node.seq_idx
+                if hasattr(node, 'seq_idx'):
+                    del node.seq_idx
 
         return N_diff
 
@@ -1546,7 +1150,7 @@ class TreeAnc(object):
         """
         seq_pairs, multiplicity = self.gtr.compress_sequence_pair(node.up.cseq,
                                               node.cseq,
-                                              pattern_multiplicity = self.multiplicity,
+                                              pattern_multiplicity = self.data.multiplicity,
                                               ignore_gaps = self.ignore_gaps)
         node.compressed_sequence = {'pair':seq_pairs, 'multiplicity':multiplicity}
 
@@ -1602,7 +1206,7 @@ class TreeAnc(object):
         """
 
         self.logger("TreeAnc.optimize_branch_length: running branch length optimization using jointML ancestral sequences",1)
-        if (self.tree is None) or (self.aln is None):
+        if (self.tree is None) or (self.data.aln is None):
             self.logger("TreeAnc.optimize_branch_length: ERROR, alignment or tree are missing", 0)
             return ttconf.ERROR
 
@@ -1660,7 +1264,7 @@ class TreeAnc(object):
                                                     node.compressed_sequence['multiplicity'])
         else:
             new_len = self.gtr.optimal_t(parent.cseq, node.cseq,
-                                         pattern_multiplicity=self.multiplicity,
+                                         pattern_multiplicity=self.data.multiplicity,
                                          ignore_gaps=self.ignore_gaps)
         return new_len
 
@@ -1718,11 +1322,11 @@ class TreeAnc(object):
             bl_ratio = node.branch_length/(node.branch_length+other.branch_length)
             pc = node.marginal_subtree_LH
             pp = normalize_profile(other.marginal_subtree_LH*self.tree.root.marginal_outgroup_LH)[0]
-            new_bl = self.gtr.optimal_t_compressed((pp, pc), self.multiplicity, profiles=True, tol=tol)
+            new_bl = self.gtr.optimal_t_compressed((pp, pc), self.data.multiplicity, profiles=True, tol=tol)
             return bl_ratio*new_bl
         else:
             pp, pc = self.marginal_branch_profile(node)
-            return self.gtr.optimal_t_compressed((pp, pc), self.multiplicity, profiles=True, tol=tol)
+            return self.gtr.optimal_t_compressed((pp, pc), self.data.multiplicity, profiles=True, tol=tol)
 
 
     def prune_short_branches(self):
@@ -1738,7 +1342,7 @@ class TreeAnc(object):
             # probability of the two seqs separated by zero time is not zero
             if  ((node.branch_length<0.1*self.one_mutation) and
                  (self.gtr.prob_t(node.up.cseq, node.cseq, 0.0,
-                                  pattern_multiplicity=self.multiplicity) > 0.1)):
+                                  pattern_multiplicity=self.data.multiplicity) > 0.1)):
                 # re-assign the node children directly to its parent
                 node.up.clades = [k for k in node.up.clades if k != node] + node.clades
                 for clade in node.clades:
@@ -1863,7 +1467,7 @@ class TreeAnc(object):
                 break
             self.optimize_branch_lengths_joint(store_old=False)
 
-        self.tree.unconstrained_sequence_LH = (self.tree.sequence_LH*self.multiplicity).sum()
+        self.tree.unconstrained_sequence_LH = (self.tree.sequence_LH*self.data.multiplicity).sum()
         self._prepare_nodes() # fix dist2root and up-links after reconstruction
         self.logger("TreeAnc.optimize_tree: Unconstrained sequence LH:%f" % self.tree.unconstrained_sequence_LH , 2)
         return ttconf.SUCCESS
@@ -1936,7 +1540,7 @@ class TreeAnc(object):
             self.logger("TreeAnc.reconstructed_alignment... reconstruction not yet done",3)
             self.reconstruct_anc('probabilistic')
 
-        new_aln = MultipleSeqAlignment([SeqRecord(id=n.name, seq=Seq("".join(n.sequence)), description="")
+        new_aln = MultipleSeqAlignment([SeqRecord(id=n.name, seq=Seq("".join(n.sequence.astype('U'))), description="")
                                         for n in self.tree.find_clades()])
 
         return new_aln
@@ -1984,23 +1588,23 @@ class TreeAnc(object):
             Description
 
         """
-        if self.is_vcf:
+        if self.data.is_sparse:
             tree_dict = {}
-            tree_dict['reference'] = self.ref
-            tree_dict['positions'] = self.nonref_positions
+            tree_dict['reference'] = self.data.ref
+            tree_dict['positions'] = self.data.nonref_positions
 
             tree_aln = {}
             for n in self.tree.find_clades():
                 if hasattr(n, 'sequence'):
                     if keep_var_ambigs: #regenerate dict to include ambig bases
-                        tree_aln[n.name] = self.dict_sequence(n, keep_var_ambigs)
+                        tree_aln[n.name] = self.data.aln[n.name]
                     else:
                         tree_aln[n.name] = n.sequence
 
             tree_dict['sequences'] = tree_aln
 
-            if len(self.inferred_const_sites) != 0:
-                tree_dict['inferred_const_sites'] = self.inferred_const_sites
+            if len(self.data.inferred_const_sites) != 0:
+                tree_dict['inferred_const_sites'] = self.data.inferred_const_sites
 
             return tree_dict
         else:

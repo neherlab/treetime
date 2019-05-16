@@ -140,7 +140,7 @@ def read_if_vcf(params):
 
             if not hasattr(params, 'gtr') or params.gtr=="infer": #if not specified, set it:
                 alpha = alphabets['aa'] if params.aa else alphabets['nuc']
-                fixed_pi = [ref.count(base)/len(ref) for base in alpha]
+                fixed_pi = [ref.count(base.decode())/len(ref) for base in alpha]
                 if fixed_pi[-1] == 0:
                     fixed_pi[-1] = 0.05
                     fixed_pi = [v-0.01 for v in fixed_pi]
@@ -205,7 +205,7 @@ def export_sequences_and_tree(tt, basename, is_vcf=False, zero_based=False,
             n.comment+=(',' if n.comment else '&') + 'date=%1.2f'%n.numdate
 
     # write tree to file
-    fmt_bl = "%1.6f" if tt.seq_len<1e6 else "%1.8e"
+    fmt_bl = "%1.6f" if tt.data.full_length<1e6 else "%1.8e"
     if timetree:
         outtree_name = basename + 'timetree.nexus'
         print("--- saved divergence times in \n\t %s\n"%dates_fname)
@@ -278,7 +278,7 @@ def scan_homoplasies(params):
     if is_vcf:
         L = len(ref) + params.const
     else:
-        L = treeanc.aln.get_alignment_length() + params.const
+        L = treeanc.data.full_length + params.const
 
     N_seq = len(treeanc.aln)
     N_tree = treeanc.tree.count_terminals()
@@ -761,7 +761,7 @@ def mugration(params):
         if n.is_terminal() and len(n.name)>40 and bioversion<"1.69":
             n.name = n.name[:35]+'_%03d'%terminal_count
             terminal_count+=1
-        n.comment= '&%s="'%attr + letter_to_state[n.sequence[0]] +'"'
+        n.comment= '&%s="'%attr + letter_to_state[n.sequence[0].decode()] +'"'
 
     if params.confidence:
         conf_name = basename+'confidence.csv'

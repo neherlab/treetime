@@ -288,7 +288,7 @@ class ClockTree(TreeAnc):
                     node.profile_pair = self.marginal_branch_profile(node)
 
                 node.branch_length_interpolator = BranchLenInterpolator(node, self.gtr,
-                            pattern_multiplicity = self.multiplicity, min_width=self.min_width,
+                            pattern_multiplicity = self.data.multiplicity, min_width=self.min_width,
                             one_mutation=self.one_mutation, branch_length_mode=self.branch_length_mode)
 
                 node.branch_length_interpolator.merger_cost = merger_cost
@@ -475,7 +475,7 @@ class ClockTree(TreeAnc):
 
         # add the root sequence LH and return
         if self.aln:
-            LH += self.gtr.sequence_logLH(self.tree.root.cseq, pattern_multiplicity=self.multiplicity)
+            LH += self.gtr.sequence_logLH(self.tree.root.cseq, pattern_multiplicity=self.data.multiplicity)
         return LH
 
 

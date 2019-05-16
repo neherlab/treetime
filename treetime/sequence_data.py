@@ -24,7 +24,7 @@ class SequenceData(object):
         self.pattern_multiplicity = None
         self.is_sparse = None
         self.reduce_alignment = reduce_alignment
-        self.seq_multiplicity = seq_multiplicity # possibly a dict mapping sequences to their read cound/sample count
+        self.seq_multiplicity = seq_multiplicity or {} # possibly a dict mapping sequences to their read cound/sample count
         self.additional_constant_sites = kwargs['additional_constant_sites'] if 'additional_constant_sites' in kwargs else 0
 
         # if not specified, this will be set as the alignment_length or reference length
@@ -86,14 +86,15 @@ class SequenceData(object):
                         in_aln=AlignIO.read(in_aln, fmt)
                     except:
                         continue
-            if type(in_aln) is MultipleSeqAlignment:
-                self.is_sparse = False
-                self._aln = {s.name: seq2array(s) for s in in_aln}
-                self.logger("SequenceData: loaded alignment.",1)
-            elif type(in_aln) in [dict, defaultdict]:
-                self.logger("SequenceData: loaded sparse/vcf alignment.",1)
-                self.is_sparse = True
-                self._aln = in_aln
+
+        if type(in_aln) is MultipleSeqAlignment:
+            self.is_sparse = False
+            self._aln = {s.name: seq2array(s) for s in in_aln}
+            self.logger("SequenceData: loaded alignment.",1)
+        elif type(in_aln) in [dict, defaultdict]:
+            self.logger("SequenceData: loaded sparse/vcf alignment.",1)
+            self.is_sparse = True
+            self._aln = in_aln
 
         if self._aln is None:
             self.logger("SequenceData: loading alignment failed... " + str(in_aln),1, warn=True)
@@ -234,6 +235,8 @@ class SequenceData(object):
             self.multiplicity = np.ones(self.full_length, dtype=float)
             self.full_to_reduced_sequence_map = np.arange(self.full_length)
             self.reduced_to_full_sequence_map = {p:np.array([p]) for p in np.arange(self.full_length)}
+            self._reduced_length==self._full_length
+            self.reduced_alignment = self._aln
             return ttconf.SUCCESS
 
         self.logger("SeqData: making reduced alignment...", 1)
@@ -342,10 +345,12 @@ class SequenceData(object):
 
 
     def full_to_sparse_sequence(self, sequence):
-        if not self.ref:
+        if self.ref is None:
             raise TypeError("SequenceData: sparse sequences can only be constructed when a reference sequence is defined")
-        if type(sequence) is not np.array:
+        if type(sequence) is not np.ndarray:
             aseq = seq2array(sequence, fill_overhangs=False)
+        else:
+            aseq = sequence
         differences = np.where(self.ref!=aseq)[0]
         return {p:aseq[p] for p in differences}
 
@@ -365,5 +370,4 @@ class SequenceData(object):
             return "".join(tmp_seq.astype('U'))
         else:
             return tmp_seq
-
 
