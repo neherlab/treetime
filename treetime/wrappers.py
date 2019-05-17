@@ -761,7 +761,7 @@ def mugration(params):
         if n.is_terminal() and len(n.name)>40 and bioversion<"1.69":
             n.name = n.name[:35]+'_%03d'%terminal_count
             terminal_count+=1
-        n.comment= '&%s="'%attr + letter_to_state[n.sequence[0].decode()] +'"'
+        n.comment= '&%s="'%attr + letter_to_state[n.cseq[0].decode()] +'"'
 
     if params.confidence:
         conf_name = basename+'confidence.csv'

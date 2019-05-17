@@ -355,10 +355,6 @@ class SequenceData(object):
         return {p:aseq[p] for p in differences}
 
 
-    def reduced_to_sparse_sequence(self, sequence):
-        return self.full_to_sparse_sequence(self.reduced_to_full_sequence(sequence))
-
-
     def reduced_to_full_sequence(self, sequence, include_additional_constant_sites=False, as_string=False):
         if include_additional_constant_sites:
             L = self.full_length

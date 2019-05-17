@@ -563,10 +563,6 @@ class TreeAnc(object):
         for node in self.tree.find_clades(order='preorder'):
             if node.up:
                 node.mutations = self.get_mutations(node)
-            if self.data.is_sparse:
-                node.sequence = self.data.reduced_to_sparse_sequence(node.cseq)
-            else:
-                node.sequence = self.data.reduced_to_full_sequence(node.cseq)
 
         return N_diff
 
@@ -1540,7 +1536,7 @@ class TreeAnc(object):
             self.logger("TreeAnc.reconstructed_alignment... reconstruction not yet done",3)
             self.reconstruct_anc('probabilistic')
 
-        new_aln = MultipleSeqAlignment([SeqRecord(id=n.name, seq=Seq("".join(n.sequence.astype('U'))), description="")
+        new_aln = MultipleSeqAlignment([SeqRecord(id=n.name, seq=Seq(self.data.reduced_to_full_sequence(n.cseq, as_string=True)), description="")
                                         for n in self.tree.find_clades()])
 
         return new_aln
