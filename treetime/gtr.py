@@ -97,7 +97,7 @@ class GTR(object):
 
         # check for a gap symbol
         try:
-            self.gap_index = list(self.alphabet).index('-')
+            self.gap_index = list(self.alphabet).index(b'-')
         except:
             self.logger("GTR: no gap symbol!", 4, warn=True)
             self.gap_index=None

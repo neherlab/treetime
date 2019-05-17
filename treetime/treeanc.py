@@ -1591,11 +1591,11 @@ class TreeAnc(object):
 
             tree_aln = {}
             for n in self.tree.find_clades():
-                if hasattr(n, 'sequence'):
+                if hasattr(n, 'cseq'):
                     if keep_var_ambigs: #regenerate dict to include ambig bases
                         tree_aln[n.name] = self.data.aln[n.name]
                     else:
-                        tree_aln[n.name] = n.sequence
+                        tree_aln[n.name] = self.data.reduced_to_sparse_sequence(node.cseq)
 
             tree_dict['sequences'] = tree_aln
 
@@ -1604,5 +1604,5 @@ class TreeAnc(object):
 
             return tree_dict
         else:
-            raise TypeError("A dict can only be returned for trees created with VCF-input!")
+            raise TypeError("A sparse alignment can only be returned for trees created with sparse/VCF-input!")
 

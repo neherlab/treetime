@@ -354,6 +354,17 @@ class SequenceData(object):
         differences = np.where(self.ref!=aseq)[0]
         return {p:aseq[p] for p in differences}
 
+    def reduced_to_sparse_sequence(self, sequence):
+        if self.ref is None:
+            raise TypeError("SequenceData: sparse sequences can only be constructed when a reference sequence is defined")
+        sparse_seq = {}
+        for pos in self.nonref_positions:
+            cseqLoc = self.full_to_reduced_sequence_map[pos]
+            base = sequence[cseqLoc]
+            if self.ref[pos] != base:
+                sparse_seq[pos] = base
+
+        return sparse_seq
 
     def reduced_to_full_sequence(self, sequence, include_additional_constant_sites=False, as_string=False):
         if include_additional_constant_sites:

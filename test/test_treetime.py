@@ -140,12 +140,13 @@ def test_seq_joint_reconstruction_correct():
     for node in myTree.tree.find_clades():
         if node.up is not None:
             mut_count += len(node.ref_mutations)
-            diff_count += np.sum(node.sequence != node.ref_seq)==0
-            if np.sum(node.sequence != node.ref_seq):
+            seq = myTree.data.reduced_to_full_sequence(node.cseq)
+            diff_count += np.sum(seq != node.ref_seq)==0
+            if np.sum(seq != node.ref_seq):
                 print("%s: True sequence does not equal inferred sequence. parent %s"%(node.name, node.up.name))
             else:
                 print("%s: True sequence equals inferred sequence. parent %s"%(node.name, node.up.name))
-        print (node.name, np.sum(node.sequence != node.ref_seq), np.where(node.sequence != node.ref_seq), len(node.mutations), node.mutations)
+        print (node.name, np.sum(seq != node.ref_seq), np.where(seq != node.ref_seq), len(node.mutations), node.mutations)
 
     # the assignment of mutations to the root node is probabilistic. Hence some differences are expected
     assert diff_count/seq_len<2*(1.0*mut_count/seq_len)**2
