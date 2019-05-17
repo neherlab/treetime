@@ -398,109 +398,6 @@ class TreeAnc(object):
 ## END SET-UP
 ####################################################################
 
-    def infer_gtr(self, marginal=False, site_specific=False, normalized_rate=True,
-                  fixed_pi=None, pc=5.0, **kwargs):
-        """
-        Calculates a GTR model given the multiple sequence alignment and the tree.
-        It performs ancestral sequence inferrence (joint or marginal), followed by
-        the branch lengths optimization. Then, the numbers of mutations are counted
-        in the optimal tree and related to the time within the mutation happened.
-        From these statistics, the relative state transition probabilities are inferred,
-        and the transition matrix is computed.
-
-        The result is used to construct the new GTR model of type 'custom'.
-        The model is assigned to the TreeAnc and is used in subsequent analysis.
-
-        Parameters
-        -----------
-
-         print_raw : bool
-            If True, print the inferred GTR model
-
-         marginal : bool
-            If True, use marginal sequence reconstruction
-
-         normalized_rate : bool
-            If True, sets the mutation rate prefactor to 1.0.
-
-         fixed_pi : np.array
-            Provide the equilibrium character concentrations.
-            If None is passed, the concentrations will be inferred from the alignment.
-
-         pc: float
-            Number of pseudo counts to use in gtr inference
-
-        Returns
-        -------
-
-         gtr : GTR
-            The inferred GTR model
-        """
-        if not self.ok:
-            self.logger("TreeAnc.infer_gtr: ERROR, sequences or tree are missing", 0)
-            return ttconf.ERROR
-
-        # if ancestral sequences are not in place, reconstruct them
-        if marginal  and (not hasattr(self.tree.root,'marginal_profile')):
-            self.infer_ancestral_sequences(marginal=True, **kwargs)
-        elif (not hasattr(self.tree.root,'cseq')) or self.tree.root.cseq is None:
-            self.infer_ancestral_sequences(marginal=False, **kwargs)
-
-        n = self.gtr.n_states
-        L = len(self.tree.root.cseq)
-        # matrix of mutations n_{ij}: i = derived state, j=ancestral state
-        n_ija = np.zeros((n,n,L))
-        T_ia = np.zeros((n,L))
-
-        self.logger("TreeAnc.infer_gtr: counting mutations...", 2)
-        for node in self.tree.get_nonterminals():
-            for c in node:
-                if marginal:
-                    mut_stack = np.transpose(self.get_branch_mutation_matrix(c, full_sequence=False), (1,2,0))
-                    T_ia += 0.5*self._branch_length_to_gtr(c) * mut_stack.sum(axis=0) * self.data.multiplicity
-                    T_ia += 0.5*self._branch_length_to_gtr(c) * mut_stack.sum(axis=1) * self.data.multiplicity
-                    n_ija += mut_stack * self.data.multiplicity
-                elif hasattr(c,'mutations'):
-                    for a,pos, d in c.mutations:
-                        try:
-                            i,j = self.gtr.state_index[d], self.gtr.state_index[a]
-                        except:
-                            continue
-                        cpos = self.data.full_to_reduced_sequence_map[pos]
-                        n_ija[i,j,cpos]+=1
-                        T_ia[j,cpos] += 0.5*self._branch_length_to_gtr(c)
-                        T_ia[i,cpos] -= 0.5*self._branch_length_to_gtr(c)
-
-                    for i, nuc in enumerate(self.gtr.alphabet):
-                        ind = node.cseq==nuc
-                        T_ia[i,ind] += self._branch_length_to_gtr(c)*self.data.multiplicity[ind]
-
-        self.logger("TreeAnc.infer_gtr: counting mutations...done", 3)
-
-        if site_specific:
-            if marginal:
-                root_state = self.tree.root.marginal_profile.T
-            else:
-                root_state = seq2prof(self.tree.root.cseq, self.gtr.profile_map).T
-            self._gtr = GTR_site_specific.infer(n_ija, T_ia, pc=pc,
-                                root_state=root_state, logger=self.logger,
-                                alphabet=self.gtr.alphabet, prof_map=self.gtr.profile_map)
-        else:
-            root_state = np.array([np.sum((self.tree.root.cseq==nuc)*self.data.multiplicity)
-                                   for nuc in self.gtr.alphabet])
-            n_ij = n_ija.sum(axis=-1)
-            self._gtr = GTR.infer(n_ij, T_ia.sum(axis=-1), root_state, fixed_pi=fixed_pi, pc=pc,
-                                  alphabet=self.gtr.alphabet, logger=self.logger,
-                                  prof_map = self.gtr.profile_map)
-
-        if normalized_rate:
-            self.logger("TreeAnc.infer_gtr: setting overall rate to 1.0...", 2)
-            if site_specific:
-                self._gtr.mu /= self._gtr.average_rate().mean()
-            else:
-                self._gtr.mu=1.0
-        return self._gtr
-
 
 ###################################################################
 ### ancestral reconstruction
@@ -563,103 +460,6 @@ class TreeAnc(object):
                 node.mutations = self.get_mutations(node)
 
         return N_diff
-
-
-    def recover_var_ambigs(self):
-        """
-        Recalculates mutations using the original compressed sequence for terminal nodes
-        which will recover ambiguous bases at variable sites. (See 'get_mutations')
-        For fasta input, also regenerates 'sequence' with original ambig sites
-
-        Once this has been run, infer_gtr and other functions which depend on self.gtr.alphabet
-        will not work, as ambiguous bases are not part of that alphabet (only A, C, G, T, -).
-        This is why it's left for the user to choose when to run
-        """
-        for node in self.tree.get_terminals():
-            node.mutations = self.get_mutations(node, keep_var_ambigs=True)
-            # If fasta, replace 'sequence' as this is what will be accessed later
-            if not self.data.is_sparse and hasattr(node, "original_cseq"):
-                node.sequence = self.data.aln[node.name]
-
-
-    def get_mutations(self, node, keep_var_ambigs=False):
-        """
-        Get the mutations on a tree branch. Take compressed sequences from both sides
-        of the branch (attached to the node), compute mutations between them, and
-        expand these mutations to the positions in the real sequences.
-
-        Parameters
-        ----------
-        node : PhyloTree.Clade
-           Tree node, which is the child node attached to the branch.
-
-        keep_var_ambigs : boolean
-           If true, generates mutations based on the *original* compressed sequence, which
-           may include ambiguities. Note sites that only have 1 unambiguous base and ambiguous
-           bases ("AAAAANN") are stripped of ambiguous bases *before* compression, so ambiguous
-           bases will **not** be preserved.
-
-        Returns
-        -------
-        muts : list
-          List of mutations. Each mutation is represented as tuple of
-          :code:`(parent_state, position, child_state)`.
-        """
-
-        # if ambiguous site are to be restored and node is terminal,
-        # assign original sequence, else reconstructed cseq
-        node_seq = node.cseq
-        if keep_var_ambigs and node.name in self.data.reduced_alignment:
-            node_seq = self.data.reduced_alignment[node.name]
-
-        muts = []
-        diff_pos = np.where(node.up.cseq!=node_seq)[0]
-        for p in diff_pos:
-            anc = node.up.cseq[p].decode()
-            der = node_seq[p].decode()
-            # expand to the positions in real sequence
-            muts.extend([(anc, pos, der) for pos in self.data.reduced_to_full_sequence_map[p]])
-
-        #sort by position
-        return sorted(muts, key=lambda x:x[1])
-
-
-    def get_branch_mutation_matrix(self, node, full_sequence=False):
-        """uses results from marginal ancestral inference to return a joint
-        distribution of the sequence states at both ends of the branch.
-
-        Parameters
-        ----------
-        node : Phylo.clade
-            node of the tree
-        full_sequence : bool, optional
-            expand the sequence to the full sequence, if false (default)
-            the there will be one mutation matrix for each column in the
-            reduced alignment
-
-        Returns
-        -------
-        numpy.array
-            an Lxqxq stack of matrices (q=alphabet size, L (reduced)sequence length)
-        """
-        pp,pc = self.marginal_branch_profile(node)
-
-        # calculate pc_i [e^Qt]_ij pp_j for each site
-        expQt = self.gtr.expQt(self._branch_length_to_gtr(node)) + ttconf.SUPERTINY_NUMBER
-        if len(expQt.shape)==3: # site specific model
-            mut_matrix_stack = np.einsum('ai,aj,ija->aij', pc, pp, expQt)
-        else:
-            mut_matrix_stack = np.einsum('ai,aj,ij->aij', pc, pp, expQt)
-
-        # normalize this distribution
-        normalizer = mut_matrix_stack.sum(axis=2).sum(axis=1)
-        mut_matrix_stack = np.einsum('aij,a->aij', mut_matrix_stack, 1.0/normalizer)
-
-        # expand to full sequence if requested
-        if full_sequence:
-            return mut_matrix_stack[self.full_to_reduced_sequence_map]
-        else:
-            return mut_matrix_stack
 
 
 ###################################################################
@@ -1127,26 +927,115 @@ class TreeAnc(object):
         return N_diff
 
 
-    def _store_compressed_sequence_to_node(self, node):
+###############################################################
+### sequence and mutation storing
+###############################################################
+    def get_mutations(self, node, keep_var_ambigs=False):
         """
-        make a compressed representation of a pair of sequences only counting
-        the number of times a particular pair of states (e.g. (A,T)) is observed
-        the the aligned sequences of parent and child.
+        Get the mutations on a tree branch. Take compressed sequences from both sides
+        of the branch (attached to the node), compute mutations between them, and
+        expand these mutations to the positions in the real sequences.
 
         Parameters
-        -----------
+        ----------
+        node : PhyloTree.Clade
+           Tree node, which is the child node attached to the branch.
 
-         node : PhyloTree.Clade
-            Tree node. **Note** because the method operates
-            on the sequences on both sides of a branch, sequence reconstruction
-            must be performed prior to calling this method.
+        keep_var_ambigs : boolean
+           If true, generates mutations based on the *original* compressed sequence, which
+           may include ambiguities. Note sites that only have 1 unambiguous base and ambiguous
+           bases ("AAAAANN") are stripped of ambiguous bases *before* compression, so ambiguous
+           bases will **not** be preserved.
 
+        Returns
+        -------
+        muts : list
+          List of mutations. Each mutation is represented as tuple of
+          :code:`(parent_state, position, child_state)`.
         """
-        seq_pairs, multiplicity = self.gtr.compress_sequence_pair(node.up.cseq,
-                                              node.cseq,
-                                              pattern_multiplicity = self.data.multiplicity,
-                                              ignore_gaps = self.ignore_gaps)
-        node.compressed_sequence = {'pair':seq_pairs, 'multiplicity':multiplicity}
+
+        # if ambiguous site are to be restored and node is terminal,
+        # assign original sequence, else reconstructed cseq
+        node_seq = node.cseq
+        if keep_var_ambigs and node.name in self.data.reduced_alignment:
+            node_seq = self.data.reduced_alignment[node.name]
+
+        muts = []
+        diff_pos = np.where(node.up.cseq!=node_seq)[0]
+        for p in diff_pos:
+            anc = node.up.cseq[p].decode()
+            der = node_seq[p].decode()
+            # expand to the positions in real sequence
+            muts.extend([(anc, pos, der) for pos in self.data.reduced_to_full_sequence_map[p]])
+
+        #sort by position
+        return sorted(muts, key=lambda x:x[1])
+
+
+    def get_branch_mutation_matrix(self, node, full_sequence=False):
+        """uses results from marginal ancestral inference to return a joint
+        distribution of the sequence states at both ends of the branch.
+
+        Parameters
+        ----------
+        node : Phylo.clade
+            node of the tree
+        full_sequence : bool, optional
+            expand the sequence to the full sequence, if false (default)
+            the there will be one mutation matrix for each column in the
+            reduced alignment
+
+        Returns
+        -------
+        numpy.array
+            an Lxqxq stack of matrices (q=alphabet size, L (reduced)sequence length)
+        """
+        pp,pc = self.marginal_branch_profile(node)
+
+        # calculate pc_i [e^Qt]_ij pp_j for each site
+        expQt = self.gtr.expQt(self._branch_length_to_gtr(node)) + ttconf.SUPERTINY_NUMBER
+        if len(expQt.shape)==3: # site specific model
+            mut_matrix_stack = np.einsum('ai,aj,ija->aij', pc, pp, expQt)
+        else:
+            mut_matrix_stack = np.einsum('ai,aj,ij->aij', pc, pp, expQt)
+
+        # normalize this distribution
+        normalizer = mut_matrix_stack.sum(axis=2).sum(axis=1)
+        mut_matrix_stack = np.einsum('aij,a->aij', mut_matrix_stack, 1.0/normalizer)
+
+        # expand to full sequence if requested
+        if full_sequence:
+            return mut_matrix_stack[self.full_to_reduced_sequence_map]
+        else:
+            return mut_matrix_stack
+
+
+    def marginal_branch_profile(self, node):
+        '''
+        calculate the marginal distribution of sequence states on both ends
+        of the branch leading to node,
+
+        Parameters
+        ----------
+        node : PhyloTree.Clade
+           TreeNode, attached to the branch.
+
+
+        Returns
+        -------
+        pp, pc : Pair of vectors (profile parent, pp) and (profile child, pc)
+           that are of shape (L,n) where L is sequence length and n is alphabet size.
+           note that this correspond to the compressed sequences.
+        '''
+        parent = node.up
+        if parent is None:
+            raise Exception("Branch profiles can't be calculated for the root!")
+        if not hasattr(node, 'marginal_outgroup_LH'):
+            raise Exception("marginal ancestral inference needs to be performed first!")
+
+        pc = node.marginal_subtree_LH
+        pp = node.marginal_outgroup_LH
+        return pp, pc
 
 
     def _store_compressed_sequence_pairs(self):
@@ -1159,12 +1048,17 @@ class TreeAnc(object):
         for node in self.tree.find_clades():
             if node.up is None:
                 continue
-            self._store_compressed_sequence_to_node(node)
+            seq_pairs, multiplicity = self.gtr.compress_sequence_pair(
+                                           node.up.cseq, node.cseq,
+                                           pattern_multiplicity = self.data.multiplicity,
+                                           ignore_gaps = self.ignore_gaps)
+            node.compressed_sequence = {'pair':seq_pairs, 'multiplicity':multiplicity}
         self.logger("TreeAnc._store_compressed_sequence_pairs...done",3)
 
 
+
 ###################################################################
-### Branch length
+### Branch length optimization
 ###################################################################
     def optimize_branch_len(self, **kwargs):
         """Deprecated in favor of 'optimize_branch_lengths_joint'"""
@@ -1263,34 +1157,6 @@ class TreeAnc(object):
         return new_len
 
 
-    def marginal_branch_profile(self, node):
-        '''
-        calculate the marginal distribution of sequence states on both ends
-        of the branch leading to node,
-
-        Parameters
-        ----------
-        node : PhyloTree.Clade
-           TreeNode, attached to the branch.
-
-
-        Returns
-        -------
-        pp, pc : Pair of vectors (profile parent, pp) and (profile child, pc)
-           that are of shape (L,n) where L is sequence length and n is alphabet size.
-           note that this correspond to the compressed sequences.
-        '''
-        parent = node.up
-        if parent is None:
-            raise Exception("Branch profiles can't be calculated for the root!")
-        if not hasattr(node, 'marginal_outgroup_LH'):
-            raise Exception("marginal ancestral inference needs to be performed first!")
-
-        pc = node.marginal_subtree_LH
-        pp = node.marginal_outgroup_LH
-        return pp, pc
-
-
     def optimal_marginal_branch_length(self, node, tol=1e-10):
         '''
         calculate the marginal distribution of sequence states on both ends
@@ -1321,26 +1187,6 @@ class TreeAnc(object):
         else:
             pp, pc = self.marginal_branch_profile(node)
             return self.gtr.optimal_t_compressed((pp, pc), self.data.multiplicity, profiles=True, tol=tol)
-
-
-    def prune_short_branches(self):
-        """
-        If the branch length is less than the minimal value, remove the branch
-        from the tree. **Requires** ancestral sequence reconstruction
-        """
-        self.logger("TreeAnc.prune_short_branches: pruning short branches (max prob at zero)...", 1)
-        for node in self.tree.find_clades():
-            if node.up is None or node.is_terminal():
-                continue
-
-            # probability of the two seqs separated by zero time is not zero
-            if  ((node.branch_length<0.1*self.one_mutation) and
-                 (self.gtr.prob_t(node.up.cseq, node.cseq, 0.0,
-                                  pattern_multiplicity=self.data.multiplicity) > 0.1)):
-                # re-assign the node children directly to its parent
-                node.up.clades = [k for k in node.up.clades if k != node] + node.clades
-                for clade in node.clades:
-                    clade.up = node.up
 
 
     def optimize_tree_marginal(self, max_iter=10, infer_gtr=False, pc=1.0, damping=0.75,
@@ -1465,6 +1311,133 @@ class TreeAnc(object):
         self._prepare_nodes() # fix dist2root and up-links after reconstruction
         self.logger("TreeAnc.optimize_tree: Unconstrained sequence LH:%f" % self.tree.unconstrained_sequence_LH , 2)
         return ttconf.SUCCESS
+
+
+    def prune_short_branches(self):
+        """
+        If the branch length is less than the minimal value, remove the branch
+        from the tree. **Requires** ancestral sequence reconstruction
+        """
+        self.logger("TreeAnc.prune_short_branches: pruning short branches (max prob at zero)...", 1)
+        for node in self.tree.find_clades():
+            if node.up is None or node.is_terminal():
+                continue
+
+            # probability of the two seqs separated by zero time is not zero
+            if  ((node.branch_length<0.1*self.one_mutation) and
+                 (self.gtr.prob_t(node.up.cseq, node.cseq, 0.0,
+                                  pattern_multiplicity=self.data.multiplicity) > 0.1)):
+                # re-assign the node children directly to its parent
+                node.up.clades = [k for k in node.up.clades if k != node] + node.clades
+                for clade in node.clades:
+                    clade.up = node.up
+
+
+#####################################################################
+## GTR INFERENCE
+#####################################################################
+    def infer_gtr(self, marginal=False, site_specific=False, normalized_rate=True,
+                  fixed_pi=None, pc=5.0, **kwargs):
+        """
+        Calculates a GTR model given the multiple sequence alignment and the tree.
+        It performs ancestral sequence inferrence (joint or marginal), followed by
+        the branch lengths optimization. Then, the numbers of mutations are counted
+        in the optimal tree and related to the time within the mutation happened.
+        From these statistics, the relative state transition probabilities are inferred,
+        and the transition matrix is computed.
+
+        The result is used to construct the new GTR model of type 'custom'.
+        The model is assigned to the TreeAnc and is used in subsequent analysis.
+
+        Parameters
+        -----------
+
+         print_raw : bool
+            If True, print the inferred GTR model
+
+         marginal : bool
+            If True, use marginal sequence reconstruction
+
+         normalized_rate : bool
+            If True, sets the mutation rate prefactor to 1.0.
+
+         fixed_pi : np.array
+            Provide the equilibrium character concentrations.
+            If None is passed, the concentrations will be inferred from the alignment.
+
+         pc: float
+            Number of pseudo counts to use in gtr inference
+
+        Returns
+        -------
+
+         gtr : GTR
+            The inferred GTR model
+        """
+        if not self.ok:
+            self.logger("TreeAnc.infer_gtr: ERROR, sequences or tree are missing", 0)
+            return ttconf.ERROR
+
+        # if ancestral sequences are not in place, reconstruct them
+        if marginal  and (not hasattr(self.tree.root,'marginal_profile')):
+            self.infer_ancestral_sequences(marginal=True, **kwargs)
+        elif (not hasattr(self.tree.root,'cseq')) or self.tree.root.cseq is None:
+            self.infer_ancestral_sequences(marginal=False, **kwargs)
+
+        n = self.gtr.n_states
+        L = len(self.tree.root.cseq)
+        # matrix of mutations n_{ij}: i = derived state, j=ancestral state
+        n_ija = np.zeros((n,n,L))
+        T_ia = np.zeros((n,L))
+
+        self.logger("TreeAnc.infer_gtr: counting mutations...", 2)
+        for node in self.tree.get_nonterminals():
+            for c in node:
+                if marginal:
+                    mut_stack = np.transpose(self.get_branch_mutation_matrix(c, full_sequence=False), (1,2,0))
+                    T_ia += 0.5*self._branch_length_to_gtr(c) * mut_stack.sum(axis=0) * self.data.multiplicity
+                    T_ia += 0.5*self._branch_length_to_gtr(c) * mut_stack.sum(axis=1) * self.data.multiplicity
+                    n_ija += mut_stack * self.data.multiplicity
+                elif hasattr(c,'mutations'):
+                    for a,pos, d in c.mutations:
+                        try:
+                            i,j = self.gtr.state_index[d], self.gtr.state_index[a]
+                        except:
+                            continue
+                        cpos = self.data.full_to_reduced_sequence_map[pos]
+                        n_ija[i,j,cpos]+=1
+                        T_ia[j,cpos] += 0.5*self._branch_length_to_gtr(c)
+                        T_ia[i,cpos] -= 0.5*self._branch_length_to_gtr(c)
+
+                    for i, nuc in enumerate(self.gtr.alphabet):
+                        ind = node.cseq==nuc
+                        T_ia[i,ind] += self._branch_length_to_gtr(c)*self.data.multiplicity[ind]
+
+        self.logger("TreeAnc.infer_gtr: counting mutations...done", 3)
+
+        if site_specific:
+            if marginal:
+                root_state = self.tree.root.marginal_profile.T
+            else:
+                root_state = seq2prof(self.tree.root.cseq, self.gtr.profile_map).T
+            self._gtr = GTR_site_specific.infer(n_ija, T_ia, pc=pc,
+                                root_state=root_state, logger=self.logger,
+                                alphabet=self.gtr.alphabet, prof_map=self.gtr.profile_map)
+        else:
+            root_state = np.array([np.sum((self.tree.root.cseq==nuc)*self.data.multiplicity)
+                                   for nuc in self.gtr.alphabet])
+            n_ij = n_ija.sum(axis=-1)
+            self._gtr = GTR.infer(n_ij, T_ia.sum(axis=-1), root_state, fixed_pi=fixed_pi, pc=pc,
+                                  alphabet=self.gtr.alphabet, logger=self.logger,
+                                  prof_map = self.gtr.profile_map)
+
+        if normalized_rate:
+            self.logger("TreeAnc.infer_gtr: setting overall rate to 1.0...", 2)
+            if site_specific:
+                self._gtr.mu /= self._gtr.average_rate().mean()
+            else:
+                self._gtr.mu=1.0
+        return self._gtr
 
 
     def infer_gtr_iterative(self, max_iter=10, site_specific=False, LHtol=0.1,
@@ -1603,4 +1576,21 @@ class TreeAnc(object):
             return tree_dict
         else:
             raise TypeError("A sparse alignment can only be returned for trees created with sparse/VCF-input!")
+
+    def recover_var_ambigs(self):
+        """
+        Recalculates mutations using the original compressed sequence for terminal nodes
+        which will recover ambiguous bases at variable sites. (See 'get_mutations')
+        For fasta input, also regenerates 'sequence' with original ambig sites
+
+        Once this has been run, infer_gtr and other functions which depend on self.gtr.alphabet
+        will not work, as ambiguous bases are not part of that alphabet (only A, C, G, T, -).
+        This is why it's left for the user to choose when to run
+        """
+        for node in self.tree.get_terminals():
+            node.mutations = self.get_mutations(node, keep_var_ambigs=True)
+            # If fasta, replace 'sequence' as this is what will be accessed later
+            if not self.data.is_sparse and hasattr(node, "original_cseq"):
+                node.sequence = self.data.aln[node.name]
+
 
