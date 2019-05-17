@@ -446,8 +446,7 @@ class TreeAnc(object):
         elif (not hasattr(self.tree.root,'cseq')) or self.tree.root.cseq is None:
             self.infer_ancestral_sequences(marginal=False, **kwargs)
 
-        alpha = [x.decode() for x in self.gtr.alphabet]
-        n=len(alpha)
+        n = self.gtr.n_states
         L = len(self.tree.root.cseq)
         # matrix of mutations n_{ij}: i = derived state, j=ancestral state
         n_ija = np.zeros((n,n,L))
@@ -464,19 +463,17 @@ class TreeAnc(object):
                 elif hasattr(c,'mutations'):
                     for a,pos, d in c.mutations:
                         try:
-                            i,j = alpha.index(d), alpha.index(a)
+                            i,j = self.gtr.state_index[d], self.gtr.state_index[a]
                         except:
                             continue
                         cpos = self.data.full_to_reduced_sequence_map[pos]
                         n_ija[i,j,cpos]+=1
                         T_ia[j,cpos] += 0.5*self._branch_length_to_gtr(c)
                         T_ia[i,cpos] -= 0.5*self._branch_length_to_gtr(c)
-                    for pos,nuc in enumerate(c.cseq.astype('U')):
-                        try:
-                            i = alpha.index(nuc)
-                        except:
-                            continue
-                        T_ia[i,pos] += self._branch_length_to_gtr(c)*self.data.multiplicity[pos]
+
+                    for i, nuc in enumerate(self.gtr.alphabet):
+                        ind = node.cseq==nuc
+                        T_ia[i,ind] += self._branch_length_to_gtr(c)*self.data.multiplicity[ind]
 
         self.logger("TreeAnc.infer_gtr: counting mutations...done", 3)
 
@@ -489,7 +486,8 @@ class TreeAnc(object):
                                 root_state=root_state, logger=self.logger,
                                 alphabet=self.gtr.alphabet, prof_map=self.gtr.profile_map)
         else:
-            root_state = np.array([np.sum((self.tree.root.cseq==nuc)*self.data.multiplicity) for nuc in alpha])
+            root_state = np.array([np.sum((self.tree.root.cseq==nuc)*self.data.multiplicity)
+                                   for nuc in self.gtr.alphabet])
             n_ij = n_ija.sum(axis=-1)
             self._gtr = GTR.infer(n_ij, T_ia.sum(axis=-1), root_state, fixed_pi=fixed_pi, pc=pc,
                                   alphabet=self.gtr.alphabet, logger=self.logger,
@@ -611,8 +609,8 @@ class TreeAnc(object):
         # if ambiguous site are to be restored and node is terminal,
         # assign original sequence, else reconstructed cseq
         node_seq = node.cseq
-        if keep_var_ambigs and hasattr(node, "original_cseq") and node.is_terminal():
-            node_seq = node.original_cseq
+        if keep_var_ambigs and node.name in self.data.reduced_alignment:
+            node_seq = self.data.reduced_alignment[node.name]
 
         muts = []
         diff_pos = np.where(node.up.cseq!=node_seq)[0]
@@ -816,7 +814,7 @@ class TreeAnc(object):
             self.infer_ancestral_sequences(marginal=True)
         if pos is not None:
             if full_sequence:
-                compressed_pos = self.full_to_reduced_sequence_map[pos]
+                compressed_pos = self.data.full_to_reduced_sequence_map[pos]
             else:
                 compressed_pos = pos
             return self.tree.sequence_LH[compressed_pos]
@@ -849,8 +847,8 @@ class TreeAnc(object):
 
             t = node.branch_length
 
-            indices = np.array([(np.argmax(self.gtr.alphabet==a),
-                        np.argmax(self.gtr.alphabet==b)) for a, b in zip(node.up.cseq, node.cseq)])
+            indices = np.array([(self.gtr.state_index[a], self.gtr.state_index[b])
+                                 for a, b in zip(node.up.cseq, node.cseq)])
 
             logQt = np.log(self.gtr.expQt(t))
             lh = logQt[indices[:, 1], indices[:, 0]]

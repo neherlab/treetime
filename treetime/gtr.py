@@ -54,7 +54,8 @@ class GTR(object):
             else:
                 self.profile_map = {x.encode() if type(x) is str else x:k for x,k in prof_map.items()}
 
-
+        self.state_index={s:si for si,s in enumerate(self.alphabet)}
+        self.state_index.update({s.decode():si for si,s in enumerate(self.alphabet)})
         if logger is None:
             def logger_default(*args,**kwargs):
                 """standard logging function if none provided"""
@@ -97,7 +98,7 @@ class GTR(object):
 
         # check for a gap symbol
         try:
-            self.gap_index = list(self.alphabet).index(b'-')
+            self.gap_index = self.state_index[b'-']
         except:
             self.logger("GTR: no gap symbol!", 4, warn=True)
             self.gap_index=None
