@@ -1509,7 +1509,7 @@ class TreeAnc(object):
             self.infer_ancestral_sequences()
 
         if self.data.is_sparse:
-            new_aln = {'sequences': {n.name: self.data.compressed_to_sparse_sequence(node.cseq)
+            new_aln = {'sequences': {n.name: self.data.compressed_to_sparse_sequence(n.cseq)
                        for n in self.tree.find_clades()}}
             new_aln['reference'] = self.data.ref
             new_aln['positions'] = self.data.nonref_positions
@@ -1522,7 +1522,7 @@ class TreeAnc(object):
 
 
     def get_tree_dict(self, keep_var_ambigs=False):
-        return self.reconstructed_alignment()
+        return self.get_reconstructed_alignment()
 
     def recover_var_ambigs(self):
         """
