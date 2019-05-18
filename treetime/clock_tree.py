@@ -441,13 +441,13 @@ class ClockTree(TreeAnc):
             if node.joint_pos_Cx is None: # no constraints or branch is bad - reconstruct from the branch len interpolator
                 node.branch_length = node.branch_length_interpolator.peak_pos
             elif node.date_constraint is not None and node.date_constraint.is_delta:
-                node.branch_length = node.date_constraint.is_delta - node.up.time_before_present
+                node.branch_length = node.up.time_before_present - node.date_constraint.peak_pos
             elif isinstance(node.joint_pos_Cx, Distribution):
                 # NOTE the Lx distribution is the likelihood, given the position of the parent
                 # (Lx.x = parent position, Lx.y = LH of the node_pos given Lx.x,
                 # the length of the branch corresponding to the most likely
                 # subtree is node.Cx(node.time_before_present))
-                subtree_LH = node.joint_pos_Lx(node.up.time_before_present)
+                # subtree_LH = node.joint_pos_Lx(node.up.time_before_present)
                 node.branch_length = node.joint_pos_Cx(max(node.joint_pos_Cx.xmin,
                                             node.up.time_before_present)+ttconf.TINY_NUMBER)
 
