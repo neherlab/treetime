@@ -286,6 +286,8 @@ class ClockTree(TreeAnc):
 
                 if self.branch_length_mode=='marginal':
                     node.profile_pair = self.marginal_branch_profile(node)
+                elif not hasattr(node, 'branch_state'):
+                    self.add_branch_state(node)
 
                 node.branch_length_interpolator = BranchLenInterpolator(node, self.gtr,
                             pattern_multiplicity = self.data.multiplicity, min_width=self.min_width,
@@ -438,7 +440,8 @@ class ClockTree(TreeAnc):
 
             if node.joint_pos_Cx is None: # no constraints or branch is bad - reconstruct from the branch len interpolator
                 node.branch_length = node.branch_length_interpolator.peak_pos
-
+            elif node.date_constraint is not None and node.date_constraint.is_delta:
+                node.branch_length = node.date_constraint.is_delta - node.up.time_before_present
             elif isinstance(node.joint_pos_Cx, Distribution):
                 # NOTE the Lx distribution is the likelihood, given the position of the parent
                 # (Lx.x = parent position, Lx.y = LH of the node_pos given Lx.x,
@@ -575,6 +578,8 @@ class ClockTree(TreeAnc):
             if node.up is None:
                 node.msg_from_parent = None # nothing beyond the root
             # all other cases (All internal nodes + unconstrained terminals)
+            elif node.date_constraint is not None and node.date_constraint.is_delta:
+                node.marginal_pos_LH = node.date_constraint
             else:
                 parent = node.up
                 # messages from the complementary subtree (iterate over all sister nodes)
@@ -584,8 +589,6 @@ class ClockTree(TreeAnc):
                 # if parent itself got smth from the root node, include it
                 if parent.msg_from_parent is not None:
                     complementary_msgs.append(parent.msg_from_parent)
-                elif parent.marginal_pos_Lx is not None:
-                    complementary_msgs.append(parent.marginal_pos_LH)
 
                 if len(complementary_msgs):
                     msg_parent_to_node = NodeInterpolator.multiply(complementary_msgs)
