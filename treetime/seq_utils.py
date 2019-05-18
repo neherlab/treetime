@@ -144,27 +144,27 @@ def guess_alphabet(aln):
         return 'aa'
 
 
-def seq2array(seq, word_length=1, fill_overhangs=False, ambiguous_character='N'):
+def seq2array(seq, word_length=1, convert_upper=False, fill_overhangs=False, ambiguous=b'N'):
     """
     Take the raw sequence, substitute the "overhanging" gaps with 'N' (missequenced),
     and convert the sequence to the numpy array of chars.
 
     Parameters
     ----------
-     seq : Biopython.SeqRecord, str, iterable
-        Sequence as an object of SeqRecord, string or iterable
-
-     fill_overhangs : bool
-        If True, substitute the "overhanging" gaps with ambiguous character symbol
-
-     ambiguous_character : char
-        Specify the character for ambiguous state ('N' default for nucleotide)
-
+    seq : Biopython.SeqRecord, str, iterable
+       Sequence as an object of SeqRecord, string or iterable
+    word_length : int, optional
+        1 for nucleotide or amino acids, 3 for codons etc.
+    convert_upper : bool, optional
+        convert the sequence to upper case
+    fill_overhangs : bool
+       If True, substitute the "overhanging" gaps with ambiguous character symbol
+    ambiguous : char
+       Specify the character for ambiguous state ('N' default for nucleotide)
     Returns
     -------
-     sequence : np.array
-        Sequence as 1D numpy array of chars
-
+    sequence : np.array
+       Sequence as 1D numpy array of chars
     """
     if isinstance(seq, str):
         seq_str = seq
@@ -175,13 +175,16 @@ def seq2array(seq, word_length=1, fill_overhangs=False, ambiguous_character='N')
     else:
         raise TypeError("seq2array: sequence must be Bio.Seq, Bio.SeqRecord, or string, got "+str(seq))
 
-    seq_array = np.fromstring(seq_str, 'S%d'%word_length)
+    if convert_upper:
+        seq_str = seq_str.upper()
 
+    seq_array = np.fromstring(seq_str, 'S%d'%word_length)
     # substitute overhanging unsequenced tails
     if fill_overhangs:
-        gaps = np.where(sequence != '-')[0]
-        seq_array [:gaps[0]] = ambiguous_character
-        seq_array [gaps[-1]+1:] = ambiguous_character
+        gaps = np.where(seq_array != b'-')[0]
+        seq_array[:gaps[0]] = ambiguous
+        seq_array[gaps[-1]+1:] = ambiguous
+
     return seq_array
 
 

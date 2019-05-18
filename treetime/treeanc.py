@@ -164,8 +164,6 @@ class TreeAnc(object):
     @property
     def gtr(self):
         """
-        The current GTR object.
-
         :setter: Sets the GTR object passed in
         :getter: Returns the current GTR object
 
@@ -175,11 +173,8 @@ class TreeAnc(object):
     @gtr.setter
     def gtr(self, value):
         """
-        Set a new GTR object
-
         Parameters
         -----------
-
          value : GTR
             the new GTR object
         """
@@ -195,13 +190,11 @@ class TreeAnc(object):
 
         Parameters
         -----------
-
          in_gtr : str, GTR
             The gtr model to be assigned. If string is passed,
             it is taken as the name of a standard GTR model, and is
             attempted to be created through :code:`GTR.standard()` interface. If a
             GTR instance is passed, it is set directly .
-
          **kwargs
             Keyword arguments to construct the GTR model. If none are passed, defaults
             are assumed.
@@ -224,6 +217,10 @@ class TreeAnc(object):
 
     @property
     def aln(self):
+        '''
+        :setter: Sets the alignment
+        :getter: Returns the alignment
+        '''
         return self.data.aln
 
     @aln.setter
@@ -415,7 +412,7 @@ class TreeAnc(object):
         Parameters
         ----------
         method : str
-           Method to use. Supported values are "parsimony", "fitch" and "probabilistic"
+           Method to use. Supported values are "parsimony", "fitch", "probabilistic" and "ml"
         infer_gtr : bool
            Infer a GTR model before reconstructing the sequences
         marginal : bool
@@ -676,19 +673,17 @@ class TreeAnc(object):
 
         Parameters
         ----------
-
-         store_compressed : bool, default True
+         store_compressed : bool, default False
             attach a compressed representation of sequence changed to each branch
-
-         final : bool, default True
-            stop full length by expanding sites with identical alignment patterns
-
          sample_from_profile : bool or str
             assign sequences probabilistically according to the inferred probabilities
             of ancestral states instead of to their ML value. This parameter can also
             take the value 'root' in which case probabilistic sampling will happen
             at the root but at no other node.
-
+        reconstruct_leaves : bool, default False
+            reconstruct sequence assigned to leaves, will replace ambiguous characters
+            with the most likely definite character. Note that this will affect the mutations
+            assigned to branches.
         """
         tree = self.tree
         # number of nucleotides changed from prev reconstruction
@@ -808,17 +803,16 @@ class TreeAnc(object):
 
         Parameters
         ----------
-
          store_compressed : bool, default True
             attach a compressed representation of sequence changed to each branch
-
-         final : bool, default True
-            stop full length by expanding sites with identical alignment patterns
-
          sample_from_profile : str
             This parameter can take the value 'root' in which case probabilistic
             sampling will happen at the root. otherwise sequences at ALL nodes are
             set to the value that jointly optimized the likelihood.
+        reconstruct_leaves : bool, default False
+            reconstruct sequence assigned to leaves, will replace ambiguous characters
+            with the most likely definite character. Note that this will affect the mutations
+            assigned to branches.
 
         """
         N_diff = 0 # number of sites differ from perv reconstruction
@@ -942,11 +936,10 @@ class TreeAnc(object):
            Tree node, which is the child node attached to the branch.
 
         keep_var_ambigs : boolean
-           If true, generates mutations based on the *original* compressed sequence, which
+           If true, generates mutations based on the *original* sequence, which
            may include ambiguities. Note sites that only have 1 unambiguous base and ambiguous
            bases ("AAAAANN") are stripped of ambiguous bases *before* compression, so ambiguous
            bases will **not** be preserved.
-
         Returns
         -------
         muts : list
@@ -1019,7 +1012,6 @@ class TreeAnc(object):
         ----------
         node : PhyloTree.Clade
            TreeNode, attached to the branch.
-
 
         Returns
         -------
@@ -1231,7 +1223,7 @@ class TreeAnc(object):
         Deprecated in favor of 'optimize_tree'
         """
         self.logger("Deprecation warning: 'optimize_sequences_and_branch_length' will be removed and replaced by 'optimize_tree'!", 1, warn=True)
-        self.optimize_seq_and_branch_len(*args,**kwargs)
+        self.optimize_tree(*args,**kwargs)
 
     def optimize_seq_and_branch_len(self,*args, **kwargs):
         """This method is a shortcut for :py:meth:`treetime.TreeAnc.optimize_tree`

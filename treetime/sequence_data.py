@@ -92,6 +92,7 @@ class SequenceData(object):
         self.compressed_to_full_sequence_map = None
         self.multiplicity = None
         self.is_sparse = None
+        self.convert_upper = convert_upper
         self.compress = compress
         self.seq_multiplicity = seq_multiplicity or {} # possibly a dict mapping sequences to their read cound/sample count
         self.additional_constant_sites = kwargs['additional_constant_sites'] if 'additional_constant_sites' in kwargs else 0
@@ -158,7 +159,9 @@ class SequenceData(object):
 
         if type(in_aln) is MultipleSeqAlignment:
             self.is_sparse = False
-            self._aln = {s.name: seq2array(s) for s in in_aln}
+            self._aln = {s.name: seq2array(s, convert_upper=self.convert_upper,
+                                           fill_overhangs=self.fill_overhangs, ambiguous=self.ambiguous)
+                         for s in in_aln}
             self.logger("SequenceData: loaded alignment.",1)
         elif type(in_aln) in [dict, defaultdict]:
             self.logger("SequenceData: loaded sparse/vcf alignment.",1)
