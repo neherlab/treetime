@@ -574,7 +574,7 @@ class GTR(object):
         return eigvals, tmp_v.T/one_norm, (eigvecs*one_norm).T/tmpp
 
 
-    def compress_sequence_pair(self, seq_p, seq_ch, pattern_multiplicity=None,
+    def state_pair(self, seq_p, seq_ch, pattern_multiplicity=None,
                                ignore_gaps=False):
         '''
         Make a compressed representation of a pair of sequences, only counting
@@ -615,7 +615,7 @@ class GTR(object):
 
         from collections import Counter
         if seq_ch.shape != seq_p.shape:
-            raise ValueError("GTR.compress_sequence_pair: Sequence lengths do not match!")
+            raise ValueError("GTR.state_pair: Sequence lengths do not match!")
 
         if len(self.alphabet)<10: # for small alphabet, repeatedly check array for all state pairs
             pair_count = []
@@ -724,7 +724,7 @@ class GTR(object):
             Resulting probability
 
         """
-        seq_pair, multiplicity = self.compress_sequence_pair(seq_p, seq_ch,
+        seq_pair, multiplicity = self.state_pair(seq_p, seq_ch,
                                         pattern_multiplicity=pattern_multiplicity, ignore_gaps=ignore_gaps)
         return self.prob_t_compressed(seq_pair, multiplicity, t, return_log=return_log)
 
@@ -752,20 +752,21 @@ class GTR(object):
             If True, ignore gaps in distance calculations
 
         '''
-        seq_pair, multiplicity = self.compress_sequence_pair(seq_p, seq_ch,
-                                                            pattern_multiplicity = pattern_multiplicity,
-                                                            ignore_gaps=ignore_gaps)
+        seq_pair, multiplicity = self.state_pair(seq_p, seq_ch,
+                                        pattern_multiplicity = pattern_multiplicity,
+                                        ignore_gaps=ignore_gaps)
         return self.optimal_t_compressed(seq_pair, multiplicity)
 
 
     def optimal_t_compressed(self, seq_pair, multiplicity, profiles=False, tol=1e-10):
         """
-        Find the optimal distance between the two sequences, for compressed sequences
+        Find the optimal distance between the two sequences represented as state_pairs
+        or as pair of profiles
 
         Parameters
         ----------
 
-         seq_pair : compressed_sequence_pair
+         seq_pair : state_pair, tuple
             Compressed representation of sequences along a branch, either
             as tuple of state pairs or as tuple of profiles.
 
@@ -779,7 +780,7 @@ class GTR(object):
             either end of the branch. With profiles==True, optimization is performed
             while summing over all possible states of the nodes at either end of the
             branch. Note that the meaning/format of seq_pair and multiplicity
-            depend on the value of profiles.
+            depend on the value of :profiles:.
 
         """
 

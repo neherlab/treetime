@@ -310,6 +310,7 @@ class TreeAnc(object):
 
         # loop over tree, and assign sequences
         for l in self.tree.find_clades():
+            if hasattr(l, 'branch_state'): del l.branch_state
             if l.name in self.data.compressed_alignment:
                 l.cseq = self.data.compressed_alignment[l.name]
             elif l.is_terminal():
@@ -664,7 +665,7 @@ class TreeAnc(object):
             return max(ttconf.MIN_BRANCH_LENGTH*self.one_mutation, node.branch_length)
 
 
-    def _ml_anc_marginal(self, store_compressed=False, sample_from_profile=False,
+    def _ml_anc_marginal(self, sample_from_profile=False,
                          reconstruct_leaves=False, debug=False, **kwargs):
         """
         Perform marginal ML reconstruction of the ancestral states. In contrast to
@@ -673,8 +674,6 @@ class TreeAnc(object):
 
         Parameters
         ----------
-         store_compressed : bool, default False
-            attach a compressed representation of sequence changed to each branch
          sample_from_profile : bool or str
             assign sequences probabilistically according to the inferred probabilities
             of ancestral states instead of to their ML value. This parameter can also
@@ -754,6 +753,7 @@ class TreeAnc(object):
         for node in tree.find_clades(order='preorder'):
             if node.up is None: # skip if node is root
                 continue
+            if hasattr(node, 'branch_state'): del node.branch_state
 
             # integrate the information coming from parents with the information
             # of all children my multiplying it to the prev computed profile
@@ -777,8 +777,6 @@ class TreeAnc(object):
 
         # note that the root doesn't contribute to N_diff (intended, since root sequence is often ambiguous)
         self.logger("TreeAnc._ml_anc_marginal: ...done", 3)
-        if store_compressed:
-            self._store_compressed_sequence_pairs()
 
         # do clean-up:
         if not debug:
@@ -793,8 +791,8 @@ class TreeAnc(object):
         return N_diff
 
 
-    def _ml_anc_joint(self, store_compressed=True, sample_from_profile=False,
-                            reconstruct_leaves=False, debug=False, **kwargs):
+    def _ml_anc_joint(self, sample_from_profile=False,
+                      reconstruct_leaves=False, debug=False, **kwargs):
 
         """
         Perform joint ML reconstruction of the ancestral states. In contrast to
@@ -803,8 +801,6 @@ class TreeAnc(object):
 
         Parameters
         ----------
-         store_compressed : bool, default True
-            attach a compressed representation of sequence changed to each branch
          sample_from_profile : str
             This parameter can take the value 'root' in which case probabilistic
             sampling will happen at the root. otherwise sequences at ALL nodes are
@@ -824,6 +820,7 @@ class TreeAnc(object):
         self.logger("TreeAnc._ml_anc_joint: Walking up the tree, computing likelihoods... ", 3)
         # for the internal nodes, scan over all states j of this node, maximize the likelihood
         for node in self.tree.find_clades(order='postorder'):
+            if hasattr(node, 'branch_state'): del node.branch_state
             if node.up is None:
                 node.joint_Cx=None # not needed for root
                 continue
@@ -907,8 +904,6 @@ class TreeAnc(object):
             node.cseq = tmp_sequence
 
         self.logger("TreeAnc._ml_anc_joint: ...done", 3)
-        if store_compressed:
-            self._store_compressed_sequence_pairs()
 
         # do clean-up
         if not debug:
@@ -1030,23 +1025,20 @@ class TreeAnc(object):
         return pp, pc
 
 
-    def _store_compressed_sequence_pairs(self):
-        """
-        Traverse the tree, and for each node store the compressed sequence pair.
-        **Note** sequence reconstruction should be performed prior to calling
-        this method.
-        """
-        self.logger("TreeAnc._store_compressed_sequence_pairs...",2)
-        for node in self.tree.find_clades():
-            if node.up is None:
-                continue
-            seq_pairs, multiplicity = self.gtr.compress_sequence_pair(
-                                           node.up.cseq, node.cseq,
-                                           pattern_multiplicity = self.data.multiplicity,
-                                           ignore_gaps = self.ignore_gaps)
-            node.compressed_sequence = {'pair':seq_pairs, 'multiplicity':multiplicity}
-        self.logger("TreeAnc._store_compressed_sequence_pairs...done",3)
+    def add_branch_state(self, node):
+        """add a dictionary to the node containing tuples of state pairs
+        and a list of their number across the branch
 
+        Parameters
+        ----------
+        node : tree.node
+            attaces attribute :branch_state:
+        """
+        seq_pairs, multiplicity = self.gtr.state_pair(
+                                       node.up.cseq, node.cseq,
+                                       pattern_multiplicity = self.data.multiplicity,
+                                       ignore_gaps = self.ignore_gaps)
+        node.branch_state = {'pair':seq_pairs, 'multiplicity':multiplicity}
 
 
 ###################################################################
@@ -1138,15 +1130,10 @@ class TreeAnc(object):
         if node.up is None:
             return self.one_mutation
 
-        parent = node.up
-        if hasattr(node, 'compressed_sequence'):
-            new_len = self.gtr.optimal_t_compressed(node.compressed_sequence['pair'],
-                                                    node.compressed_sequence['multiplicity'])
-        else:
-            new_len = self.gtr.optimal_t(parent.cseq, node.cseq,
-                                         pattern_multiplicity=self.data.multiplicity,
-                                         ignore_gaps=self.ignore_gaps)
-        return new_len
+        if not hasattr(node, 'branch_state'):
+            self.add_branch_state(node)
+        return self.gtr.optimal_t_compressed(node.branch_state['pair'],
+                                    node.branch_state['multiplicity'])
 
 
     def optimal_marginal_branch_length(self, node, tol=1e-10):

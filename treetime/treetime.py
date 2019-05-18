@@ -602,10 +602,7 @@ class TreeTime(ClockTree):
                 n2.up = new_node
                 if hasattr(clade, "cseq"):
                     new_node.cseq = clade.cseq
-                    seq_pairs, multiplicity = self.gtr.compress_sequence_pair( clade.up.cseq, clade.cseq,
-                                                   pattern_multiplicity = self.data.multiplicity,
-                                                   ignore_gaps = self.ignore_gaps)
-                    new_node.compressed_sequence = {'pair':seq_pairs, 'multiplicity':multiplicity}
+                    self.add_branch_state(new_node)
 
                 new_node.mutations = []
                 new_node.mutation_length = 0.0

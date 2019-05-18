@@ -173,7 +173,7 @@ def seq2array(seq, word_length=1, convert_upper=False, fill_overhangs=False, amb
     elif isinstance(seq, SeqRecord.SeqRecord):
         seq_str = str(seq.seq)
     else:
-        raise TypeError("seq2array: sequence must be Bio.Seq, Bio.SeqRecord, or string, got "+str(seq))
+        raise TypeError("seq2array: sequence must be Bio.Seq, Bio.SeqRecord, or string. Got "+str(seq))
 
     if convert_upper:
         seq_str = seq_str.upper()
@@ -223,10 +223,8 @@ def prof2seq(profile, gtr, sample_from_prof=False, normalize=True):
      profile : numpy 2D array
         Profile. Shape of the profile should be (L x a), where L - sequence
         length, a - alphabet size.
-
      gtr : gtr.GTR
         Instance of the GTR class to supply the sequence alphabet
-
      collapse_prof : bool
         Whether to convert the profile to the delta-function
 
@@ -234,10 +232,8 @@ def prof2seq(profile, gtr, sample_from_prof=False, normalize=True):
     -------
      seq : numpy.array
         Sequence as numpy array of length L
-
      prof_values :  numpy.array
         Values of the profile for the chosen sequence characters (length L)
-
      idx : numpy.array
         Indices chosen from profile as array of length L
     """

@@ -21,7 +21,7 @@ def read_vcf(vcf_file, ref_file=None):
     ----------
     vcf_file : string
         Path to the vcf or vcf.gz file to be read in
-    ref_file : string
+    ref_file : string, optional
         Path to the fasta reference file to be read in
 
     Returns
@@ -363,9 +363,7 @@ def write_vcf(tree_dict, file_name):#, compress=False):
                 i-=1    #don't append, break this loop
 
         #Rotate them into 'calls'
-        sites = np.asarray(sites)
-        align = np.rot90(sites)
-        align = np.flipud(align)
+        align = np.asarray(sites).T
 
         #Get rid of '-', and put '.' for calls that match ref
         #Only removes trailing '-'. This breaks VCF convension, but the standard
@@ -390,11 +388,14 @@ def write_vcf(tree_dict, file_name):#, compress=False):
 
     #prepare the header of the VCF & write out
     header=["#CHROM","POS","ID","REF","ALT","QUAL","FILTER","INFO","FORMAT"]+list(sequences.keys())
-    with open(file_name, 'w') as the_file:
-        the_file.write( "##fileformat=VCFv4.2\n"+
+
+    opn = gzip.open if file_name.endswith(('.gz', '.GZ')) else open
+    out_file = opn(file_name, 'w')
+
+    out_file.write( "##fileformat=VCFv4.2\n"+
                         "##source=NextStrain\n"+
                         "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">\n")
-        the_file.write("\t".join(header)+"\n")
+    out_file.write("\t".join(header)+"\n")
 
     vcfWrite = []
     errorPositions = []
@@ -510,15 +511,8 @@ def write_vcf(tree_dict, file_name):#, compress=False):
             "\n\nThese are the positions affected (numbering starts at 0):".format(str(len(errorPositions))))
         print (",".join(errorPositions))
 
-    with open(file_name, 'a') as the_file:
-        the_file.write("\n".join(vcfWrite))
-
-    if file_name.endswith(('.gz', '.GZ')):
-        import os
-        #must temporarily remove .gz ending, or gzip won't zip it!
-        os.rename(file_name, file_name[:-3])
-        call = ["gzip", file_name[:-3]]
-        os.system(" ".join(call))
+    out_file.write("\n".join(vcfWrite))
+    out_file.close()
 
 
 def process_sparse_alignment(aln, ref, ambiguous_char):

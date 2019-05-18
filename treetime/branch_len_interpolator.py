@@ -88,19 +88,11 @@ class BranchLenInterpolator (Distribution):
 
 
         elif branch_length_mode=='joint':
-            if not hasattr(node, 'compressed_sequence'):
-                #FIXME: this assumes node.sequence is set, but this might not be the case if
-                # ancestral reconstruction is run with final=False
-                if hasattr(node, 'sequence'):
-                    seq_pairs, multiplicity = self.gtr.compress_sequence_pair(node.up.sequence,
-                                                                          node.sequence,
-                                                                          ignore_gaps=ignore_gaps)
-                    node.compressed_sequence = {'pair':seq_pairs, 'multiplicity':multiplicity}
-                else:
-                    raise Exception("uncompressed sequence needs to be assigned to nodes")
+            if not hasattr(node, 'branch_state'):
+                raise Exception("branch state pairs need to be assigned to nodes")
 
-            log_prob = np.array([-self.gtr.prob_t_compressed(node.compressed_sequence['pair'],
-                                                    node.compressed_sequence['multiplicity'],
+            log_prob = np.array([-self.gtr.prob_t_compressed(node.branch_state['pair'],
+                                                    node.branch_state['multiplicity'],
                                                     k,
                                                     return_log=True)
                                 for k in grid])
