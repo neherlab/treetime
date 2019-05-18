@@ -12,24 +12,93 @@ def simple_logger(*args, **kwargs):
     print(args)
 
 class SequenceData(object):
-    """docstring for SeqData"""
+    """docstring for SeqData
+
+    Attributes
+    ----------
+    additional_constant_sites : int
+        length of the sequence without variation not included in the alignment
+    aln : dict
+        sequences, either sparse of full
+    ambiguous : byte
+        character signifying missing data
+    compress : bool
+        compress the alignment
+    compressed_alignment : dict
+        dictionary mapping sequence names to compressed sequences
+    compressed_to_full_sequence_map : dict
+        for each compressed position, contain a list of positions in the full alignment
+    fill_overhangs : bool
+        treat gaps at either end of sequence as missing data
+    full_length : int
+        length of the sequence
+    full_to_compressed_sequence_map : np.array
+        a map of each position in the full sequence to the compressed sequence
+    inferred_const_sites : list
+        list of positions that are constant but differ from the reference, or contain ambiguous characters
+    is_sparse : bool
+        whether the representation of the alignment is sparse (dict) or fill (array)
+    likely_alphabet : str
+        simply guess as to whether the sequence alignment is nucleotides or amino acids
+    logger : callable
+        function writting log messages
+    multiplicity : np.array
+        specifies for each column of the compressed alignment how often this pattern occurs
+    nonref_positions : list
+        positions where at least one sequence differs from the reference
+    ref : np.array
+        reference sequence (stored as np.array(dtype="S"))
+    seq_multiplicity : dict
+        store the multiplicity of sequence, for example read count in a deep sequencing experiment
+    sequence_names : list
+        list of all sequences in a fixed order
+    word_length : int
+        length of state (typically 1 A,C,G,T, but could be 3 for codons)
+    """
     def __init__(self, aln, ref=None, logger=None, convert_upper=True,
-                 sequence_length=None, reduce_alignment=True, word_length=1,
+                 sequence_length=None, compress=True, word_length=1,
                  fill_overhangs=True, seq_multiplicity=None, ambiguous=None, **kwargs):
+        """construct an sequence data object
+
+        Parameters
+        ----------
+        aln : Bio.Align.MultipleSeqAlignment, str
+            alignment or file name
+        ref : Seq, str
+            sequence or file name
+        logger : callable, optional
+            logging function
+        convert_upper : bool, optional
+            convert all sequences to upper case, default true
+        sequence_length : None, optional
+            length of the sequence, only necessary when no alignment or ref is given
+        compress : bool, optional
+            compress identical alignment columns into one
+        word_length : int
+            length of state (typically 1 A,C,G,T, but could be 3 for codons)
+        fill_overhangs : bool
+            treat gaps at either end of sequence as missing data
+        seq_multiplicity : dict
+            store the multiplicity of sequence, for example read count in a deep sequencing experiment
+        ambiguous : byte
+            character signifying missing data
+        **kwargs
+            Description
+        """
         self.logger = logger if logger else simple_logger
         self._aln = None
         self._ref = None
         self.likely_alphabet = None
-        self.reduced_to_full_sequence_map = None
-        self.pattern_multiplicity = None
+        self.compressed_to_full_sequence_map = None
+        self.multiplicity = None
         self.is_sparse = None
-        self.reduce_alignment = reduce_alignment
+        self.compress = compress
         self.seq_multiplicity = seq_multiplicity or {} # possibly a dict mapping sequences to their read cound/sample count
         self.additional_constant_sites = kwargs['additional_constant_sites'] if 'additional_constant_sites' in kwargs else 0
 
         # if not specified, this will be set as the alignment_length or reference length
         self._full_length = sequence_length
-        self._reduced_length = None
+        self._compressed_length = None
         self.word_length = word_length
         self.fill_overhangs = fill_overhangs
         self.ambiguous = ambiguous
@@ -123,7 +192,7 @@ class SequenceData(object):
         if self.ambiguous is None:
             self.ambiguous = b'N' if self.likely_alphabet=='nuc' else b'X'
 
-        self.make_reduced_alignment()
+        self.make_compressed_alignment()
 
 
     @property
@@ -151,21 +220,16 @@ class SequenceData(object):
             self.logger("Alignment: one_mutation and sequence length can't be reset",1)
 
     @property
-    def reduced_length(self):
-        return self._reduced_length
+    def compressed_length(self):
+        return self._compressed_length
 
 
     @property
     def ref(self):
         """
-        Get the str reference nucleotide sequence currently used by TreeAnc.
-        When having read alignment in from a VCF, this is what variants map to.
-
         :setter: Sets the string reference sequence
         :getter: Returns the string reference sequence
-
         """
-        # delete previous alignment if reference changes
         return self._ref
 
 
@@ -193,57 +257,44 @@ class SequenceData(object):
         if in_ref:
             self._ref = seq2array(in_ref, fill_overhangs=False, word_length=self.word_length)
             self.full_length = self._ref.shape[0]
-            self.reduced_to_full_sequence_map = None
+            self.compressed_to_full_sequence_map = None
             self.multiplicity = None
 
 
-    def make_reduced_alignment(self):
+    def make_compressed_alignment(self):
         """
-        Create the reduced alignment from the full sequences attached to (some)
-        tree nodes. The methods collects all sequences from the tree nodes, creates
-        the alignment, counts the multiplicity for each column of the alignment
-        ('alignment pattern'), and creates the reduced alignment, where only the
-        unique patterns are present. The reduced alignment and the pattern multiplicity
-        are sufficient for the GTR calculations and allow to save memory on profile
-        instantiation.
-
-        The maps from full sequence to reduced sequence and back are also stored to allow
+        Create the compressed alignment from the full sequences. This method counts
+        the multiplicity for each column of the alignment ('alignment pattern'), and
+        creates the compressed alignment, where only the unique patterns are present.
+        The maps from full sequence to compressed sequence and back are also stored to allow
         compressing and expanding the sequences.
 
         Notes
         -----
-
-          full_to_reduced_sequence_map : (array)
+          full_to_compressed_sequence_map : (array)
              Map to reduce a sequence
-
-          reduced_to_full_sequence_map : (dict)
-             Map to restore sequence from reduced alignment
-
+          compressed_to_full_sequence_map : (dict)
+             Map to restore sequence from compressed alignment
           multiplicity : (array)
-            Numpy array, which stores the pattern multiplicity for each position of the reduced alignment.
-
-          reduced_alignment : (2D numpy array)
-            The reduced alignment. Shape is (N x L'), where N is number of
+            Numpy array, which stores the pattern multiplicity for each position of the compressed alignment.
+          compressed_alignment : (2D numpy array)
+            The compressed alignment. Shape is (N x L'), where N is number of
             sequences, L' - number of unique alignment patterns
-
-          cseq : (array)
-            The compressed sequence (corresponding row of the reduced alignment) attached to each node
-
         """
 
-        if not self.reduce_alignment:
+        if not self.compress: #
             self.multiplicity = np.ones(self.full_length, dtype=float)
-            self.full_to_reduced_sequence_map = np.arange(self.full_length)
-            self.reduced_to_full_sequence_map = {p:np.array([p]) for p in np.arange(self.full_length)}
-            self._reduced_length==self._full_length
-            self.reduced_alignment = self._aln
+            self.full_to_compressed_sequence_map = np.arange(self.full_length)
+            self.compressed_to_full_sequence_map = {p:np.array([p]) for p in np.arange(self.full_length)}
+            self._compressed_length==self._full_length
+            self.compressed_alignment = self._aln
             return ttconf.SUCCESS
 
-        self.logger("SeqData: making reduced alignment...", 1)
-        # bind positions in full length sequence to that of the reduced (compressed) sequence
-        self.full_to_reduced_sequence_map = np.zeros(self.full_length, dtype=int)
-        # bind position in reduced sequence to the array of positions in full length sequence
-        self.reduced_to_full_sequence_map = {}
+        self.logger("SeqData: making compressed alignment...", 1)
+        # bind positions in full length sequence to that of the compressed (compressed) sequence
+        self.full_to_compressed_sequence_map = np.zeros(self.full_length, dtype=int)
+        # bind position in compressed sequence to the array of positions in full length sequence
+        self.compressed_to_full_sequence_map = {}
 
         #if alignment is sparse, don't iterate over all invarible sites.
         #so pre-load alignment_patterns with the location of const sites!
@@ -251,14 +302,14 @@ class SequenceData(object):
         if self.is_sparse:
             from .vcf_utils import process_sparse_alignment
             tmp = process_sparse_alignment(self.aln, self.ref, self.ambiguous)
-            reduced_aln_transpose = tmp["constant_columns"]
+            compressed_aln_transpose = tmp["constant_columns"]
             alignment_patterns = tmp["constant_patterns"]
             variable_positions = tmp["variable_positions"]
             self.inferred_const_sites = tmp["constant_up_to_ambiguous"]
             self.nonref_positions = tmp["nonref_positions"]
         else: # transpose real alignment, for ease of iteration
             alignment_patterns = {}
-            reduced_aln_transpose = []
+            compressed_aln_transpose = []
             aln_transpose = np.array([self.aln[k] for k in self.sequence_names]).T
             variable_positions = np.arange(aln_transpose.shape[0])
 
@@ -277,23 +328,24 @@ class SequenceData(object):
                 #also replace in original pattern!
                 pattern[pattern == self.ambiguous] = other
                 unique_letters = [other]
+
+            str_pattern = "".join(pattern.astype('U'))
             # if there is a mutation in this column, give it its private pattern
             # this is required when sampling mutations from reconstructed profiles.
             # otherwise, all mutations corresponding to the same pattern will be coupled.
-            # FIXME
-            str_pattern = "".join(pattern.astype('U'))
+            # FIXME: this could be done more efficiently
             if len(unique_letters)>1:
                 str_pattern += '_%d'%pi
 
             # if the pattern is not yet seen,
             if str_pattern not in alignment_patterns:
-                # bind the index in the reduced aln, index in sequence to the pattern string
-                alignment_patterns[str_pattern] = (len(reduced_aln_transpose), [pi])
-                # append this pattern to the reduced alignment
-                reduced_aln_transpose.append(pattern)
+                # bind the index in the compressed aln, index in sequence to the pattern string
+                alignment_patterns[str_pattern] = (len(compressed_aln_transpose), [pi])
+                # append this pattern to the compressed alignment
+                compressed_aln_transpose.append(pattern)
             else:
                 # if the pattern is already seen, append the position in the real
-                # sequence to the reduced aln<->sequence_pos_indexes map
+                # sequence to the compressed aln<->sequence_pos_indexes map
                 alignment_patterns[str_pattern][1].append(pi)
 
         # add constant alignment column not in the alignment. We don't know where they
@@ -315,8 +367,8 @@ class SequenceData(object):
                 if str_pattern in alignment_patterns:
                     alignment_patterns[str_pattern][1].extend(pos_list)
                 else:
-                    alignment_patterns[str_pattern] = (len(reduced_aln_transpose), pos_list)
-                    reduced_aln_transpose.append(np.array(list(str_pattern)))
+                    alignment_patterns[str_pattern] = (len(compressed_aln_transpose), pos_list)
+                    compressed_aln_transpose.append(np.array(list(str_pattern)))
                 pi += n
                 columns_left -= n
 
@@ -326,25 +378,37 @@ class SequenceData(object):
         for p, pos in alignment_patterns.values():
             self.multiplicity[p]=len(pos)
 
-        # create the reduced alignment as a dictionary linking names to sequences
-        tmp_reduced_alignment = np.array(reduced_aln_transpose).T
-        self.reduced_alignment = {k: tmp_reduced_alignment[i]
+        # create the compressed alignment as a dictionary linking names to sequences
+        tmp_compressed_alignment = np.array(compressed_aln_transpose).T
+        self.compressed_alignment = {k: tmp_compressed_alignment[i]
                                   for i,k in enumerate(self.sequence_names)}
 
         # create map to compress a sequence
         for p, pos in alignment_patterns.values():
-            self.full_to_reduced_sequence_map[np.array(pos)]=p
+            self.full_to_compressed_sequence_map[np.array(pos)]=p
 
-        # create a map to reconstruct full sequence from the reduced (compressed) sequence
+        # create a map to reconstruct full sequence from the compressed (compressed) sequence
         for p, val in alignment_patterns.items():
-            self.reduced_to_full_sequence_map[val[0]]=np.array(val[1], dtype=int)
+            self.compressed_to_full_sequence_map[val[0]]=np.array(val[1], dtype=int)
 
-        self.logger("SequenceData: constructed reduced alignment...", 1)
-        self._reduced_length = len(self.multiplicity)
+        self.logger("SequenceData: constructed compressed alignment...", 1)
+        self._compressed_length = len(self.multiplicity)
         return ttconf.SUCCESS
 
 
     def full_to_sparse_sequence(self, sequence):
+        """turn a sequence into a dictionary of differences from a reference sequence
+
+        Parameters
+        ----------
+        sequence : str, numpy.ndarray
+            sequence to convert
+
+        Returns
+        -------
+        dict
+            dictionary of difference from reference
+        """
         if self.ref is None:
             raise TypeError("SequenceData: sparse sequences can only be constructed when a reference sequence is defined")
         if type(sequence) is not np.ndarray:
@@ -354,25 +418,55 @@ class SequenceData(object):
         differences = np.where(self.ref!=aseq)[0]
         return {p:aseq[p] for p in differences}
 
-    def reduced_to_sparse_sequence(self, sequence):
+
+    def compressed_to_sparse_sequence(self, sequence):
+        """turn a compressed sequence into a list of difference from a reference
+
+        Parameters
+        ----------
+        sequence : numpy.ndarray
+            compressed sequence stored as array
+
+        Returns
+        -------
+        dict
+            dictionary of difference from reference
+        """
         if self.ref is None:
             raise TypeError("SequenceData: sparse sequences can only be constructed when a reference sequence is defined")
         sparse_seq = {}
         for pos in self.nonref_positions:
-            cseqLoc = self.full_to_reduced_sequence_map[pos]
+            cseqLoc = self.full_to_compressed_sequence_map[pos]
             base = sequence[cseqLoc]
             if self.ref[pos] != base:
                 sparse_seq[pos] = base
 
         return sparse_seq
 
-    def reduced_to_full_sequence(self, sequence, include_additional_constant_sites=False, as_string=False):
+
+    def compressed_to_full_sequence(self, sequence, include_additional_constant_sites=False, as_string=False):
+        """expand a compressed sequence
+
+        Parameters
+        ----------
+        sequence : np.ndarray
+            compressed sequence
+        include_additional_constant_sites : bool, optional
+            add sites assumed constant
+        as_string : bool, optional
+            return a string instead of an array
+
+        Returns
+        -------
+        array,str
+            expanded sequence
+        """
         if include_additional_constant_sites:
             L = self.full_length
         else:
             L = self.full_length - self.additional_constant_sites
 
-        tmp_seq = sequence[self.full_to_reduced_sequence_map[:L]]
+        tmp_seq = sequence[self.full_to_compressed_sequence_map[:L]]
         if as_string:
             return "".join(tmp_seq.astype('U'))
         else:

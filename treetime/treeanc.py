@@ -25,7 +25,7 @@ class TreeAnc(object):
     def __init__(self, tree=None, aln=None, gtr=None, fill_overhangs=True,
                 ref=None, verbose = ttconf.VERBOSE, ignore_gaps=True,
                 convert_upper=True, seq_multiplicity=None, log=None,
-                reduce_alignment=True,
+                compress=True,
                 **kwargs):
         """
         TreeAnc constructor. It prepares the tree, attaches sequences to the leaf nodes,
@@ -70,7 +70,7 @@ class TreeAnc(object):
            specified as a dictionary. This currently only affects rooting and
            can be used to weigh individual tips by abundance or important during root search.
 
-        reduce_alignment : bool, optional
+        compress : bool, optional
             reduce identical alignment columns to one (not useful when
             inferring site specific GTR models).
 
@@ -111,7 +111,7 @@ class TreeAnc(object):
 
         # set alignment and attach sequences to tree on success.
         # otherwise self.data.aln will be None
-        self.data = SequenceData(aln, ref=ref, logger=self.logger, reduce_alignment=reduce_alignment,
+        self.data = SequenceData(aln, ref=ref, logger=self.logger, compress=compress,
                                 convert_upper=convert_upper, fill_overhangs=fill_overhangs,
                                 sequence_length=kwargs['seq_len'] if 'seq_len' in kwargs else None)
 
@@ -313,12 +313,12 @@ class TreeAnc(object):
 
         # loop over tree, and assign sequences
         for l in self.tree.find_clades():
-            if l.name in self.data.reduced_alignment:
-                l.cseq = self.data.reduced_alignment[l.name]
+            if l.name in self.data.compressed_alignment:
+                l.cseq = self.data.compressed_alignment[l.name]
             elif l.is_terminal():
                 self.logger("***WARNING: TreeAnc._attach_sequences_to_nodes: NO SEQUENCE FOR LEAF: %s" % l.name, 0, warn=True)
                 failed_leaves += 1
-                l.cseq = np.repeat(self.gtr.ambiguous, self.data.reduced_length)
+                l.cseq = np.repeat(self.gtr.ambiguous, self.data.compressed_length)
                 if failed_leaves > self.tree.count_terminals()/3:
                     self.logger("ERROR: At least 30\\% terminal nodes cannot be assigned a sequence!\n", 0, warn=True)
                     self.logger("Are you sure the alignment belongs to the tree?", 2, warn=True)
@@ -614,7 +614,7 @@ class TreeAnc(object):
             self.infer_ancestral_sequences(marginal=True)
         if pos is not None:
             if full_sequence:
-                compressed_pos = self.data.full_to_reduced_sequence_map[pos]
+                compressed_pos = self.data.full_to_compressed_sequence_map[pos]
             else:
                 compressed_pos = pos
             return self.tree.sequence_LH[compressed_pos]
@@ -678,7 +678,7 @@ class TreeAnc(object):
         ----------
 
          store_compressed : bool, default True
-            attach a reduced representation of sequence changed to each branch
+            attach a compressed representation of sequence changed to each branch
 
          final : bool, default True
             stop full length by expanding sites with identical alignment patterns
@@ -694,15 +694,15 @@ class TreeAnc(object):
         # number of nucleotides changed from prev reconstruction
         N_diff = 0
 
-        L = self.data.reduced_length
+        L = self.data.compressed_length
         n_states = self.gtr.alphabet.shape[0]
         self.logger("TreeAnc._ml_anc_marginal: type of reconstruction: Marginal", 2)
 
         self.logger("Attaching sequence profiles to leafs... ", 3)
         #  set the leaves profiles
         for leaf in tree.get_terminals():
-            if leaf.name in self.data.reduced_alignment:
-                leaf.marginal_subtree_LH = seq2prof(self.data.reduced_alignment[leaf.name], self.gtr.profile_map)
+            if leaf.name in self.data.compressed_alignment:
+                leaf.marginal_subtree_LH = seq2prof(self.data.compressed_alignment[leaf.name], self.gtr.profile_map)
             else:
                 leaf.marginal_subtree_LH = np.ones((L, n_states))
             leaf.marginal_subtree_LH_prefactor = np.zeros(L)
@@ -810,7 +810,7 @@ class TreeAnc(object):
         ----------
 
          store_compressed : bool, default True
-            attach a reduced representation of sequence changed to each branch
+            attach a compressed representation of sequence changed to each branch
 
          final : bool, default True
             stop full length by expanding sites with identical alignment patterns
@@ -822,7 +822,7 @@ class TreeAnc(object):
 
         """
         N_diff = 0 # number of sites differ from perv reconstruction
-        L = self.data.reduced_length
+        L = self.data.compressed_length
         n_states = self.gtr.alphabet.shape[0]
 
         self.logger("TreeAnc._ml_anc_joint: type of reconstruction: Joint", 2)
@@ -842,8 +842,8 @@ class TreeAnc(object):
             # denoted as Pij(i), where j - parent state, i - node state
             log_transitions = np.log(np.maximum(ttconf.TINY_NUMBER, self.gtr.expQt(branch_len)))
             if node.is_terminal():
-                if node.name in self.data.reduced_alignment:
-                    tmp_prof = seq2prof(self.data.reduced_alignment[node.name], self.gtr.profile_map)
+                if node.name in self.data.compressed_alignment:
+                    tmp_prof = seq2prof(self.data.compressed_alignment[node.name], self.gtr.profile_map)
                     msg_from_children = np.log(np.maximum(tmp_prof, ttconf.TINY_NUMBER))
                 else:
                     msg_from_children = np.zeros((L, n_states))
@@ -957,8 +957,8 @@ class TreeAnc(object):
         # if ambiguous site are to be restored and node is terminal,
         # assign original sequence, else reconstructed cseq
         node_seq = node.cseq
-        if keep_var_ambigs and node.name in self.data.reduced_alignment:
-            node_seq = self.data.reduced_alignment[node.name]
+        if keep_var_ambigs and node.name in self.data.compressed_alignment:
+            node_seq = self.data.compressed_alignment[node.name]
 
         muts = []
         diff_pos = np.where(node.up.cseq!=node_seq)[0]
@@ -966,7 +966,7 @@ class TreeAnc(object):
             anc = node.up.cseq[p].decode()
             der = node_seq[p].decode()
             # expand to the positions in real sequence
-            muts.extend([(anc, pos, der) for pos in self.data.reduced_to_full_sequence_map[p]])
+            muts.extend([(anc, pos, der) for pos in self.data.compressed_to_full_sequence_map[p]])
 
         #sort by position
         return sorted(muts, key=lambda x:x[1])
@@ -983,12 +983,12 @@ class TreeAnc(object):
         full_sequence : bool, optional
             expand the sequence to the full sequence, if false (default)
             the there will be one mutation matrix for each column in the
-            reduced alignment
+            compressed alignment
 
         Returns
         -------
         numpy.array
-            an Lxqxq stack of matrices (q=alphabet size, L (reduced)sequence length)
+            an Lxqxq stack of matrices (q=alphabet size, L (compressed)sequence length)
         """
         pp,pc = self.marginal_branch_profile(node)
 
@@ -1005,7 +1005,7 @@ class TreeAnc(object):
 
         # expand to full sequence if requested
         if full_sequence:
-            return mut_matrix_stack[self.full_to_reduced_sequence_map]
+            return mut_matrix_stack[self.full_to_compressed_sequence_map]
         else:
             return mut_matrix_stack
 
@@ -1404,7 +1404,7 @@ class TreeAnc(object):
                             i,j = self.gtr.state_index[d], self.gtr.state_index[a]
                         except:
                             continue
-                        cpos = self.data.full_to_reduced_sequence_map[pos]
+                        cpos = self.data.full_to_compressed_sequence_map[pos]
                         n_ija[i,j,cpos]+=1
                         T_ia[j,cpos] += 0.5*self._branch_length_to_gtr(c)
                         T_ia[i,cpos] -= 0.5*self._branch_length_to_gtr(c)
@@ -1485,6 +1485,7 @@ class TreeAnc(object):
                 break
         return ttconf.SUCCESS
 
+
 ###############################################################################
 ### Utility functions
 ###############################################################################
@@ -1503,79 +1504,25 @@ class TreeAnc(object):
         from Bio.Seq import Seq
         from Bio.SeqRecord import SeqRecord
         self.logger("TreeAnc.get_reconstructed_alignment ...",2)
-        if not hasattr(self.tree.root, 'sequence'):
+        if not hasattr(self.tree.root, 'cseq'):
             self.logger("TreeAnc.reconstructed_alignment... reconstruction not yet done",3)
-            self.reconstruct_anc('probabilistic')
+            self.infer_ancestral_sequences()
 
-        new_aln = MultipleSeqAlignment([SeqRecord(id=n.name, seq=Seq(self.data.reduced_to_full_sequence(n.cseq, as_string=True)), description="")
+        if self.data.is_sparse:
+            new_aln = {'sequences': {n.name: self.data.compressed_to_sparse_sequence(node.cseq)
+                       for n in self.tree.find_clades()}}
+            new_aln['reference'] = self.data.ref
+            new_aln['positions'] = self.data.nonref_positions
+            new_aln['inferred_const_sites'] = self.data.inferred_const_sites
+        else:
+            new_aln = MultipleSeqAlignment([SeqRecord(id=n.name, seq=Seq(self.data.compressed_to_full_sequence(n.cseq, as_string=True)), description="")
                                         for n in self.tree.find_clades()])
 
         return new_aln
 
 
     def get_tree_dict(self, keep_var_ambigs=False):
-        """
-        For VCF-based objects, returns a nested dict with all the information required to
-        reconstruct sequences for all nodes (terminal and internal).
-
-        Parameters
-        ----------
-        keep_var_ambigs : boolean
-            If true, generates dict sequences based on the *original* compressed sequences, which
-            may include ambiguities. Note sites that only have 1 unambiguous base and ambiguous
-            bases ("AAAAANN") are stripped of ambiguous bases *before* compression, so ambiguous
-            bases at this sites will *not* be preserved.
-
-
-        Returns
-        -------
-        tree_dict : dict
-           Format: ::
-
-               {
-               'reference':'AGCTCGA...A',
-               'sequences': { 'seq1':{4:'A', 7:'-'}, 'seq2':{100:'C'} },
-               'positions': [1,4,7,10,100...],
-               'inferred_const_sites': [7,100....]
-               }
-
-           reference: str
-               The reference sequence to which the variable sites are mapped
-           sequences: nested dict
-               A dict for each sequence with the position and alternative call for each variant
-           positions: list
-               All variable positions in the alignment
-           inferred_cost_sites: list
-               *(optional)* Positions that were constant except ambiguous bases, which were
-               converted into constant sites by TreeAnc (ex: 'AAAN' -> 'AAAA')
-
-        Raises
-        ------
-        TypeError
-            Description
-
-        """
-        if self.data.is_sparse:
-            tree_dict = {}
-            tree_dict['reference'] = self.data.ref
-            tree_dict['positions'] = self.data.nonref_positions
-
-            tree_aln = {}
-            for n in self.tree.find_clades():
-                if hasattr(n, 'cseq'):
-                    if keep_var_ambigs: #regenerate dict to include ambig bases
-                        tree_aln[n.name] = self.data.aln[n.name]
-                    else:
-                        tree_aln[n.name] = self.data.reduced_to_sparse_sequence(node.cseq)
-
-            tree_dict['sequences'] = tree_aln
-
-            if len(self.data.inferred_const_sites) != 0:
-                tree_dict['inferred_const_sites'] = self.data.inferred_const_sites
-
-            return tree_dict
-        else:
-            raise TypeError("A sparse alignment can only be returned for trees created with sparse/VCF-input!")
+        return self.reconstructed_alignment()
 
     def recover_var_ambigs(self):
         """
@@ -1589,8 +1536,5 @@ class TreeAnc(object):
         """
         for node in self.tree.get_terminals():
             node.mutations = self.get_mutations(node, keep_var_ambigs=True)
-            # If fasta, replace 'sequence' as this is what will be accessed later
-            if not self.data.is_sparse and hasattr(node, "original_cseq"):
-                node.sequence = self.data.aln[node.name]
 
 

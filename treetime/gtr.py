@@ -30,8 +30,7 @@ class GTR(object):
             of observing characters in the alphabet. This is used to
             implement ambiguous characters like b'N'=[1,1,1,1] which are
             equally likely to be any of the 4 nucleotides. Standard profile_maps
-            are defined in file seq_utils.py. If None is provided, no ambigous
-            characters are supported.
+            are defined in file seq_utils.py.
 
          logger : callable
             Custom logging function that should take arguments (msg, level, warn=False),
@@ -1032,14 +1031,6 @@ class GTR(object):
                             full_gtr=full_gtr,
                             char_dist=self.Pi,
                             flow_matrix=self.W)
-
-    def save_to_json(self, zip):
-        d = {
-        "full_gtr": self.mu * np.dot(self.Pi, self.W),
-        "Substitution rate" : self.mu,
-        "Equilibrium character composition": self.Pi,
-        "Flow rate matrix": self.W
-        }
 
 
 if __name__ == "__main__":
