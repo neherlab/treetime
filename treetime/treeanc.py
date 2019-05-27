@@ -1180,7 +1180,7 @@ class TreeAnc(object):
 
 
     def optimize_tree_marginal(self, max_iter=10, infer_gtr=False, pc=1.0, damping=0.75,
-                               LHtol=0.1, site_specific_gtr=False, old_method=True):
+                               LHtol=0.1, site_specific_gtr=False):
         self.infer_ancestral_sequences(marginal=True)
         oldLH = self.sequence_LH()
         self.logger("TreeAnc.optimize_tree_marginal: initial, LH=%1.2f, total branch_length %1.4f"%

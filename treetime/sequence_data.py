@@ -5,7 +5,7 @@ from collections import defaultdict
 import numpy as np
 from Bio import SeqRecord, Seq, AlignIO, SeqIO
 from treetime import config as ttconf
-from .seq_utils import seq2array, guess_alphabet
+from .seq_utils import seq2array, guess_alphabet, alphabets
 
 string_types = [str] if sys.version_info[0]==3 else [str, unicode]
 def simple_logger(*args, **kwargs):
@@ -98,7 +98,8 @@ class SequenceData(object):
         self.additional_constant_sites = kwargs['additional_constant_sites'] if 'additional_constant_sites' in kwargs else 0
 
         # if not specified, this will be set as the alignment_length or reference length
-        self._full_length = sequence_length
+        self._full_length = None
+        self.full_length = sequence_length
         self._compressed_length = None
         self.word_length = word_length
         self.fill_overhangs = fill_overhangs
@@ -178,7 +179,9 @@ class SequenceData(object):
                     self.logger("SequenceData.aln: specified sequence length doesn't match reference length, ignoring sequence length.", 1, warn=True)
                     self._full_length = len(self.ref)
             else:
-                if self.full_length!= in_aln.get_alignment_length():
+                if self.full_length < in_aln.get_alignment_length():
+                    raise AttributeError("SequenceData.aln: specified sequence length is smaller than alignment length!")
+                elif self.full_length > in_aln.get_alignment_length():
                     self.logger("SequenceData.aln: specified sequence length doesn't match alignment length. Treating difference as constant sites.", 2, warn=True)
                     self.additional_constant_sites = max(0, self.full_length - in_aln.get_alignment_length())
         else:
@@ -220,7 +223,7 @@ class SequenceData(object):
             if L:
                 self._full_length = int(L)
         else:
-            self.logger("Alignment: one_mutation and sequence length can't be reset",1)
+            self.logger("Alignment: one_mutation and sequence length can only be specified once!",1)
 
     @property
     def compressed_length(self):
@@ -354,7 +357,7 @@ class SequenceData(object):
         # add constant alignment column not in the alignment. We don't know where they
         # are, so just add them to the end. First, determine sequence composition.
         if self.additional_constant_sites:
-            character_counts = {c:np.sum(aln_transpose==c) for c in self.alphabet
+            character_counts = {c:np.sum(aln_transpose==c) for c in alphabets[self.likely_alphabet+'_nogap']
                                 if c not in [self.ambiguous, '-']}
             total = np.sum(list(character_counts.values()))
             additional_columns_per_character = [(c,int(np.round(self.additional_constant_sites*n/total)))
@@ -364,16 +367,16 @@ class SequenceData(object):
             for c,n in additional_columns_per_character:
                 if c==additional_columns_per_character[-1][0]:  # make sure all additions add up to the correct number to avoid rounding
                     n = columns_left
-                str_pattern = c*len(self.sequence_names)
+                str_pattern = c.decode()*len(self.sequence_names)
                 pos_list = list(range(pi, pi+n))
-
-                if str_pattern in alignment_patterns:
-                    alignment_patterns[str_pattern][1].extend(pos_list)
-                else:
-                    alignment_patterns[str_pattern] = (len(compressed_aln_transpose), pos_list)
-                    compressed_aln_transpose.append(np.array(list(str_pattern)))
-                pi += n
-                columns_left -= n
+                if n:
+                    if str_pattern in alignment_patterns:
+                        alignment_patterns[str_pattern][1].extend(pos_list)
+                    else:
+                        alignment_patterns[str_pattern] = (len(compressed_aln_transpose), pos_list)
+                        compressed_aln_transpose.append(np.array(list(str_pattern)))
+                    pi += n
+                    columns_left -= n
 
 
         # count how many times each column is repeated in the real alignment

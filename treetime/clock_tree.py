@@ -263,7 +263,7 @@ class ClockTree(TreeAnc):
         """
         self.logger("ClockTree.init_date_constraints...",2)
         self.tree.coalescent_joint_LH = 0
-        if self.aln and (ancestral_inference or (not hasattr(self.tree.root, 'sequence'))):
+        if self.aln and (ancestral_inference or (not hasattr(self.tree.root, 'cseq'))):
             self.infer_ancestral_sequences('probabilistic', marginal=self.branch_length_mode=='marginal',
                                             sample_from_profile='root',**kwarks)
 
@@ -286,7 +286,7 @@ class ClockTree(TreeAnc):
 
                 if self.branch_length_mode=='marginal':
                     node.profile_pair = self.marginal_branch_profile(node)
-                elif not hasattr(node, 'branch_state'):
+                elif self.branch_length_mode=='joint' and (not hasattr(node, 'branch_state')):
                     self.add_branch_state(node)
 
                 node.branch_length_interpolator = BranchLenInterpolator(node, self.gtr,
