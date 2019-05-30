@@ -292,7 +292,7 @@ class SequenceData(object):
             self.multiplicity = np.ones(self.full_length, dtype=float)
             self.full_to_compressed_sequence_map = np.arange(self.full_length)
             self.compressed_to_full_sequence_map = {p:np.array([p]) for p in np.arange(self.full_length)}
-            self._compressed_length==self._full_length
+            self._compressed_length = self._full_length
             self.compressed_alignment = self._aln
             return ttconf.SUCCESS
 

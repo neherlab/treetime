@@ -86,7 +86,7 @@ class GTR(object):
 
     def assign_gap_and_ambiguous(self):
         n_states = len(self.alphabet)
-        self.logger("GTR: with alphabet: "+str(self.alphabet),1)
+        self.logger("GTR: with alphabet: "+str([x.decode() for x in self.alphabet]),1)
         # determine if a character exists that corresponds to no info, i.e. all one profile
         if any([x.sum()==n_states for x in self.profile_map.values()]):
             amb_states = [c for c,x in self.profile_map.items() if x.sum()==n_states]

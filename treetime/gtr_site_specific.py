@@ -255,15 +255,15 @@ class GTR_site_specific(GTR):
             p_ia_old = np.copy(p_ia)
             S_ij = np.einsum('a,ia,ja',mu_a, p_ia, T_ia)
             W_ij = (n_ij + n_ij.T + pc)/(S_ij + S_ij.T + pc)
-            
+
             avg_pi = p_ia.mean(axis=-1)
             average_rate = W_ij.dot(avg_pi).dot(avg_pi)
             W_ij = W_ij/average_rate
             mu_a *=average_rate
-            
+
             p_ia = m_ia/(mu_a*np.dot(W_ij,T_ia)+Lambda)
             p_ia = p_ia/p_ia.sum(axis=0)
-            
+
             mu_a = n_a/(pc+np.einsum('ia,ij,ja->a', p_ia, W_ij, T_ia))
 
 
@@ -276,7 +276,7 @@ class GTR_site_specific(GTR):
                 if p_ia[gtr.gap_index,p]<gap_limit:
                     gtr.logger('The model allows for gaps which are estimated to occur at a low fraction of %1.3e'%p_ia[gtr.gap_index,p]+
                            '\n\t\tthis can potentially result in artifacts.'+
-                           '\n\t\tgap fraction will be set to %1.4f'%gap_limit,2,warn=True)
+                           '\n\t\tgap fraction will be set to %1.4f'%gap_limit,4,warn=True)
                 p_ia[gtr.gap_index,p] = gap_limit
                 p_ia[:,p] /= p_ia[:,p].sum()
 
