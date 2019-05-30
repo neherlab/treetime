@@ -1389,6 +1389,7 @@ class TreeAnc(object):
                         try:
                             i,j = self.gtr.state_index[d], self.gtr.state_index[a]
                         except:
+                            # ambiguous positions
                             continue
                         cpos = self.data.full_to_compressed_sequence_map[pos]
                         n_ija[i,j,cpos]+=1
@@ -1396,7 +1397,7 @@ class TreeAnc(object):
                         T_ia[i,cpos] -= 0.5*self._branch_length_to_gtr(c)
 
                     for i, nuc in enumerate(self.gtr.alphabet):
-                        ind = node.cseq==nuc
+                        ind = c.cseq==nuc
                         T_ia[i,ind] += self._branch_length_to_gtr(c)*self.data.multiplicity[ind]
 
         self.logger("TreeAnc.infer_gtr: counting mutations...done", 3)
