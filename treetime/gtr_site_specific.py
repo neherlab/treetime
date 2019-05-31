@@ -146,7 +146,7 @@ class GTR_site_specific(GTR):
             mu = np.ones(L)
 
         gtr.assign_rates(mu=mu, pi=pi, W=W)
-        gtr.mu *= avg_mu/np.mean(gtr.mu)
+        gtr.mu *= avg_mu/np.mean(gtr.average_rate())
 
         return gtr
 
