@@ -66,14 +66,6 @@ class SeqGen(TreeAnc):
             for c in n:
                 profile = self.gtr.evolve(profile_p, c.branch_length)
                 c.sequence = self.sample_from_profile(profile)
-        self.make_reduced_alignment()
-
-        # gather mutations
-        for n in self.tree.find_clades():
-            if n==self.tree.root:
-                n.mutations=[]
-            else:
-                n.mutations = self.get_mutations(n)
 
 
     def get_aln(self, internal=False):
@@ -96,7 +88,7 @@ class SeqGen(TreeAnc):
         tmp = []
         for n in self.tree.get_terminals():
             if n.is_terminal() or internal:
-                tmp.append(SeqRecord.SeqRecord(id=n.name, name=n.name, description='', seq=Seq.Seq(''.join(n.sequence))))
+                tmp.append(SeqRecord.SeqRecord(id=n.name, name=n.name, description='', seq=Seq.Seq(''.join(n.sequence.astype('U')))))
 
         return MultipleSeqAlignment(tmp)
 
