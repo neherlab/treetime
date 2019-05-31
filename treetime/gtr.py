@@ -38,6 +38,7 @@ class GTR(object):
 
         """
         self.debug=False
+        self.is_site_specific=False
         if isinstance(alphabet, str):
             if alphabet not in alphabet_synonyms:
                 raise AttributeError("Unknown alphabet type specified")
@@ -190,6 +191,7 @@ class GTR(object):
         """
         n = len(self.alphabet)
         self._mu = mu
+        self.is_site_specific=False
 
         if pi is not None and len(pi)==n:
             Pi = np.array(pi)

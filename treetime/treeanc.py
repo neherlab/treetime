@@ -115,6 +115,9 @@ class TreeAnc(object):
                                 convert_upper=convert_upper, fill_overhangs=fill_overhangs,
                                 sequence_length=kwargs['seq_len'] if 'seq_len' in kwargs else None)
 
+        if self.gtr.is_site_specific and self.data.compress:
+            raise TypeError("TreeAnc: sequence compression and site specific gtr models are incompatible!" )
+
         if self.data.aln and self.tree:
             if len(self.tree.get_terminals()) != len(self.data.aln):
                 self.logger("**WARNING: Number of tips in tree differs from number of sequences in alignment!**", 3, warn=True)
@@ -708,9 +711,8 @@ class TreeAnc(object):
         if not debug:
             for node in self.tree.find_clades():
                 try:
-                    pass
-                    # del node.marginal_log_Lx
-                    # del node.marginal_subtree_LH_prefactor
+                    del node.marginal_log_Lx
+                    del node.marginal_subtree_LH_prefactor
                 except:
                     pass
         gc.collect()
@@ -1360,6 +1362,9 @@ class TreeAnc(object):
          gtr : GTR
             The inferred GTR model
         """
+        if site_specific and self.data.compress:
+            raise TypeError("TreeAnc.infer_gtr(): sequence compression and site specific GTR models are incompatible!" )
+
         if not self.ok:
             self.logger("TreeAnc.infer_gtr: ERROR, sequences or tree are missing", 0)
             return ttconf.ERROR

@@ -25,6 +25,7 @@ class GTR_site_specific(GTR):
         self.seq_len=seq_len
         self.approximate = approximate
         super(GTR_site_specific, self).__init__(**kwargs)
+        self.is_site_specific=True
 
 
     @property
@@ -83,11 +84,13 @@ class GTR_site_specific(GTR):
             W=0.5*(np.copy(W)+np.copy(W).T)
 
         np.fill_diagonal(W,0)
-        avg_pi = self.Pi.mean(axis=-1)
-        average_rate = W.dot(avg_pi).dot(avg_pi)
+        average_rate = np.einsum('ia,ij,ja',self.Pi, W, self.Pi)/self.seq_len
+        # average_rate = W.dot(avg_pi).dot(avg_pi)
         self._W = W/average_rate
         self._mu *=average_rate
 
+
+        self.is_site_specific=True
         self._eig()
         self._make_expQt_interpolator()
 
@@ -257,7 +260,7 @@ class GTR_site_specific(GTR):
             W_ij = (n_ij + n_ij.T + pc)/(S_ij + S_ij.T + pc)
 
             avg_pi = p_ia.mean(axis=-1)
-            average_rate = W_ij.dot(avg_pi).dot(avg_pi)
+            average_rate = W_ij.dot(avg_pi).dot(avg_pi)  # crude approx, will be fixed in assign rates
             W_ij = W_ij/average_rate
             mu_a *=average_rate
 
