@@ -16,7 +16,7 @@ class SeqGen(TreeAnc):
     def __init__(self, *args, **kwargs):
         """Instantiate. Mandatory arguments are a tree and GTR model.
         """
-        super(SeqGen, self).__init__(reduce_alignment=False, **kwargs)
+        super(SeqGen, self).__init__(compress=False, **kwargs)
 
 
     def sample_from_profile(self, p):
