@@ -53,19 +53,21 @@ class SeqGen(TreeAnc):
         self.seq_len = self.gtr.seq_len
         # set root if not given
         if root_seq:
-            self.tree.root.sequence = seq2array(root_seq)
+            self.tree.root.ancestral_sequence = seq2array(root_seq)
         else:
             if len(self.gtr.Pi.shape)==2:
-                self.tree.root.sequence = self.sample_from_profile(self.gtr.Pi.T)
+                self.tree.root.ancestral_sequence = self.sample_from_profile(self.gtr.Pi.T)
             else:
-                self.tree.root.sequence = self.sample_from_profile(np.repeat([self.gtr.Pi], self.seq_len, axis=0))
+                self.tree.root.ancestral_sequence = self.sample_from_profile(np.repeat([self.gtr.Pi], self.seq_len, axis=0))
 
         # generate sequences in preorder
         for n in self.tree.get_nonterminals(order='preorder'):
-            profile_p = seq2prof(n.sequence, self.gtr.profile_map)
+            profile_p = seq2prof(n.ancestral_sequence, self.gtr.profile_map)
             for c in n:
                 profile = self.gtr.evolve(profile_p, c.branch_length)
-                c.sequence = self.sample_from_profile(profile)
+                c.ancestral_sequence = self.sample_from_profile(profile)
+
+        self.aln = self.get_aln()
 
 
     def get_aln(self, internal=False):
@@ -88,7 +90,7 @@ class SeqGen(TreeAnc):
         tmp = []
         for n in self.tree.get_terminals():
             if n.is_terminal() or internal:
-                tmp.append(SeqRecord.SeqRecord(id=n.name, name=n.name, description='', seq=Seq.Seq(''.join(n.sequence.astype('U')))))
+                tmp.append(SeqRecord.SeqRecord(id=n.name, name=n.name, description='', seq=Seq.Seq(''.join(n.ancestral_sequence.astype('U')))))
 
         return MultipleSeqAlignment(tmp)
 
