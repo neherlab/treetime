@@ -1168,14 +1168,6 @@ class TreeAnc(object):
 
         if node.up is None:
             return self.one_mutation
-        if node.up.up is None and len(node.up.clades)==2:
-            # children of a bifurcating root!
-            other = node.up.clades[0] if node==node.up.clades[1] else node.up.clades[1]
-            bl_ratio = node.branch_length/(node.branch_length+other.branch_length)
-            pc = node.marginal_subtree_LH
-            pp = normalize_profile(other.marginal_subtree_LH*self.tree.root.marginal_outgroup_LH)[0]
-            new_bl = self.gtr.optimal_t_compressed((pp, pc), self.data.multiplicity, profiles=True, tol=tol)
-            return bl_ratio*new_bl
         else:
             pp, pc = self.marginal_branch_profile(node)
             return self.gtr.optimal_t_compressed((pp, pc), self.data.multiplicity, profiles=True, tol=tol)
@@ -1193,12 +1185,28 @@ class TreeAnc(object):
                 self.infer_ancestral_sequences(marginal=True)
 
             old_bl = self.tree.total_branch_length()
+            tol = 1e-8 + 0.01**(i+1)
             for n in self.tree.find_clades():
                 if n.up is None:
                     continue
-                new_val = self.optimal_marginal_branch_length(n, tol=1e-8 + 0.01**(i+1))
-                update_val = new_val*(1-damping**(i+1)) + n.branch_length*damping**(i+1)
-                n.branch_length = update_val
+                if n.up.up is None and len(n.up.clades)==2:
+                    # children of a bifurcating root!
+                    n1, n2 = n.up.clades
+                    total_bl = n1.branch_length+n2.branch_length
+                    bl_ratio = n1.branch_length/total_bl
+
+                    prof_c = n1.marginal_subtree_LH
+                    prof_p = normalize_profile(n2.marginal_subtree_LH*self.tree.root.marginal_outgroup_LH)[0]
+
+                    new_bl = self.gtr.optimal_t_compressed((prof_p, prof_c), self.data.multiplicity, profiles=True, tol=tol)
+                    update_val = new_bl*(1-damping**(i+1)) +  total_bl*damping**(i+1)
+
+                    n1.branch_length = update_val*bl_ratio
+                    n2.branch_length = update_val*(1-bl_ratio)
+                else:
+                    new_val = self.optimal_marginal_branch_length(n, tol=tol)
+                    update_val = new_val*(1-damping**(i+1)) + n.branch_length*damping**(i+1)
+                    n.branch_length = update_val
 
             self.infer_ancestral_sequences(marginal=True)
 
