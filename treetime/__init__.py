@@ -1,5 +1,5 @@
 from __future__ import print_function, division, absolute_import
-version="0.6.1"
+version="0.7.0"
 from .treeanc import TreeAnc
 from .treetime import TreeTime, plot_vs_years
 from .clock_tree import ClockTree
