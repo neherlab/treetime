@@ -95,6 +95,7 @@ class TreeAnc(object):
         self.t_start = time.time()
         self.verbose = verbose
         self.log=log
+        self.ok=False
         self.logger("TreeAnc: set-up",1)
         self._internal_node_count = 0
         self.use_mutation_length=False

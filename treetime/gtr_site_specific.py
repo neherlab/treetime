@@ -459,7 +459,7 @@ class GTR_site_specific(GTR):
             logQt[np.isnan(logQt) | np.isinf(logQt) | bad_indices] = -ttconf.BIG_NUMBER
             seq_indices_c = np.zeros(len(seq_ch), dtype=int)
             seq_indices_p = np.zeros(len(seq_p), dtype=int)
-            for ai, a in self.alphabet:
+            for ai, a in enumerate(self.alphabet):
                 seq_indices_p[seq_p==a] = ai
                 seq_indices_c[seq_ch==a] = ai
 
