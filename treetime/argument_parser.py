@@ -2,6 +2,7 @@
 from __future__ import print_function, division, absolute_import
 import sys, argparse, os
 from treetime.wrappers import ancestral_reconstruction, mugration, scan_homoplasies, timetree, estimate_clock_model
+import treetime
 
 py2 = sys.version_info.major==2
 
@@ -272,7 +273,7 @@ def make_parser():
 
     # make a version subcommand
     v_parser = subparsers.add_parser('version', description='print version')
-    v_parser.set_defaults(func=lambda x: print(version))
+    v_parser.set_defaults(func=lambda x: print(treetime.version))
 
     ## call the relevant function and return
     if py2:
