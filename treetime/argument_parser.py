@@ -73,7 +73,7 @@ reroot_description = "Reroot the tree using root-to-tip regression. Valid choice
     "'min_dev', 'least-squares', and 'oldest'. 'least-squares' adjusts the root to "\
     "minimize residuals of the root-to-tip vs sampling time regression, " \
     "'min_dev' minimizes variance of root-to-tip distances. "\
-    "Rerooting can be used with --covariation. "\
+    "'least-squares' can be combined with --covariation to account for shared ancestry. "\
     "Alternatively, you can specify a node name or a list of node names "\
     "to be used as outgroup or use 'oldest' to reroot to the oldest node. "\
     "By default, TreeTime will reroot using 'least-squares'. "\
@@ -133,7 +133,7 @@ def add_reroot_group(parser):
     reroot_group.add_argument('--keep-root', required = False, action="store_true", default=False,
             help ="don't reroot the tree. Otherwise, reroot to minimize the "
                   "the residual of the regression of root-to-tip distance and sampling time")
-    parser.add_argument('--tip-slack', type=float, default=10,
+    parser.add_argument('--tip-slack', type=float, default=3,
                               help="excess variance associated with terminal nodes accounting for "
                                    " overdisperion of the molecular clock")
     parser.add_argument('--covariation', action='store_true', help="Account for covariation when estimating rates "
@@ -248,6 +248,12 @@ def make_parser():
     m_parser.add_argument('--confidence', action="store_true", help="output confidence of mugration inference")
     m_parser.add_argument('--pc', type=float, default=1.0, help ="pseudo-counts higher numbers will results in 'flatter' models")
     m_parser.add_argument('--missing-data', type=str, default='?', help ="string indicating missing data")
+    m_parser.add_argument('--sampling-bias-correction', type=float,
+                        help='a rough estimate of how many more events would have been observed'
+                             ' if sequences represented an even sample. This should be'
+                             ' roughly the (1-sum_i p_i^2)/(1-sum_i t_i^2), where p_i'
+                             ' are the equilibrium frequencies and t_i are apparent ones.'
+                             '(or rather the time spent in a particular state on the tree)')
     add_common_args(m_parser)
     m_parser.set_defaults(func=mugration)
 

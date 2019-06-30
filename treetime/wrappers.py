@@ -561,9 +561,16 @@ def timetree(params):
     ### OUTPUT and saving of results
     ###########################################################################
     if infer_gtr:
-        print('\nInferred GTR model:')
+        fname = outdir+'sequence_evolution_model.txt'
+        with open(fname, 'w') as ofile:
+            ofile.write(str(myTree.gtr)+'\n')
+        print('\nInferred sequence evolution model (saved as %s):'%fname)
         print(myTree.gtr)
 
+    fname = outdir+'molecular_clock.txt'
+    with open(fname, 'w') as ofile:
+        ofile.write(str(myTree.date2dist)+'\n')
+    print('\nInferred sequence evolution model (saved as %s):'%fname)
     print(myTree.date2dist)
 
     basename = get_basename(params, outdir)
@@ -640,8 +647,11 @@ def ancestral_reconstruction(params):
     ###########################################################################
     ### OUTPUT and saving of results
     ###########################################################################
-    if params.gtr=="infer":
-        print('\nInferred GTR model:')
+    if params.gtr=='infer':
+        fname = outdir+'/sequence_evolution_model.txt'
+        with open(fname, 'w') as ofile:
+            ofile.write(str(treeanc.gtr)+'\n')
+        print('\nInferred sequence evolution model (saved as %s):'%fname)
         print(treeanc.gtr)
 
     export_sequences_and_tree(treeanc, basename, is_vcf, params.zero_based,
@@ -736,6 +746,10 @@ def mugration(params):
     if ndiff==ttconf.ERROR: # if reconstruction failed, exit
         return 1
 
+    if params.sampling_bias_correction:
+        treeanc.gtr.mu *= params.sampling_bias_correction
+        treeanc.infer_ancestral_sequences(infer_gtr=False, store_compressed=False,
+                                     marginal=True, normalized_rate=False)
 
     ###########################################################################
     ### output

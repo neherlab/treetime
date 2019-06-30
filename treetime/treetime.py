@@ -376,7 +376,7 @@ class TreeTime(ClockTree):
             cf = self.clock_model['valid_confidence']
         else:
             cf = False
-        Treg.clock_plot(ax=ax, add_internal=add_internal, confidence=cf, n_sigma=2,
+        Treg.clock_plot(ax=ax, add_internal=add_internal, confidence=cf, n_sigma=1,
                         regression=self.clock_model)
 
 
@@ -413,7 +413,7 @@ class TreeTime(ClockTree):
             root='least-squares'
 
         use_cov = self.use_covariation if covariation is None else covariation
-        slope = 0.0 if root.startswith('min_dev') else clock_rate
+        slope = 0.0 if type(root)==str and root.startswith('min_dev') else clock_rate
 
         self.logger("TreeTime.reroot: with method or node: %s"%root,0)
         for n in self.tree.find_clades():
