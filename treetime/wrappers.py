@@ -659,6 +659,71 @@ def ancestral_reconstruction(params):
 
     return 0
 
+def reconstruct_discrete_traits(tree, traits, missing_data='?', pc=1.0, sampling_bias_correction=None,
+                                weights=None, verbose=0):
+    unique_states = sorted(set(traits.values()))
+    nc = len(unique_states)
+    if nc>180:
+        print("mugration: can't have more than 180 states!", file=sys.stderr)
+        return 1
+    elif nc<2:
+        print("mugration: only one or zero states found -- this doesn't make any sense", file=sys.stderr)
+        return 1
+
+    ###########################################################################
+    ### make a single character alphabet that maps to discrete states
+    ###########################################################################
+    alphabet = [chr(65+i) for i,state in enumerate(unique_states)]
+    missing_char = chr(65+nc)
+    letter_to_state = {a:unique_states[i] for i,a in enumerate(alphabet)}
+    letter_to_state[missing_char]=missing_data
+    reverse_alphabet = {v:k for k,v in letter_to_state.items()}
+
+    ###########################################################################
+    ### construct gtr model
+    ###########################################################################
+    if type(weights)==str:
+        tmp_weights = pd.read_csv(weights, sep='\t' if weights[-3:]=='tsv' else ',',
+                             skipinitialspace=True)
+        weights = {row[0]:row[1] for ri,row in tmp_weights.iterrows()}
+        mean_weight = np.mean(list(weights.values()))
+        weights = np.array([weights[c] if c in weights else mean_weight for c in unique_states], dtype=float)
+        weights/=weights.sum()
+    else:
+        weights = None
+
+    # set up dummy matrix
+    W = np.ones((nc,nc), dtype=float)
+
+    mugration_GTR = GTR.custom(pi = weights, W=W, alphabet = np.array(alphabet))
+    mugration_GTR.profile_map[missing_char] = np.ones(nc)
+    mugration_GTR.ambiguous=missing_char
+
+    ###########################################################################
+    ### set up treeanc
+    ###########################################################################
+    treeanc = TreeAnc(tree, gtr=mugration_GTR, verbose=verbose,
+                      convert_upper=False, one_mutation=0.001)
+    pseudo_seqs = [SeqRecord(id=n.name,name=n.name,
+                   seq=Seq(reverse_alphabet[traits[n.name]]
+                           if n.name in traits else missing_char))
+                   for n in treeanc.tree.get_terminals()]
+    treeanc.aln = MultipleSeqAlignment(pseudo_seqs)
+
+    ndiff = treeanc.infer_ancestral_sequences(method='ml', infer_gtr=True,
+            store_compressed=False, pc=pc, marginal=True, normalized_rate=False,
+            fixed_pi=weights)
+
+    if ndiff==ttconf.ERROR: # if reconstruction failed, exit
+        return 1
+
+    if sampling_bias_correction:
+        treeanc.gtr.mu *= sampling_bias_correction
+        treeanc.infer_ancestral_sequences(infer_gtr=False, store_compressed=False,
+                                     marginal=True, normalized_rate=False)
+    return treeanc, letter_to_state, reverse_alphabet
+
+
 def mugration(params):
     """
     implementing treetime mugration
@@ -690,67 +755,11 @@ def mugration(params):
 
     leaf_to_attr = {x[taxon_name]:x[attr] for xi, x in states.iterrows()
                     if x[attr]!=params.missing_data}
-    unique_states = sorted(set(leaf_to_attr.values()))
-    nc = len(unique_states)
-    if nc>180:
-        print("mugration: can't have more than 180 states!", file=sys.stderr)
-        return 1
-    elif nc<2:
-        print("mugration: only one or zero states found -- this doesn't make any sense", file=sys.stderr)
-        return 1
 
-    ###########################################################################
-    ### make a single character alphabet that maps to discrete states
-    ###########################################################################
-    alphabet = [chr(65+i) for i,state in enumerate(unique_states)]
-    missing_char = chr(65+nc)
-    letter_to_state = {a:unique_states[i] for i,a in enumerate(alphabet)}
-    letter_to_state[missing_char]=params.missing_data
-    reverse_alphabet = {v:k for k,v in letter_to_state.items()}
+    mug, letter_to_state, reverse_alphabet = reconstruct_discrete_traits(params.tree, leaf_to_attr, missing_data=params.missing_data,
+            pc=params.pc, sampling_bias_correction=params.sampling_bias_correction, verbose=params.verbose)
 
-    ###########################################################################
-    ### construct gtr model
-    ###########################################################################
-    if params.weights:
-        params.infer_gtr = True
-        tmp_weights = pd.read_csv(params.weights, sep='\t' if params.states[-3:]=='tsv' else ',',
-                             skipinitialspace=True)
-        weights = {row[0]:row[1] for ri,row in tmp_weights.iterrows()}
-        mean_weight = np.mean(list(weights.values()))
-        weights = np.array([weights[c] if c in weights else mean_weight for c in unique_states], dtype=float)
-        weights/=weights.sum()
-    else:
-        weights = np.ones(nc, dtype=float)/nc
-
-    # set up dummy matrix
-    W = np.ones((nc,nc), dtype=float)
-
-    mugration_GTR = GTR.custom(pi = weights, W=W, alphabet = np.array(alphabet))
-    mugration_GTR.profile_map[missing_char] = np.ones(nc)
-    mugration_GTR.ambiguous=missing_char
-
-    ###########################################################################
-    ### set up treeanc
-    ###########################################################################
-    treeanc = TreeAnc(params.tree, gtr=mugration_GTR, verbose=params.verbose,
-                      convert_upper=False, one_mutation=0.001)
-    pseudo_seqs = [SeqRecord(id=n.name,name=n.name,
-                   seq=Seq(reverse_alphabet[leaf_to_attr[n.name]]
-                           if n.name in leaf_to_attr else missing_char))
-                   for n in treeanc.tree.get_terminals()]
-    treeanc.aln = MultipleSeqAlignment(pseudo_seqs)
-
-    ndiff = treeanc.infer_ancestral_sequences(method='ml', infer_gtr=True,
-            store_compressed=False, pc=params.pc, marginal=True, normalized_rate=False,
-            fixed_pi=weights if params.weights else None)
-    if ndiff==ttconf.ERROR: # if reconstruction failed, exit
-        return 1
-
-    if params.sampling_bias_correction:
-        treeanc.gtr.mu *= params.sampling_bias_correction
-        treeanc.infer_ancestral_sequences(infer_gtr=False, store_compressed=False,
-                                     marginal=True, normalized_rate=False)
-
+    unique_states = sorted(letter_to_state.values())
     ###########################################################################
     ### output
     ###########################################################################
@@ -762,11 +771,11 @@ def mugration(params):
         ofile.write('Character to attribute mapping:\n')
         for state in unique_states:
             ofile.write('  %s: %s\n'%(reverse_alphabet[state], state))
-        ofile.write('\n\n'+str(treeanc.gtr)+'\n')
+        ofile.write('\n\n'+str(mug.gtr)+'\n')
         print("\nSaved inferred mugration model as:", gtr_name)
 
     terminal_count = 0
-    for n in treeanc.tree.find_clades():
+    for n in mug.tree.find_clades():
         if n.up is None:
             continue
         n.confidence=None
@@ -781,14 +790,14 @@ def mugration(params):
         conf_name = basename+'confidence.csv'
         with open(conf_name, 'w') as ofile:
             ofile.write('#name, '+', '.join(unique_states)+'\n')
-            for n in treeanc.tree.find_clades():
+            for n in mug.tree.find_clades():
                 ofile.write(n.name + ', '+', '.join([str(x) for x in n.marginal_profile[0]])+'\n')
         print("Saved table with ancestral state confidences as:", conf_name)
 
     # write tree to file
     outtree_name = basename+'annotated_tree.nexus'
-    Phylo.write(treeanc.tree, outtree_name, 'nexus')
-    print("Saved annotated tree as:",outtree_name)
+    Phylo.write(mug.tree, outtree_name, 'nexus')
+    print("Saved annotated tree as:", outtree_name)
 
     return 0
 
