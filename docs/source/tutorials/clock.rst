@@ -13,41 +13,41 @@ This command will print the following output:
 
 .. code-block::
 
-    Root-Tip-Regression:
-    --rate:    2.742e-03 +/- 3.81e-04 (one std-dev)
-    --chi^2:   18.06
-    --r^2:     0.98
+   Root-Tip-Regression:
+   --rate:  2.826e-03
+   --r^2:   0.98
 
-   The R^2 value indicates the fraction of variation in
-   root-to-tip distance explained by the sampling times.
-   Higher values corresponds more clock-like behavior (max 1.0).
+  The R^2 value indicates the fraction of variation in
+  root-to-tip distance explained by the sampling times.
+  Higher values corresponds more clock-like behavior (max 1.0).
 
-   The rate is the slope of the best fit of the date to
-   the root-to-tip distance and provides an estimate of
-   the substitution rate. The rate needs to be positive!
-   Negative rates suggest an inappropriate root.
-
-
-   The estimated rate and tree correspond to a root date:
-
-   --- root-date:   1996.70 +/- 1.02 (one std-dev)
+  The rate is the slope of the best fit of the date to
+  the root-to-tip distance and provides an estimate of
+  the substitution rate. The rate needs to be positive!
+  Negative rates suggest an inappropriate root.
 
 
-   --- re-rooted tree written to
-       clock_results/rerooted.newick
+  The estimated rate and tree correspond to a root date:
 
-   --- wrote dates and root-to-tip distances to
-       clock_results/rtt.csv
+  --- root-date:   1996.75
 
-   --- root-to-tip plot saved to
-       clock_results/root_to_tip_regression.pdf
 
-and save a number of files to disk:
+  --- re-rooted tree written to
+    clock_results/rerooted.newick
 
+  --- wrote dates and root-to-tip distances to
+    clock_results/rtt.csv
+
+  --- root-to-tip plot saved to
+    clock_results/root_to_tip_regression.pdf
+
+
+In addition, a number of files are saved in the directory specified with `--outdir`:
 
 * a rerooted tree in newick format
 * a table with the root-to-tip distances and the dates of all terminal nodes
 * a graph showing the regression of root-to-tip distances vs time
+* a text-file with the rate estimate
 
 
 .. image:: figures/clock_plot.png
@@ -55,16 +55,20 @@ and save a number of files to disk:
    :alt: rtt
 
 
-Confidence intervals
-^^^^^^^^^^^^^^^^^^^^
+Confidence intervals of the clock rate
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-In its default setting, ``treetime clock`` estimates confidence intervals of the evolutionary rate and the Tmrca by maximizing the approximate likelihood while accounting for covariation in root-to-tip distances.
-However, this requires estimation of a timetree and can take a while.
-For a quick estimate without confidence intervals, use ``--reroot least-squares``.
+In its default setting, ``treetime clock`` the evolutionary rate and the Tmrca by simple least-squares regression.
+However, these root-to-tip distances are correlated due to shared ancestry no valid confidence intervals can be computed for this regression.
+This covariation can be efficiently accounted if the sequence data set is consistent with a simple strict molecular clock model, but can give misleading results when the molecular clock model is violated.
+This feature is hence off by default and can be switched on using the flag
 
-The timetree estimation can be skipped if branches are sufficiently long.
-In this case, divergences along branches are good estimators of the branch length can can be used to calculate the covariation structure among tips.
-This option is as fast as the ``least-squares`` option, provides confidence intervals, but is susceptible to a downward bias in rate estimates since less diverged tips tend to be over-weighted.
+.. code-block::
+
+   --covariation
+
+
+
 
 Filtering of tips
 ^^^^^^^^^^^^^^^^^
@@ -91,12 +95,3 @@ For the example Ebola virus data set, the command
    :target: figures/ebola_outliers.png
    :alt: ebola rtt
 
-
-Command documentation
-^^^^^^^^^^^^^^^^^^^^^
-
-.. argparse::
-   :module: treetime
-   :func: make_parser
-   :prog: treetime
-   :path: clock

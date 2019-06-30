@@ -5,8 +5,7 @@ TreeTime is compatible with Python 2.7 upwards and is tested on 2.7, 3.5, and 3.
 
 * numpy, scipy, pandas: for all kind of mathematical operations as matrix
   operations, numerical integration, interpolation, minimization, etc.
-* BioPython: for parsing multiple sequence alignments and all phylogenetic
-  functionality
+* BioPython: for parsing multiple sequence alignments and phylogenetic trees
 * matplotlib: optional dependency for plotting
 
 

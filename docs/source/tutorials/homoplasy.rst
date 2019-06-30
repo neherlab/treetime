@@ -115,12 +115,3 @@ Similarly, if you have an alignment with informative sites only, you should supp
 
    treetime homoplasy --aln data/tb/lee_2015.informative_sites.fasta --tree data/tb/lee_2015.nwk --rescale 0.0000614 --const 4411361
 
-Command documentation
-^^^^^^^^^^^^^^^^^^^^^
-
-.. argparse::
-   :module: treetime
-   :func: make_parser
-   :prog: treetime
-   :path: homoplasy
-
