@@ -27,11 +27,14 @@ setup(
         packages=['treetime'],
         install_requires = [
             'biopython>=1.66',
-            'matplotlib>=2.0, ==2.*',
             'numpy>=1.10.4',
             'pandas>=0.17.1',
             'scipy>=0.16.1'
         ],
+        extras_require = {
+            ':python_version < "3.6"':['matplotlib>=2.0, ==2.*'],
+            ':python_version >= "3.6"':['matplotlib>=2.0'],
+        },
         classifiers=[
             "Development Status :: 3 - Alpha",
             "Topic :: Scientific/Engineering :: Bio-Informatics",

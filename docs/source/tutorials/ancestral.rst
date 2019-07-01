@@ -10,7 +10,7 @@ On the command-line, ancestral reconstruction can be done via the command
 
    treetime ancestral --aln data/h3n2_na/h3n2_na_20.fasta --tree data/h3n2_na/h3n2_na_20.nwk --outdir ancestral_results
 
-This command will generate the output
+This command will save a number of files into the directory `ancestral_results` and generate the output
 
 .. code-block::
 
@@ -78,11 +78,3 @@ In this case, an additional argument specifying the mapping reference is require
 
 The ancestral reconstruction is saved as a vcf files with the name ``ancestral_sequences.vcf``.
 
-Command documentation
-^^^^^^^^^^^^^^^^^^^^^
-
-.. argparse::
-   :module: treetime
-   :func: make_parser
-   :prog: treetime
-   :path: ancestral

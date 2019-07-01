@@ -1,5 +1,5 @@
-Commands
-========
+Detailed command line documentation
+===================================
 
 .. argparse::
    :module: treetime

@@ -8,4 +8,3 @@ from .gtr import GTR
 from .merger_models import Coalescent
 from .treeregression import TreeRegression
 from .argument_parser import make_parser
-

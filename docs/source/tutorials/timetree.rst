@@ -2,14 +2,17 @@
 Estimation of time scaled phylogenies
 -------------------------------------
 
-The principal functionality of TreeTime is estimating time trees from an initial tree topology, a set of date constraints (e.g. tip dates), and an alignment (optional)
+The principal functionality of TreeTime is estimating time trees from an initial tree topology, a set of date constraints (e.g. tip dates), and an alignment (optional).
+This tutorial uses data provided in the github repository `github.com/neherlab/treetime_examples <https://github.com/neherlab/treetime_examples>`_.
 
 .. code-block:: bash
 
    treetime --tree data/h3n2_na/h3n2_na_20.nwk --dates data/h3n2_na/h3n2_na_20.metadata.csv --aln data/h3n2_na/h3n2_na_20.fasta --outdir h3n2_timetree
 
+The tree can be in newick or nexus format, the alignment in fasta or phylip, and the dates should be given as a tsv or csv file.
+TreeTime will attempt to parse dates, preferred formats are are "%Y-%m-%s" or numerical as in 2016.45.
 This command will estimate an GTR model, a molecular clock model, and a time-stamped phylogeny.
-Most results are saved to file, but rate and GTR model are printed to the console:
+The results are saved to several files in the directory specified as `outdir` and printed to standard out:
 
 .. code-block::
 
@@ -60,13 +63,26 @@ Most results are saved to file, but rate and GTR model are printed to the consol
    --- root-to-tip plot saved to
        h3n2_timetree/root_to_tip_regression.pdf
 
-The script saved an alignment with reconstructed ancestral sequences, an annotated tree in nexus format in which branch length correspond to years and mutations and node dates are added as comments to each node.
+Other output files include an alignment with reconstructed ancestral sequences, an annotated tree in nexus format in which branch length correspond to years and mutations and node dates are added as comments to each node.
 In addition, the root-to-tip vs time regression and the tree are drawn and saved to file.
 
 
 .. image:: figures/timetree.png
    :target: figures/timetree.png
    :alt: rtt
+
+
+Accounting for phylogenetic covariance
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The root-to-tip distances of samples are expected to increase with sampling date and TreeTime uses this behavior to estimate clock rates.
+However, these root-to-tip distances are correlated due to shared ancestry.
+This can be efficiently accounted if the sequence data set is consistent with a simple strict molecular clock model, but can give misleading results when the molecular clock model is violated.
+This feature is hence off by default and can be switched on using the flag
+
+.. code-block::
+
+   --covariation
 
 
 Fixed evolutionary rate
@@ -78,6 +94,7 @@ This can be done using the argument
 .. code-block::
 
    --clock-rate <rate>
+
 
 Specify or estimate coalescent models
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -128,10 +145,3 @@ The following example with a set of MtB sequences uses a fixed evolutionary rate
 For many bacterial data set were the temporal signal in the data is weak, it is advisable to fix the rate of the molecular clock explicitly.
 Divergence times, however, will depend on this choice.
 
-Command documentation
-^^^^^^^^^^^^^^^^^^^^^
-
-.. argparse::
-   :module: treetime
-   :func: make_parser
-   :prog: treetime

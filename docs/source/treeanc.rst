@@ -61,15 +61,9 @@ Ancestral reconstruction and tree optimization
 
 .. automethod:: treetime.TreeAnc.infer_ancestral_sequences
 
-.. automethod:: treetime.TreeAnc.ancestral_likelihood
+.. automethod:: treetime.TreeAnc.sequence_LH
 
-.. automethod:: treetime.TreeAnc.optimal_branch_length
-
-.. automethod:: treetime.TreeAnc.optimize_branch_length
-
-.. automethod:: treetime.TreeAnc.optimize_seq_and_branch_len
-
-.. automethod:: treetime.TreeAnc.optimize_sequences_and_branch_length
+.. automethod:: treetime.TreeAnc.optimize_tree
 
 .. automethod:: treetime.TreeAnc.infer_gtr
 

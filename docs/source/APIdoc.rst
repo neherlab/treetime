@@ -10,7 +10,8 @@ API documentation
    treeanc
    seqgen
    gtr
-
+   vcf_utils
+   seq_utils
 
 Core classes
 ------------

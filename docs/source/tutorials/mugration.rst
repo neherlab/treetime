@@ -31,22 +31,26 @@ A typical output would be
    NODE_05   0.594           0       0.406   0        ...
 
 Note, however, that these probabilities depend strongly on the model that TreeTime inferred to estimate the ancestral states.
+
+
+Sampling biases
+^^^^^^^^^^^^^^^
 Biased sampling of different states (e.g. a human case might be sampled with higher probability than a bird case) violate the model assumptions and will produce unreliable inferences.
+Increased sampling of some countries (or other states) will increase the total length of the observed tree without increasing the number of transitions between countries.
+This results in an underestimate of the transition rates and consequently over-confident estimation of ancestral states.
+To some extend, this effect can be mitigated in an ad-hoc fashion by manually increasing the transition rate.
+The `mugration` command provides a flag to specify the factor, by which the mugration rate is expected to be underestimated:
+
+.. code-block::
+
+	--sampling-bias-correction <float>
+
 
 Specifying equilibrium frequencies
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-To partly address the problems associated with biased sampling, the user can specify the equilibrium frequencies using the flag ``--weights``.
+Another possibility to address problems associated with biased sampling, is direct specification of the equilibrium frequencies using the flag ``--weights``.
 This parameter expects a csv or tsv file specifying the relative weights for each discrete state (they will be normalized to 1.0).
 These weights correspond to equilibrium frequencies in a time-reversible model.
-This has sometimes slightly bizarre implications and should be used with caution.
-
-Command documentation
-^^^^^^^^^^^^^^^^^^^^^
-
-.. argparse::
-   :module: treetime
-   :func: make_parser
-   :prog: treetime
-   :path: mugration
+This has sometimes slightly unintuitive implications and should be used with caution.
 
