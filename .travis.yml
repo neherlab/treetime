@@ -13,7 +13,7 @@ install:
   # Useful for debugging any issues with conda
   - conda info -a
 
-  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION numpy scipy biopython nose
+  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION numpy scipy biopython pandas matplotlib nose
   - source activate test-environment
   - python setup.py install
 script:
