@@ -704,6 +704,7 @@ def reconstruct_discrete_traits(tree, traits, missing_data='?', pc=1.0, sampling
     ###########################################################################
     treeanc = TreeAnc(tree, gtr=mugration_GTR, verbose=verbose,
                       convert_upper=False, one_mutation=0.001)
+    treeanc.use_mutation_length = False
     pseudo_seqs = [SeqRecord(id=n.name,name=n.name,
                    seq=Seq(reverse_alphabet[traits[n.name]]
                            if n.name in traits else missing_char))
