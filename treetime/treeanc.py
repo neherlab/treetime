@@ -840,12 +840,10 @@ class TreeAnc(object):
         self.tree.root.dist2root = 0.0
         for clade in self.tree.get_nonterminals(order='preorder'): # parents first
             for c in clade.clades:
+                if c.branch_length is None:
+                    c.branch_length = 0.0
                 if not hasattr(c, 'mutation_length'):
                     c.mutation_length = c.branch_length
-                if c.branch_length == None:
-                    c.branch_length = 0.0
-                if c.mutation_length == None:
-                    c.mutation_length = 0.0
                 c.dist2root = c.up.dist2root + c.mutation_length
 
 
