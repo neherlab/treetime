@@ -134,14 +134,7 @@ todo_include_todos = True
 
 html_theme = 'sphinx_rtd_theme'
 
-html_theme_options = {
-    'rightsidebar': True,
-    'sidebar_span': 3, # 1(min) - 12(max)
-    'content_fixed': True,
-    'content_width': '1200px',
-    'inner_theme': True,
-    'inner_theme_name': 'bootswatch-flatly',
-}
+html_theme_options = {}
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
