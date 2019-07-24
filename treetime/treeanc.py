@@ -276,6 +276,7 @@ class TreeAnc(object):
 
         # remove all existing sequence attributes
         for node in self._tree.find_clades():
+            node.branch_length = node.branch_length if node.branch_length else 0.0
             if hasattr(node, "sequence"):
                 node.__delattr__("sequence")
             node.original_length = node.branch_length
@@ -840,11 +841,7 @@ class TreeAnc(object):
         self.tree.root.dist2root = 0.0
         for clade in self.tree.get_nonterminals(order='preorder'): # parents first
             for c in clade.clades:
-                if c.branch_length is None:
-                    c.branch_length = 0.0
-                if not hasattr(c, 'mutation_length'):
-                    c.mutation_length = c.branch_length
-                c.dist2root = c.up.dist2root + c.mutation_length
+                c.dist2root = clade.dist2root + c.mutation_length
 
 
 
