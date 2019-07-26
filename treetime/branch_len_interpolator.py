@@ -30,19 +30,19 @@ class BranchLenInterpolator (Distribution):
         mutation_length = node.mutation_length
         if mutation_length < np.min((1e-5, 0.1*one_mutation)): # zero-length
             short_range = 10*one_mutation
-            grid = np.concatenate([short_range*(np.linspace(0, 1.0 , n_grid_points/2)[:-1]),
-                (short_range + (ttconf.MAX_BRANCH_LENGTH - short_range)*(np.linspace(0, 1.0 , n_grid_points/2+1)**2))])
+            grid = np.concatenate([short_range*(np.linspace(0, 1.0 , n_grid_points//2)[:-1]),
+                (short_range + (ttconf.MAX_BRANCH_LENGTH - short_range)*(np.linspace(0, 1.0 , n_grid_points//2+1)**2))])
 
         else: # branch length is not zero
             sigma = mutation_length #np.max([self.average_branch_len, mutation_length])
             # from zero to optimal branch length
-            grid_left = mutation_length * (1 - np.linspace(1, 0.0, n_grid_points/3)**2.0)
+            grid_left = mutation_length * (1 - np.linspace(1, 0.0, n_grid_points//3)**2.0)
             grid_zero = grid_left[1]*np.logspace(-20,0,6)[:5]
             grid_zero2 = grid_left[1]*np.linspace(0,1,10)[1:-1]
             # from optimal branch length to the right (--> 3*branch lengths),
-            grid_right = mutation_length + (3*sigma*(np.linspace(0, 1, n_grid_points/3)**2))
+            grid_right = mutation_length + (3*sigma*(np.linspace(0, 1, n_grid_points//3)**2))
             # far to the right (3*branch length ---> MAX_LEN), very sparse
-            far_grid = grid_right.max() + ttconf.MAX_BRANCH_LENGTH*np.linspace(0, 1, n_grid_points/3)**2
+            far_grid = grid_right.max() + ttconf.MAX_BRANCH_LENGTH*np.linspace(0, 1, n_grid_points//3)**2
 
             grid = np.concatenate((grid_zero,grid_zero2, grid_left,grid_right[1:],far_grid[1:]))
             grid.sort() # just for safety

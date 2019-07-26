@@ -205,7 +205,7 @@ class NodeInterpolator (Distribution):
 
         # make initial node grid consisting of linearly spaced points around
         # the center and quadratically spaced points at either end
-        n = n_grid_points/3
+        n = n_grid_points//3
         center_width = 3*joint_fwhm
         grid_center = new_peak_pos + np.linspace(-1, 1, n)*center_width
 

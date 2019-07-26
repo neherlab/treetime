@@ -14,7 +14,7 @@
 
 import sys
 import os
-
+from treetime import version
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
@@ -77,8 +77,6 @@ author = u'Pavel Sagulenko and Richard Neher'
 # |version| and |release|, also used in various other places throughout the
 # built documents.
 #
-# The short X.Y version.
-version = '0.6.1'
 # The full version, including alpha/beta/rc tags.
 release = version
 
@@ -136,14 +134,7 @@ todo_include_todos = True
 
 html_theme = 'sphinx_rtd_theme'
 
-html_theme_options = {
-    'rightsidebar': True,
-    'sidebar_span': 3, # 1(min) - 12(max)
-    'content_fixed': True,
-    'content_width': '1200px',
-    'inner_theme': True,
-    'inner_theme_name': 'bootswatch-flatly',
-}
+html_theme_options = {}
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.

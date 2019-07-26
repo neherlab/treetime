@@ -26,6 +26,7 @@ Have a look at our [examples and tutorials](https://github.com/neherlab/treetime
 * inference of GTR models
 * rerooting to maximize temporal signal and optimize the root-to-tip distance vs time relationship
 * simple phylodynamic analysis such as coalescent model fits
+* sequence evolution along trees using flexible site specific models.
 
 ## Table of contents
   * [Installation and prerequisites](#installation-and-prerequisites)
