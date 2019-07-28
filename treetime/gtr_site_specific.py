@@ -58,25 +58,34 @@ class GTR_site_specific(GTR):
             Equilibrium frequencies
 
         """
+        if not np.isscalar(mu) and pi is not None and len(pi.shape)==2:
+            if mu.shape[0]!=pi.shape[1]:
+                raise ValueError("GTR_site_specific: length of rate vector (got {}) and equilibrium frequency vector (got {}) must match!".format(mu.shape[0], pi.shape[1]))
+
         n = len(self.alphabet)
         if np.isscalar(mu):
             self._mu = mu*np.ones(self.seq_len)
         else:
             self._mu = np.copy(mu)
+            self.seq_len = mu.shape[0]
 
-        if pi is not None and pi.shape[0]==n:
-            self.seq_len = pi.shape[-1]
+        if pi is not None and pi.shape[0]==n and len(pi.shape)==2:
+            self.seq_len = pi.shape[1]
             Pi = np.copy(pi)
         else:
-            if pi is not None and len(pi)!=n:
-                raise ArgumentError("GTR_site_specific: length of equilibrium frequency vector does not match alphabet length.")
-            Pi = np.ones(shape=(n,self.seq_len))
+            if pi is not None:
+                if len(pi)==n:
+                    Pi = np.repeat([pi], self.seq_len, axis=0).T
+                else:
+                    raise ValueError("GTR_site_specific: length of equilibrium frequency vector (got {}) does not match alphabet length {}".format(len(pi), n))
+            else:
+                Pi = np.ones(shape=(n,self.seq_len))
 
         self._Pi = Pi/np.sum(Pi, axis=0)
 
         if W is None or W.shape!=(n,n):
             if (W is not None) and W.shape!=(n,n):
-                raise ArgumentError("GTR_site_specific: Size of substitution matrix does not match alphabet length.")
+                raise ValueError("GTR_site_specific: Size of substitution matrix (got {}) does not match alphabet length {}".format(W.shape, n))
             W = np.ones((n,n))
             np.fill_diagonal(W, 0.0)
             np.fill_diagonal(W, - W.sum(axis=0))
@@ -169,7 +178,7 @@ class GTR_site_specific(GTR):
             Equilibrium frequencies
 
          **kwargs:
-            Key word arguments to be passed
+            Key word arguments to be passed to the constructor
 
         Keyword Args
         ------------

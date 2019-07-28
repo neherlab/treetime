@@ -5,6 +5,7 @@ from .treetime import TreeTime, plot_vs_years
 from .clock_tree import ClockTree
 from .treetime import ttconf as treetime_conf
 from .gtr import GTR
+from .gtr_site_specific import GTR_site_specific
 from .merger_models import Coalescent
 from .treeregression import TreeRegression
 from .argument_parser import make_parser
