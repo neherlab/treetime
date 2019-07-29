@@ -196,7 +196,7 @@ class SequenceData(object):
         self.likely_alphabet = guess_alphabet([self.ref] if self.is_sparse
                                                else [s for s in self.aln.values()])
         if self.ambiguous is None:
-            self.ambiguous = b'N' if self.likely_alphabet=='nuc' else b'X'
+            self.ambiguous = 'N' if self.likely_alphabet=='nuc' else 'X'
 
         self.make_compressed_alignment()
 
@@ -367,7 +367,7 @@ class SequenceData(object):
             for c,n in additional_columns_per_character:
                 if c==additional_columns_per_character[-1][0]:  # make sure all additions add up to the correct number to avoid rounding
                     n = columns_left
-                str_pattern = c.decode()*len(self.sequence_names)
+                str_pattern = c*len(self.sequence_names)
                 pos_list = list(range(pi, pi+n))
                 if n:
                     if str_pattern in alignment_patterns:

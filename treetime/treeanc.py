@@ -964,8 +964,8 @@ class TreeAnc(object):
         muts = []
         diff_pos = np.where(node.up.cseq!=node_seq)[0]
         for p in diff_pos:
-            anc = node.up.cseq[p].decode()
-            der = node_seq[p].decode()
+            anc = node.up.cseq[p]
+            der = node_seq[p]
             # expand to the positions in real sequence
             muts.extend([(anc, pos, der) for pos in self.data.compressed_to_full_sequence_map[p]])
 

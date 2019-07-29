@@ -88,16 +88,16 @@ def read_vcf(vcf_file, ref_file=None):
         key = "".join(bps)
 
         return {
-            'CT': b'Y',
-            'AG': b'R',
-            'AT': b'W',
-            'CG': b'S',
-            'GT': b'K',
-            'AC': b'M',
-            'AGT': b'D',
-            'ACG': b'V',
-            'ACT': b'H',
-            'CGT': b'B'
+            'CT': 'Y',
+            'AG': 'R',
+            'AT': 'W',
+            'CG': 'S',
+            'GT': 'K',
+            'AC': 'M',
+            'AGT': 'D',
+            'ACG': 'V',
+            'ACT': 'H',
+            'CGT': 'B'
         }[key]
 
     #Parses a 'normal' (not hetero or no-call) call depending if insertion+deletion, insertion,
@@ -109,26 +109,26 @@ def read_vcf(vcf_file, ref_file=None):
             for i in range(len(ref)):
                 #if the pos doesn't match, store in sequences
                 if ref[i] != alt[i]:
-                    snps[pos+i] = (alt[i] if alt[i] != '.' else 'N').encode() #'.' = no-call
+                    snps[pos+i] = (alt[i] if alt[i] != '.' else 'N') #'.' = no-call
                 #if about to run out of ref, store rest:
                 if (i+1) >= len(ref):
-                    ins[pos+i] = alt[i:].encode()
+                    ins[pos+i] = alt[i:]
         #Deletion
         elif len(ref) > 1:
             for i in range(len(ref)):
                 #if ref is longer than alt, these are deletion positions
                 if i+1 > len(alt):
-                    snps[pos+i] = b'-'
+                    snps[pos+i] = '-'
                 #if not, there may be mutations
                 else:
                     if ref[i] != alt[i]:
-                        snps[pos+i] = (alt[i] if alt[i] != '.' else 'N').encode() #'.' = no-call
+                        snps[pos+i] = (alt[i] if alt[i] != '.' else 'N') #'.' = no-call
         #Insertion
         elif len(alt) > 1:
-            ins[pos] = alt.encode()
+            ins[pos] = alt
         #No indel
         else:
-            snps[pos] = alt.encode()
+            snps[pos] = alt
 
 
     #Parses a 'bad' (hetero or no-call) call depending on what it is
@@ -149,11 +149,11 @@ def read_vcf(vcf_file, ref_file=None):
                 for i in range(len(ref)):
                     #if ref is longer than alt, these are deletion positions
                     if i+1 > len(alt):
-                        snps[pos+i] = b'N'
+                        snps[pos+i] = 'N'
                     #if not, there may be mutations
                     else:
                         if ref[i] != alt[i]:
-                            snps[pos+i] = (alt[i] if alt[i] != '.' else 'N').encode() #'.' = no-call
+                            snps[pos+i] = (alt[i] if alt[i] != '.' else 'N') #'.' = no-call
 
         #If not deletion, need to know call type
         #if het, see if proposed alt is 1bp mutation
@@ -162,14 +162,14 @@ def read_vcf(vcf_file, ref_file=None):
             if len(alt)==1:
                 #alt = getAmbigCode(ref,alt) #if want to allow ambig
                 alt = 'N' #if you want to disregard ambig
-                snps[pos] = alt.encode()
+                snps[pos] = alt
             #else a het-call insertion, so ignore.
 
         #else it's a no-call; see if all alts have a length of 1
         #(meaning a simple 1bp mutation)
         elif len(ALT)==len("".join(ALT)):
             alt = 'N'
-            snps[pos] = alt.encode()
+            snps[pos] = alt
         #else a no-call insertion, so ignore.
 
 
@@ -483,7 +483,7 @@ def write_vcf(tree_dict, file_name):#, compress=False):
         #Write it out - Increment positions by 1 so it's in VCF numbering
         #If no longer variable, and explained, don't write it out
         if printPos:
-            output = ["MTB_anc", str(pos), ".", refb.decode(), ",".join(uniques), ".", "PASS", ".", "GT"] + calls
+            output = ["MTB_anc", str(pos), ".", refb, ",".join(uniques), ".", "PASS", ".", "GT"] + calls
             vcfWrite.append("\t".join(output))
 
         i+=1
@@ -588,7 +588,7 @@ def process_alignment_dictionary(aln, ref, ambiguous_char):
     refMod[nonref_const] = nonref_alleles
     # mask variable positions
     states = np.unique(refMod)
-    refMod[variable_pos] = b'.'
+    refMod[variable_pos] = '.'
 
     # for each base in the gtr, make constant alignment pattern and
     # assign it to all const positions in the modified reference sequence

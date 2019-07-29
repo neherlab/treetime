@@ -140,7 +140,7 @@ def read_if_vcf(params):
 
             if not hasattr(params, 'gtr') or params.gtr=="infer": #if not specified, set it:
                 alpha = alphabets['aa'] if params.aa else alphabets['nuc']
-                fixed_pi = [ref.count(base.decode())/len(ref) for base in alpha]
+                fixed_pi = [ref.count(base)/len(ref) for base in alpha]
                 if fixed_pi[-1] == 0:
                     fixed_pi[-1] = 0.05
                     fixed_pi = [v-0.01 for v in fixed_pi]
@@ -785,7 +785,7 @@ def mugration(params):
         if n.is_terminal() and len(n.name)>40 and bioversion<"1.69":
             n.name = n.name[:35]+'_%03d'%terminal_count
             terminal_count+=1
-        n.comment= '&%s="'%attr + letter_to_state[n.cseq[0].decode()] +'"'
+        n.comment= '&%s="'%attr + letter_to_state[n.cseq[0]] +'"'
 
     if params.confidence:
         conf_name = basename+'confidence.csv'
