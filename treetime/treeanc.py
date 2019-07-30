@@ -1521,17 +1521,58 @@ class TreeAnc(object):
             new_aln['positions'] = self.data.nonref_positions
             new_aln['inferred_const_sites'] = self.data.inferred_const_sites
         else:
-            new_aln = MultipleSeqAlignment([SeqRecord(id=n.name, seq=Seq(
-                                                "".join(self.data.aln[n.name]) if (not reconstructed_leaves) and n.name in self.data.aln else
-                                                self.data.compressed_to_full_sequence(n.cseq, as_string=True)
-                                            ), description="")
+            new_aln = MultipleSeqAlignment([SeqRecord(id=n.name,
+                                              seq=Seq(self.sequence(n, reconstructed=reconstructed_leaves,
+                                                      as_string=True, compressed=False)), description="")
                                         for n in self.tree.find_clades()])
 
         return new_aln
 
 
+    def sequence(self, node, reconstructed=False, as_string=True, compressed=False):
+        """return the sequence of a node.
+
+        Parameters
+        ----------
+        node : Phylo.node, str
+            node in tree
+        reconstructed : bool, optional
+            return the reconstructed sequence also for terminal nodes. this will replace
+            ambiguous sites with the most likely sequence state.
+        as_string : bool, optional
+            return the sequence as character array rather than contiguous string
+        compressed : bool, optional
+            return the a sequence where unique alignment patterns are reduced to
+            one alignment column each
+
+        Returns
+        -------
+        str or np.array
+            sequence of node
+        """
+        if type(node)==str:
+            if node in self.leaves_lookup:
+                nodes = self.leaves_lookup
+            else:
+                raise ValueError("TreeAnc.sequence accepts strings are argument only when the node is terminal and present in the leave lookup table")
+
+        if compressed:
+            if (not reconstructed) and (node.name in self.data.compressed_alignment):
+                tmp_seq = self.data.compressed_alignment[node.name]
+            else:
+                tmp_seq = node.cseq
+        else:
+            if (not reconstructed) and (node.name in self.data.aln):
+                tmp_seq = self.data.aln[node.name]
+            else:
+                tmp_seq = self.data.compressed_to_full_sequence(node.cseq, as_string=False)
+
+        return "".join(tmp_seq) if as_string else np.copy(tmp_seq)
+
+
     def get_tree_dict(self, keep_var_ambigs=False):
         return self.get_reconstructed_alignment()
+
 
     def recover_var_ambigs(self):
         """
