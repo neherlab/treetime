@@ -1515,7 +1515,10 @@ class TreeAnc(object):
             new_aln['positions'] = self.data.nonref_positions
             new_aln['inferred_const_sites'] = self.data.inferred_const_sites
         else:
-            new_aln = MultipleSeqAlignment([SeqRecord(id=n.name, seq=Seq(self.data.compressed_to_full_sequence(n.cseq, as_string=True)), description="")
+            new_aln = MultipleSeqAlignment([SeqRecord(id=n.name, seq=Seq(
+                                                "".join(self.data.aln[n.name]) if n.name in self.data.aln else
+                                                self.data.compressed_to_full_sequence(n.cseq, as_string=True)
+                                            ), description="")
                                         for n in self.tree.find_clades()])
 
         return new_aln
