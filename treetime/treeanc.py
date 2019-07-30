@@ -1489,10 +1489,16 @@ class TreeAnc(object):
 ###############################################################################
 ### Utility functions
 ###############################################################################
-    def get_reconstructed_alignment(self):
+    def get_reconstructed_alignment(self, reconstructed_leaves=False):
         """
         Get the multiple sequence alignment, including reconstructed sequences for
         the internal nodes.
+
+        Parameters
+        ----------
+        reconstructed_leaves : bool, optional
+            return reconstructed sequences of terminal nodes. this makes sense only
+            if ancestral sequences were run with `reconstruct_leaves`
 
         Returns
         -------
@@ -1516,7 +1522,7 @@ class TreeAnc(object):
             new_aln['inferred_const_sites'] = self.data.inferred_const_sites
         else:
             new_aln = MultipleSeqAlignment([SeqRecord(id=n.name, seq=Seq(
-                                                "".join(self.data.aln[n.name]) if n.name in self.data.aln else
+                                                "".join(self.data.aln[n.name]) if (not reconstructed_leaves) and n.name in self.data.aln else
                                                 self.data.compressed_to_full_sequence(n.cseq, as_string=True)
                                             ), description="")
                                         for n in self.tree.find_clades()])
