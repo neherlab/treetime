@@ -21,6 +21,9 @@ def base_regression(Q, slope=None):
     TYPE
         Description
     """
+    if np.isinf(Q).sum() or np.isnan(Q).sum():
+        raise ValueError("Invalid values in input data!")
+
     if slope is None:
         if (Q[tsqii] - Q[tavgii]**2/Q[sii])>0:
             slope = (Q[dtavgii] - Q[tavgii]*Q[davgii]/Q[sii]) \
@@ -355,7 +358,8 @@ class TreeRegression(object):
             bv = self.branch_value(n)
             var = self.branch_variance(n)
             for dx in [-0.001, 0.001]:
-                y = min(1.0, max(0.0, best_root["split"]+dx))
+                # y needs to be bounded away from 0 and 1 to avoid division by 0
+                y = min(0.9999, max(0.0001, best_root["split"]+dx))
                 tmpQ = self.propagate_averages(n, tv, bv*y, var*y) \
                      + self.propagate_averages(n, tv, bv*(1-y), var*(1-y), outgroup=True)
                 reg = base_regression(tmpQ, slope=slope)
