@@ -4,6 +4,7 @@ import gc
 from collections import defaultdict
 import numpy as np
 from Bio import Phylo
+from Bio.Phylo.BaseTree import Clade
 from Bio import AlignIO
 from treetime import config as ttconf
 from .seq_utils import seq2prof, seq2array, prof2seq, normalize_profile, extend_profile
@@ -12,7 +13,17 @@ from .gtr import GTR
 from .gtr_site_specific import GTR_site_specific
 from .sequence_data import SequenceData
 
+def compressed_sequence(node):
+    if hasattr(node, '_cseq'):
+        return node._cseq
+    elif node.name in node.tt.data.compressed_alignment:
+        return node.tt.data.compressed_alignment[node.name]
+    else:
+        raise ValueError('ancestral sequences are not yet inferred')
+
 string_types = [str] if sys.version_info[0]==3 else [str, unicode]
+Clade.sequence = property(lambda x: x.tt.sequence(x, as_string=False))
+Clade.cseq = property(compressed_sequence)
 
 
 class TreeAnc(object):
@@ -100,6 +111,7 @@ class TreeAnc(object):
         self._internal_node_count = 0
         self.use_mutation_length=False
         self.ignore_gaps = ignore_gaps
+        self.reconstructed_tip_sequences = False
 
         self._tree = None
         self.tree = tree
@@ -122,8 +134,7 @@ class TreeAnc(object):
         if self.data.aln and self.tree:
             if len(self.tree.get_terminals()) != len(self.data.aln):
                 self.logger("**WARNING: Number of tips in tree differs from number of sequences in alignment!**", 3, warn=True)
-
-            self._attach_sequences_to_nodes()
+            self.ok = True
 
 
     def logger(self, msg, level, warn=False):
@@ -230,8 +241,8 @@ class TreeAnc(object):
     @aln.setter
     def aln(self,in_aln):
         self.data.aln=in_aln
-        if self.data.aln and self.tree:
-            self._attach_sequences_to_nodes()
+        if self.tree:
+            self.ok = True
 
 
     @property
@@ -317,11 +328,11 @@ class TreeAnc(object):
         for l in self.tree.find_clades():
             if hasattr(l, 'branch_state'): del l.branch_state
             if l.name in self.data.compressed_alignment:
-                l.cseq = self.data.compressed_alignment[l.name]
+                l._cseq = self.data.compressed_alignment[l.name]
             elif l.is_terminal():
                 self.logger("***WARNING: TreeAnc._attach_sequences_to_nodes: NO SEQUENCE FOR LEAF: %s" % l.name, 0, warn=True)
                 failed_leaves += 1
-                l.cseq = np.repeat(self.gtr.ambiguous, self.data.compressed_length)
+                l._cseq = np.repeat(self.gtr.ambiguous, self.data.compressed_length)
                 if failed_leaves > self.tree.count_terminals()/3:
                     self.logger("ERROR: At least 30\\% terminal nodes cannot be assigned a sequence!\n", 0, warn=True)
                     self.logger("Are you sure the alignment belongs to the tree?", 2, warn=True)
@@ -359,6 +370,7 @@ class TreeAnc(object):
         Set auxilliary parameters to every node of the tree.
         """
         self.tree.root.up = None
+        self.tree.root.tt = self
         self.tree.root.bad_branch=self.tree.root.bad_branch if hasattr(self.tree.root, 'bad_branch') else False
         name_set = set([n.name for n in self.tree.find_clades() if n.name])
         internal_node_count = 0
@@ -375,6 +387,7 @@ class TreeAnc(object):
                 if c.is_terminal():
                     c.bad_branch = c.bad_branch if hasattr(c, 'bad_branch') else False
                 c.up = clade
+                c.tt = self
 
         for clade in self.tree.get_nonterminals(order='postorder'): # parents first
             clade.bad_branch = all([c.bad_branch for c in clade])
@@ -410,7 +423,7 @@ class TreeAnc(object):
 
 
     def infer_ancestral_sequences(self, method='probabilistic', infer_gtr=False,
-                                  marginal=False, reconstruct_leaves=False, **kwargs):
+                                  marginal=False, reconstruct_tip_sequences=False, **kwargs):
         """Reconstruct ancestral sequences
 
         Parameters
@@ -422,7 +435,7 @@ class TreeAnc(object):
         marginal : bool
            Assign sequences that are most likely after averaging over all other nodes
            instead of the jointly most likely sequences.
-        reconstruct_leaves : bool, optional
+        reconstruct_tip_sequences : bool, optional
             Reconstruct sequences of terminal nodes/leaves, thereby replacing ambiguous
             characters with the inferred base/state. default: False
         **kwargs
@@ -452,9 +465,9 @@ class TreeAnc(object):
             tmp = self.infer_gtr(marginal=marginal, **kwargs)
             if tmp==ttconf.ERROR:
                 return tmp
-            N_diff = _ml_anc(reconstruct_leaves=reconstruct_leaves, **kwargs)
+            N_diff = _ml_anc(reconstruct_tip_sequences=reconstruct_tip_sequences, **kwargs)
         else:
-            N_diff = _ml_anc(reconstruct_leaves=reconstruct_leaves, **kwargs)
+            N_diff = _ml_anc(reconstruct_tip_sequences=reconstruct_tip_sequences, **kwargs)
 
         for node in self.tree.find_clades(order='preorder'):
             if node.up:
@@ -492,7 +505,7 @@ class TreeAnc(object):
         for l in self.tree.get_terminals():
             l.state = [[k] for k in l.cseq]
 
-        L = len(self.tree.get_terminals()[0].cseq)
+        L = self.data.compressed_length
 
         self.logger("TreeAnc._fitch_anc: Walking up the tree, creating the Fitch profiles",2)
         for node in self.tree.get_nonterminals(order='postorder'):
@@ -505,7 +518,7 @@ class TreeAnc(object):
                                     "in the position %d: %s, "
                                     "choosing %s" % (amb, str(self.tree.root.state[amb]),
                                                      self.tree.root.state[amb][0]), 4)
-        self.tree.root.cseq = np.array([k[np.random.randint(len(k)) if len(k)>1 else 0]
+        self.tree.root._cseq = np.array([k[np.random.randint(len(k)) if len(k)>1 else 0]
                                            for k in self.tree.root.state])
 
         if self.is_vcf:
@@ -519,14 +532,14 @@ class TreeAnc(object):
         N_diff = 0
         for node in self.tree.get_nonterminals(order='preorder'):
             if node.up != None: # not root
-                sequence =  np.array([node.up.cseq[i]
-                        if node.up.cseq[i] in node.state[i]
+                sequence =  np.array([node.up._cseq[i]
+                        if node.up._cseq[i] in node.state[i]
                         else node.state[i][0] for i in range(L)])
                 if hasattr(node, 'sequence'):
                     N_diff += (sequence!=node.cseq).sum()
                 else:
                     N_diff += L
-                node.cseq = sequence
+                node._cseq = sequence
                 if self.is_vcf:
                     node.sequence = self.dict_sequence(node)
                 else:
@@ -669,7 +682,7 @@ class TreeAnc(object):
 
 
     def _ml_anc_marginal(self, sample_from_profile=False,
-                         reconstruct_leaves=False, debug=False, **kwargs):
+                         reconstruct_tip_sequences=False, debug=False, **kwargs):
         """
         Perform marginal ML reconstruction of the ancestral states. In contrast to
         joint reconstructions, this needs to access the probabilities rather than only
@@ -682,7 +695,7 @@ class TreeAnc(object):
             of ancestral states instead of to their ML value. This parameter can also
             take the value 'root' in which case probabilistic sampling will happen
             at the root but at no other node.
-        reconstruct_leaves : bool, default False
+        reconstruct_tip_sequences : bool, default False
             reconstruct sequence assigned to leaves, will replace ambiguous characters
             with the most likely definite character. Note that this will affect the mutations
             assigned to branches.
@@ -702,11 +715,12 @@ class TreeAnc(object):
         self.total_LH_and_root_sequence(sample_from_profile=root_sample_from_profile,
                                         assign_sequence=True)
 
-        N_diff = self.preorder_traversal_marginal(reconstruct_leaves=reconstruct_leaves,
+        N_diff = self.preorder_traversal_marginal(reconstruct_tip_sequences=reconstruct_tip_sequences,
                                                   sample_from_profile=other_sample_from_profile,
                                                   assign_sequence=True)
         self.logger("TreeAnc._ml_anc_marginal: ...done", 3)
 
+        self.reconstructed_tip_sequences = reconstruct_tips_sequences
         # do clean-up:
         if not debug:
             for node in self.tree.find_clades():
@@ -736,7 +750,7 @@ class TreeAnc(object):
         if assign_sequence:
             seq, prof_vals, idxs = prof2seq(self.tree.root.marginal_profile,
                                         self.gtr, sample_from_prof=sample_from_profile, normalize=False)
-            self.tree.root.cseq = seq
+            self.tree.root._cseq = seq
 
 
     def postorder_traversal_marginal(self):
@@ -770,7 +784,7 @@ class TreeAnc(object):
             node.marginal_subtree_LH_prefactor += offset # and store log-prefactor
 
 
-    def preorder_traversal_marginal(self, reconstruct_leaves=False, sample_from_profile=False, assign_sequence=False):
+    def preorder_traversal_marginal(self, reconstruct_tip_sequences=False, sample_from_profile=False, assign_sequence=False):
         self.logger("Preorder: computing marginal profiles...",3)
         # propagate root -->> leaves, reconstruct the internal node sequences
         # provided the upstream message + the message from the complementary subtree
@@ -784,7 +798,7 @@ class TreeAnc(object):
             # of all children my multiplying it to the prev computed profile
             node.marginal_outgroup_LH, pre = normalize_profile(np.log(np.maximum(ttconf.TINY_NUMBER, node.up.marginal_profile)) - node.marginal_log_Lx,
                                                                log=True, return_offset=False)
-            if node.is_terminal() and (not reconstruct_leaves): # skip remainder unless leaves are to be reconstructed
+            if node.is_terminal() and (not reconstruct_tip_sequences): # skip remainder unless leaves are to be reconstructed
                 continue
 
             tmp_msg_from_parent = self.gtr.evolve(node.marginal_outgroup_LH,
@@ -794,18 +808,18 @@ class TreeAnc(object):
             if assign_sequence:
                 seq, prof_vals, idxs = prof2seq(node.marginal_profile, self.gtr,
                                                 sample_from_prof=sample_from_profile, normalize=False)
-                if hasattr(node, 'cseq') and node.cseq is not None:
+                try:
                     N_diff += (seq!=node.cseq).sum()
-                else:
+                except:
                     N_diff += self.data.compressed_length
                 #assign new sequence
-                node.cseq = seq
+                node._cseq = seq
 
         return N_diff
 
 
     def _ml_anc_joint(self, sample_from_profile=False,
-                      reconstruct_leaves=False, debug=False, **kwargs):
+                      reconstruct_tip_sequences=False, debug=False, **kwargs):
 
         """
         Perform joint ML reconstruction of the ancestral states. In contrast to
@@ -818,7 +832,7 @@ class TreeAnc(object):
             This parameter can take the value 'root' in which case probabilistic
             sampling will happen at the root. otherwise sequences at ALL nodes are
             set to the value that jointly optimized the likelihood.
-        reconstruct_leaves : bool, default False
+        reconstruct_tip_sequences : bool, default False
             reconstruct sequence assigned to leaves, will replace ambiguous characters
             with the most likely definite character. Note that this will affect the mutations
             assigned to branches.
@@ -889,13 +903,13 @@ class TreeAnc(object):
         # compute the likelihood of the most probable root sequence
         self.tree.sequence_LH = np.choose(idxs, self.tree.root.joint_Lx.T)
         self.tree.sequence_joint_LH = (self.tree.sequence_LH*self.data.multiplicity).sum()
-        self.tree.root.cseq = seq
+        self.tree.root._cseq = seq
         self.tree.root.seq_idx = idxs
 
         self.logger("TreeAnc._ml_anc_joint: Walking down the tree, computing maximum likelihood sequences...",3)
         # for each node, resolve the conditioning on the parent node
         nodes_to_reconstruct = self.tree.get_nonterminals(order='preorder')
-        if reconstruct_leaves:
+        if reconstruct_tip_sequences:
             nodes_to_reconstruct += self.tree.get_terminals()
 
         for node in nodes_to_reconstruct:
@@ -909,14 +923,15 @@ class TreeAnc(object):
             node.seq_idx = np.choose(node.up.seq_idx, node.joint_Cx.T)
             # reconstruct seq, etc
             tmp_sequence = np.choose(node.seq_idx, self.gtr.alphabet)
-            if hasattr(node, 'sequence') and node.cseq is not None:
+            try:
                 N_diff += (tmp_sequence!=node.cseq).sum()
-            else:
+            except:
                 N_diff += L
 
-            node.cseq = tmp_sequence
+            node._cseq = tmp_sequence
 
         self.logger("TreeAnc._ml_anc_joint: ...done", 3)
+        self.reconstructed_tip_sequences = reconstruct_tip_sequences
 
         # do clean-up
         if not debug:
@@ -932,7 +947,7 @@ class TreeAnc(object):
 ###############################################################
 ### sequence and mutation storing
 ###############################################################
-    def get_mutations(self, node, keep_var_ambigs=False):
+    def get_mutations(self, node):
         """
         Get the mutations on a tree branch. Take compressed sequences from both sides
         of the branch (attached to the node), compute mutations between them, and
@@ -958,8 +973,6 @@ class TreeAnc(object):
         # if ambiguous site are to be restored and node is terminal,
         # assign original sequence, else reconstructed cseq
         node_seq = node.cseq
-        if keep_var_ambigs and node.name in self.data.compressed_alignment:
-            node_seq = self.data.compressed_alignment[node.name]
 
         muts = []
         diff_pos = np.where(node.up.cseq!=node_seq)[0]
@@ -1048,7 +1061,7 @@ class TreeAnc(object):
             attaces attribute :branch_state:
         """
         seq_pairs, multiplicity = self.gtr.state_pair(
-                                       node.up.cseq, node.cseq,
+                                       node.up._cseq, node._cseq,
                                        pattern_multiplicity = self.data.multiplicity,
                                        ignore_gaps = self.ignore_gaps)
         node.branch_state = {'pair':seq_pairs, 'multiplicity':multiplicity}
@@ -1321,7 +1334,7 @@ class TreeAnc(object):
 
             # probability of the two seqs separated by zero time is not zero
             if  ((node.branch_length<0.1*self.one_mutation) and
-                 (self.gtr.prob_t(node.up.cseq, node.cseq, 0.0,
+                 (self.gtr.prob_t(node.up._cseq, node._cseq, 0.0,
                                   pattern_multiplicity=self.data.multiplicity) > 0.1)):
                 # re-assign the node children directly to its parent
                 node.up.clades = [k for k in node.up.clades if k != node] + node.clades
@@ -1380,11 +1393,14 @@ class TreeAnc(object):
         # if ancestral sequences are not in place, reconstruct them
         if marginal  and (not hasattr(self.tree.root,'marginal_profile')):
             self.infer_ancestral_sequences(marginal=True, **kwargs)
-        elif (not hasattr(self.tree.root,'cseq')) or self.tree.root.cseq is None:
-            self.infer_ancestral_sequences(marginal=False, **kwargs)
+        else:
+            try:
+                self.tree.root.cseq
+            except:
+                self.infer_ancestral_sequences(marginal=False, **kwargs)
 
         n = self.gtr.n_states
-        L = len(self.tree.root.cseq)
+        L = len(self.tree.root._cseq)
         # matrix of mutations n_{ij}: i = derived state, j=ancestral state
         n_ija = np.zeros((n,n,L))
         T_ia = np.zeros((n,L))
@@ -1498,7 +1514,7 @@ class TreeAnc(object):
         ----------
         reconstructed_leaves : bool, optional
             return reconstructed sequences of terminal nodes. this makes sense only
-            if ancestral sequences were run with `reconstruct_leaves`
+            if ancestral sequences were run with `reconstruct_tip_sequences`
 
         Returns
         -------
