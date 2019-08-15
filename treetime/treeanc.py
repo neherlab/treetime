@@ -454,13 +454,15 @@ class TreeAnc(object):
             self.logger("TreeAnc.infer_ancestral_sequences: ERROR, sequences or tree are missing", 0)
             return ttconf.ERROR
 
-        if method in ['ml', 'probabilistic']:
+        if method.lower() in ['ml', 'probabilistic']:
             if marginal:
                 _ml_anc = self._ml_anc_marginal
             else:
                 _ml_anc = self._ml_anc_joint
-        else:
+        elif method.lower() in ['fitch', 'parsimony']:
             _ml_anc = self._fitch_anc
+        else:
+            raise ValueError("Reconstruction method needs to be in ['ml', 'probabilistic', 'fitch', 'parsimony'], got '{}'".format(method))
 
         if infer_gtr:
             tmp = self.infer_gtr(marginal=marginal, **kwargs)
@@ -522,11 +524,6 @@ class TreeAnc(object):
         self.tree.root._cseq = np.array([k[np.random.randint(len(k)) if len(k)>1 else 0]
                                            for k in self.tree.root.state])
 
-        if self.is_vcf:
-            self.tree.root.sequence = self.dict_sequence(self.tree.root)
-        else:
-            self.tree.root.sequence = self.expanded_sequence(self.tree.root)
-
 
         self.logger("TreeAnc._fitch_anc: Walking down the self.tree, generating sequences from the "
                          "Fitch profiles.", 2)
@@ -541,17 +538,11 @@ class TreeAnc(object):
                 else:
                     N_diff += L
                 node._cseq = sequence
-                if self.is_vcf:
-                    node.sequence = self.dict_sequence(node)
-                else:
-                    node.sequence = self.expanded_sequence(node)
                 node.mutations = self.get_mutations(node)
 
             node.profile = seq2prof(node.cseq, self.gtr.profile_map)
             del node.state # no need to store Fitch states
         self.logger("Done ancestral state reconstruction",3)
-        for node in self.tree.get_terminals():
-            node.profile = seq2prof(node.original_cseq, self.gtr.profile_map)
         return N_diff
 
 
