@@ -105,14 +105,15 @@ class TreeAnc(object):
             raise TypeError("TreeAnc requires a tree!")
         self.t_start = time.time()
         self.verbose = verbose
-        self.log=log
-        self.ok=False
-        self.data=None
+        self.log = log
+        self.ok = False
+        self.data = None
         self.logger("TreeAnc: set-up",1)
         self._internal_node_count = 0
-        self.use_mutation_length=False
+        self.use_mutation_length = False
         self.ignore_gaps = ignore_gaps
         self.reconstructed_tip_sequences = False
+        self.sequence_reconstruction = None
 
         self._tree = None
         self.tree = tree
@@ -484,11 +485,10 @@ class TreeAnc(object):
 ###################################################################
     def _fitch_anc(self, **kwargs):
         """
-        Reconstruct ancestral states using Fitch's algorithm. The method requires
-        sequences to be assigned to leaves. It implements the iteration from
-        leaves to the root constructing the Fitch profiles for each character of
-        the sequence, and then by propagating from the root to the leaves,
-        reconstructs the sequences of the internal nodes.
+        Reconstruct ancestral states using Fitch's algorithm. It implements
+        the iteration from leaves to the root constructing the Fitch profiles for
+        each character of the sequence, and then by propagating from the root
+        to the leaves, reconstructs the sequences of the internal nodes.
 
         Keyword Args
         ------------
@@ -503,8 +503,8 @@ class TreeAnc(object):
            number of characters in the tree.
 
         """
-        # set fitch profiiles to each terminal node
 
+        # set fitch profiiles to each terminal node
         for l in self.tree.get_terminals():
             l.state = [[k] for k in l.cseq]
 
@@ -533,15 +533,16 @@ class TreeAnc(object):
                 sequence =  np.array([node.up._cseq[i]
                         if node.up._cseq[i] in node.state[i]
                         else node.state[i][0] for i in range(L)])
-                if hasattr(node, 'sequence'):
+
+                if self.sequence_reconstruction:
                     N_diff += (sequence!=node.cseq).sum()
                 else:
                     N_diff += L
                 node._cseq = sequence
-                node.mutations = self.get_mutations(node)
 
-            node.profile = seq2prof(node.cseq, self.gtr.profile_map)
             del node.state # no need to store Fitch states
+
+        self.sequence_reconstruction = 'parsimony'
         self.logger("Done ancestral state reconstruction",3)
         return N_diff
 
@@ -722,7 +723,7 @@ class TreeAnc(object):
                 except:
                     pass
         gc.collect()
-
+        self.sequence_reconstruction = 'marginal'
         return N_diff
 
 
@@ -750,7 +751,7 @@ class TreeAnc(object):
         n_states = self.gtr.alphabet.shape[0]
 
         self.logger("Attaching sequence profiles to leafs... ", 3)
-        #  set the leaves profiles
+        #  set the leaves profiles. This doesn't ever need to be reassigned for leaves
         for leaf in self.tree.get_terminals():
             if not hasattr(leaf, "marginal_subtree_LH"):
                 if leaf.name in self.data.compressed_alignment:
@@ -800,9 +801,10 @@ class TreeAnc(object):
             if assign_sequence:
                 seq, prof_vals, idxs = prof2seq(node.marginal_profile, self.gtr,
                                                 sample_from_prof=sample_from_profile, normalize=False)
-                try:
+
+                if self.sequence_reconstruction:
                     N_diff += (seq!=node.cseq).sum()
-                except:
+                else:
                     N_diff += self.data.compressed_length
                 #assign new sequence
                 node._cseq = seq
@@ -915,9 +917,9 @@ class TreeAnc(object):
             node.seq_idx = np.choose(node.up.seq_idx, node.joint_Cx.T)
             # reconstruct seq, etc
             tmp_sequence = np.choose(node.seq_idx, self.gtr.alphabet)
-            try:
+            if self.sequence_reconstruction:
                 N_diff += (tmp_sequence!=node.cseq).sum()
-            except:
+            else:
                 N_diff += L
 
             node._cseq = tmp_sequence
@@ -933,6 +935,7 @@ class TreeAnc(object):
                 if hasattr(node, 'seq_idx'):
                     del node.seq_idx
 
+        self.sequence_reconstruction = 'joint'
         return N_diff
 
 
@@ -973,6 +976,9 @@ class TreeAnc(object):
             der = node_seq[p]
             # expand to the positions in real sequence
             muts.extend([(anc, pos, der) for pos in self.data.compressed_to_full_sequence_map[p]])
+
+        ## TODO: for terminal nodes, fix ambiguous sites that are masked by in
+        # the compressed alignment
 
         #sort by position
         return sorted(muts, key=lambda x:x[1])
@@ -1383,12 +1389,12 @@ class TreeAnc(object):
             return ttconf.ERROR
 
         # if ancestral sequences are not in place, reconstruct them
-        if marginal  and (not hasattr(self.tree.root,'marginal_profile')):
+        if marginal and self.sequence_reconstruction!='marginal':
             self.infer_ancestral_sequences(marginal=True, **kwargs)
         else:
-            try:
+            if self.sequence_reconstruction:
                 self.tree.root.cseq
-            except:
+            else:
                 self.infer_ancestral_sequences(marginal=False, **kwargs)
 
         n = self.gtr.n_states
@@ -1518,7 +1524,7 @@ class TreeAnc(object):
         from Bio.Seq import Seq
         from Bio.SeqRecord import SeqRecord
         self.logger("TreeAnc.get_reconstructed_alignment ...",2)
-        if not hasattr(self.tree.root, 'cseq'):
+        if not self.sequence_reconstruction:
             self.logger("TreeAnc.reconstructed_alignment... reconstruction not yet done",3)
             self.infer_ancestral_sequences()
 
