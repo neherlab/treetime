@@ -286,8 +286,8 @@ class TreeAnc(object):
         # remove all existing sequence attributes
         for node in self._tree.find_clades():
             node.branch_length = node.branch_length if node.branch_length else 0.0
-            if hasattr(node, "sequence"):
-                node.__delattr__("sequence")
+            if hasattr(node, "_cseq"):
+                node.__delattr__("_cseq")
             node.original_length = node.branch_length
             node.mutation_length = node.branch_length
         self.prepare_tree()
@@ -713,7 +713,7 @@ class TreeAnc(object):
                                                   assign_sequence=True)
         self.logger("TreeAnc._ml_anc_marginal: ...done", 3)
 
-        self.reconstructed_tip_sequences = reconstruct_tips_sequences
+        self.reconstructed_tip_sequences = reconstruct_tip_sequences
         # do clean-up:
         if not debug:
             for node in self.tree.find_clades():
@@ -1059,7 +1059,7 @@ class TreeAnc(object):
             attaces attribute :branch_state:
         """
         seq_pairs, multiplicity = self.gtr.state_pair(
-                                       node.up._cseq, node._cseq,
+                                       node.up.cseq, node.cseq,
                                        pattern_multiplicity = self.data.multiplicity,
                                        ignore_gaps = self.ignore_gaps)
         node.branch_state = {'pair':seq_pairs, 'multiplicity':multiplicity}

@@ -600,8 +600,8 @@ class TreeTime(ClockTree):
                 new_node.up = clade
                 n1.up = new_node
                 n2.up = new_node
-                if hasattr(clade, "cseq"):
-                    new_node.cseq = clade.cseq
+                if hasattr(clade, "_cseq"):
+                    new_node._cseq = clade._cseq
                     self.add_branch_state(new_node)
 
                 new_node.mutations = []
