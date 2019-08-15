@@ -107,6 +107,7 @@ class TreeAnc(object):
         self.verbose = verbose
         self.log=log
         self.ok=False
+        self.data=None
         self.logger("TreeAnc: set-up",1)
         self._internal_node_count = 0
         self.use_mutation_length=False
@@ -132,9 +133,7 @@ class TreeAnc(object):
             raise TypeError("TreeAnc: sequence compression and site specific gtr models are incompatible!" )
 
         if self.data.aln and self.tree:
-            if len(self.tree.get_terminals()) != len(self.data.aln):
-                self.logger("**WARNING: Number of tips in tree differs from number of sequences in alignment!**", 3, warn=True)
-            self.ok = True
+            self._check_alignment_tree_gtr_consistency()
 
 
     def logger(self, msg, level, warn=False):
@@ -242,7 +241,7 @@ class TreeAnc(object):
     def aln(self,in_aln):
         self.data.aln=in_aln
         if self.tree:
-            self.ok = True
+            self._check_alignment_tree_gtr_consistency()
 
 
     @property
@@ -291,8 +290,11 @@ class TreeAnc(object):
             node.original_length = node.branch_length
             node.mutation_length = node.branch_length
         self.prepare_tree()
-        return ttconf.SUCCESS
 
+        if self.data:
+            self._check_alignment_tree_gtr_consistency()
+
+        return ttconf.SUCCESS
 
 
     @property
@@ -310,11 +312,13 @@ class TreeAnc(object):
         self.logger("TreeAnc: one_mutation can't be set",1)
 
 
-    def _attach_sequences_to_nodes(self):
+    def _check_alignment_tree_gtr_consistency(self):
         '''
         For each node of the tree, check whether there is a sequence available
         in the alignment and assign this sequence as a character array
         '''
+        if len(self.tree.get_terminals()) != len(self.data.aln):
+            self.logger("**WARNING: Number of tips in tree differs from number of sequences in alignment!**", 3, warn=True)
         failed_leaves= 0
 
         # loop over leaves and assign multiplicities of leaves (e.g. number of identical reads)
@@ -327,12 +331,9 @@ class TreeAnc(object):
         # loop over tree, and assign sequences
         for l in self.tree.find_clades():
             if hasattr(l, 'branch_state'): del l.branch_state
-            if l.name in self.data.compressed_alignment:
-                l._cseq = self.data.compressed_alignment[l.name]
-            elif l.is_terminal():
+            if l.name not in self.data.compressed_alignment and l.is_terminal():
                 self.logger("***WARNING: TreeAnc._attach_sequences_to_nodes: NO SEQUENCE FOR LEAF: %s" % l.name, 0, warn=True)
                 failed_leaves += 1
-                l._cseq = np.repeat(self.gtr.ambiguous, self.data.compressed_length)
                 if failed_leaves > self.tree.count_terminals()/3:
                     self.logger("ERROR: At least 30\\% terminal nodes cannot be assigned a sequence!\n", 0, warn=True)
                     self.logger("Are you sure the alignment belongs to the tree?", 2, warn=True)
