@@ -110,7 +110,7 @@ def test_seq_joint_reconstruction_correct():
             continue
         t = node.branch_length
         p = mygtr.evolve( seq_utils.seq2prof(node.up.ref_seq, mygtr.profile_map), t)
-        # normalie profile
+        # normalize profile
         p=(p.T/p.sum(axis=1)).T
         # sample mutations randomly
         ref_seq_idxs = np.array([int(np.random.choice(np.arange(p.shape[1]), p=p[k])) for k in np.arange(p.shape[0])])
@@ -139,13 +139,11 @@ def test_seq_joint_reconstruction_correct():
     for node in myTree.tree.find_clades():
         if node.up is not None:
             mut_count += len(node.ref_mutations)
-            seq = myTree.data.compressed_to_full_sequence(node.cseq)
-            diff_count += np.sum(seq != node.ref_seq)==0
-            if np.sum(seq != node.ref_seq):
+            diff_count += np.sum(node.sequence != node.ref_seq)
+            if np.sum(node.sequence != node.ref_seq):
                 print("%s: True sequence does not equal inferred sequence. parent %s"%(node.name, node.up.name))
             else:
                 print("%s: True sequence equals inferred sequence. parent %s"%(node.name, node.up.name))
-        print (node.name, np.sum(seq != node.ref_seq), np.where(seq != node.ref_seq), len(node.mutations), node.mutations)
 
     # the assignment of mutations to the root node is probabilistic. Hence some differences are expected
     assert diff_count/seq_len<2*(1.0*mut_count/seq_len)**2
