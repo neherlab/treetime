@@ -147,7 +147,7 @@ class ClockTree(TreeAnc):
             self.precision=precision
             if self.one_mutation and self.one_mutation<1e-4 and precision<2:
                 self.logger("ClockTree._set_precision: FOR LONG SEQUENCES (>1e4) precision>=2 IS RECOMMENDED."
-                            " \n\t **** precision %d was specified by the user"%precision, level=0)
+                            " precision %d was specified by the user"%precision, level=0)
         else:
             # otherwise adjust it depending on the minimal sensible branch length
             if self.one_mutation:
@@ -312,8 +312,8 @@ class ClockTree(TreeAnc):
 
                 if hasattr(node, 'bad_branch') and node.bad_branch is True:
                     self.logger("ClockTree.init_date_constraints -- WARNING: Branch is marked as bad"
-                                ", excluding it from the optimization process.\n"
-                                "\t\tDate constraint will be ignored!", 4, warn=True)
+                                ", excluding it from the optimization process."
+                                " Date constraint will be ignored!", 4, warn=True)
             else: # node without sampling date set
                 node.raw_date_constraint = None
                 node.date_constraint = None

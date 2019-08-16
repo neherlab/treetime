@@ -2,6 +2,7 @@ from __future__ import print_function, division, absolute_import
 import os, shutil, sys
 import numpy as np
 import pandas as pd
+from textwrap import fill
 from Bio.SeqRecord import SeqRecord
 from Bio.Seq import Seq
 from Bio.Align import MultipleSeqAlignment
@@ -528,9 +529,9 @@ def timetree(params):
     elif params.confidence and params.covariation:
         vary_rate = True
     elif params.confidence:
-        print("\nOutside of covariation aware mode TreeTime cannot estimate confidence intervals "
-                "without specified standard deviation of the clock rate. \nPlease specify '--clock-std-dev' "
-                "or rerun with '--covariation'. \nWill proceed without confidence estimation")
+        print("Outside of covariation aware mode TreeTime cannot estimate confidence intervals "
+                "without specified standard deviation of the clock rate.Please specify '--clock-std-dev' "
+                "or rerun with '--covariation'. Will proceed without confidence estimation")
         vary_rate = False
         calc_confidence = False
     else:
@@ -868,14 +869,14 @@ def estimate_clock_model(params):
 
     d2d = utils.DateConversion.from_regression(myTree.clock_model)
     print('\n',d2d)
-    print('The R^2 value indicates the fraction of variation in'
-          '\nroot-to-tip distance explained by the sampling times.'
-          '\nHigher values corresponds more clock-like behavior (max 1.0).')
+    print(fill('The R^2 value indicates the fraction of variation in'
+          'root-to-tip distance explained by the sampling times.'
+          'Higher values corresponds more clock-like behavior (max 1.0).')+'\n')
 
-    print('\nThe rate is the slope of the best fit of the date to'
-          '\nthe root-to-tip distance and provides an estimate of'
-          '\nthe substitution rate. The rate needs to be positive!'
-          '\nNegative rates suggest an inappropriate root.\n')
+    print(fill('The rate is the slope of the best fit of the date to'
+          'the root-to-tip distance and provides an estimate of'
+          'the substitution rate. The rate needs to be positive!'
+          'Negative rates suggest an inappropriate root.')+'\n')
 
     print('\nThe estimated rate and tree correspond to a root date:')
     if params.covariation:

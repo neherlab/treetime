@@ -123,6 +123,7 @@ class TreeAnc(object):
         self.log = log
         self.ok = False
         self.data = None
+        self.log_messages = set()
         self.logger("TreeAnc: set-up",1)
         self._internal_node_count = 0
         self.use_mutation_length = False
@@ -152,7 +153,7 @@ class TreeAnc(object):
             self._check_alignment_tree_gtr_consistency()
 
 
-    def logger(self, msg, level, warn=False):
+    def logger(self, msg, level, warn=False, only_once=False):
         """
         Print log message *msg* to stdout.
 
@@ -171,6 +172,11 @@ class TreeAnc(object):
             regardless of its log-level.
 
         """
+        if only_once and msg in self.log_messages:
+            return
+
+        self.log_messages.add(msg)
+
         lw=80
         if level<self.verbose or (warn and level<=self.verbose):
             from textwrap import fill
@@ -467,10 +473,11 @@ class TreeAnc(object):
 
         self.logger("TreeAnc.infer_ancestral_sequences with method: %s, %s"%(method, 'marginal' if marginal else 'joint'), 1)
         if not reconstruct_tip_sequences:
-            self.logger("TreeAnc.infer_ancestral_sequences: Previous versions of TreeTime (<0.7.0)"
-                        " reconstructed sequences of tips when at positions with ambiguous bases. "
-                        " This resulted in unexpected behavior is some cases and is no longer done by default."
-                        " If you want to fill in those sites with their most likely state, rerun with `reconstruct_tip_sequences=True`.",0)
+            self.logger("WARNING: Previous versions of TreeTime (<0.7.0) RECONSTRUCTED sequences"
+                        " of tips when at positions with AMBIGUOUS bases. This resulted in"
+                        " unexpected behavior is some cases and is no longer done by default."
+                        " If you want to fill those sites with their most likely state,"
+                        " rerun with `reconstruct_tip_sequences=True`.", 0, warn=True, only_once=True)
 
         if method.lower() in ['ml', 'probabilistic']:
             if marginal:
