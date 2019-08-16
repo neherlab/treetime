@@ -7,29 +7,12 @@ from Bio import Phylo
 from Bio.Phylo.BaseTree import Clade
 from Bio import AlignIO
 from treetime import config as ttconf
+from treetime import MissingDataError,UnknownMethodError
 from .seq_utils import seq2prof, seq2array, prof2seq, normalize_profile, extend_profile
 from .vcf_utils import process_alignment_dictionary
 from .gtr import GTR
 from .gtr_site_specific import GTR_site_specific
 from .sequence_data import SequenceData
-
-class TreeTimeError(Exception):
-    """TreeTimeError class"""
-    pass
-
-class MissingDataError(TreeTimeError):
-    """MissingDataError class raised when tree or alignment are missing"""
-    pass
-
-class UnknownMethodError(TreeTimeError):
-    """MissingDataError class raised when tree or alignment are missing"""
-    pass
-
-class NotReadyError(TreeTimeError):
-    """NotReadyError class raised when results are requested before inference"""
-    pass
-
-
 
 def compressed_sequence(node):
     if node.name in node.tt.data.compressed_alignment and (not node.tt.reconstructed_tip_sequences):

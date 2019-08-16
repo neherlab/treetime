@@ -10,8 +10,9 @@ from Bio import __version__ as bioversion
 from treetime import TreeAnc, GTR, TreeTime
 from treetime import config as ttconf
 from treetime import utils
-from treetime.vcf_utils import read_vcf, write_vcf
-from treetime.seq_utils import alphabets
+from .vcf_utils import read_vcf, write_vcf
+from .seq_utils import alphabets
+from treetime import TreeTimeError
 
 def assure_tree(params, tmp_dir='treetime_tmp'):
     """
@@ -59,10 +60,10 @@ def create_gtr(params):
 
             gtr = GTR.standard(model, **kwargs)
             infer_gtr = False
-        except:
-            print ("Could not create GTR model from input arguments. Using default (Jukes-Cantor 1969)")
-            gtr = GTR.standard('jc', alphabet='aa' if params.aa else 'nuc')
-            infer_gtr = False
+        except KeyError as e:
+            print("\nUNKNOWN SUBSTITUTION MODEL\n")
+            raise e
+
     return gtr
 
 def get_outdir(params, suffix='_treetime'):
@@ -639,7 +640,7 @@ def ancestral_reconstruction(params):
         ndiff = treeanc.infer_ancestral_sequences('ml', infer_gtr=params.gtr=='infer',
                                              marginal=params.marginal, fixed_pi=fixed_pi)
     except TreeTimeError as e:
-        print("Ancestral reconstruction failed, please see above for error messages and/or rerun with --verbose 4")
+        print("\nAncestral reconstruction failed, please see above for error messages and/or rerun with --verbose 4\n")
         raise e
 
     ###########################################################################
@@ -714,7 +715,7 @@ def reconstruct_discrete_traits(tree, traits, missing_data='?', pc=1.0, sampling
             store_compressed=False, pc=pc, marginal=True, normalized_rate=False,
             fixed_pi=weights)
     except TreeTimeError as e:
-        print("Ancestral reconstruction failed, please see above for error messages and/or rerun with --verbose 4")
+        print("\nAncestral reconstruction failed, please see above for error messages and/or rerun with --verbose 4\n")
         raise e
 
     if sampling_bias_correction:
@@ -835,7 +836,7 @@ def estimate_clock_model(params):
                       verbose=params.verbose, seq_len=params.sequence_length,
                       ref=ref)
     except TreeTimeError as e:
-        print("TreeTime setup failed. Please see above for error messages and/or rerun with --verbose 4")
+        print("\nTreeTime setup failed. Please see above for error messages and/or rerun with --verbose 4\n")
         raise e
 
     myTree.tip_slack=params.tip_slack

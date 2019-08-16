@@ -5,6 +5,7 @@ from collections import defaultdict
 import numpy as np
 from Bio import SeqRecord, Seq, AlignIO, SeqIO
 from treetime import config as ttconf
+from treetime import MissingDataError
 from .seq_utils import seq2array, guess_alphabet, alphabets
 
 string_types = [str] if sys.version_info[0]==3 else [str, unicode]
@@ -170,8 +171,7 @@ class SequenceData(object):
             self._aln = in_aln
 
         if self._aln is None:
-            self.logger("SequenceData: loading alignment failed... " + str(in_aln),1, warn=True)
-            return ttconf.ERROR
+            raise MissingDataError("SequenceData: loading alignment failed... " + str(in_aln))
 
         if self.full_length:
             if self.is_sparse:
