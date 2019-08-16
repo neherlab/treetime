@@ -261,7 +261,7 @@ class ClockTree(TreeAnc):
         """
         self.logger("ClockTree.init_date_constraints...",2)
         self.tree.coalescent_joint_LH = 0
-        if self.aln and (ancestral_inference or (not hasattr(self.tree.root, 'cseq'))):
+        if self.aln and (not self.sequence_reconstruction):
             self.infer_ancestral_sequences('probabilistic', marginal=self.branch_length_mode=='marginal',
                                             sample_from_profile='root',**kwarks)
 

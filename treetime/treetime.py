@@ -106,7 +106,8 @@ class TreeTime(ClockTree):
 
         use_covariation : bool, optional
             default False, if False, rate estimates will be performed using simple
-            regression ignoring phylogenetic covaration between nodes.
+            regression ignoring phylogenetic covaration between nodes. If vary_rate is True,
+            use_covariation is true by default
 
         **kwargs
            Keyword arguments needed by the downstream functions
@@ -121,7 +122,7 @@ class TreeTime(ClockTree):
         """
 
         # register the specified covaration mode
-        self.use_covariation = use_covariation
+        self.use_covariation = use_covariation or (vary_rate and (not type(vary_rate)==float))
 
         if (self.tree is None) or (self.aln is None and self.data.full_length is None):
             raise MissingDataError("TreeTime.run: ERROR, alignment or tree are missing")
@@ -242,7 +243,7 @@ class TreeTime(ClockTree):
             elif self.clock_model['valid_confidence']:
                 self.calc_rate_susceptibility(params=tt_kwargs)
             else:
-                raise UnknownMethodError("TreeTime.run: rate variation for confidence estimation is not available")
+                raise UnknownMethodError("TreeTime.run: rate variation for confidence estimation is not available. Either specify it explicitly, or estimate from root-to-tip regression.")
 
         # if marginal reconstruction requested, make one more round with marginal=True
         # this will set marginal_pos_LH, which to be used as error bar estimations

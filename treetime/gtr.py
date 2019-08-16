@@ -510,8 +510,8 @@ class GTR(object):
         if gtr.gap_index is not None:
             if pi[gtr.gap_index]<gap_limit:
                 gtr.logger('The model allows for gaps which are estimated to occur at a low fraction of %1.3e'%pi[gtr.gap_index]+
-                       '\n\t\tthis can potentially result in artificats.'+
-                       '\n\t\tgap fraction will be set to %1.4f'%gap_limit,2,warn=True)
+                       ' this can potentially result in artificats.'+
+                       ' gap fraction will be set to %1.4f'%gap_limit,2,warn=True)
             pi[gtr.gap_index] = gap_limit
             pi /= pi.sum()
 

@@ -378,6 +378,7 @@ class TreeAnc(object):
         Should be run once the tree is read and after every rerooting,
         topology change or branch length optimizations.
         """
+        self.sequence_reconstruction = False
         self.tree.root.branch_length = 0.001
         self.tree.root.mutation_length = self.tree.root.branch_length
         self.tree.ladderize()
