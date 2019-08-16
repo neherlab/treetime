@@ -598,13 +598,13 @@ class TreeTime(ClockTree):
 
                 # set parameters for the new node
                 new_node.up = clade
+                new_node.tt = self
                 n1.up = new_node
                 n2.up = new_node
                 if hasattr(clade, "_cseq"):
                     new_node._cseq = clade._cseq
                     self.add_branch_state(new_node)
 
-                new_node.mutations = []
                 new_node.mutation_length = 0.0
                 new_node.branch_length_interpolator = BranchLenInterpolator(new_node, self.gtr, one_mutation=self.one_mutation,
                                                                             branch_length_mode = self.branch_length_mode)

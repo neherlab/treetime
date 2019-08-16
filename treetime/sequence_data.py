@@ -478,3 +478,23 @@ class SequenceData(object):
         else:
             return tmp_seq
 
+    def differences(self, seq1, seq2, seq1_compressed=True, seq2_compressed=True):
+        diffs = []
+        if self.is_sparse:
+            if seq1_compressed: seq1 = self.compressed_to_sparse_sequence(seq1)
+            if seq2_compressed: seq2 = self.compressed_to_sparse_sequence(seq2)
+
+            for pos in set(seq1.keys()).union(seq2.keys()):
+                ref_state = self.ref[pos]
+                s1 = seq1.get(pos, ref_state)
+                s2 = seq2.get(pos, ref_state)
+                if s1!=s2:
+                    diffs.append((s1,pos,s2))
+        else:
+            if seq1_compressed: seq1 = self.compressed_to_full_sequence(seq1)
+            if seq2_compressed: seq2 = self.compressed_to_full_sequence(seq2)
+            diff_pos = np.where(seq1 != seq2)[0]
+            for pos in diff_pos:
+                diffs.append((seq1[pos], pos, seq2[pos]))
+
+        return sorted(diffs, key=lambda x:x[1])

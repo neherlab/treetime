@@ -14,16 +14,30 @@ from .gtr_site_specific import GTR_site_specific
 from .sequence_data import SequenceData
 
 def compressed_sequence(node):
-    if hasattr(node, '_cseq'):
-        return node._cseq
-    elif node.name in node.tt.data.compressed_alignment:
+    if node.name in node.tt.data.compressed_alignment and (not node.tt.reconstructed_tip_sequences):
         return node.tt.data.compressed_alignment[node.name]
+    elif hasattr(node, '_cseq'):
+        return node._cseq
     else:
         raise ValueError('ancestral sequences are not yet inferred')
+
+def mutations(node):
+    """
+    Get the mutations on a tree branch. Take compressed sequences from both sides
+    of the branch (attached to the node), compute mutations between them, and
+    expand these mutations to the positions in the real sequences.
+    """
+    if node.up is None:
+        return []
+    elif (node.tt.reconstructed_tip_sequences is False) and node.name in node.tt.data.aln:
+        return node.tt.data.differences(node.up.cseq, node.tt.data.aln[node.name], seq2_compressed=False)
+    else:
+        return node.tt.data.differences(node.up.cseq, node.cseq)
 
 string_types = [str] if sys.version_info[0]==3 else [str, unicode]
 Clade.sequence = property(lambda x: x.tt.sequence(x, as_string=False))
 Clade.cseq = property(compressed_sequence)
+Clade.mutations = property(mutations)
 
 
 class TreeAnc(object):
@@ -361,7 +375,6 @@ class TreeAnc(object):
         """
         self.tree.root.branch_length = 0.001
         self.tree.root.mutation_length = self.tree.root.branch_length
-        self.tree.root.mutations = []
         self.tree.ladderize()
         self._prepare_nodes()
         self._leaves_lookup = {node.name:node for node in self.tree.get_terminals()}
@@ -472,10 +485,6 @@ class TreeAnc(object):
             N_diff = _ml_anc(reconstruct_tip_sequences=reconstruct_tip_sequences, **kwargs)
         else:
             N_diff = _ml_anc(reconstruct_tip_sequences=reconstruct_tip_sequences, **kwargs)
-
-        for node in self.tree.find_clades(order='preorder'):
-            if node.up:
-                node.mutations = self.get_mutations(node)
 
         return N_diff
 
@@ -909,7 +918,6 @@ class TreeAnc(object):
         for node in nodes_to_reconstruct:
             # root node has no mutations, everything else has been alread y set
             if node.up is None:
-                node.mutations = []
                 continue
 
             # choose the value of the Cx(i), corresponding to the state of the
@@ -942,48 +950,6 @@ class TreeAnc(object):
 ###############################################################
 ### sequence and mutation storing
 ###############################################################
-    def get_mutations(self, node):
-        """
-        Get the mutations on a tree branch. Take compressed sequences from both sides
-        of the branch (attached to the node), compute mutations between them, and
-        expand these mutations to the positions in the real sequences.
-
-        Parameters
-        ----------
-        node : PhyloTree.Clade
-           Tree node, which is the child node attached to the branch.
-
-        keep_var_ambigs : boolean
-           If true, generates mutations based on the *original* sequence, which
-           may include ambiguities. Note sites that only have 1 unambiguous base and ambiguous
-           bases ("AAAAANN") are stripped of ambiguous bases *before* compression, so ambiguous
-           bases will **not** be preserved.
-        Returns
-        -------
-        muts : list
-          List of mutations. Each mutation is represented as tuple of
-          :code:`(parent_state, position, child_state)`.
-        """
-
-        # if ambiguous site are to be restored and node is terminal,
-        # assign original sequence, else reconstructed cseq
-        node_seq = node.cseq
-
-        muts = []
-        diff_pos = np.where(node.up.cseq!=node_seq)[0]
-        for p in diff_pos:
-            anc = node.up.cseq[p]
-            der = node_seq[p]
-            # expand to the positions in real sequence
-            muts.extend([(anc, pos, der) for pos in self.data.compressed_to_full_sequence_map[p]])
-
-        ## TODO: for terminal nodes, fix ambiguous sites that are masked by in
-        # the compressed alignment
-
-        #sort by position
-        return sorted(muts, key=lambda x:x[1])
-
-
     def get_branch_mutation_matrix(self, node, full_sequence=False):
         """uses results from marginal ancestral inference to return a joint
         distribution of the sequence states at both ends of the branch.
@@ -1116,8 +1082,8 @@ class TreeAnc(object):
 
             new_len = max(0,self.optimal_branch_length(node))
 
-            self.logger("Optimization results: old_len=%.4e, new_len=%.4e, naive=%.4e"
-                        " Updating branch length..."%(node.branch_length, new_len, len(node.mutations)*self.one_mutation), 5)
+            self.logger("Optimization results: old_len=%.4e, new_len=%.4e"
+                        " Updating branch length..."%(node.branch_length, new_len), 5)
 
             node.branch_length = new_len
             node.mutation_length=new_len
@@ -1411,7 +1377,7 @@ class TreeAnc(object):
                     T_ia += 0.5*self._branch_length_to_gtr(c) * mut_stack.sum(axis=0) * self.data.multiplicity
                     T_ia += 0.5*self._branch_length_to_gtr(c) * mut_stack.sum(axis=1) * self.data.multiplicity
                     n_ija += mut_stack * self.data.multiplicity
-                elif hasattr(c,'mutations'):
+                else:
                     for a,pos, d in c.mutations:
                         try:
                             i,j = self.gtr.state_index[d], self.gtr.state_index[a]
@@ -1586,18 +1552,4 @@ class TreeAnc(object):
 
     def get_tree_dict(self, keep_var_ambigs=False):
         return self.get_reconstructed_alignment()
-
-
-    def recover_var_ambigs(self):
-        """
-        Recalculates mutations using the original compressed sequence for terminal nodes
-        which will recover ambiguous bases at variable sites. (See 'get_mutations')
-        For fasta input, also regenerates 'sequence' with original ambig sites
-
-        Once this has been run, infer_gtr and other functions which depend on self.gtr.alphabet
-        will not work, as ambiguous bases are not part of that alphabet (only A, C, G, T, -).
-        This is why it's left for the user to choose when to run
-        """
-        for node in self.tree.get_terminals():
-            node.mutations = self.get_mutations(node, keep_var_ambigs=True)
 

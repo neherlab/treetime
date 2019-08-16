@@ -160,9 +160,8 @@ def export_sequences_and_tree(tt, basename, is_vcf=False, zero_based=False,
                               report_ambiguous=False, timetree=False, confidence=False):
     seq_info = is_vcf or tt.aln
     if is_vcf:
-        tt.recover_var_ambigs()
         outaln_name = basename + 'ancestral_sequences.vcf'
-        write_vcf(tt.get_tree_dict(keep_var_ambigs=True), outaln_name)
+        write_vcf(tt.get_reconstructed_alignment(), outaln_name)
     elif tt.aln:
         outaln_name = basename + 'ancestral_sequences.fasta'
         AlignIO.write(tt.get_reconstructed_alignment(), outaln_name, 'fasta')
