@@ -293,11 +293,6 @@ def scan_homoplasies(params):
     ndiff = treeanc.infer_ancestral_sequences('ml', infer_gtr=params.gtr=='infer',
                                       marginal=False, fixed_pi=fixed_pi)
     print("...done.")
-    if ndiff==ttconf.ERROR: # if reconstruction failed, exit
-        print("Something went wrong during ancestral reconstruction, please check your input files.", file=sys.stderr)
-        return 1
-    else:
-        print("...done.")
 
     if is_vcf:
         treeanc.recover_var_ambigs()
@@ -542,7 +537,8 @@ def timetree(params):
 
     # RUN
     root = None if params.keep_root else params.reroot
-    success = myTree.run(root=root, relaxed_clock=relaxed_clock_params,
+    try:
+        success = myTree.run(root=root, relaxed_clock=relaxed_clock_params,
                resolve_polytomies=(not params.keep_polytomies),
                Tc=coalescent, max_iter=params.max_iter,
                fixed_clock_rate=params.clock_rate,
@@ -552,9 +548,9 @@ def timetree(params):
                branch_length_mode = branch_length_mode,
                fixed_pi=fixed_pi,
                use_covariation = params.covariation)
-    if success==ttconf.ERROR: # if TreeTime.run failed, exit
+    except TreeTimeError as e:
         print("\nTreeTime run FAILED: please check above for errors and/or rerun with --verbose 4.\n")
-        return 1
+        raise e
 
     ###########################################################################
     ### OUTPUT and saving of results
@@ -638,10 +634,13 @@ def ancestral_reconstruction(params):
 
     treeanc = TreeAnc(params.tree, aln=aln, ref=ref, gtr=gtr, verbose=1,
                       fill_overhangs=not params.keep_overhangs)
-    ndiff =treeanc.infer_ancestral_sequences('ml', infer_gtr=params.gtr=='infer',
+
+    try:
+        ndiff = treeanc.infer_ancestral_sequences('ml', infer_gtr=params.gtr=='infer',
                                              marginal=params.marginal, fixed_pi=fixed_pi)
-    if ndiff==ttconf.ERROR: # if reconstruction failed, exit
-        return 1
+    except TreeTimeError as e:
+        print("Ancestral reconstruction failed, please see above for error messages and/or rerun with --verbose 4")
+        raise e
 
     ###########################################################################
     ### OUTPUT and saving of results
@@ -710,12 +709,13 @@ def reconstruct_discrete_traits(tree, traits, missing_data='?', pc=1.0, sampling
                    for n in treeanc.tree.get_terminals()]
     treeanc.aln = MultipleSeqAlignment(pseudo_seqs)
 
-    ndiff = treeanc.infer_ancestral_sequences(method='ml', infer_gtr=True,
+    try:
+        ndiff = treeanc.infer_ancestral_sequences(method='ml', infer_gtr=True,
             store_compressed=False, pc=pc, marginal=True, normalized_rate=False,
             fixed_pi=weights)
-
-    if ndiff==ttconf.ERROR: # if reconstruction failed, exit
-        return 1
+    except TreeTimeError as e:
+        print("Ancestral reconstruction failed, please see above for error messages and/or rerun with --verbose 4")
+        raise e
 
     if sampling_bias_correction:
         treeanc.gtr.mu *= sampling_bias_correction
@@ -830,14 +830,15 @@ def estimate_clock_model(params):
         return 1
 
     basename = get_basename(params, outdir)
-    myTree = TreeTime(dates=dates, tree=params.tree, aln=aln, gtr='JC69',
+    try:
+        myTree = TreeTime(dates=dates, tree=params.tree, aln=aln, gtr='JC69',
                       verbose=params.verbose, seq_len=params.sequence_length,
                       ref=ref)
-    myTree.tip_slack=params.tip_slack
-    if myTree.tree is None:
-        print("ERROR: tree loading failed. exiting...")
-        return 1
+    except TreeTimeError as e:
+        print("TreeTime setup failed. Please see above for error messages and/or rerun with --verbose 4")
+        raise e
 
+    myTree.tip_slack=params.tip_slack
     if params.clock_filter:
         n_bad = [n.name for n in myTree.tree.get_terminals() if n.bad_branch]
         myTree.clock_filter(n_iqd=params.clock_filter, reroot=params.reroot or 'least-squares')
@@ -853,14 +854,14 @@ def estimate_clock_model(params):
             myTree.run(root="least-squares", max_iter=0,
                        use_covariation=params.covariation)
 
-        res = myTree.reroot(params.reroot,
+        try:
+            res = myTree.reroot(params.reroot,
                       force_positive=not params.allow_negative_rate)
-        myTree.get_clock_model(covariation=params.covariation)
+        except TreeTimeError as e:
+            print("ERROR: unknown root or rooting mechanism!")
+            raise e
 
-        if res==ttconf.ERROR:
-            print("ERROR: unknown root or rooting mechanism!\n"
-                  "\tvalid choices are 'least-squares', 'ML', and 'ML-rough'")
-            return 1
+        myTree.get_clock_model(covariation=params.covariation)
     else:
         myTree.get_clock_model(covariation=params.covariation)
 

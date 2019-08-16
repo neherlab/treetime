@@ -123,8 +123,7 @@ class TreeTime(ClockTree):
         self.use_covariation = use_covariation
 
         if (self.tree is None) or (self.aln is None and self.data.full_length is None):
-            self.logger("TreeTime.run: ERROR, alignment or tree are missing", 0)
-            return ttconf.ERROR
+            raise MissingDataError("TreeTime.run: ERROR, alignment or tree are missing")
         if (self.aln is None):
             branch_length_mode='input'
 
@@ -160,11 +159,9 @@ class TreeTime(ClockTree):
             else:
                 plot_rtt=False
             reroot_mechanism = 'least-squares' if root=='clock_filter' else root
-            if self.clock_filter(reroot=reroot_mechanism, n_iqd=n_iqd, plot=plot_rtt, fixed_clock_rate=fixed_clock_rate)==ttconf.ERROR:
-                return ttconf.ERROR
+            self.clock_filter(reroot=reroot_mechanism, n_iqd=n_iqd, plot=plot_rtt, fixed_clock_rate=fixed_clock_rate)
         elif root is not None:
-            if self.reroot(root=root, clock_rate=fixed_clock_rate)==ttconf.ERROR:
-                return ttconf.ERROR
+            self.reroot(root=root, clock_rate=fixed_clock_rate)
 
         if self.branch_length_mode=='input':
             if self.aln:
@@ -181,8 +178,7 @@ class TreeTime(ClockTree):
         self.LH =[[seq_LH, self.tree.positional_joint_LH, 0]]
 
         if root is not None and max_iter:
-            if self.reroot(root='least-squares' if root=='clock_filter' else root, clock_rate=fixed_clock_rate)==ttconf.ERROR:
-                return ttconf.ERROR
+            self.reroot(root='least-squares' if root=='clock_filter' else root, clock_rate=fixed_clock_rate)
 
         # iteratively reconstruct ancestral sequences and re-infer
         # time tree to ensure convergence.
@@ -241,14 +237,11 @@ class TreeTime(ClockTree):
         # rerun the estimation for variations of the rate
         if vary_rate:
             if type(vary_rate)==float:
-                res = self.calc_rate_susceptibility(rate_std=vary_rate, params=tt_kwargs)
+                self.calc_rate_susceptibility(rate_std=vary_rate, params=tt_kwargs)
             elif self.clock_model['valid_confidence']:
-                res = self.calc_rate_susceptibility(params=tt_kwargs)
+                self.calc_rate_susceptibility(params=tt_kwargs)
             else:
-                res = ttconf.ERROR
-
-            if res==ttconf.ERROR:
-                self.logger("TreeTime.run: rate variation failed and can't be used for confidence estimation", 1, warn=True)
+                raise UnknownMethodError("TreeTime.run: rate variation for confidence estimation is not available")
 
         # if marginal reconstruction requested, make one more round with marginal=True
         # this will set marginal_pos_LH, which to be used as error bar estimations
@@ -325,8 +318,7 @@ class TreeTime(ClockTree):
 
         terminals = self.tree.get_terminals()
         if reroot:
-            if self.reroot(root='least-squares' if reroot=='best' else reroot, covariation=False, clock_rate=fixed_clock_rate)==ttconf.ERROR:
-                return ttconf.ERROR
+            self.reroot(root='least-squares' if reroot=='best' else reroot, covariation=False, clock_rate=fixed_clock_rate)
         else:
             self.get_clock_model(covariation=False, slope=fixed_clock_rate)
 
@@ -347,8 +339,8 @@ class TreeTime(ClockTree):
                 node.bad_branch=False
 
         # redo root estimation after outlier removal
-        if reroot and self.reroot(root=reroot, clock_rate=fixed_clock_rate)==ttconf.ERROR:
-                return ttconf.ERROR
+        if reroot:
+            self.reroot(root=reroot, clock_rate=fixed_clock_rate)
 
         if plot:
             self.plot_root_to_tip()
@@ -444,8 +436,7 @@ class TreeTime(ClockTree):
                                    if n.raw_date_constraint is not None],
                                    key=lambda x:np.mean(x.raw_date_constraint))[0]
             else:
-                self.logger('TreeTime.reroot -- ERROR: unsupported rooting mechanisms or root not found',0,warn=True)
-                return ttconf.ERROR
+                raise UnknownMethodError('TreeTime.reroot -- ERROR: unsupported rooting mechanisms or root not found')
 
             #this forces a bifurcating root, as we want. Branch lengths will be reoptimized anyway.
             #(Without outgroup_branch_length, gives a trifurcating root, but this will mean
@@ -453,9 +444,6 @@ class TreeTime(ClockTree):
             self.tree.root_with_outgroup(new_root, outgroup_branch_length=new_root.branch_length/2)
             self.get_clock_model(covariation=use_cov, slope = slope)
 
-
-        if new_root == ttconf.ERROR:
-            return ttconf.ERROR
 
         self.logger("TreeTime.reroot: Tree was re-rooted to node "
                     +('new_node' if new_root.name is None else new_root.name), 2)
@@ -887,15 +875,13 @@ def plot_vs_years(tt, step = None, ax=None, confidence=None, ticks=True, **kwarg
     if confidence:
         tree_layout(tt.tree)
         if not hasattr(tt.tree.root, "marginal_inverse_cdf"):
-            print("marginal time tree reconstruction required for confidence intervals")
-            return ttconf.ERROR
+            raise NotReadyError("marginal time tree reconstruction required for confidence intervals")
         elif type(confidence) is float:
             cfunc = tt.get_max_posterior_region
         elif len(confidence)==2:
             cfunc = tt.get_confidence_interval
         else:
-            print("confidence needs to be either a float (for max posterior region) or a two numbers specifying lower and upper bounds")
-            return ttconf.ERROR
+            raise NotReadyError("confidence needs to be either a float (for max posterior region) or a two numbers specifying lower and upper bounds")
 
         for n in tt.tree.find_clades():
             pos = cfunc(n, confidence)

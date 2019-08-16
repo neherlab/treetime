@@ -13,13 +13,31 @@ from .gtr import GTR
 from .gtr_site_specific import GTR_site_specific
 from .sequence_data import SequenceData
 
+class TreeTimeError(Exception):
+    """TreeTimeError class"""
+    pass
+
+class MissingDataError(TreeTimeError):
+    """MissingDataError class raised when tree or alignment are missing"""
+    pass
+
+class UnknownMethodError(TreeTimeError):
+    """MissingDataError class raised when tree or alignment are missing"""
+    pass
+
+class NotReadyError(TreeTimeError):
+    """NotReadyError class raised when results are requested before inference"""
+    pass
+
+
+
 def compressed_sequence(node):
     if node.name in node.tt.data.compressed_alignment and (not node.tt.reconstructed_tip_sequences):
         return node.tt.data.compressed_alignment[node.name]
     elif hasattr(node, '_cseq'):
         return node._cseq
     else:
-        raise ValueError('ancestral sequences are not yet inferred')
+        raise ValueError('Ancestral sequences are not yet inferred')
 
 def mutations(node):
     """
@@ -29,7 +47,7 @@ def mutations(node):
     """
     if node.up is None:
         return []
-    elif (node.tt.reconstructed_tip_sequences is False) and node.name in node.tt.data.aln:
+    elif (not node.tt.reconstructed_tip_sequences) and node.name in node.tt.data.aln:
         return node.tt.data.differences(node.up.cseq, node.tt.data.aln[node.name], seq2_compressed=False)
     else:
         return node.tt.data.differences(node.up.cseq, node.cseq)
@@ -132,7 +150,7 @@ class TreeAnc(object):
         self._tree = None
         self.tree = tree
         if tree is None:
-            raise AttributeError("TreeAnc: tree loading failed! exiting")
+            raise ValueError("TreeAnc: tree loading failed! exiting")
 
         # set up GTR model
         self._gtr = None
@@ -170,12 +188,14 @@ class TreeAnc(object):
             regardless of its log-level.
 
         """
+        lw=80
         if level<self.verbose or (warn and level<=self.verbose):
+            from textwrap import fill
             dt = time.time() - self.t_start
             outstr = '\n' if level<2 else ''
-            outstr += format(dt, '4.2f')+'\t'
-            outstr += level*'-'
-            outstr += msg
+            initial_indent = format(dt, '4.2f')+'\t' + level*'-'
+            subsequent_indent = " "*len(format(dt, '4.2f')) + "\t" + " "*level
+            outstr += fill(msg, width=lw, initial_indent=initial_indent, subsequent_indent=subsequent_indent)
             print(outstr, file=sys.stdout)
 
 
@@ -208,7 +228,7 @@ class TreeAnc(object):
             the new GTR object
         """
         if not (isinstance(value, GTR) or isinstance(value, GTR_site_specific)):
-            raise TypeError(" GTR instance expected")
+            raise TypeError("GTR instance expected")
         self._gtr = value
 
 
@@ -279,6 +299,7 @@ class TreeAnc(object):
         loaded from file (if in_tree is str) or assigned (if in_tree is a Phylo.tree)
         '''
         from os.path import isfile
+        self._tree = None
         if isinstance(in_tree, Phylo.BaseTree.Tree):
             self._tree = in_tree
         elif type(in_tree) in string_types and isfile(in_tree):
@@ -289,13 +310,10 @@ class TreeAnc(object):
                 if fmt in ['nexus', 'nex']:
                     self._tree=Phylo.read(in_tree, 'nexus')
                 else:
-                    self.logger('TreeAnc: could not load tree, format needs to be nexus or newick! input was '+str(in_tree),1)
-                    self._tree = None
-                    return ttconf.ERROR
+                    raise ValueError('TreeAnc: could not load tree, format needs to be nexus or newick! input was '+str(in_tree))
         else:
-            self.logger('TreeAnc: could not load tree! input was '+str(in_tree),0)
-            self._tree = None
-            return ttconf.ERROR
+            raise ValueError('TreeAnc: could not load tree! input was '+str(in_tree))
+
 
         # remove all existing sequence attributes
         for node in self._tree.find_clades():
@@ -350,10 +368,8 @@ class TreeAnc(object):
                 self.logger("***WARNING: TreeAnc._attach_sequences_to_nodes: NO SEQUENCE FOR LEAF: %s" % l.name, 0, warn=True)
                 failed_leaves += 1
                 if failed_leaves > self.tree.count_terminals()/3:
-                    self.logger("ERROR: At least 30\\% terminal nodes cannot be assigned a sequence!\n", 0, warn=True)
-                    self.logger("Are you sure the alignment belongs to the tree?", 2, warn=True)
-                    self.ok = False
-                    return ttconf.ERROR
+                    raise MissingDataError("TreeAnc._check_alignment_tree_gtr_consistency: At least 30\\% terminal nodes cannot be assigned a sequence!\n"
+                                           "Are you sure the alignment belongs to the tree?", 2, warn=True)
             else: # could not assign sequence for internal node - is OK
                 pass
 
@@ -463,10 +479,15 @@ class TreeAnc(object):
            reconstruction.  If there were no pre-set sequences, returns N*L
 
         """
-        self.logger("TreeAnc.infer_ancestral_sequences with method: %s, %s"%(method, 'marginal' if marginal else 'joint'), 1)
         if not self.ok:
-            self.logger("TreeAnc.infer_ancestral_sequences: ERROR, sequences or tree are missing", 0)
-            return ttconf.ERROR
+            raise MissingDataError("TreeAnc.infer_ancestral_sequences: ERROR, sequences or tree are missing")
+
+        self.logger("TreeAnc.infer_ancestral_sequences with method: %s, %s"%(method, 'marginal' if marginal else 'joint'), 1)
+        if not reconstruct_tip_sequences:
+            self.logger("TreeAnc.infer_ancestral_sequences: Previous versions of TreeTime (<0.7.0)"
+                        " reconstructed sequences of tips when at positions with ambiguous bases. "
+                        " This resulted in unexpected behavior is some cases and is no longer done by default."
+                        " If you want to fill in those sites with their most likely state, rerun with `reconstruct_tip_sequences=True`.",0)
 
         if method.lower() in ['ml', 'probabilistic']:
             if marginal:
@@ -479,9 +500,7 @@ class TreeAnc(object):
             raise ValueError("Reconstruction method needs to be in ['ml', 'probabilistic', 'fitch', 'parsimony'], got '{}'".format(method))
 
         if infer_gtr:
-            tmp = self.infer_gtr(marginal=marginal, **kwargs)
-            if tmp==ttconf.ERROR:
-                return tmp
+            self.infer_gtr(marginal=marginal, **kwargs)
             N_diff = _ml_anc(reconstruct_tip_sequences=reconstruct_tip_sequences, **kwargs)
         else:
             N_diff = _ml_anc(reconstruct_tip_sequences=reconstruct_tip_sequences, **kwargs)
@@ -1069,8 +1088,7 @@ class TreeAnc(object):
 
         self.logger("TreeAnc.optimize_branch_length: running branch length optimization using jointML ancestral sequences",1)
         if (self.tree is None) or (self.data.aln is None):
-            self.logger("TreeAnc.optimize_branch_length: ERROR, alignment or tree are missing", 0)
-            return ttconf.ERROR
+            raise MissingDataError("TreeAnc.optimize_branch_length: ERROR, alignment or tree are missing.")
 
         store_old_dist = kwargs['store_old'] if 'store_old' in kwargs else False
 
@@ -1258,7 +1276,7 @@ class TreeAnc(object):
                                           marginal=marginal_sequences, **kwargs)
             return ttconf.success
         elif branch_length_mode!='joint':
-            return ttconf.ERROR
+            raise UnknownMethodError("TreeAnc.optimize_tree: `branch_length_mode` should be in ['marginal', 'joint', 'input']")
 
         self.logger("TreeAnc.optimize_tree: sequences...", 1)
         N_diff = self.reconstruct_anc(method='probabilistic', infer_gtr=infer_gtr, pc=pc,
@@ -1351,8 +1369,7 @@ class TreeAnc(object):
             raise TypeError("TreeAnc.infer_gtr(): sequence compression and site specific GTR models are incompatible!" )
 
         if not self.ok:
-            self.logger("TreeAnc.infer_gtr: ERROR, sequences or tree are missing", 0)
-            return ttconf.ERROR
+            raise MissingDataError("TreeAnc.infer_gtr: ERROR, sequences or tree are missing", 0)
 
         # if ancestral sequences are not in place, reconstruct them
         if marginal and self.sequence_reconstruction!='marginal':
@@ -1469,16 +1486,16 @@ class TreeAnc(object):
 ###############################################################################
 ### Utility functions
 ###############################################################################
-    def get_reconstructed_alignment(self, reconstructed_leaves=False):
+    def get_reconstructed_alignment(self, reconstructed_tip_sequences=False):
         """
         Get the multiple sequence alignment, including reconstructed sequences for
         the internal nodes.
 
         Parameters
         ----------
-        reconstructed_leaves : bool, optional
-            return reconstructed sequences of terminal nodes. this makes sense only
-            if ancestral sequences were run with `reconstruct_tip_sequences`
+        reconstructed_tip_sequences : bool, optional
+            return reconstructed sequences of terminal nodes. If these have not
+            been reconstructed yet, this will trigger a rerun of `infer_ancestral_sequences`
 
         Returns
         -------
@@ -1490,9 +1507,9 @@ class TreeAnc(object):
         from Bio.Seq import Seq
         from Bio.SeqRecord import SeqRecord
         self.logger("TreeAnc.get_reconstructed_alignment ...",2)
-        if not self.sequence_reconstruction:
+        if (not self.sequence_reconstruction) or (reconstructed_tip_sequences != self.reconstructed_tip_sequences):
             self.logger("TreeAnc.reconstructed_alignment... reconstruction not yet done",3)
-            self.infer_ancestral_sequences()
+            self.infer_ancestral_sequences(reconstruct_tip_sequences=reconstructed_tip_sequences)
 
         if self.data.is_sparse:
             new_aln = {'sequences': {n.name: self.data.compressed_to_sparse_sequence(n.cseq)
@@ -1502,7 +1519,7 @@ class TreeAnc(object):
             new_aln['inferred_const_sites'] = self.data.inferred_const_sites
         else:
             new_aln = MultipleSeqAlignment([SeqRecord(id=n.name,
-                                              seq=Seq(self.sequence(n, reconstructed=reconstructed_leaves,
+                                              seq=Seq(self.sequence(n, reconstructed=reconstructed_tip_sequences,
                                                       as_string=True, compressed=False)), description="")
                                         for n in self.tree.find_clades()])
 
@@ -1535,6 +1552,9 @@ class TreeAnc(object):
                 nodes = self.leaves_lookup
             else:
                 raise ValueError("TreeAnc.sequence accepts strings are argument only when the node is terminal and present in the leave lookup table")
+
+        if reconstructed and not self.reconstructed_tip_sequences:
+            raise ValueError("TreeAnc.sequence can only return reconstructed terminal nodes if TreeAnc.infer_ancestral_sequences was run with this the flag `reconstruct_tip_sequences`.")
 
         if compressed:
             if (not reconstructed) and (node.name in self.data.compressed_alignment):

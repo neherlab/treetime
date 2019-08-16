@@ -79,8 +79,7 @@ class ClockTree(TreeAnc):
         self.clock_model=None
         self.use_covariation=use_covariation # if false, covariation will be ignored in rate estimates.
         self._set_precision(precision)
-        if self._assign_dates()==ttconf.ERROR:
-            raise ValueError("ClockTree requires date constraints!")
+        self._assign_dates()
 
 
     def _assign_dates(self):
@@ -92,8 +91,7 @@ class ClockTree(TreeAnc):
             success/error code
         """
         if self.tree is None:
-            self.logger("ClockTree._assign_dates: tree is not set, can't assign dates", 0)
-            return ttconf.ERROR
+            raise MissingDataError("ClockTree._assign_dates: tree is not set, can't assign dates")
 
         bad_branch_counter = 0
         for node in self.tree.find_clades(order='postorder'):
@@ -128,8 +126,7 @@ class ClockTree(TreeAnc):
                 bad_branch_counter += 1
 
         if bad_branch_counter>self.tree.count_terminals()-3:
-            self.logger("ERROR: ALMOST NO VALID DATE CONSTRAINTS, EXITING", 1, warn=True)
-            return ttconf.ERROR
+            raise MissingDataError("ERROR: ALMOST NO VALID DATE CONSTRAINTS")
 
         return ttconf.SUCCESS
 
@@ -725,8 +722,8 @@ class ClockTree(TreeAnc):
         params = params or {}
         if rate_std is None:
             if not (self.clock_model['valid_confidence'] and 'cov' in self.clock_model):
-                self.logger("ClockTree.calc_rate_susceptibility: need valid standard deviation of the clock rate to estimate dating error.", 1, warn=True)
-                return ttconf.ERROR
+                raise ValueError("ClockTree.calc_rate_susceptibility: need valid standard deviation of the clock rate to estimate dating error.")
+
             rate_std = np.sqrt(self.clock_model['cov'][0,0])
 
         current_rate = np.abs(self.clock_model['slope'])
