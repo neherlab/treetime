@@ -189,6 +189,8 @@ def make_parser():
                         help='maximal number of iterations the inference cycle is run. Note that for polytomy resolution and coalescence models max_iter should be at least 2')
     t_parser.add_argument('--coalescent', default="0.0", type=str,
                           help=coalescent_description)
+    t_parser.add_argument('--n-skyline', default="20", type=int,
+                          help="number of grid points in skyline coalescent model")
     t_parser.add_argument('--plot-tree', default="timetree.pdf",
                             help = "filename to save the plot to. Suffix will determine format"
                                    " (choices pdf, png, svg, default=pdf)")

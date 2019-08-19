@@ -526,7 +526,7 @@ class ClockTree(TreeAnc):
                 # no information
                 node.marginal_pos_Lx = None
             else: # all other nodes
-                if node.date_constraint is not None and node.date_constraint.is_delta: # there is a time constraint
+                if node.date_constraint is not None and node.date_constraint.is_delta: # there is a hard time constraint
                     # initialize the Lx for nodes with precise date constraint:
                     # subtree probability given the position of the parent node
                     # position of the parent node is given by the branch length

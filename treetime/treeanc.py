@@ -1364,12 +1364,9 @@ class TreeAnc(object):
 
         # if ancestral sequences are not in place, reconstruct them
         if marginal and self.sequence_reconstruction!='marginal':
-            self.infer_ancestral_sequences(marginal=True, **kwargs)
-        else:
-            if self.sequence_reconstruction:
-                self.tree.root.cseq
-            else:
-                self.infer_ancestral_sequences(marginal=False, **kwargs)
+            self._ml_anc_marginal(**kwargs)
+        elif not self.sequence_reconstruction:
+            self._ml_anc_joint(**kwargs)
 
         n = self.gtr.n_states
         L = len(self.tree.root._cseq)

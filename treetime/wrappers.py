@@ -529,9 +529,9 @@ def timetree(params):
     elif params.confidence and params.covariation:
         vary_rate = True
     elif params.confidence:
-        print("Outside of covariation aware mode TreeTime cannot estimate confidence intervals "
+        print(fill("Outside of covariation aware mode TreeTime cannot estimate confidence intervals "
                 "without specified standard deviation of the clock rate.Please specify '--clock-std-dev' "
-                "or rerun with '--covariation'. Will proceed without confidence estimation")
+                "or rerun with '--covariation'. Will proceed without confidence estimation"))
         vary_rate = False
         calc_confidence = False
     else:
@@ -549,7 +549,7 @@ def timetree(params):
                vary_rate = vary_rate,
                branch_length_mode = branch_length_mode,
                fixed_pi=fixed_pi,
-               use_covariation = params.covariation)
+               use_covariation = params.covariation, n_points=params.n_skyline)
     except TreeTimeError as e:
         print("\nTreeTime run FAILED: please check above for errors and/or rerun with --verbose 4.\n")
         raise e
@@ -590,7 +590,7 @@ def timetree(params):
                                       or params.tip_labels) else '')
 
     plot_vs_years(myTree, show_confidence=False, label_func=label_func,
-                  confidence=0.9 if params.confidence else None)
+                  confidence=0.9 if calc_confidence else None)
     tree_fname = (outdir + params.plot_tree)
     plt.savefig(tree_fname)
     print("--- saved tree as \n\t %s\n"%tree_fname)
@@ -661,14 +661,15 @@ def ancestral_reconstruction(params):
 
 def reconstruct_discrete_traits(tree, traits, missing_data='?', pc=1.0, sampling_bias_correction=None,
                                 weights=None, verbose=0):
+    print(set(traits.values()))
     unique_states = sorted(set(traits.values()))
     nc = len(unique_states)
     if nc>180:
         print("mugration: can't have more than 180 states!", file=sys.stderr)
-        return 1
+        return None, None, None
     elif nc<2:
         print("mugration: only one or zero states found -- this doesn't make any sense", file=sys.stderr)
-        return 1
+        return None, None, None
 
     ###########################################################################
     ### make a single character alphabet that maps to discrete states
@@ -714,7 +715,7 @@ def reconstruct_discrete_traits(tree, traits, missing_data='?', pc=1.0, sampling
     try:
         ndiff = treeanc.infer_ancestral_sequences(method='ml', infer_gtr=True,
             store_compressed=False, pc=pc, marginal=True, normalized_rate=False,
-            fixed_pi=weights)
+            fixed_pi=weights, reconstruct_tip_sequences=True)
     except TreeTimeError as e:
         print("\nAncestral reconstruction failed, please see above for error messages and/or rerun with --verbose 4\n")
         raise e
@@ -722,7 +723,7 @@ def reconstruct_discrete_traits(tree, traits, missing_data='?', pc=1.0, sampling
     if sampling_bias_correction:
         treeanc.gtr.mu *= sampling_bias_correction
         treeanc.infer_ancestral_sequences(infer_gtr=False, store_compressed=False,
-                                     marginal=True, normalized_rate=False)
+                                     marginal=True, normalized_rate=False, reconstruct_tip_sequences=True)
     return treeanc, letter_to_state, reverse_alphabet
 
 
@@ -756,10 +757,14 @@ def mugration(params):
         print("Attribute for mugration inference was not specified. Using "+attr, file=sys.stderr)
 
     leaf_to_attr = {x[taxon_name]:x[attr] for xi, x in states.iterrows()
-                    if x[attr]!=params.missing_data}
+                    if x[attr]!=params.missing_data and type(x[attr])!=float and (str(x[attr])!='nan')}
 
     mug, letter_to_state, reverse_alphabet = reconstruct_discrete_traits(params.tree, leaf_to_attr, missing_data=params.missing_data,
             pc=params.pc, sampling_bias_correction=params.sampling_bias_correction, verbose=params.verbose)
+
+    if mug is None:
+        print("Mugration inference failed, check error messages above and your input data.")
+        return 1
 
     unique_states = sorted(letter_to_state.values())
     ###########################################################################
@@ -778,9 +783,9 @@ def mugration(params):
 
     terminal_count = 0
     for n in mug.tree.find_clades():
+        n.confidence=None
         if n.up is None:
             continue
-        n.confidence=None
         # due to a bug in older versions of biopython that truncated filenames in nexus export
         # we truncate them by hand and make them unique.
         if n.is_terminal() and len(n.name)>40 and bioversion<"1.69":
