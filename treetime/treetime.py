@@ -860,10 +860,14 @@ def plot_vs_years(tt, step = None, ax=None, confidence=None, ticks=True, **kwarg
         tick_vals = [x+offset-shift for x in xticks]
 
     ax.set_xticks(xticks)
-    ax.set_xticklabels(map(str, tick_vals))
+    if step>=1:
+        tick_labels = ["%d"%(int(x)) for x in tick_vals]
+    else:
+        tick_labels = ["%1.2f"%(x) for x in tick_vals]
+    ax.set_xlim((0,date_range))
+    ax.set_xticklabels(tick_labels)
     ax.set_xlabel('year')
     ax.set_ylabel('')
-    ax.set_xlim((0,date_range))
 
     # put shaded boxes to delineate years
     if step:
@@ -878,7 +882,7 @@ def plot_vs_years(tt, step = None, ax=None, confidence=None, ticks=True, **kwarg
                           edgecolor=[1,1,1])
             ax.add_patch(r)
             if year in tick_vals and pos>=xlim[0] and pos<=xlim[1] and ticks:
-                label_str = str(step*(year//step)) if step<1 else  str(int(year))
+                label_str = "%1.2f"%(step*(year//step)) if step<1 else  str(int(year))
                 ax.text(pos,ylim[0]-0.04*(ylim[1]-ylim[0]), label_str,
                         horizontalalignment='center')
         ax.set_axis_off()
