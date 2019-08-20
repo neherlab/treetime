@@ -339,12 +339,19 @@ class TreeTime(ClockTree):
 
         residuals = np.array(list(res.values()))
         iqd = np.percentile(residuals,75) - np.percentile(residuals,25)
+        bad_branch_count = 0
         for node,r in res.items():
             if abs(r)>n_iqd*iqd and node.up.up is not None:
                 self.logger('TreeTime.ClockFilter: marking %s as outlier, residual %f interquartile distances'%(node.name,r/iqd), 3, warn=True)
                 node.bad_branch=True
+                bad_branch_count += 1
             else:
                 node.bad_branch=False
+
+        if bad_branch_count>0.34*self.tree.count_terminals():
+            self.logger("TreeTime.clock_filter: More than a third of leaves have been excluded by the clock filter. Please check your input data.", 0, warn=True)
+        # reassign bad_branch flags to internal nodes
+        self.prepare_tree()
 
         # redo root estimation after outlier removal
         if reroot and self.reroot(root=reroot, clock_rate=fixed_clock_rate)==ttconf.ERROR:

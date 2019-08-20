@@ -385,6 +385,10 @@ class TreeRegression(object):
                  + self.propagate_averages(n, tv, bv*(1-x), var*(1-x), outgroup=True)
             return base_regression(tmpQ, slope=slope)['chisq']
 
+        if n.bad_branch or (n!=self.tree.root and n.up.bad_branch):
+            return np.nan, np.inf
+
+
         chisq_prox = np.inf if n.is_terminal() else base_regression(n.Qtot, slope=slope)['chisq']
         chisq_dist = np.inf if n==self.tree.root else base_regression(n.up.Qtot, slope=slope)['chisq']
 
@@ -427,6 +431,8 @@ class TreeRegression(object):
             regression parameters
         """
         best_root = self.find_best_root(force_positive=force_positive, slope=slope)
+        if best_root is None:
+            raise ValueError("Rerooting failed!")
         best_node = best_root["node"]
 
         x = best_root["split"]
