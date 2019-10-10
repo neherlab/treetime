@@ -17,6 +17,7 @@ class NotReadyError(TreeTimeError):
     """NotReadyError class raised when results are requested before inference"""
     pass
 
+
 from .treeanc import TreeAnc
 from .treetime import TreeTime, plot_vs_years
 from .clock_tree import ClockTree

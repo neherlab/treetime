@@ -333,12 +333,19 @@ class TreeTime(ClockTree):
 
         residuals = np.array(list(res.values()))
         iqd = np.percentile(residuals,75) - np.percentile(residuals,25)
+        bad_branch_count = 0
         for node,r in res.items():
             if abs(r)>n_iqd*iqd and node.up.up is not None:
                 self.logger('TreeTime.ClockFilter: marking %s as outlier, residual %f interquartile distances'%(node.name,r/iqd), 3, warn=True)
                 node.bad_branch=True
+                bad_branch_count += 1
             else:
                 node.bad_branch=False
+
+        if bad_branch_count>0.34*self.tree.count_terminals():
+            self.logger("TreeTime.clock_filter: More than a third of leaves have been excluded by the clock filter. Please check your input data.", 0, warn=True)
+        # reassign bad_branch flags to internal nodes
+        self.prepare_tree()
 
         # redo root estimation after outlier removal
         if reroot:
@@ -850,10 +857,14 @@ def plot_vs_years(tt, step = None, ax=None, confidence=None, ticks=True, **kwarg
         tick_vals = [x+offset-shift for x in xticks]
 
     ax.set_xticks(xticks)
-    ax.set_xticklabels(map(str, tick_vals))
+    if step>=1:
+        tick_labels = ["%d"%(int(x)) for x in tick_vals]
+    else:
+        tick_labels = ["%1.2f"%(x) for x in tick_vals]
+    ax.set_xlim((0,date_range))
+    ax.set_xticklabels(tick_labels)
     ax.set_xlabel('year')
     ax.set_ylabel('')
-    ax.set_xlim((0,date_range))
 
     # put shaded boxes to delineate years
     if step:
@@ -868,7 +879,7 @@ def plot_vs_years(tt, step = None, ax=None, confidence=None, ticks=True, **kwarg
                           edgecolor=[1,1,1])
             ax.add_patch(r)
             if year in tick_vals and pos>=xlim[0] and pos<=xlim[1] and ticks:
-                label_str = str(step*(year//step)) if step<1 else  str(int(year))
+                label_str = "%1.2f"%(step*(year//step)) if step<1 else  str(int(year))
                 ax.text(pos,ylim[0]-0.04*(ylim[1]-ylim[0]), label_str,
                         horizontalalignment='center')
         ax.set_axis_off()

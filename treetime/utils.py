@@ -386,6 +386,7 @@ def build_newick_fasttree(aln_fname, nuc=True):
 
 def build_newick_raxml(aln_fname, nthreads=2, raxml_bin="raxml", **kwargs):
     import shutil,os
+    print("Building tree with raxml")
     from Bio import Phylo, AlignIO
     AlignIO.write(AlignIO.read(aln_fname, 'fasta'),"temp.phyx", "phylip-relaxed")
     cmd = raxml_bin + " -f d -T " + str(nthreads) + " -m GTRCAT -c 25 -p 235813 -n tre -s temp.phyx"
@@ -397,12 +398,33 @@ def build_newick_iqtree(aln_fname, nthreads=2, iqtree_bin="iqtree",
                         iqmodel="HKY",  **kwargs):
     import os
     from Bio import Phylo, AlignIO
-    with open(aln_fname) as ifile:
-        tmp_seqs = ifile.readlines()
+    print("Building tree with iqtree")
+    aln = None
+    for fmt in ['fasta', 'phylip-relaxed']:
+        try:
+            aln = AlignIO.read(aln_fname, fmt)
+            break
+        except:
+            continue
+
+    if aln is None:
+        raise ValueError("failed to read alignment for tree building")
+
     aln_file = "temp.fasta"
-    with open(aln_file, 'w') as ofile:
-        for line in tmp_seqs:
-            ofile.write(line.replace('/', '_X_X_').replace('|','_Y_Y_'))
+    seq_names = set()
+    for s in aln:
+        tmp  = s.id
+        for c, sub in zip('/|()', 'VWXY'):
+            tmp = tmp.replace(c, '_%s_%s_'%(sub,sub))
+        if tmp in seq_names:
+            print("A sequence with name {} already exists, skipping....".format(s.id))
+            continue
+        s.id = tmp
+        s.name = s.id
+        s.description = ''
+        seq_names.add(s.id)
+
+    AlignIO.write(aln, aln_file, 'fasta')
 
     fast_opts = [
         "-ninit", "2",
@@ -416,7 +438,10 @@ def build_newick_iqtree(aln_fname, nthreads=2, iqtree_bin="iqtree",
     os.system(" ".join(call))
     T = Phylo.read(aln_file+".treefile", 'newick')
     for n in T.get_terminals():
-        n.name = n.name.replace('_X_X_','/').replace('_Y_Y_','|')
+        tmp = n.name
+        for c, sub in zip('/|()', 'VWXY'):
+            tmp = tmp.replace('_%s_%s_'%(sub,sub), c)
+        n.name = tmp
     return T
 
 if __name__ == '__main__':
