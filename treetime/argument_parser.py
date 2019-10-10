@@ -201,6 +201,7 @@ def make_parser():
                             help = "don't show tip labels (default for small trees with >=30 leaves)")
     add_anc_arguments(t_parser)
     add_common_args(t_parser)
+    t_parser.add_argument("--version", action="version", version="%(prog)s " + treetime.version)
 
     def toplevel(params):
         if (params.aln or params.tree) and params.dates:
@@ -279,7 +280,7 @@ def make_parser():
 
     # make a version subcommand
     v_parser = subparsers.add_parser('version', description='print version')
-    v_parser.set_defaults(func=lambda x: print(treetime.version))
+    v_parser.set_defaults(func=lambda x: print("treetime "+treetime.version))
 
     ## call the relevant function and return
     if py2:
