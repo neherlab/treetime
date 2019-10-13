@@ -1472,6 +1472,33 @@ class TreeAnc(object):
                 break
         return ttconf.SUCCESS
 
+    def optimize_gtr_rate(self):
+        """Estimate the overal rate of the GTR model by optimizing the full
+        likelihood of the sequence data.
+        """
+        from scipy.optimize import minimize_scalar
+        def cost_func(sqrt_mu):
+            self.gtr.mu = sqrt_mu**2
+            self.postorder_traversal_marginal()
+            self.total_LH_and_root_sequence(sample_from_profile=False,
+                                            assign_sequence=False)
+            return -self.sequence_LH()
+
+        old_mu = self.gtr.mu
+        try:
+            sol = minimize_scalar(cost_func,bracket=[0.01*np.sqrt(old_mu), np.sqrt(old_mu),100*np.sqrt(old_mu)])
+        except:
+            self.gtr.mu=old_mu
+            self.logger('treeanc:optimize_gtr_rate: optimization failed, continuing with previous mu',1,warn=True)
+            return
+
+        if sol['success']:
+            self.gtr.mu = sol['x']**2
+            self.logger('treeanc:optimize_gtr_rate: optimization successful. Overall rate estimated to be %f'%self.gtr.mu,1)
+        else:
+            self.gtr.mu=old_mu
+            self.logger('treeanc:optimize_gtr_rate: optimization failed, continuing with previous mu',1,warn=True)
+
 
 ###############################################################################
 ### Utility functions

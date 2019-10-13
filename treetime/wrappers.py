@@ -660,7 +660,7 @@ def ancestral_reconstruction(params):
     return 0
 
 def reconstruct_discrete_traits(tree, traits, missing_data='?', pc=1.0, sampling_bias_correction=None,
-                                weights=None, verbose=0):
+                                weights=None, verbose=0, iterations=5):
     print(set(traits.values()))
     unique_states = sorted(set(traits.values()))
     nc = len(unique_states)
@@ -716,14 +716,20 @@ def reconstruct_discrete_traits(tree, traits, missing_data='?', pc=1.0, sampling
         ndiff = treeanc.infer_ancestral_sequences(method='ml', infer_gtr=True,
             store_compressed=False, pc=pc, marginal=True, normalized_rate=False,
             fixed_pi=weights, reconstruct_tip_sequences=True)
+        treeanc.optimize_gtr_rate()
     except TreeTimeError as e:
         print("\nAncestral reconstruction failed, please see above for error messages and/or rerun with --verbose 4\n")
         raise e
 
+    for i in range(iterations):
+        treeanc.infer_gtr(marginal=True, normalized_rate=False, pc=pc)
+        treeanc.optimize_gtr_rate()
+
     if sampling_bias_correction:
         treeanc.gtr.mu *= sampling_bias_correction
-        treeanc.infer_ancestral_sequences(infer_gtr=False, store_compressed=False,
-                                     marginal=True, normalized_rate=False, reconstruct_tip_sequences=True)
+
+    treeanc.infer_ancestral_sequences(infer_gtr=False, store_compressed=False,
+                                 marginal=True, normalized_rate=False, reconstruct_tip_sequences=True)
     return treeanc, letter_to_state, reverse_alphabet
 
 
