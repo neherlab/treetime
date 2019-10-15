@@ -661,7 +661,40 @@ def ancestral_reconstruction(params):
 
 def reconstruct_discrete_traits(tree, traits, missing_data='?', pc=1.0, sampling_bias_correction=None,
                                 weights=None, verbose=0, iterations=5):
-    print(set(traits.values()))
+    """take a set of discrete states associated with tips of a tree
+    and reconstruct their ancestral states along with a GTR model that
+    approximately maximizes the likelihood of the states on the tree.
+
+    Parameters
+    ----------
+    tree : str, Bio.Phylo.Tree
+        name of tree file or Biopython tree object
+    traits : dict
+        dictionary linking tips to straits
+    missing_data : str, optional
+        string indicating missing data
+    pc : float, optional
+        number of pseudo-counts to be used during GTR inference, default 1.0
+    sampling_bias_correction : float, optional
+        factor to inflate overall switching rate by to counteract sampling bias
+    weights : str, optional
+        name of file with equilibirum frequencies
+    verbose : int, optional
+        level of verbosity in output
+    iterations : int, optional
+        number of times non-linear optimization of overall rate and
+        transmission estimation are iterated
+
+    Returns
+    -------
+    tuple
+        tuple of treeanc object, forward and reverse alphabets
+
+    Raises
+    ------
+    TreeTimeError
+        raise error if ancestral reconstruction errors out
+    """
     unique_states = sorted(set(traits.values()))
     nc = len(unique_states)
     if nc>180:
@@ -730,6 +763,12 @@ def reconstruct_discrete_traits(tree, traits, missing_data='?', pc=1.0, sampling
 
     treeanc.infer_ancestral_sequences(infer_gtr=False, store_compressed=False,
                                  marginal=True, normalized_rate=False, reconstruct_tip_sequences=True)
+
+    print("NOTE: previous versions (<0.7.0) of this command made a 'short-branch length assumption. "
+          "TreeTime now optimizes the overall rate numerically and thus allows for long branches "
+          "along which multiple changes accumulated. This is expected to affect estimates of the "
+          "overall rate while leaving the relative rates mostly unchanged.")
+
     return treeanc, letter_to_state, reverse_alphabet
 
 
