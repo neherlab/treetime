@@ -754,7 +754,7 @@ def mugration(params):
         attr = states.columns[1]
         print("Attribute for mugration inference was not specified. Using "+attr, file=sys.stderr)
 
-    leaf_to_attr = {x[taxon_name]:x[attr] for xi, x in states.iterrows()
+    leaf_to_attr = {x[taxon_name]:str(x[attr]) for xi, x in states.iterrows()
                     if x[attr]!=params.missing_data}
 
     mug, letter_to_state, reverse_alphabet = reconstruct_discrete_traits(params.tree, leaf_to_attr, missing_data=params.missing_data,
