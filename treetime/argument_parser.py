@@ -148,6 +148,7 @@ def add_gtr_arguments(parser):
 def add_anc_arguments(parser):
     parser.add_argument('--keep-overhangs', default = False, action='store_true', help='do not fill terminal gaps')
     parser.add_argument('--zero-based', default = False, action='store_true', help='zero based mutation indexing')
+    parser.add_argument('--reconstruct-tip-states', default = False, action='store_true', help='overwrite ambiguous states on tips with the most likely inferred state')
     parser.add_argument('--report-ambiguous', default=False, action="store_true", help='include transitions involving ambiguous states')
 
 

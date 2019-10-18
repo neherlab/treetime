@@ -1,5 +1,6 @@
 import numpy as np
 from collections import defaultdict
+from textwrap import fill
 
 ## Functions to read in and print out VCF files
 
@@ -443,7 +444,9 @@ def write_vcf(tree_dict, file_name):#, compress=False):
                 #If theres a deletion in 1st pos, VCF files do not handle this well.
                 #Proceed keeping it as '-' for alt (violates VCF), but warn user to check output.
                 #(This is rare)
-                print ("WARNING: You have a deletion in the first position of your alignment. VCF format does not handle this well. Please check the output to ensure it is correct.")
+                print(fill("WARNING: You have a deletion in the first position of your"
+                           " alignment. VCF format does not handle this well. Please check"
+                           " the output to ensure it is correct."))
         else:
             #If a deletion in next pos, need to gather up all bases
             if any(pattern2 == '-'):
@@ -497,19 +500,21 @@ def write_vcf(tree_dict, file_name):#, compress=False):
     #won't be counted in the below list, which is only sites removed from the VCF.
 
     if 'inferred_const_sites' in tree_dict and explainedErrors != 0:
-        print ( "Sites that were constant except for ambiguous bases were made constant by TreeTime. This happened {} times. These sites are now excluded from the VCF.".format(explainedErrors))
+        print(fill("Sites that were constant except for ambiguous bases were made" +
+                   " constant by TreeTime. This happened {} times. These sites are".format(explainedErrors) +
+                   " now excluded from the VCF."))
 
     if len(errorPositions) != 0:
-        print ("\n***WARNING: vcf_utils.py"
-            "\n{} sites were found that had no alternative bases. If this data has been "
-            "run through TreeTime and contains ambiguous bases, try calling get_tree_dict with "
-            "var_ambigs=True to see if this clears the error."
-            "\n\nAlternative causes:"
-            "\n- Not all sequences in your alignment are in the tree (if you are running TreeTime via commandline "
-            "this is most likely)"
-            "\n- In TreeTime, can be caused by overwriting variants in tips with small branch lengths (debug)"
-            "\n\nThese are the positions affected (numbering starts at 0):".format(str(len(errorPositions))))
-        print (",".join(errorPositions))
+        print ("\n***WARNING: vcf_utils.py")
+        print(fill("\n{} sites were found that had no alternative bases.".format(str(len(errorPositions)))+
+                  " If this data has been run through TreeTime and contains ambiguous bases,"
+                  " try calling get_tree_dict with var_ambigs=True to see if this clears the error."))
+        print(fill("\nAlternative causes:"
+                   "\n- Not all sequences in your alignment are in the tree"
+                  " (if you are running TreeTime via commandline this is most likely)"
+                  "\n- In TreeTime, can be caused by overwriting variants in tips with small branch lengths (debug)"
+                  "\n\nThese are the positions affected (numbering starts at 0):"))
+        print(fill(", ".join(errorPositions)))
 
     out_file.write("\n".join(vcfWrite))
     out_file.close()

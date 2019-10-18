@@ -133,7 +133,8 @@ class TreeTime(ClockTree):
 
         # determine how to reconstruct and sample sequences
         seq_kwargs = {"marginal_sequences":sequence_marginal or (self.branch_length_mode=='marginal'),
-                      "sample_from_profile":"root"}
+                      "sample_from_profile":"root",
+                      "reconstruct_tip_states":kwargs.get("reconstruct_tip_states", False)}
 
         tt_kwargs = {'clock_rate':fixed_clock_rate, 'time_marginal':False}
         tt_kwargs.update(kwargs)
@@ -180,7 +181,9 @@ class TreeTime(ClockTree):
         self.LH =[[seq_LH, self.tree.positional_joint_LH, 0]]
 
         if root is not None and max_iter:
-            self.reroot(root='least-squares' if root=='clock_filter' else root, clock_rate=fixed_clock_rate)
+            new_root = self.reroot(root='least-squares' if root=='clock_filter' else root, clock_rate=fixed_clock_rate)
+            self.logger("###TreeTime.run: rerunning timetree after rerooting",0)
+            self.make_time_tree(**tt_kwargs)
 
         # iteratively reconstruct ancestral sequences and re-infer
         # time tree to ensure convergence.
@@ -415,6 +418,7 @@ class TreeTime(ClockTree):
 
         use_cov = self.use_covariation if covariation is None else covariation
         slope = 0.0 if type(root)==str and root.startswith('min_dev') else clock_rate
+        old_root = self.tree.root
 
         self.logger("TreeTime.reroot: with method or node: %s"%root,0)
         for n in self.tree.find_clades():
@@ -475,7 +479,7 @@ class TreeTime(ClockTree):
 
         self.get_clock_model(covariation=self.use_covariation, slope=slope)
 
-        return ttconf.SUCCESS
+        return new_root
 
 
     def resolve_polytomies(self, merge_compressed=False):

@@ -159,14 +159,15 @@ def plot_rtt(tt, fname):
 
 
 def export_sequences_and_tree(tt, basename, is_vcf=False, zero_based=False,
-                              report_ambiguous=False, timetree=False, confidence=False):
+                              report_ambiguous=False, timetree=False, confidence=False,
+                              reconstruct_tip_states=False):
     seq_info = is_vcf or tt.aln
     if is_vcf:
         outaln_name = basename + 'ancestral_sequences.vcf'
-        write_vcf(tt.get_reconstructed_alignment(), outaln_name)
+        write_vcf(tt.get_reconstructed_alignment(reconstruct_tip_states=reconstruct_tip_states), outaln_name)
     elif tt.aln:
         outaln_name = basename + 'ancestral_sequences.fasta'
-        AlignIO.write(tt.get_reconstructed_alignment(), outaln_name, 'fasta')
+        AlignIO.write(tt.get_reconstructed_alignment(reconstruct_tip_states=reconstruct_tip_states), outaln_name, 'fasta')
     if seq_info:
         print("\n--- alignment including ancestral nodes saved as  \n\t %s\n"%outaln_name)
 
@@ -502,7 +503,7 @@ def timetree(params):
         return 1
     myTree = TreeTime(dates=dates, tree=params.tree, ref=ref,
                       aln=aln, gtr=gtr, seq_len=params.sequence_length,
-                      verbose=params.verbose)
+                      verbose=params.verbose, fill_overhangs=not params.keep_overhangs)
     myTree.tip_slack=params.tip_slack
     if not myTree.one_mutation:
         print("TreeTime setup failed, exiting")
@@ -548,6 +549,7 @@ def timetree(params):
                time_marginal="assign" if calc_confidence else False,
                vary_rate = vary_rate,
                branch_length_mode = branch_length_mode,
+               reconstruct_tip_states=params.reconstruct_tip_states,
                fixed_pi=fixed_pi,
                use_covariation = params.covariation, n_points=params.n_skyline)
     except TreeTimeError as e:
@@ -608,7 +610,8 @@ def timetree(params):
                 fh.write("%s\t%1.3e\t%1.3e\t%1.3e\t%1.2f\n"%(n.name, n.clock_length, n.mutation_length, myTree.date2dist.clock_rate*g, g))
 
     export_sequences_and_tree(myTree, basename, is_vcf, params.zero_based,
-                              timetree=True, confidence=calc_confidence)
+                              timetree=True, confidence=calc_confidence,
+                              reconstruct_tip_states=params.reconstruct_tip_states)
 
     return 0
 
@@ -639,7 +642,8 @@ def ancestral_reconstruction(params):
 
     try:
         ndiff = treeanc.infer_ancestral_sequences('ml', infer_gtr=params.gtr=='infer',
-                                             marginal=params.marginal, fixed_pi=fixed_pi)
+                                             marginal=params.marginal, fixed_pi=fixed_pi,
+                                             reconstruct_tip_states=params.reconstruct_tip_states)
     except TreeTimeError as e:
         print("\nAncestral reconstruction failed, please see above for error messages and/or rerun with --verbose 4\n")
         raise e
@@ -655,7 +659,8 @@ def ancestral_reconstruction(params):
         print(treeanc.gtr)
 
     export_sequences_and_tree(treeanc, basename, is_vcf, params.zero_based,
-                              report_ambiguous=params.report_ambiguous)
+                              report_ambiguous=params.report_ambiguous,
+                              reconstruct_tip_states=params.reconstruct_tip_states)
 
     return 0
 
@@ -748,7 +753,7 @@ def reconstruct_discrete_traits(tree, traits, missing_data='?', pc=1.0, sampling
     try:
         ndiff = treeanc.infer_ancestral_sequences(method='ml', infer_gtr=True,
             store_compressed=False, pc=pc, marginal=True, normalized_rate=False,
-            fixed_pi=weights, reconstruct_tip_sequences=True)
+            fixed_pi=weights, reconstruct_tip_states=True)
         treeanc.optimize_gtr_rate()
     except TreeTimeError as e:
         print("\nAncestral reconstruction failed, please see above for error messages and/or rerun with --verbose 4\n")
@@ -762,12 +767,12 @@ def reconstruct_discrete_traits(tree, traits, missing_data='?', pc=1.0, sampling
         treeanc.gtr.mu *= sampling_bias_correction
 
     treeanc.infer_ancestral_sequences(infer_gtr=False, store_compressed=False,
-                                 marginal=True, normalized_rate=False, reconstruct_tip_sequences=True)
+                                 marginal=True, normalized_rate=False, reconstruct_tip_states=True)
 
-    print("NOTE: previous versions (<0.7.0) of this command made a 'short-branch length assumption. "
+    print(fill("NOTE: previous versions (<0.7.0) of this command made a 'short-branch length assumption. "
           "TreeTime now optimizes the overall rate numerically and thus allows for long branches "
           "along which multiple changes accumulated. This is expected to affect estimates of the "
-          "overall rate while leaving the relative rates mostly unchanged.")
+          "overall rate while leaving the relative rates mostly unchanged."))
 
     return treeanc, letter_to_state, reverse_alphabet
 
