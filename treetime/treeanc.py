@@ -15,8 +15,13 @@ from .gtr_site_specific import GTR_site_specific
 from .sequence_data import SequenceData
 
 def compressed_sequence(node):
-    if node.name in node.tt.data.compressed_alignment and (not node.tt.reconstructed_tip_sequences):
-        return node.tt.data.compressed_alignment[node.name]
+    if node.is_terminal():
+        if node.name in node.tt.data.compressed_alignment and (not node.tt.reconstructed_tip_sequences):
+            return node.tt.data.compressed_alignment[node.name]
+        elif hasattr(node, '_cseq'):
+            return node._cseq
+        else: # node without sequence when tip-reconstruction is off.
+            return None
     elif hasattr(node, '_cseq'):
         return node._cseq
     else:
@@ -32,6 +37,8 @@ def mutations(node):
         return []
     elif (not node.tt.reconstructed_tip_sequences) and node.name in node.tt.data.aln:
         return node.tt.data.differences(node.up.cseq, node.tt.data.aln[node.name], seq2_compressed=False)
+    elif node.is_terminal() and (node.name not in node.tt.data.aln):
+        return []
     else:
         return node.tt.data.differences(node.up.cseq, node.cseq)
 
@@ -927,9 +934,10 @@ class TreeAnc(object):
         nodes_to_reconstruct = self.tree.get_nonterminals(order='preorder')
         if reconstruct_tip_states:
             nodes_to_reconstruct += self.tree.get_terminals()
+            #TODO: Should we add tips without sequence here?
 
         for node in nodes_to_reconstruct:
-            # root node has no mutations, everything else has been alread y set
+            # root node has no mutations, everything else has been already set
             if node.up is None:
                 continue
 
@@ -1398,8 +1406,10 @@ class TreeAnc(object):
                         T_ia[i,cpos] -= 0.5*self._branch_length_to_gtr(c)
 
                     for i, nuc in enumerate(self.gtr.alphabet):
-                        ind = c.cseq==nuc
-                        T_ia[i,ind] += self._branch_length_to_gtr(c)*self.data.multiplicity[ind]
+                        cseq = c.cseq
+                        if cseq is not None:
+                            ind = cseq==nuc
+                            T_ia[i,ind] += self._branch_length_to_gtr(c)*self.data.multiplicity[ind]
 
         self.logger("TreeAnc.infer_gtr: counting mutations...done", 3)
 
