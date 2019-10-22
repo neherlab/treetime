@@ -15,12 +15,11 @@ from .gtr_site_specific import GTR_site_specific
 from .sequence_data import SequenceData
 
 def compressed_sequence(node):
-    if node.is_terminal():
-        if node.name in node.tt.data.compressed_alignment and (not node.tt.reconstructed_tip_sequences):
-            return node.tt.data.compressed_alignment[node.name]
-        elif hasattr(node, '_cseq'):
-            return node._cseq
-        else: # node without sequence when tip-reconstruction is off.
+    if node.name in node.tt.data.compressed_alignment and (not node.tt.reconstructed_tip_sequences):
+        return node.tt.data.compressed_alignment[node.name]
+    elif hasattr(node, '_cseq'):
+        return node._cseq
+    elif node.is_terminal(): # node without sequence when tip-reconstruction is off.
             return None
     elif hasattr(node, '_cseq'):
         return node._cseq
@@ -1601,3 +1600,11 @@ class TreeAnc(object):
     def get_tree_dict(self, keep_var_ambigs=False):
         return self.get_reconstructed_alignment()
 
+
+    def recover_var_ambigs(self):
+        self.logger("TreeAnc: recover_var_ambigs: calls to recover_var_ambigs are no longer necessary since tip states are not inferred unless explicitly specified using `reconstruct_tip_states=True`.", 0, warn=True)
+        if self.reconstructed_tip_sequences:
+            self.logger("Your code reconstructed tip states, please change the call of ancestral inference in your code",0, warn=True)
+        else:
+            self.logger("Your analysis did not reconstructed tip states, you can remove the call of `recover_var_ambigs`",0, warn=True)
+            
