@@ -209,7 +209,7 @@ class Coalescent(object):
 
             dcost = np.array(dcost)
             optimal_cost = cost(opt_logTc)
-            self.confidence = -dlogTc**2/(2*optimal_cost - dcost[:,0] - dcost[:,1])
+            self.confidence = dlogTc/np.sqrt(np.abs(2*optimal_cost - dcost[:,0] - dcost[:,1]))
             self.logger("Coalescent:optimize_skyline:...done. new LH: %f"%self.total_LH(),2)
         else:
             self.set_Tc(initial_Tc.y, T=initial_Tc.x)
