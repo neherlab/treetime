@@ -164,7 +164,7 @@ class Coalescent(object):
         if "success" in sol and sol["success"]:
             self.set_Tc(sol['x'])
         else:
-            self.logger("merger_models:optimze_Tc: optimization of coalescent time scale failed: " + str(sol), 0, warn=True)
+            self.logger("merger_models:optimize_Tc: optimization of coalescent time scale failed: " + str(sol), 0, warn=True)
             self.set_Tc(initial_Tc.y, T=initial_Tc.x)
 
 
@@ -190,8 +190,8 @@ class Coalescent(object):
             # cap log Tc to avoid under or overflow and nan in logs
             self.set_Tc(np.exp(np.maximum(-200,np.minimum(100,logTc))), tvals)
             neglogLH = -self.total_LH() + stiffness*np.sum(np.diff(logTc)**2) \
-                       + np.sum((logTc>0)*logTc*regularization)\
-                       - np.sum((logTc<-100)*logTc*regularization)
+                       + np.sum((logTc>0)*logTc)*regularization\
+                       - np.sum((logTc<-100)*logTc)*regularization
             return neglogLH
 
         sol = minimize(cost, np.ones_like(tvals)*np.log(self.Tc.y.mean()), method=method, tol=tol)
@@ -209,7 +209,7 @@ class Coalescent(object):
 
             dcost = np.array(dcost)
             optimal_cost = cost(opt_logTc)
-            self.confidence = -dlogTc/(2*optimal_cost - dcost[:,0] - dcost[:,1])
+            self.confidence = -dlogTc**2/(2*optimal_cost - dcost[:,0] - dcost[:,1])
             self.logger("Coalescent:optimize_skyline:...done. new LH: %f"%self.total_LH(),2)
         else:
             self.set_Tc(initial_Tc.y, T=initial_Tc.x)

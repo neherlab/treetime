@@ -129,6 +129,7 @@ class ClockTree(TreeAnc):
         if bad_branch_counter>self.tree.count_terminals()-3:
             raise MissingDataError("ERROR: ALMOST NO VALID DATE CONSTRAINTS")
 
+        self.logger("ClockTree._assign_dates: assigned date contraints to {} out of {} tips.".format(self.tree.count_terminals()-bad_branch_counter, self.tree.count_terminals()), 1)
         return ttconf.SUCCESS
 
 
