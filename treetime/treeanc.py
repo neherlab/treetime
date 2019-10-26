@@ -340,6 +340,16 @@ class TreeAnc(object):
         self.logger("TreeAnc: one_mutation can't be set",1)
 
 
+    @property
+    def seq_len(self):
+        return self.data.full_length
+
+
+    @property
+    def sequence_length(self):
+        return self.data.full_length
+
+
     def _check_alignment_tree_gtr_consistency(self):
         '''
         For each node of the tree, check whether there is a sequence available
@@ -1607,4 +1617,4 @@ class TreeAnc(object):
             self.logger("Your code reconstructed tip states, please change the call of ancestral inference in your code",0, warn=True)
         else:
             self.logger("Your analysis did not reconstructed tip states, you can remove the call of `recover_var_ambigs`",0, warn=True)
-            
+
