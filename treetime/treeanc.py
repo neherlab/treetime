@@ -149,7 +149,7 @@ class TreeAnc(object):
         # set alignment and attach sequences to tree on success.
         # otherwise self.data.aln will be None
         self.data = SequenceData(aln, ref=ref, logger=self.logger, compress=compress,
-                                convert_upper=convert_upper, fill_overhangs=fill_overhangs,
+                                convert_upper=convert_upper, fill_overhangs=fill_overhangs, ambiguous=self.gtr.ambiguous,
                                 sequence_length=kwargs['seq_len'] if 'seq_len' in kwargs else None)
 
         if self.gtr.is_site_specific and self.data.compress:

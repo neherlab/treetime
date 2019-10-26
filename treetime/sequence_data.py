@@ -57,7 +57,7 @@ class SequenceData(object):
         length of state (typically 1 A,C,G,T, but could be 3 for codons)
     """
     def __init__(self, aln, ref=None, logger=None, convert_upper=True,
-                 sequence_length=None, compress=True, word_length=1,
+                 sequence_length=None, compress=True, word_length=1, sequence_type=None,
                  fill_overhangs=True, seq_multiplicity=None, ambiguous=None, **kwargs):
         """construct an sequence data object
 
@@ -105,10 +105,10 @@ class SequenceData(object):
         self.word_length = word_length
         self.fill_overhangs = fill_overhangs
         self.ambiguous = ambiguous
+        self.sequence_type = sequence_type
 
         self.ref = ref
         self.aln = aln
-
 
 
     @property
@@ -160,6 +160,8 @@ class SequenceData(object):
                         continue
 
         if type(in_aln) is MultipleSeqAlignment:
+            # check whether the alignment is consistent with a nucleotide alignment.
+            self.check_alphabet([seq2array(s) for s in in_aln])
             self.is_sparse = False
             self._aln = {s.name: seq2array(s, convert_upper=self.convert_upper,
                                            fill_overhangs=self.fill_overhangs, ambiguous=self.ambiguous)
@@ -167,10 +169,10 @@ class SequenceData(object):
             self.logger("SequenceData: loaded alignment.",1)
         elif type(in_aln) in [dict, defaultdict]:
             self.logger("SequenceData: loaded sparse/vcf alignment.",1)
+            self.check_alphabet([self.ref])
             self.is_sparse = True
             self._aln = in_aln
-
-        if self._aln is None:
+        else:
             raise MissingDataError("SequenceData: loading alignment failed... " + str(in_aln))
 
         if self.full_length:
@@ -191,12 +193,6 @@ class SequenceData(object):
                 self.full_length = in_aln.get_alignment_length()
 
         self.sequence_names = list(self.aln.keys())
-
-        # check whether the alignment is consistent with a nucleotide alignment.
-        self.likely_alphabet = guess_alphabet([self.ref] if self.is_sparse
-                                               else [s for s in self.aln.values()])
-        if self.ambiguous is None:
-            self.ambiguous = 'N' if self.likely_alphabet=='nuc' else 'X'
 
         self.make_compressed_alignment()
 
@@ -265,6 +261,20 @@ class SequenceData(object):
             self.full_length = self._ref.shape[0]
             self.compressed_to_full_sequence_map = None
             self.multiplicity = None
+
+
+    def check_alphabet(self, seqs):
+        self.likely_alphabet = guess_alphabet(seqs)
+
+        if self.sequence_type:
+            if self.likely_alphabet!=self.sequence_type:
+                if self.sequence_type=='nuc':
+                    self.logger("POSSIBLE ERROR: This does not look like a nucleotide alignment!", 0, warn=True)
+                elif self.sequence_type=='aa':
+                    self.logger("POSSIBLE ERROR: This looks like a nucleotide alignment, you indicated amino acids!", 0, warn=True)
+
+        if self.ambiguous is None:
+            self.ambiguous = 'N' if self.likely_alphabet=='nuc' else 'X'
 
 
     def make_compressed_alignment(self):
