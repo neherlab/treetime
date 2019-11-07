@@ -83,7 +83,7 @@ The to infer a timetree, i.e. a phylogenetic tree in which branch length reflect
   treetime --aln <input.fasta> --tree <input.nwk> --dates <dates.csv>
 ```
 This command will infer a time tree, ancestral sequences, a GTR model, and optionally confidence intervals and coalescent models.
-A detailed explanation is of this command with its various options and examples is available in [the documentation as readthedocs.org](https://treetime.readthedocs.io/en/latest/tutorials/timetree.html).
+A detailed explanation is of this command with its various options and examples is available in [the documentation on readthedocs.org](https://treetime.readthedocs.io/en/latest/tutorials/timetree.html).
 
 
 #### Rerooting and substitution rate estimation
