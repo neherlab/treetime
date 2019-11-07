@@ -18,7 +18,7 @@ In addition to scripting TreeTime or using it via the command-line, there is als
 
 ![Molecular clock phylogeny of 200 NA sequences of influenza A H3N2](https://raw.githubusercontent.com/neherlab/treetime_examples/master/figures/tree_and_clock.png)
 
-Have a look at our [examples and tutorials](https://github.com/neherlab/treetime_examples).
+Have a look at our repository with [example data](https://github.com/neherlab/treetime_examples) and the [tutorials](https://treetime.readthedocs.io/en/latest/tutorials.html).
 
 #### Features
 * ancestral sequence reconstruction (marginal and joint maximum likelihood)
@@ -83,7 +83,7 @@ The to infer a timetree, i.e. a phylogenetic tree in which branch length reflect
   treetime --aln <input.fasta> --tree <input.nwk> --dates <dates.csv>
 ```
 This command will infer a time tree, ancestral sequences, a GTR model, and optionally confidence intervals and coalescent models.
-A detailed explanation is of this command with its various options and examples are available at [treetime_examples/timetree.md](http://github.com/neherlab/treetime_examples/blob/master/timetree.md)
+A detailed explanation is of this command with its various options and examples is available in [the documentation as readthedocs.org](https://treetime.readthedocs.io/en/latest/tutorials/timetree.html).
 
 
 #### Rerooting and substitution rate estimation
@@ -93,7 +93,7 @@ To explore the temporal signal in the data and estimate the substitution rate (i
 ```
 The full list if options is available by typing `treetime clock -h`.
 Instead of an input alignment, `--sequence-length <L>` can be provided.
-Documentation of additional options and examples are available at [treetime_examples/clock.md](https://github.com/neherlab/treetime_examples/blob/master/clock.md)
+Documentation of additional options and examples are available at in [the documentation on readthedocs.org](https://treetime.readthedocs.io/en/latest/tutorials/clock.html).
 
 
 #### Ancestral sequence reconstruction:
@@ -103,7 +103,7 @@ The subcommand
 ```
 will reconstruct ancestral sequences at internal nodes of the input tree.
 The full list if options is available by typing `treetime ancestral -h`.
-A detailed explanation of `treetime ancestral` with examples is available at [treetime_examples/ancestral.md](https://github.com/neherlab/treetime_examples/blob/master/ancestral.md)
+A detailed explanation of `treetime ancestral` with examples is available at in [the documentation on readthedocs.org](https://treetime.readthedocs.io/en/latest/tutorials/ancestral.html).
 
 #### Homoplasy analysis
 Detecting and quantifying homoplasies or recurrent mutations is useful to check for recombination, putative adaptive sites, or contamination.
@@ -112,7 +112,7 @@ TreeTime provides a simple command to summarize homoplasies in data
   treetime homoplasy --aln <input.fasta> --tree <input.nwk>
 ```
 The full list if options is available by typing `treetime homoplasy -h`.
-Please see [treetime_examples/homoplasy.md](https://github.com/neherlab/treetime_examples/blob/master/homoplasy.md) for examples and more documentation.
+Please see [the documentation on readthedocs.org](https://treetime.readthedocs.io/en/latest/tutorials/homoplasy.html) for examples and more documentation.
 
 #### Mugration analysis
 Migration between discrete geographic regions, host switching, or other transition between discrete states are often parameterized by time-reversible models analogous to models describing evolution of genome sequences.
@@ -123,7 +123,7 @@ TreeTime GTR model machinery can be used to infer mugration models:
 ```
 where `<field>` is the relevant column in the csv file specifying the metadata `states.csv`, e.g. `<field>=country`.
 The full list if options is available by typing `treetime mugration -h`.
-Please see [treetime_examples/mugration.md](https://github.com/neherlab/treetime_examples/blob/master/mugration.md) for examples and more documentation.
+Please see [the documentation on readthedocs.org](https://treetime.readthedocs.io/en/latest/tutorials/mugration.html) for examples and more documentation.
 
 #### Metadata and date format
 Several of TreeTime commands require the user to specify a file with dates and/or other meta data.
@@ -175,12 +175,6 @@ The API documentation for the TreeTime package is generated created with Sphinx.
 
   ```bash
   pip install Sphinx
-  ```
-
-  - basicstrap Html theme for sphinx:
-
-  ```bash
-  pip install sphinxjp.themes.basicstrap
   ```
 
 After required packages are installed, navigate to doc directory, and build the docs by typing:
