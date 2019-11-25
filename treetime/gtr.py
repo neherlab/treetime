@@ -70,13 +70,6 @@ class GTR(object):
         self.n_states = len(self.alphabet)
         self.assign_gap_and_ambiguous()
 
-        # NEEDED TO BREAK RATE MATRIX DEGENERACY AND FORCE NP TO RETURN REAL ORTHONORMAL EIGENVECTORS
-        # ugly hack, but works and shouldn't affect results
-        tmp_rng_state = np.random.get_state()
-        np.random.seed(12345)
-        self.break_degen = np.random.random(size=(self.n_states, self.n_states))*1e-6
-        np.random.set_state(tmp_rng_state)
-
         # init all matrices with dummy values
         self.logger("GTR: init with dummy values!", 3)
         self.v = None # right eigenvectors
@@ -135,7 +128,10 @@ class GTR(object):
            and the equilibrium frequencies to obtain the rate matrix
            of the GTR model
         """
-        return (self.W*self.Pi).T
+        Q_tmp = (self.W*self.Pi).T
+        Q_diag = -np.sum(Q_tmp, axis=0)
+        np.fill_diagonal(Q_tmp, Q_diag)
+        return Q_tmp
 
 
 ######################################################################
@@ -215,7 +211,11 @@ class GTR(object):
             W=np.array(W)
 
         self._W = 0.5*(W+W.T)
-        self._check_fix_Q(fixed_mu=True)
+        np.fill_diagonal(W,0)
+        average_rate = W.dot(self.Pi).dot(self.Pi)
+        self._W = W/average_rate
+        self._mu *=average_rate
+
         self._eig()
 
 
@@ -521,39 +521,13 @@ class GTR(object):
 ########################################################################
 ### prepare model
 ########################################################################
-    def _check_fix_Q(self, fixed_mu=False):
-        """
-        Check the main diagonal of Q and fix it in case it does not corresond
-        the definition of the rate matrix. Should be run every time when creating
-        custom GTR model.
-        """
-
-        # NEEDED TO BREAK RATE MATRIX DEGENERACY AND FORCE NP TO RETURN REAL ORTHONORMAL EIGENVECTORS
-        self._W += self.break_degen + self.break_degen.T
-        # fix W
-        np.fill_diagonal(self.W, 0)
-        Wdiag = -(self.Q).sum(axis=0)/self.Pi
-        np.fill_diagonal(self.W, Wdiag)
-        scale_factor = -np.sum(np.diagonal(self.Q)*self.Pi)
-        self._W /= scale_factor
-        if not fixed_mu:
-            self._mu *= scale_factor
-        if (self.Q.sum(axis=0) < 1e-10).sum() <  self.alphabet.shape[0]: # fix failed
-            print ("Cannot fix the diagonal of the GTR rate matrix. Should be all zero", self.Q.sum(axis=0))
-            import ipdb; ipdb.set_trace()
-            raise ArithmeticError("Cannot fix the diagonal of the GTR rate matrix.")
-
-
     def _eig(self):
         """
         Perform eigendecompositon of the rate matrix and stores the left- and right-
         matrices to convert the sequence profiles to the GTR matrix eigenspace
         and hence to speed-up the computations.
         """
-        W_nodiag = np.copy(self.W)
-        np.fill_diagonal(W_nodiag, 0)
-
-        self.eigenvals, self.v, self.v_inv = self._eig_single_site(W_nodiag, self.Pi)
+        self.eigenvals, self.v, self.v_inv = self._eig_single_site(self.W, self.Pi)
 
 
     def _eig_single_site(self, W, p):
