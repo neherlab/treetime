@@ -136,6 +136,7 @@ class GTR_site_specific(GTR):
         gtr = cls(alphabet=alphabet, seq_len=L)
         n = gtr.alphabet.shape[0]
 
+        # Dirichlet distribution == l_1 normalized vector of samples of the Gamma distribution
         if pi_dirichlet_alpha:
             pi = 1.0*gamma.rvs(pi_dirichlet_alpha, size=(n,L))
         else:

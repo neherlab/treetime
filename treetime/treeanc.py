@@ -57,7 +57,7 @@ class TreeAnc(object):
     def __init__(self, tree=None, aln=None, gtr=None, fill_overhangs=True,
                 ref=None, verbose = ttconf.VERBOSE, ignore_gaps=True,
                 convert_upper=True, seq_multiplicity=None, log=None,
-                compress=True,
+                 compress=True, seq_len=None,
                 **kwargs):
         """
         TreeAnc constructor. It prepares the tree, attaches sequences to the leaf nodes,
@@ -106,6 +106,10 @@ class TreeAnc(object):
             reduce identical alignment columns to one (not useful when
             inferring site specific GTR models).
 
+        seq_len : int, optional
+            length of the sequence. this is inferred from the input alignment or the reference 
+            sequence in most cases but can be specified for other applications. 
+
         **kwargs
            Keyword arguments to construct the GTR model
 
@@ -150,7 +154,7 @@ class TreeAnc(object):
         # otherwise self.data.aln will be None
         self.data = SequenceData(aln, ref=ref, logger=self.logger, compress=compress,
                                 convert_upper=convert_upper, fill_overhangs=fill_overhangs, ambiguous=self.gtr.ambiguous,
-                                sequence_length=kwargs['seq_len'] if 'seq_len' in kwargs else None)
+                                 sequence_length=seq_len)
 
         if self.gtr.is_site_specific and self.data.compress:
             raise TypeError("TreeAnc: sequence compression and site specific gtr models are incompatible!" )

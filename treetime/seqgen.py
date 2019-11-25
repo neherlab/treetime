@@ -13,10 +13,10 @@ class SeqGen(TreeAnc):
     This class inherits from TreeAnc.
     '''
 
-    def __init__(self, *args, **kwargs):
-        """Instantiate. Mandatory arguments are a tree and GTR model.
+    def __init__(self, L, *args, **kwargs):
+        """Instantiate. Mandatory arguments are a the sequence length, tree and GTR model.
         """
-        super(SeqGen, self).__init__(compress=False, **kwargs)
+        super(SeqGen, self).__init__(seq_len=L, compress=False, **kwargs)
 
 
     def sample_from_profile(self, p):
@@ -50,7 +50,6 @@ class SeqGen(TreeAnc):
             sequence to be used as the root sequence of the tree. if not given,
             will sample a sequence from the equilibrium probabilities of the GTR model.
         """
-        self.seq_len = self.gtr.seq_len
         # set root if not given
         if root_seq:
             self.tree.root.ancestral_sequence = seq2array(root_seq)
