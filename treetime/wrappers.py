@@ -467,7 +467,7 @@ def timetree(params):
         relaxed_clock_params={'slack':params.relax[0], 'coupling':params.relax[1]}
 
 
-    dates = utils.parse_dates(params.dates)
+    dates = utils.parse_dates(params.dates, date_col=params.date_column, name_col=params.name_column)
     if len(dates)==0:
         print("No valid dates -- exiting.")
         return 1
@@ -748,6 +748,8 @@ def reconstruct_discrete_traits(tree, traits, missing_data='?', pc=1.0, sampling
                    seq=Seq(reverse_alphabet[traits[n.name]]
                            if n.name in traits else missing_char))
                    for n in treeanc.tree.get_terminals()]
+    valid_seq = np.array([str(s.seq)!=missing_char for s in pseudo_seqs])
+    print("Assigned discrete traits to %d out of %d taxa"%(np.sum(valid_seq),len(valid_seq)))
     treeanc.aln = MultipleSeqAlignment(pseudo_seqs)
 
     try:
@@ -794,7 +796,19 @@ def mugration(params):
 
     outdir = get_outdir(params, '_mugration')
 
-    taxon_name = 'name' if 'name' in states.columns else states.columns[0]
+    if params.name_column:
+        if params.name_column in states.columns:
+            taxon_name = params.name_column
+        else:
+            print("Error: specified column '%s' for taxon name not found in meta data file with columns: "%params.name_column + " ".join(states.columns))
+            return 1
+    elif 'name' in states.columns: taxon_name = 'name'
+    elif 'strain' in states.columns: taxon_name = 'strain'
+    elif 'accession' in states.columns: taxon_name = 'accession'
+    else:
+        taxon_name = states.columns[0]
+    print("Using column '%s' as taxon name. This needs to match the taxa in the tree!"%taxon_name)
+    
     if params.attribute:
         if params.attribute in states.columns:
             attr = params.attribute
@@ -807,7 +821,7 @@ def mugration(params):
         print("Attribute for mugration inference was not specified. Using "+attr, file=sys.stderr)
 
     leaf_to_attr = {x[taxon_name]:str(x[attr]) for xi, x in states.iterrows()
-                    if x[attr]!=params.missing_data}
+                    if x[attr]!=params.missing_data and x[attr]}
 
     mug, letter_to_state, reverse_alphabet = reconstruct_discrete_traits(params.tree, leaf_to_attr, missing_data=params.missing_data,
             pc=params.pc, sampling_bias_correction=params.sampling_bias_correction, verbose=params.verbose)
@@ -866,7 +880,7 @@ def estimate_clock_model(params):
 
     if assure_tree(params, tmp_dir='clock_model_tmp'):
         return 1
-    dates = utils.parse_dates(params.dates)
+    dates = utils.parse_dates(params.dates, date_col=params.date_column, name_col=params.name_column)
     if len(dates)==0:
         return 1
 

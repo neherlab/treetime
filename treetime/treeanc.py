@@ -498,9 +498,9 @@ class TreeAnc(object):
 
         if not reconstruct_tip_states:
             self.logger("WARNING: Previous versions of TreeTime (<0.7.0) RECONSTRUCTED sequences"
-                        " of tips when at positions with AMBIGUOUS bases. This resulted in"
+                        " of tips at positions with AMBIGUOUS bases. This resulted in"
                         " unexpected behavior is some cases and is no longer done by default."
-                        " If you want to fill those sites with their most likely state,"
+                        " If you want to replace those ambiguous sites with their most likely state,"
                         " rerun with `reconstruct_tip_states=True` or `--reconstruct-tip-states`.", 0, warn=True, only_once=True)
 
         if method.lower() in ['ml', 'probabilistic']:

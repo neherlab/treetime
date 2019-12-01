@@ -8,6 +8,7 @@ from scipy.integrate import quad
 from scipy import stats
 from scipy.ndimage import binary_dilation
 from treetime import config as ttconf
+from treetime import TreeTimeError
 
 class DateConversion(object):
     """
@@ -162,7 +163,7 @@ def numeric_date(dt=None):
 
 
 
-def parse_dates(date_file):
+def parse_dates(date_file, name_col=None, date_col=None):
     """
     parse dates from the arguments and return a dictionary mapping
     taxon names to numerical dates.
@@ -212,25 +213,37 @@ def parse_dates(date_file):
             if any([x==col.lower() for x in ['name', 'strain', 'accession']]):
                 potential_index_columns.append((ci, col))
 
+        if date_col and date_col not in df.columns:
+            raise TreeTimeError("ERROR: specified column for dates does not exist. \n\tAvailable columns are: "\
+                                +", ".join(df.columns)+"\n\tYou specified '%s'"%date_col)
+
+        if name_col and name_col not in df.columns:
+            raise TreeTimeError("ERROR: specified column for the taxon name does not exist. \n\tAvailable columns are: "\
+                                +", ".join(df.columns)+"\n\tYou specified '%s'"%name_col)
+
+            
         dates = {}
         # if a potential numeric date column was found, use it
         # (use the first, if there are more than one)
-        if not len(potential_index_columns):
-            print("ERROR: Cannot read metadata: need at least one column that contains the taxon labels."
-                  " Looking for the first column that contains 'name', 'strain', or 'accession' in the header.", file=sys.stderr)
-            return dates
+        if not (len(potential_index_columns) or name_col):
+            raise TreeTimeError("ERROR: Cannot read metadata: need at least one column that contains the taxon labels."
+                  " Looking for the first column that contains 'name', 'strain', or 'accession' in the header.")
         else:
             # use the first column that is either 'name', 'strain', 'accession'
-            index_col = sorted(potential_index_columns)[0][1]
+            if name_col is None:
+                index_col = sorted(potential_index_columns)[0][1]
+            else:
+                index_col = name_col
             print("\tUsing column '%s' as name. This needs match the taxon names in the tree!!"%index_col)
 
-        if len(potential_date_columns)>=1:
+        if len(potential_date_columns)>=1 or date_col:
             #try to parse the csv file with dates in the idx column:
-            idx = potential_date_columns[0][0]
-            col_name = potential_date_columns[0][1]
-            print("\tUsing column '%s' as date."%col_name)
+            if date_col is None:
+                date_col = potential_date_columns[0][1]
+
+            print("\tUsing column '%s' as date."%date_col)
             for ri, row in df.iterrows():
-                date_str = row.loc[col_name]
+                date_str = row.loc[date_col]
                 k = row.loc[index_col]
                 # try parsing as a float first
                 try:
@@ -255,15 +268,16 @@ def parse_dates(date_file):
                             dates[k] = [numeric_date(x) for x in [lower, upper]]
 
         else:
-            print("ERROR: Metadata file has no column which looks like a sampling date!", file=sys.stderr)
+            raise TreeTimeError("ERROR: Metadata file has no column which looks like a sampling date!")
 
         if all(v is None for v in dates.values()):
-            print("ERROR: Cannot parse dates correctly! Check date format.", file=sys.stderr)
-            return {}
+            raise TreeTimeError("ERROR: Cannot parse dates correctly! Check date format.")
+
         return dates
+    except TreeTimeError as err:
+        raise err
     except:
-        print("ERROR: Cannot read the metadata file!", file=sys.stderr)
-        return {}
+        raise
 
 
 def ambiguous_date_to_date_range(mydate, fmt="%Y-%m-%d", min_max_year=None):

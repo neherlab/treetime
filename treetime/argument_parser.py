@@ -170,6 +170,8 @@ def make_parser():
     t_parser.add_argument('--tree', type=str, help=tree_description)
     add_seq_len_aln_group(t_parser)
     t_parser.add_argument('--dates', type=str, help=dates_description)
+    t_parser.add_argument('--name-column', type=str, help="label of the column to be used as taxon name")
+    t_parser.add_argument('--date-column', type=str, help="label of the column to be used as sampling date")
     add_reroot_group(t_parser)
     add_gtr_arguments(t_parser)
     t_parser.add_argument('--clock-rate', type=float, help="if specified, the rate of the molecular clock won't be optimized.")
@@ -233,9 +235,9 @@ def make_parser():
     ## ANCESTRAL RECONSTRUCTION
     a_parser = subparsers.add_parser('ancestral', description=ancestral_description)
     add_aln_group(a_parser)
-    a_parser.add_argument('--tree', type = str,  help =tree_description)
+    a_parser.add_argument('--tree', type=str,  help=tree_description)
     add_gtr_arguments(a_parser)
-    a_parser.add_argument('--marginal', default = False, action="store_true", help ="marginal reconstruction of ancestral sequences")
+    a_parser.add_argument('--marginal', default=False, action="store_true", help ="marginal reconstruction of ancestral sequences")
     add_anc_arguments(a_parser)
     add_common_args(a_parser)
     a_parser.set_defaults(func=ancestral_reconstruction)
@@ -243,6 +245,7 @@ def make_parser():
     ## MUGRATION
     m_parser = subparsers.add_parser('mugration', description=mugration_description)
     m_parser.add_argument('--tree', required = True, type=str, help=tree_description)
+    m_parser.add_argument('--name-column', type=str, help="label of the column to be used as taxon name")
     m_parser.add_argument('--attribute', type=str, help ="attribute to reconstruct, e.g. country")
     m_parser.add_argument('--states', required = True, type=str, help ="csv or tsv file with discrete characters."
                                     "\n#name,country,continent\ntaxon1,micronesia,oceania\n...")
@@ -269,6 +272,8 @@ def make_parser():
                         "signal and recalculate branch length unless run with --keep_root.")
     c_parser.add_argument('--tree', required=True, type=str,  help=tree_description)
     c_parser.add_argument('--dates', required=True, type=str, help=dates_description)
+    c_parser.add_argument('--date-column', type=str, help="label of the column to be used as sampling date")
+    c_parser.add_argument('--name-column', type=str, help="label of the column to be used as taxon name")
     add_seq_len_aln_group(c_parser)
 
     add_reroot_group(c_parser)
