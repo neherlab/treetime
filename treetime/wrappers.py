@@ -83,7 +83,7 @@ def get_outdir(params, suffix='_treetime'):
     outdir = outdir_stem + suffix.rstrip('/')+'/'
     count = 1
     while os.path.exists(outdir):
-        outdir = outdir_stem '-%04d'%count + suffix.rstrip('/')+'/'
+        outdir = outdir_stem + '-%04d'%count + suffix.rstrip('/')+'/'
         count += 1
 
     os.makedirs(outdir)
