@@ -206,7 +206,7 @@ def datestring_from_numeric(numdate):
     else:
         year = int(np.floor(numdate))
         dt = datetime_from_numeric(1900+(numdate%1))
-        return "%:04d-%02d-%02d"%(year, dt.month, dt.day)
+        return "%04d-%02d-%02d"%(year, dt.month, dt.day)
 
 
 def parse_dates(date_file, name_col=None, date_col=None):
