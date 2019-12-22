@@ -201,7 +201,7 @@ def datestring_from_numeric(numdate):
     str
         date string YYYY-MM-DD
     """
-    if numdate>1: # python datetime doesn't work for BC dates
+    if numdate>1900: # python datetime doesn't work for dates before 1900. This can be relaxed to numdate>1 once we drop python 2.7
         return datetime.datetime.strftime(datetime_from_numeric(numdate), "%Y-%m-%d")
     else:
         year = int(np.floor(numdate))
