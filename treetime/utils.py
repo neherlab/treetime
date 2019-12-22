@@ -166,6 +166,8 @@ def numeric_date(dt=None):
 
 def datetime_from_numeric(numdate):
     """convert a numeric decimal date to a python datetime object
+    Note that this only works for AD dates since the range of datetime objects
+    is restricted to year>1.
 
     Parameters
     ----------
@@ -343,7 +345,7 @@ def ambiguous_date_to_date_range(mydate, fmt="%Y-%m-%d", min_max_year=None):
     """
     sep = fmt.split('%')[1][-1]
     min_date, max_date = {}, {}
-    today = datetime.today().date()
+    today = datetime.date.today()
 
     for val, field  in zip(mydate.split(sep), fmt.split(sep+'%')):
         f = 'year' if 'y' in field.lower() else ('day' if 'd' in field.lower() else 'month')
@@ -372,8 +374,8 @@ def ambiguous_date_to_date_range(mydate, fmt="%Y-%m-%d", min_max_year=None):
                 return None, None
     max_date['day'] = min(max_date['day'], 31 if max_date['month'] in [1,3,5,7,8,10,12]
                                            else 28 if max_date['month']==2 else 30)
-    lower_bound = datetime(year=min_date['year'], month=min_date['month'], day=min_date['day']).date()
-    upper_bound = datetime(year=max_date['year'], month=max_date['month'], day=max_date['day']).date()
+    lower_bound = datetime.date(year=min_date['year'], month=min_date['month'], day=min_date['day'])
+    upper_bound = datetime.date(year=max_date['year'], month=max_date['month'], day=max_date['day'])
     return (lower_bound, upper_bound if upper_bound<today else today)
 
 

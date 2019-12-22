@@ -3,7 +3,7 @@ import numpy as np
 from treetime import config as ttconf
 from treetime import MissingDataError
 from .treeanc import TreeAnc
-from .utils import numeric_date, DateConversion
+from .utils import numeric_date, DateConversion, datestring_from_numeric
 from .distribution import Distribution
 from .branch_len_interpolator import BranchLenInterpolator
 from .node_interpolator import NodeInterpolator
@@ -679,17 +679,7 @@ class ClockTree(TreeAnc):
                         "later than present day",4 , warn=True)
 
             node.numdate = now - years_bp
-
-            # set the human-readable date
-            year = np.floor(node.numdate)
-            days = max(0,365.25 * (node.numdate - year)-1)
-            try:  # datetime will only operate on dates after 1900
-                n_date = datetime(year, 1, 1) + timedelta(days=days)
-                node.date = datetime.strftime(n_date, "%Y-%m-%d")
-            except:
-                # this is the approximation not accounting for gap years etc
-                n_date = datetime(1900, 1, 1) + timedelta(days=days)
-                node.date = "%04d-%02d-%02d"%(year, n_date.month, n_date.day)
+            node.date = datestring_from_numeric(node.numdate)
 
 
     def branch_length_to_years(self):
