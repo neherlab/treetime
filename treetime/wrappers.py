@@ -79,9 +79,14 @@ def get_outdir(params, suffix='_treetime'):
             return params.outdir.rstrip('/') + '/'
 
     from datetime import datetime
-    outdir = datetime.now().date().isoformat()+suffix.rstrip('/') + '/'
-    if not os.path.exists(outdir):
-        os.makedirs(outdir)
+    outdir_stem = datetime.now().date().isoformat()
+    outdir = outdir_stem + suffix.rstrip('/')+'/'
+    count = 1
+    while os.path.exists(outdir):
+        outdir = outdir_stem '-%04d'%count + suffix.rstrip('/')+'/'
+        count += 1
+
+    os.makedirs(outdir)
     return outdir
 
 def get_basename(params, outdir):
