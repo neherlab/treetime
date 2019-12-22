@@ -7,7 +7,6 @@ from scipy.interpolate import interp1d
 from scipy.integrate import quad
 from scipy import stats
 from scipy.ndimage import binary_dilation
-from treetime import config as ttconf
 from treetime import TreeTimeError
 
 class DateConversion(object):
@@ -102,7 +101,7 @@ class DateConversion(object):
 
     def to_numdate(self, tbp):
         """
-        Convert the numeric date to the branch-len scale
+        Convert time before present measured in clock rate units to numeric calendar dates
         """
         return numeric_date() - self.to_years(tbp)
 
@@ -151,16 +150,61 @@ def numeric_date(dt=None):
         date of to be converted. if None, assume today
 
     """
+    from calendar import isleap
+
     if dt is None:
         dt = datetime.datetime.now()
 
+    days_in_year = 366 if isleap(dt.year) else 365
     try:
-        res = dt.year + dt.timetuple().tm_yday / 365.25
+        res = dt.year + (dt.timetuple().tm_yday-0.5) / days_in_year
     except:
         res = None
 
     return res
 
+
+def datetime_from_numeric(numdate):
+    """convert a numeric decimal date to a python datetime object
+
+    Parameters
+    ----------
+    numdate : float
+        numeric date as in 2018.23
+
+    Returns
+    -------
+    datetime.datetime
+        datetime object
+    """
+    from calendar import isleap
+    days_in_year = 366 if isleap(int(numdate)) else 365
+    # add a small number of the time elapsed in a year to avoid
+    # unexpected behavior for values 1/365, 2/365, etc
+    days_elapsed = int(((numdate%1)+1e-10)*days_in_year)
+    date = datetime.datetime(int(numdate),1,1) + datetime.timedelta(days=days_elapsed)
+    return date
+
+
+def datestring_from_numeric(numdate):
+    """convert a numerical date to a formated date string YYYY-MM-DD
+
+    Parameters
+    ----------
+    numdate : float
+        numeric date as in 2018.23
+
+    Returns
+    -------
+    str
+        date string YYYY-MM-DD
+    """
+    if numdate>1: # python datetime doesn't work for BC dates
+        return datetime.datetime.strftime(datetime_from_numeric(numdate), "%Y-%m-%d")
+    else:
+        year = int(np.floor(numdate))
+        dt = datetime_from_numeric(1900+(numdate%1))
+        return "%:04d-%02d-%02d"%(year, dt.month, dt.day)
 
 
 def parse_dates(date_file, name_col=None, date_col=None):
@@ -221,7 +265,7 @@ def parse_dates(date_file, name_col=None, date_col=None):
             raise TreeTimeError("ERROR: specified column for the taxon name does not exist. \n\tAvailable columns are: "\
                                 +", ".join(df.columns)+"\n\tYou specified '%s'"%name_col)
 
-            
+
         dates = {}
         # if a potential numeric date column was found, use it
         # (use the first, if there are more than one)
@@ -297,7 +341,6 @@ def ambiguous_date_to_date_range(mydate, fmt="%Y-%m-%d", min_max_year=None):
     tuple
         upper and lower bounds on the date. return (None, None) if errors
     """
-    from datetime import datetime
     sep = fmt.split('%')[1][-1]
     min_date, max_date = {}, {}
     today = datetime.today().date()
