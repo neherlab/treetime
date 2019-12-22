@@ -185,10 +185,16 @@ def export_sequences_and_tree(tt, basename, is_vcf=False, zero_based=False,
     for n in tt.tree.find_clades():
         if timetree:
             if confidence:
-                conf = tt.get_max_posterior_region(n, fraction=0.9)
-                fh_dates.write('%s\t%s\t%f\t%f\t%f\n'%(n.name, n.date, n.numdate,conf[0], conf[1]))
+                if n.bad_branch:
+                    fh_dates.write('%s\t--\t--\t--\t--\n'%(n.name))
+                else:
+                    conf = tt.get_max_posterior_region(n, fraction=0.9)
+                    fh_dates.write('%s\t%s\t%f\t%f\t%f\n'%(n.name, n.date, n.numdate,conf[0], conf[1]))
             else:
-                fh_dates.write('%s\t%s\t%f\n'%(n.name, n.date, n.numdate))
+                if n.bad_branch:
+                    fh_dates.write('%s\t--\t--\n'%(n.name))
+                else:
+                    fh_dates.write('%s\t%s\t%f\n'%(n.name, n.date, n.numdate))
 
         n.confidence=None
         # due to a bug in older versions of biopython that truncated filenames in nexus export
@@ -808,7 +814,7 @@ def mugration(params):
     else:
         taxon_name = states.columns[0]
     print("Using column '%s' as taxon name. This needs to match the taxa in the tree!"%taxon_name)
-    
+
     if params.attribute:
         if params.attribute in states.columns:
             attr = params.attribute
