@@ -16,3 +16,6 @@ In addition, we implemented a number of other changes to the interface
 ## Bug fixes
  * scaling of skyline confidence intervals was wrong. It now reflects the inverse second derivative in log-space
  * catch problems after rerooting associated with missing attributes in the newly generated root node.
+ * make conversion from calendar dates to numeric dates and vice versa compatible and remove approximate handling of leap-years.
+ * avoid overwriting content of output directory with default names
+ * don't export inferred dates of tips labeled as `bad_branch`.
