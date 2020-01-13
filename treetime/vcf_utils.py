@@ -195,8 +195,7 @@ def read_vcf(vcf_file, ref_file=None):
         for line in f:
             if line[0] != '#':
                 #actual data - most common so first in 'if-list'!
-                line = line.strip()
-                dat = line.split('\t')
+                dat = line.strip().split('\t')
                 POS = int(dat[posLoc])
                 REF = dat[refLoc]
                 ALT = dat[altLoc].split(',')

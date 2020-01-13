@@ -9,7 +9,6 @@ from Bio import AlignIO
 from treetime import config as ttconf
 from treetime import MissingDataError,UnknownMethodError
 from .seq_utils import seq2prof, seq2array, prof2seq, normalize_profile, extend_profile
-from .vcf_utils import process_alignment_dictionary
 from .gtr import GTR
 from .gtr_site_specific import GTR_site_specific
 from .sequence_data import SequenceData
@@ -107,8 +106,8 @@ class TreeAnc(object):
             inferring site specific GTR models).
 
         seq_len : int, optional
-            length of the sequence. this is inferred from the input alignment or the reference 
-            sequence in most cases but can be specified for other applications. 
+            length of the sequence. this is inferred from the input alignment or the reference
+            sequence in most cases but can be specified for other applications.
 
         **kwargs
            Keyword arguments to construct the GTR model
