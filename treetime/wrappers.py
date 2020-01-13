@@ -749,6 +749,7 @@ def reconstruct_discrete_traits(tree, traits, missing_data='?', pc=1.0, sampling
     mugration_GTR.profile_map[missing_char] = np.ones(nc)
     mugration_GTR.ambiguous=missing_char
 
+
     ###########################################################################
     ### set up treeanc
     ###########################################################################
@@ -760,7 +761,7 @@ def reconstruct_discrete_traits(tree, traits, missing_data='?', pc=1.0, sampling
                            if n.name in traits else missing_char))
                    for n in treeanc.tree.get_terminals()]
     valid_seq = np.array([str(s.seq)!=missing_char for s in pseudo_seqs])
-    print("Assigned discrete traits to %d out of %d taxa"%(np.sum(valid_seq),len(valid_seq)))
+    print("Assigned discrete traits to %d out of %d taxa.\n"%(np.sum(valid_seq),len(valid_seq)))
     treeanc.aln = MultipleSeqAlignment(pseudo_seqs)
 
     try:
@@ -773,14 +774,15 @@ def reconstruct_discrete_traits(tree, traits, missing_data='?', pc=1.0, sampling
         raise e
 
     for i in range(iterations):
-        treeanc.infer_gtr(marginal=True, normalized_rate=False, pc=pc)
+        treeanc.infer_gtr(marginal=True, normalized_rate=False, pc=pc, fixed_pi=weights)
         treeanc.optimize_gtr_rate()
 
     if sampling_bias_correction:
         treeanc.gtr.mu *= sampling_bias_correction
 
     treeanc.infer_ancestral_sequences(infer_gtr=False, store_compressed=False,
-                                 marginal=True, normalized_rate=False, reconstruct_tip_states=True)
+                                 marginal=True, normalized_rate=False,
+                                 reconstruct_tip_states=True)
 
     print(fill("NOTE: previous versions (<0.7.0) of this command made a 'short-branch length assumption. "
           "TreeTime now optimizes the overall rate numerically and thus allows for long branches "
@@ -835,7 +837,7 @@ def mugration(params):
                     if x[attr]!=params.missing_data and x[attr]}
 
     mug, letter_to_state, reverse_alphabet = reconstruct_discrete_traits(params.tree, leaf_to_attr, missing_data=params.missing_data,
-            pc=params.pc, sampling_bias_correction=params.sampling_bias_correction, verbose=params.verbose)
+            pc=params.pc, sampling_bias_correction=params.sampling_bias_correction, verbose=params.verbose, weights=params.weights)
 
     if mug is None:
         print("Mugration inference failed, check error messages above and your input data.")
@@ -871,7 +873,7 @@ def mugration(params):
     if params.confidence:
         conf_name = basename+'confidence.csv'
         with open(conf_name, 'w') as ofile:
-            ofile.write('#name, '+', '.join(unique_states)+'\n')
+            ofile.write('#name, '+', '.join(mug.gtr.alphabet)+'\n')
             for n in mug.tree.find_clades():
                 ofile.write(n.name + ', '+', '.join([str(x) for x in n.marginal_profile[0]])+'\n')
         print("Saved table with ancestral state confidences as:", conf_name)
@@ -880,6 +882,7 @@ def mugration(params):
     outtree_name = basename+'annotated_tree.nexus'
     Phylo.write(mug.tree, outtree_name, 'nexus')
     print("Saved annotated tree as:", outtree_name)
+    print("---Done!\n")
 
     return 0
 
