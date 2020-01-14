@@ -238,7 +238,7 @@ def parse_dates(date_file, name_col=None, date_col=None):
 
     try:
         # read the metadata file into pandas dataframe.
-        df = pd.read_csv(date_file, sep=full_sep, engine='python')
+        df = pd.read_csv(date_file, sep=full_sep, engine='python', dtype='str')
         # check the metadata has strain names in the first column
         # look for the column containing sampling dates
         # We assume that the dates might be given either in human-readable format
@@ -318,7 +318,7 @@ def parse_dates(date_file, name_col=None, date_col=None):
 
         if all(v is None for v in dates.values()):
             raise TreeTimeError("ERROR: Cannot parse dates correctly! Check date format.")
-
+        print(dates)
         return dates
     except TreeTimeError as err:
         raise err
