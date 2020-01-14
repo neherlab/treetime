@@ -723,7 +723,7 @@ def reconstruct_discrete_traits(tree, traits, missing_data='?', pc=1.0, sampling
     ###########################################################################
     ### make a single character alphabet that maps to discrete states
     ###########################################################################
-    alphabet = [chr(65+i) for i,state in enumerate(unique_states)]
+    alphabet = [chr(65+i) for i,state in enumerate(unique_states) if state!=missing_data]
     missing_char = chr(65+nc)
     letter_to_state = {a:unique_states[i] for i,a in enumerate(alphabet)}
     letter_to_state[missing_char]=missing_data
@@ -735,10 +735,19 @@ def reconstruct_discrete_traits(tree, traits, missing_data='?', pc=1.0, sampling
     if type(weights)==str:
         tmp_weights = pd.read_csv(weights, sep='\t' if weights[-3:]=='tsv' else ',',
                              skipinitialspace=True)
-        weights = {row[0]:row[1] for ri,row in tmp_weights.iterrows()}
-        mean_weight = np.mean(list(weights.values()))
-        weights = np.array([weights[c] if c in weights else mean_weight for c in unique_states], dtype=float)
-        weights/=weights.sum()
+        weights = {row[0]:row[1] for ri,row in tmp_weights.iterrows() if not np.isnan(row[1])}
+        missing_weights = [c for c in unique_states if c not in weights]
+        if len(missing_weights):
+            print("Missing weights for values: " + ", ".join(missing_weights))
+            
+        if len(missing_weights)>0.5*len(alphabet):
+            print("More than half of discrete states missing from the weights file")
+            print("Weights read from file are:", weights)
+            raise TreeTimeError("More than half of discrete states missing from the weights file")
+        else:
+            mean_weight = np.mean(list(weights.values()))
+            weights = np.array([weights[letter_to_state[c]] if letter_to_state[c] in weights else mean_weight for c in alphabet], dtype=float)
+            weights/=weights.sum()
     else:
         weights = None
 
