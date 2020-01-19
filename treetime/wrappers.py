@@ -711,7 +711,39 @@ def reconstruct_discrete_traits(tree, traits, missing_data='?', pc=1.0, sampling
     TreeTimeError
         raise error if ancestral reconstruction errors out
     """
-    unique_states = sorted(set(traits.values()))
+    ###########################################################################
+    ### make a single character alphabet that maps to discrete states
+    ###########################################################################
+
+    unique_states = set(traits.values())
+    n_observed_states = len(unique_states)
+    if type(weights)==str:
+        tmp_weights = pd.read_csv(weights, sep='\t' if weights[-3:]=='tsv' else ',',
+                             skipinitialspace=True)
+        weight_dict = {row[0]:row[1] for ri,row in tmp_weights.iterrows() if not np.isnan(row[1])}
+        unique_states.update(weight_dict.keys())
+        missing_weights = [c for c in unique_states if c not in weight_dict]
+        if len(missing_weights):
+            print("Missing weights for values: " + ", ".join(missing_weights))
+
+        if len(missing_weights)>0.5*n_observed_states:
+            print("More than half of discrete states missing from the weights file")
+            print("Weights read from file are:", weights)
+            raise TreeTimeError("More than half of discrete states missing from the weights file")
+    else:
+        weights_dict = None
+
+    unique_states=sorted(unique_states)
+    alphabet = [chr(65+i) for i,state in enumerate(unique_states) if state!=missing_data]
+    letter_to_state = {a:unique_states[i] for i,a in enumerate(alphabet)}
+
+    if weight_dict is not None:
+        mean_weight = np.mean(list(weight_dict.values()))
+        weights = np.array([weight_dict[letter_to_state[c]] if letter_to_state[c] in weight_dict else mean_weight
+                            for c in alphabet], dtype=float)
+        weights/=weights.sum()
+
+
     nc = len(unique_states)
     if nc>180:
         print("mugration: can't have more than 180 states!", file=sys.stderr)
@@ -720,36 +752,13 @@ def reconstruct_discrete_traits(tree, traits, missing_data='?', pc=1.0, sampling
         print("mugration: only one or zero states found -- this doesn't make any sense", file=sys.stderr)
         return None, None, None
 
-    ###########################################################################
-    ### make a single character alphabet that maps to discrete states
-    ###########################################################################
-    alphabet = [chr(65+i) for i,state in enumerate(unique_states) if state!=missing_data]
     missing_char = chr(65+nc)
-    letter_to_state = {a:unique_states[i] for i,a in enumerate(alphabet)}
     letter_to_state[missing_char]=missing_data
     reverse_alphabet = {v:k for k,v in letter_to_state.items()}
 
     ###########################################################################
     ### construct gtr model
     ###########################################################################
-    if type(weights)==str:
-        tmp_weights = pd.read_csv(weights, sep='\t' if weights[-3:]=='tsv' else ',',
-                             skipinitialspace=True)
-        weights = {row[0]:row[1] for ri,row in tmp_weights.iterrows() if not np.isnan(row[1])}
-        missing_weights = [c for c in unique_states if c not in weights]
-        if len(missing_weights):
-            print("Missing weights for values: " + ", ".join(missing_weights))
-            
-        if len(missing_weights)>0.5*len(alphabet):
-            print("More than half of discrete states missing from the weights file")
-            print("Weights read from file are:", weights)
-            raise TreeTimeError("More than half of discrete states missing from the weights file")
-        else:
-            mean_weight = np.mean(list(weights.values()))
-            weights = np.array([weights[letter_to_state[c]] if letter_to_state[c] in weights else mean_weight for c in alphabet], dtype=float)
-            weights/=weights.sum()
-    else:
-        weights = None
 
     # set up dummy matrix
     W = np.ones((nc,nc), dtype=float)
