@@ -33,12 +33,14 @@ class Coalescent(object):
         Args:
             - Tc:   a float or an iterable, if iterable another argument T of same shape is required
             - T:    an array like of same shape as Tc that specifies the time pivots corresponding to Tc
+                    note that this array is ordered past to present corresponding to
+                    decreasing 'time before present' values
         Returns:
             - None
         '''
         if isinstance(Tc, Iterable):
             if len(Tc)==len(T):
-                x = np.concatenate(([-ttconf.BIG_NUMBER], T, [ttconf.BIG_NUMBER]))
+                x = np.concatenate(([ttconf.BIG_NUMBER], T, [-ttconf.BIG_NUMBER]))
                 y = np.concatenate(([Tc[0]], Tc, [Tc[-1]]))
                 self.Tc = interp1d(x,y)
             else:
