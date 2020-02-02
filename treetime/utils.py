@@ -238,7 +238,7 @@ def parse_dates(date_file, name_col=None, date_col=None):
 
     try:
         # read the metadata file into pandas dataframe.
-        df = pd.read_csv(date_file, sep=full_sep, engine='python', dtype='str')
+        df = pd.read_csv(date_file, sep=full_sep, engine='python', dtype='str', index_col=False)
         # check the metadata has strain names in the first column
         # look for the column containing sampling dates
         # We assume that the dates might be given either in human-readable format
@@ -293,7 +293,10 @@ def parse_dates(date_file, name_col=None, date_col=None):
                 k = row.loc[index_col]
                 # try parsing as a float first
                 try:
-                    dates[k] = float(date_str)
+                    if date_str:
+                        dates[k] = float(date_str)
+                    else:
+                        dates[k] = None
                     continue
                 except ValueError:
                     # try whether the date string can be parsed as [2002.2:2004.3]
