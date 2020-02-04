@@ -162,6 +162,11 @@ class NodeInterpolator (Distribution):
     """
 
     @classmethod
+    def convolve_fft(cls, node_interp, branch_interp, inverse_time=True):
+        pass
+
+
+    @classmethod
     def convolve(cls, node_interp, branch_interp, max_or_integral='integral',
                  n_grid_points = ttconf.NODE_GRID_SIZE, n_integral=ttconf.N_INTEGRAL,
                  inverse_time=True, rel_tol=0.05, yc=10):
