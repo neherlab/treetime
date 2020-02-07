@@ -16,6 +16,7 @@ class Distribution(object):
     object.
     """
 
+
     @staticmethod
     def calc_fwhm(distribution, is_neg_log=True):
         """
@@ -149,6 +150,8 @@ class Distribution(object):
             self._func= interp1d(xvals, yvals, kind=kind, fill_value=BIG_NUMBER,
                                  bounds_error=False, assume_sorted=True)
             self._fwhm = Distribution.calc_fwhm(self)
+            # remember effective range
+            self._effective_support = self.calc_effective_support()
 
         elif np.isscalar(x):
             assert (np.isscalar(y) or y is None)
@@ -195,6 +198,10 @@ class Distribution(object):
     @property
     def fwhm(self):
         return self._fwhm
+
+    @property
+    def effective_support(self):
+        return self._effective_support
 
     @property
     def x(self):
@@ -245,6 +252,31 @@ class Distribution(object):
 
     def __mul__(self, other):
         return Distribution.multiply((self, other))
+
+
+    def calc_effective_support(self, cutoff=1e-15):
+        """
+        Assess the interval on which the self is higher than cutoff
+        relative to its peak
+        """
+        from scipy.optimize import brentq
+        log_cutoff = np.log(cutoff)
+        f = lambda x: self.__call__(x) - self.peak_val + log_cutoff
+        try:
+            if f(self.xmin)<0 or np.isclose(self.peak_pos, self.xmin):
+                left = self.xmin + TINY_NUMBER
+            else:
+                left = brentq(f, self.xmin, self.peak_pos, rtol=1e-5, xtol=self.peak_pos*1e-5)
+
+            if f(self.xmax)<0 or np.isclose(self.peak_pos, self.xmax):
+                right = self.xmax - TINY_NUMBER
+            else:
+                right = brentq(f, self.peak_pos, self.xmax, rtol=1e-5, xtol=self.peak_pos*1e-5)
+        except:
+            print("effective_support not good")
+            left, right = self.xmin, self.xmax
+
+        return (left,right)
 
 
     def _adjust_grid(self, rel_tol=0.01, yc=10):
@@ -328,6 +360,17 @@ class Distribution(object):
                     + np.sum((dx[:-1]+dx[1:])*y[2:-1:2]) + dx[-1]*y[-1]))
 
         return np.sum(res)
+
+
+    def fft(self, T, n=None, inverse_time=True):
+        from numpy.fft import rfft
+        if n is None:
+            n=len(T)
+        if inverse_time:
+            return rfft(self.prob_relative(T), n=n)
+        else:
+            return rfft(self.prob_relative(T)[::-1], n=n)
+
 
 if __name__=="__main__":
     # code used for debugging and development

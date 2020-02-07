@@ -163,7 +163,45 @@ class NodeInterpolator (Distribution):
 
     @classmethod
     def convolve_fft(cls, node_interp, branch_interp, inverse_time=True):
-        pass
+        fwhm = node_interp.fwhm + branch_interp.fwhm
+        dt = max(branch_interp.one_mutation*0.1, min(node_interp.fwhm, branch_interp.fwhm)/50)
+        b_effsupport = branch_interp.effective_support
+        n_effsupport = node_interp.effective_support
+
+        tmax = 2*max(b_effsupport[1]-b_effsupport[0], n_effsupport[1]-n_effsupport[0])
+
+        Tb = np.arange(b_effsupport[0], b_effsupport[0] + tmax, dt)
+        if inverse_time:
+            Tn = np.arange(n_effsupport[0], n_effsupport[0] + tmax, dt)
+        else:
+            Tn = np.arange(n_effsupport[1] - tmax, n_effsupport[1], dt)
+
+        raw_len = len(Tb)
+        fft_len = 2*raw_len
+
+        fftb = branch_interp.fft(Tb, n=fft_len)
+        fftn = node_interp.fft(Tn, n=fft_len, inverse_time=inverse_time)
+        if inverse_time:
+            fft_res = np.fft.irfft(fftb*fftn, fft_len)[:raw_len]
+            Tres = Tn + Tb[0]
+        else:
+            fft_res = np.fft.irfft(fftb*fftn, fft_len)[::-1]
+            fft_res = fft_res[raw_len:]
+            Tres = Tn - Tb[0]
+
+        res = -np.log(fft_res) + branch_interp.peak_val + node_interp.peak_val - np.log(dt)
+
+        # instantiate the new interpolation object and return
+        return cls(Tres, res, is_log=True, kind='linear', assume_sorted=True)
+
+        # left_slope = (res[10]-res[5])/(Tres[10]-Tres[5])
+        # right_slope = (res[-5]-res[-10])/(Tres[-5]-Tres[-10])
+        # Tleft, Tright = np.linspace(node_interp.x[0], Tres[0],50), np.linspace(Tres[-1], node_interp.x[-1],50)
+        # res_left = res[10] + left_slope*(Tleft - Tres[10])
+        # res_right = res[-10] + right_slope*(Tright - Tres[-10])
+
+        # # instantiate the new interpolation object and return
+        # return cls(np.concatenate((Tleft,Tres,Tright)), np.concatenate((res_left, res, res_right)), is_log=True, kind='linear', assume_sorted=True)
 
 
     @classmethod

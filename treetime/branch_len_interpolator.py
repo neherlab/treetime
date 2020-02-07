@@ -25,11 +25,12 @@ class BranchLenInterpolator (Distribution):
         if one_mutation is None:
             L = node.sequence.shape[0]
             one_mutation = 1.0/L
+        self.one_mutation = one_mutation
 
         # optimal branch length
         mutation_length = node.mutation_length
-        if mutation_length < np.min((1e-5, 0.1*one_mutation)): # zero-length
-            short_range = 10*one_mutation
+        if mutation_length < np.min((1e-5, 0.1*self.one_mutation)): # zero-length
+            short_range = 10*self.one_mutation
             grid = np.concatenate([short_range*(np.linspace(0, 1.0 , n_grid_points//2)[:-1]),
                 (short_range + (ttconf.MAX_BRANCH_LENGTH - short_range)*(np.linspace(0, 1.0 , n_grid_points//2+1)**2))])
 
@@ -65,15 +66,15 @@ class BranchLenInterpolator (Distribution):
                 # for short branches, the number of mutations is poissonian. the prob of a branch to have l=mutation_length*L
                 # mutations when its length is k, is therefor e^{-kL}(kL)^(Ll)/(Ll)!. Ignoring constants, the log is
                 # -kL + lL\log(k)
-                log_prob = np.array([ k - mutation_length*np.log(k+ttconf.MIN_BRANCH_LENGTH*one_mutation) for k in grid])/one_mutation
+                log_prob = np.array([ k - mutation_length*np.log(k+ttconf.MIN_BRANCH_LENGTH*self.one_mutation) for k in grid])/self.one_mutation
                 log_prob -= log_prob.min()
             else:
                 # make it a Gaussian
                 #sigma_sq = (mutation_length+one_mutation)*variance_scale
-                l = (mutation_length+one_mutation)
+                l = (mutation_length+self.one_mutation)
                 nm_inv = np.exp(l/p0)
-                sigma_sq = p0*(nm_inv-1)*(nm_inv - p0*(nm_inv-1))*one_mutation
-                sigma = np.sqrt(sigma_sq+ttconf.MIN_BRANCH_LENGTH*one_mutation)
+                sigma_sq = p0*(nm_inv-1)*(nm_inv - p0*(nm_inv-1))*self.one_mutation
+                sigma = np.sqrt(sigma_sq+ttconf.MIN_BRANCH_LENGTH*self.one_mutation)
                 log_prob = np.array(np.min([[ 0.5*(mutation_length-k)**2/sigma_sq for k in grid],
                                              100 + np.abs([(mutation_length-k)/sigma for k in grid])], axis=0))
         elif branch_length_mode=='marginal':
@@ -138,6 +139,10 @@ class BranchLenInterpolator (Distribution):
     def fwhm(self):
         return super(BranchLenInterpolator,self).fwhm/self.gamma
 
+    @property
+    def effective_support(self):
+        return tuple((x/self.gamma for x in super(BranchLenInterpolator,self).effective_support))
+
     def __call__(self, x, tnode=None, multiplicity=None):
         res = super(BranchLenInterpolator, self).__call__(x*self.gamma)
         if self.merger_cost is not None:
@@ -151,5 +156,4 @@ class BranchLenInterpolator (Distribution):
     def __mul__(self, other):
         res = BranchLenInterpolator(super(BranchLenInterpolator, self).__mul__(other))
         return res
-
 
