@@ -189,10 +189,26 @@ class NodeInterpolator (Distribution):
             fft_res = fft_res[raw_len:]
             Tres = Tn - Tb[0]
 
-        res = -np.log(fft_res) + branch_interp.peak_val + node_interp.peak_val - np.log(dt)
+        #ind = fft_res>fft_res.max()*1e-15
+        #res = -np.log(fft_res[ind]) + branch_interp.peak_val + node_interp.peak_val - np.log(dt)
+
+        res = -np.log(np.maximum(1e-15, fft_res)) + branch_interp.peak_val + node_interp.peak_val - np.log(dt)
+        return cls(Tres, res, is_log=True, kind='linear')
+
+        #Tres_cropped = Tres[ind]
+        # margin = 10
+        # left_slope = (res[10]-res[0])/(Tres_cropped[10]-Tres_cropped[0])
+        # right_slope = (res[-1]-res[-margin-1])/(Tres_cropped[-1]-Tres_cropped[-margin-1])
+        # Tleft, Tright = np.linspace(node_interp.x[0], Tres_cropped[0],50), np.linspace(Tres_cropped[-1], node_interp.x[-1],50)
+
+        # res_left = res[margin] + left_slope*(Tleft - Tres[margin])
+        # res_right = res[-margin-1] + right_slope*(Tright - Tres[-margin-1])
+
+        # # instantiate the new interpolation object and return
+        #return cls(np.concatenate(([node_interp.x[0]],Tres_cropped,[node_interp.x[-1]])), np.concatenate(([1e10], res, [1e10])), is_log=True, kind='linear')
 
         # instantiate the new interpolation object and return
-        return cls(Tres, res, is_log=True, kind='linear', assume_sorted=True)
+        # return cls(Tres_cropped, res, is_log=True, kind='linear', assume_sorted=True)
 
         # left_slope = (res[10]-res[5])/(Tres[10]-Tres[5])
         # right_slope = (res[-5]-res[-10])/(Tres[-5]-Tres[-10])

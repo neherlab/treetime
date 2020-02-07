@@ -166,6 +166,7 @@ class Distribution(object):
             self._xmin, self._xmax = x, x
             self._support = 0.
             self._func = lambda x : (x==self.peak_pos)*self.peak_val
+            self._effective_support = (self._xmin, self._xmax)
         else:
             raise TypeError("Cannot create Distribution: "
                 "Input arguments should be scalars or iterables!")
@@ -271,9 +272,10 @@ class Distribution(object):
             if f(self.xmax)<0 or np.isclose(self.peak_pos, self.xmax):
                 right = self.xmax - TINY_NUMBER
             else:
-                right = brentq(f, self.peak_pos, self.xmax, rtol=1e-5, xtol=self.peak_pos*1e-5)
+                right = brentq(f, self.peak_pos, self.xmax, rtol=1e-5, xtol=self.fwhm*1e-5)
         except:
             print("effective_support not good")
+            import ipdb; ipdb.set_trace()
             left, right = self.xmin, self.xmax
 
         return (left,right)
@@ -363,6 +365,8 @@ class Distribution(object):
 
 
     def fft(self, T, n=None, inverse_time=True):
+        if self.is_delta:
+            import ipdb; ipdb.set_trace()
         from numpy.fft import rfft
         if n is None:
             n=len(T)

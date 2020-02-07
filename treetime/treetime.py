@@ -136,7 +136,7 @@ class TreeTime(ClockTree):
                       "sample_from_profile":"root",
                       "reconstruct_tip_states":kwargs.get("reconstruct_tip_states", False)}
 
-        tt_kwargs = {'clock_rate':fixed_clock_rate, 'time_marginal':False}
+        tt_kwargs = {'clock_rate':fixed_clock_rate, 'time_marginal':time_marginal}
         tt_kwargs.update(kwargs)
 
         seq_LH = 0
@@ -178,7 +178,8 @@ class TreeTime(ClockTree):
 
         if self.aln:
             seq_LH = self.tree.sequence_marginal_LH if seq_kwargs['marginal_sequences'] else self.tree.sequence_joint_LH
-        self.LH =[[seq_LH, self.tree.positional_joint_LH, 0]]
+        self.LH =[[seq_LH, self.tree.positional_marginal_LH, 0]]
+        #self.LH =[[seq_LH, self.tree.positional_joint_LH, 0]]
 
         if root is not None and max_iter:
             new_root = self.reroot(root='least-squares' if root=='clock_filter' else root, clock_rate=fixed_clock_rate)
@@ -231,7 +232,8 @@ class TreeTime(ClockTree):
 
             if self.aln:
                 seq_LH = self.tree.sequence_marginal_LH if seq_kwargs['marginal_sequences'] else self.tree.sequence_joint_LH
-            self.LH.append([seq_LH, self.tree.positional_joint_LH, self.tree.coalescent_joint_LH])
+            #self.LH.append([seq_LH, self.tree.positional_joint_LH, self.tree.coalescent_joint_LH])
+            self.LH.append([seq_LH, self.tree.positional_marginal_LH, self.tree.coalescent_joint_LH])
             niter+=1
 
             if ndiff==0 and n_resolved==0 and Tc!='skyline':

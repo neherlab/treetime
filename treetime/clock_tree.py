@@ -24,7 +24,7 @@ class ClockTree(TreeAnc):
     """
 
     def __init__(self,  dates=None, debug=False, real_dates=True, precision='auto',
-                 branch_length_mode='joint', use_covariation=False, *args, **kwargs):
+                 branch_length_mode='joint', use_covariation=False, use_fft=True, *args, **kwargs):
 
         """
         ClockTree constructor
@@ -68,7 +68,8 @@ class ClockTree(TreeAnc):
         if dates is None:
             raise ValueError("ClockTree requires date constraints!")
 
-        self.debug=debug
+        self.debug = debug
+        self.use_fft = use_fft
         self.real_dates = real_dates
         self.date_dict = dates
         self._date2dist = None  # we do not know anything about the conversion
@@ -560,7 +561,11 @@ class ClockTree(TreeAnc):
                         node.marginal_pos_LH = node.subtree_distribution
                         self.tree.positional_marginal_LH = -node.subtree_distribution.peak_val
                     else: # otherwise propagate to parent
-                        res, res_t = NodeInterpolator.convolve(node.subtree_distribution,
+                        if self.use_fft:
+                            res, res_t = NodeInterpolator.convolve_fft(node.subtree_distribution,
+                                        node.branch_length_interpolator), None
+                        else:
+                            res, res_t = NodeInterpolator.convolve(node.subtree_distribution,
                                         node.branch_length_interpolator,
                                         max_or_integral='integral',
                                         n_grid_points = self.node_grid_points,
@@ -598,7 +603,10 @@ class ClockTree(TreeAnc):
 
                 # integral message, which delivers to the node the positional information
                 # from the complementary subtree
-                res, res_t = NodeInterpolator.convolve(msg_parent_to_node, node.branch_length_interpolator,
+                if self.use_fft:
+                    res, res_t = NodeInterpolator.convolve_fft(msg_parent_to_node, node.branch_length_interpolator, inverse_time=False), None
+                else:
+                    res, res_t = NodeInterpolator.convolve(msg_parent_to_node, node.branch_length_interpolator,
                                                     max_or_integral='integral',
                                                     inverse_time=False,
                                                     n_grid_points = self.node_grid_points,
@@ -728,7 +736,7 @@ class ClockTree(TreeAnc):
 
         self.logger("###ClockTree.calc_rate_susceptibility: run with upper bound of rate estimate", 1)
         self.make_time_tree(**params)
-        self.logger("###ClockTree.calc_rate_susceptibility: rate: %f, LH:%f"%(upper_rate, self.tree.positional_joint_LH), 2)
+        self.logger("###ClockTree.calc_rate_susceptibility: rate: %f, LH:%f"%(upper_rate, self.tree.positional_marginal_LH), 2)
         for n in self.tree.find_clades():
             n.numdate_rate_variation = [(upper_rate, n.numdate)]
             if n.up:
@@ -736,7 +744,7 @@ class ClockTree(TreeAnc):
 
         self.logger("###ClockTree.calc_rate_susceptibility: run with lower bound of rate estimate", 1)
         self.make_time_tree(**params)
-        self.logger("###ClockTree.calc_rate_susceptibility: rate: %f, LH:%f"%(lower_rate, self.tree.positional_joint_LH), 2)
+        self.logger("###ClockTree.calc_rate_susceptibility: rate: %f, LH:%f"%(lower_rate, self.tree.positional_marginal_LH), 2)
         for n in self.tree.find_clades():
             n.numdate_rate_variation.append((lower_rate, n.numdate))
             if n.up:
@@ -744,7 +752,7 @@ class ClockTree(TreeAnc):
 
         self.logger("###ClockTree.calc_rate_susceptibility: run with central rate estimate", 1)
         self.make_time_tree(**params)
-        self.logger("###ClockTree.calc_rate_susceptibility: rate: %f, LH:%f"%(current_rate, self.tree.positional_joint_LH), 2)
+        self.logger("###ClockTree.calc_rate_susceptibility: rate: %f, LH:%f"%(current_rate, self.tree.positional_marginal_LH), 2)
         for n in self.tree.find_clades():
             n.numdate_rate_variation.append((current_rate, n.numdate))
             n.numdate_rate_variation.sort(key=lambda x:x[1]) # sort estimates for different rates by numdate
