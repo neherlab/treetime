@@ -130,7 +130,7 @@ class Coalescent(object):
             - branch_length:    branch length, determines when this branch merges with sister
             - multiplicity:     2 if merger is binary, higher if this is a polytomy
         '''
-        merger_time = t_node+branch_length
+        merger_time = t_node + np.maximum(0,branch_length)
         return self.integral_merger_rate(merger_time) - self.integral_merger_rate(t_node)\
                  - np.log(self.total_merger_rate(merger_time))*(multiplicity-1.0)/multiplicity
 
@@ -211,6 +211,7 @@ class Coalescent(object):
 
             dcost = np.array(dcost)
             optimal_cost = cost(opt_logTc)
+
             self.confidence = dlogTc/np.sqrt(np.abs(2*optimal_cost - dcost[:,0] - dcost[:,1]))
             self.logger("Coalescent:optimize_skyline:...done. new LH: %f"%self.total_LH(),2)
         else:

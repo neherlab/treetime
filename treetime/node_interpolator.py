@@ -189,35 +189,36 @@ class NodeInterpolator (Distribution):
             fft_res = fft_res[raw_len:]
             Tres = Tn - Tb[0]
 
-        #ind = fft_res>fft_res.max()*1e-15
-        #res = -np.log(fft_res[ind]) + branch_interp.peak_val + node_interp.peak_val - np.log(dt)
+        # determine region in which we can trust the FFT convolution and avoid
+        # inaccuracies due to machine precision. 1e-15 seems robust
+        ind = fft_res>fft_res.max()*1e-15
+        res = -np.log(fft_res[ind]) + branch_interp.peak_val + node_interp.peak_val - np.log(dt)
+        Tres_cropped = Tres[ind]
 
-        res = -np.log(np.maximum(1e-15, fft_res)) + branch_interp.peak_val + node_interp.peak_val - np.log(dt)
-        return cls(Tres, res, is_log=True, kind='linear')
+        # extrapolate the tails exponentially: use margin last data points
+        margin = 10
+        left_slope = (res[10]-res[0])/(Tres_cropped[10]-Tres_cropped[0])
+        right_slope = (res[-1]-res[-margin-1])/(Tres_cropped[-1]-Tres_cropped[-margin-1])
 
-        #Tres_cropped = Tres[ind]
-        # margin = 10
-        # left_slope = (res[10]-res[0])/(Tres_cropped[10]-Tres_cropped[0])
-        # right_slope = (res[-1]-res[-margin-1])/(Tres_cropped[-1]-Tres_cropped[-margin-1])
-        # Tleft, Tright = np.linspace(node_interp.x[0], Tres_cropped[0],50), np.linspace(Tres_cropped[-1], node_interp.x[-1],50)
+        # only extrapolate on the left when the slope is negative and we are not on the boundary
+        if -ttconf.MAX_BRANCH_LENGTH<Tres_cropped[0] and left_slope<0:
+            Tleft = np.linspace(-ttconf.MAX_BRANCH_LENGTH, Tres_cropped[0],50)[:-1]
+            res_left = res[margin] + left_slope*(Tleft - Tres[margin])
+        else:
+            Tleft, res_left = [], []
 
-        # res_left = res[margin] + left_slope*(Tleft - Tres[margin])
-        # res_right = res[-margin-1] + right_slope*(Tright - Tres[-margin-1])
+        # only extrapolate on the right when the slope is positive and we are not on the boundary
+        if Tres_cropped[-1]<ttconf.MAX_BRANCH_LENGTH and right_slope>0:
+            Tright = np.linspace(Tres_cropped[-1], ttconf.MAX_BRANCH_LENGTH,50)[1:]
+            res_right = res[-margin-1] + right_slope*(Tright - Tres[-margin-1])
+        else: #otherwise
+            Tright, res_right = [], []
 
-        # # instantiate the new interpolation object and return
-        #return cls(np.concatenate(([node_interp.x[0]],Tres_cropped,[node_interp.x[-1]])), np.concatenate(([1e10], res, [1e10])), is_log=True, kind='linear')
 
         # instantiate the new interpolation object and return
-        # return cls(Tres_cropped, res, is_log=True, kind='linear', assume_sorted=True)
-
-        # left_slope = (res[10]-res[5])/(Tres[10]-Tres[5])
-        # right_slope = (res[-5]-res[-10])/(Tres[-5]-Tres[-10])
-        # Tleft, Tright = np.linspace(node_interp.x[0], Tres[0],50), np.linspace(Tres[-1], node_interp.x[-1],50)
-        # res_left = res[10] + left_slope*(Tleft - Tres[10])
-        # res_right = res[-10] + right_slope*(Tright - Tres[-10])
-
-        # # instantiate the new interpolation object and return
-        # return cls(np.concatenate((Tleft,Tres,Tright)), np.concatenate((res_left, res, res_right)), is_log=True, kind='linear', assume_sorted=True)
+        return cls(np.concatenate((Tleft,Tres_cropped,Tright)),
+                   np.concatenate((res_left, res, res_right)),
+                   is_log=True, kind='linear', assume_sorted=True)
 
 
     @classmethod

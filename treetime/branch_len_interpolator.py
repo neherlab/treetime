@@ -126,6 +126,7 @@ class BranchLenInterpolator (Distribution):
             deltay = self.__call__(self.peak_pos) - self._peak_val
             self._peak_val += deltay
             self._func.y -= deltay
+        self.calc_effective_support()
 
     @property
     def peak_pos(self):
