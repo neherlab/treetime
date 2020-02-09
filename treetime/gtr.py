@@ -500,7 +500,10 @@ class GTR(object):
             if fixed_pi is None:
                 pi = (np.sum(nij+pc_mat,axis=1)+root_state)/(ttconf.TINY_NUMBER + mu*np.dot(W_ij,Ti)+root_state.sum()+np.sum(pc_mat, axis=1))
                 pi /= pi.sum()
-            mu = nij.sum()/(ttconf.TINY_NUMBER + np.sum(pi * (W_ij.dot(Ti))))
+                mu = nij.sum()/(ttconf.TINY_NUMBER + np.sum(pi * (W_ij.dot(Ti))))
+            else:
+                mu = nij.sum()/(ttconf.TINY_NUMBER + np.sum(pi * (W_ij.dot(pi)))*Ti.sum())
+
         if count >= Nit:
             gtr.logger('WARNING: maximum number of iterations has been reached in GTR inference',3, warn=True)
             if LA.norm(pi_old-pi) > dp:
