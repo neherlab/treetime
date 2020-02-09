@@ -85,7 +85,7 @@ def _convolution_integrand(t_val, f, g,
 
 
 
-def _max_of_integrand(t_val, f, g, inverse_time=None, return_log=False):
+def _max_of_integrand(t_val, f, g, inverse_time=None, return_log=True):
 
     '''
     Evaluates max_tau f(t+tau)*g(tau) or max_tau f(t-tau)g(tau) if inverse time is TRUE
@@ -110,27 +110,55 @@ def _max_of_integrand(t_val, f, g, inverse_time=None, return_log=False):
         If True, the logarithm will be returned
 
 
-    Returns
-    -------
-
-     FG : Distribution
-        The function to be integrated as Distribution object (interpolator)
-
     '''
-    # return log is always True
-    FG = _convolution_integrand(t_val, f, g, inverse_time, return_log=True)
 
-    if FG == ttconf.BIG_NUMBER:
-        res = ttconf.BIG_NUMBER, 0
+    if inverse_time:
+        ## tau>g.xmin and t-tau<f.xmax
+        tau_min = max(t_val - f.xmax, g.xmin)
+        ## tau<g.xmax and t-tau>f.xmin
+        tau_max = min(t_val - f.xmin, g.xmax)
+    else:
+        ## tau>g.xmin and t+tau>f.xmin
+        tau_min = max(f.xmin-t_val, g.xmin)
+        ## tau<g.xmax and t+tau<f.xmax
+        tau_max = min(f.xmax-t_val, g.xmax)
+        #print(tau_min, tau_max)
+
+    if tau_max <= tau_min:
+        if return_log:
+            return ttconf.BIG_NUMBER, np.nan
+        else:
+            return 0.0, np.nan #  functions do not overlap
 
     else:
-        X = FG.x[FG.y.argmin()]
-        Y = FG.y.min()
-        res =  Y, X
+        from scipy.optimize import minimize_scalar
+        def fg(tau):
+            if inverse_time:
+                tnode = t_val - tau
+                return f(tnode) + g(tau, tnode=tnode)
+            else:
+                return f(t_val + tau) + g(tau, tnode=t_val)
+
+        sol = minimize_scalar(fg, method='bounded', bounds=(tau_min, tau_max))
+        if sol['success']:
+            res = sol['fun'], sol['x']
+        else:
+            import ipdb; ipdb.set_trace()
+
+    # return log is always True
+
+    # FG = _convolution_integrand(t_val, f, g, inverse_time, return_log=True)
+
+    # if FG == ttconf.BIG_NUMBER:
+    #     res = ttconf.BIG_NUMBER, 0
+
+    # else:
+    #     X = FG.x[FG.y.argmin()]
+    #     Y = FG.y.min()
+    #     res =  Y, X
 
     if not return_log:
-        res[0] = np.log(res[0])
-
+        res[0] = np.exp(-res[0])
 
     return res
 

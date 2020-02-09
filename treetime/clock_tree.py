@@ -730,31 +730,24 @@ class ClockTree(TreeAnc):
         upper_rate = self.clock_model['slope'] + rate_std
         lower_rate = max(0.1*current_rate, self.clock_model['slope'] - rate_std)
         for n in self.tree.find_clades():
+            n.numdate_rate_variation = []
             if n.up:
                 n._orig_gamma = n.branch_length_interpolator.gamma
-                n.branch_length_interpolator.gamma = n._orig_gamma*upper_rate/current_rate
 
-        self.logger("###ClockTree.calc_rate_susceptibility: run with upper bound of rate estimate", 1)
-        self.make_time_tree(**params)
-        self.logger("###ClockTree.calc_rate_susceptibility: rate: %f, LH:%f"%(upper_rate, self.tree.positional_marginal_LH), 2)
-        for n in self.tree.find_clades():
-            n.numdate_rate_variation = [(upper_rate, n.numdate)]
-            if n.up:
-                n.branch_length_interpolator.gamma = n._orig_gamma*lower_rate/current_rate
+        for rate, label in [(upper_rate, 'upper'), (lower_rate, 'lower'), (current_rate, 'central')]:
+            for n in self.tree.find_clades():
+                if n.up:
+                    n.branch_length_interpolator.gamma = n._orig_gamma*rate/current_rate
 
-        self.logger("###ClockTree.calc_rate_susceptibility: run with lower bound of rate estimate", 1)
-        self.make_time_tree(**params)
-        self.logger("###ClockTree.calc_rate_susceptibility: rate: %f, LH:%f"%(lower_rate, self.tree.positional_marginal_LH), 2)
-        for n in self.tree.find_clades():
-            n.numdate_rate_variation.append((lower_rate, n.numdate))
-            if n.up:
-                n.branch_length_interpolator.gamma  = n._orig_gamma
+            self.logger("###ClockTree.calc_rate_susceptibility: run with %s bound of rate estimate"%label, 1)
+            self.make_time_tree(**params)
+            if time_marginal in params and params['time_marginal']:
+                self.logger("###ClockTree.calc_rate_susceptibility: rate: %f, LH:%f"%(rate, self.tree.positional_marginal_LH), 2)
+            else:
+                self.logger("###ClockTree.calc_rate_susceptibility: rate: %f, LH:%f"%(rate, self.tree.positional_joint_LH), 2)
+            n.numdate_rate_variation.append((rate, n.numdate))
 
-        self.logger("###ClockTree.calc_rate_susceptibility: run with central rate estimate", 1)
-        self.make_time_tree(**params)
-        self.logger("###ClockTree.calc_rate_susceptibility: rate: %f, LH:%f"%(current_rate, self.tree.positional_marginal_LH), 2)
         for n in self.tree.find_clades():
-            n.numdate_rate_variation.append((current_rate, n.numdate))
             n.numdate_rate_variation.sort(key=lambda x:x[1]) # sort estimates for different rates by numdate
 
         return ttconf.SUCCESS
