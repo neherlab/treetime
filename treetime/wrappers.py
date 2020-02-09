@@ -738,6 +738,7 @@ def reconstruct_discrete_traits(tree, traits, missing_data='?', pc=1.0, sampling
             raise TreeTimeError("More than half of discrete states missing from the weights file")
 
     unique_states=sorted(unique_states)
+    # note that gap character '-' is chr(45) and will never be included here
     alphabet = [chr(65+i) for i,state in enumerate(unique_states) if state!=missing_data]
     letter_to_state = {a:unique_states[i] for i,a in enumerate(alphabet)}
 
