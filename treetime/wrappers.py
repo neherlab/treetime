@@ -721,6 +721,12 @@ def reconstruct_discrete_traits(tree, traits, missing_data='?', pc=1.0, sampling
         tmp_weights = pd.read_csv(weights, sep='\t' if weights[-3:]=='tsv' else ',',
                              skipinitialspace=True)
         weight_dict = {row[0]:row[1] for ri,row in tmp_weights.iterrows() if not np.isnan(row[1])}
+    elif type(weights)==dict:
+        weight_dict = weights
+    else:
+        weight_dict = None
+
+    if weight_dict is not None:
         unique_states.update(weight_dict.keys())
         missing_weights = [c for c in unique_states if c not in weight_dict]
         if len(missing_weights):
@@ -730,8 +736,6 @@ def reconstruct_discrete_traits(tree, traits, missing_data='?', pc=1.0, sampling
             print("More than half of discrete states missing from the weights file")
             print("Weights read from file are:", weights)
             raise TreeTimeError("More than half of discrete states missing from the weights file")
-    else:
-        weights_dict = None
 
     unique_states=sorted(unique_states)
     alphabet = [chr(65+i) for i,state in enumerate(unique_states) if state!=missing_data]
