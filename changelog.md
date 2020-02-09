@@ -1,3 +1,11 @@
+# 0.7.2 -- weights in discrete trait reconstruction
+This release implements a more consistent handling of weights (fixed equilibrium frequencies) in discrete state reconstruction.
+It also fixes a number of problems in who the arguments were processed.
+TreeTime now allows
+ * unobserved discrete states
+ * uses expected time-in-tree instead of observed time-in-tree in GTR estimation when weights are fixed. The former resulted in very unstable rate estimates.
+
+
 # 0.7.0 -- restructuring
 
 ## Major changes
