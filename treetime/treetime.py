@@ -449,7 +449,7 @@ class TreeTime(ClockTree):
             if isinstance(root,Phylo.BaseTree.Clade):
                 new_root = root
             elif isinstance(root, list):
-                new_root = self.tree.common_ancestor(*root)
+                new_root = self.tree.common_ancestor(root)
             elif root in self._leaves_lookup:
                 new_root = self._leaves_lookup[root]
             elif root=='oldest':

@@ -1,3 +1,24 @@
+# 0.7.3 -- bug fix in average rate calculation
+
+This release fixes a problem that surfaced when inferring GTR models from trees of very similar sequences but quite a few gaps. This resulted in mutation counts like so:
+
+A: [[ 0.  1.  8.  3.  0.]
+C:  [ 1.  0.  2.  7.  0.]
+G:  [ 9.  0.  0.  2.  0.]
+T:  [ 1. 23.  6.  0.  0.]
+-:  [46. 22. 28. 38.  0.]]
+
+As a result, the rate "to gap" is inferred quite high, while the equilibrium gap fraction is low. Since we cap the equilibrium gap fraction from below to avoid reconstruction problems when branches are very short, this resulted in an average rate that had substantial contribution from and assumed 1% equilibrum gap frequency where gaps mutate at 20times the rate as others. Since gaps are ignored in distance calculations anyway, it is more sensible to exclude these transitions from the calculation of the average rate. This is now happening in line 7 of treetime/gtr.py. The average rate is restricted to mutation substitutions from non-gap states to any state.
+
+
+# 0.7.2 -- weights in discrete trait reconstruction
+This release implements a more consistent handling of weights (fixed equilibrium frequencies) in discrete state reconstruction.
+It also fixes a number of problems in who the arguments were processed.
+TreeTime now allows
+ * unobserved discrete states
+ * uses expected time-in-tree instead of observed time-in-tree in GTR estimation when weights are fixed. The former resulted in very unstable rate estimates.
+
+
 # 0.7.0 -- restructuring
 
 ## Major changes

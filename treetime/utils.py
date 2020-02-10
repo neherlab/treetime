@@ -321,7 +321,6 @@ def parse_dates(date_file, name_col=None, date_col=None):
 
         if all(v is None for v in dates.values()):
             raise TreeTimeError("ERROR: Cannot parse dates correctly! Check date format.")
-        print(dates)
         return dates
     except TreeTimeError as err:
         raise err
