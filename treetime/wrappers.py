@@ -13,7 +13,7 @@ from treetime import config as ttconf
 from treetime import utils
 from .vcf_utils import read_vcf, write_vcf
 from .seq_utils import alphabets
-from treetime import TreeTimeError
+from treetime import TreeTimeError, MissingDataError
 
 def assure_tree(params, tmp_dir='treetime_tmp'):
     """
@@ -30,7 +30,8 @@ def assure_tree(params, tmp_dir='treetime_tmp'):
 
     try:
         tt = TreeAnc(params.tree)
-    except:
+    except (ValueError, TreeTimeError, MissingDataError) as e:
+        print(e)
         print("Tree loading/building failed.")
         return 1
     return 0
