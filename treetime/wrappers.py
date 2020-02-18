@@ -718,15 +718,21 @@ def reconstruct_discrete_traits(tree, traits, missing_data='?', pc=1.0, sampling
 
     unique_states = set(traits.values())
     n_observed_states = len(unique_states)
+
+    # load weights from file and convert to dict if supplied as string
     if type(weights)==str:
-        tmp_weights = pd.read_csv(weights, sep='\t' if weights[-3:]=='tsv' else ',',
-                             skipinitialspace=True)
-        weight_dict = {row[0]:row[1] for ri,row in tmp_weights.iterrows() if not np.isnan(row[1])}
+        try:
+            tmp_weights = pd.read_csv(weights, sep='\t' if weights[-3:]=='tsv' else ',',
+                                 skipinitialspace=True)
+            weight_dict = {row[0]:row[1] for ri,row in tmp_weights.iterrows() if not np.isnan(row[1])}
+        except:
+            raise ValueError("Loading of weights file '%s' failed!"%weights)
     elif type(weights)==dict:
         weight_dict = weights
     else:
         weight_dict = None
 
+    # add weights to unique states for alphabet construction
     if weight_dict is not None:
         unique_states.update(weight_dict.keys())
         missing_weights = [c for c in unique_states if c not in weight_dict]
@@ -739,23 +745,22 @@ def reconstruct_discrete_traits(tree, traits, missing_data='?', pc=1.0, sampling
             raise TreeTimeError("More than half of discrete states missing from the weights file")
 
     unique_states=sorted(unique_states)
+    # make a map from states (excluding missing data) to characters in the alphabet
     # note that gap character '-' is chr(45) and will never be included here
     reverse_alphabet = {state:chr(65+i) for i,state in enumerate(unique_states) if state!=missing_data}
     alphabet = list(reverse_alphabet.values())
+    # construct a look up from alphabet character to states
     letter_to_state = {v:k for k,v in reverse_alphabet.items()}
 
+    # construct the vector with weights to be used as equilibrium frequency
     if weight_dict is not None:
         mean_weight = np.mean(list(weight_dict.values()))
         weights = np.array([weight_dict[letter_to_state[c]] if letter_to_state[c] in weight_dict else mean_weight
                             for c in alphabet], dtype=float)
         weights/=weights.sum()
 
-
-    nc = len(unique_states)
-    if nc>180:
-        print("mugration: can't have more than 180 states!", file=sys.stderr)
-        return None, None, None
-    elif nc<2:
+    # consistency checks
+    if len(alphabet)<2:
         print("mugration: only one or zero states found -- this doesn't make any sense", file=sys.stderr)
         return None, None, None
 
@@ -768,10 +773,11 @@ def reconstruct_discrete_traits(tree, traits, missing_data='?', pc=1.0, sampling
     ###########################################################################
 
     # set up dummy matrix
-    W = np.ones((len(alphabet),len(alphabet)), dtype=float)
+    n_states = len(alphabet)
+    W = np.ones((n_states,n_states), dtype=float)
 
     mugration_GTR = GTR.custom(pi = weights, W=W, alphabet = np.array(alphabet))
-    mugration_GTR.profile_map[missing_char] = np.ones(len(alphabet))
+    mugration_GTR.profile_map[missing_char] = np.ones(n_states)
     mugration_GTR.ambiguous=missing_char
 
 
