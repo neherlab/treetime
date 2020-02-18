@@ -764,7 +764,8 @@ def reconstruct_discrete_traits(tree, traits, missing_data='?', pc=1.0, sampling
         print("mugration: only one or zero states found -- this doesn't make any sense", file=sys.stderr)
         return None, None, None
 
-    missing_char = chr(65+nc)
+    n_states = len(alphabet)
+    missing_char = chr(65+n_states)
     reverse_alphabet[missing_data]=missing_char
     letter_to_state[missing_char]=missing_data
 
@@ -773,7 +774,6 @@ def reconstruct_discrete_traits(tree, traits, missing_data='?', pc=1.0, sampling
     ###########################################################################
 
     # set up dummy matrix
-    n_states = len(alphabet)
     W = np.ones((n_states,n_states), dtype=float)
 
     mugration_GTR = GTR.custom(pi = weights, W=W, alphabet = np.array(alphabet))
