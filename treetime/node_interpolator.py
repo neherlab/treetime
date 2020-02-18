@@ -84,7 +84,6 @@ def _convolution_integrand(t_val, f, g,
         return FG
 
 
-
 def _max_of_integrand(t_val, f, g, inverse_time=None, return_log=True):
 
     '''
@@ -111,6 +110,49 @@ def _max_of_integrand(t_val, f, g, inverse_time=None, return_log=True):
 
 
     '''
+    FG = _convolution_integrand(t_val, f, g, inverse_time, return_log=True)
+
+    if FG == ttconf.BIG_NUMBER:
+        res = ttconf.BIG_NUMBER, 0
+
+    else:
+        X = FG.x[FG.y.argmin()]
+        Y = FG.y.min()
+        res =  Y, X
+
+    if not return_log:
+        res[0] = np.exp(res[0])
+
+    return res
+
+
+def _max_of_integrand_new(t_val, f, g, inverse_time=None, return_log=True):
+
+    '''
+    Evaluates max_tau f(t+tau)*g(tau) or max_tau f(t-tau)g(tau) if inverse time is TRUE
+
+    Parameters
+    -----------
+
+     t_val : double
+        Time point
+
+     f : Interpolation object
+        First multiplier in convolution
+
+     g : Interpolation object
+        Second multiplier in convolution
+
+     inverse_time : bool, None
+        time direction. If True, then the f(t-tau)*g(tau) is calculated, otherwise,
+        f(t+tau)*g(tau)
+
+     return_log : bool
+        If True, the logarithm will be returned
+
+
+    '''
+    dtau = g.one_mutation*0.01
 
     if inverse_time:
         ## tau>g.xmin and t-tau<f.xmax
@@ -124,43 +166,52 @@ def _max_of_integrand(t_val, f, g, inverse_time=None, return_log=True):
         tau_max = min(f.xmax-t_val, g.xmax)
         #print(tau_min, tau_max)
 
-    if tau_max <= tau_min:
-        if return_log:
-            return ttconf.BIG_NUMBER, np.nan
+    res = np.zeros((len(t_val),0))
+    good_ind = tau_max>tau_min
+
+    res[~good_ind,0]=ttconf.BIG_NUMBER
+    res[~good_ind,1]=np.nan
+
+    t_vals_good = t_vals[good_ind]
+
+    def fg(tau):
+        if inverse_time:
+            tnode = t_val - tau
+            return f(tnode) + g(tau, tnode=tnode)
         else:
-            return 0.0, np.nan #  functions do not overlap
+            return f(t_val + tau) + g(tau, tnode=t_val)
 
-    else:
-        from scipy.optimize import minimize_scalar
-        def fg(tau):
-            if inverse_time:
-                tnode = t_val - tau
-                return f(tnode) + g(tau, tnode=tnode)
-            else:
-                return f(t_val + tau) + g(tau, tnode=t_val)
+    def left_dfg(tau):
+        return (fg(tau)-fg(tau-dtau))/dtau
 
-        sol = minimize_scalar(fg, method='bounded', bounds=(tau_min, tau_max))
-        if sol['success']:
-            res = sol['fun'], sol['x']
-        else:
-            import ipdb; ipdb.set_trace()
+    def right_dfg(tau):
+        return (fg(tau+dtau)-fg(tau))/dtau
 
-    # return log is always True
+    def central_dfg(tau):
+        return (fg(tau+dtau*0.5)-fg(tau-dtau*0.5))/dtau
 
-    # FG = _convolution_integrand(t_val, f, g, inverse_time, return_log=True)
+    lower = tau_min[good_ind]
+    upper = tau_max[good_ind]
+    diff_lower = right_dfg(lower)
+    diff_upper = left_dfg(upper)
 
-    # if FG == ttconf.BIG_NUMBER:
-    #     res = ttconf.BIG_NUMBER, 0
+    intermediate_max = (diff_lower>0)&(diff_upper>0)
 
-    # else:
-    #     X = FG.x[FG.y.argmin()]
-    #     Y = FG.y.min()
-    #     res =  Y, X
+    while np.max(upper-lower)>dtau:
+        middle = 0.5*(lower+upper)
+        val = central_dfg(middle)
+        move_up = val>0
+        lower[move_up] = middle[move_up]
+        diff_lower[move_up] = val[move_up]
+
+        upper[~move_up] = middle[~move_up]
+        diff_upper[~move_up] = val[~move_up]
 
     if not return_log:
         res[0] = np.exp(-res[0])
 
-    return res
+    return res.T
+
 
 def _evaluate_convolution(t_val, f, g,  n_integral = 100, inverse_time=None, return_log=False):
     """
@@ -331,6 +382,10 @@ class NodeInterpolator (Distribution):
         # res0 - the values of the convolution (integral or max)
         # t_0  - the value, at which the res0 achieves maximum
         #        (when determining the maximum of the integrand, otherwise meaningless)
+        import ipdb; ipdb.set_trace()
+        res_0, t_0 = _max_of_integrand_new(time_point, node_interp, branch_interp,
+                                     return_log=True, inverse_time = inverse_time)
+
         res_0, t_0 = np.array([conv_in_point(t_val) for t_val in t_grid_0]).T
 
         # refine grid as necessary and add new points

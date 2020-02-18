@@ -136,7 +136,7 @@ class TreeTime(ClockTree):
                       "sample_from_profile":"root",
                       "reconstruct_tip_states":kwargs.get("reconstruct_tip_states", False)}
 
-        tt_kwargs = {'clock_rate':fixed_clock_rate, 'time_marginal':time_marginal}
+        tt_kwargs = {'clock_rate':fixed_clock_rate, 'time_marginal': 'assign' if time_marginal=='always' else False}
         tt_kwargs.update(kwargs)
 
         seq_LH = 0
@@ -179,7 +179,7 @@ class TreeTime(ClockTree):
         if self.aln:
             seq_LH = self.tree.sequence_marginal_LH if seq_kwargs['marginal_sequences'] else self.tree.sequence_joint_LH
 
-        if time_marginal:
+        if tt_kwargs['time_marginal']:
             self.LH =[[seq_LH, self.tree.positional_marginal_LH, 0]]
         else:
             self.LH =[[seq_LH, self.tree.positional_joint_LH, 0]]
@@ -236,7 +236,7 @@ class TreeTime(ClockTree):
             if self.aln:
                 seq_LH = self.tree.sequence_marginal_LH if seq_kwargs['marginal_sequences'] else self.tree.sequence_joint_LH
 
-            if time_marginal:
+            if tt_kwargs['time_marginal']:
                 self.LH.append([seq_LH, self.tree.positional_marginal_LH, self.tree.coalescent_joint_LH])
             else:
                 self.LH.append([seq_LH, self.tree.positional_joint_LH, self.tree.coalescent_joint_LH])
@@ -249,6 +249,8 @@ class TreeTime(ClockTree):
         # if the rate is too be varied and the rate estimate has a valid confidence interval
         # rerun the estimation for variations of the rate
         if vary_rate:
+            if time_marginal:
+                tt_kwargs['time_marginal']='assign' if time_marginal in ['always', 'assign'] else True
             if type(vary_rate)==float:
                 self.calc_rate_susceptibility(rate_std=vary_rate, params=tt_kwargs)
             elif self.clock_model['valid_confidence']:
@@ -260,7 +262,7 @@ class TreeTime(ClockTree):
         # this will set marginal_pos_LH, which to be used as error bar estimations
         if time_marginal:
             self.logger("###TreeTime.run: FINAL ROUND - confidence estimation via marginal reconstruction", 0)
-            tt_kwargs['time_marginal']=time_marginal
+            tt_kwargs['time_marginal']='assign' if time_marginal in ['always', 'assign'] else True
             self.make_time_tree(**tt_kwargs)
 
         # explicitly print out which branches are bad and whose dates don't correspond to the input dates

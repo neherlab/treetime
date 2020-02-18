@@ -345,7 +345,8 @@ class ClockTree(TreeAnc):
         else:
             self._ml_t_joint()
 
-        self.convert_dates()
+        if time_marginal=='assign' or (time_marginal==False):
+            self.convert_dates()
 
 
     def _ml_t_joint(self):
@@ -582,7 +583,7 @@ class ClockTree(TreeAnc):
             if node.up is None:
                 node.msg_from_parent = None # nothing beyond the root
             # all other cases (All internal nodes + unconstrained terminals)
-            elif node.date_constraint is not None and node.date_constraint.is_delta:
+            elif (node.date_constraint is not None) and node.date_constraint.is_delta and (not node.bad_branch):
                 node.marginal_pos_LH = node.date_constraint
             else:
                 parent = node.up
@@ -741,11 +742,14 @@ class ClockTree(TreeAnc):
 
             self.logger("###ClockTree.calc_rate_susceptibility: run with %s bound of rate estimate"%label, 1)
             self.make_time_tree(**params)
-            if time_marginal in params and params['time_marginal']:
+
+            if 'time_marginal' in params and params['time_marginal']:
                 self.logger("###ClockTree.calc_rate_susceptibility: rate: %f, LH:%f"%(rate, self.tree.positional_marginal_LH), 2)
             else:
                 self.logger("###ClockTree.calc_rate_susceptibility: rate: %f, LH:%f"%(rate, self.tree.positional_joint_LH), 2)
-            n.numdate_rate_variation.append((rate, n.numdate))
+
+            for n in self.tree.find_clades():
+                n.numdate_rate_variation.append((rate, n.numdate))
 
         for n in self.tree.find_clades():
             n.numdate_rate_variation.sort(key=lambda x:x[1]) # sort estimates for different rates by numdate
