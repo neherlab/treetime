@@ -740,8 +740,9 @@ def reconstruct_discrete_traits(tree, traits, missing_data='?', pc=1.0, sampling
 
     unique_states=sorted(unique_states)
     # note that gap character '-' is chr(45) and will never be included here
-    alphabet = [chr(65+i) for i,state in enumerate(unique_states) if state!=missing_data]
-    letter_to_state = {a:unique_states[i] for i,a in enumerate(alphabet)}
+    reverse_alphabet = {state:chr(65+i) for i,state in enumerate(unique_states) if state!=missing_data}
+    alphabet = list(reverse_alphabet.values())
+    letter_to_state = {v:k for k,v in reverse_alphabet.items()}
 
     if weight_dict is not None:
         mean_weight = np.mean(list(weight_dict.values()))
@@ -759,18 +760,18 @@ def reconstruct_discrete_traits(tree, traits, missing_data='?', pc=1.0, sampling
         return None, None, None
 
     missing_char = chr(65+nc)
+    reverse_alphabet[missing_data]=missing_char
     letter_to_state[missing_char]=missing_data
-    reverse_alphabet = {v:k for k,v in letter_to_state.items()}
 
     ###########################################################################
     ### construct gtr model
     ###########################################################################
 
     # set up dummy matrix
-    W = np.ones((nc,nc), dtype=float)
+    W = np.ones((len(alphabet),len(alphabet)), dtype=float)
 
     mugration_GTR = GTR.custom(pi = weights, W=W, alphabet = np.array(alphabet))
-    mugration_GTR.profile_map[missing_char] = np.ones(nc)
+    mugration_GTR.profile_map[missing_char] = np.ones(len(alphabet))
     mugration_GTR.ambiguous=missing_char
 
 
