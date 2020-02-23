@@ -156,56 +156,75 @@ def _max_of_integrand_new(t_val, f, g, inverse_time=None, return_log=True):
 
     if inverse_time:
         ## tau>g.xmin and t-tau<f.xmax
-        tau_min = max(t_val - f.xmax, g.xmin)
+        tau_min = np.maximum(t_val - f.xmax, g.xmin)
         ## tau<g.xmax and t-tau>f.xmin
-        tau_max = min(t_val - f.xmin, g.xmax)
+        tau_max = np.minimum(t_val - f.xmin, g.xmax)
     else:
         ## tau>g.xmin and t+tau>f.xmin
-        tau_min = max(f.xmin-t_val, g.xmin)
+        tau_min = np.maximum(f.xmin-t_val, g.xmin)
         ## tau<g.xmax and t+tau<f.xmax
-        tau_max = min(f.xmax-t_val, g.xmax)
+        tau_max = np.minimum(f.xmax-t_val, g.xmax)
         #print(tau_min, tau_max)
 
-    res = np.zeros((len(t_val),0))
+    res = np.zeros((len(t_val),2))
     good_ind = tau_max>tau_min
 
     res[~good_ind,0]=ttconf.BIG_NUMBER
     res[~good_ind,1]=np.nan
 
-    t_vals_good = t_vals[good_ind]
+    t_vals_good = t_val[good_ind]
 
-    def fg(tau):
+    def fg(tau, t):
         if inverse_time:
-            tnode = t_val - tau
+            tnode = t - tau
             return f(tnode) + g(tau, tnode=tnode)
         else:
-            return f(t_val + tau) + g(tau, tnode=t_val)
+            return f(t_vals_good + tau) + g(tau, tnode=t_vals_good)
 
-    def left_dfg(tau):
-        return (fg(tau)-fg(tau-dtau))/dtau
+    def left_dfg(tau, t):
+        return (fg(tau, t)-fg(tau-dtau, t))/dtau
 
-    def right_dfg(tau):
-        return (fg(tau+dtau)-fg(tau))/dtau
+    def right_dfg(tau, t):
+        return (fg(tau+dtau, t)-fg(tau, t))/dtau
 
-    def central_dfg(tau):
-        return (fg(tau+dtau*0.5)-fg(tau-dtau*0.5))/dtau
+    def central_dfg(tau, t):
+        return (fg(tau+dtau*0.5, t)-fg(tau-dtau*0.5, t))/dtau
 
     lower = tau_min[good_ind]
     upper = tau_max[good_ind]
-    diff_lower = right_dfg(lower)
-    diff_upper = left_dfg(upper)
+    diff_lower = right_dfg(lower, t_vals_good)
+    diff_upper = left_dfg(upper, t_vals_good)
 
-    intermediate_max = (diff_lower>0)&(diff_upper>0)
+    intermediate_max = (diff_lower<0)&(diff_upper>0)
+    t_vals_opt = t_vals_good[intermediate_max]
+    lower_opt = lower[intermediate_max]
+    upper_opt = upper[intermediate_max]
+    diff_lower_opt = diff_lower[intermediate_max]
+    diff_upper_opt = diff_upper[intermediate_max]
 
-    while np.max(upper-lower)>dtau:
-        middle = 0.5*(lower+upper)
-        val = central_dfg(middle)
-        move_up = val>0
-        lower[move_up] = middle[move_up]
-        diff_lower[move_up] = val[move_up]
+    left_max = diff_lower>0
+    upper[left_max] = lower[left_max]
 
-        upper[~move_up] = middle[~move_up]
-        diff_upper[~move_up] = val[~move_up]
+    right_max = diff_upper<0
+    lower[right_max] = upper[right_max]
+
+    if np.sum(intermediate_max):
+        while np.max(upper_opt-lower_opt)>dtau:
+            middle = 0.5*(lower_opt+upper_opt)
+            val = central_dfg(middle, t_vals_opt)
+            move_up = val<0
+            lower_opt[move_up] = middle[move_up]
+            diff_lower_opt[move_up] = val[move_up]
+
+            upper_opt[~move_up] = middle[~move_up]
+            diff_upper_opt[~move_up] = val[~move_up]
+
+        lower[intermediate_max] = lower_opt
+        upper[intermediate_max] = upper_opt
+
+    res[good_ind,1] = 0.5*(lower+upper)
+    res[good_ind,0] = fg(0.5*(lower+upper), t_vals_good)
+    # import ipdb; ipdb.set_trace()
 
     if not return_log:
         res[0] = np.exp(-res[0])
@@ -317,17 +336,6 @@ class NodeInterpolator (Distribution):
             raise Exception("Max_or_integral expected to be 'max' or 'integral', got "
                             + str(max_or_integral)  + " instead.")
 
-        def conv_in_point(time_point):
-
-            if max_or_integral == 'integral': # compute integral of the convolution
-                return _evaluate_convolution(time_point, node_interp, branch_interp,
-                                               n_integral=n_integral, return_log=True,
-                                               inverse_time = inverse_time)
-
-            else: # compute max of the convolution
-                return _max_of_integrand(time_point, node_interp, branch_interp,
-                                               return_log=True, inverse_time = inverse_time)
-
         # estimate peak and width
         joint_fwhm  = (node_interp.fwhm + branch_interp.fwhm)
         min_fwhm  = min(node_interp.fwhm, branch_interp.fwhm)
@@ -382,11 +390,11 @@ class NodeInterpolator (Distribution):
         # res0 - the values of the convolution (integral or max)
         # t_0  - the value, at which the res0 achieves maximum
         #        (when determining the maximum of the integrand, otherwise meaningless)
-        import ipdb; ipdb.set_trace()
-        res_0, t_0 = _max_of_integrand_new(time_point, node_interp, branch_interp,
+        res_0, t_0 = _max_of_integrand_new(t_grid_0, node_interp, branch_interp,
                                      return_log=True, inverse_time = inverse_time)
+        # import ipdb; ipdb.set_trace()
 
-        res_0, t_0 = np.array([conv_in_point(t_val) for t_val in t_grid_0]).T
+        # res_0, t_0 = np.array([conv_in_point(t_val) for t_val in t_grid_0]).T
 
         # refine grid as necessary and add new points
         # calculate interpolation error at all internal points [2:-2] bc end points are sometime off scale
@@ -405,7 +413,9 @@ class NodeInterpolator (Distribution):
             add_x = np.concatenate([np.linspace(t1,t2,n+2)[1:-1] for t1,t2,n in
                                zip(t_grid_0[1:-2], t_grid_0[2:-1], insert_point_idx) if n>0])
             # calculate convolution at these points
-            add_y, add_t = np.array([conv_in_point(t_val) for t_val in add_x]).T
+            add_y, add_t = _max_of_integrand_new(add_x, node_interp, branch_interp,
+                                         return_log=True, inverse_time = inverse_time)
+            # add_y, add_t = np.array([conv_in_point(t_val) for t_val in add_x]).T
 
             t_grid_0 = np.concatenate((t_grid_0, add_x))
             res_0 = np.concatenate ((res_0, add_y))
