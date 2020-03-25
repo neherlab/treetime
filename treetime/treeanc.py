@@ -378,7 +378,7 @@ class TreeAnc(object):
                 self.logger("***WARNING: TreeAnc._attach_sequences_to_nodes: NO SEQUENCE FOR LEAF: %s" % l.name, 0, warn=True)
                 failed_leaves += 1
                 if failed_leaves > self.tree.count_terminals()/3:
-                    raise MissingDataError("TreeAnc._check_alignment_tree_gtr_consistency: At least 30\% terminal nodes cannot be assigned a sequence!\n"
+                    raise MissingDataError("TreeAnc._check_alignment_tree_gtr_consistency: At least 30\\% terminal nodes cannot be assigned a sequence!\n"
                                            "Are you sure the alignment belongs to the tree?")
             else: # could not assign sequence for internal node - is OK
                 pass
@@ -1622,4 +1622,3 @@ class TreeAnc(object):
             self.logger("Your code reconstructed tip states, please change the call of ancestral inference in your code",0, warn=True)
         else:
             self.logger("Your analysis did not reconstructed tip states, you can remove the call of `recover_var_ambigs`",0, warn=True)
-
