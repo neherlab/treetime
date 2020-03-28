@@ -1,7 +1,10 @@
 from __future__ import division, print_function, absolute_import
 import numpy as np
 from scipy.interpolate import interp1d
-from collections import Iterable
+try:
+    from collections.abc import Iterable
+except ImportError: # python < 3.3
+    from collections import Iterable
 from copy import deepcopy as make_copy
 from scipy.ndimage import binary_dilation
 from .config import BIG_NUMBER, MIN_LOG, MIN_INTEGRATION_PEAK, TINY_NUMBER
