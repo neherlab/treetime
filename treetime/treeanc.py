@@ -312,6 +312,8 @@ class TreeAnc(object):
         else:
             raise ValueError('TreeAnc: could not load tree! input was '+str(in_tree))
 
+        if self._tree.count_terminals()<3:
+            raise ValueError('TreeAnc: tree in %s as only %d tips. Please check your tree!'%(str(in_tree), self._tree.count_terminals()))
 
         # remove all existing sequence attributes
         for node in self._tree.find_clades():
@@ -376,8 +378,8 @@ class TreeAnc(object):
                 self.logger("***WARNING: TreeAnc._attach_sequences_to_nodes: NO SEQUENCE FOR LEAF: %s" % l.name, 0, warn=True)
                 failed_leaves += 1
                 if failed_leaves > self.tree.count_terminals()/3:
-                    raise MissingDataError("TreeAnc._check_alignment_tree_gtr_consistency: At least 30\\% terminal nodes cannot be assigned a sequence!\n"
-                                           "Are you sure the alignment belongs to the tree?", 2, warn=True)
+                    raise MissingDataError("TreeAnc._check_alignment_tree_gtr_consistency: At least 30\% terminal nodes cannot be assigned a sequence!\n"
+                                           "Are you sure the alignment belongs to the tree?")
             else: # could not assign sequence for internal node - is OK
                 pass
 

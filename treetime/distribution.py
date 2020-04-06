@@ -275,7 +275,7 @@ class Distribution(object):
                 right = brentq(f, self.peak_pos, self.xmax, rtol=1e-5, xtol=self.fwhm*1e-5)
         except:
             print("effective_support not good")
-            import ipdb; ipdb.set_trace()
+            # import ipdb; ipdb.set_trace()
             left, right = self.xmin, self.xmax
 
         return (left,right)

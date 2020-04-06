@@ -1,5 +1,5 @@
 from __future__ import print_function, division, absolute_import
-version="0.8.0-alpha"
+version="0.8.0"
 
 class TreeTimeError(Exception):
     """TreeTimeError class"""

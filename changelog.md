@@ -1,3 +1,8 @@
+# 0.7.4 -- bug fix in reconstruct discrete trait routine
+
+The `reconstruct_discrete_traits` wrapper function didn't handle missing data correctly (after the changed released in 0.7.2) which resulted in alphabets and weights of different lengths.
+
+
 # 0.7.3 -- bug fix in average rate calculation
 
 This release fixes a problem that surfaced when inferring GTR models from trees of very similar sequences but quite a few gaps. This resulted in mutation counts like so:

@@ -294,8 +294,8 @@ class NodeInterpolator (Distribution):
         Tres_cropped = Tres[ind]
 
         # extrapolate the tails exponentially: use margin last data points
-        margin = 10
-        left_slope = (res[10]-res[0])/(Tres_cropped[10]-Tres_cropped[0])
+        margin = np.minimum(3, Tres_cropped.shape[0]//3)
+        left_slope = (res[margin]-res[0])/(Tres_cropped[margin]-Tres_cropped[0])
         right_slope = (res[-1]-res[-margin-1])/(Tres_cropped[-1]-Tres_cropped[-margin-1])
 
         # only extrapolate on the left when the slope is negative and we are not on the boundary
