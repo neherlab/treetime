@@ -161,11 +161,11 @@ class SequenceData(object):
 
         if type(in_aln) is MultipleSeqAlignment:
             # check whether the alignment is consistent with a nucleotide alignment.
-            self.check_alphabet([seq2array(s) for s in in_aln])
-            self.is_sparse = False
             self._aln = {s.name: seq2array(s, convert_upper=self.convert_upper,
                                            fill_overhangs=self.fill_overhangs, ambiguous=self.ambiguous)
                          for s in in_aln}
+            self.check_alphabet(list(self._aln.values()))
+            self.is_sparse = False
             self.logger("SequenceData: loaded alignment.",1)
         elif type(in_aln) in [dict, defaultdict]:
             self.logger("SequenceData: loaded sparse/vcf alignment.",1)

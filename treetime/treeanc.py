@@ -1286,11 +1286,15 @@ class TreeAnc(object):
 
         """
         if branch_length_mode=='marginal':
-            return self.optimize_tree_marginal(max_iter=max_iter, infer_gtr=infer_gtr, pc=pc, **kwargs)
+            self.optimize_tree_marginal(max_iter=max_iter, infer_gtr=infer_gtr, pc=pc, **kwargs)
+            if prune_short:
+                self.prune_short_branches()
         elif branch_length_mode=='input':
             N_diff = self.reconstruct_anc(method='probabilistic', infer_gtr=infer_gtr, pc=pc,
                                           marginal=marginal_sequences, **kwargs)
-            return ttconf.success
+            if prune_short:
+                self.prune_short_branches()
+            return ttconf.SUCCESS
         elif branch_length_mode!='joint':
             raise UnknownMethodError("TreeAnc.optimize_tree: `branch_length_mode` should be in ['marginal', 'joint', 'input']")
 
