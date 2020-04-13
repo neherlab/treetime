@@ -299,6 +299,10 @@ class Distribution(object):
                 updated=False
                 n_iter+=1
 
+        self._peak_idx = self.__call__(self._func.x).argmin()
+        self._peak_pos = self._func.x[self._peak_idx]
+        self._peak_val = self.__call__(self.peak_pos)
+
 
     def prob(self,x):
         return np.exp(-1 * self.__call__(x))
