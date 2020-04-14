@@ -257,7 +257,7 @@ class Distribution(object):
 
     def calc_effective_support(self, cutoff=1e-15):
         """
-        Assess the interval on which the self is higher than cutoff
+        Assess the interval on which the value of self is higher than cutoff
         relative to its peak
         """
         from scipy.optimize import brentq
@@ -275,7 +275,6 @@ class Distribution(object):
                 right = brentq(f, self.peak_pos, self.xmax, rtol=1e-5, xtol=self.fwhm*1e-5)
         except:
             print("effective_support not good")
-            # import ipdb; ipdb.set_trace()
             left, right = self.xmin, self.xmax
 
         return (left,right)
