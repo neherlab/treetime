@@ -557,18 +557,27 @@ class TreeTime(ClockTree):
             """
             cost gained if the two nodes would have been connected.
             """
-            try:
-                cg = sciopt.minimize_scalar(_c_gain,
-                    bracket=[max(n1.time_before_present,n2.time_before_present), parent.time_before_present],
-                    args=(n1,n2, parent))
-            except:
-                self.logger("TreeTime._poly.cost_gain: optimization of gain failed", 1, warn=True)
+            xvals = np.linspace(max(n1.time_before_present,n2.time_before_present), parent.time_before_present,10)
+            cg = _c_gain(xvals, n1, n2, parent)
+            max_idx = cg.argmax()
+            gain = cg[max_idx]
+            if gain>0:
+                return xvals[max_idx], gain
+            else:
                 return parent.time_before_present, 0.0
 
-            if cg['fun'] > 0 or cg['x'] < max(n1.time_before_present,n2.time_before_present) or cg['x'] > parent.time_before_present:
-                return parent.time_before_present, 0.0
-            else:
-                return cg['x'], - cg['fun']
+            # try:
+            #     cg = sciopt.minimize_scalar(_c_gain,
+            #         bracket=[max(n1.time_before_present,n2.time_before_present), parent.time_before_present],
+            #         args=(n1,n2, parent))
+            # except:
+            #     self.logger("TreeTime._poly.cost_gain: optimization of gain failed", 1, warn=True)
+            #     return parent.time_before_present, 0.0
+
+            # if cg['fun'] > 0 or cg['x'] < max(n1.time_before_present,n2.time_before_present) or cg['x'] > parent.time_before_present:
+            #     return parent.time_before_present, 0.0
+            # else:
+            #     return cg['x'], - cg['fun']
 
 
         def merge_nodes(source_arr, isall=False):
