@@ -559,12 +559,16 @@ class TreeTime(ClockTree):
             """
             try:
                 cg = sciopt.minimize_scalar(_c_gain,
-                    bounds=[max(n1.time_before_present,n2.time_before_present), parent.time_before_present],
-                    method='Bounded',args=(n1,n2, parent))
-                return cg['x'], - cg['fun']
+                    bracket=[max(n1.time_before_present,n2.time_before_present), parent.time_before_present],
+                    args=(n1,n2, parent))
             except:
-                self.logger("TreeTime._poly.cost_gain: optimization of gain failed", 3, warn=True)
+                self.logger("TreeTime._poly.cost_gain: optimization of gain failed", 1, warn=True)
                 return parent.time_before_present, 0.0
+
+            if cg['fun'] > 0 or cg['x'] < max(n1.time_before_present,n2.time_before_present) or cg['x'] > parent.time_before_present:
+                return parent.time_before_present, 0.0
+            else:
+                return cg['x'], - cg['fun']
 
 
         def merge_nodes(source_arr, isall=False):
