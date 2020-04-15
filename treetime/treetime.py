@@ -559,10 +559,10 @@ class TreeTime(ClockTree):
             """
             xvals = np.linspace(max(n1.time_before_present,n2.time_before_present), parent.time_before_present,10)
             cg = _c_gain(xvals, n1, n2, parent)
-            max_idx = cg.argmax()
+            max_idx = cg.argmin()
             gain = cg[max_idx]
-            if gain>0:
-                return xvals[max_idx], gain
+            if gain<0:
+                return xvals[max_idx], -gain
             else:
                 return parent.time_before_present, 0.0
 
