@@ -557,7 +557,10 @@ class TreeTime(ClockTree):
             """
             cost gained if the two nodes would have been connected.
             """
-            xvals = np.linspace(max(n1.time_before_present,n2.time_before_present), parent.time_before_present,10)
+            xmin = max(n1.time_before_present,n2.time_before_present)
+            xmax = parent.time_before_present
+            xvals = np.concate((xmin + 0.5*np.linspace(1,0,6)**2 * (xmax - xmin),
+                                xmax - 0.5*np.linspace(1,0,6)[:-1]**2 * (xmax - xmin)))
             cg = _c_gain(xvals, n1, n2, parent)
             max_idx = cg.argmin()
             return xvals[max_idx], -cg[max_idx]
