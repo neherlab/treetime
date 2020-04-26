@@ -576,7 +576,7 @@ class ClockTree(TreeAnc):
                         res._adjust_grid(rel_tol=self.rel_tol_prune)
                         node.marginal_pos_Lx = res
 
-        self.logger("ClockTree - Marginal reconstruction using %s convolutions:  Propagating root -> leaves..."%explicit, 2)
+        self.logger("ClockTree - Marginal reconstruction using %s convolutions:  Propagating root -> leaves..."%method, 2)
         from scipy.interpolate import interp1d
         for node in self.tree.find_clades(order='preorder'):
 
