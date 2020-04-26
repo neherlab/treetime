@@ -522,7 +522,8 @@ class ClockTree(TreeAnc):
                     pass
 
 
-        self.logger("ClockTree - Marginal reconstruction:  Propagating leaves -> root...", 2)
+        method = 'FFT' if self.use_fft else 'explicit'
+        self.logger("ClockTree - Marginal reconstruction using %s convolutions:  Propagating leaves -> root..."%method, 2)
         # go through the nodes from leaves towards the root:
         for node in self.tree.find_clades(order='postorder'):  # children first, msg to parents
             if node.bad_branch:
@@ -575,7 +576,7 @@ class ClockTree(TreeAnc):
                         res._adjust_grid(rel_tol=self.rel_tol_prune)
                         node.marginal_pos_Lx = res
 
-        self.logger("ClockTree - Marginal reconstruction:  Propagating root -> leaves...", 2)
+        self.logger("ClockTree - Marginal reconstruction using %s convolutions:  Propagating root -> leaves..."%explicit, 2)
         from scipy.interpolate import interp1d
         for node in self.tree.find_clades(order='preorder'):
 

@@ -327,7 +327,6 @@ class NodeInterpolator (Distribution):
         '''
         calculate H(t) = \int_tau f(t-tau)g(tau) if inverse_time=True
                   H(t) = \int_tau f(t+tau)g(tau) if inverse_time=False
-
         This function determines the time points of the grid of the result to
         ensure an accurate approximation.
         '''
@@ -335,6 +334,17 @@ class NodeInterpolator (Distribution):
         if max_or_integral not in ['max', 'integral']:
             raise Exception("Max_or_integral expected to be 'max' or 'integral', got "
                             + str(max_or_integral)  + " instead.")
+
+        def conv_in_point(time_point):
+
+            if max_or_integral == 'integral': # compute integral of the convolution
+                return _evaluate_convolution(time_point, node_interp, branch_interp,
+                                               n_integral=n_integral, return_log=True,
+                                               inverse_time = inverse_time)
+
+            else: # compute max of the convolution
+                return _max_of_integrand(time_point, node_interp, branch_interp,
+                                               return_log=True, inverse_time = inverse_time)
 
         # estimate peak and width
         joint_fwhm  = (node_interp.fwhm + branch_interp.fwhm)
@@ -390,11 +400,7 @@ class NodeInterpolator (Distribution):
         # res0 - the values of the convolution (integral or max)
         # t_0  - the value, at which the res0 achieves maximum
         #        (when determining the maximum of the integrand, otherwise meaningless)
-        res_0, t_0 = _max_of_integrand_new(t_grid_0, node_interp, branch_interp,
-                                     return_log=True, inverse_time = inverse_time)
-        # import ipdb; ipdb.set_trace()
-
-        # res_0, t_0 = np.array([conv_in_point(t_val) for t_val in t_grid_0]).T
+        res_0, t_0 = np.array([conv_in_point(t_val) for t_val in t_grid_0]).T
 
         # refine grid as necessary and add new points
         # calculate interpolation error at all internal points [2:-2] bc end points are sometime off scale
@@ -413,9 +419,7 @@ class NodeInterpolator (Distribution):
             add_x = np.concatenate([np.linspace(t1,t2,n+2)[1:-1] for t1,t2,n in
                                zip(t_grid_0[1:-2], t_grid_0[2:-1], insert_point_idx) if n>0])
             # calculate convolution at these points
-            add_y, add_t = _max_of_integrand_new(add_x, node_interp, branch_interp,
-                                         return_log=True, inverse_time = inverse_time)
-            # add_y, add_t = np.array([conv_in_point(t_val) for t_val in add_x]).T
+            add_y, add_t = np.array([conv_in_point(t_val) for t_val in add_x]).T
 
             t_grid_0 = np.concatenate((t_grid_0, add_x))
             res_0 = np.concatenate ((res_0, add_y))
