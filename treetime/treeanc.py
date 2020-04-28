@@ -675,7 +675,6 @@ class TreeAnc(object):
         else:
             return self.tree.total_sequence_LH
 
-
     def ancestral_likelihood(self):
         """
         Calculate the likelihood of the given realization of the sequences in
@@ -684,31 +683,44 @@ class TreeAnc(object):
         Returns
         -------
 
-         log_lh : float
+         sub_lhs : np.ndarray
             The tree likelihood given the sequences
         """
-        log_lh = np.zeros(self.data.multiplicity.shape[0])
-        for node in self.tree.find_clades(order='postorder'):
 
-            if node.up is None: #  root node
-                # 0-1 profile
-                profile = seq2prof(node.cseq, self.gtr.profile_map)
-                # get the probabilities to observe each nucleotide
-                profile *= self.gtr.Pi
-                profile = profile.sum(axis=1)
-                log_lh += np.log(profile) # product over all characters
-                continue
+        if self.sequence_reconstruction == "joint_asvr":
+            rates = self.rates
+        else:
+            rates = [(1, 1)]
 
-            t = node.branch_length
+        sub_lhs = np.ndarray((len(rates), self.data.multiplicity.shape[0]))
+        for i, (rate_multiplier, prob_of_rate) in enumerate(rates):
+            rlog_lh = np.zeros(self.data.multiplicity.shape[0])
 
-            indices = np.array([(self.gtr.state_index[a], self.gtr.state_index[b])
-                                 for a, b in zip(node.up.cseq, node.cseq)])
+            for node in self.tree.find_clades(order='postorder'):
 
-            logQt = np.log(self.gtr.expQt(t))
-            lh = logQt[indices[:, 1], indices[:, 0]]
-            log_lh += lh
+                if node.up is None:  # root node
+                    # 0-1 profile
+                    profile = seq2prof(node.cseq, self.gtr.profile_map)
+                    # get the probabilities to observe each nucleotide
+                    profile *= self.gtr.Pi
+                    profile = profile.sum(axis=1)
+                    rlog_lh += np.log(profile)  # product over all characters
+                    continue
 
-        return log_lh
+                t = node.branch_length * rate_multiplier
+
+                indices = np.array([(self.gtr.state_index[a], self.gtr.state_index[b])
+                                    for a, b in zip(node.up.cseq, node.cseq)])
+
+                logQt = np.log(self.gtr.expQt(t))
+                lh = logQt[indices[:, 1], indices[:, 0]]
+                rlog_lh += lh
+
+            rlog_lh += np.log(prob_of_rate)
+            sub_lhs[i] = rlog_lh
+
+        sub_lhs = np.logaddexp.reduce(sub_lhs)
+        return sub_lhs
 
     def _branch_length_to_gtr(self, node):
         """
