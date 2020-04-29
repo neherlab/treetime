@@ -191,9 +191,9 @@ def test_seq_joint_reconstruction_asvr_correct():
     mygtr = GTR.custom(alphabet = np.array(['A', 'C', 'G', 'T']),
                        pi = np.array([0.15, 0.95, 0.05, 0.3]), W=np.ones((4,4)))
     seq = np.random.choice(mygtr.alphabet, p=mygtr.Pi, size=400)
+    rates = [(.5, np.log(1/3)), (1, np.log(1/3)), (1.5, np.log(1/3))]
 
-
-    myTree = TreeAnc(gtr=mygtr, tree=tiny_tree, aln=None, verbose=4)
+    myTree = TreeAnc(gtr=mygtr, tree=tiny_tree, rates=rates, aln=None, verbose=4)
 
     # simulate evolution, set resulting sequence as ref_seq
     tree = myTree.tree
@@ -230,10 +230,8 @@ def test_seq_joint_reconstruction_asvr_correct():
     print (alnstr)
     myTree.aln = AlignIO.read(StringIO(alnstr), 'fasta')
 
-    rates = [(.5, np.log(1/3),), (1, np.log(1/3),), (.5, np.log(1/3),)]
-
     # reconstruct ancestral sequences:
-    myTree.infer_ancestral_sequences(final=True, asvr=True, rates=rates, debug=True, reconstruct_leaves=True)
+    myTree.infer_ancestral_sequences(final=True, debug=True, reconstruct_leaves=True)
 
     diff_count = 0
     mut_count = 0
@@ -326,6 +324,82 @@ def test_seq_joint_lh_is_max():
     ref = ref_lh()
     real  = real_lh()
 
+    print("ref = ", ref)
+    print("real = ", real)
+    print(abs(ref.max() - real) )
+    # joint chooses the most likely realization of the tree
+    assert(abs(ref.max() - real) < 1e-10)
+    return ref, real
+
+def test_seq_joint_lh_is_max_asvr():
+    """
+    For a single-char sequence, perform joint ancestral sequence reconstruction
+    and prove that this reconstruction is the most likely one by comparing to all
+    possible reconstruction variants (brute-force).
+    """
+
+    from treetime import TreeAnc, GTR
+    from treetime import seq_utils
+    from Bio import Phylo, AlignIO
+    import numpy as np
+
+    mygtr = GTR.custom(alphabet = np.array(['A', 'C', 'G', 'T']), pi = np.array([0.91, 0.05, 0.02, 0.02]), W=np.ones((4,4)))
+    tiny_tree = Phylo.read(StringIO("((A:.0060,B:.30)C:.030,D:.020)E:.004;"), 'newick')
+
+    #terminal node sequences (single nuc)
+    A_char = 'A'
+    B_char = 'C'
+    D_char = 'G'
+
+    # for brute-force, expand them to the strings
+    A_seq = ''.join(np.repeat(A_char,16))
+    B_seq = ''.join(np.repeat(B_char,16))
+    D_seq = ''.join(np.repeat(D_char,16))
+
+    #
+    def ref_lh_asvr():
+        """
+        reference likelihood - LH values for all possible variants
+        of the internal node sequences
+        """
+
+        tiny_aln = AlignIO.read(StringIO(">A\n" + A_seq + "\n"
+                                         ">B\n" + B_seq + "\n"
+                                         ">D\n" + D_seq + "\n"
+                                         ">C\nAAAACCCCGGGGTTTT\n"
+                                         ">E\nACGTACGTACGTACGT\n"), 'fasta')
+        rates = [(.5, np.log(1 / 3)), (1, np.log(1 / 3)), (1.5, np.log(1 / 3))]
+
+        myTree = TreeAnc(gtr=mygtr, tree = tiny_tree,
+                         aln =tiny_aln, rates=rates, verbose = 4)
+
+        logLH_ref = myTree.ancestral_likelihood()
+
+        return logLH_ref
+
+    #
+    def real_lh_asvr():
+        """
+        Likelihood of the sequences calculated by the joint ancestral
+        sequence reconstruction
+        """
+        tiny_aln_1 = AlignIO.read(StringIO(">A\n"+A_char+"\n"
+                                           ">B\n"+B_char+"\n"
+                                           ">D\n"+D_char+"\n"), 'fasta')
+        rates = [(.5, np.log(1 / 3)), (1, np.log(1 / 3)), (1.5, np.log(1 / 3))]
+
+        myTree_1 = TreeAnc(gtr=mygtr, tree = tiny_tree,
+                            aln=tiny_aln_1, rates=rates, verbose = 4)
+
+        myTree_1.reconstruct_anc(method='ml', marginal=False, debug=True)
+        logLH = myTree_1.tree.sequence_LH
+        return logLH
+
+    ref = ref_lh_asvr()
+    real  = real_lh_asvr()
+
+    print("ref = ", ref)
+    print("real = ", real)
     print(abs(ref.max() - real) )
     # joint chooses the most likely realization of the tree
     assert(abs(ref.max() - real) < 1e-10)

@@ -53,10 +53,10 @@ class TreeAnc(object):
     alignment, making ancestral state inference
     """
 
-    def __init__(self, tree=None, aln=None, gtr=None, fill_overhangs=True,
-                ref=None, verbose = ttconf.VERBOSE, ignore_gaps=True,
-                convert_upper=True, seq_multiplicity=None, log=None,
-                 compress=True, seq_len=None,
+    def __init__(self, tree=None, aln=None, gtr=None, rates = [(1, 0)],
+                 fill_overhangs=True, ref=None, verbose = ttconf.VERBOSE,
+                 ignore_gaps=True, convert_upper=True, seq_multiplicity=None,
+                 log=None, compress=True, seq_len=None,
                 **kwargs):
         """
         TreeAnc constructor. It prepares the tree, attaches sequences to the leaf nodes,
@@ -77,6 +77,11 @@ class TreeAnc(object):
         gtr : str, GTR
            GTR model object. If string passed, it is interpreted as the type of
            the GTR model. A new GTR instance will be created for this type.
+
+        rates : list of (float, float) tuples
+            The distribution of mutation rates over sites in the form of a list of
+            (rate_multiplier, log_probability_of_rate) pairs. rate_multiplier is used
+            to multiply branch lengths for calculations
 
         fill_overhangs : bool
            In some cases, the missing data on both ends of the alignment is
@@ -154,6 +159,8 @@ class TreeAnc(object):
         self.data = SequenceData(aln, ref=ref, logger=self.logger, compress=compress,
                                 convert_upper=convert_upper, fill_overhangs=fill_overhangs, ambiguous=self.gtr.ambiguous,
                                  sequence_length=seq_len)
+
+        self.rates = rates
 
         if self.gtr.is_site_specific and self.data.compress:
             raise TypeError("TreeAnc: sequence compression and site specific gtr models are incompatible!" )
@@ -467,8 +474,7 @@ class TreeAnc(object):
 
 
     def infer_ancestral_sequences(self, method='probabilistic', infer_gtr=False,
-                                  marginal=False, asvr=False, rates=None,
-                                  reconstruct_tip_states=False, **kwargs):
+                                  marginal=False, reconstruct_tip_states=False, **kwargs):
         """Reconstruct ancestral sequences
 
         Parameters
@@ -507,9 +513,12 @@ class TreeAnc(object):
 
         if method.lower() in ['ml', 'probabilistic']:
             if marginal:
-                _ml_anc = self._ml_anc_marginal
+                if self.rates != [(1, 0)]:
+                    raise NotImplementedError("ASVR isn't implemented for marginal reconstruction yet.")
+                else:
+                    _ml_anc = self._ml_anc_marginal
             else:
-                if asvr:
+                if self.rates != [(1, 0)]:
                     _ml_anc = self._ml_anc_joint_asvr
                 else:
                     _ml_anc = self._ml_anc_joint
@@ -520,9 +529,9 @@ class TreeAnc(object):
 
         if infer_gtr:
             self.infer_gtr(marginal=marginal, **kwargs)
-            N_diff = _ml_anc(rates=rates, reconstruct_tip_states=reconstruct_tip_states, **kwargs)
+            N_diff = _ml_anc(reconstruct_tip_states=reconstruct_tip_states, **kwargs)
         else:
-            N_diff = _ml_anc(rates=rates, reconstruct_tip_states=reconstruct_tip_states, **kwargs)
+            N_diff = _ml_anc(reconstruct_tip_states=reconstruct_tip_states, **kwargs)
 
         return N_diff
 
@@ -687,13 +696,8 @@ class TreeAnc(object):
             The tree likelihood given the sequences
         """
 
-        if self.sequence_reconstruction == "joint_asvr":
-            rates = self.rates
-        else:
-            rates = [(1, 1)]
-
-        sub_lhs = np.ndarray((len(rates), self.data.multiplicity.shape[0]))
-        for i, (rate_multiplier, prob_of_rate) in enumerate(rates):
+        sub_lhs = np.ndarray((len(self.rates), self.data.multiplicity.shape[0]))
+        for i, (rate_multiplier, prob_of_rate) in enumerate(self.rates):
             rlog_lh = np.zeros(self.data.multiplicity.shape[0])
 
             for node in self.tree.find_clades(order='postorder'):
@@ -716,10 +720,11 @@ class TreeAnc(object):
                 lh = logQt[indices[:, 1], indices[:, 0]]
                 rlog_lh += lh
 
-            rlog_lh += np.log(prob_of_rate)
+            rlog_lh += prob_of_rate
             sub_lhs[i] = rlog_lh
 
         sub_lhs = np.logaddexp.reduce(sub_lhs)
+
         return sub_lhs
 
     def _branch_length_to_gtr(self, node):
@@ -1165,19 +1170,24 @@ class TreeAnc(object):
     def store_site_reconstruction(self, site_idx, sequence_LH, best_search):
 
         self.tree.sequence_LH[site_idx] = sequence_LH
+        print("stored sequence_LH = ", sequence_LH)
 
         for (node, val)  in best_search:
             print("saving val ", val, " at site ", site_idx, " for node ", node)
             node._cseq[site_idx] = val
 
-    def _ml_anc_joint_asvr(self, rates, sample_from_profile=False,
-                      reconstruct_tip_states=False, debug=False, **kwargs):
+    def _ml_anc_joint_asvr(self, sample_from_profile=False,
+            reconstruct_tip_states=False, debug=False, **kwargs):
 
         def joint_prob_ev_rate(tree, site_idx, rates):
-            joint_prob = 0
-            for (rate, prob_of_rate) in rates:
-                joint_prob += np.logaddexp(tree.calc_rate_prob(site_idx, rate), prob_of_rate)
 
+            rjoint_probs = np.ndarray(len(rates))
+            for i, (rate, prob_of_rate) in enumerate(rates):
+                rjoint_prob = tree.calc_rate_prob(site_idx, rate) + prob_of_rate
+                rjoint_probs[i] = rjoint_prob
+            joint_prob = np.logaddexp.reduce(rjoint_probs)
+
+            print("joint_prob = ", joint_prob)
             return joint_prob
 
         def search_bnb(tree, site_idx, node_on, nodes, nodes_ln, rates, search_at, best_found, best_lh):
@@ -1233,7 +1243,7 @@ class TreeAnc(object):
             search_at = []
             best_found = []
             best_lh = float("-inf")
-            best_found, site_LH = search_bnb(self, site_idx, 0, nodes, nodes_ln, rates, search_at, best_found, best_lh)
+            best_found, site_LH = search_bnb(self, site_idx, 0, nodes, nodes_ln, self.rates, search_at, best_found, best_lh)
             self.store_site_reconstruction(site_idx, site_LH, best_found)
 
         N_diff = 0
