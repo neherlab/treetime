@@ -1,11 +1,10 @@
 from __future__ import print_function
+import random
 import sys
 if sys.version_info[0] < 3:
     from StringIO import StringIO
 else:
     from io import StringIO
-import sys
-import os
 sys.path.insert(0, "../treetime")
 
 
@@ -66,7 +65,6 @@ def test_ancestral():
 
     t.optimize_branch_len()
 
-
 def test_seq_joint_reconstruction_correct():
     """
     evolve the random sequence, get the alignment at the leaf nodes.
@@ -108,6 +106,7 @@ def test_seq_joint_reconstruction_correct():
     mutation_list = defaultdict(list)
     for node in tree.find_clades():
         for c in node.clades:
+            node.ref_mutations = []
             c.up = node
         if hasattr(node, 'ref_seq'):
             continue
@@ -140,25 +139,29 @@ def test_seq_joint_reconstruction_correct():
     diff_count = 0
     mut_count = 0
     for node in myTree.tree.find_clades():
-        if node.up is not None:
-            mut_count += len(node.ref_mutations)
-            diff_count += np.sum(node.sequence != node.ref_seq)
-            if np.sum(node.sequence != node.ref_seq):
-                print("%s: True sequence does not equal inferred sequence. parent %s"%(node.name, node.up.name))
-            else:
-                print("%s: True sequence equals inferred sequence. parent %s"%(node.name, node.up.name))
+        mut_count += len(node.ref_mutations)
+        diff_count += np.sum(node.sequence != node.ref_seq)
+        if node.up:
+            parent_name = "parent " + node.up.name
+        else:
+            parent_name = "no parent - is root"
+        if np.sum(node.sequence != node.ref_seq):
+            print("%s: True sequence does not equal inferred sequence. %s"%(node.name, parent_name))
+        else:
+            print("%s: True sequence equals inferred sequence. %s"%(node.name, parent_name))
 
     # the assignment of mutations to the root node is probabilistic. Hence some differences are expected
-    assert diff_count/seq_len<2*(1.0*mut_count/seq_len)**2
+    print("Number of sites differing from reference: ", diff_count)
+    assert diff_count < 10
+
+    print(myTree.get_reconstructed_alignment())
 
     # prove the likelihood value calculation is correct
     LH = myTree.ancestral_likelihood()
     LH_p = (myTree.tree.sequence_LH)
 
-    print("Reference LH: ", LH)
-    print("Inferred LH: ", LH_p)
     print ("Difference between reference and inferred LH:", (LH - LH_p).sum())
-    assert ((LH - LH_p).sum())<1e-9
+    assert (abs((LH - LH_p).sum()))<1e-9
 
     return myTree
 
@@ -205,8 +208,11 @@ def test_seq_joint_reconstruction_asvr_correct():
         for c in node.clades:
             c.up = node
         if hasattr(node, 'ref_seq'):
+            node.ref_mutations = []
             continue
-        t = node.branch_length
+        rand_idx = random.randrange(len(rates))
+        rate_multiplier, _ = rates[rand_idx]
+        t = node.branch_length * rate_multiplier
         p = mygtr.evolve( seq_utils.seq2prof(node.up.ref_seq, mygtr.profile_map), t)
         # normalize profile
         p=(p.T/p.sum(axis=1)).T
@@ -236,25 +242,29 @@ def test_seq_joint_reconstruction_asvr_correct():
     diff_count = 0
     mut_count = 0
     for node in myTree.tree.find_clades():
-        if node.up is not None:
-            mut_count += len(node.ref_mutations)
-            diff_count += np.sum(node.sequence != node.ref_seq)
-            if np.sum(node.sequence != node.ref_seq):
-                print("%s: True sequence does not equal inferred sequence. parent %s"%(node.name, node.up.name))
-            else:
-                print("%s: True sequence equals inferred sequence. parent %s"%(node.name, node.up.name))
+        mut_count += len(node.ref_mutations)
+        diff_count += np.sum(node.sequence != node.ref_seq)
+        if node.up:
+            parent_name = "parent " + node.up.name
+        else:
+            parent_name = "no parent - is root"
+        if np.sum(node.sequence != node.ref_seq):
+            print("%s: True sequence does not equal inferred sequence. %s"%(node.name, parent_name))
+        else:
+            print("%s: True sequence equals inferred sequence. %s"%(node.name, parent_name))
 
     # the assignment of mutations to the root node is probabilistic. Hence some differences are expected
-    assert diff_count/seq_len<2*(1.0*mut_count/seq_len)**2
+    print("Number of sites differing from reference: ", diff_count)
+    assert diff_count < 10
+
+    print(myTree.get_reconstructed_alignment())
 
     # prove the likelihood value calculation is correct
     LH = myTree.ancestral_likelihood()
     LH_p = (myTree.tree.sequence_LH)
 
-    print("Reference LH: ", LH)
-    print("Inferred LH: ", LH_p)
     print ("Difference between reference and inferred LH:", (LH - LH_p).sum())
-    assert ((LH - LH_p).sum())<1e-9
+    assert (abs((LH - LH_p).sum()))<1e-9
 
     return myTree
 
