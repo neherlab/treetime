@@ -265,6 +265,31 @@ def prof2seq(profile, gtr, sample_from_prof=False, normalize=True):
 
     return seq, prof_values, idx
 
+def prof2seq_for_bnb(profile, gtr, sample_from_prof=False, normalize=True):
+    """
+    Convert profile (of a single site) to length 1 array containing its character.
+    """
+
+    # normalize profile such that probabilities at each site sum to one
+    if normalize:
+        tmp_profile, pre = normalize_profile_for_bnb(profile, return_offset=False)
+    else:
+        tmp_profile = profile
+
+    # sample sequence according to the probabilities in the profile
+    # (sampling from cumulative distribution over the different states)
+    if sample_from_prof:
+        cumdis = tmp_profile.cumsum(axis=0).T
+        randnum = np.random.random(size=cumdis.shape[0])
+        idx = np.argmax(cumdis>=randnum, axis=0)
+    else:
+        idx = tmp_profile.argmax(axis=0)
+
+    seq = gtr.alphabet[idx]  # max LH over the alphabet
+
+    prof_values = tmp_profile[idx]
+
+    return seq, prof_values, idx
 
 def normalize_profile(in_profile, log=False, return_offset = True):
     """return a normalized version of a profile matrix
@@ -291,6 +316,22 @@ def normalize_profile(in_profile, log=False, return_offset = True):
         tmp_prof = in_profile
 
     norm_vector = tmp_prof.sum(axis=1)
-    return (np.copy(np.einsum('ai,a->ai',tmp_prof,1.0/norm_vector)),
-            (np.log(norm_vector) + tmp_prefactor) if return_offset else None)
+    normed_prof = np.copy(np.einsum('ai,a->ai',tmp_prof,1.0/norm_vector))
 
+    return normed_prof, ((np.log(norm_vector) + tmp_prefactor) if return_offset else None)
+
+def normalize_profile_for_bnb(in_profile, log=False, return_offset = True):
+    """
+    return a normalized version of the profile matrix for a single site
+    """
+    if log:
+        tmp_prefactor = in_profile.max(axis=0)
+        tmp_prof = np.exp(in_profile.T - tmp_prefactor).T
+    else:
+        tmp_prefactor = 0.0
+        tmp_prof = in_profile
+
+    norm_vector = tmp_prof.sum(axis=0)
+    normed_prof = np.copy(tmp_prof * 1.0/norm_vector)
+
+    return normed_prof, ((np.log(norm_vector) + tmp_prefactor) if return_offset else None)

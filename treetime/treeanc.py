@@ -8,8 +8,8 @@ from Bio.Phylo.BaseTree import Clade
 from Bio import AlignIO
 from treetime import config as ttconf
 from treetime import MissingDataError,UnknownMethodError
+from .seq_utils import seq2prof, seq2array, prof2seq, prof2seq_for_bnb, normalize_profile, extend_profile
 from .asrv import ASRV
-from .seq_utils import seq2prof, seq2array, prof2seq, normalize_profile, extend_profile
 from .gtr import GTR
 from .gtr_site_specific import GTR_site_specific
 from .sequence_data import SequenceData
@@ -54,11 +54,10 @@ class TreeAnc(object):
     alignment, making ancestral state inference
     """
 
-    def __init__(self, tree=None, aln=None, gtr=None, fill_overhangs=True,
-                ref=None, verbose = ttconf.VERBOSE, ignore_gaps=True,
-                convert_upper=True, seq_multiplicity=None, log=None,
-                compress=True, seq_len=None, alpha = -1, rates=None,
-                **kwargs):
+    def __init__(self, tree=None, aln=None, gtr=None, alpha=-1, rates = [(1, 0)],
+                 fill_overhangs=True, ref=None, verbose = ttconf.VERBOSE,
+                 ignore_gaps=True, convert_upper=True, seq_multiplicity=None,
+                 log=None, compress=True, seq_len=None, **kwargs):
         """
         TreeAnc constructor. It prepares the tree, attaches sequences to the leaf nodes,
         and sets some configuration parameters.
@@ -83,6 +82,11 @@ class TreeAnc(object):
             - "JTT92": single empirical matrix
             - "EX": 2-state BE (Buried / Exposed) matrices based on site-specific solvent accessibility
             - "EHO": 3-state EXO (Helix / Extended / Other) matrices based on site-specific secondary structure
+
+        rates : list of (float, float) tuples
+            The distribution of mutation rates over sites in the form of a list of
+            (rate_multiplier, log_probability_of_rate) pairs. rate_multiplier is used
+            to multiply branch lengths for calculations
 
         fill_overhangs : bool
            In some cases, the missing data on both ends of the alignment is
@@ -180,6 +184,8 @@ class TreeAnc(object):
                                 convert_upper=convert_upper, fill_overhangs=fill_overhangs, ambiguous=self.gtr.ambiguous,
                                 sequence_length=seq_len)
 
+        self.rates = rates
+  
         if not self.asrv and self.gtr.is_site_specific and self.data.compress:
             raise TypeError("TreeAnc: sequence compression and site specific gtr models are incompatible!" )
 
@@ -543,9 +549,15 @@ class TreeAnc(object):
 
         if method.lower() in ['ml', 'probabilistic']:
             if marginal:
-                _ml_anc = self._ml_anc_marginal
+                if self.rates != [(1, 0)]:
+                    raise NotImplementedError("ASVR isn't implemented for marginal reconstruction yet.")
+                else:
+                    _ml_anc = self._ml_anc_marginal
             else:
-                _ml_anc = self._ml_anc_joint
+                if self.rates != [(1, 0)]:
+                    _ml_anc = self._ml_anc_joint_asvr
+                else:
+                    _ml_anc = self._ml_anc_joint
         elif method.lower() in ['fitch', 'parsimony']:
             _ml_anc = self._fitch_anc
         else:
@@ -708,7 +720,6 @@ class TreeAnc(object):
         else:
             return self.tree.total_sequence_LH
 
-
     def ancestral_likelihood(self):
         """
         Calculate the likelihood of the given realization of the sequences in
@@ -717,31 +728,40 @@ class TreeAnc(object):
         Returns
         -------
 
-         log_lh : float
+         sub_lhs : np.ndarray
             The tree likelihood given the sequences
         """
-        log_lh = np.zeros(self.data.multiplicity.shape[0])
-        for node in self.tree.find_clades(order='postorder'):
 
-            if node.up is None: #  root node
-                # 0-1 profile
-                profile = seq2prof(node.cseq, self.gtr.profile_map)
-                # get the probabilities to observe each nucleotide
-                profile *= self.gtr.Pi
-                profile = profile.sum(axis=1)
-                log_lh += np.log(profile) # product over all characters
-                continue
+        sub_lhs = np.ndarray((len(self.rates), self.data.multiplicity.shape[0]))
+        for i, (rate_multiplier, prob_of_rate) in enumerate(self.rates):
+            rlog_lh = np.zeros(self.data.multiplicity.shape[0])
 
-            t = node.branch_length
+            for node in self.tree.find_clades(order='postorder'):
 
-            indices = np.array([(self.gtr.state_index[a], self.gtr.state_index[b])
-                                 for a, b in zip(node.up.cseq, node.cseq)])
+                if node.up is None:  # root node
+                    # 0-1 profile
+                    profile = seq2prof(node.cseq, self.gtr.profile_map)
+                    # get the probabilities to observe each nucleotide
+                    profile *= self.gtr.Pi
+                    profile = profile.sum(axis=1)
+                    rlog_lh += np.log(profile)  # product over all characters
+                    continue
 
-            logQt = np.log(self.gtr.expQt(t))
-            lh = logQt[indices[:, 1], indices[:, 0]]
-            log_lh += lh
+                t = node.branch_length * rate_multiplier
 
-        return log_lh
+                indices = np.array([(self.gtr.state_index[a], self.gtr.state_index[b])
+                                    for a, b in zip(node.up.cseq, node.cseq)])
+
+                logQt = np.log(self.gtr.expQt(t))
+                lh = logQt[indices[:, 1], indices[:, 0]]
+                rlog_lh += lh
+
+            rlog_lh += prob_of_rate
+            sub_lhs[i] = rlog_lh
+
+        sub_lhs = np.logaddexp.reduce(sub_lhs)
+
+        return sub_lhs
 
 
     def _branch_length_to_gtr(self, node):
@@ -1185,6 +1205,200 @@ class TreeAnc(object):
         self.sequence_reconstruction = 'joint'
         return N_diff
 
+    def calc_rate_prob(self, site_idx, rate_multiplier, debug=False, **kwargs):
+
+        n_states = self.gtr.alphabet.shape[0]
+
+        # for the internal nodes, scan over all states j of this node, maximize the likelihood
+        for node in self.tree.find_clades(order='postorder'):
+            print("processing node ", node.name)
+            if hasattr(node, 'branch_state'): del node.branch_state
+            if node.up is None:
+                node.joint_Cx=None # not needed for root
+                continue
+
+            branch_len = self._branch_length_to_gtr(node) * rate_multiplier
+            # transition matrix from parent states to the current node states.
+            # denoted as Pij(i), where j - parent state, i - node state
+            log_transitions = np.log(np.maximum(ttconf.TINY_NUMBER, self.gtr.expQt(branch_len)))
+            if node.is_terminal():
+                if node.name in self.data.compressed_alignment:
+                    tmp_prof = seq2prof(self.data.compressed_alignment[node.name], self.gtr.profile_map)[site_idx]
+                    msg_from_children = np.log(np.maximum(tmp_prof, ttconf.TINY_NUMBER))
+                else:
+                    msg_from_children = np.zeros(n_states)
+
+                msg_from_children[np.isnan(msg_from_children) | np.isinf(msg_from_children)] = -ttconf.BIG_NUMBER
+            elif not hasattr(node, "conditionalized"):
+                # Product (sum-Log) over all child subtree likelihoods.
+                # this is prod_ch L_x(i)
+                msg_from_children = np.sum(np.stack([c.joint_Lx for c in node.clades], axis=0), axis=0)
+            elif node.conditionalized == False:
+                # Product (sum-Log) over all child subtree likelihoods.
+                # this is prod_ch L_x(i)
+                msg_from_children = np.sum(np.stack([c.joint_Lx for c in node.clades], axis=0), axis=0)
+            else:
+                tmp_prof = seq2prof(np.full(1, node.conditionalized_val), self.gtr.profile_map)[0]
+                msg_from_children = np.log(np.maximum(tmp_prof, ttconf.TINY_NUMBER))
+
+                msg_from_children[np.isnan(msg_from_children) | np.isinf(msg_from_children)] = -ttconf.BIG_NUMBER
+
+                # Product (sum-Log) over all child subtree likelihoods.
+                # this is prod_ch L_x(i)
+                msg_from_children += np.sum(np.stack([c.joint_Lx for c in node.clades], axis=0), axis=0)
+
+            # for every possible state of the parent node,
+            # get the best state of the current node
+            # and compute the likelihood of this state
+            # preallocate storage
+            node.joint_Lx = np.zeros(n_states)             # likelihood array
+            node.joint_Cx = np.zeros(n_states, dtype=int)  # max LH indices
+            for char_i, char in enumerate(self.gtr.alphabet):
+                # Pij(i) * L_ch(i) for given parent state j
+                msg_to_parent = (log_transitions[:,char_i].T + msg_from_children)
+                # For this parent state, choose the best state of the current node:
+                node.joint_Cx[char_i] = msg_to_parent.argmax(axis=0)
+                # compute the likelihood of the best state of the current node
+                # given the state of the parent (char_i)
+                node.joint_Lx[char_i] = msg_to_parent.max(axis=0)
+
+            print("node.joint_Cx = ", node.joint_Cx)
+            print("node.joint_Lx = ", node.joint_Lx)
+
+        # root node profile = likelihood of the total tree
+        if not hasattr(node, "conditionalized"):
+            # Product (sum-Log) over all child subtree likelihoods.
+            # this is prod_ch L_x(i)
+            msg_from_children = np.sum(np.stack([c.joint_Lx for c in self.tree.root], axis=0), axis=0)
+        elif node.conditionalized == False:
+            # Product (sum-Log) over all child subtree likelihoods.
+            # this is prod_ch L_x(i)
+            msg_from_children = np.sum(np.stack([c.joint_Lx for c in self.tree.root], axis=0), axis=0)
+        else:
+            tmp_prof = seq2prof(np.full(1, node.conditionalized_val), self.gtr.profile_map)[0]
+            msg_from_children = np.log(np.maximum(tmp_prof, ttconf.TINY_NUMBER))
+
+            msg_from_children[np.isnan(msg_from_children) | np.isinf(msg_from_children)] = -ttconf.BIG_NUMBER
+
+            # Product (sum-Log) over all child subtree likelihoods.
+            # this is prod_ch L_x(i)
+            msg_from_children += np.sum(np.stack([c.joint_Lx for c in node.clades], axis=0), axis=0)
+
+        # Pi(i) * Prod_ch Lch(i)
+        self.tree.root.joint_Lx = msg_from_children + np.log(self.gtr.Pi).T
+        print("node.joint_Lx = ", node.joint_Lx)
+        normalized_profile = (self.tree.root.joint_Lx.T - self.tree.root.joint_Lx.max(axis=0)).T
+
+        # choose sequence characters from this profile.
+        seq, anc_lh_vals, idxs = prof2seq_for_bnb(np.exp(normalized_profile),
+                                             self.gtr, sample_from_prof=False)
+
+        # compute the likelihood of the most probable root sequence
+        site_LH = np.choose(idxs, self.tree.root.joint_Lx.T)
+
+        return site_LH
+
+    def store_site_reconstruction(self, site_idx, sequence_LH, best_search):
+
+        self.tree.sequence_LH[site_idx] = sequence_LH
+
+        for (node, val)  in best_search:
+            print("Saving val ", val, " at site ", site_idx, " for node ", node)
+            node._cseq[site_idx] = val
+
+    def _ml_anc_joint_asvr(self, sample_from_profile=False,
+            reconstruct_tip_states=False, debug=False, **kwargs):
+
+        def joint_prob_ev_rate(tree, site_idx, rates):
+
+            rjoint_probs = np.ndarray(len(rates))
+            for i, (rate_multiplier, prob_of_rate) in enumerate(rates):
+                rjoint_prob = tree.calc_rate_prob(site_idx, rate_multiplier) + prob_of_rate
+                rjoint_probs[i] = rjoint_prob
+            joint_prob = np.logaddexp.reduce(rjoint_probs)
+
+            return joint_prob
+
+        def search_bnb(tree, site_idx, node_on, nodes, nodes_ln, rates, search_at, best_found, best_lh):
+
+            if node_on == nodes_ln:
+                search_at_lh = joint_prob_ev_rate(tree, site_idx, rates)
+
+                if search_at_lh > best_lh:
+                    best_lh = search_at_lh
+                    best_found = search_at.copy()
+                    return best_found, best_lh
+
+            if node_on < nodes_ln:
+
+                # tree is partial
+                bound = joint_prob_ev_rate(tree, site_idx, rates)
+
+                # prune
+                if bound <= best_lh:
+                    return best_found, best_lh
+
+                next_node = nodes[node_on]
+                node_on += 1
+
+                for val in tree.gtr.alphabet:
+                    search_at.append((next_node, val))
+                    print("search_at = ", search_at)
+
+                    next_node.conditionalized = True
+                    next_node.conditionalized_val = val
+
+                    best_found, best_lh = \
+                        search_bnb(tree, site_idx, node_on, nodes, nodes_ln, rates, search_at, best_found, best_lh)
+
+                    next_node.conditionalized = False
+
+                    del search_at[-1]
+
+            if node_on > nodes_ln:
+                raise Exception("Something's gone very wrong.")
+
+            return best_found, best_lh
+
+        nodes = list(self.tree.get_nonterminals())
+        nodes_ln = len(nodes)
+        for node in self.tree.find_clades():
+            if hasattr(node, "_cseq"):
+                node._old_cseq = node.cseq
+            node._cseq = np.full(self.data.compressed_length, " ")
+        self.tree.sequence_LH = np.zeros(self.data.compressed_length)
+        L = self.data.compressed_length
+        for site_idx in range(L):
+            search_at = []
+            best_found = []
+            best_lh = float("-inf")
+            best_found, site_LH = search_bnb(self, site_idx, 0, nodes, nodes_ln, self.rates, search_at, best_found, best_lh)
+            self.store_site_reconstruction(site_idx, site_LH, best_found)
+
+        N_diff = 0
+        for node in self.tree.find_clades():
+            # root node has no mutations, everything else has been already set
+            if node.up is None:
+                continue
+
+            if self.sequence_reconstruction:
+                N_diff += (node._old_cseq!=node.cseq).sum()
+            else:
+                N_diff += L
+
+        # do clean-up
+        if not debug:
+            for node in self.tree.find_clades(order='preorder'):
+                del node._old_cseq
+                del node.joint_Lx
+                del node.joint_Cx
+                if hasattr(node, 'seq_idx'):
+                    del node.seq_idx
+
+        self.tree.sequence_joint_LH = (self.tree.sequence_LH*self.data.multiplicity).sum()
+        self.sequence_reconstruction = 'joint_asvr'
+
+        return N_diff
 
 ###############################################################
 ### sequence and mutation storing
