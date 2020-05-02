@@ -1,4 +1,4 @@
-from __future__ import division, print_function, absolute_import
+from __future__ import division, print_function,  absolute_import
 from collections import defaultdict
 import numpy as np
 from treetime import config as ttconf
