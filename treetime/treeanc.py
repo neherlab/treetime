@@ -9,6 +9,7 @@ from Bio import AlignIO
 from treetime import config as ttconf
 from treetime import MissingDataError,UnknownMethodError
 from .seq_utils import seq2prof, seq2array, prof2seq, prof2seq_for_bnb, normalize_profile, extend_profile
+from .asrv import ASRV
 from .gtr import GTR
 from .gtr_site_specific import GTR_site_specific
 from .sequence_data import SequenceData
@@ -53,11 +54,10 @@ class TreeAnc(object):
     alignment, making ancestral state inference
     """
 
-    def __init__(self, tree=None, aln=None, gtr=None, rates = [(1, 0)],
+    def __init__(self, tree=None, aln=None, gtr=None, alpha=-1, rates = [(1, 0)],
                  fill_overhangs=True, ref=None, verbose = ttconf.VERBOSE,
                  ignore_gaps=True, convert_upper=True, seq_multiplicity=None,
-                 log=None, compress=True, seq_len=None,
-                **kwargs):
+                 log=None, compress=True, seq_len=None, **kwargs):
         """
         TreeAnc constructor. It prepares the tree, attaches sequences to the leaf nodes,
         and sets some configuration parameters.
@@ -77,6 +77,11 @@ class TreeAnc(object):
         gtr : str, GTR
            GTR model object. If string passed, it is interpreted as the type of
            the GTR model. A new GTR instance will be created for this type.
+           
+           e.g. for ancestral reconstruction of amino acids:
+            - "JTT92": single empirical matrix
+            - "EX": 2-state BE (Buried / Exposed) matrices based on site-specific solvent accessibility
+            - "EHO": 3-state EXO (Helix / Extended / Other) matrices based on site-specific secondary structure
 
         rates : list of (float, float) tuples
             The distribution of mutation rates over sites in the form of a list of
@@ -113,7 +118,17 @@ class TreeAnc(object):
         seq_len : int, optional
             length of the sequence. this is inferred from the input alignment or the reference
             sequence in most cases but can be specified for other applications.
-
+            
+        alpha : float, optional
+            alpha parameter value in fitted discrete-gamma distribution to infer heterogeneous
+            rates in order to apply Among-site rate variation (ASRV) in ancestral reconstruction
+            default alpha = -1 --> no alpha value inferred from the phylogeny
+                    alpha > 0  --> infer rates and apply ASRV
+            
+        rates : list of float
+            The distribution of mutation rates over sites in the form of a list of rates
+            Each rate has equal weight (probability) W_i = 1 / len(rates)
+            
         **kwargs
            Keyword arguments to construct the GTR model
 
@@ -144,25 +159,34 @@ class TreeAnc(object):
         self.ignore_gaps = ignore_gaps
         self.reconstructed_tip_sequences = False
         self.sequence_reconstruction = None
-
+        self.rates = rates   # array of rates (r_1,...,r_k) for ASRV-based ancestral sequence reconstruction
         self._tree = None
         self.tree = tree
         if tree is None:
             raise ValueError("TreeAnc: tree loading failed! exiting")
-
+        
         # set up GTR model
+        # infer heterogeneous rates from ASRV if applicable
         self._gtr = None
+        self.asrv = False  # indicator of ASRV usage
+        self.use_mixture_model = True if gtr in ['EX', 'EHO'] else False  # indicator of mixture model
+        
+        if alpha > 0:
+            asrv = ASRV(alpha)
+            self.rates = asrv.calc_rates()
+            self.asrv = True
+            
         self.set_gtr(gtr or 'JC69', **kwargs)
 
         # set alignment and attach sequences to tree on success.
         # otherwise self.data.aln will be None
         self.data = SequenceData(aln, ref=ref, logger=self.logger, compress=compress,
                                 convert_upper=convert_upper, fill_overhangs=fill_overhangs, ambiguous=self.gtr.ambiguous,
-                                 sequence_length=seq_len)
+                                sequence_length=seq_len)
 
         self.rates = rates
-
-        if self.gtr.is_site_specific and self.data.compress:
+  
+        if not self.asrv and self.gtr.is_site_specific and self.data.compress:
             raise TypeError("TreeAnc: sequence compression and site specific gtr models are incompatible!" )
 
         if self.data.aln and self.tree:
@@ -255,9 +279,14 @@ class TreeAnc(object):
 
         """
         if isinstance(in_gtr, str):
-            self._gtr = GTR.standard(model=in_gtr, **kwargs)
-            self._gtr.logger = self.logger
-
+            if self.use_mixture_model:
+                self._gtr = []  # list of candidate matrices for mixture model
+                models = ['BURIED', 'EXPOSED'] if in_gtr == 'EX' else ['HELIX', 'EXTENDED', 'OTHER']
+                for model in models:
+                    self._gtr.append(GTR.standard(model=model, **kwargs))
+            else:
+                self._gtr = GTR.standard(model=in_gtr, **kwargs)
+                self._gtr.logger = self.logger
         elif isinstance(in_gtr, GTR) or isinstance(in_gtr, GTR_site_specific):
             self._gtr = in_gtr
             self._gtr.logger=self.logger
@@ -265,8 +294,11 @@ class TreeAnc(object):
             self.logger("TreeAnc.gtr_setter: can't interpret GTR model", 1, warn=True)
             raise TypeError("Cannot set GTR model in TreeAnc class: GTR or "
                 "string expected")
-
-        if self._gtr.ambiguous is None:
+        
+        if self.use_mixture_model:
+            if self._gtr[0].ambiguous is None:
+                self.fill_overhangs = False
+        elif self._gtr.ambiguous is None:
             self.fill_overhangs=False
 
     @property
@@ -395,8 +427,12 @@ class TreeAnc(object):
                         " POSSIBLE ERROR."%failed_leaves, 0, warn=True)
 
         # extend profile to contain additional unknown characters
-        extend_profile(self.gtr, [self.data.ref] if self.data.is_sparse
-                        else self.data.aln.values(), logger=self.logger)
+        if self.use_mixture_model:
+            for model in self.gtr:
+                extend_profile(model, [self.data.ref] if self.data.is_sparse else self.data.aln.values(), logger=self.logger)
+        else:
+            extend_profile(self.gtr, [self.data.ref] if self.data.is_sparse else self.data.aln.values(), logger=self.logger)
+        
         self.ok = True
 
 
@@ -727,6 +763,7 @@ class TreeAnc(object):
 
         return sub_lhs
 
+
     def _branch_length_to_gtr(self, node):
         """
         Set branch lengths to either mutation lengths of given branch lengths.
@@ -736,8 +773,8 @@ class TreeAnc(object):
             return max(ttconf.MIN_BRANCH_LENGTH*self.one_mutation, node.mutation_length)
         else:
             return max(ttconf.MIN_BRANCH_LENGTH*self.one_mutation, node.branch_length)
-
-
+    
+    
     def _ml_anc_marginal(self, sample_from_profile=False,
                          reconstruct_tip_states=False, debug=False, **kwargs):
         """
@@ -758,21 +795,27 @@ class TreeAnc(object):
             assigned to branches.
         """
         self.logger("TreeAnc._ml_anc_marginal: type of reconstruction: Marginal", 2)
-        self.postorder_traversal_marginal()
+        
+        if self.asrv:
+            self.postorder_traversal_marginal_asrv()  # Bottom-up, calculate UP(node)
+            self.total_LH_and_root_sequence_asrv()
+            N_diff = self.preorder_traversal_marginal_asrv()  # Top-down calculate DOWN(node) and MARGINAL(node), assign ASR characters
+            
+        else:
+            self.postorder_traversal_marginal()
+            # choose sequence characters from this profile.
+            # treat root node differently to avoid piling up mutations on the longer branch
+            if sample_from_profile=='root':
+                root_sample_from_profile = True
+                other_sample_from_profile = False
+            elif isinstance(sample_from_profile, bool):
+                root_sample_from_profile = sample_from_profile
+                other_sample_from_profile = sample_from_profile
 
-        # choose sequence characters from this profile.
-        # treat root node differently to avoid piling up mutations on the longer branch
-        if sample_from_profile=='root':
-            root_sample_from_profile = True
-            other_sample_from_profile = False
-        elif isinstance(sample_from_profile, bool):
-            root_sample_from_profile = sample_from_profile
-            other_sample_from_profile = sample_from_profile
-
-        self.total_LH_and_root_sequence(sample_from_profile=root_sample_from_profile,
+            self.total_LH_and_root_sequence(sample_from_profile=root_sample_from_profile,
                                         assign_sequence=True)
 
-        N_diff = self.preorder_traversal_marginal(reconstruct_tip_states=reconstruct_tip_states,
+            N_diff = self.preorder_traversal_marginal(reconstruct_tip_states=reconstruct_tip_states,
                                                   sample_from_profile=other_sample_from_profile,
                                                   assign_sequence=True)
         self.logger("TreeAnc._ml_anc_marginal: ...done", 3)
@@ -785,9 +828,11 @@ class TreeAnc(object):
                     del node.marginal_log_Lx
                     del node.marginal_subtree_LH_prefactor
                 except:
-                    pass
+                    del node.marginal_subtree_LH_prefactor
         gc.collect()
+        
         self.sequence_reconstruction = 'marginal'
+        
         return N_diff
 
 
@@ -827,18 +872,18 @@ class TreeAnc(object):
 
         self.logger("Postorder: computing likelihoods... ", 3)
         # propagate leaves --> root, set the marginal-likelihood messages
-        for node in self.tree.get_nonterminals(order='postorder'): #leaves -> root
+        for node in self.tree.get_nonterminals(order='postorder'):  #leaves -> root
             # regardless of what was before, set the profile to ones
-            tmp_log_subtree_LH = np.zeros((L,n_states), dtype=float)
+            tmp_log_subtree_LH = np.zeros((L,n_states), dtype=float)  # log likelihood at current node
             node.marginal_subtree_LH_prefactor = np.zeros(L, dtype=float)
             for ch in node.clades:
                 ch.marginal_log_Lx = self.gtr.propagate_profile(ch.marginal_subtree_LH,
-                    self._branch_length_to_gtr(ch), return_log=True) # raw prob to transfer prob up
+                    self._branch_length_to_gtr(ch), return_log=True)  # raw prob to transfer prob up
                 tmp_log_subtree_LH += ch.marginal_log_Lx
                 node.marginal_subtree_LH_prefactor += ch.marginal_subtree_LH_prefactor
 
             node.marginal_subtree_LH, offset = normalize_profile(tmp_log_subtree_LH, log=True)
-            node.marginal_subtree_LH_prefactor += offset # and store log-prefactor
+            node.marginal_subtree_LH_prefactor += offset  # store log-prefactor
 
 
     def preorder_traversal_marginal(self, reconstruct_tip_states=False, sample_from_profile=False, assign_sequence=False):
@@ -852,7 +897,7 @@ class TreeAnc(object):
             if hasattr(node, 'branch_state'): del node.branch_state
 
             # integrate the information coming from parents with the information
-            # of all children my multiplying it to the prev computed profile
+            # of all children by multiplying it to the prev computed profile
             node.marginal_outgroup_LH, pre = normalize_profile(np.log(np.maximum(ttconf.TINY_NUMBER, node.up.marginal_profile)) - node.marginal_log_Lx,
                                                                log=True, return_offset=False)
             if node.is_terminal() and (not reconstruct_tip_states): # skip remainder unless leaves are to be reconstructed
@@ -873,6 +918,164 @@ class TreeAnc(object):
                 #assign new sequence
                 node._cseq = seq
 
+        return N_diff
+    
+    #----- Marginal reconstruction functions using ASRV -----#
+    
+    def postorder_traversal_marginal_asrv(self):
+        """
+        postorder traversal (propagate root --> leave)
+        
+         Denote V: current node
+         for each node V: calculate likelihood UP(V) = Likelihood(V | V.children())
+        """
+        L = self.data.compressed_length  # sequence length
+        n_rates = len(self.rates)   # categories of rates
+        n_states = self.gtr.alphabet.shape[0]   # ∑(character)
+        
+        self.logger("Attaching sequence profiles to leafs...", 3)
+        
+        for leaf in self.tree.get_terminals():
+            if not hasattr(leaf, "upward_LH"):
+                leaf.upward_LH = np.ones((n_rates, L, n_states))
+                if leaf.name in self.data.compressed_alignment:
+                    tmp_upward_LH = seq2prof(self.data.compressed_alignment[leaf.name], self.gtr.profile_map)
+                    leaf.upward_LH = np.tile(tmp_upward_LH, (n_rates, 1, 1))
+            if not hasattr(leaf, "marginal_subtree_LH_prefactor"):
+                leaf.marginal_subtree_LH_prefactor = np.zeros((n_rates, L))  # store unnormalized log likelihood
+
+        self.logger("Postorder: computing likelihoods... ", 3)
+        
+        # Bottom up propagation
+        for node in self.tree.get_nonterminals(order='postorder'):
+            tmp_upward_LH = np.ones((n_rates, L, n_states), dtype=float)
+            node.marginal_subtree_LH_prefactor = np.zeros((n_rates, L), dtype=float)
+            for child in node.clades:
+                for i, rate in enumerate(self.rates):
+                    branch_len = self._branch_length_to_gtr(child) * rate
+                    propagate_LH = self.gtr.propagate_profile(child.upward_LH[i], branch_len, return_log=False)
+                    tmp_upward_LH[i, :, :] *= propagate_LH
+                
+                node.marginal_subtree_LH_prefactor += child.marginal_subtree_LH_prefactor
+            
+            node.upward_LH = np.zeros((n_rates, L, n_states))  # "UP" property: likelihood message from subtree
+            for i in range(n_rates):
+                node.upward_LH[i, :, :], offset = normalize_profile(tmp_upward_LH[i], log=False)
+                node.marginal_subtree_LH_prefactor[i] += offset  # store log-prefactor
+                
+                
+    def total_LH_and_root_sequence_asrv(self):
+        """
+        root sequence reconstruction and sequence likelihood
+        """
+        L = self.data.compressed_length  # sequence length
+        n_rates = len(self.rates)  # categories of rates
+        n_states = self.gtr.alphabet.shape[0]  # ∑(character)
+        weight = 1 / n_rates  # weight of each rate: P(r_1) = ... = P(r_k) = 1 / k
+        
+        self.logger("Computing root node seqeucne and total tree likelihod...", 3)
+        
+        self.tree.root.downward_LH = np.ones((n_rates, L, n_states))  # "DOWN" property: likelihood message from complementary tree
+        self.tree.root.marginal_LH = np.ones((n_rates, L, n_states))  # "MARGINAL" property: marginal likelihood
+        
+        marginal_LH_prefactor = np.zeros((n_rates, L))
+        for i in range(n_rates):
+            self.tree.root.marginal_LH[i, :, :], pre = normalize_profile(self.gtr.Pi.T*self.tree.root.upward_LH[i])
+            marginal_LH_prefactor[i] = self.tree.root.marginal_subtree_LH_prefactor[i] + pre
+            
+        self.tree.sequence_LH = np.sum(marginal_LH_prefactor * weight, axis=0)
+        self.tree.total_sequence_LH = (self.tree.sequence_LH*self.data.multiplicity).sum()
+            
+        # Total likelihood over different rates:  L(a) = ∑_r P(E|a,r) * π_a * P(r)
+        # Assign most likelihood characters at root node: argmax_a rownorm(L(a))
+        total_marginal_LH = self.tree.root.marginal_LH.sum(0) * weight
+        norm_total_marginal_LH = total_marginal_LH / total_marginal_LH.sum(1)[:,np.newaxis]  # row-normalization
+
+        # Marginal confidence: differentiation degree of the most probable assignment against all possibilities
+        self.tree.root.marginal_confidence = norm_total_marginal_LH.max(axis=1).sum() / norm_total_marginal_LH.sum()
+        
+        seq, _, _ = prof2seq(norm_total_marginal_LH, self.gtr, sample_from_prof=False, normalize=False)
+        self.tree.root._cseq = seq
+        
+        
+    def preorder_traversal_marginal_asrv(self):
+        """
+        preorder traversal (propagate root --> leave)
+        
+         Denote V: current node; S: V.sister(); F: V.up(); G: V.up().up() Ci: V.chiidren()
+         for each node V: calculate likelihood DOWN(V) = Likelihood(V | Tree - V.subtree())
+         - V is root node:
+             DOWN_i(V) = 1  for all i in ∑(character)
+         - V.up() == root:
+             DOWN_i(V) = ∑_j P(V=i,F=j | t_{i,j}) * ∑_k P(F=j,S=k | t_{j,k}) * UP_k(S)
+             Diagram:
+                   F                                      V
+                  / \        pseudo "reroot"            / | \
+                 V   S      ================>         C1 C2  F
+                / \ ...         towards V                     \
+              C1  C2                                          S
+             ... ...                                         ...
+        - V.up() != root:
+             DOWN_i(V) = ∑_j P(V=i,F=j | t_{i,j}) * ∑_k P(F=j,S=k | t_{j,k}) * UP_k(S) * ∑_l P(F=j, G=l | t_{j,l}) * DOWN_l(G)
+             Diagram:
+                  G                                       V
+                 / \                                    / | \
+                F ...        pseudo "reroot"          C1 C2  F
+               / \          ================>       ... ... / \
+              V   S             towards V                  S   G
+             / \ ...                                      ... ...
+           C1  C2
+          ... ...
+        """
+        L = self.data.compressed_length  # sequence length
+        n_rates = len(self.rates)  # categories of rates
+        n_states = self.gtr.alphabet.shape[0]  # ∑(character)
+        weight = 1 / n_rates  # weight of each rate: P(r_1) = ... = P(r_k) = 1 / k
+        N_diff = 0
+        
+        self.logger("Preorder: computing marginal profiles", 3)
+        
+        for node in self.tree.find_clades(order='preorder'):
+            if node.up is None:  # skip rootnode
+                continue
+            else:
+                node.downward_LH = np.ones((n_rates, L, n_states))
+                for i, rate in enumerate(self.rates):
+                    tmp_downward_LH = np.ones((L, n_states))
+                    for sister in node.up.clades:
+                        if sister.name == node.name:  # skip self
+                            continue
+                        branch_len = self._branch_length_to_gtr(sister) * rate
+                        tmp_curr_upward_LH = self.gtr.propagate_profile(sister.upward_LH[i], branch_len, return_log=False)
+                        tmp_downward_LH *= tmp_curr_upward_LH
+                        
+                    if node.up.up:   # node.up != root
+                        branch_len = self._branch_length_to_gtr(node.up) * rate
+                        tmp_curr_downward_LH = self.gtr.evolve(node.up.up.downward_LH[i], branch_len, return_log=False)
+                        tmp_downward_LH *= tmp_curr_downward_LH
+                        
+                    downward_propagate_LH, _ = normalize_profile(tmp_downward_LH)
+                    branch_len = self._branch_length_to_gtr(node) * rate
+                    node.downward_LH[i] = self.gtr.evolve(downward_propagate_LH, branch_len, return_log=False)
+            
+            node.marginal_LH = np.zeros((n_rates, L, n_states))
+            
+            for i in range(n_rates):
+                node.marginal_LH[i, :, :], _ = normalize_profile(self.gtr.Pi.T * node.upward_LH[i] * node.downward_LH[i])
+                
+            N_diff += self.data.compressed_length
+
+            # Total likelihood over different rates:  L(a) = ∑_r P(E|a,r) * π_a * P(r)
+            # Assign most likelihood characters at root node: argmax_{a} rownorm(L(a))
+            total_marginal_LH = node.marginal_LH.sum(0) * weight
+            norm_total_marginal_LH = total_marginal_LH / total_marginal_LH.sum(1)[:, np.newaxis]  # row-normalization
+            
+            # Marginal confidence: differentiation degree of the most probable assignment against all possibilities
+            node.marginal_confidence = norm_total_marginal_LH.max(axis=1).sum() / norm_total_marginal_LH.sum()
+            
+            seq, _, _ = prof2seq(norm_total_marginal_LH, self.gtr, sample_from_prof=False, normalize=False)
+            node._cseq = seq
+            
         return N_diff
 
 
@@ -1501,15 +1704,11 @@ class TreeAnc(object):
 
         """
         if branch_length_mode=='marginal':
-            self.optimize_tree_marginal(max_iter=max_iter, infer_gtr=infer_gtr, pc=pc, **kwargs)
-            if prune_short:
-                self.prune_short_branches()
+            return self.optimize_tree_marginal(max_iter=max_iter, infer_gtr=infer_gtr, pc=pc, **kwargs)
         elif branch_length_mode=='input':
             N_diff = self.reconstruct_anc(method='probabilistic', infer_gtr=infer_gtr, pc=pc,
                                           marginal=marginal_sequences, **kwargs)
-            if prune_short:
-                self.prune_short_branches()
-            return ttconf.SUCCESS
+            return ttconf.success
         elif branch_length_mode!='joint':
             raise UnknownMethodError("TreeAnc.optimize_tree: `branch_length_mode` should be in ['marginal', 'joint', 'input']")
 
@@ -1842,3 +2041,21 @@ class TreeAnc(object):
         else:
             self.logger("Your analysis did not reconstructed tip states, you can remove the call of `recover_var_ambigs`",0, warn=True)
 
+
+    def sort_bnb_search_orders(self):
+        """
+        sort tree nodes with high marginal confidence -- > low marginal confidence
+        as a guidance for branch & bound searching ordre in joint reconstruction
+        
+        Returns
+        -------
+        list of tree nodes
+            branch & bound partial reconstruction search orders
+        """
+        node_conf_list = []
+        for node in self.tree.find_clades(order='preorder'):
+            node_conf_list.append((node, node.marginal_confidence))
+            
+        node_conf_list.sort(key=lambda x: x[1], reverse=True)
+
+        return [item[0] for item in node_conf_list]

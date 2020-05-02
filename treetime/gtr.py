@@ -381,7 +381,7 @@ class GTR(object):
 
         """
         from .nuc_models import JC69, K80, F81, HKY85, T92, TN93
-        from .aa_models  import JTT92
+        from .aa_models  import JTT92, BURIED, EXPOSED, HELIX, EXTENDED, OTHER
 
         if model.lower() in ['jc', 'jc69', 'jukes-cantor', 'jukes-cantor69', 'jukescantor', 'jukescantor69']:
             model = JC69(**kwargs)
@@ -397,6 +397,16 @@ class GTR(object):
             model = TN93(**kwargs)
         elif model.lower() in ['jtt', 'jtt92']:
             model = JTT92(**kwargs)
+        elif model.lower() == 'buried':
+            model = BURIED(**kwargs)
+        elif model.lower() == 'exposed':
+            model = EXPOSED(**kwargs)
+        elif model.lower() == 'helix':
+            model = HELIX(**kwargs)
+        elif model.lower() == 'extended':
+            model = EXTENDED(**kwargs)
+        elif model.lower == 'other':
+            model = OTHER(**kwargs)
         else:
             raise KeyError("The GTR model '{}' is not in the list of available models."
                 "".format(model))
@@ -903,7 +913,6 @@ class GTR(object):
         """
         Qt = self.expQt(t)
         res = profile.dot(Qt)
-
         return np.log(res) if return_log else res
 
 
@@ -968,7 +977,7 @@ class GTR(object):
         --------
 
          expQt : numpy.array
-            Matrix exponential of exo(Qt)
+            Matrix exponential of exp(Qt)
         '''
         eLambdaT = np.diag(self._exp_lt(t)) # vector length = a
         Qs = self.v.dot(eLambdaT.dot(self.v_inv))   # This is P(nuc1 | given nuc_2)

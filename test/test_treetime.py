@@ -39,12 +39,21 @@ def test_ancestral():
     import numpy as np
     from treetime import TreeAnc, GTR
     root_dir = os.path.dirname(os.path.realpath(__file__))
-    fasta = str(os.path.join(root_dir, 'treetime_examples/data/h3n2_na/h3n2_na_20.fasta'))
-    nwk = str(os.path.join(root_dir, 'treetime_examples/data/h3n2_na/h3n2_na_20.nwk'))
-
+    
+    #fasta = str(os.path.join(root_dir, 'treetime_examples/data/h3n2_na/h3n2_na_20.fasta'))
+    #nwk = str(os.path.join(root_dir, 'treetime_examples/data/h3n2_na/h3n2_na_20.nwk'))
+    
+    # configure path
+    path = '../data/treetime_data/h3n2_na'
+    fasta_path = os.path.join(path, 'h3n2_na_20.fasta')
+    nwk_path = os.path.join(path, 'h3n2_na_20.nwk')
+    
+    fasta = str(os.path.join(root_dir, fasta_path))
+    nwk = str(os.path.join(root_dir, nwk_path))
+    
     for marginal in [True, False]:
         print('loading flu example')
-        t = TreeAnc(gtr='Jukes-Cantor', tree=nwk, aln=fasta)
+        t = TreeAnc(gtr='Jukes-Cantor', tree=nwk, aln=fasta, alpha=1000)
         print('ancestral reconstruction' + ("marginal" if marginal else "joint"))
         t.reconstruct_anc(method='ml', marginal=marginal)
         assert t.data.compressed_to_full_sequence(t.tree.root.cseq, as_string=True) == 'ATGAATCCAAATCAAAAGATAATAACGATTGGCTCTGTTTCTCTCACCATTTCCACAATATGCTTCTTCATGCAAATTGCCATCTTGATAACTACTGTAACATTGCATTTCAAGCAATATGAATTCAACTCCCCCCCAAACAACCAAGTGATGCTGTGTGAACCAACAATAATAGAAAGAAACATAACAGAGATAGTGTATCTGACCAACACCACCATAGAGAAGGAAATATGCCCCAAACCAGCAGAATACAGAAATTGGTCAAAACCGCAATGTGGCATTACAGGATTTGCACCTTTCTCTAAGGACAATTCGATTAGGCTTTCCGCTGGTGGGGACATCTGGGTGACAAGAGAACCTTATGTGTCATGCGATCCTGACAAGTGTTATCAATTTGCCCTTGGACAGGGAACAACACTAAACAACGTGCATTCAAATAACACAGTACGTGATAGGACCCCTTATCGGACTCTATTGATGAATGAGTTGGGTGTTCCTTTTCATCTGGGGACCAAGCAAGTGTGCATAGCATGGTCCAGCTCAAGTTGTCACGATGGAAAAGCATGGCTGCATGTTTGTATAACGGGGGATGATAAAAATGCAACTGCTAGCTTCATTTACAATGGGAGGCTTGTAGATAGTGTTGTTTCATGGTCCAAAGAAATTCTCAGGACCCAGGAGTCAGAATGCGTTTGTATCAATGGAACTTGTACAGTAGTAATGACTGATGGAAGTGCTTCAGGAAAAGCTGATACTAAAATACTATTCATTGAGGAGGGGAAAATCGTTCATACTAGCACATTGTCAGGAAGTGCTCAGCATGTCGAAGAGTGCTCTTGCTATCCTCGATATCCTGGTGTCAGATGTGTCTGCAGAGACAACTGGAAAGGCTCCAATCGGCCCATCGTAGATATAAACATAAAGGATCATAGCATTGTTTCCAGTTATGTGTGTTCAGGACTTGTTGGAGACACACCCAGAAAAAACGACAGCTCCAGCAGTAGCCATTGTTTGGATCCTAACAATGAAGAAGGTGGTCATGGAGTGAAAGGCTGGGCCTTTGATGATGGAAATGACGTGTGGATGGGAAGAACAATCAACGAGACGTCACGCTTAGGGTATGAAACCTTCAAAGTCATTGAAGGCTGGTCCAACCCTAAGTCCAAATTGCAGATAAATAGGCAAGTCATAGTTGACAGAGGTGATAGGTCCGGTTATTCTGGTATTTTCTCTGTTGAAGGCAAAAGCTGCATCAATCGGTGCTTTTATGTGGAGTTGATTAGGGGAAGAAAAGAGGAAACTGAAGTCTTGTGGACCTCAAACAGTATTGTTGTGTTTTGTGGCACCTCAGGTACATATGGAACAGGCTCATGGCCTGATGGGGCGGACCTCAATCTCATGCCTATA'
@@ -57,10 +66,10 @@ def test_ancestral():
                                      ">C\nACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT\n"), 'fasta')
 
     mygtr = GTR.custom(alphabet = np.array(['A', 'C', 'G', 'T']), pi = np.array([0.9, 0.06, 0.02, 0.02]), W=np.ones((4,4)))
-    t = TreeAnc(gtr=mygtr, tree=tiny_tree, aln=tiny_aln)
+    t = TreeAnc(gtr=mygtr, tree=tiny_tree, aln=tiny_aln, alpha=1000)
     t.reconstruct_anc('ml', marginal=True, debug=True)
     lhsum =  np.exp(t.sequence_LH(pos=np.arange(4**3))).sum()
-    print (lhsum)
+    print( lhsum)
     assert(np.abs(lhsum-1.0)<1e-6)
 
     t.optimize_branch_len()

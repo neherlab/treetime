@@ -735,7 +735,7 @@ def reconstruct_discrete_traits(tree, traits, missing_data='?', pc=1.0, sampling
     # add weights to unique states for alphabet construction
     if weight_dict is not None:
         unique_states.update(weight_dict.keys())
-        missing_weights = [c for c in unique_states if c not in weight_dict and c is not missing_data]
+        missing_weights = [c for c in unique_states if c not in weight_dict]
         if len(missing_weights):
             print("Missing weights for values: " + ", ".join(missing_weights))
 
