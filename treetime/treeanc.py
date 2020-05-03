@@ -1159,29 +1159,6 @@ class TreeAnc(object):
                 for i, rate in enumerate(self.rates):
                     branch_len = self._branch_length_to_gtr(child) * rate
                     propagate_LH = self.propagate(child.upward_LH[i], indicators, branch_len)
-
-                    """
-                    if self.use_mixture_model and n_gtrs == 2:  # EX mixture model
-                        is_buried, is_exposed = indicators
-                        buried_propagate_LH = is_buried * self.propty_gtr_dict['B'].propagate_profile(child.upward_LH[i], branch_len, return_log=False)
-                        exposed_propagate_LH = is_exposed * self.propty_gtr_dict['E'].propagate_profile(child.upward_LH[i], branch_len, return_log=False)
-        
-                        # merge mixture model propagations
-                        propagate_LH = buried_propagate_LH + exposed_propagate_LH
-                        
-                    elif self.use_mixture_model and n_gtrs == 3:  # EHO mixture model
-                        is_helix, is_extended, is_other = indicators
-                        helix_propagate_LH = is_helix * self.propty_gtr_dict['H'].propagate_profile(child.upward_LH[i], branch_len, return_log=False)
-                        extended_propagate_LH = is_extended * self.propty_gtr_dict['E'].propagate_profile(child.upward_LH[i], branch_len, return_log=False)
-                        other_propagate_LH = is_other * self.propty_gtr_dict['O'].propagate_profile(child.upward_LH[i], branch_len, return_log=False)
-        
-                        # merge mixture model propagations
-                        propagate_LH = helix_propagate_LH + extended_propagate_LH + other_propagate_LH
-                        
-                    else:
-                        propagate_LH = self.gtr.propagate_profile(child.upward_LH[i], branch_len, return_log=False)
-                    """
-                    
                     tmp_upward_LH[i, :, :] *= propagate_LH
                 
                 node.marginal_subtree_LH_prefactor += child.marginal_subtree_LH_prefactor
@@ -1227,7 +1204,7 @@ class TreeAnc(object):
         # Marginal confidence: differentiation degree of the most probable assignment against all possibilities
         self.tree.root.marginal_confidence = norm_total_marginal_LH.max(axis=1).sum() / norm_total_marginal_LH.sum()
         
-        # Assign most likelihood characters at root node: argmax_a rownorm(L(a))
+        # Assign most likely characters at root node: argmax_a rownorm(L(a))
         seq = self.assign_seqs(norm_total_marginal_LH, indicators)
         self.tree.root._cseq = seq
         
@@ -1305,7 +1282,7 @@ class TreeAnc(object):
             N_diff += 0 if self.use_mixture_model else self.data.compressed_length
 
             # Total likelihood over different rates:  L(a) = ∑_r P(E|a,r) * π_a * P(r)
-            # Assign most likelihood characters at root node: argmax_{a} rownorm(L(a))
+            # Assign most likely characters at root node: argmax_{a} rownorm(L(a))
             total_marginal_LH = node.marginal_LH.sum(0) * weight
             norm_total_marginal_LH = total_marginal_LH / total_marginal_LH.sum(1)[:, np.newaxis]  # row-normalization
             
