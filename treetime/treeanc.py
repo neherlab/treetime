@@ -1238,7 +1238,6 @@ class TreeAnc(object):
 
         # for the internal nodes, scan over all states j of this node, maximize the likelihood
         for node in self.tree.find_clades(order='postorder'):
-            print("processing node ", node.name)
             if hasattr(node, 'branch_state'): del node.branch_state
             if node.up is None:
                 node.joint_Cx=None # not needed for root
@@ -1247,7 +1246,10 @@ class TreeAnc(object):
             branch_len = self._branch_length_to_gtr(node) * rate_multiplier
             # transition matrix from parent states to the current node states.
             # denoted as Pij(i), where j - parent state, i - node state
-            log_transitions = np.log(np.maximum(ttconf.TINY_NUMBER, self.gtr.expQt(branch_len)[:,:,site_idx]))
+            if self.gtr.is_site_specific:
+                log_transitions = np.log(np.maximum(ttconf.TINY_NUMBER, self.gtr.expQt(branch_len, site_idx=site_idx)))
+            else:
+                log_transitions = np.log(np.maximum(ttconf.TINY_NUMBER, self.gtr.expQt(branch_len)))
             if node.is_terminal():
                 if node.name in self.data.compressed_alignment:
                     tmp_prof = seq2prof(extant_sequences[node.name], self.gtr.profile_map)[site_idx]
@@ -1289,9 +1291,6 @@ class TreeAnc(object):
                 # given the state of the parent (char_i)
                 node.joint_Lx[char_i] = msg_to_parent.max(axis=0)
 
-            print("node.joint_Cx = ", node.joint_Cx)
-            print("node.joint_Lx = ", node.joint_Lx)
-
         # root node profile = likelihood of the total tree
         if not hasattr(node, "conditionalized"):
             # Product (sum-Log) over all child subtree likelihoods.
@@ -1312,8 +1311,10 @@ class TreeAnc(object):
             msg_from_children += np.sum(np.stack([c.joint_Lx for c in node.clades], axis=0), axis=0)
 
         # Pi(i) * Prod_ch Lch(i)
-        self.tree.root.joint_Lx = msg_from_children + np.log(self.gtr.Pi[:,site_idx]).T
-        print("node.joint_Lx = ", node.joint_Lx)
+        if self.gtr.is_site_specific:
+            self.tree.root.joint_Lx = msg_from_children + np.log(self.gtr.Pi[:,site_idx]).T
+        else:
+            self.tree.root.joint_Lx = msg_from_children + np.log(self.gtr.Pi).T
         normalized_profile = (self.tree.root.joint_Lx.T - self.tree.root.joint_Lx.max(axis=0)).T
 
         # choose sequence characters from this profile.
@@ -1330,7 +1331,6 @@ class TreeAnc(object):
         self.tree.sequence_LH[site_idx] = sequence_LH
 
         for (node, val)  in best_search:
-            print("Saving val ", val, " at site ", site_idx, " for node ", node)
             node._cseq[site_idx] = val
 
     def _ml_anc_joint_asvr(self, sample_from_profile=False,
@@ -1370,7 +1370,6 @@ class TreeAnc(object):
 
                 for val in tree.gtr.alphabet:
                     search_at.append((next_node, val))
-                    print("search_at = ", search_at)
 
                     next_node.conditionalized = True
                     next_node.conditionalized_val = val

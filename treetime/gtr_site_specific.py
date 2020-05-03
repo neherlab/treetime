@@ -333,7 +333,7 @@ class GTR_site_specific(GTR):
                                            assume_sorted=True, copy=False, kind='linear')
 
 
-    def _expQt(self, t):
+    def _expQt(self, t, site_idx=None):
         """Raw numerical matrix exponentiation using the diagonalized matrix.
         This is the computational bottleneck in many simulations.
 
@@ -347,15 +347,28 @@ class GTR_site_specific(GTR):
         np.array
             stack of matrices for each site
         """
-        eLambdaT = np.exp(t*self.mu*self.eigenvals)
-        return np.einsum('jia,ja,kja->ika', self.v, eLambdaT, self.v_inv)
-
-
-    def expQt(self, t):
-        if t*self.rate_scale<10 and self.approximate:
-            return self.expQt_interpolator(t)
+        if site_idx == None:
+            eLambdaT = np.exp(t*self.mu*self.eigenvals)
+            final_Qt = np.einsum('jia,ja,kja->ika', self.v, eLambdaT, self.v_inv)
         else:
-            return self._expQt(t)
+            site_mu = self.mu[site_idx]
+            site_eigenvals = self.eigenvals[:,site_idx]
+            eLambdaT = np.exp(t * site_mu * site_eigenvals)
+            site_v = self.v[:,:,site_idx].T
+            site_v_inv = self.v_inv[:,:,site_idx].T
+            final_Qt = np.einsum('ij,j,jk', site_v, eLambdaT, site_v_inv)
+
+        return final_Qt
+
+
+    def expQt(self, t, site_idx=None):
+        if t*self.rate_scale<10 and self.approximate:
+            if site_idx != None:
+                return self.expQt_interpolator(t)[:,:,site_idx]
+            else:
+                return self.expQt_interpolator(t)
+        else:
+            return self._expQt(t, site_idx=site_idx)
 
 
     def prop_t_compressed(self, seq_pair, multiplicity, t, return_log=False):
