@@ -301,7 +301,6 @@ def test_seq_joint_reconstruction_asvr_correct():
     tiny_tree = Phylo.read(StringIO("((A:.060,B:.01200)C:.020,D:.0050)E:.004;"), 'newick')
     mygtr = GTR.custom(alphabet = np.array(['A', 'C', 'G', 'T']),
                        pi = np.array([0.15, 0.95, 0.05, 0.3]), W=np.ones((4,4)))
-    seq = np.random.choice(mygtr.alphabet, p=mygtr.Pi, size=400)
     rates = [(.5, np.log(1/3)), (1, np.log(1/3)), (1.5, np.log(1/3))]
 
     myTree = TreeAnc(gtr=mygtr, tree=tiny_tree, rates=rates, aln=None, verbose=4)
@@ -310,6 +309,111 @@ def test_seq_joint_reconstruction_asvr_correct():
     tree = myTree.tree
     seq_len = 400
     tree.root.ref_seq = np.random.choice(mygtr.alphabet, p=mygtr.Pi, size=seq_len)
+    print ("Root sequence: " + ''.join(tree.root.ref_seq.astype('U')))
+    mutation_list = defaultdict(list)
+    for node in tree.find_clades():
+        for c in node.clades:
+            c.up = node
+        if hasattr(node, 'ref_seq'):
+            node.ref_mutations = []
+            continue
+        rand_idx = random.randrange(len(rates))
+        rate_multiplier, _ = rates[rand_idx]
+        t = node.branch_length * rate_multiplier
+        p = mygtr.evolve( seq_utils.seq2prof(node.up.ref_seq, mygtr.profile_map), t)
+        # normalize profile
+        p=(p.T/p.sum(axis=1)).T
+        # sample mutations randomly
+        ref_seq_idxs = np.array([int(np.random.choice(np.arange(p.shape[1]), p=p[k])) for k in np.arange(p.shape[0])])
+
+        node.ref_seq = np.array([mygtr.alphabet[k] for k in ref_seq_idxs])
+
+        node.ref_mutations = [(anc, pos, der) for pos, (anc, der) in
+                            enumerate(izip(node.up.ref_seq, node.ref_seq)) if anc!=der]
+        for anc, pos, der in node.ref_mutations:
+            mutation_list[pos].append((node.name, anc, der))
+        print (node.name, len(node.ref_mutations), node.ref_mutations)
+
+    # set as the starting sequences to the terminal nodes:
+    alnstr = ""
+    i = 1
+    for leaf in tree.get_terminals():
+        alnstr += ">" + leaf.name + "\n" + ''.join(leaf.ref_seq.astype('U')) + '\n'
+        i += 1
+    print (alnstr)
+    myTree.aln = AlignIO.read(StringIO(alnstr), 'fasta')
+
+    # reconstruct ancestral sequences:
+    myTree.infer_ancestral_sequences(final=True, debug=True, reconstruct_leaves=True)
+
+    diff_count = 0
+    mut_count = 0
+    for node in myTree.tree.find_clades():
+        mut_count += len(node.ref_mutations)
+        diff_count += np.sum(node.sequence != node.ref_seq)
+        if node.up:
+            parent_name = "parent " + node.up.name
+        else:
+            parent_name = "no parent - is root"
+        if np.sum(node.sequence != node.ref_seq):
+            print("%s: True sequence does not equal inferred sequence. %s"%(node.name, parent_name))
+        else:
+            print("%s: True sequence equals inferred sequence. %s"%(node.name, parent_name))
+
+    # the assignment of mutations to the root node is probabilistic. Hence some differences are expected
+    print("Number of sites differing from reference: ", diff_count)
+    assert diff_count < 10
+
+    print(myTree.get_reconstructed_alignment())
+
+    # prove the likelihood value calculation is correct
+    LH = myTree.ancestral_likelihood()
+    LH_p = (myTree.tree.sequence_joint_LH)
+
+    print ("Difference between reference and inferred LH:", (LH - LH_p).sum())
+    assert (abs((LH - LH_p).sum()))<1e-9
+
+    return myTree
+
+def test_seq_joint_reconstruction_ss_asvr_correct():
+    """
+    evolve the random sequence, get the alignment at the leaf nodes.
+    Reconstruct the sequences of the internal nodes (joint)
+    and prove the reconstruction is correct.
+    In addition, compute the likelihood of the particular realization of the
+    sequences on the tree and prove that this likelihood is exactly the same
+    as calculated in the joint reconstruction
+    """
+
+    from treetime import TreeAnc, GTR_site_specific
+    from treetime import seq_utils
+    from Bio import Phylo, AlignIO
+    import numpy as np
+    try:
+        from itertools import izip
+    except ImportError:  #python3.x
+        izip = zip
+    from collections import defaultdict
+    def exclusion(a, b):
+        """
+        Intersection of two lists
+        """
+        return list(set(a) - set(b))
+
+    seq_len = 400
+    rates = [(.5, np.log(1/3)), (1, np.log(1/3)), (1.5, np.log(1/3))]
+    tiny_tree = Phylo.read(StringIO("((A:.060,B:.01200)C:.020,D:.0050)E:.004;"), 'newick')
+    mygtr = GTR_site_specific.random(L=seq_len, alphabet="nuc_nogap")
+    myTree = TreeAnc(gtr=mygtr, tree=tiny_tree, aln=None, rates=rates, verbose=4, compress=False)
+
+    ref_seq = np.ndarray(seq_len, dtype=np.dtype("<U1"))
+    for i in range(seq_len):
+        p = mygtr.Pi[:, i]
+        ref_seq[i] = np.random.choice(mygtr.alphabet, p=p)
+
+    # simulate evolution, set resulting sequence as ref_seq
+    tree = myTree.tree
+    tree.root.ref_seq = ref_seq
     print ("Root sequence: " + ''.join(tree.root.ref_seq.astype('U')))
     mutation_list = defaultdict(list)
     for node in tree.find_clades():

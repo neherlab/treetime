@@ -1230,6 +1230,10 @@ class TreeAnc(object):
 
     def calc_rate_prob(self, site_idx, rate_multiplier, debug=False, **kwargs):
 
+        if self.gtr.is_site_specific:
+            extant_sequences = self.aln
+        else:
+            extant_sequences = self.data.compressed_alignment
         n_states = self.gtr.alphabet.shape[0]
 
         # for the internal nodes, scan over all states j of this node, maximize the likelihood
@@ -1243,10 +1247,10 @@ class TreeAnc(object):
             branch_len = self._branch_length_to_gtr(node) * rate_multiplier
             # transition matrix from parent states to the current node states.
             # denoted as Pij(i), where j - parent state, i - node state
-            log_transitions = np.log(np.maximum(ttconf.TINY_NUMBER, self.gtr.expQt(branch_len)))
+            log_transitions = np.log(np.maximum(ttconf.TINY_NUMBER, self.gtr.expQt(branch_len)[:,:,site_idx]))
             if node.is_terminal():
                 if node.name in self.data.compressed_alignment:
-                    tmp_prof = seq2prof(self.data.compressed_alignment[node.name], self.gtr.profile_map)[site_idx]
+                    tmp_prof = seq2prof(extant_sequences[node.name], self.gtr.profile_map)[site_idx]
                     msg_from_children = np.log(np.maximum(tmp_prof, ttconf.TINY_NUMBER))
                 else:
                     msg_from_children = np.zeros(n_states)
@@ -1308,7 +1312,7 @@ class TreeAnc(object):
             msg_from_children += np.sum(np.stack([c.joint_Lx for c in node.clades], axis=0), axis=0)
 
         # Pi(i) * Prod_ch Lch(i)
-        self.tree.root.joint_Lx = msg_from_children + np.log(self.gtr.Pi).T
+        self.tree.root.joint_Lx = msg_from_children + np.log(self.gtr.Pi[:,site_idx]).T
         print("node.joint_Lx = ", node.joint_Lx)
         normalized_profile = (self.tree.root.joint_Lx.T - self.tree.root.joint_Lx.max(axis=0)).T
 
@@ -1383,14 +1387,19 @@ class TreeAnc(object):
 
             return best_found, best_lh
 
+        if self.gtr.is_site_specific:
+            L = self.data.full_length
+        else:
+            L = self.data.compressed_length
+
         nodes = list(self.tree.get_nonterminals())
         nodes_ln = len(nodes)
         for node in self.tree.find_clades():
             if hasattr(node, "_cseq"):
                 node._old_cseq = node.cseq
-            node._cseq = np.full(self.data.compressed_length, " ")
-        self.tree.sequence_LH = np.zeros(self.data.compressed_length)
-        L = self.data.compressed_length
+            node._cseq = np.full(L, " ")
+        self.tree.sequence_LH = np.zeros(L)
+
         for site_idx in range(L):
             search_at = []
             best_found = []
