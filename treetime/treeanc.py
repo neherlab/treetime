@@ -773,7 +773,12 @@ class TreeAnc(object):
 
         sub_lhs = np.logaddexp.reduce(sub_lhs)
 
-        return sub_lhs
+        if not self.gtr.is_site_specific:
+            sub_lhs *= self.data.multiplicity
+
+        sequence_joint_LH = sub_lhs.sum()
+
+        return sequence_joint_LH
 
 
     def _branch_length_to_gtr(self, node):

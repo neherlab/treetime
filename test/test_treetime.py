@@ -165,7 +165,7 @@ def test_seq_joint_reconstruction_correct():
 
     # prove the likelihood value calculation is correct
     LH = myTree.ancestral_likelihood()
-    LH_p = (myTree.tree.sequence_LH)
+    LH_p = myTree.tree.sequence_joint_LH
 
     print ("Difference between reference and inferred LH:", (LH - LH_p).sum())
     assert (abs((LH - LH_p).sum()))<1e-9
@@ -266,7 +266,7 @@ def test_seq_joint_reconstruction_ss_correct():
 
     # prove the likelihood value calculation is correct
     LH = myTree.ancestral_likelihood()
-    LH_p = (myTree.tree.sequence_LH)
+    LH_p = (myTree.tree.sequence_joint_LH)
 
     print ("Difference between reference and inferred LH:", (LH - LH_p).sum())
     assert (abs((LH - LH_p).sum()))<1e-9
@@ -369,7 +369,7 @@ def test_seq_joint_reconstruction_asvr_correct():
 
     # prove the likelihood value calculation is correct
     LH = myTree.ancestral_likelihood()
-    LH_p = (myTree.tree.sequence_LH)
+    LH_p = (myTree.tree.sequence_joint_LH)
 
     print ("Difference between reference and inferred LH:", (LH - LH_p).sum())
     assert (abs((LH - LH_p).sum()))<1e-9
