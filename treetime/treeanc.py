@@ -186,7 +186,7 @@ class TreeAnc(object):
 
         self.rates = rates
   
-        if not self.asrv and self.gtr.is_site_specific and self.data.compress:
+        if self.gtr.is_site_specific and self.data.compress:
             raise TypeError("TreeAnc: sequence compression and site specific gtr models are incompatible!" )
 
         if self.data.aln and self.tree:
@@ -732,9 +732,14 @@ class TreeAnc(object):
             The tree likelihood given the sequences
         """
 
-        sub_lhs = np.ndarray((len(self.rates), self.data.multiplicity.shape[0]))
+        if self.gtr.is_site_specific:
+            L = self.data.full_length
+        else:
+            L = self.data.compressed_length
+
+        sub_lhs = np.ndarray((len(self.rates), L))
         for i, (rate_multiplier, prob_of_rate) in enumerate(self.rates):
-            rlog_lh = np.zeros(self.data.multiplicity.shape[0])
+            rlog_lh = np.zeros(L)
 
             for node in self.tree.find_clades(order='postorder'):
 
@@ -742,7 +747,7 @@ class TreeAnc(object):
                     # 0-1 profile
                     profile = seq2prof(node.cseq, self.gtr.profile_map)
                     # get the probabilities to observe each nucleotide
-                    profile *= self.gtr.Pi
+                    profile *= self.gtr.Pi.T
                     profile = profile.sum(axis=1)
                     rlog_lh += np.log(profile)  # product over all characters
                     continue
@@ -753,7 +758,14 @@ class TreeAnc(object):
                                     for a, b in zip(node.up.cseq, node.cseq)])
 
                 logQt = np.log(self.gtr.expQt(t))
-                lh = logQt[indices[:, 1], indices[:, 0]]
+
+                lh = np.zeros(L)
+                for j in range(L):
+                    if self.gtr.is_site_specific:
+                        lh[j] = logQt[indices[j, 1], indices[j, 0], j]
+                    else:
+                        lh[j] = logQt[indices[j, 1], indices[j, 0]]
+
                 rlog_lh += lh
 
             rlog_lh += prob_of_rate
@@ -1100,7 +1112,13 @@ class TreeAnc(object):
 
         """
         N_diff = 0 # number of sites differ from perv reconstruction
-        L = self.data.compressed_length
+        if self.gtr.is_site_specific:
+            extant_sequences = self.aln
+            L = self.data.full_length
+        else:
+            extant_sequences = self.data.compressed_alignment
+            L = self.data.compressed_length
+
         n_states = self.gtr.alphabet.shape[0]
 
         self.logger("TreeAnc._ml_anc_joint: type of reconstruction: Joint", 2)
@@ -1119,7 +1137,7 @@ class TreeAnc(object):
             log_transitions = np.log(np.maximum(ttconf.TINY_NUMBER, self.gtr.expQt(branch_len)))
             if node.is_terminal():
                 if node.name in self.data.compressed_alignment:
-                    tmp_prof = seq2prof(self.data.compressed_alignment[node.name], self.gtr.profile_map)
+                    tmp_prof = seq2prof(extant_sequences[node.name], self.gtr.profile_map)
                     msg_from_children = np.log(np.maximum(tmp_prof, ttconf.TINY_NUMBER))
                 else:
                     msg_from_children = np.zeros((L, n_states))

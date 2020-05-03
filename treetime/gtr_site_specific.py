@@ -106,7 +106,7 @@ class GTR_site_specific(GTR):
 
     @classmethod
     def random(cls, L=1, avg_mu=1.0, alphabet='nuc', pi_dirichlet_alpha=1,
-               W_dirichlet_alpha=3.0, mu_gamma_alpha=3.0):
+               W_dirichlet_alpha=3.0, mu_gamma_alpha=3.0, **kwargs):
         """
         Creates a random GTR model
 
@@ -133,7 +133,7 @@ class GTR_site_specific(GTR):
 
         from scipy.stats import gamma
         alphabet=alphabets[alphabet]
-        gtr = cls(alphabet=alphabet, seq_len=L)
+        gtr = cls(alphabet=alphabet, seq_len=L, **kwargs)
         n = gtr.alphabet.shape[0]
 
         # Dirichlet distribution == l_1 normalized vector of samples of the Gamma distribution
