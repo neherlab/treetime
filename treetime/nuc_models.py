@@ -150,7 +150,7 @@ def HKY85(mu=1.0, pi=None, kappa=0.1, **kwargs):
     gtr.assign_rates(mu=mu, pi=pi, W=W)
     return gtr
 
-def T92(mu=1.0, pi_GC=0.5, kappa=0.1, **kwargs):
+def T92(mu=1.0, pi_CG=0.5, kappa=0.1, **kwargs):
     """
     Tamura 1992 model. Extending Kimura  (1980) model for the case where a
     G+C-content bias exists. Link:

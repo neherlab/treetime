@@ -7,10 +7,10 @@ from scipy.special import gammainc
 
 class ASRV(object):
     """
-    This class specifies performs Among-site Rate Variation (ASRV) analysis
+    This class specifies Among-site Rate Variation (ASRV) heterogenous rate calculation
     """
     def __init__(self , alpha=1):
-        self.num_catg = 4
+        self.num_catg = 8
         self.alpha = alpha
         self.scale = 1/self.alpha
         

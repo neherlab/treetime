@@ -26,6 +26,7 @@ subprocess.call('mv %s %s' % (aln, aln_new), shell=True)  # rename alignment fil
 
 # delete MSA tmp files
 subprocess.call('rm -rf {0}pastajob*'.format(path), shell=True)
+subprocess.call('rm -rf *.fasta.reduced', shell=True)
 
 # build phylogenetic tree
 outfile_suffix = seq[:-6]
