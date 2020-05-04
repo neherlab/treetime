@@ -8,7 +8,11 @@ test_ancestral()
 
 test_seq_joint_reconstruction_correct()
 
+test_seq_joint_reconstruction_ss_correct()
+
 test_seq_joint_reconstruction_asvr_correct()
+
+test_seq_joint_reconstruction_ss_asvr_correct()
 
 test_seq_joint_lh_is_max()
 
