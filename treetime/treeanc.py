@@ -56,8 +56,8 @@ class TreeAnc(object):
 
     def __init__(self, tree=None, aln=None, gtr=None, alpha=-1, rates = [(1,0)],
                  fill_overhangs=True, ref=None, verbose = ttconf.VERBOSE,
-                 ignore_gaps=True, convert_upper=True, seq_multiplicity=None,
-                 log=None, compress=True, seq_len=None, struct_propty=None, **kwargs):
+                 ignore_gaps=True, convert_upper=True, log=None, compress=True,
+                 seq_len=None, struct_propty=None, **kwargs):
         """
         TreeAnc constructor. It prepares the tree, attaches sequences to the leaf nodes,
         and sets some configuration parameters.
@@ -1175,8 +1175,8 @@ class TreeAnc(object):
             tmp_upward_LH = np.ones((n_rates, L, n_states), dtype=float)
             node.marginal_subtree_LH_prefactor = np.zeros((n_rates, L), dtype=float)
             for child in node.clades:
-                for i, rate in enumerate(self.rates):
-                    branch_len = self._branch_length_to_gtr(child) * rate
+                for i, (rate_multiplier, prob_of_rate)  in enumerate(self.rates):
+                    branch_len = self._branch_length_to_gtr(child) * rate_multiplier
                     propagate_LH = self.propagate(child.upward_LH[i], indicators, branch_len)
                     tmp_upward_LH[i, :, :] *= propagate_LH
                 
@@ -1221,8 +1221,12 @@ class TreeAnc(object):
         norm_total_marginal_LH = total_marginal_LH / total_marginal_LH.sum(1)[:,np.newaxis]  # row-normalization
 
         # Marginal confidence: differentiation degree of the most probable assignment against all possibilities
-        self.tree.root.marginal_confidence = norm_total_marginal_LH.max(axis=1).sum() / norm_total_marginal_LH.sum()
-        
+        self.tree.root.marginal_confidence = norm_total_marginal_LH.max(axis=1)
+        marginal_order_idxs = np.flip(np.argsort(norm_total_marginal_LH, axis=1), axis=1)
+        self.tree.root.marginal_order = []
+        for idxs in marginal_order_idxs:
+            self.tree.root.marginal_order.append([self.gtr.alphabet[idx] for idx in idxs])
+
         # Assign most likely characters at root node: argmax_a rownorm(L(a))
         seq = self.assign_seqs(norm_total_marginal_LH, indicators)
         self.tree.root._cseq = seq
@@ -1276,22 +1280,22 @@ class TreeAnc(object):
             else:
                 node.downward_LH = np.ones((n_rates, L, n_states))  # "DOWN" property: likelihood message from complementary tree
                 node.marginal_LH = np.ones((n_rates, L, n_states))  # "MARGINAL" property: marginal likelihood
-                for i, rate in enumerate(self.rates):
+                for i, (rate_multiplier, prob_of_rate) in enumerate(self.rates):
                     tmp_downward_LH = np.ones((L, n_states))
                     for sister in node.up.clades:
                         if sister.name == node.name:  # skip self
                             continue
-                        branch_len = self._branch_length_to_gtr(sister) * rate
+                        branch_len = self._branch_length_to_gtr(sister) * rate_multiplier
                         tmp_curr_upward_LH = self.propagate(sister.upward_LH[i], indicators, branch_len)
                         tmp_downward_LH *= tmp_curr_upward_LH
                         
                     if node.up.up:   # node.up != root
-                        branch_len = self._branch_length_to_gtr(node.up) * rate
+                        branch_len = self._branch_length_to_gtr(node.up) * rate_multiplier
                         tmp_curr_downward_LH = self.evolve(node.up.up.downward_LH[i], indicators, branch_len)
                         tmp_downward_LH *= tmp_curr_downward_LH
                         
                     node.downward_LH[i, :, :], _ = normalize_profile(tmp_downward_LH)
-                    branch_len = self._branch_length_to_gtr(node) * rate
+                    branch_len = self._branch_length_to_gtr(node) * rate_multiplier
                     msg_from_parent = self.evolve(node.downward_LH[i], indicators, branch_len)
                     
                     # calculate MARGINAL property
@@ -1306,8 +1310,12 @@ class TreeAnc(object):
             norm_total_marginal_LH = total_marginal_LH / total_marginal_LH.sum(1)[:, np.newaxis]  # row-normalization
             
             # Marginal confidence: differentiation degree of the most probable assignment against all possibilities
-            node.marginal_confidence = norm_total_marginal_LH.max(axis=1).sum() / norm_total_marginal_LH.sum()
-            
+            node.marginal_confidence = norm_total_marginal_LH.max(axis=1)
+            marginal_order_idxs = np.flip(np.argsort(norm_total_marginal_LH, axis=1), axis=1)
+            node.marginal_order = []
+            for idxs in marginal_order_idxs:
+                node.marginal_order.append([self.gtr.alphabet[idx] for idx in idxs])
+
             seq = self.assign_seqs(norm_total_marginal_LH, indicators)
             node._cseq = seq
             
@@ -1595,7 +1603,7 @@ class TreeAnc(object):
                 next_node = nodes[node_on]
                 node_on += 1
 
-                for val in tree.gtr.alphabet:
+                for val in next_node.marginal_order[site_idx]:
                     search_at.append((next_node, val))
 
                     next_node.conditionalized = True
@@ -1613,13 +1621,14 @@ class TreeAnc(object):
 
             return best_found, best_lh
 
+        self.asrv = True
+        self._ml_anc_marginal()
+
         if self.gtr.is_site_specific:
             L = self.data.full_length
         else:
             L = self.data.compressed_length
 
-        nodes = list(self.tree.get_nonterminals())
-        nodes_ln = len(nodes)
         for node in self.tree.find_clades():
             if hasattr(node, "_cseq"):
                 node._old_cseq = node.cseq
@@ -1627,6 +1636,8 @@ class TreeAnc(object):
         self.tree.sequence_LH = np.zeros(L)
 
         for site_idx in range(L):
+            nodes = self.sort_bnb_search_orders(site_idx)
+            nodes_ln = len(nodes)
             search_at = []
             best_found = []
             best_lh = float("-inf")
@@ -2300,7 +2311,7 @@ class TreeAnc(object):
             self.logger("Your analysis did not reconstructed tip states, you can remove the call of `recover_var_ambigs`",0, warn=True)
 
 
-    def sort_bnb_search_orders(self):
+    def sort_bnb_search_orders(self, site_idx):
         """
         sort tree nodes with high marginal confidence -- > low marginal confidence
         as a guidance for branch & bound searching ordre in joint reconstruction
@@ -2311,8 +2322,8 @@ class TreeAnc(object):
             branch & bound partial reconstruction search orders
         """
         node_conf_list = []
-        for node in self.tree.find_clades(order='preorder'):
-            node_conf_list.append((node, node.marginal_confidence))
+        for node in self.tree.get_nonterminals():
+            node_conf_list.append((node, node.marginal_confidence[site_idx]))
             
         node_conf_list.sort(key=lambda x: x[1], reverse=True)
         return [item[0] for item in node_conf_list]
