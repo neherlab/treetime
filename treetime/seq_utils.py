@@ -291,6 +291,6 @@ def normalize_profile(in_profile, log=False, return_offset = True):
         tmp_prof = in_profile
 
     norm_vector = tmp_prof.sum(axis=1)
-    return (np.copy(np.einsum('ai,a->ai',tmp_prof,1.0/norm_vector)),
+    return (np.einsum('ai,a->ai',tmp_prof,1.0/norm_vector),
             (np.log(norm_vector) + tmp_prefactor) if return_offset else None)
 
