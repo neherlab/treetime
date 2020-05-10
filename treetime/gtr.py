@@ -434,7 +434,7 @@ class GTR(object):
 
     @classmethod
     def infer(cls, nij, Ti, root_state, fixed_pi=None, pc=1.0, gap_limit=0.01, **kwargs):
-        """
+        r"""
         Infer a GTR model by specifying the number of transitions and time spent in each
         character. The basic equation that is being solved is
 
@@ -980,7 +980,7 @@ class GTR(object):
 
 
     def expQsds(self, s):
-        '''
+        r'''
         Returns
         -------
         Qtds :  Returns 2 V_{ij} \lambda_j s e^{\lambda_j s**2 } V^{-1}_{jk}

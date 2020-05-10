@@ -7,7 +7,10 @@ import scipy.special as sf
 from scipy.interpolate import interp1d
 from Bio import AlignIO, Phylo
 from scipy.interpolate import interp1d
-from collections import Iterable
+try:
+    from collections.abc import Iterable
+except ImportError:
+    from collections import Iterable
 from treetime import config as ttconf
 
 

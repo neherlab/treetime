@@ -295,7 +295,7 @@ class TreeTime(ClockTree):
 
 
     def clock_filter(self, reroot='least-squares', n_iqd=None, plot=False, fixed_clock_rate=None):
-        '''
+        r'''
         Labels outlier branches that don't seem to follow a molecular clock
         and excludes them from subsequent molecular clock estimation and
         the timetree propagation.
@@ -911,5 +911,3 @@ def treetime_to_newick(tt, outf):
 
 if __name__=="__main__":
     pass
-
-
