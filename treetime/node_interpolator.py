@@ -224,7 +224,6 @@ def _max_of_integrand_new(t_val, f, g, inverse_time=None, return_log=True):
 
     res[good_ind,1] = 0.5*(lower+upper)
     res[good_ind,0] = fg(0.5*(lower+upper), t_vals_good)
-    # import ipdb; ipdb.set_trace()
 
     if not return_log:
         res[0] = np.exp(-res[0])
@@ -288,8 +287,8 @@ class NodeInterpolator (Distribution):
             Tres = Tn - Tb[0]
 
         # determine region in which we can trust the FFT convolution and avoid
-        # inaccuracies due to machine precision. 1e-15 seems robust
-        ind = fft_res>fft_res.max()*1e-15
+        # inaccuracies due to machine precision. 1e-13 seems robust
+        ind = fft_res>fft_res.max()*1e-13
         res = -np.log(fft_res[ind]) + branch_interp.peak_val + node_interp.peak_val - np.log(dt)
         Tres_cropped = Tres[ind]
 
