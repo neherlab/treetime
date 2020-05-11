@@ -198,7 +198,7 @@ class GTR_site_specific(GTR):
     @classmethod
     def infer(cls, sub_ija, T_ia, root_state, pc=1.0,
               gap_limit=0.01, Nit=30, dp=1e-5, **kwargs):
-        """
+        r"""
         Infer a GTR model by specifying the number of transitions and time spent in each
         character. The basic equation that is being solved is
 
@@ -486,4 +486,3 @@ class GTR_site_specific(GTR):
             return np.einsum('a,ia,ij,ja->a',self.mu, self.Pi, self.W, self.Pi)
         else:
             return self.mu*np.einsum('ia,ij,ja->a',self.Pi, self.W, self.Pi)
-

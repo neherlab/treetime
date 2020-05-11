@@ -1,5 +1,7 @@
 language: python
 python:
+  - "3.8"
+  - "3.7"
   - "3.6"
   - "3.5"
   - "2.7"
@@ -13,7 +15,7 @@ install:
   # Useful for debugging any issues with conda
   - conda info -a
 
-  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION numpy scipy biopython pandas matplotlib nose
+  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION numpy scipy biopython pandas matplotlib pytest
   - source activate test-environment
   - python setup.py install
 script:

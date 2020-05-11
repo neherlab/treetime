@@ -324,7 +324,7 @@ class NodeInterpolator (Distribution):
                  n_grid_points = ttconf.NODE_GRID_SIZE, n_integral=ttconf.N_INTEGRAL,
                  inverse_time=True, rel_tol=0.05, yc=10):
 
-        '''
+        r'''
         calculate H(t) = \int_tau f(t-tau)g(tau) if inverse_time=True
                   H(t) = \int_tau f(t+tau)g(tau) if inverse_time=False
         This function determines the time points of the grid of the result to
@@ -436,4 +436,3 @@ class NodeInterpolator (Distribution):
                              min_width=node_interp.min_width, kind='linear')
 
         return res_y, res_t
-

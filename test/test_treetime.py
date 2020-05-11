@@ -7,7 +7,7 @@ else:
 
 
 # Tests
-def import_short_test():
+def test_import_short():
     print("testing short imports")
     from treetime import GTR
     from treetime import TreeTime
@@ -227,6 +227,3 @@ def test_seq_joint_lh_is_max():
     # joint chooses the most likely realization of the tree
     assert(abs(ref.max() - real) < 1e-10)
     return ref, real
-
-
-

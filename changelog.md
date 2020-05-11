@@ -1,3 +1,7 @@
+# 0.7.6 -- catch of distributions are too short for calculating confidence intervals.
+
+# 0.7.5 -- fix desync of peak from grid of distributions after pruning 
+
 # 0.7.4 -- bug fix in reconstruct discrete trait routine
 
 The `reconstruct_discrete_traits` wrapper function didn't handle missing data correctly (after the changed released in 0.7.2) which resulted in alphabets and weights of different lengths.

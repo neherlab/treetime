@@ -869,7 +869,7 @@ class ClockTree(TreeAnc):
         if node.marginal_pos_LH.peak_pos == min_max[0]: #peak on the left
             return self.get_confidence_interval(node, (0, fraction))
         elif node.marginal_pos_LH.peak_pos == min_max[1]: #peak on the right
-            return self.get_confidence_interval(node, (1.0-fraction ,1.0))
+            return self.get_confidence_interval(node, (1.0-fraction, 1.0))
         else: # peak in the center of the distribution
             rate_contribution = self.date_uncertainty_due_to_rate(node, ((1-fraction)*0.5, 1.0-(1.0-fraction)*0.5))
 
@@ -879,22 +879,30 @@ class ClockTree(TreeAnc):
             from scipy.optimize import minimize_scalar as minimize
             pidx = np.argmin(node.marginal_pos_LH.y)
             pval = np.min(node.marginal_pos_LH.y)
-            left =  interp1d(node.marginal_pos_LH.y[:(pidx+1)]-pval, node.marginal_pos_LH.x[:(pidx+1)],
-                            kind='linear', fill_value=min_max[0], bounds_error=False)
-            right = interp1d(node.marginal_pos_LH.y[pidx:]-pval, node.marginal_pos_LH.x[pidx:],
-                            kind='linear', fill_value=min_max[1], bounds_error=False)
 
-            # function to minimize -- squared difference between prob mass and desired fracion
-            def func(x, thres):
-                interval = np.array([left(x), right(x)]).squeeze()
-                return (thres - np.diff(node.marginal_cdf(np.array(interval))))**2
+            # check if the distribution as at least 3 points and that the peak is not either of the two 
+            # end points. Otherwise, interpolation objects can be initialized.
+            if node.marginal_pos_LH.y.shape[0]<3 or pidx==0 or pidx==node.marginal_pos_LH.y.shape[0]-1:
+                value_str = "values: " + ','.join([str(x) for x in node.marginal_pos_LH.y])
+                self.logger("get_max_posterior_region: peak on boundary or array too short." + value_str, 1, warn=True)
+                mutation_contribution=None
+            else:
+                left =  interp1d(node.marginal_pos_LH.y[:(pidx+1)]-pval, node.marginal_pos_LH.x[:(pidx+1)],
+                                kind='linear', fill_value=min_max[0], bounds_error=False)
+                right = interp1d(node.marginal_pos_LH.y[pidx:]-pval, node.marginal_pos_LH.x[pidx:],
+                                kind='linear', fill_value=min_max[1], bounds_error=False)
 
-            # minimza and determine success
-            sol = minimize(func, bracket=[0,10], args=(fraction,))
-            if sol['success']:
-                mutation_contribution = self.date2dist.to_numdate(np.array([right(sol['x']), left(sol['x'])]).squeeze())
-            else: # on failure, return standard confidence interval
-                mutation_contribution = None
+                # function to minimize -- squared difference between prob mass and desired fracion
+                def func(x, thres):
+                    interval = np.array([left(x), right(x)]).squeeze()
+                    return (thres - np.diff(node.marginal_cdf(np.array(interval))))**2
+
+                # minimza and determine success
+                sol = minimize(func, bracket=[0,10], args=(fraction,))
+                if sol['success']:
+                    mutation_contribution = self.date2dist.to_numdate(np.array([right(sol['x']), left(sol['x'])]).squeeze())
+                else: # on failure, return standard confidence interval
+                    mutation_contribution = None
 
             return self.combine_confidence(node.numdate, (min_date, max_date),
                                       c1=rate_contribution, c2=mutation_contribution)
