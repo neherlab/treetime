@@ -265,7 +265,8 @@ class Distribution(object):
         """
         from scipy.optimize import brentq
         log_cutoff = -np.log(cutoff)
-        above = self.__call__(self.x) - self.peak_val < log_cutoff
+        vals = log_cutoff - self.__call__(self.x) + self.peak_val
+        above = vals > 0
         above_idx = np.where(above)[0]
         if len(above_idx)==0:
             return (self.xmin, self.xmax)
@@ -274,12 +275,18 @@ class Distribution(object):
             if above[0]:
                 left = self.xmin
             else:
-                left = (self.x[above_idx[0]] + self.x[above_idx[0]-1])*0.5
+                x1, x2 = self.x[above_idx[0]-1], self.x[above_idx[0]]
+                y1, y2 = vals[above_idx[0]-1], vals[above_idx[0]]
+                d = y2-y1
+                left = x1*y2/d - x2*y1/d
 
             if above[-1]:
                 right = self.xmax
             else:
-                right = (self.x[above_idx[-1]] + self.x[above_idx[-1]+1])*0.5
+                x1, x2 = self.x[above_idx[-1]], self.x[above_idx[-1]+1]
+                y1, y2 = vals[above_idx[-1]], vals[above_idx[-1]+1]
+                d = y1-y2
+                right = -x1*y2/d + x2*y1/d
         except:
             raise ArithmeticError("Region of support of the distribution couldn'n be determined!")
 
