@@ -235,7 +235,7 @@ class Distribution(object):
 
         if isinstance(x, Iterable):
             valid_idxs = (x > self._xmin-TINY_NUMBER) & (x < self._xmax+TINY_NUMBER)
-            res = np.ones_like (x, dtype=float) * (BIG_NUMBER+self.peak_val)
+            res = np.ones_like(x, dtype=float) * (BIG_NUMBER+self.peak_val)
             tmp_x = np.copy(x[valid_idxs])
             tmp_x[tmp_x<self._xmin+TINY_NUMBER] = self._xmin+TINY_NUMBER
             tmp_x[tmp_x>self._xmax-TINY_NUMBER] = self._xmax-TINY_NUMBER
@@ -264,21 +264,24 @@ class Distribution(object):
         relative to its peak
         """
         from scipy.optimize import brentq
-        log_cutoff = np.log(cutoff)
-        f = lambda x: self.__call__(x) - self.peak_val + log_cutoff
-        try:
-            if f(self.xmin)<0 or np.isclose(self.peak_pos, self.xmin):
-                left = self.xmin + TINY_NUMBER
-            else:
-                left = brentq(f, self.xmin, self.peak_pos, rtol=1e-5, xtol=self.peak_pos*1e-5)
+        log_cutoff = -np.log(cutoff)
+        above = self.__call__(self.x) - self.peak_val < log_cutoff
+        above_idx = np.where(above)[0]
+        if len(above_idx)==0:
+            return (self.xmin, self.xmax)
 
-            if f(self.xmax)<0 or np.isclose(self.peak_pos, self.xmax):
-                right = self.xmax - TINY_NUMBER
+        try:
+            if above[0]:
+                left = self.xmin
             else:
-                right = brentq(f, self.peak_pos, self.xmax, rtol=1e-5, xtol=self.fwhm*1e-5)
+                left = (self.x[above_idx[0]] + self.x[above_idx[0]-1])*0.5
+
+            if above[-1]:
+                right = self.xmax
+            else:
+                right = (self.x[above_idx[-1]] + self.x[above_idx[-1]+1])*0.5
         except:
-            print("effective_support not good")
-            left, right = self.xmin, self.xmax
+            raise ArithmeticError("Region of support of the distribution couldn'n be determined!")
 
         return (left,right)
 

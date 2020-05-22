@@ -300,17 +300,16 @@ class NodeInterpolator (Distribution):
         # only extrapolate on the left when the slope is negative and we are not on the boundary
         if -ttconf.MAX_BRANCH_LENGTH<Tres_cropped[0] and left_slope<0:
             Tleft = np.linspace(-ttconf.MAX_BRANCH_LENGTH, Tres_cropped[0],50)[:-1]
-            res_left = res[margin] + left_slope*(Tleft - Tres[margin])
+            res_left = res[0] + left_slope*(Tleft - Tres_cropped[0])
         else:
             Tleft, res_left = [], []
 
         # only extrapolate on the right when the slope is positive and we are not on the boundary
         if Tres_cropped[-1]<ttconf.MAX_BRANCH_LENGTH and right_slope>0:
             Tright = np.linspace(Tres_cropped[-1], ttconf.MAX_BRANCH_LENGTH,50)[1:]
-            res_right = res[-margin-1] + right_slope*(Tright - Tres[-margin-1])
+            res_right = res[-1] + right_slope*(Tright - Tres_cropped[-1])
         else: #otherwise
             Tright, res_right = [], []
-
 
         # instantiate the new interpolation object and return
         return cls(np.concatenate((Tleft,Tres_cropped,Tright)),
