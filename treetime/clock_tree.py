@@ -577,7 +577,7 @@ class ClockTree(TreeAnc):
             if node.up is None:
                 node.msg_from_parent = None # nothing beyond the root
             # all other cases (All internal nodes + unconstrained terminals)
-            elif node.date_constraint is not None and node.date_constraint.is_delta:
+            elif (node.date_constraint is not None) and (not node.bad_branch) and node.date_constraint.is_delta:
                 node.marginal_pos_LH = node.date_constraint
             else:
                 parent = node.up
@@ -874,7 +874,7 @@ class ClockTree(TreeAnc):
             pidx = np.argmin(node.marginal_pos_LH.y)
             pval = np.min(node.marginal_pos_LH.y)
 
-            # check if the distribution as at least 3 points and that the peak is not either of the two 
+            # check if the distribution as at least 3 points and that the peak is not either of the two
             # end points. Otherwise, interpolation objects can be initialized.
             if node.marginal_pos_LH.y.shape[0]<3 or pidx==0 or pidx==node.marginal_pos_LH.y.shape[0]-1:
                 value_str = "values: " + ','.join([str(x) for x in node.marginal_pos_LH.y])
