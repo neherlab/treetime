@@ -133,6 +133,7 @@ class TreeTime(ClockTree):
 
         # determine how to reconstruct and sample sequences
         seq_kwargs = {"marginal_sequences":sequence_marginal or (self.branch_length_mode=='marginal'),
+                      "branch_length_mode": self.branch_length_mode,
                       "sample_from_profile":"root",
                       "reconstruct_tip_states":kwargs.get("reconstruct_tip_states", False)}
 
@@ -269,8 +270,8 @@ class TreeTime(ClockTree):
         bad_branches =[n for n in self.tree.get_terminals()
                        if n.bad_branch and n.raw_date_constraint]
         if bad_branches:
-            self.logger("TreeTime: The following tips don't fit the clock model, "
-                        "please remove them from the tree. Their dates have been reset:",0,warn=True)
+            self.logger("TreeTime: the following tips have been marked as outliers. Their date constraints were not used. "
+                        "Please remove them from the tree. Their dates have been reset:",0,warn=True)
             for n in bad_branches:
                 self.logger("%s, input date: %s, apparent date: %1.2f"%(n.name, str(n.raw_date_constraint), n.numdate),0,warn=True)
 
@@ -619,8 +620,15 @@ class TreeTime(ClockTree):
                     self.add_branch_state(new_node)
 
                 new_node.mutation_length = 0.0
-                new_node.branch_length_interpolator = BranchLenInterpolator(new_node, self.gtr, one_mutation=self.one_mutation,
-                                                                            branch_length_mode = self.branch_length_mode)
+                if self.branch_length_mode=='marginal':
+                    new_node.marginal_subtree_LH =  clade.marginal_subtree_LH
+                    new_node.marginal_outgroup_LH = clade.marginal_outgroup_LH
+                    new_node.profile_pair = self.marginal_branch_profile(new_node)
+
+                new_node.branch_length_interpolator = BranchLenInterpolator(new_node, self.gtr,
+                            pattern_multiplicity = self.data.multiplicity, min_width=self.min_width,
+                            one_mutation=self.one_mutation, branch_length_mode=self.branch_length_mode)
+
                 clade.clades.remove(n1)
                 clade.clades.remove(n2)
                 clade.clades.append(new_node)

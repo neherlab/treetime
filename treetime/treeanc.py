@@ -783,6 +783,7 @@ class TreeAnc(object):
 
         self.tree.sequence_LH = marginal_LH_prefactor
         self.tree.total_sequence_LH = (self.tree.sequence_LH*self.data.multiplicity).sum()
+        self.tree.sequence_marginal_LH = self.tree.total_sequence_LH
         if assign_sequence:
             seq, prof_vals, idxs = prof2seq(self.tree.root.marginal_profile,
                                         self.gtr, sample_from_prof=sample_from_profile, normalize=False)
@@ -1185,7 +1186,7 @@ class TreeAnc(object):
 
 
     def optimize_tree_marginal(self, max_iter=10, infer_gtr=False, pc=1.0, damping=0.75,
-                               LHtol=0.1, site_specific_gtr=False):
+                               LHtol=0.1, site_specific_gtr=False, **kwargs):
         self.infer_ancestral_sequences(marginal=True)
         oldLH = self.sequence_LH()
         self.logger("TreeAnc.optimize_tree_marginal: initial, LH=%1.2f, total branch_length %1.4f"%
@@ -1289,6 +1290,7 @@ class TreeAnc(object):
             self.optimize_tree_marginal(max_iter=max_iter, infer_gtr=infer_gtr, pc=pc, **kwargs)
             if prune_short:
                 self.prune_short_branches()
+            return ttconf.SUCCESS
         elif branch_length_mode=='input':
             N_diff = self.reconstruct_anc(method='probabilistic', infer_gtr=infer_gtr, pc=pc,
                                           marginal=marginal_sequences, **kwargs)

@@ -880,7 +880,7 @@ class ClockTree(TreeAnc):
             pidx = np.argmin(node.marginal_pos_LH.y)
             pval = np.min(node.marginal_pos_LH.y)
 
-            # check if the distribution as at least 3 points and that the peak is not either of the two 
+            # check if the distribution as at least 3 points and that the peak is not either of the two
             # end points. Otherwise, interpolation objects can be initialized.
             if node.marginal_pos_LH.y.shape[0]<3 or pidx==0 or pidx==node.marginal_pos_LH.y.shape[0]-1:
                 value_str = "values: " + ','.join([str(x) for x in node.marginal_pos_LH.y])
