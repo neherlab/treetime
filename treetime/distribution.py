@@ -302,18 +302,18 @@ class Distribution(object):
             dy = self.y-self.peak_val
             prune = interp_err[::2] > rel_tol*(1+ (dy[1:-1:2]/yc)**4)
             ind[1:-1:2] = prune
+            ind[self.peak_idx] = True
             if np.mean(prune)<1.0:
                 self._func.y = self._func.y[ind]
                 self._func.x = self._func.x[ind]
                 updated=True
                 n_iter+=1
             else:
-                updated=False
-                n_iter+=1
+                break
 
-        self._peak_idx = self.__call__(self._func.x).argmin()
-        self._peak_pos = self._func.x[self._peak_idx]
-        self._peak_val = self.__call__(self.peak_pos)
+            self._peak_idx = self.__call__(self._func.x).argmin()
+            self._peak_pos = self._func.x[self._peak_idx]
+            self._peak_val = self.__call__(self.peak_pos)
 
 
     def prob(self,x):
