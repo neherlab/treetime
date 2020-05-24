@@ -219,6 +219,7 @@ class Coalescent(object):
             self.logger("Coalescent:optimize_skyline:...done. new LH: %f"%self.total_LH(),2)
         else:
             self.set_Tc(initial_Tc.y, T=initial_Tc.x)
+            self.confidence = [np.nan for i in initial_Tc.x]
             self.logger("Coalescent:optimize_skyline:...failed:"+str(sol),0, warn=True)
 
 
@@ -278,4 +279,4 @@ class Coalescent(object):
             conf = [skyline.y*np.exp(-confidence*self.confidence), skyline.y*np.exp(confidence*self.confidence)]
             return skyline, conf
         else:
-            return skyline
+            return skyline, None
