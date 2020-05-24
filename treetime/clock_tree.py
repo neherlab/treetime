@@ -479,7 +479,7 @@ class ClockTree(TreeAnc):
             LH -= node.branch_length_interpolator(node.branch_length)
 
         # add the root sequence LH and return
-        if self.aln:
+        if self.aln and self.sequence_reconstruction:
             LH += self.gtr.sequence_logLH(self.tree.root.cseq, pattern_multiplicity=self.data.multiplicity)
         return LH
 
