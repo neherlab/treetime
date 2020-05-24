@@ -267,11 +267,11 @@ class NodeInterpolator (Distribution):
 
         tmax = 2*max(b_effsupport[1]-b_effsupport[0], n_effsupport[1]-n_effsupport[0])
 
-        Tb = np.arange(b_effsupport[0], b_effsupport[0] + tmax, dt)
+        Tb = np.arange(b_effsupport[0], b_effsupport[0] + tmax + dt, dt)
         if inverse_time:
-            Tn = np.arange(n_effsupport[0], n_effsupport[0] + tmax, dt)
+            Tn = np.arange(n_effsupport[0], n_effsupport[0] + tmax + dt, dt)
         else:
-            Tn = np.arange(n_effsupport[1] - tmax, n_effsupport[1], dt)
+            Tn = np.arange(n_effsupport[1] - tmax, n_effsupport[1] + dt, dt)
 
         raw_len = len(Tb)
         fft_len = 2*raw_len
@@ -294,8 +294,11 @@ class NodeInterpolator (Distribution):
 
         # extrapolate the tails exponentially: use margin last data points
         margin = np.minimum(3, Tres_cropped.shape[0]//3)
-        left_slope = (res[margin]-res[0])/(Tres_cropped[margin]-Tres_cropped[0])
-        right_slope = (res[-1]-res[-margin-1])/(Tres_cropped[-1]-Tres_cropped[-margin-1])
+        if margin<1 or len(res)==0:
+            import ipdb; ipdb.set_trace()
+        else:
+            left_slope = (res[margin]-res[0])/(Tres_cropped[margin]-Tres_cropped[0])
+            right_slope = (res[-1]-res[-margin-1])/(Tres_cropped[-1]-Tres_cropped[-margin-1])
 
         # only extrapolate on the left when the slope is negative and we are not on the boundary
         if -ttconf.MAX_BRANCH_LENGTH<Tres_cropped[0] and left_slope<0:

@@ -263,13 +263,13 @@ class ClockTree(TreeAnc):
         """
         self.logger("ClockTree.init_date_constraints...",2)
         self.tree.coalescent_joint_LH = 0
-        if self.aln and (not self.sequence_reconstruction):
+        if self.aln and (self.branch_length_mode!="input") and (not self.sequence_reconstruction):
             self.infer_ancestral_sequences('probabilistic', marginal=self.branch_length_mode=='marginal',
                                             sample_from_profile='root',**kwarks)
 
         # set the None  for the date-related attributes in the internal nodes.
         # make interpolation objects for the branches
-        self.logger('ClockTree.init_date_constraints: Initializing branch length interpolation objects...',3)
+        self.logger('ClockTree.init_date_constraints: Initializing branch length interpolation objects...', 2)
         has_clock_length = []
         for node in self.tree.find_clades(order='postorder'):
             if node.up is None:
@@ -300,6 +300,7 @@ class ClockTree(TreeAnc):
         use_cov = (np.sum(has_clock_length) > len(has_clock_length)*0.7) and self.use_covariation
         self.get_clock_model(covariation=use_cov, slope=clock_rate)
 
+        self.logger('ClockTree.init_date_constraints: node date constraints objects...', 2)
         # make node distribution objects
         for node in self.tree.find_clades(order="postorder"):
             # node is constrained
