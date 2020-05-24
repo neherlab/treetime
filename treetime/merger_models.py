@@ -12,6 +12,7 @@ try:
 except ImportError:
     from collections import Iterable
 from treetime import config as ttconf
+from treetime import TreeTimeError
 
 
 class Coalescent(object):
@@ -41,7 +42,11 @@ class Coalescent(object):
         Returns:
             - None
         '''
-        if isinstance(Tc, Iterable):
+        if isinstance(Tc, dict):
+            Tc_now = Tc['Tc_now']
+            rate = Tc['rate']
+            self.Tc = lambda t: Tc_now*np.exp(rate*t)
+        elif isinstance(Tc, Iterable):
             if len(Tc)==len(T):
                 x = np.concatenate(([ttconf.BIG_NUMBER], T, [-ttconf.BIG_NUMBER]))
                 y = np.concatenate(([Tc[0]], Tc, [Tc[-1]]))
@@ -49,9 +54,11 @@ class Coalescent(object):
             else:
                 self.logger("need Tc values and Timepoints of equal length",2,warn=True)
                 self.Tc = interp1d([-ttconf.BIG_NUMBER, ttconf.BIG_NUMBER], [1e-5, 1e-5])
-        else:
+        elif np.isscalar(Tc):
             self.Tc = interp1d([-ttconf.BIG_NUMBER, ttconf.BIG_NUMBER],
                                [Tc+ttconf.TINY_NUMBER, Tc+ttconf.TINY_NUMBER])
+        else:
+            raise TreeTimeError("Invalid arguments to set_Tc: '%s'"%str(Tc))
         self.calc_integral_merger_rate()
 
 
@@ -153,6 +160,24 @@ class Coalescent(object):
             if node.up:
                 LH -= self.cost(node.time_before_present, node.branch_length)
         return LH
+
+    def optimize_exponential(self):
+        '''
+        determines the coalescent time scale that optimizes the coalescent likelihood of the tree
+        '''
+        from scipy.optimize import minimize_scalar
+        initial_Tc = self.Tc
+        def cost(Tc):
+            self.set_Tc({"rate":x[0], "Tc_now":x[1]})
+            return -self.total_LH()
+
+        t0,t1 = self.tree_events[0,0], self.tree_events[-1,0]
+        sol = minimize(cost, [1.0/(t1-t0), initial_Tc(t1)])
+        if "success" in sol and sol["success"]:
+            self.set_Tc({"rate":sol['x'][0], "Tc_now":sol['x'][1]})
+        else:
+            self.logger("merger_models:optimize_Tc: optimization of coalescent time scale failed: " + str(sol), 0, warn=True)
+            self.set_Tc(initial_Tc.y, T=initial_Tc.x)
 
 
     def optimize_Tc(self):

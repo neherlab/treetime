@@ -10,7 +10,7 @@ class MissingDataError(TreeTimeError):
     pass
 
 class UnknownMethodError(TreeTimeError):
-    """MissingDataError class raised when tree or alignment are missing"""
+    """MissingDataError class raised when an unknown method are requested"""
     pass
 
 class NotReadyError(TreeTimeError):
