@@ -575,7 +575,7 @@ if __name__ == '__main__':
     #T.root_with_outgroup('A/Canterbury/58/2000|CY009150|09/05/2000|New_Zealand||H3N2/8-1416')
 
     dates = {}
-    with open(date_file) as ifile:
+    with open(date_file, 'r', encoding='utf-8') as ifile:
         ifile.readline()
         for line in ifile:
             if line[0]!='#':
