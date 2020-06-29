@@ -149,7 +149,7 @@ class TreeTime(ClockTree):
         # initially, infer ancestral sequences and infer gtr model if desired
         if self.branch_length_mode=='input':
             if self.aln:
-                self.infer_ancestral_sequences(infer_gtr=infer_gtr, **seq_kwargs, marginal=seq_kwargs["marginal_sequences"])
+                self.infer_ancestral_sequences(infer_gtr=infer_gtr, marginal=seq_kwargs["marginal_sequences"], **seq_kwargs)
                 self.prune_short_branches()
         else:
             self.optimize_tree(infer_gtr=infer_gtr,
