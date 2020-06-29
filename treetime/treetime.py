@@ -136,6 +136,7 @@ class TreeTime(ClockTree):
                       "branch_length_mode": self.branch_length_mode,
                       "sample_from_profile":"root",
                       "reconstruct_tip_states":kwargs.get("reconstruct_tip_states", False)}
+        seq_kwargs["marginal"] = seq_kwargs["marginal_sequences"]
 
         tt_kwargs = {'clock_rate':fixed_clock_rate, 'time_marginal':False}
         tt_kwargs.update(kwargs)
