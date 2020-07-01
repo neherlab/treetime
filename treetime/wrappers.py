@@ -182,7 +182,7 @@ def export_sequences_and_tree(tt, basename, is_vcf=False, zero_based=False,
     offset = 0 if zero_based else 1
     if timetree:
         dates_fname = basename + 'dates.tsv'
-        fh_dates = open(dates_fname, 'w')
+        fh_dates = open(dates_fname, 'w', encoding='utf-8')
         if confidence:
             fh_dates.write('#Lower and upper bound delineate the 90% max posterior region\n')
             fh_dates.write('#node\tdate\tnumeric date\tlower bound\tupper bound\n')
@@ -242,7 +242,7 @@ def print_save_plot_skyline(tt, n_std=2.0, screen=True, save='', plot=''):
         import matplotlib.pyplot as plt
 
     skyline, conf = tt.merger_model.skyline_inferred(gen=50, confidence=n_std)
-    if save: fh = open(save, 'w')
+    if save: fh = open(save, 'w', encoding='utf-8')
     header1 = "Skyline assuming 50 gen/year and approximate confidence bounds (+/- %f standard deviations of the LH)\n"%n_std
     header2 = "date \tN_e \tlower \tupper"
     if screen: print('\t'+header1+'\t'+header2)
@@ -573,13 +573,13 @@ def timetree(params):
     ###########################################################################
     if infer_gtr:
         fname = outdir+'sequence_evolution_model.txt'
-        with open(fname, 'w') as ofile:
+        with open(fname, 'w', encoding='utf-8') as ofile:
             ofile.write(str(myTree.gtr)+'\n')
         print('\nInferred sequence evolution model (saved as %s):'%fname)
         print(myTree.gtr)
 
     fname = outdir+'molecular_clock.txt'
-    with open(fname, 'w') as ofile:
+    with open(fname, 'w', encoding='utf-8') as ofile:
         ofile.write(str(myTree.date2dist)+'\n')
     print('\nInferred sequence evolution model (saved as %s):'%fname)
     print(myTree.date2dist)
@@ -613,7 +613,7 @@ def timetree(params):
     if params.relax:
         fname = outdir+'substitution_rates.tsv'
         print("--- wrote branch specific rates to\n\t %s\n"%fname)
-        with open(fname, 'w') as fh:
+        with open(fname, 'w', encoding='utf-8') as fh:
             fh.write("#node\tclock_length\tmutation_length\trate\tfold_change\n")
             for n in myTree.tree.find_clades(order="preorder"):
                 if n==myTree.tree.root:
@@ -665,7 +665,7 @@ def ancestral_reconstruction(params):
     ###########################################################################
     if params.gtr=='infer':
         fname = outdir+'/sequence_evolution_model.txt'
-        with open(fname, 'w') as ofile:
+        with open(fname, 'w', encoding='utf-8') as ofile:
             ofile.write(str(treeanc.gtr)+'\n')
         print('\nInferred sequence evolution model (saved as %s):'%fname)
         print(treeanc.gtr)
@@ -882,7 +882,7 @@ def mugration(params):
 
     basename = get_basename(params, outdir)
     gtr_name = basename + 'GTR.txt'
-    with open(gtr_name, 'w') as ofile:
+    with open(gtr_name, 'w', encoding='utf-8') as ofile:
         ofile.write('Character to attribute mapping:\n')
         for state in unique_states:
             ofile.write('  %s: %s\n'%(reverse_alphabet[state], state))
@@ -903,7 +903,7 @@ def mugration(params):
 
     if params.confidence:
         conf_name = basename+'confidence.csv'
-        with open(conf_name, 'w') as ofile:
+        with open(conf_name, 'w', encoding='utf-8') as ofile:
             ofile.write('#name, '+', '.join(mug.gtr.alphabet)+'\n')
             for n in mug.tree.find_clades():
                 ofile.write(n.name + ', '+', '.join([str(x) for x in n.marginal_profile[0]])+'\n')
@@ -1008,7 +1008,7 @@ def estimate_clock_model(params):
         print("--- re-rooted tree written to \n\t%s\n"%outtree_name)
 
     table_fname = basename+'rtt.csv'
-    with open(table_fname, 'w') as ofile:
+    with open(table_fname, 'w', encoding='utf-8') as ofile:
         ofile.write("#name, date, root-to-tip distance\n")
         ofile.write("#Dates of nodes that didn't have a specified date are inferred from the root-to-tip regression.\n")
         for n in myTree.tree.get_terminals():
