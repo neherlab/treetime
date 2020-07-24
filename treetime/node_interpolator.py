@@ -270,8 +270,12 @@ class NodeInterpolator (Distribution):
         Tb = np.arange(b_effsupport[0], b_effsupport[0] + tmax + dt, dt)
         if inverse_time:
             Tn = np.arange(n_effsupport[0], n_effsupport[0] + tmax + dt, dt)
+            Tmin = Tn[0]
+            Tmax = ttconf.MAX_BRANCH_LENGTH
         else:
             Tn = np.arange(n_effsupport[1] - tmax, n_effsupport[1] + dt, dt)
+            Tmin = -ttconf.MAX_BRANCH_LENGTH
+            Tmax = Tn[-1]
 
         raw_len = len(Tb)
         fft_len = 2*raw_len
@@ -301,15 +305,15 @@ class NodeInterpolator (Distribution):
             right_slope = (res[-1]-res[-margin-1])/(Tres_cropped[-1]-Tres_cropped[-margin-1])
 
         # only extrapolate on the left when the slope is negative and we are not on the boundary
-        if -ttconf.MAX_BRANCH_LENGTH<Tres_cropped[0] and left_slope<0:
-            Tleft = np.linspace(-ttconf.MAX_BRANCH_LENGTH, Tres_cropped[0],50)[:-1]
+        if Tmin<Tres_cropped[0] and left_slope<0:
+            Tleft = np.linspace(Tmin, Tres_cropped[0],10)[:-1]
             res_left = res[0] + left_slope*(Tleft - Tres_cropped[0])
         else:
             Tleft, res_left = [], []
 
         # only extrapolate on the right when the slope is positive and we are not on the boundary
-        if Tres_cropped[-1]<ttconf.MAX_BRANCH_LENGTH and right_slope>0:
-            Tright = np.linspace(Tres_cropped[-1], ttconf.MAX_BRANCH_LENGTH,50)[1:]
+        if Tres_cropped[-1]<Tmax and right_slope>0:
+            Tright = np.linspace(Tres_cropped[-1], Tmax,10)[1:]
             res_right = res[-1] + right_slope*(Tright - Tres_cropped[-1])
         else: #otherwise
             Tright, res_right = [], []
