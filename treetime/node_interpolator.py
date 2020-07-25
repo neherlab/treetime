@@ -261,7 +261,7 @@ class NodeInterpolator (Distribution):
     @classmethod
     def convolve_fft(cls, node_interp, branch_interp, inverse_time=True):
         fwhm = node_interp.fwhm + branch_interp.fwhm
-        dt = max(branch_interp.one_mutation*0.02, min(node_interp.fwhm, branch_interp.fwhm)/50)
+        dt = max(branch_interp.one_mutation*0.005, min(node_interp.fwhm, branch_interp.fwhm)/200)
         b_effsupport = branch_interp.effective_support
         n_effsupport = node_interp.effective_support
 
@@ -270,12 +270,12 @@ class NodeInterpolator (Distribution):
         Tb = np.arange(b_effsupport[0], b_effsupport[0] + tmax + dt, dt)
         if inverse_time:
             Tn = np.arange(n_effsupport[0], n_effsupport[0] + tmax + dt, dt)
-            Tmin = Tn[0]
+            Tmin = node_interp.xmin
             Tmax = ttconf.MAX_BRANCH_LENGTH
         else:
             Tn = np.arange(n_effsupport[1] - tmax, n_effsupport[1] + dt, dt)
             Tmin = -ttconf.MAX_BRANCH_LENGTH
-            Tmax = Tn[-1]
+            Tmax = node_interp.xmax
 
         raw_len = len(Tb)
         fft_len = 2*raw_len
