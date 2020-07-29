@@ -545,6 +545,9 @@ class ClockTree(TreeAnc):
                 else: # all nodes without precise constraint but positional information
                       # subtree likelihood given the node's constraint and child msg:
                     msgs_to_multiply = [node.date_constraint] if node.date_constraint is not None else []
+                    if self.merger_model and not node.is_terminal():
+                        time_points = np.unique(np.concatenate([child.marginal_pos_Lx.x for child in node.clades]))
+                        msgs_to_multiply.append(self.merger_model.node_contribution(node, time_points))
                     msgs_to_multiply.extend([child.marginal_pos_Lx for child in node.clades
                                              if child.marginal_pos_Lx is not None])
 

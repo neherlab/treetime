@@ -144,15 +144,15 @@ class BranchLenInterpolator (Distribution):
     def effective_support(self):
         return tuple((x/self.gamma for x in super(BranchLenInterpolator,self).effective_support))
 
-    def __call__(self, x, tnode=None, multiplicity=None):
-        res = super(BranchLenInterpolator, self).__call__(x*self.gamma)
-        if self.merger_cost is not None:
-            if tnode is None:
-                tnode = self.node.time_before_present
-            if multiplicity is None:
-                multiplicity = len(self.node.up.clades)
-            res += self.merger_cost(tnode, x, multiplicity=multiplicity)
-        return res
+    # def __call__(self, x, tnode=None, multiplicity=None):
+    #     res = super(BranchLenInterpolator, self).__call__(x*self.gamma)
+    #     if self.merger_cost is not None:
+    #         if tnode is None:
+    #             tnode = self.node.time_before_present
+    #         if multiplicity is None:
+    #             multiplicity = len(self.node.up.clades)
+    #         res += self.merger_cost(tnode, x, multiplicity=multiplicity)
+    #     return res
 
     def __mul__(self, other):
         res = BranchLenInterpolator(super(BranchLenInterpolator, self).__mul__(other))

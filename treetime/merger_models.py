@@ -12,7 +12,7 @@ try:
 except ImportError:
     from collections import Iterable
 from treetime import config as ttconf
-
+from treetime.node_interpolator import NodeInterpolator
 
 class Coalescent(object):
     """docstring for Coalescent"""
@@ -138,13 +138,18 @@ class Coalescent(object):
                  - np.log(self.total_merger_rate(merger_time))*(multiplicity-1.0)/multiplicity
 
 
-    def attach_to_tree(self):
-        '''
-        attaches the the merger cost to each branch length interpolator in the tree.
-        '''
-        for clade in self.tree.find_clades():
-            if clade.up is not None:
-                clade.branch_length_interpolator.merger_cost = self.cost
+    def node_contribution(self, node, t):
+        multiplicity = len(node.clades) - 1.0
+        y = (self.integral_merger_rate(t) - np.log(self.total_merger_rate(t)))*multiplicity
+        return NodeInterpolator(t, y, is_log=True)
+
+    # def attach_to_tree(self):
+    #     '''
+    #     attaches the the merger cost to each branch length interpolator in the tree.
+    #     '''
+    #     for clade in self.tree.find_clades():
+    #         if clade.up is not None:
+    #             clade.branch_length_interpolator.merger_cost = self.cost
 
 
     def total_LH(self):

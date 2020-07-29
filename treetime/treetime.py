@@ -732,7 +732,7 @@ class TreeTime(ClockTree):
                 except:
                     self.logger("setting of coalescent time scale failed", 1, warn=True)
 
-        self.merger_model.attach_to_tree()
+        # self.merger_model.attach_to_tree()
 
 
     def relaxed_clock(self, slack=None, coupling=None, **kwargs):
