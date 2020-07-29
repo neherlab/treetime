@@ -69,6 +69,7 @@ class ClockTree(TreeAnc):
             raise ValueError("ClockTree requires date constraints!")
 
         self.debug = debug
+        self.merger_model = None
         self.use_fft = use_fft
         self.real_dates = real_dates
         self.date_dict = dates
