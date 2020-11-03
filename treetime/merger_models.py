@@ -6,7 +6,6 @@ import numpy as np
 import scipy.special as sf
 from scipy.interpolate import interp1d
 from Bio import AlignIO, Phylo
-from scipy.interpolate import interp1d
 try:
     from collections.abc import Iterable
 except ImportError:

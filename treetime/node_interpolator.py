@@ -121,16 +121,15 @@ def _max_of_integrand(t_val, f, g, inverse_time=None, return_log=False):
     FG = _convolution_integrand(t_val, f, g, inverse_time, return_log=True)
 
     if FG == ttconf.BIG_NUMBER:
-        res = ttconf.BIG_NUMBER, 0
+        res = [ttconf.BIG_NUMBER, 0]
 
     else:
         X = FG.x[FG.y.argmin()]
         Y = FG.y.min()
-        res =  Y, X
+        res =  [Y, X]
 
     if not return_log:
-        res[0] = np.log(res[0])
-
+        res[0] = np.exp(res[0])
 
     return res
 

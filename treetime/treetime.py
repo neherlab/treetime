@@ -126,7 +126,7 @@ class TreeTime(ClockTree):
 
         if (self.tree is None) or (self.aln is None and self.data.full_length is None):
             raise MissingDataError("TreeTime.run: ERROR, alignment or tree are missing")
-        if (self.aln is None):
+        if self.aln is None:
             branch_length_mode='input'
 
         self._set_branch_length_mode(branch_length_mode)

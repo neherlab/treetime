@@ -334,6 +334,7 @@ class SequenceData(object):
                 pattern = np.array([self.aln[k][pi] if pi in self.aln[k] else self.ref[pi]
                            for k in self.sequence_names], dtype='S')
             else:
+                # pylint: disable=unsubscriptable-object
                 pattern = np.copy(aln_transpose[pi])
 
             # if the column contains only one state and ambiguous nucleotides, replace
@@ -396,6 +397,7 @@ class SequenceData(object):
 
         # create the compressed alignment as a dictionary linking names to sequences
         tmp_compressed_alignment = np.array(compressed_aln_transpose).T
+        # pylint: disable=unsubscriptable-object
         self.compressed_alignment = {k: tmp_compressed_alignment[i]
                                   for i,k in enumerate(self.sequence_names)}
 

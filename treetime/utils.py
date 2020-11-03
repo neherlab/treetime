@@ -393,9 +393,11 @@ def tree_layout(tree):
 
 
 def tree_inference(aln_fname, tree_fname, tmp_dir=None,
-                   methods = ['iqtree', 'fasttree', 'raxml'], **kwargs):
+                   methods = None, **kwargs):
     import os,shutil
     from Bio import Phylo
+    if methods is None:
+        methods = ['iqtree', 'fasttree', 'raxml']
     if not os.path.isfile(aln_fname):
         print("alignment file does not exist")
 

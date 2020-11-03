@@ -182,7 +182,7 @@ def seq2array(seq, word_length=1, convert_upper=False, fill_overhangs=False, amb
         seq_array = np.array(list(seq_str))
     else:
         if len(seq_str)%word_length:
-            raise ValueError("sequence length has to be multiple of word length");
+            raise ValueError("sequence length has to be multiple of word length")
         seq_array = np.array([seq_str[i*word_length:(i+1)*word_length]
                               for i in range(len(seq_str)/word_length)])
 

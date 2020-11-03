@@ -174,9 +174,9 @@ def T92(mu=1.0, pi_GC=0.5, kappa=0.1, **kwargs):
 
     W = _create_transversion_transition_W(kappa)
     # A C G T
-    if pi_CG >=1.:
-        raise ValueError("The relative CG content specified is larger than 1.0!")
-    pi = np.array([(1.-pi_CG)*0.5, pi_CG*0.5, pi_CG*0.5, (1-pi_CG)*0.5])
+    if pi_GC >=1.:
+        raise ValueError("The relative GC content specified is larger than 1.0!")
+    pi = np.array([(1.-pi_GC)*0.5, pi_GC*0.5, pi_GC*0.5, (1-pi_GC)*0.5])
     gtr = GTR(alphabet=alphabets['nuc_nogap'])
     gtr.assign_rates(mu=mu, pi=pi, W=W)
     return gtr

@@ -476,7 +476,7 @@ class GTR_site_specific(GTR):
             if len(logQt.shape)==2:
                 logP = np.sum(logQt[seq_indices_p, seq_indices_c]*pattern_multiplicity)
             else:
-                logP = np.sum(logQt[seq_indices_p, seq_indices_c, np.arange(len(seq_c))]*pattern_multiplicity)
+                logP = np.sum(logQt[seq_indices_p, seq_indices_c, np.arange(len(seq_ch))]*pattern_multiplicity)
 
         return logP if return_log else np.exp(logP)
 

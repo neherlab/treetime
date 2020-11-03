@@ -43,7 +43,7 @@ class Distribution(object):
             log_prob = distribution._func.y
         else:
             raise TypeError("Error in computing the FWHM for the distribution. "
-                " The input should be either Distribution or interpolation object");
+                " The input should be either Distribution or interpolation object")
 
         L = xvals.shape[0]
         # 0.69... is log(2), there is always one value for which this is true since
@@ -336,84 +336,3 @@ class Distribution(object):
 
         return np.sum(res)
 
-if __name__=="__main__":
-    # code used for debugging and development
-    from matplotlib import pyplot as plt
-    plt.ion()
-
-    x = [-1e-10,  0.,    1.,  2.,    2.+1e-10]
-    y = [  1e-10, 1e-10, 10., 1e-10, 1e-10]
-    d1 = Distribution(x, y,is_log=False)
-
-    def f(x):
-        return (x**2-5)**2 #(x-5)**2+np.abs(x)**3
-    def g(x):
-        return (x-4)**2*(x**(1.0/3)-5)**2
-
-    # measure interpolation accuracy
-    plot=False
-    error = {}
-    for kind in ['linear', 'quadratic', 'cubic', 'Q']:
-        error[kind]=[[],[]]
-    npoints = [11,21] #,31,41, 51,75,101]
-    for ex, func in [[0,f],[1,g]]:
-        for npoint in npoints:
-            if ex==0:
-                xnew = np.linspace(-5,15,1000)
-                x = np.linspace(0,10,npoint)
-            elif ex==1:
-                xnew = np.linspace(0,150,1000)
-                x = np.linspace(0,9.0,npoint)**3
-
-            if plot:
-                plt.figure()
-                plt.plot(x, np.exp(-func(x)),'-o', label = 'data')
-                plt.plot(xnew, np.exp(-func(xnew)),'-',label='true')
-            for kind in ['linear', 'quadratic', 'cubic']:
-                try:
-                    dist = Distribution(x, func(x), kind=kind, is_log=True)
-                    if plot: plt.plot(xnew, dist.prob(xnew), label=kind)
-                    E = np.mean((np.exp(-func(xnew))-dist.prob(xnew))[(xnew>dist.xmin) & (xnew<dist.xmax)]**2)
-                    print(kind,npoint, E)
-                except:
-                    E=np.nan
-                error[kind][ex].append(E)
-            try:
-                distQ = quadratic_interpolator(x, func(x))
-                if plot: plt.plot(xnew[(xnew>dist.xmin) & (xnew<dist.xmax)], np.exp(-distQ(xnew))[(xnew>dist.xmin) & (xnew<dist.xmax)], label='Q')
-                E = np.mean((np.exp(-func(xnew))-np.exp(-distQ(xnew)))[(xnew>dist.xmin) & (xnew<dist.xmax)]**2)
-                print('Q',npoint, E)
-            except:
-                E=np.nan
-            error['Q'][ex].append(E)
-            if plot:
-                plt.yscale('log')
-                plt.legend()
-
-    for ex in [0,1]:
-        plt.figure()
-        for k in error:
-            plt.plot(npoints, error[k][ex],'-o', label=k)
-        plt.yscale('log')
-        plt.legend()
-
-    # measure integration accuracy
-    integration_error = {'trapez':[], 'simpson':[], 'piecewise':[]}
-    npoints = [11,21,31, 41, 51,75,101, 201, 501, 1001]
-    xnew = np.linspace(-5,15,1000)
-    x = np.linspace(0,10,3000)
-    dist = Distribution(x, g(x), kind='linear', is_log=True)
-    for npoint in npoints:
-        integration_error['trapez'].append(dist.integrate_trapez(0,10,npoint))
-        integration_error['simpson'].append(dist.integrate_simpson(0,10,npoint))
-        xtmp = np.linspace(0,10,min(100,npoint))
-        disttmp = Distribution(xtmp, g(xtmp), kind='cubic', is_log=True)
-
-    plt.figure()
-    base_line = integration_error['simpson'][-1]
-    plt.plot(npoints, np.abs(integration_error['trapez']-base_line), label='trapez')
-    plt.plot(npoints, np.abs(integration_error['simpson']-base_line), label='simpson')
-    plt.xlabel('npoints')
-    plt.xscale('log')
-    plt.yscale('log')
-    plt.legend()

@@ -23,8 +23,8 @@ class ClockTree(TreeAnc):
     is converted to the most likely time of the internal nodes.
     """
 
-    def __init__(self,  dates=None, debug=False, real_dates=True, precision='auto',
-                 branch_length_mode='joint', use_covariation=False, *args, **kwargs):
+    def __init__(self, *args, dates=None, debug=False, real_dates=True, precision='auto',
+                 branch_length_mode='joint', use_covariation=False, **kwargs):
 
         """
         ClockTree constructor
@@ -649,8 +649,6 @@ class ClockTree(TreeAnc):
 
         if not self.debug:
             _cleanup()
-
-        return
 
 
     def convert_dates(self):

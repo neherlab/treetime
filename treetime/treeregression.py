@@ -338,7 +338,7 @@ class TreeRegression(object):
             bv = self.branch_value(n)
             var = self.branch_variance(n)
             x, chisq = self._optimal_root_along_branch(n, tv, bv, var, slope=slope)
-            if (chisq<best_root["chisq"]):
+            if chisq<best_root["chisq"]:
                 tmpQ = self.propagate_averages(n, tv, bv*x, var*x) \
                      + self.propagate_averages(n, tv, bv*(1-x), var*(1-x), outgroup=True)
                 reg = base_regression(tmpQ, slope=slope)

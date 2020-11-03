@@ -74,7 +74,7 @@ def get_outdir(params, suffix='_treetime'):
             if os.path.isdir(params.outdir):
                 return params.outdir.rstrip('/') + '/'
             else:
-                print("designated output location %s is not a directory"%params.outdir, file=stderr)
+                print("designated output location %s is not a directory"%params.outdir, file=sys.stderr)
         else:
             os.makedirs(params.outdir)
             return params.outdir.rstrip('/') + '/'

@@ -19,7 +19,7 @@ def compressed_sequence(node):
     elif hasattr(node, '_cseq'):
         return node._cseq
     elif node.is_terminal(): # node without sequence when tip-reconstruction is off.
-            return None
+        return None
     elif hasattr(node, '_cseq'):
         return node._cseq
     else:
@@ -225,7 +225,7 @@ class TreeAnc(object):
          value : GTR
             the new GTR object
         """
-        if not (isinstance(value, GTR) or isinstance(value, GTR_site_specific)):
+        if not isinstance(value, (GTR, GTR_site_specific)):
             raise TypeError("GTR instance expected")
         self._gtr = value
 
@@ -251,7 +251,7 @@ class TreeAnc(object):
             self._gtr = GTR.standard(model=in_gtr, **kwargs)
             self._gtr.logger = self.logger
 
-        elif isinstance(in_gtr, GTR) or isinstance(in_gtr, GTR_site_specific):
+        if not isinstance(in_gtr, (GTR, GTR_site_specific)):
             self._gtr = in_gtr
             self._gtr.logger=self.logger
         else:
@@ -415,7 +415,7 @@ class TreeAnc(object):
         self.tree.root.tt = self
         self.tree.root.bad_branch=self.tree.root.bad_branch if hasattr(self.tree.root, 'bad_branch') else False
 
-        name_set = set([n.name for n in self.tree.find_clades() if n.name])
+        name_set = {n.name for n in self.tree.find_clades() if n.name}
         internal_node_count = 0
         for clade in self.tree.get_nonterminals(order='preorder'): # parents first
             if clade.name is None:
@@ -1019,7 +1019,7 @@ class TreeAnc(object):
 
         # expand to full sequence if requested
         if full_sequence:
-            return mut_matrix_stack[self.full_to_compressed_sequence_map]
+            return mut_matrix_stack[self.data.full_to_compressed_sequence_map]
         else:
             return mut_matrix_stack
 
