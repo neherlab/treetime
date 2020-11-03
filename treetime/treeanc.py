@@ -250,8 +250,7 @@ class TreeAnc(object):
         if isinstance(in_gtr, str):
             self._gtr = GTR.standard(model=in_gtr, **kwargs)
             self._gtr.logger = self.logger
-
-        if not isinstance(in_gtr, (GTR, GTR_site_specific)):
+        elif isinstance(in_gtr, (GTR, GTR_site_specific)):
             self._gtr = in_gtr
             self._gtr.logger=self.logger
         else:
