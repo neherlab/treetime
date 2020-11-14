@@ -1,6 +1,8 @@
+# 0.8.0 -- drop python 2.7 support, bug fixes.
+
 # 0.7.6 -- catch of distributions are too short for calculating confidence intervals.
 
-# 0.7.5 -- fix desync of peak from grid of distributions after pruning 
+# 0.7.5 -- fix desync of peak from grid of distributions after pruning
 
 # 0.7.4 -- bug fix in reconstruct discrete trait routine
 
