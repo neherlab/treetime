@@ -10,7 +10,7 @@ This tutorial uses data provided in the github repository `github.com/neherlab/t
    treetime --tree data/h3n2_na/h3n2_na_20.nwk --dates data/h3n2_na/h3n2_na_20.metadata.csv --aln data/h3n2_na/h3n2_na_20.fasta --outdir h3n2_timetree
 
 The tree can be in newick or nexus format, the alignment in fasta or phylip, and the dates should be given as a tsv or csv file.
-TreeTime will attempt to parse dates, preferred formats are are "%Y-%m-%s" or numerical as in 2016.45.
+TreeTime will attempt to parse dates, preferred formats are are "%Y-%m-%d" or numerical as in 2016.45.
 This command will estimate an GTR model, a molecular clock model, and a time-stamped phylogeny.
 The results are saved to several files in the directory specified as `outdir` and printed to standard out:
 
