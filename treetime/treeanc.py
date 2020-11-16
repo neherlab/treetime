@@ -1611,8 +1611,10 @@ class TreeAnc(object):
         else:
             if (not reconstructed) and (node.name in self.data.aln):
                 tmp_seq = self.data.aln[node.name]
-            else:
+            elif node.cseq is not None:
                 tmp_seq = self.data.compressed_to_full_sequence(node.cseq, as_string=False)
+            else:
+                tmp_seq = np.array(['N']*self.data.compressed_length)
 
         return "".join(tmp_seq) if as_string else np.copy(tmp_seq)
 
