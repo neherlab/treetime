@@ -1614,7 +1614,7 @@ class TreeAnc(object):
             elif node.cseq is not None:
                 tmp_seq = self.data.compressed_to_full_sequence(node.cseq, as_string=False)
             else:
-                tmp_seq = np.array(['N']*self.data.compressed_length)
+                tmp_seq = np.array([self.gtr.ambiguous or 'N']*self.data.compressed_length)
 
         return "".join(tmp_seq) if as_string else np.copy(tmp_seq)
 
