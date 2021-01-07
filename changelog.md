@@ -1,3 +1,5 @@
+# 0.8.1 -- bug fixe amino acid profile map.
+
 # 0.8.0 -- drop python 2.7 support, bug fixes.
 
 # 0.7.6 -- catch of distributions are too short for calculating confidence intervals.
