@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 from __future__ import print_function, division, absolute_import
 import sys, argparse, os
-from treetime.wrappers import ancestral_reconstruction, mugration, scan_homoplasies, timetree, estimate_clock_model
-from treetime import version
+from .wrappers import ancestral_reconstruction, mugration, scan_homoplasies, timetree, estimate_clock_model
+from . import version
 
 py2 = sys.version_info.major==2
 

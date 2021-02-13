@@ -2,8 +2,8 @@ from __future__ import print_function, division, absolute_import
 import numpy as np
 from scipy import optimize as sciopt
 from Bio import Phylo
-from treetime import config as ttconf
-from treetime import MissingDataError,UnknownMethodError,NotReadyError
+from . import config as ttconf
+from . import MissingDataError,UnknownMethodError,NotReadyError
 from .utils import tree_layout
 from .clock_tree import ClockTree
 

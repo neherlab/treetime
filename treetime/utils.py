@@ -7,7 +7,7 @@ from scipy.interpolate import interp1d
 from scipy.integrate import quad
 from scipy import stats
 from scipy.ndimage import binary_dilation
-from treetime import TreeTimeError
+from . import TreeTimeError
 
 class DateConversion(object):
     """

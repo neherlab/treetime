@@ -1,7 +1,7 @@
 from __future__ import division, print_function, absolute_import
 from collections import defaultdict
 import numpy as np
-from treetime import config as ttconf
+from . import config as ttconf
 from .seq_utils import alphabets, profile_maps, alphabet_synonyms, seq2array, seq2prof
 from .gtr import GTR
 from .treeanc import TreeAnc

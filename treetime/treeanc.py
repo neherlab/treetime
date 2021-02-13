@@ -6,8 +6,8 @@ import numpy as np
 from Bio import Phylo
 from Bio.Phylo.BaseTree import Clade
 from Bio import AlignIO
-from treetime import config as ttconf
-from treetime import MissingDataError,UnknownMethodError
+from . import config as ttconf
+from . import MissingDataError,UnknownMethodError
 from .seq_utils import seq2prof, seq2array, prof2seq, normalize_profile, extend_profile
 from .gtr import GTR
 from .gtr_site_specific import GTR_site_specific

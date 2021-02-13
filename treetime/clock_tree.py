@@ -1,7 +1,7 @@
 from __future__ import print_function, division, absolute_import
 import numpy as np
-from treetime import config as ttconf
-from treetime import MissingDataError
+from . import config as ttconf
+from . import MissingDataError
 from .treeanc import TreeAnc
 from .utils import numeric_date, DateConversion, datestring_from_numeric
 from .distribution import Distribution

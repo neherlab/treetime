@@ -4,8 +4,8 @@ from os.path import isfile
 from collections import defaultdict
 import numpy as np
 from Bio import SeqRecord, Seq, AlignIO, SeqIO
-from treetime import config as ttconf
-from treetime import MissingDataError
+from . import config as ttconf
+from . import MissingDataError
 from .seq_utils import seq2array, guess_alphabet, alphabets
 
 string_types = [str] if sys.version_info[0]==3 else [str, unicode]
