@@ -1,7 +1,7 @@
 from __future__ import division, print_function, absolute_import
 from collections import defaultdict
 import numpy as np
-from treetime import config as ttconf
+from . import config as ttconf
 from .seq_utils import alphabets, profile_maps, alphabet_synonyms
 
 def avg_transition(W,pi, gap_index=None):

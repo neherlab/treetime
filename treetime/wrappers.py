@@ -8,12 +8,12 @@ from Bio.Seq import Seq
 from Bio.Align import MultipleSeqAlignment
 from Bio import Phylo, AlignIO
 from Bio import __version__ as bioversion
-from treetime import TreeAnc, GTR, TreeTime
-from treetime import config as ttconf
-from treetime import utils
+from . import TreeAnc, GTR, TreeTime
+from . import config as ttconf
+from . import utils
 from .vcf_utils import read_vcf, write_vcf
 from .seq_utils import alphabets
-from treetime import TreeTimeError, MissingDataError
+from . import TreeTimeError, MissingDataError
 
 def assure_tree(params, tmp_dir='treetime_tmp'):
     """

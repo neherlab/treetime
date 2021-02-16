@@ -10,7 +10,7 @@ try:
     from collections.abc import Iterable
 except ImportError:
     from collections import Iterable
-from treetime import config as ttconf
+from . import config as ttconf
 
 
 class Coalescent(object):
