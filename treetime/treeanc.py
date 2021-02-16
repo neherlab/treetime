@@ -1584,7 +1584,7 @@ class TreeAnc(object):
             return the reconstructed sequence also for terminal nodes. this will replace
             ambiguous sites with the most likely sequence state.
         as_string : bool, optional
-            return the sequence as character array rather than contiguous string
+            return the sequence as contiguous string rather than a character array
         compressed : bool, optional
             return the a sequence where unique alignment patterns are reduced to
             one alignment column each
@@ -1614,7 +1614,7 @@ class TreeAnc(object):
             elif node.cseq is not None:
                 tmp_seq = self.data.compressed_to_full_sequence(node.cseq, as_string=False)
             else:
-                tmp_seq = np.array([self.gtr.ambiguous or 'N']*self.data.compressed_length)
+                tmp_seq = np.array([self.gtr.ambiguous or 'N']*self.sequence_length)
 
         return "".join(tmp_seq) if as_string else np.copy(tmp_seq)
 
