@@ -1,9 +1,5 @@
 from __future__ import print_function
-import sys
-if sys.version_info[0] < 3:
-    from StringIO import StringIO
-else:
-    from io import StringIO
+from io import StringIO
 
 
 # Tests
@@ -78,10 +74,6 @@ def test_seq_joint_reconstruction_correct():
     from treetime import seq_utils
     from Bio import Phylo, AlignIO
     import numpy as np
-    try:
-        from itertools import izip
-    except ImportError:  #python3.x
-        izip = zip
     from collections import defaultdict
     def exclusion(a, b):
         """
@@ -91,7 +83,8 @@ def test_seq_joint_reconstruction_correct():
 
     tiny_tree = Phylo.read(StringIO("((A:.060,B:.01200)C:.020,D:.0050)E:.004;"), 'newick')
     mygtr = GTR.custom(alphabet = np.array(['A', 'C', 'G', 'T']),
-                       pi = np.array([0.15, 0.95, 0.05, 0.3]), W=np.ones((4,4)))
+                       pi = np.array([0.15, 0.95, 0.05, 0.3]),
+                       W=np.ones((4,4)))
     seq = np.random.choice(mygtr.alphabet, p=mygtr.Pi, size=400)
 
 
@@ -118,7 +111,7 @@ def test_seq_joint_reconstruction_correct():
         node.ref_seq = np.array([mygtr.alphabet[k] for k in ref_seq_idxs])
 
         node.ref_mutations = [(anc, pos, der) for pos, (anc, der) in
-                            enumerate(izip(node.up.ref_seq, node.ref_seq)) if anc!=der]
+                            enumerate(zip(node.up.ref_seq, node.ref_seq)) if anc!=der]
         for anc, pos, der in node.ref_mutations:
             mutation_list[pos].append((node.name, anc, der))
         print (node.name, len(node.ref_mutations), node.ref_mutations)
