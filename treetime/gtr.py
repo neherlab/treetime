@@ -672,9 +672,12 @@ class GTR(object):
             logP = -ttconf.BIG_NUMBER
         else:
             tmp_eQT = self.expQt(t)
-            bad_indices=(tmp_eQT==0)
-            logQt = np.log(tmp_eQT + ttconf.TINY_NUMBER*(bad_indices))
-            logQt[np.isnan(logQt) | np.isinf(logQt) | bad_indices] = -ttconf.BIG_NUMBER
+            #bad_indices=(tmp_eQT==0)
+            #logQt = np.log(tmp_eQT + ttconf.TINY_NUMBER*(bad_indices))
+            logQt = np.log(tmp_eQT)
+            #logQt[np.isnan(logQt) | np.isinf(logQt) | bad_indices] = -ttconf.BIG_NUMBER
+            #logQt[np.isnan(logQt) | np.isinf(logQt)] = -ttconf.BIG_NUMBER
+            logQt[~np.isfinite(logQt)] = -ttconf.BIG_NUMBER
             logP = np.sum(logQt[seq_pair[:,1], seq_pair[:,0]]*multiplicity)
 
         return logP if return_log else np.exp(logP)
