@@ -397,7 +397,7 @@ def scan_homoplasies(params):
 
 
     # compare that distribution to a Poisson distribution with the same mean
-    p = poisson.pmf(np.arange(10*multiplicities_positions.max()),1.0*total_mutations/L)
+    p = poisson.pmf(np.arange(3*len(multiplicities_positions)),1.0*total_mutations/L)
     print("\nlog-likelihood difference to Poisson distribution with same mean: %1.3e"%(
             - L*np.sum(p*np.log(p+1e-100))
             + np.sum(multiplicities_positions*np.log(p[:len(multiplicities_positions)]+1e-100))))
