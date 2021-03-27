@@ -228,7 +228,7 @@ class Distribution(object):
         #if isinstance(x, Iterable):
         if type(x) == np.ndarray:
             valid_idxs = (x > self._xmin-TINY_NUMBER) & (x < self._xmax+TINY_NUMBER)
-            res = np.ones_like (x, dtype=float) * (BIG_NUMBER+self.peak_val)
+            res = np.full(np.shape(x), BIG_NUMBER+self.peak_val, dtype=float)
             #tmp_x = np.copy(x[valid_idxs])
             tmp_x = x[valid_idxs]
             np.clip(tmp_x, self._xmin+TINY_NUMBER, self._xmax-TINY_NUMBER)
