@@ -148,8 +148,8 @@ class Distribution(object):
             self._peak_pos = xvals[self._peak_idx]
             yvals -= self._peak_val
             self._ymax = yvals.max()
-            # store the interpolation object
             self.xvals, self.yvals = xvals, yvals
+            # store the interpolation object
             self._func= interp1d(xvals, yvals, kind=kind, fill_value=BIG_NUMBER,
                                  bounds_error=False, assume_sorted=True)
             self._fwhm = Distribution.calc_fwhm(self)
@@ -225,18 +225,14 @@ class Distribution(object):
 
 
     def __call__(self, x):
-        #if isinstance(x, Iterable):
-        if type(x) == np.ndarray:
+        if isinstance(x, Iterable):
             valid_idxs = (x > self._xmin-TINY_NUMBER) & (x < self._xmax+TINY_NUMBER)
             res = np.full(np.shape(x), BIG_NUMBER+self.peak_val, dtype=float)
-            #tmp_x = np.copy(x[valid_idxs])
             tmp_x = x[valid_idxs]
             np.clip(tmp_x, self._xmin+TINY_NUMBER, self._xmax-TINY_NUMBER)
-            #tmp_x[tmp_x<self._xmin+TINY_NUMBER] = self._xmin+TINY_NUMBER
-            #tmp_x[tmp_x>self._xmax-TINY_NUMBER] = self._xmax-TINY_NUMBER
-            #res[valid_idxs] = self._peak_val + self._func(tmp_x)
             res[valid_idxs] = self._peak_val + np.interp(tmp_x, self.xvals, self.yvals)
             return res
+
         elif np.isreal(x):
             if x < self._xmin or x > self._xmax:
                 return BIG_NUMBER+self.peak_val
@@ -245,9 +241,9 @@ class Distribution(object):
                 return self._peak_val
             else:
                 return self._peak_val + self._func(x)
-                #return self._peak_val + np.interp(x, self.xvals, self.yvals)
         else:
             raise TypeError("Wrong type: should be float or array")
+
 
     def __mul__(self, other):
         return Distribution.multiply((self, other))

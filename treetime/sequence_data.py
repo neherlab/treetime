@@ -459,14 +459,6 @@ class SequenceData(object):
         mismatches = (compressed_nonref_values != self.ref[self.nonref_positions])
         return dict(zip(self.nonref_positions[mismatches], compressed_nonref_values[mismatches]))
 
-        #for pos in self.nonref_positions:
-        #    cseqLoc = self.full_to_compressed_sequence_map[pos]
-        #    base = sequence[cseqLoc]
-        #    if self.ref[pos] != base:
-        #        sparse_seq[pos] = base
-
-        #return sparse_seq
-
 
     def compressed_to_full_sequence(self, sequence, include_additional_constant_sites=False, as_string=False):
         """expand a compressed sequence
