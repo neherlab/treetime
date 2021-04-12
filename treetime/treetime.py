@@ -245,7 +245,6 @@ class TreeTime(ClockTree):
 
             niter+=1
 
-
             if ndiff==0 and n_resolved==0 and Tc!='skyline':
                 self.logger("###TreeTime.run: CONVERGED",0)
                 break
@@ -793,8 +792,17 @@ class TreeTime(ClockTree):
         ----------
         niter : int
             The current iteration.
-
-        tracelog : bool, str
+        ndiff : int
+            The number of sequence changes.
+        n_resolved : int
+            The number of polytomy changes
+        time_marginal : bool
+            True if marginal position estimation was requested, else False
+        sequence_marginal : bool
+            True if marginal sequence estimation was requested, else False
+        Tc : float, str
+            The coalescent model that was used for the current iteration.
+        tracelog : str
             The output file to write the trace log to.
 
         Returns
@@ -805,15 +813,15 @@ class TreeTime(ClockTree):
 
         # Store the run parameters in a dictionary
         trace_dict = {
-            'Sample' : niter,
-            'ndiff' : ndiff,
+            'Sample'     : niter,
+            'ndiff'      : ndiff,
             'n_resolved' : n_resolved,
-            'seq_mode' : 'marginal' if sequence_marginal else 'joint',
-            'seq_LH' : self.tree.sequence_marginal_LH if sequence_marginal else self.tree.sequence_joint_LH,
-            'pos_mode' : 'marginal' if time_marginal else 'joint',
-            'pos_LH' : self.tree.positional_marginal_LH if time_marginal else self.tree.positional_joint_LH,
-            'coal_mode' : Tc,
-            'coal_LH' : self.tree.coalescent_joint_LH,
+            'seq_mode'   : 'marginal' if sequence_marginal else 'joint',
+            'seq_LH'     : self.tree.sequence_marginal_LH if sequence_marginal else self.tree.sequence_joint_LH,
+            'pos_mode'   : 'marginal' if time_marginal else 'joint',
+            'pos_LH'     : self.tree.positional_marginal_LH if time_marginal else self.tree.positional_joint_LH,
+            'coal_mode'  : Tc,
+            'coal_LH'    : self.tree.coalescent_joint_LH,
         }
 
         # Write the current iteration to a file
