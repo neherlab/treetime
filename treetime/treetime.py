@@ -190,10 +190,16 @@ class TreeTime(ClockTree):
         # time tree to ensure convergence.
         niter = 0
         ndiff = 0
+
+        # Initialize the tracelog dict attribute
+        self.trace_run = {}
+        self.trace_run[0] = self.tracelog_run()
+
         need_new_time_tree=False
         while niter < max_iter:
             self.logger("###TreeTime.run: ITERATION %d out of %d iterations"%(niter+1,max_iter),0)
             # add coalescent prior
+            tmpTc=None
             if Tc:
                 if Tc=='skyline' and niter<max_iter-1:
                     tmpTc='const'
@@ -233,7 +239,12 @@ class TreeTime(ClockTree):
             if self.aln:
                 seq_LH = self.tree.sequence_marginal_LH if seq_kwargs['marginal_sequences'] else self.tree.sequence_joint_LH
             self.LH.append([seq_LH, self.tree.positional_joint_LH, self.tree.coalescent_joint_LH])
+
+            # Update the trace log
+            self.trace_run[niter] = self.tracelog_run(niter=niter, ndiff=ndiff, n_resolved=n_resolved, time_marginal = tt_kwargs['time_marginal'], sequence_marginal = seq_kwargs['marginal_sequences'], Tc=tmpTc,)
+
             niter+=1
+
 
             if ndiff==0 and n_resolved==0 and Tc!='skyline':
                 self.logger("###TreeTime.run: CONVERGED",0)
@@ -773,6 +784,52 @@ class TreeTime(ClockTree):
                 else:
                     g_up = node.up.branch_length_interpolator.gamma
                 node.branch_length_interpolator.gamma = max(0.1,(coupling*g_up - 0.5*node._k1)/(coupling+node._k2))
+
+    def tracelog_run(self, niter=0, ndiff=0, n_resolved=0, time_marginal=False, sequence_marginal=False, Tc=None, tracelog="trace_run.log"):
+        """
+        Create a dictionary of parameters for the current iteration of the run function.
+
+        Parameters
+        ----------
+        niter : int
+            The current iteration.
+
+        tracelog : bool, str
+            The output file to write the trace log to.
+
+        Returns
+        -------
+        trace_dict : str
+            A dictionary of parameters for the current iteration.
+        """
+
+        # Store the run parameters in a dictionary
+        trace_dict = {
+            'Sample' : niter,
+            'ndiff' : ndiff,
+            'n_resolved' : n_resolved,
+            'seq_mode' : 'marginal' if sequence_marginal else 'joint',
+            'seq_LH' : self.tree.sequence_marginal_LH if sequence_marginal else self.tree.sequence_joint_LH,
+            'pos_mode' : 'marginal' if time_marginal else 'joint',
+            'pos_LH' : self.tree.positional_marginal_LH if time_marginal else self.tree.positional_joint_LH,
+            'coal_mode' : Tc,
+            'coal_LH' : self.tree.coalescent_joint_LH,
+        }
+
+        # Write the current iteration to a file
+        if tracelog:
+            # Only on the initial round, write the headers
+            if niter == 0:
+                with open(tracelog, "w") as outfile:
+                    header = "\t".join(trace_dict.keys())
+                    outfile.write(header + "\n")
+            # Write the parameters
+            with open(tracelog, "a") as outfile:
+                params_str = [str(p) for p in trace_dict.values()]
+                params = "\t".join(params_str)
+                outfile.write(params + "\n")
+
+        return trace_dict
 
 ###############################################################################
 ### rerooting
