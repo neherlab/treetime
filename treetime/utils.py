@@ -507,6 +507,11 @@ def build_newick_iqtree(aln_fname, nthreads=2, iqtree_bin="iqtree",
         n.name = tmp
     return T
 
+def clip(a, min_val, max_val):
+    return np.maximum(min_val, np.minimum(a, max_val))
+
 if __name__ == '__main__':
     pass
+
+
 
