@@ -148,7 +148,6 @@ class Distribution(object):
             self._peak_pos = xvals[self._peak_idx]
             yvals -= self._peak_val
             self._ymax = yvals.max()
-            self.xvals, self.yvals = xvals, yvals
             # store the interpolation object
             self._func= interp1d(xvals, yvals, kind=kind, fill_value=BIG_NUMBER,
                                  bounds_error=False, assume_sorted=True)
@@ -229,8 +228,7 @@ class Distribution(object):
             valid_idxs = (x > self._xmin-TINY_NUMBER) & (x < self._xmax+TINY_NUMBER)
             res = np.full(np.shape(x), BIG_NUMBER+self.peak_val, dtype=float)
             tmp_x = x[valid_idxs]
-            np.clip(tmp_x, self._xmin+TINY_NUMBER, self._xmax-TINY_NUMBER)
-            res[valid_idxs] = self._peak_val + np.interp(tmp_x, self.xvals, self.yvals)
+            res[valid_idxs] = self._peak_val + self._func(np.clip(tmp_x, self._xmin+TINY_NUMBER, self._xmax-TINY_NUMBER))
             return res
 
         elif np.isreal(x):

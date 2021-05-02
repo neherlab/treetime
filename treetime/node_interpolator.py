@@ -65,10 +65,10 @@ def _convolution_integrand(t_val, f, g,
     else:
         # create the tau-grid for the interpolation object in the overlap region
         if inverse_time:
-            tau = np.unique(np.concatenate((g.x, t_val-f.x,[tau_min,tau_max])))
+            tau = np.concatenate((g.x, t_val-f.x,[tau_min,tau_max]))
         else:
-            tau = np.unique(np.concatenate((g.x, f.x-t_val,[tau_min,tau_max])))
-        np.clip(tau, tau_min-ttconf.TINY_NUMBER, tau_max+ttconf.TINY_NUMBER)
+            tau = np.concatenate((g.x, f.x-t_val,[tau_min,tau_max]))
+        tau = np.unique(np.clip(tau, tau_min-ttconf.TINY_NUMBER, tau_max+ttconf.TINY_NUMBER))
         if len(tau)<10:
             tau = np.linspace(tau_min, tau_max, 10)
 

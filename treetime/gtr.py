@@ -672,8 +672,8 @@ class GTR(object):
             logP = -ttconf.BIG_NUMBER
         else:
             tmp_eQT = self.expQt(t)
-            logQt = np.log(tmp_eQT)
-            logQt[~np.isfinite(logQt)] = -ttconf.BIG_NUMBER
+            logQt = np.log(np.maximum(tmp_eQT, ttconf.SUPERTINY_NUMBER))
+            # logQt[~np.isfinite(logQt)] = -ttconf.BIG_NUMBER
             logP = np.sum(logQt[seq_pair[:,1], seq_pair[:,0]]*multiplicity)
 
         return logP if return_log else np.exp(logP)

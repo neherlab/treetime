@@ -192,7 +192,7 @@ class Coalescent(object):
         tvals = np.linspace(self.tree_events[0,0], self.tree_events[-1,0], n_points)
         def cost(logTc):
             # cap log Tc to avoid under or overflow and nan in logs
-            self.set_Tc(np.exp(np.maximum(-200,np.minimum(100,logTc))), tvals)
+            self.set_Tc(np.exp(np.clip(logTc, -200, 100)), tvals)
             neglogLH = -self.total_LH() + stiffness*np.sum(np.diff(logTc)**2) \
                        + np.sum((logTc>0)*logTc)*regularization\
                        - np.sum((logTc<-100)*logTc)*regularization
