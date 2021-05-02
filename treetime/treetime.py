@@ -37,7 +37,7 @@ class TreeTime(ClockTree):
     def run(self, root=None, infer_gtr=True, relaxed_clock=None, n_iqd = None,
             resolve_polytomies=True, max_iter=0, Tc=None, fixed_clock_rate=None,
             time_marginal=False, sequence_marginal=False, branch_length_mode='auto',
-            vary_rate=False, use_covariation=False, **kwargs):
+            vary_rate=False, use_covariation=False, tracelog_file=None, **kwargs):
 
         """
         Run TreeTime reconstruction. Based on the input parameters, it divides
@@ -192,8 +192,10 @@ class TreeTime(ClockTree):
         ndiff = 0
 
         # Initialize the tracelog dict attribute
-        self.trace_run = {}
-        self.trace_run[0] = self.tracelog_run()
+        self.trace_run = []
+        self.trace_run.append(self.tracelog_run(niter=0, ndiff=0, n_resolved=0,
+                                time_marginal = tt_kwargs['time_marginal'],
+                                sequence_marginal = seq_kwargs['marginal_sequences'], Tc=None, tracelog=tracelog_file))
 
         need_new_time_tree=False
         while niter < max_iter:
@@ -241,7 +243,9 @@ class TreeTime(ClockTree):
             self.LH.append([seq_LH, self.tree.positional_joint_LH, self.tree.coalescent_joint_LH])
 
             # Update the trace log
-            self.trace_run[niter] = self.tracelog_run(niter=niter, ndiff=ndiff, n_resolved=n_resolved, time_marginal = tt_kwargs['time_marginal'], sequence_marginal = seq_kwargs['marginal_sequences'], Tc=tmpTc,)
+            self.trace_run.append(self.tracelog_run(niter=niter+1, ndiff=ndiff, n_resolved=n_resolved,
+                                      time_marginal = tt_kwargs['time_marginal'],
+                                      sequence_marginal = seq_kwargs['marginal_sequences'], Tc=tmpTc, tracelog=tracelog_file))
 
             niter+=1
 
@@ -784,7 +788,7 @@ class TreeTime(ClockTree):
                     g_up = node.up.branch_length_interpolator.gamma
                 node.branch_length_interpolator.gamma = max(0.1,(coupling*g_up - 0.5*node._k1)/(coupling+node._k2))
 
-    def tracelog_run(self, niter=0, ndiff=0, n_resolved=0, time_marginal=False, sequence_marginal=False, Tc=None, tracelog="trace_run.log"):
+    def tracelog_run(self, niter=0, ndiff=0, n_resolved=0, time_marginal=False, sequence_marginal=False, Tc=None, tracelog=None):
         """
         Create a dictionary of parameters for the current iteration of the run function.
 
