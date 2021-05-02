@@ -563,7 +563,8 @@ def timetree(params):
                branch_length_mode = branch_length_mode,
                reconstruct_tip_states=params.reconstruct_tip_states,
                fixed_pi=fixed_pi,
-               use_covariation = params.covariation, n_points=params.n_skyline)
+               use_covariation = params.covariation, n_points=params.n_skyline,
+               tracelog_file=os.path.join(outdir, "trace_run.log"))
     except TreeTimeError as e:
         print("\nTreeTime run FAILED: please check above for errors and/or rerun with --verbose 4.\n")
         raise e
