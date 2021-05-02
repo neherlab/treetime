@@ -270,6 +270,10 @@ class TreeTime(ClockTree):
             tt_kwargs['time_marginal']=time_marginal
             self.make_time_tree(**tt_kwargs)
 
+            self.trace_run.append(self.tracelog_run(niter=niter+1, ndiff=0, n_resolved=0,
+                                      time_marginal = tt_kwargs['time_marginal'],
+                                      sequence_marginal = seq_kwargs['marginal_sequences'], Tc=Tc, tracelog=tracelog_file))
+
         # explicitly print out which branches are bad and whose dates don't correspond to the input dates
         bad_branches =[n for n in self.tree.get_terminals()
                        if n.bad_branch and n.raw_date_constraint]
