@@ -8,6 +8,7 @@ except ImportError:
 from copy import deepcopy as make_copy
 from scipy.ndimage import binary_dilation
 from .config import BIG_NUMBER, MIN_LOG, MIN_INTEGRATION_PEAK, TINY_NUMBER
+from .utils import clip
 
 class Distribution(object):
     """
@@ -228,7 +229,7 @@ class Distribution(object):
             valid_idxs = (x > self._xmin-TINY_NUMBER) & (x < self._xmax+TINY_NUMBER)
             res = np.full(np.shape(x), BIG_NUMBER+self.peak_val, dtype=float)
             tmp_x = x[valid_idxs]
-            res[valid_idxs] = self._peak_val + self._func(np.clip(tmp_x, self._xmin+TINY_NUMBER, self._xmax-TINY_NUMBER))
+            res[valid_idxs] = self._peak_val + self._func(clip(tmp_x, self._xmin+TINY_NUMBER, self._xmax-TINY_NUMBER))
             return res
 
         elif np.isreal(x):
