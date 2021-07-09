@@ -61,7 +61,7 @@ class TreeTime(ClockTree):
            If not None, use autocorrelated molecular clock model. Specify the
            clock parameters as :code:`{slack:<slack>, coupling:<coupling>}` dictionary.
 
-        n_iqd : int
+        n_iqd : float
            If not None, filter tree nodes which do not obey the molecular clock
            for the particular tree. The nodes, which deviate more than
            :code:`n_iqd` interquantile intervals from the molecular clock
@@ -324,7 +324,7 @@ class TreeTime(ClockTree):
          reroot : str
             Method to find the best root in the tree (see :py:meth:`treetime.TreeTime.reroot` for options)
 
-         n_iqd : int
+         n_iqd : float
             Number of iqd intervals. The outlier nodes are those which do not fall
             into :math:`IQD\cdot n_iqd` interval (:math:`IQD` is the interval between
             75\ :sup:`th` and 25\ :sup:`th` percentiles)
