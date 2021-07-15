@@ -114,6 +114,14 @@ class DateConversion(object):
         return (d2r-self.intercept)/self.clock_rate
 
 
+    def clock_deviation(self, numdate, d2r):
+        """
+        calculate the deviatio of the
+        """
+        return (self.numdate_from_dist2root(d2r) - numdate)*self.clock_rate
+
+
+
 def min_interp(interp_object):
     """
     Find the global minimum of a function represented as an interpolation object.

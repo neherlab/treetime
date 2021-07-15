@@ -1010,21 +1010,22 @@ def estimate_clock_model(params):
 
     table_fname = basename+'rtt.csv'
     with open(table_fname, 'w', encoding='utf-8') as ofile:
-        ofile.write("#name, date, root-to-tip distance\n")
         ofile.write("#Dates of nodes that didn't have a specified date are inferred from the root-to-tip regression.\n")
+        ofile.write("name, date, root-to-tip distance, clock-deviation\n")
         for n in myTree.tree.get_terminals():
             if hasattr(n, "raw_date_constraint") and (n.raw_date_constraint is not None):
+                clock_deviation = d2d.clock_deviation(np.mean(n.raw_date_constraint), n.dist2root)
                 if np.isscalar(n.raw_date_constraint):
                     tmp_str = str(n.raw_date_constraint)
                 elif len(n.raw_date_constraint):
                     tmp_str = str(n.raw_date_constraint[0])+'-'+str(n.raw_date_constraint[1])
                 else:
                     tmp_str = ''
-                ofile.write("%s, %s, %f\n"%(n.name, tmp_str, n.dist2root))
+                ofile.write("%s, %s, %f, %f\n"%(n.name, tmp_str, n.dist2root, clock_deviation))
             else:
-                ofile.write("%s, %f, %f\n"%(n.name, d2d.numdate_from_dist2root(n.dist2root), n.dist2root))
+                ofile.write("%s, %f, %f, %f\n"%(n.name, d2d.numdate_from_dist2root(n.dist2root), n.dist2root, clock_deviation))
         for n in myTree.tree.get_nonterminals(order='preorder'):
-            ofile.write("%s, %f, %f\n"%(n.name, d2d.numdate_from_dist2root(n.dist2root), n.dist2root))
+            ofile.write("%s, %f, %f, 0.0\n"%(n.name, d2d.numdate_from_dist2root(n.dist2root), n.dist2root))
         print("--- wrote dates and root-to-tip distances to \n\t%s\n"%table_fname)
 
 
