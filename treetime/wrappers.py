@@ -248,8 +248,8 @@ def print_save_plot_skyline(tt, n_std=2.0, screen=True, save='', plot=''):
     if screen: print('\t'+header1+'\t'+header2)
     if save: fh.write("#"+ header1+'#'+header2+'\n')
     for (x,y, y1, y2) in zip(skyline.x, skyline.y, conf[0], conf[1]):
-        if screen: print("\t%1.1f\t%1.1f\t%1.1f\t%1.1f"%(x,y, y1, y2))
-        if save: fh.write("%1.1f\t%1.1f\t%1.1f\t%1.1f\n"%(x,y, y1, y2))
+        if screen: print("\t%1.3f\t%1.3e\t%1.3e\t%1.3e"%(x,y, y1, y2))
+        if save: fh.write("%1.3f\t%1.3e\t%1.3e\t%1.3e\n"%(x,y, y1, y2))
 
     if save:
         print("\n --- written skyline to %s\n"%save)
