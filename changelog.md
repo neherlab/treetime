@@ -1,3 +1,13 @@
+# 0.8.2 -- bug fixes and small feature additions
+This release fixes a few bugs and adds a few features
+
+ * output statistics of different iterations of the treetime optimization loop (trace-log, thanks to @ktmeaton)
+ * speed ups by @akislyuk
+ * fix errors with dates in the distant future
+ * better precision of tablular skyline output
+ * adds clock-deviation to the root-to-tip output of the `clock` command
+
+
 # 0.8.1 -- bug fixe amino acid profile map.
 
 # 0.8.0 -- drop python 2.7 support, bug fixes.
