@@ -26,7 +26,7 @@ setup(
         url = "https://github.com/neherlab/treetime",
         packages=['treetime'],
         install_requires = [
-            'biopython>=1.66,<=1.76',
+            'biopython>=1.67,!=1.77,!=1.78',
             'numpy>=1.10.4',
             'pandas>=0.17.1',
             'scipy>=0.16.1'
