@@ -1,3 +1,7 @@
+# 0.8.3 -- unpin biopython version
+
+ * Biopython 1.77 and 1.78 had a bug in their nexus export. This is fixed in 1.79. We now explictly exclude the buggy versions but allow others.
+
 # 0.8.2 -- bug fixes and small feature additions
 This release fixes a few bugs and adds a few features
 
