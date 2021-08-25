@@ -332,7 +332,7 @@ class SequenceData(object):
         for pi in variable_positions:
             if self.is_sparse:
                 pattern = np.array([self.aln[k][pi] if pi in self.aln[k] else self.ref[pi]
-                           for k in self.sequence_names], dtype='S')
+                           for k in self.sequence_names])
             else:
                 # pylint: disable=unsubscriptable-object
                 pattern = np.copy(aln_transpose[pi])

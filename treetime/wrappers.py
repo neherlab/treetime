@@ -785,17 +785,14 @@ def reconstruct_discrete_traits(tree, traits, missing_data='?', pc=1.0, sampling
     ###########################################################################
     ### set up treeanc
     ###########################################################################
-    treeanc = TreeAnc(tree, gtr=mugration_GTR, verbose=verbose,
+    treeanc = TreeAnc(tree, gtr=mugration_GTR, verbose=verbose, ref='A',
                       convert_upper=False, one_mutation=0.001)
     treeanc.use_mutation_length = False
-    pseudo_seqs = [SeqRecord(id=n.name,name=n.name,
-                   seq=Seq(reverse_alphabet[traits[n.name]]
-                           if n.name in traits else missing_char))
-                   for n in treeanc.tree.get_terminals()]
-    valid_seq = np.array([str(s.seq)!=missing_char for s in pseudo_seqs])
+    pseudo_seqs = {n.name: {0:reverse_alphabet[traits[n.name]] if n.name in traits else missing_char}
+                   for n in treeanc.tree.get_terminals()}
+    valid_seq = np.array([s[0]!=missing_char for s in pseudo_seqs.values()])
     print("Assigned discrete traits to %d out of %d taxa.\n"%(np.sum(valid_seq),len(valid_seq)))
-    treeanc.aln = MultipleSeqAlignment(pseudo_seqs)
-
+    treeanc.aln = pseudo_seqs
     try:
         ndiff = treeanc.infer_ancestral_sequences(method='ml', infer_gtr=True,
             store_compressed=False, pc=pc, marginal=True, normalized_rate=False,
