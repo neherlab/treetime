@@ -1,3 +1,5 @@
+# 0.8.4 -- re-release of 0.8.3.1
+
 # 0.8.3.1 -- bug fix related to Bio.Seq.Seq now bytearray
 
  * Biopython changed the representation of sequences from strings to bytearrays. This caused crashes of mugration inference with more than 62 states as states than exceeded the ascii range. This fix now bypasses Bio.Seq in the mugration analysis.
