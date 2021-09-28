@@ -982,8 +982,9 @@ def plot_vs_years(tt, step = None, ax=None, confidence=None, ticks=True, **kwarg
             raise NotReadyError("confidence needs to be either a float (for max posterior region) or a two numbers specifying lower and upper bounds")
 
         for n in tt.tree.find_clades():
-            pos = cfunc(n, confidence)
-            ax.plot(pos-offset, np.ones(len(pos))*n.ypos, lw=3, c=(0.5,0.5,0.5))
+            if not n.bad_branch:
+                pos = cfunc(n, confidence)
+                ax.plot(pos-offset, np.ones(len(pos))*n.ypos, lw=3, c=(0.5,0.5,0.5))
     return fig, ax
 
 def treetime_to_newick(tt, outf):
