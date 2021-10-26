@@ -24,7 +24,7 @@ Marginal distributions of ancestral states
 If the additional flag ``--confidence`` is added to the command, TreeTime will output a file with the inferred probability of finding an internal node in a particular discrete state.
 A typical output would be
 
-.. code-block::
+.. code-block:: bash
 
    #name     american_samoa  brazil  china   colombia ...
    NODE_00   0.0001          0.0003  0.0002  0        ...
@@ -41,7 +41,7 @@ This results in an underestimate of the transition rates and consequently over-c
 To some extend, this effect can be mitigated in an ad-hoc fashion by manually increasing the transition rate.
 The `mugration` command provides a flag to specify the factor, by which the mugration rate is expected to be underestimated:
 
-.. code-block::
+.. code-block:: bash
 
 	--sampling-bias-correction <float>
 

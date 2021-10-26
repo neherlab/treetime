@@ -12,7 +12,7 @@ On the command-line, ancestral reconstruction can be done via the command
 
 This command will save a number of files into the directory `ancestral_results` and generate the output
 
-.. code-block::
+.. code-block:: bash
 
    Inferred GTR model:
    Substitution rate (mu): 1.0

@@ -18,7 +18,7 @@ This command will reconstruct ancestral sequences and count how many time a part
 
 The basic output looks like this:
 
-.. code-block::
+.. code-block:: bash
 
    The TOTAL tree length is 6.617e-02 and 674 mutations were observed.
    Of these 674 mutations,
@@ -31,7 +31,7 @@ This block reports how many times specific mutations, e.g. ``G27A``\ , were obse
 The next output block summarizes how often sites in the sequence are hit by mutations.
 This can be compared to a null expectation that mutations are uniformly and independently distributed along the sequence according to a Poisson distribution with the same number of mutations.
 
-.. code-block::
+.. code-block:: bash
 
    Of the 10807 positions in the genome,
       - 10175 were hit 0 times (expected 10153.59)
@@ -46,7 +46,7 @@ Nonetheless, this can be a useful comparison.
 Lastly, there is a block that highlights mutations that are most homoplasic.
 By default, ``treetime homoplasy`` will list the first 10 mutations -- this behavior can be adjusted using the option ``-n``.
 
-.. code-block::
+.. code-block:: bash
 
    The ten most homoplasic mutations are:
      mut multiplicity
@@ -67,7 +67,7 @@ Additional output
 ``treetime homoplasy`` can be run with the flag ``--detailed`` which will print additional statistics, mostly concerning terminal branches.
 The first extra outputs are on the mutation statistics on terminal branch in analogy to the statistics for the total tree above.
 
-.. code-block::
+.. code-block:: bash
 
    The TERMINAL branch length is 3.962e-02 and 408 mutations were observed.
    Of these 408 mutations,
@@ -86,7 +86,7 @@ The first extra outputs are on the mutation statistics on terminal branch in ana
 Lastly, the script outputs a list of sequences that have many mutations on the terminal branches leading up to them that also occur elsewhere in the tree.
 This is can often be a sign of contamination or other problematic sequence.
 
-.. code-block::
+.. code-block:: bash
 
    Taxons that carry positions that mutated elsewhere in the tree:
      taxon name  #of homoplasic mutations
