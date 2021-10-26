@@ -23,7 +23,7 @@ GTR class documentation
 Sequence manipulation
 ---------------------
 
-.. automethod:: treetime.GTR.compress_sequence_pair
+.. automethod:: treetime.GTR.state_pair
 
 Distance and probability computations
 -------------------------------------

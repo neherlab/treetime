@@ -70,7 +70,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'TreeTime'
-copyright = u'2017-2019, Pavel Sagulenko and Richard Neher'
+copyright = u'2017-2021, Pavel Sagulenko and Richard Neher'
 author = u'Pavel Sagulenko and Richard Neher'
 
 # The version info for the project you're documenting, acts as replacement for

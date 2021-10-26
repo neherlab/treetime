@@ -11,7 +11,7 @@ This functionality is implemented as subcommand ``clock``\ :
 
 This command will print the following output:
 
-.. code-block::
+.. code-block:: bash
 
    Root-Tip-Regression:
    --rate:  2.826e-03
@@ -63,7 +63,7 @@ However, these root-to-tip distances are correlated due to shared ancestry no va
 This covariation can be efficiently accounted if the sequence data set is consistent with a simple strict molecular clock model, but can give misleading results when the molecular clock model is violated.
 This feature is hence off by default and can be switched on using the flag
 
-.. code-block::
+.. code-block:: bash
 
    --covariation
 
