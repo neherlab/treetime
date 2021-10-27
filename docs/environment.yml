@@ -1,0 +1,18 @@
+name: docs
+channels:
+  - defaults
+dependencies:
+  - make
+  - sphinx
+  - pip
+  - pip:
+    - biopython>=1.67,!=1.77,!=1.78
+    - numpy>=1.10.4
+    - pandas>=0.17.1
+    - scipy>=0.16.1
+    - recommonmark>=0.5.0
+    - sphinx-argparse>=0.2.5
+    - sphinx-autobuild
+    - sphinx-markdown-tables
+    - sphinx-rtd-theme
+    - sphinx-tabs
