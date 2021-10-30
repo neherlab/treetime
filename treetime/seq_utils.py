@@ -189,8 +189,11 @@ def seq2array(seq, word_length=1, convert_upper=False, fill_overhangs=False, amb
     # substitute overhanging unsequenced tails
     if fill_overhangs:
         gaps = np.where(seq_array != '-')[0]
-        seq_array[:gaps[0]] = ambiguous
-        seq_array[gaps[-1]+1:] = ambiguous
+        if len(gaps):
+            seq_array[:gaps[0]] = ambiguous
+            seq_array[gaps[-1]+1:] = ambiguous
+        else:
+            seq_array[:] = ambiguous
 
     return seq_array
 
