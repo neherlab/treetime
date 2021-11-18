@@ -1,3 +1,9 @@
+# 0.8.5
+ * bug fixes related to edge cases were sequences consist only of missing data
+ * bug fix when the CLI command `treetime` is run without alignment
+ * more robust behavior when parsing biopython alignments (id vs name of sequence records)
+ * drop python 3.5 support
+
 # 0.8.4 -- re-release of 0.8.3.1
 
 # 0.8.3.1 -- bug fix related to Bio.Seq.Seq now bytearray
