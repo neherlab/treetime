@@ -824,7 +824,7 @@ class TreeTime(ClockTree):
             'Sample'     : niter,
             'ndiff'      : ndiff,
             'n_resolved' : n_resolved,
-            'seq_mode'   : 'marginal' if sequence_marginal else 'joint',
+            'seq_mode'   : ('marginal' if sequence_marginal else 'joint') if self.aln else 'no sequences given',
             'seq_LH'     : (self.tree.sequence_marginal_LH if sequence_marginal else self.tree.sequence_joint_LH) if self.aln else 0,
             'pos_mode'   : 'marginal' if time_marginal else 'joint',
             'pos_LH'     : self.tree.positional_marginal_LH if time_marginal else self.tree.positional_joint_LH,
