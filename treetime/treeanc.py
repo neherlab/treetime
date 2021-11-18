@@ -360,7 +360,7 @@ class TreeAnc(object):
         in the alignment and assign this sequence as a character array
         '''
         if len(self.tree.get_terminals()) != len(self.data.aln):
-            self.logger("**WARNING: Number of tips in tree differs from number of sequences in alignment!**", 3, warn=True)
+            self.logger(f"**WARNING: Number of tips in tree ({len(self.tree.get_terminals())}) differs from number of sequences in alignment ({len(self.data.aln)})**", 3, warn=True)
         failed_leaves= 0
 
         # loop over leaves and assign multiplicities of leaves (e.g. number of identical reads)
