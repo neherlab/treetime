@@ -161,9 +161,20 @@ class SequenceData(object):
 
         if type(in_aln) is MultipleSeqAlignment:
             # check whether the alignment is consistent with a nucleotide alignment.
-            self._aln = {s.name: seq2array(s, convert_upper=self.convert_upper,
-                                           fill_overhangs=self.fill_overhangs, ambiguous=self.ambiguous)
-                         for s in in_aln}
+            self._aln = {}
+            for s in in_aln:
+                if s.id==s.name:
+                    tmp_name  = s.id
+                elif '<unknown' in s.id:  # use s.name if id is BioPython default (previous behavior)
+                    tmp_name = s.name
+                elif '<unknown' in s.name:  # use s.id if s.name is BioPython default (change relative to previous, but what we want)
+                    tmp_name = s.id
+                else:
+                    tmp_name = s.name  # otherwise use s.name (previous behavior)
+
+                self._aln[tmp_name] = seq2array(s, convert_upper=self.convert_upper,
+                                               fill_overhangs=self.fill_overhangs, ambiguous=self.ambiguous)
+
             self.check_alphabet(list(self._aln.values()))
             self.is_sparse = False
             self.logger("SequenceData: loaded alignment.",1)
