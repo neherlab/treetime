@@ -917,7 +917,7 @@ class TreeAnc(object):
             # get the best state of the current node
             # and compute the likelihood of this state
             # preallocate storage
-            node.joint_Lx = np.zeros((L, n_states), dtype=np.float32) # likelihood array
+            node.joint_Lx = np.zeros((L, n_states)) # likelihood array
             node.joint_Cx = np.zeros((L, n_states), dtype=np.uint16)  # max LH indices
             for char_i, char in enumerate(self.gtr.alphabet):
                 # Pij(i) * L_ch(i) for given parent state j
