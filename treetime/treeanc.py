@@ -56,7 +56,7 @@ class TreeAnc(object):
     def __init__(self, tree=None, aln=None, gtr=None, fill_overhangs=True,
                 ref=None, verbose = ttconf.VERBOSE, ignore_gaps=True,
                 convert_upper=True, seq_multiplicity=None, log=None,
-                 compress=True, seq_len=None,
+                 compress=True, seq_len=None, ignore_missing_alns=False,
                 **kwargs):
         """
         TreeAnc constructor. It prepares the tree, attaches sequences to the leaf nodes,
@@ -109,6 +109,8 @@ class TreeAnc(object):
             length of the sequence. this is inferred from the input alignment or the reference
             sequence in most cases but can be specified for other applications.
 
+        ignore_missing_alns : bool, default False
+
         **kwargs
            Keyword arguments to construct the GTR model
 
@@ -139,6 +141,7 @@ class TreeAnc(object):
         self.ignore_gaps = ignore_gaps
         self.reconstructed_tip_sequences = False
         self.sequence_reconstruction = None
+        self.ignore_missing_alns = ignore_missing_alns
 
         self._tree = None
         self.tree = tree
@@ -376,7 +379,7 @@ class TreeAnc(object):
             if l.name not in self.data.compressed_alignment and l.is_terminal():
                 self.logger("***WARNING: TreeAnc._attach_sequences_to_nodes: NO SEQUENCE FOR LEAF: %s" % l.name, 0, warn=True)
                 failed_leaves += 1
-                if failed_leaves > self.tree.count_terminals()/3:
+                if not self.ignore_missing_alns and failed_leaves > self.tree.count_terminals()/3:
                     raise MissingDataError("TreeAnc._check_alignment_tree_gtr_consistency: At least 30\\% terminal nodes cannot be assigned a sequence!\n"
                                            "Are you sure the alignment belongs to the tree?")
             else: # could not assign sequence for internal node - is OK
