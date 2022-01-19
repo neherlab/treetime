@@ -78,22 +78,22 @@ class TreeAnc(object):
            GTR model object. If string passed, it is interpreted as the type of
            the GTR model. A new GTR instance will be created for this type.
 
-        fill_overhangs : bool
+        fill_overhangs : bool, default True
            In some cases, the missing data on both ends of the alignment is
            filled with the gap sign('-'). If set to True, the end-gaps are converted to "unknown"
            characters ('N' for nucleotides, 'X' for aminoacids). Otherwise, the alignment is treated as-is
 
         ref : None, optional
-            Reference sequence used in VCF mode
+           Reference sequence used in VCF mode
 
-        verbose : int
+        verbose : int, default 3
            Verbosity level as number from 0 (lowest) to 10 (highest).
 
-        ignore_gaps : bool
+        ignore_gaps : bool, default True
            Ignore gaps in branch length calculations
 
-        convert_upper : bool, optional
-            Description
+        convert_upper : bool, default True
+           Convert all sequences to upper case
 
         seq_multiplicity : dict
            If individual nodes in the tree correspond to multiple sampled sequences
@@ -101,7 +101,7 @@ class TreeAnc(object):
            specified as a dictionary. This currently only affects rooting and
            can be used to weigh individual tips by abundance or important during root search.
 
-        compress : bool, optional
+        compress : bool, default True
             reduce identical alignment columns to one (not useful when
             inferring site specific GTR models).
 
@@ -335,7 +335,7 @@ class TreeAnc(object):
         Returns
         -------
         float
-            inverse of the uncompressed sequene length - length scale for short branches
+            inverse of the uncompressed sequence length - length scale for short branches
         """
         return 1.0/self.data.full_length if self.data.full_length else np.nan
 
