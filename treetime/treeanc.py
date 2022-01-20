@@ -906,12 +906,19 @@ class TreeAnc(object):
                 # this is prod_ch L_x(i)
                 msg_from_children = np.sum(np.stack([c.joint_Lx for c in node.clades], axis=0), axis=0)
 
+                if not debug:
+                    # Now that we have calculated the current node's likelihood
+                    # from its children, clean up likelihood matrices attached
+                    # to children to save memory.
+                    for c in node.clades:
+                        del c.joint_Lx
+
             # for every possible state of the parent node,
             # get the best state of the current node
             # and compute the likelihood of this state
             # preallocate storage
-            node.joint_Lx = np.zeros((L, n_states))             # likelihood array
-            node.joint_Cx = np.zeros((L, n_states), dtype=int)  # max LH indices
+            node.joint_Lx = np.zeros((L, n_states)) # likelihood array
+            node.joint_Cx = np.zeros((L, n_states), dtype=np.uint16)  # max LH indices
             for char_i, char in enumerate(self.gtr.alphabet):
                 # Pij(i) * L_ch(i) for given parent state j
                 msg_to_parent = (log_transitions[:,char_i].T + msg_from_children)
@@ -973,7 +980,10 @@ class TreeAnc(object):
         # do clean-up
         if not debug:
             for node in self.tree.find_clades(order='preorder'):
-                del node.joint_Lx
+                # Check for the likelihood matrix, since we might have cleaned
+                # it up earlier.
+                if hasattr(node, "joint_Lx"):
+                    del node.joint_Lx
                 del node.joint_Cx
                 if hasattr(node, 'seq_idx'):
                     del node.seq_idx
