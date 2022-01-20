@@ -56,7 +56,7 @@ class TreeAnc(object):
     def __init__(self, tree=None, aln=None, gtr=None, fill_overhangs=True,
                 ref=None, verbose = ttconf.VERBOSE, ignore_gaps=True,
                 convert_upper=True, seq_multiplicity=None, log=None,
-                 compress=True, seq_len=None,
+                 compress=True, seq_len=None, ignore_missing_alns=False,
                 **kwargs):
         """
         TreeAnc constructor. It prepares the tree, attaches sequences to the leaf nodes,
@@ -78,22 +78,22 @@ class TreeAnc(object):
            GTR model object. If string passed, it is interpreted as the type of
            the GTR model. A new GTR instance will be created for this type.
 
-        fill_overhangs : bool
+        fill_overhangs : bool, default True
            In some cases, the missing data on both ends of the alignment is
            filled with the gap sign('-'). If set to True, the end-gaps are converted to "unknown"
            characters ('N' for nucleotides, 'X' for aminoacids). Otherwise, the alignment is treated as-is
 
         ref : None, optional
-            Reference sequence used in VCF mode
+           Reference sequence used in VCF mode
 
-        verbose : int
+        verbose : int, default 3
            Verbosity level as number from 0 (lowest) to 10 (highest).
 
-        ignore_gaps : bool
+        ignore_gaps : bool, default True
            Ignore gaps in branch length calculations
 
-        convert_upper : bool, optional
-            Description
+        convert_upper : bool, default True
+           Convert all sequences to upper case
 
         seq_multiplicity : dict
            If individual nodes in the tree correspond to multiple sampled sequences
@@ -101,13 +101,15 @@ class TreeAnc(object):
            specified as a dictionary. This currently only affects rooting and
            can be used to weigh individual tips by abundance or important during root search.
 
-        compress : bool, optional
+        compress : bool, default True
             reduce identical alignment columns to one (not useful when
             inferring site specific GTR models).
 
         seq_len : int, optional
             length of the sequence. this is inferred from the input alignment or the reference
             sequence in most cases but can be specified for other applications.
+
+        ignore_missing_alns : bool, default False
 
         **kwargs
            Keyword arguments to construct the GTR model
@@ -139,6 +141,7 @@ class TreeAnc(object):
         self.ignore_gaps = ignore_gaps
         self.reconstructed_tip_sequences = False
         self.sequence_reconstruction = None
+        self.ignore_missing_alns = ignore_missing_alns
 
         self._tree = None
         self.tree = tree
@@ -335,7 +338,7 @@ class TreeAnc(object):
         Returns
         -------
         float
-            inverse of the uncompressed sequene length - length scale for short branches
+            inverse of the uncompressed sequence length - length scale for short branches
         """
         return 1.0/self.data.full_length if self.data.full_length else np.nan
 
@@ -376,7 +379,7 @@ class TreeAnc(object):
             if l.name not in self.data.compressed_alignment and l.is_terminal():
                 self.logger("***WARNING: TreeAnc._attach_sequences_to_nodes: NO SEQUENCE FOR LEAF: %s" % l.name, 0, warn=True)
                 failed_leaves += 1
-                if failed_leaves > self.tree.count_terminals()/3:
+                if not self.ignore_missing_alns and failed_leaves > self.tree.count_terminals()/3:
                     raise MissingDataError("TreeAnc._check_alignment_tree_gtr_consistency: At least 30\\% terminal nodes cannot be assigned a sequence!\n"
                                            "Are you sure the alignment belongs to the tree?")
             else: # could not assign sequence for internal node - is OK
