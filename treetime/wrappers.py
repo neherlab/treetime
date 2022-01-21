@@ -8,12 +8,12 @@ from Bio.Seq import Seq
 from Bio.Align import MultipleSeqAlignment
 from Bio import Phylo, AlignIO
 from Bio import __version__ as bioversion
-from treetime import TreeAnc, GTR, TreeTime
-from treetime import config as ttconf
-from treetime import utils
+from . import TreeAnc, GTR, TreeTime
+from . import config as ttconf
+from . import utils
 from .vcf_utils import read_vcf, write_vcf
 from .seq_utils import alphabets
-from treetime import TreeTimeError, MissingDataError
+from . import TreeTimeError, MissingDataError
 
 def assure_tree(params, tmp_dir='treetime_tmp'):
     """
@@ -74,7 +74,7 @@ def get_outdir(params, suffix='_treetime'):
             if os.path.isdir(params.outdir):
                 return params.outdir.rstrip('/') + '/'
             else:
-                print("designated output location %s is not a directory"%params.outdir, file=stderr)
+                print("designated output location %s is not a directory"%params.outdir, file=sys.stderr)
         else:
             os.makedirs(params.outdir)
             return params.outdir.rstrip('/') + '/'
@@ -248,8 +248,8 @@ def print_save_plot_skyline(tt, n_std=2.0, screen=True, save='', plot=''):
     if screen: print('\t'+header1+'\t'+header2)
     if save: fh.write("#"+ header1+'#'+header2+'\n')
     for (x,y, y1, y2) in zip(skyline.x, skyline.y, conf[0], conf[1]):
-        if screen: print("\t%1.1f\t%1.1f\t%1.1f\t%1.1f"%(x,y, y1, y2))
-        if save: fh.write("%1.1f\t%1.1f\t%1.1f\t%1.1f\n"%(x,y, y1, y2))
+        if screen: print("\t%1.3f\t%1.3e\t%1.3e\t%1.3e"%(x,y, y1, y2))
+        if save: fh.write("%1.3f\t%1.3e\t%1.3e\t%1.3e\n"%(x,y, y1, y2))
 
     if save:
         print("\n --- written skyline to %s\n"%save)
@@ -397,7 +397,7 @@ def scan_homoplasies(params):
 
 
     # compare that distribution to a Poisson distribution with the same mean
-    p = poisson.pmf(np.arange(10*multiplicities_positions.max()),1.0*total_mutations/L)
+    p = poisson.pmf(np.arange(3*len(multiplicities_positions)),1.0*total_mutations/L)
     print("\nlog-likelihood difference to Poisson distribution with same mean: %1.3e"%(
             - L*np.sum(p*np.log(p+1e-100))
             + np.sum(multiplicities_positions*np.log(p[:len(multiplicities_positions)]+1e-100))))
@@ -563,7 +563,8 @@ def timetree(params):
                branch_length_mode = branch_length_mode,
                reconstruct_tip_states=params.reconstruct_tip_states,
                fixed_pi=fixed_pi,
-               use_covariation = params.covariation, n_points=params.n_skyline)
+               use_covariation = params.covariation, n_points=params.n_skyline,
+               tracelog_file=os.path.join(outdir, "trace_run.log"))
     except TreeTimeError as e:
         print("\nTreeTime run FAILED: please check above for errors and/or rerun with --verbose 4.\n")
         raise e
@@ -784,17 +785,14 @@ def reconstruct_discrete_traits(tree, traits, missing_data='?', pc=1.0, sampling
     ###########################################################################
     ### set up treeanc
     ###########################################################################
-    treeanc = TreeAnc(tree, gtr=mugration_GTR, verbose=verbose,
+    treeanc = TreeAnc(tree, gtr=mugration_GTR, verbose=verbose, ref='A',
                       convert_upper=False, one_mutation=0.001)
     treeanc.use_mutation_length = False
-    pseudo_seqs = [SeqRecord(id=n.name,name=n.name,
-                   seq=Seq(reverse_alphabet[traits[n.name]]
-                           if n.name in traits else missing_char))
-                   for n in treeanc.tree.get_terminals()]
-    valid_seq = np.array([str(s.seq)!=missing_char for s in pseudo_seqs])
+    pseudo_seqs = {n.name: {0:reverse_alphabet[traits[n.name]] if n.name in traits else missing_char}
+                   for n in treeanc.tree.get_terminals()}
+    valid_seq = np.array([s[0]!=missing_char for s in pseudo_seqs.values()])
     print("Assigned discrete traits to %d out of %d taxa.\n"%(np.sum(valid_seq),len(valid_seq)))
-    treeanc.aln = MultipleSeqAlignment(pseudo_seqs)
-
+    treeanc.aln = pseudo_seqs
     try:
         ndiff = treeanc.infer_ancestral_sequences(method='ml', infer_gtr=True,
             store_compressed=False, pc=pc, marginal=True, normalized_rate=False,
@@ -1009,21 +1007,22 @@ def estimate_clock_model(params):
 
     table_fname = basename+'rtt.csv'
     with open(table_fname, 'w', encoding='utf-8') as ofile:
-        ofile.write("#name, date, root-to-tip distance\n")
         ofile.write("#Dates of nodes that didn't have a specified date are inferred from the root-to-tip regression.\n")
+        ofile.write("name, date, root-to-tip distance, clock-deviation\n")
         for n in myTree.tree.get_terminals():
             if hasattr(n, "raw_date_constraint") and (n.raw_date_constraint is not None):
+                clock_deviation = d2d.clock_deviation(np.mean(n.raw_date_constraint), n.dist2root)
                 if np.isscalar(n.raw_date_constraint):
                     tmp_str = str(n.raw_date_constraint)
                 elif len(n.raw_date_constraint):
                     tmp_str = str(n.raw_date_constraint[0])+'-'+str(n.raw_date_constraint[1])
                 else:
                     tmp_str = ''
-                ofile.write("%s, %s, %f\n"%(n.name, tmp_str, n.dist2root))
+                ofile.write("%s, %s, %f, %f\n"%(n.name, tmp_str, n.dist2root, clock_deviation))
             else:
-                ofile.write("%s, %f, %f\n"%(n.name, d2d.numdate_from_dist2root(n.dist2root), n.dist2root))
+                ofile.write("%s, %f, %f, %f\n"%(n.name, d2d.numdate_from_dist2root(n.dist2root), n.dist2root, clock_deviation))
         for n in myTree.tree.get_nonterminals(order='preorder'):
-            ofile.write("%s, %f, %f\n"%(n.name, d2d.numdate_from_dist2root(n.dist2root), n.dist2root))
+            ofile.write("%s, %f, %f, 0.0\n"%(n.name, d2d.numdate_from_dist2root(n.dist2root), n.dist2root))
         print("--- wrote dates and root-to-tip distances to \n\t%s\n"%table_fname)
 
 

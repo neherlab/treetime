@@ -1,6 +1,36 @@
+# 0.8.5
+ * bug fixes related to edge cases were sequences consist only of missing data
+ * bug fix when the CLI command `treetime` is run without alignment
+ * more robust behavior when parsing biopython alignments (id vs name of sequence records)
+ * drop python 3.5 support
+
+# 0.8.4 -- re-release of 0.8.3.1
+
+# 0.8.3.1 -- bug fix related to Bio.Seq.Seq now bytearray
+
+ * Biopython changed the representation of sequences from strings to bytearrays. This caused crashes of mugration inference with more than 62 states as states than exceeded the ascii range. This fix now bypasses Bio.Seq in the mugration analysis.
+
+# 0.8.3 -- unpin biopython version
+
+ * Biopython 1.77 and 1.78 had a bug in their nexus export. This is fixed in 1.79. We now explictly exclude the buggy versions but allow others.
+
+# 0.8.2 -- bug fixes and small feature additions
+This release fixes a few bugs and adds a few features
+
+ * output statistics of different iterations of the treetime optimization loop (trace-log, thanks to @ktmeaton)
+ * speed ups by @akislyuk
+ * fix errors with dates in the distant future
+ * better precision of tablular skyline output
+ * adds clock-deviation to the root-to-tip output of the `clock` command
+
+
+# 0.8.1 -- bug fixe amino acid profile map.
+
+# 0.8.0 -- drop python 2.7 support, bug fixes.
+
 # 0.7.6 -- catch of distributions are too short for calculating confidence intervals.
 
-# 0.7.5 -- fix desync of peak from grid of distributions after pruning 
+# 0.7.5 -- fix desync of peak from grid of distributions after pruning
 
 # 0.7.4 -- bug fix in reconstruct discrete trait routine
 

@@ -5,6 +5,10 @@
  .Trash-*
 
 
+#vscode
+.vscode/
+
+
 #VIM backup and swap
 [a-w][a-z]
 [._]s[a-w][a-z]

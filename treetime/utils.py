@@ -7,7 +7,7 @@ from scipy.interpolate import interp1d
 from scipy.integrate import quad
 from scipy import stats
 from scipy.ndimage import binary_dilation
-from treetime import TreeTimeError
+from . import TreeTimeError
 
 class DateConversion(object):
     """
@@ -114,6 +114,14 @@ class DateConversion(object):
         return (d2r-self.intercept)/self.clock_rate
 
 
+    def clock_deviation(self, numdate, d2r):
+        """
+        calculate the deviatio of the
+        """
+        return (self.numdate_from_dist2root(d2r) - numdate)*self.clock_rate
+
+
+
 def min_interp(interp_object):
     """
     Find the global minimum of a function represented as an interpolation object.
@@ -201,9 +209,9 @@ def datestring_from_numeric(numdate):
     str
         date string YYYY-MM-DD
     """
-    if numdate>1900: # python datetime doesn't work for dates before 1900. This can be relaxed to numdate>1 once we drop python 2.7
+    try:
         return datetime.datetime.strftime(datetime_from_numeric(numdate), "%Y-%m-%d")
-    else:
+    except:
         year = int(np.floor(numdate))
         dt = datetime_from_numeric(1900+(numdate%1))
         return "%04d-%02d-%02d"%(year, dt.month, dt.day)
@@ -393,9 +401,11 @@ def tree_layout(tree):
 
 
 def tree_inference(aln_fname, tree_fname, tmp_dir=None,
-                   methods = ['iqtree', 'fasttree', 'raxml'], **kwargs):
+                   methods = None, **kwargs):
     import os,shutil
     from Bio import Phylo
+    if methods is None:
+        methods = ['iqtree', 'fasttree', 'raxml']
     if not os.path.isfile(aln_fname):
         print("alignment file does not exist")
 
@@ -505,6 +515,11 @@ def build_newick_iqtree(aln_fname, nthreads=2, iqtree_bin="iqtree",
         n.name = tmp
     return T
 
+def clip(a, min_val, max_val):
+    return np.maximum(min_val, np.minimum(a, max_val))
+
 if __name__ == '__main__':
     pass
+
+
 

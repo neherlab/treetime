@@ -1,7 +1,7 @@
 from __future__ import print_function, division, absolute_import
 import numpy as np
-from treetime import config as ttconf
-from treetime import MissingDataError
+from . import config as ttconf
+from . import MissingDataError
 from .treeanc import TreeAnc
 from .utils import numeric_date, DateConversion, datestring_from_numeric
 from .distribution import Distribution
@@ -23,8 +23,8 @@ class ClockTree(TreeAnc):
     is converted to the most likely time of the internal nodes.
     """
 
-    def __init__(self,  dates=None, debug=False, real_dates=True, precision='auto',
-                 branch_length_mode='joint', use_covariation=False, use_fft=True, *args, **kwargs):
+    def __init__(self, *args, dates=None, debug=False, real_dates=True, precision='auto',
+                 branch_length_mode='joint', use_covariation=False, use_fft=True,**kwargs):
 
         """
         ClockTree constructor
@@ -39,7 +39,7 @@ class ClockTree(TreeAnc):
             If True, the debug mode is ON, which means no or less clean-up of
             obsolete parameters to control program execution in intermediate
             states. In debug mode, the python debugger is also allowed to interrupt
-            program execution with intercative shell if an error occurs.
+            program execution with interactive shell if an error occurs.
 
          real_dates : bool
             If True, some additional checks for the input dates sanity will be
@@ -664,8 +664,6 @@ class ClockTree(TreeAnc):
 
         if not self.debug:
             _cleanup()
-
-        return
 
 
     def convert_dates(self):

@@ -42,20 +42,6 @@ Basic functions, utilities, properties
 .. automethod:: treetime.TreeAnc.leaves_lookup()
 
 
-Sequence and profile manipulation
----------------------------------
-
-.. automethod:: treetime.TreeAnc.get_mutations
-
-.. automethod:: treetime.TreeAnc.get_reconstructed_alignment
-
-.. automethod:: treetime.TreeAnc.make_reduced_alignment
-
-.. automethod:: treetime.TreeAnc.expanded_sequence
-
-.. automethod:: treetime.TreeAnc.dict_sequence
-
-
 Ancestral reconstruction and tree optimization
 ----------------------------------------------
 
@@ -66,8 +52,6 @@ Ancestral reconstruction and tree optimization
 .. automethod:: treetime.TreeAnc.optimize_tree
 
 .. automethod:: treetime.TreeAnc.infer_gtr
-
-.. automethod:: treetime.TreeAnc.get_reconstructed_alignment
 
 .. automethod:: treetime.TreeAnc.get_tree_dict
 

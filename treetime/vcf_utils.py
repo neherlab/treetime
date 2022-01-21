@@ -1,3 +1,4 @@
+import gzip
 import numpy as np
 from collections import defaultdict
 from textwrap import fill
@@ -133,7 +134,7 @@ def read_vcf(vcf_file, ref_file=None):
 
 
     #Parses a 'bad' (hetero or no-call) call depending on what it is
-    def parseBadCall(snps, ins, pos, ref, ALT):
+    def parseBadCall(gen, snps, ins, pos, ref, ALT):
         #Deletion
         #   REF     ALT     Seq1    Seq2    Seq3
         #   GCC     G       1/1     0/1     ./.
@@ -231,7 +232,7 @@ def read_vcf(vcf_file, ref_file=None):
                     #If is heterozygote call (0/1) or no call (./.)
                     else:
                         #alt will differ here depending on het or no-call, must pass original
-                        parseBadCall(sequences[seq],insertions[seq], pos, ref, ALT)
+                        parseBadCall(gen, sequences[seq],insertions[seq], pos, ref, ALT)
 
             elif line[0] == '#' and line[1] == 'C':
                 #header line, get all the information

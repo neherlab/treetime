@@ -1,7 +1,7 @@
 from __future__ import division, print_function, absolute_import
 from collections import defaultdict
 import numpy as np
-from treetime import config as ttconf
+from . import config as ttconf
 from .seq_utils import alphabets, profile_maps, alphabet_synonyms
 from .gtr import GTR
 
@@ -476,7 +476,7 @@ class GTR_site_specific(GTR):
             if len(logQt.shape)==2:
                 logP = np.sum(logQt[seq_indices_p, seq_indices_c]*pattern_multiplicity)
             else:
-                logP = np.sum(logQt[seq_indices_p, seq_indices_c, np.arange(len(seq_c))]*pattern_multiplicity)
+                logP = np.sum(logQt[seq_indices_p, seq_indices_c, np.arange(len(seq_ch))]*pattern_multiplicity)
 
         return logP if return_log else np.exp(logP)
 

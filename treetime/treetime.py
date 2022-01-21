@@ -2,8 +2,8 @@ from __future__ import print_function, division, absolute_import
 import numpy as np
 from scipy import optimize as sciopt
 from Bio import Phylo
-from treetime import config as ttconf
-from treetime import MissingDataError,UnknownMethodError,NotReadyError
+from . import config as ttconf
+from . import MissingDataError,UnknownMethodError,NotReadyError
 from .utils import tree_layout
 from .clock_tree import ClockTree
 
@@ -37,7 +37,7 @@ class TreeTime(ClockTree):
     def run(self, root=None, infer_gtr=True, relaxed_clock=None, n_iqd = None,
             resolve_polytomies=True, max_iter=0, Tc=None, fixed_clock_rate=None,
             time_marginal=False, sequence_marginal=False, branch_length_mode='auto',
-            vary_rate=False, use_covariation=False, **kwargs):
+            vary_rate=False, use_covariation=False, tracelog_file=None, **kwargs):
 
         """
         Run TreeTime reconstruction. Based on the input parameters, it divides
@@ -61,7 +61,7 @@ class TreeTime(ClockTree):
            If not None, use autocorrelated molecular clock model. Specify the
            clock parameters as :code:`{slack:<slack>, coupling:<coupling>}` dictionary.
 
-        n_iqd : int
+        n_iqd : float
            If not None, filter tree nodes which do not obey the molecular clock
            for the particular tree. The nodes, which deviate more than
            :code:`n_iqd` interquantile intervals from the molecular clock
@@ -126,7 +126,7 @@ class TreeTime(ClockTree):
 
         if (self.tree is None) or (self.aln is None and self.data.full_length is None):
             raise MissingDataError("TreeTime.run: ERROR, alignment or tree are missing")
-        if (self.aln is None):
+        if self.aln is None:
             branch_length_mode='input'
 
         self._set_branch_length_mode(branch_length_mode)
@@ -193,10 +193,18 @@ class TreeTime(ClockTree):
         # time tree to ensure convergence.
         niter = 0
         ndiff = 0
+
+        # Initialize the tracelog dict attribute
+        self.trace_run = []
+        self.trace_run.append(self.tracelog_run(niter=0, ndiff=0, n_resolved=0,
+                                time_marginal = tt_kwargs['time_marginal'],
+                                sequence_marginal = seq_kwargs['marginal_sequences'], Tc=None, tracelog=tracelog_file))
+
         need_new_time_tree=False
         while niter < max_iter:
             self.logger("###TreeTime.run: ITERATION %d out of %d iterations"%(niter+1,max_iter),0)
             # add coalescent prior
+            tmpTc=None
             if Tc:
                 if Tc=='skyline' and niter<max_iter-1:
                     tmpTc='const'
@@ -242,6 +250,12 @@ class TreeTime(ClockTree):
                 self.LH.append([seq_LH, self.tree.positional_marginal_LH, self.tree.coalescent_joint_LH])
             else:
                 self.LH.append([seq_LH, self.tree.positional_joint_LH, self.tree.coalescent_joint_LH])
+
+            # Update the trace log
+            self.trace_run.append(self.tracelog_run(niter=niter+1, ndiff=ndiff, n_resolved=n_resolved,
+                                      time_marginal = tt_kwargs['time_marginal'],
+                                      sequence_marginal = seq_kwargs['marginal_sequences'], Tc=tmpTc, tracelog=tracelog_file))
+
             niter+=1
 
             if ndiff==0 and n_resolved==0 and Tc!='skyline':
@@ -266,6 +280,10 @@ class TreeTime(ClockTree):
             self.logger("###TreeTime.run: FINAL ROUND - confidence estimation via marginal reconstruction", 0)
             tt_kwargs['time_marginal']='assign' if time_marginal in ['always', 'assign'] else True
             self.make_time_tree(**tt_kwargs)
+
+            self.trace_run.append(self.tracelog_run(niter=niter+1, ndiff=0, n_resolved=0,
+                                      time_marginal = tt_kwargs['time_marginal'],
+                                      sequence_marginal = seq_kwargs['marginal_sequences'], Tc=Tc, tracelog=tracelog_file))
 
         # explicitly print out which branches are bad and whose dates don't correspond to the input dates
         bad_branches =[n for n in self.tree.get_terminals()
@@ -317,7 +335,7 @@ class TreeTime(ClockTree):
          reroot : str
             Method to find the best root in the tree (see :py:meth:`treetime.TreeTime.reroot` for options)
 
-         n_iqd : int
+         n_iqd : float
             Number of iqd intervals. The outlier nodes are those which do not fall
             into :math:`IQD\cdot n_iqd` interval (:math:`IQD` is the interval between
             75\ :sup:`th` and 25\ :sup:`th` percentiles)
@@ -787,6 +805,61 @@ class TreeTime(ClockTree):
                     g_up = node.up.branch_length_interpolator.gamma
                 node.branch_length_interpolator.gamma = max(0.1,(coupling*g_up - 0.5*node._k1)/(coupling+node._k2))
 
+    def tracelog_run(self, niter=0, ndiff=0, n_resolved=0, time_marginal=False, sequence_marginal=False, Tc=None, tracelog=None):
+        """
+        Create a dictionary of parameters for the current iteration of the run function.
+
+        Parameters
+        ----------
+        niter : int
+            The current iteration.
+        ndiff : int
+            The number of sequence changes.
+        n_resolved : int
+            The number of polytomy changes
+        time_marginal : bool
+            True if marginal position estimation was requested, else False
+        sequence_marginal : bool
+            True if marginal sequence estimation was requested, else False
+        Tc : float, str
+            The coalescent model that was used for the current iteration.
+        tracelog : str
+            The output file to write the trace log to.
+
+        Returns
+        -------
+        trace_dict : str
+            A dictionary of parameters for the current iteration.
+        """
+
+        # Store the run parameters in a dictionary
+        trace_dict = {
+            'Sample'     : niter,
+            'ndiff'      : ndiff,
+            'n_resolved' : n_resolved,
+            'seq_mode'   : ('marginal' if sequence_marginal else 'joint') if self.aln else 'no sequences given',
+            'seq_LH'     : (self.tree.sequence_marginal_LH if sequence_marginal else self.tree.sequence_joint_LH) if self.aln else 0,
+            'pos_mode'   : 'marginal' if time_marginal else 'joint',
+            'pos_LH'     : self.tree.positional_marginal_LH if time_marginal else self.tree.positional_joint_LH,
+            'coal_mode'  : Tc,
+            'coal_LH'    : self.tree.coalescent_joint_LH,
+        }
+
+        # Write the current iteration to a file
+        if tracelog:
+            # Only on the initial round, write the headers
+            if niter == 0:
+                with open(tracelog, "w") as outfile:
+                    header = "\t".join(trace_dict.keys())
+                    outfile.write(header + "\n")
+            # Write the parameters
+            with open(tracelog, "a") as outfile:
+                params_str = [str(p) for p in trace_dict.values()]
+                params = "\t".join(params_str)
+                outfile.write(params + "\n")
+
+        return trace_dict
+
 ###############################################################################
 ### rerooting
 ###############################################################################
@@ -922,8 +995,9 @@ def plot_vs_years(tt, step = None, ax=None, confidence=None, ticks=True, **kwarg
             raise NotReadyError("confidence needs to be either a float (for max posterior region) or a two numbers specifying lower and upper bounds")
 
         for n in tt.tree.find_clades():
-            pos = cfunc(n, confidence)
-            ax.plot(pos-offset, np.ones(len(pos))*n.ypos, lw=3, c=(0.5,0.5,0.5))
+            if not n.bad_branch:
+                pos = cfunc(n, confidence)
+                ax.plot(pos-offset, np.ones(len(pos))*n.ypos, lw=3, c=(0.5,0.5,0.5))
     return fig, ax
 
 def treetime_to_newick(tt, outf):

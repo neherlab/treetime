@@ -1,11 +1,11 @@
 from __future__ import print_function, division, absolute_import
 import numpy as np
-from treetime import config as ttconf
+from . import config as ttconf
 from .distribution import Distribution
 
 class BranchLenInterpolator (Distribution):
     """
-    Tjis class defines the methods to manipulate the branch length probability
+    This class defines the methods to manipulate the branch length probability
     distributions.
 
     """
@@ -155,6 +155,6 @@ class BranchLenInterpolator (Distribution):
     #     return res
 
     def __mul__(self, other):
-        res = BranchLenInterpolator(super(BranchLenInterpolator, self).__mul__(other))
+        res = BranchLenInterpolator(super(BranchLenInterpolator, self).__mul__(other), gtr=self.gtr)
         return res
 

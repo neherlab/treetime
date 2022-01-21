@@ -26,7 +26,7 @@ setup(
         url = "https://github.com/neherlab/treetime",
         packages=['treetime'],
         install_requires = [
-            'biopython>=1.66',
+            'biopython>=1.67,!=1.77,!=1.78',
             'numpy>=1.10.4',
             'pandas>=0.17.1',
             'scipy>=0.16.1'
@@ -39,9 +39,10 @@ setup(
             "Development Status :: 3 - Alpha",
             "Topic :: Scientific/Engineering :: Bio-Informatics",
             "License :: OSI Approved :: MIT License",
-            "Programming Language :: Python :: 2.7",
             "Programming Language :: Python :: 3.5",
-            "Programming Language :: Python :: 3.6"
+            "Programming Language :: Python :: 3.6",
+            "Programming Language :: Python :: 3.7",
+            "Programming Language :: Python :: 3.8"
             ],
         scripts=['bin/treetime']
     )

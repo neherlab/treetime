@@ -83,7 +83,7 @@ profile_maps = {
     'V': np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0], dtype='float'), #Valine          Val
     'W': np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0], dtype='float'), #Tryptophan      Trp
     'Y': np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0], dtype='float'), #Tyrosine        Tyr
-    '*': np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 0], dtype='float'), #stop
+    '*': np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0], dtype='float'), #stop
     '-': np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1], dtype='float'), #gap
     'X': np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], dtype='float'), #not specified/any
     'B': np.array([0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], dtype='float'), #Asparagine/Aspartic Acid    Asx
@@ -182,15 +182,18 @@ def seq2array(seq, word_length=1, convert_upper=False, fill_overhangs=False, amb
         seq_array = np.array(list(seq_str))
     else:
         if len(seq_str)%word_length:
-            raise ValueError("sequence length has to be multiple of word length");
+            raise ValueError("sequence length has to be multiple of word length")
         seq_array = np.array([seq_str[i*word_length:(i+1)*word_length]
                               for i in range(len(seq_str)/word_length)])
 
     # substitute overhanging unsequenced tails
     if fill_overhangs:
         gaps = np.where(seq_array != '-')[0]
-        seq_array[:gaps[0]] = ambiguous
-        seq_array[gaps[-1]+1:] = ambiguous
+        if len(gaps):
+            seq_array[:gaps[0]] = ambiguous
+            seq_array[gaps[-1]+1:] = ambiguous
+        else:
+            seq_array[:] = ambiguous
 
     return seq_array
 

@@ -1,7 +1,7 @@
 from __future__ import division, print_function, absolute_import
 from collections import defaultdict
 import numpy as np
-from treetime import config as ttconf
+from . import config as ttconf
 from .seq_utils import alphabets, profile_maps, alphabet_synonyms
 
 def avg_transition(W,pi, gap_index=None):
@@ -672,9 +672,8 @@ class GTR(object):
             logP = -ttconf.BIG_NUMBER
         else:
             tmp_eQT = self.expQt(t)
-            bad_indices=(tmp_eQT==0)
-            logQt = np.log(tmp_eQT + ttconf.TINY_NUMBER*(bad_indices))
-            logQt[np.isnan(logQt) | np.isinf(logQt) | bad_indices] = -ttconf.BIG_NUMBER
+            logQt = np.log(np.maximum(tmp_eQT, ttconf.SUPERTINY_NUMBER))
+            # logQt[~np.isfinite(logQt)] = -ttconf.BIG_NUMBER
             logP = np.sum(logQt[seq_pair[:,1], seq_pair[:,0]]*multiplicity)
 
         return logP if return_log else np.exp(logP)

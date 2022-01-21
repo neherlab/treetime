@@ -4,8 +4,8 @@ from os.path import isfile
 from collections import defaultdict
 import numpy as np
 from Bio import SeqRecord, Seq, AlignIO, SeqIO
-from treetime import config as ttconf
-from treetime import MissingDataError
+from . import config as ttconf
+from . import MissingDataError
 from .seq_utils import seq2array, guess_alphabet, alphabets
 
 string_types = [str] if sys.version_info[0]==3 else [str, unicode]
@@ -161,9 +161,20 @@ class SequenceData(object):
 
         if type(in_aln) is MultipleSeqAlignment:
             # check whether the alignment is consistent with a nucleotide alignment.
-            self._aln = {s.name: seq2array(s, convert_upper=self.convert_upper,
-                                           fill_overhangs=self.fill_overhangs, ambiguous=self.ambiguous)
-                         for s in in_aln}
+            self._aln = {}
+            for s in in_aln:
+                if s.id==s.name:
+                    tmp_name  = s.id
+                elif '<unknown' in s.id:  # use s.name if id is BioPython default (previous behavior)
+                    tmp_name = s.name
+                elif '<unknown' in s.name:  # use s.id if s.name is BioPython default (change relative to previous, but what we want)
+                    tmp_name = s.id
+                else:
+                    tmp_name = s.name  # otherwise use s.name (previous behavior)
+
+                self._aln[tmp_name] = seq2array(s, convert_upper=self.convert_upper,
+                                               fill_overhangs=self.fill_overhangs, ambiguous=self.ambiguous)
+
             self.check_alphabet(list(self._aln.values()))
             self.is_sparse = False
             self.logger("SequenceData: loaded alignment.",1)
@@ -332,8 +343,9 @@ class SequenceData(object):
         for pi in variable_positions:
             if self.is_sparse:
                 pattern = np.array([self.aln[k][pi] if pi in self.aln[k] else self.ref[pi]
-                           for k in self.sequence_names], dtype='S')
+                           for k in self.sequence_names])
             else:
+                # pylint: disable=unsubscriptable-object
                 pattern = np.copy(aln_transpose[pi])
 
             # if the column contains only one state and ambiguous nucleotides, replace
@@ -396,6 +408,7 @@ class SequenceData(object):
 
         # create the compressed alignment as a dictionary linking names to sequences
         tmp_compressed_alignment = np.array(compressed_aln_transpose).T
+        # pylint: disable=unsubscriptable-object
         self.compressed_alignment = {k: tmp_compressed_alignment[i]
                                   for i,k in enumerate(self.sequence_names)}
 
@@ -451,13 +464,11 @@ class SequenceData(object):
         if self.ref is None:
             raise TypeError("SequenceData: sparse sequences can only be constructed when a reference sequence is defined")
         sparse_seq = {}
-        for pos in self.nonref_positions:
-            cseqLoc = self.full_to_compressed_sequence_map[pos]
-            base = sequence[cseqLoc]
-            if self.ref[pos] != base:
-                sparse_seq[pos] = base
 
-        return sparse_seq
+        compressed_nonref_positions = self.full_to_compressed_sequence_map[self.nonref_positions]
+        compressed_nonref_values = sequence[compressed_nonref_positions]
+        mismatches = (compressed_nonref_values != self.ref[self.nonref_positions])
+        return dict(zip(self.nonref_positions[mismatches], compressed_nonref_values[mismatches]))
 
 
     def compressed_to_full_sequence(self, sequence, include_additional_constant_sites=False, as_string=False):

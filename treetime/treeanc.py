@@ -6,8 +6,8 @@ import numpy as np
 from Bio import Phylo
 from Bio.Phylo.BaseTree import Clade
 from Bio import AlignIO
-from treetime import config as ttconf
-from treetime import MissingDataError,UnknownMethodError
+from . import config as ttconf
+from . import MissingDataError,UnknownMethodError
 from .seq_utils import seq2prof, seq2array, prof2seq, normalize_profile, extend_profile
 from .gtr import GTR
 from .gtr_site_specific import GTR_site_specific
@@ -19,7 +19,7 @@ def compressed_sequence(node):
     elif hasattr(node, '_cseq'):
         return node._cseq
     elif node.is_terminal(): # node without sequence when tip-reconstruction is off.
-            return None
+        return None
     elif hasattr(node, '_cseq'):
         return node._cseq
     else:
@@ -56,7 +56,7 @@ class TreeAnc(object):
     def __init__(self, tree=None, aln=None, gtr=None, fill_overhangs=True,
                 ref=None, verbose = ttconf.VERBOSE, ignore_gaps=True,
                 convert_upper=True, seq_multiplicity=None, log=None,
-                 compress=True, seq_len=None,
+                 compress=True, seq_len=None, ignore_missing_alns=False,
                 **kwargs):
         """
         TreeAnc constructor. It prepares the tree, attaches sequences to the leaf nodes,
@@ -78,22 +78,22 @@ class TreeAnc(object):
            GTR model object. If string passed, it is interpreted as the type of
            the GTR model. A new GTR instance will be created for this type.
 
-        fill_overhangs : bool
+        fill_overhangs : bool, default True
            In some cases, the missing data on both ends of the alignment is
            filled with the gap sign('-'). If set to True, the end-gaps are converted to "unknown"
            characters ('N' for nucleotides, 'X' for aminoacids). Otherwise, the alignment is treated as-is
 
         ref : None, optional
-            Reference sequence used in VCF mode
+           Reference sequence used in VCF mode
 
-        verbose : int
+        verbose : int, default 3
            Verbosity level as number from 0 (lowest) to 10 (highest).
 
-        ignore_gaps : bool
+        ignore_gaps : bool, default True
            Ignore gaps in branch length calculations
 
-        convert_upper : bool, optional
-            Description
+        convert_upper : bool, default True
+           Convert all sequences to upper case
 
         seq_multiplicity : dict
            If individual nodes in the tree correspond to multiple sampled sequences
@@ -101,13 +101,15 @@ class TreeAnc(object):
            specified as a dictionary. This currently only affects rooting and
            can be used to weigh individual tips by abundance or important during root search.
 
-        compress : bool, optional
+        compress : bool, default True
             reduce identical alignment columns to one (not useful when
             inferring site specific GTR models).
 
         seq_len : int, optional
             length of the sequence. this is inferred from the input alignment or the reference
             sequence in most cases but can be specified for other applications.
+
+        ignore_missing_alns : bool, default False
 
         **kwargs
            Keyword arguments to construct the GTR model
@@ -139,6 +141,7 @@ class TreeAnc(object):
         self.ignore_gaps = ignore_gaps
         self.reconstructed_tip_sequences = False
         self.sequence_reconstruction = None
+        self.ignore_missing_alns = ignore_missing_alns
 
         self._tree = None
         self.tree = tree
@@ -225,7 +228,7 @@ class TreeAnc(object):
          value : GTR
             the new GTR object
         """
-        if not (isinstance(value, GTR) or isinstance(value, GTR_site_specific)):
+        if not isinstance(value, (GTR, GTR_site_specific)):
             raise TypeError("GTR instance expected")
         self._gtr = value
 
@@ -250,8 +253,7 @@ class TreeAnc(object):
         if isinstance(in_gtr, str):
             self._gtr = GTR.standard(model=in_gtr, **kwargs)
             self._gtr.logger = self.logger
-
-        elif isinstance(in_gtr, GTR) or isinstance(in_gtr, GTR_site_specific):
+        elif isinstance(in_gtr, (GTR, GTR_site_specific)):
             self._gtr = in_gtr
             self._gtr.logger=self.logger
         else:
@@ -336,7 +338,7 @@ class TreeAnc(object):
         Returns
         -------
         float
-            inverse of the uncompressed sequene length - length scale for short branches
+            inverse of the uncompressed sequence length - length scale for short branches
         """
         return 1.0/self.data.full_length if self.data.full_length else np.nan
 
@@ -361,7 +363,7 @@ class TreeAnc(object):
         in the alignment and assign this sequence as a character array
         '''
         if len(self.tree.get_terminals()) != len(self.data.aln):
-            self.logger("**WARNING: Number of tips in tree differs from number of sequences in alignment!**", 3, warn=True)
+            self.logger(f"**WARNING: Number of tips in tree ({len(self.tree.get_terminals())}) differs from number of sequences in alignment ({len(self.data.aln)})**", 3, warn=True)
         failed_leaves= 0
 
         # loop over leaves and assign multiplicities of leaves (e.g. number of identical reads)
@@ -377,7 +379,7 @@ class TreeAnc(object):
             if l.name not in self.data.compressed_alignment and l.is_terminal():
                 self.logger("***WARNING: TreeAnc._attach_sequences_to_nodes: NO SEQUENCE FOR LEAF: %s" % l.name, 0, warn=True)
                 failed_leaves += 1
-                if failed_leaves > self.tree.count_terminals()/3:
+                if not self.ignore_missing_alns and failed_leaves > self.tree.count_terminals()/3:
                     raise MissingDataError("TreeAnc._check_alignment_tree_gtr_consistency: At least 30\\% terminal nodes cannot be assigned a sequence!\n"
                                            "Are you sure the alignment belongs to the tree?")
             else: # could not assign sequence for internal node - is OK
@@ -415,7 +417,7 @@ class TreeAnc(object):
         self.tree.root.tt = self
         self.tree.root.bad_branch=self.tree.root.bad_branch if hasattr(self.tree.root, 'bad_branch') else False
 
-        name_set = set([n.name for n in self.tree.find_clades() if n.name])
+        name_set = {n.name for n in self.tree.find_clades() if n.name}
         internal_node_count = 0
         for clade in self.tree.get_nonterminals(order='preorder'): # parents first
             if clade.name is None:
@@ -907,12 +909,19 @@ class TreeAnc(object):
                 # this is prod_ch L_x(i)
                 msg_from_children = np.sum(np.stack([c.joint_Lx for c in node.clades], axis=0), axis=0)
 
+                if not debug:
+                    # Now that we have calculated the current node's likelihood
+                    # from its children, clean up likelihood matrices attached
+                    # to children to save memory.
+                    for c in node.clades:
+                        del c.joint_Lx
+
             # for every possible state of the parent node,
             # get the best state of the current node
             # and compute the likelihood of this state
             # preallocate storage
-            node.joint_Lx = np.zeros((L, n_states))             # likelihood array
-            node.joint_Cx = np.zeros((L, n_states), dtype=int)  # max LH indices
+            node.joint_Lx = np.zeros((L, n_states)) # likelihood array
+            node.joint_Cx = np.zeros((L, n_states), dtype=np.uint16)  # max LH indices
             for char_i, char in enumerate(self.gtr.alphabet):
                 # Pij(i) * L_ch(i) for given parent state j
                 msg_to_parent = (log_transitions[:,char_i].T + msg_from_children)
@@ -974,7 +983,10 @@ class TreeAnc(object):
         # do clean-up
         if not debug:
             for node in self.tree.find_clades(order='preorder'):
-                del node.joint_Lx
+                # Check for the likelihood matrix, since we might have cleaned
+                # it up earlier.
+                if hasattr(node, "joint_Lx"):
+                    del node.joint_Lx
                 del node.joint_Cx
                 if hasattr(node, 'seq_idx'):
                     del node.seq_idx
@@ -1019,7 +1031,7 @@ class TreeAnc(object):
 
         # expand to full sequence if requested
         if full_sequence:
-            return mut_matrix_stack[self.full_to_compressed_sequence_map]
+            return mut_matrix_stack[self.data.full_to_compressed_sequence_map]
         else:
             return mut_matrix_stack
 
@@ -1585,7 +1597,7 @@ class TreeAnc(object):
             return the reconstructed sequence also for terminal nodes. this will replace
             ambiguous sites with the most likely sequence state.
         as_string : bool, optional
-            return the sequence as character array rather than contiguous string
+            return the sequence as contiguous string rather than a character array
         compressed : bool, optional
             return the a sequence where unique alignment patterns are reduced to
             one alignment column each
@@ -1612,8 +1624,10 @@ class TreeAnc(object):
         else:
             if (not reconstructed) and (node.name in self.data.aln):
                 tmp_seq = self.data.aln[node.name]
-            else:
+            elif node.cseq is not None:
                 tmp_seq = self.data.compressed_to_full_sequence(node.cseq, as_string=False)
+            else:
+                tmp_seq = np.array([self.gtr.ambiguous or 'N']*self.sequence_length)
 
         return "".join(tmp_seq) if as_string else np.copy(tmp_seq)
 

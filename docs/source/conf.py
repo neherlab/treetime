@@ -14,11 +14,13 @@
 
 import sys
 import os
-from treetime import version
+
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
-#sys.path.insert(0, os.path.abspath('.'))
+sys.path.insert(0, os.path.abspath('../..'))
+
+from treetime import version
 
 # -- General configuration ------------------------------------------------
 
@@ -70,7 +72,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'TreeTime'
-copyright = u'2017-2019, Pavel Sagulenko and Richard Neher'
+copyright = u'2017-2021, Pavel Sagulenko and Richard Neher'
 author = u'Pavel Sagulenko and Richard Neher'
 
 # The version info for the project you're documenting, acts as replacement for
@@ -130,7 +132,7 @@ todo_include_todos = True
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-#html_theme = 'alabaster'
+# html_theme = 'alabaster'
 
 html_theme = 'sphinx_rtd_theme'
 

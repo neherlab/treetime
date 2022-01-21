@@ -6,13 +6,13 @@ import numpy as np
 import scipy.special as sf
 from scipy.interpolate import interp1d
 from Bio import AlignIO, Phylo
-from scipy.interpolate import interp1d
 try:
     from collections.abc import Iterable
 except ImportError:
     from collections import Iterable
-from treetime import config as ttconf
-from treetime.node_interpolator import NodeInterpolator
+from . import config as ttconf
+from .utils import clip
+
 
 class Coalescent(object):
     """docstring for Coalescent"""
@@ -139,6 +139,7 @@ class Coalescent(object):
 
 
     def node_contribution(self, node, t):
+        from treetime.node_interpolator import NodeInterpolator
         multiplicity = len(node.clades) - 1.0
         y = (self.integral_merger_rate(t) - np.log(self.total_merger_rate(t)))*multiplicity
         return NodeInterpolator(t, y, is_log=True)
@@ -198,7 +199,7 @@ class Coalescent(object):
         tvals = np.linspace(self.tree_events[0,0], self.tree_events[-1,0], n_points)
         def cost(logTc):
             # cap log Tc to avoid under or overflow and nan in logs
-            self.set_Tc(np.exp(np.maximum(-200,np.minimum(100,logTc))), tvals)
+            self.set_Tc(np.exp(clip(logTc, -200, 100)), tvals)
             neglogLH = -self.total_LH() + stiffness*np.sum(np.diff(logTc)**2) \
                        + np.sum((logTc>0)*logTc)*regularization\
                        - np.sum((logTc<-100)*logTc)*regularization

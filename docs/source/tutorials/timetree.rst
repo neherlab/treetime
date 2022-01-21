@@ -10,11 +10,11 @@ This tutorial uses data provided in the github repository `github.com/neherlab/t
    treetime --tree data/h3n2_na/h3n2_na_20.nwk --dates data/h3n2_na/h3n2_na_20.metadata.csv --aln data/h3n2_na/h3n2_na_20.fasta --outdir h3n2_timetree
 
 The tree can be in newick or nexus format, the alignment in fasta or phylip, and the dates should be given as a tsv or csv file.
-TreeTime will attempt to parse dates, preferred formats are are "%Y-%m-%s" or numerical as in 2016.45.
+TreeTime will attempt to parse dates, preferred formats are are "%Y-%m-%d" or numerical as in 2016.45.
 This command will estimate an GTR model, a molecular clock model, and a time-stamped phylogeny.
 The results are saved to several files in the directory specified as `outdir` and printed to standard out:
 
-.. code-block::
+.. code-block:: bash
 
    Inferred GTR model:
    Substitution rate (mu): 1.0
@@ -80,7 +80,7 @@ However, these root-to-tip distances are correlated due to shared ancestry.
 This can be efficiently accounted if the sequence data set is consistent with a simple strict molecular clock model, but can give misleading results when the molecular clock model is violated.
 This feature is hence off by default and can be switched on using the flag
 
-.. code-block::
+.. code-block:: bash
 
    --covariation
 
@@ -91,7 +91,7 @@ Fixed evolutionary rate
 If the temporal signal in the data is weak and the clock rate can't be estimated confidently from the data, it is advisable to specify the rate explicitly.
 This can be done using the argument
 
-.. code-block::
+.. code-block:: bash
 
    --clock-rate <rate>
 
@@ -104,7 +104,7 @@ The later is parameterized by a time scale 'Tc' which can vary in time.
 This time scale is often called 'effective population size' Ne, but the appropriate Tc has very little to do with census population sizes.
 To activate the Kingman Coalescent model in TreeTime, you need to add the flag
 
-.. code-block::
+.. code-block:: bash
 
     --coalescent <arg>
 
