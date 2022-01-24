@@ -1,3 +1,7 @@
+# 0.8.6
+ * optionally allow incomplete alignment [PR #178](https://github.com/neherlab/treetime/pull/178)
+ * reduce memory footprint through better clean up and optimizing types. [PR #179](https://github.com/neherlab/treetime/pull/179)
+
 # 0.8.5
  * bug fixes related to edge cases were sequences consist only of missing data
  * bug fix when the CLI command `treetime` is run without alignment
