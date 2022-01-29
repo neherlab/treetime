@@ -289,7 +289,7 @@ class ClockTree(TreeAnc):
                     self.add_branch_state(node)
 
                 node.branch_length_interpolator = BranchLenInterpolator(node, self.gtr,
-                            pattern_multiplicity = self.data.multiplicity(), min_width=self.min_width,
+                            pattern_multiplicity = self.data.multiplicity(mask=node.mask), min_width=self.min_width,
                             one_mutation=self.one_mutation, branch_length_mode=self.branch_length_mode)
 
                 node.branch_length_interpolator.merger_cost = merger_cost

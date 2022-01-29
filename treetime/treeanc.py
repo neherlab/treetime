@@ -403,6 +403,7 @@ class TreeAnc(object):
         """
         self.sequence_reconstruction = False
         self.tree.root.branch_length = 0.001
+        self.tree.root.mask = None
         self.tree.root.mutation_length = self.tree.root.branch_length
         self.tree.ladderize()
         self._prepare_nodes()
@@ -432,11 +433,14 @@ class TreeAnc(object):
                 c.up = clade
                 c.tt = self
 
+
         for clade in self.tree.find_clades(order='postorder'): # children first
             if clade.is_terminal():
                 clade.bad_branch = clade.bad_branch if hasattr(clade, 'bad_branch') else False
             else:
                 clade.bad_branch = all([c.bad_branch for c in clade])
+            if not hasattr(clade, "mask"):
+                clade.mask = None
 
         self._calc_dist2root()
         self._internal_node_count = max(internal_node_count, self._internal_node_count)
@@ -1074,7 +1078,7 @@ class TreeAnc(object):
         """
         seq_pairs, multiplicity = self.gtr.state_pair(
                                        node.up.cseq, node.cseq,
-                                       pattern_multiplicity = self.data.multiplicity(),
+                                       pattern_multiplicity = self.data.multiplicity(mask=node.mask),
                                        ignore_gaps = self.ignore_gaps)
         node.branch_state = {'pair':seq_pairs, 'multiplicity':multiplicity}
 
@@ -1194,7 +1198,7 @@ class TreeAnc(object):
             return self.one_mutation
         else:
             pp, pc = self.marginal_branch_profile(node)
-            return self.gtr.optimal_t_compressed((pp, pc), self.data.multiplicity(), profiles=True, tol=tol)
+            return self.gtr.optimal_t_compressed((pp, pc), self.data.multiplicity(mask=node.mask), profiles=True, tol=tol)
 
 
     def optimize_tree_marginal(self, max_iter=10, infer_gtr=False, pc=1.0, damping=0.75,
@@ -1222,7 +1226,10 @@ class TreeAnc(object):
                     prof_c = n1.marginal_subtree_LH
                     prof_p = normalize_profile(n2.marginal_subtree_LH*self.tree.root.marginal_outgroup_LH)[0]
 
-                    new_bl = self.gtr.optimal_t_compressed((prof_p, prof_c), self.data.multiplicity(), profiles=True, tol=tol)
+                    if n1.mask is None or n2.mask is None:
+                        new_bl = self.gtr.optimal_t_compressed((prof_p, prof_c), self.data.multiplicity(), profiles=True, tol=tol)
+                    else:
+                        new_bl = self.gtr.optimal_t_compressed((prof_p, prof_c), self.data.multiplicity(mask=n1.mask*n2.mask), profiles=True, tol=tol)
                     update_val = new_bl*(1-damping**(i+1)) +  total_bl*damping**(i+1)
 
                     n1.branch_length = update_val*bl_ratio
@@ -1351,7 +1358,7 @@ class TreeAnc(object):
             # probability of the two seqs separated by zero time is not zero
             if  ((node.branch_length<0.1*self.one_mutation) and
                  (self.gtr.prob_t(node.up._cseq, node._cseq, 0.0,
-                                  pattern_multiplicity=self.data.multiplicity()) > 0.1)):
+                                  pattern_multiplicity=self.data.multiplicity(mask=node.mask)) > 0.1)):
                 # re-assign the node children directly to its parent
                 node.up.clades = [k for k in node.up.clades if k != node] + node.clades
                 for clade in node.clades:
@@ -1422,9 +1429,9 @@ class TreeAnc(object):
             for c in node:
                 if marginal:
                     mut_stack = np.transpose(self.get_branch_mutation_matrix(c, full_sequence=False), (1,2,0))
-                    T_ia += 0.5*self._branch_length_to_gtr(c) * mut_stack.sum(axis=0) * self.data.multiplicity()
-                    T_ia += 0.5*self._branch_length_to_gtr(c) * mut_stack.sum(axis=1) * self.data.multiplicity()
-                    n_ija += mut_stack * self.data.multiplicity()
+                    T_ia += 0.5*self._branch_length_to_gtr(c) * mut_stack.sum(axis=0) * self.data.multiplicity(mask=c.mask)
+                    T_ia += 0.5*self._branch_length_to_gtr(c) * mut_stack.sum(axis=1) * self.data.multiplicity(mask=c.mask)
+                    n_ija += mut_stack * self.data.multiplicity(mask=c.mask)
                 else:
                     for a,pos, d in c.mutations:
                         try:
@@ -1441,7 +1448,7 @@ class TreeAnc(object):
                         cseq = c.cseq
                         if cseq is not None:
                             ind = cseq==nuc
-                            T_ia[i,ind] += self._branch_length_to_gtr(c)*self.data.multiplicity()[ind]
+                            T_ia[i,ind] += self._branch_length_to_gtr(c)*self.data.multiplicity(mask=c.mask)[ind]
 
         self.logger("TreeAnc.infer_gtr: counting mutations...done", 3)
 
@@ -1454,7 +1461,7 @@ class TreeAnc(object):
                                 root_state=root_state, logger=self.logger,
                                 alphabet=self.gtr.alphabet, prof_map=self.gtr.profile_map)
         else:
-            root_state = np.array([np.sum((self.tree.root.cseq==nuc)*self.data.multiplicity())
+            root_state = np.array([np.sum((self.tree.root.cseq==nuc)*self.data.multiplicity(mask=self.tree.root.mask))
                                    for nuc in self.gtr.alphabet])
             n_ij = n_ija.sum(axis=-1)
             self._gtr = GTR.infer(n_ij, T_ia.sum(axis=-1), root_state, fixed_pi=fixed_pi, pc=pc,
