@@ -1,4 +1,5 @@
 from __future__ import print_function, division, absolute_import
+from ctypes import alignment
 import os, shutil, sys
 import numpy as np
 import pandas as pd
@@ -8,6 +9,7 @@ from Bio.Seq import Seq
 from Bio.Align import MultipleSeqAlignment
 from Bio import Phylo, AlignIO
 from Bio import __version__ as bioversion
+from treetime.arg import setup_arg
 from . import TreeAnc, GTR, TreeTime
 from . import config as ttconf
 from . import utils
@@ -465,6 +467,21 @@ def scan_homoplasies(params):
 
 
     return 0
+
+def arg_time_trees(params):
+    """
+    implementing treetime arg
+    """
+    from .arg import parse_arg, setup_arg
+
+    arg_params = parse_arg(params.trees[0], params.trees[0],
+                    params.alignments[0], params.alignments[1], params.mcc)
+
+    dates = utils.parse_dates(params.dates, date_col=params.date_column, name_col=params.name_column)
+    for tree,mask in zip(arg_params['trees'], arg_params['masks']):
+        tt = setup_arg(tree, arg_params['alignment'], arg_params['combined_mask'],
+                       mask, dates, verbose=params.verbose, fill_overhangs=params.fill_overhangs)
+
 
 
 def timetree(params):
