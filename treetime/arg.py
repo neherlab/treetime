@@ -1,6 +1,6 @@
 import numpy as np
 
-def parse_arg(tree1, tree2, aln1, aln2, MCCs):
+def parse_arg(tree1, tree2, aln1, aln2, MCC_file):
     from Bio import Phylo, AlignIO
     from Bio.Align import MultipleSeqAlignment
 
@@ -8,14 +8,14 @@ def parse_arg(tree1, tree2, aln1, aln2, MCCs):
     t2 = Phylo.read(tree2, 'newick')
 
     MCCs = []
-    with open(MCCs) as fh:
+    with open(MCC_file) as fh:
         for line in fh:
             if line.strip():
                 MCCs.append(line.strip().split(','))
 
     a1 = {s.id:s for s in AlignIO.read(aln1, 'fasta')}
     a2 = {s.id:s for s in AlignIO.read(aln2, 'fasta')}
-    all_leaves = set.union(a1.keys(), a2.keys())
+    all_leaves = set.union(set(a1.keys()), set(a2.keys()))
 
     aln_combined = []
     for leaf in all_leaves:
@@ -23,11 +23,13 @@ def parse_arg(tree1, tree2, aln1, aln2, MCCs):
         seq.id = leaf
         aln_combined.append(seq)
 
-    combined_mask = np.ones(a1.get_alignment_length() + a2.get_alignment_length())
-    mask1 = np.zeros(a1.get_alignment_length() + a2.get_alignment_length())
-    mask2 = np.zeros(a1.get_alignment_length() + a2.get_alignment_length())
-    mask1[:a1.get_alignment_length()] = 1
-    mask2[a1.get_alignment_length():] = 1
+    l1 = len(a1[leaf])
+    l2 = len(a2[leaf])
+    combined_mask = np.ones(l1 + l2)
+    mask1 = np.zeros(l1 + l2)
+    mask2 = np.zeros(l1 + l2)
+    mask1[:l1] = 1
+    mask2[l1:] = 1
 
     return {"MCCs": MCCs, "trees":[t1,t2], "alignment":MultipleSeqAlignment(aln_combined),
             "masks":[mask1,mask2], "combined_mask":combined_mask}
@@ -51,10 +53,11 @@ def setup_arg(T, aln, total_mask, segment_mask, dates, MCCs, gtr='JC69',
             leaf_to_MCC[leaf] = mi
 
     for leaf in tt.tree.get_terminals():
-        leaf.mcc = leaf_to_MCC[leaf]
+        leaf.child_mccs = set([leaf_to_MCC[leaf.name]])
+        leaf.mcc = leaf_to_MCC[leaf.name]
 
     for n in tt.tree.get_nonterminals(order='postorder'):
-        n.child_mccs = set([c.mcc for c in n])
+        n.child_mccs = set.union(*[c.child_mccs for c in n])
 
     mcc_intersection = set.intersection(*[c.child_mccs for c in tt.tree.root])
     if len(mcc_intersection):
@@ -69,11 +72,11 @@ def setup_arg(T, aln, total_mask, segment_mask, dates, MCCs, gtr='JC69',
             if n.up.mcc in n.child_mccs:
                 n.mcc = n.up.mcc
             elif len(n.child_mccs)==1:
-                n.mcc = list(n.child_mcc)[0]
+                n.mcc = list(n.child_mccs)[0]
             else:
-                n.mcc is None
+                n.mcc = None
 
-    for n in tt.find_clades():
+    for n in tt.tree.find_clades():
         if n.up and n.up.mcc==n.mcc:
             n.mask=total_mask
         else:

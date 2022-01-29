@@ -296,7 +296,7 @@ def make_parser():
                         "signal and recalculate branch length unless run with --keep_root.")
     arg_parser.add_argument('--trees', nargs=2, required=True, type=str)
     arg_parser.add_argument('--alignments', nargs=2, required=True, type=str)
-    arg_parser.add_argument('--mccs', nargs=1, required=True, type=str)
+    arg_parser.add_argument('--mccs', required=True, type=str)
     add_timetree_args(arg_parser)
     add_time_arguments(arg_parser)
     add_seq_len_aln_group(arg_parser)

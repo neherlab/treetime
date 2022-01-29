@@ -473,22 +473,27 @@ def arg_time_trees(params):
     implementing treetime arg
     """
     from .arg import parse_arg, setup_arg
-
-    arg_params = parse_arg(params.trees[0], params.trees[0],
-                    params.alignments[0], params.alignments[1], params.mcc)
+    print(params.mccs)
+    arg_params = parse_arg(params.trees[0], params.trees[1],
+                    params.alignments[0], params.alignments[1], params.mccs)
 
     dates = utils.parse_dates(params.dates, date_col=params.date_column, name_col=params.name_column)
-    for tree,mask in zip(arg_params['trees'], arg_params['masks']):
+    outdir = get_outdir(params, '_arg-treetime')
+    for i,(tree,mask) in enumerate(zip(arg_params['trees'], arg_params['masks'])):
+        outdir = get_outdir(params, f'_arg-treetime')
+        outdir += f"-{i}"
         gtr = create_gtr(params)
-        infer_gtr = params.gtr=='infer'
-        tt = setup_arg(tree, arg_params['alignment'], arg_params['combined_mask'], mask, dates,
-                       gtr=gtr, verbose=params.verbose, fill_overhangs=params.fill_overhangs)
+
+        tt = setup_arg(tree, arg_params['alignment'], arg_params['combined_mask'], mask, dates, arg_params['MCCs'],
+                       gtr=gtr, verbose=params.verbose, fill_overhangs=not params.keep_overhangs)
+
+        run_timetree(tt, params, outdir)
 
 
 
 def timetree(params):
     """
-    implementeing treetime tree
+    implementing treetime tree
     """
     dates = utils.parse_dates(params.dates, date_col=params.date_column, name_col=params.name_column)
     if len(dates)==0:
