@@ -479,8 +479,10 @@ def arg_time_trees(params):
 
     dates = utils.parse_dates(params.dates, date_col=params.date_column, name_col=params.name_column)
     for tree,mask in zip(arg_params['trees'], arg_params['masks']):
-        tt = setup_arg(tree, arg_params['alignment'], arg_params['combined_mask'],
-                       mask, dates, verbose=params.verbose, fill_overhangs=params.fill_overhangs)
+        gtr = create_gtr(params)
+        infer_gtr = params.gtr=='infer'
+        tt = setup_arg(tree, arg_params['alignment'], arg_params['combined_mask'], mask, dates,
+                       gtr=gtr, verbose=params.verbose, fill_overhangs=params.fill_overhangs)
 
 
 
@@ -488,14 +490,6 @@ def timetree(params):
     """
     implementeing treetime tree
     """
-    if params.relax is None:
-        relaxed_clock_params = None
-    elif params.relax==[]:
-        relaxed_clock_params=True
-    elif len(params.relax)==2:
-        relaxed_clock_params={'slack':params.relax[0], 'coupling':params.relax[1]}
-
-
     dates = utils.parse_dates(params.dates, date_col=params.date_column, name_col=params.name_column)
     if len(dates)==0:
         print("No valid dates -- exiting.")
@@ -508,7 +502,21 @@ def timetree(params):
     outdir = get_outdir(params, '_treetime')
 
     gtr = create_gtr(params)
-    infer_gtr = params.gtr=='infer'
+    aln, ref, fixed_pi = read_if_vcf(params)
+
+    ###########################################################################
+    ### SET-UP and RUN
+    ###########################################################################
+    if params.aln is None and params.sequence_length is None:
+        print("one of arguments '--aln' and '--sequence-length' is required.", file=sys.stderr)
+        return 1
+    myTree = TreeTime(dates=dates, tree=params.tree, ref=ref,
+                      aln=aln, gtr=gtr, seq_len=params.sequence_length,
+                      verbose=params.verbose, fill_overhangs=not params.keep_overhangs)
+
+    return run_timetree(myTree, params, outdir)
+
+def run_timetree(myTree, params, outdir):
 
     ###########################################################################
     ### READ IN VCF
@@ -522,17 +530,8 @@ def timetree(params):
         if branch_length_mode == 'auto':
             branch_length_mode = 'joint'
 
+    infer_gtr = params.gtr=='infer'
 
-
-    ###########################################################################
-    ### SET-UP and RUN
-    ###########################################################################
-    if params.aln is None and params.sequence_length is None:
-        print("one of arguments '--aln' and '--sequence-length' is required.", file=sys.stderr)
-        return 1
-    myTree = TreeTime(dates=dates, tree=params.tree, ref=ref,
-                      aln=aln, gtr=gtr, seq_len=params.sequence_length,
-                      verbose=params.verbose, fill_overhangs=not params.keep_overhangs)
     myTree.tip_slack=params.tip_slack
     if not myTree.one_mutation:
         print("TreeTime setup failed, exiting")
@@ -566,6 +565,13 @@ def timetree(params):
         calc_confidence = False
     else:
         vary_rate = False
+
+    if params.relax is None:
+        relaxed_clock_params = None
+    elif params.relax==[]:
+        relaxed_clock_params=True
+    elif len(params.relax)==2:
+        relaxed_clock_params={'slack':params.relax[0], 'coupling':params.relax[1]}
 
     # RUN
     root = None if params.keep_root else params.reroot
