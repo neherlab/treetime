@@ -1,8 +1,10 @@
+from matplotlib.pyplot import fill
 import numpy as np
 
-def parse_arg(tree1, tree2, aln1, aln2, MCC_file):
-    from Bio import Phylo, AlignIO
+def parse_arg(tree1, tree2, aln1, aln2, MCC_file, fill_overhangs=True):
+    from Bio import Phylo, AlignIO, Seq
     from Bio.Align import MultipleSeqAlignment
+    from treetime.seq_utils import seq2array
 
     t1 = Phylo.read(tree1, 'newick')
     t2 = Phylo.read(tree2, 'newick')
@@ -16,6 +18,10 @@ def parse_arg(tree1, tree2, aln1, aln2, MCC_file):
     a1 = {s.id:s for s in AlignIO.read(aln1, 'fasta')}
     a2 = {s.id:s for s in AlignIO.read(aln2, 'fasta')}
     all_leaves = set.union(set(a1.keys()), set(a2.keys()))
+    for aln in [a1,a2]:
+        for s,seq in aln.items():
+            seqstr = "".join(seq2array(seq, fill_overhangs=fill_overhangs))
+            seq.seq = Seq.Seq(seqstr)
 
     aln_combined = []
     for leaf in all_leaves:
