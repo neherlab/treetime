@@ -615,8 +615,10 @@ class TreeTime(ClockTree):
                 new_node.clades = [n1,n2]
                 if n1.mask is None or n2.mask is None:
                     new_node.mask = None
+                    new_node.mcc = None
                 else:
                     new_node.mask = n1.mask * n2.mask
+                    new_node.mcc = n1.mcc if n1.mcc==n2.mcc else None
 
                 n1.branch_length = new_node.time_before_present - n1.time_before_present
                 n2.branch_length = new_node.time_before_present - n2.time_before_present

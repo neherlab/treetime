@@ -212,11 +212,19 @@ def export_sequences_and_tree(tt, basename, is_vcf=False, zero_based=False,
             terminal_count+=1
         n.comment=''
         if seq_info and len(n.mutations):
-            if report_ambiguous:
-                n.comment= '&mutations="' + ','.join([a+str(pos + offset)+d for (a,pos, d) in n.mutations])+'"'
+            if n.mask is None:
+                if report_ambiguous:
+                    n.comment= '&mutations="' + ','.join([a+str(pos + offset)+d for (a,pos, d) in n.mutations])+'"'
+                else:
+                    n.comment= '&mutations="' + ','.join([a+str(pos + offset)+d for (a,pos, d) in n.mutations
+                                                        if tt.gtr.ambiguous not in [a,d]])+'"'
             else:
-                n.comment= '&mutations="' + ','.join([a+str(pos + offset)+d for (a,pos, d) in n.mutations
-                                                      if tt.gtr.ambiguous not in [a,d]])+'"'
+                if report_ambiguous:
+                    n.comment= '&mutations="' + ','.join([a+str(pos + offset)+d for (a,pos, d) in n.mutations if n.mask[pos]>0])+f'",mcc="{n.mcc}"'
+                else:
+                    n.comment= '&mutations="' + ','.join([a+str(pos + offset)+d for (a,pos, d) in n.mutations
+                                                        if tt.gtr.ambiguous not in [a,d] and n.mask[pos]>0])+f'",mcc="{n.mcc}"'
+
         if timetree:
             n.comment+=(',' if n.comment else '&') + 'date=%1.2f'%n.numdate
 
@@ -478,10 +486,11 @@ def arg_time_trees(params):
                     params.alignments[0], params.alignments[1], params.mccs)
 
     dates = utils.parse_dates(params.dates, date_col=params.date_column, name_col=params.name_column)
-    outdir = get_outdir(params, '_arg-treetime')
+    prefix = params.outdir
+    params.outdir = None
     for i,(tree,mask) in enumerate(zip(arg_params['trees'], arg_params['masks'])):
-        outdir = get_outdir(params, f'_arg-treetime')
-        outdir += f"-{i}"
+        print(mask)
+        outdir = get_outdir(params, f'{prefix}_arg-treetime-{i+1}')
         gtr = create_gtr(params)
 
         tt = setup_arg(tree, arg_params['alignment'], arg_params['combined_mask'], mask, dates, arg_params['MCCs'],

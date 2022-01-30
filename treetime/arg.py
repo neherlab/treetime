@@ -77,7 +77,7 @@ def setup_arg(T, aln, total_mask, segment_mask, dates, MCCs, gtr='JC69',
                 n.mcc = None
 
     for n in tt.tree.find_clades():
-        if n.up and n.up.mcc==n.mcc:
+        if (n.mcc is not None) and n.up and n.up.mcc==n.mcc:
             n.mask=total_mask
         else:
             n.mask = segment_mask
