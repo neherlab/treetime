@@ -168,13 +168,13 @@ def plot_rtt(tt, fname):
 
 def export_sequences_and_tree(tt, basename, is_vcf=False, zero_based=False,
                               report_ambiguous=False, timetree=False, confidence=False,
-                              reconstruct_tip_states=False):
+                              reconstruct_tip_states=False, tree_suffix={}):
     seq_info = is_vcf or tt.aln
     if is_vcf:
-        outaln_name = basename + 'ancestral_sequences.vcf'
+        outaln_name = basename + f'ancestral_sequences{tree_suffix}.vcf'
         write_vcf(tt.get_reconstructed_alignment(reconstruct_tip_states=reconstruct_tip_states), outaln_name)
     elif tt.aln:
-        outaln_name = basename + 'ancestral_sequences.fasta'
+        outaln_name = basename + f'ancestral_sequences{tree_suffix}.fasta'
         AlignIO.write(tt.get_reconstructed_alignment(reconstruct_tip_states=reconstruct_tip_states), outaln_name, 'fasta')
     if seq_info:
         print("\n--- alignment including ancestral nodes saved as  \n\t %s\n"%outaln_name)
@@ -183,7 +183,7 @@ def export_sequences_and_tree(tt, basename, is_vcf=False, zero_based=False,
     terminal_count = 0
     offset = 0 if zero_based else 1
     if timetree:
-        dates_fname = basename + 'dates.tsv'
+        dates_fname = basename + f'dates{tree_suffix}.tsv'
         fh_dates = open(dates_fname, 'w', encoding='utf-8')
         if confidence:
             fh_dates.write('#Lower and upper bound delineate the 90% max posterior region\n')
@@ -231,18 +231,18 @@ def export_sequences_and_tree(tt, basename, is_vcf=False, zero_based=False,
     # write tree to file
     fmt_bl = "%1.6f" if tt.data.full_length<1e6 else "%1.8e"
     if timetree:
-        outtree_name = basename + 'timetree.nexus'
+        outtree_name = basename + f'timetree{tree_suffix}.nexus'
         print("--- saved divergence times in \n\t %s\n"%dates_fname)
         Phylo.write(tt.tree, outtree_name, 'nexus')
     else:
-        outtree_name = basename + 'annotated_tree.nexus'
+        outtree_name = basename + f'annotated_tree{tree_suffix}.nexus'
         Phylo.write(tt.tree, outtree_name, 'nexus', format_branch_length=fmt_bl)
     print("--- tree saved in nexus format as  \n\t %s\n"%outtree_name)
 
     if timetree:
         for n in tt.tree.find_clades():
             n.branch_length = n.mutation_length
-        outtree_name = basename + 'divergence_tree.nexus'
+        outtree_name = basename + f'divergence_tree{tree_suffix}.nexus'
         Phylo.write(tt.tree, outtree_name, 'nexus', format_branch_length=fmt_bl)
         print("--- divergence tree saved in nexus format as  \n\t %s\n"%outtree_name)
 
@@ -489,14 +489,13 @@ def arg_time_trees(params):
     prefix = params.outdir
     params.outdir = None
     for i,(tree,mask) in enumerate(zip(arg_params['trees'], arg_params['masks'])):
-        print(mask)
-        outdir = get_outdir(params, f'{prefix}_arg-treetime-{i+1}')
+        outdir = get_outdir(params, f'{prefix}_arg-treetime')
         gtr = create_gtr(params)
 
         tt = setup_arg(tree, arg_params['alignment'], arg_params['combined_mask'], mask, dates, arg_params['MCCs'],
                        gtr=gtr, verbose=params.verbose, fill_overhangs=not params.keep_overhangs)
 
-        run_timetree(tt, params, outdir)
+        run_timetree(tt, params, outdir, tree_suffix=f"_{i+1}")
 
 
 
@@ -530,7 +529,7 @@ def timetree(params):
 
     return run_timetree(myTree, params, outdir)
 
-def run_timetree(myTree, params, outdir):
+def run_timetree(myTree, params, outdir, tree_suffix=''):
 
     ###########################################################################
     ### READ IN VCF
@@ -601,7 +600,7 @@ def run_timetree(myTree, params, outdir):
                reconstruct_tip_states=params.reconstruct_tip_states,
                fixed_pi=fixed_pi,
                use_covariation = params.covariation, n_points=params.n_skyline,
-               tracelog_file=os.path.join(outdir, "trace_run.log"))
+               tracelog_file=os.path.join(outdir, f"trace_run{tree_suffix}.log"))
     except TreeTimeError as e:
         print("\nTreeTime run FAILED: please check above for errors and/or rerun with --verbose 4.\n")
         raise e
@@ -610,13 +609,13 @@ def run_timetree(myTree, params, outdir):
     ### OUTPUT and saving of results
     ###########################################################################
     if infer_gtr:
-        fname = outdir+'sequence_evolution_model.txt'
+        fname = outdir+f'sequence_evolution_model{tree_suffix}.txt'
         with open(fname, 'w', encoding='utf-8') as ofile:
             ofile.write(str(myTree.gtr)+'\n')
         print('\nInferred sequence evolution model (saved as %s):'%fname)
         print(myTree.gtr)
 
-    fname = outdir+'molecular_clock.txt'
+    fname = outdir+f'molecular_clock{tree_suffix}.txt'
     with open(fname, 'w', encoding='utf-8') as ofile:
         ofile.write(str(myTree.date2dist)+'\n')
     print('\nInferred sequence evolution model (saved as %s):'%fname)
@@ -643,11 +642,11 @@ def run_timetree(myTree, params, outdir):
 
     plot_vs_years(myTree, show_confidence=False, label_func=label_func,
                   confidence=0.9 if calc_confidence else None)
-    tree_fname = (outdir + params.plot_tree)
+    tree_fname = (outdir + params.plot_tree[:-4]+tree_suffix+params.plot_tree[-4:])
     plt.savefig(tree_fname)
     print("--- saved tree as \n\t %s\n"%tree_fname)
 
-    plot_rtt(myTree, outdir + params.plot_rtt)
+    plot_rtt(myTree, outdir + params.plot_rtt[:-4]+tree_suffix+params.plot_rtt[-4:])
     if params.relax:
         fname = outdir+'substitution_rates.tsv'
         print("--- wrote branch specific rates to\n\t %s\n"%fname)
@@ -661,7 +660,8 @@ def run_timetree(myTree, params, outdir):
 
     export_sequences_and_tree(myTree, basename, is_vcf, params.zero_based,
                               timetree=True, confidence=calc_confidence,
-                              reconstruct_tip_states=params.reconstruct_tip_states)
+                              reconstruct_tip_states=params.reconstruct_tip_states,
+                              tree_suffix=tree_suffix)
 
     return 0
 
