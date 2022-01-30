@@ -483,13 +483,12 @@ def arg_time_trees(params):
     from .arg import parse_arg, setup_arg
     print(params.mccs)
     arg_params = parse_arg(params.trees[0], params.trees[1],
-                    params.alignments[0], params.alignments[1], params.mccs)
+                    params.alignments[0], params.alignments[1], params.mccs,
+                    fill_overhangs=not params.keep_overhangs)
 
     dates = utils.parse_dates(params.dates, date_col=params.date_column, name_col=params.name_column)
-    prefix = params.outdir
-    params.outdir = None
     for i,(tree,mask) in enumerate(zip(arg_params['trees'], arg_params['masks'])):
-        outdir = get_outdir(params, f'{prefix}_arg-treetime')
+        outdir = get_outdir(params, f'_ARG-treetime')
         gtr = create_gtr(params)
 
         tt = setup_arg(tree, arg_params['alignment'], arg_params['combined_mask'], mask, dates, arg_params['MCCs'],
