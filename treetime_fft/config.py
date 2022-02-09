@@ -26,6 +26,9 @@ N_INTEGRAL_ULTRA = 250
 
 MIN_INTEGRATION_PEAK = 0.001
 
+# distribution parameters for FFT 
+FFT_FWHM_GRID_SIZE = 200
+
 # clocktree parameters
 BRANCH_LEN_PENALTY = 0
 MAX_BRANCH_LENGTH = 4.0          # only relevant for branch length optimization and time trees - upper boundary of interpolator objects

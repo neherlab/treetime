@@ -302,7 +302,7 @@ class TreeAnc(object):
         self._tree = None
         if isinstance(in_tree, Phylo.BaseTree.Tree):
             self._tree = in_tree
-        elif type(in_tree) in string_types and isfile(in_tree):
+        elif (type(in_tree) in string_types) and isfile(in_tree):
             try:
                 self._tree=Phylo.read(in_tree, 'newick')
             except:

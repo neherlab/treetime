@@ -5,14 +5,14 @@ from io import StringIO
 # Tests
 def test_import_short():
     print("testing short imports")
-    from treetime import GTR
-    from treetime import TreeTime
-    from treetime import TreeAnc
-    from treetime import seq_utils
+    from treetime_fft import GTR
+    from treetime_fft import TreeTime
+    from treetime_fft import TreeAnc
+    from treetime_fft import seq_utils
 
 
 def test_GTR():
-    from treetime import GTR
+    from treetime_fft import GTR
     import numpy as np
     for model in ['Jukes-Cantor']:
         print('testing GTR, model:',model)
@@ -31,7 +31,7 @@ def test_ancestral():
     import os
     from Bio import AlignIO
     import numpy as np
-    from treetime import TreeAnc, GTR
+    from treetime_fft import TreeAnc, GTR
     root_dir = os.path.dirname(os.path.realpath(__file__))
     fasta = str(os.path.join(root_dir, 'treetime_examples/data/h3n2_na/h3n2_na_20.fasta'))
     nwk = str(os.path.join(root_dir, 'treetime_examples/data/h3n2_na/h3n2_na_20.nwk'))
@@ -70,8 +70,8 @@ def test_seq_joint_reconstruction_correct():
     as calculated in the joint reconstruction
     """
 
-    from treetime import TreeAnc, GTR
-    from treetime import seq_utils
+    from treetime_fft import TreeAnc, GTR
+    from treetime_fft import seq_utils
     from Bio import Phylo, AlignIO
     import numpy as np
     from collections import defaultdict
@@ -158,8 +158,8 @@ def test_seq_joint_lh_is_max():
     possible reconstruction variants (brute-force).
     """
 
-    from treetime import TreeAnc, GTR
-    from treetime import seq_utils
+    from treetime_fft import TreeAnc, GTR
+    from treetime_fft import seq_utils
     from Bio import Phylo, AlignIO
     import numpy as np
 

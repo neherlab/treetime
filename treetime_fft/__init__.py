@@ -1,5 +1,5 @@
 from __future__ import print_function, division, absolute_import
-version="0.8.6"
+version="0.8.6-beta5"
 
 class TreeTimeError(Exception):
     """TreeTimeError class"""
@@ -27,5 +27,7 @@ from .gtr_site_specific import GTR_site_specific
 from .merger_models import Coalescent
 from .treeregression import TreeRegression
 from .argument_parser import make_parser
-
+from .distribution import Distribution
+from .branch_len_interpolator import BranchLenInterpolator
+from .node_interpolator import NodeInterpolator
 

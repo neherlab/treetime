@@ -23,8 +23,9 @@ class ClockTree(TreeAnc):
     is converted to the most likely time of the internal nodes.
     """
 
-    def __init__(self, *args, dates=None, debug=False, real_dates=True, precision='auto',
-                 branch_length_mode='joint', use_covariation=False, **kwargs):
+    def __init__(self, *args, dates=None, debug=False, real_dates=True, precision_fft = 'auto', 
+                precision='auto', branch_length_mode='joint', use_covariation=False, 
+                use_fft=True,**kwargs):
 
         """
         ClockTree constructor
@@ -39,7 +40,7 @@ class ClockTree(TreeAnc):
             If True, the debug mode is ON, which means no or less clean-up of
             obsolete parameters to control program execution in intermediate
             states. In debug mode, the python debugger is also allowed to interrupt
-            program execution with intercative shell if an error occurs.
+            program execution with interactive shell if an error occurs.
 
          real_dates : bool
             If True, some additional checks for the input dates sanity will be
@@ -51,6 +52,13 @@ class ClockTree(TreeAnc):
             for the evaluation of the branch length interpolation objects.
             When not specified, this will default to 1 for short sequences and 2
             for long sequences with L>1e4
+
+        precision_fft : int
+            When calculating the marginal distribution using the FFT approach the grid 
+            size stays constant, to optimize the calculation the size is not
+            set to a fixed number but is determined by the FWHM of the distributions. 
+            The number of points desired to span the width of the FWHM of a distribution 
+            can be specified explicitly by precision_fft (default is 200).
 
          branch_length_mode : str
             determines whether branch length are calculated using the 'joint' ML,
@@ -68,7 +76,9 @@ class ClockTree(TreeAnc):
         if dates is None:
             raise ValueError("ClockTree requires date constraints!")
 
-        self.debug=debug
+        self.debug = debug
+        self.merger_model = None
+        self.use_fft = use_fft
         self.real_dates = real_dates
         self.date_dict = dates
         self._date2dist = None  # we do not know anything about the conversion
@@ -80,7 +90,9 @@ class ClockTree(TreeAnc):
         self.clock_model=None
         self.use_covariation=use_covariation # if false, covariation will be ignored in rate estimates.
         self._set_precision(precision)
+        self._set_precision_fft(precision_fft)
         self._assign_dates()
+        print("running the treetime_fft")
 
 
     def _assign_dates(self):
@@ -131,6 +143,19 @@ class ClockTree(TreeAnc):
 
         self.logger("ClockTree._assign_dates: assigned date contraints to {} out of {} tips.".format(self.tree.count_terminals()-bad_branch_counter, self.tree.count_terminals()), 1)
         return ttconf.SUCCESS
+
+
+    def _set_precision_fft(self, precision_fft):
+        '''
+        function that allows to set the number of grid points for the minimal FWHM window 
+        when calculating the marginal distribution using the FFT-based approach
+        '''
+
+        self.fft_grid_size = ttconf.FFT_FWHM_GRID_SIZE
+        if type(precision_fft) is int:
+            self.fft_grid_size = precision_fft
+        else:
+            self.fft_grid_size = ttconf.FFT_FWHM_GRID_SIZE
 
 
     def _set_precision(self, precision):
@@ -262,26 +287,24 @@ class ClockTree(TreeAnc):
         """
         self.logger("ClockTree.init_date_constraints...",2)
         self.tree.coalescent_joint_LH = 0
-        if self.aln and (not self.sequence_reconstruction):
+        if self.aln and (self.branch_length_mode!="input") and (not self.sequence_reconstruction):
             self.infer_ancestral_sequences('probabilistic', marginal=self.branch_length_mode=='marginal',
                                             sample_from_profile='root',**kwarks)
 
         # set the None  for the date-related attributes in the internal nodes.
         # make interpolation objects for the branches
-        self.logger('ClockTree.init_date_constraints: Initializing branch length interpolation objects...',3)
+        self.logger('ClockTree.init_date_constraints: Initializing branch length interpolation objects...', 2)
         has_clock_length = []
         for node in self.tree.find_clades(order='postorder'):
             if node.up is None:
                 node.branch_length_interpolator = None
             else:
                 has_clock_length.append(hasattr(node, 'clock_length'))
-                # copy the merger rate and gamma if they are set
+                # copy gamma if set
                 if hasattr(node,'branch_length_interpolator') and node.branch_length_interpolator is not None:
                     gamma = node.branch_length_interpolator.gamma
-                    merger_cost = node.branch_length_interpolator.merger_cost
                 else:
                     gamma = 1.0
-                    merger_cost = None
 
                 if self.branch_length_mode=='marginal':
                     node.profile_pair = self.marginal_branch_profile(node)
@@ -292,13 +315,13 @@ class ClockTree(TreeAnc):
                             pattern_multiplicity = self.data.multiplicity, min_width=self.min_width,
                             one_mutation=self.one_mutation, branch_length_mode=self.branch_length_mode)
 
-                node.branch_length_interpolator.merger_cost = merger_cost
                 node.branch_length_interpolator.gamma = gamma
 
         # use covariance in clock model only after initial timetree estimation is done
         use_cov = (np.sum(has_clock_length) > len(has_clock_length)*0.7) and self.use_covariation
         self.get_clock_model(covariation=use_cov, slope=clock_rate)
 
+        self.logger('ClockTree.init_date_constraints: node date constraints objects...', 2)
         # make node distribution objects
         for node in self.tree.find_clades(order="postorder"):
             # node is constrained
@@ -344,7 +367,8 @@ class ClockTree(TreeAnc):
         else:
             self._ml_t_joint()
 
-        self.convert_dates()
+        if time_marginal=='assign' or (time_marginal==False):
+            self.convert_dates()
 
 
     def _ml_t_joint(self):
@@ -520,7 +544,8 @@ class ClockTree(TreeAnc):
                     pass
 
 
-        self.logger("ClockTree - Marginal reconstruction:  Propagating leaves -> root...", 2)
+        method = 'FFT' if self.use_fft else 'explicit'
+        self.logger("ClockTree - Marginal reconstruction using %s convolutions:  Propagating leaves -> root..."%method, 2)
         # go through the nodes from leaves towards the root:
         for node in self.tree.find_clades(order='postorder'):  # children first, msg to parents
             if node.bad_branch:
@@ -535,12 +560,22 @@ class ClockTree(TreeAnc):
                     node.subtree_distribution = node.date_constraint
                     bl = node.branch_length_interpolator.x
                     x = bl + node.date_constraint.peak_pos
-                    node.marginal_pos_Lx = Distribution(x, node.branch_length_interpolator(bl),
-                                                        min_width=self.min_width, is_log=True)
+                    node.marginal_pos_Lx =  Distribution(x, -self.merger_model.integral_merger_rate(node.date_constraint.peak_pos) +node.branch_length_interpolator(bl), min_width=self.min_width, is_log=True)
+                    #node.marginal_pos_Lx =  Distribution(x, node.branch_length_interpolator(bl), min_width=self.min_width, is_log=True)
 
                 else: # all nodes without precise constraint but positional information
                       # subtree likelihood given the node's constraint and child msg:
                     msgs_to_multiply = [node.date_constraint] if node.date_constraint is not None else []
+                    ## When a coalescent model is being used, the cost of having no merger events along the branch 
+                    ## and one at the node at time t is also factored in: -np.log((gamma(t) * np.exp**I(t))**(k-1)),
+                    ## where k is the number of branches that merge at node t, gamma(t) is the
+                    ## total_merger_rate at time t and I(t) is the integral of the merger_rate (rate of a given lineage converging)
+                    ## evaluated at position t. In a coalescent model the likelihood of a node being
+                    ## at position t is additionally compossed of the branch costs of its children np.exp**-(I(t) - I(t_0)) 
+                    ## and the cost of (k-1) merger events at time t.
+                    if self.merger_model and not node.is_terminal():
+                        time_points = np.unique(np.concatenate([child.marginal_pos_Lx.x for child in node.clades]))
+                        msgs_to_multiply.append(self.merger_model.node_contribution(node, time_points))
                     msgs_to_multiply.extend([child.marginal_pos_Lx for child in node.clades
                                              if child.marginal_pos_Lx is not None])
 
@@ -560,7 +595,11 @@ class ClockTree(TreeAnc):
                         node.marginal_pos_LH = node.subtree_distribution
                         self.tree.positional_marginal_LH = -node.subtree_distribution.peak_val
                     else: # otherwise propagate to parent
-                        res, res_t = NodeInterpolator.convolve(node.subtree_distribution,
+                        if self.use_fft:
+                            res, res_t = NodeInterpolator.convolve_fft(node.subtree_distribution,
+                                        node.branch_length_interpolator, self.fft_grid_size), None
+                        else:
+                            res, res_t = NodeInterpolator.convolve(node.subtree_distribution,
                                         node.branch_length_interpolator,
                                         max_or_integral='integral',
                                         n_grid_points = self.node_grid_points,
@@ -569,7 +608,7 @@ class ClockTree(TreeAnc):
                         res._adjust_grid(rel_tol=self.rel_tol_prune)
                         node.marginal_pos_Lx = res
 
-        self.logger("ClockTree - Marginal reconstruction:  Propagating root -> leaves...", 2)
+        self.logger("ClockTree - Marginal reconstruction using %s convolutions:  Propagating root -> leaves..."%method, 2)
         from scipy.interpolate import interp1d
         for node in self.tree.find_clades(order='preorder'):
 
@@ -577,7 +616,7 @@ class ClockTree(TreeAnc):
             if node.up is None:
                 node.msg_from_parent = None # nothing beyond the root
             # all other cases (All internal nodes + unconstrained terminals)
-            elif (node.date_constraint is not None) and (not node.bad_branch) and node.date_constraint.is_delta:
+            elif (node.date_constraint is not None) and node.date_constraint.is_delta and (not node.bad_branch):
                 node.marginal_pos_LH = node.date_constraint
             else:
                 parent = node.up
@@ -588,17 +627,25 @@ class ClockTree(TreeAnc):
                 # if parent itself got smth from the root node, include it
                 if parent.msg_from_parent is not None:
                     complementary_msgs.append(parent.msg_from_parent)
+                    if self.merger_model:
+                        time_points = np.unique(np.concatenate([np.concatenate([sister.marginal_pos_Lx.x for sister in parent.clades
+                                            if (sister != node) and (sister.marginal_pos_Lx.x is not None)]), parent.msg_from_parent.x]))
+                        complementary_msgs.append(self.merger_model.node_contribution(node, time_points))
 
                 if len(complementary_msgs):
                     msg_parent_to_node = NodeInterpolator.multiply(complementary_msgs)
-                    msg_parent_to_node._adjust_grid(rel_tol=self.rel_tol_prune)
+                    if not self.use_fft:
+                        msg_parent_to_node._adjust_grid(rel_tol=self.rel_tol_prune)
                 else:
                     x = [parent.numdate, numeric_date()]
                     msg_parent_to_node = NodeInterpolator(x, [1.0, 1.0],min_width=self.min_width)
 
                 # integral message, which delivers to the node the positional information
                 # from the complementary subtree
-                res, res_t = NodeInterpolator.convolve(msg_parent_to_node, node.branch_length_interpolator,
+                if self.use_fft:
+                    res, res_t = NodeInterpolator.convolve_fft(msg_parent_to_node, node.branch_length_interpolator, self.fft_grid_size, inverse_time=False), None
+                else:
+                    res, res_t = NodeInterpolator.convolve(msg_parent_to_node, node.branch_length_interpolator,
                                                     max_or_integral='integral',
                                                     inverse_time=False,
                                                     n_grid_points = self.node_grid_points,
@@ -626,7 +673,7 @@ class ClockTree(TreeAnc):
                         plt.plot(msg_parent_to_node.x,msg_parent_to_node.y-msg_parent_to_node.peak_val, '-o')
                         plt.ylim(0,100)
                         plt.xlim(-0.05, 0.05)
-                        import ipdb; ipdb.set_trace()
+                        #import ipdb; ipdb.set_trace()
 
             # assign positions of nodes and branch length only when desired
             # since marginal reconstruction can result in negative branch length
@@ -720,31 +767,27 @@ class ClockTree(TreeAnc):
         upper_rate = self.clock_model['slope'] + rate_std
         lower_rate = max(0.1*current_rate, self.clock_model['slope'] - rate_std)
         for n in self.tree.find_clades():
+            n.numdate_rate_variation = []
             if n.up:
                 n._orig_gamma = n.branch_length_interpolator.gamma
-                n.branch_length_interpolator.gamma = n._orig_gamma*upper_rate/current_rate
 
-        self.logger("###ClockTree.calc_rate_susceptibility: run with upper bound of rate estimate", 1)
-        self.make_time_tree(**params)
-        self.logger("###ClockTree.calc_rate_susceptibility: rate: %f, LH:%f"%(upper_rate, self.tree.positional_joint_LH), 2)
-        for n in self.tree.find_clades():
-            n.numdate_rate_variation = [(upper_rate, n.numdate)]
-            if n.up:
-                n.branch_length_interpolator.gamma = n._orig_gamma*lower_rate/current_rate
+        for rate, label in [(upper_rate, 'upper'), (lower_rate, 'lower'), (current_rate, 'central')]:
+            for n in self.tree.find_clades():
+                if n.up:
+                    n.branch_length_interpolator.gamma = n._orig_gamma*rate/current_rate
 
-        self.logger("###ClockTree.calc_rate_susceptibility: run with lower bound of rate estimate", 1)
-        self.make_time_tree(**params)
-        self.logger("###ClockTree.calc_rate_susceptibility: rate: %f, LH:%f"%(lower_rate, self.tree.positional_joint_LH), 2)
-        for n in self.tree.find_clades():
-            n.numdate_rate_variation.append((lower_rate, n.numdate))
-            if n.up:
-                n.branch_length_interpolator.gamma  = n._orig_gamma
+            self.logger("###ClockTree.calc_rate_susceptibility: run with %s bound of rate estimate"%label, 1)
+            self.make_time_tree(**params)
 
-        self.logger("###ClockTree.calc_rate_susceptibility: run with central rate estimate", 1)
-        self.make_time_tree(**params)
-        self.logger("###ClockTree.calc_rate_susceptibility: rate: %f, LH:%f"%(current_rate, self.tree.positional_joint_LH), 2)
+            if 'time_marginal' in params and params['time_marginal']:
+                self.logger("###ClockTree.calc_rate_susceptibility: rate: %f, LH:%f"%(rate, self.tree.positional_marginal_LH), 2)
+            else:
+                self.logger("###ClockTree.calc_rate_susceptibility: rate: %f, LH:%f"%(rate, self.tree.positional_joint_LH), 2)
+
+            for n in self.tree.find_clades():
+                n.numdate_rate_variation.append((rate, n.numdate))
+
         for n in self.tree.find_clades():
-            n.numdate_rate_variation.append((current_rate, n.numdate))
             n.numdate_rate_variation.sort(key=lambda x:x[1]) # sort estimates for different rates by numdate
 
         return ttconf.SUCCESS

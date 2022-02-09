@@ -3,7 +3,7 @@ from setuptools import setup
 
 def get_version():
     v = "0.0.0"
-    with open('treetime/__init__.py') as ifile:
+    with open('treetime_fft/__init__.py') as ifile:
         for line in ifile:
             if line[:7]=='version':
                 v = line.split('=')[-1].strip()[1:-1]
@@ -14,7 +14,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setup(
-        name = "phylo-treetime",
+        name = "phylo-treetime-fft",
         version = get_version(),
         author = "Pavel Sagulenko, Emma Hodcroft, and Richard Neher",
         author_email = "richard.neher@unibas.ch",
@@ -23,8 +23,8 @@ setup(
         long_description_content_type="text/markdown",
         license = "MIT",
         keywords = "Time-stamped phylogenies, phylogeography, virus evolution",
-        url = "https://github.com/neherlab/treetime",
-        packages=['treetime'],
+        #url = "https://github.com/neherlab/treetime",
+        packages=['treetime_fft'],
         install_requires = [
             'biopython>=1.67,!=1.77,!=1.78',
             'numpy>=1.10.4',
@@ -44,5 +44,5 @@ setup(
             "Programming Language :: Python :: 3.7",
             "Programming Language :: Python :: 3.8"
             ],
-        scripts=['bin/treetime']
+        #scripts=['bin/treetime_fft']
     )

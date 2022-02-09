@@ -3,6 +3,7 @@ import numpy as np
 from . import config as ttconf
 from .distribution import Distribution
 from .utils import clip
+from .merger_models import Coalescent
 
 def _create_initial_grid(node_dist, branch_dist):
     pass
@@ -75,9 +76,9 @@ def _convolution_integrand(t_val, f, g,
 
         if inverse_time: # add negative logarithms
             tnode = t_val - tau
-            fg = f(tnode) + g(tau, tnode=tnode)
+            fg = f(tnode) + g(tau)
         else:
-            fg = f(t_val + tau) + g(tau, tnode=t_val)
+            fg = f(t_val + tau) + g(tau)
 
         # create the interpolation object on this grid
         FG = Distribution(tau, fg, is_log=True, min_width = np.max([f.min_width, g.min_width]),
@@ -85,8 +86,7 @@ def _convolution_integrand(t_val, f, g,
         return FG
 
 
-
-def _max_of_integrand(t_val, f, g, inverse_time=None, return_log=False):
+def _max_of_integrand(t_val, f, g, inverse_time=None, return_log=True):
 
     '''
     Evaluates max_tau f(t+tau)*g(tau) or max_tau f(t-tau)g(tau) if inverse time is TRUE
@@ -111,14 +111,7 @@ def _max_of_integrand(t_val, f, g, inverse_time=None, return_log=False):
         If True, the logarithm will be returned
 
 
-    Returns
-    -------
-
-     FG : Distribution
-        The function to be integrated as Distribution object (interpolator)
-
     '''
-    # return log is always True
     FG = _convolution_integrand(t_val, f, g, inverse_time, return_log=True)
 
     if FG == ttconf.BIG_NUMBER:
@@ -133,6 +126,112 @@ def _max_of_integrand(t_val, f, g, inverse_time=None, return_log=False):
         res[0] = np.exp(res[0])
 
     return res
+
+
+def _max_of_integrand_new(t_val, f, g, inverse_time=None, return_log=True):
+
+    '''
+    Evaluates max_tau f(t+tau)*g(tau) or max_tau f(t-tau)g(tau) if inverse time is TRUE
+
+    Parameters
+    -----------
+
+     t_val : double
+        Time point
+
+     f : Interpolation object
+        First multiplier in convolution
+
+     g : Interpolation object
+        Second multiplier in convolution
+
+     inverse_time : bool, None
+        time direction. If True, then the f(t-tau)*g(tau) is calculated, otherwise,
+        f(t+tau)*g(tau)
+
+     return_log : bool
+        If True, the logarithm will be returned
+
+
+    '''
+    dtau = g.one_mutation*0.01
+
+    if inverse_time:
+        ## tau>g.xmin and t-tau<f.xmax
+        tau_min = np.maximum(t_val - f.xmax, g.xmin)
+        ## tau<g.xmax and t-tau>f.xmin
+        tau_max = np.minimum(t_val - f.xmin, g.xmax)
+    else:
+        ## tau>g.xmin and t+tau>f.xmin
+        tau_min = np.maximum(f.xmin-t_val, g.xmin)
+        ## tau<g.xmax and t+tau<f.xmax
+        tau_max = np.minimum(f.xmax-t_val, g.xmax)
+        #print(tau_min, tau_max)
+
+    res = np.zeros((len(t_val),2))
+    good_ind = tau_max>tau_min
+
+    res[~good_ind,0]=ttconf.BIG_NUMBER
+    res[~good_ind,1]=np.nan
+
+    t_vals_good = t_val[good_ind]
+
+    def fg(tau, t):
+        if inverse_time:
+            tnode = t - tau
+            return f(tnode) + g(tau, tnode=tnode)
+        else:
+            return f(t_vals_good + tau) + g(tau, tnode=t_vals_good)
+
+    def left_dfg(tau, t):
+        return (fg(tau, t)-fg(tau-dtau, t))/dtau
+
+    def right_dfg(tau, t):
+        return (fg(tau+dtau, t)-fg(tau, t))/dtau
+
+    def central_dfg(tau, t):
+        return (fg(tau+dtau*0.5, t)-fg(tau-dtau*0.5, t))/dtau
+
+    lower = tau_min[good_ind]
+    upper = tau_max[good_ind]
+    diff_lower = right_dfg(lower, t_vals_good)
+    diff_upper = left_dfg(upper, t_vals_good)
+
+    intermediate_max = (diff_lower<0)&(diff_upper>0)
+    t_vals_opt = t_vals_good[intermediate_max]
+    lower_opt = lower[intermediate_max]
+    upper_opt = upper[intermediate_max]
+    diff_lower_opt = diff_lower[intermediate_max]
+    diff_upper_opt = diff_upper[intermediate_max]
+
+    left_max = diff_lower>0
+    upper[left_max] = lower[left_max]
+
+    right_max = diff_upper<0
+    lower[right_max] = upper[right_max]
+
+    if np.sum(intermediate_max):
+        while np.max(upper_opt-lower_opt)>dtau:
+            middle = 0.5*(lower_opt+upper_opt)
+            val = central_dfg(middle, t_vals_opt)
+            move_up = val<0
+            lower_opt[move_up] = middle[move_up]
+            diff_lower_opt[move_up] = val[move_up]
+
+            upper_opt[~move_up] = middle[~move_up]
+            diff_upper_opt[~move_up] = val[~move_up]
+
+        lower[intermediate_max] = lower_opt
+        upper[intermediate_max] = upper_opt
+
+    res[good_ind,1] = 0.5*(lower+upper)
+    res[good_ind,0] = fg(0.5*(lower+upper), t_vals_good)
+
+    if not return_log:
+        res[0] = np.exp(-res[0])
+
+    return res.T
+
 
 def _evaluate_convolution(t_val, f, g,  n_integral = 100, inverse_time=None, return_log=False):
     """
@@ -162,6 +261,73 @@ class NodeInterpolator (Distribution):
     """
 
     @classmethod
+    def convolve_fft(cls, node_interp, branch_interp, fft_grid_size, inverse_time=True):
+        fwhm = node_interp.fwhm + branch_interp.fwhm
+        dt = max(branch_interp.one_mutation*0.005, min(node_interp.fwhm, branch_interp.fwhm)/fft_grid_size)
+        b_effsupport = branch_interp.effective_support
+        n_effsupport = node_interp.effective_support
+
+        tmax = 2*max(b_effsupport[1]-b_effsupport[0], n_effsupport[1]-n_effsupport[0])
+
+        Tb = np.arange(b_effsupport[0], b_effsupport[0] + tmax + dt, dt)
+        if inverse_time:
+            Tn = np.arange(n_effsupport[0], n_effsupport[0] + tmax + dt, dt)
+            Tmin = node_interp.xmin
+            Tmax = ttconf.MAX_BRANCH_LENGTH
+        else:
+            Tn = np.arange(n_effsupport[1] - tmax, n_effsupport[1] + dt, dt)
+            Tmin = -ttconf.MAX_BRANCH_LENGTH
+            Tmax = node_interp.xmax
+
+        raw_len = len(Tb)
+        fft_len = 2*raw_len
+
+        fftb = branch_interp.fft(Tb, n=fft_len)
+        fftn = node_interp.fft(Tn, n=fft_len, inverse_time=inverse_time)
+        if inverse_time:
+            fft_res = np.fft.irfft(fftb*fftn, fft_len)[:raw_len]
+            Tres = Tn + Tb[0]
+        else:
+            fft_res = np.fft.irfft(fftb*fftn, fft_len)[::-1]
+            fft_res = fft_res[raw_len:]
+            Tres = Tn - Tb[0]
+
+        # determine region in which we can trust the FFT convolution and avoid
+        # inaccuracies due to machine precision. 1e-13 seems robust
+        ind = fft_res>fft_res.max()*1e-13
+        res = -np.log(fft_res[ind]) + branch_interp.peak_val + node_interp.peak_val - np.log(dt)
+        Tres_cropped = Tres[ind]
+
+        # extrapolate the tails exponentially: use margin last data points
+        margin = np.minimum(3, Tres_cropped.shape[0]//3)
+        if margin<1 or len(res)==0:
+            print("Have encountered an error when patching the exponential function")
+            import ipdb; ipdb.set_trace()
+        else:
+            left_slope = (res[margin]-res[0])/(Tres_cropped[margin]-Tres_cropped[0])
+            right_slope = (res[-1]-res[-margin-1])/(Tres_cropped[-1]-Tres_cropped[-margin-1])
+
+        # only extrapolate on the left when the slope is negative and we are not on the boundary
+        if Tmin<Tres_cropped[0] and left_slope<0:
+            Tleft = np.linspace(Tmin, Tres_cropped[0],10)[:-1]
+            res_left = res[0] + left_slope*(Tleft - Tres_cropped[0])
+        else:
+            Tleft, res_left = [], []
+
+        # only extrapolate on the right when the slope is positive and we are not on the boundary
+        if Tres_cropped[-1]<Tmax and right_slope>0:
+            Tright = np.linspace(Tres_cropped[-1], Tmax,10)[1:]
+            res_right = res[-1] + right_slope*(Tright - Tres_cropped[-1])
+        else: #otherwise
+            Tright, res_right = [], []
+
+        # instantiate the new interpolation object and return
+        return cls(np.concatenate((Tleft,Tres_cropped,Tright)),
+                   np.concatenate((res_left, res, res_right)),
+                   is_log=True, kind='linear', assume_sorted=True)
+
+
+    @classmethod
     def convolve(cls, node_interp, branch_interp, max_or_integral='integral',
                  n_grid_points = ttconf.NODE_GRID_SIZE, n_integral=ttconf.N_INTEGRAL,
                  inverse_time=True, rel_tol=0.05, yc=10):
@@ -169,7 +335,6 @@ class NodeInterpolator (Distribution):
         r'''
         calculate H(t) = \int_tau f(t-tau)g(tau) if inverse_time=True
                   H(t) = \int_tau f(t+tau)g(tau) if inverse_time=False
-
         This function determines the time points of the grid of the result to
         ensure an accurate approximation.
         '''

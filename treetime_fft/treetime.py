@@ -137,7 +137,7 @@ class TreeTime(ClockTree):
                       "sample_from_profile":"root",
                       "reconstruct_tip_states":kwargs.get("reconstruct_tip_states", False)}
 
-        tt_kwargs = {'clock_rate':fixed_clock_rate, 'time_marginal':False}
+        tt_kwargs = {'clock_rate':fixed_clock_rate, 'time_marginal': 'assign' if time_marginal=='always' else False}
         tt_kwargs.update(kwargs)
 
         seq_LH = 0
@@ -167,19 +167,22 @@ class TreeTime(ClockTree):
         elif root is not None:
             self.reroot(root=root, clock_rate=fixed_clock_rate)
 
-        if self.branch_length_mode=='input':
-            if self.aln:
-                self.infer_ancestral_sequences(**seq_kwargs)
-        else:
+        if self.branch_length_mode!='input':
             self.optimize_tree(max_iter=1, prune_short=False,**seq_kwargs)
 
         # infer time tree and optionally resolve polytomies
         self.logger("###TreeTime.run: INITIAL ROUND",0)
         self.make_time_tree(**tt_kwargs)
 
-        if self.aln:
+        if self.aln and self.sequence_reconstruction:
             seq_LH = self.tree.sequence_marginal_LH if seq_kwargs['marginal_sequences'] else self.tree.sequence_joint_LH
-        self.LH =[[seq_LH, self.tree.positional_joint_LH, 0]]
+        else:
+            seq_LH = 0
+
+        if tt_kwargs['time_marginal']:
+            self.LH =[[seq_LH, self.tree.positional_marginal_LH, 0]]
+        else:
+            self.LH =[[seq_LH, self.tree.positional_joint_LH, 0]]
 
         if root is not None and max_iter:
             new_root = self.reroot(root='least-squares' if root=='clock_filter' else root, clock_rate=fixed_clock_rate)
@@ -229,18 +232,24 @@ class TreeTime(ClockTree):
 
             if need_new_time_tree:
                 self.make_time_tree(**tt_kwargs)
-                if self.aln:
+                if self.aln and self.branch_length_mode!='input':
                     ndiff = self.infer_ancestral_sequences('ml',**seq_kwargs)
             else: # no refinements, just iterate
-                if self.aln:
+                if self.aln and self.branch_length_mode!='input':
                     ndiff = self.infer_ancestral_sequences('ml',**seq_kwargs)
                 self.make_time_tree(**tt_kwargs)
 
             self.tree.coalescent_joint_LH = self.merger_model.total_LH() if Tc else 0.0
 
-            if self.aln:
+            if self.aln and self.sequence_reconstruction:
                 seq_LH = self.tree.sequence_marginal_LH if seq_kwargs['marginal_sequences'] else self.tree.sequence_joint_LH
-            self.LH.append([seq_LH, self.tree.positional_joint_LH, self.tree.coalescent_joint_LH])
+            else:
+                seq_LH = 0
+
+            if tt_kwargs['time_marginal']:
+                self.LH.append([seq_LH, self.tree.positional_marginal_LH, self.tree.coalescent_joint_LH])
+            else:
+                self.LH.append([seq_LH, self.tree.positional_joint_LH, self.tree.coalescent_joint_LH])
 
             # Update the trace log
             self.trace_run.append(self.tracelog_run(niter=niter+1, ndiff=ndiff, n_resolved=n_resolved,
@@ -256,6 +265,8 @@ class TreeTime(ClockTree):
         # if the rate is too be varied and the rate estimate has a valid confidence interval
         # rerun the estimation for variations of the rate
         if vary_rate:
+            if time_marginal:
+                tt_kwargs['time_marginal']='assign' if time_marginal in ['always', 'assign'] else True
             if type(vary_rate)==float:
                 self.calc_rate_susceptibility(rate_std=vary_rate, params=tt_kwargs)
             elif self.clock_model['valid_confidence']:
@@ -267,7 +278,7 @@ class TreeTime(ClockTree):
         # this will set marginal_pos_LH, which to be used as error bar estimations
         if time_marginal:
             self.logger("###TreeTime.run: FINAL ROUND - confidence estimation via marginal reconstruction", 0)
-            tt_kwargs['time_marginal']=time_marginal
+            tt_kwargs['time_marginal']='assign' if time_marginal in ['always', 'assign'] else True
             self.make_time_tree(**tt_kwargs)
 
             self.trace_run.append(self.tracelog_run(niter=niter+1, ndiff=0, n_resolved=0,
@@ -567,8 +578,8 @@ class TreeTime(ClockTree):
             cost gain if nodes n1, n2 are joined and their parent is placed at time t
             cost gain = (LH loss now) - (LH loss when placed at time t)
             """
-            cg2 = n2.branch_length_interpolator(parent.time_before_present - n2.time_before_present) - n2.branch_length_interpolator(t - n2.time_before_present)
-            cg1 = n1.branch_length_interpolator(parent.time_before_present - n1.time_before_present) - n1.branch_length_interpolator(t - n1.time_before_present)
+            cg2 = n2.branch_length_interpolator._func(parent.time_before_present - n2.time_before_present) - n2.branch_length_interpolator._func(t - n2.time_before_present)
+            cg1 = n1.branch_length_interpolator._func(parent.time_before_present - n1.time_before_present) - n1.branch_length_interpolator._func(t - n1.time_before_present)
             cg_new = - zero_branch_slope * (parent.time_before_present - t) # loss in LH due to the new branch
             return -(cg2+cg1+cg_new)
 
@@ -576,6 +587,7 @@ class TreeTime(ClockTree):
             """
             cost gained if the two nodes would have been connected.
             """
+
             try:
                 cg = sciopt.minimize_scalar(_c_gain,
                     bounds=[max(n1.time_before_present,n2.time_before_present), parent.time_before_present],
@@ -585,11 +597,12 @@ class TreeTime(ClockTree):
                 self.logger("TreeTime._poly.cost_gain: optimization of gain failed", 3, warn=True)
                 return parent.time_before_present, 0.0
 
-
         def merge_nodes(source_arr, isall=False):
+            self.logger("TreeTime._poly.merge_nodes: start merger matrix of size %d"%len(source_arr), 2)
             mergers = np.array([[cost_gain(n1,n2, clade) if i1<i2 else (0.0,-1.0)
                                     for i1,n1 in enumerate(source_arr)]
                                 for i2, n2 in enumerate(source_arr)])
+            self.logger("TreeTime._poly.merge_nodes: made merger matrix of size %d"%len(source_arr), 2)
             LH = 0
             while len(source_arr) > 1 + int(isall):
                 # max possible gains of the cost when connecting the nodes:
@@ -668,7 +681,7 @@ class TreeTime(ClockTree):
         stretched = [c for c  in clade.clades if c.mutation_length < c.clock_length]
         compressed = [c for c in clade.clades if c not in stretched]
 
-        if len(stretched)==1 and merge_compressed is False:
+        if len(stretched)<2 and merge_compressed is False:
             return 0.0
 
         LH = merge_nodes(stretched, isall=len(stretched)==len(clade.clades))
@@ -737,7 +750,6 @@ class TreeTime(ClockTree):
                 except:
                     self.logger("setting of coalescent time scale failed", 1, warn=True)
 
-        self.merger_model.attach_to_tree()
 
 
     def relaxed_clock(self, slack=None, coupling=None, **kwargs):

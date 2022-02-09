@@ -20,6 +20,7 @@ class Distribution(object):
     object.
     """
 
+
     @staticmethod
     def calc_fwhm(distribution, is_neg_log=True):
         """
@@ -153,6 +154,8 @@ class Distribution(object):
             self._func= interp1d(xvals, yvals, kind=kind, fill_value=BIG_NUMBER,
                                  bounds_error=False, assume_sorted=True)
             self._fwhm = Distribution.calc_fwhm(self)
+            # remember effective range
+            self._effective_support = self.calc_effective_support()
 
         elif np.isscalar(x):
             assert (np.isscalar(y) or y is None)
@@ -167,6 +170,7 @@ class Distribution(object):
             self._xmin, self._xmax = x, x
             self._support = 0.
             self._func = lambda x : (x==self.peak_pos)*self.peak_val
+            self._effective_support = (self._xmin, self._xmax)
         else:
             raise TypeError("Cannot create Distribution: "
                 "Input arguments should be scalars or iterables!")
@@ -199,6 +203,10 @@ class Distribution(object):
     @property
     def fwhm(self):
         return self._fwhm
+
+    @property
+    def effective_support(self):
+        return self._effective_support
 
     @property
     def x(self):
@@ -248,27 +256,60 @@ class Distribution(object):
         return Distribution.multiply((self, other))
 
 
+    def calc_effective_support(self, cutoff=1e-15):
+        """
+        Assess the interval on which the value of self is higher than cutoff
+        relative to its peak
+        """
+        from scipy.optimize import brentq
+        log_cutoff = -np.log(cutoff)
+        vals = log_cutoff - self.__call__(self.x) + self.peak_val
+        above = vals > 0
+        above_idx = np.where(above)[0]
+        if len(above_idx)==0:
+            return (self.xmin, self.xmax)
+
+        try:
+            if above[0]:
+                left = self.xmin
+            else:
+                x1, x2 = self.x[above_idx[0]-1], self.x[above_idx[0]]
+                y1, y2 = vals[above_idx[0]-1], vals[above_idx[0]]
+                d = y2-y1
+                left = x1*y2/d - x2*y1/d
+
+            if above[-1]:
+                right = self.xmax
+            else:
+                x1, x2 = self.x[above_idx[-1]], self.x[above_idx[-1]+1]
+                y1, y2 = vals[above_idx[-1]], vals[above_idx[-1]+1]
+                d = y1-y2
+                right = -x1*y2/d + x2*y1/d
+        except:
+            raise ArithmeticError("Region of support of the distribution couldn'n be determined!")
+
+        return (left,right)
+
+
     def _adjust_grid(self, rel_tol=0.01, yc=10):
-        updated = True
         n_iter=0
-        while len(self.y)>200 and updated and n_iter<5:
+        while len(self.y)>200 and n_iter<5:
             interp_err = 2*self.y[1:-1] - self.y[2:] - self.y[:-2]
             ind = np.ones_like(self.y, dtype=bool)
             dy = self.y-self.peak_val
             prune = interp_err[::2] > rel_tol*(1+ (dy[1:-1:2]/yc)**4)
             ind[1:-1:2] = prune
+            ind[self.peak_idx] = True
             if np.mean(prune)<1.0:
                 self._func.y = self._func.y[ind]
                 self._func.x = self._func.x[ind]
-                updated=True
                 n_iter+=1
             else:
-                updated=False
-                n_iter+=1
+                break
 
-        self._peak_idx = self.__call__(self._func.x).argmin()
-        self._peak_pos = self._func.x[self._peak_idx]
-        self._peak_val = self.__call__(self.peak_pos)
+            self._peak_idx = self.__call__(self._func.x).argmin()
+            self._peak_pos = self._func.x[self._peak_idx]
+            self._peak_val = self.__call__(self.peak_pos)
 
 
     def prob(self,x):
@@ -334,3 +375,97 @@ class Distribution(object):
 
         return np.sum(res)
 
+
+    def fft(self, T, n=None, inverse_time=True):
+        if self.is_delta:
+            import ipdb; ipdb.set_trace()
+        from numpy.fft import rfft
+        if n is None:
+            n=len(T)
+        if inverse_time:
+            return rfft(self.prob_relative(T), n=n)
+        else:
+            return rfft(self.prob_relative(T)[::-1], n=n)
+
+
+if __name__=="__main__":
+    # code used for debugging and development
+    from matplotlib import pyplot as plt
+    plt.ion()
+
+    x = [-1e-10,  0.,    1.,  2.,    2.+1e-10]
+    y = [  1e-10, 1e-10, 10., 1e-10, 1e-10]
+    d1 = Distribution(x, y,is_log=False)
+
+    def f(x):
+        return (x**2-5)**2 #(x-5)**2+np.abs(x)**3
+    def g(x):
+        return (x-4)**2*(x**(1.0/3)-5)**2
+
+    # measure interpolation accuracy
+    plot=False
+    error = {}
+    for kind in ['linear', 'quadratic', 'cubic', 'Q']:
+        error[kind]=[[],[]]
+    npoints = [11,21] #,31,41, 51,75,101]
+    for ex, func in [[0,f],[1,g]]:
+        for npoint in npoints:
+            if ex==0:
+                xnew = np.linspace(-5,15,1000)
+                x = np.linspace(0,10,npoint)
+            elif ex==1:
+                xnew = np.linspace(0,150,1000)
+                x = np.linspace(0,9.0,npoint)**3
+
+            if plot:
+                plt.figure()
+                plt.plot(x, np.exp(-func(x)),'-o', label = 'data')
+                plt.plot(xnew, np.exp(-func(xnew)),'-',label='true')
+            for kind in ['linear', 'quadratic', 'cubic']:
+                try:
+                    dist = Distribution(x, func(x), kind=kind, is_log=True)
+                    if plot: plt.plot(xnew, dist.prob(xnew), label=kind)
+                    E = np.mean((np.exp(-func(xnew))-dist.prob(xnew))[(xnew>dist.xmin) & (xnew<dist.xmax)]**2)
+                    print(kind,npoint, E)
+                except:
+                    E=np.nan
+                error[kind][ex].append(E)
+            try:
+                distQ = quadratic_interpolator(x, func(x))
+                if plot: plt.plot(xnew[(xnew>dist.xmin) & (xnew<dist.xmax)], np.exp(-distQ(xnew))[(xnew>dist.xmin) & (xnew<dist.xmax)], label='Q')
+                E = np.mean((np.exp(-func(xnew))-np.exp(-distQ(xnew)))[(xnew>dist.xmin) & (xnew<dist.xmax)]**2)
+                print('Q',npoint, E)
+            except:
+                E=np.nan
+            error['Q'][ex].append(E)
+            if plot:
+                plt.yscale('log')
+                plt.legend()
+
+    for ex in [0,1]:
+        plt.figure()
+        for k in error:
+            plt.plot(npoints, error[k][ex],'-o', label=k)
+        plt.yscale('log')
+        plt.legend()
+
+    # measure integration accuracy
+    integration_error = {'trapez':[], 'simpson':[], 'piecewise':[]}
+    npoints = [11,21,31, 41, 51,75,101, 201, 501, 1001]
+    xnew = np.linspace(-5,15,1000)
+    x = np.linspace(0,10,3000)
+    dist = Distribution(x, g(x), kind='linear', is_log=True)
+    for npoint in npoints:
+        integration_error['trapez'].append(dist.integrate_trapez(0,10,npoint))
+        integration_error['simpson'].append(dist.integrate_simpson(0,10,npoint))
+        xtmp = np.linspace(0,10,min(100,npoint))
+        disttmp = Distribution(xtmp, g(xtmp), kind='cubic', is_log=True)
+
+    plt.figure()
+    base_line = integration_error['simpson'][-1]
+    plt.plot(npoints, np.abs(integration_error['trapez']-base_line), label='trapez')
+    plt.plot(npoints, np.abs(integration_error['simpson']-base_line), label='simpson')
+    plt.xlabel('npoints')
+    plt.xscale('log')
+    plt.yscale('log')
+    plt.legend()
