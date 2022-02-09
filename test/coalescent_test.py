@@ -50,7 +50,7 @@ def eq(self1, other):
     return same
 
 ##define variables
-base_name = '../treetime_examples/data/h3n2_na/h3n2_na_20'
+base_name = '../../treetime_examples/data/h3n2_na/h3n2_na_20'
 tree = base_name+'.nwk'
 aln = base_name+'.fasta'
 seq_len = None
@@ -284,14 +284,14 @@ for key in names_numerical_old:
 ####################This is a bunch of code for plotting the final output distributions when running both the old and the new version
 
 tt_numerical_old = TreeTime(gtr='Jukes-Cantor', tree = tree,
-                aln = aln, verbose = 1, dates = dates, root=root, seq_len =seq_len, debug=True, use_fft=False)
+                aln = aln, verbose = 1, dates = dates, root=root, seq_len =seq_len, debug=True, use_fft=False, fixed_clock_rate=fixed_clock_rate)
 
 tt_numerical_old.run(root="best", branch_length_mode='marginal', time_marginal=True, max_iter=1, Tc=Tc)
 
 
 from treetime_fft import TreeTime as TreeTimeFFT
 tt_numerical_new = TreeTimeFFT(gtr='Jukes-Cantor', tree = tree,
-                aln = aln, verbose = 1, dates = dates, root=root, seq_len =seq_len, debug=True, use_fft=False)
+                aln = aln, verbose = 1, dates = dates, root=root, seq_len =seq_len, debug=True, use_fft=False, fixed_clock_rate=fixed_clock_rate)
 
 tt_numerical_new.run(root="best", branch_length_mode='marginal', time_marginal=True, max_iter=1, Tc=Tc)
 
