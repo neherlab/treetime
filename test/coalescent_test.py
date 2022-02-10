@@ -57,7 +57,7 @@ seq_len = None
 dates = parse_dates(base_name+'.metadata.csv')
 root = None
 Tc=0.01
-fixed_clock_rate=0.002
+fixed_clock_rate=0.0028
 
 ##initialize trees
 tt_numerical_old = TreeTime(gtr='Jukes-Cantor', tree = tree,
@@ -206,20 +206,21 @@ def get_new_from_old(L, node, treetime_obj, Lx=True):
 #     #print(L.peak_val)
 #     return L, L1
 
+##note that ymax and minwidth are not reset when the BranchLenInterpolation object is called with merger cost, but are reset when the functions are multiplied, however, as these should not be releveant I will leave out their comparison
 total_issues = 0
 for key in terminals_numerical_old:
     if not terminals_numerical_old[key].time_before_present == terminals_numerical_new[key].time_before_present:
         print("time error")
     if not eq(get_new_from_old(terminals_numerical_old[key].branch_length_interpolator,terminals_numerical_old[key], tt_numerical_old )[1], terminals_numerical_new[key].branch_length_interpolator):
-        if abs(get_new_from_old(terminals_numerical_old[key].branch_length_interpolator,terminals_numerical_old[key], tt_numerical_old )[1]._ymax -terminals_numerical_new[key].branch_length_interpolator._ymax) > 10e-11:
-            print("_ymax too different")
-            total_issues += 1
+        # if abs(get_new_from_old(terminals_numerical_old[key].branch_length_interpolator,terminals_numerical_old[key], tt_numerical_old )[1]._ymax -terminals_numerical_new[key].branch_length_interpolator._ymax) > 10e-11:
+        #     print("_ymax too different")
+        #     total_issues += 1
         if abs(get_new_from_old(terminals_numerical_old[key].branch_length_interpolator,terminals_numerical_old[key], tt_numerical_old )[1]._peak_val -terminals_numerical_new[key].branch_length_interpolator._peak_val) > 10e-15:
             print("_peak_val too different")
             total_issues += 1
-        if abs(get_new_from_old(terminals_numerical_old[key].branch_length_interpolator,terminals_numerical_old[key], tt_numerical_old )[1].min_width -terminals_numerical_new[key].branch_length_interpolator.min_width) > 10e-11:
-            print("_ymax too different")
-            total_issues += 1
+        # if abs(get_new_from_old(terminals_numerical_old[key].branch_length_interpolator,terminals_numerical_old[key], tt_numerical_old )[1].min_width -terminals_numerical_new[key].branch_length_interpolator.min_width) > 10e-11:
+        #     print("_minwidth too different")
+        #     total_issues += 1
 print("total number of issues:" +str(total_issues))
 
 total_issues = 0
@@ -228,18 +229,18 @@ for key in names_numerical_old:
     if not names_numerical_old[key].time_before_present == names_numerical_new[key].time_before_present:
         print("time error")
     if not eq(get_new_from_old(names_numerical_old[key].branch_length_interpolator,names_numerical_old[key], tt_numerical_old )[1], names_numerical_new[key].branch_length_interpolator):
-        ymax_diff = abs(get_new_from_old(names_numerical_old[key].branch_length_interpolator,names_numerical_old[key], tt_numerical_old )[1]._ymax -names_numerical_new[key].branch_length_interpolator._ymax)
-        if ymax_diff > 10e-11:
-            print("_ymax too different: " + str(ymax_diff))
-            total_issues += 1
+        # ymax_diff = abs(get_new_from_old(names_numerical_old[key].branch_length_interpolator,names_numerical_old[key], tt_numerical_old )[1]._ymax -names_numerical_new[key].branch_length_interpolator._ymax)
+        # if ymax_diff > 10e-11:
+        #     print("_ymax too different: " + str(ymax_diff))
+        #     total_issues += 1
         peak_val_diff = abs(get_new_from_old(names_numerical_old[key].branch_length_interpolator,names_numerical_old[key], tt_numerical_old )[1]._peak_val -names_numerical_new[key].branch_length_interpolator._peak_val)
         if peak_val_diff > 10e-15:
             print("_peak_val too different:" + str(peak_val_diff))
             total_issues += 1
-        min_width_diff = abs(get_new_from_old(names_numerical_old[key].branch_length_interpolator,names_numerical_old[key], tt_numerical_old )[1].min_width -names_numerical_new[key].branch_length_interpolator.min_width)
-        if min_width_diff > 10e-11:
-            print("_ymax too different:" + str(min_width_diff))
-            total_issues += 1
+        # min_width_diff = abs(get_new_from_old(names_numerical_old[key].branch_length_interpolator,names_numerical_old[key], tt_numerical_old )[1].min_width -names_numerical_new[key].branch_length_interpolator.min_width)
+        # if min_width_diff > 10e-11:
+        #     print("_ymax too different:" + str(min_width_diff))
+        #     total_issues += 1
         fwhm_diff = abs(get_new_from_old(names_numerical_old[key].branch_length_interpolator,names_numerical_old[key], tt_numerical_old )[1]._fwhm -names_numerical_new[key].branch_length_interpolator._fwhm)
         if min_width_diff > 10e-15:
             print("_fwhmtoo different:" + str(fwhm_diff))
@@ -324,7 +325,7 @@ def get_x_y(node, treetime_obj, Lx, new, flipped=False):
                 x = L.x 
     #y = np.exp(-L.y+L.peak_val)
     print(L.peak_val)
-    return x, L.y
+    return x, L.y 
 
 def get_new_from_old(node, treetime_obj, Lx=True):
     from treetime.distribution import Distribution
@@ -339,7 +340,7 @@ def get_new_from_old(node, treetime_obj, Lx=True):
         x = L.x
         L = multiply(x, [L, Distribution(x, -treetime_obj.merger_model.integral_merger_rate(x), is_log=True)])
     print(L.peak_val)
-    return x, L.y
+    return x, L.y 
 
 
 terminals = [key for key in terminals_numerical_old]
@@ -354,21 +355,22 @@ for key in terminals_numerical_old:
 
     # ##calculate the x and y values for plottingcd
     x_num_1, y_num_1 = get_x_y(terminals_numerical_old[key], tt_numerical_old, True, False)
-    print("number of points in old Lx:" + str(len(terminals_numerical_old[key].marginal_pos_Lx.x)))
-    print("number of points in new Lx:" + str(len(terminals_numerical_new[key].marginal_pos_Lx.x)))
+    #print("number of points in old Lx:" + str(len(terminals_numerical_old[key].marginal_pos_Lx.x)))
+    #print("number of points in new Lx:" + str(len(terminals_numerical_new[key].marginal_pos_Lx.x)))
     x_num_3, y_num_3 = get_x_y(terminals_numerical_new[key], tt_numerical_new, True, True)
-    print(x_num_1==x_num_3)
-    x_num_f, y_num_f = get_x_y(terminals_numerical_new[key], tt_numerical_new, True, True, True)
+    print(np.all(np.abs(y_num_1-y_num_3) < 10e-10))
+    #x_num_f, y_num_f = get_x_y(terminals_numerical_new[key], tt_numerical_new, True, True, True)
     x_num_new, y_num_new = get_x_y(terminals_numerical_new[key], tt_numerical_new, True, False)
     #num_size = "numeric ultra fine, N: " + str(len(x_num_3)) + " N^2: " + str(round(len(x_num_3)**2))
 
     x_reverse_old, y_reverse_old = get_new_from_old(terminals_numerical_old[key], tt_numerical_old)
-    x_new, y_new = get_x_y(terminals_numerical_new[key], tt_numerical_new, True, False)
+    print(np.all(abs(y_num_new-y_reverse_old) < 10e-6))
+    #x_new, y_new = get_x_y(terminals_numerical_new[key], tt_numerical_new, True, False)
 
     ##plot the distributions
     fig = plt.figure()
-    plt.plot(x_num_1, y_num_1, 'o', markersize=1, color='red', label='numerical (old))')
-    plt.plot(x_num_3, y_num_3, 'o', markersize=0.5, color='blue', label='numerical (new))')
+    plt.plot(x_num_new, y_num_new, 'o', markersize=1, color='red', label='numerical (new))')
+    plt.plot(x_reverse_old, y_reverse_old, 'o', markersize=0.5, color='blue', label='numerical (new from old))')
     #plt.plot(x_num_f, y_num_f, 'o', markersize=0.5, color='black', label='numerical (flipped)')
     #plt.plot(x_num_new, y_num_new, 'o', markersize=1, color='green', label='numerical (new, not altered)')
     plt.xlabel("Time (effective support)", fontsize=8)
@@ -381,15 +383,15 @@ for key in terminals_numerical_old:
     plt.close()
 
     fig = plt.figure()
-    plt.plot(y_num_3-y_num_1, 'o', markersize=1, color='red', label='true difference Lx old approach - new approach')
+    plt.plot(y_num_new-y_reverse_old, 'o', markersize=1, color='red', label='true difference Lx old approach - new approach')
     from treetime_fft.distribution import Distribution
     integral_component = Distribution(x_num_1, tt_numerical_new.merger_model.integral_merger_rate(x_num_1), is_log=True)
     y = np.exp(-integral_component.y+integral_component.peak_val)
     multiplicity = len(terminals_numerical_new[key].up.clades)
     merger_rate_component = Distribution(x_num_1, tt_numerical_new.merger_model.total_merger_rate(x_num_1)**((multiplicity-1)/(multiplicity)), is_log=False)
     y_m = np.exp(-merger_rate_component.y+merger_rate_component.peak_val)
-    plt.plot(np.max(y_num_3-y_num_1)/np.max(y)*y, 'o', markersize=1, color='green', label='integral component shape')
-    plt.plot(np.max(y_num_3-y_num_1)/np.max(y_m)*y_m, 'o', markersize=1, color='blue', label='merger rate component shape')
+    #plt.plot(np.max(y_num_3-y_num_1)/np.max(y)*y, 'o', markersize=1, color='green', label='integral component shape')
+    #plt.plot(np.max(y_num_3-y_num_1)/np.max(y_m)*y_m, 'o', markersize=1, color='blue', label='merger rate component shape')
     plt.legend(prop={"size":8})
     plt.show()
     pp.savefig()
@@ -411,21 +413,23 @@ for key in names_numerical_old:
 
         ##calculate the x and y values for plottingcd
         x_num_1, y_num_1 = get_x_y(names_numerical_old[key], tt_numerical_old, False, False)
-        num_size_1 = "numeric default, N: " + str(len(x_num_1)) + " N^2: " + str(round(len(x_num_1)**2))
+        #num_size_1 = "numeric default, N: " + str(len(x_num_1)) + " N^2: " + str(round(len(x_num_1)**2))
         x_num_3, y_num_3 = get_x_y(names_numerical_new[key], tt_numerical_new, False, True)
-        print("number of points in old Lx:" + str(len(names_numerical_old[key].subtree_distribution.x)))
-        print("number of points in new Lx:" + str(len(names_numerical_new[key].subtree_distribution.x)))
+        #print("number of points in old Lx:" + str(len(names_numerical_old[key].subtree_distribution.x)))
+        #print("number of points in new Lx:" + str(len(names_numerical_new[key].subtree_distribution.x)))
         #x_num_f, y_num_f = get_x_y(names_numerical_new[key], tt_numerical_new, False, True, True)
         #x_num_new, y_num_new = get_x_y(names_numerical_new[key], tt_numerical_new, False, False)
         #num_size = "numeric ultra fine, N: " + str(len(x_num_3)) + " N^2: " + str(round(len(x_num_3)**2))
-        x_old, y_old = get_new_from_old(names_numerical_old[key], tt_numerical_old, False)
+        x_reverse_old, y_reverse_old = get_new_from_old(names_numerical_old[key], tt_numerical_old, False)
         x_new, y_new = get_x_y(names_numerical_new[key], tt_numerical_new, False, False)
-        print(y_old==y_new)
+        print(np.all(np.abs(y_num_1-y_num_3) < 10e-6))
+        print(np.all(abs(y_num_new-y_reverse_old) < 10e-6))
+        #print(y_reverse_old==y_new)
 
         ##plot the distributions
         fig = plt.figure()
-        plt.plot(x_num_1, y_num_1, 'o', markersize=1, color='red', label='numerical (old))')
-        plt.plot(x_num_3, y_num_3, 'o', markersize=0.2, color='blue', label='numerical (new))')
+        plt.plot(x_new, y_new, 'o', markersize=1, color='red', label='numerical (new))')
+        plt.plot(x_reverse_old, y_reverse_old, 'o', markersize=0.5, color='blue', label='numerical (new from old))')
         #plt.plot(x_num_f, y_num_f, 'o', markersize=0.2, color='black', label='numerical (new, flipped)')
         #plt.plot(x_num_new, y_num_new, 'o', markersize=0.2, color='green', label='numerical (new, not altered)')
         plt.xlabel("Time (effective support)", fontsize=8)

@@ -592,7 +592,7 @@ class ClockTree(TreeAnc):
                     if node.up is None: # this is the root, set dates
                         node.subtree_distribution._adjust_grid(rel_tol=self.rel_tol_prune)
                         node.marginal_pos_Lx = node.subtree_distribution
-                        node.marginal_pos_LH = node.subtree_distribution
+                        node.marginal_pos_LH = Distribution.multiply([node.subtree_distribution, Distribution(node.subtree_distribution.x, self.merger_model.integral_merger_rate(node.subtree_distribution.x), is_log=True)])
                         self.tree.positional_marginal_LH = -node.subtree_distribution.peak_val
                     else: # otherwise propagate to parent
                         if self.use_fft:
