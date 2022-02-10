@@ -42,7 +42,7 @@ def parse_arg(tree1, tree2, aln1, aln2, MCC_file, fill_overhangs=True):
 
 
 def setup_arg(T, aln, total_mask, segment_mask, dates, MCCs, gtr='JC69',
-              verbose=0, fill_overhangs=True):
+              verbose=0, fill_overhangs=True, reroot=True):
     from treetime import TreeTime
     from collections import defaultdict
 
@@ -51,7 +51,8 @@ def setup_arg(T, aln, total_mask, segment_mask, dates, MCCs, gtr='JC69',
                   fill_overhangs=fill_overhangs, compress=False)
 
 
-    tt.reroot("least-squares", force_positive=True)
+    if reroot:
+        tt.reroot("least-squares", force_positive=True)
 
     leaf_to_MCC = {}
     for mi,mcc in enumerate(MCCs):
@@ -63,7 +64,11 @@ def setup_arg(T, aln, total_mask, segment_mask, dates, MCCs, gtr='JC69',
         leaf.mcc = leaf_to_MCC[leaf.name]
 
     for n in tt.tree.get_nonterminals(order='postorder'):
-        n.child_mccs = set.union(*[c.child_mccs for c in n])
+        common_mccs = set.intersection(*[c.child_mccs for c in n])
+        if len(common_mccs):
+            n.child_mccs = common_mccs
+        else:
+            n.child_mccs = set.union(*[c.child_mccs for c in n])
 
     mcc_intersection = set.intersection(*[c.child_mccs for c in tt.tree.root])
     if len(mcc_intersection):
