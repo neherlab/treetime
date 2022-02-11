@@ -11,6 +11,16 @@ from treetime.utils import parse_dates
 def get_test_nodes(tt1, tt2, pattern):
     return [n for n in tt1.tree.find_clades() if pattern in n.name][0], [n for n in tt2.tree.find_clades() if pattern in n.name][0]
 
+def lookup_by_names(tree):
+    names = {}
+    for clade in tree.get_clades():
+        if clade.name != tree.root.name:
+            if clade.name in names:
+                raise ValueError("Duplicate key: %s" % clade.name)
+            names[clade.name] = clade
+    return names
+
+
 
 if __name__ == '__main__':
 
@@ -20,9 +30,9 @@ if __name__ == '__main__':
 
     dates = parse_dates(base_name+'.metadata.csv')
     tt = TreeTime(gtr='Jukes-Cantor', tree = base_name+'.nwk', use_fft=False,
-                  aln = base_name+'.fasta', verbose = 1, dates = dates, precision=3)
+                  aln = base_name+'.fasta', verbose = 1, dates = dates, precision=3, debug=True)
     tt_fft = TreeTimeFFT(gtr='Jukes-Cantor', tree = base_name+'.nwk', use_fft=False,
-                  aln = base_name+'.fasta', verbose = 1, dates = dates, precision=3)
+                  aln = base_name+'.fasta', verbose = 1, dates = dates, precision=3, debug=True)
 
     tt.min_width = 0.00001
     tt_fft.min_width = 0.00001
@@ -38,6 +48,9 @@ if __name__ == '__main__':
     tt.make_time_tree(clock_rate=fixed_clock_rate, time_marginal=False)
     tt_fft.make_time_tree(clock_rate=fixed_clock_rate, time_marginal=False)
 
+
+    terminals = [clade.name for clade in tt.tree.get_terminals()]
+
     node_pattern = 'NODE_0000003'
     test_node, test_node_fft = get_test_nodes(tt, tt_fft, node_pattern)
 
@@ -45,6 +58,7 @@ if __name__ == '__main__':
     t = np.linspace(0,4*fixed_clock_rate,1000)
     plt.plot(t, test_node.branch_length_interpolator.prob_relative(t), label='old', ls='-')
     plt.plot(t, test_node_fft.branch_length_interpolator.prob_relative(t), label='new', ls='--')
+    plt.savefig("test.png")
 
     Tc=0.01
     tt.add_coalescent_model(Tc)
@@ -53,42 +67,147 @@ if __name__ == '__main__':
     plt.figure()
     plt.plot(t, tt.merger_model.cost(test_node.time_before_present, t))
     plt.plot(t, tt_fft.merger_model.cost(test_node.time_before_present, t))
+    plt.savefig("test.png")
 
     plt.figure()
     plt.plot(t, tt.merger_model.integral_merger_rate(t+0.02))
     plt.plot(t, tt_fft.merger_model.integral_merger_rate(t+0.02))
+    plt.savefig("test.png")
 
     plt.figure()
     t = np.linspace(0,4*fixed_clock_rate,1000)
     plt.plot(t, test_node.branch_length_interpolator.prob_relative(t), label='old', ls='-')
     plt.plot(t, test_node_fft.branch_length_interpolator.prob_relative(t), label='new', ls='--')
+    plt.savefig("test.png")
 
-    plt.figure()
-    t = np.linspace(0,4*fixed_clock_rate,1000)
     def undo_merger(test_node, t):
         return test_node.branch_length_interpolator.prob(t)*np.exp(tt.merger_model.cost(test_node.time_before_present, t))
 
-    plt.plot(t, undo_merger(test_node, t), label='old', ls='-')
-    plt.plot(t, test_node_fft.branch_length_interpolator.prob(t), label='new', ls='--')
+    node_pattern = 'Indiana'
+    test_node, test_node_fft = get_test_nodes(tt, tt_fft, node_pattern)
+    while test_node:
+        if test_node.name != tt.tree.root.name:
+            plt.figure()
+            t = np.linspace(0,4*fixed_clock_rate,1000)
+            plt.plot(t, undo_merger(test_node, t), label='old', ls='-')
+            plt.plot(t, test_node_fft.branch_length_interpolator.prob(t), label='new', ls='--')
+            plt.savefig("test.png")
+            print(np.max(abs(undo_merger(test_node, t)- test_node_fft.branch_length_interpolator.prob(t))))
+        test_node, test_node_fft = test_node.up, test_node_fft.up
 
+    ##the greatest absolute difference is 5.551115123125783e-16
 
-    tt.make_time_tree(clock_rate=fixed_clock_rate, time_marginal=True)
-    tt_fft.make_time_tree(clock_rate=fixed_clock_rate, time_marginal=True)
+    tt.init_date_constraints(clock_rate=fixed_clock_rate)
+    tt_fft.init_date_constraints(clock_rate=fixed_clock_rate)
+    tt._ml_t_marginal(assign_dates = True=="assign")
+    tt_fft._ml_t_marginal(assign_dates = True=="assign")
+    #tt.make_time_tree(clock_rate=fixed_clock_rate, time_marginal=True)
+    #tt_fft.make_time_tree(clock_rate=fixed_clock_rate, time_marginal=True)
 
+    for pattern in terminals:
+        test_node, test_node_fft = get_test_nodes(tt, tt_fft, pattern)
+        plt.figure()
+        t = np.linspace(0,4*fixed_clock_rate,1000)
+        plt.plot(t, undo_merger(test_node, t), label='old', ls='-')
+        plt.plot(t, test_node_fft.branch_length_interpolator.prob(t), label='new', ls='--')
+        plt.show()
+        plt.savefig("test.png")
+        print(np.max(abs(undo_merger(test_node, t)- test_node_fft.branch_length_interpolator.prob(t))))
+
+    ##Lx is correctly set on the terminals
 
     def undo_merger_H(test_node, t):
         res = test_node.subtree_distribution.prob_relative(t)*np.exp(-tt_fft.merger_model.integral_merger_rate(t))
         return res/res.max()
+
+    node_pattern = 'Indiana'
+    test_node, test_node_fft = get_test_nodes(tt, tt_fft, node_pattern)
+    from matplotlib.backends.backend_pdf import PdfPages
+    #pp = PdfPages('coalescent_k.pdf')
     while test_node:
         t_node = np.linspace(test_node.time_before_present-0.005,test_node.time_before_present+0.005,1000)
-        plt.figure(f"subtree distribution {test_node.name}, mult: {len(test_node.clades)}")
-
-        plt.plot(t_node, test_node.subtree_distribution.prob_relative(t_node), label='old', ls='-')
-        plt.plot(t_node, test_node_fft.subtree_distribution.prob_relative(t_node), label='new', ls='-')
-        plt.plot(t_node, undo_merger_H(test_node_fft, t_node), label='new_corrected', ls='--')
+        plt.figure()
+        plt.title(f"subtree distribution {test_node.name}, mult: {len(test_node.clades)}")
+        plt.plot(t_node, test_node.marginal_pos_LH.prob_relative(t_node), label='old', ls='-')
+        plt.plot(t_node, test_node_fft.marginal_pos_LH.prob_relative(t_node), label='new', ls='-')
+        #plt.plot(t_node, undo_merger_H(test_node_fft, t_node), label='new_corrected', ls='--')
         plt.legend()
+        plt.show()
+        #pp.savefig()
+        plt.savefig("test.png")
+        plt.close()
 
         test_node, test_node_fft = test_node.up, test_node_fft.up
+
+
+    def undo_C(test_node, t):
+        multiplicity = len(test_node.up.clades)
+        res = test_node.marginal_pos_Lx.prob_relative(t)*np.exp(-tt_fft.merger_model.integral_merger_rate(t))*(tt_fft.merger_model.total_merger_rate(t)**((multiplicity-1)/(multiplicity)))
+        return res/res.max()
+
+    node_pattern = 'Indiana'
+    test_node, test_node_fft = get_test_nodes(tt, tt_fft, node_pattern)
+    terminal_name = test_node.name
+    from matplotlib.backends.backend_pdf import PdfPages
+    pp = PdfPages('coalescent_k.pdf')
+    while test_node:
+        if test_node.name != tt.tree.root.name:
+            if test_node.name !=terminal_name:
+                start = test_node.time_before_present-0.005
+                end = test_node.time_before_present+0.005
+                t_node = np.linspace(start,end,1000)
+                plt.figure()
+                plt.title(f"subtree distribution {test_node.name}, mult: {len(test_node.clades)}")
+                plt.plot(t_node, test_node.subtree_distribution.prob_relative(t_node), label='old', ls='-', color='blue')
+                x_points_old = test_node.subtree_distribution.x[np.logical_and(test_node.subtree_distribution.x>start, test_node.subtree_distribution.x<end)]
+                print(len(x_points_old))
+                plt.plot(x_points_old, test_node.subtree_distribution.prob_relative(x_points_old), 'o', markersize=2, label='old', color='black')
+                plt.plot(t_node, test_node_fft.subtree_distribution.prob_relative(t_node), label='new', ls='-', color="green")
+                plt.plot(t_node, undo_merger_H(test_node_fft, t_node), label='new_corrected', ls='-', color='red')
+                x_points_old = test_node_fft.subtree_distribution.x[np.logical_and(test_node_fft.subtree_distribution.x>start, test_node_fft.subtree_distribution.x<end)]
+                plt.plot(x_points_old, undo_merger_H(test_node_fft, x_points_old),  'o', markersize=2, label='new corrected', color='black')
+                plt.legend()
+                plt.show()
+                pp.savefig()
+                #plt.savefig("test.png")
+                plt.close()
+            t_node = np.linspace(test_node.time_before_present-0.005,test_node.time_before_present+0.015,1000)
+            plt.figure()
+            plt.title(f"Lx distribution {test_node.name}, mult: {len(test_node.clades)}")
+            plt.plot(t_node, test_node.marginal_pos_Lx.prob_relative(t_node), label='old', ls='-')
+            plt.plot(t_node, test_node_fft.marginal_pos_Lx.prob_relative(t_node), label='new', ls='-')
+            plt.plot(t_node, undo_C(test_node_fft, t_node), label='new_corrected', ls='--')
+            plt.legend()
+            plt.show()
+            pp.savefig()
+            #plt.savefig("test.png")
+            plt.close()
+            t_node = np.linspace(test_node.time_before_present-0.005,test_node.time_before_present+0.015,1000)
+            plt.figure()
+            plt.title(f"final LH distribution {test_node.name}, mult: {len(test_node.clades)}")
+            plt.plot(t_node, test_node.marginal_pos_LH.prob_relative(t_node), label='old', ls='-')
+            plt.plot(t_node, test_node_fft.marginal_pos_LH.prob_relative(t_node), label='new', ls='-')
+            plt.legend()
+            plt.show()
+            pp.savefig()
+            #plt.savefig("test.png")
+            plt.close()
+        else:
+            t_node = np.linspace(test_node.time_before_present-0.005,test_node.time_before_present+0.015,1000)
+            plt.figure()
+            plt.title(f"final LH distribution {test_node.name}, mult: {len(test_node.clades)}")
+            plt.plot(t_node, test_node.marginal_pos_LH.prob_relative(t_node), label='old', ls='-')
+            plt.plot(t_node, test_node_fft.marginal_pos_LH.prob_relative(t_node), label='new', ls='-')
+            plt.legend()
+            plt.show()
+            pp.savefig()
+            #plt.savefig("test.png")
+            plt.close()
+
+
+        test_node, test_node_fft = test_node.up, test_node_fft.up
+
+    pp.close()
 
     test_node = tt.tree.root
     test_node_fft = tt_fft.tree.root
@@ -97,6 +216,7 @@ if __name__ == '__main__':
     plt.figure("marginal_pos")
     plt.plot(t_node, test_node.marginal_pos_LH.prob_relative(t_node), label='old', ls='-')
     plt.plot(t_node, test_node_fft.marginal_pos_LH.prob_relative(t_node), label='new', ls='--')
+    plt.savefig("test.png")
 
     plt.figure("marginal_pos_corrected")
     def undo_merger_P(test_node, t):
@@ -106,4 +226,5 @@ if __name__ == '__main__':
     plt.plot(t_node, test_node.marginal_pos_LH.prob_relative(t_node), label='old', ls='-')
     plt.plot(t_node, test_node_fft.marginal_pos_LH.prob_relative(t_node), label='new', ls='--')
     plt.plot(t_node, undo_merger_P(test_node_fft, t_node), label='new', ls=':')
+    plt.savefig("test.png")
 
