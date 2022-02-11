@@ -505,7 +505,7 @@ class SequenceData(object):
         else:
             return tmp_seq
 
-    def differences(self, seq1, seq2, seq1_compressed=True, seq2_compressed=True):
+    def differences(self, seq1, seq2, seq1_compressed=True, seq2_compressed=True, mask=None):
         diffs = []
         if self.is_sparse:
             if seq1_compressed: seq1 = self.compressed_to_sparse_sequence(seq1)
@@ -520,7 +520,11 @@ class SequenceData(object):
         else:
             if seq1_compressed: seq1 = self.compressed_to_full_sequence(seq1)
             if seq2_compressed: seq2 = self.compressed_to_full_sequence(seq2)
-            diff_pos = np.where(seq1 != seq2)[0]
+            if mask is None:
+                diff_pos = np.where(seq1 != seq2)[0]
+            else:
+                diff_pos = np.where((seq1 != seq2)&(mask>0))[0]
+
             for pos in diff_pos:
                 diffs.append((seq1[pos], pos, seq2[pos]))
 

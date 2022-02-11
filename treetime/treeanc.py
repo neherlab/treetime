@@ -34,11 +34,11 @@ def mutations(node):
     if node.up is None:
         return []
     elif (not node.tt.reconstructed_tip_sequences) and node.name in node.tt.data.aln:
-        return node.tt.data.differences(node.up.cseq, node.tt.data.aln[node.name], seq2_compressed=False)
+        return node.tt.data.differences(node.up.cseq, node.tt.data.aln[node.name], seq2_compressed=False, mask=node.mask)
     elif node.is_terminal() and (node.name not in node.tt.data.aln):
         return []
     else:
-        return node.tt.data.differences(node.up.cseq, node.cseq)
+        return node.tt.data.differences(node.up.cseq, node.cseq, mask=node.mask)
 
 string_types = [str] if sys.version_info[0]==3 else [str, unicode]
 Clade.sequence = property(lambda x: x.tt.sequence(x, as_string=False))
