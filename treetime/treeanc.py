@@ -818,8 +818,13 @@ class TreeAnc(object):
             tmp_log_subtree_LH = np.zeros((L,n_states), dtype=float)
             node.marginal_subtree_LH_prefactor = np.zeros(L, dtype=float)
             for ch in node.clades:
-                ch.marginal_log_Lx = self.gtr.propagate_profile(ch.marginal_subtree_LH,
-                    self._branch_length_to_gtr(ch), return_log=True) # raw prob to transfer prob up
+                if ch.mask is None:
+                    ch.marginal_log_Lx = self.gtr.propagate_profile(ch.marginal_subtree_LH,
+                        self._branch_length_to_gtr(ch), return_log=True) # raw prob to transfer prob up
+                else:
+                    ch.marginal_log_Lx = (self.gtr.propagate_profile(ch.marginal_subtree_LH,
+                                self._branch_length_to_gtr(ch), return_log=True).T*ch.mask).T # raw prob to transfer prob up
+
                 tmp_log_subtree_LH += ch.marginal_log_Lx
                 node.marginal_subtree_LH_prefactor += ch.marginal_subtree_LH_prefactor
 
@@ -846,7 +851,13 @@ class TreeAnc(object):
 
             tmp_msg_from_parent = self.gtr.evolve(node.marginal_outgroup_LH,
                                                  self._branch_length_to_gtr(node), return_log=False)
-            node.marginal_profile, pre = normalize_profile(node.marginal_subtree_LH * tmp_msg_from_parent, return_offset=False)
+
+            if node.mask is None:
+                node.marginal_profile, pre = normalize_profile(node.marginal_subtree_LH * tmp_msg_from_parent, return_offset=False)
+            else:
+                node.marginal_profile, pre = normalize_profile(node.marginal_subtree_LH * (node.mask*tmp_msg_from_parent.T + (1.0-node.mask)).T,
+                                                    return_offset=False)
+
             # choose sequence based maximal marginal LH.
             if assign_sequence:
                 seq, prof_vals, idxs = prof2seq(node.marginal_profile, self.gtr,
@@ -928,7 +939,10 @@ class TreeAnc(object):
             node.joint_Cx = np.zeros((L, n_states), dtype=np.uint16)  # max LH indices
             for char_i, char in enumerate(self.gtr.alphabet):
                 # Pij(i) * L_ch(i) for given parent state j
-                msg_to_parent = (log_transitions[:,char_i].T + msg_from_children)
+                if node.mask is None:
+                    msg_to_parent = (log_transitions[:,char_i].T + msg_from_children)
+                else:
+                    msg_to_parent = ((log_transitions[:,char_i]*node.mask).T + msg_from_children)
                 # For this parent state, choose the best state of the current node:
                 node.joint_Cx[:, char_i] = msg_to_parent.argmax(axis=1)
                 # compute the likelihood of the best state of the current node
