@@ -942,7 +942,7 @@ class TreeAnc(object):
                 if node.mask is None:
                     msg_to_parent = (log_transitions[:,char_i].T + msg_from_children)
                 else:
-                    msg_to_parent = ((log_transitions[:,char_i]*node.mask).T + msg_from_children)
+                    msg_to_parent = ((log_transitions[:,char_i]*np.repeat([node.mask], self.gtr.n_states, axis=0).T) + msg_from_children)
                 # For this parent state, choose the best state of the current node:
                 node.joint_Cx[:, char_i] = msg_to_parent.argmax(axis=1)
                 # compute the likelihood of the best state of the current node
