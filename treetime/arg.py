@@ -17,7 +17,7 @@ def parse_arg(tree1, tree2, aln1, aln2, MCC_file, fill_overhangs=True):
 
     a1 = {s.id:s for s in AlignIO.read(aln1, 'fasta')}
     a2 = {s.id:s for s in AlignIO.read(aln2, 'fasta')}
-    all_leaves = set.union(set(a1.keys()), set(a2.keys()))
+    all_leaves = set.intersection(set([x.name for x in t1.get_terminals()]), set([x.name for x in t2.get_terminals()]))
     for aln in [a1,a2]:
         for s,seq in aln.items():
             seqstr = "".join(seq2array(seq, fill_overhangs=fill_overhangs))
