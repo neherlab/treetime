@@ -56,8 +56,8 @@ class TreeAnc(object):
     def __init__(self, tree=None, aln=None, gtr=None, fill_overhangs=True,
                 ref=None, verbose = ttconf.VERBOSE, ignore_gaps=True,
                 convert_upper=True, seq_multiplicity=None, log=None,
-                 compress=True, seq_len=None, ignore_missing_alns=False,
-                **kwargs):
+                compress=True, seq_len=None, ignore_missing_alns=False,
+                keep_node_order=False, **kwargs):
         """
         TreeAnc constructor. It prepares the tree, attaches sequences to the leaf nodes,
         and sets some configuration parameters.
@@ -142,6 +142,7 @@ class TreeAnc(object):
         self.reconstructed_tip_sequences = False
         self.sequence_reconstruction = None
         self.ignore_missing_alns = ignore_missing_alns
+        self.keep_node_order = keep_node_order
 
         self._tree = None
         self.tree = tree
@@ -405,7 +406,8 @@ class TreeAnc(object):
         self.tree.root.branch_length = 0.001
         self.tree.root.mask = None
         self.tree.root.mutation_length = self.tree.root.branch_length
-        self.tree.ladderize()
+        if not self.keep_node_order:
+            self.tree.ladderize()
         self._prepare_nodes()
         self._leaves_lookup = {node.name:node for node in self.tree.get_terminals()}
 

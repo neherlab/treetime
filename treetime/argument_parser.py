@@ -170,6 +170,8 @@ def add_timetree_args(parser):
     parser.add_argument('--confidence', action='store_true', help="estimate confidence intervals of divergence times.")
     parser.add_argument('--keep-polytomies', default=False, action='store_true',
                         help="Don't resolve polytomies using temporal information.")
+    # parser.add_argument('--keep-node-order', default=False, action='store_true',
+    #                     help="Don't ladderize the tree.")
     parser.add_argument('--relax',nargs=2, type=float,
                         help='use an autocorrelated molecular clock. Strength of the gaussian priors on'
                              ' branch specific rate deviation and the coupling of parent and offspring'

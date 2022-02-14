@@ -880,7 +880,7 @@ class TreeTime(ClockTree):
             n.branch_length=n.mutation_length
         self.logger("TreeTime._find_best_root: searching for the best root position...",2)
         Treg = self.setup_TreeRegression(covariation=covariation)
-        return Treg.optimal_reroot(force_positive=force_positive, slope=slope)['node']
+        return Treg.optimal_reroot(force_positive=force_positive, slope=slope, keep_node_order=self.keep_node_order)['node']
 
 
 def plot_vs_years(tt, step = None, ax=None, confidence=None, ticks=True, **kwargs):

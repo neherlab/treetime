@@ -48,7 +48,8 @@ def setup_arg(T, aln, total_mask, segment_mask, dates, MCCs, gtr='JC69',
 
     tt = TreeTime(dates=dates, tree=T,
                   aln=aln, gtr=gtr, verbose=verbose,
-                  fill_overhangs=fill_overhangs, compress=False)
+                  fill_overhangs=fill_overhangs, keep_node_order=True,
+                  compress=False)
 
 
     if reroot:
