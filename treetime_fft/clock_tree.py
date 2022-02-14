@@ -415,9 +415,9 @@ class ClockTree(TreeAnc):
                     bl = node.branch_length_interpolator.x
                     x = bl + node.date_constraint.peak_pos
                     if self.merger_model:
-                        node.marginal_pos_Lx =  Distribution(x, -self.merger_model.integral_merger_rate(node.date_constraint.peak_pos) +node.branch_length_interpolator(bl), min_width=self.min_width, is_log=True)
+                        node.joint_pos_Lx =  Distribution(x, -self.merger_model.integral_merger_rate(node.date_constraint.peak_pos) +node.branch_length_interpolator(bl), min_width=self.min_width, is_log=True)
                     else:
-                        node.marginal_pos_Lx =  Distribution(x, node.branch_length_interpolator(bl), min_width=self.min_width, is_log=True)
+                        node.joint_pos_Lx =  Distribution(x, node.branch_length_interpolator(bl), min_width=self.min_width, is_log=True)
                     node.joint_pos_Cx = Distribution(x, bl, min_width=self.min_width) # map back to the branch length
                 else: # all nodes without precise constraint but positional information
                     msgs_to_multiply = [node.date_constraint] if node.date_constraint is not None else []
@@ -428,7 +428,7 @@ class ClockTree(TreeAnc):
                     ## evaluated at position t. In a coalescent model the likelihood of a node being
                     ## at position t is additionally compossed of the branch costs of its children np.exp**-(I(t) - I(t_0)) 
                     ## and the cost of (k-1) merger events at time t.
-                    if self.merger_model and not node.is_terminal():
+                    if self.merger_model:
                         time_points = np.unique(np.concatenate([child.joint_pos_Lx.x for child in node.clades]))
                         msgs_to_multiply.append(self.merger_model.node_contribution(node, time_points))
                     msgs_to_multiply.extend([child.joint_pos_Lx for child in node.clades
@@ -589,7 +589,7 @@ class ClockTree(TreeAnc):
                     ## evaluated at position t. In a coalescent model the likelihood of a node being
                     ## at position t is additionally compossed of the branch costs of its children np.exp**-(I(t) - I(t_0)) 
                     ## and the cost of (k-1) merger events at time t.
-                    if self.merger_model and not node.is_terminal():
+                    if self.merger_model:
                         time_points = np.unique(np.concatenate([child.marginal_pos_Lx.x for child in node.clades]))
                         msgs_to_multiply.append(self.merger_model.node_contribution(node, time_points))
                     msgs_to_multiply.extend([child.marginal_pos_Lx for child in node.clades
