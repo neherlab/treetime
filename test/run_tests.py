@@ -4,7 +4,7 @@ test_import_short()
 
 test_GTR()
 
-test_ancestral(root_dir='/home/aparker/Documents')
+test_ancestral()
 
 test_seq_joint_reconstruction_correct()
 
