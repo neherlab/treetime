@@ -27,12 +27,13 @@ def test_GTR():
         assert np.abs(myGTR.v.sum()) > 1e-10 # **and** v is not zero
 
 
-def test_ancestral():
+def test_ancestral(root_dir=None):
     import os
     from Bio import AlignIO
     import numpy as np
     from treetime import TreeAnc, GTR
-    root_dir = os.path.dirname(os.path.realpath(__file__))
+    if root_dir is None:
+        root_dir = os.path.dirname(os.path.realpath(__file__))
     fasta = str(os.path.join(root_dir, 'treetime_examples/data/h3n2_na/h3n2_na_20.fasta'))
     nwk = str(os.path.join(root_dir, 'treetime_examples/data/h3n2_na/h3n2_na_20.nwk'))
 

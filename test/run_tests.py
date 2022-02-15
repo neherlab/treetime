@@ -1,10 +1,10 @@
 from test_treetime import *
 
-import_short_test()
+test_import_short()
 
 test_GTR()
 
-test_ancestral()
+test_ancestral(root_dir='/home/aparker/Documents')
 
 test_seq_joint_reconstruction_correct()
 

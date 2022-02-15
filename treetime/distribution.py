@@ -249,9 +249,8 @@ class Distribution(object):
 
 
     def _adjust_grid(self, rel_tol=0.01, yc=10):
-        updated = True
         n_iter=0
-        while len(self.y)>200 and updated and n_iter<5:
+        while len(self.y)>200 and n_iter<5:
             interp_err = 2*self.y[1:-1] - self.y[2:] - self.y[:-2]
             ind = np.ones_like(self.y, dtype=bool)
             dy = self.y-self.peak_val
@@ -260,11 +259,9 @@ class Distribution(object):
             if np.mean(prune)<1.0:
                 self._func.y = self._func.y[ind]
                 self._func.x = self._func.x[ind]
-                updated=True
                 n_iter+=1
             else:
-                updated=False
-                n_iter+=1
+                break
 
         self._peak_idx = self.__call__(self._func.x).argmin()
         self._peak_pos = self._func.x[self._peak_idx]
