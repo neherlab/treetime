@@ -388,27 +388,28 @@ class ClockTree(TreeAnc):
                     # Cx.y is the branch length corresponding the optimal subtree
                     bl = node.branch_length_interpolator.x
                     x = bl + node.date_constraint.peak_pos
-                    if hasattr(self, 'merger_model'):
-                        node.joint_pos_Lx =  Distribution(x, -self.merger_model.integral_merger_rate(node.date_constraint.peak_pos) +node.branch_length_interpolator(bl), min_width=self.min_width, is_log=True)
+                    if hasattr(self, 'merger_model') and self.merger_model:
+                        node.joint_pos_Lx =  Distribution(x, -self.merger_model.integral_merger_rate(node.date_constraint.peak_pos) 
+                                                + node.branch_length_interpolator(bl), min_width=self.min_width, is_log=True)
                     else:
                         node.joint_pos_Lx =  Distribution(x, node.branch_length_interpolator(bl), min_width=self.min_width, is_log=True)
                     node.joint_pos_Cx = Distribution(x, bl, min_width=self.min_width) # map back to the branch length
                 else: # all nodes without precise constraint but positional information
                     msgs_to_multiply = [node.date_constraint] if node.date_constraint is not None else []
-                    ## When a coalescent model is being used, the cost of having no merger events along the branch 
-                    ## and one at the node at time t is also factored in: -np.log((gamma(t) * np.exp**I(t))**(k-1)),
-                    ## where k is the number of branches that merge at node t, gamma(t) is the
-                    ## total_merger_rate at time t and I(t) is the integral of the merger_rate (rate of a given lineage converging)
-                    ## evaluated at position t. In a coalescent model the likelihood of a node being
-                    ## at position t is additionally compossed of the branch costs of its children np.exp**-(I(t) - I(t_0)) 
-                    ## and the cost of (k-1) merger events at time t.
-                    if hasattr(self, 'merger_model'):
-                        time_points = np.unique(np.concatenate([child.joint_pos_Lx.x for child in node.clades]))
-                        msgs_to_multiply.append(self.merger_model.node_contribution(node, time_points))
                     msgs_to_multiply.extend([child.joint_pos_Lx for child in node.clades
                                              if child.joint_pos_Lx is not None])
+                    ## When a coalescent model is being used, the cost of having no merger events along the branch 
+                    ## and one at the node at time t is also factored in: -np.log((gamma(t) * np.exp**-I(t))**(k-1)),
+                    ## where k is the number of branches that merge at node t, gamma(t) is the total_merger_rate
+                    ## at time t and I(t) is the integral of the merger_rate (rate of a given lineage converging)
+                    ## evaluated at position t. (Note that the integral of the merger rate is in fact calculated 
+                    ## for k branches, but due to the fact that inner branches overlap at time t one can be removed 
+                    ## resulting in the exponent (k-1))
+                    if hasattr(self, 'merger_model') and self.merger_model:
+                        time_points = np.unique(np.concatenate([msg.x for msg in msgs_to_multiply]))
+                        msgs_to_multiply.append(self.merger_model.node_contribution(node, time_points))
 
-                    # subtree likelihood given the node's constraint and child messages
+                    # msgs_to_multiply combined returns the subtree likelihood given the node's constraint and child messages
                     if len(msgs_to_multiply) == 0: # there are no constraints
                         node.joint_pos_Lx = None
                         node.joint_pos_Cx = None
@@ -419,9 +420,10 @@ class ClockTree(TreeAnc):
                         subtree_distribution = msgs_to_multiply[0]
 
                     if node.up is None: # this is the root, set dates
-                        if hasattr(self, 'merger_model'):
-                            print("using merger model")
-                            subtree_distribution = Distribution.multiply([subtree_distribution, Distribution(subtree_distribution.x, self.merger_model.integral_merger_rate(subtree_distribution.x), is_log=True)])
+                        if hasattr(self, 'merger_model') and self.merger_model:
+                            # Removed merger rate must be added back at the root as nolonger an internal node
+                            subtree_distribution = Distribution.multiply([subtree_distribution, Distribution(subtree_distribution.x, 
+                                                    self.merger_model.integral_merger_rate(subtree_distribution.x), is_log=True)])
                         subtree_distribution._adjust_grid(rel_tol=self.rel_tol_prune)
                         # set root position and joint likelihood of the tree
                         node.time_before_present = subtree_distribution.peak_pos
@@ -548,25 +550,26 @@ class ClockTree(TreeAnc):
                     node.subtree_distribution = node.date_constraint
                     bl = node.branch_length_interpolator.x
                     x = bl + node.date_constraint.peak_pos
-                    if hasattr(self, 'merger_model'):
-                        node.marginal_pos_Lx =  Distribution(x, -self.merger_model.integral_merger_rate(node.date_constraint.peak_pos) +node.branch_length_interpolator(bl), min_width=self.min_width, is_log=True)
+                    if hasattr(self, 'merger_model') and self.merger_model:
+                        node.marginal_pos_Lx =  Distribution(x, -self.merger_model.integral_merger_rate(node.date_constraint.peak_pos) 
+                                                    +node.branch_length_interpolator(bl), min_width=self.min_width, is_log=True)
                     else:
                         node.marginal_pos_Lx =  Distribution(x, node.branch_length_interpolator(bl), min_width=self.min_width, is_log=True)
                 else: # all nodes without precise constraint but positional information
                       # subtree likelihood given the node's constraint and child msg:
                     msgs_to_multiply = [node.date_constraint] if node.date_constraint is not None else []
-                    ## When a coalescent model is being used, the cost of having no merger events along the branch 
-                    ## and one at the node at time t is also factored in: -np.log((gamma(t) * np.exp**I(t))**(k-1)),
-                    ## where k is the number of branches that merge at node t, gamma(t) is the
-                    ## total_merger_rate at time t and I(t) is the integral of the merger_rate (rate of a given lineage converging)
-                    ## evaluated at position t. In a coalescent model the likelihood of a node being
-                    ## at position t is additionally compossed of the branch costs of its children np.exp**-(I(t) - I(t_0)) 
-                    ## and the cost of (k-1) merger events at time t.
-                    if hasattr(self, 'merger_model'):
-                        time_points = np.unique(np.concatenate([child.marginal_pos_Lx.x for child in node.clades]))
-                        msgs_to_multiply.append(self.merger_model.node_contribution(node, time_points))
                     msgs_to_multiply.extend([child.marginal_pos_Lx for child in node.clades
                                              if child.marginal_pos_Lx is not None])
+                    ## When a coalescent model is being used, the cost of having no merger events along the branch 
+                    ## and one at the node at time t is also factored in: -np.log((gamma(t) * np.exp**-I(t))**(k-1)),
+                    ## where k is the number of branches that merge at node t, gamma(t) is the total_merger_rate
+                    ## at time t and I(t) is the integral of the merger_rate (rate of a given lineage converging)
+                    ## evaluated at position t. (Note that the integral of the merger rate is in fact calculated 
+                    ## for k branches, but due to the fact that inner branches overlap at time t one can be removed 
+                    ## resulting in the exponent (k-1))
+                    if hasattr(self, 'merger_model') and self.merger_model:
+                        time_points = np.unique(np.concatenate([msg.x for msg in msgs_to_multiply]))
+                        msgs_to_multiply.append(self.merger_model.node_contribution(node, time_points))
 
                     # combine the different msgs and constraints
                     if len(msgs_to_multiply)==0:
@@ -581,12 +584,13 @@ class ClockTree(TreeAnc):
                     if node.up is None: # this is the root, set dates
                         node.subtree_distribution._adjust_grid(rel_tol=self.rel_tol_prune)
                         node.marginal_pos_Lx = node.subtree_distribution
-                        if hasattr(self, 'merger_model'):
-                            print('using merger model')
-                            node.marginal_pos_LH = Distribution.multiply([node.subtree_distribution, Distribution(node.subtree_distribution.x, self.merger_model.integral_merger_rate(node.subtree_distribution.x), is_log=True)])
+                        if hasattr(self, 'merger_model') and self.merger_model:
+                            # Removed merger rate must be added back at the root as nolonger an internal node
+                            node.marginal_pos_LH = Distribution.multiply([node.subtree_distribution, Distribution(node.subtree_distribution.x, 
+                                                    self.merger_model.integral_merger_rate(node.subtree_distribution.x), is_log=True)])
                         else:
                             node.marginal_pos_LH = node.subtree_distribution
-                        self.tree.positional_marginal_LH = -node.subtree_distribution.peak_val
+                        self.tree.positional_marginal_LH = -node.marginal_pos_LH.peak_val
                     else: # otherwise propagate to parent
                         res, res_t = NodeInterpolator.convolve(node.subtree_distribution,
                                         node.branch_length_interpolator,
@@ -601,12 +605,13 @@ class ClockTree(TreeAnc):
         from scipy.interpolate import interp1d
         for node in self.tree.find_clades(order='preorder'):
 
-            ## The root node
-            if node.up is None:
+            ## If a delta constraint in known no further work required 
+            if (node.date_constraint is not None) and (not node.bad_branch) and node.date_constraint.is_delta:
+                node.marginal_pos_LH = node.date_constraint
+                node.msg_from_parent = None #if internal node has a delta constraint noprevious information passed on
+            elif node.up is None:
                 node.msg_from_parent = None # nothing beyond the root
             # all other cases (All internal nodes + unconstrained terminals)
-            elif (node.date_constraint is not None) and (not node.bad_branch) and node.date_constraint.is_delta:
-                node.marginal_pos_LH = node.date_constraint
             else:
                 parent = node.up
                 # messages from the complementary subtree (iterate over all sister nodes)
@@ -616,16 +621,15 @@ class ClockTree(TreeAnc):
                 # if parent itself got smth from the root node, include it
                 if parent.msg_from_parent is not None:
                     complementary_msgs.append(parent.msg_from_parent)
-                    if hasattr(self, 'merger_model'):
-                        time_points = np.unique(np.concatenate([np.concatenate([sister.marginal_pos_Lx.x for sister in parent.clades
-                                            if (sister != node) and (sister.marginal_pos_Lx.x is not None)]), parent.msg_from_parent.x]))
-                        complementary_msgs.append(self.merger_model.node_contribution(node, time_points))
-                else:
-                    if hasattr(self, 'merger_model'):
-                        time_points = np.unique(np.concatenate([np.concatenate([sister.marginal_pos_Lx.x for sister in parent.clades
-                                                if (sister != node) and (sister.marginal_pos_Lx.x is not None)])]))
+                
+                if hasattr(self, 'merger_model') and self.merger_model:
+                    time_points = np.unique(np.concatenate([msg.x for msg in complementary_msgs]))
+                    # As Lx do not include the node contribution this must be added on 
+                    complementary_msgs.append(self.merger_model.node_contribution(node, time_points))
+                    if parent.msg_from_parent is None:
+                        # Removed merger rate must be added back if no msgs from parent (equivalent to root node case)
                         complementary_msgs.append(Distribution(time_points, self.merger_model.integral_merger_rate(time_points), is_log=True))
-                        complementary_msgs.append(self.merger_model.node_contribution(node, time_points))
+                    
 
                 if len(complementary_msgs):
                     msg_parent_to_node = NodeInterpolator.multiply(complementary_msgs)
