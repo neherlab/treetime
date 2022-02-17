@@ -135,6 +135,7 @@ class TreeTime(ClockTree):
         seq_kwargs = {"marginal_sequences":sequence_marginal or (self.branch_length_mode=='marginal'),
                       "branch_length_mode": self.branch_length_mode,
                       "sample_from_profile":"root",
+                      "prune_short":kwargs.get("prune_short", True),
                       "reconstruct_tip_states":kwargs.get("reconstruct_tip_states", False)}
 
         tt_kwargs = {'clock_rate':fixed_clock_rate, 'time_marginal':False}
@@ -150,10 +151,11 @@ class TreeTime(ClockTree):
         if self.branch_length_mode=='input':
             if self.aln:
                 self.infer_ancestral_sequences(infer_gtr=infer_gtr, marginal=seq_kwargs["marginal_sequences"], **seq_kwargs)
-                self.prune_short_branches()
+                if seq_kwargs["prune_short"]:
+                    self.prune_short_branches()
         else:
             self.optimize_tree(infer_gtr=infer_gtr,
-                               max_iter=1, prune_short=True, **seq_kwargs)
+                               max_iter=1, **seq_kwargs)
         avg_root_to_tip = np.mean([x.dist2root for x in self.tree.get_terminals()])
 
         # optionally reroot the tree either by oldest, best regression or with a specific leaf
@@ -171,7 +173,7 @@ class TreeTime(ClockTree):
             if self.aln:
                 self.infer_ancestral_sequences(**seq_kwargs)
         else:
-            self.optimize_tree(max_iter=1, prune_short=False,**seq_kwargs)
+            self.optimize_tree(max_iter=1, **seq_kwargs)
 
         # infer time tree and optionally resolve polytomies
         self.logger("###TreeTime.run: INITIAL ROUND",0)
@@ -223,7 +225,7 @@ class TreeTime(ClockTree):
                 if n_resolved:
                     self.prepare_tree()
                     if self.branch_length_mode!='input': # otherwise reoptimize branch length while preserving branches without mutations
-                        self.optimize_tree(prune_short=False, max_iter=0, **seq_kwargs)
+                        self.optimize_tree(max_iter=0, **seq_kwargs)
 
                     need_new_time_tree = True
 
@@ -612,6 +614,7 @@ class TreeTime(ClockTree):
                 # fix positions and branch lengths
                 new_node.time_before_present = new_positions[idxs]
                 new_node.branch_length = clade.time_before_present - new_node.time_before_present
+                print("merge nodes", n1.name, n2.name)
                 new_node.clades = [n1,n2]
                 if n1.mask is None or n2.mask is None:
                     new_node.mask = None

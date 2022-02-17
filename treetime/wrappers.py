@@ -494,7 +494,7 @@ def arg_time_trees(params):
         tt = setup_arg(tree, arg_params['alignment'], arg_params['combined_mask'], mask, dates, arg_params['MCCs'],
                        gtr=gtr, verbose=params.verbose, fill_overhangs=not params.keep_overhangs)
 
-        run_timetree(tt, params, outdir, tree_suffix=f"_{i+1}")
+        run_timetree(tt, params, outdir, tree_suffix=f"_{i+1}", prune_short=False)
 
 
 
@@ -528,7 +528,7 @@ def timetree(params):
 
     return run_timetree(myTree, params, outdir)
 
-def run_timetree(myTree, params, outdir, tree_suffix=''):
+def run_timetree(myTree, params, outdir, tree_suffix='', prune_short=True):
 
     ###########################################################################
     ### READ IN VCF
@@ -597,7 +597,7 @@ def run_timetree(myTree, params, outdir, tree_suffix=''):
                vary_rate = vary_rate,
                branch_length_mode = branch_length_mode,
                reconstruct_tip_states=params.reconstruct_tip_states,
-               fixed_pi=fixed_pi,
+               fixed_pi=fixed_pi, prune_short=prune_short,
                use_covariation = params.covariation, n_points=params.n_skyline,
                tracelog_file=os.path.join(outdir, f"trace_run{tree_suffix}.log"))
     except TreeTimeError as e:

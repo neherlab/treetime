@@ -63,9 +63,11 @@ def setup_arg(T, aln, total_mask, segment_mask, dates, MCCs, gtr='JC69',
     for leaf in tt.tree.get_terminals():
         leaf.child_mccs = set([leaf_to_MCC[leaf.name]])
         leaf.mcc = leaf_to_MCC[leaf.name]
+        leaf.branch_length = max(0.5*tt.one_mutation, leaf.branch_length)
 
     for n in tt.tree.get_nonterminals(order='postorder'):
         common_mccs = set.intersection(*[c.child_mccs for c in n])
+        n.branch_length = max(0.5*tt.one_mutation, n.branch_length)
         if len(common_mccs):
             n.child_mccs = common_mccs
         else:
