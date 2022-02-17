@@ -941,15 +941,19 @@ class TreeAnc(object):
             node.joint_Cx = np.zeros((L, n_states), dtype=np.uint16)  # max LH indices
             for char_i, char in enumerate(self.gtr.alphabet):
                 # Pij(i) * L_ch(i) for given parent state j
+                # if the node has a mask, P_ij is uniformly 1 at masked positions as no info is propagated
                 if node.mask is None:
                     msg_to_parent = (log_transitions[:,char_i].T + msg_from_children)
                 else:
                     msg_to_parent = ((log_transitions[:,char_i]*np.repeat([node.mask], self.gtr.n_states, axis=0).T) + msg_from_children)
-                # For this parent state, choose the best state of the current node:
+
+                # For this parent state, choose the best state of the current node
                 node.joint_Cx[:, char_i] = msg_to_parent.argmax(axis=1)
-                # compute the likelihood of the best state of the current node
-                # given the state of the parent (char_i)
+                # and compute the likelihood of the best state of the current node
+                # given the state of the parent (char_i) -- at masked position, there is no contribution
                 node.joint_Lx[:, char_i] = msg_to_parent.max(axis=1)
+                if node.mask is not None:
+                    node.joint_Lx[:, char_i] *= node.mask
 
         # root node profile = likelihood of the total tree
         msg_from_children = np.sum(np.stack([c.joint_Lx for c in self.tree.root], axis = 0), axis=0)
