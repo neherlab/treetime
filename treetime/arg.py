@@ -60,35 +60,7 @@ def setup_arg(T, aln, total_mask, segment_mask, dates, MCCs, gtr='JC69',
         for leaf in mcc:
             leaf_to_MCC[leaf] = mi
 
-    for leaf in tt.tree.get_terminals():
-        leaf.child_mccs = set([leaf_to_MCC[leaf.name]])
-        leaf.mcc = leaf_to_MCC[leaf.name]
-        leaf.branch_length = max(0.5*tt.one_mutation, leaf.branch_length)
-
-    for n in tt.tree.get_nonterminals(order='postorder'):
-        common_mccs = set.intersection(*[c.child_mccs for c in n])
-        n.branch_length = max(0.5*tt.one_mutation, n.branch_length)
-        if len(common_mccs):
-            n.child_mccs = common_mccs
-        else:
-            n.child_mccs = set.union(*[c.child_mccs for c in n])
-
-    mcc_intersection = set.intersection(*[c.child_mccs for c in tt.tree.root])
-    if len(mcc_intersection):
-        tt.tree.root.mcc = list(mcc_intersection)[0]
-    else:
-        tt.tree.root.mcc = None
-
-    for n in tt.tree.get_nonterminals(order='preorder'):
-        if n==tt.tree.root:
-            continue
-        else:
-            if n.up.mcc in n.child_mccs:
-                n.mcc = n.up.mcc
-            elif len(n.child_mccs)==1:
-                n.mcc = list(n.child_mccs)[0]
-            else:
-                n.mcc = None
+    assign_mccs(tt.tree, leaf_to_MCC, tt.one_mutation)
 
     for n in tt.tree.find_clades():
         if (n.mcc is not None) and n.up and n.up.mcc==n.mcc:
@@ -97,3 +69,35 @@ def setup_arg(T, aln, total_mask, segment_mask, dates, MCCs, gtr='JC69',
             n.mask = segment_mask
 
     return tt
+
+
+def assign_mccs(tree, mcc_map, one_mutation=1e-4):
+    for leaf in tree.get_terminals():
+        leaf.child_mccs = set([mcc_map[leaf.name]])
+        leaf.mcc = mcc_map[leaf.name]
+        leaf.branch_length = max(0.5*one_mutation, leaf.branch_length)
+
+    for n in tree.get_nonterminals(order='postorder'):
+        common_mccs = set.intersection(*[c.child_mccs for c in n])
+        n.branch_length = max(0.5*one_mutation, n.branch_length)
+        if len(common_mccs):
+            n.child_mccs = common_mccs
+        else:
+            n.child_mccs = set.union(*[c.child_mccs for c in n])
+
+    mcc_intersection = set.intersection(*[c.child_mccs for c in tree.root])
+    if len(mcc_intersection):
+        tree.root.mcc = list(mcc_intersection)[0]
+    else:
+        tree.root.mcc = None
+
+    for n in tree.get_nonterminals(order='preorder'):
+        if n==tree.root:
+            continue
+        else:
+            if n.up.mcc in n.child_mccs:
+                n.mcc = n.up.mcc
+            elif len(n.child_mccs)==1:
+                n.mcc = list(n.child_mccs)[0]
+            else:
+                n.mcc = None
