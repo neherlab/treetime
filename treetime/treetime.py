@@ -129,6 +129,11 @@ class TreeTime(ClockTree):
         if self.aln is None:
             branch_length_mode='input'
 
+
+        for n in self.tree.find_clades():
+            if "RESOLVED" in n.name:
+                print(n.name, n.mcc, n.up.mcc)
+
         self._set_branch_length_mode(branch_length_mode)
 
         # determine how to reconstruct and sample sequences
@@ -187,6 +192,10 @@ class TreeTime(ClockTree):
             new_root = self.reroot(root='least-squares' if root=='clock_filter' else root, clock_rate=fixed_clock_rate)
             self.logger("###TreeTime.run: rerunning timetree after rerooting",0)
             self.make_time_tree(**tt_kwargs)
+
+        for n in self.tree.find_clades():
+            if "RESOLVED" in n.name:
+                print(n.name, n.mcc, n.up.mcc)
 
         # iteratively reconstruct ancestral sequences and re-infer
         # time tree to ensure convergence.
@@ -251,6 +260,9 @@ class TreeTime(ClockTree):
 
             niter+=1
 
+            for n in self.tree.find_clades():
+                if "RESOLVED" in n.name:
+                    print(n.name, n.mcc, n.up.mcc)
             if ndiff==0 and n_resolved==0 and Tc!='skyline':
                 self.logger("###TreeTime.run: CONVERGED",0)
                 break
@@ -556,7 +568,7 @@ class TreeTime(ClockTree):
         nothing. Otherwise, for each pair of nodes, assess the possible LH increase
         which could be gained by merging the two nodes. The increase in the LH is
         basically the tradeoff between the gain of the LH due to the changing the
-        branch lenghts towards the optimal values and the decrease due to the
+        branch lengths towards the optimal values and the decrease due to the
         introduction of the new branch with zero optimal length.
         """
 
@@ -622,6 +634,7 @@ class TreeTime(ClockTree):
                 else:
                     new_node.mask = n1.mask * n2.mask
                     new_node.mcc = n1.mcc if n1.mcc==n2.mcc else None
+                    self.logger('TreeTime._poly.merge_nodes: assigning mcc to new node ' + new_node.mcc, 3)
 
                 n1.branch_length = new_node.time_before_present - n1.time_before_present
                 n2.branch_length = new_node.time_before_present - n2.time_before_present
