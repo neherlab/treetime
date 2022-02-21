@@ -1380,7 +1380,6 @@ class TreeAnc(object):
                  (self.gtr.prob_t(node.up._cseq, node._cseq, 0.0,
                                   pattern_multiplicity=self.data.multiplicity(mask=node.mask)) > 0.1)):
                 # re-assign the node children directly to its parent
-                print("pruning node", node.name, node.mcc, node.up.mcc, node.mask.sum(), node.mutations)
                 node.up.clades = [k for k in node.up.clades if k != node] + node.clades
                 for clade in node.clades:
                     clade.up = node.up

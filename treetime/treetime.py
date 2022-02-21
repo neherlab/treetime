@@ -129,11 +129,6 @@ class TreeTime(ClockTree):
         if self.aln is None:
             branch_length_mode='input'
 
-
-        for n in self.tree.find_clades():
-            if "RESOLVED" in n.name:
-                print(n.name, n.mcc, n.up.mcc)
-
         self._set_branch_length_mode(branch_length_mode)
 
         # determine how to reconstruct and sample sequences
@@ -192,10 +187,6 @@ class TreeTime(ClockTree):
             new_root = self.reroot(root='least-squares' if root=='clock_filter' else root, clock_rate=fixed_clock_rate)
             self.logger("###TreeTime.run: rerunning timetree after rerooting",0)
             self.make_time_tree(**tt_kwargs)
-
-        for n in self.tree.find_clades():
-            if "RESOLVED" in n.name:
-                print(n.name, n.mcc, n.up.mcc)
 
         # iteratively reconstruct ancestral sequences and re-infer
         # time tree to ensure convergence.
@@ -260,9 +251,6 @@ class TreeTime(ClockTree):
 
             niter+=1
 
-            for n in self.tree.find_clades():
-                if "RESOLVED" in n.name:
-                    print(n.name, n.mcc, n.up.mcc)
             if ndiff==0 and n_resolved==0 and Tc!='skyline':
                 self.logger("###TreeTime.run: CONVERGED",0)
                 break
@@ -626,7 +614,7 @@ class TreeTime(ClockTree):
                 # fix positions and branch lengths
                 new_node.time_before_present = new_positions[idxs]
                 new_node.branch_length = clade.time_before_present - new_node.time_before_present
-                print("merge nodes", n1.name, n2.name)
+                self.logger(f"TreeTime._poly.merge_nodes: merging {n1.name} and {n2.name}",4)
                 new_node.clades = [n1,n2]
                 if n1.mask is None or n2.mask is None:
                     new_node.mask = None
@@ -634,7 +622,7 @@ class TreeTime(ClockTree):
                 else:
                     new_node.mask = n1.mask * n2.mask
                     new_node.mcc = n1.mcc if n1.mcc==n2.mcc else None
-                    self.logger('TreeTime._poly.merge_nodes: assigning mcc to new node ' + new_node.mcc, 3)
+                    self.logger('TreeTime._poly.merge_nodes: assigning mcc to new node ' + new_node.mcc, 4)
 
                 n1.branch_length = new_node.time_before_present - n1.time_before_present
                 n2.branch_length = new_node.time_before_present - n2.time_before_present
