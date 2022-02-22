@@ -19,7 +19,7 @@ def get_test_nodes(tree_list, pattern):
 if __name__ == '__main__':
     plt.ion()
 
-    ebola=True
+    ebola=False
     if ebola:
         base_name = '../treetime_examples/data/ebola/ebola'
     else:
@@ -41,7 +41,11 @@ if __name__ == '__main__':
         #tt._ml_t_marginal(assign_dates=True)
         tt.add_coalescent_model(0.01)
     ## set the branch_count function using the smooth approach
+    import time
+
+    start = time.process_time()
     tt_smooth.merger_model.calc_branch_count_dist()
+    print(time.process_time()-start)
     tt_smooth.merger_model.set_Tc(0.01)
 
     if ebola:
@@ -59,13 +63,15 @@ if __name__ == '__main__':
             plt.plot(t, undo_merger(test_nodes[1], tt_smooth, t), label='smooth', ls='-')
             plt.legend()
         test_nodes =[test_node.up for test_node in test_nodes]
-        
+
     ## Plot differences in the nbranches interp1d object
     plt.figure()
-    plt.plot(tt_old.merger_model.nbranches.x, tt_old.merger_model.nbranches.y, label="old nbranches function")
-    plt.plot(tt_smooth.merger_model.nbranches.x, tt_smooth.merger_model.nbranches.y, label="new nbranches function")
+    plt.plot(tt_old.merger_model.nbranches.x/tt_old.date2dist.clock_rate, tt_old.merger_model.nbranches.y, label="old nbranches function")
+    plt.plot(tt_smooth.merger_model.nbranches.x/tt_smooth.date2dist.clock_rate, tt_smooth.merger_model.nbranches.y, label="new nbranches function")
+    plt.xlabel("time before present")
+    plt.ylabel("nbranches")
     plt.legend()
-    plt.xlim((0,0.08))
+    plt.xlim((0,40))
 
     ## Plot effects on final constructed time trees
     for tt in [tt_old, tt_smooth]:
@@ -79,12 +85,31 @@ if __name__ == '__main__':
 
     ## Plot effects on final LH function
     test_nodes = get_test_nodes([tt_old, tt_smooth], node_pattern)
+    next=0
+    fig, axs = plt.subplots(2,2, sharey=True, figsize=(12,8))
+    fig.suptitle("Effect of smooth nbranches on LH distribution")
     while test_nodes[0] is not None:
         if test_nodes[0].name != tt.tree.root.name:
-            plt.figure()
-            t = np.linspace(test_nodes[0].time_before_present-0.001,test_nodes[0].time_before_present+0.001,2000)
-            plt.plot(t, test_nodes[0].marginal_pos_LH.prob_relative(t), label='old', ls='-')
-            plt.plot(t, test_nodes[1].marginal_pos_LH.prob_relative(t), label='smooth', ls='-')
-            plt.legend()
+            if next==0:
+                i, j=0, 0
+            elif next==1:
+                i, j=1, 0
+            elif next==2:
+                i, j=0, 1
+            elif next==3:
+                i, j=1, 1
+            t = np.linspace(test_nodes[0].time_before_present-0.005,test_nodes[0].time_before_present+0.003,2000)
+            axs[i,j].plot(t, test_nodes[0].marginal_pos_LH.prob_relative(t),  label='old', ls='-')
+            axs[i,j].plot(t, test_nodes[1].marginal_pos_LH.prob_relative(t), label='smooth', ls='-')
+            axs[i,j].set_xlabel("time before present")
+            axs[i,j].set_ylabel("marginal LH")
+            axs[i,j].legend()
+            next += 1
+            if next==4:
+                next=0
+                fig, axs = plt.subplots(2,2, sharey=True, figsize=(12,8))
+                fig.suptitle("Effect of smooth nbranches on LH distribution")
         test_nodes =[test_node.up for test_node in test_nodes]
+
+
     
