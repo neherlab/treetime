@@ -99,10 +99,8 @@ class Coalescent(object):
             cdf_function=None
             if hasattr(n, 'marginal_inverse_cdf'):
                 cdf_function=n.marginal_inverse_cdf
-                print("using marginal cdf")
             elif hasattr(n, 'joint_inverse_cdf'):
                 cdf_function=n.joint_inverse_cdf
-                print("using joint cdf")
             if cdf_function is not None and len(cdf_function.x)>3:
                 y_points = np.array([1e-10, 1e-5, 0.01, 0.125, 0.25])
                 x_vals = np.concatenate([[0], cdf_function(np.concatenate([[ttconf.SUPERTINY_NUMBER], y_points, 
@@ -120,6 +118,8 @@ class Coalescent(object):
             x_tot = np.unique(np.concatenate([branch_inter.x, x_vals]))
             y_tot = branch_inter_to_add(x_tot) + branch_inter(x_tot)
             branch_inter = interp1d(x_tot, y_tot, kind='linear')
+        #extend to negative x values
+        branch_inter = interp1d(np.concatenate([[-ttconf.BIG_NUMBER], x_tot]), np.concatenate([[y_tot[0]], y_tot]), kind='linear')
         self.nbranches = branch_inter
         
     def calc_integral_merger_rate(self):
