@@ -82,13 +82,46 @@ class Coalescent(object):
             nbranches.append([next_t, new_n])
 
         new_n += unique_mergers[-1,1]
-        nbranches.append([next_t, new_n])
+        nbranches.append([unique_mergers[ti+1,0], new_n])
         nbranches.append([-ttconf.BIG_NUMBER, new_n])
         nbranches=np.array(nbranches)
 
         self.nbranches = interp1d(nbranches[:,0], nbranches[:,1], kind='linear')
 
+    def calc_branch_count_dist(self):
+        '''
+        calculates an interpolation object that maps time to the number of concurrent branches in the tree, 
+        if the marginal posterior time distribution of a node has been calculated this is used or 
+        approximated using the joint posterior time distribution, for date constraints a step function is used
+        '''
+        branch_inter = interp1d([0, ttconf.BIG_NUMBER], [1, 1], kind="linear")
+        for n in self.tree.find_clades():
+            cdf_function=None
+            if hasattr(n, 'marginal_inverse_cdf'):
+                cdf_function=n.marginal_inverse_cdf
+                print("using marginal cdf")
+            elif hasattr(n, 'joint_inverse_cdf'):
+                cdf_function=n.joint_inverse_cdf
+                print("using joint cdf")
+            if cdf_function is not None and len(cdf_function.x)>3:
+                y_points = np.array([1e-10, 1e-5, 0.01, 0.125, 0.25])
+                x_vals = np.concatenate([[0], cdf_function(np.concatenate([[ttconf.SUPERTINY_NUMBER], y_points, 
+                            [0.5], (1-y_points[::-1]), [1-ttconf.SUPERTINY_NUMBER]])), [ttconf.BIG_NUMBER]])
 
+                y_vals = np.concatenate([ [(len(n.clades)-1),(len(n.clades)-1)], (len(n.clades)-1)*(1-y_points), 
+                            [(len(n.clades)-1)*0.5], (len(n.clades)-1)*(y_points[::-1]), [0,0]])
+                branch_inter_to_add = interp1d(x_vals, y_vals, kind="linear")
+                
+            else:
+                x_vals = [0, n.time_before_present, n.time_before_present+ttconf.TINY_NUMBER, ttconf.BIG_NUMBER]
+                y_vals= [(len(n.clades)-1), (len(n.clades)-1),0, 0]
+                branch_inter_to_add = interp1d(x_vals, y_vals, kind="linear")
+
+            x_tot = np.unique(np.concatenate([branch_inter.x, x_vals]))
+            y_tot = branch_inter_to_add(x_tot) + branch_inter(x_tot)
+            branch_inter = interp1d(x_tot, y_tot, kind='linear')
+        self.nbranches = branch_inter
+        
     def calc_integral_merger_rate(self):
         '''
         calculates the integral int_0^t (k(t')-1)/2Tc(t') dt' and stores it as

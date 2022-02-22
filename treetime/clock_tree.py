@@ -443,6 +443,17 @@ class ClockTree(TreeAnc):
 
                         node.joint_pos_Lx = res
                         node.joint_pos_Cx = res_t
+            # construct the inverse cumulant distribution for the branch number estimates
+            from scipy.interpolate import interp1d
+            if node.date_constraint is not None and node.date_constraint.is_delta:
+                node.joint_inverse_cdf=interp1d([0,1], node.date_constraint.peak_pos*np.ones(2), kind="linear")
+            elif isinstance(subtree_distribution, Distribution):
+                dt = np.diff(subtree_distribution.x)
+                y = subtree_distribution.prob_relative(subtree_distribution.x)
+                int_y = np.concatenate(([0], np.cumsum(dt*(y[1:]+y[:-1])/2.0)))
+                int_y/=int_y[-1]
+                node.joint_inverse_cdf = interp1d(int_y, subtree_distribution.x, kind="linear")
+                #node.joint_cdf = interp1d(subtree_distribution.x, int_y, kind="linear")
 
 
         # go through the nodes from root towards the leaves and assign joint ML positions:
