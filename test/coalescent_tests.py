@@ -25,9 +25,16 @@ tt = TreeTime(gtr='Jukes-Cantor', tree = base_name+'.nwk',
 
 
 fixed_clock_rate = 0.0028
+seq_kwargs = {"marginal_sequences":False,
+                "branch_length_mode": 'input',
+                "sample_from_profile":"root",
+                "reconstruct_tip_states":False}
+
+tt._set_branch_length_mode('joint')
 tt.infer_ancestral_sequences(infer_gtr=False, marginal=False)
 tt.prune_short_branches()
 tt.reroot(root='least-squares', clock_rate=fixed_clock_rate)
+tt.infer_ancestral_sequences(**seq_kwargs)
 #tt.init_date_constraints(clock_rate=fixed_clock_rate)
 tt.make_time_tree(clock_rate=fixed_clock_rate, time_marginal='assign')
 tree_events_tt = np.array(sorted([(n.time_before_present, len(n.clades)-1)
