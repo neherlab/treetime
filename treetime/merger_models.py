@@ -138,12 +138,14 @@ class Coalescent(object):
                  - np.log(self.total_merger_rate(merger_time))*(multiplicity-1.0)/multiplicity
 
 
-    def node_contribution(self, node, t):
+    def node_contribution(self, node, t, multiplicity=None):
         '''
         returns the contribution of node t to cost of merging branch that t is parent of
         '''
         from treetime.node_interpolator import NodeInterpolator
-        multiplicity = len(node.clades) - 1.0
+        if multiplicity is None:
+            multiplicity = len(node.clades)
+        multiplicity -= 1.0
         y = (self.integral_merger_rate(t) - np.log(self.total_merger_rate(t)))*multiplicity
         return NodeInterpolator(t, y, is_log=True)
 
