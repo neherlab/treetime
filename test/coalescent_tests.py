@@ -51,21 +51,24 @@ if __name__ == '__main__':
     # on the masterbranch or a branch to be tested
     ebola=True
     master = False
-    seq_kwargs = {"marginal_sequences":True,
-                    "branch_length_mode": 'input',
-                    "sample_from_profile":"root",
-                    "reconstruct_tip_states":False}
-    tt_kwargs = {'clock_rate':0.00028,
-                    'time_marginal':False}
-    coal_kwargs ={'Tc':10000,
-                    'time_marginal':False}
 
     if ebola:
         node_pattern = 'EM_004555'
         base_name = '../treetime_examples/data/ebola/ebola'
+        clock_rate = 0.0001
     else:
         node_pattern = 'Indiana'
         base_name = '../treetime_examples/data/h3n2_na/h3n2_na_20'
+        clock_rate = 0.0028
+
+    seq_kwargs = {"marginal_sequences":True,
+                    "branch_length_mode": 'input',
+                    "sample_from_profile":"root",
+                    "reconstruct_tip_states":False}
+    tt_kwargs = {'clock_rate':clock_rate,
+                    'time_marginal':False}
+    coal_kwargs ={'Tc':10000,
+                    'time_marginal':False}
 
     dates = parse_dates(base_name+'.metadata.csv')
     tt = TreeTime(gtr='Jukes-Cantor', tree = base_name+'.nwk',
