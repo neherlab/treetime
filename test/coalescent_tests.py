@@ -11,7 +11,7 @@ def get_test_node(tt, pattern):
     return [n for n in tt.tree.find_clades() if pattern in n.name][0]
 
 def get_tree_events(tt):
-    tree_events_tt = sorted([(n.time_before_present, n.name) for n in tt.tree.find_clades() 
+    tree_events_tt = sorted([(n.time_before_present, n.name) for n in tt.tree.find_clades()
                             if not n.bad_branch], key=lambda x:-x[0])
     return tree_events_tt
 
@@ -47,7 +47,7 @@ if __name__ == '__main__':
     plt.ion()
 
     ##model parameters for testing
-    # choose if should be tested on ebola or h3n2_na dataset and if this script is run 
+    # choose if should be tested on ebola or h3n2_na dataset and if this script is run
     # on the masterbranch or a branch to be tested
     ebola=True
     master = False
@@ -55,10 +55,10 @@ if __name__ == '__main__':
                     "branch_length_mode": 'input',
                     "sample_from_profile":"root",
                     "reconstruct_tip_states":False}
-    tt_kwargs = {'clock_rate':0.0028, 
+    tt_kwargs = {'clock_rate':0.00028,
                     'time_marginal':False}
-    coal_kwargs ={'Tc':10000, 
-                    'time_marginal':'assign'}
+    coal_kwargs ={'Tc':10000,
+                    'time_marginal':False}
 
     if ebola:
         node_pattern = 'EM_004555'
@@ -74,13 +74,14 @@ if __name__ == '__main__':
     tt._set_branch_length_mode(seq_kwargs["branch_length_mode"])
     tt.infer_ancestral_sequences(infer_gtr=False, marginal=seq_kwargs["marginal_sequences"])
     tt.prune_short_branches()
-    tt.reroot(root='least-squares', clock_rate=tt_kwargs ["clock_rate"])
+    tt.clock_filter(reroot='least-squares', n_iqd=1, plot=False, fixed_clock_rate=tt_kwargs["clock_rate"])
+    tt.reroot(root='least-squares', clock_rate=tt_kwargs["clock_rate"])
     tt.infer_ancestral_sequences(**seq_kwargs)
-    tt.make_time_tree(clock_rate=tt_kwargs ["clock_rate"], time_marginal=tt_kwargs["time_marginal"])
+    tt.make_time_tree(clock_rate=tt_kwargs["clock_rate"], time_marginal=tt_kwargs["time_marginal"])
     ##should be no difference at this point unless 'joint' is used for "branch_length_mode"
     # if master:
-    #     write_to_file(tree_events_tt)   
-    # else:              
+    #     write_to_file(tree_events_tt)
+    # else:
     #     output_comparison = compare("../../TreeTimeMaster/treetime/master.txt", tree_events_tt)
 
     tt.add_coalescent_model(coal_kwargs ["Tc"])
@@ -88,7 +89,7 @@ if __name__ == '__main__':
     tree_events_tt_post_coal = get_tree_events(tt)
 
     if master:
-        write_to_file(tree_events_tt_post_coal) 
+        write_to_file(tree_events_tt_post_coal)
     else:
         output_comparison = compare("../../TreeTimeMaster/treetime/master.txt", tree_events_tt_post_coal)
         plt.figure()
