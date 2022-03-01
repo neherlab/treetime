@@ -39,20 +39,20 @@ if __name__ == '__main__':
         tt.infer_ancestral_sequences(infer_gtr=False, marginal=False)
         tt.make_time_tree(clock_rate=fixed_clock_rate, time_marginal=False)
         #tt._ml_t_marginal(assign_dates=True)
-        tt.add_coalescent_model(0.01)
-    ## set the branch_count function using the smooth approach
+
+    ## set the branch_count function using the smooth approach and time differences
     import time
-
     start = time.process_time()
-    tt_smooth.merger_model.calc_branch_count_dist()
-    print(time.process_time()-start)
-    tt_smooth.merger_model.set_Tc(0.01)
-
+    tt_smooth.add_coalescent_model(Tc=0.001, discrete_nbranches=False)
+    print("Time for smooth nbranches:" + str(time.process_time()-start))
+    start = time.process_time()
+    tt_old.add_coalescent_model(Tc=0.001, discrete_nbranches=True)
+    print("Time for discrete nbranches:" + str(time.process_time()-start))
     if ebola:
         node_pattern= 'V517'
     else:
         node_pattern = 'Indiana'
-    
+
     ## Plot effects on branch length distribution and cost function of coalescent
     test_nodes = get_test_nodes([tt_old, tt_smooth], node_pattern)
     while test_nodes[0] is not None:
@@ -112,4 +112,3 @@ if __name__ == '__main__':
         test_nodes =[test_node.up for test_node in test_nodes]
 
 
-    
