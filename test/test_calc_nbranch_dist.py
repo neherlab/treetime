@@ -53,6 +53,32 @@ if __name__ == '__main__':
     else:
         node_pattern = 'Indiana'
 
+    ##if still checking against old function
+    tt_old.merger_model.calc_branch_count()
+
+    ## Plot differences in the nbranches interp1d object
+    plt.figure()
+    plt.plot(tt_old.merger_model.nbranches.x/tt_old.date2dist.clock_rate, tt_old.merger_model.nbranches.y, label="old nbranches function")
+    plt.plot(tt_smooth.merger_model.nbranches.x/tt_smooth.date2dist.clock_rate, tt_smooth.merger_model.nbranches.y, label="new nbranches function")
+    plt.xlabel("time before present")
+    plt.ylabel("nbranches")
+    plt.legend()
+    plt.xlim((0,40))
+
+    tt_smooth.merger_model.calc_branch_count_dist(observed=True)
+    ## Plot differences in the nbranches interp1d object
+    plt.figure()
+    plt.plot(tt_old.merger_model.nbranches.x/tt_old.date2dist.clock_rate, tt_old.merger_model.nbranches.y, label="old nbranches function")
+    plt.plot(tt_smooth.merger_model.observed_nbranches.x/tt_smooth.date2dist.clock_rate, tt_smooth.merger_model.observed_nbranches.y, label="new observed_nbranches function")
+    plt.plot(tt_smooth.merger_model.nbranches.x/tt_smooth.date2dist.clock_rate, tt_smooth.merger_model.nbranches.y, label="new nbranches function")
+    plt.xlabel("time before present")
+    plt.ylabel("nbranches")
+    plt.legend()
+    plt.xlim((0,40))
+
+    ##check that this is really the same as the previously calculated calc_branch_count:
+    print(np.all(tt_smooth.merger_model.observed_nbranches.y==tt_old.merger_model.nbranches.y))
+
     ## Plot effects on branch length distribution and cost function of coalescent
     test_nodes = get_test_nodes([tt_old, tt_smooth], node_pattern)
     while test_nodes[0] is not None:
@@ -64,14 +90,6 @@ if __name__ == '__main__':
             plt.legend()
         test_nodes =[test_node.up for test_node in test_nodes]
 
-    ## Plot differences in the nbranches interp1d object
-    plt.figure()
-    plt.plot(tt_old.merger_model.nbranches.x/tt_old.date2dist.clock_rate, tt_old.merger_model.nbranches.y, label="old nbranches function")
-    plt.plot(tt_smooth.merger_model.nbranches.x/tt_smooth.date2dist.clock_rate, tt_smooth.merger_model.nbranches.y, label="new nbranches function")
-    plt.xlabel("time before present")
-    plt.ylabel("nbranches")
-    plt.legend()
-    plt.xlim((0,40))
 
     ## Plot effects on final constructed time trees
     for tt in [tt_old, tt_smooth]:
