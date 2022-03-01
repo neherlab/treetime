@@ -453,7 +453,13 @@ class ClockTree(TreeAnc):
                 continue # the position was already set on the previous step
 
             if node.joint_pos_Cx is None: # no constraints or branch is bad - reconstruct from the branch len interpolator
-                node.branch_length = node.branch_length_interpolator.peak_pos
+                if hasattr(self, 'merger_model') and self.merger_model and node.up is not None:
+                    ##add merger_cost if using the coalescent model
+                    merger_cost = Distribution(node.branch_length_interpolator.x, self.merger_model.cost(node.time_before_present,
+                                    node.branch_length_interpolator.x, multiplicity=len(node.up.clades)), is_log=True)
+                    node.branch_length = Distribution.multiply([merger_cost, node.branch_length_interpolator]).peak_pos
+                else:
+                    node.branch_length = node.branch_length_interpolator.peak_pos
             elif node.date_constraint is not None and node.date_constraint.is_delta:
                 node.branch_length = node.up.time_before_present - node.date_constraint.peak_pos
             elif isinstance(node.joint_pos_Cx, Distribution):
