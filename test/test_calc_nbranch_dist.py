@@ -19,7 +19,7 @@ def get_test_nodes(tree_list, pattern):
 if __name__ == '__main__':
     plt.ion()
 
-    ebola=True
+    ebola=False
     if ebola:
         base_name = '../treetime_examples/data/ebola/ebola'
     else:
@@ -54,7 +54,7 @@ if __name__ == '__main__':
         node_pattern = 'Indiana'
 
     ##if still checking against old function
-    tt_old.merger_model.calc_branch_count()
+    # tt_old.merger_model.calc_branch_count()
 
     ## Plot differences in the nbranches interp1d object
     plt.figure()
@@ -79,7 +79,7 @@ if __name__ == '__main__':
     plt.xlim((0,40))
 
     ##check that this is really the same as the previously calculated calc_branch_count:
-    print(np.all(tt_smooth.merger_model.observed_nbranches.y==tt_old.merger_model.nbranches.y))
+    print(np.all(tt_smooth.merger_model.nbranches.y==tt_old.merger_model.nbranches.y))
 
     ## Plot effects on branch length distribution and cost function of coalescent
     test_nodes = get_test_nodes([tt_old, tt_smooth], node_pattern)
