@@ -19,7 +19,7 @@ def get_test_nodes(tree_list, pattern):
 if __name__ == '__main__':
     plt.ion()
 
-    ebola=False
+    ebola=True
     if ebola:
         base_name = '../treetime_examples/data/ebola/ebola'
     else:
@@ -59,18 +59,20 @@ if __name__ == '__main__':
     ## Plot differences in the nbranches interp1d object
     plt.figure()
     plt.plot(tt_old.merger_model.nbranches.x/tt_old.date2dist.clock_rate, tt_old.merger_model.nbranches.y, label="old nbranches function")
-    plt.plot(tt_smooth.merger_model.nbranches.x/tt_smooth.date2dist.clock_rate, tt_smooth.merger_model.nbranches.y, label="new nbranches function")
+    plt.plot(tt_smooth.merger_model.nbranches.x/tt_smooth.date2dist.clock_rate, tt_smooth.merger_model.nbranches.y, label="new smooth nbranches function")
     plt.xlabel("time before present")
     plt.ylabel("nbranches")
     plt.legend()
     plt.xlim((0,40))
 
-    tt_smooth.merger_model.calc_branch_count_dist(observed=True)
+    x_old = tt_smooth.merger_model.nbranches.x/tt_smooth.date2dist.clock_rate
+    y_old = tt_smooth.merger_model.nbranches.y
+    tt_smooth.merger_model.calc_branch_count_dist(discrete=True)
     ## Plot differences in the nbranches interp1d object
     plt.figure()
     plt.plot(tt_old.merger_model.nbranches.x/tt_old.date2dist.clock_rate, tt_old.merger_model.nbranches.y, label="old nbranches function")
-    plt.plot(tt_smooth.merger_model.observed_nbranches.x/tt_smooth.date2dist.clock_rate, tt_smooth.merger_model.observed_nbranches.y, label="new observed_nbranches function")
-    plt.plot(tt_smooth.merger_model.nbranches.x/tt_smooth.date2dist.clock_rate, tt_smooth.merger_model.nbranches.y, label="new nbranches function")
+    plt.plot(x_old, y_old, label="new smooth nbranches function")
+    plt.plot(tt_smooth.merger_model.nbranches.x/tt_smooth.date2dist.clock_rate, tt_smooth.merger_model.nbranches.y, label="new discrete nbranches function")
     plt.xlabel("time before present")
     plt.ylabel("nbranches")
     plt.legend()

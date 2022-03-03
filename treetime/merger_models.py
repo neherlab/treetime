@@ -16,18 +16,11 @@ from .utils import clip
 
 class Coalescent(object):
     """docstring for Coalescent"""
-    def __init__(self, tree, Tc=0.001, logger=None, date2dist=None, discrete_nbranches=True):
+    def __init__(self, tree, Tc=0.001, logger=None, date2dist=None, discrete_nbranches=False):
         super(Coalescent, self).__init__()
         self.tree = tree
-        # set the nbranches function either to the discrete observed_nbranches or the
-        # smooth estimated_nbranches using marginal_pos_LH
         self.discrete_nbranches = discrete_nbranches
-        if discrete_nbranches:
-            self.calc_branch_count_dist(observed=True)
-            self.nbranches = self.observed_nbranches
-        else:
-            self.calc_branch_count_dist(observed=False)
-            self.nbranches = self.estimated_nbranches
+        self.calc_branch_count_dist(discrete=discrete_nbranches)
         self.set_Tc(Tc)
         self.date2dist = date2dist
         if logger is None:
@@ -96,7 +89,7 @@ class Coalescent(object):
 
         self.nbranches = interp1d(nbranches[:,0], nbranches[:,1], kind='linear')
 
-    def calc_branch_count_dist(self, observed=False):
+    def calc_branch_count_dist(self, discrete=False):
         '''
         Calculates an interpolation object that maps time to the number of concurrent branches in the tree,
         if the marginal posterior time distribution of a node has been calculated this is used or
@@ -108,17 +101,15 @@ class Coalescent(object):
         ## sorted by time and mergers added or subtracted from the previous time, for smooth distributions when a new merger
         ## event occurs the previous distribution must be evaluated at the corresponding position.
 
+        self.tree_events = np.array(sorted([(n.time_before_present, len(n.clades)-1)
+                        for n in self.tree.find_clades() if not n.bad_branch],
+                        key=lambda x:-x[0]))
+
         tree_delta_events = None
         tree_smooth_events = None
 
-        if observed:
-            ## only use delta events, as observed tree has fixed times
-
-            # make a list of (time, merger or loss event) by root first iteration
-            tree_delta_events = np.array(sorted([(n.time_before_present, len(n.clades)-1)
-                                    for n in self.tree.find_clades() if not n.bad_branch],
-                                    key=lambda x:-x[0]))
-            self.tree_events = tree_delta_events
+        if discrete:
+            tree_delta_events = self.tree_events
         else:
             for n in self.tree.find_clades():
                 cdf_function=None
@@ -178,10 +169,8 @@ class Coalescent(object):
             else:
                 # if no delta events exist the starting value of 1 needs to be added to the distribution
                 nbranches = interp1d(tree_smooth_events.x, tree_smooth_events.y +1, kind="linear")
-        if observed:
-            self.observed_nbranches = nbranches
-        else:
-            self.estimated_nbranches = nbranches
+
+        self.nbranches = nbranches
 
     def calc_integral_merger_rate(self):
         '''
@@ -287,7 +276,7 @@ class Coalescent(object):
         self.logger("Coalescent:optimize_skyline:... current LH: %f"%self.total_LH(),2)
         from scipy.optimize import minimize
         initial_Tc = self.Tc
-        tvals = np.linspace(self.nbranches.x[-3], self.nbranches.x[2]-ttconf.TINY_NUMBER, n_points)
+        tvals = np.linspace(self.tree_events[0,0], self.tree_events[-1,0], n_points)
         def cost(logTc):
             # cap log Tc to avoid under or overflow and nan in logs
             self.set_Tc(np.exp(clip(logTc, -200, 100)), tvals)
@@ -327,16 +316,12 @@ class Coalescent(object):
         parameters:
             gen -- number of generations per year.
         '''
-        if not self.discrete_nbranches:
-            # uses observed merger times in tree
-            self.calc_branch_count_dist(observed=True)
-        mergers = self.tree_events[:,1]>0
-        merger_tvals = self.tree_events[mergers,0]
-        nlineages = self.observed_nbranches(merger_tvals-ttconf.TINY_NUMBER)
+        merger_times = np.array(self.tree_events[self.tree_events[:,1]>0, 0])
+        nlineages = self.nbranches(merger_times -ttconf.TINY_NUMBER)
         expected_merger_density = nlineages*(nlineages-1)*0.5
 
-        nmergers = len(mergers)
-        et = merger_tvals
+        nmergers = len(merger_times)
+        et = merger_times
         ev = 1.0/expected_merger_density
         # reduce the window size if there are few events in the tree
         if 2*n_points>len(expected_merger_density):
@@ -350,8 +335,10 @@ class Coalescent(object):
                                      [et[-1]+0.5*(et[-1]-et[-2])]))
 
         # this smoothes the ratio of expected and observed merger rate
+        # epsilon is added to avoid division by 0 and to normalize Tc
+        epsilon= (n_points/(n_points-1))*dt/nmergers
         self.Tc_inv = interp1d(mid_points[n_points:-n_points],
-                        [np.sum(ev[(et>=l)&(et<u)])/(u-l+dt/nmergers)
+                        [np.sum(ev[(et>=l)&(et<u)])/(u-l+epsilon)
                         for u,l in zip(mid_points[:-2*n_points],mid_points[2*n_points:])])
 
         return interp1d(self.date2dist.to_numdate(self.Tc_inv.x), gen/self.date2dist.clock_rate/self.Tc_inv.y)
