@@ -136,7 +136,6 @@ class TreeTime(ClockTree):
                       "branch_length_mode": self.branch_length_mode,
                       "sample_from_profile":"root",
                       "reconstruct_tip_states":kwargs.get("reconstruct_tip_states", False)}
-
         tt_kwargs = {'clock_rate':fixed_clock_rate, 'time_marginal':False}
         tt_kwargs.update(kwargs)
 
@@ -567,8 +566,8 @@ class TreeTime(ClockTree):
             cost gain if nodes n1, n2 are joined and their parent is placed at time t
             cost gain = (LH loss now) - (LH loss when placed at time t)
             """
-            cg2 = n2.branch_length_interpolator(parent.time_before_present - n2.time_before_present) - n2.branch_length_interpolator(t - n2.time_before_present)
-            cg1 = n1.branch_length_interpolator(parent.time_before_present - n1.time_before_present) - n1.branch_length_interpolator(t - n1.time_before_present)
+            cg2 = n2.branch_length_interpolator._func(parent.time_before_present - n2.time_before_present) - n2.branch_length_interpolator._func(t - n2.time_before_present)
+            cg1 = n1.branch_length_interpolator._func(parent.time_before_present - n1.time_before_present) - n1.branch_length_interpolator._func(t - n1.time_before_present)
             cg_new = - zero_branch_slope * (parent.time_before_present - t) # loss in LH due to the new branch
             return -(cg2+cg1+cg_new)
 
@@ -737,7 +736,6 @@ class TreeTime(ClockTree):
                 except:
                     self.logger("setting of coalescent time scale failed", 1, warn=True)
 
-        self.merger_model.attach_to_tree()
 
 
     def relaxed_clock(self, slack=None, coupling=None, **kwargs):

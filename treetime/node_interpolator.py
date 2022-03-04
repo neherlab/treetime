@@ -75,9 +75,9 @@ def _convolution_integrand(t_val, f, g,
 
         if inverse_time: # add negative logarithms
             tnode = t_val - tau
-            fg = f(tnode) + g(tau, tnode=tnode)
+            fg = f(tnode) + g(tau)
         else:
-            fg = f(t_val + tau) + g(tau, tnode=t_val)
+            fg = f(t_val + tau) + g(tau)
 
         # create the interpolation object on this grid
         FG = Distribution(tau, fg, is_log=True, min_width = np.max([f.min_width, g.min_width]),

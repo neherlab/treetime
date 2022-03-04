@@ -1,6 +1,6 @@
 from test_treetime import *
 
-import_short_test()
+test_import_short()
 
 test_GTR()
 

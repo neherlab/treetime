@@ -21,10 +21,10 @@ class BranchLenInterpolator (Distribution):
 
         self._gamma = 1.0
 
-        self._merger_cost = None
         if one_mutation is None:
             L = node.sequence.shape[0]
             one_mutation = 1.0/L
+        self.one_mutation = one_mutation
 
         # optimal branch length
         mutation_length = node.mutation_length
@@ -112,19 +112,6 @@ class BranchLenInterpolator (Distribution):
     def gamma(self, value):
         self._gamma = max(ttconf.TINY_NUMBER, value)
 
-    @property
-    def merger_cost(self):
-        return self._merger_cost
-
-    @merger_cost.setter
-    def merger_cost(self, cost_func):
-        self._merger_cost = cost_func
-        self._peak_idx = np.argmin(self.__call__(self.x))
-        self._peak_pos = self.x[self._peak_idx]
-        if self.kind=='linear': # can't mess like this with non-linear interpolation
-            deltay = self.__call__(self.peak_pos) - self._peak_val
-            self._peak_val += deltay
-            self._func.y -= deltay
 
     @property
     def peak_pos(self):
@@ -137,16 +124,6 @@ class BranchLenInterpolator (Distribution):
     @property
     def fwhm(self):
         return super(BranchLenInterpolator,self).fwhm/self.gamma
-
-    def __call__(self, x, tnode=None, multiplicity=None):
-        res = super(BranchLenInterpolator, self).__call__(x*self.gamma)
-        if self.merger_cost is not None:
-            if tnode is None:
-                tnode = self.node.time_before_present
-            if multiplicity is None:
-                multiplicity = len(self.node.up.clades)
-            res += self.merger_cost(tnode, x, multiplicity=multiplicity)
-        return res
 
     def __mul__(self, other):
         res = BranchLenInterpolator(super(BranchLenInterpolator, self).__mul__(other), gtr=self.gtr)

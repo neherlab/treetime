@@ -469,7 +469,7 @@ def scan_homoplasies(params):
 
 def timetree(params):
     """
-    implementeing treetime tree
+    implementing treetime tree
     """
     if params.relax is None:
         relaxed_clock_params = None

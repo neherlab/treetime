@@ -133,18 +133,21 @@ class Coalescent(object):
             - branch_length:    branch length, determines when this branch merges with sister
             - multiplicity:     2 if merger is binary, higher if this is a polytomy
         '''
-        merger_time = t_node+branch_length
+        merger_time = t_node+ np.maximum(0,branch_length)
         return self.integral_merger_rate(merger_time) - self.integral_merger_rate(t_node)\
                  - np.log(self.total_merger_rate(merger_time))*(multiplicity-1.0)/multiplicity
 
 
-    def attach_to_tree(self):
+    def node_contribution(self, node, t, multiplicity=None):
         '''
-        attaches the the merger cost to each branch length interpolator in the tree.
+        returns the contribution of node t to cost of merging branch that t is parent of
         '''
-        for clade in self.tree.find_clades():
-            if clade.up is not None:
-                clade.branch_length_interpolator.merger_cost = self.cost
+        from treetime.node_interpolator import NodeInterpolator
+        if multiplicity is None:
+            multiplicity = len(node.clades)
+        multiplicity -= 1.0
+        y = (self.integral_merger_rate(t) - np.log(self.total_merger_rate(t)))*multiplicity
+        return NodeInterpolator(t, y, is_log=True)
 
 
     def total_LH(self):
