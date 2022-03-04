@@ -11,7 +11,7 @@ if __name__ == '__main__':
     base_name = 'test/treetime_examples/data/h3n2_na/h3n2_na_20'
 
     dates = parse_dates(base_name+'.metadata.csv')
-    tt = TreeTime(gtr='Jukes-Cantor', tree = base_name+'.nwk',
+    tt = TreeTime(gtr='Jukes-Cantor', tree = base_name+'.nwk', use_fft=True,
                   aln = base_name+'.fasta', verbose = 3, dates = dates, debug=True)
 
     # rerooting can be done along with the tree time inference
@@ -49,7 +49,12 @@ if __name__ == '__main__':
     # 80ms (there are 19 nodes here, so about 20 internal branches -> 1s)
     res, res_t = NodeInterpolator.convolve(subtree_distribution, tt.tree.root.clades[1].branch_length_interpolator, max_or_integral='integral', inverse_time=False, n_grid_points = tt.node_grid_points, n_integral=tt.n_integral, rel_tol=tt.rel_tol_refine)
 
-    # This points towards the convolution being the biggest computational expense. 
+    # 1ms (there are 19 nodes here, so about 20 internal branches)
+    res = NodeInterpolator.convolve_fft(subtree_distribution, tt.tree.root.clades[1].branch_length_interpolator, inverse_time=True)
+    # 1ms (there are 19 nodes here, so about 20 internal branches)
+    res = NodeInterpolator.convolve_fft(subtree_distribution, tt.tree.root.clades[1].branch_length_interpolator, inverse_time=False)
+
+    # This points towards the convolution being the biggest computational expense.
 
 
 

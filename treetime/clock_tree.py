@@ -24,7 +24,7 @@ class ClockTree(TreeAnc):
     """
 
     def __init__(self, *args, dates=None, debug=False, real_dates=True, precision='auto',
-                 branch_length_mode='joint', use_covariation=False, **kwargs):
+                 branch_length_mode='joint', use_covariation=False, use_fft=False, **kwargs):
 
         """
         ClockTree constructor
@@ -60,6 +60,9 @@ class ClockTree(TreeAnc):
             determines whether root-to-tip regression accounts for covariance
             introduced by shared ancestry.
 
+        use_fft: boolean
+            If FFT used for calculation of convolution integrals
+
          **kwargs:
             Key word argments needed to construct parent class (TreeAnc)
 
@@ -71,6 +74,7 @@ class ClockTree(TreeAnc):
         self.debug=debug
         self.real_dates = real_dates
         self.date_dict = dates
+        self.use_fft = use_fft
         self._date2dist = None  # we do not know anything about the conversion
         self.tip_slack = ttconf.OVER_DISPERSION  # extra number of mutations added
                                                  # to terminal branches in covariance calculation
@@ -342,7 +346,8 @@ class ClockTree(TreeAnc):
         else:
             self._ml_t_joint()
 
-        self.convert_dates()
+        if time_marginal=='assign' or (time_marginal==False):
+            self.convert_dates()
 
 
     def _ml_t_joint(self):
@@ -550,7 +555,7 @@ class ClockTree(TreeAnc):
                 except:
                     pass
 
-
+        method = 'FFT' if self.use_fft else 'explicit'
         self.logger("ClockTree - Marginal reconstruction:  Propagating leaves -> root...", 2)
         # go through the nodes from leaves towards the root:
         for node in self.tree.find_clades(order='postorder'):  # children first, msg to parents
@@ -609,7 +614,11 @@ class ClockTree(TreeAnc):
                             node.marginal_pos_LH = node.subtree_distribution
                         self.tree.positional_marginal_LH = -node.marginal_pos_LH.peak_val
                     else: # otherwise propagate to parent
-                        res, res_t = NodeInterpolator.convolve(node.subtree_distribution,
+                        if self.use_fft:
+                            res, res_t = NodeInterpolator.convolve_fft(node.subtree_distribution,
+                                        node.branch_length_interpolator), None
+                        else:
+                            res, res_t = NodeInterpolator.convolve(node.subtree_distribution,
                                         node.branch_length_interpolator,
                                         max_or_integral='integral',
                                         n_grid_points = self.node_grid_points,
@@ -643,12 +652,16 @@ class ClockTree(TreeAnc):
 
                 # integral message, which delivers to the node the positional information
                 # from the complementary subtree
-                res, res_t = NodeInterpolator.convolve(msg_parent_to_node, node.branch_length_interpolator,
-                                                    max_or_integral='integral',
-                                                    inverse_time=False,
-                                                    n_grid_points = self.node_grid_points,
-                                                    n_integral=self.n_integral,
-                                                    rel_tol=self.rel_tol_refine)
+                if self.use_fft:
+                    res, res_t = NodeInterpolator.convolve_fft(msg_parent_to_node, node.branch_length_interpolator,
+                                        inverse_time=False), None
+                else:
+                    res, res_t = NodeInterpolator.convolve(msg_parent_to_node, node.branch_length_interpolator,
+                                        max_or_integral='integral',
+                                        inverse_time=False,
+                                        n_grid_points = self.node_grid_points,
+                                        n_integral=self.n_integral,
+                                        rel_tol=self.rel_tol_refine)
 
                 node.msg_from_parent = res
                 if node.marginal_pos_Lx is None:

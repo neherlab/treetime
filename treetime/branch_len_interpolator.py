@@ -125,6 +125,10 @@ class BranchLenInterpolator (Distribution):
     def fwhm(self):
         return super(BranchLenInterpolator,self).fwhm/self.gamma
 
+    @property
+    def effective_support(self):
+        return tuple((x/self.gamma for x in super(BranchLenInterpolator,self).effective_support))
+
     def __mul__(self, other):
         res = BranchLenInterpolator(super(BranchLenInterpolator, self).__mul__(other), gtr=self.gtr)
         return res

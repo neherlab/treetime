@@ -302,7 +302,7 @@ class Coalescent(object):
 
         # this smoothes the ratio of expected and observed merger rate
         # epsilon is added to avoid division by 0 and to normalize Tc
-        epsilon= (1/(n_points-1))*dt/nmergers
+        epsilon= (1/n_points)*dt/nmergers
         self.Tc_inv = interp1d(mid_points[n_points:-n_points],
                         [np.sum(ev[(et>=l)&(et<u)])/(u-l+epsilon)
                         for u,l in zip(mid_points[:-2*n_points],mid_points[2*n_points:])])

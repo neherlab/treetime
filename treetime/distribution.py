@@ -158,6 +158,8 @@ class Distribution(object):
             self._func= interp1d(xvals, yvals, kind=kind, fill_value=BIG_NUMBER,
                                  bounds_error=False, assume_sorted=True)
             self._fwhm = Distribution.calc_fwhm(self)
+            # remember effective range
+            self._effective_support = self.calc_effective_support()
 
         elif np.isscalar(x):
             assert (np.isscalar(y) or y is None)
@@ -172,6 +174,7 @@ class Distribution(object):
             self._xmin, self._xmax = x, x
             self._support = 0.
             self._func = lambda x : (x==self.peak_pos)*self.peak_val
+            self._effective_support = (self._xmin, self._xmax)
         else:
             raise TypeError("Cannot create Distribution: "
                 "Input arguments should be scalars or iterables!")
@@ -204,6 +207,10 @@ class Distribution(object):
     @property
     def fwhm(self):
         return self._fwhm
+
+    @property
+    def effective_support(self):
+        return self._effective_support
 
     @property
     def x(self):
@@ -251,6 +258,40 @@ class Distribution(object):
 
     def __mul__(self, other):
         return Distribution.multiply((self, other))
+
+    def calc_effective_support(self, cutoff=1e-15):
+        """
+        Assess the interval on which the value of self is higher than cutoff
+        relative to its peak
+        """
+        from scipy.optimize import brentq
+        log_cutoff = -np.log(cutoff)
+        vals = log_cutoff - self.__call__(self.x) + self.peak_val
+        above = vals > 0
+        above_idx = np.where(above)[0]
+        if len(above_idx)==0:
+            return (self.xmin, self.xmax)
+
+        try:
+            if above[0]:
+                left = self.xmin
+            else:
+                x1, x2 = self.x[above_idx[0]-1], self.x[above_idx[0]]
+                y1, y2 = vals[above_idx[0]-1], vals[above_idx[0]]
+                d = y2-y1
+                left = x1*y2/d - x2*y1/d
+
+            if above[-1]:
+                right = self.xmax
+            else:
+                x1, x2 = self.x[above_idx[-1]], self.x[above_idx[-1]+1]
+                y1, y2 = vals[above_idx[-1]], vals[above_idx[-1]+1]
+                d = y1-y2
+                right = -x1*y2/d + x2*y1/d
+        except:
+            raise ArithmeticError("Region of support of the distribution couldn'n be determined!")
+
+        return (left,right)
 
 
     def _adjust_grid(self, rel_tol=0.01, yc=10):
@@ -336,4 +377,17 @@ class Distribution(object):
                     + np.sum((dx[:-1]+dx[1:])*y[2:-1:2]) + dx[-1]*y[-1]))
 
         return np.sum(res)
+
+
+    def fft(self, T, n=None, inverse_time=True):
+        if self.is_delta:
+            import ipdb; ipdb.set_trace()
+        from numpy.fft import rfft
+        if n is None:
+            n=len(T)
+        if inverse_time:
+            return rfft(self.prob_relative(T), n=n)
+        else:
+            return rfft(self.prob_relative(T)[::-1], n=n)
+
 

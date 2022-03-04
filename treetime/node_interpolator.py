@@ -162,6 +162,71 @@ class NodeInterpolator (Distribution):
     """
 
     @classmethod
+    def convolve_fft(cls, node_interp, branch_interp, inverse_time=True):
+        fwhm = node_interp.fwhm + branch_interp.fwhm
+        dt = max(branch_interp.one_mutation*0.005, min(node_interp.fwhm, branch_interp.fwhm)/200)
+        b_effsupport = branch_interp.effective_support
+        n_effsupport = node_interp.effective_support
+
+        tmax = 2*max(b_effsupport[1]-b_effsupport[0], n_effsupport[1]-n_effsupport[0])
+
+        Tb = np.arange(b_effsupport[0], b_effsupport[0] + tmax + dt, dt)
+        if inverse_time:
+            Tn = np.arange(n_effsupport[0], n_effsupport[0] + tmax + dt, dt)
+            Tmin = node_interp.xmin
+            Tmax = ttconf.MAX_BRANCH_LENGTH
+        else:
+            Tn = np.arange(n_effsupport[1] - tmax, n_effsupport[1] + dt, dt)
+            Tmin = -ttconf.MAX_BRANCH_LENGTH
+            Tmax = node_interp.xmax
+
+        raw_len = len(Tb)
+        fft_len = 2*raw_len
+
+        fftb = branch_interp.fft(Tb, n=fft_len)
+        fftn = node_interp.fft(Tn, n=fft_len, inverse_time=inverse_time)
+        if inverse_time:
+            fft_res = np.fft.irfft(fftb*fftn, fft_len)[:raw_len]
+            Tres = Tn + Tb[0]
+        else:
+            fft_res = np.fft.irfft(fftb*fftn, fft_len)[::-1]
+            fft_res = fft_res[raw_len:]
+            Tres = Tn - Tb[0]
+
+        # determine region in which we can trust the FFT convolution and avoid
+        # inaccuracies due to machine precision. 1e-13 seems robust
+        ind = fft_res>fft_res.max()*1e-13
+        res = -np.log(fft_res[ind]) + branch_interp.peak_val + node_interp.peak_val - np.log(dt)
+        Tres_cropped = Tres[ind]
+
+        # extrapolate the tails exponentially: use margin last data points
+        margin = np.minimum(3, Tres_cropped.shape[0]//3)
+        if margin<1 or len(res)==0:
+            import ipdb; ipdb.set_trace()
+        else:
+            left_slope = (res[margin]-res[0])/(Tres_cropped[margin]-Tres_cropped[0])
+            right_slope = (res[-1]-res[-margin-1])/(Tres_cropped[-1]-Tres_cropped[-margin-1])
+
+        # only extrapolate on the left when the slope is negative and we are not on the boundary
+        if Tmin<Tres_cropped[0] and left_slope<0:
+            Tleft = np.linspace(Tmin, Tres_cropped[0],10)[:-1]
+            res_left = res[0] + left_slope*(Tleft - Tres_cropped[0])
+        else:
+            Tleft, res_left = [], []
+
+        # only extrapolate on the right when the slope is positive and we are not on the boundary
+        if Tres_cropped[-1]<Tmax and right_slope>0:
+            Tright = np.linspace(Tres_cropped[-1], Tmax,10)[1:]
+            res_right = res[-1] + right_slope*(Tright - Tres_cropped[-1])
+        else: #otherwise
+            Tright, res_right = [], []
+
+        # instantiate the new interpolation object and return
+        return cls(np.concatenate((Tleft,Tres_cropped,Tright)),
+                   np.concatenate((res_left, res, res_right)),
+                   is_log=True, kind='linear', assume_sorted=True)
+
+    @classmethod
     def convolve(cls, node_interp, branch_interp, max_or_integral='integral',
                  n_grid_points = ttconf.NODE_GRID_SIZE, n_integral=ttconf.N_INTEGRAL,
                  inverse_time=True, rel_tol=0.05, yc=10):

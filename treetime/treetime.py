@@ -667,7 +667,7 @@ class TreeTime(ClockTree):
         stretched = [c for c  in clade.clades if c.mutation_length < c.clock_length]
         compressed = [c for c in clade.clades if c not in stretched]
 
-        if len(stretched)==1 and merge_compressed is False:
+        if len(stretched)<2 and merge_compressed is False:
             return 0.0
 
         LH = merge_nodes(stretched, isall=len(stretched)==len(clade.clades))
