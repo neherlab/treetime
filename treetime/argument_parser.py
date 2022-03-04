@@ -194,9 +194,10 @@ def make_parser():
                           help=coalescent_description)
     t_parser.add_argument('--n-skyline', default="20", type=int,
                           help="number of grid points in skyline coalescent model")
-    t_parser.add_argument('--n-branches-posterior', default=False, type=bool,
-                          help= "use the posterior probability distributions of divergence times for calculating"
-                                "the number of branches at each time in the tree or use infered time before present." )
+    t_parser.add_argument('--n-branches-posterior', default=False, action='store_true',
+                          help= "add posterior LH to coalescent model: use the posterior probability distributions of "
+                                "divergence times for estimating the number of branches when calculating the coalescent merger"
+                                "rate or use infered time before present (default)." )
     t_parser.add_argument('--plot-tree', default="timetree.pdf",
                             help = "filename to save the plot to. Suffix will determine format"
                                    " (choices pdf, png, svg, default=pdf)")
