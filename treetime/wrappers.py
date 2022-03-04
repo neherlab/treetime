@@ -533,6 +533,8 @@ def timetree(params):
             print("unknown coalescent model specification, has to be either "
                   "a float, 'opt', 'const' or 'skyline' -- exiting")
             return 1
+    n_branches_posterior = params.n_branches_posterior
+
 
     # determine whether confidence intervals are to be computed and how the
     # uncertainty in the rate estimate should be treated
@@ -563,7 +565,8 @@ def timetree(params):
                branch_length_mode = branch_length_mode,
                reconstruct_tip_states=params.reconstruct_tip_states,
                fixed_pi=fixed_pi,
-               use_covariation = params.covariation, n_points=params.n_skyline,
+               use_covariation = params.covariation,
+               n_points=params.n_skyline, n_branches_posterior = n_branches_posterior,
                tracelog_file=os.path.join(outdir, "trace_run.log"))
     except TreeTimeError as e:
         print("\nTreeTime run FAILED: please check above for errors and/or rerun with --verbose 4.\n")
