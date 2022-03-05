@@ -2,6 +2,7 @@ from __future__ import division, print_function, absolute_import
 import sys
 from os.path import isfile
 from collections import defaultdict
+from unittest.mock import NonCallableMagicMock
 import numpy as np
 from Bio import SeqRecord, Seq, AlignIO, SeqIO
 from . import config as ttconf
@@ -91,7 +92,7 @@ class SequenceData(object):
         self._ref = None
         self.likely_alphabet = None
         self.compressed_to_full_sequence_map = None
-        self.multiplicity = None
+        self._multiplicity = None
         self.is_sparse = None
         self.convert_upper = convert_upper
         self.compress = compress
@@ -271,8 +272,13 @@ class SequenceData(object):
             self._ref = seq2array(in_ref, fill_overhangs=False, word_length=self.word_length)
             self.full_length = self._ref.shape[0]
             self.compressed_to_full_sequence_map = None
-            self.multiplicity = None
+            self._multiplicity = None
 
+    def multiplicity(self, mask=None):
+        if mask is None:
+            return self._multiplicity
+        else:
+            return self._multiplicity*mask
 
     def check_alphabet(self, seqs):
         self.likely_alphabet = guess_alphabet(seqs)
@@ -310,7 +316,7 @@ class SequenceData(object):
         """
 
         if not self.compress: #
-            self.multiplicity = np.ones(self.full_length, dtype=float)
+            self._multiplicity = np.ones(self.full_length, dtype=float)
             self.full_to_compressed_sequence_map = np.arange(self.full_length)
             self.compressed_to_full_sequence_map = {p:np.array([p]) for p in np.arange(self.full_length)}
             self._compressed_length = self._full_length
@@ -402,9 +408,9 @@ class SequenceData(object):
 
 
         # count how many times each column is repeated in the real alignment
-        self.multiplicity = np.zeros(len(alignment_patterns))
+        self._multiplicity = np.zeros(len(alignment_patterns))
         for p, pos in alignment_patterns.values():
-            self.multiplicity[p]=len(pos)
+            self._multiplicity[p]=len(pos)
 
         # create the compressed alignment as a dictionary linking names to sequences
         tmp_compressed_alignment = np.array(compressed_aln_transpose).T
@@ -421,7 +427,7 @@ class SequenceData(object):
             self.compressed_to_full_sequence_map[val[0]]=np.array(val[1], dtype=int)
 
         self.logger("SequenceData: constructed compressed alignment...", 1)
-        self._compressed_length = len(self.multiplicity)
+        self._compressed_length = len(self._multiplicity)
         return ttconf.SUCCESS
 
 
@@ -499,7 +505,7 @@ class SequenceData(object):
         else:
             return tmp_seq
 
-    def differences(self, seq1, seq2, seq1_compressed=True, seq2_compressed=True):
+    def differences(self, seq1, seq2, seq1_compressed=True, seq2_compressed=True, mask=None):
         diffs = []
         if self.is_sparse:
             if seq1_compressed: seq1 = self.compressed_to_sparse_sequence(seq1)
@@ -514,7 +520,11 @@ class SequenceData(object):
         else:
             if seq1_compressed: seq1 = self.compressed_to_full_sequence(seq1)
             if seq2_compressed: seq2 = self.compressed_to_full_sequence(seq2)
-            diff_pos = np.where(seq1 != seq2)[0]
+            if mask is None:
+                diff_pos = np.where(seq1 != seq2)[0]
+            else:
+                diff_pos = np.where((seq1 != seq2)&(mask>0))[0]
+
             for pos in diff_pos:
                 diffs.append((seq1[pos], pos, seq2[pos]))
 

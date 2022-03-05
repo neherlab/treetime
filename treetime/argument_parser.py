@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 from __future__ import print_function, division, absolute_import
 import sys, argparse, os
-from .wrappers import ancestral_reconstruction, mugration, scan_homoplasies, timetree, estimate_clock_model
+from .wrappers import ancestral_reconstruction, mugration, scan_homoplasies,\
+                      timetree, estimate_clock_model, arg_time_trees
 from . import version
 
 py2 = sys.version_info.major==2
@@ -144,6 +145,10 @@ def add_gtr_arguments(parser):
     parser.add_argument('--gtr-params', nargs='+', help=gtr_params_description)
     parser.add_argument('--aa', action='store_true', help="use aminoacid alphabet")
 
+def add_time_arguments(parser):
+    parser.add_argument('--dates', type=str, help=dates_description)
+    parser.add_argument('--name-column', type=str, help="label of the column to be used as taxon name")
+    parser.add_argument('--date-column', type=str, help="label of the column to be used as sampling date")
 
 def add_anc_arguments(parser):
     parser.add_argument('--keep-overhangs', default = False, action='store_true', help='do not fill terminal gaps')
@@ -156,6 +161,39 @@ def add_common_args(parser):
     parser.add_argument('--verbose', default=1, type=int,  help='verbosity of output 0-6')
     parser.add_argument('--outdir', type=str,  help='directory to write the output to')
 
+def add_timetree_args(parser):
+    parser.add_argument('--clock-rate', type=float, help="if specified, the rate of the molecular clock won't be optimized.")
+    parser.add_argument('--clock-std-dev', type=float, help="standard deviation of the provided clock rate estimate")
+    parser.add_argument('--branch-length-mode', default='auto', type=str, choices=['auto', 'input', 'joint', 'marginal'],
+                        help="If set to 'input', the provided branch length will be used without modification. "
+                             "Note that branch lengths optimized by treetime are only accurate at short evolutionary distances.")
+    parser.add_argument('--confidence', action='store_true', help="estimate confidence intervals of divergence times.")
+    parser.add_argument('--keep-polytomies', default=False, action='store_true',
+                        help="Don't resolve polytomies using temporal information.")
+    # parser.add_argument('--keep-node-order', default=False, action='store_true',
+    #                     help="Don't ladderize the tree.")
+    parser.add_argument('--relax',nargs=2, type=float,
+                        help='use an autocorrelated molecular clock. Strength of the gaussian priors on'
+                             ' branch specific rate deviation and the coupling of parent and offspring'
+                             ' rates can be specified e.g. as --relax 1.0 0.5. Values around 1.0 correspond'
+                             ' to weak priors, larger values constrain rate deviations more strongly.'
+                             ' Coupling 0 (--relax 1.0 0) corresponds to an un-correlated clock.')
+    parser.add_argument('--max-iter', default=2, type=int,
+                        help='maximal number of iterations the inference cycle is run. Note that for polytomy resolution and coalescence models max_iter should be at least 2')
+    parser.add_argument('--coalescent', default="0.0", type=str,
+                          help=coalescent_description)
+    parser.add_argument('--n-skyline', default="20", type=int,
+                          help="number of grid points in skyline coalescent model")
+    parser.add_argument('--plot-tree', default="timetree.pdf",
+                            help = "filename to save the plot to. Suffix will determine format"
+                                   " (choices pdf, png, svg, default=pdf)")
+    parser.add_argument('--plot-rtt', default="root_to_tip_regression.pdf",
+                            help = "filename to save the plot to. Suffix will determine format"
+                                   " (choices pdf, png, svg, default=pdf)")
+    parser.add_argument('--tip-labels', action='store_true',
+                            help = "add tip labels (default for small trees with <30 leaves)")
+    parser.add_argument('--no-tip-labels', action='store_true',
+                            help = "don't show tip labels (default for small trees with >=30 leaves)")
 
 def make_parser():
     parser = argparse.ArgumentParser(description = "",
@@ -169,41 +207,10 @@ def make_parser():
         t_parser = parser
     t_parser.add_argument('--tree', type=str, help=tree_description)
     add_seq_len_aln_group(t_parser)
-    t_parser.add_argument('--dates', type=str, help=dates_description)
-    t_parser.add_argument('--name-column', type=str, help="label of the column to be used as taxon name")
-    t_parser.add_argument('--date-column', type=str, help="label of the column to be used as sampling date")
+    add_time_arguments(t_parser)
+    add_timetree_args(t_parser)
     add_reroot_group(t_parser)
     add_gtr_arguments(t_parser)
-    t_parser.add_argument('--clock-rate', type=float, help="if specified, the rate of the molecular clock won't be optimized.")
-    t_parser.add_argument('--clock-std-dev', type=float, help="standard deviation of the provided clock rate estimate")
-    t_parser.add_argument('--branch-length-mode', default='auto', type=str, choices=['auto', 'input', 'joint', 'marginal'],
-                        help="If set to 'input', the provided branch length will be used without modification. "
-                             "Note that branch lengths optimized by treetime are only accurate at short evolutionary distances.")
-    t_parser.add_argument('--confidence', action='store_true', help="estimate confidence intervals of divergence times.")
-    t_parser.add_argument('--keep-polytomies', default=False, action='store_true',
-                        help="Don't resolve polytomies using temporal information.")
-    t_parser.add_argument('--relax',nargs=2, type=float,
-                        help='use an autocorrelated molecular clock. Strength of the gaussian priors on'
-                             ' branch specific rate deviation and the coupling of parent and offspring'
-                             ' rates can be specified e.g. as --relax 1.0 0.5. Values around 1.0 correspond'
-                             ' to weak priors, larger values constrain rate deviations more strongly.'
-                             ' Coupling 0 (--relax 1.0 0) corresponds to an un-correlated clock.')
-    t_parser.add_argument('--max-iter', default=2, type=int,
-                        help='maximal number of iterations the inference cycle is run. Note that for polytomy resolution and coalescence models max_iter should be at least 2')
-    t_parser.add_argument('--coalescent', default="0.0", type=str,
-                          help=coalescent_description)
-    t_parser.add_argument('--n-skyline', default="20", type=int,
-                          help="number of grid points in skyline coalescent model")
-    t_parser.add_argument('--plot-tree', default="timetree.pdf",
-                            help = "filename to save the plot to. Suffix will determine format"
-                                   " (choices pdf, png, svg, default=pdf)")
-    t_parser.add_argument('--plot-rtt', default="root_to_tip_regression.pdf",
-                            help = "filename to save the plot to. Suffix will determine format"
-                                   " (choices pdf, png, svg, default=pdf)")
-    t_parser.add_argument('--tip-labels', action='store_true',
-                            help = "add tip labels (default for small trees with <30 leaves)")
-    t_parser.add_argument('--no-tip-labels', action='store_true',
-                            help = "don't show tip labels (default for small trees with >=30 leaves)")
     add_anc_arguments(t_parser)
     add_common_args(t_parser)
     t_parser.add_argument("--version", action="version", version="%(prog)s " + version)
@@ -271,9 +278,7 @@ def make_parser():
                         "It will reroot the tree to maximize the clock-like "
                         "signal and recalculate branch length unless run with --keep_root.")
     c_parser.add_argument('--tree', required=True, type=str,  help=tree_description)
-    c_parser.add_argument('--dates', required=True, type=str, help=dates_description)
-    c_parser.add_argument('--date-column', type=str, help="label of the column to be used as sampling date")
-    c_parser.add_argument('--name-column', type=str, help="label of the column to be used as taxon name")
+    add_time_arguments(c_parser)
     add_seq_len_aln_group(c_parser)
 
     add_reroot_group(c_parser)
@@ -285,6 +290,23 @@ def make_parser():
                                    " (choices pdf, png, svg, default=pdf)")
     add_common_args(c_parser)
     c_parser.set_defaults(func=estimate_clock_model)
+
+    ## ARG
+    arg_parser = subparsers.add_parser('arg',
+            description="Calculates the root-to-tip regression and quantifies the 'clock-i-ness' of the tree. "
+                        "It will reroot the tree to maximize the clock-like "
+                        "signal and recalculate branch length unless run with --keep_root.")
+    arg_parser.add_argument('--trees', nargs=2, required=True, type=str)
+    arg_parser.add_argument('--alignments', nargs=2, required=True, type=str)
+    arg_parser.add_argument('--mccs', required=True, type=str)
+    add_timetree_args(arg_parser)
+    add_time_arguments(arg_parser)
+    add_seq_len_aln_group(arg_parser)
+
+    add_reroot_group(arg_parser)
+    add_common_args(arg_parser)
+    arg_parser.set_defaults(func=arg_time_trees)
+
 
     # make a version subcommand
     v_parser = subparsers.add_parser('version', description='print version')
