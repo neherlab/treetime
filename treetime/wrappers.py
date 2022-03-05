@@ -478,11 +478,7 @@ def scan_homoplasies(params):
 
 def arg_time_trees(params):
     """
-<<<<<<< HEAD
     implementing treetime tree
-=======
-    implementing treetime arg
->>>>>>> feat/arg-compatibility
     """
     from .arg import parse_arg, setup_arg
     print(params.mccs)
