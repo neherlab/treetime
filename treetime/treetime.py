@@ -476,6 +476,7 @@ class TreeTime(ClockTree):
             #(Without outgroup_branch_length, gives a trifurcating root, but this will mean
             #mutations may have to occur multiple times.)
             self.tree.root_with_outgroup(new_root, outgroup_branch_length=new_root.branch_length/2)
+            self.tree.root.clades.sort(key = lambda x:x.count_terminals())
             self.get_clock_model(covariation=use_cov, slope = slope)
 
 
