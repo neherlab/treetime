@@ -1,10 +1,8 @@
-from __future__ import division, print_function, absolute_import
 import sys
 from os.path import isfile
 from collections import defaultdict
-from unittest.mock import NonCallableMagicMock
 import numpy as np
-from Bio import SeqRecord, Seq, AlignIO, SeqIO
+from Bio import AlignIO, SeqIO
 from . import config as ttconf
 from . import MissingDataError
 from .seq_utils import seq2array, guess_alphabet, alphabets

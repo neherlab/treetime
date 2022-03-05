@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-from __future__ import print_function, division, absolute_import
 import sys, argparse, os
 from .wrappers import ancestral_reconstruction, mugration, scan_homoplasies,\
                       timetree, estimate_clock_model, arg_time_trees

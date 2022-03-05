@@ -1,4 +1,3 @@
-from __future__ import print_function, division, absolute_import
 from ctypes import alignment
 import os, shutil, sys
 import numpy as np
@@ -478,7 +477,8 @@ def scan_homoplasies(params):
 
 def arg_time_trees(params):
     """
-    implementing treetime tree
+    This function takes command line arguments and runs treetime
+    on each of the two trees provided.
     """
     from .arg import parse_arg, setup_arg
     print(params.mccs)
@@ -500,7 +500,7 @@ def arg_time_trees(params):
 
 def timetree(params):
     """
-    implementing treetime tree
+    this function implements the regular treetime time tree estimation
     """
     dates = utils.parse_dates(params.dates, date_col=params.date_column, name_col=params.name_column)
     if len(dates)==0:
@@ -528,8 +528,12 @@ def timetree(params):
 
     return run_timetree(myTree, params, outdir)
 
-def run_timetree(myTree, params, outdir, tree_suffix='', prune_short=True):
 
+def run_timetree(myTree, params, outdir, tree_suffix='', prune_short=True):
+    '''
+    this function abstracts the time tree estimation that is used for regular
+    treetime inference and for arg time tree inference.
+    '''
     ###########################################################################
     ### READ IN VCF
     ###########################################################################

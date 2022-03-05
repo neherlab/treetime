@@ -1,14 +1,12 @@
-from __future__ import print_function, division, absolute_import
 import time, sys
 import gc
-from collections import defaultdict
 import numpy as np
 from Bio import Phylo
 from Bio.Phylo.BaseTree import Clade
 from Bio import AlignIO
 from . import config as ttconf
 from . import MissingDataError,UnknownMethodError
-from .seq_utils import seq2prof, seq2array, prof2seq, normalize_profile, extend_profile
+from .seq_utils import seq2prof, prof2seq, normalize_profile, extend_profile
 from .gtr import GTR
 from .gtr_site_specific import GTR_site_specific
 from .sequence_data import SequenceData
