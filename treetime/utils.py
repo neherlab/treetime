@@ -3,10 +3,6 @@ import os,sys
 import datetime
 import pandas as pd
 import numpy as np
-from scipy.interpolate import interp1d
-from scipy.integrate import quad
-from scipy import stats
-from scipy.ndimage import binary_dilation
 from . import TreeTimeError
 
 class DateConversion(object):

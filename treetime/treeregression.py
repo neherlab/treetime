@@ -409,7 +409,7 @@ class TreeRegression(object):
                 return np.nan, np.inf
 
 
-    def optimal_reroot(self, force_positive=True, slope=None):
+    def optimal_reroot(self, force_positive=True, slope=None, keep_node_order=False):
         """
         determine the best root and reroot the tree to this value.
         Note that this can change the parent child relations of the tree
@@ -459,7 +459,8 @@ class TreeRegression(object):
         new_node.rtt_regression = best_root
         self.tree.root_with_outgroup(new_node)
 
-        self.tree.ladderize()
+        if not keep_node_order:
+            self.tree.ladderize()
         for n in self.tree.get_nonterminals(order='postorder'):
             for c in n:
                 c.up=n

@@ -1,4 +1,4 @@
-from __future__ import print_function, division, absolute_import
+from ctypes import alignment
 import os, shutil, sys
 import numpy as np
 import pandas as pd
@@ -8,6 +8,7 @@ from Bio.Seq import Seq
 from Bio.Align import MultipleSeqAlignment
 from Bio import Phylo, AlignIO
 from Bio import __version__ as bioversion
+from treetime.arg import setup_arg
 from . import TreeAnc, GTR, TreeTime
 from . import config as ttconf
 from . import utils
@@ -166,13 +167,13 @@ def plot_rtt(tt, fname):
 
 def export_sequences_and_tree(tt, basename, is_vcf=False, zero_based=False,
                               report_ambiguous=False, timetree=False, confidence=False,
-                              reconstruct_tip_states=False):
+                              reconstruct_tip_states=False, tree_suffix={}):
     seq_info = is_vcf or tt.aln
     if is_vcf:
-        outaln_name = basename + 'ancestral_sequences.vcf'
+        outaln_name = basename + f'ancestral_sequences{tree_suffix}.vcf'
         write_vcf(tt.get_reconstructed_alignment(reconstruct_tip_states=reconstruct_tip_states), outaln_name)
     elif tt.aln:
-        outaln_name = basename + 'ancestral_sequences.fasta'
+        outaln_name = basename + f'ancestral_sequences{tree_suffix}.fasta'
         AlignIO.write(tt.get_reconstructed_alignment(reconstruct_tip_states=reconstruct_tip_states), outaln_name, 'fasta')
     if seq_info:
         print("\n--- alignment including ancestral nodes saved as  \n\t %s\n"%outaln_name)
@@ -181,7 +182,7 @@ def export_sequences_and_tree(tt, basename, is_vcf=False, zero_based=False,
     terminal_count = 0
     offset = 0 if zero_based else 1
     if timetree:
-        dates_fname = basename + 'dates.tsv'
+        dates_fname = basename + f'dates{tree_suffix}.tsv'
         fh_dates = open(dates_fname, 'w', encoding='utf-8')
         if confidence:
             fh_dates.write('#Lower and upper bound delineate the 90% max posterior region\n')
@@ -210,29 +211,37 @@ def export_sequences_and_tree(tt, basename, is_vcf=False, zero_based=False,
             terminal_count+=1
         n.comment=''
         if seq_info and len(n.mutations):
-            if report_ambiguous:
-                n.comment= '&mutations="' + ','.join([a+str(pos + offset)+d for (a,pos, d) in n.mutations])+'"'
+            if n.mask is None:
+                if report_ambiguous:
+                    n.comment= '&mutations="' + ','.join([a+str(pos + offset)+d for (a,pos, d) in n.mutations])+'"'
+                else:
+                    n.comment= '&mutations="' + ','.join([a+str(pos + offset)+d for (a,pos, d) in n.mutations
+                                                        if tt.gtr.ambiguous not in [a,d]])+'"'
             else:
-                n.comment= '&mutations="' + ','.join([a+str(pos + offset)+d for (a,pos, d) in n.mutations
-                                                      if tt.gtr.ambiguous not in [a,d]])+'"'
+                if report_ambiguous:
+                    n.comment= '&mutations="' + ','.join([a+str(pos + offset)+d for (a,pos, d) in n.mutations if n.mask[pos]>0])+f'",mcc="{n.mcc}"'
+                else:
+                    n.comment= '&mutations="' + ','.join([a+str(pos + offset)+d for (a,pos, d) in n.mutations
+                                                        if tt.gtr.ambiguous not in [a,d] and n.mask[pos]>0])+f'",mcc="{n.mcc}"'
+
         if timetree:
             n.comment+=(',' if n.comment else '&') + 'date=%1.2f'%n.numdate
 
     # write tree to file
     fmt_bl = "%1.6f" if tt.data.full_length<1e6 else "%1.8e"
     if timetree:
-        outtree_name = basename + 'timetree.nexus'
+        outtree_name = basename + f'timetree{tree_suffix}.nexus'
         print("--- saved divergence times in \n\t %s\n"%dates_fname)
         Phylo.write(tt.tree, outtree_name, 'nexus')
     else:
-        outtree_name = basename + 'annotated_tree.nexus'
+        outtree_name = basename + f'annotated_tree{tree_suffix}.nexus'
         Phylo.write(tt.tree, outtree_name, 'nexus', format_branch_length=fmt_bl)
     print("--- tree saved in nexus format as  \n\t %s\n"%outtree_name)
 
     if timetree:
         for n in tt.tree.find_clades():
             n.branch_length = n.mutation_length
-        outtree_name = basename + 'divergence_tree.nexus'
+        outtree_name = basename + f'divergence_tree{tree_suffix}.nexus'
         Phylo.write(tt.tree, outtree_name, 'nexus', format_branch_length=fmt_bl)
         print("--- divergence tree saved in nexus format as  \n\t %s\n"%outtree_name)
 
@@ -466,19 +475,33 @@ def scan_homoplasies(params):
 
     return 0
 
+def arg_time_trees(params):
+    """
+    This function takes command line arguments and runs treetime
+    on each of the two trees provided.
+    """
+    from .arg import parse_arg, setup_arg
+    print(params.mccs)
+    arg_params = parse_arg(params.trees[0], params.trees[1],
+                    params.alignments[0], params.alignments[1], params.mccs,
+                    fill_overhangs=not params.keep_overhangs)
+
+    dates = utils.parse_dates(params.dates, date_col=params.date_column, name_col=params.name_column)
+    for i,(tree,mask) in enumerate(zip(arg_params['trees'], arg_params['masks'])):
+        outdir = get_outdir(params, f'_ARG-treetime')
+        gtr = create_gtr(params)
+
+        tt = setup_arg(tree, arg_params['alignment'], arg_params['combined_mask'], mask, dates, arg_params['MCCs'],
+                       gtr=gtr, verbose=params.verbose, fill_overhangs=not params.keep_overhangs)
+
+        run_timetree(tt, params, outdir, tree_suffix=f"_{i+1}", prune_short=False)
+
+
 
 def timetree(params):
     """
-    implementing treetime tree
+    this function implements the regular treetime time tree estimation
     """
-    if params.relax is None:
-        relaxed_clock_params = None
-    elif params.relax==[]:
-        relaxed_clock_params=True
-    elif len(params.relax)==2:
-        relaxed_clock_params={'slack':params.relax[0], 'coupling':params.relax[1]}
-
-
     dates = utils.parse_dates(params.dates, date_col=params.date_column, name_col=params.name_column)
     if len(dates)==0:
         print("No valid dates -- exiting.")
@@ -491,8 +514,26 @@ def timetree(params):
     outdir = get_outdir(params, '_treetime')
 
     gtr = create_gtr(params)
-    infer_gtr = params.gtr=='infer'
+    aln, ref, fixed_pi = read_if_vcf(params)
 
+    ###########################################################################
+    ### SET-UP and RUN
+    ###########################################################################
+    if params.aln is None and params.sequence_length is None:
+        print("one of arguments '--aln' and '--sequence-length' is required.", file=sys.stderr)
+        return 1
+    myTree = TreeTime(dates=dates, tree=params.tree, ref=ref,
+                      aln=aln, gtr=gtr, seq_len=params.sequence_length,
+                      verbose=params.verbose, fill_overhangs=not params.keep_overhangs)
+
+    return run_timetree(myTree, params, outdir)
+
+
+def run_timetree(myTree, params, outdir, tree_suffix='', prune_short=True):
+    '''
+    this function abstracts the time tree estimation that is used for regular
+    treetime inference and for arg time tree inference.
+    '''
     ###########################################################################
     ### READ IN VCF
     ###########################################################################
@@ -505,17 +546,8 @@ def timetree(params):
         if branch_length_mode == 'auto':
             branch_length_mode = 'joint'
 
+    infer_gtr = params.gtr=='infer'
 
-
-    ###########################################################################
-    ### SET-UP and RUN
-    ###########################################################################
-    if params.aln is None and params.sequence_length is None:
-        print("one of arguments '--aln' and '--sequence-length' is required.", file=sys.stderr)
-        return 1
-    myTree = TreeTime(dates=dates, tree=params.tree, ref=ref,
-                      aln=aln, gtr=gtr, seq_len=params.sequence_length,
-                      verbose=params.verbose, fill_overhangs=not params.keep_overhangs)
     myTree.tip_slack=params.tip_slack
     if not myTree.one_mutation:
         print("TreeTime setup failed, exiting")
@@ -552,6 +584,13 @@ def timetree(params):
     else:
         vary_rate = False
 
+    if params.relax is None:
+        relaxed_clock_params = None
+    elif params.relax==[]:
+        relaxed_clock_params=True
+    elif len(params.relax)==2:
+        relaxed_clock_params={'slack':params.relax[0], 'coupling':params.relax[1]}
+
     # RUN
     root = None if params.keep_root else params.reroot
     try:
@@ -564,10 +603,10 @@ def timetree(params):
                vary_rate = vary_rate,
                branch_length_mode = branch_length_mode,
                reconstruct_tip_states=params.reconstruct_tip_states,
-               fixed_pi=fixed_pi,
-               use_covariation = params.covariation,
                n_points=params.n_skyline, n_branches_posterior = n_branches_posterior,
-               tracelog_file=os.path.join(outdir, "trace_run.log"))
+               fixed_pi=fixed_pi, prune_short=prune_short,
+               use_covariation = params.covariation,
+               tracelog_file=os.path.join(outdir, f"trace_run{tree_suffix}.log"))
     except TreeTimeError as e:
         print("\nTreeTime run FAILED: please check above for errors and/or rerun with --verbose 4.\n")
         raise e
@@ -576,13 +615,13 @@ def timetree(params):
     ### OUTPUT and saving of results
     ###########################################################################
     if infer_gtr:
-        fname = outdir+'sequence_evolution_model.txt'
+        fname = outdir+f'sequence_evolution_model{tree_suffix}.txt'
         with open(fname, 'w', encoding='utf-8') as ofile:
             ofile.write(str(myTree.gtr)+'\n')
         print('\nInferred sequence evolution model (saved as %s):'%fname)
         print(myTree.gtr)
 
-    fname = outdir+'molecular_clock.txt'
+    fname = outdir+f'molecular_clock{tree_suffix}.txt'
     with open(fname, 'w', encoding='utf-8') as ofile:
         ofile.write(str(myTree.date2dist)+'\n')
     print('\nInferred sequence evolution model (saved as %s):'%fname)
@@ -609,11 +648,11 @@ def timetree(params):
 
     plot_vs_years(myTree, show_confidence=False, label_func=label_func,
                   confidence=0.9 if calc_confidence else None)
-    tree_fname = (outdir + params.plot_tree)
+    tree_fname = (outdir + params.plot_tree[:-4]+tree_suffix+params.plot_tree[-4:])
     plt.savefig(tree_fname)
     print("--- saved tree as \n\t %s\n"%tree_fname)
 
-    plot_rtt(myTree, outdir + params.plot_rtt)
+    plot_rtt(myTree, outdir + params.plot_rtt[:-4]+tree_suffix+params.plot_rtt[-4:])
     if params.relax:
         fname = outdir+'substitution_rates.tsv'
         print("--- wrote branch specific rates to\n\t %s\n"%fname)
@@ -627,7 +666,8 @@ def timetree(params):
 
     export_sequences_and_tree(myTree, basename, is_vcf, params.zero_based,
                               timetree=True, confidence=calc_confidence,
-                              reconstruct_tip_states=params.reconstruct_tip_states)
+                              reconstruct_tip_states=params.reconstruct_tip_states,
+                              tree_suffix=tree_suffix)
 
     return 0
 
