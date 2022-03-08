@@ -16,11 +16,11 @@ from .utils import clip
 
 class Coalescent(object):
     """docstring for Coalescent"""
-    def __init__(self, tree, Tc=0.001, logger=None, date2dist=None, discrete_nbranches=False):
+    def __init__(self, tree, Tc=0.001, logger=None, date2dist=None, n_branches_posterior=False):
         super(Coalescent, self).__init__()
         self.tree = tree
-        self.discrete_nbranches = discrete_nbranches
-        self.calc_branch_count(discrete=discrete_nbranches)
+        self.n_branches_posterior = n_branches_posterior
+        self.calc_branch_count(posterior=n_branches_posterior)
         self.set_Tc(Tc)
         self.date2dist = date2dist
         if logger is None:
@@ -57,13 +57,14 @@ class Coalescent(object):
 
 
 
-    def calc_branch_count(self, discrete=False):
+    def calc_branch_count(self, posterior=False):
         '''
-        Calculates an interpolation object that maps time to the number of concurrent branches in the tree,
-        if the marginal posterior time distribution of a node has been calculated this is used or
-        approximated using the joint posterior time distribution, for date constraints a step function is used
+        Calculates an interpolation object that maps time to the number of concurrent branches in the tree.
+        Either the infered time before present of each node is used, or if desired the posterior distribution.
+        If the marginal posterior time distribution of a node has been calculated this is used or
+        approximated using the joint posterior time distribution, for date constraints a step function is used.
         '''
-        ## Divide merger events into either smooth merger events where a likelihood distribution is known or
+        ## Divide merger events into either smooth merger events where a posterior likelihood distribution is known or
         ## delta events where either a date constraint for that node exists or the likelihood distribution is unknown.
         ## For delta distributions the corresponding nbranches step function can be calculated faster as the nodes can be
         ## sorted by time and mergers added or subtracted from the previous time, for smooth distributions when a new merger
@@ -76,7 +77,7 @@ class Coalescent(object):
         tree_delta_events = []
         tree_smooth_events = []
 
-        if discrete:
+        if not posterior:
             tree_delta_events = self.tree_events
         else:
             y_power = np.array([-8, -4, -3, -2, 0, 2, 3, 4, 8])

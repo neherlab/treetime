@@ -709,7 +709,7 @@ class TreeTime(ClockTree):
             print("ERROR. Did you run the corresponding inference (joint/marginal)?")
 
 
-    def add_coalescent_model(self, Tc, discrete_nbranches=False, **kwargs):
+    def add_coalescent_model(self, Tc, n_branches_posterior=False, **kwargs):
         """Add a coalescent model to the tree and optionally optimze
 
         Parameters
@@ -721,7 +721,7 @@ class TreeTime(ClockTree):
         from .merger_models import Coalescent
         self.logger('TreeTime.run: adding coalescent prior with Tc='+str(Tc),1)
         self.merger_model = Coalescent(self.tree, date2dist=self.date2dist,
-                                logger=self.logger, discrete_nbranches=discrete_nbranches)
+                                logger=self.logger, n_branches_posterior=n_branches_posterior)
 
         if Tc=='skyline': # restrict skyline model optimization to last iteration
             self.merger_model.optimize_skyline(**kwargs)

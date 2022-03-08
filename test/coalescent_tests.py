@@ -1,7 +1,7 @@
 import numpy as np
 from Bio import Phylo
 import matplotlib.pyplot as plt
-from matplotlib import cm
+import pandas as pd
 
 from treetime import TreeTime
 from treetime.utils import parse_dates
@@ -11,17 +11,19 @@ def get_test_node(tt, pattern):
     return [n for n in tt.tree.find_clades() if pattern in n.name][0]
 
 def get_tree_events(tt):
-    tree_events_tt = sorted([(n.time_before_present, n.name) for n in tt.tree.find_clades()
+    tree_events_tt = sorted([(n.time_before_present, n.name, int(n.bad_branch)) for n in tt.tree.find_clades()
                             if not n.bad_branch], key=lambda x:-x[0])
     return tree_events_tt
 
 def write_to_file(times_and_names):
     with open('master.txt', 'w') as f:
-        f.write("time \t name \n")
+        f.write("time \t name \t bad_branch\n")
         for t in times_and_names:
             f.write(str(t[0]))
             f.write("\t")
             f.write(t[1])
+            f.write("\n")
+            f.write(str(t[2]))
             f.write("\n")
     f.close()
     return None
@@ -31,17 +33,21 @@ def read_from_file(file_name):
     with open(file_name, 'r') as f:
         for line in f.readlines()[1:]:
             lines = line.split("\n")[0].split("\t")
-            times_and_names += [[float(lines[0]), lines[1]]]
+            times_and_names += [[float(lines[0]), lines[1], lines[2]]]
     return times_and_names
 
 def compare(file_name, new_times_and_names):
-    import pandas as pd
     new_times_and_names = pd.DataFrame(new_times_and_names)
     old_times_and_names = pd.DataFrame(read_from_file(file_name))
     old_times_and_names = old_times_and_names.set_index(1)
     new_times_and_names = new_times_and_names.set_index(1)
     old_times_and_names = old_times_and_names.reindex(index=new_times_and_names.index)
-    return np.all(new_times_and_names==old_times_and_names), np.float_(new_times_and_names.iloc[:,0])-np.float_(old_times_and_names.iloc[:,0])
+    bad_branches = np.float_(old_times_and_names.iloc[:,1]) + 2*np.float_(new_times_and_names.iloc[:,1])
+    df = pd.DataFrame(dict(times=np.float_(new_times_and_names.iloc[:,0]),
+        difference=(np.float_(new_times_and_names.iloc[:,0])-np.float_(old_times_and_names.iloc[:,0])),
+        bad_branches=bad_branches))
+    return np.all(new_times_and_names.iloc[:,0]==old_times_and_names.iloc[:,0]), df
+
 
 if __name__ == '__main__':
     plt.ion()
@@ -66,12 +72,12 @@ if __name__ == '__main__':
                     "sample_from_profile":"root",
                     "reconstruct_tip_states":False}
     tt_kwargs = {'clock_rate':clock_rate,
-                    'time_marginal':False}
+                    'time_marginal':'assign'}
     coal_kwargs ={'Tc':10000,
-                    'time_marginal':False}
+                    'time_marginal':'assign'}
 
     dates = parse_dates(base_name+'.metadata.csv')
-    tt = TreeTime(gtr='Jukes-Cantor', tree = base_name+'.nwk',
+    tt = TreeTime(gtr='Jukes-Cantor', tree = base_name+'.nwk', use_fft=True,
                     aln = base_name+'.fasta', verbose = 1, dates = dates, precision=3, debug=True)
 
     tt._set_branch_length_mode(seq_kwargs["branch_length_mode"])
@@ -82,10 +88,11 @@ if __name__ == '__main__':
     tt.infer_ancestral_sequences(**seq_kwargs)
     tt.make_time_tree(clock_rate=tt_kwargs["clock_rate"], time_marginal=tt_kwargs["time_marginal"])
     ##should be no difference at this point unless 'joint' is used for "branch_length_mode"
-    # if master:
-    #     write_to_file(tree_events_tt)
-    # else:
-    #     output_comparison = compare("../../TreeTimeMaster/treetime/master.txt", tree_events_tt)
+    tree_events_tt = get_tree_events(tt)
+    if master:
+        write_to_file(tree_events_tt)
+    else:
+        output_comparison = compare("../../TreeTimeMaster/treetime/master.txt", tree_events_tt)
 
     tt.add_coalescent_model(coal_kwargs ["Tc"])
     tt.make_time_tree(clock_rate=tt_kwargs ["clock_rate"], time_marginal=coal_kwargs ["time_marginal"])
@@ -95,8 +102,10 @@ if __name__ == '__main__':
         write_to_file(tree_events_tt_post_coal)
     else:
         output_comparison = compare("../../TreeTimeMaster/treetime/master.txt", tree_events_tt_post_coal)
+        groups = output_comparison[1].groupby('bad_branches')
         plt.figure()
-        plt.plot(output_comparison[1], 'o')
+        for name, group in groups:
+            plt.plot(output_comparison[1].times, output_comparison[1].difference, marker='o', linestyle='', ms=1, label=name)
         plt.xlabel("nodes ranging from root at 0 to most recent")
         plt.ylabel("difference time_before_present coalescent branch - master branch")
         if ebola:
@@ -111,7 +120,7 @@ if __name__ == '__main__':
             if test_node.name != tt.tree.root.name:
                 plt.figure()
                 t = np.linspace(test_node.time_before_present-0.0001,test_node.time_before_present+0.0001,1000)
-                plt.plot(t, test_node.marginal_pos_LH.prob_relative(t), label='new', ls='--')
+                plt.plot(t, test_node.marginal_pos_LH.prob_relative(t), 'o-', label='new')
                 plt.title(test_node.name)
                 plt.show()
             test_node= test_node.up
