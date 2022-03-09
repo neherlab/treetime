@@ -179,7 +179,7 @@ class TreeTime(ClockTree):
 
         if self.aln:
             seq_LH = self.tree.sequence_marginal_LH if seq_kwargs['marginal_sequences'] else self.tree.sequence_joint_LH
-        self.LH =[[seq_LH, self.tree.positional_joint_LH, 0]]
+        self.LH =[[seq_LH, self.tree.positional_LH, 0]]
 
         if root is not None and max_iter:
             new_root = self.reroot(root='least-squares' if root=='clock_filter' else root, clock_rate=fixed_clock_rate)
@@ -240,7 +240,7 @@ class TreeTime(ClockTree):
 
             if self.aln:
                 seq_LH = self.tree.sequence_marginal_LH if seq_kwargs['marginal_sequences'] else self.tree.sequence_joint_LH
-            self.LH.append([seq_LH, self.tree.positional_joint_LH, self.tree.coalescent_joint_LH])
+            self.LH.append([seq_LH, self.tree.positional_LH, self.tree.coalescent_joint_LH])
 
             # Update the trace log
             self.trace_run.append(self.tracelog_run(niter=niter+1, ndiff=ndiff, n_resolved=n_resolved,
@@ -701,13 +701,12 @@ class TreeTime(ClockTree):
         """
         try:
             u_lh = self.tree.unconstrained_sequence_LH
+            t_lh = self.tree.positional_LH
             if joint:
                 s_lh = self.tree.sequence_joint_LH
-                t_lh = self.tree.positional_joint_LH
                 c_lh = self.tree.coalescent_joint_LH
             else:
                 s_lh = self.tree.sequence_marginal_LH
-                t_lh = self.tree.positional_marginal_LH
                 c_lh = 0
 
             print ("###  Tree Log-Likelihood  ###\n"
@@ -836,7 +835,7 @@ class TreeTime(ClockTree):
             'seq_mode'   : ('marginal' if sequence_marginal else 'joint') if self.aln else 'no sequences given',
             'seq_LH'     : (self.tree.sequence_marginal_LH if sequence_marginal else self.tree.sequence_joint_LH) if self.aln else 0,
             'pos_mode'   : 'marginal' if time_marginal else 'joint',
-            'pos_LH'     : self.tree.positional_marginal_LH if time_marginal else self.tree.positional_joint_LH,
+            'pos_LH'     : self.tree.positional_LH,
             'coal_mode'  : Tc,
             'coal_LH'    : self.tree.coalescent_joint_LH,
         }

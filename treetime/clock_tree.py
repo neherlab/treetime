@@ -367,6 +367,8 @@ class ClockTree(TreeAnc):
         else:
             self._ml_t_joint()
 
+        self.tree.positional_LH = self.timetree_likelihood(time_marginal)
+
         if time_marginal=='assign' or (time_marginal==False):
             self.convert_dates()
 
@@ -519,25 +521,28 @@ class ClockTree(TreeAnc):
             node.time_before_present = node.up.time_before_present - node.branch_length
             node.clock_length = node.branch_length
 
-        self.tree.positional_joint_LH = self.timetree_likelihood()
+        #self.tree.positional_joint_LH = self.timetree_likelihood()
         # cleanup, if required
         if not self.debug:
             _cleanup()
 
 
-    def timetree_likelihood(self):
+    def timetree_likelihood(self, time_marginal):
         '''
         Return the likelihood of the data given the current branch length in the tree
         '''
-        LH = 0
-        for node in self.tree.find_clades(order='preorder'):  # sum the likelihood contributions of all branches
-            if node.up is None: # root node
-                continue
-            LH -= node.branch_length_interpolator(node.branch_length)
+        if time_marginal:
+            LH =  -self.tree.root.marginal_pos_LH.peak_val
+        else:
+            LH = 0
+            for node in self.tree.find_clades(order='preorder'):  # sum the likelihood contributions of all branches
+                if node.up is None: # root node
+                    continue
+                LH -= node.branch_length_interpolator(node.branch_length)
 
-        # add the root sequence LH and return
-        if self.aln and self.sequence_reconstruction:
-            LH += self.gtr.sequence_logLH(self.tree.root.cseq, pattern_multiplicity=self.data.multiplicity())
+            # add the root sequence LH and return
+            if self.aln and self.sequence_reconstruction:
+                LH += self.gtr.sequence_logLH(self.tree.root.cseq, pattern_multiplicity=self.data.multiplicity())
         return LH
 
 
@@ -636,7 +641,7 @@ class ClockTree(TreeAnc):
                                                     self.merger_model.integral_merger_rate(node.subtree_distribution.x), is_log=True)])
                         else:
                             node.marginal_pos_LH = node.subtree_distribution
-                        self.tree.positional_marginal_LH = -node.marginal_pos_LH.peak_val
+                        #self.tree.positional_marginal_LH = -node.marginal_pos_LH.peak_val
                     else: # otherwise propagate to parent
                         if self.use_fft:
                             res, res_t = NodeInterpolator.convolve_fft(node.subtree_distribution,
@@ -841,7 +846,7 @@ class ClockTree(TreeAnc):
 
         self.logger("###ClockTree.calc_rate_susceptibility: run with upper bound of rate estimate", 1)
         self.make_time_tree(**params)
-        self.logger("###ClockTree.calc_rate_susceptibility: rate: %f, LH:%f"%(upper_rate, self.tree.positional_joint_LH), 2)
+        self.logger("###ClockTree.calc_rate_susceptibility: rate: %f, LH:%f"%(upper_rate, self.tree.positional_LH), 2)
         for n in self.tree.find_clades():
             n.numdate_rate_variation = [(upper_rate, n.numdate)]
             if n.up:
@@ -849,7 +854,7 @@ class ClockTree(TreeAnc):
 
         self.logger("###ClockTree.calc_rate_susceptibility: run with lower bound of rate estimate", 1)
         self.make_time_tree(**params)
-        self.logger("###ClockTree.calc_rate_susceptibility: rate: %f, LH:%f"%(lower_rate, self.tree.positional_joint_LH), 2)
+        self.logger("###ClockTree.calc_rate_susceptibility: rate: %f, LH:%f"%(lower_rate, self.tree.positional_LH), 2)
         for n in self.tree.find_clades():
             n.numdate_rate_variation.append((lower_rate, n.numdate))
             if n.up:
@@ -857,7 +862,7 @@ class ClockTree(TreeAnc):
 
         self.logger("###ClockTree.calc_rate_susceptibility: run with central rate estimate", 1)
         self.make_time_tree(**params)
-        self.logger("###ClockTree.calc_rate_susceptibility: rate: %f, LH:%f"%(current_rate, self.tree.positional_joint_LH), 2)
+        self.logger("###ClockTree.calc_rate_susceptibility: rate: %f, LH:%f"%(current_rate, self.tree.positional_LH), 2)
         for n in self.tree.find_clades():
             n.numdate_rate_variation.append((current_rate, n.numdate))
             n.numdate_rate_variation.sort(key=lambda x:x[1]) # sort estimates for different rates by numdate
