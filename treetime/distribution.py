@@ -7,7 +7,7 @@ except ImportError:
     from collections import Iterable
 from copy import deepcopy as make_copy
 from scipy.ndimage import binary_dilation
-from .config import BIG_NUMBER, MIN_LOG, MIN_INTEGRATION_PEAK, TINY_NUMBER
+from .config import BIG_NUMBER, MIN_LOG, MIN_INTEGRATION_PEAK, TINY_NUMBER, SUPERTINY_NUMBER
 from .utils import clip
 
 class Distribution(object):
@@ -98,7 +98,7 @@ class Distribution(object):
             new_xmax = np.min([k.xmax for k in dists])
 
             x_vals = np.unique(np.concatenate([k.x for k in dists]))
-            x_vals = x_vals[(x_vals>new_xmin-TINY_NUMBER)&(x_vals<new_xmax+TINY_NUMBER)]
+            x_vals = x_vals[(x_vals>new_xmin-SUPERTINY_NUMBER)&(x_vals<new_xmax+SUPERTINY_NUMBER)]
             y_vals = np.sum([k.__call__(x_vals) for k in dists], axis=0)
             peak = y_vals.min()
             ind = (y_vals-peak)<BIG_NUMBER/1000

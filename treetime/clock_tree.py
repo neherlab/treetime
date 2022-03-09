@@ -322,7 +322,7 @@ class ClockTree(TreeAnc):
                 node.date_constraint = None
 
 
-    def make_time_tree(self, time_marginal=False, clock_rate=None, **kwargs):
+    def make_time_tree(self, time_marginal=False, clock_rate=None, divide=True, **kwargs):
         '''
         Use the date constraints to calculate the most likely positions of
         unconstrained nodes.
@@ -342,7 +342,7 @@ class ClockTree(TreeAnc):
         self.init_date_constraints(clock_rate=clock_rate, **kwargs)
 
         if time_marginal:
-            self._ml_t_marginal(assign_dates = time_marginal=="assign")
+            self._ml_t_marginal(assign_dates = time_marginal=="assign", divide=divide)
         else:
             self._ml_t_joint()
 
@@ -517,7 +517,7 @@ class ClockTree(TreeAnc):
         return LH
 
 
-    def _ml_t_marginal(self, assign_dates=False):
+    def _ml_t_marginal(self, assign_dates=False, divide=False):
         """
         Compute the marginal probability distribution of the internal nodes positions by
         propagating from the tree leaves towards the root. The result of
@@ -641,14 +641,45 @@ class ClockTree(TreeAnc):
             else:
                 parent = node.up
 
-                if node.marginal_pos_Lx is not None:
-                    msg_parent_to_node = Distribution.divide(parent.marginal_pos_LH, node.marginal_pos_Lx)
-                    msg_parent_to_node._adjust_grid(rel_tol=self.rel_tol_prune)
-                elif parent.marginal_pos_LH is not None:
-                    msg_parent_to_node = parent.marginal_pos_LH
+                if divide:
+
+                    if node.marginal_pos_Lx is not None:
+                        msg_parent_to_node = Distribution.divide(parent.marginal_pos_LH, node.marginal_pos_Lx)
+                        msg_parent_to_node._adjust_grid(rel_tol=self.rel_tol_prune)
+                    elif parent.marginal_pos_LH is not None:
+                        msg_parent_to_node = parent.marginal_pos_LH
+                    else:
+                        x = [parent.numdate, numeric_date()]
+                        msg_parent_to_node = NodeInterpolator(x, [1.0, 1.0],min_width=self.min_width)
                 else:
-                    x = [parent.numdate, numeric_date()]
-                    msg_parent_to_node = NodeInterpolator(x, [1.0, 1.0],min_width=self.min_width)
+                    msg_parent_to_node =None
+                    if node.marginal_pos_Lx is not None:
+                        # messages from the complementary subtree (iterate over all sister nodes)
+                        complementary_msgs = [sister.marginal_pos_Lx for sister in parent.clades
+                                                    if (sister != node) and (sister.marginal_pos_Lx is not None)]
+
+                        # if parent itself got smth from the root node, include it
+                        if parent.msg_from_parent is not None:
+                            complementary_msgs.append(parent.msg_from_parent)
+
+                        if hasattr(self, 'merger_model') and self.merger_model:
+                            time_points = np.unique(np.concatenate([msg.x for msg in complementary_msgs]))
+                            # As Lx do not include the node contribution this must be added on
+                            complementary_msgs.append(self.merger_model.node_contribution(parent, time_points))
+                            if parent.msg_from_parent is None:
+                                # Removed merger rate must be added back if no msgs from parent (equivalent to root node case)
+                                complementary_msgs.append(Distribution(time_points, self.merger_model.integral_merger_rate(time_points), is_log=True))
+
+                        if len(complementary_msgs):
+                            msg_parent_to_node = NodeInterpolator.multiply(complementary_msgs)
+                            msg_parent_to_node._adjust_grid(rel_tol=self.rel_tol_prune)
+
+                    elif parent.marginal_pos_LH is not None:
+                        msg_parent_to_node = parent.marginal_pos_LH
+
+                    if msg_parent_to_node is None:
+                        x = [parent.numdate, numeric_date()]
+                        msg_parent_to_node = NodeInterpolator(x, [1.0, 1.0],min_width=self.min_width)
 
                 # integral message, which delivers to the node the positional information
                 # from the complementary subtree
@@ -684,7 +715,7 @@ class ClockTree(TreeAnc):
                         plt.plot(msg_parent_to_node.x,msg_parent_to_node.y-msg_parent_to_node.peak_val, '-o')
                         plt.ylim(0,100)
                         plt.xlim(-0.05, 0.05)
-                        import ipdb; ipdb.set_trace()
+                        #import ipdb; ipdb.set_trace()
 
             # assign positions of nodes and branch length only when desired
             # since marginal reconstruction can result in negative branch length
