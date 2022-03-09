@@ -1,4 +1,3 @@
-from __future__ import print_function, division, absolute_import
 import numpy as np
 from scipy import optimize as sciopt
 from Bio import Phylo
@@ -135,6 +134,7 @@ class TreeTime(ClockTree):
         seq_kwargs = {"marginal_sequences":sequence_marginal or (self.branch_length_mode=='marginal'),
                       "branch_length_mode": self.branch_length_mode,
                       "sample_from_profile":"root",
+                      "prune_short":kwargs.get("prune_short", True),
                       "reconstruct_tip_states":kwargs.get("reconstruct_tip_states", False)}
         tt_kwargs = {'clock_rate':fixed_clock_rate, 'time_marginal':False}
         tt_kwargs.update(kwargs)
@@ -149,10 +149,11 @@ class TreeTime(ClockTree):
         if self.branch_length_mode=='input':
             if self.aln:
                 self.infer_ancestral_sequences(infer_gtr=infer_gtr, marginal=seq_kwargs["marginal_sequences"], **seq_kwargs)
-                self.prune_short_branches()
+                if seq_kwargs["prune_short"]:
+                    self.prune_short_branches()
         else:
             self.optimize_tree(infer_gtr=infer_gtr,
-                               max_iter=1, prune_short=True, **seq_kwargs)
+                               max_iter=1, **seq_kwargs)
         avg_root_to_tip = np.mean([x.dist2root for x in self.tree.get_terminals()])
 
         # optionally reroot the tree either by oldest, best regression or with a specific leaf
@@ -170,7 +171,7 @@ class TreeTime(ClockTree):
             if self.aln:
                 self.infer_ancestral_sequences(**seq_kwargs)
         else:
-            self.optimize_tree(max_iter=1, prune_short=False,**seq_kwargs)
+            self.optimize_tree(max_iter=1, **seq_kwargs)
 
         # infer time tree and optionally resolve polytomies
         self.logger("###TreeTime.run: INITIAL ROUND",0)
@@ -222,7 +223,7 @@ class TreeTime(ClockTree):
                 if n_resolved:
                     self.prepare_tree()
                     if self.branch_length_mode!='input': # otherwise reoptimize branch length while preserving branches without mutations
-                        self.optimize_tree(prune_short=False, max_iter=0, **seq_kwargs)
+                        self.optimize_tree(max_iter=0, **seq_kwargs)
 
                     need_new_time_tree = True
 
@@ -473,6 +474,7 @@ class TreeTime(ClockTree):
             #(Without outgroup_branch_length, gives a trifurcating root, but this will mean
             #mutations may have to occur multiple times.)
             self.tree.root_with_outgroup(new_root, outgroup_branch_length=new_root.branch_length/2)
+            self.tree.root.clades.sort(key = lambda x:x.count_terminals())
             self.get_clock_model(covariation=use_cov, slope = slope)
 
 
@@ -553,7 +555,7 @@ class TreeTime(ClockTree):
         nothing. Otherwise, for each pair of nodes, assess the possible LH increase
         which could be gained by merging the two nodes. The increase in the LH is
         basically the tradeoff between the gain of the LH due to the changing the
-        branch lenghts towards the optimal values and the decrease due to the
+        branch lengths towards the optimal values and the decrease due to the
         introduction of the new branch with zero optimal length.
         """
 
@@ -611,7 +613,16 @@ class TreeTime(ClockTree):
                 # fix positions and branch lengths
                 new_node.time_before_present = new_positions[idxs]
                 new_node.branch_length = clade.time_before_present - new_node.time_before_present
+                self.logger(f"TreeTime._poly.merge_nodes: merging {n1.name} and {n2.name}",4)
                 new_node.clades = [n1,n2]
+                if n1.mask is None or n2.mask is None:
+                    new_node.mask = None
+                    new_node.mcc = None
+                else:
+                    new_node.mask = n1.mask * n2.mask
+                    new_node.mcc = n1.mcc if n1.mcc==n2.mcc else None
+                    self.logger('TreeTime._poly.merge_nodes: assigning mcc to new node ' + new_node.mcc, 4)
+
                 n1.branch_length = new_node.time_before_present - n1.time_before_present
                 n2.branch_length = new_node.time_before_present - n2.time_before_present
 
@@ -871,7 +882,7 @@ class TreeTime(ClockTree):
             n.branch_length=n.mutation_length
         self.logger("TreeTime._find_best_root: searching for the best root position...",2)
         Treg = self.setup_TreeRegression(covariation=covariation)
-        return Treg.optimal_reroot(force_positive=force_positive, slope=slope)['node']
+        return Treg.optimal_reroot(force_positive=force_positive, slope=slope, keep_node_order=self.keep_node_order)['node']
 
 
 def plot_vs_years(tt, step = None, ax=None, confidence=None, ticks=True, **kwargs):

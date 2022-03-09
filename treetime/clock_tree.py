@@ -1,4 +1,3 @@
-from __future__ import print_function, division, absolute_import
 import numpy as np
 from . import config as ttconf
 from . import MissingDataError
@@ -313,7 +312,7 @@ class ClockTree(TreeAnc):
                     self.add_branch_state(node)
 
                 node.branch_length_interpolator = BranchLenInterpolator(node, self.gtr,
-                            pattern_multiplicity = self.data.multiplicity, min_width=self.min_width,
+                            pattern_multiplicity = self.data.multiplicity(mask=node.mask), min_width=self.min_width,
                             one_mutation=self.one_mutation, branch_length_mode=self.branch_length_mode)
 
                 node.branch_length_interpolator.gamma = gamma
@@ -504,18 +503,21 @@ class ClockTree(TreeAnc):
                 # NOTE the Lx distribution is the likelihood, given the position of the parent
                 # (Lx.x = parent position, Lx.y = LH of the node_pos given Lx.x,
                 # the length of the branch corresponding to the most likely
-                # subtree is node.Cx(node.time_before_present))
+                # subtree is node.Cx(node.up.time_before_present))
                 # subtree_LH = node.joint_pos_Lx(node.up.time_before_present)
                 node.branch_length = node.joint_pos_Cx(max(node.joint_pos_Cx.xmin,
-                                            node.up.time_before_present)+ttconf.TINY_NUMBER)
+                                                           node.up.time_before_present))
+
+            # clean up tiny negative branch length, warn against bigger ones.
+            if node.branch_length<0:
+                if node.branch_length>-2*ttconf.TINY_NUMBER:
+                    self.logger(f"ClockTree - Joint reconstruction: correcting rounding error of {node.name} bl={node.branch_length:1.2e}", 4)
+                else:
+                    self.logger(f"ClockTree - Joint reconstruction: NEGATIVE BRANCH LENGTH {node.name} bl={node.branch_length:1.2e}", 2, warn=True)
+                node.branch_length = 0
+
             node.time_before_present = node.up.time_before_present - node.branch_length
             node.clock_length = node.branch_length
-
-            # just sanity check, should never happen:
-            if node.branch_length < 0 or node.time_before_present < 0:
-                if node.branch_length<0 and node.branch_length>-ttconf.TINY_NUMBER:
-                    self.logger("ClockTree - Joint reconstruction: correcting rounding error of %s"%node.name, 4)
-                    node.branch_length = 0
 
         self.tree.positional_joint_LH = self.timetree_likelihood()
         # cleanup, if required
@@ -535,7 +537,7 @@ class ClockTree(TreeAnc):
 
         # add the root sequence LH and return
         if self.aln and self.sequence_reconstruction:
-            LH += self.gtr.sequence_logLH(self.tree.root.cseq, pattern_multiplicity=self.data.multiplicity)
+            LH += self.gtr.sequence_logLH(self.tree.root.cseq, pattern_multiplicity=self.data.multiplicity())
         return LH
 
 
