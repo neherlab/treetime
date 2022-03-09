@@ -24,6 +24,9 @@ BRANCH_GRID_SIZE_ULTRA = 400
 NODE_GRID_SIZE_ULTRA = 400
 N_INTEGRAL_ULTRA = 250
 
+# distribution parameters for FFT
+FFT_FWHM_GRID_SIZE = 200
+
 MIN_INTEGRATION_PEAK = 0.001
 
 # clocktree parameters

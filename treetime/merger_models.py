@@ -183,7 +183,7 @@ class Coalescent(object):
             - branch_length:    branch length, determines when this branch merges with sister
             - multiplicity:     2 if merger is binary, higher if this is a polytomy
         '''
-        merger_time = t_node+ np.maximum(0,branch_length)
+        merger_time = t_node + np.maximum(0,branch_length)
         return self.integral_merger_rate(merger_time) - self.integral_merger_rate(t_node)\
                  - np.log(self.total_merger_rate(merger_time))*(multiplicity-1.0)/multiplicity
 

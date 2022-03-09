@@ -23,8 +23,9 @@ class ClockTree(TreeAnc):
     is converted to the most likely time of the internal nodes.
     """
 
-    def __init__(self, *args, dates=None, debug=False, real_dates=True, precision='auto',
-                 branch_length_mode='joint', use_covariation=False, use_fft=False, **kwargs):
+    def __init__(self, *args, dates=None, debug=False, real_dates=True, precision_fft = 'auto',
+                precision='auto', branch_length_mode='joint', use_covariation=False,
+                use_fft=True,**kwargs):
 
         """
         ClockTree constructor
@@ -51,6 +52,13 @@ class ClockTree(TreeAnc):
             for the evaluation of the branch length interpolation objects.
             When not specified, this will default to 1 for short sequences and 2
             for long sequences with L>1e4
+
+        precision_fft : int
+            When calculating the marginal distribution using the FFT approach the grid
+            size stays constant, to optimize the calculation the size is not
+            set to a fixed number but is determined by the FWHM of the distributions.
+            The number of points desired to span the width of the FWHM of a distribution
+            can be specified explicitly by precision_fft (default is 200).
 
          branch_length_mode : str
             determines whether branch length are calculated using the 'joint' ML,
@@ -84,6 +92,7 @@ class ClockTree(TreeAnc):
         self.clock_model=None
         self.use_covariation=use_covariation # if false, covariation will be ignored in rate estimates.
         self._set_precision(precision)
+        self._set_precision_fft(precision_fft)
         self._assign_dates()
 
 
@@ -180,6 +189,19 @@ class ClockTree(TreeAnc):
             self.node_grid_points = ttconf.NODE_GRID_SIZE
             self.branch_grid_points = ttconf.BRANCH_GRID_SIZE
             self.n_integral = ttconf.N_INTEGRAL
+
+    def _set_precision_fft(self, precision_fft):
+            '''
+            function that allows to set the number of grid points for the minimal FWHM window
+            when calculating the marginal distribution using the FFT-based approach
+            '''
+
+            self.fft_grid_size = ttconf.FFT_FWHM_GRID_SIZE
+            if type(precision_fft) is int:
+                self.fft_grid_size = precision_fft
+            else:
+                self.fft_grid_size = ttconf.FFT_FWHM_GRID_SIZE
+
 
     @property
     def date2dist(self):
@@ -616,7 +638,7 @@ class ClockTree(TreeAnc):
                     else: # otherwise propagate to parent
                         if self.use_fft:
                             res, res_t = NodeInterpolator.convolve_fft(node.subtree_distribution,
-                                        node.branch_length_interpolator), None
+                                        node.branch_length_interpolator, self.fft_grid_size), None
                         else:
                             res, res_t = NodeInterpolator.convolve(node.subtree_distribution,
                                         node.branch_length_interpolator,
@@ -666,8 +688,9 @@ class ClockTree(TreeAnc):
                             time_points = np.unique(np.concatenate([msg.x for msg in complementary_msgs]))
                             # As Lx do not include the node contribution this must be added on
                             complementary_msgs.append(self.merger_model.node_contribution(parent, time_points))
+
+                            # Removed merger rate must be added back if no msgs from parent (equivalent to root node case)
                             if parent.msg_from_parent is None:
-                                # Removed merger rate must be added back if no msgs from parent (equivalent to root node case)
                                 complementary_msgs.append(Distribution(time_points, self.merger_model.integral_merger_rate(time_points), is_log=True))
 
                         if len(complementary_msgs):
@@ -685,7 +708,7 @@ class ClockTree(TreeAnc):
                 # from the complementary subtree
                 if self.use_fft:
                     res, res_t = NodeInterpolator.convolve_fft(msg_parent_to_node, node.branch_length_interpolator,
-                                        inverse_time=False), None
+                                        fft_grid_size = self.fft_grid_size, inverse_time=False), None
                 else:
                     res, res_t = NodeInterpolator.convolve(msg_parent_to_node, node.branch_length_interpolator,
                                         max_or_integral='integral',
