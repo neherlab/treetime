@@ -343,7 +343,7 @@ class ClockTree(TreeAnc):
                 node.date_constraint = None
 
 
-    def make_time_tree(self, time_marginal=False, clock_rate=None, divide=True, assign_dates=True, **kwargs):
+    def make_time_tree(self, time_marginal=False, clock_rate=None, divide=False, assign_dates=True, **kwargs):
         '''
         Use the date constraints to calculate the most likely positions of
         unconstrained nodes.
@@ -572,7 +572,6 @@ class ClockTree(TreeAnc):
             root.
 
         """
-
         def _cleanup():
             for node in self.tree.find_clades():
                 try:
@@ -651,7 +650,7 @@ class ClockTree(TreeAnc):
                                         n_grid_points = self.node_grid_points,
                                         n_integral=self.n_integral,
                                         rel_tol=self.rel_tol_refine)
-                        res._adjust_grid(rel_tol=self.rel_tol_prune)
+                            res._adjust_grid(rel_tol=self.rel_tol_prune)
                         node.marginal_pos_Lx = res
 
         self.logger("ClockTree - Marginal reconstruction:  Propagating root -> leaves...", 2)
