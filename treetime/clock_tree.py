@@ -343,7 +343,7 @@ class ClockTree(TreeAnc):
                 node.date_constraint = None
 
 
-    def make_time_tree(self, time_marginal=False, clock_rate=None, divide=True, **kwargs):
+    def make_time_tree(self, time_marginal=False, clock_rate=None, divide=True, assign_dates=True, **kwargs):
         '''
         Use the date constraints to calculate the most likely positions of
         unconstrained nodes.
@@ -363,13 +363,13 @@ class ClockTree(TreeAnc):
         self.init_date_constraints(clock_rate=clock_rate, **kwargs)
 
         if time_marginal:
-            self._ml_t_marginal(assign_dates = time_marginal=="assign", divide=divide)
+            self._ml_t_marginal(assign_dates = assign_dates, divide=divide)
         else:
             self._ml_t_joint()
 
         self.tree.positional_LH = self.timetree_likelihood(time_marginal)
 
-        if time_marginal=='assign' or (time_marginal==False):
+        if assign_dates or not time_marginal:
             self.convert_dates()
 
 
@@ -521,7 +521,6 @@ class ClockTree(TreeAnc):
             node.time_before_present = node.up.time_before_present - node.branch_length
             node.clock_length = node.branch_length
 
-        #self.tree.positional_joint_LH = self.timetree_likelihood()
         # cleanup, if required
         if not self.debug:
             _cleanup()
@@ -641,7 +640,6 @@ class ClockTree(TreeAnc):
                                                     self.merger_model.integral_merger_rate(node.subtree_distribution.x), is_log=True)])
                         else:
                             node.marginal_pos_LH = node.subtree_distribution
-                        #self.tree.positional_marginal_LH = -node.marginal_pos_LH.peak_val
                     else: # otherwise propagate to parent
                         if self.use_fft:
                             res, res_t = NodeInterpolator.convolve_fft(node.subtree_distribution,

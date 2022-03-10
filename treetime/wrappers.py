@@ -591,6 +591,7 @@ def run_timetree(myTree, params, outdir, tree_suffix='', prune_short=True):
     elif len(params.relax)==2:
         relaxed_clock_params={'slack':params.relax[0], 'coupling':params.relax[1]}
 
+    time_marginal = params.time_marginal
     # RUN
     root = None if params.keep_root else params.reroot
     try:
@@ -599,7 +600,7 @@ def run_timetree(myTree, params, outdir, tree_suffix='', prune_short=True):
                Tc=coalescent, max_iter=params.max_iter,
                fixed_clock_rate=params.clock_rate,
                n_iqd=params.clock_filter,
-               time_marginal="assign" if calc_confidence else False,
+               time_marginal="add_conf_round" if calc_confidence and not time_marginal else time_marginal,
                vary_rate = vary_rate,
                branch_length_mode = branch_length_mode,
                reconstruct_tip_states=params.reconstruct_tip_states,

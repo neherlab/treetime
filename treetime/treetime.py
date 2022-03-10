@@ -84,8 +84,11 @@ class TreeTime(ClockTree):
         fixed_clock_rate : float
            Fixed clock rate to be used. If None, infer clock rate from the molecular clock.
 
-        time_marginal : bool
-           If True, perform a final round of marginal reconstruction of the node's positions.
+        time_marginal : bool, str
+           If False perform joint reconstruction of the divergence times, if True use marginal
+           reconstruction of the divergence times, if 'only_final' (or 'assign') apply the marginal reconstruction
+           only to the last optimization round, if "add_conf_round" perform additional round using marginal
+           reconstruction for calculation of confidence intervals but do not update times.
 
         sequence_marginal : bool, optional
             use marginal reconstruction for ancestral sequences
@@ -136,7 +139,8 @@ class TreeTime(ClockTree):
                       "sample_from_profile":"root",
                       "prune_short":kwargs.get("prune_short", True),
                       "reconstruct_tip_states":kwargs.get("reconstruct_tip_states", False)}
-        tt_kwargs = {'clock_rate':fixed_clock_rate, 'time_marginal':False}
+        time_marginal = 'only_final' if time_marginal=='assign' else time_marginal ## for backward compatibility
+        tt_kwargs = {'clock_rate':fixed_clock_rate, 'time_marginal':False if time_marginal in [False, 'only_final', 'add_conf_round'] else True}
         tt_kwargs.update(kwargs)
 
         seq_LH = 0
@@ -212,7 +216,6 @@ class TreeTime(ClockTree):
 
             # estimate a relaxed molecular clock
             if relaxed_clock:
-                print("relaxed_clock", relaxed_clock)
                 self.relaxed_clock(**relaxed_clock)
                 need_new_time_tree = True
 
@@ -265,10 +268,11 @@ class TreeTime(ClockTree):
 
         # if marginal reconstruction requested, make one more round with marginal=True
         # this will set marginal_pos_LH, which to be used as error bar estimations
-        if time_marginal:
+        if time_marginal in ['only_final', 'add_conf_round']:
             self.logger("###TreeTime.run: FINAL ROUND - confidence estimation via marginal reconstruction", 0)
-            tt_kwargs['time_marginal']=time_marginal
-            self.make_time_tree(**tt_kwargs)
+            tt_kwargs['time_marginal']=True
+            assign_dates = False if time_marginal=='add_conf_round' else True
+            self.make_time_tree(**tt_kwargs, assign_dates= assign_dates)
 
             self.trace_run.append(self.tracelog_run(niter=niter+1, ndiff=0, n_resolved=0,
                                       time_marginal = tt_kwargs['time_marginal'],
