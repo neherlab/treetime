@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import sys, argparse, os
+import sys, argparse
 from .wrappers import ancestral_reconstruction, mugration, scan_homoplasies,\
                       timetree, estimate_clock_model, arg_time_trees
 from . import version
@@ -167,13 +167,13 @@ def add_timetree_args(parser):
                         help="If set to 'input', the provided branch length will be used without modification. "
                              "Note that branch lengths optimized by treetime are only accurate at short evolutionary distances.")
     parser.add_argument('--confidence', action='store_true', help="estimate confidence intervals of divergence times using the marginal"
-                                                                    "posterior distribution, if time-marginal is False (default) infered divergence"
-                                                                    "time will still be calculated using the joint distribution.")
-    parser.add_argument('--time-marginal', default=False, help="if specified infer the divergence time of nodes using the marginal distribution"
-                                                                "False uses the joint posterior distribution for inference of divergence times"
-                                                                "True uses the marginal distribution at every round of optimization, 'only_final'"
-                                                                "(or 'assign' for compatibility with previous versions) only uses the marginal"
-                                                                "distribution in the final round.")
+                                                                  " posterior distribution, if `--time-marginal` is False (default) inferred divergence"
+                                                                  " times will still be calculated using the jointly most likely tree configuration.")
+    parser.add_argument('--time-marginal', default='false', choices = ['false', 'true', 'assign', 'always', 'only-final', 'never'],
+                        help="If 'false' or 'never', TreeTime uses the jointly most likely values for the divergence times. "
+                             "If 'true' and 'always' uses the marginal inference mode at every round of optimization, 'only-final' "
+                             "(or 'assign' for compatibility with previous versions) only uses the marginal "
+                             "distribution in the final round.")
     parser.add_argument('--keep-polytomies', default=False, action='store_true',
                         help="Don't resolve polytomies using temporal information.")
     # parser.add_argument('--keep-node-order', default=False, action='store_true',

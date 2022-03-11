@@ -10,6 +10,20 @@ rerooting_mechanisms = ["min_dev", "best", "least-squares"]
 deprecated_rerooting_mechanisms = {"residual":"least-squares", "res":"least-squares",
                                    "min_dev_ML": "min_dev", "ML":"least-squares"}
 
+
+def reduce_time_marginal_argument(input_time_marginal):
+    if input_time_marginal in ['false', 'never']:
+        return 'never'
+    elif input_time_marginal in ['always', 'true']:
+        return 'always'
+    elif input_time_marginal in ['only-final', 'assign']:
+        return 'only-final'
+    elif input_time_marginal == 'confidence-only':
+        return input_time_marginal
+    else:
+        raise ValueError(f"'{input_time_marginal}' is not a known time marginal argument")
+
+
 class TreeTime(ClockTree):
     """
     TreeTime is a wrapper class to ClockTree that adds additional functionality
@@ -35,7 +49,7 @@ class TreeTime(ClockTree):
 
     def run(self, root=None, infer_gtr=True, relaxed_clock=None, n_iqd = None,
             resolve_polytomies=True, max_iter=0, Tc=None, fixed_clock_rate=None,
-            time_marginal=False, sequence_marginal=False, branch_length_mode='auto',
+            time_marginal='never', sequence_marginal=False, branch_length_mode='auto',
             vary_rate=False, use_covariation=False, tracelog_file=None, **kwargs):
 
         """
@@ -87,7 +101,7 @@ class TreeTime(ClockTree):
         time_marginal : bool, str
            If False perform joint reconstruction of the divergence times, if True use marginal
            reconstruction of the divergence times, if 'only_final' (or 'assign') apply the marginal reconstruction
-           only to the last optimization round, if "add_conf_round" perform additional round using marginal
+           only to the last optimization round, if "confidence-only" perform additional round using marginal
            reconstruction for calculation of confidence intervals but do not update times.
 
         sequence_marginal : bool, optional
@@ -139,8 +153,8 @@ class TreeTime(ClockTree):
                       "sample_from_profile":"root",
                       "prune_short":kwargs.get("prune_short", True),
                       "reconstruct_tip_states":kwargs.get("reconstruct_tip_states", False)}
-        time_marginal = 'only_final' if time_marginal=='assign' else time_marginal ## for backward compatibility
-        tt_kwargs = {'clock_rate':fixed_clock_rate, 'time_marginal':False if time_marginal in [False, 'only_final', 'add_conf_round'] else True}
+        time_marginal_method = reduce_time_marginal_argument(time_marginal) ## for backward compatibility
+        tt_kwargs = {'clock_rate':fixed_clock_rate, 'time_marginal':False if time_marginal_method in ['never', 'only-final', 'confidence-only'] else True}
         tt_kwargs.update(kwargs)
 
         seq_LH = 0
@@ -268,15 +282,15 @@ class TreeTime(ClockTree):
 
         # if marginal reconstruction requested, make one more round with marginal=True
         # this will set marginal_pos_LH, which to be used as error bar estimations
-        if time_marginal in ['only_final', 'add_conf_round']:
+        if time_marginal_method in ['only-final', 'confidence-only']:
             self.logger("###TreeTime.run: FINAL ROUND - confidence estimation via marginal reconstruction", 0)
-            tt_kwargs['time_marginal']=True
-            assign_dates = False if time_marginal=='add_conf_round' else True
-            self.make_time_tree(**tt_kwargs, assign_dates= assign_dates)
+            tt_kwargs['time_marginal'] = True
+            assign_dates = time_marginal_method!='confidence-only'
+            self.make_time_tree(**tt_kwargs, assign_dates=assign_dates)
 
             self.trace_run.append(self.tracelog_run(niter=niter+1, ndiff=0, n_resolved=0,
-                                      time_marginal = tt_kwargs['time_marginal'],
-                                      sequence_marginal = seq_kwargs['marginal_sequences'], Tc=Tc, tracelog=tracelog_file))
+                                      time_marginal=tt_kwargs['time_marginal'],
+                                      sequence_marginal=seq_kwargs['marginal_sequences'], Tc=Tc, tracelog=tracelog_file))
 
         # explicitly print out which branches are bad and whose dates don't correspond to the input dates
         bad_branches =[n for n in self.tree.get_terminals()
@@ -646,7 +660,7 @@ class TreeTime(ClockTree):
                     new_node.profile_pair = self.marginal_branch_profile(new_node)
 
                 new_node.branch_length_interpolator = BranchLenInterpolator(new_node, self.gtr,
-                            pattern_multiplicity = self.data.multiplicity, min_width=self.min_width,
+                            pattern_multiplicity = self.data.multiplicity(mask=new_node.mask), min_width=self.min_width,
                             one_mutation=self.one_mutation, branch_length_mode=self.branch_length_mode)
 
                 clade.clades.remove(n1)

@@ -1,20 +1,15 @@
-from ctypes import alignment
 import os, shutil, sys
 import numpy as np
 import pandas as pd
 from textwrap import fill
-from Bio.SeqRecord import SeqRecord
-from Bio.Seq import Seq
-from Bio.Align import MultipleSeqAlignment
 from Bio import Phylo, AlignIO
 from Bio import __version__ as bioversion
-from treetime.arg import setup_arg
 from . import TreeAnc, GTR, TreeTime
-from . import config as ttconf
 from . import utils
 from .vcf_utils import read_vcf, write_vcf
 from .seq_utils import alphabets
 from . import TreeTimeError, MissingDataError
+from .treetime import reduce_time_marginal_argument
 
 def assure_tree(params, tmp_dir='treetime_tmp'):
     """
@@ -497,7 +492,6 @@ def arg_time_trees(params):
         run_timetree(tt, params, outdir, tree_suffix=f"_{i+1}", prune_short=False)
 
 
-
 def timetree(params):
     """
     this function implements the regular treetime time tree estimation
@@ -591,7 +585,7 @@ def run_timetree(myTree, params, outdir, tree_suffix='', prune_short=True):
     elif len(params.relax)==2:
         relaxed_clock_params={'slack':params.relax[0], 'coupling':params.relax[1]}
 
-    time_marginal = params.time_marginal
+    time_marginal = reduce_time_marginal_argument(params.time_marginal)
     # RUN
     root = None if params.keep_root else params.reroot
     try:
@@ -600,7 +594,7 @@ def run_timetree(myTree, params, outdir, tree_suffix='', prune_short=True):
                Tc=coalescent, max_iter=params.max_iter,
                fixed_clock_rate=params.clock_rate,
                n_iqd=params.clock_filter,
-               time_marginal="add_conf_round" if calc_confidence and not time_marginal else time_marginal,
+               time_marginal="confidence-only" if calc_confidence and not time_marginal else time_marginal,
                vary_rate = vary_rate,
                branch_length_mode = branch_length_mode,
                reconstruct_tip_states=params.reconstruct_tip_states,
