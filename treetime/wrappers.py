@@ -594,7 +594,7 @@ def run_timetree(myTree, params, outdir, tree_suffix='', prune_short=True):
                Tc=coalescent, max_iter=params.max_iter,
                fixed_clock_rate=params.clock_rate,
                n_iqd=params.clock_filter,
-               time_marginal="confidence-only" if calc_confidence and not time_marginal else time_marginal,
+               time_marginal="confidence-only" if (calc_confidence and time_marginal=='never') else time_marginal,
                vary_rate = vary_rate,
                branch_length_mode = branch_length_mode,
                reconstruct_tip_states=params.reconstruct_tip_states,

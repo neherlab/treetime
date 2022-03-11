@@ -136,7 +136,6 @@ class TreeTime(ClockTree):
 
 
         """
-
         # register the specified covaration mode
         self.use_covariation = use_covariation or (vary_rate and (not type(vary_rate)==float))
 
