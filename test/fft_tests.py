@@ -27,6 +27,12 @@ def compare(new_times_and_names, old_times_and_names):
         bad_branch=bad_branches), index=new_times_and_names.index)
     return np.all(new_times_and_names.iloc[:,0]==old_times_and_names.iloc[:,0]), df
 
+def get_large_differences(df):
+    large_differences = df[abs(df.difference) > abs(np.mean(df.difference)) + 2*np.std(df.difference)]
+    return large_differences
+
+
+
 
 if __name__ == '__main__':
     plt.ion()
@@ -58,7 +64,7 @@ if __name__ == '__main__':
     dates = parse_dates(base_name+'.metadata.csv')
     tt = TreeTime(gtr='Jukes-Cantor', tree = base_name+'.nwk', use_fft=False,
                     aln = base_name+'.fasta', verbose = 1, dates = dates, precision=3, debug=True)
-    tt_fft = TreeTime(gtr='Jukes-Cantor', tree = base_name+'.nwk', use_fft=False,
+    tt_fft = TreeTime(gtr='Jukes-Cantor', tree = base_name+'.nwk', use_fft=True, precision_fft=200,
                     aln = base_name+'.fasta', verbose = 1, dates = dates, precision=3, debug=True)
 
     for tree in [tt, tt_fft]:
@@ -96,7 +102,7 @@ if __name__ == '__main__':
     plt.xlabel("nodes ranging from root at 0 to most recent")
     plt.ylabel("difference time_before_present coalescent branch - master branch")
 
-    large_differences = output_comparison[1][abs(output_comparison[1]['difference']) > abs(np.mean(output_comparison[1].difference)) + 2*np.std(output_comparison[1].difference)]
+    large_differences = get_large_differences(output_comparison[1])
 
     for n in list(large_differences.index):
         test_node, test_node_fft = get_test_node([tt, tt_fft], n)
@@ -107,34 +113,34 @@ if __name__ == '__main__':
             plt.plot(test_node.marginal_pos_LH.x, test_node.marginal_pos_LH.prob_relative(test_node.marginal_pos_LH.x), marker='o', linestyle='', ms=2, label='numerical')
             plt.plot(test_node_fft.marginal_pos_LH.x, test_node_fft.marginal_pos_LH.prob_relative(test_node_fft.marginal_pos_LH.x), marker='o', linestyle='', ms=1, label='fft')
             plt.xlim((test_node.time_before_present-0.0001,test_node.time_before_present+0.0001))
-            plt.title(test_node.name)
+            plt.title(test_node.name + "LH")
             plt.legend()
             plt.show()
             plt.figure()
             plt.plot(test_node.msg_from_parent.x, test_node.msg_from_parent.prob_relative(test_node.msg_from_parent.x), marker='o', linestyle='', ms=2, label='numerical')
             plt.plot(test_node_fft.msg_from_parent.x, test_node_fft.msg_from_parent.prob_relative(test_node_fft.msg_from_parent.x), marker='o', linestyle='', ms=1, label='fft')
             plt.xlim((test_node.time_before_present-0.0001,test_node.time_before_present+0.0001))
-            plt.title(test_node.name)
+            plt.title(test_node.name + "msg parent")
             plt.legend()
             plt.show()
             plt.figure()
             plt.plot(test_node.subtree_distribution.x, test_node.subtree_distribution.prob_relative(test_node.subtree_distribution.x), marker='o', linestyle='', ms=2, label='numerical')
             plt.plot(test_node_fft.subtree_distribution.x, test_node_fft.subtree_distribution.prob_relative(test_node_fft.subtree_distribution.x), marker='o', linestyle='', ms=1, label='fft')
-            plt.xlim((test_node.time_before_present-0.0001,test_node.time_before_present+0.0001))
-            plt.title(test_node.name)
+            plt.xlim((test_node.time_before_present-0.01,test_node.time_before_present+0.01))
+            plt.title(test_node.name + "subtree_dist")
             plt.legend()
             plt.show()
             plt.figure()
             plt.plot(test_node.branch_length_interpolator.x, test_node.branch_length_interpolator.prob_relative(test_node.branch_length_interpolator.x), marker='o', linestyle='', ms=2, label='numerical')
             plt.plot(test_node_fft.branch_length_interpolator.x, test_node_fft.branch_length_interpolator.prob_relative(test_node_fft.branch_length_interpolator.x), marker='o', linestyle='', ms=1, label='fft')
-            plt.title(test_node.name)
+            plt.title(test_node.name + "bracnh length")
             plt.legend()
             plt.show()
             plt.figure()
             plt.plot(test_node.marginal_pos_Lx.x, test_node.marginal_pos_Lx.prob_relative(test_node.marginal_pos_Lx.x), marker='o', linestyle='', ms=2, label='numerical')
             plt.plot(test_node_fft.marginal_pos_Lx.x, test_node_fft.marginal_pos_Lx.prob_relative(test_node_fft.marginal_pos_Lx.x), marker='o', linestyle='', ms=1, label='fft')
-            plt.xlim((test_node.up.time_before_present-0.0001,test_node.up.time_before_present+0.0001))
-            plt.title(test_node.name)
+            plt.xlim((test_node.up.time_before_present-0.01,test_node.up.time_before_present+0.01))
+            plt.title(test_node.name + "marginal Lx")
             plt.legend()
             plt.show()
             print(test_node.up.name + test_node_fft.up.name)
@@ -174,3 +180,32 @@ if __name__ == '__main__':
     tt_fft.make_time_tree(clock_rate=tt_kwargs ["clock_rate"], time_marginal=coal_kwargs ["time_marginal"], divide=False)
     tree_events_tt_post_coal = get_tree_events(tt)
 
+    ## code to look closer at the msgs of a child of a node and behavior of functions
+    #nodes_to_look_at = ['NODE_0000120', 'NODE_0000098']
+    # for n in nodes_to_look_at:
+    #     test_node, test_node_fft = get_test_node([tt, tt_fft], n)
+    #     print([c.name for c in test_node.clades])
+    #     print([c.name for c in test_node_fft.clades])
+    #     msgs_to_multiply_tt_fft = [child.marginal_pos_Lx for child in test_node_fft.clades
+    #                                     if child.marginal_pos_Lx is not None]
+    #     msgs_to_multiply_tt = [child.marginal_pos_Lx for child in test_node.clades
+    #                                     if child.marginal_pos_Lx is not None]
+    #     subtree_distribution_tt = Distribution.multiply(msgs_to_multiply_tt)
+    #     subtree_distribution_tt_fft = Distribution.multiply(msgs_to_multiply_tt_fft)
+    #     plt.figure()
+    #     plt.plot(subtree_distribution_tt_fft.x, subtree_distribution_tt_fft.prob_relative(subtree_distribution_tt_fft.x), marker='o', linestyle='', ms=2, label='fft')
+    #     plt.plot(subtree_distribution_tt.x, subtree_distribution_tt.prob_relative(subtree_distribution_tt.x), marker='o', linestyle='', ms=1, label='numerical')
+    #     plt.xlim((test_node.time_before_present-0.0001,test_node.time_before_present+0.001))
+    #     plt.title(test_node.name + "child LH")
+    #     plt.legend()
+    #     plt.show()
+    #     if test_node.name != tt.tree.root.name and not test_node.marginal_pos_LH.is_delta:
+    #         for c in test_node.clades:
+    #             test_node, test_node_fft = get_test_node([tt, tt_fft], c.name)
+    #             plt.figure()
+    #             plt.plot(test_node.marginal_pos_Lx.x, test_node.marginal_pos_Lx.prob_relative(test_node.marginal_pos_Lx.x), marker='o', linestyle='', ms=2, label='numerical')
+    #             plt.plot(test_node_fft.marginal_pos_Lx.x, test_node_fft.marginal_pos_Lx.prob_relative(test_node_fft.marginal_pos_Lx.x), marker='o', linestyle='', ms=1, label='fft')
+    #             plt.xlim((test_node.time_before_present-0.0001,test_node.time_before_present+0.001))
+    #             plt.title(test_node.name + "child Lx")
+    #             plt.legend()
+    #             plt.show()
