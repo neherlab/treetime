@@ -1,3 +1,17 @@
+# 0.9.0-b1
+
+This release contains several major changes to how TreeTime calculates time scaled phylogenies.
+Most of this is work by @anna-parker!
+
+ * implements convolutions needed for marginal time tree inference using FFT.
+   Previously, these were calculated by explicit integration using optimized irregular grids.
+   Using FFT requires regular (and hence much finer/larger) grids, but greatly reduces computational complexity from `n^2` to `n log(n)`, where `n` is the number of grid points.
+   The FFT feature can be switched on an off with the `use_fft` attribute of the ClockTree class.
+ * Using FFT in convolutions required moving the contributions of the coalescent models from th branches to the nodes.
+   This should not change the results in any way, but cleans up the code.
+ * The number concurrent of lineages determines the rate of coalescence.
+   This can now optionally be calculated using the uncertainty of the timing of merger events, instead of the step functions used previously.
+
 # 0.8.6
  * optionally allow incomplete alignment [PR #178](https://github.com/neherlab/treetime/pull/178)
  * reduce memory footprint through better clean up and optimizing types. [PR #179](https://github.com/neherlab/treetime/pull/179)
