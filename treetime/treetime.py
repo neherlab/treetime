@@ -660,7 +660,8 @@ class TreeTime(ClockTree):
 
                 new_node.branch_length_interpolator = BranchLenInterpolator(new_node, self.gtr,
                             pattern_multiplicity = self.data.multiplicity(mask=new_node.mask), min_width=self.min_width,
-                            one_mutation=self.one_mutation, branch_length_mode=self.branch_length_mode)
+                            one_mutation=self.one_mutation, branch_length_mode=self.branch_length_mode,
+                            n_grid_points = self.branch_grid_points)
 
                 clade.clades.remove(n1)
                 clade.clades.remove(n2)

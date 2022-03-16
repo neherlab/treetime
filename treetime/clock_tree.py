@@ -23,7 +23,7 @@ class ClockTree(TreeAnc):
     """
 
     def __init__(self, *args, dates=None, debug=False, real_dates=True, precision_fft = 'auto',
-                precision='auto', branch_length_mode='joint', use_covariation=False,
+                precision='auto', precision_branch='auto', branch_length_mode='joint', use_covariation=False,
                 use_fft=True,**kwargs):
 
         """
@@ -91,7 +91,7 @@ class ClockTree(TreeAnc):
         self.clock_model=None
         self.use_covariation=use_covariation # if false, covariation will be ignored in rate estimates.
         self._set_precision(precision)
-        self._set_precision_fft(precision_fft)
+        self._set_precision_fft(precision_fft, precision_branch)
         self._assign_dates()
 
 
@@ -189,10 +189,11 @@ class ClockTree(TreeAnc):
             self.branch_grid_points = ttconf.BRANCH_GRID_SIZE
             self.n_integral = ttconf.N_INTEGRAL
 
-    def _set_precision_fft(self, precision_fft):
+    def _set_precision_fft(self, precision_fft, precision_branch='auto'):
             '''
             function that allows to set the number of grid points for the minimal FWHM window
             when calculating the marginal distribution using the FFT-based approach
+            also allows explicit definition of branch_grid_points, overriding the argument in set_precision
             '''
 
             self.fft_grid_size = ttconf.FFT_FWHM_GRID_SIZE
@@ -200,6 +201,11 @@ class ClockTree(TreeAnc):
                 self.fft_grid_size = precision_fft
             else:
                 self.fft_grid_size = ttconf.FFT_FWHM_GRID_SIZE
+
+            if type(precision_branch) is int:
+                self.logger("ClockTree.init._set_precision_fft: setting branch grid size explicitly,"
+                        " branch_grid_points=%.3e"%(precision_branch), 2)
+                self.branch_grid_points = precision_branch
 
 
     @property
@@ -313,7 +319,8 @@ class ClockTree(TreeAnc):
 
                 node.branch_length_interpolator = BranchLenInterpolator(node, self.gtr,
                             pattern_multiplicity = self.data.multiplicity(mask=node.mask), min_width=self.min_width,
-                            one_mutation=self.one_mutation, branch_length_mode=self.branch_length_mode)
+                            one_mutation=self.one_mutation, branch_length_mode=self.branch_length_mode,
+                            n_grid_points = self.branch_grid_points)
 
                 node.branch_length_interpolator.gamma = gamma
 
