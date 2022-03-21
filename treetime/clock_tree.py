@@ -147,7 +147,7 @@ class ClockTree(TreeAnc):
 
     def _set_precision(self, precision):
         '''
-        function that sets precision to an (hopfully) reasonable guess based
+        function that sets precision to a (hopefully) reasonable guess based
         on the length of the sequence if not explicitly set
         '''
         # if precision is explicitly specified, use it.
@@ -191,17 +191,19 @@ class ClockTree(TreeAnc):
 
     def _set_precision_fft(self, precision_fft, precision_branch='auto'):
             '''
-            function that allows to set the number of grid points for the minimal FWHM window
+            function to set the number of grid points for the minimal FWHM window and branch grid
             when calculating the marginal distribution using the FFT-based approach
-            also allows explicit definition of branch_grid_points, overriding the argument in set_precision
+            The default parameters ttconf.FFT_FWHM_GRID_SIZE and ttconf.BRANCH_GRID_SIZE_ULTRA
+            are used unless an integer value is specified using precision_fft and precision_branch,
+            overriding the argument in set_precision
             '''
 
-            self.fft_grid_size = ttconf.FFT_FWHM_GRID_SIZE
             if type(precision_fft) is int:
                 self.fft_grid_size = precision_fft
             else:
                 self.fft_grid_size = ttconf.FFT_FWHM_GRID_SIZE
-
+            if self.use_fft:
+                self.branch_grid_points = ttconf.BRANCH_GRID_SIZE_ULTRA
             if type(precision_branch) is int:
                 self.logger("ClockTree.init._set_precision_fft: setting branch grid size explicitly,"
                         " branch_grid_points=%.3e"%(precision_branch), 2)
@@ -350,7 +352,7 @@ class ClockTree(TreeAnc):
                 node.date_constraint = None
 
 
-    def make_time_tree(self, time_marginal=False, clock_rate=None, divide=False, assign_dates=True, **kwargs):
+    def make_time_tree(self, time_marginal=False, clock_rate=None, assign_dates=True, **kwargs):
         '''
         Use the date constraints to calculate the most likely positions of
         unconstrained nodes.
@@ -370,7 +372,7 @@ class ClockTree(TreeAnc):
         self.init_date_constraints(clock_rate=clock_rate, **kwargs)
 
         if time_marginal:
-            self._ml_t_marginal(assign_dates = assign_dates, divide=divide)
+            self._ml_t_marginal(assign_dates = assign_dates)
         else:
             self._ml_t_joint()
 
@@ -552,7 +554,7 @@ class ClockTree(TreeAnc):
         return LH
 
 
-    def _ml_t_marginal(self, assign_dates=False, divide=False):
+    def _ml_t_marginal(self, assign_dates=False):
         """
         Compute the marginal probability distribution of the internal nodes positions by
         propagating from the tree leaves towards the root. The result of
@@ -674,47 +676,36 @@ class ClockTree(TreeAnc):
             else:
                 parent = node.up
 
-                if divide:
+                msg_parent_to_node =None
+                if node.marginal_pos_Lx is not None:
+                    # messages from the complementary subtree (iterate over all sister nodes)
+                    complementary_msgs = [parent.date_constraint] if parent.date_constraint is not None else []
+                    complementary_msgs.extend([sister.marginal_pos_Lx for sister in parent.clades
+                                                if (sister != node) and (sister.marginal_pos_Lx is not None)])
 
-                    if node.marginal_pos_Lx is not None:
-                        msg_parent_to_node = Distribution.divide(parent.marginal_pos_LH, node.marginal_pos_Lx)
+                    # if parent itself got smth from the root node, include it
+                    if parent.msg_from_parent is not None:
+                        complementary_msgs.append(parent.msg_from_parent)
+
+                    if hasattr(self, 'merger_model') and self.merger_model:
+                        time_points = np.unique(np.concatenate([msg.x for msg in complementary_msgs]))
+                        # As Lx do not include the node contribution this must be added on
+                        complementary_msgs.append(self.merger_model.node_contribution(parent, time_points))
+
+                        # Removed merger rate must be added back if no msgs from parent (equivalent to root node case)
+                        if parent.msg_from_parent is None:
+                            complementary_msgs.append(Distribution(time_points, self.merger_model.integral_merger_rate(time_points), is_log=True))
+
+                    if len(complementary_msgs):
+                        msg_parent_to_node = NodeInterpolator.multiply(complementary_msgs)
                         msg_parent_to_node._adjust_grid(rel_tol=self.rel_tol_prune)
-                    elif parent.marginal_pos_LH is not None:
-                        msg_parent_to_node = parent.marginal_pos_LH
-                    else:
-                        x = [parent.numdate, numeric_date()]
-                        msg_parent_to_node = NodeInterpolator(x, [1.0, 1.0],min_width=self.min_width)
-                else:
-                    msg_parent_to_node =None
-                    if node.marginal_pos_Lx is not None:
-                        # messages from the complementary subtree (iterate over all sister nodes)
-                        complementary_msgs = [parent.date_constraint] if parent.date_constraint is not None else []
-                        complementary_msgs.extend([sister.marginal_pos_Lx for sister in parent.clades
-                                                    if (sister != node) and (sister.marginal_pos_Lx is not None)])
 
-                        # if parent itself got smth from the root node, include it
-                        if parent.msg_from_parent is not None:
-                            complementary_msgs.append(parent.msg_from_parent)
+                elif parent.marginal_pos_LH is not None:
+                    msg_parent_to_node = parent.marginal_pos_LH
 
-                        if hasattr(self, 'merger_model') and self.merger_model:
-                            time_points = np.unique(np.concatenate([msg.x for msg in complementary_msgs]))
-                            # As Lx do not include the node contribution this must be added on
-                            complementary_msgs.append(self.merger_model.node_contribution(parent, time_points))
-
-                            # Removed merger rate must be added back if no msgs from parent (equivalent to root node case)
-                            if parent.msg_from_parent is None:
-                                complementary_msgs.append(Distribution(time_points, self.merger_model.integral_merger_rate(time_points), is_log=True))
-
-                        if len(complementary_msgs):
-                            msg_parent_to_node = NodeInterpolator.multiply(complementary_msgs)
-                            msg_parent_to_node._adjust_grid(rel_tol=self.rel_tol_prune)
-
-                    elif parent.marginal_pos_LH is not None:
-                        msg_parent_to_node = parent.marginal_pos_LH
-
-                    if msg_parent_to_node is None:
-                        x = [parent.numdate, numeric_date()]
-                        msg_parent_to_node = NodeInterpolator(x, [1.0, 1.0],min_width=self.min_width)
+                if msg_parent_to_node is None:
+                    x = [parent.numdate, numeric_date()]
+                    msg_parent_to_node = NodeInterpolator(x, [1.0, 1.0],min_width=self.min_width)
 
                 # integral message, which delivers to the node the positional information
                 # from the complementary subtree

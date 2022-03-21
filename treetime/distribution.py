@@ -116,11 +116,6 @@ class Distribution(object):
 
         return res
 
-    @staticmethod
-    def divide(dis1, dis2):
-        dis2_inv = Distribution(dis2.x, -dis2.y, is_log=True, assume_sorted=True)
-        return Distribution.multiply([dis1,dis2_inv])
-
 
     def __init__(self, x, y, is_log=True, min_width = MIN_INTEGRATION_PEAK,
                  kind='linear', assume_sorted=False):

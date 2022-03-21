@@ -75,8 +75,8 @@ if __name__ == '__main__':
         tree.reroot(root='least-squares', clock_rate=tt_kwargs["clock_rate"])
         tree.infer_ancestral_sequences(**seq_kwargs)
 
-    tt.make_time_tree(clock_rate=tt_kwargs["clock_rate"], time_marginal=tt_kwargs["time_marginal"], divide=False)
-    tt_fft.make_time_tree(clock_rate=tt_kwargs["clock_rate"], time_marginal=tt_kwargs["time_marginal"], divide=False)
+    tt.make_time_tree(clock_rate=tt_kwargs["clock_rate"], time_marginal=tt_kwargs["time_marginal"])
+    tt_fft.make_time_tree(clock_rate=tt_kwargs["clock_rate"], time_marginal=tt_kwargs["time_marginal"])
     ##should be no difference at this point unless 'joint' is used for "branch_length_mode"
     tree_events_tt = get_tree_events(tt)
     tree_events_tt_fft = get_tree_events(tt_fft)
@@ -151,14 +151,6 @@ if __name__ == '__main__':
             plt.title(test_node.up.name)
             plt.legend()
             plt.show()
-            msg_parent_to_node = Distribution.divide(test_node.up.marginal_pos_LH, test_node.marginal_pos_Lx)
-            msg_parent_to_node_fft = Distribution.divide(test_node_fft.up.marginal_pos_LH, test_node_fft.marginal_pos_Lx)
-            plt.figure()
-            plt.plot(msg_parent_to_node.x, msg_parent_to_node.prob_relative(msg_parent_to_node.x), marker='o', linestyle='', ms=2, label='numerical')
-            plt.plot(msg_parent_to_node_fft.x, msg_parent_to_node_fft.prob_relative(msg_parent_to_node_fft.x), marker='o', linestyle='', ms=1, label='fft')
-            plt.title(test_node.up.name)
-            plt.legend()
-            plt.show()
             for c in test_node.clades:
                 test_node, test_node_fft = get_test_node([tt, tt_fft], c.name)
                 print("Time difference is " + str(test_node.time_before_present - test_node_fft.time_before_present ))
@@ -177,7 +169,7 @@ if __name__ == '__main__':
     tt.add_coalescent_model(coal_kwargs ["Tc"])
     tt.make_time_tree(clock_rate=tt_kwargs ["clock_rate"], time_marginal=coal_kwargs ["time_marginal"])
     tt_fft.add_coalescent_model(coal_kwargs ["Tc"])
-    tt_fft.make_time_tree(clock_rate=tt_kwargs ["clock_rate"], time_marginal=coal_kwargs ["time_marginal"], divide=False)
+    tt_fft.make_time_tree(clock_rate=tt_kwargs ["clock_rate"], time_marginal=coal_kwargs ["time_marginal"])
     tree_events_tt_post_coal = get_tree_events(tt)
 
     ## code to look closer at the msgs of a child of a node and behavior of functions

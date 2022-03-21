@@ -51,7 +51,7 @@ def run_first_round(tree, kwargs):
     tree.clock_filter(reroot='least-squares', n_iqd=1, plot=False, fixed_clock_rate=kwargs["clock_rate"])
     tree.reroot(root='least-squares', clock_rate=kwargs["clock_rate"])
     tree.infer_ancestral_sequences(**kwargs)
-    tree.make_time_tree(clock_rate=kwargs["clock_rate"], time_marginal=kwargs["time_marginal"], divide=False)
+    tree.make_time_tree(clock_rate=kwargs["clock_rate"], time_marginal=kwargs["time_marginal"])
 
 
 
@@ -60,7 +60,7 @@ if __name__ == '__main__':
     ##model parameters for testing
     # choose if should be tested on ebola or h3n2_na dataset and if this script is run
     # on the masterbranch or a branch to be tested
-    ebola=True
+    ebola=False
     master = False
 
     if ebola:
@@ -88,9 +88,15 @@ if __name__ == '__main__':
     tree_make_time = time.process_time() - start
     tree_events_numerical = get_tree_events(tt_numerical)
     print("Time to make tree using ultra fine numerical grid: " + str(tree_make_time))
+    fig, axs = plt.subplots(1,2, sharey=True, figsize=(12,8))
+    Phylo.draw(tt_numerical.tree, label_func=lambda x:"", axes=axs[0])
+    axs[0].set_title("numerical time tree")
+    Phylo.draw(tt_numerical.tree, label_func=lambda x:"", axes=axs[1])
+    axs[1].set_title("fft time tree ")
 
     precision_fft = [5, 25, 50, 75, 100, 150, 200, 300, 400]
-    branch_grid_size = [50, 75, 100, 150, 200, 300, 400]
+    #branch_grid_size = [50, 75, 100, 150, 200, 300, 400]
+    branch_grid_size = [200]
     time_fft = []
     time_grid_fft_list = []
     divergence_time_diff_list = []
@@ -102,7 +108,7 @@ if __name__ == '__main__':
             tt_fft = TreeTime(gtr='Jukes-Cantor', tree = base_name+'.nwk', precision_fft=prec, use_fft=True,
                         aln = base_name+'.fasta', verbose = 1, dates = dates, precision=3, precision_branch=b, debug=True)
 
-            tt_fft.run(root="best", branch_length_mode='input', time_marginal='assign', max_iter=1)
+            run_first_round(tt_fft, kwargs)
             tree_make_time_fft = time.process_time() - start
             print("Time to make tree using fft grid of size " + str(prec) +" :"+str(tree_make_time_fft))
             tree_events_fft = get_tree_events(tt_fft)
