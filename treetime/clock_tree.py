@@ -193,17 +193,16 @@ class ClockTree(TreeAnc):
             '''
             function to set the number of grid points for the minimal FWHM window and branch grid
             when calculating the marginal distribution using the FFT-based approach
-            The default parameters ttconf.FFT_FWHM_GRID_SIZE and ttconf.BRANCH_GRID_SIZE_ULTRA
-            are used unless an integer value is specified using precision_fft and precision_branch,
-            overriding the argument in set_precision
+            The default parameters ttconf.FFT_FWHM_GRID_SIZE and branch_grid_points determined in set_precision
+            are used unless an integer value is specified using precision_fft and precision_branch
             '''
 
             if type(precision_fft) is int:
+                self.logger("ClockTree.init._set_precision_fft: setting fft grid size explicitly,"
+                        " fft_grid_points=%.3e"%(precision_fft), 2)
                 self.fft_grid_size = precision_fft
             else:
                 self.fft_grid_size = ttconf.FFT_FWHM_GRID_SIZE
-            if self.use_fft:
-                self.branch_grid_points = ttconf.BRANCH_GRID_SIZE_ULTRA
             if type(precision_branch) is int:
                 self.logger("ClockTree.init._set_precision_fft: setting branch grid size explicitly,"
                         " branch_grid_points=%.3e"%(precision_branch), 2)

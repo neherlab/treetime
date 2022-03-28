@@ -174,7 +174,6 @@ def add_timetree_args(parser):
                              "If 'true' and 'always' uses the marginal inference mode at every round of optimization, 'only-final' "
                              "(or 'assign' for compatibility with previous versions) only uses the marginal "
                              "distribution in the final round.")
-    parser.add_argument('--use-fft', default=False, action='store_true', help="use the FFT to speed up the calculation of inferred divergence time distributions")
     parser.add_argument('--keep-polytomies', default=False, action='store_true',
                         help="Don't resolve polytomies using temporal information.")
     # parser.add_argument('--keep-node-order', default=False, action='store_true',
