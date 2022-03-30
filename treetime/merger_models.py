@@ -14,8 +14,29 @@ from .utils import clip
 
 
 class Coalescent(object):
-    """docstring for Coalescent"""
+    """
+    Class for adding the Kingman coalescent model to the tree time inference, this is optional.
+    The coalescent model is based on the idea that certain tree structures are more likely given a specific population structure
+    and this likelihood can be added to divergence time inference. The coalescent depends on the effective population size (:math:`Tc`)
+    and the number of lineages at any point in time :math:`k(t)`.
+    """
+
     def __init__(self, tree, Tc=0.001, logger=None, date2dist=None, n_branches_posterior=False):
+        '''
+        Initialize :math:`k(t)` and :math:`Tc` functions
+
+        Parameters
+        -----------
+            Tc:    float
+                time scale of coalescence / effective population size
+
+            n_branches_posterior:  boolean
+                True if the uncertainty of the divergence time estimates should be taken into consideration when calculating
+                the number of lineages function :math:`k(t)`, False if current divergence times should be seen as fixed (default).
+                Using the uncertainty should make :math:`k(t)` more smooth.
+
+        '''
+
         super(Coalescent, self).__init__()
         self.tree = tree
         self.n_branches_posterior = n_branches_posterior
@@ -31,15 +52,17 @@ class Coalescent(object):
 
     def set_Tc(self, Tc, T=None):
         '''
-        initialize the merger model with a coalescent time
+        initialize the merger model with a coalescent time and calculate the integral of the merger rate
 
-        Args:
-            - Tc:   a float or an iterable, if iterable another argument T of same shape is required
-            - T:    an array like of same shape as Tc that specifies the time pivots corresponding to Tc
-                    note that this array is ordered past to present corresponding to
-                    decreasing 'time before present' values
-        Returns:
-            - None
+        Parameters
+        ----------
+            Tc:  float, iterable
+                float if the coalescence rate is constant, if this should be approximated by a piece-wise linear
+                merger rate (skyline method) an iterable with another argument T of the same shape is required
+            T:  array
+                an array of same shape as Tc that specifies the time pivots corresponding to Tc
+                note that this array is ordered past to present corresponding to
+                decreasing 'time before present' values
         '''
         if isinstance(Tc, Iterable):
             if len(Tc)==len(T):
@@ -58,10 +81,15 @@ class Coalescent(object):
 
     def calc_branch_count(self, posterior=False):
         '''
-        Calculates an interpolation object that maps time to the number of concurrent branches in the tree.
-        Either the infered time before present of each node is used, or if desired the posterior distribution.
-        If the marginal posterior time distribution of a node has been calculated this is used or
-        approximated using the joint posterior time distribution, for date constraints a step function is used.
+        Calculates an interpolation object that maps time to the number of concurrent branches in the tree:
+        :math:`k(t)`
+
+        Parameters
+        ----------
+            posterior:  boolean
+                If False use current best estimate of divergence times, else use posterior distributions of divergence times
+                (If the marginal posterior time distribution of a node has been calculated this is used or
+                approximated using the joint posterior time distribution)
         '''
         ## Divide merger events into either smooth merger events where a posterior likelihood distribution is known or
         ## delta events where either a date constraint for that node exists or the likelihood distribution is unknown.
@@ -140,7 +168,7 @@ class Coalescent(object):
 
     def calc_integral_merger_rate(self):
         '''
-        calculates the integral int_0^t (k(t')-1)/2Tc(t') dt' and stores it as
+        calculates the integral :math:`int_0^t (k(t')-1)/2Tc(t') dt` and stores it as
         self.integral_merger_rate. This differences of this quantity evaluated at
         different times points are the cost of a branch.
         '''
@@ -157,15 +185,21 @@ class Coalescent(object):
                                   np.concatenate(([cost[0]], cost,[cost[-1]])), kind='linear')
 
     def branch_merger_rate(self, t):
-        # returns the rate at which one particular branch merges with any other branch
+        '''
+        rate at which one particular branch merges with any other branch at time t,
+        in the Kingsman model this is: :math:`\kappa(t) = (k(t)-1)/(2Tc(t))`
+        '''
         # note that we always have a positive merger rate by capping the
         # number of branches at 0.5 from below. in these regions, the
         # function should only be called if the tree changes.
         return 0.5*np.maximum(0.5,self.nbranches(t)-1.0)/self.Tc(t)
 
     def total_merger_rate(self, t):
-        # returns the rate at which any branch merges with any other branch
-        # not that we always have a positive merger rate by capping the
+        '''
+        rate at which any branch merges with any other branch at time t,
+        in the Kingsman model this is: :math:`\lambda(t) = k(t)(k(t)-1)/(2Tc(t))`
+        '''
+        # note that we always have a positive merger rate by capping the
         # number of branches at 0.5 from below. in these regions, the
         # function should only be called if the tree changes.
         nlineages = np.maximum(0.5,self.nbranches(t)-1.0)
@@ -174,13 +208,20 @@ class Coalescent(object):
 
     def cost(self, t_node, branch_length, multiplicity=2.0):
         '''
-        returns the cost associated with a branch starting at t_node
-        t_node is time before present, the branch goes back in time
+        returns the cost associated with a branch starting with divergence time t_node (:math:`t_n`)
+        having a branch length :math:`\\tau`.
+        This is equivalent to the probability of there being no merger on that branch and a merger at the end of the branch,
+        calculated in the negative log
+        :math:`-log(\lambda(t_n+ \\tau)^{(m-1)/m}) + \int_{t_n}^{t_n+ \\tau} \kappa(t) dt`, where m is the multiplicity
 
-        Args:
-            - t_node:           time of the node
-            - branch_length:    branch length, determines when this branch merges with sister
-            - multiplicity:     2 if merger is binary, higher if this is a polytomy
+        Parameters
+        ----------
+            t_node: float
+                time of the node
+            branch_length: float
+                branch length, determines when this branch merges with sister
+            multiplicity: int
+                2 if merger is binary, higher if this is a polytomy
         '''
         merger_time = t_node + np.maximum(0,branch_length)
         return self.integral_merger_rate(merger_time) - self.integral_merger_rate(t_node)\
@@ -189,7 +230,7 @@ class Coalescent(object):
 
     def node_contribution(self, node, t, multiplicity=None):
         '''
-        returns the contribution of node t to cost of merging branch that t is parent of
+        returns the contribution of node at time t to cost of merging branch that node is parent of
         '''
         from treetime.node_interpolator import NodeInterpolator
         if multiplicity is None:
@@ -209,7 +250,8 @@ class Coalescent(object):
 
     def optimize_Tc(self):
         '''
-        determines the coalescent time scale that optimizes the coalescent likelihood of the tree
+        determines the coalescent time scale Tc that optimizes the coalescent likelihood of the tree
+        (product of the cost of coalescence of all nodes)
         '''
         from scipy.optimize import minimize_scalar
         initial_Tc = self.Tc
@@ -228,16 +270,23 @@ class Coalescent(object):
     def optimize_skyline(self, n_points=20, stiffness=2.0, method = 'SLSQP',
                          tol=0.03, regularization=10.0, **kwarks):
         '''
-        optimize the trajectory of the merger rate 1./T_c to maximize the
-        coalescent likelihood.
-        parameters:
-            n_points    --  number of pivots of the Tc interpolation object
-            stiffness   --  penalty for rapid changes in log(Tc)
-            methods     --  method used to optimize
-            tol         --  optimization tolerance
-            regularization --  cost of moving logTc outsize of the range [-100,0]
-                               merger rate is measured in branch length units, no
-                               plausible rates should never be outside this window
+        optimize the trajectory of the clock rate 1./T_c to maximize the
+        coalescent likelihood, this is the product of the cost of coalescence of all nodes
+
+        Parameters
+        ----------
+            n_points: int
+                number of pivots of the Tc interpolation object
+            stiffness: float
+                penalty for rapid changes in log(Tc)
+            methods: str
+                method used to optimize, see documentation of scipy.optimize.minimize for options
+            tol: float
+                optimization tolerance
+            regularization: float
+                cost of moving log(Tc) outsize of the range [-100,0]
+                merger rate is measured in branch length units, no
+                plausible rates should ever be outside this window
         '''
         self.logger("Coalescent:optimize_skyline:... current LH: %f"%self.total_LH(),2)
         from scipy.optimize import minimize
@@ -279,8 +328,12 @@ class Coalescent(object):
         returns the skyline, i.e., an estimate of the inverse rate of coalesence.
         Here, the skyline is estimated from a sliding window average of the observed
         mergers, i.e., without reference to the coalescence likelihood.
-        parameters:
-            gen -- number of generations per year.
+
+        Parameters
+        ----------
+            gen: float
+                number of generations per year
+            n_points: int
         '''
         merger_times = np.array(self.tree_events[self.tree_events[:,1]>0, 0])
         nlineages = self.nbranches(merger_times -ttconf.TINY_NUMBER)
@@ -316,10 +369,14 @@ class Coalescent(object):
         This function merely returns the merger rate self.Tc that was set or
         estimated by other means. If it was determined using self.optimize_skyline,
         the returned skyline will maximize the coalescent likelihood.
-        parameters:
-            gen -- number of generations per year. Unit of time is branch length,
-                   hence this needs to be the inverse substitution rate per generation
-            confidence -- False, or number of standard deviations of confidence intervals
+
+        Parameters
+        ----------
+            gen: float
+                number of generations per year. Unit of time is branch length,
+                hence this needs to be the inverse substitution rate per generation
+            confidence: boolean, float
+                False, or number of standard deviations of confidence intervals
         '''
         if len(self.Tc.x)<=2:
             print("no skyline has been inferred, returning constant population size")

@@ -96,6 +96,41 @@ This can be done using the argument
    --clock-rate <rate>
 
 
+Divergence times inference methods
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+TimeTree estimates optimal time trees by chosing node positions/ divergence times that optimize the joint or marginal likelihood.
+
+The **joint maximum-likelihood** assignment corresponds to the global configuration with the highest likelihood, however it gives no information about the confidence of divergence time estimates.
+The **marginal maximum-likelihood** assignment assigns nodes to their most likely divergence time after integrating over all possible configurations of the other nodes, it enables the computation of divergence time confidence intervals.
+
+Which 'method' of divergence time estimation is used can be specified with the flag:
+
+.. code-block:: bash
+
+   --time-marginal <method>
+
+It is possible to run iterations of TreeTime using different methods.
+If ``‘false’`` or ``‘never’``, TreeTime uses the jointly most likely values for the divergence times. If ``‘true’`` or ``‘always’`` TreeTime uses the marginal inference mode at every
+round of optimization, ``‘only-final’`` (or ``‘assign’`` for compatibility with previous versions) only uses the marginal distribution in the final round.
+
+
+In versions 0.9 and higher the marginal-likelihood assignment was sped up by using the Fast Fourier Transform to calculate convolution integrals. Now the time complexity of marginal and joint likelihood calculations is comparable,
+whereas in versions prior to 0.9 the joint likelihood assignment was 2-3 times faster. To maintain compatibility with previous versions the joint maximum-likelihood assignment is still
+preformed as a default, however the marginal-likelihood assignment is now recommended.
+
+
+Confidence intervals
+^^^^^^^^^^^^^^^^^^^^
+
+In its default setting, TreeTime does not estimate confidence intervals of divergence times.
+Such estimates require calculation of the marginal probability distributions of the dates of the internal nodes.
+To switch on confidence estimation, pass the flag ``--confidence``.
+If the ``--time-marginal`` method is in ``['false', 'never']`` TreeTime will run another round of marginal timetree reconstruction to calculate the marginal probability distribution of the nodes. Otherwise, TreeTime will use the marginal
+probability distribution calculated in the last round of time tree reconstruction and determine the region that contains 90% of the marginal probability distribution of the node dates.
+These intervals are drawn into the tree graph and written to the dates file.
+
+
 Specify or estimate coalescent models
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -109,28 +144,33 @@ To activate the Kingman Coalescent model in TreeTime, you need to add the flag
     --coalescent <arg>
 
 where the argument is either a floating point number giving the time scale of coalescence in units of divergence, 'const' to have TreeTime estimate a constant merger rate, or 'skyline'.
-In the latter case, TreeTime will estimate a piece-wise linear merger rate trajectory and save this in files ending on 'skyline.tsv' and 'skyline.pdf'
+In the latter case, TreeTime will estimate a piece-wise linear merger rate trajectory and save this in files ending on ``skyline.tsv`` and ``skyline.pdf``
 
 The following command will run TreeTime on the ebola example data set and estimate a time tree along with a skyline (this will take a few minutes).
 
 .. code-block:: bash
 
-   treetime --tree data/ebola/ebola.nwk --dates data/ebola/ebola.metadata.csv --aln data/ebola/ebola.fasta --outdir ebola  --coalescent skyline
+    treetime --tree data/ebola/ebola.nwk --dates data/ebola/ebola.metadata.csv --aln data/ebola/ebola.fasta --outdir ebola  --coalescent skyline
 
+The number of grid points in the skyline model can be additionally specified using the flag
+
+.. code-block:: bash
+
+    --n-skyline <n_skyline_grid_points>
 
 .. image:: figures/ebola_skyline.png
    :target: figures/ebola_skyline.png
    :alt: ebola_skyline
 
+The coalescent model requires the number of lineages in the tree at any given time for estimating the probability of a coalecent event. In the default
+setting the current estimates of divergence times are used for calculating the number of lineages, if the certainty of these estimates should be accounted for
+the posterior probability distributions of divergence times can be used by adding the flag
 
-Confidence intervals
-^^^^^^^^^^^^^^^^^^^^
+.. code-block:: bash
 
-In its default setting, ``treetime`` does not estimate confidence intervals of divergence times.
-Such estimates require calculation of the marginal probability distributions of the dates of the internal nodes that take about 2-3 times as long as calculating only the jointly maximally likely dates.
-To switch on confidence estimation, pass the flag ``--confidence``.
-TreeTime will run another round of marginal timetree reconstruction and determine the region that contains 90% of the marginal probability distribution of the node dates.
-These intervals are drawn into the tree graph and written to the dates file.
+   --n-branches-posterior
+
+this should smooth the coalescence likelihood distributions.
 
 VCF files as input
 ^^^^^^^^^^^^^^^^^^
@@ -144,4 +184,6 @@ The following example with a set of MtB sequences uses a fixed evolutionary rate
 
 For many bacterial data set were the temporal signal in the data is weak, it is advisable to fix the rate of the molecular clock explicitly.
 Divergence times, however, will depend on this choice.
+
+
 

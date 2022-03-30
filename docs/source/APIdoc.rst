@@ -10,6 +10,7 @@ API documentation
    treeanc
    seqgen
    gtr
+   merger_models
    vcf_utils
    seq_utils
 
@@ -31,6 +32,9 @@ Core classes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 :doc:`GTR class<gtr>`
+~~~~~~~~~~~~~~~~~~~~~
+
+:doc:`Coalescent class<merger_models>`
 ~~~~~~~~~~~~~~~~~~~~~
 
 
