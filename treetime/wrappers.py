@@ -607,7 +607,7 @@ def run_timetree(myTree, params, outdir, tree_suffix='', prune_short=True):
                reconstruct_tip_states=params.reconstruct_tip_states,
                n_points=params.n_skyline, n_branches_posterior = n_branches_posterior,
                fixed_pi=fixed_pi, prune_short=prune_short,
-               use_covariation = params.covariation,
+               use_covariation=params.covariation,
                tracelog_file=os.path.join(outdir, f"trace_run{tree_suffix}.log"))
     except TreeTimeError as e:
         print("\nTreeTime run FAILED: please check above for errors and/or rerun with --verbose 4.\n")
