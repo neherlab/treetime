@@ -4,7 +4,6 @@ methods to calculate merger models for a time tree
 import numpy as np
 import scipy.special as sf
 from scipy.interpolate import interp1d
-from Bio import AlignIO, Phylo
 try:
     from collections.abc import Iterable
 except ImportError:

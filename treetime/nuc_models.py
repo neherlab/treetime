@@ -1,7 +1,7 @@
 #!/usr/local/bin/python
 # -*- coding: utf-8 -*-
 import numpy as np
-from .seq_utils import alphabets, profile_maps
+from .seq_utils import alphabets
 from .gtr import GTR
 
 def get_alphabet(a):

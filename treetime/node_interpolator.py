@@ -4,9 +4,6 @@ from .distribution import Distribution
 from .utils import clip
 from .config import FFT_FWHM_GRID_SIZE
 
-def _create_initial_grid(node_dist, branch_dist):
-    pass
-
 def _convolution_integrand(t_val, f, g,
                            inverse_time=None, return_log=False):
     '''

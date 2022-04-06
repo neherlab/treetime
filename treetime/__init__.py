@@ -1,4 +1,3 @@
-from __future__ import print_function, division, absolute_import
 version="0.9.0-b.2"
 
 class TreeTimeError(Exception):
