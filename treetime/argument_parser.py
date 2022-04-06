@@ -170,8 +170,8 @@ def add_timetree_args(parser):
                                                                   " posterior distribution, if `--time-marginal` is False (default) inferred divergence"
                                                                   " times will still be calculated using the jointly most likely tree configuration.")
     parser.add_argument('--time-marginal', default='false', choices = ['false', 'true', 'assign', 'always', 'only-final', 'never'],
-                        help="If 'false' or 'never', TreeTime uses the jointly most likely values for the divergence times. "
-                             "If 'true' and 'always' uses the marginal inference mode at every round of optimization, 'only-final' "
+                        help="For 'false' or 'never', TreeTime uses the jointly most likely values for the divergence times. "
+                             "For 'true' and 'always', it uses the marginal inference mode at every round of optimization, for 'only-final' "
                              "(or 'assign' for compatibility with previous versions) only uses the marginal "
                              "distribution in the final round.")
     parser.add_argument('--keep-polytomies', default=False, action='store_true',

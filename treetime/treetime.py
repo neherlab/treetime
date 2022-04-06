@@ -12,9 +12,13 @@ deprecated_rerooting_mechanisms = {"residual":"least-squares", "res":"least-squa
 
 
 def reduce_time_marginal_argument(input_time_marginal):
-    if input_time_marginal in ['false', 'never']:
+    '''
+    This function maps deprecated arguments/terms for the timetree inference mode
+    to recommended terms.
+    '''
+    if input_time_marginal in [False, 'false', 'never']:
         return 'never'
-    elif input_time_marginal in ['always', 'true']:
+    elif input_time_marginal in [True, 'always', 'true']:
         return 'always'
     elif input_time_marginal in ['only-final', 'assign']:
         return 'only-final'
@@ -153,7 +157,8 @@ class TreeTime(ClockTree):
                       "prune_short":kwargs.get("prune_short", True),
                       "reconstruct_tip_states":kwargs.get("reconstruct_tip_states", False)}
         time_marginal_method = reduce_time_marginal_argument(time_marginal) ## for backward compatibility
-        tt_kwargs = {'clock_rate':fixed_clock_rate, 'time_marginal':False if time_marginal_method in ['never', 'only-final', 'confidence-only'] else True}
+        tt_kwargs = {'clock_rate':fixed_clock_rate,
+                     'time_marginal':False if time_marginal_method in ['never', 'only-final', 'confidence-only'] else True}
         tt_kwargs.update(kwargs)
 
         seq_LH = 0
@@ -199,7 +204,7 @@ class TreeTime(ClockTree):
         self.LH =[[seq_LH, self.tree.positional_LH, 0]]
 
         if root is not None and max_iter:
-            new_root = self.reroot(root='least-squares' if root=='clock_filter' else root, clock_rate=fixed_clock_rate)
+            self.reroot(root='least-squares' if root=='clock_filter' else root, clock_rate=fixed_clock_rate)
             self.logger("###TreeTime.run: rerunning timetree after rerooting",0)
             self.make_time_tree(**tt_kwargs)
 

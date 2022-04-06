@@ -53,8 +53,8 @@ class ClockTree(TreeAnc):
             for long sequences with L>1e4
 
         precision_fft : int
-            When calculating the marginal distribution using the FFT approach the grid
-            size stays constant, to optimize the calculation the size is not
+            When calculating convolutions using the FFT approach a regular
+            discrete grid needs to be chosen. To optimize the calculation the size is not
             set to a fixed number but is determined by the FWHM of the distributions.
             The number of points desired to span the width of the FWHM of a distribution
             can be specified explicitly by precision_fft (default is 200).
@@ -68,10 +68,11 @@ class ClockTree(TreeAnc):
             introduced by shared ancestry.
 
         use_fft: boolean
-            If FFT used for calculation of convolution integrals
+            Use FFT for calculation of convolution integrals if true (default).
+            The alternative is kept to be able to reproduce previous behavior.
 
          **kwargs:
-            Key word argments needed to construct parent class (TreeAnc)
+            Key word arguments passed on to the parent class (TreeAnc)
 
         """
         super(ClockTree, self).__init__(*args, **kwargs)
@@ -201,6 +202,8 @@ class ClockTree(TreeAnc):
                 self.logger("ClockTree.init._set_precision_fft: setting fft grid size explicitly,"
                         " fft_grid_points=%.3e"%(precision_fft), 2)
                 self.fft_grid_size = precision_fft
+            elif precision_fft!='auto':
+                raise ValueError(f"ClockTree: precision_fft needs to be either 'auto' or an integer, got '{precision_fft}'.")
             else:
                 self.fft_grid_size = ttconf.FFT_FWHM_GRID_SIZE
             if type(precision_branch) is int:
