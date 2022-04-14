@@ -102,7 +102,8 @@ class Distribution(object):
             try:
                 peak = y_vals.min()
             except:
-                print("ERROR in distribution multiplication: Distributions do not overlap")
+                print("WARNING: Unexpected behavior detected in multipy function,"
+                        "if you see this error \n please let us know by filling an issue at: https://github.com/neherlab/treetime/issues")
                 x_vals = [0,1]
                 y_vals = [BIG_NUMBER,BIG_NUMBER]
                 res = Distribution(x_vals, y_vals, is_log=True,
@@ -111,7 +112,8 @@ class Distribution(object):
             ind = (y_vals-peak)<BIG_NUMBER/1000
             n_points = ind.sum()
             if n_points == 0:
-                print ("ERROR in distribution multiplication: Distributions do not overlap")
+                print("WARNING: Unexpected behavior detected in multipy function,"
+                        "if you see this error \n please let us know by filling an issue at: https://github.com/neherlab/treetime/issues")
                 x_vals = [0,1]
                 y_vals = [BIG_NUMBER,BIG_NUMBER]
                 res = Distribution(x_vals, y_vals, is_log=True,
