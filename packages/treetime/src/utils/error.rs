@@ -48,6 +48,17 @@ macro_rules! make_error {
 pub use make_error;
 
 #[macro_export(local_inner_macros)]
+macro_rules! make_report {
+  ($($arg:tt)*) => {
+    {
+      eyre::eyre!($($arg)*)
+    }
+  };
+}
+
+pub use make_report;
+
+#[macro_export(local_inner_macros)]
 macro_rules! make_internal_error {
   ($($arg:tt)*) => {
     {

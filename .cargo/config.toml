@@ -200,4 +200,8 @@ rustflags = [
   "-Aelided_lifetimes_in_paths",
   "-Aunused_imports",
   "-Aunused_variables",
+  #
+  # We'd like to use notation that is closer to scientific
+  # and it nol always matches snake case convention
+  "-Anon-snake-case"
 ]
