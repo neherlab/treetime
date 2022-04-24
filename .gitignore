@@ -97,3 +97,9 @@ ehthumbs.db
 Thumbs.db
 
 test/treetime_examples
+
+
+/\.build
+/\.cache
+/target
+/packages/**/target

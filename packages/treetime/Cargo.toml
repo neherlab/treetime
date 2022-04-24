@@ -1,0 +1,40 @@
+[package]
+name = "treetime"
+description = "Maximum-likelihood phylodynamic inference"
+version = "4.0.0"
+documentation = "https://treetime.readthedocs.io/en/stable/"
+homepage = "https://github.com/neherlab/treetime"
+edition = "2021"
+license = "MIT"
+publish = false
+keywords = ["phylogenetics", "phylogeography", "virus", "evolution"]
+
+
+[lib]
+crate-type = ["lib"]
+
+[dependencies]
+chrono = { version = "0.4.19", default-features = false, features = ["clock", "std"] }
+clap = { version = "3.1.8", features = ["derive"] }
+clap-verbosity-flag = "1.0.0"
+clap_complete = "3.1.1"
+clap_complete_fig = "3.1.4"
+color-eyre = "0.6.1"
+ctor = "0.1.22"
+env_logger = "0.9.0"
+eyre = "0.6.8"
+itertools = "0.10.3"
+lazy_static = "1.4.0"
+log = "0.4.16"
+owo-colors = "3.3.0"
+serde = { version = "1.0.136", features = ["derive"] }
+serde_json = { version = "1.0.79", features = ["preserve_order", "indexmap", "unbounded_depth"] }
+
+[target.'cfg(all(target_family = "linux", target_arch = "x86_64"))'.dependencies]
+mimalloc = { version = "0.1.28", default-features = false, optional = true }
+
+[dev-dependencies]
+criterion = { version = "0.3.5", features = ["html_reports"] }
+pretty_assertions = "1.2.1"
+rstest = "0.12.0"
+rstest_reuse = "0.3.0"
