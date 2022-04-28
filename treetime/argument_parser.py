@@ -154,6 +154,8 @@ def add_anc_arguments(parser):
     parser.add_argument('--zero-based', default = False, action='store_true', help='zero based mutation indexing')
     parser.add_argument('--reconstruct-tip-states', default = False, action='store_true', help='overwrite ambiguous states on tips with the most likely inferred state')
     parser.add_argument('--report-ambiguous', default=False, action="store_true", help='include transitions involving ambiguous states')
+    parser.add_argument('--method-anc', default='probabilistic', type=str, choices = ['parsimony', 'fitch', 'probabilistic', 'ml'],
+                        help="method uesed for reconstructing ancestral sequences, default is 'probabilistic'")
 
 
 def add_common_args(parser):
@@ -312,6 +314,7 @@ def make_parser():
     add_timetree_args(arg_parser)
     add_time_arguments(arg_parser)
     add_seq_len_aln_group(arg_parser)
+    add_anc_arguments(arg_parser)
 
     add_reroot_group(arg_parser)
     add_common_args(arg_parser)

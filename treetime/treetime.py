@@ -54,7 +54,8 @@ class TreeTime(ClockTree):
     def run(self, root=None, infer_gtr=True, relaxed_clock=None, n_iqd = None,
             resolve_polytomies=True, max_iter=0, Tc=None, fixed_clock_rate=None,
             time_marginal='never', sequence_marginal=False, branch_length_mode='auto',
-            vary_rate=False, use_covariation=False, tracelog_file=None, **kwargs):
+            vary_rate=False, use_covariation=False, tracelog_file=None, 
+            method_anc = 'probabilistic', **kwargs):
 
         """
         Run TreeTime reconstruction. Based on the input parameters, it divides
@@ -129,6 +130,11 @@ class TreeTime(ClockTree):
             regression ignoring phylogenetic covaration between nodes. If vary_rate is True,
             use_covariation is true by default
 
+        method_anc: str, optional
+            Which method should be used to reconstruct ancestral sequences. 
+            Supported values are "parsimony", "fitch", "probabilistic" and "ml". 
+            Default is "probabilistic"
+
         **kwargs
            Keyword arguments needed by the downstream functions
 
@@ -147,7 +153,6 @@ class TreeTime(ClockTree):
             raise MissingDataError("TreeTime.run: ERROR, alignment or tree are missing")
         if self.aln is None:
             branch_length_mode='input'
-
         self._set_branch_length_mode(branch_length_mode)
 
         # determine how to reconstruct and sample sequences
@@ -175,7 +180,7 @@ class TreeTime(ClockTree):
                     self.prune_short_branches()
         else:
             self.optimize_tree(infer_gtr=infer_gtr,
-                               max_iter=1, **seq_kwargs)
+                               max_iter=1, method_anc = method_anc, **seq_kwargs)
         avg_root_to_tip = np.mean([x.dist2root for x in self.tree.get_terminals()])
 
         # optionally reroot the tree either by oldest, best regression or with a specific leaf
@@ -193,7 +198,7 @@ class TreeTime(ClockTree):
             if self.aln:
                 self.infer_ancestral_sequences(**seq_kwargs)
         else:
-            self.optimize_tree(max_iter=1, **seq_kwargs)
+            self.optimize_tree(max_iter=1, method_anc = method_anc, **seq_kwargs)
 
         # infer time tree and optionally resolve polytomies
         self.logger("###TreeTime.run: INITIAL ROUND",0)
@@ -244,7 +249,7 @@ class TreeTime(ClockTree):
                 if n_resolved:
                     self.prepare_tree()
                     if self.branch_length_mode!='input': # otherwise reoptimize branch length while preserving branches without mutations
-                        self.optimize_tree(max_iter=0, **seq_kwargs)
+                        self.optimize_tree(max_iter=0, method_anc = method_anc,**seq_kwargs)
 
                     need_new_time_tree = True
 
