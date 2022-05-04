@@ -1285,9 +1285,8 @@ class TreeAnc(object):
         self.logger("Deprecation warning: 'optimize_seq_and_branch_len' will be removed and replaced by 'optimize_tree'!", 1, warn=True)
         self.optimize_tree(*args,**kwargs)
 
-    def optimize_tree(self,prune_short=True,
-                      marginal_sequences=False, branch_length_mode='joint',
-                      max_iter=5, infer_gtr=False, pc=1.0, **kwargs):
+    def optimize_tree(self,prune_short=True, marginal_sequences=False, branch_length_mode='joint',
+                      max_iter=5, infer_gtr=False, pc=1.0, method_anc='probabilistic', **kwargs):
         """
         Iteratively set branch lengths and reconstruct ancestral sequences until
         the values of either former or latter do not change. The algorithm assumes
@@ -1322,6 +1321,9 @@ class TreeAnc(object):
          infer_gtr : bool
             Infer a GTR model from the observed substitutions.
 
+         method_anc: str
+            Which method should be used to reconstruct ancestral sequences. 
+            Supported values are "parsimony", "fitch", "probabilistic" and "ml"
         """
         if branch_length_mode=='marginal':
             self.optimize_tree_marginal(max_iter=max_iter, infer_gtr=infer_gtr, pc=pc, **kwargs)
@@ -1329,7 +1331,7 @@ class TreeAnc(object):
                 self.prune_short_branches()
             return ttconf.SUCCESS
         elif branch_length_mode=='input':
-            N_diff = self.reconstruct_anc(method='probabilistic', infer_gtr=infer_gtr, pc=pc,
+            N_diff = self.reconstruct_anc(method=method_anc, infer_gtr=infer_gtr, pc=pc,
                                           marginal=marginal_sequences, **kwargs)
             if prune_short:
                 self.prune_short_branches()
@@ -1338,7 +1340,7 @@ class TreeAnc(object):
             raise UnknownMethodError("TreeAnc.optimize_tree: `branch_length_mode` should be in ['marginal', 'joint', 'input']")
 
         self.logger("TreeAnc.optimize_tree: sequences...", 1)
-        N_diff = self.reconstruct_anc(method='probabilistic', infer_gtr=infer_gtr, pc=pc,
+        N_diff = self.reconstruct_anc(method=method_anc, infer_gtr=infer_gtr, pc=pc,
                                       marginal=marginal_sequences, **kwargs)
         self.optimize_branch_len(verbose=0, store_old=False, mode=branch_length_mode)
 
@@ -1347,7 +1349,7 @@ class TreeAnc(object):
             n += 1
             if prune_short:
                 self.prune_short_branches()
-            N_diff = self.reconstruct_anc(method='probabilistic', infer_gtr=False,
+            N_diff = self.reconstruct_anc(method=method_anc, infer_gtr=False,
                                           marginal=marginal_sequences, **kwargs)
 
             self.logger("TreeAnc.optimize_tree: Iteration %d."
