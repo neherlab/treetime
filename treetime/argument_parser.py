@@ -288,7 +288,7 @@ def make_parser():
     c_parser = subparsers.add_parser('clock',
             description="Calculates the root-to-tip regression and quantifies the 'clock-i-ness' of the tree. "
                         "It will reroot the tree to maximize the clock-like "
-                        "signal and recalculate branch length unless run with --keep_root.")
+                        "signal and recalculate branch length unless run with --keep-root.")
     c_parser.add_argument('--tree', required=True, type=str,  help=tree_description)
     add_time_arguments(c_parser)
     add_seq_len_aln_group(c_parser)
