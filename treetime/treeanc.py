@@ -376,7 +376,7 @@ class TreeAnc(object):
         for l in self.tree.find_clades():
             if hasattr(l, 'branch_state'): del l.branch_state
             if l.name not in self.data.compressed_alignment and l.is_terminal():
-                self.logger("***WARNING: TreeAnc._attach_sequences_to_nodes: NO SEQUENCE FOR LEAF: %s" % l.name, 0, warn=True)
+                self.logger("***WARNING: TreeAnc._check_alignment_tree_gtr_consistency: NO SEQUENCE FOR LEAF: '%s'" % l.name, 0, warn=True)
                 failed_leaves += 1
                 if not self.ignore_missing_alns and failed_leaves > self.tree.count_terminals()/3:
                     raise MissingDataError("TreeAnc._check_alignment_tree_gtr_consistency: At least 30\\% terminal nodes cannot be assigned a sequence!\n"
@@ -1322,7 +1322,7 @@ class TreeAnc(object):
             Infer a GTR model from the observed substitutions.
 
          method_anc: str
-            Which method should be used to reconstruct ancestral sequences. 
+            Which method should be used to reconstruct ancestral sequences.
             Supported values are "parsimony", "fitch", "probabilistic" and "ml"
         """
         if branch_length_mode=='marginal':
