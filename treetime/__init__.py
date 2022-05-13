@@ -1,4 +1,4 @@
-version="0.9.0-b.2"
+version="0.9.0"
 
 class TreeTimeError(Exception):
     """TreeTimeError class"""

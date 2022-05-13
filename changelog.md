@@ -1,4 +1,4 @@
-# 0.9.0-b1
+# 0.9.0
 
 This release contains several major changes to how TreeTime calculates time scaled phylogenies.
 Most of this is work by @anna-parker!
@@ -11,6 +11,7 @@ Most of this is work by @anna-parker!
    This should not change the results in any way, but cleans up the code.
  * The number concurrent of lineages determines the rate of coalescence.
    This can now optionally be calculated using the uncertainty of the timing of merger events, instead of the step functions used previously.
+ * Adds a subcommand to read in ancestral reassortment graphs of two segments produced by [TreeKnit](https://github.com/PierreBarrat/TreeKnit.jl). This command takes two trees and a file with MCCs inferred by TreeKnit. See [these docs](https://treetime.readthedocs.io/en/latest/commands.html#arg) for command line usage.
 
 # 0.8.6
  * optionally allow incomplete alignment [PR #178](https://github.com/neherlab/treetime/pull/178)
