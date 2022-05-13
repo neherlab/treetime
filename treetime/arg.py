@@ -61,7 +61,7 @@ def parse_arg(tree1, tree2, aln1, aln2, MCC_file, fill_overhangs=True):
 
 
 def setup_arg(T, aln, total_mask, segment_mask, dates, MCCs, gtr='JC69',
-              verbose=0, fill_overhangs=True, reroot=True, fixed_clock_rate=None):
+              verbose=0, fill_overhangs=True, reroot=True, fixed_clock_rate=None, **kwargs):
     """construct a TreeTime object with the appropriate masks on each node
     for branch length optimization with full or segment only alignment.
 
@@ -83,9 +83,9 @@ def setup_arg(T, aln, total_mask, segment_mask, dates, MCCs, gtr='JC69',
     from treetime import TreeTime
 
     tt = TreeTime(dates=dates, tree=T,
-                  aln=aln, gtr=gtr, verbose=verbose,
+                  aln=aln, gtr=gtr, alphabet='nuc', verbose=verbose,
                   fill_overhangs=fill_overhangs, keep_node_order=True,
-                  compress=False)
+                  compress=False, **kwargs)
 
 
     if reroot:
