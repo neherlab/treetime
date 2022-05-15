@@ -12,7 +12,7 @@ with other functionalities available as subcommands
 
 .. code:: bash
 
-  treetime {ancestral, clock, homoplasy, mugration, version}
+  treetime {ancestral, clock, homoplasy, mugration, arg, version}
 
 
 TreeTime can use full alignments in `fasta` or `phylip` format or work of VCF files.
