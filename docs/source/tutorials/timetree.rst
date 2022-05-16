@@ -10,7 +10,7 @@ This tutorial uses data provided in the github repository `github.com/neherlab/t
    treetime --tree data/h3n2_na/h3n2_na_20.nwk --dates data/h3n2_na/h3n2_na_20.metadata.csv --aln data/h3n2_na/h3n2_na_20.fasta --outdir h3n2_timetree
 
 The tree can be in newick or nexus format, the alignment in fasta or phylip, and the dates should be given as a tsv or csv file.
-TreeTime will attempt to parse dates, preferred formats are are "%Y-%m-%d" or numerical as in 2016.45.
+TreeTime will attempt to parse dates, preferred formats are "%Y-%m-%d" or numerical as in YYYY.F (where 'F' is the fraction of the year that has passed, in days. For example 2016.04918 means that 18/366 days of 2016 have passed). 
 This command will estimate an GTR model, a molecular clock model, and a time-stamped phylogeny.
 The results are saved to several files in the directory specified as `outdir` and printed to standard out:
 
@@ -63,7 +63,7 @@ The results are saved to several files in the directory specified as `outdir` an
    --- root-to-tip plot saved to
        h3n2_timetree/root_to_tip_regression.pdf
 
-Other output files include an alignment with reconstructed ancestral sequences, an annotated tree in nexus format in which branch length correspond to years and mutations and node dates are added as comments to each node.
+Other output files include an alignment with reconstructed ancestral sequences, an annotated tree in nexus format in which branch length correspond to years and mutations and node dates (in the numeric format detailed above) are added as comments to each node.
 In addition, the root-to-tip vs time regression and the tree are drawn and saved to file.
 
 
