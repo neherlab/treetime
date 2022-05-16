@@ -86,7 +86,7 @@ class SeqGen(TreeAnc):
         from Bio.Align import MultipleSeqAlignment
 
         tmp = []
-        for n in self.tree.get_terminals():
+        for n in self.tree.find_clades():
             if n.is_terminal() or internal:
                 tmp.append(SeqRecord.SeqRecord(id=n.name, name=n.name, description='', seq=Seq.Seq(''.join(n.ancestral_sequence.astype('U')))))
 
