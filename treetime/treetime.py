@@ -54,7 +54,7 @@ class TreeTime(ClockTree):
     def run(self, root=None, infer_gtr=True, relaxed_clock=None, n_iqd = None,
             resolve_polytomies=True, max_iter=0, Tc=None, fixed_clock_rate=None,
             time_marginal='never', sequence_marginal=False, branch_length_mode='auto',
-            vary_rate=False, use_covariation=False, tracelog_file=None, 
+            vary_rate=False, use_covariation=False, tracelog_file=None,
             method_anc = 'probabilistic', **kwargs):
 
         """
@@ -75,7 +75,7 @@ class TreeTime(ClockTree):
         infer_gtr : bool
            If True, infer GTR model
 
-        relaxed_clock : dic
+        relaxed_clock : dict
            If not None, use autocorrelated molecular clock model. Specify the
            clock parameters as :code:`{slack:<slack>, coupling:<coupling>}` dictionary.
 
@@ -131,8 +131,8 @@ class TreeTime(ClockTree):
             use_covariation is true by default
 
         method_anc: str, optional
-            Which method should be used to reconstruct ancestral sequences. 
-            Supported values are "parsimony", "fitch", "probabilistic" and "ml". 
+            Which method should be used to reconstruct ancestral sequences.
+            Supported values are "parsimony", "fitch", "probabilistic" and "ml".
             Default is "probabilistic"
 
         **kwargs

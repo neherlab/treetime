@@ -420,7 +420,7 @@ class ClockTree(TreeAnc):
                 node.joint_pos_Lx = None
                 node.joint_pos_Cx = None
             else: # all other nodes
-                if node.date_constraint is not None and node.date_constraint.is_delta: # there is a time constraint
+                if node.date_constraint is not None and node.date_constraint.is_delta: # there is a strict time constraint
                     # subtree probability given the position of the parent node
                     # Lx.x is the position of the parent node
                     # Lx.y is the probablity of the subtree (consisting of one terminal node in this case)
@@ -446,7 +446,10 @@ class ClockTree(TreeAnc):
                     ## resulting in the exponent (k-1))
                     if hasattr(self, 'merger_model') and self.merger_model:
                         time_points = np.unique(np.concatenate([msg.x for msg in msgs_to_multiply]))
-                        msgs_to_multiply.append(self.merger_model.node_contribution(node, time_points))
+                        if node.is_terminal():
+                            msgs_to_multiply.append(Distribution(time_points, -self.merger_model.integral_merger_rate(time_points), is_log=True))
+                        else:
+                            msgs_to_multiply.append(self.merger_model.node_contribution(node, time_points))
 
                     # msgs_to_multiply combined returns the subtree likelihood given the node's constraint and child messages
                     if len(msgs_to_multiply) == 0: # there are no constraints
@@ -630,7 +633,10 @@ class ClockTree(TreeAnc):
                     if hasattr(self, 'merger_model') and self.merger_model:
                         time_points = np.unique(np.concatenate([msg.x for msg in msgs_to_multiply]))
                         # set multiplicity of node to number of good child branches
-                        msgs_to_multiply.append(self.merger_model.node_contribution(node, time_points))
+                        if node.is_terminal():
+                            msgs_to_multiply.append(Distribution(time_points, -self.merger_model.integral_merger_rate(time_points), is_log=True))
+                        else:
+                            msgs_to_multiply.append(self.merger_model.node_contribution(node, time_points))
 
                     # combine the different msgs and constraints
                     if len(msgs_to_multiply)==0:
