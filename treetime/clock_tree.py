@@ -423,7 +423,7 @@ class ClockTree(TreeAnc):
                 if node.date_constraint is not None and node.date_constraint.is_delta: # there is a strict time constraint
                     # subtree probability given the position of the parent node
                     # Lx.x is the position of the parent node
-                    # Lx.y is the probablity of the subtree (consisting of one terminal node in this case)
+                    # Lx.y is the probability of the subtree (consisting of one terminal node in this case)
                     # Cx.y is the branch length corresponding the optimal subtree
                     bl = node.branch_length_interpolator.x
                     x = bl + node.date_constraint.peak_pos

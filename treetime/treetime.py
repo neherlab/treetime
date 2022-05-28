@@ -2,7 +2,7 @@ import numpy as np
 from scipy import optimize as sciopt
 from Bio import Phylo
 from . import config as ttconf
-from . import MissingDataError,UnknownMethodError,NotReadyError
+from . import MissingDataError,UnknownMethodError,NotReadyError,TreeTimeError
 from .utils import tree_layout
 from .clock_tree import ClockTree
 
@@ -55,7 +55,7 @@ class TreeTime(ClockTree):
             resolve_polytomies=True, max_iter=0, Tc=None, fixed_clock_rate=None,
             time_marginal='never', sequence_marginal=False, branch_length_mode='auto',
             vary_rate=False, use_covariation=False, tracelog_file=None,
-            method_anc = 'probabilistic', **kwargs):
+            method_anc = 'probabilistic', assign_gamma=None, **kwargs):
 
         """
         Run TreeTime reconstruction. Based on the input parameters, it divides
@@ -172,6 +172,9 @@ class TreeTime(ClockTree):
         if "do_marginal" in kwargs:
             time_marginal=kwargs["do_marginal"]
 
+        if assign_gamma and relaxed_clock:
+            raise TreeTimeError("assign_gamma and relaxed clock are incompatible arguments")
+
         # initially, infer ancestral sequences and infer gtr model if desired
         if self.branch_length_mode=='input':
             if self.aln:
@@ -250,8 +253,12 @@ class TreeTime(ClockTree):
                     self.prepare_tree()
                     if self.branch_length_mode!='input': # otherwise reoptimize branch length while preserving branches without mutations
                         self.optimize_tree(max_iter=0, method_anc = method_anc,**seq_kwargs)
-
                     need_new_time_tree = True
+
+
+            if assign_gamma:
+                assign_gamma(self.tree)
+                need_new_time_tree = True
 
             if need_new_time_tree:
                 self.make_time_tree(**tt_kwargs)
@@ -278,6 +285,9 @@ class TreeTime(ClockTree):
             if ndiff==0 and n_resolved==0 and Tc!='skyline':
                 self.logger("###TreeTime.run: CONVERGED",0)
                 break
+
+        if self.branch_length_mode!='input': # otherwise reoptimize branch length while preserving branches without mutations
+            self.optimize_tree(max_iter=0, method_anc = method_anc,**seq_kwargs)
 
         # if the rate is too be varied and the rate estimate has a valid confidence interval
         # rerun the estimation for variations of the rate
