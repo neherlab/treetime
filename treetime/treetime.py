@@ -158,7 +158,7 @@ class TreeTime(ClockTree):
         # determine how to reconstruct and sample sequences
         seq_kwargs = {"marginal_sequences":sequence_marginal or (self.branch_length_mode=='marginal'),
                       "branch_length_mode": self.branch_length_mode,
-                      "sample_from_profile":"root",
+                      "sample_from_profile": "root",
                       "prune_short":kwargs.get("prune_short", True),
                       "reconstruct_tip_states":kwargs.get("reconstruct_tip_states", False)}
         time_marginal_method = reduce_time_marginal_argument(time_marginal) ## for backward compatibility
@@ -250,6 +250,7 @@ class TreeTime(ClockTree):
                 # if polytomies are found, rerun the entire procedure
                 n_resolved = self.resolve_polytomies()
                 if n_resolved:
+                    seq_kwargs['prune_short']=False
                     self.prepare_tree()
                     if self.branch_length_mode!='input': # otherwise reoptimize branch length while preserving branches without mutations
                         self.optimize_tree(max_iter=0, method_anc = method_anc,**seq_kwargs)
@@ -286,8 +287,6 @@ class TreeTime(ClockTree):
                 self.logger("###TreeTime.run: CONVERGED",0)
                 break
 
-        if self.branch_length_mode!='input': # otherwise reoptimize branch length while preserving branches without mutations
-            self.optimize_tree(max_iter=0, method_anc = method_anc,**seq_kwargs)
 
         # if the rate is too be varied and the rate estimate has a valid confidence interval
         # rerun the estimation for variations of the rate
@@ -310,6 +309,9 @@ class TreeTime(ClockTree):
             self.trace_run.append(self.tracelog_run(niter=niter+1, ndiff=0, n_resolved=0,
                                       time_marginal=tt_kwargs['time_marginal'],
                                       sequence_marginal=seq_kwargs['marginal_sequences'], Tc=Tc, tracelog=tracelog_file))
+
+        if self.branch_length_mode!='input': # otherwise reoptimize branch length while preserving branches without mutations
+            self.optimize_tree(max_iter=0, method_anc = method_anc,**seq_kwargs)
 
         # explicitly print out which branches are bad and whose dates don't correspond to the input dates
         bad_branches =[n for n in self.tree.get_terminals()

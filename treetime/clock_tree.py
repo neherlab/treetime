@@ -546,7 +546,7 @@ class ClockTree(TreeAnc):
         Return the likelihood of the data given the current branch length in the tree
         '''
         if time_marginal:
-            LH =  -self.tree.root.marginal_pos_LH.peak_val
+            LH = self.tree.root.marginal_pos_LH.integrate(return_log=True, a=self.tree.root.marginal_pos_LH.xmin, b=self.tree.root.marginal_pos_LH.xmax, n=1000)
         else:
             LH = 0
             for node in self.tree.find_clades(order='preorder'):  # sum the likelihood contributions of all branches
@@ -736,7 +736,7 @@ class ClockTree(TreeAnc):
                     node.marginal_pos_LH = NodeInterpolator.multiply((node.msg_from_parent, node.subtree_distribution))
 
                 self.logger('ClockTree._ml_t_root_to_leaves: computed convolution'
-                                ' with %d points at node %s'%(len(res.x),node.name),4)
+                                ' with %d points at node %s'%(len(res.x),node.name), 4)
 
                 if self.debug:
                     tmp = np.diff(res.y-res.peak_val)
@@ -795,10 +795,10 @@ class ClockTree(TreeAnc):
                 if not hasattr(node, "bad_branch") or node.bad_branch is False:
                     self.logger("ClockTree.convert_dates -- WARNING: The node is later than today, but it is not "
                         "marked as \"BAD\", which indicates the error in the "
-                        "likelihood optimization.",4 , warn=True)
+                        "likelihood optimization.", 4, warn=True)
                 else:
                     self.logger("ClockTree.convert_dates -- WARNING: node which is marked as \"BAD\" optimized "
-                        "later than present day",4 , warn=True)
+                        "later than present day", 4, warn=True)
 
             node.numdate = now - years_bp
             node.date = datestring_from_numeric(node.numdate)
