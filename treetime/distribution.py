@@ -339,7 +339,7 @@ class Distribution(object):
             self._xmax = factor*tmp
             self._func.x = self._func.x[::-1]
             self._func.y = self._func.y[::-1]
-            self._fwhm *= -factor
+            self._fwhm *= factor
             self._effective_support = [x*factor for x in self._effective_support[::-1]]
 
 

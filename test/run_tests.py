@@ -2,6 +2,8 @@ from test_treetime import *
 
 test_import_short()
 
+test_assign_gamma()
+
 test_GTR()
 
 test_ancestral()
