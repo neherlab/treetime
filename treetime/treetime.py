@@ -2,7 +2,7 @@ import numpy as np
 from scipy import optimize as sciopt
 from Bio import Phylo
 from . import config as ttconf
-from . import MissingDataError,UnknownMethodError,NotReadyError
+from . import MissingDataError,UnknownMethodError,NotReadyError,TreeTimeError
 from .utils import tree_layout
 from .clock_tree import ClockTree
 
@@ -54,8 +54,8 @@ class TreeTime(ClockTree):
     def run(self, root=None, infer_gtr=True, relaxed_clock=None, n_iqd = None,
             resolve_polytomies=True, max_iter=0, Tc=None, fixed_clock_rate=None,
             time_marginal='never', sequence_marginal=False, branch_length_mode='auto',
-            vary_rate=False, use_covariation=False, tracelog_file=None, 
-            method_anc = 'probabilistic', **kwargs):
+            vary_rate=False, use_covariation=False, tracelog_file=None,
+            method_anc = 'probabilistic', assign_gamma=None, **kwargs):
 
         """
         Run TreeTime reconstruction. Based on the input parameters, it divides
@@ -75,7 +75,7 @@ class TreeTime(ClockTree):
         infer_gtr : bool
            If True, infer GTR model
 
-        relaxed_clock : dic
+        relaxed_clock : dict
            If not None, use autocorrelated molecular clock model. Specify the
            clock parameters as :code:`{slack:<slack>, coupling:<coupling>}` dictionary.
 
@@ -131,9 +131,13 @@ class TreeTime(ClockTree):
             use_covariation is true by default
 
         method_anc: str, optional
-            Which method should be used to reconstruct ancestral sequences. 
-            Supported values are "parsimony", "fitch", "probabilistic" and "ml". 
+            Which method should be used to reconstruct ancestral sequences.
+            Supported values are "parsimony", "fitch", "probabilistic" and "ml".
             Default is "probabilistic"
+
+        assign_gamma: callable, optional
+            function to specify gamma (branch length scaling, local clock rate modifier) 
+            for each branch in tree, not compatible with a relaxed clock model
 
         **kwargs
            Keyword arguments needed by the downstream functions
@@ -158,7 +162,7 @@ class TreeTime(ClockTree):
         # determine how to reconstruct and sample sequences
         seq_kwargs = {"marginal_sequences":sequence_marginal or (self.branch_length_mode=='marginal'),
                       "branch_length_mode": self.branch_length_mode,
-                      "sample_from_profile":"root",
+                      "sample_from_profile": "root",
                       "prune_short":kwargs.get("prune_short", True),
                       "reconstruct_tip_states":kwargs.get("reconstruct_tip_states", False)}
         time_marginal_method = reduce_time_marginal_argument(time_marginal) ## for backward compatibility
@@ -171,6 +175,9 @@ class TreeTime(ClockTree):
             seq_kwargs["fixed_pi"] = kwargs["fixed_pi"]
         if "do_marginal" in kwargs:
             time_marginal=kwargs["do_marginal"]
+
+        if assign_gamma and relaxed_clock:
+            raise TreeTimeError("assign_gamma and relaxed clock are incompatible arguments")
 
         # initially, infer ancestral sequences and infer gtr model if desired
         if self.branch_length_mode=='input':
@@ -247,11 +254,15 @@ class TreeTime(ClockTree):
                 # if polytomies are found, rerun the entire procedure
                 n_resolved = self.resolve_polytomies()
                 if n_resolved:
+                    seq_kwargs['prune_short']=False
                     self.prepare_tree()
                     if self.branch_length_mode!='input': # otherwise reoptimize branch length while preserving branches without mutations
                         self.optimize_tree(max_iter=0, method_anc = method_anc,**seq_kwargs)
-
                     need_new_time_tree = True
+            if assign_gamma and callable(assign_gamma):
+                self.logger("### assigning gamma",1)
+                assign_gamma(self.tree)
+                need_new_time_tree = True
 
             if need_new_time_tree:
                 self.make_time_tree(**tt_kwargs)
@@ -279,6 +290,7 @@ class TreeTime(ClockTree):
                 self.logger("###TreeTime.run: CONVERGED",0)
                 break
 
+
         # if the rate is too be varied and the rate estimate has a valid confidence interval
         # rerun the estimation for variations of the rate
         if vary_rate:
@@ -300,6 +312,9 @@ class TreeTime(ClockTree):
             self.trace_run.append(self.tracelog_run(niter=niter+1, ndiff=0, n_resolved=0,
                                       time_marginal=tt_kwargs['time_marginal'],
                                       sequence_marginal=seq_kwargs['marginal_sequences'], Tc=Tc, tracelog=tracelog_file))
+
+        if self.branch_length_mode!='input': # otherwise reoptimize branch length while preserving branches without mutations
+            self.optimize_tree(max_iter=0, method_anc = method_anc,**seq_kwargs)
 
         # explicitly print out which branches are bad and whose dates don't correspond to the input dates
         bad_branches =[n for n in self.tree.get_terminals()

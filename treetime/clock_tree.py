@@ -420,10 +420,10 @@ class ClockTree(TreeAnc):
                 node.joint_pos_Lx = None
                 node.joint_pos_Cx = None
             else: # all other nodes
-                if node.date_constraint is not None and node.date_constraint.is_delta: # there is a time constraint
+                if node.date_constraint is not None and node.date_constraint.is_delta: # there is a strict time constraint
                     # subtree probability given the position of the parent node
                     # Lx.x is the position of the parent node
-                    # Lx.y is the probablity of the subtree (consisting of one terminal node in this case)
+                    # Lx.y is the probability of the subtree (consisting of one terminal node in this case)
                     # Cx.y is the branch length corresponding the optimal subtree
                     bl = node.branch_length_interpolator.x
                     x = bl + node.date_constraint.peak_pos
@@ -446,7 +446,10 @@ class ClockTree(TreeAnc):
                     ## resulting in the exponent (k-1))
                     if hasattr(self, 'merger_model') and self.merger_model:
                         time_points = np.unique(np.concatenate([msg.x for msg in msgs_to_multiply]))
-                        msgs_to_multiply.append(self.merger_model.node_contribution(node, time_points))
+                        if node.is_terminal():
+                            msgs_to_multiply.append(Distribution(time_points, -self.merger_model.integral_merger_rate(time_points), is_log=True))
+                        else:
+                            msgs_to_multiply.append(self.merger_model.node_contribution(node, time_points))
 
                     # msgs_to_multiply combined returns the subtree likelihood given the node's constraint and child messages
                     if len(msgs_to_multiply) == 0: # there are no constraints
@@ -543,7 +546,7 @@ class ClockTree(TreeAnc):
         Return the likelihood of the data given the current branch length in the tree
         '''
         if time_marginal:
-            LH =  -self.tree.root.marginal_pos_LH.peak_val
+            LH = self.tree.root.marginal_pos_LH.integrate(return_log=True, a=self.tree.root.marginal_pos_LH.xmin, b=self.tree.root.marginal_pos_LH.xmax, n=1000)
         else:
             LH = 0
             for node in self.tree.find_clades(order='preorder'):  # sum the likelihood contributions of all branches
@@ -630,7 +633,10 @@ class ClockTree(TreeAnc):
                     if hasattr(self, 'merger_model') and self.merger_model:
                         time_points = np.unique(np.concatenate([msg.x for msg in msgs_to_multiply]))
                         # set multiplicity of node to number of good child branches
-                        msgs_to_multiply.append(self.merger_model.node_contribution(node, time_points))
+                        if node.is_terminal():
+                            msgs_to_multiply.append(Distribution(time_points, -self.merger_model.integral_merger_rate(time_points), is_log=True))
+                        else:
+                            msgs_to_multiply.append(self.merger_model.node_contribution(node, time_points))
 
                     # combine the different msgs and constraints
                     if len(msgs_to_multiply)==0:
@@ -730,7 +736,7 @@ class ClockTree(TreeAnc):
                     node.marginal_pos_LH = NodeInterpolator.multiply((node.msg_from_parent, node.subtree_distribution))
 
                 self.logger('ClockTree._ml_t_root_to_leaves: computed convolution'
-                                ' with %d points at node %s'%(len(res.x),node.name),4)
+                                ' with %d points at node %s'%(len(res.x),node.name), 4)
 
                 if self.debug:
                     tmp = np.diff(res.y-res.peak_val)
@@ -789,10 +795,10 @@ class ClockTree(TreeAnc):
                 if not hasattr(node, "bad_branch") or node.bad_branch is False:
                     self.logger("ClockTree.convert_dates -- WARNING: The node is later than today, but it is not "
                         "marked as \"BAD\", which indicates the error in the "
-                        "likelihood optimization.",4 , warn=True)
+                        "likelihood optimization.", 4, warn=True)
                 else:
                     self.logger("ClockTree.convert_dates -- WARNING: node which is marked as \"BAD\" optimized "
-                        "later than present day",4 , warn=True)
+                        "later than present day", 4, warn=True)
 
             node.numdate = now - years_bp
             node.date = datestring_from_numeric(node.numdate)

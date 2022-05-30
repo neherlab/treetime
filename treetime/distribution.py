@@ -293,7 +293,7 @@ class Distribution(object):
                 d = y1-y2
                 right = -x1*y2/d + x2*y1/d
         except:
-            raise ArithmeticError("Region of support of the distribution couldn'n be determined!")
+            raise ArithmeticError("Region of support of the distribution could not be determined!")
 
         return (left,right)
 
@@ -331,12 +331,16 @@ class Distribution(object):
         if factor>=0:
             self._xmin*=factor
             self._xmax*=factor
+            self._fwhm*=factor
+            self._effective_support = [x*factor for x in self._effective_support]
         else:
             tmp = self.xmin
             self._xmin = factor*self.xmax
             self._xmax = factor*tmp
             self._func.x = self._func.x[::-1]
             self._func.y = self._func.y[::-1]
+            self._fwhm *= -factor
+            self._effective_support = [x*factor for x in self._effective_support[::-1]]
 
 
     def integrate(self, return_log=False ,**kwargs):

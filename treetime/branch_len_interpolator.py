@@ -109,24 +109,10 @@ class BranchLenInterpolator (Distribution):
 
     @gamma.setter
     def gamma(self, value):
-        self._gamma = max(ttconf.TINY_NUMBER, value)
-
-
-    @property
-    def peak_pos(self):
-        return super(BranchLenInterpolator,self).peak_pos/self.gamma
-
-    @property
-    def support(self):
-        return self._support/self.gamma
-
-    @property
-    def fwhm(self):
-        return super(BranchLenInterpolator,self).fwhm/self.gamma
-
-    @property
-    def effective_support(self):
-        return tuple((x/self.gamma for x in super(BranchLenInterpolator,self).effective_support))
+        new_gamma = max(ttconf.TINY_NUMBER, value)
+        ratio = self._gamma/new_gamma
+        self.x_rescale(ratio)
+        self._gamma = new_gamma
 
     def __mul__(self, other):
         res = BranchLenInterpolator(super(BranchLenInterpolator, self).__mul__(other), gtr=self.gtr)

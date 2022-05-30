@@ -186,7 +186,7 @@ class Coalescent(object):
     def branch_merger_rate(self, t):
         '''
         rate at which one particular branch merges with any other branch at time t,
-        in the Kingsman model this is: :math:`\kappa(t) = (k(t)-1)/(2Tc(t))`
+        in the Kingman model this is: :math:`\kappa(t) = (k(t)-1)/(2Tc(t))`
         '''
         # note that we always have a positive merger rate by capping the
         # number of branches at 0.5 from below. in these regions, the
@@ -196,7 +196,7 @@ class Coalescent(object):
     def total_merger_rate(self, t):
         '''
         rate at which any branch merges with any other branch at time t,
-        in the Kingsman model this is: :math:`\lambda(t) = k(t)(k(t)-1)/(2Tc(t))`
+        in the Kingman model this is: :math:`\lambda(t) = k(t)(k(t)-1)/(2Tc(t))`
         '''
         # note that we always have a positive merger rate by capping the
         # number of branches at 0.5 from below. in these regions, the
@@ -234,6 +234,7 @@ class Coalescent(object):
         from treetime.node_interpolator import NodeInterpolator
         if multiplicity is None:
             multiplicity = len(node.clades)
+        # the number of mergers is 'number of children' - 1
         multiplicity -= 1.0
         y = (self.integral_merger_rate(t) - np.log(self.total_merger_rate(t)))*multiplicity
         return NodeInterpolator(t, y, is_log=True)
