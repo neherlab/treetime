@@ -135,6 +135,10 @@ class TreeTime(ClockTree):
             Supported values are "parsimony", "fitch", "probabilistic" and "ml".
             Default is "probabilistic"
 
+        assign_gamma: callable, optional
+            function to specify gamma (branch length scaling, local clock rate modifier) 
+            for each branch in tree, not compatible with a relaxed clock model
+
         **kwargs
            Keyword arguments needed by the downstream functions
 
@@ -255,9 +259,8 @@ class TreeTime(ClockTree):
                     if self.branch_length_mode!='input': # otherwise reoptimize branch length while preserving branches without mutations
                         self.optimize_tree(max_iter=0, method_anc = method_anc,**seq_kwargs)
                     need_new_time_tree = True
-
-
-            if assign_gamma:
+            if assign_gamma and callable(assign_gamma):
+                self.logger("### assigning gamma",1)
                 assign_gamma(self.tree)
                 need_new_time_tree = True
 
