@@ -184,7 +184,6 @@ class TreeTime(ClockTree):
         else:
             self.optimize_tree(infer_gtr=infer_gtr,
                                max_iter=1, method_anc = method_anc, **seq_kwargs)
-        avg_root_to_tip = np.mean([x.dist2root for x in self.tree.get_terminals()])
 
         # optionally reroot the tree either by oldest, best regression or with a specific leaf
         if n_iqd or root=='clock_filter':
@@ -211,9 +210,15 @@ class TreeTime(ClockTree):
             seq_LH = self.tree.sequence_marginal_LH if seq_kwargs['marginal_sequences'] else self.tree.sequence_joint_LH
         self.LH =[[seq_LH, self.tree.positional_LH, 0]]
 
+        # if we reroot, repeat rerooting after initial clock-filter/time tree
+        # re-optimize branch length, and update time tree
         if root is not None and max_iter:
             self.reroot(root='least-squares' if root=='clock_filter' else root, clock_rate=fixed_clock_rate)
             self.logger("###TreeTime.run: rerunning timetree after rerooting",0)
+
+            if self.branch_length_mode!='input':
+                self.optimize_tree(max_iter=0, method_anc = method_anc,**seq_kwargs)
+
             self.make_time_tree(**tt_kwargs)
 
         # iteratively reconstruct ancestral sequences and re-infer
@@ -309,9 +314,6 @@ class TreeTime(ClockTree):
             self.trace_run.append(self.tracelog_run(niter=niter+1, ndiff=0, n_resolved=0,
                                       time_marginal=tt_kwargs['time_marginal'],
                                       sequence_marginal=seq_kwargs['marginal_sequences'], Tc=Tc, tracelog=tracelog_file))
-
-        if self.branch_length_mode!='input': # otherwise reoptimize branch length while preserving branches without mutations
-            self.optimize_tree(max_iter=0, method_anc = method_anc,**seq_kwargs)
 
         # explicitly print out which branches are bad and whose dates don't correspond to the input dates
         bad_branches =[n for n in self.tree.get_terminals()
