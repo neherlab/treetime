@@ -1221,14 +1221,14 @@ class TreeAnc(object):
 
     def optimize_tree_marginal(self, max_iter=10, infer_gtr=False, pc=1.0, damping=0.75,
                                LHtol=0.1, site_specific_gtr=False, **kwargs):
-        self.infer_ancestral_sequences(marginal=True)
+        self.infer_ancestral_sequences(marginal=True, **kwargs)
         oldLH = self.sequence_LH()
         self.logger("TreeAnc.optimize_tree_marginal: initial, LH=%1.2f, total branch_length %1.4f"%
                     (oldLH, self.tree.total_branch_length()), 2)
         for i in range(max_iter):
             if infer_gtr:
                 self.infer_gtr(site_specific=site_specific_gtr, marginal=True, normalized_rate=True, pc=pc)
-                self.infer_ancestral_sequences(marginal=True)
+                self.infer_ancestral_sequences(marginal=True, **kwargs)
 
             old_bl = self.tree.total_branch_length()
             tol = 1e-8 + 0.01**(i+1)
@@ -1252,12 +1252,15 @@ class TreeAnc(object):
 
                     n1.branch_length = update_val*bl_ratio
                     n2.branch_length = update_val*(1-bl_ratio)
+                    n1.mutation_length = n1.branch_length
+                    n2.mutation_length = n2.branch_length
                 else:
                     new_val = self.optimal_marginal_branch_length(n, tol=tol)
                     update_val = new_val*(1-damping**(i+1)) + n.branch_length*damping**(i+1)
                     n.branch_length = update_val
+                    n.mutation_length = n.branch_length
 
-            self.infer_ancestral_sequences(marginal=True)
+            self.infer_ancestral_sequences(marginal=True, **kwargs)
 
             LH = self.sequence_LH()
             deltaLH = LH - oldLH
@@ -1342,8 +1345,7 @@ class TreeAnc(object):
         self.logger("TreeAnc.optimize_tree: sequences...", 1)
         N_diff = self.reconstruct_anc(method=method_anc, infer_gtr=infer_gtr, pc=pc,
                                       marginal=marginal_sequences, **kwargs)
-        self.optimize_branch_len(verbose=0, store_old=False, mode=branch_length_mode)
-
+        self.optimize_branch_lengths_joint(verbose=0, store_old=False, mode=branch_length_mode)
         n = 0
         while n<max_iter:
             n += 1
