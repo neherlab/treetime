@@ -167,8 +167,7 @@ class TreeTime(ClockTree):
                       "reconstruct_tip_states":kwargs.get("reconstruct_tip_states", False)}
         time_marginal_method = reduce_time_marginal_argument(time_marginal) ## for backward compatibility
         tt_kwargs = {'clock_rate':fixed_clock_rate,
-                     'time_marginal':False if time_marginal_method in ['never', 'only-final', 'confidence-only'] else True,
-                     'assign_dates': True}
+                     'time_marginal':False if time_marginal_method in ['never', 'only-final', 'confidence-only'] else True}
         tt_kwargs.update(kwargs)
 
         seq_LH = 0

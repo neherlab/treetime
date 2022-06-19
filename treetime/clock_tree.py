@@ -621,6 +621,17 @@ class ClockTree(TreeAnc):
                     msgs_to_multiply = [node.date_constraint] if node.date_constraint is not None else []
                     msgs_to_multiply.extend([child.marginal_pos_Lx for child in node.clades
                                              if child.marginal_pos_Lx is not None])
+
+                    # combine the different msgs and constraints
+                    if len(msgs_to_multiply)==0:
+                        # no information
+                        node.marginal_pos_Lx = None
+                        continue
+                    elif len(msgs_to_multiply)==1:
+                        node.product_of_child_messages = msgs_to_multiply[0]
+                    else: # combine the different msgs and constraints
+                        node.product_of_child_messages = Distribution.multiply(msgs_to_multiply)
+
                     ## When a coalescent model is being used, the cost of having no merger events along the branch
                     ## and one at the node at time t is also factored in: -np.log((gamma(t) * np.exp**-I(t))**(k-1)),
                     ## where k is the number of branches that merge at node t, gamma(t) is the total_merger_rate
@@ -632,19 +643,12 @@ class ClockTree(TreeAnc):
                         time_points = np.unique(np.concatenate([msg.x for msg in msgs_to_multiply]))
                         # set multiplicity of node to number of good child branches
                         if node.is_terminal():
-                            msgs_to_multiply.append(Distribution(time_points, -self.merger_model.integral_merger_rate(time_points), is_log=True))
+                            merger_contribution = Distribution(time_points, -self.merger_model.integral_merger_rate(time_points), is_log=True)
                         else:
-                            msgs_to_multiply.append(self.merger_model.node_contribution(node, time_points))
-
-                    # combine the different msgs and constraints
-                    if len(msgs_to_multiply)==0:
-                        # no information
-                        node.marginal_pos_Lx = None
-                        continue
-                    elif len(msgs_to_multiply)==1:
-                        node.subtree_distribution = msgs_to_multiply[0]
-                    else: # combine the different msgs and constraints
-                        node.subtree_distribution = Distribution.multiply(msgs_to_multiply)
+                            merger_contribution = self.merger_model.node_contribution(node, time_points)
+                        node.subtree_distribution = Distribution.multiply([merger_contribution, node.product_of_child_messages])
+                    else:
+                        node.subtree_distribution = node.product_of_child_messages
 
                     if node.up is None: # this is the root, set dates
                         node.subtree_distribution._adjust_grid(rel_tol=self.rel_tol_prune)
@@ -676,7 +680,7 @@ class ClockTree(TreeAnc):
             ## If a delta constraint in known no further work required
             if (node.date_constraint is not None) and (not node.bad_branch) and node.date_constraint.is_delta:
                 node.marginal_pos_LH = node.date_constraint
-                node.msg_from_parent = None #if internal node has a delta constraint noprevious information passed on
+                node.msg_from_parent = None #if internal node has a delta constraint no previous information is passed on
             elif node.up is None:
                 node.msg_from_parent = None # nothing beyond the root
             # all other cases (All internal nodes + unconstrained terminals)
@@ -685,14 +689,17 @@ class ClockTree(TreeAnc):
 
                 msg_parent_to_node =None
                 if node.marginal_pos_Lx is not None:
-                    # messages from the complementary subtree (iterate over all sister nodes)
-                    complementary_msgs = [parent.date_constraint] if parent.date_constraint is not None else []
-                    complementary_msgs.extend([sister.marginal_pos_Lx for sister in parent.clades
-                                                if (sister != node) and (sister.marginal_pos_Lx is not None)])
+                    if len(parent.clades)<5:
+                        # messages from the complementary subtree (iterate over all sister nodes)
+                        complementary_msgs = [parent.date_constraint] if parent.date_constraint is not None else []
+                        complementary_msgs.extend([sister.marginal_pos_Lx for sister in parent.clades
+                                                    if (sister != node) and (sister.marginal_pos_Lx is not None)])
 
-                    # if parent itself got smth from the root node, include it
-                    if parent.msg_from_parent is not None:
-                        complementary_msgs.append(parent.msg_from_parent)
+                        # if parent itself got smth from the root node, include it
+                        if parent.msg_from_parent is not None:
+                            complementary_msgs.append(parent.msg_from_parent)
+                    else:
+                        complementary_msgs = [Distribution.divide(parent.product_of_child_messages, node.marginal_pos_Lx)]
 
                     if hasattr(self, 'merger_model') and self.merger_model:
                         time_points = np.unique(np.concatenate([msg.x for msg in complementary_msgs]))
