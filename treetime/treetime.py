@@ -136,7 +136,7 @@ class TreeTime(ClockTree):
             Default is "probabilistic"
 
         assign_gamma: callable, optional
-            function to specify gamma (branch length scaling, local clock rate modifier) 
+            function to specify gamma (branch length scaling, local clock rate modifier)
             for each branch in tree, not compatible with a relaxed clock model
 
         **kwargs
@@ -167,7 +167,8 @@ class TreeTime(ClockTree):
                       "reconstruct_tip_states":kwargs.get("reconstruct_tip_states", False)}
         time_marginal_method = reduce_time_marginal_argument(time_marginal) ## for backward compatibility
         tt_kwargs = {'clock_rate':fixed_clock_rate,
-                     'time_marginal':False if time_marginal_method in ['never', 'only-final', 'confidence-only'] else True}
+                     'time_marginal':False if time_marginal_method in ['never', 'only-final', 'confidence-only'] else True,
+                     'assign_dates': True}
         tt_kwargs.update(kwargs)
 
         seq_LH = 0
@@ -311,8 +312,7 @@ class TreeTime(ClockTree):
         if time_marginal_method in ['only-final', 'confidence-only']:
             self.logger("###TreeTime.run: FINAL ROUND - confidence estimation via marginal reconstruction", 0)
             tt_kwargs['time_marginal'] = True
-            assign_dates = time_marginal_method!='confidence-only'
-            self.make_time_tree(**tt_kwargs, assign_dates=assign_dates)
+            self.make_time_tree(**tt_kwargs)
 
             self.trace_run.append(self.tracelog_run(niter=niter+1, ndiff=0, n_resolved=0,
                                       time_marginal=tt_kwargs['time_marginal'],
@@ -546,7 +546,7 @@ class TreeTime(ClockTree):
         return new_root
 
 
-    def resolve_polytomies(self, merge_compressed=False):
+    def resolve_polytomies(self, merge_compressed=False, resolution_threshold=0.05):
         """
         Resolve the polytomies on the tree.
 
@@ -575,7 +575,7 @@ class TreeTime(ClockTree):
         for n in self.tree.find_clades():
             if len(n.clades) > 2:
                 prior_n_clades = len(n.clades)
-                self._poly(n, merge_compressed)
+                self._poly(n, merge_compressed, resolution_threshold=resolution_threshold)
                 poly_found+=prior_n_clades - len(n.clades)
 
         obsolete_nodes = [n for n in self.tree.find_clades() if len(n.clades)==1 and n.up is not None]
@@ -591,7 +591,7 @@ class TreeTime(ClockTree):
         return poly_found
 
 
-    def _poly(self, clade, merge_compressed):
+    def _poly(self, clade, merge_compressed, resolution_threshold):
 
         """
         Function to resolve polytomies for a given parent node. If the
@@ -645,13 +645,12 @@ class TreeTime(ClockTree):
                 # set zero to large negative value and find optimal pair
                 np.fill_diagonal(cost_gains, -1e11)
                 idxs = np.unravel_index(cost_gains.argmax(),cost_gains.shape)
-                if (idxs[0] == idxs[1]) or cost_gains.max()<0:
+                if (idxs[0] == idxs[1]) or cost_gains.max()<resolution_threshold:
                     self.logger("TreeTime._poly.merge_nodes: node is not fully resolved "+clade.name,4)
                     return LH
 
                 n1, n2 = source_arr[idxs[0]], source_arr[idxs[1]]
                 LH += cost_gains[idxs]
-
                 new_node = Phylo.BaseTree.Clade()
 
                 # fix positions and branch lengths

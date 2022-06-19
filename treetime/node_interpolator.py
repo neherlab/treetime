@@ -160,7 +160,7 @@ class NodeInterpolator (Distribution):
 
     @classmethod
     def convolve_fft(cls, node_interp, branch_interp, fft_grid_size=FFT_FWHM_GRID_SIZE, inverse_time=True):
-        fwhm = node_interp.fwhm + branch_interp.fwhm
+
         dt = max(branch_interp.one_mutation*0.005, min(node_interp.fwhm, branch_interp.fwhm)/fft_grid_size)
         b_effsupport = branch_interp.effective_support
         n_effsupport = node_interp.effective_support
