@@ -694,12 +694,11 @@ class ClockTree(TreeAnc):
                         complementary_msgs = [parent.date_constraint] if parent.date_constraint is not None else []
                         complementary_msgs.extend([sister.marginal_pos_Lx for sister in parent.clades
                                                     if (sister != node) and (sister.marginal_pos_Lx is not None)])
-
-                        # if parent itself got smth from the root node, include it
-                        if parent.msg_from_parent is not None:
-                            complementary_msgs.append(parent.msg_from_parent)
                     else:
                         complementary_msgs = [Distribution.divide(parent.product_of_child_messages, node.marginal_pos_Lx)]
+                    # if parent itself got smth from the root node, include it
+                    if parent.msg_from_parent is not None:
+                        complementary_msgs.append(parent.msg_from_parent)
 
                     if hasattr(self, 'merger_model') and self.merger_model:
                         time_points = np.unique(np.concatenate([msg.x for msg in complementary_msgs]))
