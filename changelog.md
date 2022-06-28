@@ -1,3 +1,10 @@
+# 0.9.1
+This release is mostly a bug-fix release and contains some additional safeguards against unwanted side-effects of greedy polytomy resolution.
+
+ * resolve polytomies only when significant LH gain can be achieved
+ * performance enhancement in pre-order iteration during marginal time tree estimate when hitting large polytomies.
+ * allow users to set branch specific rates (only when used as a library)
+
 # 0.9.0
 
 This release contains several major changes to how TreeTime calculates time scaled phylogenies.
@@ -39,7 +46,7 @@ This release fixes a few bugs and adds a few features
  * output statistics of different iterations of the treetime optimization loop (trace-log, thanks to @ktmeaton)
  * speed ups by @akislyuk
  * fix errors with dates in the distant future
- * better precision of tablular skyline output
+ * better precision of tabular skyline output
  * adds clock-deviation to the root-to-tip output of the `clock` command
 
 
