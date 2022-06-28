@@ -158,7 +158,7 @@ class SequenceData(object):
                     except:
                         continue
 
-        if type(in_aln) is MultipleSeqAlignment:
+        if isinstance(in_aln, MultipleSeqAlignment):
             # check whether the alignment is consistent with a nucleotide alignment.
             self._aln = {}
             for s in in_aln:
