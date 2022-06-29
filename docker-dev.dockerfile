@@ -153,7 +153,6 @@ RUN set -euxo pipefail >/dev/null \
 && cargo install \
   cargo-deny \
   cargo-edit \
-  cargo-generate \
   cargo-watch \
   wasm-bindgen-cli \
   wasm-pack \
