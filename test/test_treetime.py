@@ -10,6 +10,27 @@ def test_import_short():
     from treetime import TreeAnc
     from treetime import seq_utils
 
+def test_assign_gamma(root_dir=None):
+    print("testing assign gamma")
+    import os
+    from treetime import TreeTime
+    from treetime.utils import parse_dates
+    if root_dir is None:
+        root_dir = os.path.dirname(os.path.realpath(__file__))
+    fasta = root_dir + "/treetime_examples/data/h3n2_na/h3n2_na_20.fasta"
+    nwk = root_dir + "/treetime_examples/data/h3n2_na/h3n2_na_20.nwk"
+    dates = parse_dates(root_dir + "/treetime_examples/data/h3n2_na/h3n2_na_20.metadata.csv")
+    seq_kwargs = {"marginal_sequences":True,
+                    "branch_length_mode": 'input',
+                    "reconstruct_tip_states":False}
+    tt_kwargs = {'clock_rate': 0.0001,
+                    'time_marginal':'assign'}
+    myTree = TreeTime(gtr='Jukes-Cantor', tree = nwk, use_fft=False,
+                    aln = fasta, verbose = 1, dates = dates, precision=3, debug=True)
+    def assign_gamma(tree):
+        return tree
+    success = myTree.run(infer_gtr=False, assign_gamma=assign_gamma, max_iter=1, verbose=3, **seq_kwargs, **tt_kwargs)
+    assert success
 
 def test_GTR():
     from treetime import GTR

@@ -6,8 +6,8 @@
 TreeTime: time-tree and ancestral sequence inference
 ====================================================
 
-.. image:: https://travis-ci.org/neherlab/treetime.svg?branch=master
-   :target: https://travis-ci.org/neherlab/treetime
+.. image:: https://github.com/neherlab/treetime/actions/workflows/ci.yml/badge.svg?branch=master
+   :target: https://github.com/neherlab/treetime/actions/workflows/ci.yml
 
 .. image:: https://anaconda.org/bioconda/treetime/badges/installer/conda.svg
    :target: https://anaconda.org/bioconda/treetime

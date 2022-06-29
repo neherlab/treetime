@@ -483,20 +483,24 @@ def arg_time_trees(params):
     on each of the two trees provided.
     """
     from .arg import parse_arg, setup_arg
-    print(params.mccs)
+
     arg_params = parse_arg(params.trees[0], params.trees[1],
                     params.alignments[0], params.alignments[1], params.mccs,
                     fill_overhangs=not params.keep_overhangs)
 
     dates = utils.parse_dates(params.dates, date_col=params.date_column, name_col=params.name_column)
+    root = None if params.keep_root else params.reroot
+
     for i,(tree,mask) in enumerate(zip(arg_params['trees'], arg_params['masks'])):
         outdir = get_outdir(params, f'_ARG-treetime')
         gtr = create_gtr(params)
 
         tt = setup_arg(tree, arg_params['alignment'], arg_params['combined_mask'], mask, dates, arg_params['MCCs'],
-                       gtr=gtr, verbose=params.verbose, fill_overhangs=not params.keep_overhangs)
+                       gtr=gtr, verbose=params.verbose, fill_overhangs=not params.keep_overhangs,
+                       fixed_clock_rate = params.clock_rate, reroot=root)
 
-        run_timetree(tt, params, outdir, tree_suffix=f"_{i+1}", prune_short=False)
+        run_timetree(tt, params, outdir, tree_suffix=f"_{i+1}", prune_short=False, method_anc=params.method_anc)
+
 
 
 def timetree(params):
@@ -525,12 +529,13 @@ def timetree(params):
         return 1
     myTree = TreeTime(dates=dates, tree=params.tree, ref=ref,
                       aln=aln, gtr=gtr, seq_len=params.sequence_length,
-                      verbose=params.verbose, fill_overhangs=not params.keep_overhangs)
+                      verbose=params.verbose, fill_overhangs=not params.keep_overhangs,
+                      branch_length_mode = params.branch_length_mode)
 
     return run_timetree(myTree, params, outdir)
 
 
-def run_timetree(myTree, params, outdir, tree_suffix='', prune_short=True):
+def run_timetree(myTree, params, outdir, tree_suffix='', prune_short=True, method_anc='probabilistic'):
     '''
     this function abstracts the time tree estimation that is used for regular
     treetime inference and for arg time tree inference.
@@ -607,7 +612,7 @@ def run_timetree(myTree, params, outdir, tree_suffix='', prune_short=True):
                reconstruct_tip_states=params.reconstruct_tip_states,
                n_points=params.n_skyline, n_branches_posterior = n_branches_posterior,
                fixed_pi=fixed_pi, prune_short=prune_short,
-               use_covariation=params.covariation,
+               use_covariation=params.covariation, method_anc=method_anc,
                tracelog_file=os.path.join(outdir, f"trace_run{tree_suffix}.log"))
     except TreeTimeError as e:
         print("\nTreeTime run FAILED: please check above for errors and/or rerun with --verbose 4.\n")
@@ -641,6 +646,7 @@ def run_timetree(myTree, params, outdir, tree_suffix='', prune_short=True):
             print(" --N_e: \t %1.2e \tcorresponding 'effective population size' assuming 50 gen/year\n"%(Tc/myTree.date2dist.clock_rate*50))
 
     # plot
+    ##IMPORTANT: after this point the functions not only plot the tree but also modify the branch length
     import matplotlib.pyplot as plt
     from .treetime import plot_vs_years
     leaf_count = myTree.tree.count_terminals()

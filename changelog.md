@@ -1,4 +1,11 @@
-# 0.9.0-b1
+# 0.9.1
+This release is mostly a bug-fix release and contains some additional safeguards against unwanted side-effects of greedy polytomy resolution.
+
+ * resolve polytomies only when significant LH gain can be achieved
+ * performance enhancement in pre-order iteration during marginal time tree estimate when hitting large polytomies.
+ * allow users to set branch specific rates (only when used as a library)
+
+# 0.9.0
 
 This release contains several major changes to how TreeTime calculates time scaled phylogenies.
 Most of this is work by @anna-parker!
@@ -11,6 +18,7 @@ Most of this is work by @anna-parker!
    This should not change the results in any way, but cleans up the code.
  * The number concurrent of lineages determines the rate of coalescence.
    This can now optionally be calculated using the uncertainty of the timing of merger events, instead of the step functions used previously.
+ * Adds a subcommand to read in ancestral reassortment graphs of two segments produced by [TreeKnit](https://github.com/PierreBarrat/TreeKnit.jl). This command takes two trees and a file with MCCs inferred by TreeKnit. See [these docs](https://treetime.readthedocs.io/en/latest/commands.html#arg) for command line usage.
 
 # 0.8.6
  * optionally allow incomplete alignment [PR #178](https://github.com/neherlab/treetime/pull/178)
@@ -38,7 +46,7 @@ This release fixes a few bugs and adds a few features
  * output statistics of different iterations of the treetime optimization loop (trace-log, thanks to @ktmeaton)
  * speed ups by @akislyuk
  * fix errors with dates in the distant future
- * better precision of tablular skyline output
+ * better precision of tabular skyline output
  * adds clock-deviation to the root-to-tip output of the `clock` command
 
 

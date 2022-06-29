@@ -154,6 +154,8 @@ def add_anc_arguments(parser):
     parser.add_argument('--zero-based', default = False, action='store_true', help='zero based mutation indexing')
     parser.add_argument('--reconstruct-tip-states', default = False, action='store_true', help='overwrite ambiguous states on tips with the most likely inferred state')
     parser.add_argument('--report-ambiguous', default=False, action="store_true", help='include transitions involving ambiguous states')
+    parser.add_argument('--method-anc', default='probabilistic', type=str, choices = ['parsimony', 'fitch', 'probabilistic', 'ml'],
+                        help="method uesed for reconstructing ancestral sequences, default is 'probabilistic'")
 
 
 def add_common_args(parser):
@@ -193,7 +195,7 @@ def add_timetree_args(parser):
     parser.add_argument('--n-branches-posterior', default=False, action='store_true',
                           help= "add posterior LH to coalescent model: use the posterior probability distributions of "
                                 "divergence times for estimating the number of branches when calculating the coalescent merger"
-                                "rate or use infered time before present (default)." )
+                                "rate or use inferred time before present (default)." )
     parser.add_argument('--plot-tree', default="timetree.pdf",
                             help = "filename to save the plot to. Suffix will determine format"
                                    " (choices pdf, png, svg, default=pdf)")
@@ -286,7 +288,7 @@ def make_parser():
     c_parser = subparsers.add_parser('clock',
             description="Calculates the root-to-tip regression and quantifies the 'clock-i-ness' of the tree. "
                         "It will reroot the tree to maximize the clock-like "
-                        "signal and recalculate branch length unless run with --keep_root.")
+                        "signal and recalculate branch length unless run with --keep-root.")
     c_parser.add_argument('--tree', required=True, type=str,  help=tree_description)
     add_time_arguments(c_parser)
     add_seq_len_aln_group(c_parser)
@@ -312,6 +314,7 @@ def make_parser():
     add_timetree_args(arg_parser)
     add_time_arguments(arg_parser)
     add_seq_len_aln_group(arg_parser)
+    add_anc_arguments(arg_parser)
 
     add_reroot_group(arg_parser)
     add_common_args(arg_parser)

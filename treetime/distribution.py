@@ -97,13 +97,23 @@ class Distribution(object):
             new_xmax = np.min([k.xmax for k in dists])
 
             x_vals = np.unique(np.concatenate([k.x for k in dists]))
-            x_vals = x_vals[(x_vals>new_xmin-SUPERTINY_NUMBER)&(x_vals<new_xmax+SUPERTINY_NUMBER)]
+            x_vals = x_vals[(x_vals> new_xmin-TINY_NUMBER)&(x_vals< new_xmax+TINY_NUMBER)]
             y_vals = np.sum([k.__call__(x_vals) for k in dists], axis=0)
-            peak = y_vals.min()
+            try:
+                peak = y_vals.min()
+            except:
+                print("WARNING: Unexpected behavior detected in multiply function,"
+                        "if you see this error \n please let us know by filling an issue at: https://github.com/neherlab/treetime/issues")
+                x_vals = [0,1]
+                y_vals = [BIG_NUMBER,BIG_NUMBER]
+                res = Distribution(x_vals, y_vals, is_log=True,
+                                    min_width=min_width, kind='linear')
+                return res
             ind = (y_vals-peak)<BIG_NUMBER/1000
             n_points = ind.sum()
             if n_points == 0:
-                print ("ERROR in distribution multiplication: Distributions do not overlap")
+                print("WARNING: Unexpected behavior detected in multipy function,"
+                        "if you see this error \n please let us know by filling an issue at: https://github.com/neherlab/treetime/issues")
                 x_vals = [0,1]
                 y_vals = [BIG_NUMBER,BIG_NUMBER]
                 res = Distribution(x_vals, y_vals, is_log=True,
@@ -116,6 +126,39 @@ class Distribution(object):
 
         return res
 
+    @staticmethod
+    def divide(numerator, denominator):
+        '''
+        divides one distribution object by another. Note that this is in general an ill-defined procedure.
+        this is implemented here for the special case where the numerator is a product that contains the denominator
+        to produce a reduced product without the denominator.
+        '''
+        if numerator.is_delta or denominator.is_delta:
+            raise(ArithmeticError("Can not divide delta functions"))
+        dists = [numerator, denominator]
+        min_width = np.max([k.min_width for k in dists])
+        new_xmin = np.max([k.xmin for k in dists])
+        new_xmax = np.min([k.xmax for k in dists])
+        x_vals = np.unique(np.concatenate([k.x for k in dists]))
+        x_vals = x_vals[(x_vals> new_xmin-TINY_NUMBER)&(x_vals< new_xmax+TINY_NUMBER)]
+        y_vals = numerator.__call__(x_vals) - denominator.__call__(x_vals)
+
+        peak = y_vals.min()
+        ind = (y_vals-peak)<BIG_NUMBER/1000
+        n_points = ind.sum()
+        if n_points == 0:
+            print("WARNING: Unexpected behavior detected in multipy function,"
+                    "if you see this error \n please let us know by filling an issue at: https://github.com/neherlab/treetime/issues")
+            x_vals = [0,1]
+            y_vals = [BIG_NUMBER,BIG_NUMBER]
+            res = Distribution(x_vals, y_vals, is_log=True,
+                                min_width=min_width, kind='linear')
+        elif n_points == 1:
+            res = Distribution.delta_function(x_vals[0])
+        else:
+            res = Distribution(x_vals[ind], y_vals[ind], is_log=True,
+                                min_width=min_width, kind='linear', assume_sorted=True)
+        return res
 
     def __init__(self, x, y, is_log=True, min_width = MIN_INTEGRATION_PEAK,
                  kind='linear', assume_sorted=False):
@@ -283,7 +326,7 @@ class Distribution(object):
                 d = y1-y2
                 right = -x1*y2/d + x2*y1/d
         except:
-            raise ArithmeticError("Region of support of the distribution couldn'n be determined!")
+            raise ArithmeticError("Region of support of the distribution could not be determined!")
 
         return (left,right)
 
@@ -321,12 +364,16 @@ class Distribution(object):
         if factor>=0:
             self._xmin*=factor
             self._xmax*=factor
+            self._fwhm*=factor
+            self._effective_support = [x*factor for x in self._effective_support]
         else:
             tmp = self.xmin
             self._xmin = factor*self.xmax
             self._xmax = factor*tmp
             self._func.x = self._func.x[::-1]
             self._func.y = self._func.y[::-1]
+            self._fwhm *= -factor
+            self._effective_support = [x*factor for x in self._effective_support[::-1]]
 
 
     def integrate(self, return_log=False ,**kwargs):

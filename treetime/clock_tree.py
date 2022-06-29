@@ -354,7 +354,7 @@ class ClockTree(TreeAnc):
                 node.date_constraint = None
 
 
-    def make_time_tree(self, time_marginal=False, clock_rate=None, assign_dates=True, **kwargs):
+    def make_time_tree(self, time_marginal=False, clock_rate=None, **kwargs):
         '''
         Use the date constraints to calculate the most likely positions of
         unconstrained nodes.
@@ -374,14 +374,12 @@ class ClockTree(TreeAnc):
         self.init_date_constraints(clock_rate=clock_rate, **kwargs)
 
         if time_marginal:
-            self._ml_t_marginal(assign_dates = assign_dates)
+            self._ml_t_marginal()
         else:
             self._ml_t_joint()
 
         self.tree.positional_LH = self.timetree_likelihood(time_marginal)
-
-        if assign_dates or not time_marginal:
-            self.convert_dates()
+        self.convert_dates()
 
 
     def _ml_t_joint(self):
@@ -420,10 +418,10 @@ class ClockTree(TreeAnc):
                 node.joint_pos_Lx = None
                 node.joint_pos_Cx = None
             else: # all other nodes
-                if node.date_constraint is not None and node.date_constraint.is_delta: # there is a time constraint
+                if node.date_constraint is not None and node.date_constraint.is_delta: # there is a strict time constraint
                     # subtree probability given the position of the parent node
                     # Lx.x is the position of the parent node
-                    # Lx.y is the probablity of the subtree (consisting of one terminal node in this case)
+                    # Lx.y is the probability of the subtree (consisting of one terminal node in this case)
                     # Cx.y is the branch length corresponding the optimal subtree
                     bl = node.branch_length_interpolator.x
                     x = bl + node.date_constraint.peak_pos
@@ -446,7 +444,10 @@ class ClockTree(TreeAnc):
                     ## resulting in the exponent (k-1))
                     if hasattr(self, 'merger_model') and self.merger_model:
                         time_points = np.unique(np.concatenate([msg.x for msg in msgs_to_multiply]))
-                        msgs_to_multiply.append(self.merger_model.node_contribution(node, time_points))
+                        if node.is_terminal():
+                            msgs_to_multiply.append(Distribution(time_points, -self.merger_model.integral_merger_rate(time_points), is_log=True))
+                        else:
+                            msgs_to_multiply.append(self.merger_model.node_contribution(node, time_points))
 
                     # msgs_to_multiply combined returns the subtree likelihood given the node's constraint and child messages
                     if len(msgs_to_multiply) == 0: # there are no constraints
@@ -482,17 +483,18 @@ class ClockTree(TreeAnc):
 
                         node.joint_pos_Lx = res
                         node.joint_pos_Cx = res_t
-            # construct the inverse cumulant distribution for the branch number estimates
-            from scipy.interpolate import interp1d
-            if node.date_constraint is not None and node.date_constraint.is_delta:
-                node.joint_inverse_cdf=interp1d([0,1], node.date_constraint.peak_pos*np.ones(2), kind="linear")
-            elif isinstance(subtree_distribution, Distribution):
-                dt = np.diff(subtree_distribution.x)
-                y = subtree_distribution.prob_relative(subtree_distribution.x)
-                int_y = np.concatenate(([0], np.cumsum(dt*(y[1:]+y[:-1])/2.0)))
-                int_y/=int_y[-1]
-                node.joint_inverse_cdf = interp1d(int_y, subtree_distribution.x, kind="linear")
-                #node.joint_cdf = interp1d(subtree_distribution.x, int_y, kind="linear")
+
+                # construct the inverse cumulant distribution for the branch number estimates
+                from scipy.interpolate import interp1d
+                if node.date_constraint is not None and node.date_constraint.is_delta:
+                    node.joint_inverse_cdf=interp1d([0,1], node.date_constraint.peak_pos*np.ones(2), kind="linear")
+                elif isinstance(subtree_distribution, Distribution):
+                    dt = np.diff(subtree_distribution.x)
+                    y = subtree_distribution.prob_relative(subtree_distribution.x)
+                    int_y = np.concatenate(([0], np.cumsum(dt*(y[1:]+y[:-1])/2.0)))
+                    int_y/=int_y[-1]
+                    node.joint_inverse_cdf = interp1d(int_y, subtree_distribution.x, kind="linear")
+                    #node.joint_cdf = interp1d(subtree_distribution.x, int_y, kind="linear")
 
 
         # go through the nodes from root towards the leaves and assign joint ML positions:
@@ -542,7 +544,7 @@ class ClockTree(TreeAnc):
         Return the likelihood of the data given the current branch length in the tree
         '''
         if time_marginal:
-            LH =  -self.tree.root.marginal_pos_LH.peak_val
+            LH = self.tree.root.marginal_pos_LH.integrate(return_log=True, a=self.tree.root.marginal_pos_LH.xmin, b=self.tree.root.marginal_pos_LH.xmax, n=1000)
         else:
             LH = 0
             for node in self.tree.find_clades(order='preorder'):  # sum the likelihood contributions of all branches
@@ -556,7 +558,7 @@ class ClockTree(TreeAnc):
         return LH
 
 
-    def _ml_t_marginal(self, assign_dates=False):
+    def _ml_t_marginal(self):
         """
         Compute the marginal probability distribution of the internal nodes positions by
         propagating from the tree leaves towards the root. The result of
@@ -619,6 +621,17 @@ class ClockTree(TreeAnc):
                     msgs_to_multiply = [node.date_constraint] if node.date_constraint is not None else []
                     msgs_to_multiply.extend([child.marginal_pos_Lx for child in node.clades
                                              if child.marginal_pos_Lx is not None])
+
+                    # combine the different msgs and constraints
+                    if len(msgs_to_multiply)==0:
+                        # no information
+                        node.marginal_pos_Lx = None
+                        continue
+                    elif len(msgs_to_multiply)==1:
+                        node.product_of_child_messages = msgs_to_multiply[0]
+                    else: # combine the different msgs and constraints
+                        node.product_of_child_messages = Distribution.multiply(msgs_to_multiply)
+
                     ## When a coalescent model is being used, the cost of having no merger events along the branch
                     ## and one at the node at time t is also factored in: -np.log((gamma(t) * np.exp**-I(t))**(k-1)),
                     ## where k is the number of branches that merge at node t, gamma(t) is the total_merger_rate
@@ -629,17 +642,13 @@ class ClockTree(TreeAnc):
                     if hasattr(self, 'merger_model') and self.merger_model:
                         time_points = np.unique(np.concatenate([msg.x for msg in msgs_to_multiply]))
                         # set multiplicity of node to number of good child branches
-                        msgs_to_multiply.append(self.merger_model.node_contribution(node, time_points))
-
-                    # combine the different msgs and constraints
-                    if len(msgs_to_multiply)==0:
-                        # no information
-                        node.marginal_pos_Lx = None
-                        continue
-                    elif len(msgs_to_multiply)==1:
-                        node.subtree_distribution = msgs_to_multiply[0]
-                    else: # combine the different msgs and constraints
-                        node.subtree_distribution = Distribution.multiply(msgs_to_multiply)
+                        if node.is_terminal():
+                            merger_contribution = Distribution(time_points, -self.merger_model.integral_merger_rate(time_points), is_log=True)
+                        else:
+                            merger_contribution = self.merger_model.node_contribution(node, time_points)
+                        node.subtree_distribution = Distribution.multiply([merger_contribution, node.product_of_child_messages])
+                    else:
+                        node.subtree_distribution = node.product_of_child_messages
 
                     if node.up is None: # this is the root, set dates
                         node.subtree_distribution._adjust_grid(rel_tol=self.rel_tol_prune)
@@ -671,7 +680,7 @@ class ClockTree(TreeAnc):
             ## If a delta constraint in known no further work required
             if (node.date_constraint is not None) and (not node.bad_branch) and node.date_constraint.is_delta:
                 node.marginal_pos_LH = node.date_constraint
-                node.msg_from_parent = None #if internal node has a delta constraint noprevious information passed on
+                node.msg_from_parent = None #if internal node has a delta constraint no previous information is passed on
             elif node.up is None:
                 node.msg_from_parent = None # nothing beyond the root
             # all other cases (All internal nodes + unconstrained terminals)
@@ -680,11 +689,13 @@ class ClockTree(TreeAnc):
 
                 msg_parent_to_node =None
                 if node.marginal_pos_Lx is not None:
-                    # messages from the complementary subtree (iterate over all sister nodes)
-                    complementary_msgs = [parent.date_constraint] if parent.date_constraint is not None else []
-                    complementary_msgs.extend([sister.marginal_pos_Lx for sister in parent.clades
-                                                if (sister != node) and (sister.marginal_pos_Lx is not None)])
-
+                    if len(parent.clades)<5:
+                        # messages from the complementary subtree (iterate over all sister nodes)
+                        complementary_msgs = [parent.date_constraint] if parent.date_constraint is not None else []
+                        complementary_msgs.extend([sister.marginal_pos_Lx for sister in parent.clades
+                                                    if (sister != node) and (sister.marginal_pos_Lx is not None)])
+                    else:
+                        complementary_msgs = [Distribution.divide(parent.product_of_child_messages, node.marginal_pos_Lx)]
                     # if parent itself got smth from the root node, include it
                     if parent.msg_from_parent is not None:
                         complementary_msgs.append(parent.msg_from_parent)
@@ -729,7 +740,7 @@ class ClockTree(TreeAnc):
                     node.marginal_pos_LH = NodeInterpolator.multiply((node.msg_from_parent, node.subtree_distribution))
 
                 self.logger('ClockTree._ml_t_root_to_leaves: computed convolution'
-                                ' with %d points at node %s'%(len(res.x),node.name),4)
+                                ' with %d points at node %s'%(len(res.x),node.name), 4)
 
                 if self.debug:
                     tmp = np.diff(res.y-res.peak_val)
@@ -745,15 +756,14 @@ class ClockTree(TreeAnc):
                         plt.xlim(-0.05, 0.05)
                         #import ipdb; ipdb.set_trace()
 
-            # assign positions of nodes and branch length only when desired
-            # since marginal reconstruction can result in negative branch length
-            if assign_dates:
-                node.time_before_present = node.marginal_pos_LH.peak_pos
-                if node.up:
-                    node.clock_length = node.up.time_before_present - node.time_before_present
-                    node.branch_length = node.clock_length
+            # assign positions of nodes and branch length
+            # note that marginal reconstruction can result in negative branch lengths
+            node.time_before_present = node.marginal_pos_LH.peak_pos
+            if node.up:
+                node.clock_length = node.up.time_before_present - node.time_before_present
+                node.branch_length = node.clock_length
 
-            # construct the inverse cumulant distribution to evaluate confidence intervals
+            # construct the inverse cumulative distribution to evaluate confidence intervals
             if node.marginal_pos_LH.is_delta:
                 node.marginal_inverse_cdf=interp1d([0,1], node.marginal_pos_LH.peak_pos*np.ones(2), kind="linear")
             else:
@@ -788,10 +798,10 @@ class ClockTree(TreeAnc):
                 if not hasattr(node, "bad_branch") or node.bad_branch is False:
                     self.logger("ClockTree.convert_dates -- WARNING: The node is later than today, but it is not "
                         "marked as \"BAD\", which indicates the error in the "
-                        "likelihood optimization.",4 , warn=True)
+                        "likelihood optimization.", 4, warn=True)
                 else:
                     self.logger("ClockTree.convert_dates -- WARNING: node which is marked as \"BAD\" optimized "
-                        "later than present day",4 , warn=True)
+                        "later than present day", 4, warn=True)
 
             node.numdate = now - years_bp
             node.date = datestring_from_numeric(node.numdate)

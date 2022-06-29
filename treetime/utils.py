@@ -433,7 +433,9 @@ def tree_inference(aln_fname, tree_fname, tmp_dir=None,
             continue
     os.chdir(cwd)
     if T is None:
-        print("tree building failed. tried", ", ".join(methods), "but none worked")
+        msg = f"tree building failed. tried '{','.join(methods)}', but none worked"
+        print(msg)
+        raise(TreeTimeError(msg))
     else:
         Phylo.write(T, tree_fname, 'newick')
 
