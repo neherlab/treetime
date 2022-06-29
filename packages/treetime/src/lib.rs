@@ -9,6 +9,7 @@
 // pub mod mugration;
 // pub mod nuc_models;
 // pub mod seq_utils;
+pub mod graph;
 pub mod utils;
 
 #[cfg(test)]
