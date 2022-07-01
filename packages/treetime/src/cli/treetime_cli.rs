@@ -59,6 +59,9 @@ pub enum TreetimeCommands {
     shell: String,
   },
 
+  /// Estimates time trees from an initial tree topology, a set of date constraints (e.g. tip dates), and an alignment (optional).
+  Timetree(TreetimeTimetreeArgs),
+
   /// Reconstructs ancestral sequences and maps mutations to the tree. The output consists of a file 'ancestral.fasta' with ancestral sequences and a tree 'annotated_tree.nexus' with mutations added as comments like A45G,G136T,..., number in SNPs used 1-based index by default. The inferred GTR model is written to stdout.
   Ancestral(TreetimeAncestralArgs),
 
@@ -70,7 +73,13 @@ pub enum TreetimeCommands {
 
   /// Reconstructs discrete ancestral states, for example geographic location, host, or similar. In addition to ancestral states, a GTR model of state transitions is inferred.
   Mugration(TreetimeMugrationArgs),
+
+  /// Estimates ancestral reassortment graph (ARG).
+  Arg(TreetimeAncestralReassortmentGraphArgs),
 }
+
+#[derive(Parser, Debug)]
+pub struct TreetimeTimetreeArgs {}
 
 #[derive(Parser, Debug)]
 pub struct TreetimeAncestralArgs {}
@@ -83,6 +92,9 @@ pub struct TreetimeHomoplasyArgs {}
 
 #[derive(Parser, Debug)]
 pub struct TreetimeMugrationArgs {}
+
+#[derive(Parser, Debug)]
+pub struct TreetimeAncestralReassortmentGraphArgs {}
 
 pub fn generate_shell_completions(shell: &str) -> Result<(), Report> {
   let mut command = TreetimeArgs::command();
