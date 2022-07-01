@@ -17,25 +17,24 @@ fn init() {
 }
 
 fn main() -> Result<(), Report> {
-    let gtr = jc69()?;
+  let gtr = jc69()?;
 
-    let dummy_prof = Array2::<f32>::random((10000,5));
+  let dummy_prof = Array2::<f32>::random((10000, 5));
 
-    // used a lot (300us)
-    let (norm_prof, _) = normalize_profile(&dummy_prof, false);
+  // used a lot (300us)
+  let (norm_prof, _) = normalize_profile(&dummy_prof, false);
 
-    // used less but still a lot (50us)
-    gtr.evolve(&norm_prof, 0.1, false);
+  // used less but still a lot (50us)
+  gtr.evolve(&norm_prof, 0.1, false);
 
-    // used less but still a lot (50us)
-    gtr.propagate_profile(norm_prof, 0.1, false);
+  // used less but still a lot (50us)
+  gtr.propagate_profile(norm_prof, 0.1, false);
 
-    // used only in final, sample_from_prof=False speeds it up (600us or 300us)
-    let  (seq, p, seq_ii) = prof2seq(norm_prof, &gtr, true, false);
-
-    // used only initially (slow, 5ms)
-    let tmp_prof = seq2prof(seq, gtr.profile_map);
-  }
+  // // used only in final, sample_from_prof=False speeds it up (600us or 300us)
+  // let  (seq, p, seq_ii) = prof2seq(norm_prof, &gtr, true, false);
+  //
+  // // used only initially (slow, 5ms)
+  // let tmp_prof = seq2prof(seq, gtr.profile_map);
 
   Ok(())
 }
