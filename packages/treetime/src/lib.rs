@@ -1,15 +1,14 @@
-// pub mod alphabet;
-// pub mod ancestral;
-// pub mod cli;
-// pub mod clock;
-// pub mod gtr;
-// pub mod gtr;
-// pub mod homoplasy;
-// pub mod io;
-// pub mod mugration;
-// pub mod nuc_models;
-// pub mod seq_utils;
+pub mod alphabet;
+pub mod ancestral;
+pub mod cli;
+pub mod clock;
 pub mod graph;
+pub mod gtr;
+pub mod homoplasy;
+pub mod io;
+pub mod mugration;
+pub mod nuc_models;
+pub mod seq_utils;
 pub mod utils;
 
 #[cfg(test)]
