@@ -1,5 +1,20 @@
+use ndarray::Array1;
+use num_traits::NumCast;
+use std::ops::Index;
+
 #[derive(Clone, Debug)]
 pub struct Alphabet {}
+
+const DUMMY: Array1<f32> = Array1::<f32>::from_iter([1.0, 0.0, 0.0, 0.0, 0.0]);
+
+impl<I: NumCast> Index<I> for Alphabet {
+  type Output = Array1<f32>;
+
+  fn index(&self, index: I) -> &Self::Output {
+    let index = index.to_usize().unwrap();
+    &DUMMY
+  }
+}
 
 impl Alphabet {
   pub fn new(name: &str) -> Self {

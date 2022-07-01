@@ -64,16 +64,16 @@ pub struct GTRParams {
 
 /// Defines General-Time-Reversible model of character evolution.
 pub struct GTR {
-  debug: bool,
-  is_site_specific: bool,
-  alphabet: Alphabet,
-  profile_map: ProfileMap,
-  mu: f32,
-  W: Array2<f32>,
-  pi: Array1<f32>,
-  eigvals: Array1<f32>,
-  v: Array1<f32>,
-  v_inv: Array2<f32>,
+  pub debug: bool,
+  pub is_site_specific: bool,
+  pub alphabet: Alphabet,
+  pub profile_map: ProfileMap,
+  pub mu: f32,
+  pub W: Array2<f32>,
+  pub pi: Array1<f32>,
+  pub eigvals: Array1<f32>,
+  pub v: Array1<f32>,
+  pub v_inv: Array2<f32>,
 }
 
 impl GTR {
@@ -1031,7 +1031,7 @@ mod test {
       [0.02839864, 0.20064851, 0.06049814, 0.3828229, 0.32763181]
     ];
 
-    gtr.evolve(&norm_prof, 0.1, false)?;
+    gtr.evolve(&norm_prof, 0.1, false);
     // gtr.expQt(0.1)?;
 
     let eLambdaT = array![
