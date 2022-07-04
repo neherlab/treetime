@@ -7,8 +7,7 @@ use rand::SeedableRng;
 use rand_isaac::Isaac64Rng;
 use treetime::nuc_models::jc69::jc69;
 use treetime::seq_utils::normalize_profile::normalize_profile;
-use treetime::seq_utils::seq2prof::{prof2seq, Prof2SeqParams, Prof2SeqResult};
-// use treetime::seq_utils::seq2prof::{prof2seq, seq2prof};
+use treetime::seq_utils::seq2prof::{prof2seq, seq2prof, Prof2SeqParams};
 use treetime::utils::global_init::{global_init, setup_logger};
 use treetime::utils::ndarray::random;
 
@@ -57,8 +56,8 @@ fn main() -> Result<(), Report> {
 
   info!("prof2seq_result:\n{prof2seq_result:#?}\n");
 
-  // // used only initially (slow, 5ms)
-  // let tmp_prof = seq2prof(&seq, &gtr.profile_map);
+  let prof = seq2prof(&prof2seq_result.seq, &gtr.profile_map)?;
+  info!("prof:\n{prof}\n");
 
   Ok(())
 }

@@ -6,8 +6,8 @@ use std::ops::Index;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Alphabet {
-  name: String,
-  alphabet: Array1<char>,
+  pub name: String,
+  pub alphabet: Array1<char>,
 }
 
 lazy_static! {

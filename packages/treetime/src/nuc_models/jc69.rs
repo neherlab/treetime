@@ -9,7 +9,7 @@ pub fn jc69() -> Result<GTR, Report> {
   let alphabet_name = "nuc";
 
   let alphabet = Alphabet::new(alphabet_name)?;
-  let profile_map = ProfileMap::from_alphabet(&alphabet);
+  let profile_map = ProfileMap::from_alphabet(&alphabet)?;
 
   let num_chars = alphabet.len();
   let W = Array2::<f32>::ones((num_chars, num_chars));

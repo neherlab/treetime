@@ -1,8 +1,9 @@
+use crate::alphabet::profile_map::ProfileMap;
 use crate::gtr::gtr::GTR;
 use crate::seq_utils::normalize_profile::normalize_profile;
 use crate::utils::ndarray::{argmax_axis, cumsum_axis, random};
 use eyre::Report;
-use ndarray::{array, Array1, Array2, Axis};
+use ndarray::{array, stack, Array1, Array2, Axis};
 use ndarray_rand::RandomExt;
 use ndarray_stats::QuantileExt;
 use rand::Rng;
@@ -105,26 +106,27 @@ pub fn get_prof_values(profile: &Array2<f32>, seq_ii: &Array1<usize>) -> Array1<
     .collect()
 }
 
-// /// Convert the given character sequence into the profile according to the
-// /// alphabet specified.
-// ///
-// /// Parameters
-// /// ----------
-// ///
-// ///  seq : numpy.array
-// ///     Sequence to be converted to the profile
-// ///
-// ///  profile_map : dic
-// ///     Mapping valid characters to profiles
-// ///
-// /// Returns
-// /// -------
-// ///
-// ///  idx : numpy.array
-// ///     Profile for the character. Zero array if the character not found
-// pub fn seq2prof(seq: String, profile_map: Array2<f32>) {
-//   // np.array([profile_map[k] for k in seq])
-// }
+/// Convert the given character sequence into the profile according to the
+/// alphabet specified.
+///
+/// Parameters
+/// ----------
+///
+///  seq : numpy.array
+///     Sequence to be converted to the profile
+///
+///  profile_map : dic
+///     Mapping valid characters to profiles
+///
+/// Returns
+/// -------
+///
+///  idx : numpy.array
+///     Profile for the character. Zero array if the character not found
+pub fn seq2prof(seq: &Array1<char>, profile_map: &ProfileMap) -> Result<Array2<f32>, Report> {
+  let prof = stack(Axis(0), seq.map(|&c| profile_map.get(c).view()).as_slice().unwrap())?;
+  Ok(prof)
+}
 
 #[allow(clippy::excessive_precision, clippy::lossy_float_literal)]
 #[cfg(test)]
@@ -227,6 +229,26 @@ mod tests {
       array![0.14942127, 0.26841563, 0.1833069, 0.3361539, 0.24872985, 0.19585568, 0.2730016]
     );
 
+    Ok(())
+  }
+
+  #[rstest]
+  fn calculates_seq2prof() -> Result<(), Report> {
+    let seq = array!['G', 'T', 'G', '-', 'G', 'G', 'C'];
+    let profile_map = ProfileMap::new("nuc")?;
+    let prof = seq2prof(&seq, &profile_map)?;
+    assert_eq!(
+      prof,
+      array![
+        [0., 0., 1., 0., 0.],
+        [0., 0., 0., 1., 0.],
+        [0., 0., 1., 0., 0.],
+        [0., 0., 0., 0., 1.],
+        [0., 0., 1., 0., 0.],
+        [0., 0., 1., 0., 0.],
+        [0., 1., 0., 0., 0.]
+      ]
+    );
     Ok(())
   }
 }
