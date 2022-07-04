@@ -1,18 +1,21 @@
+use lazy_static::lazy_static;
 use ndarray::Array1;
 use num_traits::NumCast;
 use std::ops::Index;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq)]
 pub struct Alphabet {}
 
-const DUMMY: Array1<f32> = Array1::<f32>::from_iter([1.0, 0.0, 0.0, 0.0, 0.0]);
+lazy_static! {
+  static ref DUMMY: Array1<f32> = Array1::<f32>::from_iter([1.0, 0.0, 0.0, 0.0, 0.0]);
+}
 
 impl<I: NumCast> Index<I> for Alphabet {
   type Output = Array1<f32>;
 
   fn index(&self, index: I) -> &Self::Output {
     let index = index.to_usize().unwrap();
-    &DUMMY
+    &DUMMY // FIXME
   }
 }
 
@@ -23,7 +26,7 @@ impl Alphabet {
 
   #[inline]
   pub fn len(&self) -> usize {
-    0
+    5 // FIXME
   }
 
   #[inline]

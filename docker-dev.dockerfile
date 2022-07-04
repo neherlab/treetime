@@ -20,6 +20,7 @@ RUN set -euxo pipefail >/dev/null \
   build-essential \
   ca-certificates \
   curl \
+  gfortran \
   git \
   gnupg \
   libssl-dev \

@@ -23,6 +23,7 @@ fn main() -> Result<(), Report> {
   info!("{:#?}", &args);
 
   match args.command {
+    TreetimeCommands::Timetree(timetree_args) => {}
     TreetimeCommands::Ancestral(ancestral_args) => {
       run_ancestral(ancestral_args)?;
     }
@@ -38,6 +39,7 @@ fn main() -> Result<(), Report> {
     TreetimeCommands::Completions { shell } => {
       generate_shell_completions(&shell)?;
     }
+    TreetimeCommands::Arg(arg_args) => {}
   }
 
   Ok(())

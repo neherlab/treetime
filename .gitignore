@@ -103,3 +103,4 @@ test/treetime_examples
 /\.cache
 /target
 /packages/**/target
+/tmp*
