@@ -1,66 +1,110 @@
-// use crate::gtr::gtr::GTR;
-// use crate::seq_utils::normalize_profile::normalize_profile;
-// use crate::utils::ndarray::{argmax_axis, cumsum_axis};
-// use eyre::Report;
-// use ndarray::{s, Array1, Array2, Axis, Zip};
-// use ndarray_rand::rand_distr::Uniform;
-// use ndarray_rand::RandomExt;
-//
-// /// Convert profile to sequence and normalize profile across sites.
-// ///
-// /// Parameters
-// /// ----------
-// ///
-// ///  profile : numpy 2D array
-// ///     Profile. Shape of the profile should be (L x a), where L - sequence
-// ///     length, a - alphabet size.
-// ///  gtr : gtr.GTR
-// ///     Instance of the GTR class to supply the sequence alphabet
-// ///  collapse_prof : bool
-// ///     Whether to convert the profile to the delta-function
-// ///
-// /// Returns
-// /// -------
-// ///  seq : numpy.array
-// ///     Sequence as numpy array of length L
-// ///  prof_values :  numpy.array
-// ///     Values of the profile for the chosen sequence characters (length L)
-// ///  idx : numpy.array
-// ///     Indices chosen from profile as array of length L
-// pub fn prof2seq(profile: &Array2<f32>, gtr: &GTR, sample_from_prof: bool, normalize: bool) -> Result<(), Report> {
-//   // Normalize profile such that probabilities at each site sum to one
-//   let profile = &if normalize {
-//     normalize_profile(profile, false)?
-//   } else {
-//     profile.to_owned()
-//   };
-//
-//   // Sample sequence according to the probabilities in the profile
-//   // (sampling from cumulative distribution over the different states)
-//   let idx = if sample_from_prof {
-//     //cumdis = tmp_profile.cumsum(axis=1).T
-//     let cumdis: Array1<f32> = cumsum_axis(profile, Axis(1))?.t().to_owned();
-//
-//     // randnum = np.random.random(size=cumdis.shape[1])
-//     let randnum: Array1<f32> = Array1::<f32>::random(cumdis.shape()[1], Uniform::new(0.0, 1.0));
-//
-//     // np.argmax(cumdis >= randnum, axis = 0);
-//     let mask: Array1<u8> = Zip::from(&cumdis)
-//       .and(&randnum)
-//       .map_collect(|&c, &r| if c > r { 1 } else { 0 });
-//
-//     argmax_axis(&mask, Axis(0))
-//   } else {
-//     // tmp_profile.argmax(axis=1)
-//     argmax_axis(profile, Axis(1))
-//   };
-//
-//   let seq = &gtr.alphabet[idx]; // max LH over the alphabet
-//   let prof_values = &profile[s!(.., idx)];
-//
-//   Ok((seq, prof_values, idx))
-// }
-//
+use crate::gtr::gtr::GTR;
+use crate::seq_utils::normalize_profile::normalize_profile;
+use crate::utils::ndarray::{argmax_axis, cumsum_axis, random};
+use eyre::Report;
+use ndarray::{array, Array1, Array2, Axis};
+use ndarray_rand::RandomExt;
+use ndarray_stats::QuantileExt;
+use rand::Rng;
+
+#[derive(Debug, Clone)]
+pub struct Prof2SeqParams {
+  pub should_sample_from_profile: bool,
+  pub should_normalize_profile: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct Prof2SeqResult {
+  pub seq: Array1<char>,
+  pub prof_values: Array1<f32>,
+  pub seq_ii: Array1<usize>,
+}
+
+/// Convert profile to sequence and normalize profile across sites.
+///
+/// Parameters
+/// ----------
+///
+///  profile : numpy 2D array
+///     Profile. Shape of the profile should be (L x a), where L - sequence
+///     length, a - alphabet size.
+///  gtr : gtr.GTR
+///     Instance of the GTR class to supply the sequence alphabet
+///  collapse_prof : bool
+///     Whether to convert the profile to the delta-function
+///
+/// Returns
+/// -------
+///  seq : numpy.array
+///     Sequence as numpy array of length L
+///  prof_values :  numpy.array
+///     Values of the profile for the chosen sequence characters (length L)
+///  idx : numpy.array
+///     Indices chosen from profile as array of length L
+pub fn prof2seq<R: Rng>(
+  profile: &Array2<f32>,
+  gtr: &GTR,
+  rng: &mut R,
+  params: &Prof2SeqParams,
+) -> Result<Prof2SeqResult, Report> {
+  // Normalize profile such that probabilities at each site sum to one
+  let profile = if params.should_normalize_profile {
+    let (prof_norm, _) = normalize_profile(profile, false)?;
+    prof_norm
+  } else {
+    profile.to_owned()
+  };
+
+  let seq_ii: Array1<usize> = if params.should_sample_from_profile {
+    let randnum: Array1<f32> = random(profile.shape()[0], rng);
+    sample_from_prof(&profile, &randnum)
+  } else {
+    argmax_axis(&profile, Axis(1))
+  };
+
+  let seq = gtr.alphabet.indices_to_seq(&seq_ii); // max LH over the alphabet
+
+  let prof_values = get_prof_values(&profile, &seq_ii);
+
+  Ok(Prof2SeqResult {
+    seq,
+    prof_values,
+    seq_ii,
+  })
+}
+
+/// Sample sequence according to the probabilities in the profile
+/// (sampling from cumulative distribution over the different states)
+pub fn sample_from_prof(profile: &Array2<f32>, randnum: &Array1<f32>) -> Array1<usize> {
+  assert_eq!(profile.shape()[0], randnum.shape()[0]);
+
+  let cumdis: Array2<f32> = cumsum_axis(profile, Axis(1)).t().to_owned();
+
+  cumdis
+    .axis_iter(Axis(1))
+    .enumerate()
+    .map(|(i, row)| {
+      for (j, val) in row.iter().enumerate() {
+        if val > &randnum[i] {
+          return j;
+        }
+      }
+      row.len()
+    })
+    .collect()
+}
+
+pub fn get_prof_values(profile: &Array2<f32>, seq_ii: &Array1<usize>) -> Array1<f32> {
+  profile
+    .axis_iter(Axis(0))
+    .enumerate()
+    .map(|(i, row)| {
+      let index = seq_ii[i];
+      row[index]
+    })
+    .collect()
+}
+
 // /// Convert the given character sequence into the profile according to the
 // /// alphabet specified.
 // ///
@@ -81,3 +125,108 @@
 // pub fn seq2prof(seq: String, profile_map: Array2<f32>) {
 //   // np.array([profile_map[k] for k in seq])
 // }
+
+#[allow(clippy::excessive_precision, clippy::lossy_float_literal)]
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use crate::nuc_models::jc69::jc69;
+  use approx::assert_ulps_eq;
+  use eyre::Report;
+  use ndarray::array;
+  use pretty_assertions::assert_eq;
+  use rand::SeedableRng;
+  use rand_isaac::Isaac64Rng;
+  use rstest::rstest;
+
+  #[rstest]
+  fn samples_from_profile() -> Result<(), Report> {
+    let rng = &mut Isaac64Rng::seed_from_u64(42);
+
+    let profile = array![
+      [0.19356424, 0.25224431, 0.21259213, 0.19217803, 0.14942128],
+      [0.19440831, 0.13170981, 0.26841564, 0.29005381, 0.11541244],
+      [0.27439982, 0.18330691, 0.19687558, 0.32079767, 0.02462001],
+      [0.03366488, 0.00781195, 0.32170632, 0.30066296, 0.33615390],
+      [0.31185458, 0.25466645, 0.14705881, 0.24872985, 0.03769030],
+      [0.24016971, 0.05380214, 0.35454510, 0.19585567, 0.15562739],
+      [0.12705805, 0.37184099, 0.21907519, 0.27300161, 0.00902417]
+    ];
+
+    let randnum = array![0.6176355, 0.61209572, 0.616934, 0.94374808, 0.6818203, 0.3595079, 0.43703195];
+
+    let sample: Array1<usize> = sample_from_prof(&profile, &randnum);
+
+    assert_eq!(sample, array![2, 3, 2, 4, 2, 2, 1]);
+
+    Ok(())
+  }
+
+  #[rstest]
+  fn gets_prof_values() -> Result<(), Report> {
+    let rng = &mut Isaac64Rng::seed_from_u64(42);
+
+    let profile = array![
+      [0.19356424, 0.25224431, 0.21259213, 0.19217803, 0.14942128],
+      [0.19440831, 0.13170981, 0.26841564, 0.29005381, 0.11541244],
+      [0.27439982, 0.18330691, 0.19687558, 0.32079767, 0.02462001],
+      [0.03366488, 0.00781195, 0.32170632, 0.30066296, 0.33615390],
+      [0.31185458, 0.25466645, 0.14705881, 0.24872985, 0.03769030],
+      [0.24016971, 0.05380214, 0.35454510, 0.19585567, 0.15562739],
+      [0.12705805, 0.37184099, 0.21907519, 0.27300161, 0.00902417],
+    ];
+
+    let seq_ii = array![2, 3, 2, 4, 2, 2, 1];
+
+    let prof_values = get_prof_values(&profile, &seq_ii);
+
+    assert_eq!(
+      prof_values,
+      array![0.21259213, 0.29005381, 0.19687558, 0.3361539, 0.14705881, 0.3545451, 0.37184099]
+    );
+
+    Ok(())
+  }
+
+  #[rstest]
+  fn calculates_prof2seq_with_sample_without_normalize() -> Result<(), Report> {
+    let rng = &mut Isaac64Rng::seed_from_u64(42);
+
+    let gtr = jc69()?;
+
+    let norm_prof = array![
+      [0.19356424, 0.25224431, 0.21259213, 0.19217803, 0.14942128],
+      [0.19440831, 0.13170981, 0.26841564, 0.29005381, 0.11541244],
+      [0.27439982, 0.18330691, 0.19687558, 0.32079767, 0.02462001],
+      [0.03366488, 0.00781195, 0.32170632, 0.30066296, 0.33615390],
+      [0.31185458, 0.25466645, 0.14705881, 0.24872985, 0.03769030],
+      [0.24016971, 0.05380214, 0.35454510, 0.19585567, 0.15562739],
+      [0.12705805, 0.37184099, 0.21907519, 0.27300161, 0.00902417],
+    ];
+
+    let Prof2SeqResult {
+      seq,
+      prof_values,
+      seq_ii,
+    } = prof2seq(
+      &norm_prof,
+      &gtr,
+      rng,
+      &Prof2SeqParams {
+        should_sample_from_profile: true,
+        should_normalize_profile: false,
+      },
+    )?;
+
+    assert_eq!(seq_ii, array![4, 2, 1, 4, 3, 3, 3]);
+
+    assert_eq!(seq, array!['-', 'G', 'C', '-', 'T', 'T', 'T']);
+
+    assert_ulps_eq!(
+      prof_values,
+      array![0.14942127, 0.26841563, 0.1833069, 0.3361539, 0.24872985, 0.19585568, 0.2730016]
+    );
+
+    Ok(())
+  }
+}

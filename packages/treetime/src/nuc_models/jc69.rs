@@ -8,7 +8,7 @@ pub fn jc69() -> Result<GTR, Report> {
   let mu = 1.0;
   let alphabet_name = "nuc";
 
-  let alphabet = Alphabet::new(alphabet_name);
+  let alphabet = Alphabet::new(alphabet_name)?;
   let profile_map = ProfileMap::from_alphabet(&alphabet);
 
   let num_chars = alphabet.len();

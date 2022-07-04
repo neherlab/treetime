@@ -1,7 +1,11 @@
 use eyre::Report;
-use ndarray::{Array, Array1, Array2, Axis, Dim, Dimension, Ix1, Ix2, NdProducer, RawData, Zip};
-use num_traits::Bounded;
-use std::ops::MulAssign;
+use ndarray::{Array, Array1, Array2, Axis, Dimension, Ix2, NdProducer, RawData, RemoveAxis, ShapeBuilder, Zip};
+use ndarray_rand::RandomExt;
+use num_traits::{Bounded, NumCast};
+use rand::distributions::uniform::SampleUniform;
+use rand::distributions::Uniform;
+use rand::Rng;
+use std::ops::{Add, AddAssign, MulAssign};
 
 pub fn to_col(a: &Array1<f32>) -> Result<Array2<f32>, Report> {
   Ok(a.to_shape((a.len(), 1))?.into_dimensionality::<Ix2>()?.to_owned())
@@ -18,13 +22,13 @@ pub fn outer(a: &Array1<f32>, b: &Array1<f32>) -> Result<Array2<f32>, Report> {
   Ok(a.dot(&b))
 }
 
-/// Calculates min sum over given axis
+/// Calculates min over given axis
 #[inline]
 pub fn min_axis(arr: &Array2<f32>, axis: Axis) -> Result<Array1<f32>, Report> {
   Ok(arr.fold_axis(axis, f32::MAX, |a, b| a.min(*b)))
 }
 
-/// Calculates max sum over given axis
+/// Calculates max over given axis
 #[inline]
 pub fn max_axis(arr: &Array2<f32>, axis: Axis) -> Result<Array1<f32>, Report> {
   Ok(arr.fold_axis(axis, f32::MIN, |a, b| a.max(*b)))
@@ -32,30 +36,36 @@ pub fn max_axis(arr: &Array2<f32>, axis: Axis) -> Result<Array1<f32>, Report> {
 
 /// Finds index of min value over given axis
 #[inline]
-pub fn argmin_axis<T: Copy + Ord + PartialOrd + Bounded>(arr: &Array1<T>, axis: Axis) -> usize {
-  let mut i_curr = 0;
-  let res = arr
-    .fold_axis(axis, (0_usize, T::max_value()), |(i_min, x_min), x| {
-      let res = if x < x_min { (i_curr, *x) } else { (*i_min, *x_min) };
-      i_curr += 1;
-      res
+pub fn argmin_axis<T: 'static + Copy + PartialOrd + Bounded, D: RemoveAxis>(
+  arr: &Array<T, D>,
+  axis: Axis,
+) -> Array<usize, D::Smaller> {
+  arr
+    .fold_axis(axis, (0_usize, 0_usize, T::max_value()), |(i_curr, i_min, x_min), x| {
+      if x < x_min {
+        (i_curr + 1, *i_curr, *x)
+      } else {
+        (i_curr + 1, *i_min, *x_min)
+      }
     })
-    .into_raw_vec();
-  res[0].0
+    .mapv_into_any(|(_, i, _)| i)
 }
 
 /// Finds index of max value over given axis
 #[inline]
-pub fn argmax_axis<T: Copy + Ord + PartialOrd + Bounded>(arr: &Array1<T>, axis: Axis) -> usize {
-  let mut i_curr = 0;
-  let res = arr
-    .fold_axis(axis, (0_usize, T::min_value()), |(i_max, x_max), x| {
-      let res = if x > x_max { (i_curr, *x) } else { (*i_max, *x_max) };
-      i_curr += 1;
-      res
+pub fn argmax_axis<T: 'static + Copy + PartialOrd + Bounded, D: RemoveAxis>(
+  arr: &Array<T, D>,
+  axis: Axis,
+) -> Array<usize, D::Smaller> {
+  arr
+    .fold_axis(axis, (0_usize, 0_usize, T::min_value()), |(i_curr, i_max, x_max), x| {
+      if x > x_max {
+        (i_curr + 1, *i_curr, *x)
+      } else {
+        (i_curr + 1, *i_max, *x_max)
+      }
     })
-    .into_raw_vec();
-  res[0].0
+    .mapv_into_any(|(_, i, _)| i)
 }
 
 /// Element-wise minimum of two arrays
@@ -87,22 +97,95 @@ pub fn clamp<T: Copy + PartialOrd, D: Dimension>(a: &Array<T, D>, lower: T, uppe
 
 /// Calculates cumulative sum over given axis
 #[inline]
-pub fn cumsum_axis(profile: &Array2<f32>, axis: Axis) -> Result<Array1<f32>, Report> {
-  let mut result = profile.to_owned();
+pub fn cumsum_axis<T: Copy + AddAssign, D: Dimension>(a: &Array<T, D>, axis: Axis) -> Array<T, D> {
+  let mut result = a.to_owned();
   result.accumulate_axis_inplace(axis, |&prev, curr| *curr += prev);
-  let result = result.into_dimensionality::<Ix1>()?;
-  Ok(result)
+  result
 }
 
-#[allow(clippy::excessive_precision)]
+pub fn random<T: Copy + SampleUniform + NumCast, D: Dimension, Sh: ShapeBuilder<Dim = D>, R: Rng>(
+  shape: Sh,
+  rng: &mut R,
+) -> Array<T, D> {
+  let from: T = NumCast::from(0_i32).unwrap();
+  let to: T = NumCast::from(1_i32).unwrap();
+  Array::<T, D>::random_using(shape, Uniform::<T>::new::<T, T>(from, to), rng)
+}
+
+#[allow(clippy::excessive_precision, clippy::lossy_float_literal)]
 #[cfg(test)]
 mod tests {
   use super::*;
   use approx::assert_ulps_eq;
   use eyre::Report;
+  use lazy_static::lazy_static;
   use ndarray::array;
   use ndarray_linalg::{Eigh, UPLO};
+  use rand::SeedableRng;
+  use rand_isaac::Isaac64Rng;
   use rstest::rstest;
+
+  lazy_static! {
+    static ref INPUT: Array2<f32> = array![
+      [0.19356424, 0.25224431, 0.21259213, 0.19217803, 0.14942128],
+      [0.19440831, 0.13170981, 0.26841564, 0.29005381, 0.11541244],
+      [0.27439982, 0.18330691, 0.19687558, 0.32079767, 0.02462001],
+      [0.03366488, 0.00781195, 0.32170632, 0.30066296, 0.33615390],
+      [0.31185458, 0.25466645, 0.14705881, 0.24872985, 0.03769030],
+      [0.24016971, 0.05380214, 0.35454510, 0.19585567, 0.15562739],
+      [0.12705805, 0.37184099, 0.21907519, 0.27300161, 0.00902417],
+    ];
+  }
+
+  #[rstest]
+  fn computes_argmin_axis_0() {
+    assert_eq!(argmin_axis(&INPUT, Axis(0)), array![3, 3, 4, 0, 6]);
+  }
+
+  #[rstest]
+  fn computes_argmin_axis_1() {
+    assert_eq!(argmin_axis(&INPUT, Axis(1)), array![4, 4, 4, 1, 4, 1, 4]);
+  }
+
+  #[rstest]
+  fn computes_argmax_axis_0() {
+    assert_eq!(argmax_axis(&INPUT, Axis(0)), array![4, 6, 5, 2, 3]);
+  }
+
+  #[rstest]
+  fn computes_argmax_axis_1() {
+    assert_eq!(argmax_axis(&INPUT, Axis(1)), array![1, 3, 3, 4, 0, 2, 1]);
+  }
+
+  #[rstest]
+  fn computes_cumsum_axis_0() {
+    let expected = array![
+      [0.19356424, 0.25224431, 0.21259213, 0.19217803, 0.14942128],
+      [0.38797255, 0.38395412, 0.48100777, 0.48223184, 0.26483372],
+      [0.66237237, 0.56726103, 0.67788335, 0.80302951, 0.28945373],
+      [0.69603725, 0.57507298, 0.99958967, 1.10369247, 0.62560763],
+      [1.00789183, 0.82973943, 1.14664848, 1.35242232, 0.66329793],
+      [1.24806154, 0.88354157, 1.50119358, 1.54827799, 0.81892532],
+      [1.37511959, 1.25538256, 1.72026877, 1.82127960, 0.82794949],
+    ];
+
+    assert_ulps_eq!(cumsum_axis(&INPUT, Axis(0)), expected);
+  }
+
+  #[rstest]
+  fn computes_cumsum_axis_1() {
+    let expected = array![
+      [0.19356424, 0.44580855, 0.65840068, 0.85057871, 0.99999999],
+      [0.19440831, 0.32611812, 0.59453376, 0.88458757, 1.00000001],
+      [0.27439982, 0.45770673, 0.65458231, 0.97537998, 0.99999999],
+      [0.03366488, 0.04147683, 0.36318315, 0.66384611, 1.00000001],
+      [0.31185458, 0.56652103, 0.71357984, 0.96230969, 0.99999999],
+      [0.24016971, 0.29397185, 0.64851695, 0.84437262, 1.00000001],
+      [0.12705805, 0.49889904, 0.71797423, 0.99097584, 1.00000001],
+    ];
+
+    assert_ulps_eq!(cumsum_axis(&INPUT, Axis(1)), expected);
+  }
 
   #[rstest]
   fn computes_outer_product() -> Result<(), Report> {
@@ -184,5 +267,30 @@ mod tests {
     );
 
     Ok(())
+  }
+
+  #[rstest]
+  fn generates_predictable_random_uniform() {
+    let mut rng = Isaac64Rng::seed_from_u64(42);
+
+    let r: Array2<f32> = random((3, 4), &mut rng);
+    assert_ulps_eq!(
+      r,
+      array![
+        [0.95799470, 0.47098792, 0.39911770, 0.77817917],
+        [0.73372230, 0.72803986, 0.86803260, 0.24949098],
+        [0.94433236, 0.41172707, 0.22396588, 0.76245964],
+      ]
+    );
+
+    let r: Array2<f32> = random((3, 4), &mut rng);
+    assert_ulps_eq!(
+      r,
+      array![
+        [0.70186340, 0.79208550, 0.92076266, 0.68138490],
+        [0.02917111, 0.67137120, 0.13164222, 0.85151780],
+        [0.49220824, 0.31181955, 0.52067375, 0.73982537],
+      ]
+    );
   }
 }

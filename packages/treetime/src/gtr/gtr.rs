@@ -198,7 +198,7 @@ impl GTR {
   ///  res : np.array
   ///     Profile of the sequence after time t in the past.
   ///     Shape = (L, a), where L - sequence length, a - alphabet size.
-  pub fn propagate_profile(self, profile: &Array2<f32>, t: f32, return_log: bool) -> Array2<f32> {
+  pub fn propagate_profile(&self, profile: &Array2<f32>, t: f32, return_log: bool) -> Array2<f32> {
     let Qt = self.expQt(t);
     let res = profile.dot(&Qt);
     if return_log {
@@ -321,7 +321,7 @@ mod test {
       ]
     );
 
-    assert_eq!(gtr.alphabet, Alphabet::new("nuc")); // array!['A', 'C', 'G', 'T', '-']
+    assert_eq!(gtr.alphabet, Alphabet::new("nuc")?);
 
     // assert_eq!(gtr.profile_map, {
     //   '-': array([0.0, 0.0, 0.0, 0.0, 1.0]),
