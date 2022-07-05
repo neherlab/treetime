@@ -18,7 +18,7 @@ approx = "0.5.1"
 argmin = { version = "0.5.1", features = ["ctrlc", "ndarray"] }
 bio = "0.41.0"
 bio-types = "0.12.1"
-blas-src = { version = "0.8.0", features = ["openblas"] }
+blas-src = { version = "0.8.0", features = ["openblas-src"] }
 chrono = { version = "0.4.19", default-features = false, features = ["clock", "std"] }
 clap = { version = "3.1.8", features = ["derive"] }
 clap-verbosity-flag = "1.0.0"
