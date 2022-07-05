@@ -1,3 +1,6 @@
+[env]
+DYNAMIC_ARCH = "1" # https://github.com/xianyi/OpenBLAS#support-for-multiple-targets-in-a-single-library=
+
 [future-incompat-report]
 frequency = 'always'
 
