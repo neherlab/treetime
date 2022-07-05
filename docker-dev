@@ -23,13 +23,14 @@ export PACKAGE_DIR_REL=""
 export PROJECT_ROOT_DIR="$(abspath "${THIS_DIR}")"
 export PACKAGE_DIR="$(abspath "${PROJECT_ROOT_DIR}/${PACKAGE_DIR_REL}")"
 
-export DOCKER_IMAGE_NAME="${PACKAGE_NAME}-dev"
-export DOCKER_CONTAINER_NAME="${DOCKER_IMAGE_NAME//\//-}-$(date +%s)"
+export DOCKER_REPO="neherlab/teetime_builder"
+export DOCKER_IMAGE_NAME_SAFE="${DOCKER_REPO//\//-}"
+export DOCKER_CONTAINER_NAME="${DOCKER_IMAGE_NAME_SAFE}-$(date +%s)"
 
 export USER=user
 export GROUP=user
 
-export BUILD_DIR_REL=".build/docker/${PACKAGE_DIR_REL}"
+export BUILD_DIR_REL=".build/docker${CROSS:+-$CROSS}/${PACKAGE_DIR_REL}"
 export BUILD_DIR="$(abspath "${PACKAGE_DIR}/${BUILD_DIR_REL}")"
 export BUILD_DIR_TEST="${BUILD_DIR}/test"
 
@@ -43,6 +44,16 @@ export RUST_BACKTRACE="full"
 export COLORBT_SHOW_HIDDEN="0"
 export RUST_LOG="warn"
 export CARGO_BUILD_TARGET_DIR="${BUILD_DIR_REL}"
+
+if [ -f "${PROJECT_ROOT_DIR}/.env.example" ]; then
+  . "${PROJECT_ROOT_DIR}/.env.example"
+fi
+
+if [ -f "${PROJECT_ROOT_DIR}/.env" ]; then
+  . "${PROJECT_ROOT_DIR}/.env"
+fi
+
+. "${THIS_DIR}/scripts/is_ci.sh"
 
 export EXTENSIONS_TO_WATCH="rs,toml,lock"
 
@@ -65,6 +76,8 @@ export FILES_TO_IGNORE="\
 
 export LINT_FIX="--fix --allow-staged"
 
+FORCE_DOCKER_IMAGE_BUILD=${FORCE_DOCKER_IMAGE_BUILD:-}
+DOCKER_IMAGE_PUSH=0
 BUILD=0
 RUN=0
 WASM=0
@@ -76,9 +89,19 @@ TEST_FLAGS=
 BENCH=0
 EXAMPLE=0
 LINT=0
+FORMAT=0
 FIX=
 
 case "${1:-}" in
+"docker-image-build" | "d")
+  shift
+  FORCE_DOCKER_IMAGE_BUILD=1
+  ;;
+"docker-image-build-push" | "dp")
+  shift
+  FORCE_DOCKER_IMAGE_BUILD=1
+  DOCKER_IMAGE_PUSH=1
+  ;;
 "build" | "b")
   shift
   BUILD=1
@@ -107,6 +130,46 @@ case "${1:-}" in
   RUN=1
   RELEASE="--release"
   WATCH=1
+  ;;
+"wasm" | "W")
+  shift
+  WASM=1
+  RELEASE="dev"
+  ;;
+"wasm-release" | "Wr")
+  shift
+  WASM=1
+  RELEASE="prod"
+  ;;
+"watch-wasm" | "wW")
+  shift
+  WASM=1
+  RELEASE="dev"
+  WATCH=1
+  ;;
+"watch-wasm-release" | "wWr")
+  shift
+  WASM=1
+  RELEASE="prod"
+  WATCH=1
+  ;;
+"web" | "a")
+  shift
+  WEB=1
+  RELEASE="dev"
+  WATCH=0
+  ;;
+"web-release" | "ar")
+  shift
+  WEB=1
+  RELEASE="prod:build"
+  WATCH=0
+  ;;
+"watch-web-release" | "war")
+  shift
+  WEB=1
+  RELEASE="prod:watch"
+  WATCH=0
   ;;
 "test" | "t")
   shift
@@ -185,6 +248,18 @@ case "${1:-}" in
   WATCH=1
   FIX="${LINT_FIX}"
   ;;
+"format" | "f")
+  shift
+  FORMAT=1
+  WATCH=0
+  FIX=
+  ;;
+"format-check" | "fc")
+  shift
+  FORMAT=1
+  WATCH=1
+  FIX="--check"
+  ;;
 "exec" | "e")
   shift
   RUN=0
@@ -195,43 +270,78 @@ if [ "${WASM}" == "1" ]; then
   CROSS="wasm32-unknown-unknown"
 fi
 
+DOCKER_BASE_IMAGE="${DOCKER_BASE_IMAGE:=ubuntu:20.04}"
+CLANG_VERSION="${CLANG_VERSION:=13}"
 DOCKER_TARGET="dev"
-DOCKER_TAG="latest"
 RUST_TARGET=""
 if [ -n "${CROSS:-}" ]; then
+  if [[ "${CROSS}" == *linux-gnu ]]; then
+
+    if [[ "${CROSS}" == x86_64-* ]]; then
+      DOCKER_BASE_IMAGE="debian:7.11"
+      CLANG_VERSION="3.5"
+    else
+      DOCKER_BASE_IMAGE="debian:9.13"
+      CLANG_VERSION="13"
+    fi
+
+  fi
+
   DOCKER_TARGET="cross-${CROSS}"
-  DOCKER_TAG="cross-${CROSS}"
   RUST_TARGET="--target=${CROSS}"
 fi
+DOCKER_IMAGE_VERSION="$(./scripts/docker_build_checksum.sh)"
 
-DOCKER_BUILD_ARGS=""
-MACOS_SDK_FILENAME="MacOSX11.1.sdk.tar.xz"
-MACOS_SDK_SHA="4a575e099c1b5dafe2835770d2a225c4ed082c2a36ecec9eac0946339fe665f3"
-if [[ "${CROSS:-}" == *-apple-darwin ]]; then
-  DOCKER_BUILD_ARGS=" \
-    --build-arg MACOS_SDK_FILENAME=${MACOS_SDK_FILENAME} \
-    --build-arg MACOS_SDK_SHA=${MACOS_SDK_SHA} \
-  "
+if ! docker inspect --format '{{.Id}}' "${DOCKER_REPO}:${DOCKER_TARGET}-${DOCKER_IMAGE_VERSION}" &>/dev/null ||
+  [ -n "${FORCE_DOCKER_IMAGE_BUILD}" ]; then
+
+  export DOCKER_BUILDKIT=1
+  export BUILDKIT_PROGRESS=plain
+  export PROGRESS_NO_TRUNC=1
+
+  ADDITIONAL_DOCKER_BUILD_ARGS=
+  if [[ "${DOCKER_TARGET}" == *apple* ]]; then
+    # shellcheck disable=SC2089
+
+    ADDITIONAL_DOCKER_BUILD_ARGS="--build-arg OSXCROSS_URL=${OSXCROSS_URL}"
+  fi
+
+  ${NICE} docker build -q \
+    --file="docker/docker-dev.dockerfile" \
+    --target="${DOCKER_TARGET}" \
+    --tag="${DOCKER_REPO}:${DOCKER_TARGET}" \
+    --tag="${DOCKER_REPO}:${DOCKER_TARGET}-${DOCKER_IMAGE_VERSION}" \
+    --cache-from="${DOCKER_REPO}:dev" \
+    --cache-from="${DOCKER_REPO}:dev-${DOCKER_IMAGE_VERSION}" \
+    --cache-from="${DOCKER_REPO}:${DOCKER_TARGET}" \
+    --cache-from="${DOCKER_REPO}:${DOCKER_TARGET}-${DOCKER_IMAGE_VERSION}" \
+    --network=host \
+    --build-arg="DOCKER_BASE_IMAGE=${DOCKER_BASE_IMAGE}" \
+    --build-arg="CLANG_VERSION=${CLANG_VERSION}" \
+    --build-arg="UID=$(id -u)" \
+    --build-arg="GID=$(id -g)" \
+    --build-arg="USER=user" \
+    --build-arg="GROUP=user" \
+    ${ADDITIONAL_DOCKER_BUILD_ARGS} \
+    . \
+    >/dev/null
+
+  if [ "${DOCKER_IMAGE_PUSH}" == "1" ]; then
+    docker push "${DOCKER_REPO}:${DOCKER_TARGET}"
+    docker push "${DOCKER_REPO}:${DOCKER_TARGET}-${DOCKER_IMAGE_VERSION}"
+  fi
+
+  if [ -n "${FORCE_DOCKER_IMAGE_BUILD}" ]; then
+    exit 0
+  fi
 fi
-
-# shellcheck disable=SC2086
-docker build -q -t "${DOCKER_IMAGE_NAME}:${DOCKER_TAG}" \
-  -f "${PACKAGE_DIR}/docker-dev.dockerfile" \
-  --target="${DOCKER_TARGET}" \
-  --build-arg="UID=$(id -u)" \
-  --build-arg="GID=$(id -g)" \
-  --build-arg="USER=user" \
-  --build-arg="GROUP=user" \
-  --network=host \
-  ${DOCKER_BUILD_ARGS} \
-  "${PACKAGE_DIR}" \
-  >/dev/null
 
 export RUSTC_FORCE_INCREMENTAL=""
 if [ -n "${RELEASE}" ]; then
   export RUSTC_FORCE_INCREMENTAL=1
 fi
-
+CI=1
+PARAMS=""
 COMMAND=${*:-}
 PORTS=
 if [ "${RUN}" == "1" ]; then
@@ -239,15 +349,34 @@ if [ "${RUN}" == "1" ]; then
   if [ -n "${PARAMS}" ]; then
     PARAMS="--bin=${PARAMS}"
   fi
+  if [ "$(is_ci)" == "1" ]; then
+    PARAMS=" --locked ${PARAMS}"
+  fi
   COMMAND="cargo run -q --target-dir='${BUILD_DIR_REL}' ${RUST_TARGET} ${RELEASE} ${PARAMS}"
 elif [ "${EXAMPLE}" == "1" ]; then
   PARAMS="$(echo "${@:-}" | xargs)"
   if [ -n "${PARAMS}" ]; then
     PARAMS="--example=${PARAMS}"
   fi
-  COMMAND="cargo run -q --target-dir='${BUILD_DIR_REL}' ${RUST_TARGET} ${RELEASE} ${PARAMS}"
+  if [ "$(is_ci)" == "1" ]; then
+    PARAMS=" --locked ${PARAMS}"
+  fi
+  COMMAND="cargo run -q --package=treetime --target-dir='${BUILD_DIR_REL}' ${RUST_TARGET} ${RELEASE} ${PARAMS}"
 elif [ "${BUILD}" == "1" ]; then
-  COMMAND="cargo build -q --target-dir='${BUILD_DIR_REL}' ${RUST_TARGET} ${RELEASE} ${PARAMS}"
+  PARAMS="$(echo "${@:-}" | xargs)"
+  if [ -n "${PARAMS}" ]; then
+    PARAMS="--bin=${PARAMS}"
+  fi
+  if [ "$(is_ci)" == "1" ]; then
+    PARAMS=" --locked ${PARAMS}"
+  fi
+  COMMAND="cargo build -q --package=treetime --target-dir='${BUILD_DIR_REL}' ${RUST_TARGET} ${RELEASE} ${PARAMS}"
+elif [ "${WASM}" == "1" ]; then
+  COMMAND="bash -c \"set -euo pipefail && cd packages/treetime-web && yarn wasm-${RELEASE}\""
+elif [ "${WEB}" == "1" ]; then
+  PORTS="-p 3000:3000"
+  COMMAND=${COMMAND:=yarn install && yarn ${RELEASE}}
+  COMMAND="bash -c \"set -euo pipefail && cd packages/treetime-web && ${COMMAND}\""
 elif [ "${TEST}" == "1" ]; then
   PRETTY_TEST="( grep --color=always --line-buffered -vP \"running.*tests|\x1b\[32m.\x1b\(B\x1b\[m|^$|test result|TEST START\" || true )"
   COMMAND="cargo test --color=always -q --target-dir='${BUILD_DIR_REL}' ${RUST_TARGET} ${TEST_FLAGS} ${*:-} -- --nocapture --color=always | ${PRETTY_TEST} ${SUCCESS_OR_FAILURE}"
@@ -256,6 +385,8 @@ elif [ "${BENCH}" == "1" ]; then
   COMMAND="cargo bench --color=always -q --target-dir='${BUILD_DIR_REL}' ${RUST_TARGET} ${*:-} | ${PRETTY_BENCH} ${SUCCESS_OR_FAILURE}"
 elif [ "${LINT}" == "1" ]; then
   COMMAND="cargo clippy --exclude=3rdparty -q --target-dir=\"${BUILD_DIR_REL}\" --all ${FIX:-}"
+elif [ "${FORMAT}" == "1" ]; then
+  COMMAND="cargo fmt -q --all ${FIX:-}"
 else
   COMMAND="${NICE} ${TIME} ${COMMAND}"
 fi
@@ -275,16 +406,14 @@ else
   COMMAND="${NICE} ${TIME} ${COMMAND}"
 fi
 
-CPUS="$(($(nproc) - 2))"
-
 mkdir -p "${BUILD_DIR}" "${CACHE_DIR}/.cargo/"{install,registry}
 
 # shellcheck disable=SC2086
-docker run -it --rm \
+${NICE} docker run -it --rm \
   --network=host \
   --init \
   --name="${DOCKER_CONTAINER_NAME}" \
-  --hostname="${DOCKER_IMAGE_NAME}" \
+  --hostname="${DOCKER_IMAGE_NAME_SAFE}" \
   --user="$(id -u):$(id -g)" \
   --volume="${PROJECT_ROOT_DIR}:/workdir" \
   --volume="${CACHE_DIR}/.cargo/install:/home/${USER}/.cargo/install" \
@@ -300,7 +429,16 @@ docker run -it --rm \
   --env="RUST_LOG=${RUST_LOG}" \
   --env="CARGO_BUILD_TARGET_DIR=${CARGO_BUILD_TARGET_DIR}" \
   --env="RUSTC_FORCE_INCREMENTAL=${RUSTC_FORCE_INCREMENTAL}" \
+  --env-file="${PROJECT_ROOT_DIR}/.env" \
   ${PORTS} \
-  --cpus="${CPUS}" \
-  "${DOCKER_IMAGE_NAME}:${DOCKER_TAG}" \
+  "${DOCKER_REPO}:${DOCKER_TARGET}-${DOCKER_IMAGE_VERSION}" \
   bash -c "set -euo pipefail; ${HANDLE_SIGINT}; ${COMMAND} ${SUCCESS_OR_FAILURE}"
+
+if [ -n "${CROSS:-}" ] && [ -n "${RELEASE:-}" ] && { [ "${BUILD:-}" == 1 ] || [ "${RUN:-}" == 1 ]; }; then
+  mkdir -p .out/
+  if [[ "${CROSS}" == *windows* ]]; then
+    cp "${BUILD_DIR}/${CROSS}/release/treetime.exe" ".out/treetime-${CROSS}.exe"
+  else
+    cp "${BUILD_DIR}/${CROSS}/release/treetime" ".out/treetime-${CROSS}"
+  fi
+fi
