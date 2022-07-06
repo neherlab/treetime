@@ -45,7 +45,13 @@ fn main() -> Result<(), Report> {
 
   graph.build();
 
+  println!("Traverse forward:");
   graph.iter_breadth_first(|node| {
+    println!("{}", &node.payload.data);
+  });
+
+  println!("Traverse backwards:");
+  graph.iter_breadth_first_reverse(|node| {
     println!("{}", &node.payload.data);
   });
 

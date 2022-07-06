@@ -82,4 +82,14 @@ impl<N> Graph<N> {
       f(node);
     }
   }
+
+  /// Iterates graph from leaves to roots in breadth-first order
+  pub fn iter_breadth_first_reverse(&self, f: impl Fn(&GraphNode<N>)) {
+    let mut queue: VecDeque<usize> = self.leaves.iter().copied().collect();
+    while let Some(idx) = queue.pop_front() {
+      let node = &self.nodes[idx];
+      queue.extend(node.parents.iter().copied());
+      f(node);
+    }
+  }
 }
