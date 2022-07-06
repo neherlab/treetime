@@ -19,7 +19,8 @@ pub struct NodePayload {
 
 fn main() -> Result<(), Report> {
   let mut graph = Graph::new();
-  let root = graph.insert(NodePayload { data: "root" });
+  let root1 = graph.insert(NodePayload { data: "root1" });
+  let root2 = graph.insert(NodePayload { data: "root2" });
   let a = graph.insert(NodePayload { data: "a" });
   let b = graph.insert(NodePayload { data: "b" });
   let c = graph.insert(NodePayload { data: "c" });
@@ -29,8 +30,8 @@ fn main() -> Result<(), Report> {
   let g = graph.insert(NodePayload { data: "g" });
   let h = graph.insert(NodePayload { data: "h" });
 
-  graph.connect(root, a);
-  graph.connect(root, b);
+  graph.connect(root1, a);
+  graph.connect(root2, b);
 
   graph.connect(a, c);
   graph.connect(a, f);
@@ -41,6 +42,8 @@ fn main() -> Result<(), Report> {
 
   graph.connect(b, e);
   graph.connect(e, h);
+
+  graph.build();
 
   graph.iter_breadth_first(|node| {
     println!("{}", &node.payload.data);

@@ -30,17 +30,18 @@ impl<N> GraphNode<N> {
 #[derive(Clone, Debug)]
 pub struct Graph<N> {
   pub nodes: Vec<GraphNode<N>>,
+  pub roots: Vec<usize>,
+  pub leaves: Vec<usize>,
 }
 
 impl<N> Graph<N> {
   /// Creates an empty graph
   pub const fn new() -> Self {
-    Self { nodes: vec![] }
-  }
-
-  /// Returns reference to root node
-  pub fn root(&self) -> &GraphNode<N> {
-    &self.nodes[0]
+    Self {
+      nodes: vec![],
+      roots: vec![],
+      leaves: vec![],
+    }
   }
 
   /// Adds a node, given its payload. Returns index of the added node.
@@ -59,11 +60,22 @@ impl<N> Graph<N> {
     to.parents.push(from_idx);
   }
 
-  /// Iterates graph from root to leaves in breadth-first order
-  pub fn iter_breadth_first(&self, f: impl Fn(&GraphNode<N>)) {
-    let root = self.root();
-    let mut queue = VecDeque::from(vec![root.idx]);
+  /// Finalizes the graph initialization
+  pub fn build(&mut self) -> &mut Self {
+    for node in &self.nodes {
+      if node.is_leaf() {
+        self.leaves.push(node.idx);
+      }
+      if node.is_root() {
+        self.roots.push(node.idx);
+      }
+    }
+    self
+  }
 
+  /// Iterates graph from roots to leaves in breadth-first order
+  pub fn iter_breadth_first(&self, f: impl Fn(&GraphNode<N>)) {
+    let mut queue: VecDeque<usize> = self.roots.iter().copied().collect();
     while let Some(idx) = queue.pop_front() {
       let node = &self.nodes[idx];
       queue.extend(node.children.iter().copied());
