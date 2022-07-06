@@ -57,8 +57,8 @@ fn main() -> Result<(), Report> {
   println!("Traverse forward:");
   println!("{:^6} | {:^20} | {:^}", "Node", "Parents", "Is root");
   graph.iter_breadth_first_forward(|node| {
-    let node_data = &node.payload.name;
-    let parent_names = &node.parents.iter().map(|parent| &parent.name).join(", ");
+    let node_data = &node.payload_mut().name;
+    let parent_names = &node.parents().map(|parent| &parent.name).join(", ");
     let is_root = &node.is_root();
     println!("{node_data:>6} | {parent_names:20} | {is_root}");
   });
@@ -68,8 +68,8 @@ fn main() -> Result<(), Report> {
   println!("Traverse backwards:");
   println!("{:^6} | {:^20} | {:^}", "Node", "Parents", "Is leaf");
   graph.iter_breadth_first_reverse(|node| {
-    let node_name = &node.payload.name;
-    let child_names = &node.children.iter().map(|child| &child.name).join(", ");
+    let node_data = &node.payload_mut().name;
+    let child_names = &node.children().map(|child| &child.name).join(", ");
     let is_leaf = &node.is_leaf();
     println!("{node_name:>6} | {child_names:20} | {is_leaf}");
   });
