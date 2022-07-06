@@ -1,10 +1,11 @@
-use std::collections::VecDeque;
+use std::collections::{HashSet, VecDeque};
 
 #[derive(Clone, Debug)]
 pub struct GraphNode<N> {
   idx: usize,
   parents: Vec<usize>,
   children: Vec<usize>,
+  visited: bool,
   pub payload: N,
 }
 
@@ -15,6 +16,7 @@ impl<N> GraphNode<N> {
       parents: vec![],
       children: vec![],
       payload,
+      visited: false,
     }
   }
 
@@ -76,20 +78,28 @@ impl<N> Graph<N> {
   /// Iterates graph from roots to leaves in breadth-first order
   pub fn iter_breadth_first(&self, f: impl Fn(&GraphNode<N>)) {
     let mut queue: VecDeque<usize> = self.roots.iter().copied().collect();
+    let mut visited = HashSet::<usize>::new();
     while let Some(idx) = queue.pop_front() {
-      let node = &self.nodes[idx];
-      queue.extend(node.children.iter().copied());
-      f(node);
+      if !visited.contains(&idx) {
+        let node = &self.nodes[idx];
+        queue.extend(node.children.iter().copied());
+        f(node);
+        visited.insert(idx);
+      }
     }
   }
 
   /// Iterates graph from leaves to roots in breadth-first order
   pub fn iter_breadth_first_reverse(&self, f: impl Fn(&GraphNode<N>)) {
     let mut queue: VecDeque<usize> = self.leaves.iter().copied().collect();
+    let mut visited = HashSet::<usize>::new();
     while let Some(idx) = queue.pop_front() {
-      let node = &self.nodes[idx];
-      queue.extend(node.parents.iter().copied());
-      f(node);
+      if !visited.contains(&idx) {
+        let node = &self.nodes[idx];
+        queue.extend(node.parents.iter().copied());
+        f(node);
+        visited.insert(idx);
+      }
     }
   }
 }
