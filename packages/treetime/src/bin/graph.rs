@@ -42,9 +42,9 @@ fn main() -> Result<(), Report> {
   graph.connect(b, e);
   graph.connect(e, h);
 
-  for node in graph.iter_breadth_first() {
+  graph.iter_breadth_first(|node| {
     println!("{}", &node.payload.data);
-  }
+  });
 
   Ok(())
 }

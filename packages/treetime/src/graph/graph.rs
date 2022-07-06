@@ -59,38 +59,15 @@ impl<N> Graph<N> {
     to.parents.push(from_idx);
   }
 
-  /// Returns iterator to breadth-first traversal
-  pub fn iter_breadth_first<'a>(&'a self) -> GraphBreadthFirstIterator<'a, N> {
-    GraphBreadthFirstIterator::<'a, N>::new(self)
-  }
-}
+  /// Iterates graph from root to leaves in breadth-first order
+  pub fn iter_breadth_first(&self, f: impl Fn(&GraphNode<N>)) {
+    let root = self.root();
+    let mut queue = VecDeque::from(vec![root.idx]);
 
-#[derive(Clone, Debug)]
-pub struct GraphBreadthFirstIterator<'a, T> {
-  graph: &'a Graph<T>,
-  queue: VecDeque<usize>,
-}
-
-impl<'a, T> GraphBreadthFirstIterator<'a, T> {
-  #[inline]
-  pub fn new(graph: &'a Graph<T>) -> Self {
-    let root = graph.root();
-    Self {
-      graph,
-      queue: VecDeque::from(vec![root.idx]),
+    while let Some(idx) = queue.pop_front() {
+      let node = &self.nodes[idx];
+      queue.extend(node.children.iter().copied());
+      f(node);
     }
-  }
-}
-
-impl<'a, T> Iterator for GraphBreadthFirstIterator<'a, T> {
-  type Item = &'a GraphNode<T>;
-
-  #[inline]
-  fn next(&mut self) -> Option<Self::Item> {
-    self.queue.pop_front().map(|idx| {
-      let node = &self.graph.nodes[idx];
-      self.queue.extend(node.children.iter().copied());
-      node
-    })
   }
 }
