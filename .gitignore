@@ -27,6 +27,7 @@
 .vscode/
 /\.build
 /\.cache
+/\.env
 /packages/**/target
 /target
 /test/treetime_examples
