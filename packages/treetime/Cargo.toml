@@ -45,6 +45,7 @@ num-integer = "0.1.44"
 num-traits = "0.2.14"
 openblas-src = { version = "0.10.4", features = ["static"] }
 owo-colors = "3.3.0"
+parking_lot = { version = "0.12.1", features = ["deadlock_detection", "hardware-lock-elision"] }
 polars = { version = "0.20.0", features = ["ndarray", "performant", "random", "temporal", "serde"] }
 rand = { version = "0.8.5", features = ["serde1", "log"] }
 rand_distr = { version = "0.4.3", feaures = ["serde1", "std_math"] }
@@ -58,8 +59,8 @@ statrs = { version = "0.15.0", features = [] }
 triple_accel = "0.4.0"
 
 
-[target.'cfg(all(target_family = "linux", target_arch = "x86_64"))'.dependencies]
-mimalloc = { version = "0.1.28", default-features = false, optional = true }
+[target.'cfg(all(target_os = "linux", target_arch = "x86_64"))'.dependencies]
+mimalloc = { version = "0.1.28", default-features = false }
 
 [dev-dependencies]
 criterion = { version = "0.3.5", features = ["html_reports"] }
