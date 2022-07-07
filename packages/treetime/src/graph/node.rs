@@ -1,4 +1,4 @@
-use crate::graph::core::{Continue, Traverse, CLOSED, OPEN};
+use crate::graph::core::{CLOSED, OPEN};
 use crate::graph::edge::Edge;
 use parking_lot::{Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard};
 use std::fmt::{Debug, Display, Formatter};
@@ -6,34 +6,32 @@ use std::hash::Hash;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Weak};
 
-type Outbound<K, N, E> = RwLock<Vec<Arc<Edge<K, N, E>>>>;
-type Inbound<K, N, E> = RwLock<Vec<Weak<Edge<K, N, E>>>>;
+type Outbound<N, E> = RwLock<Vec<Arc<Edge<N, E>>>>;
+type Inbound<N, E> = RwLock<Vec<Weak<Edge<N, E>>>>;
 
 /// Represents a node in the graph. Data can be stored in and loaded from the
 /// node in a thread safe manner.
 #[derive(Debug)]
-pub struct Node<K, N, E>
+pub struct Node<N, E>
 where
-  K: Hash + Eq + Clone + Debug + Display + Sync + Send,
   N: Clone + Debug + Display + Sync + Send,
   E: Clone + Debug + Display + Sync + Send,
 {
-  pub key: K,
+  pub key: usize,
   pub data: Mutex<N>,
-  pub outbound: Outbound<K, N, E>,
-  pub inbound: Inbound<K, N, E>,
+  pub outbound: Outbound<N, E>,
+  pub inbound: Inbound<N, E>,
   pub lock: AtomicBool,
 }
 
-impl<K, N, E> Node<K, N, E>
+impl<N, E> Node<N, E>
 where
-  K: Hash + Eq + Clone + Debug + Display + Sync + Send,
   N: Clone + Debug + Display + Sync + Send,
   E: Clone + Debug + Display + Sync + Send,
 {
   /// Create a new node.
   #[inline]
-  pub const fn new(key: K, data: N) -> Node<K, N, E> {
+  pub const fn new(key: usize, data: N) -> Node<N, E> {
     Self {
       key,
       data: Mutex::new(data),
@@ -57,8 +55,8 @@ where
 
   /// Get node key.
   #[inline]
-  pub const fn key(&self) -> &K {
-    &self.key
+  pub const fn key(&self) -> usize {
+    self.key
   }
 
   /// Get node degree ie. amount of outbound edges.
@@ -75,7 +73,7 @@ where
 
   /// Find an outbound node and return the corresponding edge if found.
   #[inline]
-  pub fn find_outbound(&self, target: &Arc<Node<K, N, E>>) -> Option<Arc<Edge<K, N, E>>> {
+  pub fn find_outbound(&self, target: &Arc<Node<N, E>>) -> Option<Arc<Edge<N, E>>> {
     for edge in self.outbound().iter() {
       if edge.target().key() == target.key() {
         return Some(Arc::clone(edge));
@@ -86,7 +84,7 @@ where
 
   /// Find an inbound node and return the corresponding edge if found.
   #[inline]
-  pub fn find_inbound(&self, source: &Arc<Node<K, N, E>>) -> Option<Weak<Edge<K, N, E>>> {
+  pub fn find_inbound(&self, source: &Arc<Node<N, E>>) -> Option<Weak<Edge<N, E>>> {
     for edge in self.inbound().iter() {
       if edge.upgrade().unwrap().source().key == source.key {
         return Some(Weak::clone(edge));
@@ -97,25 +95,25 @@ where
 
   /// Get read access to outbound edges of the node.
   #[inline]
-  pub fn outbound(&self) -> RwLockReadGuard<Vec<Arc<Edge<K, N, E>>>> {
+  pub fn outbound(&self) -> RwLockReadGuard<Vec<Arc<Edge<N, E>>>> {
     self.outbound.read()
   }
 
   /// Get read and write access to the outbound edges of the node. Will block other threads.
   #[inline]
-  pub fn outbound_mut(&self) -> RwLockWriteGuard<Vec<Arc<Edge<K, N, E>>>> {
+  pub fn outbound_mut(&self) -> RwLockWriteGuard<Vec<Arc<Edge<N, E>>>> {
     self.outbound.write()
   }
 
   /// Get read access to inbound edges of the node.
   #[inline]
-  pub fn inbound(&self) -> RwLockReadGuard<Vec<Weak<Edge<K, N, E>>>> {
+  pub fn inbound(&self) -> RwLockReadGuard<Vec<Weak<Edge<N, E>>>> {
     self.inbound.read()
   }
 
   /// Get read and write access to the outbound edges of the node. Will block other threads.
   #[inline]
-  pub fn inbound_mut(&self) -> RwLockWriteGuard<Vec<Weak<Edge<K, N, E>>>> {
+  pub fn inbound_mut(&self) -> RwLockWriteGuard<Vec<Weak<Edge<N, E>>>> {
     self.inbound.write()
   }
 
@@ -135,39 +133,26 @@ where
   }
 
   #[inline]
-  pub fn map_adjacent_dir<F>(&self, user_closure: &F) -> Continue<Vec<Weak<Edge<K, N, E>>>>
+  pub fn map_adjacent_dir<F>(&self, user_closure: &F) -> Vec<Weak<Edge<N, E>>>
   where
-    K: Hash + Eq + Clone + Debug + Display + Sync + Send,
     N: Clone + Debug + Display + Sync + Send,
     E: Clone + Debug + Display + Sync + Send,
-    F: Fn(&Arc<Edge<K, N, E>>) -> Traverse + Sync + Send + Copy,
+    F: Fn(&Arc<Edge<N, E>>),
   {
-    let mut segment: Vec<Weak<Edge<K, N, E>>> = Vec::new();
+    let mut segment: Vec<Weak<Edge<N, E>>> = Vec::new();
     for edge in self.outbound().iter() {
       if edge.target().try_lock() == OPEN {
         edge.target().close();
-        let traversal_state = user_closure(edge);
-        match traversal_state {
-          Traverse::Include => {
-            segment.push(Arc::downgrade(edge));
-          }
-          Traverse::Finish => {
-            segment.push(Arc::downgrade(edge));
-            return Continue::No(segment);
-          }
-          Traverse::Skip => {
-            edge.target().open();
-          }
-        }
+        user_closure(edge);
+        segment.push(Arc::downgrade(edge));
       }
     }
-    Continue::Yes(segment)
+    segment
   }
 }
 
-impl<K, N, E> Display for Node<K, N, E>
+impl<N, E> Display for Node<N, E>
 where
-  K: Hash + Eq + Clone + Debug + Display + Sync + Send,
   N: Clone + Debug + Display + Sync + Send,
   E: Clone + Debug + Display + Sync + Send,
 {

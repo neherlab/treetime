@@ -1,5 +1,4 @@
 use crate::graph::breadth_first::directed_breadth_first_traversal_parallel;
-use crate::graph::core::Traverse;
 use crate::graph::edge::Edge;
 use crate::graph::node::Node;
 use std::collections::HashMap;
@@ -13,7 +12,7 @@ where
   N: Clone + Debug + Display + Sync + Send,
   E: Clone + Debug + Display + Sync + Send,
 {
-  nodes: HashMap<usize, Arc<Node<usize, N, E>>>,
+  nodes: HashMap<usize, Arc<Node<N, E>>>,
   idx: usize,
 }
 
@@ -29,11 +28,11 @@ where
     }
   }
 
-  pub fn get_node(&self, node: usize) -> Option<Arc<Node<usize, N, E>>> {
+  pub fn get_node(&self, node: usize) -> Option<Arc<Node<N, E>>> {
     self.nodes.get(&node).cloned()
   }
 
-  pub fn iter_nodes(&self, f: &mut dyn FnMut(Arc<Node<usize, N, E>>)) {
+  pub fn iter_nodes(&self, f: &mut dyn FnMut(Arc<Node<N, E>>)) {
     for node in self.nodes.values() {
       f(Arc::clone(node));
     }
@@ -105,7 +104,7 @@ where
   }
 
   /// Get an edge if it exists.
-  pub fn get_edge(&self, source: usize, target: usize) -> Option<Arc<Edge<usize, N, E>>> {
+  pub fn get_edge(&self, source: usize, target: usize) -> Option<Arc<Edge<N, E>>> {
     let s = self.get_node(source);
     let t = self.get_node(target);
     match s {
@@ -129,25 +128,24 @@ where
 
   /// Approximate the size of the graph.
   pub fn size_of(&self) -> usize {
-    (self.node_count() * std::mem::size_of::<Node<usize, N, E>>())
-      + (self.edge_count() * std::mem::size_of::<Edge<usize, N, E>>())
+    (self.node_count() * std::mem::size_of::<Node<N, E>>()) + (self.edge_count() * std::mem::size_of::<Edge<N, E>>())
   }
 
   pub fn par_iter_breadth_first_forward<F>(&mut self, explorer: F)
   where
-    F: Fn(&Arc<Edge<usize, N, E>>) -> Traverse + Sync + Send + Copy,
+    F: Fn(&Arc<Edge<N, E>>) + Sync + Send,
   {
     self.par_breadth_first(0, explorer);
   }
 
   /// Parallel breadth first traversal of the graph.
-  fn par_breadth_first<F>(&self, source: usize, explorer: F) -> Option<Vec<Weak<Edge<usize, N, E>>>>
+  fn par_breadth_first<F>(&self, source: usize, explorer: F) -> Vec<Weak<Edge<N, E>>>
   where
-    F: Fn(&Arc<Edge<usize, N, E>>) -> Traverse + Sync + Send + Copy,
+    F: Fn(&Arc<Edge<N, E>>) + Sync + Send,
   {
     match self.get_node(source) {
       Some(s) => directed_breadth_first_traversal_parallel(&s, explorer),
-      None => None,
+      None => vec![],
     }
   }
 

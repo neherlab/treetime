@@ -10,26 +10,24 @@ use std::sync::{Arc, Weak};
 /// stored in the edge atomically. Edge's target and source node's are
 /// weak references and can't outlive the nodes they represent.
 #[derive(Debug)]
-pub struct Edge<K, N, E>
+pub struct Edge<N, E>
 where
-  K: Hash + Eq + Clone + Debug + Display + Sync + Send,
   N: Clone + Debug + Display + Sync + Send,
   E: Clone + Debug + Display + Sync + Send,
 {
-  pub source: Weak<Node<K, N, E>>,
-  pub target: Weak<Node<K, N, E>>,
+  pub source: Weak<Node<N, E>>,
+  pub target: Weak<Node<N, E>>,
   pub data: Mutex<E>,
   pub lock: AtomicBool,
 }
 
-impl<K, N, E> Edge<K, N, E>
+impl<N, E> Edge<N, E>
 where
-  K: Hash + Eq + Clone + Debug + Display + Sync + Send,
   N: Clone + Debug + Display + Sync + Send,
   E: Clone + Debug + Display + Sync + Send,
 {
   /// Creates a new edge.
-  pub fn new(source: &Arc<Node<K, N, E>>, target: &Arc<Node<K, N, E>>, data: E) -> Edge<K, N, E> {
+  pub fn new(source: &Arc<Node<N, E>>, target: &Arc<Node<N, E>>, data: E) -> Edge<N, E> {
     Edge {
       source: Arc::downgrade(source),
       target: Arc::downgrade(target),
@@ -40,13 +38,13 @@ where
 
   /// Edge's source node.
   #[inline]
-  pub fn source(&self) -> Arc<Node<K, N, E>> {
+  pub fn source(&self) -> Arc<Node<N, E>> {
     self.source.upgrade().unwrap()
   }
 
   /// Edge's target node.
   #[inline]
-  pub fn target(&self) -> Arc<Node<K, N, E>> {
+  pub fn target(&self) -> Arc<Node<N, E>> {
     self.target.upgrade().unwrap()
   }
 
@@ -79,9 +77,8 @@ where
   }
 }
 
-impl<K, N, E> Display for Edge<K, N, E>
+impl<N, E> Display for Edge<N, E>
 where
-  K: Hash + Eq + Clone + Debug + Display + Sync + Send,
   N: Clone + Debug + Display + Sync + Send,
   E: Clone + Debug + Display + Sync + Send,
 {

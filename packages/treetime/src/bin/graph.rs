@@ -7,7 +7,6 @@ use std::fmt::{Debug, Display, Formatter};
 use std::hash::Hash;
 use std::io::Write;
 use std::sync::Arc;
-use treetime::graph::core::Traverse;
 use treetime::graph::graph::Graph;
 use treetime::io::file::create_file;
 use treetime::utils::global_init::global_init;
@@ -81,8 +80,6 @@ fn main() -> Result<(), Report> {
       "{:<6} | {:<16} | {:<6} | {:<16} | {:<5}",
       parent_name, edge_name, node_name, parent_names, is_leaf
     );
-
-    Traverse::Include
   });
 
   Ok(())
