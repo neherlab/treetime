@@ -52,7 +52,7 @@ fn main() -> Result<(), Report> {
     "{:^6} | {:^16} | {:^6} | {:^16} | {:^5}",
     "Parent", "Edge", "Node", "Parents", "Is leaf"
   );
-  graph.iter_breadth_first_forward(|edge| {
+  graph.par_iter_breadth_first_forward(|edge| {
     let edge = Arc::clone(edge);
 
     let edge_payload = edge.load();
@@ -141,8 +141,7 @@ fn create_example_graph() -> Result<Graph<NodePayload, EdgePayload>, Report>  {
   graph.add_edge(e, o, EdgePayload{ name: "e->o".to_owned() });
   graph.add_edge(m, k, EdgePayload{ name: "m->k".to_owned() });
 
-  graph.print(create_file("tmp/graph.dot")?)?;
-
+  graph.print_graph(create_file("tmp/graph.dot")?)?;
 
   Ok(graph)
 }
