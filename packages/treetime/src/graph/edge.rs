@@ -79,22 +79,6 @@ where
   }
 }
 
-impl<K, N, E> Clone for Edge<K, N, E>
-where
-  K: Hash + Eq + Clone + Debug + Display + Sync + Send,
-  N: Clone + Debug + Display + Sync + Send,
-  E: Clone + Debug + Display + Sync + Send,
-{
-  fn clone(&self) -> Self {
-    Edge {
-      source: Weak::clone(&self.source),
-      target: Weak::clone(&self.target),
-      data: Mutex::new(self.data.lock().clone()),
-      lock: AtomicBool::new(OPEN),
-    }
-  }
-}
-
 impl<K, N, E> Display for Edge<K, N, E>
 where
   K: Hash + Eq + Clone + Debug + Display + Sync + Send,

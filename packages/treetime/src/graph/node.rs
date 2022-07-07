@@ -1,10 +1,13 @@
-use crate::graph::core::{Continue, Inbound, Outbound, Traverse, CLOSED, OPEN};
+use crate::graph::core::{Continue, Traverse, CLOSED, OPEN};
 use crate::graph::edge::Edge;
-use parking_lot::{Mutex, RwLockReadGuard, RwLockWriteGuard};
+use parking_lot::{Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard};
 use std::fmt::{Debug, Display, Formatter};
 use std::hash::Hash;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Weak};
+
+type Outbound<K, N, E> = RwLock<Vec<Arc<Edge<K, N, E>>>>;
+type Inbound<K, N, E> = RwLock<Vec<Weak<Edge<K, N, E>>>>;
 
 /// Represents a node in the graph. Data can be stored in and loaded from the
 /// node in a thread safe manner.
@@ -161,20 +164,6 @@ where
     Continue::Yes(segment)
   }
 }
-
-// impl<K, N, E> PartialEq for Node<K, N, E>
-// where
-//   K: Hash + Eq + Clone + Debug + Display + Sync + Send,
-//   N: Clone + Debug + Display + Sync + Send,
-//   E: Clone + Debug + Display + Sync + Send,
-// {
-//   fn eq(&self, other: &Self) -> bool {
-//     if self.key == other.key {
-//       return true;
-//     }
-//     false
-//   }
-// }
 
 impl<K, N, E> Display for Node<K, N, E>
 where

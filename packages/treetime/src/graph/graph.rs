@@ -1,6 +1,5 @@
-use crate::graph::core::{
-  connect, directed_breadth_first_traversal, disconnect, parallel_directed_breadth_first_traversal, Traverse,
-};
+use crate::graph::breadth_first::directed_breadth_first_traversal_parallel;
+use crate::graph::core::Traverse;
 use crate::graph::edge::Edge;
 use crate::graph::node::Node;
 use std::collections::HashMap;
@@ -53,33 +52,55 @@ where
   }
 
   /// Add a new edge to the graph.
-  pub fn add_edge(&mut self, src_idx: usize, dst_idx: usize, edge_payload: E) {
+  pub fn add_edge(&mut self, src_idx: usize, dst_idx: usize, edge_payload: E) -> bool {
     let src = self.get_node(src_idx);
     let dst = self.get_node(dst_idx);
-    match src {
-      Some(src) => match dst {
-        Some(dst) => {
-          connect(&src, &dst, edge_payload);
+    match (src, dst) {
+      (Some(src), Some(dst)) => {
+        let connected = src
+          .outbound()
+          .iter()
+          .any(|edge| edge.target.upgrade().map(|edge| edge.key) == Some(dst.key));
+
+        if !connected {
+          let new_edge = Arc::new(Edge::new(&src, &dst, edge_payload));
+          src.outbound_mut().push(Arc::clone(&new_edge));
+          dst.inbound_mut().push(Arc::downgrade(&new_edge));
+          true
+        } else {
+          false
         }
-        None => {}
-      },
-      None => {}
+      }
+      _ => false,
     }
   }
 
   /// Delete an edge from the graph.
-  pub fn del_edge(&mut self, source: usize, target: usize) -> bool {
-    let s = self.get_node(source);
-    let t = self.get_node(target);
-    match s {
-      Some(src) => match t {
-        Some(trg) => {
-          disconnect(&src, &trg);
-          true
+  pub fn del_edge(&mut self, src: usize, dst: usize) -> bool {
+    let src = self.get_node(src);
+    let dst = self.get_node(dst);
+    match (src, dst) {
+      (Some(src), Some(dst)) => {
+        let mut idx: (usize, usize) = (0, 0);
+        let mut flag = false;
+        for (i, edge) in src.outbound().iter().enumerate() {
+          if edge.target().key == dst.key {
+            idx.0 = i;
+            flag = true;
+          }
         }
-        None => false,
-      },
-      None => false,
+        for (i, edge) in dst.inbound().iter().enumerate() {
+          if edge.upgrade().unwrap().source().key == src.key {
+            idx.1 = i;
+          }
+        }
+        if flag {
+          src.outbound_mut().remove(idx.0);
+          src.inbound_mut().remove(idx.1);
+        }
+        flag
+      }
+      _ => false,
     }
   }
 
@@ -112,17 +133,6 @@ where
       + (self.edge_count() * std::mem::size_of::<Edge<usize, N, E>>())
   }
 
-  /// Breadth first traversal of the graph.
-  pub fn breadth_first<F>(&self, source: usize, explorer: F) -> Option<Vec<Weak<Edge<usize, N, E>>>>
-  where
-    F: Fn(&Arc<Edge<usize, N, E>>) -> Traverse + Sync + Send + Copy,
-  {
-    match self.get_node(source) {
-      Some(s) => directed_breadth_first_traversal(&s, explorer),
-      None => None,
-    }
-  }
-
   pub fn par_iter_breadth_first_forward<F>(&mut self, explorer: F)
   where
     F: Fn(&Arc<Edge<usize, N, E>>) -> Traverse + Sync + Send + Copy,
@@ -136,7 +146,7 @@ where
     F: Fn(&Arc<Edge<usize, N, E>>) -> Traverse + Sync + Send + Copy,
   {
     match self.get_node(source) {
-      Some(s) => parallel_directed_breadth_first_traversal(&s, explorer),
+      Some(s) => directed_breadth_first_traversal_parallel(&s, explorer),
       None => None,
     }
   }
