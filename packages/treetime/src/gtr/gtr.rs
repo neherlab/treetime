@@ -273,8 +273,42 @@ mod test {
   }
 
   #[rstest]
+  fn avg_transition_test() -> Result<(), Report> {
+    let pi = array![1.0/3.0, 1.0/3.0, 1.0/3.0];
+
+    let Wi: Array2<f32> = array![
+                        [0.0, 4.0 / 3.0, 4.0 / 3.0], 
+                        [4.0 / 3.0, 0.0, 4.0 / 3.0], 
+                        [4.0 / 3.0, 4.0 / 3.0, 0.0],
+                        ];
+    // test without gap index
+    assert_ulps_eq!(avg_transition(
+      &Wi,
+      &pi,
+      None
+    )?, 8.0/9.0);
+
+    // // test with gap index - the index is wrong
+    // let i: usize = 0;
+    // assert_eq!(avg_transition(
+    //   &Wi,
+    //   &pi,
+    //   &i,
+    // )?, (8.0/9.0 - 8.0/27.0)*(3.0/2.0));
+
+    Ok(())
+  }
+
+  #[rstest]
   fn jc69_creates() -> Result<(), Report> {
+
     let gtr = jc69()?;
+
+    assert_eq!(gtr.pi, array![0.2, 0.2, 0.2, 0.2, 0.2]);
+
+    // need to add gap index for avg_transition with 'nuc' alphabet as this contains '-'
+    // assert_ulps_eq!(gtr.mu, 0.8);
+    println!("mu = {}", gtr.mu);
 
     assert_eq!(
       gtr.W,
@@ -286,10 +320,6 @@ mod test {
         [1.25, 1.25, 1.25, 1.25, 0.00],
       ]
     );
-
-    assert_eq!(gtr.pi, array![0.2, 0.2, 0.2, 0.2, 0.2]);
-
-    assert_ulps_eq!(gtr.mu, 1.0);
 
     #[rustfmt::skip]
     assert_ulps_eq!(
