@@ -23,7 +23,7 @@ pub fn avg_transition(W: &Array2<f32>, pi: &Array1<f32>, gap_index: Option<usize
     let W_slice = W.slice(s!(.., gap_index));
     let pi_mul_W_slice = pi * &W_slice;
     let pi_mul_W_slice_sum = pi_mul_W_slice.sum();
-    let result = result - pi_mul_W_slice_sum * &pi[gap_index] / (1.0 - pi[gap_index]);
+    let result = (result - pi_mul_W_slice_sum * &pi[gap_index]) / (1.0 - pi[gap_index]);
     result
   } else {
     result
@@ -94,19 +94,24 @@ impl GTR {
     // self.state_index.update({s:si for si,s in enumerate(self.alphabet)})
 
     // self.ambiguous = None
-    // self.gap_index = None
-    // self.assign_gap_and_ambiguous();
 
     let n = alphabet.len();
+
+    let gap_index = Self::assign_gap_and_ambiguous(alphabet);
 
     let mut pi = if pi.len() == n { pi.clone() } else { Array1::ones(n) };
     let pi_sum = pi.sum();
     pi = pi / pi_sum;
-
-    let mut W: Array2<f32> = 0.5 * W + W.t();
+    
+    let mut W: Array2<f32> = if W.len() == n { W.clone() } else { Array2::<f32>::ones((n, n)) };
+    W.diag_mut().fill(0.0);
+    let W_: Array2<f32> = W.clone();
+    let W_slice = W_.slice(s!(.., 0));
+    W.diag_mut().fill(-W_slice.sum());
+    let mut W = 0.5*(&W + &W.t());
     W.diag_mut().fill(0.0);
 
-    let average_rate = avg_transition(&W, &pi, None)?;
+    let average_rate = avg_transition(&W, &pi, gap_index)?;
     W = W / average_rate;
     let mu = mu * average_rate;
 
@@ -126,8 +131,9 @@ impl GTR {
     })
   }
 
-  fn assign_gap_and_ambiguous(&self) {
-    let n_states = self.alphabet.len();
+  fn assign_gap_and_ambiguous(alphabet: &Alphabet) -> Option<usize> {
+    // let n_states = self.alphabet.len();
+    alphabet.alphabet.iter().position(|&x| x == '-')
 
     // // determine if a character exists that corresponds to no info, i.e. all one profile
     // if any([x.sum()==n_states for x in self.profile_map.values()]):
@@ -142,6 +148,7 @@ impl GTR {
     // except:
     //     self.gap_index=None
   }
+
 
   /// Compute the probability of the sequence state of the child
   /// at time t later, given the parent profile.
@@ -288,13 +295,12 @@ mod test {
       None
     )?, 8.0/9.0);
 
-    // // test with gap index - the index is wrong
-    // let i: usize = 0;
-    // assert_eq!(avg_transition(
-    //   &Wi,
-    //   &pi,
-    //   &i,
-    // )?, (8.0/9.0 - 8.0/27.0)*(3.0/2.0));
+    // test with gap index - the index is wrong
+    assert_ulps_eq!(avg_transition(
+      &Wi,
+      &pi,
+      Some(1),
+    )?, 8.0/9.0);
 
     Ok(())
   }
@@ -307,7 +313,7 @@ mod test {
     assert_eq!(gtr.pi, array![0.2, 0.2, 0.2, 0.2, 0.2]);
 
     // need to add gap index for avg_transition with 'nuc' alphabet as this contains '-'
-    // assert_ulps_eq!(gtr.mu, 0.8);
+    assert_ulps_eq!(gtr.mu, 0.8);
     println!("mu = {}", gtr.mu);
 
     assert_eq!(
