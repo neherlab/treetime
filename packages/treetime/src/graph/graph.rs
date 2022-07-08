@@ -1,5 +1,7 @@
 use itertools::Itertools;
 use std::collections::{HashSet, VecDeque};
+use std::fmt::Display;
+use std::io::Write;
 
 /// Internal representation of a node
 #[derive(Clone, Debug)]
@@ -63,19 +65,31 @@ impl<'node, N> GraphNodeReverse<'node, N> {
   }
 }
 
+/// Internal representation of an edge
+#[derive(Clone, Debug)]
+struct GraphEdgeImpl<E: Display> {
+  idx: usize,
+  src: usize,
+  dst: usize,
+  visited: bool,
+  payload: E,
+}
+
 /// Representation of a graph
 #[derive(Clone, Debug)]
-pub struct Graph<N> {
+pub struct Graph<N: Display, E: Display> {
   nodes: Vec<GraphNodeImpl<N>>,
+  edges: Vec<GraphEdgeImpl<E>>,
   roots: Vec<usize>,
   leaves: Vec<usize>,
 }
 
-impl<N> Graph<N> {
+impl<N: Display, E: Display> Graph<N, E> {
   /// Creates an empty graph
   pub const fn new() -> Self {
     Self {
       nodes: vec![],
+      edges: vec![],
       roots: vec![],
       leaves: vec![],
     }
@@ -85,22 +99,33 @@ impl<N> Graph<N> {
   ///
   /// The order of insertion can be arbitrary and is not taken into account in any of the graph
   /// operations.
-  pub fn insert(&mut self, node_payload: N) -> usize {
-    let node = GraphNodeImpl::new(self.nodes.len(), node_payload);
+  pub fn add_node(&mut self, node_payload: N) -> usize {
+    let idx = self.nodes.len();
+    let node = GraphNodeImpl::new(idx, node_payload);
     self.nodes.push(node);
-    self.nodes.len() - 1
+    idx
   }
 
   /// Adds an edge between two nodes given their indices
   ///
   /// The edge is directed from the first node to the second node, i.e. the first node is considered
   /// a parent and the second node is considered a child.
-  pub fn connect(&mut self, from_idx: usize, to_idx: usize) {
-    let from = &mut self.nodes[from_idx];
-    from.children.push(to_idx);
+  pub fn add_edge(&mut self, src: usize, dst: usize, payload: E) {
+    let idx = self.edges.len();
 
-    let to = &mut self.nodes[to_idx];
-    to.parents.push(from_idx);
+    self.edges.push(GraphEdgeImpl {
+      idx,
+      src,
+      dst,
+      visited: false,
+      payload,
+    });
+
+    let from = &mut self.nodes[src];
+    from.children.push(dst);
+
+    let to = &mut self.nodes[dst];
+    to.parents.push(src);
   }
 
   /// Finalizes the graph initialization
@@ -160,5 +185,28 @@ impl<N> Graph<N> {
         visited.insert(idx);
       }
     }
+  }
+
+  /// Print graph in .dot format.
+  pub fn write_graph<W: Write>(&self, mut writer: W) -> std::io::Result<()> {
+    writeln!(writer, "digraph {{")?;
+
+    self
+      .nodes
+      .iter()
+      .sorted_by_key(|node| node.idx)
+      .map(|GraphNodeImpl { idx, payload, .. }| writeln!(writer, "  {idx} [label = \"{idx} : {payload}\"]"))
+      .collect::<std::io::Result<Vec<()>>>()?;
+
+    self
+      .edges
+      .iter()
+      .sorted_by_key(|edge| (edge.src, edge.dst))
+      .map(|GraphEdgeImpl { src, dst, payload, .. }| writeln!(writer, "  {src} -> {dst} [label = \"{payload}\"]"))
+      .collect::<std::io::Result<Vec<()>>>()?;
+
+    writeln!(writer, "}}")?;
+
+    Ok(())
   }
 }
