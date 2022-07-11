@@ -42,9 +42,9 @@ fn eig_single_site(W: &Array2<f32>, pi: &Array1<f32>) -> Result<(Array1<f32>, Ar
 
   let diag = -(W * pi).sum_axis(Axis(1));
   sym_Q.diag_mut().assign(&diag);
+  println!("sym_Q = {}", sym_Q);
 
   let (eigvals, eigvecs) = sym_Q.eigh(Lower)?;
-
   let tmp_v: Array2<f32> = eigvecs.t().to_owned().dot(&to_col(&tmp_pi)?);
   let one_norm: Array1<f32> = tmp_v.mapv(f32::abs).sum_axis(Axis(1));
 
@@ -222,6 +222,7 @@ impl GTR {
     let eLambdaT_dot_v_inv: Array2<f32> = eLambdaT.dot(&self.v_inv);
 
     let Qs: Array2<f32> = self.v.dot(&eLambdaT_dot_v_inv); // This is P(nuc1 | given nuc_2)
+    println!("Qs = {}", Qs);
 
     clamp_min(&Qs, 0.0)
   }
@@ -315,8 +316,13 @@ mod test {
     // need to add gap index for avg_transition with 'nuc' alphabet as this contains '-'
     assert_ulps_eq!(gtr.mu, 0.8);
     println!("mu = {}", gtr.mu);
+    println!("eigenvals = {}", gtr.eigvals);
+    println!("v = {}", gtr.v);
+    let diag = Array2::from_diag(&gtr.eigvals);
+    println!("diag = {}", diag);
+    println!("check decomposition correct = {}", gtr.v.dot(&diag).dot(&gtr.v_inv));
 
-    assert_eq!(
+    assert_ulps_eq!(
       gtr.W,
       array![
         [0.00, 1.25, 1.25, 1.25, 1.25],
@@ -344,7 +350,13 @@ mod test {
         [1.66666667e-01,-1.33974596e-01,5.00000000e-01,4.16666667e-02,-2.00000000e-01]
       ]
     );
-
+    array![
+      [ 2.58667770e-02,  0.00000000e+00,  5.00000000e-01, 1.57104954e-02,  2.00000000e-01],
+    [-1.84976937e-01, -2.94392336e-17, -1.25781243e-01, 4.84289505e-01,  2.00000000e-01],
+    [-3.15023063e-01, -5.92654687e-17, -9.51199735e-02, -3.76223872e-01,  2.00000000e-01],
+    [ 2.37066612e-01, -5.00000000e-01, -1.39549392e-01, -6.18880642e-02,  2.00000000e-01],
+    [ 2.37066612e-01,  5.00000000e-01, -1.39549392e-01, -6.18880642e-02,  2.00000000e-01]
+    ];
     #[rustfmt::skip]
     assert_ulps_eq!(
       gtr.v_inv,
@@ -385,6 +397,20 @@ mod test {
   #[rstest]
   fn jc69_calculates_exp_qt() -> Result<(), Report> {
     let gtr = jc69()?;
+
+    let t = (1.0/5.0).ln()/ gtr.mu;
+    let Qs = gtr.expQt(t);
+
+    assert_ulps_eq!(
+      Qs, 
+      array![
+        [6.18139512, 0.        , 0.        , 0.        , 0.        ],
+        [0.        , 6.18139512, 0.        , 0.        , 0.        ],
+        [0.        , 0.        , 6.18139512, 0.        , 0.        ],
+        [0.        , 0.        , 0.        , 6.18139512, 0.        ],
+        [0.        , 0.        , 0.        , 0.        , 6.18139512]
+      ]
+    );
 
     let Qs = gtr.expQt(0.1);
 
