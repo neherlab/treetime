@@ -474,29 +474,26 @@ mod test {
       [1.25, 1.25, 1.25, 1.25, 0.00],
     ];
 
-    let profile: Array2<f32> = array![
-      [0.00, 0.8, 0.0, 0.2, 0.0],
-    ];
-
-    let pi: Array1<f32> =array![0.18, 0.35, 0.25, 0.18, 0.04];
-    let pi_copy =array![0.18, 0.35, 0.25, 0.18, 0.04];
-    let alphabet_name = "nuc";
-    let alphabet = Alphabet::new(alphabet_name)?;
+    let pi: Array1<f32> = array![0.18, 0.35, 0.25, 0.18, 0.04];
+    let alphabet = Alphabet::new("nuc")?;
+    let profile: Array2<f32> = array![[0.00, 0.8, 0.0, 0.2, 0.0],];
     let profile_map = ProfileMap::from_alphabet(&alphabet)?;
     let mu = 1.0;
 
     let mut weight = 0.0;
     for i in 0..5 {
-      weight += pi[i] * profile[[0,i]];
+      weight += pi[i] * profile[[0, i]];
     }
 
-    let gtr = GTR::new(&GTRParams {
+    let params = GTRParams {
       alphabet,
       profile_map,
       mu,
       W,
       pi,
-    })?;
+    };
+
+    let gtr = GTR::new(&params)?;
 
     let distant_past = gtr.propagate_profile(&profile, 100.0, false);
     let distant_future = gtr.evolve(&profile, 100.0, false);
@@ -506,7 +503,7 @@ mod test {
                     array![[1.0, 1.0, 1.0, 1.0, 1.0]] * weight, epsilon=1e-4);
 
     #[rustfmt::skip]
-    assert_ulps_eq!(distant_future.slice(s![0,..]), pi_copy, epsilon=1e-4);
+    assert_ulps_eq!(distant_future.slice(s![0,..]), params.pi, epsilon=1e-4);
 
     Ok(())
   }
