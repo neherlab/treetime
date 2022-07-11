@@ -450,7 +450,7 @@ mod test {
   }
 
   #[rstest]
-  fn test_propagate() -> Result<(), Report> {
+  fn gtr_test_theoretical_limits() -> Result<(), Report> {
     // symmetric rate matrix with some variation in entries (test doesn't depend on precise values)
     let W: Array2<f64> = array![
       [0.00, 1.25, 2.25, 1.25, 1.25],
