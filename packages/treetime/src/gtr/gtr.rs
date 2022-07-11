@@ -1,3 +1,4 @@
+#![allow(clippy::type_complexity)]
 #![allow(non_snake_case)]
 
 use crate::alphabet::alphabet::Alphabet;
@@ -23,8 +24,7 @@ pub fn avg_transition(W: &Array2<f64>, pi: &Array1<f64>, gap_index: Option<usize
     let W_slice = W.slice(s!(.., gap_index));
     let pi_mul_W_slice = pi * &W_slice;
     let pi_mul_W_slice_sum = pi_mul_W_slice.sum();
-    let result = (result - pi_mul_W_slice_sum * &pi[gap_index]) / (1.0 - pi[gap_index]);
-    result
+    (result - pi_mul_W_slice_sum * pi[gap_index]) / (1.0 - pi[gap_index])
   } else {
     result
   })
@@ -100,7 +100,7 @@ impl GTR {
 
     let mut pi = if pi.len() == n { pi.clone() } else { Array1::ones(n) };
     let pi_sum = pi.sum();
-    pi = pi / pi_sum;
+    pi /= pi_sum;
 
     let mut W: Array2<f64> = if W.len() == n * n {
       W.clone()
@@ -115,7 +115,7 @@ impl GTR {
     let average_rate = avg_transition(&W, &pi, gap_index)?;
     // W.diag_mut().fill(0.0);
 
-    W = W / average_rate;
+    W /= average_rate;
     let mu = mu * average_rate;
 
     let (eigvals, v, v_inv) = eig_single_site(&W, &pi)?;
@@ -123,8 +123,8 @@ impl GTR {
     Ok(Self {
       debug: false,
       is_site_specific: false,
-      alphabet: alphabet.to_owned(),
-      profile_map: profile_map.to_owned(),
+      alphabet: alphabet.clone(),
+      profile_map: profile_map.clone(),
       mu,
       W,
       pi,
@@ -239,7 +239,6 @@ impl GTR {
 mod test {
   use super::*;
   use crate::nuc_models::jc69::jc69;
-  use crate::pretty_assert_eq;
   use approx::{assert_abs_diff_eq, assert_ulps_eq};
   use eyre::Report;
   use ndarray::{array, Array1, Array2};

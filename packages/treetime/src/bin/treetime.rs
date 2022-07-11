@@ -25,16 +25,16 @@ fn main() -> Result<(), Report> {
   match args.command {
     TreetimeCommands::Timetree(timetree_args) => {}
     TreetimeCommands::Ancestral(ancestral_args) => {
-      run_ancestral(ancestral_args)?;
+      run_ancestral(&ancestral_args)?;
     }
     TreetimeCommands::Clock(clock_args) => {
-      run_clock(clock_args)?;
+      run_clock(&clock_args)?;
     }
     TreetimeCommands::Homoplasy(homoplasy_args) => {
-      run_homoplasy(homoplasy_args)?;
+      run_homoplasy(&homoplasy_args)?;
     }
     TreetimeCommands::Mugration(mugration_args) => {
-      run_mugration(mugration_args)?;
+      run_mugration(&mugration_args)?;
     }
     TreetimeCommands::Completions { shell } => {
       generate_shell_completions(&shell)?;

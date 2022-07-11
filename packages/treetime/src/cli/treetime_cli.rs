@@ -79,22 +79,22 @@ pub enum TreetimeCommands {
 }
 
 #[derive(Parser, Debug)]
-pub struct TreetimeTimetreeArgs {}
+pub struct TreetimeTimetreeArgs;
 
 #[derive(Parser, Debug)]
-pub struct TreetimeAncestralArgs {}
+pub struct TreetimeAncestralArgs;
 
 #[derive(Parser, Debug)]
-pub struct TreetimeClockArgs {}
+pub struct TreetimeClockArgs;
 
 #[derive(Parser, Debug)]
-pub struct TreetimeHomoplasyArgs {}
+pub struct TreetimeHomoplasyArgs;
 
 #[derive(Parser, Debug)]
-pub struct TreetimeMugrationArgs {}
+pub struct TreetimeMugrationArgs;
 
 #[derive(Parser, Debug)]
-pub struct TreetimeAncestralReassortmentGraphArgs {}
+pub struct TreetimeAncestralReassortmentGraphArgs;
 
 pub fn generate_shell_completions(shell: &str) -> Result<(), Report> {
   let mut command = TreetimeArgs::command();
