@@ -17,11 +17,11 @@ where
   N: Clone + Debug + Display + Sync + Send,
   E: Clone + Debug + Display + Sync + Send,
 {
-  pub key: usize,
+  key: usize,
   pub data: Mutex<N>,
   pub outbound: Outbound<N, E>,
   pub inbound: Inbound<N, E>,
-  pub lock: AtomicBool,
+  lock: AtomicBool,
 }
 
 impl<N, E> Node<N, E>
@@ -71,27 +71,27 @@ where
     self.outbound().len() == 0
   }
 
-  /// Find an outbound node and return the corresponding edge if found.
-  #[inline]
-  pub fn find_outbound(&self, target: &Arc<Node<N, E>>) -> Option<Arc<Edge<N, E>>> {
-    for edge in self.outbound().iter() {
-      if edge.target().key() == target.key() {
-        return Some(Arc::clone(edge));
-      }
-    }
-    None
-  }
-
-  /// Find an inbound node and return the corresponding edge if found.
-  #[inline]
-  pub fn find_inbound(&self, source: &Arc<Node<N, E>>) -> Option<Weak<Edge<N, E>>> {
-    for edge in self.inbound().iter() {
-      if edge.upgrade().unwrap().source().key == source.key {
-        return Some(Weak::clone(edge));
-      }
-    }
-    None
-  }
+  // /// Find an outbound node and return the corresponding edge if found.
+  // #[inline]
+  // pub fn find_outbound(&self, target: &Arc<Mutex<Node<N, E>>>) -> Option<Arc<Edge<N, E>>> {
+  //   for edge in self.outbound().iter() {
+  //     if edge.target().lock().key() == target.key() {
+  //       return Some(Arc::clone(edge));
+  //     }
+  //   }
+  //   None
+  // }
+  //
+  // /// Find an inbound node and return the corresponding edge if found.
+  // #[inline]
+  // pub fn find_inbound(&self, source: &Arc<Mutex<Node<N, E>>>) -> Option<Weak<Edge<N, E>>> {
+  //   for edge in self.inbound().iter() {
+  //     if edge.upgrade().unwrap().source().lock().key == source.key {
+  //       return Some(Weak::clone(edge));
+  //     }
+  //   }
+  //   None
+  // }
 
   /// Get read access to outbound edges of the node.
   #[inline]
@@ -141,8 +141,10 @@ where
   {
     let mut segment: Vec<Weak<Edge<N, E>>> = Vec::new();
     for edge in self.outbound().iter() {
-      if edge.target().try_lock() == OPEN {
-        edge.target().close();
+      let target = edge.target();
+      let target = target.lock();
+      if target.try_lock() == OPEN {
+        target.close();
         user_closure(edge);
         segment.push(Arc::downgrade(edge));
       }

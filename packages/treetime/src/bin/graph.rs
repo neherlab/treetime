@@ -58,10 +58,12 @@ fn main() -> Result<(), Report> {
     let edge_name = edge_payload.name;
 
     let parent = edge.source();
+    let parent = parent.lock();
     let parent_payload = parent.load();
     let parent_name = parent_payload.name;
 
     let node = edge.target();
+    let node = node.lock();
     let is_leaf = node.is_leaf();
     let node_payload = node.load();
     let node_name = node_payload.name;
@@ -70,7 +72,7 @@ fn main() -> Result<(), Report> {
     let parents = parent_edges.iter().map(|parent_edge| {
       let parent_edge = parent_edge.upgrade().unwrap();
       let parent_edge_payload = parent_edge.load();
-      let parent_node_payload = parent_edge.source().load();
+      let parent_node_payload = parent_edge.source().lock().load();
       (parent_node_payload, parent_edge_payload)
     });
 

@@ -1,12 +1,13 @@
 use crate::graph::edge::Edge;
 use crate::graph::node::Node;
+use parking_lot::Mutex;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::fmt::{Debug, Display};
 use std::hash::Hash;
 use std::sync::{Arc, Weak};
 
 pub fn directed_breadth_first_traversal_parallel<N, E, F>(
-  source: &Arc<Node<N, E>>,
+  source: &Arc<Mutex<Node<N, E>>>,
   explorer: F,
 ) -> Vec<Weak<Edge<N, E>>>
 where
@@ -16,8 +17,11 @@ where
 {
   let mut bounds = (0, 0);
 
-  source.close();
-  let mut frontiers = source.map_adjacent_dir(&explorer);
+  let mut frontiers = {
+    let source = source.lock();
+    source.close();
+    source.map_adjacent_dir(&explorer)
+  };
 
   loop {
     bounds.1 = frontiers.len();
@@ -33,7 +37,7 @@ where
       .into_par_iter()
       .map(|edge| {
         let node = edge.upgrade().unwrap().target();
-        let segment = node.map_adjacent_dir(&explorer);
+        let segment = node.lock().map_adjacent_dir(&explorer);
         Some(segment)
       })
       .while_some()
@@ -57,10 +61,10 @@ where
   if edges.is_empty() {
     return;
   }
-  edges[0].upgrade().unwrap().source().open();
+  edges[0].upgrade().unwrap().source().lock().open();
   for weak in edges.iter() {
     let edge = weak.upgrade().unwrap();
     edge.open();
-    edge.target().open();
+    edge.target().lock().open();
   }
 }

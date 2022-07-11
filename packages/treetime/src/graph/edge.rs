@@ -15,10 +15,10 @@ where
   N: Clone + Debug + Display + Sync + Send,
   E: Clone + Debug + Display + Sync + Send,
 {
-  pub source: Weak<Node<N, E>>,
-  pub target: Weak<Node<N, E>>,
+  pub source: Weak<Mutex<Node<N, E>>>,
+  pub target: Weak<Mutex<Node<N, E>>>,
   pub data: Mutex<E>,
-  pub lock: AtomicBool,
+  lock: AtomicBool,
 }
 
 impl<N, E> Edge<N, E>
@@ -27,10 +27,10 @@ where
   E: Clone + Debug + Display + Sync + Send,
 {
   /// Creates a new edge.
-  pub fn new(source: &Arc<Node<N, E>>, target: &Arc<Node<N, E>>, data: E) -> Edge<N, E> {
+  pub fn new(source: Weak<Mutex<Node<N, E>>>, target: Weak<Mutex<Node<N, E>>>, data: E) -> Edge<N, E> {
     Edge {
-      source: Arc::downgrade(source),
-      target: Arc::downgrade(target),
+      source,
+      target,
       data: Mutex::new(data),
       lock: AtomicBool::new(OPEN),
     }
@@ -38,13 +38,13 @@ where
 
   /// Edge's source node.
   #[inline]
-  pub fn source(&self) -> Arc<Node<N, E>> {
+  pub fn source(&self) -> Arc<Mutex<Node<N, E>>> {
     self.source.upgrade().unwrap()
   }
 
   /// Edge's target node.
   #[inline]
-  pub fn target(&self) -> Arc<Node<N, E>> {
+  pub fn target(&self) -> Arc<Mutex<Node<N, E>>> {
     self.target.upgrade().unwrap()
   }
 
@@ -83,6 +83,6 @@ where
   E: Clone + Debug + Display + Sync + Send,
 {
   fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
-    write!(fmt, "{} -> {}", self.source().key(), self.target().key())
+    write!(fmt, "{} -> {}", self.source().lock().key(), self.target().lock().key())
   }
 }
