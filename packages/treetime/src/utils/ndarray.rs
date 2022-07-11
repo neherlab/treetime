@@ -1,22 +1,23 @@
 use eyre::Report;
 use ndarray::{Array, Array1, Array2, Axis, Dimension, Ix2, NdProducer, RawData, RemoveAxis, ShapeBuilder, Zip};
 use ndarray_rand::RandomExt;
-use num_traits::{Bounded, NumCast};
+use num_traits::real::Real;
+use num_traits::{Bounded, Float, Num, NumCast};
 use rand::distributions::uniform::SampleUniform;
 use rand::distributions::Uniform;
 use rand::Rng;
-use std::ops::{Add, AddAssign, MulAssign};
+use std::ops::{Add, AddAssign, Deref, MulAssign};
 
-pub fn to_col(a: &Array1<f32>) -> Result<Array2<f32>, Report> {
+pub fn to_col<T: Real>(a: &Array1<T>) -> Result<Array2<T>, Report> {
   Ok(a.to_shape((a.len(), 1))?.into_dimensionality::<Ix2>()?.to_owned())
 }
 
-pub fn to_row(b: &Array1<f32>) -> Result<Array2<f32>, Report> {
+pub fn to_row<T: Real>(b: &Array1<T>) -> Result<Array2<T>, Report> {
   Ok(b.to_shape((1, b.len()))?.into_dimensionality::<Ix2>()?.to_owned())
 }
 
 // Calculates outer product of 2 vectors
-pub fn outer(a: &Array1<f32>, b: &Array1<f32>) -> Result<Array2<f32>, Report> {
+pub fn outer<T: 'static + Real>(a: &Array1<T>, b: &Array1<T>) -> Result<Array2<T>, Report> {
   let a = a.to_shape((a.len(), 1))?.into_dimensionality::<Ix2>()?;
   let b = b.to_shape((1, b.len()))?.into_dimensionality::<Ix2>()?;
   Ok(a.dot(&b))
@@ -24,22 +25,19 @@ pub fn outer(a: &Array1<f32>, b: &Array1<f32>) -> Result<Array2<f32>, Report> {
 
 /// Calculates min over given axis
 #[inline]
-pub fn min_axis(arr: &Array2<f32>, axis: Axis) -> Result<Array1<f32>, Report> {
-  Ok(arr.fold_axis(axis, f32::MAX, |a, b| a.min(*b)))
+pub fn min_axis<T: Real>(arr: &Array2<T>, axis: Axis) -> Result<Array1<T>, Report> {
+  Ok(arr.fold_axis(axis, T::max_value(), |&a, &b| a.min(b)))
 }
 
 /// Calculates max over given axis
 #[inline]
-pub fn max_axis(arr: &Array2<f32>, axis: Axis) -> Result<Array1<f32>, Report> {
-  Ok(arr.fold_axis(axis, f32::MIN, |a, b| a.max(*b)))
+pub fn max_axis<T: Real>(arr: &Array2<T>, axis: Axis) -> Result<Array1<T>, Report> {
+  Ok(arr.fold_axis(axis, T::min_value(), |&a, &b| a.max(b)))
 }
 
 /// Finds index of min value over given axis
 #[inline]
-pub fn argmin_axis<T: 'static + Copy + PartialOrd + Bounded, D: RemoveAxis>(
-  arr: &Array<T, D>,
-  axis: Axis,
-) -> Array<usize, D::Smaller> {
+pub fn argmin_axis<T: 'static + Real, D: RemoveAxis>(arr: &Array<T, D>, axis: Axis) -> Array<usize, D::Smaller> {
   arr
     .fold_axis(axis, (0_usize, 0_usize, T::max_value()), |(i_curr, i_min, x_min), x| {
       if x < x_min {
@@ -124,9 +122,10 @@ mod tests {
   use rand::SeedableRng;
   use rand_isaac::Isaac64Rng;
   use rstest::rstest;
+  use crate::pretty_assert_eq;
 
   lazy_static! {
-    static ref INPUT: Array2<f32> = array![
+    static ref INPUT: Array2<f64> = array![
       [0.19356424, 0.25224431, 0.21259213, 0.19217803, 0.14942128],
       [0.19440831, 0.13170981, 0.26841564, 0.29005381, 0.11541244],
       [0.27439982, 0.18330691, 0.19687558, 0.32079767, 0.02462001],
@@ -273,7 +272,7 @@ mod tests {
   fn generates_predictable_random_uniform() {
     let mut rng = Isaac64Rng::seed_from_u64(42);
 
-    let r: Array2<f32> = random((3, 4), &mut rng);
+    let r: Array2<f64> = random((3, 4), &mut rng);
     assert_ulps_eq!(
       r,
       array![
@@ -283,7 +282,7 @@ mod tests {
       ]
     );
 
-    let r: Array2<f32> = random((3, 4), &mut rng);
+    let r: Array2<f64> = random((3, 4), &mut rng);
     assert_ulps_eq!(
       r,
       array![
