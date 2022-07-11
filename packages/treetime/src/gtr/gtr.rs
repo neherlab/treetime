@@ -536,13 +536,10 @@ mod test {
       weight += params.pi[i] * profile[[0, i]];
     }
 
-    #[rustfmt::skip]
-    assert_ulps_eq!(distant_past,
-                    array![[1.0, 1.0, 1.0, 1.0, 1.0]] * weight, epsilon=1e-4);
+    assert_ulps_eq!(distant_past, array![[1.0, 1.0, 1.0, 1.0, 1.0]] * weight, epsilon = 1e-14);
 
     // propagating the profile far into the future gives the equilibrium probabilities pi
-    #[rustfmt::skip]
-    assert_ulps_eq!(distant_future.slice(s![0,..]), params.pi, epsilon=1e-4);
+    assert_ulps_eq!(distant_future.slice(s![0, ..]), params.pi, epsilon = 1e-14);
 
     Ok(())
   }
