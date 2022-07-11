@@ -466,6 +466,7 @@ mod test {
 
   #[rstest]
   fn test_propagate() -> Result<(), Report> {
+    // symmetric rate matrix with some variation in entries (test doesn't depend on precise values)
     let W: Array2<f32> = array![
       [0.00, 1.25, 2.25, 1.25, 1.25],
       [1.25, 0.00, 1.25, 3.25, 1.25],
@@ -474,16 +475,11 @@ mod test {
       [1.25, 1.25, 1.25, 1.25, 0.00],
     ];
 
+    // pi vector of equilibrium probability, some variation to be general, doesn't depend on details
     let pi: Array1<f32> = array![0.18, 0.35, 0.25, 0.18, 0.04];
     let alphabet = Alphabet::new("nuc")?;
-    let profile: Array2<f32> = array![[0.00, 0.8, 0.0, 0.2, 0.0],];
     let profile_map = ProfileMap::from_alphabet(&alphabet)?;
     let mu = 1.0;
-
-    let mut weight = 0.0;
-    for i in 0..5 {
-      weight += pi[i] * profile[[0, i]];
-    }
 
     let params = GTRParams {
       alphabet,
@@ -495,13 +491,24 @@ mod test {
 
     let gtr = GTR::new(&params)?;
 
-    let distant_past = gtr.propagate_profile(&profile, 100.0, false);
-    let distant_future = gtr.evolve(&profile, 100.0, false);
+    // initial profile to be back_propagated or evolved
+    let profile: Array2<f32> = array![[0.00, 0.8, 0.0, 0.2, 0.0],];
+    // propagate forward and backward in time by a large amount (as long as exp(-mu*large_t) is tiny, value of large_t doesn't matter)
+    let large_t = 100.0;
+    let distant_past = gtr.propagate_profile(&profile, large_t, false);
+    let distant_future = gtr.evolve(&profile, large_t, false);
+
+    // the "distant past profile" is the product of a vector [1,1,1,1,1] times the dot product of pi and initial profile
+    let mut weight = 0.0;
+    for i in 0..5 {
+      weight += params.pi[i] * profile[[0, i]];
+    }
 
     #[rustfmt::skip]
     assert_ulps_eq!(distant_past,
                     array![[1.0, 1.0, 1.0, 1.0, 1.0]] * weight, epsilon=1e-4);
 
+    // propagating the profile far into the future gives the equilibrium probabilities pi
     #[rustfmt::skip]
     assert_ulps_eq!(distant_future.slice(s![0,..]), params.pi, epsilon=1e-4);
 
