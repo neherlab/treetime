@@ -12,7 +12,7 @@ use ndarray_linalg::{Eig, Eigh};
 use num_traits::abs;
 use num_traits::real::Real;
 
-pub fn avg_transition(W: &Array2<f32>, pi: &Array1<f32>, gap_index: Option<usize>) -> Result<f32, Report> {
+pub fn avg_transition(W: &Array2<f64>, pi: &Array1<f64>, gap_index: Option<usize>) -> Result<f64, Report> {
   let result = einsum("i,ij,j", &[pi, W, pi])
     .map_err(|err| make_report!("einsum: {err}"))?
     .into_dimensionality::<Ix0>()?
@@ -34,19 +34,19 @@ pub fn avg_transition(W: &Array2<f32>, pi: &Array1<f32>, gap_index: Option<usize
 /// matrices to convert the sequence profiles to the GTR matrix eigenspace
 /// and hence to speed-up the computations.
 /// NOTE: this assumes the diagonal of W is all zeros
-fn eig_single_site(W: &Array2<f32>, pi: &Array1<f32>) -> Result<(Array1<f32>, Array2<f32>, Array2<f32>), Report> {
+fn eig_single_site(W: &Array2<f64>, pi: &Array1<f64>) -> Result<(Array1<f64>, Array2<f64>, Array2<f64>), Report> {
   assert!(abs(W.diag().sum()) < 1e-10);
 
-  let sqrt_pi: Array1<f32> = pi.mapv(f32::sqrt);
-  let mut sym_Q: Array2<f32> = W * outer(&sqrt_pi, &sqrt_pi)?;
+  let sqrt_pi: Array1<f64> = pi.mapv(f64::sqrt);
+  let mut sym_Q: Array2<f64> = W * outer(&sqrt_pi, &sqrt_pi)?;
 
   let diag = -(W * pi).sum_axis(Axis(1));
   sym_Q.diag_mut().assign(&diag);
 
   let (eigvals, eigvecs) = sym_Q.eigh(Lower)?;
 
-  let tmp_v: Array2<f32> = eigvecs.t().to_owned() * sqrt_pi.to_owned();
-  let one_norm: Array1<f32> = tmp_v.mapv(f32::abs).sum_axis(Axis(1));
+  let tmp_v: Array2<f64> = eigvecs.t().to_owned() * sqrt_pi.to_owned();
+  let one_norm: Array1<f64> = tmp_v.mapv(f64::abs).sum_axis(Axis(1));
 
   let v = tmp_v.t().to_owned() / &one_norm;
   let v_inv = (eigvecs * one_norm).t().to_owned() / sqrt_pi;
@@ -58,9 +58,9 @@ fn eig_single_site(W: &Array2<f32>, pi: &Array1<f32>) -> Result<(Array1<f32>, Ar
 pub struct GTRParams {
   pub alphabet: Alphabet,
   pub profile_map: ProfileMap,
-  pub mu: f32,
-  pub W: Array2<f32>,
-  pub pi: Array1<f32>,
+  pub mu: f64,
+  pub W: Array2<f64>,
+  pub pi: Array1<f64>,
 }
 
 /// Defines General-Time-Reversible model of character evolution.
@@ -70,12 +70,12 @@ pub struct GTR {
   pub is_site_specific: bool,
   pub alphabet: Alphabet,
   pub profile_map: ProfileMap,
-  pub mu: f32,
-  pub W: Array2<f32>,
-  pub pi: Array1<f32>,
-  pub eigvals: Array1<f32>,
-  pub v: Array2<f32>,
-  pub v_inv: Array2<f32>,
+  pub mu: f64,
+  pub W: Array2<f64>,
+  pub pi: Array1<f64>,
+  pub eigvals: Array1<f64>,
+  pub v: Array2<f64>,
+  pub v_inv: Array2<f64>,
 }
 
 impl GTR {
@@ -102,12 +102,16 @@ impl GTR {
     let pi_sum = pi.sum();
     pi = pi / pi_sum;
 
-    let mut W: Array2<f32> = if W.len() == n*n { W.clone() } else { Array2::<f32>::ones((n, n)) };
+    let mut W: Array2<f64> = if W.len() == n * n {
+      W.clone()
+    } else {
+      Array2::<f64>::ones((n, n))
+    };
     W.diag_mut().fill(0.0);
-    let W_: Array2<f32> = W.clone();
+    let W_: Array2<f64> = W.clone();
     // let W_slice = W_.slice(s!(.., 0));
     // W.diag_mut().fill(-W_slice.sum());
-    let mut W = 0.5*(&W + &W.t());
+    let mut W = 0.5 * (&W + &W.t());
     let average_rate = avg_transition(&W, &pi, gap_index)?;
     // W.diag_mut().fill(0.0);
 
@@ -148,7 +152,6 @@ impl GTR {
     //     self.gap_index=None
   }
 
-
   /// Compute the probability of the sequence state of the child
   /// at time t later, given the parent profile.
   ///
@@ -171,11 +174,11 @@ impl GTR {
   ///  res : np.array
   ///     Profile of the sequence after time t in the future.
   ///     Shape = (L, a), where L - sequence length, a - alphabet size.
-  pub fn evolve(&self, profile: &Array2<f32>, t: f32, return_log: bool) -> Array2<f32> {
+  pub fn evolve(&self, profile: &Array2<f64>, t: f64, return_log: bool) -> Array2<f64> {
     let Qt = self.expQt(t);
     let res = profile.dot(&Qt.t());
     if return_log {
-      res.mapv(f32::ln)
+      res.mapv(f64::ln)
     } else {
       res
     }
@@ -204,30 +207,30 @@ impl GTR {
   ///  res : np.array
   ///     Profile of the sequence after time t in the past.
   ///     Shape = (L, a), where L - sequence length, a - alphabet size.
-  pub fn propagate_profile(&self, profile: &Array2<f32>, t: f32, return_log: bool) -> Array2<f32> {
+  pub fn propagate_profile(&self, profile: &Array2<f64>, t: f64, return_log: bool) -> Array2<f64> {
     let Qt = self.expQt(t);
     let res = profile.dot(&Qt);
 
     if return_log {
-      res.mapv(f32::ln)
+      res.mapv(f64::ln)
     } else {
       res
     }
   }
 
   /// Matrix exponential of exo(Qt)
-  fn expQt(&self, t: f32) -> Array2<f32> {
-    let eLambdaT: Array2<f32> = Array2::from_diag(&self.exp_lt(t)); // vector length = a
+  fn expQt(&self, t: f64) -> Array2<f64> {
+    let eLambdaT: Array2<f64> = Array2::from_diag(&self.exp_lt(t)); // vector length = a
 
-    let eLambdaT_dot_v_inv: Array2<f32> = eLambdaT.dot(&self.v_inv);
+    let eLambdaT_dot_v_inv: Array2<f64> = eLambdaT.dot(&self.v_inv);
 
-    let Qt: Array2<f32> = self.v.dot(&eLambdaT_dot_v_inv); // This is P(nuc1 | given nuc_2)
+    let Qt: Array2<f64> = self.v.dot(&eLambdaT_dot_v_inv); // This is P(nuc1 | given nuc_2)
 
     clamp_min(&Qt, 0.0)
   }
 
-  fn exp_lt(&self, t: f32) -> Array1<f32> {
-    (self.mu * t * &self.eigvals).mapv(f32::exp)
+  fn exp_lt(&self, t: f64) -> Array1<f64> {
+    (self.mu * t * &self.eigvals).mapv(f64::exp)
   }
 }
 
@@ -240,10 +243,13 @@ mod test {
   use eyre::Report;
   use ndarray::{array, Array1, Array2};
   use rstest::rstest;
+  use crate::pretty_assert_eq;
+
+  const EPSILON: f64 = 1e-4;
 
   #[rstest]
   fn computes_eig_single_site() -> Result<(), Report> {
-    let W: Array2<f32> = array![
+    let W: Array2<f64> = array![
       [0.00, 1.25, 1.25, 1.25, 1.25],
       [1.25, 0.00, 1.25, 1.25, 1.25],
       [1.25, 1.25, 0.00, 1.25, 1.25],
@@ -251,15 +257,19 @@ mod test {
       [1.25, 1.25, 1.25, 1.25, 0.00],
     ];
 
-    let pi: Array1<f32> = array![0.2, 0.2, 0.2, 0.2, 0.2];
+    let pi: Array1<f64> = array![0.2, 0.2, 0.2, 0.2, 0.2];
 
     let (eigvals, v, v_inv) = eig_single_site(&W, &pi)?;
 
     #[rustfmt::skip]
-    assert_ulps_eq!(eigvals, array![-1.25000000e+00, -1.25000000e+00, -1.25000000e+00, -1.25000000e+00, -6.66133815e-16]);
+    assert_ulps_eq!(
+      eigvals,
+      array![-1.25000000e+00, -1.25000000e+00, -1.25000000e+00, -1.25000000e+00, -6.66133815e-16],
+      epsilon = EPSILON
+    );
 
     #[rustfmt::skip]
-    assert_ulps_eq!(v, array![
+    pretty_assert_eq!(v, array![
       [0.00000000e+00,0.00000000e+00,5.00000000e-01,-4.31551005e-02,-2.00000000e-01],
       [-2.54951242e-17,0.00000000e+00,-1.68258119e-01,-4.56844900e-01,-2.00000000e-01],
       [5.00000000e-01,-2.22621050e-17,-1.10580627e-01,1.66666667e-01,-2.00000000e-01],
@@ -274,40 +284,31 @@ mod test {
       [1.58732668e+00,-5.34161205e-01,-3.51055159e-01,-3.51055159e-01,-3.51055159e-01],
       [-1.46834522e-01,-1.55440729e+00,5.67080603e-01,5.67080603e-01,5.67080603e-01],
       [-1.00000000e+00,-1.00000000e+00,-1.00000000e+00,-1.00000000e+00,-1.00000000e+00]
-    ]);
+    ], epsilon = EPSILON);
 
     Ok(())
   }
 
   #[rstest]
   fn avg_transition_test() -> Result<(), Report> {
-    let pi = array![1.0/3.0, 1.0/3.0, 1.0/3.0];
+    let pi = array![1.0 / 3.0, 1.0 / 3.0, 1.0 / 3.0];
 
-    let Wi: Array2<f32> = array![
-                        [0.0, 4.0 / 3.0, 4.0 / 3.0],
-                        [4.0 / 3.0, 0.0, 4.0 / 3.0],
-                        [4.0 / 3.0, 4.0 / 3.0, 0.0],
-                        ];
+    let Wi: Array2<f64> = array![
+      [0.0, 4.0 / 3.0, 4.0 / 3.0],
+      [4.0 / 3.0, 0.0, 4.0 / 3.0],
+      [4.0 / 3.0, 4.0 / 3.0, 0.0],
+    ];
     // test without gap index
-    assert_ulps_eq!(avg_transition(
-      &Wi,
-      &pi,
-      None
-    )?, 8.0/9.0);
+    assert_ulps_eq!(avg_transition(&Wi, &pi, None)?, 8.0 / 9.0);
 
     // test with gap index - the index is wrong
-    assert_ulps_eq!(avg_transition(
-      &Wi,
-      &pi,
-      Some(1),
-    )?, 8.0/9.0);
+    assert_ulps_eq!(avg_transition(&Wi, &pi, Some(1),)?, 8.0 / 9.0);
 
     Ok(())
   }
 
   #[rstest]
   fn jc69_creates() -> Result<(), Report> {
-
     let gtr = jc69()?;
 
     assert_eq!(gtr.pi, array![0.2, 0.2, 0.2, 0.2, 0.2]);
@@ -402,18 +403,19 @@ mod test {
   fn jc69_calculates_exp_qt() -> Result<(), Report> {
     let gtr = jc69()?;
 
-    let t = (1.0/5.0).ln()/ gtr.mu;
+    let t = (1.0 / 5.0).ln() / gtr.mu;
     let Qs = gtr.expQt(t);
 
     assert_ulps_eq!(
       Qs,
       array![
-        [6.18139512, 0.        , 0.        , 0.        , 0.        ],
-        [0.        , 6.18139512, 0.        , 0.        , 0.        ],
-        [0.        , 0.        , 6.18139512, 0.        , 0.        ],
-        [0.        , 0.        , 0.        , 6.18139512, 0.        ],
-        [0.        , 0.        , 0.        , 0.        , 6.18139512]
-      ]
+        [6.18139512, 0., 0., 0., 0.],
+        [0., 6.18139512, 0., 0., 0.],
+        [0., 0., 6.18139512, 0., 0.],
+        [0., 0., 0., 6.18139512, 0.],
+        [0., 0., 0., 0., 6.18139512]
+      ],
+      epsilon = 1e-4
     );
 
     let Qs = gtr.expQt(0.1);
@@ -426,7 +428,8 @@ mod test {
         [0.02350062, 0.02350062, 0.90599752, 0.02350062, 0.02350062],
         [0.02350062, 0.02350062, 0.02350062, 0.90599752, 0.02350062],
         [0.02350062, 0.02350062, 0.02350062, 0.02350062, 0.90599752]
-      ]
+      ],
+      epsilon = 1e-4
     );
 
     Ok(())
@@ -436,7 +439,7 @@ mod test {
   fn jc69_evolves() -> Result<(), Report> {
     let gtr = jc69()?;
 
-    let norm_prof: Array2<f32> = array![
+    let norm_prof: Array2<f64> = array![
       [0.19356424, 0.25224431, 0.21259213, 0.19217803, 0.14942128],
       [0.19440831, 0.13170981, 0.26841564, 0.29005381, 0.11541244],
       [0.27439982, 0.18330691, 0.19687558, 0.32079767, 0.02462001],
@@ -458,7 +461,8 @@ mod test {
         [0.29871132, 0.24824297, 0.15327957, 0.24300395, 0.05676219],
         [0.23544964, 0.07098084, 0.33638557, 0.19634264, 0.16084131],
         [0.13562895, 0.35164914, 0.21683379, 0.26442369, 0.03146442],
-      ]
+      ],
+      epsilon = 1e-4
     );
 
     Ok(())
@@ -467,7 +471,7 @@ mod test {
   #[rstest]
   fn test_propagate() -> Result<(), Report> {
     // symmetric rate matrix with some variation in entries (test doesn't depend on precise values)
-    let W: Array2<f32> = array![
+    let W: Array2<f64> = array![
       [0.00, 1.25, 2.25, 1.25, 1.25],
       [1.25, 0.00, 1.25, 3.25, 1.25],
       [2.25, 1.25, 0.00, 1.25, 1.25],
@@ -476,7 +480,7 @@ mod test {
     ];
 
     // pi vector of equilibrium probability, some variation to be general, doesn't depend on details
-    let pi: Array1<f32> = array![0.18, 0.35, 0.25, 0.18, 0.04];
+    let pi: Array1<f64> = array![0.18, 0.35, 0.25, 0.18, 0.04];
     let alphabet = Alphabet::new("nuc")?;
     let profile_map = ProfileMap::from_alphabet(&alphabet)?;
     let mu = 1.0;
@@ -492,7 +496,7 @@ mod test {
     let gtr = GTR::new(&params)?;
 
     // initial profile to be back_propagated or evolved
-    let profile: Array2<f32> = array![[0.00, 0.8, 0.0, 0.2, 0.0],];
+    let profile: Array2<f64> = array![[0.00, 0.8, 0.0, 0.2, 0.0],];
     // propagate forward and backward in time by a large amount (as long as exp(-mu*large_t) is tiny, value of large_t doesn't matter)
     let large_t = 100.0;
     let distant_past = gtr.propagate_profile(&profile, large_t, false);
@@ -514,5 +518,4 @@ mod test {
 
     Ok(())
   }
-
 }

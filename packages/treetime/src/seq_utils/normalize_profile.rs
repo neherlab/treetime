@@ -21,20 +21,20 @@ use num_traits::FloatConst;
 /// -------
 /// tuple
 ///     normalized profile (fresh np object) and offset (if return_offset==True)
-pub fn normalize_profile(in_prof: &Array2<f32>, log: bool) -> Result<(Array2<f32>, Array1<f32>), Report> {
+pub fn normalize_profile(in_prof: &Array2<f64>, log: bool) -> Result<(Array2<f64>, Array1<f64>), Report> {
   let (tmp_prof, tmp_prefactor) = if log {
     let tmp_prefactor = max_axis(in_prof, Axis(1))?;
 
     let tmp_prof = {
       let tmp_prof = &in_prof.t() - &tmp_prefactor;
-      let tmp_prof = tmp_prof.mapv(f32::exp);
+      let tmp_prof = tmp_prof.mapv(f64::exp);
       let tmp_prof = tmp_prof.t();
       tmp_prof.to_owned()
     };
 
     (tmp_prof, tmp_prefactor)
   } else {
-    let tmp_prefactor: Array1<f32> = Array1::zeros(in_prof.shape()[0]);
+    let tmp_prefactor: Array1<f64> = Array1::zeros(in_prof.shape()[0]);
     (in_prof.to_owned(), tmp_prefactor)
   };
 
@@ -45,7 +45,7 @@ pub fn normalize_profile(in_prof: &Array2<f32>, log: bool) -> Result<(Array2<f32
     .map_err(|err| make_report!("einsum: {err}"))?
     .into_dimensionality::<Ix2>()?;
 
-  let offset: Array1<f32> = norm_vector.mapv(|x| f32::log(x, f32::E())) + tmp_prefactor;
+  let offset: Array1<f64> = norm_vector.mapv(|x| f64::log(x, f64::E())) + tmp_prefactor;
 
   Ok((norm_prof, offset))
 }

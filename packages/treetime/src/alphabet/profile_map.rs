@@ -7,7 +7,7 @@ use ndarray::array;
 use ndarray::Array1;
 
 lazy_static! {
-  static ref PROFILE_MAP_NUC: IndexMap<char, Array1<f32>> = IndexMap::<char, Array1<f32>>::from([
+  static ref PROFILE_MAP_NUC: IndexMap<char, Array1<f64>> = IndexMap::<char, Array1<f64>>::from([
     ('A', array![1.0, 0.0, 0.0, 0.0, 0.0]),
     ('C', array![0.0, 1.0, 0.0, 0.0, 0.0]),
     ('G', array![0.0, 0.0, 1.0, 0.0, 0.0]),
@@ -30,7 +30,7 @@ lazy_static! {
 
 #[derive(Clone, Debug)]
 pub struct ProfileMap {
-  profile_map: IndexMap<char, Array1<f32>>,
+  profile_map: IndexMap<char, Array1<f64>>,
 }
 
 impl ProfileMap {
@@ -49,7 +49,7 @@ impl ProfileMap {
   }
 
   #[inline]
-  pub fn get(&self, c: char) -> &Array1<f32> {
+  pub fn get(&self, c: char) -> &Array1<f64> {
     self
       .profile_map
       .get(&c)

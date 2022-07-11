@@ -17,7 +17,7 @@ pub struct Prof2SeqParams {
 #[derive(Debug, Clone)]
 pub struct Prof2SeqResult {
   pub seq: Array1<char>,
-  pub prof_values: Array1<f32>,
+  pub prof_values: Array1<f64>,
   pub seq_ii: Array1<usize>,
 }
 
@@ -43,7 +43,7 @@ pub struct Prof2SeqResult {
 ///  idx : numpy.array
 ///     Indices chosen from profile as array of length L
 pub fn prof2seq<R: Rng>(
-  profile: &Array2<f32>,
+  profile: &Array2<f64>,
   gtr: &GTR,
   rng: &mut R,
   params: &Prof2SeqParams,
@@ -57,7 +57,7 @@ pub fn prof2seq<R: Rng>(
   };
 
   let seq_ii: Array1<usize> = if params.should_sample_from_profile {
-    let randnum: Array1<f32> = random(profile.shape()[0], rng);
+    let randnum: Array1<f64> = random(profile.shape()[0], rng);
     sample_from_prof(&profile, &randnum)
   } else {
     argmax_axis(&profile, Axis(1))
@@ -76,10 +76,10 @@ pub fn prof2seq<R: Rng>(
 
 /// Sample sequence according to the probabilities in the profile
 /// (sampling from cumulative distribution over the different states)
-pub fn sample_from_prof(profile: &Array2<f32>, randnum: &Array1<f32>) -> Array1<usize> {
+pub fn sample_from_prof(profile: &Array2<f64>, randnum: &Array1<f64>) -> Array1<usize> {
   assert_eq!(profile.shape()[0], randnum.shape()[0]);
 
-  let cumdis: Array2<f32> = cumsum_axis(profile, Axis(1)).t().to_owned();
+  let cumdis: Array2<f64> = cumsum_axis(profile, Axis(1)).t().to_owned();
 
   cumdis
     .axis_iter(Axis(1))
@@ -95,7 +95,7 @@ pub fn sample_from_prof(profile: &Array2<f32>, randnum: &Array1<f32>) -> Array1<
     .collect()
 }
 
-pub fn get_prof_values(profile: &Array2<f32>, seq_ii: &Array1<usize>) -> Array1<f32> {
+pub fn get_prof_values(profile: &Array2<f64>, seq_ii: &Array1<usize>) -> Array1<f64> {
   profile
     .axis_iter(Axis(0))
     .enumerate()
@@ -123,7 +123,7 @@ pub fn get_prof_values(profile: &Array2<f32>, seq_ii: &Array1<usize>) -> Array1<
 ///
 ///  idx : numpy.array
 ///     Profile for the character. Zero array if the character not found
-pub fn seq2prof(seq: &Array1<char>, profile_map: &ProfileMap) -> Result<Array2<f32>, Report> {
+pub fn seq2prof(seq: &Array1<char>, profile_map: &ProfileMap) -> Result<Array2<f64>, Report> {
   let prof = stack(Axis(0), seq.map(|&c| profile_map.get(c).view()).as_slice().unwrap())?;
   Ok(prof)
 }

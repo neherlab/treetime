@@ -28,7 +28,7 @@ fn main() -> Result<(), Report> {
   info!("gtr:\n{gtr:#?}\n");
 
   let mut rng = Isaac64Rng::seed_from_u64(RANDOM_SEED);
-  let dummy_prof: Array2<f32> = random((100, 5), &mut rng);
+  let dummy_prof: Array2<f64> = random((100, 5), &mut rng);
   info!("dummy_prof:\n{dummy_prof}\n");
 
   // used a lot (300us)

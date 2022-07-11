@@ -12,8 +12,8 @@ pub fn jc69() -> Result<GTR, Report> {
   let profile_map = ProfileMap::from_alphabet(&alphabet)?;
 
   let num_chars = alphabet.len();
-  let W = Array2::<f32>::ones((num_chars, num_chars));
-  let pi = Array1::<f32>::ones(num_chars);
+  let W = Array2::<f64>::ones((num_chars, num_chars));
+  let pi = Array1::<f64>::ones(num_chars);
 
   let gtr = GTR::new(&GTRParams {
     alphabet,
