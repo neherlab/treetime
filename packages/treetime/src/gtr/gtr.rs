@@ -37,19 +37,19 @@ pub fn avg_transition(W: &Array2<f32>, pi: &Array1<f32>, gap_index: Option<usize
 fn eig_single_site(W: &Array2<f32>, pi: &Array1<f32>) -> Result<(Array1<f32>, Array2<f32>, Array2<f32>), Report> {
   assert!(abs(W.diag().sum()) < 1e-10);
 
-  let tmp_pi: Array1<f32> = pi.mapv(f32::sqrt);
-  let mut sym_Q: Array2<f32> = W * outer(&tmp_pi, &tmp_pi)?;
+  let sqrt_pi: Array1<f32> = pi.mapv(f32::sqrt);
+  let mut sym_Q: Array2<f32> = W * outer(&sqrt_pi, &sqrt_pi)?;
 
   let diag = -(W * pi).sum_axis(Axis(1));
   sym_Q.diag_mut().assign(&diag);
-  println!("sym_Q = {}", sym_Q);
 
   let (eigvals, eigvecs) = sym_Q.eigh(Lower)?;
-  let tmp_v: Array2<f32> = eigvecs.t().to_owned().dot(&to_col(&tmp_pi)?);
+
+  let tmp_v: Array2<f32> = eigvecs.t().to_owned() * sqrt_pi.to_owned();
   let one_norm: Array1<f32> = tmp_v.mapv(f32::abs).sum_axis(Axis(1));
 
-  let v = tmp_v / &one_norm;
-  let v_inv = (eigvecs * one_norm) / tmp_pi;
+  let v = tmp_v.t().to_owned() / &one_norm;
+  let v_inv = (eigvecs * one_norm).t().to_owned() / sqrt_pi;
 
   Ok((eigvals, v, v_inv))
 }
@@ -94,7 +94,6 @@ impl GTR {
     // self.state_index.update({s:si for si,s in enumerate(self.alphabet)})
 
     // self.ambiguous = None
-
     let n = alphabet.len();
 
     let gap_index = Self::assign_gap_and_ambiguous(alphabet);
@@ -102,16 +101,16 @@ impl GTR {
     let mut pi = if pi.len() == n { pi.clone() } else { Array1::ones(n) };
     let pi_sum = pi.sum();
     pi = pi / pi_sum;
-    
-    let mut W: Array2<f32> = if W.len() == n { W.clone() } else { Array2::<f32>::ones((n, n)) };
+
+    let mut W: Array2<f32> = if W.len() == n*n { W.clone() } else { Array2::<f32>::ones((n, n)) };
     W.diag_mut().fill(0.0);
     let W_: Array2<f32> = W.clone();
-    let W_slice = W_.slice(s!(.., 0));
-    W.diag_mut().fill(-W_slice.sum());
+    // let W_slice = W_.slice(s!(.., 0));
+    // W.diag_mut().fill(-W_slice.sum());
     let mut W = 0.5*(&W + &W.t());
-    W.diag_mut().fill(0.0);
-
     let average_rate = avg_transition(&W, &pi, gap_index)?;
+    // W.diag_mut().fill(0.0);
+
     W = W / average_rate;
     let mu = mu * average_rate;
 
@@ -208,6 +207,7 @@ impl GTR {
   pub fn propagate_profile(&self, profile: &Array2<f32>, t: f32, return_log: bool) -> Array2<f32> {
     let Qt = self.expQt(t);
     let res = profile.dot(&Qt);
+    println!("{}",Qt);
     if return_log {
       res.mapv(f32::ln)
     } else {
@@ -221,10 +221,9 @@ impl GTR {
 
     let eLambdaT_dot_v_inv: Array2<f32> = eLambdaT.dot(&self.v_inv);
 
-    let Qs: Array2<f32> = self.v.dot(&eLambdaT_dot_v_inv); // This is P(nuc1 | given nuc_2)
-    println!("Qs = {}", Qs);
+    let Qt: Array2<f32> = self.v.dot(&eLambdaT_dot_v_inv); // This is P(nuc1 | given nuc_2)
 
-    clamp_min(&Qs, 0.0)
+    clamp_min(&Qt, 0.0)
   }
 
   fn exp_lt(&self, t: f32) -> Array1<f32> {
@@ -285,8 +284,8 @@ mod test {
     let pi = array![1.0/3.0, 1.0/3.0, 1.0/3.0];
 
     let Wi: Array2<f32> = array![
-                        [0.0, 4.0 / 3.0, 4.0 / 3.0], 
-                        [4.0 / 3.0, 0.0, 4.0 / 3.0], 
+                        [0.0, 4.0 / 3.0, 4.0 / 3.0],
+                        [4.0 / 3.0, 0.0, 4.0 / 3.0],
                         [4.0 / 3.0, 4.0 / 3.0, 0.0],
                         ];
     // test without gap index
@@ -313,14 +312,19 @@ mod test {
 
     assert_eq!(gtr.pi, array![0.2, 0.2, 0.2, 0.2, 0.2]);
 
-    // need to add gap index for avg_transition with 'nuc' alphabet as this contains '-'
     assert_ulps_eq!(gtr.mu, 0.8);
-    println!("mu = {}", gtr.mu);
-    println!("eigenvals = {}", gtr.eigvals);
-    println!("v = {}", gtr.v);
+
     let diag = Array2::from_diag(&gtr.eigvals);
-    println!("diag = {}", diag);
-    println!("check decomposition correct = {}", gtr.v.dot(&diag).dot(&gtr.v_inv));
+    assert_ulps_eq!(
+      gtr.v.dot(&diag).dot(&gtr.v_inv),
+      array![
+        [-1.00, 0.25, 0.25, 0.25, 0.25],
+        [0.25, -1.00, 0.25, 0.25, 0.25],
+        [0.25, 0.25, -1.00, 0.25, 0.25],
+        [0.25, 0.25, 0.25, -1.00, 0.25],
+        [0.25, 0.25, 0.25, 0.25, -1.00],
+      ]
+    );
 
     assert_ulps_eq!(
       gtr.W,
@@ -350,13 +354,13 @@ mod test {
         [1.66666667e-01,-1.33974596e-01,5.00000000e-01,4.16666667e-02,-2.00000000e-01]
       ]
     );
-    array![
-      [ 2.58667770e-02,  0.00000000e+00,  5.00000000e-01, 1.57104954e-02,  2.00000000e-01],
-    [-1.84976937e-01, -2.94392336e-17, -1.25781243e-01, 4.84289505e-01,  2.00000000e-01],
-    [-3.15023063e-01, -5.92654687e-17, -9.51199735e-02, -3.76223872e-01,  2.00000000e-01],
-    [ 2.37066612e-01, -5.00000000e-01, -1.39549392e-01, -6.18880642e-02,  2.00000000e-01],
-    [ 2.37066612e-01,  5.00000000e-01, -1.39549392e-01, -6.18880642e-02,  2.00000000e-01]
-    ];
+    // array![
+    //   [ 2.58667770e-02,  0.00000000e+00,  5.00000000e-01, 1.57104954e-02,  2.00000000e-01],
+    // [-1.84976937e-01, -2.94392336e-17, -1.25781243e-01, 4.84289505e-01,  2.00000000e-01],
+    // [-3.15023063e-01, -5.92654687e-17, -9.51199735e-02, -3.76223872e-01,  2.00000000e-01],
+    // [ 2.37066612e-01, -5.00000000e-01, -1.39549392e-01, -6.18880642e-02,  2.00000000e-01],
+    // [ 2.37066612e-01,  5.00000000e-01, -1.39549392e-01, -6.18880642e-02,  2.00000000e-01]
+    // ];
     #[rustfmt::skip]
     assert_ulps_eq!(
       gtr.v_inv,
@@ -459,4 +463,50 @@ mod test {
 
     Ok(())
   }
+
+  #[rstest]
+  fn test_propagate() -> Result<(), Report> {
+    let W: Array2<f32> = array![
+      [0.00, 1.25, 2.25, 1.25, 1.25],
+      [1.25, 0.00, 1.25, 3.25, 1.25],
+      [2.25, 1.25, 0.00, 1.25, 1.25],
+      [1.25, 3.25, 1.25, 0.00, 1.25],
+      [1.25, 1.25, 1.25, 1.25, 0.00],
+    ];
+
+    let profile: Array2<f32> = array![
+      [0.00, 0.8, 0.0, 0.2, 0.0],
+    ];
+
+    let pi: Array1<f32> = array![0.18, 0.3, 0.3, 0.18, 0.04];
+    let alphabet_name = "nuc";
+    let alphabet = Alphabet::new(alphabet_name)?;
+    let profile_map = ProfileMap::from_alphabet(&alphabet)?;
+    let mu = 1.0;
+
+    let gtr = GTR::new(&GTRParams {
+      alphabet,
+      profile_map,
+      mu,
+      W,
+      pi,
+    })?;
+    println!("{} {}", gtr.v, gtr.v_inv);
+
+    let distant_past = gtr.propagate_profile(&profile, 100.0, false);
+    let distant_future = gtr.evolve(&profile, 100.0, false);
+
+    #[rustfmt::skip]
+    assert_ulps_eq!(distant_past, array![[1.0, 1.0, 1.0, 1.0, 1.0]]);
+
+    // #[rustfmt::skip]
+    // assert_ulps_eq!(distant_past,
+    //                 array![[1.0, 1.0, 1.0, 1.0, 1.0]] * (profile[0] * pi).sum());
+
+    // #[rustfmt::skip]
+    // assert_ulps_eq!(distant_future[0], pi);
+
+    Ok(())
+  }
+
 }
