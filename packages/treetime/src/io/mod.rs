@@ -1,2 +1,2 @@
-pub mod fs;
 pub mod file;
+pub mod fs;
