@@ -6,6 +6,9 @@ use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
 use std::hash::Hash;
 use std::io::Write;
+use std::ops::Deref;
+use std::thread::sleep;
+use std::time::Duration;
 use treetime::graph::graph::Graph;
 use treetime::io::file::create_file;
 use treetime::utils::global_init::global_init;
@@ -82,30 +85,37 @@ fn main() -> Result<(), Report> {
 
     let parent = edge.source();
     let parent = parent.read();
-    let parent_payload = parent.load();
-    let parent_name = parent_payload.name;
+    let parent_payload = parent.payload();
+    let parent_name = &parent_payload.name;
 
     let node = edge.target();
-    let node = node.read();
+    let node = node.write();
     let is_leaf = node.is_leaf();
-    let node_payload = node.load();
-    let node_name = node_payload.name;
+
+    let mut node_payload = node.payload_mut();
+
+    node_payload.name = format!("{}*", &node_payload.name);
+    let node_name = &node_payload.name;
 
     let parent_edges = node.inbound();
     let parents = parent_edges.iter().map(|parent_edge| {
       let parent_edge = parent_edge.upgrade().unwrap();
       let parent_edge_payload = parent_edge.load();
-      let parent_node_payload = parent_edge.source().read().load();
+      let parent_node_payload = parent_edge.source().read().payload().clone();
       (parent_node_payload, parent_edge_payload)
     });
 
     let parent_names = parents.map(|(node, _)| node.name).join(", ");
+
+    sleep(Duration::from_secs(2));
 
     println!(
       "{:<6} | {:<16} | {:<6} | {:<16} | {:<5}",
       parent_name, edge_name, node_name, parent_names, is_leaf
     );
   });
+
+  graph.print_graph(create_file("tmp/graph2.dot")?)?;
 
   Ok(())
 }

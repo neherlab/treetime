@@ -1,6 +1,6 @@
 use crate::graph::core::{CLOSED, OPEN};
 use crate::graph::edge::Edge;
-use parking_lot::{Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard};
+use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 use std::fmt::{Debug, Display, Formatter};
 use std::hash::Hash;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -18,7 +18,7 @@ where
   E: Clone + Debug + Display + Sync + Send,
 {
   key: usize,
-  pub data: Mutex<N>,
+  pub data: Arc<RwLock<N>>,
   pub outbound: Outbound<N, E>,
   pub inbound: Inbound<N, E>,
   lock: AtomicBool,
@@ -31,26 +31,24 @@ where
 {
   /// Create a new node.
   #[inline]
-  pub const fn new(key: usize, data: N) -> Node<N, E> {
+  pub fn new(key: usize, data: N) -> Node<N, E> {
     Self {
       key,
-      data: Mutex::new(data),
+      data: Arc::new(RwLock::new(data)),
       outbound: Outbound::new(Vec::new()),
       inbound: Inbound::new(Vec::new()),
       lock: AtomicBool::new(OPEN),
     }
   }
 
-  /// Load data from the node.
   #[inline]
-  pub fn load(&self) -> N {
-    self.data.lock().clone()
+  pub fn payload(&self) -> RwLockReadGuard<N> {
+    self.data.read()
   }
 
-  /// Store data to the node.
   #[inline]
-  pub fn store(&self, data: N) {
-    *self.data.lock() = data;
+  pub fn payload_mut(&self) -> RwLockWriteGuard<N> {
+    self.data.write()
   }
 
   /// Get node key.
@@ -70,28 +68,6 @@ where
   pub fn is_leaf(&self) -> bool {
     self.outbound().len() == 0
   }
-
-  // /// Find an outbound node and return the corresponding edge if found.
-  // #[inline]
-  // pub fn find_outbound(&self, target: &Arc<Mutex<Node<N, E>>>) -> Option<Arc<Edge<N, E>>> {
-  //   for edge in self.outbound().iter() {
-  //     if edge.target().lock().key() == target.key() {
-  //       return Some(Arc::clone(edge));
-  //     }
-  //   }
-  //   None
-  // }
-  //
-  // /// Find an inbound node and return the corresponding edge if found.
-  // #[inline]
-  // pub fn find_inbound(&self, source: &Arc<Mutex<Node<N, E>>>) -> Option<Weak<Edge<N, E>>> {
-  //   for edge in self.inbound().iter() {
-  //     if edge.upgrade().unwrap().source().lock().key == source.key {
-  //       return Some(Weak::clone(edge));
-  //     }
-  //   }
-  //   None
-  // }
 
   /// Get read access to outbound edges of the node.
   #[inline]
@@ -158,7 +134,7 @@ where
   E: Clone + Debug + Display + Sync + Send,
 {
   fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
-    let header = format!("{} [label = \"{} : {}\"]", self.key, self.key, self.data.lock());
+    let header = format!("{} [label = \"{} : {}\"]", self.key, self.key, self.data.read());
     write!(fmt, "{}", header)
   }
 }
