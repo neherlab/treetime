@@ -104,15 +104,14 @@ impl GTR {
     // self.state_index.update({s:si for si,s in enumerate(self.alphabet)})
 
     // self.ambiguous = None
-
-    let gap_index = Self::assign_gap_and_ambiguous(alphabet);
+    // let gap_index = Self::assign_gap_and_ambiguous(alphabet);
 
     let pi = {
       let pi_sum = pi.sum();
       pi / pi_sum
     };
 
-    let average_rate = avg_transition(W, &pi, gap_index)?;
+    let average_rate = avg_transition(W, &pi, alphabet.gap_index())?;
 
     let W = {
       let mut W = 0.5 * (&W.view() + &W.t());
@@ -138,9 +137,9 @@ impl GTR {
     })
   }
 
+  #[allow(clippy::missing_const_for_fn)]
   fn assign_gap_and_ambiguous(alphabet: &Alphabet) -> Option<usize> {
     // let n_states = self.alphabet.len();
-    alphabet.alphabet.iter().position(|&x| x == '-')
 
     // // determine if a character exists that corresponds to no info, i.e. all one profile
     // if any([x.sum()==n_states for x in self.profile_map.values()]):
@@ -154,6 +153,8 @@ impl GTR {
     //     self.gap_index = self.state_index['-']
     // except:
     //     self.gap_index=None
+
+    None
   }
 
   /// Compute the probability of the sequence state of the child
