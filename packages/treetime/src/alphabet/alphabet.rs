@@ -8,6 +8,7 @@ use std::ops::Index;
 pub struct Alphabet {
   pub name: String,
   pub alphabet: Array1<char>,
+  pub gap_index: Option<usize>,
 }
 
 lazy_static! {
@@ -36,9 +37,12 @@ impl Alphabet {
       _ => make_error!("Unknown alphabet: '{name}'"),
     }?;
 
+    let gap_index = alphabet.iter().position(|&x| x == '-');
+
     Ok(Self {
       name: name.to_owned(),
       alphabet,
+      gap_index,
     })
   }
 
@@ -54,6 +58,11 @@ impl Alphabet {
   #[inline]
   pub fn is_empty(&self) -> bool {
     self.len() == 0
+  }
+
+  #[inline]
+  pub const fn gap_index(&self) -> Option<usize> {
+    self.gap_index
   }
 }
 
