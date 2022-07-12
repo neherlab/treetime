@@ -89,33 +89,37 @@ impl GTR {
     }: &GTRParams,
   ) -> Result<Self, Report> {
     assert!(!alphabet.is_empty(), "Alphabet should not be empty");
+    assert_eq!(
+      pi.shape().to_vec(),
+      [alphabet.len()],
+      "Length of equilibrium frequency vector (`pi`) does not match the alphabet length"
+    );
+    assert_eq!(
+      W.shape().to_vec(),
+      [alphabet.len(), alphabet.len()],
+      "Dimensions of substitution matrix (`W`) don't match the alphabet size"
+    );
 
     // self.state_index= {s:si for si,s in enumerate(self.alphabet)}
     // self.state_index.update({s:si for si,s in enumerate(self.alphabet)})
 
     // self.ambiguous = None
-    let n = alphabet.len();
 
     let gap_index = Self::assign_gap_and_ambiguous(alphabet);
 
-    let mut pi = if pi.len() == n { pi.clone() } else { Array1::ones(n) };
-    let pi_sum = pi.sum();
-    pi /= pi_sum;
-
-    let mut W: Array2<f64> = if W.len() == n * n {
-      W.clone()
-    } else {
-      Array2::<f64>::ones((n, n))
+    let pi = {
+      let pi_sum = pi.sum();
+      pi / pi_sum
     };
-    W.diag_mut().fill(0.0);
-    let W_: Array2<f64> = W.clone();
-    // let W_slice = W_.slice(s!(.., 0));
-    // W.diag_mut().fill(-W_slice.sum());
-    let mut W = 0.5 * (&W + &W.t());
-    let average_rate = avg_transition(&W, &pi, gap_index)?;
-    // W.diag_mut().fill(0.0);
 
-    W /= average_rate;
+    let average_rate = avg_transition(W, &pi, gap_index)?;
+
+    let W = {
+      let mut W = 0.5 * (&W.view() + &W.t());
+      W.diag_mut().fill(0.0);
+      W / average_rate
+    };
+
     let mu = mu * average_rate;
 
     let (eigvals, v, v_inv) = eig_single_site(&W, &pi)?;
