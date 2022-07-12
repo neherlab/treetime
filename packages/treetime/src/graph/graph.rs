@@ -1,7 +1,7 @@
 use crate::graph::breadth_first::directed_breadth_first_traversal_parallel;
 use crate::graph::edge::Edge;
 use crate::graph::node::Node;
-use parking_lot::Mutex;
+use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::fmt::{Debug, Display};
 use std::hash::Hash;
@@ -13,7 +13,7 @@ where
   N: Clone + Debug + Display + Sync + Send,
   E: Clone + Debug + Display + Sync + Send,
 {
-  nodes: HashMap<usize, Arc<Mutex<Node<N, E>>>>,
+  nodes: HashMap<usize, Arc<RwLock<Node<N, E>>>>,
   idx: usize,
 }
 
@@ -29,11 +29,11 @@ where
     }
   }
 
-  pub fn get_node(&self, node: usize) -> Option<Arc<Mutex<Node<N, E>>>> {
+  pub fn get_node(&self, node: usize) -> Option<Arc<RwLock<Node<N, E>>>> {
     self.nodes.get(&node).cloned()
   }
 
-  pub fn iter_nodes(&self, f: &mut dyn FnMut(Arc<Mutex<Node<N, E>>>)) {
+  pub fn iter_nodes(&self, f: &mut dyn FnMut(Arc<RwLock<Node<N, E>>>)) {
     for node in self.nodes.values() {
       f(Arc::clone(node));
     }
@@ -45,7 +45,7 @@ where
 
   pub fn add_node(&mut self, node_payload: N) -> usize {
     let idx = self.idx;
-    let node = Arc::new(Mutex::new(Node::new(idx, node_payload)));
+    let node = Arc::new(RwLock::new(Node::new(idx, node_payload)));
     self.nodes.insert(idx, node);
     self.idx += 1;
     idx
@@ -57,12 +57,12 @@ where
     let dst = self.get_node(dst_idx);
     match (src, dst) {
       (Some(src_mtx), Some(dst_mtx)) => {
-        let (src, dst) = (src_mtx.lock(), dst_mtx.lock());
+        let (src, dst) = (src_mtx.read(), dst_mtx.read());
 
         let connected = src
           .outbound()
           .iter()
-          .any(|edge| edge.target.upgrade().map(|edge| edge.lock().key()) == Some(dst.key()));
+          .any(|edge| edge.target.upgrade().map(|edge| edge.read().key()) == Some(dst.key()));
 
         if !connected {
           let new_edge = Arc::new(Edge::new(
@@ -87,18 +87,18 @@ where
     let dst = self.get_node(dst);
     match (src, dst) {
       (Some(src_mtx), Some(dst_mtx)) => {
-        let (src, dst) = (src_mtx.lock(), dst_mtx.lock());
+        let (src, dst) = (src_mtx.read(), dst_mtx.read());
 
         let mut idx: (usize, usize) = (0, 0);
         let mut flag = false;
         for (i, edge) in src.outbound().iter().enumerate() {
-          if edge.target().lock().key() == dst.key() {
+          if edge.target().read().key() == dst.key() {
             idx.0 = i;
             flag = true;
           }
         }
         for (i, edge) in dst.inbound().iter().enumerate() {
-          if edge.upgrade().unwrap().source().lock().key() == src.key() {
+          if edge.upgrade().unwrap().source().read().key() == src.key() {
             idx.1 = i;
           }
         }
@@ -160,18 +160,18 @@ where
 
   /// Print graph nodes.
   fn print_nodes<W: Write>(&self, mut writer: W) {
-    self.iter_nodes(&mut |node| writeln!(writer, "	{}", node.lock()).unwrap());
+    self.iter_nodes(&mut |node| writeln!(writer, "	{}", node.read()).unwrap());
   }
 
   /// Print graph edges.
   fn print_edges<W: Write>(&self, mut writer: W) {
     self.iter_nodes(&mut |node| {
-      for edge in node.lock().outbound().iter() {
+      for edge in node.read().outbound().iter() {
         writeln!(
           writer,
           "	{} -> {} [label = \"{}\"]",
-          edge.source().lock().key(),
-          edge.target().lock().key(),
+          edge.source().read().key(),
+          edge.target().read().key(),
           edge.load()
         )
         .unwrap();

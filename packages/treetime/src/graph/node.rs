@@ -142,9 +142,8 @@ where
     let mut segment: Vec<Weak<Edge<N, E>>> = Vec::new();
     for edge in self.outbound().iter() {
       let target = edge.target();
-      let target = target.lock();
-      if target.try_lock() == OPEN {
-        target.close();
+      if target.read().try_lock() == OPEN {
+        target.read().close();
         user_closure(edge);
         segment.push(Arc::downgrade(edge));
       }

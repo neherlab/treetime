@@ -1,6 +1,6 @@
 use crate::graph::core::{CLOSED, OPEN};
 use crate::graph::node::Node;
-use parking_lot::Mutex;
+use parking_lot::RwLock;
 use std::fmt::{Debug, Display, Formatter};
 use std::hash::Hash;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -15,9 +15,9 @@ where
   N: Clone + Debug + Display + Sync + Send,
   E: Clone + Debug + Display + Sync + Send,
 {
-  pub source: Weak<Mutex<Node<N, E>>>,
-  pub target: Weak<Mutex<Node<N, E>>>,
-  pub data: Mutex<E>,
+  pub source: Weak<RwLock<Node<N, E>>>,
+  pub target: Weak<RwLock<Node<N, E>>>,
+  pub data: RwLock<E>,
   lock: AtomicBool,
 }
 
@@ -27,37 +27,37 @@ where
   E: Clone + Debug + Display + Sync + Send,
 {
   /// Creates a new edge.
-  pub fn new(source: Weak<Mutex<Node<N, E>>>, target: Weak<Mutex<Node<N, E>>>, data: E) -> Edge<N, E> {
+  pub fn new(source: Weak<RwLock<Node<N, E>>>, target: Weak<RwLock<Node<N, E>>>, data: E) -> Edge<N, E> {
     Edge {
       source,
       target,
-      data: Mutex::new(data),
+      data: RwLock::new(data),
       lock: AtomicBool::new(OPEN),
     }
   }
 
   /// Edge's source node.
   #[inline]
-  pub fn source(&self) -> Arc<Mutex<Node<N, E>>> {
+  pub fn source(&self) -> Arc<RwLock<Node<N, E>>> {
     self.source.upgrade().unwrap()
   }
 
   /// Edge's target node.
   #[inline]
-  pub fn target(&self) -> Arc<Mutex<Node<N, E>>> {
+  pub fn target(&self) -> Arc<RwLock<Node<N, E>>> {
     self.target.upgrade().unwrap()
   }
 
   /// Load data from the edge.
   #[inline]
   pub fn load(&self) -> E {
-    self.data.lock().clone()
+    self.data.read().clone()
   }
 
   /// Store data into the edge.
   #[inline]
   pub fn store(&self, data: E) {
-    let mut x = self.data.lock();
+    let mut x = self.data.write();
     *x = data;
   }
 
@@ -83,6 +83,6 @@ where
   E: Clone + Debug + Display + Sync + Send,
 {
   fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
-    write!(fmt, "{} -> {}", self.source().lock().key(), self.target().lock().key())
+    write!(fmt, "{} -> {}", self.source().read().key(), self.target().read().key())
   }
 }

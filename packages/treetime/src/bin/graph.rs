@@ -6,7 +6,6 @@ use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
 use std::hash::Hash;
 use std::io::Write;
-use std::sync::Arc;
 use treetime::graph::graph::Graph;
 use treetime::io::file::create_file;
 use treetime::utils::global_init::global_init;
@@ -46,24 +45,48 @@ impl Display for EdgePayload {
 fn main() -> Result<(), Report> {
   let mut graph = create_example_graph()?;
 
+  #[cfg(debug_assertions)]
+  {
+    use parking_lot::deadlock;
+    use std::thread;
+    use std::time::Duration;
+
+    // Create a background thread which checks for deadlocks every 10s
+    thread::spawn(move || loop {
+      thread::sleep(Duration::from_secs(5));
+      let deadlocks = deadlock::check_deadlock();
+      println!("{} deadlocks detected", deadlocks.len());
+
+      if deadlocks.is_empty() {
+        continue;
+      }
+
+      for (i, threads) in deadlocks.iter().enumerate() {
+        println!("Deadlock #{}", i);
+        for t in threads {
+          println!("Thread Id {:#?}", t.thread_id());
+          println!("{:#?}", t.backtrace());
+        }
+      }
+    });
+  }
+
   println!("Traverse forward:");
   println!(
     "{:^6} | {:^16} | {:^6} | {:^16} | {:^5}",
     "Parent", "Edge", "Node", "Parents", "Is leaf"
   );
   graph.par_iter_breadth_first_forward(|edge| {
-    let edge = Arc::clone(edge);
-
     let edge_payload = edge.load();
     let edge_name = edge_payload.name;
 
     let parent = edge.source();
-    let parent = parent.lock();
+    let parent = parent.read();
     let parent_payload = parent.load();
     let parent_name = parent_payload.name;
 
     let node = edge.target();
-    let node = node.lock();
+    let node = node.read();
     let is_leaf = node.is_leaf();
     let node_payload = node.load();
     let node_name = node_payload.name;
@@ -72,7 +95,7 @@ fn main() -> Result<(), Report> {
     let parents = parent_edges.iter().map(|parent_edge| {
       let parent_edge = parent_edge.upgrade().unwrap();
       let parent_edge_payload = parent_edge.load();
-      let parent_node_payload = parent_edge.source().lock().load();
+      let parent_node_payload = parent_edge.source().read().load();
       (parent_node_payload, parent_edge_payload)
     });
 
