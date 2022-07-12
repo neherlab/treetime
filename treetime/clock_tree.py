@@ -1,6 +1,6 @@
 import numpy as np
 from . import config as ttconf
-from . import MissingDataError
+from . import MissingDataError, TreeTimeError
 from .treeanc import TreeAnc
 from .utils import numeric_date, DateConversion, datestring_from_numeric
 from .distribution import Distribution
@@ -700,7 +700,7 @@ class ClockTree(TreeAnc):
                     if parent.msg_from_parent is not None:
                         complementary_msgs.append(parent.msg_from_parent)
 
-                    if hasattr(self, 'merger_model') and self.merger_model:
+                    if hasattr(self, 'merger_model') and self.merger_model and len(complementary_msgs):
                         time_points = np.unique(np.concatenate([msg.x for msg in complementary_msgs]))
                         # As Lx do not include the node contribution this must be added on
                         complementary_msgs.append(self.merger_model.node_contribution(parent, time_points))
@@ -717,8 +717,14 @@ class ClockTree(TreeAnc):
                     msg_parent_to_node = parent.marginal_pos_LH
 
                 if msg_parent_to_node is None:
-                    x = [parent.numdate, numeric_date()]
-                    msg_parent_to_node = NodeInterpolator(x, [1.0, 1.0],min_width=self.min_width)
+                    try:
+                        x = [parent.numdate, numeric_date()]
+                        msg_parent_to_node = NodeInterpolator(x, [1.0, 1.0],min_width=self.min_width)
+                    except TreeTimeError as e:
+                        print("\n TreeTime error: Marginal divergence time inference failed, root is bad branch. "
+                            "\n This is caused by contradicting input data, check that the sequence data and dates are set correctly.\n")
+                        raise e
+
 
                 # integral message, which delivers to the node the positional information
                 # from the complementary subtree
