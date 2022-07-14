@@ -6,7 +6,6 @@ use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
 use std::hash::Hash;
 use std::io::Write;
-use std::ops::Deref;
 use std::thread::sleep;
 use std::time::Duration;
 use treetime::graph::graph::Graph;
@@ -75,20 +74,8 @@ fn main() -> Result<(), Report> {
   }
 
   println!("Traverse forward:");
-  println!(
-    "{:^6} | {:^16} | {:^6} | {:^16} | {:^5}",
-    "Parent", "Edge", "Node", "Parents", "Is leaf"
-  );
-  graph.par_iter_breadth_first_forward(|edge| {
-    let edge_payload = edge.load();
-    let edge_name = edge_payload.name;
-
-    let parent = edge.source();
-    let parent = parent.read();
-    let parent_payload = parent.payload();
-    let parent_name = &parent_payload.name;
-
-    let node = edge.target();
+  println!("{:^6} | {:^16} | {:^5}", "Node", "Parents", "Is leaf");
+  graph.par_iter_breadth_first_forward(|node| {
     let node = node.write();
     let is_leaf = node.is_leaf();
 
@@ -109,10 +96,7 @@ fn main() -> Result<(), Report> {
 
     sleep(Duration::from_secs(2));
 
-    println!(
-      "{:<6} | {:<16} | {:<6} | {:<16} | {:<5}",
-      parent_name, edge_name, node_name, parent_names, is_leaf
-    );
+    println!("{:<6} | {:<16} | {:<5}", node_name, parent_names, is_leaf);
   });
 
   graph.print_graph(create_file("tmp/graph2.dot")?)?;

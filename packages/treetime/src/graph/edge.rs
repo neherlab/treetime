@@ -1,9 +1,7 @@
-use crate::graph::core::{CLOSED, OPEN};
 use crate::graph::node::Node;
 use parking_lot::RwLock;
 use std::fmt::{Debug, Display, Formatter};
 use std::hash::Hash;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Weak};
 
 /// Edge representing a connection between two nodes. Relevant data can be
@@ -15,10 +13,9 @@ where
   N: Clone + Debug + Display + Sync + Send,
   E: Clone + Debug + Display + Sync + Send,
 {
-  pub source: Weak<RwLock<Node<N, E>>>,
+  source: Weak<RwLock<Node<N, E>>>,
   pub target: Weak<RwLock<Node<N, E>>>,
-  pub data: RwLock<E>,
-  lock: AtomicBool,
+  data: RwLock<E>,
 }
 
 impl<N, E> Edge<N, E>
@@ -32,7 +29,6 @@ where
       source,
       target,
       data: RwLock::new(data),
-      lock: AtomicBool::new(OPEN),
     }
   }
 
@@ -59,21 +55,6 @@ where
   pub fn store(&self, data: E) {
     let mut x = self.data.write();
     *x = data;
-  }
-
-  #[inline]
-  pub fn try_lock(&self) -> bool {
-    self.lock.load(Ordering::Relaxed)
-  }
-
-  #[inline]
-  pub fn close(&self) {
-    self.lock.store(CLOSED, Ordering::Relaxed);
-  }
-
-  #[inline]
-  pub fn open(&self) {
-    self.lock.store(OPEN, Ordering::Relaxed);
   }
 }
 

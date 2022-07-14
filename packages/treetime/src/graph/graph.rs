@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::fmt::{Debug, Display};
 use std::hash::Hash;
 use std::io::Write;
-use std::sync::{Arc, Weak};
+use std::sync::Arc;
 
 pub struct Graph<N, E>
 where
@@ -62,7 +62,7 @@ where
         let connected = src
           .outbound()
           .iter()
-          .any(|edge| edge.target.upgrade().map(|edge| edge.read().key()) == Some(dst.key()));
+          .any(|edge| edge.target().read().key() == dst.key());
 
         if !connected {
           let new_edge = Arc::new(Edge::new(
@@ -112,49 +112,12 @@ where
     }
   }
 
-  // /// Get an edge if it exists.
-  // pub fn get_edge(&self, source: usize, target: usize) -> Option<Arc<Edge<N, E>>> {
-  //   let s = self.get_node(source);
-  //   let t = self.get_node(target);
-  //   match s {
-  //     Some(ss) => match t {
-  //       Some(tt) => ss.lock().find_outbound(tt.lock()),
-  //       None => None,
-  //     },
-  //     None => None,
-  //   }
-  // }
-
-  // /// Count the number of edges in the graph.
-  // pub fn edge_count(&self) -> usize {
-  //   let r: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
-  //   self.iter_nodes(&mut |n| {
-  //     let o = r.load(std::sync::atomic::Ordering::Relaxed);
-  //     r.store(o + n.outbound().len(), std::sync::atomic::Ordering::Relaxed);
-  //   });
-  //   r.load(std::sync::atomic::Ordering::Relaxed)
-  // }
-
-  // /// Approximate the size of the graph.
-  // pub fn size_of(&self) -> usize {
-  //   (self.node_count() * std::mem::size_of::<Node<N, E>>()) + (self.edge_count() * std::mem::size_of::<Edge<N, E>>())
-  // }
-
   pub fn par_iter_breadth_first_forward<F>(&mut self, explorer: F)
   where
-    F: Fn(&Arc<Edge<N, E>>) + Sync + Send,
+    F: Fn(&RwLock<Node<N, E>>) + Sync + Send,
   {
-    self.par_breadth_first(0, explorer);
-  }
-
-  /// Parallel breadth first traversal of the graph.
-  fn par_breadth_first<F>(&self, source: usize, explorer: F) -> Vec<Weak<Edge<N, E>>>
-  where
-    F: Fn(&Arc<Edge<N, E>>) + Sync + Send,
-  {
-    match self.get_node(source) {
-      Some(s) => directed_breadth_first_traversal_parallel(&s, explorer),
-      None => vec![],
+    if let Some(s) = self.get_node(0) {
+      directed_breadth_first_traversal_parallel(&[s], explorer);
     }
   }
 

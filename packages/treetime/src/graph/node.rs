@@ -1,4 +1,3 @@
-use crate::graph::core::{CLOSED, OPEN};
 use crate::graph::edge::Edge;
 use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 use std::fmt::{Debug, Display, Formatter};
@@ -18,10 +17,10 @@ where
   E: Clone + Debug + Display + Sync + Send,
 {
   key: usize,
-  pub data: Arc<RwLock<N>>,
-  pub outbound: Outbound<N, E>,
-  pub inbound: Inbound<N, E>,
-  lock: AtomicBool,
+  data: Arc<RwLock<N>>,
+  outbound: Outbound<N, E>,
+  inbound: Inbound<N, E>,
+  is_visited: AtomicBool,
 }
 
 impl<N, E> Node<N, E>
@@ -37,7 +36,7 @@ where
       data: Arc::new(RwLock::new(data)),
       outbound: Outbound::new(Vec::new()),
       inbound: Inbound::new(Vec::new()),
-      lock: AtomicBool::new(OPEN),
+      is_visited: AtomicBool::new(false),
     }
   }
 
@@ -94,37 +93,18 @@ where
   }
 
   #[inline]
-  fn try_lock(&self) -> bool {
-    self.lock.load(Ordering::Relaxed)
+  pub fn is_visited(&self) -> bool {
+    self.is_visited.load(Ordering::Relaxed)
   }
 
   #[inline]
-  pub fn close(&self) {
-    self.lock.store(CLOSED, Ordering::Relaxed);
+  pub fn mark_as_visited(&mut self) {
+    self.is_visited.store(true, Ordering::Relaxed);
   }
 
   #[inline]
-  pub fn open(&self) {
-    self.lock.store(OPEN, Ordering::Relaxed);
-  }
-
-  #[inline]
-  pub fn map_adjacent_dir<F>(&self, user_closure: &F) -> Vec<Weak<Edge<N, E>>>
-  where
-    N: Clone + Debug + Display + Sync + Send,
-    E: Clone + Debug + Display + Sync + Send,
-    F: Fn(&Arc<Edge<N, E>>),
-  {
-    let mut segment: Vec<Weak<Edge<N, E>>> = Vec::new();
-    for edge in self.outbound().iter() {
-      let target = edge.target();
-      if target.read().try_lock() == OPEN {
-        target.read().close();
-        user_closure(edge);
-        segment.push(Arc::downgrade(edge));
-      }
-    }
-    segment
+  pub fn mark_as_not_visited(&mut self) {
+    self.is_visited.store(false, Ordering::Relaxed);
   }
 }
 
