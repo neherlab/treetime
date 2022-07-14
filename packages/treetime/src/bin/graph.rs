@@ -1,14 +1,19 @@
 #![allow(clippy::many_single_char_names)]
 
 use ctor::ctor;
-use derive_more::Display;
 use eyre::Report;
 use itertools::Itertools;
-use treetime::graph::graph::Graph;
+use std::borrow::Borrow;
+use std::error::Error;
+use std::fmt::{Debug, Display, Formatter};
+use std::hash::Hash;
+use std::io::Write;
+use std::time::Duration;
+use treetime::graph::graph::{Graph, NodeEdgePair};
 use treetime::io::file::create_file;
 use treetime::utils::global_init::global_init;
 
-#[cfg(all(target_family = "linux", target_arch = "x86_64"))]
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
@@ -18,43 +23,114 @@ fn init() {
 }
 
 /// An example of node payload type
-#[derive(Clone, Debug, Display)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct NodePayload {
   name: String,
 }
 
+impl Display for NodePayload {
+  fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    write!(f, "{}", self.name)
+  }
+}
+
 /// An example of edge payload type
-#[derive(Clone, Debug, Display)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct EdgePayload {
   name: String,
+}
+
+impl Display for EdgePayload {
+  fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    write!(f, "{}", &self.name)
+  }
 }
 
 fn main() -> Result<(), Report> {
   let mut graph = create_example_graph()?;
 
-  graph.write_graph(create_file("tmp/graph.dot")?)?;
+  #[cfg(debug_assertions)]
+  {
+    use parking_lot::deadlock;
+    use std::thread;
+    use std::time::Duration;
 
-  // Finalize the graph. Performs some internal bookkeeping.
-  graph.build();
+    // Create a background thread which checks for deadlocks every 10s
+    thread::spawn(move || loop {
+      thread::sleep(Duration::from_secs(5));
+      let deadlocks = deadlock::check_deadlock();
+      println!("{} deadlocks detected", deadlocks.len());
+
+      if deadlocks.is_empty() {
+        continue;
+      }
+
+      for (i, threads) in deadlocks.iter().enumerate() {
+        println!("Deadlock #{}", i);
+        for t in threads {
+          println!("Thread Id {:#?}", t.thread_id());
+          println!("{:#?}", t.backtrace());
+        }
+      }
+    });
+  }
 
   println!("Traverse forward:");
-  println!("{:^6} | {:^20} | {:^}", "Node", "Parents", "Is root");
-  graph.iter_breadth_first_forward(|node| {
-    let node_data = &node.payload.name;
-    let parent_names = &node.parents.iter().map(|parent| &parent.name).join(", ");
-    let is_root = &node.is_root();
-    println!("{node_data:>6} | {parent_names:20} | {is_root}");
+  println!(
+    "{:^6} | {:^16} | {:^7} | {:^7}",
+    "Node", "Parents", "Is leaf", "Is root"
+  );
+  graph.par_iter_breadth_first_forward(|node| {
+    // Mutable access to node payload
+    node.payload.name = format!("{}*", &node.payload.name);
+
+    // Read-write access to list pairs of `(edge, parent)`, where `edge is the edge leading to the `parent`.
+    // Note: order of writes is not specified. Write access is exclusive and blocks other threads.
+    // Note: there is no access to children, because they are not guaranteed to be processed at this point yet.
+    let parent_names = node
+      .parents
+      .iter()
+      .map(|NodeEdgePair { edge, node: parent }| {
+        let parent = parent.read();
+        parent.name.clone()
+      })
+      .join(", ");
+
+    println!(
+      "{:<6} | {:<16} | {:<7} | {:<7}",
+      node.payload.name, parent_names, node.is_leaf, node.is_root
+    );
   });
+
+  graph.print_graph(create_file("tmp/graph2.dot")?)?;
 
   println!();
 
-  println!("Traverse backwards:");
-  println!("{:^6} | {:^20} | {:^}", "Node", "Children", "Is leaf");
-  graph.iter_breadth_first_reverse(|node| {
-    let node_name = &node.payload.name;
-    let child_names = &node.children.iter().map(|child| &child.name).join(", ");
-    let is_leaf = &node.is_leaf();
-    println!("{node_name:>6} | {child_names:20} | {is_leaf}");
+  println!("Traverse backward:");
+  println!(
+    "{:^6} | {:^16} | {:^7} | {:^7}",
+    "Node", "Children", "Is leaf", "Is root"
+  );
+  graph.par_iter_breadth_first_backward(|node| {
+    // Mutable access to node payload
+    node.payload.name = format!("{}*", &node.payload.name);
+
+    // Access to list pairs of `(edge, child)`, where `edge` is the edge leading to that `child`
+    // Note: order of writes is not specified. Write access is exclusive and blocks other threads.
+    // Note: there is no access to parents, because they are not guaranteed to be processed at this point yet.
+    let child_names = node
+      .children
+      .iter()
+      .map(|NodeEdgePair { edge, node: child }| {
+        let child = child.read();
+        child.name.clone()
+      })
+      .join(", ");
+
+    println!(
+      "{:<6} | {:<16} | {:<7} | {:<7}",
+      node.payload.name, child_names, node.is_leaf, node.is_root
+    );
   });
 
   Ok(())
@@ -69,7 +145,6 @@ fn create_example_graph() -> Result<Graph<NodePayload, EdgePayload>, Report>  {
   //
   // At this point, nodes are not connected yet. Each insertion operation returns an index of
   // a newly created node, which can later be used for creating graph edges.
-  let r0 = graph.add_node(NodePayload { name: "r0".to_owned() });
   let r1 = graph.add_node(NodePayload { name: "r1".to_owned() });
   let r2 = graph.add_node(NodePayload { name: "r2".to_owned() });
   let a = graph.add_node(NodePayload { name: "a".to_owned() });
@@ -91,8 +166,6 @@ fn create_example_graph() -> Result<Graph<NodePayload, EdgePayload>, Report>  {
   // Connect nodes pairwise. Each connection operation creates a graph edge between a pair of nodes.
   // The edge is directed from the first node to the second node, i.e. the first node is considered
   // a parent and the second node is considered a child.
-  graph.add_edge(r0, r1, EdgePayload{ name: "r0->r1".to_owned() });
-  graph.add_edge(r0, r2, EdgePayload{ name: "r0->r2".to_owned() });
   graph.add_edge(r1, a, EdgePayload{ name: "r1->a".to_owned() });
   graph.add_edge(r2, b, EdgePayload{ name: "r2->b".to_owned() });
   graph.add_edge(a, c, EdgePayload{ name: "a->c".to_owned() });
@@ -113,7 +186,9 @@ fn create_example_graph() -> Result<Graph<NodePayload, EdgePayload>, Report>  {
   graph.add_edge(e, o, EdgePayload{ name: "e->o".to_owned() });
   graph.add_edge(m, k, EdgePayload{ name: "m->k".to_owned() });
 
-  graph.write_graph(create_file("tmp/graph.dot")?)?;
+  graph.build()?;
+
+  graph.print_graph(create_file("tmp/graph.dot")?)?;
 
   Ok(graph)
 }

@@ -1,212 +1,286 @@
+use crate::graph::breadth_first::{
+  directed_breadth_first_traversal_backward, directed_breadth_first_traversal_forward,
+};
+use crate::graph::edge::Edge;
+use crate::graph::node::Node;
+use eyre::Report;
 use itertools::Itertools;
-use std::collections::{HashSet, VecDeque};
-use std::fmt::Display;
+use parking_lot::RwLock;
+use std::borrow::{Borrow, BorrowMut};
+use std::collections::HashMap;
+use std::fmt::{Debug, Display};
+use std::hash::Hash;
 use std::io::Write;
+use std::sync::Arc;
 
-/// Internal representation of a node
-#[derive(Clone, Debug)]
-struct GraphNodeImpl<N> {
+pub struct NodeEdgePair<N, E> {
+  pub node: Arc<RwLock<N>>,
+  pub edge: Arc<RwLock<E>>,
+}
+
+/// Represents graph node during forward traversal
+pub struct GraphNodeForward<'n, N, E>
+where
+  N: Clone + Debug + Display + Sync + Send,
+  E: Clone + Debug + Display + Sync + Send,
+{
+  pub is_root: bool,
+  pub is_leaf: bool,
+  pub key: usize,
+  pub payload: &'n mut N,
+  pub parents: Vec<NodeEdgePair<N, E>>,
+}
+
+/// Represents graph node during backwards traversal
+pub struct GraphNodeBackward<'n, N, E>
+where
+  N: Clone + Debug + Display + Sync + Send,
+  E: Clone + Debug + Display + Sync + Send,
+{
+  pub is_root: bool,
+  pub is_leaf: bool,
+  pub key: usize,
+  pub payload: &'n mut N,
+  pub children: Vec<NodeEdgePair<N, E>>,
+}
+
+pub struct Graph<N, E>
+where
+  N: Clone + Debug + Display + Sync + Send,
+  E: Clone + Debug + Display + Sync + Send,
+{
+  nodes: HashMap<usize, Arc<RwLock<Node<N, E>>>>,
   idx: usize,
-  parents: Vec<usize>,
-  children: Vec<usize>,
-  visited: bool,
-  payload: N,
-}
-
-impl<N> GraphNodeImpl<N> {
-  pub const fn new(idx: usize, payload: N) -> Self {
-    Self {
-      idx,
-      parents: vec![],
-      children: vec![],
-      payload,
-      visited: false,
-    }
-  }
-
-  pub fn is_root(&self) -> bool {
-    self.parents.is_empty()
-  }
-
-  pub fn is_leaf(&self) -> bool {
-    self.children.is_empty()
-  }
-}
-
-/// Public representation of a node during forward traversal (from roots to leaves).
-///
-/// Here we only have access to parent data, because child data is not yet computed.
-#[derive(Clone, Debug)]
-pub struct GraphNodeForward<'node, N> {
-  pub idx: usize,
-  pub parents: Vec<&'node N>,
-  pub payload: &'node N,
-}
-
-impl<'node, N> GraphNodeForward<'node, N> {
-  pub fn is_root(&self) -> bool {
-    self.parents.is_empty()
-  }
-}
-
-/// Public representation of a node during reverse traversal
-///
-/// Here we only have access to child data, because parent data is not yet computed.
-#[derive(Clone, Debug)]
-pub struct GraphNodeReverse<'node, N> {
-  pub idx: usize,
-  pub children: Vec<&'node N>,
-  pub payload: &'node N,
-}
-
-impl<'node, N> GraphNodeReverse<'node, N> {
-  pub fn is_leaf(&self) -> bool {
-    self.children.is_empty()
-  }
-}
-
-/// Internal representation of an edge
-#[derive(Clone, Debug)]
-struct GraphEdgeImpl<E: Display> {
-  idx: usize,
-  src: usize,
-  dst: usize,
-  visited: bool,
-  payload: E,
-}
-
-/// Representation of a graph
-#[derive(Clone, Debug)]
-pub struct Graph<N: Display, E: Display> {
-  nodes: Vec<GraphNodeImpl<N>>,
-  edges: Vec<GraphEdgeImpl<E>>,
   roots: Vec<usize>,
   leaves: Vec<usize>,
 }
 
-impl<N: Display, E: Display> Graph<N, E> {
-  /// Creates an empty graph
-  pub const fn new() -> Self {
+impl<N, E> Graph<N, E>
+where
+  N: Clone + Debug + Display + Sync + Send,
+  E: Clone + Debug + Display + Sync + Send,
+{
+  pub fn new() -> Self {
     Self {
-      nodes: vec![],
-      edges: vec![],
+      nodes: HashMap::new(),
+      idx: 0,
       roots: vec![],
       leaves: vec![],
     }
   }
 
-  /// Adds a node, given its payload. Returns index of the added node.
-  ///
-  /// The order of insertion can be arbitrary and is not taken into account in any of the graph
-  /// operations.
+  pub fn get_node(&self, node: usize) -> Option<Arc<RwLock<Node<N, E>>>> {
+    self.nodes.get(&node).cloned()
+  }
+
+  pub fn iter_nodes(&self, f: &mut dyn FnMut(Arc<RwLock<Node<N, E>>>)) {
+    for node in self.nodes.values() {
+      f(Arc::clone(node));
+    }
+  }
+
+  pub fn node_count(&self) -> usize {
+    self.nodes.len()
+  }
+
   pub fn add_node(&mut self, node_payload: N) -> usize {
-    let idx = self.nodes.len();
-    let node = GraphNodeImpl::new(idx, node_payload);
-    self.nodes.push(node);
+    let idx = self.idx;
+    let node = Arc::new(RwLock::new(Node::new(idx, node_payload)));
+    self.nodes.insert(idx, node);
+    self.idx += 1;
     idx
   }
 
-  /// Adds an edge between two nodes given their indices
-  ///
-  /// The edge is directed from the first node to the second node, i.e. the first node is considered
-  /// a parent and the second node is considered a child.
-  pub fn add_edge(&mut self, src: usize, dst: usize, payload: E) {
-    let idx = self.edges.len();
+  /// Add a new edge to the graph.
+  pub fn add_edge(&mut self, src_idx: usize, dst_idx: usize, edge_payload: E) -> bool {
+    let src = self.get_node(src_idx);
+    let dst = self.get_node(dst_idx);
+    match (src, dst) {
+      (Some(src_mtx), Some(dst_mtx)) => {
+        let (src, dst) = (src_mtx.read(), dst_mtx.read());
 
-    self.edges.push(GraphEdgeImpl {
-      idx,
-      src,
-      dst,
-      visited: false,
-      payload,
+        let connected = src
+          .outbound()
+          .iter()
+          .any(|edge| edge.target().read().key() == dst.key());
+
+        if !connected {
+          let new_edge = Arc::new(Edge::new(
+            Arc::downgrade(&src_mtx),
+            Arc::downgrade(&dst_mtx),
+            edge_payload,
+          ));
+          src.outbound_mut().push(Arc::clone(&new_edge));
+          dst.inbound_mut().push(Arc::downgrade(&new_edge));
+          true
+        } else {
+          false
+        }
+      }
+      _ => false,
+    }
+  }
+
+  /// Delete an edge from the graph.
+  pub fn del_edge(&mut self, src: usize, dst: usize) -> bool {
+    let src = self.get_node(src);
+    let dst = self.get_node(dst);
+    match (src, dst) {
+      (Some(src_mtx), Some(dst_mtx)) => {
+        let (src, dst) = (src_mtx.read(), dst_mtx.read());
+
+        let mut idx: (usize, usize) = (0, 0);
+        let mut flag = false;
+        for (i, edge) in src.outbound().iter().enumerate() {
+          if edge.target().read().key() == dst.key() {
+            idx.0 = i;
+            flag = true;
+          }
+        }
+        for (i, edge) in dst.inbound().iter().enumerate() {
+          if edge.upgrade().unwrap().source().read().key() == src.key() {
+            idx.1 = i;
+          }
+        }
+        if flag {
+          src.outbound_mut().remove(idx.0);
+          src.inbound_mut().remove(idx.1);
+        }
+        flag
+      }
+      _ => false,
+    }
+  }
+
+  pub fn build(&mut self) -> Result<(), Report> {
+    self.roots = self
+      .nodes
+      .iter()
+      .filter_map(|(i, node)| node.read().is_root().then(|| *i))
+      .collect_vec();
+
+    self.leaves = self
+      .nodes
+      .iter()
+      .filter_map(|(i, node)| node.read().is_leaf().then(|| *i))
+      .collect_vec();
+
+    Ok(())
+  }
+
+  pub fn par_iter_breadth_first_forward<F>(&mut self, explorer: F)
+  where
+    F: Fn(GraphNodeForward<N, E>) + Sync + Send,
+  {
+    let roots = self.roots.iter().filter_map(|idx| self.get_node(*idx)).collect_vec();
+
+    directed_breadth_first_traversal_forward(roots.as_slice(), |node| {
+      let is_leaf = node.is_leaf();
+      let is_root = node.is_root();
+      let key = node.key();
+
+      let payload = node.payload();
+      let mut payload = payload.write();
+      let payload = payload.borrow_mut();
+
+      let parent_edges = node.inbound();
+      let parents = parent_edges
+        .iter()
+        .map(|parent_edge| {
+          let parent_edge = parent_edge.upgrade().unwrap();
+          let edge: Arc<RwLock<E>> = parent_edge.payload();
+          let node: Arc<RwLock<N>> = parent_edge.source().read().payload();
+          NodeEdgePair { node, edge }
+        })
+        .collect_vec();
+
+      explorer(GraphNodeForward {
+        is_root,
+        is_leaf,
+        key,
+        payload,
+        parents,
+      });
     });
 
-    let from = &mut self.nodes[src];
-    from.children.push(dst);
-
-    let to = &mut self.nodes[dst];
-    to.parents.push(src);
+    self.reset_nodes();
   }
 
-  /// Finalizes the graph initialization
-  pub fn build(&mut self) -> &mut Self {
-    for node in &self.nodes {
-      if node.is_leaf() {
-        self.leaves.push(node.idx);
-      }
-      if node.is_root() {
-        self.roots.push(node.idx);
-      }
-    }
+  pub fn par_iter_breadth_first_backward<F>(&mut self, explorer: F)
+  where
+    F: Fn(GraphNodeBackward<N, E>) + Sync + Send,
+  {
+    let leaves = self.leaves.iter().filter_map(|idx| self.get_node(*idx)).collect_vec();
+
+    directed_breadth_first_traversal_backward(leaves.as_slice(), |node| {
+      let is_leaf = node.is_leaf();
+      let is_root = node.is_root();
+      let key = node.key();
+
+      let payload = node.payload();
+      let mut payload = payload.write();
+      let payload = payload.borrow_mut();
+
+      let children_edges = node.outbound();
+      let children = children_edges
+        .iter()
+        .map(|child_edge| {
+          let edge: Arc<RwLock<E>> = child_edge.payload();
+          let node: Arc<RwLock<N>> = child_edge.target().read().payload();
+          NodeEdgePair { node, edge }
+        })
+        .collect_vec();
+
+      explorer(GraphNodeBackward {
+        is_root,
+        is_leaf,
+        key,
+        payload,
+        children,
+      });
+    });
+
+    self.reset_nodes();
+  }
+
+  /// Returns graph into initial state after traversal
+  pub fn reset_nodes(&mut self) {
+    // Mark all nodes as not visited. As a part of traversal all nodes, one by one, marked as visited,
+    // to ensure correctness of traversal. Here we reset the "is visited" markers this,
+    // to allow for traversals again.
     self
+      .nodes
+      .values_mut()
+      .for_each(|node| node.write().mark_as_not_visited());
   }
 
-  /// Iterates graph from roots to leaves in breadth-first order.
-  ///
-  /// Guarantees that for each visited node, all of it parents (recursively) are visited before
-  /// the node itself is visited.
-  ///
-  /// The order of traversal does not take into account the order of insertion of nodes or edges.
-  pub fn iter_breadth_first_forward(&self, visitor_func: impl Fn(&GraphNodeForward<N>)) {
-    let mut queue: VecDeque<usize> = self.roots.iter().copied().collect();
-    let mut visited = HashSet::<usize>::new();
-    while let Some(idx) = queue.pop_front() {
-      if !visited.contains(&idx) {
-        let node = &self.nodes[idx];
-        queue.extend(node.children.iter().copied());
-        visitor_func(&GraphNodeForward {
-          idx,
-          parents: node.parents.iter().map(|&idx| &self.nodes[idx].payload).collect_vec(),
-          payload: &node.payload,
-        });
-        visited.insert(idx);
-      }
-    }
+  /// Print graph nodes.
+  fn print_nodes<W: Write>(&self, mut writer: W) {
+    self.iter_nodes(&mut |node| writeln!(writer, "	{}", node.read()).unwrap());
   }
 
-  /// Iterates graph from leaves to roots in breadth-first order
-  ///
-  /// Guarantees that for each visited node, all of it children (recursively) are visited before
-  /// the node itself is visited.
-  ///
-  /// The order of traversal does not take into account the order of insertion of nodes or edges.
-  pub fn iter_breadth_first_reverse(&self, visitor_func: impl Fn(&GraphNodeReverse<N>)) {
-    let mut queue: VecDeque<usize> = self.leaves.iter().copied().collect();
-    let mut visited = HashSet::<usize>::new();
-    while let Some(idx) = queue.pop_front() {
-      if !visited.contains(&idx) {
-        let node = &self.nodes[idx];
-        queue.extend(node.parents.iter().copied());
-        visitor_func(&GraphNodeReverse {
-          idx,
-          children: node.children.iter().map(|&idx| &self.nodes[idx].payload).collect_vec(),
-          payload: &node.payload,
-        });
-        visited.insert(idx);
+  /// Print graph edges.
+  fn print_edges<W: Write>(&self, mut writer: W) {
+    self.iter_nodes(&mut |node| {
+      for edge in node.read().outbound().iter() {
+        writeln!(
+          writer,
+          "	{} -> {} [label = \"{}\"]",
+          edge.source().read().key(),
+          edge.target().read().key(),
+          edge.payload().read()
+        )
+        .unwrap();
       }
-    }
+    });
   }
 
   /// Print graph in .dot format.
-  pub fn write_graph<W: Write>(&self, mut writer: W) -> std::io::Result<()> {
+  pub fn print_graph<W: Write>(&self, mut writer: W) -> std::io::Result<()> {
     writeln!(writer, "digraph {{")?;
-
-    self
-      .nodes
-      .iter()
-      .sorted_by_key(|node| node.idx)
-      .map(|GraphNodeImpl { idx, payload, .. }| writeln!(writer, "  {idx} [label = \"{idx} : {payload}\"]"))
-      .collect::<std::io::Result<Vec<()>>>()?;
-
-    self
-      .edges
-      .iter()
-      .sorted_by_key(|edge| (edge.src, edge.dst))
-      .map(|GraphEdgeImpl { src, dst, payload, .. }| writeln!(writer, "  {src} -> {dst} [label = \"{payload}\"]"))
-      .collect::<std::io::Result<Vec<()>>>()?;
-
+    self.print_nodes(&mut writer);
+    self.print_edges(&mut writer);
     writeln!(writer, "}}")?;
-
     Ok(())
   }
 }
