@@ -6,7 +6,6 @@ use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
 use std::hash::Hash;
 use std::io::Write;
-use std::thread::sleep;
 use std::time::Duration;
 use treetime::graph::graph::Graph;
 use treetime::io::file::create_file;
@@ -110,7 +109,6 @@ fn create_example_graph() -> Result<Graph<NodePayload, EdgePayload>, Report>  {
   //
   // At this point, nodes are not connected yet. Each insertion operation returns an index of
   // a newly created node, which can later be used for creating graph edges.
-  let r0 = graph.add_node(NodePayload { name: "r0".to_owned() });
   let r1 = graph.add_node(NodePayload { name: "r1".to_owned() });
   let r2 = graph.add_node(NodePayload { name: "r2".to_owned() });
   let a = graph.add_node(NodePayload { name: "a".to_owned() });
@@ -132,8 +130,6 @@ fn create_example_graph() -> Result<Graph<NodePayload, EdgePayload>, Report>  {
   // Connect nodes pairwise. Each connection operation creates a graph edge between a pair of nodes.
   // The edge is directed from the first node to the second node, i.e. the first node is considered
   // a parent and the second node is considered a child.
-  graph.add_edge(r0, r1, EdgePayload{ name: "r0->r1".to_owned() });
-  graph.add_edge(r0, r2, EdgePayload{ name: "r0->r2".to_owned() });
   graph.add_edge(r1, a, EdgePayload{ name: "r1->a".to_owned() });
   graph.add_edge(r2, b, EdgePayload{ name: "r2->b".to_owned() });
   graph.add_edge(a, c, EdgePayload{ name: "a->c".to_owned() });
@@ -153,6 +149,8 @@ fn create_example_graph() -> Result<Graph<NodePayload, EdgePayload>, Report>  {
   graph.add_edge(r2, o, EdgePayload{ name: "r2->o".to_owned() });
   graph.add_edge(e, o, EdgePayload{ name: "e->o".to_owned() });
   graph.add_edge(m, k, EdgePayload{ name: "m->k".to_owned() });
+
+  graph.build()?;
 
   graph.print_graph(create_file("tmp/graph.dot")?)?;
 

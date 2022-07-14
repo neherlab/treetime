@@ -62,10 +62,16 @@ where
     self.outbound().len()
   }
 
-  /// Check if node is a leaf node ie. has no outbound edges.
+  /// Check if node is a leaf node, i.e. has no outbound edges.
   #[inline]
   pub fn is_leaf(&self) -> bool {
     self.outbound().len() == 0
+  }
+
+  /// Check if node is a root node, i.e. has no inbound edges.
+  #[inline]
+  pub fn is_root(&self) -> bool {
+    self.inbound().len() == 0
   }
 
   /// Get read access to outbound edges of the node.

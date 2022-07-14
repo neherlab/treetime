@@ -1,6 +1,8 @@
 use crate::graph::breadth_first::directed_breadth_first_traversal_parallel;
 use crate::graph::edge::Edge;
 use crate::graph::node::Node;
+use eyre::Report;
+use itertools::Itertools;
 use parking_lot::{RwLock, RwLockWriteGuard};
 use std::collections::HashMap;
 use std::fmt::{Debug, Display};
@@ -15,6 +17,8 @@ where
 {
   nodes: HashMap<usize, Arc<RwLock<Node<N, E>>>>,
   idx: usize,
+  roots: Vec<usize>,
+  leaves: Vec<usize>,
 }
 
 impl<N, E> Graph<N, E>
@@ -26,6 +30,8 @@ where
     Self {
       nodes: HashMap::new(),
       idx: 0,
+      roots: vec![],
+      leaves: vec![],
     }
   }
 
@@ -112,13 +118,28 @@ where
     }
   }
 
+  pub fn build(&mut self) -> Result<(), Report> {
+    self.roots = self
+      .nodes
+      .iter()
+      .filter_map(|(i, node)| node.read().is_root().then(|| *i))
+      .collect_vec();
+
+    self.leaves = self
+      .nodes
+      .iter()
+      .filter_map(|(i, node)| node.read().is_leaf().then(|| *i))
+      .collect_vec();
+
+    Ok(())
+  }
+
   pub fn par_iter_breadth_first_forward<F>(&mut self, explorer: F)
   where
     F: Fn(&RwLockWriteGuard<Node<N, E>>) + Sync + Send,
   {
-    if let Some(s) = self.get_node(0) {
-      directed_breadth_first_traversal_parallel(&[s], explorer);
-    }
+    let nodes = self.roots.iter().filter_map(|idx| self.get_node(*idx)).collect_vec();
+    directed_breadth_first_traversal_parallel(nodes.as_slice(), explorer);
     self.reset_nodes();
   }
 
