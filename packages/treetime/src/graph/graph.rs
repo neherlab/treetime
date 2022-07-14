@@ -92,33 +92,44 @@ where
   }
 
   /// Add a new edge to the graph.
-  pub fn add_edge(&mut self, src_idx: usize, dst_idx: usize, edge_payload: E) -> bool {
-    let src = self.get_node(src_idx);
-    let dst = self.get_node(dst_idx);
-    match (src, dst) {
-      (Some(src_mtx), Some(dst_mtx)) => {
-        let (src, dst) = (src_mtx.read(), dst_mtx.read());
+  pub fn add_edge(&mut self, src_idx: usize, dst_idx: usize, edge_payload: E) {
+    // TODO: handle errors properly
 
-        let connected = src
-          .outbound()
-          .iter()
-          .any(|edge| edge.target().read().key() == dst.key());
+    let src_mtx = self
+      .get_node(src_idx)
+      .ok_or_else(|| format!("When adding a graph edge {src_idx}->{dst_idx}: Node {src_idx} not found."))
+      .unwrap();
 
-        if !connected {
-          let new_edge = Arc::new(Edge::new(
-            Arc::downgrade(&src_mtx),
-            Arc::downgrade(&dst_mtx),
-            edge_payload,
-          ));
-          src.outbound_mut().push(Arc::clone(&new_edge));
-          dst.inbound_mut().push(Arc::downgrade(&new_edge));
-          true
-        } else {
-          false
-        }
-      }
-      _ => false,
-    }
+    let dst_mtx = self
+      .get_node(dst_idx)
+      .ok_or_else(|| format!("When adding a graph edge {src_idx}->{dst_idx}: Node {dst_idx} not found."))
+      .unwrap();
+
+    assert_ne!(
+      src_idx, dst_idx,
+      "When adding a graph edge {src_idx}->{dst_idx}: Attempted to connect node {src_idx} to itself."
+    );
+
+    let (src, dst) = (src_mtx.read(), dst_mtx.read());
+
+    let connected = src
+      .outbound()
+      .iter()
+      .any(|edge| edge.target().read().key() == dst.key());
+
+    assert!(
+      !connected,
+      "When adding a graph edge {src_idx}->{dst_idx}: Nodes {src_idx} and {dst_idx} are already connected."
+    );
+
+    let new_edge = Arc::new(Edge::new(
+      Arc::downgrade(&src_mtx),
+      Arc::downgrade(&dst_mtx),
+      edge_payload,
+    ));
+
+    src.outbound_mut().push(Arc::clone(&new_edge));
+    dst.inbound_mut().push(Arc::downgrade(&new_edge));
   }
 
   /// Delete an edge from the graph.
