@@ -1,6 +1,6 @@
 use crate::graph::node::Node;
 use itertools::Itertools;
-use parking_lot::RwLock;
+use parking_lot::{RwLock, RwLockWriteGuard};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::fmt::{Debug, Display};
 use std::hash::Hash;
@@ -10,7 +10,7 @@ pub fn directed_breadth_first_traversal_parallel<N, E, F>(sources: &[Arc<RwLock<
 where
   N: Clone + Debug + Display + Sync + Send,
   E: Clone + Debug + Display + Sync + Send,
-  F: Fn(&RwLock<Node<N, E>>) + Sync + Send,
+  F: Fn(&RwLockWriteGuard<Node<N, E>>) + Sync + Send,
 {
   // Walk the graph one "frontier" at a time. Frontier is a set of nodes of a "level" in the graph, where each node
   // has its dependencies already resolved. Frontiers allow parallelism.
@@ -21,14 +21,15 @@ where
     frontier = frontier
       .into_par_iter()
       .map(|node| {
-
-        // The actual visit. Here we call the user-provided function.
-        explorer(&node);
-
-        // We mark the node as visited so that it's not visited twice and telling following loop iterations
-        // that its children can potentially be processed now
         {
-          node.write().mark_as_visited();
+          let mut node = node.write();
+
+          // The actual visit. Here we call the user-provided function.
+          explorer(&node);
+
+          // We mark the node as visited so that it's not visited twice and telling following loop iterations
+          // that its children can potentially be processed now
+          node.mark_as_visited();
         }
 
         // Here we iterate over node's children and decide which children to add to the next frontier:

@@ -76,7 +76,6 @@ fn main() -> Result<(), Report> {
   println!("Traverse forward:");
   println!("{:^6} | {:^16} | {:^5}", "Node", "Parents", "Is leaf");
   graph.par_iter_breadth_first_forward(|node| {
-    let node = node.write();
     let is_leaf = node.is_leaf();
 
     let mut node_payload = node.payload_mut();
@@ -93,8 +92,6 @@ fn main() -> Result<(), Report> {
     });
 
     let parent_names = parents.map(|(node, _)| node.name).join(", ");
-
-    sleep(Duration::from_secs(2));
 
     println!("{:<6} | {:<16} | {:<5}", node_name, parent_names, is_leaf);
   });
