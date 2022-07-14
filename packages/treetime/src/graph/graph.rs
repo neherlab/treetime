@@ -1,4 +1,6 @@
-use crate::graph::breadth_first::directed_breadth_first_traversal_parallel;
+use crate::graph::breadth_first::{
+  directed_breadth_first_traversal_backward, directed_breadth_first_traversal_forward,
+};
 use crate::graph::edge::Edge;
 use crate::graph::node::Node;
 use eyre::Report;
@@ -138,8 +140,17 @@ where
   where
     F: Fn(&RwLockWriteGuard<Node<N, E>>) + Sync + Send,
   {
-    let nodes = self.roots.iter().filter_map(|idx| self.get_node(*idx)).collect_vec();
-    directed_breadth_first_traversal_parallel(nodes.as_slice(), explorer);
+    let roots = self.roots.iter().filter_map(|idx| self.get_node(*idx)).collect_vec();
+    directed_breadth_first_traversal_forward(roots.as_slice(), explorer);
+    self.reset_nodes();
+  }
+
+  pub fn par_iter_breadth_first_backward<F>(&mut self, explorer: F)
+  where
+    F: Fn(&RwLockWriteGuard<Node<N, E>>) + Sync + Send,
+  {
+    let leaves = self.leaves.iter().filter_map(|idx| self.get_node(*idx)).collect_vec();
+    directed_breadth_first_traversal_backward(leaves.as_slice(), explorer);
     self.reset_nodes();
   }
 

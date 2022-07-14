@@ -73,9 +73,13 @@ fn main() -> Result<(), Report> {
   }
 
   println!("Traverse forward:");
-  println!("{:^6} | {:^16} | {:^5}", "Node", "Parents", "Is leaf");
+  println!(
+    "{:^6} | {:^16} | {:^7} | {:^7}",
+    "Node", "Children", "Is leaf", "Is root"
+  );
   graph.par_iter_breadth_first_forward(|node| {
     let is_leaf = node.is_leaf();
+    let is_root = node.is_root();
 
     let mut node_payload = node.payload_mut();
 
@@ -92,10 +96,44 @@ fn main() -> Result<(), Report> {
 
     let parent_names = parents.map(|(node, _)| node.name).join(", ");
 
-    println!("{:<6} | {:<16} | {:<5}", node_name, parent_names, is_leaf);
+    println!(
+      "{:<6} | {:<16} | {:<7} | {:<7}",
+      node_name, parent_names, is_leaf, is_root
+    );
   });
 
   graph.print_graph(create_file("tmp/graph2.dot")?)?;
+
+  println!();
+
+  println!("Traverse backward:");
+  println!(
+    "{:^6} | {:^16} | {:^7} | {:^7}",
+    "Node", "Children", "Is leaf", "Is root"
+  );
+  graph.par_iter_breadth_first_backward(|node| {
+    let is_leaf = node.is_leaf();
+    let is_root = node.is_root();
+
+    let mut node_payload = node.payload_mut();
+
+    node_payload.name = format!("{}*", &node_payload.name);
+    let node_name = &node_payload.name;
+
+    let child_edges = node.outbound();
+    let children = child_edges.iter().map(|child_edge| {
+      let child_edge_payload = child_edge.load();
+      let child_node_payload = child_edge.target().read().payload().clone();
+      (child_node_payload, child_edge_payload)
+    });
+
+    let child_names = children.map(|(node, _)| node.name).join(", ");
+
+    println!(
+      "{:<6} | {:<16} | {:<7} | {:<7}",
+      node_name, child_names, is_leaf, is_root
+    );
+  });
 
   Ok(())
 }
