@@ -115,7 +115,7 @@ where
   E: Clone + Debug + Display + Sync + Send,
 {
   fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
-    let header = format!("{} [label = \"{} : {}\"]", self.key, self.key, self.data.read());
+    let header = format!("{} [label = \"{}\"]", self.key, self.data.read());
     write!(fmt, "{}", header)
   }
 }
