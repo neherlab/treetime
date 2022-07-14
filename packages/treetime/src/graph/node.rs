@@ -41,13 +41,8 @@ where
   }
 
   #[inline]
-  pub fn payload(&self) -> RwLockReadGuard<N> {
-    self.data.read()
-  }
-
-  #[inline]
-  pub fn payload_mut(&self) -> RwLockWriteGuard<N> {
-    self.data.write()
+  pub fn payload(&self) -> Arc<RwLock<N>> {
+    Arc::clone(&self.data)
   }
 
   /// Get node key.

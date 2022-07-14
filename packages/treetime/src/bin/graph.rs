@@ -7,7 +7,7 @@ use std::fmt::{Debug, Display, Formatter};
 use std::hash::Hash;
 use std::io::Write;
 use std::time::Duration;
-use treetime::graph::graph::Graph;
+use treetime::graph::graph::{Graph, NodeEdgePair};
 use treetime::io::file::create_file;
 use treetime::utils::global_init::global_init;
 
@@ -32,6 +32,7 @@ impl Display for NodePayload {
   }
 }
 
+/// An example of edge payload type
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct EdgePayload {
   name: String,
@@ -75,30 +76,27 @@ fn main() -> Result<(), Report> {
   println!("Traverse forward:");
   println!(
     "{:^6} | {:^16} | {:^7} | {:^7}",
-    "Node", "Children", "Is leaf", "Is root"
+    "Node", "Parents", "Is leaf", "Is root"
   );
   graph.par_iter_breadth_first_forward(|node| {
-    let is_leaf = node.is_leaf();
-    let is_root = node.is_root();
+    // Mutable access to node payload
+    node.payload.name = format!("{}*", &node.payload.name);
 
-    let mut node_payload = node.payload_mut();
-
-    node_payload.name = format!("{}*", &node_payload.name);
-    let node_name = &node_payload.name;
-
-    let parent_edges = node.inbound();
-    let parents = parent_edges.iter().map(|parent_edge| {
-      let parent_edge = parent_edge.upgrade().unwrap();
-      let parent_edge_payload = parent_edge.load();
-      let parent_node_payload = parent_edge.source().read().payload().clone();
-      (parent_node_payload, parent_edge_payload)
-    });
-
-    let parent_names = parents.map(|(node, _)| node.name).join(", ");
+    // Read-write access to list pairs of `(edge, parent)`, where `edge is the edge leading to the `parent`.
+    // Note: order of writes is not specified. Write access is exclusive and blocks other threads.
+    // Note: there is no access to children, because they are not guaranteed to be processed at this point yet.
+    let parent_names = node
+      .parents
+      .iter()
+      .map(|NodeEdgePair { edge, node: parent }| {
+        let parent = parent.read();
+        parent.name.clone()
+      })
+      .join(", ");
 
     println!(
       "{:<6} | {:<16} | {:<7} | {:<7}",
-      node_name, parent_names, is_leaf, is_root
+      node.payload.name, parent_names, node.is_leaf, node.is_root
     );
   });
 
@@ -112,26 +110,24 @@ fn main() -> Result<(), Report> {
     "Node", "Children", "Is leaf", "Is root"
   );
   graph.par_iter_breadth_first_backward(|node| {
-    let is_leaf = node.is_leaf();
-    let is_root = node.is_root();
+    // Mutable access to node payload
+    node.payload.name = format!("{}*", &node.payload.name);
 
-    let mut node_payload = node.payload_mut();
-
-    node_payload.name = format!("{}*", &node_payload.name);
-    let node_name = &node_payload.name;
-
-    let child_edges = node.outbound();
-    let children = child_edges.iter().map(|child_edge| {
-      let child_edge_payload = child_edge.load();
-      let child_node_payload = child_edge.target().read().payload().clone();
-      (child_node_payload, child_edge_payload)
-    });
-
-    let child_names = children.map(|(node, _)| node.name).join(", ");
+    // Access to list pairs of `(edge, child)`, where `edge` is the edge leading to that `child`
+    // Note: order of writes is not specified. Write access is exclusive and blocks other threads.
+    // Note: there is no access to parents, because they are not guaranteed to be processed at this point yet.
+    let child_names = node
+      .children
+      .iter()
+      .map(|NodeEdgePair { edge, node: child }| {
+        let child = child.read();
+        child.name.clone()
+      })
+      .join(", ");
 
     println!(
       "{:<6} | {:<16} | {:<7} | {:<7}",
-      node_name, child_names, is_leaf, is_root
+      node.payload.name, child_names, node.is_leaf, node.is_root
     );
   });
 

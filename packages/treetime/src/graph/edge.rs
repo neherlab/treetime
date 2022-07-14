@@ -14,8 +14,8 @@ where
   E: Clone + Debug + Display + Sync + Send,
 {
   source: Weak<RwLock<Node<N, E>>>,
-  pub target: Weak<RwLock<Node<N, E>>>,
-  data: RwLock<E>,
+  target: Weak<RwLock<Node<N, E>>>,
+  data: Arc<RwLock<E>>,
 }
 
 impl<N, E> Edge<N, E>
@@ -28,33 +28,23 @@ where
     Edge {
       source,
       target,
-      data: RwLock::new(data),
+      data: Arc::new(RwLock::new(data)),
     }
   }
 
-  /// Edge's source node.
   #[inline]
   pub fn source(&self) -> Arc<RwLock<Node<N, E>>> {
     self.source.upgrade().unwrap()
   }
 
-  /// Edge's target node.
   #[inline]
   pub fn target(&self) -> Arc<RwLock<Node<N, E>>> {
     self.target.upgrade().unwrap()
   }
 
-  /// Load data from the edge.
   #[inline]
-  pub fn load(&self) -> E {
-    self.data.read().clone()
-  }
-
-  /// Store data into the edge.
-  #[inline]
-  pub fn store(&self, data: E) {
-    let mut x = self.data.write();
-    *x = data;
+  pub fn payload(&self) -> Arc<RwLock<E>> {
+    Arc::clone(&self.data)
   }
 }
 

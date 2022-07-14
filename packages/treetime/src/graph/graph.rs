@@ -5,12 +5,44 @@ use crate::graph::edge::Edge;
 use crate::graph::node::Node;
 use eyre::Report;
 use itertools::Itertools;
-use parking_lot::{RwLock, RwLockWriteGuard};
+use parking_lot::RwLock;
+use std::borrow::{Borrow, BorrowMut};
 use std::collections::HashMap;
 use std::fmt::{Debug, Display};
 use std::hash::Hash;
 use std::io::Write;
 use std::sync::Arc;
+
+pub struct NodeEdgePair<N, E> {
+  pub node: Arc<RwLock<N>>,
+  pub edge: Arc<RwLock<E>>,
+}
+
+/// Represents graph node during forward traversal
+pub struct GraphNodeForward<'n, N, E>
+where
+  N: Clone + Debug + Display + Sync + Send,
+  E: Clone + Debug + Display + Sync + Send,
+{
+  pub is_root: bool,
+  pub is_leaf: bool,
+  pub key: usize,
+  pub payload: &'n mut N,
+  pub parents: Vec<NodeEdgePair<N, E>>,
+}
+
+/// Represents graph node during backwards traversal
+pub struct GraphNodeBackward<'n, N, E>
+where
+  N: Clone + Debug + Display + Sync + Send,
+  E: Clone + Debug + Display + Sync + Send,
+{
+  pub is_root: bool,
+  pub is_leaf: bool,
+  pub key: usize,
+  pub payload: &'n mut N,
+  pub children: Vec<NodeEdgePair<N, E>>,
+}
 
 pub struct Graph<N, E>
 where
@@ -138,19 +170,76 @@ where
 
   pub fn par_iter_breadth_first_forward<F>(&mut self, explorer: F)
   where
-    F: Fn(&RwLockWriteGuard<Node<N, E>>) + Sync + Send,
+    F: Fn(GraphNodeForward<N, E>) + Sync + Send,
   {
     let roots = self.roots.iter().filter_map(|idx| self.get_node(*idx)).collect_vec();
-    directed_breadth_first_traversal_forward(roots.as_slice(), explorer);
+
+    directed_breadth_first_traversal_forward(roots.as_slice(), |node| {
+      let is_leaf = node.is_leaf();
+      let is_root = node.is_root();
+      let key = node.key();
+
+      let payload = node.payload();
+      let mut payload = payload.write();
+      let payload = payload.borrow_mut();
+
+      let parent_edges = node.inbound();
+      let parents = parent_edges
+        .iter()
+        .map(|parent_edge| {
+          let parent_edge = parent_edge.upgrade().unwrap();
+          let edge: Arc<RwLock<E>> = parent_edge.payload();
+          let node: Arc<RwLock<N>> = parent_edge.source().read().payload();
+          NodeEdgePair { node, edge }
+        })
+        .collect_vec();
+
+      explorer(GraphNodeForward {
+        is_root,
+        is_leaf,
+        key,
+        payload,
+        parents,
+      });
+    });
+
     self.reset_nodes();
   }
 
   pub fn par_iter_breadth_first_backward<F>(&mut self, explorer: F)
   where
-    F: Fn(&RwLockWriteGuard<Node<N, E>>) + Sync + Send,
+    F: Fn(GraphNodeBackward<N, E>) + Sync + Send,
   {
     let leaves = self.leaves.iter().filter_map(|idx| self.get_node(*idx)).collect_vec();
-    directed_breadth_first_traversal_backward(leaves.as_slice(), explorer);
+
+    directed_breadth_first_traversal_backward(leaves.as_slice(), |node| {
+      let is_leaf = node.is_leaf();
+      let is_root = node.is_root();
+      let key = node.key();
+
+      let payload = node.payload();
+      let mut payload = payload.write();
+      let payload = payload.borrow_mut();
+
+      let children_edges = node.outbound();
+      let children = children_edges
+        .iter()
+        .map(|child_edge| {
+          let edge: Arc<RwLock<E>> = child_edge.payload();
+          let node: Arc<RwLock<N>> = child_edge.target().read().payload();
+          NodeEdgePair { node, edge }
+        })
+        .collect_vec();
+
+      explorer(GraphNodeBackward {
+        is_root,
+        is_leaf,
+        key,
+        payload,
+        children,
+      });
+    });
+
     self.reset_nodes();
   }
 
@@ -179,7 +268,7 @@ where
           "	{} -> {} [label = \"{}\"]",
           edge.source().read().key(),
           edge.target().read().key(),
-          edge.load()
+          edge.payload().read()
         )
         .unwrap();
       }
