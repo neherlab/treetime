@@ -1,7 +1,7 @@
 use crate::graph::breadth_first::directed_breadth_first_traversal_parallel;
 use crate::graph::edge::Edge;
 use crate::graph::node::Node;
-use parking_lot::RwLock;
+use parking_lot::{RwLock, RwLockWriteGuard};
 use std::collections::HashMap;
 use std::fmt::{Debug, Display};
 use std::hash::Hash;
@@ -114,11 +114,23 @@ where
 
   pub fn par_iter_breadth_first_forward<F>(&mut self, explorer: F)
   where
-    F: Fn(&RwLock<Node<N, E>>) + Sync + Send,
+    F: Fn(&RwLockWriteGuard<Node<N, E>>) + Sync + Send,
   {
     if let Some(s) = self.get_node(0) {
       directed_breadth_first_traversal_parallel(&[s], explorer);
     }
+    self.reset_nodes();
+  }
+
+  /// Returns graph into initial state after traversal
+  pub fn reset_nodes(&mut self) {
+    // Mark all nodes as not visited. As a part of traversal all nodes, one by one, marked as visited,
+    // to ensure correctness of traversal. Here we reset the "is visited" markers this,
+    // to allow for traversals again.
+    self
+      .nodes
+      .values_mut()
+      .for_each(|node| node.write().mark_as_not_visited());
   }
 
   /// Print graph nodes.
