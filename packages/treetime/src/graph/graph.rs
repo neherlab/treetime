@@ -11,6 +11,8 @@ use std::fmt::{Debug, Display};
 use std::io::Write;
 use std::sync::Arc;
 
+pub type SafeNode<N, E> = Arc<RwLock<Node<N, E>>>;
+
 pub struct NodeEdgePair<N, E> {
   pub node: Arc<RwLock<N>>,
   pub edge: Arc<RwLock<E>>,
@@ -271,17 +273,80 @@ where
       .for_each(|node| node.write().mark_as_not_visited());
   }
 
+  fn print_fake_edges<W: Write>(&self, mut writer: W, nodes: &[&SafeNode<N, E>]) {
+    // Fake edges needed to align a set of nodes beautifully
+    let fake_edges = nodes
+      .iter()
+      .map(|node| node.read().key())
+      .chunks(2)
+      .into_iter()
+      .enumerate()
+      .map(|(i, pair)| {
+        let pair = pair.collect_vec();
+        if pair.len() != 2 {
+          return "".to_owned();
+        }
+
+        let left = pair[0];
+        let right = pair[1];
+        let weight = 1000 + i * 100;
+        format!("      {left}-> {right} [style=invis, weight={weight}]")
+      })
+      .join("\n");
+
+    writeln!(
+      writer,
+      "\n    // fake edges for alignment of nodes\n    {{\n      rank=same\n{fake_edges}\n    }}"
+    )
+    .unwrap();
+  }
+
+  fn print_node<W: Write>(&self, mut writer: W, node: &SafeNode<N, E>) {
+    writeln!(
+      writer,
+      "    {} [label = \"{}\"]",
+      node.read().key(),
+      node.read().payload().read()
+    )
+    .unwrap();
+  }
+
   /// Print graph nodes.
   fn print_nodes<W: Write>(&self, mut writer: W) {
-    self.iter_nodes(&mut |node| {
-      writeln!(
-        writer,
-        "	{} [label = \"{}\"]",
-        node.read().key(),
-        node.read().payload().read()
-      )
-      .unwrap();
-    });
+    let roots = self.nodes.iter().filter(|node| node.read().is_root()).collect_vec();
+    let leaves = self.nodes.iter().filter(|node| node.read().is_leaf()).collect_vec();
+    let internal = self
+      .nodes
+      .iter()
+      .filter(|node| {
+        let node = node.read();
+        !node.is_leaf() && !node.is_root()
+      })
+      .collect_vec();
+
+    writeln!(writer, "\n  subgraph roots {{").unwrap();
+
+    for node in &roots {
+      self.print_node(&mut writer, node);
+    }
+
+    self.print_fake_edges(&mut writer, &roots);
+
+    writeln!(writer, "  }}\n\n  subgraph internals {{").unwrap();
+
+    for node in &internal {
+      self.print_node(&mut writer, node);
+    }
+
+    writeln!(writer, "  }}\n\n  subgraph leaves {{").unwrap();
+
+    for node in &leaves {
+      self.print_node(&mut writer, node);
+    }
+
+    self.print_fake_edges(&mut writer, &leaves);
+
+    writeln!(writer, "  }}").unwrap();
   }
 
   /// Print graph edges.
@@ -292,7 +357,7 @@ where
         let payload = payload.read();
         writeln!(
           writer,
-          "	{} -> {} [xlabel = \"{}\", weight=\"{}\"]",
+          "  {} -> {} [xlabel = \"{}\", weight=\"{}\"]",
           edge.source().read().key(),
           edge.target().read().key(),
           payload,
@@ -305,16 +370,17 @@ where
 
   /// Print graph in .dot format.
   pub fn print_graph<W: Write>(&self, mut writer: W) -> std::io::Result<()> {
-    writeln!(
+    write!(
       writer,
       r#"
 digraph Phylogeny {{
-  graph [rankdir=LR, overlap=scale, splines=curved, nodesep=1.0, ordering=out];
-  edge [];
-  node [shape=box];
+  graph [rankdir=LR, overlap=scale, splines=ortho, nodesep=1.0, ordering=out];
+  edge  [overlap=scale];
+  node  [shape=box];
 "#
     )?;
     self.print_nodes(&mut writer);
+    writeln!(writer)?;
     self.print_edges(&mut writer);
     writeln!(writer, "}}")?;
     Ok(())
