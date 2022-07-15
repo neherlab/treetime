@@ -10,6 +10,7 @@ use std::path::PathBuf;
 use treetime::graph::graph::{Graph, Weighted};
 use treetime::io::file::create_file;
 use treetime::io::fs::read_file_to_string;
+use treetime::io::nwk::read_nwk;
 use treetime::utils::global_init::global_init;
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
@@ -67,14 +68,13 @@ pub struct TreetimeNwkArgs {
 fn main() -> Result<(), Report> {
   let TreetimeNwkArgs { input_nwk, output_dot } = TreetimeNwkArgs::parse();
 
-  let mut graph = Graph::<NodePayload, EdgePayload>::new();
+  let nwk_tree = read_nwk(input_nwk)?;
 
-  let nwk_str = read_file_to_string(&input_nwk)?;
-  let tree = newick::read(nwk_str.as_bytes())?;
+  let mut graph = Graph::<NodePayload, EdgePayload>::new();
 
   // Insert nodes
   let mut index_map = IndexMap::<usize, usize>::new(); // Map of internal `nwk` node indices to `Graph` node indices
-  for (nwk_idx, nwk_node) in tree.g.raw_nodes().iter().enumerate() {
+  for (nwk_idx, nwk_node) in nwk_tree.g.raw_nodes().iter().enumerate() {
     // Attempt to parse weight as float. If not a float, then it's a named leaf node, otherwise - internal node.
     let inserted_node_idx = match nwk_node.weight.parse::<f64>() {
       Ok(weight) => graph.add_node(NodePayload::Internal(weight)),
@@ -85,7 +85,7 @@ fn main() -> Result<(), Report> {
   }
 
   // Insert edges
-  for (nwk_idx, nwk_edge) in tree.g.raw_edges().iter().enumerate() {
+  for (nwk_idx, nwk_edge) in nwk_tree.g.raw_edges().iter().enumerate() {
     let weight: f64 = nwk_edge.weight as f64;
     let source: usize = nwk_edge.source().index();
     let target: usize = nwk_edge.target().index();

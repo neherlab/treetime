@@ -1,3 +1,4 @@
+use crate::gtr::get_gtr::GtrModelName;
 use crate::utils::global_init::setup_logger;
 use clap::{AppSettings, ArgEnum, CommandFactory, Parser, Subcommand, ValueHint};
 use clap_complete::{generate, Generator, Shell};
@@ -135,8 +136,8 @@ pub struct TreetimeAncestralArgs {
   /// GTR model to use
   ///
   /// '--gtr infer' will infer a model from the data. Alternatively, specify the model type. If the specified model requires additional options, use '--gtr-params' to specify those.
-  #[clap(long, short = 'g')]
-  pub gtr: Option<PathBuf>,
+  #[clap(long, short = 'g', arg_enum, default_value_t = GtrModelName::default())]
+  pub gtr: GtrModelName,
 
   /// GTR parameters for the model specified by the --gtr argument. The parameters should be feed as 'key=value' list of parameters.
   ///
