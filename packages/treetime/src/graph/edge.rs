@@ -1,3 +1,4 @@
+use crate::graph::graph::Weighted;
 use crate::graph::node::Node;
 use parking_lot::RwLock;
 use std::fmt::{Debug, Display, Formatter};
@@ -11,7 +12,7 @@ use std::sync::{Arc, Weak};
 pub struct Edge<N, E>
 where
   N: Clone + Debug + Display + Sync + Send,
-  E: Clone + Debug + Display + Sync + Send,
+  E: Clone + Debug + Display + Sync + Send + Weighted,
 {
   source: Weak<RwLock<Node<N, E>>>,
   target: Weak<RwLock<Node<N, E>>>,
@@ -21,7 +22,7 @@ where
 impl<N, E> Edge<N, E>
 where
   N: Clone + Debug + Display + Sync + Send,
-  E: Clone + Debug + Display + Sync + Send,
+  E: Clone + Debug + Display + Sync + Send + Weighted,
 {
   /// Creates a new edge.
   pub fn new(source: Weak<RwLock<Node<N, E>>>, target: Weak<RwLock<Node<N, E>>>, data: E) -> Edge<N, E> {
@@ -51,7 +52,7 @@ where
 impl<N, E> Display for Edge<N, E>
 where
   N: Clone + Debug + Display + Sync + Send,
-  E: Clone + Debug + Display + Sync + Send,
+  E: Clone + Debug + Display + Sync + Send + Weighted,
 {
   fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
     write!(fmt, "{} -> {}", self.source().read().key(), self.target().read().key())

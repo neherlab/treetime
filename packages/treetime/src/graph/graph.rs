@@ -42,10 +42,14 @@ where
   pub children: Vec<NodeEdgePair<N, E>>,
 }
 
+pub trait Weighted {
+  fn weight(&self) -> f64;
+}
+
 pub struct Graph<N, E>
 where
   N: Clone + Debug + Display + Sync + Send,
-  E: Clone + Debug + Display + Sync + Send,
+  E: Clone + Debug + Display + Sync + Send + Weighted,
 {
   nodes: Vec<Arc<RwLock<Node<N, E>>>>,
   idx: usize,
@@ -56,7 +60,7 @@ where
 impl<N, E> Graph<N, E>
 where
   N: Clone + Debug + Display + Sync + Send,
-  E: Clone + Debug + Display + Sync + Send,
+  E: Clone + Debug + Display + Sync + Send + Weighted,
 {
   pub const fn new() -> Self {
     Self {
@@ -270,7 +274,7 @@ where
     self.iter_nodes(&mut |node| {
       writeln!(
         writer,
-        "	{} [shape = box, label = \"{}\"]",
+        "	{} [label = \"{}\"]",
         node.read().key(),
         node.read().payload().read()
       )
@@ -282,12 +286,15 @@ where
   fn print_edges<W: Write>(&self, mut writer: W) {
     self.iter_nodes(&mut |node| {
       for edge in node.read().outbound().iter() {
+        let payload = edge.payload();
+        let payload = payload.read();
         writeln!(
           writer,
-          "	{} -> {} [label = \"{}\"]",
+          "	{} -> {} [xlabel = \"{}\", weight=\"{}\"]",
           edge.source().read().key(),
           edge.target().read().key(),
-          edge.payload().read()
+          payload,
+          payload.weight()
         )
         .unwrap();
       }
@@ -298,7 +305,12 @@ where
   pub fn print_graph<W: Write>(&self, mut writer: W) -> std::io::Result<()> {
     writeln!(
       writer,
-      "digraph Phylogeny {{\n  rankdir=LR;\n  splines=line;\n  node [shape=none]"
+      r#"
+digraph Phylogeny {{
+  graph [rankdir=LR, overlap=scale, splines=ortho, nodesep=1.0, ordering=out];
+  edge [];
+  node [shape=box];
+"#
     )?;
     self.print_nodes(&mut writer);
     self.print_edges(&mut writer);

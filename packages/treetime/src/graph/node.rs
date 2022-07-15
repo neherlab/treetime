@@ -1,6 +1,7 @@
 use crate::graph::edge::Edge;
+use crate::graph::graph::Weighted;
 use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
-use std::fmt::{Debug, Display, Formatter};
+use std::fmt::{Debug, Display};
 use std::hash::Hash;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Weak};
@@ -14,7 +15,7 @@ type Inbound<N, E> = RwLock<Vec<Weak<Edge<N, E>>>>;
 pub struct Node<N, E>
 where
   N: Clone + Debug + Display + Sync + Send,
-  E: Clone + Debug + Display + Sync + Send,
+  E: Clone + Debug + Display + Sync + Send + Weighted,
 {
   key: usize,
   data: Arc<RwLock<N>>,
@@ -26,7 +27,7 @@ where
 impl<N, E> Node<N, E>
 where
   N: Clone + Debug + Display + Sync + Send,
-  E: Clone + Debug + Display + Sync + Send,
+  E: Clone + Debug + Display + Sync + Send + Weighted,
 {
   /// Create a new node.
   #[inline]

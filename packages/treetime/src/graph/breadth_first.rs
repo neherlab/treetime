@@ -1,4 +1,5 @@
 use crate::graph::edge::Edge;
+use crate::graph::graph::Weighted;
 use crate::graph::node::Node;
 use parking_lot::{RwLock, RwLockWriteGuard};
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
@@ -12,7 +13,7 @@ use std::sync::Arc;
 pub trait BfsTraversalPolicy<N, E>
 where
   N: Clone + Debug + Display + Sync + Send,
-  E: Clone + Debug + Display + Sync + Send,
+  E: Clone + Debug + Display + Sync + Send + Weighted,
 {
   /// Obtains successors of a node during traversal
   fn node_successors(node: &Arc<RwLock<Node<N, E>>>) -> Vec<Arc<RwLock<Node<N, E>>>>;
@@ -31,7 +32,7 @@ pub struct BfsTraversalPolicyForward;
 impl<N, E> BfsTraversalPolicy<N, E> for BfsTraversalPolicyForward
 where
   N: Clone + Debug + Display + Sync + Send,
-  E: Clone + Debug + Display + Sync + Send,
+  E: Clone + Debug + Display + Sync + Send + Weighted,
 {
   /// Obtains successors of a node during forward traversal
   fn node_successors(node: &Arc<RwLock<Node<N, E>>>) -> Vec<Arc<RwLock<Node<N, E>>>> {
@@ -66,7 +67,7 @@ pub struct BfsTraversalPolicyBackward;
 impl<N, E> BfsTraversalPolicy<N, E> for BfsTraversalPolicyBackward
 where
   N: Clone + Debug + Display + Sync + Send,
-  E: Clone + Debug + Display + Sync + Send,
+  E: Clone + Debug + Display + Sync + Send + Weighted,
 {
   /// Obtains successors of a node during backward traversal
   fn node_successors(node: &Arc<RwLock<Node<N, E>>>) -> Vec<Arc<RwLock<Node<N, E>>>> {
@@ -98,7 +99,7 @@ where
 pub fn directed_breadth_first_traversal_forward<N, E, F>(sources: &[Arc<RwLock<Node<N, E>>>], explorer: F)
 where
   N: Clone + Debug + Display + Sync + Send,
-  E: Clone + Debug + Display + Sync + Send,
+  E: Clone + Debug + Display + Sync + Send + Weighted,
   F: Fn(&RwLockWriteGuard<Node<N, E>>) + Sync + Send,
 {
   directed_breadth_first_traversal::<N, E, F, BfsTraversalPolicyForward>(sources, explorer);
@@ -108,7 +109,7 @@ where
 pub fn directed_breadth_first_traversal_backward<N, E, F>(sources: &[Arc<RwLock<Node<N, E>>>], explorer: F)
 where
   N: Clone + Debug + Display + Sync + Send,
-  E: Clone + Debug + Display + Sync + Send,
+  E: Clone + Debug + Display + Sync + Send + Weighted,
   F: Fn(&RwLockWriteGuard<Node<N, E>>) + Sync + Send,
 {
   directed_breadth_first_traversal::<N, E, F, BfsTraversalPolicyBackward>(sources, explorer);
@@ -122,7 +123,7 @@ where
 fn directed_breadth_first_traversal<N, E, F, TraversalPolicy>(sources: &[Arc<RwLock<Node<N, E>>>], explorer: F)
 where
   N: Clone + Debug + Display + Sync + Send,
-  E: Clone + Debug + Display + Sync + Send,
+  E: Clone + Debug + Display + Sync + Send + Weighted,
   F: Fn(&RwLockWriteGuard<Node<N, E>>) + Sync + Send,
   TraversalPolicy: BfsTraversalPolicy<N, E>,
 {

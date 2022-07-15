@@ -8,7 +8,7 @@ use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
 use std::io::Write;
 use std::time::Duration;
-use treetime::graph::graph::{Graph, NodeEdgePair};
+use treetime::graph::graph::{Graph, NodeEdgePair, Weighted};
 use treetime::io::file::create_file;
 use treetime::utils::global_init::global_init;
 
@@ -37,6 +37,12 @@ impl Display for NodePayload {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct EdgePayload {
   name: String,
+}
+
+impl Weighted for EdgePayload {
+  fn weight(&self) -> f64 {
+    2.0
+  }
 }
 
 impl Display for EdgePayload {

@@ -7,7 +7,7 @@ use std::borrow::Borrow;
 use std::fmt::{Debug, Display, Formatter};
 use std::hash::Hash;
 use std::path::PathBuf;
-use treetime::graph::graph::Graph;
+use treetime::graph::graph::{Graph, Weighted};
 use treetime::io::file::create_file;
 use treetime::io::fs::read_file_to_string;
 use treetime::utils::global_init::global_init;
@@ -41,6 +41,12 @@ impl Display for NodePayload {
 #[derive(Clone, Debug, PartialEq)]
 pub struct EdgePayload {
   weight: f64,
+}
+
+impl Weighted for EdgePayload {
+  fn weight(&self) -> f64 {
+    self.weight
+  }
 }
 
 impl Display for EdgePayload {
