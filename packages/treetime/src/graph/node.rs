@@ -108,14 +108,3 @@ where
     self.is_visited.store(false, Ordering::Relaxed);
   }
 }
-
-impl<N, E> Display for Node<N, E>
-where
-  N: Clone + Debug + Display + Sync + Send,
-  E: Clone + Debug + Display + Sync + Send,
-{
-  fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
-    let header = format!("{} [label = \"{}\"]", self.key, self.data.read());
-    write!(fmt, "{}", header)
-  }
-}

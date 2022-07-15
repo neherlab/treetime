@@ -16,8 +16,8 @@ crate-type = ["lib"]
 [dependencies]
 approx = "0.5.1"
 argmin = { version = "0.5.1", features = ["ctrlc", "ndarray"] }
-bio = "0.41.0"
-bio-types = "0.12.1"
+bio = { version = "0.41.0", features = ["phylogeny"] }
+bio-types = { version = "0.12.1", features = ["phylogeny"] }
 blas-src = { version = "0.8.0", features = ["openblas-src"] }
 chrono = { version = "0.4.19", default-features = false, features = ["clock", "std"] }
 clap = { version = "3.1.8", features = ["derive"] }
@@ -47,6 +47,7 @@ num-traits = "0.2.14"
 openblas-src = { version = "0.10.4", features = ["static"] }
 owo-colors = "3.3.0"
 parking_lot = { version = "0.12.1", features = ["deadlock_detection", "hardware-lock-elision"] }
+petgraph = "0.6.2"
 polars = { version = "0.20.0", features = ["ndarray", "performant", "random", "temporal", "serde"] }
 rand = { version = "0.8.5", features = ["serde1", "log"] }
 rand_distr = { version = "0.4.3", feaures = ["serde1", "std_math"] }

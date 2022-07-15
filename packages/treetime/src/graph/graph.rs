@@ -7,9 +7,7 @@ use eyre::Report;
 use itertools::Itertools;
 use parking_lot::RwLock;
 use std::borrow::{Borrow, BorrowMut};
-use std::collections::HashMap;
 use std::fmt::{Debug, Display};
-use std::hash::Hash;
 use std::io::Write;
 use std::sync::Arc;
 
@@ -49,7 +47,7 @@ where
   N: Clone + Debug + Display + Sync + Send,
   E: Clone + Debug + Display + Sync + Send,
 {
-  nodes: HashMap<usize, Arc<RwLock<Node<N, E>>>>,
+  nodes: Vec<Arc<RwLock<Node<N, E>>>>,
   idx: usize,
   roots: Vec<usize>,
   leaves: Vec<usize>,
@@ -60,21 +58,21 @@ where
   N: Clone + Debug + Display + Sync + Send,
   E: Clone + Debug + Display + Sync + Send,
 {
-  pub fn new() -> Self {
+  pub const fn new() -> Self {
     Self {
-      nodes: HashMap::new(),
+      nodes: Vec::new(),
       idx: 0,
       roots: vec![],
       leaves: vec![],
     }
   }
 
-  pub fn get_node(&self, node: usize) -> Option<Arc<RwLock<Node<N, E>>>> {
-    self.nodes.get(&node).cloned()
+  pub fn get_node(&self, index: usize) -> Option<Arc<RwLock<Node<N, E>>>> {
+    self.nodes.get(index).map(Arc::clone)
   }
 
   pub fn iter_nodes(&self, f: &mut dyn FnMut(Arc<RwLock<Node<N, E>>>)) {
-    for node in self.nodes.values() {
+    for node in &self.nodes {
       f(Arc::clone(node));
     }
   }
@@ -167,13 +165,15 @@ where
     self.roots = self
       .nodes
       .iter()
-      .filter_map(|(i, node)| node.read().is_root().then(|| *i))
+      .enumerate()
+      .filter_map(|(i, node)| node.read().is_root().then(|| i))
       .collect_vec();
 
     self.leaves = self
       .nodes
       .iter()
-      .filter_map(|(i, node)| node.read().is_leaf().then(|| *i))
+      .enumerate()
+      .filter_map(|(i, node)| node.read().is_leaf().then(|| i))
       .collect_vec();
 
     Ok(())
@@ -261,13 +261,21 @@ where
     // to allow for traversals again.
     self
       .nodes
-      .values_mut()
+      .iter_mut()
       .for_each(|node| node.write().mark_as_not_visited());
   }
 
   /// Print graph nodes.
   fn print_nodes<W: Write>(&self, mut writer: W) {
-    self.iter_nodes(&mut |node| writeln!(writer, "	{}", node.read()).unwrap());
+    self.iter_nodes(&mut |node| {
+      writeln!(
+        writer,
+        "	{} [shape = box, label = \"{}\"]",
+        node.read().key(),
+        node.read().payload().read()
+      )
+      .unwrap();
+    });
   }
 
   /// Print graph edges.
@@ -288,7 +296,10 @@ where
 
   /// Print graph in .dot format.
   pub fn print_graph<W: Write>(&self, mut writer: W) -> std::io::Result<()> {
-    writeln!(writer, "digraph {{")?;
+    writeln!(
+      writer,
+      "digraph Phylogeny {{\n  rankdir=LR;\n  splines=line;\n  node [shape=none]"
+    )?;
     self.print_nodes(&mut writer);
     self.print_edges(&mut writer);
     writeln!(writer, "}}")?;

@@ -6,7 +6,6 @@ use itertools::Itertools;
 use std::borrow::Borrow;
 use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
-use std::hash::Hash;
 use std::io::Write;
 use std::time::Duration;
 use treetime::graph::graph::{Graph, NodeEdgePair};
@@ -23,7 +22,7 @@ fn init() {
 }
 
 /// An example of node payload type
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct NodePayload {
   name: String,
 }
@@ -35,7 +34,7 @@ impl Display for NodePayload {
 }
 
 /// An example of edge payload type
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct EdgePayload {
   name: String,
 }
