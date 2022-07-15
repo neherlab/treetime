@@ -16,9 +16,11 @@ crate-type = ["lib"]
 [dependencies]
 approx = "0.5.1"
 argmin = { version = "0.5.1", features = ["ctrlc", "ndarray"] }
+atty = "0.2.14"
 bio = { version = "0.41.0", features = ["phylogeny"] }
 bio-types = { version = "0.12.1", features = ["phylogeny"] }
 blas-src = { version = "0.8.0", features = ["openblas-src"] }
+bzip2 = "0.4.3"
 chrono = { version = "0.4.19", default-features = false, features = ["clock", "std"] }
 clap = { version = "3.1.8", features = ["derive"] }
 clap-verbosity-flag = "1.0.0"
@@ -29,6 +31,7 @@ ctor = "0.1.22"
 derive_more = { version = "0.99.17" }
 env_logger = "0.9.0"
 eyre = "0.6.8"
+flate2 = "1.0.24"
 float-cmp = "0.9.0"
 indexmap = { version = "1.9.1", features = ["serde-1"] }
 itertools = "0.10.3"
@@ -58,7 +61,11 @@ rustfft = "6.0.1"
 serde = { version = "1.0.136", features = ["derive"] }
 serde_json = { version = "1.0.79", features = ["preserve_order", "indexmap", "unbounded_depth"] }
 statrs = { version = "0.15.0", features = [] }
+strum = "0.24.0"
+strum_macros = "0.24.0"
 triple_accel = "0.4.0"
+xz2 = "0.1.7"
+zstd = { version = "0.11.2+zstd.1.5.2", features = ["zstdmt"] }
 
 
 [target.'cfg(all(target_os = "linux", target_arch = "x86_64"))'.dependencies]
