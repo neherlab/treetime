@@ -43,11 +43,7 @@ pub struct EdgePayload {
   weight: f64,
 }
 
-impl Weighted for EdgePayload {
-  fn weight(&self) -> f64 {
-    self.weight
-  }
-}
+impl Weighted for EdgePayload {}
 
 impl Display for EdgePayload {
   fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {

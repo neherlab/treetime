@@ -43,7 +43,9 @@ where
 }
 
 pub trait Weighted {
-  fn weight(&self) -> f64;
+  fn weight(&self) -> f64 {
+    0.0
+  }
 }
 
 pub struct Graph<N, E>
@@ -307,7 +309,7 @@ where
       writer,
       r#"
 digraph Phylogeny {{
-  graph [rankdir=LR, overlap=scale, splines=ortho, nodesep=1.0, ordering=out];
+  graph [rankdir=LR, overlap=scale, splines=curved, nodesep=1.0, ordering=out];
   edge [];
   node [shape=box];
 "#
