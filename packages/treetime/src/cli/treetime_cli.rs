@@ -1,5 +1,5 @@
 use crate::utils::global_init::setup_logger;
-use clap::{AppSettings, CommandFactory, Parser, Subcommand};
+use clap::{AppSettings, ArgEnum, CommandFactory, Parser, Subcommand, ValueHint};
 use clap_complete::{generate, Generator, Shell};
 use clap_complete_fig::Fig;
 use clap_verbosity_flag::{Verbosity, WarnLevel};
@@ -9,6 +9,7 @@ use lazy_static::lazy_static;
 use log::LevelFilter;
 use std::fmt::Debug;
 use std::io;
+use std::path::PathBuf;
 use std::str::FromStr;
 
 lazy_static! {
@@ -81,8 +82,102 @@ pub enum TreetimeCommands {
 #[derive(Parser, Debug)]
 pub struct TreetimeTimetreeArgs;
 
+#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, ArgEnum)]
+pub enum MethodAnc {
+  Parsimony,
+  Fitch,
+  Probabilistic,
+  Ml,
+}
+
+impl Default for MethodAnc {
+  fn default() -> Self {
+    Self::Probabilistic
+  }
+}
+
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Parser, Debug)]
-pub struct TreetimeAncestralArgs;
+pub struct TreetimeAncestralArgs {
+  /// Path to one or multiple FASTA files with aligned input sequences
+  ///
+  /// Accepts plain or compressed FASTA files. If a compressed fasta file is provided, it will be transparently
+  /// decompressed. Supported compression formats: `gz`, `bz2`, `xz`, `zstd`. Decompressor is chosen based on file
+  /// extension. If there's multiple input files, then different files can have different compression formats.
+  ///
+  /// If no input files provided, the plain fasta input is read from standard input (stdin).
+  ///
+  /// See: https://en.wikipedia.org/wiki/FASTA_format
+  #[clap(value_hint = ValueHint::FilePath)]
+  #[clap(display_order = 1)]
+  pub input_fastas: Vec<PathBuf>,
+
+  /// REMOVED. Use positional arguments instead.
+  ///
+  /// Example: treetime ancestral seq1.fasta seq2.fasta
+  #[clap(long, visible_alias("aln"))]
+  #[clap(value_hint = ValueHint::FilePath)]
+  #[clap(hide_long_help = true, hide_short_help = true)]
+  pub aln: Option<PathBuf>,
+
+  /// FASTA file of the sequence the VCF was mapped to (only for vcf input)
+  #[clap(long, short = 'r')]
+  #[clap(value_hint = ValueHint::FilePath)]
+  pub vcf_reference: Option<PathBuf>,
+
+  /// Name of file containing the tree in newick, nexus, or phylip format.
+  ///
+  /// If none is provided, treetime will attempt to build a tree from the alignment using fasttree, iqtree, or raxml (assuming they are installed)
+  #[clap(long, short = 't')]
+  #[clap(value_hint = ValueHint::FilePath)]
+  pub tree: Option<PathBuf>,
+
+  /// GTR model to use
+  ///
+  /// '--gtr infer' will infer a model from the data. Alternatively, specify the model type. If the specified model requires additional options, use '--gtr-params' to specify those.
+  #[clap(long, short = 'g')]
+  pub gtr: Option<PathBuf>,
+
+  /// GTR parameters for the model specified by the --gtr argument. The parameters should be feed as 'key=value' list of parameters.
+  ///
+  /// Example: '--gtr K80 --gtr-params kappa=0.2 pis=0.25,0.25,0.25,0.25'.
+  ///
+  /// See the exact definitions of the parameters in the GTR creation methods in treetime/nuc_models.py or treetime/aa_models.py
+  #[clap(long)]
+  pub gtr_params: Vec<String>,
+
+  /// Use aminoacid alphabet
+  #[clap(long)]
+  pub aa: bool,
+
+  /// Marginal reconstruction of ancestral sequences
+  #[clap(long)]
+  pub marginal: bool,
+
+  /// Do not fill terminal gaps
+  #[clap(long)]
+  pub keep_overhangs: bool,
+
+  /// Zero-based mutation indexing
+  #[clap(long)]
+  pub zero_based: bool,
+
+  /// Overwrite ambiguous states on tips with the most likely inferred state
+  #[clap(long)]
+  pub reconstruct_tip_states: bool,
+
+  /// Include transitions involving ambiguous states
+  #[clap(long)]
+  pub report_ambiguous: bool,
+
+  /// Method Used for reconstructing ancestral sequences, default is 'probabilistic'
+  #[clap(long, arg_enum, default_value_t = MethodAnc::default())]
+  pub method_anc: MethodAnc,
+
+  /// Directory to write the output to
+  #[clap(long, short = 'O')]
+  pub outdir: PathBuf,
+}
 
 #[derive(Parser, Debug)]
 pub struct TreetimeClockArgs;
@@ -104,8 +199,8 @@ pub fn generate_shell_completions(shell: &str) -> Result<(), Report> {
     return Ok(());
   }
 
-  let generator =
-    Shell::from_str(&shell.to_lowercase()).map_err(|err| eyre!("{}: Possible values: {}", err, SHELLS.join(", ")))?;
+  let generator = <Shell as ArgEnum>::from_str(&shell.to_lowercase(), true)
+    .map_err(|err| eyre!("{}: Possible values: {}", err, SHELLS.join(", ")))?;
 
   let bin_name = command.get_name().to_owned();
 
