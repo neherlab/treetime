@@ -1,7 +1,8 @@
+use crate::alphabet::alphabet::Alphabet;
+use crate::alphabet::sequence_data::SequenceData;
 use crate::cli::treetime_cli::{MethodAnc, TreetimeAncestralArgs};
 use crate::graph::graph::{Graph as GenericGraph, Weighted};
 use crate::gtr::get_gtr::get_gtr;
-use crate::io::fasta::read_many_fasta;
 use crate::io::nwk::read_nwk;
 use color_eyre::Section;
 use eyre::{eyre, Report, WrapErr};
@@ -27,7 +28,10 @@ pub fn run_ancestral(ancestral_args: &TreetimeAncestralArgs) -> Result<(), Repor
     outdir,
   } = ancestral_args;
 
-  let fasta_records = read_many_fasta(input_fastas)?;
+  // TODO: alphabet is hardcoded. Make it dynamic.
+  let alphabet = Alphabet::new("nuc")?;
+
+  let sequence_data = SequenceData::new(input_fastas, alphabet.ambiguous());
 
   let gtr = get_gtr(gtr)?;
 

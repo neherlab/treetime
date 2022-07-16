@@ -9,16 +9,21 @@ pub struct Alphabet {
   pub name: String,
   pub alphabet: Array1<char>,
   pub gap_index: Option<usize>,
+  pub ambiguous: char,
 }
 
 lazy_static! {
   static ref ALPHABET_NUC: Array1<char> = array!['A', 'C', 'G', 'T', '-'];
+  static ref LETTER_AMBIGUOUS_NUC: char = 'N';
   static ref ALPHABET_NUC_NOGAP: Array1<char> = array!['A', 'C', 'G', 'T'];
+  static ref LETTER_AMBIGUOUS_NUC_NOGAP: char = 'N';
   static ref ALPHABET_AA: Array1<char> = array![
     'A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y', '*', '-'
   ];
+  static ref LETTER_AMBIGUOUS_AA: char = 'X';
   static ref ALPHABET_AA_NOGAP: Array1<char> =
     array!['A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y'];
+  static ref LETTER_AMBIGUOUS_AA_NOGAP: char = 'X';
 }
 
 impl Alphabet {
@@ -37,12 +42,27 @@ impl Alphabet {
       _ => make_error!("Unknown alphabet: '{name}'"),
     }?;
 
+    let ambiguous = match name {
+      "nuc" => Ok(LETTER_AMBIGUOUS_NUC.to_owned()),
+      "nucleotide" => Ok(LETTER_AMBIGUOUS_NUC.to_owned()),
+      "DNA" => Ok(LETTER_AMBIGUOUS_NUC.to_owned()),
+      "nuc_nogap" => Ok(LETTER_AMBIGUOUS_NUC_NOGAP.to_owned()),
+      "nucleotide_nogap" => Ok(LETTER_AMBIGUOUS_NUC_NOGAP.to_owned()),
+      "DNA_nogap" => Ok(LETTER_AMBIGUOUS_NUC_NOGAP.to_owned()),
+      "aa" => Ok(LETTER_AMBIGUOUS_AA.to_owned()),
+      "aminoacid" => Ok(LETTER_AMBIGUOUS_AA.to_owned()),
+      "aa_nogap" => Ok(LETTER_AMBIGUOUS_AA_NOGAP.to_owned()),
+      "aminoacid_nogap" => Ok(LETTER_AMBIGUOUS_AA_NOGAP.to_owned()),
+      _ => make_error!("Unknown alphabet: '{name}'"),
+    }?;
+
     let gap_index = alphabet.iter().position(|&x| x == '-');
 
     Ok(Self {
       name: name.to_owned(),
       alphabet,
       gap_index,
+      ambiguous,
     })
   }
 
@@ -63,6 +83,11 @@ impl Alphabet {
   #[inline]
   pub const fn gap_index(&self) -> Option<usize> {
     self.gap_index
+  }
+
+  #[inline]
+  pub const fn ambiguous(&self) -> char {
+    self.ambiguous
   }
 }
 
