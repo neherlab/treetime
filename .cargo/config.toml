@@ -206,5 +206,8 @@ rustflags = [
   #
   # We'd like to use notation that is closer to scientific
   # and it nol always matches snake case convention
-  "-Anon-snake-case"
+  "-Anon-snake-case",
+  #
+  # Temporarily allow unimplemented!() macro. Go implement things and remove this!
+  "-Aclippy::unimplemented"
 ]

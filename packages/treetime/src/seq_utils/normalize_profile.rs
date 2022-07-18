@@ -2,6 +2,7 @@ use crate::make_report;
 use crate::utils::ndarray::max_axis;
 use eyre::Report;
 use ndarray::prelude::*;
+use ndarray::Data;
 use ndarray_einsum_beta::einsum;
 use num_traits::real::Real;
 use num_traits::FloatConst;
@@ -21,9 +22,12 @@ use num_traits::FloatConst;
 /// -------
 /// tuple
 ///     normalized profile (fresh np object) and offset (if return_offset==True)
-pub fn normalize_profile(in_prof: &Array2<f64>, log: bool) -> Result<(Array2<f64>, Array1<f64>), Report> {
+pub fn normalize_profile<S>(in_prof: &ArrayBase<S, Ix2>, log: bool) -> Result<(Array2<f64>, Array1<f64>), Report>
+where
+  S: Data<Elem = f64>,
+{
   let (tmp_prof, tmp_prefactor) = if log {
-    let tmp_prefactor = max_axis(in_prof, Axis(1))?;
+    let tmp_prefactor = max_axis(in_prof, Axis(1));
 
     let tmp_prof = {
       let tmp_prof = &in_prof.t() - &tmp_prefactor;

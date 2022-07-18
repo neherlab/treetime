@@ -3,11 +3,11 @@
 use crate::io::fasta::read_many_fasta;
 use eyre::Report;
 use itertools::Itertools;
-use ndarray::{s, Array1, Array2, ArrayBase, ArrayView1, Axis};
+use ndarray::{s, Array1, Array2, ArrayBase, ArrayView, ArrayView1, Axis, Data, Ix1};
 use polars::export::arrow::array::Array;
 use std::collections::HashMap;
 use std::fmt::Write as _;
-use std::path::Path;
+use std::path::{Iter, Path};
 
 #[derive(Clone, Debug)]
 pub struct Sequence {
@@ -34,10 +34,15 @@ pub struct AlignmentPattern {
 pub struct SequenceData {
   aln: Array2<char>,
   aln_transpose: Array2<char>,
+  aln_compressed: Array2<char>,
   records: Vec<Sequence>,
   records_compressed: Vec<SequenceCompressed>,
-  len: usize,
+  seq_names_to_indices: HashMap<String, usize>,
+  len_full: usize,
   len_compressed: usize,
+  multiplicity: Array1<f64>,
+  compression_map: Array1<usize>,
+  decompression_map: HashMap<usize, Array1<usize>>,
 }
 
 impl SequenceData {
@@ -45,7 +50,12 @@ impl SequenceData {
     let fasta_records = read_many_fasta(fasta_paths)?;
 
     // TODO: does this need to be mode complex?
-    let mut full_length = fasta_records[0].seq.len();
+    let mut len_full = fasta_records[0].seq.len();
+
+    let seq_names_to_indices: HashMap<String, usize> = fasta_records
+      .iter()
+      .map(|record| (record.seq_name.clone(), record.index))
+      .collect();
 
     let records = fasta_records
       .iter()
@@ -68,34 +78,77 @@ impl SequenceData {
     if let Some(additional_constant_sites) = additional_constant_sites {
       add_additional_constant_sites();
       // TODO: full length should change here
-      full_length = full_length;
+      len_full = len_full;
     }
 
     let (aln_compressed, alignment_patterns) = compress(&aln_transpose, ambiguous_letter)?;
 
     let multiplicity = compute_multiplicity(&alignment_patterns);
 
-    let compression_map = compute_compression_map(&alignment_patterns, full_length);
+    let compression_map = compute_compression_map(&alignment_patterns, len_full);
     let decompression_map = compute_decompression_map(&alignment_patterns);
 
     Ok(Self {
       aln,
       aln_transpose,
+      aln_compressed,
       records,
       records_compressed: vec![],
-      len: 0,
+      seq_names_to_indices,
+      len_full,
       len_compressed: multiplicity.len(),
+      multiplicity,
+      compression_map,
+      decompression_map,
     })
   }
 
   #[inline]
-  pub const fn len(&self) -> usize {
-    self.len
+  pub const fn len_full(&self) -> usize {
+    self.len_full
   }
 
   #[inline]
   pub const fn len_compressed(&self) -> usize {
     self.len_compressed
+  }
+
+  /// Inverse of the uncompressed sequence length. Length scale for short branches.
+  #[inline]
+  pub fn one_mutation(&self) -> f64 {
+    1.0 / (self.len_full() as f64)
+  }
+
+  #[inline]
+  pub fn multiplicity(&self) -> ArrayView1<f64> {
+    self.multiplicity.view()
+  }
+
+  /// Retrieve compressed sequence by name
+  pub fn get_compressed(&self, seq_name: &str) -> Option<ArrayView1<char>> {
+    self
+      .seq_names_to_indices
+      .get(seq_name)
+      .map(|index| self.aln_compressed.slice(s![*index, ..]))
+  }
+
+  /// Retrieve full sequence by name
+  pub fn get_full(&self, seq_name: &str) -> Option<Array1<char>> {
+    self
+      .get_compressed(seq_name)
+      .map(|compressed| self.decompress(&compressed))
+  }
+
+  pub fn decompress<S>(&self, compressed_seq: &ArrayBase<S, Ix1>) -> Array1<char>
+  where
+    S: Data<Elem = char>,
+  {
+    // TODO: account for `additional_constant_sites`
+    // if include_additional_constant_sites:
+    //     L = self.full_length
+    // else:
+    //     L = self.full_length - self.additional_constant_sites
+    self.compression_map.iter().map(|i| compressed_seq[*i]).collect()
   }
 }
 
@@ -153,12 +206,12 @@ fn replace_ambiguous_in_place(pattern: &mut Array1<char>, ambiguous_letter: char
 }
 
 /// Count how many times each column is repeated in the real alignment
-fn compute_multiplicity(alignment_patterns: &HashMap<String, AlignmentPattern>) -> Array1<usize> {
+fn compute_multiplicity(alignment_patterns: &HashMap<String, AlignmentPattern>) -> Array1<f64> {
   let mut multiplicity = Array1::<usize>::zeros(alignment_patterns.len());
   for AlignmentPattern { length, patterns } in alignment_patterns.values() {
     multiplicity[*length] = patterns.len();
   }
-  multiplicity
+  multiplicity.mapv(|x| x as f64)
 }
 
 // Bind positions in full length sequence to that of the compressed sequence

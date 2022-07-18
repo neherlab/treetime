@@ -1,11 +1,17 @@
+use crate::constants::BIG_NUMBER;
 use eyre::Report;
-use ndarray::{Array, Array1, Array2, Axis, Dimension, Ix2, NdProducer, RawData, RemoveAxis, ShapeBuilder, Zip};
+use ndarray::{
+  Array, Array1, Array2, ArrayBase, Axis, Data, Dimension, Ix, Ix1, Ix2, NdProducer, RawData, RemoveAxis, ShapeBuilder,
+  Zip,
+};
 use ndarray_rand::RandomExt;
 use num_traits::real::Real;
-use num_traits::{Bounded, Float, Num, NumCast};
+use num_traits::{Bounded, Float, Num, NumCast, Zero};
 use rand::distributions::uniform::SampleUniform;
 use rand::distributions::Uniform;
 use rand::Rng;
+use rayon::iter::plumbing::Reducer;
+use std::f64::consts::E;
 use std::ops::{Add, AddAssign, Deref, MulAssign};
 
 pub fn to_col<T: Real>(a: &Array1<T>) -> Result<Array2<T>, Report> {
@@ -25,14 +31,17 @@ pub fn outer<T: 'static + Real>(a: &Array1<T>, b: &Array1<T>) -> Result<Array2<T
 
 /// Calculates min over given axis
 #[inline]
-pub fn min_axis<T: Real>(arr: &Array2<T>, axis: Axis) -> Result<Array1<T>, Report> {
-  Ok(arr.fold_axis(axis, T::max_value(), |&a, &b| a.min(b)))
+pub fn min_axis<T: Real>(arr: &Array2<T>, axis: Axis) -> Array1<T> {
+  arr.fold_axis(axis, T::max_value(), |&a, &b| a.min(b))
 }
 
 /// Calculates max over given axis
 #[inline]
-pub fn max_axis<T: Real>(arr: &Array2<T>, axis: Axis) -> Result<Array1<T>, Report> {
-  Ok(arr.fold_axis(axis, T::min_value(), |&a, &b| a.max(b)))
+pub fn max_axis<S, T: Real>(arr: &ArrayBase<S, Ix2>, axis: Axis) -> Array1<T>
+where
+  S: Data<Elem = T>,
+{
+  arr.fold_axis(axis, T::min_value(), |&a, &b| a.max(b))
 }
 
 /// Finds index of min value over given axis
@@ -78,6 +87,11 @@ pub fn maximum<T: Copy + PartialOrd, D: Dimension>(x: &Array<T, D>, y: &Array<T,
   Zip::from(x).and(y).map_collect(|&a, &b| if a > b { a } else { b })
 }
 
+/// Element-wise maximum of array and a scalar
+pub fn maximum_scalar<T: Copy + PartialOrd, D: Dimension>(arr: &Array<T, D>, y: T) -> Array<T, D> {
+  arr.mapv(|a| if a > y { a } else { y })
+}
+
 /// Clamp each element to at most `lower`
 pub fn clamp_min<T: Copy + PartialOrd, D: Dimension>(a: &Array<T, D>, lower: T) -> Array<T, D> {
   a.mapv(|x| num_traits::clamp_min(x, lower))
@@ -91,6 +105,52 @@ pub fn clamp_max<T: Copy + PartialOrd, D: Dimension>(a: &Array<T, D>, upper: T) 
 /// Clamp each element so that they are between given `lower` and `upper` values
 pub fn clamp<T: Copy + PartialOrd, D: Dimension>(a: &Array<T, D>, lower: T, upper: T) -> Array<T, D> {
   a.mapv(|x| num_traits::clamp(x, lower, upper))
+}
+
+/// Element-wise exp
+pub fn exp<T, S, D>(arr: &ArrayBase<S, D>) -> Array<T, D>
+where
+  T: Float + From<f64>,
+  S: Data<Elem = T>,
+  D: Dimension,
+{
+  arr.mapv(|x| Float::exp(x))
+}
+
+/// Element-wise log
+pub fn log<T: Float + From<f64>, D: Dimension>(arr: &Array<T, D>) -> Array<T, D> {
+  arr.mapv(|x| Float::log(x, E.into()))
+}
+
+/// Construct an array from an index array and an array to choose from
+pub fn choose1<T, SI, ST>(indices: &ArrayBase<SI, Ix1>, arr: &ArrayBase<ST, Ix1>) -> Array1<T>
+where
+  T: Copy + Default,
+  SI: Data<Elem = usize>,
+  ST: Data<Elem = T>,
+{
+  indices.iter().map(|i| arr[*i]).collect()
+}
+
+/// Construct an array from an index array and a list of arrays to choose from (or 2D array).
+pub fn choose2<T, SI, ST>(indices: &ArrayBase<SI, Ix1>, arr: &ArrayBase<ST, Ix2>) -> Array1<T>
+where
+  T: Copy + Default,
+  SI: Data<Elem = usize>,
+  ST: Data<Elem = T>,
+{
+  Zip::from(indices)
+    .and(arr.axis_iter(Axis(1)))
+    .map_collect(|i, axis| axis[*i])
+}
+
+pub fn zeros<T, D, Sh>(shape: Sh) -> Array<T, D>
+where
+  T: Zero + Clone,
+  D: Dimension,
+  Sh: ShapeBuilder<Dim = D>,
+{
+  Array::<T, D>::zeros(shape)
 }
 
 /// Calculates cumulative sum over given axis
@@ -108,6 +168,17 @@ pub fn random<T: Copy + SampleUniform + NumCast, D: Dimension, Sh: ShapeBuilder<
   let from: T = NumCast::from(0_i32).unwrap();
   let to: T = NumCast::from(1_i32).unwrap();
   Array::<T, D>::random_using(shape, Uniform::<T>::new::<T, T>(from, to), rng)
+}
+
+/// Replaces non-finite with a very small number
+pub fn sanitize_in_place<T: Float, D: Dimension>(arr: &mut Array<T, D>) {
+  arr.mapv_inplace(|x| {
+    if x.is_finite() {
+      x
+    } else {
+      T::from(-BIG_NUMBER).unwrap()
+    }
+  });
 }
 
 #[allow(clippy::excessive_precision, clippy::lossy_float_literal)]
@@ -270,6 +341,20 @@ mod tests {
     );
 
     Ok(())
+  }
+
+  #[rstest]
+  fn chooses_1d_by_index() {
+    let indices = array![2, 0, 1, 0, 0, 2];
+    let choices = array!['a', 'b', 'c'];
+    assert_eq!(choose1(&indices, &choices), array!['c', 'a', 'b', 'a', 'a', 'c']);
+  }
+
+  #[rstest]
+  fn chooses_2d_by_index() {
+    let indices = array![2, 0, 1];
+    let choices = array![[0, 1, 2], [10, 11, 12], [20, 21, 22], [30, 31, 32]];
+    assert_eq!(choose2(&indices, &choices), array![20, 1, 12]);
   }
 
   #[rstest]

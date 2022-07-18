@@ -224,7 +224,7 @@ impl GTR {
   }
 
   /// Matrix exponential of exo(Qt)
-  fn expQt(&self, t: f64) -> Array2<f64> {
+  pub fn expQt(&self, t: f64) -> Array2<f64> {
     let eLambdaT: Array2<f64> = Array2::from_diag(&self.exp_lt(t)); // vector length = a
 
     let eLambdaT_dot_v_inv: Array2<f64> = eLambdaT.dot(&self.v_inv);

@@ -37,7 +37,7 @@ pub struct TreetimeArgs {
 
   /// Set verbosity level
   #[clap(long, global = true, conflicts_with = "verbose", conflicts_with = "silent", possible_values(VERBOSITIES.iter()))]
-  pub verbosity: Option<log::LevelFilter>,
+  pub verbosity: Option<LevelFilter>,
 
   /// Disable all console output. Same as --verbosity=off
   #[clap(long, global = true, conflicts_with = "verbose", conflicts_with = "verbosity")]
@@ -84,16 +84,16 @@ pub enum TreetimeCommands {
 pub struct TreetimeTimetreeArgs;
 
 #[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, ArgEnum)]
-pub enum MethodAnc {
+#[clap(rename = "kebab-case")]
+pub enum MethodAncestral {
+  MaximumLikelihoodJoint,
+  MaximumLikelihoodMarginal,
   Parsimony,
-  Fitch,
-  Probabilistic,
-  Ml,
 }
 
-impl Default for MethodAnc {
+impl Default for MethodAncestral {
   fn default() -> Self {
-    Self::Probabilistic
+    Self::MaximumLikelihoodJoint
   }
 }
 
@@ -147,13 +147,13 @@ pub struct TreetimeAncestralArgs {
   #[clap(long)]
   pub gtr_params: Vec<String>,
 
+  /// Method used for reconstructing ancestral sequences
+  #[clap(long, arg_enum, default_value_t = MethodAncestral::default())]
+  pub method_anc: MethodAncestral,
+
   /// Use aminoacid alphabet
   #[clap(long)]
   pub aa: bool,
-
-  /// Marginal reconstruction of ancestral sequences
-  #[clap(long)]
-  pub marginal: bool,
 
   /// Do not fill terminal gaps
   #[clap(long)]
@@ -171,13 +171,13 @@ pub struct TreetimeAncestralArgs {
   #[clap(long)]
   pub report_ambiguous: bool,
 
-  /// Method Used for reconstructing ancestral sequences, default is 'probabilistic'
-  #[clap(long, arg_enum, default_value_t = MethodAnc::default())]
-  pub method_anc: MethodAnc,
-
   /// Directory to write the output to
   #[clap(long, short = 'O')]
   pub outdir: PathBuf,
+
+  /// Random seed
+  #[clap(long)]
+  pub seed: Option<u64>,
 }
 
 #[derive(Parser, Debug)]

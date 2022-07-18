@@ -195,7 +195,7 @@ impl FastaWriter {
     Ok(Self::new(create_file(filepath)?))
   }
 
-  pub fn write(&mut self, seq_name: &str, seq: &str, is_reverse_complement: bool) -> Result<(), Report> {
+  pub fn write(&mut self, seq_name: &str, seq: &str) -> Result<(), Report> {
     write!(self.writer, ">{seq_name}\n{seq}\n")?;
     Ok(())
   }

@@ -3,7 +3,7 @@ use crate::gtr::gtr::GTR;
 use crate::seq_utils::normalize_profile::normalize_profile;
 use crate::utils::ndarray::{argmax_axis, cumsum_axis, random};
 use eyre::Report;
-use ndarray::{array, stack, Array1, Array2, Axis};
+use ndarray::{array, stack, Array1, Array2, ArrayBase, Axis, Data, Dimension, Ix1, Ix2};
 use ndarray_rand::RandomExt;
 use ndarray_stats::QuantileExt;
 use rand::Rng;
@@ -42,12 +42,15 @@ pub struct Prof2SeqResult {
 ///     Values of the profile for the chosen sequence characters (length L)
 ///  idx : numpy.array
 ///     Indices chosen from profile as array of length L
-pub fn prof2seq<R: Rng>(
-  profile: &Array2<f64>,
+pub fn prof2seq<S, R: Rng>(
+  profile: &ArrayBase<S, Ix2>,
   gtr: &GTR,
   rng: &mut R,
   params: &Prof2SeqParams,
-) -> Result<Prof2SeqResult, Report> {
+) -> Result<Prof2SeqResult, Report>
+where
+  S: Data<Elem = f64>,
+{
   // Normalize profile such that probabilities at each site sum to one
   let profile = if params.should_normalize_profile {
     let (prof_norm, _) = normalize_profile(profile, false)?;
@@ -123,7 +126,10 @@ pub fn get_prof_values(profile: &Array2<f64>, seq_ii: &Array1<usize>) -> Array1<
 ///
 ///  idx : numpy.array
 ///     Profile for the character. Zero array if the character not found
-pub fn seq2prof(seq: &Array1<char>, profile_map: &ProfileMap) -> Result<Array2<f64>, Report> {
+pub fn seq2prof<S>(seq: &ArrayBase<S, Ix1>, profile_map: &ProfileMap) -> Result<Array2<f64>, Report>
+where
+  S: Data<Elem = char>,
+{
   let prof = stack(Axis(0), seq.map(|&c| profile_map.get(c).view()).as_slice().unwrap())?;
   Ok(prof)
 }

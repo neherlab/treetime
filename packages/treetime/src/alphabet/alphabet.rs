@@ -1,7 +1,8 @@
 use crate::make_error;
 use eyre::Report;
 use lazy_static::lazy_static;
-use ndarray::{array, Array, Array1, Dimension};
+use ndarray::iter::Iter;
+use ndarray::{array, Array, Array1, Dimension, Ix1};
 use std::ops::Index;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -88,6 +89,10 @@ impl Alphabet {
   #[inline]
   pub const fn ambiguous(&self) -> char {
     self.ambiguous
+  }
+
+  pub fn iter(&self) -> Iter<'_, char, Ix1> {
+    self.alphabet.iter()
   }
 }
 
