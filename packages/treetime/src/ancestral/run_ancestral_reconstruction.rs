@@ -51,6 +51,8 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
     Some(tree) => create_graph(tree)?,
   };
 
+  graph.print_graph(create_file(outdir.join("graph_input.dot"))?)?;
+
   let ancestral_params = TreetimeAncestralParams::default();
 
   run_anc_method(
@@ -71,6 +73,8 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
   for FastaRecord { seq, seq_name, .. } in fasta_records {
     fasta_writer.write(&seq_name, &seq)?;
   }
+
+  graph.print_graph(create_file(outdir.join("graph_output.dot"))?)?;
 
   Ok(())
 }
