@@ -7,7 +7,7 @@ use ndarray::{array, Array1, Array2};
 use std::fmt::{Display, Formatter};
 use std::path::Path;
 
-pub type Graph = GenericGraph<Node, Edge>;
+pub type AncestralGraph = GenericGraph<Node, Edge>;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum NodeType {
@@ -74,16 +74,16 @@ impl Display for Edge {
   }
 }
 
-pub fn infer_graph() -> Result<Graph, Report> {
+pub fn infer_graph() -> Result<AncestralGraph, Report> {
   unimplemented!("Not implemented: Graph inference is not yet implemented. Please provide the `--tree` argument.")
 }
 
-pub fn create_graph(tree_path: impl AsRef<Path>) -> Result<Graph, Report> {
+pub fn create_graph(tree_path: impl AsRef<Path>) -> Result<AncestralGraph, Report> {
   let nwk_tree = read_nwk(tree_path)
     .wrap_err("When parsing input tree")
     .with_section(|| "Note: only Newick format is currently supported")?;
 
-  let mut graph = Graph::new();
+  let mut graph = AncestralGraph::new();
 
   // Insert nodes
   let mut index_map = IndexMap::<usize, usize>::new(); // Map of internal `nwk` node indices to `Graph` node indices

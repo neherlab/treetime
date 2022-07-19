@@ -1,13 +1,13 @@
 use crate::alphabet::sequence_data::SequenceData;
-use crate::ancestral::ancestral_graph::{Graph, NodeType};
-use crate::ancestral::run_ancestral::TreetimeAncestralParams;
+use crate::ancestral::anc_graph::{AncestralGraph, NodeType};
+use crate::ancestral::run_ancestral_reconstruction::TreetimeAncestralParams;
 use crate::cli::treetime_cli::TreetimeAncestralArgs;
 use crate::io::fasta::FastaRecord;
 use itertools::Itertools;
 
-pub fn ancestral_reconstruct_sequences(
+pub fn reconstruct_ancestral_sequences(
   sequence_data: &SequenceData,
-  graph: &Graph,
+  graph: &AncestralGraph,
   ancestral_args: &TreetimeAncestralArgs,
   ancestral_params: &TreetimeAncestralParams,
 ) -> Vec<FastaRecord> {

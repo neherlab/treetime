@@ -1,8 +1,8 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::alphabet::sequence_data::SequenceData;
-use crate::ancestral::ancestral_graph::{create_graph, infer_graph};
-use crate::ancestral::ancestral_rec::run_ancestral_reconstruction;
-use crate::ancestral::ancestral_seq::ancestral_reconstruct_sequences;
+use crate::ancestral::anc_graph::{create_graph, infer_graph};
+use crate::ancestral::anc_seq::reconstruct_ancestral_sequences;
+use crate::ancestral::run_anc_method::run_anc_method;
 use crate::cli::treetime_cli::TreetimeAncestralArgs;
 use crate::gtr::get_gtr::get_gtr;
 use crate::io::fasta::{FastaRecord, FastaWriter};
@@ -19,7 +19,7 @@ pub struct TreetimeAncestralParams {
   pub fixed_pi: bool,
 }
 
-pub fn run_ancestral(ancestral_args: &TreetimeAncestralArgs) -> Result<(), Report> {
+pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> Result<(), Report> {
   let TreetimeAncestralArgs {
     input_fastas,
     aln,
@@ -53,7 +53,7 @@ pub fn run_ancestral(ancestral_args: &TreetimeAncestralArgs) -> Result<(), Repor
 
   let ancestral_params = TreetimeAncestralParams::default();
 
-  run_ancestral_reconstruction(
+  run_anc_method(
     &sequence_data,
     &alphabet,
     &model,
@@ -63,7 +63,7 @@ pub fn run_ancestral(ancestral_args: &TreetimeAncestralArgs) -> Result<(), Repor
     &ancestral_params,
   )?;
 
-  let fasta_records = ancestral_reconstruct_sequences(&sequence_data, &graph, ancestral_args, &ancestral_params);
+  let fasta_records = reconstruct_ancestral_sequences(&sequence_data, &graph, ancestral_args, &ancestral_params);
 
   let fasta_file = create_file(outdir.join("ancestral_sequences.fasta"))?;
   let mut fasta_writer = FastaWriter::new(fasta_file);

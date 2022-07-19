@@ -1,7 +1,7 @@
 use ctor::ctor;
 use eyre::Report;
 use log::info;
-use treetime::ancestral::run_ancestral::run_ancestral;
+use treetime::ancestral::run_ancestral_reconstruction::run_ancestral_reconstruction;
 use treetime::cli::treetime_cli::{generate_shell_completions, treetime_parse_cli_args, TreetimeCommands};
 use treetime::clock::run_clock::run_clock;
 use treetime::homoplasy::run_homoplasy::run_homoplasy;
@@ -25,7 +25,7 @@ fn main() -> Result<(), Report> {
   match args.command {
     TreetimeCommands::Timetree(timetree_args) => {}
     TreetimeCommands::Ancestral(ancestral_args) => {
-      run_ancestral(&ancestral_args)?;
+      run_ancestral_reconstruction(&ancestral_args)?;
     }
     TreetimeCommands::Clock(clock_args) => {
       run_clock(&clock_args)?;
