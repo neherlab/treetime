@@ -28,6 +28,7 @@
 /\.build
 /\.cache
 /\.env
+/data_dev/
 /packages/**/target
 /target
 /test/treetime_examples

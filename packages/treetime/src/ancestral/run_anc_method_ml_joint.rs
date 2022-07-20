@@ -26,6 +26,48 @@ pub fn run_anc_method_ml_joint(
   ancestral_args: &TreetimeAncestralArgs,
   ancestral_params: &TreetimeAncestralParams,
 ) -> Result<(), Report> {
+  traverse_backward(
+    sequence_data,
+    alphabet,
+    model,
+    graph,
+    rng,
+    ancestral_args,
+    ancestral_params,
+  );
+
+  compute_roots(
+    sequence_data,
+    alphabet,
+    model,
+    graph,
+    rng,
+    ancestral_args,
+    ancestral_params,
+  )?;
+
+  traverse_forward(
+    sequence_data,
+    alphabet,
+    model,
+    graph,
+    rng,
+    ancestral_args,
+    ancestral_params,
+  );
+
+  Ok(())
+}
+
+fn traverse_backward(
+  sequence_data: &SequenceData,
+  alphabet: &Alphabet,
+  model: &GTR,
+  graph: &mut AncestralGraph,
+  rng: &mut impl Rng,
+  ancestral_args: &TreetimeAncestralArgs,
+  ancestral_params: &TreetimeAncestralParams,
+) {
   let L = sequence_data.len_compressed();
   let n_states = alphabet.len();
 
@@ -114,7 +156,17 @@ pub fn run_anc_method_ml_joint(
       }
     },
   );
+}
 
+fn compute_roots(
+  sequence_data: &SequenceData,
+  alphabet: &Alphabet,
+  model: &GTR,
+  graph: &mut AncestralGraph,
+  rng: &mut impl Rng,
+  ancestral_args: &TreetimeAncestralArgs,
+  ancestral_params: &TreetimeAncestralParams,
+) -> Result<(), Report> {
   // root node profile = likelihood of the total tree
   let msg_from_children = {
     let non_root_joint_Lxs = graph.filter_map(|node| {
@@ -131,49 +183,59 @@ pub fn run_anc_method_ml_joint(
   };
 
   // TODO: consider case when there's multiple roots
-  {
-    let mut roots = graph.get_roots();
-    if roots.len() > 1 {
-      // TODO: consider case when there's multiple roots
-      unimplemented!("The case of multiple roots is not implemented");
-    }
-
-    let root = &mut roots[0];
-    let root = root.write();
-    let root = root.payload();
-    let mut root = root.write();
-
-    // Pi(i) * Prod_ch Lch(i)
-    let root_joint_Lx = &msg_from_children + &log(&model.pi).t();
-    root.joint_Lx = root_joint_Lx;
-
-    let normalized_profile = (&root.joint_Lx.t() - &max_axis(&root.joint_Lx, Axis(1))).t().to_owned();
-
-    // choose sequence characters from this profile.
-    // treat root node differently to avoid piling up mutations on the longer branch
-    let normalized_profile = exp(&normalized_profile);
-    let Prof2SeqResult {
-      prof_values,
-      seq,
-      seq_ii,
-    } = prof2seq(
-      &normalized_profile,
-      model,
-      rng,
-      &Prof2SeqParams {
-        should_sample_from_profile: ancestral_params.sample_from_profile,
-        should_normalize_profile: false,
-      },
-    )?;
-
-    // compute the likelihood of the most probable root sequence
-    let root_joint_Lx_t = root.joint_Lx.t();
-    let sequence_LH = choose2(&seq_ii, &root_joint_Lx_t);
-    let sequence_joint_LH = (&sequence_LH * &sequence_data.multiplicity()).sum();
-    root.seq = seq;
-    root.seq_ii = seq_ii;
+  let mut roots = graph.get_roots();
+  if roots.len() > 1 {
+    // TODO: consider case when there's multiple roots
+    unimplemented!("The case of multiple roots is not implemented");
   }
 
+  let root = &mut roots[0];
+  let root = root.write();
+  let root = root.payload();
+  let mut root = root.write();
+
+  // Pi(i) * Prod_ch Lch(i)
+  let root_joint_Lx = &msg_from_children + &log(&model.pi).t();
+  root.joint_Lx = root_joint_Lx;
+
+  let normalized_profile = (&root.joint_Lx.t() - &max_axis(&root.joint_Lx, Axis(1))).t().to_owned();
+
+  // choose sequence characters from this profile.
+  // treat root node differently to avoid piling up mutations on the longer branch
+  let normalized_profile = exp(&normalized_profile);
+  let Prof2SeqResult {
+    prof_values,
+    seq,
+    seq_ii,
+  } = prof2seq(
+    &normalized_profile,
+    model,
+    rng,
+    &Prof2SeqParams {
+      should_sample_from_profile: ancestral_params.sample_from_profile,
+      should_normalize_profile: false,
+    },
+  )?;
+
+  // compute the likelihood of the most probable root sequence
+  let root_joint_Lx_t = root.joint_Lx.t();
+  let sequence_LH = choose2(&seq_ii, &root_joint_Lx_t);
+  let sequence_joint_LH = (&sequence_LH * &sequence_data.multiplicity()).sum();
+  root.seq = seq;
+  root.seq_ii = seq_ii;
+
+  Ok(())
+}
+
+fn traverse_forward(
+  sequence_data: &SequenceData,
+  alphabet: &Alphabet,
+  model: &GTR,
+  graph: &mut AncestralGraph,
+  rng: &mut impl Rng,
+  ancestral_args: &TreetimeAncestralArgs,
+  ancestral_params: &TreetimeAncestralParams,
+) {
   graph.par_iter_breadth_first_forward(
     |GraphNodeForward {
        is_root,
@@ -204,6 +266,4 @@ pub fn run_anc_method_ml_joint(
       node.seq = choose1(&node.seq_ii, &alphabet.alphabet);
     },
   );
-
-  Ok(())
 }
