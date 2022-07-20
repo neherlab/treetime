@@ -1,0 +1,39 @@
+[package]
+name = "intel-mkl-sys"
+version = "0.2.0+mkl2020.1"
+authors = ["Toshiki Teramura <toshiki.teramura@gmail.com>"]
+edition = "2018"
+
+description = "FFI for Intel(R) MKL"
+repository  = "https://github.com/rust-math/intel-mkl-src"
+keywords    = ["ffi"]
+license     = "MIT"
+
+[features]
+default = ["download", "mkl-static-lp64-seq"]
+
+# MKL config
+# https://software.intel.com/content/www/us/en/develop/articles/intel-math-kernel-library-intel-mkl-and-pkg-config-tool.html
+mkl-static-lp64-iomp   = ["intel-mkl-src/mkl-static-lp64-iomp"]
+mkl-static-lp64-seq    = ["intel-mkl-src/mkl-static-lp64-seq"]
+mkl-static-ilp64-iomp  = ["intel-mkl-src/mkl-static-ilp64-iomp"]
+mkl-static-ilp64-seq   = ["intel-mkl-src/mkl-static-lp64-seq"]
+mkl-dynamic-lp64-iomp  = ["intel-mkl-src/mkl-dynamic-lp64-iomp"]
+mkl-dynamic-lp64-seq   = ["intel-mkl-src/mkl-dynamic-lp64-seq"]
+mkl-dynamic-ilp64-iomp = ["intel-mkl-src/mkl-dynamic-ilp64-iomp"]
+mkl-dynamic-ilp64-seq  = ["intel-mkl-src/mkl-dynamic-ilp64-seq"]
+
+# Enable downloading from AWS S3 when not found
+download = ["intel-mkl-src/download"]
+
+[dependencies]
+intel-mkl-src = { path = "../intel-mkl-src", version = "0.6.0", default-features = false }
+
+[dev-dependencies]
+criterion = "0.3.0"
+rand = "0.7.2"
+approx = "0.3.2"
+
+[[bench]]
+name = "cos"
+harness = false

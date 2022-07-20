@@ -1,5 +1,11 @@
 [workspace]
 
 members = [
-  "packages/*",
+  "packages/3rdparty/blas-src",
+  "packages/3rdparty/intel-mkl-src/intel-mkl-src",
+  "packages/3rdparty/intel-mkl-src/intel-mkl-sys",
+  "packages/3rdparty/intel-mkl-src/intel-mkl-tool",
+  "packages/3rdparty/ndarray-linalg/lax",
+  "packages/3rdparty/ndarray-linalg/ndarray-linalg",
+  "packages/treetime",
 ]

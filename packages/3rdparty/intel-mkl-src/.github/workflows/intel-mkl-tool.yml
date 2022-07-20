@@ -1,0 +1,41 @@
+name: intel-mkl-tool
+
+on:
+  push:
+    branches:
+      - master
+  pull_request: {}
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - windows-2019
+          - macos-10.15
+          - ubuntu-18.04
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@v1
+    - uses: actions-rs/cargo@v1
+      with:
+        command: test
+        args: --manifest-path=intel-mkl-tool/Cargo.toml
+      name: cargo-test
+    - uses: actions-rs/cargo@v1
+      with:
+        command: test
+        args: --manifest-path=intel-mkl-tool/Cargo.toml --no-default-features
+      name: cargo-test no-default-features
+
+  docker:
+    runs-on: ubuntu-18.04
+    strategy:
+      fail-fast: false
+      matrix:
+        target: ["test", "package", "seek", "seek-ubuntu", "seek-centos"]
+    steps:
+    - uses: actions/checkout@v1
+    - name: Test with mkl-rust container
+      run: make -C intel-mkl-tool ${{ matrix.target }}

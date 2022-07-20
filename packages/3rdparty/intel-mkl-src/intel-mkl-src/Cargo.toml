@@ -1,0 +1,37 @@
+[package]
+name = "intel-mkl-src"
+version = "0.6.0+mkl2020.1"
+authors = ["Toshiki Teramura <toshiki.teramura@gmail.com>"]
+edition = "2018"
+
+description = "Redistribution of Intel(R) MKL as a crate"
+repository = "https://github.com/rust-math/intel-mkl-src"
+keywords = ["fft", "blas", "lapack"]
+license-file = "../License.txt"
+readme = "../README.md"
+
+build = "build.rs"
+links = "mkl_core"
+
+[features]
+default = ["download", "mkl-static-lp64-seq"]
+
+# MKL config
+# https://software.intel.com/content/www/us/en/develop/articles/intel-math-kernel-library-intel-mkl-and-pkg-config-tool.html
+mkl-static-lp64-iomp   = []
+mkl-static-lp64-seq    = []
+mkl-static-ilp64-iomp  = []
+mkl-static-ilp64-seq   = []
+mkl-dynamic-lp64-iomp  = []
+mkl-dynamic-lp64-seq   = []
+mkl-dynamic-ilp64-iomp = []
+mkl-dynamic-ilp64-seq  = []
+
+# Enable downloading from AWS S3 when system MKL not found
+download = ["intel-mkl-tool/archive"]
+# (Experimental) Cache download archive ad $XDG_DATA_HOME/intel-mkl-tool/
+xdg-data-home = []
+
+[build-dependencies]
+anyhow = "1"
+intel-mkl-tool = { version = "0.2.0", path = "../intel-mkl-tool", default-features = false }

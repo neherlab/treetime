@@ -1,0 +1,32 @@
+[package]
+name = "blas-tests"
+version = "0.1.0"
+authors = ["bluss"]
+publish = false
+
+[lib]
+test = false
+
+[dev-dependencies]
+approx = "0.4"
+defmac = "0.2"
+num-traits = "0.2"
+num-complex = { version = "0.4", default-features = false }
+
+[dependencies]
+ndarray = { path = "../", features = ["approx", "blas"] }
+
+blas-src = { version = "0.8", optional = true }
+
+openblas-src = { version = "0.10", optional = true }
+netlib-src = { version = "0.8", optional = true }
+blis-src = { version = "0.2", features = ["system"], optional = true }
+
+[features]
+# Just for making an example and to help testing, , multiple different possible
+# configurations are selectable here.
+openblas-system = ["blas-src", "blas-src/openblas", "openblas-src/system"]
+openblas-cache = ["blas-src", "blas-src/openblas", "openblas-src/cache"]
+netlib = ["blas-src", "blas-src/netlib"]
+netlib-system = ["blas-src", "blas-src/netlib", "netlib-src/system"]
+blis-system = ["blas-src", "blas-src/blis", "blis-src/system"]
