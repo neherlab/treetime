@@ -23,7 +23,9 @@ fn main() -> Result<(), Report> {
   info!("{:#?}", &args);
 
   match args.command {
-    TreetimeCommands::Timetree(timetree_args) => {}
+    TreetimeCommands::Timetree(timetree_args) => {
+      run_timetree_estimation(timetree_args)?;
+    }
     TreetimeCommands::Ancestral(ancestral_args) => {
       run_ancestral_reconstruction(&ancestral_args)?;
     }

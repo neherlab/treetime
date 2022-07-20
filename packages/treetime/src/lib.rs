@@ -10,6 +10,7 @@ pub mod io;
 pub mod mugration;
 pub mod nuc_models;
 pub mod seq_utils;
+pub mod timetree;
 pub mod utils;
 
 #[cfg(test)]
