@@ -182,8 +182,8 @@ pub struct TreetimeTimetreeArgs {
 
   /// ignore tips that don't follow a loose clock, 'clock-filter=number of inter-quartile ranges from
   /// regression'. Default=3.0, set to 0 to switch off.
-  #[clap(long)]
-  pub clock_filter: Option<f64>,
+  #[clap(long, default_value = "3.0")]
+  pub clock_filter: f64,
 
   /// Reroot the tree using root-to-tip regression. Valid choices are 'min_dev', 'least-squares',
   /// and 'oldest'. 'least-squares' adjusts the root to minimize residuals of the root-to-tip vs

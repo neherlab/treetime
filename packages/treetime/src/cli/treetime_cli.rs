@@ -1,4 +1,10 @@
+#![allow(clippy::large_enum_variant)]
+#![allow(clippy::struct_excessive_bools)]
+
 use crate::ancestral::anc_args::TreetimeAncestralArgs;
+use crate::clock::timetree_args::TreetimeClockArgs;
+use crate::homoplasy::homoplasy_args::TreetimeHomoplasyArgs;
+use crate::mugration::mugration_args::TreetimeMugrationArgs;
 use crate::timetree::timetree_args::TreetimeTimetreeArgs;
 use crate::utils::global_init::setup_logger;
 use clap::{AppSettings, ArgEnum, CommandFactory, Parser, Subcommand};
@@ -79,15 +85,6 @@ pub enum TreetimeCommands {
   /// Estimates ancestral reassortment graph (ARG).
   Arg(TreetimeAncestralReassortmentGraphArgs),
 }
-
-#[derive(Parser, Debug)]
-pub struct TreetimeClockArgs;
-
-#[derive(Parser, Debug)]
-pub struct TreetimeHomoplasyArgs;
-
-#[derive(Parser, Debug)]
-pub struct TreetimeMugrationArgs;
 
 #[derive(Parser, Debug)]
 pub struct TreetimeAncestralReassortmentGraphArgs;
