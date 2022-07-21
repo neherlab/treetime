@@ -1,9 +1,9 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::alphabet::sequence_data::SequenceData;
+use crate::ancestral::anc_args::TreetimeAncestralArgs;
 use crate::ancestral::anc_graph::{create_graph, infer_graph};
 use crate::ancestral::anc_seq::reconstruct_ancestral_sequences;
 use crate::ancestral::run_anc_method::run_anc_method;
-use crate::cli::treetime_cli::TreetimeAncestralArgs;
 use crate::gtr::get_gtr::get_gtr;
 use crate::io::fasta::{FastaRecord, FastaWriter};
 use crate::io::file::create_file;

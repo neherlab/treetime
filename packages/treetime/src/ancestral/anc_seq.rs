@@ -1,7 +1,7 @@
 use crate::alphabet::sequence_data::SequenceData;
+use crate::ancestral::anc_args::TreetimeAncestralArgs;
 use crate::ancestral::anc_graph::{AncestralGraph, NodeType};
 use crate::ancestral::run_ancestral_reconstruction::TreetimeAncestralParams;
-use crate::cli::treetime_cli::TreetimeAncestralArgs;
 use crate::io::fasta::FastaRecord;
 use itertools::Itertools;
 

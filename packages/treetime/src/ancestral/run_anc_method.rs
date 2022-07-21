@@ -1,11 +1,11 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::alphabet::sequence_data::SequenceData;
+use crate::ancestral::anc_args::{MethodAncestral, TreetimeAncestralArgs};
 use crate::ancestral::anc_graph::AncestralGraph;
 use crate::ancestral::run_anc_method_fitch::run_anc_method_fitch;
 use crate::ancestral::run_anc_method_ml_joint::run_anc_method_ml_joint;
 use crate::ancestral::run_anc_method_ml_marginal::run_anc_method_ml_marginal;
 use crate::ancestral::run_ancestral_reconstruction::TreetimeAncestralParams;
-use crate::cli::treetime_cli::{MethodAncestral, TreetimeAncestralArgs};
 use crate::gtr::gtr::GTR;
 use eyre::Report;
 use rand::Rng;

@@ -1,8 +1,8 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::alphabet::sequence_data::SequenceData;
+use crate::ancestral::anc_args::TreetimeAncestralArgs;
 use crate::ancestral::anc_graph::{AncestralGraph, NodeType};
 use crate::ancestral::run_ancestral_reconstruction::TreetimeAncestralParams;
-use crate::cli::treetime_cli::TreetimeAncestralArgs;
 use crate::constants::{MIN_BRANCH_LENGTH, TINY_NUMBER};
 use crate::graph::graph::{GraphNodeBackward, GraphNodeForward, NodeEdgePair};
 use crate::gtr::gtr::GTR;
