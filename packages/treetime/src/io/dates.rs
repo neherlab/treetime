@@ -30,7 +30,7 @@ pub fn read_dates(
   let filepath = filepath.as_ref();
   let file = BufReader::new(File::open(&filepath)?);
   let delimiter =
-    guess_csv_delimiter(&filepath).wrap_err_with(|| format!("When guessing CSV delimiter for '{filepath:#?}'"))?;
+    guess_csv_delimiter(&filepath).wrap_err_with(|| format!("When guessing CSV delimiter for {filepath:#?}"))?;
 
   let mut reader = CsvReaderBuilder::new()
     .trim(Trim::All)
@@ -43,10 +43,10 @@ pub fn read_dates(
     .map_err(|err| eyre!("{err}"))?;
 
   let name_column_idx = get_col_name(&headers, &vec_of_owned!["name", "strain", "accession"], name_column)
-    .wrap_err_with(|| format!("When detecting name column in '{filepath:#?}'"))?;
+    .wrap_err_with(|| format!("When detecting name column in {filepath:#?}"))?;
 
   let date_column_idx = get_col_name(&headers, &vec_of_owned!["date"], date_column)
-    .wrap_err_with(|| format!("When detecting date column in '{filepath:#?}'"))?;
+    .wrap_err_with(|| format!("When detecting date column in {filepath:#?}"))?;
 
   reader
     .records()
