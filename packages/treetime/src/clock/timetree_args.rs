@@ -45,7 +45,7 @@ pub struct TreetimeClockArgs {
   /// CSV file with dates for nodes with 'node_name, date' where date is float (as in 2012.15)
   #[clap(long, short = 'd')]
   #[clap(value_hint = ValueHint::FilePath)]
-  pub dates: Option<PathBuf>,
+  pub dates: PathBuf,
 
   /// Label of the column to be used as taxon name
   #[clap(long)]
