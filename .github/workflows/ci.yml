@@ -5,7 +5,8 @@ on:
   push:
     branches:
       - master
-
+  workflow_dispatch:
+    
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref || github.run_id }}
   cancel-in-progress: true
@@ -24,24 +25,17 @@ jobs:
           - '3.9'
           - '3.10'
 
-    defaults:
-      run:
-        shell: bash -l {0}
-
     steps:
       - uses: actions/checkout@v3
-
-      - uses: conda-incubator/setup-miniconda@v2
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
-          activate-environment: test
-
-      - run: conda install numpy scipy biopython pandas matplotlib pytest
-
-      - run: python setup.py install
-
-      - run: conda info
-
-      - run: conda list
-
-      - run: bash test.sh
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest
+      - name: Install treetime
+        run: python -m pip install .
+      - name: Run tests
+        run: bash test.sh
