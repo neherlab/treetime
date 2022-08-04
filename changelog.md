@@ -1,5 +1,5 @@
 # 0.9.2
-big fix release:
+bug fix release:
  * CLI now works for windows (thanks @corneliusroemer for the fix)
  * fixes vcf parsing. haploid no-calls were not properly parsed and treated as reference (thanks @jodyphelan for the issue).
  * fix file names in CLI output. (thanks @gtonkinhill)
