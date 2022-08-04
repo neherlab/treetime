@@ -105,7 +105,6 @@ def read_vcf(vcf_file, ref_file=None):
     #Parses a 'normal' (not hetero or no-call) call depending if insertion+deletion, insertion,
     #deletion, or single bp subsitution
     def parseCall(snps, ins, pos, ref, alt):
-
         #Insertion where there are also deletions (special handling)
         if len(ref) > 1 and len(alt)>len(ref):
             for i in range(len(ref)):
@@ -209,8 +208,14 @@ def read_vcf(vcf_file, ref_file=None):
                         gt = sa.split(':')[0]
                     else: #if 'pseudo' VCF file (nextstrain output, or otherwise stripped)
                         gt = sa
-                    if gt == '0' or gt == '1': #for haploid calls in VCF
-                        gt = '0/0' if gt == '0' else '1/1'
+
+                    # convert haploid calls to pseudo diploid
+                    if gt == '0':
+                        gt = '0/0'
+                    elif gt == '1':
+                        gt = '1/1'
+                    elif gt == '.':
+                        gt = './.'
 
                     #ignore if ref call: '.' or '0/0', depending on VCF
                     if ('/' in gt and gt != '0/0') or ('|' in gt and gt != '0|0'):
