@@ -467,7 +467,6 @@ class SequenceData(object):
         """
         if self.ref is None:
             raise TypeError("SequenceData: sparse sequences can only be constructed when a reference sequence is defined")
-        sparse_seq = {}
 
         compressed_nonref_positions = self.full_to_compressed_sequence_map[self.nonref_positions]
         compressed_nonref_values = sequence[compressed_nonref_positions]
