@@ -73,11 +73,23 @@ This complexity should be disentangled and made more explicit.
 #### Steps
 
 * `TreeTime.run` which under the hood does
-  - (optional) reroot and clock filter
-  - calculate branch length models either via inferring ancestral sequences (if sequences are provided) or using the
-    branch length of the input tree and the sequence length
-  - infer initial time tree
-  - iterate of time tree estimation and optional steps like polytomy resolution or coalescent models.
+  - initial iteration:
+    - optimize the tree unless using the input branch length, otherwise infer ancestral sequences if an alignment is provided, remove unsupported branches.
+    - (optional) reroot and clock filter. This is happening with the
+    - `make_time_tree`: calculate branch length models either via inferring ancestral sequences (if sequences are provided) or using the branch length of the input tree and the sequence length
+    - `make_time_tree`: infer initial time tree
+  - subsequent iterations:
+    - one initial reroot
+    - optional step: coalescent models (most costly version only done in last iteration).
+    - optional step: polytomy resolution
+    - reinfer time tree and ancestral sequences
+  - finally: evaluate rate variation and determine confidence intervals
+* Happy path:
+  - `infer_ancestral_sequences`
+  - `reroot`
+  - `make_time_tree`
+
+
 
 #### Outputs:
 
