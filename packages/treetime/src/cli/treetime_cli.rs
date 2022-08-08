@@ -2,7 +2,7 @@
 #![allow(clippy::struct_excessive_bools)]
 
 use crate::ancestral::anc_args::TreetimeAncestralArgs;
-use crate::clock::timetree_args::TreetimeClockArgs;
+use crate::clock::clock_args::TreetimeClockArgs;
 use crate::homoplasy::homoplasy_args::TreetimeHomoplasyArgs;
 use crate::mugration::mugration_args::TreetimeMugrationArgs;
 use crate::timetree::timetree_args::TreetimeTimetreeArgs;

@@ -43,6 +43,7 @@ pub enum RerootMode {
   LeastSquares,
   MinDev,
   Oldest,
+  ClockFilter,
 }
 
 impl Default for RerootMode {

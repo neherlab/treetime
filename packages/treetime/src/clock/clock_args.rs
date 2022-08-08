@@ -1,7 +1,9 @@
 #![allow(clippy::large_enum_variant)]
 #![allow(clippy::struct_excessive_bools)]
 
-use crate::timetree::timetree_args::RerootMode;
+use crate::ancestral::anc_args::MethodAncestral;
+use crate::gtr::get_gtr::GtrModelName;
+use crate::timetree::timetree_args::{BranchLengthMode, RerootMode};
 use clap::{ArgEnum, Parser, ValueHint};
 use std::fmt::Debug;
 use std::path::PathBuf;
@@ -59,6 +61,28 @@ pub struct TreetimeClockArgs {
   #[clap(long)]
   pub sequence_length: Option<usize>,
 
+  /// GTR model to use
+  ///
+  /// '--gtr infer' will infer a model from the data. Alternatively, specify the model type. If the specified model requires additional options, use '--gtr-params' to specify those.
+  #[clap(long, short = 'g', arg_enum, default_value_t = GtrModelName::default())]
+  pub gtr: GtrModelName,
+
+  /// GTR parameters for the model specified by the --gtr argument. The parameters should be feed as 'key=value' list of parameters.
+  ///
+  /// Example: '--gtr K80 --gtr-params kappa=0.2 pis=0.25,0.25,0.25,0.25'.
+  ///
+  /// See the exact definitions of the parameters in the GTR creation methods in treetime/nuc_models.py or treetime/aa_models.py
+  #[clap(long)]
+  pub gtr_params: Vec<String>,
+
+  /// If set to 'input', the provided branch length will be used without modification. Note that branch lengths optimized by treetime are only accurate at short evolutionary distances.
+  #[clap(long, arg_enum, default_value_t = BranchLengthMode::default())]
+  pub branch_length_mode: BranchLengthMode,
+
+  /// Method used for reconstructing ancestral sequences
+  #[clap(long, arg_enum, default_value_t = MethodAncestral::default())]
+  pub method_anc: MethodAncestral,
+
   /// ignore tips that don't follow a loose clock, 'clock-filter=number of interquartile ranges from regression'. Default=3.0, set to 0 to switch off.
   #[clap(long, default_value = "3.0")]
   pub clock_filter: f64,
@@ -77,6 +101,9 @@ pub struct TreetimeClockArgs {
   /// root-to-tip distance and sampling time
   #[clap(long)]
   pub keep_root: bool,
+
+  #[clap(long)]
+  pub prune_short: bool,
 
   /// excess variance associated with terminal nodes accounting for overdispersion of the molecular
   /// clock
