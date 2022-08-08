@@ -20,17 +20,9 @@ pub struct TreetimeClockArgs {
   /// If no input files provided, the plain fasta input is read from standard input (stdin).
   ///
   /// See: https://en.wikipedia.org/wiki/FASTA_format
+  #[clap(long)]
   #[clap(value_hint = ValueHint::FilePath)]
-  #[clap(display_order = 1)]
-  pub input_fastas: Vec<PathBuf>,
-
-  /// REMOVED. Use positional arguments instead.
-  ///
-  /// Example: treetime Clock seq1.fasta seq2.fasta
-  #[clap(long, visible_alias("aln"))]
-  #[clap(value_hint = ValueHint::FilePath)]
-  #[clap(hide_long_help = true, hide_short_help = true)]
-  pub aln: Option<PathBuf>,
+  pub aln: Vec<PathBuf>,
 
   /// Name of file containing the tree in newick, nexus, or phylip format.
   ///

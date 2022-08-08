@@ -15,7 +15,7 @@ crate-type = ["lib"]
 
 [dependencies]
 approx = "0.5.1"
-argmin = { version = "0.5.1", features = ["ctrlc", "ndarray"] }
+argmin = { version = "0.6.0-rc.2", features = [] }
 atty = "0.2.14"
 bio = { version = "0.41.0", features = ["phylogeny"] }
 bio-types = { version = "0.12.1", features = ["phylogeny"] }

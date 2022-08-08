@@ -12,7 +12,6 @@ use eyre::Report;
 
 pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
   let TreetimeClockArgs {
-    input_fastas,
     aln,
     tree,
     vcf_reference,
@@ -43,7 +42,9 @@ pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
   // TODO: alphabet is hardcoded. Make it dynamic.
   let alphabet = Alphabet::new("nuc")?;
 
-  let sequence_data = SequenceData::new(input_fastas, alphabet.ambiguous())?;
+  if !aln.is_empty() {
+    let sequence_data = SequenceData::new(aln, alphabet.ambiguous())?;
+  }
 
   let model = get_gtr(gtr)?;
 

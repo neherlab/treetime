@@ -3,7 +3,7 @@ use crate::io::nwk::read_nwk;
 use color_eyre::Section;
 use eyre::{eyre, Report, WrapErr};
 use indexmap::IndexMap;
-use ndarray::Array1;
+use ndarray::{array, Array1};
 use std::fmt::{Display, Formatter};
 use std::path::Path;
 
@@ -31,6 +31,7 @@ pub type ClockGraph = GenericGraph<Node, Edge>;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum NodeType {
+  Root,
   Internal,
   Leaf(String),
 }
@@ -61,9 +62,9 @@ impl Node {
       mutation_length: 0.0,
       dist2root: 0.0,
       raw_date_constraint: 0.0,
-      Q: Default::default(),
-      Qtot: Default::default(),
-      O: Default::default(),
+      Q: Array1::zeros(6),
+      Qtot: Array1::zeros(6),
+      O: Array1::zeros(6),
     }
   }
 
@@ -77,9 +78,9 @@ impl Node {
       mutation_length: 0.0,
       dist2root: 0.0,
       raw_date_constraint: 0.0,
-      Q: Default::default(),
-      Qtot: Default::default(),
-      O: Default::default(),
+      Q: Array1::zeros(6),
+      Qtot: Array1::zeros(6),
+      O: Array1::zeros(6),
     }
   }
 }
@@ -155,6 +156,10 @@ pub fn create_graph(tree_path: impl AsRef<Path>) -> Result<ClockGraph, Report> {
   }
 
   graph.build()?;
+
+  for root in graph.get_roots() {
+    root.write().payload().write().node_type = NodeType::Root;
+  }
 
   Ok(graph)
 }

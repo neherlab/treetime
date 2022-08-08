@@ -4,8 +4,12 @@ use crate::clock::clock_graph::{ClockGraph, Node, NodeType};
 use crate::clock::graph_regression_policy::GraphNodeRegressionPolicy;
 use crate::clock::run_reroot::RerootParams;
 use crate::graph::graph::{GraphNodeBackward, NodeEdgePair};
-use ndarray::{array, Array1};
+use approx::{assert_ulps_ne, UlpsEq};
+use ndarray::{array, Array1, ArrayBase, Data, Ix1};
+use ndarray_linalg::Inverse;
+use num_traits::real::Real;
 use num_traits::Float;
+use petgraph::matrix_graph::Zero;
 
 const tavgii: usize = 0;
 const davgii: usize = 1;
@@ -77,7 +81,7 @@ pub fn calculate_averages<P: GraphNodeRegressionPolicy>(graph: &mut ClockGraph, 
 }
 
 /// Propagates means, variance, and covariances along a branch. Operates both towards the root and tips.
-fn propagate_averages(n: &Node, tv: Option<f64>, bv: f64, var: f64, outgroup: bool) -> Array1<f64> {
+pub fn propagate_averages(n: &Node, tv: Option<f64>, bv: f64, var: f64, outgroup: bool) -> Array1<f64> {
   match n.node_type {
     NodeType::Leaf(_) if !outgroup => match tv {
       None => Array1::<f64>::zeros(6),
@@ -113,5 +117,72 @@ fn propagate_averages(n: &Node, tv: Option<f64>, bv: f64, var: f64, outgroup: bo
         tmpQ[sii] * denom,
       ]
     }
+  }
+}
+
+#[derive(Debug, Clone)]
+pub struct BaseRegressionResult {
+  pub slope: f64,
+  pub intercept: f64,
+  pub chisq: f64,
+  pub hessian: Option<f64>,
+  pub cov: Option<f64>,
+}
+
+impl Default for BaseRegressionResult {
+  fn default() -> Self {
+    Self {
+      slope: 0.0,
+      intercept: 0.0,
+      chisq: 0.0,
+      hessian: None,
+      cov: None,
+    }
+  }
+}
+
+/// Calculates the regression coefficients for a given vector containing the averages of tip and
+/// branch quantities
+pub fn base_regression<S>(Q: &ArrayBase<S, Ix1>, slope: &Option<f64>) -> BaseRegressionResult
+where
+  S: Data<Elem = f64>,
+{
+  assert!(Q.iter().all(|x| x.is_finite()), "Non-finite values are invalid here");
+  assert_ulps_ne!(Q[sii], 0.0);
+  let V = Q[tsqii] - Q[tavgii].powf(2.0) / Q[sii];
+  assert!(
+    V > 0.0,
+    "No variation in sampling dates! Please specify your clock rate explicitly. Variance was: {V}"
+  );
+
+  let (slope, only_intercept) = match slope {
+    None => {
+      let slope = (Q[dtavgii] - Q[tavgii] * Q[davgii] / Q[sii]) / V;
+      (slope, false)
+    }
+    Some(slope) => (*slope, true),
+  };
+
+  let intercept = (Q[davgii] - Q[tavgii] * slope) / Q[sii];
+  let chisq = if V > 0.0 {
+    0.5 * (Q[dsqii] - Q[davgii].powf(2.0) / Q[sii] - (Q[dtavgii] - Q[davgii] * Q[tavgii] / Q[sii]).powf(2.0) / V)
+  } else {
+    0.5 * (Q[dsqii] - Q[davgii].powf(2.0) / Q[sii])
+  };
+
+  let (hessian, cov) = if !only_intercept {
+    let hessian = array![[Q[tsqii], Q[tavgii]], [Q[tavgii], Q[sii]]];
+    let cov = hessian.inv();
+    (Some(hessian), Some(cov))
+  } else {
+    (None, None)
+  };
+
+  BaseRegressionResult {
+    slope,
+    intercept,
+    chisq,
+    hessian: None,
+    cov: None,
   }
 }

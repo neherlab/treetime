@@ -1,8 +1,14 @@
-use crate::clock::clock_graph::{ClockGraph, Node};
+use crate::clock::clock_graph::{ClockGraph, Edge, Node, NodeType};
+use crate::clock::graph_regression::{base_regression, propagate_averages};
 use crate::clock::graph_regression_policy::{GraphNodeRegressionPolicy, GraphNodeRegressionPolicyReroot};
-use crate::graph::graph::GraphNodeForward;
+use crate::clock::minimize_scalar::minimize_scalar_brent_bounded;
+use crate::graph::graph::{GraphNodeForward, NodeEdgePair};
 use crate::timetree::timetree_args::RerootMode;
+use eyre::Report;
+use ndarray::Array1;
+use ndarray_stats::QuantileExt;
 use num_traits::Float;
+use statrs::statistics::Statistics;
 
 pub struct RerootParams {
   pub reroot: RerootMode,
@@ -77,7 +83,10 @@ impl Default for BestRoot {
 
 /// Determines the position on the tree that minimizes the bilinear product of the inverse
 /// covariance and the data vectors.
-fn find_best_root<P: GraphNodeRegressionPolicy>(graph: &mut ClockGraph, params: &RerootParams) -> BestRoot {
+fn find_best_root<P: GraphNodeRegressionPolicy>(
+  graph: &mut ClockGraph,
+  params: &RerootParams,
+) -> Result<BestRoot, Report> {
   // calculate_averages::<GraphNodeRegressionPolicyReroot>(graph, params);
 
   let best_root = BestRoot::default();
@@ -98,9 +107,13 @@ fn find_best_root<P: GraphNodeRegressionPolicy>(graph: &mut ClockGraph, params: 
       let bv = P::branch_value(n);
       let var = P::branch_variance(n);
 
-      let (x, chisq) = find_optimal_root_along_branch(n, tv, bv, var, params);
+      let bad_branch = n.bad_branch || parents.iter().any(|parent| parent.node.read().bad_branch);
 
-      unimplemented!();
+      let (x, chisq) = if bad_branch {
+        (f64::nan(), f64::infinity())
+      } else {
+        find_optimal_root_along_branch(n, &parents, tv, bv, var, params).unwrap()
+      };
 
       // if chisq<best_root["chisq"]:
       //     tmpQ = self.propagate_averages(n, tv, bv*x, var*x) \
@@ -130,38 +143,51 @@ fn find_best_root<P: GraphNodeRegressionPolicy>(graph: &mut ClockGraph, params: 
     },
   );
 
-  best_root
+  Ok(best_root)
 }
 
-fn find_optimal_root_along_branch(n: &Node, tv: Option<f64>, bv: f64, var: f64, params: &RerootParams) -> (f64, f64) {
-  unimplemented!();
+fn find_optimal_root_along_branch(
+  n: &Node,
+  parents: &[NodeEdgePair<Node, Edge>],
+  tv: Option<f64>,
+  bv: f64,
+  var: f64,
+  params: &RerootParams,
+) -> Result<(f64, f64), Report> {
+  let chisq_prox = match n.node_type {
+    NodeType::Leaf(_) => f64::infinity(),
+    _ => base_regression(&n.Qtot, &Some(params.slope)).chisq,
+  };
 
-  // from scipy.optimize import minimize_scalar
-  // def chisq(x):
-  //     tmpQ = self.propagate_averages(n, tv, bv*x, var*x) \
-  //          + self.propagate_averages(n, tv, bv*(1-x), var*(1-x), outgroup=True)
-  //     return base_regression(tmpQ, slope=slope)['chisq']
-  //
-  // if n.bad_branch or (n!=self.tree.root and n.up.bad_branch):
-  //     return np.nan, np.inf
-  //
-  //
-  // chisq_prox = np.inf if n.is_terminal() else base_regression(n.Qtot, slope=slope)['chisq']
-  // chisq_dist = np.inf if n==self.tree.root else base_regression(n.up.Qtot, slope=slope)['chisq']
-  //
-  // grid = np.linspace(0.001,0.999,6)
-  // chisq_grid = np.array([chisq(x) for x in grid])
-  // min_chisq = chisq_grid.min()
-  // if chisq_prox<=min_chisq:
-  //     return 0.0, chisq_prox
-  // elif chisq_dist<=min_chisq:
-  //     return 1.0, chisq_dist
-  // else:
-  //     ii = np.argmin(chisq_grid)
-  //     bounds = (0 if ii==0 else grid[ii-1], 1.0 if ii==len(grid)-1 else grid[ii+1])
-  //     sol = minimize_scalar(chisq, bounds=bounds, method="bounded")
-  //     if sol["success"]:
-  //         return sol['x'], sol['fun']
-  //     else:
-  //         return np.nan, np.inf
+  let chisq_dist = if n.node_type == NodeType::Root {
+    f64::infinity()
+  } else {
+    if parents.len() != 1 {
+      unimplemented!("Multiple parents are not yet supported")
+    };
+    let parent_node = &parents[0].node.read();
+    base_regression(&parent_node.Qtot, &Some(params.slope)).chisq
+  };
+
+  let cost_function = |x: f64| {
+    let tmpQ = propagate_averages(n, tv, bv * x, var * x, false)
+      + propagate_averages(n, tv, bv * (1.0 - x), var * (1.0 - x), true);
+    base_regression(&tmpQ, &Some(params.slope)).chisq
+  };
+
+  let grid = Array1::<f64>::linspace(0.001, 0.999, 6);
+  let chisq_grid = Array1::from_iter(grid.map(|x| cost_function(*x)));
+  let min_chisq = chisq_grid.clone().min();
+
+  Ok(if chisq_prox <= min_chisq {
+    (0.0, chisq_prox)
+  } else if chisq_dist <= min_chisq {
+    (1.0, chisq_dist)
+  } else {
+    let ii = chisq_grid.argmin()?;
+    let bounds_from = if ii == 0 { 0.0 } else { grid[ii - 1] };
+    let bounds_to = if ii == grid.len() - 1 { 1.0 } else { grid[ii + 1] };
+    minimize_scalar_brent_bounded(cost_function, (bounds_from, bounds_to))
+      .unwrap_or_else(|_| (f64::nan(), f64::infinity()))
+  })
 }
