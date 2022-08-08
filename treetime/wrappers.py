@@ -162,7 +162,7 @@ def plot_rtt(tt, fname):
 
 def export_sequences_and_tree(tt, basename, is_vcf=False, zero_based=False,
                               report_ambiguous=False, timetree=False, confidence=False,
-                              reconstruct_tip_states=False, tree_suffix={}):
+                              reconstruct_tip_states=False, tree_suffix=''):
     seq_info = is_vcf or tt.aln
     if is_vcf:
         outaln_name = basename + f'ancestral_sequences{tree_suffix}.vcf'

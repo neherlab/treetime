@@ -135,7 +135,7 @@ def add_reroot_group(parser):
                   "the residual of the regression of root-to-tip distance and sampling time")
     parser.add_argument('--tip-slack', type=float, default=3,
                               help="excess variance associated with terminal nodes accounting for "
-                                   " overdisperion of the molecular clock")
+                                   " overdispersion of the molecular clock")
     parser.add_argument('--covariation', action='store_true', help="Account for covariation when estimating rates "
                         "or rerooting using root-to-tip regression, default False.")
 
@@ -155,7 +155,7 @@ def add_anc_arguments(parser):
     parser.add_argument('--reconstruct-tip-states', default = False, action='store_true', help='overwrite ambiguous states on tips with the most likely inferred state')
     parser.add_argument('--report-ambiguous', default=False, action="store_true", help='include transitions involving ambiguous states')
     parser.add_argument('--method-anc', default='probabilistic', type=str, choices = ['parsimony', 'fitch', 'probabilistic', 'ml'],
-                        help="method uesed for reconstructing ancestral sequences, default is 'probabilistic'")
+                        help="method used for reconstructing ancestral sequences, default is 'probabilistic'")
 
 
 def add_common_args(parser):

@@ -1,3 +1,9 @@
+# 0.9.2
+bug fix release:
+ * CLI now works for windows (thanks @corneliusroemer for the fix)
+ * fixes vcf parsing. haploid no-calls were not properly parsed and treated as reference (thanks @jodyphelan for the issue).
+ * fix file names in CLI output. (thanks @gtonkinhill)
+
 # 0.9.1
 This release is mostly a bug-fix release and contains some additional safeguards against unwanted side-effects of greedy polytomy resolution.
 
