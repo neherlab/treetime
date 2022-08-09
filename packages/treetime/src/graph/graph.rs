@@ -10,9 +10,6 @@ use petgraph::visit::Walker;
 use std::borrow::{Borrow, BorrowMut};
 use std::fmt::{Debug, Display};
 use std::io::Write;
-use std::iter::Map;
-use std::ops::DerefMut;
-use std::slice::Iter;
 use std::sync::Arc;
 
 pub type SafeNode<N, E> = Arc<RwLock<Node<N, E>>>;
@@ -145,7 +142,7 @@ where
 
   /// Iterates nodes synchronously and in unspecified order
   pub fn for_each<T, F>(&self, f: &mut dyn FnMut(GraphNodeSafe<N, E>)) {
-    self.nodes.iter().for_each(|node| f(GraphNodeSafe::from_node(&node)));
+    self.nodes.iter().for_each(|node| f(GraphNodeSafe::from_node(node)));
   }
 
   /// Iterates nodes synchronously and in unspecified order
@@ -156,7 +153,7 @@ where
     self
       .nodes
       .iter()
-      .map(|node| f(GraphNodeSafe::from_node(&node)))
+      .map(|node| f(GraphNodeSafe::from_node(node)))
       .collect_vec()
   }
 
@@ -209,8 +206,19 @@ where
       .collect_vec()
   }
 
-  pub fn node_count(&self) -> usize {
+  #[inline]
+  pub fn num_nodes(&self) -> usize {
     self.nodes.len()
+  }
+
+  #[inline]
+  pub fn num_roots(&self) -> usize {
+    self.roots.len()
+  }
+
+  #[inline]
+  pub fn num_leaves(&self) -> usize {
+    self.leaves.len()
   }
 
   pub fn get_roots(&self) -> Vec<Arc<RwLock<Node<N, E>>>> {

@@ -6,6 +6,7 @@ use eyre::{eyre, Report, WrapErr};
 use itertools::Itertools;
 use lazy_static::lazy_static;
 use regex::Regex;
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
@@ -16,17 +17,24 @@ pub enum DateOrRange {
   YearFractionRange((f64, f64)),
 }
 
-#[derive(Clone, Debug)]
-pub struct DateRecord {
-  name: String,
-  date: DateOrRange,
+impl DateOrRange {
+  #[inline]
+  pub fn mean(&self) -> f64 {
+    match self {
+      DateOrRange::YearFraction(date) => *date,
+      DateOrRange::YearFractionRange((begin, end)) => (begin + end) / 2.0,
+    }
+  }
 }
+
+pub type DatesMap = HashMap<String, DateOrRange>;
+pub type DateRecord = (String, DateOrRange);
 
 pub fn read_dates(
   filepath: impl AsRef<Path>,
   name_column: &Option<String>,
   date_column: &Option<String>,
-) -> Result<Vec<DateRecord>, Report> {
+) -> Result<DatesMap, Report> {
   let filepath = filepath.as_ref();
   let file = BufReader::new(File::open(&filepath)?);
   let delimiter =
@@ -55,7 +63,7 @@ pub fn read_dates(
       let record = record?;
       convert_record(index, &record, name_column_idx, date_column_idx)
     })
-    .collect::<Result<Vec<DateRecord>, Report>>()
+    .collect::<Result<DatesMap, Report>>()
 }
 
 pub fn convert_record(
@@ -75,7 +83,7 @@ pub fn convert_record(
 
   let date = parse_date(date).wrap_err_with(|| format!("Row '{index}': When parsing date column"))?;
 
-  Ok(DateRecord { name, date })
+  Ok((name, date))
 }
 
 pub fn parse_date(date_str: &str) -> Result<DateOrRange, Report> {

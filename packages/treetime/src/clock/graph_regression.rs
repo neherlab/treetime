@@ -1,6 +1,7 @@
 #![allow(non_upper_case_globals)]
+#![allow(non_snake_case)]
 
-use crate::clock::clock_graph::{ClockGraph, Node, NodeType};
+use crate::clock::clock_graph::{ClockGraph, Node};
 use crate::clock::graph_regression_policy::GraphNodeRegressionPolicy;
 use crate::clock::run_reroot::RerootParams;
 use crate::graph::graph::{GraphNodeBackward, GraphNodeForward, NodeEdgePair};
@@ -87,7 +88,6 @@ pub fn calculate_averages<P: GraphNodeRegressionPolicy>(graph: &mut ClockGraph, 
 
 /// Propagates means, variance, and covariances along a branch. Operates both towards the root and tips.
 pub fn propagate_averages(n: &Node, tv: Option<f64>, bv: f64, var: f64, outgroup: bool) -> Array1<f64> {
-  dbg!(&n);
   if n.is_leaf() && !outgroup {
     match tv {
       None => Array1::<f64>::zeros(6),

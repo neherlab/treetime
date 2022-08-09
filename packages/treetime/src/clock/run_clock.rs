@@ -50,7 +50,7 @@ pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
 
   let mut graph = match tree {
     None => infer_graph()?,
-    Some(tree) => create_graph(tree)?,
+    Some(tree) => create_graph(tree, &dates)?,
   };
 
   graph.print_graph(create_file(outdir.join("graph_input.dot"))?)?;

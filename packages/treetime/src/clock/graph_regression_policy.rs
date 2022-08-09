@@ -15,9 +15,10 @@ pub struct GraphNodeRegressionPolicyReroot;
 impl GraphNodeRegressionPolicy for GraphNodeRegressionPolicyReroot {
   #[inline]
   fn tip_value(node: &Node) -> Option<f64> {
-    match node.node_type {
-      NodeType::Leaf(_) if !node.bad_branch => Some(node.raw_date_constraint),
-      _ => None,
+    if node.is_leaf() && !node.bad_branch {
+      node.raw_date_constraint
+    } else {
+      None
     }
   }
 

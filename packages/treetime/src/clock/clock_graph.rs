@@ -1,11 +1,15 @@
-use crate::graph::graph::{Graph as GenericGraph, Weighted};
+use crate::graph::graph::{Graph as GenericGraph, Graph, GraphNodeBackward, GraphNodeForward, Weighted};
+use crate::io::dates::{DateOrRange, DatesMap};
 use crate::io::nwk::read_nwk;
+use crate::make_error;
 use color_eyre::Section;
 use eyre::{eyre, Report, WrapErr};
 use indexmap::IndexMap;
-use ndarray::{array, Array1};
+use ndarray::Array1;
 use std::fmt::{Display, Formatter};
 use std::path::Path;
+use std::sync::atomic::AtomicUsize;
+use std::sync::atomic::Ordering::Relaxed;
 
 pub type ClockGraph = GenericGraph<Node, Edge>;
 
@@ -45,7 +49,7 @@ pub struct Node {
   pub branch_length: f64,
   pub mutation_length: f64,
   pub dist2root: f64,
-  pub raw_date_constraint: f64,
+  pub raw_date_constraint: Option<f64>,
   pub Q: Array1<f64>,
   pub Qtot: Array1<f64>,
   pub O: Array1<f64>,
@@ -61,7 +65,7 @@ impl Node {
       branch_length: 0.0,
       mutation_length: 0.0,
       dist2root: 0.0,
-      raw_date_constraint: 0.0,
+      raw_date_constraint: None,
       Q: Array1::zeros(6),
       Qtot: Array1::zeros(6),
       O: Array1::zeros(6),
@@ -77,7 +81,7 @@ impl Node {
       branch_length: 0.0,
       mutation_length: 0.0,
       dist2root: 0.0,
-      raw_date_constraint: 0.0,
+      raw_date_constraint: None,
       Q: Array1::zeros(6),
       Qtot: Array1::zeros(6),
       O: Array1::zeros(6),
@@ -85,12 +89,12 @@ impl Node {
   }
 
   #[inline]
-  pub fn is_root(&self) -> bool {
+  pub const fn is_root(&self) -> bool {
     matches!(self.node_type, NodeType::Root)
   }
 
   #[inline]
-  pub fn is_leaf(&self) -> bool {
+  pub const fn is_leaf(&self) -> bool {
     matches!(self.node_type, NodeType::Leaf(_))
   }
 }
@@ -118,7 +122,7 @@ pub fn infer_graph() -> Result<ClockGraph, Report> {
   unimplemented!("Not implemented: Graph inference is not yet implemented. Please provide the `--tree` argument.")
 }
 
-pub fn create_graph(tree_path: impl AsRef<Path>) -> Result<ClockGraph, Report> {
+pub fn create_graph(tree_path: impl AsRef<Path>, dates: &DatesMap) -> Result<ClockGraph, Report> {
   let nwk_tree = read_nwk(tree_path)
     .wrap_err("When parsing input tree")
     .with_section(|| "Note: only Newick format is currently supported")?;
@@ -167,9 +171,54 @@ pub fn create_graph(tree_path: impl AsRef<Path>) -> Result<ClockGraph, Report> {
 
   graph.build()?;
 
+  // Mark roots
   for root in graph.get_roots() {
     root.write().payload().write().node_type = NodeType::Root;
   }
 
+  assign_dates(&mut graph, dates)?;
+
   Ok(graph)
+}
+
+pub fn assign_dates(graph: &mut ClockGraph, dates: &DatesMap) -> Result<(), Report> {
+  // Add dates and mark bad branches
+  let num_bad_branches = AtomicUsize::new(0);
+  let num_dates = AtomicUsize::new(0);
+  graph.par_iter_breadth_first_backward(
+    |GraphNodeBackward {
+       is_root,
+       is_leaf,
+       key,
+       payload: node,
+       children,
+     }| {
+      node.raw_date_constraint = dates.get(&node.name).map(DateOrRange::mean);
+      if node.raw_date_constraint.is_none() {
+        if node.is_leaf() {
+          // Terminal nodes without date constraints marked as 'bad'
+          node.bad_branch = true;
+          num_bad_branches.fetch_add(1, Relaxed);
+        } else {
+          // If all branches downstream are 'bad', and there is no date constraint for this node, the branch is marked as 'bad'
+          node.bad_branch = children.iter().all(|child| child.node.read().bad_branch);
+        }
+      } else {
+        num_dates.fetch_add(1, Relaxed);
+      }
+    },
+  );
+
+  let num_bad_branches = num_bad_branches.into_inner();
+  let num_dates = num_dates.into_inner();
+  if num_bad_branches > graph.num_leaves() - 3 {
+    return make_error!(
+      "Not enough date constraints: total leaves {}, total dates: {}, bad branches: {}",
+      graph.num_leaves(),
+      num_dates,
+      num_bad_branches
+    );
+  };
+
+  Ok(())
 }
