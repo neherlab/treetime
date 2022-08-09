@@ -72,7 +72,7 @@ pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
         force_positive: false,
         keep_node_order: false,
       },
-    );
+    )?;
   }
 
   run_clock_model(&mut graph);

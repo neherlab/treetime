@@ -83,6 +83,16 @@ impl Node {
       O: Array1::zeros(6),
     }
   }
+
+  #[inline]
+  pub fn is_root(&self) -> bool {
+    matches!(self.node_type, NodeType::Root)
+  }
+
+  #[inline]
+  pub fn is_leaf(&self) -> bool {
+    matches!(self.node_type, NodeType::Leaf(_))
+  }
 }
 
 impl Display for Node {
