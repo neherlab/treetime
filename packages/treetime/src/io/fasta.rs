@@ -24,8 +24,6 @@ const TTY_WARNING: &str = r#"Reading from standard input which is a TTY (e.g. an
     treetime sequences.fasta sequences2.fasta <your other flags>
 "#;
 
-
-
 #[derive(Clone, Default, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FastaRecord {
@@ -130,12 +128,7 @@ impl<'a> FastaReader<'a> {
         break;
       }
 
-      let fragment = self
-        .line
-        .trim_end()
-        .chars()
-        .into_iter()
-        .map(|c| c.to_ascii_uppercase());
+      let fragment = self.line.trim_end().chars().into_iter().map(|c| c.to_ascii_uppercase());
 
       record.seq.extend(fragment);
     }
