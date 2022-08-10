@@ -13,7 +13,6 @@ use crate::utils::ndarray::{
 use eyre::Report;
 use itertools::Itertools;
 use ndarray::{s, stack, Array2, ArrayBase, Axis};
-use petgraph::visit::Walker;
 use rand::Rng;
 use std::fmt::Display;
 

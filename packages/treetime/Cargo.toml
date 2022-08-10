@@ -33,12 +33,9 @@ derive_more = { version = "0.99.17" }
 env_logger = "0.9.0"
 eyre = "0.6.8"
 flate2 = "1.0.24"
-float-cmp = "0.9.0"
 indexmap = { version = "1.9.1", features = ["serde-1"] }
 itertools = "0.10.3"
-itertools-num = "0.1.3"
 lazy_static = "1.4.0"
-linfa = { version = "0.5.1", features = ["blas"] }
 log = "0.4.16"
 ndarray = { version = "0.15.4", features = ["rayon", "serde", "approx-0_5", "blas"] }
 ndarray-linalg = { version = "0.14.1", features = ["openblas-static"] }
@@ -50,24 +47,17 @@ num-integer = "0.1.44"
 num-traits = "0.2.14"
 num_cpus = "1.13.1"
 openblas-src = { version = "0.10.4", features = ["static"] }
-owo-colors = "3.3.0"
 parking_lot = { version = "0.12.1", features = ["deadlock_detection", "hardware-lock-elision"] }
-petgraph = "0.6.2"
-polars = { version = "0.20.0", features = ["ndarray", "performant", "random", "temporal", "serde"] }
 rand = { version = "0.8.5", features = ["serde1", "log"] }
 rand_distr = { version = "0.4.3", feaures = ["serde1", "std_math"] }
 rand_isaac = { version = "0.3.0", features = ["serde1"] }
-rand_pcg = { version = "0.3.1", features = ["serde1"] }
 rayon = "1.5.2"
 regex = { version = "1.6.0", features = [] }
-rustfft = "6.0.1"
 serde = { version = "1.0.136", features = ["derive"] }
 serde_json = { version = "1.0.79", features = ["preserve_order", "indexmap", "unbounded_depth"] }
-statrs = { version = "0.15.0", features = [] }
 strum = "0.24.0"
 strum_macros = "0.24.0"
 time = { version = "0.3.11", features = ["serde", "macros", "parsing"] }
-triple_accel = "0.4.0"
 xz2 = "0.1.7"
 zstd = { version = "0.11.2+zstd.1.5.2", features = ["zstdmt"] }
 

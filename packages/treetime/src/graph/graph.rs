@@ -6,7 +6,6 @@ use crate::graph::node::Node;
 use eyre::Report;
 use itertools::Itertools;
 use parking_lot::RwLock;
-use petgraph::visit::Walker;
 use std::borrow::{Borrow, BorrowMut};
 use std::fmt::{Debug, Display};
 use std::io::Write;

@@ -10,7 +10,6 @@ use ndarray::Array1;
 use ndarray_stats::QuantileExt;
 use num_traits::Float;
 use parking_lot::Mutex;
-use statrs::statistics::Statistics;
 
 pub struct RerootParams {
   pub reroot: RerootMode,
@@ -227,7 +226,7 @@ fn find_optimal_root_along_branch(
 
   let grid = Array1::<f64>::linspace(0.001, 0.999, 6);
   let chisq_grid = Array1::from_iter(grid.map(|x| cost_function(*x)));
-  let min_chisq = chisq_grid.clone().min();
+  let min_chisq = *chisq_grid.min()?;
 
   Ok(if chisq_prox <= min_chisq {
     (0.0, chisq_prox)

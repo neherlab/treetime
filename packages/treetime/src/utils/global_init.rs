@@ -1,8 +1,8 @@
 use crate::io::fs::filename_maybe;
 use crate::utils::datetime::{date_format_precise, date_now};
+use color_eyre::owo_colors::OwoColorize;
 use env_logger::Env;
 use log::{Level, LevelFilter, Record};
-use owo_colors::OwoColorize;
 use std::env;
 use std::io::Write;
 
