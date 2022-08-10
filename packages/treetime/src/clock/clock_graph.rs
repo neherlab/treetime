@@ -90,7 +90,7 @@ impl Display for Node {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Edge {
-  weight: f64,
+  pub weight: f64,
 }
 
 impl Weighted for Edge {}

@@ -35,8 +35,9 @@ pub fn calculate_averages<P: GraphNodeRegressionPolicy>(graph: &mut ClockGraph) 
       let mut Q = Array1::<f64>::zeros(6);
       for NodeEdgePair { node: c, edge } in children {
         let c = c.read();
+        let edge = edge.read();
         let tv = P::tip_value(&c);
-        let bv = P::branch_value(&c);
+        let bv = P::branch_value(&edge);
         let var = P::branch_variance(&c);
         Q += &propagate_averages(&c, tv, bv, var, false);
       }
@@ -58,29 +59,43 @@ pub fn calculate_averages<P: GraphNodeRegressionPolicy>(graph: &mut ClockGraph) 
 
       let mut O = Array1::<f64>::zeros(6);
 
-      for NodeEdgePair { node: parent, .. } in &parents {
-        let p = parent.read();
-        let tv = P::tip_value(&p);
-        let bv = P::branch_value(&p);
-        let var = P::branch_variance(&p);
-        O += &propagate_averages(&p, tv, bv, var, false);
+      for NodeEdgePair { node: parent, edge } in &parents {
+        let parent = parent.read();
+        let edge = edge.read();
+        let tv = P::tip_value(&parent);
+        let bv = P::branch_value(&edge);
+        let var = P::branch_variance(&parent);
+        O += &propagate_averages(&parent, tv, bv, var, false);
       }
 
-      for NodeEdgePair { node: parent, .. } in &parents {
-        let p = parent.read();
+      for NodeEdgePair { node: parent, edge } in &parents {
+        let parent = parent.read();
+        let edge = edge.read();
         if !node.is_root() {
-          let tv = P::tip_value(&p);
-          let bv = P::branch_value(&p);
-          let var = P::branch_variance(&p);
-          O += &propagate_averages(&p, tv, bv, var, true);
+          let tv = P::tip_value(&parent);
+          let bv = P::branch_value(&edge);
+          let var = P::branch_variance(&parent);
+          O += &propagate_averages(&parent, tv, bv, var, true);
         }
       }
 
       node.O = O;
 
       if !node.is_leaf() {
+        let bv = {
+          if parents.len() > 1 {
+            unimplemented!("Multiple parent nodes are not supported yet");
+          }
+
+          let mut bv = 0.0;
+          for NodeEdgePair { edge, .. } in &parents {
+            let edge = edge.read();
+            bv += P::branch_value(&edge);
+          }
+          bv
+        };
+
         let tv = P::tip_value(node);
-        let bv = P::branch_value(node);
         let var = P::branch_variance(node);
         node.Qtot = &node.Q + &propagate_averages(node, tv, bv, var, true);
       }
@@ -210,16 +225,14 @@ where
         return;
       }
 
-      node.v = P::branch_value(node);
-      {
-        if parents.len() > 1 {
-          unimplemented!("Multiple parent nodes are not supported yet");
-        }
-        for parent in parents {
-          let parent = parent.node.read();
-          node.v += parent.v;
-        }
-      };
+      if parents.len() > 1 {
+        unimplemented!("Multiple parent nodes are not supported yet");
+      }
+      for NodeEdgePair { node: parent, edge } in parents {
+        let parent = parent.read();
+        let edge = edge.read();
+        node.v += parent.v + P::branch_value(&edge);
+      }
     },
   );
 

@@ -1,5 +1,5 @@
 use crate::clock::clock_graph::{ClockGraph, Edge, Node, NodeType};
-use crate::clock::graph_regression::{base_regression, calculate_averages, propagate_averages};
+use crate::clock::graph_regression::{base_regression, propagate_averages};
 use crate::clock::graph_regression_policy::{GraphNodeRegressionPolicy, GraphNodeRegressionPolicyReroot};
 use crate::clock::minimize_scalar::minimize_scalar_brent_bounded;
 use crate::graph::graph::{GraphNodeForward, NodeEdgePair};
@@ -109,29 +109,41 @@ fn find_best_root_least_squares<P: GraphNodeRegressionPolicy>(
          is_root,
          is_leaf,
          key,
-         payload: n,
+         payload: node,
          parents,
        }| {
         if is_root {
           return;
         }
 
-        let tv = P::tip_value(n);
-        let bv = P::branch_value(n);
-        let var = P::branch_variance(n);
+        let bv = {
+          if parents.len() > 1 {
+            unimplemented!("Multiple parent nodes are not supported yet");
+          }
 
-        let bad_branch = n.bad_branch || parents.iter().any(|parent| parent.node.read().bad_branch);
+          let mut bv = 0.0;
+          for NodeEdgePair { edge, .. } in &parents {
+            let edge = edge.read();
+            bv += P::branch_value(&edge);
+          }
+          bv
+        };
+
+        let tv = P::tip_value(node);
+        let var = P::branch_variance(node);
+
+        let bad_branch = node.bad_branch || parents.iter().any(|parent| parent.node.read().bad_branch);
 
         let (x, chisq) = if bad_branch {
           (f64::nan(), f64::infinity())
         } else {
-          find_optimal_root_along_branch(n, &parents, tv, bv, var, params).unwrap()
+          find_optimal_root_along_branch(node, &parents, tv, bv, var, params).unwrap()
         };
 
         let mut best_root = best_root.lock();
         if chisq < best_root.chisq {
-          let tmpQ = propagate_averages(n, tv, bv * x, var * x, false)
-            + propagate_averages(n, tv, bv * (1.0 - x), var * (1.0 - x), true);
+          let tmpQ = propagate_averages(node, tv, bv * x, var * x, false)
+            + propagate_averages(node, tv, bv * (1.0 - x), var * (1.0 - x), true);
           let reg = base_regression(&tmpQ, &Some(params.slope));
 
           if reg.slope >= 0.0 || !params.force_positive {

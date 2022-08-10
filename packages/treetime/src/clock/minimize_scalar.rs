@@ -2,6 +2,8 @@ use argmin::core::observers::{ObserverMode, SlogLogger};
 use argmin::core::{CostFunction, Error, Executor, State};
 use argmin::solver::brent::BrentOpt;
 use eyre::Report;
+use log::log_enabled;
+use log::Level::Trace;
 
 struct CostFunctionWrapper<F>
 where
@@ -36,13 +38,15 @@ pub fn minimize_scalar_brent_bounded(problem: impl Fn(f64) -> f64, bounds: (f64,
   let problem = CostFunctionWrapper::new(problem);
   let solver = BrentOpt::new(bounds.0, bounds.1);
 
-  let res = Executor::new(problem, solver)
-    .configure(|state| state.max_iters(1000))
-    .add_observer(SlogLogger::term(), ObserverMode::Always)
-    .run()
-    .unwrap();
+  let mut executor = Executor::new(problem, solver).configure(|state| state.max_iters(1000));
 
-  let param = *res.state().get_best_param().unwrap();
-  let cost = res.state().get_best_cost();
+  if log_enabled!(Trace) {
+    executor = executor.add_observer(SlogLogger::term_noblock(), ObserverMode::NewBest);
+  }
+
+  let result = executor.run().unwrap();
+
+  let param = *result.state().get_best_param().unwrap();
+  let cost = result.state().get_best_cost();
   Ok((param, cost))
 }
