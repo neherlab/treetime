@@ -1071,7 +1071,7 @@ def estimate_clock_model(params):
                     tmp_str = ''
                 ofile.write("%s, %s, %f, %f\n"%(n.name, tmp_str, n.dist2root, clock_deviation))
             else:
-                ofile.write("%s, %f, %f, %f\n"%(n.name, d2d.numdate_from_dist2root(n.dist2root), n.dist2root, clock_deviation))
+                ofile.write("%s, %f, %f, 0.0\n"%(n.name, d2d.numdate_from_dist2root(n.dist2root), n.dist2root))
         for n in myTree.tree.get_nonterminals(order='preorder'):
             ofile.write("%s, %f, %f, 0.0\n"%(n.name, d2d.numdate_from_dist2root(n.dist2root), n.dist2root))
         print("--- wrote dates and root-to-tip distances to \n\t%s\n"%table_fname)
