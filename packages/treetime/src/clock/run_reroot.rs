@@ -24,7 +24,13 @@ pub struct RerootParams {
 /// Note that this can change the parent child relations of the tree and values associated with
 /// branches rather than nodes (e.g. confidence) might need to be re-evaluated afterwards
 pub fn run_reroot(graph: &mut ClockGraph, params: &RerootParams) -> Result<(), Report> {
-  let best_root = find_best_root::<GraphNodeRegressionPolicyReroot>(graph, params)?;
+  let best_root = match params.reroot {
+    RerootMode::LeastSquares => find_best_root_least_squares::<GraphNodeRegressionPolicyReroot>(graph, params),
+    RerootMode::MinDev => unimplemented!("'min dev' rerooting"),
+    RerootMode::Oldest => unimplemented!("'oldest' rerooting"),
+    RerootMode::ClockFilter => unimplemented!("'clock filter' rerooting"),
+    RerootMode::Mrca => unimplemented!("'MRCA' rerooting"),
+  }?;
 
   let best_node = graph
     .get_node(best_root.node_key as usize)
@@ -87,7 +93,7 @@ impl Default for BestRoot {
 
 /// Determines the position on the tree that minimizes the bilinear product of the inverse
 /// covariance and the data vectors.
-fn find_best_root<P: GraphNodeRegressionPolicy>(
+fn find_best_root_least_squares<P: GraphNodeRegressionPolicy>(
   graph: &mut ClockGraph,
   params: &RerootParams,
 ) -> Result<BestRoot, Report> {

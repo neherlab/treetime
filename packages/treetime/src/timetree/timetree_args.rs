@@ -44,6 +44,7 @@ pub enum RerootMode {
   MinDev,
   Oldest,
   ClockFilter,
+  Mrca,
 }
 
 impl Default for RerootMode {
