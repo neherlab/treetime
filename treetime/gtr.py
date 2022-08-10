@@ -951,7 +951,13 @@ class GTR(object):
             Array of values exp(lambda(i) * t),
             where (i) - alphabet index (the eigenvalue number).
         """
-        return np.exp(self.mu * t * self.eigenvals)
+        log_val = self.mu * t * self.eigenvals
+        if any(i > 10 for i in log_val):
+            raise ValueError("Error in computing exp(Q * t): Q has positive eigenvalues or the branch length t \n"
+                    "is too large. This is most likely caused by incorrect input data. If this error persists \n"
+                    "please let us know by filing an issue at: https://github.com/neherlab/treetime/issues")
+
+        return np.exp(log_val)
 
 
     def expQt(self, t):
