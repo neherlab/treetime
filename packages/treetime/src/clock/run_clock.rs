@@ -4,6 +4,7 @@ use crate::clock::graph_regression::calculate_averages;
 use crate::clock::graph_regression_policy::GraphNodeRegressionPolicyReroot;
 use crate::clock::run_clock_model::{run_clock_model, RunClockModelParams};
 use crate::clock::run_reroot::{run_reroot, RerootParams};
+use crate::io::csv::CsvStructFileWriter;
 use crate::io::dates::read_dates;
 use crate::io::file::create_file;
 use eyre::Report;
@@ -66,7 +67,10 @@ pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
     )?;
   }
 
-  let result = run_clock_model::<GraphNodeRegressionPolicyReroot>(&mut graph, &RunClockModelParams { slope })?;
+  let results = run_clock_model::<GraphNodeRegressionPolicyReroot>(&mut graph, &RunClockModelParams { slope })?;
+
+  let mut rtt_writer = CsvStructFileWriter::new(outdir.join("rtt.csv"), b',')?;
+  results.into_iter().try_for_each(|result| rtt_writer.write(&result))?;
 
   graph.print_graph(create_file(outdir.join("graph_output.dot"))?)?;
 
