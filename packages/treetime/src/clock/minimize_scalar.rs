@@ -1,7 +1,7 @@
 use argmin::core::observers::{ObserverMode, SlogLogger};
 use argmin::core::{CostFunction, Error, Executor, State};
 use argmin::solver::brent::BrentOpt;
-use eyre::Report;
+use eyre::{eyre, Report};
 use log::log_enabled;
 use log::Level::Trace;
 
@@ -44,9 +44,14 @@ pub fn minimize_scalar_brent_bounded(problem: impl Fn(f64) -> f64, bounds: (f64,
     executor = executor.add_observer(SlogLogger::term_noblock(), ObserverMode::NewBest);
   }
 
-  let result = executor.run().unwrap();
+  let result = executor.run().map_err(|err| eyre!("{err}"))?;
 
-  let param = *result.state().get_best_param().unwrap();
+  let param = *result
+    .state()
+    .get_best_param()
+    .ok_or_else(|| eyre!("Unable to get the best param"))?;
+
   let cost = result.state().get_best_cost();
+
   Ok((param, cost))
 }
