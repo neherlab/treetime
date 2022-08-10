@@ -1,3 +1,5 @@
+#![allow(clippy::self_named_module_files)]
+
 use ctor::ctor;
 use eyre::Report;
 use log::info;

@@ -3,11 +3,11 @@
 use crate::io::fasta::read_many_fasta;
 use eyre::Report;
 use itertools::Itertools;
-use ndarray::{s, Array1, Array2, ArrayBase, ArrayView, ArrayView1, Axis, Data, Ix1};
+use ndarray::{s, Array1, Array2, ArrayBase, ArrayView1, Axis, Data, Ix1};
 use polars::export::arrow::array::Array;
 use std::collections::HashMap;
 use std::fmt::Write as _;
-use std::path::{Iter, Path};
+use std::path::Path;
 
 #[derive(Clone, Debug)]
 pub struct Sequence {
@@ -75,6 +75,8 @@ impl SequenceData {
 
     // TODO: `additional_constant_sites`: where does it come from?
     let additional_constant_sites: Option<usize> = None;
+
+    #[allow(clippy::self_assignment)]
     if let Some(additional_constant_sites) = additional_constant_sites {
       add_additional_constant_sites();
       // TODO: full length should change here

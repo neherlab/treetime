@@ -16,7 +16,7 @@ impl<F> CostFunctionWrapper<F>
 where
   F: Fn(f64) -> f64,
 {
-  pub fn new(problem: F) -> Self {
+  pub const fn new(problem: F) -> Self {
     Self { problem }
   }
 }
