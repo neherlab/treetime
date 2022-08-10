@@ -48,6 +48,7 @@ ndarray_einsum_beta = "0.7.0"
 num = "0.4.0"
 num-integer = "0.1.44"
 num-traits = "0.2.14"
+num_cpus = "1.13.1"
 openblas-src = { version = "0.10.4", features = ["static"] }
 owo-colors = "3.3.0"
 parking_lot = { version = "0.12.1", features = ["deadlock_detection", "hardware-lock-elision"] }

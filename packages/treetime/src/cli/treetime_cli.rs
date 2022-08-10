@@ -15,6 +15,7 @@ use eyre::{eyre, Report};
 use itertools::Itertools;
 use lazy_static::lazy_static;
 use log::LevelFilter;
+use num_cpus;
 use std::fmt::Debug;
 use std::io;
 use std::str::FromStr;
@@ -48,6 +49,10 @@ pub struct TreetimeArgs {
   /// Disable all console output. Same as --verbosity=off
   #[clap(long, global = true, conflicts_with = "verbose", conflicts_with = "verbosity")]
   pub silent: bool,
+
+  /// Number of processing jobs. If not specified, all available CPU threads will be used.
+  #[clap(global = true, long, short = 'j', default_value_t = num_cpus::get())]
+  pub jobs: usize,
 }
 
 #[derive(Subcommand, Debug)]

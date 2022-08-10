@@ -23,6 +23,8 @@ fn main() -> Result<(), Report> {
 
   info!("{:#?}", &args);
 
+  rayon::ThreadPoolBuilder::new().num_threads(args.jobs).build_global()?;
+
   match args.command {
     TreetimeCommands::Timetree(timetree_args) => {
       run_timetree_estimation(&timetree_args)?;

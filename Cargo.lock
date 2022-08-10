@@ -2651,6 +2651,7 @@ dependencies = [
  "num",
  "num-integer",
  "num-traits",
+ "num_cpus",
  "openblas-src",
  "owo-colors",
  "parking_lot",
