@@ -1,6 +1,8 @@
 use crate::clock::clock_args::TreetimeClockArgs;
 use crate::clock::clock_graph::{create_graph, infer_graph};
-use crate::clock::run_clock_model::run_clock_model;
+use crate::clock::graph_regression::calculate_averages;
+use crate::clock::graph_regression_policy::GraphNodeRegressionPolicyReroot;
+use crate::clock::run_clock_model::{run_clock_model, RunClockModelParams};
 use crate::clock::run_reroot::{run_reroot, RerootParams};
 use crate::io::dates::read_dates;
 use crate::io::file::create_file;
@@ -44,6 +46,10 @@ pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
     unimplemented!("clock_filter")
   }
 
+  calculate_averages::<GraphNodeRegressionPolicyReroot>(&mut graph);
+
+  let slope = 0.0;
+
   if !keep_root {
     if *covariation {
       unimplemented!("covariation")
@@ -53,14 +59,14 @@ pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
       &mut graph,
       &RerootParams {
         reroot: *reroot,
-        slope: 0.0,
+        slope,
         force_positive: false,
         keep_node_order: false,
       },
     )?;
   }
 
-  run_clock_model(&mut graph);
+  let result = run_clock_model::<GraphNodeRegressionPolicyReroot>(&mut graph, &RunClockModelParams { slope })?;
 
   graph.print_graph(create_file(outdir.join("graph_output.dot"))?)?;
 

@@ -221,8 +221,19 @@ where
     self.leaves.len()
   }
 
+  #[inline]
+  pub fn get_nodes(&self) -> &[Arc<RwLock<Node<N, E>>>] {
+    &self.nodes
+  }
+
+  #[inline]
   pub fn get_roots(&self) -> Vec<Arc<RwLock<Node<N, E>>>> {
     self.roots.iter().filter_map(|idx| self.get_node(*idx)).collect_vec()
+  }
+
+  #[inline]
+  pub fn get_leaves(&self) -> Vec<Arc<RwLock<Node<N, E>>>> {
+    self.leaves.iter().filter_map(|idx| self.get_node(*idx)).collect_vec()
   }
 
   pub fn add_node(&mut self, node_payload: N) -> usize {

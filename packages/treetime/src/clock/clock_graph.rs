@@ -33,6 +33,7 @@ pub struct Node {
   pub Q: Array1<f64>,
   pub Qtot: Array1<f64>,
   pub O: Array1<f64>,
+  pub v: f64,
 }
 
 impl Node {
@@ -49,6 +50,7 @@ impl Node {
       Q: Array1::zeros(6),
       Qtot: Array1::zeros(6),
       O: Array1::zeros(6),
+      v: 0.0,
     }
   }
 
@@ -65,6 +67,7 @@ impl Node {
       Q: Array1::zeros(6),
       Qtot: Array1::zeros(6),
       O: Array1::zeros(6),
+      v: 0.0,
     }
   }
 

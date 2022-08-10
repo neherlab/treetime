@@ -3,11 +3,13 @@
 
 use crate::clock::clock_graph::{ClockGraph, Node};
 use crate::clock::graph_regression_policy::GraphNodeRegressionPolicy;
-use crate::clock::run_reroot::RerootParams;
 use crate::graph::graph::{GraphNodeBackward, GraphNodeForward, NodeEdgePair};
 use approx::assert_ulps_ne;
-use ndarray::{array, Array1, ArrayBase, Data, Ix1};
+use eyre::Report;
+use itertools::Itertools;
+use ndarray::{array, Array1, Array2, ArrayBase, Data, Ix1};
 use ndarray_linalg::Inverse;
+use ndarray_stats::CorrelationExt;
 use num_traits::real::Real;
 use num_traits::Float;
 
@@ -18,7 +20,7 @@ const dtavgii: usize = 3;
 const dsqii: usize = 4;
 const sii: usize = 5;
 
-pub fn calculate_averages<P: GraphNodeRegressionPolicy>(graph: &mut ClockGraph, params: &RerootParams) {
+pub fn calculate_averages<P: GraphNodeRegressionPolicy>(graph: &mut ClockGraph) {
   graph.par_iter_breadth_first_backward(
     |GraphNodeBackward {
        is_root,
@@ -190,4 +192,52 @@ where
     hessian: None,
     cov: None,
   }
+}
+
+pub fn explained_variance<P>(graph: &mut ClockGraph) -> Result<f64, Report>
+where
+  P: GraphNodeRegressionPolicy,
+{
+  graph.par_iter_breadth_first_forward(
+    |GraphNodeForward {
+       is_root,
+       is_leaf,
+       key,
+       payload: node,
+       parents,
+     }| {
+      if node.is_leaf() {
+        return;
+      }
+
+      node.v = P::branch_value(node);
+      {
+        if parents.len() > 1 {
+          unimplemented!("Multiple parent nodes are not supported yet");
+        }
+        for parent in parents {
+          let parent = parent.node.read();
+          node.v += parent.v;
+        }
+      };
+    },
+  );
+
+  let tips_vs_branches = graph
+    .get_leaves()
+    .iter()
+    .flat_map(|leaf| {
+      let leaf = leaf.read().payload();
+      let leaf = leaf.read();
+      let tip = P::tip_value(&leaf).expect("leaf node is expected to have tip value, but none found");
+      let branch = leaf.v;
+      [tip, branch]
+    })
+    .collect_vec();
+
+  let tips_vs_branches = Array2::<f64>::from_shape_vec((graph.num_leaves(), 2), tips_vs_branches)?;
+
+  let corr = tips_vs_branches.t().pearson_correlation()?;
+
+  Ok(corr[[0, 1]])
 }

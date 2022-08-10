@@ -15,6 +15,7 @@ use statrs::statistics::Statistics;
 pub struct RerootParams {
   pub reroot: RerootMode,
   pub slope: f64,
+  /// only accept positive evolutionary rate estimates when rerooting the tree
   pub force_positive: bool,
   pub keep_node_order: bool,
 }
@@ -91,14 +92,15 @@ impl Default for BestRoot {
   }
 }
 
+/// Determine the node that, when the tree is rooted on this node, results
+/// in the best regression of temporal constraints and root to tip distances.
+///
 /// Determines the position on the tree that minimizes the bilinear product of the inverse
 /// covariance and the data vectors.
 fn find_best_root_least_squares<P: GraphNodeRegressionPolicy>(
   graph: &mut ClockGraph,
   params: &RerootParams,
 ) -> Result<BestRoot, Report> {
-  calculate_averages::<GraphNodeRegressionPolicyReroot>(graph, params);
-
   let best_root = {
     let best_root = Mutex::new(BestRoot::default());
 
@@ -199,7 +201,7 @@ fn find_optimal_root_along_branch(
     f64::infinity()
   } else {
     if parents.len() != 1 {
-      unimplemented!("Multiple parent nodes not handled yet");
+      unimplemented!("Multiple parent nodes are not supported yet");
     };
     let parent_node = &parents[0].node.read();
     base_regression(&parent_node.Qtot, &Some(params.slope)).chisq
