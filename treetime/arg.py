@@ -1,15 +1,52 @@
 from matplotlib.pyplot import fill
 import numpy as np
+import json
+import itertools
 
-def parse_arg(tree1, tree2, aln1, aln2, MCC_file, fill_overhangs=True):
+def get_tree_names(tree_nwk_files):
+    tree_names = []
+    for file in tree_nwk_files:
+        file_name = file.split("/")[-1].split(".")[0]
+        file_name = file_name.replace("_resolved", "").replace("resolved", "")
+        tree_names.append(file_name)
+    if len(set(tree_names)) != len(tree_nwk_files):
+        #tree name identifiers are not unique
+        raise Exception("Error: Tree names must be unique, see TreeKnit output format.")
+    return tree_names
+
+def get_MCC_dict(MCC_file):   
+    f = open("test.json")
+    data = json.load(f)
+    MCC_dict = {}
+    for key in data["MCC_dict"]:
+        MCC_dict[frozenset(data["MCC_dict"][key]["trees"])] = data["MCC_dict"][key]["mccs"]
+
+    return MCC_dict
+
+def get_mask(length_segments, tree_names):
+    pos_list = [0]
+    for l in length_segments:
+        new = pos_list[-1] + l
+        pos_list.append(new)
+    mask = {}
+    no_trees = len(tree_names)
+    for r in range(1,no_trees):
+        combos = itertools.combinations(range(no_trees), r)
+        for comb in combos:
+            new_mask = np.zeros(sum(length_segments))
+            for c in comb:
+                new_mask[pos_list[c-1]:pos_list[c]] = 1
+            mask[frozenset(tree_names[comb])] = new_mask
+    return mask
+
+def parse_arg(tree_files, aln_files, MCC_file, fill_overhangs=True):
+#def parse_arg(tree_file_dir, aln_file_dir, MCC_file, tree_names, fill_overhangs=True):
     """parse the output of TreeKnit and return a file structure to be
     further consumed by TreeTime
 
     Args:
-        tree1 (str): file name of tree1
-        tree2 (str): file name of tree2
-        aln1 (str): file name of alignment 1
-        aln2 (str): file name of alignment 2
+        tree_files (str): file names of trees
+        aln_files (str): file names of alignments MUST be in the same order as tree_files
         MCC_file (str): name of mcc file
         fill_overhangs (bool, optional): fill terminal gaps of alignmens before concatenating. Defaults to True.
 
@@ -20,22 +57,21 @@ def parse_arg(tree1, tree2, aln1, aln2, MCC_file, fill_overhangs=True):
     from Bio.Align import MultipleSeqAlignment
     from treetime.seq_utils import seq2array
 
-    # read trees and determine common terminal nodes
-    t1 = Phylo.read(tree1, 'newick')
-    t2 = Phylo.read(tree2, 'newick')
-    all_leaves = set.intersection(set([x.name for x in t1.get_terminals()]), set([x.name for x in t2.get_terminals()]))
-
     # read MCCs as lists of taxon names
-    MCCs = []
-    with open(MCC_file) as fh:
-        for line in fh:
-            if line.strip():
-                MCCs.append(line.strip().split(','))
+    MCC_dict = get_MCC_dict(MCC_file)
+
+    # read trees, assert trees are named consistently
+    tree_names = get_tree_names(tree_files)
+    trees_in_dict = set().union(*MCC_dict.keys())
+    assert(all([k in trees_in_dict for k in tree_names]))
+    trees = [Phylo.read(t, 'newick') for t in tree_files]
+
+    # determine common terminal nodes
+    all_leaves = set.intersection(*[set([x.name for x in t.get_terminals()]) for t in trees])
 
     # read alignments and construct edge modified sequence arrays
-    a1 = {s.id:s for s in AlignIO.read(aln1, 'fasta')}
-    a2 = {s.id:s for s in AlignIO.read(aln2, 'fasta')}
-    for aln in [a1,a2]:
+    alignments = [{s.id:s for s in AlignIO.read(aln, 'fasta')} for aln in aln_files]
+    for aln in alignments:
         for s,seq in aln.items():
             seqstr = "".join(seq2array(seq, fill_overhangs=fill_overhangs))
             seq.seq = Seq.Seq(seqstr)
@@ -43,23 +79,21 @@ def parse_arg(tree1, tree2, aln1, aln2, MCC_file, fill_overhangs=True):
     # construct concatenated alignment
     aln_combined = []
     for leaf in all_leaves:
-        seq = a1[leaf] + a2[leaf]
+        concat_seq = []
+        for a in alignments:
+            concat_seq += a[leaf]
+        seq = [concat_seq]
         seq.id = leaf
         aln_combined.append(seq)
 
     # construct masks for the concatenation and the two segments
-    l1 = len(a1[leaf])
-    l2 = len(a2[leaf])
-    combined_mask = np.ones(l1 + l2)
-    mask1 = np.zeros(l1 + l2)
-    mask2 = np.zeros(l1 + l2)
-    mask1[:l1] = 1
-    mask2[l1:] = 1
+    l = [len(a[leaf]) for a in alignments]
+    masks = get_mask(l, tree_names)
 
-    return {"MCCs": MCCs, "trees":[t1,t2], "alignment":MultipleSeqAlignment(aln_combined),
-            "masks":[mask1,mask2], "combined_mask":combined_mask}
+    return {"MCCs": MCC_dict, "trees":trees, "alignment":MultipleSeqAlignment(aln_combined),
+            "masks":masks}
 
-def setup_arg(T, aln, total_mask, segment_mask, dates, MCCs, gtr='JC69',
+def setup_arg(T, aln, dates, MCCs, masks, gtr='JC69',
             verbose=0, fill_overhangs=True, reroot=True, fixed_clock_rate=None, alphabet='nuc', **kwargs):
     """construct a TreeTime object with the appropriate masks on each node
     for branch length optimization with full or segment only alignment.
@@ -91,19 +125,16 @@ def setup_arg(T, aln, total_mask, segment_mask, dates, MCCs, gtr='JC69',
         tt.reroot("least-squares", force_positive=True, clock_rate=fixed_clock_rate)
 
     # make a lookup for the MCCs and assign to tree
-    leaf_to_MCC = {}
-    for mi,mcc in enumerate(MCCs):
-        for leaf in mcc:
-            leaf_to_MCC[leaf] = mi
+    leaf_to_MCC = get_mcc_map(MCCs)
 
-    assign_mccs(tt.tree, leaf_to_MCC, tt.one_mutation)
+    assign_all_mccs(tt.tree, len(MCCs), leaf_to_MCC, tt.one_mutation)
 
     # assign masks to branches whenever child and parent are in the same MCC
     for n in tt.tree.find_clades():
-        if (n.mcc is not None) and n.up and n.up.mcc==n.mcc:
-            n.mask = total_mask
-        else:
-            n.mask = segment_mask
+        shared = [(n.mcc[pos] is not None) and n.up and n.up.mcc[pos]==n.mcc[pos] for pos in len(MCCs)]
+        pos_shared = frozenset([i for i, x in enumerate(shared) if x])
+        n.mask = masks[pos_shared]
+
 
     return tt
 
@@ -147,3 +178,50 @@ def assign_mccs(tree, mcc_map, one_mutation=1e-4):
                 n.mcc = list(n.child_mccs)[0]
             else: # no unique child MCC and no match with parent -> not part of an MCCs
                 n.mcc = None
+
+def get_mcc_map(MCCs_list):
+    # make a lookup for the MCCs and assign to trees
+    leaf_to_MCC = {}
+    for MCCs in MCCs_list:
+        for mi,mcc in enumerate(MCCs):
+            for leaf in mcc:
+                if leaf not in leaf_to_MCC:
+                    leaf_to_MCC[leaf] = [mi]
+                else:
+                    leaf_to_MCC[leaf].append(mi)
+    return leaf_to_MCC
+
+def assign_all_mccs(tree, len_tree_list, mcc_map, one_mutation=1e-4):
+    for leaf in tree.get_terminals():
+        leaf.child_mccs = [set([mcc_map[leaf.name][pos]]) for pos in range(len_tree_list)]
+        leaf.mcc = mcc_map[leaf.name]
+        leaf.branch_length = max(0.5*one_mutation, leaf.branch_length)
+    # reconstruct MCCs with Fitch algorithm
+    for n in tree.get_nonterminals(order='postorder'):
+        common_mccs = [set.intersection(*[c.child_mccs[pos] for c in n]) for pos in range(len_tree_list)]
+        n.branch_length = max(0.5*one_mutation, n.branch_length)
+        n.child_mccs = []
+        for pos in range(len_tree_list):
+            if len(common_mccs[pos]):
+                n.child_mccs.append(common_mccs[pos])
+            else:
+                n.child_mccs.append(set.union(*[c.child_mccs[pos] for c in n]))
+    mcc_intersection = [set.intersection(*[c.child_mccs[pos] for c in tree.root]) for pos in range(len_tree_list)]
+    tree.root.mcc = []
+    for pos in range(len_tree_list):
+        if len(mcc_intersection[pos]):
+            tree.root.mcc.append(list(mcc_intersection[pos])[0])
+        else:
+            tree.root.mcc.append(None)
+    for n in tree.get_nonterminals(order='preorder'):
+        if n==tree.root:
+            continue
+        else:
+            n.mcc = []
+            for pos in range(len_tree_list):
+                if n.up.mcc[pos] in n.child_mccs[pos]: # parent MCC part of children -> that is the MCC
+                    n.mcc.append(n.up.mcc[pos])
+                elif len(n.child_mccs[pos])==1:  # child is an MCC
+                    n.mcc.append(list(n.child_mccs[pos])[0])
+                else: # no unique child MCC and no match with parent -> not part of an MCCs
+                    n.mcc.append(None)
