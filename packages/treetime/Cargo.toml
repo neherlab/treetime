@@ -15,58 +15,58 @@ crate-type = ["lib"]
 
 [dependencies]
 approx = "0.5.1"
-argmin = { version = "0.6.0-rc.2", features = [] }
+argmin = { version = "0.6.0", features = [] }
 atty = "0.2.14"
 bio = { version = "0.41.0", features = ["phylogeny"] }
-bio-types = { version = "0.12.1", features = ["phylogeny"] }
+bio-types = { version = "0.13.0", features = ["phylogeny"] }
 blas-src = { version = "0.8.0", features = ["openblas-src"] }
 bzip2 = "0.4.3"
-chrono = { version = "0.4.19", default-features = false, features = ["clock", "std"] }
-clap = { version = "3.1.8", features = ["derive"] }
-clap-verbosity-flag = "1.0.0"
-clap_complete = "3.1.1"
-clap_complete_fig = "3.1.4"
-color-eyre = "0.6.1"
+chrono = { version = "0.4.21", default-features = false, features = ["clock", "std"] }
+clap = { version = "3.2.16", features = ["derive"] }
+clap-verbosity-flag = "1.0.1"
+clap_complete = "3.2.3"
+clap_complete_fig = "3.2.4"
+color-eyre = "0.6.2"
 csv = "1.1.6"
-ctor = "0.1.22"
-derive_more = { version = "0.99.17" }
+ctor = "0.1.23"
+derive_more = "0.99.17"
 env_logger = "0.9.0"
 eyre = "0.6.8"
 flate2 = "1.0.24"
 indexmap = { version = "1.9.1", features = ["serde-1"] }
 itertools = "0.10.3"
 lazy_static = "1.4.0"
-log = "0.4.16"
-ndarray = { version = "0.15.4", features = ["rayon", "serde", "approx-0_5", "blas"] }
+log = "0.4.17"
+ndarray = { version = "0.15.6", features = ["rayon", "serde", "approx-0_5", "blas"] }
 ndarray-linalg = { version = "0.14.1", features = ["openblas-static"] }
 ndarray-rand = "0.14.0"
 ndarray-stats = "0.5.0"
 ndarray_einsum_beta = "0.7.0"
 num = "0.4.0"
-num-integer = "0.1.44"
-num-traits = "0.2.14"
+num-integer = "0.1.45"
+num-traits = "0.2.15"
 num_cpus = "1.13.1"
 openblas-src = { version = "0.10.4", features = ["static"] }
 parking_lot = { version = "0.12.1", features = ["deadlock_detection", "hardware-lock-elision"] }
 rand = { version = "0.8.5", features = ["serde1", "log"] }
 rand_distr = { version = "0.4.3", feaures = ["serde1", "std_math"] }
 rand_isaac = { version = "0.3.0", features = ["serde1"] }
-rayon = "1.5.2"
+rayon = "1.5.3"
 regex = { version = "1.6.0", features = [] }
-serde = { version = "1.0.136", features = ["derive"] }
-serde_json = { version = "1.0.79", features = ["preserve_order", "indexmap", "unbounded_depth"] }
-strum = "0.24.0"
-strum_macros = "0.24.0"
-time = { version = "0.3.11", features = ["serde", "macros", "parsing"] }
+serde = { version = "1.0.143", features = ["derive"] }
+serde_json = { version = "1.0.83", features = ["preserve_order", "indexmap", "unbounded_depth"] }
+strum = "0.24.1"
+strum_macros = "0.24.3"
+time = { version = "0.3.13", features = ["serde", "macros", "parsing"] }
 xz2 = "0.1.7"
-zstd = { version = "0.11.2+zstd.1.5.2", features = ["zstdmt"] }
+zstd = { version = "0.11.2", features = ["zstdmt"] }
 
 
 [target.'cfg(all(target_os = "linux", target_arch = "x86_64"))'.dependencies]
-mimalloc = { version = "0.1.28", default-features = false }
+mimalloc = { version = "0.1.29", default-features = false }
 
 [dev-dependencies]
-criterion = { version = "0.3.5", features = ["html_reports"] }
+criterion = { version = "0.3.6", features = ["html_reports"] }
 pretty_assertions = "1.2.1"
-rstest = "0.12.0"
-rstest_reuse = "0.3.0"
+rstest = "0.15.0"
+rstest_reuse = "0.4.0"
