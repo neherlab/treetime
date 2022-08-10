@@ -1,4 +1,4 @@
-use crate::graph::graph::{Graph as GenericGraph, Graph, GraphNodeBackward, GraphNodeForward, Weighted};
+use crate::graph::graph::{Graph as GenericGraph, GraphNodeBackward, Weighted};
 use crate::io::dates::{DateOrRange, DatesMap};
 use crate::io::nwk::read_nwk;
 use crate::make_error;
@@ -12,26 +12,6 @@ use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering::Relaxed;
 
 pub type ClockGraph = GenericGraph<Node, Edge>;
-
-// {'O': array([    36153.374401089997263625,         0.401970000000000049,  72615145.592690706253051758,       806.093643935642603537,         0.015141327100000003,        18.000000000000000000]),
-//  '_color': None,
-//  '_ii': array([18]),
-//  '_v': 0.04481212509893939,
-//  'bad_branch': False,
-//  'branch_length': 0.00142,
-//  'clades': [],
-//  'clock_length': 0.00142,
-//  'comment': None,
-//  'confidence': None,
-//  'dist2root': 0.04481212509893939,
-//  'mask': None,
-//  'mutation_length': 0.00142,
-//  'name': 'A/Boston/DOA2_107/2012|CY148382|11/01/2012|USA|12_13|H3N2/1-1409',
-//  'original_length': 0.00142,
-//  'raw_date_constraint': 2012.83778234,
-//  'tt': <treetime.treetime.TreeTime object at 0x7fd6fcd78760>,
-//  'up': Clade(bad_branch=False, branch_length=0.00055, clock_length=0.00055, confidence=0.45, mutation_length=0.00055, name='NODE_0000002', original_length=0.00055),
-//  'width': None}
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum NodeType {
