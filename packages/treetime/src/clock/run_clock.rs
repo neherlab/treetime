@@ -7,6 +7,7 @@ use crate::clock::run_reroot::{run_reroot, RerootParams};
 use crate::io::csv::CsvStructFileWriter;
 use crate::io::dates::read_dates;
 use crate::io::file::create_file;
+use crate::io::nwk::write_nwk;
 use eyre::Report;
 
 pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
@@ -73,6 +74,8 @@ pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
   results.into_iter().try_for_each(|result| rtt_writer.write(&result))?;
 
   graph.print_graph(create_file(outdir.join("graph_output.dot"))?)?;
+
+  write_nwk(&mut create_file(outdir.join("rerooted.nwk"))?, &graph)?;
 
   Ok(())
 }

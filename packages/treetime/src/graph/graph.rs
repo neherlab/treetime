@@ -1,8 +1,8 @@
 use crate::graph::breadth_first::{
   directed_breadth_first_traversal_backward, directed_breadth_first_traversal_forward,
 };
-use crate::graph::edge::Edge;
-use crate::graph::node::Node;
+use crate::graph::edge::{Edge, GraphEdge};
+use crate::graph::node::{GraphNode, Node};
 use eyre::Report;
 use itertools::Itertools;
 use parking_lot::RwLock;
@@ -21,8 +21,8 @@ pub struct NodeEdgePair<N, E> {
 /// Represents graph node during forward traversal
 pub struct GraphNodeForward<'n, N, E>
 where
-  N: Clone + Debug + Display + Sync + Send,
-  E: Clone + Debug + Display + Sync + Send,
+  N: GraphNode,
+  E: GraphEdge,
 {
   pub is_root: bool,
   pub is_leaf: bool,
@@ -34,8 +34,8 @@ where
 /// Represents graph node during backwards traversal
 pub struct GraphNodeBackward<'n, N, E>
 where
-  N: Clone + Debug + Display + Sync + Send,
-  E: Clone + Debug + Display + Sync + Send,
+  N: GraphNode,
+  E: GraphEdge,
 {
   pub is_root: bool,
   pub is_leaf: bool,
@@ -47,8 +47,8 @@ where
 /// Represents graph node during safe traversal
 pub struct GraphNodeSafe<N, E>
 where
-  N: Clone + Debug + Display + Sync + Send,
-  E: Clone + Debug + Display + Sync + Send,
+  N: GraphNode,
+  E: GraphEdge,
 {
   pub is_root: bool,
   pub is_leaf: bool,
@@ -60,8 +60,8 @@ where
 
 impl<N, E> GraphNodeSafe<N, E>
 where
-  N: Clone + Debug + Display + Sync + Send,
-  E: Clone + Debug + Display + Sync + Send + Weighted,
+  N: GraphNode,
+  E: GraphEdge,
 {
   pub fn from_node(node: &Arc<RwLock<Node<N, E>>>) -> Self {
     let node = node.read();
@@ -103,17 +103,11 @@ where
   }
 }
 
-pub trait Weighted {
-  fn weight(&self) -> f64 {
-    0.0
-  }
-}
-
 #[derive(Debug)]
 pub struct Graph<N, E>
 where
-  N: Clone + Debug + Display + Sync + Send,
-  E: Clone + Debug + Display + Sync + Send + Weighted,
+  N: GraphNode,
+  E: GraphEdge,
 {
   nodes: Vec<Arc<RwLock<Node<N, E>>>>,
   idx: usize,
@@ -123,8 +117,8 @@ where
 
 impl<N, E> Graph<N, E>
 where
-  N: Clone + Debug + Display + Sync + Send,
-  E: Clone + Debug + Display + Sync + Send + Weighted,
+  N: GraphNode,
+  E: GraphEdge,
 {
   pub const fn new() -> Self {
     Self {
@@ -233,6 +227,11 @@ where
   #[inline]
   pub fn get_leaves(&self) -> Vec<Arc<RwLock<Node<N, E>>>> {
     self.leaves.iter().filter_map(|idx| self.get_node(*idx)).collect_vec()
+  }
+
+  #[inline]
+  pub fn get_edges(&self) -> Vec<Arc<RwLock<Node<N, E>>>> {
+    self.roots.iter().filter_map(|idx| self.get_node(*idx)).collect_vec()
   }
 
   pub fn add_node(&mut self, node_payload: N) -> usize {

@@ -1,4 +1,3 @@
-use bio::io::newick;
 use clap::{AppSettings, Parser};
 use ctor::ctor;
 use eyre::{eyre, Report};
@@ -7,10 +6,11 @@ use std::borrow::Borrow;
 use std::fmt::{Debug, Display, Formatter};
 use std::hash::Hash;
 use std::path::PathBuf;
-use treetime::graph::graph::{Graph, Weighted};
+use treetime::graph::edge::{GraphEdge, Weighted};
+use treetime::graph::graph::Graph;
+use treetime::graph::node::{GraphNode, Named};
 use treetime::io::file::create_file;
-use treetime::io::fs::read_file_to_string;
-use treetime::io::nwk::read_nwk;
+use treetime::io::nwk::{read_nwk_file, write_nwk};
 use treetime::utils::global_init::global_init;
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
@@ -29,6 +29,17 @@ pub enum NodePayload {
   Internal(f64),
 }
 
+impl Named for NodePayload {
+  fn name(&self) -> &str {
+    match self {
+      NodePayload::Leaf(name) => name,
+      NodePayload::Internal(weight) => "",
+    }
+  }
+}
+
+impl GraphNode for NodePayload {}
+
 impl Display for NodePayload {
   fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
     match self {
@@ -44,7 +55,13 @@ pub struct EdgePayload {
   weight: f64,
 }
 
-impl Weighted for EdgePayload {}
+impl Weighted for EdgePayload {
+  fn weight(&self) -> f64 {
+    self.weight
+  }
+}
+
+impl GraphEdge for EdgePayload {}
 
 impl Display for EdgePayload {
   fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -58,17 +75,24 @@ impl Display for EdgePayload {
 #[clap(global_setting(AppSettings::DeriveDisplayOrder))]
 #[clap(verbatim_doc_comment)]
 pub struct TreetimeNwkArgs {
-  #[clap(long, short = 'i')]
+  #[clap(long)]
   input_nwk: PathBuf,
 
-  #[clap(long, short = 'o')]
-  output_dot: PathBuf,
+  #[clap(long)]
+  output_dot: Option<PathBuf>,
+
+  #[clap(long)]
+  output_nwk: Option<PathBuf>,
 }
 
 fn main() -> Result<(), Report> {
-  let TreetimeNwkArgs { input_nwk, output_dot } = TreetimeNwkArgs::parse();
+  let TreetimeNwkArgs {
+    input_nwk,
+    output_dot,
+    output_nwk,
+  } = TreetimeNwkArgs::parse();
 
-  let nwk_tree = read_nwk(input_nwk)?;
+  let nwk_tree = read_nwk_file(input_nwk)?;
 
   let mut graph = Graph::<NodePayload, EdgePayload>::new();
 
@@ -101,7 +125,15 @@ fn main() -> Result<(), Report> {
     graph.add_edge(*source, *target, EdgePayload { weight });
   }
 
-  graph.print_graph(create_file(&output_dot)?)?;
+  graph.build()?;
+
+  if let Some(output_dot) = output_dot {
+    graph.print_graph(create_file(&output_dot)?)?;
+  }
+
+  if let Some(output_nwk) = output_nwk {
+    write_nwk(&mut create_file(&output_nwk)?, &graph)?;
+  }
 
   Ok(())
 }

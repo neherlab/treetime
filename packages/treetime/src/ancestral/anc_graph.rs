@@ -1,5 +1,7 @@
-use crate::graph::graph::{Graph as GenericGraph, Weighted};
-use crate::io::nwk::read_nwk;
+use crate::graph::edge::{GraphEdge, Weighted};
+use crate::graph::graph::Graph as GenericGraph;
+use crate::graph::node::{GraphNode, Named};
+use crate::io::nwk::read_nwk_file;
 use color_eyre::Section;
 use eyre::{eyre, Report, WrapErr};
 use indexmap::IndexMap;
@@ -24,6 +26,14 @@ pub struct Node {
   pub mask: Option<usize>,
   pub seq: Array1<char>,
   pub seq_ii: Array1<usize>,
+}
+
+impl GraphNode for Node {}
+
+impl Named for Node {
+  fn name(&self) -> &str {
+    &self.name
+  }
 }
 
 impl Node {
@@ -66,7 +76,13 @@ pub struct Edge {
   weight: f64,
 }
 
-impl Weighted for Edge {}
+impl GraphEdge for Edge {}
+
+impl Weighted for Edge {
+  fn weight(&self) -> f64 {
+    self.weight
+  }
+}
 
 impl Display for Edge {
   fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -79,7 +95,7 @@ pub fn infer_graph() -> Result<AncestralGraph, Report> {
 }
 
 pub fn create_graph(tree_path: impl AsRef<Path>) -> Result<AncestralGraph, Report> {
-  let nwk_tree = read_nwk(tree_path)
+  let nwk_tree = read_nwk_file(tree_path)
     .wrap_err("When parsing input tree")
     .with_section(|| "Note: only Newick format is currently supported")?;
 

@@ -1,6 +1,5 @@
-use crate::graph::edge::Edge;
-use crate::graph::graph::Weighted;
-use crate::graph::node::Node;
+use crate::graph::edge::{Edge, GraphEdge};
+use crate::graph::node::{GraphNode, Node};
 use parking_lot::{RwLock, RwLockWriteGuard};
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use std::borrow::Borrow;
@@ -12,8 +11,8 @@ use std::sync::Arc;
 /// during a particular type of breadth-first traversal
 pub trait BfsTraversalPolicy<N, E>
 where
-  N: Clone + Debug + Display + Sync + Send,
-  E: Clone + Debug + Display + Sync + Send + Weighted,
+  N: GraphNode,
+  E: GraphEdge,
 {
   /// Obtains successors of a node during traversal
   fn node_successors(node: &Arc<RwLock<Node<N, E>>>) -> Vec<Arc<RwLock<Node<N, E>>>>;
@@ -31,8 +30,8 @@ pub struct BfsTraversalPolicyForward;
 
 impl<N, E> BfsTraversalPolicy<N, E> for BfsTraversalPolicyForward
 where
-  N: Clone + Debug + Display + Sync + Send,
-  E: Clone + Debug + Display + Sync + Send + Weighted,
+  N: GraphNode,
+  E: GraphEdge,
 {
   /// Obtains successors of a node during forward traversal
   fn node_successors(node: &Arc<RwLock<Node<N, E>>>) -> Vec<Arc<RwLock<Node<N, E>>>> {
@@ -66,8 +65,8 @@ pub struct BfsTraversalPolicyBackward;
 
 impl<N, E> BfsTraversalPolicy<N, E> for BfsTraversalPolicyBackward
 where
-  N: Clone + Debug + Display + Sync + Send,
-  E: Clone + Debug + Display + Sync + Send + Weighted,
+  N: GraphNode,
+  E: GraphEdge,
 {
   /// Obtains successors of a node during backward traversal
   fn node_successors(node: &Arc<RwLock<Node<N, E>>>) -> Vec<Arc<RwLock<Node<N, E>>>> {
@@ -98,8 +97,8 @@ where
 /// Performs parallel forward breadth-first traversal (from roots to leaves, along edge directions)
 pub fn directed_breadth_first_traversal_forward<N, E, F>(sources: &[Arc<RwLock<Node<N, E>>>], explorer: F)
 where
-  N: Clone + Debug + Display + Sync + Send,
-  E: Clone + Debug + Display + Sync + Send + Weighted,
+  N: GraphNode,
+  E: GraphEdge,
   F: Fn(&RwLockWriteGuard<Node<N, E>>) + Sync + Send,
 {
   directed_breadth_first_traversal::<N, E, F, BfsTraversalPolicyForward>(sources, explorer);
@@ -108,8 +107,8 @@ where
 /// Performs parallel backward breadth-first traversal (from leaves to roots, against edge directions)
 pub fn directed_breadth_first_traversal_backward<N, E, F>(sources: &[Arc<RwLock<Node<N, E>>>], explorer: F)
 where
-  N: Clone + Debug + Display + Sync + Send,
-  E: Clone + Debug + Display + Sync + Send + Weighted,
+  N: GraphNode,
+  E: GraphEdge,
   F: Fn(&RwLockWriteGuard<Node<N, E>>) + Sync + Send,
 {
   directed_breadth_first_traversal::<N, E, F, BfsTraversalPolicyBackward>(sources, explorer);
@@ -122,8 +121,8 @@ where
 /// concrete type of traversal.
 fn directed_breadth_first_traversal<N, E, F, TraversalPolicy>(sources: &[Arc<RwLock<Node<N, E>>>], explorer: F)
 where
-  N: Clone + Debug + Display + Sync + Send,
-  E: Clone + Debug + Display + Sync + Send + Weighted,
+  N: GraphNode,
+  E: GraphEdge,
   F: Fn(&RwLockWriteGuard<Node<N, E>>) + Sync + Send,
   TraversalPolicy: BfsTraversalPolicy<N, E>,
 {

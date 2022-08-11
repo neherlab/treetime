@@ -1,5 +1,4 @@
-use crate::graph::edge::Edge;
-use crate::graph::graph::Weighted;
+use crate::graph::edge::{Edge, GraphEdge};
 use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 use std::fmt::{Debug, Display};
 use std::hash::Hash;
@@ -9,13 +8,19 @@ use std::sync::{Arc, Weak};
 type Outbound<N, E> = RwLock<Vec<Arc<Edge<N, E>>>>;
 type Inbound<N, E> = RwLock<Vec<Weak<Edge<N, E>>>>;
 
+pub trait Named {
+  fn name(&self) -> &str;
+}
+
+pub trait GraphNode: Clone + Debug + Display + Sync + Send + Named {}
+
 /// Represents a node in the graph. Data can be stored in and loaded from the
 /// node in a thread safe manner.
 #[derive(Debug)]
 pub struct Node<N, E>
 where
-  N: Clone + Debug + Display + Sync + Send,
-  E: Clone + Debug + Display + Sync + Send + Weighted,
+  N: GraphNode,
+  E: GraphEdge,
 {
   key: usize,
   data: Arc<RwLock<N>>,
@@ -26,8 +31,8 @@ where
 
 impl<N, E> Node<N, E>
 where
-  N: Clone + Debug + Display + Sync + Send,
-  E: Clone + Debug + Display + Sync + Send + Weighted,
+  N: GraphNode,
+  E: GraphEdge,
 {
   /// Create a new node.
   #[inline]

@@ -1,6 +1,8 @@
-use crate::graph::graph::{Graph as GenericGraph, GraphNodeBackward, Weighted};
+use crate::graph::edge::{GraphEdge, Weighted};
+use crate::graph::graph::{Graph as GenericGraph, GraphNodeBackward};
+use crate::graph::node::{GraphNode, Named};
 use crate::io::dates::{DateOrRange, DatesMap};
-use crate::io::nwk::read_nwk;
+use crate::io::nwk::read_nwk_file;
 use crate::make_error;
 use color_eyre::Section;
 use eyre::{eyre, Report, WrapErr};
@@ -34,6 +36,14 @@ pub struct Node {
   pub Qtot: Array1<f64>,
   pub O: Array1<f64>,
   pub v: f64,
+}
+
+impl GraphNode for Node {}
+
+impl Named for Node {
+  fn name(&self) -> &str {
+    &self.name
+  }
 }
 
 impl Node {
@@ -93,7 +103,13 @@ pub struct Edge {
   pub weight: f64,
 }
 
-impl Weighted for Edge {}
+impl GraphEdge for Edge {}
+
+impl Weighted for Edge {
+  fn weight(&self) -> f64 {
+    self.weight
+  }
+}
 
 impl Display for Edge {
   fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -106,7 +122,7 @@ pub fn infer_graph() -> Result<ClockGraph, Report> {
 }
 
 pub fn create_graph(tree_path: impl AsRef<Path>, dates: &DatesMap) -> Result<ClockGraph, Report> {
-  let nwk_tree = read_nwk(tree_path)
+  let nwk_tree = read_nwk_file(tree_path)
     .wrap_err("When parsing input tree")
     .with_section(|| "Note: only Newick format is currently supported")?;
 
