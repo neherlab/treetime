@@ -15,7 +15,7 @@ def get_tree_names(tree_nwk_files):
     return tree_names
 
 def get_MCC_dict(MCC_file):   
-    f = open("test.json")
+    f = open(MCC_file)
     data = json.load(f)
     MCC_dict = {}
     for key in data["MCC_dict"]:
@@ -30,13 +30,13 @@ def get_mask(length_segments, tree_names):
         pos_list.append(new)
     mask = {}
     no_trees = len(tree_names)
-    for r in range(1,no_trees):
-        combos = itertools.combinations(range(no_trees), r)
+    for r in range(1,(no_trees+1)):
+        combos = itertools.combinations(range(1, (no_trees+1)), r)
         for comb in combos:
             new_mask = np.zeros(sum(length_segments))
             for c in comb:
                 new_mask[pos_list[c-1]:pos_list[c]] = 1
-            mask[frozenset(tree_names[comb])] = new_mask
+            mask[frozenset([tree_names[c-1] for c in comb])] = new_mask
     return mask
 
 def parse_arg(tree_files, aln_files, MCC_file, fill_overhangs=True):
@@ -79,10 +79,10 @@ def parse_arg(tree_files, aln_files, MCC_file, fill_overhangs=True):
     # construct concatenated alignment
     aln_combined = []
     for leaf in all_leaves:
-        concat_seq = []
-        for a in alignments:
-            concat_seq += a[leaf]
-        seq = [concat_seq]
+        concat_seq = alignments[1][leaf]
+        for a in range(1, len(alignments)):
+            concat_seq += alignments[a][leaf]
+        seq = concat_seq
         seq.id = leaf
         aln_combined.append(seq)
 
