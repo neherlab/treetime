@@ -49,6 +49,11 @@ class Distribution(object):
         # 0.69... is log(2), there is always one value for which this is true since
         # the minimum is subtracted
         tmp = np.where(log_prob < 0.693147)[0]
+        if len(tmp)==0:
+            raise Exception("Error in computing the FWHM for the distribution. This is "
+                    "most likely caused by \n incorrect input data. If this error persists "
+                    "please let us know by filing an issue at: \n https://github.com/neherlab/treetime/issues")
+
         x_l, x_u = tmp[0], tmp[-1]
         if L < 2:
             print ("Not enough points to compute FWHM: returning zero")
