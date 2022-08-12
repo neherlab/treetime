@@ -308,8 +308,8 @@ def make_parser():
             description="Calculates the root-to-tip regression and quantifies the 'clock-i-ness' of the tree. "
                         "It will reroot the tree to maximize the clock-like "
                         "signal and recalculate branch length unless run with --keep_root.")
-    arg_parser.add_argument('--trees', nargs=2, required=True, type=str)
-    arg_parser.add_argument('--alignments', nargs=2, required=True, type=str)
+    arg_parser.add_argument('--trees', nargs='+', required=True, type=str)
+    arg_parser.add_argument('--alignments', nargs='+', required=True, type=str)
     arg_parser.add_argument('--mccs', required=True, type=str)
     add_timetree_args(arg_parser)
     add_time_arguments(arg_parser)
@@ -318,7 +318,18 @@ def make_parser():
 
     add_reroot_group(arg_parser)
     add_common_args(arg_parser)
-    arg_parser.set_defaults(func=arg_time_trees)
+
+    def toplevel_arg(params):
+        if len(params.trees) <2 or len(params.alignments) <2:
+            print(treetime_description+timetree_description+subcommand_description+
+                  "'arg' requires at least two tree and alignment files.\n")
+        elif len(params.trees) != len(params.alignments):
+            print(treetime_description+timetree_description+subcommand_description+
+                  "'arg' requires the same number of tree and alignment files, it is important that these are given in the same order.\n")
+        else:
+            arg_time_trees(params)
+
+    arg_parser.set_defaults(func=toplevel_arg)
 
 
     # make a version subcommand

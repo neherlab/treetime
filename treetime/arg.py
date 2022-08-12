@@ -23,7 +23,7 @@ def get_MCC_dict(MCC_file):
 
     return MCC_dict
 
-def get_mask(length_segments, tree_names):
+def get_mask_dict(length_segments, tree_names):
     pos_list = [0]
     for l in length_segments:
         new = pos_list[-1] + l
@@ -64,10 +64,12 @@ def parse_arg(tree_files, aln_files, MCC_file, fill_overhangs=True):
     tree_names = get_tree_names(tree_files)
     trees_in_dict = set().union(*MCC_dict.keys())
     assert(all([k in trees_in_dict for k in tree_names]))
-    trees = [Phylo.read(t, 'newick') for t in tree_files]
+    trees_dict = {}
+    for i in range(0, len(tree_files)):
+        trees_dict[tree_names[i]] = Phylo.read(tree_files[i], 'newick')
 
     # determine common terminal nodes
-    all_leaves = set.intersection(*[set([x.name for x in t.get_terminals()]) for t in trees])
+    all_leaves = set.intersection(*[set([x.name for x in t.get_terminals()]) for (k, t) in trees_dict.items()])
 
     # read alignments and construct edge modified sequence arrays
     alignments = [{s.id:s for s in AlignIO.read(aln, 'fasta')} for aln in aln_files]
@@ -88,12 +90,12 @@ def parse_arg(tree_files, aln_files, MCC_file, fill_overhangs=True):
 
     # construct masks for the concatenation and the two segments
     l = [len(a[leaf]) for a in alignments]
-    masks = get_mask(l, tree_names)
+    masks = get_mask_dict(l, tree_names)
 
-    return {"MCCs": MCC_dict, "trees":trees, "alignment":MultipleSeqAlignment(aln_combined),
-            "masks":masks}
+    return {"MCCs_dict": MCC_dict, "trees_dict":trees_dict, "alignment":MultipleSeqAlignment(aln_combined),
+            "masks_dict":masks}
 
-def setup_arg(T, aln, dates, MCCs, masks, gtr='JC69',
+def setup_arg(trees_dict, alignments, dates, MCCs_dict, masks_dict, tree_name, gtr='JC69',
             verbose=0, fill_overhangs=True, reroot=True, fixed_clock_rate=None, alphabet='nuc', **kwargs):
     """construct a TreeTime object with the appropriate masks on each node
     for branch length optimization with full or segment only alignment.
@@ -115,8 +117,20 @@ def setup_arg(T, aln, dates, MCCs, masks, gtr='JC69',
     """
     from treetime import TreeTime
 
+    T= trees_dict[tree_name] ##desired tree
+
+    ##get list of MCCs of all trees with T and the order of these trees
+    MCCs = []
+    tree_order = {}
+    i = 0
+    for t in trees_dict.keys():
+        if t != tree_name:
+            tree_order[i] = t
+            MCCs.append(MCCs_dict[frozenset([tree_name, t])])
+            i +=1
+
     tt = TreeTime(dates=dates, tree=T,
-            aln=aln, gtr=gtr, alphabet=alphabet, verbose=verbose,
+            aln=alignments, gtr=gtr, alphabet=alphabet, verbose=verbose,
             fill_overhangs=fill_overhangs, keep_node_order=True,
             compress=False, **kwargs)
 
@@ -131,9 +145,11 @@ def setup_arg(T, aln, dates, MCCs, masks, gtr='JC69',
 
     # assign masks to branches whenever child and parent are in the same MCC
     for n in tt.tree.find_clades():
-        shared = [(n.mcc[pos] is not None) and n.up and n.up.mcc[pos]==n.mcc[pos] for pos in len(MCCs)]
-        pos_shared = frozenset([i for i, x in enumerate(shared) if x])
-        n.mask = masks[pos_shared]
+        shared = [(n.mcc[pos] is not None) and n.up and n.up.mcc[pos]==n.mcc[pos] for pos in range(len(MCCs))]
+        ##use tree_order to convert position in MCC list to tree_names and see which trees share this branch and assign a proper mask
+        pos_shared = [tree_order[i] for i, x in enumerate(shared) if x]
+        pos_shared.append(tree_name)
+        n.mask = masks_dict[frozenset(pos_shared)]
 
 
     return tt
