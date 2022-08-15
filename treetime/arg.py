@@ -73,7 +73,10 @@ def parse_arg(tree_files, aln_files, MCC_file, fill_overhangs=True):
 
     # read alignments and construct edge modified sequence arrays
     alignments = [{s.id:s for s in AlignIO.read(aln, 'fasta')} for aln in aln_files]
+    alignment_ranges = []
+    start_val = 0
     for aln in alignments:
+        alignment_ranges.append((start_val, start_val+aln.alignment_length))
         for s,seq in aln.items():
             seqstr = "".join(seq2array(seq, fill_overhangs=fill_overhangs))
             seq.seq = Seq.Seq(seqstr)
@@ -93,7 +96,7 @@ def parse_arg(tree_files, aln_files, MCC_file, fill_overhangs=True):
     masks = get_mask_dict(l, tree_names)
 
     return {"MCCs_dict": MCC_dict, "trees_dict":trees_dict, "alignment":MultipleSeqAlignment(aln_combined),
-            "masks_dict":masks}
+            "masks_dict":masks, "alignment_ranges":alignment_ranges}
 
 
 def setup_arg(trees_dict, alignments, dates, MCCs_dict, masks_dict, tree_name, gtr='JC69',
