@@ -69,7 +69,7 @@ def test_setup_arg():
     dict_ = arg.parse_arg(tree_nwk_files, aln_files, MCC_file, fill_overhangs=True)
 
     ##check if arg is set up correctly on tree_b
-    masked_tree_b = arg.setup_arg(dict_["trees_dict"], dict_["alignment"], dates, dict_["MCCs_dict"], dict_["masks_dict"], "tree_b", gtr='JC69',
+    masked_tree_b = arg.setup_arg("tree_b", dict_["trees_dict"], dict_["alignment"], dates, dict_["MCCs_dict"], dict_["masks_dict"], gtr='JC69',
             verbose=0, fill_overhangs=True, reroot=False, fixed_clock_rate=0.001, alphabet='nuc')
 
     node_dict = {}
