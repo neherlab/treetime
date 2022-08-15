@@ -14,7 +14,7 @@ def get_tree_names(tree_nwk_files):
         raise Exception("Error: Tree names must be unique, see TreeKnit output format.")
     return tree_names
 
-def get_MCC_dict(MCC_file):   
+def get_MCC_dict(MCC_file):
     f = open(MCC_file)
     data = json.load(f)
     MCC_dict = {}
@@ -95,6 +95,7 @@ def parse_arg(tree_files, aln_files, MCC_file, fill_overhangs=True):
     return {"MCCs_dict": MCC_dict, "trees_dict":trees_dict, "alignment":MultipleSeqAlignment(aln_combined),
             "masks_dict":masks}
 
+
 def setup_arg(trees_dict, alignments, dates, MCCs_dict, masks_dict, tree_name, gtr='JC69',
             verbose=0, fill_overhangs=True, reroot=True, fixed_clock_rate=None, alphabet='nuc', **kwargs):
     """construct a TreeTime object with the appropriate masks on each node
@@ -134,7 +135,6 @@ def setup_arg(trees_dict, alignments, dates, MCCs_dict, masks_dict, tree_name, g
             fill_overhangs=fill_overhangs, keep_node_order=True,
             compress=False, **kwargs)
 
-
     if reroot:
         tt.reroot("least-squares", force_positive=True, clock_rate=fixed_clock_rate)
 
@@ -145,55 +145,15 @@ def setup_arg(trees_dict, alignments, dates, MCCs_dict, masks_dict, tree_name, g
 
     # assign masks to branches whenever child and parent are in the same MCC
     for n in tt.tree.find_clades():
-        shared = [(n.mcc[pos] is not None) and n.up and n.up.mcc[pos]==n.mcc[pos] for pos in range(len(MCCs))]
+        shared = [(n.mcc[other_tree] is not None) and n.up and n.up.mcc[other_tree]==n.mcc[other_tree]
+                   for other_tree in range(len(MCCs))]
         ##use tree_order to convert position in MCC list to tree_names and see which trees share this branch and assign a proper mask
-        pos_shared = [tree_order[i] for i, x in enumerate(shared) if x]
-        pos_shared.append(tree_name)
-        n.mask = masks_dict[frozenset(pos_shared)]
-
+        branch_shared = [tree_order[i] for i, x in enumerate(shared) if x]
+        branch_shared.append(tree_name)
+        n.mask = masks_dict[frozenset(branch_shared)]
 
     return tt
 
-
-def assign_mccs(tree, mcc_map, one_mutation=1e-4):
-    """Assign MCCs to all terminal and internal branches of the tree.
-
-    Args:
-        tree (Bio.Phylo.Tree): tree
-        mcc_map (dict): map from leaf to mcc
-        one_mutation (float, optional): minimal length of branches. Defaults to 1e-4.
-    """
-    # assign MCCs to leaves
-    for leaf in tree.get_terminals():
-        leaf.child_mccs = set([mcc_map[leaf.name]])
-        leaf.mcc = mcc_map[leaf.name]
-        leaf.branch_length = max(0.5*one_mutation, leaf.branch_length)
-
-    # reconstruct MCCs with Fitch algorithm
-    for n in tree.get_nonterminals(order='postorder'):
-        common_mccs = set.intersection(*[c.child_mccs for c in n])
-        n.branch_length = max(0.5*one_mutation, n.branch_length)
-        if len(common_mccs):
-            n.child_mccs = common_mccs
-        else:
-            n.child_mccs = set.union(*[c.child_mccs for c in n])
-
-    mcc_intersection = set.intersection(*[c.child_mccs for c in tree.root])
-    if len(mcc_intersection):
-        tree.root.mcc = list(mcc_intersection)[0]
-    else:
-        tree.root.mcc = None
-
-    for n in tree.get_nonterminals(order='preorder'):
-        if n==tree.root:
-            continue
-        else:
-            if n.up.mcc in n.child_mccs: # parent MCC part of children -> that is the MCC
-                n.mcc = n.up.mcc
-            elif len(n.child_mccs)==1:  # child is an MCC
-                n.mcc = list(n.child_mccs)[0]
-            else: # no unique child MCC and no match with parent -> not part of an MCCs
-                n.mcc = None
 
 def get_mcc_map(MCCs_list):
     # make a lookup for the MCCs and assign to trees
@@ -207,6 +167,7 @@ def get_mcc_map(MCCs_list):
                     leaf_to_MCC[leaf].append(mi)
     return leaf_to_MCC
 
+
 def assign_all_mccs(tree, len_tree_list, mcc_map, one_mutation=1e-4):
     for leaf in tree.get_terminals():
         leaf.child_mccs = [set([mcc_map[leaf.name][pos]]) for pos in range(len_tree_list)]
@@ -217,16 +178,16 @@ def assign_all_mccs(tree, len_tree_list, mcc_map, one_mutation=1e-4):
         common_mccs = [set.intersection(*[c.child_mccs[pos] for c in n]) for pos in range(len_tree_list)]
         n.branch_length = max(0.5*one_mutation, n.branch_length)
         n.child_mccs = []
-        for pos in range(len_tree_list):
-            if len(common_mccs[pos]):
-                n.child_mccs.append(common_mccs[pos])
+        for other_tree in range(len_tree_list):
+            if len(common_mccs[other_tree]):
+                n.child_mccs.append(common_mccs[other_tree])
             else:
-                n.child_mccs.append(set.union(*[c.child_mccs[pos] for c in n]))
-    mcc_intersection = [set.intersection(*[c.child_mccs[pos] for c in tree.root]) for pos in range(len_tree_list)]
+                n.child_mccs.append(set.union(*[c.child_mccs[other_tree] for c in n]))
+    mcc_intersection = [set.intersection(*[c.child_mccs[other_tree] for c in tree.root]) for other_tree in range(len_tree_list)]
     tree.root.mcc = []
-    for pos in range(len_tree_list):
-        if len(mcc_intersection[pos]):
-            tree.root.mcc.append(list(mcc_intersection[pos])[0])
+    for other_tree in range(len_tree_list):
+        if len(mcc_intersection[other_tree]):
+            tree.root.mcc.append(list(mcc_intersection[other_tree])[0])
         else:
             tree.root.mcc.append(None)
     for n in tree.get_nonterminals(order='preorder'):
@@ -234,10 +195,10 @@ def assign_all_mccs(tree, len_tree_list, mcc_map, one_mutation=1e-4):
             continue
         else:
             n.mcc = []
-            for pos in range(len_tree_list):
-                if n.up.mcc[pos] in n.child_mccs[pos]: # parent MCC part of children -> that is the MCC
-                    n.mcc.append(n.up.mcc[pos])
-                elif len(n.child_mccs[pos])==1:  # child is an MCC
-                    n.mcc.append(list(n.child_mccs[pos])[0])
+            for other_tree in range(len_tree_list):
+                if n.up.mcc[other_tree] in n.child_mccs[other_tree]: # parent MCC part of children -> that is the MCC
+                    n.mcc.append(n.up.mcc[other_tree])
+                elif len(n.child_mccs[other_tree])==1:  # child is an MCC
+                    n.mcc.append(list(n.child_mccs[other_tree])[0])
                 else: # no unique child MCC and no match with parent -> not part of an MCCs
                     n.mcc.append(None)
