@@ -65,7 +65,7 @@ class TreeAnc(object):
         tree : str, Bio.Phylo.Tree
             Phylogenetic tree. String passed is interpreted as a filename with
             a tree in a standard format that can be parsed by the Biopython Phylo module.
-            Branch length should be in units of average number of nucleotide or protein 
+            Branch length should be in units of average number of nucleotide or protein
             substitutions per site. Use on trees with longer branches (>4) is not recommended.
 
         aln : str, Bio.Align.MultipleSequenceAlignment, dict
@@ -329,9 +329,10 @@ class TreeAnc(object):
             node.original_length = node.branch_length
             node.mutation_length = node.branch_length
         if branch_length_warning:
-            self.logger("WARNING: TreeTime has detected branches that are longer than %d, TreeTime requires trees where branch length\n"
-            "is in units of average number of nucleotide or protein substitutions per site. Use on trees with longer branches\n"
-            "is not recommended."%(ttconf.MAX_BRANCH_LENGTH), 0, warn=True)
+            self.logger("WARNING: TreeTime has detected branches that are longer than %d. "
+                        "TreeTime requires trees where branch length is in units of average number "
+                        "of nucleotide or protein substitutions per site. "
+                        "Use on trees with longer branches is not recommended for ancestral sequence reconstruction."%(ttconf.MAX_BRANCH_LENGTH), 0, warn=True)
         self.prepare_tree()
 
         if self.data:
