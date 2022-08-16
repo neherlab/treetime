@@ -4,7 +4,7 @@ use crate::graph::breadth_first::{
 use crate::graph::edge::{Edge, GraphEdge};
 use crate::graph::node::{GraphNode, Node};
 use eyre::Report;
-use itertools::Itertools;
+use itertools::{iproduct, Itertools};
 use parking_lot::RwLock;
 use std::borrow::{Borrow, BorrowMut};
 use std::fmt::{Debug, Display};
@@ -429,36 +429,31 @@ where
 
   fn print_fake_edges<W: Write>(&self, mut writer: W, nodes: &[&SafeNode<N, E>]) {
     // Fake edges needed to align a set of nodes beautifully
-    let fake_edges = nodes
-      .iter()
-      .map(|node| node.read().key())
-      .chunks(2)
+    let node_keys = nodes.iter().map(|node| node.read().key()).collect_vec();
+
+    let fake_edges = iproduct!(&node_keys, &node_keys)
       .into_iter()
       .enumerate()
-      .map(|(i, pair)| {
-        let pair = pair.collect_vec();
-        if pair.len() != 2 {
-          return "".to_owned();
-        }
-
-        let left = pair[0];
-        let right = pair[1];
+      .map(|(i, (left, right))| {
         let weight = 1000 + i * 100;
         format!("      {left}-> {right} [style=invis, weight={weight}]")
       })
       .join("\n");
 
-    writeln!(
-      writer,
-      "\n    // fake edges for alignment of nodes\n    {{\n      rank=same\n{fake_edges}\n    }}"
-    )
-    .unwrap();
+    if !fake_edges.is_empty() {
+      writeln!(
+        writer,
+        "\n    // fake edges for alignment of nodes\n    {{\n      rank=same\n{fake_edges}\n    }}"
+      )
+      .unwrap();
+    }
   }
 
   fn print_node<W: Write>(&self, mut writer: W, node: &SafeNode<N, E>) {
     writeln!(
       writer,
-      "    {} [label = \"{}\"]",
+      "    {} [label = \"({}) {}\"]",
+      node.read().key(),
       node.read().key(),
       node.read().payload().read()
     )
