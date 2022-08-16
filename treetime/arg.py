@@ -1,3 +1,4 @@
+from ctypes import alignment
 from matplotlib.pyplot import fill
 import numpy as np
 import json
@@ -132,7 +133,13 @@ def parse_arg(tree_files, aln_files, MCC_file, fill_overhangs=True):
     all_leaves = set.intersection(*[set([x.name for x in t.get_terminals()]) for (k, t) in trees_dict.items()])
 
     # read alignments and construct edge modified sequence arrays
-    alignments = [{s.id:s for s in AlignIO.read(aln, 'fasta')} for aln in aln_files]
+    alignments = [] 
+    alignment_lengths = []
+    for aln_fname in aln_files:
+        aln = AlignIO.read(aln_fname, 'fasta')
+        alignment_lengths.append(aln.get_alignment_length())
+        alignments.append({s.id:s for s in aln})
+
     for aln in alignments:
         for s,seq in aln.items():
             seqstr = "".join(seq2array(seq, fill_overhangs=fill_overhangs))
@@ -141,7 +148,7 @@ def parse_arg(tree_files, aln_files, MCC_file, fill_overhangs=True):
     # construct concatenated alignment
     aln_combined = []
     for leaf in all_leaves:
-        concat_seq = alignments[1][leaf]
+        concat_seq = alignments[0][leaf]
         for a in range(1, len(alignments)):
             concat_seq += alignments[a][leaf]
         seq = concat_seq
@@ -149,8 +156,7 @@ def parse_arg(tree_files, aln_files, MCC_file, fill_overhangs=True):
         aln_combined.append(seq)
 
     # construct masks for the concatenated alignment
-    l = [len(a[leaf]) for a in alignments]
-    masks, segment_positions = get_mask_dict(l, tree_names)
+    masks, segment_positions = get_mask_dict(alignment_lengths, tree_names)
 
     return {"MCCs_dict": MCC_dict, "trees_dict":trees_dict, "alignment":MultipleSeqAlignment(aln_combined),
             "masks_dict":masks, "seg_pos_dict":segment_positions}
@@ -190,7 +196,6 @@ def setup_arg(tree_name, trees_dict, aln, dates, MCCs_dict, masks_dict, gtr='JC6
     from treetime import TreeTime
 
     T= trees_dict[tree_name] ##desired tree
-
     ##get list of MCCs of all other trees with T and the order of these trees
     MCCs = []
     other_tree_order = {}
