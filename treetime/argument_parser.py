@@ -79,10 +79,11 @@ reroot_description = "Reroot the tree using root-to-tip regression. Valid choice
     "By default, TreeTime will reroot using 'least-squares'. "\
     "Use --keep-root to keep the current root."
 
-tree_description = "Name of file containing the tree in "\
-    "newick, nexus, or phylip format. If none is provided, "\
-    "treetime will attempt to build a tree from the alignment "\
-    "using fasttree, iqtree, or raxml (assuming they are installed)"
+tree_description = "Name of file containing the tree in newick, nexus, or phylip format, "\
+    "the branch length of the tree should be in units of average number of nucleotide or protein "\
+    "substitutions per site. If no file is provided, treetime will attempt "\
+    "to build a tree from the alignment using fasttree, iqtree, or raxml "\
+    "(assuming they are installed). "
 
 aln_description = "alignment file (fasta)"
 
