@@ -2,6 +2,7 @@ from matplotlib.pyplot import fill
 import numpy as np
 import json
 import itertools
+from os import path
 
 def get_tree_names(tree_nwk_files):
     '''
@@ -11,7 +12,7 @@ def get_tree_names(tree_nwk_files):
     '''
     tree_names = []
     for file in tree_nwk_files:
-        file_name = file.split("/")[-1].split(".")[0]
+        file_name = path.splitext(path.basename(file))[0]
         file_name = file_name.replace("_resolved", "").replace("resolved", "")
         tree_names.append(file_name)
     if len(set(tree_names)) != len(tree_nwk_files):
