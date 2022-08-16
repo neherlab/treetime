@@ -4,6 +4,7 @@ import numpy as np
 import json
 import itertools
 from os import path
+import random
 
 def get_tree_names(tree_nwk_files):
     '''
@@ -232,19 +233,23 @@ def setup_arg(tree_name, trees_dict, aln, dates, MCCs_dict, masks_dict, gtr='JC6
     return tt
 
 
-def get_mcc_map(MCCs_list):
+def get_mcc_map(MCCs_list, shuffle=False):
     """
     Make a lookup for the MCCs and assign to trees.
     Each leaf will be assigned a list of mcc clades in the order of `MCCs_list`.
     """
     leaf_to_MCC = {}
     for MCCs in MCCs_list:
+        mcc_index = list(range(len(MCCs)))
+        if shuffle:
+            random.seed(987)
+            random.shuffle(mcc_index)
         for mi,mcc in enumerate(MCCs):
             for leaf in mcc:
                 if leaf not in leaf_to_MCC:
-                    leaf_to_MCC[leaf] = [mi]
+                    leaf_to_MCC[leaf] = [mcc_index[mi]]
                 else:
-                    leaf_to_MCC[leaf].append(mi)
+                    leaf_to_MCC[leaf].append(mcc_index[mi])
     return leaf_to_MCC
 
 
