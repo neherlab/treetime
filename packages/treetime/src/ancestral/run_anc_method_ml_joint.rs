@@ -4,6 +4,7 @@ use crate::ancestral::anc_args::TreetimeAncestralArgs;
 use crate::ancestral::anc_graph::{AncestralGraph, NodeType};
 use crate::ancestral::run_ancestral_reconstruction::TreetimeAncestralParams;
 use crate::constants::{MIN_BRANCH_LENGTH, TINY_NUMBER};
+use crate::graph::breadth_first::GraphTraversalContinuation;
 use crate::graph::graph::{GraphNodeBackward, GraphNodeForward, NodeEdgePair};
 use crate::gtr::gtr::GTR;
 use crate::seq_utils::seq2prof::{prof2seq, seq2prof, Prof2SeqParams, Prof2SeqResult};
@@ -79,7 +80,7 @@ fn traverse_backward(
        children,
      }| {
       if is_root {
-        return;
+        return GraphTraversalContinuation::Continue;
       }
 
       let branch_length = {
@@ -153,6 +154,8 @@ fn traverse_backward(
           // joint_Lx_target *= mask
         }
       }
+
+      GraphTraversalContinuation::Continue
     },
   );
 }
@@ -245,11 +248,11 @@ fn traverse_forward(
      }| {
       // root node has no mutations, everything else has been already set
       if is_root {
-        return;
+        return GraphTraversalContinuation::Continue;
       }
 
       if is_leaf && !ancestral_args.reconstruct_tip_states {
-        return;
+        return GraphTraversalContinuation::Continue;
       }
 
       if parents.len() > 1 {
@@ -263,6 +266,8 @@ fn traverse_forward(
       // parent node i. This is the state of the current node
       node.seq_ii = choose2(&parent.seq_ii, &node.joint_Cx.t());
       node.seq = choose1(&node.seq_ii, &alphabet.alphabet);
+
+      GraphTraversalContinuation::Continue
     },
   );
 }

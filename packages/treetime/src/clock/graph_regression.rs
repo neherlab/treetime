@@ -3,6 +3,7 @@
 
 use crate::clock::clock_graph::{ClockGraph, Node};
 use crate::clock::graph_regression_policy::GraphNodeRegressionPolicy;
+use crate::graph::breadth_first::GraphTraversalContinuation;
 use crate::graph::graph::{GraphNodeBackward, GraphNodeForward, NodeEdgePair};
 use approx::assert_ulps_ne;
 use eyre::Report;
@@ -30,7 +31,7 @@ pub fn calculate_averages<P: GraphNodeRegressionPolicy>(graph: &mut ClockGraph) 
        children,
      }| {
       if is_leaf {
-        return;
+        return GraphTraversalContinuation::Continue;
       }
       let mut Q = Array1::<f64>::zeros(6);
       for NodeEdgePair { node: c, edge } in children {
@@ -42,6 +43,7 @@ pub fn calculate_averages<P: GraphNodeRegressionPolicy>(graph: &mut ClockGraph) 
         Q += &propagate_averages(&c, tv, bv, var, false);
       }
       n.Q = Q;
+      GraphTraversalContinuation::Continue
     },
   );
 
@@ -54,7 +56,7 @@ pub fn calculate_averages<P: GraphNodeRegressionPolicy>(graph: &mut ClockGraph) 
      }| {
       if node.is_root() {
         node.Qtot = node.Q.clone();
-        return;
+        return GraphTraversalContinuation::Continue;
       }
 
       let mut O = Array1::<f64>::zeros(6);
@@ -99,6 +101,8 @@ pub fn calculate_averages<P: GraphNodeRegressionPolicy>(graph: &mut ClockGraph) 
         let var = P::branch_variance(node);
         node.Qtot = &node.Q + &propagate_averages(node, tv, bv, var, true);
       }
+
+      GraphTraversalContinuation::Continue
     },
   );
 }
@@ -222,7 +226,7 @@ where
        parents,
      }| {
       if node.is_leaf() {
-        return;
+        return GraphTraversalContinuation::Continue;
       }
 
       if parents.len() > 1 {
@@ -233,6 +237,8 @@ where
         let edge = edge.read();
         node.v += parent.v + P::branch_value(&edge);
       }
+
+      GraphTraversalContinuation::Continue
     },
   );
 

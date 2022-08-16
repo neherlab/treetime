@@ -1,5 +1,5 @@
 use crate::graph::breadth_first::{
-  directed_breadth_first_traversal_backward, directed_breadth_first_traversal_forward,
+  directed_breadth_first_traversal_backward, directed_breadth_first_traversal_forward, GraphTraversalContinuation,
 };
 use crate::graph::edge::{Edge, GraphEdge};
 use crate::graph::node::{GraphNode, Node};
@@ -110,7 +110,9 @@ where
   E: GraphEdge,
 {
   nodes: Vec<Arc<RwLock<Node<N, E>>>>,
-  idx: usize,
+  edges: Vec<Arc<Edge<N, E>>>,
+  node_idx: usize,
+  edge_idx: usize,
   roots: Vec<usize>,
   leaves: Vec<usize>,
 }
@@ -123,7 +125,9 @@ where
   pub const fn new() -> Self {
     Self {
       nodes: Vec::new(),
-      idx: 0,
+      edges: Vec::new(),
+      node_idx: 0,
+      edge_idx: 0,
       roots: vec![],
       leaves: vec![],
     }
@@ -131,6 +135,10 @@ where
 
   pub fn get_node(&self, index: usize) -> Option<Arc<RwLock<Node<N, E>>>> {
     self.nodes.get(index).map(Arc::clone)
+  }
+
+  pub fn get_edge(&self, index: usize) -> Option<Arc<Edge<N, E>>> {
+    self.edges.get(index).map(Arc::clone)
   }
 
   /// Iterates nodes synchronously and in unspecified order
@@ -230,16 +238,16 @@ where
   }
 
   #[inline]
-  pub fn get_edges(&self) -> Vec<Arc<RwLock<Node<N, E>>>> {
-    self.roots.iter().filter_map(|idx| self.get_node(*idx)).collect_vec()
+  pub fn get_edges(&self) -> &[Arc<Edge<N, E>>] {
+    &self.edges
   }
 
   pub fn add_node(&mut self, node_payload: N) -> usize {
-    let idx = self.idx;
-    let node = Arc::new(RwLock::new(Node::new(idx, node_payload)));
-    self.nodes.insert(idx, node);
-    self.idx += 1;
-    idx
+    let node_idx = self.node_idx;
+    let node = Arc::new(RwLock::new(Node::new(node_idx, node_payload)));
+    self.nodes.insert(node_idx, node);
+    self.node_idx += 1;
+    node_idx
   }
 
   /// Add a new edge to the graph.
@@ -273,11 +281,15 @@ where
       "When adding a graph edge {src_idx}->{dst_idx}: Nodes {src_idx} and {dst_idx} are already connected."
     );
 
+    let edge_idx = self.edge_idx;
     let new_edge = Arc::new(Edge::new(
+      edge_idx,
       Arc::downgrade(&src_mtx),
       Arc::downgrade(&dst_mtx),
       edge_payload,
     ));
+    self.edges.push(Arc::clone(&new_edge));
+    self.edge_idx += 1;
 
     src.outbound_mut().push(Arc::clone(&new_edge));
     dst.inbound_mut().push(Arc::downgrade(&new_edge));
@@ -334,7 +346,7 @@ where
 
   pub fn par_iter_breadth_first_forward<F>(&mut self, explorer: F)
   where
-    F: Fn(GraphNodeForward<N, E>) + Sync + Send,
+    F: Fn(GraphNodeForward<N, E>) -> GraphTraversalContinuation + Sync + Send,
   {
     let roots = self.roots.iter().filter_map(|idx| self.get_node(*idx)).collect_vec();
 
@@ -364,7 +376,7 @@ where
         key,
         payload,
         parents,
-      });
+      })
     });
 
     self.reset_nodes();
@@ -372,7 +384,7 @@ where
 
   pub fn par_iter_breadth_first_backward<F>(&mut self, explorer: F)
   where
-    F: Fn(GraphNodeBackward<N, E>) + Sync + Send,
+    F: Fn(GraphNodeBackward<N, E>) -> GraphTraversalContinuation + Sync + Send,
   {
     let leaves = self.leaves.iter().filter_map(|idx| self.get_node(*idx)).collect_vec();
 
@@ -401,21 +413,18 @@ where
         key,
         payload,
         children,
-      });
+      })
     });
 
     self.reset_nodes();
   }
 
   /// Returns graph into initial state after traversal
-  pub fn reset_nodes(&mut self) {
+  pub fn reset_nodes(&self) {
     // Mark all nodes as not visited. As a part of traversal all nodes, one by one, marked as visited,
     // to ensure correctness of traversal. Here we reset the "is visited" markers this,
     // to allow for traversals again.
-    self
-      .nodes
-      .iter_mut()
-      .for_each(|node| node.write().mark_as_not_visited());
+    self.nodes.iter().for_each(|node| node.write().mark_as_not_visited());
   }
 
   fn print_fake_edges<W: Write>(&self, mut writer: W, nodes: &[&SafeNode<N, E>]) {

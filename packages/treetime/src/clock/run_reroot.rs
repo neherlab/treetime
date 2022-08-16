@@ -2,7 +2,10 @@ use crate::clock::clock_graph::{ClockGraph, Edge, Node, NodeType};
 use crate::clock::graph_regression::{base_regression, propagate_averages};
 use crate::clock::graph_regression_policy::{GraphNodeRegressionPolicy, GraphNodeRegressionPolicyReroot};
 use crate::clock::minimize_scalar::minimize_scalar_brent_bounded;
+use crate::graph::breadth_first::GraphTraversalContinuation;
+use crate::graph::find_paths::find_paths;
 use crate::graph::graph::{GraphNodeForward, NodeEdgePair};
+use crate::graph::ladderize::ladderize;
 use crate::timetree::timetree_args::RerootMode;
 use crate::{make_error, make_internal_report};
 use eyre::Report;
@@ -10,6 +13,7 @@ use ndarray::Array1;
 use ndarray_stats::QuantileExt;
 use num_traits::Float;
 use parking_lot::Mutex;
+use std::sync::Arc;
 
 pub struct RerootParams {
   pub reroot: RerootMode,
@@ -38,34 +42,47 @@ pub fn run_reroot(graph: &mut ClockGraph, params: &RerootParams) -> Result<(), R
 
   let x = best_root.split;
 
-  // if x<1e-5:
-  //     new_node = best_node
-  // elif x>1.0-1e-5:
-  //     new_node = best_node.up
-  // else:
-  //     # create new node in the branch and root the tree to it
-  //     new_node = Phylo.BaseTree.Clade()
-  //
-  //     # insert the new node in the middle of the branch
-  //     # by simple re-wiring the links on the both sides of the branch
-  //     # and fix the branch lengths
-  //     new_node.branch_length = best_node.branch_length*(1-x)
-  //     new_node.up = best_node.up
-  //     new_node.clades = [best_node]
-  //     new_node.up.clades = [k if k!=best_node else new_node
-  //                           for k in best_node.up.clades]
-  //
-  //     best_node.branch_length *= x
-  //     best_node.up = new_node
-  //
-  // new_node.rtt_regression = best_root
-  // self.tree.root_with_outgroup(new_node)
-  //
-  // if not keep_node_order:
-  //     self.tree.ladderize()
-  // for n in self.tree.get_nonterminals(order='postorder'):
-  //     for c in n:
-  //         c.up=n
+  let new_root = if x < 1e-5 {
+    best_node
+  } else if x > 1.0 - 1e-5 {
+    let parents = best_node.read().parents();
+    if parents.len() > 1 {
+      unimplemented!("Multiple parent nodes are not supported yet");
+    }
+    Arc::clone(&parents[0].0)
+  } else {
+    unimplemented!();
+  };
+
+  let old_root = {
+    let roots = graph.get_roots();
+    if roots.len() > 1 {
+      unimplemented!("Multiple roots are not supported yet");
+    }
+    Arc::clone(&roots[0])
+  };
+
+  let new_root_key = new_root.read().key();
+  let old_root_key = old_root.read().key();
+
+  if new_root_key == old_root_key {
+    // The new root is the same as old. Nothing to do.
+    return Ok(());
+  }
+
+  // Find paths from the old root to the new desired root
+  let mut paths = find_paths(graph, &old_root, &new_root)?;
+
+  // Invert every edge on the path from old to new root.
+  // This will make the desired new root into an actual root. The old root might no longer be a root.
+  paths.iter_mut().for_each(|edge| edge.invert());
+
+  // Recalculate some bookkeeping
+  graph.build()?;
+
+  if !params.keep_node_order {
+    ladderize(graph);
+  }
 
   Ok(())
 }
@@ -112,7 +129,7 @@ fn find_best_root_least_squares<P: GraphNodeRegressionPolicy>(
          parents,
        }| {
         if is_root {
-          return;
+          return GraphTraversalContinuation::Continue;
         }
 
         let bv = {
@@ -155,6 +172,8 @@ fn find_best_root_least_squares<P: GraphNodeRegressionPolicy>(
             };
           }
         }
+
+        GraphTraversalContinuation::Continue
       },
     );
 

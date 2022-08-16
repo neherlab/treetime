@@ -8,7 +8,10 @@ use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
 use std::io::Write;
 use std::time::Duration;
-use treetime::graph::graph::{Graph, NodeEdgePair, Weighted};
+use treetime::graph::breadth_first::GraphTraversalContinuation;
+use treetime::graph::edge::{GraphEdge, Weighted};
+use treetime::graph::graph::{Graph, NodeEdgePair};
+use treetime::graph::node::{GraphNode, Named};
 use treetime::io::file::create_file;
 use treetime::utils::global_init::global_init;
 
@@ -23,11 +26,19 @@ fn init() {
 
 /// An example of node payload type
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct NodePayload {
+pub struct Node {
   name: String,
 }
 
-impl Display for NodePayload {
+impl Named for Node {
+  fn name(&self) -> &str {
+    &self.name
+  }
+}
+
+impl GraphNode for Node {}
+
+impl Display for Node {
   fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
     write!(f, "{}", self.name)
   }
@@ -35,17 +46,19 @@ impl Display for NodePayload {
 
 /// An example of edge payload type
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct EdgePayload {
+pub struct Edge {
   name: String,
 }
 
-impl Weighted for EdgePayload {
+impl Weighted for Edge {
   fn weight(&self) -> f64 {
-    2.0
+    1.0
   }
 }
 
-impl Display for EdgePayload {
+impl GraphEdge for Edge {}
+
+impl Display for Edge {
   fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
     write!(f, "{}", &self.name)
   }
@@ -105,6 +118,8 @@ fn main() -> Result<(), Report> {
       "{:<6} | {:<16} | {:<7} | {:<7}",
       node.payload.name, parent_names, node.is_leaf, node.is_root
     );
+
+    GraphTraversalContinuation::Continue
   });
 
   graph.print_graph(create_file("tmp/graph2.dot")?)?;
@@ -136,60 +151,62 @@ fn main() -> Result<(), Report> {
       "{:<6} | {:<16} | {:<7} | {:<7}",
       node.payload.name, child_names, node.is_leaf, node.is_root
     );
+
+    GraphTraversalContinuation::Continue
   });
 
   Ok(())
 }
 
 #[rustfmt::skip]
-fn create_example_graph() -> Result<Graph<NodePayload, EdgePayload>, Report>  {
-  let mut graph = Graph::<NodePayload, EdgePayload>::new();
+fn create_example_graph() -> Result<Graph<Node, Edge>, Report>  {
+  let mut graph = Graph::<Node, Edge>::new();
 
   // Create nodes of the graph by providing their payloads. Node payload can be any arbitrary type.
   // In this case it is a `struct NodePayload` defined just above.
   //
   // At this point, nodes are not connected yet. Each insertion operation returns an index of
   // a newly created node, which can later be used for creating graph edges.
-  let r1 = graph.add_node(NodePayload { name: "r1".to_owned() });
-  let r2 = graph.add_node(NodePayload { name: "r2".to_owned() });
-  let a = graph.add_node(NodePayload { name: "a".to_owned() });
-  let b = graph.add_node(NodePayload { name: "b".to_owned() });
-  let c = graph.add_node(NodePayload { name: "c".to_owned() });
-  let d = graph.add_node(NodePayload { name: "d".to_owned() });
-  let e = graph.add_node(NodePayload { name: "e".to_owned() });
-  let f = graph.add_node(NodePayload { name: "f".to_owned() });
-  let g = graph.add_node(NodePayload { name: "g".to_owned() });
-  let h = graph.add_node(NodePayload { name: "h".to_owned() });
-  let i = graph.add_node(NodePayload { name: "i".to_owned() });
-  let j = graph.add_node(NodePayload { name: "j".to_owned() });
-  let k = graph.add_node(NodePayload { name: "k".to_owned() });
-  let l = graph.add_node(NodePayload { name: "l".to_owned() });
-  let m = graph.add_node(NodePayload { name: "m".to_owned() });
-  let n = graph.add_node(NodePayload { name: "n".to_owned() });
-  let o = graph.add_node(NodePayload { name: "o".to_owned() });
+  let r1 = graph.add_node(Node { name: "r1".to_owned() });
+  let r2 = graph.add_node(Node { name: "r2".to_owned() });
+  let  a = graph.add_node(Node { name:  "a".to_owned() });
+  let  b = graph.add_node(Node { name:  "b".to_owned() });
+  let  c = graph.add_node(Node { name:  "c".to_owned() });
+  let  d = graph.add_node(Node { name:  "d".to_owned() });
+  let  e = graph.add_node(Node { name:  "e".to_owned() });
+  let  f = graph.add_node(Node { name:  "f".to_owned() });
+  let  g = graph.add_node(Node { name:  "g".to_owned() });
+  let  h = graph.add_node(Node { name:  "h".to_owned() });
+  let  i = graph.add_node(Node { name:  "i".to_owned() });
+  let  j = graph.add_node(Node { name:  "j".to_owned() });
+  let  k = graph.add_node(Node { name:  "k".to_owned() });
+  let  l = graph.add_node(Node { name:  "l".to_owned() });
+  let  m = graph.add_node(Node { name:  "m".to_owned() });
+  let  n = graph.add_node(Node { name:  "n".to_owned() });
+  let  o = graph.add_node(Node { name:  "o".to_owned() });
 
   // Connect nodes pairwise. Each connection operation creates a graph edge between a pair of nodes.
   // The edge is directed from the first node to the second node, i.e. the first node is considered
   // a parent and the second node is considered a child.
-  graph.add_edge(r1, a, EdgePayload{ name: "r1->a".to_owned() });
-  graph.add_edge(r2, b, EdgePayload{ name: "r2->b".to_owned() });
-  graph.add_edge(a, c, EdgePayload{ name: "a->c".to_owned() });
-  graph.add_edge(a, f, EdgePayload{ name: "a->f".to_owned() });
-  graph.add_edge(a, d, EdgePayload{ name: "a->d".to_owned() });
-  graph.add_edge(b, d, EdgePayload{ name: "b->d".to_owned() });
-  graph.add_edge(d, g, EdgePayload{ name: "d->g".to_owned() });
-  graph.add_edge(b, e, EdgePayload{ name: "b->e".to_owned() });
-  graph.add_edge(e, h, EdgePayload{ name: "e->h".to_owned() });
-  graph.add_edge(c, g, EdgePayload{ name: "c->g".to_owned() });
-  graph.add_edge(f, i, EdgePayload{ name: "f->i".to_owned() });
-  graph.add_edge(f, j, EdgePayload{ name: "f->j".to_owned() });
-  graph.add_edge(d, k, EdgePayload{ name: "d->k".to_owned() });
-  graph.add_edge(e, l, EdgePayload{ name: "e->l".to_owned() });
-  graph.add_edge(b, m, EdgePayload{ name: "b->m".to_owned() });
-  graph.add_edge(r2, n, EdgePayload{ name: "r2->n".to_owned() });
-  graph.add_edge(r2, o, EdgePayload{ name: "r2->o".to_owned() });
-  graph.add_edge(e, o, EdgePayload{ name: "e->o".to_owned() });
-  graph.add_edge(m, k, EdgePayload{ name: "m->k".to_owned() });
+  graph.add_edge(r1, a, Edge { name: "r1->a".to_owned() });
+  graph.add_edge(r2, b, Edge { name: "r2->b".to_owned() });
+  graph.add_edge(a,  c, Edge { name:  "a->c".to_owned() });
+  graph.add_edge(a,  f, Edge { name:  "a->f".to_owned() });
+  graph.add_edge(a,  d, Edge { name:  "a->d".to_owned() });
+  graph.add_edge(b,  d, Edge { name:  "b->d".to_owned() });
+  graph.add_edge(d,  g, Edge { name:  "d->g".to_owned() });
+  graph.add_edge(b,  e, Edge { name:  "b->e".to_owned() });
+  graph.add_edge(e,  h, Edge { name:  "e->h".to_owned() });
+  graph.add_edge(c,  g, Edge { name:  "c->g".to_owned() });
+  graph.add_edge(f,  i, Edge { name:  "f->i".to_owned() });
+  graph.add_edge(f,  j, Edge { name:  "f->j".to_owned() });
+  graph.add_edge(d,  k, Edge { name:  "d->k".to_owned() });
+  graph.add_edge(e,  l, Edge { name:  "e->l".to_owned() });
+  graph.add_edge(b,  m, Edge { name:  "b->m".to_owned() });
+  graph.add_edge(r2, n, Edge { name: "r2->n".to_owned() });
+  graph.add_edge(r2, o, Edge { name: "r2->o".to_owned() });
+  graph.add_edge(e,  o, Edge { name:  "e->o".to_owned() });
+  graph.add_edge(m,  k, Edge { name:  "m->k".to_owned() });
 
   graph.build()?;
 

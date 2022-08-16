@@ -1,4 +1,5 @@
 use crate::graph::edge::{Edge, GraphEdge};
+use itertools::Itertools;
 use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 use std::fmt::{Debug, Display};
 use std::hash::Hash;
@@ -27,6 +28,16 @@ where
   outbound: Outbound<N, E>,
   inbound: Inbound<N, E>,
   is_visited: AtomicBool,
+}
+
+impl<N, E> PartialEq<Self> for Node<N, E>
+where
+  E: GraphEdge,
+  N: GraphNode,
+{
+  fn eq(&self, other: &Self) -> bool {
+    self.key == other.key
+  }
 }
 
 impl<N, E> Node<N, E>
@@ -99,18 +110,45 @@ where
     self.inbound.write()
   }
 
+  #[allow(clippy::type_complexity)]
+  pub fn parents(&self) -> Vec<(Arc<RwLock<Node<N, E>>>, Arc<Edge<N, E>>)> {
+    let parent_edges = self.inbound.read();
+    parent_edges
+      .iter()
+      .cloned()
+      .map(|parent_edge| {
+        let parent_edge = parent_edge.upgrade().unwrap();
+        let parent_node = parent_edge.source();
+        (parent_node, parent_edge)
+      })
+      .collect_vec()
+  }
+
+  #[allow(clippy::type_complexity)]
+  pub fn children(&self) -> Vec<(Arc<RwLock<Node<N, E>>>, Arc<Edge<N, E>>)> {
+    let child_edges = self.outbound.read();
+    child_edges
+      .iter()
+      .cloned()
+      .map(|child_edge| {
+        let child_node = child_edge.target();
+        (child_node, child_edge)
+      })
+      .collect_vec()
+  }
+
   #[inline]
   pub fn is_visited(&self) -> bool {
     self.is_visited.load(Ordering::Relaxed)
   }
 
   #[inline]
-  pub fn mark_as_visited(&mut self) {
+  pub fn mark_as_visited(&self) {
     self.is_visited.store(true, Ordering::Relaxed);
   }
 
   #[inline]
-  pub fn mark_as_not_visited(&mut self) {
+  pub fn mark_as_not_visited(&self) {
     self.is_visited.store(false, Ordering::Relaxed);
   }
 }

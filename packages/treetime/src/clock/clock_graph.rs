@@ -1,3 +1,4 @@
+use crate::graph::breadth_first::GraphTraversalContinuation;
 use crate::graph::edge::{GraphEdge, Weighted};
 use crate::graph::graph::{Graph as GenericGraph, GraphNodeBackward};
 use crate::graph::node::{GraphNode, Named};
@@ -205,6 +206,7 @@ pub fn assign_dates(graph: &mut ClockGraph, dates: &DatesMap) -> Result<(), Repo
       } else {
         num_dates.fetch_add(1, Relaxed);
       }
+      GraphTraversalContinuation::Continue
     },
   );
 

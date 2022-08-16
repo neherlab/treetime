@@ -1,7 +1,9 @@
 use crate::graph::node::{GraphNode, Node};
 use parking_lot::RwLock;
+use std::borrow::BorrowMut;
 use std::fmt::{Debug, Display, Formatter};
 use std::hash::Hash;
+use std::mem::swap;
 use std::sync::{Arc, Weak};
 
 pub trait Weighted {
@@ -19,6 +21,7 @@ where
   N: GraphNode,
   E: GraphEdge,
 {
+  key: usize,
   source: Weak<RwLock<Node<N, E>>>,
   target: Weak<RwLock<Node<N, E>>>,
   data: Arc<RwLock<E>>,
@@ -30,8 +33,9 @@ where
   E: GraphEdge,
 {
   /// Creates a new edge.
-  pub fn new(source: Weak<RwLock<Node<N, E>>>, target: Weak<RwLock<Node<N, E>>>, data: E) -> Edge<N, E> {
+  pub fn new(key: usize, source: Weak<RwLock<Node<N, E>>>, target: Weak<RwLock<Node<N, E>>>, data: E) -> Edge<N, E> {
     Edge {
+      key,
       source,
       target,
       data: Arc::new(RwLock::new(data)),
@@ -51,6 +55,13 @@ where
   #[inline]
   pub fn payload(&self) -> Arc<RwLock<E>> {
     Arc::clone(&self.data)
+  }
+
+  /// Invert direction of this edge.
+  pub fn invert(&self) {
+    let source = self.source();
+    let target = self.target();
+    swap(&mut source.write(), &mut target.write());
   }
 }
 

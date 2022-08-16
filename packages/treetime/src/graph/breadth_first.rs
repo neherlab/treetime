@@ -7,6 +7,11 @@ use std::fmt::{Debug, Display};
 use std::hash::Hash;
 use std::sync::Arc;
 
+pub enum GraphTraversalContinuation {
+  Stop,
+  Continue,
+}
+
 /// Policy trait, which defines how successors and predecessors of graph nodes and edges are resolved
 /// during a particular type of breadth-first traversal
 pub trait BfsTraversalPolicy<N, E>
@@ -99,7 +104,7 @@ pub fn directed_breadth_first_traversal_forward<N, E, F>(sources: &[Arc<RwLock<N
 where
   N: GraphNode,
   E: GraphEdge,
-  F: Fn(&RwLockWriteGuard<Node<N, E>>) + Sync + Send,
+  F: Fn(&RwLockWriteGuard<Node<N, E>>) -> GraphTraversalContinuation + Sync + Send,
 {
   directed_breadth_first_traversal::<N, E, F, BfsTraversalPolicyForward>(sources, explorer);
 }
@@ -109,7 +114,7 @@ pub fn directed_breadth_first_traversal_backward<N, E, F>(sources: &[Arc<RwLock<
 where
   N: GraphNode,
   E: GraphEdge,
-  F: Fn(&RwLockWriteGuard<Node<N, E>>) + Sync + Send,
+  F: Fn(&RwLockWriteGuard<Node<N, E>>) -> GraphTraversalContinuation + Sync + Send,
 {
   directed_breadth_first_traversal::<N, E, F, BfsTraversalPolicyBackward>(sources, explorer);
 }
@@ -119,11 +124,11 @@ where
 ///
 /// TraversalPolicy here is a generic type, that defines how to access predecessors and successors during a
 /// concrete type of traversal.
-fn directed_breadth_first_traversal<N, E, F, TraversalPolicy>(sources: &[Arc<RwLock<Node<N, E>>>], explorer: F)
+pub fn directed_breadth_first_traversal<N, E, F, TraversalPolicy>(sources: &[Arc<RwLock<Node<N, E>>>], explorer: F)
 where
   N: GraphNode,
   E: GraphEdge,
-  F: Fn(&RwLockWriteGuard<Node<N, E>>) + Sync + Send,
+  F: Fn(&RwLockWriteGuard<Node<N, E>>) -> GraphTraversalContinuation + Sync + Send,
   TraversalPolicy: BfsTraversalPolicy<N, E>,
 {
   // Walk the graph one "frontier" at a time. Frontier is a set of nodes of a "layer" in the graph, where each node
@@ -138,10 +143,12 @@ where
       .into_par_iter()
       .map(|node| {
         {
-          let mut node = node.write();
+          let node = node.write();
           if !node.is_visited() {
             // The actual visit. Here we call the user-provided function.
-            explorer(&node);
+            if let GraphTraversalContinuation::Stop = explorer(&node) {
+                return vec![];
+            }
 
             // We mark the node as visited so that it's not visited twice and telling following loop iterations
             // that its successors can potentially be processed now
