@@ -4,7 +4,7 @@
 use crate::clock::clock_graph::{ClockGraph, Node};
 use crate::clock::graph_regression_policy::GraphNodeRegressionPolicy;
 use crate::graph::breadth_first::GraphTraversalContinuation;
-use crate::graph::graph::{GraphNodeBackward, GraphNodeForward, NodeEdgePair};
+use crate::graph::graph::{GraphNodeBackward, GraphNodeForward};
 use approx::assert_ulps_ne;
 use eyre::Report;
 use itertools::Itertools;
@@ -34,7 +34,7 @@ pub fn calculate_averages<P: GraphNodeRegressionPolicy>(graph: &mut ClockGraph) 
         return GraphTraversalContinuation::Continue;
       }
       let mut Q = Array1::<f64>::zeros(6);
-      for NodeEdgePair { node: c, edge } in children {
+      for (c, edge) in children {
         let c = c.read();
         let edge = edge.read();
         let tv = P::tip_value(&c);
@@ -61,7 +61,7 @@ pub fn calculate_averages<P: GraphNodeRegressionPolicy>(graph: &mut ClockGraph) 
 
       let mut O = Array1::<f64>::zeros(6);
 
-      for NodeEdgePair { node: parent, edge } in &parents {
+      for (parent, edge) in &parents {
         let parent = parent.read();
         let edge = edge.read();
         let tv = P::tip_value(&parent);
@@ -70,7 +70,7 @@ pub fn calculate_averages<P: GraphNodeRegressionPolicy>(graph: &mut ClockGraph) 
         O += &propagate_averages(&parent, tv, bv, var, false);
       }
 
-      for NodeEdgePair { node: parent, edge } in &parents {
+      for (parent, edge) in &parents {
         let parent = parent.read();
         let edge = edge.read();
         if !node.is_root() {
@@ -90,7 +90,7 @@ pub fn calculate_averages<P: GraphNodeRegressionPolicy>(graph: &mut ClockGraph) 
           }
 
           let mut bv = 0.0;
-          for NodeEdgePair { edge, .. } in &parents {
+          for (_, edge) in &parents {
             let edge = edge.read();
             bv += P::branch_value(&edge);
           }
@@ -232,7 +232,7 @@ where
       if parents.len() > 1 {
         unimplemented!("Multiple parent nodes are not supported yet");
       }
-      for NodeEdgePair { node: parent, edge } in parents {
+      for (parent, edge) in parents {
         let parent = parent.read();
         let edge = edge.read();
         node.v += parent.v + P::branch_value(&edge);

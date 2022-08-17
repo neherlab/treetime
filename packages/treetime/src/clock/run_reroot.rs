@@ -3,9 +3,10 @@ use crate::clock::graph_regression::{base_regression, propagate_averages};
 use crate::clock::graph_regression_policy::{GraphNodeRegressionPolicy, GraphNodeRegressionPolicyReroot};
 use crate::clock::minimize_scalar::minimize_scalar_brent_bounded;
 use crate::graph::breadth_first::GraphTraversalContinuation;
-use crate::graph::find_paths::find_paths;
-use crate::graph::graph::{GraphNodeForward, NodeEdgePair};
+use crate::graph::graph::{GraphNodeForward, NodeEdgePayloadPair};
 use crate::graph::ladderize::ladderize;
+use crate::graph::node::GraphNodeKey;
+use crate::graph::reroot::reroot;
 use crate::timetree::timetree_args::RerootMode;
 use crate::{make_error, make_internal_report};
 use eyre::Report;
@@ -36,61 +37,52 @@ pub fn run_reroot(graph: &mut ClockGraph, params: &RerootParams) -> Result<(), R
     RerootMode::Mrca => unimplemented!("'MRCA' rerooting"),
   }?;
 
-  let best_node = graph
-    .get_node(best_root.node_key as usize)
-    .ok_or_else(|| make_internal_report!("No node with index {}", best_root.node_key))?;
+  if let Some(best_root_node_key) = best_root.node_key {
+    let best_node = graph
+      .get_node(best_root_node_key)
+      .ok_or_else(|| make_internal_report!("No node with index {}", best_root_node_key))?;
 
-  let x = best_root.split;
+    let x = best_root.split;
 
-  let new_root = if x < 1e-5 {
-    best_node
-  } else if x > 1.0 - 1e-5 {
-    let parents = best_node.read().parents();
-    if parents.len() > 1 {
-      unimplemented!("Multiple parent nodes are not supported yet");
+    let new_root = if x < 1e-5 {
+      best_node
+    } else if x > 1.0 - 1e-5 {
+      let parents = graph.parents_of(&best_node.read());
+      if parents.len() > 1 {
+        unimplemented!("Multiple parent nodes are not supported yet");
+      }
+      Arc::clone(&parents[0].0)
+    } else {
+      unimplemented!();
+    };
+
+    let old_root = {
+      let roots = graph.get_roots();
+      if roots.len() > 1 {
+        unimplemented!("Multiple roots are not supported yet");
+      }
+      Arc::clone(&roots[0])
+    };
+
+    reroot(graph, &old_root, &new_root)?;
+
+    // Recalculate some bookkeeping
+    graph.build()?;
+
+    if !params.keep_node_order {
+      ladderize(graph);
     }
-    Arc::clone(&parents[0].0)
+
+    Ok(())
   } else {
-    unimplemented!();
-  };
-
-  let old_root = {
-    let roots = graph.get_roots();
-    if roots.len() > 1 {
-      unimplemented!("Multiple roots are not supported yet");
-    }
-    Arc::clone(&roots[0])
-  };
-
-  let new_root_key = new_root.read().key();
-  let old_root_key = old_root.read().key();
-
-  if new_root_key == old_root_key {
-    // The new root is the same as old. Nothing to do.
-    return Ok(());
+    make_error!("Rerooting failed: unable to find the best root node")
   }
-
-  // Find paths from the old root to the new desired root
-  let mut paths = find_paths(graph, &old_root, &new_root)?;
-
-  // Invert every edge on the path from old to new root.
-  // This will make the desired new root into an actual root. The old root might no longer be a root.
-  paths.iter_mut().for_each(|edge| edge.invert());
-
-  // Recalculate some bookkeeping
-  graph.build()?;
-
-  if !params.keep_node_order {
-    ladderize(graph);
-  }
-
-  Ok(())
 }
 
 #[derive(Debug, Clone)]
 pub struct BestRoot {
   pub chisq: f64,
-  pub node_key: isize,
+  pub node_key: Option<GraphNodeKey>,
   pub split: f64,
   pub hessian: Option<f64>,
   pub cov: Option<f64>,
@@ -100,7 +92,7 @@ impl Default for BestRoot {
   fn default() -> Self {
     Self {
       chisq: f64::infinity(),
-      node_key: -1,
+      node_key: None,
       split: 0.0,
       cov: None,
       hessian: None,
@@ -138,7 +130,7 @@ fn find_best_root_least_squares<P: GraphNodeRegressionPolicy>(
           }
 
           let mut bv = 0.0;
-          for NodeEdgePair { edge, .. } in &parents {
+          for (_, edge) in &parents {
             let edge = edge.read();
             bv += P::branch_value(&edge);
           }
@@ -148,7 +140,7 @@ fn find_best_root_least_squares<P: GraphNodeRegressionPolicy>(
         let tv = P::tip_value(node);
         let var = P::branch_variance(node);
 
-        let bad_branch = node.bad_branch || parents.iter().any(|parent| parent.node.read().bad_branch);
+        let bad_branch = node.bad_branch || parents.iter().any(|(parent, _)| parent.read().bad_branch);
 
         let (x, chisq) = if bad_branch {
           (f64::nan(), f64::infinity())
@@ -167,7 +159,7 @@ fn find_best_root_least_squares<P: GraphNodeRegressionPolicy>(
               chisq: reg.chisq,
               cov: reg.cov,
               hessian: reg.hessian,
-              node_key: key as isize,
+              node_key: Some(key),
               split: x,
             };
           }
@@ -180,7 +172,7 @@ fn find_best_root_least_squares<P: GraphNodeRegressionPolicy>(
     best_root.into_inner()
   };
 
-  if best_root.node_key == -1 {
+  if best_root.node_key.is_none() {
     return make_error!("No valid root found!");
   }
 
@@ -216,7 +208,7 @@ fn find_best_root_least_squares<P: GraphNodeRegressionPolicy>(
 
 fn find_optimal_root_along_branch(
   n: &Node,
-  parents: &[NodeEdgePair<Node, Edge>],
+  parents: &[NodeEdgePayloadPair<Node, Edge>],
   tv: Option<f64>,
   bv: f64,
   var: f64,
@@ -233,7 +225,7 @@ fn find_optimal_root_along_branch(
     if parents.len() != 1 {
       unimplemented!("Multiple parent nodes are not supported yet");
     };
-    let parent_node = &parents[0].node.read();
+    let parent_node = &parents[0].0.read();
     base_regression(&parent_node.Qtot, &Some(params.slope)).chisq
   };
 

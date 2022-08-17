@@ -46,7 +46,7 @@ where
   };
 
   let root = root.read();
-  node_to_nwk_string(writer, &root)?;
+  node_to_nwk_string(writer, graph, &root)?;
   writeln!(writer, ";")?;
 
   Ok(())
@@ -62,19 +62,19 @@ where
   Ok(String::from_utf8(buf)?)
 }
 
-fn node_to_nwk_string<N, E>(writer: &mut impl Write, node: &Node<N, E>) -> Result<(), Report>
+fn node_to_nwk_string<N, E>(writer: &mut impl Write, graph: &Graph<N, E>, node: &Node<N>) -> Result<(), Report>
 where
   N: GraphNode,
   E: GraphEdge,
 {
-  let edges = node.outbound();
+  let outbound_edge_keys = node.outbound();
 
-  if !edges.is_empty() {
+  if !outbound_edge_keys.is_empty() {
     write!(writer, "(")?;
 
     let mut first = true;
-    for edge in edges.iter() {
-      let edge = edge.as_ref();
+    for outbound_edge_key in outbound_edge_keys.iter() {
+      let edge = graph.get_edge(*outbound_edge_key).unwrap();
 
       if first {
         first = false;
@@ -82,9 +82,14 @@ where
         write!(writer, ",")?;
       }
 
-      node_to_nwk_string(writer, &edge.target().read())?;
+      {
+        let child_key = edge.read().target();
+        let child = graph.get_node(child_key).unwrap();
+        let child = child.read();
+        node_to_nwk_string(writer, graph, &child)?;
+      }
 
-      let weight = edge.payload().read().weight();
+      let weight = edge.read().payload().read().weight();
       if weight.is_finite() {
         let weight = float_to_significant_digits(weight, 3);
         write!(writer, ":{weight}")?;

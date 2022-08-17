@@ -26,7 +26,7 @@ pub fn reconstruct_ancestral_sequences(
     .join("");
 
     Some(FastaRecord {
-      index: node.key,
+      index: node.key.as_usize(),
       seq_name: payload.name.clone(),
       seq,
     })

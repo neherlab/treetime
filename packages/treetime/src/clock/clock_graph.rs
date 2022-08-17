@@ -1,7 +1,7 @@
 use crate::graph::breadth_first::GraphTraversalContinuation;
 use crate::graph::edge::{GraphEdge, Weighted};
 use crate::graph::graph::{Graph as GenericGraph, GraphNodeBackward};
-use crate::graph::node::{GraphNode, Named};
+use crate::graph::node::{GraphNode, GraphNodeKey, Named};
 use crate::io::dates::{DateOrRange, DatesMap};
 use crate::io::nwk::read_nwk_file;
 use crate::make_error;
@@ -130,7 +130,7 @@ pub fn create_graph(tree_path: impl AsRef<Path>, dates: &DatesMap) -> Result<Clo
   let mut graph = ClockGraph::new();
 
   // Insert nodes
-  let mut index_map = IndexMap::<usize, usize>::new(); // Map of internal `nwk` node indices to `Graph` node indices
+  let mut index_map = IndexMap::<usize, GraphNodeKey>::new(); // Map of internal `nwk` node indices to `Graph` node indices
   let mut node_counter: usize = 0;
   for (nwk_idx, nwk_node) in nwk_tree.g.raw_nodes().iter().enumerate() {
     // Attempt to parse weight as float. If not a float, then it's a named leaf node, otherwise - internal node.
@@ -166,7 +166,7 @@ pub fn create_graph(tree_path: impl AsRef<Path>, dates: &DatesMap) -> Result<Clo
       .get(&target)
       .ok_or_else(|| eyre!("When inserting edge {nwk_idx}: Node with index {target} not found."))?;
 
-    graph.add_edge(*source, *target, Edge { weight });
+    graph.add_edge(*source, *target, Edge { weight })?;
   }
 
   graph.build()?;
@@ -201,7 +201,7 @@ pub fn assign_dates(graph: &mut ClockGraph, dates: &DatesMap) -> Result<(), Repo
           num_bad_branches.fetch_add(1, Relaxed);
         } else {
           // If all branches downstream are 'bad', and there is no date constraint for this node, the branch is marked as 'bad'
-          node.bad_branch = children.iter().all(|child| child.node.read().bad_branch);
+          node.bad_branch = children.iter().all(|(child, _)| child.read().bad_branch);
         }
       } else {
         num_dates.fetch_add(1, Relaxed);

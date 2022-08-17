@@ -1,7 +1,9 @@
 use crate::graph::edge::{Edge, GraphEdge};
+use crate::graph::graph::Graph;
 use crate::graph::node::{GraphNode, Node};
+use itertools::Itertools;
 use parking_lot::{RwLock, RwLockWriteGuard};
-use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::borrow::Borrow;
 use std::fmt::{Debug, Display};
 use std::hash::Hash;
@@ -20,13 +22,13 @@ where
   E: GraphEdge,
 {
   /// Obtains successors of a node during traversal
-  fn node_successors(node: &Arc<RwLock<Node<N, E>>>) -> Vec<Arc<RwLock<Node<N, E>>>>;
+  fn node_successors(graph: &Graph<N, E>, node: &Arc<RwLock<Node<N>>>) -> Vec<Arc<RwLock<Node<N>>>>;
 
   /// Obtains predecessors of a node during traversal
-  fn node_predecessors(node: &Arc<RwLock<Node<N, E>>>) -> Vec<Arc<RwLock<Node<N, E>>>>;
+  fn node_predecessors(graph: &Graph<N, E>, node: &Arc<RwLock<Node<N>>>) -> Vec<Arc<RwLock<Node<N>>>>;
 
   /// Obtains predecessor node of an edge during traversal
-  fn edge_predecessor(edge: &Arc<Edge<N, E>>) -> Arc<RwLock<Node<N, E>>>;
+  fn edge_predecessor(graph: &Graph<N, E>, edge: &Arc<RwLock<Edge<E>>>) -> Arc<RwLock<Node<N>>>;
 }
 
 /// Policy trait implementation, which defines how successors and predecessors of graph nodes and edges are resolved
@@ -39,28 +41,29 @@ where
   E: GraphEdge,
 {
   /// Obtains successors of a node during forward traversal
-  fn node_successors(node: &Arc<RwLock<Node<N, E>>>) -> Vec<Arc<RwLock<Node<N, E>>>> {
+  fn node_successors(graph: &Graph<N, E>, node: &Arc<RwLock<Node<N>>>) -> Vec<Arc<RwLock<Node<N>>>> {
     // During forward traversal, successors are the children (targets of outbound edges)
-    let node = node.read();
-    let edges = node.outbound();
-    edges.par_iter().map(|edge| edge.target()).collect()
+    graph
+      .children_of(&node.read())
+      .into_iter()
+      .map(|(child, _)| child)
+      .collect_vec()
   }
 
   /// Obtains successors of a node during forward traversal
-  fn node_predecessors(node: &Arc<RwLock<Node<N, E>>>) -> Vec<Arc<RwLock<Node<N, E>>>> {
+  fn node_predecessors(graph: &Graph<N, E>, node: &Arc<RwLock<Node<N>>>) -> Vec<Arc<RwLock<Node<N>>>> {
     // During forward traversal, predecessors are the parents (sources of inbound edges)
-    let node = node.read();
-    let edges = node.inbound();
-    edges
-      .par_iter()
-      .filter_map(|edge| edge.upgrade().map(|edge| edge.source()))
-      .collect()
+    graph
+      .parents_of(&node.read())
+      .into_iter()
+      .map(|(child, _)| child)
+      .collect_vec()
   }
 
   /// Obtains predecessor node of an edge during forward traversal
-  fn edge_predecessor(edge: &Arc<Edge<N, E>>) -> Arc<RwLock<Node<N, E>>> {
+  fn edge_predecessor(graph: &Graph<N, E>, edge: &Arc<RwLock<Edge<E>>>) -> Arc<RwLock<Node<N>>> {
     // During backward traversal, predecessor node of an edge is the source edge
-    edge.source()
+    graph.get_node(edge.read().source()).unwrap()
   }
 }
 
@@ -74,49 +77,56 @@ where
   E: GraphEdge,
 {
   /// Obtains successors of a node during backward traversal
-  fn node_successors(node: &Arc<RwLock<Node<N, E>>>) -> Vec<Arc<RwLock<Node<N, E>>>> {
+  fn node_successors(graph: &Graph<N, E>, node: &Arc<RwLock<Node<N>>>) -> Vec<Arc<RwLock<Node<N>>>> {
     // During backward traversal, successors are the parents (sources of inbound edges)
-    let node = node.read();
-    let edges = node.inbound();
-    edges
-      .par_iter()
-      .filter_map(|edge| edge.upgrade().map(|edge| edge.source()))
-      .collect()
+    graph
+      .parents_of(&node.read())
+      .into_iter()
+      .map(|(child, _)| child)
+      .collect_vec()
   }
 
-  /// Obtains predecessors of a node during forward backward
-  fn node_predecessors(node: &Arc<RwLock<Node<N, E>>>) -> Vec<Arc<RwLock<Node<N, E>>>> {
+  /// Obtains predecessors of a node during forward traversal
+  fn node_predecessors(graph: &Graph<N, E>, node: &Arc<RwLock<Node<N>>>) -> Vec<Arc<RwLock<Node<N>>>> {
     // During backward traversal, predecessors are the children (targets of outbound edges)
-    let node = node.read();
-    let edges = node.outbound();
-    edges.par_iter().map(|edge| edge.target()).collect()
+    graph
+      .children_of(&node.read())
+      .into_iter()
+      .map(|(child, _)| child)
+      .collect_vec()
   }
 
   /// Obtains predecessor node of an edge during backward traversal
-  fn edge_predecessor(edge: &Arc<Edge<N, E>>) -> Arc<RwLock<Node<N, E>>> {
+  fn edge_predecessor(graph: &Graph<N, E>, edge: &Arc<RwLock<Edge<E>>>) -> Arc<RwLock<Node<N>>> {
     // During backward traversal, predecessor node of an edge is the target edge
-    edge.target()
+    graph.get_node(edge.read().target()).unwrap()
   }
 }
 
 /// Performs parallel forward breadth-first traversal (from roots to leaves, along edge directions)
-pub fn directed_breadth_first_traversal_forward<N, E, F>(sources: &[Arc<RwLock<Node<N, E>>>], explorer: F)
-where
+pub fn directed_breadth_first_traversal_forward<N, E, F>(
+  graph: &Graph<N, E>,
+  sources: &[Arc<RwLock<Node<N>>>],
+  explorer: F,
+) where
   N: GraphNode,
   E: GraphEdge,
-  F: Fn(&RwLockWriteGuard<Node<N, E>>) -> GraphTraversalContinuation + Sync + Send,
+  F: Fn(&RwLockWriteGuard<Node<N>>) -> GraphTraversalContinuation + Sync + Send,
 {
-  directed_breadth_first_traversal::<N, E, F, BfsTraversalPolicyForward>(sources, explorer);
+  directed_breadth_first_traversal::<N, E, F, BfsTraversalPolicyForward>(graph, sources, explorer);
 }
 
 /// Performs parallel backward breadth-first traversal (from leaves to roots, against edge directions)
-pub fn directed_breadth_first_traversal_backward<N, E, F>(sources: &[Arc<RwLock<Node<N, E>>>], explorer: F)
-where
+pub fn directed_breadth_first_traversal_backward<N, E, F>(
+  graph: &Graph<N, E>,
+  sources: &[Arc<RwLock<Node<N>>>],
+  explorer: F,
+) where
   N: GraphNode,
   E: GraphEdge,
-  F: Fn(&RwLockWriteGuard<Node<N, E>>) -> GraphTraversalContinuation + Sync + Send,
+  F: Fn(&RwLockWriteGuard<Node<N>>) -> GraphTraversalContinuation + Sync + Send,
 {
-  directed_breadth_first_traversal::<N, E, F, BfsTraversalPolicyBackward>(sources, explorer);
+  directed_breadth_first_traversal::<N, E, F, BfsTraversalPolicyBackward>(graph, sources, explorer);
 }
 
 /// Implements parallel breadth-first traversal of a directed graph, given source nodes, exploration function and
@@ -124,11 +134,14 @@ where
 ///
 /// TraversalPolicy here is a generic type, that defines how to access predecessors and successors during a
 /// concrete type of traversal.
-pub fn directed_breadth_first_traversal<N, E, F, TraversalPolicy>(sources: &[Arc<RwLock<Node<N, E>>>], explorer: F)
-where
+pub fn directed_breadth_first_traversal<N, E, F, TraversalPolicy>(
+  graph: &Graph<N, E>,
+  sources: &[Arc<RwLock<Node<N>>>],
+  explorer: F,
+) where
   N: GraphNode,
   E: GraphEdge,
-  F: Fn(&RwLockWriteGuard<Node<N, E>>) -> GraphTraversalContinuation + Sync + Send,
+  F: Fn(&RwLockWriteGuard<Node<N>>) -> GraphTraversalContinuation + Sync + Send,
   TraversalPolicy: BfsTraversalPolicy<N, E>,
 {
   // Walk the graph one "frontier" at a time. Frontier is a set of nodes of a "layer" in the graph, where each node
@@ -139,7 +152,7 @@ where
   // frontier will have no unvisited successors), ending this loop.
   while !frontier.is_empty() {
     // Process each node in the current frontier concurrently
-    let frontier_candidate_nodes: Vec<Arc<RwLock<Node<N, E>>>> = frontier
+    let frontier_candidate_nodes: Vec<Arc<RwLock<Node<N>>>> = frontier
       .into_par_iter()
       .map(|node| {
         {
@@ -159,7 +172,7 @@ where
         // Gather node's successors:
         //  - for forward traversal: children
         //  - for backwards traversal: parents
-        TraversalPolicy::node_successors(&node)
+        TraversalPolicy::node_successors(graph, &node)
       })
         // For each node, we receive a list of its successors, so overall a list of lists. We flatten it here into a
         // flat list.
@@ -174,7 +187,7 @@ where
     let next_frontier = frontier_candidate_nodes
       .into_par_iter()
       .filter(|candidate_node| {
-        TraversalPolicy::node_predecessors(candidate_node)
+        TraversalPolicy::node_predecessors(graph, candidate_node)
           .iter()
           .all(|asc| asc.read().is_visited())
       })

@@ -1,6 +1,6 @@
 use crate::graph::edge::{GraphEdge, Weighted};
 use crate::graph::graph::Graph as GenericGraph;
-use crate::graph::node::{GraphNode, Named};
+use crate::graph::node::{GraphNode, GraphNodeKey, Named};
 use crate::io::nwk::read_nwk_file;
 use color_eyre::Section;
 use eyre::{eyre, Report, WrapErr};
@@ -102,7 +102,7 @@ pub fn create_graph(tree_path: impl AsRef<Path>) -> Result<AncestralGraph, Repor
   let mut graph = AncestralGraph::new();
 
   // Insert nodes
-  let mut index_map = IndexMap::<usize, usize>::new(); // Map of internal `nwk` node indices to `Graph` node indices
+  let mut index_map = IndexMap::<usize, GraphNodeKey>::new(); // Map of internal `nwk` node indices to `Graph` node indices
   let mut node_counter: usize = 0;
   for (nwk_idx, nwk_node) in nwk_tree.g.raw_nodes().iter().enumerate() {
     // Attempt to parse weight as float. If not a float, then it's a named leaf node, otherwise - internal node.
@@ -138,7 +138,7 @@ pub fn create_graph(tree_path: impl AsRef<Path>) -> Result<AncestralGraph, Repor
       .get(&target)
       .ok_or_else(|| eyre!("When inserting edge {nwk_idx}: Node with index {target} not found."))?;
 
-    graph.add_edge(*source, *target, Edge { weight });
+    graph.add_edge(*source, *target, Edge { weight })?;
   }
 
   graph.build()?;

@@ -1,38 +1,39 @@
-use crate::graph::edge::{Edge, GraphEdge};
-use itertools::Itertools;
-use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
+use crate::graph::edge::GraphEdgeKey;
+use derive_more::Display;
+use parking_lot::RwLock;
 use std::fmt::{Debug, Display};
 use std::hash::Hash;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Weak};
-
-type Outbound<N, E> = RwLock<Vec<Arc<Edge<N, E>>>>;
-type Inbound<N, E> = RwLock<Vec<Weak<Edge<N, E>>>>;
+use std::sync::Arc;
 
 pub trait Named {
   fn name(&self) -> &str;
 }
 
+#[derive(Copy, Clone, Debug, Display, Eq, PartialEq, Ord, PartialOrd, Hash)]
+pub struct GraphNodeKey(pub usize);
+
+impl GraphNodeKey {
+  #[inline]
+  pub const fn as_usize(self) -> usize {
+    self.0
+  }
+}
+
 pub trait GraphNode: Clone + Debug + Display + Sync + Send + Named {}
 
-/// Represents a node in the graph. Data can be stored in and loaded from the
-/// node in a thread safe manner.
+/// Internal representation of a node in a graph
 #[derive(Debug)]
-pub struct Node<N, E>
-where
-  N: GraphNode,
-  E: GraphEdge,
-{
-  key: usize,
+pub struct Node<N: GraphNode> {
+  key: GraphNodeKey,
   data: Arc<RwLock<N>>,
-  outbound: Outbound<N, E>,
-  inbound: Inbound<N, E>,
+  outbound_edges: Vec<GraphEdgeKey>,
+  inbound_edges: Vec<GraphEdgeKey>,
   is_visited: AtomicBool,
 }
 
-impl<N, E> PartialEq<Self> for Node<N, E>
+impl<N> PartialEq<Self> for Node<N>
 where
-  E: GraphEdge,
   N: GraphNode,
 {
   fn eq(&self, other: &Self) -> bool {
@@ -40,19 +41,18 @@ where
   }
 }
 
-impl<N, E> Node<N, E>
+impl<N> Node<N>
 where
   N: GraphNode,
-  E: GraphEdge,
 {
   /// Create a new node.
   #[inline]
-  pub fn new(key: usize, data: N) -> Node<N, E> {
+  pub fn new(key: GraphNodeKey, data: N) -> Node<N> {
     Self {
       key,
       data: Arc::new(RwLock::new(data)),
-      outbound: Outbound::new(Vec::new()),
-      inbound: Inbound::new(Vec::new()),
+      outbound_edges: Vec::new(),
+      inbound_edges: Vec::new(),
       is_visited: AtomicBool::new(false),
     }
   }
@@ -64,7 +64,7 @@ where
 
   /// Get node key.
   #[inline]
-  pub const fn key(&self) -> usize {
+  pub const fn key(&self) -> GraphNodeKey {
     self.key
   }
 
@@ -77,64 +77,37 @@ where
   /// Check if node is a leaf node, i.e. has no outbound edges.
   #[inline]
   pub fn is_leaf(&self) -> bool {
-    self.outbound().len() == 0
+    self.outbound().is_empty()
   }
 
   /// Check if node is a root node, i.e. has no inbound edges.
   #[inline]
   pub fn is_root(&self) -> bool {
-    self.inbound().len() == 0
+    self.inbound().is_empty()
   }
 
   /// Get read access to outbound edges of the node.
   #[inline]
-  pub fn outbound(&self) -> RwLockReadGuard<Vec<Arc<Edge<N, E>>>> {
-    self.outbound.read()
+  pub fn outbound(&self) -> &[GraphEdgeKey] {
+    self.outbound_edges.as_slice()
   }
 
   /// Get read and write access to the outbound edges of the node. Will block other threads.
   #[inline]
-  pub fn outbound_mut(&self) -> RwLockWriteGuard<Vec<Arc<Edge<N, E>>>> {
-    self.outbound.write()
+  pub fn outbound_mut(&mut self) -> &mut Vec<GraphEdgeKey> {
+    &mut self.outbound_edges
   }
 
   /// Get read access to inbound edges of the node.
   #[inline]
-  pub fn inbound(&self) -> RwLockReadGuard<Vec<Weak<Edge<N, E>>>> {
-    self.inbound.read()
+  pub fn inbound(&self) -> &[GraphEdgeKey] {
+    self.inbound_edges.as_slice()
   }
 
   /// Get read and write access to the outbound edges of the node. Will block other threads.
   #[inline]
-  pub fn inbound_mut(&self) -> RwLockWriteGuard<Vec<Weak<Edge<N, E>>>> {
-    self.inbound.write()
-  }
-
-  #[allow(clippy::type_complexity)]
-  pub fn parents(&self) -> Vec<(Arc<RwLock<Node<N, E>>>, Arc<Edge<N, E>>)> {
-    let parent_edges = self.inbound.read();
-    parent_edges
-      .iter()
-      .cloned()
-      .map(|parent_edge| {
-        let parent_edge = parent_edge.upgrade().unwrap();
-        let parent_node = parent_edge.source();
-        (parent_node, parent_edge)
-      })
-      .collect_vec()
-  }
-
-  #[allow(clippy::type_complexity)]
-  pub fn children(&self) -> Vec<(Arc<RwLock<Node<N, E>>>, Arc<Edge<N, E>>)> {
-    let child_edges = self.outbound.read();
-    child_edges
-      .iter()
-      .cloned()
-      .map(|child_edge| {
-        let child_node = child_edge.target();
-        (child_node, child_edge)
-      })
-      .collect_vec()
+  pub fn inbound_mut(&mut self) -> &mut Vec<GraphEdgeKey> {
+    &mut self.inbound_edges
   }
 
   #[inline]

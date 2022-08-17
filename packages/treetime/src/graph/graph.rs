@@ -1,8 +1,9 @@
 use crate::graph::breadth_first::{
   directed_breadth_first_traversal_backward, directed_breadth_first_traversal_forward, GraphTraversalContinuation,
 };
-use crate::graph::edge::{Edge, GraphEdge};
-use crate::graph::node::{GraphNode, Node};
+use crate::graph::edge::{Edge, GraphEdge, GraphEdgeKey};
+use crate::graph::node::{GraphNode, GraphNodeKey, Node};
+use crate::make_error;
 use eyre::Report;
 use itertools::{iproduct, Itertools};
 use parking_lot::RwLock;
@@ -11,12 +12,10 @@ use std::fmt::{Debug, Display};
 use std::io::Write;
 use std::sync::Arc;
 
-pub type SafeNode<N, E> = Arc<RwLock<Node<N, E>>>;
+pub type SafeNode<N> = Arc<RwLock<Node<N>>>;
 
-pub struct NodeEdgePair<N, E> {
-  pub node: Arc<RwLock<N>>,
-  pub edge: Arc<RwLock<E>>,
-}
+pub type NodeEdgePair<N, E> = (Arc<RwLock<Node<N>>>, Arc<RwLock<Edge<E>>>);
+pub type NodeEdgePayloadPair<N, E> = (Arc<RwLock<N>>, Arc<RwLock<E>>);
 
 /// Represents graph node during forward traversal
 pub struct GraphNodeForward<'n, N, E>
@@ -26,9 +25,9 @@ where
 {
   pub is_root: bool,
   pub is_leaf: bool,
-  pub key: usize,
+  pub key: GraphNodeKey,
   pub payload: &'n mut N,
-  pub parents: Vec<NodeEdgePair<N, E>>,
+  pub parents: Vec<NodeEdgePayloadPair<N, E>>,
 }
 
 /// Represents graph node during backwards traversal
@@ -39,9 +38,9 @@ where
 {
   pub is_root: bool,
   pub is_leaf: bool,
-  pub key: usize,
+  pub key: GraphNodeKey,
   pub payload: &'n mut N,
-  pub children: Vec<NodeEdgePair<N, E>>,
+  pub children: Vec<NodeEdgePayloadPair<N, E>>,
 }
 
 /// Represents graph node during safe traversal
@@ -52,7 +51,7 @@ where
 {
   pub is_root: bool,
   pub is_leaf: bool,
-  pub key: usize,
+  pub key: GraphNodeKey,
   pub payload: Arc<RwLock<N>>,
   pub children: Vec<NodeEdgePair<N, E>>,
   pub parents: Vec<NodeEdgePair<N, E>>,
@@ -63,34 +62,14 @@ where
   N: GraphNode,
   E: GraphEdge,
 {
-  pub fn from_node(node: &Arc<RwLock<Node<N, E>>>) -> Self {
+  pub fn from_node(graph: &Graph<N, E>, node: &Arc<RwLock<Node<N>>>) -> Self {
     let node = node.read();
     let is_leaf = node.is_leaf();
     let is_root = node.is_root();
     let key = node.key();
-
-    let parent_edges = node.inbound();
-    let parents = parent_edges
-      .iter()
-      .map(|parent_edge| {
-        let parent_edge = parent_edge.upgrade().unwrap();
-        let edge: Arc<RwLock<E>> = parent_edge.payload();
-        let node: Arc<RwLock<N>> = parent_edge.source().read().payload();
-        NodeEdgePair { node, edge }
-      })
-      .collect_vec();
-
-    let children_edges = node.outbound();
-    let children = children_edges
-      .iter()
-      .map(|child_edge| {
-        let edge: Arc<RwLock<E>> = child_edge.payload();
-        let node: Arc<RwLock<N>> = child_edge.target().read().payload();
-        NodeEdgePair { node, edge }
-      })
-      .collect_vec();
-
     let payload = node.payload();
+    let parents = graph.parents_of(&node);
+    let children = graph.children_of(&node);
 
     Self {
       is_root,
@@ -109,12 +88,10 @@ where
   N: GraphNode,
   E: GraphEdge,
 {
-  nodes: Vec<Arc<RwLock<Node<N, E>>>>,
-  edges: Vec<Arc<Edge<N, E>>>,
-  node_idx: usize,
-  edge_idx: usize,
-  roots: Vec<usize>,
-  leaves: Vec<usize>,
+  nodes: Vec<Arc<RwLock<Node<N>>>>,
+  edges: Vec<Arc<RwLock<Edge<E>>>>,
+  roots: Vec<GraphNodeKey>,
+  leaves: Vec<GraphNodeKey>,
 }
 
 impl<N, E> Graph<N, E>
@@ -126,24 +103,53 @@ where
     Self {
       nodes: Vec::new(),
       edges: Vec::new(),
-      node_idx: 0,
-      edge_idx: 0,
       roots: vec![],
       leaves: vec![],
     }
   }
 
-  pub fn get_node(&self, index: usize) -> Option<Arc<RwLock<Node<N, E>>>> {
-    self.nodes.get(index).map(Arc::clone)
+  /// Retrieve parent nodes of a given node.
+  pub fn parents_of(&self, node: &Node<N>) -> Vec<NodeEdgePair<N, E>> {
+    // Parents are the source nodes of inbound edges
+    node
+      .inbound()
+      .iter()
+      .filter_map(|edge_key| self.get_edge(*edge_key))
+      .filter_map(|edge| {
+        let parent_key = edge.read().source();
+        self.get_node(parent_key).map(|parent| (parent, edge))
+      })
+      .collect_vec()
   }
 
-  pub fn get_edge(&self, index: usize) -> Option<Arc<Edge<N, E>>> {
-    self.edges.get(index).map(Arc::clone)
+  /// Retrieve children nodes of a given node.
+  pub fn children_of(&self, node: &Node<N>) -> Vec<NodeEdgePair<N, E>> {
+    // Children are the target nodes of outbound edges
+    node
+      .outbound()
+      .iter()
+      .filter_map(|edge_key| self.get_edge(*edge_key))
+      .filter_map(|edge| {
+        let child_key = edge.read().target();
+        self.get_node(child_key).map(|child| (child, edge))
+      })
+      .collect_vec()
+  }
+
+  pub fn get_node(&self, index: GraphNodeKey) -> Option<Arc<RwLock<Node<N>>>> {
+    self.nodes.get(index.0).map(Arc::clone)
+  }
+
+  pub fn get_edge(&self, index: GraphEdgeKey) -> Option<Arc<RwLock<Edge<E>>>> {
+    self.edges.get(index.0).map(Arc::clone)
   }
 
   /// Iterates nodes synchronously and in unspecified order
   pub fn for_each<T, F>(&self, f: &mut dyn FnMut(GraphNodeSafe<N, E>)) {
-    self.nodes.iter().for_each(|node| f(GraphNodeSafe::from_node(node)));
+    self
+      .nodes
+      .iter()
+      .for_each(|node| f(GraphNodeSafe::from_node(self, node)));
   }
 
   /// Iterates nodes synchronously and in unspecified order
@@ -154,7 +160,7 @@ where
     self
       .nodes
       .iter()
-      .map(|node| f(GraphNodeSafe::from_node(node)))
+      .map(|node| f(GraphNodeSafe::from_node(self, node)))
       .collect_vec()
   }
 
@@ -166,44 +172,7 @@ where
     self
       .nodes
       .iter()
-      .filter_map(|node| {
-        let node = node.read();
-        let is_leaf = node.is_leaf();
-        let is_root = node.is_root();
-        let key = node.key();
-
-        let parent_edges = node.inbound();
-        let parents = parent_edges
-          .iter()
-          .map(|parent_edge| {
-            let parent_edge = parent_edge.upgrade().unwrap();
-            let edge: Arc<RwLock<E>> = parent_edge.payload();
-            let node: Arc<RwLock<N>> = parent_edge.source().read().payload();
-            NodeEdgePair { node, edge }
-          })
-          .collect_vec();
-
-        let children_edges = node.outbound();
-        let children = children_edges
-          .iter()
-          .map(|child_edge| {
-            let edge: Arc<RwLock<E>> = child_edge.payload();
-            let node: Arc<RwLock<N>> = child_edge.target().read().payload();
-            NodeEdgePair { node, edge }
-          })
-          .collect_vec();
-
-        let payload = node.payload();
-
-        f(GraphNodeSafe {
-          is_root,
-          is_leaf,
-          key,
-          payload,
-          children,
-          parents,
-        })
-      })
+      .filter_map(|node| f(GraphNodeSafe::from_node(self, node)))
       .collect_vec()
   }
 
@@ -223,122 +192,99 @@ where
   }
 
   #[inline]
-  pub fn get_nodes(&self) -> &[Arc<RwLock<Node<N, E>>>] {
+  pub fn get_nodes(&self) -> &[Arc<RwLock<Node<N>>>] {
     &self.nodes
   }
 
   #[inline]
-  pub fn get_roots(&self) -> Vec<Arc<RwLock<Node<N, E>>>> {
+  pub fn get_roots(&self) -> Vec<Arc<RwLock<Node<N>>>> {
     self.roots.iter().filter_map(|idx| self.get_node(*idx)).collect_vec()
   }
 
   #[inline]
-  pub fn get_leaves(&self) -> Vec<Arc<RwLock<Node<N, E>>>> {
+  pub fn get_leaves(&self) -> Vec<Arc<RwLock<Node<N>>>> {
     self.leaves.iter().filter_map(|idx| self.get_node(*idx)).collect_vec()
   }
 
   #[inline]
-  pub fn get_edges(&self) -> &[Arc<Edge<N, E>>] {
+  pub fn get_edges(&self) -> &[Arc<RwLock<Edge<E>>>] {
     &self.edges
   }
 
-  pub fn add_node(&mut self, node_payload: N) -> usize {
-    let node_idx = self.node_idx;
-    let node = Arc::new(RwLock::new(Node::new(node_idx, node_payload)));
-    self.nodes.insert(node_idx, node);
-    self.node_idx += 1;
-    node_idx
+  pub fn add_node(&mut self, node_payload: N) -> GraphNodeKey {
+    let node_key = GraphNodeKey(self.nodes.len());
+    let node = Arc::new(RwLock::new(Node::new(node_key, node_payload)));
+    self.nodes.push(node);
+    node_key
   }
 
   /// Add a new edge to the graph.
-  pub fn add_edge(&mut self, src_idx: usize, dst_idx: usize, edge_payload: E) {
-    // TODO: handle errors properly
-
-    let src_mtx = self
-      .get_node(src_idx)
-      .ok_or_else(|| format!("When adding a graph edge {src_idx}->{dst_idx}: Node {src_idx} not found."))
-      .unwrap();
-
-    let dst_mtx = self
-      .get_node(dst_idx)
-      .ok_or_else(|| format!("When adding a graph edge {src_idx}->{dst_idx}: Node {dst_idx} not found."))
-      .unwrap();
-
-    assert_ne!(
-      src_idx, dst_idx,
-      "When adding a graph edge {src_idx}->{dst_idx}: Attempted to connect node {src_idx} to itself."
-    );
-
-    let (src, dst) = (src_mtx.read(), dst_mtx.read());
-
-    let connected = src
-      .outbound()
-      .iter()
-      .any(|edge| edge.target().read().key() == dst.key());
-
-    assert!(
-      !connected,
-      "When adding a graph edge {src_idx}->{dst_idx}: Nodes {src_idx} and {dst_idx} are already connected."
-    );
-
-    let edge_idx = self.edge_idx;
-    let new_edge = Arc::new(Edge::new(
-      edge_idx,
-      Arc::downgrade(&src_mtx),
-      Arc::downgrade(&dst_mtx),
-      edge_payload,
-    ));
-    self.edges.push(Arc::clone(&new_edge));
-    self.edge_idx += 1;
-
-    src.outbound_mut().push(Arc::clone(&new_edge));
-    dst.inbound_mut().push(Arc::downgrade(&new_edge));
-  }
-
-  /// Delete an edge from the graph.
-  pub fn del_edge(&mut self, src: usize, dst: usize) -> bool {
-    let src = self.get_node(src);
-    let dst = self.get_node(dst);
-    match (src, dst) {
-      (Some(src_mtx), Some(dst_mtx)) => {
-        let (src, dst) = (src_mtx.read(), dst_mtx.read());
-
-        let mut idx: (usize, usize) = (0, 0);
-        let mut flag = false;
-        for (i, edge) in src.outbound().iter().enumerate() {
-          if edge.target().read().key() == dst.key() {
-            idx.0 = i;
-            flag = true;
-          }
-        }
-        for (i, edge) in dst.inbound().iter().enumerate() {
-          if edge.upgrade().unwrap().source().read().key() == src.key() {
-            idx.1 = i;
-          }
-        }
-        if flag {
-          src.outbound_mut().remove(idx.0);
-          src.inbound_mut().remove(idx.1);
-        }
-        flag
-      }
-      _ => false,
+  pub fn add_edge(
+    &mut self,
+    source_key: GraphNodeKey,
+    target_key: GraphNodeKey,
+    edge_payload: E,
+  ) -> Result<(), Report> {
+    if source_key == target_key {
+      return make_error!(
+        "When adding a graph edge {source_key}->{target_key}: Attempted to connect node {source_key} to itself."
+      );
     }
+
+    let source_lock = self
+      .get_node(source_key)
+      .ok_or_else(|| format!("When adding a graph edge {source_key}->{target_key}: Node {source_key} not found."))
+      .unwrap();
+
+    let target_lock = self
+      .get_node(target_key)
+      .ok_or_else(|| format!("When adding a graph edge {source_key}->{target_key}: Node {target_key} not found."))
+      .unwrap();
+
+    let edge_key = GraphEdgeKey(self.edges.len());
+    let new_edge = Arc::new(RwLock::new(Edge::new(edge_key, source_key, target_key, edge_payload)));
+
+    {
+      let (source, target) = (source_lock.read(), target_lock.read());
+
+      let already_connected = source
+        .outbound()
+        .iter()
+        .any(|edge| self.get_edge(*edge).unwrap().read().target() == target.key());
+
+      if already_connected {
+        return make_error!("When adding a graph edge {source_key}->{target_key}: Nodes {source_key} and {target_key} are already connected.");
+      }
+
+      self.edges.push(Arc::clone(&new_edge));
+    }
+
+    {
+      let (mut source, mut target) = (source_lock.write(), target_lock.write());
+      source.outbound_mut().push(edge_key);
+      target.inbound_mut().push(edge_key);
+    }
+
+    Ok(())
   }
 
   pub fn build(&mut self) -> Result<(), Report> {
     self.roots = self
       .nodes
       .iter()
-      .enumerate()
-      .filter_map(|(i, node)| node.read().is_root().then(|| i))
+      .filter_map(|node| {
+        let node = node.read();
+        node.is_root().then(|| node.key())
+      })
       .collect_vec();
 
     self.leaves = self
       .nodes
       .iter()
-      .enumerate()
-      .filter_map(|(i, node)| node.read().is_leaf().then(|| i))
+      .filter_map(|node| {
+        let node = node.read();
+        node.is_leaf().then(|| node.key())
+      })
       .collect_vec();
 
     Ok(())
@@ -350,7 +296,7 @@ where
   {
     let roots = self.roots.iter().filter_map(|idx| self.get_node(*idx)).collect_vec();
 
-    directed_breadth_first_traversal_forward(roots.as_slice(), |node| {
+    directed_breadth_first_traversal_forward::<N, E, _>(self, roots.as_slice(), |node| {
       let is_leaf = node.is_leaf();
       let is_root = node.is_root();
       let key = node.key();
@@ -359,15 +305,10 @@ where
       let mut payload = payload.write();
       let payload = payload.borrow_mut();
 
-      let parent_edges = node.inbound();
-      let parents = parent_edges
-        .iter()
-        .map(|parent_edge| {
-          let parent_edge = parent_edge.upgrade().unwrap();
-          let edge: Arc<RwLock<E>> = parent_edge.payload();
-          let node: Arc<RwLock<N>> = parent_edge.source().read().payload();
-          NodeEdgePair { node, edge }
-        })
+      let parents = self
+        .parents_of(node)
+        .into_iter()
+        .map(|(node, edge)| (node.read().payload(), edge.read().payload()))
         .collect_vec();
 
       explorer(GraphNodeForward {
@@ -388,7 +329,7 @@ where
   {
     let leaves = self.leaves.iter().filter_map(|idx| self.get_node(*idx)).collect_vec();
 
-    directed_breadth_first_traversal_backward(leaves.as_slice(), |node| {
+    directed_breadth_first_traversal_backward::<N, E, _>(self, leaves.as_slice(), |node| {
       let is_leaf = node.is_leaf();
       let is_root = node.is_root();
       let key = node.key();
@@ -397,14 +338,10 @@ where
       let mut payload = payload.write();
       let payload = payload.borrow_mut();
 
-      let children_edges = node.outbound();
-      let children = children_edges
-        .iter()
-        .map(|child_edge| {
-          let edge: Arc<RwLock<E>> = child_edge.payload();
-          let node: Arc<RwLock<N>> = child_edge.target().read().payload();
-          NodeEdgePair { node, edge }
-        })
+      let children = self
+        .children_of(node)
+        .into_iter()
+        .map(|(node, edge)| (node.read().payload(), edge.read().payload()))
         .collect_vec();
 
       explorer(GraphNodeBackward {
@@ -427,7 +364,7 @@ where
     self.nodes.iter().for_each(|node| node.write().mark_as_not_visited());
   }
 
-  fn print_fake_edges<W: Write>(&self, mut writer: W, nodes: &[&SafeNode<N, E>]) {
+  fn print_fake_edges<W: Write>(&self, mut writer: W, nodes: &[&SafeNode<N>]) {
     // Fake edges needed to align a set of nodes beautifully
     let node_keys = nodes.iter().map(|node| node.read().key()).collect_vec();
 
@@ -449,7 +386,7 @@ where
     }
   }
 
-  fn print_node<W: Write>(&self, mut writer: W, node: &SafeNode<N, E>) {
+  fn print_node<W: Write>(&self, mut writer: W, node: &SafeNode<N>) {
     writeln!(
       writer,
       "    {} [label = \"({}) {}\"]",
@@ -500,15 +437,16 @@ where
 
   /// Print graph edges.
   fn print_edges<W: Write>(&self, mut writer: W) {
-    self.nodes.iter().for_each(&mut |node: &Arc<RwLock<Node<N, E>>>| {
-      for edge in node.read().outbound().iter() {
-        let payload = edge.payload();
+    self.nodes.iter().for_each(&mut |node: &Arc<RwLock<Node<N>>>| {
+      for edge_key in node.read().outbound() {
+        let edge = self.get_edge(*edge_key).unwrap();
+        let payload = edge.read().payload();
         let payload = payload.read();
         writeln!(
           writer,
           "  {} -> {} [xlabel = \"{}\", weight=\"{}\"]",
-          edge.source().read().key(),
-          edge.target().read().key(),
+          edge.read().source(),
+          edge.read().target(),
           payload,
           payload.weight()
         )

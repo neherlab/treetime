@@ -8,7 +8,7 @@ use std::hash::Hash;
 use std::path::PathBuf;
 use treetime::graph::edge::{GraphEdge, Weighted};
 use treetime::graph::graph::Graph;
-use treetime::graph::node::{GraphNode, Named};
+use treetime::graph::node::{GraphNode, GraphNodeKey, Named};
 use treetime::io::file::create_file;
 use treetime::io::nwk::{read_nwk_file, write_nwk};
 use treetime::utils::global_init::global_init;
@@ -97,7 +97,7 @@ fn main() -> Result<(), Report> {
   let mut graph = Graph::<NodePayload, EdgePayload>::new();
 
   // Insert nodes
-  let mut index_map = IndexMap::<usize, usize>::new(); // Map of internal `nwk` node indices to `Graph` node indices
+  let mut index_map = IndexMap::<usize, GraphNodeKey>::new(); // Map of internal `nwk` node indices to `Graph` node indices
   for (nwk_idx, nwk_node) in nwk_tree.g.raw_nodes().iter().enumerate() {
     // Attempt to parse weight as float. If not a float, then it's a named leaf node, otherwise - internal node.
     let inserted_node_idx = match nwk_node.weight.parse::<f64>() {
@@ -122,7 +122,7 @@ fn main() -> Result<(), Report> {
       .get(&target)
       .ok_or_else(|| eyre!("When inserting edge {nwk_idx}: Node with index {target} not found."))?;
 
-    graph.add_edge(*source, *target, EdgePayload { weight });
+    graph.add_edge(*source, *target, EdgePayload { weight })?;
   }
 
   graph.build()?;

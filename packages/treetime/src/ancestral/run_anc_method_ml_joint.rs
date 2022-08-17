@@ -5,7 +5,7 @@ use crate::ancestral::anc_graph::{AncestralGraph, NodeType};
 use crate::ancestral::run_ancestral_reconstruction::TreetimeAncestralParams;
 use crate::constants::{MIN_BRANCH_LENGTH, TINY_NUMBER};
 use crate::graph::breadth_first::GraphTraversalContinuation;
-use crate::graph::graph::{GraphNodeBackward, GraphNodeForward, NodeEdgePair};
+use crate::graph::graph::{GraphNodeBackward, GraphNodeForward};
 use crate::gtr::gtr::GTR;
 use crate::seq_utils::seq2prof::{prof2seq, seq2prof, Prof2SeqParams, Prof2SeqResult};
 use crate::utils::ndarray::{
@@ -109,10 +109,10 @@ fn traverse_backward(
         NodeType::Internal(weight) => {
           let child_joint_Lxs = children
             .into_iter()
-            .map(|child| {
-              let node = child.node.read();
+            .map(|(child, edge)| {
+              let child = child.read();
               // TODO(perf): avoid this copy. It seems we need a version of `stack()` function accepting an iterator, not ` &[ArrayView<A, D>]`.
-              node.joint_Lx.clone()
+              child.joint_Lx.clone()
             })
             .collect_vec();
           let child_joint_Lx_views = child_joint_Lxs.iter().map(ArrayBase::view).collect_vec();
@@ -259,7 +259,7 @@ fn traverse_forward(
         unimplemented!("Multiple parent nodes not handled yet");
       }
 
-      let NodeEdgePair { edge, node: parent } = &parents[0];
+      let (parent, _) = &parents[0];
       let parent = parent.read();
 
       // choose the value of the Cx(i), corresponding to the state of the
