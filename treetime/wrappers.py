@@ -217,10 +217,12 @@ def export_sequences_and_tree(tt, basename, is_vcf=False, zero_based=False,
                                                         if tt.gtr.ambiguous not in [a,d]])+'"'
             else:
                 if report_ambiguous:
-                    n.comment= '&mutations="' + ','.join([a+str(pos + offset)+d for (a,pos, d) in n.mutations if n.mask[pos]>0])+f'",mcc="{n.mcc}"'
+                    n.comment= '&mutations="' + ','.join([a+str(pos + offset)+d for (a,pos, d) in n.mutations if n.mask[pos]>0])\
+                                                        +f'",mcc="{",".join([str(x) for x in n.mcc])}"'
                 else:
                     n.comment= '&mutations="' + ','.join([a+str(pos + offset)+d for (a,pos, d) in n.mutations
-                                                        if tt.gtr.ambiguous not in [a,d] and n.mask[pos]>0])+f'",mcc="{n.mcc}"'
+                                                         if tt.gtr.ambiguous not in [a,d] and n.mask[pos]>0])\
+                                                        +f'",mcc="{",".join([str(x) for x in n.mcc])}"'
 
                 for (a, pos, d) in n.mutations:
                     if tt.gtr.ambiguous not in [a,d] or report_ambiguous:
