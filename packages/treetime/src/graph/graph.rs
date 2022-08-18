@@ -19,6 +19,7 @@ pub type NodeEdgePair<N, E> = (Arc<RwLock<Node<N>>>, Arc<RwLock<Edge<E>>>);
 pub type NodeEdgePayloadPair<N, E> = (Arc<RwLock<N>>, Arc<RwLock<E>>);
 
 /// Represents graph node during forward traversal
+#[derive(Debug)]
 pub struct GraphNodeForward<'n, N, E>
 where
   N: GraphNode,
@@ -32,6 +33,7 @@ where
 }
 
 /// Represents graph node during backwards traversal
+#[derive(Debug)]
 pub struct GraphNodeBackward<'n, N, E>
 where
   N: GraphNode,
@@ -45,6 +47,7 @@ where
 }
 
 /// Represents graph node during safe traversal
+#[derive(Debug)]
 pub struct GraphNodeSafe<N, E>
 where
   N: GraphNode,
@@ -223,6 +226,11 @@ where
   #[inline]
   pub fn get_nodes(&self) -> &[Arc<RwLock<Node<N>>>] {
     &self.nodes
+  }
+
+  #[inline]
+  pub fn get_node_payloads(&self) -> impl Iterator<Item = Arc<RwLock<N>>> + '_ {
+    self.nodes.iter().map(|node| node.read().payload())
   }
 
   #[inline]

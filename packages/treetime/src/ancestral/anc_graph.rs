@@ -1,3 +1,4 @@
+use crate::graph::assign_node_names::assign_node_names;
 use crate::graph::edge::{GraphEdge, Weighted};
 use crate::graph::graph::Graph as GenericGraph;
 use crate::graph::node::{GraphNode, GraphNodeKey, Named};
@@ -33,6 +34,10 @@ impl GraphNode for Node {}
 impl Named for Node {
   fn name(&self) -> &str {
     &self.name
+  }
+
+  fn set_name(&mut self, name: &str) {
+    self.name = name.to_owned();
   }
 }
 
@@ -103,22 +108,14 @@ pub fn create_graph(tree_path: impl AsRef<Path>) -> Result<AncestralGraph, Repor
 
   // Insert nodes
   let mut index_map = IndexMap::<usize, GraphNodeKey>::new(); // Map of internal `nwk` node indices to `Graph` node indices
-  let mut node_counter: usize = 0;
   for (nwk_idx, nwk_node) in nwk_tree.g.raw_nodes().iter().enumerate() {
     // Attempt to parse weight as float. If not a float, then it's a named leaf node, otherwise - internal node.
     let inserted_node_idx = if let Ok(weight) = nwk_node.weight.parse::<f64>() {
-      let node = Node::internal(&format!("NODE_{node_counter:07}"), weight);
-      node_counter += 1;
+      let node = Node::internal("", 0.0);
       graph.add_node(node)
     } else {
       let name = nwk_node.weight.as_str();
-      if name == "N/A" {
-        let node = Node::internal(&format!("NODE_{node_counter:07}"), 0.0);
-        node_counter += 1;
-        graph.add_node(node)
-      } else {
-        graph.add_node(Node::leaf(name))
-      }
+      graph.add_node(Node::leaf(name))
     };
 
     index_map.insert(nwk_idx, inserted_node_idx);
@@ -142,6 +139,8 @@ pub fn create_graph(tree_path: impl AsRef<Path>) -> Result<AncestralGraph, Repor
   }
 
   graph.build()?;
+
+  assign_node_names(&mut graph);
 
   Ok(graph)
 }

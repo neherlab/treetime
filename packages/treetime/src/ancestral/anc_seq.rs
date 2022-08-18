@@ -1,6 +1,6 @@
 use crate::alphabet::sequence_data::SequenceData;
 use crate::ancestral::anc_args::TreetimeAncestralArgs;
-use crate::ancestral::anc_graph::{AncestralGraph, NodeType};
+use crate::ancestral::anc_graph::AncestralGraph;
 use crate::ancestral::run_ancestral_reconstruction::TreetimeAncestralParams;
 use crate::io::fasta::FastaRecord;
 use itertools::Itertools;
@@ -13,8 +13,8 @@ pub fn reconstruct_ancestral_sequences(
 ) -> Vec<FastaRecord> {
   graph.filter_map(|node| {
     let payload = &node.payload.read();
-
-    let seq = if let (NodeType::Leaf(name), true) = (&payload.node_type, !ancestral_args.reconstruct_tip_states) {
+    let name = &payload.name;
+    let seq = if node.is_leaf && !ancestral_args.reconstruct_tip_states {
       sequence_data
         .get_full(name)
         .ok_or_else(|| format!("Sequence not found: '{name}'"))

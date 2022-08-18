@@ -8,6 +8,7 @@ use std::sync::Arc;
 
 pub trait Named {
   fn name(&self) -> &str;
+  fn set_name(&mut self, name: &str);
 }
 
 #[derive(Copy, Clone, Debug, Display, Eq, PartialEq, Ord, PartialOrd, Hash)]
