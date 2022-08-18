@@ -1,6 +1,6 @@
 use crate::graph::breadth_first::GraphTraversalContinuation;
 use crate::graph::edge::{GraphEdge, Weighted};
-use crate::graph::graph::{Graph as GenericGraph, GraphNodeBackward};
+use crate::graph::graph::{Graph as GenericGraph, Graph, GraphNodeBackward, GraphNodeForward};
 use crate::graph::node::{GraphNode, GraphNodeKey, Named};
 use crate::io::dates::{DateOrRange, DatesMap};
 use crate::io::nwk::read_nwk_file;
@@ -8,6 +8,7 @@ use crate::make_error;
 use color_eyre::Section;
 use eyre::{eyre, Report, WrapErr};
 use indexmap::IndexMap;
+use itertools::Itertools;
 use ndarray::Array1;
 use std::fmt::{Display, Formatter};
 use std::path::Path;
@@ -169,6 +170,8 @@ pub fn create_graph(tree_path: impl AsRef<Path>, dates: &DatesMap) -> Result<Clo
 
   assign_dates(&mut graph, dates)?;
 
+  calculate_distances_to_root(&mut graph);
+
   Ok(graph)
 }
 
@@ -213,4 +216,30 @@ pub fn assign_dates(graph: &mut ClockGraph, dates: &DatesMap) -> Result<(), Repo
   };
 
   Ok(())
+}
+
+/// For every node, calculate distance of that node to the root
+pub fn calculate_distances_to_root(graph: &mut Graph<Node, Edge>) {
+  graph.par_iter_breadth_first_forward(
+    |GraphNodeForward {
+       payload: node, parents, ..
+     }| {
+      if node.is_root() {
+        node.dist2root = 0.0;
+      } else {
+        assert!(parents.len() <= 1, "Multiple parents are not supported yet");
+
+        node.dist2root = parents
+          .iter()
+          .map(|(parent, edge)| {
+            let parent = parent.read();
+            let edge = edge.read();
+            parent.dist2root + edge.weight
+          })
+          .next().unwrap_or(0.0) // Returns first item or 0.0
+          ;
+      }
+      GraphTraversalContinuation::Continue
+    },
+  );
 }
