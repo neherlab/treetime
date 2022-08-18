@@ -8,6 +8,7 @@ use eyre::Report;
 use itertools::{iproduct, Itertools};
 use parking_lot::RwLock;
 use std::borrow::{Borrow, BorrowMut};
+use std::collections::{HashSet, VecDeque};
 use std::fmt::{Debug, Display};
 use std::io::Write;
 use std::sync::Arc;
@@ -108,7 +109,10 @@ where
     }
   }
 
-  /// Retrieve parent nodes of a given node.
+  /// Retrieve parent nodes of a given node and the corresponding edges.
+  ///
+  /// **Returns**: list of pairs `(parent, edge)`, where `parent` is the parent node,
+  /// and `edge` is the inbound edge connecting the parent node with the given node.
   pub fn parents_of(&self, node: &Node<N>) -> Vec<NodeEdgePair<N, E>> {
     // Parents are the source nodes of inbound edges
     node
@@ -122,7 +126,21 @@ where
       .collect_vec()
   }
 
-  /// Retrieve children nodes of a given node.
+  /// Retrieve keys of parent nodes of a given node.
+  pub fn parent_keys_of(&self, node: &Node<N>) -> Vec<GraphNodeKey> {
+    // Parents are the source nodes of inbound edges
+    node
+      .inbound()
+      .iter()
+      .filter_map(|edge_key| self.get_edge(*edge_key))
+      .map(|edge| edge.read().source())
+      .collect_vec()
+  }
+
+  /// Retrieve child nodes of a given node and the corresponding edges.
+  ///
+  /// **Returns**: list of pairs `(child, edge)`, where `child` is the child node,
+  /// and `edge` is the outbound edge connecting the given node with the child node.
   pub fn children_of(&self, node: &Node<N>) -> Vec<NodeEdgePair<N, E>> {
     // Children are the target nodes of outbound edges
     node
@@ -133,6 +151,17 @@ where
         let child_key = edge.read().target();
         self.get_node(child_key).map(|child| (child, edge))
       })
+      .collect_vec()
+  }
+
+  /// Retrieve keys of parent nodes of a given node.
+  pub fn child_keys_of(&self, node: &Node<N>) -> Vec<GraphNodeKey> {
+    // Children are the target nodes of outbound edges
+    node
+      .outbound()
+      .iter()
+      .filter_map(|edge_key| self.get_edge(*edge_key))
+      .map(|edge| edge.read().target())
       .collect_vec()
   }
 
@@ -354,6 +383,90 @@ where
     });
 
     self.reset_nodes();
+  }
+
+  /// Synchronously traverse graph in depth-first preorder fashion forward (from roots to leaves, along edge directions).
+  ///
+  /// Guarantees that for each visited node, all of it parents (recursively) are visited before
+  /// the node itself is visited.
+  pub fn iter_depth_first_preorder_forward(&self, mut explorer: impl FnMut(GraphNodeForward<N, E>)) {
+    let mut stack: Vec<GraphNodeKey> = self.roots.clone();
+    let mut visited = HashSet::<GraphNodeKey>::new();
+    while let Some(key) = stack.pop() {
+      if !visited.contains(&key) {
+        let node = self.get_node(key).unwrap();
+        let node = &node.read();
+        stack.extend(self.child_keys_of(node));
+        explorer(GraphNodeForward {
+          is_root: node.is_root(),
+          is_leaf: node.is_leaf(),
+          key,
+          parents: self
+            .parents_of(node)
+            .into_iter()
+            .map(|(parent, edge)| (parent.read().payload(), edge.read().payload()))
+            .collect_vec(),
+          payload: &mut node.payload().write(),
+        });
+        visited.insert(key);
+      }
+    }
+  }
+
+  /// Synchronously traverse graph in breadth-first order forward (from roots to leaves, along edge directions).
+  ///
+  /// Guarantees that for each visited node, all of it parents (recursively) are visited before
+  /// the node itself is visited.
+  pub fn iter_breadth_first_forward(&self, mut explorer: impl FnMut(GraphNodeForward<N, E>)) {
+    let mut queue: VecDeque<GraphNodeKey> = self.roots.iter().copied().collect();
+    let mut visited = HashSet::<GraphNodeKey>::new();
+    while let Some(key) = queue.pop_front() {
+      if !visited.contains(&key) {
+        let node = self.get_node(key).unwrap();
+        let node = &node.read();
+        queue.extend(self.child_keys_of(node));
+        explorer(GraphNodeForward {
+          is_root: node.is_root(),
+          is_leaf: node.is_leaf(),
+          key,
+          parents: self
+            .parents_of(node)
+            .into_iter()
+            .map(|(parent, edge)| (parent.read().payload(), edge.read().payload()))
+            .collect_vec(),
+          payload: &mut node.payload().write(),
+        });
+        visited.insert(key);
+      }
+    }
+  }
+
+  /// Synchronously traverse graph in breadth-first order backwards (from leaves to roots, against edge directions).
+  ///
+  /// Guarantees that for each visited node, all of it children (recursively) are visited before
+  /// the node itself is visited.
+  pub fn iter_breadth_first_reverse(&self, mut explorer: impl FnMut(GraphNodeBackward<N, E>)) {
+    let mut queue: VecDeque<GraphNodeKey> = self.leaves.iter().copied().collect();
+    let mut visited = HashSet::<GraphNodeKey>::new();
+    while let Some(key) = queue.pop_front() {
+      if !visited.contains(&key) {
+        let node = self.get_node(key).unwrap();
+        let node = &node.read();
+        queue.extend(self.parent_keys_of(node));
+        explorer(GraphNodeBackward {
+          is_root: node.is_root(),
+          is_leaf: node.is_leaf(),
+          key,
+          children: self
+            .children_of(node)
+            .into_iter()
+            .map(|(child, edge)| (child.read().payload(), edge.read().payload()))
+            .collect_vec(),
+          payload: &mut node.payload().write(),
+        });
+        visited.insert(key);
+      }
+    }
   }
 
   /// Returns graph into initial state after traversal
