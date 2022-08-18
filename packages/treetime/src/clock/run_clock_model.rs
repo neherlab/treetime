@@ -8,7 +8,7 @@ use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
 pub struct RunClockModelParams {
-  pub slope: f64,
+  pub slope: Option<f64>,
 }
 
 pub fn run_clock_model<P>(graph: &mut ClockGraph, params: &RunClockModelParams) -> Result<Vec<RootToTipResult>, Report>
@@ -59,7 +59,7 @@ fn regression(graph: &mut ClockGraph, params: &RunClockModelParams) -> Result<Cl
     &root.payload().read().Q.clone()
   };
 
-  let regression = base_regression(Q_root, &Some(params.slope));
+  let regression = base_regression(Q_root, &params.slope);
   let r_val = explained_variance::<GraphNodeRegressionPolicyReroot>(graph)?;
 
   Ok(ClockModel { regression, r_val })

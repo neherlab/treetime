@@ -50,7 +50,7 @@ pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
 
   calculate_averages::<GraphNodeRegressionPolicyReroot>(&mut graph);
 
-  let slope = 0.0;
+  let slope = None;
 
   if !keep_root {
     if *covariation {

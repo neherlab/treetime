@@ -18,7 +18,7 @@ use std::sync::Arc;
 
 pub struct RerootParams {
   pub reroot: RerootMode,
-  pub slope: f64,
+  pub slope: Option<f64>,
   /// only accept positive evolutionary rate estimates when rerooting the tree
   pub force_positive: bool,
   pub keep_node_order: bool,
@@ -152,7 +152,7 @@ fn find_best_root_least_squares<P: GraphNodeRegressionPolicy>(
         if chisq < best_root.chisq {
           let tmpQ = propagate_averages(node, tv, bv * x, var * x, false)
             + propagate_averages(node, tv, bv * (1.0 - x), var * (1.0 - x), true);
-          let reg = base_regression(&tmpQ, &Some(params.slope));
+          let reg = base_regression(&tmpQ, &params.slope);
 
           if reg.slope >= 0.0 || !params.force_positive {
             *best_root = BestRoot {
@@ -216,7 +216,7 @@ fn find_optimal_root_along_branch(
 ) -> Result<(f64, f64), Report> {
   let chisq_prox = match n.node_type {
     NodeType::Leaf(_) => f64::infinity(),
-    _ => base_regression(&n.Qtot, &Some(params.slope)).chisq,
+    _ => base_regression(&n.Qtot, &params.slope).chisq,
   };
 
   let chisq_dist = if n.node_type == NodeType::Root {
@@ -226,13 +226,13 @@ fn find_optimal_root_along_branch(
       unimplemented!("Multiple parent nodes are not supported yet");
     };
     let parent_node = &parents[0].0.read();
-    base_regression(&parent_node.Qtot, &Some(params.slope)).chisq
+    base_regression(&parent_node.Qtot, &params.slope).chisq
   };
 
   let cost_function = |x: f64| {
     let tmpQ = propagate_averages(n, tv, bv * x, var * x, false)
       + propagate_averages(n, tv, bv * (1.0 - x), var * (1.0 - x), true);
-    base_regression(&tmpQ, &Some(params.slope)).chisq
+    base_regression(&tmpQ, &params.slope).chisq
   };
 
   let grid = Array1::<f64>::linspace(0.001, 0.999, 6);
