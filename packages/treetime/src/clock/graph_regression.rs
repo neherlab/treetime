@@ -266,6 +266,7 @@ mod tests {
   #![allow(clippy::excessive_precision)]
 
   use super::*;
+  use crate::clock::clock_graph::NodeType;
   use approx::assert_ulps_eq;
   use eyre::Report;
   use rstest::rstest;
@@ -302,6 +303,201 @@ mod tests {
     assert_ulps_eq!(result.chisq, expected.chisq);
     assert_ulps_eq!(result.hessian.unwrap(), expected.hessian.unwrap());
     assert_ulps_eq!(result.cov.unwrap(), expected.cov.unwrap());
+
+    Ok(())
+  }
+
+  #[rstest]
+  fn propagates_averages_internal_ingroup() -> Result<(), Report> {
+    let n = Node {
+      name: "NODE_0000012".to_owned(),
+      node_type: NodeType::Internal,
+      bad_branch: false,
+      dist2root: 0.028582125098939384,
+      raw_date_constraint: None,
+      Q: array![
+        28155.5503080000017,
+        0.1681200000000,
+        56623980.7637753337622,
+        338.2419817247367,
+        0.0024005550000,
+        14.0000000000000
+      ],
+      Qtot: array![
+        38166.212183430005097762,
+        0.339399999999999979,
+        76666661.530706107616424561,
+        681.210035461932875478,
+        0.008912137600000002,
+        19.000000000000000000
+      ],
+      O: array![
+        10010.6618754299997817725,
+        0.1025800000000000045,
+        20042680.7669307738542556763,
+        205.4215595687880124842,
+        0.0027487462000000003,
+        5.0000000000000000000
+      ],
+      v: 0.028582125098939384,
+    };
+    let tv = None;
+    let bv = 0.002756244;
+    let var = 0.0;
+    let outgroup = false;
+
+    let result = propagate_averages(&n, tv, bv, var, outgroup);
+
+    let expected = array![
+      28155.5503080000016780104,
+      0.2067074159999999772,
+      56623980.7637753337621688843,
+      415.8455483278598876495,
+      0.0034336708163855037,
+      14.0000000000000000000
+    ];
+
+    assert_ulps_eq!(result, expected);
+
+    Ok(())
+  }
+
+  #[rstest]
+  fn propagates_averages_internal_outgroup() -> Result<(), Report> {
+    let n = Node {
+      name: "NODE_0000014".to_owned(),
+      node_type: NodeType::Internal,
+      bad_branch: false,
+      dist2root: 0.004742125098939387,
+      raw_date_constraint: None,
+      Q: array![
+        32158.6872005400000,
+        0.5198600000000,
+        64636537.3683674037457,
+        1045.4782662693638,
+        0.0186299394000,
+        16.0000000000000
+      ],
+      Qtot: array![
+        38166.2121834299978,
+        0.5741600000000,
+        76666661.5307061076164,
+        1154.2448309989718,
+        0.0197935472000,
+        19.0000000000000
+      ],
+      O: array![
+        6007.524982889999591862,
+        0.052320000000000005,
+        12030124.162338696420192719,
+        104.801598240900602832,
+        0.001093238600000000,
+        3.000000000000000000
+      ],
+      v: 0.004742125098939387,
+    };
+
+    let tv = None;
+    let bv = 0.000527604;
+    let var = 0.0;
+    let outgroup = true;
+
+    let result = propagate_averages(&n, tv, bv, var, outgroup);
+
+    let expected = array![
+      6007.524982889999591862,
+      0.053902812000000008,
+      12030124.162338696420192719,
+      107.971192451973294624,
+      0.001149282180502448,
+      3.000000000000000000
+    ];
+
+    assert_ulps_eq!(result, expected);
+
+    Ok(())
+  }
+
+  #[rstest]
+  fn propagates_averages_leaf_ingroup() -> Result<(), Report> {
+    let n = Node {
+      name: "A/New_Hampshire/12/2012|KF790252|11/08/2012|USA|12_13|H3N2/1-1409".to_owned(),
+      node_type: NodeType::Leaf("A/New_Hampshire/12/2012|KF790252|11/08/2012|USA|12_13|H3N2/1-1409".to_owned()),
+      bad_branch: false,
+      dist2root: 0.0441021250989394,
+      raw_date_constraint: Some(2012.8569473),
+      Q: array![],
+      Qtot: array![],
+      O: array![
+        36153.355236129995319061,
+        0.402680000000000038,
+        72615068.440412238240242004,
+        807.523046317570560859,
+        0.015141255400000003,
+        18.000000000000000000
+      ],
+      v: 0.0441021250989394,
+    };
+
+    let tv = Some(2012.8569473);
+    let bv = 0.000567574;
+    let var = 0.7994;
+    let outgroup = false;
+
+    let result = propagate_averages(&n, tv, bv, var, outgroup);
+
+    let expected = array![
+      2517.95965386539910468854941,
+      0.00071000000000000001912,
+      5068292.58230407163500785827637,
+      1.42912843258300004123384,
+      0.00000040297754000000005,
+      1.25093820365273966643826
+    ];
+
+    assert_ulps_eq!(result, expected);
+
+    Ok(())
+  }
+
+  #[rstest]
+  fn propagates_averages_leaf_outgroup() -> Result<(), Report> {
+    let n = Node {
+      name: "A/Hawaii/02/2013|KF789866|05/28/2013|USA|12_13|H3N2/1-1409".to_owned(),
+      node_type: NodeType::Leaf("A/Hawaii/02/2013|KF789866|05/28/2013|USA|12_13|H3N2/1-1409".to_owned()),
+      bad_branch: false,
+      dist2root: 0.04696212509893939,
+      raw_date_constraint: Some(2013.40520192),
+      Q: array![],
+      Qtot: array![],
+      O: array![
+        36152.806981509995239321,
+        0.399820000000000009,
+        72612861.023587599396705627,
+        801.764017015711033309,
+        0.015130598600000003,
+        18.000000000000000000
+      ],
+      v: 0.04696212509893939,
+    };
+
+    let tv = Some(2013.40520192);
+    let bv = 3.570000000000003e-06;
+    let var = 0.0010000000000000009;
+    let outgroup = true;
+
+    let result = propagate_averages(&n, tv, bv, var, outgroup);
+
+    let expected = array![
+      35513.562850206282746512,
+      0.392813614931237731,
+      71328946.040638372302055359,
+      787.691767736316819537,
+      0.014976373562483502,
+      17.681728880157169925
+    ];
+
+    assert_ulps_eq!(result, expected);
 
     Ok(())
   }
