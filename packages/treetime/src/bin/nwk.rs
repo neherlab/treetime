@@ -36,6 +36,12 @@ impl Named for NodePayload {
       NodePayload::Internal(weight) => "",
     }
   }
+
+  fn set_name(&mut self, name: &str) {
+    if let NodePayload::Leaf(_) = self {
+      *self = NodePayload::Leaf(name.to_owned());
+    }
+  }
 }
 
 impl GraphNode for NodePayload {}
