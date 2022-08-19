@@ -146,13 +146,13 @@ pub fn propagate_averages(n: &Node, tv: Option<f64>, bv: f64, var: f64, outgroup
   }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct BaseRegressionResult {
   pub slope: f64,
   pub intercept: f64,
   pub chisq: f64,
-  pub hessian: Option<f64>,
-  pub cov: Option<f64>,
+  pub hessian: Option<Array2<f64>>,
+  pub cov: Option<Array2<f64>>,
 }
 
 impl Default for BaseRegressionResult {
@@ -169,7 +169,7 @@ impl Default for BaseRegressionResult {
 
 /// Calculates the regression coefficients for a given vector containing the averages of tip and
 /// branch quantities
-pub fn base_regression<S>(Q: &ArrayBase<S, Ix1>, slope: &Option<f64>) -> BaseRegressionResult
+pub fn base_regression<S>(Q: &ArrayBase<S, Ix1>, slope: &Option<f64>) -> Result<BaseRegressionResult, Report>
 where
   S: Data<Elem = f64>,
 {
@@ -198,19 +198,19 @@ where
 
   let (hessian, cov) = if !only_intercept {
     let hessian = array![[Q[tsqii], Q[tavgii]], [Q[tavgii], Q[sii]]];
-    let cov = hessian.inv();
+    let cov = hessian.inv()?;
     (Some(hessian), Some(cov))
   } else {
     (None, None)
   };
 
-  BaseRegressionResult {
+  Ok(BaseRegressionResult {
     slope,
     intercept,
     chisq,
-    hessian: None,
-    cov: None,
-  }
+    hessian,
+    cov,
+  })
 }
 
 pub fn explained_variance<P>(graph: &mut ClockGraph) -> Result<f64, Report>
@@ -259,4 +259,50 @@ where
   let corr = tips_vs_branches.t().pearson_correlation()?;
 
   Ok(corr[[0, 1]])
+}
+
+#[cfg(test)]
+mod tests {
+  #![allow(clippy::excessive_precision)]
+
+  use super::*;
+  use approx::assert_ulps_eq;
+  use eyre::Report;
+  use rstest::rstest;
+
+  #[rstest]
+  fn computes_base_regression_without_slope() -> Result<(), Report> {
+    let Q = array![
+      38166.212183429997821804,
+      0.403390000000000026,
+      76666661.530706107616424561,
+      808.952174750153517380,
+      0.015141759500000003,
+      19.000000000000000000
+    ];
+
+    let result = base_regression(&Q, &None)?;
+
+    let expected = BaseRegressionResult {
+      slope: -0.0037814764985444897,
+      intercept: 7.617264442636995,
+      chisq: 0.0007235466244115011,
+      hessian: Some(array![
+        [76666661.53070611, 38166.21218343],
+        [38166.21218343, 19.00000000]
+      ]),
+      cov: Some(array![
+        [0.002787291727171332, -5.598966709281058662],
+        [-5.59896670928105955, 11246.965864967458401225]
+      ]),
+    };
+
+    assert_ulps_eq!(result.slope, expected.slope);
+    assert_ulps_eq!(result.intercept, expected.intercept);
+    assert_ulps_eq!(result.chisq, expected.chisq);
+    assert_ulps_eq!(result.hessian.unwrap(), expected.hessian.unwrap());
+    assert_ulps_eq!(result.cov.unwrap(), expected.cov.unwrap());
+
+    Ok(())
+  }
 }

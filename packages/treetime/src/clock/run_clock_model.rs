@@ -59,7 +59,7 @@ fn regression(graph: &mut ClockGraph, params: &RunClockModelParams) -> Result<Cl
     &root.payload().read().Q.clone()
   };
 
-  let regression = base_regression(Q_root, &params.slope);
+  let regression = base_regression(Q_root, &params.slope)?;
   let r_val = explained_variance::<GraphNodeRegressionPolicyReroot>(graph)?;
 
   Ok(ClockModel { regression, r_val })

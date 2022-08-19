@@ -10,7 +10,7 @@ use crate::graph::reroot::reroot;
 use crate::timetree::timetree_args::RerootMode;
 use crate::{make_error, make_internal_report};
 use eyre::Report;
-use ndarray::Array1;
+use ndarray::{Array1, Array2};
 use ndarray_stats::QuantileExt;
 use num_traits::Float;
 use parking_lot::Mutex;
@@ -84,8 +84,8 @@ pub struct BestRoot {
   pub chisq: f64,
   pub node_key: Option<GraphNodeKey>,
   pub split: f64,
-  pub hessian: Option<f64>,
-  pub cov: Option<f64>,
+  pub hessian: Option<Array2<f64>>,
+  pub cov: Option<Array2<f64>>,
 }
 
 impl Default for BestRoot {
@@ -152,7 +152,7 @@ fn find_best_root_least_squares<P: GraphNodeRegressionPolicy>(
         if chisq < best_root.chisq {
           let tmpQ = propagate_averages(node, tv, bv * x, var * x, false)
             + propagate_averages(node, tv, bv * (1.0 - x), var * (1.0 - x), true);
-          let reg = base_regression(&tmpQ, &params.slope);
+          let reg = base_regression(&tmpQ, &params.slope).unwrap();
 
           if reg.slope >= 0.0 || !params.force_positive {
             *best_root = BestRoot {
@@ -216,7 +216,7 @@ fn find_optimal_root_along_branch(
 ) -> Result<(f64, f64), Report> {
   let chisq_prox = match n.node_type {
     NodeType::Leaf(_) => f64::infinity(),
-    _ => base_regression(&n.Qtot, &params.slope).chisq,
+    _ => base_regression(&n.Qtot, &params.slope)?.chisq,
   };
 
   let chisq_dist = if n.node_type == NodeType::Root {
@@ -226,13 +226,13 @@ fn find_optimal_root_along_branch(
       unimplemented!("Multiple parent nodes are not supported yet");
     };
     let parent_node = &parents[0].0.read();
-    base_regression(&parent_node.Qtot, &params.slope).chisq
+    base_regression(&parent_node.Qtot, &params.slope)?.chisq
   };
 
   let cost_function = |x: f64| {
     let tmpQ = propagate_averages(n, tv, bv * x, var * x, false)
       + propagate_averages(n, tv, bv * (1.0 - x), var * (1.0 - x), true);
-    base_regression(&tmpQ, &params.slope).chisq
+    base_regression(&tmpQ, &params.slope).unwrap().chisq
   };
 
   let grid = Array1::<f64>::linspace(0.001, 0.999, 6);
