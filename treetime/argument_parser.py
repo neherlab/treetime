@@ -305,9 +305,10 @@ def make_parser():
 
     ## ARG
     arg_parser = subparsers.add_parser('arg',
-            description="Calculates the root-to-tip regression and quantifies the 'clock-i-ness' of the tree. "
-                        "It will reroot the tree to maximize the clock-like "
-                        "signal and recalculate branch length unless run with --keep_root.")
+            description="Command to use recombination event information to better estimate time trees, clock rates and ancestral reconstruction of sequences."
+                    "Given trees, their alignments and a list of maximally compatible clades (shared topological" 
+                    "structures where no recombination events have occurred) this command will perform standard treetime inference"
+                    "on all trees, using alignment information from other trees for inference on shared branches (branches in MCCs).")
     arg_parser.add_argument('--trees', nargs='+', required=True, type=str)
     arg_parser.add_argument('--alignments', nargs='+', required=True, type=str)
     arg_parser.add_argument('--mccs', required=True, type=str)
