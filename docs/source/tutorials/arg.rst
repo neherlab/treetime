@@ -3,7 +3,7 @@ Using Recombination Event Knowledge to Improve Time Tree Inference
 ------------------------------------------------------------------
 
 Although relatively uncommon, recombination can be a driver of pathogen evolution. However, recombining segments are often not used together in phylogenetic inference due to computational challenges.
-Because of this, typically, segments of the genome with little to no recombination are used to infer the pathogen phylogeny, leading to a loss of information. 
+Because of this, typically, segments of the genome with little to no recombination are used individually to infer the pathogen phylogeny, leading to a loss of information. 
 As recombination is an uncommon event most segments will have portions of their phylogenies that show a great deal of overlap. Segments share evolutionary history in these areas of overlap and this knowledge can 
 be used to improve divergence time estimates in TreeTime.
 
@@ -29,10 +29,11 @@ These leaves can be used to determine so called maximally compatible clades (MCC
 If desired TreeKnit additionally returns trees that have been resolved according to each other. 
 
 This output can be used in TreeTime to improve the inference of time trees and in turn improve the ancestral sequence reconstruction and the clock tree inference. 
-The ``treetime arg`` command uses input trees and their corresponding alignments to infer time trees. It is assumed the list of MCCs are in json format as described in TreeKnit. 
+The ``treetime arg`` command uses input trees and their corresponding alignments to infer time trees. It is assumed the list of MCCs are in json format as described in `TreeKnit <https://github.com/PierreBarrat/TreeKnit.jl>`_ . 
 For each tree, the list of maximally compatible clades with every other tree is used to determine if internal nodes are part of a MCC with another tree and if they are, which MCC they belong to. 
-This is done using the Fitch algorithm (function: ``assign_all_mccs``). If a node and it's parent both belong to the same MCC then the branch between them is shared.
-For example if a branch is shared between trees of segments A and B then the alignment of both segment A and B can be used to infer the divergence time of the branch, 
+This is done using the `Fitch algorithm <https://www.jstor.org/stable/2412116>`_ (function: ``assign_all_mccs``). If a node and it's parent both belong to the same MCC then the branch between them is shared.
+Take for example three trees of segments A, B and C. If a branch is shared between trees of segments A and B then the alignment of both segment A and B can be used to infer the divergence time of the branch 
+(the alignment of segment C is masked at this position), if the branch is only in tree A the alignment of segment B and C will be masked. If a branch is shared between the segments A, B and C then alignments A, B and C can be used, 
 leading to more accurate branch length estimates than if only the alignment of segment A was used to infer the divergence time of that branch.
 
 In the test folder there is an example of a standard TreeKnit output for three trees. TreeTime expects recombination information to be in `TreeKnit output format <https://pierrebarrat.github.io/TreeKnit.jl/overview/#Output>`_. This can be used to run the ``treetime arg`` command:
