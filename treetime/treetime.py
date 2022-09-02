@@ -54,7 +54,7 @@ class TreeTime(ClockTree):
     def run(self, augur=False, **kwargs):
         import sys
         try:
-            self._run(**kwargs)
+            return self._run(**kwargs)
         except TreeTimeError as err:
             print(f"ERROR: {err} \n", file=sys.stderr)
             if augur:
