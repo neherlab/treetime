@@ -2,7 +2,7 @@ import numpy as np
 from scipy import optimize as sciopt
 from Bio import Phylo
 from . import config as ttconf
-from . import MissingDataError,UnknownMethodError,NotReadyError,TreeTimeError
+from . import MissingDataError,UnknownMethodError,NotReadyError,TreeTimeError, TreeTimeOtherError
 from .utils import tree_layout
 from .clock_tree import ClockTree
 
@@ -25,7 +25,7 @@ def reduce_time_marginal_argument(input_time_marginal):
     elif input_time_marginal == 'confidence-only':
         return input_time_marginal
     else:
-        raise ValueError(f"'{input_time_marginal}' is not a known time marginal argument")
+        raise UnknownMethodError(f"'{input_time_marginal}' is not a known time marginal argument")
 
 
 class TreeTime(ClockTree):
@@ -51,7 +51,29 @@ class TreeTime(ClockTree):
         super(TreeTime, self).__init__(*args, **kwargs)
 
 
-    def run(self, root=None, infer_gtr=True, relaxed_clock=None, n_iqd = None,
+    def run(self, augur=False, **kwargs):
+        import sys
+        try:
+            self._run(**kwargs)
+        except TreeTimeError as err:
+            print(f"ERROR: {err} \n", file=sys.stderr)
+            if augur:
+                raise err
+            else:
+                sys.exit(2)
+        except BaseException as err:
+            import traceback
+            print(traceback.format_exc())
+            print(f"ERROR: {err} \n ", file=sys.stderr)
+            print("ERROR in TreeTime.run: An error has occurred which is not properly handled in TreeTime. If this error persists, please let us know "
+                    "by filing a new issue including the original command and the error above at: https://github.com/neherlab/treetime/issues \n", file=sys.stderr)
+            if augur:
+                raise TreeTimeOtherError() from err
+            else:
+                sys.exit(2)
+
+
+    def _run(self, root=None, infer_gtr=True, relaxed_clock=None, n_iqd = None,
             resolve_polytomies=True, max_iter=0, Tc=None, fixed_clock_rate=None,
             time_marginal='never', sequence_marginal=False, branch_length_mode='auto',
             vary_rate=False, use_covariation=False, tracelog_file=None,
@@ -177,7 +199,7 @@ class TreeTime(ClockTree):
             time_marginal=kwargs["do_marginal"]
 
         if assign_gamma and relaxed_clock:
-            raise TreeTimeError("assign_gamma and relaxed clock are incompatible arguments")
+            raise UnknownMethodError("assign_gamma and relaxed clock are incompatible arguments")
 
         # initially, infer ancestral sequences and infer gtr model if desired
         if self.branch_length_mode=='input':

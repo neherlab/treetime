@@ -1,6 +1,6 @@
 from collections import defaultdict
 import numpy as np
-from . import config as ttconf
+from . import config as ttconf, TreeTimeError, MissingDataError
 from .seq_utils import alphabets, profile_maps, alphabet_synonyms
 
 def avg_transition(W,pi, gap_index=None):
@@ -953,9 +953,8 @@ class GTR(object):
         """
         log_val = self.mu * t * self.eigenvals
         if any(i > 10 for i in log_val):
-            raise ValueError("Error in computing exp(Q * t): Q has positive eigenvalues or the branch length t \n"
-                    "is too large. This is most likely caused by incorrect input data. If this error persists \n"
-                    "please let us know by filing an issue at: https://github.com/neherlab/treetime/issues")
+            raise ValueError("Error in computing exp(Q * t): Q has positive eigenvalues or the branch length t is too large. "
+                    "This is most likely caused by incorrect input data.")
 
         return np.exp(log_val)
 
