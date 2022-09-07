@@ -4,7 +4,12 @@ version="0.9.2"
 ## Errors marked as TreeTimeOtherErrors might be due to data not fulfilling base assumptions or due 
 ## to bugs in TreeTime. Please report them to the developers if they persist. 
 class TreeTimeError(Exception):
-    """TreeTimeError class"""
+    """
+    TreeTimeError class
+    Parent class for more specific errors
+    Raised when treetime is used incorrectly in contrast with `TreeTimeOtherError`
+    `TreeTimeOtherError` is raised when the reason of the error is unknown, could indicate bug     
+    """
     pass
 
 class MissingDataError(TreeTimeError):
