@@ -1,6 +1,6 @@
 import numpy as np
 from . import config as ttconf
-from . import MissingDataError
+from . import MissingDataError, UnknownMethodError
 from .treeanc import TreeAnc
 from .utils import numeric_date, DateConversion, datestring_from_numeric
 from .distribution import Distribution
@@ -77,7 +77,7 @@ class ClockTree(TreeAnc):
         """
         super(ClockTree, self).__init__(*args, **kwargs)
         if dates is None:
-            raise ValueError("ClockTree requires date constraints!")
+            raise MissingDataError("ClockTree requires date constraints!")
 
         self.debug=debug
         self.real_dates = real_dates
@@ -203,7 +203,7 @@ class ClockTree(TreeAnc):
                         " fft_grid_points=%.3e"%(precision_fft), 2)
                 self.fft_grid_size = precision_fft
             elif precision_fft!='auto':
-                raise ValueError(f"ClockTree: precision_fft needs to be either 'auto' or an integer, got '{precision_fft}'.")
+                raise UnknownMethodError(f"ClockTree: precision_fft needs to be either 'auto' or an integer, got '{precision_fft}'.")
             else:
                 self.fft_grid_size = ttconf.FFT_FWHM_GRID_SIZE
             if type(precision_branch) is int:

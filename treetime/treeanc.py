@@ -147,7 +147,7 @@ class TreeAnc(object):
         self._tree = None
         self.tree = tree
         if tree is None:
-            raise ValueError("TreeAnc: tree loading failed! exiting")
+            raise MissingDataError("TreeAnc: tree loading failed! exiting")
 
         # set up GTR model
         self._gtr = None
@@ -311,12 +311,12 @@ class TreeAnc(object):
                 if fmt in ['nexus', 'nex']:
                     self._tree=Phylo.read(in_tree, 'nexus')
                 else:
-                    raise ValueError('TreeAnc: could not load tree, format needs to be nexus or newick! input was '+str(in_tree))
+                    raise MissingDataError('TreeAnc: could not load tree, format needs to be nexus or newick! input was '+str(in_tree))
         else:
-            raise ValueError('TreeAnc: could not load tree! input was '+str(in_tree))
+            raise MissingDataError('TreeAnc: could not load tree! input was '+str(in_tree))
 
         if self._tree.count_terminals()<3:
-            raise ValueError('TreeAnc: tree in %s as only %d tips. Please check your tree!'%(str(in_tree), self._tree.count_terminals()))
+            raise MissingDataError('TreeAnc: tree in %s as only %d tips. Please check your tree!'%(str(in_tree), self._tree.count_terminals()))
 
         # remove all existing sequence attributes
         branch_length_warning = False
@@ -528,7 +528,7 @@ class TreeAnc(object):
         elif method.lower() in ['fitch', 'parsimony']:
             _ml_anc = self._fitch_anc
         else:
-            raise ValueError("Reconstruction method needs to be in ['ml', 'probabilistic', 'fitch', 'parsimony'], got '{}'".format(method))
+            raise UnknownMethodError("Reconstruction method needs to be in ['ml', 'probabilistic', 'fitch', 'parsimony'], got '{}'".format(method))
 
         if infer_gtr:
             self.infer_gtr(marginal=marginal, **kwargs)

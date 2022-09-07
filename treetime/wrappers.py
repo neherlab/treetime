@@ -8,7 +8,7 @@ from . import TreeAnc, GTR, TreeTime
 from . import utils
 from .vcf_utils import read_vcf, write_vcf
 from .seq_utils import alphabets
-from . import TreeTimeError, MissingDataError
+from . import TreeTimeError, MissingDataError, UnknownMethodError
 from .treetime import reduce_time_marginal_argument
 
 def assure_tree(params, tmp_dir='treetime_tmp'):
@@ -794,7 +794,7 @@ def reconstruct_discrete_traits(tree, traits, missing_data='?', pc=1.0, sampling
         if len(missing_weights)>0.5*n_observed_states:
             print("More than half of discrete states missing from the weights file")
             print("Weights read from file are:", weights)
-            raise TreeTimeError("More than half of discrete states missing from the weights file")
+            raise MissingDataError("More than half of discrete states missing from the weights file")
 
     unique_states=sorted(unique_states)
     # make a map from states (excluding missing data) to characters in the alphabet
@@ -1022,7 +1022,7 @@ def estimate_clock_model(params):
         try:
             res = myTree.reroot(params.reroot,
                       force_positive=not params.allow_negative_rate)
-        except TreeTimeError as e:
+        except UnknownMethodError as e:
             print("ERROR: unknown root or rooting mechanism!")
             raise e
 
