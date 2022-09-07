@@ -24,7 +24,7 @@ class NotReadyError(TreeTimeError):
     """NotReadyError class raised when results are requested before inference"""
     pass
 
-class TreeTimeOtherError(TreeTimeError):
+class TreeTimeOtherError(Exception):
     """TreeTimeOtherError class raised when TreeTime fails during inference due to an unknown reason. This might be due to data not fulfilling base assumptions or due  to bugs in TreeTime. Please report them to the developers if they persist."""
     pass
 
