@@ -1,3 +1,13 @@
+# 0.9.3
+
+ * Add extra error class for "unknown" (==unhandled) errors
+ * Wrap `run` function and have it optionally raise unhandled exceptions as `TreeTimeUnknownError`.
+   This is mainly done to improve interaction with `augur` that uses `TreeTime` internals as a library.
+   (both by @anna-parker with input from @victorlin)
+
+[PR #206](https://github.com/neherlab/treetime/pull/206)
+[PR #208](https://github.com/neherlab/treetime/pull/208)
+
 # 0.9.2
 bug fix release:
  * CLI now works for windows (thanks @corneliusroemer for the fix)

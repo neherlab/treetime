@@ -1,14 +1,14 @@
-version="0.9.2"
+version="0.9.3"
 ## Here we define an error class for TreeTime errors, MissingData, UnknownMethod and NotReady errors
 ## are all due to incorrect calling of TreeTime functions or input data that does not fit our base assumptions.
-## Errors marked as TreeTimeUnknownErrors might be due to data not fulfilling base assumptions or due 
-## to bugs in TreeTime. Please report them to the developers if they persist. 
+## Errors marked as TreeTimeUnknownErrors might be due to data not fulfilling base assumptions or due
+## to bugs in TreeTime. Please report them to the developers if they persist.
 class TreeTimeError(Exception):
     """
     TreeTimeError class
     Parent class for more specific errors
     Raised when treetime is used incorrectly in contrast with `TreeTimeUnknownError`
-    `TreeTimeUnknownError` is raised when the reason of the error is unknown, could indicate bug     
+    `TreeTimeUnknownError` is raised when the reason of the error is unknown, could indicate bug
     """
     pass
 
