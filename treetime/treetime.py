@@ -2,7 +2,7 @@ import numpy as np
 from scipy import optimize as sciopt
 from Bio import Phylo
 from . import config as ttconf
-from . import MissingDataError,UnknownMethodError,NotReadyError,TreeTimeError, TreeTimeOtherError
+from . import MissingDataError,UnknownMethodError,NotReadyError,TreeTimeError, TreeTimeUnknownError
 from .utils import tree_layout
 from .clock_tree import ClockTree
 
@@ -51,24 +51,24 @@ class TreeTime(ClockTree):
         super(TreeTime, self).__init__(*args, **kwargs)
 
 
-    def run(self, augur=False, **kwargs):
+    def run(self, raise_uncaught_exceptions=False, **kwargs):
         import sys
         try:
             return self._run(**kwargs)
         except TreeTimeError as err:
-            print(f"ERROR: {err} \n", file=sys.stderr)
-            if augur:
+            if raise_uncaught_exceptions:
                 raise err
             else:
+                print(f"ERROR: {err} \n", file=sys.stderr)
                 sys.exit(2)
         except BaseException as err:
             import traceback
-            print(traceback.format_exc())
+            print(traceback.format_exc(), file=sys.stderr)
             print(f"ERROR: {err} \n ", file=sys.stderr)
-            print("ERROR in TreeTime.run: An error has occurred which is not properly handled in TreeTime. If this error persists, please let us know "
+            print("ERROR in TreeTime.run: An error occurred which was not properly handled in TreeTime. If this error persists, please let us know "
                     "by filing a new issue including the original command and the error above at: https://github.com/neherlab/treetime/issues \n", file=sys.stderr)
-            if augur:
-                raise TreeTimeOtherError() from err
+            if raise_uncaught_exceptions:
+                raise TreeTimeUnknownError() from err
             else:
                 sys.exit(2)
 
