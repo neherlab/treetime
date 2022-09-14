@@ -1,12 +1,12 @@
 #![allow(clippy::large_enum_variant)]
 #![allow(clippy::struct_excessive_bools)]
 
-use crate::ancestral::anc_args::TreetimeAncestralArgs;
-use crate::clock::clock_args::TreetimeClockArgs;
-use crate::homoplasy::homoplasy_args::TreetimeHomoplasyArgs;
-use crate::mugration::mugration_args::TreetimeMugrationArgs;
-use crate::timetree::timetree_args::TreetimeTimetreeArgs;
-use crate::utils::global_init::setup_logger;
+use treetime::ancestral::anc_args::TreetimeAncestralArgs;
+use treetime::clock::clock_args::TreetimeClockArgs;
+use treetime::homoplasy::homoplasy_args::TreetimeHomoplasyArgs;
+use treetime::mugration::mugration_args::TreetimeMugrationArgs;
+use treetime::timetree::timetree_args::TreetimeTimetreeArgs;
+use treetime::utils::global_init::setup_logger;
 use clap::{AppSettings, ArgEnum, CommandFactory, Parser, Subcommand};
 use clap_complete::{generate, Generator, Shell};
 use clap_complete_fig::Fig;

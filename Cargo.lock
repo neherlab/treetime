@@ -2283,7 +2283,7 @@ dependencies = [
 
 [[package]]
 name = "treetime"
-version = "4.0.0"
+version = "1.0.0"
 dependencies = [
  "approx 0.5.1",
  "argmin",
@@ -2338,6 +2338,26 @@ dependencies = [
  "time",
  "xz2",
  "zstd",
+]
+
+[[package]]
+name = "treetime-cli"
+version = "1.0.0"
+dependencies = [
+ "clap 3.2.16",
+ "clap-verbosity-flag",
+ "clap_complete",
+ "clap_complete_fig",
+ "color-eyre",
+ "ctor",
+ "eyre",
+ "itertools",
+ "lazy_static",
+ "log",
+ "mimalloc",
+ "num_cpus",
+ "rayon",
+ "treetime",
 ]
 
 [[package]]

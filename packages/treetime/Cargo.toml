@@ -1,7 +1,7 @@
 [package]
 name = "treetime"
 description = "Maximum-likelihood phylodynamic inference"
-version = "4.0.0"
+version = "1.0.0"
 documentation = "https://treetime.readthedocs.io/en/stable/"
 homepage = "https://github.com/neherlab/treetime"
 edition = "2021"
@@ -16,11 +16,9 @@ crate-type = ["lib"]
 [dependencies]
 approx = "=0.5.1"
 argmin = { version = "=0.6.0", features = [] }
-atty = "=0.2.14"
 bio = { version = "=0.41.0", features = ["phylogeny"] }
 bio-types = { version = "=0.13.0", features = ["phylogeny", ] }
 blas-src = { version = "=0.8.0", features = ["openblas-src"] }
-bzip2 = "=0.4.3"
 chrono = { version = "=0.4.21", default-features = false, features = ["clock", "std"] }
 clap = { version = "=3.2.16", features = ["derive"] }
 clap-verbosity-flag = "=1.0.1"
@@ -60,12 +58,15 @@ serde_json = { version = "=1.0.83", features = ["preserve_order", "indexmap", "u
 strum = "=0.24.1"
 strum_macros = "=0.24.3"
 time = { version = "=0.3.13", features = ["serde", "macros", "parsing"] }
-xz2 = "=0.1.7"
-zstd = { version = "=0.11.2", features = ["zstdmt"] }
-
 
 [target.'cfg(all(target_os = "linux", target_arch = "x86_64"))'.dependencies]
 mimalloc = { version = "=0.1.29", default-features = false }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+atty = "0.2.14"
+bzip2 = "0.4.3"
+xz2 = "0.1.7"
+zstd = { version = "0.11.2+zstd.1.5.2", features = ["zstdmt"] }
 
 [dev-dependencies]
 criterion = { version = "=0.3.6", features = ["html_reports"] }

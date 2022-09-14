@@ -1,0 +1,29 @@
+[package]
+name = "treetime-cli"
+description = "Maximum-likelihood phylodynamic inference: command-line tool"
+version = "1.0.0"
+documentation = "https://treetime.readthedocs.io/en/stable/"
+homepage = "https://github.com/neherlab/treetime"
+edition = "2021"
+license = "MIT"
+publish = false
+keywords = ["phylogenetics", "phylogeography", "virus", "evolution"]
+
+
+[dependencies]
+clap = { version = "=3.2.16", features = ["derive"] }
+clap-verbosity-flag = "=1.0.1"
+clap_complete = "=3.2.3"
+clap_complete_fig = "=3.2.4"
+color-eyre = "=0.6.2"
+ctor = "=0.1.23"
+eyre = "=0.6.8"
+itertools = "=0.10.3"
+lazy_static = "=1.4.0"
+log = "=0.4.17"
+num_cpus = "=1.13.1"
+rayon = "=1.5.3"
+treetime = { path = "../treetime" }
+
+[target.'cfg(all(target_os = "linux", target_arch = "x86_64"))'.dependencies]
+mimalloc = { version = "=0.1.29", default-features = false }
