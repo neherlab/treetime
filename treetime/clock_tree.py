@@ -596,7 +596,7 @@ class ClockTree(TreeAnc):
                     pass
 
         method = 'FFT' if self.use_fft else 'explicit'
-        self.logger("ClockTree - Marginal reconstruction:  Propagating leaves -> root...", 2)
+        self.logger(f"ClockTree - Marginal reconstruction using {method} convolution:  Propagating leaves -> root...", 2)
         # go through the nodes from leaves towards the root:
         for node in self.tree.find_clades(order='postorder'):  # children first, msg to parents
             if node.bad_branch:
