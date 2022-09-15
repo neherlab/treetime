@@ -8,7 +8,7 @@ use crate::io::csv::CsvStructFileWriter;
 use crate::io::dates::read_dates;
 use crate::io::file::create_file;
 use crate::io::nwk::write_nwk;
-use eyre::Report;
+use eyre::{Report, WrapErr};
 
 pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
   let TreetimeClockArgs {
@@ -35,7 +35,7 @@ pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
     seed,
   } = clock_args;
 
-  let dates = read_dates(dates, name_column, date_column)?;
+  let dates = read_dates(dates, name_column, date_column).wrap_err("When reading dates")?;
 
   let mut graph = match tree {
     None => infer_graph()?,

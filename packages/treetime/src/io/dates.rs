@@ -36,7 +36,7 @@ pub fn read_dates(
   date_column: &Option<String>,
 ) -> Result<DatesMap, Report> {
   let filepath = filepath.as_ref();
-  let file = BufReader::new(File::open(&filepath)?);
+  let file = BufReader::new(File::open(&filepath).wrap_err_with(|| format!("When reading file: {filepath:#?}"))?);
   let delimiter =
     guess_csv_delimiter(&filepath).wrap_err_with(|| format!("When guessing CSV delimiter for {filepath:#?}"))?;
 
