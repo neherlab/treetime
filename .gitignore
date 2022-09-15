@@ -97,3 +97,5 @@ ehthumbs.db
 Thumbs.db
 
 test/treetime_examples
+/tmp*/
+/data_dev*
