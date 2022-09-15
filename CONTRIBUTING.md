@@ -63,8 +63,8 @@ git checkout <branch_name>
 # Build and run in debug mode (convenient for development, fast to build, slow to run, has more information in stack traces and when running under a debugger)
 cargo run --bin=treetime
 
-# Instead of `--bin=treetime` you can also run any other executable from `packages/treetime/src/bin/`. Just substitute its filename.
-# This is a `cargo` convention everything in `src/bin/` that has a `main()` function in it becomes an executable. This way you can add more executables.
+# Instead of `--bin=treetime` you can also run any other executable from `packages/**/src/bin/`. Just substitute its filename.
+# This is a `cargo` convention: everything in `src/bin/` that has a `main()` function in it becomes an executable. This way you can add more executables.
 cargo run --bin=graph
 cargo run --bin=sequence_algorithms
 
@@ -82,7 +82,7 @@ will automatically install Rust version required by the project. This may cause 
 
 ### Testing
 
-Run all test with:
+Run all tests with:
 
 ```bash
 cargo test
@@ -128,8 +128,7 @@ automatically.
 ### Upgrading Rust
 
 Dependencies for subprojects are defined in  `packages/**/Cargo.toml` and in `Cargo.lock`. They are periodically
-upgraded by a dedicated maintaier, manually using `cargo-upgrade`
-from [cargo-edit](https://github.com/killercup/cargo-edit) package.
+upgraded by a dedicated maintainer manually using `cargo-upgrade` from [cargo-edit](https://github.com/killercup/cargo-edit) package.
 
 ```bash
 cargo upgrade --workspace
