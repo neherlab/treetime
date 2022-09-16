@@ -3,24 +3,20 @@
 
 use crate::alphabet::alphabet::Alphabet;
 use crate::alphabet::profile_map::ProfileMap;
-use crate::make_report;
+use crate::utils::einsum::einsum_1d;
 use crate::utils::ndarray::{clamp_min, outer};
 use eyre::Report;
 use ndarray::prelude::*;
-use ndarray_einsum_beta::einsum;
 use ndarray_linalg::UPLO::Lower;
 use ndarray_linalg::{Eig, Eigh};
 use num_traits::abs;
 use num_traits::real::Real;
 
 pub fn avg_transition(W: &Array2<f64>, pi: &Array1<f64>, gap_index: Option<usize>) -> Result<f64, Report> {
-  let result = einsum("i,ij,j", &[pi, W, pi])
-    .map_err(|err| make_report!("einsum: {err}"))?
-    .into_dimensionality::<Ix0>()?
-    .into_scalar();
+  let result = einsum_1d("i,ij,j", &[pi, W, pi])?;
 
   Ok(if let Some(gap_index) = gap_index {
-    // np.sum(pi*W[:,gap_index]) *pi[gap_index])/(1-pi[gap_index])
+    // np.sum(pi*W[:,gap_index]) *pi[gap_index])/(1-pi[gap_index]
     let W_slice = W.slice(s!(.., gap_index));
     let pi_mul_W_slice = pi * &W_slice;
     let pi_mul_W_slice_sum = pi_mul_W_slice.sum();
@@ -106,20 +102,21 @@ impl GTR {
     // self.ambiguous = None
     // let gap_index = Self::assign_gap_and_ambiguous(alphabet);
 
+    let W = {
+      let mut W = 0.5 * (&W.view() + &W.t());
+      W.diag_mut().fill(0.0);
+      W
+    };
+
     let pi = {
       let pi_sum = pi.sum();
       pi / pi_sum
     };
 
-    let average_rate = avg_transition(W, &pi, alphabet.gap_index())?;
-
-    let W = {
-      let mut W = 0.5 * (&W.view() + &W.t());
-      W.diag_mut().fill(0.0);
-      W / average_rate
-    };
+    let average_rate = avg_transition(&W, &pi, alphabet.gap_index())?;
 
     let mu = mu * average_rate;
+    let W = W / average_rate;
 
     let (eigvals, v, v_inv) = eig_single_site(&W, &pi)?;
 
@@ -309,7 +306,27 @@ mod test {
     assert_ulps_eq!(avg_transition(&Wi, &pi, None)?, 8.0 / 9.0);
 
     // test with gap index - the index is wrong
-    assert_ulps_eq!(avg_transition(&Wi, &pi, Some(1),)?, 8.0 / 9.0);
+    assert_ulps_eq!(avg_transition(&Wi, &pi, Some(1))?, 8.0 / 9.0);
+
+    Ok(())
+  }
+
+  #[rstest]
+  fn avg_transition_from_alphabet() -> Result<(), Report> {
+    let alphabet = Alphabet::new("nuc")?;
+    let num_chars = alphabet.len();
+
+    let W = array![
+      [0., 1., 1., 1., 1.],
+      [1., 0., 1., 1., 1.],
+      [1., 1., 0., 1., 1.],
+      [1., 1., 1., 0., 1.],
+      [1., 1., 1., 1., 0.]
+    ];
+
+    let pi = array![0.2, 0.2, 0.2, 0.2, 0.2];
+
+    assert_ulps_eq!(avg_transition(&W, &pi, alphabet.gap_index)?, 0.8000000000000005);
 
     Ok(())
   }
