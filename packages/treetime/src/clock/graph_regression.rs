@@ -14,12 +14,12 @@ use ndarray_stats::CorrelationExt;
 use num_traits::real::Real;
 use num_traits::Float;
 
-const tavgii: usize = 0;
-const davgii: usize = 1;
-const tsqii: usize = 2;
-const dtavgii: usize = 3;
-const dsqii: usize = 4;
-const sii: usize = 5;
+pub const tavgii: usize = 0;
+pub const davgii: usize = 1;
+pub const tsqii: usize = 2;
+pub const dtavgii: usize = 3;
+pub const dsqii: usize = 4;
+pub const sii: usize = 5;
 
 pub fn calculate_averages<P: GraphNodeRegressionPolicy>(graph: &mut ClockGraph) {
   graph.par_iter_breadth_first_backward(

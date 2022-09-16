@@ -1,5 +1,5 @@
 use crate::clock::clock_graph::{ClockGraph, Edge, Node, NodeType};
-use crate::clock::graph_regression::{base_regression, propagate_averages};
+use crate::clock::graph_regression::{base_regression, davgii, propagate_averages, tavgii};
 use crate::clock::graph_regression_policy::{GraphNodeRegressionPolicy, GraphNodeRegressionPolicyReroot};
 use crate::clock::minimize_scalar::minimize_scalar_brent_bounded;
 use crate::graph::breadth_first::GraphTraversalContinuation;
@@ -8,10 +8,13 @@ use crate::graph::ladderize::ladderize;
 use crate::graph::node::GraphNodeKey;
 use crate::graph::reroot::reroot;
 use crate::timetree::timetree_args::RerootMode;
+use crate::utils::ndarray::zeros;
 use crate::{make_error, make_internal_report};
 use eyre::Report;
-use ndarray::{Array1, Array2};
+use ndarray::{s, Array1, Array2};
+use ndarray_linalg::Inverse;
 use ndarray_stats::QuantileExt;
+use num::clamp;
 use num_traits::Float;
 use parking_lot::Mutex;
 use std::sync::Arc;
@@ -109,7 +112,7 @@ fn find_best_root_least_squares<P: GraphNodeRegressionPolicy>(
   graph: &mut ClockGraph,
   params: &RerootParams,
 ) -> Result<BestRoot, Report> {
-  let best_root = {
+  let mut best_root = {
     let best_root = Mutex::new(BestRoot::default());
 
     graph.par_iter_breadth_first_forward(
@@ -172,38 +175,73 @@ fn find_best_root_least_squares<P: GraphNodeRegressionPolicy>(
     best_root.into_inner()
   };
 
-  if best_root.node_key.is_none() {
-    return make_error!("No valid root found!");
+  match best_root.node_key {
+    None => make_error!("Reroot: No valid root found!"),
+    Some(_) => {
+      calculate_diff_to_x_in_place::<P>(&mut best_root, graph, &params)?;
+      Ok(best_root)
+    }
   }
+}
 
-  if let Some(hessian) = best_root.hessian {
-    unimplemented!("calculate differentials with respect to x");
-    // # calculate differentials with respect to x
-    // deriv = []
-    // n = best_root["node"]
-    // tv = self.tip_value(n)
-    // bv = self.branch_value(n)
-    // var = self.branch_variance(n)
-    // for dx in [-0.001, 0.001]:
-    //     # y needs to be bounded away from 0 and 1 to avoid division by 0
-    //     y = min(0.9999, max(0.0001, best_root["split"]+dx))
-    //     tmpQ = self.propagate_averages(n, tv, bv*y, var*y) \
-    //          + self.propagate_averages(n, tv, bv*(1-y), var*(1-y), outgroup=True)
-    //     reg = base_regression(tmpQ, slope=slope)
-    //     deriv.append([y,reg['chisq'], tmpQ[tavgii], tmpQ[davgii]])
-    //
-    // estimator_hessian = np.zeros((3,3))
-    // estimator_hessian[:2,:2] = best_root['hessian']
-    // estimator_hessian[2,2] = (deriv[0][1] + deriv[1][1] - 2.0*best_root['chisq'])/(deriv[0][0] - deriv[1][0])**2
-    // # estimator_hessian[2,0] = (deriv[0][2] - deriv[1][2])/(deriv[0][0] - deriv[1][0])
-    // # estimator_hessian[2,1] = (deriv[0][3] - deriv[1][3])/(deriv[0][0] - deriv[1][0])
-    // estimator_hessian[0,2] = estimator_hessian[2,0]
-    // estimator_hessian[1,2] = estimator_hessian[2,1]
-    // best_root['hessian'] = estimator_hessian
-    // best_root['cov'] = np.linalg.inv(estimator_hessian)
+/// Calculate differentials with respect to x
+pub fn calculate_diff_to_x_in_place<P: GraphNodeRegressionPolicy>(
+  mut best_root: &mut BestRoot,
+  graph: &mut ClockGraph,
+  params: &&RerootParams,
+) -> Result<(), Report> {
+  match best_root.node_key {
+    Some(node_key) => {
+      let n = graph
+        .get_node(node_key)
+        .expect("Graph node key should point to a valid node in Graph");
+
+      if let Some(hessian) = &mut best_root.hessian {
+        let n = n.read().payload();
+        let n = n.read();
+
+        let bv = 0.0; // TODO: What branch value of root node supposed to be? Root has no incoming edges.
+        let tv = P::tip_value(&n);
+        let var = P::branch_variance(&n);
+
+        let mut deriv = vec![];
+        for dx in [-0.001, 0.001] {
+          let y: f64 = best_root.split + dx;
+          let y: f64 = clamp(y, 0.0001, 0.9999); // y needs to be bounded away from 0 and 1 to avoid division by 0
+          let tmpQ = propagate_averages(&n, tv, bv * y, var * y, false)
+            + propagate_averages(&n, tv, bv * (1.0 - y), var * (1.0 - y), true);
+          let reg = base_regression(&tmpQ, &params.slope)?;
+          deriv.push([y, reg.chisq, tmpQ[tavgii], tmpQ[davgii]]);
+        }
+
+        // estimator_hessian = np.zeros((3,3))
+        let mut estimator_hessian: Array2<f64> = zeros([3, 3]);
+
+        // estimator_hessian[:2,:2] = best_root['hessian']
+        estimator_hessian.slice_mut(s![0..2, 0..2]).assign(hessian);
+
+        // estimator_hessian[2,2] = (deriv[0][1] + deriv[1][1] - 2.0*best_root['chisq'])/(deriv[0][0] - deriv[1][0])**2
+        estimator_hessian[[2, 2]] =
+          (deriv[0][1] + deriv[1][1] - 2.0 * best_root.chisq) / (deriv[0][0] - (deriv[1][0]).powf(2.0));
+
+        // This was commented out in Python code
+        // # estimator_hessian[2,0] = (deriv[0][2] - deriv[1][2])/(deriv[0][0] - deriv[1][0])
+        // # estimator_hessian[2,1] = (deriv[0][3] - deriv[1][3])/(deriv[0][0] - deriv[1][0])
+
+        // estimator_hessian[0,2] = estimator_hessian[2,0]
+        estimator_hessian[[0, 2]] = estimator_hessian[[2, 0]];
+
+        // estimator_hessian[1,2] = estimator_hessian[2,1]
+        estimator_hessian[[1, 2]] = estimator_hessian[[2, 1]];
+
+        best_root.cov = Some(estimator_hessian.inv()?);
+        best_root.hessian = Some(estimator_hessian);
+      }
+
+      Ok(())
+    }
+    _ => Ok(()),
   }
-
-  Ok(best_root)
 }
 
 fn find_optimal_root_along_branch(
