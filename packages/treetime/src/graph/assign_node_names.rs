@@ -28,7 +28,6 @@ pub fn assign_node_names<N: GraphNode, E: GraphEdge>(graph: &mut Graph<N, E>) {
         names.insert(name.clone());
         payload.set_name(&name);
       }
-      node_counter += 1;
     },
   );
 }
