@@ -6,6 +6,22 @@ Based on augur's __main__.py and setup.py
 
 from __future__ import print_function, division, absolute_import
 import sys
+import math
+import os
+
+sys.path.append(os.path.join(os.path.dirname(__file__), '.'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '../../..'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '../../../treetime'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '../../treetime'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '../treetime'))
+sys.path.append(os.path.join(os.path.dirname(__file__), './treetime'))
+import numpy as np
+
+np.set_printoptions(precision=60, threshold=20, edgeitems=8, suppress=True, linewidth=999, sign=' ',
+                    floatmode='maxprec_equal')
+
 from treetime import version, make_parser
 
 
