@@ -9,7 +9,7 @@ from .seq_utils import seq2array, guess_alphabet, alphabets
 
 string_types = [str] if sys.version_info[0]==3 else [str, unicode]
 def simple_logger(*args, **kwargs):
-    print(args)
+    pass
 
 class SequenceData(object):
     """docstring for SeqData

@@ -157,8 +157,6 @@ def plot_rtt(tt, fname):
 
     from matplotlib import pyplot as plt
     plt.savefig(fname)
-    print("--- root-to-tip plot saved to  \n\t"+fname)
-
 
 def export_sequences_and_tree(tt, basename, is_vcf=False, zero_based=False,
                               report_ambiguous=False, timetree=False, confidence=False,
@@ -169,9 +167,9 @@ def export_sequences_and_tree(tt, basename, is_vcf=False, zero_based=False,
         write_vcf(tt.get_reconstructed_alignment(reconstruct_tip_states=reconstruct_tip_states), outaln_name)
     elif tt.aln:
         outaln_name = basename + f'ancestral_sequences{tree_suffix}.fasta'
-        AlignIO.write(tt.get_reconstructed_alignment(reconstruct_tip_states=reconstruct_tip_states), outaln_name, 'fasta')
+        AlignIO.write(tt.get_reconstructed_alignment(reconstruct_tip_states=reconstruct_tip_states), outaln_name, 'fasta-2line')
     if seq_info:
-        print("\n--- alignment including ancestral nodes saved as  \n\t %s\n"%outaln_name)
+        pass
 
     # decorate tree with inferred mutations
     terminal_count = 0
@@ -233,19 +231,16 @@ def export_sequences_and_tree(tt, basename, is_vcf=False, zero_based=False,
     fmt_bl = "%1.6f" if tt.data.full_length<1e6 else "%1.8e"
     if timetree:
         outtree_name = basename + f'timetree{tree_suffix}.nexus'
-        print("--- saved divergence times in \n\t %s\n"%dates_fname)
         Phylo.write(tt.tree, outtree_name, 'nexus')
     else:
         outtree_name = basename + f'annotated_tree{tree_suffix}.nexus'
         Phylo.write(tt.tree, outtree_name, 'nexus', format_branch_length=fmt_bl)
-    print("--- tree saved in nexus format as  \n\t %s\n"%outtree_name)
 
     if timetree:
         for n in tt.tree.find_clades():
             n.branch_length = n.mutation_length
         outtree_name = basename + f'divergence_tree{tree_suffix}.nexus'
         Phylo.write(tt.tree, outtree_name, 'nexus', format_branch_length=fmt_bl)
-        print("--- divergence tree saved in nexus format as  \n\t %s\n"%outtree_name)
 
 
 def print_save_plot_skyline(tt, n_std=2.0, screen=True, save='', plot=''):
@@ -625,14 +620,10 @@ def run_timetree(myTree, params, outdir, tree_suffix='', prune_short=True, metho
         fname = outdir+f'sequence_evolution_model{tree_suffix}.txt'
         with open(fname, 'w', encoding='utf-8') as ofile:
             ofile.write(str(myTree.gtr)+'\n')
-        print('\nInferred sequence evolution model (saved as %s):'%fname)
-        print(myTree.gtr)
 
     fname = outdir+f'molecular_clock{tree_suffix}.txt'
     with open(fname, 'w', encoding='utf-8') as ofile:
         ofile.write(str(myTree.date2dist)+'\n')
-    print('\nInferred sequence evolution model (saved as %s):'%fname)
-    print(myTree.date2dist)
 
     basename = get_basename(params, outdir)
     if coalescent in ['skyline', 'opt', 'const']:
@@ -719,8 +710,6 @@ def ancestral_reconstruction(params):
         fname = outdir+'/sequence_evolution_model.txt'
         with open(fname, 'w', encoding='utf-8') as ofile:
             ofile.write(str(treeanc.gtr)+'\n')
-        print('\nInferred sequence evolution model (saved as %s):'%fname)
-        print(treeanc.gtr)
 
     export_sequences_and_tree(treeanc, basename, is_vcf, params.zero_based,
                               report_ambiguous=params.report_ambiguous,
@@ -900,7 +889,6 @@ def mugration(params):
     elif 'accession' in states.columns: taxon_name = 'accession'
     else:
         taxon_name = states.columns[0]
-    print("Using column '%s' as taxon name. This needs to match the taxa in the tree!"%taxon_name)
 
     if params.attribute:
         if params.attribute in states.columns:
@@ -1031,30 +1019,26 @@ def estimate_clock_model(params):
         myTree.get_clock_model(covariation=params.covariation)
 
     d2d = utils.DateConversion.from_regression(myTree.clock_model)
-    print('\n',d2d)
-    print(fill('The R^2 value indicates the fraction of variation in'
-          'root-to-tip distance explained by the sampling times.'
-          'Higher values corresponds more clock-like behavior (max 1.0).')+'\n')
+    # print(fill('The R^2 value indicates the fraction of variation in'
+    #       'root-to-tip distance explained by the sampling times.'
+    #       'Higher values corresponds more clock-like behavior (max 1.0).')+'\n')
+    #
+    # print(fill('The rate is the slope of the best fit of the date to'
+    #       'the root-to-tip distance and provides an estimate of'
+    #       'the substitution rate. The rate needs to be positive!'
+    #       'Negative rates suggest an inappropriate root.')+'\n')
 
-    print(fill('The rate is the slope of the best fit of the date to'
-          'the root-to-tip distance and provides an estimate of'
-          'the substitution rate. The rate needs to be positive!'
-          'Negative rates suggest an inappropriate root.')+'\n')
-
-    print('\nThe estimated rate and tree correspond to a root date:')
     if params.covariation:
         reg = myTree.clock_model
         dp = np.array([reg['intercept']/reg['slope']**2,-1./reg['slope']])
         droot = np.sqrt(reg['cov'][:2,:2].dot(dp).dot(dp))
-        print('\n--- root-date:\t %3.2f +/- %1.2f (one std-dev)\n\n'%(-d2d.intercept/d2d.clock_rate, droot))
     else:
-        print('\n--- root-date:\t %3.2f\n\n'%(-d2d.intercept/d2d.clock_rate))
+        pass
 
     if not params.keep_root:
         # write rerooted tree to file
         outtree_name = basename+'rerooted.newick'
         Phylo.write(myTree.tree, outtree_name, 'newick')
-        print("--- re-rooted tree written to \n\t%s\n"%outtree_name)
 
     table_fname = basename+'rtt.csv'
     with open(table_fname, 'w', encoding='utf-8') as ofile:
@@ -1074,7 +1058,6 @@ def estimate_clock_model(params):
                 ofile.write("%s, %f, %f, 0.0\n"%(n.name, d2d.numdate_from_dist2root(n.dist2root), n.dist2root))
         for n in myTree.tree.get_nonterminals(order='preorder'):
             ofile.write("%s, %f, %f, 0.0\n"%(n.name, d2d.numdate_from_dist2root(n.dist2root), n.dist2root))
-        print("--- wrote dates and root-to-tip distances to \n\t%s\n"%table_fname)
 
 
     ###########################################################################

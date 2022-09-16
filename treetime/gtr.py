@@ -65,7 +65,7 @@ class GTR(object):
             def logger_default(*args,**kwargs):
                 """standard logging function if none provided"""
                 if self.debug:
-                    print(*args)
+                    pass
             self.logger = logger_default
         else:
             self.logger = logger
@@ -142,36 +142,6 @@ class GTR(object):
 ######################################################################
 ## constructor methods
 ######################################################################
-
-    def __str__(self):
-        '''
-        String representation of the GTR model for pretty printing
-        '''
-        multi_site = len(self.Pi.shape)==2
-
-        if multi_site:
-            eq_freq_str = "Average substitution rate (mu): "+str(np.round(self.average_rate,6))+'\n'
-        else:
-            eq_freq_str = "Substitution rate (mu): "+str(np.round(self.mu,6))+'\n'
-
-        if not multi_site:
-            eq_freq_str += "\nEquilibrium frequencies (pi_i):\n"
-            for a,p in zip(self.alphabet, self.Pi):
-                eq_freq_str+='  '+a+': '+str(np.round(p,4))+'\n'
-
-        W_str = "\nSymmetrized rates from j->i (W_ij):\n"
-        W_str+='\t'+'\t'.join(self.alphabet)+'\n'
-        for a,Wi in zip(self.alphabet, self.W):
-            W_str+= '  '+a+'\t'+'\t'.join([str(np.round(max(0,p),4)) for p in Wi])+'\n'
-
-        if not multi_site:
-            Q_str = "\nActual rates from j->i (Q_ij):\n"
-            Q_str+='\t'+'\t'.join(self.alphabet)+'\n'
-            for a,Qi in zip(self.alphabet, self.Q):
-                Q_str+= '  '+a+'\t'+'\t'.join([str(np.round(max(0,p),4)) for p in Qi])+'\n'
-
-        return eq_freq_str + W_str + Q_str
-
 
     def assign_rates(self, mu=1.0, pi=None, W=None):
         """

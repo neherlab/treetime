@@ -167,39 +167,7 @@ class TreeAnc(object):
 
 
     def logger(self, msg, level, warn=False, only_once=False):
-        """
-        Print log message *msg* to stdout.
-
-        Parameters
-        -----------
-
-         msg : str
-            String to print on the screen
-
-         level : int
-            Log-level. Only the messages with a level higher than the
-            current verbose level will be shown.
-
-         warn : bool
-            Warning flag. If True, the message will be displayed
-            regardless of its log-level.
-
-        """
-        if only_once and msg in self.log_messages:
-            return
-
-        self.log_messages.add(msg)
-
-        lw=80
-        if level<self.verbose or (warn and level<=self.verbose):
-            from textwrap import fill
-            dt = time.time() - self.t_start
-            outstr = '\n' if level<2 else ''
-            initial_indent = format(dt, '4.2f')+'\t' + level*'-'
-            subsequent_indent = " "*len(format(dt, '4.2f')) + "\t" + " "*level
-            outstr += fill(msg, width=lw, initial_indent=initial_indent, subsequent_indent=subsequent_indent)
-            print(outstr, file=sys.stdout)
-
+        pass
 
 ####################################################################
 ## SET-UP

@@ -20,18 +20,6 @@ class DateConversion(object):
         self.sigma = 0
         self.valid_confidence = False
 
-    def __str__(self):
-        if self.cov is not None and self.valid_confidence:
-            dslope = np.sqrt(self.cov[0,0])
-            outstr = ('Root-Tip-Regression:\n --rate:\t%1.3e +/- %1.2e (one std-dev)\n --chi^2:\t%1.2f\n --r^2:  \t%1.2f\n'
-                  %(self.clock_rate, dslope, self.chisq**2, self.r_val**2))
-        else:
-            outstr = ('Root-Tip-Regression:\n --rate:\t%1.3e\n --r^2:  \t%1.2f\n'
-                  %(self.clock_rate, self.r_val**2))
-
-        return outstr
-
-
     @classmethod
     def from_regression(cls, clock_model):
         """
@@ -231,10 +219,8 @@ def parse_dates(date_file, name_col=None, date_col=None):
         It will first try to parse the column as float, than via
         pandas.to_datetime and finally as ambiguous date such as 2018-05-XX
     """
-    print("\nAttempting to parse dates...")
     dates = {}
     if not os.path.isfile(date_file):
-        print("\n\tERROR: file %s does not exist, exiting..."%date_file)
         return dates
     # separator for the csv/tsv file. If csv, we'll strip extra whitespace around ','
     full_sep = '\t' if date_file.endswith('.tsv') else r'\s*,\s*'
@@ -283,14 +269,12 @@ def parse_dates(date_file, name_col=None, date_col=None):
                 index_col = sorted(potential_index_columns)[0][1]
             else:
                 index_col = name_col
-            print("\tUsing column '%s' as name. This needs match the taxon names in the tree!!"%index_col)
 
         if len(potential_date_columns)>=1 or date_col:
             #try to parse the csv file with dates in the idx column:
             if date_col is None:
                 date_col = potential_date_columns[0][1]
 
-            print("\tUsing column '%s' as date."%date_col)
             for ri, row in df.iterrows():
                 date_str = row.loc[date_col]
                 k = row.loc[index_col]
