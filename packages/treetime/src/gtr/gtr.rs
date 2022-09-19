@@ -6,11 +6,14 @@ use crate::alphabet::profile_map::ProfileMap;
 use crate::utils::einsum::einsum_1d;
 use crate::utils::ndarray::{clamp_min, outer};
 use eyre::Report;
+use itertools::Itertools;
 use ndarray::prelude::*;
 use ndarray_linalg::UPLO::Lower;
 use ndarray_linalg::{Eig, Eigh};
 use num_traits::abs;
 use num_traits::real::Real;
+use std::io::Write;
+use std::iter::zip;
 
 pub fn avg_transition(W: &Array2<f64>, pi: &Array1<f64>, gap_index: Option<usize>) -> Result<f64, Report> {
   let result = einsum_1d("i,ij,j", &[pi, W, pi])?;
@@ -66,6 +69,7 @@ pub struct GTR {
   pub is_site_specific: bool,
   pub alphabet: Alphabet,
   pub profile_map: ProfileMap,
+  pub average_rate: f64,
   pub mu: f64,
   pub W: Array2<f64>,
   pub pi: Array1<f64>,
@@ -125,6 +129,7 @@ impl GTR {
       is_site_specific: false,
       alphabet: alphabet.clone(),
       profile_map: profile_map.clone(),
+      average_rate,
       mu,
       W,
       pi,
@@ -233,6 +238,55 @@ impl GTR {
 
   fn exp_lt(&self, t: f64) -> Array1<f64> {
     (self.mu * t * &self.eigvals).mapv(f64::exp)
+  }
+
+  pub fn is_multi_site(&self) -> bool {
+    self.pi.shape().len() > 1
+  }
+
+  /// Product of the transition matrix and the equilibrium frequencies to obtain the rate matrix
+  /// of the GTR model
+  pub fn Q(&self) -> Array2<f64> {
+    let mut Q = (&self.W * &self.pi).t().to_owned();
+    let diag = -Q.sum_axis(Axis(0));
+    Q.diag_mut().assign(&diag);
+    Q
+  }
+
+  pub fn print<W: Write>(&self, w: &mut W) -> Result<(), Report> {
+    if self.is_multi_site() {
+      writeln!(w, "Average substitution rate (mu): {:.6}", self.average_rate)?;
+    } else {
+      writeln!(w, "Substitution rate (mu): {:.6}", self.mu)?;
+      writeln!(w, "\nEquilibrium frequencies (pi_i):")?;
+      for (a, p) in zip(&self.alphabet.alphabet, &self.pi) {
+        writeln!(w, "{a}:\t{p:.4}")?;
+      }
+    }
+
+    writeln!(w, "\nSymmetrized rates from j->i (W_ij):")?;
+    writeln!(w, "\t{}", self.alphabet.alphabet.iter().join("\t"))?;
+    for (a, Wi) in zip(&self.alphabet.alphabet, self.W.rows()) {
+      writeln!(w, "{a}\t{}", Wi.iter().map(|Wij| format!("{Wij:.4}")).join("\t"))?;
+    }
+
+    if !self.is_multi_site() {
+      writeln!(w, "\nActual rates from j->i (Q_ij):")?;
+      writeln!(w, "\t{}", self.alphabet.alphabet.iter().join("\t"))?;
+      for (a, Qi) in zip(&self.alphabet.alphabet, self.Q().rows()) {
+        writeln!(w, "{a}\t{}", Qi.iter().map(|Qij| format!("{Qij:.4}")).join("\t"))?;
+      }
+    }
+    writeln!(w)?;
+    Ok(())
+  }
+}
+
+impl ToString for GTR {
+  fn to_string(&self) -> String {
+    let mut buf = vec![];
+    self.print(&mut buf).unwrap();
+    String::from_utf8(buf).unwrap()
   }
 }
 

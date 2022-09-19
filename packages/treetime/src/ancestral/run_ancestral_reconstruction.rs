@@ -10,7 +10,9 @@ use crate::io::file::create_file;
 use crate::utils::random::get_random_number_generator;
 use eyre::Report;
 use itertools::Itertools;
+use log::info;
 use std::fmt::Display;
+use std::io::Write;
 
 #[allow(clippy::struct_excessive_bools)]
 #[derive(Clone, Debug, Default)]
@@ -75,6 +77,11 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
   }
 
   graph.print_graph(create_file(outdir.join("graph_output.dot"))?)?;
+
+  let model_string = model.to_string();
+  let mut model_file = create_file(outdir.join("sequence_evolution_model.txt"))?;
+  writeln!(model_file, "{model_string}")?;
+  info!("{model_string}");
 
   Ok(())
 }
