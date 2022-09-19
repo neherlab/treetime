@@ -10,23 +10,25 @@ pub fn assign_node_names<N: GraphNode, E: GraphEdge>(graph: &mut Graph<N, E>) {
     .map(|node| node.read().name().to_owned())
     .collect::<HashSet<String>>();
 
-  let mut node_counter = 0_i64;
+  let mut internal_node_counter = 0;
+
   graph.iter_depth_first_preorder_forward(
     |GraphNodeForward {
        key,
        payload,
        parents,
        is_leaf,
-       ..
+       is_root,
      }| {
       if payload.name().is_empty() {
-        let mut name = format!("NODE_{node_counter:07}");
+        let mut name = format!("NODE_{internal_node_counter:07}");
         while names.contains(&name) {
-          node_counter += 1;
-          name = format!("NODE_{node_counter:07}");
+          internal_node_counter += 1;
+          name = format!("NODE_{internal_node_counter:07}");
         }
         names.insert(name.clone());
         payload.set_name(&name);
+        internal_node_counter += 1;
       }
     },
   );
