@@ -267,14 +267,22 @@ impl GTR {
     writeln!(w, "\nSymmetrized rates from j->i (W_ij):")?;
     writeln!(w, "\t{}", self.alphabet.alphabet.iter().join("\t"))?;
     for (a, Wi) in zip(&self.alphabet.alphabet, self.W.rows()) {
-      writeln!(w, "{a}\t{}", Wi.iter().map(|Wij| format!("{Wij:.4}")).join("\t"))?;
+      writeln!(
+        w,
+        "{a}\t{}",
+        Wi.iter().map(|Wij| format!("{:.4}", Wij.max(0.0))).join("\t")
+      )?;
     }
 
     if !self.is_multi_site() {
       writeln!(w, "\nActual rates from j->i (Q_ij):")?;
       writeln!(w, "\t{}", self.alphabet.alphabet.iter().join("\t"))?;
       for (a, Qi) in zip(&self.alphabet.alphabet, self.Q().rows()) {
-        writeln!(w, "{a}\t{}", Qi.iter().map(|Qij| format!("{Qij:.4}")).join("\t"))?;
+        writeln!(
+          w,
+          "{a}\t{}",
+          Qi.iter().map(|Qij| format!("{:.4}", Qij.max(0.0))).join("\t")
+        )?;
       }
     }
     writeln!(w)?;
