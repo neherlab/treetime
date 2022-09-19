@@ -5,4 +5,5 @@ pub mod dates;
 pub mod fasta;
 pub mod file;
 pub mod fs;
+pub mod nex;
 pub mod nwk;

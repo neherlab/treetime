@@ -7,6 +7,7 @@ use crate::ancestral::run_anc_method::run_anc_method;
 use crate::gtr::get_gtr::get_gtr;
 use crate::io::fasta::{FastaRecord, FastaWriter};
 use crate::io::file::create_file;
+use crate::io::nex::write_nex;
 use crate::utils::random::get_random_number_generator;
 use eyre::Report;
 use itertools::Itertools;
@@ -82,6 +83,8 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
   let mut model_file = create_file(outdir.join("sequence_evolution_model.txt"))?;
   writeln!(model_file, "{model_string}")?;
   info!("{model_string}");
+
+  write_nex(&mut create_file(outdir.join("annotated_tree.nexus"))?, &graph)?;
 
   Ok(())
 }
