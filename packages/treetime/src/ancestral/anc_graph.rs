@@ -1,3 +1,4 @@
+use crate::alphabet::find_mutations::Mutation;
 use crate::graph::assign_node_names::assign_node_names;
 use crate::graph::edge::{GraphEdge, Weighted};
 use crate::graph::graph::Graph as GenericGraph;
@@ -7,6 +8,7 @@ use crate::o;
 use color_eyre::Section;
 use eyre::{eyre, Report, WrapErr};
 use indexmap::IndexMap;
+use itertools::Itertools;
 use ndarray::{array, Array1, Array2};
 use std::collections::BTreeMap;
 use std::fmt::{Display, Formatter};
@@ -26,14 +28,16 @@ pub struct Node {
   pub node_type: NodeType,
   pub joint_Lx: Array2<f64>,   // likelihood
   pub joint_Cx: Array2<usize>, // max likelihood indices
-  pub mask: Option<usize>,
+  pub mask: Option<Array1<i8>>,
   pub seq: Array1<char>,
   pub seq_ii: Array1<usize>,
+  pub mutations: Vec<Mutation>,
 }
 
 impl WithNwkComments for Node {
   fn nwk_comments(&self) -> BTreeMap<String, String> {
-    BTreeMap::from([(o!("mutations"), o!("TODO"))])
+    let mutations = self.mutations.iter().map(Mutation::to_string).join(",");
+    BTreeMap::from([(o!("mutations"), mutations)])
   }
 }
 
@@ -59,6 +63,7 @@ impl Node {
       mask: None,
       seq: Array1::<char>::default(0),
       seq_ii: Array1::<usize>::default(0),
+      mutations: vec![],
     }
   }
 
@@ -71,6 +76,7 @@ impl Node {
       mask: None,
       seq: Array1::<char>::default(0),
       seq_ii: Array1::<usize>::default(0),
+      mutations: vec![],
     }
   }
 }

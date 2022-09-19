@@ -6,7 +6,7 @@ use crate::io::fasta::FastaRecord;
 use itertools::Itertools;
 
 pub fn reconstruct_ancestral_sequences(
-  sequence_data: &SequenceData,
+  sequence_data: &mut SequenceData,
   graph: &AncestralGraph,
   ancestral_args: &TreetimeAncestralArgs,
   ancestral_params: &TreetimeAncestralParams,
@@ -15,11 +15,9 @@ pub fn reconstruct_ancestral_sequences(
     let payload = &node.payload.read();
     let name = &payload.name;
     let seq = if node.is_leaf && !ancestral_args.reconstruct_tip_states {
-      sequence_data
-        .get_full(name)
-        .ok_or_else(|| format!("Sequence not found: '{name}'"))
-        .unwrap()
+      sequence_data.get_full(name).unwrap()
     } else {
+      sequence_data.set(&payload.name, &payload.seq).unwrap();
       sequence_data.decompress(&payload.seq)
     }
     .iter()

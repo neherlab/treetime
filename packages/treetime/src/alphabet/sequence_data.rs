@@ -1,8 +1,10 @@
 #![allow(clippy::len_without_is_empty)]
 
 use crate::io::fasta::read_many_fasta;
+use crate::{make_internal_error, make_internal_report};
 use eyre::Report;
 use itertools::Itertools;
+use log::warn;
 use ndarray::{s, Array1, Array2, ArrayBase, ArrayView1, Axis, Data, Ix1};
 use std::collections::HashMap;
 use std::fmt::Write as _;
@@ -133,11 +135,18 @@ impl SequenceData {
       .map(|index| self.aln_compressed.slice(s![*index, ..]))
   }
 
-  /// Retrieve full sequence by name
-  pub fn get_full(&self, seq_name: &str) -> Option<Array1<char>> {
+  /// Retrieve full sequence by name (infallible)
+  pub fn get_full_maybe(&self, seq_name: &str) -> Option<Array1<char>> {
     self
       .get_compressed(seq_name)
       .map(|compressed| self.decompress(&compressed))
+  }
+
+  /// Retrieve full sequence by name (fallible)
+  pub fn get_full(&self, seq_name: &str) -> Result<Array1<char>, Report> {
+    self
+      .get_full_maybe(seq_name)
+      .ok_or_else(|| make_internal_report!("Sequence '{seq_name}' not found"))
   }
 
   pub fn decompress<S>(&self, compressed_seq: &ArrayBase<S, Ix1>) -> Array1<char>
@@ -150,6 +159,32 @@ impl SequenceData {
     // else:
     //     L = self.full_length - self.additional_constant_sites
     self.compression_map.iter().map(|i| compressed_seq[*i]).collect()
+  }
+
+  pub fn set(&mut self, seq_name: &str, seq_compressed: &Array1<char>) -> Result<(), Report> {
+    assert_eq!(self.aln_compressed.shape()[1], seq_compressed.len());
+
+    let records = self
+      .seq_names_to_indices
+      .iter()
+      .filter(|(name, index)| name == &seq_name)
+      .collect_vec();
+
+    if records.len() > 1 {
+      warn!("Sequences with duplicate names found: '{seq_name}'. Results might be unreliable");
+    }
+
+    if records.is_empty() {
+      self.aln_compressed.push_row(seq_compressed.view())?;
+      self
+        .seq_names_to_indices
+        .insert(seq_name.to_owned(), self.aln_compressed.nrows() - 1);
+    } else {
+      let (_, index) = records[0];
+      self.aln_compressed.row_mut(*index).assign(seq_compressed);
+    }
+
+    Ok(())
   }
 }
 

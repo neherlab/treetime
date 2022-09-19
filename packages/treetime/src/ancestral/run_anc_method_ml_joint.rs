@@ -130,7 +130,7 @@ fn traverse_backward(
       for (char_i, char) in alphabet.iter().enumerate() {
         // Pij(i) * L_ch(i) for given parent state j
         // if the node has a mask, P_ij is uniformly 1 at masked positions as no info is propagated
-        let msg_to_parent = match node.mask {
+        let msg_to_parent = match &node.mask {
           Some(mask) => {
             unimplemented!("node.mask is not yet implemented");
             // ((log_transitions[:,char_i]*np.repeat([node.mask], self.gtr.n_states, axis=0).T) + msg_from_children)
