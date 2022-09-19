@@ -2,7 +2,7 @@ use crate::graph::assign_node_names::assign_node_names;
 use crate::graph::breadth_first::GraphTraversalContinuation;
 use crate::graph::edge::{GraphEdge, Weighted};
 use crate::graph::graph::{Graph as GenericGraph, Graph, GraphNodeBackward, GraphNodeForward};
-use crate::graph::node::{GraphNode, GraphNodeKey, Named};
+use crate::graph::node::{GraphNode, GraphNodeKey, Named, WithNwkComments};
 use crate::io::dates::{DateOrRange, DatesMap};
 use crate::io::nwk::read_nwk_file;
 use crate::make_error;
@@ -39,6 +39,8 @@ pub struct Node {
 }
 
 impl GraphNode for Node {}
+
+impl WithNwkComments for Node {}
 
 impl Named for Node {
   fn name(&self) -> &str {

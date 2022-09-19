@@ -1,6 +1,7 @@
 use crate::graph::edge::GraphEdgeKey;
 use derive_more::Display;
 use parking_lot::RwLock;
+use std::collections::BTreeMap;
 use std::fmt::{Debug, Display};
 use std::hash::Hash;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -10,6 +11,14 @@ pub trait Named {
   fn name(&self) -> &str;
   fn set_name(&mut self, name: &str);
 }
+
+/// Defines comments to attach to nodes when writing to Newick and Nexus files
+pub trait WithNwkComments {
+  fn nwk_comments(&self) -> BTreeMap<String, String> {
+    BTreeMap::<String, String>::new()
+  }
+}
+
 
 #[derive(Copy, Clone, Debug, Display, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct GraphNodeKey(pub usize);
@@ -21,7 +30,7 @@ impl GraphNodeKey {
   }
 }
 
-pub trait GraphNode: Clone + Debug + Display + Sync + Send + Named {}
+pub trait GraphNode: Clone + Debug + Display + Sync + Send + Named + WithNwkComments {}
 
 /// Internal representation of a node in a graph
 #[derive(Debug)]

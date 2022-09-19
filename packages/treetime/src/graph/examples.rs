@@ -2,7 +2,7 @@
 
 use crate::graph::edge::{GraphEdge, Weighted};
 use crate::graph::graph::Graph;
-use crate::graph::node::{GraphNode, Named};
+use crate::graph::node::{GraphNode, Named, WithNwkComments};
 use eyre::Report;
 use std::fmt::{Display, Formatter};
 
@@ -22,6 +22,8 @@ impl Named for Node {
 }
 
 impl GraphNode for Node {}
+
+impl WithNwkComments for Node {}
 
 impl Display for Node {
   fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {

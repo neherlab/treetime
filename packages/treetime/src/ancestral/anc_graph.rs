@@ -1,12 +1,14 @@
 use crate::graph::assign_node_names::assign_node_names;
 use crate::graph::edge::{GraphEdge, Weighted};
 use crate::graph::graph::Graph as GenericGraph;
-use crate::graph::node::{GraphNode, GraphNodeKey, Named};
+use crate::graph::node::{GraphNode, GraphNodeKey, Named, WithNwkComments};
 use crate::io::nwk::read_nwk_file;
+use crate::o;
 use color_eyre::Section;
 use eyre::{eyre, Report, WrapErr};
 use indexmap::IndexMap;
 use ndarray::{array, Array1, Array2};
+use std::collections::BTreeMap;
 use std::fmt::{Display, Formatter};
 use std::path::Path;
 
@@ -27,6 +29,12 @@ pub struct Node {
   pub mask: Option<usize>,
   pub seq: Array1<char>,
   pub seq_ii: Array1<usize>,
+}
+
+impl WithNwkComments for Node {
+  fn nwk_comments(&self) -> BTreeMap<String, String> {
+    BTreeMap::from([(o!("mutations"), o!("TODO"))])
+  }
 }
 
 impl GraphNode for Node {}

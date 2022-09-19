@@ -7,6 +7,7 @@ use crate::utils::float_fmt::float_to_significant_digits;
 use bio::io::newick;
 use bio_types::phylogeny::Tree;
 use eyre::{Report, WrapErr};
+use itertools::Itertools;
 use std::io::{Read, Write};
 use std::path::Path;
 
@@ -67,6 +68,12 @@ where
   N: GraphNode,
   E: GraphEdge,
 {
+  let (name, comments) = {
+    let node_payload = node.payload();
+    let node_payload = node_payload.read();
+    (node_payload.name().to_owned(), node_payload.nwk_comments())
+  };
+
   let outbound_edge_keys = node.outbound();
 
   if !outbound_edge_keys.is_empty() {
@@ -94,13 +101,14 @@ where
         let weight = float_to_significant_digits(weight, 3);
         write!(writer, ":{weight}")?;
       }
+      if !comments.is_empty() {
+        let comments = comments.iter().map(|(key, val)| format!("[&{key}=\"{val}\"]")).join("");
+        write!(writer, "{comments}")?;
+      }
     }
     write!(writer, ")")?;
   }
 
-  let node_payload = node.payload();
-  let node_payload = node_payload.read();
-  let name = node_payload.name();
   write!(writer, "{name}")?;
 
   Ok(())
