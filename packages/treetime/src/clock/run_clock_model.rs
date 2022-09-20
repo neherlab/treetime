@@ -11,7 +11,12 @@ pub struct RunClockModelParams {
   pub slope: Option<f64>,
 }
 
-pub fn run_clock_model<P>(graph: &mut ClockGraph, params: &RunClockModelParams) -> Result<Vec<RootToTipResult>, Report>
+pub struct RunClockModelResults {
+  pub clock_model: ClockModel,
+  pub rtt: Vec<RootToTipResult>,
+}
+
+pub fn run_clock_model<P>(graph: &mut ClockGraph, params: &RunClockModelParams) -> Result<RunClockModelResults, Report>
 where
   P: GraphNodeRegressionPolicy,
 {
@@ -23,12 +28,14 @@ where
     );
   }
 
-  Ok(get_root_to_tip_result(graph, &clock_model))
+  let rtt = get_root_to_tip_result(graph, &clock_model);
+
+  Ok(RunClockModelResults { clock_model, rtt })
 }
 
 pub struct ClockModel {
-  regression: BaseRegressionResult,
-  r_val: f64,
+  pub regression: BaseRegressionResult,
+  pub r_val: f64,
 }
 
 impl ClockModel {
@@ -67,12 +74,12 @@ fn regression(graph: &mut ClockGraph, params: &RunClockModelParams) -> Result<Cl
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct RootToTipResult {
-  name: String,
-  date: f64,
+  pub name: String,
+  pub date: f64,
   #[serde(rename = "root-to-tip distance")]
-  root_to_tip_distance: f64,
+  pub root_to_tip_distance: f64,
   #[serde(rename = "clock-deviation")]
-  clock_deviation: f64,
+  pub clock_deviation: f64,
 }
 
 /// Get results of the root-to-tip clock inference.

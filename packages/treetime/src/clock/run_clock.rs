@@ -1,8 +1,9 @@
+use crate::cli::rtt_chart::draw_rtt_console_chart;
 use crate::clock::clock_args::TreetimeClockArgs;
 use crate::clock::clock_graph::{create_graph, infer_graph};
 use crate::clock::graph_regression::calculate_averages;
 use crate::clock::graph_regression_policy::GraphNodeRegressionPolicyReroot;
-use crate::clock::run_clock_model::{run_clock_model, RunClockModelParams};
+use crate::clock::run_clock_model::{run_clock_model, RunClockModelParams, RunClockModelResults};
 use crate::clock::run_reroot::{run_reroot, RerootParams};
 use crate::io::csv::CsvStructFileWriter;
 use crate::io::dates::read_dates;
@@ -68,14 +69,17 @@ pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
     )?;
   }
 
-  let results = run_clock_model::<GraphNodeRegressionPolicyReroot>(&mut graph, &RunClockModelParams { slope })?;
+  let RunClockModelResults { clock_model, rtt } =
+    run_clock_model::<GraphNodeRegressionPolicyReroot>(&mut graph, &RunClockModelParams { slope })?;
 
   let mut rtt_writer = CsvStructFileWriter::new(outdir.join("rtt.csv"), b',')?;
-  results.into_iter().try_for_each(|result| rtt_writer.write(&result))?;
+  rtt.iter().try_for_each(|result| rtt_writer.write(result))?;
 
   graph.print_graph(create_file(outdir.join("graph_output.dot"))?)?;
 
   write_nwk(&mut create_file(outdir.join("rerooted.nwk"))?, &graph)?;
+
+  draw_rtt_console_chart(&rtt, &clock_model);
 
   Ok(())
 }
