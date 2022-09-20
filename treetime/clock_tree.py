@@ -256,7 +256,7 @@ class ClockTree(TreeAnc):
 
 
     def get_clock_model(self, covariation=True, slope=None):
-        self.logger(f'ClockTree.get_clock_model: estimating clock model with {covariation=}',3)
+        self.logger(f'ClockTree.get_clock_model: estimating clock model with covariation={covariation}',3)
         Treg = self.setup_TreeRegression(covariation=covariation)
         self.clock_model = Treg.regression(slope=slope)
         if not np.isfinite(self.clock_model['slope']):
