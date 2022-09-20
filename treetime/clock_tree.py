@@ -244,7 +244,7 @@ class ClockTree(TreeAnc):
         branch_value = lambda x:x.mutation_length
         if covariation:
             om = self.one_mutation
-            branch_variance = lambda x:((x.clock_length if hasattr(x,'clock_length') else x.mutation_length)
+            branch_variance = lambda x:((max(0,x.clock_length) if hasattr(x,'clock_length') else x.mutation_length)
                                         +(self.tip_slack**2*om if x.is_terminal() else 0.0))*om
         else:
             branch_variance = lambda x:1.0 if x.is_terminal() else 0.0
@@ -256,6 +256,7 @@ class ClockTree(TreeAnc):
 
 
     def get_clock_model(self, covariation=True, slope=None):
+        self.logger(f'ClockTree.get_clock_model: estimating clock model with {covariation=}',3)
         Treg = self.setup_TreeRegression(covariation=covariation)
         self.clock_model = Treg.regression(slope=slope)
         if not np.isfinite(self.clock_model['slope']):
