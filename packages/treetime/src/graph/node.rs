@@ -19,7 +19,6 @@ pub trait WithNwkComments {
   }
 }
 
-
 #[derive(Copy, Clone, Debug, Display, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct GraphNodeKey(pub usize);
 

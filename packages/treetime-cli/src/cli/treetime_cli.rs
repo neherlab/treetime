@@ -1,12 +1,6 @@
 #![allow(clippy::large_enum_variant)]
 #![allow(clippy::struct_excessive_bools)]
 
-use treetime::ancestral::anc_args::TreetimeAncestralArgs;
-use treetime::clock::clock_args::TreetimeClockArgs;
-use treetime::homoplasy::homoplasy_args::TreetimeHomoplasyArgs;
-use treetime::mugration::mugration_args::TreetimeMugrationArgs;
-use treetime::timetree::timetree_args::TreetimeTimetreeArgs;
-use treetime::utils::global_init::setup_logger;
 use clap::{AppSettings, ArgEnum, CommandFactory, Parser, Subcommand};
 use clap_complete::{generate, Generator, Shell};
 use clap_complete_fig::Fig;
@@ -19,6 +13,12 @@ use num_cpus;
 use std::fmt::Debug;
 use std::io;
 use std::str::FromStr;
+use treetime::ancestral::anc_args::TreetimeAncestralArgs;
+use treetime::clock::clock_args::TreetimeClockArgs;
+use treetime::homoplasy::homoplasy_args::TreetimeHomoplasyArgs;
+use treetime::mugration::mugration_args::TreetimeMugrationArgs;
+use treetime::timetree::timetree_args::TreetimeTimetreeArgs;
+use treetime::utils::global_init::setup_logger;
 
 lazy_static! {
   static ref SHELLS: &'static [&'static str] = &["bash", "elvish", "fish", "fig", "powershell", "zsh"];

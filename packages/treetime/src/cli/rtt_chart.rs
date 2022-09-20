@@ -4,11 +4,16 @@ use eyre::Report;
 use itertools::Itertools;
 use log::{info, warn};
 use num_traits::clamp;
-use plotters::chart::SeriesLabelStyle;
-use plotters::prelude::*;
+use plotters::{
+  backend::SVGBackend,
+  chart::{ChartBuilder, SeriesLabelPosition},
+  drawing::IntoDrawingArea,
+  element::{Circle, EmptyElement, PathElement},
+  series::{LineSeries, PointSeries},
+  style::{Color, IntoFont, RGBColor, ShapeStyle, BLACK, WHITE},
+};
 use rgb::RGB8;
 use std::path::Path;
-use textplots::Shape::Points;
 use textplots::{Chart, ColorPlot, Shape};
 
 pub fn write_rtt_svg_chart(
