@@ -641,7 +641,7 @@ class ClockTree(TreeAnc):
                     ## for k branches, but due to the fact that inner branches overlap at time t one can be removed
                     ## resulting in the exponent (k-1))
                     if hasattr(self, 'merger_model') and self.merger_model:
-                        time_points = np.unique(np.concatenate([msg.x for msg in msgs_to_multiply]))
+                        time_points = node.product_of_child_messages.x
                         # set multiplicity of node to number of good child branches
                         if node.is_terminal():
                             merger_contribution = Distribution(time_points, -self.merger_model.integral_merger_rate(time_points), is_log=True)
@@ -690,7 +690,7 @@ class ClockTree(TreeAnc):
 
                 msg_parent_to_node =None
                 if node.marginal_pos_Lx is not None:
-                    if len(parent.clades)<5:
+                    if len(parent.clades)<3:
                         # messages from the complementary subtree (iterate over all sister nodes)
                         complementary_msgs = [parent.date_constraint] if parent.date_constraint is not None else []
                         complementary_msgs.extend([sister.marginal_pos_Lx for sister in parent.clades
@@ -702,7 +702,7 @@ class ClockTree(TreeAnc):
                         complementary_msgs.append(parent.msg_from_parent)
 
                     if hasattr(self, 'merger_model') and self.merger_model:
-                        time_points = np.unique(np.concatenate([msg.x for msg in complementary_msgs]))
+                        time_points = parent.marginal_pos_LH.x
                         # As Lx do not include the node contribution this must be added on
                         complementary_msgs.append(self.merger_model.node_contribution(parent, time_points))
 
