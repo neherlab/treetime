@@ -48,6 +48,7 @@ num_cpus = "=1.13.1"
 openblas-src = { version = "=0.10.4", features = ["static"] }
 parking_lot = { version = "=0.12.1", features = ["deadlock_detection", "hardware-lock-elision"] }
 petgraph = "=0.6.2"
+plotters = { version = "=0.3.4", default_features = false, features = ["all_series", "all_elements", "svg_backend"] }
 pretty_dtoa = "=0.3.0"
 rand = { version = "=0.8.5", features = ["serde1", "log"] }
 rand_distr = { version = "=0.4.3", feaures = ["serde1", "std_math"] }

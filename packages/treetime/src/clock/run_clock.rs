@@ -1,4 +1,4 @@
-use crate::cli::rtt_chart::draw_rtt_console_chart;
+use crate::cli::rtt_chart::{draw_rtt_console_chart, write_rtt_svg_chart};
 use crate::clock::clock_args::TreetimeClockArgs;
 use crate::clock::clock_graph::{create_graph, infer_graph};
 use crate::clock::graph_regression::calculate_averages;
@@ -80,6 +80,7 @@ pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
   write_nwk(&mut create_file(outdir.join("rerooted.nwk"))?, &graph)?;
 
   draw_rtt_console_chart(&rtt, &clock_model);
+  write_rtt_svg_chart(outdir.join("rtt.svg"), &rtt, &clock_model)?;
 
   Ok(())
 }
