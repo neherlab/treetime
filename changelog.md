@@ -1,3 +1,8 @@
+# 0.9.4: bug fix and performance improvments
+
+ * avoid negative variance associated with branch lengths in tree regression. This could happen in rare cases when marginal time tree estimation returned short negative branch length and the variance was estimated as being proportional to branch length. Variances in the `TreeRegression` clock model are now always non-negative.
+ * downsample the grid during multiplication of distribution objects. This turned out to be an issue for trees with very large polytomies. In these cases, a large number of distributions get multiplied which resulted in grid sizes above 100000 points. Grid sizes are now downsampled to the average grid size.
+
 # 0.9.3
 
  * Add extra error class for "unknown" (==unhandled) errors

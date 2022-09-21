@@ -690,7 +690,7 @@ class ClockTree(TreeAnc):
 
                 msg_parent_to_node =None
                 if node.marginal_pos_Lx is not None:
-                    if len(parent.clades)<3:
+                    if len(parent.clades)<5:
                         # messages from the complementary subtree (iterate over all sister nodes)
                         complementary_msgs = [parent.date_constraint] if parent.date_constraint is not None else []
                         complementary_msgs.extend([sister.marginal_pos_Lx for sister in parent.clades
