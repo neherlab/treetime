@@ -102,6 +102,14 @@ class Distribution(object):
 
             x_vals = np.unique(np.concatenate([k.x for k in dists]))
             x_vals = x_vals[(x_vals> new_xmin-TINY_NUMBER)&(x_vals< new_xmax+TINY_NUMBER)]
+            n_dists = len(dists)
+            if len(x_vals)>100*n_dists and n_dists>3:
+                n_bins = len(x_vals)//n_dists - 6
+                lower_cut_off = n_dists*3
+                upper_cut_off = n_dists*(n_bins + 3)
+                x_vals = np.concatenate((x_vals[:lower_cut_off],
+                                         x_vals[lower_cut_off:upper_cut_off].reshape((-1,n_dists)).mean(axis=1),
+                                         x_vals[upper_cut_off:]))
             y_vals = np.sum([k.__call__(x_vals) for k in dists], axis=0)
             try:
                 peak = y_vals.min()

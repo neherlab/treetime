@@ -347,7 +347,7 @@ class TreeRegression(object):
                     best_root.update(reg)
 
         if 'node' not in best_root:
-            print(f"TreeRegression.find_best_root: No valid root found! {force_positive=}")
+            print(f"TreeRegression.find_best_root: No valid root found! force_positive={force_positive}")
             return None
 
         if 'hessian' in best_root:
