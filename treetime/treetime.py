@@ -77,7 +77,7 @@ class TreeTime(ClockTree):
             resolve_polytomies=True, max_iter=0, Tc=None, fixed_clock_rate=None,
             time_marginal='never', sequence_marginal=False, branch_length_mode='auto',
             vary_rate=False, use_covariation=False, tracelog_file=None,
-            method_anc = 'probabilistic', assign_gamma=None, **kwargs):
+            method_anc = 'probabilistic', assign_gamma=None, remove_outgroup=False, **kwargs):
 
         """
         Run TreeTime reconstruction. Based on the input parameters, it divides
@@ -149,7 +149,7 @@ class TreeTime(ClockTree):
 
         use_covariation : bool, optional
             default False, if False, rate estimates will be performed using simple
-            regression ignoring phylogenetic covaration between nodes. If vary_rate is True,
+            regression ignoring phylogenetic covariation between nodes. If vary_rate is True,
             use_covariation is true by default
 
         method_anc: str, optional
@@ -160,6 +160,9 @@ class TreeTime(ClockTree):
         assign_gamma: callable, optional
             function to specify gamma (branch length scaling, local clock rate modifier)
             for each branch in tree, not compatible with a relaxed clock model
+
+        remove_outgroup: bool, optional 
+            remove outgroup from tree after rooting on outgroup and running treetime. Default is False
 
         **kwargs
            Keyword arguments needed by the downstream functions
@@ -174,6 +177,13 @@ class TreeTime(ClockTree):
         """
         # register the specified covaration mode
         self.use_covariation = use_covariation or (vary_rate and (not type(vary_rate)==float))
+
+        if remove_outgroup:
+            if root is None:
+                print("WARNING: remove_outgroup is set to True, but no outgroup is specified. "
+                      "Assuming the root's first clade is the outgroup to be removed.")
+            if root in ['min_dev', 'least-squares','oldest', 'least-squares']:
+                raise TreeTimeError("Cannot remove outgroup when not rooted on outgroup")
 
         if (self.tree is None) or (self.aln is None and self.data.full_length is None):
             raise MissingDataError("TreeTime.run: ERROR, alignment or tree are missing")
@@ -348,6 +358,9 @@ class TreeTime(ClockTree):
             for n in bad_branches:
                 self.logger("%s, input date: %s, apparent date: %1.2f"%(n.name, str(n.raw_date_constraint), n.numdate),0,warn=True)
 
+        if remove_outgroup:
+            self.tree = self.tree.root.clades[1]
+        
         return ttconf.SUCCESS
 
 

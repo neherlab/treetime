@@ -134,6 +134,8 @@ def add_reroot_group(parser):
     reroot_group.add_argument('--keep-root', required = False, action="store_true", default=False,
             help ="don't reroot the tree. Otherwise, reroot to minimize the "
                   "the residual of the regression of root-to-tip distance and sampling time")
+    reroot_group.add_argument('--remove-outgroup', required = False, action="store_true", default=False,
+            help ="requires a tree rooted on an outgroup. Removes the outgroup from the tree after inference.")
     parser.add_argument('--tip-slack', type=float, default=3,
                               help="excess variance associated with terminal nodes accounting for "
                                    " overdispersion of the molecular clock")

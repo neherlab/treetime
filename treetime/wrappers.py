@@ -491,6 +491,13 @@ def arg_time_trees(params):
     dates = utils.parse_dates(params.dates, date_col=params.date_column, name_col=params.name_column)
     root = None if params.keep_root else params.reroot
 
+    if params.remove_outgroup:
+        if root is None:
+            print("WARNING: remove_outgroup is set to True, but no outgroup is specified. "
+                    "Assuming the root's first clade is the outgroup to be removed.")
+        if root in ['min_dev', 'least-squares','oldest', 'least-squares']:
+            raise TreeTimeError("Cannot remove outgroup when not rooted on outgroup")
+
     for i,(tree,mask) in enumerate(zip(arg_params['trees'], arg_params['masks'])):
         outdir = get_outdir(params, f'_ARG-treetime')
         gtr = create_gtr(params)
@@ -600,6 +607,14 @@ def run_timetree(myTree, params, outdir, tree_suffix='', prune_short=True, metho
     time_marginal = reduce_time_marginal_argument(params.time_marginal)
     # RUN
     root = None if params.keep_root else params.reroot
+
+    if params.remove_outgroup:
+        if root is None:
+            print("WARNING: remove_outgroup is set to True, but no outgroup is specified. "
+                    "Assuming the root's first clade is the outgroup to be removed.")
+        if root in ['min_dev', 'least-squares','oldest', 'least-squares']:
+            raise TreeTimeError("Cannot remove outgroup when not rooted on outgroup")
+
     try:
         success = myTree.run(root=root, relaxed_clock=relaxed_clock_params,
                resolve_polytomies=(not params.keep_polytomies),
@@ -612,7 +627,7 @@ def run_timetree(myTree, params, outdir, tree_suffix='', prune_short=True, metho
                reconstruct_tip_states=params.reconstruct_tip_states,
                n_points=params.n_skyline, n_branches_posterior = n_branches_posterior,
                fixed_pi=fixed_pi, prune_short=prune_short,
-               use_covariation=params.covariation, method_anc=method_anc,
+               use_covariation=params.covariation, method_anc=method_anc, remove_outgroup=params.remove_outgroup,
                tracelog_file=os.path.join(outdir, f"trace_run{tree_suffix}.log"))
     except TreeTimeError as e:
         print("\nTreeTime run FAILED: please check above for errors and/or rerun with --verbose 4.\n")
@@ -971,6 +986,12 @@ def estimate_clock_model(params):
     """
     implementing treetime clock
     """
+    if params.remove_outgroup:
+        if params.root is None:
+            print("WARNING: remove_outgroup is set to True, but no outgroup is specified. "
+                    "Assuming the root's first clade is the outgroup to be removed.")
+        if params.root in ['min_dev', 'least-squares','oldest', 'least-squares']:
+            raise TreeTimeError("Cannot remove outgroup when not rooted on outgroup")
 
     if assure_tree(params, tmp_dir='clock_model_tmp'):
         return 1
@@ -1050,11 +1071,17 @@ def estimate_clock_model(params):
     else:
         print('\n--- root-date:\t %3.2f\n\n'%(-d2d.intercept/d2d.clock_rate))
 
-    if not params.keep_root:
-        # write rerooted tree to file
-        outtree_name = basename+'rerooted.newick'
-        Phylo.write(myTree.tree, outtree_name, 'newick')
-        print("--- re-rooted tree written to \n\t%s\n"%outtree_name)
+    if params.remove_outgroup:
+        # write tree with removed root and outgroup to file
+        outtree_name = basename+'removed_outgroup.newick'
+        Phylo.write(myTree.tree.root.clades[1], outtree_name, 'newick')
+        print("--- tree rooted on outgroup with removed outgroup written to \n\t%s\n"%outtree_name)
+    else:
+        if not params.keep_root:
+            # write rerooted tree to file
+            outtree_name = basename+'rerooted.newick'
+            Phylo.write(myTree.tree, outtree_name, 'newick')
+            print("--- re-rooted tree written to \n\t%s\n"%outtree_name)
 
     table_fname = basename+'rtt.csv'
     with open(table_fname, 'w', encoding='utf-8') as ofile:
