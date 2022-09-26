@@ -1,7 +1,7 @@
 #![allow(clippy::len_without_is_empty)]
 
 use crate::io::fasta::read_many_fasta;
-use crate::{make_internal_error, make_internal_report};
+use crate::make_internal_report;
 use eyre::Report;
 use itertools::Itertools;
 use log::warn;

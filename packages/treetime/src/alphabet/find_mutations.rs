@@ -1,3 +1,7 @@
+use crate::alphabet::sequence_data::SequenceData;
+use crate::ancestral::anc_graph::AncestralGraph;
+use crate::graph::breadth_first::GraphTraversalContinuation;
+use crate::graph::graph::GraphNodeForward;
 use ndarray::{Array1, CowArray, Zip};
 use num_traits::{One, Zero};
 use std::cmp::Ordering;
@@ -67,6 +71,35 @@ pub fn find_mutations<M: Clone + PartialOrd + Zero + One>(
       }
       acc
     })
+}
+
+/// Finds mutations on a graph and attach them to node payloads.
+pub fn find_graph_mutations(graph: &mut AncestralGraph, sequence_data: &SequenceData) {
+  graph.par_iter_breadth_first_forward(
+    |GraphNodeForward {
+       is_root,
+       is_leaf,
+       key,
+       payload: node,
+       parents,
+     }| {
+      if is_root {
+        return GraphTraversalContinuation::Continue;
+      }
+
+      if parents.len() > 1 {
+        unimplemented!("Multiple parent nodes are not supported yet");
+      }
+
+      let (parent, _) = &parents[0];
+
+      let parent_seq = sequence_data.get_full(&parent.read().name).unwrap();
+      let this_seq = sequence_data.get_full(&node.name).unwrap();
+      node.mutations = find_mutations(&parent_seq, &this_seq, &node.mask);
+
+      GraphTraversalContinuation::Continue
+    },
+  );
 }
 
 #[cfg(test)]
