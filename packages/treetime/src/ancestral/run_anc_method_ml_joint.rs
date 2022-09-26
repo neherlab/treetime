@@ -1,11 +1,14 @@
+#![allow(non_snake_case)]
+
 use crate::alphabet::alphabet::Alphabet;
 use crate::alphabet::sequence_data::SequenceData;
 use crate::ancestral::anc_args::TreetimeAncestralArgs;
-use crate::ancestral::anc_graph::{AncestralGraph, NodeType};
+use crate::ancestral::anc_graph::AncestralGraph;
 use crate::ancestral::run_ancestral_reconstruction::TreetimeAncestralParams;
 use crate::constants::{MIN_BRANCH_LENGTH, TINY_NUMBER};
 use crate::graph::breadth_first::GraphTraversalContinuation;
 use crate::graph::graph::{GraphNodeBackward, GraphNodeForward};
+use crate::graph::node::NodeType;
 use crate::gtr::gtr::GTR;
 use crate::seq_utils::seq2prof::{prof2seq, seq2prof, Prof2SeqParams, Prof2SeqResult};
 use crate::utils::ndarray::{
@@ -106,7 +109,7 @@ fn traverse_backward(
           sanitize_in_place(&mut msg_from_children);
           msg_from_children
         }
-        NodeType::Internal(weight) => {
+        NodeType::Internal(weight) | NodeType::Root(weight) => {
           let child_joint_Lxs = children
             .into_iter()
             .map(|(child, edge)| {

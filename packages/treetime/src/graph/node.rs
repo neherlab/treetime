@@ -7,6 +7,13 @@ use std::hash::Hash;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
+#[derive(Clone, Debug, PartialEq)]
+pub enum NodeType {
+  Root(f64),
+  Leaf(String),
+  Internal(f64),
+}
+
 pub trait Named {
   fn name(&self) -> &str;
   fn set_name(&mut self, name: &str);
@@ -19,6 +26,13 @@ pub trait WithNwkComments {
   }
 }
 
+pub trait GraphNode: Clone + Debug + Display + Sync + Send + Named + WithNwkComments {
+  fn root(name: &str, weight: f64) -> Self;
+  fn internal(name: &str, weight: f64) -> Self;
+  fn leaf(name: &str) -> Self;
+  fn set_node_type(&mut self, node_type: NodeType);
+}
+
 #[derive(Copy, Clone, Debug, Display, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct GraphNodeKey(pub usize);
 
@@ -28,8 +42,6 @@ impl GraphNodeKey {
     self.0
   }
 }
-
-pub trait GraphNode: Clone + Debug + Display + Sync + Send + Named + WithNwkComments {}
 
 /// Internal representation of a node in a graph
 #[derive(Debug)]

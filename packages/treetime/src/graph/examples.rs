@@ -2,7 +2,7 @@
 
 use crate::graph::edge::{GraphEdge, Weighted};
 use crate::graph::graph::Graph;
-use crate::graph::node::{GraphNode, Named, WithNwkComments};
+use crate::graph::node::{GraphNode, Named, NodeType, WithNwkComments};
 use eyre::Report;
 use std::fmt::{Display, Formatter};
 
@@ -21,7 +21,21 @@ impl Named for Node {
   }
 }
 
-impl GraphNode for Node {}
+impl GraphNode for Node {
+  fn root(name: &str, weight: f64) -> Self {
+    Self { name: name.to_owned() }
+  }
+
+  fn internal(name: &str, weight: f64) -> Self {
+    Self { name: name.to_owned() }
+  }
+
+  fn leaf(name: &str) -> Self {
+    Self { name: name.to_owned() }
+  }
+
+  fn set_node_type(&mut self, node_type: NodeType) {}
+}
 
 impl WithNwkComments for Node {}
 
@@ -42,7 +56,13 @@ impl Weighted for Edge {
   }
 }
 
-impl GraphEdge for Edge {}
+impl GraphEdge for Edge {
+  fn new(weight: f64) -> Self {
+    Self {
+      name: format!("{weight}"),
+    }
+  }
+}
 
 impl Display for Edge {
   fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {

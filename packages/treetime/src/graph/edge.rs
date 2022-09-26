@@ -13,6 +13,10 @@ pub trait Weighted {
   fn weight(&self) -> f64;
 }
 
+pub trait GraphEdge: Clone + Debug + Display + Sync + Send + Weighted {
+  fn new(weight: f64) -> Self;
+}
+
 #[derive(Copy, Clone, Debug, Display, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct GraphEdgeKey(pub usize);
 
@@ -22,8 +26,6 @@ impl GraphEdgeKey {
     self.0
   }
 }
-
-pub trait GraphEdge: Clone + Debug + Display + Sync + Send + Weighted {}
 
 /// Edge representing a connection between two nodes. Relevant data can be
 /// stored in the edge atomically. Edge's target and source node's are

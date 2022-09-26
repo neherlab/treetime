@@ -1,14 +1,13 @@
-use crate::graph::assign_node_names::assign_node_names;
+#![allow(non_snake_case)]
+
 use crate::graph::breadth_first::GraphTraversalContinuation;
+use crate::graph::create_graph_from_nwk::create_graph_from_nwk;
 use crate::graph::edge::{GraphEdge, Weighted};
-use crate::graph::graph::{Graph as GenericGraph, Graph, GraphNodeBackward, GraphNodeForward};
-use crate::graph::node::{GraphNode, GraphNodeKey, Named, WithNwkComments};
+use crate::graph::graph::{Graph, GraphNodeBackward, GraphNodeForward};
+use crate::graph::node::{GraphNode, Named, NodeType, WithNwkComments};
 use crate::io::dates::{DateOrRange, DatesMap};
-use crate::io::nwk::read_nwk_file;
 use crate::make_error;
-use color_eyre::Section;
-use eyre::{eyre, Report, WrapErr};
-use indexmap::IndexMap;
+use eyre::Report;
 use itertools::Itertools;
 use ndarray::Array1;
 use std::fmt::{Display, Formatter};
@@ -16,14 +15,7 @@ use std::path::Path;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering::Relaxed;
 
-pub type ClockGraph = GenericGraph<Node, Edge>;
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum NodeType {
-  Root,
-  Internal,
-  Leaf(String),
-}
+pub type ClockGraph = Graph<Node, Edge>;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Node {
@@ -38,7 +30,53 @@ pub struct Node {
   pub v: f64,
 }
 
-impl GraphNode for Node {}
+impl GraphNode for Node {
+  fn root(name: &str, weight: f64) -> Self {
+    Self {
+      name: name.to_owned(),
+      node_type: NodeType::Root(weight),
+      bad_branch: false,
+      dist2root: 0.0,
+      raw_date_constraint: None,
+      Q: Array1::zeros(6),
+      Qtot: Array1::zeros(6),
+      O: Array1::zeros(6),
+      v: 0.0,
+    }
+  }
+
+  fn internal(name: &str, weight: f64) -> Self {
+    Self {
+      name: name.to_owned(),
+      node_type: NodeType::Internal(weight),
+      bad_branch: false,
+      dist2root: 0.0,
+      raw_date_constraint: None,
+      Q: Array1::zeros(6),
+      Qtot: Array1::zeros(6),
+      O: Array1::zeros(6),
+      v: 0.0,
+    }
+  }
+
+  fn leaf(name: &str) -> Self {
+    Self {
+      name: name.to_owned(),
+      node_type: NodeType::Leaf(name.to_owned()),
+      bad_branch: false,
+      dist2root: 0.0,
+      raw_date_constraint: None,
+      Q: Array1::zeros(6),
+      Qtot: Array1::zeros(6),
+      O: Array1::zeros(6),
+      v: 0.0,
+    }
+  }
+
+  fn set_node_type(&mut self, node_type: NodeType) {
+    self.node_type = node_type;
+  }
+}
 
 impl WithNwkComments for Node {}
 
@@ -53,37 +91,14 @@ impl Named for Node {
 }
 
 impl Node {
-  pub fn leaf(name: &str) -> Self {
-    Self {
-      name: name.to_owned(),
-      node_type: NodeType::Leaf(name.to_owned()),
-      bad_branch: false,
-      dist2root: 0.0,
-      raw_date_constraint: None,
-      Q: Array1::zeros(6),
-      Qtot: Array1::zeros(6),
-      O: Array1::zeros(6),
-      v: 0.0,
-    }
-  }
-
-  pub fn internal(name: &str) -> Self {
-    Self {
-      name: name.to_owned(),
-      node_type: NodeType::Internal,
-      bad_branch: false,
-      dist2root: 0.0,
-      raw_date_constraint: None,
-      Q: Array1::zeros(6),
-      Qtot: Array1::zeros(6),
-      O: Array1::zeros(6),
-      v: 0.0,
-    }
+  #[inline]
+  pub const fn is_root(&self) -> bool {
+    matches!(self.node_type, NodeType::Root(_))
   }
 
   #[inline]
-  pub const fn is_root(&self) -> bool {
-    matches!(self.node_type, NodeType::Root)
+  pub const fn is_internal(&self) -> bool {
+    matches!(self.node_type, NodeType::Internal(_))
   }
 
   #[inline]
@@ -94,7 +109,11 @@ impl Node {
 
 impl Display for Node {
   fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-    write!(f, "{}", self.name)
+    match &self.node_type {
+      NodeType::Root(weight) => write!(f, "{weight:1.4}"),
+      NodeType::Internal(weight) => write!(f, "{weight:1.4}"),
+      NodeType::Leaf(name) => write!(f, "{name}"),
+    }
   }
 }
 
@@ -103,7 +122,11 @@ pub struct Edge {
   pub weight: f64,
 }
 
-impl GraphEdge for Edge {}
+impl GraphEdge for Edge {
+  fn new(weight: f64) -> Self {
+    Self { weight }
+  }
+}
 
 impl Weighted for Edge {
   fn weight(&self) -> f64 {
@@ -121,58 +144,10 @@ pub fn infer_graph() -> Result<ClockGraph, Report> {
   unimplemented!("Not implemented: Graph inference is not yet implemented. Please provide the `--tree` argument.")
 }
 
-pub fn create_graph(tree_path: impl AsRef<Path>, dates: &DatesMap) -> Result<ClockGraph, Report> {
-  let nwk_tree = read_nwk_file(tree_path)
-    .wrap_err("When parsing input tree")
-    .with_section(|| "Note: only Newick format is currently supported")?;
-
-  let mut graph = ClockGraph::new();
-
-  // Insert nodes
-  let mut index_map = IndexMap::<usize, GraphNodeKey>::new(); // Map of internal `nwk` node indices to `Graph` node indices
-  for (nwk_idx, nwk_node) in nwk_tree.g.raw_nodes().iter().enumerate() {
-    // Attempt to parse weight as float. If not a float, then it's a named leaf node, otherwise - internal node.
-    let inserted_node_idx = if let Ok(weight) = nwk_node.weight.parse::<f64>() {
-      let node = Node::internal("");
-      graph.add_node(node)
-    } else {
-      let name = nwk_node.weight.as_str();
-      graph.add_node(Node::leaf(name))
-    };
-
-    index_map.insert(nwk_idx, inserted_node_idx);
-  }
-
-  // Insert edges
-  for (nwk_idx, nwk_edge) in nwk_tree.g.raw_edges().iter().enumerate() {
-    let weight: f64 = nwk_edge.weight as f64;
-    let source: usize = nwk_edge.source().index();
-    let target: usize = nwk_edge.target().index();
-
-    let source = index_map
-      .get(&source)
-      .ok_or_else(|| eyre!("When inserting edge {nwk_idx}: Node with index {source} not found."))?;
-
-    let target = index_map
-      .get(&target)
-      .ok_or_else(|| eyre!("When inserting edge {nwk_idx}: Node with index {target} not found."))?;
-
-    graph.add_edge(*source, *target, Edge { weight })?;
-  }
-
-  graph.build()?;
-
-  // Mark roots
-  for root in graph.get_roots() {
-    root.write().payload().write().node_type = NodeType::Root;
-  }
-
+pub fn create_graph<P: AsRef<Path>>(tree_path: P, dates: &DatesMap) -> Result<ClockGraph, Report> {
+  let mut graph = create_graph_from_nwk::<Node, Edge, P>(tree_path)?;
   assign_dates(&mut graph, dates)?;
-
-  assign_node_names(&mut graph);
-
   calculate_distances_to_root(&mut graph);
-
   Ok(graph)
 }
 

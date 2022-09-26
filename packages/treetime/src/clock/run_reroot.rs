@@ -1,11 +1,13 @@
-use crate::clock::clock_graph::{ClockGraph, Edge, Node, NodeType};
+#![allow(non_snake_case)]
+
+use crate::clock::clock_graph::{ClockGraph, Edge, Node};
 use crate::clock::graph_regression::{base_regression, davgii, propagate_averages, tavgii};
 use crate::clock::graph_regression_policy::{GraphNodeRegressionPolicy, GraphNodeRegressionPolicyReroot};
 use crate::clock::minimize_scalar::minimize_scalar_brent_bounded;
 use crate::graph::breadth_first::GraphTraversalContinuation;
 use crate::graph::graph::{GraphNodeForward, NodeEdgePayloadPair};
 use crate::graph::ladderize::ladderize;
-use crate::graph::node::GraphNodeKey;
+use crate::graph::node::{GraphNodeKey, NodeType};
 use crate::graph::reroot::reroot;
 use crate::timetree::timetree_args::RerootMode;
 use crate::utils::ndarray::zeros;
@@ -257,7 +259,7 @@ fn find_optimal_root_along_branch(
     _ => base_regression(&n.Qtot, &params.slope)?.chisq,
   };
 
-  let chisq_dist = if n.node_type == NodeType::Root {
+  let chisq_dist = if n.is_root() {
     f64::infinity()
   } else {
     if parents.len() != 1 {
