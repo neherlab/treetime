@@ -359,6 +359,7 @@ class TreeTime(ClockTree):
                 self.logger("%s, input date: %s, apparent date: %1.2f"%(n.name, str(n.raw_date_constraint), n.numdate),0,warn=True)
 
         if remove_outgroup:
+            self.logger("###TreeTime.run: removing outgroup from tree",0)
             self.tree = Phylo.BaseTree.Tree(self.tree.root.clades[1])
         
         return ttconf.SUCCESS
