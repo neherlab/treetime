@@ -266,7 +266,7 @@ mod tests {
   #![allow(clippy::excessive_precision)]
 
   use super::*;
-  use crate::clock::clock_graph::NodeType;
+  use crate::graph::node::NodeType;
   use approx::assert_ulps_eq;
   use eyre::Report;
   use rstest::rstest;
@@ -311,7 +311,7 @@ mod tests {
   fn propagates_averages_internal_ingroup() -> Result<(), Report> {
     let n = Node {
       name: "NODE_0000012".to_owned(),
-      node_type: NodeType::Internal,
+      node_type: NodeType::Internal(0.0),
       bad_branch: false,
       dist2root: 0.028582125098939384,
       raw_date_constraint: None,
@@ -366,7 +366,7 @@ mod tests {
   fn propagates_averages_internal_outgroup() -> Result<(), Report> {
     let n = Node {
       name: "NODE_0000014".to_owned(),
-      node_type: NodeType::Internal,
+      node_type: NodeType::Internal(0.0),
       bad_branch: false,
       dist2root: 0.004742125098939387,
       raw_date_constraint: None,
