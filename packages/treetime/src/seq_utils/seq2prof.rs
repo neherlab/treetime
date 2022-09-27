@@ -138,7 +138,7 @@ where
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::nuc_models::jc69::jc69;
+  use crate::nuc_models::jc69::{jc69, JC69Params};
   use approx::assert_ulps_eq;
   use eyre::Report;
   use ndarray::array;
@@ -200,7 +200,7 @@ mod tests {
   fn calculates_prof2seq_with_sample_without_normalize() -> Result<(), Report> {
     let rng = &mut Isaac64Rng::seed_from_u64(42);
 
-    let gtr = jc69()?;
+    let gtr = jc69(&JC69Params::default())?;
 
     let norm_prof = array![
       [0.19356424, 0.25224431, 0.21259213, 0.19217803, 0.14942128],

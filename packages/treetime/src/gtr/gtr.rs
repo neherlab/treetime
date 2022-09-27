@@ -302,7 +302,7 @@ impl ToString for GTR {
 #[cfg(test)]
 mod test {
   use super::*;
-  use crate::nuc_models::jc69::jc69;
+  use crate::nuc_models::jc69::{jc69, JC69Params};
   use approx::{assert_abs_diff_eq, assert_ulps_eq};
   use eyre::Report;
   use ndarray::{array, Array1, Array2};
@@ -395,7 +395,7 @@ mod test {
 
   #[rstest]
   fn jc69_creates() -> Result<(), Report> {
-    let gtr = jc69()?;
+    let gtr = jc69(&JC69Params::default())?;
 
     assert_eq!(gtr.pi, array![0.2, 0.2, 0.2, 0.2, 0.2]);
 
@@ -462,7 +462,7 @@ mod test {
 
   #[rstest]
   fn jc69_calculates_exp_qt() -> Result<(), Report> {
-    let gtr = jc69()?;
+    let gtr = jc69(&JC69Params::default())?;
 
     let t = (1.0 / 5.0).ln() / gtr.mu;
     let Qs = gtr.expQt(t);
