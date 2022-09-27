@@ -193,6 +193,8 @@ def add_timetree_args(parser):
                           help=coalescent_description)
     parser.add_argument('--n-skyline', default="20", type=int,
                           help="number of grid points in skyline coalescent model")
+    parser.add_argument('--gen-per-year', default="50.0", type=float,
+                          help="number of generations per year - used for estimating N_e in coalescent models")
     parser.add_argument('--n-branches-posterior', default=False, action='store_true',
                           help= "add posterior LH to coalescent model: use the posterior probability distributions of "
                                 "divergence times for estimating the number of branches when calculating the coalescent merger"

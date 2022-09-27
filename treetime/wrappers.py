@@ -248,13 +248,13 @@ def export_sequences_and_tree(tt, basename, is_vcf=False, zero_based=False,
         print("--- divergence tree saved in nexus format as  \n\t %s\n"%outtree_name)
 
 
-def print_save_plot_skyline(tt, n_std=2.0, screen=True, save='', plot=''):
+def print_save_plot_skyline(tt, n_std=2.0, screen=True, save='', plot='', gen=50):
     if plot:
         import matplotlib.pyplot as plt
 
-    skyline, conf = tt.merger_model.skyline_inferred(gen=50, confidence=n_std)
+    skyline, conf = tt.merger_model.skyline_inferred(gen=gen, confidence=n_std)
     if save: fh = open(save, 'w', encoding='utf-8')
-    header1 = "Skyline assuming 50 gen/year and approximate confidence bounds (+/- %f standard deviations of the LH)\n"%n_std
+    header1 = "Skyline assuming "+ str(gen)+" gen/year and approximate confidence bounds (+/- %f standard deviations of the LH)\n"%n_std
     header2 = "date \tN_e \tlower \tupper"
     if screen: print('\t'+header1+'\t'+header2)
     if save: fh.write("#"+ header1+'#'+header2+'\n')
@@ -638,12 +638,12 @@ def run_timetree(myTree, params, outdir, tree_suffix='', prune_short=True, metho
     if coalescent in ['skyline', 'opt', 'const']:
         print("Inferred coalescent model")
         if coalescent=='skyline':
-            print_save_plot_skyline(myTree, plot=basename+'skyline.pdf', save=basename+'skyline.tsv', screen=True)
+            print_save_plot_skyline(myTree, plot=basename+'skyline.pdf', save=basename+'skyline.tsv', screen=True, gen=params.gen_per_year)
         else:
             Tc = myTree.merger_model.Tc.y[0]
             print(" --T_c: \t %1.2e \toptimized inverse merger rate in units of substitutions"%Tc)
             print(" --T_c: \t %1.2e \toptimized inverse merger rate in years"%(Tc/myTree.date2dist.clock_rate))
-            print(" --N_e: \t %1.2e \tcorresponding 'effective population size' assuming 50 gen/year\n"%(Tc/myTree.date2dist.clock_rate*50))
+            print(" --N_e: \t %1.2e \tcorresponding 'effective population size' assuming %1.2e gen/year\n"%(params.gen_per_year, Tc/myTree.date2dist.clock_rate*params.gen_per_year))
 
     # plot
     ##IMPORTANT: after this point the functions not only plot the tree but also modify the branch length
