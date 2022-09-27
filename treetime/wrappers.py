@@ -643,7 +643,7 @@ def run_timetree(myTree, params, outdir, tree_suffix='', prune_short=True, metho
             Tc = myTree.merger_model.Tc.y[0]
             print(" --T_c: \t %1.2e \toptimized inverse merger rate in units of substitutions"%Tc)
             print(" --T_c: \t %1.2e \toptimized inverse merger rate in years"%(Tc/myTree.date2dist.clock_rate))
-            print(" --N_e: \t %1.2e \tcorresponding 'effective population size' assuming %1.2e gen/year\n"%(params.gen_per_year, Tc/myTree.date2dist.clock_rate*params.gen_per_year))
+            print(" --N_e: \t %1.2e \tcorresponding 'effective population size' assuming %1.2e gen/year\n"%(Tc/myTree.date2dist.clock_rate*params.gen_per_year, params.gen_per_year))
 
     # plot
     ##IMPORTANT: after this point the functions not only plot the tree but also modify the branch length
