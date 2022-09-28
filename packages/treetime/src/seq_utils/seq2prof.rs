@@ -1,4 +1,4 @@
-use crate::alphabet::profile_map::ProfileMap;
+use crate::alphabet::alphabet::Alphabet;
 use crate::gtr::gtr::GTR;
 use crate::seq_utils::normalize_profile::normalize_profile;
 use crate::utils::ndarray::{argmax_axis, cumsum_axis, random};
@@ -126,11 +126,14 @@ pub fn get_prof_values(profile: &Array2<f64>, seq_ii: &Array1<usize>) -> Array1<
 ///
 ///  idx : numpy.array
 ///     Profile for the character. Zero array if the character not found
-pub fn seq2prof<S>(seq: &ArrayBase<S, Ix1>, profile_map: &ProfileMap) -> Result<Array2<f64>, Report>
+pub fn seq2prof<S>(seq: &ArrayBase<S, Ix1>, alphabet: &Alphabet) -> Result<Array2<f64>, Report>
 where
   S: Data<Elem = char>,
 {
-  let prof = stack(Axis(0), seq.map(|&c| profile_map.get(c).view()).as_slice().unwrap())?;
+  let prof = stack(
+    Axis(0),
+    seq.map(|&c| alphabet.get_profile(c).view()).as_slice().unwrap(),
+  )?;
   Ok(prof)
 }
 
@@ -151,7 +154,6 @@ mod tests {
 
   lazy_static! {
     static ref ALPHABET: Alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
-    static ref PROFILE_MAP: ProfileMap = ProfileMap::from_alphabet(&ALPHABET).unwrap();
   }
 
   #[rstest]
@@ -248,7 +250,7 @@ mod tests {
   #[rstest]
   fn calculates_seq2prof() -> Result<(), Report> {
     let seq = array!['G', 'T', 'G', '-', 'G', 'G', 'C'];
-    let prof = seq2prof(&seq, &PROFILE_MAP)?;
+    let prof = seq2prof(&seq, &ALPHABET)?;
     assert_eq!(
       prof,
       array![

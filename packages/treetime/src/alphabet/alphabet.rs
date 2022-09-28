@@ -1,5 +1,6 @@
 use clap::ArgEnum;
 use eyre::Report;
+use indexmap::IndexMap;
 use itertools::Itertools;
 use lazy_static::lazy_static;
 use ndarray::iter::Iter;
@@ -7,20 +8,6 @@ use ndarray::{array, Array, Array1, Dimension, Ix1};
 use smart_default::SmartDefault;
 use std::ops::Index;
 use strum_macros::Display;
-
-lazy_static! {
-  static ref ALPHABET_NUC: Array1<char> = array!['A', 'C', 'G', 'T', '-'];
-  static ref LETTER_AMBIGUOUS_NUC: char = 'N';
-  static ref ALPHABET_NUC_NOGAP: Array1<char> = array!['A', 'C', 'G', 'T'];
-  static ref LETTER_AMBIGUOUS_NUC_NOGAP: char = 'N';
-  static ref ALPHABET_AA: Array1<char> = array![
-    'A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y', '*', '-'
-  ];
-  static ref LETTER_AMBIGUOUS_AA: char = 'X';
-  static ref ALPHABET_AA_NOGAP: Array1<char> =
-    array!['A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y'];
-  static ref LETTER_AMBIGUOUS_AA_NOGAP: char = 'X';
-}
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, ArgEnum, SmartDefault, Display)]
 #[clap(rename = "kebab-case")]
@@ -32,21 +19,46 @@ pub enum AlphabetName {
   AaNogap,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug)]
 pub struct Alphabet {
   pub name: AlphabetName,
   pub alphabet: Array1<char>,
+  pub profile_map: IndexMap<char, Array1<f64>>,
   pub gap_index: Option<usize>,
   pub ambiguous: char,
 }
 
+impl Eq for Alphabet {}
+
+impl PartialEq for Alphabet {
+  fn eq(&self, other: &Self) -> bool {
+    self.name == other.name
+  }
+}
+
 impl Alphabet {
   pub fn new(name: AlphabetName) -> Result<Self, Report> {
-    let (alphabet, ambiguous) = match name {
-      AlphabetName::Nuc => (ALPHABET_NUC.to_owned(), *LETTER_AMBIGUOUS_NUC),
-      AlphabetName::NucNogap => (ALPHABET_NUC_NOGAP.to_owned(), *LETTER_AMBIGUOUS_NUC_NOGAP),
-      AlphabetName::Aa => (ALPHABET_AA.to_owned(), *LETTER_AMBIGUOUS_AA),
-      AlphabetName::AaNogap => (ALPHABET_AA_NOGAP.to_owned(), *LETTER_AMBIGUOUS_AA_NOGAP),
+    let (alphabet, profile_map, ambiguous) = match name {
+      AlphabetName::Nuc => (
+        ALPHABET_NUC.to_owned(),
+        PROFILE_MAP_NUC.to_owned(),
+        *LETTER_AMBIGUOUS_NUC,
+      ),
+      AlphabetName::NucNogap => (
+        ALPHABET_NUC_NOGAP.to_owned(),
+        PROFILE_MAP_NUC_NOGAP.to_owned(),
+        *LETTER_AMBIGUOUS_NUC_NOGAP,
+      ),
+      AlphabetName::Aa => (
+        ALPHABET_AA.to_owned(),
+        PROFILE_MAP_NUC_NOGAP.to_owned(),
+        *LETTER_AMBIGUOUS_AA,
+      ),
+      AlphabetName::AaNogap => (
+        ALPHABET_AA_NOGAP.to_owned(),
+        PROFILE_MAP_NUC_NOGAP.to_owned(),
+        *LETTER_AMBIGUOUS_AA_NOGAP,
+      ),
     };
 
     let gap_index = alphabet.iter().position(|&x| x == '-');
@@ -54,9 +66,24 @@ impl Alphabet {
     Ok(Self {
       name,
       alphabet,
+      profile_map,
       gap_index,
       ambiguous,
     })
+  }
+
+  #[inline]
+  pub fn get_profile(&self, c: char) -> &Array1<f64> {
+    self
+      .profile_map
+      .get(&c)
+      .ok_or_else(|| {
+        format!(
+          "When accessing profile map: Unknown character: '{c}'. Known characters: {}",
+          self.profile_map.keys().join(", ")
+        )
+      })
+      .unwrap()
   }
 
   pub fn indices_to_seq<D: Dimension>(&self, indices: &Array<usize, D>) -> Array<char, D> {
@@ -118,4 +145,114 @@ mod tests {
     );
     Ok(())
   }
+}
+
+lazy_static! {
+  static ref ALPHABET_NUC: Array1<char> = array!['A', 'C', 'G', 'T', '-'];
+  static ref LETTER_AMBIGUOUS_NUC: char = 'N';
+  static ref PROFILE_MAP_NUC: IndexMap<char, Array1<f64>> = IndexMap::<char, Array1<f64>>::from([
+    ('A', array![1.0, 0.0, 0.0, 0.0, 0.0]),
+    ('C', array![0.0, 1.0, 0.0, 0.0, 0.0]),
+    ('G', array![0.0, 0.0, 1.0, 0.0, 0.0]),
+    ('T', array![0.0, 0.0, 0.0, 1.0, 0.0]),
+    ('-', array![0.0, 0.0, 0.0, 0.0, 1.0]),
+    ('N', array![1.0, 1.0, 1.0, 1.0, 1.0]),
+    ('X', array![1.0, 1.0, 1.0, 1.0, 1.0]),
+    ('R', array![1.0, 0.0, 1.0, 0.0, 0.0]),
+    ('Y', array![0.0, 1.0, 0.0, 1.0, 0.0]),
+    ('S', array![0.0, 1.0, 1.0, 0.0, 0.0]),
+    ('W', array![1.0, 0.0, 0.0, 1.0, 0.0]),
+    ('K', array![0.0, 0.0, 1.0, 1.0, 0.0]),
+    ('M', array![1.0, 1.0, 0.0, 0.0, 0.0]),
+    ('D', array![1.0, 0.0, 1.0, 1.0, 0.0]),
+    ('H', array![1.0, 1.0, 0.0, 1.0, 0.0]),
+    ('B', array![0.0, 1.0, 1.0, 1.0, 0.0]),
+    ('V', array![1.0, 1.0, 1.0, 0.0, 0.0]),
+  ]);
+
+
+  static ref ALPHABET_NUC_NOGAP: Array1<char> = array!['A', 'C', 'G', 'T'];
+  static ref LETTER_AMBIGUOUS_NUC_NOGAP: char = 'N';
+  static ref PROFILE_MAP_NUC_NOGAP: IndexMap<char, Array1<f64>> = IndexMap::<char, Array1<f64>>::from([
+    ('A', array![1.0, 0.0, 0.0, 0.0]),
+    ('C', array![0.0, 1.0, 0.0, 0.0]),
+    ('G', array![0.0, 0.0, 1.0, 0.0]),
+    ('T', array![0.0, 0.0, 0.0, 1.0]),
+    ('-', array![1.0, 1.0, 1.0, 1.0]), // gaps are completely ignored in distance computations
+    ('N', array![1.0, 1.0, 1.0, 1.0]),
+    ('X', array![1.0, 1.0, 1.0, 1.0]),
+    ('R', array![1.0, 0.0, 1.0, 0.0]),
+    ('Y', array![0.0, 1.0, 0.0, 1.0]),
+    ('S', array![0.0, 1.0, 1.0, 0.0]),
+    ('W', array![1.0, 0.0, 0.0, 1.0]),
+    ('K', array![0.0, 0.0, 1.0, 1.0]),
+    ('M', array![1.0, 1.0, 0.0, 0.0]),
+    ('D', array![1.0, 0.0, 1.0, 1.0]),
+    ('H', array![1.0, 1.0, 0.0, 1.0]),
+    ('B', array![0.0, 1.0, 1.0, 1.0]),
+    ('V', array![1.0, 1.0, 1.0, 0.0]),
+  ]);
+
+
+  static ref ALPHABET_AA: Array1<char> = array![
+    'A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y', '*', '-'
+  ];
+  static ref LETTER_AMBIGUOUS_AA: char = 'X';
+  static ref PROFILE_MAP_AA: IndexMap<char, Array1<f64>> = IndexMap::<char, Array1<f64>>::from([
+    ('A', array![1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Alanine         Ala
+    ('C', array![0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Cysteine        Cys
+    ('D', array![0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Aspartic AciD   Asp
+    ('E', array![0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Glutamic Acid   Glu
+    ('F', array![0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Phenylalanine   Phe
+    ('G', array![0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Glycine         Gly
+    ('H', array![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Histidine       His
+    ('I', array![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Isoleucine      Ile
+    ('K', array![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Lysine          Lys
+    ('L', array![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Leucine         Leu
+    ('M', array![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Methionine      Met
+    ('N', array![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // AsparagiNe      Asn
+    ('P', array![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Proline         Pro
+    ('Q', array![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Glutamine       Gln
+    ('R', array![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // ARginine        Arg
+    ('S', array![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Serine          Ser
+    ('T', array![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Threonine       Thr
+    ('V', array![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0]), // Valine          Val
+    ('W', array![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0]), // Tryptophan      Trp
+    ('Y', array![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0]), // Tyrosine        Tyr
+    ('*', array![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0]), // stop
+    ('-', array![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]), // gap
+    ('X', array![1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]), // not specified/any
+    ('B', array![0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Asparagine/Aspartic Acid    Asx
+    ('Z', array![0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Glutamine/Glutamic Acid     Glx
+  ]);
+
+
+  static ref ALPHABET_AA_NOGAP: Array1<char> =
+    array!['A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y'];
+  static ref LETTER_AMBIGUOUS_AA_NOGAP: char = 'X';
+  static ref PROFILE_MAP_AA_NOGAP: IndexMap<char, Array1<f64>> = IndexMap::<char, Array1<f64>>::from([
+     ('A', array![1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Alanine         Ala
+     ('C', array![0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Cysteine        Cys
+     ('D', array![0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Aspartic AciD   Asp
+     ('E', array![0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Glutamic Acid   Glu
+     ('F', array![0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Phenylalanine   Phe
+     ('G', array![0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Glycine         Gly
+     ('H', array![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Histidine       His
+     ('I', array![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Isoleucine      Ile
+     ('K', array![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Lysine          Lys
+     ('L', array![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Leucine         Leu
+     ('M', array![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Methionine      Met
+     ('N', array![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // AsparagiNe      Asn
+     ('P', array![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Proline         Pro
+     ('Q', array![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Glutamine       Gln
+     ('R', array![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // ARginine        Arg
+     ('S', array![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0]), // Serine          Ser
+     ('T', array![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0]), // Threonine       Thr
+     ('V', array![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0]), // Valine          Val
+     ('W', array![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0]), // Tryptophan      Trp
+     ('Y', array![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]), // Tyrosine        Tyr
+     ('X', array![1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]), // not specified/any
+     ('B', array![0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Asparagine/Aspartic Acid    Asx
+     ('Z', array![0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Glutamine/Glutamic Acid     Glx
+  ]);
 }

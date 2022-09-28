@@ -2,7 +2,6 @@
 #![allow(non_snake_case)]
 
 use crate::alphabet::alphabet::Alphabet;
-use crate::alphabet::profile_map::ProfileMap;
 use crate::utils::einsum::einsum_1d;
 use crate::utils::ndarray::{clamp_min, outer};
 use eyre::Report;
@@ -56,7 +55,6 @@ fn eig_single_site(W: &Array2<f64>, pi: &Array1<f64>) -> Result<(Array1<f64>, Ar
 #[derive(Clone, Debug)]
 pub struct GTRParams {
   pub alphabet: Alphabet,
-  pub profile_map: ProfileMap,
   pub mu: f64,
   pub W: Array2<f64>,
   pub pi: Array1<f64>,
@@ -68,7 +66,6 @@ pub struct GTR {
   pub debug: bool,
   pub is_site_specific: bool,
   pub alphabet: Alphabet,
-  pub profile_map: ProfileMap,
   pub average_rate: f64,
   pub mu: f64,
   pub W: Array2<f64>,
@@ -79,15 +76,7 @@ pub struct GTR {
 }
 
 impl GTR {
-  pub fn new(
-    GTRParams {
-      alphabet,
-      profile_map,
-      mu,
-      W,
-      pi,
-    }: GTRParams,
-  ) -> Result<Self, Report> {
+  pub fn new(GTRParams { alphabet, mu, W, pi }: GTRParams) -> Result<Self, Report> {
     assert!(!alphabet.is_empty(), "Alphabet should not be empty");
     assert_eq!(
       pi.shape().to_vec(),
@@ -128,7 +117,6 @@ impl GTR {
       debug: false,
       is_site_specific: false,
       alphabet,
-      profile_map,
       average_rate,
       mu,
       W,
@@ -142,11 +130,6 @@ impl GTR {
   #[inline]
   pub const fn alphabet(&self) -> &Alphabet {
     &self.alphabet
-  }
-
-  #[inline]
-  pub const fn profile_map(&self) -> &ProfileMap {
-    &self.profile_map
   }
 
   #[inline]
@@ -327,7 +310,6 @@ mod test {
 
   lazy_static! {
     static ref ALPHABET: Alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
-    static ref PROFILE_MAP: ProfileMap = ProfileMap::from_alphabet(&ALPHABET).unwrap();
   }
 
   #[rstest]
@@ -523,7 +505,6 @@ mod test {
 
     let params = GTRParams {
       alphabet: ALPHABET.clone(),
-      profile_map: PROFILE_MAP.clone(),
       mu,
       W,
       pi: pi.clone(),

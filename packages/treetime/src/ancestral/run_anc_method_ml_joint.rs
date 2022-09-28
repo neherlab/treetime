@@ -71,7 +71,7 @@ fn traverse_backward(
         NodeType::Leaf(name) => {
           let mut msg_from_children = match sequence_data.get_compressed(name) {
             Some(compressed_alignment) => {
-              let prof = seq2prof(&compressed_alignment, &gtr.profile_map).unwrap();
+              let prof = seq2prof(&compressed_alignment, gtr.alphabet()).unwrap();
               log(&maximum_scalar(&prof, TINY_NUMBER))
             }
             None => zeros((L, n_states)),

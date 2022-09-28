@@ -1,7 +1,6 @@
 #![allow(non_snake_case)]
 
 use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-use crate::alphabet::profile_map::ProfileMap;
 use crate::gtr::gtr::{GTRParams, GTR};
 use crate::{make_error, make_report};
 use clap::ArgEnum;
@@ -60,20 +59,10 @@ pub struct JC69Params {
 /// See: Jukes and Cantor (1969). Evolution of Protein Molecules. New York: Academic Press. pp. 21–132
 pub fn jc69(JC69Params { mu, alphabet }: JC69Params) -> Result<GTR, Report> {
   let alphabet = Alphabet::new(alphabet)?;
-  let profile_map = ProfileMap::from_alphabet(&alphabet)?;
   let num_chars = alphabet.len();
   let W = Array2::<f64>::ones((num_chars, num_chars));
   let pi = Array1::<f64>::ones(num_chars);
-
-  let gtr = GTR::new(GTRParams {
-    alphabet,
-    profile_map,
-    mu,
-    W,
-    pi,
-  })?;
-
-  Ok(gtr)
+  GTR::new(GTRParams { alphabet, mu, W, pi })
 }
 
 #[derive(Copy, Clone, Debug, SmartDefault)]
@@ -101,20 +90,10 @@ pub struct K80Params {
 /// See: Kimura (1980),  J. Mol. Evol. 16 (2): 111–120. doi:10.1007/BF01731581.
 pub fn k80(K80Params { mu, kappa, alphabet }: K80Params) -> Result<GTR, Report> {
   let alphabet = Alphabet::new(alphabet)?;
-  let profile_map = ProfileMap::from_alphabet(&alphabet)?;
   let num_chars = alphabet.len();
   let W = create_transversion_transition_W(&alphabet, kappa)?;
   let pi = Array1::<f64>::ones(num_chars) / (num_chars as f64);
-
-  let gtr = GTR::new(GTRParams {
-    alphabet,
-    profile_map,
-    mu,
-    W,
-    pi,
-  })?;
-
-  Ok(gtr)
+  GTR::new(GTRParams { alphabet, mu, W, pi })
 }
 
 #[derive(Copy, Clone, Debug, SmartDefault)]
@@ -135,7 +114,6 @@ pub struct F81Params {
 /// See: Felsenstein (1981), J. Mol. Evol. 17  (6): 368–376. doi:10.1007/BF01734359
 pub fn f81(F81Params { mu, alphabet }: F81Params) -> Result<GTR, Report> {
   let alphabet = Alphabet::new(alphabet)?;
-  let profile_map = ProfileMap::from_alphabet(&alphabet)?;
   let num_chars = alphabet.len();
   let W = Array2::<f64>::ones((num_chars, num_chars));
   let pi: Array1<f64> = {
@@ -143,16 +121,7 @@ pub fn f81(F81Params { mu, alphabet }: F81Params) -> Result<GTR, Report> {
     let sum = pi.sum();
     pi / sum
   };
-
-  let gtr = GTR::new(GTRParams {
-    alphabet,
-    profile_map,
-    mu,
-    W,
-    pi,
-  })?;
-
-  Ok(gtr)
+  GTR::new(GTRParams { alphabet, mu, W, pi })
 }
 
 #[derive(Copy, Clone, Debug, SmartDefault)]
@@ -179,7 +148,6 @@ pub struct HKY85Params {
 /// See: Hasegawa, Kishino, Yano (1985), J. Mol. Evol. 22 (2): 160–174. doi:10.1007/BF02101694
 pub fn hky85(HKY85Params { mu, kappa, alphabet }: HKY85Params) -> Result<GTR, Report> {
   let alphabet = Alphabet::new(alphabet)?;
-  let profile_map = ProfileMap::from_alphabet(&alphabet)?;
   let num_chars = alphabet.len();
   let W = create_transversion_transition_W(&alphabet, kappa)?;
   let pi: Array1<f64> = {
@@ -187,16 +155,7 @@ pub fn hky85(HKY85Params { mu, kappa, alphabet }: HKY85Params) -> Result<GTR, Re
     let sum = pi.sum();
     pi / sum
   };
-
-  let gtr = GTR::new(GTRParams {
-    alphabet,
-    profile_map,
-    mu,
-    W,
-    pi,
-  })?;
-
-  Ok(gtr)
+  GTR::new(GTRParams { alphabet, mu, W, pi })
 }
 
 #[derive(Copy, Clone, Debug, SmartDefault)]
@@ -237,20 +196,10 @@ pub fn t92(
   }
 
   let alphabet = Alphabet::new(alphabet)?;
-  let profile_map = ProfileMap::from_alphabet(&alphabet)?;
   let num_chars = alphabet.len();
   let W = create_transversion_transition_W(&alphabet, kappa)?;
   let pi = array![(1.0 - pi_GC) * 0.5, pi_GC * 0.5, pi_GC * 0.5, (1.0 - pi_GC) * 0.5];
-
-  let gtr = GTR::new(GTRParams {
-    alphabet,
-    profile_map,
-    mu,
-    W,
-    pi,
-  })?;
-
-  Ok(gtr)
+  GTR::new(GTRParams { alphabet, mu, W, pi })
 }
 
 fn create_transversion_transition_W(alphabet: &Alphabet, kappa: f64) -> Result<Array2<f64>, Report> {
