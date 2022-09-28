@@ -1,15 +1,15 @@
 #![allow(non_snake_case)]
 
-use crate::clock::clock_graph::{ClockGraph, Edge, Node};
-use crate::clock::graph_regression::{base_regression, davgii, propagate_averages, tavgii};
-use crate::clock::graph_regression_policy::{GraphNodeRegressionPolicy, GraphNodeRegressionPolicyReroot};
-use crate::clock::minimize_scalar::minimize_scalar_brent_bounded;
+use crate::commands::clock::clock_graph::{ClockGraph, Edge, Node};
+use crate::commands::clock::graph_regression::{base_regression, davgii, propagate_averages, tavgii};
+use crate::commands::clock::graph_regression_policy::{GraphNodeRegressionPolicy, GraphNodeRegressionPolicyReroot};
+use crate::commands::clock::minimize_scalar::minimize_scalar_brent_bounded;
+use crate::commands::timetree::timetree_args::RerootMode;
 use crate::graph::breadth_first::GraphTraversalContinuation;
 use crate::graph::graph::{GraphNodeForward, NodeEdgePayloadPair};
 use crate::graph::ladderize::ladderize;
 use crate::graph::node::{GraphNodeKey, NodeType};
 use crate::graph::reroot::reroot;
-use crate::timetree::timetree_args::RerootMode;
 use crate::utils::ndarray::zeros;
 use crate::{make_error, make_internal_report};
 use eyre::Report;

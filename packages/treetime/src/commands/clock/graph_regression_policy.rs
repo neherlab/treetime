@@ -1,4 +1,4 @@
-use crate::clock::clock_graph::{Edge, Node};
+use crate::commands::clock::clock_graph::{Edge, Node};
 use crate::graph::node::NodeType;
 
 /// Defines how to obtain node values required for regression

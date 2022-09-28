@@ -1,6 +1,6 @@
-use crate::clock::clock_graph::ClockGraph;
-use crate::clock::graph_regression::{base_regression, explained_variance, BaseRegressionResult};
-use crate::clock::graph_regression_policy::{GraphNodeRegressionPolicy, GraphNodeRegressionPolicyReroot};
+use crate::commands::clock::clock_graph::ClockGraph;
+use crate::commands::clock::graph_regression::{base_regression, explained_variance, BaseRegressionResult};
+use crate::commands::clock::graph_regression_policy::{GraphNodeRegressionPolicy, GraphNodeRegressionPolicyReroot};
 use crate::make_error;
 use eyre::Report;
 use itertools::Itertools;

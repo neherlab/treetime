@@ -1,15 +1,11 @@
 pub mod alphabet;
-pub mod ancestral;
 pub mod cli;
-pub mod clock;
+pub mod commands;
 pub mod constants;
 pub mod graph;
 pub mod gtr;
-pub mod homoplasy;
 pub mod io;
-pub mod mugration;
 pub mod seq_utils;
-pub mod timetree;
 pub mod utils;
 
 #[cfg(test)]

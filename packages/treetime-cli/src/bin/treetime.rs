@@ -3,11 +3,11 @@
 use ctor::ctor;
 use eyre::Report;
 use log::info;
-use treetime::ancestral::run_ancestral_reconstruction::run_ancestral_reconstruction;
-use treetime::clock::run_clock::run_clock;
-use treetime::homoplasy::run_homoplasy::run_homoplasy;
-use treetime::mugration::run_mugration::run_mugration;
-use treetime::timetree::run_timetree_estimation::run_timetree_estimation;
+use treetime::commands::ancestral::run_ancestral_reconstruction::run_ancestral_reconstruction;
+use treetime::commands::clock::run_clock::run_clock;
+use treetime::commands::homoplasy::run_homoplasy::run_homoplasy;
+use treetime::commands::mugration::run_mugration::run_mugration;
+use treetime::commands::timetree::run_timetree_estimation::run_timetree_estimation;
 use treetime::utils::global_init::global_init;
 use treetime_cli::cli::treetime_cli::{generate_shell_completions, treetime_parse_cli_args, TreetimeCommands};
 

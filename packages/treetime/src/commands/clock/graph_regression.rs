@@ -1,8 +1,8 @@
 #![allow(non_upper_case_globals)]
 #![allow(non_snake_case)]
 
-use crate::clock::clock_graph::{ClockGraph, Node};
-use crate::clock::graph_regression_policy::GraphNodeRegressionPolicy;
+use crate::commands::clock::clock_graph::{ClockGraph, Node};
+use crate::commands::clock::graph_regression_policy::GraphNodeRegressionPolicy;
 use crate::graph::breadth_first::GraphTraversalContinuation;
 use crate::graph::graph::{GraphNodeBackward, GraphNodeForward};
 use approx::assert_ulps_ne;

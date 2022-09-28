@@ -1,5 +1,5 @@
-use crate::clock::graph_regression::BaseRegressionResult;
-use crate::clock::run_clock_model::{ClockModel, RootToTipResult};
+use crate::commands::clock::graph_regression::BaseRegressionResult;
+use crate::commands::clock::run_clock_model::{ClockModel, RootToTipResult};
 use eyre::Report;
 use itertools::Itertools;
 use log::{info, warn};

@@ -1,10 +1,10 @@
 use crate::cli::rtt_chart::{draw_rtt_console_chart, write_rtt_svg_chart};
-use crate::clock::clock_args::TreetimeClockArgs;
-use crate::clock::clock_graph::{create_graph, infer_graph};
-use crate::clock::graph_regression::calculate_averages;
-use crate::clock::graph_regression_policy::GraphNodeRegressionPolicyReroot;
-use crate::clock::run_clock_model::{run_clock_model, RunClockModelParams, RunClockModelResults};
-use crate::clock::run_reroot::{run_reroot, RerootParams};
+use crate::commands::clock::clock_args::TreetimeClockArgs;
+use crate::commands::clock::clock_graph::{create_graph, infer_graph};
+use crate::commands::clock::graph_regression::calculate_averages;
+use crate::commands::clock::graph_regression_policy::GraphNodeRegressionPolicyReroot;
+use crate::commands::clock::run_clock_model::{run_clock_model, RunClockModelParams, RunClockModelResults};
+use crate::commands::clock::run_reroot::{run_reroot, RerootParams};
 use crate::io::csv::CsvStructFileWriter;
 use crate::io::dates::read_dates;
 use crate::io::file::create_file;

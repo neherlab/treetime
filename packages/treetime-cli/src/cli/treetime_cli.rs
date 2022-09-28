@@ -13,11 +13,11 @@ use num_cpus;
 use std::fmt::Debug;
 use std::io;
 use std::str::FromStr;
-use treetime::ancestral::anc_args::TreetimeAncestralArgs;
-use treetime::clock::clock_args::TreetimeClockArgs;
-use treetime::homoplasy::homoplasy_args::TreetimeHomoplasyArgs;
-use treetime::mugration::mugration_args::TreetimeMugrationArgs;
-use treetime::timetree::timetree_args::TreetimeTimetreeArgs;
+use treetime::commands::ancestral::anc_args::TreetimeAncestralArgs;
+use treetime::commands::clock::clock_args::TreetimeClockArgs;
+use treetime::commands::homoplasy::homoplasy_args::TreetimeHomoplasyArgs;
+use treetime::commands::mugration::mugration_args::TreetimeMugrationArgs;
+use treetime::commands::timetree::timetree_args::TreetimeTimetreeArgs;
 use treetime::utils::global_init::setup_logger;
 
 lazy_static! {

@@ -1,9 +1,9 @@
 #![allow(clippy::large_enum_variant)]
 #![allow(clippy::struct_excessive_bools)]
 
-use crate::ancestral::anc_args::MethodAncestral;
+use crate::commands::ancestral::anc_args::MethodAncestral;
+use crate::commands::timetree::timetree_args::{BranchLengthMode, RerootMode};
 use crate::gtr::get_gtr::GtrModelName;
-use crate::timetree::timetree_args::{BranchLengthMode, RerootMode};
 use clap::{ArgEnum, Parser, ValueHint};
 use std::fmt::Debug;
 use std::path::PathBuf;

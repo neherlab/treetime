@@ -1,5 +1,5 @@
 use crate::alphabet::sequence_data::SequenceData;
-use crate::ancestral::anc_graph::AncestralGraph;
+use crate::commands::ancestral::anc_graph::AncestralGraph;
 use crate::graph::breadth_first::GraphTraversalContinuation;
 use crate::graph::graph::GraphNodeForward;
 use ndarray::{Array1, CowArray, Zip};
