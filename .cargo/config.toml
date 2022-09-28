@@ -38,13 +38,11 @@ codegen-units = 1
 incremental = false
 lto = "fat"
 opt-level = 3
-panic = "abort"
 strip = true
 
 [profile.test]
 debug = true
 
-# Optimize dependencies in tests
 [profile.test.package."*"]
 opt-level = 2
 [profile.test.package.backtrace]
@@ -60,18 +58,6 @@ opt-level = 3
 [profile.test.package.pretty_assertions]
 opt-level = 3
 
-
-[target.aarch64-unknown-linux-gnu]
-linker = "aarch64-linux-gnu-ld"
-ar = "aarch64-linux-gnu-ar"
-
-[target.x86_64-apple-darwin]
-# linker = "x86_64-apple-darwin20.2-clang"
-# ar = "x86_64-apple-darwin20.2-ar"
-
-[target.aarch64-apple-darwin]
-linker = "aarch64-apple-darwin20.2-clang"
-ar = "aarch64-apple-darwin20.2-ar"
 
 [target.'cfg(all())']
 rustflags = [
@@ -208,6 +194,8 @@ rustflags = [
   "-Aclippy::pattern_type_mismatch",
   "-Aclippy::print_stderr",
   "-Aclippy::print_stdout",
+  "-Aclippy::pub-use",
+  "-Aclippy::self-named-module-files",
   "-Aclippy::separated_literal_suffix",
   "-Aclippy::shadow_reuse",
   "-Aclippy::shadow_same",
