@@ -23,6 +23,7 @@ lazy_static! {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, ArgEnum, SmartDefault, Display)]
+#[clap(rename = "kebab-case")]
 pub enum AlphabetName {
   #[default]
   Nuc,
