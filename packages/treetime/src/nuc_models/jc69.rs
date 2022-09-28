@@ -33,9 +33,6 @@ impl Default for JC69Params {
 ///
 /// See: Jukes and Cantor (1969). Evolution of Protein Molecules. New York: Academic Press. pp. 21–132
 pub fn jc69(JC69Params { mu, alphabet_name }: &JC69Params) -> Result<GTR, Report> {
-  let mu = 1.0;
-  let alphabet_name = "nuc";
-
   let alphabet = Alphabet::new(alphabet_name)?;
   let profile_map = ProfileMap::from_alphabet(&alphabet)?;
 
@@ -46,7 +43,7 @@ pub fn jc69(JC69Params { mu, alphabet_name }: &JC69Params) -> Result<GTR, Report
   let gtr = GTR::new(&GTRParams {
     alphabet,
     profile_map,
-    mu,
+    mu: *mu,
     W,
     pi,
   })?;
