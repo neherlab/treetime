@@ -318,7 +318,7 @@ impl ToString for GTR {
 mod test {
   use super::*;
   use crate::alphabet::alphabet::AlphabetName;
-  use crate::nuc_models::jc69::{jc69, JC69Params};
+  use crate::gtr::get_gtr::{jc69, JC69Params};
   use approx::{assert_abs_diff_eq, assert_ulps_eq};
   use eyre::Report;
   use lazy_static::lazy_static;
