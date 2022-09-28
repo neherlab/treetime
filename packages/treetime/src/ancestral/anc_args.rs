@@ -1,6 +1,7 @@
 #![allow(clippy::large_enum_variant)]
 #![allow(clippy::struct_excessive_bools)]
 
+use crate::alphabet::alphabet::AlphabetName;
 use crate::gtr::get_gtr::GtrModelName;
 use clap::{ArgEnum, Parser, ValueHint};
 use std::fmt::Debug;
@@ -55,6 +56,11 @@ pub struct TreetimeAncestralArgs {
   #[clap(long, short = 't')]
   #[clap(value_hint = ValueHint::FilePath)]
   pub tree: Option<PathBuf>,
+
+  /// Alphabet
+  ///
+  #[clap(long, short = 'a', arg_enum)]
+  pub alphabet: Option<AlphabetName>,
 
   /// GTR model to use
   ///

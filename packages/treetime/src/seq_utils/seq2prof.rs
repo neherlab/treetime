@@ -138,14 +138,21 @@ where
 #[cfg(test)]
 mod tests {
   use super::*;
+  use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::nuc_models::jc69::{jc69, JC69Params};
   use approx::assert_ulps_eq;
   use eyre::Report;
+  use lazy_static::lazy_static;
   use ndarray::array;
   use pretty_assertions::assert_eq;
   use rand::SeedableRng;
   use rand_isaac::Isaac64Rng;
   use rstest::rstest;
+
+  lazy_static! {
+    static ref ALPHABET: Alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
+    static ref PROFILE_MAP: ProfileMap = ProfileMap::from_alphabet(&ALPHABET).unwrap();
+  }
 
   #[rstest]
   fn samples_from_profile() -> Result<(), Report> {
@@ -200,7 +207,7 @@ mod tests {
   fn calculates_prof2seq_with_sample_without_normalize() -> Result<(), Report> {
     let rng = &mut Isaac64Rng::seed_from_u64(42);
 
-    let gtr = jc69(&JC69Params::default())?;
+    let gtr = jc69(JC69Params::default())?;
 
     let norm_prof = array![
       [0.19356424, 0.25224431, 0.21259213, 0.19217803, 0.14942128],
@@ -241,8 +248,7 @@ mod tests {
   #[rstest]
   fn calculates_seq2prof() -> Result<(), Report> {
     let seq = array!['G', 'T', 'G', '-', 'G', 'G', 'C'];
-    let profile_map = ProfileMap::new("nuc")?;
-    let prof = seq2prof(&seq, &profile_map)?;
+    let prof = seq2prof(&seq, &PROFILE_MAP)?;
     assert_eq!(
       prof,
       array![

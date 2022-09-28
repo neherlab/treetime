@@ -29,6 +29,7 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
     aln,
     vcf_reference,
     tree,
+    alphabet,
     gtr,
     gtr_params,
     aa,
@@ -43,12 +44,9 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
 
   let mut rng = get_random_number_generator(*seed);
 
-  // TODO: alphabet is hardcoded. Make it dynamic.
-  let alphabet = Alphabet::new("nuc")?;
+  let gtr = get_gtr(gtr, alphabet)?;
 
-  let mut sequence_data = SequenceData::new(input_fastas, alphabet.ambiguous())?;
-
-  let model = get_gtr(gtr)?;
+  let mut sequence_data = SequenceData::new(input_fastas, gtr.alphabet().ambiguous())?;
 
   let mut graph = match tree {
     None => infer_graph()?,
@@ -61,8 +59,7 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
 
   run_anc_method(
     &sequence_data,
-    &alphabet,
-    &model,
+    &gtr,
     &mut graph,
     &mut rng,
     ancestral_args,
@@ -82,7 +79,7 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
 
   graph.print_graph(create_file(outdir.join("graph_output.dot"))?)?;
 
-  let model_string = model.to_string();
+  let model_string = gtr.to_string();
   let mut model_file = create_file(outdir.join("sequence_evolution_model.txt"))?;
   writeln!(model_file, "{model_string}")?;
   info!("{model_string}");

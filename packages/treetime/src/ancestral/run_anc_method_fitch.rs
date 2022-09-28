@@ -1,4 +1,3 @@
-use crate::alphabet::alphabet::Alphabet;
 use crate::alphabet::sequence_data::SequenceData;
 use crate::ancestral::anc_args::TreetimeAncestralArgs;
 use crate::ancestral::anc_graph::AncestralGraph;
@@ -9,7 +8,6 @@ use rand::Rng;
 
 pub fn run_anc_method_fitch(
   sequence_data: &SequenceData,
-  alphabet: &Alphabet,
   model: &GTR,
   graph: &mut AncestralGraph,
   rng: &mut impl Rng,

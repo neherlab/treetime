@@ -86,7 +86,7 @@ impl GTR {
       mu,
       W,
       pi,
-    }: &GTRParams,
+    }: GTRParams,
   ) -> Result<Self, Report> {
     assert!(!alphabet.is_empty(), "Alphabet should not be empty");
     assert_eq!(
@@ -127,8 +127,8 @@ impl GTR {
     Ok(Self {
       debug: false,
       is_site_specific: false,
-      alphabet: alphabet.clone(),
-      profile_map: profile_map.clone(),
+      alphabet,
+      profile_map,
       average_rate,
       mu,
       W,
@@ -137,6 +137,21 @@ impl GTR {
       v,
       v_inv,
     })
+  }
+
+  #[inline]
+  pub const fn alphabet(&self) -> &Alphabet {
+    &self.alphabet
+  }
+
+  #[inline]
+  pub const fn profile_map(&self) -> &ProfileMap {
+    &self.profile_map
+  }
+
+  #[inline]
+  pub const fn average_rate(&self) -> f64 {
+    self.average_rate
   }
 
   #[allow(clippy::missing_const_for_fn)]
@@ -302,11 +317,18 @@ impl ToString for GTR {
 #[cfg(test)]
 mod test {
   use super::*;
+  use crate::alphabet::alphabet::AlphabetName;
   use crate::nuc_models::jc69::{jc69, JC69Params};
   use approx::{assert_abs_diff_eq, assert_ulps_eq};
   use eyre::Report;
+  use lazy_static::lazy_static;
   use ndarray::{array, Array1, Array2};
   use rstest::rstest;
+
+  lazy_static! {
+    static ref ALPHABET: Alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
+    static ref PROFILE_MAP: ProfileMap = ProfileMap::from_alphabet(&ALPHABET).unwrap();
+  }
 
   #[rstest]
   fn computes_eig_single_site() -> Result<(), Report> {
@@ -375,8 +397,7 @@ mod test {
 
   #[rstest]
   fn avg_transition_from_alphabet() -> Result<(), Report> {
-    let alphabet = Alphabet::new("nuc")?;
-    let num_chars = alphabet.len();
+    let num_chars = ALPHABET.len();
 
     let W = array![
       [0., 1., 1., 1., 1.],
@@ -388,14 +409,14 @@ mod test {
 
     let pi = array![0.2, 0.2, 0.2, 0.2, 0.2];
 
-    assert_ulps_eq!(avg_transition(&W, &pi, alphabet.gap_index)?, 0.8000000000000005);
+    assert_ulps_eq!(avg_transition(&W, &pi, ALPHABET.gap_index())?, 0.8000000000000005);
 
     Ok(())
   }
 
   #[rstest]
   fn jc69_creates() -> Result<(), Report> {
-    let gtr = jc69(&JC69Params::default())?;
+    let gtr = jc69(JC69Params::default())?;
 
     assert_eq!(gtr.pi, array![0.2, 0.2, 0.2, 0.2, 0.2]);
 
@@ -455,14 +476,14 @@ mod test {
       ]
     );
 
-    assert_eq!(gtr.alphabet, Alphabet::new("nuc")?);
+    assert_eq!(gtr.alphabet, Alphabet::new(AlphabetName::Nuc)?);
 
     Ok(())
   }
 
   #[rstest]
   fn jc69_calculates_exp_qt() -> Result<(), Report> {
-    let gtr = jc69(&JC69Params::default())?;
+    let gtr = jc69(JC69Params::default())?;
 
     let t = (1.0 / 5.0).ln() / gtr.mu;
     let Qs = gtr.expQt(t);
@@ -495,22 +516,21 @@ mod test {
 
     // pi vector of equilibrium probability, some variation to be general, doesn't depend on details
     let pi: Array1<f64> = array![0.18, 0.35, 0.25, 0.18, 0.04];
-    let alphabet = Alphabet::new("nuc")?;
-    let profile_map = ProfileMap::from_alphabet(&alphabet)?;
     let mu = 1.0;
-
-    let params = GTRParams {
-      alphabet,
-      profile_map,
-      mu,
-      W,
-      pi,
-    };
-
-    let gtr = GTR::new(&params)?;
 
     // initial profile to be back_propagated or evolved
     let profile: Array2<f64> = array![[0.00, 0.8, 0.0, 0.2, 0.0],];
+
+    let params = GTRParams {
+      alphabet: ALPHABET.clone(),
+      profile_map: PROFILE_MAP.clone(),
+      mu,
+      W,
+      pi: pi.clone(),
+    };
+
+    let gtr = GTR::new(params)?;
+
     // propagate forward and backward in time by a large amount (as long as exp(-mu*large_t) is tiny, value of large_t doesn't matter)
     let large_t = 100.0;
     let distant_past = gtr.propagate_profile(&profile, large_t, false);
@@ -519,17 +539,13 @@ mod test {
     // the "distant past profile" is the product of a vector [1,1,1,1,1] times the dot product of pi and initial profile
     let mut weight = 0.0;
     for i in 0..5 {
-      weight += params.pi[i] * profile[[0, i]];
+      weight += pi[i] * profile[[0, i]];
     }
-
-    assert_ulps_eq!(
-      distant_past,
-      array![[1.0, 1.0, 1.0, 1.0, 1.0]] * weight,
-      epsilon = 1e-14
-    );
+    let distant_past_expected = array![[1.0, 1.0, 1.0, 1.0, 1.0]] * weight;
+    assert_ulps_eq!(distant_past, distant_past_expected, epsilon = 1e-14);
 
     // propagating the profile far into the future gives the equilibrium probabilities pi
-    assert_ulps_eq!(distant_future.slice(s![0, ..]), params.pi, epsilon = 1e-14);
+    assert_ulps_eq!(distant_future.slice(s![0, ..]), pi, epsilon = 1e-14);
 
     Ok(())
   }

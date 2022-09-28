@@ -1,6 +1,5 @@
 #![allow(non_snake_case)]
 
-use crate::alphabet::alphabet::Alphabet;
 use crate::alphabet::sequence_data::SequenceData;
 use crate::ancestral::anc_args::TreetimeAncestralArgs;
 use crate::ancestral::anc_graph::AncestralGraph;
@@ -22,57 +21,28 @@ use std::fmt::Display;
 
 pub fn run_anc_method_ml_joint(
   sequence_data: &SequenceData,
-  alphabet: &Alphabet,
-  model: &GTR,
+  gtr: &GTR,
   graph: &mut AncestralGraph,
   rng: &mut impl Rng,
   ancestral_args: &TreetimeAncestralArgs,
   ancestral_params: &TreetimeAncestralParams,
 ) -> Result<(), Report> {
-  traverse_backward(
-    sequence_data,
-    alphabet,
-    model,
-    graph,
-    rng,
-    ancestral_args,
-    ancestral_params,
-  );
-
-  compute_roots(
-    sequence_data,
-    alphabet,
-    model,
-    graph,
-    rng,
-    ancestral_args,
-    ancestral_params,
-  )?;
-
-  traverse_forward(
-    sequence_data,
-    alphabet,
-    model,
-    graph,
-    rng,
-    ancestral_args,
-    ancestral_params,
-  );
-
+  traverse_backward(sequence_data, gtr, graph, rng, ancestral_args, ancestral_params);
+  compute_roots(sequence_data, gtr, graph, rng, ancestral_args, ancestral_params)?;
+  traverse_forward(sequence_data, gtr, graph, rng, ancestral_args, ancestral_params);
   Ok(())
 }
 
 fn traverse_backward(
   sequence_data: &SequenceData,
-  alphabet: &Alphabet,
-  model: &GTR,
+  gtr: &GTR,
   graph: &mut AncestralGraph,
   rng: &mut impl Rng,
   ancestral_args: &TreetimeAncestralArgs,
   ancestral_params: &TreetimeAncestralParams,
 ) {
   let L = sequence_data.len_compressed();
-  let n_states = alphabet.len();
+  let n_states = gtr.alphabet().len();
 
   graph.par_iter_breadth_first_backward(
     |GraphNodeBackward {
@@ -94,14 +64,14 @@ fn traverse_backward(
 
       // transition matrix from parent states to the current node states.
       // denoted as Pij(i), where j - parent state, i - node state
-      let Qt = model.expQt(branch_length);
+      let Qt = gtr.expQt(branch_length);
       let log_transitions = maximum_scalar(&Qt, TINY_NUMBER);
 
       let msg_from_children: Array2<f64> = match &node.node_type {
         NodeType::Leaf(name) => {
           let mut msg_from_children = match sequence_data.get_compressed(name) {
             Some(compressed_alignment) => {
-              let prof = seq2prof(&compressed_alignment, &model.profile_map).unwrap();
+              let prof = seq2prof(&compressed_alignment, &gtr.profile_map).unwrap();
               log(&maximum_scalar(&prof, TINY_NUMBER))
             }
             None => zeros((L, n_states)),
@@ -130,7 +100,7 @@ fn traverse_backward(
       node.joint_Lx = zeros((L, n_states));
       node.joint_Cx = zeros((L, n_states));
 
-      for (char_i, char) in alphabet.iter().enumerate() {
+      for (char_i, char) in gtr.alphabet().iter().enumerate() {
         // Pij(i) * L_ch(i) for given parent state j
         // if the node has a mask, P_ij is uniformly 1 at masked positions as no info is propagated
         let msg_to_parent = match &node.mask {
@@ -165,7 +135,6 @@ fn traverse_backward(
 
 fn compute_roots(
   sequence_data: &SequenceData,
-  alphabet: &Alphabet,
   model: &GTR,
   graph: &mut AncestralGraph,
   rng: &mut impl Rng,
@@ -234,7 +203,6 @@ fn compute_roots(
 
 fn traverse_forward(
   sequence_data: &SequenceData,
-  alphabet: &Alphabet,
   model: &GTR,
   graph: &mut AncestralGraph,
   rng: &mut impl Rng,
@@ -268,7 +236,7 @@ fn traverse_forward(
       // choose the value of the Cx(i), corresponding to the state of the
       // parent node i. This is the state of the current node
       node.seq_ii = choose2(&parent.seq_ii, &node.joint_Cx.t());
-      node.seq = choose1(&node.seq_ii, &alphabet.alphabet);
+      node.seq = choose1(&node.seq_ii, &model.alphabet().alphabet);
 
       GraphTraversalContinuation::Continue
     },

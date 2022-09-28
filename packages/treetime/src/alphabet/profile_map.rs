@@ -1,4 +1,4 @@
-use crate::alphabet::alphabet::Alphabet;
+use crate::alphabet::alphabet::{Alphabet, AlphabetName};
 use eyre::Report;
 use indexmap::IndexMap;
 use itertools::Itertools;
@@ -108,13 +108,12 @@ pub struct ProfileMap {
 }
 
 impl ProfileMap {
-  pub fn new(name: &str) -> Result<Self, Report> {
+  pub fn new(name: &AlphabetName) -> Result<Self, Report> {
     let profile_map = match name {
-      "nuc" => PROFILE_MAP_NUC.to_owned(),
-      "nuc_nogap" => PROFILE_MAP_NUC_NOGAP.to_owned(),
-      "aa" => PROFILE_MAP_NUC_NOGAP.to_owned(),
-      "aa_nogap" => PROFILE_MAP_NUC_NOGAP.to_owned(),
-      _ => unimplemented!("Profile map for alphabet '{}' is not implemented", name),
+      AlphabetName::Nuc => PROFILE_MAP_NUC.to_owned(),
+      AlphabetName::NucNogap => PROFILE_MAP_NUC_NOGAP.to_owned(),
+      AlphabetName::Aa => PROFILE_MAP_NUC_NOGAP.to_owned(),
+      AlphabetName::AaNogap => PROFILE_MAP_NUC_NOGAP.to_owned(),
     };
     Ok(Self { profile_map })
   }
