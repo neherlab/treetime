@@ -2,10 +2,11 @@ use crate::alphabet::alphabet::Alphabet;
 use crate::alphabet::find_mutations::find_graph_mutations;
 use crate::alphabet::sequence_data::SequenceData;
 use crate::commands::ancestral::anc_args::TreetimeAncestralArgs;
-use crate::commands::ancestral::anc_graph::{create_graph, infer_graph};
+use crate::commands::ancestral::anc_graph::{create_graph, infer_graph, AncestralGraph};
 use crate::commands::ancestral::anc_seq::reconstruct_ancestral_sequences;
 use crate::commands::ancestral::run_anc_method::run_anc_method;
 use crate::gtr::get_gtr::get_gtr;
+use crate::gtr::gtr::GTR;
 use crate::io::fasta::{FastaRecord, FastaWriter};
 use crate::io::file::create_file;
 use crate::io::nex::write_nex;
@@ -23,7 +24,9 @@ pub struct TreetimeAncestralParams {
   pub fixed_pi: bool,
 }
 
-pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> Result<(), Report> {
+pub fn run_ancestral_reconstruction(
+  ancestral_args: &TreetimeAncestralArgs,
+) -> Result<(GTR, SequenceData, AncestralGraph), Report> {
   let TreetimeAncestralArgs {
     input_fastas,
     aln,
@@ -86,5 +89,5 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
 
   write_nex(&mut create_file(outdir.join("annotated_tree.nexus"))?, &graph)?;
 
-  Ok(())
+  Ok((gtr, sequence_data, graph))
 }

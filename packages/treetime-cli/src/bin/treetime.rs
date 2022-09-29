@@ -38,7 +38,7 @@ fn main() -> Result<(), Report> {
       run_clock(&clock_args)?;
     }
     TreetimeCommands::Homoplasy(homoplasy_args) => {
-      run_homoplasy(&homoplasy_args)?;
+      run_homoplasy(homoplasy_args)?;
     }
     TreetimeCommands::Mugration(mugration_args) => {
       run_mugration(&mugration_args)?;

@@ -36,6 +36,7 @@ indexmap = { version = "=1.9.1", features = ["serde-1"] }
 itertools = "=0.10.3"
 lazy_static = "=1.4.0"
 log = "=0.4.17"
+multimap = { version = "=0.8.3", features = ["serde_impl"] }
 ndarray = { version = "=0.15.6", features = ["rayon", "serde", "approx-0_5", "blas"] }
 ndarray-linalg = { version = "=0.14.1", features = ["openblas-static"] }
 ndarray-rand = "=0.14.0"
@@ -46,6 +47,7 @@ num-integer = "=0.1.45"
 num-traits = "=0.2.15"
 num_cpus = "=1.13.1"
 openblas-src = { version = "=0.10.4", features = ["static"] }
+ordered-float = { version = "=3.1.0", default-features = false }
 parking_lot = { version = "=0.12.1", features = ["deadlock_detection", "hardware-lock-elision"] }
 petgraph = "=0.6.2"
 plotters = { version = "=0.3.4", default_features = false, features = ["all_series", "all_elements", "svg_backend"] }
@@ -56,6 +58,7 @@ rand_isaac = { version = "=0.3.0", features = ["serde1"] }
 rayon = "=1.5.3"
 regex = { version = "=1.6.0", features = [] }
 rgb = "=0.8.34"
+rstat = { version = "=0.6.0", features = ["serde"] }
 serde = { version = "=1.0.143", features = ["derive"] }
 serde_json = { version = "=1.0.83", features = ["preserve_order", "indexmap", "unbounded_depth"] }
 smart-default = "=0.6.0"

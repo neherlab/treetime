@@ -5,18 +5,18 @@ use crate::graph::graph::GraphNodeForward;
 use ndarray::{Array1, CowArray, Zip};
 use num_traits::{One, Zero};
 use std::cmp::Ordering;
-use std::fmt::Display;
+use std::fmt::{Display, Formatter};
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Mutation {
-  reff: char,
-  pos: usize,
-  qry: char,
+  pub reff: char,
+  pub pos: usize,
+  pub qry: char,
 }
 
-impl ToString for Mutation {
-  fn to_string(&self) -> String {
-    format!("{}{}{}", self.reff, self.pos, self.qry)
+impl Display for Mutation {
+  fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    write!(f, "{}{}{}", self.reff, self.pos, self.qry)
   }
 }
 
@@ -35,6 +35,11 @@ impl PartialOrd for Mutation {
 impl Mutation {
   pub const fn new(reff: char, pos: usize, qry: char) -> Self {
     Self { reff, pos, qry }
+  }
+
+  pub const fn is_valid(&self) -> bool {
+    let Mutation { reff, pos, qry } = self;
+    *reff != '-' && *reff != 'N' && *qry != '-' && *qry != 'N'
   }
 }
 
