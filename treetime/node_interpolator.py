@@ -163,20 +163,18 @@ class NodeInterpolator (Distribution):
 
         dt = max(branch_interp.one_mutation*0.005, min(node_interp.fwhm, branch_interp.fwhm)/fft_grid_size)
         ratio = node_interp.fwhm/branch_interp.fwhm
-        if ratio < 1/100 and dt > 4*node_interp.fwhm/fft_grid_size:
-            print("convolve_fft: entering delta function mode")
+        if ratio < 1/250 and dt > 4*node_interp.fwhm/fft_grid_size:
             ## node distribution is much narrower than the branch distribution, proceed as if node distribution is
             ## a delta distribution
-            bl = branch_interp.x
-            x = bl + node_interp._peak_pos
-            return Distribution(x, branch_interp(bl), min_width=min(node_interp.min_width, branch_interp.min_width), is_log=True)
-        elif ratio >100 and dt > 4*branch_interp.fwhm/fft_grid_size:
+            x = branch_interp.x + node_interp._peak_pos
+            x = np.concatenate((np.logspace(-10,0,6)[:5]*x[0], x)) # avoid numerical issues if peak pos is slightly inaccurate
+            return Distribution(x, branch_interp(x - node_interp._peak_pos), min_width=max(node_interp.min_width, branch_interp.min_width), is_log=True)
+        elif ratio >250 and dt > 4*branch_interp.fwhm/fft_grid_size:
             ## branch distribution is much narrower than the node distribution, proceed as if branch distribution is
             ## a delta distribution
-            print("convolve_fft: entering delta function mode")
-            bl = node_interp.x
-            x = bl + branch_interp._peak_pos
-            return  Distribution(x, node_interp(bl), min_width=min(node_interp.min_width, branch_interp.min_width), is_log=True)
+            x = node_interp.x + branch_interp._peak_pos
+            x = np.concatenate((np.logspace(-10,0,6)[:5]*x[0], x))
+            return  Distribution(x, node_interp(x - branch_interp._peak_pos), min_width=max(node_interp.min_width, branch_interp.min_width), is_log=True)
         else:
             b_effsupport = branch_interp.effective_support
             n_effsupport = node_interp.effective_support
