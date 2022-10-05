@@ -163,18 +163,18 @@ class NodeInterpolator (Distribution):
 
         dt = max(branch_interp.one_mutation*0.005, min(node_interp.fwhm, branch_interp.fwhm)/fft_grid_size)
         ratio = node_interp.fwhm/branch_interp.fwhm
-        if ratio < 1/250 and dt > 4*node_interp.fwhm/fft_grid_size:
+        if ratio < 1/fft_grid_size and 4*dt > node_interp.fwhm:
             ## node distribution is much narrower than the branch distribution, proceed as if node distribution is
             ## a delta distribution
-            x = branch_interp.x + node_interp._peak_pos
-            x = np.concatenate((np.logspace(-10,0,6)[:5]*x[0], x)) # avoid numerical issues if peak pos is slightly inaccurate
-            return Distribution(x, branch_interp(x - node_interp._peak_pos), min_width=max(node_interp.min_width, branch_interp.min_width), is_log=True)
-        elif ratio >250 and dt > 4*branch_interp.fwhm/fft_grid_size:
-            ## branch distribution is much narrower than the node distribution, proceed as if branch distribution is
-            ## a delta distribution
-            x = node_interp.x + branch_interp._peak_pos
-            x = np.concatenate((np.logspace(-10,0,6)[:5]*x[0], x))
-            return  Distribution(x, node_interp(x - branch_interp._peak_pos), min_width=max(node_interp.min_width, branch_interp.min_width), is_log=True)
+            if inverse_time:
+                x = branch_interp.x + node_interp._peak_pos
+            else:
+                x = - branch_interp.x + node_interp._peak_pos
+            log_scale_node_interp = node_interp.integrate(return_log=True, a=node_interp.xmin,b=node_interp.xmax,n=max(100, len(node_interp.x))) #probability of node distribution 
+            dist = Distribution(x, branch_interp(x - node_interp._peak_pos) + log_scale_node_interp, min_width=max(node_interp.min_width, branch_interp.min_width), is_log=True)
+            return dist
+        elif ratio > fft_grid_size and 4*dt > branch_interp.fwhm:
+            raise ValueError("ERROR: Unexpected behavior: branch distribution is much narrower than the node distribution.")
         else:
             b_effsupport = branch_interp.effective_support
             n_effsupport = node_interp.effective_support
