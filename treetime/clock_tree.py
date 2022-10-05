@@ -598,7 +598,6 @@ class ClockTree(TreeAnc):
 
         method = 'FFT' if self.use_fft else 'explicit'
         self.logger(f"ClockTree - Marginal reconstruction using {method} convolution:  Propagating leaves -> root...", 2)
-        from scipy.interpolate import interp1d
         # go through the nodes from leaves towards the root:
         for node in self.tree.find_clades(order='postorder'):  # children first, msg to parents
             if node.bad_branch:
@@ -661,12 +660,6 @@ class ClockTree(TreeAnc):
                                                     self.merger_model.integral_merger_rate(node.subtree_distribution.x), is_log=True)])
                         else:
                             node.marginal_pos_LH = node.subtree_distribution
-                        dt = np.diff(node.marginal_pos_LH.x)
-                        y = node.marginal_pos_LH.prob_relative(node.marginal_pos_LH.x)
-                        int_y = np.concatenate(([0], np.cumsum(dt*(y[1:]+y[:-1])/2.0)))
-                        int_y/=int_y[-1]
-                        node.marginal_inverse_cdf = interp1d(int_y, node.marginal_pos_LH.x, kind="linear")
-                        node.marginal_cdf = interp1d(node.marginal_pos_LH.x, int_y, kind="linear")
                     else: # otherwise propagate to parent
                         if self.use_fft:
                             res, res_t = NodeInterpolator.convolve_fft(node.subtree_distribution,
@@ -682,13 +675,13 @@ class ClockTree(TreeAnc):
                         node.marginal_pos_Lx = res
 
         self.logger("ClockTree - Marginal reconstruction:  Propagating root -> leaves...", 2)
+        from scipy.interpolate import interp1d
         for node in self.tree.find_clades(order='preorder'):
 
             ## If a delta constraint in known no further work required
             if (node.date_constraint is not None) and (not node.bad_branch) and node.date_constraint.is_delta:
                 node.marginal_pos_LH = node.date_constraint
                 node.msg_from_parent = None #if internal node has a delta constraint no previous information is passed on
-                node.marginal_inverse_cdf = "delta"
             elif node.up is None:
                 node.msg_from_parent = None # nothing beyond the root
             # all other cases (All internal nodes + unconstrained terminals)
