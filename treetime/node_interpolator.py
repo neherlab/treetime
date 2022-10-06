@@ -171,7 +171,7 @@ class NodeInterpolator (Distribution):
             else:
                 x = - branch_interp.x + node_interp._peak_pos
             log_scale_node_interp = node_interp.integrate(return_log=True, a=node_interp.xmin,b=node_interp.xmax,n=max(100, len(node_interp.x))) #probability of node distribution 
-            dist = Distribution(x, branch_interp(x - node_interp._peak_pos) + log_scale_node_interp, min_width=max(node_interp.min_width, branch_interp.min_width), is_log=True)
+            dist = Distribution(x, branch_interp(x - node_interp._peak_pos) - log_scale_node_interp, min_width=max(node_interp.min_width, branch_interp.min_width), is_log=True)
             return dist
         elif ratio > fft_grid_size and 4*dt > branch_interp.fwhm:
             raise ValueError("ERROR: Unexpected behavior: branch distribution is much narrower than the node distribution.")
