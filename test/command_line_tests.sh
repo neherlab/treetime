@@ -54,6 +54,14 @@ else
 	echo "timetree_inference on vcf data failed $retval"
 fi
 
+treetime --tree treetime_examples/data/ebola/ebola.nwk --dates treetime_examples/data/ebola/ebola.metadata.csv --aln treetime_examples/data/ebola/ebola.fasta  --coalescent skyline --gen-per-year 100
+retval="$?"
+if [ "$retval" == 0 ]; then
+	echo "skyline approximation ok"
+else
+	((all_tests++))
+	echo "skyline approximation failed $retval"
+fi
 
 if [ "$all_tests" == 0 ];then
 	echo "All tests passed"
