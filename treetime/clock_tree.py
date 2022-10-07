@@ -767,13 +767,26 @@ class ClockTree(TreeAnc):
             # construct the inverse cumulative distribution to evaluate confidence intervals
             if node.marginal_pos_LH.is_delta:
                 node.marginal_inverse_cdf=interp1d([0,1], node.marginal_pos_LH.peak_pos*np.ones(2), kind="linear")
+                node.marginal_cdf = interp1d(node.marginal_pos_LH.peak_pos*np.ones(2), [0,1], kind="linear")
             else:
                 dt = np.diff(node.marginal_pos_LH.x)
                 y = node.marginal_pos_LH.prob_relative(node.marginal_pos_LH.x)
                 int_y = np.concatenate(([0], np.cumsum(dt*(y[1:]+y[:-1])/2.0)))
-                int_y/=int_y[-1]
-                node.marginal_inverse_cdf = interp1d(int_y, node.marginal_pos_LH.x, kind="linear")
-                node.marginal_cdf = interp1d(node.marginal_pos_LH.x, int_y, kind="linear")
+                int_x = node.marginal_pos_LH.x
+                if int_y[-1] == 0:
+                    if len(dt)==0 or node.marginal_pos_LH.fwhm < 100*ttconf.TINY_NUMBER:
+                        ##delta function
+                        peak_idx = node.marginal_pos_LH._peak_idx
+                        int_y = np.concatenate((np.zeros(peak_idx), np.ones(len(node.marginal_pos_LH.x)-peak_idx)))
+                        if peak_idx == 0:
+                            int_y = np.concatenate(([0], int_y))
+                            int_x = np.concatenate(([int_x[0]- ttconf.TINY_NUMBER], int_x))
+                    else:
+                        import ipdb; ipdb.set_trace()
+                else:
+                    int_y/=int_y[-1]
+                node.marginal_inverse_cdf = interp1d(int_y, int_x, kind="linear")
+                node.marginal_cdf = interp1d(int_x, int_y, kind="linear")
 
         if not self.debug:
             _cleanup()

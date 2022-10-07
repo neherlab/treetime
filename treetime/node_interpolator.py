@@ -166,12 +166,13 @@ class NodeInterpolator (Distribution):
         if ratio < 1/fft_grid_size and 4*dt > node_interp.fwhm:
             ## node distribution is much narrower than the branch distribution, proceed as if node distribution is
             ## a delta distribution
+            log_scale_node_interp = node_interp.integrate(return_log=True, a=node_interp.xmin,b=node_interp.xmax,n=max(100, len(node_interp.x))) #probability of node distribution 
             if inverse_time:
                 x = branch_interp.x + node_interp._peak_pos
+                dist = Distribution(x, branch_interp(x - node_interp._peak_pos) - log_scale_node_interp, min_width=max(node_interp.min_width, branch_interp.min_width), is_log=True)  
             else:
                 x = - branch_interp.x + node_interp._peak_pos
-            log_scale_node_interp = node_interp.integrate(return_log=True, a=node_interp.xmin,b=node_interp.xmax,n=max(100, len(node_interp.x))) #probability of node distribution 
-            dist = Distribution(x, branch_interp(x - node_interp._peak_pos) - log_scale_node_interp, min_width=max(node_interp.min_width, branch_interp.min_width), is_log=True)
+                dist = Distribution(x, branch_interp(branch_interp.x) - log_scale_node_interp, min_width=max(node_interp.min_width, branch_interp.min_width), is_log=True)
             return dist
         elif ratio > fft_grid_size and 4*dt > branch_interp.fwhm:
             raise ValueError("ERROR: Unexpected behavior: branch distribution is much narrower than the node distribution.")
