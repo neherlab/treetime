@@ -1,3 +1,4 @@
+use crate::io::file::open_file_or_stdin;
 use crate::io::fs::extension;
 use crate::utils::datetime::{date_from_formats, date_from_iso, date_from_rfc2822, date_to_year_fraction};
 use crate::{make_error, make_internal_report, vec_of_owned};
@@ -7,8 +8,6 @@ use itertools::Itertools;
 use lazy_static::lazy_static;
 use regex::Regex;
 use std::collections::HashMap;
-use std::fs::File;
-use std::io::BufReader;
 use std::path::Path;
 
 #[derive(Clone, Debug)]
@@ -36,7 +35,7 @@ pub fn read_dates(
   date_column: &Option<String>,
 ) -> Result<DatesMap, Report> {
   let filepath = filepath.as_ref();
-  let file = BufReader::new(File::open(&filepath).wrap_err_with(|| format!("When reading file: {filepath:#?}"))?);
+  let file = open_file_or_stdin(&Some(filepath)).wrap_err_with(|| format!("When reading file: {filepath:#?}"))?;
   let delimiter =
     guess_csv_delimiter(&filepath).wrap_err_with(|| format!("When guessing CSV delimiter for {filepath:#?}"))?;
 
