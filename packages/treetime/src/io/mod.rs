@@ -1,7 +1,8 @@
 pub mod compression;
 pub mod concat;
 pub mod csv;
-pub mod dates;
+pub mod dates_csv;
+pub mod discrete_states_csv;
 pub mod fasta;
 pub mod file;
 pub mod fs;

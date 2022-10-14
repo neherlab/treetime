@@ -1,5 +1,5 @@
+use crate::io::csv::{get_col_name, guess_csv_delimiter};
 use crate::io::file::open_file_or_stdin;
-use crate::io::fs::extension;
 use crate::utils::datetime::{date_from_formats, date_from_iso, date_from_rfc2822, date_to_year_fraction};
 use crate::{make_error, make_internal_report, vec_of_owned};
 use csv::{ReaderBuilder as CsvReaderBuilder, StringRecord, Trim};
@@ -47,7 +47,10 @@ pub fn read_dates(
   let headers = reader
     .headers()
     .map(|record| record.iter().map(str::to_owned).collect_vec())
-    .map_err(|err| eyre!("{err}"))?;
+    .map_err(|err| eyre!("{err}"))?
+    .iter()
+    .map(|header| header.trim_start_matches('#').trim_end_matches('#').to_owned())
+    .collect_vec();
 
   let name_column_idx = get_col_name(&headers, &vec_of_owned!["name", "strain", "accession"], name_column)
     .wrap_err_with(|| format!("When detecting name column in {filepath:#?}"))?;
@@ -78,7 +81,7 @@ pub fn convert_record(
 
   let date = record
     .get(date_column_idx)
-    .ok_or_else(|| make_internal_report!("Row '{index}': Unable to get column with index '{name_column_idx}'"))?;
+    .ok_or_else(|| make_internal_report!("Row '{index}': Unable to get column with index '{date_column_idx}'"))?;
 
   let date = parse_date(date).wrap_err_with(|| format!("Row '{index}': When parsing date column"))?;
 
@@ -130,42 +133,5 @@ pub fn parse_date_range(date_str: &str) -> Result<(f64, f64), Report> {
     }
   } else {
     make_error!("Unable to parse date range: '{date_str}'")
-  }
-}
-
-pub fn get_col_name(
-  headers: &[String],
-  possible_names: &[String],
-  provided_name: &Option<String>,
-) -> Result<usize, Report> {
-  if let Some(provided_name) = provided_name {
-    match headers.iter().position(|header| header == provided_name) {
-      Some(idx) => Ok(idx),
-      None => make_error!("Requested column '{provided_name}' not found"),
-    }
-  } else {
-    headers
-      .iter()
-      .position(|header| possible_names.contains(header))
-      .ok_or_else(|| {
-        eyre!(
-          "Unable to find column:\n  Looking for: {}\n  Found: {}",
-          possible_names.join(", "),
-          headers.join(",")
-        )
-      })
-  }
-}
-
-pub fn guess_csv_delimiter(filepath: impl AsRef<Path>) -> Result<u8, Report> {
-  let filepath = filepath.as_ref();
-  let ext = extension(filepath)
-    .ok_or_else(|| eyre!("Unable to detect file extension: '{filepath:?}': "))?
-    .to_lowercase();
-  match ext.as_str() {
-    "csv" => Ok(b','),
-    "tsv" => Ok(b'\t'),
-    "ssv" => Ok(b';'),
-    _ => make_error!("Unknown file extension: '{ext}'"),
   }
 }

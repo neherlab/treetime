@@ -1,8 +1,9 @@
 use crate::io::file::create_file;
-use crate::io::fs::read_file_to_string;
+use crate::io::fs::{extension, read_file_to_string};
+use crate::make_error;
 use crate::utils::error::to_eyre_error;
 use csv::{ReaderBuilder as CsvReaderBuilder, Writer as CsvWriterImpl, WriterBuilder as CsvWriterBuilder};
-use eyre::Report;
+use eyre::{eyre, Report};
 use serde::{Deserialize, Serialize};
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -119,4 +120,44 @@ pub fn read_csv_file<T: for<'de> Deserialize<'de>>(filepath: impl AsRef<Path>) -
   let filepath = filepath.as_ref();
   let data = read_file_to_string(filepath)?;
   parse_csv(data)
+}
+
+pub fn get_col_name(
+  headers: &[String],
+  possible_names: &[String],
+  provided_name: &Option<String>,
+) -> Result<usize, Report> {
+  if let Some(provided_name) = provided_name {
+    match headers.iter().position(|header| header == provided_name) {
+      Some(idx) => Ok(idx),
+      None => make_error!(
+        "Unable to find column '{provided_name}'. Available columns are: {}",
+        headers.join(", ")
+      ),
+    }
+  } else {
+    headers
+      .iter()
+      .position(|header| possible_names.contains(header))
+      .ok_or_else(|| {
+        eyre!(
+          "Unable to find column:\n  Looking for: {}\n  Available columns are: {}",
+          possible_names.join(", "),
+          headers.join(", ")
+        )
+      })
+  }
+}
+
+pub fn guess_csv_delimiter(filepath: impl AsRef<Path>) -> Result<u8, Report> {
+  let filepath = filepath.as_ref();
+  let ext = extension(filepath)
+    .ok_or_else(|| eyre!("Unable to detect file extension: '{filepath:?}': "))?
+    .to_lowercase();
+  match ext.as_str() {
+    "csv" => Ok(b','),
+    "tsv" => Ok(b'\t'),
+    "ssv" => Ok(b';'),
+    _ => make_error!("Unknown file extension: '{ext}'"),
+  }
 }

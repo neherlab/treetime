@@ -17,12 +17,12 @@ pub struct TreetimeMugrationArgs {
 
   /// Attribute to reconstruct, e.g. country
   #[clap(long)]
-  pub attribute: Option<String>,
+  pub attribute: String,
 
   /// CSV or TSV file with discrete characters. #name,country,continent taxon1,micronesia,oceania ...
   #[clap(long, short = 's')]
   #[clap(value_hint = ValueHint::FilePath)]
-  pub states: Option<PathBuf>,
+  pub states: PathBuf,
 
   /// CSV or TSV file with probabilities of that a randomly sampled sequence at equilibrium has a particular state. E.g. population of different continents or countries. E.g.: #country,weight micronesia,0.1 ...
   #[clap(long, short = 'w')]

@@ -5,7 +5,7 @@ use crate::graph::create_graph_from_nwk::create_graph_from_nwk;
 use crate::graph::edge::{GraphEdge, Weighted};
 use crate::graph::graph::{Graph, GraphNodeBackward, GraphNodeForward};
 use crate::graph::node::{GraphNode, Named, NodeType, WithNwkComments};
-use crate::io::dates::{DateOrRange, DatesMap};
+use crate::io::dates_csv::{DateOrRange, DatesMap};
 use crate::make_error;
 use eyre::Report;
 use itertools::Itertools;

@@ -6,7 +6,7 @@ use crate::commands::clock::graph_regression_policy::GraphNodeRegressionPolicyRe
 use crate::commands::clock::run_clock_model::{run_clock_model, RunClockModelParams, RunClockModelResults};
 use crate::commands::clock::run_reroot::{run_reroot, RerootParams};
 use crate::io::csv::CsvStructFileWriter;
-use crate::io::dates::read_dates;
+use crate::io::dates_csv::read_dates;
 use crate::io::file::create_file;
 use crate::io::nwk::write_nwk;
 use eyre::{Report, WrapErr};
