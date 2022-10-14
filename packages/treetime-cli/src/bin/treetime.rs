@@ -11,7 +11,7 @@ use treetime::commands::timetree::run_timetree_estimation::run_timetree_estimati
 use treetime::utils::global_init::global_init;
 use treetime_cli::cli::treetime_cli::{generate_shell_completions, treetime_parse_cli_args, TreetimeCommands};
 
-#[cfg(all(target_family = "linux", target_arch = "x86_64"))]
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
