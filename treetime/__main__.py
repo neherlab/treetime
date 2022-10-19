@@ -7,7 +7,9 @@ Based on augur's __main__.py and setup.py
 from __future__ import print_function, division, absolute_import
 import sys
 import math
+import random
 import os
+from pprint import pprint
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '.'))
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
@@ -21,6 +23,10 @@ import numpy as np
 
 np.set_printoptions(precision=60, threshold=20, edgeitems=8, suppress=True, linewidth=999, sign=' ',
                     floatmode='maxprec_equal')
+
+SEED=1010336213
+random.seed(SEED)
+np.random.seed(SEED)
 
 from treetime import version, make_parser
 
