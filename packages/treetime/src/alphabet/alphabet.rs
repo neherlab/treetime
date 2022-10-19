@@ -4,7 +4,7 @@ use indexmap::IndexMap;
 use itertools::Itertools;
 use lazy_static::lazy_static;
 use ndarray::iter::Iter;
-use ndarray::{array, Array, Array1, Dimension, Ix1};
+use ndarray::{array, Array, Array1, Array2, Dimension, Ix1};
 use smart_default::SmartDefault;
 use std::ops::Index;
 use strum_macros::Display;
@@ -21,22 +21,14 @@ pub enum AlphabetName {
 
 #[derive(Clone, Debug)]
 pub struct Alphabet {
-  pub name: AlphabetName,
   pub alphabet: Array1<char>,
   pub profile_map: IndexMap<char, Array1<f64>>,
   pub gap_index: Option<usize>,
   pub ambiguous: char,
 }
 
-impl Eq for Alphabet {}
-
-impl PartialEq for Alphabet {
-  fn eq(&self, other: &Self) -> bool {
-    self.name == other.name
-  }
-}
-
 impl Alphabet {
+  /// Creates one of the pre-defined alphabets
   pub fn new(name: AlphabetName) -> Result<Self, Report> {
     let (alphabet, profile_map, ambiguous) = match name {
       AlphabetName::Nuc => (
@@ -64,10 +56,29 @@ impl Alphabet {
     let gap_index = alphabet.iter().position(|&x| x == '-');
 
     Ok(Self {
-      name,
       alphabet,
       profile_map,
       gap_index,
+      ambiguous,
+    })
+  }
+
+  /// Creates custom alphabet from a given set of letters and generates a trivial unambiguous profile map
+  pub fn with_letters(letters: &[char], ambiguous: char) -> Result<Self, Report> {
+    let eye = Array2::<f64>::eye(letters.len());
+
+    let mut profile_map: IndexMap<char, Array1<f64>> = letters
+      .iter()
+      .zip(eye.rows())
+      .map(|(s, x)| (*s, x.to_owned()))
+      .collect();
+
+    profile_map.insert(ambiguous, Array1::<f64>::ones(letters.len()));
+
+    Ok(Self {
+      alphabet: Array1::<char>::from_iter(letters.iter().copied()),
+      profile_map,
+      gap_index: None,
       ambiguous,
     })
   }

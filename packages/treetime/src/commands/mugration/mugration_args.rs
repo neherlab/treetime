@@ -43,8 +43,12 @@ pub struct TreetimeMugrationArgs {
   pub pc: Option<f64>,
 
   /// String indicating missing data
-  #[clap(long)]
-  pub missing_data: Option<String>,
+  #[clap(long, default_value = "?")]
+  pub missing_data: String,
+
+  /// Portion of attribute values that is allowed to not have weights in the weights file
+  #[clap(long, default_value_t = 0.5)]
+  pub missing_weights_threshold: f64,
 
   /// Rough estimate of how many more events would have been observed if sequences represented an
   /// even sample. This should be roughly the (1-sum_i p_i^2)/(1-sum_i t_i^2), where p_i are the

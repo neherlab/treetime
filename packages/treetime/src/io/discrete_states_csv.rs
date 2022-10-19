@@ -7,17 +7,12 @@ use itertools::Itertools;
 use std::collections::HashMap;
 use std::path::Path;
 
-#[derive(Clone, Debug)]
-pub struct DiscreteStates {
-  value_name: String,
-  values: HashMap<String, String>,
-}
-
-pub fn read_discrete_states(
+pub fn read_discrete_attrs<T>(
   filepath: impl AsRef<Path>,
   name_column: &Option<String>,
   value_column: &Option<String>,
-) -> Result<DiscreteStates, Report> {
+  parser: impl Fn(&str) -> Result<T, Report>,
+) -> Result<(HashMap<String, T>, String), Report> {
   let filepath = filepath.as_ref();
   let file = open_file_or_stdin(&Some(filepath)).wrap_err_with(|| format!("When reading file: {filepath:#?}"))?;
   let delimiter =
@@ -50,19 +45,20 @@ pub fn read_discrete_states(
     .enumerate()
     .map(|(index, record)| {
       let record = record?;
-      convert_record(index, &record, name_column_idx, value_column_idx)
+      convert_record::<T>(index, &record, name_column_idx, value_column_idx, &parser)
     })
-    .collect::<Result<HashMap<String, String>, Report>>()?;
+    .collect::<Result<HashMap<String, T>, Report>>()?;
 
-  Ok(DiscreteStates { value_name, values })
+  Ok((values, value_name))
 }
 
-pub fn convert_record(
+pub fn convert_record<T>(
   index: usize,
   record: &StringRecord,
   name_column_idx: usize,
   value_column_idx: usize,
-) -> Result<(String, String), Report> {
+  parser: &impl Fn(&str) -> Result<T, Report>,
+) -> Result<(String, T), Report> {
   let key = record
     .get(name_column_idx)
     .ok_or_else(|| make_internal_report!("Row '{index}': Unable to get column with index '{name_column_idx}'"))?
@@ -70,8 +66,9 @@ pub fn convert_record(
 
   let value = record
     .get(value_column_idx)
-    .ok_or_else(|| make_internal_report!("Row '{index}': Unable to get column with index '{value_column_idx}'"))?
-    .to_owned();
+    .ok_or_else(|| make_internal_report!("Row '{index}': Unable to get column with index '{value_column_idx}'"))?;
+
+  let value = parser(value)?;
 
   Ok((key, value))
 }

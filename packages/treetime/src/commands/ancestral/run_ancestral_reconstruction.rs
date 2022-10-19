@@ -1,4 +1,3 @@
-use crate::alphabet::alphabet::Alphabet;
 use crate::alphabet::find_mutations::find_graph_mutations;
 use crate::alphabet::sequence_data::SequenceData;
 use crate::commands::ancestral::anc_args::TreetimeAncestralArgs;
