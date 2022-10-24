@@ -1,6 +1,6 @@
 import numpy as np
 from . import config as ttconf
-from . import MissingDataError
+from . import MissingDataError, UnknownMethodError
 from .treeanc import TreeAnc
 from .utils import numeric_date, DateConversion, datestring_from_numeric
 from .distribution import Distribution
@@ -77,7 +77,7 @@ class ClockTree(TreeAnc):
         """
         super(ClockTree, self).__init__(*args, **kwargs)
         if dates is None:
-            raise ValueError("ClockTree requires date constraints!")
+            raise MissingDataError("ClockTree requires date constraints!")
 
         self.debug=debug
         self.real_dates = real_dates
@@ -203,7 +203,7 @@ class ClockTree(TreeAnc):
                         " fft_grid_points=%.3e"%(precision_fft), 2)
                 self.fft_grid_size = precision_fft
             elif precision_fft!='auto':
-                raise ValueError(f"ClockTree: precision_fft needs to be either 'auto' or an integer, got '{precision_fft}'.")
+                raise UnknownMethodError(f"ClockTree: precision_fft needs to be either 'auto' or an integer, got '{precision_fft}'.")
             else:
                 self.fft_grid_size = ttconf.FFT_FWHM_GRID_SIZE
             if type(precision_branch) is int:
@@ -244,7 +244,7 @@ class ClockTree(TreeAnc):
         branch_value = lambda x:x.mutation_length
         if covariation:
             om = self.one_mutation
-            branch_variance = lambda x:((x.clock_length if hasattr(x,'clock_length') else x.mutation_length)
+            branch_variance = lambda x:((max(0,x.clock_length) if hasattr(x,'clock_length') else x.mutation_length)
                                         +(self.tip_slack**2*om if x.is_terminal() else 0.0))*om
         else:
             branch_variance = lambda x:1.0 if x.is_terminal() else 0.0
@@ -256,6 +256,7 @@ class ClockTree(TreeAnc):
 
 
     def get_clock_model(self, covariation=True, slope=None):
+        self.logger(f'ClockTree.get_clock_model: estimating clock model with covariation={covariation}',3)
         Treg = self.setup_TreeRegression(covariation=covariation)
         self.clock_model = Treg.regression(slope=slope)
         if not np.isfinite(self.clock_model['slope']):
@@ -596,7 +597,7 @@ class ClockTree(TreeAnc):
                     pass
 
         method = 'FFT' if self.use_fft else 'explicit'
-        self.logger("ClockTree - Marginal reconstruction:  Propagating leaves -> root...", 2)
+        self.logger(f"ClockTree - Marginal reconstruction using {method} convolution:  Propagating leaves -> root...", 2)
         # go through the nodes from leaves towards the root:
         for node in self.tree.find_clades(order='postorder'):  # children first, msg to parents
             if node.bad_branch:
@@ -640,7 +641,7 @@ class ClockTree(TreeAnc):
                     ## for k branches, but due to the fact that inner branches overlap at time t one can be removed
                     ## resulting in the exponent (k-1))
                     if hasattr(self, 'merger_model') and self.merger_model:
-                        time_points = np.unique(np.concatenate([msg.x for msg in msgs_to_multiply]))
+                        time_points = node.product_of_child_messages.x
                         # set multiplicity of node to number of good child branches
                         if node.is_terminal():
                             merger_contribution = Distribution(time_points, -self.merger_model.integral_merger_rate(time_points), is_log=True)
@@ -701,7 +702,7 @@ class ClockTree(TreeAnc):
                         complementary_msgs.append(parent.msg_from_parent)
 
                     if hasattr(self, 'merger_model') and self.merger_model:
-                        time_points = np.unique(np.concatenate([msg.x for msg in complementary_msgs]))
+                        time_points = parent.marginal_pos_LH.x
                         # As Lx do not include the node contribution this must be added on
                         complementary_msgs.append(self.merger_model.node_contribution(parent, time_points))
 

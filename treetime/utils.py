@@ -2,7 +2,7 @@ import os,sys
 import datetime
 import pandas as pd
 import numpy as np
-from . import TreeTimeError
+from . import TreeTimeError, MissingDataError
 
 class DateConversion(object):
     """
@@ -263,11 +263,11 @@ def parse_dates(date_file, name_col=None, date_col=None):
                 potential_index_columns.append((ci, col))
 
         if date_col and date_col not in df.columns:
-            raise TreeTimeError("ERROR: specified column for dates does not exist. \n\tAvailable columns are: "\
+            raise MissingDataError("ERROR: specified column for dates does not exist. \n\tAvailable columns are: "\
                                 +", ".join(df.columns)+"\n\tYou specified '%s'"%date_col)
 
         if name_col and name_col not in df.columns:
-            raise TreeTimeError("ERROR: specified column for the taxon name does not exist. \n\tAvailable columns are: "\
+            raise MissingDataError("ERROR: specified column for the taxon name does not exist. \n\tAvailable columns are: "\
                                 +", ".join(df.columns)+"\n\tYou specified '%s'"%name_col)
 
 
@@ -275,7 +275,7 @@ def parse_dates(date_file, name_col=None, date_col=None):
         # if a potential numeric date column was found, use it
         # (use the first, if there are more than one)
         if not (len(potential_index_columns) or name_col):
-            raise TreeTimeError("ERROR: Cannot read metadata: need at least one column that contains the taxon labels."
+            raise MissingDataError("ERROR: Cannot read metadata: need at least one column that contains the taxon labels."
                   " Looking for the first column that contains 'name', 'strain', or 'accession' in the header.")
         else:
             # use the first column that is either 'name', 'strain', 'accession'
@@ -320,10 +320,10 @@ def parse_dates(date_file, name_col=None, date_col=None):
                             dates[k] = [numeric_date(x) for x in [lower, upper]]
 
         else:
-            raise TreeTimeError("ERROR: Metadata file has no column which looks like a sampling date!")
+            raise MissingDataError("ERROR: Metadata file has no column which looks like a sampling date!")
 
         if all(v is None for v in dates.values()):
-            raise TreeTimeError("ERROR: Cannot parse dates correctly! Check date format.")
+            raise MissingDataError("ERROR: Cannot parse dates correctly! Check date format.")
         return dates
     except TreeTimeError as err:
         raise err

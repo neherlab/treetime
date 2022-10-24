@@ -54,7 +54,7 @@ The API documentation for the TreeTime package is generated created with Sphinx.
 
   .. code:: bash
 
-	pip install recommonmark sphinx-argparse
+	pip install recommonmark sphinx-argparse sphinx_rtd_theme
 
 After required packages are installed, navigate to doc directory, and build the docs by typing:
 

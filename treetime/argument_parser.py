@@ -79,10 +79,11 @@ reroot_description = "Reroot the tree using root-to-tip regression. Valid choice
     "By default, TreeTime will reroot using 'least-squares'. "\
     "Use --keep-root to keep the current root."
 
-tree_description = "Name of file containing the tree in "\
-    "newick, nexus, or phylip format. If none is provided, "\
-    "treetime will attempt to build a tree from the alignment "\
-    "using fasttree, iqtree, or raxml (assuming they are installed)"
+tree_description = "Name of file containing the tree in newick, nexus, or phylip format, "\
+    "the branch length of the tree should be in units of average number of nucleotide or protein "\
+    "substitutions per site. If no file is provided, treetime will attempt "\
+    "to build a tree from the alignment using fasttree, iqtree, or raxml "\
+    "(assuming they are installed). "
 
 aln_description = "alignment file (fasta)"
 
@@ -192,6 +193,8 @@ def add_timetree_args(parser):
                           help=coalescent_description)
     parser.add_argument('--n-skyline', default="20", type=int,
                           help="number of grid points in skyline coalescent model")
+    parser.add_argument('--gen-per-year', default="50.0", type=float,
+                          help="number of generations per year - used for estimating N_e in coalescent models")
     parser.add_argument('--n-branches-posterior', default=False, action='store_true',
                           help= "add posterior LH to coalescent model: use the posterior probability distributions of "
                                 "divergence times for estimating the number of branches when calculating the coalescent merger"

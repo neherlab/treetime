@@ -63,8 +63,10 @@ class TreeAnc(object):
         Parameters
         ----------
         tree : str, Bio.Phylo.Tree
-           Phylogenetic tree. String passed is interpreted as a filename with
-           a tree in a standard format that can be parsed by the Biopython Phylo module.
+            Phylogenetic tree. String passed is interpreted as a filename with
+            a tree in a standard format that can be parsed by the Biopython Phylo module.
+            Branch length should be in units of average number of nucleotide or protein
+            substitutions per site. Use on trees with longer branches (>4) is not recommended.
 
         aln : str, Bio.Align.MultipleSequenceAlignment, dict
            Sequence alignment. If a string passed, it is interpreted as the
@@ -145,7 +147,7 @@ class TreeAnc(object):
         self._tree = None
         self.tree = tree
         if tree is None:
-            raise ValueError("TreeAnc: tree loading failed! exiting")
+            raise MissingDataError("TreeAnc: tree loading failed! exiting")
 
         # set up GTR model
         self._gtr = None
@@ -309,20 +311,28 @@ class TreeAnc(object):
                 if fmt in ['nexus', 'nex']:
                     self._tree=Phylo.read(in_tree, 'nexus')
                 else:
-                    raise ValueError('TreeAnc: could not load tree, format needs to be nexus or newick! input was '+str(in_tree))
+                    raise MissingDataError('TreeAnc: could not load tree, format needs to be nexus or newick! input was '+str(in_tree))
         else:
-            raise ValueError('TreeAnc: could not load tree! input was '+str(in_tree))
+            raise MissingDataError('TreeAnc: could not load tree! input was '+str(in_tree))
 
         if self._tree.count_terminals()<3:
-            raise ValueError('TreeAnc: tree in %s as only %d tips. Please check your tree!'%(str(in_tree), self._tree.count_terminals()))
+            raise MissingDataError('TreeAnc: tree in %s as only %d tips. Please check your tree!'%(str(in_tree), self._tree.count_terminals()))
 
         # remove all existing sequence attributes
+        branch_length_warning = False
         for node in self._tree.find_clades():
             node.branch_length = node.branch_length if node.branch_length else 0.0
+            if node.branch_length > ttconf.MAX_BRANCH_LENGTH:
+                branch_length_warning = True
             if hasattr(node, "_cseq"):
                 node.__delattr__("_cseq")
             node.original_length = node.branch_length
             node.mutation_length = node.branch_length
+        if branch_length_warning:
+            self.logger("WARNING: TreeTime has detected branches that are longer than %d. "
+                        "TreeTime requires trees where branch length is in units of average number "
+                        "of nucleotide or protein substitutions per site. "
+                        "Use on trees with longer branches is not recommended for ancestral sequence reconstruction."%(ttconf.MAX_BRANCH_LENGTH), 0, warn=True)
         self.prepare_tree()
 
         if self.data:
@@ -518,7 +528,7 @@ class TreeAnc(object):
         elif method.lower() in ['fitch', 'parsimony']:
             _ml_anc = self._fitch_anc
         else:
-            raise ValueError("Reconstruction method needs to be in ['ml', 'probabilistic', 'fitch', 'parsimony'], got '{}'".format(method))
+            raise UnknownMethodError("Reconstruction method needs to be in ['ml', 'probabilistic', 'fitch', 'parsimony'], got '{}'".format(method))
 
         if infer_gtr:
             self.infer_gtr(marginal=marginal, **kwargs)

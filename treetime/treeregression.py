@@ -119,7 +119,7 @@ class TreeRegression(object):
     def Cov(self):
         """
         calculate the covariance matrix of the tips assuming variance
-        has accumulated along branches of the tree accoriding to the
+        has accumulated along branches of the tree according to the
         the provided
         Returns
         -------
@@ -347,7 +347,7 @@ class TreeRegression(object):
                     best_root.update(reg)
 
         if 'node' not in best_root:
-            print("TreeRegression.find_best_root: No valid root found!", force_positive)
+            print(f"TreeRegression.find_best_root: No valid root found! force_positive={force_positive}")
             return None
 
         if 'hessian' in best_root:

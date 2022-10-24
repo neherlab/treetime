@@ -8,7 +8,7 @@
 
 TreeTime provides routines for ancestral sequence reconstruction and inference of molecular-clock phylogenies, i.e., a tree where all branches are scaled such that the positions of terminal nodes correspond to their sampling times and internal nodes are placed at the most likely time of divergence.
 
-To optimize the likelihood of time-scaled phylogenies, TreeTime uses an iterative approach that first infers ancestral sequences given the branch length of the tree, then optimizes the positions of unconstrained nodes on the time axis, and then repeats this cycle.
+To optimize the likelihood of time-scaled phylogenies, TreeTime uses an iterative approach that first infers ancestral sequences given the branch length of the tree (assuming the branch length of the input tree is in units of average number of nucleotide or protein substitutions per site in the sequence). After infering ancestral sequences TreeTime optimizes the positions of unconstrained nodes on the time axis, and then repeats this cycle.
 The only topology optimization are (optional) resolution of polytomies in a way that is most (approximately) consistent with the sampling time constraints on the tree.
 The package is designed to be used as a stand-alone tool on the command-line or as a library used in larger phylogenetic analysis work-flows.
 [The documentation of TreeTime is hosted on readthedocs.org](https://treetime.readthedocs.io/en/latest/).
