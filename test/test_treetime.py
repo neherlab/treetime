@@ -48,6 +48,35 @@ def test_GTR():
         assert np.abs(myGTR.v.sum()) > 1e-10 # **and** v is not zero
 
 
+def test_reconstruct_discrete_traits():
+    from Bio import Phylo
+    from treetime.wrappers import reconstruct_discrete_traits
+
+    # Create a minimal tree with traits to reconstruct.
+    tiny_tree = Phylo.read(StringIO("((A:0.60100000009,B:0.3010000009):0.1,C:0.2):0.001;"), 'newick')
+    traits = {
+        "A": "?",
+        "B": "North America",
+        "C": "West Asia",
+    }
+
+    # Reconstruct traits with "?" as missing data.
+    mugration, letter_to_state, reverse_alphabet = reconstruct_discrete_traits(
+        tiny_tree,
+        traits,
+        missing_data="?",
+    )
+
+    # With two known states, the letters "A" and "B" should be in the alphabet
+    # mapping to those states.
+    assert "A" in letter_to_state
+    assert "B" in letter_to_state
+
+    # The letter for missing data should be the next letter in the alphabet,
+    # following the two known state letters.
+    assert letter_to_state["C"] == "?"
+
+
 def test_ancestral(root_dir=None):
     import os
     from Bio import AlignIO

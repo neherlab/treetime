@@ -757,7 +757,10 @@ def reconstruct_discrete_traits(tree, traits, missing_data='?', pc=1.0, sampling
     ### make a single character alphabet that maps to discrete states
     ###########################################################################
 
-    unique_states = set(traits.values())
+    # Find all unique states to reconstruct, excluding the missing data state.
+    # This missing state will get its own letter assigned after we enumerate the
+    # known states.
+    unique_states = set(traits.values()) - {missing_data}
     n_observed_states = len(unique_states)
 
     # load weights from file and convert to dict if supplied as string

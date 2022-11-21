@@ -1168,6 +1168,9 @@ class TreeAnc(object):
             return self.one_mutation
 
         if not hasattr(node, 'branch_state'):
+            if node.cseq is None and node.is_terminal():
+                raise MissingDataError("TreeAnc.optimal_branch_length: terminal node alignments required; sequence is missing for leaf: '%s'. "
+                        "Missing terminal sequences can be inferred from sister nodes by rerunning with `reconstruct_tip_states=True` or `--reconstruct-tip-states`" % node.name)
             self.add_branch_state(node)
         return self.gtr.optimal_t_compressed(node.branch_state['pair'],
                                     node.branch_state['multiplicity'])
