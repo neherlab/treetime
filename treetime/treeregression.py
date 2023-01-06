@@ -402,7 +402,7 @@ class TreeRegression(object):
         else:
             ii = np.argmin(chisq_grid)
             bounds = (0 if ii==0 else grid[ii-1], 1.0 if ii==len(grid)-1 else grid[ii+1])
-            sol = minimize_scalar(chisq, bounds=bounds, method="bounded")
+            sol = minimize_scalar(chisq, bounds=bounds, method="bounded", tol=1e-6)
             if sol["success"]:
                 return sol['x'], sol['fun']
             else:
