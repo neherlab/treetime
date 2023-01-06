@@ -261,7 +261,7 @@ class Coalescent(object):
 
         sol = minimize_scalar(cost, bracket=[-20.0, 2.0], method='brent')
         if "success" in sol and sol["success"]:
-            self.set_Tc(sol['x'])
+            self.set_Tc(np.exp(sol['x']))
         else:
             self.logger("merger_models:optimize_Tc: optimization of coalescent time scale failed: " + str(sol), 0, warn=True)
             self.set_Tc(initial_Tc.y, T=initial_Tc.x)
