@@ -1571,7 +1571,7 @@ class TreeAnc(object):
 
         old_mu = self.gtr.mu
         try:
-            sol = minimize_scalar(cost_func,bracket=[0.01*np.sqrt(old_mu), np.sqrt(old_mu),100*np.sqrt(old_mu)])
+            sol = minimize_scalar(cost_func, bracket=[0.01*np.sqrt(old_mu), np.sqrt(old_mu),100*np.sqrt(old_mu)], method='brent')
         except:
             self.gtr.mu=old_mu
             self.logger('treeanc:optimize_gtr_rate: optimization failed, continuing with previous mu',1,warn=True)

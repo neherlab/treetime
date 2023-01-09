@@ -645,7 +645,7 @@ class TreeTime(ClockTree):
             try:
                 cg = sciopt.minimize_scalar(_c_gain,
                     bounds=[max(n1.time_before_present,n2.time_before_present), parent.time_before_present],
-                    method='Bounded',args=(n1,n2, parent))
+                    method='bounded',args=(n1,n2, parent), options={'xatol':1e-4*self.one_mutation})
                 return cg['x'], - cg['fun']
             except:
                 self.logger("TreeTime._poly.cost_gain: optimization of gain failed", 3, warn=True)
