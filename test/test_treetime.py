@@ -39,7 +39,7 @@ def test_GTR(root_dir=None):
     if root_dir is None:
         root_dir = os.path.dirname(os.path.realpath(__file__))
     ##check custom GTR model
-    custom_gtr = root_dir + "/sequence_evolution_model.txt"
+    custom_gtr = root_dir + "/test_sequence_evolution_model.txt"
     gtr = GTR.from_str(custom_gtr)
     assert (gtr.Pi.sum() - 1.0)**2<1e-14
     assert np.allclose(gtr.Pi, np.array([0.3088, 0.1897, 0.2335, 0.2581, 0.0099]))
