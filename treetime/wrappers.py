@@ -32,12 +32,24 @@ def assure_tree(params, tmp_dir='treetime_tmp'):
         return 1
     return 0
 
+
 def create_gtr(params):
     """
     parse the arguments referring to the GTR model and return a GTR structure
     """
     model = params.gtr
     gtr_params = params.gtr_params
+    custom_gtr = params.custom_gtr
+    if custom_gtr:
+        if model not in ['custom', 'infer']:
+            print(f'Warning: you specified a GTR model `{model}` and a custom gtr path `{custom_gtr}`. TreeTime will load the custom model and ignore the parameter `--gtr {model}`.')
+        if os.path.isfile(custom_gtr):
+            gtr = GTR.from_file(custom_gtr)
+            params.gtr = 'custom'
+            return gtr
+        else:
+            raise ValueError(f"File with custom GTR model `{custom_gtr}` does not exist!")
+
     if model == 'infer':
         gtr = GTR.standard('jc', alphabet='aa' if params.aa else 'nuc')
     else:

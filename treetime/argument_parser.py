@@ -144,6 +144,7 @@ def add_gtr_arguments(parser):
     parser.add_argument('--gtr', default='infer', help=gtr_description)
     parser.add_argument('--gtr-params', nargs='+', help=gtr_params_description)
     parser.add_argument('--aa', action='store_true', help="use aminoacid alphabet")
+    parser.add_argument('--custom-gtr', default = None, type=str, help="filename of pre-defined custom GTR model in standard TreeTime format")
 
 def add_time_arguments(parser):
     parser.add_argument('--dates', type=str, help=dates_description)
