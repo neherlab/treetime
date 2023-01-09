@@ -1,4 +1,10 @@
-# 0.9.4: bug fix and performance improvments
+# 0.9.5: load custom GTR via CLI
+
+ * add CLI flag and functionality to load sequence evolution models inferred and saved by TreeTime as human-readable text files. The flag is `--custom-gtr <filename>` and overwrites any arguments passed under the `--gtr` flag.
+ * explicitly specify the optimization method, brackets, bounds, and tolerances in calls of `scipy.optimize.minimize` to suppress scipy warning. Scipy had previously silently ignored bounds when the method wasn't explicitly set to `bounded`.
+
+
+# 0.9.4: bug fix and performance improvements
 
  * avoid negative variance associated with branch lengths in tree regression. This could happen in rare cases when marginal time tree estimation returned short negative branch length and the variance was estimated as being proportional to branch length. Variances in the `TreeRegression` clock model are now always non-negative.
  * downsample the grid during multiplication of distribution objects. This turned out to be an issue for trees with very large polytomies. In these cases, a large number of distributions get multiplied which resulted in grid sizes above 100000 points. Grid sizes are now downsampled to the average grid size.
