@@ -173,19 +173,20 @@ class GTR(object):
         return eq_freq_str + W_str + Q_str
 
     @staticmethod
-    def from_str(gtr_string):
+    def from_file(gtr_fname):
         """
-        Parse a GTR string and assign the rates accordingly
+        Parse a GTR string and assign the rates accordingly.
+        Note that the input string is expected to be formatted exactly like the output of the `__str__` method.
 
         Parameters
         ----------
 
-            gtr_string : string
+            gtr_fname : file name
             String representation of the GTR model
 
         """
-        try: 
-            with open(gtr_string) as f:
+        try:
+            with open(gtr_fname) as f:
                 alphabet = []
                 pi = []
                 while True:
@@ -201,7 +202,7 @@ class GTR(object):
                             pi.append(float(line.split(":")[1].strip()))
                             line = f.readline()
                         if not np.any([len(alphabet) == len(a) and np.all(np.array(alphabet) == a) for a in alphabets.values()]):
-                            raise ValueError("GTR: was unable to read custom GTR model in "+str(gtr_string) +" - Alphabet not recognized")
+                            raise ValueError("GTR: was unable to read custom GTR model in "+str(gtr_fname) +" - Alphabet not recognized")
                     elif line.strip().startswith("Symmetrized rates from j->i (W_ij):"):
                         line = f.readline()
                         line = f.readline()
@@ -215,11 +216,11 @@ class GTR(object):
                             j +=1
                             line = f.readline()
                         if j != n:
-                            raise ValueError("GTR: was unable to read custom GTR model in "+str(gtr_string) +" - Number of lines in W matrix does not match alphabet length")
+                            raise ValueError("GTR: was unable to read custom GTR model in "+str(gtr_fname) +" - Number of lines in W matrix does not match alphabet length")
                 gtr = GTR.custom(mu, pi, W, alphabet = alphabet)
                 return gtr
         except:
-            raise MissingDataError('GTR: was unable to read custom GTR model in '+str(gtr_string))
+            raise MissingDataError('GTR: was unable to read custom GTR model in '+str(gtr_fname))
 
 
     def assign_rates(self, mu=1.0, pi=None, W=None):

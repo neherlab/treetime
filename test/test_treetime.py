@@ -40,13 +40,13 @@ def test_GTR(root_dir=None):
         root_dir = os.path.dirname(os.path.realpath(__file__))
     ##check custom GTR model
     custom_gtr = root_dir + "/test_sequence_evolution_model.txt"
-    gtr = GTR.from_str(custom_gtr)
+    gtr = GTR.from_file(custom_gtr)
     assert (gtr.Pi.sum() - 1.0)**2<1e-14
     assert np.allclose(gtr.Pi, np.array([0.3088, 0.1897, 0.2335, 0.2581, 0.0099]))
     assert np.all(gtr.alphabet == np.array(['A', 'C', 'G', 'T', '-']))
     assert abs(gtr.mu - 1.0) < 1e-4
     assert abs(gtr.Q.sum(0)).sum() < 1e-14
-    assert np.allclose(gtr.W, np.array([[0, 0.7003, 3.0669, 0.2651, 0.9742], 
+    assert np.allclose(gtr.W, np.array([[0, 0.7003, 3.0669, 0.2651, 0.9742],
                             [0.7003, 0, 0.3354, 3.399, 0.999],
                             [3.0669, 0.3354, 0, 0.4258, 0.9892],
                             [0.2651, 3.399, 0.4258, 0, 0.9848],
