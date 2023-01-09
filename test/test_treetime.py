@@ -35,14 +35,12 @@ def test_assign_gamma(root_dir=None):
 def test_GTR(root_dir=None):
     from treetime import GTR
     import numpy as np
-    from treetime.wrappers import custom_gtr_from_str
     import os
     if root_dir is None:
         root_dir = os.path.dirname(os.path.realpath(__file__))
     ##check custom GTR model
     custom_gtr = root_dir + "/sequence_evolution_model.txt"
-    mu, pi, alphabet, W = custom_gtr_from_str(custom_gtr)
-    gtr = GTR.custom(mu, pi, W, alphabet = alphabet)
+    gtr = GTR.from_str(custom_gtr)
     assert (gtr.Pi.sum() - 1.0)**2<1e-14
     assert np.allclose(gtr.Pi, np.array([0.3088, 0.1897, 0.2335, 0.2581, 0.0099]))
     assert np.all(gtr.alphabet == np.array(['A', 'C', 'G', 'T', '-']))

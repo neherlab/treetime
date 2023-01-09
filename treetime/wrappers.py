@@ -32,53 +32,6 @@ def assure_tree(params, tmp_dir='treetime_tmp'):
         return 1
     return 0
 
-def custom_gtr_from_str(gtr_string):
-    """
-    Parse a GTR string and assign the rates accordingly
-
-    Parameters
-    ----------
-
-        gtr_string : string
-        String representation of the GTR model
-
-    """
-    try: 
-        with open(gtr_string) as f:
-            alphabet = []
-            pi = []
-            while True:
-                line = f.readline()
-                if not line:
-                    break
-                if line.strip().startswith("Substitution rate (mu):"):
-                    mu = float(line.split(":")[1].strip())
-                elif line.strip().startswith("Equilibrium frequencies (pi_i):"):
-                    line = f.readline()
-                    while line.strip()!="":
-                        alphabet.append(line.split(":")[0].strip())
-                        pi.append(float(line.split(":")[1].strip()))
-                        line = f.readline()
-                    if not np.any([len(alphabet) == len(a) and np.all(np.array(alphabet) == a) for a in alphabets.values()]):
-                        raise ValueError("GTR: was unable to read custom GTR model in "+str(gtr_string) +" - Alphabet not recognized")
-                elif line.strip().startswith("Symmetrized rates from j->i (W_ij):"):
-                    line = f.readline()
-                    line = f.readline()
-                    n = len(pi)
-                    W = np.ones((n,n))
-                    j = 0
-                    while line.strip()!="":
-                        values = line.split()
-                        for i in range(n):
-                            W[j,i] = float(values[i+1])
-                        j +=1
-                        line = f.readline()
-                    if j != n:
-                        raise ValueError("GTR: was unable to read custom GTR model in "+str(gtr_string) +" - Number of lines in W matrix does not match alphabet length")
-            return mu, pi, alphabet, W
-    except:
-        raise MissingDataError('GTR: was unable to read custom GTR model in '+str(gtr_string))
-
 
 def create_gtr(params):
     """
@@ -88,8 +41,7 @@ def create_gtr(params):
     gtr_params = params.gtr_params
     custom_gtr = params.custom_gtr
     if custom_gtr:
-        mu, pi, alphabet, W = custom_gtr_from_str(custom_gtr)
-        gtr = GTR.custom(mu, pi, W, alphabet = alphabet)
+        gtr = GTR.from_str(custom_gtr)
         params.gtr = 'custom'
         return gtr
     if model == 'infer':
