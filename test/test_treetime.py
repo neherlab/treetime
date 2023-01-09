@@ -32,9 +32,27 @@ def test_assign_gamma(root_dir=None):
     success = myTree.run(infer_gtr=False, assign_gamma=assign_gamma, max_iter=1, verbose=3, **seq_kwargs, **tt_kwargs)
     assert success
 
-def test_GTR():
+def test_GTR(root_dir=None):
     from treetime import GTR
     import numpy as np
+    from treetime.wrappers import custom_gtr_from_str
+    import os
+    if root_dir is None:
+        root_dir = os.path.dirname(os.path.realpath(__file__))
+    ##check custom GTR model
+    custom_gtr = root_dir + "/sequence_evolution_model.txt"
+    mu, pi, alphabet, W = custom_gtr_from_str(custom_gtr)
+    gtr = GTR.custom(mu, pi, W, alphabet = alphabet)
+    assert (gtr.Pi.sum() - 1.0)**2<1e-14
+    assert np.allclose(gtr.Pi, np.array([0.3088, 0.1897, 0.2335, 0.2581, 0.0099]))
+    assert np.all(gtr.alphabet == np.array(['A', 'C', 'G', 'T', '-']))
+    assert abs(gtr.mu - 1.0) < 1e-4
+    assert abs(gtr.Q.sum(0)).sum() < 1e-14
+    assert np.allclose(gtr.W, np.array([[0, 0.7003, 3.0669, 0.2651, 0.9742], 
+                            [0.7003, 0, 0.3354, 3.399, 0.999],
+                            [3.0669, 0.3354, 0, 0.4258, 0.9892],
+                            [0.2651, 3.399, 0.4258, 0, 0.9848],
+                            [0.9742, 0.999, 0.9892, 0.9848, 0]]), atol=1e-4)
     for model in ['Jukes-Cantor']:
         print('testing GTR, model:',model)
         myGTR = GTR.standard(model, alphabet='nuc')
