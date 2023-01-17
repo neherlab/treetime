@@ -142,6 +142,56 @@ class GTR(object):
 ######################################################################
 ## constructor methods
 ######################################################################
+    @staticmethod
+    def from_file(gtr_fname):
+        """
+        Parse a GTR string and assign the rates accordingly.
+        Note that the input string is expected to be formatted exactly like the output of the `__str__` method.
+
+        Parameters
+        ----------
+
+            gtr_fname : file name
+            String representation of the GTR model
+
+        """
+        try:
+            with open(gtr_fname) as f:
+                alphabet = []
+                pi = []
+                while True:
+                    line = f.readline()
+                    if not line:
+                        break
+                    if line.strip().startswith("Substitution rate (mu):"):
+                        mu = float(line.split(":")[1].strip())
+                    elif line.strip().startswith("Equilibrium frequencies (pi_i):"):
+                        line = f.readline()
+                        while line.strip()!="":
+                            alphabet.append(line.split(":")[0].strip())
+                            pi.append(float(line.split(":")[1].strip()))
+                            line = f.readline()
+                        if not np.any([len(alphabet) == len(a) and np.all(np.array(alphabet) == a) for a in alphabets.values()]):
+                            raise ValueError("GTR: was unable to read custom GTR model in "+str(gtr_fname) +" - Alphabet not recognized")
+                    elif line.strip().startswith("Symmetrized rates from j->i (W_ij):"):
+                        line = f.readline()
+                        line = f.readline()
+                        n = len(pi)
+                        W = np.ones((n,n))
+                        j = 0
+                        while line.strip()!="":
+                            values = line.split()
+                            for i in range(n):
+                                W[j,i] = float(values[i+1])
+                            j +=1
+                            line = f.readline()
+                        if j != n:
+                            raise ValueError("GTR: was unable to read custom GTR model in "+str(gtr_fname) +" - Number of lines in W matrix does not match alphabet length")
+                gtr = GTR.custom(mu, pi, W, alphabet = alphabet)
+                return gtr
+        except:
+            raise MissingDataError('GTR: was unable to read custom GTR model in '+str(gtr_fname))
+
 
     def assign_rates(self, mu=1.0, pi=None, W=None):
         """
@@ -773,8 +823,8 @@ class GTR(object):
         try:
             from scipy.optimize import minimize_scalar
             opt = minimize_scalar(_neg_prob,
-                    bounds=[-np.sqrt(ttconf.MAX_BRANCH_LENGTH),np.sqrt(ttconf.MAX_BRANCH_LENGTH)],
-                    args=(seq_pair, multiplicity), tol=tol)
+                    bracket=[-np.sqrt(ttconf.MAX_BRANCH_LENGTH),np.sqrt(ttconf.MAX_BRANCH_LENGTH)],
+                    args=(seq_pair, multiplicity), tol=tol, method='brent')
             new_len = opt["x"]**2
             if 'success' not in opt:
                 opt['success'] = True

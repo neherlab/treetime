@@ -435,7 +435,10 @@ def write_vcf(tree_dict, file_name):#, compress=False):
             try:
                 pattern2.append(sequences[k][pi+1])
             except KeyError:
-                pattern2.append(ref[pi+1])
+                try:
+                    pattern2.append(ref[pi+1])
+                except IndexError:
+                    pass
 
         pattern = np.array(pattern).astype('U')
         pattern2 = np.array(pattern2).astype('U')
