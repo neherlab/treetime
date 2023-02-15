@@ -956,8 +956,6 @@ def mugration(params):
     terminal_count = 0
     for n in mug.tree.find_clades():
         n.confidence=None
-        if n.up is None:
-            continue
         # due to a bug in older versions of biopython that truncated filenames in nexus export
         # we truncate them by hand and make them unique.
         if n.is_terminal() and len(n.name)>40 and bioversion<"1.69":
