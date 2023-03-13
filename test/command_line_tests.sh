@@ -54,6 +54,15 @@ else
 	echo "timetree_inference on vcf data failed $retval"
 fi
 
+treetime arg --trees arg/TreeKnit/tree_a_resolved.nwk arg/TreeKnit/tree_b_resolved.nwk arg/TreeKnit/tree_c_resolved.nwk --alignments arg/TreeKnit/aln_a.fasta arg/TreeKnit/aln_b.fasta arg/TreeKnit/aln_c.fasta --mccs arg/TreeKnit/MCCs.json --dates arg/TreeKnit/metadata.csv --clock-rate 0.0028 --outdir time_tree_arg_results
+retval="$?"
+if [ "$retval" == 0 ]; then
+	echo "timetree arg on 3 trees ok"
+else
+	((all_tests++))
+	echo "timetree arg on 3 trees failed $retval"
+fi
+
 treetime --tree treetime_examples/data/ebola/ebola.nwk --dates treetime_examples/data/ebola/ebola.metadata.csv --aln treetime_examples/data/ebola/ebola.fasta  --coalescent skyline --gen-per-year 100
 retval="$?"
 if [ "$retval" == 0 ]; then

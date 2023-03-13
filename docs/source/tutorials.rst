@@ -29,3 +29,4 @@ These tutorials use example data provided in the github-repository
     tutorials/clock
     tutorials/mugration
     tutorials/homoplasy
+    tutorials/arg

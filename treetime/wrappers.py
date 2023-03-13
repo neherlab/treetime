@@ -174,14 +174,14 @@ def plot_rtt(tt, fname):
 
 def export_sequences_and_tree(tt, basename, is_vcf=False, zero_based=False,
                               report_ambiguous=False, timetree=False, confidence=False,
-                              reconstruct_tip_states=False, tree_suffix=''):
+                              reconstruct_tip_states=False, tree_suffix='', aln_slice=None):
     seq_info = is_vcf or tt.aln
     if is_vcf:
         outaln_name = basename + f'ancestral_sequences{tree_suffix}.vcf'
         write_vcf(tt.get_reconstructed_alignment(reconstruct_tip_states=reconstruct_tip_states), outaln_name)
     elif tt.aln:
         outaln_name = basename + f'ancestral_sequences{tree_suffix}.fasta'
-        AlignIO.write(tt.get_reconstructed_alignment(reconstruct_tip_states=reconstruct_tip_states), outaln_name, 'fasta')
+        AlignIO.write(tt.get_reconstructed_alignment(reconstruct_tip_states=reconstruct_tip_states, aln_slice=aln_slice), outaln_name, 'fasta')
     if seq_info:
         print("\n--- alignment including ancestral nodes saved as  \n\t %s\n"%outaln_name)
 
@@ -229,10 +229,12 @@ def export_sequences_and_tree(tt, basename, is_vcf=False, zero_based=False,
                                                         if tt.gtr.ambiguous not in [a,d]])+'"'
             else:
                 if report_ambiguous:
-                    n.comment= '&mutations="' + ','.join([a+str(pos + offset)+d for (a,pos, d) in n.mutations if n.mask[pos]>0])+f'",mcc="{n.mcc}"'
+                    n.comment= '&mutations="' + ','.join([a+str(pos + offset)+d for (a,pos, d) in n.mutations if n.mask[pos]>0])\
+                                                        +f'",mcc="{",".join([str(x) for x in n.mcc])}"'
                 else:
                     n.comment= '&mutations="' + ','.join([a+str(pos + offset)+d for (a,pos, d) in n.mutations
-                                                        if tt.gtr.ambiguous not in [a,d] and n.mask[pos]>0])+f'",mcc="{n.mcc}"'
+                                                         if tt.gtr.ambiguous not in [a,d] and n.mask[pos]>0])\
+                                                        +f'",mcc="{",".join([str(x) for x in n.mcc])}"'
 
                 for (a, pos, d) in n.mutations:
                     if tt.gtr.ambiguous not in [a,d] or report_ambiguous:
@@ -496,22 +498,22 @@ def arg_time_trees(params):
     """
     from .arg import parse_arg, setup_arg
 
-    arg_params = parse_arg(params.trees[0], params.trees[1],
-                    params.alignments[0], params.alignments[1], params.mccs,
+    arg_params = parse_arg(params.trees,
+                    params.alignments, params.mccs,
                     fill_overhangs=not params.keep_overhangs)
 
     dates = utils.parse_dates(params.dates, date_col=params.date_column, name_col=params.name_column)
     root = None if params.keep_root else params.reroot
 
-    for i,(tree,mask) in enumerate(zip(arg_params['trees'], arg_params['masks'])):
+    for tree_name in arg_params['trees_dict'].keys():
         outdir = get_outdir(params, f'_ARG-treetime')
         gtr = create_gtr(params)
 
-        tt = setup_arg(tree, arg_params['alignment'], arg_params['combined_mask'], mask, dates, arg_params['MCCs'],
-                       gtr=gtr, verbose=params.verbose, fill_overhangs=not params.keep_overhangs,
-                       fixed_clock_rate = params.clock_rate, reroot=root)
-
-        run_timetree(tt, params, outdir, tree_suffix=f"_{i+1}", prune_short=False, method_anc=params.method_anc)
+        tt = setup_arg(tree_name, arg_params['trees_dict'], arg_params['alignment'], dates, arg_params['MCCs_dict'], arg_params['masks_dict'],
+                        gtr=gtr, verbose=params.verbose, fill_overhangs=not params.keep_overhangs,
+                        fixed_clock_rate = params.clock_rate, reroot=root)
+        
+        run_timetree(tt, params, outdir, tree_suffix=f"_"+tree_name, prune_short=False, method_anc=params.method_anc, aln_slice=arg_params["seg_pos_dict"][tree_name])
 
 
 
@@ -547,7 +549,7 @@ def timetree(params):
     return run_timetree(myTree, params, outdir)
 
 
-def run_timetree(myTree, params, outdir, tree_suffix='', prune_short=True, method_anc='probabilistic'):
+def run_timetree(myTree, params, outdir, tree_suffix='', prune_short=True, method_anc='probabilistic', aln_slice=None):
     '''
     this function abstracts the time tree estimation that is used for regular
     treetime inference and for arg time tree inference.
@@ -687,7 +689,7 @@ def run_timetree(myTree, params, outdir, tree_suffix='', prune_short=True, metho
     export_sequences_and_tree(myTree, basename, is_vcf, params.zero_based,
                               timetree=True, confidence=calc_confidence,
                               reconstruct_tip_states=params.reconstruct_tip_states,
-                              tree_suffix=tree_suffix)
+                              tree_suffix=tree_suffix, aln_slice=aln_slice)
 
     return 0
 

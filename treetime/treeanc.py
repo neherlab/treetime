@@ -1588,7 +1588,7 @@ class TreeAnc(object):
 ###############################################################################
 ### Utility functions
 ###############################################################################
-    def get_reconstructed_alignment(self, reconstruct_tip_states=False):
+    def get_reconstructed_alignment(self, reconstruct_tip_states=False, aln_slice=None):
         """
         Get the multiple sequence alignment, including reconstructed sequences for
         the internal nodes.
@@ -1620,11 +1620,17 @@ class TreeAnc(object):
             new_aln['positions'] = self.data.nonref_positions
             new_aln['inferred_const_sites'] = self.data.inferred_const_sites
         else:
-            new_aln = MultipleSeqAlignment([SeqRecord(id=n.name,
+            if aln_slice:
+                start, end = aln_slice
+                new_aln = MultipleSeqAlignment([SeqRecord(id=n.name,
+                                              seq=Seq(self.sequence(n, reconstructed=reconstruct_tip_states,
+                                                      as_string=True, compressed=False)[start:end]), description="")
+                                        for n in self.tree.find_clades()])
+            else:
+                new_aln = MultipleSeqAlignment([SeqRecord(id=n.name,
                                               seq=Seq(self.sequence(n, reconstructed=reconstruct_tip_states,
                                                       as_string=True, compressed=False)), description="")
                                         for n in self.tree.find_clades()])
-
         return new_aln
 
 
