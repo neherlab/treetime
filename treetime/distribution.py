@@ -124,7 +124,7 @@ class Distribution(object):
             ind = (y_vals-peak)<BIG_NUMBER/1000
             n_points = ind.sum()
             if n_points == 0:
-                print("WARNING: Unexpected behavior detected in multipy function,"
+                print("WARNING: Unexpected behavior detected in multiply function,"
                         "if you see this error \n please let us know by filling an issue at: https://github.com/neherlab/treetime/issues")
                 x_vals = [0,1]
                 y_vals = [BIG_NUMBER,BIG_NUMBER]
@@ -159,7 +159,7 @@ class Distribution(object):
         ind = (y_vals-peak)<BIG_NUMBER/1000
         n_points = ind.sum()
         if n_points == 0:
-            print("WARNING: Unexpected behavior detected in multipy function,"
+            print("WARNING: Unexpected behavior detected in multiply function,"
                     "if you see this error \n please let us know by filling an issue at: https://github.com/neherlab/treetime/issues")
             x_vals = [0,1]
             y_vals = [BIG_NUMBER,BIG_NUMBER]
@@ -271,7 +271,7 @@ class Distribution(object):
     @property
     def y(self):
         if self.is_delta:
-            print("THIS SHOULDN'T BE CALLED ON A DELTA FUNCTION")
+            print("Warning: evaluating log probability of a delta distribution.")
             return [self.weight]
         else:
             return self._peak_val + self._func.y
