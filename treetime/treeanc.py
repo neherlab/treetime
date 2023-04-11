@@ -3,7 +3,6 @@ import gc
 import numpy as np
 from Bio import Phylo
 from Bio.Phylo.BaseTree import Clade
-from Bio import AlignIO
 from . import config as ttconf
 from . import MissingDataError,UnknownMethodError
 from .seq_utils import seq2prof, prof2seq, normalize_profile, extend_profile

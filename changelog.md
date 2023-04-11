@@ -1,4 +1,10 @@
+# 0.9.6: bug fixes
+ * in cases when very large polytomies are resolved, the multiplication of the discretized message results in messages/distributions of length 1. This resulted in an error, since interpolation objects require at least two points. This is now caught and a small discrete grid created.
+ * increase recursion limit to 10000 by default. The recursion limit can now also be set via the environment variable `TREETIME_RECURSION_LIMIT`.
+ * removed unused imports, fixed typos
+
 # 0.9.5: load custom GTR via CLI
+
  * fix bug that omitted the inferred state of the root in the nexus export of the migration command
  * add CLI flag and functionality to load sequence evolution models inferred and saved by TreeTime as human-readable text files. The flag is `--custom-gtr <filename>` and overwrites any arguments passed under the `--gtr` flag.
  * explicitly specify the optimization method, brackets, bounds, and tolerances in calls of `scipy.optimize.minimize` to suppress scipy warning. Scipy had previously silently ignored bounds when the method wasn't explicitly set to `bounded`.

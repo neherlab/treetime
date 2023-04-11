@@ -4,9 +4,7 @@ try:
     from collections.abc import Iterable
 except ImportError:
     from collections import Iterable
-from copy import deepcopy as make_copy
-from scipy.ndimage import binary_dilation
-from .config import BIG_NUMBER, MIN_LOG, MIN_INTEGRATION_PEAK, TINY_NUMBER, SUPERTINY_NUMBER
+from .config import BIG_NUMBER, MIN_INTEGRATION_PEAK, TINY_NUMBER
 from .utils import clip
 
 class Distribution(object):
@@ -313,7 +311,6 @@ class Distribution(object):
         Assess the interval on which the value of self is higher than cutoff
         relative to its peak
         """
-        from scipy.optimize import brentq
         log_cutoff = -np.log(cutoff)
         vals = log_cutoff - self.__call__(self.x) + self.peak_val
         above = vals > 0
