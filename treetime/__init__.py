@@ -1,4 +1,4 @@
-version="0.9.5"
+version="0.9.6"
 ## Here we define an error class for TreeTime errors, MissingData, UnknownMethod and NotReady errors
 ## are all due to incorrect calling of TreeTime functions or input data that does not fit our base assumptions.
 ## Errors marked as TreeTimeUnknownErrors might be due to data not fulfilling base assumptions or due
@@ -28,6 +28,12 @@ class TreeTimeUnknownError(Exception):
     """TreeTimeUnknownError class raised when TreeTime fails during inference due to an unknown reason. This might be due to data not fulfilling base assumptions or due  to bugs in TreeTime. Please report them to the developers if they persist."""
     pass
 
+import os, sys
+recursion_limit = os.environ.get("TREETIME_RECURSION_LIMIT")
+if recursion_limit:
+    sys.setrecursionlimit(int(recursion_limit))
+else:
+    sys.setrecursionlimit(max(sys.getrecursionlimit(), 10000))
 
 from .treeanc import TreeAnc
 from .treetime import TreeTime, plot_vs_years

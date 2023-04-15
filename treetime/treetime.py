@@ -616,7 +616,7 @@ class TreeTime(ClockTree):
 
         """
         Function to resolve polytomies for a given parent node. If the
-        number of the direct decendants is less than three (not a polytomy), does
+        number of the direct descendants is less than three (not a polytomy), does
         nothing. Otherwise, for each pair of nodes, assess the possible LH increase
         which could be gained by merging the two nodes. The increase in the LH is
         basically the tradeoff between the gain of the LH due to the changing the
@@ -632,11 +632,17 @@ class TreeTime(ClockTree):
             """
             cost gain if nodes n1, n2 are joined and their parent is placed at time t
             cost gain = (LH loss now) - (LH loss when placed at time t)
+            NOTE: this cost function ignores the coalescent likelihood. Given the greedy
+            and approximate nature of this calculation, this seems justified. But this
+            entire procedure is not well suited for large polytomies.
             """
-            cg2 = n2.branch_length_interpolator._func(parent.time_before_present - n2.time_before_present) - n2.branch_length_interpolator._func(t - n2.time_before_present)
+            # old - new contributions of child branches
             cg1 = n1.branch_length_interpolator._func(parent.time_before_present - n1.time_before_present) - n1.branch_length_interpolator._func(t - n1.time_before_present)
+            cg2 = n2.branch_length_interpolator._func(parent.time_before_present - n2.time_before_present) - n2.branch_length_interpolator._func(t - n2.time_before_present)
+            # old - new contribution of additional branch (no old contribution)
             cg_new = - zero_branch_slope * (parent.time_before_present - t) # loss in LH due to the new branch
-            return -(cg2+cg1+cg_new)
+
+            return -(cg2 + cg1 + cg_new)
 
         def cost_gain(n1, n2, parent):
             """
@@ -648,6 +654,7 @@ class TreeTime(ClockTree):
                     method='bounded',args=(n1,n2, parent), options={'xatol':1e-4*self.one_mutation})
                 return cg['x'], - cg['fun']
             except:
+                import ipdb; ipdb.set_trace()
                 self.logger("TreeTime._poly.cost_gain: optimization of gain failed", 3, warn=True)
                 return parent.time_before_present, 0.0
 

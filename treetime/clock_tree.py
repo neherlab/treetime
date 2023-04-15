@@ -703,6 +703,9 @@ class ClockTree(TreeAnc):
 
                     if hasattr(self, 'merger_model') and self.merger_model:
                         time_points = parent.marginal_pos_LH.x
+                        if len(time_points)<5:
+                            time_points = np.linspace(np.min([x.xmin for x in complementary_msgs]),
+                                                      np.max([x.xmax for x in complementary_msgs]), 10)
                         # As Lx do not include the node contribution this must be added on
                         complementary_msgs.append(self.merger_model.node_contribution(parent, time_points))
 

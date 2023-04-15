@@ -1,12 +1,11 @@
 import numpy as np
+from . import TreeTimeUnknownError
 from scipy.interpolate import interp1d
 try:
     from collections.abc import Iterable
 except ImportError:
     from collections import Iterable
-from copy import deepcopy as make_copy
-from scipy.ndimage import binary_dilation
-from .config import BIG_NUMBER, MIN_LOG, MIN_INTEGRATION_PEAK, TINY_NUMBER, SUPERTINY_NUMBER
+from .config import BIG_NUMBER, MIN_INTEGRATION_PEAK, TINY_NUMBER
 from .utils import clip
 
 class Distribution(object):
@@ -114,22 +113,18 @@ class Distribution(object):
             try:
                 peak = y_vals.min()
             except:
-                print("WARNING: Unexpected behavior detected in multiply function,"
-                        "if you see this error \n please let us know by filling an issue at: https://github.com/neherlab/treetime/issues")
-                x_vals = [0,1]
-                y_vals = [BIG_NUMBER,BIG_NUMBER]
-                res = Distribution(x_vals, y_vals, is_log=True,
-                                    min_width=min_width, kind='linear')
-                return res
+                TreeTimeUnknownError("Error: Unexpected behavior detected in multiply function"
+                        " when determining peak of function with y-values '"+ str(y_vals) + "'.\n\n"
+                        "If you see this error please let us know by filling an issue at: \n"
+                        "https://github.com/neherlab/treetime/issues")
+
             ind = (y_vals-peak)<BIG_NUMBER/1000
             n_points = ind.sum()
             if n_points == 0:
-                print("WARNING: Unexpected behavior detected in multipy function,"
-                        "if you see this error \n please let us know by filling an issue at: https://github.com/neherlab/treetime/issues")
-                x_vals = [0,1]
-                y_vals = [BIG_NUMBER,BIG_NUMBER]
-                res = Distribution(x_vals, y_vals, is_log=True,
-                                   min_width=min_width, kind='linear')
+                TreeTimeUnknownError("Error: Unexpected behavior detected in multiply function. "
+                                     "No valid points left after reducing to plausible region.\n\n"
+                        "If you see this error please let us know by filling an issue at:\n"
+                        "https://github.com/neherlab/treetime/issues")
             elif n_points == 1:
                 res = Distribution.delta_function(x_vals[0])
             else:
@@ -159,7 +154,7 @@ class Distribution(object):
         ind = (y_vals-peak)<BIG_NUMBER/1000
         n_points = ind.sum()
         if n_points == 0:
-            print("WARNING: Unexpected behavior detected in multipy function,"
+            print("WARNING: Unexpected behavior detected in multiply function,"
                     "if you see this error \n please let us know by filling an issue at: https://github.com/neherlab/treetime/issues")
             x_vals = [0,1]
             y_vals = [BIG_NUMBER,BIG_NUMBER]
@@ -271,7 +266,7 @@ class Distribution(object):
     @property
     def y(self):
         if self.is_delta:
-            print("THIS SHOULDN'T BE CALLED ON A DELTA FUNCTION")
+            print("Warning: evaluating log probability of a delta distribution.")
             return [self.weight]
         else:
             return self._peak_val + self._func.y
@@ -313,7 +308,6 @@ class Distribution(object):
         Assess the interval on which the value of self is higher than cutoff
         relative to its peak
         """
-        from scipy.optimize import brentq
         log_cutoff = -np.log(cutoff)
         vals = log_cutoff - self.__call__(self.x) + self.peak_val
         above = vals > 0
@@ -434,6 +428,7 @@ class Distribution(object):
 
     def fft(self, T, n=None, inverse_time=True):
         if self.is_delta:
+            raise
             import ipdb; ipdb.set_trace()
         from numpy.fft import rfft
         if n is None:
