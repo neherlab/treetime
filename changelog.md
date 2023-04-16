@@ -1,7 +1,8 @@
-# 0.9.6: bug fixes
+# 0.9.6: bug fixes and new mode of polytomy resolution
  * in cases when very large polytomies are resolved, the multiplication of the discretized message results in messages/distributions of length 1. This resulted in an error, since interpolation objects require at least two points. This is now caught and a small discrete grid created.
  * increase recursion limit to 10000 by default. The recursion limit can now also be set via the environment variable `TREETIME_RECURSION_LIMIT`.
  * removed unused imports, fixed typos
+ * add new way to resolve polytomies. the previous polytomy resolution greedily pulled out pairs of child-clades at a time and merged then into a single clade. This often results in atypical caterpillar like subtrees. This is undesirable since it (i) is very atypical, (ii) causes numerical issues due to repeated convolutions, and (iii) triggers recursion errors during newick export. The new optional way of resolving replaces a multi-furcation by a randomly generated coalescent tree that backwards in time mutates (all mutations are singletons and need to 'go' before coalescence), and merges lineages. Lineages that remain when time reaches the time of the parent remain as children of the parent. This new way of resolving is much faster for large polytomies. This experimental feature can be used via the flag `--stochastic-resolve`. Note that the outcome of this stochastic resolution is stochastic!
 
 # 0.9.5: load custom GTR via CLI
 

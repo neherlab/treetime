@@ -585,6 +585,9 @@ def run_timetree(myTree, params, outdir, tree_suffix='', prune_short=True, metho
             return 1
     n_branches_posterior = params.n_branches_posterior
 
+    if hasattr(params, 'stochastic_resolve'):
+        stochastic_resolve = params.stochastic_resolve
+    else: stochastic_resolve = False
 
     # determine whether confidence intervals are to be computed and how the
     # uncertainty in the rate estimate should be treated
@@ -615,6 +618,7 @@ def run_timetree(myTree, params, outdir, tree_suffix='', prune_short=True, metho
     try:
         success = myTree.run(root=root, relaxed_clock=relaxed_clock_params,
                resolve_polytomies=(not params.keep_polytomies),
+               stochastic_resolve = stochastic_resolve,
                Tc=coalescent, max_iter=params.max_iter,
                fixed_clock_rate=params.clock_rate,
                n_iqd=params.clock_filter,

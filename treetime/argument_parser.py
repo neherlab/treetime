@@ -180,6 +180,8 @@ def add_timetree_args(parser):
                              "distribution in the final round.")
     parser.add_argument('--keep-polytomies', default=False, action='store_true',
                         help="Don't resolve polytomies using temporal information.")
+    parser.add_argument('--stochastic-resolve', default=False, action='store_true',
+                        help="Resolve polytomies using a random coalescent tree.")
     # parser.add_argument('--keep-node-order', default=False, action='store_true',
     #                     help="Don't ladderize the tree.")
     parser.add_argument('--relax',nargs=2, type=float,
