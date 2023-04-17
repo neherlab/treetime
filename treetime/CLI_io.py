@@ -181,6 +181,13 @@ def export_sequences_and_tree(tt, basename, is_vcf=False, zero_based=False,
         Phylo.write(tt.tree, outtree_name, 'nexus', format_branch_length=fmt_bl)
     print("--- tree saved in nexus format as  \n\t %s\n"%outtree_name)
 
+    auspice = create_auspice_json(tt, timetree=timetree, confidence=confidence)
+    outtree_name_json = basename + f'auspice_tree{tree_suffix}.json'
+    with open(outtree_name_json, 'w') as fh:
+        import json
+        json.dump(auspice, fh, indent=0)
+        print("--- tree saved in auspice json format as  \n\t %s\n"%outtree_name_json)
+
     if timetree:
         for n in tt.tree.find_clades():
             n.branch_length = n.mutation_length
@@ -218,32 +225,63 @@ def print_save_plot_skyline(tt, n_std=2.0, screen=True, save='', plot='', gen=50
 
 
 
-def create_auspice_json(tt):
+def create_auspice_json(tt, timetree=False, confidence=False):
+    # mock up meta data for auspice json
     meta = {
         "title": "Auspice visualization of TreeTime result",
         "build_url": "https://github.com/neherlab/treetime",
         "genome_annotations": {
-            "nuc":{"start":1, "end":tt.data.full_length, "type":"source", "strand":"+:"}
+            "nuc":{"start":1, "end":int(tt.data.full_length), "type":"source", "strand":"+:"}
         },
-        "panels":["tree", "entropy"]
+        "panels":["tree", "entropy"],
+        "colorings": [
+            {
+                "title": "Date",
+                "type": "continuous",
+                "key": "num_date",
+            },
+            {
+                "title": "Excluded",
+                "type": "categorical",
+                "key": "bad_branch"
+            },
+            {
+                "title": "Branch Support",
+                "type": "continuous",
+                "key": "confidence"
+            }
+        ]
     }
 
     def node_to_json(n, pdiv=0.0):
-        j = {"name":n.name, "node_attrs":{}, branch_attrs:{}}
+        j = {"name":n.name, "node_attrs":{}, "branch_attrs":{}}
         if n.clades:
             j["children"] = []
 
-        j["node_attrs"]["num_date"] = {"value":n.numdate, "confidence":n.confidence}
-        j["node_attrs"]["div"] = pdiv + n.mutation_length
+        if timetree:
+            j["node_attrs"]["num_date"] = {"value":float(n.numdate)}
+            if confidence:
+                conf = tt.get_max_posterior_region(n, fraction=0.9)
+                j["node_attrs"]["num_date"]["confidence"] = (float(conf[0]), float(conf[1]))
+        j["node_attrs"]["div"] = float(pdiv + n.mutation_length)
+        j["node_attrs"]["bad_branch"] = {"value": "Yes" if n.bad_branch else "No"}
 
-        j["branch_attrs"]["mutations"] = {"nuc": [x for x in n.mutations if x[-1] in "ACGT"]}
+        j["branch_attrs"]["mutations"] = {"nuc": [f"{a}{pos+1}{d}" for a,pos,d in n.mutations if d in "ACGT-"]}
+        # generate bootstrap confidence substitute via the negative exponential of the number of mutations
+        # this is the bootstrap confidence for iid mutations (only ACGT mutations)
+        j["node_attrs"]["confidence"] = {"value":round(1-np.exp(-len([pos for a,pos,d in n.mutations if d in "ACGT"])),3)
+                                          if not n.is_terminal() else 1.0}
+        return j
 
+    # create the tree data structure from the Biopython tree
     tree = node_to_json(tt.tree.root, 0.0)
-    node_to_json = {tt.tree.root.name: tree}
+    # dictionary to look up nodes by name
+    node_lookup = {tt.tree.root.name: tree}
     for n in tt.tree.get_nonterminals():
-        n_json = node_to_json[n.name]
+        n_json = node_lookup[n.name]
         for c in n.clades:
+            # generate node jsons for all children and attach them the to parent
             n_json["children"].append(node_to_json(c, n_json["node_attrs"]["div"]))
-            node_to_json[c.name] = n_json["children"][-1]
+            node_lookup[c.name] = n_json["children"][-1]
 
     return {"meta":meta, "tree":tree}

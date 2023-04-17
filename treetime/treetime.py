@@ -667,7 +667,6 @@ class TreeTime(ClockTree):
                     method='bounded',args=(n1,n2, parent), options={'xatol':1e-4*self.one_mutation})
                 return cg['x'], - cg['fun']
             except:
-                import ipdb; ipdb.set_trace()
                 self.logger("TreeTime._poly.cost_gain: optimization of gain failed", 3, warn=True)
                 return parent.time_before_present, 0.0
 
