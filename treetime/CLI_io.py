@@ -228,7 +228,7 @@ def print_save_plot_skyline(tt, n_std=2.0, screen=True, save='', plot='', gen=50
 def create_auspice_json(tt, timetree=False, confidence=False):
     # mock up meta data for auspice json
     meta = {
-        "title": "Auspice visualization of TreeTime result",
+        "title": "Auspice visualization of TreeTime analysis",
         "build_url": "https://github.com/neherlab/treetime",
         "genome_annotations": {
             "nuc":{"start":1, "end":int(tt.data.full_length), "type":"source", "strand":"+:"}
@@ -238,6 +238,11 @@ def create_auspice_json(tt, timetree=False, confidence=False):
             {
                 "title": "Date",
                 "type": "continuous",
+                "key": "gt",
+            },
+            {
+                "title": "Genotype",
+                "type": "categorical",
                 "key": "num_date",
             },
             {
