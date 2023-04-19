@@ -113,7 +113,7 @@ class Distribution(object):
             try:
                 peak = y_vals.min()
             except:
-                TreeTimeUnknownError("Error: Unexpected behavior detected in multiply function"
+                raise TreeTimeUnknownError("Error: Unexpected behavior detected in multiply function"
                         " when determining peak of function with y-values '"+ str(y_vals) + "'.\n\n"
                         "If you see this error please let us know by filling an issue at: \n"
                         "https://github.com/neherlab/treetime/issues")
@@ -121,8 +121,8 @@ class Distribution(object):
             ind = (y_vals-peak)<BIG_NUMBER/1000
             n_points = ind.sum()
             if n_points == 0:
-                TreeTimeUnknownError("Error: Unexpected behavior detected in multiply function. "
-                                     "No valid points left after reducing to plausible region.\n\n"
+                raise TreeTimeUnknownError("Error: Unexpected behavior detected in multiply function. "
+                        "No valid points left after reducing to plausible region.\n\n"
                         "If you see this error please let us know by filling an issue at:\n"
                         "https://github.com/neherlab/treetime/issues")
             elif n_points == 1:
