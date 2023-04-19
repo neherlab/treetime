@@ -1,3 +1,8 @@
+# Next: add auspice.json output
+
+ * the output directory now contains a json file that is compatible with auspice.us. Both time scaled phylogenies and ancestral inferences can now be visualized and explored using auspice. Available colorings are "Date", "genotype", "Branch support", and Excluded. See [PR #232](https://github.com/neherlab/treetime/pull/232) for details.
+ * move most function related to IO of the command line wrappers into a separate file.
+
 # 0.9.6: bug fixes and new mode of polytomy resolution
  * in cases when very large polytomies are resolved, the multiplication of the discretized message results in messages/distributions of length 1. This resulted in an error, since interpolation objects require at least two points. This is now caught and a small discrete grid created.
  * increase recursion limit to 10000 by default. The recursion limit can now also be set via the environment variable `TREETIME_RECURSION_LIMIT`.

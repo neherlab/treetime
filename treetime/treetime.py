@@ -667,7 +667,6 @@ class TreeTime(ClockTree):
                     method='bounded',args=(n1,n2, parent), options={'xatol':1e-4*self.one_mutation})
                 return cg['x'], - cg['fun']
             except:
-                import ipdb; ipdb.set_trace()
                 self.logger("TreeTime._poly.cost_gain: optimization of gain failed", 3, warn=True)
                 return parent.time_before_present, 0.0
 
@@ -801,16 +800,21 @@ class TreeTime(ClockTree):
         # loop until time collides with the parent node or all but two branches have been dealt with
         # the remaining two would be the children of the parent
         while len(branches_alive)+len(branches_to_come)>2 and t<tmax:
-            total_mutations = np.sum([mutations_per_branch.get(b.name,0) for b in branches_alive])
-            total_mut_rate = mutation_rate * total_mutations
 
             # branches without mutations are ready to coalesce -- others have to mutate first
             ready_to_coalesce = [b for b in branches_alive if mutations_per_branch.get(b.name,0)==0]
             if self.merger_model is None:
-                total_coalescent_rate = max(0,(len(ready_to_coalesce)-1))*(dummy_coalescent_rate + mutation_rate)
+                coalescent_rate = 0.5*len(ready_to_coalesce)*dummy_coalescent_rate + mutation_rate
             else:
-                total_coalescent_rate = max(0,(len(ready_to_coalesce)-1))*(self.merger_model.branch_merger_rate(t) + mutation_rate)
+                coalescent_rate = self.merger_model.branch_merger_rate(t) + mutation_rate
 
+            total_mutations = np.sum([mutations_per_branch.get(b.name,0) for b in branches_alive])
+            n_branches_w_mutations = len(branches_alive) - len(ready_to_coalesce)
+            # the probability of a branch without events is the sum of mutation and coalescent rates
+            # branches with mutations can only mutate, the others only coalesce. This is due to the
+            # conditioning for all branches being direct descendants of a polytomy.
+            total_mut_rate = mutation_rate*total_mutations + coalescent_rate*n_branches_w_mutations
+            total_coalescent_rate = max(0,(len(ready_to_coalesce)-1))*(coalescent_rate + mutation_rate)
             # just a single branch and no mutations --> advance to next branch
             if (total_mut_rate + total_coalescent_rate)==0 and len(branches_to_come):
                 branches_alive.append(branches_to_come.pop(0))
