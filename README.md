@@ -46,7 +46,7 @@ Have a look at our repository with [example data](https://github.com/neherlab/tr
 
 ### Installation and prerequisites
 
-TreeTime is compatible with Python 3.6 upwards and is tested on 3.6, 3.7, and 3.8.  It depends on several Python libraries:
+TreeTime is compatible with Python 3.7 upwards and is tested on 3.7 to 3.10.  It depends on several Python libraries:
 
 * numpy, scipy, pandas: for all kind of mathematical operations as matrix
   operations, numerical integration, interpolation, minimization, etc.
