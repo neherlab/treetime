@@ -426,6 +426,7 @@ class ClockTree(TreeAnc):
                     # Cx.y is the branch length corresponding the optimal subtree
                     bl = node.branch_length_interpolator.x
                     x = bl + node.date_constraint.peak_pos
+                    # if a merger model is defined, add its (log) rate to the propagated distribution
                     if hasattr(self, 'merger_model') and self.merger_model:
                         node.joint_pos_Lx =  Distribution(x, -self.merger_model.integral_merger_rate(node.date_constraint.peak_pos)
                                                 + node.branch_length_interpolator(bl), min_width=self.min_width, is_log=True)
@@ -677,7 +678,6 @@ class ClockTree(TreeAnc):
         self.logger("ClockTree - Marginal reconstruction:  Propagating root -> leaves...", 2)
         from scipy.interpolate import interp1d
         for node in self.tree.find_clades(order='preorder'):
-
             ## If a delta constraint in known no further work required
             if (node.date_constraint is not None) and (not node.bad_branch) and node.date_constraint.is_delta:
                 node.marginal_pos_LH = node.date_constraint
@@ -702,10 +702,10 @@ class ClockTree(TreeAnc):
                         complementary_msgs.append(parent.msg_from_parent)
 
                     if hasattr(self, 'merger_model') and self.merger_model:
-                        time_points = parent.marginal_pos_LH.x
+                        time_points = np.unique(np.concatenate(parent.msg_from_parent.x, node.subtree_distribution.x))
                         if len(time_points)<5:
                             time_points = np.linspace(np.min([x.xmin for x in complementary_msgs]),
-                                                      np.max([x.xmax for x in complementary_msgs]), 10)
+                                                      np.max([x.xmax for x in complementary_msgs]), 50)
                         # As Lx do not include the node contribution this must be added on
                         complementary_msgs.append(self.merger_model.node_contribution(parent, time_points))
 
@@ -758,7 +758,6 @@ class ClockTree(TreeAnc):
                         plt.plot(msg_parent_to_node.x,msg_parent_to_node.y-msg_parent_to_node.peak_val, '-o')
                         plt.ylim(0,100)
                         plt.xlim(-0.05, 0.05)
-                        #import ipdb; ipdb.set_trace()
 
             # assign positions of nodes and branch length
             # note that marginal reconstruction can result in negative branch lengths

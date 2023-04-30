@@ -259,7 +259,9 @@ def create_auspice_json(tt, timetree=False, confidence=False):
                 "type": "continuous",
                 "key": "confidence"
             }
-        ]
+        ],
+        "display_defaults": {"color_by":"bad_branch"},
+        "filters": ["bad_branch"]
     }
 
     def node_to_json(n, pdiv=0.0):

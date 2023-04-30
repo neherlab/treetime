@@ -554,7 +554,7 @@ def reconstruct_discrete_traits(tree, traits, missing_data='?', pc=1.0, sampling
     sampling_bias_correction : float, optional
         factor to inflate overall switching rate by to counteract sampling bias
     weights : str, optional
-        name of file with equilibirum frequencies
+        name of file with equilibrium frequencies
     verbose : int, optional
         level of verbosity in output
     iterations : int, optional
