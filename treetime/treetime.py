@@ -603,6 +603,12 @@ class TreeTime(ClockTree):
         """
         self.logger("TreeTime.resolve_polytomies: resolving multiple mergers...",1)
         poly_found=0
+        if stochastic_resolve is False:
+            self.logger("DEPRECATION WARNING. TreeTime.resolve_polytomies: You are "
+                        "resolving polytomies using the old 'greedy' mode. This is not "
+                        "well suited for large polytomies. Stochastic resolution will "
+                        "become the default in future versions. To switch now, rerun "
+                        "with the flag `--stochastic-resolve`.", 0, warn=True, only_once=True)
 
         for n in self.tree.find_clades():
             if len(n.clades) > 2:

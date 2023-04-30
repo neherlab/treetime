@@ -512,13 +512,6 @@ class TreeAnc(object):
 
         self.logger("TreeAnc.infer_ancestral_sequences with method: %s, %s"%(method, 'marginal' if marginal else 'joint'), 1)
 
-        if not reconstruct_tip_states:
-            self.logger("WARNING: Previous versions of TreeTime (<0.7.0) RECONSTRUCTED sequences"
-                        " of tips at positions with AMBIGUOUS bases. This resulted in"
-                        " unexpected behavior is some cases and is no longer done by default."
-                        " If you want to replace those ambiguous sites with their most likely state,"
-                        " rerun with `reconstruct_tip_states=True` or `--reconstruct-tip-states`.", 0, warn=True, only_once=True)
-
         if method.lower() in ['ml', 'probabilistic']:
             if marginal:
                 _ml_anc = self._ml_anc_marginal

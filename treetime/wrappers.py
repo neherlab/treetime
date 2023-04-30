@@ -675,11 +675,6 @@ def reconstruct_discrete_traits(tree, traits, missing_data='?', pc=1.0, sampling
                                  marginal=True, normalized_rate=False,
                                  reconstruct_tip_states=True)
 
-    print(fill("NOTE: previous versions (<0.7.0) of this command made a 'short-branch length assumption. "
-          "TreeTime now optimizes the overall rate numerically and thus allows for long branches "
-          "along which multiple changes accumulated. This is expected to affect estimates of the "
-          "overall rate while leaving the relative rates mostly unchanged."))
-
     return treeanc, letter_to_state, reverse_alphabet
 
 
