@@ -537,7 +537,7 @@ def ancestral_reconstruction(params):
     return 0
 
 def reconstruct_discrete_traits(tree, traits, missing_data='?', pc=1.0, sampling_bias_correction=None,
-                                weights=None, verbose=0, iterations=5):
+                                weights=None, verbose=0, iterations=5, rng_seed=None):
     """take a set of discrete states associated with tips of a tree
     and reconstruct their ancestral states along with a GTR model that
     approximately maximizes the likelihood of the states on the tree.
@@ -648,7 +648,7 @@ def reconstruct_discrete_traits(tree, traits, missing_data='?', pc=1.0, sampling
     ### set up treeanc
     ###########################################################################
     treeanc = TreeAnc(tree, gtr=mugration_GTR, verbose=verbose, ref='A',
-                      convert_upper=False, one_mutation=0.001, rng_seed=params.rng_seed)
+                      convert_upper=False, one_mutation=0.001, rng_seed=rng_seed)
     treeanc.use_mutation_length = False
     pseudo_seqs = {n.name: {0:reverse_alphabet[traits[n.name]] if n.name in traits else missing_char}
                    for n in treeanc.tree.get_terminals()}
@@ -722,8 +722,10 @@ def mugration(params):
     leaf_to_attr = {x[taxon_name]:str(x[attr]) for xi, x in states.iterrows()
                     if x[attr]!=params.missing_data and x[attr]}
 
-    mug, letter_to_state, reverse_alphabet = reconstruct_discrete_traits(params.tree, leaf_to_attr, missing_data=params.missing_data,
-            pc=params.pc, sampling_bias_correction=params.sampling_bias_correction, verbose=params.verbose, weights=params.weights)
+    mug, letter_to_state, reverse_alphabet = reconstruct_discrete_traits(params.tree, leaf_to_attr,
+                missing_data=params.missing_data, pc=params.pc,
+                sampling_bias_correction=params.sampling_bias_correction,
+                verbose=params.verbose, weights=params.weights, rng_seed=params.rng_seed)
 
     if mug is None:
         print("Mugration inference failed, check error messages above and your input data.")
