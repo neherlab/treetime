@@ -702,11 +702,12 @@ class ClockTree(TreeAnc):
                         complementary_msgs.append(parent.msg_from_parent)
 
                     if hasattr(self, 'merger_model') and self.merger_model:
-                        time_points = np.unique(np.concatenate(parent.msg_from_parent.x, node.subtree_distribution.x))
+                        time_points = parent.marginal_pos_LH.x
                         if len(time_points)<5:
                             time_points = np.linspace(np.min([x.xmin for x in complementary_msgs]),
                                                       np.max([x.xmax for x in complementary_msgs]), 50)
-                        # As Lx do not include the node contribution this must be added on
+                        # As Lx (the product of child messages) does not include the node contribution this must
+                        # be added to recover the full distribution of the parent node w/o contribution of the focal node.
                         complementary_msgs.append(self.merger_model.node_contribution(parent, time_points))
 
                         # Removed merger rate must be added back if no msgs from parent (equivalent to root node case)
@@ -741,6 +742,7 @@ class ClockTree(TreeAnc):
                 if node.marginal_pos_Lx is None:
                     node.marginal_pos_LH = node.msg_from_parent
                 else:
+                    #node.subtree_distribution contains merger model contribution of this node
                     node.marginal_pos_LH = NodeInterpolator.multiply((node.msg_from_parent, node.subtree_distribution))
 
                 self.logger('ClockTree._ml_t_root_to_leaves: computed convolution'
