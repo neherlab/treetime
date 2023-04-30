@@ -182,6 +182,9 @@ def add_timetree_args(parser):
                         help="Don't resolve polytomies using temporal information.")
     parser.add_argument('--stochastic-resolve', default=False, action='store_true',
                         help="Resolve polytomies using a random coalescent tree.")
+    parser.add_argument('--greedy-resolve', action='store_false', dest='stochastic_resolve',
+                        help="Resolve polytomies greedily. Currently default, but will "
+                             "switched to `stochastic-resolve` in future versions.")
     # parser.add_argument('--keep-node-order', default=False, action='store_true',
     #                     help="Don't ladderize the tree.")
     parser.add_argument('--relax',nargs=2, type=float,

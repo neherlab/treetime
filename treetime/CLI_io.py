@@ -3,6 +3,7 @@ from Bio import AlignIO, Phylo
 from .vcf_utils import read_vcf, write_vcf
 from .seq_utils import alphabets
 from Bio import __version__ as bioversion
+from . import version as treetime_version
 import numpy as np
 
 def get_outdir(params, suffix='_treetime'):
@@ -227,9 +228,12 @@ def print_save_plot_skyline(tt, n_std=2.0, screen=True, save='', plot='', gen=50
 
 def create_auspice_json(tt, timetree=False, confidence=False):
     # mock up meta data for auspice json
+    from datetime import datetime
     meta = {
-        "title": "Auspice visualization of TreeTime analysis",
+        "title": f"Auspice visualization of TreeTime (v{treetime_version}) analysis",
         "build_url": "https://github.com/neherlab/treetime",
+        "last_updated": datetime.now().strftime("%Y-%m-%d"),
+        "treetime_version": treetime_version,
         "genome_annotations": {
             "nuc":{"start":1, "end":int(tt.data.full_length), "type":"source", "strand":"+:"}
         },
@@ -238,12 +242,12 @@ def create_auspice_json(tt, timetree=False, confidence=False):
             {
                 "title": "Date",
                 "type": "continuous",
-                "key": "gt",
+                "key": "num_date",
             },
             {
                 "title": "Genotype",
                 "type": "categorical",
-                "key": "num_date",
+                "key": "gt",
             },
             {
                 "title": "Excluded",

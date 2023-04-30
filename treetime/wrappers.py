@@ -68,7 +68,6 @@ def create_gtr(params):
                 print ("GTR params are not specified. Creating GTR model with default parameters")
 
             gtr = GTR.standard(model, **kwargs)
-            infer_gtr = False
         except KeyError as e:
             print("\nUNKNOWN SUBSTITUTION MODEL\n")
             raise e
@@ -361,20 +360,25 @@ def run_timetree(myTree, params, outdir, tree_suffix='', prune_short=True, metho
     # coalescent model options
     try:
         coalescent = float(params.coalescent)
-        if coalescent<10*myTree.one_mutation:
-            coalescent = None
     except:
         if params.coalescent in ['opt', 'const', 'skyline']:
             coalescent = params.coalescent
         else:
-            print("unknown coalescent model specification, has to be either "
-                  "a float, 'opt', 'const' or 'skyline' -- exiting")
-            return 1
+            raise TreeTimeError("unknown coalescent model specification, has to be either "
+                                "a float, 'opt', 'const' or 'skyline' -- exiting")
+
+    # coalescent rates faster than the time to one mutation can lead to numerical issues
+    if type(coalescent)==float and coalescent>0 and coalescent<myTree.one_mutation:
+        raise TreeTimeError(f"coalescent time scale is too low, should be at least distance"
+                            f" corresponding to one mutation {myTree.one_mutation:1.3e}")
+
+
     n_branches_posterior = params.n_branches_posterior
 
     if hasattr(params, 'stochastic_resolve'):
         stochastic_resolve = params.stochastic_resolve
     else: stochastic_resolve = False
+    print(f"stochastic_resolve: {stochastic_resolve}")
 
     # determine whether confidence intervals are to be computed and how the
     # uncertainty in the rate estimate should be treated
