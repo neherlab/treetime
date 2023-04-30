@@ -68,7 +68,6 @@ def create_gtr(params):
                 print ("GTR params are not specified. Creating GTR model with default parameters")
 
             gtr = GTR.standard(model, **kwargs)
-            infer_gtr = False
         except KeyError as e:
             print("\nUNKNOWN SUBSTITUTION MODEL\n")
             raise e
@@ -95,7 +94,7 @@ def scan_homoplasies(params):
     ### ANCESTRAL RECONSTRUCTION
     ###########################################################################
     treeanc = TreeAnc(params.tree, aln=aln, ref=ref, gtr=gtr, verbose=1,
-                      fill_overhangs=True)
+                      fill_overhangs=True, rng_seed=params.rng_seed)
     if treeanc.aln is None: # if alignment didn't load, exit
         return 1
 
@@ -326,10 +325,11 @@ def timetree(params):
     if params.aln is None and params.sequence_length is None:
         print("one of arguments '--aln' and '--sequence-length' is required.", file=sys.stderr)
         return 1
+    print(f"rng_seed: {params.rng_seed}")
     myTree = TreeTime(dates=dates, tree=params.tree, ref=ref,
                       aln=aln, gtr=gtr, seq_len=params.sequence_length,
                       verbose=params.verbose, fill_overhangs=not params.keep_overhangs,
-                      branch_length_mode = params.branch_length_mode)
+                      branch_length_mode = params.branch_length_mode, rng_seed=params.rng_seed)
 
     return run_timetree(myTree, params, outdir)
 
@@ -361,20 +361,25 @@ def run_timetree(myTree, params, outdir, tree_suffix='', prune_short=True, metho
     # coalescent model options
     try:
         coalescent = float(params.coalescent)
-        if coalescent<10*myTree.one_mutation:
-            coalescent = None
     except:
         if params.coalescent in ['opt', 'const', 'skyline']:
             coalescent = params.coalescent
         else:
-            print("unknown coalescent model specification, has to be either "
-                  "a float, 'opt', 'const' or 'skyline' -- exiting")
-            return 1
+            raise TreeTimeError("unknown coalescent model specification, has to be either "
+                                "a float, 'opt', 'const' or 'skyline' -- exiting")
+
+    # coalescent rates faster than the time to one mutation can lead to numerical issues
+    if type(coalescent)==float and coalescent>0 and coalescent<myTree.one_mutation:
+        raise TreeTimeError(f"coalescent time scale is too low, should be at least distance"
+                            f" corresponding to one mutation {myTree.one_mutation:1.3e}")
+
+
     n_branches_posterior = params.n_branches_posterior
 
     if hasattr(params, 'stochastic_resolve'):
         stochastic_resolve = params.stochastic_resolve
     else: stochastic_resolve = False
+    print(f"stochastic_resolve: {stochastic_resolve}")
 
     # determine whether confidence intervals are to be computed and how the
     # uncertainty in the rate estimate should be treated
@@ -505,7 +510,7 @@ def ancestral_reconstruction(params):
     is_vcf = True if ref is not None else False
 
     treeanc = TreeAnc(params.tree, aln=aln, ref=ref, gtr=gtr, verbose=1,
-                      fill_overhangs=not params.keep_overhangs)
+                      fill_overhangs=not params.keep_overhangs, rng_seed=params.rng_seed)
 
     try:
         ndiff = treeanc.infer_ancestral_sequences('ml', infer_gtr=params.gtr=='infer',
@@ -532,7 +537,7 @@ def ancestral_reconstruction(params):
     return 0
 
 def reconstruct_discrete_traits(tree, traits, missing_data='?', pc=1.0, sampling_bias_correction=None,
-                                weights=None, verbose=0, iterations=5):
+                                weights=None, verbose=0, iterations=5, rng_seed=None):
     """take a set of discrete states associated with tips of a tree
     and reconstruct their ancestral states along with a GTR model that
     approximately maximizes the likelihood of the states on the tree.
@@ -550,7 +555,7 @@ def reconstruct_discrete_traits(tree, traits, missing_data='?', pc=1.0, sampling
     sampling_bias_correction : float, optional
         factor to inflate overall switching rate by to counteract sampling bias
     weights : str, optional
-        name of file with equilibirum frequencies
+        name of file with equilibrium frequencies
     verbose : int, optional
         level of verbosity in output
     iterations : int, optional
@@ -643,7 +648,7 @@ def reconstruct_discrete_traits(tree, traits, missing_data='?', pc=1.0, sampling
     ### set up treeanc
     ###########################################################################
     treeanc = TreeAnc(tree, gtr=mugration_GTR, verbose=verbose, ref='A',
-                      convert_upper=False, one_mutation=0.001)
+                      convert_upper=False, one_mutation=0.001, rng_seed=rng_seed)
     treeanc.use_mutation_length = False
     pseudo_seqs = {n.name: {0:reverse_alphabet[traits[n.name]] if n.name in traits else missing_char}
                    for n in treeanc.tree.get_terminals()}
@@ -669,11 +674,6 @@ def reconstruct_discrete_traits(tree, traits, missing_data='?', pc=1.0, sampling
     treeanc.infer_ancestral_sequences(infer_gtr=False, store_compressed=False,
                                  marginal=True, normalized_rate=False,
                                  reconstruct_tip_states=True)
-
-    print(fill("NOTE: previous versions (<0.7.0) of this command made a 'short-branch length assumption. "
-          "TreeTime now optimizes the overall rate numerically and thus allows for long branches "
-          "along which multiple changes accumulated. This is expected to affect estimates of the "
-          "overall rate while leaving the relative rates mostly unchanged."))
 
     return treeanc, letter_to_state, reverse_alphabet
 
@@ -722,8 +722,10 @@ def mugration(params):
     leaf_to_attr = {x[taxon_name]:str(x[attr]) for xi, x in states.iterrows()
                     if x[attr]!=params.missing_data and x[attr]}
 
-    mug, letter_to_state, reverse_alphabet = reconstruct_discrete_traits(params.tree, leaf_to_attr, missing_data=params.missing_data,
-            pc=params.pc, sampling_bias_correction=params.sampling_bias_correction, verbose=params.verbose, weights=params.weights)
+    mug, letter_to_state, reverse_alphabet = reconstruct_discrete_traits(params.tree, leaf_to_attr,
+                missing_data=params.missing_data, pc=params.pc,
+                sampling_bias_correction=params.sampling_bias_correction,
+                verbose=params.verbose, weights=params.weights, rng_seed=params.rng_seed)
 
     if mug is None:
         print("Mugration inference failed, check error messages above and your input data.")
@@ -802,7 +804,7 @@ def estimate_clock_model(params):
     try:
         myTree = TreeTime(dates=dates, tree=params.tree, aln=aln, gtr='JC69',
                       verbose=params.verbose, seq_len=params.sequence_length,
-                      ref=ref)
+                      ref=ref, rng_seed=params.rng_seed)
     except TreeTimeError as e:
         print("\nTreeTime setup failed. Please see above for error messages and/or rerun with --verbose 4\n")
         raise e

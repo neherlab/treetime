@@ -163,7 +163,13 @@ class NodeInterpolator (Distribution):
     def convolve_fft(cls, node_interp, branch_interp, fft_grid_size=FFT_FWHM_GRID_SIZE, inverse_time=True):
 
         dt = max(branch_interp.one_mutation*0.005, min(node_interp.fwhm, branch_interp.fwhm)/fft_grid_size)
+        b_effsupport = branch_interp.effective_support
+        n_effsupport = node_interp.effective_support
+        b_support_range = b_effsupport[1]-b_effsupport[0]
+        n_support_range = n_effsupport[1]-n_effsupport[0]
+        #ratio = n_support_range/b_support_range
         ratio = node_interp.fwhm/branch_interp.fwhm
+
         if ratio < 1/fft_grid_size and 4*dt > node_interp.fwhm:
             ## node distribution is much narrower than the branch distribution, proceed as if node distribution is
             ## a delta distribution
@@ -178,10 +184,7 @@ class NodeInterpolator (Distribution):
         elif ratio > fft_grid_size and 4*dt > branch_interp.fwhm:
             raise ValueError("ERROR: Unexpected behavior: branch distribution is much narrower than the node distribution.")
         else:
-            b_effsupport = branch_interp.effective_support
-            n_effsupport = node_interp.effective_support
-
-            tmax = 2*max(b_effsupport[1]-b_effsupport[0], n_effsupport[1]-n_effsupport[0])
+            tmax = 2*max(b_support_range, n_support_range)
 
             Tb = np.arange(b_effsupport[0], b_effsupport[0] + tmax + dt, dt)
             if inverse_time:

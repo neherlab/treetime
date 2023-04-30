@@ -100,15 +100,19 @@ class Distribution(object):
             new_xmax = np.min([k.xmax for k in dists])
 
             x_vals = np.unique(np.concatenate([k.x for k in dists]))
-            x_vals = x_vals[(x_vals> new_xmin-TINY_NUMBER)&(x_vals< new_xmax+TINY_NUMBER)]
+            x_vals = x_vals[(x_vals > new_xmin - TINY_NUMBER)&(x_vals < new_xmax + TINY_NUMBER)]
             n_dists = len(dists)
+            # for reduce number of points if there are many distributions
             if len(x_vals)>100*n_dists and n_dists>3:
+                # make sure there are at least 3 points per distribution on average
                 n_bins = len(x_vals)//n_dists - 6
                 lower_cut_off = n_dists*3
                 upper_cut_off = n_dists*(n_bins + 3)
+                # use peripheral points from the original array, average the center
                 x_vals = np.concatenate((x_vals[:lower_cut_off],
                                          x_vals[lower_cut_off:upper_cut_off].reshape((-1,n_dists)).mean(axis=1),
                                          x_vals[upper_cut_off:]))
+            # evaluate the function at the consolidated lists of x-values
             y_vals = np.sum([k.__call__(x_vals) for k in dists], axis=0)
             try:
                 peak = y_vals.min()
@@ -118,6 +122,7 @@ class Distribution(object):
                         "If you see this error please let us know by filling an issue at: \n"
                         "https://github.com/neherlab/treetime/issues")
 
+            # remove data points exp(-1000) less likely than the peak
             ind = (y_vals-peak)<BIG_NUMBER/1000
             n_points = ind.sum()
             if n_points == 0:

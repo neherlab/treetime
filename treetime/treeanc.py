@@ -54,7 +54,7 @@ class TreeAnc(object):
                 ref=None, verbose = ttconf.VERBOSE, ignore_gaps=True,
                 convert_upper=True, seq_multiplicity=None, log=None,
                 compress=True, seq_len=None, ignore_missing_alns=False,
-                keep_node_order=False, **kwargs):
+                keep_node_order=False, rng_seed=None, **kwargs):
         """
         TreeAnc constructor. It prepares the tree, attaches sequences to the leaf nodes,
         and sets some configuration parameters.
@@ -142,7 +142,7 @@ class TreeAnc(object):
         self.sequence_reconstruction = None
         self.ignore_missing_alns = ignore_missing_alns
         self.keep_node_order = keep_node_order
-
+        self.rng = np.random.default_rng(seed=rng_seed)
         self._tree = None
         self.tree = tree
         if tree is None:
@@ -512,13 +512,6 @@ class TreeAnc(object):
 
         self.logger("TreeAnc.infer_ancestral_sequences with method: %s, %s"%(method, 'marginal' if marginal else 'joint'), 1)
 
-        if not reconstruct_tip_states:
-            self.logger("WARNING: Previous versions of TreeTime (<0.7.0) RECONSTRUCTED sequences"
-                        " of tips at positions with AMBIGUOUS bases. This resulted in"
-                        " unexpected behavior is some cases and is no longer done by default."
-                        " If you want to replace those ambiguous sites with their most likely state,"
-                        " rerun with `reconstruct_tip_states=True` or `--reconstruct-tip-states`.", 0, warn=True, only_once=True)
-
         if method.lower() in ['ml', 'probabilistic']:
             if marginal:
                 _ml_anc = self._ml_anc_marginal
@@ -579,7 +572,7 @@ class TreeAnc(object):
                                     "in the position %d: %s, "
                                     "choosing %s" % (amb, str(self.tree.root.state[amb]),
                                                      self.tree.root.state[amb][0]), 4)
-        self.tree.root._cseq = np.array([k[np.random.randint(len(k)) if len(k)>1 else 0]
+        self.tree.root._cseq = np.array([k[self.rng.randint(len(k)) if len(k)>1 else 0]
                                            for k in self.tree.root.state])
 
 
@@ -801,7 +794,8 @@ class TreeAnc(object):
         self.tree.sequence_marginal_LH = self.tree.total_sequence_LH
         if assign_sequence:
             seq, prof_vals, idxs = prof2seq(self.tree.root.marginal_profile,
-                                        self.gtr, sample_from_prof=sample_from_profile, normalize=False)
+                                        self.gtr, sample_from_prof=sample_from_profile,
+                                        normalize=False, rng=self.rng)
             self.tree.root._cseq = seq
 
 
@@ -870,7 +864,8 @@ class TreeAnc(object):
             # choose sequence based maximal marginal LH.
             if assign_sequence:
                 seq, prof_vals, idxs = prof2seq(node.marginal_profile, self.gtr,
-                                                sample_from_prof=sample_from_profile, normalize=False)
+                                                sample_from_prof=sample_from_profile,
+                                                normalize=False, rng=self.rng)
 
                 if self.sequence_reconstruction:
                     N_diff += (seq!=node.cseq).sum()
@@ -975,8 +970,9 @@ class TreeAnc(object):
         elif isinstance(sample_from_profile, bool):
             root_sample_from_profile = sample_from_profile
 
-        seq, anc_lh_vals, idxs = prof2seq(np.exp(normalized_profile),
-                                    self.gtr, sample_from_prof = root_sample_from_profile)
+        seq, anc_lh_vals, idxs = prof2seq(np.exp(normalized_profile), self.gtr,
+                                          sample_from_prof = root_sample_from_profile,
+                                          rng=self.rng)
 
         # compute the likelihood of the most probable root sequence
         self.tree.sequence_LH = np.choose(idxs, self.tree.root.joint_Lx.T)

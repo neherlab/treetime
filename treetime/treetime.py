@@ -290,6 +290,7 @@ class TreeTime(ClockTree):
                     if self.branch_length_mode!='input': # otherwise reoptimize branch length while preserving branches without mutations
                         self.optimize_tree(max_iter=0, method_anc = method_anc,**seq_kwargs)
                     need_new_time_tree = True
+
             if assign_gamma and callable(assign_gamma):
                 self.logger("### assigning gamma",1)
                 assign_gamma(self.tree)
@@ -571,7 +572,8 @@ class TreeTime(ClockTree):
         return new_root
 
 
-    def resolve_polytomies(self, merge_compressed=False, resolution_threshold=0.05, stochastic_resolve=False):
+    def resolve_polytomies(self, merge_compressed=False, resolution_threshold=0.05,
+                           stochastic_resolve=False):
         """
         Resolve the polytomies on the tree.
 
@@ -601,6 +603,12 @@ class TreeTime(ClockTree):
         """
         self.logger("TreeTime.resolve_polytomies: resolving multiple mergers...",1)
         poly_found=0
+        if stochastic_resolve is False:
+            self.logger("DEPRECATION WARNING. TreeTime.resolve_polytomies: You are "
+                        "resolving polytomies using the old 'greedy' mode. This is not "
+                        "well suited for large polytomies. Stochastic resolution will "
+                        "become the default in future versions. To switch now, rerun "
+                        "with the flag `--stochastic-resolve`.", 0, warn=True, only_once=True)
 
         for n in self.tree.find_clades():
             if len(n.clades) > 2:
@@ -612,7 +620,8 @@ class TreeTime(ClockTree):
 
                 poly_found+=prior_n_clades - len(n.clades)
 
-        obsolete_nodes = [n for n in self.tree.find_clades() if len(n.clades)==1 and n.up is not None]
+        obsolete_nodes = [n for n in self.tree.find_clades()
+                          if len(n.clades)==1 and n.up is not None]
         for node in obsolete_nodes:
             self.logger('TreeTime.resolve_polytomies: remove obsolete node '+node.name,4)
             if node.up is not None:
@@ -773,7 +782,9 @@ class TreeTime(ClockTree):
 
 
     def generate_subtree(self, parent):
-        from numpy.random import exponential as exp_dis
+        # use the random number generator of TreeTime
+        exp_dis = self.rng.exponential
+
         L = self.data.full_length
         mutation_rate = self.gtr.mu*L
 
@@ -833,7 +844,7 @@ class TreeTime(ClockTree):
             # else mutate or coalesce
             else:
                 # determine whether to mutate or coalesce
-                p = np.random.random()
+                p = self.rng.random()
                 mut_or_coal = p<total_mut_rate*total_rate_inv
                 if mut_or_coal:
                     # transform p to be on a scale of 0 to total mutation
@@ -846,7 +857,7 @@ class TreeTime(ClockTree):
                     mutations_per_branch[b.name] -= 1
                 else:
                     # pick a pair to coalesce, make a new node.
-                    picks = np.random.choice(len(ready_to_coalesce), size=2, replace=False)
+                    picks = self.rng.choice(len(ready_to_coalesce), size=2, replace=False)
                     new_node = Phylo.BaseTree.Clade()
                     new_node.time_before_present = t
                     n1, n2 = ready_to_coalesce[picks[0]], ready_to_coalesce[picks[1]]
