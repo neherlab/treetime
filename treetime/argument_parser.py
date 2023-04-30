@@ -227,6 +227,7 @@ def make_parser():
     else:
         t_parser = parser
     t_parser.add_argument('--tree', type=str, help=tree_description)
+    t_parser.add_argument('--rng-seed', type=int, help="random number generator seed for treetime")
     add_seq_len_aln_group(t_parser)
     add_time_arguments(t_parser)
     add_timetree_args(t_parser)
@@ -250,6 +251,7 @@ def make_parser():
     h_parser = subparsers.add_parser('homoplasy', description=homoplasy_description)
     add_aln_group(h_parser)
     h_parser.add_argument('--tree', type = str,  help=tree_description)
+    h_parser.add_argument('--rng-seed', type=int, help="random number generator seed for treetime")
     h_parser.add_argument('--const', type = int, default=0, help ="number of constant sites not included in alignment")
     h_parser.add_argument('--rescale', type = float, default=1.0, help ="rescale branch lengths")
     h_parser.add_argument('--detailed', required = False, action="store_true",  help ="generate a more detailed report")
@@ -264,6 +266,7 @@ def make_parser():
     a_parser = subparsers.add_parser('ancestral', description=ancestral_description)
     add_aln_group(a_parser)
     a_parser.add_argument('--tree', type=str,  help=tree_description)
+    a_parser.add_argument('--rng-seed', type=int, help="random number generator seed for treetime")
     add_gtr_arguments(a_parser)
     a_parser.add_argument('--marginal', default=False, action="store_true", help ="marginal reconstruction of ancestral sequences")
     add_anc_arguments(a_parser)
@@ -273,6 +276,7 @@ def make_parser():
     ## MUGRATION
     m_parser = subparsers.add_parser('mugration', description=mugration_description)
     m_parser.add_argument('--tree', required = True, type=str, help=tree_description)
+    m_parser.add_argument('--rng-seed', type=int, help="random number generator seed for treetime")
     m_parser.add_argument('--name-column', type=str, help="label of the column to be used as taxon name")
     m_parser.add_argument('--attribute', type=str, help ="attribute to reconstruct, e.g. country")
     m_parser.add_argument('--states', required = True, type=str, help ="csv or tsv file with discrete characters."
@@ -299,6 +303,7 @@ def make_parser():
                         "It will reroot the tree to maximize the clock-like "
                         "signal and recalculate branch length unless run with --keep-root.")
     c_parser.add_argument('--tree', required=True, type=str,  help=tree_description)
+    c_parser.add_argument('--rng-seed', type=int, help="random number generator seed for treetime")
     add_time_arguments(c_parser)
     add_seq_len_aln_group(c_parser)
 
@@ -317,6 +322,7 @@ def make_parser():
             description="Calculates the root-to-tip regression and quantifies the 'clock-i-ness' of the tree. "
                         "It will reroot the tree to maximize the clock-like "
                         "signal and recalculate branch length unless run with --keep_root.")
+    arg_parser.add_argument('--rng-seed', type=int, help="random number generator seed for treetime")
     arg_parser.add_argument('--trees', nargs=2, required=True, type=str)
     arg_parser.add_argument('--alignments', nargs=2, required=True, type=str)
     arg_parser.add_argument('--mccs', required=True, type=str)

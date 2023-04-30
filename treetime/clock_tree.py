@@ -24,7 +24,7 @@ class ClockTree(TreeAnc):
 
     def __init__(self, *args, dates=None, debug=False, real_dates=True, precision_fft = 'auto',
                 precision='auto', precision_branch='auto', branch_length_mode='joint', use_covariation=False,
-                use_fft=True,**kwargs):
+                use_fft=True, **kwargs):
 
         """
         ClockTree constructor
@@ -32,20 +32,20 @@ class ClockTree(TreeAnc):
         Parameters
         ----------
 
-         dates : dict
+        dates : dict
             :code:`{leaf_name:leaf_date}` dictionary
 
-         debug : bool
+        debug : bool
             If True, the debug mode is ON, which means no or less clean-up of
             obsolete parameters to control program execution in intermediate
             states. In debug mode, the python debugger is also allowed to interrupt
             program execution with intercative shell if an error occurs.
 
-         real_dates : bool
+        real_dates : bool
             If True, some additional checks for the input dates sanity will be
             performed.
 
-         precision : int
+        precision : int
             Precision can be 0 (rough), 1 (default), 2 (fine), or 3 (ultra fine).
             This parameter determines the number of grid points that are used
             for the evaluation of the branch length interpolation objects.
@@ -59,11 +59,11 @@ class ClockTree(TreeAnc):
             The number of points desired to span the width of the FWHM of a distribution
             can be specified explicitly by precision_fft (default is 200).
 
-         branch_length_mode : str
+        branch_length_mode : str
             determines whether branch length are calculated using the 'joint' ML,
             'marginal' ML, or branch length of the input tree ('input').
 
-         use_covariation : bool
+        use_covariation : bool
             determines whether root-to-tip regression accounts for covariance
             introduced by shared ancestry.
 

@@ -105,7 +105,7 @@ class GTR_site_specific(GTR):
 
     @classmethod
     def random(cls, L=1, avg_mu=1.0, alphabet='nuc', pi_dirichlet_alpha=1,
-               W_dirichlet_alpha=3.0, mu_gamma_alpha=3.0):
+               W_dirichlet_alpha=3.0, mu_gamma_alpha=3.0, rng=None):
         """
         Creates a random GTR model
 
@@ -129,28 +129,29 @@ class GTR_site_specific(GTR):
         GTR_site_specific
             model with randomly sampled frequencies
         """
+        if rng is None:
+            rng = np.random.default_rng()
 
-        from scipy.stats import gamma
         alphabet=alphabets[alphabet]
         gtr = cls(alphabet=alphabet, seq_len=L)
         n = gtr.alphabet.shape[0]
 
         # Dirichlet distribution == l_1 normalized vector of samples of the Gamma distribution
         if pi_dirichlet_alpha:
-            pi = 1.0*gamma.rvs(pi_dirichlet_alpha, size=(n,L))
+            pi = 1.0*rng.gamma(pi_dirichlet_alpha, size=(n,L))
         else:
             pi = np.ones((n,L))
 
         pi /= pi.sum(axis=0)
         if W_dirichlet_alpha:
-            tmp = 1.0*gamma.rvs(W_dirichlet_alpha, size=(n,n))
+            tmp = 1.0*rng.gamma(W_dirichlet_alpha, size=(n,n))
         else:
             tmp = np.ones((n,n))
         tmp = np.tril(tmp,k=-1)
         W = tmp + tmp.T
 
         if mu_gamma_alpha:
-            mu = gamma.rvs(mu_gamma_alpha, size=(L,))
+            mu = rng.gamma(mu_gamma_alpha, size=(L,))
         else:
             mu = np.ones(L)
 

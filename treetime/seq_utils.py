@@ -223,7 +223,7 @@ def seq2prof(seq, profile_map):
     return np.array([profile_map[k] for k in seq])
 
 
-def prof2seq(profile, gtr, sample_from_prof=False, normalize=True):
+def prof2seq(profile, gtr, sample_from_prof=False, normalize=True, rng=None):
     """
     Convert profile to sequence and normalize profile across sites.
 
@@ -247,7 +247,8 @@ def prof2seq(profile, gtr, sample_from_prof=False, normalize=True):
      idx : numpy.array
         Indices chosen from profile as array of length L
     """
-
+    if rng is None:
+        rng = np.random.default_rng()
     # normalize profile such that probabilities at each site sum to one
     if normalize:
         tmp_profile, pre=normalize_profile(profile, return_offset=False)
@@ -258,7 +259,7 @@ def prof2seq(profile, gtr, sample_from_prof=False, normalize=True):
     # (sampling from cumulative distribution over the different states)
     if sample_from_prof:
         cumdis = tmp_profile.cumsum(axis=1).T
-        randnum = np.random.random(size=cumdis.shape[1])
+        randnum = rng.random(size=cumdis.shape[1])
         idx = np.argmax(cumdis>=randnum, axis=0)
     else:
         idx = tmp_profile.argmax(axis=1)

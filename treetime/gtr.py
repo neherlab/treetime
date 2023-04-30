@@ -455,7 +455,7 @@ class GTR(object):
 
 
     @classmethod
-    def random(cls, mu=1.0, alphabet='nuc'):
+    def random(cls, mu=1.0, alphabet='nuc', rng=None):
         """
         Creates a random GTR model
 
@@ -470,12 +470,14 @@ class GTR(object):
 
 
         """
+        if rng is None:
+            rng = np.random.default_rng()
 
         alphabet=alphabets[alphabet]
         gtr = cls(alphabet)
         n = gtr.alphabet.shape[0]
-        pi = 1.0*np.random.randint(0,100,size=(n))
-        W = 1.0*np.random.randint(0,100,size=(n,n)) # with gaps
+        pi = 1.0*rng.randint(0,100,size=(n))
+        W = 1.0*rng.randint(0,100,size=(n,n)) # with gaps
 
         gtr.assign_rates(mu=mu, pi=pi, W=W)
         return gtr

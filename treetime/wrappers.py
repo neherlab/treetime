@@ -94,7 +94,7 @@ def scan_homoplasies(params):
     ### ANCESTRAL RECONSTRUCTION
     ###########################################################################
     treeanc = TreeAnc(params.tree, aln=aln, ref=ref, gtr=gtr, verbose=1,
-                      fill_overhangs=True)
+                      fill_overhangs=True, rng_seed=params.rng_seed)
     if treeanc.aln is None: # if alignment didn't load, exit
         return 1
 
@@ -325,10 +325,11 @@ def timetree(params):
     if params.aln is None and params.sequence_length is None:
         print("one of arguments '--aln' and '--sequence-length' is required.", file=sys.stderr)
         return 1
+    print(f"rng_seed: {params.rng_seed}")
     myTree = TreeTime(dates=dates, tree=params.tree, ref=ref,
                       aln=aln, gtr=gtr, seq_len=params.sequence_length,
                       verbose=params.verbose, fill_overhangs=not params.keep_overhangs,
-                      branch_length_mode = params.branch_length_mode)
+                      branch_length_mode = params.branch_length_mode, rng_seed=params.rng_seed)
 
     return run_timetree(myTree, params, outdir)
 
@@ -509,7 +510,7 @@ def ancestral_reconstruction(params):
     is_vcf = True if ref is not None else False
 
     treeanc = TreeAnc(params.tree, aln=aln, ref=ref, gtr=gtr, verbose=1,
-                      fill_overhangs=not params.keep_overhangs)
+                      fill_overhangs=not params.keep_overhangs, rng_seed=params.rng_seed)
 
     try:
         ndiff = treeanc.infer_ancestral_sequences('ml', infer_gtr=params.gtr=='infer',
@@ -647,7 +648,7 @@ def reconstruct_discrete_traits(tree, traits, missing_data='?', pc=1.0, sampling
     ### set up treeanc
     ###########################################################################
     treeanc = TreeAnc(tree, gtr=mugration_GTR, verbose=verbose, ref='A',
-                      convert_upper=False, one_mutation=0.001)
+                      convert_upper=False, one_mutation=0.001, rng_seed=params.rng_seed)
     treeanc.use_mutation_length = False
     pseudo_seqs = {n.name: {0:reverse_alphabet[traits[n.name]] if n.name in traits else missing_char}
                    for n in treeanc.tree.get_terminals()}
@@ -806,7 +807,7 @@ def estimate_clock_model(params):
     try:
         myTree = TreeTime(dates=dates, tree=params.tree, aln=aln, gtr='JC69',
                       verbose=params.verbose, seq_len=params.sequence_length,
-                      ref=ref)
+                      ref=ref, rng_seed=params.rng_seed)
     except TreeTimeError as e:
         print("\nTreeTime setup failed. Please see above for error messages and/or rerun with --verbose 4\n")
         raise e
