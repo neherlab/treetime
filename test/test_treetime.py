@@ -26,7 +26,7 @@ def test_assign_gamma(root_dir=None):
     tt_kwargs = {'clock_rate': 0.0001,
                     'time_marginal':'assign'}
     myTree = TreeTime(gtr='Jukes-Cantor', tree = nwk, use_fft=False,
-                    aln = fasta, verbose = 1, dates = dates, precision=3, debug=True)
+                    aln = fasta, verbose = 1, dates = dates, precision=3, debug=True, rng_seed=1234)
     def assign_gamma(tree):
         return tree
     success = myTree.run(infer_gtr=False, assign_gamma=assign_gamma, max_iter=1, verbose=3, **seq_kwargs, **tt_kwargs)
@@ -105,7 +105,7 @@ def test_ancestral(root_dir=None):
 
     for marginal in [True, False]:
         print('loading flu example')
-        t = TreeAnc(gtr='Jukes-Cantor', tree=nwk, aln=fasta)
+        t = TreeAnc(gtr='Jukes-Cantor', tree=nwk, aln=fasta, rng_seed=1234)
         print('ancestral reconstruction' + ("marginal" if marginal else "joint"))
         t.reconstruct_anc(method='ml', marginal=marginal)
         assert t.data.compressed_to_full_sequence(t.tree.root.cseq, as_string=True) == 'ATGAATCCAAATCAAAAGATAATAACGATTGGCTCTGTTTCTCTCACCATTTCCACAATATGCTTCTTCATGCAAATTGCCATCTTGATAACTACTGTAACATTGCATTTCAAGCAATATGAATTCAACTCCCCCCCAAACAACCAAGTGATGCTGTGTGAACCAACAATAATAGAAAGAAACATAACAGAGATAGTGTATCTGACCAACACCACCATAGAGAAGGAAATATGCCCCAAACCAGCAGAATACAGAAATTGGTCAAAACCGCAATGTGGCATTACAGGATTTGCACCTTTCTCTAAGGACAATTCGATTAGGCTTTCCGCTGGTGGGGACATCTGGGTGACAAGAGAACCTTATGTGTCATGCGATCCTGACAAGTGTTATCAATTTGCCCTTGGACAGGGAACAACACTAAACAACGTGCATTCAAATAACACAGTACGTGATAGGACCCCTTATCGGACTCTATTGATGAATGAGTTGGGTGTTCCTTTTCATCTGGGGACCAAGCAAGTGTGCATAGCATGGTCCAGCTCAAGTTGTCACGATGGAAAAGCATGGCTGCATGTTTGTATAACGGGGGATGATAAAAATGCAACTGCTAGCTTCATTTACAATGGGAGGCTTGTAGATAGTGTTGTTTCATGGTCCAAAGAAATTCTCAGGACCCAGGAGTCAGAATGCGTTTGTATCAATGGAACTTGTACAGTAGTAATGACTGATGGAAGTGCTTCAGGAAAAGCTGATACTAAAATACTATTCATTGAGGAGGGGAAAATCGTTCATACTAGCACATTGTCAGGAAGTGCTCAGCATGTCGAAGAGTGCTCTTGCTATCCTCGATATCCTGGTGTCAGATGTGTCTGCAGAGACAACTGGAAAGGCTCCAATCGGCCCATCGTAGATATAAACATAAAGGATCATAGCATTGTTTCCAGTTATGTGTGTTCAGGACTTGTTGGAGACACACCCAGAAAAAACGACAGCTCCAGCAGTAGCCATTGTTTGGATCCTAACAATGAAGAAGGTGGTCATGGAGTGAAAGGCTGGGCCTTTGATGATGGAAATGACGTGTGGATGGGAAGAACAATCAACGAGACGTCACGCTTAGGGTATGAAACCTTCAAAGTCATTGAAGGCTGGTCCAACCCTAAGTCCAAATTGCAGATAAATAGGCAAGTCATAGTTGACAGAGGTGATAGGTCCGGTTATTCTGGTATTTTCTCTGTTGAAGGCAAAAGCTGCATCAATCGGTGCTTTTATGTGGAGTTGATTAGGGGAAGAAAAGAGGAAACTGAAGTCTTGTGGACCTCAAACAGTATTGTTGTGTTTTGTGGCACCTCAGGTACATATGGAACAGGCTCATGGCCTGATGGGGCGGACCTCAATCTCATGCCTATA'
@@ -118,7 +118,7 @@ def test_ancestral(root_dir=None):
                                      ">C\nACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT\n"), 'fasta')
 
     mygtr = GTR.custom(alphabet = np.array(['A', 'C', 'G', 'T']), pi = np.array([0.9, 0.06, 0.02, 0.02]), W=np.ones((4,4)))
-    t = TreeAnc(gtr=mygtr, tree=tiny_tree, aln=tiny_aln)
+    t = TreeAnc(gtr=mygtr, tree=tiny_tree, aln=tiny_aln, rng_seed=1234)
     t.reconstruct_anc('ml', marginal=True, debug=True)
     lhsum =  np.exp(t.sequence_LH(pos=np.arange(4**3))).sum()
     print (lhsum)
@@ -152,15 +152,14 @@ def test_seq_joint_reconstruction_correct():
     mygtr = GTR.custom(alphabet = np.array(['A', 'C', 'G', 'T']),
                        pi = np.array([0.15, 0.95, 0.05, 0.3]),
                        W=np.ones((4,4)))
-    seq = np.random.choice(mygtr.alphabet, p=mygtr.Pi, size=400)
 
 
-    myTree = TreeAnc(gtr=mygtr, tree=tiny_tree, aln=None, verbose=4)
+    myTree = TreeAnc(gtr=mygtr, tree=tiny_tree, aln=None, verbose=4, rng_seed=1234)
 
     # simulate evolution, set resulting sequence as ref_seq
     tree = myTree.tree
     seq_len = 400
-    tree.root.ref_seq = np.random.choice(mygtr.alphabet, p=mygtr.Pi, size=seq_len)
+    tree.root.ref_seq = myTree.rng.choice(mygtr.alphabet, p=mygtr.Pi, size=seq_len)
     print ("Root sequence: " + ''.join(tree.root.ref_seq.astype('U')))
     mutation_list = defaultdict(list)
     for node in tree.find_clades():
@@ -173,7 +172,7 @@ def test_seq_joint_reconstruction_correct():
         # normalize profile
         p=(p.T/p.sum(axis=1)).T
         # sample mutations randomly
-        ref_seq_idxs = np.array([int(np.random.choice(np.arange(p.shape[1]), p=p[k])) for k in np.arange(p.shape[0])])
+        ref_seq_idxs = np.array([int(myTree.rng.choice(np.arange(p.shape[1]), p=p[k])) for k in np.arange(p.shape[0])])
 
         node.ref_seq = np.array([mygtr.alphabet[k] for k in ref_seq_idxs])
 
@@ -257,7 +256,7 @@ def test_seq_joint_lh_is_max():
                                          ">E\nACGTACGTACGTACGT\n"), 'fasta')
 
         myTree = TreeAnc(gtr=mygtr, tree = tiny_tree,
-                         aln =tiny_aln, verbose = 4)
+                         aln =tiny_aln, verbose = 4, rng_seed=1234)
 
         logLH_ref = myTree.ancestral_likelihood()
 
@@ -274,7 +273,7 @@ def test_seq_joint_lh_is_max():
                                            ">D\n"+D_char+"\n"), 'fasta')
 
         myTree_1 = TreeAnc(gtr=mygtr, tree = tiny_tree,
-                            aln=tiny_aln_1, verbose = 4)
+                            aln=tiny_aln_1, verbose = 4, rng_seed=1234)
 
         myTree_1.reconstruct_anc(method='ml', marginal=False, debug=True)
         logLH = myTree_1.tree.sequence_LH
