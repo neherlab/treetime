@@ -325,7 +325,7 @@ def timetree(params):
     if params.aln is None and params.sequence_length is None:
         print("one of arguments '--aln' and '--sequence-length' is required.", file=sys.stderr)
         return 1
-    print(f"rng_seed: {params.rng_seed}")
+
     myTree = TreeTime(dates=dates, tree=params.tree, ref=ref,
                       aln=aln, gtr=gtr, seq_len=params.sequence_length,
                       verbose=params.verbose, fill_overhangs=not params.keep_overhangs,
@@ -379,7 +379,6 @@ def run_timetree(myTree, params, outdir, tree_suffix='', prune_short=True, metho
     if hasattr(params, 'stochastic_resolve'):
         stochastic_resolve = params.stochastic_resolve
     else: stochastic_resolve = False
-    print(f"stochastic_resolve: {stochastic_resolve}")
 
     # determine whether confidence intervals are to be computed and how the
     # uncertainty in the rate estimate should be treated
