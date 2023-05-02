@@ -31,14 +31,12 @@ setup(
             'scipy>=0.16.1'
         ],
         extras_require = {
-            ':python_version < "3.6"':['matplotlib>=2.0, ==2.*'],
             ':python_version >= "3.6"':['matplotlib>=2.0'],
         },
         classifiers=[
             "Development Status :: 5 - Production/Stable",
             "Topic :: Scientific/Engineering :: Bio-Informatics",
             "License :: OSI Approved :: MIT License",
-            "Programming Language :: Python :: 3.6",
             "Programming Language :: Python :: 3.7",
             "Programming Language :: Python :: 3.8",
             "Programming Language :: Python :: 3.9",
