@@ -272,6 +272,7 @@ class Distribution(object):
     def y(self):
         if self.is_delta:
             print("Warning: evaluating log probability of a delta distribution.")
+            import ipdb; ipdb.set_trace()
             return [self.weight]
         else:
             return self._peak_val + self._func.y
@@ -344,7 +345,7 @@ class Distribution(object):
 
     def _adjust_grid(self, rel_tol=0.01, yc=10):
         n_iter=0
-        while len(self.y)>200 and n_iter<5:
+        while len(self.x)>200 and n_iter<5:
             interp_err = 2*self.y[1:-1] - self.y[2:] - self.y[:-2]
             ind = np.ones_like(self.y, dtype=bool)
             dy = self.y-self.peak_val

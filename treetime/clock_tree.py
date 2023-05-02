@@ -704,8 +704,13 @@ class ClockTree(TreeAnc):
                     if hasattr(self, 'merger_model') and self.merger_model:
                         time_points = parent.marginal_pos_LH.x
                         if len(time_points)<5:
-                            time_points = np.linspace(np.min([x.xmin for x in complementary_msgs]),
-                                                      np.max([x.xmax for x in complementary_msgs]), 50)
+                            time_points = np.unique(np.concatenate([
+                                                        time_points,
+                                                        np.linspace(np.min([x.xmin for x in complementary_msgs]),
+                                                                    np.max([x.xmax for x in complementary_msgs]), 50),
+                                                        np.linspace(np.min([x.effective_support[0] for x in complementary_msgs]),
+                                                                    np.max([x.effective_support[1] for x in complementary_msgs]), 50),
+                                                        ]))
                         # As Lx (the product of child messages) does not include the node contribution this must
                         # be added to recover the full distribution of the parent node w/o contribution of the focal node.
                         complementary_msgs.append(self.merger_model.node_contribution(parent, time_points))
