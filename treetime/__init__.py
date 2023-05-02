@@ -1,4 +1,4 @@
-version="0.9.6"
+version="0.10.0"
 ## Here we define an error class for TreeTime errors, MissingData, UnknownMethod and NotReady errors
 ## are all due to incorrect calling of TreeTime functions or input data that does not fit our base assumptions.
 ## Errors marked as TreeTimeUnknownErrors might be due to data not fulfilling base assumptions or due
