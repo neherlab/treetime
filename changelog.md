@@ -7,6 +7,7 @@
    Add deprecation warning for `greedy-resolve`.
  * tighten conditions that trigger approximation of narrow distribution as a delta function in convolution using FFT [PR #235](https://github.com/neherlab/treetime/pull/235).
  * Drop support for python 3.6.
+ * Don't attempt to show figure when calling `Phylo.draw` to suppress matplotlib back-end warning.
 
 # 0.9.6: bug fixes and new mode of polytomy resolution
  * in cases when very large polytomies are resolved, the multiplication of the discretized message results in messages/distributions of length 1. This resulted in an error, since interpolation objects require at least two points. This is now caught and a small discrete grid created.

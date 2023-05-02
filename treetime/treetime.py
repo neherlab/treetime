@@ -608,7 +608,8 @@ class TreeTime(ClockTree):
                         "resolving polytomies using the old 'greedy' mode. This is not "
                         "well suited for large polytomies. Stochastic resolution will "
                         "become the default in future versions. To switch now, rerun "
-                        "with the flag `--stochastic-resolve`.", 0, warn=True, only_once=True)
+                        "with the flag `--stochastic-resolve`. To keep using the greedy method "
+                        "in the future, run with --`greedy-resolve` ", 0, warn=True, only_once=True)
 
         for n in self.tree.find_clades():
             if len(n.clades) > 2:
@@ -1125,7 +1126,7 @@ def plot_vs_years(tt, step = None, ax=None, confidence=None, ticks=True, **kwarg
     # draw tree
     if "label_func" not in kwargs:
         kwargs["label_func"] = lambda x:x.name if (x.is_terminal() and nleafs<30) else ""
-    Phylo.draw(tt.tree, axes=ax, **kwargs)
+    Phylo.draw(tt.tree, axes=ax, do_show=False, **kwargs)
 
     offset = tt.tree.root.numdate - tt.tree.root.branch_length
     date_range = np.max([n.numdate for n in tt.tree.get_terminals()])-offset
