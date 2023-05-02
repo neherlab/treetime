@@ -4,8 +4,6 @@ from .wrappers import ancestral_reconstruction, mugration, scan_homoplasies,\
                       timetree, estimate_clock_model, arg_time_trees
 from . import version
 
-py2 = sys.version_info.major==2
-
 def set_default_subparser(self, name, args=None, positional_args=0):
     """default subparser selection. Call after setup, just before parse_args()
     name: is the name of the subparser to call by default
@@ -28,10 +26,6 @@ def set_default_subparser(self, name, args=None, positional_args=0):
                 sys.argv.insert(1, name)
             else:
                 args.insert(1, name)
-
-
-if py2:
-    argparse.ArgumentParser.set_default_subparser = set_default_subparser
 
 
 treetime_description = \
@@ -222,10 +216,7 @@ def make_parser():
 
     subparsers = parser.add_subparsers()
 
-    if py2:
-        t_parser = subparsers.add_parser('tt', description=timetree_description)
-    else:
-        t_parser = parser
+    t_parser = parser
     t_parser.add_argument('--tree', type=str, help=tree_description)
     t_parser.add_argument('--rng-seed', type=int, help="random number generator seed for treetime")
     add_seq_len_aln_group(t_parser)
@@ -339,9 +330,5 @@ def make_parser():
     # make a version subcommand
     v_parser = subparsers.add_parser('version', description='print version')
     v_parser.set_defaults(func=lambda x: print("treetime "+version))
-
-    ## call the relevant function and return
-    if py2:
-        parser.set_default_subparser('tt')
 
     return parser

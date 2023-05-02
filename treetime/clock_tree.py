@@ -1,6 +1,6 @@
 import numpy as np
 from . import config as ttconf
-from . import MissingDataError, UnknownMethodError
+from . import MissingDataError, UnknownMethodError, TreeTimeUnknownError
 from .treeanc import TreeAnc
 from .utils import numeric_date, DateConversion, datestring_from_numeric
 from .distribution import Distribution
@@ -142,7 +142,7 @@ class ClockTree(TreeAnc):
         if bad_branch_counter>self.tree.count_terminals()-3:
             raise MissingDataError("ERROR: ALMOST NO VALID DATE CONSTRAINTS")
 
-        self.logger("ClockTree._assign_dates: assigned date contraints to {} out of {} tips.".format(self.tree.count_terminals()-bad_branch_counter, self.tree.count_terminals()), 1)
+        self.logger("ClockTree._assign_dates: assigned date constraints to {} out of {} tips.".format(self.tree.count_terminals()-bad_branch_counter, self.tree.count_terminals()), 1)
         return ttconf.SUCCESS
 
 
@@ -272,7 +272,7 @@ class ClockTree(TreeAnc):
         self.date2dist = DateConversion.from_regression(self.clock_model)
 
 
-    def init_date_constraints(self, ancestral_inference=False, clock_rate=None, **kwarks):
+    def init_date_constraints(self, clock_rate=None, **kwarks):
         """
         Get the conversion coefficients between the dates and the branch
         lengths as they are used in ML computations. The conversion formula is
@@ -286,10 +286,6 @@ class ClockTree(TreeAnc):
 
         Parameters
         ----------
-
-         ancestral_inference: bool
-            If True, reinfer ancestral sequences
-            when ancestral sequences are missing
 
          clock_rate: float
             If specified, timetree optimization will be done assuming a
@@ -791,7 +787,7 @@ class ClockTree(TreeAnc):
                             int_y = np.concatenate(([0], int_y))
                             int_x = np.concatenate(([int_x[0]- ttconf.TINY_NUMBER], int_x))
                     else:
-                        import ipdb; ipdb.set_trace()
+                        raise TreeTimeUnknownError("Loss of probability in marginal time tree inference.")
                 else:
                     int_y/=int_y[-1]
                 node.marginal_inverse_cdf = interp1d(int_y, int_x, kind="linear")

@@ -167,8 +167,6 @@ def scan_homoplasies(params):
                                       for x in treeanc.tree.find_clades()])
     corrected_terminal_branch_length = np.sum([np.exp(-x.branch_length)*np.sinh(x.branch_length)
                                       for x in treeanc.tree.get_terminals()])
-    expected_mutations = L*corrected_branch_length
-    expected_terminal_mutations = L*corrected_terminal_branch_length
 
     # make histograms and sum mutations in different categories
     multiplicities = np.bincount([len(x) for x in mutations.values()])

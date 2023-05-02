@@ -167,10 +167,10 @@ class NodeInterpolator (Distribution):
         n_effsupport = node_interp.effective_support
         b_support_range = b_effsupport[1]-b_effsupport[0]
         n_support_range = n_effsupport[1]-n_effsupport[0]
-        #ratio = n_support_range/b_support_range
+        # compare the support of the node distribution to the width of the branch length distribution
         ratio = n_support_range/branch_interp.fwhm
 
-        if ratio < 1/fft_grid_size and 4.0*dt > node_interp.fwhm:
+        if ratio < 1.0/fft_grid_size and 4.0*dt > node_interp.fwhm:
             ## node distribution is much narrower than the branch distribution, proceed as if
             # node distribution is a delta distribution with the peak 4 full-width-half-maxima
             # away from the nominal peak to avoid slicing the relevant range to zero

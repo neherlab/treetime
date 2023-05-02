@@ -272,7 +272,6 @@ class Distribution(object):
     def y(self):
         if self.is_delta:
             print("Warning: evaluating log probability of a delta distribution.")
-            import ipdb; ipdb.set_trace()
             return [self.weight]
         else:
             return self._peak_val + self._func.y
@@ -434,8 +433,8 @@ class Distribution(object):
 
     def fft(self, T, n=None, inverse_time=True):
         if self.is_delta:
-            raise
-            import ipdb; ipdb.set_trace()
+            raise TreeTimeUnknownError("attempting Fourier transform of delta function.")
+
         from numpy.fft import rfft
         if n is None:
             n=len(T)
