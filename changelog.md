@@ -1,4 +1,4 @@
-# 0.10.0: add auspice.json output, drop
+# 0.10.0: add auspice.json output, drop python 3.6
 
  * the output directory now contains a json file that is compatible with auspice.us. Both time scaled phylogenies and ancestral inferences can now be visualized and explored using auspice. Available colorings are "Date", "genotype", "Branch support", and "Excluded". See [PR #232](https://github.com/neherlab/treetime/pull/232) for details.
  * move most function related to IO of the command line wrappers into a separate file.
