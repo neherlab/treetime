@@ -1,11 +1,14 @@
 import sys
-from os.path import isfile
 from collections import defaultdict
+from os.path import isfile
+from tkinter import E
+
 import numpy as np
 from Bio import AlignIO, SeqIO
-from . import config as ttconf
+
 from . import MissingDataError
-from .seq_utils import seq2array, guess_alphabet, alphabets
+from . import config as ttconf
+from .seq_utils import alphabets, guess_alphabet, seq2array
 
 string_types = [str] if sys.version_info[0]==3 else [str, unicode]
 def simple_logger(*args, **kwargs):
@@ -19,7 +22,7 @@ class SequenceData(object):
     additional_constant_sites : int
         length of the sequence without variation not included in the alignment
     aln : dict
-        sequences, either sparse of full
+        sequences, either sparse or full
     ambiguous : byte
         character signifying missing data
     compress : bool
@@ -63,7 +66,7 @@ class SequenceData(object):
         Parameters
         ----------
         aln : Bio.Align.MultipleSeqAlignment, str
-            alignment or file name
+            alignment or file name or /dev/stdin of fasta alignment
         ref : Seq, str
             sequence or file name
         logger : callable, optional
@@ -146,17 +149,26 @@ class SequenceData(object):
         elif type(in_aln) in [defaultdict, dict]:  #if input is sparse (i.e. from VCF)
             self._aln = in_aln
             self.is_sparse = True
-        elif type(in_aln) in string_types and isfile(in_aln):
-            if any([in_aln.lower().endswith(x) for x in ['.vcf', '.vcf.gz']]) and (self.ref is not None):
-                from .vcf_utils import read_vcf
-                compress_seq = read_vcf(in_aln)
-                in_aln = compress_seq['sequences']
-            else:
-                for fmt in ['fasta', 'phylip-relaxed', 'nexus']:
-                    try:
-                        in_aln=AlignIO.read(in_aln, fmt)
-                    except:
-                        continue
+        elif type(in_aln) in string_types:
+            if isfile(in_aln):
+                if any([in_aln.lower().endswith(x) for x in ['.vcf', '.vcf.gz']]) and (self.ref is not None):
+                    from .vcf_utils import read_vcf
+                    compress_seq = read_vcf(in_aln)
+                    in_aln = compress_seq['sequences']
+                else:
+                    for fmt in ['fasta', 'phylip-relaxed', 'nexus']:
+                        try:
+                            in_aln=AlignIO.read(in_aln, fmt)
+                        except Exception as e:
+                            print("Could not read alignment file %s in format %s" % (in_aln, fmt))
+                            print(e)
+            elif in_aln == "/dev/stdin":
+                try:
+                    in_aln = AlignIO.read(in_aln, 'fasta')
+                except Exception as e:
+                    print("Could not read alignment file %s in format %s" % (in_aln, fmt))
+                    print(e)
+
 
         if isinstance(in_aln, MultipleSeqAlignment):
             # check whether the alignment is consistent with a nucleotide alignment.

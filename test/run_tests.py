@@ -12,4 +12,4 @@ test_seq_joint_reconstruction_correct()
 
 test_seq_joint_lh_is_max()
 
-print('\n\n TEST HAVE FINISHED SUCCESSFULLY\n\n')
+print('\n\n TESTS HAVE FINISHED SUCCESSFULLY\n\n')
