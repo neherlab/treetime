@@ -816,9 +816,9 @@ class TreeTime(ClockTree):
             # branches without mutations are ready to coalesce -- others have to mutate first
             ready_to_coalesce = [b for b in branches_alive if mutations_per_branch.get(b.name,0)==0]
             if hasattr(self, 'merger_model') and (self.merger_model is not None):
-                coalescent_rate = 0.5*len(ready_to_coalesce)*dummy_coalescent_rate + mutation_rate
-            else:
                 coalescent_rate = self.merger_model.branch_merger_rate(t) + mutation_rate
+            else:
+                coalescent_rate = 0.5*len(ready_to_coalesce)*dummy_coalescent_rate + mutation_rate
 
             total_mutations = np.sum([mutations_per_branch.get(b.name,0) for b in branches_alive])
             n_branches_w_mutations = len(branches_alive) - len(ready_to_coalesce)
