@@ -222,7 +222,7 @@ class NodeInterpolator (Distribution):
             # extrapolate the tails exponentially: use margin last data points
             margin = np.minimum(3, Tres_cropped.shape[0]//3)
             if margin<1 or len(res)==0:
-                TreeTimeUnknownError("Error: Unexpected behavior detected in FFT function. "
+                raise TreeTimeUnknownError("Error: Unexpected behavior detected in FFT function. "
                                      "No valid points left after reducing to plausible region.\n\n"
                         "If you see this error please let us know by filling an issue at:\n"
                         "https://github.com/neherlab/treetime/issues")
