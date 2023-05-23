@@ -38,8 +38,8 @@ class Distribution(object):
 
         elif isinstance(distribution, Distribution):
             # Distribution always stores neg log-prob with the peak value subtracted
-            xvals = distribution._func.x
-            log_prob = distribution._func.y
+            xvals = distribution._func_log.x
+            log_prob = distribution._func_log.y
         else:
             raise TypeError("Error in computing the FWHM for the distribution. "
                 " The input should be either Distribution or interpolation object")
@@ -94,7 +94,7 @@ class Distribution(object):
             delta_dist = dists[delta_dist_ii]
             new_xpos = delta_dist.peak_pos
             new_weight  = np.prod([k.prob(new_xpos) for k in dists if k!=delta_dist_ii]) * delta_dist.weight
-            res = Distribution.delta_function(new_xpos, weight = new_weight,min_width=min_width)
+            res = Distribution.delta_func_logtion(new_xpos, weight = new_weight,min_width=min_width)
         else:
             new_xmin = np.max([k.xmin for k in dists])
             new_xmax = np.min([k.xmax for k in dists])
@@ -131,7 +131,7 @@ class Distribution(object):
                         "If you see this error please let us know by filling an issue at:\n"
                         "https://github.com/neherlab/treetime/issues")
             elif n_points == 1:
-                res = Distribution.delta_function(x_vals[0])
+                res = Distribution.delta_func_logtion(x_vals[0])
             else:
                 res = Distribution(x_vals[ind], y_vals[ind], is_log=True,
                                    min_width=min_width, kind='linear', assume_sorted=True)
@@ -166,7 +166,7 @@ class Distribution(object):
             res = Distribution(x_vals, y_vals, is_log=True,
                                 min_width=min_width, kind='linear')
         elif n_points == 1:
-            res = Distribution.delta_function(x_vals[0])
+            res = Distribution.delta_func_logtion(x_vals[0])
         else:
             res = Distribution(x_vals[ind], y_vals[ind], is_log=True,
                                 min_width=min_width, kind='linear', assume_sorted=True)
@@ -204,10 +204,12 @@ class Distribution(object):
             yvals -= self._peak_val
             self._ymax = yvals.max()
             # store the interpolation object
-            self._func= interp1d(xvals, yvals, kind=kind, fill_value=BIG_NUMBER,
+            self._func_log= interp1d(xvals, yvals, kind=kind, fill_value=BIG_NUMBER,
                                  bounds_error=False, assume_sorted=True)
             self._fwhm = Distribution.calc_fwhm(self)
             # remember effective range
+            self._func= interp1d(xvals, self.prob_relative(xvals), kind=kind, fill_value=BIG_NUMBER,
+                                 bounds_error=False, assume_sorted=True)
             self._effective_support = self.calc_effective_support()
 
         elif np.isscalar(x):
@@ -222,6 +224,7 @@ class Distribution(object):
 
             self._xmin, self._xmax = x, x
             self._support = 0.
+            self._func_log = lambda x : (x==self.peak_pos)*self.peak_val
             self._func = lambda x : (x==self.peak_pos)*self.peak_val
             self._effective_support = (self._xmin, self._xmax)
         else:
@@ -266,7 +269,7 @@ class Distribution(object):
         if self.is_delta:
             return [self._peak_pos]
         else:
-            return self._func.x
+            return self._func_log.x
 
     @property
     def y(self):
@@ -274,7 +277,7 @@ class Distribution(object):
             print("Warning: evaluating log probability of a delta distribution.")
             return [self.weight]
         else:
-            return self._peak_val + self._func.y
+            return self._peak_val + self._func_log.y
 
     @property
     def xmin(self):
@@ -290,7 +293,7 @@ class Distribution(object):
             valid_idxs = (x > self._xmin-TINY_NUMBER) & (x < self._xmax+TINY_NUMBER)
             res = np.full(np.shape(x), BIG_NUMBER+self.peak_val, dtype=float)
             tmp_x = x[valid_idxs]
-            res[valid_idxs] = self._peak_val + self._func(clip(tmp_x, self._xmin+TINY_NUMBER, self._xmax-TINY_NUMBER))
+            res[valid_idxs] = self._peak_val + self._func_log(clip(tmp_x, self._xmin+TINY_NUMBER, self._xmax-TINY_NUMBER))
             return res
 
         elif np.isreal(x):
@@ -300,7 +303,7 @@ class Distribution(object):
             elif self._delta == True:
                 return self._peak_val
             else:
-                return self._peak_val + self._func(x)
+                return self._peak_val + self._func_log(x)
         else:
             raise TypeError("Wrong type: should be float or array")
 
@@ -352,14 +355,16 @@ class Distribution(object):
             ind[1:-1:2] = prune
             ind[self.peak_idx] = True
             if np.mean(prune)<1.0:
-                self._func.y = self._func.y[ind]
+                self._func_log.y = self._func_log.y[ind]
+                self._func_log.x = self._func_log.x[ind]
                 self._func.x = self._func.x[ind]
+                self._func.y = self._func.y[ind]
                 n_iter+=1
             else:
                 break
 
-            self._peak_idx = self.__call__(self._func.x).argmin()
-            self._peak_pos = self._func.x[self._peak_idx]
+            self._peak_idx = self.__call__(self._func_log.x).argmin()
+            self._peak_pos = self._func_log.x[self._peak_idx]
             self._peak_val = self.__call__(self.peak_pos)
 
 
@@ -370,6 +375,7 @@ class Distribution(object):
         return np.exp(-1 * (self.__call__(x)-self.peak_val))
 
     def x_rescale(self, factor):
+        self._func_log.x*=factor
         self._func.x*=factor
         self._peak_pos*=factor
         if factor>=0:
@@ -381,8 +387,10 @@ class Distribution(object):
             tmp = self.xmin
             self._xmin = factor*self.xmax
             self._xmax = factor*tmp
-            self._func.x = self._func.x[::-1]
-            self._func.y = self._func.y[::-1]
+            self._func_log.x = self._func_log.x[::-1]
+            self._func_log.y = self._func_log.y[::-1]
+            self._func.x = self._func_log.x[::-1]
+            self._func.y = self._func_log.y[::-1]
             self._fwhm *= -factor
             self._effective_support = [x*factor for x in self._effective_support[::-1]]
 
@@ -408,7 +416,7 @@ class Distribution(object):
 
         x = np.linspace(a,b,n)
         dx = np.diff(x)
-        y = self.prob_relative(x)
+        y = self._func(x)
         return mult*np.sum(dx*(y[:-1] + y[1:]))
 
 
@@ -424,7 +432,7 @@ class Distribution(object):
         for lw, up in zip(threshold[:-1], threshold[1:]):
             x = np.linspace(lw,up,n)
             dx = np.diff(x[::2])
-            y = self.prob_relative(x)
+            y = self._func(x)
             res.append(mult*(dx[0]*y[0]+ np.sum(4*dx*y[1:-1:2])
                     + np.sum((dx[:-1]+dx[1:])*y[2:-1:2]) + dx[-1]*y[-1]))
 
@@ -439,8 +447,8 @@ class Distribution(object):
         if n is None:
             n=len(T)
         if inverse_time:
-            return rfft(self.prob_relative(T), n=n)
+            return rfft(self._func(T), n=n)
         else:
-            return rfft(self.prob_relative(T)[::-1], n=n)
+            return rfft(self._func(T)[::-1], n=n)
 
 
