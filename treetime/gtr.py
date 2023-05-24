@@ -852,10 +852,11 @@ class GTR(object):
             else:
                 return -1.0*self.prob_t_compressed(seq_pair, multiplicity,t**2, return_log=True)
 
+        hamming_distance = np.sum(multiplicity[seq_pair[:,1]!=seq_pair[:,0]])/np.sum(multiplicity)
         try:
             from scipy.optimize import minimize_scalar
             opt = minimize_scalar(_neg_prob,
-                    bracket=[-np.sqrt(ttconf.MAX_BRANCH_LENGTH),np.sqrt(ttconf.MAX_BRANCH_LENGTH)],
+                    bracket=[-np.sqrt(ttconf.MAX_BRANCH_LENGTH), np.sqrt(hamming_distance), np.sqrt(ttconf.MAX_BRANCH_LENGTH)],
                     args=(seq_pair, multiplicity), tol=tol, method='brent')
             new_len = opt["x"]**2
             if 'success' not in opt:
@@ -876,7 +877,7 @@ class GTR(object):
 
         if opt["success"] != True:
             # return hamming distance: number of state pairs where state differs/all pairs
-            new_len =  np.sum(multiplicity[seq_pair[:,1]!=seq_pair[:,0]])/np.sum(multiplicity)
+            new_len =  hamming_distance
 
         return new_len
 
