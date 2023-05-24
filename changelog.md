@@ -1,3 +1,10 @@
+# 0.10.1: bug fix release
+
+ * avoid probability loss at the end of the domain of distributions
+ * fix erroneous check for merger model.
+ * raise error when probability is lost.
+ * improve initial guess in  branch length optimizations
+
 # 0.10.0: add auspice.json output, drop python 3.6
 
  * the output directory now contains a json file that is compatible with auspice.us. Both time scaled phylogenies and ancestral inferences can now be visualized and explored using auspice. Available colorings are "Date", "genotype", "Branch support", and "Excluded". See [PR #232](https://github.com/neherlab/treetime/pull/232) for details.
