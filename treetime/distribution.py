@@ -438,9 +438,19 @@ class Distribution(object):
         from numpy.fft import rfft
         if n is None:
             n=len(T)
+
+        vals = self.prob_relative(T)
+        if max(vals)<1e-15:
+            # probability is lost due to sampling next to timepoints with
+            # vanishing probability. Since we interpolate logarithms, this
+            # results in loss of probability when we should have a delta-like
+            # peak. Use min log-value to recalibrate and obtain a meaningful peak
+            log_vals = self.__call__(T)
+            vals = np.exp(-(log_vals - log_vals.min()))
+
         if inverse_time:
-            return rfft(self.prob_relative(T), n=n)
+            return rfft(vals, n=n)
         else:
-            return rfft(self.prob_relative(T)[::-1], n=n)
+            return rfft(vals[::-1], n=n)
 
 

@@ -1353,7 +1353,7 @@ class TreeAnc(object):
         self.logger("TreeAnc.optimize_tree: sequences...", 1)
         N_diff = self.reconstruct_anc(method=method_anc, infer_gtr=infer_gtr, pc=pc,
                                       marginal=marginal_sequences, **kwargs)
-        self.optimize_branch_lengths_joint(verbose=0, store_old=False, mode=branch_length_mode)
+        self.optimize_branch_lengths_joint(store_old=False)
         n = 0
         while n<max_iter:
             n += 1
