@@ -405,34 +405,18 @@ class TreeTime(ClockTree):
             If True, plot the results
 
         '''
+        from .clock_filter_methods import residual_filter
         if n_iqd is None:
             n_iqd = ttconf.NIQD
         if type(reroot) is list and len(reroot)==1:
             reroot=str(reroot[0])
 
-        terminals = self.tree.get_terminals()
         if reroot:
             self.reroot(root='least-squares' if reroot=='best' else reroot, covariation=False, clock_rate=fixed_clock_rate)
         else:
             self.get_clock_model(covariation=False, slope=fixed_clock_rate)
 
-        clock_rate = self.clock_model['slope']
-        icpt = self.clock_model['intercept']
-        res = {}
-        for node in terminals:
-            if hasattr(node, 'raw_date_constraint') and  (node.raw_date_constraint is not None):
-                res[node] = node.dist2root - clock_rate*np.mean(node.raw_date_constraint) - icpt
-
-        residuals = np.array(list(res.values()))
-        iqd = np.percentile(residuals,75) - np.percentile(residuals,25)
-        bad_branch_count = 0
-        for node,r in res.items():
-            if abs(r)>n_iqd*iqd and node.up.up is not None:
-                self.logger('TreeTime.ClockFilter: marking %s as outlier, residual %f interquartile distances'%(node.name,r/iqd), 3, warn=True)
-                node.bad_branch=True
-                bad_branch_count += 1
-            else:
-                node.bad_branch=False
+        bad_branch_count = residual_filter(self, n_iqd)
 
         if bad_branch_count>0.34*self.tree.count_terminals():
             self.logger("TreeTime.clock_filter: More than a third of leaves have been excluded by the clock filter. Please check your input data.", 0, warn=True)
