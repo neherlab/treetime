@@ -405,7 +405,7 @@ class TreeTime(ClockTree):
             If True, plot the results
 
         '''
-        from .clock_filter_methods import residual_filter
+        from .clock_filter_methods import residual_filter, local_outlier_detection
         if n_iqd is None:
             n_iqd = ttconf.NIQD
         if type(reroot) is list and len(reroot)==1:
@@ -416,7 +416,8 @@ class TreeTime(ClockTree):
         else:
             self.get_clock_model(covariation=False, slope=fixed_clock_rate)
 
-        bad_branch_count = residual_filter(self, n_iqd)
+        #bad_branch_count = residual_filter(self, n_iqd)
+        bad_branch_count = local_outlier_detection(self, n_iqd)
 
         if bad_branch_count>0.34*self.tree.count_terminals():
             self.logger("TreeTime.clock_filter: More than a third of leaves have been excluded by the clock filter. Please check your input data.", 0, warn=True)
