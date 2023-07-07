@@ -73,8 +73,8 @@ class TreeTime(ClockTree):
                 sys.exit(2)
 
 
-    def _run(self, root=None, infer_gtr=True, relaxed_clock=None, n_iqd = None,
-            resolve_polytomies=True, max_iter=0, Tc=None, fixed_clock_rate=None,
+    def _run(self, root=None, infer_gtr=True, relaxed_clock=None, clock_filter_method='residuals',
+             n_iqd = None, resolve_polytomies=True, max_iter=0, Tc=None, fixed_clock_rate=None,
             time_marginal='never', sequence_marginal=False, branch_length_mode='auto',
             vary_rate=False, use_covariation=False, tracelog_file=None,
             method_anc = 'probabilistic', assign_gamma=None, stochastic_resolve=False,
@@ -222,7 +222,8 @@ class TreeTime(ClockTree):
             else:
                 plot_rtt=False
             reroot_mechanism = 'least-squares' if root=='clock_filter' else root
-            self.clock_filter(reroot=reroot_mechanism, n_iqd=n_iqd, plot=plot_rtt, fixed_clock_rate=fixed_clock_rate)
+            self.clock_filter(reroot=reroot_mechanism, method=clock_filter_method,
+                              n_iqd=n_iqd, plot=plot_rtt, fixed_clock_rate=fixed_clock_rate)
         elif root is not None:
             self.reroot(root=root, clock_rate=fixed_clock_rate)
 
@@ -383,7 +384,8 @@ class TreeTime(ClockTree):
             self.branch_length_mode = 'input'
 
 
-    def clock_filter(self, reroot='least-squares', n_iqd=None, plot=False, fixed_clock_rate=None):
+    def clock_filter(self, reroot='least-squares', method='residual',
+                     n_iqd=None, plot=False, fixed_clock_rate=None):
         r'''
         Labels outlier branches that don't seem to follow a molecular clock
         and excludes them from subsequent molecular clock estimation and
@@ -405,34 +407,22 @@ class TreeTime(ClockTree):
             If True, plot the results
 
         '''
+        from .clock_filter_methods import residual_filter, local_filter
         if n_iqd is None:
             n_iqd = ttconf.NIQD
         if type(reroot) is list and len(reroot)==1:
             reroot=str(reroot[0])
 
-        terminals = self.tree.get_terminals()
         if reroot:
-            self.reroot(root='least-squares' if reroot=='best' else reroot, covariation=False, clock_rate=fixed_clock_rate)
+            self.reroot(root='least-squares' if reroot=='best' else reroot,
+                        covariation=False, clock_rate=fixed_clock_rate)
         else:
             self.get_clock_model(covariation=False, slope=fixed_clock_rate)
 
-        clock_rate = self.clock_model['slope']
-        icpt = self.clock_model['intercept']
-        res = {}
-        for node in terminals:
-            if hasattr(node, 'raw_date_constraint') and  (node.raw_date_constraint is not None):
-                res[node] = node.dist2root - clock_rate*np.mean(node.raw_date_constraint) - icpt
-
-        residuals = np.array(list(res.values()))
-        iqd = np.percentile(residuals,75) - np.percentile(residuals,25)
-        bad_branch_count = 0
-        for node,r in res.items():
-            if abs(r)>n_iqd*iqd and node.up.up is not None:
-                self.logger('TreeTime.ClockFilter: marking %s as outlier, residual %f interquartile distances'%(node.name,r/iqd), 3, warn=True)
-                node.bad_branch=True
-                bad_branch_count += 1
-            else:
-                node.bad_branch=False
+        if method=='residual':
+            bad_branch_count = residual_filter(self, n_iqd)
+        elif method=='local':
+            bad_branch_count = local_filter(self, n_iqd)
 
         if bad_branch_count>0.34*self.tree.count_terminals():
             self.logger("TreeTime.clock_filter: More than a third of leaves have been excluded by the clock filter. Please check your input data.", 0, warn=True)

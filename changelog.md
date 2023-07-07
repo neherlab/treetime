@@ -1,3 +1,9 @@
+# 0.11.0: new clock filter method
+
+Previously, only a crude analysis of whether the divergence of tips roughly follows a linear trend was implemented. Tips that deviated too much from that regression line were flagged as outliers and this threshold was parameterized as number of interquartile distances of the distribution of residuals `n_iqd`.
+This filter is not very sensitive and often misses misdated tips that severely distort the tree but still fall within the distribution of root-to-tip distances at that time.
+To overcome this, we implemented a novel filtering method that fits a simple gaussian model of divergence accumulation.
+
 # 0.10.1: bug fix release
 
  * avoid probability loss at the end of the domain of distributions
