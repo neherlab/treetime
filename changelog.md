@@ -4,6 +4,9 @@ Previously, only a crude analysis of whether the divergence of tips roughly foll
 This filter is not very sensitive and often misses misdated tips that severely distort the tree but still fall within the distribution of root-to-tip distances at that time.
 To overcome this, we implemented a novel filtering method that fits a simple gaussian model of divergence accumulation.
 
+### Other fixes
+ * error when rate estimate is negative during the rate susceptibility calculation. Give hint in error message to specify the rate and its uncertainty explicitly.
+
 # 0.10.1: bug fix release
 
  * avoid probability loss at the end of the domain of distributions
