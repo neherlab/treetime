@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 
 def residual_filter(tt, n_iqd):
     terminals = tt.tree.get_terminals()
@@ -11,33 +12,44 @@ def residual_filter(tt, n_iqd):
 
     residuals = np.array(list(res.values()))
     iqd = np.percentile(residuals,75) - np.percentile(residuals,25)
-    bad_branch_count = 0
+    outliers = {}
     for node,r in res.items():
         if abs(r)>n_iqd*iqd and node.up.up is not None:
-            tt.logger('TreeTime.ClockFilter: marking %s as outlier, residual %f interquartile distances'%(node.name,r/iqd), 3, warn=True)
             node.bad_branch=True
-            bad_branch_count += 1
+            outliers[node.name] = {'tau':(node.dist2root - icpt)/clock_rate,  'avg_date': np.mean(node.raw_date_constraint),
+                                'exact_date': node.raw_date_constraint if type(node) is float else None,
+                                'residual': r/iqd}
         else:
             node.bad_branch=False
 
-    return bad_branch_count
+    if len(outliers):
+        outlier_df = pd.DataFrame(outliers).T.loc[:,['avg_date', 'tau', 'residual']]\
+                                .rename(columns={'avg_date':'given_date', 'tau':'apparent_date'})
+        tt.logger("Clock_filter.residual_filter marked the following outliers:", 2, warn=True)
+        if tt.verbose>=2:
+            print(outlier_df)
+    return len(outliers)
 
-def local_outlier_detection(tt, z_score_threshold):
+def local_filter(tt, z_score_threshold):
     tt.logger(f"TreeTime.ClockFilter: starting local_outlier_detection", 2)
 
     node_info = collect_node_info(tt)
 
     node_info, z_scale = calculate_node_timings(tt, node_info)
+    tt.logger(f"TreeTime.ClockFilter: z-scale {z_scale:1.2f}", 2)
 
     outliers = flag_outliers(tt, node_info, z_score_threshold, z_scale)
 
     for n in tt.tree.get_terminals():
         if n.name in outliers:
-            ol = outliers[n.name]
             n.bad_branch = True
-            tt.logger(f"TreeTime.ClockFilter.local_outlier_detection: flag '{n.name}' as outlier. "
-                      f"given date '{n.raw_date_constraint}', apparent date {ol['tau']:1.2f}.", 3, warn=True)
 
+    if len(outliers):
+        outlier_df = pd.DataFrame(outliers).T.loc[:,['avg_date', 'tau', 'z']]\
+                                .rename(columns={'avg_date':'given_date', 'tau':'apparent_date'})
+        tt.logger("Clock_filter.local_filter marked the following outliers", 2, warn=True)
+        if tt.verbose>=2:
+            print(outlier_df)
     return len(outliers)
 
 
@@ -46,7 +58,7 @@ def flag_outliers(tt, node_info, z_score_threshold, z_scale):
     for n in tt.tree.get_terminals():
         n_info = node_info[n.name]
         if n_info['exact_date']:
-            z = (n_info['tau'] - n_info['avg_date'])/z_scale
+            z = (n_info['avg_date'] - n_info['tau'])/z_scale
             if np.abs(z) > z_score_threshold:
                 n_info['z'] = z
                 outliers[n.name] = n_info
@@ -61,7 +73,7 @@ def flag_outliers(tt, node_info, z_score_threshold, z_scale):
 def calculate_node_timings(tt, node_info, eps=0.2):
     mu = tt.clock_model['slope']*tt.data.full_length
     sigma_sq = (3/mu)**2
-
+    tt.logger(f"Clockfilter.calculate_node_timings: mu={mu:1.3e}/y, sigma={3/mu:1.3e}y", 2)
     for n in tt.tree.find_clades(order='postorder'):
         p = node_info[n.name]
         if not p['exact_date'] or p['skip']:
@@ -136,13 +148,13 @@ def collect_node_info(tt, percentile_for_exact_date=90):
 
                 if child['exact_date']:
                     exact_dates += 1
-                if child["nmuts"]==0:
-                    child['skip'] = True
-                    parent["tips"][c.name]={'date': np.mean(c.raw_date_constraint),
-                                            'exact_date':child['exact_date']}
-                else:
-                    child['skip'] = False
-                    child['observations'] = 1
+                    if child["nmuts"]==0:
+                        child['skip'] = True
+                        parent["tips"][c.name]={'date': np.mean(c.raw_date_constraint),
+                                                'exact_date':child['exact_date']}
+                    else:
+                        child['skip'] = False
+                        child['observations'] = 1
                 if c.raw_date_constraint is not None:
                     child["avg_date"] = np.mean(c.raw_date_constraint)
                 node_info[c.name] = child

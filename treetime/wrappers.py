@@ -410,7 +410,7 @@ def run_timetree(myTree, params, outdir, tree_suffix='', prune_short=True, metho
                stochastic_resolve = stochastic_resolve,
                Tc=coalescent, max_iter=params.max_iter,
                fixed_clock_rate=params.clock_rate,
-               n_iqd=params.clock_filter,
+               n_iqd=params.clock_filter, clock_filter_method=params.clock_filter_method,
                time_marginal="confidence-only" if (calc_confidence and time_marginal=='never') else time_marginal,
                vary_rate = vary_rate,
                branch_length_mode = branch_length_mode,
@@ -809,7 +809,8 @@ def estimate_clock_model(params):
     myTree.tip_slack=params.tip_slack
     if params.clock_filter:
         n_bad = [n.name for n in myTree.tree.get_terminals() if n.bad_branch]
-        myTree.clock_filter(n_iqd=params.clock_filter, reroot=params.reroot or 'least-squares')
+        myTree.clock_filter(n_iqd=params.clock_filter, reroot=params.reroot or 'least-squares',
+                            method=params.clock_filter_method)
         n_bad_after = [n.name for n in myTree.tree.get_terminals() if n.bad_branch]
         if len(n_bad_after)>len(n_bad):
             print("The following leaves don't follow a loose clock and "

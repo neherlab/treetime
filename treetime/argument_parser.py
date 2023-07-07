@@ -121,8 +121,12 @@ def add_aln_group(parser, required=True):
 def add_reroot_group(parser):
     parser.add_argument('--clock-filter', type=float, default=4.0,
                               help="ignore tips that don't follow a loose clock, "
-                                   "'clock-filter=number of interquartile ranges from regression'. "
+                                   "'clock-filter=number of interquartile ranges from regression (method=`residual`)' "
+                                   "or z-score of local clock deviation (method=`local`). "
                                    "Default=4.0, set to 0 to switch off.")
+    parser.add_argument('--clock-filter-method', choices=['residual', 'local'], default='residual',
+                        help="Use residuals from global clock (`residual`, default) or local clock deviation (`clock`) "
+                             "to filter out tips that don't follow the clock")
     reroot_group = parser.add_mutually_exclusive_group()
     reroot_group.add_argument('--reroot', nargs='+', default='best', help=reroot_description)
     reroot_group.add_argument('--keep-root', required = False, action="store_true", default=False,
