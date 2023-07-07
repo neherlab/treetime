@@ -862,6 +862,9 @@ class ClockTree(TreeAnc):
 
             rate_std = np.sqrt(self.clock_model['cov'][0,0])
 
+        if self.clock_model['slope']<0:
+            raise ValueError("ClockTree.calc_rate_susceptibility: rate estimate is negative. In this case the heuristic treetime uses to account for uncertainty in the rate estimate does not work. Please specify the clock-rate and its standard deviation explicitly via CLI parameters or arguments.")
+
         current_rate = np.abs(self.clock_model['slope'])
         upper_rate = self.clock_model['slope'] + rate_std
         lower_rate = max(0.1*current_rate, self.clock_model['slope'] - rate_std)
