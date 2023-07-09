@@ -87,7 +87,8 @@ def flag_outliers(tt, node_info, z_score_threshold, z_scale):
         elif n.raw_date_constraint and len(n.raw_date_constraint):
             zs = [(n_info['tau'] - x)/z_scale for x in n.raw_date_constraint]
             if zs[0]*zs[1]>0 and np.min(np.abs(zs))>z_score_threshold:
-                outliers[n.name] = add_outlier_info(zs[0] if np.abs(zs[0])>np.abs(zs[1]) else zs[1], n, n_info, parent_tau, mu)
+                outliers[n.name] = add_outlier_info(zs[0] if np.abs(zs[0])<np.abs(zs[1]) else zs[1],
+                                                    n, n_info, parent_tau, mu)
 
     return outliers
 
