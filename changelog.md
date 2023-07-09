@@ -3,6 +3,7 @@
 Previously, only a crude analysis of whether the divergence of tips roughly follows a linear trend was implemented. Tips that deviated too much from that regression line were flagged as outliers and this threshold was parameterized as number of interquartile distances of the distribution of residuals `n_iqd`.
 This filter is not very sensitive and often misses misdated tips that severely distort the tree but still fall within the distribution of root-to-tip distances at that time.
 To overcome this, we implemented a novel filtering method that fits a simple gaussian model of divergence accumulation.
+Information on outliers is saved in a pandas DataFrame `self.outliers` of `TreeTime` and written to file as a tsv file when running treetime as command line tool.
 
 ### Other fixes
  * error when rate estimate is negative during the rate susceptibility calculation. Give hint in error message to specify the rate and its uncertainty explicitly.
