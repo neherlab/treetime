@@ -599,7 +599,7 @@ class TreeTime(ClockTree):
                         "well suited for large polytomies. Stochastic resolution will "
                         "become the default in future versions. To switch now, rerun "
                         "with the flag `--stochastic-resolve`. To keep using the greedy method "
-                        "in the future, run with --`greedy-resolve` ", 0, warn=True, only_once=True)
+                        "in the future, run with `--greedy-resolve` ", 0, warn=True, only_once=True)
 
         for n in self.tree.find_clades():
             if len(n.clades) > 2:

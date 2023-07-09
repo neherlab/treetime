@@ -196,6 +196,9 @@ def export_sequences_and_tree(tt, basename, is_vcf=False, zero_based=False,
         Phylo.write(tt.tree, outtree_name, 'nexus', format_branch_length=fmt_bl)
         print("--- divergence tree saved in nexus format as  \n\t %s\n"%outtree_name)
 
+    if hasattr(tt, 'outliers') and tt.outliers is not None:
+        print("--- saved detected outliers as " + basename + 'outliers.tsv')
+        tt.outliers.to_csv(basename + 'outliers.tsv', sep='\t')
 
 def print_save_plot_skyline(tt, n_std=2.0, screen=True, save='', plot='', gen=50):
     if plot:

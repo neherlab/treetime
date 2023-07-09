@@ -22,12 +22,14 @@ def residual_filter(tt, n_iqd):
         else:
             node.bad_branch=False
 
+    tt.outliers=None
     if len(outliers):
         outlier_df = pd.DataFrame(outliers).T.loc[:,['avg_date', 'tau', 'residual']]\
                                 .rename(columns={'avg_date':'given_date', 'tau':'apparent_date'})
         tt.logger("Clock_filter.residual_filter marked the following outliers:", 2, warn=True)
         if tt.verbose>=2:
             print(outlier_df)
+        tt.outliers = outlier_df
     return len(outliers)
 
 def local_filter(tt, z_score_threshold):
@@ -44,29 +46,47 @@ def local_filter(tt, z_score_threshold):
         if n.name in outliers:
             n.bad_branch = True
 
+    tt.outliers=None
     if len(outliers):
-        outlier_df = pd.DataFrame(outliers).T.loc[:,['avg_date', 'tau', 'z']]\
-                                .rename(columns={'avg_date':'given_date', 'tau':'apparent_date'})
+        outlier_df = pd.DataFrame(outliers).T.loc[:,['avg_date', 'tau', 'z', 'diagnosis']]\
+                                .rename(columns={'avg_date':'given_date', 'tau':'apparent_date', 'z':'z-score'})
         tt.logger("Clock_filter.local_filter marked the following outliers", 2, warn=True)
         if tt.verbose>=2:
             print(outlier_df)
+        tt.outliers = outlier_df
     return len(outliers)
 
 
 def flag_outliers(tt, node_info, z_score_threshold, z_scale):
+    def add_outlier_info(z, n, n_info, parent_tau, mu):
+        n_info['z'] = z
+        diagnosis=''
+        print(n.name, n.up.name, n_info)
+        # muts = n_info["nmuts"] if n.is_terminal() else 0.0
+        # parent_tau = node_info[n.up.name]['tau'] if n.is_terminal() else n_info['tau']
+        if z<0:
+            if np.abs(n_info['avg_date']-parent_tau) > n_info["nmuts"]/mu:
+                diagnosis='date_too_early'
+            else:
+                diagnosis = 'excess_mutations'
+        else:
+            diagnosis = 'date_too_late'
+        n_info['diagnosis'] = diagnosis
+        return n_info
+
     outliers = {}
+    mu = tt.clock_model['slope']*tt.data.full_length
     for n in tt.tree.get_terminals():
         n_info = node_info[n.name]
+        parent_tau = node_info[n.up.name]['tau']
         if n_info['exact_date']:
             z = (n_info['avg_date'] - n_info['tau'])/z_scale
             if np.abs(z) > z_score_threshold:
-                n_info['z'] = z
-                outliers[n.name] = n_info
+                outliers[n.name] = add_outlier_info(z, n, n_info, parent_tau, mu)
         elif n.raw_date_constraint and len(n.raw_date_constraint):
             zs = [(n_info['tau'] - x)/z_scale for x in n.raw_date_constraint]
             if zs[0]*zs[1]>0 and np.min(np.abs(zs))>z_score_threshold:
-                n_info['z'] = z
-                outliers[n.name] = n_info
+                outliers[n.name] = add_outlier_info(zs[0] if np.abs(zs[0])>np.abs(zs[1]) else zs[1], n, n_info, parent_tau, mu)
 
     return outliers
 
