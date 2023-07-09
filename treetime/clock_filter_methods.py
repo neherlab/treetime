@@ -76,7 +76,7 @@ def flag_outliers(tt, node_info, z_score_threshold, z_scale):
     outliers = {}
     mu = tt.clock_model['slope']*tt.data.full_length
     for n in tt.tree.get_terminals():
-        if n.up.up is not None:
+        if n.up.up is None:
             continue # do not label children of the root as bad -- typically a problem with root choice that will be fixed anyway
         n_info = node_info[n.name]
         parent_tau = node_info[n.up.name]['tau']
