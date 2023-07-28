@@ -142,11 +142,6 @@ def test_seq_joint_reconstruction_correct():
     from Bio import Phylo, AlignIO
     import numpy as np
     from collections import defaultdict
-    def exclusion(a, b):
-        """
-        Intersection of two lists
-        """
-        return list(set(a) - set(b))
 
     tiny_tree = Phylo.read(StringIO("((A:.060,B:.01200)C:.020,D:.0050)E:.004;"), 'newick')
     mygtr = GTR.custom(alphabet = np.array(['A', 'C', 'G', 'T']),
