@@ -63,6 +63,16 @@ else
 	echo "skyline approximation failed $retval"
 fi
 
+# From https://github.com/neherlab/treetime/issues/250 
+treetime --tree treetime_examples/data/ebola/ebola.nwk --dates treetime_examples/data/ebola/ebola.metadata.csv --sequence-length 1000
+retval="$?"
+if [ "$retval" == 0 ]; then
+	echo "sequence length only ok"
+else
+	((all_tests++))
+	echo "sequence length only failed $retval"
+fi
+
 if [ "$all_tests" == 0 ];then
 	echo "All tests passed"
 	exit 0
