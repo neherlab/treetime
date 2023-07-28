@@ -182,12 +182,14 @@ def export_sequences_and_tree(tt, basename, is_vcf=False, zero_based=False,
         Phylo.write(tt.tree, outtree_name, 'nexus', format_branch_length=fmt_bl)
     print("--- tree saved in nexus format as  \n\t %s\n"%outtree_name)
 
-    auspice = create_auspice_json(tt, timetree=timetree, confidence=confidence)
-    outtree_name_json = basename + f'auspice_tree{tree_suffix}.json'
-    with open(outtree_name_json, 'w') as fh:
-        import json
-        json.dump(auspice, fh, indent=0)
-        print("--- tree saved in auspice json format as  \n\t %s\n"%outtree_name_json)
+    # Only create auspice json if there is sequence information
+    if seq_info:
+        auspice = create_auspice_json(tt, timetree=timetree, confidence=confidence)
+        outtree_name_json = basename + f'auspice_tree{tree_suffix}.json'
+        with open(outtree_name_json, 'w') as fh:
+            import json
+            json.dump(auspice, fh, indent=0)
+            print("--- tree saved in auspice json format as  \n\t %s\n"%outtree_name_json)
 
     if timetree:
         for n in tt.tree.find_clades():
