@@ -142,11 +142,6 @@ def test_seq_joint_reconstruction_correct():
     from Bio import Phylo, AlignIO
     import numpy as np
     from collections import defaultdict
-    def exclusion(a, b):
-        """
-        Intersection of two lists
-        """
-        return list(set(a) - set(b))
 
     tiny_tree = Phylo.read(StringIO("((A:.060,B:.01200)C:.020,D:.0050)E:.004;"), 'newick')
     mygtr = GTR.custom(alphabet = np.array(['A', 'C', 'G', 'T']),
@@ -213,8 +208,6 @@ def test_seq_joint_reconstruction_correct():
 
     print ("Difference between reference and inferred LH:", (LH - LH_p).sum())
     assert ((LH - LH_p).sum())<1e-9
-
-    return myTree
 
 
 def test_seq_joint_lh_is_max():
@@ -285,4 +278,3 @@ def test_seq_joint_lh_is_max():
     print(abs(ref.max() - real) )
     # joint chooses the most likely realization of the tree
     assert(abs(ref.max() - real) < 1e-10)
-    return ref, real
