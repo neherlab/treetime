@@ -7,6 +7,7 @@ Information on outliers is saved in a pandas DataFrame `self.outliers` of `TreeT
 
 ### Other fixes
  * error when rate estimate is negative during the rate susceptibility calculation. Give hint in error message to specify the rate and its uncertainty explicitly.
+ * Fix bug [issue #250](https://github.com/neherlab/treetime/issues/250) introduced in 0.10.0 where treetime fails in absence of an alignment when trying to create an auspice json file. [PR #251](https://github.com/neherlab/treetime/pull/251)
 
 # 0.10.1: bug fix release
 

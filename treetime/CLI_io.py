@@ -182,7 +182,8 @@ def export_sequences_and_tree(tt, basename, is_vcf=False, zero_based=False,
         Phylo.write(tt.tree, outtree_name, 'nexus', format_branch_length=fmt_bl)
     print("--- tree saved in nexus format as  \n\t %s\n"%outtree_name)
 
-    auspice = create_auspice_json(tt, timetree=timetree, confidence=confidence)
+    # Only create auspice json if there is sequence information
+    auspice = create_auspice_json(tt, timetree=timetree, confidence=confidence, seq_info=seq_info)
     outtree_name_json = basename + f'auspice_tree{tree_suffix}.json'
     with open(outtree_name_json, 'w') as fh:
         import json
@@ -229,7 +230,7 @@ def print_save_plot_skyline(tt, n_std=2.0, screen=True, save='', plot='', gen=50
 
 
 
-def create_auspice_json(tt, timetree=False, confidence=False):
+def create_auspice_json(tt, timetree=False, confidence=False, seq_info=False):
     # mock up meta data for auspice json
     from datetime import datetime
     meta = {
@@ -280,11 +281,12 @@ def create_auspice_json(tt, timetree=False, confidence=False):
         j["node_attrs"]["div"] = float(pdiv + n.mutation_length)
         j["node_attrs"]["bad_branch"] = {"value": "Yes" if n.bad_branch else "No"}
 
-        j["branch_attrs"]["mutations"] = {"nuc": [f"{a}{pos+1}{d}" for a,pos,d in n.mutations if d in "ACGT-"]}
-        # generate bootstrap confidence substitute via the negative exponential of the number of mutations
-        # this is the bootstrap confidence for iid mutations (only ACGT mutations)
-        j["node_attrs"]["confidence"] = {"value":round(1-np.exp(-len([pos for a,pos,d in n.mutations if d in "ACGT"])),3)
-                                          if not n.is_terminal() else 1.0}
+        if seq_info: # only add mutations to the json if run with sequence data (fasta or vcf)
+            j["branch_attrs"]["mutations"] = {"nuc": [f"{a}{pos+1}{d}" for a,pos,d in n.mutations if d in "ACGT-"]}
+            # generate bootstrap confidence substitute via the negative exponential of the number of mutations
+            # this is the bootstrap confidence for iid mutations (only ACGT mutations)
+            j["node_attrs"]["confidence"] = {"value":round(1-np.exp(-len([pos for a,pos,d in n.mutations if d in "ACGT"])),3)
+                                            if not n.is_terminal() else 1.0}
         return j
 
     # create the tree data structure from the Biopython tree
