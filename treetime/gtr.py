@@ -545,14 +545,13 @@ class GTR(object):
             pi = np.copy(fixed_pi)
         pi/=pi.sum()
         W_ij = np.ones_like(nij)
-        mu = nij.sum()/Ti.sum()
+        mu = (nij.sum()+pc)/(Ti.sum()+pc)
         # if pi is fixed, this will immediately converge
         while LA.norm(pi_old-pi) > dp and count < Nit:
             gtr.logger(' '.join(map(str, ['GTR inference iteration',count,'change:',LA.norm(pi_old-pi)])), 3)
             count += 1
             pi_old = np.copy(pi)
-            W_ij = (nij+nij.T+2*pc_mat)/mu/(np.outer(pi,Ti) + np.outer(Ti,pi)
-                                                    + ttconf.TINY_NUMBER + 2*pc_mat)
+            W_ij = (nij+nij.T+2*pc_mat)/mu/(np.outer(pi,Ti) + np.outer(Ti,pi) + ttconf.TINY_NUMBER + 2*pc_mat)
 
             np.fill_diagonal(W_ij, 0)
             scale_factor = avg_transition(W_ij,pi, gap_index=gtr.gap_index)
@@ -561,9 +560,9 @@ class GTR(object):
             if fixed_pi is None:
                 pi = (np.sum(nij+pc_mat,axis=1)+root_state)/(ttconf.TINY_NUMBER + mu*np.dot(W_ij,Ti)+root_state.sum()+np.sum(pc_mat, axis=1))
                 pi /= pi.sum()
-                mu = nij.sum()/(ttconf.TINY_NUMBER + np.sum(pi * (W_ij.dot(Ti))))
+                mu = (nij.sum() + pc)/(np.sum(pi * (W_ij.dot(Ti)))+pc)
             else:
-                mu = nij.sum()/(ttconf.TINY_NUMBER + np.sum(pi * (W_ij.dot(pi)))*Ti.sum())
+                mu = (nij.sum() + pc)/(np.sum(pi * (W_ij.dot(pi)))*Ti.sum() + pc)
 
         if count >= Nit:
             gtr.logger('WARNING: maximum number of iterations has been reached in GTR inference',3, warn=True)
