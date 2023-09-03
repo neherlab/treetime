@@ -220,16 +220,23 @@ def parse_dates(date_file, name_col=None, date_col=None):
     Parameters
     ----------
     date_file : str
-        name of file to parse meta data from
+        name of csv/tsv file to parse meta data from
+    name_col : str, optional
+        name of column containing taxon names. If None, will use
+        first column that contains 'name', 'strain', 'accession'
+    date_col : str, optional
+        name of column containing taxon names. If None, will use 
+        a column that contains the substring 'date'
 
     Returns
     -------
-    dict
-        dictionary linking fields in a column interpreted as taxon name
-        (first column that contains 'name', 'strain', 'accession')
-        to a numerical date inferred from a column that contains 'date'.
-        It will first try to parse the column as float, than via
+    dict[str, float | list[float]]
+        dictionary mapping taxon names to numeric dates (float year)
+        It will first try to parse date column strings as float, then as min/max
+        pair of floats (e.g. '[2018.2:2018.4]'), then as date strings using
         pandas.to_datetime and finally as ambiguous date such as 2018-05-XX
+        Numeric date values are returned as float or a list of floats with
+        2 elements [min, max] if the date is ambiguous.
     """
     print("\nAttempting to parse dates...")
     dates = {}
