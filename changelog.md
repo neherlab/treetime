@@ -1,3 +1,9 @@
+# 0.11.1: bug fixes and tweaks to plotting
+- fix division by zero error during GTR inference
+- improve doc strings in parse dates
+- tweaks to background shading in timetree plot function (`plot_vs_years`)
+- allow to specify branches on which date confidence intervals are shown.
+
 # 0.11.0: new clock filter method
 
 Previously, only a crude analysis of whether the divergence of tips roughly follows a linear trend was implemented. Tips that deviated too much from that regression line were flagged as outliers and this threshold was parameterized as number of interquartile distances of the distribution of residuals `n_iqd`.
