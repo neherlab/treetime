@@ -1168,8 +1168,8 @@ def plot_vs_years(tt, step = None, ax=None, confidence=None, ticks=True, selecti
             pos = year - offset
             r = Rectangle((pos, ylim[1]-5),
                           step, ylim[0]-ylim[1]+10,
-                          facecolor=[0.7+0.1*(1+yi%2)] * 3,
-                          edgecolor=[1,1,1])
+                          facecolor=[0.88+0.04*(1+yi%2)] * 3,
+                          edgecolor=[0.8,0.8,0.8])
             ax.add_patch(r)
             if step>=1:
                 if year in tick_vals and pos>=xlim[0] and pos<=xlim[1] and ticks:
