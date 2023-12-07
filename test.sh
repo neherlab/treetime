@@ -19,5 +19,10 @@ if [ "$OUT" != 0 ]; then
   exit 1
 fi
 
+pytest test_vcf.py
+if [ "$OUT" != 0 ]; then
+  exit 1
+fi
+
 # Clean up, the 202* is to remove auto-generated output dirs
 rm -rf treetime_examples __pycache__ 202*

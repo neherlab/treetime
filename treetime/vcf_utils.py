@@ -2,6 +2,7 @@ import gzip
 import numpy as np
 from collections import defaultdict
 from textwrap import fill
+from . import TreeTimeError
 
 ## Functions to read in and print out VCF files
 
@@ -178,28 +179,46 @@ def read_vcf(vcf_file, ref_file=None):
     #about coverage, quality, counts, etc, which pyvcf goes to effort to parse
     #(and it's not easy as there's no standard ordering). Custom code can completely
     #ignore all of this.
-    import gzip
     from Bio import SeqIO
-    import numpy as np
-
-    nsamp = 0
-    posLoc = 0
-    refLoc = 0
-    altLoc = 0
-    sampLoc = 9
 
     #Use different openers depending on whether compressed
     opn = gzip.open if vcf_file.endswith(('.gz', '.GZ')) else open
 
     with opn(vcf_file, mode='rt') as f:
+        current_block = "meta-information" # The start of VCF files is the meta-information (lines starting with ##)
+        header,samps,nsamp=None,None,None
+
         for line in f:
-            if line[0] != '#':
-                #actual data - most common so first in 'if-list'!
-                dat = line.strip().split('\t')
-                POS = int(dat[posLoc])
-                REF = dat[refLoc]
-                ALT = dat[altLoc].split(',')
-                calls = np.array(dat[sampLoc:])
+            if line.startswith("##"):
+                if current_block!='meta-information':
+                    raise TreeTimeError(f"Malformed VCF file {vcf_file!r} - all the meta-information (lines starting with ##) must appear at the top of the file.")
+                ## TODO - parse the meta information!
+            elif line[0]=='#':
+                mandatory_fields = ['CHROM', 'POS', 'ID', 'REF', 'ALT', 'QUAL', 'FILTER', 'INFO', 'FORMAT']
+                # Note that FORMAT isn't mandatory unless genotype data is present. But every VCF we deal with has genotype data - that's the point!
+                header_start = "#"+"\t".join(mandatory_fields)
+                if not line.startswith(header_start):
+                    raise TreeTimeError(f"Malformed VCF file {vcf_file!r} - the header line must start with {header_start}")
+                if current_block!='meta-information':
+                    raise TreeTimeError(f"Malformed VCF file {vcf_file!r} - the header must immediately follow the meta-information lines")
+                current_block = 'header'
+                header = line.strip().split('\t')
+                samps = [ x.strip() for x in header[9:] ] #ensure no leading/trailing spaces
+                nsamp = len(samps)
+            else:
+                if current_block!='header' and current_block!='data-lines':
+                    raise TreeTimeError(f"Malformed VCF file {vcf_file!r} - the data lines must follow the header line")
+                current_block='data-lines'
+                l = line.strip()
+                if not l: # empty line
+                    continue
+                dat = l.split('\t')
+                POS = int(dat[1])
+                REF = dat[3]
+                ALT = dat[4].split(',')
+                calls = np.array(dat[9:])
+                if len(calls)!=nsamp:
+                    raise TreeTimeError(f"Malformed VCF file {vcf_file!r} - the data lines have different number of calls than the number of samples defined in the header")
 
                 #get samples that differ from Ref at this site
                 recCalls = {}
@@ -239,23 +258,16 @@ def read_vcf(vcf_file, ref_file=None):
                         #alt will differ here depending on het or no-call, must pass original
                         parseBadCall(gen, sequences[seq],insertions[seq], pos, ref, ALT)
 
-            elif line[0] == '#' and line[1] == 'C':
-                #header line, get all the information
-                header = line.strip().split('\t')
-                posLoc = header.index("POS")
-                refLoc = header.index('REF')
-                altLoc = header.index('ALT')
-                sampLoc = header.index('FORMAT')+1
-                samps = header[sampLoc:]
-                samps = [ x.strip() for x in samps ] #ensure no leading/trailing spaces
-                nsamp = len(samps)
-
-            #else you are a comment line, ignore.
 
     #Gather all variable positions
+    #NOTE: this does not consider positions of insertions
     positions = set()
     for seq, muts in sequences.items():
         positions.update(muts.keys())
+
+    num_insertions = sum([len(list(ins.keys())) for ins in insertions.values()])
+    if len(positions)==0 and num_insertions==0:
+        raise TreeTimeError(f"VCF file {vcf_file!r} has no data-lines which we could extract genotype information from!")
 
     #One or more seqs are same as ref! (No non-ref calls) So haven't been 'seen' yet
     if nsamp > len(sequences):
