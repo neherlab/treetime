@@ -145,20 +145,84 @@ class TestSimpleVcf:
         assert(data['positions'] == [pos+1 for pos in vcf_data['positions']]) 
 
 
-class TestNoCallAllele:
+class TestNoCallsOrMissing:
+    """
+    Tests a few overlapping concepts:
+    - The genotype field (i.e. within the column of a sample name) may be "." which results in a
+      no call allele. So we call this as SNP(s) changing the REF to N(s). The 4.2 spec refers
+      to this as "a call cannot be made for a sample at a given locus". Spec 4.3 defines this
+      as "If a call cannot be made for a sample at a given locus, '.' must be specified for each
+      missing allele in the GT field (for example ./. for a diploid genotype and . for haploid
+      genotype)"
+    - The ALT allele may be "*". v4.2. defines this as "missing due to a upstream deletion (sic)"
+      and 4.3 defines this as "allele missing due to overlapping deletion". Either way we encode
+      this similarly to the no-call above, i.e. changing the REF to N(s). Note that the allele
+      must be the one-character "*" - this can't appear within other bases.
+    - The ALT allele may be ".". This was introduced in version 4.3 as "a MISSING value (no variant)"
+      So we treat this the same as "*" above. Again, this must be the entire allele, '.' can't appear
+      as part of other bases. Note that while this doesn't exist in v4.2, it is commonly found in
+      v4.2 VCF files, e.g. those produced by `snp_sites`.
+    """
+
     @pytest.fixture(scope="class")
     def data(self, tmp_path_factory):
-        sample_names = ["sample_A", "sample_B"]
+        reference="ATCGA"
+        sample_names = ["sample_A", "sample_B", "sample_C", "sample_D"]
         data_lines = [
-            ["1", "2",  ".", "T", "A",   ".", ".", ".", "GT", ".", "1"], # No-call allele -> make a SNP of T2N in sample_A
-            ["1", "4",  ".", "C", "G",   ".", ".", ".", "GT", "1", "1"],
+            ## No call alleles
+            ["1", "2",  ".", "T", "A",    ".", ".", ".", "GT", ".", "1", "0", "0"], # sample A has T2N
+            ["1", "4",  ".", "GA", "C",   ".", ".", ".", "GT", ".", "1", "0", "0"], # sample A has GA -> NN
+            ## star alleles & dot alleles indicate missing
+            ["1", "3",  ".", "C", "*,G",  ".", ".", ".", "GT", "1", "2", "0", "0"], # sample A has C->N
+            ["1", "3",  ".", "C", "T,.",  ".", ".", ".", "GT", "0", "0", "1", "2"], # sample D has C->N
+            ["1", "4",  ".", "GA", ".,*", ".", ".", ".", "GT", "0", "0", "1", "2"], # both samples C & D have G->N and A->N
         ]
-        filenames = write_data(tmp_path_factory, sample_names, data_lines, "ATGC")
+        filenames = write_data(tmp_path_factory, sample_names, data_lines, reference)
         return {"filenames": filenames}
 
     def test_no_call_allele(self, data):
         vcf_data = read_vcf(*data['filenames'])
         assert(vcf_data['sequences']['sample_A'][zero_based(2)]=='N')
+        assert(vcf_data['sequences']['sample_A'][zero_based(4)]=='N')
+        assert(vcf_data['sequences']['sample_A'][zero_based(5)]=='N')
+        assert(vcf_data['sequences']['sample_B'][zero_based(4)]=='C') 
+        assert(vcf_data['sequences']['sample_B'][zero_based(5)]=='-')
+
+    def test_star_allele(self, data):
+        vcf_data = read_vcf(*data['filenames'])
+        assert(vcf_data['sequences']['sample_A'][zero_based(3)]=='N')
+        assert(vcf_data['sequences']['sample_B'][zero_based(3)]=='G')
+
+        assert(vcf_data['sequences']['sample_D'][zero_based(4)]=='N')
+        assert(vcf_data['sequences']['sample_D'][zero_based(5)]=='N')
+
+    def test_dot_allele(self, data):
+        vcf_data = read_vcf(*data['filenames'])
+        assert(vcf_data['sequences']['sample_C'][zero_based(3)]=='T')
+        assert(vcf_data['sequences']['sample_D'][zero_based(3)]=='N')
+
+        assert(vcf_data['sequences']['sample_C'][zero_based(4)]=='N')
+        assert(vcf_data['sequences']['sample_C'][zero_based(5)]=='N')
+
+
+    def test_malformed_star_allele(self, tmp_path):
+        """* must be an entire allele, not together with other bases"""
+        with pytest.raises(TreeTimeError):
+            read_vcf(create_vcf(tmp_path, """\
+                #CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tsample_A\tsample_B\tsample_C
+                ##fileformat=VCFv4.3
+                1\t5\t.\tT\tC*\t.\t.\t.\tGT\t1\t1\t1
+            """))
+
+    def test_malformed_dot_allele(self, tmp_path):
+        """. must be an entire allele, not together with other bases"""
+        with pytest.raises(TreeTimeError):
+            read_vcf(create_vcf(tmp_path, """\
+                #CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tsample_A\tsample_B\tsample_C
+                ##fileformat=VCFv4.3
+                1\t5\t.\tT\tC.,G\t.\t.\t.\tGT\t1\t1\t1
+            """))
+
 
 class TestVcfSpecExamples:
     """

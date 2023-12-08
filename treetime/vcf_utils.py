@@ -55,6 +55,8 @@ def read_vcf(vcf_file, ref_file=None):
             Python list of all positions with a mutation, insertion, or deletion.
 
     """
+    import re
+    ALT_CHARS = re.compile(r"^([ACGTNacgtn]+|\*|\.)$") # straight from the VCF 4.3 spec
 
     #Programming Note:
     # Note on VCF Format
@@ -106,6 +108,11 @@ def read_vcf(vcf_file, ref_file=None):
     #Parses a 'normal' (not hetero or no-call) call depending if insertion+deletion, insertion,
     #deletion, or single bp subsitution
     def parse_homozygous_call(snps, ins, pos, ref, alt):
+
+        # Replace missing allele with N(s). See commentary in test_vcf.py::TestNoCallsOrMissing for more details
+        if alt=='*' or alt=='.':
+            alt = "N" * len(ref)
+
         #Insertion where there are also deletions (special handling)
         if len(ref) > 1 and len(alt)>len(ref):
             ## NOTE: the loop below contains a potential double-counting bug. For example,
@@ -116,12 +123,7 @@ def read_vcf(vcf_file, ref_file=None):
             for i in range(len(ref)):
                 #if the pos doesn't match, store in sequences
                 if ref[i] != alt[i]:
-                    ## TODO XXX - the following line potentially misconstrues `alt` which is the alternate allele base(s)
-                    ## for this call. According to the VCF 4.2 spec this must be a case-insensitive string of {A,C,G,T,N,*}
-                    ## (because we've asserted it's a GT FORMAT). However 4.3 does allow the character "." defined as
-                    ## "MISSING value ‘.’ (no variant)". This shouldn't be confused with the definition of '.' as
-                    ## a "call cannot be made" identifier when it appears in a sample column.
-                    snps[pos+i] = (alt[i] if alt[i] != '.' else 'N') #'.' = no-call
+                    snps[pos+i] = alt[i]
                 #if about to run out of ref, store rest:
                 if (i+1) >= len(ref):
                     ins[pos+i] = alt[i:]
@@ -134,8 +136,7 @@ def read_vcf(vcf_file, ref_file=None):
                 #if not, there may be mutations
                 else:
                     if ref[i] != alt[i]:
-                        ## TODO XXX See above comment, but alt cannot be '.'
-                        snps[pos+i] = (alt[i] if alt[i] != '.' else 'N') #'.' = no-call
+                        snps[pos+i] = alt[i]
         #Insertion
         elif len(alt) > 1:
             ins[pos] = alt
@@ -145,6 +146,7 @@ def read_vcf(vcf_file, ref_file=None):
 
 
     #Parses a 'bad' (hetero or no-call) call depending on what it is
+    #TODO - consider the situation where the alternate allele base(s) is '*' (done for the homozygous case)
     def parse_heterozygous_call(gen, snps, ins, pos, ref, ALT):
         #Deletion
         #   REF     ALT     Seq1    Seq2    Seq3
@@ -185,6 +187,24 @@ def read_vcf(vcf_file, ref_file=None):
             snps[pos] = alt
         #else a no-call insertion, so ignore.
 
+    def validate_alt(alt):
+        """
+        from the VCF 4.3 spec:
+        > the ALT field must be a symbolic allele, or a breakend replacement string,
+        > or match the regular expression [see ALT_CHARS regex, above]
+        Since we only consider GT variation, the symbolic alleles and breakends aren't
+        relevant for us.
+
+        The spec also states:
+        > Tools processing VCF files are not required to preserve case in the allele String
+        
+        Return the uppercase allele bases (string) _or_ None if it fails validation
+        """
+        if ALT_CHARS.match(alt):
+            return alt.upper()
+        else:
+            print(f"WARNING: Encountered invalid allele base(s) {alt!r}. Skipping...")
+            return None
 
     #House code is *much* faster than pyvcf because we don't care about all info
     #about coverage, quality, counts, etc, which pyvcf goes to effort to parse
@@ -259,12 +279,13 @@ def read_vcf(vcf_file, ref_file=None):
                     if len(gts)>1 and len(set(gts))==1:
                         gt = gts[0]
 
-                    if gt.isdigit(): # haploid, with a valid alternate allele (i.e. a call has been made)
+                    if gt.isdigit(): # haploid, and a call has been made (i.e. it's not gt='.')
                         gt = int(gt)
                         if gt==0:
                             continue # reference allele!
-                        alt = ALT[gt-1]
-                        parse_homozygous_call(sequences[sname],insertions[sname], pos, REF, alt)
+                        alt = validate_alt(ALT[gt-1]) # gt is the 1-based lookup, but ALT is 0-indexed
+                        if alt:
+                            parse_homozygous_call(sequences[sname],insertions[sname], pos, REF, alt)
                         continue
 
                     if gt=='.': # haploid "call cannot be made" identifier - replace REF with N(s)
