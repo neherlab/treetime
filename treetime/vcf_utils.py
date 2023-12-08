@@ -105,12 +105,20 @@ def read_vcf(vcf_file, ref_file=None):
 
     #Parses a 'normal' (not hetero or no-call) call depending if insertion+deletion, insertion,
     #deletion, or single bp subsitution
-    def parseCall(snps, ins, pos, ref, alt):
+    def parse_homozygous_call(snps, ins, pos, ref, alt):
         #Insertion where there are also deletions (special handling)
         if len(ref) > 1 and len(alt)>len(ref):
+            ## TODO XXX - the loop below contains a double-counting bug. Imagine the following
+            ## data: REF='TCG' ALT='TCAG' (Example 5.1.3 in the VCF 4.2 spec)
+            ## then when i=2, we'll add both snps[pos+2] = 'A' as well as ins[pos+2] = 'AG'
             for i in range(len(ref)):
                 #if the pos doesn't match, store in sequences
                 if ref[i] != alt[i]:
+                    ## TODO XXX - the following line potentially misconstrues `alt` which is the alternate allele base(s)
+                    ## for this call. According to the VCF 4.2 spec this must be a case-insensitive string of {A,C,G,T,N,*}
+                    ## (because we've asserted it's a GT FORMAT). However 4.3 does allow the character "." defined as
+                    ## "MISSING value ‘.’ (no variant)". This shouldn't be confused with the definition of '.' as
+                    ## a "call cannot be made" identifier when it appears in a sample column.
                     snps[pos+i] = (alt[i] if alt[i] != '.' else 'N') #'.' = no-call
                 #if about to run out of ref, store rest:
                 if (i+1) >= len(ref):
@@ -124,6 +132,7 @@ def read_vcf(vcf_file, ref_file=None):
                 #if not, there may be mutations
                 else:
                     if ref[i] != alt[i]:
+                        ## TODO XXX See above comment, but alt cannot be '.'
                         snps[pos+i] = (alt[i] if alt[i] != '.' else 'N') #'.' = no-call
         #Insertion
         elif len(alt) > 1:
@@ -134,7 +143,7 @@ def read_vcf(vcf_file, ref_file=None):
 
 
     #Parses a 'bad' (hetero or no-call) call depending on what it is
-    def parseBadCall(gen, snps, ins, pos, ref, ALT):
+    def parse_heterozygous_call(gen, snps, ins, pos, ref, ALT):
         #Deletion
         #   REF     ALT     Seq1    Seq2    Seq3
         #   GCC     G       1/1     0/1     ./.
@@ -205,6 +214,8 @@ def read_vcf(vcf_file, ref_file=None):
                 header = line.strip().split('\t')
                 samps = [ x.strip() for x in header[9:] ] #ensure no leading/trailing spaces
                 nsamp = len(samps)
+                for sample_name in samps:
+                    sequences[sample_name] = {}
             else:
                 if current_block!='header' and current_block!='data-lines':
                     raise TreeTimeError(f"Malformed VCF file {vcf_file!r} - the data lines must follow the header line")
@@ -213,51 +224,54 @@ def read_vcf(vcf_file, ref_file=None):
                 if not l: # empty line
                     continue
                 dat = l.split('\t')
-                POS = int(dat[1])
+                pos = int(dat[1])-1 # Convert VCF 1-based to python 0-based
                 REF = dat[3]
-                ALT = dat[4].split(',')
+                ALT = dat[4].split(',') # List of alternate alleles (strings)
                 calls = np.array(dat[9:])
                 if len(calls)!=nsamp:
                     raise TreeTimeError(f"Malformed VCF file {vcf_file!r} - the data lines have different number of calls than the number of samples defined in the header")
 
+                # Treetime only parses GT FORMAT calls. Moreover, "the first sub-field must always be the genotype (GT) if it is present"
+                # according to the VCF 4.2 spec. Note that if the VCF is for one sample only then the format's a bit different, but this'll
+                # raise an error above because the header differs from what we assert. Other variation (CN, BND etc) is not parsed by
+                # TreeTime, only GT.
+                FORMAT = dat[8]
+                if not FORMAT.startswith('GT'):
+                    continue
+
                 #get samples that differ from Ref at this site
-                recCalls = {}
                 for sname, sa in zip(samps, calls):
-                    if ':' in sa: #if proper VCF file (followed by quality/coverage info)
-                        gt = sa.split(':')[0]
-                    else: #if 'pseudo' VCF file (nextstrain output, or otherwise stripped)
-                        gt = sa
+                    gt = sa.split(':')[0] # May be multiple colon-separated subfields, depending on the line's FORMAT
 
-                    # convert haploid calls to pseudo diploid
-                    if gt == '0':
-                        gt = '0/0'
-                    elif gt == '1':
-                        gt = '1/1'
-                    elif gt == '.':
-                        gt = './.'
+                    # `gt` is the "index" of the alternate allele for this sample.
+                    # The format of `gt` is quite varied:
+                    # For haploid genomes, it's simply a single int _or_ "." (meaning a call cannot be made at the locus)
+                    # For polyploid genomes, the format is a list of {int, '.'} separated by "/" or "|"
+                    # ('/' means unphased, '|' means phased). 
+                    # If the index is an int, it's the 1-based (!) lookup index for ALT
 
-                    #ignore if ref call: '.' or '0/0', depending on VCF
-                    if ('/' in gt and gt != '0/0') or ('|' in gt and gt != '0|0'):
-                        recCalls[sname] = gt
+                    # Split on the valid separators - if haploid, then we'll get a list len=1
+                    gts = gt.split('|') if '|' in gt else gt.split('/')
 
-                #store the position and the alt
-                for seq, gen in recCalls.items():
-                    ref = REF
-                    pos = POS-1     #VCF numbering starts from 1, but Reference seq numbering
-                                    #will be from 0 because it's python!
-                    #Accepts only calls that are 1/1, 2/2 etc. Rejects hets and no-calls
-                    if gen[0] != '0' and gen[2] != '0' and gen[0] != '.' and gen[2] != '.':
-                        alt = str(ALT[int(gen[0])-1])   #get the index of the alternate
-                        if seq not in sequences.keys():
-                            sequences[seq] = {}
+                    # if polyploid, but homozygous, then treat as if haploid
+                    if len(gts)>1 and len(set(gts))==1:
+                        gt = gts[0]
 
-                        parseCall(sequences[seq],insertions[seq], pos, ref, alt)
+                    if gt.isdigit(): # haploid, with a valid alternate allele (i.e. a call has been made)
+                        gt = int(gt)
+                        if gt==0:
+                            continue # reference allele!
+                        alt = ALT[gt-1]
+                        parse_homozygous_call(sequences[sname],insertions[sname], pos, REF, alt)
+                        continue
 
-                    #If is heterozygote call (0/1) or no call (./.)
-                    else:
-                        #alt will differ here depending on het or no-call, must pass original
-                        parseBadCall(gen, sequences[seq],insertions[seq], pos, ref, ALT)
+                    if gt=='.': # haploid "call cannot be made" identifier - replace REF with N(s)
+                        for i in range(len(REF)):
+                            sequences[sname][pos+i] = 'N'
+                        continue
 
+                    # ---- heterozygous polyploid call  ----
+                    parse_heterozygous_call(gt, sequences[sname],insertions[sname], pos, REF, ALT)
 
     #Gather all variable positions
     #NOTE: this does not consider positions of insertions
