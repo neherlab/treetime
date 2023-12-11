@@ -108,9 +108,11 @@ def read_vcf(vcf_file, ref_file=None):
     def parse_homozygous_call(snps, ins, pos, ref, alt):
         #Insertion where there are also deletions (special handling)
         if len(ref) > 1 and len(alt)>len(ref):
-            ## TODO XXX - the loop below contains a double-counting bug. Imagine the following
-            ## data: REF='TCG' ALT='TCAG' (Example 5.1.3 in the VCF 4.2 spec)
-            ## then when i=2, we'll add both snps[pos+2] = 'A' as well as ins[pos+2] = 'AG'
+            ## NOTE: the loop below contains a potential double-counting bug. For example,
+            ## REF='TCG' ALT='TCAG' (Example 5.1.3 in the VCF 4.2 spec), then when i=2
+            ## we'll add both snps[pos+2] = 'A' as well as ins[pos+2] = 'AG'. This has been 
+            ## detailed within `test_vcf.py`, as it may also be the expected way to encode
+            ## insertions within TreeTime
             for i in range(len(ref)):
                 #if the pos doesn't match, store in sequences
                 if ref[i] != alt[i]:

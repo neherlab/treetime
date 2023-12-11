@@ -159,3 +159,115 @@ class TestNoCallAllele:
     def test_no_call_allele(self, data):
         vcf_data = read_vcf(*data['filenames'])
         assert(vcf_data['sequences']['sample_A'][zero_based(2)]=='N')
+
+class TestVcfSpecExamples:
+    """
+    Test the examples provided in the VCF specs. Note that the examples
+    aren't provided as per-sample VCF files, so there's a bit of interpretation
+    required to create the example data. Note that the actual `test_<name>`
+    methods are added dynamically after the class definition.
+    """
+    def create(self, tmp_path, input):
+        lines = ["##fileformat=VCFv4.2", # Actual version may differ, but we don't parse this so it doesn't matter (yet)
+            "##contig=<ID=1,length=50>",
+            "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">",
+            "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t" + "\t".join(input['samples']),
+        ]
+        for d in input['data']:
+            lines.append(f"{d['chrom']}\t{d['pos']}\t.\t{d['ref']}\t{d['alt']}\t.\t.\t.\tGT\t" + "\t".join([str(x) for x in d['values']]))
+        return create_vcf(tmp_path, "\n".join(lines))
+
+    @staticmethod
+    def add_test(example_data):
+        def test(self, tmp_path):
+            vcf = read_vcf(self.create(tmp_path, example_data))
+            for sample_name, sample_data in example_data['expect_sequences'].items():
+                assert(sample_name in vcf['sequences'])
+                for snp in sample_data:
+                    assert(len(snp)==2)
+                    assert(vcf['sequences'][sample_name][zero_based(int(snp[0]))] == snp[1])
+                assert(len(vcf['sequences'][sample_name].keys()) == len(sample_data))
+            for sample_name, sample_data in example_data['expect_insertions'].items():
+                assert(sample_name in vcf['insertions'])
+                for ins in sample_data:
+                    assert(vcf['insertions'][sample_name][zero_based(int(ins[0]))] == ins[1:])
+                assert(len(vcf['insertions'][sample_name].keys()) == len(sample_data))
+        return test
+
+"""
+-------- comment re: TreeTime's encoding of insertions --------
+
+Give a reference base of 'C' at 1-based position 2, and an
+insertion _after_ this of 'A', TreeTime encodes this as an insertion
+of 'CA' at (0-based) position 1. This was unexpected to me,
+I would have expected an insertion of just 'A'. However I've written
+the tests to conform to TreeTime's existing behaviour (version 0.11.1)
+
+---------------------------------------------------------------
+"""
+
+vcf_spec_data = {
+    'version_4_2': {
+        '5_1_1': {
+            'samples': ['A', 'B', 'C'],
+            'data': [
+                {'chrom': 20, 'pos': 3, 'ref': 'C', 'alt': 'G', 'values': [1, 0, 0]},
+                {'chrom': 20, 'pos': 2, 'ref': 'TC', 'alt': 'T,TCA', 'values': [0, 1, 2]}
+            ],
+            # Note that with TC->TCA, there are no sequence changes (T->T, C->C) but one insertion ("A")
+            'expect_sequences': {'A': ['3G'], 'B': ['3-']},
+            'expect_insertions': {'C': ['3CA']} # see comment above. Actually only a single base "A" insertion
+        },
+        '5_1_2': {
+            'samples': ['A', 'B'],
+            'data': [
+                {'chrom': 20, 'pos': 2, 'ref': 'TC', 'alt': 'TG,T', 'values': [1,2]}
+            ],
+            'expect_sequences': {'A': ['3G'], 'B': ['3-']},
+            'expect_insertions': {}
+        },
+        '5_1_3': {
+            'samples': ['A', 'B', 'C'],
+            ## This example is quite hard to understand for sample A. The alignment provided indicates that
+            ## TCG -> T-G is encoded as "ref: TCG, alt: TG". But without aligning the alt to the ref, the only
+            ## sane interpretation of this is 2 changes: C->G and G->-. This is what the spec means by
+            ## "the molecular equivalence explicitly listed above in the per-base alignment is discarded so the
+            ## actual placement of equivalent g isn't retained" (also explained in example 5.2.4)
+            ## Similarly, for sample C, the actual event is described as "A base is inserted wrt the reference
+            ## sequence" but the way the VCF file reads we are going to have a SNP (G->A) + a insertion (G)
+            'data': [
+                {'chrom': 20, 'pos': 2, 'ref': 'TCG', 'alt': 'TG,T,TCAG', 'values': [1,2,3]}
+            ],
+            'expect_sequences': {'A': ['3G', '4-'], 'B': ['3-', '4-'], 'C': ['4A']},
+            'expect_insertions': {'C': ['4AG']} # See comment above
+        },
+        '5_2_1': {
+            'samples': ['A'],
+            'data': [
+                {'chrom': 20, 'pos': 3, 'ref': 'C', 'alt': 'T', 'values': [1]}
+            ],
+            'expect_sequences': {'A': ['3T']},
+            'expect_insertions': {}
+        },
+        '5_2_2': {
+            'samples': ['A'],
+            'data': [
+                {'chrom': 20, 'pos': 3, 'ref': 'C', 'alt': 'CTAG', 'values': [1]}
+            ],
+            'expect_sequences': {},
+            'expect_insertions': {'A': ['3CTAG']} # See comment above
+        },
+        '5_2_3': {
+            'samples': ['A'],
+            'data': [
+                {'chrom': 20, 'pos': 2, 'ref': 'TCG', 'alt': 'T', 'values': [1]}
+            ],
+            'expect_sequences': {'A': ['3-', '4-']},
+            'expect_insertions': {}
+        },
+    }
+}
+# dynamically create a test for each example in the above data (by adding methods to the class)
+for spec_version, spec_data in vcf_spec_data.items():
+    for example_key, example_data in spec_data.items():
+        setattr(TestVcfSpecExamples, f"test_{spec_version}_example_{example_key}", TestVcfSpecExamples.add_test(example_data))
