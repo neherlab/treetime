@@ -1,6 +1,6 @@
 import pytest
 from textwrap import dedent
-from treetime.vcf_utils import read_vcf
+from treetime.vcf_utils import read_vcf, write_vcf
 from treetime import TreeTimeError
 
 def create_vcf(dir, content):
@@ -51,7 +51,7 @@ def zero_based(idx):
 def write_data(tmp_path_factory, sample_names, data_lines, reference_seq, meta_lines=None, reference_name='reference_name'):
     """helper function to create and write a VCF and FASTA file. Returns a tuple of filenames"""
     if meta_lines:
-        vcf = "\n".join(meta_lines)
+        vcf = "\n".join(meta_lines)+"\n"
     else:
         vcf = dedent("""\
             ##fileformat=VCFv4.3
@@ -371,3 +371,84 @@ class TestMutationAndInsertion:
         assert(vcf_data['sequences']['sample_B'][zero_based(5)]=='G')
         assert(vcf_data['insertions']['sample_B'][zero_based(5)]=='GT') # see comment above re: insertion encoding
 
+
+    
+def roundtrip(tmp_path, sample_names, data_lines, reference, meta_lines):
+    """
+    Write the provided data to a (temporary) VCF file.
+    Then read it via `read_vcf` and store this as `vcf_a`.
+    Then write this data via `write_vcf` and read it back, storing as `vcf_b`.
+    Returns a tuple of (vcf_a, vcf_b)
+    """
+
+    dir = tmp_path / 'data'
+    dir.mkdir()
+    vcf_filename_a = str(dir / "a.vcf")
+    vcf_filename_b = str(dir / "b.vcf")
+    reference_filename = str(dir / 'reference.fasta')
+
+    with open(str(dir / 'reference.fasta'), 'w') as fh:
+        print(dedent(f"""\
+            >reference_name
+            {reference}
+        """), file=fh)
+
+    with open(vcf_filename_a, 'w') as fh:
+        vcf_lines = meta_lines[:] + \
+            ["#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t" + "\t".join(sample_names)] + \
+            ["\t".join(data) for data in data_lines]
+        print("\n".join(vcf_lines), file=fh)
+
+    vcf_a = read_vcf(vcf_filename_a, reference_filename)
+
+    ## take this data and write it out as a VCF
+    write_vcf(
+        {'sequences': vcf_a['sequences'], 'reference': vcf_a['reference'], 'positions': vcf_a['positions']},
+        vcf_filename_b
+    )
+    ## then read in this (just-created) VCF
+    vcf_b = read_vcf(vcf_filename_b, reference_filename)
+
+    ## uncomment the following & run pytest with "-s" to see the contents of the VCF file being written by TreeTime
+    # print("_________________________________")
+    # with open(vcf_filename_b) as fh:
+    #     for line in fh:
+    #         print(line, end='')
+    # print("\n_________________________________")
+
+    return (vcf_a, vcf_b)
+
+
+class TestWriting:
+    """
+    Write a simple VCF file out (created by hand), parse it with `read_vcf` (called "vcf_a")
+    then write that data out and read it back in (called "vcf_b"). vcf_a should equal vcf_b
+    for the data we care about.
+    """
+
+    def test_basic_roundtripping_vcf(self, tmp_path):
+        [vcf_a, vcf_b] = roundtrip(tmp_path,
+            reference = "ATCGACC",
+            meta_lines = [
+                "##fileformat=VCFv4.3",
+                "##contig=<ID=1,length=7>",
+                "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">"
+            ],
+            sample_names = ["sample_A", "sample_B"],
+            data_lines = [
+                ["1", "2",  ".", "T", "G",    ".", ".", ".", "GT", "1", "0"],
+                ["1", "3",  ".", "C", "GA,*", ".", ".", ".", "GT", "1", "2"], # "A" insertion will be lost on roundtrip!
+                ["1", "5",  ".", "A", "TC",   ".", ".", ".", "GT", ".", "1"],
+                ["1", "6",  ".", "CC", "C",   ".", ".", ".", "GT", "1", "0"], # del of (1-based) pos 7 in sample A
+            ],
+        )
+
+        ## reference is certainly the same, the same FASTA file is being used for both read_vcf commands, but check anyway
+        assert(vcf_a['reference']==vcf_a['reference'])
+        ## insertions, if there are any, _won't_ be the same because `write_vcf` doesn't read insertions even if they're provided
+        ## as input. Note that vcf_a does have an insertion!
+
+        ## positions should be the same (positions are only reflective of data in `sequences`, so the ignoring of insertions is ok)
+        assert(vcf_a['positions']==vcf_a['positions'])
+        ## check sequences are the same
+        assert(vcf_a['sequences']==vcf_b['sequences'])
