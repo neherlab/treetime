@@ -342,8 +342,13 @@ def write_vcf(tree_dict, file_name):#, compress=False):
     Parameters
     ----------
      tree_dict: nested dict
-        A nested dict with keys 'sequence' 'reference' and 'positions',
-        as is created by :py:meth:`treetime.TreeAnc.get_tree_dict`
+        A nested dict with required keys of:
+        'sequences': maps sampleName -> pos (0-based) -> new base (SNP)
+        'reference': string of reference nuc sequence
+        'positions': sorted list of 0-based positions with variation in sequences
+        And optional keys:
+        'inferred_const_sites': list or set, 0-based positions to skip output for.
+        This input is often created by :py:meth:`treetime.TreeAnc.get_tree_dict`
 
      file_name: str
         File to which the new VCF should be written out. File names ending with
@@ -423,7 +428,7 @@ def write_vcf(tree_dict, file_name):#, compress=False):
         #Rotate them into 'calls'
         align = np.asarray(sites).T
 
-        #Get rid of '-', and put '.' for calls that match ref
+        #Get rid of '-', and put '0' for calls that match ref
         #Only removes trailing '-'. This breaks VCF convension, but the standard
         #VCF way of handling this* is really complicated, and the situation is rare.
         #(*deletions and mutations at the same locations)
@@ -435,7 +440,7 @@ def write_vcf(tree_dict, file_name):#, compress=False):
                 gp-=1
             pat = "".join(pt)
             if pat == refb:
-                fullpat.append('.')
+                fullpat.append('0')
             else:
                 fullpat.append(pat)
 
@@ -515,13 +520,13 @@ def write_vcf(tree_dict, file_name):#, compress=False):
         #If deletion, treat affected bases as 1 'call':
         if delete or deleteGroup:
             i, pi, pos, refb, pattern = handleDeletions(i, pi, pos, ref, delete, pattern)
-        #If no deletion, replace ref with '.', as in VCF format
+        #If no deletion, replace ref with '0' which means the reference base is unchanged
         else:
-            pattern[pattern==refb] = '.'
+            pattern[pattern==refb] = '0'
 
-        #Get the list of ALTs - minus any '.'!
+        #Get the list of ALTs - minus any '0' which are unchanged reference sequences!
         uniques = np.unique(pattern)
-        uniques = uniques[np.where(uniques!='.')]
+        uniques = uniques[np.where(uniques!='0')]
 
         #Convert bases to the number that matches the ALT
         j=1
