@@ -428,7 +428,7 @@ class TestMetadataParsing:
 
 
     
-def roundtrip(tmp_path, sample_names, data_lines, reference, meta_lines):
+def roundtrip(tmp_path, sample_names, data_lines, reference, meta_lines, pass_metadata=True):
     """
     Write the provided data to a (temporary) VCF file.
     Then read it via `read_vcf` and store this as `vcf_a`.
@@ -457,10 +457,11 @@ def roundtrip(tmp_path, sample_names, data_lines, reference, meta_lines):
     vcf_a = read_vcf(vcf_filename_a, reference_filename)
 
     ## take this data and write it out as a VCF
-    write_vcf(
-        {'sequences': vcf_a['sequences'], 'reference': vcf_a['reference'], 'positions': vcf_a['positions']},
-        vcf_filename_b
-    )
+    tree_dict = {'sequences': vcf_a['sequences'], 'reference': vcf_a['reference'], 'positions': vcf_a['positions']}
+    if pass_metadata:
+        tree_dict['metadata'] = vcf_a['metadata']
+    write_vcf(tree_dict, vcf_filename_b)
+
     ## then read in this (just-created) VCF
     vcf_b = read_vcf(vcf_filename_b, reference_filename)
 
@@ -491,17 +492,55 @@ class TestWriting:
             ],
             sample_names = ["sample_A", "sample_B"],
             data_lines = [
-                ["1", "2",  ".", "T", "G",    ".", ".", ".", "GT", "1", "0"],
-                ["1", "3",  ".", "C", "GA,*", ".", ".", ".", "GT", "1", "2"], # "A" insertion will be lost on roundtrip!
-                ["1", "5",  ".", "A", "TC",   ".", ".", ".", "GT", ".", "1"],
-                ["1", "6",  ".", "CC", "C",   ".", ".", ".", "GT", "1", "0"], # del of (1-based) pos 7 in sample A
+                ["foo", "2",  ".", "T", "G",    ".", ".", ".", "GT", "1", "0"],
+                ["foo", "3",  ".", "C", "GA,*", ".", ".", ".", "GT", "1", "2"], # "A" insertion will be lost on roundtrip!
+                ["foo", "5",  ".", "A", "TC",   ".", ".", ".", "GT", ".", "1"],
+                ["foo", "6",  ".", "CC", "C",   ".", ".", ".", "GT", "1", "0"], # del of (1-based) pos 7 in sample A
             ],
+            pass_metadata=False
         )
 
         ## reference is certainly the same, the same FASTA file is being used for both read_vcf commands, but check anyway
         assert(vcf_a['reference']==vcf_a['reference'])
         ## insertions, if there are any, _won't_ be the same because `write_vcf` doesn't read insertions even if they're provided
         ## as input. Note that vcf_a does have an insertion!
+
+        ## The meta-lines are different (as expected) and since we are not passing the metadata information to `write_vcf`
+        ## we get back the defaults, which differ from the input
+        assert(vcf_a['metadata']['chrom'] == "foo" and vcf_b['metadata']['chrom'] == "1")
+        assert(vcf_a['metadata']['ploidy'] == 1 and vcf_b['metadata']['ploidy'] == 2)
+
+        ## positions should be the same (positions are only reflective of data in `sequences`, so the ignoring of insertions is ok)
+        assert(vcf_a['positions']==vcf_a['positions'])
+        ## check sequences are the same
+        assert(vcf_a['sequences']==vcf_b['sequences'])
+
+    def test_basic_roundtripping_vcf_with_metadata(self, tmp_path):
+        [vcf_a, vcf_b] = roundtrip(tmp_path,
+            reference = "ATCGACC",
+            meta_lines = [
+                "##fileformat=VCFv4.3",
+                "##contig=<ID=1,length=7>",
+                "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">"
+            ],
+            sample_names = ["sample_A", "sample_B"],
+            data_lines = [
+                ["1", "2",  ".", "T", "G",    ".", ".", ".", "GT", "1", "0"],
+                ["1", "3",  ".", "C", "GA,*", ".", ".", ".", "GT", "1", "2"], # "A" insertion will be lost on roundtrip!
+                ["1", "5",  ".", "A", "TC",   ".", ".", ".", "GT", ".", "1"],
+                ["1", "6",  ".", "CC", "C",   ".", ".", ".", "GT", "1", "0"], # del of (1-based) pos 7 in sample A
+            ],
+            pass_metadata=True
+        )
+
+        ## reference is certainly the same, the same FASTA file is being used for both read_vcf commands, but check anyway
+        assert(vcf_a['reference']==vcf_a['reference'])
+        ## insertions, if there are any, _won't_ be the same because `write_vcf` doesn't read insertions even if they're provided
+        ## as input. Note that vcf_a does have an insertion!
+
+        ## The meta-lines are different (as expected) but the chrom + ploidy should be the same
+        assert(vcf_a['metadata']['chrom'] == vcf_b['metadata']['chrom'])
+        assert(vcf_a['metadata']['ploidy'] == vcf_b['metadata']['ploidy'])
 
         ## positions should be the same (positions are only reflective of data in `sequences`, so the ignoring of insertions is ok)
         assert(vcf_a['positions']==vcf_a['positions'])

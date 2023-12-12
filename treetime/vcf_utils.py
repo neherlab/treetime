@@ -365,6 +365,11 @@ def write_vcf(tree_dict, file_name):#, compress=False):
         And optional keys:
         'inferred_const_sites': list or set, 0-based positions to skip output for.
         This input is often created by :py:meth:`treetime.TreeAnc.get_tree_dict`
+        'metadata': dict of information to influence VCF formatting. Only
+        the following keys are used:
+        'metadata.ploidy': int. Influences how genotype calls are formatted. (default
+        of 2 (diploid) used if not provided)
+        'metadata.chrom': str. The chromosome name (default of '1' used if not provided)
 
      file_name: str
         File to which the new VCF should be written out. File names ending with
@@ -402,6 +407,8 @@ def write_vcf(tree_dict, file_name):#, compress=False):
     sequences = tree_dict['sequences']
     ref = tree_dict['reference']
     positions = tree_dict['positions']
+    ploidy = tree_dict.get('metadata', {}).get('ploidy', 2)
+    chrom_name = tree_dict.get('metadata', {}).get('chrom', '1')
 
     def handleDeletions(i, pi, pos, ref, delete, pattern):
         refb = ref[pi]
@@ -549,8 +556,10 @@ def write_vcf(tree_dict, file_name):#, compress=False):
         for u in uniques:
             pattern[np.where(pattern==u)[0]] = str(j)
             j+=1
-        #Now convert these calls to #/# (VCF format)
-        calls = [ j+"/"+j if j!='.' else '.' for j in pattern ]
+        #Now convert these calls to a VCF format matching the ploidy.
+        #In case ploidy>1, we treat it as unphased ('/' as the separator)
+        #Note that this includes patterns of "." (no-calls)
+        calls = [ "/".join([j]*ploidy) for j in pattern ]
 
         #What if there's no variation at a variable site??
         #This can happen when sites are modified by TreeTime - see below.
@@ -567,7 +576,7 @@ def write_vcf(tree_dict, file_name):#, compress=False):
         #Write it out - Increment positions by 1 so it's in VCF numbering
         #If no longer variable, and explained, don't write it out
         if printPos:
-            output = ["MTB_anc", str(pos), ".", refb, ",".join(uniques), ".", "PASS", ".", "GT"] + calls
+            output = [chrom_name, str(pos), ".", refb, ",".join(uniques), ".", "PASS", ".", "GT"] + calls
             vcfWrite.append("\t".join(output))
 
         i+=1
