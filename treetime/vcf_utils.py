@@ -85,6 +85,11 @@ def read_vcf(vcf_file, ref_file=None):
     #define here, so that all sub-functions can access them
     sequences = defaultdict(dict)
     insertions = defaultdict(dict) #Currently not used, but kept in case of future use.
+    metadata = {
+        'meta_lines': [], # all the VCF meta_lines, i.e. those starting with '##' (they are left unparsed)
+        'chrom': None,    # chromosome name (we only allow one)
+        'ploidy': None,   # ploidy count -- encoded in how the GT calls are formatted
+    }
 
     #TreeTime handles 2-3 base ambig codes, this will allow that.
     def getAmbigCode(bp1, bp2, bp3=""):
@@ -226,7 +231,7 @@ def read_vcf(vcf_file, ref_file=None):
             if line.startswith("##"):
                 if current_block!='meta-information':
                     raise TreeTimeError(f"Malformed VCF file {vcf_file!r} - all the meta-information (lines starting with ##) must appear at the top of the file.")
-                ## TODO - parse the meta information!
+                metadata['meta_lines'].append(line.strip())
             elif line[0]=='#':
                 mandatory_fields = ['CHROM', 'POS', 'ID', 'REF', 'ALT', 'QUAL', 'FILTER', 'INFO', 'FORMAT']
                 # Note that FORMAT isn't mandatory unless genotype data is present. But every VCF we deal with has genotype data - that's the point!
@@ -249,6 +254,11 @@ def read_vcf(vcf_file, ref_file=None):
                 if not l: # empty line
                     continue
                 dat = l.split('\t')
+                chrom = str(dat[0])
+                if metadata['chrom'] is None:
+                    metadata['chrom'] = chrom
+                elif metadata['chrom']!=chrom:
+                    raise TreeTimeError(f"The VCF file {vcf_file!r} contains multiple chromosomes. TreeTime can not yet handle this.")
                 pos = int(dat[1])-1 # Convert VCF 1-based to python 0-based
                 REF = dat[3]
                 ALT = dat[4].split(',') # List of alternate alleles (strings)
@@ -277,9 +287,14 @@ def read_vcf(vcf_file, ref_file=None):
 
                     # Split on the valid separators - if haploid, then we'll get a list len=1
                     gts = gt.split('|') if '|' in gt else gt.split('/')
+                    ploidy = len(gts)
+                    if metadata['ploidy'] is None:
+                        metadata['ploidy'] = ploidy
+                    elif metadata['ploidy']!=ploidy:
+                        raise TreeTimeError(f"The VCF file {vcf_file!r} had genotype calls of ploidy {metadata['ploidy']} but sample {sname!r} has a genotype of ploidy {ploidy}")
 
                     # if polyploid, but homozygous, then treat as if haploid
-                    if len(gts)>1 and len(set(gts))==1:
+                    if ploidy>1 and len(set(gts))==1:
                         gt = gts[0]
 
                     if gt.isdigit(): # haploid, and a call has been made (i.e. it's not gt='.')
@@ -325,7 +340,8 @@ def read_vcf(vcf_file, ref_file=None):
     compress_seq = {'reference':refSeqStr,
                     'sequences': sequences,
                     'insertions': insertions,
-                    'positions': sorted(positions)}
+                    'positions': sorted(positions),
+                    'metadata': metadata}
 
     return compress_seq
 

@@ -44,6 +44,34 @@ class TestMalformedVcf:
                 #CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tsample_A\tsample_B\tsample_C
             """))
 
+    def test_consistent_ploidy(self, tmp_path):
+        """
+        The spec heavily implies that ALT alleles must be supplied for each copy
+        of the chromosome, even for no-calls: "If a call cannot be made for a
+        sample at a given locus, '.' must be specified for each missing allele
+        in the GT field (for example './.' for a diploid genotype and '.' for
+        haploid genotype)."
+        """
+        with pytest.raises(TreeTimeError):
+            read_vcf(create_vcf(tmp_path, """\
+                ##fileformat=VCFv4.3
+                #CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tsample_A\tsample_B
+                1\t5\t.\tT\tC\t.\t.\t.\tGT\t1\t1\t1/1
+            """))
+
+class TestMultipleChromosomes:
+    """
+    These are valid VCFs but TreeTime cannot yet parse them
+    """
+    def test_multiple_chromosomes(self, tmp_path):
+        with pytest.raises(TreeTimeError):
+            read_vcf(create_vcf(tmp_path, """\
+                ##fileformat=VCFv4.3
+                #CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tsample_A\tsample_B\tsample_C
+                1\t5\t.\tT\tC\t.\t.\t.\tGT\t1\t1\t1
+                2\t6\t.\tT\tC\t.\t.\t.\tGT\t1\t1\t1
+            """))
+
 def zero_based(idx):
     """Useful as a form of code commentary. Convert idx from 1-based to 0-based"""
     return idx-1
@@ -370,6 +398,33 @@ class TestMutationAndInsertion:
         assert(vcf_data['sequences']['sample_B'][zero_based(4)]=='C')
         assert(vcf_data['sequences']['sample_B'][zero_based(5)]=='G')
         assert(vcf_data['insertions']['sample_B'][zero_based(5)]=='GT') # see comment above re: insertion encoding
+
+class TestMetadataParsing:
+        
+    def test_simple_haploid(self, tmp_path):
+        data = read_vcf(create_vcf(tmp_path, """\
+            ##fileformat=VCFv4.3
+            #CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tsample_A\tsample_B\tsample_C
+            1\t5\t.\tT\tC\t.\t.\t.\tGT\t1\t1\t1
+            1\t6\t.\tT\tC\t.\t.\t.\tGT\t1\t1\t1
+        """))
+        assert(data['metadata']['chrom']=='1')
+        assert(data['metadata']['ploidy']==1)
+        assert(data['metadata']['meta_lines']==['##fileformat=VCFv4.3'])
+
+    def test_simple_diploid(self, tmp_path):
+        data = read_vcf(create_vcf(tmp_path, """\
+            ##fileformat=VCFv4.3
+            ##contig=<ID=1,length=50>
+            ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+            #CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tsample_A
+            foo\t5\t.\tT\tC\t.\t.\t.\tGT\t1/1
+            foo\t6\t.\tT\tC\t.\t.\t.\tGT\t.|.
+        """))
+        assert(data['metadata']['chrom']=='foo')
+        assert(data['metadata']['ploidy']==2)
+        assert(data['metadata']['meta_lines']==['##fileformat=VCFv4.3', '##contig=<ID=1,length=50>', '##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">'])
+
 
 
     
