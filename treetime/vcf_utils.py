@@ -76,7 +76,7 @@ def read_vcf(vcf_file, ref_file=None):
     #     Ex:
     #       REF     ALT
     #       A       ATT
-    #     First base always matches Ref.
+    #     First base _does not_ always match REF, so there may be a SNP as well
     # 'No indel'
     #     Ex:
     #       REF     ALT
@@ -137,9 +137,12 @@ def read_vcf(vcf_file, ref_file=None):
                 else:
                     if ref[i] != alt[i]:
                         snps[pos+i] = alt[i]
-        #Insertion
+        #Insertion + single-base ref
         elif len(alt) > 1:
             ins[pos] = alt
+            # If the first base of the allele doesn't match the ref then we _also_ have a mutation
+            if ref[0]!=alt[0]:
+                snps[pos] = alt[0]
         #No indel
         else:
             snps[pos] = alt

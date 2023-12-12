@@ -335,3 +335,39 @@ vcf_spec_data = {
 for spec_version, spec_data in vcf_spec_data.items():
     for example_key, example_data in spec_data.items():
         setattr(TestVcfSpecExamples, f"test_{spec_version}_example_{example_key}", TestVcfSpecExamples.add_test(example_data))
+
+
+class TestMutationAndInsertion:
+    """
+    Tests the situation where a reference base is mutated _and_ there's an insertion
+    """
+
+    @pytest.fixture(scope="class")
+    def data(self, tmp_path_factory):
+        reference="ATCGA"
+        sample_names = ["sample_A", "sample_B"]
+        data_lines = [
+            ["1", "2",  ".", "T", "GA",    ".", ".", ".", "GT", "1", "0"], # sample A has both a C->G mutation _and_ a subsequent "A" insertion
+            ["1", "3",  ".", "CGA", "NTTTA,CCGT",   ".", ".", ".", "GT", "1", "2"], # complex! Both samples have multiple mutations + an insertion
+        ]
+        filenames = write_data(tmp_path_factory, sample_names, data_lines, reference)
+        return {"filenames": filenames}
+
+    def test_single_ref_base_mutation_and_insertion(self, data):
+        # This case was missed in treetime 0.11.1
+        vcf_data = read_vcf(*data['filenames'])
+        assert(vcf_data['sequences']['sample_A'][zero_based(2)]=='G')
+        assert(vcf_data['insertions']['sample_A'][zero_based(2)]=='GA') # see comment above re: insertion encoding
+
+    def test_multi_ref_base_mutations_and_insertion(self, data):
+        # This case was missed in treetime 0.11.1
+        vcf_data = read_vcf(*data['filenames'])
+        assert(vcf_data['sequences']['sample_A'][zero_based(3)]=='N')
+        assert(vcf_data['sequences']['sample_A'][zero_based(4)]=='T')
+        assert(vcf_data['sequences']['sample_A'][zero_based(5)]=='T')
+        assert(vcf_data['insertions']['sample_A'][zero_based(5)]=='TTA') # see comment above re: insertion encoding
+
+        assert(vcf_data['sequences']['sample_B'][zero_based(4)]=='C')
+        assert(vcf_data['sequences']['sample_B'][zero_based(5)]=='G')
+        assert(vcf_data['insertions']['sample_B'][zero_based(5)]=='GT') # see comment above re: insertion encoding
+
