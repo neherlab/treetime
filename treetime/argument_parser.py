@@ -127,8 +127,6 @@ def add_reroot_group(parser):
     parser.add_argument('--clock-filter-method', choices=['residual', 'local'], default='residual',
                         help="Use residuals from global clock (`residual`, default) or local clock deviation (`clock`) "
                              "to filter out tips that don't follow the clock")
-    parser.add_argument('--prune-outliers', action='store_true', default=False,
-                        help="remove detected outliers from the output tree")
     reroot_group = parser.add_mutually_exclusive_group()
     reroot_group.add_argument('--reroot', nargs='+', default='best', help=reroot_description)
     reroot_group.add_argument('--keep-root', required = False, action="store_true", default=False,
@@ -305,6 +303,8 @@ def make_parser():
     add_seq_len_aln_group(c_parser)
 
     add_reroot_group(c_parser)
+    c_parser.add_argument('--prune-outliers', action='store_true', default=False,
+                        help="remove detected outliers from the output tree")
     c_parser.add_argument('--allow-negative-rate', required = False, action="store_true", default=False,
                           help="By default, rates are forced to be positive. For trees with little temporal "
                                "signal it is advisable to remove this restriction to achieve essentially mid-point rooting.")
