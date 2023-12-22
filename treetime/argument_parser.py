@@ -127,6 +127,8 @@ def add_reroot_group(parser):
     parser.add_argument('--clock-filter-method', choices=['residual', 'local'], default='residual',
                         help="Use residuals from global clock (`residual`, default) or local clock deviation (`clock`) "
                              "to filter out tips that don't follow the clock")
+    parser.add_argument('--prune-outliers', action='store_true', default=False,
+                        help="remove detected outliers from the output tree")
     reroot_group = parser.add_mutually_exclusive_group()
     reroot_group.add_argument('--reroot', nargs='+', default='best', help=reroot_description)
     reroot_group.add_argument('--keep-root', required = False, action="store_true", default=False,

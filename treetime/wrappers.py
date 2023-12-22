@@ -854,11 +854,24 @@ def estimate_clock_model(params):
     else:
         print('\n--- root-date:\t %3.2f\n\n'%(-d2d.intercept/d2d.clock_rate))
 
+    if hasattr(myTree, 'outliers') and myTree.outliers is not None:
+        print("--- saved detected outliers as " + basename + 'outliers.tsv')
+        myTree.outliers.to_csv(basename + 'outliers.tsv', sep='\t')
+
+    if hasattr(myTree, 'outliers') and myTree.outliers is not None and params.prune_outliers:
+        for outlier in myTree.outliers:
+            myTree.tree.prune(outlier)
+
     if not params.keep_root:
         # write rerooted tree to file
         outtree_name = basename+'rerooted.newick'
-        Phylo.write(myTree.tree, outtree_name, 'newick')
-        print("--- re-rooted tree written to \n\t%s\n"%outtree_name)
+    elif params.prune_outliers:
+        outtree_name = basename+'pruned.newick'
+    else:
+        outtree_name = basename+'.output.newick'
+
+    Phylo.write(myTree.tree, outtree_name, 'newick')
+    print("--- new tree written to \n\t%s\n"%outtree_name)
 
     table_fname = basename+'rtt.csv'
     with open(table_fname, 'w', encoding='utf-8') as ofile:
