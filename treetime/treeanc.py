@@ -1670,7 +1670,7 @@ class TreeAnc(object):
 
 
     def get_tree_dict(self, keep_var_ambigs=False):
-        return self.get_reconstructed_alignment()
+        return self.get_reconstructed_alignment(reconstruct_tip_states=not keep_var_ambigs)
 
 
     def recover_var_ambigs(self):
