@@ -482,7 +482,8 @@ def write_vcf(tree_dict, file_name, mask=None):#, compress=False):
 
     out_file.write( "##fileformat=VCFv4.2\n"+
                         "##source=NextStrain\n"+
-                        "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">\n")
+                        "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">\n"+
+                        f"##contig=<ID={chrom_name}>\n")
     out_file.write("\t".join(header)+"\n")
 
     vcfWrite = []
