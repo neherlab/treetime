@@ -346,7 +346,7 @@ def read_vcf(vcf_file, ref_file=None):
     return compress_seq
 
 
-def write_vcf(tree_dict, file_name):#, compress=False):
+def write_vcf(tree_dict, file_name, mask=None):#, compress=False):
     """
     Writes out a VCF-style file (which seems to be minimally handleable
     by vcftools and pyvcf) of the alignment. This is created from a dict
@@ -375,6 +375,8 @@ def write_vcf(tree_dict, file_name):#, compress=False):
         File to which the new VCF should be written out. File names ending with
         '.gz' will result in the VCF automatically being gzipped.
 
+    mask : optional, str of 0 or 1
+        Calls at these positions will be skipped
     """
 
 #   Programming Logic Note:
@@ -486,6 +488,7 @@ def write_vcf(tree_dict, file_name):#, compress=False):
     vcfWrite = []
     errorPositions = []
     explainedErrors = 0
+    mask_skip_count = 0
 
     #Why so basic? Because we sometimes have to back up a position!
     i=0
@@ -499,6 +502,11 @@ def write_vcf(tree_dict, file_name):#, compress=False):
         refb = ref[pi] #reference base at this position
         delete = False #deletion at this position - need to grab previous base (invariable)
         deleteGroup = False #deletion at next position (mutation at this pos) - do not need to get prev base
+
+        if mask and mask[pi] == '1':
+            mask_skip_count+=1
+            i+=1
+            continue
 
         #try/except is much more efficient than 'if' statements for constructing patterns,
         #as on average a 'variable' location will not be variable for any given sequence
@@ -588,6 +596,9 @@ def write_vcf(tree_dict, file_name):#, compress=False):
     #This will be converted to 'AAAAA' and listed as an 'inferred_const_sites'. However, for VCF
     #purposes, because the site is 'variant' against the ref, it is variant, as expected, and so
     #won't be counted in the below list, which is only sites removed from the VCF.
+
+    if mask_skip_count:
+        print(f"{mask_skip_count} positions were skipped due to the provided mask")
 
     if 'inferred_const_sites' in tree_dict and explainedErrors != 0:
         print(fill("Sites that were constant except for ambiguous bases were made" +
