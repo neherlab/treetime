@@ -572,19 +572,19 @@ def write_vcf(tree_dict, file_name, mask=None):#, compress=False):
 
         #What if there's no variation at a variable site??
         #This can happen when sites are modified by TreeTime - see below.
-        printPos = True
-        if len(uniques)==0:
+        #We don't print to VCF (because no variation!)
+        any_variation = len(uniques)!=0
+        if not any_variation:
             #If we expect it (it was made constant by TreeTime), it's fine.
             if 'inferred_const_sites' in tree_dict and pi in tree_dict['inferred_const_sites']:
                 explainedErrors += 1
-                printPos = False #and don't output position to the VCF
             else:
                 #If we don't expect, raise an error
                 errorPositions.append(str(pi))
 
         #Write it out - Increment positions by 1 so it's in VCF numbering
         #If no longer variable, and explained, don't write it out
-        if printPos:
+        if any_variation:
             output = [chrom_name, str(pos), ".", refb, ",".join(uniques), ".", "PASS", ".", "GT"] + calls
             vcfWrite.append("\t".join(output))
 
