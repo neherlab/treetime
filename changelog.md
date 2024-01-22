@@ -1,3 +1,7 @@
+# 0.11.2: improvements in VCF parsing/writing + clock-filter functionality
+- rewrite of the vcf reading and writing code including many more tests, closer alignment with spec, and performance improvements by @jameshadfield [PR #263](https://github.com/neherlab/treetime/pull/263)
+- clock-filter command can now remove detected outliers with the additional flag `--prune-outliers`.
+
 # 0.11.1: bug fixes and tweaks to plotting
 - fix division by zero error during GTR inference
 - improve doc strings in parse dates
