@@ -440,7 +440,8 @@ class TestReferenceSequenceReferenceAlleleMismatch:
         return {"filenames": filenames}
 
     def test_non_ref_allele_parsed(self, data):
-        vcf_data = read_vcf(*data['filenames'])
+        pass
+        # vcf_data = read_vcf(*data['filenames'])
 
         # Right now we have
         #   data['sequences']['sample_A'] = {} ## Missing 'C' allele
@@ -452,6 +453,11 @@ class TestReferenceSequenceReferenceAlleleMismatch:
         #           it as a SNP, but do report gt=0 samples as a SNP
 
         # Option 1 is probably the safer
+
+
+    def test_ref_allele_mismatch_raises(self, data):
+        with pytest.raises(TreeTimeError):
+            read_vcf(*data['filenames'])
     
 def roundtrip(tmp_path, sample_names, data_lines, reference, meta_lines, pass_metadata=True):
     """

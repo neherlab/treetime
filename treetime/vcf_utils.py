@@ -91,6 +91,14 @@ def read_vcf(vcf_file, ref_file=None):
         'ploidy': None,   # ploidy count -- encoded in how the GT calls are formatted
     }
 
+    from Bio import SeqIO
+    if ref_file:
+        refSeq = SeqIO.read(ref_file, format='fasta')
+        refSeq = refSeq.upper() #convert to uppercase to avoid unknown chars later
+        refSeqStr = str(refSeq.seq)
+    else:
+        refSeqStr = None
+
     #TreeTime handles 2-3 base ambig codes, this will allow that.
     def getAmbigCode(bp1, bp2, bp3=""):
         bps = [bp1,bp2,bp3]
@@ -218,7 +226,6 @@ def read_vcf(vcf_file, ref_file=None):
     #about coverage, quality, counts, etc, which pyvcf goes to effort to parse
     #(and it's not easy as there's no standard ordering). Custom code can completely
     #ignore all of this.
-    from Bio import SeqIO
 
     #Use different openers depending on whether compressed
     opn = gzip.open if vcf_file.endswith(('.gz', '.GZ')) else open
@@ -261,6 +268,9 @@ def read_vcf(vcf_file, ref_file=None):
                     raise TreeTimeError(f"The VCF file {vcf_file!r} contains multiple chromosomes. TreeTime can not yet handle this.")
                 pos = int(dat[1])-1 # Convert VCF 1-based to python 0-based
                 REF = dat[3]
+                if refSeqStr and REF!=refSeqStr[pos]:
+                    raise TreeTimeError(f"Malformed VCF file {vcf_file!r} - POS {dat[1]} has REF {REF!r} which doesn't match the provided FASTA reference: {refSeqStr[pos]!r}")
+
                 ALT = dat[4].split(',') # List of alternate alleles (strings)
                 calls = np.array(dat[9:])
                 if len(calls)!=nsamp:
@@ -329,13 +339,6 @@ def read_vcf(vcf_file, ref_file=None):
         missings = set(samps).difference(sequences.keys())
         for s in missings:
             sequences[s] = {}
-
-    if ref_file:
-        refSeq = SeqIO.read(ref_file, format='fasta')
-        refSeq = refSeq.upper() #convert to uppercase to avoid unknown chars later
-        refSeqStr = str(refSeq.seq)
-    else:
-        refSeqStr = None
 
     compress_seq = {'reference':refSeqStr,
                     'sequences': sequences,
