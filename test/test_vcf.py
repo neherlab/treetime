@@ -425,8 +425,33 @@ class TestMetadataParsing:
         assert(data['metadata']['ploidy']==2)
         assert(data['metadata']['meta_lines']==['##fileformat=VCFv4.3', '##contig=<ID=1,length=50>', '##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">'])
 
+class TestReferenceSequenceReferenceAlleleMismatch:
+    """See <https://github.com/nextstrain/augur/issues/1368>"""
 
+    @pytest.fixture(scope="class")
+    def data(self, tmp_path_factory):
+        reference="ATCGA"
+        sample_names = ["sample_A", "sample_B"]
+        data_lines = [
+            # At first position Sample A is "C" sample B is "A"
+            ["1", "1",  ".", "C", "A",    ".", ".", ".", "GT", "0", "1"],
+        ]
+        filenames = write_data(tmp_path_factory, sample_names, data_lines, reference)
+        return {"filenames": filenames}
 
+    def test_non_ref_allele_parsed(self, data):
+        vcf_data = read_vcf(*data['filenames'])
+
+        # Right now we have
+        #   data['sequences']['sample_A'] = {} ## Missing 'C' allele
+        #   data['sequences']['sample_B'][0] = A ## This is the reference
+        #   data['reference'][0] = A
+
+        # Option 1: compare REF to provided reference sequence and error on mismatch
+        # Option 2: if the true reference allele is in the list of ALTs then don't report
+        #           it as a SNP, but do report gt=0 samples as a SNP
+
+        # Option 1 is probably the safer
     
 def roundtrip(tmp_path, sample_names, data_lines, reference, meta_lines, pass_metadata=True):
     """
