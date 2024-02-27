@@ -1,4 +1,5 @@
 *
-!/rust-toolchain.toml
-!/\.nvmrc
 !/\.downloads
+!/\.nvmrc
+!/docker/files
+!/rust-toolchain.toml

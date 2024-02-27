@@ -1,9 +1,85 @@
 #!/usr/bin/env bash
 
+# Runs various day-to-day dev commands inside dev docker container.
+#
+# The container includes all the tools required for maintaining the project. But this container and script exist
+# for convenience only and are not required for operations. The usual `cargo` and `yarn` workflows can still be used
+# (see dev guide).
+#
+# See the full list of possible commands in the long `case` block halfway through the script.
+# Here are some of the most useful ones (run them from project root):
+#
+# * Build treetime binary in debug mode:
+#   ./docker/dev b treetime
+#
+# * Build treetime binary in release mode:
+#   ./docker/dev br treetime
+#
+# * Build and run treetime binary in debug mode, with arguments:
+#   ./docker/dev r treetime -- timetree --help
+#
+# * Build and run treetime binary in release mode, with arguments:
+#   ./docker/dev rr treetime -- timetree --help
+#
+# * Cross-compile treetime binary for Windows in release mode:
+#   CROSS=x86_64-pc-windows-gnu ./docker/dev br
+#
+# * Build WebAssembly module in debug mode:
+#   ./docker/dev W
+#
+# * Build WebAssembly module in release mode:
+#   ./docker/dev Wr
+#
+# * Build and run web application in debug mode:
+#   ./docker/dev a
+#
+# * Build and run web application in release mode:
+#   ./docker/dev war
+#
+# * Lint Rust code:
+#   ./docker/dev l
+#
+# * Lint Rust code, apply automatic fixes:
+#   ./docker/dev lf
+#
+# * Format Rust code:
+#   ./docker/dev f
+#
+# * Shell into the container:
+#   ./docker/dev bash
+#
+# * Run arbitrary command inside the container:
+#   ./docker/dev cargo --version
+#
+# * Run arbitrary yarn command, in the context of web app, inside the container:
+#   ./docker/dev a yarn add --dev react
+#
+
 set -euo pipefail
 
 function abspath() {
   readlink -m "$1"
+}
+
+# Checks whether we are running on a Continuous integration server
+function is_ci() {
+  if false ||
+    [ "${BUILD_ID:=}" == "1" ] || [ "${BUILD_ID:=}" == "true" ] ||
+    [ "${CI:=}" == "1" ] || [ "${CI:=}" == "true" ] ||
+    [ "${CIRCLECI:=}" == "1" ] || [ "${CIRCLECI:=}" == "true" ] ||
+    [ "${CIRRUS_CI:=}" == "1" ] || [ "${CIRRUS_CI:=}" == "true" ] ||
+    [ "${CODEBUILD_BUILD_ID:=}" == "1" ] || [ "${CODEBUILD_BUILD_ID:=}" == "true" ] ||
+    [ "${GITHUB_ACTIONS:=}" == "1" ] || [ "${GITHUB_ACTIONS:=}" == "true" ] ||
+    [ "${GITLAB_CI:=}" == "1" ] || [ "${GITLAB_CI:=}" == "true" ] ||
+    [ "${HEROKU_TEST_RUN_ID:=}" == "1" ] || [ "${HEROKU_TEST_RUN_ID:=}" == "true" ] ||
+    [ "${TEAMCITY_VERSION:=}" == "1" ] || [ "${TEAMCITY_VERSION:=}" == "true" ] ||
+    [ "${TF_BUILD:=}" == "1" ] || [ "${TF_BUILD:=}" == "true" ] ||
+    [ "${TRAVIS:=}" == "1" ] || [ "${TRAVIS:=}" == "true" ] \
+    ; then
+    echo "1"
+  else
+    echo "0"
+  fi
 }
 
 export THIS_DIR=$(
@@ -20,12 +96,16 @@ HANDLE_SIGINT="trap \"${CANCELLED}; exit 0\" INT"
 export PACKAGE_NAME="treetime"
 export PACKAGE_DIR_REL=""
 
-export PROJECT_ROOT_DIR="$(abspath "${THIS_DIR}")"
+export PROJECT_ROOT_DIR="$(abspath "${THIS_DIR}/..")"
 export PACKAGE_DIR="$(abspath "${PROJECT_ROOT_DIR}/${PACKAGE_DIR_REL}")"
 
-export DOCKER_REPO="neherlab/teetime_builder"
+export DOCKER_REPO="neherlab/treetime_builder"
 export DOCKER_IMAGE_NAME_SAFE="${DOCKER_REPO//\//-}"
-export DOCKER_CONTAINER_NAME="${DOCKER_IMAGE_NAME_SAFE}-$(date +%s)"
+export DOCKER_CONTAINER_NAME="${DOCKER_IMAGE_NAME_SAFE}-$(date -u "+%Y-%m-%d_%H-%M-%S_%3NZ")"
+
+if [ -n "${CROSS:-}" ]; then
+  export DOCKER_CONTAINER_NAME="${DOCKER_IMAGE_NAME_SAFE}-${CROSS}-$(date -u "+%Y-%m-%d_%H-%M-%S_%3NZ")"
+fi
 
 export USER=user
 export GROUP=user
@@ -38,22 +118,16 @@ export CACHE_DIR_REL=".cache/docker/${PACKAGE_DIR_REL}"
 export CACHE_DIR="$(abspath "${PACKAGE_DIR}/${CACHE_DIR_REL}")"
 
 export NICE="nice -14 ionice -c2 -n3"
-export TIME="/usr/bin/time --quiet -f \"Cmd : %C\nTime: %E\nMem : %M KB\n\""
+export TIME="/usr/bin/time -f \"Cmd : %C\nTime: %E\nMem : %M KB\n\""
 
 export RUST_BACKTRACE="full"
 export COLORBT_SHOW_HIDDEN="0"
 export RUST_LOG="warn"
-export CARGO_BUILD_TARGET_DIR="${BUILD_DIR_REL}"
 
-if [ -f "${PROJECT_ROOT_DIR}/.env.example" ]; then
-  . "${PROJECT_ROOT_DIR}/.env.example"
-fi
-
+. "${PROJECT_ROOT_DIR}/.env.example"
 if [ -f "${PROJECT_ROOT_DIR}/.env" ]; then
   . "${PROJECT_ROOT_DIR}/.env"
 fi
-
-. "${THIS_DIR}/scripts/is_ci.sh"
 
 export EXTENSIONS_TO_WATCH="rs,toml,lock"
 
@@ -86,11 +160,13 @@ RELEASE=
 WATCH=0
 TEST=0
 TEST_FLAGS=
+SMOKE_TEST=0
 BENCH=0
 EXAMPLE=0
 LINT=0
 FORMAT=0
 FIX=
+LINT_DENY=
 
 case "${1:-}" in
 "docker-image-build" | "d")
@@ -181,6 +257,17 @@ case "${1:-}" in
   TEST=1
   WATCH=1
   ;;
+"test-smoke" | "ts")
+  shift
+  SMOKE_TEST=1
+  WATCH=0
+  ;;
+"test-smoke-release" | "tsr")
+  shift
+  SMOKE_TEST=1
+  RELEASE="--release"
+  WATCH=0
+  ;;
 "test-unit" | "tu")
   shift
   TEST=1
@@ -248,6 +335,13 @@ case "${1:-}" in
   WATCH=1
   FIX="${LINT_FIX}"
   ;;
+"lint-ci" | "lc")
+  shift
+  LINT=1
+  WATCH=0
+  FIX=
+  LINT_DENY='-- -Dwarnings' # Fail if there's warnings
+  ;;
 "format" | "f")
   shift
   FORMAT=1
@@ -257,7 +351,7 @@ case "${1:-}" in
 "format-check" | "fc")
   shift
   FORMAT=1
-  WATCH=1
+  WATCH=0
   FIX="--check"
   ;;
 "exec" | "e")
@@ -278,24 +372,33 @@ if [ -n "${CROSS:-}" ]; then
   if [[ "${CROSS}" == *linux-gnu ]]; then
 
     if [[ "${CROSS}" == x86_64-* ]]; then
-      DOCKER_BASE_IMAGE="debian:7.11"
-      CLANG_VERSION="3.5"
+      # 'manylinux2014_x86_64' image is based on 'centos:7.9.2009' and offers build environment with
+      # the best compatibility across target Linux distros
+      DOCKER_BASE_IMAGE="quay.io/pypa/manylinux2014_x86_64"
+      CLANG_VERSION="3.4"
     else
       DOCKER_BASE_IMAGE="debian:9.13"
       CLANG_VERSION="13"
     fi
-
   fi
 
   DOCKER_TARGET="cross-${CROSS}"
   RUST_TARGET="--target=${CROSS}"
 fi
-DOCKER_IMAGE_VERSION="$(./scripts/docker_build_checksum.sh)"
+
+DOCKER_IMAGE_VERSION="$(cat \
+  .dockerignore \
+  .env* \
+  .gitignore \
+  .nvmrc \
+  rust-toolchain.toml \
+  $(find docker/ -type f) \
+| sha256sum | cut -f 1 -d " " \
+)"
 
 if ! docker inspect --format '{{.Id}}' "${DOCKER_REPO}:${DOCKER_TARGET}-${DOCKER_IMAGE_VERSION}" &>/dev/null ||
   [ -n "${FORCE_DOCKER_IMAGE_BUILD}" ]; then
 
-  export DOCKER_BUILDKIT=1
   export BUILDKIT_PROGRESS=plain
   export PROGRESS_NO_TRUNC=1
 
@@ -306,15 +409,42 @@ if ! docker inspect --format '{{.Id}}' "${DOCKER_REPO}:${DOCKER_TARGET}-${DOCKER
     ADDITIONAL_DOCKER_BUILD_ARGS="--build-arg OSXCROSS_URL=${OSXCROSS_URL}"
   fi
 
-  ${NICE} docker build -q \
+  ADDITIONAL_DOCKER_BUILD_ARGS="${ADDITIONAL_DOCKER_BUILD_ARGS} --builder=${DOCKER_IMAGE_NAME_SAFE}"
+  if ! docker buildx inspect "${DOCKER_IMAGE_NAME_SAFE}" &>/dev/null; then
+    docker buildx create --use --name "${DOCKER_IMAGE_NAME_SAFE}" --driver docker-container --driver-opt network=host >/dev/null
+  fi
+
+  if [ "${DOCKER_IMAGE_PUSH}" == "1" ]; then
+    ADDITIONAL_DOCKER_BUILD_ARGS="${ADDITIONAL_DOCKER_BUILD_ARGS} --push"
+  else
+    ADDITIONAL_DOCKER_BUILD_ARGS="${ADDITIONAL_DOCKER_BUILD_ARGS} --load"
+  fi
+
+  BRANCH="$(git rev-parse --abbrev-ref HEAD || echo "${GITHUB_REF_NAME:=}")"
+  CACHE_SCOPE="${DOCKER_REPO}-${DOCKER_TARGET}-${BRANCH}"
+  BUILDX_CACHE_DIR="${CACHE_DIR}/buildx"
+
+  mkdir -p "${BUILDX_CACHE_DIR}"
+  if [ ! -f "${BUILDX_CACHE_DIR}/index.json" ]; then
+    ADDITIONAL_DOCKER_BUILD_ARGS="${ADDITIONAL_DOCKER_BUILD_ARGS} --cache-from=\"type=local,src=${BUILDX_CACHE_DIR},scope=${CACHE_SCOPE}\""
+  fi
+
+  if [ "${VERBOSE:=0}" != "1" ]; then
+    ADDITIONAL_DOCKER_BUILD_ARGS="${ADDITIONAL_DOCKER_BUILD_ARGS} -q"
+  fi
+
+  ${NICE} docker buildx build \
+    --progress=quiet \
     --file="docker/docker-dev.dockerfile" \
     --target="${DOCKER_TARGET}" \
     --tag="${DOCKER_REPO}:${DOCKER_TARGET}" \
     --tag="${DOCKER_REPO}:${DOCKER_TARGET}-${DOCKER_IMAGE_VERSION}" \
+    --cache-from="${DOCKER_REPO}" \
     --cache-from="${DOCKER_REPO}:dev" \
     --cache-from="${DOCKER_REPO}:dev-${DOCKER_IMAGE_VERSION}" \
     --cache-from="${DOCKER_REPO}:${DOCKER_TARGET}" \
     --cache-from="${DOCKER_REPO}:${DOCKER_TARGET}-${DOCKER_IMAGE_VERSION}" \
+    --cache-to="type=local,dest=${BUILDX_CACHE_DIR},mode=max,compression=zstd,scope=${CACHE_SCOPE},ignore-error=true" \
     --network=host \
     --build-arg="DOCKER_BASE_IMAGE=${DOCKER_BASE_IMAGE}" \
     --build-arg="CLANG_VERSION=${CLANG_VERSION}" \
@@ -326,13 +456,8 @@ if ! docker inspect --format '{{.Id}}' "${DOCKER_REPO}:${DOCKER_TARGET}-${DOCKER
     . \
     >/dev/null
 
-  if [ "${DOCKER_IMAGE_PUSH}" == "1" ]; then
-    docker push "${DOCKER_REPO}:${DOCKER_TARGET}"
-    docker push "${DOCKER_REPO}:${DOCKER_TARGET}-${DOCKER_IMAGE_VERSION}"
-  fi
-
   if [ -n "${FORCE_DOCKER_IMAGE_BUILD}" ]; then
-    exit 0
+    exit 0;
   fi
 fi
 
@@ -371,8 +496,10 @@ elif [ "${BUILD}" == "1" ]; then
     PARAMS=" --locked ${PARAMS}"
   fi
   COMMAND="cargo build -q --package=treetime --target-dir='${BUILD_DIR_REL}' ${RUST_TARGET} ${RELEASE} ${PARAMS}"
+elif [ "${SMOKE_TEST}" == "1" ]; then
+  COMMAND="./tests/run-smoke-tests 'cargo run -q --target-dir='${BUILD_DIR_REL}' ${RUST_TARGET} ${RELEASE} --bin=treetime'"
 elif [ "${WASM}" == "1" ]; then
-  COMMAND="bash -c \"set -euo pipefail && cd packages/treetime-web && yarn wasm-${RELEASE}\""
+  COMMAND="bash -c \"set -euo pipefail && cd packages/treetime-web && yarn install && yarn wasm-${RELEASE}\""
 elif [ "${WEB}" == "1" ]; then
   PORTS="-p 3000:3000"
   COMMAND=${COMMAND:=yarn install && yarn ${RELEASE}}
@@ -384,9 +511,12 @@ elif [ "${BENCH}" == "1" ]; then
   PRETTY_BENCH="( grep --color=always --line-buffered -vP \"Benchmarking|Gnuplot not found, using plotters backend\" || true )"
   COMMAND="cargo bench --color=always -q --target-dir='${BUILD_DIR_REL}' ${RUST_TARGET} ${*:-} | ${PRETTY_BENCH} ${SUCCESS_OR_FAILURE}"
 elif [ "${LINT}" == "1" ]; then
-  COMMAND="cargo clippy --exclude=3rdparty -q --target-dir=\"${BUILD_DIR_REL}\" --all ${FIX:-}"
+  COMMAND="cargo clippy --exclude=3rdparty -q --target-dir=\"${BUILD_DIR_REL}\" --all ${FIX:-} ${LINT_DENY}"
 elif [ "${FORMAT}" == "1" ]; then
-  COMMAND="cargo fmt -q --all ${FIX:-}"
+  if [ -z "${FIX}" ]; then
+    FIX="-q"
+  fi
+  COMMAND="cargo fmt --all ${FIX:-}"
 else
   COMMAND="${NICE} ${TIME} ${COMMAND}"
 fi
@@ -408,8 +538,15 @@ fi
 
 mkdir -p "${BUILD_DIR}" "${CACHE_DIR}/.cargo/"{install,registry}
 
+
+ADDITIONAL_DOCKER_RUN_ARGS=""
+if [ -t 1 ]; then
+  ADDITIONAL_DOCKER_RUN_ARGS="${ADDITIONAL_DOCKER_RUN_ARGS} -it"
+fi
+
 # shellcheck disable=SC2086
-${NICE} docker run -it --rm \
+${NICE} docker run --rm \
+  ${ADDITIONAL_DOCKER_RUN_ARGS} \
   --network=host \
   --init \
   --name="${DOCKER_CONTAINER_NAME}" \
@@ -427,9 +564,8 @@ ${NICE} docker run -it --rm \
   --env="RUST_BACKTRACE=${RUST_BACKTRACE}" \
   --env="COLORBT_SHOW_HIDDEN=${COLORBT_SHOW_HIDDEN}" \
   --env="RUST_LOG=${RUST_LOG}" \
-  --env="CARGO_BUILD_TARGET_DIR=${CARGO_BUILD_TARGET_DIR}" \
-  --env="RUSTC_FORCE_INCREMENTAL=${RUSTC_FORCE_INCREMENTAL}" \
   --env-file="${PROJECT_ROOT_DIR}/.env" \
+  --ulimit core=0 \
   ${PORTS} \
   "${DOCKER_REPO}:${DOCKER_TARGET}-${DOCKER_IMAGE_VERSION}" \
   bash -c "set -euo pipefail; ${HANDLE_SIGINT}; ${COMMAND} ${SUCCESS_OR_FAILURE}"
