@@ -1,84 +1,85 @@
 [package]
 name = "treetime"
-description = "Maximum-likelihood phylodynamic inference"
-version = "1.0.0"
-documentation = "https://treetime.readthedocs.io/en/stable/"
-homepage = "https://github.com/neherlab/treetime"
-edition = "2021"
-license = "MIT"
-publish = false
-keywords = ["phylogenetics", "phylogeography", "virus", "evolution"]
+authors.workspace = true
+description.workspace = true
+documentation.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+publish.workspace = true
+repository.workspace = true
+version.workspace = true
 
 
 [lib]
 crate-type = ["lib"]
 
-[dependencies]
-approx = "=0.5.1"
-argmin = { version = "=0.6.0", features = [] }
-bio = { version = "=0.41.0", features = ["phylogeny"] }
-bio-types = { version = "=0.13.0", features = ["phylogeny", ] }
-blas-src = { version = "=0.8.0", features = ["openblas-src"] }
-chrono = { version = "=0.4.21", default-features = false, features = ["clock", "std"] }
-clap = { version = "=3.2.16", features = ["derive"] }
-clap-verbosity-flag = "=1.0.1"
-clap_complete = "=3.2.3"
-clap_complete_fig = "=3.2.4"
-color-eyre = "=0.6.2"
-crossterm = "=0.25.0"
-csv = "=1.1.6"
-ctor = "=0.1.23"
-derive_more = "=0.99.17"
-env_logger = "=0.9.0"
-eyre = "=0.6.8"
-flate2 = "=1.0.24"
-indexmap = { version = "=1.9.1", features = ["serde-1"] }
-itertools = "=0.10.3"
-lazy_static = "=1.4.0"
-log = "=0.4.17"
-multimap = { version = "=0.8.3", features = ["serde_impl"] }
-ndarray = { version = "=0.15.6", features = ["rayon", "serde", "approx-0_5", "blas"] }
-ndarray-linalg = { version = "=0.14.1", features = ["openblas-static"] }
-ndarray-rand = "=0.14.0"
-ndarray-stats = "=0.5.0"
-ndarray_einsum_beta = "=0.7.0"
-num = "=0.4.0"
-num-integer = "=0.1.45"
-num-traits = "=0.2.15"
-num_cpus = "=1.13.1"
-openblas-src = { version = "=0.10.4", features = ["static"] }
-ordered-float = { version = "=3.1.0", default-features = false }
-parking_lot = { version = "=0.12.1", features = ["deadlock_detection", "hardware-lock-elision"] }
-petgraph = "=0.6.2"
-plotters = { version = "=0.3.4", default_features = false, features = ["all_series", "all_elements", "svg_backend"] }
-pretty_dtoa = "=0.3.0"
-rand = { version = "=0.8.5", features = ["serde1", "log"] }
-rand_distr = { version = "=0.4.3", feaures = ["serde1", "std_math"] }
-rand_isaac = { version = "=0.3.0", features = ["serde1"] }
-rayon = "=1.5.3"
-regex = { version = "=1.6.0", features = [] }
-rgb = "=0.8.34"
-rstat = { version = "=0.6.0", features = ["serde"] }
-serde = { version = "=1.0.143", features = ["derive"] }
-serde_json = { version = "=1.0.83", features = ["preserve_order", "indexmap", "unbounded_depth"] }
-smart-default = "=0.6.0"
-statrs = "=0.16.0"
-strum = "=0.24.1"
-strum_macros = "=0.24.3"
-textplots = "=0.8.0"
-time = { version = "=0.3.13", features = ["serde", "macros", "parsing"] }
 
-[target.'cfg(all(target_os = "linux", target_arch = "x86_64"))'.dependencies]
-mimalloc = { version = "=0.1.29", default-features = false }
+[dependencies]
+approx = { workspace = true }
+argmin = { workspace = true }
+bio = { workspace = true }
+bio-types = { workspace = true }
+chrono = { workspace = true }
+clap = { workspace = true }
+clap-verbosity-flag = { workspace = true }
+clap_complete = { workspace = true }
+clap_complete_fig = { workspace = true }
+color-eyre = { workspace = true }
+csv = { workspace = true }
+ctor = { workspace = true }
+derive_more = { workspace = true }
+env_logger = { workspace = true }
+eyre = { workspace = true }
+flate2 = { workspace = true }
+indexmap = { workspace = true }
+itertools = { workspace = true }
+lazy_static = { workspace = true }
+log = { workspace = true }
+multimap = { workspace = true }
+num = { workspace = true }
+num-integer = { workspace = true }
+num-traits = { workspace = true }
+num_cpus = { workspace = true }
+ordered-float = { workspace = true }
+parking_lot = { workspace = true }
+plotters = { workspace = true }
+pretty_dtoa = { workspace = true }
+rand = { workspace = true }
+rand_distr = { workspace = true }
+rand_isaac = { workspace = true }
+rayon = { workspace = true }
+regex = { workspace = true }
+rgb = { workspace = true }
+rstat = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+smart-default = { workspace = true }
+strum = { workspace = true }
+strum_macros = { workspace = true }
+time = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-atty = "0.2.14"
-bzip2 = "0.4.3"
-xz2 = "0.1.7"
-zstd = { version = "0.11.2+zstd.1.5.2", features = ["zstdmt"] }
+atty = { workspace = true }
+blas-src = { workspace = true }
+bzip2 = { workspace = true }
+crossterm = { workspace = true }
+ndarray = { workspace = true }
+ndarray-linalg = { workspace = true }
+ndarray-rand = { workspace = true }
+ndarray-stats = { workspace = true }
+ndarray_einsum_beta = { workspace = true }
+openblas-src = { workspace = true }
+statrs = { workspace = true }
+textplots = { workspace = true }
+xz2 = { workspace = true }
+zstd = { workspace = true }
 
 [dev-dependencies]
-criterion = { version = "=0.3.6", features = ["html_reports"] }
-pretty_assertions = "=1.2.1"
-rstest = "=0.15.0"
-rstest_reuse = "=0.4.0"
+criterion = { workspace = true }
+pretty_assertions = { workspace = true }
+rstest = { workspace = true }
+rstest_reuse = { workspace = true }
+
+[lints]
+workspace = true

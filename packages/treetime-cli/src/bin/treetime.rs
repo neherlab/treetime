@@ -1,5 +1,3 @@
-#![allow(clippy::self_named_module_files)]
-
 use ctor::ctor;
 use eyre::Report;
 use log::info;
@@ -10,10 +8,6 @@ use treetime::commands::mugration::run_mugration::run_mugration;
 use treetime::commands::timetree::run_timetree_estimation::run_timetree_estimation;
 use treetime::utils::global_init::global_init;
 use treetime_cli::cli::treetime_cli::{generate_shell_completions, treetime_parse_cli_args, TreetimeCommands};
-
-#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
-#[global_allocator]
-static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 #[ctor]
 fn init() {

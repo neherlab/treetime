@@ -1,6 +1,241 @@
 [workspace]
+resolver = '2'
 
 members = [
   "packages/treetime",
   "packages/treetime-cli",
 ]
+
+exclude = []
+
+
+[workspace.package]
+description = "Maximum-likelihood phylodynamic inference"
+version = "1.0.0"
+documentation = "https://treetime.readthedocs.io/en/stable/"
+repository = "https://github.com/neherlab/treetime"
+homepage = "https://github.com/neherlab/treetime"
+edition = "2021"
+license = "MIT"
+publish = false
+keywords = ["biology", "evolution", "phylogenetics", "phylogeography", "virus"]
+authors = [
+  "NeherLab <https://neherlab.org>",
+  "Richard Neher",
+  "Pavel Sagulenko",
+  "Emma Hodcroft",
+  "Ivan Aksamentov",
+]
+
+[workspace.dependencies]
+approx = "=0.5.1"
+argmin = { version = "=0.6.0", features = [] }
+assert2 = "=0.3.11"
+atty = "=0.2.14"
+bio = { version = "=1.5.0", features = ["phylogeny"] }
+bio-types = { version = "=1.0.1", features = ["phylogeny"] }
+blas-src = { version = "=0.8.0", features = ["openblas-src"] }
+bzip2 = "=0.4.3"
+chrono = { version = "=0.4.21", default-features = false, features = ["clock", "std"] }
+clap = { version = "=3.2.16", features = ["derive"] }
+clap-verbosity-flag = "=1.0.1"
+clap_complete = "=3.2.3"
+clap_complete_fig = "=3.2.4"
+color-eyre = "=0.6.2"
+criterion = { version = "=0.5.1", features = ["html_reports"] }
+crossterm = "=0.27.0"
+csv = "=1.1.6"
+ctor = "=0.1.23"
+derive_more = "=0.99.17"
+env_logger = "=0.9.0"
+eyre = "=0.6.8"
+flate2 = "=1.0.24"
+indexmap = { version = "=1.9.1", features = ["serde-1"] }
+itertools = "=0.10.3"
+lazy_static = "=1.4.0"
+log = "=0.4.17"
+multimap = { version = "=0.8.3", features = ["serde_impl"] }
+ndarray = { version = "=0.15.6", features = ["rayon", "serde", "approx-0_5", "blas"] }
+ndarray-linalg = { version = "=0.14.1", features = ["openblas-static"] }
+ndarray-rand = "=0.14.0"
+ndarray-stats = "=0.5.0"
+ndarray_einsum_beta = "=0.7.0"
+num = "=0.4.0"
+num-integer = "=0.1.45"
+num-traits = "=0.2.15"
+num_cpus = "=1.13.1"
+openblas-src = { version = "=0.10.4", features = ["static"] }
+ordered-float = { version = "=3.1.0", default-features = false }
+parking_lot = { version = "=0.12.1", features = ["deadlock_detection", "hardware-lock-elision"] }
+plotters = { version = "=0.3.4", default_features = false, features = ["all_series", "all_elements", "svg_backend"] }
+pretty_assertions = "=1.4.0"
+pretty_dtoa = "=0.3.0"
+rand = { version = "=0.8.5", features = ["serde1", "log"] }
+rand_distr = { version = "=0.4.3", feaures = ["serde1", "std_math"] }
+rand_isaac = { version = "=0.3.0", features = ["serde1"] }
+rayon = "=1.5.3"
+regex = { version = "=1.10.3", features = [] }
+rgb = "=0.8.34"
+rstat = { version = "=0.6.0", features = ["serde"] }
+rstest = "=0.17.0"
+rstest_reuse = "=0.5.0"
+serde = { version = "=1.0.143", features = ["derive"] }
+serde_json = { version = "=1.0.83", features = ["preserve_order", "indexmap", "unbounded_depth"] }
+smart-default = "=0.6.0"
+statrs = "=0.16.0"
+strum = "=0.24.1"
+strum_macros = "=0.24.3"
+textplots = "=0.8.0"
+time = { version = "=0.3.13", features = ["serde", "macros", "parsing"] }
+xz2 = "=0.1.7"
+zstd = { version = "=0.11.2", features = ["zstdmt"] }
+
+
+[workspace.lints.rust]
+# Lint groups
+# https://doc.rust-lang.org/rustc/lints/groups.html
+deprecated_in_future = "warn"
+future_incompatible = "warn"
+nonstandard_style = "warn"
+rust_2018_idioms = "warn"
+rust_2021_compatibility = "warn"
+trivial_numeric_casts = "warn"
+
+# Disable some of the lints enabled by default
+# https://doc.rust-lang.org/rustc/lints/listing/warn-by-default.html
+elided_lifetimes_in_paths = "allow"
+
+# Enable lints not enabled by default
+# https://doc.rust-lang.org/rustc/lints/listing/allowed-by-default.html
+absolute_paths_not_starting_with_crate = "warn"
+explicit_outlives_requirements = "warn"
+ffi_unwind_calls = "warn"
+keyword_idents = "warn"
+let_underscore_drop = "warn"
+macro_use_extern_crate = "warn"
+meta_variable_misuse = "warn"
+missing_abi = "warn"
+non_ascii_idents = "warn"
+rust_2021_incompatible_closure_captures = "warn"
+rust_2021_incompatible_or_patterns = "warn"
+rust_2021_prefixes_incompatible_syntax = "warn"
+rust_2021_prelude_collisions = "warn"
+single_use_lifetimes = "warn"
+trivial_casts = "warn"
+unit_bindings = "warn"
+unsafe_code = "warn"
+unsafe_op_in_unsafe_fn = "warn"
+unused_lifetimes = "warn"
+unused_macro_rules = "warn"
+unused_qualifications = "warn"
+unused_tuple_struct_fields = "warn"
+variant_size_differences = "warn"
+# missing_copy_implementations = "warn"
+# missing_debug_implementations = "warn"
+
+[workspace.lints.clippy]
+# https://rust-lang.github.io/rust-clippy/stable/
+# This is a strict (sometimes too much) Clippy setup.
+# We go bold and enable all Clippy lints, then disable the ones that we don't need.
+# This has an advantage that when upgrading Rust and Clippy, we receive new lints automatically.
+all = { level = "warn", priority = -2 }
+pedantic = { level = "warn", priority = -1 }
+blanket_clippy_restriction_lints = "allow"
+restriction = { level = "warn", priority = -1 }
+nursery = { level = "warn", priority = -1 }
+# Disable some of the Clippy lints
+absolute_paths = "allow"
+allow_attributes = "allow"
+arithmetic_side_effects = "allow"
+as_conversions = "allow"
+assign_op_pattern = "allow"
+bool_to_int_with_if = "allow"
+cast_lossless = "allow"
+cast_possible_truncation = "allow"
+cast_possible_wrap = "allow"
+cast_precision_loss = "allow"
+cast_sign_loss = "allow"
+cognitive_complexity = "allow"
+comparison_chain = "allow"
+default_numeric_fallback = "allow"
+deref_by_slicing = "allow"
+doc_markdown = "allow"
+else_if_without_else = "allow"
+exhaustive_enums = "allow"
+exhaustive_structs = "allow"
+expect_used = "allow"
+float_arithmetic = "allow"
+if_not_else = "allow"
+impl_trait_in_params = "allow"
+implicit_hasher = "allow"
+implicit_return = "allow"
+inconsistent_digit_grouping = "allow"
+indexing_slicing = "allow"
+integer_division = "allow"
+iter_nth_zero = "allow"
+large_digit_groups = "allow"
+len_zero = "allow"
+let_underscore_must_use = "allow"
+manual_string_new = "allow"
+match_same_arms = "allow"
+min_ident_chars = "allow"
+missing_assert_message = "allow"
+missing_docs_in_private_items = "allow"
+missing_errors_doc = "allow"
+missing_inline_in_public_items = "allow"
+missing_panics_doc = "allow"
+missing_trait_methods = "allow"
+mod_module_files = "allow"
+module_inception = "allow"
+module_name_repetitions = "allow"
+modulo_arithmetic = "allow"
+must_use_candidate = "allow"
+needless_for_each = "allow"
+needless_raw_string_hashes = "allow"
+needless_raw_strings = "allow"
+new_without_default = "allow"
+non_ascii_literal = "allow"
+option_if_let_else = "allow"
+panic = "allow"
+panic_in_result_fn = "allow"
+pattern_type_mismatch = "allow"
+print_stderr = "allow"
+print_stdout = "allow"
+pub_use = "allow"
+pub_with_shorthand = "allow"
+question_mark_used = "allow"
+self_named_module_files = "allow"
+semicolon_inside_block = "allow"
+semicolon_outside_block = "allow"
+separated_literal_suffix = "allow"
+shadow_reuse = "allow"
+shadow_same = "allow"
+shadow_unrelated = "allow"
+should_implement_trait = "allow"
+similar_names = "allow"
+single_call_fn = "allow"
+single_char_lifetime_names = "allow"
+std_instead_of_alloc = "allow"
+std_instead_of_core = "allow"
+struct_field_names = "allow"
+suboptimal_flops = "allow"
+too_many_arguments = "allow"
+too_many_lines = "allow"
+type_repetition_in_bounds = "allow"
+unnecessary_wraps = "allow"
+unreachable = "allow"
+unreadable_literal = "allow"
+unsafe_derive_deserialize = "allow"
+unused_self = "allow"
+unused_unit = "allow"
+unwrap_in_result = "allow"
+unwrap_used = "allow"
+use_debug = "allow"
+use_self = "allow"
+useless_transmute = "allow"
+wildcard_enum_match_arm = "allow"
+
+
+[workspace.lints.rustdoc]
+broken_intra_doc_links = "warn"
+bare_urls = "warn"
