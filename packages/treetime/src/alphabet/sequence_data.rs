@@ -1,5 +1,3 @@
-#![allow(clippy::len_without_is_empty)]
-
 use crate::io::fasta::read_many_fasta;
 use crate::make_internal_report;
 use eyre::Report;
@@ -77,7 +75,6 @@ impl SequenceData {
     // TODO: `additional_constant_sites`: where does it come from?
     let additional_constant_sites: Option<usize> = None;
 
-    #[allow(clippy::self_assignment)]
     if let Some(additional_constant_sites) = additional_constant_sites {
       add_additional_constant_sites();
       // TODO: full length should change here

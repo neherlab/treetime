@@ -1,6 +1,3 @@
-#![allow(clippy::large_enum_variant)]
-#![allow(clippy::struct_excessive_bools)]
-
 use clap::{AppSettings, ArgEnum, CommandFactory, Parser, Subcommand};
 use clap_complete::{generate, Generator, Shell};
 use clap_complete_fig::Fig;

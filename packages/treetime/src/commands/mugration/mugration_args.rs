@@ -1,6 +1,3 @@
-#![allow(clippy::large_enum_variant)]
-#![allow(clippy::struct_excessive_bools)]
-
 use clap::{Parser, ValueHint};
 use std::fmt::Debug;
 use std::path::PathBuf;

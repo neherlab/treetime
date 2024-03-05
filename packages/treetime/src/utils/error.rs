@@ -1,5 +1,3 @@
-#![allow(clippy::pub_use)]
-
 use color_eyre::Report;
 use eyre::eyre;
 use itertools::Itertools;

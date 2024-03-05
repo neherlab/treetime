@@ -1,6 +1,3 @@
-#![allow(clippy::type_complexity)]
-#![allow(non_snake_case)]
-
 use crate::alphabet::alphabet::Alphabet;
 use crate::utils::einsum::einsum_1d;
 use crate::utils::ndarray::{clamp_min, outer};
@@ -14,6 +11,7 @@ use num_traits::real::Real;
 use std::io::Write;
 use std::iter::zip;
 
+#[allow(non_snake_case)]
 pub fn avg_transition(W: &Array2<f64>, pi: &Array1<f64>, gap_index: Option<usize>) -> Result<f64, Report> {
   let result = einsum_1d("i,ij,j", &[pi, W, pi])?;
 
@@ -137,7 +135,6 @@ impl GTR {
     self.average_rate
   }
 
-  #[allow(clippy::missing_const_for_fn)]
   fn assign_gap_and_ambiguous(alphabet: &Alphabet) -> Option<usize> {
     // let n_states = self.alphabet.len();
 
@@ -296,9 +293,10 @@ impl ToString for GTR {
   }
 }
 
-#[allow(clippy::excessive_precision)]
 #[cfg(test)]
 mod test {
+  #![allow(clippy::excessive_precision)]
+
   use super::*;
   use crate::alphabet::alphabet::AlphabetName;
   use crate::gtr::get_gtr::{jc69, JC69Params};

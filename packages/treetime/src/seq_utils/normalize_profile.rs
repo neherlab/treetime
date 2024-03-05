@@ -54,9 +54,10 @@ where
   Ok((norm_prof, offset))
 }
 
-#[allow(clippy::excessive_precision)]
 #[cfg(test)]
 mod tests {
+  #![allow(clippy::excessive_precision)]
+
   use super::*;
   use approx::assert_ulps_eq;
   use eyre::Report;

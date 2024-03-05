@@ -1,6 +1,3 @@
-#![allow(clippy::large_enum_variant)]
-#![allow(clippy::struct_excessive_bools)]
-
 use crate::commands::ancestral::anc_args::MethodAncestral;
 use crate::commands::timetree::timetree_args::{BranchLengthMode, RerootMode};
 use crate::gtr::get_gtr::GtrModelName;

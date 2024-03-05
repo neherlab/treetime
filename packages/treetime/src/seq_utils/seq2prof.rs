@@ -137,9 +137,10 @@ where
   Ok(prof)
 }
 
-#[allow(clippy::excessive_precision, clippy::lossy_float_literal)]
 #[cfg(test)]
 mod tests {
+  #![allow(clippy::excessive_precision, clippy::lossy_float_literal)]
+
   use super::*;
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::gtr::get_gtr::{jc69, JC69Params};

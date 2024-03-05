@@ -1,6 +1,3 @@
-#![allow(clippy::large_enum_variant)]
-#![allow(clippy::struct_excessive_bools)]
-
 use crate::commands::ancestral::anc_args::MethodAncestral;
 use crate::gtr::get_gtr::GtrModelName;
 use clap::{ArgEnum, Parser, ValueHint};

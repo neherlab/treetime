@@ -181,9 +181,10 @@ pub fn sanitize_in_place<T: Float, D: Dimension>(arr: &mut Array<T, D>) {
   });
 }
 
-#[allow(clippy::excessive_precision, clippy::lossy_float_literal)]
 #[cfg(test)]
 mod tests {
+  #![allow(clippy::excessive_precision, clippy::lossy_float_literal)]
+
   use super::*;
   use approx::assert_ulps_eq;
   use eyre::Report;

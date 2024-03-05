@@ -37,8 +37,6 @@ pub fn reroot<N: GraphNode, E: GraphEdge>(
 
 #[cfg(test)]
 mod tests {
-  #![allow(clippy::needless_pass_by_value, clippy::many_single_char_names)]
-
   use super::*;
   use crate::graph::examples::get_example_tree;
   use crate::graph::node::GraphNodeKey;

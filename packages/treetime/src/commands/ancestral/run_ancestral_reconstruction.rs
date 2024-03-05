@@ -16,7 +16,6 @@ use log::info;
 use std::fmt::Display;
 use std::io::Write;
 
-#[allow(clippy::struct_excessive_bools)]
 #[derive(Clone, Debug, Default)]
 pub struct TreetimeAncestralParams {
   pub sample_from_profile: bool,
