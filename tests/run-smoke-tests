@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+# shellcheck disable=SC2043
+
+set -euo pipefail
+trap "exit 0" INT
+
+THIS_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")";  pwd)
+export THIS_DIR
+
+TREETIME_BIN="${1:? "Usage: ${0} <path_to_treetime_executable>"}"
+RESULTS_DIR="${THIS_DIR}/../tmp/smoke-tests"
+
+for organism in h3n2_na_20 h3n2_na_200 h3n2_na_500; do
+
+  printf "\n\n%s\n\n" "----------------- ${organism}: timetree  -------------------"
+  ${TREETIME_BIN} timetree --verbose \
+    "data/${organism}/${organism}.fasta.zst" \
+    --tree="data/${organism}/${organism}.nwk" \
+    --dates="data/${organism}/${organism}.metadata.csv" \
+    --outdir="${RESULTS_DIR}/timetree/${organism}" \
+    --confidence \
+    --covariation \
+    --jobs=1 \
+    --seed=999999
+
+  printf "\n\n%s\n\n" "----------------- ${organism}: ancestral -------------------"
+  ${TREETIME_BIN} ancestral --verbose \
+    "data/${organism}/${organism}.fasta.zst" \
+    --tree="data/${organism}/${organism}.nwk" \
+    --outdir="${RESULTS_DIR}/ancestral/${organism}" \
+    --gtr="jc69" \
+    --jobs=1 \
+    --seed=999999
+
+  printf "\n\n%s\n\n" "----------------- ${organism}: clock     -------------------"
+  ${TREETIME_BIN} clock --verbose \
+    --tree="data/${organism}/${organism}.nwk" \
+    --dates="data/${organism}/${organism}.metadata.csv" \
+    --outdir="${RESULTS_DIR}/clock/${organism}" \
+    --sequence-length=1400 \
+    --clock-filter=0 \
+    --jobs=1 \
+    --seed=999999 \
+
+  printf "\n\n%s\n\n" "----------------- ${organism}: homoplasy -------------------"
+  ${TREETIME_BIN} homoplasy --verbose \
+    "data/${organism}/${organism}.fasta.zst" \
+    --tree="data/${organism}/${organism}.nwk" \
+    --outdir="${RESULTS_DIR}/homoplasy/${organism}" \
+    --gtr="jc69" \
+    --jobs=1 \
+    --seed=999999 \
+
+done
+
+
+
+for organism in zika; do
+
+printf "\n\n%s\n\n" "----------------- ${organism}: mugration -------------------"
+
+${TREETIME_BIN} mugration --verbose \
+  --tree="data/${organism}/${organism}.nwk" \
+  --states="data/${organism}/${organism}.metadata.csv" \
+  --weights="data/${organism}/${organism}.country_weights.csv" \
+  --outdir="${RESULTS_DIR}/mugration/${organism}" \
+  --attribute="country" \
+  --jobs=1 \
+  --seed=999999
+
+done
