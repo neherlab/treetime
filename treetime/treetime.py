@@ -73,7 +73,7 @@ class TreeTime(ClockTree):
                 sys.exit(2)
 
 
-    def _run(self, root=None, infer_gtr=True, relaxed_clock=None, clock_filter_method='residuals',
+    def _run(self, root=None, infer_gtr=True, relaxed_clock=None, clock_filter_method='residual',
              n_iqd = None, resolve_polytomies=True, max_iter=0, Tc=None, fixed_clock_rate=None,
             time_marginal='never', sequence_marginal=False, branch_length_mode='auto',
             vary_rate=False, use_covariation=False, tracelog_file=None,
@@ -423,6 +423,8 @@ class TreeTime(ClockTree):
             bad_branch_count = residual_filter(self, n_iqd)
         elif method=='local':
             bad_branch_count = local_filter(self, n_iqd)
+        else:
+            raise ValueError(f"TreeTime.clock_filter: unknown clock-filter method '{method}'. Implemented methods are: 'residual', 'local'")
 
         if bad_branch_count>0.34*self.tree.count_terminals():
             self.logger("TreeTime.clock_filter: More than a third of leaves have been excluded by the clock filter. Please check your input data.", 0, warn=True)
