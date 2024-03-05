@@ -44,8 +44,6 @@ mod tests {
   use eyre::Report;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use std::borrow::Borrow;
-  use std::fmt::Display;
 
   #[rstest]
   fn reroots() -> Result<(), Report> {

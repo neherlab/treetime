@@ -3,9 +3,7 @@ use crate::gtr::gtr::GTR;
 use crate::seq_utils::normalize_profile::normalize_profile;
 use crate::utils::ndarray::{argmax_axis, cumsum_axis, random};
 use eyre::Report;
-use ndarray::{array, stack, Array1, Array2, ArrayBase, Axis, Data, Dimension, Ix1, Ix2};
-use ndarray_rand::RandomExt;
-use ndarray_stats::QuantileExt;
+use ndarray::{stack, Array1, Array2, ArrayBase, Axis, Data, Ix1, Ix2};
 use rand::Rng;
 
 #[derive(Debug, Clone)]

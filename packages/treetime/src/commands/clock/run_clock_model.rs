@@ -3,7 +3,6 @@ use crate::commands::clock::graph_regression::{base_regression, explained_varian
 use crate::commands::clock::graph_regression_policy::{GraphNodeRegressionPolicy, GraphNodeRegressionPolicyReroot};
 use crate::make_error;
 use eyre::Report;
-use itertools::Itertools;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 

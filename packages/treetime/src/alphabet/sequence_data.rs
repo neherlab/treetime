@@ -8,6 +8,7 @@ use std::collections::HashMap;
 use std::fmt::Write as _;
 use std::path::Path;
 
+#[allow(dead_code)]
 #[derive(Clone, Debug)]
 pub struct Sequence {
   index: usize,
@@ -15,6 +16,7 @@ pub struct Sequence {
   seq: Array1<char>,
 }
 
+#[allow(dead_code)]
 #[derive(Clone, Debug)]
 pub struct SequenceCompressed {
   index: usize,
@@ -29,6 +31,7 @@ pub struct AlignmentPattern {
   patterns: Vec<usize>,
 }
 
+#[allow(dead_code)]
 #[derive(Clone, Debug)]
 pub struct SequenceData {
   aln: Array2<char>,
@@ -48,8 +51,8 @@ impl SequenceData {
   pub fn new<P: AsRef<Path>>(fasta_paths: &[P], ambiguous_letter: char) -> Result<Self, Report> {
     let fasta_records = read_many_fasta(fasta_paths)?;
 
-    // TODO: does this need to be mode complex?
-    let mut len_full = fasta_records[0].seq.len();
+    // TODO: does this need to be more complex?
+    let len_full = fasta_records[0].seq.len();
 
     let seq_names_to_indices: HashMap<String, usize> = fasta_records
       .iter()
@@ -77,8 +80,7 @@ impl SequenceData {
 
     if let Some(additional_constant_sites) = additional_constant_sites {
       add_additional_constant_sites();
-      // TODO: full length should change here
-      len_full = len_full;
+      // TODO: len_full should change here
     }
 
     let (aln_compressed, alignment_patterns) = compress(&aln_transpose, ambiguous_letter)?;

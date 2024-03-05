@@ -1,6 +1,4 @@
 #![allow(non_upper_case_globals)]
-#![allow(non_snake_case)]
-
 use crate::commands::clock::clock_graph::{ClockGraph, Node};
 use crate::commands::clock::graph_regression_policy::GraphNodeRegressionPolicy;
 use crate::graph::breadth_first::GraphTraversalContinuation;
@@ -11,7 +9,6 @@ use itertools::Itertools;
 use ndarray::{array, Array1, Array2, ArrayBase, Data, Ix1};
 use ndarray_linalg::Inverse;
 use ndarray_stats::CorrelationExt;
-use num_traits::real::Real;
 use num_traits::Float;
 
 pub const tavgii: usize = 0;

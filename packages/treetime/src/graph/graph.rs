@@ -7,9 +7,9 @@ use crate::make_error;
 use eyre::Report;
 use itertools::{iproduct, Itertools};
 use parking_lot::RwLock;
-use std::borrow::{Borrow, BorrowMut};
+use std::borrow::BorrowMut;
 use std::collections::{HashSet, VecDeque};
-use std::fmt::{Debug, Display};
+use std::fmt::Debug;
 use std::io::Write;
 use std::sync::Arc;
 
@@ -490,7 +490,6 @@ where
     let node_keys = nodes.iter().map(|node| node.read().key()).collect_vec();
 
     let fake_edges = iproduct!(&node_keys, &node_keys)
-      .into_iter()
       .enumerate()
       .map(|(i, (left, right))| {
         let weight = 1000 + i * 100;

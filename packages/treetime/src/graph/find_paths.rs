@@ -7,9 +7,7 @@ use crate::graph::graph::Graph;
 use crate::graph::node::{GraphNode, Node};
 use crate::make_internal_report;
 use eyre::Report;
-use itertools::Itertools;
 use parking_lot::RwLock;
-use std::borrow::Borrow;
 use std::collections::HashSet;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::Relaxed;
@@ -23,7 +21,7 @@ pub fn find_paths<N: GraphNode, E: GraphEdge>(
 ) -> Result<Vec<Arc<RwLock<Edge<E>>>>, Report> {
   let mut edge_keys = HashSet::<GraphEdgeKey>::new();
 
-  for edge in graph.get_edges().iter() {
+  for edge in graph.get_edges() {
     // An edge (connecting nodes `source` and `target`) is on a path between nodes `start` and `end` iff:
     //  - there exists a forward path from `start` to `source`
     //  - there exists a backward path from `finish` to `target`

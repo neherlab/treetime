@@ -1,5 +1,3 @@
-#![allow(non_snake_case)]
-
 use crate::alphabet::sequence_data::SequenceData;
 use crate::commands::ancestral::anc_args::TreetimeAncestralArgs;
 use crate::commands::ancestral::anc_graph::AncestralGraph;
@@ -17,7 +15,6 @@ use eyre::Report;
 use itertools::Itertools;
 use ndarray::{s, stack, Array2, ArrayBase, Axis};
 use rand::Rng;
-use std::fmt::Display;
 
 pub fn run_anc_method_ml_joint(
   sequence_data: &SequenceData,
@@ -37,7 +34,7 @@ fn traverse_backward(
   sequence_data: &SequenceData,
   gtr: &GTR,
   graph: &mut AncestralGraph,
-  rng: &mut impl Rng,
+  rng: &impl Rng,
   ancestral_args: &TreetimeAncestralArgs,
   ancestral_params: &TreetimeAncestralParams,
 ) {
@@ -136,7 +133,7 @@ fn traverse_backward(
 fn compute_roots(
   sequence_data: &SequenceData,
   model: &GTR,
-  graph: &mut AncestralGraph,
+  graph: &AncestralGraph,
   rng: &mut impl Rng,
   ancestral_args: &TreetimeAncestralArgs,
   ancestral_params: &TreetimeAncestralParams,
@@ -205,7 +202,7 @@ fn traverse_forward(
   sequence_data: &SequenceData,
   model: &GTR,
   graph: &mut AncestralGraph,
-  rng: &mut impl Rng,
+  rng: &impl Rng,
   ancestral_args: &TreetimeAncestralArgs,
   ancestral_params: &TreetimeAncestralParams,
 ) {

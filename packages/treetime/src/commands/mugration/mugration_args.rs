@@ -1,7 +1,6 @@
 use clap::{Parser, ValueHint};
 use std::fmt::Debug;
 use std::path::PathBuf;
-use std::str::FromStr;
 
 #[derive(Parser, Debug)]
 pub struct TreetimeMugrationArgs {

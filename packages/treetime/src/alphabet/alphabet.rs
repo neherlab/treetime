@@ -6,7 +6,6 @@ use lazy_static::lazy_static;
 use ndarray::iter::Iter;
 use ndarray::{array, Array, Array1, Array2, Dimension, Ix1};
 use smart_default::SmartDefault;
-use std::ops::Index;
 use strum_macros::Display;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, ArgEnum, SmartDefault, Display)]
@@ -19,7 +18,7 @@ pub enum AlphabetName {
   AaNogap,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Alphabet {
   pub alphabet: Array1<char>,
   pub profile_map: IndexMap<char, Array1<f64>>,
@@ -125,6 +124,7 @@ impl Alphabet {
     self.ambiguous
   }
 
+  #[allow(clippy::iter_without_into_iter)]
   pub fn iter(&self) -> Iter<'_, char, Ix1> {
     self.alphabet.iter()
   }

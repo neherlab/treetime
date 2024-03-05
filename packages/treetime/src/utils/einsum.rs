@@ -12,7 +12,6 @@ pub fn einsum_1d<A: LinalgScalar>(input_string: &str, operands: &[&dyn ArrayLike
   Ok(result)
 }
 
-#[allow(non_snake_case)]
 #[cfg(test)]
 mod tests {
   use super::*;

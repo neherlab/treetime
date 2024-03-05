@@ -1,5 +1,3 @@
-#![allow(non_snake_case)]
-
 use crate::alphabet::alphabet::{Alphabet, AlphabetName};
 use crate::gtr::gtr::{GTRParams, GTR};
 use crate::{make_error, make_report};

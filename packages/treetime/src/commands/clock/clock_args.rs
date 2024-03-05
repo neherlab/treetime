@@ -1,10 +1,9 @@
 use crate::commands::ancestral::anc_args::MethodAncestral;
 use crate::commands::timetree::timetree_args::{BranchLengthMode, RerootMode};
 use crate::gtr::get_gtr::GtrModelName;
-use clap::{ArgEnum, Parser, ValueHint};
+use clap::{Parser, ValueHint};
 use std::fmt::Debug;
 use std::path::PathBuf;
-use std::str::FromStr;
 
 #[derive(Parser, Debug)]
 pub struct TreetimeClockArgs {

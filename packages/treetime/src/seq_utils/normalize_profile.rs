@@ -4,7 +4,6 @@ use eyre::Report;
 use ndarray::prelude::*;
 use ndarray::Data;
 use ndarray_einsum_beta::einsum;
-use num_traits::real::Real;
 use num_traits::FloatConst;
 
 /// Returns a normalized version of a profile matrix

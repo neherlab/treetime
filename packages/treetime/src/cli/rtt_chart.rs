@@ -83,7 +83,7 @@ pub fn write_rtt_svg_chart(
       "Root-to-tip regression: {}",
       rtt_equation_str(*slope, *intercept)
     ))
-    .legend(move |(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &line_color));
+    .legend(move |(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], line_color));
 
   let point_color = RGBColor(255, 105, 97);
   chart
@@ -105,8 +105,8 @@ pub fn write_rtt_svg_chart(
 
   chart
     .configure_series_labels()
-    .border_style(&BLACK)
-    .background_style(&WHITE)
+    .border_style(BLACK)
+    .background_style(WHITE)
     .position(SeriesLabelPosition::UpperRight)
     .draw()?;
 

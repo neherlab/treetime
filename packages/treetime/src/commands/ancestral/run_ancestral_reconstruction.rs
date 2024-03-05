@@ -11,9 +11,7 @@ use crate::io::file::create_file;
 use crate::io::nex::write_nex;
 use crate::utils::random::get_random_number_generator;
 use eyre::Report;
-use itertools::Itertools;
 use log::info;
-use std::fmt::Display;
 use std::io::Write;
 
 #[derive(Clone, Debug, Default)]

@@ -1,18 +1,14 @@
 use crate::constants::BIG_NUMBER;
 use eyre::Report;
-use ndarray::{
-  Array, Array1, Array2, ArrayBase, Axis, Data, Dimension, Ix, Ix1, Ix2, NdProducer, RawData, RemoveAxis, ShapeBuilder,
-  Zip,
-};
+use ndarray::{Array, Array1, Array2, ArrayBase, Axis, Data, Dimension, Ix1, Ix2, RemoveAxis, ShapeBuilder, Zip};
 use ndarray_rand::RandomExt;
 use num_traits::real::Real;
-use num_traits::{Bounded, Float, Num, NumCast, Zero};
+use num_traits::{Bounded, Float, NumCast, Zero};
 use rand::distributions::uniform::SampleUniform;
 use rand::distributions::Uniform;
 use rand::Rng;
-use rayon::iter::plumbing::Reducer;
 use std::f64::consts::E;
-use std::ops::{Add, AddAssign, Deref, MulAssign};
+use std::ops::AddAssign;
 
 pub fn to_col<T: Real>(a: &Array1<T>) -> Result<Array2<T>, Report> {
   Ok(a.to_shape((a.len(), 1))?.into_dimensionality::<Ix2>()?.to_owned())

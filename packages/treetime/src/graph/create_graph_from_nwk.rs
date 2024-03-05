@@ -61,7 +61,7 @@ where
     root.set_node_type(NodeType::Root(0.0));
   }
 
-  assign_node_names(&mut graph);
+  assign_node_names(&graph);
 
   Ok(graph)
 }

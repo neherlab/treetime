@@ -1,5 +1,3 @@
-#![allow(non_snake_case)]
-
 use crate::commands::clock::clock_graph::{ClockGraph, Edge, Node};
 use crate::commands::clock::graph_regression::{base_regression, davgii, propagate_averages, tavgii};
 use crate::commands::clock::graph_regression_policy::{GraphNodeRegressionPolicy, GraphNodeRegressionPolicyReroot};
@@ -188,8 +186,8 @@ fn find_best_root_least_squares<P: GraphNodeRegressionPolicy>(
 
 /// Calculate differentials with respect to x
 pub fn calculate_diff_to_x_in_place<P: GraphNodeRegressionPolicy>(
-  mut best_root: &mut BestRoot,
-  graph: &mut ClockGraph,
+  best_root: &mut BestRoot,
+  graph: &ClockGraph,
   params: &&RerootParams,
 ) -> Result<(), Report> {
   match best_root.node_key {

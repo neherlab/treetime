@@ -1,5 +1,3 @@
-#![allow(non_snake_case)]
-
 use crate::graph::breadth_first::GraphTraversalContinuation;
 use crate::graph::create_graph_from_nwk::create_graph_from_nwk;
 use crate::graph::edge::{GraphEdge, Weighted};
@@ -8,7 +6,6 @@ use crate::graph::node::{GraphNode, Named, NodeType, WithNwkComments};
 use crate::io::dates_csv::{DateOrRange, DatesMap};
 use crate::make_error;
 use eyre::Report;
-use itertools::Itertools;
 use ndarray::Array1;
 use std::fmt::{Display, Formatter};
 use std::path::Path;

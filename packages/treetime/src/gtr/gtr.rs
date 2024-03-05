@@ -4,14 +4,13 @@ use crate::utils::ndarray::{clamp_min, outer};
 use eyre::Report;
 use itertools::Itertools;
 use ndarray::prelude::*;
+use ndarray_linalg::Eigh;
 use ndarray_linalg::UPLO::Lower;
-use ndarray_linalg::{Eig, Eigh};
 use num_traits::abs;
-use num_traits::real::Real;
+use std::fmt::Display;
 use std::io::Write;
 use std::iter::zip;
 
-#[allow(non_snake_case)]
 pub fn avg_transition(W: &Array2<f64>, pi: &Array1<f64>, gap_index: Option<usize>) -> Result<f64, Report> {
   let result = einsum_1d("i,ij,j", &[pi, W, pi])?;
 
@@ -30,6 +29,7 @@ pub fn avg_transition(W: &Array2<f64>, pi: &Array1<f64>, gap_index: Option<usize
 /// matrices to convert the sequence profiles to the GTR matrix eigenspace
 /// and hence to speed-up the computations.
 /// NOTE: this assumes the diagonal of W is all zeros
+#[allow(clippy::type_complexity)]
 fn eig_single_site(W: &Array2<f64>, pi: &Array1<f64>) -> Result<(Array1<f64>, Array2<f64>, Array2<f64>), Report> {
   assert!(abs(W.diag().sum()) < 1e-10);
 
@@ -135,24 +135,24 @@ impl GTR {
     self.average_rate
   }
 
-  fn assign_gap_and_ambiguous(alphabet: &Alphabet) -> Option<usize> {
-    // let n_states = self.alphabet.len();
-
-    // // determine if a character exists that corresponds to no info, i.e. all one profile
-    // if any([x.sum()==n_states for x in self.profile_map.values()]):
-    //     amb_states = [c for c,x in self.profile_map.items() if x.sum()==n_states]
-    //     self.ambiguous = 'N' if 'N' in amb_states else amb_states[0]
-    // else:
-    //     self.ambiguous=None
-    //
-    // // check for a gap symbol
-    // try:
-    //     self.gap_index = self.state_index['-']
-    // except:
-    //     self.gap_index=None
-
-    None
-  }
+  // fn assign_gap_and_ambiguous(alphabet: &Alphabet) -> Option<usize> {
+  //   // let n_states = self.alphabet.len();
+  //
+  //   // // determine if a character exists that corresponds to no info, i.e. all one profile
+  //   // if any([x.sum()==n_states for x in self.profile_map.values()]):
+  //   //     amb_states = [c for c,x in self.profile_map.items() if x.sum()==n_states]
+  //   //     self.ambiguous = 'N' if 'N' in amb_states else amb_states[0]
+  //   // else:
+  //   //     self.ambiguous=None
+  //   //
+  //   // // check for a gap symbol
+  //   // try:
+  //   //     self.gap_index = self.state_index['-']
+  //   // except:
+  //   //     self.gap_index=None
+  //
+  //   None
+  // }
 
   /// Compute the probability of the sequence state of the child
   /// at time t later, given the parent profile.
@@ -285,11 +285,11 @@ impl GTR {
   }
 }
 
-impl ToString for GTR {
-  fn to_string(&self) -> String {
+impl Display for GTR {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     let mut buf = vec![];
     self.print(&mut buf).unwrap();
-    String::from_utf8(buf).unwrap()
+    write!(f, "{}", String::from_utf8(buf).unwrap())
   }
 }
 
@@ -465,7 +465,7 @@ mod test {
   fn jc69_calculates_exp_qt() -> Result<(), Report> {
     let gtr = jc69(JC69Params::default())?;
 
-    let t = (1.0 / 5.0).ln() / gtr.mu;
+    let t = (1.0_f64 / 5.0).ln() / gtr.mu;
     let Qs = gtr.expQt(t);
 
     assert_abs_diff_eq!(

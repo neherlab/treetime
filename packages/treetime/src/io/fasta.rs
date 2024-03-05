@@ -5,10 +5,8 @@ use crate::make_error;
 use eyre::Report;
 use log::info;
 use serde::{Deserialize, Serialize};
-use std::fmt::Display;
-use std::io::{BufRead, BufReader, Read};
+use std::io::{BufRead, BufReader};
 use std::path::Path;
-use std::str::FromStr;
 
 #[derive(Clone, Default, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -102,7 +100,7 @@ impl<'a> FastaReader<'a> {
         break;
       }
 
-      let fragment = self.line.trim_end().chars().into_iter().map(|c| c.to_ascii_uppercase());
+      let fragment = self.line.trim_end().chars().map(|c| c.to_ascii_uppercase());
 
       record.seq.extend(fragment);
     }

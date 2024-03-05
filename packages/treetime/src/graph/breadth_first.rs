@@ -4,9 +4,6 @@ use crate::graph::node::{GraphNode, Node};
 use itertools::Itertools;
 use parking_lot::{RwLock, RwLockWriteGuard};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use std::borrow::Borrow;
-use std::fmt::{Debug, Display};
-use std::hash::Hash;
 use std::sync::Arc;
 
 pub enum GraphTraversalContinuation {

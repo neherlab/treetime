@@ -13,7 +13,7 @@ use std::path::Path;
 
 pub fn read_nwk_file(nwk_file_path: impl AsRef<Path>) -> Result<Tree, Report> {
   let nwk_file_path = nwk_file_path.as_ref();
-  let nwk_str = read_file_to_string(&nwk_file_path)?;
+  let nwk_str = read_file_to_string(nwk_file_path)?;
   read_nwk(nwk_str.as_bytes()).wrap_err_with(|| format!("When parsing Newick file {nwk_file_path:#?}"))
 }
 
@@ -80,7 +80,7 @@ where
     write!(writer, "(")?;
 
     let mut first = true;
-    for outbound_edge_key in outbound_edge_keys.iter() {
+    for outbound_edge_key in outbound_edge_keys {
       let edge = graph.get_edge(*outbound_edge_key).unwrap();
 
       if first {

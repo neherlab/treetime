@@ -162,7 +162,7 @@ fn map_mutations(graph: &AncestralGraph) -> MappedMutations {
   let mut mutations = MultiMap::<Mutation, GraphNodeKey>::new();
   let mut terminal_mutations = MultiMap::<Mutation, GraphNodeKey>::new();
 
-  for node in graph.get_nodes().iter() {
+  for node in graph.get_nodes() {
     let node = node.read();
     let key = node.key();
     let node = node.payload();
@@ -199,7 +199,7 @@ fn find_homoplasic_mutations_by_strain(
 ) -> BTreeMap<GraphNodeKey, Vec<(Mutation, usize)>> {
   let mut mutations_by_strain = BTreeMap::<GraphNodeKey, Vec<(Mutation, usize)>>::new();
 
-  for node in graph.get_nodes().iter() {
+  for node in graph.get_nodes() {
     let node = node.read();
     let key = node.key();
     let node = node.payload();
@@ -218,7 +218,7 @@ fn find_homoplasic_mutations_by_strain(
             if num_mutations > 1 {
               mutations_by_strain
                 .entry(key)
-                .or_insert(vec![])
+                .or_default()
                 .push((mutation.clone(), num_mutations));
             }
           }

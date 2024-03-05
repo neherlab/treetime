@@ -1,3 +1,4 @@
+#![allow(clippy::many_single_char_names)]
 use crate::graph::edge::{GraphEdge, Weighted};
 use crate::graph::graph::Graph;
 use crate::graph::node::{GraphNode, Named, NodeType, WithNwkComments};

@@ -1,10 +1,9 @@
 use crate::graph::edge::GraphEdge;
 use crate::graph::graph::{Graph, GraphNodeForward};
 use crate::graph::node::GraphNode;
-use itertools::Itertools;
 use std::collections::HashSet;
 
-pub fn assign_node_names<N: GraphNode, E: GraphEdge>(graph: &mut Graph<N, E>) {
+pub fn assign_node_names<N: GraphNode, E: GraphEdge>(graph: &Graph<N, E>) {
   let mut names = graph
     .get_node_payloads()
     .map(|node| node.read().name().to_owned())

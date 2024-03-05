@@ -1,14 +1,12 @@
+use crate::io::compression::{Compressor, Decompressor};
 use crate::io::fs::ensure_dir;
+#[cfg(not(target_arch = "wasm32"))]
+use atty::{is as is_tty, Stream};
 use eyre::{Report, WrapErr};
 use log::{info, warn};
-use std::fmt::Debug;
 use std::fs::File;
 use std::io::{stdin, stdout, BufRead, BufReader, BufWriter, Write};
 use std::path::{Path, PathBuf};
-
-use crate::io::compression::{Compressor, Decompressor};
-#[cfg(not(target_arch = "wasm32"))]
-use atty::{is as is_tty, Stream};
 
 const TTY_WARNING: &str = r#"Reading from standard input which is a TTY (e.g. an interactive terminal). This is likely not what you meant. Instead:
 
@@ -60,8 +58,8 @@ pub fn create_file(filepath: impl AsRef<Path>) -> Result<Box<dyn Write + Send>, 
     info!("File path is {filepath:?}. Writing to standard output.");
     Box::new(BufWriter::with_capacity(32 * 1024, stdout()))
   } else {
-    ensure_dir(&filepath)?;
-    Box::new(File::create(&filepath).wrap_err_with(|| format!("When creating file: '{filepath:?}'"))?)
+    ensure_dir(filepath)?;
+    Box::new(File::create(filepath).wrap_err_with(|| format!("When creating file: '{filepath:?}'"))?)
   };
 
   let buf_file = BufWriter::with_capacity(32 * 1024, file);

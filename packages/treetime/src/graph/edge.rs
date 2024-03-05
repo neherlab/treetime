@@ -2,11 +2,9 @@ use crate::graph::graph::Graph;
 use crate::graph::node::{GraphNode, GraphNodeKey};
 use derive_more::Display;
 use parking_lot::RwLock;
-use std::borrow::BorrowMut;
 use std::fmt::{Debug, Display, Formatter};
 use std::hash::Hash;
 use std::mem::swap;
-use std::ops::Index;
 use std::sync::Arc;
 
 pub trait Weighted {
@@ -71,7 +69,7 @@ impl<E: GraphEdge> Edge<E> {
 }
 
 /// Invert direction of an edge.
-pub fn invert_edge<N: GraphNode, E: GraphEdge>(graph: &mut Graph<N, E>, edge: &Arc<RwLock<Edge<E>>>) {
+pub fn invert_edge<N: GraphNode, E: GraphEdge>(graph: &Graph<N, E>, edge: &Arc<RwLock<Edge<E>>>) {
   let (this_edge_key, source, target) = {
     let edge = edge.read();
 

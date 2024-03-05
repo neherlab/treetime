@@ -37,7 +37,7 @@ pub fn read_dates(
   let filepath = filepath.as_ref();
   let file = open_file_or_stdin(&Some(filepath)).wrap_err_with(|| format!("When reading file: {filepath:#?}"))?;
   let delimiter =
-    guess_csv_delimiter(&filepath).wrap_err_with(|| format!("When guessing CSV delimiter for {filepath:#?}"))?;
+    guess_csv_delimiter(filepath).wrap_err_with(|| format!("When guessing CSV delimiter for {filepath:#?}"))?;
 
   let mut reader = CsvReaderBuilder::new()
     .trim(Trim::All)

@@ -1,15 +1,13 @@
 use clap::{AppSettings, ArgEnum, CommandFactory, Parser, Subcommand};
-use clap_complete::{generate, Generator, Shell};
+use clap_complete::{generate, Shell};
 use clap_complete_fig::Fig;
 use clap_verbosity_flag::{Verbosity, WarnLevel};
 use eyre::{eyre, Report};
-use itertools::Itertools;
 use lazy_static::lazy_static;
 use log::LevelFilter;
 use num_cpus;
 use std::fmt::Debug;
 use std::io;
-use std::str::FromStr;
 use treetime::commands::ancestral::anc_args::TreetimeAncestralArgs;
 use treetime::commands::clock::clock_args::TreetimeClockArgs;
 use treetime::commands::homoplasy::homoplasy_args::TreetimeHomoplasyArgs;

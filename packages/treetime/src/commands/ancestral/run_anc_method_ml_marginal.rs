@@ -9,8 +9,8 @@ use rand::Rng;
 pub fn run_anc_method_ml_marginal(
   sequence_data: &SequenceData,
   model: &GTR,
-  graph: &mut AncestralGraph,
-  rng: &mut impl Rng,
+  graph: &AncestralGraph,
+  rng: &impl Rng,
   ancestral_args: &TreetimeAncestralArgs,
   ancestral_params: &TreetimeAncestralParams,
 ) -> Result<(), Report> {

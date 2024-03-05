@@ -3,7 +3,6 @@ use crate::gtr::get_gtr::GtrModelName;
 use clap::{ArgEnum, Parser, ValueHint};
 use std::fmt::Debug;
 use std::path::PathBuf;
-use std::str::FromStr;
 
 #[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, ArgEnum)]
 #[clap(rename = "kebab-case")]

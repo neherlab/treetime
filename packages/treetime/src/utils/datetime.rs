@@ -1,7 +1,6 @@
 use crate::make_error;
 use chrono::{DateTime, Datelike, FixedOffset, NaiveDate, Utc};
 use eyre::Report;
-use itertools::Itertools;
 use std::time::{Duration, UNIX_EPOCH};
 use time::util::days_in_year;
 
