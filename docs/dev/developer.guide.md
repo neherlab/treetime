@@ -16,7 +16,7 @@ Treetime is written in Rust. The usual `rustup` & `cargo` workflow can be used:
 # These particular commands are specific for Ubuntu Linux and will work on some other Debian-based Linux distros.
 # Refer to documentation of your operating system to find how to install these dependencies.
 sudo apt-get update
-sudo apt-get install --yes bash curl gcc gfortran git make
+sudo apt-get install --yes bash curl gcc gfortran git make pkg-config libssl-dev
 
 # Install Rustup, the Rust version manager (https://www.rust-lang.org/tools/install)
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y
