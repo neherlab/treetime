@@ -34,7 +34,7 @@ assert2 = "=0.3.11"
 atty = "=0.2.14"
 bio = { version = "=1.5.0", features = ["phylogeny"] }
 bio-types = { version = "=1.0.1", features = ["phylogeny"] }
-blas-src = { version = "=0.8.0", features = ["openblas-src"] }
+blas-src = { version = "=0.10.0", features = ["openblas-src"] }
 bzip2 = "=0.4.3"
 chrono = { version = "=0.4.21", default-features = false, features = ["clock", "std"] }
 clap = { version = "=3.2.16", features = ["derive"] }
@@ -49,7 +49,7 @@ ctor = "=0.1.23"
 derive_more = "=0.99.17"
 env_logger = "=0.9.0"
 eyre = "=0.6.8"
-flate2 = "=1.0.24"
+flate2 = "=1.0.28"
 indexmap = { version = "=1.9.1", features = ["serde-1"] }
 itertools = "=0.10.3"
 lazy_static = "=1.4.0"
@@ -64,7 +64,7 @@ num = "=0.4.0"
 num-integer = "=0.1.45"
 num-traits = "=0.2.15"
 num_cpus = "=1.13.1"
-openblas-src = { version = "=0.10.4", features = ["static"] }
+openblas-src = { version = "=0.10.9", features = ["static"] }
 ordered-float = { version = "=3.1.0", default-features = false }
 parking_lot = { version = "=0.12.1", features = ["deadlock_detection", "hardware-lock-elision"] }
 plotters = { version = "=0.3.4", default_features = false, features = ["all_series", "all_elements", "svg_backend"] }
