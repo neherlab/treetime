@@ -13,28 +13,35 @@ seqs = {'A':'ACATCGCC',
 
 myGTR = GTR.standard('JC69', alphabet='nuc')
 
-# Barebones implemenation of marginal likelihood calculation and ancestral sequence inference
+# Barebones implementation of marginal likelihood calculation and ancestral sequence inference
 # this uses elementary operations from the GTR model but no other treetime functionality
 # it treats sequences as fixed length arrays and does not compress identical columns etc
 # each node keeps copies of its profile, the message from its parent, and the message to its parent
 # this can use a lot of memory 
 
 
+## postorder traversal, deal with leaves first
 for n in tree.get_terminals():
     n.seq = seqs[n.name]
     n.profile = seq2prof(n.seq, profile_map=profile_maps['nuc'])
     n.msg_to_parent = myGTR.propagate_profile(n.profile, n.branch_length)
 
-
+## postorder traversal, deal with internal nodes
 for n in tree.get_nonterminals(order='postorder'):
     n.profile = np.prod([c.msg_to_parent for c in n.clades], axis=0)
     n.msg_to_parent = myGTR.propagate_profile(n.profile, n.branch_length)
 
+## calculate the root state
 tree.root.msg_from_parent = np.array([myGTR.Pi for i in range(len(tree.root.profile))])
 tree.root.marginal_LH = tree.root.msg_from_parent*tree.root.profile
+
+# if not careful, this will result in underflows for long sequences
 tree.total_LH = tree.root.marginal_LH.sum(axis=1).prod()
+
+# this is a profile normalization step that we need to do a lot
 tree.root.marginal_LH /= tree.root.marginal_LH.sum(axis=1)[:,None]
 
+## preorder traversal. 
 for n in tree.get_nonterminals(order='preorder'):
     for c in n.clades:
         parent_msg = np.prod([n.msg_from_parent] + [s.msg_to_parent for s in n.clades if s!=c], axis=0)
@@ -42,6 +49,7 @@ for n in tree.get_nonterminals(order='preorder'):
         c.marginal_LH = c.msg_from_parent*c.profile
         c.marginal_LH /= c.marginal_LH.sum(axis=1)[:,None]
 
+## calculate the inferred sequences
 for n in tree.find_clades():
     # convert back to sequences by picking the most likely base at each position
     # the marginal_LH are already normalized, no need to normalize again
