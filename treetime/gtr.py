@@ -476,8 +476,8 @@ class GTR(object):
         alphabet=alphabets[alphabet]
         gtr = cls(alphabet)
         n = gtr.alphabet.shape[0]
-        pi = 1.0*rng.randint(0,100,size=(n))
-        W = 1.0*rng.randint(0,100,size=(n,n)) # with gaps
+        pi = 1.0*rng.random(size=n)
+        W = 1.0*rng.random(size=(n,n)) # with gaps
 
         gtr.assign_rates(mu=mu, pi=pi, W=W)
         return gtr

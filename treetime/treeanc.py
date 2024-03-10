@@ -572,7 +572,7 @@ class TreeAnc(object):
                                     "in the position %d: %s, "
                                     "choosing %s" % (amb, str(self.tree.root.state[amb]),
                                                      self.tree.root.state[amb][0]), 4)
-        self.tree.root._cseq = np.array([k[self.rng.randint(len(k)) if len(k)>1 else 0]
+        self.tree.root._cseq = np.array([k[self.rng.integers(len(k)) if len(k)>1 else 0]
                                            for k in self.tree.root.state])
 
 
