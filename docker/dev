@@ -166,6 +166,7 @@ ${NICE} docker run --rm \
   --env="USER=${USER}" \
   --env="GROUP=${GROUP}" \
   --env="PS1=\${USER}@\${HOST}" \
+  --env="PYTHONPATH=/workdir" \
   --ulimit core=0 \
   ${PORTS} \
   "${DOCKER_REPO}:${DOCKER_TARGET}-${DOCKER_IMAGE_VERSION}" \
