@@ -545,10 +545,10 @@ mod test {
       [0.10, 0.15, 0.30, 0.40, 0.05], // pi
     ];
 
-    // Propagate for long time
+    // Evolve for short time
     #[rustfmt::skip]
     pretty_assert_ulps_eq!(
-      gtr.propagate_profile(&profile, 0.1, false),
+      gtr.evolve(&profile, 0.1, false),
       array![
         [ 0.9738958307080365362,  0.0029771074531009080,  0.0147256008712759682,  0.0079039526550447985,  0.0004975083125415711],
         [ 0.0019847383020672347,  0.9690872766199875032,  0.0088430096746691337,  0.0195874670907354546,  0.0004975083125416335],
@@ -561,10 +561,10 @@ mod test {
       epsilon = 1e-12
     );
 
-    // Propagate for long time
+    // Evolve for long time
     #[rustfmt::skip]
     pretty_assert_ulps_eq!(
-      gtr.propagate_profile(&profile, 1000.0, false),
+      gtr.evolve(&profile, 1000.0, false),
       array![
         [0.10, 0.15, 0.30, 0.40, 0.05], // pi
         [0.10, 0.15, 0.30, 0.40, 0.05], // pi
