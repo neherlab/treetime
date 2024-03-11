@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+trap "exit 0" INT
+
+export THIS_DIR=$(
+  cd "$(dirname "${BASH_SOURCE[0]}")"
+  pwd
+)
+
+RESULTS_DIR="${THIS_DIR}/tmp/smoke-tests"
+
+function run_treetime() {
+  cmd=$([[ "$1" == --* ]] && echo "timetree" || echo "$1")
+  printf "\n\n%s\n\n" "----------------- ${cmd} -----------------------"
+  set -x
+  python3 -m 'treetime.__main__' $*
+  { set +x; } 2>/dev/null
+}
+
+run_treetime \
+  --aln "test/treetime_examples/data/h3n2_na/h3n2_na_20.fasta" \
+  --tree "test/treetime_examples/data/h3n2_na/h3n2_na_20.nwk" \
+  --dates "test/treetime_examples/data/h3n2_na/h3n2_na_20.metadata.csv" \
+  --outdir "${RESULTS_DIR}/timetree/h3n2_na_20"
+
+run_treetime ancestral \
+  --aln "test/treetime_examples/data/h3n2_na/h3n2_na_20.fasta" \
+  --tree "test/treetime_examples/data/h3n2_na/h3n2_na_20.nwk" \
+  --outdir "${RESULTS_DIR}/ancestral/h3n2_na_20"
+
+run_treetime clock \
+  --tree "test/treetime_examples/data/h3n2_na/h3n2_na_20.nwk" \
+  --dates "test/treetime_examples/data/h3n2_na/h3n2_na_20.metadata.csv" \
+  --sequence-length 1400 \
+  --outdir "${RESULTS_DIR}/clock/h3n2_na_20"
+
+run_treetime clock \
+  --tree "test/treetime_examples/data/ebola/ebola.nwk" \
+  --dates "test/treetime_examples/data/ebola/ebola.metadata.csv" \
+  --aln "test/treetime_examples/data/ebola/ebola.fasta" \
+  --outdir "${RESULTS_DIR}/clock/ebola"
+
+run_treetime homoplasy \
+    --aln "test/treetime_examples/data/h3n2_na/h3n2_na_20.fasta" \
+    --tree "test/treetime_examples/data/h3n2_na/h3n2_na_20.nwk" \
+    --gtr="jc69" \
+    --outdir "${RESULTS_DIR}/homoplasy/h3n2_na_20"
+
+run_treetime mugration \
+  --tree "test/treetime_examples/data/zika/zika.nwk" \
+  --states "test/treetime_examples/data/zika/zika.metadata.csv" \
+  --weights "test/treetime_examples/data/zika/zika.country_weights.csv" \
+  --attribute "country" \
+  --outdir "${RESULTS_DIR}/mugration/zika"
