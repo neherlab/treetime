@@ -425,7 +425,7 @@ class GTR(object):
 
 
     @classmethod
-    def random(cls, mu=1.0, alphabet='nuc'):
+    def random(cls, mu=1.0, alphabet='nuc', rng=None):
         """
         Creates a random GTR model
 
@@ -440,12 +440,14 @@ class GTR(object):
 
 
         """
+        if rng is None:
+            rng = np.random.default_rng()
 
         alphabet=alphabets[alphabet]
         gtr = cls(alphabet)
         n = gtr.alphabet.shape[0]
-        pi = 1.0*np.random.randint(0,100,size=(n))
-        W = 1.0*np.random.randint(0,100,size=(n,n)) # with gaps
+        pi = 1.0*rng.random(size=n)
+        W = 1.0*rng.random(size=(n,n)) # with gaps
 
         gtr.assign_rates(mu=mu, pi=pi, W=W)
         return gtr
@@ -513,14 +515,13 @@ class GTR(object):
             pi = np.copy(fixed_pi)
         pi/=pi.sum()
         W_ij = np.ones_like(nij)
-        mu = nij.sum()/Ti.sum()
+        mu = (nij.sum()+pc)/(Ti.sum()+pc)
         # if pi is fixed, this will immediately converge
         while LA.norm(pi_old-pi) > dp and count < Nit:
             gtr.logger(' '.join(map(str, ['GTR inference iteration',count,'change:',LA.norm(pi_old-pi)])), 3)
             count += 1
             pi_old = np.copy(pi)
-            W_ij = (nij+nij.T+2*pc_mat)/mu/(np.outer(pi,Ti) + np.outer(Ti,pi)
-                                                    + ttconf.TINY_NUMBER + 2*pc_mat)
+            W_ij = (nij+nij.T+2*pc_mat)/mu/(np.outer(pi,Ti) + np.outer(Ti,pi) + ttconf.TINY_NUMBER + 2*pc_mat)
 
             np.fill_diagonal(W_ij, 0)
             scale_factor = avg_transition(W_ij,pi, gap_index=gtr.gap_index)
@@ -529,9 +530,9 @@ class GTR(object):
             if fixed_pi is None:
                 pi = (np.sum(nij+pc_mat,axis=1)+root_state)/(ttconf.TINY_NUMBER + mu*np.dot(W_ij,Ti)+root_state.sum()+np.sum(pc_mat, axis=1))
                 pi /= pi.sum()
-                mu = nij.sum()/(ttconf.TINY_NUMBER + np.sum(pi * (W_ij.dot(Ti))))
+                mu = (nij.sum() + pc)/(np.sum(pi * (W_ij.dot(Ti)))+pc)
             else:
-                mu = nij.sum()/(ttconf.TINY_NUMBER + np.sum(pi * (W_ij.dot(pi)))*Ti.sum())
+                mu = (nij.sum() + pc)/(np.sum(pi * (W_ij.dot(pi)))*Ti.sum() + pc)
 
         if count >= Nit:
             gtr.logger('WARNING: maximum number of iterations has been reached in GTR inference',3, warn=True)
@@ -820,10 +821,11 @@ class GTR(object):
             else:
                 return -1.0*self.prob_t_compressed(seq_pair, multiplicity,t**2, return_log=True)
 
+        hamming_distance = np.sum(multiplicity[seq_pair[:,1]!=seq_pair[:,0]])/np.sum(multiplicity)
         try:
             from scipy.optimize import minimize_scalar
             opt = minimize_scalar(_neg_prob,
-                    bracket=[-np.sqrt(ttconf.MAX_BRANCH_LENGTH),np.sqrt(ttconf.MAX_BRANCH_LENGTH)],
+                    bracket=[-np.sqrt(ttconf.MAX_BRANCH_LENGTH), np.sqrt(hamming_distance), np.sqrt(ttconf.MAX_BRANCH_LENGTH)],
                     args=(seq_pair, multiplicity), tol=tol, method='brent')
             new_len = opt["x"]**2
             if 'success' not in opt:
@@ -844,7 +846,7 @@ class GTR(object):
 
         if opt["success"] != True:
             # return hamming distance: number of state pairs where state differs/all pairs
-            new_len =  np.sum(multiplicity[seq_pair[:,1]!=seq_pair[:,0]])/np.sum(multiplicity)
+            new_len =  hamming_distance
 
         return new_len
 

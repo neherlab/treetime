@@ -73,16 +73,17 @@ class TreeTime(ClockTree):
                 sys.exit(2)
 
 
-    def _run(self, root=None, infer_gtr=True, relaxed_clock=None, n_iqd = None,
-            resolve_polytomies=True, max_iter=0, Tc=None, fixed_clock_rate=None,
+    def _run(self, root=None, infer_gtr=True, relaxed_clock=None, clock_filter_method='residual',
+             n_iqd = None, resolve_polytomies=True, max_iter=0, Tc=None, fixed_clock_rate=None,
             time_marginal='never', sequence_marginal=False, branch_length_mode='auto',
             vary_rate=False, use_covariation=False, tracelog_file=None,
-            method_anc = 'probabilistic', assign_gamma=None, **kwargs):
+            method_anc = 'probabilistic', assign_gamma=None, stochastic_resolve=False,
+            **kwargs):
 
         """
         Run TreeTime reconstruction. Based on the input parameters, it divides
         the analysis into semi-independent jobs and conquers them one-by-one,
-        gradually optimizing the tree given the temporal constarints and leaf
+        gradually optimizing the tree given the temporal constraints and leaf
         node sequences.
 
         Parameters
@@ -110,6 +111,9 @@ class TreeTime(ClockTree):
 
         resolve_polytomies : bool
            If True, attempt to resolve multiple mergers
+
+        stochastic_resolve : bool (default False)
+           Resolve multiple mergers via a random coalescent tree (True) or via greedy optimization
 
         max_iter : int
            Maximum number of iterations to optimize the tree
@@ -149,7 +153,7 @@ class TreeTime(ClockTree):
 
         use_covariation : bool, optional
             default False, if False, rate estimates will be performed using simple
-            regression ignoring phylogenetic covaration between nodes. If vary_rate is True,
+            regression ignoring phylogenetic covariation between nodes. If vary_rate is True,
             use_covariation is true by default
 
         method_anc: str, optional
@@ -167,7 +171,7 @@ class TreeTime(ClockTree):
 
         Returns
         -------
-        TreeTime error/succces code : str
+        TreeTime error/success code : str
             return value depending on success or error
 
 
@@ -218,7 +222,8 @@ class TreeTime(ClockTree):
             else:
                 plot_rtt=False
             reroot_mechanism = 'least-squares' if root=='clock_filter' else root
-            self.clock_filter(reroot=reroot_mechanism, n_iqd=n_iqd, plot=plot_rtt, fixed_clock_rate=fixed_clock_rate)
+            self.clock_filter(reroot=reroot_mechanism, method=clock_filter_method,
+                              n_iqd=n_iqd, plot=plot_rtt, fixed_clock_rate=fixed_clock_rate)
         elif root is not None:
             self.reroot(root=root, clock_rate=fixed_clock_rate)
 
@@ -279,13 +284,14 @@ class TreeTime(ClockTree):
             n_resolved=0
             if resolve_polytomies:
                 # if polytomies are found, rerun the entire procedure
-                n_resolved = self.resolve_polytomies()
+                n_resolved = self.resolve_polytomies(stochastic_resolve=stochastic_resolve)
                 if n_resolved:
                     seq_kwargs['prune_short']=False
                     self.prepare_tree()
                     if self.branch_length_mode!='input': # otherwise reoptimize branch length while preserving branches without mutations
                         self.optimize_tree(max_iter=0, method_anc = method_anc,**seq_kwargs)
                     need_new_time_tree = True
+
             if assign_gamma and callable(assign_gamma):
                 self.logger("### assigning gamma",1)
                 assign_gamma(self.tree)
@@ -378,7 +384,8 @@ class TreeTime(ClockTree):
             self.branch_length_mode = 'input'
 
 
-    def clock_filter(self, reroot='least-squares', n_iqd=None, plot=False, fixed_clock_rate=None):
+    def clock_filter(self, reroot='least-squares', method='residual',
+                     n_iqd=None, plot=False, fixed_clock_rate=None):
         r'''
         Labels outlier branches that don't seem to follow a molecular clock
         and excludes them from subsequent molecular clock estimation and
@@ -400,34 +407,24 @@ class TreeTime(ClockTree):
             If True, plot the results
 
         '''
+        from .clock_filter_methods import residual_filter, local_filter
         if n_iqd is None:
             n_iqd = ttconf.NIQD
         if type(reroot) is list and len(reroot)==1:
             reroot=str(reroot[0])
 
-        terminals = self.tree.get_terminals()
         if reroot:
-            self.reroot(root='least-squares' if reroot=='best' else reroot, covariation=False, clock_rate=fixed_clock_rate)
+            self.reroot(root='least-squares' if reroot=='best' else reroot,
+                        covariation=False, clock_rate=fixed_clock_rate)
         else:
             self.get_clock_model(covariation=False, slope=fixed_clock_rate)
 
-        clock_rate = self.clock_model['slope']
-        icpt = self.clock_model['intercept']
-        res = {}
-        for node in terminals:
-            if hasattr(node, 'raw_date_constraint') and  (node.raw_date_constraint is not None):
-                res[node] = node.dist2root - clock_rate*np.mean(node.raw_date_constraint) - icpt
-
-        residuals = np.array(list(res.values()))
-        iqd = np.percentile(residuals,75) - np.percentile(residuals,25)
-        bad_branch_count = 0
-        for node,r in res.items():
-            if abs(r)>n_iqd*iqd and node.up.up is not None:
-                self.logger('TreeTime.ClockFilter: marking %s as outlier, residual %f interquartile distances'%(node.name,r/iqd), 3, warn=True)
-                node.bad_branch=True
-                bad_branch_count += 1
-            else:
-                node.bad_branch=False
+        if method=='residual':
+            bad_branch_count = residual_filter(self, n_iqd)
+        elif method=='local':
+            bad_branch_count = local_filter(self, n_iqd)
+        else:
+            raise ValueError(f"TreeTime.clock_filter: unknown clock-filter method '{method}'. Implemented methods are: 'residual', 'local'")
 
         if bad_branch_count>0.34*self.tree.count_terminals():
             self.logger("TreeTime.clock_filter: More than a third of leaves have been excluded by the clock filter. Please check your input data.", 0, warn=True)
@@ -567,7 +564,8 @@ class TreeTime(ClockTree):
         return new_root
 
 
-    def resolve_polytomies(self, merge_compressed=False, resolution_threshold=0.05):
+    def resolve_polytomies(self, merge_compressed=False, resolution_threshold=0.05,
+                           stochastic_resolve=False):
         """
         Resolve the polytomies on the tree.
 
@@ -581,8 +579,13 @@ class TreeTime(ClockTree):
         Parameters
         ----------
          merge_compressed : bool
-            If True, keep compressed branches as polytomies. If False,
-            return a strictly binary tree.
+            If True, keep compressed branches as polytomies. Applies to greedy resolve
+         resolution_threshold : float
+            minimal delta LH to consider for polytomy resolution. Otherwise, keep parent as polytomy
+         stochastic_resolve : bool
+            generate a stochastic binary coalescent tree with mutation from the children of
+            a polytomy. Doesn't necessarily resolve the node fully. This step is stochastic
+            and different runs will result in different outcomes.
 
         Returns
         --------
@@ -592,14 +595,26 @@ class TreeTime(ClockTree):
         """
         self.logger("TreeTime.resolve_polytomies: resolving multiple mergers...",1)
         poly_found=0
+        if stochastic_resolve is False:
+            self.logger("DEPRECATION WARNING. TreeTime.resolve_polytomies: You are "
+                        "resolving polytomies using the old 'greedy' mode. This is not "
+                        "well suited for large polytomies. Stochastic resolution will "
+                        "become the default in future versions. To switch now, rerun "
+                        "with the flag `--stochastic-resolve`. To keep using the greedy method "
+                        "in the future, run with `--greedy-resolve` ", 0, warn=True, only_once=True)
 
         for n in self.tree.find_clades():
             if len(n.clades) > 2:
                 prior_n_clades = len(n.clades)
-                self._poly(n, merge_compressed, resolution_threshold=resolution_threshold)
+                if stochastic_resolve:
+                    self.generate_subtree(n)
+                else:
+                    self._poly(n, merge_compressed, resolution_threshold=resolution_threshold)
+
                 poly_found+=prior_n_clades - len(n.clades)
 
-        obsolete_nodes = [n for n in self.tree.find_clades() if len(n.clades)==1 and n.up is not None]
+        obsolete_nodes = [n for n in self.tree.find_clades()
+                          if len(n.clades)==1 and n.up is not None]
         for node in obsolete_nodes:
             self.logger('TreeTime.resolve_polytomies: remove obsolete node '+node.name,4)
             if node.up is not None:
@@ -616,7 +631,7 @@ class TreeTime(ClockTree):
 
         """
         Function to resolve polytomies for a given parent node. If the
-        number of the direct decendants is less than three (not a polytomy), does
+        number of the direct descendants is less than three (not a polytomy), does
         nothing. Otherwise, for each pair of nodes, assess the possible LH increase
         which could be gained by merging the two nodes. The increase in the LH is
         basically the tradeoff between the gain of the LH due to the changing the
@@ -632,11 +647,17 @@ class TreeTime(ClockTree):
             """
             cost gain if nodes n1, n2 are joined and their parent is placed at time t
             cost gain = (LH loss now) - (LH loss when placed at time t)
+            NOTE: this cost function ignores the coalescent likelihood. Given the greedy
+            and approximate nature of this calculation, this seems justified. But this
+            entire procedure is not well suited for large polytomies.
             """
-            cg2 = n2.branch_length_interpolator._func(parent.time_before_present - n2.time_before_present) - n2.branch_length_interpolator._func(t - n2.time_before_present)
+            # old - new contributions of child branches
             cg1 = n1.branch_length_interpolator._func(parent.time_before_present - n1.time_before_present) - n1.branch_length_interpolator._func(t - n1.time_before_present)
+            cg2 = n2.branch_length_interpolator._func(parent.time_before_present - n2.time_before_present) - n2.branch_length_interpolator._func(t - n2.time_before_present)
+            # old - new contribution of additional branch (no old contribution)
             cg_new = - zero_branch_slope * (parent.time_before_present - t) # loss in LH due to the new branch
-            return -(cg2+cg1+cg_new)
+
+            return -(cg2 + cg1 + cg_new)
 
         def cost_gain(n1, n2, parent):
             """
@@ -751,6 +772,122 @@ class TreeTime(ClockTree):
             LH += merge_nodes(compressed, isall=len(compressed)==len(clade.clades))
 
         return LH
+
+
+    def generate_subtree(self, parent):
+        from .branch_len_interpolator import BranchLenInterpolator
+        # use the random number generator of TreeTime
+        exp_dis = self.rng.exponential
+
+        L = self.data.full_length
+        mutation_rate = self.gtr.mu*L
+
+        tmax = parent.time_before_present
+        branches_by_time = sorted(parent.clades, key=lambda x:x.time_before_present)
+        # calculate the mutations on branches leading to nodes from the mutation length
+        # this excludes state chances to ambiguous states
+        mutations_per_branch = {b.name:round(b.mutation_length*L) for b in branches_by_time}
+
+        branches_alive=branches_by_time[:1]
+        branches_to_come = branches_by_time[1:]
+        t = branches_alive[-1].time_before_present
+        if t>=tmax:
+            # no time left -- keep everything as individual children.
+            return
+
+        # if there is no coalescent model, assume a rate that would typically coalesce all tips
+        # in the time window between the latest and the parent node.
+        dummy_coalescent_rate = 2.0/(tmax-t)
+        self.logger(f"TreeTime.generate_subtree: node {parent.name} has {len(branches_by_time)} children."
+                    +f" {len([b for b,k in mutations_per_branch.items() if k>0])} have mutations."
+                    +f" The time window for coalescence is {tmax-t:1.4e}",3)
+
+        # loop until time collides with the parent node or all but two branches have been dealt with
+        # the remaining two would be the children of the parent
+        while len(branches_alive)+len(branches_to_come)>2 and t<tmax:
+
+            # branches without mutations are ready to coalesce -- others have to mutate first
+            ready_to_coalesce = [b for b in branches_alive if mutations_per_branch.get(b.name,0)==0]
+            if hasattr(self, 'merger_model') and (self.merger_model is not None):
+                coalescent_rate = self.merger_model.branch_merger_rate(t) + mutation_rate
+            else:
+                coalescent_rate = 0.5*len(ready_to_coalesce)*dummy_coalescent_rate + mutation_rate
+
+            total_mutations = np.sum([mutations_per_branch.get(b.name,0) for b in branches_alive])
+            n_branches_w_mutations = len(branches_alive) - len(ready_to_coalesce)
+            # the probability of a branch without events is the sum of mutation and coalescent rates
+            # branches with mutations can only mutate, the others only coalesce. This is due to the
+            # conditioning for all branches being direct descendants of a polytomy.
+            total_mut_rate = mutation_rate*total_mutations + coalescent_rate*n_branches_w_mutations
+            total_coalescent_rate = max(0,(len(ready_to_coalesce)-1))*(coalescent_rate + mutation_rate)
+            # just a single branch and no mutations --> advance to next branch
+            if (total_mut_rate + total_coalescent_rate)==0 and len(branches_to_come):
+                branches_alive.append(branches_to_come.pop(0))
+                t = branches_alive[-1].time_before_present
+                continue
+
+            # determine the next time step
+            total_rate_inv = 1.0/(total_mut_rate + total_coalescent_rate)
+            dt = exp_dis(total_rate_inv)
+            t+=dt
+            # if the time advanced past the next branch in the branches_to_come list
+            # add this branch to branches alive and re-renter the loop
+            if len(branches_to_come) and t>branches_to_come[0].time_before_present:
+                while len(branches_to_come) and t>branches_to_come[0].time_before_present:
+                    branches_alive.append(branches_to_come.pop(0))
+            # else mutate or coalesce
+            else:
+                # determine whether to mutate or coalesce
+                p = self.rng.random()
+                mut_or_coal = p<total_mut_rate*total_rate_inv
+                if mut_or_coal:
+                    # transform p to be on a scale of 0 to total mutation
+                    p /= total_mut_rate*total_rate_inv
+                    p *= total_mutations
+                    # discount one mutation at a time until p<0, break and remove that mutation
+                    for b in branches_alive:
+                        p -= mutations_per_branch.get(b.name,0)
+                        if p<0: break
+                    mutations_per_branch[b.name] -= 1
+                else:
+                    # pick a pair to coalesce, make a new node.
+                    picks = self.rng.choice(len(ready_to_coalesce), size=2, replace=False)
+                    new_node = Phylo.BaseTree.Clade()
+                    new_node.time_before_present = t
+                    n1, n2 = ready_to_coalesce[picks[0]], ready_to_coalesce[picks[1]]
+                    new_node.clades = [n1, n2]
+                    new_node.mutation_length = 0.0
+                    n1.branch_length = t - n1.time_before_present
+                    n2.branch_length = t - n2.time_before_present
+                    n1.up = new_node
+                    n2.up = new_node
+                    if n1.mask is None or n2.mask is None:
+                        new_node.mask = None
+                        new_node.mcc = None
+                    else:
+                        new_node.mask = n1.mask * n2.mask
+                        new_node.mcc = n1.mcc if n1.mcc==n2.mcc else None
+                        self.logger('TreeTime._poly.merge_nodes: assigning mcc to new node ' + new_node.mcc, 4)
+                    new_node.up = parent
+                    new_node.tt = self
+                    if hasattr(parent, "_cseq"):
+                        new_node._cseq = parent._cseq
+                        self.add_branch_state(new_node)
+                    new_node.branch_length_interpolator = BranchLenInterpolator(new_node, self.gtr,
+                                pattern_multiplicity = self.data.multiplicity(mask=new_node.mask), min_width=self.min_width,
+                                one_mutation=self.one_mutation, branch_length_mode=self.branch_length_mode,
+                                n_grid_points = self.branch_grid_points)
+                    branches_alive = [b for b in branches_alive if b not in [n1,n2]] + [new_node]
+
+        remaining_branches = []
+        for b in branches_alive + branches_to_come:
+            b.branch_length = tmax - b.time_before_present
+            b.up = parent
+            remaining_branches.append(b)
+
+        self.logger(f"TreeTime.generate_subtree: node {parent.name} was resolved from {len(branches_by_time)} to {len(remaining_branches)} children.",3)
+        # assign the remaining branches as new clades to the parent.
+        parent.clades = remaining_branches
 
 
     def print_lh(self, joint=True):
@@ -949,7 +1086,7 @@ class TreeTime(ClockTree):
         return Treg.optimal_reroot(force_positive=force_positive, slope=slope, keep_node_order=self.keep_node_order)['node']
 
 
-def plot_vs_years(tt, step = None, ax=None, confidence=None, ticks=True, **kwargs):
+def plot_vs_years(tt, step = None, ax=None, confidence=None, ticks=True, selective_confidence=None, **kwargs):
     '''
     Converts branch length to years and plots the time tree on a time axis.
 
@@ -986,7 +1123,7 @@ def plot_vs_years(tt, step = None, ax=None, confidence=None, ticks=True, **kwarg
     # draw tree
     if "label_func" not in kwargs:
         kwargs["label_func"] = lambda x:x.name if (x.is_terminal() and nleafs<30) else ""
-    Phylo.draw(tt.tree, axes=ax, **kwargs)
+    Phylo.draw(tt.tree, axes=ax, do_show=False, **kwargs)
 
     offset = tt.tree.root.numdate - tt.tree.root.branch_length
     date_range = np.max([n.numdate for n in tt.tree.get_terminals()])-offset
@@ -1033,14 +1170,16 @@ def plot_vs_years(tt, step = None, ax=None, confidence=None, ticks=True, **kwarg
             pos = year - offset
             r = Rectangle((pos, ylim[1]-5),
                           step, ylim[0]-ylim[1]+10,
-                          facecolor=[0.7+0.1*(1+yi%2)] * 3,
-                          edgecolor=[1,1,1])
+                          facecolor=[0.88+0.04*(1+yi%2)] * 3,
+                          edgecolor=[0.8,0.8,0.8])
             ax.add_patch(r)
-            if year in tick_vals and pos>=xlim[0] and pos<=xlim[1] and ticks:
-                label_str = "%1.2f"%(step*(year//step)) if step<1 else  str(int(year))
-                ax.text(pos,ylim[0]-0.04*(ylim[1]-ylim[0]), label_str,
-                        horizontalalignment='center')
-        ax.set_axis_off()
+            if step>=1:
+                if year in tick_vals and pos>=xlim[0] and pos<=xlim[1] and ticks:
+                    label_str = "%1.2f"%(step*(year//step)) if step<1 else  str(int(year))
+                    ax.text(pos,ylim[0]-0.04*(ylim[1]-ylim[0]), label_str,
+                            horizontalalignment='center')
+        if step>=1:
+            ax.set_axis_off()
 
     # add confidence intervals to the tree graph -- grey bars
     if confidence:
@@ -1055,7 +1194,7 @@ def plot_vs_years(tt, step = None, ax=None, confidence=None, ticks=True, **kwarg
             raise NotReadyError("confidence needs to be either a float (for max posterior region) or a two numbers specifying lower and upper bounds")
 
         for n in tt.tree.find_clades():
-            if not n.bad_branch:
+            if not n.bad_branch and (selective_confidence is None or selective_confidence(n)):
                 pos = cfunc(n, confidence)
                 ax.plot(pos-offset, np.ones(len(pos))*n.ypos, lw=3, c=(0.5,0.5,0.5))
     return fig, ax

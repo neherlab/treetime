@@ -33,7 +33,7 @@ class SeqGen(TreeAnc):
         """
         cum_p = p.cumsum(axis=1).T
 
-        prand = np.random.random(self.seq_len)
+        prand = self.rng.random(self.seq_len)
         seq = self.gtr.alphabet[np.argmax(cum_p>prand, axis=0)]
         return seq
 

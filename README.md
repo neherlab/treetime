@@ -1,5 +1,5 @@
 [![CI](https://github.com/neherlab/treetime/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/neherlab/treetime/actions/workflows/ci.yml)
-[![anaconda](https://anaconda.org/bioconda/treetime/badges/installer/conda.svg)](https://anaconda.org/bioconda/treetime)
+[![anaconda](https://anaconda.org/bioconda/treetime/badges/version.svg)](https://anaconda.org/bioconda/treetime)
 [![readthedocs](https://readthedocs.org/projects/treetime/badge/)](https://treetime.readthedocs.io/en/latest/)
 
 ## TreeTime: maximum likelihood dating and ancestral sequence inference
@@ -46,7 +46,7 @@ Have a look at our repository with [example data](https://github.com/neherlab/tr
 
 ### Installation and prerequisites
 
-TreeTime is compatible with Python 3.6 upwards and is tested on 3.6, 3.7, and 3.8.  It depends on several Python libraries:
+TreeTime is compatible with Python 3.7 upwards and is tested on 3.7 to 3.10.  It depends on several Python libraries:
 
 * numpy, scipy, pandas: for all kind of mathematical operations as matrix
   operations, numerical integration, interpolation, minimization, etc.

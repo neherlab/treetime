@@ -182,7 +182,7 @@ The following example with a set of MtB sequences uses a fixed evolutionary rate
 
    treetime --aln data/tb/lee_2015.vcf.gz --vcf-reference data/tb/tb_ref.fasta --tree data/tb/lee_2015.nwk --clock-rate 1e-7 --dates data/tb/lee_2015.metadata.tsv
 
-For many bacterial data set were the temporal signal in the data is weak, it is advisable to fix the rate of the molecular clock explicitly.
+For many bacterial data sets where the temporal signal in the data is weak, it is advisable to fix the rate of the molecular clock explicitly.
 Divergence times, however, will depend on this choice.
 
 

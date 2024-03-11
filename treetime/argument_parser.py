@@ -4,8 +4,6 @@ from .wrappers import ancestral_reconstruction, mugration, scan_homoplasies,\
                       timetree, estimate_clock_model, arg_time_trees
 from . import version
 
-py2 = sys.version_info.major==2
-
 def set_default_subparser(self, name, args=None, positional_args=0):
     """default subparser selection. Call after setup, just before parse_args()
     name: is the name of the subparser to call by default
@@ -28,10 +26,6 @@ def set_default_subparser(self, name, args=None, positional_args=0):
                 sys.argv.insert(1, name)
             else:
                 args.insert(1, name)
-
-
-if py2:
-    argparse.ArgumentParser.set_default_subparser = set_default_subparser
 
 
 treetime_description = \
@@ -125,10 +119,14 @@ def add_aln_group(parser, required=True):
 
 
 def add_reroot_group(parser):
-    parser.add_argument('--clock-filter', type=float, default=3,
+    parser.add_argument('--clock-filter', type=float, default=4.0,
                               help="ignore tips that don't follow a loose clock, "
-                                   "'clock-filter=number of interquartile ranges from regression'. "
-                                   "Default=3.0, set to 0 to switch off.")
+                                   "'clock-filter=number of interquartile ranges from regression (method=`residual`)' "
+                                   "or z-score of local clock deviation (method=`local`). "
+                                   "Default=4.0, set to 0 to switch off.")
+    parser.add_argument('--clock-filter-method', choices=['residual', 'local'], default='residual',
+                        help="Use residuals from global clock (`residual`, default) or local clock deviation (`clock`) "
+                             "to filter out tips that don't follow the clock")
     reroot_group = parser.add_mutually_exclusive_group()
     reroot_group.add_argument('--reroot', nargs='+', default='best', help=reroot_description)
     reroot_group.add_argument('--keep-root', required = False, action="store_true", default=False,
@@ -180,6 +178,11 @@ def add_timetree_args(parser):
                              "distribution in the final round.")
     parser.add_argument('--keep-polytomies', default=False, action='store_true',
                         help="Don't resolve polytomies using temporal information.")
+    parser.add_argument('--stochastic-resolve', default=False, action='store_true',
+                        help="Resolve polytomies using a random coalescent tree.")
+    parser.add_argument('--greedy-resolve', action='store_false', dest='stochastic_resolve',
+                        help="Resolve polytomies greedily. Currently default, but will "
+                             "switched to `stochastic-resolve` in future versions.")
     # parser.add_argument('--keep-node-order', default=False, action='store_true',
     #                     help="Don't ladderize the tree.")
     parser.add_argument('--relax',nargs=2, type=float,
@@ -217,11 +220,9 @@ def make_parser():
 
     subparsers = parser.add_subparsers()
 
-    if py2:
-        t_parser = subparsers.add_parser('tt', description=timetree_description)
-    else:
-        t_parser = parser
+    t_parser = parser
     t_parser.add_argument('--tree', type=str, help=tree_description)
+    t_parser.add_argument('--rng-seed', type=int, help="random number generator seed for treetime")
     add_seq_len_aln_group(t_parser)
     add_time_arguments(t_parser)
     add_timetree_args(t_parser)
@@ -245,6 +246,7 @@ def make_parser():
     h_parser = subparsers.add_parser('homoplasy', description=homoplasy_description)
     add_aln_group(h_parser)
     h_parser.add_argument('--tree', type = str,  help=tree_description)
+    h_parser.add_argument('--rng-seed', type=int, help="random number generator seed for treetime")
     h_parser.add_argument('--const', type = int, default=0, help ="number of constant sites not included in alignment")
     h_parser.add_argument('--rescale', type = float, default=1.0, help ="rescale branch lengths")
     h_parser.add_argument('--detailed', required = False, action="store_true",  help ="generate a more detailed report")
@@ -259,6 +261,7 @@ def make_parser():
     a_parser = subparsers.add_parser('ancestral', description=ancestral_description)
     add_aln_group(a_parser)
     a_parser.add_argument('--tree', type=str,  help=tree_description)
+    a_parser.add_argument('--rng-seed', type=int, help="random number generator seed for treetime")
     add_gtr_arguments(a_parser)
     a_parser.add_argument('--marginal', default=False, action="store_true", help ="marginal reconstruction of ancestral sequences")
     add_anc_arguments(a_parser)
@@ -268,6 +271,7 @@ def make_parser():
     ## MUGRATION
     m_parser = subparsers.add_parser('mugration', description=mugration_description)
     m_parser.add_argument('--tree', required = True, type=str, help=tree_description)
+    m_parser.add_argument('--rng-seed', type=int, help="random number generator seed for treetime")
     m_parser.add_argument('--name-column', type=str, help="label of the column to be used as taxon name")
     m_parser.add_argument('--attribute', type=str, help ="attribute to reconstruct, e.g. country")
     m_parser.add_argument('--states', required = True, type=str, help ="csv or tsv file with discrete characters."
@@ -294,10 +298,13 @@ def make_parser():
                         "It will reroot the tree to maximize the clock-like "
                         "signal and recalculate branch length unless run with --keep-root.")
     c_parser.add_argument('--tree', required=True, type=str,  help=tree_description)
+    c_parser.add_argument('--rng-seed', type=int, help="random number generator seed for treetime")
     add_time_arguments(c_parser)
     add_seq_len_aln_group(c_parser)
 
     add_reroot_group(c_parser)
+    c_parser.add_argument('--prune-outliers', action='store_true', default=False,
+                        help="remove detected outliers from the output tree")
     c_parser.add_argument('--allow-negative-rate', required = False, action="store_true", default=False,
                           help="By default, rates are forced to be positive. For trees with little temporal "
                                "signal it is advisable to remove this restriction to achieve essentially mid-point rooting.")
@@ -312,6 +319,7 @@ def make_parser():
             description="Calculates the root-to-tip regression and quantifies the 'clock-i-ness' of the tree. "
                         "It will reroot the tree to maximize the clock-like "
                         "signal and recalculate branch length unless run with --keep_root.")
+    arg_parser.add_argument('--rng-seed', type=int, help="random number generator seed for treetime")
     arg_parser.add_argument('--trees', nargs=2, required=True, type=str)
     arg_parser.add_argument('--alignments', nargs=2, required=True, type=str)
     arg_parser.add_argument('--mccs', required=True, type=str)
@@ -328,9 +336,5 @@ def make_parser():
     # make a version subcommand
     v_parser = subparsers.add_parser('version', description='print version')
     v_parser.set_defaults(func=lambda x: print("treetime "+version))
-
-    ## call the relevant function and return
-    if py2:
-        parser.set_default_subparser('tt')
 
     return parser

@@ -1,12 +1,11 @@
 import numpy as np
+from . import TreeTimeUnknownError
 from scipy.interpolate import interp1d
 try:
     from collections.abc import Iterable
 except ImportError:
     from collections import Iterable
-from copy import deepcopy as make_copy
-from scipy.ndimage import binary_dilation
-from .config import BIG_NUMBER, MIN_LOG, MIN_INTEGRATION_PEAK, TINY_NUMBER, SUPERTINY_NUMBER
+from .config import BIG_NUMBER, MIN_INTEGRATION_PEAK, TINY_NUMBER
 from .utils import clip
 
 class Distribution(object):
@@ -101,35 +100,36 @@ class Distribution(object):
             new_xmax = np.min([k.xmax for k in dists])
 
             x_vals = np.unique(np.concatenate([k.x for k in dists]))
-            x_vals = x_vals[(x_vals> new_xmin-TINY_NUMBER)&(x_vals< new_xmax+TINY_NUMBER)]
+            x_vals = x_vals[(x_vals > new_xmin - TINY_NUMBER)&(x_vals < new_xmax + TINY_NUMBER)]
             n_dists = len(dists)
+            # for reduce number of points if there are many distributions
             if len(x_vals)>100*n_dists and n_dists>3:
+                # make sure there are at least 3 points per distribution on average
                 n_bins = len(x_vals)//n_dists - 6
                 lower_cut_off = n_dists*3
                 upper_cut_off = n_dists*(n_bins + 3)
+                # use peripheral points from the original array, average the center
                 x_vals = np.concatenate((x_vals[:lower_cut_off],
                                          x_vals[lower_cut_off:upper_cut_off].reshape((-1,n_dists)).mean(axis=1),
                                          x_vals[upper_cut_off:]))
+            # evaluate the function at the consolidated lists of x-values
             y_vals = np.sum([k.__call__(x_vals) for k in dists], axis=0)
             try:
                 peak = y_vals.min()
             except:
-                print("WARNING: Unexpected behavior detected in multiply function,"
-                        "if you see this error \n please let us know by filling an issue at: https://github.com/neherlab/treetime/issues")
-                x_vals = [0,1]
-                y_vals = [BIG_NUMBER,BIG_NUMBER]
-                res = Distribution(x_vals, y_vals, is_log=True,
-                                    min_width=min_width, kind='linear')
-                return res
+                raise TreeTimeUnknownError("Error: Unexpected behavior detected in multiply function"
+                        " when determining peak of function with y-values '"+ str(y_vals) + "'.\n\n"
+                        "If you see this error please let us know by filling an issue at: \n"
+                        "https://github.com/neherlab/treetime/issues")
+
+            # remove data points exp(-1000) less likely than the peak
             ind = (y_vals-peak)<BIG_NUMBER/1000
             n_points = ind.sum()
             if n_points == 0:
-                print("WARNING: Unexpected behavior detected in multipy function,"
-                        "if you see this error \n please let us know by filling an issue at: https://github.com/neherlab/treetime/issues")
-                x_vals = [0,1]
-                y_vals = [BIG_NUMBER,BIG_NUMBER]
-                res = Distribution(x_vals, y_vals, is_log=True,
-                                   min_width=min_width, kind='linear')
+                raise TreeTimeUnknownError("Error: Unexpected behavior detected in multiply function. "
+                        "No valid points left after reducing to plausible region.\n\n"
+                        "If you see this error please let us know by filling an issue at:\n"
+                        "https://github.com/neherlab/treetime/issues")
             elif n_points == 1:
                 res = Distribution.delta_function(x_vals[0])
             else:
@@ -159,7 +159,7 @@ class Distribution(object):
         ind = (y_vals-peak)<BIG_NUMBER/1000
         n_points = ind.sum()
         if n_points == 0:
-            print("WARNING: Unexpected behavior detected in multipy function,"
+            print("WARNING: Unexpected behavior detected in multiply function,"
                     "if you see this error \n please let us know by filling an issue at: https://github.com/neherlab/treetime/issues")
             x_vals = [0,1]
             y_vals = [BIG_NUMBER,BIG_NUMBER]
@@ -271,7 +271,7 @@ class Distribution(object):
     @property
     def y(self):
         if self.is_delta:
-            print("THIS SHOULDN'T BE CALLED ON A DELTA FUNCTION")
+            print("Warning: evaluating log probability of a delta distribution.")
             return [self.weight]
         else:
             return self._peak_val + self._func.y
@@ -313,7 +313,6 @@ class Distribution(object):
         Assess the interval on which the value of self is higher than cutoff
         relative to its peak
         """
-        from scipy.optimize import brentq
         log_cutoff = -np.log(cutoff)
         vals = log_cutoff - self.__call__(self.x) + self.peak_val
         above = vals > 0
@@ -345,7 +344,7 @@ class Distribution(object):
 
     def _adjust_grid(self, rel_tol=0.01, yc=10):
         n_iter=0
-        while len(self.y)>200 and n_iter<5:
+        while len(self.x)>200 and n_iter<5:
             interp_err = 2*self.y[1:-1] - self.y[2:] - self.y[:-2]
             ind = np.ones_like(self.y, dtype=bool)
             dy = self.y-self.peak_val
@@ -434,13 +433,24 @@ class Distribution(object):
 
     def fft(self, T, n=None, inverse_time=True):
         if self.is_delta:
-            import ipdb; ipdb.set_trace()
+            raise TreeTimeUnknownError("attempting Fourier transform of delta function.")
+
         from numpy.fft import rfft
         if n is None:
             n=len(T)
+
+        vals = self.prob_relative(T)
+        if max(vals)<1e-15:
+            # probability is lost due to sampling next to timepoints with
+            # vanishing probability. Since we interpolate logarithms, this
+            # results in loss of probability when we should have a delta-like
+            # peak. Use min log-value to recalibrate and obtain a meaningful peak
+            log_vals = self.__call__(T)
+            vals = np.exp(-(log_vals - log_vals.min()))
+
         if inverse_time:
-            return rfft(self.prob_relative(T), n=n)
+            return rfft(vals, n=n)
         else:
-            return rfft(self.prob_relative(T)[::-1], n=n)
+            return rfft(vals[::-1], n=n)
 
 

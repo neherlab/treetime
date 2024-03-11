@@ -2,6 +2,7 @@ import gzip
 import numpy as np
 from collections import defaultdict
 from textwrap import fill
+from . import TreeTimeError
 
 ## Functions to read in and print out VCF files
 
@@ -54,6 +55,8 @@ def read_vcf(vcf_file, ref_file=None):
             Python list of all positions with a mutation, insertion, or deletion.
 
     """
+    import re
+    ALT_CHARS = re.compile(r"^([ACGTNacgtn]+|\*|\.)$") # straight from the VCF 4.3 spec
 
     #Programming Note:
     # Note on VCF Format
@@ -73,7 +76,7 @@ def read_vcf(vcf_file, ref_file=None):
     #     Ex:
     #       REF     ALT
     #       A       ATT
-    #     First base always matches Ref.
+    #     First base _does not_ always match REF, so there may be a SNP as well
     # 'No indel'
     #     Ex:
     #       REF     ALT
@@ -82,6 +85,11 @@ def read_vcf(vcf_file, ref_file=None):
     #define here, so that all sub-functions can access them
     sequences = defaultdict(dict)
     insertions = defaultdict(dict) #Currently not used, but kept in case of future use.
+    metadata = {
+        'meta_lines': [], # all the VCF meta_lines, i.e. those starting with '##' (they are left unparsed)
+        'chrom': None,    # chromosome name (we only allow one)
+        'ploidy': None,   # ploidy count -- encoded in how the GT calls are formatted
+    }
 
     #TreeTime handles 2-3 base ambig codes, this will allow that.
     def getAmbigCode(bp1, bp2, bp3=""):
@@ -104,13 +112,23 @@ def read_vcf(vcf_file, ref_file=None):
 
     #Parses a 'normal' (not hetero or no-call) call depending if insertion+deletion, insertion,
     #deletion, or single bp subsitution
-    def parseCall(snps, ins, pos, ref, alt):
+    def parse_homozygous_call(snps, ins, pos, ref, alt):
+
+        # Replace missing allele with N(s). See commentary in test_vcf.py::TestNoCallsOrMissing for more details
+        if alt=='*' or alt=='.':
+            alt = "N" * len(ref)
+
         #Insertion where there are also deletions (special handling)
         if len(ref) > 1 and len(alt)>len(ref):
+            ## NOTE: the loop below contains a potential double-counting bug. For example,
+            ## REF='TCG' ALT='TCAG' (Example 5.1.3 in the VCF 4.2 spec), then when i=2
+            ## we'll add both snps[pos+2] = 'A' as well as ins[pos+2] = 'AG'. This has been 
+            ## detailed within `test_vcf.py`, as it may also be the expected way to encode
+            ## insertions within TreeTime
             for i in range(len(ref)):
                 #if the pos doesn't match, store in sequences
                 if ref[i] != alt[i]:
-                    snps[pos+i] = (alt[i] if alt[i] != '.' else 'N') #'.' = no-call
+                    snps[pos+i] = alt[i]
                 #if about to run out of ref, store rest:
                 if (i+1) >= len(ref):
                     ins[pos+i] = alt[i:]
@@ -123,17 +141,21 @@ def read_vcf(vcf_file, ref_file=None):
                 #if not, there may be mutations
                 else:
                     if ref[i] != alt[i]:
-                        snps[pos+i] = (alt[i] if alt[i] != '.' else 'N') #'.' = no-call
-        #Insertion
+                        snps[pos+i] = alt[i]
+        #Insertion + single-base ref
         elif len(alt) > 1:
             ins[pos] = alt
+            # If the first base of the allele doesn't match the ref then we _also_ have a mutation
+            if ref[0]!=alt[0]:
+                snps[pos] = alt[0]
         #No indel
         else:
             snps[pos] = alt
 
 
     #Parses a 'bad' (hetero or no-call) call depending on what it is
-    def parseBadCall(gen, snps, ins, pos, ref, ALT):
+    #TODO - consider the situation where the alternate allele base(s) is '*' (done for the homozygous case)
+    def parse_heterozygous_call(gen, snps, ins, pos, ref, ALT):
         #Deletion
         #   REF     ALT     Seq1    Seq2    Seq3
         #   GCC     G       1/1     0/1     ./.
@@ -173,89 +195,134 @@ def read_vcf(vcf_file, ref_file=None):
             snps[pos] = alt
         #else a no-call insertion, so ignore.
 
+    def validate_alt(alt):
+        """
+        from the VCF 4.3 spec:
+        > the ALT field must be a symbolic allele, or a breakend replacement string,
+        > or match the regular expression [see ALT_CHARS regex, above]
+        Since we only consider GT variation, the symbolic alleles and breakends aren't
+        relevant for us.
+
+        The spec also states:
+        > Tools processing VCF files are not required to preserve case in the allele String
+        
+        Return the uppercase allele bases (string) _or_ None if it fails validation
+        """
+        if ALT_CHARS.match(alt):
+            return alt.upper()
+        else:
+            print(f"WARNING: Encountered invalid allele base(s) {alt!r}. Skipping...")
+            return None
 
     #House code is *much* faster than pyvcf because we don't care about all info
     #about coverage, quality, counts, etc, which pyvcf goes to effort to parse
     #(and it's not easy as there's no standard ordering). Custom code can completely
     #ignore all of this.
-    import gzip
     from Bio import SeqIO
-    import numpy as np
-
-    nsamp = 0
-    posLoc = 0
-    refLoc = 0
-    altLoc = 0
-    sampLoc = 9
 
     #Use different openers depending on whether compressed
     opn = gzip.open if vcf_file.endswith(('.gz', '.GZ')) else open
 
     with opn(vcf_file, mode='rt') as f:
+        current_block = "meta-information" # The start of VCF files is the meta-information (lines starting with ##)
+        header,samps,nsamp=None,None,None
+
         for line in f:
-            if line[0] != '#':
-                #actual data - most common so first in 'if-list'!
-                dat = line.strip().split('\t')
-                POS = int(dat[posLoc])
-                REF = dat[refLoc]
-                ALT = dat[altLoc].split(',')
-                calls = np.array(dat[sampLoc:])
+            if line.startswith("##"):
+                if current_block!='meta-information':
+                    raise TreeTimeError(f"Malformed VCF file {vcf_file!r} - all the meta-information (lines starting with ##) must appear at the top of the file.")
+                metadata['meta_lines'].append(line.strip())
+            elif line[0]=='#':
+                mandatory_fields = ['CHROM', 'POS', 'ID', 'REF', 'ALT', 'QUAL', 'FILTER', 'INFO', 'FORMAT']
+                # Note that FORMAT isn't mandatory unless genotype data is present. But every VCF we deal with has genotype data - that's the point!
+                header_start = "#"+"\t".join(mandatory_fields)
+                if not line.startswith(header_start):
+                    raise TreeTimeError(f"Malformed VCF file {vcf_file!r} - the header line must start with {header_start}")
+                if current_block!='meta-information':
+                    raise TreeTimeError(f"Malformed VCF file {vcf_file!r} - the header must immediately follow the meta-information lines")
+                current_block = 'header'
+                header = line.strip().split('\t')
+                samps = [ x.strip() for x in header[9:] ] #ensure no leading/trailing spaces
+                nsamp = len(samps)
+                for sample_name in samps:
+                    sequences[sample_name] = {}
+            else:
+                if current_block!='header' and current_block!='data-lines':
+                    raise TreeTimeError(f"Malformed VCF file {vcf_file!r} - the data lines must follow the header line")
+                current_block='data-lines'
+                l = line.strip()
+                if not l: # empty line
+                    continue
+                dat = l.split('\t')
+                chrom = str(dat[0])
+                if metadata['chrom'] is None:
+                    metadata['chrom'] = chrom
+                elif metadata['chrom']!=chrom:
+                    raise TreeTimeError(f"The VCF file {vcf_file!r} contains multiple chromosomes. TreeTime can not yet handle this.")
+                pos = int(dat[1])-1 # Convert VCF 1-based to python 0-based
+                REF = dat[3]
+                ALT = dat[4].split(',') # List of alternate alleles (strings)
+                calls = np.array(dat[9:])
+                if len(calls)!=nsamp:
+                    raise TreeTimeError(f"Malformed VCF file {vcf_file!r} - the data lines have different number of calls than the number of samples defined in the header")
+
+                # Treetime only parses GT FORMAT calls. Moreover, "the first sub-field must always be the genotype (GT) if it is present"
+                # according to the VCF 4.2 spec. Note that if the VCF is for one sample only then the format's a bit different, but this'll
+                # raise an error above because the header differs from what we assert. Other variation (CN, BND etc) is not parsed by
+                # TreeTime, only GT.
+                FORMAT = dat[8]
+                if not FORMAT.startswith('GT'):
+                    continue
 
                 #get samples that differ from Ref at this site
-                recCalls = {}
                 for sname, sa in zip(samps, calls):
-                    if ':' in sa: #if proper VCF file (followed by quality/coverage info)
-                        gt = sa.split(':')[0]
-                    else: #if 'pseudo' VCF file (nextstrain output, or otherwise stripped)
-                        gt = sa
+                    gt = sa.split(':')[0] # May be multiple colon-separated subfields, depending on the line's FORMAT
 
-                    # convert haploid calls to pseudo diploid
-                    if gt == '0':
-                        gt = '0/0'
-                    elif gt == '1':
-                        gt = '1/1'
-                    elif gt == '.':
-                        gt = './.'
+                    # `gt` is the "index" of the alternate allele for this sample.
+                    # The format of `gt` is quite varied:
+                    # For haploid genomes, it's simply a single int _or_ "." (meaning a call cannot be made at the locus)
+                    # For polyploid genomes, the format is a list of {int, '.'} separated by "/" or "|"
+                    # ('/' means unphased, '|' means phased). 
+                    # If the index is an int, it's the 1-based (!) lookup index for ALT
 
-                    #ignore if ref call: '.' or '0/0', depending on VCF
-                    if ('/' in gt and gt != '0/0') or ('|' in gt and gt != '0|0'):
-                        recCalls[sname] = gt
+                    # Split on the valid separators - if haploid, then we'll get a list len=1
+                    gts = gt.split('|') if '|' in gt else gt.split('/')
+                    ploidy = len(gts)
+                    if metadata['ploidy'] is None:
+                        metadata['ploidy'] = ploidy
+                    elif metadata['ploidy']!=ploidy:
+                        raise TreeTimeError(f"The VCF file {vcf_file!r} had genotype calls of ploidy {metadata['ploidy']} but sample {sname!r} has a genotype of ploidy {ploidy}")
 
-                #store the position and the alt
-                for seq, gen in recCalls.items():
-                    ref = REF
-                    pos = POS-1     #VCF numbering starts from 1, but Reference seq numbering
-                                    #will be from 0 because it's python!
-                    #Accepts only calls that are 1/1, 2/2 etc. Rejects hets and no-calls
-                    if gen[0] != '0' and gen[2] != '0' and gen[0] != '.' and gen[2] != '.':
-                        alt = str(ALT[int(gen[0])-1])   #get the index of the alternate
-                        if seq not in sequences.keys():
-                            sequences[seq] = {}
+                    # if polyploid, but homozygous, then treat as if haploid
+                    if ploidy>1 and len(set(gts))==1:
+                        gt = gts[0]
 
-                        parseCall(sequences[seq],insertions[seq], pos, ref, alt)
+                    if gt.isdigit(): # haploid, and a call has been made (i.e. it's not gt='.')
+                        gt = int(gt)
+                        if gt==0:
+                            continue # reference allele!
+                        alt = validate_alt(ALT[gt-1]) # gt is the 1-based lookup, but ALT is 0-indexed
+                        if alt:
+                            parse_homozygous_call(sequences[sname],insertions[sname], pos, REF, alt)
+                        continue
 
-                    #If is heterozygote call (0/1) or no call (./.)
-                    else:
-                        #alt will differ here depending on het or no-call, must pass original
-                        parseBadCall(gen, sequences[seq],insertions[seq], pos, ref, ALT)
+                    if gt=='.': # haploid "call cannot be made" identifier - replace REF with N(s)
+                        for i in range(len(REF)):
+                            sequences[sname][pos+i] = 'N'
+                        continue
 
-            elif line[0] == '#' and line[1] == 'C':
-                #header line, get all the information
-                header = line.strip().split('\t')
-                posLoc = header.index("POS")
-                refLoc = header.index('REF')
-                altLoc = header.index('ALT')
-                sampLoc = header.index('FORMAT')+1
-                samps = header[sampLoc:]
-                samps = [ x.strip() for x in samps ] #ensure no leading/trailing spaces
-                nsamp = len(samps)
-
-            #else you are a comment line, ignore.
+                    # ---- heterozygous polyploid call  ----
+                    parse_heterozygous_call(gt, sequences[sname],insertions[sname], pos, REF, ALT)
 
     #Gather all variable positions
+    #NOTE: this does not consider positions of insertions
     positions = set()
     for seq, muts in sequences.items():
         positions.update(muts.keys())
+
+    num_insertions = sum([len(list(ins.keys())) for ins in insertions.values()])
+    if len(positions)==0 and num_insertions==0:
+        raise TreeTimeError(f"VCF file {vcf_file!r} has no data-lines which we could extract genotype information from!")
 
     #One or more seqs are same as ref! (No non-ref calls) So haven't been 'seen' yet
     if nsamp > len(sequences):
@@ -273,12 +340,13 @@ def read_vcf(vcf_file, ref_file=None):
     compress_seq = {'reference':refSeqStr,
                     'sequences': sequences,
                     'insertions': insertions,
-                    'positions': sorted(positions)}
+                    'positions': sorted(positions),
+                    'metadata': metadata}
 
     return compress_seq
 
 
-def write_vcf(tree_dict, file_name):#, compress=False):
+def write_vcf(tree_dict, file_name, mask=None):#, compress=False):
     """
     Writes out a VCF-style file (which seems to be minimally handleable
     by vcftools and pyvcf) of the alignment. This is created from a dict
@@ -290,13 +358,25 @@ def write_vcf(tree_dict, file_name):#, compress=False):
     Parameters
     ----------
      tree_dict: nested dict
-        A nested dict with keys 'sequence' 'reference' and 'positions',
-        as is created by :py:meth:`treetime.TreeAnc.get_tree_dict`
+        A nested dict with required keys of:
+        'sequences': maps sampleName -> pos (0-based) -> new base (SNP)
+        'reference': string of reference nuc sequence
+        'positions': sorted list of 0-based positions with variation in sequences
+        And optional keys:
+        'inferred_const_sites': list or set, 0-based positions to skip output for.
+        This input is often created by :py:meth:`treetime.TreeAnc.get_tree_dict`
+        'metadata': dict of information to influence VCF formatting. Only
+        the following keys are used:
+        'metadata.ploidy': int. Influences how genotype calls are formatted. (default
+        of 2 (diploid) used if not provided)
+        'metadata.chrom': str. The chromosome name (default of '1' used if not provided)
 
      file_name: str
         File to which the new VCF should be written out. File names ending with
         '.gz' will result in the VCF automatically being gzipped.
 
+    mask : optional, str of 0 or 1
+        Calls at these positions will be skipped
     """
 
 #   Programming Logic Note:
@@ -329,6 +409,23 @@ def write_vcf(tree_dict, file_name):#, compress=False):
     sequences = tree_dict['sequences']
     ref = tree_dict['reference']
     positions = tree_dict['positions']
+    ploidy = tree_dict.get('metadata', {}).get('ploidy', 2)
+    chrom_name = tree_dict.get('metadata', {}).get('chrom', '1')
+    sample_names = list(sequences.keys())
+    inferred_const_sites = set(tree_dict.get('inferred_const_sites', []))
+
+    # For every variable site in sequences, flip the format around so
+    # we can have fast lookups later on.
+    alleles = {}
+    num_samples = len(sample_names)
+    for idx, name in enumerate(sample_names):
+        for posn, allele in sequences[name].items():
+            if posn not in alleles:
+                alleles[posn] = np.zeros(num_samples, dtype='U')
+            alleles[posn][idx] = allele
+    # fill in reference
+    for posn,bases in alleles.items():
+        bases[bases==''] = ref[posn]
 
     def handleDeletions(i, pi, pos, ref, delete, pattern):
         refb = ref[pi]
@@ -371,7 +468,7 @@ def write_vcf(tree_dict, file_name):#, compress=False):
         #Rotate them into 'calls'
         align = np.asarray(sites).T
 
-        #Get rid of '-', and put '.' for calls that match ref
+        #Get rid of '-', and put '0' for calls that match ref
         #Only removes trailing '-'. This breaks VCF convension, but the standard
         #VCF way of handling this* is really complicated, and the situation is rare.
         #(*deletions and mutations at the same locations)
@@ -383,7 +480,7 @@ def write_vcf(tree_dict, file_name):#, compress=False):
                 gp-=1
             pat = "".join(pt)
             if pat == refb:
-                fullpat.append('.')
+                fullpat.append('0')
             else:
                 fullpat.append(pat)
 
@@ -393,19 +490,21 @@ def write_vcf(tree_dict, file_name):#, compress=False):
 
 
     #prepare the header of the VCF & write out
-    header=["#CHROM","POS","ID","REF","ALT","QUAL","FILTER","INFO","FORMAT"]+list(sequences.keys())
+    header=["#CHROM","POS","ID","REF","ALT","QUAL","FILTER","INFO","FORMAT"]+sample_names
 
     opn = gzip.open if file_name.endswith(('.gz', '.GZ')) else open
     out_file = opn(file_name, 'w')
 
     out_file.write( "##fileformat=VCFv4.2\n"+
                         "##source=NextStrain\n"+
-                        "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">\n")
+                        "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">\n"+
+                        f"##contig=<ID={chrom_name}>\n")
     out_file.write("\t".join(header)+"\n")
 
     vcfWrite = []
     errorPositions = []
     explainedErrors = 0
+    mask_skip_count = 0
 
     #Why so basic? Because we sometimes have to back up a position!
     i=0
@@ -420,28 +519,14 @@ def write_vcf(tree_dict, file_name):#, compress=False):
         delete = False #deletion at this position - need to grab previous base (invariable)
         deleteGroup = False #deletion at next position (mutation at this pos) - do not need to get prev base
 
-        #try/except is much more efficient than 'if' statements for constructing patterns,
-        #as on average a 'variable' location will not be variable for any given sequence
-        pattern = []
-        #pattern2 gets the pattern at next position to check for upcoming deletions
-        #it's more efficient to get both here rather than loop through sequences twice!
-        pattern2 = []
-        for k,v in sequences.items():
-            try:
-                pattern.append(sequences[k][pi])
-            except KeyError:
-                pattern.append(ref[pi])
+        if mask and mask[pi] == '1':
+            mask_skip_count+=1
+            i+=1
+            continue
 
-            try:
-                pattern2.append(sequences[k][pi+1])
-            except KeyError:
-                try:
-                    pattern2.append(ref[pi+1])
-                except IndexError:
-                    pass
-
-        pattern = np.array(pattern).astype('U')
-        pattern2 = np.array(pattern2).astype('U')
+        # patterns will be empty if there was no variation in the sequences
+        pattern = alleles[pi] if pi in alleles else np.array([]).astype('U')
+        pattern2 = alleles[pi+1] if pi+1 in alleles else np.array([]).astype('U')
 
         #If a deletion here, need to gather up all bases, and position before
         if any(pattern == '-'):
@@ -462,39 +547,40 @@ def write_vcf(tree_dict, file_name):#, compress=False):
 
         #If deletion, treat affected bases as 1 'call':
         if delete or deleteGroup:
+            if pattern.size==0: # no variation in sequences
+                pattern = np.full(num_samples, refb, dtype='U')
             i, pi, pos, refb, pattern = handleDeletions(i, pi, pos, ref, delete, pattern)
-        #If no deletion, replace ref with '.', as in VCF format
+        #If no deletion, replace ref with '0' which means the reference base is unchanged
         else:
-            pattern[pattern==refb] = '.'
+            pattern[pattern==refb] = '0'
 
-        #Get the list of ALTs - minus any '.'!
+        #Get the list of ALTs - minus any '0' which are unchanged reference sequences!
         uniques = np.unique(pattern)
-        uniques = uniques[np.where(uniques!='.')]
+        uniques = uniques[np.where(uniques!='0')]
 
         #Convert bases to the number that matches the ALT
         j=1
         for u in uniques:
             pattern[np.where(pattern==u)[0]] = str(j)
             j+=1
-        #Now convert these calls to #/# (VCF format)
-        calls = [ j+"/"+j if j!='.' else '.' for j in pattern ]
 
         #What if there's no variation at a variable site??
         #This can happen when sites are modified by TreeTime - see below.
-        printPos = True
-        if len(uniques)==0:
+        #We don't print to VCF (because no variation!)
+        any_variation = len(uniques)!=0
+        if not any_variation:
             #If we expect it (it was made constant by TreeTime), it's fine.
-            if 'inferred_const_sites' in tree_dict and pi in tree_dict['inferred_const_sites']:
+            if pi in inferred_const_sites:
                 explainedErrors += 1
-                printPos = False #and don't output position to the VCF
             else:
                 #If we don't expect, raise an error
                 errorPositions.append(str(pi))
 
         #Write it out - Increment positions by 1 so it's in VCF numbering
         #If no longer variable, and explained, don't write it out
-        if printPos:
-            output = ["MTB_anc", str(pos), ".", refb, ",".join(uniques), ".", "PASS", ".", "GT"] + calls
+        if any_variation:
+            calls = [ "/".join([j]*ploidy) for j in pattern ]
+            output = [chrom_name, str(pos), ".", refb, ",".join(uniques), ".", "PASS", ".", "GT"] + calls
             vcfWrite.append("\t".join(output))
 
         i+=1
@@ -506,6 +592,9 @@ def write_vcf(tree_dict, file_name):#, compress=False):
     #This will be converted to 'AAAAA' and listed as an 'inferred_const_sites'. However, for VCF
     #purposes, because the site is 'variant' against the ref, it is variant, as expected, and so
     #won't be counted in the below list, which is only sites removed from the VCF.
+
+    if mask_skip_count:
+        print(f"{mask_skip_count} positions were skipped due to the provided mask")
 
     if 'inferred_const_sites' in tree_dict and explainedErrors != 0:
         print(fill("Sites that were constant except for ambiguous bases were made" +

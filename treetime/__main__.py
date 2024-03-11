@@ -3,9 +3,8 @@
 Stub function and module used as a setuptools entry point.
 Based on augur's __main__.py and setup.py
 """
-
-from __future__ import print_function, division, absolute_import
 import sys
+from treetime import make_parser
 import math
 import random
 import os
@@ -27,8 +26,6 @@ np.set_printoptions(precision=60, threshold=20, edgeitems=8, suppress=True, line
 SEED=1010336213
 random.seed(SEED)
 np.random.seed(SEED)
-
-from treetime import version, make_parser
 
 
 # Entry point for setuptools-installed script and bin/augur dev wrapper.

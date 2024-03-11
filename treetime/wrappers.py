@@ -2,14 +2,13 @@ import os, shutil, sys
 import numpy as np
 import pandas as pd
 from textwrap import fill
-from Bio import Phylo, AlignIO
+from Bio import Phylo
 from Bio import __version__ as bioversion
 from . import TreeAnc, GTR, TreeTime
 from . import utils
-from .vcf_utils import read_vcf, write_vcf
-from .seq_utils import alphabets
 from . import TreeTimeError, MissingDataError, UnknownMethodError
 from .treetime import reduce_time_marginal_argument
+from .CLI_io import *
 
 def assure_tree(params, tmp_dir='treetime_tmp'):
     """
@@ -69,219 +68,11 @@ def create_gtr(params):
                 print ("GTR params are not specified. Creating GTR model with default parameters")
 
             gtr = GTR.standard(model, **kwargs)
-            infer_gtr = False
         except KeyError as e:
             print("\nUNKNOWN SUBSTITUTION MODEL\n")
             raise e
 
     return gtr
-
-def get_outdir(params, suffix='_treetime'):
-    if params.outdir:
-        if os.path.exists(params.outdir):
-            if os.path.isdir(params.outdir):
-                return params.outdir.rstrip('/') + '/'
-            else:
-                print("designated output location %s is not a directory"%params.outdir, file=sys.stderr)
-        else:
-            os.makedirs(params.outdir)
-            return params.outdir.rstrip('/') + '/'
-
-    from datetime import datetime
-    outdir_stem = datetime.now().date().isoformat()
-    outdir = outdir_stem + suffix.rstrip('/')+'/'
-    count = 1
-    while os.path.exists(outdir):
-        outdir = outdir_stem + '-%04d'%count + suffix.rstrip('/')+'/'
-        count += 1
-
-    os.makedirs(outdir)
-    return outdir
-
-def get_basename(params, outdir):
-    # if params.aln:
-    #     basename = outdir + '.'.join(params.aln.split('/')[-1].split('.')[:-1])
-    # elif params.tree:
-    #     basename = outdir + '.'.join(params.tree.split('/')[-1].split('.')[:-1])
-    # else:
-    basename = outdir
-    return basename
-
-def read_in_DRMs(drm_file, offset):
-    import pandas as pd
-
-    DRMs = {}
-    drmPositions = []
-
-    df = pd.read_csv(drm_file, sep='\t')
-    for mi, m in df.iterrows():
-        pos = m.GENOMIC_POSITION-1+offset #put in correct numbering
-        drmPositions.append(pos)
-
-        if pos in DRMs:
-            DRMs[pos]['alt_base'][m.ALT_BASE] = m.SUBSTITUTION
-        else:
-            DRMs[pos] = {}
-            DRMs[pos]['drug'] = m.DRUG
-            DRMs[pos]['alt_base'] = {}
-            DRMs[pos]['alt_base'][m.ALT_BASE] = m.SUBSTITUTION
-            DRMs[pos]['gene'] = m.GENE
-
-    drmPositions = np.array(drmPositions)
-    drmPositions = np.unique(drmPositions)
-    drmPositions = np.sort(drmPositions)
-
-    DRM_info = {'DRMs': DRMs,
-            'drmPositions': drmPositions}
-
-    return DRM_info
-
-
-def read_if_vcf(params):
-    """
-    Checks if input is VCF and reads in appropriately if it is
-    """
-    ref = None
-    aln = params.aln
-    fixed_pi = None
-    if hasattr(params, 'aln') and params.aln is not None:
-        if any([params.aln.lower().endswith(x) for x in ['.vcf', '.vcf.gz']]):
-            if not params.vcf_reference:
-                print("ERROR: a reference Fasta is required with VCF-format alignments")
-                return -1
-            compress_seq = read_vcf(params.aln, params.vcf_reference)
-            sequences = compress_seq['sequences']
-            ref = compress_seq['reference']
-            aln = sequences
-
-            if not hasattr(params, 'gtr') or params.gtr=="infer": #if not specified, set it:
-                alpha = alphabets['aa'] if params.aa else alphabets['nuc']
-                fixed_pi = [ref.count(base)/len(ref) for base in alpha]
-                if fixed_pi[-1] == 0:
-                    fixed_pi[-1] = 0.05
-                    fixed_pi = [v-0.01 for v in fixed_pi]
-
-    return aln, ref, fixed_pi
-
-
-def plot_rtt(tt, fname):
-    tt.plot_root_to_tip()
-
-    from matplotlib import pyplot as plt
-    plt.savefig(fname)
-
-def export_sequences_and_tree(tt, basename, is_vcf=False, zero_based=False,
-                              report_ambiguous=False, timetree=False, confidence=False,
-                              reconstruct_tip_states=False, tree_suffix=''):
-    seq_info = is_vcf or tt.aln
-    if is_vcf:
-        outaln_name = basename + f'ancestral_sequences{tree_suffix}.vcf'
-        write_vcf(tt.get_reconstructed_alignment(reconstruct_tip_states=reconstruct_tip_states), outaln_name)
-    elif tt.aln:
-        outaln_name = basename + f'ancestral_sequences{tree_suffix}.fasta'
-        AlignIO.write(tt.get_reconstructed_alignment(reconstruct_tip_states=reconstruct_tip_states), outaln_name, 'fasta-2line')
-    if seq_info:
-        pass
-
-    # decorate tree with inferred mutations
-    terminal_count = 0
-    offset = 0 if zero_based else 1
-    if timetree:
-        dates_fname = basename + f'dates{tree_suffix}.tsv'
-        fh_dates = open(dates_fname, 'w', encoding='utf-8')
-        if confidence:
-            fh_dates.write('#Lower and upper bound delineate the 90% max posterior region\n')
-            fh_dates.write('#node\tdate\tnumeric date\tlower bound\tupper bound\n')
-        else:
-            fh_dates.write('#node\tdate\tnumeric date\n')
-
-    mutations_out = open(basename + "branch_mutations.txt", "w")
-    mutations_out.write("node\tstate1\tpos\tstate2\n")
-    for n in tt.tree.find_clades():
-        if timetree:
-            if confidence:
-                if n.bad_branch:
-                    fh_dates.write('%s\t--\t--\t--\t--\n'%(n.name))
-                else:
-                    conf = tt.get_max_posterior_region(n, fraction=0.9)
-                    fh_dates.write('%s\t%s\t%f\t%f\t%f\n'%(n.name, n.date, n.numdate,conf[0], conf[1]))
-            else:
-                if n.bad_branch:
-                    fh_dates.write('%s\t--\t--\n'%(n.name))
-                else:
-                    fh_dates.write('%s\t%s\t%f\n'%(n.name, n.date, n.numdate))
-
-        n.confidence=None
-        # due to a bug in older versions of biopython that truncated filenames in nexus export
-        # we truncate them by hand and make them unique.
-        if n.is_terminal() and len(n.name)>40 and bioversion<"1.69":
-            n.name = n.name[:35]+'_%03d'%terminal_count
-            terminal_count+=1
-        n.comment=''
-        if seq_info and len(n.mutations):
-            if n.mask is None:
-                if report_ambiguous:
-                    n.comment= '&mutations="' + ','.join([a+str(pos + offset)+d for (a,pos, d) in n.mutations])+'"'
-                else:
-                    n.comment= '&mutations="' + ','.join([a+str(pos + offset)+d for (a,pos, d) in n.mutations
-                                                        if tt.gtr.ambiguous not in [a,d]])+'"'
-            else:
-                if report_ambiguous:
-                    n.comment= '&mutations="' + ','.join([a+str(pos + offset)+d for (a,pos, d) in n.mutations if n.mask[pos]>0])+f'",mcc="{n.mcc}"'
-                else:
-                    n.comment= '&mutations="' + ','.join([a+str(pos + offset)+d for (a,pos, d) in n.mutations
-                                                        if tt.gtr.ambiguous not in [a,d] and n.mask[pos]>0])+f'",mcc="{n.mcc}"'
-
-                for (a, pos, d) in n.mutations:
-                    if tt.gtr.ambiguous not in [a,d] or report_ambiguous:
-                        mutations_out.write("%s\t%s\t%s\t%s\n" %(n.name, a, pos + 1, d))
-        if timetree:
-            n.comment+=(',' if n.comment else '&') + 'date=%1.2f'%n.numdate
-    mutations_out.close()
-
-    # write tree to file
-    fmt_bl = "%1.6f" if tt.data.full_length<1e6 else "%1.8e"
-    if timetree:
-        outtree_name = basename + f'timetree{tree_suffix}.nexus'
-        Phylo.write(tt.tree, outtree_name, 'nexus')
-    else:
-        outtree_name = basename + f'annotated_tree{tree_suffix}.nexus'
-        Phylo.write(tt.tree, outtree_name, 'nexus', format_branch_length=fmt_bl)
-
-    if timetree:
-        for n in tt.tree.find_clades():
-            n.branch_length = n.mutation_length
-        outtree_name = basename + f'divergence_tree{tree_suffix}.nexus'
-        Phylo.write(tt.tree, outtree_name, 'nexus', format_branch_length=fmt_bl)
-
-
-def print_save_plot_skyline(tt, n_std=2.0, screen=True, save='', plot='', gen=50):
-    if plot:
-        import matplotlib.pyplot as plt
-
-    skyline, conf = tt.merger_model.skyline_inferred(gen=gen, confidence=n_std)
-    if save: fh = open(save, 'w', encoding='utf-8')
-    header1 = "Skyline assuming "+ str(gen)+" gen/year and approximate confidence bounds (+/- %f standard deviations of the LH)\n"%n_std
-    header2 = "date \tN_e \tlower \tupper"
-    if screen: print('\t'+header1+'\t'+header2)
-    if save: fh.write("#"+ header1+'#'+header2+'\n')
-    for (x,y, y1, y2) in zip(skyline.x, skyline.y, conf[0], conf[1]):
-        if screen: print("\t%1.3f\t%1.3e\t%1.3e\t%1.3e"%(x,y, y1, y2))
-        if save: fh.write("%1.3f\t%1.3e\t%1.3e\t%1.3e\n"%(x,y, y1, y2))
-
-    if save:
-        print("\n --- written skyline to %s\n"%save)
-        fh.close()
-
-    if plot:
-        plt.figure()
-        plt.fill_between(skyline.x, conf[0], conf[1], color=(0.8, 0.8, 0.8))
-        plt.plot(skyline.x, skyline.y, label='maximum likelihood skyline')
-        plt.yscale('log')
-        plt.legend()
-        plt.ticklabel_format(axis='x',useOffset=False)
-        plt.savefig(plot)
-
 
 def scan_homoplasies(params):
     """
@@ -303,7 +94,7 @@ def scan_homoplasies(params):
     ### ANCESTRAL RECONSTRUCTION
     ###########################################################################
     treeanc = TreeAnc(params.tree, aln=aln, ref=ref, gtr=gtr, verbose=1,
-                      fill_overhangs=True)
+                      fill_overhangs=True, rng_seed=params.rng_seed)
     if treeanc.aln is None: # if alignment didn't load, exit
         return 1
 
@@ -376,8 +167,6 @@ def scan_homoplasies(params):
                                       for x in treeanc.tree.find_clades()])
     corrected_terminal_branch_length = np.sum([np.exp(-x.branch_length)*np.sinh(x.branch_length)
                                       for x in treeanc.tree.get_terminals()])
-    expected_mutations = L*corrected_branch_length
-    expected_terminal_mutations = L*corrected_terminal_branch_length
 
     # make histograms and sum mutations in different categories
     multiplicities = np.bincount([len(x) for x in mutations.values()])
@@ -534,10 +323,11 @@ def timetree(params):
     if params.aln is None and params.sequence_length is None:
         print("one of arguments '--aln' and '--sequence-length' is required.", file=sys.stderr)
         return 1
+
     myTree = TreeTime(dates=dates, tree=params.tree, ref=ref,
                       aln=aln, gtr=gtr, seq_len=params.sequence_length,
                       verbose=params.verbose, fill_overhangs=not params.keep_overhangs,
-                      branch_length_mode = params.branch_length_mode)
+                      branch_length_mode = params.branch_length_mode, rng_seed=params.rng_seed)
 
     return run_timetree(myTree, params, outdir)
 
@@ -569,17 +359,24 @@ def run_timetree(myTree, params, outdir, tree_suffix='', prune_short=True, metho
     # coalescent model options
     try:
         coalescent = float(params.coalescent)
-        if coalescent<10*myTree.one_mutation:
-            coalescent = None
     except:
         if params.coalescent in ['opt', 'const', 'skyline']:
             coalescent = params.coalescent
         else:
-            print("unknown coalescent model specification, has to be either "
-                  "a float, 'opt', 'const' or 'skyline' -- exiting")
-            return 1
+            raise TreeTimeError("unknown coalescent model specification, has to be either "
+                                "a float, 'opt', 'const' or 'skyline' -- exiting")
+
+    # coalescent rates faster than the time to one mutation can lead to numerical issues
+    if type(coalescent)==float and coalescent>0 and coalescent<myTree.one_mutation:
+        raise TreeTimeError(f"coalescent time scale is too low, should be at least distance"
+                            f" corresponding to one mutation {myTree.one_mutation:1.3e}")
+
+
     n_branches_posterior = params.n_branches_posterior
 
+    if hasattr(params, 'stochastic_resolve'):
+        stochastic_resolve = params.stochastic_resolve
+    else: stochastic_resolve = False
 
     # determine whether confidence intervals are to be computed and how the
     # uncertainty in the rate estimate should be treated
@@ -610,9 +407,10 @@ def run_timetree(myTree, params, outdir, tree_suffix='', prune_short=True, metho
     try:
         success = myTree.run(root=root, relaxed_clock=relaxed_clock_params,
                resolve_polytomies=(not params.keep_polytomies),
+               stochastic_resolve = stochastic_resolve,
                Tc=coalescent, max_iter=params.max_iter,
                fixed_clock_rate=params.clock_rate,
-               n_iqd=params.clock_filter,
+               n_iqd=params.clock_filter, clock_filter_method=params.clock_filter_method,
                time_marginal="confidence-only" if (calc_confidence and time_marginal=='never') else time_marginal,
                vary_rate = vary_rate,
                branch_length_mode = branch_length_mode,
@@ -632,10 +430,14 @@ def run_timetree(myTree, params, outdir, tree_suffix='', prune_short=True, metho
         fname = outdir+f'sequence_evolution_model{tree_suffix}.txt'
         with open(fname, 'w', encoding='utf-8') as ofile:
             ofile.write(str(myTree.gtr)+'\n')
+        print('\nInferred sequence evolution model (saved as %s):'%fname)
+        print(myTree.gtr)
 
     fname = outdir+f'molecular_clock{tree_suffix}.txt'
     with open(fname, 'w', encoding='utf-8') as ofile:
         ofile.write(str(myTree.date2dist)+'\n')
+    print('\nInferred sequence evolution model (saved as %s):'%fname)
+    print(myTree.date2dist)
 
     basename = get_basename(params, outdir)
     if coalescent in ['skyline', 'opt', 'const']:
@@ -705,7 +507,7 @@ def ancestral_reconstruction(params):
     is_vcf = True if ref is not None else False
 
     treeanc = TreeAnc(params.tree, aln=aln, ref=ref, gtr=gtr, verbose=1,
-                      fill_overhangs=not params.keep_overhangs)
+                      fill_overhangs=not params.keep_overhangs, rng_seed=params.rng_seed)
 
     try:
         ndiff = treeanc.infer_ancestral_sequences('ml', infer_gtr=params.gtr=='infer',
@@ -722,6 +524,8 @@ def ancestral_reconstruction(params):
         fname = outdir+'/sequence_evolution_model.txt'
         with open(fname, 'w', encoding='utf-8') as ofile:
             ofile.write(str(treeanc.gtr)+'\n')
+        print('\nInferred sequence evolution model (saved as %s):'%fname)
+        print(treeanc.gtr)
 
     export_sequences_and_tree(treeanc, basename, is_vcf, params.zero_based,
                               report_ambiguous=params.report_ambiguous,
@@ -730,7 +534,7 @@ def ancestral_reconstruction(params):
     return 0
 
 def reconstruct_discrete_traits(tree, traits, missing_data='?', pc=1.0, sampling_bias_correction=None,
-                                weights=None, verbose=0, iterations=5):
+                                weights=None, verbose=0, iterations=5, rng_seed=None):
     """take a set of discrete states associated with tips of a tree
     and reconstruct their ancestral states along with a GTR model that
     approximately maximizes the likelihood of the states on the tree.
@@ -748,7 +552,7 @@ def reconstruct_discrete_traits(tree, traits, missing_data='?', pc=1.0, sampling
     sampling_bias_correction : float, optional
         factor to inflate overall switching rate by to counteract sampling bias
     weights : str, optional
-        name of file with equilibirum frequencies
+        name of file with equilibrium frequencies
     verbose : int, optional
         level of verbosity in output
     iterations : int, optional
@@ -841,7 +645,7 @@ def reconstruct_discrete_traits(tree, traits, missing_data='?', pc=1.0, sampling
     ### set up treeanc
     ###########################################################################
     treeanc = TreeAnc(tree, gtr=mugration_GTR, verbose=verbose, ref='A',
-                      convert_upper=False, one_mutation=0.001)
+                      convert_upper=False, one_mutation=0.001, rng_seed=rng_seed)
     treeanc.use_mutation_length = False
     pseudo_seqs = {n.name: {0:reverse_alphabet[traits[n.name]] if n.name in traits else missing_char}
                    for n in treeanc.tree.get_terminals()}
@@ -867,11 +671,6 @@ def reconstruct_discrete_traits(tree, traits, missing_data='?', pc=1.0, sampling
     treeanc.infer_ancestral_sequences(infer_gtr=False, store_compressed=False,
                                  marginal=True, normalized_rate=False,
                                  reconstruct_tip_states=True)
-
-    print(fill("NOTE: previous versions (<0.7.0) of this command made a 'short-branch length assumption. "
-          "TreeTime now optimizes the overall rate numerically and thus allows for long branches "
-          "along which multiple changes accumulated. This is expected to affect estimates of the "
-          "overall rate while leaving the relative rates mostly unchanged."))
 
     return treeanc, letter_to_state, reverse_alphabet
 
@@ -904,6 +703,7 @@ def mugration(params):
     elif 'accession' in states.columns: taxon_name = 'accession'
     else:
         taxon_name = states.columns[0]
+    print("Using column '%s' as taxon name. This needs to match the taxa in the tree!"%taxon_name)
 
     if params.attribute:
         if params.attribute in states.columns:
@@ -919,8 +719,10 @@ def mugration(params):
     leaf_to_attr = {x[taxon_name]:str(x[attr]) for xi, x in states.iterrows()
                     if x[attr]!=params.missing_data and x[attr]}
 
-    mug, letter_to_state, reverse_alphabet = reconstruct_discrete_traits(params.tree, leaf_to_attr, missing_data=params.missing_data,
-            pc=params.pc, sampling_bias_correction=params.sampling_bias_correction, verbose=params.verbose, weights=params.weights)
+    mug, letter_to_state, reverse_alphabet = reconstruct_discrete_traits(params.tree, leaf_to_attr,
+                missing_data=params.missing_data, pc=params.pc,
+                sampling_bias_correction=params.sampling_bias_correction,
+                verbose=params.verbose, weights=params.weights, rng_seed=params.rng_seed)
 
     if mug is None:
         print("Mugration inference failed, check error messages above and your input data.")
@@ -944,8 +746,6 @@ def mugration(params):
     terminal_count = 0
     for n in mug.tree.find_clades():
         n.confidence=None
-        if n.up is None:
-            continue
         # due to a bug in older versions of biopython that truncated filenames in nexus export
         # we truncate them by hand and make them unique.
         if n.is_terminal() and len(n.name)>40 and bioversion<"1.69":
@@ -1001,7 +801,7 @@ def estimate_clock_model(params):
     try:
         myTree = TreeTime(dates=dates, tree=params.tree, aln=aln, gtr='JC69',
                       verbose=params.verbose, seq_len=params.sequence_length,
-                      ref=ref)
+                      ref=ref, rng_seed=params.rng_seed)
     except TreeTimeError as e:
         print("\nTreeTime setup failed. Please see above for error messages and/or rerun with --verbose 4\n")
         raise e
@@ -1009,7 +809,8 @@ def estimate_clock_model(params):
     myTree.tip_slack=params.tip_slack
     if params.clock_filter:
         n_bad = [n.name for n in myTree.tree.get_terminals() if n.bad_branch]
-        myTree.clock_filter(n_iqd=params.clock_filter, reroot=params.reroot or 'least-squares')
+        myTree.clock_filter(n_iqd=params.clock_filter, reroot=params.reroot or 'least-squares',
+                            method=params.clock_filter_method)
         n_bad_after = [n.name for n in myTree.tree.get_terminals() if n.bad_branch]
         if len(n_bad_after)>len(n_bad):
             print("The following leaves don't follow a loose clock and "
@@ -1034,26 +835,43 @@ def estimate_clock_model(params):
         myTree.get_clock_model(covariation=params.covariation)
 
     d2d = utils.DateConversion.from_regression(myTree.clock_model)
-    # print(fill('The R^2 value indicates the fraction of variation in'
-    #       'root-to-tip distance explained by the sampling times.'
-    #       'Higher values corresponds more clock-like behavior (max 1.0).')+'\n')
-    #
-    # print(fill('The rate is the slope of the best fit of the date to'
-    #       'the root-to-tip distance and provides an estimate of'
-    #       'the substitution rate. The rate needs to be positive!'
-    #       'Negative rates suggest an inappropriate root.')+'\n')
+    print('\n',d2d)
+    print(fill('The R^2 value indicates the fraction of variation in'
+          'root-to-tip distance explained by the sampling times.'
+          'Higher values corresponds more clock-like behavior (max 1.0).')+'\n')
 
+    print(fill('The rate is the slope of the best fit of the date to'
+          'the root-to-tip distance and provides an estimate of'
+          'the substitution rate. The rate needs to be positive!'
+          'Negative rates suggest an inappropriate root.')+'\n')
+
+    print('\nThe estimated rate and tree correspond to a root date:')
     if params.covariation:
         reg = myTree.clock_model
         dp = np.array([reg['intercept']/reg['slope']**2,-1./reg['slope']])
         droot = np.sqrt(reg['cov'][:2,:2].dot(dp).dot(dp))
+        print('\n--- root-date:\t %3.2f +/- %1.2f (one std-dev)\n\n'%(-d2d.intercept/d2d.clock_rate, droot))
     else:
-        pass
+        print('\n--- root-date:\t %3.2f\n\n'%(-d2d.intercept/d2d.clock_rate))
+
+    if hasattr(myTree, 'outliers') and myTree.outliers is not None:
+        print("--- saved detected outliers as " + basename + 'outliers.tsv')
+        myTree.outliers.to_csv(basename + 'outliers.tsv', sep='\t')
+
+    if hasattr(myTree, 'outliers') and myTree.outliers is not None and params.prune_outliers:
+        for outlier in myTree.outliers:
+            myTree.tree.prune(outlier)
 
     if not params.keep_root:
         # write rerooted tree to file
         outtree_name = basename+'rerooted.newick'
-        Phylo.write(myTree.tree, outtree_name, 'newick')
+    elif params.prune_outliers:
+        outtree_name = basename+'pruned.newick'
+    else:
+        outtree_name = basename+'.output.newick'
+
+    Phylo.write(myTree.tree, outtree_name, 'newick')
+    print("--- new tree written to \n\t%s\n"%outtree_name)
 
     table_fname = basename+'rtt.csv'
     with open(table_fname, 'w', encoding='utf-8') as ofile:
@@ -1073,6 +891,7 @@ def estimate_clock_model(params):
                 ofile.write("%s, %f, %f, 0.0\n"%(n.name, d2d.numdate_from_dist2root(n.dist2root), n.dist2root))
         for n in myTree.tree.get_nonterminals(order='preorder'):
             ofile.write("%s, %f, %f, 0.0\n"%(n.name, d2d.numdate_from_dist2root(n.dist2root), n.dist2root))
+        print("--- wrote dates and root-to-tip distances to \n\t%s\n"%table_fname)
 
 
     ###########################################################################

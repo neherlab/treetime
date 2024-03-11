@@ -1,5 +1,6 @@
 import numpy as np
 from . import config as ttconf
+from . import TreeTimeUnknownError
 from .distribution import Distribution
 from .utils import clip
 from .config import FFT_FWHM_GRID_SIZE
@@ -162,25 +163,31 @@ class NodeInterpolator (Distribution):
     def convolve_fft(cls, node_interp, branch_interp, fft_grid_size=FFT_FWHM_GRID_SIZE, inverse_time=True):
 
         dt = max(branch_interp.one_mutation*0.005, min(node_interp.fwhm, branch_interp.fwhm)/fft_grid_size)
-        ratio = node_interp.fwhm/branch_interp.fwhm
-        if ratio < 1/fft_grid_size and 4*dt > node_interp.fwhm:
-            ## node distribution is much narrower than the branch distribution, proceed as if node distribution is
-            ## a delta distribution
-            log_scale_node_interp = node_interp.integrate(return_log=True, a=node_interp.xmin,b=node_interp.xmax,n=max(100, len(node_interp.x))) #probability of node distribution 
+        b_effsupport = branch_interp.effective_support
+        n_effsupport = node_interp.effective_support
+        b_support_range = b_effsupport[1]-b_effsupport[0]
+        n_support_range = n_effsupport[1]-n_effsupport[0]
+        # compare the support of the node distribution to the width of the branch length distribution
+        ratio = n_support_range/branch_interp.fwhm
+
+        if ratio < 1.0/fft_grid_size and 4.0*dt > node_interp.fwhm:
+            ## node distribution is much narrower than the branch distribution, proceed as if
+            # node distribution is a delta distribution with the peak 4 full-width-half-maxima
+            # away from the nominal peak to avoid slicing the relevant range to zero
+            log_scale_node_interp = node_interp.integrate(return_log=True, a=node_interp.xmin,b=node_interp.xmax,n=max(100, len(node_interp.x))) #probability of node distribution
             if inverse_time:
-                x = branch_interp.x + node_interp._peak_pos
-                dist = Distribution(x, branch_interp(x - node_interp._peak_pos) - log_scale_node_interp, min_width=max(node_interp.min_width, branch_interp.min_width), is_log=True)  
+                x = branch_interp.x + max(n_effsupport[0], node_interp._peak_pos - 4.0*node_interp.fwhm)
+                dist = Distribution(x, branch_interp(x - node_interp._peak_pos) - log_scale_node_interp,
+                                    min_width=max(node_interp.min_width, branch_interp.min_width), is_log=True)
             else:
-                x = - branch_interp.x + node_interp._peak_pos
-                dist = Distribution(x, branch_interp(branch_interp.x) - log_scale_node_interp, min_width=max(node_interp.min_width, branch_interp.min_width), is_log=True)
+                x = - branch_interp.x + min(n_effsupport[1], node_interp._peak_pos + 4.0*node_interp.fwhm)
+                dist = Distribution(x, branch_interp(branch_interp.x) - log_scale_node_interp,
+                                    min_width=max(node_interp.min_width, branch_interp.min_width), is_log=True)
             return dist
         elif ratio > fft_grid_size and 4*dt > branch_interp.fwhm:
             raise ValueError("ERROR: Unexpected behavior: branch distribution is much narrower than the node distribution.")
         else:
-            b_effsupport = branch_interp.effective_support
-            n_effsupport = node_interp.effective_support
-
-            tmax = 2*max(b_effsupport[1]-b_effsupport[0], n_effsupport[1]-n_effsupport[0])
+            tmax = 2*max(b_support_range, n_support_range)
 
             Tb = np.arange(b_effsupport[0], b_effsupport[0] + tmax + dt, dt)
             if inverse_time:
@@ -209,12 +216,16 @@ class NodeInterpolator (Distribution):
             # inaccuracies due to machine precision. 1e-13 seems robust
             ind = fft_res>fft_res.max()*1e-13
             res = -np.log(fft_res[ind]) + branch_interp.peak_val + node_interp.peak_val - np.log(dt)
+
             Tres_cropped = Tres[ind]
 
             # extrapolate the tails exponentially: use margin last data points
             margin = np.minimum(3, Tres_cropped.shape[0]//3)
             if margin<1 or len(res)==0:
-                import ipdb; ipdb.set_trace()
+                raise TreeTimeUnknownError("Error: Unexpected behavior detected in FFT function. "
+                                     "No valid points left after reducing to plausible region.\n\n"
+                        "If you see this error please let us know by filling an issue at:\n"
+                        "https://github.com/neherlab/treetime/issues")
             else:
                 left_slope = (res[margin]-res[0])/(Tres_cropped[margin]-Tres_cropped[0])
                 right_slope = (res[-1]-res[-margin-1])/(Tres_cropped[-1]-Tres_cropped[-margin-1])

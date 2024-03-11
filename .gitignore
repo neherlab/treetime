@@ -97,5 +97,6 @@ ehthumbs.db
 Thumbs.db
 
 test/treetime_examples
-/tmp*/
-/data_dev*
+
+# Output directories produced by bash test/command_line_tests.sh
+test/20*/
