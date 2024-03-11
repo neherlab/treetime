@@ -5,19 +5,7 @@ Based on augur's __main__.py and setup.py
 """
 import sys
 from treetime import make_parser
-import math
 import random
-import os
-from pprint import pprint
-
-sys.path.append(os.path.join(os.path.dirname(__file__), '.'))
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
-sys.path.append(os.path.join(os.path.dirname(__file__), '../../..'))
-sys.path.append(os.path.join(os.path.dirname(__file__), '../../../treetime'))
-sys.path.append(os.path.join(os.path.dirname(__file__), '../../treetime'))
-sys.path.append(os.path.join(os.path.dirname(__file__), '../treetime'))
-sys.path.append(os.path.join(os.path.dirname(__file__), './treetime'))
 import numpy as np
 
 np.set_printoptions(precision=60, threshold=20, edgeitems=8, suppress=True, linewidth=999, sign=' ',
