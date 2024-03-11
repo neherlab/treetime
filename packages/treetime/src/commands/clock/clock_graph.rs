@@ -1,5 +1,5 @@
 use crate::graph::breadth_first::GraphTraversalContinuation;
-use crate::graph::create_graph_from_nwk::create_graph_from_nwk;
+use crate::graph::create_graph_from_nwk::create_graph_from_nwk_file;
 use crate::graph::edge::{GraphEdge, Weighted};
 use crate::graph::graph::{Graph, GraphNodeBackward, GraphNodeForward};
 use crate::graph::node::{GraphNode, Named, NodeType, WithNwkComments};
@@ -142,7 +142,7 @@ pub fn infer_graph() -> Result<ClockGraph, Report> {
 }
 
 pub fn create_graph<P: AsRef<Path>>(tree_path: P, dates: &DatesMap) -> Result<ClockGraph, Report> {
-  let mut graph = create_graph_from_nwk::<Node, Edge, P>(tree_path)?;
+  let mut graph = create_graph_from_nwk_file::<Node, Edge>(tree_path)?;
   assign_dates(&mut graph, dates)?;
   calculate_distances_to_root(&mut graph);
   Ok(graph)
