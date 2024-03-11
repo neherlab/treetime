@@ -1,0 +1,172 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+function abspath() {
+  readlink -m "$1"
+}
+
+export THIS_DIR=$(
+  cd "$(dirname "${BASH_SOURCE[0]}")"
+  pwd
+)
+
+SUCCESS="({ set +x; } 2> /dev/null && echo '🟩 Success' && exit 0)"
+FAILURE="({ set +x; } 2> /dev/null && echo '🟥 Failure' && exit 1)"
+CANCELLED="({ set +x; } 2> /dev/null && echo '🟦 Cancelled' && exit 0)"
+SUCCESS_OR_FAILURE="&& ${SUCCESS} || ${FAILURE}"
+HANDLE_SIGINT="trap \"${CANCELLED}; exit 0\" INT"
+
+export PACKAGE_NAME="treetime_py"
+export PACKAGE_DIR_REL=""
+
+export PROJECT_ROOT_DIR="$(abspath "${THIS_DIR}/..")"
+export PACKAGE_DIR="$(abspath "${PROJECT_ROOT_DIR}/${PACKAGE_DIR_REL}")"
+
+export DOCKER_REPO="neherlab/treetime_py"
+export DOCKER_IMAGE_NAME_SAFE="${DOCKER_REPO//\//-}"
+export DOCKER_CONTAINER_NAME="${DOCKER_IMAGE_NAME_SAFE}-$(date -u "+%Y-%m-%d_%H-%M-%S_%3NZ")"
+
+export USER=user
+export GROUP=user
+
+export BUILD_DIR_REL=".build/docker/${PACKAGE_DIR_REL}"
+export BUILD_DIR="$(abspath "${PACKAGE_DIR}/${BUILD_DIR_REL}")"
+export BUILD_DIR_TEST="${BUILD_DIR}/test"
+
+export CACHE_DIR_REL=".cache/docker/${PACKAGE_DIR_REL}"
+export CACHE_DIR="$(abspath "${PACKAGE_DIR}/${CACHE_DIR_REL}")"
+
+export NICE="nice -14 ionice -c2 -n3"
+export TIME="/usr/bin/time -f \"Cmd : %C\nTime: %E\nMem : %M KB\n\""
+
+DOCKER_TARGET="py"
+DOCKER_IMAGE_VERSION="$(cat \
+  .dockerignore \
+  .gitignore \
+  requirements.txt \
+  $(find docker/ -type f) \
+| sha256sum | cut -f 1 -d " " \
+)"
+
+FORCE_DOCKER_IMAGE_BUILD=${FORCE_DOCKER_IMAGE_BUILD:-}
+DOCKER_IMAGE_PUSH=0
+RUN=0
+JUPYTER=0
+
+case "${1:-}" in
+"docker-image-build" | "d")
+  shift
+  FORCE_DOCKER_IMAGE_BUILD=1
+  ;;
+"docker-image-build-push" | "dp")
+  shift
+  FORCE_DOCKER_IMAGE_BUILD=1
+  DOCKER_IMAGE_PUSH=1
+  ;;
+"run" | "r")
+  shift
+  RUN=1
+  ;;
+"jupyter" | "j")
+  shift
+  JUPYTER=1
+  ;;
+"exec" | "e")
+  shift
+  RUN=0
+  ;;
+esac
+
+
+if ! docker inspect --format '{{.Id}}' "${DOCKER_REPO}:${DOCKER_TARGET}-${DOCKER_IMAGE_VERSION}" &>/dev/null ||
+  [ -n "${FORCE_DOCKER_IMAGE_BUILD}" ]; then
+
+  export PROGRESS_NO_TRUNC=1
+
+  ADDITIONAL_DOCKER_BUILD_ARGS=
+  ADDITIONAL_DOCKER_BUILD_ARGS="${ADDITIONAL_DOCKER_BUILD_ARGS} --builder=${DOCKER_IMAGE_NAME_SAFE}"
+  if ! docker buildx inspect "${DOCKER_IMAGE_NAME_SAFE}" &>/dev/null; then
+    docker buildx create --use --name "${DOCKER_IMAGE_NAME_SAFE}" --driver docker-container --driver-opt network=host >/dev/null
+  fi
+
+  if [ "${DOCKER_IMAGE_PUSH}" == "1" ]; then
+    ADDITIONAL_DOCKER_BUILD_ARGS="${ADDITIONAL_DOCKER_BUILD_ARGS} --push"
+  else
+    ADDITIONAL_DOCKER_BUILD_ARGS="${ADDITIONAL_DOCKER_BUILD_ARGS} --load"
+  fi
+
+  BRANCH="$(git rev-parse --abbrev-ref HEAD || echo "${GITHUB_REF_NAME:=}")"
+  CACHE_SCOPE="${DOCKER_REPO}-${DOCKER_TARGET}-${BRANCH}"
+  BUILDX_CACHE_DIR="${CACHE_DIR}/buildx"
+
+  mkdir -p "${BUILDX_CACHE_DIR}"
+  if [ ! -f "${BUILDX_CACHE_DIR}/index.json" ]; then
+    ADDITIONAL_DOCKER_BUILD_ARGS="${ADDITIONAL_DOCKER_BUILD_ARGS} --cache-from=\"type=local,src=${BUILDX_CACHE_DIR},scope=${CACHE_SCOPE}\""
+  fi
+
+  ${NICE} docker buildx build \
+    --progress=plain \
+    --file="docker/docker-dev.dockerfile" \
+    --target="${DOCKER_TARGET}" \
+    --tag="${DOCKER_REPO}:${DOCKER_TARGET}" \
+    --tag="${DOCKER_REPO}:${DOCKER_TARGET}-${DOCKER_IMAGE_VERSION}" \
+    --cache-from="${DOCKER_REPO}" \
+    --cache-from="${DOCKER_REPO}:dev" \
+    --cache-from="${DOCKER_REPO}:dev-${DOCKER_IMAGE_VERSION}" \
+    --cache-from="${DOCKER_REPO}:${DOCKER_TARGET}" \
+    --cache-from="${DOCKER_REPO}:${DOCKER_TARGET}-${DOCKER_IMAGE_VERSION}" \
+    --cache-to="type=local,dest=${BUILDX_CACHE_DIR},mode=max,compression=zstd,scope=${CACHE_SCOPE},ignore-error=true" \
+    --build-arg="UID=$(id -u)" \
+    --build-arg="GID=$(id -g)" \
+    --build-arg="USER=user" \
+    --build-arg="GROUP=user" \
+    ${ADDITIONAL_DOCKER_BUILD_ARGS} \
+    ${PROJECT_ROOT_DIR} \
+    >/dev/null
+
+  if [ -n "${FORCE_DOCKER_IMAGE_BUILD}" ]; then
+    exit 0;
+  fi
+fi
+
+PARAMS=""
+COMMAND=${*:-bash}
+PORTS=
+if [ "${RUN}" == "1" ]; then
+  PARAMS="$(echo "${@:-}" | xargs)"
+  COMMAND="python3 -m treetime.__main__ ${PARAMS}"
+elif [ "${JUPYTER}" == "1" ]; then
+  JUPYTER_PORT="${JUPYTER_PORT:-10002}"
+  echo "🧪 Starting Jupyter Lab on port ${JUPYTER_PORT}"
+  COMMAND="/files/start-jupyter"
+  PORTS="-p ${JUPYTER_PORT}:8888"
+else
+  COMMAND="${NICE} ${TIME} ${COMMAND}"
+fi
+
+mkdir -p "${BUILD_DIR}" "${CACHE_DIR}/.jupyter"
+
+ADDITIONAL_DOCKER_RUN_ARGS=""
+if [ -t 1 ]; then
+  ADDITIONAL_DOCKER_RUN_ARGS="${ADDITIONAL_DOCKER_RUN_ARGS} -it"
+fi
+
+# shellcheck disable=SC2086
+${NICE} docker run --rm \
+  ${ADDITIONAL_DOCKER_RUN_ARGS} \
+  --init \
+  --name="${DOCKER_CONTAINER_NAME}" \
+  --hostname="${DOCKER_IMAGE_NAME_SAFE}" \
+  --user="$(id -u):$(id -g)" \
+  --volume="${PROJECT_ROOT_DIR}:/workdir" \
+  --volume="${CACHE_DIR}/.jupyter:/home/${USER}/.jupyter" \
+  --workdir="/workdir/${PACKAGE_DIR_REL}" \
+  --env="UID=$(id -u)" \
+  --env="GID=$(id -g)" \
+  --env="USER=${USER}" \
+  --env="GROUP=${GROUP}" \
+  --env="PS1=\${USER}@\${HOST}" \
+  --ulimit core=0 \
+  ${PORTS} \
+  "${DOCKER_REPO}:${DOCKER_TARGET}-${DOCKER_IMAGE_VERSION}" \
+  bash -c "set -euo pipefail; ${HANDLE_SIGINT}; ${COMMAND} ${SUCCESS_OR_FAILURE}"

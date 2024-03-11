@@ -10,8 +10,6 @@
 
 
 #VIM backup and swap
-[a-w][a-z]
-[._]s[a-w][a-z]
 *.un~
 Session.vim
 .netrwhist
@@ -79,9 +77,6 @@ target/
 *.sublime-project
 # sftp configuration file
 sftp-config.json
-
-#data files other resources
-*.svg
 
 !data/
 

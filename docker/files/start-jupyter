@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+if [ ! -d "${HOME}/.jupyter/lab" ]; then
+  cp -r "/files/.jupyter" "${HOME}/"
+fi
+
+jupyter lab \
+  -y --no-browser \
+  --ip='*' --port=8888 \
+  --IdentityProvider.token='' \
+  --ServerApp.log_level=ERROR \
+  --ExtensionApp.log_level=ERROR \
+  --LabApp.log_level=ERROR \
+  --FileCheckpoints.checkpoint_dir=/workdir/.cache/.ipynb_checkpoints
