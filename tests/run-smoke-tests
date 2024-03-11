@@ -8,7 +8,7 @@ export THIS_DIR=$(
   pwd
 )
 
-RESULTS_DIR="${THIS_DIR}/tmp/smoke-tests"
+RESULTS_DIR="${THIS_DIR}/../tmp/smoke-tests"
 
 function run_treetime() {
   cmd=$([[ "$1" == --* ]] && echo "timetree" || echo "$1")
