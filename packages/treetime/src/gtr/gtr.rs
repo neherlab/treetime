@@ -545,7 +545,7 @@ mod test {
       [0.10, 0.15, 0.30, 0.40, 0.05], // pi
     ];
 
-    // Propagate for short time
+    // Propagate for long time
     #[rustfmt::skip]
     pretty_assert_ulps_eq!(
       gtr.propagate_profile(&profile, 0.1, false),
@@ -561,7 +561,7 @@ mod test {
       epsilon = 1e-12
     );
 
-    // Propagate for short time
+    // Propagate for long time
     #[rustfmt::skip]
     pretty_assert_ulps_eq!(
       gtr.propagate_profile(&profile, 1000.0, false),
