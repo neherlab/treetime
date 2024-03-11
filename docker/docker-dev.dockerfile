@@ -130,15 +130,15 @@ RUN set -euxo pipefail >/dev/null \
   "python=${PYTHON_VERSION}" \
   'mamba' \
 && mamba list python | grep '^python ' | tr -s ' ' | cut -d ' ' -f 1,2 >> "${CONDA_DIR}/conda-meta/pinned" \
-&& echo 'blas=*.*=*mkl*' >> "${CONDA_DIR}/conda-meta/pinned" \
-&& echo 'conda-forge::blas=*.*=*mkl*' >> "${CONDA_DIR}/conda-meta/pinned" \
-&& echo 'conda-forge::libblas=*.*=*mkl*' >> "${CONDA_DIR}/conda-meta/pinned"
+&& echo 'blas=*.*=*openblas*' >> "${CONDA_DIR}/conda-meta/pinned" \
+&& echo 'conda-forge::blas=*.*=*openblas*' >> "${CONDA_DIR}/conda-meta/pinned" \
+&& echo 'conda-forge::libblas=*.*=*openblas*' >> "${CONDA_DIR}/conda-meta/pinned"
 
 RUN set -euxo pipefail >/dev/null \
 && mamba install --quiet --yes \
-  'blas=*.*=*mkl*' \
-  'conda-forge::blas=*.*=*mkl*' \
-  'conda-forge::libblas=*.*=*mkl*' \
+  'blas=*.*=*openblas*' \
+  'conda-forge::blas=*.*=*openblas*' \
+  'conda-forge::libblas=*.*=*openblas*' \
   'bokeh' \
   'cython' \
   'dill' \
@@ -147,8 +147,6 @@ RUN set -euxo pipefail >/dev/null \
   'jupyterlab' \
   'jupyterlab_widgets' \
   'matplotlib-base' \
-  'mkl' \
-  'mkl-service' \
   'notebook' \
   'numpy' \
   'pandas' \

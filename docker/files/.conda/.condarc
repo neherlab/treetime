@@ -5,4 +5,4 @@ channels:
   - conda-forge
   - defaults
 track_features:
-  - mkl
+  - openblas
