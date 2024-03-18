@@ -156,6 +156,23 @@ for n in tree.find_clades(order='postorder'):
         for c in n.clades:
             del c.seq
 
+# def dump_tree(tree):
+#     node_dicts = []
+#     for n in tree.find_clades(order='postorder'):
+#         node_dicts.append({
+#             "name": n.name,
+#             "is_terminal": n.is_terminal(),
+#             "mutations": n.__dict__.get("mutations"),
+#             "gaps": n.__dict__.get("gaps"),
+#             "ambiguous": n.__dict__.get("ambiguous"),
+#             "mixed": n.__dict__.get("mixed"),
+#             "non_consensus": list(map(lambda x: (x[0], list(x[1])), n.__dict__.get("non_consensus").items())),
+#         })
+#     import json
+#     return json.dumps(node_dicts, indent=2)
+#
+# print(dump_tree(tree))
+
 # determine the sequence at the root
 for pos, states in tree.root.non_consensus.items():
     tree.root.seq[pos] = states.pop()  # should be random choice
