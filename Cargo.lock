@@ -1110,6 +1110,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "gcollections"
+version = "1.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2f551fdf23ef80329f754919669147a71c67b6cfe3569cd93b6fabdd62044377"
+dependencies = [
+ "bit-set",
+ "num-integer",
+ "num-traits",
+ "trilean",
+]
+
+[[package]]
 name = "generic-array"
 version = "0.14.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1284,6 +1296,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7a5bbe824c507c5da5956355e86a746d82e0e1464f65d862cc5e71da70e94b2c"
 dependencies = [
  "cfg-if",
+]
+
+[[package]]
+name = "intervallum"
+version = "1.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "18bfda24d3930aa647f90044d5ef87d0c8120f13b86b2d60e8aade66e656e659"
+dependencies = [
+ "bit-set",
+ "gcollections",
+ "num-integer",
+ "num-traits",
+ "trilean",
 ]
 
 [[package]]
@@ -3097,7 +3122,9 @@ dependencies = [
  "env_logger",
  "eyre",
  "flate2",
+ "gcollections",
  "indexmap 1.9.1",
+ "intervallum",
  "itertools 0.10.3",
  "lazy_static",
  "log",
@@ -3156,6 +3183,12 @@ dependencies = [
  "rayon",
  "treetime",
 ]
+
+[[package]]
+name = "trilean"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "683ba5022fe6dbd7133cad150478ccf51bdb6d861515181e5fc6b4323d4fa424"
 
 [[package]]
 name = "triple_accel"

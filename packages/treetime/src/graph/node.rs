@@ -14,6 +14,8 @@ pub enum NodeType {
   Internal(f64),
 }
 
+impl Eq for NodeType {}
+
 pub trait Named {
   fn name(&self) -> &str;
   fn set_name(&mut self, name: &str);
