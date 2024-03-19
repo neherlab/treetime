@@ -1,49 +1,41 @@
-use crate::seq::range_union::range_union;
-
 // Finds contiguous ranges (segments) in the sequence, such that for every character inside every range,
 // the predicate function returns true and every range contains only the same letter.
 //
 // The predicate is a function that takes a character and returns boolean.
 //
-// For example if predicate returns `true` for characters A and C, this function will find ranges `AAAA` and `CCCCC`,
-// but not `ZZZ` or `ACCCAC`.
+// For example if predicate returns `true` for characters A and C, this function will find ranges `AAAA`, `CCCCC`, `ACCCACAAA`
+// but not `ZZZZZ`.
 pub fn find_letter_ranges_by(seq: &[char], pred: impl Fn(char) -> bool) -> Vec<(usize, usize)> {
   let len = seq.len();
 
   let mut result = vec![];
   let mut i = 0_usize;
   let mut start = 0_usize;
-  let mut found_maybe = Option::<char>::default();
+  let mut is_inside_range = false;
   while i < len {
     let letter = seq[i];
 
     // Find beginning of a range
     if pred(letter) {
       start = i;
-      found_maybe = Some(letter);
+      is_inside_range = true;
     }
 
-    match found_maybe {
-      // If there's a current range we are working on (for which we found a `start`), extend it
-      Some(found) => {
-        // Rewind forward until we find a mismatch
-        while i < len && seq[i] == found {
-          i += 1;
-        }
-
-        // We found the end of the current range, so now it's complete
-        let end = i;
-
-        // Remember the range
-        result.push((start, end));
-
-        found_maybe = None;
+    if is_inside_range {
+      // Rewind forward until we find a mismatch
+      while i < len && pred(seq[i]) {
+        i += 1;
       }
-      None => {
-        if i < len {
-          i += 1;
-        }
-      }
+
+      // We found the end of the current range, so now it's complete
+      let end = i;
+
+      // Remember the range
+      result.push((start, end));
+
+      is_inside_range = false;
+    } else if i < len {
+      i += 1;
     }
   }
   result
@@ -63,7 +55,7 @@ pub fn find_gap_ranges(seq: &[char]) -> Vec<(usize, usize)> {
 }
 
 pub fn find_undetermined_ranges(seq: &[char]) -> Vec<(usize, usize)> {
-  range_union(&[find_letter_ranges_by(seq, |c| c == 'N' || c == '-')])
+  find_letter_ranges_by(seq, |c| c == 'N' || c == '-')
 }
 
 #[cfg(test)]
