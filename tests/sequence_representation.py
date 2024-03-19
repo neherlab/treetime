@@ -19,13 +19,13 @@ from io import StringIO
 tree_fname = '../test/treetime_examples/data/ebola/ebola.nwk'
 aln_fname = '../test/treetime_examples/data/ebola/ebola.fasta'
 
-dummy=True
+dummy=False
 
 if dummy:
     tree = Phylo.read(StringIO("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;"), 'newick')
     # in practice, we don't want all sequences in memory. Idealy we'd stream then in the same order as leaves of the tree. 
     seqs = {'A':'ACATCGCCNNA--G',
-            'B':'GCATCCCTGTA-TG',
+            'B':'GCATCCCTGTA-NG',
             'C':'CCGGCGATGTATTG',
             'D':'TCGGCCGTGTRTTG'}
 else:
@@ -44,6 +44,10 @@ def find_ambiguous_ranges(seq):
 def find_gap_ranges(seq):
     return find_char_ranges(seq, '-')
 
+def find_undetermined_ranges(seq):
+    # this should be the union of the gap and N ranges
+    return find_char_ranges(seq.replace('-', 'N'), 'N')
+
 def find_char_ranges(seq, char):
     ranges = []
     start = None
@@ -53,6 +57,8 @@ def find_char_ranges(seq, char):
             start = None
         elif nuc == char and start is None:
             start = pos
+    if start:
+        ranges.append((start, len(seq)))
     return ranges
 
 def range_intersection(range_sets):
@@ -107,29 +113,28 @@ for n in tree.find_clades(order='postorder'):
         # at each terminal node, temporarily store the sequence and ranges of N, - and mixed sites
         n.seq = seqs[n.name]
         n.ambiguous = find_ambiguous_ranges(n.seq)
+        n.undetermined = find_undetermined_ranges(n.seq)
         n.gaps = find_gap_ranges(n.seq)
         # n.mixed stores the exact character at each mixed positions, the non_consensus stores the possible states
         n.mixed, n.non_consensus = find_mixed_sites(n.seq)
     else:
         # positions that are N or - in all children are still N or - in the parent
-        n.ambiguous = range_intersection([c.ambiguous for c in n.clades])
-        n.gaps = range_intersection([c.gaps for c in n.clades])
+        n.undetermined = range_intersection([c.undetermined for c in n.clades])
         # all sites that are not N or - but not fixed will need special treatment
         non_consensus_positions = set.union(*[set(c.non_consensus.keys()) for c in n.clades])
         n.non_consensus = {}
         n.seq = ['']*L # construct sequence of node, will be deleted later again
         for pos in range(L):
             # skip ambiguous and gaps
-            if ranges_contain(n.ambiguous, pos):
-                continue
-            if ranges_contain(n.gaps, pos):
+            if ranges_contain(n.undetermined, pos):
                 continue
             # deal with positions that are variable in at least one child
             if pos in non_consensus_positions:
                 # indeterminate in at least one child
                 isect = set.intersection(*[c.non_consensus.get(pos, set({c.seq[pos]})) 
-                                           for c in n.clades if not (ranges_contain(c.ambiguous, pos) or ranges_contain(c.gaps, pos))])
-                
+                                           for c in n.clades if not ranges_contain(c.undetermined, pos)])
+                if '-' in isect:
+                    import ipdb; ipdb.set_trace()
                 if len(isect)==1:
                     n.seq[pos] = isect.pop()
                 elif len(isect)>1:
@@ -139,13 +144,13 @@ for n in tree.find_clades(order='postorder'):
                             c.non_consensus[pos] = set([c.seq[pos]])
                 else:
                     n.non_consensus[pos] = set.union(*[c.non_consensus.get(pos, set([c.seq[pos]])) 
-                                           for c in n.clades if not (ranges_contain(c.ambiguous, pos) or ranges_contain(c.gaps, pos))])
+                                           for c in n.clades if not ranges_contain(c.undetermined, pos)])
                     for c in n.clades:
                         if pos not in c.non_consensus:
                             c.non_consensus[pos] = set([c.seq[pos]])
             else: # deal with all other positions. 
                 # this could probably be sped up by explicitly checking whether the states of all children are equal. 
-                states = set([c.seq[pos] for c in n.clades])
+                states = set([c.seq[pos] for c in n.clades if not ranges_contain(c.undetermined, pos)])
                 if len(states)==1: # if all children are equal
                     n.seq[pos] = states.pop()
                 else: # if children differ
