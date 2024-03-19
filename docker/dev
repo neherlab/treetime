@@ -507,8 +507,7 @@ elif [ "${WEB}" == "1" ]; then
 elif [ "${TEST}" == "1" ]; then
   COMMAND="cargo -q nextest run --workspace --cargo-quiet --no-fail-fast --hide-progress-bar --color=always --target-dir='${BUILD_DIR_REL}' ${RUST_TARGET} ${TEST_FLAGS} ${*:-} -- ${SUCCESS_OR_FAILURE}"
 elif [ "${BENCH}" == "1" ]; then
-  PRETTY_BENCH="( grep --color=always --line-buffered -vP \"Benchmarking|Gnuplot not found, using plotters backend\" || true )"
-  COMMAND="cargo bench --color=always -q --target-dir='${BUILD_DIR_REL}' ${RUST_TARGET} ${*:-} | ${PRETTY_BENCH} ${SUCCESS_OR_FAILURE}"
+  COMMAND="cargo -q bench --workspace --benches --target-dir='${BUILD_DIR_REL}' ${RUST_TARGET} -- --color=always ${SUCCESS_OR_FAILURE}"
 elif [ "${LINT}" == "1" ]; then
   COMMAND="cargo clippy --exclude=3rdparty -q --target-dir=\"${BUILD_DIR_REL}\" --all ${FIX:-} ${LINT_DENY}"
 elif [ "${FORMAT}" == "1" ]; then

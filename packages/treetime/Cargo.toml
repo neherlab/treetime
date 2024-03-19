@@ -85,3 +85,7 @@ rstest_reuse = { workspace = true }
 
 [lints]
 workspace = true
+
+[[bench]]
+name = "find_letter_ranges_benchmark"
+harness = false
