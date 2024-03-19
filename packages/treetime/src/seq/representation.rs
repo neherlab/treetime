@@ -42,11 +42,12 @@ impl Node {
     }
   }
 
+  /// Gather all states at a given position from all child nodes
   pub fn get_letter_disambiguated(&self, pos: usize) -> Vec<char> {
     self
-      .non_consensus
-      .get(&pos)
-      .cloned()
+      // Get possible states if non-consensus
+      .non_consensus.get(&pos).cloned()
+      // Otherwise read the sequence at that position
       .unwrap_or_else(|| vec![self.seq[pos]])
   }
 
@@ -157,6 +158,7 @@ pub fn get_common_length<K: AsRef<str>, V: AsRef<str>>(seqs: impl Iterator<Item 
   .wrap_err("When calculating length of sequences")
 }
 
+/// Gather all states at a given position from all child nodes
 #[allow(single_use_lifetimes)]
 pub fn gather_child_states<'a>(pos: usize, children: impl Iterator<Item = &'a Node>) -> Vec<char> {
   children
