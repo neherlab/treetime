@@ -294,7 +294,7 @@ impl Display for GTR {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
   #![allow(clippy::excessive_precision)]
 
   use super::*;

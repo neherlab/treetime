@@ -5,7 +5,8 @@ use crate::graph::node::{GraphNode, Named, NodeType, WithNwkComments};
 use crate::make_error;
 use crate::seq::find_char_ranges::find_letter_ranges;
 use crate::seq::find_mixed_sites::{find_mixed_sites, MixedSite};
-use crate::seq::range_intersection::{range_intersection_iter, ranges_contain};
+use crate::seq::range::range_contains;
+use crate::seq::range_intersection::range_intersection_iter;
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use std::collections::{BTreeMap, BTreeSet};
@@ -190,8 +191,8 @@ pub fn compress_sequences(seqs: &BTreeMap<String, String>, graph: &mut Graph<Nod
       } else {
         // Positions that are N or - in all children are still N or - in the parent
         let mut children = children.iter().map(|(node, _)| node.write()).collect_vec();
-        n.ambiguous = range_intersection_iter(children.iter().map(|c| &c.ambiguous));
-        n.gaps = range_intersection_iter(children.iter().map(|c| &c.gaps));
+        n.ambiguous = range_intersection_iter(children.iter().map(|c| &c.ambiguous)).collect();
+        n.gaps = range_intersection_iter(children.iter().map(|c| &c.gaps)).collect();
 
         // All sites that are not N or - but not fixed will need special treatment
         let non_consensus_positions: BTreeSet<usize> =
@@ -201,7 +202,7 @@ pub fn compress_sequences(seqs: &BTreeMap<String, String>, graph: &mut Graph<Nod
         let mut seq = vec![' '; L];
         for pos in 0..L {
           // Skip ambiguous and gaps
-          if ranges_contain(&n.ambiguous, pos) || ranges_contain(&n.gaps, pos) {
+          if range_contains(&n.ambiguous, pos) || range_contains(&n.gaps, pos) {
             continue;
           }
 
