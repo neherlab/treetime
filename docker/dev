@@ -429,12 +429,12 @@ if ! docker inspect --format '{{.Id}}' "${DOCKER_REPO}:${DOCKER_TARGET}-${DOCKER
     ADDITIONAL_DOCKER_BUILD_ARGS="${ADDITIONAL_DOCKER_BUILD_ARGS} --cache-from=\"type=local,src=${BUILDX_CACHE_DIR},scope=${CACHE_SCOPE}\""
   fi
 
-  if [ "${VERBOSE:=0}" != "1" ]; then
-    ADDITIONAL_DOCKER_BUILD_ARGS="${ADDITIONAL_DOCKER_BUILD_ARGS} -q"
-  fi
+#  if [ "${VERBOSE:=0}" != "1" ]; then
+#    ADDITIONAL_DOCKER_BUILD_ARGS="${ADDITIONAL_DOCKER_BUILD_ARGS} -q"
+#  fi
 
+#    --progress=quiet \
   ${NICE} docker buildx build \
-    --progress=quiet \
     --file="docker/docker-dev.dockerfile" \
     --target="${DOCKER_TARGET}" \
     --tag="${DOCKER_REPO}:${DOCKER_TARGET}" \
@@ -505,8 +505,7 @@ elif [ "${WEB}" == "1" ]; then
   COMMAND=${COMMAND:=yarn install && yarn ${RELEASE}}
   COMMAND="bash -c \"set -euo pipefail && cd packages/treetime-web && ${COMMAND}\""
 elif [ "${TEST}" == "1" ]; then
-  PRETTY_TEST="( grep --color=always --line-buffered -vP \"running.*tests|\x1b\[32m.\x1b\(B\x1b\[m|^$|test result|TEST START\" || true )"
-  COMMAND="cargo test --color=always -q --target-dir='${BUILD_DIR_REL}' ${RUST_TARGET} ${TEST_FLAGS} ${*:-} -- --nocapture --color=always | ${PRETTY_TEST} ${SUCCESS_OR_FAILURE}"
+  COMMAND="cargo -q nextest run --workspace --cargo-quiet --no-fail-fast --hide-progress-bar --color=always --target-dir='${BUILD_DIR_REL}' ${RUST_TARGET} ${TEST_FLAGS} ${*:-} -- ${SUCCESS_OR_FAILURE}"
 elif [ "${BENCH}" == "1" ]; then
   PRETTY_BENCH="( grep --color=always --line-buffered -vP \"Benchmarking|Gnuplot not found, using plotters backend\" || true )"
   COMMAND="cargo bench --color=always -q --target-dir='${BUILD_DIR_REL}' ${RUST_TARGET} ${*:-} | ${PRETTY_BENCH} ${SUCCESS_OR_FAILURE}"
