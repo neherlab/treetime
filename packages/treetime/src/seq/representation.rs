@@ -3,10 +3,11 @@ use crate::graph::edge::{GraphEdge, Weighted};
 use crate::graph::graph::{Graph, GraphNodeBackward};
 use crate::graph::node::{GraphNode, Named, NodeType, WithNwkComments};
 use crate::make_error;
-use crate::seq::find_char_ranges::find_letter_ranges;
+use crate::seq::find_char_ranges::{find_ambiguous_ranges, find_gap_ranges};
 use crate::seq::find_mixed_sites::{find_mixed_sites, MixedSite};
 use crate::seq::range::range_contains;
 use crate::seq::range_intersection::range_intersection_iter;
+use crate::seq::range_union::range_union;
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use std::collections::{BTreeMap, BTreeSet};
@@ -21,6 +22,7 @@ pub struct Node {
   pub mutations: BTreeMap<usize, (char, char)>,
   pub gaps: Vec<(usize, usize)>,
   pub ambiguous: Vec<(usize, usize)>,
+  pub undetermined: Vec<(usize, usize)>,
   pub mixed: Vec<MixedSite>,
   pub non_consensus: BTreeMap<usize, Vec<char>>,
 
@@ -36,6 +38,7 @@ impl Node {
       mutations: BTreeMap::new(),
       gaps: vec![],
       ambiguous: vec![],
+      undetermined: vec![],
       mixed: vec![],
       non_consensus: BTreeMap::new(),
 
@@ -183,16 +186,17 @@ pub fn compress_sequences(seqs: &BTreeMap<String, String>, graph: &mut Graph<Nod
       if is_leaf {
         // At each terminal node, temporarily store the sequence and ranges of N, - and mixed sites
         n.seq = seqs[&n.name].chars().collect();
-        n.ambiguous = find_letter_ranges(&n.seq, 'N');
-        n.gaps = find_letter_ranges(&n.seq, '-');
+
+        n.gaps = find_gap_ranges(&n.seq);
+        n.ambiguous = find_ambiguous_ranges(&n.seq);
+        n.undetermined = range_union(&[n.gaps.clone(), n.ambiguous.clone()]); // TODO: avoid copy
 
         // n.mixed stores the exact character at each mixed positions, the non_consensus stores the possible states
         (n.mixed, n.non_consensus) = find_mixed_sites(&n.seq);
       } else {
         // Positions that are N or - in all children are still N or - in the parent
         let mut children = children.iter().map(|(node, _)| node.write()).collect_vec();
-        n.ambiguous = range_intersection_iter(children.iter().map(|c| &c.ambiguous)).collect();
-        n.gaps = range_intersection_iter(children.iter().map(|c| &c.gaps)).collect();
+        n.undetermined = range_intersection_iter(children.iter().map(|c| &c.undetermined)).collect();
 
         // All sites that are not N or - but not fixed will need special treatment
         let non_consensus_positions: BTreeSet<usize> =
@@ -202,7 +206,7 @@ pub fn compress_sequences(seqs: &BTreeMap<String, String>, graph: &mut Graph<Nod
         let mut seq = vec![' '; L];
         for pos in 0..L {
           // Skip ambiguous and gaps
-          if range_contains(&n.ambiguous, pos) || range_contains(&n.gaps, pos) {
+          if range_contains(&n.undetermined, pos) {
             continue;
           }
 
@@ -245,7 +249,7 @@ mod tests {
   fn test_seq_representation() -> Result<(), Report> {
     let seqs = BTreeMap::from([
       (o!("A"), o!("ACATCGCCNNA--G")),
-      (o!("B"), o!("GCATCCCTGTA-TG")),
+      (o!("B"), o!("GCATCCCTGTA-NG")),
       (o!("C"), o!("CCGGCGATGTATTG")),
       (o!("D"), o!("TCGGCCGTGTRTTG")),
     ]);
@@ -265,14 +269,14 @@ mod tests {
         mutations: BTreeMap::new(),
         gaps: vec![],
         ambiguous: vec![],
+        undetermined: vec![],
         mixed: vec![],
         non_consensus: BTreeMap::from([
-          (0, vec!['G', 'C', 'A', 'T']),
+          (0, vec!['A', 'G', 'C', 'T']),
           (2, vec!['G', 'A']),
           (3, vec!['G', 'T']),
           (5, vec!['G', 'C']),
           (6, vec!['G', 'C', 'A']),
-          (11, vec![' ', 'T']), // FIXME: empty char
         ]),
         seq: vec![],
       },
@@ -280,20 +284,17 @@ mod tests {
         name: o!("AB"),
         node_type: NodeType::Leaf(o!("AB")),
         mutations: BTreeMap::new(),
-        gaps: vec![(11, 12)],
+        gaps: vec![],
         ambiguous: vec![],
+        undetermined: vec![(11, 13)],
         mixed: vec![],
         non_consensus: BTreeMap::from([
-          (0, vec!['G', 'A']),
+          (0, vec!['A', 'G']),
           (5, vec!['G', 'C']),
           (7, vec!['C', 'T']),
-          (8, vec!['G', 'N']),
-          (9, vec!['N', 'T']),
-          (12, vec!['-', 'T']),
           (2, vec!['A']),
           (3, vec!['T']),
           (6, vec!['C']),
-          (11, vec![]),
         ]),
         seq: vec![],
       },
@@ -303,14 +304,12 @@ mod tests {
         mutations: BTreeMap::new(),
         gaps: vec![(11, 13)],
         ambiguous: vec![(8, 10)],
+        undetermined: vec![(8, 10), (11, 13)],
         mixed: vec![],
         non_consensus: BTreeMap::from([
-          (0, vec!['A']),
-          (5, vec!['G']),
-          (7, vec!['C']),
-          (8, vec!['N']),
-          (9, vec!['N']),
-          (12, vec!['-']),
+          (0, vec!['A']), //
+          (5, vec!['G']), //
+          (7, vec!['C']), //
         ]),
         seq: vec![],
       },
@@ -319,15 +318,13 @@ mod tests {
         node_type: NodeType::Leaf(o!("B")),
         mutations: BTreeMap::new(),
         gaps: vec![(11, 12)],
-        ambiguous: vec![],
+        ambiguous: vec![(12, 13)],
+        undetermined: vec![(11, 13)],
         mixed: vec![],
         non_consensus: BTreeMap::from([
-          (0, vec!['G']),
-          (5, vec!['C']),
-          (7, vec!['T']),
-          (8, vec!['G']),
-          (9, vec!['T']),
-          (12, vec!['T']),
+          (0, vec!['G']), //
+          (5, vec!['C']), //
+          (7, vec!['T']), //
         ]),
         seq: vec![],
       },
@@ -337,6 +334,7 @@ mod tests {
         mutations: BTreeMap::new(),
         gaps: vec![],
         ambiguous: vec![],
+        undetermined: vec![],
         mixed: vec![],
         non_consensus: BTreeMap::from([
           (0, vec!['C', 'T']),
@@ -344,7 +342,6 @@ mod tests {
           (6, vec!['G', 'A']),
           (2, vec!['G']),
           (3, vec!['G']),
-          (11, vec!['T']),
         ]),
         seq: vec![],
       },
@@ -354,8 +351,13 @@ mod tests {
         mutations: BTreeMap::new(),
         gaps: vec![],
         ambiguous: vec![],
+        undetermined: vec![],
         mixed: vec![],
-        non_consensus: BTreeMap::from([(0, vec!['C']), (5, vec!['G']), (6, vec!['A'])]),
+        non_consensus: BTreeMap::from([
+          (0, vec!['C']), //
+          (5, vec!['G']), //
+          (6, vec!['A']), //
+        ]),
         seq: vec![],
       },
       Node {
@@ -364,8 +366,14 @@ mod tests {
         mutations: BTreeMap::new(),
         gaps: vec![],
         ambiguous: vec![],
+        undetermined: vec![],
         mixed: vec![MixedSite::new(10, 'R')],
-        non_consensus: BTreeMap::from([(10, vec!['G', 'A']), (0, vec!['T']), (5, vec!['C']), (6, vec!['G'])]),
+        non_consensus: BTreeMap::from([
+          (10, vec!['A', 'G']), //
+          (0, vec!['T']),       //
+          (5, vec!['C']),       //
+          (6, vec!['G']),       //
+        ]),
         seq: vec![],
       },
     ];
