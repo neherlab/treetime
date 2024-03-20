@@ -8,11 +8,12 @@ use crate::seq::find_mixed_sites::{find_mixed_sites, MixedSite};
 use crate::seq::range::range_contains;
 use crate::seq::range_intersection::range_intersection_iter;
 use crate::seq::range_union::range_union;
+use crate::seq::sets::{sets_intersection, sets_union};
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::{Display, Formatter};
-use std::ops::Deref;
+use std::ops::DerefMut;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Node {
@@ -162,16 +163,6 @@ pub fn get_common_length<K: AsRef<str>, V: AsRef<str>>(seqs: impl Iterator<Item 
   .wrap_err("When calculating length of sequences")
 }
 
-/// Gather all states at a given position from all child nodes
-#[allow(single_use_lifetimes)]
-pub fn gather_child_states<'a>(pos: usize, children: impl Iterator<Item = &'a Node>) -> Vec<char> {
-  children
-    .flat_map(|c| c.get_letter_disambiguated(pos))
-    .unique()
-    .collect_vec()
-}
-
-#[allow(clippy::needless_range_loop)]
 pub fn compress_sequences(seqs: &BTreeMap<String, String>, graph: &mut Graph<Node, Edge>) -> Result<(), Report> {
   let L = get_common_length(seqs.iter())?;
 
@@ -196,36 +187,12 @@ pub fn compress_sequences(seqs: &BTreeMap<String, String>, graph: &mut Graph<Nod
       } else {
         // Positions that are N or - in all children are still N or - in the parent
         let mut children = children.iter().map(|(node, _)| node.write()).collect_vec();
+        let mut children = children.iter_mut().map(DerefMut::deref_mut).collect_vec();
         n.undetermined = range_intersection_iter(children.iter().map(|c| &c.undetermined)).collect();
-
-        // All sites that are not N or - but not fixed will need special treatment
-        let non_consensus_positions: BTreeSet<usize> =
-          children.iter().flat_map(|c| c.non_consensus.keys().copied()).collect();
-
-        n.non_consensus = BTreeMap::new();
-        let mut seq = vec![' '; L];
-        for pos in 0..L {
-          // Skip ambiguous and gaps
-          if range_contains(&n.undetermined, pos) {
-            continue;
-          }
-
-          let states = gather_child_states(pos, children.iter().map(Deref::deref));
-          match states[..] {
-            [] => {}
-            [state] => {
-              seq[pos] = state;
-            }
-            _ => {
-              n.non_consensus.insert(pos, states);
-            }
-          };
-        }
+        calculate_fitch_parsimony_in_place(n, &mut children, L);
 
         // Deallocate full sequences from children
         children.iter_mut().for_each(|c| c.seq = vec![]);
-
-        n.seq = seq;
       }
 
       GraphTraversalContinuation::Continue
@@ -233,6 +200,96 @@ pub fn compress_sequences(seqs: &BTreeMap<String, String>, graph: &mut Graph<Nod
   );
 
   Ok(())
+}
+
+fn calculate_fitch_parsimony_in_place(n: &mut Node, children: &mut [&mut Node], L: usize) {
+  // All sites that are not N or - but not fixed will need special treatment
+  let non_consensus_positions: BTreeSet<usize> =
+    children.iter().flat_map(|c| c.non_consensus.keys().copied()).collect();
+
+  n.non_consensus = BTreeMap::new();
+  n.seq = vec!['?'; L];
+  for pos in 0..L {
+    // Skip ambiguous and gaps
+    if range_contains(&n.undetermined, pos) {
+      continue;
+    }
+
+    if non_consensus_positions.contains(&pos) {
+      let child_state_sets = gather_child_state_sets(children, pos);
+      let intersection = sets_intersection(child_state_sets.clone().into_iter());
+      match intersection.into_iter().collect_vec().as_slice() {
+        [state] => {
+          // One element in the intersection of child states. Write to sequence.
+          n.seq[pos] = *state;
+        }
+        [] => {
+          // Empty intersection of child states. Propagate union of child states.
+          let states = sets_union(child_state_sets.into_iter()).into_iter().collect_vec();
+          n.non_consensus.insert(pos, states);
+
+          // Adjust children, now that we know they can disagree
+          // TODO: avoid code duplication
+          children.iter_mut().for_each(|c| {
+            // TODO: double check that. Do we need to perform union here if position is already taken?
+            c.non_consensus.entry(pos).or_insert_with(|| vec![c.seq[pos]]);
+          });
+        }
+        states => {
+          // More than one element in the intersection of child states. Propagate intersection.
+          n.non_consensus.insert(pos, states.to_owned());
+
+          // Adjust children, now that we know they can disagree
+          // TODO: avoid code duplication
+          children.iter_mut().for_each(|c| {
+            // TODO: double check that. Do we need to perform union here if position is already taken?
+            c.non_consensus.entry(pos).or_insert_with(|| vec![c.seq[pos]]);
+          });
+        }
+      };
+    } else {
+      let child_states = gather_consensus_child_states(children, pos);
+      match child_states.as_slice() {
+        [state] => {
+          // Same character in all child sequences
+          n.seq[pos] = *state;
+        }
+        [] => {
+          // We are not in non-consensus position, but children have no consensus characters.
+          // This is impossible, and the fact that we have to handle that might hint at bad code design.
+          unreachable!("Child sequences contain no characters");
+        }
+        states => {
+          // Child states are different, propagate union
+          n.non_consensus.insert(pos, states.to_owned());
+
+          // Adjust children, now that we know they can disagree
+          // TODO: avoid code duplication
+          children.iter_mut().for_each(|c| {
+            c.non_consensus.entry(pos).or_insert_with(|| vec![c.seq[pos]]);
+          });
+        }
+      }
+    }
+  }
+}
+
+pub fn gather_child_state_sets(children: &[&mut Node], pos: usize) -> Vec<BTreeSet<char>> {
+  children
+    .iter()
+    .filter(|c| !range_contains(&c.undetermined, pos))
+    .map(|c| c.get_letter_disambiguated(pos).into_iter().collect::<BTreeSet<_>>())
+    .unique()
+    .collect_vec()
+}
+
+pub fn gather_consensus_child_states(children: &[&mut Node], pos: usize) -> Vec<char> {
+  children
+    .iter()
+    .filter(|c| !range_contains(&c.undetermined, pos))
+    .map(|c| c.seq[pos])
+    .unique()
+    .collect_vec()
 }
 
 #[cfg(test)]
@@ -272,13 +329,13 @@ mod tests {
         undetermined: vec![],
         mixed: vec![],
         non_consensus: BTreeMap::from([
-          (0, vec!['A', 'G', 'C', 'T']),
-          (2, vec!['G', 'A']),
-          (3, vec!['G', 'T']),
-          (5, vec!['G', 'C']),
-          (6, vec!['G', 'C', 'A']),
+          (0, vec!['A', 'C', 'G', 'T']),
+          (2, vec!['A', 'G']),
+          (3, vec!['T', 'G']),
+          (5, vec!['C', 'G']),
+          (6, vec!['A', 'C', 'G']),
         ]),
-        seq: vec![],
+        seq: vec!['?', 'C', '?', '?', 'C', '?', '?', 'T', 'G', 'T', 'A', 'T', 'T', 'G'],
       },
       Node {
         name: o!("AB"),
@@ -339,7 +396,7 @@ mod tests {
         non_consensus: BTreeMap::from([
           (0, vec!['C', 'T']),
           (5, vec!['G', 'C']),
-          (6, vec!['G', 'A']),
+          (6, vec!['A', 'G']),
           (2, vec!['G']),
           (3, vec!['G']),
         ]),
