@@ -6,3 +6,4 @@ pub mod range_intersection;
 pub mod range_properties;
 pub mod range_union;
 pub mod representation;
+pub mod sets;
