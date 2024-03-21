@@ -421,7 +421,7 @@ mod tests {
       },
       Node {
         name: o!("AB"),
-        node_type: NodeType::Leaf(o!("AB")),
+        node_type: NodeType::Internal(o!("AB")),
         mutations: BTreeMap::new(),
         gaps: vec![],
         ambiguous: vec![],
@@ -469,7 +469,7 @@ mod tests {
       },
       Node {
         name: o!("CD"),
-        node_type: NodeType::Leaf(o!("CD")),
+        node_type: NodeType::Internal(o!("CD")),
         mutations: BTreeMap::new(),
         gaps: vec![],
         ambiguous: vec![],
