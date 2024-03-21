@@ -19,7 +19,7 @@ from io import StringIO
 tree_fname = '../test/treetime_examples/data/ebola/ebola.nwk'
 aln_fname = '../test/treetime_examples/data/ebola/ebola.fasta'
 
-dummy=False
+dummy=True
 
 if dummy:
     tree = Phylo.read(StringIO("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;"), 'newick')
@@ -212,21 +212,70 @@ for n in tree.get_nonterminals(order='preorder'):
 # function to reconstruct the sequence of a node from the sequence at the root and mutations
 def reconstruct_seq(tree, node):
     # get the path in the tree from the root to node
-    path = tree.get_path(n)
+    path = tree.get_path(node)
     # copy the root sequence as array to be able to modify by element and slice
     seq = np.array(tree.root.seq)
     # apply mutations
     for anc in path:
         for pos in anc.mutations:
             seq[pos] = anc.mutations[pos][1]
+    introduce_non_nucs(node, seq)
+    return ''.join(seq)
+
+def introduce_non_nucs(node, seq):
     # introduce N, gaps, and mixed sites
     for r in node.ambiguous:
         seq[r[0]:r[1]] = 'N'
     for r in node.gaps:
         seq[r[0]:r[1]] = '-'
-    for pos, state in n.mixed.items():
+    for pos, state in node.mixed.items():
         seq[pos] = state
-    return ''.join(seq)
+
+
+# iterate over sequence while keeping track of the sequence
+# straight forward in pre-order or post-order traversal
+# unsure how one would best do this in breadth-first. 
+seq = np.array(tree.root.seq) # to allow element wise assignment
+
+def pre_order(node, seq, do_stuff):
+    # pick up sequence from parent, apply mutations
+    for pos, (anc, der) in node.mutations.items():
+        seq[pos] = der
+    # execute what is necessary (this would be the yield in an iterator)
+    do_stuff(node, seq)
+    # call the same function for the children
+    for c in node.clades:
+        pre_order(c, seq, do_stuff)
+
+    # undo the mutations
+    for pos, (anc, der) in node.mutations.items():
+        seq[pos] = anc
+
+def post_order(node, seq, do_stuff):
+    # pick up sequence from parent, apply mutations
+    for pos, (anc, der) in node.mutations.items():
+        seq[pos] = der
+    # execute what is necessary (this would be the yield in an iterator)
+    # call the same function for the children
+    for c in node.clades:
+        post_order(c, seq, do_stuff)
+    do_stuff(node, seq)
+
+    # undo the mutations
+    for pos, (anc, der) in node.mutations.items():
+        seq[pos] = anc
+
+def check_seq(node, seq):
+    if node.is_terminal():
+        seq_copy = np.copy(seq)
+        introduce_non_nucs(node, seq_copy)
+        seq_str=''.join(seq_copy)
+        print(f"{node.name}\t", "".join(seq), seq_str, seqs[node.name]==seq_str)
+    else:
+        print(f"{node.name}\t", "".join(seq))
+
+pre_order(tree.root, seq, check_seq)
+post_order(tree.root, seq, check_seq)
 
 fails = []
 for n in tree.get_terminals():
