@@ -9,9 +9,9 @@ use std::sync::Arc;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum NodeType {
-  Root(f64),
+  Root(String),
   Leaf(String),
-  Internal(f64),
+  Internal(String),
 }
 
 impl Eq for NodeType {}
@@ -29,8 +29,8 @@ pub trait WithNwkComments {
 }
 
 pub trait GraphNode: Clone + Debug + Display + Sync + Send + Named + WithNwkComments {
-  fn root(name: &str, weight: f64) -> Self;
-  fn internal(name: &str, weight: f64) -> Self;
+  fn root(name: &str) -> Self;
+  fn internal(name: &str) -> Self;
   fn leaf(name: &str) -> Self;
   fn set_node_type(&mut self, node_type: NodeType);
 }

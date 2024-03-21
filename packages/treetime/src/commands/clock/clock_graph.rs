@@ -28,10 +28,10 @@ pub struct Node {
 }
 
 impl GraphNode for Node {
-  fn root(name: &str, weight: f64) -> Self {
+  fn root(name: &str) -> Self {
     Self {
       name: name.to_owned(),
-      node_type: NodeType::Root(weight),
+      node_type: NodeType::Root(name.to_owned()),
       bad_branch: false,
       dist2root: 0.0,
       raw_date_constraint: None,
@@ -42,10 +42,10 @@ impl GraphNode for Node {
     }
   }
 
-  fn internal(name: &str, weight: f64) -> Self {
+  fn internal(name: &str) -> Self {
     Self {
       name: name.to_owned(),
-      node_type: NodeType::Internal(weight),
+      node_type: NodeType::Internal(name.to_owned()),
       bad_branch: false,
       dist2root: 0.0,
       raw_date_constraint: None,

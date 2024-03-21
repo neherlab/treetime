@@ -8,7 +8,7 @@ use crate::gtr::get_gtr::get_gtr;
 use crate::gtr::gtr::GTR;
 use crate::io::fasta::{FastaRecord, FastaWriter};
 use crate::io::file::create_file;
-use crate::io::nex::write_nex;
+use crate::io::nex::{write_nex, WriteNexOptions};
 use crate::utils::random::get_random_number_generator;
 use eyre::Report;
 use log::info;
@@ -83,7 +83,11 @@ pub fn run_ancestral_reconstruction(
   writeln!(model_file, "{model_string}")?;
   info!("{model_string}");
 
-  write_nex(&mut create_file(outdir.join("annotated_tree.nexus"))?, &graph)?;
+  write_nex(
+    &mut create_file(outdir.join("annotated_tree.nexus"))?,
+    &graph,
+    &WriteNexOptions::default(),
+  )?;
 
   Ok((gtr, sequence_data, graph))
 }

@@ -1,13 +1,16 @@
 use crate::graph::edge::GraphEdge;
 use crate::graph::graph::Graph;
 use crate::graph::node::{GraphNode, Node};
+use crate::io::file::create_file;
 use crate::io::fs::read_file_to_string;
 use crate::make_error;
-use crate::utils::float_fmt::float_to_significant_digits;
+use crate::utils::float_fmt::float_to_digits;
 use bio::io::newick;
 use bio_types::phylogeny::Tree;
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
+use log::warn;
+use smart_default::SmartDefault;
 use std::io::{Read, Write};
 use std::path::Path;
 
@@ -29,7 +32,45 @@ pub fn read_nwk(reader: impl Read) -> Result<Tree, Report> {
   Ok(nwk_tree)
 }
 
-pub fn write_nwk<N, E>(writer: &mut impl Write, graph: &Graph<N, E>) -> Result<(), Report>
+#[derive(Clone, SmartDefault)]
+pub struct WriteNwkOptions {
+  /// Format node weights keeping this many significant digits
+  pub weight_significant_digits: Option<u8>,
+
+  /// Format node weights keeping this many decimal digits
+  pub weight_decimal_digits: Option<i8>,
+}
+
+pub fn write_nwk_file<N, E>(
+  filepath: &impl AsRef<Path>,
+  graph: &Graph<N, E>,
+  options: &WriteNwkOptions,
+) -> Result<(), Report>
+where
+  N: GraphNode,
+  E: GraphEdge,
+{
+  let mut f = create_file(filepath)?;
+  write_nwk_writer(&mut f, graph, options)?;
+  writeln!(f)?;
+  Ok(())
+}
+
+pub fn write_nwk_str<N, E>(graph: &Graph<N, E>, options: &WriteNwkOptions) -> Result<String, Report>
+where
+  N: GraphNode,
+  E: GraphEdge,
+{
+  let mut buf = Vec::new();
+  write_nwk_writer(&mut buf, graph, options)?;
+  Ok(String::from_utf8(buf)?)
+}
+
+pub fn write_nwk_writer<N, E>(
+  writer: &mut impl Write,
+  graph: &Graph<N, E>,
+  options: &WriteNwkOptions,
+) -> Result<(), Report>
 where
   N: GraphNode,
   E: GraphEdge,
@@ -47,23 +88,18 @@ where
   };
 
   let root = root.read();
-  node_to_nwk_string(writer, graph, &root)?;
-  writeln!(writer, ";")?;
+  node_to_nwk_string(writer, graph, &root, options)?;
+  write!(writer, ";")?;
 
   Ok(())
 }
 
-pub fn to_nwk_string<N, E>(graph: &Graph<N, E>) -> Result<String, Report>
-where
-  N: GraphNode,
-  E: GraphEdge,
-{
-  let mut buf = Vec::new();
-  write_nwk(&mut buf, graph)?;
-  Ok(String::from_utf8(buf)?)
-}
-
-fn node_to_nwk_string<N, E>(writer: &mut impl Write, graph: &Graph<N, E>, node: &Node<N>) -> Result<(), Report>
+fn node_to_nwk_string<N, E>(
+  writer: &mut impl Write,
+  graph: &Graph<N, E>,
+  node: &Node<N>,
+  options: &WriteNwkOptions,
+) -> Result<(), Report>
 where
   N: GraphNode,
   E: GraphEdge,
@@ -93,14 +129,12 @@ where
         let child_key = edge.read().target();
         let child = graph.get_node(child_key).unwrap();
         let child = child.read();
-        node_to_nwk_string(writer, graph, &child)?;
+        node_to_nwk_string(writer, graph, &child, options)?;
       }
 
       let weight = edge.read().payload().read().weight();
-      if weight.is_finite() {
-        let weight = float_to_significant_digits(weight, 3);
-        write!(writer, ":{weight}")?;
-      }
+      write!(writer, ":{}", format_weight(weight, options))?;
+
       if !comments.is_empty() {
         let comments = comments.iter().map(|(key, val)| format!("[&{key}=\"{val}\"]")).join("");
         write!(writer, "{comments}")?;
@@ -112,4 +146,21 @@ where
   write!(writer, "{name}")?;
 
   Ok(())
+}
+
+pub fn format_weight(weight: f64, options: &WriteNwkOptions) -> String {
+  if !weight.is_finite() {
+    warn!("When converting graph to Newick: Weight is invalid: '{weight}'");
+  }
+
+  // if let Some(precision) = options.weight_precision {
+  //   return format!("{weight:.precision$}");
+  // }
+
+  let digits = options.weight_significant_digits.unwrap_or(3);
+  float_to_digits(
+    weight,
+    options.weight_significant_digits.or(Some(3)),
+    options.weight_decimal_digits,
+  )
 }

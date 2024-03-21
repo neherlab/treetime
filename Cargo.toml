@@ -70,6 +70,7 @@ num_cpus = "=1.13.1"
 openblas-src = { version = "=0.10.9", features = ["static"] }
 ordered-float = { version = "=3.1.0", default-features = false }
 parking_lot = { version = "=0.12.1", features = ["deadlock_detection", "hardware-lock-elision"] }
+petgraph = { version = "=0.6.4", features = ["serde"] }
 plotters = { version = "=0.3.4", default_features = false, features = ["all_series", "all_elements", "svg_backend"] }
 pretty_assertions = "=1.4.0"
 pretty_dtoa = "=0.3.0"

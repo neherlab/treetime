@@ -308,7 +308,7 @@ mod tests {
   fn propagates_averages_internal_ingroup() -> Result<(), Report> {
     let n = Node {
       name: "NODE_0000012".to_owned(),
-      node_type: NodeType::Internal(0.0),
+      node_type: NodeType::Internal("NODE_0000012".to_owned()),
       bad_branch: false,
       dist2root: 0.028582125098939384,
       raw_date_constraint: None,
@@ -363,7 +363,7 @@ mod tests {
   fn propagates_averages_internal_outgroup() -> Result<(), Report> {
     let n = Node {
       name: "NODE_0000014".to_owned(),
-      node_type: NodeType::Internal(0.0),
+      node_type: NodeType::Internal("NODE_0000014".to_owned()),
       bad_branch: false,
       dist2root: 0.004742125098939387,
       raw_date_constraint: None,

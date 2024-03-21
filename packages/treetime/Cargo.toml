@@ -46,6 +46,7 @@ num-traits = { workspace = true }
 num_cpus = { workspace = true }
 ordered-float = { workspace = true }
 parking_lot = { workspace = true }
+petgraph = { workspace = true }
 plotters = { workspace = true }
 pretty_dtoa = { workspace = true }
 rand = { workspace = true }

@@ -75,12 +75,12 @@ impl Node {
 }
 
 impl GraphNode for Node {
-  fn root(name: &str, weight: f64) -> Self {
-    Self::new(name, NodeType::Root(weight))
+  fn root(name: &str) -> Self {
+    Self::new(name, NodeType::Root(name.to_owned()))
   }
 
-  fn internal(name: &str, weight: f64) -> Self {
-    Self::new(name, NodeType::Internal(weight))
+  fn internal(name: &str) -> Self {
+    Self::new(name, NodeType::Internal(name.to_owned()))
   }
 
   fn leaf(name: &str) -> Self {
@@ -404,7 +404,7 @@ mod tests {
     let expected = vec![
       Node {
         name: o!("root"),
-        node_type: NodeType::Root(0.0),
+        node_type: NodeType::Root(o!("root")),
         mutations: BTreeMap::new(),
         gaps: vec![],
         ambiguous: vec![],
