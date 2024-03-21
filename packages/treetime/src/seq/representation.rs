@@ -1,6 +1,6 @@
 use crate::graph::breadth_first::GraphTraversalContinuation;
 use crate::graph::edge::{GraphEdge, Weighted};
-use crate::graph::graph::{Graph, GraphNodeBackward};
+use crate::graph::graph::{Graph, GraphNodeBackward, GraphNodeForward};
 use crate::graph::node::{GraphNode, Named, NodeType, WithNwkComments};
 use crate::make_error;
 use crate::seq::find_char_ranges::{find_ambiguous_ranges, find_gap_ranges};
@@ -9,6 +9,7 @@ use crate::seq::range::range_contains;
 use crate::seq::range_intersection::range_intersection_iter;
 use crate::seq::range_union::range_union;
 use crate::seq::sets::{sets_intersection, sets_union};
+use crate::utils::random::{clone_random_number_generator, random_remove};
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use rand::Rng;
@@ -167,7 +168,7 @@ pub fn get_common_length<K: AsRef<str>, V: AsRef<str>>(seqs: impl Iterator<Item 
 pub fn compress_sequences(
   seqs: &BTreeMap<String, String>,
   graph: &mut Graph<Node, Edge>,
-  rng: &mut impl Rng,
+  rng: &mut (impl Rng + Send + Sync + Clone),
 ) -> Result<(), Report> {
   let L = get_common_length(seqs.iter())?;
 
@@ -205,6 +206,8 @@ pub fn compress_sequences(
   );
 
   root_seq_fill_non_consensus_inplace(graph, rng);
+
+  gather_mutations_inplace(graph, rng);
 
   Ok(())
 }
@@ -307,10 +310,62 @@ fn root_seq_fill_non_consensus_inplace(graph: &Graph<Node, Edge>, rng: &mut impl
 
   let root = &mut *roots[0].write();
   root.non_consensus.iter_mut().for_each(|(pos, states)| {
-    let index: usize = rng.gen_range(0..states.len());
-    let state = states.remove(index);
-    root.seq[*pos] = state;
+    root.seq[*pos] = random_remove(states, rng);
   });
+}
+
+fn gather_mutations_inplace(graph: &Graph<Node, Edge>, rng: &(impl Rng + Send + Sync + Clone)) {
+  graph.iter_depth_first_preorder_forward(
+    |GraphNodeForward {
+       is_root,
+       is_leaf,
+       key,
+       payload: node,
+       parents,
+     }| {
+      if is_root {
+        return;
+      }
+
+      let mut rng = clone_random_number_generator(&mut rng.clone());
+
+      if parents.len() > 1 {
+        unimplemented!("Multiple parent nodes are not supported yet");
+      }
+      let (parent, e) = &parents[0];
+      let parent = &mut *parent.write();
+
+      if !node.is_leaf() {
+        node.seq = parent.seq.clone();
+      }
+
+      // Gather states that are different from parent
+      let states = node
+        .non_consensus
+        .iter_mut()
+        .filter_map(|(pos, states)| {
+          if states.contains(&parent.seq[*pos]) {
+            None
+          } else {
+            let state = random_remove(states, &mut rng);
+            Some((*pos, state))
+          }
+        })
+        .collect_vec();
+
+      // Fill mutations
+      states.into_iter().for_each(|(pos, state)| {
+        node.mutations.insert(pos, (parent.seq[pos], state));
+        if !node.is_leaf() {
+          node.seq[pos] = state;
+        }
+      });
+
+      // // Deallocate data that is no longer needed
+      // parent.non_consensus = btreemap! {};
+      // parent.seq = vec![];
+    },
+  );
 }
 
 #[cfg(test)]
