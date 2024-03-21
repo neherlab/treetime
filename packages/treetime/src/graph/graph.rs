@@ -3,7 +3,7 @@ use crate::graph::breadth_first::{
 };
 use crate::graph::edge::{Edge, GraphEdge, GraphEdgeKey};
 use crate::graph::node::{GraphNode, GraphNodeKey, Node};
-use crate::make_error;
+use crate::{make_error, make_internal_error};
 use eyre::Report;
 use itertools::{iproduct, Itertools};
 use parking_lot::RwLock;
@@ -12,6 +12,7 @@ use std::collections::{HashSet, VecDeque};
 use std::fmt::Debug;
 use std::io::Write;
 use std::sync::Arc;
+use traversal::{DftPost, DftPre};
 
 pub type SafeNode<N> = Arc<RwLock<Node<N>>>;
 
@@ -233,6 +234,18 @@ where
     self.nodes.iter().map(|node| node.read().payload())
   }
 
+  pub fn get_exactly_one_root(&self) -> Result<Arc<RwLock<Node<N>>>, Report> {
+    let roots = self.get_roots();
+    if roots.len() != 1 {
+      make_internal_error!(
+        "Only trees with exactly one root are currently supported, but found '{}'",
+        self.roots.len()
+      )
+    } else {
+      Ok(Arc::clone(&roots[0]))
+    }
+  }
+
   #[inline]
   pub fn get_roots(&self) -> Vec<Arc<RwLock<Node<N>>>> {
     self.roots.iter().filter_map(|idx| self.get_node(*idx)).collect_vec()
@@ -407,27 +420,79 @@ where
   /// Guarantees that for each visited node, all of it parents (recursively) are visited before
   /// the node itself is visited.
   pub fn iter_depth_first_preorder_forward(&self, mut explorer: impl FnMut(GraphNodeForward<N, E>)) {
-    let mut stack: Vec<GraphNodeKey> = self.roots.clone();
-    let mut visited = HashSet::<GraphNodeKey>::new();
-    while let Some(key) = stack.pop() {
-      if !visited.contains(&key) {
-        let node = self.get_node(key).unwrap();
-        let node = &node.read();
-        stack.extend(self.child_keys_of(node));
-        explorer(GraphNodeForward {
-          is_root: node.is_root(),
-          is_leaf: node.is_leaf(),
-          key,
-          parents: self
-            .parents_of(node)
-            .into_iter()
-            .map(|(parent, edge)| (parent.read().payload(), edge.read().payload()))
-            .collect_vec(),
-          payload: &mut node.payload().write(),
-        });
-        visited.insert(key);
-      }
-    }
+    let root = self.get_exactly_one_root().unwrap();
+    DftPre::new(&root, |node: &Arc<RwLock<Node<N>>>| {
+      let child_keys = self.child_keys_of(&*node.read());
+      self.nodes.iter().filter(move |node| {
+        let node = node.read();
+        child_keys.contains(&node.key())
+      })
+    })
+    .for_each(move |(_, node)| {
+      let node = node.write();
+
+      let is_leaf = node.is_leaf();
+      let is_root = node.is_root();
+      let key = node.key();
+
+      let payload = node.payload();
+      let mut payload = payload.write();
+      let payload = payload.borrow_mut();
+
+      let parents = self
+        .parents_of(&node)
+        .into_iter()
+        .map(|(node, edge)| (node.read().payload(), edge.read().payload()))
+        .collect_vec();
+
+      explorer(GraphNodeForward {
+        is_root,
+        is_leaf,
+        key,
+        payload,
+        parents,
+      });
+    });
+  }
+
+  /// Synchronously traverse graph in depth-first postorder fashion forward (from roots to leaves, along edge directions).
+  ///
+  /// Guarantees that for each visited node, all of it children (recursively) are visited before
+  /// the node itself is visited.
+  pub fn iter_depth_first_postorder_forward(&self, mut explorer: impl FnMut(GraphNodeBackward<N, E>)) {
+    let root = self.get_exactly_one_root().unwrap();
+    DftPost::new(&root, |node: &Arc<RwLock<Node<N>>>| {
+      let child_keys = self.child_keys_of(&*node.read());
+      self.nodes.iter().filter(move |node| {
+        let node = node.read();
+        child_keys.contains(&node.key())
+      })
+    })
+    .for_each(move |(_, node)| {
+      let node = node.write();
+
+      let is_leaf = node.is_leaf();
+      let is_root = node.is_root();
+      let key = node.key();
+
+      let payload = node.payload();
+      let mut payload = payload.write();
+      let payload = payload.borrow_mut();
+
+      let children = self
+        .children_of(&node)
+        .into_iter()
+        .map(|(node, edge)| (node.read().payload(), edge.read().payload()))
+        .collect_vec();
+
+      explorer(GraphNodeBackward {
+        is_root,
+        is_leaf,
+        key,
+        payload,
+        children,
+      });
+    });
   }
 
   /// Synchronously traverse graph in breadth-first order forward (from roots to leaves, along edge directions).
@@ -599,6 +664,121 @@ digraph Phylogeny {{
     writeln!(writer)?;
     self.print_edges(&mut writer);
     writeln!(writer, "}}")?;
+    Ok(())
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use crate::graph::create_graph_from_nwk::create_graph_from_nwk_str;
+  use crate::graph::edge::Weighted;
+  use crate::graph::node::{Named, NodeType, WithNwkComments};
+  use std::fmt::{Display, Formatter};
+
+  #[derive(Clone, Debug, PartialEq, Eq)]
+  pub struct Node {
+    pub name: String,
+    pub node_type: NodeType,
+  }
+
+  impl Node {
+    pub fn new(name: impl AsRef<str>, node_type: NodeType) -> Self {
+      Self {
+        name: name.as_ref().to_owned(),
+        node_type,
+      }
+    }
+  }
+
+  impl GraphNode for Node {
+    fn root(name: &str) -> Self {
+      Self::new(name, NodeType::Root(name.to_owned()))
+    }
+
+    fn internal(name: &str) -> Self {
+      Self::new(name, NodeType::Internal(name.to_owned()))
+    }
+
+    fn leaf(name: &str) -> Self {
+      Self::new(name, NodeType::Leaf(name.to_owned()))
+    }
+
+    fn set_node_type(&mut self, node_type: NodeType) {
+      self.node_type = node_type;
+    }
+  }
+
+  impl WithNwkComments for Node {}
+
+  impl Named for Node {
+    fn name(&self) -> &str {
+      &self.name
+    }
+
+    fn set_name(&mut self, name: &str) {
+      self.name = name.to_owned();
+    }
+  }
+
+  impl Display for Node {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+      match &self.node_type {
+        NodeType::Root(weight) => write!(f, "{weight:}"),
+        NodeType::Internal(weight) => write!(f, "{weight:}"),
+        NodeType::Leaf(name) => write!(f, "{name}"),
+      }
+    }
+  }
+
+  #[derive(Clone, Debug, PartialEq)]
+  pub struct Edge {
+    pub weight: f64,
+  }
+
+  impl GraphEdge for Edge {
+    fn new(weight: f64) -> Self {
+      Self { weight }
+    }
+  }
+
+  impl Weighted for Edge {
+    fn weight(&self) -> f64 {
+      self.weight
+    }
+  }
+
+  impl Display for Edge {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+      write!(f, "{:}", &self.weight)
+    }
+  }
+
+  #[test]
+  fn test_traversal_serial_depth_first_preorder_forward() -> Result<(), Report> {
+    let graph = create_graph_from_nwk_str::<Node, Edge>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+
+    let mut actual = vec![];
+    graph.iter_depth_first_preorder_forward(|node| {
+      actual.push(node.payload.name.clone());
+    });
+
+    assert_eq!(vec!["root", "AB", "A", "B", "CD", "C", "D"], actual);
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_traversal_serial_depth_first_postorder_forward() -> Result<(), Report> {
+    let graph = create_graph_from_nwk_str::<Node, Edge>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+
+    let mut actual = vec![];
+    graph.iter_depth_first_postorder_forward(|node| {
+      actual.push(node.payload.name.clone());
+    });
+
+    assert_eq!(vec!["A", "B", "AB", "C", "D", "CD", "root"], actual);
+
     Ok(())
   }
 }
