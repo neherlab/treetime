@@ -140,21 +140,21 @@ fn find_best_root_least_squares<P: GraphNodeRegressionPolicy>(
           bv
         };
 
-        let tv = P::tip_value(node);
-        let var = P::branch_variance(node);
+        let tv = P::tip_value(&node);
+        let var = P::branch_variance(&node);
 
         let bad_branch = node.bad_branch || parents.iter().any(|(parent, _)| parent.read().bad_branch);
 
         let (x, chisq) = if bad_branch {
           (f64::nan(), f64::infinity())
         } else {
-          find_optimal_root_along_branch(node, &parents, tv, bv, var, params).unwrap()
+          find_optimal_root_along_branch(&node, &parents, tv, bv, var, params).unwrap()
         };
 
         let mut best_root = best_root.lock();
         if chisq < best_root.chisq {
-          let tmpQ = propagate_averages(node, tv, bv * x, var * x, false)
-            + propagate_averages(node, tv, bv * (1.0 - x), var * (1.0 - x), true);
+          let tmpQ = propagate_averages(&node, tv, bv * x, var * x, false)
+            + propagate_averages(&node, tv, bv * (1.0 - x), var * (1.0 - x), true);
           let reg = base_regression(&tmpQ, &params.slope).unwrap();
 
           if reg.slope >= 0.0 || !params.force_positive {

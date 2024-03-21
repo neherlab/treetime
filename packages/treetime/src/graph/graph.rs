@@ -6,22 +6,26 @@ use crate::graph::node::{GraphNode, GraphNodeKey, Node};
 use crate::{make_error, make_internal_error};
 use eyre::Report;
 use itertools::{iproduct, Itertools};
-use parking_lot::RwLock;
-use std::borrow::BorrowMut;
-use std::collections::{HashSet, VecDeque};
+use parking_lot::lock_api::{ArcRwLockReadGuard, ArcRwLockWriteGuard};
+use parking_lot::{RawRwLock, RwLock};
 use std::fmt::Debug;
 use std::io::Write;
 use std::sync::Arc;
-use traversal::{DftPost, DftPre};
+use traversal::{Bft, DftPost, DftPre};
 
 pub type SafeNode<N> = Arc<RwLock<Node<N>>>;
+pub type SafeNodeRef<N> = ArcRwLockReadGuard<RawRwLock, Node<N>>;
+pub type SafeNodeRefMut<N> = ArcRwLockWriteGuard<RawRwLock, Node<N>>;
+
+pub type SafeNodePayloadRef<N> = ArcRwLockReadGuard<RawRwLock, N>;
+pub type SafeNodePayloadRefMut<N> = ArcRwLockWriteGuard<RawRwLock, N>;
 
 pub type NodeEdgePair<N, E> = (Arc<RwLock<Node<N>>>, Arc<RwLock<Edge<E>>>);
 pub type NodeEdgePayloadPair<N, E> = (Arc<RwLock<N>>, Arc<RwLock<E>>);
 
 /// Represents graph node during forward traversal
 #[derive(Debug)]
-pub struct GraphNodeForward<'n, N, E>
+pub struct GraphNodeForward<N, E>
 where
   N: GraphNode,
   E: GraphEdge,
@@ -29,13 +33,41 @@ where
   pub is_root: bool,
   pub is_leaf: bool,
   pub key: GraphNodeKey,
-  pub payload: &'n mut N,
+  pub payload: SafeNodePayloadRefMut<N>,
   pub parents: Vec<NodeEdgePayloadPair<N, E>>,
+}
+
+impl<N, E> GraphNodeForward<N, E>
+where
+  N: GraphNode,
+  E: GraphEdge,
+{
+  pub fn new(graph: &Graph<N, E>, node: &Node<N>) -> Self {
+    let is_leaf = node.is_leaf();
+    let is_root = node.is_root();
+    let key = node.key();
+
+    let payload = node.payload().write_arc();
+
+    let parents = graph
+      .parents_of(node)
+      .iter()
+      .map(|(node, edge)| (node.read().payload(), edge.read().payload()))
+      .collect_vec();
+
+    Self {
+      is_root,
+      is_leaf,
+      key,
+      payload,
+      parents,
+    }
+  }
 }
 
 /// Represents graph node during backwards traversal
 #[derive(Debug)]
-pub struct GraphNodeBackward<'n, N, E>
+pub struct GraphNodeBackward<N, E>
 where
   N: GraphNode,
   E: GraphEdge,
@@ -43,8 +75,36 @@ where
   pub is_root: bool,
   pub is_leaf: bool,
   pub key: GraphNodeKey,
-  pub payload: &'n mut N,
+  pub payload: SafeNodePayloadRefMut<N>,
   pub children: Vec<NodeEdgePayloadPair<N, E>>,
+}
+
+impl<N, E> GraphNodeBackward<N, E>
+where
+  N: GraphNode,
+  E: GraphEdge,
+{
+  pub fn new(graph: &Graph<N, E>, node: &Node<N>) -> Self {
+    let is_leaf = node.is_leaf();
+    let is_root = node.is_root();
+    let key = node.key();
+
+    let payload = node.payload().write_arc();
+
+    let children = graph
+      .children_of(node)
+      .iter()
+      .map(|(node, edge)| (node.read().payload(), edge.read().payload()))
+      .collect_vec();
+
+    Self {
+      is_root,
+      is_leaf,
+      key,
+      payload,
+      children,
+    }
+  }
 }
 
 /// Represents graph node during safe traversal
@@ -356,27 +416,7 @@ where
     let roots = self.roots.iter().filter_map(|idx| self.get_node(*idx)).collect_vec();
 
     directed_breadth_first_traversal_forward::<N, E, _>(self, roots.as_slice(), |node| {
-      let is_leaf = node.is_leaf();
-      let is_root = node.is_root();
-      let key = node.key();
-
-      let payload = node.payload();
-      let mut payload = payload.write();
-      let payload = payload.borrow_mut();
-
-      let parents = self
-        .parents_of(node)
-        .into_iter()
-        .map(|(node, edge)| (node.read().payload(), edge.read().payload()))
-        .collect_vec();
-
-      explorer(GraphNodeForward {
-        is_root,
-        is_leaf,
-        key,
-        payload,
-        parents,
-      })
+      explorer(GraphNodeForward::new(self, node))
     });
 
     self.reset_nodes();
@@ -386,30 +426,15 @@ where
   where
     F: Fn(GraphNodeBackward<N, E>) -> GraphTraversalContinuation + Sync + Send,
   {
-    let leaves = self.leaves.iter().filter_map(|idx| self.get_node(*idx)).collect_vec();
+    let leaves = self
+      .leaves
+      .iter()
+      .filter_map(|idx| self.get_node(*idx))
+      .rev()
+      .collect_vec();
 
     directed_breadth_first_traversal_backward::<N, E, _>(self, leaves.as_slice(), |node| {
-      let is_leaf = node.is_leaf();
-      let is_root = node.is_root();
-      let key = node.key();
-
-      let payload = node.payload();
-      let mut payload = payload.write();
-      let payload = payload.borrow_mut();
-
-      let children = self
-        .children_of(node)
-        .into_iter()
-        .map(|(node, edge)| (node.read().payload(), edge.read().payload()))
-        .collect_vec();
-
-      explorer(GraphNodeBackward {
-        is_root,
-        is_leaf,
-        key,
-        payload,
-        children,
-      })
+      explorer(GraphNodeBackward::new(self, node))
     });
 
     self.reset_nodes();
@@ -421,37 +446,8 @@ where
   /// the node itself is visited.
   pub fn iter_depth_first_preorder_forward(&self, mut explorer: impl FnMut(GraphNodeForward<N, E>)) {
     let root = self.get_exactly_one_root().unwrap();
-    DftPre::new(&root, |node: &Arc<RwLock<Node<N>>>| {
-      let child_keys = self.child_keys_of(&*node.read());
-      self.nodes.iter().filter(move |node| {
-        let node = node.read();
-        child_keys.contains(&node.key())
-      })
-    })
-    .for_each(move |(_, node)| {
-      let node = node.write();
-
-      let is_leaf = node.is_leaf();
-      let is_root = node.is_root();
-      let key = node.key();
-
-      let payload = node.payload();
-      let mut payload = payload.write();
-      let payload = payload.borrow_mut();
-
-      let parents = self
-        .parents_of(&node)
-        .into_iter()
-        .map(|(node, edge)| (node.read().payload(), edge.read().payload()))
-        .collect_vec();
-
-      explorer(GraphNodeForward {
-        is_root,
-        is_leaf,
-        key,
-        payload,
-        parents,
-      });
+    DftPre::new(&root, |node| self.iter_children_arc(node)).for_each(move |(_, node)| {
+      explorer(GraphNodeForward::new(self, &node.write()));
     });
   }
 
@@ -461,37 +457,8 @@ where
   /// the node itself is visited.
   pub fn iter_depth_first_postorder_forward(&self, mut explorer: impl FnMut(GraphNodeBackward<N, E>)) {
     let root = self.get_exactly_one_root().unwrap();
-    DftPost::new(&root, |node: &Arc<RwLock<Node<N>>>| {
-      let child_keys = self.child_keys_of(&*node.read());
-      self.nodes.iter().filter(move |node| {
-        let node = node.read();
-        child_keys.contains(&node.key())
-      })
-    })
-    .for_each(move |(_, node)| {
-      let node = node.write();
-
-      let is_leaf = node.is_leaf();
-      let is_root = node.is_root();
-      let key = node.key();
-
-      let payload = node.payload();
-      let mut payload = payload.write();
-      let payload = payload.borrow_mut();
-
-      let children = self
-        .children_of(&node)
-        .into_iter()
-        .map(|(node, edge)| (node.read().payload(), edge.read().payload()))
-        .collect_vec();
-
-      explorer(GraphNodeBackward {
-        is_root,
-        is_leaf,
-        key,
-        payload,
-        children,
-      });
+    DftPost::new(&root, |node| self.iter_children_arc(node)).for_each(move |(_, node)| {
+      explorer(GraphNodeBackward::new(self, &node.write()));
     });
   }
 
@@ -500,27 +467,10 @@ where
   /// Guarantees that for each visited node, all of it parents (recursively) are visited before
   /// the node itself is visited.
   pub fn iter_breadth_first_forward(&self, mut explorer: impl FnMut(GraphNodeForward<N, E>)) {
-    let mut queue: VecDeque<GraphNodeKey> = self.roots.iter().copied().collect();
-    let mut visited = HashSet::<GraphNodeKey>::new();
-    while let Some(key) = queue.pop_front() {
-      if !visited.contains(&key) {
-        let node = self.get_node(key).unwrap();
-        let node = &node.read();
-        queue.extend(self.child_keys_of(node));
-        explorer(GraphNodeForward {
-          is_root: node.is_root(),
-          is_leaf: node.is_leaf(),
-          key,
-          parents: self
-            .parents_of(node)
-            .into_iter()
-            .map(|(parent, edge)| (parent.read().payload(), edge.read().payload()))
-            .collect_vec(),
-          payload: &mut node.payload().write(),
-        });
-        visited.insert(key);
-      }
-    }
+    let root = self.get_exactly_one_root().unwrap();
+    Bft::new(&root, |node| self.iter_children_arc(node)).for_each(move |(_, node)| {
+      explorer(GraphNodeForward::new(self, &node.write()));
+    });
   }
 
   /// Synchronously traverse graph in breadth-first order backwards (from leaves to roots, against edge directions).
@@ -528,27 +478,22 @@ where
   /// Guarantees that for each visited node, all of it children (recursively) are visited before
   /// the node itself is visited.
   pub fn iter_breadth_first_reverse(&self, mut explorer: impl FnMut(GraphNodeBackward<N, E>)) {
-    let mut queue: VecDeque<GraphNodeKey> = self.leaves.iter().copied().collect();
-    let mut visited = HashSet::<GraphNodeKey>::new();
-    while let Some(key) = queue.pop_front() {
-      if !visited.contains(&key) {
-        let node = self.get_node(key).unwrap();
-        let node = &node.read();
-        queue.extend(self.parent_keys_of(node));
-        explorer(GraphNodeBackward {
-          is_root: node.is_root(),
-          is_leaf: node.is_leaf(),
-          key,
-          children: self
-            .children_of(node)
-            .into_iter()
-            .map(|(child, edge)| (child.read().payload(), edge.read().payload()))
-            .collect_vec(),
-          payload: &mut node.payload().write(),
-        });
-        visited.insert(key);
-      }
-    }
+    let root = self.get_exactly_one_root().unwrap();
+    Bft::new(&root, |node| self.iter_children_arc(node))
+      .collect_vec() // HACK: how to reverse without collecting?
+      .into_iter()
+      .rev()
+      .for_each(move |(_, node)| {
+        explorer(GraphNodeBackward::new(self, &node.write()));
+      });
+  }
+
+  fn iter_children_arc(&self, node: &Arc<RwLock<Node<N>>>) -> impl Iterator<Item = &Arc<RwLock<Node<N>>>> {
+    let child_keys = self.child_keys_of(&*node.read());
+    self.nodes.iter().filter(move |node| {
+      let node = node.read();
+      child_keys.contains(&node.key())
+    })
   }
 
   /// Returns graph into initial state after traversal
@@ -778,6 +723,68 @@ mod tests {
     });
 
     assert_eq!(vec!["A", "B", "AB", "C", "D", "CD", "root"], actual);
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_traversal_serial_breadth_first_forward() -> Result<(), Report> {
+    let graph = create_graph_from_nwk_str::<Node, Edge>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+
+    let mut actual = vec![];
+    graph.iter_breadth_first_forward(|node| {
+      actual.push(node.payload.name.clone());
+    });
+
+    assert_eq!(vec!["root", "AB", "CD", "A", "B", "C", "D"], actual);
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_traversal_serial_breadth_first_reverse() -> Result<(), Report> {
+    let graph = create_graph_from_nwk_str::<Node, Edge>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+
+    let mut actual = vec![];
+    graph.iter_breadth_first_reverse(|node| {
+      actual.push(node.payload.name.clone());
+    });
+
+    assert_eq!(vec!["D", "C", "B", "A", "CD", "AB", "root"], actual);
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_traversal_parallel_breadth_first_forward() -> Result<(), Report> {
+    rayon::ThreadPoolBuilder::new().num_threads(1).build_global()?;
+
+    let mut graph = create_graph_from_nwk_str::<Node, Edge>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+
+    let actual = Arc::new(RwLock::new(vec![]));
+    graph.par_iter_breadth_first_forward(|node| {
+      actual.write_arc().push(node.payload.name.clone());
+      GraphTraversalContinuation::Continue
+    });
+
+    assert_eq!(&vec!["root", "AB", "CD", "A", "B", "C", "D"], &*actual.read());
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_traversal_parallel_breadth_first_backward() -> Result<(), Report> {
+    rayon::ThreadPoolBuilder::new().num_threads(1).build_global()?;
+
+    let mut graph = create_graph_from_nwk_str::<Node, Edge>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+
+    let actual = Arc::new(RwLock::new(vec![]));
+    graph.par_iter_breadth_first_backward(|node| {
+      actual.write_arc().push(node.payload.name.clone());
+      GraphTraversalContinuation::Continue
+    });
+
+    assert_eq!(&vec!["D", "C", "B", "A", "CD", "AB", "root"], &*actual.read());
 
     Ok(())
   }

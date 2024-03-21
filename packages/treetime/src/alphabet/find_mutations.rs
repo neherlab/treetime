@@ -85,7 +85,7 @@ pub fn find_graph_mutations(graph: &mut AncestralGraph, sequence_data: &Sequence
        is_root,
        is_leaf,
        key,
-       payload: node,
+       payload: mut node,
        parents,
      }| {
       if is_root {

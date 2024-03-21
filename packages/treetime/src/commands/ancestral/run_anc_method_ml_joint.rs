@@ -46,7 +46,7 @@ fn traverse_backward(
        is_root,
        is_leaf,
        key,
-       payload: node,
+       payload: mut node,
        children,
      }| {
       if is_root {
@@ -211,7 +211,7 @@ fn traverse_forward(
        is_root,
        is_leaf,
        key,
-       payload: node,
+       payload: mut node,
        parents,
      }| {
       // root node has no mutations, everything else has been already set

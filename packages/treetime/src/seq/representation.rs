@@ -177,7 +177,7 @@ pub fn compress_sequences(
        is_root,
        is_leaf,
        key,
-       payload: n,
+       payload: mut n,
        children,
      }| {
       if is_leaf {
@@ -195,7 +195,7 @@ pub fn compress_sequences(
         let mut children = children.iter().map(|(node, _)| node.write()).collect_vec();
         let mut children = children.iter_mut().map(DerefMut::deref_mut).collect_vec();
         n.undetermined = range_intersection_iter(children.iter().map(|c| &c.undetermined)).collect();
-        calculate_fitch_parsimony_in_place(n, &mut children, L);
+        calculate_fitch_parsimony_in_place(&mut n, &mut children, L);
 
         // Deallocate full sequences from children
         children.iter_mut().for_each(|c| c.seq = vec![]);
@@ -320,7 +320,7 @@ fn gather_mutations_inplace(graph: &Graph<Node, Edge>, rng: &(impl Rng + Send + 
        is_root,
        is_leaf,
        key,
-       payload: node,
+       payload: mut node,
        parents,
      }| {
       if is_root {

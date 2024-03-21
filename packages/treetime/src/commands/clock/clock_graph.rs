@@ -157,7 +157,7 @@ pub fn assign_dates(graph: &mut ClockGraph, dates: &DatesMap) -> Result<(), Repo
        is_root,
        is_leaf,
        key,
-       payload: node,
+       payload: mut node,
        children,
      }| {
       node.raw_date_constraint = dates.get(&node.name).map(DateOrRange::mean);
@@ -195,7 +195,9 @@ pub fn assign_dates(graph: &mut ClockGraph, dates: &DatesMap) -> Result<(), Repo
 pub fn calculate_distances_to_root(graph: &mut Graph<Node, Edge>) {
   graph.par_iter_breadth_first_forward(
     |GraphNodeForward {
-       payload: node, parents, ..
+       payload: mut node,
+       parents,
+       ..
      }| {
       if node.is_root() {
         node.dist2root = 0.0;

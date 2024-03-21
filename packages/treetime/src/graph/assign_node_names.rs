@@ -14,7 +14,7 @@ pub fn assign_node_names<N: GraphNode, E: GraphEdge>(graph: &Graph<N, E>) {
   graph.iter_depth_first_preorder_forward(
     |GraphNodeForward {
        key,
-       payload,
+       mut payload,
        parents,
        is_leaf,
        is_root,

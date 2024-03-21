@@ -24,7 +24,7 @@ pub fn calculate_averages<P: GraphNodeRegressionPolicy>(graph: &mut ClockGraph) 
        is_root,
        is_leaf,
        key,
-       payload: n,
+       payload: mut n,
        children,
      }| {
       if is_leaf {
@@ -47,7 +47,7 @@ pub fn calculate_averages<P: GraphNodeRegressionPolicy>(graph: &mut ClockGraph) 
   graph.par_iter_breadth_first_forward(
     |GraphNodeForward {
        key,
-       payload: node,
+       payload: mut node,
        parents,
        ..
      }| {
@@ -94,9 +94,9 @@ pub fn calculate_averages<P: GraphNodeRegressionPolicy>(graph: &mut ClockGraph) 
           bv
         };
 
-        let tv = P::tip_value(node);
-        let var = P::branch_variance(node);
-        node.Qtot = &node.Q + &propagate_averages(node, tv, bv, var, true);
+        let tv = P::tip_value(&node);
+        let var = P::branch_variance(&node);
+        node.Qtot = &node.Q + &propagate_averages(&node, tv, bv, var, true);
       }
 
       GraphTraversalContinuation::Continue
@@ -219,7 +219,7 @@ where
        is_root,
        is_leaf,
        key,
-       payload: node,
+       payload: mut node,
        parents,
      }| {
       if node.is_leaf() {
