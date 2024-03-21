@@ -9,8 +9,10 @@ use crate::seq::range::range_contains;
 use crate::seq::range_intersection::range_intersection_iter;
 use crate::seq::range_union::range_union;
 use crate::seq::sets::{sets_intersection, sets_union};
+use crate::utils::random::random_choice;
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
+use rand::Rng;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::{Display, Formatter};
 use std::ops::DerefMut;
@@ -163,7 +165,11 @@ pub fn get_common_length<K: AsRef<str>, V: AsRef<str>>(seqs: impl Iterator<Item 
   .wrap_err("When calculating length of sequences")
 }
 
-pub fn compress_sequences(seqs: &BTreeMap<String, String>, graph: &mut Graph<Node, Edge>) -> Result<(), Report> {
+pub fn compress_sequences(
+  seqs: &BTreeMap<String, String>,
+  graph: &mut Graph<Node, Edge>,
+  rng: &mut impl Rng,
+) -> Result<(), Report> {
   let L = get_common_length(seqs.iter())?;
 
   graph.par_iter_breadth_first_backward(
@@ -198,6 +204,8 @@ pub fn compress_sequences(seqs: &BTreeMap<String, String>, graph: &mut Graph<Nod
       GraphTraversalContinuation::Continue
     },
   );
+
+  root_seq_fill_non_consensus_inplace(graph, rng)?;
 
   Ok(())
 }
@@ -292,11 +300,31 @@ pub fn gather_consensus_child_states(children: &[&mut Node], pos: usize) -> Vec<
     .collect_vec()
 }
 
+fn root_seq_fill_non_consensus_inplace(graph: &Graph<Node, Edge>, rng: &mut impl Rng) -> Result<(), Report> {
+  let roots = graph.get_root_payloads().collect_vec();
+  if roots.len() > 1 {
+    unimplemented!("Multiple roots are not supported yet");
+  }
+
+  let root = &mut *roots[0].write();
+  root
+    .non_consensus
+    .iter_mut()
+    .try_for_each(|(pos, states)| -> Result<(), Report> {
+      let state = random_choice(states, rng)?;
+      root.seq[*pos] = *state;
+      Ok(())
+    })?;
+
+  Ok(())
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
   use crate::graph::create_graph_from_nwk::create_graph_from_nwk_str;
   use crate::o;
+  use crate::utils::random::get_random_number_generator;
   use eyre::Report;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
@@ -304,6 +332,10 @@ mod tests {
 
   #[rstest]
   fn test_seq_representation() -> Result<(), Report> {
+    rayon::ThreadPoolBuilder::new().num_threads(1).build_global()?;
+
+    let mut rng = get_random_number_generator(Some(42));
+
     let seqs = BTreeMap::from([
       (o!("A"), o!("ACATCGCCNNA--G")),
       (o!("B"), o!("GCATCCCTGTA-NG")),
@@ -312,12 +344,16 @@ mod tests {
     ]);
 
     let mut graph = create_graph_from_nwk_str::<Node, Edge>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
-    compress_sequences(&seqs, &mut graph).unwrap();
+
+    compress_sequences(&seqs, &mut graph, &mut rng).unwrap();
 
     let mut actual: Vec<Node> = vec![];
     graph.get_nodes().iter().for_each(|node| {
       actual.push(node.read().payload().read().clone());
     });
+
+    let roots = graph.get_root_payloads().collect_vec();
+    let root = &mut *roots[0].write();
 
     let expected = vec![
       Node {
@@ -335,7 +371,7 @@ mod tests {
           (5, vec!['C', 'G']),
           (6, vec!['A', 'C', 'G']),
         ]),
-        seq: vec!['?', 'C', '?', '?', 'C', '?', '?', 'T', 'G', 'T', 'A', 'T', 'T', 'G'],
+        seq: vec!['T', 'C', 'G', 'G', 'C', 'C', 'C', 'T', 'G', 'T', 'A', 'T', 'T', 'G'],
       },
       Node {
         name: o!("AB"),

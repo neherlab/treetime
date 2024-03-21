@@ -239,6 +239,15 @@ where
   }
 
   #[inline]
+  pub fn get_root_payloads(&self) -> impl Iterator<Item = Arc<RwLock<N>>> + '_ {
+    self
+      .roots
+      .iter()
+      .filter_map(|idx| self.get_node(*idx))
+      .map(|node| node.read().payload())
+  }
+
+  #[inline]
   pub fn get_leaves(&self) -> Vec<Arc<RwLock<Node<N>>>> {
     self.leaves.iter().filter_map(|idx| self.get_node(*idx)).collect_vec()
   }
