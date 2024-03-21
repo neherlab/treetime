@@ -9,7 +9,6 @@ use crate::seq::range::range_contains;
 use crate::seq::range_intersection::range_intersection_iter;
 use crate::seq::range_union::range_union;
 use crate::seq::sets::{sets_intersection, sets_union};
-use crate::utils::random::random_choice;
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use rand::Rng;
@@ -205,7 +204,7 @@ pub fn compress_sequences(
     },
   );
 
-  root_seq_fill_non_consensus_inplace(graph, rng)?;
+  root_seq_fill_non_consensus_inplace(graph, rng);
 
   Ok(())
 }
@@ -300,23 +299,18 @@ pub fn gather_consensus_child_states(children: &[&mut Node], pos: usize) -> Vec<
     .collect_vec()
 }
 
-fn root_seq_fill_non_consensus_inplace(graph: &Graph<Node, Edge>, rng: &mut impl Rng) -> Result<(), Report> {
+fn root_seq_fill_non_consensus_inplace(graph: &Graph<Node, Edge>, rng: &mut impl Rng) {
   let roots = graph.get_root_payloads().collect_vec();
   if roots.len() > 1 {
     unimplemented!("Multiple roots are not supported yet");
   }
 
   let root = &mut *roots[0].write();
-  root
-    .non_consensus
-    .iter_mut()
-    .try_for_each(|(pos, states)| -> Result<(), Report> {
-      let state = random_choice(states, rng)?;
-      root.seq[*pos] = *state;
-      Ok(())
-    })?;
-
-  Ok(())
+  root.non_consensus.iter_mut().for_each(|(pos, states)| {
+    let index: usize = rng.gen_range(0..states.len());
+    let state = states.remove(index);
+    root.seq[*pos] = state;
+  });
 }
 
 #[cfg(test)]
@@ -352,9 +346,6 @@ mod tests {
       actual.push(node.read().payload().read().clone());
     });
 
-    let roots = graph.get_root_payloads().collect_vec();
-    let root = &mut *roots[0].write();
-
     let expected = vec![
       Node {
         name: o!("root"),
@@ -365,13 +356,13 @@ mod tests {
         undetermined: vec![],
         mixed: vec![],
         non_consensus: BTreeMap::from([
-          (0, vec!['A', 'C', 'G', 'T']),
-          (2, vec!['A', 'G']),
-          (3, vec!['T', 'G']),
-          (5, vec!['C', 'G']),
-          (6, vec!['A', 'C', 'G']),
+          (0, vec!['A', 'C', 'G']),
+          (2, vec!['A']),
+          (3, vec!['G']),
+          (5, vec!['C']),
+          (6, vec!['A', 'C']),
         ]),
-        seq: vec!['T', 'C', 'G', 'G', 'C', 'C', 'C', 'T', 'G', 'T', 'A', 'T', 'T', 'G'],
+        seq: vec!['T', 'C', 'G', 'T', 'C', 'G', 'G', 'T', 'G', 'T', 'A', 'T', 'T', 'G'],
       },
       Node {
         name: o!("AB"),
