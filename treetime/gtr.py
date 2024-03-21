@@ -851,7 +851,11 @@ class GTR(object):
             else:
                 return -1.0*self.prob_t_compressed(seq_pair, multiplicity,t**2, return_log=True)
 
-        hamming_distance = np.sum(multiplicity[seq_pair[:,1]!=seq_pair[:,0]])/np.sum(multiplicity)
+        if profiles:
+            hamming_distance = 1-np.sum(multiplicity*np.sum(seq_pair[0]*seq_pair[1], axis=1))/np.sum(multiplicity)
+        else:
+            hamming_distance = np.sum(multiplicity[seq_pair[:,1]!=seq_pair[:,0]])/np.sum(multiplicity)
+
         try:
             from scipy.optimize import minimize_scalar
             opt = minimize_scalar(_neg_prob,
