@@ -45,5 +45,5 @@ pub fn bench_2(c: &mut Criterion) {
   });
 }
 
-criterion_group!(benches, bench_1, bench_2);
-criterion_main!(benches);
+criterion_group!(find_letter_ranges, bench_1, bench_2);
+criterion_main!(find_letter_ranges);

@@ -11,7 +11,7 @@ use parking_lot::{RawRwLock, RwLock};
 use std::fmt::Debug;
 use std::io::Write;
 use std::sync::Arc;
-use traversal::{Bft, DftPost, DftPre};
+use traversal::{Bft, DftLongestPaths, DftPost, DftPre};
 
 pub type SafeNode<N> = Arc<RwLock<Node<N>>>;
 pub type SafeNodeRef<N> = ArcRwLockReadGuard<RawRwLock, Node<N>>;
@@ -199,6 +199,18 @@ where
       .filter_map(|edge_key| self.get_edge(*edge_key))
       .map(|edge| edge.read().source())
       .collect_vec()
+  }
+
+  pub fn exactly_one_parent_of(&self, node: &Node<N>) -> Result<Arc<RwLock<Node<N>>>, Report> {
+    let roots = self.get_roots();
+    if roots.len() != 1 {
+      make_internal_error!(
+        "Only trees with exactly one root are currently supported, but found '{}'",
+        self.roots.len()
+      )
+    } else {
+      Ok(Arc::clone(&roots[0]))
+    }
   }
 
   /// Retrieve child nodes of a given node and the corresponding edges.
@@ -494,6 +506,22 @@ where
       let node = node.read();
       child_keys.contains(&node.key())
     })
+  }
+
+  /// Find nodes on the path from root to a given node
+  pub fn path_from_leaf_to_root(&self, node_key: GraphNodeKey) -> Result<Option<Vec<SafeNode<N>>>, Report> {
+    let root = self.get_exactly_one_root()?; // Multiple roots are not supported (yet?)
+
+    let path = DftLongestPaths::new(&root, |node| self.iter_children_arc(node))
+      .find(move |path| {
+        path
+          .last()
+          .map(|leaf| leaf.read().key() == node_key)
+          .unwrap_or_default()
+      })
+      .map(|path| path.into_iter().cloned().collect_vec());
+
+    Ok(path)
   }
 
   /// Returns graph into initial state after traversal

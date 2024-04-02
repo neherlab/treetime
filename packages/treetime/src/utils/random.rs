@@ -1,7 +1,7 @@
 use crate::make_internal_report;
 use eyre::Report;
 use ndarray_rand::rand::SeedableRng;
-use rand::{seq::IteratorRandom, Rng};
+use rand::{seq::IteratorRandom, seq::SliceRandom, Rng};
 use rand_isaac::Isaac64Rng;
 
 pub fn get_random_number_generator(seed: Option<u64>) -> (impl Rng + Send + Sync + Clone) {
@@ -27,4 +27,10 @@ pub fn random_choice<T>(iter: impl IntoIterator<Item = T>, rng: &mut impl Rng) -
 pub fn random_remove<T>(v: &mut Vec<T>, rng: &mut impl Rng) -> T {
   let index: usize = rng.gen_range(0..v.len());
   v.remove(index)
+}
+
+pub fn random_sequence(length: usize, seed: Option<u64>) -> Vec<char> {
+  let mut rng = get_random_number_generator(seed);
+  let letters = ['A', 'C', 'G', 'T', 'N', '-'];
+  letters.choose_multiple(&mut rng, length).copied().collect()
 }

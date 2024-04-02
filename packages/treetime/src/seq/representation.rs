@@ -1,8 +1,7 @@
 use crate::graph::breadth_first::GraphTraversalContinuation;
 use crate::graph::edge::{GraphEdge, Weighted};
 use crate::graph::graph::{Graph, GraphNodeBackward, GraphNodeForward};
-use crate::graph::node::{GraphNode, Named, NodeType, WithNwkComments};
-use crate::make_error;
+use crate::graph::node::{GraphNode, GraphNodeKey, Named, NodeType, WithNwkComments};
 use crate::seq::find_char_ranges::{find_ambiguous_ranges, find_gap_ranges};
 use crate::seq::find_mixed_sites::{find_mixed_sites, MixedSite};
 use crate::seq::range::range_contains;
@@ -10,6 +9,8 @@ use crate::seq::range_intersection::range_intersection_iter;
 use crate::seq::range_union::range_union;
 use crate::seq::sets::{sets_intersection, sets_union};
 use crate::utils::random::{clone_random_number_generator, random_remove};
+use crate::utils::string::vec_to_string;
+use crate::{make_error, make_internal_report};
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use rand::Rng;
@@ -38,7 +39,7 @@ impl Node {
       name: name.as_ref().to_owned(),
       node_type,
 
-      mutations: BTreeMap::new(),
+      mutations: BTreeMap::from([]),
       gaps: vec![],
       ambiguous: vec![],
       undetermined: vec![],
@@ -368,10 +369,68 @@ fn gather_mutations_inplace(graph: &Graph<Node, Edge>, rng: &(impl Rng + Send + 
   );
 }
 
+pub fn reconstruct_leaf_sequences(graph: &Graph<Node, Edge>) -> Result<BTreeMap<String, String>, Report> {
+  let root_seq = {
+    let root = graph.get_exactly_one_root()?.read_arc().payload().read_arc();
+    root.seq.clone()
+  };
+
+  graph
+    .get_leaves()
+    .into_iter()
+    .map(|leaf| {
+      let leaf = leaf.read_arc();
+      let name = leaf.payload().read_arc().name().to_owned();
+      let seq = decompress_leaf_sequence(graph, leaf.key(), &root_seq)?;
+      Ok((name, seq))
+    })
+    .collect()
+}
+
+pub fn decompress_leaf_sequence(
+  graph: &Graph<Node, Edge>,
+  node_key: GraphNodeKey,
+  root_seq: &[char],
+) -> Result<String, Report> {
+  let mut seq = root_seq.to_vec();
+  let path = graph
+    .path_from_leaf_to_root(node_key)?
+    .ok_or_else(|| make_internal_report!("No path from root to node '{node_key}'"))?;
+
+  for anc in path {
+    let anc = anc.read_arc().payload().read_arc();
+    // Apply mutations
+    for (&pos, &(ref_char, _)) in &anc.mutations {
+      seq[pos] = ref_char;
+    }
+  }
+
+  let node = graph
+    .get_node(node_key)
+    .ok_or_else(|| make_internal_report!("No path from root to node '{node_key}'"))?
+    .read_arc()
+    .payload()
+    .read_arc();
+
+  // introduce N, gaps, and mixed sites
+  for &(from, to) in &node.ambiguous {
+    seq[from..to].iter_mut().for_each(|x| *x = 'N');
+  }
+  for &(from, to) in &node.gaps {
+    seq[from..to].iter_mut().for_each(|x| *x = '-');
+  }
+  for &MixedSite { pos, nuc } in &node.mixed {
+    seq[pos] = nuc;
+  }
+
+  Ok(vec_to_string(seq))
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
   use crate::graph::create_graph_from_nwk::create_graph_from_nwk_str;
+  use crate::io::json::{json_stringify, JsonPretty};
   use crate::o;
   use crate::utils::random::get_random_number_generator;
   use eyre::Report;
@@ -385,7 +444,7 @@ mod tests {
 
     let mut rng = get_random_number_generator(Some(42));
 
-    let seqs = BTreeMap::from([
+    let inputs = BTreeMap::from([
       (o!("A"), o!("ACATCGCCNNA--G")),
       (o!("B"), o!("GCATCCCTGTA-NG")),
       (o!("C"), o!("CCGGCGATGTATTG")),
@@ -394,7 +453,7 @@ mod tests {
 
     let mut graph = create_graph_from_nwk_str::<Node, Edge>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
-    compress_sequences(&seqs, &mut graph, &mut rng).unwrap();
+    compress_sequences(&inputs, &mut graph, &mut rng).unwrap();
 
     let mut actual: Vec<Node> = vec![];
     graph.get_nodes().iter().for_each(|node| {
@@ -405,7 +464,7 @@ mod tests {
       Node {
         name: o!("root"),
         node_type: NodeType::Root(o!("root")),
-        mutations: BTreeMap::new(),
+        mutations: BTreeMap::from([]),
         gaps: vec![],
         ambiguous: vec![],
         undetermined: vec![],
@@ -422,7 +481,11 @@ mod tests {
       Node {
         name: o!("AB"),
         node_type: NodeType::Internal(o!("AB")),
-        mutations: BTreeMap::new(),
+        mutations: BTreeMap::from([
+          (0, ('T', 'G')), //
+          (2, ('G', 'A')), //
+          (6, ('G', 'C')), //
+        ]),
         gaps: vec![],
         ambiguous: vec![],
         undetermined: vec![(11, 13)],
@@ -440,7 +503,10 @@ mod tests {
       Node {
         name: o!("A"),
         node_type: NodeType::Leaf(o!("A")),
-        mutations: BTreeMap::new(),
+        mutations: BTreeMap::from([
+          (0, ('G', 'A')), //
+          (7, ('T', 'C')), //
+        ]),
         gaps: vec![(11, 13)],
         ambiguous: vec![(8, 10)],
         undetermined: vec![(8, 10), (11, 13)],
@@ -455,7 +521,9 @@ mod tests {
       Node {
         name: o!("B"),
         node_type: NodeType::Leaf(o!("B")),
-        mutations: BTreeMap::new(),
+        mutations: BTreeMap::from([
+          (5, ('G', 'C')), //
+        ]),
         gaps: vec![(11, 12)],
         ambiguous: vec![(12, 13)],
         undetermined: vec![(11, 13)],
@@ -470,7 +538,9 @@ mod tests {
       Node {
         name: o!("CD"),
         node_type: NodeType::Internal(o!("CD")),
-        mutations: BTreeMap::new(),
+        mutations: BTreeMap::from([
+          (3, ('T', 'G')), //
+        ]),
         gaps: vec![],
         ambiguous: vec![],
         undetermined: vec![],
@@ -487,7 +557,10 @@ mod tests {
       Node {
         name: o!("C"),
         node_type: NodeType::Leaf(o!("C")),
-        mutations: BTreeMap::new(),
+        mutations: BTreeMap::from([
+          (0, ('T', 'C')), //
+          (6, ('G', 'A')), //
+        ]),
         gaps: vec![],
         ambiguous: vec![],
         undetermined: vec![],
@@ -502,7 +575,9 @@ mod tests {
       Node {
         name: o!("D"),
         node_type: NodeType::Leaf(o!("D")),
-        mutations: BTreeMap::new(),
+        mutations: BTreeMap::from([
+          (5, ('G', 'C')), //
+        ]),
         gaps: vec![],
         ambiguous: vec![],
         undetermined: vec![],
@@ -518,6 +593,33 @@ mod tests {
     ];
 
     assert_eq!(expected, actual);
+
+    Ok(())
+  }
+
+  #[rstest]
+  fn test_seq_reconstruction() -> Result<(), Report> {
+    rayon::ThreadPoolBuilder::new().num_threads(1).build_global()?;
+
+    let mut rng = get_random_number_generator(Some(42));
+
+    let inputs = BTreeMap::from([
+      (o!("A"), o!("ACATCGCCNNA--G")),
+      (o!("B"), o!("GCATCCCTGTA-NG")),
+      (o!("C"), o!("CCGGCGATGTATTG")),
+      (o!("D"), o!("TCGGCCGTGTRTTG")),
+    ]);
+
+    let mut graph = create_graph_from_nwk_str::<Node, Edge>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+
+    compress_sequences(&inputs, &mut graph, &mut rng).unwrap();
+
+    let actual = reconstruct_leaf_sequences(&graph)?;
+
+    assert_eq!(
+      json_stringify(&inputs, JsonPretty(false))?,
+      json_stringify(&actual, JsonPretty(false))?
+    );
 
     Ok(())
   }

@@ -92,3 +92,7 @@ workspace = true
 [[bench]]
 name = "find_letter_ranges_benchmark"
 harness = false
+
+[[bench]]
+name = "vec_char_to_string"
+harness = false
