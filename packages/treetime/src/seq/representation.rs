@@ -1,6 +1,5 @@
-use crate::graph::breadth_first::GraphTraversalContinuation;
 use crate::graph::edge::{GraphEdge, Weighted};
-use crate::graph::graph::{Graph, GraphNodeBackward, GraphNodeForward};
+use crate::graph::graph::{Graph, GraphNodeBackward};
 use crate::graph::node::{GraphNode, GraphNodeKey, Named, NodeType, WithNwkComments};
 use crate::seq::find_char_ranges::{find_ambiguous_ranges, find_gap_ranges};
 use crate::seq::find_mixed_sites::{find_mixed_sites, MixedSite};
@@ -8,11 +7,12 @@ use crate::seq::range::range_contains;
 use crate::seq::range_intersection::range_intersection_iter;
 use crate::seq::range_union::range_union;
 use crate::seq::sets::{sets_intersection, sets_union};
-use crate::utils::random::{clone_random_number_generator, random_remove};
+use crate::utils::random::random_pop;
 use crate::utils::string::vec_to_string;
 use crate::{make_error, make_internal_report};
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
+use maplit::{btreemap, btreeset};
 use rand::Rng;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::{Display, Formatter};
@@ -28,7 +28,7 @@ pub struct Node {
   pub ambiguous: Vec<(usize, usize)>,
   pub undetermined: Vec<(usize, usize)>,
   pub mixed: Vec<MixedSite>,
-  pub non_consensus: BTreeMap<usize, Vec<char>>,
+  pub non_consensus: BTreeMap<usize, BTreeSet<char>>,
 
   pub seq: Vec<char>,
 }
@@ -51,12 +51,12 @@ impl Node {
   }
 
   /// Gather all states at a given position from all child nodes
-  pub fn get_letter_disambiguated(&self, pos: usize) -> Vec<char> {
+  pub fn get_letter_disambiguated(&self, pos: usize) -> BTreeSet<char> {
     self
       // Get possible states if non-consensus
       .non_consensus.get(&pos).cloned()
       // Otherwise read the sequence at that position
-      .unwrap_or_else(|| vec![self.seq[pos]])
+      .unwrap_or_else(|| btreeset!{self.seq[pos]})
   }
 
   #[inline]
@@ -168,12 +168,12 @@ pub fn get_common_length<K: AsRef<str>, V: AsRef<str>>(seqs: impl Iterator<Item 
 
 pub fn compress_sequences(
   seqs: &BTreeMap<String, String>,
-  graph: &mut Graph<Node, Edge>,
+  graph: &Graph<Node, Edge>,
   rng: &mut (impl Rng + Send + Sync + Clone),
 ) -> Result<(), Report> {
   let L = get_common_length(seqs.iter())?;
 
-  graph.par_iter_breadth_first_backward(
+  graph.iter_depth_first_postorder_forward(
     |GraphNodeBackward {
        is_root,
        is_leaf,
@@ -181,7 +181,7 @@ pub fn compress_sequences(
        payload: mut n,
        children,
      }| {
-      if is_leaf {
+      if n.is_leaf() {
         // At each terminal node, temporarily store the sequence and ranges of N, - and mixed sites
         n.seq = seqs[&n.name].chars().collect();
 
@@ -201,8 +201,6 @@ pub fn compress_sequences(
         // Deallocate full sequences from children
         children.iter_mut().for_each(|c| c.seq = vec![]);
       }
-
-      GraphTraversalContinuation::Continue
     },
   );
 
@@ -236,25 +234,26 @@ fn calculate_fitch_parsimony_in_place(n: &mut Node, children: &mut [&mut Node], 
         }
         [] => {
           // Empty intersection of child states. Propagate union of child states.
-          let states = sets_union(child_state_sets.into_iter()).into_iter().collect_vec();
+          let states = sets_union(child_state_sets.into_iter()).into_iter().collect();
           n.non_consensus.insert(pos, states);
 
           // Adjust children, now that we know they can disagree
           // TODO: avoid code duplication
           children.iter_mut().for_each(|c| {
             // TODO: double check that. Do we need to perform union here if position is already taken?
-            c.non_consensus.entry(pos).or_insert_with(|| vec![c.seq[pos]]);
+            c.non_consensus.entry(pos).or_insert_with(|| btreeset![c.seq[pos]]);
           });
         }
         states => {
           // More than one element in the intersection of child states. Propagate intersection.
-          n.non_consensus.insert(pos, states.to_owned());
+          let states = states.iter().copied().collect();
+          n.non_consensus.insert(pos, states);
 
           // Adjust children, now that we know they can disagree
           // TODO: avoid code duplication
           children.iter_mut().for_each(|c| {
             // TODO: double check that. Do we need to perform union here if position is already taken?
-            c.non_consensus.entry(pos).or_insert_with(|| vec![c.seq[pos]]);
+            c.non_consensus.entry(pos).or_insert_with(|| btreeset![c.seq[pos]]);
           });
         }
       };
@@ -272,12 +271,13 @@ fn calculate_fitch_parsimony_in_place(n: &mut Node, children: &mut [&mut Node], 
         }
         states => {
           // Child states are different, propagate union
-          n.non_consensus.insert(pos, states.to_owned());
+          let states = states.iter().copied().collect();
+          n.non_consensus.insert(pos, states);
 
           // Adjust children, now that we know they can disagree
           // TODO: avoid code duplication
           children.iter_mut().for_each(|c| {
-            c.non_consensus.entry(pos).or_insert_with(|| vec![c.seq[pos]]);
+            c.non_consensus.entry(pos).or_insert_with(|| btreeset! {c.seq[pos]});
           });
         }
       }
@@ -311,62 +311,53 @@ fn root_seq_fill_non_consensus_inplace(graph: &Graph<Node, Edge>, rng: &mut impl
 
   let root = &mut *roots[0].write();
   root.non_consensus.iter_mut().for_each(|(pos, states)| {
-    root.seq[*pos] = random_remove(states, rng);
+    root.seq[*pos] = random_pop(states, rng);
   });
 }
 
-fn gather_mutations_inplace(graph: &Graph<Node, Edge>, rng: &(impl Rng + Send + Sync + Clone)) {
-  graph.iter_depth_first_preorder_forward(
-    |GraphNodeForward {
-       is_root,
-       is_leaf,
-       key,
-       payload: mut node,
-       parents,
-     }| {
-      if is_root {
-        return;
+fn gather_mutations_inplace(graph: &Graph<Node, Edge>, rng: &mut (impl Rng + Send + Sync + Clone)) {
+  graph.iter_depth_first_preorder_forward_2(|node| {
+    let node = node.write_arc();
+    if node.is_leaf() {
+      return;
+    }
+
+    let children = graph.children_of(&node);
+    let mut node = node.payload().write_arc();
+
+    children.into_iter().for_each(|(child, _)| {
+      let mut child = child.write_arc().payload().write_arc();
+      child.mutations = BTreeMap::new();
+
+      // we need this temporary sequence only for internal nodes
+      if !child.is_leaf() {
+        child.seq = node.seq.clone();
       }
 
-      let mut rng = clone_random_number_generator(&mut rng.clone());
-
-      if parents.len() > 1 {
-        unimplemented!("Multiple parent nodes are not supported yet");
-      }
-      let (parent, e) = &parents[0];
-      let parent = &mut *parent.write();
-
-      if !node.is_leaf() {
-        node.seq = parent.seq.clone();
-      }
-
-      // Gather states that are different from parent
-      let states = node
+      // all positions that potentially differ in the child c from the parent n are in `c.non_consensus`
+      let child_states = child
         .non_consensus
         .iter_mut()
-        .filter_map(|(pos, states)| {
-          if states.contains(&parent.seq[*pos]) {
-            None
-          } else {
-            let state = random_remove(states, &mut rng);
-            Some((*pos, state))
-          }
+        .filter_map(|(&pos, states)| {
+          let parent_state = node.seq[pos];
+          (!states.contains(&parent_state)).then_some({
+            // in this case we need a mutation to one state in states
+            let child_state = random_pop(states, rng);
+            (pos, parent_state, child_state)
+          })
         })
         .collect_vec();
 
-      // Fill mutations
-      states.into_iter().for_each(|(pos, state)| {
-        node.mutations.insert(pos, (parent.seq[pos], state));
-        if !node.is_leaf() {
-          node.seq[pos] = state;
-        }
+      child_states.into_iter().for_each(|(pos, parent_state, child_state)| {
+        child.mutations.insert(pos, (parent_state, child_state));
       });
+    });
 
-      // // Deallocate data that is no longer needed
-      // parent.non_consensus = btreemap! {};
-      // parent.seq = vec![];
-    },
-  );
+    if !node.is_root() {
+      node.non_consensus = btreemap! {};
+      node.seq = vec![];
+    }
+  });
 }
 
 pub fn reconstruct_leaf_sequences(graph: &Graph<Node, Edge>) -> Result<BTreeMap<String, String>, Report> {
@@ -451,9 +442,9 @@ mod tests {
       (o!("D"), o!("TCGGCCGTGTRTTG")),
     ]);
 
-    let mut graph = create_graph_from_nwk_str::<Node, Edge>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let graph = create_graph_from_nwk_str::<Node, Edge>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
-    compress_sequences(&inputs, &mut graph, &mut rng).unwrap();
+    compress_sequences(&inputs, &graph, &mut rng).unwrap();
 
     let mut actual: Vec<Node> = vec![];
     graph.get_nodes().iter().for_each(|node| {
@@ -470,11 +461,11 @@ mod tests {
         undetermined: vec![],
         mixed: vec![],
         non_consensus: BTreeMap::from([
-          (0, vec!['A', 'C', 'G']),
-          (2, vec!['A']),
-          (3, vec!['G']),
-          (5, vec!['C']),
-          (6, vec!['A', 'C']),
+          (0, btreeset!['A', 'C', 'G']),
+          (2, btreeset!['A']),
+          (3, btreeset!['G']),
+          (5, btreeset!['C']),
+          (6, btreeset!['A', 'C']),
         ]),
         seq: vec!['T', 'C', 'G', 'T', 'C', 'G', 'G', 'T', 'G', 'T', 'A', 'T', 'T', 'G'],
       },
@@ -491,12 +482,12 @@ mod tests {
         undetermined: vec![(11, 13)],
         mixed: vec![],
         non_consensus: BTreeMap::from([
-          (0, vec!['A', 'G']),
-          (5, vec!['G', 'C']),
-          (7, vec!['C', 'T']),
-          (2, vec!['A']),
-          (3, vec!['T']),
-          (6, vec!['C']),
+          (0, btreeset!['A', 'G']),
+          (5, btreeset!['G', 'C']),
+          (7, btreeset!['C', 'T']),
+          (2, btreeset!['A']),
+          (3, btreeset!['T']),
+          (6, btreeset!['C']),
         ]),
         seq: vec![],
       },
@@ -512,9 +503,9 @@ mod tests {
         undetermined: vec![(8, 10), (11, 13)],
         mixed: vec![],
         non_consensus: BTreeMap::from([
-          (0, vec!['A']), //
-          (5, vec!['G']), //
-          (7, vec!['C']), //
+          (0, btreeset!['A']), //
+          (5, btreeset!['G']), //
+          (7, btreeset!['C']), //
         ]),
         seq: vec![],
       },
@@ -529,9 +520,9 @@ mod tests {
         undetermined: vec![(11, 13)],
         mixed: vec![],
         non_consensus: BTreeMap::from([
-          (0, vec!['G']), //
-          (5, vec!['C']), //
-          (7, vec!['T']), //
+          (0, btreeset!['G']), //
+          (5, btreeset!['C']), //
+          (7, btreeset!['T']), //
         ]),
         seq: vec![],
       },
@@ -546,11 +537,11 @@ mod tests {
         undetermined: vec![],
         mixed: vec![],
         non_consensus: BTreeMap::from([
-          (0, vec!['C', 'T']),
-          (5, vec!['G', 'C']),
-          (6, vec!['A', 'G']),
-          (2, vec!['G']),
-          (3, vec!['G']),
+          (0, btreeset!['C', 'T']),
+          (5, btreeset!['G', 'C']),
+          (6, btreeset!['A', 'G']),
+          (2, btreeset!['G']),
+          (3, btreeset!['G']),
         ]),
         seq: vec![],
       },
@@ -566,9 +557,9 @@ mod tests {
         undetermined: vec![],
         mixed: vec![],
         non_consensus: BTreeMap::from([
-          (0, vec!['C']), //
-          (5, vec!['G']), //
-          (6, vec!['A']), //
+          (0, btreeset!['C']), //
+          (5, btreeset!['G']), //
+          (6, btreeset!['A']), //
         ]),
         seq: vec![],
       },
@@ -583,10 +574,10 @@ mod tests {
         undetermined: vec![],
         mixed: vec![MixedSite::new(10, 'R')],
         non_consensus: BTreeMap::from([
-          (10, vec!['A', 'G']), //
-          (0, vec!['T']),       //
-          (5, vec!['C']),       //
-          (6, vec!['G']),       //
+          (10, btreeset!['A', 'G']), //
+          (0, btreeset!['T']),       //
+          (5, btreeset!['C']),       //
+          (6, btreeset!['G']),       //
         ]),
         seq: vec![],
       },
@@ -610,9 +601,9 @@ mod tests {
       (o!("D"), o!("TCGGCCGTGTRTTG")),
     ]);
 
-    let mut graph = create_graph_from_nwk_str::<Node, Edge>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let graph = create_graph_from_nwk_str::<Node, Edge>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
-    compress_sequences(&inputs, &mut graph, &mut rng).unwrap();
+    compress_sequences(&inputs, &graph, &mut rng).unwrap();
 
     let actual = reconstruct_leaf_sequences(&graph)?;
 

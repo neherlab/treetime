@@ -1,8 +1,9 @@
 use crate::make_internal_error;
 use eyre::Report;
-use std::collections::BTreeMap;
+use maplit::btreeset;
+use std::collections::{BTreeMap, BTreeSet};
 
-pub fn find_mixed_sites(seq: &[char]) -> (Vec<MixedSite>, BTreeMap<usize, Vec<char>>) {
+pub fn find_mixed_sites(seq: &[char]) -> (Vec<MixedSite>, BTreeMap<usize, BTreeSet<char>>) {
   let mut mixed_positions = Vec::new();
 
   for (pos, nuc) in seq.iter().enumerate() {
@@ -30,18 +31,18 @@ impl MixedSite {
     Self { pos, nuc }
   }
 
-  pub fn disambiguate(&self) -> Result<Vec<char>, Report> {
+  pub fn disambiguate(&self) -> Result<BTreeSet<char>, Report> {
     match &self.nuc {
-      'R' => Ok(vec!['A', 'G']),
-      'Y' => Ok(vec!['C', 'T']),
-      'S' => Ok(vec!['G', 'C']),
-      'W' => Ok(vec!['A', 'T']),
-      'K' => Ok(vec!['G', 'T']),
-      'M' => Ok(vec!['A', 'C']),
-      'B' => Ok(vec!['C', 'G', 'T']),
-      'D' => Ok(vec!['A', 'G', 'T']),
-      'H' => Ok(vec!['A', 'C', 'T']),
-      'V' => Ok(vec!['A', 'C', 'G']),
+      'R' => Ok(btreeset! {'A', 'G'}),
+      'Y' => Ok(btreeset! {'C', 'T'}),
+      'S' => Ok(btreeset! {'G', 'C'}),
+      'W' => Ok(btreeset! {'A', 'T'}),
+      'K' => Ok(btreeset! {'G', 'T'}),
+      'M' => Ok(btreeset! {'A', 'C'}),
+      'B' => Ok(btreeset! {'C', 'G', 'T'}),
+      'D' => Ok(btreeset! {'A', 'G', 'T'}),
+      'H' => Ok(btreeset! {'A', 'C', 'T'}),
+      'V' => Ok(btreeset! {'A', 'C', 'G'}),
       _ => make_internal_error!("Unknown ambiguous nucleotide: '{}'", &self.nuc),
     }
   }
@@ -69,10 +70,10 @@ mod tests {
     ];
 
     let disambiguated = BTreeMap::from([
-      (3, vec!['A', 'G', 'T']),
-      (9, vec!['C', 'T']),
-      (10, vec!['A', 'G']),
-      (14, vec!['A', 'C', 'T']),
+      (3, btreeset! {'A', 'G', 'T'}),
+      (9, btreeset! {'C', 'T'}),
+      (10, btreeset! {'A', 'G'}),
+      (14, btreeset! {'A', 'C', 'T'}),
     ]);
 
     let expected = (mixed, disambiguated);

@@ -463,6 +463,13 @@ where
     });
   }
 
+  pub fn iter_depth_first_preorder_forward_2(&self, mut explorer: impl FnMut(&SafeNode<N>)) {
+    let root = self.get_exactly_one_root().unwrap();
+    DftPre::new(&root, |node| self.iter_children_arc(node)).for_each(move |(_, node)| {
+      explorer(node);
+    });
+  }
+
   /// Synchronously traverse graph in depth-first postorder fashion forward (from roots to leaves, along edge directions).
   ///
   /// Guarantees that for each visited node, all of it children (recursively) are visited before
