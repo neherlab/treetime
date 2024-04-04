@@ -391,8 +391,8 @@ pub fn decompress_leaf_sequence(
   for anc in path {
     let anc = anc.read_arc().payload().read_arc();
     // Apply mutations
-    for (&pos, &(ref_char, _)) in &anc.mutations {
-      seq[pos] = ref_char;
+    for (&pos, &(_, qry_seq)) in &anc.mutations {
+      seq[pos] = qry_seq;
     }
   }
 
