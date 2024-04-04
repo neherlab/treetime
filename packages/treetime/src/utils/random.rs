@@ -28,9 +28,7 @@ pub fn random_choice<T>(iter: impl IntoIterator<Item = T>, rng: &mut impl Rng) -
 
 pub fn random_remove<T>(v: &mut Vec<T>, rng: &mut impl Rng) -> T {
   let index: usize = rng.gen_range(0..v.len());
-
-  // TODO: use index for randomness!
-  v.remove(0)
+  v.remove(index)
 }
 
 pub fn random_pop<T: Clone + Ord>(s: &mut BTreeSet<T>, rng: &mut impl Rng) -> T {
