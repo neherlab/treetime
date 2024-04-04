@@ -463,11 +463,11 @@ mod tests {
         non_consensus: BTreeMap::from([
           (0, btreeset!['A', 'C', 'G']),
           (2, btreeset!['A']),
-          (3, btreeset!['G']),
+          (3, btreeset!['T']),
           (5, btreeset!['C']),
           (6, btreeset!['A', 'C']),
         ]),
-        seq: vec!['T', 'C', 'G', 'T', 'C', 'G', 'G', 'T', 'G', 'T', 'A', 'T', 'T', 'G'],
+        seq: vec!['T', 'C', 'G', 'G', 'C', 'G', 'G', 'T', 'G', 'T', 'A', 'T', 'T', 'G'],
       },
       Node {
         name: o!("AB"),
@@ -475,27 +475,21 @@ mod tests {
         mutations: BTreeMap::from([
           (0, ('T', 'G')), //
           (2, ('G', 'A')), //
+          (3, ('G', 'T')), //
           (6, ('G', 'C')), //
         ]),
         gaps: vec![],
         ambiguous: vec![],
         undetermined: vec![(11, 13)],
         mixed: vec![],
-        non_consensus: BTreeMap::from([
-          (0, btreeset!['A', 'G']),
-          (5, btreeset!['G', 'C']),
-          (7, btreeset!['C', 'T']),
-          (2, btreeset!['A']),
-          (3, btreeset!['T']),
-          (6, btreeset!['C']),
-        ]),
+        non_consensus: BTreeMap::from([]),
         seq: vec![],
       },
       Node {
         name: o!("A"),
         node_type: NodeType::Leaf(o!("A")),
         mutations: BTreeMap::from([
-          (0, ('G', 'A')), //
+          (0, ('T', 'A')), //
           (7, ('T', 'C')), //
         ]),
         gaps: vec![(11, 13)],
@@ -503,9 +497,9 @@ mod tests {
         undetermined: vec![(8, 10), (11, 13)],
         mixed: vec![],
         non_consensus: BTreeMap::from([
-          (0, btreeset!['A']), //
-          (5, btreeset!['G']), //
-          (7, btreeset!['C']), //
+          (0, btreeset![]), //
+          (5, btreeset![]), //
+          (7, btreeset![]), //
         ]),
         seq: vec![],
       },
@@ -513,6 +507,7 @@ mod tests {
         name: o!("B"),
         node_type: NodeType::Leaf(o!("B")),
         mutations: BTreeMap::from([
+          (0, ('T', 'G')), //
           (5, ('G', 'C')), //
         ]),
         gaps: vec![(11, 12)],
@@ -520,29 +515,21 @@ mod tests {
         undetermined: vec![(11, 13)],
         mixed: vec![],
         non_consensus: BTreeMap::from([
-          (0, btreeset!['G']), //
-          (5, btreeset!['C']), //
-          (7, btreeset!['T']), //
+          (0, btreeset![]), //
+          (5, btreeset![]), //
+          (7, btreeset![]), //
         ]),
         seq: vec![],
       },
       Node {
         name: o!("CD"),
         node_type: NodeType::Internal(o!("CD")),
-        mutations: BTreeMap::from([
-          (3, ('T', 'G')), //
-        ]),
+        mutations: BTreeMap::from([]),
         gaps: vec![],
         ambiguous: vec![],
         undetermined: vec![],
         mixed: vec![],
-        non_consensus: BTreeMap::from([
-          (0, btreeset!['C', 'T']),
-          (5, btreeset!['G', 'C']),
-          (6, btreeset!['A', 'G']),
-          (2, btreeset!['G']),
-          (3, btreeset!['G']),
-        ]),
+        non_consensus: BTreeMap::from([]),
         seq: vec![],
       },
       Node {
@@ -557,9 +544,9 @@ mod tests {
         undetermined: vec![],
         mixed: vec![],
         non_consensus: BTreeMap::from([
-          (0, btreeset!['C']), //
-          (5, btreeset!['G']), //
-          (6, btreeset!['A']), //
+          (0, btreeset![]), //
+          (5, btreeset![]), //
+          (6, btreeset![]), //
         ]),
         seq: vec![],
       },
@@ -574,10 +561,10 @@ mod tests {
         undetermined: vec![],
         mixed: vec![MixedSite::new(10, 'R')],
         non_consensus: BTreeMap::from([
-          (10, btreeset!['A', 'G']), //
-          (0, btreeset!['T']),       //
-          (5, btreeset!['C']),       //
-          (6, btreeset!['G']),       //
+          (0, btreeset![]),     //
+          (5, btreeset![]),     //
+          (6, btreeset![]),     //
+          (10, btreeset!['G']), //
         ]),
         seq: vec![],
       },
