@@ -29,6 +29,7 @@ pub struct Node {
   pub undetermined: Vec<(usize, usize)>,
   pub mixed: Vec<MixedSite>,
   pub non_consensus: BTreeMap<usize, BTreeSet<char>>,
+  pub nuc_composition: BTreeMap<char, usize>,
 
   pub seq: Vec<char>,
 }
@@ -45,6 +46,7 @@ impl Node {
       undetermined: vec![],
       mixed: vec![],
       non_consensus: BTreeMap::new(),
+      nuc_composition: BTreeMap::new(),
 
       seq: vec![],
     }
@@ -313,6 +315,14 @@ fn root_seq_fill_non_consensus_inplace(graph: &Graph<Node, Edge>, rng: &mut impl
   root.non_consensus.iter_mut().for_each(|(pos, states)| {
     root.seq[*pos] = random_pop(states, rng);
   });
+
+  root.nuc_composition = root
+    .seq
+    .iter()
+    .counts()
+    .into_iter()
+    .map(|(letter, count)| (*letter, count))
+    .collect();
 }
 
 fn gather_mutations_inplace(graph: &Graph<Node, Edge>, rng: &mut (impl Rng + Send + Sync + Clone)) {
@@ -328,6 +338,7 @@ fn gather_mutations_inplace(graph: &Graph<Node, Edge>, rng: &mut (impl Rng + Sen
     children.into_iter().for_each(|(child, _)| {
       let mut child = child.write_arc().payload().write_arc();
       child.mutations = BTreeMap::new();
+      child.nuc_composition = node.nuc_composition.clone();
 
       // we need this temporary sequence only for internal nodes
       if !child.is_leaf() {
@@ -350,6 +361,8 @@ fn gather_mutations_inplace(graph: &Graph<Node, Edge>, rng: &mut (impl Rng + Sen
 
       child_states.into_iter().for_each(|(pos, parent_state, child_state)| {
         child.mutations.insert(pos, (parent_state, child_state));
+        *child.nuc_composition.entry(parent_state).or_insert(0) -= 1;
+        *child.nuc_composition.entry(child_state).or_insert(0) += 1;
       });
     });
 
@@ -442,6 +455,8 @@ mod tests {
       (o!("D"), o!("TCGGCCGTGTRTTG")),
     ]);
 
+    let L = inputs.first_key_value().unwrap().1.len();
+
     let graph = create_graph_from_nwk_str::<Node, Edge>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
     compress_sequences(&inputs, &graph, &mut rng).unwrap();
@@ -467,6 +482,12 @@ mod tests {
           (5, btreeset!['C']),
           (6, btreeset!['A', 'C']),
         ]),
+        nuc_composition: btreemap! {
+          'A' => 1,
+          'C' => 2,
+          'G' => 6,
+          'T' => 5,
+        },
         seq: vec!['T', 'C', 'G', 'G', 'C', 'G', 'G', 'T', 'G', 'T', 'A', 'T', 'T', 'G'],
       },
       Node {
@@ -483,6 +504,12 @@ mod tests {
         undetermined: vec![(11, 13)],
         mixed: vec![],
         non_consensus: BTreeMap::from([]),
+        nuc_composition: btreemap! {
+          'A' => 2,
+          'C' => 3,
+          'G' => 4,
+          'T' => 5,
+        },
         seq: vec![],
       },
       Node {
@@ -501,6 +528,12 @@ mod tests {
           (5, btreeset![]), //
           (7, btreeset![]), //
         ]),
+        nuc_composition: btreemap! {
+          'A' => 3,
+          'C' => 4,
+          'G' => 4,
+          'T' => 3,
+        },
         seq: vec![],
       },
       Node {
@@ -519,6 +552,12 @@ mod tests {
           (5, btreeset![]), //
           (7, btreeset![]), //
         ]),
+        nuc_composition: btreemap! {
+          'A' => 2,
+          'C' => 4,
+          'G' => 4,
+          'T' => 4,
+        },
         seq: vec![],
       },
       Node {
@@ -530,6 +569,12 @@ mod tests {
         undetermined: vec![],
         mixed: vec![],
         non_consensus: BTreeMap::from([]),
+        nuc_composition: btreemap! {
+          'A' => 1,
+          'C' => 2,
+          'G' => 6,
+          'T' => 5,
+        },
         seq: vec![],
       },
       Node {
@@ -548,6 +593,12 @@ mod tests {
           (5, btreeset![]), //
           (6, btreeset![]), //
         ]),
+        nuc_composition: btreemap! {
+          'A' => 2,
+          'C' => 3,
+          'G' => 5,
+          'T' => 4,
+        },
         seq: vec![],
       },
       Node {
@@ -566,11 +617,34 @@ mod tests {
           (6, btreeset![]),     //
           (10, btreeset!['G']), //
         ]),
+        nuc_composition: btreemap! {
+          'A' => 1,
+          'C' => 3,
+          'G' => 5,
+          'T' => 5,
+        },
         seq: vec![],
       },
     ];
 
-    assert_eq!(expected, actual);
+    assert_eq!(&expected, &actual);
+
+    let nuc_counts: BTreeMap<String, usize> = actual
+      .iter()
+      .map(|node| (node.name.clone(), node.nuc_composition.values().sum()))
+      .collect();
+
+    let nuc_counts_expected = btreemap! {
+      o!("A") => L,
+      o!("AB") => L,
+      o!("B") => L,
+      o!("C") => L,
+      o!("CD") => L,
+      o!("D") => L,
+      o!("root") => L,
+    };
+
+    assert_eq!(nuc_counts_expected, nuc_counts);
 
     Ok(())
   }
