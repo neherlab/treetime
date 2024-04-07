@@ -10,12 +10,18 @@ aln_fname = '../test/treetime_examples/data/ebola/ebola.fasta'
 dummy=True
 
 if dummy:
-    tree = Phylo.read(StringIO("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;"), 'newick')
+    nwk_str = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;"
+    tree = Phylo.read(StringIO(nwk_str), 'newick')
     # in practice, we don't want all sequences in memory. Idealy we'd stream then in the same order as leaves of the tree. 
     seqs = {'A':'ACATCGCCNNA--G',
             'B':'GCATCCCTGTA-NG',
             'C':'CCGGCGATGTATTG',
             'D':'TCGGCCGTGTRTTG'}
+    
+    seqs = {'A':'ACATCGCCTTATTG',
+            'B':'GCATCCCTGTATTG',
+            'C':'CCGGCGATGTATTG',
+            'D':'TCGGCCGTGTTTTG'}
 else:
     # Ebola test data
     tree = Phylo.read(tree_fname, 'newick')

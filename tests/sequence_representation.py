@@ -22,12 +22,18 @@ aln_fname = '../test/treetime_examples/data/ebola/ebola.fasta'
 dummy=True
 
 if dummy:
-    tree = Phylo.read(StringIO("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;"), 'newick')
+    nwk_str = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;"
+    tree = Phylo.read(StringIO(nwk_str), 'newick')
     # in practice, we don't want all sequences in memory. Idealy we'd stream then in the same order as leaves of the tree. 
     seqs = {'A':'ACATCGCCNNA--G',
             'B':'GCATCCCTGTA-NG',
             'C':'CCGGCGATGTATTG',
             'D':'TCGGCCGTGTRTTG'}
+    
+    # seqs = {'A':'ACATCGCCTTATTGAGGT',
+    #         'B':'GCATCCCTGTATTGAGGT',
+    #         'C':'CCGGCGATGTATTGAGGT',
+    #         'D':'TCGGCCGTGTTTTGAGGT'}
 else:
     # Ebola test data
     tree = Phylo.read(tree_fname, 'newick')
@@ -375,18 +381,22 @@ def calc_likelihood(tree, node, seq):
 tree.logLH=0
 tree.profile = {}
 post_order(tree, tree.root, tree.root.seq, calc_likelihood)
+
+
+inert_nucs = {k:v for k,v in tree.root.nuc_composition.items()}
 for pos, vec in tree.root.message_to_parent.items():
     tree.profile[pos] = vec*myGTR.Pi
     vec_norm = np.sum(tree.profile[pos])
     tree.profile[pos]/=vec_norm
     tree.logLH += np.log(vec_norm)
+    inert_nucs[tree.root.seq[pos]] -= 1
 
 tree.inert_profile = {}
 for n in 'ACGT':
     tree.inert_profile[n] = tree.root.inert_vectors[n]*myGTR.Pi
     vec_norm = tree.inert_profile[n].sum()
     tree.inert_profile[n]/=vec_norm
-    tree.logLH += np.log(vec_norm)
+    tree.logLH += inert_nucs[n]*np.log(vec_norm)
 
 
 print(tree.logLH)
@@ -396,8 +406,16 @@ from treetime import TreeAnc
 from Bio.Align import MultipleSeqAlignment
 from Bio.SeqRecord import SeqRecord
 aln = MultipleSeqAlignment([SeqRecord(seq=seqs[k], id=k) for k in seqs])
-tt = TreeAnc(tree=Phylo.read(StringIO("((A:0.1,B:0.2):0.1,(C:0.2,D:0.12):0.05):0.01;"), 'newick'), aln=aln, gtr=myGTR, compress=False)
+tt = TreeAnc(tree=Phylo.read(StringIO(nwk_str), 'newick'), aln=aln, gtr=myGTR, compress=False)
 
 tt.infer_ancestral_sequences(marginal=True)
-print(tt.tree.root.marginal_profile)
 
+for pos in tree.profile:
+    print(pos, np.abs(tree.profile[pos] - tt.tree.root.marginal_profile[pos]).sum()<eps)
+
+for pos in range(L):
+    if pos in tree.profile: continue
+    print(pos, tree.root.seq[pos], np.abs(tree.inert_profile[tree.root.seq[pos]] - tt.tree.root.marginal_profile[pos]).sum()<eps)
+
+
+print(tree.logLH, tt.sequence_LH(), tree.logLH-tt.sequence_LH(), )
