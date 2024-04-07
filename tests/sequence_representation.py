@@ -287,8 +287,9 @@ def check_seq(tree, node, seq):
     else:
         print(f"{node.name}\t", "".join(seq))
 
-# pre_order(tree, tree.root, seq, check_seq)
-# post_order(tree, tree.root, seq, check_seq)
+if dummy:
+    pre_order(tree, tree.root, seq, check_seq)
+    post_order(tree, tree.root, seq, check_seq)
 
 fails = []
 for n in tree.get_terminals():
@@ -330,7 +331,7 @@ eps = 1e-6
 
 # payload function that calculates the likelihood
 def calc_likelihood(tree, node, seq):
-    # GTR matrix associated with this branch length
+    # GTR matrix associated with this branch length. Using 0 length for the root saves an extra calculation below
     expQt = myGTR.expQt(0 if node==tree.root else node.branch_length)
 
     # we have calculated the total nucleotide composition in the sequence representation. 
@@ -378,11 +379,8 @@ def calc_likelihood(tree, node, seq):
             vec_norm = vec.sum()
             tree.logLH += np.log(vec_norm)
             node.variable_states[pos] = vec/vec_norm
-            if nuc and nuc in 'ACGT':
-                try:
-                    inert_nucs[nuc] -= 1
-                except:
-                    import ipdb; ipdb.set_trace()
+            if nuc and nuc in 'ACGT': # this condition is not necessary if nuc is `N` or `-` since these are in nuc-composition
+                inert_nucs[nuc] -= 1
 
         # collect contribution from the inert sites
         for n in 'ACGT':
@@ -404,39 +402,38 @@ def calc_likelihood(tree, node, seq):
             node.message_to_parent[pos] = node.inert_vectors[der]
 
 
-    print(node.name, tree.logLH)
-
-
+# run the likelihood calculation
 tree.logLH=0
-tree.profile = {}
 post_order(tree, tree.root, tree.root.seq, calc_likelihood)
 
-
+# multiply the `message_to_parent`` at the root with the equilibrium probabilties
+tree.root.profile = {}
 inert_nucs = {k:v for k,v in tree.root.nuc_composition.items()}
+# variable positions
 for pos, vec in tree.root.message_to_parent.items():
-    tree.profile[pos] = vec*myGTR.Pi
-    vec_norm = np.sum(tree.profile[pos])
-    tree.profile[pos]/=vec_norm
+    tree.root.profile[pos] = vec*myGTR.Pi
+    vec_norm = np.sum(tree.root.profile[pos])
+    tree.root.profile[pos]/=vec_norm
     tree.logLH += np.log(vec_norm)
     nuc = tree.root.seq[pos]
     if nuc and nuc in 'ACGT':
         inert_nucs[nuc] -= 1
 
-tree.inert_profile = {}
+# inert positions
+tree.root.inert_profile = {}
 for n in 'ACGT':
-    tree.inert_profile[n] = tree.root.inert_vectors[n]*myGTR.Pi
-    vec_norm = tree.inert_profile[n].sum()
-    tree.inert_profile[n]/=vec_norm
+    tree.root.inert_profile[n] = tree.root.inert_vectors[n]*myGTR.Pi
+    vec_norm = tree.root.inert_profile[n].sum()
+    tree.root.inert_profile[n]/=vec_norm
     tree.logLH += inert_nucs[n]*np.log(vec_norm)
 
 
-print(tree.logLH)
-
-
+# compare with treetime
 from treetime import TreeAnc
 from Bio.Align import MultipleSeqAlignment
 from Bio.SeqRecord import SeqRecord
-aln = MultipleSeqAlignment([SeqRecord(seq=seqs[k], id=k) for k in seqs])
+from Bio.Seq import Seq
+aln = MultipleSeqAlignment([SeqRecord(seq=Seq(seqs[k]), id=k) for k in seqs])
 
 if dummy:
     new_tree = Phylo.read(StringIO(nwk_str), 'newick')
@@ -447,17 +444,19 @@ else:
 tt = TreeAnc(tree=new_tree, aln=aln, gtr=myGTR, compress=False)
 
 tt.infer_ancestral_sequences(marginal=True)
+
+# check numerical values of the profiles at the root
 eps2=0.0001
-for pos in tree.profile:
-    agree = np.abs(tree.profile[pos] - tt.tree.root.marginal_profile[pos]).sum()<eps2
+for pos in tree.root.profile:
+    agree = np.abs(tree.root.profile[pos] - tt.tree.root.marginal_profile[pos]).sum()<eps2
     if not agree:
-        print(pos, tree.profile[pos], tt.tree.root.marginal_profile[pos])
+        print(pos, tree.root.profile[pos], tt.tree.root.marginal_profile[pos])
 
 for pos in range(L):
-    if pos in tree.profile: continue
-    agree = np.abs(tree.inert_profile[tree.root.seq[pos]] - tt.tree.root.marginal_profile[pos]).sum()<eps2
+    if pos in tree.root.profile: continue
+    agree = np.abs(tree.root.inert_profile[tree.root.seq[pos]] - tt.tree.root.marginal_profile[pos]).sum()<eps2
     if not agree:
-        print(pos, tree.root.seq[pos], tree.inert_profile[tree.root.seq[pos]], tt.tree.root.marginal_profile[pos])
+        print(pos, tree.root.seq[pos], tree.root.inert_profile[tree.root.seq[pos]], tt.tree.root.marginal_profile[pos])
 
-
+# compare total likelihood
 print(tree.logLH, tt.sequence_LH(), tree.logLH-tt.sequence_LH(), )
