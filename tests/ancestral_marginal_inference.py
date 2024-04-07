@@ -1,17 +1,28 @@
 import numpy as np
 from treetime import GTR
 from treetime.seq_utils import seq2prof, profile_maps, prof2seq
-from Bio import Phylo
+from Bio import Phylo, SeqIO
 from io import StringIO
 
-tree = Phylo.read(StringIO("((A:0.1,B:0.2):0.1,(C:0.2,D:0.12):0.05):0.01;"), 'newick')
+tree_fname = '../test/treetime_examples/data/ebola/ebola.nwk'
+aln_fname = '../test/treetime_examples/data/ebola/ebola.fasta'
 
-seqs = {'A':'ACATCGCC',
-        'B':'ACATCCCT',
-        'C':'ACGGCCCT',
-        'D':'ACGGCCCT'}
+dummy=True
 
-myGTR = GTR.standard('JC69', alphabet='nuc')
+if dummy:
+    tree = Phylo.read(StringIO("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;"), 'newick')
+    # in practice, we don't want all sequences in memory. Idealy we'd stream then in the same order as leaves of the tree. 
+    seqs = {'A':'ACATCGCCNNA--G',
+            'B':'GCATCCCTGTA-NG',
+            'C':'CCGGCGATGTATTG',
+            'D':'TCGGCCGTGTRTTG'}
+else:
+    # Ebola test data
+    tree = Phylo.read(tree_fname, 'newick')
+    # remove U in favor or T
+    seqs = {r.id:str(r.seq.upper().replace('U', 'T')) for r in SeqIO.parse(aln_fname, 'fasta')}
+
+myGTR = GTR.standard('JC69', alphabet='nuc_nogap')
 
 # Barebones implementation of marginal likelihood calculation and ancestral sequence inference
 # this uses elementary operations from the GTR model but no other treetime functionality
@@ -23,7 +34,7 @@ myGTR = GTR.standard('JC69', alphabet='nuc')
 ## postorder traversal, deal with leaves first
 for n in tree.get_terminals():
     n.seq = seqs[n.name]
-    n.profile = seq2prof(n.seq, profile_map=profile_maps['nuc'])
+    n.profile = seq2prof(n.seq, profile_map=profile_maps['nuc_nogap'])
     n.msg_to_parent = myGTR.propagate_profile(n.profile, n.branch_length)
 
 ## postorder traversal, deal with internal nodes
@@ -73,3 +84,5 @@ print(tt.sequence_LH() - np.log(tree.total_LH))
 
 for n1,n2 in zip(tt.tree.find_clades(), tree.find_clades()):
     print(tt.sequence(n1), n2.inferred_seq,tt.sequence(n1)==n2.inferred_seq)
+
+

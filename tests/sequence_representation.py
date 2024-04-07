@@ -1,5 +1,5 @@
 import numpy as np 
-
+from collections import defaultdict
 
 # sequence representation: for large trees, we should avoid storing the entire sequence at every node. 
 # since along every branch, only a few positions change, there should be efficient ways to handle this
@@ -157,6 +157,7 @@ for n in tree.find_clades(order='postorder'):
                     n.non_consensus[pos] = states
                     for c in n.clades:
                         c.non_consensus[pos] = set([c.seq[pos]])
+        print(len(n.non_consensus))
         # no longer need sequences of children
         for c in n.clades:
             del c.seq
@@ -187,12 +188,12 @@ for pos, states in tree.root.non_consensus.items():
 # there might still be ambiguous positions, but that means we have no information anywhere...
 
 tree.root.tmp_seq = list(tree.root.seq)
-tree.root.mutations = {}
+tree.root.muts = {}
 
 # do a pre-order traversal to construct all necessary mutations
 for n in tree.get_nonterminals(order='preorder'):
     for c in n.clades:
-        c.mutations = {}
+        c.muts = {}
         # we need this temporary sequence only for internal nodes
         if not c.is_terminal():
             c.tmp_seq = list(n.tmp_seq)
@@ -202,23 +203,29 @@ for n in tree.get_nonterminals(order='preorder'):
             if n.tmp_seq[pos] not in states:
                 # in this case we need a mutation to one state in states
                 state = states.pop()
-                c.mutations[pos] = (n.tmp_seq[pos], state)
+                c.muts[pos] = (n.tmp_seq[pos], state)
                 if not c.is_terminal():
                     c.tmp_seq[pos] = state
     # no longer needed
     del n.non_consensus
     del n.tmp_seq
 
+
 # function to reconstruct the sequence of a node from the sequence at the root and mutations
-def reconstruct_seq(tree, node):
+def reconstruct_raw_seq(tree, node):
     # get the path in the tree from the root to node
     path = tree.get_path(node)
     # copy the root sequence as array to be able to modify by element and slice
     seq = np.array(tree.root.seq)
     # apply mutations
     for anc in path:
-        for pos in anc.mutations:
-            seq[pos] = anc.mutations[pos][1]
+        for pos in anc.muts:
+            seq[pos] = anc.muts[pos][1]
+    return seq
+
+# function to reconstruct the sequence of a node from the sequence at the root and mutations
+def reconstruct_seq(tree, node):
+    seq = reconstruct_raw_seq(tree, node)
     introduce_non_nucs(node, seq)
     return ''.join(seq)
 
@@ -237,35 +244,35 @@ def introduce_non_nucs(node, seq):
 # unsure how one would best do this in breadth-first. 
 seq = np.array(tree.root.seq) # to allow element wise assignment
 
-def pre_order(node, seq, do_stuff):
+def pre_order(tree, node, seq, do_stuff):
     # pick up sequence from parent, apply mutations
-    for pos, (anc, der) in node.mutations.items():
+    for pos, (anc, der) in node.muts.items():
         seq[pos] = der
     # execute what is necessary (this would be the yield in an iterator)
-    do_stuff(node, seq)
+    do_stuff(tree, node, seq)
     # call the same function for the children
     for c in node.clades:
-        pre_order(c, seq, do_stuff)
+        pre_order(tree, c, seq, do_stuff)
 
     # undo the mutations
-    for pos, (anc, der) in node.mutations.items():
+    for pos, (anc, der) in node.muts.items():
         seq[pos] = anc
 
-def post_order(node, seq, do_stuff):
+def post_order(tree, node, seq, do_stuff):
     # pick up sequence from parent, apply mutations
-    for pos, (anc, der) in node.mutations.items():
+    for pos, (anc, der) in node.muts.items():
         seq[pos] = der
     # execute what is necessary (this would be the yield in an iterator)
     # call the same function for the children
     for c in node.clades:
-        post_order(c, seq, do_stuff)
-    do_stuff(node, seq)
+        post_order(tree, c, seq, do_stuff)
+    do_stuff(tree, node, seq)
 
     # undo the mutations
-    for pos, (anc, der) in node.mutations.items():
+    for pos, (anc, der) in node.muts.items():
         seq[pos] = anc
 
-def check_seq(node, seq):
+def check_seq(tree, node, seq):
     if node.is_terminal():
         seq_copy = np.copy(seq)
         introduce_non_nucs(node, seq_copy)
@@ -274,8 +281,8 @@ def check_seq(node, seq):
     else:
         print(f"{node.name}\t", "".join(seq))
 
-pre_order(tree.root, seq, check_seq)
-post_order(tree.root, seq, check_seq)
+pre_order(tree, tree.root, seq, check_seq)
+post_order(tree, tree.root, seq, check_seq)
 
 fails = []
 for n in tree.get_terminals():
@@ -289,6 +296,108 @@ if len(fails):
 else:
     print("TADA: all sequences were reconstructed correctly.")
 
+## calculate nucleotide composition -- only for dev purposes
+def nuc_comp(node, seq):
+    node.nuc_composition = defaultdict(int)
+    if node.is_terminal():
+        seq_copy = np.copy(seq)
+        introduce_non_nucs(node, seq_copy)
+    else:
+        seq_copy = seq
+
+    for n in 'ACGTN-':
+        node.nuc_composition[n] = np.sum(n==seq)
+
+for n in tree.find_clades():
+    seq = reconstruct_raw_seq(tree, n)
+    nuc_comp(n, seq)
 
 
+# with the sequence representation in place, we can now calculate the likelihood. 
+from treetime import GTR
+myGTR = GTR.standard('JC69', alphabet='nuc_nogap')
+from treetime.seq_utils import profile_maps
+prof_nuc = profile_maps['nuc_nogap']
+
+eps = 1e-3
+def calc_likelihood(tree, node, seq):
+    expQt = myGTR.expQt(0 if node==tree.root else node.branch_length)
+    # make a copy since we'll modify this
+    inert_nucs = {k:v for k,v in node.nuc_composition.items()}
+    node.inert_vectors = {}
+    if node.is_terminal():
+        node.variable_states = {}
+        for pos, state in node.mixed.items():
+            node.variable_states[pos] = prof_nuc[state]
+            inert_nucs[seq[pos]] -= 1
+        for pos, (anc, der) in node.muts.items():
+            node.variable_states[pos] = prof_nuc[der]
+            inert_nucs[seq[pos]] -= 1
+        node.message_to_parent = {pos: expQt.dot(prof) for pos, prof in node.variable_states.items()}
+        for ni, n in enumerate('ACGT'):
+            node.inert_vectors[n] = expQt[ni, :]
+    else:
+        node.variable_states = {}
+        variable_pos = set.union(*[set(c.message_to_parent.keys()) for c in node.clades])
+        for pos in variable_pos:
+            try:
+                node.variable_states[pos] = np.prod([c.message_to_parent.get(pos, c.inert_vectors[seq[pos]]) for c in node.clades], axis=0)
+            except:
+                import ipdb; ipdb.set_trace()
+            vec_norm = node.variable_states[pos].sum()
+            tree.logLH += np.log(vec_norm)
+            node.variable_states[pos]/= vec_norm
+            inert_nucs[seq[pos]] -= 1
+
+        for n in 'ACGT':
+            vec = np.prod([c.inert_vectors[n] for c in node], axis=0)
+            vec_norm = vec.sum()
+            tree.logLH += inert_nucs[n]*np.log(vec_norm)
+            node.inert_vectors[n] = expQt.dot(vec/vec_norm)
+
+        node.message_to_parent = {}
+        for pos, vec in node.variable_states.items():
+            if vec.max()>1-eps and seq[pos] == 'ACGT'[vec.arg_max()]:
+                inert_nucs['ACGT'[vec.arg_max()]] += 1
+            else:
+                node.message_to_parent[pos] = expQt.dot(vec)
+
+        for pos, (anc, der) in node.muts.items():
+            if pos in node.message_to_parent: 
+                continue
+            node.message_to_parent[pos] = node.inert_vectors[der]
+            inert_nucs[der] -= 1
+
+
+    print(node.name, tree.logLH)
+
+
+tree.logLH=0
+tree.profile = {}
+post_order(tree, tree.root, tree.root.seq, calc_likelihood)
+for pos, vec in tree.root.message_to_parent.items():
+    tree.profile[pos] = vec*myGTR.Pi
+    vec_norm = np.sum(tree.profile[pos])
+    tree.profile[pos]/=vec_norm
+    tree.logLH += np.log(vec_norm)
+
+tree.inert_profile = {}
+for n in 'ACGT':
+    tree.inert_profile[n] = tree.root.inert_vectors[n]*myGTR.Pi
+    vec_norm = tree.inert_profile[n].sum()
+    tree.inert_profile[n]/=vec_norm
+    tree.logLH += np.log(vec_norm)
+
+
+print(tree.logLH)
+
+
+from treetime import TreeAnc
+from Bio.Align import MultipleSeqAlignment
+from Bio.SeqRecord import SeqRecord
+aln = MultipleSeqAlignment([SeqRecord(seq=seqs[k], id=k) for k in seqs])
+tt = TreeAnc(tree=Phylo.read(StringIO("((A:0.1,B:0.2):0.1,(C:0.2,D:0.12):0.05):0.01;"), 'newick'), aln=aln, gtr=myGTR, compress=False)
+
+tt.infer_ancestral_sequences(marginal=True)
+print(tt.tree.root.marginal_profile)
 
