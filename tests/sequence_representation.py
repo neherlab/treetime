@@ -325,13 +325,24 @@ myGTR = GTR.standard('JC69', alphabet='nuc_nogap')
 from treetime.seq_utils import profile_maps
 prof_nuc = profile_maps['nuc_nogap']
 
+# threshold to keep position among the variable ones
 eps = 1e-3
+
+# payload function that calculates the likelihood
 def calc_likelihood(tree, node, seq):
+    # GTR matrix associated with this branch length
     expQt = myGTR.expQt(0 if node==tree.root else node.branch_length)
-    # make a copy since we'll modify this
+
+    # we have calculated the total nucleotide composition in the sequence representation. 
+    # from this, we will subtract positions that are tracked as variable positions -- hence need to copu
     inert_nucs = {k:v for k,v in node.nuc_composition.items()}
+
+    # each node will get a vector with the probability distribution of non-variable positions
+    # this vector should always be peaked around the focal nucleotide and quantifies the uncertainty around it
     node.inert_vectors = {}
+
     if node.is_terminal():
+        # For terminal nodes, we deem mixed sites and sites that have mutations in the branch to the parent as variable
         node.variable_states = {}
         for pos, state in node.mixed.items():
             node.variable_states[pos] = prof_nuc[state]
@@ -343,36 +354,43 @@ def calc_likelihood(tree, node, seq):
         for ni, n in enumerate('ACGT'):
             node.inert_vectors[n] = expQt[ni, :]
     else:
+        # For internal nodes, we consider all positions that are variable in any of the children
         node.variable_states = {}
         variable_pos = set.union(*[set(c.message_to_parent.keys()) for c in node.clades])
         for pos in variable_pos:
-            try:
-                node.variable_states[pos] = np.prod([c.message_to_parent.get(pos, c.inert_vectors[seq[pos]]) for c in node.clades], axis=0)
-            except:
-                import ipdb; ipdb.set_trace()
-            vec_norm = node.variable_states[pos].sum()
-            tree.logLH += np.log(vec_norm)
-            node.variable_states[pos]/= vec_norm
-            inert_nucs[seq[pos]] -= 1
+            nuc = seq[pos]
+            # calculate the product of child messages
+            tmp_msg = []
+            for c in node.clades:
+                if pos in c.message_to_parent:
+                    tmp_msg.append(c.message_to_parent[pos])
+                elif not ranges_contain(c.undetermined, pos):
+                    tmp_msg.append(c.inert_vectors[nuc])
 
+            vec = np.prod(tmp_msg, axis=0)
+            vec_norm = vec.sum()
+            tree.logLH += np.log(vec_norm)
+            node.variable_states[pos] = vec/vec_norm
+            inert_nucs[nuc] -= 1
+
+        # collect contribution from the inert sites
         for n in 'ACGT':
             vec = np.prod([c.inert_vectors[n] for c in node], axis=0)
             vec_norm = vec.sum()
             tree.logLH += inert_nucs[n]*np.log(vec_norm)
             node.inert_vectors[n] = expQt.dot(vec/vec_norm)
 
+        # prune positions that are no longer variable.
         node.message_to_parent = {}
         for pos, vec in node.variable_states.items():
-            if vec.max()>1-eps and seq[pos] == 'ACGT'[vec.arg_max()]:
-                inert_nucs['ACGT'[vec.arg_max()]] += 1
-            else:
+            if vec.max()<1-eps or seq[pos] == 'ACGT'[vec.arg_max()]:
                 node.message_to_parent[pos] = expQt.dot(vec)
 
+        # add position that mutate towards the parent
         for pos, (anc, der) in node.muts.items():
             if pos in node.message_to_parent: 
                 continue
             node.message_to_parent[pos] = node.inert_vectors[der]
-            inert_nucs[der] -= 1
 
 
     print(node.name, tree.logLH)
