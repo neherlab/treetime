@@ -287,8 +287,8 @@ def check_seq(tree, node, seq):
     else:
         print(f"{node.name}\t", "".join(seq))
 
-pre_order(tree, tree.root, seq, check_seq)
-post_order(tree, tree.root, seq, check_seq)
+# pre_order(tree, tree.root, seq, check_seq)
+# post_order(tree, tree.root, seq, check_seq)
 
 fails = []
 for n in tree.get_terminals():
@@ -326,7 +326,7 @@ from treetime.seq_utils import profile_maps
 prof_nuc = profile_maps['nuc_nogap']
 
 # threshold to keep position among the variable ones
-eps = 1e-3
+eps = 1e-6
 
 # payload function that calculates the likelihood
 def calc_likelihood(tree, node, seq):
@@ -350,6 +350,13 @@ def calc_likelihood(tree, node, seq):
         for pos, (anc, der) in node.muts.items():
             node.variable_states[pos] = prof_nuc[der]
             inert_nucs[seq[pos]] -= 1
+
+        # this could be done more efficiently. We just need to look-up these positions, no need to save the flat vector.
+        for rg in node.undetermined:
+            for pos in range(*rg):
+                node.variable_states[pos] = prof_nuc['N']
+                # inert_nucs[seq[pos]] -= 1
+
         node.message_to_parent = {pos: expQt.dot(prof) for pos, prof in node.variable_states.items()}
         for ni, n in enumerate('ACGT'):
             node.inert_vectors[n] = expQt[ni, :]
@@ -371,7 +378,11 @@ def calc_likelihood(tree, node, seq):
             vec_norm = vec.sum()
             tree.logLH += np.log(vec_norm)
             node.variable_states[pos] = vec/vec_norm
-            inert_nucs[nuc] -= 1
+            if nuc and nuc in 'ACGT':
+                try:
+                    inert_nucs[nuc] -= 1
+                except:
+                    import ipdb; ipdb.set_trace()
 
         # collect contribution from the inert sites
         for n in 'ACGT':
@@ -383,7 +394,7 @@ def calc_likelihood(tree, node, seq):
         # prune positions that are no longer variable.
         node.message_to_parent = {}
         for pos, vec in node.variable_states.items():
-            if vec.max()<1-eps or seq[pos] == 'ACGT'[vec.arg_max()]:
+            if vec.max()<1-eps or seq[pos] != 'ACGT'[vec.argmax()]:
                 node.message_to_parent[pos] = expQt.dot(vec)
 
         # add position that mutate towards the parent
@@ -407,7 +418,9 @@ for pos, vec in tree.root.message_to_parent.items():
     vec_norm = np.sum(tree.profile[pos])
     tree.profile[pos]/=vec_norm
     tree.logLH += np.log(vec_norm)
-    inert_nucs[tree.root.seq[pos]] -= 1
+    nuc = tree.root.seq[pos]
+    if nuc and nuc in 'ACGT':
+        inert_nucs[nuc] -= 1
 
 tree.inert_profile = {}
 for n in 'ACGT':
@@ -424,16 +437,27 @@ from treetime import TreeAnc
 from Bio.Align import MultipleSeqAlignment
 from Bio.SeqRecord import SeqRecord
 aln = MultipleSeqAlignment([SeqRecord(seq=seqs[k], id=k) for k in seqs])
-tt = TreeAnc(tree=Phylo.read(StringIO(nwk_str), 'newick'), aln=aln, gtr=myGTR, compress=False)
+
+if dummy:
+    new_tree = Phylo.read(StringIO(nwk_str), 'newick')
+else:
+    # Ebola test data
+    new_tree = Phylo.read(tree_fname, 'newick')
+
+tt = TreeAnc(tree=new_tree, aln=aln, gtr=myGTR, compress=False)
 
 tt.infer_ancestral_sequences(marginal=True)
-
+eps2=0.0001
 for pos in tree.profile:
-    print(pos, np.abs(tree.profile[pos] - tt.tree.root.marginal_profile[pos]).sum()<eps)
+    agree = np.abs(tree.profile[pos] - tt.tree.root.marginal_profile[pos]).sum()<eps2
+    if not agree:
+        print(pos, tree.profile[pos], tt.tree.root.marginal_profile[pos])
 
 for pos in range(L):
     if pos in tree.profile: continue
-    print(pos, tree.root.seq[pos], np.abs(tree.inert_profile[tree.root.seq[pos]] - tt.tree.root.marginal_profile[pos]).sum()<eps)
+    agree = np.abs(tree.inert_profile[tree.root.seq[pos]] - tt.tree.root.marginal_profile[pos]).sum()<eps2
+    if not agree:
+        print(pos, tree.root.seq[pos], tree.inert_profile[tree.root.seq[pos]], tt.tree.root.marginal_profile[pos])
 
 
 print(tree.logLH, tt.sequence_LH(), tree.logLH-tt.sequence_LH(), )
