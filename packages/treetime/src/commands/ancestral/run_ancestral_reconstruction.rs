@@ -3,6 +3,7 @@ use crate::commands::ancestral::anc_graph::{create_graph, infer_graph};
 use crate::io::fasta::{read_many_fasta, FastaRecord, FastaWriter};
 use crate::io::file::create_file;
 use crate::io::nex::{write_nex, WriteNexOptions};
+use crate::io::nwk::{write_nwk_writer, WriteNwkOptions};
 use crate::seq::representation::{compress_sequences, reconstruct_ancestral_sequences};
 use crate::utils::random::get_random_number_generator;
 use crate::utils::string::vec_to_string;
@@ -59,6 +60,12 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
   })?;
 
   graph.print_graph(create_file(outdir.join("graph_output.dot"))?)?;
+
+  write_nwk_writer(
+    &mut create_file(outdir.join("annotated_tree.nwk"))?,
+    &graph,
+    &WriteNwkOptions::default(),
+  )?;
 
   write_nex(
     &mut create_file(outdir.join("annotated_tree.nexus"))?,
