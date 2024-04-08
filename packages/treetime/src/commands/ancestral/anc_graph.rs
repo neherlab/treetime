@@ -2,8 +2,10 @@ use crate::graph::create_graph_from_nwk::create_graph_from_nwk_file;
 use crate::graph::edge::{GraphEdge, Weighted};
 use crate::graph::graph::Graph;
 use crate::graph::node::{GraphNode, Named, NodeType, WithNwkComments};
+use crate::o;
 use crate::seq::find_mixed_sites::MixedSite;
 use eyre::Report;
+use itertools::Itertools;
 use maplit::btreeset;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::{Display, Formatter};
@@ -88,7 +90,16 @@ impl GraphNode for Node {
   }
 }
 
-impl WithNwkComments for Node {}
+impl WithNwkComments for Node {
+  fn nwk_comments(&self) -> BTreeMap<String, String> {
+    let mutations = self
+      .mutations
+      .iter()
+      .map(|(pos, (anc, der))| format!("{anc}{pos}{der}"))
+      .join(",");
+    BTreeMap::from([(o!("mutations"), mutations)])
+  }
+}
 
 impl Named for Node {
   fn name(&self) -> &str {
