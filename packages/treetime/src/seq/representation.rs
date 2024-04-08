@@ -1,6 +1,6 @@
-use crate::graph::edge::{GraphEdge, Weighted};
+use crate::commands::ancestral::anc_graph::{Edge, Node};
 use crate::graph::graph::{Graph, GraphNodeBackward};
-use crate::graph::node::{GraphNode, GraphNodeKey, Named, NodeType, WithNwkComments};
+use crate::make_error;
 use crate::seq::find_char_ranges::{find_ambiguous_ranges, find_gap_ranges};
 use crate::seq::find_mixed_sites::{find_mixed_sites, MixedSite};
 use crate::seq::range::range_contains;
@@ -9,136 +9,12 @@ use crate::seq::range_union::range_union;
 use crate::seq::sets::{sets_intersection, sets_union};
 use crate::utils::random::random_pop;
 use crate::utils::string::vec_to_string;
-use crate::{make_error, make_internal_report};
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use maplit::{btreemap, btreeset};
 use rand::Rng;
 use std::collections::{BTreeMap, BTreeSet};
-use std::fmt::{Display, Formatter};
 use std::ops::DerefMut;
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Node {
-  pub name: String,
-  pub node_type: NodeType,
-
-  pub mutations: BTreeMap<usize, (char, char)>,
-  pub gaps: Vec<(usize, usize)>,
-  pub ambiguous: Vec<(usize, usize)>,
-  pub undetermined: Vec<(usize, usize)>,
-  pub mixed: Vec<MixedSite>,
-  pub non_consensus: BTreeMap<usize, BTreeSet<char>>,
-  pub nuc_composition: BTreeMap<char, usize>,
-
-  pub seq: Vec<char>,
-}
-
-impl Node {
-  pub fn new(name: impl AsRef<str>, node_type: NodeType) -> Self {
-    Self {
-      name: name.as_ref().to_owned(),
-      node_type,
-
-      mutations: BTreeMap::from([]),
-      gaps: vec![],
-      ambiguous: vec![],
-      undetermined: vec![],
-      mixed: vec![],
-      non_consensus: BTreeMap::new(),
-      nuc_composition: BTreeMap::new(),
-
-      seq: vec![],
-    }
-  }
-
-  /// Gather all states at a given position from all child nodes
-  pub fn get_letter_disambiguated(&self, pos: usize) -> BTreeSet<char> {
-    self
-      // Get possible states if non-consensus
-      .non_consensus.get(&pos).cloned()
-      // Otherwise read the sequence at that position
-      .unwrap_or_else(|| btreeset!{self.seq[pos]})
-  }
-
-  #[inline]
-  pub const fn is_root(&self) -> bool {
-    matches!(self.node_type, NodeType::Root(_))
-  }
-
-  #[inline]
-  pub const fn is_internal(&self) -> bool {
-    matches!(self.node_type, NodeType::Internal(_))
-  }
-
-  #[inline]
-  pub const fn is_leaf(&self) -> bool {
-    matches!(self.node_type, NodeType::Leaf(_))
-  }
-}
-
-impl GraphNode for Node {
-  fn root(name: &str) -> Self {
-    Self::new(name, NodeType::Root(name.to_owned()))
-  }
-
-  fn internal(name: &str) -> Self {
-    Self::new(name, NodeType::Internal(name.to_owned()))
-  }
-
-  fn leaf(name: &str) -> Self {
-    Self::new(name, NodeType::Leaf(name.to_owned()))
-  }
-
-  fn set_node_type(&mut self, node_type: NodeType) {
-    self.node_type = node_type;
-  }
-}
-
-impl WithNwkComments for Node {}
-
-impl Named for Node {
-  fn name(&self) -> &str {
-    &self.name
-  }
-
-  fn set_name(&mut self, name: &str) {
-    self.name = name.to_owned();
-  }
-}
-
-impl Display for Node {
-  fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-    match &self.node_type {
-      NodeType::Root(weight) => write!(f, "{weight:1.4}"),
-      NodeType::Internal(weight) => write!(f, "{weight:1.4}"),
-      NodeType::Leaf(name) => write!(f, "{name}"),
-    }
-  }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct Edge {
-  pub weight: f64,
-}
-
-impl GraphEdge for Edge {
-  fn new(weight: f64) -> Self {
-    Self { weight }
-  }
-}
-
-impl Weighted for Edge {
-  fn weight(&self) -> f64 {
-    self.weight
-  }
-}
-
-impl Display for Edge {
-  fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-    write!(f, "{:1.4}", &self.weight)
-  }
-}
 
 pub fn get_common_length<K: AsRef<str>, V: AsRef<str>>(seqs: impl Iterator<Item = (K, V)>) -> Result<usize, Report> {
   let lengths = seqs
@@ -364,6 +240,10 @@ fn gather_mutations_inplace(graph: &Graph<Node, Edge>, rng: &mut (impl Rng + Sen
         *child.nuc_composition.entry(parent_state).or_insert(0) -= 1;
         *child.nuc_composition.entry(child_state).or_insert(0) += 1;
       });
+
+      node.mutations.iter().for_each(|(&pos, &state)| {
+        child.mutations.entry(pos).or_insert(state);
+      });
     });
 
     if !node.is_root() {
@@ -382,41 +262,47 @@ pub fn reconstruct_leaf_sequences(graph: &Graph<Node, Edge>) -> Result<BTreeMap<
   graph
     .get_leaves()
     .into_iter()
-    .map(|leaf| {
-      let leaf = leaf.read_arc();
-      let name = leaf.payload().read_arc().name().to_owned();
-      let seq = decompress_leaf_sequence(graph, leaf.key(), &root_seq)?;
-      Ok((name, seq))
+    .map(|node| {
+      let node = node.read_arc().payload().read_arc();
+      let mut seq = root_seq.clone();
+      apply_changes_inplace(&node, &mut seq);
+      Ok((node.name.clone(), vec_to_string(seq)))
     })
     .collect()
 }
 
-pub fn decompress_leaf_sequence(
+/// Reconstruct ancestral sequences.
+///
+/// Calls visitor function for every ancestral node, providing the node itself and its reconstructed sequence.
+/// Optionally reconstructs leaf sequences.
+pub fn reconstruct_ancestral_sequences(
   graph: &Graph<Node, Edge>,
-  node_key: GraphNodeKey,
-  root_seq: &[char],
-) -> Result<String, Report> {
-  let mut seq = root_seq.to_vec();
-  let path = graph
-    .path_from_leaf_to_root(node_key)?
-    .ok_or_else(|| make_internal_report!("No path from root to node '{node_key}'"))?;
+  include_leaves: bool,
+  mut visitor: impl FnMut(&Node, Vec<char>),
+) -> Result<(), Report> {
+  let root_seq = {
+    let root = graph.get_exactly_one_root()?.read_arc().payload().read_arc();
+    root.seq.clone()
+  };
 
-  for anc in path {
-    let anc = anc.read_arc().payload().read_arc();
-    // Apply mutations
-    for (&pos, &(_, qry_seq)) in &anc.mutations {
-      seq[pos] = qry_seq;
+  graph.iter_depth_first_preorder_forward_2(|node| {
+    let node = node.read_arc();
+    if !include_leaves && node.is_leaf() {
+      return;
     }
+    let node = node.payload().read_arc();
+    let mut seq = root_seq.clone();
+    apply_changes_inplace(&node, &mut seq);
+    visitor(&node, seq);
+  });
+
+  Ok(())
+}
+
+fn apply_changes_inplace(node: &Node, seq: &mut [char]) {
+  for (&pos, &(_, der)) in &node.mutations {
+    seq[pos] = der;
   }
-
-  let node = graph
-    .get_node(node_key)
-    .ok_or_else(|| make_internal_report!("No path from root to node '{node_key}'"))?
-    .read_arc()
-    .payload()
-    .read_arc();
-
-  // introduce N, gaps, and mixed sites
   for &(from, to) in &node.ambiguous {
     seq[from..to].iter_mut().for_each(|x| *x = 'N');
   }
@@ -426,14 +312,13 @@ pub fn decompress_leaf_sequence(
   for &MixedSite { pos, nuc } in &node.mixed {
     seq[pos] = nuc;
   }
-
-  Ok(vec_to_string(seq))
 }
 
 #[cfg(test)]
 mod tests {
   use super::*;
   use crate::graph::create_graph_from_nwk::create_graph_from_nwk_str;
+  use crate::graph::node::NodeType;
   use crate::io::json::{json_stringify, JsonPretty};
   use crate::o;
   use crate::utils::random::get_random_number_generator;
@@ -650,7 +535,7 @@ mod tests {
   }
 
   #[rstest]
-  fn test_seq_reconstruction() -> Result<(), Report> {
+  fn test_seq_leaf_reconstruction() -> Result<(), Report> {
     rayon::ThreadPoolBuilder::new().num_threads(1).build_global()?;
 
     let mut rng = get_random_number_generator(Some(42));
@@ -670,6 +555,84 @@ mod tests {
 
     assert_eq!(
       json_stringify(&inputs, JsonPretty(false))?,
+      json_stringify(&actual, JsonPretty(false))?
+    );
+
+    Ok(())
+  }
+
+  #[rstest]
+  fn test_seq_ancestral_reconstruction() -> Result<(), Report> {
+    rayon::ThreadPoolBuilder::new().num_threads(1).build_global()?;
+
+    let mut rng = get_random_number_generator(Some(42));
+
+    let inputs = BTreeMap::from([
+      (o!("A"), o!("ACATCGCCNNA--G")),
+      (o!("B"), o!("GCATCCCTGTA-NG")),
+      (o!("C"), o!("CCGGCGATGTATTG")),
+      (o!("D"), o!("TCGGCCGTGTRTTG")),
+    ]);
+
+    #[rustfmt::skip]
+    let expected = BTreeMap::from([
+      (o!("AB"),   o!("GCATCGCTGTATTG")),
+      (o!("CD"),   o!("TCGGCGGTGTATTG")),
+      (o!("root"), o!("TCGGCGGTGTATTG")),
+    ]);
+
+    let graph = create_graph_from_nwk_str::<Node, Edge>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+
+    compress_sequences(&inputs, &graph, &mut rng).unwrap();
+
+    let mut actual = BTreeMap::new();
+    reconstruct_ancestral_sequences(&graph, false, |node, seq| {
+      actual.insert(node.name.clone(), vec_to_string(seq));
+    })?;
+
+    assert_eq!(
+      json_stringify(&expected, JsonPretty(false))?,
+      json_stringify(&actual, JsonPretty(false))?
+    );
+
+    Ok(())
+  }
+
+  #[rstest]
+  fn test_seq_ancestral_reconstruction_with_leaves() -> Result<(), Report> {
+    rayon::ThreadPoolBuilder::new().num_threads(1).build_global()?;
+
+    let mut rng = get_random_number_generator(Some(42));
+
+    let inputs = BTreeMap::from([
+      (o!("A"), o!("ACATCGCCNNA--G")),
+      (o!("B"), o!("GCATCCCTGTA-NG")),
+      (o!("C"), o!("CCGGCGATGTATTG")),
+      (o!("D"), o!("TCGGCCGTGTRTTG")),
+    ]);
+
+    #[rustfmt::skip]
+    let expected = BTreeMap::from([
+      (o!("A"),    o!("ACATCGCCNNA--G")),
+      (o!("AB"),   o!("GCATCGCTGTATTG")),
+      (o!("B"),    o!("GCATCCCTGTA-NG")),
+      (o!("C"),    o!("CCGGCGATGTATTG")),
+      (o!("CD"),   o!("TCGGCGGTGTATTG")),
+      (o!("D"),    o!("TCGGCCGTGTRTTG")),
+      (o!("root"), o!("TCGGCGGTGTATTG")),
+    ]);
+
+    let graph = create_graph_from_nwk_str::<Node, Edge>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+
+    compress_sequences(&inputs, &graph, &mut rng).unwrap();
+
+    let mut actual = BTreeMap::new();
+    reconstruct_ancestral_sequences(&graph, true, |node, seq| {
+      actual.insert(node.name.clone(), vec_to_string(seq));
+    })?;
+
+    assert_eq!(
+      json_stringify(&expected, JsonPretty(false))?,
       json_stringify(&actual, JsonPretty(false))?
     );
 

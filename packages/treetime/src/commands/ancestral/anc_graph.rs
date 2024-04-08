@@ -1,93 +1,59 @@
-use crate::alphabet::find_mutations::Mutation;
 use crate::graph::create_graph_from_nwk::create_graph_from_nwk_file;
 use crate::graph::edge::{GraphEdge, Weighted};
 use crate::graph::graph::Graph;
 use crate::graph::node::{GraphNode, Named, NodeType, WithNwkComments};
-use crate::o;
+use crate::seq::find_mixed_sites::MixedSite;
 use eyre::Report;
-use itertools::Itertools;
-use ndarray::{array, Array1, Array2};
-use std::collections::BTreeMap;
+use maplit::btreeset;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::{Display, Formatter};
 use std::path::Path;
 
 pub type AncestralGraph = Graph<Node, Edge>;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Node {
   pub name: String,
   pub node_type: NodeType,
-  pub joint_Lx: Array2<f64>,   // likelihood
-  pub joint_Cx: Array2<usize>, // max likelihood indices
-  pub mask: Option<Array1<i8>>,
-  pub seq: Array1<char>,
-  pub seq_ii: Array1<usize>,
-  pub mutations: Vec<Mutation>,
-}
 
-impl GraphNode for Node {
-  fn root(name: &str) -> Self {
-    Self {
-      name: name.to_owned(),
-      node_type: NodeType::Root(name.to_owned()),
-      joint_Lx: array![[]],
-      joint_Cx: array![[]],
-      mask: None,
-      seq: Array1::<char>::default(0),
-      seq_ii: Array1::<usize>::default(0),
-      mutations: vec![],
-    }
-  }
+  pub mutations: BTreeMap<usize, (char, char)>,
+  pub gaps: Vec<(usize, usize)>,
+  pub ambiguous: Vec<(usize, usize)>,
+  pub undetermined: Vec<(usize, usize)>,
+  pub mixed: Vec<MixedSite>,
+  pub non_consensus: BTreeMap<usize, BTreeSet<char>>,
+  pub nuc_composition: BTreeMap<char, usize>,
 
-  fn internal(name: &str) -> Self {
-    Self {
-      name: name.to_owned(),
-      node_type: NodeType::Internal(name.to_owned()),
-      joint_Lx: array![[]],
-      joint_Cx: array![[]],
-      mask: None,
-      seq: Array1::<char>::default(0),
-      seq_ii: Array1::<usize>::default(0),
-      mutations: vec![],
-    }
-  }
-
-  fn leaf(name: &str) -> Self {
-    Self {
-      name: name.to_owned(),
-      node_type: NodeType::Leaf(name.to_owned()),
-      joint_Lx: Array2::<f64>::default((0, 0)),
-      joint_Cx: Array2::<usize>::default((0, 0)),
-      mask: None,
-      seq: Array1::<char>::default(0),
-      seq_ii: Array1::<usize>::default(0),
-      mutations: vec![],
-    }
-  }
-
-  fn set_node_type(&mut self, node_type: NodeType) {
-    self.node_type = node_type;
-  }
-}
-
-impl WithNwkComments for Node {
-  fn nwk_comments(&self) -> BTreeMap<String, String> {
-    let mutations = self.mutations.iter().map(Mutation::to_string).join(",");
-    BTreeMap::from([(o!("mutations"), mutations)])
-  }
-}
-
-impl Named for Node {
-  fn name(&self) -> &str {
-    &self.name
-  }
-
-  fn set_name(&mut self, name: &str) {
-    self.name = name.to_owned();
-  }
+  pub seq: Vec<char>,
 }
 
 impl Node {
+  pub fn new(name: impl AsRef<str>, node_type: NodeType) -> Self {
+    Self {
+      name: name.as_ref().to_owned(),
+      node_type,
+
+      mutations: BTreeMap::from([]),
+      gaps: vec![],
+      ambiguous: vec![],
+      undetermined: vec![],
+      mixed: vec![],
+      non_consensus: BTreeMap::new(),
+      nuc_composition: BTreeMap::new(),
+
+      seq: vec![],
+    }
+  }
+
+  /// Gather all states at a given position from all child nodes
+  pub fn get_letter_disambiguated(&self, pos: usize) -> BTreeSet<char> {
+    self
+      // Get possible states if non-consensus
+      .non_consensus.get(&pos).cloned()
+      // Otherwise read the sequence at that position
+      .unwrap_or_else(|| btreeset!{self.seq[pos]})
+  }
+
   #[inline]
   pub const fn is_root(&self) -> bool {
     matches!(self.node_type, NodeType::Root(_))
@@ -104,13 +70,39 @@ impl Node {
   }
 }
 
+impl GraphNode for Node {
+  fn root(name: &str) -> Self {
+    Self::new(name, NodeType::Root(name.to_owned()))
+  }
+
+  fn internal(name: &str) -> Self {
+    Self::new(name, NodeType::Internal(name.to_owned()))
+  }
+
+  fn leaf(name: &str) -> Self {
+    Self::new(name, NodeType::Leaf(name.to_owned()))
+  }
+
+  fn set_node_type(&mut self, node_type: NodeType) {
+    self.node_type = node_type;
+  }
+}
+
+impl WithNwkComments for Node {}
+
+impl Named for Node {
+  fn name(&self) -> &str {
+    &self.name
+  }
+
+  fn set_name(&mut self, name: &str) {
+    self.name = name.to_owned();
+  }
+}
+
 impl Display for Node {
   fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-    match &self.node_type {
-      NodeType::Root(weight) => write!(f, "{weight:1.4}"),
-      NodeType::Internal(weight) => write!(f, "{weight:1.4}"),
-      NodeType::Leaf(name) => write!(f, "{name}"),
-    }
+    write!(f, "{}", self.name)
   }
 }
 
