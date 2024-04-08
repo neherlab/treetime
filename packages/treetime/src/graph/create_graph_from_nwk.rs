@@ -4,6 +4,7 @@ use crate::graph::graph::Graph;
 use crate::graph::node::{GraphNode, GraphNodeKey};
 use crate::io::file::open_file_or_stdin;
 use crate::io::nwk::read_nwk;
+use crate::o;
 use eyre::{eyre, Report, WrapErr};
 use indexmap::IndexMap;
 use petgraph::visit::IntoNodeReferences;
@@ -46,10 +47,17 @@ where
     let n_edges_incoming = nwk_tree.g.edges_directed(nwk_idx, Direction::Incoming).count();
     let n_edges_outgoing = nwk_tree.g.edges_directed(nwk_idx, Direction::Outgoing).count();
 
+    // Discard node names which are parseable to a number. These are not names, but weights.
+    // And we don't need them here. Weights are collected onto the edges later.
+    let mut nwk_node: String = nwk_node.to_owned();
+    if nwk_node.parse::<f64>().is_ok() {
+      nwk_node = o!("");
+    };
+
     let inserted_node_idx = match (n_edges_incoming, n_edges_outgoing) {
-      (0, _) => graph.add_node(N::root(nwk_node)),
-      (_, 0) => graph.add_node(N::leaf(nwk_node)),
-      (_, _) => graph.add_node(N::internal(nwk_node)),
+      (0, _) => graph.add_node(N::root(&nwk_node)),
+      (_, 0) => graph.add_node(N::leaf(&nwk_node)),
+      (_, _) => graph.add_node(N::internal(&nwk_node)),
     };
 
     index_map.insert(nwk_idx.index(), inserted_node_idx);
