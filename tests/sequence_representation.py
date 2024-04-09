@@ -424,10 +424,38 @@ def calculate_root_state(tree):
         tree.logLH += inert_nucs[n]*np.log(vec_norm)
 
 
+def outgroup_profiles(tree, node, seq):
+    for c in node.clades:
+        variable_pos = set.union(set(c.subtree_profile_variable.keys()), set(node.profile_variable.keys()))
+        c.outgroup_profile_variable = {}
+        c.profile_variable = {}
+        for pos in variable_pos:
+            nuc = seq[pos]
+            stp = c.subtree_profile_variable.get(pos, c.subtree_profile_fixed[nuc])
+            vec = node.profile_variable[pos]/c.expQt.dot(stp)  # this is numerically tricky, need to guard against division by 0
+            vec_norm = vec.sum()
+            c.outgroup_profile_variable[pos]=vec/vec_norm
+
+            vec = stp*c.expQt.T.dot(c.outgroup_profile_variable[pos])
+            vec_norm =vec.sum()
+            if vec.max()<(1-eps)*vec_norm or nuc!='ACGT'[vec.argmax()]:
+                c.profile_variable[pos] = vec/vec_norm
+
+        c.profile_fixed = {}
+        c.outgroup_profile_fixed = {}
+        for nuc in 'ACGT':
+            vec = node.profile_fixed[nuc]/c.expQt.dot(c.subtree_profile_fixed[nuc])
+            vec_norm = vec.sum()
+            c.outgroup_profile_fixed[nuc] = vec/vec_norm
+            c.profile_fixed[nuc] = c.subtree_profile_fixed[nuc]*c.expQt.T.dot(c.outgroup_profile_fixed[nuc])
+
+
 # run the likelihood calculation
 tree.logLH=0
 post_order(tree, tree.root, tree.root.seq, subtree_profiles)
 calculate_root_state(tree)
+pre_order(tree, tree.root, tree.root.seq, outgroup_profiles)
+
 
 # compare with treetime
 from treetime import TreeAnc
@@ -460,4 +488,12 @@ for pos in range(L):
         print(pos, tree.root.seq[pos], tree.root.profile_fixed[tree.root.seq[pos]], tt.tree.root.marginal_profile[pos])
 
 # compare total likelihood
-print(tree.logLH, tt.sequence_LH(), tree.logLH-tt.sequence_LH(), )
+print(tree.logLH, tt.sequence_LH(), tree.logLH-tt.sequence_LH())
+
+node_name = 'B'
+for tt_node in tt.tree.get_nonterminals():
+    tree_node = tree.find_any(tt_node.name)
+    for pos in tree_node.profile_variable:
+        agree = np.abs(tree_node.profile_variable[pos] - tt_node.marginal_profile[pos]).sum()<eps2
+        if not agree:
+            print(pos, tree_node.profile_variable[pos], tt_node.marginal_profile[pos])
