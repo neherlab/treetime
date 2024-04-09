@@ -340,30 +340,30 @@ def calc_likelihood(tree, node, seq):
 
     # each node will get a vector with the probability distribution of non-variable positions
     # this vector should always be peaked around the focal nucleotide and quantifies the uncertainty around it
-    node.inert_vectors = {}
+    node.subtree_profile_fixed = {}
 
     if node.is_terminal():
         # For terminal nodes, we deem mixed sites and sites that have mutations in the branch to the parent as variable
-        node.variable_states = {}
+        node.subtree_profile_variable = {}
         for pos, state in node.mixed.items():
-            node.variable_states[pos] = prof_nuc[state]
+            node.subtree_profile_variable[pos] = prof_nuc[state]
             inert_nucs[seq[pos]] -= 1
         for pos, (anc, der) in node.muts.items():
-            node.variable_states[pos] = prof_nuc[der]
+            node.subtree_profile_variable[pos] = prof_nuc[der]
             inert_nucs[seq[pos]] -= 1
 
         # this could be done more efficiently. We just need to look-up these positions, no need to save the flat vector.
         for rg in node.undetermined:
             for pos in range(*rg):
-                node.variable_states[pos] = prof_nuc['N']
+                node.subtree_profile_variable[pos] = prof_nuc['N']
                 # inert_nucs[seq[pos]] -= 1
 
-        node.message_to_parent = {pos: expQt.dot(prof) for pos, prof in node.variable_states.items()}
+        node.message_to_parent = {pos: expQt.dot(prof) for pos, prof in node.subtree_profile_variable.items()}
         for ni, n in enumerate('ACGT'):
-            node.inert_vectors[n] = expQt[ni, :]
+            node.subtree_profile_fixed[n] = expQt[ni, :]
     else:
         # For internal nodes, we consider all positions that are variable in any of the children
-        node.variable_states = {}
+        node.subtree_profile_variable = {}
         variable_pos = set.union(*[set(c.message_to_parent.keys()) for c in node.clades])
         for pos in variable_pos:
             nuc = seq[pos]
@@ -373,25 +373,26 @@ def calc_likelihood(tree, node, seq):
                 if pos in c.message_to_parent:
                     tmp_msg.append(c.message_to_parent[pos])
                 elif not ranges_contain(c.undetermined, pos):
-                    tmp_msg.append(c.inert_vectors[nuc])
+                    tmp_msg.append(c.subtree_profile_fixed[nuc])
 
+            # could do selection here right away, keep only variable ones
             vec = np.prod(tmp_msg, axis=0)
             vec_norm = vec.sum()
             tree.logLH += np.log(vec_norm)
-            node.variable_states[pos] = vec/vec_norm
+            node.subtree_profile_variable[pos] = vec/vec_norm
             if nuc and nuc in 'ACGT': # this condition is not necessary if nuc is `N` or `-` since these are in nuc-composition
                 inert_nucs[nuc] -= 1
 
         # collect contribution from the inert sites
         for n in 'ACGT':
-            vec = np.prod([c.inert_vectors[n] for c in node], axis=0)
+            vec = np.prod([c.subtree_profile_fixed[n] for c in node], axis=0)
             vec_norm = vec.sum()
             tree.logLH += inert_nucs[n]*np.log(vec_norm)
-            node.inert_vectors[n] = expQt.dot(vec/vec_norm)
+            node.subtree_profile_fixed[n] = expQt.dot(vec/vec_norm)
 
         # prune positions that are no longer variable.
         node.message_to_parent = {}
-        for pos, vec in node.variable_states.items():
+        for pos, vec in node.subtree_profile_variable.items():
             if vec.max()<1-eps or seq[pos] != 'ACGT'[vec.argmax()]:
                 node.message_to_parent[pos] = expQt.dot(vec)
 
@@ -399,7 +400,7 @@ def calc_likelihood(tree, node, seq):
         for pos, (anc, der) in node.muts.items():
             if pos in node.message_to_parent: 
                 continue
-            node.message_to_parent[pos] = node.inert_vectors[der]
+            node.message_to_parent[pos] = node.subtree_profile_fixed[der]
 
 
 # run the likelihood calculation
@@ -407,24 +408,24 @@ tree.logLH=0
 post_order(tree, tree.root, tree.root.seq, calc_likelihood)
 
 # multiply the `message_to_parent`` at the root with the equilibrium probabilties
-tree.root.profile = {}
+tree.root.profile_variable = {}
 inert_nucs = {k:v for k,v in tree.root.nuc_composition.items()}
 # variable positions
 for pos, vec in tree.root.message_to_parent.items():
-    tree.root.profile[pos] = vec*myGTR.Pi
-    vec_norm = np.sum(tree.root.profile[pos])
-    tree.root.profile[pos]/=vec_norm
+    tree.root.profile_variable[pos] = vec*myGTR.Pi
+    vec_norm = np.sum(tree.root.profile_variable[pos])
+    tree.root.profile_variable[pos]/=vec_norm
     tree.logLH += np.log(vec_norm)
     nuc = tree.root.seq[pos]
     if nuc and nuc in 'ACGT':
         inert_nucs[nuc] -= 1
 
 # inert positions
-tree.root.inert_profile = {}
+tree.root.profile_fixed = {}
 for n in 'ACGT':
-    tree.root.inert_profile[n] = tree.root.inert_vectors[n]*myGTR.Pi
-    vec_norm = tree.root.inert_profile[n].sum()
-    tree.root.inert_profile[n]/=vec_norm
+    tree.root.profile_fixed[n] = tree.root.subtree_profile_fixed[n]*myGTR.Pi
+    vec_norm = tree.root.profile_fixed[n].sum()
+    tree.root.profile_fixed[n]/=vec_norm
     tree.logLH += inert_nucs[n]*np.log(vec_norm)
 
 
@@ -447,16 +448,16 @@ tt.infer_ancestral_sequences(marginal=True)
 
 # check numerical values of the profiles at the root
 eps2=0.0001
-for pos in tree.root.profile:
-    agree = np.abs(tree.root.profile[pos] - tt.tree.root.marginal_profile[pos]).sum()<eps2
+for pos in tree.root.profile_variable:
+    agree = np.abs(tree.root.profile_variable[pos] - tt.tree.root.marginal_profile[pos]).sum()<eps2
     if not agree:
-        print(pos, tree.root.profile[pos], tt.tree.root.marginal_profile[pos])
+        print(pos, tree.root.profile_variable[pos], tt.tree.root.marginal_profile[pos])
 
 for pos in range(L):
-    if pos in tree.root.profile: continue
-    agree = np.abs(tree.root.inert_profile[tree.root.seq[pos]] - tt.tree.root.marginal_profile[pos]).sum()<eps2
+    if pos in tree.root.profile_variable: continue
+    agree = np.abs(tree.root.profile_fixed[tree.root.seq[pos]] - tt.tree.root.marginal_profile[pos]).sum()<eps2
     if not agree:
-        print(pos, tree.root.seq[pos], tree.root.inert_profile[tree.root.seq[pos]], tt.tree.root.marginal_profile[pos])
+        print(pos, tree.root.seq[pos], tree.root.profile_fixed[tree.root.seq[pos]], tt.tree.root.marginal_profile[pos])
 
 # compare total likelihood
 print(tree.logLH, tt.sequence_LH(), tree.logLH-tt.sequence_LH(), )
