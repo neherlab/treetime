@@ -274,9 +274,7 @@ pub fn decompress_leaf_sequence(
   root_seq: &[char],
 ) -> Result<String, Report> {
   let mut seq = root_seq.to_vec();
-  let path = graph
-    .path_from_leaf_to_root(node_key)?
-    .ok_or_else(|| make_internal_report!("No path from root to node '{node_key}'"))?;
+  let path = graph.path_from_root_to_node(node_key)?;
 
   for anc in path {
     let anc = anc.read_arc().payload().read_arc();

@@ -3,7 +3,7 @@ use crate::graph::breadth_first::{
 };
 use crate::graph::edge::{Edge, GraphEdge, GraphEdgeKey};
 use crate::graph::node::{GraphNode, GraphNodeKey, Node};
-use crate::{make_error, make_internal_error};
+use crate::{make_error, make_internal_error, make_internal_report};
 use eyre::Report;
 use itertools::{iproduct, Itertools};
 use parking_lot::lock_api::{ArcRwLockReadGuard, ArcRwLockWriteGuard};
@@ -11,7 +11,7 @@ use parking_lot::{RawRwLock, RwLock};
 use std::fmt::Debug;
 use std::io::Write;
 use std::sync::Arc;
-use traversal::{Bft, DftLongestPaths, DftPost, DftPre};
+use traversal::{Bft, DftPost, DftPre};
 
 pub type SafeNode<N> = Arc<RwLock<Node<N>>>;
 pub type SafeNodeRef<N> = ArcRwLockReadGuard<RawRwLock, Node<N>>;
@@ -202,15 +202,36 @@ where
   }
 
   pub fn exactly_one_parent_of(&self, node: &Node<N>) -> Result<Arc<RwLock<Node<N>>>, Report> {
-    let roots = self.get_roots();
-    if roots.len() != 1 {
-      make_internal_error!(
-        "Only trees with exactly one root are currently supported, but found '{}'",
-        self.roots.len()
+    self.one_parent_of(node)?.ok_or_else(|| {
+      make_internal_report!(
+        "No parents found for node {} (context: is_root={} is_leaf={})",
+        node.key(),
+        node.is_root(),
+        node.is_leaf()
       )
-    } else {
-      Ok(Arc::clone(&roots[0]))
+    })
+  }
+
+  pub fn one_parent_of(&self, node: &Node<N>) -> Result<Option<Arc<RwLock<Node<N>>>>, Report> {
+    let parents = self
+      .parents_of(node)
+      .into_iter()
+      .map(|(parent, _)| parent)
+      .collect_vec();
+
+    if parents.is_empty() {
+      return Ok(None);
     }
+
+    if parents.len() > 1 {
+      return make_internal_error!(
+        "Only trees with exactly one parent per node are currently supported, but node '{}' has {} parents",
+        node.key(),
+        self.roots.len()
+      );
+    }
+
+    Ok(Some(Arc::clone(&parents[0])))
   }
 
   /// Retrieve child nodes of a given node and the corresponding edges.
@@ -516,18 +537,23 @@ where
   }
 
   /// Find nodes on the path from root to a given node
-  pub fn path_from_leaf_to_root(&self, node_key: GraphNodeKey) -> Result<Option<Vec<SafeNode<N>>>, Report> {
-    let root = self.get_exactly_one_root()?; // Multiple roots are not supported (yet?)
+  pub fn path_from_root_to_node(&self, node_key: GraphNodeKey) -> Result<Vec<SafeNode<N>>, Report> {
+    let mut node = self
+      .get_node(node_key)
+      .ok_or_else(|| make_internal_report!("Node not found on the graph: {node_key}"))?;
 
-    let path = DftLongestPaths::new(&root, |node| self.iter_children_arc(node))
-      .find(move |path| {
-        path
-          .last()
-          .map(|leaf| leaf.read().key() == node_key)
-          .unwrap_or_default()
-      })
-      .map(|path| path.into_iter().cloned().collect_vec());
+    let mut path = vec![Arc::clone(&node)];
+    loop {
+      match self.one_parent_of(&node.read_arc())? {
+        None => break,
+        Some(parent) => {
+          path.push(Arc::clone(&parent));
+          node = parent;
+        }
+      }
+    }
 
+    let path = path.into_iter().rev().collect_vec();
     Ok(path)
   }
 
