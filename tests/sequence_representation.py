@@ -490,7 +490,6 @@ for pos in range(L):
 # compare total likelihood
 print(tree.logLH, tt.sequence_LH(), tree.logLH-tt.sequence_LH())
 
-node_name = 'B'
 for tt_node in tt.tree.get_nonterminals():
     tree_node = tree.find_any(tt_node.name)
     for pos in tree_node.profile_variable:
