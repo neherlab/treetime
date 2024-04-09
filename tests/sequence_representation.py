@@ -508,12 +508,14 @@ for pos in range(L):
 # compare total likelihood
 print(tree.logLH, tt.sequence_LH(), tree.logLH-tt.sequence_LH())
 
+# compare profiles between treetime and here
 for tt_node, tree_node in zip(tt.tree.get_nonterminals(), tree.get_nonterminals()):
     for pos in tree_node.profile_variable:
         agree = np.abs(tree_node.profile_variable[pos] - tt_node.marginal_profile[pos]).sum()<eps2
         if not agree:
             print(pos, tree_node.profile_variable[pos], tt_node.marginal_profile[pos])
 
+# compare reconstructed sequences between treetime and here
 for tt_node, tree_node in zip(tt.tree.find_clades(), tree.find_clades()):
     if not np.all(tt.sequence(tt_node, reconstructed=True, as_string=False)==tree_node.reconstructed_seq):
         print(tt_node.name, "reconstructed_seqs don't agree")
