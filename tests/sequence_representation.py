@@ -171,7 +171,7 @@ for n in tree.find_clades(order='postorder'):
 # def dump_tree(tree):
 #     node_dicts = []
 #     for n in tree.find_clades(order='postorder'):
-#         node_dicts.append({
+#         node_dicts.append({myGTR.expQt
 #             "name": n.name,
 #             "is_terminal": n.is_terminal(),
 #             "mutations": n.__dict__.get("mutations"),
@@ -322,7 +322,8 @@ for n in tree.find_clades():
 
 # with the sequence representation in place, we can now calculate the likelihood. 
 from treetime import GTR
-myGTR = GTR.standard('JC69', alphabet='nuc_nogap')
+#myGTR = GTR.standard('JC69', alphabet='nuc_nogap')
+myGTR = GTR.custom(pi=[0.2, 0.3, 0.15, 0.45], alphabet='nuc_nogap')
 from treetime.seq_utils import profile_maps
 prof_nuc = profile_maps['nuc_nogap']
 
@@ -332,7 +333,7 @@ eps = 1e-6
 # payload function that calculates the likelihood
 def calc_likelihood(tree, node, seq):
     # GTR matrix associated with this branch length. Using 0 length for the root saves an extra calculation below
-    node.expQt = myGTR.expQt(0 if node==tree.root else node.branch_length) # might make sense to save this on the edge
+    node.expQt = myGTR.expQt(0 if node==tree.root else node.branch_length).T # might make sense to save this on the edge
 
     # we have calculated the total nucleotide composition in the sequence representation. 
     # from this, we will subtract positions that are tracked as variable positions -- hence need to copu
@@ -376,9 +377,12 @@ def calc_likelihood(tree, node, seq):
             vec = np.prod(tmp_msg, axis=0)
             vec_norm = vec.sum()
             tree.logLH += np.log(vec_norm)
+
+            # add position to variable states if the subleading states have a probability exceeding eps
             if vec.max()<(1-eps)*vec_norm or nuc != 'ACGT'[vec.argmax()]:
                 node.subtree_profile_variable[pos] = vec/vec_norm
-            # this position is accounted for, hence can subtract it from the count of fixed nucs 
+
+            # this position is accounted for, hence we can subtract it from the count of fixed nucs 
             # unless nuc is `N` or `-` since these are in nuc-composition
             if nuc and nuc in 'ACGT': 
                 fixed_nuc_count[nuc] -= 1
@@ -395,6 +399,7 @@ def calc_likelihood(tree, node, seq):
             if pos in node.subtree_profile_variable: 
                 continue
             node.subtree_profile_variable[pos] = node.subtree_profile_fixed[der]
+    # NOTE: we could save c.expQT.dot(xxx) on the edges. that would save some computation. 
 
 
 # run the likelihood calculation
