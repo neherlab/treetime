@@ -279,7 +279,7 @@ pub fn reconstruct_ancestral_sequences(
   let root = graph.get_exactly_one_root()?;
   let mut seq = { root.read_arc().payload().read_arc().seq.clone() };
 
-  post_order_intrusive(graph, &root, &mut seq, &mut |node: &SafeNode<Node>, seq: &[char]| {
+  pre_order_intrusive(graph, &root, &mut seq, &mut |node: &SafeNode<Node>, seq: &[char]| {
     if !include_leaves && node.read_arc().is_leaf() {
       return;
     }
@@ -299,7 +299,11 @@ where
     seq[*pos] = *der;
   }
 
-  visitor(node_arc, seq);
+  // Apply ambiguous, gaps and mixed only for visiting. This should not propagate further.
+  // TODO: Try to avoid copy
+  let mut seq_copy = seq.to_owned();
+  apply_non_nuc_changes_inplace(&node.payload().read_arc(), &mut seq_copy);
+  visitor(node_arc, &seq_copy);
 
   let children = graph.children_of(&node).into_iter().map(|(child, _)| child);
   children.for_each(|child| pre_order_intrusive(graph, &child, seq, visitor));
@@ -322,7 +326,11 @@ where
   let children = graph.children_of(&node).into_iter().map(|(child, _)| child);
   children.for_each(|child| post_order_intrusive(graph, &child, seq, visitor));
 
-  visitor(node_arc, seq);
+  // Apply ambiguous, gaps and mixed only for visiting. This should not propagate further.
+  // TODO: Try to avoid copy
+  let mut seq_copy = seq.to_owned();
+  apply_non_nuc_changes_inplace(&node.payload().read_arc(), &mut seq_copy);
+  visitor(node_arc, &seq_copy);
 
   for (pos, (anc, _)) in &node.payload().read_arc().mutations {
     seq[*pos] = *anc;
@@ -333,6 +341,10 @@ fn apply_changes_inplace(node: &Node, seq: &mut [char]) {
   for (&pos, &(_, der)) in &node.mutations {
     seq[pos] = der;
   }
+  apply_non_nuc_changes_inplace(node, seq);
+}
+
+fn apply_non_nuc_changes_inplace(node: &Node, seq: &mut [char]) {
   for &(from, to) in &node.ambiguous {
     seq[from..to].iter_mut().for_each(|x| *x = 'N');
   }
