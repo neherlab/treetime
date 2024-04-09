@@ -331,7 +331,7 @@ prof_nuc = profile_maps['nuc_nogap']
 eps = 1e-6
 
 # payload function that calculates the likelihood
-def calc_likelihood(tree, node, seq):
+def subtree_profiles(tree, node, seq):
     # GTR matrix associated with this branch length. Using 0 length for the root saves an extra calculation below
     node.expQt = myGTR.expQt(0 if node==tree.root else node.branch_length).T # might make sense to save this on the edge
 
@@ -401,32 +401,33 @@ def calc_likelihood(tree, node, seq):
             node.subtree_profile_variable[pos] = node.subtree_profile_fixed[der]
     # NOTE: we could save c.expQT.dot(xxx) on the edges. that would save some computation. 
 
+def calculate_root_state(tree):
+    # multiply the `message_to_parent`` at the root with the equilibrium probabilties
+    tree.root.profile_variable = {}
+    inert_nucs = {k:v for k,v in tree.root.nuc_composition.items()}
+    # variable positions
+    for pos, vec in tree.root.subtree_profile_variable.items():
+        tree.root.profile_variable[pos] = vec*myGTR.Pi
+        vec_norm = np.sum(tree.root.profile_variable[pos])
+        tree.root.profile_variable[pos]/=vec_norm
+        tree.logLH += np.log(vec_norm)
+        nuc = tree.root.seq[pos]
+        if nuc and nuc in 'ACGT':
+            inert_nucs[nuc] -= 1
+
+    # inert positions
+    tree.root.profile_fixed = {}
+    for n in 'ACGT':
+        tree.root.profile_fixed[n] = tree.root.subtree_profile_fixed[n]*myGTR.Pi
+        vec_norm = tree.root.profile_fixed[n].sum()
+        tree.root.profile_fixed[n]/=vec_norm
+        tree.logLH += inert_nucs[n]*np.log(vec_norm)
+
 
 # run the likelihood calculation
 tree.logLH=0
-post_order(tree, tree.root, tree.root.seq, calc_likelihood)
-
-# multiply the `message_to_parent`` at the root with the equilibrium probabilties
-tree.root.profile_variable = {}
-inert_nucs = {k:v for k,v in tree.root.nuc_composition.items()}
-# variable positions
-for pos, vec in tree.root.subtree_profile_variable.items():
-    tree.root.profile_variable[pos] = vec*myGTR.Pi
-    vec_norm = np.sum(tree.root.profile_variable[pos])
-    tree.root.profile_variable[pos]/=vec_norm
-    tree.logLH += np.log(vec_norm)
-    nuc = tree.root.seq[pos]
-    if nuc and nuc in 'ACGT':
-        inert_nucs[nuc] -= 1
-
-# inert positions
-tree.root.profile_fixed = {}
-for n in 'ACGT':
-    tree.root.profile_fixed[n] = tree.root.subtree_profile_fixed[n]*myGTR.Pi
-    vec_norm = tree.root.profile_fixed[n].sum()
-    tree.root.profile_fixed[n]/=vec_norm
-    tree.logLH += inert_nucs[n]*np.log(vec_norm)
-
+post_order(tree, tree.root, tree.root.seq, subtree_profiles)
+calculate_root_state(tree)
 
 # compare with treetime
 from treetime import TreeAnc
