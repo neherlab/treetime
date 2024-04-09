@@ -95,7 +95,7 @@ impl WithNwkComments for Node {
     let mutations = self
       .mutations
       .iter()
-      .map(|(pos, (anc, der))| format!("{anc}{pos}{der}"))
+      .map(|(pos, (anc, der))| format!("{anc}{}{der}", pos + 1))
       .join(",");
     BTreeMap::from([(o!("mutations"), mutations)])
   }
