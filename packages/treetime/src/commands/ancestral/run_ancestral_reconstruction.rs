@@ -56,7 +56,7 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
   let mut fasta_writer = FastaWriter::new(fasta_file);
   reconstruct_ancestral_sequences(&graph, *reconstruct_tip_states, |node, seq| {
     // TODO: avoid converting vec to string, write vec chars directly
-    fasta_writer.write(&node.name, &vec_to_string(seq)).unwrap();
+    fasta_writer.write(&node.name, &vec_to_string(seq.to_owned())).unwrap();
   })?;
 
   graph.print_graph(create_file(outdir.join("graph_output.dot"))?)?;

@@ -1,5 +1,5 @@
 use crate::commands::ancestral::anc_graph::{Edge, Node};
-use crate::graph::graph::{Graph, GraphNodeBackward};
+use crate::graph::graph::{Graph, GraphNodeBackward, SafeNode};
 use crate::make_error;
 use crate::seq::find_char_ranges::{find_ambiguous_ranges, find_gap_ranges};
 use crate::seq::find_mixed_sites::{find_mixed_sites, MixedSite};
@@ -240,10 +240,6 @@ fn gather_mutations_inplace(graph: &Graph<Node, Edge>, rng: &mut (impl Rng + Sen
         *child.nuc_composition.entry(parent_state).or_insert(0) -= 1;
         *child.nuc_composition.entry(child_state).or_insert(0) += 1;
       });
-
-      node.mutations.iter().for_each(|(&pos, &state)| {
-        child.mutations.entry(pos).or_insert(state);
-      });
     });
 
     if !node.is_root() {
@@ -278,25 +274,59 @@ pub fn reconstruct_leaf_sequences(graph: &Graph<Node, Edge>) -> Result<BTreeMap<
 pub fn reconstruct_ancestral_sequences(
   graph: &Graph<Node, Edge>,
   include_leaves: bool,
-  mut visitor: impl FnMut(&Node, Vec<char>),
+  mut visitor: impl FnMut(&Node, &[char]),
 ) -> Result<(), Report> {
-  let root_seq = {
-    let root = graph.get_exactly_one_root()?.read_arc().payload().read_arc();
-    root.seq.clone()
-  };
+  let root = graph.get_exactly_one_root()?;
+  let mut seq = { root.read_arc().payload().read_arc().seq.clone() };
 
-  graph.iter_depth_first_preorder_forward_2(|node| {
-    let node = node.read_arc();
-    if !include_leaves && node.is_leaf() {
+  post_order_intrusive(graph, &root, &mut seq, &mut |node: &SafeNode<Node>, seq: &[char]| {
+    if !include_leaves && node.read_arc().is_leaf() {
       return;
     }
-    let node = node.payload().read_arc();
-    let mut seq = root_seq.clone();
-    apply_changes_inplace(&node, &mut seq);
-    visitor(&node, seq);
+    visitor(&node.read_arc().payload().read_arc(), seq);
   });
 
   Ok(())
+}
+
+fn pre_order_intrusive<F>(graph: &Graph<Node, Edge>, node_arc: &SafeNode<Node>, seq: &mut [char], visitor: &mut F)
+where
+  F: FnMut(&SafeNode<Node>, &[char]),
+{
+  let node = node_arc.read_arc();
+
+  for (pos, (_, der)) in &node.payload().read_arc().mutations {
+    seq[*pos] = *der;
+  }
+
+  visitor(node_arc, seq);
+
+  let children = graph.children_of(&node).into_iter().map(|(child, _)| child);
+  children.for_each(|child| pre_order_intrusive(graph, &child, seq, visitor));
+
+  for (pos, (anc, _)) in &node.payload().read_arc().mutations {
+    seq[*pos] = *anc;
+  }
+}
+
+fn post_order_intrusive<F>(graph: &Graph<Node, Edge>, node_arc: &SafeNode<Node>, seq: &mut [char], visitor: &mut F)
+where
+  F: FnMut(&SafeNode<Node>, &[char]),
+{
+  let node = node_arc.read_arc();
+
+  for (pos, (_, der)) in &node.payload().read_arc().mutations {
+    seq[*pos] = *der;
+  }
+
+  let children = graph.children_of(&node).into_iter().map(|(child, _)| child);
+  children.for_each(|child| post_order_intrusive(graph, &child, seq, visitor));
+
+  visitor(node_arc, seq);
+
+  for (pos, (anc, _)) in &node.payload().read_arc().mutations {
+    seq[*pos] = *anc;
+  }
 }
 
 fn apply_changes_inplace(node: &Node, seq: &mut [char]) {
@@ -587,7 +617,7 @@ mod tests {
 
     let mut actual = BTreeMap::new();
     reconstruct_ancestral_sequences(&graph, false, |node, seq| {
-      actual.insert(node.name.clone(), vec_to_string(seq));
+      actual.insert(node.name.clone(), vec_to_string(seq.to_owned()));
     })?;
 
     assert_eq!(
@@ -628,7 +658,7 @@ mod tests {
 
     let mut actual = BTreeMap::new();
     reconstruct_ancestral_sequences(&graph, true, |node, seq| {
-      actual.insert(node.name.clone(), vec_to_string(seq));
+      actual.insert(node.name.clone(), vec_to_string(seq.to_owned()));
     })?;
 
     assert_eq!(
