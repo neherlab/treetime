@@ -406,7 +406,7 @@ def subtree_profiles(tree, node, seq):
     # NOTE: we could save c.expQT.dot(xxx) on the edges. that would save some computation. 
 
 def calculate_root_state(tree):
-    # multiply the `message_to_parent`` at the root with the equilibrium probabilties
+    # multiply the `message_to_parent` at the root with the equilibrium probabilties
     tree.root.profile_variable = {}
     inert_nucs = {k:v for k,v in tree.root.nuc_composition.items()}
     # variable positions
@@ -419,7 +419,7 @@ def calculate_root_state(tree):
         if nuc and nuc in 'ACGT':
             inert_nucs[nuc] -= 1
 
-    # inert positions
+    # fixed positions
     tree.root.profile_fixed = {}
     for n in 'ACGT':
         tree.root.profile_fixed[n] = tree.root.subtree_profile_fixed[n]*myGTR.Pi
@@ -429,24 +429,28 @@ def calculate_root_state(tree):
 
 
 def outgroup_profiles(tree, node, seq):
-    if node == tree.root:
+    if node == tree.root: # root state gets different treatment
         calculate_root_state(tree)
-    else:
+    else: # for other nodes, calculate outgroup_profile and profile for non-root nodes
         variable_pos = set.union(set(node.subtree_profile_variable.keys()), set(node.parent.profile_variable.keys()))
         node.outgroup_profile_variable = {}
         node.profile_variable = {}
         for pos in variable_pos:
             nuc = seq[pos]
+            # divide the parent profile by the contribution coming in from this node 
+            # (one could also multiply the remaining contributions, but dividing is more efficient in polytomies)
             stp = node.subtree_profile_variable.get(pos, node.subtree_profile_fixed[nuc])
             vec = node.parent.profile_variable[pos]/node.expQt.dot(stp)  # this is numerically tricky, need to guard against division by 0
             vec_norm = vec.sum()
             node.outgroup_profile_variable[pos]=vec/vec_norm
 
+            # if uncertaintly is high, keep this position
             vec = stp*node.expQt.T.dot(node.outgroup_profile_variable[pos])
             vec_norm =vec.sum()
             if vec.max()<(1-eps)*vec_norm or nuc!='ACGT'[vec.argmax()]:
                 node.profile_variable[pos] = vec/vec_norm
 
+        # report for fixed positions for each nucleotide
         node.profile_fixed = {}
         node.outgroup_profile_fixed = {}
         for nuc in 'ACGT':
@@ -456,11 +460,20 @@ def outgroup_profiles(tree, node, seq):
             node.profile_fixed[nuc] = node.subtree_profile_fixed[nuc]*node.expQt.T.dot(node.outgroup_profile_fixed[nuc])
 
 
+def marginal_ancestral_sequences(tree, node, seq):
+    tmp_seq = np.copy(seq)
+    for pos, vec in node.profile_variable.items():
+        tmp_seq[pos] = 'ACGT'[vec.argmax()]
+    # just for demonstration, save to the node (could be streamed out, etc)
+    node.reconstructed_seq = tmp_seq
+
+
 # run the likelihood calculation
 tree.logLH=0
 post_order(tree, tree.root, tree.root.seq, subtree_profiles)
 pre_order(tree, tree.root, tree.root.seq, outgroup_profiles)
 
+pre_order(tree, tree.root, tree.root.seq, marginal_ancestral_sequences)
 
 # compare with treetime
 from treetime import TreeAnc
@@ -477,7 +490,7 @@ else:
 
 tt = TreeAnc(tree=new_tree, aln=aln, gtr=myGTR, compress=False)
 
-tt.infer_ancestral_sequences(marginal=True)
+tt.infer_ancestral_sequences(marginal=True, reconstruct_tip_states=True)
 
 # check numerical values of the profiles at the root
 eps2=0.000001
@@ -500,3 +513,8 @@ for tt_node, tree_node in zip(tt.tree.get_nonterminals(), tree.get_nonterminals(
         agree = np.abs(tree_node.profile_variable[pos] - tt_node.marginal_profile[pos]).sum()<eps2
         if not agree:
             print(pos, tree_node.profile_variable[pos], tt_node.marginal_profile[pos])
+
+for tt_node, tree_node in zip(tt.tree.find_clades(), tree.find_clades()):
+    if not np.all(tt.sequence(tt_node, reconstructed=True, as_string=False)==tree_node.reconstructed_seq):
+        print(tt_node.name, "reconstructed_seqs don't agree")
+
