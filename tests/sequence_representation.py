@@ -336,7 +336,7 @@ def calc_likelihood(tree, node, seq):
 
     # we have calculated the total nucleotide composition in the sequence representation. 
     # from this, we will subtract positions that are tracked as variable positions -- hence need to copu
-    inert_nucs = {k:v for k,v in node.nuc_composition.items()}
+    fixed_nuc_count = {k:v for k,v in node.nuc_composition.items()}
 
     # each node will get a vector with the probability distribution of non-variable positions
     # this vector should always be peaked around the focal nucleotide and quantifies the uncertainty around it
@@ -347,16 +347,16 @@ def calc_likelihood(tree, node, seq):
         node.subtree_profile_variable = {}
         for pos, state in node.mixed.items():
             node.subtree_profile_variable[pos] = prof_nuc[state]
-            inert_nucs[seq[pos]] -= 1
+            fixed_nuc_count[seq[pos]] -= 1
         for pos, (anc, der) in node.muts.items():
             node.subtree_profile_variable[pos] = prof_nuc[der]
-            inert_nucs[seq[pos]] -= 1
+            fixed_nuc_count[seq[pos]] -= 1
 
         # this could be done more efficiently. We just need to look-up these positions, no need to save the flat vector.
         for rg in node.undetermined:
             for pos in range(*rg):
                 node.subtree_profile_variable[pos] = prof_nuc['N']
-                # inert_nucs[seq[pos]] -= 1
+                # fixed_nuc_count[seq[pos]] -= 1
 
         node.message_to_parent = {pos: expQt.dot(prof) for pos, prof in node.subtree_profile_variable.items()}
         for ni, n in enumerate('ACGT'):
@@ -381,13 +381,13 @@ def calc_likelihood(tree, node, seq):
             tree.logLH += np.log(vec_norm)
             node.subtree_profile_variable[pos] = vec/vec_norm
             if nuc and nuc in 'ACGT': # this condition is not necessary if nuc is `N` or `-` since these are in nuc-composition
-                inert_nucs[nuc] -= 1
+                fixed_nuc_count[nuc] -= 1
 
         # collect contribution from the inert sites
         for n in 'ACGT':
             vec = np.prod([c.subtree_profile_fixed[n] for c in node], axis=0)
             vec_norm = vec.sum()
-            tree.logLH += inert_nucs[n]*np.log(vec_norm)
+            tree.logLH += fixed_nuc_count[n]*np.log(vec_norm)
             node.subtree_profile_fixed[n] = expQt.dot(vec/vec_norm)
 
         # prune positions that are no longer variable.
