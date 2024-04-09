@@ -42,6 +42,10 @@ else:
 
 # pull out the sequence length for convenience
 L = len(seqs[tree.get_terminals()[0].name])
+for n in tree.get_nonterminals():
+    for c in n:
+        c.parent = n
+tree.root.parent=None
 
 # utility functions to determine the ranges of missing information and gaps
 def find_ambiguous_ranges(seq):
@@ -425,35 +429,36 @@ def calculate_root_state(tree):
 
 
 def outgroup_profiles(tree, node, seq):
-    for c in node.clades:
-        variable_pos = set.union(set(c.subtree_profile_variable.keys()), set(node.profile_variable.keys()))
-        c.outgroup_profile_variable = {}
-        c.profile_variable = {}
+    if node == tree.root:
+        calculate_root_state(tree)
+    else:
+        variable_pos = set.union(set(node.subtree_profile_variable.keys()), set(node.parent.profile_variable.keys()))
+        node.outgroup_profile_variable = {}
+        node.profile_variable = {}
         for pos in variable_pos:
             nuc = seq[pos]
-            stp = c.subtree_profile_variable.get(pos, c.subtree_profile_fixed[nuc])
-            vec = node.profile_variable[pos]/c.expQt.dot(stp)  # this is numerically tricky, need to guard against division by 0
+            stp = node.subtree_profile_variable.get(pos, node.subtree_profile_fixed[nuc])
+            vec = node.parent.profile_variable[pos]/node.expQt.dot(stp)  # this is numerically tricky, need to guard against division by 0
             vec_norm = vec.sum()
-            c.outgroup_profile_variable[pos]=vec/vec_norm
+            node.outgroup_profile_variable[pos]=vec/vec_norm
 
-            vec = stp*c.expQt.T.dot(c.outgroup_profile_variable[pos])
+            vec = stp*node.expQt.T.dot(node.outgroup_profile_variable[pos])
             vec_norm =vec.sum()
             if vec.max()<(1-eps)*vec_norm or nuc!='ACGT'[vec.argmax()]:
-                c.profile_variable[pos] = vec/vec_norm
+                node.profile_variable[pos] = vec/vec_norm
 
-        c.profile_fixed = {}
-        c.outgroup_profile_fixed = {}
+        node.profile_fixed = {}
+        node.outgroup_profile_fixed = {}
         for nuc in 'ACGT':
-            vec = node.profile_fixed[nuc]/c.expQt.dot(c.subtree_profile_fixed[nuc])
+            vec = node.parent.profile_fixed[nuc]/node.expQt.dot(node.subtree_profile_fixed[nuc])
             vec_norm = vec.sum()
-            c.outgroup_profile_fixed[nuc] = vec/vec_norm
-            c.profile_fixed[nuc] = c.subtree_profile_fixed[nuc]*c.expQt.T.dot(c.outgroup_profile_fixed[nuc])
+            node.outgroup_profile_fixed[nuc] = vec/vec_norm
+            node.profile_fixed[nuc] = node.subtree_profile_fixed[nuc]*node.expQt.T.dot(node.outgroup_profile_fixed[nuc])
 
 
 # run the likelihood calculation
 tree.logLH=0
 post_order(tree, tree.root, tree.root.seq, subtree_profiles)
-calculate_root_state(tree)
 pre_order(tree, tree.root, tree.root.seq, outgroup_profiles)
 
 
@@ -490,8 +495,7 @@ for pos in range(L):
 # compare total likelihood
 print(tree.logLH, tt.sequence_LH(), tree.logLH-tt.sequence_LH())
 
-for tt_node in tt.tree.get_nonterminals():
-    tree_node = tree.find_any(tt_node.name)
+for tt_node, tree_node in zip(tt.tree.get_nonterminals(), tree.get_nonterminals()):
     for pos in tree_node.profile_variable:
         agree = np.abs(tree_node.profile_variable[pos] - tt_node.marginal_profile[pos]).sum()<eps2
         if not agree:
