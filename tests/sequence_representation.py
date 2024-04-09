@@ -332,7 +332,7 @@ eps = 1e-6
 # payload function that calculates the likelihood
 def calc_likelihood(tree, node, seq):
     # GTR matrix associated with this branch length. Using 0 length for the root saves an extra calculation below
-    expQt = myGTR.expQt(0 if node==tree.root else node.branch_length)
+    node.expQt = myGTR.expQt(0 if node==tree.root else node.branch_length) # might make sense to save this on the edge
 
     # we have calculated the total nucleotide composition in the sequence representation. 
     # from this, we will subtract positions that are tracked as variable positions -- hence need to copu
@@ -356,51 +356,45 @@ def calc_likelihood(tree, node, seq):
         for rg in node.undetermined:
             for pos in range(*rg):
                 node.subtree_profile_variable[pos] = prof_nuc['N']
-                # fixed_nuc_count[seq[pos]] -= 1
 
-        node.message_to_parent = {pos: expQt.dot(prof) for pos, prof in node.subtree_profile_variable.items()}
+        # node.message_to_parent = {pos: expQt.dot(prof) for pos, prof in node.subtree_profile_variable.items()}
         for ni, n in enumerate('ACGT'):
-            node.subtree_profile_fixed[n] = expQt[ni, :]
+            node.subtree_profile_fixed[n] = prof_nuc[n]
+            # node.subtree_profile_fixed[n] = expQt[ni, :]
     else:
         # For internal nodes, we consider all positions that are variable in any of the children
         node.subtree_profile_variable = {}
-        variable_pos = set.union(*[set(c.message_to_parent.keys()) for c in node.clades])
+        variable_pos = set.union(*[set(c.subtree_profile_variable.keys()) for c in node.clades])
         for pos in variable_pos:
             nuc = seq[pos]
             # calculate the product of child messages
             tmp_msg = []
             for c in node.clades:
-                if pos in c.message_to_parent:
-                    tmp_msg.append(c.message_to_parent[pos])
-                elif not ranges_contain(c.undetermined, pos):
-                    tmp_msg.append(c.subtree_profile_fixed[nuc])
+                tmp_msg.append(c.expQt.dot(c.subtree_profile_variable.get(pos, c.subtree_profile_fixed[nuc])))
 
             # could do selection here right away, keep only variable ones
             vec = np.prod(tmp_msg, axis=0)
             vec_norm = vec.sum()
             tree.logLH += np.log(vec_norm)
-            node.subtree_profile_variable[pos] = vec/vec_norm
-            if nuc and nuc in 'ACGT': # this condition is not necessary if nuc is `N` or `-` since these are in nuc-composition
+            if vec.max()<(1-eps)*vec_norm or nuc != 'ACGT'[vec.argmax()]:
+                node.subtree_profile_variable[pos] = vec/vec_norm
+            # this position is accounted for, hence can subtract it from the count of fixed nucs 
+            # unless nuc is `N` or `-` since these are in nuc-composition
+            if nuc and nuc in 'ACGT': 
                 fixed_nuc_count[nuc] -= 1
 
         # collect contribution from the inert sites
         for n in 'ACGT':
-            vec = np.prod([c.subtree_profile_fixed[n] for c in node], axis=0)
+            vec = np.prod([c.expQt.dot(c.subtree_profile_fixed[n]) for c in node], axis=0)
             vec_norm = vec.sum()
             tree.logLH += fixed_nuc_count[n]*np.log(vec_norm)
-            node.subtree_profile_fixed[n] = expQt.dot(vec/vec_norm)
-
-        # prune positions that are no longer variable.
-        node.message_to_parent = {}
-        for pos, vec in node.subtree_profile_variable.items():
-            if vec.max()<1-eps or seq[pos] != 'ACGT'[vec.argmax()]:
-                node.message_to_parent[pos] = expQt.dot(vec)
+            node.subtree_profile_fixed[n] = vec/vec_norm
 
         # add position that mutate towards the parent
         for pos, (anc, der) in node.muts.items():
-            if pos in node.message_to_parent: 
+            if pos in node.subtree_profile_variable: 
                 continue
-            node.message_to_parent[pos] = node.subtree_profile_fixed[der]
+            node.subtree_profile_variable[pos] = node.subtree_profile_fixed[der]
 
 
 # run the likelihood calculation
@@ -411,7 +405,7 @@ post_order(tree, tree.root, tree.root.seq, calc_likelihood)
 tree.root.profile_variable = {}
 inert_nucs = {k:v for k,v in tree.root.nuc_composition.items()}
 # variable positions
-for pos, vec in tree.root.message_to_parent.items():
+for pos, vec in tree.root.subtree_profile_variable.items():
     tree.root.profile_variable[pos] = vec*myGTR.Pi
     vec_norm = np.sum(tree.root.profile_variable[pos])
     tree.root.profile_variable[pos]/=vec_norm
@@ -447,7 +441,7 @@ tt = TreeAnc(tree=new_tree, aln=aln, gtr=myGTR, compress=False)
 tt.infer_ancestral_sequences(marginal=True)
 
 # check numerical values of the profiles at the root
-eps2=0.0001
+eps2=0.000001
 for pos in tree.root.profile_variable:
     agree = np.abs(tree.root.profile_variable[pos] - tt.tree.root.marginal_profile[pos]).sum()<eps2
     if not agree:
