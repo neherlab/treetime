@@ -1,6 +1,6 @@
 use crate::commands::ancestral::anc_graph::{Edge, Node};
 use crate::graph::graph::{Graph, GraphNodeBackward, SafeNode};
-use crate::make_error;
+use crate::graph::node::{GraphNodeKey, Named};
 use crate::seq::find_char_ranges::{find_ambiguous_ranges, find_gap_ranges};
 use crate::seq::find_mixed_sites::{find_mixed_sites, MixedSite};
 use crate::seq::range::range_contains;
@@ -9,6 +9,7 @@ use crate::seq::range_union::range_union;
 use crate::seq::sets::{sets_intersection, sets_union};
 use crate::utils::random::random_pop;
 use crate::utils::string::vec_to_string;
+use crate::{make_error, make_internal_report};
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use maplit::{btreemap, btreeset};
@@ -258,13 +259,52 @@ pub fn reconstruct_leaf_sequences(graph: &Graph<Node, Edge>) -> Result<BTreeMap<
   graph
     .get_leaves()
     .into_iter()
-    .map(|node| {
-      let node = node.read_arc().payload().read_arc();
-      let mut seq = root_seq.clone();
-      apply_changes_inplace(&node, &mut seq);
-      Ok((node.name.clone(), vec_to_string(seq)))
+    .map(|leaf| {
+      let leaf = leaf.read_arc();
+      let name = leaf.payload().read_arc().name().to_owned();
+      let seq = decompress_leaf_sequence(graph, leaf.key(), &root_seq)?;
+      Ok((name, seq))
     })
     .collect()
+}
+
+pub fn decompress_leaf_sequence(
+  graph: &Graph<Node, Edge>,
+  node_key: GraphNodeKey,
+  root_seq: &[char],
+) -> Result<String, Report> {
+  let mut seq = root_seq.to_vec();
+  let path = graph
+    .path_from_leaf_to_root(node_key)?
+    .ok_or_else(|| make_internal_report!("No path from root to node '{node_key}'"))?;
+
+  for anc in path {
+    let anc = anc.read_arc().payload().read_arc();
+    // Apply mutations
+    for (&pos, &(_, qry_seq)) in &anc.mutations {
+      seq[pos] = qry_seq;
+    }
+  }
+
+  let node = graph
+    .get_node(node_key)
+    .ok_or_else(|| make_internal_report!("No path from root to node '{node_key}'"))?
+    .read_arc()
+    .payload()
+    .read_arc();
+
+  // introduce N, gaps, and mixed sites
+  for &(from, to) in &node.ambiguous {
+    seq[from..to].iter_mut().for_each(|x| *x = 'N');
+  }
+  for &(from, to) in &node.gaps {
+    seq[from..to].iter_mut().for_each(|x| *x = '-');
+  }
+  for &MixedSite { pos, nuc } in &node.mixed {
+    seq[pos] = nuc;
+  }
+
+  Ok(vec_to_string(seq))
 }
 
 /// Reconstruct ancestral sequences.
