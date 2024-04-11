@@ -1,3 +1,4 @@
+#![allow(clippy::default_trait_access)]
 use crate::commands::ancestral::anc_graph::{Edge, Node};
 use crate::graph::graph::{Graph, GraphNodeBackward, SafeNode};
 use crate::graph::node::{GraphNodeKey, Named};
@@ -327,7 +328,7 @@ pub fn reconstruct_ancestral_sequences(
   Ok(())
 }
 
-fn pre_order_intrusive<F>(graph: &Graph<Node, Edge>, node_arc: &SafeNode<Node>, seq: &mut [char], visitor: &mut F)
+pub fn pre_order_intrusive<F>(graph: &Graph<Node, Edge>, node_arc: &SafeNode<Node>, seq: &mut [char], visitor: &mut F)
 where
   F: FnMut(&SafeNode<Node>, &[char]),
 {
@@ -351,7 +352,7 @@ where
   }
 }
 
-fn post_order_intrusive<F>(graph: &Graph<Node, Edge>, node_arc: &SafeNode<Node>, seq: &mut [char], visitor: &mut F)
+pub fn post_order_intrusive<F>(graph: &Graph<Node, Edge>, node_arc: &SafeNode<Node>, seq: &mut [char], visitor: &mut F)
 where
   F: FnMut(&SafeNode<Node>, &[char]),
 {
@@ -454,6 +455,13 @@ mod tests {
           'T' => 5,
         },
         seq: vec!['T', 'C', 'G', 'G', 'C', 'G', 'G', 'T', 'G', 'T', 'A', 'T', 'T', 'G'],
+        subtree_profile_variable: Default::default(),
+        subtree_profile_fixed: Default::default(),
+        profile_variable: Default::default(),
+        profile_fixed: Default::default(),
+        outgroup_profile_variable: Default::default(),
+        outgroup_profile_fixed: Default::default(),
+        expQt: Default::default(),
       },
       Node {
         name: o!("AB"),
@@ -476,6 +484,13 @@ mod tests {
           'T' => 5,
         },
         seq: vec![],
+        subtree_profile_variable: Default::default(),
+        subtree_profile_fixed: Default::default(),
+        profile_variable: Default::default(),
+        profile_fixed: Default::default(),
+        outgroup_profile_variable: Default::default(),
+        outgroup_profile_fixed: Default::default(),
+        expQt: Default::default(),
       },
       Node {
         name: o!("A"),
@@ -500,6 +515,13 @@ mod tests {
           'T' => 3,
         },
         seq: vec![],
+        subtree_profile_variable: Default::default(),
+        subtree_profile_fixed: Default::default(),
+        profile_variable: Default::default(),
+        profile_fixed: Default::default(),
+        outgroup_profile_variable: Default::default(),
+        outgroup_profile_fixed: Default::default(),
+        expQt: Default::default(),
       },
       Node {
         name: o!("B"),
@@ -524,6 +546,13 @@ mod tests {
           'T' => 4,
         },
         seq: vec![],
+        subtree_profile_variable: Default::default(),
+        subtree_profile_fixed: Default::default(),
+        profile_variable: Default::default(),
+        profile_fixed: Default::default(),
+        outgroup_profile_variable: Default::default(),
+        outgroup_profile_fixed: Default::default(),
+        expQt: Default::default(),
       },
       Node {
         name: o!("CD"),
@@ -541,6 +570,13 @@ mod tests {
           'T' => 5,
         },
         seq: vec![],
+        subtree_profile_variable: Default::default(),
+        subtree_profile_fixed: Default::default(),
+        profile_variable: Default::default(),
+        profile_fixed: Default::default(),
+        outgroup_profile_variable: Default::default(),
+        outgroup_profile_fixed: Default::default(),
+        expQt: Default::default(),
       },
       Node {
         name: o!("C"),
@@ -565,6 +601,13 @@ mod tests {
           'T' => 4,
         },
         seq: vec![],
+        subtree_profile_variable: Default::default(),
+        subtree_profile_fixed: Default::default(),
+        profile_variable: Default::default(),
+        profile_fixed: Default::default(),
+        outgroup_profile_variable: Default::default(),
+        outgroup_profile_fixed: Default::default(),
+        expQt: Default::default(),
       },
       Node {
         name: o!("D"),
@@ -589,6 +632,13 @@ mod tests {
           'T' => 5,
         },
         seq: vec![],
+        subtree_profile_variable: Default::default(),
+        subtree_profile_fixed: Default::default(),
+        profile_variable: Default::default(),
+        profile_fixed: Default::default(),
+        outgroup_profile_variable: Default::default(),
+        outgroup_profile_fixed: Default::default(),
+        expQt: Default::default(),
       },
     ];
 

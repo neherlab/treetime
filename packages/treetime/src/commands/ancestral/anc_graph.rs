@@ -1,3 +1,4 @@
+#![allow(clippy::default_trait_access)]
 use crate::graph::create_graph_from_nwk::create_graph_from_nwk_file;
 use crate::graph::edge::{GraphEdge, Weighted};
 use crate::graph::graph::Graph;
@@ -6,14 +7,15 @@ use crate::o;
 use crate::seq::find_mixed_sites::MixedSite;
 use eyre::Report;
 use itertools::Itertools;
-use maplit::btreeset;
+use maplit::{btreemap, btreeset};
+use ndarray::{Array1, Array2};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::{Display, Formatter};
 use std::path::Path;
 
 pub type AncestralGraph = Graph<Node, Edge>;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Node {
   pub name: String,
   pub node_type: NodeType,
@@ -27,6 +29,17 @@ pub struct Node {
   pub nuc_composition: BTreeMap<char, usize>,
 
   pub seq: Vec<char>,
+
+  pub subtree_profile_variable: BTreeMap<usize, Array1<f64>>,
+  pub subtree_profile_fixed: BTreeMap<char, Array1<f64>>,
+
+  pub profile_variable: BTreeMap<usize, Array1<f64>>,
+  pub profile_fixed: BTreeMap<char, Array1<f64>>,
+
+  pub outgroup_profile_variable: BTreeMap<usize, Array1<f64>>,
+  pub outgroup_profile_fixed: BTreeMap<char, Array1<f64>>,
+
+  pub expQt: Array2<f64>, // TODO: might be possible to store at the edges. Related to branch length.
 }
 
 impl Node {
@@ -44,6 +57,17 @@ impl Node {
       nuc_composition: BTreeMap::new(),
 
       seq: vec![],
+
+      subtree_profile_variable: btreemap! {},
+      subtree_profile_fixed: btreemap! {},
+
+      profile_variable: btreemap! {},
+      profile_fixed: btreemap! {},
+
+      outgroup_profile_variable: btreemap! {},
+      outgroup_profile_fixed: btreemap! {},
+
+      expQt: Default::default(),
     }
   }
 
