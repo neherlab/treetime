@@ -1,9 +1,13 @@
 use crate::constants::BIG_NUMBER;
 use eyre::Report;
-use ndarray::{Array, Array1, Array2, ArrayBase, Axis, Data, Dimension, Ix1, Ix2, RemoveAxis, ShapeBuilder, Zip};
+use itertools::Itertools;
+use ndarray::{
+  stack, Array, Array1, Array2, ArrayBase, ArrayView, Axis, Data, Dimension, Ix1, Ix2, RemoveAxis, ScalarOperand,
+  ShapeBuilder, ShapeError, Zip,
+};
 use ndarray_rand::RandomExt;
 use num_traits::real::Real;
-use num_traits::{Bounded, Float, NumCast, Zero};
+use num_traits::{Bounded, Float, NumCast, One, Zero};
 use rand::distributions::uniform::SampleUniform;
 use rand::distributions::Uniform;
 use rand::Rng;
@@ -16,6 +20,17 @@ pub fn to_col<T: Real>(a: &Array1<T>) -> Result<Array2<T>, Report> {
 
 pub fn to_row<T: Real>(b: &Array1<T>) -> Result<Array2<T>, Report> {
   Ok(b.to_shape((1, b.len()))?.into_dimensionality::<Ix2>()?.to_owned())
+}
+
+// Stack owned arrays. Similar to ndarray::stack() but accepting owned arrays rather than views.
+pub fn stack_owned<A, D>(axis: Axis, arrays: &[Array<A, D>]) -> Result<Array<A, D::Larger>, ShapeError>
+where
+  A: Clone,
+  D: Dimension,
+  D::Larger: RemoveAxis,
+{
+  let arrays = arrays.iter().map(ArrayView::from).collect_vec();
+  stack(axis, &arrays)
 }
 
 // Calculates outer product of 2 vectors
@@ -155,6 +170,16 @@ pub fn cumsum_axis<T: Copy + AddAssign, D: Dimension>(a: &Array<T, D>, axis: Axi
   let mut result = a.to_owned();
   result.accumulate_axis_inplace(axis, |&prev, curr| *curr += prev);
   result
+}
+
+/// Calculate product over given axis
+#[inline]
+pub fn product_axis<T: Copy + One + ScalarOperand, D: Dimension + RemoveAxis>(
+  a: &Array<T, D>,
+  axis: Axis,
+) -> Array<T, D::Smaller> {
+  let init_value = Array::<T, D::Smaller>::ones(a.raw_dim().remove_axis(axis));
+  a.fold_axis(axis, T::one(), |&acc, &x| acc * x)
 }
 
 pub fn random<T: Copy + SampleUniform + NumCast, D: Dimension, Sh: ShapeBuilder<Dim = D>, R: Rng>(
@@ -395,5 +420,21 @@ mod tests {
         ]
       ]
     );
+  }
+
+  #[test]
+  fn test_product_axis_axis_0() {
+    let input = array![[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]];
+    let expected = array![15.0, 48.0];
+    let result = product_axis(&input, Axis(0));
+    pretty_assert_ulps_eq!(result, expected, epsilon = 1e-8);
+  }
+
+  #[test]
+  fn test_product_axis_axis_1() {
+    let input = array![[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]];
+    let expected = array![2.0, 12.0, 30.0];
+    let result = product_axis(&input, Axis(1));
+    pretty_assert_ulps_eq!(result, expected, epsilon = 1e-8);
   }
 }
