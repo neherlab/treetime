@@ -102,7 +102,8 @@ pub fn subtree_profiles(
       // This position is accounted for, hence we can subtract it from the count of fixed nucs
       // unless nuc is `N` or `-` since these are in nuc-composition
       if nuc != 'N' && nuc != '-' {
-        *fixed_nuc_count.entry(nuc).or_insert(0) -= 1;
+        let count = fixed_nuc_count.entry(nuc).or_insert(0);
+        *count = count.saturating_sub(1);
       }
     }
 
