@@ -54,7 +54,7 @@ fn eig_single_site(W: &Array2<f64>, pi: &Array1<f64>) -> Result<(Array1<f64>, Ar
 pub struct GTRParams {
   pub alphabet: Alphabet,
   pub mu: f64,
-  pub W: Array2<f64>,
+  pub W: Option<Array2<f64>>,
   pub pi: Array1<f64>,
 }
 
@@ -75,17 +75,22 @@ pub struct GTR {
 
 impl GTR {
   pub fn new(GTRParams { alphabet, mu, W, pi }: GTRParams) -> Result<Self, Report> {
+    let n = alphabet.len();
+
     assert!(!alphabet.is_empty(), "Alphabet should not be empty");
     assert_eq!(
       pi.shape().to_vec(),
-      [alphabet.len()],
+      [n],
       "Length of equilibrium frequency vector (`pi`) does not match the alphabet length"
     );
-    assert_eq!(
-      W.shape().to_vec(),
-      [alphabet.len(), alphabet.len()],
-      "Dimensions of substitution matrix (`W`) don't match the alphabet size"
-    );
+
+    if let Some(W) = &W {
+      assert_eq!(
+        W.shape().to_vec(),
+        [n, n],
+        "Dimensions of substitution matrix (`W`) don't match the alphabet size"
+      );
+    }
 
     // self.state_index= {s:si for si,s in enumerate(self.alphabet)}
     // self.state_index.update({s:si for si,s in enumerate(self.alphabet)})
@@ -94,6 +99,13 @@ impl GTR {
     // let gap_index = Self::assign_gap_and_ambiguous(alphabet);
 
     let W = {
+      let W = W.unwrap_or_else(|| {
+        let mut W = Array2::<f64>::ones([n, n]);
+        W.diag_mut().fill(0.0);
+        let s = -W.sum_axis(Axis(0));
+        W.diag_mut().assign(&s);
+        W
+      });
       let mut W = 0.5 * (&W.view() + &W.t());
       W.diag_mut().fill(0.0);
       W
@@ -418,7 +430,7 @@ mod tests {
 
     let gtr = GTR::new(GTRParams {
       alphabet: ALPHABET.clone(),
-      W,
+      W: Some(W),
       pi: pi.clone(),
       mu,
     })
@@ -721,7 +733,7 @@ mod tests {
     let params = GTRParams {
       alphabet: ALPHABET.clone(),
       mu,
-      W,
+      W: Some(W),
       pi: pi.clone(),
     };
 

@@ -99,7 +99,7 @@ pub fn run_mugration(mugration_args: &TreetimeMugrationArgs) -> Result<(), Repor
   let gtr = GTR::new(GTRParams {
     alphabet: Alphabet::with_letters(&alphabet.letters, missing_char)?,
     mu: 1.0,
-    W: Array2::<f64>::ones((num_attrs, num_attrs)),
+    W: Some(Array2::<f64>::ones((num_attrs, num_attrs))),
     pi: weights.unwrap_or_else(|| Array1::<f64>::ones(num_attrs)),
   })?;
 

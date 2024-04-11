@@ -58,7 +58,7 @@ pub struct JC69Params {
 pub fn jc69(JC69Params { mu, alphabet }: JC69Params) -> Result<GTR, Report> {
   let alphabet = Alphabet::new(alphabet)?;
   let num_chars = alphabet.len();
-  let W = Array2::<f64>::ones((num_chars, num_chars));
+  let W = Some(Array2::<f64>::ones((num_chars, num_chars)));
   let pi = Array1::<f64>::ones(num_chars);
   GTR::new(GTRParams { alphabet, mu, W, pi })
 }
@@ -89,7 +89,7 @@ pub struct K80Params {
 pub fn k80(K80Params { mu, kappa, alphabet }: K80Params) -> Result<GTR, Report> {
   let alphabet = Alphabet::new(alphabet)?;
   let num_chars = alphabet.len();
-  let W = create_transversion_transition_W(&alphabet, kappa)?;
+  let W = Some(create_transversion_transition_W(&alphabet, kappa)?);
   let pi = Array1::<f64>::ones(num_chars) / (num_chars as f64);
   GTR::new(GTRParams { alphabet, mu, W, pi })
 }
@@ -113,7 +113,7 @@ pub struct F81Params {
 pub fn f81(F81Params { mu, alphabet }: F81Params) -> Result<GTR, Report> {
   let alphabet = Alphabet::new(alphabet)?;
   let num_chars = alphabet.len();
-  let W = Array2::<f64>::ones((num_chars, num_chars));
+  let W = Some(Array2::<f64>::ones((num_chars, num_chars)));
   let pi: Array1<f64> = {
     let pi = Array1::<f64>::ones(num_chars) / (num_chars as f64);
     let sum = pi.sum();
@@ -147,7 +147,7 @@ pub struct HKY85Params {
 pub fn hky85(HKY85Params { mu, kappa, alphabet }: HKY85Params) -> Result<GTR, Report> {
   let alphabet = Alphabet::new(alphabet)?;
   let num_chars = alphabet.len();
-  let W = create_transversion_transition_W(&alphabet, kappa)?;
+  let W = Some(create_transversion_transition_W(&alphabet, kappa)?);
   let pi: Array1<f64> = {
     let pi = Array1::<f64>::ones(num_chars) / (num_chars as f64);
     let sum = pi.sum();
@@ -195,7 +195,7 @@ pub fn t92(
 
   let alphabet = Alphabet::new(alphabet)?;
   let num_chars = alphabet.len();
-  let W = create_transversion_transition_W(&alphabet, kappa)?;
+  let W = Some(create_transversion_transition_W(&alphabet, kappa)?);
   let pi = array![(1.0 - pi_GC) * 0.5, pi_GC * 0.5, pi_GC * 0.5, (1.0 - pi_GC) * 0.5];
   GTR::new(GTRParams { alphabet, mu, W, pi })
 }
