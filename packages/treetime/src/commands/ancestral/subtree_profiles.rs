@@ -1,4 +1,4 @@
-use crate::commands::ancestral::anc_graph::{AncestralGraph, Node};
+use crate::commands::ancestral::anc_graph::{AncestralGraph, Edge, Node};
 use crate::graph::graph::SafeNode;
 use crate::gtr::gtr::GTR;
 use crate::seq::find_mixed_sites::MixedSite;
@@ -16,6 +16,7 @@ pub const EPS: f64 = 1e-6;
 pub fn subtree_profiles(
   graph: &AncestralGraph,
   node: &mut Node,
+  edge: Option<&Edge>,
   children: &[SafeNode<Node>], // TODO: Should we lock all these child locks in advance?
   seq: &[char],
   gtr: &GTR,
@@ -24,8 +25,7 @@ pub fn subtree_profiles(
   let prof_nuc = &gtr.alphabet.profile_map;
 
   // GTR matrix associated with this branch length. Using 0 length for the root saves an extra calculation below
-  // let t = if node.is_root() { 0.0 } else { node.branch_length };
-  let t = 0.0;
+  let t = edge.map(|edge| edge.weight).unwrap_or_default();
   node.expQt = gtr.expQt(t).t().to_owned(); // TODO: might make sense to save this on the edge
 
   // We have calculated the total nucleotide composition in the sequence representation.
@@ -95,7 +95,6 @@ pub fn subtree_profiles(
 
       // Add position to variable states if the subleading states have a probability exceeding EPS
       if (vec.max().unwrap() < &((1.0 - EPS) * vec_norm)) || (nuc != ['A', 'C', 'G', 'T'][vec.argmax().unwrap()]) {
-        // let vec_div_vec_norm = vec.iter().map(|x| x / vec_norm).collect_vec();
         node.subtree_profile_variable.insert(pos, vec / vec_norm);
       }
 
@@ -184,7 +183,7 @@ mod tests {
 
     let mut logLH = 0.0;
 
-    post_order_intrusive(&graph, &root, &mut root_seq, &mut |node, seq| {
+    post_order_intrusive(&graph, &root, None, &mut root_seq, &mut |node, edge, seq| {
       let node = node.write_arc();
 
       let children: Vec<SafeNode<Node>> = graph
@@ -194,11 +193,11 @@ mod tests {
         .collect_vec();
 
       let mut node = node.payload().write_arc();
-
-      subtree_profiles(&graph, &mut node, &children, seq, &gtr, &mut logLH);
+      let edge = edge.map(|e| e.payload().read_arc());
+      subtree_profiles(&graph, &mut node, edge.as_deref(), &children, seq, &gtr, &mut logLH);
     });
 
-    pretty_assert_ulps_eq!(0.0, logLH, max_ulps = 1);
+    pretty_assert_ulps_eq!(-36.73309018328218, logLH, epsilon = 1e-5);
 
     Ok(())
   }

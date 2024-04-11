@@ -1,6 +1,6 @@
 #![allow(clippy::default_trait_access)]
 use crate::commands::ancestral::anc_graph::{Edge, Node};
-use crate::graph::graph::{Graph, GraphNodeBackward, SafeNode};
+use crate::graph::graph::{Graph, GraphNodeBackward, SafeEdge, SafeEdgeRef, SafeNode};
 use crate::graph::node::{GraphNodeKey, Named};
 use crate::seq::find_char_ranges::{find_ambiguous_ranges, find_gap_ranges};
 use crate::seq::find_mixed_sites::{find_mixed_sites, MixedSite};
@@ -14,6 +14,7 @@ use crate::{make_error, make_internal_report};
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use maplit::{btreemap, btreeset};
+use parking_lot::RwLock;
 use rand::Rng;
 use std::collections::{BTreeMap, BTreeSet};
 use std::ops::DerefMut;
@@ -355,9 +356,14 @@ where
   }
 }
 
-pub fn post_order_intrusive<F>(graph: &Graph<Node, Edge>, node_arc: &SafeNode<Node>, seq: &mut [char], visitor: &mut F)
-where
-  F: FnMut(&SafeNode<Node>, &[char]),
+pub fn post_order_intrusive<F>(
+  graph: &Graph<Node, Edge>,
+  node_arc: &SafeNode<Node>,
+  edge_arc: Option<&SafeEdge<Edge>>,
+  seq: &mut [char],
+  visitor: &mut F,
+) where
+  F: FnMut(&SafeNode<Node>, Option<&SafeEdgeRef<Edge>>, &[char]),
 {
   let node = node_arc.read_arc();
 
@@ -365,8 +371,10 @@ where
     seq[*pos] = *der;
   }
 
-  let children = graph.children_of(&node).into_iter().map(|(child, _)| child);
-  children.for_each(|child| post_order_intrusive(graph, &child, seq, visitor));
+  graph
+    .children_of(&node)
+    .into_iter()
+    .for_each(|(child, edge)| post_order_intrusive(graph, &child, Some(&edge), seq, visitor));
 
   // Apply ambiguous, gaps and mixed only for visiting. This should not propagate further.
   // TODO: Try to avoid copy
@@ -374,7 +382,7 @@ where
   apply_non_nuc_changes_inplace(&node.payload().read_arc(), &mut seq_copy);
 
   drop(node); // Prevents deadlock if visitors lock fof writing (likely)
-  visitor(node_arc, &seq_copy);
+  visitor(node_arc, edge_arc.map(RwLock::read_arc).as_ref(), &seq_copy);
   let node = node_arc.read_arc();
 
   for (pos, (anc, _)) in &node.payload().read_arc().mutations {
@@ -382,6 +390,7 @@ where
   }
 }
 
+#[allow(dead_code)]
 fn apply_changes_inplace(node: &Node, seq: &mut [char]) {
   for (&pos, &(_, der)) in &node.mutations {
     seq[pos] = der;
