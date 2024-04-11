@@ -41,11 +41,13 @@ pub fn subtree_profiles(
     node.subtree_profile_variable = btreemap! {};
     for MixedSite { pos, nuc } in &node.mixed {
       node.subtree_profile_variable.insert(*pos, prof_nuc[nuc].clone());
-      *fixed_nuc_count.entry(seq[*pos]).or_insert(0) -= 1;
+      let count = fixed_nuc_count.entry(seq[*pos]).or_insert(0);
+      *count = count.saturating_sub(1);
     }
     for (pos, (anc, der)) in &node.mutations {
       node.subtree_profile_variable.insert(*pos, prof_nuc[der].clone());
-      *fixed_nuc_count.entry(seq[*pos]).or_insert(0) -= 1;
+      let count = fixed_nuc_count.entry(seq[*pos]).or_insert(0);
+      *count = count.saturating_sub(1);
     }
 
     // This could be done more efficiently. We just need to look-up these positions, no need to save the flat vector.
