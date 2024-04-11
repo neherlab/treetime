@@ -139,9 +139,10 @@ mod tests {
   use super::*;
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::commands::ancestral::anc_graph::{Edge, Node};
+  use crate::commands::ancestral::outgroup_profiles::outgroup_profiles;
   use crate::graph::create_graph_from_nwk::create_graph_from_nwk_str;
   use crate::gtr::gtr::GTRParams;
-  use crate::seq::representation::{compress_sequences, post_order_intrusive};
+  use crate::seq::representation::{compress_sequences, post_order_intrusive, pre_order_intrusive};
   use crate::utils::random::get_random_number_generator;
   use crate::{o, pretty_assert_ulps_eq};
   use eyre::Report;
@@ -198,6 +199,20 @@ mod tests {
     });
 
     pretty_assert_ulps_eq!(-36.73309018328218, logLH, epsilon = 1e-5);
+
+    pre_order_intrusive(&graph, &root, &mut root_seq, &mut |node, seq| {
+      let node = node.write_arc();
+
+      let parent = graph
+        .one_parent_of(&node)
+        .unwrap()
+        .map(|parent| parent.read_arc().payload().read_arc());
+
+      let mut node = node.payload().write_arc();
+      outgroup_profiles(&mut node, parent.as_deref(), seq, &mut logLH, &gtr);
+    });
+
+    pretty_assert_ulps_eq!(-57.189205994979005, logLH, epsilon = 1e-5);
 
     Ok(())
   }
