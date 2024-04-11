@@ -342,7 +342,10 @@ where
   // TODO: Try to avoid copy
   let mut seq_copy = seq.to_owned();
   apply_non_nuc_changes_inplace(&node.payload().read_arc(), &mut seq_copy);
+
+  drop(node); // Prevents deadlock if visitors lock fof writing (likely)
   visitor(node_arc, &seq_copy);
+  let node = node_arc.read_arc();
 
   let children = graph.children_of(&node).into_iter().map(|(child, _)| child);
   children.for_each(|child| pre_order_intrusive(graph, &child, seq, visitor));
@@ -369,7 +372,10 @@ where
   // TODO: Try to avoid copy
   let mut seq_copy = seq.to_owned();
   apply_non_nuc_changes_inplace(&node.payload().read_arc(), &mut seq_copy);
+
+  drop(node); // Prevents deadlock if visitors lock fof writing (likely)
   visitor(node_arc, &seq_copy);
+  let node = node_arc.read_arc();
 
   for (pos, (anc, _)) in &node.payload().read_arc().mutations {
     seq[*pos] = *anc;
