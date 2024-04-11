@@ -307,28 +307,6 @@ pub fn decompress_leaf_sequence(
   Ok(vec_to_string(seq))
 }
 
-/// Reconstruct ancestral sequences.
-///
-/// Calls visitor function for every ancestral node, providing the node itself and its reconstructed sequence.
-/// Optionally reconstructs leaf sequences.
-pub fn reconstruct_ancestral_sequences(
-  graph: &Graph<Node, Edge>,
-  include_leaves: bool,
-  mut visitor: impl FnMut(&Node, &[char]),
-) -> Result<(), Report> {
-  let root = graph.get_exactly_one_root()?;
-  let mut seq = { root.read_arc().payload().read_arc().seq.clone() };
-
-  pre_order_intrusive(graph, &root, &mut seq, &mut |node: &SafeNode<Node>, seq: &[char]| {
-    if !include_leaves && node.read_arc().is_leaf() {
-      return;
-    }
-    visitor(&node.read_arc().payload().read_arc(), seq);
-  });
-
-  Ok(())
-}
-
 pub fn pre_order_intrusive<F>(graph: &Graph<Node, Edge>, node_arc: &SafeNode<Node>, seq: &mut [char], visitor: &mut F)
 where
   F: FnMut(&SafeNode<Node>, &[char]),
@@ -413,6 +391,7 @@ fn apply_non_nuc_changes_inplace(node: &Node, seq: &mut [char]) {
 #[cfg(test)]
 mod tests {
   use super::*;
+  use crate::commands::ancestral::anc_reconstruction_fitch::ancestral_reconstruction_fitch;
   use crate::graph::create_graph_from_nwk::create_graph_from_nwk_str;
   use crate::graph::node::NodeType;
   use crate::io::json::{json_stringify, JsonPretty};
@@ -731,7 +710,7 @@ mod tests {
     compress_sequences(&inputs, &graph, &mut rng).unwrap();
 
     let mut actual = BTreeMap::new();
-    reconstruct_ancestral_sequences(&graph, false, |node, seq| {
+    ancestral_reconstruction_fitch(&graph, false, |node, seq| {
       actual.insert(node.name.clone(), vec_to_string(seq.to_owned()));
     })?;
 
@@ -772,7 +751,7 @@ mod tests {
     compress_sequences(&inputs, &graph, &mut rng).unwrap();
 
     let mut actual = BTreeMap::new();
-    reconstruct_ancestral_sequences(&graph, true, |node, seq| {
+    ancestral_reconstruction_fitch(&graph, true, |node, seq| {
       actual.insert(node.name.clone(), vec_to_string(seq.to_owned()));
     })?;
 

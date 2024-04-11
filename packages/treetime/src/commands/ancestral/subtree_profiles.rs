@@ -142,12 +142,15 @@ mod tests {
   use crate::commands::ancestral::outgroup_profiles::outgroup_profiles;
   use crate::graph::create_graph_from_nwk::create_graph_from_nwk_str;
   use crate::gtr::gtr::GTRParams;
+  use crate::io::json::{json_stringify, JsonPretty};
   use crate::seq::representation::{compress_sequences, post_order_intrusive, pre_order_intrusive};
   use crate::utils::random::get_random_number_generator;
+  use crate::utils::string::vec_to_string;
   use crate::{o, pretty_assert_ulps_eq};
   use eyre::Report;
   use itertools::Itertools;
   use ndarray::array;
+  use pretty_assertions::assert_eq;
   use rstest::rstest;
   use std::collections::BTreeMap;
 
@@ -213,6 +216,32 @@ mod tests {
     });
 
     pretty_assert_ulps_eq!(-57.189205994979005, logLH, epsilon = 1e-5);
+
+    let mut actual = btreemap! {};
+    pre_order_intrusive(&graph, &root, &mut root_seq, &mut |node, seq| {
+      let node = node.write_arc().payload().write_arc();
+      let mut seq = seq.to_owned();
+      for (&pos, vec) in &node.profile_variable {
+        seq[pos] = ['A', 'C', 'G', 'T'][vec.argmax().unwrap()];
+      }
+      actual.insert(node.name.clone(), vec_to_string(seq));
+    });
+
+    #[rustfmt::skip]
+    let expected = BTreeMap::from([
+      (o!("A"),    o!("ACATCGCCGTATTG")),
+      (o!("AB"),   o!("ACATCGCTGTATTG")),
+      (o!("B"),    o!("GCATCCCTGTATTG")),
+      (o!("C"),    o!("CCGGCGATGTATTG")),
+      (o!("CD"),   o!("TCGGCGGTGTATTG")),
+      (o!("D"),    o!("TCGGCCGTGTATTG")),
+      (o!("root"), o!("TCGGCGCTGTATTG")),
+    ]);
+
+    assert_eq!(
+      json_stringify(&expected, JsonPretty(false))?,
+      json_stringify(&actual, JsonPretty(false))?
+    );
 
     Ok(())
   }

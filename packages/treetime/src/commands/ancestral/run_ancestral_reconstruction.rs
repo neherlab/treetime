@@ -1,10 +1,13 @@
-use crate::commands::ancestral::anc_args::TreetimeAncestralArgs;
+use crate::commands::ancestral::anc_args::{MethodAncestral, TreetimeAncestralArgs};
 use crate::commands::ancestral::anc_graph::{create_graph, infer_graph};
+use crate::commands::ancestral::anc_reconstruction_fitch::ancestral_reconstruction_fitch;
+use crate::commands::ancestral::anc_reconstruction_marginal::ancestral_reconstruction_marginal;
+use crate::gtr::get_gtr::get_gtr;
 use crate::io::fasta::{read_many_fasta, FastaRecord, FastaWriter};
 use crate::io::file::create_file;
 use crate::io::nex::{write_nex, WriteNexOptions};
 use crate::io::nwk::{write_nwk_writer, WriteNwkOptions};
-use crate::seq::representation::{compress_sequences, reconstruct_ancestral_sequences};
+use crate::seq::representation::compress_sequences;
 use crate::utils::random::get_random_number_generator;
 use crate::utils::string::vec_to_string;
 use eyre::Report;
@@ -54,10 +57,37 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
 
   let fasta_file = create_file(outdir.join("ancestral_sequences.fasta"))?;
   let mut fasta_writer = FastaWriter::new(fasta_file);
-  reconstruct_ancestral_sequences(&graph, *reconstruct_tip_states, |node, seq| {
-    // TODO: avoid converting vec to string, write vec chars directly
-    fasta_writer.write(&node.name, &vec_to_string(seq.to_owned())).unwrap();
-  })?;
+
+  match method_anc {
+    MethodAncestral::MaximumLikelihoodJoint => {
+      unimplemented!("MethodAncestral::MaximumLikelihoodJoint")
+    }
+    MethodAncestral::MaximumLikelihoodMarginal => {
+      let gtr = get_gtr(gtr, alphabet)?;
+
+      // Uncomment this for custom GTR
+      //
+      // let alphabet = Alphabet::new(AlphabetName::NucNogap)?;
+      //
+      // let gtr = GTR::new(GTRParams {
+      //   alphabet,
+      //   mu: 1.0,
+      //   W: None,
+      //   pi: array![0.2, 0.3, 0.15, 0.45],
+      // })?;
+
+      ancestral_reconstruction_marginal(&graph, &gtr, *reconstruct_tip_states, |node, seq| {
+        // TODO: avoid converting vec to string, write vec chars directly
+        fasta_writer.write(&node.name, &vec_to_string(seq.to_owned())).unwrap();
+      })?;
+    }
+    MethodAncestral::Parsimony => {
+      ancestral_reconstruction_fitch(&graph, *reconstruct_tip_states, |node, seq| {
+        // TODO: avoid converting vec to string, write vec chars directly
+        fasta_writer.write(&node.name, &vec_to_string(seq.to_owned())).unwrap();
+      })?;
+    }
+  }
 
   graph.print_graph(create_file(outdir.join("graph_output.dot"))?)?;
 
