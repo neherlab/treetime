@@ -18,10 +18,12 @@ pub enum AlphabetName {
   AaNogap,
 }
 
+pub type ProfileMap = IndexMap<char, Array1<f64>>;
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Alphabet {
   pub alphabet: Array1<char>,
-  pub profile_map: IndexMap<char, Array1<f64>>,
+  pub profile_map: ProfileMap,
   pub gap_index: Option<usize>,
   pub ambiguous: char,
 }
@@ -66,7 +68,7 @@ impl Alphabet {
   pub fn with_letters(letters: &[char], ambiguous: char) -> Result<Self, Report> {
     let eye = Array2::<f64>::eye(letters.len());
 
-    let mut profile_map: IndexMap<char, Array1<f64>> = letters
+    let mut profile_map: ProfileMap = letters
       .iter()
       .zip(eye.rows())
       .map(|(s, x)| (*s, x.to_owned()))
@@ -161,7 +163,7 @@ mod tests {
 lazy_static! {
   static ref ALPHABET_NUC: Array1<char> = array!['A', 'C', 'G', 'T', '-'];
   static ref LETTER_AMBIGUOUS_NUC: char = 'N';
-  static ref PROFILE_MAP_NUC: IndexMap<char, Array1<f64>> = IndexMap::<char, Array1<f64>>::from([
+  static ref PROFILE_MAP_NUC: ProfileMap = ProfileMap::from([
     ('A', array![1.0, 0.0, 0.0, 0.0, 0.0]),
     ('C', array![0.0, 1.0, 0.0, 0.0, 0.0]),
     ('G', array![0.0, 0.0, 1.0, 0.0, 0.0]),
@@ -184,7 +186,7 @@ lazy_static! {
 
   static ref ALPHABET_NUC_NOGAP: Array1<char> = array!['A', 'C', 'G', 'T'];
   static ref LETTER_AMBIGUOUS_NUC_NOGAP: char = 'N';
-  static ref PROFILE_MAP_NUC_NOGAP: IndexMap<char, Array1<f64>> = IndexMap::<char, Array1<f64>>::from([
+  static ref PROFILE_MAP_NUC_NOGAP: ProfileMap = ProfileMap::from([
     ('A', array![1.0, 0.0, 0.0, 0.0]),
     ('C', array![0.0, 1.0, 0.0, 0.0]),
     ('G', array![0.0, 0.0, 1.0, 0.0]),
@@ -209,7 +211,7 @@ lazy_static! {
     'A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y', '*', '-'
   ];
   static ref LETTER_AMBIGUOUS_AA: char = 'X';
-  static ref PROFILE_MAP_AA: IndexMap<char, Array1<f64>> = IndexMap::<char, Array1<f64>>::from([
+  static ref PROFILE_MAP_AA: ProfileMap = ProfileMap::from([
     ('A', array![1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Alanine         Ala
     ('C', array![0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Cysteine        Cys
     ('D', array![0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Aspartic AciD   Asp
@@ -241,7 +243,7 @@ lazy_static! {
   static ref ALPHABET_AA_NOGAP: Array1<char> =
     array!['A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y'];
   static ref LETTER_AMBIGUOUS_AA_NOGAP: char = 'X';
-  static ref PROFILE_MAP_AA_NOGAP: IndexMap<char, Array1<f64>> = IndexMap::<char, Array1<f64>>::from([
+  static ref PROFILE_MAP_AA_NOGAP: ProfileMap = ProfileMap::from([
      ('A', array![1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Alanine         Ala
      ('C', array![0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Cysteine        Cys
      ('D', array![0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Aspartic AciD   Asp
