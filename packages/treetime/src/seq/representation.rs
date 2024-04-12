@@ -239,7 +239,9 @@ fn gather_mutations_inplace(graph: &Graph<Node, Edge>, rng: &mut (impl Rng + Sen
         .collect_vec();
 
       child_states.into_iter().for_each(|(pos, parent_state, child_state)| {
-        if !child.is_leaf() {child.seq[pos] = child_state;}
+        if !child.is_leaf() {
+          child.seq[pos] = child_state;
+        }
         child.mutations.insert(pos, (parent_state, child_state));
         *child.nuc_composition.entry(parent_state).or_insert(0) -= 1;
         *child.nuc_composition.entry(child_state).or_insert(0) += 1;
@@ -410,10 +412,6 @@ mod tests {
     let mut rng = get_random_number_generator(Some(42));
 
     let inputs = BTreeMap::from([
-      // (o!("A"), o!("ACATCGCCGTATTG")),
-      // (o!("B"), o!("GCATCCCTGTATTG")),
-      // (o!("C"), o!("CCGGCGATGTATTG")),
-      // (o!("D"), o!("TCGGCCGTGTGTTG")),
       (o!("A"), o!("ACATCGCCNNA--G")),
       (o!("B"), o!("GCATCCCTGTA-NG")),
       (o!("C"), o!("CCGGCGATGTATTG")),
