@@ -239,6 +239,7 @@ fn gather_mutations_inplace(graph: &Graph<Node, Edge>, rng: &mut (impl Rng + Sen
         .collect_vec();
 
       child_states.into_iter().for_each(|(pos, parent_state, child_state)| {
+        if !child.is_leaf() {child.seq[pos] = child_state;}
         child.mutations.insert(pos, (parent_state, child_state));
         *child.nuc_composition.entry(parent_state).or_insert(0) -= 1;
         *child.nuc_composition.entry(child_state).or_insert(0) += 1;
@@ -430,6 +431,10 @@ mod tests {
     let mut rng = get_random_number_generator(Some(42));
 
     let inputs = BTreeMap::from([
+      // (o!("A"), o!("ACATCGCCGTATTG")),
+      // (o!("B"), o!("GCATCCCTGTATTG")),
+      // (o!("C"), o!("CCGGCGATGTATTG")),
+      // (o!("D"), o!("TCGGCCGTGTGTTG")),
       (o!("A"), o!("ACATCGCCNNA--G")),
       (o!("B"), o!("GCATCCCTGTA-NG")),
       (o!("C"), o!("CCGGCGATGTATTG")),
@@ -511,7 +516,7 @@ mod tests {
         name: o!("A"),
         node_type: NodeType::Leaf(o!("A")),
         mutations: BTreeMap::from([
-          (0, ('T', 'A')), //
+          (0, ('G', 'A')), //
           (7, ('T', 'C')), //
         ]),
         gaps: vec![(11, 13)],
@@ -526,8 +531,8 @@ mod tests {
         nuc_composition: btreemap! {
           'A' => 3,
           'C' => 4,
-          'G' => 4,
-          'T' => 3,
+          'G' => 3,
+          'T' => 4,
         },
         seq: vec![],
         subtree_profile_variable: Default::default(),
@@ -542,7 +547,6 @@ mod tests {
         name: o!("B"),
         node_type: NodeType::Leaf(o!("B")),
         mutations: BTreeMap::from([
-          (0, ('T', 'G')), //
           (5, ('G', 'C')), //
         ]),
         gaps: vec![(11, 12)],
@@ -557,8 +561,8 @@ mod tests {
         nuc_composition: btreemap! {
           'A' => 2,
           'C' => 4,
-          'G' => 4,
-          'T' => 4,
+          'G' => 3,
+          'T' => 5,
         },
         seq: vec![],
         subtree_profile_variable: Default::default(),
