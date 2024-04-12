@@ -102,8 +102,19 @@ impl Alphabet {
     indices.map(|&i| self.alphabet[i])
   }
 
-  pub fn characters(&self) -> String {
-    self.alphabet.iter().join("")
+  #[must_use]
+  pub fn char(&self, index: usize) -> char {
+    self.alphabet[index]
+  }
+
+  #[must_use]
+  pub fn chars(&self) -> &Array1<char> {
+    &self.alphabet
+  }
+
+  #[must_use]
+  pub fn contains(&self, letter: char) -> bool {
+    self.chars().iter().contains(&letter)
   }
 
   #[inline]

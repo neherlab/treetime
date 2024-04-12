@@ -57,7 +57,7 @@ pub fn subtree_profiles(
       }
     }
 
-    for n in ['A', 'C', 'G', 'T'] {
+    for &n in gtr.alphabet.chars() {
       node.subtree_profile_fixed.insert(n, prof_nuc[&n].clone());
     }
   } else {
@@ -94,7 +94,7 @@ pub fn subtree_profiles(
       *logLH += vec_norm.ln();
 
       // Add position to variable states if the subleading states have a probability exceeding EPS
-      if (vec.max().unwrap() < &((1.0 - EPS) * vec_norm)) || (nuc != ['A', 'C', 'G', 'T'][vec.argmax().unwrap()]) {
+      if (vec.max().unwrap() < &((1.0 - EPS) * vec_norm)) || (nuc != gtr.alphabet.char(vec.argmax().unwrap())) {
         node.subtree_profile_variable.insert(pos, vec / vec_norm);
       }
 
@@ -107,7 +107,7 @@ pub fn subtree_profiles(
     }
 
     // Collect contribution from the inert sites
-    for nuc in ['A', 'C', 'G', 'T'] {
+    for &nuc in gtr.alphabet.chars() {
       let child_messages = children
         .iter()
         .map(|child| {
@@ -222,7 +222,7 @@ mod tests {
       let node = node.write_arc().payload().write_arc();
       let mut seq = seq.to_owned();
       for (&pos, vec) in &node.profile_variable {
-        seq[pos] = ['A', 'C', 'G', 'T'][vec.argmax().unwrap()];
+        seq[pos] = gtr.alphabet.char(vec.argmax().unwrap());
       }
       actual.insert(node.name.clone(), vec_to_string(seq));
     });

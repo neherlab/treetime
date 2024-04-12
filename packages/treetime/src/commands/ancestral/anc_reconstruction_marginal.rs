@@ -61,7 +61,7 @@ pub fn ancestral_reconstruction_marginal(
       let node = node.write_arc().payload().write_arc();
       let mut seq = seq.to_owned();
       for (&pos, vec) in &node.profile_variable {
-        seq[pos] = ['A', 'C', 'G', 'T'][vec.argmax().unwrap()];
+        seq[pos] = gtr.alphabet.char(vec.argmax().unwrap());
       }
 
       visitor(&node, &seq);

@@ -34,7 +34,7 @@ pub fn outgroup_profiles(node: &mut Node, parent: Option<&Node>, seq: &[char], l
           // If uncertainty is high, keep this position
           let vec = &stp * node.expQt.t().dot(&node.outgroup_profile_variable[&pos]);
           let vec_norm = vec.sum();
-          if (vec.max().unwrap() < &((1.0 - EPS) * vec_norm)) || (*nuc != ['A', 'C', 'G', 'T'][vec.argmax().unwrap()]) {
+          if (vec.max().unwrap() < &((1.0 - EPS) * vec_norm)) || (*nuc != gtr.alphabet.char(vec.argmax().unwrap())) {
             node.profile_variable.insert(pos, vec / vec_norm);
           }
         }
@@ -68,7 +68,7 @@ fn calculate_root_state(root: &mut Node, logLH: &mut f64, gtr: &GTR) {
     *root.profile_variable.entry(pos).or_default() /= vec_norm;
     *logLH += vec_norm.ln();
     if let Some(nuc) = root.seq.get(pos) {
-      if ['A', 'C', 'G', 'T'].contains(nuc) {
+      if gtr.alphabet.contains(*nuc) {
         let count = inert_nucs.entry(*nuc).or_default();
         *count = count.saturating_sub(1);
       }
@@ -77,7 +77,7 @@ fn calculate_root_state(root: &mut Node, logLH: &mut f64, gtr: &GTR) {
 
   // Fixed positions
   root.profile_fixed = btreemap! {};
-  for nuc in ['A', 'C', 'G', 'T'] {
+  for &nuc in gtr.alphabet.chars() {
     if let Some(subtree_profile_fixed) = root.subtree_profile_fixed.get(&nuc) {
       root.profile_fixed.insert(nuc, subtree_profile_fixed * &gtr.pi);
       if let Some(profile_fixed) = root.profile_fixed.get_mut(&nuc) {
