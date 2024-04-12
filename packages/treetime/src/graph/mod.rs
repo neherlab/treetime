@@ -7,5 +7,4 @@ pub mod find_paths;
 pub mod graph;
 pub mod ladderize;
 pub mod node;
-pub mod path;
 pub mod reroot;
