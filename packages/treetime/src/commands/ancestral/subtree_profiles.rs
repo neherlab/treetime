@@ -1,3 +1,4 @@
+use crate::alphabet;
 use crate::commands::ancestral::anc_graph::{AncestralGraph, Edge, Node};
 use crate::graph::graph::SafeNode;
 use crate::gtr::gtr::GTR;
@@ -53,7 +54,7 @@ pub fn subtree_profiles(
     // This could be done more efficiently. We just need to look-up these positions, no need to save the flat vector.
     for rg in &node.undetermined {
       for pos in rg.0..rg.1 {
-        node.subtree_profile_variable.insert(pos, prof_nuc[&'N'].clone());
+        node.subtree_profile_variable.insert(pos, prof_nuc[&gtr.alphabet.ambiguous].clone());
       }
     }
 
@@ -73,6 +74,11 @@ pub fn subtree_profiles(
 
     for pos in variable_positions {
       let nuc = seq[pos];
+      // if the parsimony sequence is ambiguous there is no information anywhere, can skip
+      // TODO: if there is no gap in the alphabet, we can skip as well with gap.
+      if nuc==gtr.alphabet.ambiguous {
+        continue;
+      }
 
       // Calculate the product of child messages
       let child_messages = children
@@ -99,15 +105,15 @@ pub fn subtree_profiles(
       }
 
       // This position is accounted for, hence we can subtract it from the count of fixed nucs
-      // unless nuc is `N` or `-` since these are in nuc-composition
-      if nuc != 'N' && nuc != '-' {
-        let count = fixed_nuc_count.entry(nuc).or_insert(0);
-        *count = count.saturating_sub(1);
-      }
+      let count = fixed_nuc_count.entry(nuc).or_insert(0);
+      *count = count.saturating_sub(1);
     }
 
     // Collect contribution from the inert sites
     for &nuc in gtr.alphabet.chars() {
+      if !fixed_nuc_count.contains_key(&nuc) {
+        continue;
+      }
       let child_messages = children
         .iter()
         .map(|child| {
@@ -161,10 +167,10 @@ mod tests {
     let mut rng = get_random_number_generator(Some(42));
 
     let inputs = BTreeMap::from([
-      (o!("A"), o!("ACATCGCCGTATTG")),
-      (o!("B"), o!("GCATCCCTGTATTG")),
+      (o!("A"), o!("ACATCGCCNNA--G")),
+      (o!("B"), o!("GCATCCCTGTA-NG")),
       (o!("C"), o!("CCGGCGATGTATTG")),
-      (o!("D"), o!("TCGGCCGTGTGTTG")),
+      (o!("D"), o!("TCGGCCGTGTRTTG")),
     ]);
 
     let L = inputs.first_key_value().unwrap().1.len();
@@ -201,7 +207,7 @@ mod tests {
       subtree_profiles(&graph, &mut node, edge.as_deref(), &children, seq, &gtr, &mut logLH);
     });
 
-    pretty_assert_ulps_eq!(-41.5162785132374, logLH, epsilon = 1e-5);
+    pretty_assert_ulps_eq!(-36.73309018328223, logLH, epsilon = 1e-5);
 
     pre_order_intrusive(&graph, &root, &mut root_seq, &mut |node, seq| {
       let node = node.write_arc();
@@ -215,7 +221,7 @@ mod tests {
       outgroup_profiles(&mut node, parent.as_deref(), seq, &mut logLH, &gtr);
     });
 
-    pretty_assert_ulps_eq!(-61.909209687579484, logLH, epsilon = 1e-5);
+    pretty_assert_ulps_eq!(-57.189205994979055, logLH, epsilon = 1e-5);
 
     let mut actual = btreemap! {};
     pre_order_intrusive(&graph, &root, &mut root_seq, &mut |node, seq| {
