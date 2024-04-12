@@ -161,10 +161,10 @@ mod tests {
     let mut rng = get_random_number_generator(Some(42));
 
     let inputs = BTreeMap::from([
-      (o!("A"), o!("ACATCGCCNNA--G")),
-      (o!("B"), o!("GCATCCCTGTA-NG")),
+      (o!("A"), o!("ACATCGCCGTATTG")),
+      (o!("B"), o!("GCATCCCTGTATTG")),
       (o!("C"), o!("CCGGCGATGTATTG")),
-      (o!("D"), o!("TCGGCCGTGTRTTG")),
+      (o!("D"), o!("TCGGCCGTGTGTTG")),
     ]);
 
     let L = inputs.first_key_value().unwrap().1.len();
@@ -201,7 +201,7 @@ mod tests {
       subtree_profiles(&graph, &mut node, edge.as_deref(), &children, seq, &gtr, &mut logLH);
     });
 
-    pretty_assert_ulps_eq!(-36.73309018328218, logLH, epsilon = 1e-5);
+    pretty_assert_ulps_eq!(-41.5162785132374, logLH, epsilon = 1e-5);
 
     pre_order_intrusive(&graph, &root, &mut root_seq, &mut |node, seq| {
       let node = node.write_arc();
@@ -215,7 +215,7 @@ mod tests {
       outgroup_profiles(&mut node, parent.as_deref(), seq, &mut logLH, &gtr);
     });
 
-    pretty_assert_ulps_eq!(-57.189205994979005, logLH, epsilon = 1e-5);
+    pretty_assert_ulps_eq!(-61.909209687579484, logLH, epsilon = 1e-5);
 
     let mut actual = btreemap! {};
     pre_order_intrusive(&graph, &root, &mut root_seq, &mut |node, seq| {
