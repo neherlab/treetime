@@ -1,6 +1,6 @@
 use crate::commands::ancestral::anc_graph::{Edge, Node};
 use crate::graph::graph::{Graph, SafeNode};
-use crate::seq::representation::pre_order_intrusive;
+use crate::seq::representation::{apply_non_nuc_changes_inplace, pre_order_intrusive};
 use eyre::Report;
 
 /// Reconstruct ancestral sequences using Fitch parsimony.
@@ -10,21 +10,27 @@ use eyre::Report;
 pub fn ancestral_reconstruction_fitch(
   graph: &Graph<Node, Edge>,
   include_leaves: bool,
-  mut visitor: impl FnMut(&Node, &[char]),
+  mut visitor: impl FnMut(&Node, Vec<char>),
 ) -> Result<(), Report> {
   let root = graph.get_exactly_one_root()?;
   let mut root_seq = { root.read_arc().payload().read_arc().seq.clone() };
 
-  // TODO: use a Vec<char> instead of &[char] everywhere to avoid extra copying
   pre_order_intrusive(
     graph,
     &root,
     &mut root_seq,
     &mut |node: &SafeNode<Node>, seq: &[char]| {
-      if !include_leaves && node.read_arc().is_leaf() {
+      let node = node.read_arc().payload().read_arc();
+
+      if !include_leaves && node.is_leaf() {
         return;
       }
-      visitor(&node.read_arc().payload().read_arc(), seq);
+
+      // Apply ambiguous, gaps and mixed only for visiting
+      let mut seq = seq.to_owned();
+      apply_non_nuc_changes_inplace(&node, &mut seq);
+
+      visitor(&node, seq);
     },
   );
 

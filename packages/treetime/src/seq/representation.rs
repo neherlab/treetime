@@ -320,13 +320,8 @@ where
     seq[*pos] = *der;
   }
 
-  // Apply ambiguous, gaps and mixed only for visiting. This should not propagate further.
-  // TODO: Try to avoid copy
-  let mut seq_copy = seq.to_owned();
-  apply_non_nuc_changes_inplace(&node.payload().read_arc(), &mut seq_copy);
-
   drop(node); // Prevents deadlock if visitors lock fof writing (likely)
-  visitor(node_arc, &seq_copy);
+  visitor(node_arc, seq);
   let node = node_arc.read_arc();
 
   let children = graph.children_of(&node).into_iter().map(|(child, _)| child);
@@ -357,13 +352,8 @@ pub fn post_order_intrusive<F>(
     .into_iter()
     .for_each(|(child, edge)| post_order_intrusive(graph, &child, Some(&edge), seq, visitor));
 
-  // Apply ambiguous, gaps and mixed only for visiting. This should not propagate further.
-  // TODO: Try to avoid copy
-  let mut seq_copy = seq.to_owned();
-  apply_non_nuc_changes_inplace(&node.payload().read_arc(), &mut seq_copy);
-
   drop(node); // Prevents deadlock if visitors lock fof writing (likely)
-  visitor(node_arc, edge_arc.map(RwLock::read_arc).as_ref(), &seq_copy);
+  visitor(node_arc, edge_arc.map(RwLock::read_arc).as_ref(), seq);
   let node = node_arc.read_arc();
 
   for (pos, (anc, _)) in &node.payload().read_arc().mutations {
@@ -372,14 +362,14 @@ pub fn post_order_intrusive<F>(
 }
 
 #[allow(dead_code)]
-fn apply_changes_inplace(node: &Node, seq: &mut [char]) {
+pub fn apply_changes_inplace(node: &Node, seq: &mut [char]) {
   for (&pos, &(_, der)) in &node.mutations {
     seq[pos] = der;
   }
   apply_non_nuc_changes_inplace(node, seq);
 }
 
-fn apply_non_nuc_changes_inplace(node: &Node, seq: &mut [char]) {
+pub fn apply_non_nuc_changes_inplace(node: &Node, seq: &mut [char]) {
   for &(from, to) in &node.ambiguous {
     seq[from..to].iter_mut().for_each(|x| *x = 'N');
   }
