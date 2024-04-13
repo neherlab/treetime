@@ -133,67 +133,56 @@ for n in tree.find_clades(order='postorder'):
         # all sites that are not N or - but not fixed will need special treatment
         non_consensus_positions = set.union(*[set(c.non_consensus.keys()) for c in n.clades])
         n.non_consensus = {}
-        n.seq = ['']*L # construct sequence of node, will be deleted later again
-        for pos in range(L):
-            # skip ambiguous and gaps
-            if ranges_contain(n.undetermined, pos):
-                continue
-            # deal with positions that are variable in at least one child
-            if pos in non_consensus_positions:
-                # indeterminate in at least one child
-                isect = set.intersection(*[c.non_consensus.get(pos, set({c.seq[pos]})) 
-                                           for c in n.clades if not ranges_contain(c.undetermined, pos)])
-                if '-' in isect:
-                    import ipdb; ipdb.set_trace()
-                if len(isect)==1:
-                    n.seq[pos] = isect.pop()
-                elif len(isect)>1:
+        n.seq = ['?']*L # construct sequence of node, will be deleted later again
+
+        # introduce Ns to mark indeterminate positions
+        for rg in n.undetermined:
+            for pos in range(*rg):
+                n.seq[pos] = 'N'
+
+        # indeterminate in at least one child
+        for pos in non_consensus_positions:
+            child_sets = []
+            for c in n.clades:
+                if pos in c.non_consensus:
+                    child_sets.append(c.non_consensus[pos])
+                elif c.seq[pos] in 'ACGT': # memorize child state to assign mutations
+                    child_sets.append(set({c.seq[pos]}))
+                    c.non_consensus[pos] = set({c.seq[pos]})
+            isect = set.intersection(*child_sets) if child_sets else set()
+
+            if len(isect)==1:
+                n.seq[pos] = isect.pop()
+            else:
+                if len(isect)>1:
                     n.non_consensus[pos] = isect
-                    for c in n.clades:
-                        if pos not in c.non_consensus:
-                            c.non_consensus[pos] = set([c.seq[pos]])
                 else:
                     n.non_consensus[pos] = set.union(*[c.non_consensus.get(pos, set([c.seq[pos]])) 
-                                           for c in n.clades if not ranges_contain(c.undetermined, pos)])
-                    for c in n.clades:
-                        if pos not in c.non_consensus:
-                            c.non_consensus[pos] = set([c.seq[pos]])
-            else: # deal with all other positions. 
-                # this could probably be sped up by explicitly checking whether the states of all children are equal. 
-                states = set([c.seq[pos] for c in n.clades if not ranges_contain(c.undetermined, pos)])
-                if len(states)==1: # if all children are equal
-                    n.seq[pos] = states.pop()
-                else: # if children differ
-                    n.non_consensus[pos] = states
-                    for c in n.clades:
-                        c.non_consensus[pos] = set([c.seq[pos]])
-        print(len(n.non_consensus))
+                                        for c in n.clades if not ranges_contain(c.undetermined, pos)])
+                n.seq[pos] = '~'
+
+        for pos, (nuc, child_states) in enumerate(zip(n.seq, zip(*[c.seq for c in n.clades]))):
+            if nuc!='?': # these positions have been dealt with above
+                continue
+
+            # this could probably be sped up by explicitly checking whether the states of all children are equal. 
+            states = set([x for x in child_states if x in 'ACGT'])
+            if len(states)==1: # if all children are equal
+                n.seq[pos] = states.pop()
+            else: # if children differ
+                n.non_consensus[pos] = states
+                n.seq[pos] = '~'
+                for c in n.clades: # memorize child state to assign mutations
+                    if pos not in c.non_consensus and c.seq[pos] in 'ACGT':
+                        c.non_consensus[pos] = set(c.seq[pos])
+
         # no longer need sequences of children
         for c in n.clades:
             del c.seq
 
-# def dump_tree(tree):
-#     node_dicts = []
-#     for n in tree.find_clades(order='postorder'):
-#         node_dicts.append({myGTR.expQt
-#             "name": n.name,
-#             "is_terminal": n.is_terminal(),
-#             "mutations": n.__dict__.get("mutations"),
-#             "gaps": n.__dict__.get("gaps"),
-#             "ambiguous": n.__dict__.get("ambiguous"),
-#             "mixed": n.__dict__.get("mixed"),
-#             "non_consensus": list(map(lambda x: (x[0], list(x[1])), n.__dict__.get("non_consensus").items())),
-#         })
-#     import json
-#     return json.dumps(node_dicts, indent=2)
-#
-# print(dump_tree(tree))
-
 # determine the sequence at the root
 for pos, states in tree.root.non_consensus.items():
     tree.root.seq[pos] = states.pop()  # should be random choice
-
-
 # we now have a complete sequence at the root and should be able to delete the non_consensus 
 # there might still be ambiguous positions, but that means we have no information anywhere...
 
