@@ -1,4 +1,3 @@
-use crate::alphabet;
 use crate::commands::ancestral::anc_graph::{AncestralGraph, Edge, Node};
 use crate::graph::graph::SafeNode;
 use crate::gtr::gtr::GTR;
@@ -54,7 +53,9 @@ pub fn subtree_profiles(
     // This could be done more efficiently. We just need to look-up these positions, no need to save the flat vector.
     for rg in &node.undetermined {
       for pos in rg.0..rg.1 {
-        node.subtree_profile_variable.insert(pos, prof_nuc[&gtr.alphabet.ambiguous].clone());
+        node
+          .subtree_profile_variable
+          .insert(pos, prof_nuc[&gtr.alphabet.ambiguous].clone());
       }
     }
 
@@ -76,7 +77,7 @@ pub fn subtree_profiles(
       let nuc = seq[pos];
       // if the parsimony sequence is ambiguous there is no information anywhere, can skip
       // TODO: if there is no gap in the alphabet, we can skip as well with gap.
-      if nuc==gtr.alphabet.ambiguous {
+      if nuc == gtr.alphabet.ambiguous {
         continue;
       }
 
