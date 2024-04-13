@@ -21,25 +21,23 @@ pub fn outgroup_profiles(node: &mut Node, parent: Option<&Node>, seq: &[char], l
       for pos in variable_pos {
         if let Some(nuc) = seq.get(pos) {
           // For both the subtree and the parent profile, use the variable profile if available, otherwise use the fixed profile
-          // NOTE: these are not modified. Avoid copy? 
           let stp = node
             .subtree_profile_variable
             .get(&pos)
-            .cloned()
-            .unwrap_or_else(|| node.subtree_profile_fixed[nuc].clone());
+            .unwrap_or_else(|| &node.subtree_profile_fixed[nuc]);
+
           let pp = parent
             .profile_variable
             .get(&pos)
-            .cloned()
-            .unwrap_or_else(|| parent.profile_fixed[nuc].clone());
+            .unwrap_or_else(|| &parent.profile_fixed[nuc]);
 
-          let vec = &pp / node.expQt.dot(&stp); // this is numerically tricky, need to guard against division by 0
+          let vec = pp / node.expQt.dot(stp); // this is numerically tricky, need to guard against division by 0
           let vec_norm = vec.sum();
           let outgroup_profile_variable = vec / vec_norm;
           node.outgroup_profile_variable.insert(pos, outgroup_profile_variable);
 
           // If uncertainty is high, keep this position
-          let vec = &stp * node.expQt.t().dot(&node.outgroup_profile_variable[&pos]);
+          let vec = stp * node.expQt.t().dot(&node.outgroup_profile_variable[&pos]);
           let vec_norm = vec.sum();
           if (vec.max().unwrap() < &((1.0 - EPS) * vec_norm)) || (*nuc != gtr.alphabet.char(vec.argmax().unwrap())) {
             node.profile_variable.insert(pos, vec / vec_norm);
