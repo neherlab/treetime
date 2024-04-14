@@ -316,7 +316,7 @@ for n in tree.find_clades():
 # with the sequence representation in place, we can now calculate the likelihood. 
 from treetime import GTR
 #myGTR = GTR.standard('JC69', alphabet='nuc_nogap')
-myGTR = GTR.custom(pi=[0.2, 0.3, 0.15, 0.45], alphabet='nuc_nogap')
+myGTR = GTR.custom(pi=[0.2, 0.3, 0.15, 0.35], alphabet='nuc_nogap')
 from treetime.seq_utils import profile_maps
 prof_nuc = profile_maps['nuc_nogap']
 
@@ -509,3 +509,60 @@ for tt_node, tree_node in zip(tt.tree.find_clades(), tree.find_clades()):
     if not np.all(tt.sequence(tt_node, reconstructed=True, as_string=False)==tree_node.reconstructed_seq):
         print(tt_node.name, "reconstructed_seqs don't agree")
 
+
+def calculate_optimal_branch_length(tree, node, seq):
+    if node == tree.root:
+        return
+    gtr = tree.gtr
+    variable_pos = set.union(set(node.subtree_profile_variable.keys()), set(node.outgroup_profile_variable.keys()))
+    t0 = node.branch_length
+    t0 = len(node.muts)/len(seq)
+    weights = []
+    counts = []
+    fixed_nuc_count = {k:v for k,v in node.nuc_composition.items()}
+    for pos in variable_pos:
+        nuc = seq[pos]
+        tmp = np.zeros(len(gtr.eigenvals))
+        for i in range(len(gtr.eigenvals)):
+            tmp[i] = node.outgroup_profile_variable.get(pos, node.outgroup_profile_fixed[nuc]).dot(gtr.v_inv[i])*node.subtree_profile_variable.get(pos, node.subtree_profile_fixed[nuc]).dot(gtr.v[:,i])
+        weights.append(tmp)
+        counts.append(1)
+
+        # this position is accounted for, hence we can subtract it from the count of fixed nucs 
+        if nuc and nuc in 'ACGT': 
+            fixed_nuc_count[nuc] -= 1
+    
+    for nuc in 'ACGT':
+        tmp = np.zeros(len(gtr.eigenvals))
+        for i in range(len(gtr.eigenvals)):
+            tmp[i] = node.outgroup_profile_fixed[nuc].dot(gtr.v_inv[i])*node.subtree_profile_fixed[nuc].dot(gtr.v[:,i])
+        weights.append(tmp)
+        counts.append(fixed_nuc_count[nuc])
+
+    max_iter = 10
+    eps=t0*1e-3
+    ii=0
+    while ii<max_iter:
+        coefficients = np.array([np.exp(t0*lam) for lam in gtr.eigenvals])
+        f0=0
+        fp0=0
+        fpp0=0
+        for c, w in zip(counts, weights):
+            d = w.dot(coefficients)
+            d1 = w.dot(gtr.eigenvals*coefficients)
+            d2 = w.dot(gtr.eigenvals**2*coefficients)
+            d3 = w.dot(gtr.eigenvals**3*coefficients)
+            f0 += c*d1/d
+            fp0 += c*(d2-d1**2/d)/d
+            fpp0 += c*((d3-2*d2*d1/d+d1**3/d**2)/d-(d2-d1*d1/d)*d1/d**2)
+
+        t1 = t0 - 2*f0*fp0/(2*fp0**2-f0*fpp0)
+        if np.abs(t1-t0)<eps:
+            break
+        t0 = t1
+        ii += 1
+
+    node.branch_length = t1
+
+tree.gtr = myGTR
+pre_order(tree, tree.root, tree.root.seq, calculate_optimal_branch_length)
