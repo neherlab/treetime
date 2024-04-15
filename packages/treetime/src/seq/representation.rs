@@ -147,6 +147,7 @@ fn calculate_fitch_parsimony_in_place(n: &mut Node, children: &mut [&mut Node], 
     let child_states_good = child_states
       .iter()
       .filter(|x| ['A', 'C', 'G', 'T'].contains(x))
+      .unique()
       .collect_vec();
 
     match child_states_good.into_iter().copied().collect_vec().as_slice() {
