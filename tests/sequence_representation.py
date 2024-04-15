@@ -30,8 +30,8 @@ if dummy:
             'C':'CCGGCGATGTATTG',
             'D':'TCGGCCGTGTRTTG'}
     
-    # seqs = {'A':'ACATCGCCTTATTGAGGT',
-    #         'B':'GCATCCCTGTATTGAGGT',
+    # seqs = {'A':'ACATCGCCTTATAGAGGT',
+    #         'B':'GCATCCCTGTATTGAGAT',
     #         'C':'CCGGCGATGTATTGAGGT',
     #         'D':'TCGGCCGTGTTTTGAGGT'}
 else:
@@ -157,8 +157,7 @@ for n in tree.find_clades(order='postorder'):
                 if len(isect)>1:
                     n.non_consensus[pos] = isect
                 else:
-                    n.non_consensus[pos] = set.union(*[c.non_consensus.get(pos, set([c.seq[pos]])) 
-                                        for c in n.clades if not ranges_contain(c.undetermined, pos)])
+                    n.non_consensus[pos] = set.union(*child_sets)
                 n.seq[pos] = '~'
 
         for pos, (nuc, child_states) in enumerate(zip(n.seq, zip(*[c.seq for c in n.clades]))):
@@ -172,9 +171,9 @@ for n in tree.find_clades(order='postorder'):
             else: # if children differ
                 n.non_consensus[pos] = states
                 n.seq[pos] = '~'
-                for c in n.clades: # memorize child state to assign mutations
-                    if pos not in c.non_consensus and c.seq[pos] in 'ACGT':
-                        c.non_consensus[pos] = set(c.seq[pos])
+                for c, cstate in zip(n.clades, child_states):
+                    if (pos not in c.non_consensus) and cstate in 'ACGT':
+                        c.non_consensus[pos] = set(cstate)
 
         # no longer need sequences of children
         for c in n.clades:
@@ -429,8 +428,10 @@ def outgroup_profiles(tree, node, seq):
             # divide the parent profile by the contribution coming in from this node 
             # (one could also multiply the remaining contributions, but dividing is more efficient in polytomies)
             stp = node.subtree_profile_variable.get(pos, node.subtree_profile_fixed[nuc])
-            vec = node.parent.profile_variable[pos]/node.expQt.dot(stp)  # this is numerically tricky, need to guard against division by 0
+            vec = node.parent.profile_variable.get(pos, node.parent.profile_fixed[nuc])/node.expQt.dot(stp)  # this is numerically tricky, need to guard against division by 0
             vec_norm = vec.sum()
+            if np.isnan(vec_norm):
+                import ipdb; ipdb.set_trace()
             node.outgroup_profile_variable[pos]=vec/vec_norm
 
             # if uncertaintly is high, keep this position
@@ -556,13 +557,25 @@ def calculate_optimal_branch_length(tree, node, seq):
             fp0 += c*(d2-d1**2/d)/d
             fpp0 += c*((d3-2*d2*d1/d+d1**3/d**2)/d-(d2-d1*d1/d)*d1/d**2)
 
-        t1 = t0 - 2*f0*fp0/(2*fp0**2-f0*fpp0)
+        #t1 = t0 - 2*f0*fp0/(2*fp0**2-f0*fpp0)
+        t1 = t0 - f0/fp0
         if np.abs(t1-t0)<eps:
             break
-        t0 = t1
+        t0 = max(0.0, t1)
         ii += 1
 
-    node.branch_length = t1
+    node.branch_length = max(0.0, t1)
+    print(node.name, node.branch_length)
 
 tree.gtr = myGTR
-pre_order(tree, tree.root, tree.root.seq, calculate_optimal_branch_length)
+for i in range(4):
+    tree.logLH=0
+    post_order(tree, tree.root, tree.root.seq, subtree_profiles)
+    print(tree.logLH)
+    pre_order(tree, tree.root, tree.root.seq, outgroup_profiles)
+    pre_order(tree, tree.root, tree.root.seq, calculate_optimal_branch_length)
+
+tree.logLH=0
+post_order(tree, tree.root, tree.root.seq, subtree_profiles)
+print(tree.logLH)
+
