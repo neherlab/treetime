@@ -13,7 +13,7 @@ use crate::utils::random::random_pop;
 use crate::utils::string::vec_to_string;
 use crate::{make_error, make_internal_report};
 use eyre::{Report, WrapErr};
-use itertools::Itertools;
+use itertools::{izip, Itertools};
 use maplit::{btreemap, btreeset};
 use parking_lot::RwLock;
 use rand::Rng;
@@ -119,7 +119,6 @@ fn calculate_fitch_parsimony_in_place(n: &mut Node, children: &mut [&mut Node], 
       }
       [] => {
         // Empty intersection of child states. Propagate union of child states.
-        let child_state_sets = gather_child_state_sets2(children, pos);
         let states = sets_union(child_state_sets.into_iter()).into_iter().collect();
         n.non_consensus.insert(pos, states);
 
@@ -166,9 +165,9 @@ fn calculate_fitch_parsimony_in_place(n: &mut Node, children: &mut [&mut Node], 
         n.non_consensus.insert(pos, states);
         *nuc = '~';
         // memorize child state to assign mutations
-        for c in &mut *children {
-          if !c.non_consensus.contains_key(&pos) && ['A', 'C', 'G', 'T'].contains(&c.seq[pos]) {
-            c.non_consensus.insert(pos, btreeset! {c.seq[pos]});
+        for (c, cstate) in izip!(children.iter_mut(), child_states) {
+          if !c.non_consensus.contains_key(&pos) && ['A', 'C', 'G', 'T'].contains(&cstate) {
+            c.non_consensus.insert(pos, btreeset! {cstate});
           }
         }
       }
@@ -190,15 +189,6 @@ pub fn gather_child_state_sets(children: &mut [&mut Node], pos: usize) -> Vec<BT
     }
   }
   child_state_sets
-}
-
-pub fn gather_child_state_sets2(children: &[&mut Node], pos: usize) -> Vec<BTreeSet<char>> {
-  children
-    .iter()
-    .filter(|c| !range_contains(&c.undetermined, pos))
-    .map(|c| c.get_letter_disambiguated(pos).into_iter().collect::<BTreeSet<_>>())
-    .unique()
-    .collect_vec()
 }
 
 pub fn gather_consensus_child_states(children: &[&mut Node], pos: usize) -> Vec<char> {
