@@ -12,6 +12,7 @@ use std::path::Path;
 #[serde(rename_all = "camelCase")]
 pub struct FastaRecord {
   pub seq_name: String,
+  pub desc: String,
   pub seq: String,
   pub index: usize,
 }
@@ -91,7 +92,12 @@ impl<'a> FastaReader<'a> {
       return make_error!("Expected character '>' at record start.");
     }
 
-    record.seq_name = self.line[1..].trim().to_owned();
+    let (seq_name, desc) = self.line[1..]
+      .split_once(char::is_whitespace)
+      .unwrap_or_else(|| (&self.line[1..], ""));
+
+    record.seq_name = seq_name.trim().to_owned();
+    record.desc = desc.trim().to_owned();
 
     loop {
       self.line.clear();
