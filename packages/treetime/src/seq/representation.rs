@@ -135,9 +135,7 @@ fn calculate_fitch_parsimony_in_place(n: &mut Node, children: &mut [&mut Node], 
   }
 
   // Gather state sets for each position across child sequences
-  let child_state_sets = Manyzip(children.iter().map(|c| c.seq.iter().copied()).collect_vec())
-    .map(BTreeSet::from_iter)
-    .collect_vec();
+  let child_state_sets = Manyzip(children.iter().map(|c| c.seq.iter().copied()).collect_vec()).collect_vec();
 
   // Zip these states with node sequence
   let state_zip = n.seq.iter_mut().zip(child_state_sets);
@@ -145,12 +143,13 @@ fn calculate_fitch_parsimony_in_place(n: &mut Node, children: &mut [&mut Node], 
     if *nuc != '?' {
       continue;
     }
-    let child_states = child_states
-      .into_iter()
+
+    let child_states_good = child_states
+      .iter()
       .filter(|x| ['A', 'C', 'G', 'T'].contains(x))
       .collect_vec();
 
-    match child_states.as_slice() {
+    match child_states_good.into_iter().copied().collect_vec().as_slice() {
       [state] => {
         // All children have the same state
         *nuc = *state;
