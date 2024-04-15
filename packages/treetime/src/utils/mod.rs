@@ -5,6 +5,7 @@ pub mod einsum;
 pub mod error;
 pub mod float_fmt;
 pub mod global_init;
+pub mod manyzip;
 pub mod ndarray;
 pub mod random;
 pub mod string;

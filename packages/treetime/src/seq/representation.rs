@@ -8,6 +8,7 @@ use crate::seq::range::range_contains;
 use crate::seq::range_intersection::range_intersection_iter;
 use crate::seq::range_union::range_union;
 use crate::seq::sets::{sets_intersection, sets_union};
+use crate::utils::manyzip::Manyzip;
 use crate::utils::random::random_pop;
 use crate::utils::string::vec_to_string;
 use crate::{make_error, make_internal_report};
@@ -99,74 +100,99 @@ fn calculate_fitch_parsimony_in_place(n: &mut Node, children: &mut [&mut Node], 
 
   n.non_consensus = BTreeMap::new();
   n.seq = vec!['?'; L];
-  for pos in 0..L {
-    // Skip ambiguous and gaps
-    if range_contains(&n.undetermined, pos) {
+
+  // Introduce Ns to mark indeterminate positions
+  for &(start, end) in &n.undetermined {
+    for pos in start..end {
+      n.seq[pos] = 'N';
+    }
+  }
+
+  // Indeterminate in at least one child
+  for pos in non_consensus_positions {
+    let child_state_sets = gather_child_state_sets(children, pos);
+    let intersection = sets_intersection(child_state_sets.clone().into_iter());
+    match intersection.into_iter().collect_vec().as_slice() {
+      [state] => {
+        // One element in the intersection of child states. Write to sequence.
+        n.seq[pos] = *state;
+      }
+      [] => {
+        // Empty intersection of child states. Propagate union of child states.
+        let child_state_sets = gather_child_state_sets2(children, pos);
+        let states = sets_union(child_state_sets.into_iter()).into_iter().collect();
+        n.non_consensus.insert(pos, states);
+
+        n.seq[pos] = '~';
+      }
+      states => {
+        // More than one element in the intersection of child states. Propagate intersection.
+        let states = states.iter().copied().collect();
+        n.non_consensus.insert(pos, states);
+
+        n.seq[pos] = '~';
+      }
+    };
+  }
+
+  // Gather state sets for each position across child sequences
+  let child_state_sets = Manyzip(children.iter().map(|c| c.seq.iter().copied()).collect_vec())
+    .map(BTreeSet::from_iter)
+    .collect_vec();
+
+  // Zip these states with node sequence
+  let state_zip = n.seq.iter_mut().zip(child_state_sets);
+  for (pos, (nuc, child_states)) in state_zip.enumerate() {
+    if *nuc != '?' {
       continue;
     }
+    let child_states = child_states
+      .into_iter()
+      .filter(|x| ['A', 'C', 'G', 'T'].contains(x))
+      .collect_vec();
 
-    if non_consensus_positions.contains(&pos) {
-      let child_state_sets = gather_child_state_sets(children, pos);
-      let intersection = sets_intersection(child_state_sets.clone().into_iter());
-      match intersection.into_iter().collect_vec().as_slice() {
-        [state] => {
-          // One element in the intersection of child states. Write to sequence.
-          n.seq[pos] = *state;
-        }
-        [] => {
-          // Empty intersection of child states. Propagate union of child states.
-          let states = sets_union(child_state_sets.into_iter()).into_iter().collect();
-          n.non_consensus.insert(pos, states);
-
-          // Adjust children, now that we know they can disagree
-          // TODO: avoid code duplication
-          children.iter_mut().for_each(|c| {
-            // TODO: double check that. Do we need to perform union here if position is already taken?
-            c.non_consensus.entry(pos).or_insert_with(|| btreeset![c.seq[pos]]);
-          });
-        }
-        states => {
-          // More than one element in the intersection of child states. Propagate intersection.
-          let states = states.iter().copied().collect();
-          n.non_consensus.insert(pos, states);
-
-          // Adjust children, now that we know they can disagree
-          // TODO: avoid code duplication
-          children.iter_mut().for_each(|c| {
-            // TODO: double check that. Do we need to perform union here if position is already taken?
-            c.non_consensus.entry(pos).or_insert_with(|| btreeset![c.seq[pos]]);
-          });
-        }
-      };
-    } else {
-      let child_states = gather_consensus_child_states(children, pos);
-      match child_states.as_slice() {
-        [state] => {
-          // Same character in all child sequences
-          n.seq[pos] = *state;
-        }
-        [] => {
-          // We are not in non-consensus position, but children have no consensus characters.
-          // This is impossible, and the fact that we have to handle that might hint at bad code design.
-          unreachable!("Child sequences contain no characters");
-        }
-        states => {
-          // Child states are different, propagate union
-          let states = states.iter().copied().collect();
-          n.non_consensus.insert(pos, states);
-
-          // Adjust children, now that we know they can disagree
-          // TODO: avoid code duplication
-          children.iter_mut().for_each(|c| {
-            c.non_consensus.entry(pos).or_insert_with(|| btreeset! {c.seq[pos]});
-          });
+    match child_states.as_slice() {
+      [state] => {
+        // All children have the same state
+        *nuc = *state;
+      }
+      [] => {
+        // No child states. Impossible
+        unreachable!("No child states. This is impossible");
+      }
+      states => {
+        // Child states differ
+        let states = states.iter().copied().collect::<BTreeSet<char>>(); // TODO: avoid copy
+        n.non_consensus.insert(pos, states);
+        *nuc = '~';
+        // memorize child state to assign mutations
+        for c in &mut *children {
+          if !c.non_consensus.contains_key(&pos) && ['A', 'C', 'G', 'T'].contains(&c.seq[pos]) {
+            c.non_consensus.insert(pos, btreeset! {c.seq[pos]});
+          }
         }
       }
     }
   }
 }
 
-pub fn gather_child_state_sets(children: &[&mut Node], pos: usize) -> Vec<BTreeSet<char>> {
+#[allow(clippy::map_entry)]
+pub fn gather_child_state_sets(children: &mut [&mut Node], pos: usize) -> Vec<BTreeSet<char>> {
+  let mut child_state_sets = vec![];
+  for c in children {
+    if c.non_consensus.contains_key(&pos) {
+      child_state_sets.push(c.non_consensus[&pos].clone());
+    } else if "ACGT".contains(c.seq[pos]) {
+      // memorize child state to assign mutations
+      let state = btreeset! {c.seq[pos]};
+      child_state_sets.push(state.clone());
+      c.non_consensus.insert(pos, state);
+    }
+  }
+  child_state_sets
+}
+
+pub fn gather_child_state_sets2(children: &[&mut Node], pos: usize) -> Vec<BTreeSet<char>> {
   children
     .iter()
     .filter(|c| !range_contains(&c.undetermined, pos))
