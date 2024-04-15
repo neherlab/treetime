@@ -1,10 +1,9 @@
 use crate::commands::ancestral::anc_graph::{Edge, Node};
-use crate::commands::ancestral::anc_reconstruction_fitch::ancestral_reconstruction_fitch;
 use crate::commands::ancestral::outgroup_profiles::outgroup_profiles;
 use crate::commands::ancestral::subtree_profiles::subtree_profiles;
 use crate::graph::graph::{Graph, SafeNode};
 use crate::gtr::gtr::GTR;
-use crate::seq::representation::{post_order_intrusive, pre_order_intrusive};
+use crate::seq::representation::{apply_non_nuc_changes_inplace, post_order_intrusive, pre_order_intrusive};
 use eyre::Report;
 use itertools::Itertools;
 use ndarray_stats::QuantileExt;
@@ -17,7 +16,7 @@ pub fn ancestral_reconstruction_marginal(
   graph: &Graph<Node, Edge>,
   gtr: &GTR,
   include_leaves: bool,
-  mut visitor: impl FnMut(&Node, Vec<char>),
+  mut visitor: impl FnMut(&Node, &[char]),
 ) -> Result<(), Report> {
   let root = graph.get_exactly_one_root()?;
   let mut root_seq = { root.read_arc().payload().read_arc().seq.clone() };
@@ -49,13 +48,29 @@ pub fn ancestral_reconstruction_marginal(
     outgroup_profiles(&mut node, parent.as_deref(), seq, &mut logLH, gtr);
   });
 
-  // Apply marginal reconstruction on top of Fitch parsimony
-  ancestral_reconstruction_fitch(graph, include_leaves, |node, mut seq| {
-    for (&pos, vec) in &node.profile_variable {
-      seq[pos] = gtr.alphabet.char(vec.argmax().unwrap());
-    }
-    visitor(node, seq);
-  })?;
+  pre_order_intrusive(
+    graph,
+    &root,
+    &mut root_seq,
+    &mut |node: &SafeNode<Node>, seq: &[char]| {
+      let node = node.read_arc().payload().read_arc();
+
+      if !include_leaves && node.is_leaf() {
+        return;
+      }
+
+      let mut seq = seq.to_owned();
+      for (&pos, vec) in &node.profile_variable {
+        seq[pos] = gtr.alphabet.char(vec.argmax().unwrap());
+      }
+
+      if include_leaves {
+        apply_non_nuc_changes_inplace(&node, &mut seq);
+      }
+
+      visitor(&node, &seq);
+    },
+  );
 
   Ok(())
 }
@@ -107,17 +122,17 @@ mod tests {
 
     let mut actual = btreemap! {};
     ancestral_reconstruction_marginal(&graph, &gtr, true, |node, seq| {
-      actual.insert(node.name.clone(), vec_to_string(seq));
+      actual.insert(node.name.clone(), vec_to_string(seq.to_owned()));
     })?;
 
     #[rustfmt::skip]
     let expected = BTreeMap::from([
-      (o!("A"),    o!("ACATCGCCGTATTG")),
+      (o!("A"),    o!("ACATCGCCNNA--G")),
       (o!("AB"),   o!("ACATCGCTGTATTG")),
-      (o!("B"),    o!("GCATCCCTGTATTG")),
+      (o!("B"),    o!("GCATCCCTGTA-NG")),
       (o!("C"),    o!("CCGGCGATGTATTG")),
       (o!("CD"),   o!("TCGGCGGTGTATTG")),
-      (o!("D"),    o!("TCGGCCGTGTATTG")),
+      (o!("D"),    o!("TCGGCCGTGTRTTG")),
       (o!("root"), o!("TCGGCGCTGTATTG")),
     ]);
 

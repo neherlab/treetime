@@ -78,13 +78,13 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
 
       ancestral_reconstruction_marginal(&graph, &gtr, *reconstruct_tip_states, |node, seq| {
         // TODO: avoid converting vec to string, write vec chars directly
-        fasta_writer.write(&node.name, &vec_to_string(seq)).unwrap();
+        fasta_writer.write(&node.name, &vec_to_string(seq.to_owned())).unwrap();
       })?;
     }
     MethodAncestral::Parsimony => {
       ancestral_reconstruction_fitch(&graph, *reconstruct_tip_states, |node, seq| {
         // TODO: avoid converting vec to string, write vec chars directly
-        fasta_writer.write(&node.name, &vec_to_string(seq)).unwrap();
+        fasta_writer.write(&node.name, &vec_to_string(seq.to_owned())).unwrap();
       })?;
     }
   }

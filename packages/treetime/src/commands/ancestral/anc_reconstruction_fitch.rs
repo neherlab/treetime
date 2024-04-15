@@ -2,6 +2,7 @@ use crate::commands::ancestral::anc_graph::{Edge, Node};
 use crate::graph::graph::{Graph, SafeNode};
 use crate::seq::representation::{apply_non_nuc_changes_inplace, pre_order_intrusive};
 use eyre::Report;
+use std::borrow::Cow;
 
 /// Reconstruct ancestral sequences using Fitch parsimony.
 ///
@@ -10,7 +11,7 @@ use eyre::Report;
 pub fn ancestral_reconstruction_fitch(
   graph: &Graph<Node, Edge>,
   include_leaves: bool,
-  mut visitor: impl FnMut(&Node, Vec<char>),
+  mut visitor: impl FnMut(&Node, &[char]),
 ) -> Result<(), Report> {
   let root = graph.get_exactly_one_root()?;
   let mut root_seq = { root.read_arc().payload().read_arc().seq.clone() };
@@ -26,11 +27,15 @@ pub fn ancestral_reconstruction_fitch(
         return;
       }
 
-      // Apply ambiguous, gaps and mixed only for visiting
-      let mut seq = seq.to_owned();
-      apply_non_nuc_changes_inplace(&node, &mut seq);
+      let seq = if include_leaves {
+        let mut seq = seq.to_owned();
+        apply_non_nuc_changes_inplace(&node, &mut seq);
+        Cow::from(seq)
+      } else {
+        Cow::from(seq)
+      };
 
-      visitor(&node, seq);
+      visitor(&node, &seq);
     },
   );
 
