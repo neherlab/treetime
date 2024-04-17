@@ -198,8 +198,7 @@ for n in tree.find_clades(order='preorder'):
             # in this case we need a mutation to one state in states
             state = n.non_consensus[pos].pop()
             n.muts[pos] = (parent_seq[pos], state)
-            if not n.is_terminal():
-                seq[pos] = state
+            seq[pos] = state
         elif pos in n.non_consensus and parent_seq[pos] in states:
             # in this case, we can just copy the state
             seq[pos] = parent_seq[pos]
