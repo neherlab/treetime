@@ -40,6 +40,8 @@ else:
     # remove U in favor or T
     seqs = {r.id:str(r.seq.upper().replace('U', 'T')) for r in SeqIO.parse(aln_fname, 'fasta')}
 
+seq_store = {k:np.array(list(v)) for k,v in seqs.items()}
+
 # pull out the sequence length for convenience
 L = len(seqs[tree.get_terminals()[0].name])
 for n in tree.get_nonterminals():
@@ -121,92 +123,88 @@ def find_mixed_sites(seq):
 for n in tree.find_clades(order='postorder'):
     if n.is_terminal():
         # at each terminal node, temporarily store the sequence and ranges of N, - and mixed sites
-        n.seq = seqs[n.name]
-        n.ambiguous = find_ambiguous_ranges(n.seq)
-        n.undetermined = find_undetermined_ranges(n.seq)
-        n.gaps = find_gap_ranges(n.seq)
+        seq = "".join(seq_store[n.name])
+        n.ambiguous = find_ambiguous_ranges(seq)
+        n.undetermined = find_undetermined_ranges(seq)
+        n.gaps = find_gap_ranges(seq)
         # n.mixed stores the exact character at each mixed positions, the non_consensus stores the possible states
-        n.mixed, n.non_consensus = find_mixed_sites(n.seq)
+        n.mixed, n.non_consensus = find_mixed_sites(seq)
     else:
         # positions that are N or - in all children are still N or - in the parent
         n.undetermined = range_intersection([c.undetermined for c in n.clades])
         # all sites that are not N or - but not fixed will need special treatment
         non_consensus_positions = set.union(*[set(c.non_consensus.keys()) for c in n.clades])
         n.non_consensus = {}
-        n.seq = ['?']*L # construct sequence of node, will be deleted later again
+        seq = ['?']*L # construct sequence of node, will be deleted later again
 
         # introduce Ns to mark indeterminate positions
         for rg in n.undetermined:
             for pos in range(*rg):
-                n.seq[pos] = 'N'
+                seq[pos] = 'N'
 
         # indeterminate in at least one child
         for pos in non_consensus_positions:
             child_sets = []
             for c in n.clades:
+                cseq = seq_store[c.name]
                 if pos in c.non_consensus:
                     child_sets.append(c.non_consensus[pos])
-                elif c.seq[pos] in 'ACGT': # memorize child state to assign mutations
-                    child_sets.append(set({c.seq[pos]}))
-                    c.non_consensus[pos] = set({c.seq[pos]})
+                elif cseq[pos] in 'ACGT': # memorize child state to assign mutations
+                    child_sets.append(set({cseq[pos]}))
             isect = set.intersection(*child_sets) if child_sets else set()
 
             if len(isect)==1:
-                n.seq[pos] = isect.pop()
+                seq[pos] = isect.pop()
             else:
                 if len(isect)>1:
                     n.non_consensus[pos] = isect
                 else:
                     n.non_consensus[pos] = set.union(*child_sets)
-                n.seq[pos] = '~'
+                seq[pos] = '~'
 
-        for pos, (nuc, child_states) in enumerate(zip(n.seq, zip(*[c.seq for c in n.clades]))):
+        for pos, (nuc, child_states) in enumerate(zip(seq, zip(*[seq_store[c.name] for c in n.clades]))):
             if nuc!='?': # these positions have been dealt with above
                 continue
 
             # this could probably be sped up by explicitly checking whether the states of all children are equal. 
             states = set([x for x in child_states if x in 'ACGT'])
             if len(states)==1: # if all children are equal
-                n.seq[pos] = states.pop()
+                seq[pos] = states.pop()
             else: # if children differ
                 n.non_consensus[pos] = states
-                n.seq[pos] = '~'
-                for c, cstate in zip(n.clades, child_states):
-                    if (pos not in c.non_consensus) and cstate in 'ACGT':
-                        c.non_consensus[pos] = set(cstate)
-
-        # no longer need sequences of children
-        for c in n.clades:
-            del c.seq
+                seq[pos] = '~'
+        seq_store[n.name] = seq
 
 # determine the sequence at the root
+seq = seq_store['root']
 for pos, states in tree.root.non_consensus.items():
-    tree.root.seq[pos] = states.pop()  # should be random choice
+    seq[pos] = states.pop()  # should be random choice
 # we now have a complete sequence at the root and should be able to delete the non_consensus 
 # there might still be ambiguous positions, but that means we have no information anywhere...
 
-tree.root.tmp_seq = list(tree.root.seq)
 tree.root.muts = {}
+tree.root.seq = seq #this one is to keep
 
 # do a pre-order traversal to construct all necessary mutations
-for n in tree.get_nonterminals(order='preorder'):
-    for c in n.clades:
-        c.muts = {}
-        # we need this temporary sequence only for internal nodes
-        if not c.is_terminal():
-            c.tmp_seq = list(n.tmp_seq)
+for n in tree.find_clades(order='preorder'):
+    if n==tree.root: continue
 
-        # all positions that potentially differ in the child c from the parent n are in `c.non_consensus` 
-        for pos, states in c.non_consensus.items():
-            if n.tmp_seq[pos] not in states:
-                # in this case we need a mutation to one state in states
-                state = states.pop()
-                c.muts[pos] = (n.tmp_seq[pos], state)
-                if not c.is_terminal():
-                    c.tmp_seq[pos] = state
-    # no longer needed
-    del n.non_consensus
-    del n.tmp_seq
+    n.muts = {}
+    parent_seq = seq_store[n.parent.name] # read only
+    seq = seq_store[n.name] # read/write
+    # all positions that potentially differ in the child c from the parent n are in `c.non_consensus` 
+    for pos in set.union(set(n.non_consensus.keys()), set(n.parent.non_consensus.keys())):
+        if pos in n.non_consensus and parent_seq[pos] not in states:
+            # in this case we need a mutation to one state in states
+            state = n.non_consensus[pos].pop()
+            n.muts[pos] = (parent_seq[pos], state)
+            if not n.is_terminal():
+                seq[pos] = state
+        elif pos in n.non_consensus and parent_seq[pos] in states:
+            # in this case, we can just copy the state
+            seq[pos] = parent_seq[pos]
+        elif parent_seq[pos]!=seq[pos]:
+            n.muts[pos] = (parent_seq[pos], seq[pos])
 
 
 # function to reconstruct the sequence of a node from the sequence at the root and mutations
@@ -214,7 +212,7 @@ def reconstruct_raw_seq(tree, node):
     # get the path in the tree from the root to node
     path = tree.get_path(node)
     # copy the root sequence as array to be able to modify by element and slice
-    seq = np.array(tree.root.seq)
+    seq = np.array(tree.root.seq) # to allow element wise assignment
     # apply mutations
     for anc in path:
         for pos in anc.muts:
