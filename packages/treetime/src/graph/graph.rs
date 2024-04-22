@@ -1,5 +1,6 @@
 use crate::graph::breadth_first::{
-  directed_breadth_first_traversal_backward, directed_breadth_first_traversal_forward, GraphTraversalContinuation,
+  directed_breadth_first_traversal, directed_breadth_first_traversal_biphasic, BfsTraversalPolicyBackward,
+  BfsTraversalPolicyForward, GraphTraversalContinuation, GraphTraversalPhase,
 };
 use crate::graph::edge::{Edge, GraphEdge, GraphEdgeKey};
 use crate::graph::node::{GraphNode, GraphNodeKey, Node};
@@ -450,9 +451,9 @@ where
   where
     F: Fn(GraphNodeForward<N, E>) -> GraphTraversalContinuation + Sync + Send,
   {
-    let roots = self.roots.iter().filter_map(|idx| self.get_node(*idx)).collect_vec();
+    let roots = self.get_roots();
 
-    directed_breadth_first_traversal_forward::<N, E, _>(self, roots.as_slice(), |node| {
+    directed_breadth_first_traversal::<N, E, _, BfsTraversalPolicyForward>(self, roots.as_slice(), |node| {
       explorer(GraphNodeForward::new(self, node))
     });
 
@@ -463,16 +464,43 @@ where
   where
     F: Fn(GraphNodeBackward<N, E>) -> GraphTraversalContinuation + Sync + Send,
   {
-    let leaves = self
-      .leaves
-      .iter()
-      .filter_map(|idx| self.get_node(*idx))
-      .rev()
-      .collect_vec();
+    let mut leaves = self.get_leaves();
+    leaves.reverse();
 
-    directed_breadth_first_traversal_backward::<N, E, _>(self, leaves.as_slice(), |node| {
+    directed_breadth_first_traversal::<N, E, _, BfsTraversalPolicyBackward>(self, leaves.as_slice(), |node| {
       explorer(GraphNodeBackward::new(self, node))
     });
+
+    self.reset_nodes();
+  }
+
+  pub fn par_iter_breadth_first_biphasic_forward<F>(&mut self, explorer: F)
+  where
+    F: Fn((GraphNodeForward<N, E>, GraphTraversalPhase)) -> GraphTraversalContinuation + Sync + Send,
+  {
+    let roots = self.roots.iter().filter_map(|idx| self.get_node(*idx)).collect_vec();
+
+    directed_breadth_first_traversal_biphasic::<N, E, _, BfsTraversalPolicyForward>(
+      self,
+      roots.as_slice(),
+      |(node, phase)| explorer((GraphNodeForward::new(self, &*node.read()), phase)),
+    );
+
+    self.reset_nodes();
+  }
+
+  pub fn par_iter_breadth_first_biphasic_backward<F>(&mut self, explorer: F)
+  where
+    F: Fn((GraphNodeBackward<N, E>, GraphTraversalPhase)) -> GraphTraversalContinuation + Sync + Send,
+  {
+    let mut leaves = self.get_leaves();
+    leaves.reverse();
+
+    directed_breadth_first_traversal_biphasic::<N, E, _, BfsTraversalPolicyBackward>(
+      self,
+      leaves.as_slice(),
+      |(node, phase)| explorer((GraphNodeBackward::new(self, &*node.read()), phase)),
+    );
 
     self.reset_nodes();
   }
@@ -566,7 +594,9 @@ where
     // Mark all nodes as not visited. As a part of traversal all nodes, one by one, marked as visited,
     // to ensure correctness of traversal. Here we reset the "is visited" markers this,
     // to allow for traversals again.
-    self.nodes.iter().for_each(|node| node.write().mark_as_not_visited());
+    self.nodes.iter().for_each(|node| {
+      node.write().mark_as_not_visited();
+    });
   }
 
   fn print_fake_edges<W: Write>(&self, mut writer: W, nodes: &[&SafeNode<N>]) {
@@ -684,12 +714,14 @@ mod tests {
   use crate::graph::create_graph_from_nwk::create_graph_from_nwk_str;
   use crate::graph::edge::Weighted;
   use crate::graph::node::{Named, NodeType, WithNwkComments};
+  use crate::io::nwk::{write_nwk_str, WriteNwkOptions};
   use std::fmt::{Display, Formatter};
 
-  #[derive(Clone, Debug, PartialEq, Eq)]
+  #[derive(Clone, Debug, PartialEq)]
   pub struct Node {
     pub name: String,
     pub node_type: NodeType,
+    pub tmp: f64,
   }
 
   impl Node {
@@ -697,6 +729,7 @@ mod tests {
       Self {
         name: name.as_ref().to_owned(),
         node_type,
+        tmp: 0.0,
       }
     }
   }
@@ -850,6 +883,106 @@ mod tests {
     });
 
     assert_eq!(&vec!["D", "C", "B", "A", "CD", "AB", "root"], &*actual.read());
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_traversal_parallel_biphasic_breadth_first_forward() -> Result<(), Report> {
+    rayon::ThreadPoolBuilder::new().num_threads(1).build_global()?;
+
+    let mut graph = create_graph_from_nwk_str::<Node, Edge>("((A:4,B:5)AB:2,(C:6,D:7)CD:3)root;")?;
+
+    // Traverse the tree from root to leaves and set node weight to be a sum of weights of all of its parents
+    // recursively. This demonstrates that we can accumulate and use temporary values in the "pre" phase and clear
+    // temporary values in the "post" phase.
+    graph.par_iter_breadth_first_biphasic_forward(|(mut node, phase)| {
+      match phase {
+        GraphTraversalPhase::Pre => {
+          // On "pre" visit: own incoming weight + parent tmp values accumulated so far
+          let incoming: f64 = node.parents.iter().map(|(p, e)| e.read_arc().weight).sum();
+          let parent: f64 = node.parents.iter().map(|(p, e)| p.read_arc().tmp).sum();
+
+          node.payload.tmp = parent + incoming;
+
+          // Write weight to the incoming edges
+          node
+            .parents
+            .iter()
+            .for_each(|(_, e)| e.write_arc().weight = node.payload.tmp);
+        }
+        GraphTraversalPhase::Post => {
+          // On "post" visit: wipe tmp (simulate "deallocation")
+          node.payload.tmp = 0.0;
+        }
+      }
+      GraphTraversalContinuation::Continue
+    });
+
+    // Check that the weights are the sum of parent weights
+    assert_eq!(
+      &write_nwk_str(&graph, &WriteNwkOptions::default())?,
+      "((A:6.,B:7.)AB:2.,(C:9.,D:10.)CD:3.)root;"
+    );
+
+    // Check that all tmp values have been "deallocated"
+    let tmps = graph
+      .nodes
+      .iter()
+      .map(|node| node.read_arc().payload().read_arc().tmp)
+      .collect_vec();
+
+    assert_eq!(tmps, vec![0.0; 7]);
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_traversal_parallel_biphasic_breadth_first_backward() -> Result<(), Report> {
+    rayon::ThreadPoolBuilder::new().num_threads(1).build_global()?;
+
+    let mut graph = create_graph_from_nwk_str::<Node, Edge>("((A:1,B:2)AB:3,(C:4,D:5)CD:6)root;")?;
+
+    // Traverse the tree from leaves to root and set node weight to be a sum of weights of all of its children
+    // recursively. This demonstrates that we can accumulate and use temporary values in the "pre" phase and clear
+    // temporary values in the "post" phase.
+    graph.par_iter_breadth_first_biphasic_backward(|(mut node, phase)| {
+      match phase {
+        GraphTraversalPhase::Pre => {
+          // On "pre" visit: own outgoing weights + child tmp values accumulated so far and
+          let outgoing: f64 = node.children.iter().map(|(p, e)| e.read_arc().weight).sum();
+          let children: f64 = node.children.iter().map(|(p, e)| p.read_arc().tmp).sum();
+
+          node.payload.tmp = children + outgoing;
+
+          // Write weight to the outgoing edges
+          node
+            .children
+            .iter()
+            .for_each(|(_, e)| e.write_arc().weight = node.payload.tmp);
+        }
+        GraphTraversalPhase::Post => {
+          // On "post" visit: wipe tmp (simulate "deallocation")
+          node.payload.tmp = 0.0;
+        }
+      }
+      GraphTraversalContinuation::Continue
+    });
+
+    // Check that the weights are the sum of children weights
+    assert_eq!(
+      &write_nwk_str(&graph, &WriteNwkOptions::default())?,
+      "((A:6.,B:7.)AB:2.,(C:9.,D:10.)CD:3.)root;"
+    );
+
+    // Check that all tmp values have been "deallocated"
+    let tmps = graph
+      .nodes
+      .iter()
+      .map(|node| node.read_arc().payload().read_arc().tmp)
+      .collect_vec();
+
+    assert_eq!(tmps, vec![0.0; 7]);
 
     Ok(())
   }

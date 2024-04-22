@@ -3,7 +3,7 @@ use crate::graph::graph::{Graph, SafeNode, SafeNodeRefMut};
 use crate::graph::node::GraphNode;
 use itertools::Itertools;
 use parking_lot::RwLock;
-use rayon::iter::{IntoParallelIterator, ParallelIterator};
+use rayon::prelude::*;
 use std::sync::Arc;
 
 pub enum GraphTraversalContinuation {
@@ -100,91 +100,109 @@ where
   }
 }
 
-/// Performs parallel forward breadth-first traversal (from roots to leaves, along edge directions)
-pub fn directed_breadth_first_traversal_forward<N, E, F>(graph: &Graph<N, E>, sources: &[SafeNode<N>], explorer: F)
-where
-  N: GraphNode,
-  E: GraphEdge,
-  F: Fn(&SafeNodeRefMut<N>) -> GraphTraversalContinuation + Sync + Send,
-{
-  directed_breadth_first_traversal::<N, E, F, BfsTraversalPolicyForward>(graph, sources, explorer);
-}
-
-/// Performs parallel backward breadth-first traversal (from leaves to roots, against edge directions)
-pub fn directed_breadth_first_traversal_backward<N, E, F>(graph: &Graph<N, E>, sources: &[SafeNode<N>], explorer: F)
-where
-  N: GraphNode,
-  E: GraphEdge,
-  F: Fn(&SafeNodeRefMut<N>) -> GraphTraversalContinuation + Sync + Send,
-{
-  directed_breadth_first_traversal::<N, E, F, BfsTraversalPolicyBackward>(graph, sources, explorer);
-}
-
-/// Implements parallel breadth-first traversal of a directed graph, given source nodes, exploration function and
-/// a traversal polity type.
+/// Implements parallel breadth-first traversal of a directed graph, given source nodes, visitor function and
+/// a traversal policy type.
 ///
-/// TraversalPolicy here is a generic type, that defines how to access predecessors and successors during a
+/// Any given node is guaranteed to be visited after all of its predecessors and before all of its successors,
+/// however the exact order of visits is not specified. Each node is visited exactly once.
+///
+/// TraversalPolicy here is a generic type that defines how to access predecessors and successors during a
 /// concrete type of traversal.
 pub fn directed_breadth_first_traversal<N, E, F, TraversalPolicy>(
   graph: &Graph<N, E>,
   sources: &[SafeNode<N>],
-  explorer: F,
+  visitor: F,
 ) where
   N: GraphNode,
   E: GraphEdge,
   F: Fn(&SafeNodeRefMut<N>) -> GraphTraversalContinuation + Sync + Send,
   TraversalPolicy: BfsTraversalPolicy<N, E>,
 {
+  directed_breadth_first_traversal_biphasic::<_, _, _, TraversalPolicy>(graph, sources, |(node, phase)| match phase {
+    GraphTraversalPhase::Pre => visitor(&node.write_arc()),
+    GraphTraversalPhase::Post => GraphTraversalContinuation::Continue,
+  });
+}
+
+/// Phase during biphasic traversal
+#[derive(Debug)]
+pub enum GraphTraversalPhase {
+  Pre,  // Node is being visited for the first time, before its successors have been visited
+  Post, // Node is being visited for the second time, after its successors have been visited
+}
+
+/// Implements biphasic parallel breadth-first traversal of a directed graph, given source nodes, visitor function and
+/// a traversal policy type.
+///
+/// Any given node is guaranteed to be visited after all of its predecessors, however the exact order of visits is not
+/// specified. Each node is visited exactly twice:
+///  - before its successors (the `phase` is `Pre`)
+///  - after its successors (the `phase` is `Post`)
+/// This allows to execute different code before and after traversal of node's successors.
+///
+/// TraversalPolicy here is a generic type that defines how to access predecessors and successors during a
+/// concrete type of traversal.
+pub fn directed_breadth_first_traversal_biphasic<N, E, F, TraversalPolicy>(
+  graph: &Graph<N, E>,
+  sources: &[SafeNode<N>],
+  visitor: F,
+) where
+  N: GraphNode,
+  E: GraphEdge,
+  F: Fn((SafeNode<N>, GraphTraversalPhase)) -> GraphTraversalContinuation + Sync + Send,
+  TraversalPolicy: BfsTraversalPolicy<N, E>,
+{
   // Walk the graph one "frontier" at a time. Frontier is a set of nodes of a "layer" in the graph, where each node
   // has its dependencies already resolved. Frontiers allow parallelism.
-  let mut frontier = sources.to_vec();
+  // TODO: try to further split up the frontier into generations, such that independent parts of the frontier don't
+  // wait until the remainder of the frontier is processed.
+  let mut frontier = sources
+    .iter()
+    .map(|node| (Arc::clone(node), GraphTraversalPhase::Pre))
+    .collect_vec();
 
   // We traverse the graph, gathering frontiers. The last frontier will be empty (nodes of the previous to last
   // frontier will have no unvisited successors), ending this loop.
   while !frontier.is_empty() {
     // Process each node in the current frontier concurrently
-    let frontier_candidate_nodes: Vec<SafeNode<N>> = frontier
-      .into_par_iter()
-      .map(|node| {
-        {
-          let node = node.write_arc();
-          if !node.is_visited() {
-            // The actual visit. Here we call the user-provided function.
-            if let GraphTraversalContinuation::Stop = explorer(&node) {
+    frontier = frontier
+      .par_iter()
+      .map(|(node, phase)| {
+        match phase {
+          GraphTraversalPhase::Pre => {
+            if !node.write_arc().mark_as_visited_pre() {
+              // The first ("pre") visit
+              if let GraphTraversalContinuation::Stop = visitor((Arc::clone(node), GraphTraversalPhase::Pre)) {
                 return vec![];
-            }
+              }
 
-            // We mark the node as visited so that it's not visited twice and telling following loop iterations
-            // that its successors can potentially be processed now
-            node.mark_as_visited();
+              // Schedule node's successors for first ("pre") traversal. Successors are:
+              //  - for forward traversal: children
+              //  - for backward traversal: parents
+              let mut successors = TraversalPolicy::node_successors(graph, node)
+                .into_iter()
+                .map(|succ| (Arc::clone(&succ), GraphTraversalPhase::Pre)).collect_vec();
+
+              // Schedule yourself for second traversal ("post"), right after children.
+              successors.push((Arc::clone(node), GraphTraversalPhase::Post));
+
+              successors
+            } else {
+              vec![]
+            }
+          }
+          GraphTraversalPhase::Post => {
+            if !node.write_arc().mark_as_not_visited_post() {
+              // The second ("post") visit
+              visitor((Arc::clone(node), GraphTraversalPhase::Post));
+            }
+            vec![]
           }
         }
-
-        // Gather node's successors:
-        //  - for forward traversal: children
-        //  - for backwards traversal: parents
-        TraversalPolicy::node_successors(graph, &node)
       })
         // For each node, we receive a list of its successors, so overall a list of lists. We flatten it here into a
         // flat list.
       .flatten()
       .collect();
-
-    // NOTE: this is a barrier. The separation of the two loops is necessary for synchronization.
-
-    // Decide which successors to add to the next frontier. We only add the successors which have ALL of its
-    // predecessors already visited. This ensures exploration where each node is visited exactly once and only when all
-    // of its dependencies are resolved.
-    let next_frontier = frontier_candidate_nodes
-      .into_par_iter()
-      .filter(|candidate_node| {
-        TraversalPolicy::node_predecessors(graph, candidate_node)
-          .iter()
-          .all(|asc| asc.read().is_visited())
-      })
-      .collect();
-
-    // The newly gathered frontier becomes the new current frontier
-    frontier = next_frontier;
   }
 }

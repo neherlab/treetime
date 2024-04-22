@@ -52,7 +52,8 @@ pub struct Node<N: GraphNode> {
   data: Arc<RwLock<N>>,
   outbound_edges: Vec<GraphEdgeKey>,
   inbound_edges: Vec<GraphEdgeKey>,
-  is_visited: AtomicBool,
+  is_visited_pre: AtomicBool,
+  is_visited_post: AtomicBool,
 }
 
 impl<N> PartialEq<Self> for Node<N>
@@ -76,7 +77,8 @@ where
       data: Arc::new(RwLock::new(data)),
       outbound_edges: Vec::new(),
       inbound_edges: Vec::new(),
-      is_visited: AtomicBool::new(false),
+      is_visited_pre: AtomicBool::new(false),
+      is_visited_post: AtomicBool::new(false),
     }
   }
 
@@ -135,16 +137,48 @@ where
 
   #[inline]
   pub fn is_visited(&self) -> bool {
-    self.is_visited.load(Ordering::Relaxed)
+    self.is_visited_pre()
   }
 
   #[inline]
-  pub fn mark_as_visited(&self) {
-    self.is_visited.store(true, Ordering::Relaxed);
+  pub fn is_visited_pre(&self) -> bool {
+    self.is_visited_pre.load(Ordering::Relaxed)
   }
 
   #[inline]
-  pub fn mark_as_not_visited(&self) {
-    self.is_visited.store(false, Ordering::Relaxed);
+  pub fn is_visited_post(&self) -> bool {
+    self.is_visited_post.load(Ordering::Relaxed)
+  }
+
+  #[inline]
+  pub fn mark_as_visited(&self) -> bool {
+    self.mark_as_visited_post();
+    self.mark_as_visited_pre()
+  }
+
+  #[inline]
+  pub fn mark_as_not_visited(&self) -> bool {
+    self.mark_as_not_visited_post();
+    self.mark_as_not_visited_pre()
+  }
+
+  #[inline]
+  pub fn mark_as_visited_pre(&self) -> bool {
+    self.is_visited_pre.swap(true, Ordering::Relaxed)
+  }
+
+  #[inline]
+  pub fn mark_as_not_visited_pre(&self) -> bool {
+    self.is_visited_pre.swap(false, Ordering::Relaxed)
+  }
+
+  #[inline]
+  pub fn mark_as_visited_post(&self) -> bool {
+    self.is_visited_post.swap(true, Ordering::Relaxed)
+  }
+
+  #[inline]
+  pub fn mark_as_not_visited_post(&self) -> bool {
+    self.is_visited_post.swap(false, Ordering::Relaxed)
   }
 }
