@@ -156,53 +156,55 @@ pub fn directed_breadth_first_traversal_biphasic<N, E, F, TraversalPolicy>(
   // has its dependencies already resolved. Frontiers allow parallelism.
   // TODO: try to further split up the frontier into generations, such that independent parts of the frontier don't
   // wait until the remainder of the frontier is processed.
-  let mut frontier = sources
-    .iter()
-    .map(|node| (Arc::clone(node), GraphTraversalPhase::Pre))
-    .collect_vec();
+  let mut frontier_pre = sources.to_vec();
+  let mut frontier_post = vec![];
 
   // We traverse the graph, gathering frontiers. The last frontier will be empty (nodes of the previous to last
   // frontier will have no unvisited successors), ending this loop.
-  while !frontier.is_empty() {
-    // Process each node in the current frontier concurrently
-    frontier = frontier
+  while !(frontier_pre.is_empty() && frontier_post.is_empty()) {
+    // The first ("pre") visit
+    let next_frontier = frontier_pre
       .par_iter()
-      .map(|(node, phase)| {
-        match phase {
-          GraphTraversalPhase::Pre => {
-            if !node.write_arc().mark_as_visited_pre() {
-              // The first ("pre") visit
-              if let GraphTraversalContinuation::Stop = visitor((Arc::clone(node), GraphTraversalPhase::Pre)) {
-                return vec![];
-              }
-
-              // Schedule node's successors for first ("pre") traversal. Successors are:
-              //  - for forward traversal: children
-              //  - for backward traversal: parents
-              let mut successors = TraversalPolicy::node_successors(graph, node)
-                .into_iter()
-                .map(|succ| (Arc::clone(&succ), GraphTraversalPhase::Pre)).collect_vec();
-
-              // Schedule yourself for second traversal ("post"), right after children.
-              successors.push((Arc::clone(node), GraphTraversalPhase::Post));
-
-              successors
-            } else {
-              vec![]
-            }
-          }
-          GraphTraversalPhase::Post => {
-            if !node.write_arc().mark_as_not_visited_post() {
-              // The second ("post") visit
-              visitor((Arc::clone(node), GraphTraversalPhase::Post));
-            }
-            vec![]
-          }
-        }
-      })
-        // For each node, we receive a list of its successors, so overall a list of lists. We flatten it here into a
-        // flat list.
-      .flatten()
+      .flat_map(|node| visit_pre::<N, E, F, TraversalPolicy>(graph, node, &visitor))
       .collect();
+
+    // The second ("post") visit
+    frontier_post
+      .par_iter()
+      .for_each(|node| visit_post::<N, F>(node, &visitor));
+
+    frontier_post = frontier_pre;
+    frontier_pre = next_frontier;
+  }
+}
+
+fn visit_pre<N, E, F, TraversalPolicy>(graph: &Graph<N, E>, node: &SafeNode<N>, visitor: &F) -> Vec<SafeNode<N>>
+where
+  N: GraphNode,
+  E: GraphEdge,
+  F: Fn((SafeNode<N>, GraphTraversalPhase)) -> GraphTraversalContinuation + Sync + Send,
+  TraversalPolicy: BfsTraversalPolicy<N, E>,
+{
+  if !node.write_arc().mark_as_visited_pre() {
+    if let GraphTraversalContinuation::Stop = visitor((Arc::clone(node), GraphTraversalPhase::Pre)) {
+      return vec![];
+    }
+
+    // Schedule node's successors for first ("pre") traversal. Successors are:
+    //  - for forward traversal: children
+    //  - for backward traversal: parents
+    TraversalPolicy::node_successors(graph, node)
+  } else {
+    vec![]
+  }
+}
+
+fn visit_post<N, F>(node: &SafeNode<N>, visitor: &F)
+where
+  N: GraphNode,
+  F: Fn((SafeNode<N>, GraphTraversalPhase)) -> GraphTraversalContinuation + Sync + Send,
+{
+  if !node.write_arc().mark_as_not_visited_post() {
+    visitor((Arc::clone(node), GraphTraversalPhase::Post));
   }
 }

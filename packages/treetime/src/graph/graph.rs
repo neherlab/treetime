@@ -889,8 +889,6 @@ mod tests {
 
   #[test]
   fn test_traversal_parallel_biphasic_breadth_first_forward() -> Result<(), Report> {
-    rayon::ThreadPoolBuilder::new().num_threads(1).build_global()?;
-
     let mut graph = create_graph_from_nwk_str::<Node, Edge>("((A:4,B:5)AB:2,(C:6,D:7)CD:3)root;")?;
 
     // Traverse the tree from root to leaves and set node weight to be a sum of weights of all of its parents
@@ -933,14 +931,11 @@ mod tests {
       .collect_vec();
 
     assert_eq!(tmps, vec![0.0; 7]);
-
     Ok(())
   }
 
   #[test]
   fn test_traversal_parallel_biphasic_breadth_first_backward() -> Result<(), Report> {
-    rayon::ThreadPoolBuilder::new().num_threads(1).build_global()?;
-
     let mut graph = create_graph_from_nwk_str::<Node, Edge>("((A:1,B:2)AB:3,(C:4,D:5)CD:6)root;")?;
 
     // Traverse the tree from leaves to root and set node weight to be a sum of weights of all of its children
@@ -972,7 +967,7 @@ mod tests {
     // Check that the weights are the sum of children weights
     assert_eq!(
       &write_nwk_str(&graph, &WriteNwkOptions::default())?,
-      "((A:6.,B:7.)AB:2.,(C:9.,D:10.)CD:3.)root;"
+      "((A:3.,B:3.)AB:21.,(C:9.,D:9.)CD:21.)root;"
     );
 
     // Check that all tmp values have been "deallocated"
@@ -983,7 +978,6 @@ mod tests {
       .collect_vec();
 
     assert_eq!(tmps, vec![0.0; 7]);
-
     Ok(())
   }
 }
