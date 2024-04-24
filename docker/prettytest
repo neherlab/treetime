@@ -1,0 +1,19 @@
+#!/usr/bin/env python3
+
+import re
+import sys
+
+patterns = [
+  r'\n.*PASS.*\n\n.*STDOUT.*---.*\n\nrunning \d+ test\ntest .* ... ok\n\ntest result: (ok|FAILED). \d+ passed; \d+ failed; \d+ ignored; \d+ measured; \d+ filtered out; finished in .*\n\n',
+
+  r'test .* \.\.\. FAILED\n\nfailures:\n\nfailures:\n.*\n\ntest result: FAILED. \d+ passed; \d+ failed; \d+ ignored; \d+ measured; \d+ filtered out; finished in .*\n',
+
+  r'\n.*STDOUT.*\n\nrunning \d+ tests?\n',
+]
+
+s = sys.stdin.read()
+
+for pattern in patterns:
+  s = re.sub(pattern, '', s, flags=re.MULTILINE)
+
+sys.stdout.write(s)
