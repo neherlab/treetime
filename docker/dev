@@ -504,7 +504,7 @@ elif [ "${WEB}" == "1" ]; then
   COMMAND=${COMMAND:=yarn install && yarn ${RELEASE}}
   COMMAND="bash -c \"set -euo pipefail && cd packages/treetime-web && ${COMMAND}\""
 elif [ "${TEST}" == "1" ]; then
-  COMMAND="cargo -q nextest run --nocapture --workspace --cargo-quiet --no-fail-fast --hide-progress-bar --color=always --target-dir='${BUILD_DIR_REL}' ${RUST_TARGET} ${TEST_FLAGS} ${*:-} -- ${SUCCESS_OR_FAILURE}"
+  COMMAND="cargo -q nextest run --success-output=immediate --workspace --cargo-quiet --no-fail-fast --hide-progress-bar --color=always --target-dir='${BUILD_DIR_REL}' ${RUST_TARGET} ${TEST_FLAGS} ${*:-} 2>&1 | ./docker/prettytest ${SUCCESS_OR_FAILURE}"
 elif [ "${BENCH}" == "1" ]; then
   COMMAND="cargo -q bench --workspace --benches --target-dir='${BUILD_DIR_REL}' ${RUST_TARGET} -- --color=always ${SUCCESS_OR_FAILURE}"
 elif [ "${LINT}" == "1" ]; then
