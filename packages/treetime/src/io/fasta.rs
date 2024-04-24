@@ -151,11 +151,11 @@ pub fn read_one_fasta_str(contents: &str) -> Result<FastaRecord, Report> {
 
 // Writes sequences into given fasta file
 pub struct FastaWriter {
-  writer: Box<dyn std::io::Write>,
+  writer: Box<dyn std::io::Write + Send + Sync>,
 }
 
 impl FastaWriter {
-  pub fn new(writer: Box<dyn std::io::Write>) -> Self {
+  pub fn new(writer: Box<dyn std::io::Write + Send + Sync>) -> Self {
     Self { writer }
   }
 

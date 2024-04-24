@@ -28,7 +28,7 @@ impl<W: Write + Send> CsvStructWriter<W> {
 /// Writes CSV files. Each row is a serde-annotated struct.
 pub struct CsvStructFileWriter {
   pub filepath: PathBuf,
-  pub writer: CsvStructWriter<Box<dyn Write + Send>>,
+  pub writer: CsvStructWriter<Box<dyn Write + Send + Sync>>,
 }
 
 impl CsvStructFileWriter {
@@ -80,7 +80,7 @@ impl<W: Write + Send> VecWriter for CsvVecWriter<W> {
 pub struct CsvVecFileWriter {
   pub filepath: PathBuf,
   pub headers: Vec<String>,
-  pub writer: CsvVecWriter<Box<dyn Write + Send>>,
+  pub writer: CsvVecWriter<Box<dyn Write + Send + Sync>>,
 }
 
 impl CsvVecFileWriter {

@@ -30,10 +30,9 @@ use xz2::read::XzDecoder;
 #[cfg(not(target_arch = "wasm32"))]
 use xz2::write::XzEncoder;
 #[cfg(not(target_arch = "wasm32"))]
-#[cfg(not(target_arch = "wasm32"))]
 use zstd::Decoder as ZstdDecoder;
-#[cfg(not(target_arch = "wasm32"))]
-use zstd::Encoder as ZstdEncoder;
+// #[cfg(not(target_arch = "wasm32"))]
+// use zstd::Encoder as ZstdEncoder;
 
 #[derive(strum_macros::Display, Clone)]
 pub enum CompressionType {
@@ -142,21 +141,38 @@ fn get_comp_level<I: FromStr + Integer + NumCast>(ext: &str) -> I {
 }
 
 pub struct Compressor<'w> {
-  compressor: Box<dyn Write + Send + 'w>,
+  compressor: Box<dyn Write + Send + Sync + 'w>,
   compression_type: CompressionType,
   filepath: Option<String>,
 }
 
 impl<'w> Compressor<'w> {
-  pub fn new<W: 'w + Write + Send>(writer: W, compression_type: &CompressionType) -> Result<Self, Report> {
-    let compressor: Box<dyn Write + Send + 'w> = match compression_type {
+  pub fn new<W: 'w + Write + Send + Sync>(writer: W, compression_type: &CompressionType) -> Result<Self, Report> {
+    let compressor: Box<dyn Write + Send + Sync + 'w> = match compression_type {
       #[cfg(not(target_arch = "wasm32"))]
       CompressionType::Bzip2 => Box::new(BzEncoder::new(writer, BzCompressionLevel::new(get_comp_level("BZ2")))),
+
       #[cfg(not(target_arch = "wasm32"))]
       CompressionType::Xz => Box::new(XzEncoder::new(writer, get_comp_level("XZ"))),
+
       #[cfg(not(target_arch = "wasm32"))]
-      CompressionType::Zstandard => Box::new(ZstdEncoder::new(writer, get_comp_level("ZST"))?.auto_finish()),
+      CompressionType::Zstandard => {
+        unimplemented!("zstd compression is currently disabled");
+        // TODO: disabled due to issues with concurrency. We need to share `Compressor` between threads, i.e. to have
+        // `Sync` marker on the boxed `compressor` field.
+        //
+        // Code which should be here:
+        // let z = ZstdEncoder::new(writer, get_comp_level("ZST"))?;
+        // Box::new(z.auto_finish())
+        //
+        // Error message:
+        // `dyn std::ops::FnMut(std::result::Result<W, std::io::Error>) + std::marker::Send` cannot be shared between threads safely
+        // It seems that `AutoFinishEncoder` lacks `Sync` marker. Need to check library code and contact maintainer.
+        // Maybe we can `.finish()` the compressor manually in a `Drop` trait?
+      }
+
       CompressionType::Gzip => Box::new(GzEncoder::new(writer, GzCompressionLevel::new(get_comp_level("GZ")))),
+
       CompressionType::None => Box::new(writer),
     };
 
@@ -167,7 +183,7 @@ impl<'w> Compressor<'w> {
     })
   }
 
-  pub fn from_path<W: 'w + Write + Send>(writer: W, filepath: impl AsRef<Path>) -> Result<Self, Report> {
+  pub fn from_path<W: 'w + Write + Send + Sync>(writer: W, filepath: impl AsRef<Path>) -> Result<Self, Report> {
     let filepath = filepath.as_ref();
     let (compression_type, ext) = guess_compression_from_filepath(filepath);
     Self::new(writer, &compression_type)

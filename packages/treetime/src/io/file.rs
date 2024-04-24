@@ -51,10 +51,10 @@ pub fn open_file_or_stdin<P: AsRef<Path>>(filepath: &Option<P>) -> Result<Box<dy
 }
 
 /// Open file for writing. If the path does not exist it will be created recursively.
-pub fn create_file(filepath: impl AsRef<Path>) -> Result<Box<dyn Write + Send>, Report> {
+pub fn create_file(filepath: impl AsRef<Path>) -> Result<Box<dyn Write + Send + Sync>, Report> {
   let filepath = filepath.as_ref();
 
-  let file: Box<dyn Write + Sync + Send> = if is_path_stdout(filepath) {
+  let file: Box<dyn Write + Send + Sync> = if is_path_stdout(filepath) {
     info!("File path is {filepath:?}. Writing to standard output.");
     Box::new(BufWriter::with_capacity(32 * 1024, stdout()))
   } else {
@@ -62,10 +62,10 @@ pub fn create_file(filepath: impl AsRef<Path>) -> Result<Box<dyn Write + Send>, 
     Box::new(File::create(filepath).wrap_err_with(|| format!("When creating file: '{filepath:?}'"))?)
   };
 
-  let buf_file = BufWriter::with_capacity(32 * 1024, file);
-  let compressor = Compressor::from_path(buf_file, filepath)?;
-  let buf_compressor = BufWriter::with_capacity(32 * 1024, compressor);
-  Ok(Box::new(buf_compressor))
+  let file = BufWriter::with_capacity(32 * 1024, file);
+  let file = Compressor::from_path(file, filepath)?;
+  let file = BufWriter::with_capacity(32 * 1024, file);
+  Ok(Box::new(file))
 }
 
 pub fn is_path_stdin(filepath: impl AsRef<Path>) -> bool {
