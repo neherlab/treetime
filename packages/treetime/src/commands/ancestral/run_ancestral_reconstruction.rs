@@ -11,6 +11,8 @@ use crate::seq::representation::compress_sequences;
 use crate::utils::random::get_random_number_generator;
 use crate::utils::string::vec_to_string;
 use eyre::Report;
+use parking_lot::RwLock;
+use std::sync::Arc;
 
 #[derive(Clone, Debug, Default)]
 pub struct TreetimeAncestralParams {
@@ -56,8 +58,7 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
   compress_sequences(&seqs, &graph, &mut rng)?;
 
   let fasta_file = create_file(outdir.join("ancestral_sequences.fasta"))?;
-  let mut fasta_writer = FastaWriter::new(fasta_file);
-
+  let fasta_writer = Arc::new(RwLock::new(FastaWriter::new(fasta_file)));
   match method_anc {
     MethodAncestral::MaximumLikelihoodJoint => {
       unimplemented!("MethodAncestral::MaximumLikelihoodJoint")
@@ -78,13 +79,20 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
 
       ancestral_reconstruction_marginal(&graph, &gtr, *reconstruct_tip_states, |node, seq| {
         // TODO: avoid converting vec to string, write vec chars directly
-        fasta_writer.write(&node.name, &vec_to_string(seq.to_owned())).unwrap();
+        fasta_writer
+          .write_arc()
+          .write(&node.name, &vec_to_string(seq.to_owned()))
+          .unwrap();
       })?;
     }
+
     MethodAncestral::Parsimony => {
       ancestral_reconstruction_fitch(&graph, *reconstruct_tip_states, |node, seq| {
         // TODO: avoid converting vec to string, write vec chars directly
-        fasta_writer.write(&node.name, &vec_to_string(seq.to_owned())).unwrap();
+        fasta_writer
+          .write_arc()
+          .write(&node.name, &vec_to_string(seq.to_owned()))
+          .unwrap();
       })?;
     }
   }

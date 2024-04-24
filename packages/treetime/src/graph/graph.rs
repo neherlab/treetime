@@ -4,8 +4,9 @@ use crate::graph::breadth_first::{
 };
 use crate::graph::edge::{Edge, GraphEdge, GraphEdgeKey};
 use crate::graph::node::{GraphNode, GraphNodeKey, Node};
-use crate::{make_error, make_internal_error, make_internal_report};
-use eyre::Report;
+use crate::utils::vec::get_exactly_one;
+use crate::{make_error, make_internal_report};
+use eyre::{Report, WrapErr};
 use itertools::{iproduct, Itertools};
 use parking_lot::lock_api::{ArcRwLockReadGuard, ArcRwLockWriteGuard};
 use parking_lot::{RawRwLock, RwLock};
@@ -14,19 +15,21 @@ use std::io::Write;
 use std::sync::Arc;
 use traversal::{Bft, DftPost, DftPre};
 
-pub type SafeNode<N> = Arc<RwLock<Node<N>>>;
+pub type ArcLock<T> = Arc<RwLock<T>>;
+
+pub type SafeNode<N> = ArcLock<Node<N>>;
 pub type SafeNodeRef<N> = ArcRwLockReadGuard<RawRwLock, Node<N>>;
 pub type SafeNodeRefMut<N> = ArcRwLockWriteGuard<RawRwLock, Node<N>>;
 
-pub type SafeEdge<E> = Arc<RwLock<Edge<E>>>;
+pub type SafeEdge<E> = ArcLock<Edge<E>>;
 pub type SafeEdgeRef<E> = ArcRwLockReadGuard<RawRwLock, Edge<E>>;
 pub type SafeEdgeRefMut<E> = ArcRwLockWriteGuard<RawRwLock, Edge<E>>;
 
 pub type SafeNodePayloadRef<N> = ArcRwLockReadGuard<RawRwLock, N>;
 pub type SafeNodePayloadRefMut<N> = ArcRwLockWriteGuard<RawRwLock, N>;
 
-pub type NodeEdgePair<N, E> = (Arc<RwLock<Node<N>>>, Arc<RwLock<Edge<E>>>);
-pub type NodeEdgePayloadPair<N, E> = (Arc<RwLock<N>>, Arc<RwLock<E>>);
+pub type NodeEdgePair<N, E> = (ArcLock<Node<N>>, ArcLock<Edge<E>>);
+pub type NodeEdgePayloadPair<N, E> = (ArcLock<N>, ArcLock<E>);
 
 /// Represents graph node during forward traversal
 #[derive(Debug)]
@@ -67,6 +70,13 @@ where
       payload,
       parents,
     }
+  }
+
+  pub fn get_one_parent(&self) -> Option<&NodeEdgePayloadPair<N, E>> {
+    if self.parents.is_empty() {
+      return None;
+    }
+    Some(get_exactly_one(&self.parents).unwrap())
   }
 }
 
@@ -228,15 +238,15 @@ where
       return Ok(None);
     }
 
-    if parents.len() > 1 {
-      return make_internal_error!(
-        "Only trees with exactly one parent per node are currently supported, but node '{}' has {} parents",
+    let parent = get_exactly_one(&parents).wrap_err_with(|| {
+      format!(
+        "Only trees with at most one parent per node are currently supported, but node '{}' has {} parents",
         node.key(),
-        self.roots.len()
-      );
-    }
+        parents.len()
+      )
+    })?;
 
-    Ok(Some(Arc::clone(&parents[0])))
+    Ok(Some(Arc::clone(&parent)))
   }
 
   /// Retrieve child nodes of a given node and the corresponding edges.
@@ -334,14 +344,9 @@ where
 
   pub fn get_exactly_one_root(&self) -> Result<Arc<RwLock<Node<N>>>, Report> {
     let roots = self.get_roots();
-    if roots.len() != 1 {
-      make_internal_error!(
-        "Only trees with exactly one root are currently supported, but found '{}'",
-        self.roots.len()
-      )
-    } else {
-      Ok(Arc::clone(&roots[0]))
-    }
+    Ok(Arc::clone(
+      get_exactly_one(&roots).wrap_err("Only trees with exactly 1 root are currently supported")?,
+    ))
   }
 
   #[inline]
@@ -474,7 +479,7 @@ where
     self.reset_nodes();
   }
 
-  pub fn par_iter_breadth_first_biphasic_forward<F>(&mut self, explorer: F)
+  pub fn par_iter_breadth_first_biphasic_forward<F>(&self, explorer: F)
   where
     F: Fn((GraphNodeForward<N, E>, GraphTraversalPhase)) -> GraphTraversalContinuation + Sync + Send,
   {
@@ -489,7 +494,7 @@ where
     self.reset_nodes();
   }
 
-  pub fn par_iter_breadth_first_biphasic_backward<F>(&mut self, explorer: F)
+  pub fn par_iter_breadth_first_biphasic_backward<F>(&self, explorer: F)
   where
     F: Fn((GraphNodeBackward<N, E>, GraphTraversalPhase)) -> GraphTraversalContinuation + Sync + Send,
   {

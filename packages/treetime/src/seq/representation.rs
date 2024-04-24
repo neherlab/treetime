@@ -378,11 +378,10 @@ pub fn post_order_intrusive<F>(
 }
 
 #[allow(dead_code)]
-pub fn apply_changes_inplace(node: &Node, seq: &mut [char]) {
+pub fn apply_muts_inplace(node: &Node, seq: &mut [char]) {
   for (&pos, &(_, der)) in &node.mutations {
     seq[pos] = der;
   }
-  apply_non_nuc_changes_inplace(node, seq);
 }
 
 pub fn apply_non_nuc_changes_inplace(node: &Node, seq: &mut [char]) {
@@ -410,6 +409,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use std::collections::BTreeMap;
+  use std::sync::Arc;
 
   #[rstest]
   fn test_seq_representation() -> Result<(), Report> {
@@ -717,9 +717,11 @@ mod tests {
 
     compress_sequences(&inputs, &graph, &mut rng).unwrap();
 
-    let mut actual = BTreeMap::new();
+    let actual = Arc::new(RwLock::new(BTreeMap::new()));
     ancestral_reconstruction_fitch(&graph, false, |node, seq| {
-      actual.insert(node.name.clone(), vec_to_string(seq.to_owned()));
+      actual
+        .write_arc()
+        .insert(node.name.clone(), vec_to_string(seq.to_owned()));
     })?;
 
     assert_eq!(
@@ -758,9 +760,11 @@ mod tests {
 
     compress_sequences(&inputs, &graph, &mut rng).unwrap();
 
-    let mut actual = BTreeMap::new();
+    let actual = Arc::new(RwLock::new(BTreeMap::new()));
     ancestral_reconstruction_fitch(&graph, true, |node, seq| {
-      actual.insert(node.name.clone(), vec_to_string(seq.to_owned()));
+      actual
+        .write_arc()
+        .insert(node.name.clone(), vec_to_string(seq.to_owned()));
     })?;
 
     assert_eq!(

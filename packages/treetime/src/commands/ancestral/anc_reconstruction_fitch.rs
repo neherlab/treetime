@@ -1,8 +1,8 @@
 use crate::commands::ancestral::anc_graph::{Edge, Node};
-use crate::graph::graph::{Graph, SafeNode};
-use crate::seq::representation::{apply_non_nuc_changes_inplace, pre_order_intrusive};
+use crate::graph::breadth_first::{GraphTraversalContinuation, GraphTraversalPhase};
+use crate::graph::graph::{Graph, GraphNodeForward};
+use crate::seq::representation::{apply_muts_inplace, apply_non_nuc_changes_inplace};
 use eyre::Report;
-use std::borrow::Cow;
 
 /// Reconstruct ancestral sequences using Fitch parsimony.
 ///
@@ -11,31 +11,36 @@ use std::borrow::Cow;
 pub fn ancestral_reconstruction_fitch(
   graph: &Graph<Node, Edge>,
   include_leaves: bool,
-  mut visitor: impl FnMut(&Node, &[char]),
+  visitor: impl Fn(&Node, &[char]) + Send + Sync,
 ) -> Result<(), Report> {
-  let root = graph.get_exactly_one_root()?;
-  let mut root_seq = { root.read_arc().payload().read_arc().seq.clone() };
+  graph.par_iter_breadth_first_biphasic_forward(
+    |(mut node, phase): (GraphNodeForward<Node, Edge>, GraphTraversalPhase)| {
+      match phase {
+        GraphTraversalPhase::Pre => {
+          if !include_leaves && node.is_leaf {
+            return GraphTraversalContinuation::Continue;
+          }
 
-  pre_order_intrusive(
-    graph,
-    &root,
-    &mut root_seq,
-    &mut |node: &SafeNode<Node>, seq: &[char]| {
-      let node = node.read_arc().payload().read_arc();
+          // Apply node mutations to the parent sequence, and remember the result
+          if let Some((parent, _)) = node.get_one_parent() {
+            let mut seq = { parent.read_arc().seq.clone() };
+            apply_muts_inplace(&node.payload, &mut seq);
+            if include_leaves && node.is_leaf {
+              apply_non_nuc_changes_inplace(&node.payload, &mut seq);
+            }
+            node.payload.seq = seq;
+          }
 
-      if !include_leaves && node.is_leaf() {
-        return;
+          visitor(&node.payload, &node.payload.seq);
+        }
+        GraphTraversalPhase::Post => {
+          // Second visit, after all children are visited. Deallocate sequences - they are no longer needed.
+          if !node.is_root {
+            node.payload.seq = vec![];
+          }
+        }
       }
-
-      let seq = if include_leaves {
-        let mut seq = seq.to_owned();
-        apply_non_nuc_changes_inplace(&node, &mut seq);
-        Cow::from(seq)
-      } else {
-        Cow::from(seq)
-      };
-
-      visitor(&node, &seq);
+      GraphTraversalContinuation::Continue
     },
   );
 
@@ -53,9 +58,11 @@ mod tests {
   use crate::utils::random::get_random_number_generator;
   use crate::utils::string::vec_to_string;
   use eyre::Report;
+  use parking_lot::RwLock;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use std::collections::BTreeMap;
+  use std::sync::Arc;
 
   #[rstest]
   fn test_seq_ancestral_reconstruction_with_leaves() -> Result<(), Report> {
@@ -85,9 +92,11 @@ mod tests {
 
     compress_sequences(&inputs, &graph, &mut rng).unwrap();
 
-    let mut actual = BTreeMap::new();
+    let actual = Arc::new(RwLock::new(BTreeMap::new()));
     ancestral_reconstruction_fitch(&graph, true, |node, seq| {
-      actual.insert(node.name.clone(), vec_to_string(seq.to_owned()));
+      actual
+        .write_arc()
+        .insert(node.name.clone(), vec_to_string(seq.to_owned()));
     })?;
 
     assert_eq!(
