@@ -7,6 +7,7 @@ use crate::io::dates_csv::{DateOrRange, DatesMap};
 use crate::make_error;
 use eyre::Report;
 use ndarray::Array1;
+use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 use std::path::Path;
 use std::sync::atomic::AtomicUsize;
@@ -14,7 +15,7 @@ use std::sync::atomic::Ordering::Relaxed;
 
 pub type ClockGraph = Graph<Node, Edge>;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Node {
   pub name: String,
   pub node_type: NodeType,
@@ -114,7 +115,7 @@ impl Display for Node {
   }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Edge {
   pub weight: f64,
 }

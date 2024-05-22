@@ -1,13 +1,14 @@
 use crate::graph::edge::GraphEdgeKey;
 use derive_more::Display;
 use parking_lot::RwLock;
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fmt::{Debug, Display};
 use std::hash::Hash;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum NodeType {
   Root(String),
   Leaf(String),
@@ -35,7 +36,7 @@ pub trait GraphNode: Clone + Debug + Display + Sync + Send + Named + WithNwkComm
   fn set_node_type(&mut self, node_type: NodeType);
 }
 
-#[derive(Copy, Clone, Debug, Display, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Copy, Clone, Debug, Display, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct GraphNodeKey(pub usize);
 
 impl GraphNodeKey {
@@ -46,7 +47,7 @@ impl GraphNodeKey {
 }
 
 /// Internal representation of a node in a graph
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Node<N: GraphNode> {
   key: GraphNodeKey,
   data: Arc<RwLock<N>>,

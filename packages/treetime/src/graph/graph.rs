@@ -8,6 +8,7 @@ use eyre::Report;
 use itertools::{iproduct, Itertools};
 use parking_lot::lock_api::{ArcRwLockReadGuard, ArcRwLockWriteGuard};
 use parking_lot::{RawRwLock, RwLock};
+use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use std::io::Write;
 use std::sync::Arc;
@@ -151,7 +152,7 @@ where
   }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Graph<N, E>
 where
   N: GraphNode,
@@ -686,7 +687,7 @@ mod tests {
   use crate::graph::node::{Named, NodeType, WithNwkComments};
   use std::fmt::{Display, Formatter};
 
-  #[derive(Clone, Debug, PartialEq, Eq)]
+  #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
   pub struct Node {
     pub name: String,
     pub node_type: NodeType,
@@ -741,7 +742,7 @@ mod tests {
     }
   }
 
-  #[derive(Clone, Debug, PartialEq)]
+  #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
   pub struct Edge {
     pub weight: f64,
   }

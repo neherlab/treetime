@@ -2,6 +2,7 @@ use crate::graph::graph::Graph;
 use crate::graph::node::{GraphNode, GraphNodeKey};
 use derive_more::Display;
 use parking_lot::RwLock;
+use serde::{Deserialize, Serialize};
 use std::fmt::{Debug, Display, Formatter};
 use std::hash::Hash;
 use std::mem::swap;
@@ -15,7 +16,7 @@ pub trait GraphEdge: Clone + Debug + Display + Sync + Send + Weighted {
   fn new(weight: f64) -> Self;
 }
 
-#[derive(Copy, Clone, Debug, Display, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Copy, Clone, Debug, Display, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct GraphEdgeKey(pub usize);
 
 impl GraphEdgeKey {
@@ -28,7 +29,7 @@ impl GraphEdgeKey {
 /// Edge representing a connection between two nodes. Relevant data can be
 /// stored in the edge atomically. Edge's target and source node's are
 /// weak references and can't outlive the nodes they represent.
-#[derive(Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Edge<E: GraphEdge> {
   key: GraphEdgeKey,
   source: GraphNodeKey,

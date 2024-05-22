@@ -8,6 +8,7 @@ use crate::commands::clock::run_reroot::{run_reroot, RerootParams};
 use crate::io::csv::CsvStructFileWriter;
 use crate::io::dates_csv::read_dates;
 use crate::io::file::create_file;
+use crate::io::json::{json_write_file, JsonPretty};
 use crate::io::nwk::{write_nwk_file, WriteNwkOptions};
 use eyre::{Report, WrapErr};
 
@@ -44,6 +45,7 @@ pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
   };
 
   graph.print_graph(create_file(outdir.join("graph_input.dot"))?)?;
+  json_write_file(&graph, outdir.join("graph_input.json"), JsonPretty(true))?;
 
   if *clock_filter > 0.0 {
     unimplemented!("clock_filter")
@@ -76,6 +78,7 @@ pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
   rtt.iter().try_for_each(|result| rtt_writer.write(result))?;
 
   graph.print_graph(create_file(outdir.join("graph_output.dot"))?)?;
+  json_write_file(&graph, outdir.join("graph_output.json"), JsonPretty(true))?;
 
   write_nwk_file(&outdir.join("rerooted.nwk"), &graph, &WriteNwkOptions::default())?;
 

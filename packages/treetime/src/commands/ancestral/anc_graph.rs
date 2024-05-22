@@ -9,13 +9,14 @@ use eyre::Report;
 use itertools::Itertools;
 use maplit::{btreemap, btreeset};
 use ndarray::{Array1, Array2};
+use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::{Display, Formatter};
 use std::path::Path;
 
 pub type AncestralGraph = Graph<Node, Edge>;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Node {
   pub name: String,
   pub node_type: NodeType,
@@ -141,7 +142,7 @@ impl Display for Node {
   }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Edge {
   pub weight: f64,
 }

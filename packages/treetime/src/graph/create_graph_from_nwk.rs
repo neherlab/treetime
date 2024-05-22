@@ -96,9 +96,10 @@ mod tests {
   use eyre::Report;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
+  use serde::{Deserialize, Serialize};
   use std::fmt::{Display, Formatter};
 
-  #[derive(Clone, Debug, PartialEq, Eq)]
+  #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
   pub struct Node {
     pub name: String,
     pub node_type: NodeType,
@@ -153,7 +154,7 @@ mod tests {
     }
   }
 
-  #[derive(Clone, Debug, PartialEq)]
+  #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
   pub struct Edge {
     pub weight: f64,
   }

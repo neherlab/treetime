@@ -5,6 +5,7 @@ use crate::commands::ancestral::anc_reconstruction_marginal::ancestral_reconstru
 use crate::gtr::get_gtr::get_gtr;
 use crate::io::fasta::{read_many_fasta, FastaRecord, FastaWriter};
 use crate::io::file::create_file;
+use crate::io::json::{json_write_file, JsonPretty};
 use crate::io::nex::{write_nex, WriteNexOptions};
 use crate::io::nwk::{write_nwk_writer, WriteNwkOptions};
 use crate::seq::representation::compress_sequences;
@@ -45,6 +46,7 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
   };
 
   graph.print_graph(create_file(outdir.join("graph_input.dot"))?)?;
+  json_write_file(&graph, outdir.join("graph_input.json"), JsonPretty(true))?;
 
   // TODO: avoid reading all sequences into memory somehow?
   let fastas = read_many_fasta(input_fastas)?;
@@ -90,6 +92,7 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
   }
 
   graph.print_graph(create_file(outdir.join("graph_output.dot"))?)?;
+  json_write_file(&graph, outdir.join("graph_output.json"), JsonPretty(true))?;
 
   write_nwk_writer(
     &mut create_file(outdir.join("annotated_tree.nwk"))?,

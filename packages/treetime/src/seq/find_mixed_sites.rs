@@ -2,6 +2,7 @@ use crate::make_internal_error;
 use eyre::Report;
 use maplit::btreeset;
 use std::collections::{BTreeMap, BTreeSet};
+use serde::{Deserialize, Serialize};
 
 pub fn find_mixed_sites(seq: &[char]) -> (Vec<MixedSite>, BTreeMap<usize, BTreeSet<char>>) {
   let mut mixed_positions = Vec::new();
@@ -20,7 +21,7 @@ pub fn find_mixed_sites(seq: &[char]) -> (Vec<MixedSite>, BTreeMap<usize, BTreeS
   (mixed_positions, non_consensus)
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MixedSite {
   pub pos: usize,
   pub nuc: char,
