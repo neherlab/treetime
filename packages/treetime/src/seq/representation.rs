@@ -483,7 +483,7 @@ mod tests {
         ambiguous: vec![],
         undetermined: vec![(11, 13)],
         mixed: vec![],
-        non_consensus: BTreeMap::from([]),
+        non_consensus: btreemap! {},
         nuc_composition: btreemap! {
           'A' => 2,
           'C' => 3,
@@ -510,11 +510,7 @@ mod tests {
         ambiguous: vec![(8, 10)],
         undetermined: vec![(8, 10), (11, 13)],
         mixed: vec![],
-        non_consensus: BTreeMap::from([
-          (0, btreeset![]), //
-          (5, btreeset![]), //
-          (7, btreeset![]), //
-        ]),
+        non_consensus: btreemap! {},
         nuc_composition: btreemap! {
           'A' => 3,
           'C' => 4,
@@ -540,11 +536,7 @@ mod tests {
         ambiguous: vec![(12, 13)],
         undetermined: vec![(11, 13)],
         mixed: vec![],
-        non_consensus: BTreeMap::from([
-          (0, btreeset![]), //
-          (5, btreeset![]), //
-          (7, btreeset![]), //
-        ]),
+        non_consensus: btreemap! {},
         nuc_composition: btreemap! {
           'A' => 2,
           'C' => 4,
@@ -568,7 +560,7 @@ mod tests {
         ambiguous: vec![],
         undetermined: vec![],
         mixed: vec![],
-        non_consensus: BTreeMap::from([]),
+        non_consensus: btreemap! {},
         nuc_composition: btreemap! {
           'A' => 1,
           'C' => 2,
@@ -595,11 +587,7 @@ mod tests {
         ambiguous: vec![],
         undetermined: vec![],
         mixed: vec![],
-        non_consensus: BTreeMap::from([
-          (0, btreeset![]), //
-          (5, btreeset![]), //
-          (6, btreeset![]), //
-        ]),
+        non_consensus: btreemap! {},
         nuc_composition: btreemap! {
           'A' => 2,
           'C' => 3,
@@ -625,12 +613,9 @@ mod tests {
         ambiguous: vec![],
         undetermined: vec![],
         mixed: vec![MixedSite::new(10, 'R')],
-        non_consensus: BTreeMap::from([
-          (0, btreeset![]),     //
-          (5, btreeset![]),     //
-          (6, btreeset![]),     //
-          (10, btreeset!['G']), //
-        ]),
+        non_consensus: btreemap! {
+          10 => btreeset!{'G'},
+        },
         nuc_composition: btreemap! {
           'A' => 1,
           'C' => 3,
