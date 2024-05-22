@@ -211,6 +211,8 @@ fn root_seq_fill_non_consensus_inplace(graph: &Graph<Node, Edge>, rng: &mut impl
     root.seq[*pos] = random_pop(states, rng);
   });
 
+  root.non_consensus.retain(|pos, states| !states.is_empty());
+
   root.nuc_composition = root
     .seq
     .iter()
@@ -253,6 +255,8 @@ fn gather_mutations_inplace(graph: &Graph<Node, Edge>, rng: &mut (impl Rng + Sen
           })
         })
         .collect_vec();
+
+      child.non_consensus.retain(|pos, states| !states.is_empty());
 
       child_states.into_iter().for_each(|(pos, parent_state, child_state)| {
         if !child.is_leaf() {
