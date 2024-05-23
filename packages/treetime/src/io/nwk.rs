@@ -88,7 +88,7 @@ where
   };
 
   let root = root.read();
-  node_to_nwk_string(writer, graph, &root, 0.0001, options)?;
+  node_to_nwk_string(writer, graph, &root, None, options)?;
   write!(writer, ";")?;
 
   Ok(())
@@ -98,7 +98,7 @@ fn node_to_nwk_string<N, E>(
   writer: &mut impl Write,
   graph: &Graph<N, E>,
   node: &Node<N>,
-  weight: f64,
+  weight: Option<f64>,
   options: &WriteNwkOptions,
 ) -> Result<(), Report>
 where
@@ -125,9 +125,8 @@ where
         let child = graph.get_node(child_key).unwrap();
         let child = child.read();
         let weight = edge.read().payload().read().weight();
-        node_to_nwk_string(writer, graph, &child, weight, options)?;
+        node_to_nwk_string(writer, graph, &child, Some(weight), options)?;
       }
-
     }
     write!(writer, ")")?;
   }
@@ -138,7 +137,11 @@ where
     (node_payload.name().to_owned(), node_payload.nwk_comments())
   };
   write!(writer, "{name}")?;
-  write!(writer, ":{}", format_weight(weight, options))?;
+
+  if let Some(weight) = weight {
+    write!(writer, ":{}", format_weight(weight, options))?;
+  }
+
   if !comments.is_empty() {
     let comments = comments.iter().map(|(key, val)| format!("[&{key}=\"{val}\"]")).join("");
     write!(writer, "{comments}")?;
