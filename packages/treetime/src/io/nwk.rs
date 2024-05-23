@@ -142,7 +142,6 @@ where
   if !comments.is_empty() {
     let comments = comments.iter().map(|(key, val)| format!("[&{key}=\"{val}\"]")).join("");
     write!(writer, "{comments}")?;
-    dbg!(&name, &comments);
   }
 
   Ok(())
