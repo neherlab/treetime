@@ -88,7 +88,7 @@ where
   };
 
   let root = root.read();
-  node_to_nwk_string(writer, graph, &root, options)?;
+  node_to_nwk_string(writer, graph, &root, 0.0001, options)?;
   write!(writer, ";")?;
 
   Ok(())
@@ -98,18 +98,13 @@ fn node_to_nwk_string<N, E>(
   writer: &mut impl Write,
   graph: &Graph<N, E>,
   node: &Node<N>,
+  weight: f64,
   options: &WriteNwkOptions,
 ) -> Result<(), Report>
 where
   N: GraphNode,
   E: GraphEdge,
 {
-  let (name, comments) = {
-    let node_payload = node.payload();
-    let node_payload = node_payload.read();
-    (node_payload.name().to_owned(), node_payload.nwk_comments())
-  };
-
   let outbound_edge_keys = node.outbound();
 
   if !outbound_edge_keys.is_empty() {
@@ -129,21 +124,26 @@ where
         let child_key = edge.read().target();
         let child = graph.get_node(child_key).unwrap();
         let child = child.read();
-        node_to_nwk_string(writer, graph, &child, options)?;
+        let weight = edge.read().payload().read().weight();
+        node_to_nwk_string(writer, graph, &child, weight, options)?;
       }
 
-      let weight = edge.read().payload().read().weight();
-      write!(writer, ":{}", format_weight(weight, options))?;
-
-      if !comments.is_empty() {
-        let comments = comments.iter().map(|(key, val)| format!("[&{key}=\"{val}\"]")).join("");
-        write!(writer, "{comments}")?;
-      }
     }
     write!(writer, ")")?;
   }
 
+  let (name, comments) = {
+    let node_payload = node.payload();
+    let node_payload = node_payload.read();
+    (node_payload.name().to_owned(), node_payload.nwk_comments())
+  };
   write!(writer, "{name}")?;
+  write!(writer, ":{}", format_weight(weight, options))?;
+  if !comments.is_empty() {
+    let comments = comments.iter().map(|(key, val)| format!("[&{key}=\"{val}\"]")).join("");
+    write!(writer, "{comments}")?;
+    dbg!(&name, &comments);
+  }
 
   Ok(())
 }
