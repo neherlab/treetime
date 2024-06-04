@@ -65,14 +65,14 @@ class Coalescent(object):
         '''
         if isinstance(Tc, Iterable):
             if len(Tc)==len(T):
-                x = np.concatenate(([ttconf.BIG_NUMBER], T, [-ttconf.BIG_NUMBER]))
+                x = np.concatenate(([ttconf.BIGGEST_NUMBER], T, [-ttconf.BIGGEST_NUMBER]))
                 y = np.concatenate(([Tc[0]], Tc, [Tc[-1]]))
                 self.Tc = interp1d(x,y)
             else:
                 self.logger("need Tc values and Timepoints of equal length",2,warn=True)
-                self.Tc = interp1d([-ttconf.BIG_NUMBER, ttconf.BIG_NUMBER], [1e-5, 1e-5])
+                self.Tc = interp1d([-ttconf.BIGGEST_NUMBER, ttconf.BIGGEST_NUMBER], [1e-5, 1e-5])
         else:
-            self.Tc = interp1d([-ttconf.BIG_NUMBER, ttconf.BIG_NUMBER],
+            self.Tc = interp1d([-ttconf.BIGGEST_NUMBER, ttconf.BIGGEST_NUMBER],
                                [Tc+ttconf.TINY_NUMBER, Tc+ttconf.TINY_NUMBER])
         self.calc_integral_merger_rate()
 
@@ -117,7 +117,7 @@ class Coalescent(object):
                     cdf_function=n.joint_inverse_cdf
 
                 if cdf_function is not None:
-                    x_vals = np.concatenate([[-ttconf.BIG_NUMBER], cdf_function(y_points), [ttconf.BIG_NUMBER]])
+                    x_vals = np.concatenate([[-ttconf.BIGGEST_NUMBER], cdf_function(y_points), [ttconf.BIGGEST_NUMBER]])
                     y_vals = np.concatenate([ [(len(n.clades)-1),(len(n.clades)-1)], (1-y_points[1:-1]), [0,0]])
                     tree_smooth_events +=  [interp1d(x_vals, y_vals, kind="linear")]
                 else:
@@ -134,7 +134,7 @@ class Coalescent(object):
             unique_mergers = np.array(sorted(dn_branch.items(), key = lambda x:-x[0]))
 
             # calculate the branch count at each point summing the delta branch counts
-            nbranches_discrete = [[ttconf.BIG_NUMBER, 1], [unique_mergers[0,0]+ttconf.TINY_NUMBER, 1]]
+            nbranches_discrete = [[ttconf.BIGGEST_NUMBER, 1], [unique_mergers[0,0]+ttconf.TINY_NUMBER, 1]]
             for ti, (t, dn) in enumerate(unique_mergers[:-1]):
                 new_n = nbranches_discrete[-1][1]+dn
                 next_t = unique_mergers[ti+1,0]+ttconf.TINY_NUMBER
@@ -143,7 +143,7 @@ class Coalescent(object):
 
             new_n += unique_mergers[-1,1]
             nbranches_discrete.append([unique_mergers[ti+1,0], new_n])
-            nbranches_discrete.append([-ttconf.BIG_NUMBER, new_n])
+            nbranches_discrete.append([-ttconf.BIGGEST_NUMBER, new_n])
             nbranches_discrete=np.array(nbranches_discrete)
             nbranches_discrete = interp1d(nbranches_discrete[:,0], nbranches_discrete[:,1], kind='linear')
 
@@ -180,7 +180,7 @@ class Coalescent(object):
         # the latter is scaled by 0.5/Tc
         # need to add extra point at very large time before present to
         # prevent 'out of interpolation range' errors
-        self.integral_merger_rate = interp1d(np.concatenate(([-ttconf.BIG_NUMBER], tvals,[ttconf.BIG_NUMBER])),
+        self.integral_merger_rate = interp1d(np.concatenate(([-ttconf.BIGGEST_NUMBER], tvals,[ttconf.BIGGEST_NUMBER])),
                                   np.concatenate(([cost[0]], cost,[cost[-1]])), kind='linear')
 
     def branch_merger_rate(self, t):
