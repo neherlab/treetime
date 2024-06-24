@@ -3,9 +3,10 @@ from typing import List, Tuple, Callable, Any, Optional, TypeVar, Generic
 from .key import GraphEdgeKey, GraphNodeKey
 from .node import Node, N
 from .edge import Edge, E
+from .str import AutoRepr
 
 
-class GraphNodeForward:
+class GraphNodeForward(AutoRepr):
   """
   Subset of node data which is safe to access during forward parallel traversal
   """
@@ -21,7 +22,7 @@ class GraphNodeForward:
     ]
 
 
-class GraphNodeBackward:
+class GraphNodeBackward(AutoRepr):
   """
   Subset of node data which is safe to access during backward parallel traversal
   """
@@ -37,7 +38,7 @@ class GraphNodeBackward:
     ]
 
 
-class GraphNodeSafe:
+class GraphNodeSafe(AutoRepr):
   """
   Subset of node data which is safe to access during unordered parallel iteration.
   """
@@ -54,7 +55,7 @@ class GraphNodeSafe:
 T = TypeVar('T')
 
 
-class Graph(Generic[N, E]):
+class Graph(Generic[N, E], AutoRepr):
   def __init__(self):
     self.nodes: List[Node[N]] = []
     self.edges: List[Edge[E]] = []

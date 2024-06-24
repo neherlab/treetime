@@ -18,33 +18,32 @@ def graph_from_nwk_str(
 
   graph = Graph()
 
-  def add_node(tree_node: Clade) -> GraphNodeKey:
+  def recurse(tree_node: Clade) -> GraphNodeKey:
     node_key = graph.add_node(node_payload_factory(tree_node.name))
     for child in tree_node.clades:
-      child_key = add_node(child)
+      child_key = recurse(child)
       graph.add_edge(node_key, child_key, edge_payload_factory(tree_node.branch_length))
     return node_key
 
   root = tree.root
-  add_node(root)
+  recurse(root)
   graph.build()
 
   return graph
 
 
-def graph_to_nwk_string(graph: Graph[N, E]) -> str:
-  def build_phylo_tree(node: Node[N], edge: Optional[Edge[E]]) -> Clade:
-    if node.is_leaf():
-      name = node.payload().name
-      branch_length = edge.payload().weight
-      return Clade(name=name, branch_length=branch_length)
-    else:
-      children = graph.children_of(node.key())
-      clades = [build_phylo_tree(child, edge) for child, edge in children]
-      return Clade(clades=clades)
+def graph_to_nwk_str(graph: Graph[N, E]) -> str:
+  def recurse(node: Node[N], edge: Optional[Edge[E]]) -> Clade:
+    name = node.payload().name
+    branch_length = edge.payload().weight if edge is not None else None
+    children = graph.children_of(node.key())
+    clades = []
+    if children:
+      clades = [recurse(child, child_edge) for child, child_edge in children]
+    return Clade(name=name, branch_length=branch_length, clades=clades)
 
   root = graph.get_one_root()
-  tree = build_phylo_tree(root, None)
+  tree = recurse(root, None)
 
   with StringIO() as f:
     Phylo.write(tree, f, "newick")

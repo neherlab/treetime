@@ -1,11 +1,12 @@
 from typing import TypeVar, Generic
 
 from .key import GraphEdgeKey, GraphNodeKey
+from .str import AutoRepr
 
 E = TypeVar('E')
 
 
-class Edge(Generic[E]):
+class Edge(Generic[E], AutoRepr):
   def __init__(self, key: GraphEdgeKey, source: GraphNodeKey, target: GraphNodeKey, payload: E):
     self._key: GraphEdgeKey = key
     self._source: GraphNodeKey = source

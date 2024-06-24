@@ -1,11 +1,12 @@
 from typing import TypeVar, Generic, List
 
 from .key import GraphNodeKey, GraphEdgeKey
+from .str import AutoRepr
 
 N = TypeVar('N')
 
 
-class Node(Generic[N]):
+class Node(Generic[N], AutoRepr):
   def __init__(self, key: GraphNodeKey, payload: N):
     self._key: GraphNodeKey = key
     self._payload: N = payload
