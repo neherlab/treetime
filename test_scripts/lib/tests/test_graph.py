@@ -16,7 +16,7 @@ class TestGraph(unittest.TestCase):
     self.graph.add_edge(self.node_c, self.node_e, "C->E")
     self.graph.build()
 
-  def test_depth_first_preorder_forward(self):
+  def test_par_iter_forward(self):
     result = []
 
     def explorer(node: GraphNodeForward):
@@ -26,7 +26,7 @@ class TestGraph(unittest.TestCase):
     expected = ["A", "B", "D", "C", "E"]
     self.assertEqual(result, expected)
 
-  def test_depth_first_postorder_forward(self):
+  def test_par_iter_backward(self):
     result = []
 
     def explorer(node: GraphNodeBackward):
