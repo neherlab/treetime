@@ -35,14 +35,18 @@ def main():
 
   graph.par_iter_forward(explorer)
 
-  print(result)
+  print("\n".join(map(lambda x: x.__repr__(), result)))
+
+  print("\n\n")
+
+  result = []
 
   def explorer(node: GraphNodeBackward):
     result.append(node.payload)
 
   graph.par_iter_backward(explorer)
 
-  print(result)
+  print("\n".join(map(lambda x: x.__repr__(), result)))
 
 
 if __name__ == '__main__':
