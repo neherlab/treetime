@@ -5,9 +5,8 @@ from ..nwk import graph_to_nwk_string, graph_from_nwk_str
 
 
 class NodePayload:
-  def __init__(self, name: Optional[str], weight: Optional[float]):
+  def __init__(self, name: Optional[str]):
     self.name: Optional[str] = name
-    self.weight: Optional[float] = weight
 
 
 class EdgePayload:
