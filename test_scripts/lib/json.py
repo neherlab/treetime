@@ -1,6 +1,6 @@
 import jsonpickle
 
-from test_scripts.lib import Graph
+from .graph import Graph
 
 
 def graph_to_json(self: Graph):
