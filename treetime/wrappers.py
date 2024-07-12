@@ -859,7 +859,8 @@ def estimate_clock_model(params):
         myTree.outliers.to_csv(basename + 'outliers.tsv', sep='\t')
 
     if hasattr(myTree, 'outliers') and myTree.outliers is not None and params.prune_outliers:
-        for outlier in myTree.outliers:
+        for outlier in myTree.outliers.index:
+            print("removing ", outlier)
             myTree.tree.prune(outlier)
 
     if not params.keep_root:
