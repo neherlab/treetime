@@ -47,7 +47,8 @@ def main():
   graph.par_iter_backward(explorer)
 
   print("\n".join(map(lambda x: x.__repr__(), result)))
+  return graph
 
 
 if __name__ == '__main__':
-  main()
+  g=main()
