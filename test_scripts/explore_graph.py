@@ -2,7 +2,8 @@ from dataclasses import dataclass
 from Bio import AlignIO
 import numpy as np
 from typing import Optional, List, Dict
-from lib import Graph, AutoRepr, Mut, graph_from_nwk_str, Node
+from lib import Graph, AutoRepr, Mut, graph_from_nwk_str, Node, GraphNodeBackward, GraphNodeForward
+from treetime import GTR
 
 # definition and function to handle mixed sites
 #                        "A,C,G,T"
@@ -35,13 +36,19 @@ class Range(AutoRepr):
   end: int
 
 @dataclass
+class VarPos(AutoRepr):
+  profile: np.array
+  state: str
+
+@dataclass
 class Seq(AutoRepr):
   gaps: List[Range]
   unknown: List[Range]
   indeterminate: List[Range]
-  variable_ingroup:  Optional[Dict[int, np.array]]
-  variable_outgroup: Optional[Dict[int, np.array]]
-  variable_profile:  Optional[Dict[int, np.array]]
+  ingroupLH: List[float]
+  variable_ingroup:  Optional[Dict[int, VarPos]]
+  variable_outgroup: Optional[Dict[int, VarPos]]
+  variable_profile:  Optional[Dict[int, VarPos]]
   fixed_ingroup:     Optional[Dict[str, np.array]]
   fixed_outgroup:    Optional[Dict[str, np.array]]
   fixed_profile:     Optional[Dict[str, np.array]]
@@ -110,6 +117,10 @@ def range_intersection(range_sets: List[List[Range]]):
     current_ranges = new_ranges
   return current_ranges
 
+def contains(ranges: List[Range], pos: int) -> bool:
+  for r in ranges:
+    if r.start<=pos and pos<r.end: return True
+  return False
 
 def generate_sparse_sequence_representation(graph):
   '''
@@ -118,15 +129,15 @@ def generate_sparse_sequence_representation(graph):
   while saving the parts of the sequence that are indeterminate (via gaps or Ns) as ranges.
   Letters that are considered indeterminate are probably best abstracted.
   '''
-  def fitch_backwards(node):
+  def fitch_backwards(node: GraphNodeBackward):
     if node.is_leaf: # process sequences on leaves
       for si in range(n_seq_partitions):
         seq = node.payload.full_seq[si]
         # code the missing regions and gap regions along with the ambiguous nucleotides
         seq_rep = Seq(gaps=find_char_ranges(seq, '-'),
                       unknown=find_char_ranges(seq, 'N'),
-                      indeterminate=sorted(find_char_ranges(seq, '-')+find_char_ranges(seq, 'N'), key=lambda x:x.start),
-                      variable_ingroup={pos:profiles.get(nuc, default_profile) for pos, nuc in enumerate(seq) if nuc not in 'ACTG-N'},
+                      indeterminate=sorted(find_char_ranges(seq, '-')+find_char_ranges(seq, 'N'), key=lambda x:x.start), ingroupLH=0.0,
+                      variable_ingroup={pos:VarPos(profiles.get(nuc, default_profile), None) for pos, nuc in enumerate(seq) if nuc not in 'ACTG-N'},
                       variable_outgroup={}, variable_profile={}, fixed_ingroup={}, fixed_outgroup={}, fixed_profile={}, state_composition={})
         node.payload.seq.append(seq_rep)
     else:
@@ -136,7 +147,7 @@ def generate_sparse_sequence_representation(graph):
         seq_rep = Seq(gaps=range_intersection([c.seq[si].gaps for c,e in node.children]),
                       unknown=range_intersection([c.seq[si].unknown for c,e in node.children]),
                       indeterminate=range_intersection([c.seq[si].indeterminate for c,e in node.children]),
-                      variable_ingroup={}, variable_outgroup={}, variable_profile={},
+                      ingroupLH=0.0, variable_ingroup={}, variable_outgroup={}, variable_profile={},
                       fixed_ingroup={}, fixed_outgroup={}, fixed_profile={}, state_composition={})
         # define dummy sequence
         full_seq = np.array(['?']*node.children[0][0].seq_len[si])
@@ -151,7 +162,7 @@ def generate_sparse_sequence_representation(graph):
         for pos in variable_pos:
           # 2D float array
           # stack all ingroup profiles of children, use the determinate profile if position is not variable.
-          child_profiles = np.array([c.seq[si].variable_ingroup[pos]
+          child_profiles = np.array([c.seq[si].variable_ingroup[pos].profile
                                       if pos in c.seq[si].variable_ingroup
                                       else profiles[c.full_seq[si][pos]]
                                       for c,e in node.children])
@@ -160,11 +171,11 @@ def generate_sparse_sequence_representation(graph):
           if isect.sum()==1:
             full_seq[pos]=alphabet[np.argmax(isect)]
           elif isect.sum()>1:
-            variable_ingroup[pos]=isect
+            variable_ingroup[pos]=VarPos(isect, None)
             full_seq[pos]='~'
           else:
             child_union = np.sum(child_profiles, axis=0)
-            variable_ingroup[pos]=np.array([1.0 if x>0 else 0.0 for x in child_union])
+            variable_ingroup[pos]=VarPos(np.array([1.0 if x>0 else 0.0 for x in child_union]), None)
             full_seq[pos]='~'
 
         # process all positions where the children are fixed or completely unknown in some children
@@ -177,7 +188,7 @@ def generate_sparse_sequence_representation(graph):
           if len(determined_states)==1:
             full_seq[pos]=determined_states.pop()
           elif len(determined_states)>1:
-            variable_ingroup[pos] = np.sum([profiles[x] for x in determined_states], axis=0)
+            variable_ingroup[pos] = VarPos(np.sum([profiles[x] for x in determined_states], axis=0), None)
             full_seq[pos]='~'
           else:
             import ipdb; ipdb.set_trace()
@@ -188,11 +199,11 @@ def generate_sparse_sequence_representation(graph):
         node.payload.full_seq.append(full_seq)
         node.payload.seq_len.append(len(full_seq))
 
-  def fitch_forward(node):
+  def fitch_forward(node: GraphNodeForward):
     if node.is_root:
       for seq_rep, full_seq in zip(node.payload.seq, node.payload.full_seq):
         for pos, p in seq_rep.variable_ingroup.items():
-          full_seq[pos] = alphabet[np.argmax(p)]
+          full_seq[pos] = alphabet[np.argmax(p.profile)]
         seq_rep.state_composition = {s:0 for s in alphabet}
         for s in full_seq:
           seq_rep.state_composition[s] += 1
@@ -214,10 +225,10 @@ def generate_sparse_sequence_representation(graph):
         # for each variable position, pick a state or a mutation
         for pos, p in seq_rep.variable_ingroup.items():
           pnuc=pseq[pos]
-          if np.sum(profiles[pnuc]*p):
+          if np.sum(profiles[pnuc]*p.profile):
             full_seq[pos] = pnuc
           else:
-            cnuc = alphabet[np.argmax(p)]
+            cnuc = alphabet[np.argmax(p.profile)]
             full_seq[pos] = cnuc
             # could be factored out
             muts.append(Mut(pnuc, pos, cnuc))
@@ -229,6 +240,8 @@ def generate_sparse_sequence_representation(graph):
             muts.append(Mut(pseq[pos], pos, full_seq[pos]))
             seq_rep.state_composition[pseq[pos]] -= 1
             seq_rep.state_composition[full_seq[pos]] += 1
+        for pos in seq_rep.variable_ingroup:
+          seq_rep.variable_ingroup[pos].state = full_seq[pos]
         edge.muts.append(muts)
       # print(edge.muts)
 
@@ -271,16 +284,83 @@ def reconstruct_sequence(G: Graph, node: Node):
       for pos in range(r.start, r.end):
         s[pos]='N'
     for pos, p in seq_rep.variable_ingroup.items():
-      s[pos]=reverse_profile[tuple(p)]
+      s[pos]=reverse_profile[tuple(p.profile)]
   return seqs
 
 
+def ingroup_profiles(G: Graph, gtrs: List[GTR]):
+  eps=1e-6
+  def calculate_ingroup(node: GraphNodeBackward) -> None:
+    if node.is_leaf:
+      for seq_rep in node.payload.seq:
+        seq_rep.fixed_ingroup = {state: profiles[state] for state in alphabet}
+      return
+
+    # get all variable positions and the reference state
+    variable_pos = [{} for _ in range(n_seq_partitions)]
+    for c,e in node.children:
+      # go over all mutations and get reference state
+      for si, mutset in enumerate(e.muts):
+        for m in mutset:
+          variable_pos[si][m.pos] = m.ref
+
+      # go over child variable position and get reference state
+      for si, seq_rep in enumerate(c.seq):
+        for pos, p in seq_rep.variable_ingroup.items():
+          if pos in variable_pos[si]:
+            assert variable_pos[si][pos] == p.state
+          else:
+            variable_pos[si][pos] = p.state
+
+    expQT = [[gtr.expQt(e.branchlength or 0.0) for c,e in node.children] for gtr in gtrs]
+
+    for si, seq_rep in enumerate(node.payload.seq):
+      seq_rep.ingroupLH = 0.0
+      for c,e in node.children:
+        seq_rep.ingroupLH += c.seq[si].ingroupLH
+
+      variable_ingroup = {}
+      for pos, state in variable_pos[si].items():
+        child_profiles = []
+        for ci,(c,e) in enumerate(node.children):
+          # need to check whether position is determined
+          if not contains(seq_rep.indeterminate, pos):
+            child_profiles.append(expQT[si][ci].dot(
+                                      c.seq[si].variable_ingroup[pos].profile
+                                      if pos in c.seq[si].variable_ingroup
+                                      else c.seq[si].fixed_ingroup[state]
+                                      )
+                                    )
+        vec = np.prod(child_profiles, axis=0)
+        vec_norm = vec.sum()
+        seq_rep.ingroupLH  += np.log(vec_norm)
+
+        # add position to variable states if the subleading states have a probability exceeding eps
+        if vec.max()<(1-eps)*vec_norm:
+          variable_ingroup[pos] = VarPos(vec/vec_norm, state)
+
+          # this position is accounted for, hence we can subtract it from the count of fixed nucs
+          if state in 'ACGT':
+              seq_rep.state_composition[state] -= 1
+
+      # collect contribution from the inert sites
+      for state in alphabet:
+        child_profiles = []
+        for ci,(c,e) in enumerate(node.children):
+          child_profiles.append(expQT[si][ci].dot(c.seq[si].fixed_ingroup[state]))
+        vec = np.prod(child_profiles, axis=0)
+        vec_norm = vec.sum()
+
+        seq_rep.ingroupLH  += seq_rep.state_composition[state]*np.log(vec_norm)
+        seq_rep.fixed_ingroup[state] = vec/vec_norm
+
+  G.par_iter_backward(calculate_ingroup)
 
 if __name__=="__main__":
-  # fname_nwk = 'data/ebola/ebola.nwk'
-  # fname_seq = 'data/ebola/ebola_dna.fasta'
-  fname_nwk = 'test_scripts/data/tree.nwk'
-  fname_seq = 'test_scripts/data/sequences.fasta'
+  fname_nwk = 'data/ebola/ebola.nwk'
+  fname_seq = 'data/ebola/ebola_dna.fasta'
+  # fname_nwk = 'test_scripts/data/tree.nwk'
+  # fname_seq = 'test_scripts/data/sequences.fasta'
   with open(fname_nwk) as fh:
     nwkstr = fh.read()
   G = graph_from_nwk_str(nwk_string=nwkstr, node_payload_factory=NodePayload, edge_payload_factory=EdgePayload)
@@ -292,6 +372,8 @@ if __name__=="__main__":
     G.get_node(name_to_key[sname]).payload().seq_len.append(len(seq))
 
   generate_sparse_sequence_representation(G)
+
+  ingroup_profiles(G, [GTR('nuc_nogap')])
 
   # check output
   for leaf in G.leaves:
