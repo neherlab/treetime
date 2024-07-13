@@ -62,12 +62,6 @@ class EdgePayload():
   branchlength: Optional[float]
   muts: List[List[Mut]]
 
-def find_ambiguous_ranges(seq):
-    return find_char_ranges(seq, 'N')
-
-def find_gap_ranges(seq):
-    return find_char_ranges(seq, '-')
-
 def find_char_ranges(seq, char):
   ranges = []
   start = None
@@ -82,36 +76,39 @@ def find_char_ranges(seq, char):
   return ranges
 
 def range_intersection(range_sets: List[List[Range]]):
-    if any([len(r)==0 for r in range_sets]):
-        return []
+  '''
+  Note, this assumes sorted ranges
+  '''
+  if any([len(r)==0 for r in range_sets]):
+    return []
 
-    current_ranges = [Range(r.start, r.end) for r in range_sets[0]]
-    for next_ranges in range_sets[1:]:
-        new_ranges = []
-        ri1, ri2 = 0, 0
-        r1 = current_ranges[ri1]
-        r2 = next_ranges[ri2]
-        while ri1<len(current_ranges) and ri2<len(next_ranges):
-            if r2.start>r1.end:
-                ri1 += 1
-                if ri1<len(current_ranges):
-                    r1 = current_ranges[ri1]
-            elif r1.start>r2.end:
-                ri2 += 1
-                if ri2<len(next_ranges):
-                    r2 = next_ranges[ri2]
-            else:
-                new_ranges.append(Range(max(r1.start, r2.start), min(r1.end, r2.end)))
-                if r1.end<r2.end:
-                    ri1 += 1
-                    if ri1<len(current_ranges):
-                        r1 = current_ranges[ri1]
-                else:
-                    ri2 += 1
-                    if ri2<len(next_ranges):
-                        r2 = next_ranges[ri2]
-        current_ranges = new_ranges
-    return current_ranges
+  current_ranges = [Range(r.start, r.end) for r in range_sets[0]]
+  for next_ranges in range_sets[1:]:
+    new_ranges = []
+    ri1, ri2 = 0, 0
+    r1 = current_ranges[ri1]
+    r2 = next_ranges[ri2]
+    while ri1<len(current_ranges) and ri2<len(next_ranges):
+      if r2.start>r1.end:
+        ri1 += 1
+        if ri1<len(current_ranges):
+          r1 = current_ranges[ri1]
+      elif r1.start>r2.end:
+        ri2 += 1
+        if ri2<len(next_ranges):
+          r2 = next_ranges[ri2]
+      else:
+        new_ranges.append(Range(max(r1.start, r2.start), min(r1.end, r2.end)))
+        if r1.end<r2.end:
+          ri1 += 1
+          if ri1<len(current_ranges):
+            r1 = current_ranges[ri1]
+        else:
+          ri2 += 1
+          if ri2<len(next_ranges):
+            r2 = next_ranges[ri2]
+    current_ranges = new_ranges
+  return current_ranges
 
 
 def generate_sparse_sequence_representation(graph):
@@ -296,6 +293,7 @@ if __name__=="__main__":
 
   generate_sparse_sequence_representation(G)
 
+  # check output
   for leaf in G.leaves:
     node = G.get_node(leaf)
     nname = node.payload().name
