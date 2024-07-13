@@ -22,7 +22,7 @@ def graph_from_nwk_str(
     node_key = graph.add_node(node_payload_factory(tree_node.name, None, [], [], []))
     for child in tree_node.clades:
       child_key = recurse(child)
-      graph.add_edge(node_key, child_key, edge_payload_factory(tree_node.branch_length, []))
+      graph.add_edge(node_key, child_key, edge_payload_factory(child.branch_length, []))
     return node_key
 
   root = tree.root

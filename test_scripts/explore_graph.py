@@ -219,7 +219,6 @@ def generate_sparse_sequence_representation(graph):
         for r in seq_rep.indeterminate:
           for pos in range(r.start, r.end):
             full_seq[pos]=pseq[pos]
-            seq_rep.state_composition[pseq[pos]] -= 1
 
         muts = []
         # for each variable position, pick a state or a mutation
@@ -235,6 +234,7 @@ def generate_sparse_sequence_representation(graph):
             seq_rep.state_composition[pnuc] -= 1
             seq_rep.state_composition[cnuc] += 1
         for pos in parent.seq[si].variable_ingroup:
+          if pos in seq_rep.variable_ingroup: continue
           if pseq[pos]!=full_seq[pos]:
             # could be factored out
             muts.append(Mut(pseq[pos], pos, full_seq[pos]))
@@ -246,11 +246,17 @@ def generate_sparse_sequence_representation(graph):
       # print(edge.muts)
 
   def clean_up(node):
+    for full_seq, seq_rep in zip(node.payload.full_seq, node.payload.seq):
+      if not node.is_leaf:
+        seq_rep.variable_ingroup = {}
+      for r in seq_rep.indeterminate:
+        for pos in range(r.start, r.end):
+          seq_rep.state_composition[full_seq[pos]] -= 1
+      for pos, p in seq_rep.variable_ingroup.items():
+        seq_rep.state_composition[p.state] -= 1
+
     if not node.is_root:
       node.payload.full_seq = [[] for n in range(n_seq_partitions)]
-    if not node.is_leaf:
-      for seq_rep in node.payload.seq:
-        seq_rep.variable_ingroup = {}
 
   graph.par_iter_backward(visitor=fitch_backwards)
 
@@ -291,7 +297,6 @@ def reconstruct_sequence(G: Graph, node: Node):
 def ingroup_profiles(G: Graph, gtrs: List[GTR]):
   eps=1e-6
   def calculate_ingroup(node: GraphNodeBackward) -> None:
-    print(node.payload.name)
     if node.is_leaf:
       for seq_rep in node.payload.seq:
         seq_rep.fixed_ingroup = {state: profiles[state] for state in alphabet}
@@ -313,14 +318,17 @@ def ingroup_profiles(G: Graph, gtrs: List[GTR]):
           if pos not in variable_pos[si]:
             variable_pos[si][pos] = p.state
 
-    expQT = [[gtr.expQt(e.branchlength or 0.0) for c,e in node.children] for gtr in gtrs]
+    expQT = [[gtr.expQt(e.branchlength or 0.0).T for c,e in node.children] for gtr in gtrs]
     for si, seq_rep in enumerate(node.payload.seq):
+      # init LH with sum of child values
       seq_rep.ingroupLH = 0.0
       for c,e in node.children:
         seq_rep.ingroupLH += c.seq[si].ingroupLH
 
+      # go over all putatively variable positions
       variable_ingroup = {}
       for pos, state in variable_pos[si].items():
+        # collect the profiles of children to multiply
         child_profiles = []
         for ci,(c,e) in enumerate(node.children):
           # need to check whether position is determined
@@ -333,6 +341,7 @@ def ingroup_profiles(G: Graph, gtrs: List[GTR]):
               v=c.seq[si].fixed_ingroup[state]
             child_profiles.append(expQT[si][ci].dot(v))
 
+        # calculate new profile and likelihood contribution
         vec = np.prod(child_profiles, axis=0)
         vec_norm = vec.sum()
         seq_rep.ingroupLH  += np.log(vec_norm)
@@ -341,9 +350,8 @@ def ingroup_profiles(G: Graph, gtrs: List[GTR]):
         if vec.max()<(1-eps)*vec_norm:
           variable_ingroup[pos] = VarPos(vec/vec_norm, state)
 
-          # this position is accounted for, hence we can subtract it from the count of fixed nucs
-          if state in 'ACGT':
-              seq_rep.state_composition[state] -= 1
+          # this position is now accounted for, hence we can subtract it from the count of fixed nucs
+          seq_rep.state_composition[state] -= 1
 
       seq_rep.variable_ingroup = variable_ingroup
       # collect contribution from the inert sites
@@ -356,7 +364,6 @@ def ingroup_profiles(G: Graph, gtrs: List[GTR]):
 
         seq_rep.ingroupLH  += seq_rep.state_composition[state]*np.log(vec_norm)
         seq_rep.fixed_ingroup[state] = vec/vec_norm
-
   G.par_iter_backward(calculate_ingroup)
 
 def calculate_root_state(G: Graph, gtrs: List[GTR]):
@@ -369,7 +376,6 @@ def calculate_root_state(G: Graph, gtrs: List[GTR]):
       vec_norm = vec.sum()
       logLH += np.log(vec_norm)
       seq_rep.variable_profile[pos] = VarPos(vec/vec_norm, p.state)
-      print(pos, vec/vec_norm)
     for state in alphabet:
       vec = seq_rep.fixed_ingroup[state]*gtrs[si].Pi
       vec_norm = vec.sum()
@@ -395,6 +401,8 @@ if __name__=="__main__":
   generate_sparse_sequence_representation(G)
   gtr = GTR.custom(pi=[0.2, 0.3, 0.15, 0.35], alphabet='nuc_nogap')
 
+  # for n in G.nodes:
+  #   print(n.payload().name, n.payload().seq[0].state_composition)
   ingroup_profiles(G, [gtr])
   print(calculate_root_state(G, [gtr]))
 
