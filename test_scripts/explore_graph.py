@@ -356,6 +356,8 @@ def ingroup_profiles(G: Graph, gtrs: List[GTR]):
       seq_rep.variable_ingroup = variable_ingroup
       # collect contribution from the inert sites
       for state in alphabet:
+        # indeterminate parts in some children are not handled correctly here.
+        # they should not contribute to the product.
         child_profiles = []
         for ci,(c,e) in enumerate(node.children):
           child_profiles.append(expQT[si][ci].dot(c.seq[si].fixed_ingroup[state]))
