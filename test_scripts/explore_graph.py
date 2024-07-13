@@ -291,6 +291,7 @@ def reconstruct_sequence(G: Graph, node: Node):
 def ingroup_profiles(G: Graph, gtrs: List[GTR]):
   eps=1e-6
   def calculate_ingroup(node: GraphNodeBackward) -> None:
+    print(node.payload.name)
     if node.is_leaf:
       for seq_rep in node.payload.seq:
         seq_rep.fixed_ingroup = {state: profiles[state] for state in alphabet}
@@ -298,22 +299,21 @@ def ingroup_profiles(G: Graph, gtrs: List[GTR]):
 
     # get all variable positions and the reference state
     variable_pos = [{} for _ in range(n_seq_partitions)]
-    for c,e in node.children:
+    child_states = [[{} for _ in range(n_seq_partitions)] for c, e in node.children]
+    for ci, (c,e) in enumerate(node.children):
       # go over all mutations and get reference state
       for si, mutset in enumerate(e.muts):
         for m in mutset:
           variable_pos[si][m.pos] = m.ref
+          child_states[ci][si][m.pos] = m.qry
 
       # go over child variable position and get reference state
       for si, seq_rep in enumerate(c.seq):
         for pos, p in seq_rep.variable_ingroup.items():
-          if pos in variable_pos[si]:
-            assert variable_pos[si][pos] == p.state
-          else:
+          if pos not in variable_pos[si]:
             variable_pos[si][pos] = p.state
 
     expQT = [[gtr.expQt(e.branchlength or 0.0) for c,e in node.children] for gtr in gtrs]
-
     for si, seq_rep in enumerate(node.payload.seq):
       seq_rep.ingroupLH = 0.0
       for c,e in node.children:
@@ -324,13 +324,15 @@ def ingroup_profiles(G: Graph, gtrs: List[GTR]):
         child_profiles = []
         for ci,(c,e) in enumerate(node.children):
           # need to check whether position is determined
-          if not contains(seq_rep.indeterminate, pos):
-            child_profiles.append(expQT[si][ci].dot(
-                                      c.seq[si].variable_ingroup[pos].profile
-                                      if pos in c.seq[si].variable_ingroup
-                                      else c.seq[si].fixed_ingroup[state]
-                                      )
-                                    )
+          if not contains(c.seq[si].indeterminate, pos):
+            if pos in c.seq[si].variable_ingroup:
+              v = c.seq[si].variable_ingroup[pos].profile
+            elif pos in child_states[ci][si]:
+              v = c.seq[si].fixed_ingroup[child_states[ci][si][pos]]
+            else:
+              v=c.seq[si].fixed_ingroup[state]
+            child_profiles.append(expQT[si][ci].dot(v))
+
         vec = np.prod(child_profiles, axis=0)
         vec_norm = vec.sum()
         seq_rep.ingroupLH  += np.log(vec_norm)
@@ -343,6 +345,7 @@ def ingroup_profiles(G: Graph, gtrs: List[GTR]):
           if state in 'ACGT':
               seq_rep.state_composition[state] -= 1
 
+      seq_rep.variable_ingroup = variable_ingroup
       # collect contribution from the inert sites
       for state in alphabet:
         child_profiles = []
@@ -356,11 +359,29 @@ def ingroup_profiles(G: Graph, gtrs: List[GTR]):
 
   G.par_iter_backward(calculate_ingroup)
 
+def calculate_root_state(G: Graph, gtrs: List[GTR]):
+  root_node = G.get_roots()[0].payload()
+  logLH = 0
+  for si, seq_rep in enumerate(root_node.seq):
+    logLH += seq_rep.ingroupLH
+    for pos, p in seq_rep.variable_ingroup.items():
+      vec = p.profile*gtrs[si].Pi
+      vec_norm = vec.sum()
+      logLH += np.log(vec_norm)
+      seq_rep.variable_profile[pos] = VarPos(vec/vec_norm, p.state)
+      print(pos, vec/vec_norm)
+    for state in alphabet:
+      vec = seq_rep.fixed_ingroup[state]*gtrs[si].Pi
+      vec_norm = vec.sum()
+      logLH += np.log(vec_norm)*seq_rep.state_composition[state]
+      seq_rep.fixed_profile[state] = vec/vec_norm
+  return logLH
+
 if __name__=="__main__":
   fname_nwk = 'data/ebola/ebola.nwk'
   fname_seq = 'data/ebola/ebola_dna.fasta'
-  # fname_nwk = 'test_scripts/data/tree.nwk'
-  # fname_seq = 'test_scripts/data/sequences.fasta'
+  fname_nwk = 'test_scripts/data/tree.nwk'
+  fname_seq = 'test_scripts/data/sequences.fasta'
   with open(fname_nwk) as fh:
     nwkstr = fh.read()
   G = graph_from_nwk_str(nwk_string=nwkstr, node_payload_factory=NodePayload, edge_payload_factory=EdgePayload)
@@ -372,8 +393,10 @@ if __name__=="__main__":
     G.get_node(name_to_key[sname]).payload().seq_len.append(len(seq))
 
   generate_sparse_sequence_representation(G)
+  gtr = GTR.custom(pi=[0.2, 0.3, 0.15, 0.35], alphabet='nuc_nogap')
 
-  ingroup_profiles(G, [GTR('nuc_nogap')])
+  ingroup_profiles(G, [gtr])
+  print(calculate_root_state(G, [gtr]))
 
   # check output
   for leaf in G.leaves:
