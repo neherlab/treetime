@@ -6,8 +6,9 @@ from lib import Graph, AutoRepr, Mut, graph_from_nwk_str, Node, GraphNodeBackwar
 from treetime import GTR
 
 # definition and function to handle mixed sites
+alphabet='ACGT'
+default_profile = np.ones(len(alphabet), dtype=float)
 #                        "A,C,G,T"
-default_profile = np.array([1,1,1,1], dtype=float)
 profiles = {'A':np.array([1,0,0,0], dtype=float),
             'C':np.array([0,1,0,0], dtype=float),
             'G':np.array([0,0,1,0], dtype=float),
@@ -28,7 +29,6 @@ profiles = {'A':np.array([1,0,0,0], dtype=float),
 reverse_profile = {tuple(p): nuc for nuc, p in profiles.items()}
 
 n_seq_partitions = 1
-alphabet='ACGT'
 
 @dataclass
 class Range(AutoRepr):
@@ -388,8 +388,8 @@ def calculate_root_state(G: Graph, gtrs: List[GTR]):
 if __name__=="__main__":
   fname_nwk = 'data/ebola/ebola.nwk'
   fname_seq = 'data/ebola/ebola_dna.fasta'
-  fname_nwk = 'test_scripts/data/tree.nwk'
-  fname_seq = 'test_scripts/data/sequences.fasta'
+  # fname_nwk = 'test_scripts/data/tree.nwk'
+  # fname_seq = 'test_scripts/data/sequences.fasta'
   with open(fname_nwk) as fh:
     nwkstr = fh.read()
   G = graph_from_nwk_str(nwk_string=nwkstr, node_payload_factory=NodePayload, edge_payload_factory=EdgePayload)

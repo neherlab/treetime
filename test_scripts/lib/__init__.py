@@ -6,3 +6,5 @@ from .mut import *
 from .node import *
 from .nwk import *
 from .str import *
+from .sequence_partions import *
+from .range import *

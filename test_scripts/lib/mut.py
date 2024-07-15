@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-
+from typing import List, Optional
 
 @dataclass
 class Mut:
@@ -36,3 +36,11 @@ class Mut:
 
   def is_del(self):
     return self.qry == '-'
+
+
+@dataclass
+class InDel:
+  pos: int
+  length: int
+  seq: Optional[List[str]]
+  deletion: bool = True # deletion if True, insertion if False
