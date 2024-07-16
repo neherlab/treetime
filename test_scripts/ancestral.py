@@ -227,21 +227,19 @@ if __name__=="__main__":
     print(nname, np.sum(rec_seq!=aln_dict[nname]))
 
 
-  # generate_sparse_sequence_representation(G)
-
-  # # for n in G.nodes:
-  # #   print(n.payload().name, n.payload().seq[0].state_composition)
-  # ingroup_profiles(G, [gtr])
-  # print(calculate_root_state(G, [gtr]))
-
-  # # check output
-  # for leaf in G.leaves:
-  #   node = G.get_node(leaf)
-  #   nname = node.payload().name
-  #   rec_seq = reconstruct_sequence(G, node)[0]
-  #   print(nname, np.sum(rec_seq!=aln[nname]))
+'''
+# NOTES
+## Gaps and insertions
+I have preliminarily included an InDel struct on the edges. This should allow us to treat indels
+properly in ancestral reconstructions and other computations (currently, they are treated like missing info).
+It should then also allow to to remove the gap and unknown fields from the nodes since these could be
+accumulated from indels along branches like mutations (though it might be useful to keep them). Properly
+accounting for indels would be a significant advance since few tree-builders do (if any). The arithmetic would
+require a lot of 'interval/range collection' operations.
 
 
+
+'''
 # how to avoid carrying along the sequence
 
 # - pre-compute nucleotide composition
