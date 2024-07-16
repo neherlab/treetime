@@ -10,7 +10,7 @@ class SeqPartition(AutoRepr):
     self.gtr=gtr
     self.length=length
     self._profile_map=profile_map
-    self._reverse_profile = {tuple(p): nuc for nuc, p in self._profile_map.items()}
+    self._reverse_profile_map = {tuple(p): nuc for nuc, p in self._profile_map.items()}
 
   def profile(self, s: str) -> np.array:
     # need to handle wrong input
@@ -27,7 +27,7 @@ class VarPos(AutoRepr):
   state: str
 
 @dataclass
-class SeqInfo(AutoRepr):
+class SeqInfoLh(AutoRepr):
   '''
   This class is meant to contain information related to the parts of a sequence necessary for likelihood calculation.
   This information includes
@@ -45,5 +45,21 @@ class SeqInfo(AutoRepr):
   fixed: Optional[Dict[str, np.array]] = None
   fixed_composition: Optional[Dict[str, int]] = None
 
+@dataclass
+class SeqInfoParsimony(AutoRepr):
+  '''
+  This class is meant to contain information related to the parts of a sequence necessary for likelihood calculation.
+  This information includes
+  - unknown (ranges)
+  - gaps (ranges)
+  - non_nuc (ranges): any position that does not evolve according to the substition model, i.e. gap or N
+  - variable (0/1 vector for each variable position collecting information from children)
+  - fixed_composition (this is important for likelihood calculations)
+  '''
+  unknown: RangeCollection
+  gaps: RangeCollection
+  non_char: RangeCollection
+  variable: Dict[int, VarPos]
+  fixed_composition: Optional[Dict[str, int]] = None
 
 

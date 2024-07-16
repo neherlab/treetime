@@ -2,8 +2,8 @@ from dataclasses import dataclass
 from Bio import AlignIO
 import numpy as np
 from typing import Optional, List, Dict
-from lib import Graph, graph_from_nwk_str, GraphNodeBackward, GraphNodeForward
-from lib import SeqPartition, SeqInfo, find_char_ranges, VarPos, RangeCollection_intersection, RangeCollection
+from lib import Graph, graph_from_nwk_str, GraphNodeBackward, GraphNodeForward, Node
+from lib import SeqPartition, SeqInfoParsimony, find_char_ranges, VarPos, RangeCollection_intersection, RangeCollection, Mut
 from treetime import GTR
 from payload import NodePayload, EdgePayload
 from profile_map import profile_map, default_profile
@@ -14,28 +14,29 @@ FILL_CHAR = ' '
 
 def fitch_backwards(graph: Graph):
   n_seq_partitions = len(graph.partitions)
-
+  alphabets = [''.join(p.gtr.alphabet) for p in G.partitions]
+  alphabets_gapN = [a+'-N' for a in alphabets]
   def fitch_backwards_node(node: GraphNodeBackward):
     print(node.payload.name)
     if node.is_leaf: # process sequences on leaves
-      node.payload.seq_info_ingroup = []
+      node.payload.fitch = []
       for si,seq in enumerate(node.payload.full_seq):
         # code the missing regions and gap regions along with the ambiguous nucleotides
-        seq_info = SeqInfo(unknown=find_char_ranges(seq, 'N'), gaps=find_char_ranges(seq, '-'),
+        seq_info = SeqInfoParsimony(unknown=find_char_ranges(seq, 'N'), gaps=find_char_ranges(seq, '-'),
                            non_char=RangeCollection(find_char_ranges(seq, 'N').ranges + find_char_ranges(seq, '-').ranges),
                            variable={pos:VarPos(graph.partitions[si].profile(nuc), None)
-                                    for pos, nuc in enumerate(seq) if nuc not in 'ACTG-N'})
-        node.payload.seq_info_ingroup.append(seq_info)
+                                    for pos, nuc in enumerate(seq) if nuc not in alphabets_gapN[si]})
+        node.payload.fitch.append(seq_info)
     else:
       # process internal nodes, again for each sequence partition
-      node.payload.seq_info_ingroup = []
+      node.payload.fitch = []
       node.payload.full_seq = []
       for si in range(n_seq_partitions):
         # init the local representation with gaps, unknowns
         # need to account for parts of the sequence transmitted along edges
-        seq_info = SeqInfo(gaps=RangeCollection_intersection([c.seq_info_ingroup[si].gaps for c,e in node.children]),
-                           unknown=RangeCollection_intersection([c.seq_info_ingroup[si].unknown for c,e in node.children]),
-                           non_char=RangeCollection_intersection([c.seq_info_ingroup[si].non_char for c,e in node.children]),
+        seq_info = SeqInfoParsimony(gaps=RangeCollection_intersection([c.fitch[si].gaps for c,e in node.children]),
+                           unknown=RangeCollection_intersection([c.fitch[si].unknown for c,e in node.children]),
+                           non_char=RangeCollection_intersection([c.fitch[si].non_char for c,e in node.children]),
                            variable={})
         # define dummy sequence
         full_seq = np.array([FILL_CHAR]*graph.partitions[0].length)
@@ -46,7 +47,7 @@ def fitch_backwards(graph: Graph):
 
         # process all positions where the children are variable (there are probably better ways to )
         # need to account for parts of the sequence transmitted along edges
-        variable_pos = np.unique(np.concatenate([np.array(list(c.seq_info_ingroup[si].variable.keys()), dtype=int) for c,e in node.children]))
+        variable_pos = np.unique(np.concatenate([np.array(list(c.fitch[si].variable.keys()), dtype=int) for c,e in node.children]))
         for pos in variable_pos:
           # 2D float array
           # stack all ingroup profiles of children, use the determinate profile if position is not variable.
@@ -55,8 +56,8 @@ def fitch_backwards(graph: Graph):
             if e.transmission and (not e.transmission.contains(pos)):
               # transmission field is not currently used
               continue
-            if pos in c.seq_info_ingroup[si].variable:
-              child_profiles.append(c.seq_info_ingroup[si].variable[pos].profile)
+            if pos in c.fitch[si].variable:
+              child_profiles.append(c.fitch[si].variable[pos].profile)
             else:
               child_profiles.append(graph.partitions[si].profile(c.full_seq[si][pos]))
 
@@ -78,7 +79,7 @@ def fitch_backwards(graph: Graph):
           if nuc!=FILL_CHAR: # already touched this position
             continue
 
-          determined_states = set([x for x in child_states if x in graph.partitions[si].gtr.alphabet])
+          determined_states = set([x for x in child_states if x in alphabets[si]])
           if len(determined_states)==1:
             full_seq[pos]=determined_states.pop()
           elif len(determined_states)>1:
@@ -87,10 +88,111 @@ def fitch_backwards(graph: Graph):
           else:
             import ipdb; ipdb.set_trace()
 
-        node.payload.seq_info_ingroup.append(seq_info)
+        node.payload.fitch.append(seq_info)
         node.payload.full_seq.append(full_seq)
 
   graph.par_iter_backward(fitch_backwards_node)
+
+def add_mutation(pos, pnuc, cnuc, composition):
+  composition[pnuc] -= 1
+  composition[cnuc] += 1
+  return Mut(pnuc, pos, cnuc)
+
+def fitch_forward(graph: Graph):
+  n_seq_partitions = len(graph.partitions)
+  alphabets = [''.join(p.gtr.alphabet) for p in G.partitions]
+
+  def fitch_forward_node(node: GraphNodeForward):
+    if node.is_root:
+      for si, (seq_info, full_seq) in enumerate(zip(node.payload.fitch, node.payload.full_seq)):
+        for pos, p in seq_info.variable.items():
+          full_seq[pos] = alphabets[si][np.argmax(p.profile)]
+        seq_info.fixed_composition = {s:0 for s in alphabets[si]}
+        for s in full_seq:
+          if s in alphabets[si]: #there could be positions that are gap or N everywhere
+            seq_info.fixed_composition[s] += 1
+    else:
+      # only deal with one parent for now
+      parent, edge = node.parents[0]
+      edge.muts = []
+      # loop over sequence partitions
+      for si, (seq_info, full_seq) in enumerate(zip(node.payload.fitch, node.payload.full_seq)):
+        pseq=parent.full_seq[si]
+        seq_info.fixed_composition = {s:k for s,k in parent.fitch[si].fixed_composition.items()}
+
+        # fill in the indeterminate positions.
+        for r in seq_info.non_char:
+          for pos in range(r.start, r.end):
+            full_seq[pos]=pseq[pos]
+
+        muts = []
+        # for each variable position, pick a state or a mutation
+        for pos, p in seq_info.variable.items():
+          pnuc=pseq[pos]
+          # check whether parent is in child profile (sum>0 --> parent state is in profile)
+          if np.sum(graph.partitions[si].profile(pnuc)*p.profile):
+            full_seq[pos] = pnuc
+          else:
+            cnuc = alphabets[si][np.argmax(p.profile)]
+            full_seq[pos] = cnuc
+            # could be factored out
+            muts.append(add_mutation(pos, pnuc, cnuc, seq_info.fixed_composition))
+        for pos in parent.fitch[si].variable:
+          if pos in seq_info.variable: continue
+          if pseq[pos]!=full_seq[pos]:
+            # could be factored out
+            muts.append(add_mutation(pos, pseq[pos], full_seq[pos], seq_info.fixed_composition))
+        for pos in seq_info.variable:
+          seq_info.variable[pos].state = full_seq[pos]
+        edge.muts.append(muts)
+      # print(edge.muts)
+
+
+  def clean_up_node(node):
+    for full_seq, seq_info in zip(node.payload.full_seq, node.payload.fitch):
+      if not node.is_leaf: #delete the variable position everywhere instead of leaves
+        seq_info.variable = {}
+      for r in seq_info.non_char: # remove the undetermined counts from the counts of fixed positions
+        for pos in range(r.start, r.end):
+          seq_info.fixed_composition[full_seq[pos]] -= 1
+      for pos, p in seq_info.variable.items():
+        seq_info.fixed_composition[p.state] -= 1
+
+    if not node.is_root:
+      node.payload.full_seq = [[] for n in range(n_seq_partitions)]
+
+  graph.par_iter_forward(fitch_forward_node)
+  graph.par_iter_forward(clean_up_node)
+
+
+def reconstruct_sequence(graph: Graph, node: Node):
+  '''
+  reconstruct a specific sequence using the full sequence at the root and implanting mutations
+  '''
+  path_to_root = [node]
+  p = node
+  while not p.is_root():
+    assert len(p._inbound)==1
+    p = graph.get_node(graph.get_edge(p._inbound[0]).source())
+    path_to_root.append(p)
+
+  seqs = [np.copy(s) for s in path_to_root[-1].payload().full_seq]
+  # walk back from root to node
+  for n in path_to_root[::-1][1:]:
+    muts=graph.get_edge(n._inbound[0]).payload().muts
+    for s, mset  in zip(seqs, muts):
+      for m in mset:
+        s[m.pos] = m.qry
+  for partition, s, seq_rep in zip(graph.partitions, seqs, node.payload().fitch):
+    for r in seq_rep.gaps:
+      for pos in range(r.start, r.end):
+        s[pos]='-'
+    for r in seq_rep.unknown:
+      for pos in range(r.start, r.end):
+        s[pos]=partition.gtr.ambiguous
+    for pos, p in seq_rep.variable.items():
+      s[pos]=partition.code(tuple(p.profile))
+  return seqs
 
 
 if __name__=="__main__":
@@ -113,6 +215,15 @@ if __name__=="__main__":
     G.get_node(name_to_key[sname]).payload().full_seq = [np.copy(seq)]
 
   fitch_backwards(G)
+  fitch_forward(G)
+
+  # check output
+  for leaf in G.leaves:
+    node = G.get_node(leaf)
+    nname = node.payload().name
+    rec_seq = reconstruct_sequence(G, node)[0]
+    print(nname, np.sum(rec_seq!=aln_dict[nname]))
+
 
   # generate_sparse_sequence_representation(G)
 

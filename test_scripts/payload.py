@@ -1,5 +1,5 @@
 from typing import Optional, List, Dict
-from lib import Graph, AutoRepr, Mut, InDel, Node, SeqInfo, RangeCollection
+from lib import Graph, AutoRepr, Mut, InDel, Node, SeqInfoLh, SeqInfoParsimony, RangeCollection
 from dataclasses import dataclass
 
 
@@ -8,10 +8,12 @@ class NodePayload(AutoRepr):
   name: Optional[str] = None
   date: Optional[float] = None
   full_seq: Optional[List[str]] = None
+  fitch: Optional[List[SeqInfoParsimony]] = None
+
   # there is one for each sequence partition. Maybe make plural obvious?
-  seq_info: Optional[List[SeqInfo]] = None
-  seq_info_ingroup:  Optional[List[SeqInfo]] = None  #these are calculated for the node from its children
-  seq_info_outgroup: Optional[List[List[SeqInfo]]] = None  #these are calculated for each child, i.e. the outbound edges
+  seq_info: Optional[List[SeqInfoLh]] = None
+  seq_info_ingroup:  Optional[List[SeqInfoLh]] = None  #these are calculated for the node from its children
+  seq_info_outgroup: Optional[List[List[SeqInfoLh]]] = None  #these are calculated for each child, i.e. the outbound edges
 
 
 @dataclass
