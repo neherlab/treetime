@@ -72,7 +72,7 @@ def RangeCollection_intersection(range_collections: List[RangeCollection]) -> Ra
   '''
   Note, this assumes sorted ranges
   '''
-  if any([len(r)==0 for r in RangeCollection]):
+  if any([len(r)==0 for r in range_collections]):
     return RangeCollection([])
 
   current_ranges = RangeCollection(range_collections[0])
