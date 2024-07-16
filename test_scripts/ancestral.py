@@ -17,7 +17,6 @@ def fitch_backwards(graph: Graph):
   alphabets = [''.join(p.gtr.alphabet) for p in G.partitions]
   alphabets_gapN = [a+'-N' for a in alphabets]
   def fitch_backwards_node(node: GraphNodeBackward):
-    print(node.payload.name)
     if node.is_leaf: # process sequences on leaves
       node.payload.fitch = []
       for si,seq in enumerate(node.payload.full_seq):
@@ -55,6 +54,9 @@ def fitch_backwards(graph: Graph):
           for c,e in node.children:
             if e.transmission and (not e.transmission.contains(pos)):
               # transmission field is not currently used
+              continue
+            if c.fitch[si].non_char.contains(pos):
+              # this position does not have character state information
               continue
             if pos in c.fitch[si].variable:
               child_profiles.append(c.fitch[si].variable[pos].profile)
@@ -196,10 +198,10 @@ def reconstruct_sequence(graph: Graph, node: Node):
 
 
 if __name__=="__main__":
-#   fname_nwk = 'data/ebola/ebola.nwk'
-#   fname_seq = 'data/ebola/ebola_dna.fasta'
-  fname_nwk = 'test_scripts/data/tree.nwk'
-  fname_seq = 'test_scripts/data/sequences.fasta'
+  fname_nwk = 'data/ebola/ebola.nwk'
+  fname_seq = 'data/ebola/ebola_dna.fasta'
+  # fname_nwk = 'test_scripts/data/tree.nwk'
+  # fname_seq = 'test_scripts/data/sequences.fasta'
   with open(fname_nwk) as fh:
     nwkstr = fh.read()
   G = graph_from_nwk_str(nwk_string=nwkstr, node_payload_factory=NodePayload, edge_payload_factory=EdgePayload)
