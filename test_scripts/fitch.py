@@ -1,12 +1,10 @@
-from dataclasses import dataclass
 from Bio import AlignIO
 import numpy as np
-from typing import Optional, List, Dict
 from lib import Graph, graph_from_nwk_str, GraphNodeBackward, GraphNodeForward, Node
 from lib import SeqPartition, SeqInfoParsimony, find_char_ranges, VarPos, RangeCollection_intersection, RangeCollection, Mut
 from treetime import GTR
 from payload import NodePayload, EdgePayload
-from profile_map import profile_map, default_profile
+from profile_map import profile_map
 
 NON_CHAR = '.'
 VARIABLE = '~'
@@ -14,7 +12,7 @@ FILL_CHAR = ' '
 
 def fitch_backwards(graph: Graph):
   n_seq_partitions = len(graph.partitions)
-  alphabets = [''.join(p.gtr.alphabet) for p in G.partitions]
+  alphabets = [''.join(p.gtr.alphabet) for p in graph.partitions]
   alphabets_gapN = [a+'-N' for a in alphabets]
   def fitch_backwards_node(node: GraphNodeBackward):
     if node.is_leaf: # process sequences on leaves
@@ -102,7 +100,7 @@ def add_mutation(pos, pnuc, cnuc, composition):
 
 def fitch_forward(graph: Graph):
   n_seq_partitions = len(graph.partitions)
-  alphabets = [''.join(p.gtr.alphabet) for p in G.partitions]
+  alphabets = [''.join(p.gtr.alphabet) for p in graph.partitions]
 
   def fitch_forward_node(node: GraphNodeForward):
     if node.is_root:
@@ -145,6 +143,7 @@ def fitch_forward(graph: Graph):
             # could be factored out
             muts.append(add_mutation(pos, pseq[pos], full_seq[pos], seq_info.fixed_composition))
         for pos in seq_info.variable:
+          # saving the reference state at variable positions for probabilistic inference
           seq_info.variable[pos].state = full_seq[pos]
         edge.muts.append(muts)
       # print(edge.muts)
@@ -198,10 +197,10 @@ def reconstruct_sequence(graph: Graph, node: Node):
 
 
 if __name__=="__main__":
-  fname_nwk = 'data/ebola/ebola.nwk'
-  fname_seq = 'data/ebola/ebola_dna.fasta'
-  # fname_nwk = 'test_scripts/data/tree.nwk'
-  # fname_seq = 'test_scripts/data/sequences.fasta'
+  # fname_nwk = 'data/ebola/ebola.nwk'
+  # fname_seq = 'data/ebola/ebola_dna.fasta'
+  fname_nwk = 'test_scripts/data/tree.nwk'
+  fname_seq = 'test_scripts/data/sequences.fasta'
   with open(fname_nwk) as fh:
     nwkstr = fh.read()
   G = graph_from_nwk_str(nwk_string=nwkstr, node_payload_factory=NodePayload, edge_payload_factory=EdgePayload)
