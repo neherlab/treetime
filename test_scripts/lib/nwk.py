@@ -15,6 +15,11 @@ def graph_from_nwk_str(
   edge_payload_factory: CreateEdgePayloadFunction,
 ) -> Graph[N, E]:
   tree = Phylo.read(StringIO(nwk_string), "newick")
+  node_count = 0
+  for n in tree.find_clades():
+    if not n.name:
+      n.name = f"NODE_{node_count:05d}"
+    node_count+=1
 
   graph = Graph()
 

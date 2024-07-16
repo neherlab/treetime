@@ -42,6 +42,7 @@ class SeqInfoLh(AutoRepr):
   gaps: RangeCollection
   non_char: RangeCollection
   variable: Dict[int, VarPos]
+  logLH: float = 0.0
   fixed: Optional[Dict[str, np.array]] = None
   fixed_composition: Optional[Dict[str, int]] = None
 
