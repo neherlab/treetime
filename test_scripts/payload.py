@@ -14,8 +14,8 @@ class NodePayload(AutoRepr):
   seq_info: Optional[List[SeqInfoLh]] = None
   seq_info_ingroup:  Optional[List[SeqInfoLh]] = None  #these are calculated for the node from its children
   seq_info_outgroup: Optional[List[SeqInfoLh]] = None  #these are calculated for each child, i.e. the outbound edges
-  child_messages: Optional[List[List[Tuple[str, SeqInfoLh]]]] = None # messages received from children.
-  parent_messages: Optional[List[List[Tuple[str, SeqInfoLh]]]] = None # messages received from parents.
+  child_messages: Optional[List[List[Tuple[str, SeqInfoLh]]]] = None # messages received from children. Could move to edge
+  parent_messages: Optional[List[List[Tuple[str, SeqInfoLh]]]] = None # messages received from parents. Could move to edge
 
 @dataclass
 class EdgePayload():

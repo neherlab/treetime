@@ -15,20 +15,20 @@ def fitch_backwards(graph: Graph):
   alphabets = [''.join(p.gtr.alphabet) for p in graph.partitions]
   alphabets_gapN = [a+'-N' for a in alphabets]
   def fitch_backwards_node(node: GraphNodeBackward):
-    if node.is_leaf: # process sequences on leaves
-      node.payload.fitch = []
-      for si,seq in enumerate(node.payload.full_seq):
+    node.payload.fitch = []
+    if not node.is_leaf: # leaf nodes have a full sequence attached
+      node.payload.full_seq = []
+
+    for si in range(n_seq_partitions):
+      if node.is_leaf: # process sequences on leaves
+        seq = node.payload.full_seq[si]
         # code the missing regions and gap regions along with the ambiguous nucleotides
         seq_info = SeqInfoParsimony(unknown=find_char_ranges(seq, 'N'), gaps=find_char_ranges(seq, '-'),
                            non_char=RangeCollection(find_char_ranges(seq, 'N').ranges + find_char_ranges(seq, '-').ranges),
                            variable={pos:VarPos(graph.partitions[si].profile(nuc), None)
                                     for pos, nuc in enumerate(seq) if nuc not in alphabets_gapN[si]})
         node.payload.fitch.append(seq_info)
-    else:
-      # process internal nodes, again for each sequence partition
-      node.payload.fitch = []
-      node.payload.full_seq = []
-      for si in range(n_seq_partitions):
+      else: # process internal nodes
         # init the local representation with gaps, unknowns
         # need to account for parts of the sequence transmitted along edges
         seq_info = SeqInfoParsimony(gaps=RangeCollection_intersection([c.fitch[si].gaps for c,e in node.children]),
@@ -42,7 +42,7 @@ def fitch_backwards(graph: Graph):
           for pos in range(r.start, r.end):
             full_seq[pos]=NON_CHAR
 
-        # process all positions where the children are variable (there are probably better ways to )
+        # process all positions where the children are variable (there are probably better ways to do this)
         # need to account for parts of the sequence transmitted along edges
         variable_pos = np.unique(np.concatenate([np.array(list(c.fitch[si].variable.keys()), dtype=int) for c,e in node.children]))
         for pos in variable_pos:
@@ -62,8 +62,9 @@ def fitch_backwards(graph: Graph):
               child_profiles.append(graph.partitions[si].profile(c.full_seq[si][pos]))
 
           isect = np.prod(child_profiles, axis=0)
+          # if we save the states of the children for each position that is variable in the node, we would not need the full_seq on the forward pass
           if isect.sum()==1:
-            full_seq[pos]=graph.partitions[si].gtr.alphabet[np.argmax(isect)]
+            full_seq[pos]=alphabets[si][np.argmax(isect)]
           elif isect.sum()>1:
             seq_info.variable[pos]=VarPos(isect, None)
             full_seq[pos]=VARIABLE
@@ -78,11 +79,11 @@ def fitch_backwards(graph: Graph):
         for pos, (nuc, child_states) in enumerate(zip(full_seq, zip(*[c.full_seq[si] for c,e in node.children]))):
           if nuc!=FILL_CHAR: # already touched this position
             continue
-
           determined_states = set([x for x in child_states if x in alphabets[si]])
           if len(determined_states)==1:
             full_seq[pos]=determined_states.pop()
           elif len(determined_states)>1:
+            # if we save the states of the children for each position that is variable in the node, we would not need the full_seq on the forward pass
             seq_info.variable[pos] = VarPos(np.sum([graph.partitions[si].profile(x) for x in determined_states], axis=0), None)
             full_seq[pos]=VARIABLE
           else:
@@ -106,10 +107,11 @@ def fitch_forward(graph: Graph):
     if node.is_root:
       for si, (seq_info, full_seq) in enumerate(zip(node.payload.fitch, node.payload.full_seq)):
         for pos, p in seq_info.variable.items():
-          full_seq[pos] = alphabets[si][np.argmax(p.profile)]
+          p.state = alphabets[si][np.argmax(p.profile)]
+          full_seq[pos] = p.state
         seq_info.fixed_composition = {s:0 for s in alphabets[si]}
         for s in full_seq:
-          if s in alphabets[si]: #there could be positions that are gap or N everywhere
+          if s in alphabets[si]: #there could be positions that are gap or N everywhere, should be over complement of `non_char`
             seq_info.fixed_composition[s] += 1
     else:
       # only deal with one parent for now
@@ -135,13 +137,13 @@ def fitch_forward(graph: Graph):
           else:
             cnuc = alphabets[si][np.argmax(p.profile)]
             full_seq[pos] = cnuc
-            # could be factored out
             muts.append(add_mutation(pos, pnuc, cnuc, seq_info.fixed_composition))
-        for pos in parent.fitch[si].variable:
+        for pos, pvar in parent.fitch[si].variable.items():
           if pos in seq_info.variable: continue
-          if pseq[pos]!=full_seq[pos]:
-            # could be factored out
-            muts.append(add_mutation(pos, pseq[pos], full_seq[pos], seq_info.fixed_composition))
+          # NOTE: access to full_seq would not be necessary if we had saved the
+          # child state of variable positions in the backward pass
+          if pvar.state!=full_seq[pos]:
+            muts.append(add_mutation(pos, pvar.state, full_seq[pos], seq_info.fixed_composition))
         for pos in seq_info.variable:
           # saving the reference state at variable positions for probabilistic inference
           seq_info.variable[pos].state = full_seq[pos]
@@ -197,8 +199,8 @@ def reconstruct_sequence(graph: Graph, node: Node):
 
 
 if __name__=="__main__":
-  # fname_nwk = 'data/ebola/ebola.nwk'
-  # fname_seq = 'data/ebola/ebola_dna.fasta'
+  fname_nwk = 'data/ebola/ebola.nwk'
+  fname_seq = 'data/ebola/ebola_dna.fasta'
   fname_nwk = 'test_scripts/data/tree.nwk'
   fname_seq = 'test_scripts/data/sequences.fasta'
   with open(fname_nwk) as fh:

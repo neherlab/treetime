@@ -145,7 +145,7 @@ def outgroup_profiles(graph: Graph):
   alphabets = [''.join(p.gtr.alphabet) for p in graph.partitions]
 
   eps=1e-6
-  def calculate_outgroup_node(node: GraphNodeBackward) -> None:
+  def calculate_outgroup_node(node: GraphNodeForward) -> None:
     node.payload.seq_info_outgroup = []
     node.payload.seq_info = []
     node.payload.parent_messages = []
