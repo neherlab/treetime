@@ -37,6 +37,14 @@ class Mut:
   def is_del(self):
     return self.qry == '-'
 
+  def __gt__(self, other):
+    if self.pos>other.pos: return True
+    elif self.pos==other.pos:
+      if self.ref>other.ref:
+        return True
+      if self.ref==other.ref:
+        return self.qry>self.ref
+    return False
 
 @dataclass
 class InDel:

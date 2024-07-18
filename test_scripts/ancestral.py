@@ -74,6 +74,8 @@ def combine_messages(seq_info, messages, variable_pos, eps, alphabet):
     for name, msg in messages:
       if pos in msg.variable:
         msg_profiles.append(msg.variable[pos].profile)
+      else:
+        msg_profiles.append(msg.fixed[state])
 
     # calculate new profile and likelihood contribution
     try:

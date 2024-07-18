@@ -1,96 +1,139 @@
 from Bio import AlignIO
+from typing import Dict
 import numpy as np
-from lib import Graph, graph_from_nwk_str, GraphNodeBackward, GraphNodeForward, Node
+from lib import Graph, graph_from_nwk_str, GraphNodeBackward, GraphNodeForward, Node, SparseSeqNode, SparseSeqInfo, SparseSeqDis, SparseSeqEdge
 from lib import SeqPartition, SeqInfoParsimony, find_char_ranges, VarPos, RangeCollection_intersection, RangeCollection, Mut
 from treetime import GTR
 from payload import NodePayload, EdgePayload
 from profile_map import profile_map
+from itertools import chain
+import time
 
 NON_CHAR = '.'
 VARIABLE = '~'
 FILL_CHAR = ' '
 
+def seq_info_from_array(seq: np.array, profile: Dict[str,np.array], alphabet_gapN: str) -> SparseSeqInfo:
+    seq_dis = SparseSeqDis(variable={pos:VarPos(profile(nuc), None) for pos, nuc in enumerate(seq) if nuc not in alphabet_gapN})
+    # code the missing regions and gap regions along with the ambiguous nucleotides
+    unknown = find_char_ranges(seq, 'N')
+    gaps = find_char_ranges(seq, '-')
+    return(SparseSeqInfo(unknown=unknown, gaps=gaps,
+                        non_char=RangeCollection(unknown.ranges + gaps.ranges),
+                        distribution=seq_dis, sequence=seq))
+
+def attach_seqs_to_graph(graph, aln_list, gtr_list):
+  name_to_key = {}
+  for n in graph.get_leaves():
+    n.payload().sparse_sequences = []
+    name_to_key[n.payload().name] = n.key()
+
+  graph.partitions = []
+  for aln, gtr in zip(aln_list, gtr_list):
+    L = len(aln[list(aln.keys())[0]]) # stupid way to get alignment length
+    partition = SeqPartition(gtr=gtr, length=L, profile_map=profile_map)
+    graph.partitions.append(partition)
+    alphabet_gapN = ''.join(gtr.alphabet)+'-N'
+    profile = partition.profile
+
+    for leaf in graph.get_leaves():
+      leaf_name = leaf.payload().name
+      leaf.payload().sparse_sequences.append(seq_info_from_array(np.fromiter(str(aln[leaf_name]).upper(), 'U1'), profile, alphabet_gapN))
+
+def init_sparse_sequences(graph, aln_list, gtr_list):
+  t0 = time.time()
+  print(f"elapsed: {time.time()-t0:.3f}")
+  attach_seqs_to_graph(graph, aln_list, gtr_list)
+  print(f"elapsed: {time.time()-t0:.3f}")
+  fitch_backwards(graph)
+  print(f"elapsed: {time.time()-t0:.3f}")
+  fitch_forward(graph)
+  print(f"elapsed: {time.time()-t0:.3f}")
+
+
 def fitch_backwards(graph: Graph):
-  n_seq_partitions = len(graph.partitions)
-  alphabets = [''.join(p.gtr.alphabet) for p in graph.partitions]
-  alphabets_gapN = [a+'-N' for a in alphabets]
+  n_partitions = len(graph.partitions)
   def fitch_backwards_node(node: GraphNodeBackward):
-    node.payload.fitch = []
-    if not node.is_leaf: # leaf nodes have a full sequence attached
-      node.payload.full_seq = []
+    if node.is_leaf: # leaves have been dealt with in init
+      return
 
-    for si in range(n_seq_partitions):
-      if node.is_leaf: # process sequences on leaves
-        seq = node.payload.full_seq[si]
-        # code the missing regions and gap regions along with the ambiguous nucleotides
-        seq_info = SeqInfoParsimony(unknown=find_char_ranges(seq, 'N'), gaps=find_char_ranges(seq, '-'),
-                           non_char=RangeCollection(find_char_ranges(seq, 'N').ranges + find_char_ranges(seq, '-').ranges),
-                           variable={pos:VarPos(graph.partitions[si].profile(nuc), None)
-                                    for pos, nuc in enumerate(seq) if nuc not in alphabets_gapN[si]})
-        node.payload.fitch.append(seq_info)
-      else: # process internal nodes
-        # init the local representation with gaps, unknowns
-        # need to account for parts of the sequence transmitted along edges
-        seq_info = SeqInfoParsimony(gaps=RangeCollection_intersection([c.fitch[si].gaps for c,e in node.children]),
-                           unknown=RangeCollection_intersection([c.fitch[si].unknown for c,e in node.children]),
-                           non_char=RangeCollection_intersection([c.fitch[si].non_char for c,e in node.children]),
-                           variable={})
-        # define dummy sequence
-        full_seq = np.array([FILL_CHAR]*graph.partitions[0].length)
-        # fill indeterminate positions
-        for r in seq_info.non_char:
-          for pos in range(r.start, r.end):
-            full_seq[pos]=NON_CHAR
+    # init internal node and edges
+    node.payload.sparse_sequences = []
+    for c,e in node.children:
+      # not clear where the transmission info on the edge is going to come from
+      e.sparse_sequences = [SparseSeqEdge() for _ in range(n_partitions)]
 
-        # process all positions where the children are variable (there are probably better ways to do this)
-        # need to account for parts of the sequence transmitted along edges
-        variable_pos = np.unique(np.concatenate([np.array(list(c.fitch[si].variable.keys()), dtype=int) for c,e in node.children]))
-        for pos in variable_pos:
-          # 2D float array
-          # stack all ingroup profiles of children, use the determinate profile if position is not variable.
-          child_profiles = []
-          for c,e in node.children:
-            if e.transmission and (not e.transmission.contains(pos)):
-              # transmission field is not currently used
-              continue
-            if c.fitch[si].non_char.contains(pos):
-              # this position does not have character state information
-              continue
-            if pos in c.fitch[si].variable:
-              child_profiles.append(c.fitch[si].variable[pos].profile)
-            else:
-              child_profiles.append(graph.partitions[si].profile(c.full_seq[si][pos]))
+    for si in range(n_partitions):
+      # short hands
+      child_seqs = [c.sparse_sequences[si] for c,e in node.children]
+      child_edges = [e.sparse_sequences[si] for c,e in node.children]
+      gtr = graph.partitions[si].gtr
+      L = graph.partitions[si].length
+      profile = graph.partitions[si].profile
 
-          isect = np.prod(child_profiles, axis=0)
-          # if we save the states of the children for each position that is variable in the node, we would not need the full_seq on the forward pass
-          if isect.sum()==1:
-            full_seq[pos]=alphabets[si][np.argmax(isect)]
-          elif isect.sum()>1:
-            seq_info.variable[pos]=VarPos(isect, None)
-            full_seq[pos]=VARIABLE
-          else:
-            child_union = np.sum(child_profiles, axis=0)
-            seq_info.variable[pos]=VarPos(np.array([1.0 if x>0 else 0.0 for x in child_union]), None)
-            full_seq[pos]=VARIABLE
+      # init the local representation with gaps, unknowns
+      # need to account for parts of the sequence transmitted along edges
+      seq_dis = SparseSeqDis(variable={})
+      seq_info = SparseSeqInfo(gaps=RangeCollection_intersection([cseq.gaps for cseq in child_seqs]),
+                          unknown=RangeCollection_intersection([cseq.unknown for cseq in child_seqs]),
+                          non_char=RangeCollection_intersection([cseq.non_char for cseq in child_seqs]))
+      # define dummy sequence
+      full_seq = np.array([FILL_CHAR]*L)
+      # fill indeterminate positions
+      for r in seq_info.non_char:
+        for pos in range(r.start, r.end):
+          full_seq[pos]=NON_CHAR
 
-        # process all positions where the children are fixed or completely unknown in some children
-        # this is ridiculously slow, even though we are only comparing nucleotides in the children
-        # it should be possible to make this much faster.
-        for pos, (nuc, child_states) in enumerate(zip(full_seq, zip(*[c.full_seq[si] for c,e in node.children]))):
-          if nuc!=FILL_CHAR: # already touched this position
+      # process all positions where the children are variable (there are probably better ways to do this)
+      # need to account for parts of the sequence transmitted along edges
+      variable_pos = sorted(set(chain.from_iterable([cseq.distribution.variable.keys() for cseq in child_seqs])))
+      for pos in variable_pos:
+        # 2D float array
+        # stack all ingroup profiles of children, use the determinate profile if position is not variable.
+        child_profiles = []
+        for cseq,e in zip(child_seqs, child_edges):
+          if e.transmission and (not e.transmission.contains(pos)):
+            # transmission field is not currently used
             continue
-          determined_states = set([x for x in child_states if x in alphabets[si]])
-          if len(determined_states)==1:
-            full_seq[pos]=determined_states.pop()
-          elif len(determined_states)>1:
-            # if we save the states of the children for each position that is variable in the node, we would not need the full_seq on the forward pass
-            seq_info.variable[pos] = VarPos(np.sum([graph.partitions[si].profile(x) for x in determined_states], axis=0), None)
-            full_seq[pos]=VARIABLE
+          if cseq.non_char.contains(pos):
+            # this position does not have character state information
+            continue
+          if pos in cseq.distribution.variable:
+            child_profiles.append(cseq.distribution.variable[pos].profile)
           else:
-            import ipdb; ipdb.set_trace()
+            child_profiles.append(profile(cseq.sequence[pos]))
 
-        node.payload.fitch.append(seq_info)
-        node.payload.full_seq.append(full_seq)
+        isect = np.prod(child_profiles, axis=0)
+        # if we save the states of the children for each position that is variable in the node, we would not need the full_seq on the forward pass
+        if isect.sum()==1:
+          full_seq[pos]=gtr.alphabet[np.argmax(isect)]
+        elif isect.sum()>1:
+          seq_dis.variable[pos]=VarPos(isect, None)
+          full_seq[pos]=VARIABLE
+        else:
+          child_union = np.sum(child_profiles, axis=0)
+          seq_dis.variable[pos]=VarPos(np.array([1.0 if x>0 else 0.0 for x in child_union]), None)
+          full_seq[pos]=VARIABLE
+
+      # process all positions where the children are fixed or completely unknown in some children
+      # this is ridiculously slow, even though we are only comparing nucleotides in the children
+      # it should be possible to make this much faster.
+      for pos, (nuc, child_states) in enumerate(zip(full_seq, zip(*[cseq.sequence for cseq in child_seqs]))):
+        if nuc!=FILL_CHAR: # already touched this position
+          continue
+        determined_states = set([x for x in child_states if x in gtr.alphabet])
+        if len(determined_states)==1:
+          full_seq[pos]=determined_states.pop()
+        elif len(determined_states)>1:
+          # if we save the states of the children for each position that is variable in the node, we would not need the full_seq on the forward pass
+          seq_dis.variable[pos] = VarPos(np.sum([profile(x) for x in determined_states], axis=0), None)
+          full_seq[pos]=VARIABLE
+        else:
+          import ipdb; ipdb.set_trace()
+
+      seq_info.distribution=seq_dis
+      seq_info.sequence=full_seq
+      node.payload.sparse_sequences.append(seq_info)
 
   graph.par_iter_backward(fitch_backwards_node)
 
@@ -100,69 +143,73 @@ def add_mutation(pos, pnuc, cnuc, composition):
   return Mut(pnuc, pos, cnuc)
 
 def fitch_forward(graph: Graph):
-  n_seq_partitions = len(graph.partitions)
-  alphabets = [''.join(p.gtr.alphabet) for p in graph.partitions]
+  n_partitions = len(graph.partitions)
 
   def fitch_forward_node(node: GraphNodeForward):
-    if node.is_root:
-      for si, (seq_info, full_seq) in enumerate(zip(node.payload.fitch, node.payload.full_seq)):
-        for pos, p in seq_info.variable.items():
-          p.state = alphabets[si][np.argmax(p.profile)]
-          full_seq[pos] = p.state
-        seq_info.fixed_composition = {s:0 for s in alphabets[si]}
-        for s in full_seq:
-          if s in alphabets[si]: #there could be positions that are gap or N everywhere, should be over complement of `non_char`
-            seq_info.fixed_composition[s] += 1
-    else:
-      # only deal with one parent for now
-      parent, edge = node.parents[0]
-      edge.muts = []
-      # loop over sequence partitions
-      for si, (seq_info, full_seq) in enumerate(zip(node.payload.fitch, node.payload.full_seq)):
-        pseq=parent.full_seq[si]
-        seq_info.fixed_composition = {s:k for s,k in parent.fitch[si].fixed_composition.items()}
+    for si in range(n_partitions):
+      gtr = graph.partitions[si].gtr
+      profile = graph.partitions[si].profile
+      seq_info = node.payload.sparse_sequences[si]
+
+      if node.is_root:
+        for pos, p in seq_info.distribution.variable.items():
+            p.state = gtr.alphabet[np.argmax(p.profile)]
+            seq_info.sequence[pos] = p.state
+
+        seq_info.composition = {s:0 for s in gtr.alphabet}
+        for s in seq_info.sequence:
+          if s in gtr.alphabet: #there could be positions that are gap or N everywhere, should be over complement of `non_char`
+            seq_info.composition[s] += 1
+      else:
+        # short hands
+        pseq = node.parents[0][0].sparse_sequences[si]
+        pedge = node.parents[0][1].sparse_sequences[si]
+        seq_info = node.payload.sparse_sequences[si]
+        pedge.muts = []
+
+        # copy parent seqinfo
+        seq_info.composition = {s:k for s,k in pseq.composition.items()}
 
         # fill in the indeterminate positions.
         for r in seq_info.non_char:
           for pos in range(r.start, r.end):
-            full_seq[pos]=pseq[pos]
+            seq_info.sequence[pos]=pseq.sequence[pos]
 
-        muts = []
         # for each variable position, pick a state or a mutation
-        for pos, p in seq_info.variable.items():
-          pnuc=pseq[pos]
+        for pos, p in seq_info.distribution.variable.items():
+          pnuc=pseq.sequence[pos]
           # check whether parent is in child profile (sum>0 --> parent state is in profile)
-          if np.sum(graph.partitions[si].profile(pnuc)*p.profile):
-            full_seq[pos] = pnuc
+          if np.sum(profile(pnuc)*p.profile):
+            seq_info.sequence[pos] = pnuc
           else:
-            cnuc = alphabets[si][np.argmax(p.profile)]
-            full_seq[pos] = cnuc
-            muts.append(add_mutation(pos, pnuc, cnuc, seq_info.fixed_composition))
-        for pos, pvar in parent.fitch[si].variable.items():
-          if pos in seq_info.variable: continue
+            cnuc = gtr.alphabet[np.argmax(p.profile)]
+            seq_info.sequence[pos] = cnuc
+            pedge.muts.append(add_mutation(pos, pnuc, cnuc, seq_info.composition))
+
+          p.state = seq_info.sequence[pos]
+
+        for pos, pvar in pseq.distribution.variable.items():
+          if pos in seq_info.distribution.variable: continue
           # NOTE: access to full_seq would not be necessary if we had saved the
           # child state of variable positions in the backward pass
-          if pvar.state!=full_seq[pos]:
-            muts.append(add_mutation(pos, pvar.state, full_seq[pos], seq_info.fixed_composition))
-        for pos in seq_info.variable:
-          # saving the reference state at variable positions for probabilistic inference
-          seq_info.variable[pos].state = full_seq[pos]
-        edge.muts.append(muts)
-      # print(edge.muts)
-
+          node_nuc = seq_info.sequence[pos]
+          if pvar.state!=node_nuc:
+            pedge.muts.append(add_mutation(pos, pvar.state, node_nuc, seq_info.composition))
 
   def clean_up_node(node):
-    for full_seq, seq_info in zip(node.payload.full_seq, node.payload.fitch):
+    for seq_info in node.payload.sparse_sequences:
       if not node.is_leaf: #delete the variable position everywhere instead of leaves
-        seq_info.variable = {}
+        seq_info.distribution.variable = {}
       for r in seq_info.non_char: # remove the undetermined counts from the counts of fixed positions
         for pos in range(r.start, r.end):
-          seq_info.fixed_composition[full_seq[pos]] -= 1
-      for pos, p in seq_info.variable.items():
-        seq_info.fixed_composition[p.state] -= 1
+          seq_info.composition[seq_info.sequence[pos]] -= 1
+      seq_info.distribution.fixed_counts = {k:v for k,v in seq_info.composition.items()}
 
-    if not node.is_root:
-      node.payload.full_seq = [[] for n in range(n_seq_partitions)]
+      for pos, p in seq_info.distribution.variable.items():
+        seq_info.distribution.fixed_counts[p.state] -= 1
+
+      if not node.is_root:
+        seq_info.sequence = []
 
   graph.par_iter_forward(fitch_forward_node)
   graph.par_iter_forward(clean_up_node)
@@ -170,7 +217,8 @@ def fitch_forward(graph: Graph):
 
 def reconstruct_sequence(graph: Graph, node: Node):
   '''
-  reconstruct a specific sequence using the full sequence at the root and implanting mutations
+  reconstruct a specific sequence using the full sequence at the root and implanting mutations.
+  Note that this works only for trees with one root.
   '''
   path_to_root = [node]
   p = node
@@ -179,24 +227,75 @@ def reconstruct_sequence(graph: Graph, node: Node):
     p = graph.get_node(graph.get_edge(p._inbound[0]).source())
     path_to_root.append(p)
 
-  seqs = [np.copy(s) for s in path_to_root[-1].payload().full_seq]
-  # walk back from root to node
-  for n in path_to_root[::-1][1:]:
-    muts=graph.get_edge(n._inbound[0]).payload().muts
-    for s, mset  in zip(seqs, muts):
-      for m in mset:
-        s[m.pos] = m.qry
-  for partition, s, seq_rep in zip(graph.partitions, seqs, node.payload().fitch):
-    for r in seq_rep.gaps:
+  seqs = []
+  for si in range(len(graph.partitions)):
+    seq = np.copy(path_to_root[-1].payload().sparse_sequences[si].sequence)
+    # walk back from root to node
+    for n in path_to_root[::-1][1:]:
+      for m in graph.get_edge(n._inbound[0]).payload().sparse_sequences[si].muts:
+        seq[m.pos] = m.qry
+
+    seq_info = node.payload().sparse_sequences[si]
+    for r in seq_info.gaps:
       for pos in range(r.start, r.end):
-        s[pos]='-'
-    for r in seq_rep.unknown:
+        seq[pos]='-'
+    for r in seq_info.unknown:
       for pos in range(r.start, r.end):
-        s[pos]=partition.gtr.ambiguous
-    for pos, p in seq_rep.variable.items():
-      s[pos]=partition.code(tuple(p.profile))
+        seq[pos]=graph.partitions[si].gtr.ambiguous
+    for pos, p in seq_info.distribution.variable.items():
+      seq[pos]=graph.partitions[si].code(tuple(p.profile))
+    seqs.append(seq)
+
   return seqs
 
+def tests():
+  aln = {"root":"ACAGCCATGTATTG",
+         "AB":"ACATCCCTGTA-TG",
+         "A":"ACATCGCCNNA--G",
+         "B":"GCATCCCTGTA-NG",
+         "CD":"CCGGCCATGTATTG",
+         "C":"CCGGCGATGTRTTG",
+         "D":"TCGGCCGTGTRTTG"}
+
+  tree = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;"
+  profile = lambda x: profile_map[x]
+
+  # initializion of leaves
+  seq_info = seq_info_from_array(np.fromiter(aln['B'], 'U1'), profile, 'ACGT-N')
+  assert str(seq_info.gaps.ranges) == "[Range(start=11, end=12)]"
+  assert str(seq_info.unknown.ranges) == "[Range(start=12, end=13)]"
+
+  seq_info = seq_info_from_array(np.fromiter(aln['D'], 'U1'), profile, 'ACGT-N')
+  assert str(seq_info.gaps.ranges) == "[]"
+  assert str(seq_info.distribution.variable) == "{10: VarPos(profile=array([1., 0., 1., 0.]), state=None)}"
+
+  G = graph_from_nwk_str(nwk_string=tree, node_payload_factory=NodePayload, edge_payload_factory=EdgePayload)
+  gtr = GTR.custom(pi=[0.2, 0.3, 0.15, 0.35], alphabet='nuc_nogap')
+  attach_seqs_to_graph(G, [aln], [gtr])
+  fitch_backwards(G)
+  seq_info = G.get_one_root().payload().sparse_sequences[0]
+  assert tuple(sorted(seq_info.distribution.variable.keys())) == (0, 2, 3, 5, 6)
+  assert "".join(seq_info.sequence) == '~C~~C~~TGTATTG'
+
+  fitch_forward(G)
+  seq_info = G.get_one_root().payload().sparse_sequences[0]
+  # note that this is contingent on picking the first of ACGT when there are multiple options
+  assert "".join(seq_info.sequence) == aln['root']
+  for n in G.get_nodes():
+    rec_seq = ''.join(reconstruct_sequence(G, n)[0])
+    assert rec_seq==aln[n.payload().name]
+
+  muts_expected = [
+        "['C6G', 'T8C']",
+        "['A1G']",
+        "['G4T', 'A7C']",
+        "['C6G']",
+        "['C1T', 'A7G']",
+        "['A1C', 'A3G']",
+        ]
+  for mexp,e in zip(muts_expected,G.get_edges()):
+    muts = str(sorted(e.payload().sparse_sequences[0].muts))
+    assert muts==mexp
 
 if __name__=="__main__":
   fname_nwk = 'data/ebola/ebola.nwk'
@@ -206,27 +305,26 @@ if __name__=="__main__":
   with open(fname_nwk) as fh:
     nwkstr = fh.read()
   G = graph_from_nwk_str(nwk_string=nwkstr, node_payload_factory=NodePayload, edge_payload_factory=EdgePayload)
-  name_to_key={n.payload().name: n.key() for n in G.get_leaves()}
-  aln = AlignIO.read(fname_seq, 'fasta')
-  aln_dict = {s.id:np.fromiter(str(s.seq).upper(), 'U1') for s in aln}
 
+  aln = {seq.id: str(seq.seq).upper() for seq in AlignIO.read(fname_seq, 'fasta')}
   gtr = GTR.custom(pi=[0.2, 0.3, 0.15, 0.35], alphabet='nuc_nogap')
-  G.partitions = [SeqPartition(gtr=gtr, length=aln.get_alignment_length(), profile_map=profile_map)]
+  init_sparse_sequences(G, [aln], [gtr])
 
-
-  for sname, seq in aln_dict.items():
-    G.get_node(name_to_key[sname]).payload().full_seq = [np.copy(seq)]
-
-  fitch_backwards(G)
-  fitch_forward(G)
-
+  failed = []
+  t0=time.time()
   # check output
   for leaf in G.leaves:
     node = G.get_node(leaf)
     nname = node.payload().name
-    rec_seq = reconstruct_sequence(G, node)[0]
-    print(nname, np.sum(rec_seq!=aln_dict[nname]))
+    rec_seq = ''.join(reconstruct_sequence(G, node)[0])
+    if rec_seq!=aln[nname]:
+      failed.append((nname,rec_seq, aln[nname]))
 
+  if failed:
+    print(failed)
+  else:
+    print("all reconstructed successfully")
+  print(f"reconstructed in {time.time()-t0:.3f}s")
 
 '''
 # NOTES

@@ -8,3 +8,4 @@ from .nwk import *
 from .str import *
 from .sequence_partions import *
 from .range import *
+from .sparse_seq import *
