@@ -1,6 +1,8 @@
-VERBOSE = 3
+import sys
 
+VERBOSE = 3
 BIG_NUMBER = 1e10
+BIGGEST_NUMBER = sys.float_info.max
 TINY_NUMBER = 1e-12
 SUPERTINY_NUMBER = 1e-24
 MIN_LOG = -1e8 # minimal log value
