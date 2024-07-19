@@ -3,7 +3,7 @@ use crate::graph::edge::GraphEdge;
 use crate::graph::graph::{Graph, SafeEdge, SafeNode};
 use crate::graph::node::GraphNodeKey;
 use crate::graph::node::{GraphNode, Named};
-use crate::io::file::create_file;
+use crate::io::file::create_file_or_stdout;
 use crate::io::file::open_file_or_stdin;
 use crate::make_error;
 use crate::o;
@@ -114,7 +114,7 @@ where
   N: GraphNode + NodeToNwk,
   E: GraphEdge + EdgeToNwk,
 {
-  let mut f = create_file(filepath)?;
+  let mut f = create_file_or_stdout(filepath)?;
   nwk_write(&mut f, graph, options)?;
   writeln!(f)?;
   Ok(())

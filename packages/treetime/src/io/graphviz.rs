@@ -1,7 +1,7 @@
 use crate::graph::edge::GraphEdge;
 use crate::graph::graph::{Graph, SafeNode};
 use crate::graph::node::{GraphNode, Node};
-use crate::io::file::create_file;
+use crate::io::file::create_file_or_stdout;
 use eyre::Report;
 use itertools::{iproduct, Itertools};
 use parking_lot::RwLock;
@@ -15,7 +15,7 @@ where
   N: GraphNode + NodeToGraphviz,
   E: GraphEdge + EdgeToGraphViz,
 {
-  let mut f = create_file(filepath)?;
+  let mut f = create_file_or_stdout(filepath)?;
   graphviz_write(&mut f, graph)?;
   writeln!(f)?;
   Ok(())

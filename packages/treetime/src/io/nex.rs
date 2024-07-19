@@ -1,7 +1,7 @@
 use crate::graph::edge::GraphEdge;
 use crate::graph::graph::Graph;
 use crate::graph::node::GraphNode;
-use crate::io::file::create_file;
+use crate::io::file::create_file_or_stdout;
 use crate::io::nwk::{EdgeToNwk, NodeToNwk, nwk_write_str, NwkWriteOptions};
 use eyre::Report;
 use itertools::Itertools;
@@ -27,7 +27,7 @@ where
   N: GraphNode + NodeToNwk,
   E: GraphEdge + EdgeToNwk,
 {
-  let mut f = create_file(filepath)?;
+  let mut f = create_file_or_stdout(filepath)?;
   nex_write(&mut f, graph, options)?;
   writeln!(f)?;
   Ok(())

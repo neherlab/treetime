@@ -1,7 +1,6 @@
 use crate::graph::graph::Graph;
 use crate::graph::node::{GraphNode, GraphNodeKey};
 use derive_more::Display;
-use eyre::Report;
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;

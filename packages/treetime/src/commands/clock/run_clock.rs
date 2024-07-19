@@ -45,7 +45,7 @@ pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
   };
 
   graphviz_write_file(outdir.join("graph_input.dot"), &graph)?;
-  json_write_file(&graph, outdir.join("graph_input.json"), JsonPretty(true))?;
+  json_write_file(outdir.join("graph_input.json"), &graph, JsonPretty(true))?;
 
   if *clock_filter > 0.0 {
     unimplemented!("clock_filter")
@@ -78,7 +78,7 @@ pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
   rtt.iter().try_for_each(|result| rtt_writer.write(result))?;
 
   graphviz_write_file(outdir.join("graph_output.dot"), &graph)?;
-  json_write_file(&graph, outdir.join("graph_output.json"), JsonPretty(true))?;
+  json_write_file(outdir.join("graph_output.json"), &graph, JsonPretty(true))?;
 
   nwk_write_file(outdir.join("rerooted.nwk"), &graph, &NwkWriteOptions::default())?;
 

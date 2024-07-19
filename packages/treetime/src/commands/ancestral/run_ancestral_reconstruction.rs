@@ -4,7 +4,7 @@ use crate::commands::ancestral::anc_reconstruction_fitch::ancestral_reconstructi
 use crate::commands::ancestral::anc_reconstruction_marginal::ancestral_reconstruction_marginal;
 use crate::gtr::get_gtr::get_gtr;
 use crate::io::fasta::{read_many_fasta, FastaRecord, FastaWriter};
-use crate::io::file::create_file;
+use crate::io::file::create_file_or_stdout;
 use crate::io::graphviz::graphviz_write_file;
 use crate::io::json::{json_write_file, JsonPretty};
 use crate::io::nex::{nex_write, NexWriteOptions};
@@ -47,7 +47,7 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
   };
 
   graphviz_write_file(outdir.join("graph_input.dot"), &graph)?;
-  json_write_file(&graph, outdir.join("graph_input.json"), JsonPretty(true))?;
+  json_write_file(outdir.join("graph_input.json"), &graph, JsonPretty(true))?;
 
   // TODO: avoid reading all sequences into memory somehow?
   let fastas = read_many_fasta(input_fastas)?;
@@ -58,7 +58,7 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
 
   compress_sequences(&seqs, &graph, &mut rng)?;
 
-  let fasta_file = create_file(outdir.join("ancestral_sequences.fasta"))?;
+  let fasta_file = create_file_or_stdout(outdir.join("ancestral_sequences.fasta"))?;
   let mut fasta_writer = FastaWriter::new(fasta_file);
 
   match method_anc {
@@ -93,16 +93,16 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
   }
 
   graphviz_write_file(outdir.join("graph_output.dot"), &graph)?;
-  json_write_file(&graph, outdir.join("graph_output.json"), JsonPretty(true))?;
+  json_write_file(outdir.join("graph_output.json"), &graph, JsonPretty(true))?;
 
   nwk_write(
-    &mut create_file(outdir.join("annotated_tree.nwk"))?,
+    &mut create_file_or_stdout(outdir.join("annotated_tree.nwk"))?,
     &graph,
     &NwkWriteOptions::default(),
   )?;
 
   nex_write(
-    &mut create_file(outdir.join("annotated_tree.nexus"))?,
+    &mut create_file_or_stdout(outdir.join("annotated_tree.nexus"))?,
     &graph,
     &NexWriteOptions::default(),
   )?;
