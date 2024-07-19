@@ -609,7 +609,7 @@ mod tests {
         undetermined: vec![],
         mixed: vec![MixedSite::new(10, 'R')],
         non_consensus: btreemap! {
-          10 => btreeset!{'G'},
+          10 => btreeset!{'A'},
         },
         nuc_composition: btreemap! {
           'A' => 1,
