@@ -1,6 +1,6 @@
-use crate::graph::edge::{EdgeToGraphViz, GraphEdge};
+use crate::graph::edge::GraphEdge;
 use crate::graph::graph::{Graph, SafeNode};
-use crate::graph::node::{GraphNode, Node, NodeToGraphviz};
+use crate::graph::node::{GraphNode, Node};
 use crate::io::file::create_file;
 use eyre::Report;
 use itertools::{iproduct, Itertools};
@@ -8,6 +8,7 @@ use parking_lot::RwLock;
 use std::io::Write;
 use std::path::Path;
 use std::sync::Arc;
+use std::collections::BTreeMap;
 
 pub fn graphviz_write_file<N, E>(filepath: impl AsRef<Path>, graph: &Graph<N, E>) -> Result<(), Report>
 where
@@ -142,5 +143,30 @@ where
       "\n    // fake edges for alignment of nodes\n    {{\n      rank=same\n{fake_edges}\n    }}"
     )
     .unwrap();
+  }
+}
+
+/// Defines how to display node information when writing to GraphViz (.dot) file
+pub trait NodeToGraphviz {
+  // Defines how to display label (name) of the node in GraphViz (.dot) file
+  fn to_graphviz_label(&self) -> String;
+
+  // Defines how to display additional attributes of the node in GraphViz (.dot) file
+  fn to_graphviz_attributes(&self) -> BTreeMap<String, String> {
+    BTreeMap::<String, String>::new()
+  }
+}
+
+/// Defines how to display edge information when writing to GraphViz (.dot) file
+pub trait EdgeToGraphViz {
+  // Defines how to display label (name) of the edge in GraphViz (.dot) file
+  fn to_graphviz_label(&self) -> String;
+
+  // Defines how to assign weight of the edge in GraphViz (.dot) file
+  fn to_graphviz_weight(&self) -> f64;
+
+  // Defines how to display additional attributes of the edge in GraphViz (.dot) file
+  fn to_graphviz_attributes(&self) -> BTreeMap<String, String> {
+    BTreeMap::<String, String>::new()
   }
 }

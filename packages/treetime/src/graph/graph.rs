@@ -596,10 +596,11 @@ where
 #[cfg(test)]
 pub mod tests {
   use super::*;
-  use crate::graph::edge::{EdgeFromNwk, EdgeToGraphViz, EdgeToNwk, Weighted};
-  use crate::graph::node::{Named, NodeFromNwk, NodeToGraphviz, NodeToNwk};
-  use crate::io::nwk::{format_weight, nwk_read_str, NwkWriteOptions};
+  use crate::graph::edge::Weighted;
+  use crate::graph::node::Named;
+  use crate::io::nwk::{EdgeFromNwk, EdgeToNwk, format_weight, NodeFromNwk, NodeToNwk, nwk_read_str, NwkWriteOptions};
   use std::collections::BTreeMap;
+  use crate::io::graphviz::{EdgeToGraphViz, NodeToGraphviz};
 
   #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
   pub struct TestNode(pub String);

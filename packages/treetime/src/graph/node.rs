@@ -1,9 +1,7 @@
 use crate::graph::edge::GraphEdgeKey;
 use derive_more::Display;
-use eyre::Report;
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -13,31 +11,6 @@ use std::sync::Arc;
 pub trait Named {
   fn name(&self) -> &str;
   fn set_name(&mut self, name: impl AsRef<str>);
-}
-
-/// Defines how to construct node when reading from Newick and Nexus files
-pub trait NodeFromNwk: Sized {
-  fn from_nwk(name: impl AsRef<str>, comments: &BTreeMap<String, String>) -> Result<Self, Report>;
-}
-
-/// Defines how to display node information when writing to Newick and Nexus files
-pub trait NodeToNwk {
-  fn nwk_name(&self) -> Option<impl AsRef<str>>;
-
-  fn nwk_comments(&self) -> BTreeMap<String, String> {
-    BTreeMap::<String, String>::new()
-  }
-}
-
-/// Defines how to display node information when writing to GraphViz (.dot) file
-pub trait NodeToGraphviz {
-  // Defines how to display label (name) of the node in GraphViz (.dot) file
-  fn to_graphviz_label(&self) -> String;
-
-  // Defines how to display additional attributes of the node in GraphViz (.dot) file
-  fn to_graphviz_attributes(&self) -> BTreeMap<String, String> {
-    BTreeMap::<String, String>::new()
-  }
 }
 
 pub trait GraphNode: Clone + Debug + Sync + Send {}

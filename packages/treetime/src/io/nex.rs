@@ -1,8 +1,8 @@
-use crate::graph::edge::{EdgeToNwk, GraphEdge};
+use crate::graph::edge::GraphEdge;
 use crate::graph::graph::Graph;
-use crate::graph::node::{GraphNode, NodeToNwk};
+use crate::graph::node::GraphNode;
 use crate::io::file::create_file;
-use crate::io::nwk::{nwk_write_str, NwkWriteOptions};
+use crate::io::nwk::{EdgeToNwk, NodeToNwk, nwk_write_str, NwkWriteOptions};
 use eyre::Report;
 use itertools::Itertools;
 use smart_default::SmartDefault;

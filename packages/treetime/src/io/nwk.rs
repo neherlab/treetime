@@ -1,8 +1,8 @@
 use crate::graph::assign_node_names::assign_node_names;
-use crate::graph::edge::{EdgeFromNwk, EdgeToNwk, GraphEdge};
+use crate::graph::edge::GraphEdge;
 use crate::graph::graph::{Graph, SafeEdge, SafeNode};
-use crate::graph::node::{GraphNode, Named, NodeToNwk};
-use crate::graph::node::{GraphNodeKey, NodeFromNwk};
+use crate::graph::node::GraphNodeKey;
+use crate::graph::node::{GraphNode, Named};
 use crate::io::file::create_file;
 use crate::io::file::open_file_or_stdin;
 use crate::make_error;
@@ -16,6 +16,7 @@ use log::warn;
 use maplit::btreemap;
 use petgraph::visit::IntoNodeReferences;
 use smart_default::SmartDefault;
+use std::collections::BTreeMap;
 use std::io::Cursor;
 use std::io::{Read, Write};
 use std::path::Path;
@@ -206,6 +207,30 @@ pub fn format_weight(weight: f64, options: &NwkWriteOptions) -> String {
     options.weight_significant_digits.or(Some(3)),
     options.weight_decimal_digits,
   )
+}
+
+/// Defines how to construct node when reading from Newick and Nexus files
+pub trait NodeFromNwk: Sized {
+  fn from_nwk(name: impl AsRef<str>, comments: &BTreeMap<String, String>) -> Result<Self, Report>;
+}
+
+/// Defines how to display node information when writing to Newick and Nexus files
+pub trait NodeToNwk {
+  fn nwk_name(&self) -> Option<impl AsRef<str>>;
+
+  fn nwk_comments(&self) -> BTreeMap<String, String> {
+    BTreeMap::<String, String>::new()
+  }
+}
+
+/// Defines how to construct edge when reading from Newick and Nexus files
+pub trait EdgeFromNwk: Sized {
+  fn from_nwk(weight: Option<f64>) -> Result<Self, Report>;
+}
+
+/// Defines how to display edge information when writing to Newick and Nexus files
+pub trait EdgeToNwk {
+  fn nwk_weight(&self) -> Option<f64>;
 }
 
 #[cfg(test)]

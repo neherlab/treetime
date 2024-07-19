@@ -1,8 +1,8 @@
 #![allow(clippy::default_trait_access)]
-use crate::graph::edge::{EdgeFromNwk, EdgeToGraphViz, EdgeToNwk, GraphEdge, Weighted};
+use crate::graph::edge::{GraphEdge, Weighted};
 use crate::graph::graph::Graph;
-use crate::graph::node::{GraphNode, Named, NodeFromNwk, NodeToGraphviz, NodeToNwk};
-use crate::io::nwk::{format_weight, nwk_read_file, NwkWriteOptions};
+use crate::graph::node::{GraphNode, Named};
+use crate::io::nwk::{EdgeFromNwk, EdgeToNwk, format_weight, NodeFromNwk, NodeToNwk, nwk_read_file, NwkWriteOptions};
 use crate::o;
 use crate::seq::find_mixed_sites::MixedSite;
 use eyre::Report;
@@ -12,6 +12,7 @@ use ndarray::{Array1, Array2};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
+use crate::io::graphviz::{EdgeToGraphViz, NodeToGraphviz};
 
 pub type AncestralGraph = Graph<Node, Edge>;
 

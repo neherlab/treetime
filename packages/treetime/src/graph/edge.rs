@@ -4,7 +4,6 @@ use derive_more::Display;
 use eyre::Report;
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::mem::swap;
@@ -13,30 +12,6 @@ use std::sync::Arc;
 /// Defines how to read and write edge weight
 pub trait Weighted {
   fn weight(&self) -> f64;
-}
-
-/// Defines how to construct edge when reading from Newick and Nexus files
-pub trait EdgeFromNwk: Sized {
-  fn from_nwk(weight: Option<f64>) -> Result<Self, Report>;
-}
-
-/// Defines how to display edge information when writing to Newick and Nexus files
-pub trait EdgeToNwk {
-  fn nwk_weight(&self) -> Option<f64>;
-}
-
-/// Defines how to display edge information when writing to GraphViz (.dot) file
-pub trait EdgeToGraphViz {
-  // Defines how to display label (name) of the edge in GraphViz (.dot) file
-  fn to_graphviz_label(&self) -> String;
-
-  // Defines how to assign weight of the edge in GraphViz (.dot) file
-  fn to_graphviz_weight(&self) -> f64;
-
-  // Defines how to display additional attributes of the edge in GraphViz (.dot) file
-  fn to_graphviz_attributes(&self) -> BTreeMap<String, String> {
-    BTreeMap::<String, String>::new()
-  }
 }
 
 pub trait GraphEdge: Clone + Debug + Sync + Send {}
