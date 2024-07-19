@@ -87,13 +87,14 @@ fn get_root_to_tip_result(graph: &ClockGraph, clock_model: &ClockModel) -> Vec<R
     .get_nodes()
     .par_iter()
     .map(|node| {
-      let node = node.read().payload();
-      let node = node.read();
+      let node = node.read_arc();
+      let is_leaf = node.is_leaf();
+      let node = node.payload().read_arc();
       let name = node.name.clone();
 
       let (date, clock_deviation) = match node.raw_date_constraint {
         // TODO: is the condition on `is_leaf` necessary here? Could internal nodes have date constraints sometimes?
-        Some(raw_date_constraint) if node.is_leaf() => {
+        Some(raw_date_constraint) if is_leaf => {
           let clock_deviation = clock_model.clock_deviation(raw_date_constraint, node.dist2root);
           (raw_date_constraint, clock_deviation)
         }

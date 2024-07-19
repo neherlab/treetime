@@ -5,9 +5,10 @@ use crate::commands::ancestral::anc_reconstruction_marginal::ancestral_reconstru
 use crate::gtr::get_gtr::get_gtr;
 use crate::io::fasta::{read_many_fasta, FastaRecord, FastaWriter};
 use crate::io::file::create_file;
+use crate::io::graphviz::graphviz_write_file;
 use crate::io::json::{json_write_file, JsonPretty};
-use crate::io::nex::{write_nex, WriteNexOptions};
-use crate::io::nwk::{write_nwk_writer, WriteNwkOptions};
+use crate::io::nex::{nex_write, NexWriteOptions};
+use crate::io::nwk::{nwk_write, NwkWriteOptions};
 use crate::seq::representation::compress_sequences;
 use crate::utils::random::get_random_number_generator;
 use crate::utils::string::vec_to_string;
@@ -45,7 +46,7 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
     Some(tree) => create_graph(tree)?,
   };
 
-  graph.print_graph(create_file(outdir.join("graph_input.dot"))?)?;
+  graphviz_write_file(outdir.join("graph_input.dot"), &graph)?;
   json_write_file(&graph, outdir.join("graph_input.json"), JsonPretty(true))?;
 
   // TODO: avoid reading all sequences into memory somehow?
@@ -91,19 +92,19 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
     }
   }
 
-  graph.print_graph(create_file(outdir.join("graph_output.dot"))?)?;
+  graphviz_write_file(outdir.join("graph_output.dot"), &graph)?;
   json_write_file(&graph, outdir.join("graph_output.json"), JsonPretty(true))?;
 
-  write_nwk_writer(
+  nwk_write(
     &mut create_file(outdir.join("annotated_tree.nwk"))?,
     &graph,
-    &WriteNwkOptions::default(),
+    &NwkWriteOptions::default(),
   )?;
 
-  write_nex(
+  nex_write(
     &mut create_file(outdir.join("annotated_tree.nexus"))?,
     &graph,
-    &WriteNexOptions::default(),
+    &NexWriteOptions::default(),
   )?;
 
   Ok(())

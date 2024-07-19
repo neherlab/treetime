@@ -6,6 +6,7 @@ pub mod discrete_states_csv;
 pub mod fasta;
 pub mod file;
 pub mod fs;
+pub mod graphviz;
 pub mod json;
 pub mod nex;
 pub mod nwk;

@@ -38,17 +38,18 @@ pub fn reroot<N: GraphNode, E: GraphEdge>(
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::graph::examples::get_example_tree;
+  use crate::graph::examples::tests::get_example_tree;
   use crate::graph::node::GraphNodeKey;
-  use crate::io::file::create_file;
+  use crate::io::graphviz::graphviz_write_file;
   use eyre::Report;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
+  use std::path::PathBuf;
 
   #[rstest]
   fn reroots() -> Result<(), Report> {
     let mut graph = get_example_tree()?;
-    graph.print_graph(create_file("../../tmp__/graph_input.dot")?)?;
+    graphviz_write_file(PathBuf::from("tmp/graph_input.dot"), &graph)?;
 
     let roots = graph.get_roots();
     let old_root = roots.first().unwrap();
@@ -58,7 +59,7 @@ mod tests {
     let new_root_key = new_root.read().key();
 
     reroot(&mut graph, old_root, &new_root).unwrap();
-    graph.print_graph(create_file("../../tmp__/graph_output.dot")?)?;
+    graphviz_write_file(PathBuf::from("tmp/graph_output.dot"), &graph)?;
 
     let roots = graph.get_roots();
     let actual_root = roots.first().unwrap();

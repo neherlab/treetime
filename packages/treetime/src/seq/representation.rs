@@ -63,7 +63,7 @@ pub fn compress_sequences(
        payload: mut n,
        children,
      }| {
-      if n.is_leaf() {
+      if is_leaf {
         // At each terminal node, temporarily store the sequence and ranges of N, - and mixed sites
         n.seq = seqs[&n.name].chars().collect();
 
@@ -225,6 +225,7 @@ fn root_seq_fill_non_consensus_inplace(graph: &Graph<Node, Edge>, rng: &mut impl
 fn gather_mutations_inplace(graph: &Graph<Node, Edge>, rng: &mut (impl Rng + Send + Sync + Clone)) {
   graph.iter_depth_first_preorder_forward_2(|node| {
     let node = node.write_arc();
+    let is_root = node.is_root();
     if node.is_leaf() {
       return;
     }
@@ -233,12 +234,14 @@ fn gather_mutations_inplace(graph: &Graph<Node, Edge>, rng: &mut (impl Rng + Sen
     let mut node = node.payload().write_arc();
 
     children.into_iter().for_each(|(child, _)| {
-      let mut child = child.write_arc().payload().write_arc();
+      let child = child.write_arc();
+      let child_is_leaf = child.is_leaf();
+      let mut child = child.payload().write_arc();
       child.mutations = BTreeMap::new();
       child.nuc_composition = node.nuc_composition.clone();
 
       // we need this temporary sequence only for internal nodes
-      if !child.is_leaf() {
+      if !child_is_leaf {
         child.seq = node.seq.clone();
       }
 
@@ -259,7 +262,7 @@ fn gather_mutations_inplace(graph: &Graph<Node, Edge>, rng: &mut (impl Rng + Sen
       child.non_consensus.retain(|pos, states| !states.is_empty());
 
       child_states.into_iter().for_each(|(pos, parent_state, child_state)| {
-        if !child.is_leaf() {
+        if !child_is_leaf {
           child.seq[pos] = child_state;
         }
         child.mutations.insert(pos, (parent_state, child_state));
@@ -268,7 +271,7 @@ fn gather_mutations_inplace(graph: &Graph<Node, Edge>, rng: &mut (impl Rng + Sen
       });
     });
 
-    if !node.is_root() {
+    if !is_root {
       node.non_consensus = btreemap! {};
       node.seq = vec![];
     }
@@ -405,9 +408,8 @@ pub fn apply_non_nuc_changes_inplace(node: &Node, seq: &mut [char]) {
 mod tests {
   use super::*;
   use crate::commands::ancestral::anc_reconstruction_fitch::ancestral_reconstruction_fitch;
-  use crate::graph::create_graph_from_nwk::create_graph_from_nwk_str;
-  use crate::graph::node::NodeType;
   use crate::io::json::{json_stringify, JsonPretty};
+  use crate::io::nwk::nwk_read_str;
   use crate::o;
   use crate::utils::random::get_random_number_generator;
   use eyre::Report;
@@ -430,7 +432,7 @@ mod tests {
 
     let L = inputs.first_key_value().unwrap().1.len();
 
-    let graph = create_graph_from_nwk_str::<Node, Edge>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let graph = nwk_read_str::<Node, Edge>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
     compress_sequences(&inputs, &graph, &mut rng).unwrap();
 
@@ -442,7 +444,6 @@ mod tests {
     let expected = vec![
       Node {
         name: o!("root"),
-        node_type: NodeType::Root(o!("root")),
         mutations: BTreeMap::from([]),
         gaps: vec![],
         ambiguous: vec![],
@@ -472,7 +473,6 @@ mod tests {
       },
       Node {
         name: o!("AB"),
-        node_type: NodeType::Internal(o!("AB")),
         mutations: BTreeMap::from([
           (0, ('T', 'G')), //
           (2, ('G', 'A')), //
@@ -501,7 +501,6 @@ mod tests {
       },
       Node {
         name: o!("A"),
-        node_type: NodeType::Leaf(o!("A")),
         mutations: BTreeMap::from([
           (0, ('G', 'A')), //
           (7, ('T', 'C')), //
@@ -528,7 +527,6 @@ mod tests {
       },
       Node {
         name: o!("B"),
-        node_type: NodeType::Leaf(o!("B")),
         mutations: BTreeMap::from([
           (5, ('G', 'C')), //
         ]),
@@ -554,7 +552,6 @@ mod tests {
       },
       Node {
         name: o!("CD"),
-        node_type: NodeType::Internal(o!("CD")),
         mutations: BTreeMap::from([]),
         gaps: vec![],
         ambiguous: vec![],
@@ -578,7 +575,6 @@ mod tests {
       },
       Node {
         name: o!("C"),
-        node_type: NodeType::Leaf(o!("C")),
         mutations: BTreeMap::from([
           (0, ('T', 'C')), //
           (6, ('G', 'A')), //
@@ -605,7 +601,6 @@ mod tests {
       },
       Node {
         name: o!("D"),
-        node_type: NodeType::Leaf(o!("D")),
         mutations: BTreeMap::from([
           (5, ('G', 'C')), //
         ]),
@@ -668,7 +663,7 @@ mod tests {
       (o!("D"), o!("TCGGCCGTGTRTTG")),
     ]);
 
-    let graph = create_graph_from_nwk_str::<Node, Edge>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let graph = nwk_read_str::<Node, Edge>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
     compress_sequences(&inputs, &graph, &mut rng).unwrap();
 
@@ -702,7 +697,7 @@ mod tests {
       (o!("root"), o!("TCGGCGGTGTATTG")),
     ]);
 
-    let graph = create_graph_from_nwk_str::<Node, Edge>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let graph = nwk_read_str::<Node, Edge>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
     compress_sequences(&inputs, &graph, &mut rng).unwrap();
 
@@ -743,7 +738,7 @@ mod tests {
       (o!("root"), o!("TCGGCGGTGTATTG")),
     ]);
 
-    let graph = create_graph_from_nwk_str::<Node, Edge>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let graph = nwk_read_str::<Node, Edge>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
     compress_sequences(&inputs, &graph, &mut rng).unwrap();
 

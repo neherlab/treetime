@@ -31,9 +31,19 @@ pub fn ancestral_reconstruction_marginal(
       .map(|(child, _)| child)
       .collect_vec();
 
+    let is_leaf = node.is_leaf();
     let mut node = node.payload().write_arc();
     let edge = edge.map(|e| e.payload().read_arc());
-    subtree_profiles(graph, &mut node, edge.as_deref(), &children, seq, gtr, &mut logLH);
+    subtree_profiles(
+      graph,
+      &mut node,
+      is_leaf,
+      edge.as_deref(),
+      &children,
+      seq,
+      gtr,
+      &mut logLH,
+    );
   });
 
   pre_order_intrusive(graph, &root, &mut root_seq, &mut |node, seq| {
@@ -53,12 +63,13 @@ pub fn ancestral_reconstruction_marginal(
     &root,
     &mut root_seq,
     &mut |node: &SafeNode<Node>, seq: &[char]| {
-      let node = node.read_arc().payload().read_arc();
+      let node = node.read_arc();
 
       if !include_leaves && node.is_leaf() {
         return;
       }
 
+      let node = node.payload().read_arc();
       let mut seq = seq.to_owned();
       for (&pos, vec) in &node.profile_variable {
         seq[pos] = gtr.alphabet.char(vec.argmax().unwrap());
@@ -80,9 +91,9 @@ mod tests {
   use super::*;
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::commands::ancestral::anc_graph::{Edge, Node};
-  use crate::graph::create_graph_from_nwk::create_graph_from_nwk_str;
   use crate::gtr::gtr::GTRParams;
   use crate::io::json::{json_stringify, JsonPretty};
+  use crate::io::nwk::nwk_read_str;
   use crate::o;
   use crate::seq::representation::compress_sequences;
   use crate::utils::random::get_random_number_generator;
@@ -107,7 +118,7 @@ mod tests {
       (o!("D"), o!("TCGGCCGTGTRTTG")),
     ]);
 
-    let graph = create_graph_from_nwk_str::<Node, Edge>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let graph = nwk_read_str::<Node, Edge>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
     compress_sequences(&inputs, &graph, &mut rng).unwrap();
 
