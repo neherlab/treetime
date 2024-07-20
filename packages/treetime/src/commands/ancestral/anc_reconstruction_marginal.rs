@@ -52,7 +52,7 @@ pub fn ancestral_reconstruction_marginal(
     let parent = graph
       .one_parent_of(&node)
       .unwrap()
-      .map(|parent| parent.read_arc().payload().read_arc());
+      .map(|(parent, _)| parent.read_arc().payload().read_arc());
 
     let mut node = node.payload().write_arc();
     outgroup_profiles(&mut node, parent.as_deref(), seq, &mut logLH, gtr);

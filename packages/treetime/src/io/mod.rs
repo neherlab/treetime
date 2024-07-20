@@ -1,3 +1,4 @@
+pub mod auspice;
 pub mod compression;
 pub mod concat;
 pub mod csv;

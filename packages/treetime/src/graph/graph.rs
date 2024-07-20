@@ -27,6 +27,22 @@ pub type SafeNodePayloadRefMut<N> = ArcRwLockWriteGuard<RawRwLock, N>;
 pub type NodeEdgePair<N, E> = (Arc<RwLock<Node<N>>>, Arc<RwLock<Edge<E>>>);
 pub type NodeEdgePayloadPair<N, E> = (Arc<RwLock<N>>, Arc<RwLock<E>>);
 
+pub struct GraphElement<N, E> {
+  pub node: N,
+  pub edge: E,
+}
+
+pub struct GraphElementRef<'a, N, E> {
+  pub node: &'a N,
+  pub edge: Option<&'a E>,
+}
+
+impl<'a, N, E> GraphElementRef<'a, N, E> {
+  pub fn new(node: &'a N, edge: Option<&'a E>) -> Self {
+    Self { node, edge }
+  }
+}
+
 /// Represents graph node during forward traversal
 #[derive(Debug)]
 pub struct GraphNodeForward<N, E>
@@ -205,7 +221,7 @@ where
       .collect_vec()
   }
 
-  pub fn exactly_one_parent_of(&self, node: &Node<N>) -> Result<Arc<RwLock<Node<N>>>, Report> {
+  pub fn exactly_one_parent_of(&self, node: &Node<N>) -> Result<NodeEdgePair<N, E>, Report> {
     self.one_parent_of(node)?.ok_or_else(|| {
       make_internal_report!(
         "No parents found for node {} (context: is_root={} is_leaf={})",
@@ -216,12 +232,8 @@ where
     })
   }
 
-  pub fn one_parent_of(&self, node: &Node<N>) -> Result<Option<Arc<RwLock<Node<N>>>>, Report> {
-    let parents = self
-      .parents_of(node)
-      .into_iter()
-      .map(|(parent, _)| parent)
-      .collect_vec();
+  pub fn one_parent_of(&self, node: &Node<N>) -> Result<Option<NodeEdgePair<N, E>>, Report> {
+    let parents = self.parents_of(node).into_iter().collect_vec();
 
     if parents.is_empty() {
       return Ok(None);
@@ -235,7 +247,7 @@ where
       );
     }
 
-    Ok(Some(Arc::clone(&parents[0])))
+    Ok(Some(parents[0].clone()))
   }
 
   /// Retrieve child nodes of a given node and the corresponding edges.
@@ -331,7 +343,7 @@ where
     let roots = self.get_roots();
     if roots.len() != 1 {
       make_internal_error!(
-        "Only trees with exactly one root are currently supported, but found '{}'",
+        "Only trees with exactly one root are currently supported, but found {} roots",
         self.roots.len()
       )
     } else {
@@ -565,7 +577,7 @@ where
     loop {
       match self.one_parent_of(&node.read_arc())? {
         None => break,
-        Some(parent) => {
+        Some((parent, _)) => {
           path.push(Arc::clone(&parent));
           node = parent;
         }
@@ -598,9 +610,9 @@ pub mod tests {
   use super::*;
   use crate::graph::edge::Weighted;
   use crate::graph::node::Named;
-  use crate::io::nwk::{EdgeFromNwk, EdgeToNwk, format_weight, NodeFromNwk, NodeToNwk, nwk_read_str, NwkWriteOptions};
-  use std::collections::BTreeMap;
   use crate::io::graphviz::{EdgeToGraphViz, NodeToGraphviz};
+  use crate::io::nwk::{format_weight, nwk_read_str, EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteOptions};
+  use std::collections::BTreeMap;
 
   #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
   pub struct TestNode(pub String);
