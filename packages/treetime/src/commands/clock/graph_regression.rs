@@ -26,6 +26,7 @@ pub fn calculate_averages<P: GraphNodeRegressionPolicy>(graph: &mut ClockGraph) 
        key,
        payload: mut n,
        children,
+       ..
      }| {
       if is_leaf {
         return GraphTraversalContinuation::Continue;
@@ -51,6 +52,7 @@ pub fn calculate_averages<P: GraphNodeRegressionPolicy>(graph: &mut ClockGraph) 
        parents,
        is_leaf,
        is_root,
+       ..
      }| {
       if is_root {
         node.Qtot = node.Q.clone();
@@ -222,6 +224,7 @@ where
        key,
        payload: mut node,
        parents,
+       ..
      }| {
       if is_leaf {
         return GraphTraversalContinuation::Continue;

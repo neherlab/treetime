@@ -122,6 +122,7 @@ fn find_best_root_least_squares<P: GraphNodeRegressionPolicy>(
          key,
          payload: node,
          parents,
+         ..
        }| {
         if is_root {
           return GraphTraversalContinuation::Continue;

@@ -3,7 +3,7 @@ use crate::graph::graph::{Graph, GraphNodeForward};
 use crate::graph::node::{GraphNode, Named};
 use std::collections::HashSet;
 
-pub fn assign_node_names<N: GraphNode + Named, E: GraphEdge>(graph: &Graph<N, E>) {
+pub fn assign_node_names<N: GraphNode + Named, E: GraphEdge, D: Sync + Send>(graph: &Graph<N, E, D>) {
   let mut names = graph
     .get_node_payloads()
     .map(|node| node.read().name().to_owned())
@@ -18,6 +18,7 @@ pub fn assign_node_names<N: GraphNode + Named, E: GraphEdge>(graph: &Graph<N, E>
        parents,
        is_leaf,
        is_root,
+       ..
      }| {
       if payload.name().is_empty() {
         let mut name = format!("NODE_{internal_node_counter:07}");

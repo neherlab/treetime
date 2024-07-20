@@ -14,11 +14,16 @@ use std::sync::atomic::Ordering::Relaxed;
 use std::sync::Arc;
 
 /// Finds edges on all paths between two nodes
-pub fn find_paths<N: GraphNode, E: GraphEdge>(
-  graph: &Graph<N, E>,
+pub fn find_paths<N, E, D>(
+  graph: &Graph<N, E, D>,
   start: &Arc<RwLock<Node<N>>>,
   finish: &Arc<RwLock<Node<N>>>,
-) -> Result<Vec<Arc<RwLock<Edge<E>>>>, Report> {
+) -> Result<Vec<Arc<RwLock<Edge<E>>>>, Report>
+where
+  N: GraphNode,
+  E: GraphEdge,
+  D: Sync + Send,
+{
   let mut edge_keys = HashSet::<GraphEdgeKey>::new();
 
   for edge in graph.get_edges() {
@@ -53,45 +58,48 @@ pub fn find_paths<N: GraphNode, E: GraphEdge>(
 }
 
 /// Checks whether a path exists between two nodes of a graph in forward direction (leaves to roots)
-pub fn exists_forward_path_between<N, E>(
-  graph: &Graph<N, E>,
+pub fn exists_forward_path_between<N, E, D>(
+  graph: &Graph<N, E, D>,
   start: &Arc<RwLock<Node<N>>>,
   finish: &Arc<RwLock<Node<N>>>,
 ) -> bool
 where
   N: GraphNode,
   E: GraphEdge,
+  D: Sync + Send,
 {
-  exists_path_between::<N, E, BfsTraversalPolicyForward>(graph, start, finish)
+  exists_path_between::<N, E, D, BfsTraversalPolicyForward>(graph, start, finish)
 }
 
 /// Checks whether a path exists between two nodes of a graph in backward direction (leaves to roots)
-pub fn exists_backward_path_between<N, E>(
-  graph: &Graph<N, E>,
+pub fn exists_backward_path_between<N, E, D>(
+  graph: &Graph<N, E, D>,
   start: &Arc<RwLock<Node<N>>>,
   finish: &Arc<RwLock<Node<N>>>,
 ) -> bool
 where
   N: GraphNode,
   E: GraphEdge,
+  D: Sync + Send,
 {
-  exists_path_between::<N, E, BfsTraversalPolicyBackward>(graph, start, finish)
+  exists_path_between::<N, E, D, BfsTraversalPolicyBackward>(graph, start, finish)
 }
 
 /// Checks whether a path exists between two nodes of a graph, given a traversal policy
-pub fn exists_path_between<N, E, P>(
-  graph: &Graph<N, E>,
+pub fn exists_path_between<N, E, D, P>(
+  graph: &Graph<N, E, D>,
   start: &Arc<RwLock<Node<N>>>,
   finish: &Arc<RwLock<Node<N>>>,
 ) -> bool
 where
   N: GraphNode,
   E: GraphEdge,
-  P: BfsTraversalPolicy<N, E>,
+  D: Sync + Send,
+  P: BfsTraversalPolicy<N, E, D>,
 {
   let path_exists = AtomicBool::new(false);
   let finish_node_key = finish.read().key();
-  directed_breadth_first_traversal::<N, E, _, P>(graph, &[Arc::clone(start)], |node| {
+  directed_breadth_first_traversal::<N, E, D, _, P>(graph, &[Arc::clone(start)], |node| {
     if node.key() == finish_node_key {
       path_exists.store(true, Relaxed);
       return GraphTraversalContinuation::Stop;

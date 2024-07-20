@@ -2,25 +2,24 @@ use crate::graph::assign_node_names::assign_node_names;
 use crate::graph::edge::{Edge, GraphEdge};
 use crate::graph::graph::{Graph, GraphElement, GraphElementRef};
 use crate::graph::node::{GraphNode, Named};
-use crate::io::auspice::auspice::{AuspiceTree, AuspiceTreeMeta, AuspiceTreeNode};
+use crate::io::auspice::auspice::{AuspiceTree, AuspiceTreeData, AuspiceTreeNode};
 use crate::io::file::create_file_or_stdout;
 use crate::io::file::open_file_or_stdin;
 use crate::io::json::{json_read, json_write, JsonPretty};
-use crate::o;
 use eyre::{Report, WrapErr};
-use indexmap::{indexmap, indexset};
+use maplit::{btreemap, btreeset};
 use parking_lot::RwLock;
-use serde_json::Value;
 use std::collections::VecDeque;
 use std::io::Cursor;
 use std::io::{Read, Write};
 use std::path::Path;
 use std::sync::Arc;
 
-pub fn auspice_read_file<N, E>(filepath: impl AsRef<Path>) -> Result<Graph<N, E>, Report>
+pub fn auspice_read_file<N, E, D>(filepath: impl AsRef<Path>) -> Result<Graph<N, E, D>, Report>
 where
   N: GraphNode + Named,
   E: GraphEdge,
+  D: FromAuspiceData + Sync + Send,
   GraphElement<N, E>: FromAuspiceNode,
 {
   let filepath = filepath.as_ref();
@@ -28,29 +27,29 @@ where
     .wrap_err_with(|| format!("When reading Auspice v2 JSON file '{filepath:#?}'"))
 }
 
-pub fn auspice_read_str<N, E>(auspice_string: impl AsRef<str>) -> Result<Graph<N, E>, Report>
+pub fn auspice_read_str<N, E, D>(auspice_string: impl AsRef<str>) -> Result<Graph<N, E, D>, Report>
 where
   N: GraphNode + Named,
   E: GraphEdge,
+  D: FromAuspiceData + Sync + Send,
   GraphElement<N, E>: FromAuspiceNode,
 {
   let auspice_string = auspice_string.as_ref();
   auspice_read(Cursor::new(auspice_string)).wrap_err("When reading Auspice v2 JSON string")
 }
 
-pub fn auspice_read<N, E>(reader: impl Read) -> Result<Graph<N, E>, Report>
+pub fn auspice_read<N, E, D>(reader: impl Read) -> Result<Graph<N, E, D>, Report>
 where
   N: GraphNode + Named,
   E: GraphEdge,
+  D: FromAuspiceData + Sync + Send,
   GraphElement<N, E>: FromAuspiceNode,
 {
   let tree: AuspiceTree = json_read(reader).wrap_err("When reading Auspice v2 JSON")?;
-  let tree_root = tree.tree;
 
-  let mut queue = VecDeque::new();
-  queue.push_back((None, tree_root));
+  let mut graph = Graph::<N, E, D>::with_data(D::from_auspice_data(&tree));
 
-  let mut graph = Graph::<N, E>::new();
+  let mut queue = VecDeque::from([(None, tree.tree)]);
   while let Some((parent_key, node)) = queue.pop_front() {
     let ge = GraphElement::from_auspice_node(&node);
     let node_key = graph.add_node(ge.node);
@@ -67,10 +66,11 @@ where
   Ok(graph)
 }
 
-pub fn auspice_write_file<N, E>(filepath: impl AsRef<Path>, graph: &Graph<N, E>) -> Result<(), Report>
+pub fn auspice_write_file<N, E, D>(filepath: impl AsRef<Path>, graph: &Graph<N, E, D>) -> Result<(), Report>
 where
   N: GraphNode,
   E: GraphEdge,
+  D: ToAuspiceData + Sync + Send,
   for<'a> GraphElementRef<'a, N, E>: ToAuspiceNode,
 {
   let filepath = filepath.as_ref();
@@ -80,10 +80,11 @@ where
   Ok(())
 }
 
-pub fn auspice_write_str<N, E>(graph: &Graph<N, E>) -> Result<String, Report>
+pub fn auspice_write_str<N, E, D>(graph: &Graph<N, E, D>) -> Result<String, Report>
 where
   N: GraphNode,
   E: GraphEdge,
+  D: ToAuspiceData + Sync + Send,
   for<'a> GraphElementRef<'a, N, E>: ToAuspiceNode,
 {
   let mut buf = Vec::new();
@@ -91,17 +92,18 @@ where
   Ok(String::from_utf8(buf)?)
 }
 
-pub fn auspice_write<N, E>(writer: &mut impl Write, graph: &Graph<N, E>) -> Result<(), Report>
+pub fn auspice_write<N, E, D>(writer: &mut impl Write, graph: &Graph<N, E, D>) -> Result<(), Report>
 where
   N: GraphNode,
   E: GraphEdge,
+  D: ToAuspiceData + Sync + Send,
   for<'a> GraphElementRef<'a, N, E>: ToAuspiceNode,
 {
   let root = graph.get_exactly_one_root().wrap_err("When writing Auspice v2 JSON")?;
 
   // Pre-order iteration to construct the nodes from graph nodes and edges
   let mut node_map = {
-    let mut node_map = indexmap! {};
+    let mut node_map = btreemap! {};
     let mut queue = VecDeque::from([(Arc::clone(&root), None)]);
     while let Some((current_node, current_edge)) = queue.pop_front() {
       let current_node = current_node.read_arc();
@@ -122,7 +124,7 @@ where
   };
 
   // Post-order traversal to populate .children array
-  let mut visited = indexset! {};
+  let mut visited = btreeset! {};
   let mut stack = vec![Arc::clone(&root)];
   while let Some(node) = stack.pop() {
     if visited.contains(&node.read_arc().key()) {
@@ -145,22 +147,14 @@ where
     }
   }
 
-  let root = node_map.remove(&root.read_arc().key()).unwrap();
-
-  // TODO: fill missing fields
-  let tree = AuspiceTree {
-    version: Some(o!("v2")),
-    meta: AuspiceTreeMeta::default(),
-    tree: root,
-    root_sequence: None,
-    other: Value::default(),
-  };
-
+  let data = graph.data().read_arc().to_auspice_data();
+  let tree = node_map.remove(&root.read_arc().key()).unwrap();
+  let tree = AuspiceTree { data, tree };
   json_write(writer, &tree, JsonPretty(true)).wrap_err("When writing Auspice v2 JSON")
 }
 
 /// Defines conversion to tree node when writing to Auspice v2 JSON
-pub trait ToAuspiceNode: Sized {
+pub trait ToAuspiceNode {
   fn to_auspice_node(&self) -> AuspiceTreeNode;
 }
 
@@ -169,15 +163,57 @@ pub trait FromAuspiceNode: Sized {
   fn from_auspice_node(tree_node: &AuspiceTreeNode) -> Self;
 }
 
+/// Defines conversion to tree global data when writing to Auspice v2 JSON
+pub trait ToAuspiceData {
+  fn to_auspice_data(&self) -> AuspiceTreeData;
+}
+
+/// Defines conversion from tree global data when reading from Auspice v2 JSON
+pub trait FromAuspiceData: Sized {
+  fn from_auspice_data(tree: &AuspiceTree) -> Self;
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
   use crate::graph::graph::tests::{TestEdge, TestNode};
-  use crate::io::auspice::auspice::AuspiceTreeNodeAttrs;
+  use crate::io::auspice::auspice::{AuspiceTreeMeta, AuspiceTreeNodeAttrs};
   use crate::io::auspice::tests::auspice::AuspiceTreeBranchAttrs;
   use eyre::Report;
   use indoc::indoc;
   use pretty_assertions::assert_eq;
+  use serde_json::Value;
+  use std::collections::BTreeMap;
+
+  #[derive(Clone, Debug)]
+  pub struct GraphAuspiceData {
+    pub version: Option<String>,
+    pub meta: AuspiceTreeMeta,
+    pub root_sequence: Option<BTreeMap<String, String>>,
+    pub other: Value,
+  }
+
+  impl ToAuspiceData for GraphAuspiceData {
+    fn to_auspice_data(&self) -> AuspiceTreeData {
+      AuspiceTreeData {
+        version: self.version.clone(),
+        meta: self.meta.clone(),
+        root_sequence: self.root_sequence.clone(),
+        other: self.other.clone(),
+      }
+    }
+  }
+
+  impl FromAuspiceData for GraphAuspiceData {
+    fn from_auspice_data(tree: &AuspiceTree) -> Self {
+      Self {
+        version: tree.data.version.clone(),
+        meta: tree.data.meta.clone(),
+        root_sequence: tree.data.root_sequence.clone(),
+        other: tree.data.other.clone(),
+      }
+    }
+  }
 
   impl ToAuspiceNode for GraphElementRef<'_, TestNode, TestEdge> {
     fn to_auspice_node(&self) -> AuspiceTreeNode {
@@ -213,7 +249,14 @@ mod tests {
       // language=json
       r#"{
         "version": "v2",
-        "meta": {},
+        "meta": {
+          "description": "This is a test!",
+          "name": "Test"
+        },
+        "root_sequence": {
+          "nuc": "ACGTACGTACGTACGTACGTACGT"
+        },
+        "unknown_field": 42,
         "tree": {
           "name": "root",
           "node_attrs": {},
@@ -249,7 +292,7 @@ mod tests {
       }"#
     );
 
-    let graph = auspice_read_str::<TestNode, TestEdge>(input)?;
+    let graph = auspice_read_str::<TestNode, TestEdge, GraphAuspiceData>(input)?;
     let output = auspice_write_str(&graph)?;
     assert_eq!(input, output);
     Ok(())
@@ -552,20 +595,26 @@ mod auspice {
     }
   }
 
-  #[derive(Clone, Serialize, Deserialize, Debug)]
-  pub struct AuspiceTree {
+  #[derive(Clone, Default, Serialize, Deserialize, Debug)]
+  pub struct AuspiceTreeData {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub version: Option<String>,
 
     pub meta: AuspiceTreeMeta,
-
-    pub tree: AuspiceTreeNode,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub root_sequence: Option<BTreeMap<String, String>>,
 
     #[serde(flatten)]
     pub other: serde_json::Value,
+  }
+
+  #[derive(Clone, Serialize, Deserialize, Debug)]
+  pub struct AuspiceTree {
+    #[serde(flatten)]
+    pub data: AuspiceTreeData,
+
+    pub tree: AuspiceTreeNode,
   }
 
   pub type AuspiceTreeNodeIter<'a> = Iter<'a, AuspiceTreeNode>;
@@ -620,6 +669,7 @@ mod auspice {
 
     pub fn root_sequence(&self) -> Option<&str> {
       self
+        .data
         .root_sequence
         .as_ref()
         .and_then(|root_sequence| root_sequence.get("nuc"))

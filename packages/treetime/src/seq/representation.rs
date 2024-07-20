@@ -62,6 +62,7 @@ pub fn compress_sequences(
        key,
        payload: mut n,
        children,
+       ..
      }| {
       if is_leaf {
         // At each terminal node, temporarily store the sequence and ranges of N, - and mixed sites

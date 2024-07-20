@@ -3,7 +3,8 @@ use crate::graph::edge::{GraphEdge, Weighted};
 use crate::graph::graph::{Graph, GraphNodeBackward, GraphNodeForward};
 use crate::graph::node::{GraphNode, Named};
 use crate::io::dates_csv::{DateOrRange, DatesMap};
-use crate::io::nwk::{EdgeFromNwk, EdgeToNwk, format_weight, NodeFromNwk, NodeToNwk, nwk_read_file, NwkWriteOptions};
+use crate::io::graphviz::{EdgeToGraphViz, NodeToGraphviz};
+use crate::io::nwk::{format_weight, nwk_read_file, EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteOptions};
 use crate::make_error;
 use eyre::Report;
 use maplit::btreemap;
@@ -13,7 +14,6 @@ use std::collections::BTreeMap;
 use std::path::Path;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering::Relaxed;
-use crate::io::graphviz::{EdgeToGraphViz, NodeToGraphviz};
 
 pub type ClockGraph = Graph<Node, Edge>;
 
@@ -131,6 +131,7 @@ pub fn assign_dates(graph: &mut ClockGraph, dates: &DatesMap) -> Result<(), Repo
        key,
        payload: mut node,
        children,
+       ..
      }| {
       node.raw_date_constraint = dates.get(&node.name).map(DateOrRange::mean);
       if node.raw_date_constraint.is_none() {
