@@ -3452,6 +3452,7 @@ dependencies = [
  "prost-derive",
  "prost-types",
  "serde",
+ "serde_json",
 ]
 
 [[package]]

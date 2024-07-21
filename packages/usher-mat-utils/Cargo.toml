@@ -29,6 +29,7 @@ prost = { workspace = true }
 prost-derive = { workspace = true }
 prost-types = { workspace = true }
 serde = { workspace = true }
+serde_json = { workspace = true }
 
 
 [dev-dependencies]
