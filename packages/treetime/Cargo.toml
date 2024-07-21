@@ -16,6 +16,8 @@ crate-type = ["lib"]
 
 
 [dependencies]
+usher-mat-utils = { path = "../usher-mat-utils" }
+
 approx = { workspace = true }
 argmin = { workspace = true }
 bio = { workspace = true }

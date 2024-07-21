@@ -4,6 +4,7 @@ resolver = '2'
 members = [
   "packages/treetime",
   "packages/treetime-cli",
+  "packages/usher-mat-utils",
 ]
 
 exclude = []
@@ -35,6 +36,7 @@ atty = "=0.2.14"
 bio = { version = "=1.5.0", features = ["phylogeny"] }
 bio-types = { version = "=1.0.1", features = ["phylogeny"] }
 blas-src = { version = "=0.10.0", features = ["openblas-src"] }
+bytes = { version = "1.6.1", features = ["serde"] }
 bzip2 = "=0.4.3"
 chrono = { version = "=0.4.21", default-features = false, features = ["clock", "std"] }
 clap = { version = "=3.2.16", features = ["derive"] }
@@ -75,6 +77,10 @@ petgraph = { version = "=0.6.4", features = ["serde"] }
 plotters = { version = "=0.3.4", default_features = false, features = ["all_series", "all_elements", "svg_backend"] }
 pretty_assertions = "=1.4.0"
 pretty_dtoa = "=0.3.0"
+prost = { version = "=0.13.1", features = ["no-recursion-limit"] }
+prost-types = "=0.13.1"
+prost-build = "=0.13.1"
+prost-derive = "=0.13.1"
 rand = { version = "=0.8.5", features = ["serde1", "log"] }
 rand_distr = { version = "=0.4.3", feaures = ["serde1", "std_math"] }
 rand_isaac = { version = "=0.3.0", features = ["serde1"] }

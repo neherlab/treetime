@@ -1,0 +1,53 @@
+[package]
+name = "usher-mat-utils"
+authors.workspace = true
+description.workspace = true
+documentation.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+publish.workspace = true
+repository.workspace = true
+version.workspace = true
+
+build = "build.rs"
+
+
+[lib]
+crate-type = ["lib"]
+
+
+[dependencies]
+bytes = { workspace = true }
+color-eyre = { workspace = true }
+ctor = { workspace = true }
+env_logger = { workspace = true }
+eyre = { workspace = true }
+itertools = { workspace = true }
+log = { workspace = true }
+prost = { workspace = true }
+prost-derive = { workspace = true }
+prost-types = { workspace = true }
+serde = { workspace = true }
+
+
+[dev-dependencies]
+pretty_assertions = { workspace = true }
+
+
+[build-dependencies]
+bytes = { workspace = true }
+color-eyre = { workspace = true }
+ctor = { workspace = true }
+env_logger = { workspace = true }
+eyre = { workspace = true }
+itertools = { workspace = true }
+log = { workspace = true }
+prost = { workspace = true }
+prost-build = { workspace = true }
+prost-derive = { workspace = true }
+prost-types = { workspace = true }
+serde = { workspace = true }
+
+[lints]
+workspace = true
