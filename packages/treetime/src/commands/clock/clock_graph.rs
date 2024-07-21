@@ -114,7 +114,7 @@ pub fn infer_graph() -> Result<ClockGraph, Report> {
 }
 
 pub fn create_graph<P: AsRef<Path>>(tree_path: P, dates: &DatesMap) -> Result<ClockGraph, Report> {
-  let mut graph = nwk_read_file::<Node, Edge>(tree_path)?;
+  let mut graph = nwk_read_file(tree_path)?;
   assign_dates(&mut graph, dates)?;
   calculate_distances_to_root(&mut graph);
   Ok(graph)

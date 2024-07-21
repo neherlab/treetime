@@ -22,28 +22,31 @@ use std::io::{Read, Write};
 use std::path::Path;
 use std::sync::Arc;
 
-pub fn nwk_read_file<N, E>(filepath: impl AsRef<Path>) -> Result<Graph<N, E>, Report>
+pub fn nwk_read_file<N, E, D>(filepath: impl AsRef<Path>) -> Result<Graph<N, E, D>, Report>
 where
   N: GraphNode + NodeFromNwk + Named,
   E: GraphEdge + EdgeFromNwk,
+  D: Sync + Send + Default,
 {
   let filepath = filepath.as_ref();
   nwk_read(open_file_or_stdin(&Some(filepath))?).wrap_err_with(|| format!("When reading file '{filepath:#?}'"))
 }
 
-pub fn nwk_read_str<N, E>(nwk_string: impl AsRef<str>) -> Result<Graph<N, E>, Report>
+pub fn nwk_read_str<N, E, D>(nwk_string: impl AsRef<str>) -> Result<Graph<N, E, D>, Report>
 where
   N: GraphNode + NodeFromNwk + Named,
   E: GraphEdge + EdgeFromNwk,
+  D: Sync + Send + Default,
 {
   let nwk_string = nwk_string.as_ref();
   nwk_read(Cursor::new(nwk_string)).wrap_err_with(|| format!("When reading Newick string:\n    '{nwk_string}'"))
 }
 
-pub fn nwk_read<N, E>(reader: impl Read) -> Result<Graph<N, E>, Report>
+pub fn nwk_read<N, E, D>(reader: impl Read) -> Result<Graph<N, E, D>, Report>
 where
   N: GraphNode + NodeFromNwk + Named,
   E: GraphEdge + EdgeFromNwk,
+  D: Sync + Send + Default,
 {
   let mut nwk_tree = newick::read(reader)?;
 
@@ -53,7 +56,7 @@ where
     }
   });
 
-  let mut graph = Graph::<N, E>::new();
+  let mut graph = Graph::<N, E, D>::new();
 
   // Insert nodes
   let mut index_map = IndexMap::<usize, GraphNodeKey>::new(); // Map of internal `nwk` node indices to `Graph` node indices
@@ -105,14 +108,15 @@ pub struct NwkWriteOptions {
   pub weight_decimal_digits: Option<i8>,
 }
 
-pub fn nwk_write_file<N, E>(
+pub fn nwk_write_file<N, E, D>(
   filepath: impl AsRef<Path>,
-  graph: &Graph<N, E>,
+  graph: &Graph<N, E, D>,
   options: &NwkWriteOptions,
 ) -> Result<(), Report>
 where
   N: GraphNode + NodeToNwk,
   E: GraphEdge + EdgeToNwk,
+  D: Sync + Send + Default,
 {
   let mut f = create_file_or_stdout(filepath)?;
   nwk_write(&mut f, graph, options)?;
@@ -120,20 +124,26 @@ where
   Ok(())
 }
 
-pub fn nwk_write_str<N, E>(graph: &Graph<N, E>, options: &NwkWriteOptions) -> Result<String, Report>
+pub fn nwk_write_str<N, E, D>(graph: &Graph<N, E, D>, options: &NwkWriteOptions) -> Result<String, Report>
 where
   N: GraphNode + NodeToNwk,
   E: GraphEdge + EdgeToNwk,
+  D: Sync + Send + Default,
 {
   let mut buf = Vec::new();
   nwk_write(&mut buf, graph, options)?;
   Ok(String::from_utf8(buf)?)
 }
 
-pub fn nwk_write<N, E>(writer: &mut impl Write, graph: &Graph<N, E>, options: &NwkWriteOptions) -> Result<(), Report>
+pub fn nwk_write<N, E, D>(
+  writer: &mut impl Write,
+  graph: &Graph<N, E, D>,
+  options: &NwkWriteOptions,
+) -> Result<(), Report>
 where
   N: GraphNode + NodeToNwk,
   E: GraphEdge + EdgeToNwk,
+  D: Sync + Send + Default,
 {
   let roots = graph.get_roots();
   if roots.is_empty() {
@@ -243,7 +253,7 @@ mod tests {
   #[test]
   fn test_nwk_roundtrip() -> Result<(), Report> {
     let input = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root;";
-    let graph = nwk_read_str::<TestNode, TestEdge>(input)?;
+    let graph = nwk_read_str::<TestNode, TestEdge, ()>(input)?;
     let output = nwk_write_str(&graph, &NwkWriteOptions::default())?;
     assert_eq!(input, output);
     Ok(())

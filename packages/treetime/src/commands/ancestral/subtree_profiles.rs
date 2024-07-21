@@ -171,7 +171,7 @@ mod tests {
       (o!("D"), o!("TCGGCCGTGTRTTG")),
     ]);
 
-    let graph = nwk_read_str::<Node, Edge>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let graph = nwk_read_str::<Node, Edge, ()>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
     compress_sequences(&inputs, &graph, &mut rng).unwrap();
 

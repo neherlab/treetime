@@ -722,7 +722,7 @@ pub mod tests {
 
   #[test]
   fn test_traversal_serial_depth_first_preorder_forward() -> Result<(), Report> {
-    let graph = nwk_read_str::<TestNode, TestEdge>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let graph = nwk_read_str::<TestNode, TestEdge, ()>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
     let mut actual = vec![];
     graph.iter_depth_first_preorder_forward(|node| {
@@ -736,7 +736,7 @@ pub mod tests {
 
   #[test]
   fn test_traversal_serial_depth_first_postorder_forward() -> Result<(), Report> {
-    let graph = nwk_read_str::<TestNode, TestEdge>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let graph = nwk_read_str::<TestNode, TestEdge, ()>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
     let mut actual = vec![];
     graph.iter_depth_first_postorder_forward(|node| {
@@ -750,7 +750,7 @@ pub mod tests {
 
   #[test]
   fn test_traversal_serial_breadth_first_forward() -> Result<(), Report> {
-    let graph = nwk_read_str::<TestNode, TestEdge>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let graph = nwk_read_str::<TestNode, TestEdge, ()>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
     let mut actual = vec![];
     graph.iter_breadth_first_forward(|node| {
@@ -764,7 +764,7 @@ pub mod tests {
 
   #[test]
   fn test_traversal_serial_breadth_first_reverse() -> Result<(), Report> {
-    let graph = nwk_read_str::<TestNode, TestEdge>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let graph = nwk_read_str::<TestNode, TestEdge, ()>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
     let mut actual = vec![];
     graph.iter_breadth_first_reverse(|node| {
@@ -780,7 +780,7 @@ pub mod tests {
   fn test_traversal_parallel_breadth_first_forward() -> Result<(), Report> {
     rayon::ThreadPoolBuilder::new().num_threads(1).build_global()?;
 
-    let mut graph = nwk_read_str::<TestNode, TestEdge>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let mut graph = nwk_read_str::<TestNode, TestEdge, ()>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
     let actual = Arc::new(RwLock::new(vec![]));
     graph.par_iter_breadth_first_forward(|node| {
@@ -797,7 +797,7 @@ pub mod tests {
   fn test_traversal_parallel_breadth_first_backward() -> Result<(), Report> {
     rayon::ThreadPoolBuilder::new().num_threads(1).build_global()?;
 
-    let mut graph = nwk_read_str::<TestNode, TestEdge>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let mut graph = nwk_read_str::<TestNode, TestEdge, ()>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
     let actual = Arc::new(RwLock::new(vec![]));
     graph.par_iter_breadth_first_backward(|node| {
