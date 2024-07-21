@@ -27,22 +27,6 @@ pub type SafeNodePayloadRefMut<N> = ArcRwLockWriteGuard<RawRwLock, N>;
 pub type NodeEdgePair<N, E> = (Arc<RwLock<Node<N>>>, Arc<RwLock<Edge<E>>>);
 pub type NodeEdgePayloadPair<N, E> = (Arc<RwLock<N>>, Arc<RwLock<E>>);
 
-pub struct GraphElement<N, E> {
-  pub node: N,
-  pub edge: E,
-}
-
-pub struct GraphElementRef<'a, N, E> {
-  pub node: &'a N,
-  pub edge: Option<&'a E>,
-}
-
-impl<'a, N, E> GraphElementRef<'a, N, E> {
-  pub fn new(node: &'a N, edge: Option<&'a E>) -> Self {
-    Self { node, edge }
-  }
-}
-
 /// Represents graph node during forward traversal
 #[derive(Debug)]
 pub struct GraphNodeForward<N, E, D>

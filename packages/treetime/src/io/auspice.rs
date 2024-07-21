@@ -1,6 +1,6 @@
 use crate::graph::assign_node_names::assign_node_names;
 use crate::graph::edge::{Edge, GraphEdge};
-use crate::graph::graph::{Graph, GraphElement, GraphElementRef};
+use crate::graph::graph::Graph;
 use crate::graph::node::{GraphNode, Named};
 use crate::io::file::create_file_or_stdout;
 use crate::io::file::open_file_or_stdin;
@@ -19,7 +19,7 @@ where
   N: GraphNode + Named,
   E: GraphEdge,
   D: FromAuspiceData + Sync + Send,
-  GraphElement<N, E>: FromAuspiceNode,
+  (N, E): FromAuspiceNode,
 {
   let filepath = filepath.as_ref();
   auspice_read(open_file_or_stdin(&Some(filepath))?)
@@ -31,7 +31,7 @@ where
   N: GraphNode + Named,
   E: GraphEdge,
   D: FromAuspiceData + Sync + Send,
-  GraphElement<N, E>: FromAuspiceNode,
+  (N, E): FromAuspiceNode,
 {
   let auspice_string = auspice_string.as_ref();
   auspice_read(Cursor::new(auspice_string)).wrap_err("When reading Auspice v2 JSON string")
@@ -42,7 +42,7 @@ where
   N: GraphNode + Named,
   E: GraphEdge,
   D: FromAuspiceData + Sync + Send,
-  GraphElement<N, E>: FromAuspiceNode,
+  (N, E): FromAuspiceNode,
 {
   let tree: AuspiceTree = json_read(reader).wrap_err("When reading Auspice v2 JSON")?;
 
@@ -50,10 +50,10 @@ where
 
   let mut queue = VecDeque::from([(None, tree.tree)]);
   while let Some((parent_key, node)) = queue.pop_front() {
-    let ge = GraphElement::from_auspice_node(&node);
-    let node_key = graph.add_node(ge.node);
+    let (graph_node, graph_edge) = <(N, E)>::from_auspice_node(&node);
+    let node_key = graph.add_node(graph_node);
     if let Some(parent_key) = parent_key {
-      graph.add_edge(parent_key, node_key, ge.edge)?;
+      graph.add_edge(parent_key, node_key, graph_edge)?;
     }
     for child in node.children {
       queue.push_back((Some(node_key), child));
@@ -70,7 +70,7 @@ where
   N: GraphNode,
   E: GraphEdge,
   D: ToAuspiceData + Sync + Send,
-  for<'a> GraphElementRef<'a, N, E>: ToAuspiceNode,
+  for<'a> (&'a N, Option<&'a E>): ToAuspiceNode,
 {
   let filepath = filepath.as_ref();
   let mut f = create_file_or_stdout(filepath)?;
@@ -84,7 +84,7 @@ where
   N: GraphNode,
   E: GraphEdge,
   D: ToAuspiceData + Sync + Send,
-  for<'a> GraphElementRef<'a, N, E>: ToAuspiceNode,
+  for<'a> (&'a N, Option<&'a E>): ToAuspiceNode,
 {
   let mut buf = Vec::new();
   auspice_write(&mut buf, graph).wrap_err("When writing Auspice v2 JSON string")?;
@@ -96,7 +96,7 @@ where
   N: GraphNode,
   E: GraphEdge,
   D: ToAuspiceData + Sync + Send,
-  for<'a> GraphElementRef<'a, N, E>: ToAuspiceNode,
+  for<'a> (&'a N, Option<&'a E>): ToAuspiceNode,
 {
   let root = graph.get_exactly_one_root().wrap_err("When writing Auspice v2 JSON")?;
 
@@ -112,8 +112,7 @@ where
         .as_ref()
         .map(|edge: &Arc<RwLock<Edge<E>>>| edge.read_arc().payload().read_arc());
 
-      let current_tree_node =
-        GraphElementRef::new(current_node_payload, current_edge_payload.as_deref()).to_auspice_node();
+      let current_tree_node = (current_node_payload, current_edge_payload.as_deref()).to_auspice_node();
       for (child, edge) in graph.children_of(&current_node) {
         queue.push_back((child, Some(edge)));
       }
@@ -214,13 +213,13 @@ mod tests {
     }
   }
 
-  impl ToAuspiceNode for GraphElementRef<'_, TestNode, TestEdge> {
+  impl ToAuspiceNode for (&TestNode, Option<&TestEdge>) {
     fn to_auspice_node(&self) -> AuspiceTreeNode {
       AuspiceTreeNode {
-        name: self.node.0.clone(),
+        name: self.0 .0.clone(),
         branch_attrs: AuspiceTreeBranchAttrs::default(),
         node_attrs: AuspiceTreeNodeAttrs {
-          div: self.edge.map(|edge| edge.0),
+          div: self.1.map(|edge| edge.0),
           clade_membership: None,
           region: None,
           country: None,
@@ -233,12 +232,12 @@ mod tests {
     }
   }
 
-  impl FromAuspiceNode for GraphElement<TestNode, TestEdge> {
+  impl FromAuspiceNode for (TestNode, TestEdge) {
     fn from_auspice_node(node: &AuspiceTreeNode) -> Self {
-      Self {
-        node: TestNode(node.name.clone()),
-        edge: TestEdge(node.node_attrs.div.unwrap_or_default()),
-      }
+      (
+        TestNode(node.name.clone()),
+        TestEdge(node.node_attrs.div.unwrap_or_default()),
+      )
     }
   }
 
