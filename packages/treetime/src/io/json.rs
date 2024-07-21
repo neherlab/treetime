@@ -6,9 +6,9 @@ use serde_json::{de::Read, Deserializer};
 use std::io::{Cursor, Write};
 use std::path::Path;
 
-pub fn json_read_file<T: for<'de> Deserialize<'de>, P: AsRef<Path>>(filepath: &Option<P>) -> Result<T, Report> {
-  json_read(open_file_or_stdin(filepath)?)
-    .wrap_err_with(|| format!("When reading JSON file: {:#?}", filepath.as_ref().map(AsRef::as_ref)))
+pub fn json_read_file<T: for<'de> Deserialize<'de>, P: AsRef<Path>>(filepath: P) -> Result<T, Report> {
+  let filepath = filepath.as_ref();
+  json_read(open_file_or_stdin(&Some(filepath))?).wrap_err_with(|| format!("When reading JSON file: {filepath:#?}"))
 }
 
 pub fn json_read_str<T: for<'de> Deserialize<'de>>(s: impl AsRef<str>) -> Result<T, Report> {
