@@ -3255,6 +3255,7 @@ dependencies = [
  "bio",
  "bio-types",
  "blas-src",
+ "bytes",
  "bzip2",
  "chrono",
  "clap 3.2.16",

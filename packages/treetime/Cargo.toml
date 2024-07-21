@@ -22,6 +22,7 @@ approx = { workspace = true }
 argmin = { workspace = true }
 bio = { workspace = true }
 bio-types = { workspace = true }
+bytes = { workspace = true }
 chrono = { workspace = true }
 clap = { workspace = true }
 clap-verbosity-flag = { workspace = true }

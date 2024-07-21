@@ -9,6 +9,7 @@ pub mod file;
 pub mod fs;
 pub mod graphviz;
 pub mod json;
+pub mod usher_mat;
 pub mod nex;
 pub mod nwk;
 pub mod yaml;
