@@ -1,7 +1,7 @@
 from typing import Optional, List, Dict
 from dataclasses import dataclass, field
 from .mut import Mut, InDel
-from .range import RangeCollection
+from .range import RangeCollection, Range
 from .str import AutoRepr
 import numpy as np
 
@@ -9,6 +9,12 @@ import numpy as np
 class VarPos(AutoRepr):
   profile: np.array  # array of floats of size 'alphabet'
   state: str
+
+@dataclass
+class Deletion(AutoRepr):
+  present: int = 0  # number of times deletion is observed
+  absent: int = 0   # or not
+  alt: str = ''
 
 @dataclass
 class SparseSeqDis(AutoRepr):
@@ -19,6 +25,7 @@ class SparseSeqDis(AutoRepr):
   '''
   origin: str = None # needed to filter sibling messages
   variable: Dict[int, VarPos] = field(default_factory=dict)
+  variable_indel: Dict[Range, Deletion] = field(default_factory=dict)
   fixed: Dict[str, np.array] = field(default_factory=dict)
   fixed_counts: Dict[str, int] = field(default_factory=dict)
   logLH: float = 0.0

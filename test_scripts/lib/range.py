@@ -7,6 +7,9 @@ class Range(AutoRepr):
   start: int
   end: int
 
+  def __hash__(self) -> int:
+    return tuple.__hash__((self.start, self.end))
+
 # there are probably existing interval collections available.
 class RangeCollection(AutoRepr):
   def __init__(self, ranges: List[Range]) -> None:
@@ -19,6 +22,11 @@ class RangeCollection(AutoRepr):
       elif r.start>pos:
         return False
     return False
+
+  def add(self, r: Range):
+    # should check overlap
+    self.ranges.append(r)
+    self.ranges.sort(key=lambda x:x.start)
 
   def __len__(self) -> int:
     return len(self.ranges)
@@ -54,7 +62,7 @@ def RangeCollection_complement(ranges: RangeCollection, global_start: int, globa
         new_ranges.append(Range(global_start, global_end))
     else:
       # starts inside the range
-      if r2.start<global_end:
+      if r2.start<global_end and r1.end<r2.start:
         #ends in the range
         new_ranges.append(Range(r1.end, r2.start))
       else:
@@ -92,7 +100,9 @@ def RangeCollection_intersection(range_collections: List[RangeCollection]) -> Ra
         if ri2<len(next_ranges):
           r2 = next_ranges[ri2]
       else:
-        new_ranges.append(Range(max(r1.start, r2.start), min(r1.end, r2.end)))
+        new_range = Range(max(r1.start, r2.start), min(r1.end, r2.end))
+        if new_range.start<new_range.end:
+          new_ranges.append(new_range)
         if r1.end<r2.end:
           ri1 += 1
           if ri1<len(current_ranges):
@@ -104,6 +114,15 @@ def RangeCollection_intersection(range_collections: List[RangeCollection]) -> Ra
     current_ranges = RangeCollection(new_ranges)
 
   return current_ranges
+
+def RangeCollection_difference(rc1, rc2) -> RangeCollection:
+  if len(rc1.ranges)==0:
+    return rc1
+  # restrict the complement to the range of rc1 -- could be entire sequence as well
+  rc2_comp = RangeCollection_complement(rc2, global_start=rc1.ranges[0].start,
+                                             global_end=rc1.ranges[-1].end)
+  return RangeCollection_intersection([rc1, rc2_comp])
+
 
 def find_char_ranges(seq, char):
   ranges = []

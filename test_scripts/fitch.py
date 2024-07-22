@@ -1,8 +1,8 @@
 from Bio import AlignIO
 from typing import Dict
 import numpy as np
-from lib import Graph, graph_from_nwk_str, GraphNodeBackward, GraphNodeForward, Node, SparseSeqNode, SparseSeqInfo, SparseSeqDis, SparseSeqEdge
-from lib import SeqPartition, SeqInfoParsimony, find_char_ranges, VarPos, RangeCollection_intersection, RangeCollection, Mut
+from lib import Graph, graph_from_nwk_str, GraphNodeBackward, GraphNodeForward, Node, InDel, SparseSeqInfo, SparseSeqDis, SparseSeqEdge
+from lib import SeqPartition, find_char_ranges, VarPos, RangeCollection_intersection, Range, RangeCollection, Mut, Deletion, RangeCollection_complement, RangeCollection_difference
 from treetime import GTR
 from payload import NodePayload, EdgePayload
 from profile_map import profile_map
@@ -12,6 +12,7 @@ import time
 NON_CHAR = '.'
 VARIABLE = '~'
 FILL_CHAR = ' '
+GAP_CHAR = '-'
 
 def seq_info_from_array(seq: np.array, profile: Dict[str,np.array], alphabet_gapN: str) -> SparseSeqInfo:
     seq_dis = SparseSeqDis(variable={pos:VarPos(profile(nuc), None) for pos, nuc in enumerate(seq) if nuc not in alphabet_gapN})
@@ -73,10 +74,16 @@ def fitch_backwards(graph: Graph):
 
       # init the local representation with gaps, unknowns
       # need to account for parts of the sequence transmitted along edges
+
+      gap_intersection = RangeCollection_intersection([cseq.gaps for cseq in child_seqs])
+      known_seq = RangeCollection_intersection([cseq.unknown for cseq in child_seqs])
+      non_gap = RangeCollection_complement(gap_intersection, global_start=0, global_end=L)
+
       seq_dis = SparseSeqDis(variable={})
-      seq_info = SparseSeqInfo(gaps=RangeCollection_intersection([cseq.gaps for cseq in child_seqs]),
-                          unknown=RangeCollection_intersection([cseq.unknown for cseq in child_seqs]),
+      seq_info = SparseSeqInfo(gaps=gap_intersection,
+                          unknown=known_seq,
                           non_char=RangeCollection_intersection([cseq.non_char for cseq in child_seqs]))
+
       # define dummy sequence
       full_seq = np.array([FILL_CHAR]*L)
       # fill indeterminate positions
@@ -131,16 +138,57 @@ def fitch_backwards(graph: Graph):
         else:
           import ipdb; ipdb.set_trace()
 
+      # process insertions and deletions.
+      # 1) seq_info.gaps is the intersection of child gaps, i.e. this is gap if and only if all children have a gap
+      #    --> hence we find positions where children differ in terms of gap presence absence by intersecting
+      #        the child gaps with the parent gaps
+      for cseq in child_seqs:
+        for r in RangeCollection_intersection([non_gap, cseq.gaps]).ranges:
+          if r not in seq_dis.variable_indel:
+            seq_dis.variable_indel[r] = Deletion(absent=len(child_seqs), alt=full_seq[r.start:r.end])
+          seq_dis.variable_indel[r].present += 1
+          seq_dis.variable_indel[r].absent -= 1
+
+      # 2) if a gap is variable in a child and the parent, we need to pull this down to the parent
+      for cseq in child_seqs:
+        for r in cseq.distribution.variable_indel:
+          if r in seq_dis.variable_indel:
+            seq_dis.variable_indel[r].present += 1
+            seq_dis.variable_indel[r].absent -= 1
+
+      # 3) if all children are compatible with a gap, we add the gap back to the gap collection and remove the variable site
+      # (nothing needs doing in the case where all children are compatible with non-gap)
+      to_pop = []
+      for r, indel in seq_dis.variable_indel.items():
+        if indel.present==len(child_seqs):
+          seq_info.gaps.add(r)
+          to_pop.append(r)
+      for r in to_pop:
+        seq_dis.variable_indel.pop(r)
+
       seq_info.distribution=seq_dis
       seq_info.sequence=full_seq
       node.payload.sparse_sequences.append(seq_info)
 
   graph.par_iter_backward(fitch_backwards_node)
 
-def add_mutation(pos, pnuc, cnuc, composition):
+def add_mutation(pos: int, pnuc: str, cnuc: str, composition: Dict[str, int]) -> Mut:
   composition[pnuc] -= 1
   composition[cnuc] += 1
   return Mut(pnuc, pos, cnuc)
+
+def add_indel(r: Range, seq: np.array, deletion:bool, composition: Dict[str, int]) -> InDel:
+  subseq = seq[r.start:r.end]
+  print(subseq)
+  if deletion:
+    for nuc in subseq:
+      composition[nuc] -= 1
+  else:
+    for nuc in subseq:
+      composition[nuc] += 1
+
+  return InDel(pos=r.start, length=r.end-r.start, seq = subseq, deletion=deletion)
+
 
 def fitch_forward(graph: Graph):
   n_partitions = len(graph.partitions)
@@ -160,6 +208,13 @@ def fitch_forward(graph: Graph):
         for s in seq_info.sequence:
           if s in gtr.alphabet: #there could be positions that are gap or N everywhere, should be over complement of `non_char`
             seq_info.composition[s] += 1
+
+        # process indels as majority rule at the root
+        for r, indel in seq_info.distribution.variable_indel.items():
+          if indel.present>indel.absent:
+            seq_info.gaps.add(r)
+        for r in seq_info.gaps:
+          seq_info.sequence[r.start:r.end] = GAP_CHAR
       else:
         # short hands
         pseq = node.parents[0][0].sparse_sequences[si]
@@ -196,11 +251,36 @@ def fitch_forward(graph: Graph):
           if pvar.state!=node_nuc:
             pedge.muts.append(add_mutation(pos, pvar.state, node_nuc, seq_info.composition))
 
+        # process indels
+        # gaps where the children disagree, need to be decided by also looking at parent
+        for r, indel in seq_info.distribution.variable_indel.items():
+          present_in_parent = 1 if r in pseq.gaps else 0
+          if indel.present + present_in_parent>indel.absent: # add the gap
+            seq_info.gaps.add(r)
+            if not present_in_parent: # if the gap is not in parent, add deletion
+              pedge.indels.append(add_indel(r, seq_info.sequence, deletion=True, composition=seq_info.composition))
+          else: # not a gap
+            # to_pop.append(r) # remove from variable seqs
+            if present_in_parent: # add insertion if gap is present in parent.
+              pedge.indels.append(add_indel(r, seq_info.sequence, deletion=False, composition=seq_info.composition))
+        # for r in to_pop: seq_info.distribution.variable_indel.pop(r)
+
+        # process consensus gaps in the node that are not in the parent
+        for r in RangeCollection_difference(seq_info.gaps, pseq.gaps).ranges:
+          pedge.indels.append(add_indel(r, seq_info.sequence, deletion=True, composition=seq_info.composition))
+
+        # process gaps in the parent that are not in the node
+        # print(pseq.gaps, seq_info.gaps, RangeCollection_difference(pseq.gaps, seq_info.gaps))
+        for r in RangeCollection_difference(pseq.gaps, seq_info.gaps).ranges:
+          # gaps in the parent that are not in the node, need to add insertion
+          pedge.indels.append(add_indel(r, seq_info.sequence, deletion=False, composition=seq_info.composition))
+
+
   def clean_up_node(node):
     for seq_info in node.payload.sparse_sequences:
       if not node.is_leaf: #delete the variable position everywhere instead of leaves
         seq_info.distribution.variable = {}
-      for r in seq_info.non_char: # remove the undetermined counts from the counts of fixed positions
+      for r in seq_info.unknown: # remove the undetermined counts from the counts of fixed positions
         for pos in range(r.start, r.end):
           seq_info.composition[seq_info.sequence[pos]] -= 1
       seq_info.distribution.fixed_counts = {k:v for k,v in seq_info.composition.items()}
@@ -234,11 +314,14 @@ def reconstruct_sequence(graph: Graph, node: Node):
     for n in path_to_root[::-1][1:]:
       for m in graph.get_edge(n._inbound[0]).payload().sparse_sequences[si].muts:
         seq[m.pos] = m.qry
+      for m in graph.get_edge(n._inbound[0]).payload().sparse_sequences[si].indels:
+        if m.deletion:
+          seq[m.pos:m.pos+m.length] = GAP_CHAR
+        else:
+          seq[m.pos:m.pos+m.length] = m.seq
 
     seq_info = node.payload().sparse_sequences[si]
-    for r in seq_info.gaps:
-      for pos in range(r.start, r.end):
-        seq[pos]='-'
+
     for r in seq_info.unknown:
       for pos in range(r.start, r.end):
         seq[pos]=graph.partitions[si].gtr.ambiguous
@@ -249,24 +332,24 @@ def reconstruct_sequence(graph: Graph, node: Node):
   return seqs
 
 def tests():
-  aln = {"root":"ACAGCCATGTATTG",
-         "AB":"ACATCCCTGTA-TG",
-         "A":"ACATCGCCNNA--G",
-         "B":"GCATCCCTGTA-NG",
-         "CD":"CCGGCCATGTATTG",
-         "C":"CCGGCGATGTRTTG",
-         "D":"TCGGCCGTGTRTTG"}
+  aln = {"root":"ACAGCCATGTATTG--",
+         "AB":"ACATCCCTGTA-TG--",
+         "A":"ACATCGCCNNA--GAC",
+         "B":"GCATCCCTGTA-NG--",
+         "CD":"CCGGCCATGTATTG--",
+         "C":"CCGGCGATGTRTTG--",
+         "D":"TCGGCCGTGTRTTG--"}
 
   tree = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;"
   profile = lambda x: profile_map[x]
 
   # initializion of leaves
   seq_info = seq_info_from_array(np.fromiter(aln['B'], 'U1'), profile, 'ACGT-N')
-  assert str(seq_info.gaps.ranges) == "[Range(start=11, end=12)]"
+  assert str(seq_info.gaps.ranges) == "[Range(start=11, end=12), Range(start=14, end=16)]"
   assert str(seq_info.unknown.ranges) == "[Range(start=12, end=13)]"
 
   seq_info = seq_info_from_array(np.fromiter(aln['D'], 'U1'), profile, 'ACGT-N')
-  assert str(seq_info.gaps.ranges) == "[]"
+  assert str(seq_info.gaps.ranges) == "[Range(start=14, end=16)]"
   assert str(seq_info.distribution.variable) == "{10: VarPos(profile=array([1., 0., 1., 0.]), state=None)}"
 
   G = graph_from_nwk_str(nwk_string=tree, node_payload_factory=NodePayload, edge_payload_factory=EdgePayload)
@@ -275,7 +358,7 @@ def tests():
   fitch_backwards(G)
   seq_info = G.get_one_root().payload().sparse_sequences[0]
   assert tuple(sorted(seq_info.distribution.variable.keys())) == (0, 2, 3, 5, 6)
-  assert "".join(seq_info.sequence) == '~C~~C~~TGTATTG'
+  assert "".join(seq_info.sequence) == '~C~~C~~TGTATTGAC'
 
   fitch_forward(G)
   seq_info = G.get_one_root().payload().sparse_sequences[0]
@@ -325,6 +408,10 @@ if __name__=="__main__":
   else:
     print("all reconstructed successfully")
   print(f"reconstructed in {time.time()-t0:.3f}s")
+
+  for e in G.get_edges():
+    print(e.payload().sparse_sequences[0])
+
 
 '''
 # NOTES

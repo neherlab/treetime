@@ -50,5 +50,5 @@ class Mut:
 class InDel:
   pos: int
   length: int
-  seq: Optional[List[str]]
+  seq: Optional[list[str]]
   deletion: bool = True # deletion if True, insertion if False
