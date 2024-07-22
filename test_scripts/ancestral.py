@@ -7,7 +7,7 @@ from payload import NodePayload, EdgePayload
 from profile_map import profile_map
 from fitch import init_sparse_sequences
 
-def get_variable_states(child_seqs, child_edges):
+def get_variable_states_children(child_seqs, child_edges):
   variable_pos = {}
   child_states = [{} for c in child_edges]
   for ci, edge in enumerate(child_edges):
@@ -24,17 +24,17 @@ def get_variable_states(child_seqs, child_edges):
 
   return variable_pos, child_states
 
-def get_variable_states_parents(node, seq_index):
-  variable_pos = {pos: p.state for pos, p in node.payload.seq_info_ingroup[seq_index].variable.items()}
-  parent_states = [{} for c, e in node.parents]
-  for ci, (parent,e) in enumerate(node.parents):
+def get_variable_states_parents(node_seq_info, parents, parent_edges):
+  variable_pos = {pos: p.state for pos, p in node_seq_info.variable.items()}
+  parent_states = [{} for p in parents]
+  for pi, pseq in enumerate(parents):
     # go over all mutations and get reference state
-    for m in e.muts[seq_index]:
+    for m in parent_edges[pi].muts:
       variable_pos[m.pos] = m.qry  # this might be set multiple times, but the reference state should always be the same
-      parent_states[ci][m.pos] = m.ref
+      parent_states[pi][m.pos] = m.ref
 
     # go over child variable position and get reference state
-    for pos, p in parent.seq_info[seq_index].variable.items():
+    for pos, p in pseq.variable.items():
       if pos not in variable_pos:
         variable_pos[pos] = p.state
 
@@ -122,10 +122,10 @@ def sparse_ingroup_profiles(graph: Graph):
                                                 fixed={state:graph.partitions[si].profile(state) for state in alphabets[si]})
       else: # internal nodes
         # get all variable positions, the reference state, and the child states at these positions
+        child_expQt = [gtrs[si].expQt(e.branch_length or 0.0).T for c,e in node.children]
         child_seqs = [c.sparse_sequences[si] for c,e in node.children]
         child_edges = [e.sparse_sequences[si] for c,e in node.children]
-        child_expQt = [gtrs[si].expQt(e.branch_length or 0.0).T for c,e in node.children]
-        variable_pos, child_states = get_variable_states(child_seqs, child_edges)
+        variable_pos, child_states = get_variable_states_children(child_seqs, child_edges)
 
         seq_dis = SparseSeqDis(fixed_counts={k:v for k,v in seq_info.state.composition.items()})
 
@@ -145,33 +145,31 @@ def sparse_ingroup_profiles(graph: Graph):
 
 def outgroup_profiles(graph: Graph):
   alphabets = [''.join(p.gtr.alphabet) for p in graph.partitions]
+  gtrs = [p.gtr for p in graph.partitions]
 
   eps=1e-6
   def calculate_outgroup_node(node: GraphNodeForward) -> None:
-    node.payload.seq_info_outgroup = []
-    node.payload.seq_info = []
-    node.payload.parent_messages = []
-    for si, partition in enumerate(graph.partitions):
-      variable_pos, parent_states = get_variable_states_parents(node, si)
+    for si, seq_info in enumerate(node.payload.sparse_sequences):
+      variable_pos, parent_states = get_variable_states_parents(seq_info.msg_to_parents,
+                                                                [p.sparse_sequences[si].profile for p,e in node.parents],
+                                                                [e.sparse_sequences[si] for p,e in node.parents])
       for p, e in node.parents:
-        messages = p.parent_messages + [(cname, m) for (cname, m) in p.child_messages if cname!=node.payload.name]
+        pseq_info = p.sparse_sequences[si]
+        messages = pseq_info.msgs_from_parents + [m for m in pseq_info.msgs_from_children if m.origin!=node.payload.name]
         # gaps, unknown, etc should be the from the combined messages
-        seq_info = SeqInfoLh(unknown=p.seq_info[si].unknown, gaps=p.seq_info[si].gaps, non_char=p.seq_info[si].non_char,
-                             variable={}, fixed={}, fixed_composition={k:v for k,v in p.seq_info[si].fixed_composition.items()})
+        seq_dis = SparseSeqDis(fixed_counts={k:v for k,v in pseq_info.profile.fixed_counts.items()})
 
-        combine_messages(seq_info, messages, variable_pos=variable_pos, eps=eps, alphabet=alphabets[si])
+        combine_messages(seq_dis, messages, variable_pos=variable_pos, eps=eps, alphabet=alphabets[si])
 
-        node.payload.parent_messages.append((p.name, propagate(e, expQt=partition.gtr.expQt(e.branch_length or 0.0),
-                                                     seq_info=seq_info, variable_pos=variable_pos, child_states=parent_states)))
+        seq_info.msgs_from_parents.append(propagate(origin=p.name, expQt=gtrs[si].expQt(e.branch_length or 0.0),
+                                                     seq_dis=seq_dis, variable_pos=variable_pos, child_states=parent_states,
+                                                     non_char=pseq_info.state.non_char, transmission=None))
 
       # gaps, unknown, etc should be the from the combined messages
-      seq_info = SeqInfoLh(unknown=node.payload.seq_info_ingroup[si].unknown,
-                           gaps=node.payload.seq_info_ingroup[si].gaps,
-                           non_char=node.payload.seq_info_ingroup[si].non_char,
-                           variable={}, fixed={}, fixed_composition={k:v for k,v in node.payload.seq_info_ingroup[si].fixed_composition.items()})
-      combine_messages(seq_info=seq_info, messages=node.payload.parent_messages + [(node.payload.name, node.payload.seq_info_ingroup[si])],
+      seq_dis = SparseSeqDis(fixed_counts={k:v for k,v in seq_info.state.composition.items()})
+      combine_messages(seq_dis=seq_dis, messages=seq_info.msgs_from_parents + [seq_info.msg_to_parent],
                        variable_pos=variable_pos, eps=eps, alphabet=alphabets[si])
-      node.payload.seq_info.append(seq_info)
+      seq_info.profile = seq_dis
 
   graph.par_iter_forward(calculate_outgroup_node)
 
