@@ -12,8 +12,8 @@ class VarPos(AutoRepr):
 
 @dataclass
 class Deletion(AutoRepr):
-  present: int = 0  # number of times deletion is observed
-  absent: int = 0   # or not
+  deleted: int = 0  # number of times deletion is observed
+  ins: int = 0   # or not
   alt: str = ''
 
 @dataclass

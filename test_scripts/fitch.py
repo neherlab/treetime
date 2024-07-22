@@ -1,5 +1,5 @@
 from Bio import AlignIO
-from typing import Dict
+from typing import Dict, List
 import numpy as np
 from lib import Graph, graph_from_nwk_str, GraphNodeBackward, GraphNodeForward, Node, InDel, SparseSeqInfo, SparseSeqDis, SparseSeqEdge
 from lib import SeqPartition, find_char_ranges, VarPos, RangeCollection_intersection, Range, RangeCollection, Mut, Deletion, RangeCollection_complement, RangeCollection_difference
@@ -15,6 +15,9 @@ FILL_CHAR = ' '
 GAP_CHAR = '-'
 
 def seq_info_from_array(seq: np.array, profile: Dict[str,np.array], alphabet_gapN: str) -> SparseSeqInfo:
+    '''
+    Initialize the sequence information from an input string/array
+    '''
     seq_dis = SparseSeqDis(variable={pos:VarPos(profile(nuc), None) for pos, nuc in enumerate(seq) if nuc not in alphabet_gapN})
     # code the missing regions and gap regions along with the ambiguous nucleotides
     unknown = find_char_ranges(seq, 'N')
@@ -23,7 +26,7 @@ def seq_info_from_array(seq: np.array, profile: Dict[str,np.array], alphabet_gap
                         non_char=RangeCollection(unknown.ranges + gaps.ranges),
                         distribution=seq_dis, sequence=seq))
 
-def attach_seqs_to_graph(graph, aln_list, gtr_list):
+def attach_seqs_to_graph(graph: Graph, aln_list: List[Dict[str,np.array]], gtr_list: List[GTR]) -> None:
   name_to_key = {}
   for n in graph.get_leaves():
     n.payload().sparse_sequences = []
@@ -41,7 +44,7 @@ def attach_seqs_to_graph(graph, aln_list, gtr_list):
       leaf_name = leaf.payload().name
       leaf.payload().sparse_sequences.append(seq_info_from_array(np.fromiter(str(aln[leaf_name]).upper(), 'U1'), profile, alphabet_gapN))
 
-def init_sparse_sequences(graph, aln_list, gtr_list):
+def init_sparse_sequences(graph: Graph, aln_list: List[Dict[str,np.array]], gtr_list: List[GTR]) -> None:
   t0 = time.time()
   print(f"elapsed: {time.time()-t0:.3f}")
   attach_seqs_to_graph(graph, aln_list, gtr_list)
@@ -58,7 +61,7 @@ def fitch_backwards(graph: Graph):
     if node.is_leaf: # leaves have been dealt with in init
       return
 
-    # init internal node and edges
+    # initialize internal node and edges
     node.payload.sparse_sequences = []
     for c,e in node.children:
       # not clear where the transmission info on the edge is going to come from
@@ -76,12 +79,12 @@ def fitch_backwards(graph: Graph):
       # need to account for parts of the sequence transmitted along edges
 
       gap_intersection = RangeCollection_intersection([cseq.gaps for cseq in child_seqs])
-      known_seq = RangeCollection_intersection([cseq.unknown for cseq in child_seqs])
+      unknown_seq = RangeCollection_intersection([cseq.unknown for cseq in child_seqs])
       non_gap = RangeCollection_complement(gap_intersection, global_start=0, global_end=L)
 
       seq_dis = SparseSeqDis(variable={})
       seq_info = SparseSeqInfo(gaps=gap_intersection,
-                          unknown=known_seq,
+                          unknown=unknown_seq,
                           non_char=RangeCollection_intersection([cseq.non_char for cseq in child_seqs]))
 
       # define dummy sequence
@@ -94,7 +97,7 @@ def fitch_backwards(graph: Graph):
       # process all positions where the children are variable (there are probably better ways to do this)
       # need to account for parts of the sequence transmitted along edges
       variable_pos = sorted(set(chain.from_iterable([cseq.distribution.variable.keys() for cseq in child_seqs])))
-      for pos in variable_pos:
+      for pos in variable_pos: # This is usually a small number of positions
         # 2D float array
         # stack all ingroup profiles of children, use the determinate profile if position is not variable.
         child_profiles = []
@@ -141,26 +144,26 @@ def fitch_backwards(graph: Graph):
       # process insertions and deletions.
       # 1) seq_info.gaps is the intersection of child gaps, i.e. this is gap if and only if all children have a gap
       #    --> hence we find positions where children differ in terms of gap presence absence by intersecting
-      #        the child gaps with the parent gaps
+      #        the child gaps with the complement of the parent gaps
       for cseq in child_seqs:
         for r in RangeCollection_intersection([non_gap, cseq.gaps]).ranges:
           if r not in seq_dis.variable_indel:
-            seq_dis.variable_indel[r] = Deletion(absent=len(child_seqs), alt=full_seq[r.start:r.end])
-          seq_dis.variable_indel[r].present += 1
-          seq_dis.variable_indel[r].absent -= 1
+            seq_dis.variable_indel[r] = Deletion(ins=len(child_seqs), alt=full_seq[r.start:r.end])
+          seq_dis.variable_indel[r].deleted  += 1
+          seq_dis.variable_indel[r].ins -= 1
 
       # 2) if a gap is variable in a child and the parent, we need to pull this down to the parent
       for cseq in child_seqs:
         for r in cseq.distribution.variable_indel:
           if r in seq_dis.variable_indel:
-            seq_dis.variable_indel[r].present += 1
-            seq_dis.variable_indel[r].absent -= 1
+            seq_dis.variable_indel[r].deleted  += 1
+            seq_dis.variable_indel[r].ins -= 1
 
       # 3) if all children are compatible with a gap, we add the gap back to the gap collection and remove the variable site
       # (nothing needs doing in the case where all children are compatible with non-gap)
       to_pop = []
       for r, indel in seq_dis.variable_indel.items():
-        if indel.present==len(child_seqs):
+        if indel.deleted ==len(child_seqs):
           seq_info.gaps.add(r)
           to_pop.append(r)
       for r in to_pop:
@@ -211,7 +214,7 @@ def fitch_forward(graph: Graph):
 
         # process indels as majority rule at the root
         for r, indel in seq_info.distribution.variable_indel.items():
-          if indel.present>indel.absent:
+          if indel.deleted >indel.ins:
             seq_info.gaps.add(r)
         for r in seq_info.gaps:
           seq_info.sequence[r.start:r.end] = GAP_CHAR
@@ -254,23 +257,20 @@ def fitch_forward(graph: Graph):
         # process indels
         # gaps where the children disagree, need to be decided by also looking at parent
         for r, indel in seq_info.distribution.variable_indel.items():
-          present_in_parent = 1 if r in pseq.gaps else 0
-          if indel.present + present_in_parent>indel.absent: # add the gap
+          gap_in_parent = 1 if r in pseq.gaps else 0
+          if indel.deleted  + gap_in_parent>indel.ins: # add the gap
             seq_info.gaps.add(r)
-            if not present_in_parent: # if the gap is not in parent, add deletion
+            if not gap_in_parent: # if the gap is not in parent, add deletion
               pedge.indels.append(add_indel(r, seq_info.sequence, deletion=True, composition=seq_info.composition))
           else: # not a gap
-            # to_pop.append(r) # remove from variable seqs
-            if present_in_parent: # add insertion if gap is present in parent.
+            if gap_in_parent: # add insertion if gap is present in parent.
               pedge.indels.append(add_indel(r, seq_info.sequence, deletion=False, composition=seq_info.composition))
-        # for r in to_pop: seq_info.distribution.variable_indel.pop(r)
 
         # process consensus gaps in the node that are not in the parent
         for r in RangeCollection_difference(seq_info.gaps, pseq.gaps).ranges:
           pedge.indels.append(add_indel(r, seq_info.sequence, deletion=True, composition=seq_info.composition))
 
         # process gaps in the parent that are not in the node
-        # print(pseq.gaps, seq_info.gaps, RangeCollection_difference(pseq.gaps, seq_info.gaps))
         for r in RangeCollection_difference(pseq.gaps, seq_info.gaps).ranges:
           # gaps in the parent that are not in the node, need to add insertion
           pedge.indels.append(add_indel(r, seq_info.sequence, deletion=False, composition=seq_info.composition))
@@ -312,16 +312,18 @@ def reconstruct_sequence(graph: Graph, node: Node):
     seq = np.copy(path_to_root[-1].payload().sparse_sequences[si].sequence)
     # walk back from root to node
     for n in path_to_root[::-1][1:]:
+      # implant the mutations
       for m in graph.get_edge(n._inbound[0]).payload().sparse_sequences[si].muts:
         seq[m.pos] = m.qry
+      # implant the indels
       for m in graph.get_edge(n._inbound[0]).payload().sparse_sequences[si].indels:
         if m.deletion:
           seq[m.pos:m.pos+m.length] = GAP_CHAR
         else:
           seq[m.pos:m.pos+m.length] = m.seq
 
+    # at the node itself, mask whatever is unknown in the node.
     seq_info = node.payload().sparse_sequences[si]
-
     for r in seq_info.unknown:
       for pos in range(r.start, r.end):
         seq[pos]=graph.partitions[si].gtr.ambiguous
