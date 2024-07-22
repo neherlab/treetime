@@ -185,9 +185,11 @@ def add_indel(r: Range, seq: np.array, deletion:bool, composition: Dict[str, int
   if deletion:
     for nuc in subseq:
       composition[nuc] -= 1
+      composition[GAP_CHAR] += 1
   else:
     for nuc in subseq:
       composition[nuc] += 1
+      composition[GAP_CHAR] -= 1
 
   return InDel(range=r, seq = subseq, deletion=deletion)
 
@@ -206,17 +208,16 @@ def fitch_forward(graph: Graph):
             p.state = gtr.alphabet[np.argmax(p.profile)]
             seq_info.sequence[pos] = p.state
 
-        seq_info.composition = {s:0 for s in gtr.alphabet}
-        for s in seq_info.sequence:
-          if s in gtr.alphabet: #there could be positions that are gap or N everywhere, should be over complement of `non_char`
-            seq_info.composition[s] += 1
-
         # process indels as majority rule at the root
         for r, indel in seq_info.distribution.variable_indel.items():
           if indel.deleted >indel.ins:
             seq_info.gaps.add(r)
         for r in seq_info.gaps:
           seq_info.sequence[r.start:r.end] = GAP_CHAR
+
+        seq_info.composition = {s:0 for s in list(gtr.alphabet) + [GAP_CHAR, gtr.ambiguous]}
+        for s in seq_info.sequence:
+          seq_info.composition[s] += 1
       else:
         # short hands
         pseq = node.parents[0][0].sparse_sequences[si].state

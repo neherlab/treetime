@@ -118,7 +118,7 @@ def sparse_ingroup_profiles(graph: Graph):
     for si,seq_info in enumerate(node.payload.sparse_sequences):
       if node.is_leaf:
         # this is mostly a copy (or ref here) of the fitch state.
-        seq_info.msg_to_parent = SparseSeqDis(fixed_counts=seq_info.state.composition, variable=seq_info.state.distribution.variable, origin='input',
+        seq_info.msg_to_parents = SparseSeqDis(fixed_counts=seq_info.state.composition, variable=seq_info.state.distribution.variable, origin='input',
                                                 fixed={state:graph.partitions[si].profile(state) for state in alphabets[si]})
       else: # internal nodes
         # get all variable positions, the reference state, and the child states at these positions
@@ -133,12 +133,12 @@ def sparse_ingroup_profiles(graph: Graph):
         for ci, (c,e) in enumerate(node.children):
           seq_dis.logLH += child_seqs[ci].msg_to_parents.logLH
           seq_info.msgs_from_children.append(propagate(origin=c.name, expQt=child_expQt[ci],
-                                                       seq_dis=child_seqs[ci].msg_to_parent, variable_pos=variable_pos,
-                                                       child_states = child_states[ci], non_char=child_seqs[ci].state.non_char, transmission=None))
+                                                       seq_dis=child_seqs[ci].msg_to_parents, variable_pos=variable_pos,
+                                                       child_states = child_states[ci], non_char=child_seqs[ci].state.non_char,
+                                                       transmission=None))
 
         combine_messages(seq_dis, seq_info.msgs_from_children, variable_pos, eps, alphabets[si])
-
-        seq_info.msg_to_parent=seq_dis
+        seq_info.msg_to_parents=seq_dis
 
   graph.par_iter_backward(calculate_ingroup_node)
 
@@ -149,6 +149,8 @@ def outgroup_profiles(graph: Graph):
 
   eps=1e-6
   def calculate_outgroup_node(node: GraphNodeForward) -> None:
+    if node.is_root:
+      return
     for si, seq_info in enumerate(node.payload.sparse_sequences):
       variable_pos, parent_states = get_variable_states_parents(seq_info.msg_to_parents,
                                                                 [p.sparse_sequences[si].profile for p,e in node.parents],
@@ -167,7 +169,7 @@ def outgroup_profiles(graph: Graph):
 
       # gaps, unknown, etc should be the from the combined messages
       seq_dis = SparseSeqDis(fixed_counts={k:v for k,v in seq_info.state.composition.items()})
-      combine_messages(seq_dis=seq_dis, messages=seq_info.msgs_from_parents + [seq_info.msg_to_parent],
+      combine_messages(seq_dis=seq_dis, messages=seq_info.msgs_from_parents + [seq_info.msg_to_parents],
                        variable_pos=variable_pos, eps=eps, alphabet=alphabets[si])
       seq_info.profile = seq_dis
 
@@ -178,18 +180,18 @@ def calculate_root_state(graph: Graph):
   logLH = 0
   for si, seq_info in enumerate(root_node.sparse_sequences):
     gtr = graph.partitions[si].gtr
-    seq_profile = SparseSeqDis(fixed_counts={pos:v for pos, v in seq_info.msg_to_parent.fixed_counts.items()},
+    seq_profile = SparseSeqDis(fixed_counts={pos:v for pos, v in seq_info.msg_to_parents.fixed_counts.items()},
                                logLH=seq_info.msg_to_parents.logLH)
 
-    for pos, p in seq_info.msg_to_parent.variable.items():
+    for pos, p in seq_info.msg_to_parents.variable.items():
       vec = p.profile*gtr.Pi
       vec_norm = vec.sum()
       seq_profile.logLH += np.log(vec_norm)
       seq_profile.variable[pos] = VarPos(vec/vec_norm, p.state)
-    for state, p in seq_info.msg_to_parent.fixed.items():
+    for state, p in seq_info.msg_to_parents.fixed.items():
       vec = p*gtr.Pi
       vec_norm = vec.sum()
-      seq_profile.logLH += np.log(vec_norm)*seq_info.msg_to_parent.fixed_counts[state]
+      seq_profile.logLH += np.log(vec_norm)*seq_info.msg_to_parents.fixed_counts[state]
       seq_profile.fixed[state] = vec/vec_norm
     logLH += seq_profile.logLH
 
@@ -215,3 +217,4 @@ if __name__=="__main__":
   print(calculate_root_state(G))
   outgroup_profiles(G)
 
+  seq_info = G.get_roots()[0].payload().sparse_sequences[0]
