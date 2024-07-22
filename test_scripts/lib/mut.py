@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from .ranges import Range
 from typing import List, Optional
 
 @dataclass
@@ -48,7 +49,13 @@ class Mut:
 
 @dataclass
 class InDel:
-  pos: int
-  length: int
+  range: Range
   seq: Optional[list[str]]
   deletion: bool = True # deletion if True, insertion if False
+
+  def __str__(self):
+    if self.deletion:
+      delta_str = f"{''.join(self.seq)} -> {'-'*len(self.seq)}"
+    else:
+      delta_str = f"{'-'*len(self.seq)} -> {''.join(self.seq)}"
+    return f"{self.range.start}--{self.range.end}: {delta_str}"

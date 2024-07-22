@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from .str import AutoRepr
 from typing import List, Dict, Optional
-from .range import RangeCollection
+from .ranges import RangeCollection
 from .sparse_seq import VarPos
 import numpy as np
 from treetime import GTR

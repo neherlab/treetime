@@ -182,7 +182,6 @@ def add_mutation(pos: int, pnuc: str, cnuc: str, composition: Dict[str, int]) ->
 
 def add_indel(r: Range, seq: np.array, deletion:bool, composition: Dict[str, int]) -> InDel:
   subseq = seq[r.start:r.end]
-  print(subseq)
   if deletion:
     for nuc in subseq:
       composition[nuc] -= 1
@@ -190,7 +189,7 @@ def add_indel(r: Range, seq: np.array, deletion:bool, composition: Dict[str, int
     for nuc in subseq:
       composition[nuc] += 1
 
-  return InDel(pos=r.start, length=r.end-r.start, seq = subseq, deletion=deletion)
+  return InDel(range=r, seq = subseq, deletion=deletion)
 
 
 def fitch_forward(graph: Graph):
@@ -318,9 +317,9 @@ def reconstruct_sequence(graph: Graph, node: Node):
       # implant the indels
       for m in graph.get_edge(n._inbound[0]).payload().sparse_sequences[si].indels:
         if m.deletion:
-          seq[m.pos:m.pos+m.length] = GAP_CHAR
+          seq[m.range.start:m.range.end] = GAP_CHAR
         else:
-          seq[m.pos:m.pos+m.length] = m.seq
+          seq[m.range.start:m.range.end] = m.seq
 
     # at the node itself, mask whatever is unknown in the node.
     seq_info = node.payload().sparse_sequences[si]
@@ -381,6 +380,18 @@ def tests():
   for mexp,e in zip(muts_expected,G.get_edges()):
     muts = str(sorted(e.payload().sparse_sequences[0].muts))
     assert muts==mexp
+
+  indels_expected = [
+                    "12--13: T -> -, 14--16: -- -> AC",
+                    "",
+                    "11--12: T -> -",
+                    "",
+                    "",
+                    "",
+                    "",
+                    ]
+  for iexp, e in zip(indels_expected, G.get_edges()):
+    assert iexp==", ".join(indel.__str__() for indel in e.payload().sparse_sequences[0].indels)
 
 if __name__=="__main__":
   fname_nwk = 'data/ebola/ebola.nwk'

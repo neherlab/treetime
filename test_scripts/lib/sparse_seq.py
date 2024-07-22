@@ -1,7 +1,7 @@
 from typing import Optional, List, Dict
 from dataclasses import dataclass, field
 from .mut import Mut, InDel
-from .range import RangeCollection, Range
+from .ranges import RangeCollection, Range
 from .str import AutoRepr
 import numpy as np
 
