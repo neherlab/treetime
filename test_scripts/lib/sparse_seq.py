@@ -49,6 +49,7 @@ class SparseSeqInfo(AutoRepr):
 @dataclass
 class SparseSeqNode(AutoRepr):
   state: SparseSeqInfo
+  profile: SparseSeqDis = field(default_factory=SparseSeqDis)
   msg_to_parents:    SparseSeqDis = field(default_factory=SparseSeqDis)      # there might be multiple parents, but all parents only see info from children
   msgs_from_parents:  List[SparseSeqDis] = field(default_factory=list)       # lists correspond to lists of children or parents
   msgs_to_children:   List[SparseSeqDis] = field(default_factory=list)
