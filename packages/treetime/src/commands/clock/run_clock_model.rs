@@ -73,7 +73,7 @@ fn regression(graph: &mut ClockGraph, params: &RunClockModelParams) -> Result<Cl
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct RootToTipResult {
-  pub name: String,
+  pub name: Option<String>,
   pub date: f64,
   #[serde(rename = "root-to-tip distance")]
   pub root_to_tip_distance: f64,

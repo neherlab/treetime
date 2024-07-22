@@ -5,10 +5,10 @@ use crate::io::file::create_file_or_stdout;
 use eyre::Report;
 use itertools::{iproduct, Itertools};
 use parking_lot::RwLock;
+use std::collections::BTreeMap;
 use std::io::Write;
 use std::path::Path;
 use std::sync::Arc;
-use std::collections::BTreeMap;
 
 pub fn graphviz_write_file<N, E>(filepath: impl AsRef<Path>, graph: &Graph<N, E>) -> Result<(), Report>
 where
@@ -58,14 +58,16 @@ where
   W: Write,
   N: GraphNode + NodeToGraphviz,
 {
-  writeln!(
-    writer,
-    "    {} [label = \"({}) {}\"]",
-    node.read().key(),
-    node.read().key(),
-    node.read().payload().read().to_graphviz_label()
-  )
-  .unwrap();
+  let key = node.read_arc().key();
+  let node = node.read_arc().payload().read_arc();
+  let label = node.to_graphviz_label();
+
+  if let Some(label) = label {
+    let label = label.as_ref();
+    writeln!(writer, "    {key} [label=\"({key}) {label}\"]").unwrap();
+  } else {
+    writeln!(writer, "    {key} [label=\"({key})\"]").unwrap();
+  }
 }
 
 fn print_nodes<W, N, E>(graph: &Graph<N, E>, mut writer: W)
@@ -106,17 +108,28 @@ where
   graph.get_nodes().iter().for_each(&mut |node: &Arc<RwLock<Node<N>>>| {
     for edge_key in node.read().outbound() {
       let edge = graph.get_edge(*edge_key).unwrap();
-      let payload = edge.read().payload();
-      let payload = payload.read();
-      writeln!(
-        writer,
-        "  {} -> {} [xlabel = \"{}\", weight=\"{}\"]",
-        edge.read().source(),
-        edge.read().target(),
-        payload.to_graphviz_label(),
-        payload.to_graphviz_weight(),
-      )
-      .unwrap();
+      let source = edge.read_arc().source();
+      let target = edge.read_arc().target();
+      let payload = edge.read_arc().payload().read_arc();
+
+      let label = payload.to_graphviz_label();
+      let weight = payload.to_graphviz_weight();
+
+      let mut attrs = Vec::new();
+      if let Some(label) = label {
+        let label = label.as_ref();
+        attrs.push(format!("xlabel=\"{label}\""));
+      }
+      if let Some(weight) = weight {
+        attrs.push(format!("weight=\"{weight}\""));
+      }
+      let attrs = attrs.join(", ");
+
+      if !attrs.is_empty() {
+        writeln!(writer, "  {source} -> {target} [{attrs}]").unwrap();
+      } else {
+        writeln!(writer, "  {source} -> {target}").unwrap();
+      }
     }
   });
 }
@@ -149,7 +162,7 @@ where
 /// Defines how to display node information when writing to GraphViz (.dot) file
 pub trait NodeToGraphviz {
   // Defines how to display label (name) of the node in GraphViz (.dot) file
-  fn to_graphviz_label(&self) -> String;
+  fn to_graphviz_label(&self) -> Option<impl AsRef<str>>;
 
   // Defines how to display additional attributes of the node in GraphViz (.dot) file
   fn to_graphviz_attributes(&self) -> BTreeMap<String, String> {
@@ -160,10 +173,10 @@ pub trait NodeToGraphviz {
 /// Defines how to display edge information when writing to GraphViz (.dot) file
 pub trait EdgeToGraphViz {
   // Defines how to display label (name) of the edge in GraphViz (.dot) file
-  fn to_graphviz_label(&self) -> String;
+  fn to_graphviz_label(&self) -> Option<impl AsRef<str>>;
 
   // Defines how to assign weight of the edge in GraphViz (.dot) file
-  fn to_graphviz_weight(&self) -> f64;
+  fn to_graphviz_weight(&self) -> Option<f64>;
 
   // Defines how to display additional attributes of the edge in GraphViz (.dot) file
   fn to_graphviz_attributes(&self) -> BTreeMap<String, String> {

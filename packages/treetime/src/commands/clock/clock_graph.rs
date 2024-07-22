@@ -19,7 +19,8 @@ pub type ClockGraph = Graph<Node, Edge>;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Node {
-  pub name: String,
+  pub name: Option<String>,
+
   pub bad_branch: bool,
   pub dist2root: f64,
   pub raw_date_constraint: Option<f64>,
@@ -32,19 +33,18 @@ pub struct Node {
 impl GraphNode for Node {}
 
 impl Named for Node {
-  fn name(&self) -> &str {
-    &self.name
+  fn name(&self) -> Option<impl AsRef<str>> {
+    self.name.as_deref()
   }
-
-  fn set_name(&mut self, name: impl AsRef<str>) {
-    self.name = name.as_ref().to_owned();
+  fn set_name(&mut self, name: Option<impl AsRef<str>>) {
+    self.name = name.map(|n| n.as_ref().to_owned());
   }
 }
 
 impl NodeFromNwk for Node {
-  fn from_nwk(name: impl AsRef<str>, _: &BTreeMap<String, String>) -> Result<Self, Report> {
+  fn from_nwk(name: Option<impl AsRef<str>>, _comments: &BTreeMap<String, String>) -> Result<Self, Report> {
     Ok(Self {
-      name: name.as_ref().to_owned(),
+      name: name.map(|n| n.as_ref().to_owned()),
       bad_branch: false,
       dist2root: 0.0,
       raw_date_constraint: None,
@@ -58,7 +58,7 @@ impl NodeFromNwk for Node {
 
 impl NodeToNwk for Node {
   fn nwk_name(&self) -> Option<impl AsRef<str>> {
-    Some(&self.name)
+    self.name.as_deref()
   }
 
   fn nwk_comments(&self) -> BTreeMap<String, String> {
@@ -67,44 +67,47 @@ impl NodeToNwk for Node {
 }
 
 impl NodeToGraphviz for Node {
-  fn to_graphviz_label(&self) -> String {
-    self.name.clone()
+  fn to_graphviz_label(&self) -> Option<impl AsRef<str>> {
+    self.name.as_deref()
   }
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Edge {
-  pub weight: f64,
+  pub weight: Option<f64>,
 }
 
 impl GraphEdge for Edge {}
 
 impl Weighted for Edge {
-  fn weight(&self) -> f64 {
+  fn weight(&self) -> Option<f64> {
     self.weight
+  }
+  fn set_weight(&mut self, weight: Option<f64>) {
+    self.weight = weight;
   }
 }
 
 impl EdgeFromNwk for Edge {
   fn from_nwk(weight: Option<f64>) -> Result<Self, Report> {
-    Ok(Self {
-      weight: weight.unwrap_or_default(),
-    })
+    Ok(Self { weight })
   }
 }
 
 impl EdgeToNwk for Edge {
   fn nwk_weight(&self) -> Option<f64> {
-    Some(self.weight)
+    self.weight
   }
 }
 
 impl EdgeToGraphViz for Edge {
-  fn to_graphviz_label(&self) -> String {
-    format_weight(self.weight, &NwkWriteOptions::default())
+  fn to_graphviz_label(&self) -> Option<impl AsRef<str>> {
+    self
+      .weight
+      .map(|weight| format_weight(weight, &NwkWriteOptions::default()))
   }
 
-  fn to_graphviz_weight(&self) -> f64 {
+  fn to_graphviz_weight(&self) -> Option<f64> {
     self.weight
   }
 }
@@ -133,7 +136,10 @@ pub fn assign_dates(graph: &mut ClockGraph, dates: &DatesMap) -> Result<(), Repo
        children,
        ..
      }| {
-      node.raw_date_constraint = dates.get(&node.name).map(DateOrRange::mean);
+      node.raw_date_constraint = node
+        .name
+        .as_ref()
+        .and_then(|name| dates.get(name).map(DateOrRange::mean));
       if node.raw_date_constraint.is_none() {
         if is_leaf {
           // Terminal nodes without date constraints marked as 'bad'
@@ -183,7 +189,7 @@ pub fn calculate_distances_to_root(graph: &mut Graph<Node, Edge>) {
           .map(|(parent, edge)| {
             let parent = parent.read();
             let edge = edge.read();
-            parent.dist2root + edge.weight
+            parent.dist2root + edge.weight.unwrap_or(0.0)
           })
           .next().unwrap_or(0.0) // Returns first item or 0.0
           ;

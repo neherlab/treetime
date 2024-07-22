@@ -6,7 +6,6 @@ use crate::graph::node::{GraphNode, Named};
 use crate::io::file::create_file_or_stdout;
 use crate::io::file::open_file_or_stdin;
 use crate::make_error;
-use crate::o;
 use crate::utils::float_fmt::float_to_digits;
 use bio::io::newick;
 use eyre::{eyre, Report, WrapErr};
@@ -61,17 +60,17 @@ where
   // Insert nodes
   let mut index_map = IndexMap::<usize, GraphNodeKey>::new(); // Map of internal `nwk` node indices to `Graph` node indices
   for (nwk_idx, nwk_node) in nwk_tree.g.node_references() {
+    let nwk_idx = nwk_idx.index();
+
     // Discard node names which are parseable to a number. These are not names, but weights.
     // And we don't need them here. Weights are collected onto the edges later.
-    let mut nwk_node: String = nwk_node.to_owned();
-    if nwk_node.parse::<f64>().is_ok() {
-      nwk_node = o!("");
-    };
+    let nwk_node = nwk_node.parse::<f64>().ok().map(|_| String::new());
 
     let comments = btreemap! {}; // TODO: parse nwk comments
-    let node = N::from_nwk(&nwk_node, &comments).wrap_err_with(|| format!("When reading node {nwk_node}"))?;
+    let node = N::from_nwk(nwk_node.as_ref(), &comments)
+      .wrap_err_with(|| format!("When reading node #{nwk_idx} '{}'", nwk_node.unwrap_or_default()))?;
     let node_key = graph.add_node(node);
-    index_map.insert(nwk_idx.index(), node_key);
+    index_map.insert(nwk_idx, node_key);
   }
 
   // Insert edges
@@ -221,7 +220,7 @@ pub fn format_weight(weight: f64, options: &NwkWriteOptions) -> String {
 
 /// Defines how to construct node when reading from Newick and Nexus files
 pub trait NodeFromNwk: Sized {
-  fn from_nwk(name: impl AsRef<str>, comments: &BTreeMap<String, String>) -> Result<Self, Report>;
+  fn from_nwk(name: Option<impl AsRef<str>>, _: &BTreeMap<String, String>) -> Result<Self, Report>;
 }
 
 /// Defines how to display node information when writing to Newick and Nexus files

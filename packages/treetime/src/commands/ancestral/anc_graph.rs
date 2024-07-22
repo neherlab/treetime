@@ -18,7 +18,7 @@ pub type AncestralGraph = Graph<Node, Edge>;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Node {
-  pub name: String,
+  pub name: Option<String>,
 
   pub mutations: BTreeMap<usize, (char, char)>,
   pub gaps: Vec<(usize, usize)>,
@@ -42,11 +42,33 @@ pub struct Node {
   pub expQt: Array2<f64>, // TODO: might be possible to store at the edges. Related to branch length.
 }
 
+impl Node {
+  /// Gather all states at a given position from all child nodes
+  pub fn get_letter_disambiguated(&self, pos: usize) -> BTreeSet<char> {
+    self
+      // Get possible states if non-consensus
+      .non_consensus.get(&pos).cloned()
+      // Otherwise read the sequence at that position
+      .unwrap_or_else(|| btreeset!{self.seq[pos]})
+  }
+}
+
+impl GraphNode for Node {}
+
+impl Named for Node {
+  fn name(&self) -> Option<impl AsRef<str>> {
+    self.name.as_deref()
+  }
+  fn set_name(&mut self, name: Option<impl AsRef<str>>) {
+    self.name = name.map(|n| n.as_ref().to_owned());
+  }
+}
+
 impl NodeFromNwk for Node {
-  fn from_nwk(name: impl AsRef<str>, _comments: &BTreeMap<String, String>) -> Result<Self, Report> {
+  fn from_nwk(name: Option<impl AsRef<str>>, _comments: &BTreeMap<String, String>) -> Result<Self, Report> {
     // TODO: parse mutations from comments
     Ok(Self {
-      name: name.as_ref().to_owned(),
+      name: name.map(|n| n.as_ref().to_owned()),
 
       mutations: BTreeMap::from([]),
       gaps: vec![],
@@ -72,31 +94,9 @@ impl NodeFromNwk for Node {
   }
 }
 
-impl Node {
-  /// Gather all states at a given position from all child nodes
-  pub fn get_letter_disambiguated(&self, pos: usize) -> BTreeSet<char> {
-    self
-      // Get possible states if non-consensus
-      .non_consensus.get(&pos).cloned()
-      // Otherwise read the sequence at that position
-      .unwrap_or_else(|| btreeset!{self.seq[pos]})
-  }
-}
-
-impl GraphNode for Node {}
-
-impl Named for Node {
-  fn name(&self) -> &str {
-    &self.name
-  }
-  fn set_name(&mut self, name: impl AsRef<str>) {
-    self.name = name.as_ref().to_owned();
-  }
-}
-
 impl NodeToNwk for Node {
   fn nwk_name(&self) -> Option<impl AsRef<str>> {
-    Some(&self.name)
+    self.name.as_deref()
   }
 
   fn nwk_comments(&self) -> BTreeMap<String, String> {
@@ -110,44 +110,47 @@ impl NodeToNwk for Node {
 }
 
 impl NodeToGraphviz for Node {
-  fn to_graphviz_label(&self) -> String {
-    self.name.clone()
+  fn to_graphviz_label(&self) -> Option<impl AsRef<str>> {
+    self.name.as_deref()
   }
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Edge {
-  pub weight: f64,
+  pub weight: Option<f64>,
 }
 
 impl GraphEdge for Edge {}
 
 impl Weighted for Edge {
-  fn weight(&self) -> f64 {
+  fn weight(&self) -> Option<f64> {
     self.weight
+  }
+  fn set_weight(&mut self, weight: Option<f64>) {
+    self.weight = weight;
   }
 }
 
 impl EdgeFromNwk for Edge {
   fn from_nwk(weight: Option<f64>) -> Result<Self, Report> {
-    Ok(Self {
-      weight: weight.unwrap_or_default(),
-    })
+    Ok(Self { weight })
   }
 }
 
 impl EdgeToNwk for Edge {
   fn nwk_weight(&self) -> Option<f64> {
-    Some(self.weight)
+    self.weight
   }
 }
 
 impl EdgeToGraphViz for Edge {
-  fn to_graphviz_label(&self) -> String {
-    format_weight(self.weight, &NwkWriteOptions::default())
+  fn to_graphviz_label(&self) -> Option<impl AsRef<str>> {
+    self
+      .weight
+      .map(|weight| format_weight(weight, &NwkWriteOptions::default()))
   }
 
-  fn to_graphviz_weight(&self) -> f64 {
+  fn to_graphviz_weight(&self) -> Option<f64> {
     self.weight
   }
 }

@@ -10,7 +10,8 @@ use std::sync::Arc;
 
 /// Defines how to read and write edge weight
 pub trait Weighted {
-  fn weight(&self) -> f64;
+  fn weight(&self) -> Option<f64>;
+  fn set_weight(&mut self, weight: Option<f64>);
 }
 
 pub trait GraphEdge: Clone + Debug + Sync + Send {}

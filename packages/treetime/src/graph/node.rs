@@ -9,8 +9,8 @@ use std::sync::Arc;
 
 /// Defines how to read and write node name
 pub trait Named {
-  fn name(&self) -> &str;
-  fn set_name(&mut self, name: impl AsRef<str>);
+  fn name(&self) -> Option<impl AsRef<str>>;
+  fn set_name(&mut self, name: Option<impl AsRef<str>>);
 }
 
 pub trait GraphNode: Clone + Debug + Sync + Send {}

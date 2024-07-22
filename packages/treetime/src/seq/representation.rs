@@ -66,7 +66,12 @@ pub fn compress_sequences(
      }| {
       if is_leaf {
         // At each terminal node, temporarily store the sequence and ranges of N, - and mixed sites
-        n.seq = seqs[&n.name].chars().collect();
+        let name = n
+          .name
+          .as_ref()
+          .ok_or_else(|| make_internal_report!("Encountered node with empty name"))
+          .unwrap();
+        n.seq = seqs[name].chars().collect();
 
         n.gaps = find_gap_ranges(&n.seq);
         n.ambiguous = find_ambiguous_ranges(&n.seq);
@@ -290,7 +295,14 @@ pub fn reconstruct_leaf_sequences(graph: &Graph<Node, Edge>) -> Result<BTreeMap<
     .into_iter()
     .map(|leaf| {
       let leaf = leaf.read_arc();
-      let name = leaf.payload().read_arc().name().to_owned();
+      let name = leaf
+        .payload()
+        .read_arc()
+        .name()
+        .ok_or_else(|| make_internal_report!("Encountered node with empty name"))
+        .unwrap()
+        .as_ref()
+        .to_owned();
       let seq = decompress_leaf_sequence(graph, leaf.key(), &root_seq)?;
       Ok((name, seq))
     })
@@ -444,7 +456,7 @@ mod tests {
 
     let expected = vec![
       Node {
-        name: o!("root"),
+        name: Some(o!("root")),
         mutations: BTreeMap::from([]),
         gaps: vec![],
         ambiguous: vec![],
@@ -473,7 +485,7 @@ mod tests {
         expQt: Default::default(),
       },
       Node {
-        name: o!("AB"),
+        name: Some(o!("AB")),
         mutations: BTreeMap::from([
           (0, ('T', 'G')), //
           (2, ('G', 'A')), //
@@ -501,7 +513,7 @@ mod tests {
         expQt: Default::default(),
       },
       Node {
-        name: o!("A"),
+        name: Some(o!("A")),
         mutations: BTreeMap::from([
           (0, ('G', 'A')), //
           (7, ('T', 'C')), //
@@ -527,7 +539,7 @@ mod tests {
         expQt: Default::default(),
       },
       Node {
-        name: o!("B"),
+        name: Some(o!("B")),
         mutations: BTreeMap::from([
           (5, ('G', 'C')), //
         ]),
@@ -552,7 +564,7 @@ mod tests {
         expQt: Default::default(),
       },
       Node {
-        name: o!("CD"),
+        name: Some(o!("CD")),
         mutations: BTreeMap::from([]),
         gaps: vec![],
         ambiguous: vec![],
@@ -575,7 +587,7 @@ mod tests {
         expQt: Default::default(),
       },
       Node {
-        name: o!("C"),
+        name: Some(o!("C")),
         mutations: BTreeMap::from([
           (0, ('T', 'C')), //
           (6, ('G', 'A')), //
@@ -601,7 +613,7 @@ mod tests {
         expQt: Default::default(),
       },
       Node {
-        name: o!("D"),
+        name: Some(o!("D")),
         mutations: BTreeMap::from([
           (5, ('G', 'C')), //
         ]),
@@ -633,7 +645,7 @@ mod tests {
 
     let nuc_counts: BTreeMap<String, usize> = actual
       .iter()
-      .map(|node| (node.name.clone(), node.nuc_composition.values().sum()))
+      .map(|node| (node.name.as_ref().unwrap().clone(), node.nuc_composition.values().sum()))
       .collect();
 
     let nuc_counts_expected = btreemap! {

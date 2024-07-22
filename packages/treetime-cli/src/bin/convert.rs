@@ -11,7 +11,7 @@ use lazy_static::lazy_static;
 use log::LevelFilter;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use treetime::graph::edge::GraphEdge;
+use treetime::graph::edge::{GraphEdge, Weighted};
 use treetime::graph::graph::Graph;
 use treetime::graph::node::{GraphNode, Named};
 use treetime::io::auspice::{
@@ -21,8 +21,12 @@ use treetime::io::auspice::{
 };
 use treetime::io::compression::remove_compression_ext;
 use treetime::io::fs::extension;
+use treetime::io::graphviz::{EdgeToGraphViz, NodeToGraphviz};
 use treetime::io::json::{json_read_file, json_write_file, JsonPretty};
-use treetime::io::nwk::{EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk};
+use treetime::io::nex::{nex_write_file, NexWriteOptions};
+use treetime::io::nwk::{
+  format_weight, nwk_read_file, nwk_write_file, EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteOptions,
+};
 use treetime::make_report;
 use treetime::utils::global_init::{global_init, setup_logger};
 
@@ -64,8 +68,8 @@ fn main() -> Result<(), Report> {
 
   let graph: ConverterGraph = match input_format {
     TreeFormat::Auspice => auspice_read_file(&args.input),
-    // TreeFormat::Newick => nwk_read_file(&args.input),
-    // TreeFormat::Nexus => unimplemented!("Reading Nexus files is not yet implemented"),
+    TreeFormat::Newick => nwk_read_file(&args.input),
+    TreeFormat::Nexus => unimplemented!("Reading Nexus files is not yet implemented"),
     TreeFormat::PhyloGraph => json_read_file(&args.input),
     // TreeFormat::MatJson => usher_mat_json_read_file(&args.input),
     // TreeFormat::MatPb => usher_mat_pb_read_file(&args.input),
@@ -74,8 +78,8 @@ fn main() -> Result<(), Report> {
 
   match output_format {
     TreeFormat::Auspice => auspice_write_file(&args.output, &graph),
-    // TreeFormat::Newick => nwk_write_file(&args.output, &graph, &NwkWriteOptions::default()),
-    // TreeFormat::Nexus => nex_write_file(&args.output, &graph, &NexWriteOptions::default()),
+    TreeFormat::Newick => nwk_write_file(&args.output, &graph, &NwkWriteOptions::default()),
+    TreeFormat::Nexus => nex_write_file(&args.output, &graph, &NexWriteOptions::default()),
     TreeFormat::PhyloGraph => json_write_file(&args.output, &graph, JsonPretty(true)),
     // TreeFormat::MatJson => usher_mat_json_write_file(&args.output, &graph),
     // TreeFormat::MatPb => usher_mat_pb_write_file(&args.output, &graph),
@@ -95,24 +99,31 @@ struct ConverterNode {
 impl GraphNode for ConverterNode {}
 
 impl Named for ConverterNode {
-  fn name(&self) -> &str {
-    todo!()
+  fn name(&self) -> Option<impl AsRef<str>> {
+    self.name.as_deref()
   }
-
-  fn set_name(&mut self, name: impl AsRef<str>) {
-    todo!()
+  fn set_name(&mut self, name: Option<impl AsRef<str>>) {
+    self.name = name.map(|n| n.as_ref().to_owned());
   }
 }
 
 impl NodeFromNwk for ConverterNode {
-  fn from_nwk(name: impl AsRef<str>, comments: &BTreeMap<String, String>) -> Result<Self, Report> {
-    todo!()
+  fn from_nwk(name: Option<impl AsRef<str>>, _: &BTreeMap<String, String>) -> Result<Self, Report> {
+    Ok(Self {
+      name: name.map(|n| n.as_ref().to_owned()),
+    })
   }
 }
 
 impl NodeToNwk for ConverterNode {
   fn nwk_name(&self) -> Option<impl AsRef<str>> {
-    self.name.as_ref()
+    self.name.as_deref()
+  }
+}
+
+impl NodeToGraphviz for ConverterNode {
+  fn to_graphviz_label(&self) -> Option<impl AsRef<str>> {
+    self.name.as_deref()
   }
 }
 
@@ -123,19 +134,40 @@ struct ConverterEdge {
 
 impl GraphEdge for ConverterEdge {}
 
+impl Weighted for ConverterEdge {
+  fn weight(&self) -> Option<f64> {
+    self.weight
+  }
+  fn set_weight(&mut self, weight: Option<f64>) {
+    self.weight = weight;
+  }
+}
+
 impl EdgeFromNwk for ConverterEdge {
   fn from_nwk(weight: Option<f64>) -> Result<Self, Report> {
-    todo!()
+    Ok(Self { weight })
   }
 }
 
 impl EdgeToNwk for ConverterEdge {
   fn nwk_weight(&self) -> Option<f64> {
-    todo!()
+    self.weight
   }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+impl EdgeToGraphViz for ConverterEdge {
+  fn to_graphviz_label(&self) -> Option<impl AsRef<str>> {
+    self
+      .weight
+      .map(|weight| format_weight(weight, &NwkWriteOptions::default()))
+  }
+
+  fn to_graphviz_weight(&self) -> Option<f64> {
+    self.weight
+  }
+}
+
+#[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct ConverterData {
   pub version: Option<String>,
   pub meta: AuspiceTreeMeta,
@@ -144,32 +176,32 @@ pub struct ConverterData {
 }
 
 impl AuspiceDataFromGraphData for ConverterData {
-  fn auspice_data_from_graph_data(&self) -> AuspiceTreeData {
-    AuspiceTreeData {
+  fn auspice_data_from_graph_data(&self) -> Result<AuspiceTreeData, Report> {
+    Ok(AuspiceTreeData {
       version: self.version.clone(),
       meta: self.meta.clone(),
       root_sequence: self.root_sequence.clone(),
       other: self.other.clone(),
-    }
+    })
   }
 }
 
 impl AuspiceDataToGraphData for ConverterData {
-  fn auspice_data_to_graph_data(tree: &AuspiceTree) -> Self {
-    Self {
+  fn auspice_data_to_graph_data(tree: &AuspiceTree) -> Result<Self, Report> {
+    Ok(Self {
       version: tree.data.version.clone(),
       meta: tree.data.meta.clone(),
       root_sequence: tree.data.root_sequence.clone(),
       other: tree.data.other.clone(),
-    }
+    })
   }
 }
 
 impl AuspiceFromGraph<ConverterNode, ConverterEdge, ConverterData> for () {
   fn auspice_node_from_graph_components(
     GraphContext { node, edge, .. }: &GraphContext<ConverterNode, ConverterEdge, ConverterData>,
-  ) -> AuspiceTreeNode {
-    AuspiceTreeNode {
+  ) -> Result<AuspiceTreeNode, Report> {
+    Ok(AuspiceTreeNode {
       name: node.name.clone().unwrap_or_default(),
       branch_attrs: AuspiceTreeBranchAttrs::default(),
       node_attrs: AuspiceTreeNodeAttrs {
@@ -182,20 +214,22 @@ impl AuspiceFromGraph<ConverterNode, ConverterEdge, ConverterData> for () {
       },
       children: vec![],
       other: Value::default(),
-    }
+    })
   }
 }
 
 impl AuspiceToGraph<ConverterNode, ConverterEdge, ConverterData> for () {
-  fn auspice_node_to_graph_components(TreeContext { node, .. }: &TreeContext) -> (ConverterNode, ConverterEdge) {
-    (
+  fn auspice_node_to_graph_components(
+    TreeContext { node, .. }: &TreeContext,
+  ) -> Result<(ConverterNode, ConverterEdge), Report> {
+    Ok((
       ConverterNode {
         name: Some(node.name.clone()),
       },
       ConverterEdge {
         weight: node.node_attrs.div,
       },
-    )
+    ))
   }
 }
 

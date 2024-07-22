@@ -26,7 +26,7 @@ pub fn subtree_profiles(
   let prof_nuc = &gtr.alphabet.profile_map;
 
   // GTR matrix associated with this branch length. Using 0 length for the root saves an extra calculation below
-  let t = edge.map(|edge| edge.weight).unwrap_or_default();
+  let t = edge.and_then(|edge| edge.weight).unwrap_or_default();
   node.expQt = gtr.expQt(t).t().to_owned(); // TODO: might make sense to save this on the edge
 
   // We have calculated the total nucleotide composition in the sequence representation.

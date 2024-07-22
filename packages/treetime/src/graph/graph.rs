@@ -640,66 +640,69 @@ pub mod tests {
   use std::collections::BTreeMap;
 
   #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-  pub struct TestNode(pub String);
+  pub struct TestNode(pub Option<String>);
 
   impl GraphNode for TestNode {}
 
   impl Named for TestNode {
-    fn name(&self) -> &str {
-      &self.0
+    fn name(&self) -> Option<impl AsRef<str>> {
+      self.0.as_deref()
     }
-    fn set_name(&mut self, name: impl AsRef<str>) {
-      self.0 = name.as_ref().to_owned();
+    fn set_name(&mut self, name: Option<impl AsRef<str>>) {
+      self.0 = name.map(|n| n.as_ref().to_owned());
     }
   }
 
   impl NodeFromNwk for TestNode {
-    fn from_nwk(name: impl AsRef<str>, _: &BTreeMap<String, String>) -> Result<Self, Report> {
-      Ok(Self(name.as_ref().to_owned()))
+    fn from_nwk(name: Option<impl AsRef<str>>, _: &BTreeMap<String, String>) -> Result<Self, Report> {
+      Ok(Self(name.map(|n| n.as_ref().to_owned())))
     }
   }
 
   impl NodeToNwk for TestNode {
     fn nwk_name(&self) -> Option<impl AsRef<str>> {
-      Some(&self.0)
+      self.0.as_deref()
     }
   }
 
   impl NodeToGraphviz for TestNode {
-    fn to_graphviz_label(&self) -> String {
-      self.0.clone()
+    fn to_graphviz_label(&self) -> Option<impl AsRef<str>> {
+      self.0.as_deref()
     }
   }
 
   #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-  pub struct TestEdge(pub f64);
+  pub struct TestEdge(pub Option<f64>);
 
   impl GraphEdge for TestEdge {}
 
   impl Weighted for TestEdge {
-    fn weight(&self) -> f64 {
+    fn weight(&self) -> Option<f64> {
       self.0
+    }
+    fn set_weight(&mut self, weight: Option<f64>) {
+      self.0 = weight;
     }
   }
 
   impl EdgeFromNwk for TestEdge {
     fn from_nwk(weight: Option<f64>) -> Result<Self, Report> {
-      Ok(Self(weight.unwrap_or_default()))
+      Ok(Self(weight))
     }
   }
 
   impl EdgeToNwk for TestEdge {
     fn nwk_weight(&self) -> Option<f64> {
-      Some(self.0)
+      self.0
     }
   }
 
   impl EdgeToGraphViz for TestEdge {
-    fn to_graphviz_label(&self) -> String {
-      format_weight(self.0, &NwkWriteOptions::default())
+    fn to_graphviz_label(&self) -> Option<impl AsRef<str>> {
+      self.0.map(|weight| format_weight(weight, &NwkWriteOptions::default()))
     }
 
-    fn to_graphviz_weight(&self) -> f64 {
+    fn to_graphviz_weight(&self) -> Option<f64> {
       self.0
     }
   }
@@ -710,7 +713,7 @@ pub mod tests {
 
     let mut actual = vec![];
     graph.iter_depth_first_preorder_forward(|node| {
-      actual.push(node.payload.name().to_owned());
+      actual.push(node.payload.name().unwrap().as_ref().to_owned());
     });
 
     assert_eq!(vec!["root", "AB", "A", "B", "CD", "C", "D"], actual);
@@ -724,7 +727,7 @@ pub mod tests {
 
     let mut actual = vec![];
     graph.iter_depth_first_postorder_forward(|node| {
-      actual.push(node.payload.name().to_owned());
+      actual.push(node.payload.name().unwrap().as_ref().to_owned());
     });
 
     assert_eq!(vec!["A", "B", "AB", "C", "D", "CD", "root"], actual);
@@ -738,7 +741,7 @@ pub mod tests {
 
     let mut actual = vec![];
     graph.iter_breadth_first_forward(|node| {
-      actual.push(node.payload.name().to_owned());
+      actual.push(node.payload.name().unwrap().as_ref().to_owned());
     });
 
     assert_eq!(vec!["root", "AB", "CD", "A", "B", "C", "D"], actual);
@@ -752,7 +755,7 @@ pub mod tests {
 
     let mut actual = vec![];
     graph.iter_breadth_first_reverse(|node| {
-      actual.push(node.payload.name().to_owned());
+      actual.push(node.payload.name().unwrap().as_ref().to_owned());
     });
 
     assert_eq!(vec!["D", "C", "B", "A", "CD", "AB", "root"], actual);
@@ -768,7 +771,9 @@ pub mod tests {
 
     let actual = Arc::new(RwLock::new(vec![]));
     graph.par_iter_breadth_first_forward(|node| {
-      actual.write_arc().push(node.payload.name().to_owned());
+      actual
+        .write_arc()
+        .push(node.payload.name().unwrap().as_ref().to_owned());
       GraphTraversalContinuation::Continue
     });
 
@@ -785,7 +790,9 @@ pub mod tests {
 
     let actual = Arc::new(RwLock::new(vec![]));
     graph.par_iter_breadth_first_backward(|node| {
-      actual.write_arc().push(node.payload.name().to_owned());
+      actual
+        .write_arc()
+        .push(node.payload.name().unwrap().as_ref().to_owned());
       GraphTraversalContinuation::Continue
     });
 

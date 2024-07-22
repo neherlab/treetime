@@ -267,6 +267,7 @@ mod tests {
   #![allow(clippy::excessive_precision)]
 
   use super::*;
+  use crate::o;
   use approx::assert_ulps_eq;
   use eyre::Report;
   use rstest::rstest;
@@ -310,7 +311,7 @@ mod tests {
   #[rstest]
   fn propagates_averages_internal_ingroup() -> Result<(), Report> {
     let n = Node {
-      name: "NODE_0000012".to_owned(),
+      name: Some(o!("NODE_0000012")),
       bad_branch: false,
       dist2root: 0.028582125098939384,
       raw_date_constraint: None,
@@ -364,7 +365,7 @@ mod tests {
   #[rstest]
   fn propagates_averages_internal_outgroup() -> Result<(), Report> {
     let n = Node {
-      name: "NODE_0000014".to_owned(),
+      name: Some(o!("NODE_0000014")),
       bad_branch: false,
       dist2root: 0.004742125098939387,
       raw_date_constraint: None,
@@ -419,7 +420,7 @@ mod tests {
   #[rstest]
   fn propagates_averages_leaf_ingroup() -> Result<(), Report> {
     let n = Node {
-      name: "A/New_Hampshire/12/2012|KF790252|11/08/2012|USA|12_13|H3N2/1-1409".to_owned(),
+      name: Some(o!("A/New_Hampshire/12/2012|KF790252|11/08/2012|USA|12_13|H3N2/1-1409")),
       bad_branch: false,
       dist2root: 0.0441021250989394,
       raw_date_constraint: Some(2012.8569473),
@@ -460,7 +461,7 @@ mod tests {
   #[rstest]
   fn propagates_averages_leaf_outgroup() -> Result<(), Report> {
     let n = Node {
-      name: "A/Hawaii/02/2013|KF789866|05/28/2013|USA|12_13|H3N2/1-1409".to_owned(),
+      name: Some(o!("A/Hawaii/02/2013|KF789866|05/28/2013|USA|12_13|H3N2/1-1409")),
       bad_branch: false,
       dist2root: 0.04696212509893939,
       raw_date_constraint: Some(2013.40520192),

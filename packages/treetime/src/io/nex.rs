@@ -2,7 +2,7 @@ use crate::graph::edge::GraphEdge;
 use crate::graph::graph::Graph;
 use crate::graph::node::GraphNode;
 use crate::io::file::create_file_or_stdout;
-use crate::io::nwk::{EdgeToNwk, NodeToNwk, nwk_write_str, NwkWriteOptions};
+use crate::io::nwk::{nwk_write_str, EdgeToNwk, NodeToNwk, NwkWriteOptions};
 use eyre::Report;
 use itertools::Itertools;
 use smart_default::SmartDefault;
@@ -18,14 +18,15 @@ pub struct NexWriteOptions {
   pub weight_decimal_digits: Option<i8>,
 }
 
-pub fn nex_write_file<N, E>(
+pub fn nex_write_file<N, E, D>(
   filepath: impl AsRef<Path>,
-  graph: &Graph<N, E>,
+  graph: &Graph<N, E, D>,
   options: &NexWriteOptions,
 ) -> Result<(), Report>
 where
   N: GraphNode + NodeToNwk,
   E: GraphEdge + EdgeToNwk,
+  D: Sync + Send + Default,
 {
   let mut f = create_file_or_stdout(filepath)?;
   nex_write(&mut f, graph, options)?;
@@ -33,20 +34,22 @@ where
   Ok(())
 }
 
-pub fn nex_write_string<N, E>(graph: &Graph<N, E>, options: &NexWriteOptions) -> Result<String, Report>
+pub fn nex_write_string<N, E, D>(graph: &Graph<N, E, D>, options: &NexWriteOptions) -> Result<String, Report>
 where
   N: GraphNode + NodeToNwk,
   E: GraphEdge + EdgeToNwk,
+  D: Sync + Send + Default,
 {
   let mut buf = Vec::new();
   nex_write(&mut buf, graph, options)?;
   Ok(String::from_utf8(buf)?)
 }
 
-pub fn nex_write<N, E>(w: &mut impl Write, graph: &Graph<N, E>, options: &NexWriteOptions) -> Result<(), Report>
+pub fn nex_write<N, E, D>(w: &mut impl Write, graph: &Graph<N, E, D>, options: &NexWriteOptions) -> Result<(), Report>
 where
   N: GraphNode + NodeToNwk,
   E: GraphEdge + EdgeToNwk,
+  D: Sync + Send + Default,
 {
   let n_leaves = graph.num_leaves();
   let leaf_names = graph

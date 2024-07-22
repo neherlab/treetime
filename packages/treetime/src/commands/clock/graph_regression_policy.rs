@@ -27,7 +27,9 @@ impl GraphNodeRegressionPolicy for GraphNodeRegressionPolicyReroot {
 
   #[inline]
   fn branch_value(edge: &Edge) -> f64 {
-    edge.weight
+    // FIXME
+    0.0
+    // edge.weight
   }
 
   #[inline]
