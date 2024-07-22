@@ -1,7 +1,7 @@
 from Bio import AlignIO
 from typing import Dict, List
 import numpy as np
-from lib import Graph, graph_from_nwk_str, GraphNodeBackward, GraphNodeForward, Node, InDel, SparseSeqInfo, SparseSeqDis, SparseSeqEdge
+from lib import Graph, graph_from_nwk_str, GraphNodeBackward, GraphNodeForward, Node, InDel, SparseSeqInfo, SparseSeqDis, SparseSeqEdge, SparseSeqNode
 from lib import SeqPartition, find_char_ranges, VarPos, RangeCollection_intersection, Range, RangeCollection, Mut, Deletion, RangeCollection_complement, RangeCollection_difference
 from treetime import GTR
 from payload import NodePayload, EdgePayload
@@ -42,7 +42,7 @@ def attach_seqs_to_graph(graph: Graph, aln_list: List[Dict[str,np.array]], gtr_l
 
     for leaf in graph.get_leaves():
       leaf_name = leaf.payload().name
-      leaf.payload().sparse_sequences.append(seq_info_from_array(np.fromiter(str(aln[leaf_name]).upper(), 'U1'), profile, alphabet_gapN))
+      leaf.payload().sparse_sequences.append(SparseSeqNode(state=seq_info_from_array(np.fromiter(str(aln[leaf_name]).upper(), 'U1'), profile, alphabet_gapN)))
 
 def init_sparse_sequences(graph: Graph, aln_list: List[Dict[str,np.array]], gtr_list: List[GTR]) -> None:
   t0 = time.time()
@@ -69,7 +69,7 @@ def fitch_backwards(graph: Graph):
 
     for si in range(n_partitions):
       # short hands
-      child_seqs = [c.sparse_sequences[si] for c,e in node.children]
+      child_seqs = [c.sparse_sequences[si].state for c,e in node.children]
       child_edges = [e.sparse_sequences[si] for c,e in node.children]
       gtr = graph.partitions[si].gtr
       L = graph.partitions[si].length
@@ -171,7 +171,7 @@ def fitch_backwards(graph: Graph):
 
       seq_info.distribution=seq_dis
       seq_info.sequence=full_seq
-      node.payload.sparse_sequences.append(seq_info)
+      node.payload.sparse_sequences.append(SparseSeqNode(state=seq_info))
 
   graph.par_iter_backward(fitch_backwards_node)
 
@@ -199,7 +199,7 @@ def fitch_forward(graph: Graph):
     for si in range(n_partitions):
       gtr = graph.partitions[si].gtr
       profile = graph.partitions[si].profile
-      seq_info = node.payload.sparse_sequences[si]
+      seq_info = node.payload.sparse_sequences[si].state
 
       if node.is_root:
         for pos, p in seq_info.distribution.variable.items():
@@ -219,9 +219,9 @@ def fitch_forward(graph: Graph):
           seq_info.sequence[r.start:r.end] = GAP_CHAR
       else:
         # short hands
-        pseq = node.parents[0][0].sparse_sequences[si]
+        pseq = node.parents[0][0].sparse_sequences[si].state
         pedge = node.parents[0][1].sparse_sequences[si]
-        seq_info = node.payload.sparse_sequences[si]
+        seq_info = node.payload.sparse_sequences[si].state
         pedge.muts = []
 
         # copy parent seqinfo
@@ -276,7 +276,8 @@ def fitch_forward(graph: Graph):
 
 
   def clean_up_node(node):
-    for seq_info in node.payload.sparse_sequences:
+    for node_info in node.payload.sparse_sequences:
+      seq_info = node_info.state
       if not node.is_leaf: #delete the variable position everywhere instead of leaves
         seq_info.distribution.variable = {}
       for r in seq_info.unknown: # remove the undetermined counts from the counts of fixed positions
@@ -308,7 +309,7 @@ def reconstruct_sequence(graph: Graph, node: Node):
 
   seqs = []
   for si in range(len(graph.partitions)):
-    seq = np.copy(path_to_root[-1].payload().sparse_sequences[si].sequence)
+    seq = np.copy(path_to_root[-1].payload().sparse_sequences[si].state.sequence)
     # walk back from root to node
     for n in path_to_root[::-1][1:]:
       # implant the mutations
@@ -322,7 +323,7 @@ def reconstruct_sequence(graph: Graph, node: Node):
           seq[m.range.start:m.range.end] = m.seq
 
     # at the node itself, mask whatever is unknown in the node.
-    seq_info = node.payload().sparse_sequences[si]
+    seq_info = node.payload().sparse_sequences[si].state
     for r in seq_info.unknown:
       for pos in range(r.start, r.end):
         seq[pos]=graph.partitions[si].gtr.ambiguous
@@ -357,12 +358,12 @@ def tests():
   gtr = GTR.custom(pi=[0.2, 0.3, 0.15, 0.35], alphabet='nuc_nogap')
   attach_seqs_to_graph(G, [aln], [gtr])
   fitch_backwards(G)
-  seq_info = G.get_one_root().payload().sparse_sequences[0]
+  seq_info = G.get_one_root().payload().sparse_sequences[0].state
   assert tuple(sorted(seq_info.distribution.variable.keys())) == (0, 2, 3, 5, 6)
   assert "".join(seq_info.sequence) == '~C~~C~~TGTATTGAC'
 
   fitch_forward(G)
-  seq_info = G.get_one_root().payload().sparse_sequences[0]
+  seq_info = G.get_one_root().payload().sparse_sequences[0].state
   # note that this is contingent on picking the first of ACGT when there are multiple options
   assert "".join(seq_info.sequence) == aln['root']
   for n in G.get_nodes():
