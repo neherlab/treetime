@@ -24,6 +24,8 @@ lazy_static = { workspace = true }
 log = { workspace = true }
 num_cpus = { workspace = true }
 rayon = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
 treetime = { path = "../treetime" }
 
 [lints]

@@ -3338,6 +3338,8 @@ dependencies = [
  "log",
  "num_cpus",
  "rayon",
+ "serde",
+ "serde_json",
  "treetime",
 ]
 

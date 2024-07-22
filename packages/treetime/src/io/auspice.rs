@@ -84,7 +84,7 @@ where
   json_write(writer, &tree, JsonPretty(true)).wrap_err("When writing Auspice v2 JSON")
 }
 
-/// Defines conversion from tree global data when reading from Auspice v2 JSON
+/// Describes conversion from tree global data when reading from Auspice v2 JSON
 pub trait AuspiceDataToGraphData: Sized {
   fn auspice_data_to_graph_data(tree: &AuspiceTree) -> Self;
 }
@@ -94,6 +94,7 @@ pub struct TreeContext<'a> {
   pub tree: &'a AuspiceTree,
 }
 
+/// Describes conversion from Auspice tree node data when reading from Auspice v2 JSON
 pub trait AuspiceToGraph<N, E, D>
 where
   N: GraphNode,
@@ -103,6 +104,7 @@ where
   fn auspice_node_to_graph_components(context: &TreeContext) -> (N, E);
 }
 
+/// Convert Auspice v2 JSON to graph
 pub fn auspice_to_graph<N, E, D>(tree: &AuspiceTree) -> Result<Graph<N, E, D>, Report>
 where
   N: GraphNode,
@@ -127,7 +129,7 @@ where
   Ok(graph)
 }
 
-/// Defines conversion to tree global data when writing to Auspice v2 JSON
+/// Describes conversion to tree global data when writing to Auspice v2 JSON
 pub trait AuspiceDataFromGraphData {
   fn auspice_data_from_graph_data(&self) -> AuspiceTreeData;
 }
@@ -143,6 +145,7 @@ where
   pub graph: &'a Graph<N, E, D>,
 }
 
+/// Describes conversion to Auspice tree node data when writing to Auspice v2 JSON
 pub trait AuspiceFromGraph<N, E, D>
 where
   N: GraphNode,
@@ -152,6 +155,7 @@ where
   fn auspice_node_from_graph_components(context: &GraphContext<N, E, D>) -> AuspiceTreeNode;
 }
 
+/// Convert graph to Auspice v2 JSON
 pub fn auspice_from_graph<N, E, D>(graph: &Graph<N, E, D>) -> Result<AuspiceTree, Report>
 where
   N: GraphNode,

@@ -1,0 +1,291 @@
+use std::collections::BTreeMap;
+use std::fmt::Debug;
+use std::path::{Path, PathBuf};
+
+use clap::{AppSettings, ArgEnum, Parser, ValueHint};
+use clap_verbosity_flag::{Verbosity, WarnLevel};
+use color_eyre::{Section, SectionExt};
+use ctor::ctor;
+use eyre::Report;
+use lazy_static::lazy_static;
+use log::LevelFilter;
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use treetime::graph::edge::GraphEdge;
+use treetime::graph::graph::Graph;
+use treetime::graph::node::{GraphNode, Named};
+use treetime::io::auspice::{
+  auspice_read_file, auspice_write_file, AuspiceDataFromGraphData, AuspiceDataToGraphData, AuspiceFromGraph,
+  AuspiceToGraph, AuspiceTree, AuspiceTreeBranchAttrs, AuspiceTreeData, AuspiceTreeMeta, AuspiceTreeNode,
+  AuspiceTreeNodeAttrs, GraphContext, TreeContext,
+};
+use treetime::io::compression::remove_compression_ext;
+use treetime::io::fs::extension;
+use treetime::io::json::{json_read_file, json_write_file, JsonPretty};
+use treetime::io::nwk::{EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk};
+use treetime::make_report;
+use treetime::utils::global_init::{global_init, setup_logger};
+
+#[ctor]
+fn init() {
+  global_init();
+}
+
+fn main() -> Result<(), Report> {
+  let args = Args::parse();
+
+  // --verbosity=<level> and --silent take priority over -v and -q
+  let filter_level = if args.silent {
+    LevelFilter::Off
+  } else {
+    match args.verbosity {
+      None => args.verbose.log_level_filter(),
+      Some(verbosity) => verbosity,
+    }
+  };
+
+  setup_logger(filter_level);
+
+  let input_format = args
+    .input_format
+    .or_else(|| guess_tree_format_from_filename(remove_compression_ext(&args.input)))
+    .ok_or_else(|| {
+      make_report!("Input format was not specified and unable to autodetect. Please provide --input-format argument")
+    })
+    .with_section(|| format!("{:#?}", &args.input).header("Input file:"))?;
+
+  let output_format = args
+    .output_format
+    .or_else(|| guess_tree_format_from_filename(remove_compression_ext(&args.output)))
+    .ok_or_else(|| {
+      make_report!("Output format was not specified and unable to autodetect. Please provide --output-format argument")
+    })
+    .with_section(|| format!("{:#?}", &args.input).header("Output file:"))?;
+
+  let graph: ConverterGraph = match input_format {
+    TreeFormat::Auspice => auspice_read_file(&args.input),
+    // TreeFormat::Newick => nwk_read_file(&args.input),
+    // TreeFormat::Nexus => unimplemented!("Reading Nexus files is not yet implemented"),
+    TreeFormat::PhyloGraph => json_read_file(&args.input),
+    // TreeFormat::MatJson => usher_mat_json_read_file(&args.input),
+    // TreeFormat::MatPb => usher_mat_pb_read_file(&args.input),
+    _ => panic!(),
+  }?;
+
+  match output_format {
+    TreeFormat::Auspice => auspice_write_file(&args.output, &graph),
+    // TreeFormat::Newick => nwk_write_file(&args.output, &graph, &NwkWriteOptions::default()),
+    // TreeFormat::Nexus => nex_write_file(&args.output, &graph, &NexWriteOptions::default()),
+    TreeFormat::PhyloGraph => json_write_file(&args.output, &graph, JsonPretty(true)),
+    // TreeFormat::MatJson => usher_mat_json_write_file(&args.output, &graph),
+    // TreeFormat::MatPb => usher_mat_pb_write_file(&args.output, &graph),
+    _ => panic!(),
+  }?;
+
+  Ok(())
+}
+
+type ConverterGraph = Graph<ConverterNode, ConverterEdge, ConverterData>;
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+struct ConverterNode {
+  pub name: Option<String>,
+}
+
+impl GraphNode for ConverterNode {}
+
+impl Named for ConverterNode {
+  fn name(&self) -> &str {
+    todo!()
+  }
+
+  fn set_name(&mut self, name: impl AsRef<str>) {
+    todo!()
+  }
+}
+
+impl NodeFromNwk for ConverterNode {
+  fn from_nwk(name: impl AsRef<str>, comments: &BTreeMap<String, String>) -> Result<Self, Report> {
+    todo!()
+  }
+}
+
+impl NodeToNwk for ConverterNode {
+  fn nwk_name(&self) -> Option<impl AsRef<str>> {
+    self.name.as_ref()
+  }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+struct ConverterEdge {
+  pub weight: Option<f64>,
+}
+
+impl GraphEdge for ConverterEdge {}
+
+impl EdgeFromNwk for ConverterEdge {
+  fn from_nwk(weight: Option<f64>) -> Result<Self, Report> {
+    todo!()
+  }
+}
+
+impl EdgeToNwk for ConverterEdge {
+  fn nwk_weight(&self) -> Option<f64> {
+    todo!()
+  }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ConverterData {
+  pub version: Option<String>,
+  pub meta: AuspiceTreeMeta,
+  pub root_sequence: Option<BTreeMap<String, String>>,
+  pub other: Value,
+}
+
+impl AuspiceDataFromGraphData for ConverterData {
+  fn auspice_data_from_graph_data(&self) -> AuspiceTreeData {
+    AuspiceTreeData {
+      version: self.version.clone(),
+      meta: self.meta.clone(),
+      root_sequence: self.root_sequence.clone(),
+      other: self.other.clone(),
+    }
+  }
+}
+
+impl AuspiceDataToGraphData for ConverterData {
+  fn auspice_data_to_graph_data(tree: &AuspiceTree) -> Self {
+    Self {
+      version: tree.data.version.clone(),
+      meta: tree.data.meta.clone(),
+      root_sequence: tree.data.root_sequence.clone(),
+      other: tree.data.other.clone(),
+    }
+  }
+}
+
+impl AuspiceFromGraph<ConverterNode, ConverterEdge, ConverterData> for () {
+  fn auspice_node_from_graph_components(
+    GraphContext { node, edge, .. }: &GraphContext<ConverterNode, ConverterEdge, ConverterData>,
+  ) -> AuspiceTreeNode {
+    AuspiceTreeNode {
+      name: node.name.clone().unwrap_or_default(),
+      branch_attrs: AuspiceTreeBranchAttrs::default(),
+      node_attrs: AuspiceTreeNodeAttrs {
+        div: edge.and_then(|edge| edge.weight),
+        clade_membership: None,
+        region: None,
+        country: None,
+        division: None,
+        other: Value::default(),
+      },
+      children: vec![],
+      other: Value::default(),
+    }
+  }
+}
+
+impl AuspiceToGraph<ConverterNode, ConverterEdge, ConverterData> for () {
+  fn auspice_node_to_graph_components(TreeContext { node, .. }: &TreeContext) -> (ConverterNode, ConverterEdge) {
+    (
+      ConverterNode {
+        name: Some(node.name.clone()),
+      },
+      ConverterEdge {
+        weight: node.node_attrs.div,
+      },
+    )
+  }
+}
+
+#[derive(Copy, Clone, Debug, ArgEnum)]
+#[clap(rename = "kebab-case")]
+pub enum TreeFormat {
+  Auspice,
+  MatJson,
+  MatPb,
+  Newick,
+  Nexus,
+  PhyloGraph,
+}
+
+pub fn guess_tree_format_from_filename(filepath: impl AsRef<Path>) -> Option<TreeFormat> {
+  let filepath = filepath.as_ref();
+  let ext = extension(filepath).map(|s| s.to_lowercase());
+  match ext.as_deref() {
+    Some("auspice.json") => Some(TreeFormat::Auspice),
+    Some("graph.json") => Some(TreeFormat::PhyloGraph),
+    Some("mat.json") => Some(TreeFormat::MatPb),
+    Some("mat.pb") => Some(TreeFormat::MatPb),
+    Some("nex | nexus") => Some(TreeFormat::Nexus),
+    Some("nwk" | "newick") => Some(TreeFormat::Newick),
+    _ => None,
+  }
+}
+
+#[derive(Parser, Debug)]
+#[clap(name = "treetime", trailing_var_arg = true)]
+#[clap(author, version)]
+#[clap(global_setting(AppSettings::DeriveDisplayOrder))]
+#[clap(verbatim_doc_comment)]
+/// Read and write Usher MAT files
+///
+/// * https://github.com/yatisht/usher
+/// * https://usher-wiki.readthedocs.io/
+pub struct Args {
+  /// Path to input file
+  ///
+  /// Accepts plain or compressed files. If a compressed file is provided, it will be transparently
+  /// decompressed. Supported compression formats: "gz", "bz2", "xz", "zst". Decompressor is chosen based on file
+  /// extension.
+  ///
+  /// Omit this argument or use special value "-" to read uncompressed data from standard input (stdin).
+  #[clap(value_hint = ValueHint::FilePath)]
+  #[clap(display_order = 1)]
+  #[clap(default_value = "-")]
+  pub input: PathBuf,
+
+  /// Path to output file
+  ///
+  /// If the provided file path ends with one of the supported extensions: "gz", "bz2", "xz", "zst", then the file will be written compressed. Compressor is chosen based on file extension.
+  ///
+  /// Omit this argument or use special value "-" to write uncompressed data to standard output (stdout).
+  #[clap(long, short = 'o')]
+  #[clap(display_order = 1)]
+  #[clap(value_hint = ValueHint::AnyPath)]
+  #[clap(default_value = "-")]
+  pub output: PathBuf,
+
+  /// Input format to read
+  ///
+  /// Provide this argument if automatic format detection fails or if you want to override it.
+  #[clap(long, short = 'r', arg_enum)]
+  #[clap(display_order = 2)]
+  pub input_format: Option<TreeFormat>,
+
+  /// Output format to write
+  ///
+  /// Provide this argument if automatic format detection fails or if you want to override it.
+  #[clap(long, short = 'w', arg_enum)]
+  #[clap(display_order = 2)]
+  pub output_format: Option<TreeFormat>,
+
+  /// Make output more quiet or more verbose
+  #[clap(flatten)]
+  pub verbose: Verbosity<WarnLevel>,
+
+  /// Set verbosity level
+  #[clap(long, global = true, conflicts_with = "verbose", conflicts_with = "silent", possible_values(VERBOSITIES.iter()))]
+  #[clap(display_order = 999)]
+  pub verbosity: Option<LevelFilter>,
+
+  /// Disable all console output. Same as --verbosity=off
+  #[clap(long, global = true, conflicts_with = "verbose", conflicts_with = "verbosity")]
+  #[clap(display_order = 999)]
+  pub silent: bool,
+}
+
+lazy_static! {
+  static ref VERBOSITIES: &'static [&'static str] = &["off", "error", "warn", "info", "debug", "trace"];
+}

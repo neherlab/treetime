@@ -10,7 +10,7 @@ use num::Integer;
 use num_traits::NumCast;
 use std::env;
 use std::io::{ErrorKind, Read, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 // NOTE: crates `bzip2`, `xz2` and `zstd` depend on corresponding C libraries and require libc in order to build.
@@ -73,6 +73,18 @@ pub fn guess_compression_from_filepath(filepath: impl AsRef<Path>) -> (Compressi
       (compression_type, ext)
     }
   }
+}
+
+/// Remove extensions for recognized compressed formats
+pub fn remove_compression_ext(filepath: impl AsRef<Path>) -> PathBuf {
+  let compressed_exts = ["bz2", "xz", "zst", "gz"];
+  let path = filepath.as_ref();
+
+  path
+    .extension()
+    .and_then(|ext| ext.to_str())
+    .filter(|ext| compressed_exts.iter().any(|&e| e.eq_ignore_ascii_case(ext)))
+    .map_or_else(|| path.to_path_buf(), |_| path.with_extension(""))
 }
 
 pub struct Decompressor<'r> {
