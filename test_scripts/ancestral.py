@@ -66,21 +66,17 @@ def propagate(origin, expQt, seq_dis, variable_pos, child_states, non_char, tran
 
   return message
 
-def combine_messages(seq_dis, messages, variable_pos, eps, alphabet):
+def combine_messages(seq_dis, messages, variable_pos, eps, alphabet, gtr_weight=None):
   # go over all putatively variable positions
   for pos, state in variable_pos.items():
     # collect the profiles of children to multiply
-    msg_profiles = []
+    msg_profiles = [] if gtr_weight is None else [gtr_weight]
     for msg in messages:
       if pos in msg.variable:
         msg_profiles.append(msg.variable[pos].profile)
 
     # calculate new profile and likelihood contribution
-    try:
-      vec = np.prod(msg_profiles, axis=0)
-    except:
-      print(msg_profiles)
-      import ipdb; ipdb.set_trace()
+    vec = np.prod(msg_profiles, axis=0)
     vec_norm = vec.sum()
 
     # add position to variable states if the subleading states have a probability exceeding eps
@@ -98,7 +94,7 @@ def combine_messages(seq_dis, messages, variable_pos, eps, alphabet):
     # indeterminate parts in some children are not handled correctly here.
     # they should not contribute to the product. This will require some additional
     # handling or could be handled by treating these positions as variable
-    msg_profiles = []
+    msg_profiles = [] if gtr_weight is None else [gtr_weight]
     for msg in messages:
       msg_profiles.append(msg.fixed[state])
     vec = np.prod(msg_profiles, axis=0)
@@ -157,11 +153,12 @@ def outgroup_profiles(graph: Graph):
                                                                 [e.sparse_sequences[si] for p,e in node.parents])
       for p, e in node.parents:
         pseq_info = p.sparse_sequences[si]
-        messages = pseq_info.msgs_from_parents + [m for m in pseq_info.msgs_from_children if m.origin!=node.payload.name]
+        messages =  pseq_info.msgs_from_parents + [m for m in pseq_info.msgs_from_children if m.origin!=node.payload.name]
         # gaps, unknown, etc should be the from the combined messages
         seq_dis = SparseSeqDis(fixed_counts={k:v for k,v in pseq_info.profile.fixed_counts.items()})
 
-        combine_messages(seq_dis, messages, variable_pos=variable_pos, eps=eps, alphabet=alphabets[si])
+        combine_messages(seq_dis, messages, variable_pos=variable_pos, eps=eps, alphabet=alphabets[si],
+                         gtr_weight=None if len(pseq_info.msgs_from_parents) else gtrs[si].Pi)
 
         seq_info.msgs_from_parents.append(propagate(origin=p.name, expQt=gtrs[si].expQt(e.branch_length or 0.0),
                                                      seq_dis=seq_dis, variable_pos=variable_pos, child_states=parent_states,
@@ -199,6 +196,34 @@ def calculate_root_state(graph: Graph):
   return logLH
 
 
+def tests():
+  aln = {"root":"ACAGCCATGTATTG--",
+         "AB":"ACATCCCTGTA-TG--",
+         "A":"ACATCGCCNNA--GAC",
+         "B":"GCATCCCTGTA-NG--",
+         "CD":"CCGGCCATGTATTG--",
+         "C":"CCGGCGATGTRTTG--",
+         "D":"TCGGCCGTGTRTTG--"}
+
+  tree = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;"
+  profile = lambda x: profile_map[x]
+  G = graph_from_nwk_str(nwk_string=tree, node_payload_factory=NodePayload, edge_payload_factory=EdgePayload)
+  gtr = GTR.custom(pi=[0.2, 0.3, 0.15, 0.35], alphabet='nuc_nogap')
+  init_sparse_sequences(G, [aln], [gtr])
+
+  sparse_ingroup_profiles(G)
+  seq_info_root = G.get_one_root().payload().sparse_sequences[0]
+
+  assert tuple(sorted(seq_info_root.msg_to_parents.variable.keys()))==(0,2,3,5,6,7,10)
+  assert tuple([round(x,8) for x in seq_info_root.msg_to_parents.variable[0].profile])==(0.34485164, 0.17637237, 0.22492433, 0.25385166)
+
+  calculate_root_state(G)
+  assert tuple([round(x,8) for x in seq_info_root.profile.variable[0].profile])==(0.28212327, 0.21643546, 0.13800802, 0.36343326)
+  assert np.abs(seq_info_root.profile.fixed['G']-np.array([1.76723056e-04, 2.65084585e-04, 9.99248927e-01, 3.09265349e-04])).sum()<1e-6
+
+  outgroup_profiles(G)
+  node_AB = G.get_node(G.nodes[1].key()).payload().sparse_sequences[0]
+  assert np.abs(node_AB.profile.variable[0].profile-np.array([0.51275208, 0.09128506, 0.24647255, 0.14949031])).sum()<1e-6
 
 if __name__=="__main__":
   fname_nwk = 'data/ebola/ebola.nwk'
