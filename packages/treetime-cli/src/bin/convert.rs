@@ -1,7 +1,3 @@
-use std::collections::BTreeMap;
-use std::fmt::Debug;
-use std::path::{Path, PathBuf};
-
 use clap::{AppSettings, ArgEnum, Parser, ValueHint};
 use clap_verbosity_flag::{Verbosity, WarnLevel};
 use color_eyre::{Section, SectionExt};
@@ -11,13 +7,16 @@ use lazy_static::lazy_static;
 use log::LevelFilter;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::collections::BTreeMap;
+use std::fmt::Debug;
+use std::path::{Path, PathBuf};
 use treetime::graph::edge::{GraphEdge, Weighted};
 use treetime::graph::graph::Graph;
 use treetime::graph::node::{GraphNode, Named};
 use treetime::io::auspice::{
   auspice_read_file, auspice_write_file, AuspiceDataFromGraphData, AuspiceDataToGraphData, AuspiceFromGraph,
-  AuspiceToGraph, AuspiceTree, AuspiceTreeBranchAttrs, AuspiceTreeData, AuspiceTreeMeta, AuspiceTreeNode,
-  AuspiceTreeNodeAttrs, GraphContext, TreeContext,
+  AuspiceGraphContext, AuspiceToGraph, AuspiceTree, AuspiceTreeBranchAttrs, AuspiceTreeContext, AuspiceTreeData,
+  AuspiceTreeMeta, AuspiceTreeNode, AuspiceTreeNodeAttrs,
 };
 use treetime::io::compression::remove_compression_ext;
 use treetime::io::fs::extension;
@@ -27,8 +26,12 @@ use treetime::io::nex::{nex_write_file, NexWriteOptions};
 use treetime::io::nwk::{
   format_weight, nwk_read_file, nwk_write_file, EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteOptions,
 };
-use treetime::make_report;
+use treetime::io::usher_mat::{
+  usher_mat_pb_read_file, usher_mat_pb_write_file, UsherDataToGraphData, UsherFromGraph, UsherGraphContext,
+  UsherMetadata, UsherMutationList, UsherToGraph, UsherTree, UsherTreeContext, UsherTreeNode,
+};
 use treetime::utils::global_init::{global_init, setup_logger};
+use treetime::{make_internal_report, make_report};
 
 #[ctor]
 fn init() {
@@ -36,6 +39,8 @@ fn init() {
 }
 
 fn main() -> Result<(), Report> {
+  rayon::ThreadPoolBuilder::new().num_threads(1).build_global()?;
+
   let args = Args::parse();
 
   // --verbosity=<level> and --silent take priority over -v and -q
@@ -72,7 +77,7 @@ fn main() -> Result<(), Report> {
     TreeFormat::Nexus => unimplemented!("Reading Nexus files is not yet implemented"),
     TreeFormat::PhyloGraph => json_read_file(&args.input),
     // TreeFormat::MatJson => usher_mat_json_read_file(&args.input),
-    // TreeFormat::MatPb => usher_mat_pb_read_file(&args.input),
+    TreeFormat::MatPb => usher_mat_pb_read_file(&args.input),
     _ => panic!(),
   }?;
 
@@ -82,7 +87,7 @@ fn main() -> Result<(), Report> {
     TreeFormat::Nexus => nex_write_file(&args.output, &graph, &NexWriteOptions::default()),
     TreeFormat::PhyloGraph => json_write_file(&args.output, &graph, JsonPretty(true)),
     // TreeFormat::MatJson => usher_mat_json_write_file(&args.output, &graph),
-    // TreeFormat::MatPb => usher_mat_pb_write_file(&args.output, &graph),
+    TreeFormat::MatPb => usher_mat_pb_write_file(&args.output, &graph),
     _ => panic!(),
   }?;
 
@@ -199,7 +204,7 @@ impl AuspiceDataToGraphData for ConverterData {
 
 impl AuspiceFromGraph<ConverterNode, ConverterEdge, ConverterData> for () {
   fn auspice_node_from_graph_components(
-    GraphContext { node, edge, .. }: &GraphContext<ConverterNode, ConverterEdge, ConverterData>,
+    AuspiceGraphContext { node, edge, .. }: &AuspiceGraphContext<ConverterNode, ConverterEdge, ConverterData>,
   ) -> Result<AuspiceTreeNode, Report> {
     Ok(AuspiceTreeNode {
       name: node.name.clone().unwrap_or_default(),
@@ -220,7 +225,7 @@ impl AuspiceFromGraph<ConverterNode, ConverterEdge, ConverterData> for () {
 
 impl AuspiceToGraph<ConverterNode, ConverterEdge, ConverterData> for () {
   fn auspice_node_to_graph_components(
-    TreeContext { node, .. }: &TreeContext,
+    AuspiceTreeContext { node, .. }: &AuspiceTreeContext,
   ) -> Result<(ConverterNode, ConverterEdge), Report> {
     Ok((
       ConverterNode {
@@ -230,6 +235,58 @@ impl AuspiceToGraph<ConverterNode, ConverterEdge, ConverterData> for () {
         weight: node.node_attrs.div,
       },
     ))
+  }
+}
+
+impl UsherDataToGraphData for ConverterData {
+  fn usher_data_to_graph_data(_: &UsherTree) -> Result<Self, Report> {
+    Ok(Self::default())
+  }
+}
+
+impl UsherFromGraph<ConverterNode, ConverterEdge, ConverterData> for () {
+  fn usher_node_from_graph_components(
+    context: &UsherGraphContext<ConverterNode, ConverterEdge, ConverterData>,
+  ) -> Result<(UsherTreeNode, UsherMutationList, UsherMetadata), Report> {
+    let &UsherGraphContext { node, .. } = context;
+
+    let node_name = node
+      .name
+      .as_ref()
+      .ok_or_else(|| make_internal_report!("Encountered node with empty name"))?
+      .to_owned();
+
+    let usher_node = UsherTreeNode {
+      node_name,
+      condensed_leaves: vec![],
+    };
+
+    let usher_mutations = UsherMutationList { mutation: vec![] };
+
+    let usher_meta = UsherMetadata {
+      clade_annotations: vec![],
+    };
+
+    Ok((usher_node, usher_mutations, usher_meta))
+  }
+}
+
+impl UsherToGraph<ConverterNode, ConverterEdge, ConverterData> for () {
+  fn usher_node_to_graph_components(context: &UsherTreeContext) -> Result<(ConverterNode, ConverterEdge), Report> {
+    let &UsherTreeContext {
+      node,
+      mutations,
+      metadata,
+      tree,
+    } = context;
+
+    let node = ConverterNode {
+      name: Some(node.node_name.clone()),
+    };
+
+    let edge = ConverterEdge { weight: None };
+
+    Ok((node, edge))
   }
 }
 

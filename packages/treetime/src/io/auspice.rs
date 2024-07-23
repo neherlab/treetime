@@ -89,7 +89,7 @@ pub trait AuspiceDataToGraphData: Sized {
   fn auspice_data_to_graph_data(tree: &AuspiceTree) -> Result<Self, Report>;
 }
 
-pub struct TreeContext<'a> {
+pub struct AuspiceTreeContext<'a> {
   pub node: &'a AuspiceTreeNode,
   pub tree: &'a AuspiceTree,
 }
@@ -101,7 +101,7 @@ where
   E: GraphEdge,
   D: AuspiceDataToGraphData + Sync + Send,
 {
-  fn auspice_node_to_graph_components(context: &TreeContext) -> Result<(N, E), Report>;
+  fn auspice_node_to_graph_components(context: &AuspiceTreeContext) -> Result<(N, E), Report>;
 }
 
 /// Convert Auspice v2 JSON to graph
@@ -116,7 +116,7 @@ where
   let mut queue = VecDeque::from([(None, &tree.tree)]);
   while let Some((parent_key, node)) = queue.pop_front() {
     let (graph_node, graph_edge) =
-      <() as AuspiceToGraph<N, E, D>>::auspice_node_to_graph_components(&TreeContext { node, tree })?;
+      <() as AuspiceToGraph<N, E, D>>::auspice_node_to_graph_components(&AuspiceTreeContext { node, tree })?;
     let node_key = graph.add_node(graph_node);
     if let Some(parent_key) = parent_key {
       graph.add_edge(parent_key, node_key, graph_edge)?;
@@ -134,7 +134,7 @@ pub trait AuspiceDataFromGraphData {
   fn auspice_data_from_graph_data(&self) -> Result<AuspiceTreeData, Report>;
 }
 
-pub struct GraphContext<'a, N, E, D>
+pub struct AuspiceGraphContext<'a, N, E, D>
 where
   N: GraphNode,
   E: GraphEdge,
@@ -152,7 +152,7 @@ where
   E: GraphEdge,
   D: AuspiceDataFromGraphData + Sync + Send,
 {
-  fn auspice_node_from_graph_components(context: &GraphContext<N, E, D>) -> Result<AuspiceTreeNode, Report>;
+  fn auspice_node_from_graph_components(context: &AuspiceGraphContext<N, E, D>) -> Result<AuspiceTreeNode, Report>;
 }
 
 /// Convert graph to Auspice v2 JSON
@@ -178,7 +178,11 @@ where
         .map(|edge: &Arc<RwLock<Edge<E>>>| edge.read_arc().payload().read_arc());
       let edge = edge.as_deref();
       let current_tree_node =
-        <() as AuspiceFromGraph<N, E, D>>::auspice_node_from_graph_components(&GraphContext { node, edge, graph })?;
+        <() as AuspiceFromGraph<N, E, D>>::auspice_node_from_graph_components(&AuspiceGraphContext {
+          node,
+          edge,
+          graph,
+        })?;
       for (child, edge) in graph.children_of(&current_node) {
         queue.push_back((child, Some(edge)));
       }
@@ -261,7 +265,7 @@ mod tests {
 
   impl AuspiceFromGraph<TestNode, TestEdge, GraphAuspiceData> for () {
     fn auspice_node_from_graph_components(
-      GraphContext { node, edge, .. }: &GraphContext<TestNode, TestEdge, GraphAuspiceData>,
+      AuspiceGraphContext { node, edge, .. }: &AuspiceGraphContext<TestNode, TestEdge, GraphAuspiceData>,
     ) -> Result<AuspiceTreeNode, Report> {
       let name = node
         .0
@@ -288,7 +292,7 @@ mod tests {
 
   impl AuspiceToGraph<TestNode, TestEdge, GraphAuspiceData> for () {
     fn auspice_node_to_graph_components(
-      TreeContext { node, .. }: &TreeContext,
+      AuspiceTreeContext { node, .. }: &AuspiceTreeContext,
     ) -> Result<(TestNode, TestEdge), Report> {
       Ok((TestNode(Some(node.name.clone())), TestEdge(node.node_attrs.div)))
     }
