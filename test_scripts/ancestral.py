@@ -43,8 +43,8 @@ def get_variable_states_parents(node_seq_info, parents, parent_edges):
   return variable_pos, parent_states
 
 
-def propagate(origin, expQt, seq_dis, variable_pos, child_states, non_char, transmission):
-  message = SparseSeqDis(origin=origin, fixed_counts={k:v for k,v in seq_dis.fixed_counts.items()}, variable={}, fixed={})
+def propagate(expQt, seq_dis, variable_pos, child_states, non_char, transmission):
+  message = SparseSeqDis(fixed_counts={k:v for k,v in seq_dis.fixed_counts.items()}, variable={}, fixed={})
   for pos, state in variable_pos.items():
     if transmission and (not transmission.contains(pos)):
       # transmission field is not currently used
@@ -116,7 +116,7 @@ def sparse_ingroup_profiles(graph: Graph):
     for si,seq_info in enumerate(node.payload.sparse_sequences):
       if node.is_leaf:
         # this is mostly a copy (or ref here) of the fitch state.
-        seq_info.msg_to_parents = SparseSeqDis(fixed_counts=seq_info.seq.composition, variable=seq_info.seq.fitch.variable, origin='input',
+        seq_info.msg_to_parents = SparseSeqDis(fixed_counts=seq_info.seq.composition, variable=seq_info.seq.fitch.variable,
                                                 fixed={state:graph.partitions[si].profile(state) for state in alphabets[si]})
       else: # internal nodes
         # get all variable positions, the reference state, and the child states at these positions
@@ -127,15 +127,15 @@ def sparse_ingroup_profiles(graph: Graph):
 
         seq_dis = SparseSeqDis(fixed_counts={k:v for k,v in seq_info.seq.composition.items()})
 
-        seq_info.msgs_from_children = []
+        seq_info.msgs_from_children = {}
         for ci, (c,e) in enumerate(node.children):
           seq_dis.logLH += child_seqs[ci].msg_to_parents.logLH
-          seq_info.msgs_from_children.append(propagate(origin=c.name, expQt=child_expQt[ci],
+          seq_info.msgs_from_children[c.name] = propagate(expQt=child_expQt[ci],
                                                        seq_dis=child_seqs[ci].msg_to_parents, variable_pos=variable_pos,
                                                        child_states = child_states[ci], non_char=child_seqs[ci].seq.non_char,
-                                                       transmission=None))
+                                                       transmission=None)
 
-        combine_messages(seq_dis, seq_info.msgs_from_children, variable_pos, eps, alphabets[si])
+        combine_messages(seq_dis, list(seq_info.msgs_from_children.values()), variable_pos, eps, alphabets[si])
         seq_info.msg_to_parents=seq_dis
 
   graph.par_iter_backward(calculate_ingroup_node)
@@ -152,24 +152,31 @@ def outgroup_profiles(graph: Graph):
       variable_pos, parent_states = get_variable_states_parents(seq_info.msg_to_parents,
                                                                 [p.sparse_sequences[si].profile for p,e in node.parents],
                                                                 [e.sparse_sequences[si] for p,e in node.parents])
+      msgs_from_parents = []
       for p, e in node.parents:
         pseq_info = p.sparse_sequences[si]
-        messages =  pseq_info.msgs_from_parents + [m for m in pseq_info.msgs_from_children if m.origin!=node.payload.name]
         # gaps, unknown, etc should be the from the combined messages
         seq_dis = SparseSeqDis(fixed_counts={k:v for k,v in pseq_info.profile.fixed_counts.items()})
-
-        combine_messages(seq_dis, messages, variable_pos=variable_pos, eps=eps, alphabet=alphabets[si],
-                         gtr_weight=None if len(pseq_info.msgs_from_parents) else gtrs[si].Pi)
-
-        seq_info.msgs_from_parents.append(propagate(origin=p.name, expQt=gtrs[si].expQt(e.branch_length or 0.0),
-                                                     seq_dis=seq_dis, variable_pos=variable_pos, child_states=parent_states,
-                                                     non_char=pseq_info.seq.non_char, transmission=None))
+        msgs_from_parents.append(propagate(expQt=gtrs[si].expQt(e.branch_length or 0.0),
+                                           seq_dis=pseq_info.msgs_to_children[node.payload.name],
+                                           variable_pos=variable_pos, child_states=parent_states,
+                                           non_char=pseq_info.seq.non_char, transmission=None))
 
       # gaps, unknown, etc should be the from the combined messages
       seq_dis = SparseSeqDis(fixed_counts={k:v for k,v in seq_info.seq.composition.items()})
-      combine_messages(seq_dis=seq_dis, messages=seq_info.msgs_from_parents + [seq_info.msg_to_parents],
+      combine_messages(seq_dis=seq_dis, messages=msgs_from_parents + [seq_info.msg_to_parents],
                        variable_pos=variable_pos, eps=eps, alphabet=alphabets[si])
       seq_info.profile = seq_dis
+
+    # precalculate messages to children that summarize into from their siblings (from the backward pass) and the parent
+    # note that this could be replaced by "subtracting/dividing" the profile by the msg from the respective child
+    # in some circumstances, this might be more efficient
+    seq_info.msgs_to_children = {}
+    for c in seq_info.msgs_from_children:
+      msgs = [m for k,m in seq_info.msgs_from_children.items() if k!=c]
+      seq_dis = SparseSeqDis(fixed_counts={pos:v for pos, v in seq_info.msg_to_parents.fixed_counts.items()})
+      combine_messages(seq_dis, msgs, variable_pos=variable_pos, eps=eps, alphabet=gtr.alphabet)
+      seq_info.msgs_to_children[c] = seq_dis
 
   graph.par_iter_forward(calculate_outgroup_node)
 
@@ -194,15 +201,16 @@ def calculate_root_state(graph: Graph):
       seq_profile.logLH += np.log(vec_norm)*seq_info.msg_to_parents.fixed_counts[state]
       seq_profile.fixed[state] = vec/vec_norm
 
-    # # calculate messages to children -- ideally we'd add this as outgoing edge payload
-    # seq_info.msgs_to_children = []
-    # variable_pos = {pos:p.state for pos, p in seq_info.msg_to_parents.variable.items()}
-    # for c,e in graph.children_of(root_node.key()):
-    #   msgs = [m for m in seq_info.msgs_from_children if m.origin!=c.payload().name]
-    #   seq_dis = SparseSeqDis(fixed_counts={pos:v for pos, v in seq_info.msg_to_parents.fixed_counts.items()})
-    #   combine_messages(seq_dis, msgs, variable_pos=variable_pos, eps=eps, alphabet=gtr.alphabet,
-    #                    gtr_weight=gtr.Pi)
-    #   seq_info.msgs_to_children.append(seq_dis)
+    # calculate messages to children -- ideally we'd add this as outgoing edge payload
+    variable_pos = {pos:p.state for pos, p in seq_info.msg_to_parents.variable.items()}
+    seq_info.msgs_to_children = {}
+    for c,e in graph.children_of(root_node.key()):
+      cname = c.payload().name
+      msgs = [m for k,m in seq_info.msgs_from_children.items() if k!=cname]
+      seq_dis = SparseSeqDis(fixed_counts={pos:v for pos, v in seq_info.msg_to_parents.fixed_counts.items()})
+      combine_messages(seq_dis, msgs, variable_pos=variable_pos, eps=eps, alphabet=gtr.alphabet,
+                       gtr_weight=gtr.Pi)
+      seq_info.msgs_to_children[cname] = seq_dis
 
     seq_info.profile=seq_profile
     logLH += seq_profile.logLH

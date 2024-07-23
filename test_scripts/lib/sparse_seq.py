@@ -23,7 +23,6 @@ class SparseSeqDis(AutoRepr):
   - fixed (probability vector for the state of fixed positions based on information from children)
   - logLH (total_LH)
   '''
-  origin: str = None # needed to filter sibling messages
   variable: Dict[int, VarPos] = field(default_factory=dict)
   variable_indel: Dict[Range, Deletion] = field(default_factory=dict)
   fixed: Dict[str, np.array] = field(default_factory=dict)
@@ -60,9 +59,8 @@ class SparseSeqNode(AutoRepr):
   seq: SparseSeqInfo
   profile: SparseSeqDis = field(default_factory=SparseSeqDis)
   msg_to_parents:    SparseSeqDis = field(default_factory=SparseSeqDis)      # there might be multiple parents, but all parents only see info from children
-  msgs_from_parents:  List[SparseSeqDis] = field(default_factory=list)       # lists correspond to lists of children or parents
-  msgs_to_children:   List[SparseSeqDis] = field(default_factory=list)
-  msgs_from_children: List[SparseSeqDis] = field(default_factory=list)
+  msgs_to_children:   Dict[str, SparseSeqDis] = field(default_factory=dict)
+  msgs_from_children: Dict[str, SparseSeqDis] = field(default_factory=dict)
 
 
 @dataclass
