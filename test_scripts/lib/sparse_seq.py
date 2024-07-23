@@ -31,6 +31,17 @@ class SparseSeqDis(AutoRepr):
   logLH: float = 0.0
 
 @dataclass
+class FitchVar(AutoRepr):
+  '''
+  - variable (probability vector for each variable position collecting information from children)
+  - fixed (probability vector for the state of fixed positions based on information from children)
+  - logLH (total_LH)
+  '''
+  variable: Dict[int, VarPos] = field(default_factory=dict)
+  variable_indel: Dict[Range, Deletion] = field(default_factory=dict)
+
+
+@dataclass
 class SparseSeqInfo(AutoRepr):
   '''
   This class is meant to contain information related to the parts of a sequence necessary for likelihood calculation.
@@ -44,11 +55,11 @@ class SparseSeqInfo(AutoRepr):
   non_char: RangeCollection
   composition: Dict[str, int] = field(default_factory=dict) # count of all characters in the region that is not `non_char`
   sequence: Optional[np.array] = None
-  distribution: SparseSeqDis = field(default_factory=SparseSeqDis)
+  fitch: FitchVar = field(default_factory=FitchVar)
 
 @dataclass
 class SparseSeqNode(AutoRepr):
-  state: SparseSeqInfo
+  seq: SparseSeqInfo
   profile: SparseSeqDis = field(default_factory=SparseSeqDis)
   msg_to_parents:    SparseSeqDis = field(default_factory=SparseSeqDis)      # there might be multiple parents, but all parents only see info from children
   msgs_from_parents:  List[SparseSeqDis] = field(default_factory=list)       # lists correspond to lists of children or parents

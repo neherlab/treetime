@@ -24,7 +24,7 @@ def seq_info_from_array(seq: np.array, profile: Dict[str,np.array], alphabet_gap
     gaps = find_char_ranges(seq, '-')
     return(SparseSeqInfo(unknown=unknown, gaps=gaps,
                         non_char=RangeCollection(unknown.ranges + gaps.ranges),
-                        distribution=seq_dis, sequence=seq))
+                        fitch=seq_dis, sequence=seq))
 
 def attach_seqs_to_graph(graph: Graph, aln_list: List[Dict[str,np.array]], gtr_list: List[GTR]) -> None:
   name_to_key = {}
@@ -42,7 +42,7 @@ def attach_seqs_to_graph(graph: Graph, aln_list: List[Dict[str,np.array]], gtr_l
 
     for leaf in graph.get_leaves():
       leaf_name = leaf.payload().name
-      leaf.payload().sparse_sequences.append(SparseSeqNode(state=seq_info_from_array(np.fromiter(str(aln[leaf_name]).upper(), 'U1'), profile, alphabet_gapN)))
+      leaf.payload().sparse_sequences.append(SparseSeqNode(seq=seq_info_from_array(np.fromiter(str(aln[leaf_name]).upper(), 'U1'), profile, alphabet_gapN)))
 
 def init_sparse_sequences(graph: Graph, aln_list: List[Dict[str,np.array]], gtr_list: List[GTR]) -> None:
   t0 = time.time()
@@ -69,7 +69,7 @@ def fitch_backwards(graph: Graph):
 
     for si in range(n_partitions):
       # short hands
-      child_seqs = [c.sparse_sequences[si].state for c,e in node.children]
+      child_seqs = [c.sparse_sequences[si].seq for c,e in node.children]
       child_edges = [e.sparse_sequences[si] for c,e in node.children]
       gtr = graph.partitions[si].gtr
       L = graph.partitions[si].length
@@ -96,7 +96,7 @@ def fitch_backwards(graph: Graph):
 
       # process all positions where the children are variable (there are probably better ways to do this)
       # need to account for parts of the sequence transmitted along edges
-      variable_pos = sorted(set(chain.from_iterable([cseq.distribution.variable.keys() for cseq in child_seqs])))
+      variable_pos = sorted(set(chain.from_iterable([cseq.fitch.variable.keys() for cseq in child_seqs])))
       for pos in variable_pos: # This is usually a small number of positions
         # 2D float array
         # stack all ingroup profiles of children, use the determinate profile if position is not variable.
@@ -108,8 +108,8 @@ def fitch_backwards(graph: Graph):
           if cseq.non_char.contains(pos):
             # this position does not have character state information
             continue
-          if pos in cseq.distribution.variable:
-            child_profiles.append(cseq.distribution.variable[pos].profile)
+          if pos in cseq.fitch.variable:
+            child_profiles.append(cseq.fitch.variable[pos].profile)
           else:
             child_profiles.append(profile(cseq.sequence[pos]))
 
@@ -154,7 +154,7 @@ def fitch_backwards(graph: Graph):
 
       # 2) if a gap is variable in a child and the parent, we need to pull this down to the parent
       for cseq in child_seqs:
-        for r in cseq.distribution.variable_indel:
+        for r in cseq.fitch.variable_indel:
           if r in seq_dis.variable_indel:
             seq_dis.variable_indel[r].deleted  += 1
             seq_dis.variable_indel[r].ins -= 1
@@ -169,9 +169,9 @@ def fitch_backwards(graph: Graph):
       for r in to_pop:
         seq_dis.variable_indel.pop(r)
 
-      seq_info.distribution=seq_dis
+      seq_info.fitch=seq_dis
       seq_info.sequence=full_seq
-      node.payload.sparse_sequences.append(SparseSeqNode(state=seq_info))
+      node.payload.sparse_sequences.append(SparseSeqNode(seq=seq_info))
 
   graph.par_iter_backward(fitch_backwards_node)
 
@@ -201,15 +201,15 @@ def fitch_forward(graph: Graph):
     for si in range(n_partitions):
       gtr = graph.partitions[si].gtr
       profile = graph.partitions[si].profile
-      seq_info = node.payload.sparse_sequences[si].state
+      seq_info = node.payload.sparse_sequences[si].seq
 
       if node.is_root:
-        for pos, p in seq_info.distribution.variable.items():
+        for pos, p in seq_info.fitch.variable.items():
             p.state = gtr.alphabet[np.argmax(p.profile)]
             seq_info.sequence[pos] = p.state
 
         # process indels as majority rule at the root
-        for r, indel in seq_info.distribution.variable_indel.items():
+        for r, indel in seq_info.fitch.variable_indel.items():
           if indel.deleted >indel.ins:
             seq_info.gaps.add(r)
         for r in seq_info.gaps:
@@ -220,9 +220,9 @@ def fitch_forward(graph: Graph):
           seq_info.composition[s] += 1
       else:
         # short hands
-        pseq = node.parents[0][0].sparse_sequences[si].state
+        pseq = node.parents[0][0].sparse_sequences[si].seq
         pedge = node.parents[0][1].sparse_sequences[si]
-        seq_info = node.payload.sparse_sequences[si].state
+        seq_info = node.payload.sparse_sequences[si].seq
         pedge.muts = []
 
         # copy parent seqinfo
@@ -234,7 +234,7 @@ def fitch_forward(graph: Graph):
             seq_info.sequence[pos]=pseq.sequence[pos]
 
         # for each variable position, pick a state or a mutation
-        for pos, p in seq_info.distribution.variable.items():
+        for pos, p in seq_info.fitch.variable.items():
           pnuc=pseq.sequence[pos]
           # check whether parent is in child profile (sum>0 --> parent state is in profile)
           if np.sum(profile(pnuc)*p.profile):
@@ -246,8 +246,8 @@ def fitch_forward(graph: Graph):
 
           p.state = seq_info.sequence[pos]
 
-        for pos, pvar in pseq.distribution.variable.items():
-          if pos in seq_info.distribution.variable: continue
+        for pos, pvar in pseq.fitch.variable.items():
+          if pos in seq_info.fitch.variable: continue
           # NOTE: access to full_seq would not be necessary if we had saved the
           # child state of variable positions in the backward pass
           node_nuc = seq_info.sequence[pos]
@@ -256,7 +256,7 @@ def fitch_forward(graph: Graph):
 
         # process indels
         # gaps where the children disagree, need to be decided by also looking at parent
-        for r, indel in seq_info.distribution.variable_indel.items():
+        for r, indel in seq_info.fitch.variable_indel.items():
           gap_in_parent = 1 if r in pseq.gaps else 0
           if indel.deleted  + gap_in_parent>indel.ins: # add the gap
             seq_info.gaps.add(r)
@@ -278,16 +278,16 @@ def fitch_forward(graph: Graph):
 
   def clean_up_node(node):
     for node_info in node.payload.sparse_sequences:
-      seq_info = node_info.state
+      seq_info = node_info.seq
       if not node.is_leaf: #delete the variable position everywhere instead of leaves
-        seq_info.distribution.variable = {}
+        seq_info.fitch.variable = {}
       for r in seq_info.unknown: # remove the undetermined counts from the counts of fixed positions
         for pos in range(r.start, r.end):
           seq_info.composition[seq_info.sequence[pos]] -= 1
-      seq_info.distribution.fixed_counts = {k:v for k,v in seq_info.composition.items()}
+      seq_info.fitch.fixed_counts = {k:v for k,v in seq_info.composition.items()}
 
-      for pos, p in seq_info.distribution.variable.items():
-        seq_info.distribution.fixed_counts[p.state] -= 1
+      for pos, p in seq_info.fitch.variable.items():
+        seq_info.fitch.fixed_counts[p.state] -= 1
 
       if not node.is_root:
         seq_info.sequence = []
@@ -310,7 +310,7 @@ def reconstruct_sequence(graph: Graph, node: Node):
 
   seqs = []
   for si in range(len(graph.partitions)):
-    seq = np.copy(path_to_root[-1].payload().sparse_sequences[si].state.sequence)
+    seq = np.copy(path_to_root[-1].payload().sparse_sequences[si].seq.sequence)
     # walk back from root to node
     for n in path_to_root[::-1][1:]:
       # implant the mutations
@@ -324,11 +324,11 @@ def reconstruct_sequence(graph: Graph, node: Node):
           seq[m.range.start:m.range.end] = m.seq
 
     # at the node itself, mask whatever is unknown in the node.
-    seq_info = node.payload().sparse_sequences[si].state
+    seq_info = node.payload().sparse_sequences[si].seq
     for r in seq_info.unknown:
       for pos in range(r.start, r.end):
         seq[pos]=graph.partitions[si].gtr.ambiguous
-    for pos, p in seq_info.distribution.variable.items():
+    for pos, p in seq_info.fitch.variable.items():
       seq[pos]=graph.partitions[si].code(tuple(p.profile))
     seqs.append(seq)
 
@@ -353,18 +353,18 @@ def tests():
 
   seq_info = seq_info_from_array(np.fromiter(aln['D'], 'U1'), profile, 'ACGT-N')
   assert str(seq_info.gaps.ranges) == "[Range(start=14, end=16)]"
-  assert str(seq_info.distribution.variable) == "{10: VarPos(profile=array([1., 0., 1., 0.]), state=None)}"
+  assert str(seq_info.fitch.variable) == "{10: VarPos(profile=array([1., 0., 1., 0.]), state=None)}"
 
   G = graph_from_nwk_str(nwk_string=tree, node_payload_factory=NodePayload, edge_payload_factory=EdgePayload)
   gtr = GTR.custom(pi=[0.2, 0.3, 0.15, 0.35], alphabet='nuc_nogap')
   attach_seqs_to_graph(G, [aln], [gtr])
   fitch_backwards(G)
-  seq_info = G.get_one_root().payload().sparse_sequences[0].state
-  assert tuple(sorted(seq_info.distribution.variable.keys())) == (0, 2, 3, 5, 6)
+  seq_info = G.get_one_root().payload().sparse_sequences[0].seq
+  assert tuple(sorted(seq_info.fitch.variable.keys())) == (0, 2, 3, 5, 6)
   assert "".join(seq_info.sequence) == '~C~~C~~TGTATTGAC'
 
   fitch_forward(G)
-  seq_info = G.get_one_root().payload().sparse_sequences[0].state
+  seq_info = G.get_one_root().payload().sparse_sequences[0].seq
   # note that this is contingent on picking the first of ACGT when there are multiple options
   assert "".join(seq_info.sequence) == aln['root']
   for n in G.get_nodes():

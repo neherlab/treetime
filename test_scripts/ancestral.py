@@ -114,7 +114,7 @@ def sparse_ingroup_profiles(graph: Graph):
     for si,seq_info in enumerate(node.payload.sparse_sequences):
       if node.is_leaf:
         # this is mostly a copy (or ref here) of the fitch state.
-        seq_info.msg_to_parents = SparseSeqDis(fixed_counts=seq_info.state.composition, variable=seq_info.state.distribution.variable, origin='input',
+        seq_info.msg_to_parents = SparseSeqDis(fixed_counts=seq_info.seq.composition, variable=seq_info.seq.fitch.variable, origin='input',
                                                 fixed={state:graph.partitions[si].profile(state) for state in alphabets[si]})
       else: # internal nodes
         # get all variable positions, the reference state, and the child states at these positions
@@ -123,14 +123,14 @@ def sparse_ingroup_profiles(graph: Graph):
         child_edges = [e.sparse_sequences[si] for c,e in node.children]
         variable_pos, child_states = get_variable_states_children(child_seqs, child_edges)
 
-        seq_dis = SparseSeqDis(fixed_counts={k:v for k,v in seq_info.state.composition.items()})
+        seq_dis = SparseSeqDis(fixed_counts={k:v for k,v in seq_info.seq.composition.items()})
 
         seq_info.msgs_from_children = []
         for ci, (c,e) in enumerate(node.children):
           seq_dis.logLH += child_seqs[ci].msg_to_parents.logLH
           seq_info.msgs_from_children.append(propagate(origin=c.name, expQt=child_expQt[ci],
                                                        seq_dis=child_seqs[ci].msg_to_parents, variable_pos=variable_pos,
-                                                       child_states = child_states[ci], non_char=child_seqs[ci].state.non_char,
+                                                       child_states = child_states[ci], non_char=child_seqs[ci].seq.non_char,
                                                        transmission=None))
 
         combine_messages(seq_dis, seq_info.msgs_from_children, variable_pos, eps, alphabets[si])
@@ -162,10 +162,10 @@ def outgroup_profiles(graph: Graph):
 
         seq_info.msgs_from_parents.append(propagate(origin=p.name, expQt=gtrs[si].expQt(e.branch_length or 0.0),
                                                      seq_dis=seq_dis, variable_pos=variable_pos, child_states=parent_states,
-                                                     non_char=pseq_info.state.non_char, transmission=None))
+                                                     non_char=pseq_info.seq.non_char, transmission=None))
 
       # gaps, unknown, etc should be the from the combined messages
-      seq_dis = SparseSeqDis(fixed_counts={k:v for k,v in seq_info.state.composition.items()})
+      seq_dis = SparseSeqDis(fixed_counts={k:v for k,v in seq_info.seq.composition.items()})
       combine_messages(seq_dis=seq_dis, messages=seq_info.msgs_from_parents + [seq_info.msg_to_parents],
                        variable_pos=variable_pos, eps=eps, alphabet=alphabets[si])
       seq_info.profile = seq_dis
