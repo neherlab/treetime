@@ -27,8 +27,9 @@ use treetime::io::nwk::{
   format_weight, nwk_read_file, nwk_write_file, EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteOptions,
 };
 use treetime::io::usher_mat::{
-  usher_mat_pb_read_file, usher_mat_pb_write_file, UsherDataToGraphData, UsherFromGraph, UsherGraphContext,
-  UsherMetadata, UsherMutationList, UsherToGraph, UsherTree, UsherTreeContext, UsherTreeNode,
+  usher_mat_json_read_file, usher_mat_json_write_file, usher_mat_pb_read_file, usher_mat_pb_write_file,
+  UsherDataToGraphData, UsherFromGraph, UsherGraphContext, UsherMatJsonOptions, UsherMetadata, UsherMutationList,
+  UsherToGraph, UsherTree, UsherTreeContext, UsherTreeNode,
 };
 use treetime::utils::global_init::{global_init, setup_logger};
 use treetime::{make_internal_report, make_report};
@@ -76,9 +77,8 @@ fn main() -> Result<(), Report> {
     TreeFormat::Newick => nwk_read_file(&args.input),
     TreeFormat::Nexus => unimplemented!("Reading Nexus files is not yet implemented"),
     TreeFormat::PhyloGraph => json_read_file(&args.input),
-    // TreeFormat::MatJson => usher_mat_json_read_file(&args.input),
+    TreeFormat::MatJson => usher_mat_json_read_file(&args.input),
     TreeFormat::MatPb => usher_mat_pb_read_file(&args.input),
-    _ => panic!(),
   }?;
 
   match output_format {
@@ -86,9 +86,8 @@ fn main() -> Result<(), Report> {
     TreeFormat::Newick => nwk_write_file(&args.output, &graph, &NwkWriteOptions::default()),
     TreeFormat::Nexus => nex_write_file(&args.output, &graph, &NexWriteOptions::default()),
     TreeFormat::PhyloGraph => json_write_file(&args.output, &graph, JsonPretty(true)),
-    // TreeFormat::MatJson => usher_mat_json_write_file(&args.output, &graph),
+    TreeFormat::MatJson => usher_mat_json_write_file(&args.output, &graph, &UsherMatJsonOptions::default()),
     TreeFormat::MatPb => usher_mat_pb_write_file(&args.output, &graph),
-    _ => panic!(),
   }?;
 
   Ok(())
@@ -273,7 +272,7 @@ impl UsherFromGraph<ConverterNode, ConverterEdge, ConverterData> for () {
 
 impl UsherToGraph<ConverterNode, ConverterEdge, ConverterData> for () {
   fn usher_node_to_graph_components(context: &UsherTreeContext) -> Result<(ConverterNode, ConverterEdge), Report> {
-    let UsherTreeContext { node, tree } = context;
+    let UsherTreeContext { node, .. } = context;
 
     let node = ConverterNode {
       name: node.name.as_ref().map(ToOwned::to_owned),

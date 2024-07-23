@@ -38,19 +38,3 @@ pub fn usher_mat_pb_write(writer: &mut impl Write, tree: &UsherTree) -> Result<(
   usher_mat_pb_write_bytes(&mut buf, tree)?;
   writer.write_all(&buf).wrap_err("When writing encoded protobuf message")
 }
-
-pub fn usher_mat_json_read_str(s: impl AsRef<str>) -> Result<UsherTree, Report> {
-  serde_json::from_str(s.as_ref()).wrap_err("When reading Usher MAT JSON string")
-}
-
-pub fn usher_mat_json_read(reader: impl Read) -> Result<UsherTree, Report> {
-  serde_json::from_reader(reader).wrap_err("When reading Usher MAT JSON")
-}
-
-pub fn usher_mat_json_write_str(tree: &UsherTree) -> Result<String, Report> {
-  serde_json::to_string(tree).wrap_err("When writing Usher MAT JSON string")
-}
-
-pub fn usher_mat_json_write(writer: &mut impl Write, tree: &UsherTree) -> Result<(), Report> {
-  serde_json::to_writer(writer, tree).wrap_err("When writing Usher MAT JSON")
-}
