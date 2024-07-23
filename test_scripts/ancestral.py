@@ -7,6 +7,8 @@ from payload import NodePayload, EdgePayload
 from profile_map import profile_map
 from fitch import init_sparse_sequences
 
+eps=1e-6
+
 def get_variable_states_children(child_seqs, child_edges):
   variable_pos = {}
   child_states = [{} for c in child_edges]
@@ -119,7 +121,7 @@ def sparse_ingroup_profiles(graph: Graph):
       else: # internal nodes
         # get all variable positions, the reference state, and the child states at these positions
         child_expQt = [gtrs[si].expQt(e.branch_length or 0.0).T for c,e in node.children]
-        child_seqs = [c.sparse_sequences[si] for c,e in node.children]
+        child_seqs =  [c.sparse_sequences[si] for c,e in node.children]
         child_edges = [e.sparse_sequences[si] for c,e in node.children]
         variable_pos, child_states = get_variable_states_children(child_seqs, child_edges)
 
@@ -143,7 +145,6 @@ def outgroup_profiles(graph: Graph):
   alphabets = [''.join(p.gtr.alphabet) for p in graph.partitions]
   gtrs = [p.gtr for p in graph.partitions]
 
-  eps=1e-6
   def calculate_outgroup_node(node: GraphNodeForward) -> None:
     if node.is_root:
       return
@@ -173,13 +174,15 @@ def outgroup_profiles(graph: Graph):
   graph.par_iter_forward(calculate_outgroup_node)
 
 def calculate_root_state(graph: Graph):
-  root_node = graph.get_roots()[0].payload()
+  root_node = graph.get_roots()[0]
+
   logLH = 0
-  for si, seq_info in enumerate(root_node.sparse_sequences):
+  for si, seq_info in enumerate(root_node.payload().sparse_sequences):
     gtr = graph.partitions[si].gtr
     seq_profile = SparseSeqDis(fixed_counts={pos:v for pos, v in seq_info.msg_to_parents.fixed_counts.items()},
                                logLH=seq_info.msg_to_parents.logLH)
 
+    # multiply the info from the tree with the GTR equilibrium probabilities (variable and fixed)
     for pos, p in seq_info.msg_to_parents.variable.items():
       vec = p.profile*gtr.Pi
       vec_norm = vec.sum()
@@ -190,9 +193,20 @@ def calculate_root_state(graph: Graph):
       vec_norm = vec.sum()
       seq_profile.logLH += np.log(vec_norm)*seq_info.msg_to_parents.fixed_counts[state]
       seq_profile.fixed[state] = vec/vec_norm
-    logLH += seq_profile.logLH
+
+    # # calculate messages to children -- ideally we'd add this as outgoing edge payload
+    # seq_info.msgs_to_children = []
+    # variable_pos = {pos:p.state for pos, p in seq_info.msg_to_parents.variable.items()}
+    # for c,e in graph.children_of(root_node.key()):
+    #   msgs = [m for m in seq_info.msgs_from_children if m.origin!=c.payload().name]
+    #   seq_dis = SparseSeqDis(fixed_counts={pos:v for pos, v in seq_info.msg_to_parents.fixed_counts.items()})
+    #   combine_messages(seq_dis, msgs, variable_pos=variable_pos, eps=eps, alphabet=gtr.alphabet,
+    #                    gtr_weight=gtr.Pi)
+    #   seq_info.msgs_to_children.append(seq_dis)
 
     seq_info.profile=seq_profile
+    logLH += seq_profile.logLH
+
   return logLH
 
 

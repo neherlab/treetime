@@ -34,8 +34,6 @@ class SparseSeqDis(AutoRepr):
 class FitchVar(AutoRepr):
   '''
   - variable (probability vector for each variable position collecting information from children)
-  - fixed (probability vector for the state of fixed positions based on information from children)
-  - logLH (total_LH)
   '''
   variable: Dict[int, VarPos] = field(default_factory=dict)
   variable_indel: Dict[Range, Deletion] = field(default_factory=dict)
