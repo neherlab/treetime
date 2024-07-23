@@ -273,15 +273,10 @@ impl UsherFromGraph<ConverterNode, ConverterEdge, ConverterData> for () {
 
 impl UsherToGraph<ConverterNode, ConverterEdge, ConverterData> for () {
   fn usher_node_to_graph_components(context: &UsherTreeContext) -> Result<(ConverterNode, ConverterEdge), Report> {
-    let &UsherTreeContext {
-      node,
-      mutations,
-      metadata,
-      tree,
-    } = context;
+    let UsherTreeContext { node, tree } = context;
 
     let node = ConverterNode {
-      name: Some(node.node_name.clone()),
+      name: node.name.as_ref().map(ToOwned::to_owned),
     };
 
     let edge = ConverterEdge { weight: None };

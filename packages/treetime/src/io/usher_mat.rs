@@ -4,11 +4,11 @@ use crate::graph::node::{GraphNode, Named};
 use crate::io::file::create_file_or_stdout;
 use crate::io::file::open_file_or_stdin;
 use crate::io::nwk::{nwk_read_str, nwk_write_str, EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteOptions};
+use crate::make_error;
 use bytes::Buf;
 use eyre::{Report, WrapErr};
 use std::io::{Read, Write};
 use std::path::Path;
-
 pub use usher_mat_utils::{UsherMetadata, UsherMutation, UsherMutationList, UsherTree, UsherTreeNode};
 
 pub fn usher_mat_pb_read_file<N, E, D>(filepath: impl AsRef<Path>) -> Result<Graph<N, E, D>, Report>
@@ -91,9 +91,7 @@ pub trait UsherDataToGraphData: Sized + Default {
 }
 
 pub struct UsherTreeContext<'a> {
-  pub node: &'a UsherTreeNode,
-  pub mutations: &'a UsherMutationList,
-  pub metadata: &'a UsherMetadata,
+  pub node: UsherNodeImpl,
   pub tree: &'a UsherTree,
 }
 
@@ -107,43 +105,51 @@ where
   fn usher_node_to_graph_components(context: &UsherTreeContext) -> Result<(N, E), Report>;
 }
 
+pub struct UsherNodeImpl {
+  pub name: Option<String>,
+  pub branch_length: f64,
+  pub clade_annotations: Vec<String>,
+  pub mutations: Vec<UsherMutation>,
+}
+
 /// Convert Usher MAT protobuf to graph
-pub fn usher_to_graph<N, E, D>(data: &UsherTree) -> Result<Graph<N, E, D>, Report>
+pub fn usher_to_graph<N, E, D>(tree: &UsherTree) -> Result<Graph<N, E, D>, Report>
 where
   N: GraphNode + NodeFromNwk + Named,
   E: GraphEdge + EdgeFromNwk,
   D: UsherDataToGraphData + Sync + Send + Default,
   (): UsherToGraph<N, E, D>,
 {
-  println!("{}", &data.newick);
+  let mut graph: Graph<N, E, D> = nwk_read_str(&tree.newick)?;
 
-  let mut graph: Graph<N, E, D> = nwk_read_str(&data.newick)?;
-  graph.set_data(D::usher_data_to_graph_data(data)?);
+  let n_nodes = &graph.num_nodes();
+  let n_muts = &tree.node_mutations.len();
+  let n_meta = &tree.metadata.len();
 
-  // let mut i = 0;
-  // graph.iter_depth_first_preorder_forward(|mut node| {
-  //   let context = UsherTreeContext {
-  //     node: &data.condensed_nodes[i],
-  //     mutations: &data.node_mutations[i],
-  //     metadata: &data.metadata[i],
-  //     tree: data,
-  //   };
-  //
-  //   // if let Some(name) = node.payload.name() {
-  //   //   assert_eq!(context.node.node_name, name.as_ref());
-  //   // }
-  //
-  //   let (graph_node, graph_edge) = <() as UsherToGraph<N, E, D>>::usher_node_to_graph_components(&context).unwrap();
-  //
-  //   *node.payload = graph_node;
-  //
-  //   // if let Some(parent) = node.parents.first() {
-  //   //   let (_, edge) = parent;
-  //   //   *edge.write_arc() = graph_edge;
-  //   // }
-  //
-  //   i += 1;
-  // });
+  if n_nodes != n_muts || n_nodes != n_meta {
+    return make_error!(
+      "Inconsistent number of nodes, mutations and metadata entries: nodes: {n_nodes}, muts: {n_muts}, meta: {n_meta}"
+    );
+  }
+
+  graph.set_data(D::usher_data_to_graph_data(tree)?);
+
+  let mut i = 0;
+  graph.iter_depth_first_preorder_forward(|mut node| {
+    let context = UsherTreeContext {
+      node: UsherNodeImpl {
+        name: node.payload.name().map(|name| name.as_ref().to_owned()),
+        branch_length: 0.0,
+        clade_annotations: tree.metadata[i].clade_annotations.clone(),
+        mutations: tree.node_mutations[i].mutation.clone(),
+      },
+      tree,
+    };
+
+    let (graph_node, _) = <() as UsherToGraph<N, E, D>>::usher_node_to_graph_components(&context).unwrap();
+    *node.payload = graph_node;
+    i += 1;
+  });
 
   Ok(graph)
 }
