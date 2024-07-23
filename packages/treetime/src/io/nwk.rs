@@ -64,11 +64,11 @@ where
 
     // Discard node names which are parseable to a number. These are not names, but weights.
     // And we don't need them here. Weights are collected onto the edges later.
-    let nwk_node = nwk_node.parse::<f64>().ok().map(|_| String::new());
+    let name: Option<&str> = nwk_node.parse::<f64>().is_err().then_some(nwk_node.as_str());
 
     let comments = btreemap! {}; // TODO: parse nwk comments
-    let node = N::from_nwk(nwk_node.as_ref(), &comments)
-      .wrap_err_with(|| format!("When reading node #{nwk_idx} '{}'", nwk_node.unwrap_or_default()))?;
+    let node = N::from_nwk(name, &comments)
+      .wrap_err_with(|| format!("When reading node #{nwk_idx} '{}'", name.unwrap_or_default()))?;
     let node_key = graph.add_node(node);
     index_map.insert(nwk_idx, node_key);
   }

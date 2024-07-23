@@ -9,9 +9,10 @@ use itertools::Itertools;
 use parking_lot::lock_api::{ArcRwLockReadGuard, ArcRwLockWriteGuard};
 use parking_lot::{RawRwLock, RwLock};
 use serde::{Deserialize, Serialize};
+use std::collections::{HashSet, VecDeque};
 use std::fmt::Debug;
 use std::sync::Arc;
-use traversal::{Bft, DftPost, DftPre};
+use traversal::{Bft, DftPre};
 
 pub type SafeNode<N> = Arc<RwLock<Node<N>>>;
 pub type SafeNodeRef<N> = ArcRwLockReadGuard<RawRwLock, Node<N>>;
@@ -535,9 +536,14 @@ where
   /// the node itself is visited.
   pub fn iter_depth_first_preorder_forward(&self, mut explorer: impl FnMut(GraphNodeForward<N, E, D>)) {
     let root = self.get_exactly_one_root().unwrap();
-    DftPre::new(&root, |node| self.iter_children_arc(node)).for_each(move |(_, node)| {
-      explorer(GraphNodeForward::new(self, &node.write()));
-    });
+    let mut stack = Vec::from([(Arc::clone(&root), None)]);
+    while let Some((current_node, _current_edge)) = stack.pop() {
+      let current_node = current_node.read_arc();
+      explorer(GraphNodeForward::new(self, &current_node));
+      for (child, edge) in self.children_of(&current_node).into_iter().rev() {
+        stack.push((child, Some(edge)));
+      }
+    }
   }
 
   pub fn iter_depth_first_preorder_forward_2(&self, mut explorer: impl FnMut(&SafeNode<N>)) {
@@ -553,9 +559,25 @@ where
   /// the node itself is visited.
   pub fn iter_depth_first_postorder_forward(&self, mut explorer: impl FnMut(GraphNodeBackward<N, E, D>)) {
     let root = self.get_exactly_one_root().unwrap();
-    DftPost::new(&root, |node| self.iter_children_arc(node)).for_each(move |(_, node)| {
-      explorer(GraphNodeBackward::new(self, &node.write()));
-    });
+    let mut stack = Vec::new();
+    let mut visited = HashSet::new();
+    stack.push((Arc::clone(&root), None));
+    while let Some((current_node, _)) = stack.pop() {
+      let node_key = current_node.read_arc().key();
+      if !visited.contains(&node_key) {
+        visited.insert(node_key);
+        stack.push((Arc::clone(&current_node), None));
+        let children = self.children_of(&current_node.read_arc()).into_iter().rev();
+        for (child, edge) in children {
+          let child_key = child.read_arc().key();
+          if !visited.contains(&child_key) {
+            stack.push((child, Some(edge)));
+          }
+        }
+      } else {
+        explorer(GraphNodeBackward::new(self, &current_node.read_arc()));
+      }
+    }
   }
 
   /// Synchronously traverse graph in breadth-first order forward (from roots to leaves, along edge directions).
@@ -564,9 +586,16 @@ where
   /// the node itself is visited.
   pub fn iter_breadth_first_forward(&self, mut explorer: impl FnMut(GraphNodeForward<N, E, D>)) {
     let root = self.get_exactly_one_root().unwrap();
-    Bft::new(&root, |node| self.iter_children_arc(node)).for_each(move |(_, node)| {
-      explorer(GraphNodeForward::new(self, &node.write()));
-    });
+    let mut queue = VecDeque::new();
+    queue.push_back(Arc::clone(&root));
+
+    while let Some(current_node) = queue.pop_front() {
+      explorer(GraphNodeForward::new(self, &current_node.read_arc()));
+      let children = self.children_of(&current_node.read_arc());
+      for (child, _) in children {
+        queue.push_back(child);
+      }
+    }
   }
 
   /// Synchronously traverse graph in breadth-first order backwards (from leaves to roots, against edge directions).
@@ -632,12 +661,16 @@ where
 
 #[cfg(test)]
 pub mod tests {
-  use super::*;
+  use std::collections::BTreeMap;
+
+  use pretty_assertions::assert_eq;
+
   use crate::graph::edge::Weighted;
   use crate::graph::node::Named;
   use crate::io::graphviz::{EdgeToGraphViz, NodeToGraphviz};
   use crate::io::nwk::{format_weight, nwk_read_str, EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteOptions};
-  use std::collections::BTreeMap;
+
+  use super::*;
 
   #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
   pub struct TestNode(pub Option<String>);
