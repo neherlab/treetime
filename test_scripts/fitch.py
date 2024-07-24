@@ -109,7 +109,7 @@ def fitch_backwards(graph: Graph):
             # this position does not have character state information
             continue
           if pos in cseq.fitch.variable:
-            child_profiles.append(cseq.fitch.variable[pos].profile)
+            child_profiles.append(cseq.fitch.variable[pos].dis)
           else:
             child_profiles.append(profile(cseq.sequence[pos]))
 
@@ -205,7 +205,7 @@ def fitch_forward(graph: Graph):
 
       if node.is_root:
         for pos, p in seq_info.fitch.variable.items():
-            p.state = gtr.alphabet[np.argmax(p.profile)]
+            p.state = gtr.alphabet[np.argmax(p.dis)]
             seq_info.sequence[pos] = p.state
 
         # process indels as majority rule at the root
@@ -237,10 +237,10 @@ def fitch_forward(graph: Graph):
         for pos, p in seq_info.fitch.variable.items():
           pnuc=pseq.sequence[pos]
           # check whether parent is in child profile (sum>0 --> parent state is in profile)
-          if np.sum(profile(pnuc)*p.profile):
+          if np.sum(profile(pnuc)*p.dis):
             seq_info.sequence[pos] = pnuc
           else:
-            cnuc = gtr.alphabet[np.argmax(p.profile)]
+            cnuc = gtr.alphabet[np.argmax(p.dis)]
             seq_info.sequence[pos] = cnuc
             pedge.muts.append(add_mutation(pos, pnuc, cnuc, seq_info.composition))
 
@@ -329,7 +329,7 @@ def reconstruct_sequence(graph: Graph, node: Node):
       for pos in range(r.start, r.end):
         seq[pos]=graph.sparse_partitions[si].gtr.ambiguous
     for pos, p in seq_info.fitch.variable.items():
-      seq[pos]=graph.sparse_partitions[si].code(tuple(p.profile))
+      seq[pos]=graph.sparse_partitions[si].code(tuple(p.dis))
     seqs.append(seq)
 
   return seqs
@@ -353,7 +353,7 @@ def tests():
 
   seq_info = seq_info_from_array(np.fromiter(aln['D'], 'U1'), profile, 'ACGT-N')
   assert str(seq_info.gaps.ranges) == "[Range(start=14, end=16)]"
-  assert str(seq_info.fitch.variable) == "{10: VarPos(profile=array([1., 0., 1., 0.]), state=None)}"
+  assert str(seq_info.fitch.variable) == "{10: VarPos(dis=array([1., 0., 1., 0.]), state=None)}"
 
   G = graph_from_nwk_str(nwk_string=tree, node_payload_factory=NodePayload, edge_payload_factory=EdgePayload)
   gtr = GTR.custom(pi=[0.2, 0.3, 0.15, 0.35], alphabet='nuc_nogap')

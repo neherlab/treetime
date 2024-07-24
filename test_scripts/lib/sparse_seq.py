@@ -7,7 +7,7 @@ import numpy as np
 
 @dataclass
 class VarPos(AutoRepr):
-  profile: np.array  # array of floats of size 'alphabet'
+  dis: np.array  # array of floats of size 'alphabet'
   state: str
 
 @dataclass

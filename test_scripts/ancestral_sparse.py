@@ -53,7 +53,7 @@ def propagate(expQt, seq_dis, variable_pos, child_states, non_char, transmission
       continue
 
     if pos in seq_dis.variable:
-      v = seq_dis.variable[pos].profile
+      v = seq_dis.variable[pos].dis
     elif pos in child_states:
       v = seq_dis.fixed[child_states[pos]]
       message.fixed_counts[child_states[pos]] -= 1
@@ -72,13 +72,13 @@ def combine_messages(seq_dis, messages, variable_pos, eps, alphabet, gtr_weight=
   # go over all putatively variable positions
   for pos, state in variable_pos.items():
     # collect the profiles of children to multiply
-    msg_profiles = [] if gtr_weight is None else [gtr_weight]
+    msg_dis = [] if gtr_weight is None else [gtr_weight]
     for msg in messages:
       if pos in msg.variable:
-        msg_profiles.append(msg.variable[pos].profile)
+        msg_dis.append(msg.variable[pos].dis)
 
     # calculate new profile and likelihood contribution
-    vec = np.prod(msg_profiles, axis=0)
+    vec = np.prod(msg_dis, axis=0)
     vec_norm = vec.sum()
 
     # add position to variable states if the subleading states have a probability exceeding eps
@@ -96,10 +96,10 @@ def combine_messages(seq_dis, messages, variable_pos, eps, alphabet, gtr_weight=
     # indeterminate parts in some children are not handled correctly here.
     # they should not contribute to the product. This will require some additional
     # handling or could be handled by treating these positions as variable
-    msg_profiles = [] if gtr_weight is None else [gtr_weight]
+    msg_dis = [] if gtr_weight is None else [gtr_weight]
     for msg in messages:
-      msg_profiles.append(msg.fixed[state])
-    vec = np.prod(msg_profiles, axis=0)
+      msg_dis.append(msg.fixed[state])
+    vec = np.prod(msg_dis, axis=0)
     vec_norm = vec.sum()
 
     seq_dis.logLH += seq_dis.fixed_counts[state]*np.log(vec_norm)
@@ -192,7 +192,7 @@ def calculate_root_state_sparse(graph: Graph):
 
       # multiply the info from the tree with the GTR equilibrium probabilities (variable and fixed)
       for pos, p in seq_info.msg_to_parents.variable.items():
-        vec = p.profile*gtr.Pi
+        vec = p.dis*gtr.Pi
         vec_norm = vec.sum()
         seq_profile.logLH += np.log(vec_norm)
         seq_profile.variable[pos] = VarPos(vec/vec_norm, p.state)
@@ -243,15 +243,15 @@ def tests():
   seq_info_root = G.get_one_root().payload().sparse_sequences[0]
 
   assert tuple(sorted(seq_info_root.msg_to_parents.variable.keys()))==(0,2,3,5,6,7,10)
-  assert tuple([round(x,8) for x in seq_info_root.msg_to_parents.variable[0].profile])==(0.34485164, 0.17637237, 0.22492433, 0.25385166)
+  assert tuple([round(x,8) for x in seq_info_root.msg_to_parents.variable[0].dis])==(0.34485164, 0.17637237, 0.22492433, 0.25385166)
 
   calculate_root_state_sparse(G)
-  assert tuple([round(x,8) for x in seq_info_root.profile.variable[0].profile])==(0.28212327, 0.21643546, 0.13800802, 0.36343326)
+  assert tuple([round(x,8) for x in seq_info_root.profile.variable[0].dis])==(0.28212327, 0.21643546, 0.13800802, 0.36343326)
   assert np.abs(seq_info_root.profile.fixed['G']-np.array([1.76723056e-04, 2.65084585e-04, 9.99248927e-01, 3.09265349e-04])).sum()<1e-6
 
   outgroup_profiles_sparse(G)
   node_AB = G.get_node(G.nodes[1].key()).payload().sparse_sequences[0]
-  assert np.abs(node_AB.profile.variable[0].profile-np.array([0.51275208, 0.09128506, 0.24647255, 0.14949031])).sum()<1e-6
+  assert np.abs(node_AB.profile.variable[0].dis-np.array([0.51275208, 0.09128506, 0.24647255, 0.14949031])).sum()<1e-6
 
 if __name__=="__main__":
   fname_nwk = 'data/ebola/ebola.nwk'
