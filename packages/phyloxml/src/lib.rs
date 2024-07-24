@@ -74,18 +74,24 @@ pub struct Phyloxml {
 pub struct PhyloxmlPhylogeny {
   #[serde(rename = "@rooted")]
   pub rooted: bool,
-  #[serde(rename = "@rerootable")]
+  #[serde(rename = "@rerootable", skip_serializing_if = "Option::is_none")]
   pub rerootable: Option<bool>,
-  #[serde(rename = "@branch_length_unit")]
+  #[serde(rename = "@branch_length_unit", skip_serializing_if = "Option::is_none")]
   pub branch_length_unit: Option<String>,
   #[serde(rename = "@type")]
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub phylogeny_type: Option<String>,
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub name: Option<String>,
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub id: Option<PhyloXmlId>,
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub description: Option<String>,
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub date: Option<String>,
   #[serde(default, skip_serializing_if = "Vec::is_empty")]
   pub confidence: Vec<PhyloxmlConfidence>,
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub clade: Option<PhyloxmlClade>,
   #[serde(default, skip_serializing_if = "Vec::is_empty")]
   pub clade_relation: Vec<PhyloxmlCladeRelation>,
@@ -99,24 +105,33 @@ pub struct PhyloxmlPhylogeny {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PhyloxmlClade {
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub name: Option<String>,
   #[serde(rename = "branch_length")]
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub branch_length_elem: Option<f64>,
   #[serde(rename = "@branch_length")]
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub branch_length_attr: Option<f64>,
   #[serde(default, skip_serializing_if = "Vec::is_empty")]
   pub confidence: Vec<PhyloxmlConfidence>,
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub width: Option<f64>,
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub color: Option<PhyloxmlBranchColor>,
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub node_id: Option<PhyloXmlId>,
   #[serde(default, skip_serializing_if = "Vec::is_empty")]
   pub taxonomy: Vec<PhyloxmlTaxonomy>,
   #[serde(default, skip_serializing_if = "Vec::is_empty")]
   pub sequence: Vec<PhyloxmlSequence>,
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub events: Option<PhyloxmlEvents>,
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub binary_characters: Option<PhyloxmlBinaryCharacters>,
   #[serde(default, skip_serializing_if = "Vec::is_empty")]
   pub distribution: Vec<PhyloxmlDistribution>,
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub date: Option<PhyloxmlDate>,
   #[serde(default, skip_serializing_if = "Vec::is_empty")]
   pub reference: Vec<PhyloxmlReference>,
@@ -130,15 +145,21 @@ pub struct PhyloxmlClade {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PhyloxmlTaxonomy {
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub id: Option<PhyloXmlId>,
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub code: Option<String>,
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub scientific_name: Option<String>,
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub authority: Option<String>,
   #[serde(default, skip_serializing_if = "Vec::is_empty")]
   pub common_name: Vec<String>,
   #[serde(default, skip_serializing_if = "Vec::is_empty")]
   pub synonym: Vec<String>,
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub rank: Option<String>,
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub uri: Option<PhyloxmlUri>,
   #[serde(flatten)]
   pub other: BTreeMap<String, serde_json::Value>,
@@ -146,14 +167,21 @@ pub struct PhyloxmlTaxonomy {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PhyloxmlSequence {
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub symbol: Option<String>,
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub accession: Option<PhyloxmlAccession>,
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub name: Option<String>,
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub location: Option<String>,
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub mol_seq: Option<PhyloxmlMolSeq>,
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub uri: Option<PhyloxmlUri>,
   #[serde(default, skip_serializing_if = "Vec::is_empty")]
   pub annotation: Vec<PhyloxmlAnnotation>,
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub domain_architecture: Option<PhyloxmlDomainArchitecture>,
   #[serde(flatten)]
   pub other: BTreeMap<String, serde_json::Value>,
@@ -163,6 +191,7 @@ pub struct PhyloxmlSequence {
 pub struct PhyloxmlMolSeq {
   #[serde(rename = "$value")]
   pub sequence: String,
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub is_aligned: Option<bool>,
 }
 
@@ -173,6 +202,7 @@ pub struct PhyloxmlAccession {
   #[serde(rename = "@source")]
   pub source: String,
   #[serde(rename = "@comment")]
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub comment: Option<String>,
 }
 
@@ -192,16 +222,23 @@ pub struct PhyloxmlProteinDomain {
   pub from: u64,
   #[serde(rename = "@to")]
   pub to: u64,
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub confidence: Option<f64>,
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub id: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PhyloxmlEvents {
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub event_type: Option<String>,
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub duplications: Option<u64>,
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub speciations: Option<u64>,
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub losses: Option<u64>,
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub confidence: Option<PhyloxmlConfidence>,
 }
 
@@ -217,11 +254,13 @@ pub struct PhyloxmlConfidence {
 pub struct PhyloXmlId {
   #[serde(rename = "$value")]
   pub identifier: String,
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub provider: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PhyloxmlDistribution {
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub desc: Option<String>,
   #[serde(default, skip_serializing_if = "Vec::is_empty")]
   pub point: Vec<PhyloxmlPoint>,
@@ -233,8 +272,10 @@ pub struct PhyloxmlDistribution {
 pub struct PhyloxmlPoint {
   pub lat: f64,
   pub long: f64,
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub alt: Option<f64>,
   pub geodetic_datum: String,
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub alt_unit: Option<String>,
 }
 
@@ -246,10 +287,15 @@ pub struct Polygon {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PhyloxmlDate {
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub desc: Option<String>,
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub value: Option<f64>,
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub minimum: Option<f64>,
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub maximum: Option<f64>,
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub unit: Option<String>,
 }
 
@@ -262,18 +308,22 @@ pub struct PhyloxmlBranchColor {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PhyloxmlSequenceRelation {
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub confidence: Option<PhyloxmlConfidence>,
   pub id_ref_0: String,
   pub id_ref_1: String,
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub distance: Option<f64>,
   pub type_: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PhyloxmlCladeRelation {
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub confidence: Option<PhyloxmlConfidence>,
   pub id_ref_0: String,
   pub id_ref_1: String,
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub distance: Option<f64>,
   pub type_: String,
 }
@@ -282,7 +332,9 @@ pub struct PhyloxmlCladeRelation {
 pub struct PhyloxmlUri {
   #[serde(rename = "$value")]
   pub uri: String,
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub desc: Option<String>,
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub type_: Option<String>,
 }
 
@@ -293,39 +345,57 @@ pub struct PhyloxmlProperty {
   #[serde(rename = "@ref")]
   pub ref_: String,
   #[serde(rename = "@unit")]
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub unit: Option<String>,
   #[serde(rename = "@datatype")]
   pub datatype: String,
   #[serde(rename = "@applies_to")]
   pub applies_to: String,
   #[serde(rename = "@id_ref")]
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub id_ref: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PhyloxmlAnnotation {
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub desc: Option<String>,
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub confidence: Option<PhyloxmlConfidence>,
   #[serde(default, skip_serializing_if = "Vec::is_empty")]
   pub property: Vec<PhyloxmlProperty>,
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub uri: Option<PhyloxmlUri>,
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub ref_: Option<String>,
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub source: Option<String>,
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub evidence: Option<String>,
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub type_: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PhyloxmlBinaryCharacters {
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub gained: Option<PhyloxmlBinaryCharacterList>,
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub lost: Option<PhyloxmlBinaryCharacterList>,
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub present: Option<PhyloxmlBinaryCharacterList>,
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub absent: Option<PhyloxmlBinaryCharacterList>,
   #[serde(rename = "type")]
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub character_type: Option<String>,
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub gained_count: Option<u64>,
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub lost_count: Option<u64>,
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub present_count: Option<u64>,
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub absent_count: Option<u64>,
 }
 
@@ -337,6 +407,8 @@ pub struct PhyloxmlBinaryCharacterList {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PhyloxmlReference {
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub desc: Option<String>,
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub doi: Option<String>,
 }
