@@ -26,6 +26,11 @@ use treetime::io::nex::{nex_write_file, NexWriteOptions};
 use treetime::io::nwk::{
   format_weight, nwk_read_file, nwk_write_file, EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteOptions,
 };
+use treetime::io::phyloxml::{
+  phyloxml_json_read_file, phyloxml_json_write_file, phyloxml_read_file, phyloxml_write_file, Phyloxml, PhyloxmlClade,
+  PhyloxmlContext, PhyloxmlDataFromGraphData, PhyloxmlDataToGraphData, PhyloxmlFromGraph, PhyloxmlGraphContext,
+  PhyloxmlJsonOptions, PhyloxmlPhylogeny, PhyloxmlToGraph,
+};
 use treetime::io::usher_mat::{
   usher_mat_json_read_file, usher_mat_json_write_file, usher_mat_pb_read_file, usher_mat_pb_write_file,
   UsherDataToGraphData, UsherFromGraph, UsherGraphContext, UsherMatJsonOptions, UsherMetadata, UsherMutationList,
@@ -79,6 +84,8 @@ fn main() -> Result<(), Report> {
     TreeFormat::PhyloGraph => json_read_file(&args.input),
     TreeFormat::MatJson => usher_mat_json_read_file(&args.input),
     TreeFormat::MatPb => usher_mat_pb_read_file(&args.input),
+    TreeFormat::Phyloxml => phyloxml_read_file(&args.input),
+    TreeFormat::PhyloxmlJson => phyloxml_json_read_file(&args.input),
   }?;
 
   match output_format {
@@ -88,6 +95,8 @@ fn main() -> Result<(), Report> {
     TreeFormat::PhyloGraph => json_write_file(&args.output, &graph, JsonPretty(true)),
     TreeFormat::MatJson => usher_mat_json_write_file(&args.output, &graph, &UsherMatJsonOptions::default()),
     TreeFormat::MatPb => usher_mat_pb_write_file(&args.output, &graph),
+    TreeFormat::Phyloxml => phyloxml_write_file(&args.output, &graph),
+    TreeFormat::PhyloxmlJson => phyloxml_json_write_file(&args.output, &graph, &PhyloxmlJsonOptions::default()),
   }?;
 
   Ok(())
@@ -173,6 +182,7 @@ impl EdgeToGraphViz for ConverterEdge {
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct ConverterData {
+  pub rooted: bool,
   pub version: Option<String>,
   pub meta: AuspiceTreeMeta,
   pub root_sequence: Option<BTreeMap<String, String>>,
@@ -193,6 +203,7 @@ impl AuspiceDataFromGraphData for ConverterData {
 impl AuspiceDataToGraphData for ConverterData {
   fn auspice_data_to_graph_data(tree: &AuspiceTree) -> Result<Self, Report> {
     Ok(Self {
+      rooted: true,
       version: tree.data.version.clone(),
       meta: tree.data.meta.clone(),
       root_sequence: tree.data.root_sequence.clone(),
@@ -232,6 +243,86 @@ impl AuspiceToGraph<ConverterNode, ConverterEdge, ConverterData> for () {
       },
       ConverterEdge {
         weight: node.node_attrs.div,
+      },
+    ))
+  }
+}
+
+impl PhyloxmlDataFromGraphData for ConverterData {
+  fn phyloxml_data_from_graph_data(&self) -> Result<Phyloxml, Report> {
+    Ok(Phyloxml {
+      phylogeny: vec![PhyloxmlPhylogeny {
+        rooted: self.rooted,
+        rerootable: None,
+        branch_length_unit: None,
+        phylogeny_type: None,
+        name: None,
+        id: None,
+        description: None,
+        date: None,
+        confidence: vec![],
+        clade: None,
+        clade_relation: vec![],
+        sequence_relation: vec![],
+        property: vec![],
+        other: BTreeMap::default(),
+      }],
+      other: BTreeMap::default(),
+    })
+  }
+}
+
+impl PhyloxmlDataToGraphData for ConverterData {
+  fn phyloxml_data_to_graph_data(pxml: &Phyloxml) -> Result<Self, Report> {
+    Ok(Self {
+      rooted: pxml.phylogeny[0].rooted,
+      version: None,
+      meta: AuspiceTreeMeta::default(),
+      root_sequence: None,
+      other: Value::default(),
+    })
+  }
+}
+
+impl PhyloxmlFromGraph<ConverterNode, ConverterEdge, ConverterData> for () {
+  fn phyloxml_node_from_graph_components(
+    PhyloxmlGraphContext { node, edge, .. }: &PhyloxmlGraphContext<ConverterNode, ConverterEdge, ConverterData>,
+  ) -> Result<PhyloxmlClade, Report> {
+    Ok(PhyloxmlClade {
+      name: None,
+      branch_length_elem: edge.and_then(|edge| edge.weight),
+      branch_length_attr: edge.and_then(|edge| edge.weight),
+      confidence: vec![],
+      width: None,
+      color: None,
+      node_id: None,
+      taxonomy: vec![],
+      sequence: vec![],
+      events: None,
+      binary_characters: None,
+      distribution: vec![],
+      date: None,
+      reference: vec![],
+      property: vec![],
+      clade: vec![],
+      other: BTreeMap::default(),
+    })
+  }
+}
+
+impl PhyloxmlToGraph<ConverterNode, ConverterEdge, ConverterData> for () {
+  fn phyloxml_node_to_graph_components(
+    PhyloxmlContext { clade, pxml }: &PhyloxmlContext,
+  ) -> Result<(ConverterNode, ConverterEdge), Report> {
+    Ok((
+      ConverterNode {
+        name: clade
+          .name
+          .clone()
+          .or_else(|| clade.taxonomy.first().as_ref().and_then(|t| t.scientific_name.clone())),
+      },
+      ConverterEdge {
+        weight: clade.branch_length_attr.or(clade.branch_length_elem),
       },
     ))
   }
@@ -293,6 +384,8 @@ pub enum TreeFormat {
   Newick,
   Nexus,
   PhyloGraph,
+  Phyloxml,
+  PhyloxmlJson,
 }
 
 pub fn guess_tree_format_from_filename(filepath: impl AsRef<Path>) -> Option<TreeFormat> {
@@ -305,6 +398,7 @@ pub fn guess_tree_format_from_filename(filepath: impl AsRef<Path>) -> Option<Tre
     Some("mat.pb") => Some(TreeFormat::MatPb),
     Some("nex | nexus") => Some(TreeFormat::Nexus),
     Some("nwk" | "newick") => Some(TreeFormat::Newick),
+    Some("phylo.xml") => Some(TreeFormat::Phyloxml),
     _ => None,
   }
 }

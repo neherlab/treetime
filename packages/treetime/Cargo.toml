@@ -16,6 +16,7 @@ crate-type = ["lib"]
 
 
 [dependencies]
+phyloxml = { path = "../phyloxml" }
 usher-mat-utils = { path = "../usher-mat-utils" }
 
 approx = { workspace = true }
