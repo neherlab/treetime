@@ -32,11 +32,11 @@ def attach_seqs_to_graph(graph: Graph, aln_list: List[Dict[str,np.array]], gtr_l
     n.payload().sparse_sequences = []
     name_to_key[n.payload().name] = n.key()
 
-  graph.partitions = []
+  graph.sparse_partitions = []
   for aln, gtr in zip(aln_list, gtr_list):
     L = len(aln[list(aln.keys())[0]]) # stupid way to get alignment length
     partition = SeqPartition(gtr=gtr, length=L, profile_map=profile_map)
-    graph.partitions.append(partition)
+    graph.sparse_partitions.append(partition)
     alphabet_gapN = ''.join(gtr.alphabet)+'-N'
     profile = partition.profile
 
@@ -56,7 +56,7 @@ def init_sparse_sequences(graph: Graph, aln_list: List[Dict[str,np.array]], gtr_
 
 
 def fitch_backwards(graph: Graph):
-  n_partitions = len(graph.partitions)
+  n_partitions = len(graph.sparse_partitions)
   def fitch_backwards_node(node: GraphNodeBackward):
     if node.is_leaf: # leaves have been dealt with in init
       return
@@ -71,9 +71,9 @@ def fitch_backwards(graph: Graph):
       # short hands
       child_seqs = [c.sparse_sequences[si].seq for c,e in node.children]
       child_edges = [e.sparse_sequences[si] for c,e in node.children]
-      gtr = graph.partitions[si].gtr
-      L = graph.partitions[si].length
-      profile = graph.partitions[si].profile
+      gtr = graph.sparse_partitions[si].gtr
+      L = graph.sparse_partitions[si].length
+      profile = graph.sparse_partitions[si].profile
 
       # init the local representation with gaps, unknowns
       # need to account for parts of the sequence transmitted along edges
@@ -195,12 +195,12 @@ def add_indel(r: Range, seq: np.array, deletion:bool, composition: Dict[str, int
 
 
 def fitch_forward(graph: Graph):
-  n_partitions = len(graph.partitions)
+  n_partitions = len(graph.sparse_partitions)
 
   def fitch_forward_node(node: GraphNodeForward):
     for si in range(n_partitions):
-      gtr = graph.partitions[si].gtr
-      profile = graph.partitions[si].profile
+      gtr = graph.sparse_partitions[si].gtr
+      profile = graph.sparse_partitions[si].profile
       seq_info = node.payload.sparse_sequences[si].seq
 
       if node.is_root:
@@ -309,7 +309,7 @@ def reconstruct_sequence(graph: Graph, node: Node):
     path_to_root.append(p)
 
   seqs = []
-  for si in range(len(graph.partitions)):
+  for si in range(len(graph.sparse_partitions)):
     seq = np.copy(path_to_root[-1].payload().sparse_sequences[si].seq.sequence)
     # walk back from root to node
     for n in path_to_root[::-1][1:]:
@@ -327,9 +327,9 @@ def reconstruct_sequence(graph: Graph, node: Node):
     seq_info = node.payload().sparse_sequences[si].seq
     for r in seq_info.unknown:
       for pos in range(r.start, r.end):
-        seq[pos]=graph.partitions[si].gtr.ambiguous
+        seq[pos]=graph.sparse_partitions[si].gtr.ambiguous
     for pos, p in seq_info.fitch.variable.items():
-      seq[pos]=graph.partitions[si].code(tuple(p.profile))
+      seq[pos]=graph.sparse_partitions[si].code(tuple(p.profile))
     seqs.append(seq)
 
   return seqs

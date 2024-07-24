@@ -9,3 +9,4 @@ from .str import *
 from .sequence_partions import *
 from .ranges import *
 from .sparse_seq import *
+from .dense_seq import *

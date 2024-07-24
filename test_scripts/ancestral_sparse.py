@@ -1,7 +1,7 @@
 from Bio import AlignIO
 import numpy as np
-from lib import Graph, graph_from_nwk_str, GraphNodeBackward, GraphNodeForward, Node
-from lib import SeqPartition, SparseSeqDis, VarPos, RangeCollection_intersection, RangeCollection, Mut
+from lib import Graph, graph_from_nwk_str, GraphNodeBackward, GraphNodeForward
+from lib import SparseSeqDis, VarPos
 from treetime import GTR
 from payload import NodePayload, EdgePayload
 from profile_map import profile_map
@@ -107,8 +107,8 @@ def combine_messages(seq_dis, messages, variable_pos, eps, alphabet, gtr_weight=
 
 
 def sparse_ingroup_profiles(graph: Graph):
-  alphabets = [''.join(p.gtr.alphabet) for p in graph.partitions]
-  gtrs = [p.gtr for p in graph.partitions]
+  alphabets = [''.join(p.gtr.alphabet) for p in graph.sparse_partitions]
+  gtrs = [p.gtr for p in graph.sparse_partitions]
 
   eps=1e-6
   def calculate_ingroup_node(node: GraphNodeBackward) -> None:
@@ -117,12 +117,13 @@ def sparse_ingroup_profiles(graph: Graph):
       if node.is_leaf:
         # this is mostly a copy (or ref here) of the fitch state.
         seq_info.msg_to_parents = SparseSeqDis(fixed_counts=seq_info.seq.composition, variable=seq_info.seq.fitch.variable,
-                                                fixed={state:graph.partitions[si].profile(state) for state in alphabets[si]})
+                                                fixed={state:graph.sparse_partitions[si].profile(state) for state in alphabets[si]})
       else: # internal nodes
-        # get all variable positions, the reference state, and the child states at these positions
         child_expQt = [gtrs[si].expQt(e.branch_length or 0.0).T for c,e in node.children]
         child_seqs =  [c.sparse_sequences[si] for c,e in node.children]
         child_edges = [e.sparse_sequences[si] for c,e in node.children]
+
+        # get all variable positions, the reference state, and the child states at these positions
         variable_pos, child_states = get_variable_states_children(child_seqs, child_edges)
 
         seq_dis = SparseSeqDis(fixed_counts={k:v for k,v in seq_info.seq.composition.items()})
@@ -142,8 +143,8 @@ def sparse_ingroup_profiles(graph: Graph):
 
 
 def outgroup_profiles(graph: Graph):
-  alphabets = [''.join(p.gtr.alphabet) for p in graph.partitions]
-  gtrs = [p.gtr for p in graph.partitions]
+  alphabets = [''.join(p.gtr.alphabet) for p in graph.sparse_partitions]
+  gtrs = [p.gtr for p in graph.sparse_partitions]
 
   def calculate_outgroup_node(node: GraphNodeForward) -> None:
     if node.is_root:
@@ -185,7 +186,7 @@ def calculate_root_state(graph: Graph):
 
   logLH = 0
   for si, seq_info in enumerate(root_node.payload().sparse_sequences):
-    gtr = graph.partitions[si].gtr
+    gtr = graph.sparse_partitions[si].gtr
     seq_profile = SparseSeqDis(fixed_counts={pos:v for pos, v in seq_info.msg_to_parents.fixed_counts.items()},
                                logLH=seq_info.msg_to_parents.logLH)
 
