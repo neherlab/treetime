@@ -52,13 +52,12 @@ def ingroup_profiles_dense(graph: Graph):
   seq_len = [p.length for p in graph.dense_partitions]
 
   def calculate_ingroup_node(node: GraphNodeBackward) -> None:
-    print(node.payload.name)
     if node.is_leaf:
       return # the msg to parents for leaves was put in init phase
 
-    node.dense_sequences=[]
+    node.payload.dense_sequences=[]
     for si,gtr in enumerate(gtrs):
-      child_expQt = [gtr.expQt(e.branch_length or 0.0.T) for c,e in node.children]
+      child_expQt = [gtr.expQt(e.branch_length or 0.0).T for c,e in node.children]
       child_seqs =  [c.dense_sequences[si] for c,e in node.children]
       child_edges = [e.dense_sequences[si] for c,e in node.children]
       gap_intersection = RangeCollection_intersection([cseq.seq.gaps for cseq in child_seqs])
@@ -115,6 +114,7 @@ def outgroup_profiles_dense(graph: Graph):
   graph.par_iter_forward(calculate_outgroup_node)
 
 def calculate_root_state_dense(graph: Graph):
+  logLH=0
   for root_node in graph.get_roots():
     for si,seq_info in enumerate(root_node.payload().dense_sequences):
       gtr = graph.dense_partitions[si].gtr
@@ -129,6 +129,15 @@ def calculate_root_state_dense(graph: Graph):
       for cname in seq_info.msgs_from_children:
         seq_info.msgs_to_children[cname] = DenseSeqDis(dis = seq_info.profile.dis/seq_info.msgs_from_children[cname].dis,
                               logLH=seq_info.profile.logLH-seq_info.msgs_from_children[cname].logLH)
+      logLH+=seq_info.profile.logLH
+  return logLH
+
+def ancestral_dense(graph: Graph) -> float:
+  ingroup_profiles_dense(graph)
+  logLH = calculate_root_state_dense(graph)
+  outgroup_profiles_dense(graph)
+  return logLH
+
 
 if __name__=="__main__":
   fname_nwk = 'data/ebola/ebola.nwk'
@@ -143,6 +152,4 @@ if __name__=="__main__":
   gtr = GTR.custom(pi=[0.2, 0.3, 0.15, 0.35], alphabet='nuc_nogap')
   init_sequences_dense(G, [aln], [gtr])
 
-  ingroup_profiles_dense(G)
-  calculate_root_state_dense(G)
-  outgroup_profiles_dense(G)
+  print("LogLH", ancestral_dense(G))
