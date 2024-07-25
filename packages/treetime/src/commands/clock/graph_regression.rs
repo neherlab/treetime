@@ -26,6 +26,7 @@ pub fn calculate_averages<P: GraphNodeRegressionPolicy>(graph: &mut ClockGraph) 
        key,
        payload: mut n,
        children,
+       ..
      }| {
       if is_leaf {
         return GraphTraversalContinuation::Continue;
@@ -37,7 +38,7 @@ pub fn calculate_averages<P: GraphNodeRegressionPolicy>(graph: &mut ClockGraph) 
         let tv = P::tip_value(&c);
         let bv = P::branch_value(&edge);
         let var = P::branch_variance(&c);
-        Q += &propagate_averages(&c, tv, bv, var, false);
+        Q += &propagate_averages(&c, is_leaf, tv, bv, var, false);
       }
       n.Q = Q;
       GraphTraversalContinuation::Continue
@@ -49,9 +50,11 @@ pub fn calculate_averages<P: GraphNodeRegressionPolicy>(graph: &mut ClockGraph) 
        key,
        payload: mut node,
        parents,
+       is_leaf,
+       is_root,
        ..
      }| {
-      if node.is_root() {
+      if is_root {
         node.Qtot = node.Q.clone();
         return GraphTraversalContinuation::Continue;
       }
@@ -64,23 +67,23 @@ pub fn calculate_averages<P: GraphNodeRegressionPolicy>(graph: &mut ClockGraph) 
         let tv = P::tip_value(&parent);
         let bv = P::branch_value(&edge);
         let var = P::branch_variance(&parent);
-        O += &propagate_averages(&parent, tv, bv, var, false);
+        O += &propagate_averages(&parent, is_leaf, tv, bv, var, false);
       }
 
       for (parent, edge) in &parents {
         let parent = parent.read();
         let edge = edge.read();
-        if !node.is_root() {
+        if !is_root {
           let tv = P::tip_value(&parent);
           let bv = P::branch_value(&edge);
           let var = P::branch_variance(&parent);
-          O += &propagate_averages(&parent, tv, bv, var, true);
+          O += &propagate_averages(&parent, is_leaf, tv, bv, var, true);
         }
       }
 
       node.O = O;
 
-      if !node.is_leaf() {
+      if !is_leaf {
         let bv = {
           if parents.len() > 1 {
             unimplemented!("Multiple parent nodes are not supported yet");
@@ -96,7 +99,7 @@ pub fn calculate_averages<P: GraphNodeRegressionPolicy>(graph: &mut ClockGraph) 
 
         let tv = P::tip_value(&node);
         let var = P::branch_variance(&node);
-        node.Qtot = &node.Q + &propagate_averages(&node, tv, bv, var, true);
+        node.Qtot = &node.Q + &propagate_averages(&node, is_leaf, tv, bv, var, true);
       }
 
       GraphTraversalContinuation::Continue
@@ -105,8 +108,8 @@ pub fn calculate_averages<P: GraphNodeRegressionPolicy>(graph: &mut ClockGraph) 
 }
 
 /// Propagates means, variance, and covariances along a branch. Operates both towards the root and tips.
-pub fn propagate_averages(n: &Node, tv: Option<f64>, bv: f64, var: f64, outgroup: bool) -> Array1<f64> {
-  if n.is_leaf() && !outgroup {
+pub fn propagate_averages(n: &Node, is_leaf: bool, tv: Option<f64>, bv: f64, var: f64, outgroup: bool) -> Array1<f64> {
+  if is_leaf && !outgroup {
     match tv {
       None => Array1::<f64>::zeros(6),
       Some(tv) => {
@@ -221,8 +224,9 @@ where
        key,
        payload: mut node,
        parents,
+       ..
      }| {
-      if node.is_leaf() {
+      if is_leaf {
         return GraphTraversalContinuation::Continue;
       }
 
@@ -263,7 +267,7 @@ mod tests {
   #![allow(clippy::excessive_precision)]
 
   use super::*;
-  use crate::graph::node::NodeType;
+  use crate::o;
   use approx::assert_ulps_eq;
   use eyre::Report;
   use rstest::rstest;
@@ -307,8 +311,7 @@ mod tests {
   #[rstest]
   fn propagates_averages_internal_ingroup() -> Result<(), Report> {
     let n = Node {
-      name: "NODE_0000012".to_owned(),
-      node_type: NodeType::Internal("NODE_0000012".to_owned()),
+      name: Some(o!("NODE_0000012")),
       bad_branch: false,
       dist2root: 0.028582125098939384,
       raw_date_constraint: None,
@@ -343,7 +346,7 @@ mod tests {
     let var = 0.0;
     let outgroup = false;
 
-    let result = propagate_averages(&n, tv, bv, var, outgroup);
+    let result = propagate_averages(&n, false, tv, bv, var, outgroup);
 
     let expected = array![
       28155.5503080000016780104,
@@ -362,8 +365,7 @@ mod tests {
   #[rstest]
   fn propagates_averages_internal_outgroup() -> Result<(), Report> {
     let n = Node {
-      name: "NODE_0000014".to_owned(),
-      node_type: NodeType::Internal("NODE_0000014".to_owned()),
+      name: Some(o!("NODE_0000014")),
       bad_branch: false,
       dist2root: 0.004742125098939387,
       raw_date_constraint: None,
@@ -399,7 +401,7 @@ mod tests {
     let var = 0.0;
     let outgroup = true;
 
-    let result = propagate_averages(&n, tv, bv, var, outgroup);
+    let result = propagate_averages(&n, false, tv, bv, var, outgroup);
 
     let expected = array![
       6007.524982889999591862,
@@ -418,8 +420,7 @@ mod tests {
   #[rstest]
   fn propagates_averages_leaf_ingroup() -> Result<(), Report> {
     let n = Node {
-      name: "A/New_Hampshire/12/2012|KF790252|11/08/2012|USA|12_13|H3N2/1-1409".to_owned(),
-      node_type: NodeType::Leaf("A/New_Hampshire/12/2012|KF790252|11/08/2012|USA|12_13|H3N2/1-1409".to_owned()),
+      name: Some(o!("A/New_Hampshire/12/2012|KF790252|11/08/2012|USA|12_13|H3N2/1-1409")),
       bad_branch: false,
       dist2root: 0.0441021250989394,
       raw_date_constraint: Some(2012.8569473),
@@ -441,7 +442,7 @@ mod tests {
     let var = 0.7994;
     let outgroup = false;
 
-    let result = propagate_averages(&n, tv, bv, var, outgroup);
+    let result = propagate_averages(&n, true, tv, bv, var, outgroup);
 
     let expected = array![
       2517.95965386539910468854941,
@@ -460,8 +461,7 @@ mod tests {
   #[rstest]
   fn propagates_averages_leaf_outgroup() -> Result<(), Report> {
     let n = Node {
-      name: "A/Hawaii/02/2013|KF789866|05/28/2013|USA|12_13|H3N2/1-1409".to_owned(),
-      node_type: NodeType::Leaf("A/Hawaii/02/2013|KF789866|05/28/2013|USA|12_13|H3N2/1-1409".to_owned()),
+      name: Some(o!("A/Hawaii/02/2013|KF789866|05/28/2013|USA|12_13|H3N2/1-1409")),
       bad_branch: false,
       dist2root: 0.04696212509893939,
       raw_date_constraint: Some(2013.40520192),
@@ -483,7 +483,7 @@ mod tests {
     let var = 0.0010000000000000009;
     let outgroup = true;
 
-    let result = propagate_averages(&n, tv, bv, var, outgroup);
+    let result = propagate_averages(&n, true, tv, bv, var, outgroup);
 
     let expected = array![
       35513.562850206282746512,

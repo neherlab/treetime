@@ -16,10 +16,14 @@ crate-type = ["lib"]
 
 
 [dependencies]
+phyloxml = { path = "../phyloxml" }
+usher-mat-utils = { path = "../usher-mat-utils" }
+
 approx = { workspace = true }
 argmin = { workspace = true }
 bio = { workspace = true }
 bio-types = { workspace = true }
+bytes = { workspace = true }
 chrono = { workspace = true }
 clap = { workspace = true }
 clap-verbosity-flag = { workspace = true }
@@ -34,6 +38,7 @@ eyre = { workspace = true }
 flate2 = { workspace = true }
 gcollections = { workspace = true }
 indexmap = { workspace = true }
+indoc = { workspace = true }
 intervallum = { workspace = true }
 itertools = { workspace = true }
 lazy_static = { workspace = true }
@@ -58,6 +63,9 @@ rgb = { workspace = true }
 rstat = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+serde_repr = { workspace = true }
+serde_stacker = { workspace = true }
+serde_yaml = { workspace = true }
 smart-default = { workspace = true }
 strum = { workspace = true }
 strum_macros = { workspace = true }

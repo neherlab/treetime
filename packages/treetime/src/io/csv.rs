@@ -1,4 +1,4 @@
-use crate::io::file::create_file;
+use crate::io::file::create_file_or_stdout;
 use crate::io::fs::{extension, read_file_to_string};
 use crate::make_error;
 use crate::utils::error::to_eyre_error;
@@ -34,7 +34,7 @@ pub struct CsvStructFileWriter {
 impl CsvStructFileWriter {
   pub fn new(filepath: impl AsRef<Path>, delimiter: u8) -> Result<Self, Report> {
     let filepath = filepath.as_ref();
-    let file = create_file(filepath)?;
+    let file = create_file_or_stdout(filepath)?;
     let writer = CsvStructWriter::new(file, delimiter)?;
     Ok(Self {
       filepath: filepath.to_owned(),
@@ -86,7 +86,7 @@ pub struct CsvVecFileWriter {
 impl CsvVecFileWriter {
   pub fn new(filepath: impl AsRef<Path>, delimiter: u8, headers: &[String]) -> Result<Self, Report> {
     let filepath = filepath.as_ref();
-    let file = create_file(filepath)?;
+    let file = create_file_or_stdout(filepath)?;
     let writer = CsvVecWriter::new(file, delimiter, headers)?;
     Ok(Self {
       filepath: filepath.to_owned(),
@@ -103,8 +103,15 @@ impl VecWriter for CsvVecFileWriter {
   }
 }
 
-/// Parses CSV data from string.
-pub fn parse_csv<T: for<'de> Deserialize<'de>, S: AsRef<str>>(data: S) -> Result<Vec<T>, Report> {
+/// Parse entire CSV file
+pub fn csv_read_file<T: for<'de> Deserialize<'de>>(filepath: impl AsRef<Path>) -> Result<Vec<T>, Report> {
+  let filepath = filepath.as_ref();
+  let data = read_file_to_string(filepath)?;
+  csv_read_str(data)
+}
+
+/// Parse entire CSV string
+pub fn csv_read_str<T: for<'de> Deserialize<'de>, S: AsRef<str>>(data: S) -> Result<Vec<T>, Report> {
   let reader = CsvReaderBuilder::new()
     .has_headers(true)
     .from_reader(data.as_ref().as_bytes());
@@ -112,13 +119,6 @@ pub fn parse_csv<T: for<'de> Deserialize<'de>, S: AsRef<str>>(data: S) -> Result
     .into_deserialize::<T>()
     .map(to_eyre_error)
     .collect::<Result<Vec<T>, Report>>()
-}
-
-/// Parses CSV file.
-pub fn read_csv_file<T: for<'de> Deserialize<'de>>(filepath: impl AsRef<Path>) -> Result<Vec<T>, Report> {
-  let filepath = filepath.as_ref();
-  let data = read_file_to_string(filepath)?;
-  parse_csv(data)
 }
 
 pub fn get_col_name(

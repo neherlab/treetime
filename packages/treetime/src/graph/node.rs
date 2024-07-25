@@ -2,39 +2,18 @@ use crate::graph::edge::GraphEdgeKey;
 use derive_more::Display;
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
-use std::fmt::{Debug, Display};
+use std::fmt::Debug;
 use std::hash::Hash;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub enum NodeType {
-  Root(String),
-  Leaf(String),
-  Internal(String),
-}
-
-impl Eq for NodeType {}
-
+/// Defines how to read and write node name
 pub trait Named {
-  fn name(&self) -> &str;
-  fn set_name(&mut self, name: &str);
+  fn name(&self) -> Option<impl AsRef<str>>;
+  fn set_name(&mut self, name: Option<impl AsRef<str>>);
 }
 
-/// Defines comments to attach to nodes when writing to Newick and Nexus files
-pub trait WithNwkComments {
-  fn nwk_comments(&self) -> BTreeMap<String, String> {
-    BTreeMap::<String, String>::new()
-  }
-}
-
-pub trait GraphNode: Clone + Debug + Display + Sync + Send + Named + WithNwkComments {
-  fn root(name: &str) -> Self;
-  fn internal(name: &str) -> Self;
-  fn leaf(name: &str) -> Self;
-  fn set_node_type(&mut self, node_type: NodeType);
-}
+pub trait GraphNode: Clone + Debug + Sync + Send {}
 
 #[derive(Copy, Clone, Debug, Display, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct GraphNodeKey(pub usize);
@@ -92,7 +71,7 @@ where
     self.key
   }
 
-  /// Get node degree ie. amount of outbound edges.
+  /// Get node degree i.e. number of outbound edges.
   #[inline]
   pub fn degree(&self) -> usize {
     self.outbound().len()

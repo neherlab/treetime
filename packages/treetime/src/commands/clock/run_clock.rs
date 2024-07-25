@@ -7,9 +7,9 @@ use crate::commands::clock::run_clock_model::{run_clock_model, RunClockModelPara
 use crate::commands::clock::run_reroot::{run_reroot, RerootParams};
 use crate::io::csv::CsvStructFileWriter;
 use crate::io::dates_csv::read_dates;
-use crate::io::file::create_file;
+use crate::io::graphviz::graphviz_write_file;
 use crate::io::json::{json_write_file, JsonPretty};
-use crate::io::nwk::{write_nwk_file, WriteNwkOptions};
+use crate::io::nwk::{nwk_write_file, NwkWriteOptions};
 use eyre::{Report, WrapErr};
 
 pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
@@ -44,8 +44,8 @@ pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
     Some(tree) => create_graph(tree, &dates)?,
   };
 
-  graph.print_graph(create_file(outdir.join("graph_input.dot"))?)?;
-  json_write_file(&graph, outdir.join("graph_input.json"), JsonPretty(true))?;
+  graphviz_write_file(outdir.join("graph_input.dot"), &graph)?;
+  json_write_file(outdir.join("graph_input.json"), &graph, JsonPretty(true))?;
 
   if *clock_filter > 0.0 {
     unimplemented!("clock_filter")
@@ -77,10 +77,10 @@ pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
   let mut rtt_writer = CsvStructFileWriter::new(outdir.join("rtt.csv"), b',')?;
   rtt.iter().try_for_each(|result| rtt_writer.write(result))?;
 
-  graph.print_graph(create_file(outdir.join("graph_output.dot"))?)?;
-  json_write_file(&graph, outdir.join("graph_output.json"), JsonPretty(true))?;
+  graphviz_write_file(outdir.join("graph_output.dot"), &graph)?;
+  json_write_file(outdir.join("graph_output.json"), &graph, JsonPretty(true))?;
 
-  write_nwk_file(&outdir.join("rerooted.nwk"), &graph, &WriteNwkOptions::default())?;
+  nwk_write_file(outdir.join("rerooted.nwk"), &graph, &NwkWriteOptions::default())?;
 
   draw_rtt_console_chart(&rtt, &clock_model);
   write_rtt_svg_chart(outdir.join("rtt.svg"), &rtt, &clock_model)?;

@@ -1,27 +1,52 @@
+use crate::graph::assign_node_names::assign_node_names;
 use crate::graph::edge::GraphEdge;
 use crate::graph::graph::{Graph, SafeEdge, SafeNode};
-use crate::graph::node::GraphNode;
-use crate::io::file::create_file;
-use crate::io::fs::read_file_to_string;
+use crate::graph::node::GraphNodeKey;
+use crate::graph::node::{GraphNode, Named};
+use crate::io::file::create_file_or_stdout;
+use crate::io::file::open_file_or_stdin;
 use crate::make_error;
 use crate::utils::float_fmt::float_to_digits;
 use bio::io::newick;
-use bio_types::phylogeny::Tree;
-use eyre::{Report, WrapErr};
+use eyre::{eyre, Report, WrapErr};
+use indexmap::IndexMap;
 use itertools::Itertools;
 use log::warn;
+use maplit::btreemap;
+use petgraph::visit::IntoNodeReferences;
 use smart_default::SmartDefault;
+use std::collections::BTreeMap;
+use std::io::Cursor;
 use std::io::{Read, Write};
 use std::path::Path;
 use std::sync::Arc;
 
-pub fn read_nwk_file(nwk_file_path: impl AsRef<Path>) -> Result<Tree, Report> {
-  let nwk_file_path = nwk_file_path.as_ref();
-  let nwk_str = read_file_to_string(nwk_file_path)?;
-  read_nwk(nwk_str.as_bytes()).wrap_err_with(|| format!("When parsing Newick file {nwk_file_path:#?}"))
+pub fn nwk_read_file<N, E, D>(filepath: impl AsRef<Path>) -> Result<Graph<N, E, D>, Report>
+where
+  N: GraphNode + NodeFromNwk + Named,
+  E: GraphEdge + EdgeFromNwk,
+  D: Sync + Send + Default,
+{
+  let filepath = filepath.as_ref();
+  nwk_read(open_file_or_stdin(&Some(filepath))?).wrap_err_with(|| format!("When reading file '{filepath:#?}'"))
 }
 
-pub fn read_nwk(reader: impl Read) -> Result<Tree, Report> {
+pub fn nwk_read_str<N, E, D>(nwk_string: impl AsRef<str>) -> Result<Graph<N, E, D>, Report>
+where
+  N: GraphNode + NodeFromNwk + Named,
+  E: GraphEdge + EdgeFromNwk,
+  D: Sync + Send + Default,
+{
+  let nwk_string = nwk_string.as_ref();
+  nwk_read(Cursor::new(nwk_string)).wrap_err_with(|| format!("When reading Newick string:\n    '{nwk_string}'"))
+}
+
+pub fn nwk_read<N, E, D>(reader: impl Read) -> Result<Graph<N, E, D>, Report>
+where
+  N: GraphNode + NodeFromNwk + Named,
+  E: GraphEdge + EdgeFromNwk,
+  D: Sync + Send + Default,
+{
   let mut nwk_tree = newick::read(reader)?;
 
   nwk_tree.g.node_weights_mut().for_each(|weight| {
@@ -30,11 +55,51 @@ pub fn read_nwk(reader: impl Read) -> Result<Tree, Report> {
     }
   });
 
-  Ok(nwk_tree)
+  let mut graph = Graph::<N, E, D>::new();
+
+  // Insert nodes
+  let mut index_map = IndexMap::<usize, GraphNodeKey>::new(); // Map of internal `nwk` node indices to `Graph` node indices
+  for (nwk_idx, nwk_node) in nwk_tree.g.node_references() {
+    let nwk_idx = nwk_idx.index();
+
+    // Discard node names which are parseable to a number. These are not names, but weights.
+    // And we don't need them here. Weights are collected onto the edges later.
+    let name: Option<&str> = nwk_node.parse::<f64>().is_err().then_some(nwk_node.as_str());
+
+    let comments = btreemap! {}; // TODO: parse nwk comments
+    let node = N::from_nwk(name, &comments)
+      .wrap_err_with(|| format!("When reading node #{nwk_idx} '{}'", name.unwrap_or_default()))?;
+    let node_key = graph.add_node(node);
+    index_map.insert(nwk_idx, node_key);
+  }
+
+  // Insert edges
+  for (nwk_idx, nwk_edge) in nwk_tree.g.raw_edges().iter().enumerate() {
+    let weight: f64 = nwk_edge.weight as f64;
+    let source: usize = nwk_edge.source().index();
+    let target: usize = nwk_edge.target().index();
+
+    let source = index_map
+      .get(&source)
+      .ok_or_else(|| eyre!("When inserting edge {nwk_idx}: Node with index {source} not found."))?;
+
+    let target = index_map
+      .get(&target)
+      .ok_or_else(|| eyre!("When inserting edge {nwk_idx}: Node with index {target} not found."))?;
+
+    let edge = E::from_nwk(Some(weight))?;
+    graph.add_edge(*source, *target, edge)?;
+  }
+
+  graph.build()?;
+
+  assign_node_names(&graph);
+
+  Ok(graph)
 }
 
 #[derive(Clone, SmartDefault)]
-pub struct WriteNwkOptions {
+pub struct NwkWriteOptions {
   /// Format node weights keeping this many significant digits
   pub weight_significant_digits: Option<u8>,
 
@@ -42,39 +107,42 @@ pub struct WriteNwkOptions {
   pub weight_decimal_digits: Option<i8>,
 }
 
-pub fn write_nwk_file<N, E>(
-  filepath: &impl AsRef<Path>,
-  graph: &Graph<N, E>,
-  options: &WriteNwkOptions,
+pub fn nwk_write_file<N, E, D>(
+  filepath: impl AsRef<Path>,
+  graph: &Graph<N, E, D>,
+  options: &NwkWriteOptions,
 ) -> Result<(), Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
+  N: GraphNode + NodeToNwk,
+  E: GraphEdge + EdgeToNwk,
+  D: Sync + Send + Default,
 {
-  let mut f = create_file(filepath)?;
-  write_nwk_writer(&mut f, graph, options)?;
+  let mut f = create_file_or_stdout(filepath)?;
+  nwk_write(&mut f, graph, options)?;
   writeln!(f)?;
   Ok(())
 }
 
-pub fn write_nwk_str<N, E>(graph: &Graph<N, E>, options: &WriteNwkOptions) -> Result<String, Report>
+pub fn nwk_write_str<N, E, D>(graph: &Graph<N, E, D>, options: &NwkWriteOptions) -> Result<String, Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
+  N: GraphNode + NodeToNwk,
+  E: GraphEdge + EdgeToNwk,
+  D: Sync + Send + Default,
 {
   let mut buf = Vec::new();
-  write_nwk_writer(&mut buf, graph, options)?;
+  nwk_write(&mut buf, graph, options)?;
   Ok(String::from_utf8(buf)?)
 }
 
-pub fn write_nwk_writer<N, E>(
+pub fn nwk_write<N, E, D>(
   writer: &mut impl Write,
-  graph: &Graph<N, E>,
-  options: &WriteNwkOptions,
+  graph: &Graph<N, E, D>,
+  options: &NwkWriteOptions,
 ) -> Result<(), Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
+  N: GraphNode + NodeToNwk,
+  E: GraphEdge + EdgeToNwk,
+  D: Sync + Send + Default,
 {
   let roots = graph.get_roots();
   if roots.is_empty() {
@@ -110,12 +178,17 @@ where
 
       let (name, comments) = {
         let node_payload = node.read_arc().payload().read_arc();
-        (node_payload.name().to_owned(), node_payload.nwk_comments())
+        (
+          node_payload.nwk_name().map(|n| n.as_ref().to_owned()),
+          node_payload.nwk_comments(),
+        )
       };
 
-      let weight = edge.map(|edge| edge.read_arc().payload().read().weight());
+      let weight = edge.and_then(|edge| edge.read_arc().payload().read_arc().nwk_weight());
 
-      write!(writer, "{name}")?;
+      if let Some(name) = name {
+        write!(writer, "{name}")?;
+      }
 
       if let Some(weight) = weight {
         write!(writer, ":{}", format_weight(weight, options))?;
@@ -133,15 +206,10 @@ where
   Ok(())
 }
 
-pub fn format_weight(weight: f64, options: &WriteNwkOptions) -> String {
+pub fn format_weight(weight: f64, options: &NwkWriteOptions) -> String {
   if !weight.is_finite() {
     warn!("When converting graph to Newick: Weight is invalid: '{weight}'");
   }
-
-  // if let Some(precision) = options.weight_precision {
-  //   return format!("{weight:.precision$}");
-  // }
-
   let digits = options.weight_significant_digits.unwrap_or(3);
   float_to_digits(
     weight,
@@ -150,101 +218,42 @@ pub fn format_weight(weight: f64, options: &WriteNwkOptions) -> String {
   )
 }
 
+/// Defines how to construct node when reading from Newick and Nexus files
+pub trait NodeFromNwk: Sized {
+  fn from_nwk(name: Option<impl AsRef<str>>, _: &BTreeMap<String, String>) -> Result<Self, Report>;
+}
+
+/// Defines how to display node information when writing to Newick and Nexus files
+pub trait NodeToNwk {
+  fn nwk_name(&self) -> Option<impl AsRef<str>>;
+
+  fn nwk_comments(&self) -> BTreeMap<String, String> {
+    BTreeMap::<String, String>::new()
+  }
+}
+
+/// Defines how to construct edge when reading from Newick and Nexus files
+pub trait EdgeFromNwk: Sized {
+  fn from_nwk(weight: Option<f64>) -> Result<Self, Report>;
+}
+
+/// Defines how to display edge information when writing to Newick and Nexus files
+pub trait EdgeToNwk {
+  fn nwk_weight(&self) -> Option<f64>;
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::graph::create_graph_from_nwk::create_graph_from_nwk_str;
-  use crate::graph::edge::Weighted;
-  use crate::graph::node::{Named, NodeType, WithNwkComments};
+  use crate::graph::graph::tests::{TestEdge, TestNode};
   use eyre::Report;
   use pretty_assertions::assert_eq;
-  use rstest::rstest;
-  use serde::{Deserialize, Serialize};
-  use std::fmt::{Display, Formatter};
 
-  #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-  pub struct Node {
-    pub name: String,
-    pub node_type: NodeType,
-  }
-
-  impl Node {
-    pub fn new(name: impl AsRef<str>, node_type: NodeType) -> Self {
-      Self {
-        name: name.as_ref().to_owned(),
-        node_type,
-      }
-    }
-  }
-
-  impl GraphNode for Node {
-    fn root(name: &str) -> Self {
-      Self::new(name, NodeType::Root(name.to_owned()))
-    }
-
-    fn internal(name: &str) -> Self {
-      Self::new(name, NodeType::Internal(name.to_owned()))
-    }
-
-    fn leaf(name: &str) -> Self {
-      Self::new(name, NodeType::Leaf(name.to_owned()))
-    }
-
-    fn set_node_type(&mut self, node_type: NodeType) {
-      self.node_type = node_type;
-    }
-  }
-
-  impl WithNwkComments for Node {}
-
-  impl Named for Node {
-    fn name(&self) -> &str {
-      &self.name
-    }
-
-    fn set_name(&mut self, name: &str) {
-      self.name = name.to_owned();
-    }
-  }
-
-  impl Display for Node {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-      match &self.node_type {
-        NodeType::Root(name) => write!(f, "{name:}"),
-        NodeType::Internal(name) => write!(f, "{name:}"),
-        NodeType::Leaf(name) => write!(f, "{name}"),
-      }
-    }
-  }
-
-  #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-  pub struct Edge {
-    pub weight: f64,
-  }
-
-  impl GraphEdge for Edge {
-    fn new(weight: f64) -> Self {
-      Self { weight }
-    }
-  }
-
-  impl Weighted for Edge {
-    fn weight(&self) -> f64 {
-      self.weight
-    }
-  }
-
-  impl Display for Edge {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-      write!(f, "{:}", &self.weight)
-    }
-  }
-
-  #[rstest]
-  fn test_write_nwk() -> Result<(), Report> {
+  #[test]
+  fn test_nwk_roundtrip() -> Result<(), Report> {
     let input = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root;";
-    let graph = create_graph_from_nwk_str::<Node, Edge>(input)?;
-    let output = write_nwk_str(&graph, &WriteNwkOptions::default())?;
+    let graph = nwk_read_str::<TestNode, TestEdge, ()>(input)?;
+    let output = nwk_write_str(&graph, &NwkWriteOptions::default())?;
     assert_eq!(input, output);
     Ok(())
   }

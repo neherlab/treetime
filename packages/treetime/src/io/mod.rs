@@ -1,3 +1,4 @@
+pub mod auspice;
 pub mod compression;
 pub mod concat;
 pub mod csv;
@@ -6,6 +7,10 @@ pub mod discrete_states_csv;
 pub mod fasta;
 pub mod file;
 pub mod fs;
+pub mod graphviz;
 pub mod json;
 pub mod nex;
 pub mod nwk;
+pub mod phyloxml;
+pub mod usher_mat;
+pub mod yaml;

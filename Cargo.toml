@@ -2,8 +2,10 @@
 resolver = '2'
 
 members = [
+  "packages/phyloxml",
   "packages/treetime",
   "packages/treetime-cli",
+  "packages/usher-mat-utils",
 ]
 
 exclude = []
@@ -35,6 +37,7 @@ atty = "=0.2.14"
 bio = { version = "=1.5.0", features = ["phylogeny"] }
 bio-types = { version = "=1.0.1", features = ["phylogeny"] }
 blas-src = { version = "=0.10.0", features = ["openblas-src"] }
+bytes = { version = "1.6.1", features = ["serde"] }
 bzip2 = "=0.4.3"
 chrono = { version = "=0.4.21", default-features = false, features = ["clock", "std"] }
 clap = { version = "=3.2.16", features = ["derive"] }
@@ -52,10 +55,11 @@ eyre = "=0.6.8"
 flate2 = "=1.0.28"
 gcollections = "=1.5.0"
 indexmap = { version = "=1.9.1", features = ["serde-1"] }
+indoc = "=2.0.5"
 intervallum = "=1.4.1"
 itertools = "=0.10.3"
 lazy_static = "=1.4.0"
-log = "=0.4.17"
+log = "=0.4.22"
 maplit = { version = "=1.0.2", features = [] }
 multimap = { version = "=0.8.3", features = ["serde_impl"] }
 ndarray = { version = "=0.15.6", features = ["rayon", "serde", "approx-0_5", "blas"] }
@@ -74,6 +78,10 @@ petgraph = { version = "=0.6.4", features = ["serde"] }
 plotters = { version = "=0.3.4", default_features = false, features = ["all_series", "all_elements", "svg_backend"] }
 pretty_assertions = "=1.4.0"
 pretty_dtoa = "=0.3.0"
+prost = { version = "=0.13.1", features = ["no-recursion-limit"] }
+prost-build = "=0.13.1"
+prost-derive = "=0.13.1"
+prost-types = "=0.13.1"
 rand = { version = "=0.8.5", features = ["serde1", "log"] }
 rand_distr = { version = "=0.4.3", feaures = ["serde1", "std_math"] }
 rand_isaac = { version = "=0.3.0", features = ["serde1"] }
@@ -83,8 +91,11 @@ rgb = "=0.8.34"
 rstat = { version = "=0.6.0", features = ["serde"] }
 rstest = "=0.17.0"
 rstest_reuse = "=0.5.0"
-serde = { version = "=1.0.143", features = ["derive"] }
-serde_json = { version = "=1.0.83", features = ["preserve_order", "indexmap", "unbounded_depth"] }
+serde = { version = "=1.0.204", features = ["derive"] }
+serde_json = { version = "=1.0.120", features = ["preserve_order", "indexmap", "unbounded_depth"] }
+serde_repr = "=0.1.19"
+serde_stacker = { version = "=0.1.11" }
+serde_yaml = "=0.9.22"
 smart-default = "=0.6.0"
 statrs = "=0.16.0"
 strum = "=0.24.1"
@@ -92,6 +103,7 @@ strum_macros = "=0.24.3"
 textplots = "=0.8.0"
 time = { version = "=0.3.13", features = ["serde", "macros", "parsing"] }
 traversal = "=0.1.2"
+typify = { version = "=0.1.0", features = ["macro"] }
 xz2 = "=0.1.7"
 zstd = { version = "=0.11.2", features = ["zstdmt"] }
 

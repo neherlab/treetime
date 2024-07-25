@@ -10,6 +10,7 @@ ARG WATCHEXEC_VERSION="1.17.1"
 ARG NODEMON_VERSION="2.0.15"
 ARG YARN_VERSION="1.22.18"
 ARG CLANG_VERSION=$CLANG_VERSION
+ARG PROTOC_VERSION="27.2"
 
 # Install required packages if running CentOS
 RUN set -euxo pipefail >/dev/null \
@@ -44,6 +45,7 @@ RUN set -euxo pipefail >/dev/null \
   sudo \
   tar \
   time \
+  unzip \
   xz \
   zstd \
 && dnf clean all \
@@ -82,6 +84,7 @@ RUN set -euxo pipefail >/dev/null \
   rename \
   sudo \
   time \
+  unzip \
   xz-utils \
 >/dev/null \
 && echo "deb https://apt.llvm.org/$(lsb_release -cs)/ llvm-toolchain-$(lsb_release -cs)-${CLANG_VERSION} main" >> "/etc/apt/sources.list.d/llvm.list" \
@@ -141,6 +144,13 @@ RUN set -euxo pipefail >/dev/null \
 && curl -sSL "https://github.com/watchexec/watchexec/releases/download/cli-v${WATCHEXEC_VERSION}/watchexec-${WATCHEXEC_VERSION}-x86_64-unknown-linux-musl.tar.xz" | tar -C "/usr/bin/" -xJ --strip-components=1 "watchexec-${WATCHEXEC_VERSION}-x86_64-unknown-linux-musl/watchexec" \
 && chmod +x "/usr/bin/watchexec" \
 && watchexec --version
+
+RUN set -euxo pipefail >/dev/null \
+&& mkdir /tmp/download && cd /tmp/download \
+&& curl -sSLO "https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/protoc-${PROTOC_VERSION}-linux-x86_64.zip" \
+&& unzip "protoc-${PROTOC_VERSION}-linux-x86_64.zip" -d "/usr/" \
+&& rm -rf /tmp/download \
+&& protoc --version
 
 # Install Node.js
 COPY .nvmrc /

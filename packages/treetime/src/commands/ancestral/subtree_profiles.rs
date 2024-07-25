@@ -16,6 +16,7 @@ pub const EPS: f64 = 1e-6;
 pub fn subtree_profiles(
   graph: &AncestralGraph,
   node: &mut Node,
+  is_leaf: bool,
   edge: Option<&Edge>,
   children: &[SafeNode<Node>], // TODO: Should we lock all these child locks in advance?
   seq: &[char],
@@ -25,7 +26,7 @@ pub fn subtree_profiles(
   let prof_nuc = &gtr.alphabet.profile_map;
 
   // GTR matrix associated with this branch length. Using 0 length for the root saves an extra calculation below
-  let t = edge.map(|edge| edge.weight).unwrap_or_default();
+  let t = edge.and_then(|edge| edge.weight).unwrap_or_default();
   node.expQt = gtr.expQt(t).t().to_owned(); // TODO: might make sense to save this on the edge
 
   // We have calculated the total nucleotide composition in the sequence representation.
@@ -35,22 +36,22 @@ pub fn subtree_profiles(
   // Each node will get a vector with the probability distribution of non-variable positions.
   // This vector should always be peaked around the focal nucleotide and quantifies the uncertainty around it.
   node.subtree_profile_fixed = btreemap! {};
+  node.subtree_profile_variable = btreemap! {};
 
-  if node.is_leaf() {
+  if is_leaf {
     // For terminal nodes, we deem mixed sites and sites that have mutations in the branch to the parent as variable
-    node.subtree_profile_variable = btreemap! {};
     for MixedSite { pos, nuc } in &node.mixed {
       node.subtree_profile_variable.insert(*pos, prof_nuc[nuc].clone());
       let count = fixed_nuc_count.entry(seq[*pos]).or_insert(0);
       *count = count.saturating_sub(1);
     }
-    for (pos, (anc, der)) in &node.mutations {
+    for (pos, (_, der)) in &node.mutations {
       node.subtree_profile_variable.insert(*pos, prof_nuc[der].clone());
       let count = fixed_nuc_count.entry(seq[*pos]).or_insert(0);
       *count = count.saturating_sub(1);
     }
 
-    // This could be done more efficiently. We just need to look-up these positions, no need to save the flat vector.
+    // This could be done more efficiently. We just need to look up these positions, no need to save the flat vector.
     for rg in &node.undetermined {
       for pos in rg.0..rg.1 {
         node
@@ -64,7 +65,6 @@ pub fn subtree_profiles(
     }
   } else {
     // For internal nodes, we consider all positions that are variable in any of the children
-    node.subtree_profile_variable = btreemap! {};
     let variable_positions: BTreeSet<usize> = children
       .iter()
       .flat_map(|c| {
@@ -131,7 +131,7 @@ pub fn subtree_profiles(
     }
 
     // Add position that mutate towards the parent
-    for (pos, (anc, der)) in &node.mutations {
+    for (pos, (_, der)) in &node.mutations {
       if !node.subtree_profile_variable.contains_key(pos) {
         let prof = node.subtree_profile_fixed[der].to_owned();
         node.subtree_profile_variable.insert(*pos, prof);
@@ -147,17 +147,14 @@ mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::commands::ancestral::anc_graph::{Edge, Node};
   use crate::commands::ancestral::outgroup_profiles::outgroup_profiles;
-  use crate::graph::create_graph_from_nwk::create_graph_from_nwk_str;
   use crate::gtr::gtr::GTRParams;
-  use crate::io::json::{json_stringify, JsonPretty};
+  use crate::io::nwk::nwk_read_str;
   use crate::seq::representation::{compress_sequences, post_order_intrusive, pre_order_intrusive};
   use crate::utils::random::get_random_number_generator;
-  use crate::utils::string::vec_to_string;
   use crate::{o, pretty_assert_ulps_eq};
   use eyre::Report;
   use itertools::Itertools;
   use ndarray::array;
-  use pretty_assertions::assert_eq;
   use rstest::rstest;
   use std::collections::BTreeMap;
 
@@ -174,9 +171,7 @@ mod tests {
       (o!("D"), o!("TCGGCCGTGTRTTG")),
     ]);
 
-    let L = inputs.first_key_value().unwrap().1.len();
-
-    let graph = create_graph_from_nwk_str::<Node, Edge>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let graph = nwk_read_str::<Node, Edge, ()>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
     compress_sequences(&inputs, &graph, &mut rng).unwrap();
 
@@ -196,6 +191,7 @@ mod tests {
 
     post_order_intrusive(&graph, &root, None, &mut root_seq, &mut |node, edge, seq| {
       let node = node.write_arc();
+      let is_leaf = node.is_leaf();
 
       let children: Vec<SafeNode<Node>> = graph
         .children_of(&node)
@@ -205,7 +201,16 @@ mod tests {
 
       let mut node = node.payload().write_arc();
       let edge = edge.map(|e| e.payload().read_arc());
-      subtree_profiles(&graph, &mut node, edge.as_deref(), &children, seq, &gtr, &mut logLH);
+      subtree_profiles(
+        &graph,
+        &mut node,
+        is_leaf,
+        edge.as_deref(),
+        &children,
+        seq,
+        &gtr,
+        &mut logLH,
+      );
     });
 
     pretty_assert_ulps_eq!(-36.73309018328223, logLH, epsilon = 1e-5);
@@ -216,15 +221,13 @@ mod tests {
       let parent = graph
         .one_parent_of(&node)
         .unwrap()
-        .map(|parent| parent.read_arc().payload().read_arc());
+        .map(|(parent, _)| parent.read_arc().payload().read_arc());
 
       let mut node = node.payload().write_arc();
       outgroup_profiles(&mut node, parent.as_deref(), seq, &mut logLH, &gtr);
     });
 
     pretty_assert_ulps_eq!(-57.189205994979055, logLH, epsilon = 1e-5);
-
-
 
     Ok(())
   }

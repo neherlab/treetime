@@ -4,10 +4,11 @@ use crate::commands::ancestral::anc_reconstruction_fitch::ancestral_reconstructi
 use crate::commands::ancestral::anc_reconstruction_marginal::ancestral_reconstruction_marginal;
 use crate::gtr::get_gtr::get_gtr;
 use crate::io::fasta::{read_many_fasta, FastaRecord, FastaWriter};
-use crate::io::file::create_file;
+use crate::io::file::create_file_or_stdout;
+use crate::io::graphviz::graphviz_write_file;
 use crate::io::json::{json_write_file, JsonPretty};
-use crate::io::nex::{write_nex, WriteNexOptions};
-use crate::io::nwk::{write_nwk_writer, WriteNwkOptions};
+use crate::io::nex::{nex_write, NexWriteOptions};
+use crate::io::nwk::{nwk_write, NwkWriteOptions};
 use crate::seq::representation::compress_sequences;
 use crate::utils::random::get_random_number_generator;
 use crate::utils::string::vec_to_string;
@@ -45,8 +46,8 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
     Some(tree) => create_graph(tree)?,
   };
 
-  graph.print_graph(create_file(outdir.join("graph_input.dot"))?)?;
-  json_write_file(&graph, outdir.join("graph_input.json"), JsonPretty(true))?;
+  graphviz_write_file(outdir.join("graph_input.dot"), &graph)?;
+  json_write_file(outdir.join("graph_input.json"), &graph, JsonPretty(true))?;
 
   // TODO: avoid reading all sequences into memory somehow?
   let fastas = read_many_fasta(input_fastas)?;
@@ -57,7 +58,7 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
 
   compress_sequences(&seqs, &graph, &mut rng)?;
 
-  let fasta_file = create_file(outdir.join("ancestral_sequences.fasta"))?;
+  let fasta_file = create_file_or_stdout(outdir.join("ancestral_sequences.fasta"))?;
   let mut fasta_writer = FastaWriter::new(fasta_file);
 
   match method_anc {
@@ -79,31 +80,33 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
       // })?;
 
       ancestral_reconstruction_marginal(&graph, &gtr, *reconstruct_tip_states, |node, seq| {
+        let name = node.name.as_deref().unwrap_or("");
         // TODO: avoid converting vec to string, write vec chars directly
-        fasta_writer.write(&node.name, &vec_to_string(seq.to_owned())).unwrap();
+        fasta_writer.write(name, &vec_to_string(seq.to_owned())).unwrap();
       })?;
     }
     MethodAncestral::Parsimony => {
       ancestral_reconstruction_fitch(&graph, *reconstruct_tip_states, |node, seq| {
+        let name = node.name.as_deref().unwrap_or("");
         // TODO: avoid converting vec to string, write vec chars directly
-        fasta_writer.write(&node.name, &vec_to_string(seq.to_owned())).unwrap();
+        fasta_writer.write(name, &vec_to_string(seq.to_owned())).unwrap();
       })?;
     }
   }
 
-  graph.print_graph(create_file(outdir.join("graph_output.dot"))?)?;
-  json_write_file(&graph, outdir.join("graph_output.json"), JsonPretty(true))?;
+  graphviz_write_file(outdir.join("graph_output.dot"), &graph)?;
+  json_write_file(outdir.join("graph_output.json"), &graph, JsonPretty(true))?;
 
-  write_nwk_writer(
-    &mut create_file(outdir.join("annotated_tree.nwk"))?,
+  nwk_write(
+    &mut create_file_or_stdout(outdir.join("annotated_tree.nwk"))?,
     &graph,
-    &WriteNwkOptions::default(),
+    &NwkWriteOptions::default(),
   )?;
 
-  write_nex(
-    &mut create_file(outdir.join("annotated_tree.nexus"))?,
+  nex_write(
+    &mut create_file_or_stdout(outdir.join("annotated_tree.nexus"))?,
     &graph,
-    &WriteNexOptions::default(),
+    &NexWriteOptions::default(),
   )?;
 
   Ok(())

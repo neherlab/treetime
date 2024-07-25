@@ -13,32 +13,34 @@ pub enum GraphTraversalContinuation {
 
 /// Policy trait, which defines how successors and predecessors of graph nodes and edges are resolved
 /// during a particular type of breadth-first traversal
-pub trait BfsTraversalPolicy<N, E>
+pub trait BfsTraversalPolicy<N, E, D>
 where
   N: GraphNode,
   E: GraphEdge,
+  D: Sync + Send,
 {
   /// Obtains successors of a node during traversal
-  fn node_successors(graph: &Graph<N, E>, node: &SafeNode<N>) -> Vec<SafeNode<N>>;
+  fn node_successors(graph: &Graph<N, E, D>, node: &SafeNode<N>) -> Vec<SafeNode<N>>;
 
   /// Obtains predecessors of a node during traversal
-  fn node_predecessors(graph: &Graph<N, E>, node: &SafeNode<N>) -> Vec<SafeNode<N>>;
+  fn node_predecessors(graph: &Graph<N, E, D>, node: &SafeNode<N>) -> Vec<SafeNode<N>>;
 
   /// Obtains predecessor node of an edge during traversal
-  fn edge_predecessor(graph: &Graph<N, E>, edge: &Arc<RwLock<Edge<E>>>) -> SafeNode<N>;
+  fn edge_predecessor(graph: &Graph<N, E, D>, edge: &Arc<RwLock<Edge<E>>>) -> SafeNode<N>;
 }
 
 /// Policy trait implementation, which defines how successors and predecessors of graph nodes and edges are resolved
 /// during forward breadth-first traversal (from roots to leaves, along edge directions)
 pub struct BfsTraversalPolicyForward;
 
-impl<N, E> BfsTraversalPolicy<N, E> for BfsTraversalPolicyForward
+impl<N, E, D> BfsTraversalPolicy<N, E, D> for BfsTraversalPolicyForward
 where
   N: GraphNode,
   E: GraphEdge,
+  D: Sync + Send,
 {
   /// Obtains successors of a node during forward traversal
-  fn node_successors(graph: &Graph<N, E>, node: &SafeNode<N>) -> Vec<SafeNode<N>> {
+  fn node_successors(graph: &Graph<N, E, D>, node: &SafeNode<N>) -> Vec<SafeNode<N>> {
     // During forward traversal, successors are the children (targets of outbound edges)
     graph
       .children_of(&node.read())
@@ -48,7 +50,7 @@ where
   }
 
   /// Obtains successors of a node during forward traversal
-  fn node_predecessors(graph: &Graph<N, E>, node: &SafeNode<N>) -> Vec<SafeNode<N>> {
+  fn node_predecessors(graph: &Graph<N, E, D>, node: &SafeNode<N>) -> Vec<SafeNode<N>> {
     // During forward traversal, predecessors are the parents (sources of inbound edges)
     graph
       .parents_of(&node.read())
@@ -58,7 +60,7 @@ where
   }
 
   /// Obtains predecessor node of an edge during forward traversal
-  fn edge_predecessor(graph: &Graph<N, E>, edge: &Arc<RwLock<Edge<E>>>) -> SafeNode<N> {
+  fn edge_predecessor(graph: &Graph<N, E, D>, edge: &Arc<RwLock<Edge<E>>>) -> SafeNode<N> {
     // During backward traversal, predecessor node of an edge is the source edge
     graph.get_node(edge.read_arc().source()).unwrap()
   }
@@ -68,13 +70,14 @@ where
 /// during backward breadth-first traversal (from leaves to roots, against edge directions)
 pub struct BfsTraversalPolicyBackward;
 
-impl<N, E> BfsTraversalPolicy<N, E> for BfsTraversalPolicyBackward
+impl<N, E, D> BfsTraversalPolicy<N, E, D> for BfsTraversalPolicyBackward
 where
   N: GraphNode,
   E: GraphEdge,
+  D: Sync + Send,
 {
   /// Obtains successors of a node during backward traversal
-  fn node_successors(graph: &Graph<N, E>, node: &SafeNode<N>) -> Vec<SafeNode<N>> {
+  fn node_successors(graph: &Graph<N, E, D>, node: &SafeNode<N>) -> Vec<SafeNode<N>> {
     // During backward traversal, successors are the parents (sources of inbound edges)
     graph
       .parents_of(&node.read())
@@ -84,7 +87,7 @@ where
   }
 
   /// Obtains predecessors of a node during forward traversal
-  fn node_predecessors(graph: &Graph<N, E>, node: &SafeNode<N>) -> Vec<SafeNode<N>> {
+  fn node_predecessors(graph: &Graph<N, E, D>, node: &SafeNode<N>) -> Vec<SafeNode<N>> {
     // During backward traversal, predecessors are the children (targets of outbound edges)
     graph
       .children_of(&node.read())
@@ -94,30 +97,38 @@ where
   }
 
   /// Obtains predecessor node of an edge during backward traversal
-  fn edge_predecessor(graph: &Graph<N, E>, edge: &Arc<RwLock<Edge<E>>>) -> SafeNode<N> {
+  fn edge_predecessor(graph: &Graph<N, E, D>, edge: &Arc<RwLock<Edge<E>>>) -> SafeNode<N> {
     // During backward traversal, predecessor node of an edge is the target edge
     graph.get_node(edge.read().target()).unwrap()
   }
 }
 
 /// Performs parallel forward breadth-first traversal (from roots to leaves, along edge directions)
-pub fn directed_breadth_first_traversal_forward<N, E, F>(graph: &Graph<N, E>, sources: &[SafeNode<N>], explorer: F)
-where
+pub fn directed_breadth_first_traversal_forward<N, E, D, F>(
+  graph: &Graph<N, E, D>,
+  sources: &[SafeNode<N>],
+  explorer: F,
+) where
   N: GraphNode,
   E: GraphEdge,
+  D: Sync + Send,
   F: Fn(&SafeNodeRefMut<N>) -> GraphTraversalContinuation + Sync + Send,
 {
-  directed_breadth_first_traversal::<N, E, F, BfsTraversalPolicyForward>(graph, sources, explorer);
+  directed_breadth_first_traversal::<N, E, D, F, BfsTraversalPolicyForward>(graph, sources, explorer);
 }
 
 /// Performs parallel backward breadth-first traversal (from leaves to roots, against edge directions)
-pub fn directed_breadth_first_traversal_backward<N, E, F>(graph: &Graph<N, E>, sources: &[SafeNode<N>], explorer: F)
-where
+pub fn directed_breadth_first_traversal_backward<N, E, D, F>(
+  graph: &Graph<N, E, D>,
+  sources: &[SafeNode<N>],
+  explorer: F,
+) where
   N: GraphNode,
   E: GraphEdge,
+  D: Sync + Send,
   F: Fn(&SafeNodeRefMut<N>) -> GraphTraversalContinuation + Sync + Send,
 {
-  directed_breadth_first_traversal::<N, E, F, BfsTraversalPolicyBackward>(graph, sources, explorer);
+  directed_breadth_first_traversal::<N, E, D, F, BfsTraversalPolicyBackward>(graph, sources, explorer);
 }
 
 /// Implements parallel breadth-first traversal of a directed graph, given source nodes, exploration function and
@@ -125,15 +136,16 @@ where
 ///
 /// TraversalPolicy here is a generic type, that defines how to access predecessors and successors during a
 /// concrete type of traversal.
-pub fn directed_breadth_first_traversal<N, E, F, TraversalPolicy>(
-  graph: &Graph<N, E>,
+pub fn directed_breadth_first_traversal<N, E, D, F, TraversalPolicy>(
+  graph: &Graph<N, E, D>,
   sources: &[SafeNode<N>],
   explorer: F,
 ) where
   N: GraphNode,
   E: GraphEdge,
+  D: Sync + Send,
   F: Fn(&SafeNodeRefMut<N>) -> GraphTraversalContinuation + Sync + Send,
-  TraversalPolicy: BfsTraversalPolicy<N, E>,
+  TraversalPolicy: BfsTraversalPolicy<N, E, D>,
 {
   // Walk the graph one "frontier" at a time. Frontier is a set of nodes of a "layer" in the graph, where each node
   // has its dependencies already resolved. Frontiers allow parallelism.

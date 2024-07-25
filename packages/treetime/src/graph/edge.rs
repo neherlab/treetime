@@ -3,31 +3,30 @@ use crate::graph::node::{GraphNode, GraphNodeKey};
 use derive_more::Display;
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
-use std::fmt::{Debug, Display, Formatter};
+use std::fmt::Debug;
 use std::hash::Hash;
 use std::mem::swap;
 use std::sync::Arc;
 
+/// Defines how to read and write edge weight
 pub trait Weighted {
-  fn weight(&self) -> f64;
+  fn weight(&self) -> Option<f64>;
+  fn set_weight(&mut self, weight: Option<f64>);
 }
 
-pub trait GraphEdge: Clone + Debug + Display + Sync + Send + Weighted {
-  fn new(weight: f64) -> Self;
-}
+pub trait GraphEdge: Clone + Debug + Sync + Send {}
 
 #[derive(Copy, Clone, Debug, Display, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct GraphEdgeKey(pub usize);
 
 impl GraphEdgeKey {
-  #[inline]
   pub const fn as_usize(self) -> usize {
     self.0
   }
 }
 
 /// Edge representing a connection between two nodes. Relevant data can be
-/// stored in the edge atomically. Edge's target and source node's are
+/// stored in the edge atomically. Edge's target and source nodes are
 /// weak references and can't outlive the nodes they represent.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Edge<E: GraphEdge> {
@@ -47,23 +46,15 @@ impl<E: GraphEdge> Edge<E> {
       data: Arc::new(RwLock::new(data)),
     }
   }
-
-  #[inline]
   pub const fn key(&self) -> GraphEdgeKey {
     self.key
   }
-
-  #[inline]
   pub const fn source(&self) -> GraphNodeKey {
     self.source
   }
-
-  #[inline]
   pub const fn target(&self) -> GraphNodeKey {
     self.target
   }
-
-  #[inline]
   pub fn payload(&self) -> Arc<RwLock<E>> {
     Arc::clone(&self.data)
   }
@@ -100,28 +91,22 @@ pub fn invert_edge<N: GraphNode, E: GraphEdge>(graph: &Graph<N, E>, edge: &Arc<R
   }
 }
 
-impl<E: GraphEdge> Display for Edge<E> {
-  fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
-    write!(fmt, "{} -> {}", self.source(), self.target())
-  }
-}
-
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::graph::examples::get_example_tree;
+  use crate::graph::examples::tests::get_example_tree;
   use eyre::Report;
   use rstest::rstest;
 
   #[rstest]
   fn edge_inverts() -> Result<(), Report> {
-    let mut graph = get_example_tree()?;
+    let graph = get_example_tree()?;
 
     let edge = graph.get_edge(GraphEdgeKey(3)).unwrap();
     let input_source = edge.read().source();
     let input_target = edge.read().target();
 
-    invert_edge(&mut graph, &edge);
+    invert_edge(&graph, &edge);
 
     let edge = graph.get_edge(GraphEdgeKey(3)).unwrap();
     let output_source = edge.read().source();

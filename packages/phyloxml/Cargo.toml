@@ -1,0 +1,23 @@
+[package]
+name = "phyloxml"
+authors.workspace = true
+description.workspace = true
+documentation.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+publish.workspace = true
+repository.workspace = true
+version.workspace = true
+
+[lib]
+crate-type = ["lib"]
+
+[dependencies]
+quick-xml = { version = "0.36.1", features = ["serde", "serialize"] }
+serde = { version = "1.0.204", features = ["derive"] }
+serde_json = "1.0.120"
+xml = "0.8"
+
+[lints]
+workspace = true

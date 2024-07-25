@@ -6,7 +6,7 @@ use crate::commands::timetree::timetree_args::RerootMode;
 use crate::graph::breadth_first::GraphTraversalContinuation;
 use crate::graph::graph::{GraphNodeForward, NodeEdgePayloadPair};
 use crate::graph::ladderize::ladderize;
-use crate::graph::node::{GraphNodeKey, NodeType};
+use crate::graph::node::GraphNodeKey;
 use crate::graph::reroot::reroot;
 use crate::utils::ndarray::zeros;
 use crate::{make_error, make_internal_report};
@@ -30,7 +30,7 @@ pub struct RerootParams {
 /// Determines the best root and reroots the tree to this value.
 ///
 /// Note that this can change the parent child relations of the tree and values associated with
-/// branches rather than nodes (e.g. confidence) might need to be re-evaluated afterwards
+/// branches rather than nodes (e.g. confidence) might need to be re-evaluated afterward
 pub fn run_reroot(graph: &mut ClockGraph, params: &RerootParams) -> Result<(), Report> {
   let best_root = match params.reroot {
     RerootMode::LeastSquares => find_best_root_least_squares::<GraphNodeRegressionPolicyReroot>(graph, params),
@@ -122,6 +122,7 @@ fn find_best_root_least_squares<P: GraphNodeRegressionPolicy>(
          key,
          payload: node,
          parents,
+         ..
        }| {
         if is_root {
           return GraphTraversalContinuation::Continue;
@@ -148,13 +149,13 @@ fn find_best_root_least_squares<P: GraphNodeRegressionPolicy>(
         let (x, chisq) = if bad_branch {
           (f64::nan(), f64::infinity())
         } else {
-          find_optimal_root_along_branch(&node, &parents, tv, bv, var, params).unwrap()
+          find_optimal_root_along_branch(&node, is_leaf, is_root, &parents, tv, bv, var, params).unwrap()
         };
 
         let mut best_root = best_root.lock();
         if chisq < best_root.chisq {
-          let tmpQ = propagate_averages(&node, tv, bv * x, var * x, false)
-            + propagate_averages(&node, tv, bv * (1.0 - x), var * (1.0 - x), true);
+          let tmpQ = propagate_averages(&node, is_leaf, tv, bv * x, var * x, false)
+            + propagate_averages(&node, is_leaf, tv, bv * (1.0 - x), var * (1.0 - x), true);
           let reg = base_regression(&tmpQ, &params.slope).unwrap();
 
           if reg.slope >= 0.0 || !params.force_positive {
@@ -196,6 +197,8 @@ pub fn calculate_diff_to_x_in_place<P: GraphNodeRegressionPolicy>(
         .get_node(node_key)
         .expect("Graph node key should point to a valid node in Graph");
 
+      let is_leaf = graph.is_leaf(node_key);
+
       if let Some(hessian) = &mut best_root.hessian {
         let n = n.read().payload();
         let n = n.read();
@@ -208,8 +211,8 @@ pub fn calculate_diff_to_x_in_place<P: GraphNodeRegressionPolicy>(
         for dx in [-0.001, 0.001] {
           let y: f64 = best_root.split + dx;
           let y: f64 = clamp(y, 0.0001, 0.9999); // y needs to be bounded away from 0 and 1 to avoid division by 0
-          let tmpQ = propagate_averages(&n, tv, bv * y, var * y, false)
-            + propagate_averages(&n, tv, bv * (1.0 - y), var * (1.0 - y), true);
+          let tmpQ = propagate_averages(&n, is_leaf, tv, bv * y, var * y, false)
+            + propagate_averages(&n, is_leaf, tv, bv * (1.0 - y), var * (1.0 - y), true);
           let reg = base_regression(&tmpQ, &params.slope)?;
           deriv.push([y, reg.chisq, tmpQ[tavgii], tmpQ[davgii]]);
         }
@@ -246,18 +249,21 @@ pub fn calculate_diff_to_x_in_place<P: GraphNodeRegressionPolicy>(
 
 fn find_optimal_root_along_branch(
   n: &Node,
+  is_leaf: bool,
+  is_root: bool,
   parents: &[NodeEdgePayloadPair<Node, Edge>],
   tv: Option<f64>,
   bv: f64,
   var: f64,
   params: &RerootParams,
 ) -> Result<(f64, f64), Report> {
-  let chisq_prox = match n.node_type {
-    NodeType::Leaf(_) => f64::infinity(),
-    _ => base_regression(&n.Qtot, &params.slope)?.chisq,
+  let chisq_prox = if is_leaf {
+    f64::infinity()
+  } else {
+    base_regression(&n.Qtot, &params.slope)?.chisq
   };
 
-  let chisq_dist = if n.is_root() {
+  let chisq_dist = if is_root {
     f64::infinity()
   } else {
     if parents.len() != 1 {
@@ -268,8 +274,8 @@ fn find_optimal_root_along_branch(
   };
 
   let cost_function = |x: f64| {
-    let tmpQ = propagate_averages(n, tv, bv * x, var * x, false)
-      + propagate_averages(n, tv, bv * (1.0 - x), var * (1.0 - x), true);
+    let tmpQ = propagate_averages(n, is_leaf, tv, bv * x, var * x, false)
+      + propagate_averages(n, is_leaf, tv, bv * (1.0 - x), var * (1.0 - x), true);
     base_regression(&tmpQ, &params.slope).unwrap().chisq
   };
 

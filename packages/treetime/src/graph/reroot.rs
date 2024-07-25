@@ -38,9 +38,8 @@ pub fn reroot<N: GraphNode, E: GraphEdge>(
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::graph::examples::get_example_tree;
+  use crate::graph::examples::tests::get_example_tree;
   use crate::graph::node::GraphNodeKey;
-  use crate::io::file::create_file;
   use eyre::Report;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
@@ -48,7 +47,6 @@ mod tests {
   #[rstest]
   fn reroots() -> Result<(), Report> {
     let mut graph = get_example_tree()?;
-    graph.print_graph(create_file("../../tmp__/graph_input.dot")?)?;
 
     let roots = graph.get_roots();
     let old_root = roots.first().unwrap();
@@ -58,7 +56,6 @@ mod tests {
     let new_root_key = new_root.read().key();
 
     reroot(&mut graph, old_root, &new_root).unwrap();
-    graph.print_graph(create_file("../../tmp__/graph_output.dot")?)?;
 
     let roots = graph.get_roots();
     let actual_root = roots.first().unwrap();
