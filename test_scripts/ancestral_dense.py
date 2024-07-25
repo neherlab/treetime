@@ -95,6 +95,7 @@ def outgroup_profiles_dense(graph: Graph):
         pseq = p.dense_sequences[si]
         seq_dis = DenseSeqDis(dis = np.ones((seq_len[si], len(alphabets[si]))),
                               logLH=pseq.msgs_to_children[node.payload.name].logLH)
+        # note that these dot products are really just a_{ik} = b.dot(c) = sum(b_{ij}c{jk}, j) -- we can use whatever memory layout we want.
         if e.dense_sequences[si].transmission:
           for r in e.dense_sequences[si].transmission:
             seq_dis.dis[r.start:r.end] *= pseq.msgs_to_children[node.payload.name].dis[r.start:r.end].dot(eQt)
@@ -127,6 +128,9 @@ def calculate_root_state_dense(graph: Graph):
       seq_info.profile = seq_dis
       seq_info.msgs_to_children = {}
       for cname in seq_info.msgs_from_children:
+        # this division operation can cause 'division by 0' problems. Note that profile = prod(msgs[child], child in children) * msgs_from_parent
+        # alternative, msgs_to_children could be calculated as  prod(msgs[sibling], sibling in children/child) * msgs_from_parent
+        # this latter redundant calculation is done in the sparse case, but division is more efficient in particular in case of polytomies.
         seq_info.msgs_to_children[cname] = DenseSeqDis(dis = seq_info.profile.dis/seq_info.msgs_from_children[cname].dis,
                               logLH=seq_info.profile.logLH-seq_info.msgs_from_children[cname].logLH)
       logLH+=seq_info.profile.logLH
