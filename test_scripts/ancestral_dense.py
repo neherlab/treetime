@@ -136,6 +136,35 @@ def calculate_root_state_dense(graph: Graph):
       logLH+=seq_info.profile.logLH
   return logLH
 
+
+def tests():
+  aln = {"root":"ACAGCCATGTATTG--",
+         "AB":"ACATCCCTGTA-TG--",
+         "A":"ACATCGCCNNA--GAC",
+         "B":"GCATCCCTGTA-NG--",
+         "CD":"CCGGCCATGTATTG--",
+         "C":"CCGGCGATGTRTTG--",
+         "D":"TCGGCCGTGTRTTG--"}
+
+  tree = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;"
+  profile = lambda x: profile_map[x]
+  G = graph_from_nwk_str(nwk_string=tree, node_payload_factory=NodePayload, edge_payload_factory=EdgePayload)
+  gtr = GTR.custom(pi=[0.2, 0.3, 0.15, 0.35], alphabet='nuc_nogap')
+  init_sequences_dense(G, [aln], [gtr])
+
+  ingroup_profiles_dense(G)
+  seq_info_root = G.get_one_root().payload().dense_sequences[0]
+
+  assert tuple([round(x,8) for x in seq_info_root.msg_to_parents.dis[0]])==(0.34485164, 0.17637237, 0.22492433, 0.25385166)
+
+  calculate_root_state_dense(G)
+  assert tuple([round(x,8) for x in seq_info_root.profile.dis[0]])==(0.28212327, 0.21643546, 0.13800802, 0.36343326)
+
+  outgroup_profiles_dense(G)
+  node_AB = G.get_node(G.nodes[1].key()).payload().dense_sequences[0]
+  assert np.abs(node_AB.profile.dis[0]-np.array([0.51275208, 0.09128506, 0.24647255, 0.14949031])).sum()<1e-6
+
+
 def ancestral_dense(graph: Graph) -> float:
   ingroup_profiles_dense(graph)
   logLH = calculate_root_state_dense(graph)
