@@ -57,7 +57,7 @@ def ingroup_profiles_dense(graph: Graph):
 
     node.payload.dense_sequences=[]
     for si,gtr in enumerate(gtrs):
-      child_expQt = [gtr.expQt(e.branch_length or 0.0).T for c,e in node.children]
+      child_expQt = [gtr.expQt(e.branch_length or 0.0) for c,e in node.children]
       child_seqs =  [c.dense_sequences[si] for c,e in node.children]
       child_edges = [e.dense_sequences[si] for c,e in node.children]
       gap_intersection = RangeCollection_intersection([cseq.seq.gaps for cseq in child_seqs])

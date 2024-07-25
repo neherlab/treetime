@@ -110,7 +110,6 @@ def ingroup_profiles_sparse(graph: Graph):
   alphabets = [''.join(p.gtr.alphabet) for p in graph.sparse_partitions]
   gtrs = [p.gtr for p in graph.sparse_partitions]
 
-  eps=1e-6
   def calculate_ingroup_node(node: GraphNodeBackward) -> None:
 
     for si,seq_info in enumerate(node.payload.sparse_sequences):
