@@ -5,7 +5,7 @@ from lib import SparseSeqDis, VarPos
 from treetime import GTR
 from payload import NodePayload, EdgePayload
 from profile_map import profile_map
-from fitch import init_sparse_sequences
+from fitch import init_sequences_sparse
 
 eps=1e-6
 
@@ -236,7 +236,7 @@ def tests():
   profile = lambda x: profile_map[x]
   G = graph_from_nwk_str(nwk_string=tree, node_payload_factory=NodePayload, edge_payload_factory=EdgePayload)
   gtr = GTR.custom(pi=[0.2, 0.3, 0.15, 0.35], alphabet='nuc_nogap')
-  init_sparse_sequences(G, [aln], [gtr])
+  init_sequences_sparse(G, [aln], [gtr])
 
   ingroup_profiles_sparse(G)
   seq_info_root = G.get_one_root().payload().sparse_sequences[0]
@@ -263,7 +263,7 @@ if __name__=="__main__":
 
   aln = {seq.id: str(seq.seq).upper() for seq in AlignIO.read(fname_seq, 'fasta')}
   gtr = GTR.custom(pi=[0.2, 0.3, 0.15, 0.35], alphabet='nuc_nogap')
-  init_sparse_sequences(G, [aln], [gtr])
+  init_sequences_sparse(G, [aln], [gtr])
 
   print("LogLH", ancestral_sparse(G))
 

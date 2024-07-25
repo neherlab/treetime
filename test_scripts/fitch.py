@@ -44,7 +44,7 @@ def attach_seqs_to_graph(graph: Graph, aln_list: List[Dict[str,np.array]], gtr_l
       leaf_name = leaf.payload().name
       leaf.payload().sparse_sequences.append(SparseSeqNode(seq=seq_info_from_array(np.fromiter(str(aln[leaf_name]).upper(), 'U1'), profile, alphabet_gapN)))
 
-def init_sparse_sequences(graph: Graph, aln_list: List[Dict[str,np.array]], gtr_list: List[GTR]) -> None:
+def init_sequences_sparse(graph: Graph, aln_list: List[Dict[str,np.array]], gtr_list: List[GTR]) -> None:
   t0 = time.time()
   print(f"elapsed: {time.time()-t0:.3f}")
   attach_seqs_to_graph(graph, aln_list, gtr_list)
@@ -406,7 +406,7 @@ if __name__=="__main__":
 
   aln = {seq.id: str(seq.seq).upper() for seq in AlignIO.read(fname_seq, 'fasta')}
   gtr = GTR.custom(pi=[0.2, 0.3, 0.15, 0.35], alphabet='nuc_nogap')
-  init_sparse_sequences(G, [aln], [gtr])
+  init_sequences_sparse(G, [aln], [gtr])
 
   failed = []
   t0=time.time()
