@@ -168,15 +168,15 @@ def outgroup_profiles_sparse(graph: Graph):
                        variable_pos=variable_pos, eps=eps, alphabet=alphabets[si])
       seq_info.profile = seq_dis
 
-    # precalculate messages to children that summarize into from their siblings (from the backward pass) and the parent
-    # note that this could be replaced by "subtracting/dividing" the profile by the msg from the respective child
-    # in some circumstances, this might be more efficient
-    seq_info.msgs_to_children = {}
-    for c in seq_info.msgs_from_children:
-      msgs = [m for k,m in seq_info.msgs_from_children.items() if k!=c]
-      seq_dis = SparseSeqDis(fixed_counts={pos:v for pos, v in seq_info.msg_to_parents.fixed_counts.items()})
-      combine_messages(seq_dis, msgs, variable_pos=variable_pos, eps=eps, alphabet=gtr.alphabet)
-      seq_info.msgs_to_children[c] = seq_dis
+      # precalculate messages to children that summarize into from their siblings (from the backward pass) and the parent
+      # note that this could be replaced by "subtracting/dividing" the profile by the msg from the respective child
+      # in some circumstances, this might be more efficient
+      seq_info.msgs_to_children = {}
+      for c in seq_info.msgs_from_children:
+        msgs = [m for k,m in seq_info.msgs_from_children.items() if k!=c]
+        seq_dis = SparseSeqDis(fixed_counts={pos:v for pos, v in seq_info.msg_to_parents.fixed_counts.items()})
+        combine_messages(seq_dis, msgs, variable_pos=variable_pos, eps=eps, alphabet=gtr.alphabet)
+        seq_info.msgs_to_children[c] = seq_dis
 
   graph.par_iter_forward(calculate_outgroup_node)
 
@@ -201,7 +201,10 @@ def calculate_root_state_sparse(graph: Graph):
         seq_profile.logLH += np.log(vec_norm)*seq_info.msg_to_parents.fixed_counts[state]
         seq_profile.fixed[state] = vec/vec_norm
 
-      # calculate messages to children -- ideally we'd add this as outgoing edge payload
+      seq_info.profile=seq_profile
+      logLH += seq_profile.logLH
+
+      # calculate messages to children
       variable_pos = {pos:p.state for pos, p in seq_info.msg_to_parents.variable.items()}
       seq_info.msgs_to_children = {}
       for c,e in graph.children_of(root_node.key()):
@@ -211,9 +214,6 @@ def calculate_root_state_sparse(graph: Graph):
         combine_messages(seq_dis, msgs, variable_pos=variable_pos, eps=eps, alphabet=gtr.alphabet,
                         gtr_weight=gtr.Pi)
         seq_info.msgs_to_children[cname] = seq_dis
-
-      seq_info.profile=seq_profile
-      logLH += seq_profile.logLH
 
     return logLH
 
@@ -233,7 +233,7 @@ def tests():
          "D":"TCGGCCGTGTRTTG--"}
 
   tree = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;"
-  profile = lambda x: profile_map[x]
+
   G = graph_from_nwk_str(nwk_string=tree, node_payload_factory=NodePayload, edge_payload_factory=EdgePayload)
   gtr = GTR.custom(pi=[0.2, 0.3, 0.15, 0.35], alphabet='nuc_nogap')
   init_sequences_sparse(G, [aln], [gtr])
@@ -251,6 +251,32 @@ def tests():
   outgroup_profiles_sparse(G)
   node_AB = G.get_node(G.nodes[1].key()).payload().sparse_sequences[0]
   assert np.abs(node_AB.profile.variable[0].dis-np.array([0.51275208, 0.09128506, 0.24647255, 0.14949031])).sum()<1e-6
+
+  # redo the tests with two sequence sets using different GTRs
+  G2 = graph_from_nwk_str(nwk_string=tree, node_payload_factory=NodePayload, edge_payload_factory=EdgePayload)
+  gtr1 = GTR.custom(pi=[0.2, 0.3, 0.15, 0.35], alphabet='nuc_nogap')
+  gtr2 = GTR.custom(pi=[0.4, 0.15, 0.12, 0.33], alphabet='nuc_nogap')
+  init_sequences_sparse(G2, [aln, aln], [gtr1, gtr2])
+
+  ingroup_profiles_sparse(G2)
+  seq_info_root_1 = G2.get_one_root().payload().sparse_sequences[0]
+  seq_info_root_2 = G2.get_one_root().payload().sparse_sequences[1]
+
+  assert tuple(sorted(seq_info_root_1.msg_to_parents.variable.keys()))==(0,2,3,5,6,7,10)
+  assert tuple(sorted(seq_info_root_2.msg_to_parents.variable.keys()))==(0,2,3,5,6,7,10)
+  assert tuple([round(x,8) for x in seq_info_root_1.msg_to_parents.variable[0].dis])==(0.34485164, 0.17637237, 0.22492433, 0.25385166)
+  assert tuple([round(x,8) for x in seq_info_root_2.msg_to_parents.variable[0].dis])==(0.17085068, 0.31568135, 0.26076566, 0.25270231)
+
+  calculate_root_state_sparse(G2)
+  assert tuple([round(x,8) for x in seq_info_root_1.profile.variable[0].dis])==(0.28212327, 0.21643546, 0.13800802, 0.36343326)
+  assert tuple([round(x,8) for x in seq_info_root_2.profile.variable[0].dis])==(0.29664652, 0.20554302, 0.13582953, 0.36198093)
+  assert np.abs(seq_info_root_2.profile.fixed['G']-np.array([2.78247843e-04, 1.04342941e-04, 9.99387855e-01, 2.29554470e-04])).sum()<1e-6
+
+  outgroup_profiles_sparse(G2)
+  node_AB = G2.get_node(G2.nodes[1].key()).payload().sparse_sequences[1]
+  assert np.abs(node_AB.profile.variable[0].dis-np.array([0.52331521, 0.08336271, 0.24488808, 0.148434])).sum()<1e-6
+
+
 
 if __name__=="__main__":
   fname_nwk = 'data/ebola/ebola.nwk'

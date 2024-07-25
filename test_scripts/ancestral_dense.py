@@ -147,7 +147,6 @@ def tests():
          "D":"TCGGCCGTGTRTTG--"}
 
   tree = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;"
-  profile = lambda x: profile_map[x]
   G = graph_from_nwk_str(nwk_string=tree, node_payload_factory=NodePayload, edge_payload_factory=EdgePayload)
   gtr = GTR.custom(pi=[0.2, 0.3, 0.15, 0.35], alphabet='nuc_nogap')
   init_sequences_dense(G, [aln], [gtr])
