@@ -1,11 +1,12 @@
 from typing import Optional, List
-from lib import AutoRepr, SparseSeqNode, SparseSeqEdge, DenseSeqEdge, DenseSeqNode
+from lib import AutoRepr, SparseSeqNode, SparseSeqEdge, DenseSeqEdge, DenseSeqNode, ClockData
 from dataclasses import dataclass, field
 
 @dataclass
 class NodePayload(AutoRepr):
   name: str
   date: Optional[float] = None
+  clock: ClockData = field(default_factory=ClockData)
   sparse_sequences: List[SparseSeqNode] = field(default_factory=list)
   dense_sequences:  List[DenseSeqNode] = field(default_factory=list)
   # discrete_traits:  List[DiscreteTraitNode] = field(default_factory=list)
