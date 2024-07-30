@@ -13,80 +13,76 @@ use std::io::{Read, Write};
 use std::path::Path;
 use std::sync::Arc;
 
-pub fn auspice_read_file<N, E, D>(filepath: impl AsRef<Path>) -> Result<Graph<N, E, D>, Report>
+pub fn auspice_read_file<C, N, E, D>(filepath: impl AsRef<Path>) -> Result<Graph<N, E, D>, Report>
 where
   N: GraphNode,
   E: GraphEdge,
-  D: AuspiceDataToGraphData + Sync + Send,
-  (): AuspiceToGraph<N, E, D>,
+  D: Sync + Send,
+  C: AuspiceRead<N, E, D>,
 {
   let filepath = filepath.as_ref();
-  auspice_read(open_file_or_stdin(&Some(filepath))?)
+  auspice_read::<C, _, _, _>(open_file_or_stdin(&Some(filepath))?)
     .wrap_err_with(|| format!("When reading Auspice v2 JSON file '{filepath:#?}'"))
 }
 
-pub fn auspice_read_str<N, E, D>(auspice_string: impl AsRef<str>) -> Result<Graph<N, E, D>, Report>
+pub fn auspice_read_str<C, N, E, D>(auspice_string: impl AsRef<str>) -> Result<Graph<N, E, D>, Report>
 where
   N: GraphNode,
   E: GraphEdge,
-  D: AuspiceDataToGraphData + Sync + Send,
-  (): AuspiceToGraph<N, E, D>,
+  D: Sync + Send,
+  C: AuspiceRead<N, E, D>,
 {
   let auspice_string = auspice_string.as_ref();
-  auspice_read(Cursor::new(auspice_string)).wrap_err("When reading Auspice v2 JSON string")
+  auspice_read::<C, _, _, _>(Cursor::new(auspice_string)).wrap_err("When reading Auspice v2 JSON string")
 }
 
-pub fn auspice_read<N, E, D>(reader: impl Read) -> Result<Graph<N, E, D>, Report>
+pub fn auspice_read<C, N, E, D>(reader: impl Read) -> Result<Graph<N, E, D>, Report>
 where
   N: GraphNode,
   E: GraphEdge,
-  D: AuspiceDataToGraphData + Sync + Send,
-  (): AuspiceToGraph<N, E, D>,
+  D: Sync + Send,
+  C: AuspiceRead<N, E, D>,
 {
   let tree: AuspiceTree = json_read(reader).wrap_err("When reading Auspice v2 JSON")?;
-  auspice_to_graph(&tree).wrap_err("When converting Auspice v2 JSON to graph")
+  auspice_to_graph::<C, _, _, _>(&tree).wrap_err("When converting Auspice v2 JSON to graph")
 }
 
-pub fn auspice_write_file<N, E, D>(filepath: impl AsRef<Path>, graph: &Graph<N, E, D>) -> Result<(), Report>
+pub fn auspice_write_file<C, N, E, D>(filepath: impl AsRef<Path>, graph: &Graph<N, E, D>) -> Result<(), Report>
 where
   N: GraphNode,
   E: GraphEdge,
-  D: AuspiceDataFromGraphData + Sync + Send,
-  (): AuspiceFromGraph<N, E, D>,
+  D: Sync + Send,
+  C: AuspiceWrite<N, E, D>,
 {
   let filepath = filepath.as_ref();
   let mut f = create_file_or_stdout(filepath)?;
-  auspice_write(&mut f, graph).wrap_err_with(|| format!("When reading Auspice v2 JSON file '{filepath:#?}'"))?;
+  auspice_write::<C, _, _, _>(&mut f, graph)
+    .wrap_err_with(|| format!("When reading Auspice v2 JSON file '{filepath:#?}'"))?;
   writeln!(f)?;
   Ok(())
 }
 
-pub fn auspice_write_str<N, E, D>(graph: &Graph<N, E, D>) -> Result<String, Report>
+pub fn auspice_write_str<C, N, E, D>(graph: &Graph<N, E, D>) -> Result<String, Report>
 where
   N: GraphNode,
   E: GraphEdge,
-  D: AuspiceDataFromGraphData + Sync + Send,
-  (): AuspiceFromGraph<N, E, D>,
+  D: Sync + Send,
+  C: AuspiceWrite<N, E, D>,
 {
   let mut buf = Vec::new();
-  auspice_write(&mut buf, graph).wrap_err("When writing Auspice v2 JSON string")?;
+  auspice_write::<C, _, _, _>(&mut buf, graph).wrap_err("When writing Auspice v2 JSON string")?;
   Ok(String::from_utf8(buf)?)
 }
 
-pub fn auspice_write<N, E, D>(writer: &mut impl Write, graph: &Graph<N, E, D>) -> Result<(), Report>
+pub fn auspice_write<C, N, E, D>(writer: &mut impl Write, graph: &Graph<N, E, D>) -> Result<(), Report>
 where
   N: GraphNode,
   E: GraphEdge,
-  D: AuspiceDataFromGraphData + Sync + Send,
-  (): AuspiceFromGraph<N, E, D>,
+  D: Sync + Send,
+  C: AuspiceWrite<N, E, D>,
 {
-  let tree = auspice_from_graph(graph)?;
+  let tree = auspice_from_graph::<C, _, _, _>(graph)?;
   json_write(writer, &tree, JsonPretty(true)).wrap_err("When writing Auspice v2 JSON")
-}
-
-/// Describes conversion from tree global data when reading from Auspice v2 JSON
-pub trait AuspiceDataToGraphData: Sized {
-  fn auspice_data_to_graph_data(tree: &AuspiceTree) -> Result<Self, Report>;
 }
 
 pub struct AuspiceTreeContext<'a> {
@@ -94,29 +90,32 @@ pub struct AuspiceTreeContext<'a> {
   pub tree: &'a AuspiceTree,
 }
 
-/// Describes conversion from Auspice tree node data when reading from Auspice v2 JSON
-pub trait AuspiceToGraph<N, E, D>
+pub trait AuspiceRead<N, E, D>: Sized
 where
   N: GraphNode,
   E: GraphEdge,
-  D: AuspiceDataToGraphData + Sync + Send,
+  D: Sync + Send,
 {
-  fn auspice_node_to_graph_components(context: &AuspiceTreeContext) -> Result<(N, E), Report>;
+  fn new(tree: &AuspiceTree) -> Result<Self, Report>;
+
+  fn auspice_data_to_graph_data(&mut self, tree: &AuspiceTree) -> Result<D, Report>;
+
+  fn auspice_node_to_graph_components(&mut self, context: &AuspiceTreeContext) -> Result<(N, E), Report>;
 }
 
 /// Convert Auspice v2 JSON to graph
-pub fn auspice_to_graph<N, E, D>(tree: &AuspiceTree) -> Result<Graph<N, E, D>, Report>
+pub fn auspice_to_graph<C, N, E, D>(tree: &AuspiceTree) -> Result<Graph<N, E, D>, Report>
 where
   N: GraphNode,
   E: GraphEdge,
-  D: AuspiceDataToGraphData + Sync + Send,
-  (): AuspiceToGraph<N, E, D>,
+  D: Sync + Send,
+  C: AuspiceRead<N, E, D>,
 {
-  let mut graph = Graph::<N, E, D>::with_data(D::auspice_data_to_graph_data(tree)?);
+  let mut converter = C::new(tree)?;
+  let mut graph = Graph::<N, E, D>::with_data(converter.auspice_data_to_graph_data(tree)?);
   let mut queue = VecDeque::from([(None, &tree.tree)]);
   while let Some((parent_key, node)) = queue.pop_front() {
-    let (graph_node, graph_edge) =
-      <() as AuspiceToGraph<N, E, D>>::auspice_node_to_graph_components(&AuspiceTreeContext { node, tree })?;
+    let (graph_node, graph_edge) = converter.auspice_node_to_graph_components(&AuspiceTreeContext { node, tree })?;
     let node_key = graph.add_node(graph_node);
     if let Some(parent_key) = parent_key {
       graph.add_edge(parent_key, node_key, graph_edge)?;
@@ -129,40 +128,42 @@ where
   Ok(graph)
 }
 
-/// Describes conversion to tree global data when writing to Auspice v2 JSON
-pub trait AuspiceDataFromGraphData {
-  fn auspice_data_from_graph_data(&self) -> Result<AuspiceTreeData, Report>;
-}
-
 pub struct AuspiceGraphContext<'a, N, E, D>
 where
   N: GraphNode,
   E: GraphEdge,
-  D: AuspiceDataFromGraphData + Sync + Send,
+  D: Sync + Send,
 {
   pub node: &'a N,
   pub edge: Option<&'a E>,
   pub graph: &'a Graph<N, E, D>,
 }
 
-/// Describes conversion to Auspice tree node data when writing to Auspice v2 JSON
-pub trait AuspiceFromGraph<N, E, D>
+pub trait AuspiceWrite<N, E, D>: Sized
 where
   N: GraphNode,
   E: GraphEdge,
-  D: AuspiceDataFromGraphData + Sync + Send,
+  D: Sync + Send,
 {
-  fn auspice_node_from_graph_components(context: &AuspiceGraphContext<N, E, D>) -> Result<AuspiceTreeNode, Report>;
+  fn new(graph: &Graph<N, E, D>) -> Result<Self, Report>;
+
+  fn auspice_data_from_graph_data(&self, graph: &Graph<N, E, D>) -> Result<AuspiceTreeData, Report>;
+
+  fn auspice_node_from_graph_components(
+    &mut self,
+    context: &AuspiceGraphContext<N, E, D>,
+  ) -> Result<AuspiceTreeNode, Report>;
 }
 
 /// Convert graph to Auspice v2 JSON
-pub fn auspice_from_graph<N, E, D>(graph: &Graph<N, E, D>) -> Result<AuspiceTree, Report>
+pub fn auspice_from_graph<C, N, E, D>(graph: &Graph<N, E, D>) -> Result<AuspiceTree, Report>
 where
   N: GraphNode,
   E: GraphEdge,
-  D: AuspiceDataFromGraphData + Sync + Send,
-  (): AuspiceFromGraph<N, E, D>,
+  D: Sync + Send,
+  C: AuspiceWrite<N, E, D>,
 {
+  let mut converter = C::new(graph)?;
   let root = graph.get_exactly_one_root().wrap_err("When writing Auspice v2 JSON")?;
 
   // Pre-order iteration to construct the nodes from graph nodes and edges
@@ -178,11 +179,7 @@ where
         .map(|edge: &Arc<RwLock<Edge<E>>>| edge.read_arc().payload().read_arc());
       let edge = edge.as_deref();
       let current_tree_node =
-        <() as AuspiceFromGraph<N, E, D>>::auspice_node_from_graph_components(&AuspiceGraphContext {
-          node,
-          edge,
-          graph,
-        })?;
+        converter.auspice_node_from_graph_components(&AuspiceGraphContext { node, edge, graph })?;
       for (child, edge) in graph.children_of(&current_node) {
         queue.push_back((child, Some(edge)));
       }
@@ -215,7 +212,7 @@ where
     }
   }
 
-  let data = graph.data().read_arc().auspice_data_from_graph_data()?;
+  let data = converter.auspice_data_from_graph_data(graph)?;
   let tree = node_map.remove(&root.read_arc().key()).unwrap();
   Ok(AuspiceTree { data, tree })
 }
@@ -234,39 +231,39 @@ mod tests {
   use std::collections::BTreeMap;
 
   #[derive(Clone, Debug)]
-  pub struct GraphAuspiceData {
+  pub struct TestAuspiceData {
     pub version: Option<String>,
     pub meta: AuspiceTreeMeta,
     pub root_sequence: Option<BTreeMap<String, String>>,
     pub other: Value,
   }
 
-  impl AuspiceDataFromGraphData for GraphAuspiceData {
-    fn auspice_data_from_graph_data(&self) -> Result<AuspiceTreeData, Report> {
+  pub struct AuspiceWriter {}
+
+  impl AuspiceWrite<TestNode, TestEdge, TestAuspiceData> for AuspiceWriter {
+    fn new(graph: &Graph<TestNode, TestEdge, TestAuspiceData>) -> Result<Self, Report> {
+      Ok(Self {})
+    }
+
+    fn auspice_data_from_graph_data(
+      &self,
+      graph: &Graph<TestNode, TestEdge, TestAuspiceData>,
+    ) -> Result<AuspiceTreeData, Report> {
+      let data = graph.data().read_arc();
       Ok(AuspiceTreeData {
-        version: self.version.clone(),
-        meta: self.meta.clone(),
-        root_sequence: self.root_sequence.clone(),
-        other: self.other.clone(),
+        version: data.version.clone(),
+        meta: data.meta.clone(),
+        root_sequence: data.root_sequence.clone(),
+        other: data.other.clone(),
       })
     }
-  }
 
-  impl AuspiceDataToGraphData for GraphAuspiceData {
-    fn auspice_data_to_graph_data(tree: &AuspiceTree) -> Result<Self, Report> {
-      Ok(Self {
-        version: tree.data.version.clone(),
-        meta: tree.data.meta.clone(),
-        root_sequence: tree.data.root_sequence.clone(),
-        other: tree.data.other.clone(),
-      })
-    }
-  }
-
-  impl AuspiceFromGraph<TestNode, TestEdge, GraphAuspiceData> for () {
     fn auspice_node_from_graph_components(
-      AuspiceGraphContext { node, edge, .. }: &AuspiceGraphContext<TestNode, TestEdge, GraphAuspiceData>,
+      &mut self,
+      context: &AuspiceGraphContext<TestNode, TestEdge, TestAuspiceData>,
     ) -> Result<AuspiceTreeNode, Report> {
+      let AuspiceGraphContext { node, edge, graph } = context;
+
       let name = node
         .0
         .as_ref()
@@ -290,10 +287,27 @@ mod tests {
     }
   }
 
-  impl AuspiceToGraph<TestNode, TestEdge, GraphAuspiceData> for () {
+  pub struct AuspiceReader {}
+
+  impl AuspiceRead<TestNode, TestEdge, TestAuspiceData> for AuspiceReader {
+    fn new(tree: &AuspiceTree) -> Result<Self, Report> {
+      Ok(Self {})
+    }
+
+    fn auspice_data_to_graph_data(&mut self, tree: &AuspiceTree) -> Result<TestAuspiceData, Report> {
+      Ok(TestAuspiceData {
+        version: tree.data.version.clone(),
+        meta: tree.data.meta.clone(),
+        root_sequence: tree.data.root_sequence.clone(),
+        other: tree.data.other.clone(),
+      })
+    }
+
     fn auspice_node_to_graph_components(
-      AuspiceTreeContext { node, .. }: &AuspiceTreeContext,
+      &mut self,
+      context: &AuspiceTreeContext,
     ) -> Result<(TestNode, TestEdge), Report> {
+      let AuspiceTreeContext { node, .. } = context;
       Ok((TestNode(Some(node.name.clone())), TestEdge(node.node_attrs.div)))
     }
   }
@@ -347,8 +361,8 @@ mod tests {
       }"#
     );
 
-    let graph = auspice_read_str::<TestNode, TestEdge, GraphAuspiceData>(input)?;
-    let output = auspice_write_str(&graph)?;
+    let graph = auspice_read_str::<AuspiceReader, _, _, _>(input)?;
+    let output = auspice_write_str::<AuspiceWriter, _, _, _>(&graph)?;
     assert_eq!(input, output);
     Ok(())
   }

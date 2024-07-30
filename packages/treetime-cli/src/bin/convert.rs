@@ -14,9 +14,8 @@ use treetime::graph::edge::{GraphEdge, Weighted};
 use treetime::graph::graph::Graph;
 use treetime::graph::node::{GraphNode, Named};
 use treetime::io::auspice::{
-  auspice_read_file, auspice_write_file, AuspiceDataFromGraphData, AuspiceDataToGraphData, AuspiceFromGraph,
-  AuspiceGraphContext, AuspiceToGraph, AuspiceTree, AuspiceTreeBranchAttrs, AuspiceTreeContext, AuspiceTreeData,
-  AuspiceTreeMeta, AuspiceTreeNode, AuspiceTreeNodeAttrs,
+  auspice_read_file, auspice_write_file, AuspiceGraphContext, AuspiceRead, AuspiceTree, AuspiceTreeBranchAttrs,
+  AuspiceTreeContext, AuspiceTreeData, AuspiceTreeMeta, AuspiceTreeNode, AuspiceTreeNodeAttrs, AuspiceWrite,
 };
 use treetime::io::compression::remove_compression_ext;
 use treetime::io::fs::extension;
@@ -33,8 +32,8 @@ use treetime::io::phyloxml::{
 };
 use treetime::io::usher_mat::{
   usher_mat_json_read_file, usher_mat_json_write_file, usher_mat_pb_read_file, usher_mat_pb_write_file,
-  UsherDataToGraphData, UsherFromGraph, UsherGraphContext, UsherMatJsonOptions, UsherMetadata, UsherMutationList,
-  UsherToGraph, UsherTree, UsherTreeContext, UsherTreeNode,
+  UsherGraphContext, UsherMatJsonOptions, UsherMetadata, UsherMutationList, UsherRead, UsherTree, UsherTreeContext,
+  UsherTreeNode, UsherWrite,
 };
 use treetime::utils::global_init::{global_init, setup_logger};
 use treetime::{make_internal_report, make_report};
@@ -78,23 +77,25 @@ fn main() -> Result<(), Report> {
     .with_section(|| format!("{:#?}", &args.input).header("Output file:"))?;
 
   let graph: ConverterGraph = match input_format {
-    TreeFormat::Auspice => auspice_read_file(&args.input),
+    TreeFormat::Auspice => auspice_read_file::<AuspiceReader, _, _, _>(&args.input),
     TreeFormat::Newick => nwk_read_file(&args.input),
     TreeFormat::Nexus => unimplemented!("Reading Nexus files is not yet implemented"),
     TreeFormat::PhyloGraph => json_read_file(&args.input),
-    TreeFormat::MatJson => usher_mat_json_read_file(&args.input),
-    TreeFormat::MatPb => usher_mat_pb_read_file(&args.input),
+    TreeFormat::MatJson => usher_mat_json_read_file::<UsherReader, _, _, _>(&args.input),
+    TreeFormat::MatPb => usher_mat_pb_read_file::<UsherReader, _, _, _>(&args.input),
     TreeFormat::Phyloxml => phyloxml_read_file(&args.input),
     TreeFormat::PhyloxmlJson => phyloxml_json_read_file(&args.input),
   }?;
 
   match output_format {
-    TreeFormat::Auspice => auspice_write_file(&args.output, &graph),
+    TreeFormat::Auspice => auspice_write_file::<AuspiceWriter, _, _, _>(&args.output, &graph),
     TreeFormat::Newick => nwk_write_file(&args.output, &graph, &NwkWriteOptions::default()),
     TreeFormat::Nexus => nex_write_file(&args.output, &graph, &NexWriteOptions::default()),
     TreeFormat::PhyloGraph => json_write_file(&args.output, &graph, JsonPretty(true)),
-    TreeFormat::MatJson => usher_mat_json_write_file(&args.output, &graph, &UsherMatJsonOptions::default()),
-    TreeFormat::MatPb => usher_mat_pb_write_file(&args.output, &graph),
+    TreeFormat::MatJson => {
+      usher_mat_json_write_file::<UsherWriter, _, _, _>(&args.output, &graph, &UsherMatJsonOptions::default())
+    }
+    TreeFormat::MatPb => usher_mat_pb_write_file::<UsherWriter, _, _, _>(&args.output, &graph),
     TreeFormat::Phyloxml => phyloxml_write_file(&args.output, &graph),
     TreeFormat::PhyloxmlJson => phyloxml_json_write_file(&args.output, &graph, &PhyloxmlJsonOptions::default()),
   }?;
@@ -107,6 +108,20 @@ type ConverterGraph = Graph<ConverterNode, ConverterEdge, ConverterData>;
 #[derive(Clone, Debug, Serialize, Deserialize)]
 struct ConverterNode {
   pub name: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+struct ConverterEdge {
+  pub weight: Option<f64>,
+}
+
+#[derive(Clone, Default, Debug, Serialize, Deserialize)]
+pub struct ConverterData {
+  pub rooted: bool,
+  pub version: Option<String>,
+  pub meta: AuspiceTreeMeta,
+  pub root_sequence: Option<BTreeMap<String, String>>,
+  pub other: Value,
 }
 
 impl GraphNode for ConverterNode {}
@@ -138,11 +153,6 @@ impl NodeToGraphviz for ConverterNode {
   fn to_graphviz_label(&self) -> Option<impl AsRef<str>> {
     self.name.as_deref()
   }
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-struct ConverterEdge {
-  pub weight: Option<f64>,
 }
 
 impl GraphEdge for ConverterEdge {}
@@ -180,42 +190,31 @@ impl EdgeToGraphViz for ConverterEdge {
   }
 }
 
-#[derive(Clone, Default, Debug, Serialize, Deserialize)]
-pub struct ConverterData {
-  pub rooted: bool,
-  pub version: Option<String>,
-  pub meta: AuspiceTreeMeta,
-  pub root_sequence: Option<BTreeMap<String, String>>,
-  pub other: Value,
-}
+pub struct AuspiceWriter {}
 
-impl AuspiceDataFromGraphData for ConverterData {
-  fn auspice_data_from_graph_data(&self) -> Result<AuspiceTreeData, Report> {
+impl AuspiceWrite<ConverterNode, ConverterEdge, ConverterData> for AuspiceWriter {
+  fn new(graph: &Graph<ConverterNode, ConverterEdge, ConverterData>) -> Result<Self, Report> {
+    Ok(Self {})
+  }
+
+  fn auspice_data_from_graph_data(
+    &self,
+    graph: &Graph<ConverterNode, ConverterEdge, ConverterData>,
+  ) -> Result<AuspiceTreeData, Report> {
+    let data = graph.data().read_arc();
     Ok(AuspiceTreeData {
-      version: self.version.clone(),
-      meta: self.meta.clone(),
-      root_sequence: self.root_sequence.clone(),
-      other: self.other.clone(),
+      version: data.version.clone(),
+      meta: data.meta.clone(),
+      root_sequence: data.root_sequence.clone(),
+      other: data.other.clone(),
     })
   }
-}
 
-impl AuspiceDataToGraphData for ConverterData {
-  fn auspice_data_to_graph_data(tree: &AuspiceTree) -> Result<Self, Report> {
-    Ok(Self {
-      rooted: true,
-      version: tree.data.version.clone(),
-      meta: tree.data.meta.clone(),
-      root_sequence: tree.data.root_sequence.clone(),
-      other: tree.data.other.clone(),
-    })
-  }
-}
-
-impl AuspiceFromGraph<ConverterNode, ConverterEdge, ConverterData> for () {
   fn auspice_node_from_graph_components(
-    AuspiceGraphContext { node, edge, .. }: &AuspiceGraphContext<ConverterNode, ConverterEdge, ConverterData>,
+    &mut self,
+    context: &AuspiceGraphContext<ConverterNode, ConverterEdge, ConverterData>,
   ) -> Result<AuspiceTreeNode, Report> {
+    let AuspiceGraphContext { node, edge, .. } = context;
     Ok(AuspiceTreeNode {
       name: node.name.clone().unwrap_or_default(),
       branch_attrs: AuspiceTreeBranchAttrs::default(),
@@ -233,10 +232,28 @@ impl AuspiceFromGraph<ConverterNode, ConverterEdge, ConverterData> for () {
   }
 }
 
-impl AuspiceToGraph<ConverterNode, ConverterEdge, ConverterData> for () {
+pub struct AuspiceReader {}
+
+impl AuspiceRead<ConverterNode, ConverterEdge, ConverterData> for AuspiceReader {
+  fn new(tree: &AuspiceTree) -> Result<Self, Report> {
+    Ok(Self {})
+  }
+
+  fn auspice_data_to_graph_data(&mut self, tree: &AuspiceTree) -> Result<ConverterData, Report> {
+    Ok(ConverterData {
+      rooted: true,
+      version: tree.data.version.clone(),
+      meta: tree.data.meta.clone(),
+      root_sequence: tree.data.root_sequence.clone(),
+      other: tree.data.other.clone(),
+    })
+  }
+
   fn auspice_node_to_graph_components(
-    AuspiceTreeContext { node, .. }: &AuspiceTreeContext,
+    &mut self,
+    context: &AuspiceTreeContext,
   ) -> Result<(ConverterNode, ConverterEdge), Report> {
+    let AuspiceTreeContext { node, .. } = context;
     Ok((
       ConverterNode {
         name: Some(node.name.clone()),
@@ -245,6 +262,67 @@ impl AuspiceToGraph<ConverterNode, ConverterEdge, ConverterData> for () {
         weight: node.node_attrs.div,
       },
     ))
+  }
+}
+
+pub struct UsherWriter {}
+
+impl UsherWrite<ConverterNode, ConverterEdge, ConverterData> for UsherWriter {
+  fn new(graph: &Graph<ConverterNode, ConverterEdge, ConverterData>) -> Result<Self, Report> {
+    Ok(Self {})
+  }
+
+  fn usher_node_from_graph_components(
+    &mut self,
+    context: &UsherGraphContext<ConverterNode, ConverterEdge, ConverterData>,
+  ) -> Result<(UsherTreeNode, UsherMutationList, UsherMetadata), Report> {
+    let &UsherGraphContext { node, .. } = context;
+
+    let node_name = node
+      .name
+      .as_ref()
+      .ok_or_else(|| make_internal_report!("Encountered node with empty name"))?
+      .to_owned();
+
+    let usher_node = UsherTreeNode {
+      node_name,
+      condensed_leaves: vec![],
+    };
+
+    let usher_mutations = UsherMutationList { mutation: vec![] };
+
+    let usher_meta = UsherMetadata {
+      clade_annotations: vec![],
+    };
+
+    Ok((usher_node, usher_mutations, usher_meta))
+  }
+}
+
+pub struct UsherReader {}
+
+impl UsherRead<ConverterNode, ConverterEdge, ConverterData> for UsherReader {
+  fn new(tree: &UsherTree) -> Result<Self, Report> {
+    Ok(Self {})
+  }
+
+  fn usher_data_to_graph_data(&mut self, tree: &UsherTree) -> Result<ConverterData, Report> {
+    Ok(ConverterData::default())
+  }
+
+  fn usher_node_to_graph_components(
+    &mut self,
+    context: &UsherTreeContext,
+  ) -> Result<(ConverterNode, ConverterEdge), Report> {
+    let UsherTreeContext { node, .. } = context;
+
+    let node = ConverterNode {
+      name: node.name.as_ref().map(ToOwned::to_owned),
+    };
+
+    let edge = ConverterEdge { weight: None };
+
+    Ok((node, edge))
   }
 }
 
@@ -325,53 +403,6 @@ impl PhyloxmlToGraph<ConverterNode, ConverterEdge, ConverterData> for () {
         weight: clade.branch_length_attr.or(clade.branch_length_elem),
       },
     ))
-  }
-}
-
-impl UsherDataToGraphData for ConverterData {
-  fn usher_data_to_graph_data(_: &UsherTree) -> Result<Self, Report> {
-    Ok(Self::default())
-  }
-}
-
-impl UsherFromGraph<ConverterNode, ConverterEdge, ConverterData> for () {
-  fn usher_node_from_graph_components(
-    context: &UsherGraphContext<ConverterNode, ConverterEdge, ConverterData>,
-  ) -> Result<(UsherTreeNode, UsherMutationList, UsherMetadata), Report> {
-    let &UsherGraphContext { node, .. } = context;
-
-    let node_name = node
-      .name
-      .as_ref()
-      .ok_or_else(|| make_internal_report!("Encountered node with empty name"))?
-      .to_owned();
-
-    let usher_node = UsherTreeNode {
-      node_name,
-      condensed_leaves: vec![],
-    };
-
-    let usher_mutations = UsherMutationList { mutation: vec![] };
-
-    let usher_meta = UsherMetadata {
-      clade_annotations: vec![],
-    };
-
-    Ok((usher_node, usher_mutations, usher_meta))
-  }
-}
-
-impl UsherToGraph<ConverterNode, ConverterEdge, ConverterData> for () {
-  fn usher_node_to_graph_components(context: &UsherTreeContext) -> Result<(ConverterNode, ConverterEdge), Report> {
-    let UsherTreeContext { node, .. } = context;
-
-    let node = ConverterNode {
-      name: node.name.as_ref().map(ToOwned::to_owned),
-    };
-
-    let edge = ConverterEdge { weight: None };
-
-    Ok((node, edge))
   }
 }
 

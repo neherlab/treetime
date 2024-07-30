@@ -13,166 +13,163 @@ use eyre::{Report, WrapErr};
 use smart_default::SmartDefault;
 use std::io::{Read, Write};
 use std::path::Path;
+
 pub use usher_mat_utils::{UsherMetadata, UsherMutation, UsherMutationList, UsherTree, UsherTreeNode};
 
-pub fn usher_mat_pb_read_file<N, E, D>(filepath: impl AsRef<Path>) -> Result<Graph<N, E, D>, Report>
+pub fn usher_mat_pb_read_file<C, N, E, D>(filepath: impl AsRef<Path>) -> Result<Graph<N, E, D>, Report>
 where
   N: GraphNode + NodeFromNwk + Named,
   E: GraphEdge + EdgeFromNwk,
-  D: UsherDataToGraphData + Sync + Send + Default,
-  (): UsherToGraph<N, E, D>,
+  D: Sync + Send + Default,
+  C: UsherRead<N, E, D>,
 {
   let filepath = filepath.as_ref();
-  usher_mat_pb_read(open_file_or_stdin(&Some(filepath))?)
+  usher_mat_pb_read::<C, _, _, _>(open_file_or_stdin(&Some(filepath))?)
     .wrap_err_with(|| format!("When reading Usher MAT protobuf file '{filepath:#?}'"))
 }
 
-pub fn usher_mat_pb_read_bytes<N, E, D>(buf: impl Buf) -> Result<Graph<N, E, D>, Report>
+pub fn usher_mat_pb_read_bytes<C, N, E, D>(buf: impl Buf) -> Result<Graph<N, E, D>, Report>
 where
   N: GraphNode + NodeFromNwk + Named,
   E: GraphEdge + EdgeFromNwk,
-  D: UsherDataToGraphData + Sync + Send + Default,
-  (): UsherToGraph<N, E, D>,
+  D: Sync + Send + Default,
+  C: UsherRead<N, E, D>,
 {
   let tree = usher_mat_utils::usher_mat_pb_read_bytes(buf).wrap_err("When reading Usher MAT protobuf bytes")?;
-  usher_to_graph(&tree)
+  usher_to_graph::<C, _, _, _>(&tree)
 }
 
-pub fn usher_mat_pb_read<N, E, D>(reader: impl Read) -> Result<Graph<N, E, D>, Report>
+pub fn usher_mat_pb_read<C, N, E, D>(reader: impl Read) -> Result<Graph<N, E, D>, Report>
 where
   N: GraphNode + NodeFromNwk + Named,
   E: GraphEdge + EdgeFromNwk,
-  D: UsherDataToGraphData + Sync + Send + Default,
-  (): UsherToGraph<N, E, D>,
+  D: Sync + Send + Default,
+  C: UsherRead<N, E, D>,
 {
   let tree = usher_mat_utils::usher_mat_pb_read(reader).wrap_err("When reading Usher MAT protobuf")?;
-  usher_to_graph(&tree)
+  usher_to_graph::<C, _, _, _>(&tree)
 }
 
-pub fn usher_mat_json_read_file<N, E, D>(filepath: impl AsRef<Path>) -> Result<Graph<N, E, D>, Report>
+pub fn usher_mat_json_read_file<C, N, E, D>(filepath: impl AsRef<Path>) -> Result<Graph<N, E, D>, Report>
 where
   N: GraphNode + NodeFromNwk + Named,
   E: GraphEdge + EdgeFromNwk,
-  D: UsherDataToGraphData + Sync + Send + Default,
-  (): UsherToGraph<N, E, D>,
+  D: Sync + Send + Default,
+  C: UsherRead<N, E, D>,
 {
   let filepath = filepath.as_ref();
   let tree = json_read_file(filepath).wrap_err_with(|| format!("When reading Usher MAT JSON file '{filepath:#?}'"))?;
-  usher_to_graph(&tree)
+  usher_to_graph::<C, _, _, _>(&tree)
 }
 
-pub fn usher_mat_json_read_str<N, E, D>(s: impl AsRef<str>) -> Result<Graph<N, E, D>, Report>
+pub fn usher_mat_json_read_str<C, N, E, D>(s: impl AsRef<str>) -> Result<Graph<N, E, D>, Report>
 where
   N: GraphNode + NodeFromNwk + Named,
   E: GraphEdge + EdgeFromNwk,
-  D: UsherDataToGraphData + Sync + Send + Default,
-  (): UsherToGraph<N, E, D>,
+  D: Sync + Send + Default,
+  C: UsherRead<N, E, D>,
 {
   let tree = json_read_str(s).wrap_err("When reading Usher MAT JSON string")?;
-  usher_to_graph(&tree)
+  usher_to_graph::<C, _, _, _>(&tree)
 }
 
-pub fn usher_mat_json_read<N, E, D>(reader: impl Read) -> Result<Graph<N, E, D>, Report>
+pub fn usher_mat_json_read<C, N, E, D>(reader: impl Read) -> Result<Graph<N, E, D>, Report>
 where
   N: GraphNode + NodeFromNwk + Named,
   E: GraphEdge + EdgeFromNwk,
-  D: UsherDataToGraphData + Sync + Send + Default,
-  (): UsherToGraph<N, E, D>,
+  D: Sync + Send + Default,
+  C: UsherRead<N, E, D>,
 {
   let tree = json_read(reader).wrap_err("When reading Usher MAT JSON")?;
-  usher_to_graph(&tree)
+  usher_to_graph::<C, _, _, _>(&tree)
 }
 
-pub fn usher_mat_pb_write_file<N, E, D>(filepath: impl AsRef<Path>, graph: &Graph<N, E, D>) -> Result<(), Report>
+pub fn usher_mat_pb_write_file<C, N, E, D>(filepath: impl AsRef<Path>, graph: &Graph<N, E, D>) -> Result<(), Report>
 where
   N: GraphNode + NodeToNwk,
   E: GraphEdge + EdgeToNwk,
   D: Sync + Send + Default,
-  (): UsherFromGraph<N, E, D>,
+  C: UsherWrite<N, E, D>,
 {
   let filepath = filepath.as_ref();
   let mut f = create_file_or_stdout(filepath)?;
-  usher_mat_pb_write(&mut f, graph)
+  usher_mat_pb_write::<C, _, _, _>(&mut f, graph)
     .wrap_err_with(|| format!("When reading Usher MAT protobuf file '{filepath:#?}'"))?;
   writeln!(f)?;
   Ok(())
 }
 
-pub fn usher_mat_pb_write_bytes<N, E, D>(graph: &Graph<N, E, D>) -> Result<(), Report>
+pub fn usher_mat_pb_write_bytes<C, N, E, D>(graph: &Graph<N, E, D>) -> Result<(), Report>
 where
   N: GraphNode + NodeToNwk,
   E: GraphEdge + EdgeToNwk,
   D: Sync + Send + Default,
-  (): UsherFromGraph<N, E, D>,
+  C: UsherWrite<N, E, D>,
 {
-  let tree = usher_from_graph(graph)?;
+  let tree = usher_from_graph::<C, _, _, _>(graph)?;
   let mut buf = Vec::new();
   usher_mat_utils::usher_mat_pb_write_bytes(&mut buf, &tree).wrap_err("When writing Usher MAT protobuf bytes")
 }
 
-pub fn usher_mat_pb_write<N, E, D>(writer: &mut impl Write, graph: &Graph<N, E, D>) -> Result<(), Report>
+pub fn usher_mat_pb_write<C, N, E, D>(writer: &mut impl Write, graph: &Graph<N, E, D>) -> Result<(), Report>
 where
   N: GraphNode + NodeToNwk,
   E: GraphEdge + EdgeToNwk,
   D: Sync + Send + Default,
-  (): UsherFromGraph<N, E, D>,
+  C: UsherWrite<N, E, D>,
 {
-  let tree = usher_from_graph(graph)?;
+  let tree = usher_from_graph::<C, _, _, _>(graph)?;
   usher_mat_utils::usher_mat_pb_write(writer, &tree).wrap_err("When writing Usher MAT protobuf")
 }
 
-pub fn usher_mat_json_write_file<N, E, D>(
+pub fn usher_mat_json_write_file<C, N, E, D>(
   filepath: impl AsRef<Path>,
   graph: &Graph<N, E, D>,
+
   options: &UsherMatJsonOptions,
 ) -> Result<(), Report>
 where
   N: GraphNode + NodeToNwk,
   E: GraphEdge + EdgeToNwk,
   D: Sync + Send + Default,
-  (): UsherFromGraph<N, E, D>,
+  C: UsherWrite<N, E, D>,
 {
   let filepath = filepath.as_ref();
-  let tree = usher_from_graph(graph)?;
+  let tree = usher_from_graph::<C, _, _, _>(graph)?;
   json_write_file(filepath, &tree, JsonPretty(options.pretty))
     .wrap_err_with(|| format!("When writing Usher MAT JSON file: '{filepath:#?}'"))?;
   Ok(())
 }
 
-pub fn usher_mat_json_write_str<N, E, D>(
+pub fn usher_mat_json_write_str<C, N, E, D>(
   graph: &Graph<N, E, D>,
+
   options: &UsherMatJsonOptions,
 ) -> Result<String, Report>
 where
   N: GraphNode + NodeToNwk,
   E: GraphEdge + EdgeToNwk,
   D: Sync + Send + Default,
-  (): UsherFromGraph<N, E, D>,
+  C: UsherWrite<N, E, D>,
 {
-  let tree = usher_from_graph(graph)?;
+  let tree = usher_from_graph::<C, _, _, _>(graph)?;
   json_write_str(&tree, JsonPretty(options.pretty)).wrap_err("When writing Usher MAT JSON string")
 }
 
-pub fn usher_mat_json_write<N, E, D>(
+pub fn usher_mat_json_write<C, N, E, D>(
   writer: &mut impl Write,
   graph: &Graph<N, E, D>,
+
   options: &UsherMatJsonOptions,
 ) -> Result<(), Report>
 where
   N: GraphNode + NodeToNwk,
   E: GraphEdge + EdgeToNwk,
   D: Sync + Send + Default,
-  (): UsherFromGraph<N, E, D>,
+  C: UsherWrite<N, E, D>,
 {
-  let tree = usher_from_graph(graph)?;
+  let tree = usher_from_graph::<C, _, _, _>(graph)?;
   json_write(writer, &tree, JsonPretty(options.pretty)).wrap_err("When writing Usher MAT JSON")
-}
-
-/// Describes conversion from Usher tree global data when reading from Usher MAT protobuf
-pub trait UsherDataToGraphData: Sized + Default {
-  fn usher_data_to_graph_data(_: &UsherTree) -> Result<Self, Report> {
-    Ok(Self::default())
-  }
 }
 
 #[derive(SmartDefault)]
@@ -181,35 +178,39 @@ pub struct UsherMatJsonOptions {
   pretty: bool,
 }
 
-pub struct UsherTreeContext<'a> {
-  pub node: UsherNodeImpl,
-  pub tree: &'a UsherTree,
-}
-
-/// Describes conversion from Usher tree node data when reading from Usher MAT protobuf
-pub trait UsherToGraph<N, E, D>
-where
-  N: GraphNode,
-  E: GraphEdge,
-  D: UsherDataToGraphData + Sync + Send,
-{
-  fn usher_node_to_graph_components(context: &UsherTreeContext) -> Result<(N, E), Report>;
-}
-
 pub struct UsherNodeImpl {
+  pub index: usize,
   pub name: Option<String>,
   pub branch_length: f64,
   pub clade_annotations: Vec<String>,
   pub mutations: Vec<UsherMutation>,
 }
 
-/// Convert Usher MAT protobuf to graph
-pub fn usher_to_graph<N, E, D>(tree: &UsherTree) -> Result<Graph<N, E, D>, Report>
+pub struct UsherTreeContext<'a> {
+  pub node: UsherNodeImpl,
+  pub tree: &'a UsherTree,
+}
+
+pub trait UsherRead<N, E, D>: Sized
 where
   N: GraphNode + NodeFromNwk + Named,
   E: GraphEdge + EdgeFromNwk,
-  D: UsherDataToGraphData + Sync + Send + Default,
-  (): UsherToGraph<N, E, D>,
+  D: Sync + Send + Default,
+{
+  fn new(tree: &UsherTree) -> Result<Self, Report>;
+
+  fn usher_data_to_graph_data(&mut self, tree: &UsherTree) -> Result<D, Report>;
+
+  fn usher_node_to_graph_components(&mut self, context: &UsherTreeContext) -> Result<(N, E), Report>;
+}
+
+/// Convert Usher MAT protobuf to graph
+pub fn usher_to_graph<C, N, E, D>(tree: &UsherTree) -> Result<Graph<N, E, D>, Report>
+where
+  N: GraphNode + NodeFromNwk + Named,
+  E: GraphEdge + EdgeFromNwk,
+  D: Sync + Send + Default,
+  C: UsherRead<N, E, D>,
 {
   let mut graph: Graph<N, E, D> = nwk_read_str(&tree.newick)?;
 
@@ -223,12 +224,15 @@ where
     );
   }
 
-  graph.set_data(D::usher_data_to_graph_data(tree)?);
+  let mut converter = C::new(tree)?;
+
+  graph.set_data(converter.usher_data_to_graph_data(tree)?);
 
   let mut i = 0;
   graph.iter_depth_first_preorder_forward(|mut node| {
     let context = UsherTreeContext {
       node: UsherNodeImpl {
+        index: i,
         name: node.payload.name().map(|name| name.as_ref().to_owned()),
         branch_length: 0.0,
         clade_annotations: tree.metadata[i].clade_annotations.clone(),
@@ -237,7 +241,7 @@ where
       tree,
     };
 
-    let (graph_node, _) = <() as UsherToGraph<N, E, D>>::usher_node_to_graph_components(&context).unwrap();
+    let (graph_node, _) = converter.usher_node_to_graph_components(&context).unwrap();
     *node.payload = graph_node;
     i += 1;
   });
@@ -250,44 +254,48 @@ where
   N: GraphNode + NodeToNwk,
   E: GraphEdge + EdgeToNwk,
   D: Sync + Send + Default,
-  (): UsherFromGraph<N, E, D>,
 {
   pub node: &'a N,
   pub edge: Option<&'a E>,
   pub graph: &'a Graph<N, E, D>,
 }
 
-/// Describes conversion to Usher tree node data when writing to Usher MAT protobuf
-pub trait UsherFromGraph<N, E, D>
+pub trait UsherWrite<N, E, D>: Sized
 where
   N: GraphNode + NodeToNwk,
   E: GraphEdge + EdgeToNwk,
   D: Sync + Send + Default,
-  (): UsherFromGraph<N, E, D>,
 {
+  fn new(graph: &Graph<N, E, D>) -> Result<Self, Report>;
+
   fn usher_node_from_graph_components(
+    &mut self,
     context: &UsherGraphContext<N, E, D>,
   ) -> Result<(UsherTreeNode, UsherMutationList, UsherMetadata), Report>;
 }
 
 /// Convert graph to Usher MAT protobuf
-pub fn usher_from_graph<N, E, D>(graph: &Graph<N, E, D>) -> Result<UsherTree, Report>
+pub fn usher_from_graph<C, N, E, D>(graph: &Graph<N, E, D>) -> Result<UsherTree, Report>
 where
   N: GraphNode + NodeToNwk,
   E: GraphEdge + EdgeToNwk,
   D: Sync + Send + Default,
-  (): UsherFromGraph<N, E, D>,
+  C: UsherWrite<N, E, D>,
 {
   let mut node_mutations = vec![];
   let mut condensed_nodes = vec![];
   let mut metadata = vec![];
+
+  let mut converter = C::new(graph)?;
   graph.iter_depth_first_preorder_forward(|node| {
     let edge = node.parents.first().map(|(_, edge)| edge.read_arc());
     let edge = edge.as_deref();
     let node = &node.payload;
-    let (node, mutations, meta) =
-      <() as UsherFromGraph<N, E, D>>::usher_node_from_graph_components(&UsherGraphContext { node, edge, graph })
-        .unwrap();
+
+    let (node, mutations, meta) = converter
+      .usher_node_from_graph_components(&UsherGraphContext { node, edge, graph })
+      .unwrap();
+
     node_mutations.push(mutations);
     condensed_nodes.push(node);
     metadata.push(meta);
