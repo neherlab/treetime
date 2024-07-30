@@ -19,10 +19,13 @@ clap_complete_fig = { workspace = true }
 color-eyre = { workspace = true }
 ctor = { workspace = true }
 eyre = { workspace = true }
+indoc = { workspace = true }
 itertools = { workspace = true }
 lazy_static = { workspace = true }
 log = { workspace = true }
+maplit = { workspace = true }
 num_cpus = { workspace = true }
+pretty_assertions = { workspace = true }
 rayon = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

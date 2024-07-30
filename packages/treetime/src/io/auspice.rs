@@ -1,6 +1,6 @@
 use crate::graph::edge::{Edge, GraphEdge};
 use crate::graph::graph::Graph;
-use crate::graph::node::GraphNode;
+use crate::graph::node::{GraphNode, GraphNodeKey, Node};
 use crate::io::file::create_file_or_stdout;
 use crate::io::file::open_file_or_stdin;
 use crate::io::json::{json_read, json_write, JsonPretty};
@@ -87,7 +87,21 @@ where
 
 pub struct AuspiceTreeContext<'a> {
   pub node: &'a AuspiceTreeNode,
+  pub parent: Option<&'a AuspiceTreeNode>,
   pub tree: &'a AuspiceTree,
+}
+
+impl AuspiceTreeContext<'_> {
+  pub fn branch_length(&self) -> Option<f64> {
+    let parent_div = self.parent.and_then(|parent| parent.node_attrs.div);
+    let div = self.node.node_attrs.div;
+    match (parent_div, div) {
+      (Some(parent_div), Some(div)) => Some(div - parent_div),
+      (None, Some(div)) => Some(div),
+      (Some(_parent_div), None) => None,
+      (None, None) => None,
+    }
+  }
 }
 
 pub trait AuspiceRead<N, E, D>: Sized
@@ -113,15 +127,16 @@ where
 {
   let mut converter = C::new(tree)?;
   let mut graph = Graph::<N, E, D>::with_data(converter.auspice_data_to_graph_data(tree)?);
-  let mut queue = VecDeque::from([(None, &tree.tree)]);
-  while let Some((parent_key, node)) = queue.pop_front() {
-    let (graph_node, graph_edge) = converter.auspice_node_to_graph_components(&AuspiceTreeContext { node, tree })?;
+  let mut queue = VecDeque::from([(None, &tree.tree, None)]);
+  while let Some((parent_key, node, parent)) = queue.pop_front() {
+    let (graph_node, graph_edge) =
+      converter.auspice_node_to_graph_components(&AuspiceTreeContext { node, parent, tree })?;
     let node_key = graph.add_node(graph_node);
     if let Some(parent_key) = parent_key {
       graph.add_edge(parent_key, node_key, graph_edge)?;
     }
     for child in &node.children {
-      queue.push_back((Some(node_key), &child));
+      queue.push_back((Some(node_key), &child, Some(node)));
     }
   }
   graph.build()?;
@@ -134,7 +149,10 @@ where
   E: GraphEdge,
   D: Sync + Send,
 {
+  pub node_key: GraphNodeKey,
   pub node: &'a N,
+  pub parent_key: Option<GraphNodeKey>,
+  pub parent: Option<&'a N>,
   pub edge: Option<&'a E>,
   pub graph: &'a Graph<N, E, D>,
 }
@@ -169,21 +187,34 @@ where
   // Pre-order iteration to construct the nodes from graph nodes and edges
   let mut node_map = {
     let mut node_map = btreemap! {};
-    let mut queue = VecDeque::from([(Arc::clone(&root), None)]);
-    while let Some((current_node, current_edge)) = queue.pop_front() {
-      let current_node = current_node.read_arc();
-
-      let node = &*current_node.payload().read_arc();
+    let mut queue = VecDeque::from([(Arc::clone(&root), None, None)]);
+    while let Some((current_node, current_parent, current_edge)) = queue.pop_front() {
+      let node_key = current_node.read_arc().key();
+      let node = &*current_node.read_arc().payload().read_arc();
+      let parent_key = current_parent
+        .as_ref()
+        .map(|parent: &Arc<RwLock<Node<N>>>| parent.read_arc().key());
+      let parent = current_parent
+        .as_ref()
+        .map(|parent: &Arc<RwLock<Node<N>>>| parent.read_arc().payload().read_arc());
+      let parent = parent.as_deref();
       let edge = current_edge
         .as_ref()
         .map(|edge: &Arc<RwLock<Edge<E>>>| edge.read_arc().payload().read_arc());
       let edge = edge.as_deref();
-      let current_tree_node =
-        converter.auspice_node_from_graph_components(&AuspiceGraphContext { node, edge, graph })?;
-      for (child, edge) in graph.children_of(&current_node) {
-        queue.push_back((child, Some(edge)));
+      let context = AuspiceGraphContext {
+        node_key,
+        node,
+        parent_key,
+        parent,
+        edge,
+        graph,
+      };
+      let current_tree_node = converter.auspice_node_from_graph_components(&context)?;
+      for (child, edge) in graph.children_of(&current_node.read_arc()) {
+        queue.push_back((child, Some(Arc::clone(&current_node)), Some(edge)));
       }
-      node_map.insert(current_node.key(), current_tree_node);
+      node_map.insert(current_node.read_arc().key(), current_tree_node);
     }
     node_map
   };
@@ -215,157 +246,6 @@ where
   let data = converter.auspice_data_from_graph_data(graph)?;
   let tree = node_map.remove(&root.read_arc().key()).unwrap();
   Ok(AuspiceTree { data, tree })
-}
-
-#[cfg(test)]
-mod tests {
-  use super::*;
-  use crate::graph::graph::tests::{TestEdge, TestNode};
-  use crate::io::auspice::tests::AuspiceTreeBranchAttrs;
-  use crate::io::auspice::{AuspiceTreeMeta, AuspiceTreeNodeAttrs};
-  use crate::make_internal_report;
-  use eyre::Report;
-  use indoc::indoc;
-  use pretty_assertions::assert_eq;
-  use serde_json::Value;
-  use std::collections::BTreeMap;
-
-  #[derive(Clone, Debug)]
-  pub struct TestAuspiceData {
-    pub version: Option<String>,
-    pub meta: AuspiceTreeMeta,
-    pub root_sequence: Option<BTreeMap<String, String>>,
-    pub other: Value,
-  }
-
-  pub struct AuspiceWriter {}
-
-  impl AuspiceWrite<TestNode, TestEdge, TestAuspiceData> for AuspiceWriter {
-    fn new(graph: &Graph<TestNode, TestEdge, TestAuspiceData>) -> Result<Self, Report> {
-      Ok(Self {})
-    }
-
-    fn auspice_data_from_graph_data(
-      &self,
-      graph: &Graph<TestNode, TestEdge, TestAuspiceData>,
-    ) -> Result<AuspiceTreeData, Report> {
-      let data = graph.data().read_arc();
-      Ok(AuspiceTreeData {
-        version: data.version.clone(),
-        meta: data.meta.clone(),
-        root_sequence: data.root_sequence.clone(),
-        other: data.other.clone(),
-      })
-    }
-
-    fn auspice_node_from_graph_components(
-      &mut self,
-      context: &AuspiceGraphContext<TestNode, TestEdge, TestAuspiceData>,
-    ) -> Result<AuspiceTreeNode, Report> {
-      let AuspiceGraphContext { node, edge, graph } = context;
-
-      let name = node
-        .0
-        .as_ref()
-        .ok_or_else(|| make_internal_report!("Encountered node with empty name"))?
-        .to_owned();
-
-      Ok(AuspiceTreeNode {
-        name,
-        branch_attrs: AuspiceTreeBranchAttrs::default(),
-        node_attrs: AuspiceTreeNodeAttrs {
-          div: edge.and_then(|edge| edge.0),
-          clade_membership: None,
-          region: None,
-          country: None,
-          division: None,
-          other: Value::default(),
-        },
-        children: vec![],
-        other: Value::default(),
-      })
-    }
-  }
-
-  pub struct AuspiceReader {}
-
-  impl AuspiceRead<TestNode, TestEdge, TestAuspiceData> for AuspiceReader {
-    fn new(tree: &AuspiceTree) -> Result<Self, Report> {
-      Ok(Self {})
-    }
-
-    fn auspice_data_to_graph_data(&mut self, tree: &AuspiceTree) -> Result<TestAuspiceData, Report> {
-      Ok(TestAuspiceData {
-        version: tree.data.version.clone(),
-        meta: tree.data.meta.clone(),
-        root_sequence: tree.data.root_sequence.clone(),
-        other: tree.data.other.clone(),
-      })
-    }
-
-    fn auspice_node_to_graph_components(
-      &mut self,
-      context: &AuspiceTreeContext,
-    ) -> Result<(TestNode, TestEdge), Report> {
-      let AuspiceTreeContext { node, .. } = context;
-      Ok((TestNode(Some(node.name.clone())), TestEdge(node.node_attrs.div)))
-    }
-  }
-
-  #[test]
-  fn test_auspice_roundtrip() -> Result<(), Report> {
-    let input = indoc!(
-      // language=json
-      r#"{
-        "version": "v2",
-        "meta": {
-          "description": "This is a test!",
-          "name": "Test"
-        },
-        "root_sequence": {
-          "nuc": "ACGTACGTACGTACGTACGTACGT"
-        },
-        "unknown_field": 42,
-        "tree": {
-          "name": "root",
-          "node_attrs": {},
-          "children": [
-            {
-              "name": "AB",
-              "node_attrs": {
-                "div": 3.0
-              },
-              "children": [
-                {
-                  "name": "A",
-                  "node_attrs": {
-                    "div": 8.0
-                  }
-                },
-                {
-                  "name": "B",
-                  "node_attrs": {
-                    "div": 5.0
-                  }
-                }
-              ]
-            },
-            {
-              "name": "C",
-              "node_attrs": {
-                "div": 7.0
-              }
-            }
-          ]
-        }
-      }"#
-    );
-
-    let graph = auspice_read_str::<AuspiceReader, _, _, _>(input)?;
-    let output = auspice_write_str::<AuspiceWriter, _, _, _>(&graph)?;
-    assert_eq!(input, output);
-    Ok(())
-  }
 }
 
 use serde::{Deserialize, Serialize};
