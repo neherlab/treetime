@@ -28,7 +28,7 @@ def leaf_contribution(tip_value: float) -> ClockSet:
 
 
 def clock_regression_backward(graph: Graph) -> None:
-  bv = lambda e: e.branch_length # should be configurable
+  bv = lambda e: graph.clock_mode['variance_factor']*e.branch_length +  graph.clock_mode['variance_offset'] # should be configurable
   def clock_backward(n: GraphNodeBackward) -> None:
     n.payload.clock.from_children = {}
     if n.is_leaf:
@@ -45,7 +45,7 @@ def clock_regression_backward(graph: Graph) -> None:
   graph.par_iter_backward(clock_backward)
 
 def clock_regression_forward(graph: Graph) -> None:
-  bv = lambda e: e.branch_length # should be configurable and identical to above
+  bv = lambda e: graph.clock_mode['variance_factor']*e.branch_length +  graph.clock_mode['variance_offset']
   def clock_forward(n: GraphNodeForward) -> None:
     Q = n.payload.clock.to_parent
     Q_tot = ClockSet(t_sum=Q.t_sum, tsq_sum=Q.tsq_sum, d_sum=Q.d_sum, dsq_sum=Q.dsq_sum, dt_sum=Q.dt_sum, norm=Q.norm)
@@ -54,7 +54,6 @@ def clock_regression_forward(graph: Graph) -> None:
       Q_tot.add(propagate_averages(p.clock.to_children[n.payload.name], branch_value=e.branch_length, branch_variance=bv(e)))
 
     n.payload.clock.to_children = {}
-    print(n.payload.clock.from_children)
     for c, Q in n.payload.clock.from_children.items():
       Q_to_children = ClockSet(t_sum=Q_tot.t_sum, tsq_sum=Q_tot.tsq_sum, d_sum=Q_tot.d_sum,
                                dsq_sum=Q_tot.dsq_sum, dt_sum=Q_tot.dt_sum, norm=Q_tot.norm)
@@ -74,7 +73,7 @@ def clock_model(Q: ClockSet) -> ClockModel:
   else:
     raise ValueError("No variation in sampling dates! Please specify your clock rate explicitly.")
 
-  intercept = (Q.t_sum - Q.t_sum*rate)/Q.norm
+  intercept = (Q.d_sum - Q.t_sum*rate)/Q.norm
   estimator_hessian = np.array([[Q.tsq_sum, Q.t_sum], [Q.t_sum, Q.norm]])
   chisq = 0.5*(Q.dsq_sum*Q.norm - Q.d_sum**2 - (Q.dt_sum*Q.norm - Q.d_sum*Q.t_sum)**2/(Q.tsq_sum*Q.norm - Q.t_sum**2))/Q.norm
   return ClockModel(rate=rate, intercept=intercept, hessian=estimator_hessian, chisq=chisq)
@@ -95,7 +94,7 @@ def find_best_split(graph: Graph, edge: GraphEdgeKey) -> FindRootResult:
 
   # precalculate branch values for the edge.
   branch_value = edge.payload().branch_length
-  branch_variance = branch_value  # should be configurable and identical to above
+  branch_variance =  graph.clock_mode['variance_factor']*branch_value +  graph.clock_mode['variance_offset'] # should be configurable
 
   # interogate different positions along the branch
   best_chisq = np.inf
@@ -148,6 +147,35 @@ def find_best_root(graph: Graph) -> FindRootResult:
 
   return best_root
 
+def tests():
+  dates = {"A":2013, "B": 2022, "C":2017, "D": 2005}
+  div = {"A":0.2, "B": 0.3, "C":0.25, "D": 0.17}
+
+  t = np.sum([x for x in dates.values()])
+  tsq = np.sum([x**2 for x in dates.values()])
+  dt = np.sum([div[c]*dates[c] for c in div])
+  d = np.sum([div[c] for c in div])
+  naive_rate = (dt*4-d*t)/(tsq*4-t**2)
+
+  tree = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;"
+  G = graph_from_nwk_str(nwk_string=tree, node_payload_factory=NodePayload, edge_payload_factory=EdgePayload)
+  for n in G.get_leaves():
+    n.payload().clock.date = dates[n.payload().name]
+
+  G.clock_mode = {'variance_factor': 0.0, 'variance_offset':0.0}
+  clock_regression_backward(G)
+  clock_regression_forward(G)
+
+  root = G.get_one_root()
+  clock = clock_model(root.payload().clock.total)
+
+  assert naive_rate==clock.rate
+
+  G.clock_mode = {'variance_factor': 1.0, 'variance_offset':0.0}
+  res = find_best_root(G)
+  assert res.clock.rate == 0.008095476518345305
+
+
 
 if __name__=="__main__":
   fname_nwk = 'test_scripts/data/tree.nwk'
@@ -161,11 +189,12 @@ if __name__=="__main__":
   tsq = np.sum([x**2 for x in dates.values()])
   dt = np.sum([div[c]*dates[c] for c in div])
   d = np.sum([div[c] for c in div])
-  print((dt*4-d*t)/(tsq*4-t**2))
+  print("Naive rate:", (dt*4-d*t)/(tsq*4-t**2))
 
   with open(fname_nwk) as fh:
     nwkstr = fh.read()
   G = graph_from_nwk_str(nwk_string=nwkstr, node_payload_factory=NodePayload, edge_payload_factory=EdgePayload)
+  G.clock_mode = {'variance_factor': 1.0, 'variance_offset':0.0}
 
   for n in G.get_leaves():
     n.payload().clock.date = dates[n.payload().name]
