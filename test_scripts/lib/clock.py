@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 from .str import AutoRepr
 from typing import Dict, Optional
 import numpy as np
+from .edge import GraphEdgeKey
 
 @dataclass
 class ClockSet(AutoRepr):
@@ -43,3 +44,9 @@ class ClockModel(AutoRepr):
     intercept: float
     hessian: np.array
     chisq: float = 0.0
+
+@dataclass
+class FindRootResult(AutoRepr):
+    edge: GraphEdgeKey
+    split: float
+    clock: ClockModel

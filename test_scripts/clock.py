@@ -1,46 +1,51 @@
-from Bio import AlignIO
 import numpy as np
-from lib import Graph, graph_from_nwk_str, GraphNodeBackward, GraphNodeForward, Node, ClockSet, ClockModel
+from lib import Graph, graph_from_nwk_str, GraphNodeBackward, GraphNodeForward, Node, ClockSet, ClockModel, FindRootResult, GraphEdgeKey
 from typing import List, Dict
 from payload import NodePayload, EdgePayload
 
 def propagate_averages(Q_src: ClockSet, branch_value: float, branch_variance: float) -> ClockSet:
   denom = 1.0/(1+branch_variance*Q_src.norm)
-  # denom = 1/q/(1/q + bv)
-  # q = sum_c 1/q_c/(1/q_c + bv_c)
-  # 1/q = 1/(sum_c 1/q_c/(1/q_c + bv_c)) =
   return ClockSet(
     t_sum  = Q_src.t_sum*denom,  # Eq 11 in Neher 2018 -- contribution of children doesn't change
     tsq_sum   = Q_src.tsq_sum - branch_variance*Q_src.t_sum**2*denom, # Eq. 13
     d_sum  = (Q_src.d_sum + branch_value*Q_src.norm)*denom, # Eq. 12 -- add branch_value norm times
-    dt_sum = (Q_src.dt_sum + branch_value*Q_src.t_sum - branch_variance*Q_src.t_sum*(Q_src.d_sum+Q_src.norm*branch_value))*denom, # Eq. 14
+    dt_sum = Q_src.dt_sum + branch_value*Q_src.t_sum - branch_variance*Q_src.t_sum*(Q_src.d_sum+Q_src.norm*branch_value)*denom, # Eq. 14
     # Eq. A.2
     dsq_sum = (Q_src.dsq_sum + 2*branch_value*Q_src.d_sum + branch_value**2*Q_src.norm \
                - branch_variance*(Q_src.d_sum**2 + 2*branch_value*Q_src.d_sum*Q_src.norm + branch_value**2*Q_src.norm**2)*denom),
     norm   = Q_src.norm*denom
   )
 
+def leaf_contribution(tip_value: float) -> ClockSet:
+  return ClockSet(
+    t_sum  = tip_value,
+    tsq_sum = tip_value**2,
+    d_sum  = 0,
+    dt_sum = 0,
+    dsq_sum = 0,
+    norm = 1
+  )
+
 
 def clock_regression_backward(graph: Graph) -> None:
-  bv = lambda e: 0.0
+  bv = lambda e: e.branch_length # should be configurable
   def clock_backward(n: GraphNodeBackward) -> None:
     n.payload.clock.from_children = {}
     if n.is_leaf:
-      t = n.payload.clock.date
-      n.payload.clock.to_parent = ClockSet(t_sum=t, tsq_sum=t**2, d_sum=0, dsq_sum=0, dt_sum=0, norm=1.0)
+      Q_dest = leaf_contribution(tip_value=n.payload.clock.date)
     else:
       Q_dest = ClockSet()
       for c,e in n.children:
-        n.payload.clock.from_children[c.name] = propagate_averages(c.clock.to_parent, branch_value=e.branch_length,
-                                                                            branch_variance=bv(e))
-        Q_dest.add(n.payload.clock.from_children[c.name])
+        Q_from_child = propagate_averages(c.clock.to_parent, branch_value=e.branch_length,
+                                                       branch_variance=bv(e))
+        Q_dest.add(Q_from_child)
+        n.payload.clock.from_children[c.name] = Q_from_child
 
-      n.payload.clock.to_parent=Q_dest
-
+    n.payload.clock.to_parent=Q_dest
   graph.par_iter_backward(clock_backward)
 
 def clock_regression_forward(graph: Graph) -> None:
-  bv = lambda e: 0.0
+  bv = lambda e: e.branch_length # should be configurable and identical to above
   def clock_forward(n: GraphNodeForward) -> None:
     Q = n.payload.clock.to_parent
     Q_tot = ClockSet(t_sum=Q.t_sum, tsq_sum=Q.tsq_sum, d_sum=Q.d_sum, dsq_sum=Q.dsq_sum, dt_sum=Q.dt_sum, norm=Q.norm)
@@ -82,6 +87,67 @@ def clock_model_fixed_rate(Q: ClockSet, rate: float) -> ClockModel:
   return ClockModel(rate=rate, intercept=intercept, hessian=estimator_hessian)
 
 
+def find_best_split(graph: Graph, edge: GraphEdgeKey) -> FindRootResult:
+  # get clock data from both ends of the edge
+  n = graph.get_node(edge.target())
+  n_clock = n.payload().clock.to_parent
+  p_clock = graph.get_node(edge.source()).payload().clock.to_children[n.payload().name]
+
+  # precalculate branch values for the edge.
+  branch_value = edge.payload().branch_length
+  branch_variance = branch_value  # should be configurable and identical to above
+
+  # interogate different positions along the branch
+  best_chisq = np.inf
+  best_x = np.nan
+  best_clock = None
+  for x in np.linspace(0,1,11): # arbitrary choice for now, should optimize
+    Q_tmp = propagate_averages(p_clock, branch_value=branch_value*x, branch_variance=branch_variance*x)
+    Q_tmp.add(propagate_averages(n_clock, branch_value=branch_value*(1-x), branch_variance=branch_variance*(1-x)))
+    clock = clock_model(Q_tmp)
+
+    if clock.chisq<best_chisq:
+      best_chisq=clock.chisq
+      best_x=x
+      best_clock = clock
+
+  return FindRootResult(edge=edge, split=best_x, clock=best_clock)
+
+
+def find_best_root(graph: Graph) -> FindRootResult:
+  '''
+  loop over all nodes, pick the one with the lowest chisq, then optimize position along surrounding brances
+  '''
+  clock_regression_backward(graph)
+  clock_regression_forward(graph)
+  root = graph.get_one_root()
+  best_root_node = root
+  best_chisq = clock_model(root.payload().clock.total).chisq
+  best_root = FindRootResult(edge=None, split=0.0, clock=clock_model(root.payload().clock.total))
+
+  # find best node
+  for n in graph.get_nodes():
+    tmp_chisq = clock_model(n.payload().clock.total).chisq
+    if tmp_chisq<best_chisq:
+      best_root_node=n
+      best_chisq=tmp_chisq
+
+  # check if somehwere on parent branch is better
+  if best_root_node!=root:
+    res = find_best_split(graph, graph.get_edge(best_root_node.inbound()[0]))
+    if res.clock.chisq < best_chisq:
+      best_chisq=res.clock.chisq
+      best_root = res
+
+  # check if somehwere on a child branch is better
+  for e in best_root_node.outbound():
+    res = find_best_split(graph, graph.get_edge(e))
+    if res.clock.chisq < best_chisq:
+      best_chisq=res.clock.chisq
+      best_root = res
+
+  return best_root
+
 
 if __name__=="__main__":
   fname_nwk = 'test_scripts/data/tree.nwk'
@@ -112,3 +178,6 @@ if __name__=="__main__":
   print(root.payload().clock)
 
   print(clock_model(root.payload().clock.total))
+
+  res = find_best_root(G)
+  print(res)
