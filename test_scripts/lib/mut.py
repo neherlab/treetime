@@ -1,5 +1,6 @@
 from dataclasses import dataclass
-
+from .ranges import Range
+from typing import List, Optional
 
 @dataclass
 class Mut:
@@ -36,3 +37,25 @@ class Mut:
 
   def is_del(self):
     return self.qry == '-'
+
+  def __gt__(self, other):
+    if self.pos>other.pos: return True
+    elif self.pos==other.pos:
+      if self.ref>other.ref:
+        return True
+      if self.ref==other.ref:
+        return self.qry>self.ref
+    return False
+
+@dataclass
+class InDel:
+  range: Range
+  seq: Optional[list[str]]
+  deletion: bool = True # deletion if True, insertion if False
+
+  def __str__(self):
+    if self.deletion:
+      delta_str = f"{''.join(self.seq)} -> {'-'*len(self.seq)}"
+    else:
+      delta_str = f"{'-'*len(self.seq)} -> {''.join(self.seq)}"
+    return f"{self.range.start}--{self.range.end}: {delta_str}"

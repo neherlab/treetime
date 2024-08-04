@@ -15,14 +15,19 @@ def graph_from_nwk_str(
   edge_payload_factory: CreateEdgePayloadFunction,
 ) -> Graph[N, E]:
   tree = Phylo.read(StringIO(nwk_string), "newick")
+  node_count = 0
+  for n in tree.find_clades():
+    if not n.name:
+      n.name = f"NODE_{node_count:05d}"
+    node_count+=1
 
   graph = Graph()
 
   def recurse(tree_node: Clade) -> GraphNodeKey:
-    node_key = graph.add_node(node_payload_factory(tree_node.name))
+    node_key = graph.add_node(node_payload_factory(name=tree_node.name))
     for child in tree_node.clades:
       child_key = recurse(child)
-      graph.add_edge(node_key, child_key, edge_payload_factory(tree_node.branch_length))
+      graph.add_edge(node_key, child_key, edge_payload_factory(child.branch_length))
     return node_key
 
   root = tree.root
