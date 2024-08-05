@@ -1,5 +1,5 @@
 use crate::io::compression::Decompressor;
-use crate::io::concat::concat;
+use crate::io::concat::Concat;
 use crate::io::file::{create_file_or_stdout, open_file_or_stdin, open_stdin};
 use crate::make_error;
 use eyre::Report;
@@ -8,11 +8,18 @@ use serde::{Deserialize, Serialize};
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 
-#[derive(Clone, Default, Debug, Deserialize, Serialize)]
+const VALID_CHARS: &[char] = &[
+  'A', 'C', 'G', 'T', 'Y', 'R', 'W', 'S', 'K', 'M', 'D', 'V', 'H', 'B', 'N', '-',
+];
+
+pub fn is_char_allowed(c: char) -> bool {
+  VALID_CHARS.contains(&c)
+}
+
+#[derive(Clone, Default, Debug, Deserialize, Serialize, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct FastaRecord {
   pub seq_name: String,
-  pub desc: String,
   pub seq: String,
   pub index: usize,
 }
@@ -48,8 +55,8 @@ impl<'a> FastaReader<'a> {
     }
   }
 
-  pub fn from_str(contents: &'a str) -> Result<Self, Report> {
-    let reader = contents.as_bytes();
+  pub fn from_str(contents: &'a impl AsRef<str>) -> Result<Self, Report> {
+    let reader = contents.as_ref().as_bytes();
     Ok(Self::new(Box::new(reader)))
   }
 
@@ -57,6 +64,10 @@ impl<'a> FastaReader<'a> {
     let decompressor = Decompressor::from_str_and_path(contents, filepath)?;
     let reader = BufReader::new(decompressor);
     Ok(Self::new(Box::new(reader)))
+  }
+
+  pub fn from_path(filepath: impl AsRef<Path>) -> Result<Self, Report> {
+    Self::from_paths(&[filepath])
   }
 
   /// Reads multiple files sequentially given a set of paths
@@ -71,7 +82,7 @@ impl<'a> FastaReader<'a> {
       .map(|filepath| -> Result<Box<dyn BufRead + 'a>, Report> { open_file_or_stdin(&Some(filepath)) })
       .collect::<Result<Vec<Box<dyn BufRead + 'a>>, Report>>()?;
 
-    let concat = concat(readers.into_iter());
+    let concat = Concat::with_delimiter(readers.into_iter(), Some(b"\n".to_vec()));
     let concat_buf = BufReader::new(concat);
 
     Ok(Self::new(Box::new(concat_buf)))
@@ -82,9 +93,19 @@ impl<'a> FastaReader<'a> {
     record.clear();
 
     if self.line.is_empty() {
-      self.reader.read_line(&mut self.line)?;
-      if self.line.is_empty() {
-        return Ok(());
+      loop {
+        self.line.clear();
+
+        let n_bytes = self.reader.read_line(&mut self.line)?;
+        if n_bytes == 0 {
+          return Ok(());
+        }
+
+        let trimmed = self.line.trim();
+        if !trimmed.is_empty() {
+          self.line = trimmed.to_owned();
+          break;
+        }
       }
     }
 
@@ -92,21 +113,52 @@ impl<'a> FastaReader<'a> {
       return make_error!("Expected character '>' at record start.");
     }
 
-    let (seq_name, desc) = self.line[1..]
-      .split_once(char::is_whitespace)
-      .unwrap_or_else(|| (&self.line[1..], ""));
+    record.seq_name = self.line[1..].trim().to_owned();
 
-    record.seq_name = seq_name.trim().to_owned();
-    record.desc = desc.trim().to_owned();
+    loop {
+      self.line.clear();
+
+      let n_bytes = self.reader.read_line(&mut self.line)?;
+      if n_bytes == 0 {
+        record.index = self.index;
+        self.index += 1;
+        return Ok(());
+      }
+
+      let trimmed = self.line.trim();
+      if !trimmed.is_empty() {
+        self.line = trimmed.to_owned();
+        break;
+      }
+    }
+
+    if self.line.is_empty() || self.line.starts_with('>') {
+      record.index = self.index;
+      self.index += 1;
+      return Ok(());
+    }
+
+    let fragment = self
+      .line
+      .chars()
+      .filter(|c| is_char_allowed(*c))
+      .map(|c| c.to_ascii_uppercase());
+
+    record.seq.extend(fragment);
 
     loop {
       self.line.clear();
       self.reader.read_line(&mut self.line)?;
+      self.line = self.line.trim().to_owned();
       if self.line.is_empty() || self.line.starts_with('>') {
         break;
       }
 
-      let fragment = self.line.trim_end().chars().map(|c| c.to_ascii_uppercase());
+      let fragment = self
+        .line
+        .chars()
+        .filter(|c| is_char_allowed(*c))
+        .map(|c| c.to_ascii_uppercase());
 
       record.seq.extend(fragment);
     }
@@ -120,7 +172,7 @@ impl<'a> FastaReader<'a> {
 
 pub fn read_one_fasta(filepath: impl AsRef<Path>) -> Result<FastaRecord, Report> {
   let filepath = filepath.as_ref();
-  let mut reader = FastaReader::from_paths(&[filepath])?;
+  let mut reader = FastaReader::from_path(filepath)?;
   let mut record = FastaRecord::default();
   reader.read(&mut record)?;
   Ok(record)
@@ -142,11 +194,27 @@ pub fn read_many_fasta<P: AsRef<Path>>(filepaths: &[P]) -> Result<Vec<FastaRecor
   Ok(fasta_records)
 }
 
-pub fn read_one_fasta_str(contents: &str) -> Result<FastaRecord, Report> {
-  let mut reader = FastaReader::from_str(contents)?;
+pub fn read_one_fasta_str(contents: impl AsRef<str>) -> Result<FastaRecord, Report> {
+  let mut reader = FastaReader::from_str(&contents)?;
   let mut record = FastaRecord::default();
   reader.read(&mut record)?;
   Ok(record)
+}
+
+pub fn read_many_fasta_str(contents: impl AsRef<str>) -> Result<Vec<FastaRecord>, Report> {
+  let mut reader = FastaReader::from_str(&contents)?;
+  let mut fasta_records = Vec::<FastaRecord>::new();
+
+  loop {
+    let mut record = FastaRecord::default();
+    reader.read(&mut record).unwrap();
+    if record.is_empty() {
+      break;
+    }
+    fasta_records.push(record);
+  }
+
+  Ok(fasta_records)
 }
 
 // Writes sequences into given fasta file
@@ -163,8 +231,8 @@ impl FastaWriter {
     Ok(Self::new(create_file_or_stdout(filepath)?))
   }
 
-  pub fn write(&mut self, seq_name: &str, seq: &str) -> Result<(), Report> {
-    write!(self.writer, ">{seq_name}\n{seq}\n")?;
+  pub fn write(&mut self, seq_name: impl AsRef<str>, seq: impl AsRef<str>) -> Result<(), Report> {
+    write!(self.writer, ">{}\n{}\n", seq_name.as_ref(), seq.as_ref())?;
     Ok(())
   }
 
@@ -174,7 +242,267 @@ impl FastaWriter {
   }
 }
 
-#[derive(Clone, Debug, Serialize)]
-struct OutputTranslationsTemplateContext<'a> {
-  gene: &'a str,
+pub fn write_one_fasta(
+  filepath: impl AsRef<Path>,
+  seq_name: impl AsRef<str>,
+  seq: impl AsRef<str>,
+) -> Result<(), Report> {
+  let mut writer = FastaWriter::from_path(&filepath)?;
+  writer.write(seq_name, seq)
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use crate::o;
+  use pretty_assertions::assert_eq;
+  use std::io::Cursor;
+
+  #[test]
+  fn test_fasta_reader_fail_on_non_fasta() {
+    let data =
+      b"This is not a valid FASTA string.\nIt is not empty, and not entirely whitespace\nbut does not contain 'greater than' character.\n";
+    let mut reader = FastaReader::new(Box::new(Cursor::new(data)));
+    let mut record = FastaRecord::new();
+    assert_eq!(
+      reader.read(&mut record).unwrap_err().to_string(),
+      "Expected character '>' at record start."
+    );
+  }
+
+  #[test]
+  fn test_fasta_reader_read_empty() {
+    let data = b"";
+    let mut reader = FastaReader::new(Box::new(Cursor::new(data)));
+
+    let mut record = FastaRecord::new();
+    reader.read(&mut record).unwrap();
+
+    assert!(record.is_empty());
+  }
+
+  #[test]
+  fn test_fasta_reader_read_whitespace_only() {
+    let data = b"\n \n \n\n";
+    let mut reader = FastaReader::new(Box::new(Cursor::new(data)));
+
+    let mut record = FastaRecord::new();
+    reader.read(&mut record).unwrap();
+
+    assert!(record.is_empty());
+  }
+
+  #[test]
+  fn test_fasta_reader_read_single_record() {
+    let data = b">seq1\nATCG\n";
+    let mut reader = FastaReader::new(Box::new(Cursor::new(data)));
+
+    let mut record = FastaRecord::new();
+    reader.read(&mut record).unwrap();
+
+    assert_eq!(record.seq_name, "seq1");
+    assert_eq!(record.seq, "ATCG");
+    assert_eq!(record.index, 0);
+  }
+
+  #[test]
+  fn test_fasta_reader_read_single_record_with_leading_newline() {
+    let data = b"\n>seq1\nATCG\n";
+    let mut reader = FastaReader::new(Box::new(Cursor::new(data)));
+
+    let mut record = FastaRecord::new();
+    reader.read(&mut record).unwrap();
+
+    assert_eq!(record.seq_name, "seq1");
+    assert_eq!(record.seq, "ATCG");
+    assert_eq!(record.index, 0);
+  }
+
+  #[test]
+  fn test_fasta_reader_read_single_record_with_multiple_leading_newlines() {
+    let data = b"\n\n\n>seq1\nATCG\n";
+    let mut reader = FastaReader::new(Box::new(Cursor::new(data)));
+
+    let mut record = FastaRecord::new();
+    reader.read(&mut record).unwrap();
+
+    assert_eq!(record.seq_name, "seq1");
+    assert_eq!(record.seq, "ATCG");
+    assert_eq!(record.index, 0);
+  }
+
+  #[test]
+  fn test_fasta_reader_read_single_record_without_trailing_newline() {
+    let data = b">seq1\nATCG";
+    let mut reader = FastaReader::new(Box::new(Cursor::new(data)));
+
+    let mut record = FastaRecord::new();
+    reader.read(&mut record).unwrap();
+
+    assert_eq!(record.seq_name, "seq1");
+    assert_eq!(record.seq, "ATCG");
+    assert_eq!(record.index, 0);
+  }
+
+  #[test]
+  fn test_fasta_reader_read_multiple_records() {
+    let data = b">seq1\nATCG\n>seq2\nGCTA\n";
+    let mut reader = FastaReader::new(Box::new(Cursor::new(data)));
+
+    let mut record1 = FastaRecord::new();
+    reader.read(&mut record1).unwrap();
+
+    let mut record2 = FastaRecord::new();
+    reader.read(&mut record2).unwrap();
+
+    assert_eq!(record1.seq_name, "seq1");
+    assert_eq!(record1.seq, "ATCG");
+    assert_eq!(record1.index, 0);
+
+    assert_eq!(record2.seq_name, "seq2");
+    assert_eq!(record2.seq, "GCTA");
+    assert_eq!(record2.index, 1);
+  }
+
+  #[test]
+  fn test_fasta_reader_read_empty_lines_between_records() {
+    let data = b"\n>seq1\n\nATCG\n\n\n>seq2\nGCTA\n\n";
+    let mut reader = FastaReader::new(Box::new(Cursor::new(data)));
+
+    let mut record1 = FastaRecord::new();
+    reader.read(&mut record1).unwrap();
+
+    let mut record2 = FastaRecord::new();
+    reader.read(&mut record2).unwrap();
+
+    assert_eq!(record1.seq_name, "seq1");
+    assert_eq!(record1.seq, "ATCG");
+    assert_eq!(record1.index, 0);
+
+    assert_eq!(record2.seq_name, "seq2");
+    assert_eq!(record2.seq, "GCTA");
+    assert_eq!(record2.index, 1);
+  }
+
+  #[test]
+  fn test_fasta_reader_read_with_trailing_newline() {
+    let data = b">seq1\nATCG\n\n";
+    let mut reader = FastaReader::new(Box::new(Cursor::new(data)));
+
+    let mut record = FastaRecord::new();
+    reader.read(&mut record).unwrap();
+
+    assert_eq!(record.seq_name, "seq1");
+    assert_eq!(record.seq, "ATCG");
+    assert_eq!(record.index, 0);
+  }
+
+  #[test]
+  fn test_fasta_reader_example_1() {
+    let data = b"\n\n>a\nACGCTCGATC\n\n>b\nCCGCGC";
+    let mut reader = FastaReader::new(Box::new(Cursor::new(data)));
+
+    let mut record = FastaRecord::new();
+    reader.read(&mut record).unwrap();
+
+    assert_eq!(
+      record,
+      FastaRecord {
+        seq_name: o!("a"),
+        seq: o!("ACGCTCGATC"),
+        index: 0,
+      }
+    );
+
+    reader.read(&mut record).unwrap();
+
+    assert_eq!(
+      record,
+      FastaRecord {
+        seq_name: o!("b"),
+        seq: o!("CCGCGC"),
+        index: 1,
+      }
+    );
+  }
+
+  #[test]
+  fn test_fasta_reader_example_2() {
+    let data = b">a\nACGCTCGATC\n>b\nCCGCGC\n>c";
+    let mut reader = FastaReader::new(Box::new(Cursor::new(data)));
+
+    let mut record = FastaRecord::new();
+    reader.read(&mut record).unwrap();
+
+    assert_eq!(
+      record,
+      FastaRecord {
+        seq_name: o!("a"),
+        seq: o!("ACGCTCGATC"),
+        index: 0,
+      }
+    );
+
+    reader.read(&mut record).unwrap();
+
+    assert_eq!(
+      record,
+      FastaRecord {
+        seq_name: o!("b"),
+        seq: o!("CCGCGC"),
+        index: 1,
+      }
+    );
+
+    reader.read(&mut record).unwrap();
+
+    assert_eq!(
+      record,
+      FastaRecord {
+        seq_name: o!("c"),
+        seq: o!(""),
+        index: 2,
+      }
+    );
+  }
+
+  #[test]
+  fn test_fasta_reader_example_3() {
+    let data = b">a\nACGCTCGATC\n>b\n>c\nCCGCGC";
+    let mut reader = FastaReader::new(Box::new(Cursor::new(data)));
+
+    let mut record = FastaRecord::new();
+    reader.read(&mut record).unwrap();
+
+    assert_eq!(
+      record,
+      FastaRecord {
+        seq_name: o!("a"),
+        seq: o!("ACGCTCGATC"),
+        index: 0,
+      }
+    );
+
+    reader.read(&mut record).unwrap();
+
+    assert_eq!(
+      record,
+      FastaRecord {
+        seq_name: o!("b"),
+        seq: o!(""),
+        index: 1,
+      }
+    );
+
+    reader.read(&mut record).unwrap();
+
+    assert_eq!(
+      record,
+      FastaRecord {
+        seq_name: o!("c"),
+        seq: o!("CCGCGC"),
+        index: 2,
+      }
+    );
+  }
 }
