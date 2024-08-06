@@ -3,6 +3,9 @@ use interval::interval_set::ToIntervalSet;
 use interval::IntervalSet;
 use itertools::Itertools;
 
+pub type Range = (usize, usize);
+pub type RangeCollection = Vec<Range>;
+
 pub fn range_contains(ranges: &[(usize, usize)], pos: usize) -> bool {
   range_contains_iter(ranges.iter(), pos)
 }

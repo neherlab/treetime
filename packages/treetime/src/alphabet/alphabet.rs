@@ -98,6 +98,16 @@ impl Alphabet {
       .unwrap()
   }
 
+  pub fn get_code(&self, profile: &Array1<f64>) -> char {
+    // TODO(perf): this mapping needs to be precomputed
+    self
+      .profile_map
+      .iter()
+      .find_map(|(&c, p)| (p == profile).then_some(c))
+      .ok_or_else(|| format!("When accessing profile map: Unknown profile: '{profile}'"))
+      .unwrap()
+  }
+
   pub fn indices_to_seq<D: Dimension>(&self, indices: &Array<usize, D>) -> Array<char, D> {
     indices.map(|&i| self.alphabet[i])
   }
@@ -133,8 +143,21 @@ impl Alphabet {
   }
 
   #[inline]
+  pub fn gap(&self) -> Option<char> {
+    self.gap_index.map(|gap_index| self.char(gap_index))
+  }
+
+  #[inline]
   pub const fn ambiguous(&self) -> char {
     self.ambiguous
+  }
+
+  pub fn is_ambiguous(&self, c: char) -> bool {
+    self.ambiguous() == c
+  }
+
+  pub fn is_gap(&self, c: char) -> bool {
+    self.gap().map_or(false, |gap| c == gap)
   }
 
   #[allow(clippy::iter_without_into_iter)]
