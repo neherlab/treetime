@@ -1,0 +1,7 @@
+{
+    "editorConfig": {
+        "highlightActiveLine": false,
+        "highlightTrailingWhitespace": true,
+        "highlightWhitespace": true
+    }
+}

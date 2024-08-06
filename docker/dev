@@ -124,7 +124,10 @@ export RUST_BACKTRACE="full"
 export COLORBT_SHOW_HIDDEN="0"
 export RUST_LOG="warn"
 
+if [ -f "${PROJECT_ROOT_DIR}/.env.example" ]; then
 . "${PROJECT_ROOT_DIR}/.env.example"
+fi
+
 if [ -f "${PROJECT_ROOT_DIR}/.env" ]; then
   . "${PROJECT_ROOT_DIR}/.env"
 fi
@@ -167,6 +170,7 @@ LINT=0
 FORMAT=0
 FIX=
 LINT_DENY=
+JUPYTER=0
 
 case "${1:-}" in
 "docker-image-build" | "d")
@@ -354,6 +358,15 @@ case "${1:-}" in
   WATCH=0
   FIX="--check"
   ;;
+"p" | "py")
+  shift
+  DOCKER_TARGET="py"
+  ;;
+"jupyter" | "j")
+  shift
+  JUPYTER=1
+  DOCKER_TARGET="py"
+  ;;
 "exec" | "e")
   shift
   RUN=0
@@ -366,7 +379,7 @@ fi
 
 DOCKER_BASE_IMAGE="${DOCKER_BASE_IMAGE:=ubuntu:20.04}"
 CLANG_VERSION="${CLANG_VERSION:=13}"
-DOCKER_TARGET="dev"
+DOCKER_TARGET="${DOCKER_TARGET:-dev}"
 RUST_TARGET=""
 if [ -n "${CROSS:-}" ]; then
   if [[ "${CROSS}" == *linux-gnu ]]; then
@@ -514,6 +527,9 @@ elif [ "${FORMAT}" == "1" ]; then
     FIX="-q"
   fi
   COMMAND="cargo fmt --all ${FIX:-}"
+elif [ "${JUPYTER}" == "1" ]; then
+  COMMAND="/files/start-jupyter"
+  PORTS="-p 10001:8888"
 else
   COMMAND="${NICE} ${TIME} ${COMMAND}"
 fi
@@ -533,7 +549,7 @@ else
   COMMAND="${NICE} ${TIME} ${COMMAND}"
 fi
 
-mkdir -p "${BUILD_DIR}" "${CACHE_DIR}/.cargo/"{install,registry}
+mkdir -p "${BUILD_DIR}" "${CACHE_DIR}/.cargo/"{install,registry} "${CACHE_DIR}"/.jupyter
 
 
 ADDITIONAL_DOCKER_RUN_ARGS=""
@@ -552,6 +568,7 @@ ${NICE} docker run --rm \
   --volume="${PROJECT_ROOT_DIR}:/workdir" \
   --volume="${CACHE_DIR}/.cargo/install:/home/${USER}/.cargo/install" \
   --volume="${CACHE_DIR}/.cargo/registry:/home/${USER}/.cargo/registry" \
+  --volume="${CACHE_DIR}/.jupyter:/home/${USER}/.jupyter" \
   --workdir="/workdir/${PACKAGE_DIR_REL}" \
   --env="UID=$(id -u)" \
   --env="GID=$(id -g)" \
@@ -570,8 +587,8 @@ ${NICE} docker run --rm \
 if [ -n "${CROSS:-}" ] && [ -n "${RELEASE:-}" ] && { [ "${BUILD:-}" == 1 ] || [ "${RUN:-}" == 1 ]; }; then
   mkdir -p .out/
   if [[ "${CROSS}" == *windows* ]]; then
-    cp "${BUILD_DIR}/${CROSS}/release/treetime.exe" ".out/treetime-${CROSS}.exe"
+    cp "${BUILD_DIR}/${CROSS}/release/${PACKAGE_NAME}.exe" ".out/${PACKAGE_NAME}-${CROSS}.exe"
   else
-    cp "${BUILD_DIR}/${CROSS}/release/treetime" ".out/treetime-${CROSS}"
+    cp "${BUILD_DIR}/${CROSS}/release/${PACKAGE_NAME}" ".out/${PACKAGE_NAME}-${CROSS}"
   fi
 fi

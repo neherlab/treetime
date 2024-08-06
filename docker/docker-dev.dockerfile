@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1
+
 ARG DOCKER_BASE_IMAGE
 
 FROM $DOCKER_BASE_IMAGE as base
@@ -450,3 +452,78 @@ ENV CC_aarch64-apple-darwin=aarch64-apple-darwin20.2-clang
 ENV CXX_aarch64-apple-darwin=aarch64-apple-darwin20.2-clang++
 ENV CARGO_TARGET_AARCH64_APPLE_DARWIN_LINKER=aarch64-apple-darwin20.2-clang
 ENV CARGO_TARGET_AARCH64_APPLE_DARWIN_STRIP=aarch64-apple-darwin20.2-strip
+
+
+
+
+
+# Python and Jupyter
+FROM base as py
+
+
+ARG PYTHON_VERSION="3.11"
+ARG CONDA_DIR="${HOME}/.conda"
+ENV PATH="${HOME}/bin:${CONDA_DIR}/bin:${PATH}"
+ENV XDG_CACHE_HOME="${HOME}/.cache/"
+ENV MPLBACKEND="Agg"
+
+COPY docker/files /files
+
+RUN set -euxo pipefail >/dev/null \
+&& cp -r /files/.conda "${CONDA_DIR}/" \
+&& chown -R ${UID}:${GID} "${CONDA_DIR}"
+
+USER ${USER}
+
+RUN set -euxo pipefail >/dev/null \
+&& export CONDA_DIR="${CONDA_DIR}" \
+&& export PYTHON_VERSION="${PYTHON_VERSION}" \
+&& mkdir -p "${CONDA_DIR}/bin" "${HOME}/.config/conda" \
+&& curl -fsSL "https://micro.mamba.pm/api/micromamba/linux-64/latest" | tar -C "${CONDA_DIR}/bin" --strip-components=1 -xvj "bin/micromamba" \
+&& micromamba install --yes \
+  --root-prefix="${CONDA_DIR}" \
+  --prefix="${CONDA_DIR}" \
+  "python=${PYTHON_VERSION}" \
+  'mamba' \
+&& mamba list python | grep '^python ' | tr -s ' ' | cut -d ' ' -f 1,2 >> "${CONDA_DIR}/conda-meta/pinned" \
+&& echo 'blas=*.*=*mkl*' >> "${CONDA_DIR}/conda-meta/pinned" \
+&& echo 'conda-forge::blas=*.*=*mkl*' >> "${CONDA_DIR}/conda-meta/pinned" \
+&& echo 'conda-forge::libblas=*.*=*mkl*' >> "${CONDA_DIR}/conda-meta/pinned"
+
+RUN set -euxo pipefail >/dev/null \
+&& mamba install --quiet --yes \
+  'blas=*.*=*mkl*' \
+  'conda-forge::blas=*.*=*mkl*' \
+  'conda-forge::libblas=*.*=*mkl*' \
+  'biopython' \
+  'bokeh' \
+  'cython' \
+  'dill' \
+  'ipywidgets' \
+  'jsonpickle' \
+  'jupyter-dash' \
+  'jupyterlab' \
+  'jupyterlab_widgets' \
+  'matplotlib-base' \
+  'mkl' \
+  'mkl-service' \
+  'notebook' \
+  'numpy' \
+  'pandas' \
+  'pathos' \
+  'plotly' \
+  'polars' \
+  'scipy' \
+  'seaborn' \
+  'statsmodels' \
+  'tqdm' \
+  'widgetsnbextension' \
+&& mamba clean --all -f -y \
+&& mamba init bash
+
+RUN set -euxo pipefail >/dev/null \
+&& python -m pip install phylo-treetime
+
+# Import matplotlib the first time to build the font cache.
+RUN set -euxo pipefail >/dev/null \
+&& python -c "import matplotlib.pyplot"
