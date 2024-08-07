@@ -9,10 +9,10 @@ use std::str::FromStr;
 
 #[derive(Clone, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq)]
 pub struct Mut {
-  pos: usize,
-  qry: char,
+  pub pos: usize,
+  pub qry: char,
   #[serde(rename = "ref")]
-  reff: char,
+  pub reff: char,
 }
 
 impl Mut {
@@ -71,9 +71,9 @@ impl fmt::Display for Mut {
 
 #[derive(Clone, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq)]
 pub struct InDel {
-  range: (usize, usize),
-  seq: Option<Vec<char>>,
-  deletion: bool, // deletion if True, insertion if False
+  pub range: (usize, usize),
+  pub seq: Option<Vec<char>>,
+  pub deletion: bool, // deletion if True, insertion if False
 }
 
 impl fmt::Display for InDel {
