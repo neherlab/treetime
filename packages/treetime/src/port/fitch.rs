@@ -1,14 +1,19 @@
 #![allow(dead_code)]
+
 use crate::alphabet::alphabet::Alphabet;
 use crate::graph::breadth_first::GraphTraversalContinuation;
 use crate::gtr::gtr::GTR;
 use crate::io::fasta::FastaRecord;
+use crate::port::composition::Composition;
+use crate::port::constants::{FILL_CHAR, GAP_CHAR, NON_CHAR, VARIABLE};
+use crate::port::mutation::{InDel, Mut};
 use crate::port::seq_partitions::SeqPartition;
 use crate::port::seq_sparse::{
   Deletion, SparseGraph, SparseNode, SparseSeqDis, SparseSeqEdge, SparseSeqInfo, SparseSeqNode, VarPos,
 };
 use crate::seq::range::range_contains;
 use crate::seq::range_complement::range_complement;
+use crate::seq::range_difference::range_difference;
 use crate::seq::range_intersection::{range_intersection, range_intersection_iter};
 use crate::utils::manyzip::Manyzip;
 use crate::utils::ndarray::product_axis;
@@ -19,11 +24,7 @@ use itertools::{izip, Itertools};
 use maplit::btreemap;
 use ndarray::{stack, Array1, Array2, Axis};
 use ndarray_stats::QuantileExt;
-
-const NON_CHAR: char = '.';
-const VARIABLE: char = '~';
-const FILL_CHAR: char = ' ';
-const GAP_CHAR: char = '-';
+use std::collections::BTreeMap;
 
 #[derive(Debug)]
 pub struct PartitionModel<'g> {
@@ -252,7 +253,7 @@ fn fitch_backwards(graph: &mut SparseGraph) {
           non_char,
           fitch: seq_dis,
           sequence,
-          composition: btreemap! {},
+          composition: Composition::default(),
         },
         profile: SparseSeqDis::default(),
         msg_to_parents: SparseSeqDis::default(),
@@ -263,6 +264,167 @@ fn fitch_backwards(graph: &mut SparseGraph) {
 
     GraphTraversalContinuation::Continue
   });
+}
+
+fn fitch_forward(graph: &mut SparseGraph) {
+  let sparse_partitions = &graph.data().read_arc().sparse_partitions;
+  let n_partitions = sparse_partitions.len();
+
+  graph.par_iter_breadth_first_forward(|mut node| {
+    #[allow(clippy::needless_range_loop)]
+    for si in 0..n_partitions {
+      let &SeqPartition { gtr, length, alphabet } = &sparse_partitions[si];
+      let SparseSeqInfo {
+        gaps,
+        sequence,
+        composition,
+        non_char,
+        fitch: SparseSeqDis {
+          variable,
+          variable_indel,
+          ..
+        },
+        ..
+      } = &mut node.payload.sparse_partitions[si].seq;
+
+      if node.is_root {
+        for (pos, p) in variable {
+          let i = p.dis.argmax().unwrap();
+          let state = alphabet.char(i);
+          p.state = Some(state);
+          sequence[*pos] = state;
+        }
+        // process indels as majority rule at the root
+        for (r, indel) in variable_indel.iter() {
+          if indel.deleted > indel.ins {
+            gaps.push(*r);
+          }
+        }
+        for r in gaps.iter() {
+          sequence[r.0..r.1].fill(GAP_CHAR);
+        }
+        *composition = Composition::with_sequence(sequence.iter().copied(), alphabet.iter().copied());
+      } else {
+        let (parent, edge) = node
+          .parents
+          .first()
+          .ok_or_else(|| make_internal_report!("Graphs with multiple parents per node are not yet supported"))
+          .unwrap();
+
+        let parent = &parent.read_arc().sparse_partitions[si].seq;
+        let edge = &mut edge.write_arc().sparse_partitions[si];
+
+        *composition = parent.composition.clone();
+
+        // fill in the indeterminate positions
+        for r in non_char {
+          sequence[r.0..r.1].clone_from_slice(&parent.sequence[r.0..r.1]);
+        }
+
+        // for each variable position, pick a state or a mutation
+        for (pos, p) in variable.iter_mut() {
+          let pnuc = parent.sequence[*pos];
+          // check whether parent is in child profile (sum>0 --> parent state is in profile)
+          let parent_in_profile = (alphabet.get_profile(pnuc) * &p.dis).sum() > 0.0;
+          if parent_in_profile {
+            sequence[*pos] = pnuc;
+          } else {
+            let i = p.dis.argmax().unwrap();
+            let cnuc = alphabet.char(i);
+            sequence[*pos] = cnuc;
+            let m = Mut {
+              pos: *pos,
+              qry: cnuc,
+              reff: pnuc,
+            };
+            composition.add_mutation(&m);
+            edge.muts.push(m);
+          }
+          p.state = Some(sequence[*pos]);
+        }
+
+        for (&pos, pvar) in &parent.fitch.variable {
+          if variable.contains_key(&pos) {
+            continue;
+          }
+
+          // NOTE: access to full_seq would not be necessary if we had saved the
+          // child state of variable positions in the backward pass
+          let node_nuc = sequence[pos];
+          if let Some(pvar_state) = pvar.state {
+            if pvar_state != node_nuc {
+              let m = Mut {
+                pos,
+                qry: node_nuc,
+                reff: pvar_state,
+              };
+              composition.add_mutation(&m);
+              edge.muts.push(m);
+            }
+          }
+        }
+
+        // Process indels. Gaps where the children disagree, need to be decided by also looking at parent.
+        for (r, indel) in variable_indel.iter() {
+          let gap_in_parent = if parent.gaps.contains(r) { 1 } else { 0 };
+          if indel.deleted + gap_in_parent > indel.ins {
+            gaps.push(*r);
+            if gap_in_parent == 0 {
+              // If the gap is not in parent, add deletion.
+              let indel = InDel {
+                range: *r,
+                seq: sequence[r.0..r.1].to_owned(),
+                deletion: true,
+              };
+              composition.add_indel(&indel);
+              edge.indels.push(indel);
+            }
+          } else if gap_in_parent > 0 {
+            // Add insertion if gap is present in parent.
+            let indel = InDel {
+              range: *r,
+              seq: sequence[r.0..r.1].to_owned(),
+              deletion: true,
+            };
+            composition.add_indel(&indel);
+            edge.indels.push(indel);
+          }
+        }
+
+        // Process consensus gaps in the node that are not in the parent (deletions)
+        for r in range_difference(gaps, &parent.gaps) {
+          let indel = InDel {
+            range: r,
+            seq: sequence[r.0..r.1].to_owned(),
+            deletion: true,
+          };
+          composition.add_indel(&indel);
+          edge.indels.push(indel);
+        }
+
+        // Process gaps in the parent that are not in the node (insertions)
+        for r in range_difference(&parent.gaps, gaps) {
+          let indel = InDel {
+            range: r,
+            seq: sequence[r.0..r.1].to_owned(),
+            deletion: true,
+          };
+          composition.add_indel(&indel);
+          edge.indels.push(indel);
+        }
+      }
+    }
+    GraphTraversalContinuation::Continue
+  });
+}
+
+fn calculate_sequence_composition<'a, 'b>(
+  seq: impl Iterator<Item = &'a char>,
+  alphabet_chars: impl Iterator<Item = &'b char>,
+) -> BTreeMap<char, usize> {
+  let mut counts: BTreeMap<char, usize> = alphabet_chars.map(|&s| (s, 0)).collect();
+  counts.extend(seq.copied().counts());
+  counts
 }
 
 pub fn get_common_length(aln: &[FastaRecord]) -> Result<usize, Report> {

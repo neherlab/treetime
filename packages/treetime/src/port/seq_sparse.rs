@@ -2,6 +2,7 @@ use crate::alphabet::alphabet::Alphabet;
 use crate::graph::edge::GraphEdge;
 use crate::graph::graph::Graph;
 use crate::graph::node::{GraphNode, Named};
+use crate::port::composition::Composition;
 use crate::port::mutation::{InDel, Mut};
 use crate::port::seq_partitions::SeqPartition;
 use crate::seq::find_char_ranges::find_letter_ranges;
@@ -36,7 +37,7 @@ pub struct SparseSeqInfo {
   pub unknown: Vec<(usize, usize)>,
   pub gaps: Vec<(usize, usize)>,
   pub non_char: Vec<(usize, usize)>, // any position that does not evolve according to the substitution model, i.e. gap or N
-  pub composition: BTreeMap<String, usize>, // count of all characters in the region that is not `non_char`
+  pub composition: Composition,      // count of all characters in the region that is not `non_char`
   pub sequence: Vec<char>,
   pub fitch: SparseSeqDis,
 }
@@ -90,7 +91,7 @@ impl SparseSeqNode {
         unknown,
         gaps,
         non_char: vec![],
-        composition: btreemap! {},
+        composition: Composition::default(),
         sequence: vec![],
         fitch: seq_dis,
       },

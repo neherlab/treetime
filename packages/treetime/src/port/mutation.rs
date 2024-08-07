@@ -72,24 +72,16 @@ impl fmt::Display for Mut {
 #[derive(Clone, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq)]
 pub struct InDel {
   pub range: (usize, usize),
-  pub seq: Option<Vec<char>>,
+  pub seq: Vec<char>,
   pub deletion: bool, // deletion if True, insertion if False
 }
 
 impl fmt::Display for InDel {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     let delta_str = if self.deletion {
-      format!(
-        "{} -> {}",
-        self.seq.as_ref().unwrap().iter().collect::<String>(),
-        "-".repeat(self.seq.as_ref().unwrap().len())
-      )
+      format!("{} -> {}", String::from_iter(&self.seq), "-".repeat(self.seq.len()))
     } else {
-      format!(
-        "{} -> {}",
-        "-".repeat(self.seq.as_ref().unwrap().len()),
-        self.seq.as_ref().unwrap().iter().collect::<String>()
-      )
+      format!("{} -> {}", "-".repeat(self.seq.len()), String::from_iter(&self.seq),)
     };
     write!(f, "{}--{}: {}", self.range.0, self.range.1, delta_str)
   }
