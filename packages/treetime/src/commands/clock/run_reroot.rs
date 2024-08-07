@@ -109,7 +109,7 @@ impl Default for BestRoot {
 /// Determines the position on the tree that minimizes the bilinear product of the inverse
 /// covariance and the data vectors.
 fn find_best_root_least_squares<P: GraphNodeRegressionPolicy>(
-  graph: &mut ClockGraph,
+  graph: &ClockGraph,
   params: &RerootParams,
 ) -> Result<BestRoot, Report> {
   let mut best_root = {

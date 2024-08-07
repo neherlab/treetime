@@ -18,7 +18,7 @@ pub const dtavgii: usize = 3;
 pub const dsqii: usize = 4;
 pub const sii: usize = 5;
 
-pub fn calculate_averages<P: GraphNodeRegressionPolicy>(graph: &mut ClockGraph) {
+pub fn calculate_averages<P: GraphNodeRegressionPolicy>(graph: &ClockGraph) {
   graph.par_iter_breadth_first_backward(
     |GraphNodeBackward {
        is_root,
@@ -213,7 +213,7 @@ where
   })
 }
 
-pub fn explained_variance<P>(graph: &mut ClockGraph) -> Result<f64, Report>
+pub fn explained_variance<P>(graph: &ClockGraph) -> Result<f64, Report>
 where
   P: GraphNodeRegressionPolicy,
 {

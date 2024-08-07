@@ -51,7 +51,7 @@ pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
     unimplemented!("clock_filter")
   }
 
-  calculate_averages::<GraphNodeRegressionPolicyReroot>(&mut graph);
+  calculate_averages::<GraphNodeRegressionPolicyReroot>(&graph);
 
   let slope = None;
 
@@ -72,7 +72,7 @@ pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
   }
 
   let RunClockModelResults { clock_model, rtt } =
-    run_clock_model::<GraphNodeRegressionPolicyReroot>(&mut graph, &RunClockModelParams { slope })?;
+    run_clock_model::<GraphNodeRegressionPolicyReroot>(&graph, &RunClockModelParams { slope })?;
 
   let mut rtt_writer = CsvStructFileWriter::new(outdir.join("rtt.csv"), b',')?;
   rtt.iter().try_for_each(|result| rtt_writer.write(result))?;

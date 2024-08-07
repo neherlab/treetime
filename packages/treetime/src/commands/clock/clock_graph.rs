@@ -117,13 +117,13 @@ pub fn infer_graph() -> Result<ClockGraph, Report> {
 }
 
 pub fn create_graph<P: AsRef<Path>>(tree_path: P, dates: &DatesMap) -> Result<ClockGraph, Report> {
-  let mut graph = nwk_read_file(tree_path)?;
-  assign_dates(&mut graph, dates)?;
-  calculate_distances_to_root(&mut graph);
+  let graph = nwk_read_file(tree_path)?;
+  assign_dates(&graph, dates)?;
+  calculate_distances_to_root(&graph);
   Ok(graph)
 }
 
-pub fn assign_dates(graph: &mut ClockGraph, dates: &DatesMap) -> Result<(), Report> {
+pub fn assign_dates(graph: &ClockGraph, dates: &DatesMap) -> Result<(), Report> {
   // Add dates and mark bad branches
   let num_bad_branches = AtomicUsize::new(0);
   let num_dates = AtomicUsize::new(0);
@@ -171,7 +171,7 @@ pub fn assign_dates(graph: &mut ClockGraph, dates: &DatesMap) -> Result<(), Repo
 }
 
 /// For every node, calculate distance of that node to the root
-pub fn calculate_distances_to_root(graph: &mut Graph<Node, Edge>) {
+pub fn calculate_distances_to_root(graph: &Graph<Node, Edge>) {
   graph.par_iter_breadth_first_forward(
     |GraphNodeForward {
        payload: mut node,

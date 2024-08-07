@@ -15,7 +15,7 @@ pub struct RunClockModelResults {
   pub rtt: Vec<RootToTipResult>,
 }
 
-pub fn run_clock_model<P>(graph: &mut ClockGraph, params: &RunClockModelParams) -> Result<RunClockModelResults, Report>
+pub fn run_clock_model<P>(graph: &ClockGraph, params: &RunClockModelParams) -> Result<RunClockModelResults, Report>
 where
   P: GraphNodeRegressionPolicy,
 {
@@ -55,7 +55,7 @@ impl ClockModel {
 }
 
 /// Regress tip values against branch values
-fn regression(graph: &mut ClockGraph, params: &RunClockModelParams) -> Result<ClockModel, Report> {
+fn regression(graph: &ClockGraph, params: &RunClockModelParams) -> Result<ClockModel, Report> {
   let Q_root = {
     if graph.num_roots() > 1 {
       unimplemented!("Multiple roots are not supported yet");
