@@ -418,15 +418,6 @@ fn fitch_forward(graph: &mut SparseGraph) {
   });
 }
 
-fn calculate_sequence_composition<'a, 'b>(
-  seq: impl Iterator<Item = &'a char>,
-  alphabet_chars: impl Iterator<Item = &'b char>,
-) -> BTreeMap<char, usize> {
-  let mut counts: BTreeMap<char, usize> = alphabet_chars.map(|&s| (s, 0)).collect();
-  counts.extend(seq.copied().counts());
-  counts
-}
-
 pub fn get_common_length(aln: &[FastaRecord]) -> Result<usize, Report> {
   let lengths = aln
     .iter()
