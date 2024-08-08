@@ -45,7 +45,7 @@ pub struct JC69Params {
   #[default = 1.0]
   pub mu: f64,
 
-  #[default(AlphabetName::NucNogap)]
+  #[default(AlphabetName::Nuc)]
   pub alphabet: AlphabetName,
 }
 
@@ -100,7 +100,7 @@ pub struct F81Params {
   #[default = 1.0]
   pub mu: f64,
 
-  #[default(AlphabetName::NucNogap)]
+  #[default(AlphabetName::Nuc)]
   pub alphabet: AlphabetName,
 }
 
