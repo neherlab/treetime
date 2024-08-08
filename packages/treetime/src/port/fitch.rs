@@ -1,6 +1,4 @@
 #![allow(dead_code)]
-
-use crate::alphabet::alphabet::Alphabet;
 use crate::graph::breadth_first::GraphTraversalContinuation;
 use crate::gtr::gtr::GTR;
 use crate::io::fasta::FastaRecord;
@@ -24,7 +22,6 @@ use itertools::{izip, Itertools};
 use maplit::btreemap;
 use ndarray::{stack, Array1, Array2, Axis};
 use ndarray_stats::QuantileExt;
-use std::collections::BTreeMap;
 
 #[derive(Debug)]
 pub struct PartitionModel<'g> {
@@ -32,16 +29,12 @@ pub struct PartitionModel<'g> {
   gtr: &'g GTR,
 }
 
-fn attach_seqs_to_graph<'a, 'g>(
-  graph: &SparseGraph<'a, 'g>,
-  alphabet: &'a Alphabet,
-  partitions: &[PartitionModel<'g>],
-) -> Result<(), Report> {
+fn attach_seqs_to_graph<'g>(graph: &SparseGraph<'g>, partitions: &[PartitionModel<'g>]) -> Result<(), Report> {
   graph.data().write_arc().sparse_partitions = partitions
     .iter()
     .map(|PartitionModel { aln, gtr }| {
       let length = get_common_length(aln)?;
-      Ok(SeqPartition::new(gtr, length, alphabet))
+      Ok(SeqPartition::new(gtr, length))
     })
     .collect::<Result<_, Report>>()?;
 
@@ -66,7 +59,7 @@ fn attach_seqs_to_graph<'a, 'g>(
         // never need a copy like here.
         let sequence = leaf_fasta.seq.chars().collect::<Vec<_>>();
 
-        SparseSeqNode::new(&sequence, alphabet)
+        SparseSeqNode::new(&sequence, gtr.alphabet())
       })
       .collect::<Result<_, Report>>()?;
 
@@ -94,7 +87,7 @@ fn fitch_backwards(graph: &mut SparseGraph) {
 
     #[allow(clippy::needless_range_loop)]
     for si in 0..n_partitions {
-      let &SeqPartition { gtr, length, alphabet } = &sparse_partitions[si];
+      let &SeqPartition { gtr, length } = &sparse_partitions[si];
 
       let children = node
         .children
@@ -140,7 +133,7 @@ fn fitch_backwards(graph: &mut SparseGraph) {
             }
             let state = match child.fitch.variable.get(&pos) {
               Some(var_pos) => var_pos.dis.view(),
-              None => alphabet.get_profile(child.sequence[pos]).view(),
+              None => gtr.alphabet().get_profile(child.sequence[pos]).view(),
             };
             Some(state)
           })
@@ -155,7 +148,7 @@ fn fitch_backwards(graph: &mut SparseGraph) {
         let intersection = product_axis(&child_profiles, Axis(0));
         if intersection.sum().ulps_eq(&1.0, f64::EPSILON, 5) {
           let i = intersection.argmax().unwrap();
-          sequence[pos] = alphabet.char(i);
+          sequence[pos] = gtr.alphabet().char(i);
         } else if intersection.sum() > 1.0 {
           seq_dis.variable.insert(pos, VarPos::new(intersection, None));
           sequence[pos] = VARIABLE;
@@ -182,7 +175,7 @@ fn fitch_backwards(graph: &mut SparseGraph) {
 
         let determined_states = child_states
           .into_iter()
-          .filter(|&x| alphabet.contains(x))
+          .filter(|&x| gtr.alphabet().contains(x))
           .unique()
           .collect_vec();
 
@@ -199,7 +192,10 @@ fn fitch_backwards(graph: &mut SparseGraph) {
           states => {
             // Child states differ. This is variable state.
             // Save child states and postpone the decision until forward pass.
-            let child_profiles = states.iter().map(|&c| alphabet.get_profile(c).view()).collect_vec();
+            let child_profiles = states
+              .iter()
+              .map(|&c| gtr.alphabet().get_profile(c).view())
+              .collect_vec();
             let child_profiles: Array2<f64> = stack(Axis(0), &child_profiles).unwrap();
             let summed_profile = child_profiles.sum_axis(Axis(0));
             seq_dis.variable.insert(pos, VarPos::new(summed_profile, None));
@@ -273,7 +269,7 @@ fn fitch_forward(graph: &mut SparseGraph) {
   graph.par_iter_breadth_first_forward(|mut node| {
     #[allow(clippy::needless_range_loop)]
     for si in 0..n_partitions {
-      let &SeqPartition { gtr, length, alphabet } = &sparse_partitions[si];
+      let &SeqPartition { gtr, length } = &sparse_partitions[si];
       let SparseSeqInfo {
         gaps,
         sequence,
@@ -290,7 +286,7 @@ fn fitch_forward(graph: &mut SparseGraph) {
       if node.is_root {
         for (pos, p) in variable {
           let i = p.dis.argmax().unwrap();
-          let state = alphabet.char(i);
+          let state = gtr.alphabet().char(i);
           p.state = Some(state);
           sequence[*pos] = state;
         }
@@ -303,7 +299,7 @@ fn fitch_forward(graph: &mut SparseGraph) {
         for r in gaps.iter() {
           sequence[r.0..r.1].fill(GAP_CHAR);
         }
-        *composition = Composition::with_sequence(sequence.iter().copied(), alphabet.iter().copied());
+        *composition = Composition::with_sequence(sequence.iter().copied(), gtr.alphabet().iter().copied());
       } else {
         let (parent, edge) = node
           .parents
@@ -325,12 +321,12 @@ fn fitch_forward(graph: &mut SparseGraph) {
         for (pos, p) in variable.iter_mut() {
           let pnuc = parent.sequence[*pos];
           // check whether parent is in child profile (sum>0 --> parent state is in profile)
-          let parent_in_profile = (alphabet.get_profile(pnuc) * &p.dis).sum() > 0.0;
+          let parent_in_profile = (gtr.alphabet().get_profile(pnuc) * &p.dis).sum() > 0.0;
           if parent_in_profile {
             sequence[*pos] = pnuc;
           } else {
             let i = p.dis.argmax().unwrap();
-            let cnuc = alphabet.char(i);
+            let cnuc = gtr.alphabet().char(i);
             sequence[*pos] = cnuc;
             let m = Mut {
               pos: *pos,
@@ -418,6 +414,80 @@ fn fitch_forward(graph: &mut SparseGraph) {
   });
 }
 
+fn fitch_cleanup() {}
+
+pub fn compress_sequences<'g>(graph: &mut SparseGraph<'g>, partitions: &'g [PartitionModel<'g>]) -> Result<(), Report> {
+  attach_seqs_to_graph(graph, partitions)?;
+  fitch_backwards(graph);
+  fitch_forward(graph);
+  fitch_cleanup();
+  Ok(())
+}
+
+/// Reconstruct ancestral sequences using Fitch parsimony.
+///
+/// Calls visitor function for every ancestral node, providing the node itself and its reconstructed sequence.
+/// Optionally reconstructs leaf sequences.
+pub fn ancestral_reconstruction_fitch(
+  graph: &SparseGraph,
+  include_leaves: bool,
+  mut visitor: impl FnMut(&SparseNode, Vec<char>),
+) -> Result<(), Report> {
+  let sparse_partitions = &graph.data().read_arc().sparse_partitions;
+  let n_partitions = sparse_partitions.len();
+
+  graph.iter_depth_first_preorder_forward(|node| {
+    if node.is_root {
+      return;
+    }
+    if !include_leaves && node.is_leaf {
+      return;
+    }
+
+    let seq = (0..n_partitions)
+      .flat_map(|si| {
+        let (parent, edge) = node.get_exactly_one_parent().unwrap();
+        let parent = &parent.read_arc().sparse_partitions[si];
+        let edge = &edge.read_arc().sparse_partitions[si];
+
+        let node = &node.payload.sparse_partitions[si].seq;
+
+        let mut seq = parent.seq.sequence.clone();
+
+        // Implant mutations
+        for m in &edge.muts {
+          seq[m.pos] = m.qry;
+        }
+
+        // Implant indels
+        for indel in &edge.indels {
+          if indel.deletion {
+            seq[indel.range.0..indel.range.1].fill(GAP_CHAR);
+          } else {
+            seq[indel.range.0..indel.range.1].copy_from_slice(&indel.seq);
+          }
+        }
+
+        // At the node itself, mask whatever is unknown in the node.
+        for r in &node.unknown {
+          let ambig_char = sparse_partitions[si].gtr.alphabet.ambiguous();
+          seq[r.0..r.1].fill(ambig_char);
+        }
+
+        for (pos, p) in &node.fitch.variable {
+          seq[*pos] = sparse_partitions[si].code(&p.dis);
+        }
+
+        seq
+      })
+      .collect();
+
+    visitor(&node.payload, seq);
+  });
+
+  Ok(())
+}
+
 pub fn get_common_length(aln: &[FastaRecord]) -> Result<usize, Report> {
   let lengths = aln
     .iter()
@@ -442,4 +512,149 @@ pub fn get_common_length(aln: &[FastaRecord]) -> Result<usize, Report> {
     }
   }
   .wrap_err("When calculating length of sequences")
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use crate::gtr::get_gtr::{jc69, JC69Params};
+  use crate::io::fasta::read_many_fasta_str;
+  use crate::io::json::{json_write_str, JsonPretty};
+  use crate::io::nwk::nwk_read_str;
+  use crate::utils::string::vec_to_string;
+  use eyre::Report;
+  use indoc::indoc;
+  use pretty_assertions::assert_eq;
+  use std::collections::BTreeMap;
+
+  #[test]
+  fn test_seq_ancestral_reconstruction() -> Result<(), Report> {
+    rayon::ThreadPoolBuilder::new().num_threads(1).build_global()?;
+
+    let inputs = read_many_fasta_str(indoc! {r#"
+      >A
+      ACATCGCCNNA--G
+      >B
+      GCATCCCTGTA-NG
+      >C
+      CCGGCGATGTATTG
+      >D
+      TCGGCCGTGTRTTG
+    "#})?;
+
+    let expected = read_many_fasta_str(indoc! {r#"
+      >AB
+      GCATCGCTGTATTG
+      >CD
+      TCGGCGGTGTATTG
+      >root
+      TCGGCGGTGTATTG
+    "#})?;
+
+    let mut graph: SparseGraph = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+
+    let gtr = &jc69(JC69Params::default())?;
+    let partitions = vec![PartitionModel { gtr, aln: inputs }];
+    compress_sequences(&mut graph, &partitions).unwrap();
+
+    let mut actual = BTreeMap::new();
+    ancestral_reconstruction_fitch(&graph, false, |node, seq| {
+      actual.insert(node.name.clone(), vec_to_string(seq));
+    })?;
+
+    assert_eq!(
+      json_write_str(&expected, JsonPretty(false))?,
+      json_write_str(&actual, JsonPretty(false))?
+    );
+
+    Ok(())
+  }
+
+  // #[test]
+  // fn test_seq_ancestral_reconstruction2() -> Result<(), Report> {
+  //   rayon::ThreadPoolBuilder::new().num_threads(1).build_global()?;
+  //
+  //   let inputs = read_many_fasta_str(indoc! {r#"
+  //     >root
+  //     ACAGCCATGTATTG--
+  //     >AB
+  //     ACATCCCTGTA-TG--
+  //     >A
+  //     ACATCGCCNNA--GAC
+  //     >B
+  //     GCATCCCTGTA-NG--
+  //     >CD
+  //     CCGGCCATGTATTG--
+  //     >C
+  //     CCGGCGATGTRTTG--
+  //     >D
+  //     TCGGCCGTGTRTTG--
+  //   "#})?;
+  //
+  //   let expected = read_many_fasta_str(indoc! {r#"
+  //     >root
+  //     ACAGCCATGTATTG--
+  //     >AB
+  //     ACATCCCTGTA-TG--
+  //     >CD
+  //     CCGGCCATGTATTG--
+  //   "#})?;
+  //
+  //   let mut graph: SparseGraph = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+  //
+  //   let gtr = &jc69(JC69Params::default())?;
+  //   let partitions = vec![PartitionModel { gtr, aln: inputs }];
+  //   compress_sequences(&mut graph, &partitions).unwrap();
+  //
+  //   let mut actual = BTreeMap::new();
+  //   ancestral_reconstruction_fitch(&graph, false, |node, seq| {
+  //     actual.insert(node.name.clone(), vec_to_string(seq));
+  //   })?;
+  //
+  //   assert_eq!(
+  //     json_write_str(&expected, JsonPretty(false))?,
+  //     json_write_str(&actual, JsonPretty(false))?
+  //   );
+  //
+  //   Ok(())
+  // }
+
+  // #[test]
+  // fn test_seq_ancestral_reconstruction_with_leaves() -> Result<(), Report> {
+  //   rayon::ThreadPoolBuilder::new().num_threads(1).build_global()?;
+  //
+  //   let inputs = BTreeMap::from([
+  //     (o!("A"), o!("ACATCGCCNNA--G")),
+  //     (o!("B"), o!("GCATCCCTGTA-NG")),
+  //     (o!("C"), o!("CCGGCGATGTATTG")),
+  //     (o!("D"), o!("TCGGCCGTGTRTTG")),
+  //   ]);
+  //
+  //   #[rustfmt::skip]
+  //   let expected = BTreeMap::from([
+  //     (o!("A"),    o!("ACATCGCCNNA--G")),
+  //     (o!("AB"),   o!("GCATCGCTGTATTG")),
+  //     (o!("B"),    o!("GCATCCCTGTA-NG")),
+  //     (o!("C"),    o!("CCGGCGATGTATTG")),
+  //     (o!("CD"),   o!("TCGGCGGTGTATTG")),
+  //     (o!("D"),    o!("TCGGCCGTGTRTTG")),
+  //     (o!("root"), o!("TCGGCGGTGTATTG")),
+  //   ]);
+  //
+  //   let graph = nwk_read_str::<Node, Edge, ()>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+  //
+  //   compress_sequences(&inputs, &graph).unwrap();
+  //
+  //   let mut actual = BTreeMap::new();
+  //   ancestral_reconstruction_fitch(&graph, true, |node, seq| {
+  //     actual.insert(node.name.clone(), vec_to_string(seq.to_owned()));
+  //   })?;
+  //
+  //   assert_eq!(
+  //     json_write_str(&expected, JsonPretty(false))?,
+  //     json_write_str(&actual, JsonPretty(false))?
+  //   );
+  //
+  //   Ok(())
+  // }
 }

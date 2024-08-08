@@ -2,6 +2,7 @@ use crate::alphabet::alphabet::Alphabet;
 use crate::graph::edge::GraphEdge;
 use crate::graph::graph::Graph;
 use crate::graph::node::{GraphNode, Named};
+use crate::io::nwk::{EdgeFromNwk, NodeFromNwk};
 use crate::port::composition::Composition;
 use crate::port::mutation::{InDel, Mut};
 use crate::port::seq_partitions::SeqPartition;
@@ -12,12 +13,21 @@ use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-pub type SparseGraph<'a, 'g> = Graph<SparseNode, SparseEdge, SparseMeta<'a, 'g>>;
+pub type SparseGraph<'g> = Graph<SparseNode, SparseEdge, SparseMeta<'g>>;
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct SparseNode {
   pub name: Option<String>,
   pub sparse_partitions: Vec<SparseSeqNode>,
+}
+
+impl NodeFromNwk for SparseNode {
+  fn from_nwk(name: Option<impl AsRef<str>>, _: &BTreeMap<String, String>) -> Result<Self, Report> {
+    Ok(Self {
+      name: name.map(|s| s.as_ref().to_owned()),
+      ..SparseNode::default()
+    })
+  }
 }
 
 impl GraphNode for SparseNode {}
@@ -110,6 +120,12 @@ pub struct SparseEdge {
 
 impl GraphEdge for SparseEdge {}
 
+impl EdgeFromNwk for SparseEdge {
+  fn from_nwk(_: Option<f64>) -> Result<Self, Report> {
+    Ok(Self::default())
+  }
+}
+
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct SparseSeqEdge {
   pub muts: Vec<Mut>,
@@ -118,9 +134,9 @@ pub struct SparseSeqEdge {
 }
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
-pub struct SparseMeta<'a, 'g> {
+pub struct SparseMeta<'g> {
   #[serde(skip)]
-  pub sparse_partitions: Vec<SeqPartition<'a, 'g>>,
+  pub sparse_partitions: Vec<SeqPartition<'g>>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

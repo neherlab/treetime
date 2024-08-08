@@ -3,8 +3,9 @@ use crate::graph::breadth_first::{
 };
 use crate::graph::edge::{Edge, GraphEdge, GraphEdgeKey};
 use crate::graph::node::{GraphNode, GraphNodeKey, Node};
+use crate::utils::container::get_exactly_one;
 use crate::{make_error, make_internal_error, make_internal_report};
-use eyre::Report;
+use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use parking_lot::lock_api::{ArcRwLockReadGuard, ArcRwLockWriteGuard};
 use parking_lot::{RawRwLock, RwLock};
@@ -29,6 +30,7 @@ pub type NodeEdgePair<N, E> = (Arc<RwLock<Node<N>>>, Arc<RwLock<Edge<E>>>);
 pub type NodeEdgePayloadPair<N, E> = (Arc<RwLock<N>>, Arc<RwLock<E>>);
 
 /// Represents graph node during forward traversal
+#[must_use]
 #[derive(Debug)]
 pub struct GraphNodeForward<N, E, D>
 where
@@ -73,9 +75,14 @@ where
       data,
     }
   }
+
+  pub fn get_exactly_one_parent(&self) -> Result<&NodeEdgePayloadPair<N, E>, Report> {
+    get_exactly_one(&self.parents).wrap_err("Nodes with multiple parents are not yet supported")
+  }
 }
 
 /// Represents graph node during backwards traversal
+#[must_use]
 #[derive(Debug)]
 pub struct GraphNodeBackward<N, E, D>
 where

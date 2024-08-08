@@ -1,4 +1,3 @@
-use crate::alphabet::alphabet::Alphabet;
 use crate::gtr::gtr::GTR;
 use crate::port::seq_sparse::VarPos;
 use crate::seq::range::RangeCollection;
@@ -7,23 +6,22 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
 #[derive(Clone, Debug)]
-pub struct SeqPartition<'a, 'g> {
+pub struct SeqPartition<'g> {
   pub gtr: &'g GTR,
   pub length: usize,
-  pub alphabet: &'a Alphabet,
 }
 
-impl<'a, 'g> SeqPartition<'a, 'g> {
-  pub fn new(gtr: &'g GTR, length: usize, alphabet: &'a Alphabet) -> Self {
-    SeqPartition { gtr, length, alphabet }
+impl<'g> SeqPartition<'g> {
+  pub fn new(gtr: &'g GTR, length: usize) -> Self {
+    SeqPartition { gtr, length }
   }
 
   pub fn profile(&self, c: char) -> &Array1<f64> {
-    self.alphabet.get_profile(c)
+    self.gtr.alphabet().get_profile(c)
   }
 
   pub fn code(&self, p: &Array1<f64>) -> char {
-    self.alphabet.get_code(p)
+    self.gtr.alphabet().get_code(p)
   }
 }
 
