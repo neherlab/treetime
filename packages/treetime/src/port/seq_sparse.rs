@@ -102,7 +102,7 @@ impl SparseSeqNode {
         gaps,
         non_char: vec![],
         composition: Composition::default(),
-        sequence: vec![],
+        sequence: seq.to_owned(), // TODO(perf): try to avoid cloning
         fitch: seq_dis,
       },
       profile: SparseSeqDis::default(),
