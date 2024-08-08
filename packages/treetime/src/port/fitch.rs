@@ -77,7 +77,7 @@ fn fitch_backwards(graph: &mut SparseGraph) {
   let n_partitions = sparse_partitions.len();
 
   graph.par_iter_breadth_first_backward(|mut node| {
-    if graph.is_leaf(node.key) {
+    if node.is_leaf {
       return GraphTraversalContinuation::Continue;
     }
 
