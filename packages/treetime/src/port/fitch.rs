@@ -551,7 +551,6 @@ pub fn get_common_length(aln: &[FastaRecord]) -> Result<usize, Report> {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::alphabet::alphabet::AlphabetName;
   use crate::gtr::get_gtr::{jc69, JC69Params};
   use crate::io::fasta::read_many_fasta_str;
   use crate::io::json::{json_write_str, JsonPretty};
@@ -561,55 +560,6 @@ mod tests {
   use indoc::indoc;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
-
-  // #[test]
-  // fn test_seq_ancestral_reconstruction() -> Result<(), Report> {
-  //   rayon::ThreadPoolBuilder::new().num_threads(1).build_global()?;
-  //
-  //   let inputs = read_many_fasta_str(indoc! {r#"
-  //     >A
-  //     ACATCGCCNNA--G
-  //     >B
-  //     GCATCCCTGTA-NG
-  //     >C
-  //     CCGGCGATGTATTG
-  //     >D
-  //     TCGGCCGTGTRTTG
-  //   "#})?;
-  //
-  //   let expected = read_many_fasta_str(indoc! {r#"
-  //     >AB
-  //     GCATCGCTGTATTG
-  //     >CD
-  //     TCGGCGGTGTATTG
-  //     >root
-  //     TCGGCGGTGTATTG
-  //   "#})?
-  //   .into_iter()
-  //   .map(|fasta| (fasta.seq_name, fasta.seq))
-  //   .collect::<BTreeMap<_, _>>();
-  //
-  //   let mut graph: SparseGraph = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
-  //
-  //   let gtr = &jc69(JC69Params {
-  //     alphabet: AlphabetName::NucNogap,
-  //     ..JC69Params::default()
-  //   })?;
-  //   let partitions = vec![PartitionModel { gtr, aln: inputs }];
-  //   compress_sequences(&mut graph, &partitions).unwrap();
-  //
-  //   let mut actual = BTreeMap::new();
-  //   ancestral_reconstruction_fitch(&graph, false, |node, seq| {
-  //     actual.insert(node.name.clone(), vec_to_string(seq));
-  //   })?;
-  //
-  //   assert_eq!(
-  //     json_write_str(&expected, JsonPretty(false))?,
-  //     json_write_str(&actual, JsonPretty(false))?
-  //   );
-  //
-  //   Ok(())
-  // }
 
   #[test]
   fn test_seq_ancestral_reconstruction2() -> Result<(), Report> {
@@ -663,42 +613,103 @@ mod tests {
     Ok(())
   }
 
-  // #[test]
-  // fn test_seq_ancestral_reconstruction_with_leaves() -> Result<(), Report> {
-  //   rayon::ThreadPoolBuilder::new().num_threads(1).build_global()?;
-  //
-  //   let inputs = BTreeMap::from([
-  //     (o!("A"), o!("ACATCGCCNNA--G")),
-  //     (o!("B"), o!("GCATCCCTGTA-NG")),
-  //     (o!("C"), o!("CCGGCGATGTATTG")),
-  //     (o!("D"), o!("TCGGCCGTGTRTTG")),
-  //   ]);
-  //
-  //   #[rustfmt::skip]
-  //   let expected = BTreeMap::from([
-  //     (o!("A"),    o!("ACATCGCCNNA--G")),
-  //     (o!("AB"),   o!("GCATCGCTGTATTG")),
-  //     (o!("B"),    o!("GCATCCCTGTA-NG")),
-  //     (o!("C"),    o!("CCGGCGATGTATTG")),
-  //     (o!("CD"),   o!("TCGGCGGTGTATTG")),
-  //     (o!("D"),    o!("TCGGCCGTGTRTTG")),
-  //     (o!("root"), o!("TCGGCGGTGTATTG")),
-  //   ]);
-  //
-  //   let graph = nwk_read_str::<Node, Edge, ()>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
-  //
-  //   compress_sequences(&inputs, &graph).unwrap();
-  //
-  //   let mut actual = BTreeMap::new();
-  //   ancestral_reconstruction_fitch(&graph, true, |node, seq| {
-  //     actual.insert(node.name.clone(), vec_to_string(seq.to_owned()));
-  //   })?;
-  //
-  //   assert_eq!(
-  //     json_write_str(&expected, JsonPretty(false))?,
-  //     json_write_str(&actual, JsonPretty(false))?
-  //   );
-  //
-  //   Ok(())
-  // }
+  #[test]
+  fn test_seq_ancestral_reconstruction3() -> Result<(), Report> {
+    rayon::ThreadPoolBuilder::new().num_threads(1).build_global()?;
+
+    let inputs = read_many_fasta_str(indoc! {r#"
+      >A
+      ACATCGCCNNA--G
+      >B
+      GCATCCCTGTA-NG
+      >C
+      CCGGCGATGTATTG
+      >D
+      TCGGCCGTGTRTTG
+    "#})?;
+
+    let expected = read_many_fasta_str(indoc! {r#"
+      >AB
+      GCATCGCTGTATTG
+      >CD
+      TCGGCGGTGTATTG
+      >root
+      TCGGCGGTGTATTG
+    "#})?
+    .into_iter()
+    .map(|fasta| (fasta.seq_name, fasta.seq))
+    .collect::<BTreeMap<_, _>>();
+
+    let mut graph: SparseGraph = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+
+    let gtr = &jc69(JC69Params::default())?;
+    let partitions = vec![PartitionModel { gtr, aln: inputs }];
+    compress_sequences(&mut graph, &partitions).unwrap();
+
+    let mut actual = BTreeMap::new();
+    ancestral_reconstruction_fitch(&graph, false, |node, seq| {
+      actual.insert(node.name.clone(), vec_to_string(seq));
+    })?;
+
+    assert_eq!(
+      json_write_str(&expected, JsonPretty(false))?,
+      json_write_str(&actual, JsonPretty(false))?
+    );
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_seq_ancestral_reconstruction3_with_leaves() -> Result<(), Report> {
+    rayon::ThreadPoolBuilder::new().num_threads(1).build_global()?;
+
+    let inputs = read_many_fasta_str(indoc! {r#"
+      >A
+      ACATCGCCNNA--G
+      >B
+      GCATCCCTGTA-NG
+      >C
+      CCGGCGATGTATTG
+      >D
+      TCGGCCGTGTRTTG
+    "#})?;
+
+    let expected = read_many_fasta_str(indoc! {r#"
+      >A
+      ACATCGCCNNA--G
+      >AB
+      GCATCGCTGTATTG
+      >B
+      GCATCCCTGTA-NG
+      >C
+      CCGGCGATGTATTG
+      >CD
+      TCGGCGGTGTATTG
+      >D
+      TCGGCCGTGTRTTG
+      >root
+      TCGGCGGTGTATTG
+    "#})?
+    .into_iter()
+    .map(|fasta| (fasta.seq_name, fasta.seq))
+    .collect::<BTreeMap<_, _>>();
+
+    let mut graph: SparseGraph = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+
+    let gtr = &jc69(JC69Params::default())?;
+    let partitions = vec![PartitionModel { gtr, aln: inputs }];
+    compress_sequences(&mut graph, &partitions).unwrap();
+
+    let mut actual = BTreeMap::new();
+    ancestral_reconstruction_fitch(&graph, true, |node, seq| {
+      actual.insert(node.name.clone(), vec_to_string(seq));
+    })?;
+
+    assert_eq!(
+      json_write_str(&expected, JsonPretty(false))?,
+      json_write_str(&actual, JsonPretty(false))?
+    );
+
+    Ok(())
+  }
 }
