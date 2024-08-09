@@ -167,7 +167,7 @@ pub struct SparseSeqDis {
   /// probability vector for the state of fixed positions based on information from children
   pub fixed: BTreeMap<String, Array1<f64>>,
 
-  pub fixed_counts: BTreeMap<String, usize>,
+  pub fixed_counts: Composition,
 
   /// Total log likelihood
   pub log_lh: f64,

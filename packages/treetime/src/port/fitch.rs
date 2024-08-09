@@ -414,13 +414,42 @@ fn fitch_forward(graph: &mut SparseGraph) {
   });
 }
 
-fn fitch_cleanup() {}
+fn fitch_cleanup(graph: &SparseGraph) {
+  graph.par_iter_breadth_first_forward(|mut node| {
+    for SparseSeqNode { seq, .. } in &mut node.payload.sparse_partitions {
+      // delete the variable position everywhere instead of leaves
+      if !node.is_leaf {
+        seq.fitch.variable = btreemap! {};
+      }
+
+      // remove the undetermined counts from the counts of fixed positions
+      for r in &seq.unknown {
+        for pos in r.0..r.1 {
+          seq.composition.adjust_count(seq.sequence[pos], -1);
+        }
+      }
+
+      seq.fitch.fixed_counts = seq.composition.clone();
+      for p in seq.fitch.variable.values() {
+        if let Some(state) = p.state {
+          seq.fitch.fixed_counts.adjust_count(state, -1);
+        }
+      }
+
+      if !node.is_root {
+        seq.sequence = vec![];
+      }
+    }
+
+    GraphTraversalContinuation::Continue
+  });
+}
 
 pub fn compress_sequences<'g>(graph: &mut SparseGraph<'g>, partitions: &'g [PartitionModel<'g>]) -> Result<(), Report> {
   attach_seqs_to_graph(graph, partitions)?;
   fitch_backwards(graph);
   fitch_forward(graph);
-  fitch_cleanup();
+  fitch_cleanup(graph);
   Ok(())
 }
 

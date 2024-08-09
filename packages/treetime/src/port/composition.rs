@@ -78,7 +78,7 @@ impl Composition {
     }
   }
 
-  fn adjust_count(&mut self, nuc: char, change: isize) {
+  pub fn adjust_count(&mut self, nuc: char, change: isize) {
     let count = self.counts.entry(nuc).or_default();
     *count = count.saturating_add_signed(change);
   }
