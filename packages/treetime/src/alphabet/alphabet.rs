@@ -21,8 +21,7 @@ pub enum AlphabetName {
   Aa,
 }
 
-pub type ProfileMap = BTreeMap<char, Array1<f64>>;
-pub type ProfileMapInverse = IndexMap<Array1<f64>, char>;
+pub type ProfileMap = IndexMap<char, Array1<f64>>;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Alphabet {
@@ -210,34 +209,6 @@ impl Alphabet {
   /// Check if character is a gap
   pub fn is_gap(&self, c: char) -> bool {
     c == self.gap()
-  }
-
-  /// Undetermined characters, i.e. an unknown and a gap
-  pub fn undetermined(&self) -> impl Iterator<Item = char> + '_ {
-    [self.unknown, self.gap].into_iter()
-  }
-
-  /// Check if character is undetermined, i.e. an unknown or gap
-  pub fn is_undetermined(&self, c: char) -> bool {
-    self.is_unknown(c) || self.is_gap(c)
-  }
-
-  pub fn n_undetermined(&self) -> usize {
-    self.undetermined().count()
-  }
-
-  /// Determined characters, i.e. all except unknown and gap
-  pub fn determined(&self) -> impl Iterator<Item = char> + '_ {
-    chain!(&self.canonical, self.ambiguous.keys()).cloned()
-  }
-
-  /// Check if character is determined, i.e. not an unknown or gap
-  pub fn is_determined(&self, c: char) -> bool {
-    !self.is_undetermined(c)
-  }
-
-  pub fn n_determined(&self) -> usize {
-    self.determined().count()
   }
 }
 
