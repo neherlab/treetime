@@ -175,7 +175,7 @@ fn fitch_backwards(graph: &mut SparseGraph) {
 
         let determined_states = child_states
           .into_iter()
-          .filter(|&c| gtr.alphabet().is_determined(c))
+          .filter(|&c| gtr.alphabet().is_canonical(c))
           .unique()
           .collect_vec();
 
