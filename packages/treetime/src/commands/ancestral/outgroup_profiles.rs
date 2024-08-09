@@ -66,30 +66,30 @@ fn calculate_root_state(root: &mut Node, logLH: &mut f64, gtr: &GTR) {
   root.profile_variable = btreemap! {};
   let mut inert_nucs = root.nuc_composition.clone();
 
-  // Variable positions
-  for (&pos, vec) in &root.subtree_profile_variable {
-    root.profile_variable.insert(pos, vec * &gtr.pi);
-    let vec_norm = root.profile_variable[&pos].sum();
-    *root.profile_variable.entry(pos).or_default() /= vec_norm;
-    *logLH += vec_norm.ln();
-    if let Some(nuc) = root.seq.get(pos) {
-      if gtr.alphabet.contains(*nuc) {
-        let count = inert_nucs.entry(*nuc).or_default();
-        *count = count.saturating_sub(1);
-      }
-    }
-  }
-
-  // Fixed positions
-  root.profile_fixed = btreemap! {};
-  for &nuc in gtr.alphabet.chars() {
-    if let Some(subtree_profile_fixed) = root.subtree_profile_fixed.get(&nuc) {
-      root.profile_fixed.insert(nuc, subtree_profile_fixed * &gtr.pi);
-      if let Some(profile_fixed) = root.profile_fixed.get_mut(&nuc) {
-        let vec_norm = profile_fixed.sum();
-        *profile_fixed /= vec_norm;
-        *logLH += (inert_nucs[&nuc] as f64) * vec_norm.ln();
-      }
-    }
-  }
+  // // Variable positions
+  // for (&pos, vec) in &root.subtree_profile_variable {
+  //   root.profile_variable.insert(pos, vec * &gtr.pi);
+  //   let vec_norm = root.profile_variable[&pos].sum();
+  //   *root.profile_variable.entry(pos).or_default() /= vec_norm;
+  //   *logLH += vec_norm.ln();
+  //   if let Some(nuc) = root.seq.get(pos) {
+  //     if gtr.alphabet.contains(*nuc) {
+  //       let count = inert_nucs.entry(*nuc).or_default();
+  //       *count = count.saturating_sub(1);
+  //     }
+  //   }
+  // }
+  // 
+  // // Fixed positions
+  // root.profile_fixed = btreemap! {};
+  // for &nuc in gtr.alphabet.chars() {
+  //   if let Some(subtree_profile_fixed) = root.subtree_profile_fixed.get(&nuc) {
+  //     root.profile_fixed.insert(nuc, subtree_profile_fixed * &gtr.pi);
+  //     if let Some(profile_fixed) = root.profile_fixed.get_mut(&nuc) {
+  //       let vec_norm = profile_fixed.sum();
+  //       *profile_fixed /= vec_norm;
+  //       *logLH += (inert_nucs[&nuc] as f64) * vec_norm.ln();
+  //     }
+  //   }
+  // }
 }

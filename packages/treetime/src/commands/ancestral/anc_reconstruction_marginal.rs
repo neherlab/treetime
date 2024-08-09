@@ -122,7 +122,7 @@ mod tests {
 
     compress_sequences(&inputs, &graph, &mut rng).unwrap();
 
-    let alphabet = Alphabet::new(AlphabetName::NucNogap)?;
+    let alphabet = Alphabet::new(AlphabetName::Nuc)?;
 
     let gtr = GTR::new(GTRParams {
       alphabet,

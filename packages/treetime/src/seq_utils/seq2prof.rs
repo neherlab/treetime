@@ -64,7 +64,7 @@ where
     argmax_axis(&profile, Axis(1))
   };
 
-  let seq = gtr.alphabet.indices_to_seq(&seq_ii); // max LH over the alphabet
+  let seq = gtr.alphabet.indices_to_sequence(seq_ii.iter().copied()).collect(); // max LH over the alphabet
 
   let prof_values = get_prof_values(&profile, &seq_ii);
 

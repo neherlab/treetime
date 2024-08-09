@@ -96,12 +96,12 @@ pub fn run_mugration(mugration_args: &TreetimeMugrationArgs) -> Result<(), Repor
   alphabet.attr_to_letter.insert(missing_data.clone(), missing_char);
   alphabet.letter_to_attr.insert(missing_char, missing_data.clone());
 
-  let gtr = GTR::new(GTRParams {
-    alphabet: Alphabet::with_letters(&alphabet.letters, missing_char)?,
-    mu: 1.0,
-    W: Some(Array2::<f64>::ones((num_attrs, num_attrs))),
-    pi: weights.unwrap_or_else(|| Array1::<f64>::ones(num_attrs)),
-  })?;
+  // let gtr = GTR::new(GTRParams {
+  //   alphabet: Alphabet::with_letters(&alphabet.letters, missing_char)?,
+  //   mu: 1.0,
+  //   W: Some(Array2::<f64>::ones((num_attrs, num_attrs))),
+  //   pi: weights.unwrap_or_else(|| Array1::<f64>::ones(num_attrs)),
+  // })?;
 
   Ok(())
 }

@@ -3,7 +3,6 @@ use crate::gtr::gtr::{GTRParams, GTR};
 use crate::{make_error, make_report};
 use clap::ArgEnum;
 use eyre::{Report, WrapErr};
-use itertools::Itertools;
 use ndarray::{array, Array1, Array2};
 use smart_default::SmartDefault;
 use strum_macros::Display;
@@ -57,7 +56,7 @@ pub struct JC69Params {
 /// See: Jukes and Cantor (1969). Evolution of Protein Molecules. New York: Academic Press. pp. 21–132
 pub fn jc69(JC69Params { mu, alphabet }: JC69Params) -> Result<GTR, Report> {
   let alphabet = Alphabet::new(alphabet)?;
-  let num_chars = alphabet.len();
+  let num_chars = alphabet.n_canonical();
   let W = Some(Array2::<f64>::ones((num_chars, num_chars)));
   let pi = Array1::<f64>::ones(num_chars);
   GTR::new(GTRParams { alphabet, mu, W, pi })
@@ -73,7 +72,7 @@ pub struct K80Params {
   #[default = 0.1]
   pub kappa: f64,
 
-  #[default(AlphabetName::NucNogap)]
+  #[default(AlphabetName::Nuc)]
   pub alphabet: AlphabetName,
 }
 
@@ -88,7 +87,7 @@ pub struct K80Params {
 /// See: Kimura (1980),  J. Mol. Evol. 16 (2): 111–120. doi:10.1007/BF01731581.
 pub fn k80(K80Params { mu, kappa, alphabet }: K80Params) -> Result<GTR, Report> {
   let alphabet = Alphabet::new(alphabet)?;
-  let num_chars = alphabet.len();
+  let num_chars = alphabet.n_canonical();
   let W = Some(create_transversion_transition_W(&alphabet, kappa)?);
   let pi = Array1::<f64>::ones(num_chars) / (num_chars as f64);
   GTR::new(GTRParams { alphabet, mu, W, pi })
@@ -112,7 +111,7 @@ pub struct F81Params {
 /// See: Felsenstein (1981), J. Mol. Evol. 17  (6): 368–376. doi:10.1007/BF01734359
 pub fn f81(F81Params { mu, alphabet }: F81Params) -> Result<GTR, Report> {
   let alphabet = Alphabet::new(alphabet)?;
-  let num_chars = alphabet.len();
+  let num_chars = alphabet.n_canonical();
   let W = Some(Array2::<f64>::ones((num_chars, num_chars)));
   let pi: Array1<f64> = {
     let pi = Array1::<f64>::ones(num_chars) / (num_chars as f64);
@@ -132,7 +131,7 @@ pub struct HKY85Params {
   #[default = 0.1]
   pub kappa: f64,
 
-  #[default(AlphabetName::NucNogap)]
+  #[default(AlphabetName::Nuc)]
   pub alphabet: AlphabetName,
 }
 
@@ -146,7 +145,7 @@ pub struct HKY85Params {
 /// See: Hasegawa, Kishino, Yano (1985), J. Mol. Evol. 22 (2): 160–174. doi:10.1007/BF02101694
 pub fn hky85(HKY85Params { mu, kappa, alphabet }: HKY85Params) -> Result<GTR, Report> {
   let alphabet = Alphabet::new(alphabet)?;
-  let num_chars = alphabet.len();
+  let num_chars = alphabet.n_canonical();
   let W = Some(create_transversion_transition_W(&alphabet, kappa)?);
   let pi: Array1<f64> = {
     let pi = Array1::<f64>::ones(num_chars) / (num_chars as f64);
@@ -170,7 +169,7 @@ pub struct T92Params {
   #[default = 0.5]
   pub pi_GC: f64,
 
-  #[default(AlphabetName::NucNogap)]
+  #[default(AlphabetName::Nuc)]
   pub alphabet: AlphabetName,
 }
 
@@ -194,19 +193,13 @@ pub fn t92(
   }
 
   let alphabet = Alphabet::new(alphabet)?;
-  let num_chars = alphabet.len();
   let W = Some(create_transversion_transition_W(&alphabet, kappa)?);
   let pi = array![(1.0 - pi_GC) * 0.5, pi_GC * 0.5, pi_GC * 0.5, (1.0 - pi_GC) * 0.5];
   GTR::new(GTRParams { alphabet, mu, W, pi })
 }
 
 fn create_transversion_transition_W(alphabet: &Alphabet, kappa: f64) -> Result<Array2<f64>, Report> {
-  let num_chars = alphabet.len();
-  let chars = alphabet.alphabet.iter().join("");
-  if chars != "ACGT" {
-    return make_error!("Only ACGT alphabet is supported, but found {chars}");
-  }
-
+  let num_chars = alphabet.n_canonical();
   let mut W = Array2::<f64>::ones((num_chars, num_chars));
   W[[0, 2]] = kappa;
   W[[1, 3]] = kappa;

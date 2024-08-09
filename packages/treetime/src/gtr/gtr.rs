@@ -11,18 +11,21 @@ use std::fmt::Display;
 use std::io::Write;
 use std::iter::zip;
 
-pub fn avg_transition(W: &Array2<f64>, pi: &Array1<f64>, gap_index: Option<usize>) -> Result<f64, Report> {
+pub fn avg_transition(W: &Array2<f64>, pi: &Array1<f64> /*, gap_index: Option<usize> */) -> Result<f64, Report> {
   let result = einsum_1d("i,ij,j", &[pi, W, pi])?;
 
-  Ok(if let Some(gap_index) = gap_index {
-    // np.sum(pi*W[:,gap_index]) *pi[gap_index])/(1-pi[gap_index]
-    let W_slice = W.slice(s!(.., gap_index));
-    let pi_mul_W_slice = pi * &W_slice;
-    let pi_mul_W_slice_sum = pi_mul_W_slice.sum();
-    (result - pi_mul_W_slice_sum * pi[gap_index]) / (1.0 - pi[gap_index])
-  } else {
-    result
-  })
+  // FIXME: alphabet.gap_index() does not exist anymore
+  // Ok(if let Some(gap_index) = gap_index {
+  //   // np.sum(pi*W[:,gap_index]) *pi[gap_index])/(1-pi[gap_index]
+  //   let W_slice = W.slice(s!(.., gap_index));
+  //   let pi_mul_W_slice = pi * &W_slice;
+  //   let pi_mul_W_slice_sum = pi_mul_W_slice.sum();
+  //   (result - pi_mul_W_slice_sum * pi[gap_index]) / (1.0 - pi[gap_index])
+  // } else {
+  //   result
+  // })
+
+  Ok(result)
 }
 
 /// Performs eigendecomposition of the rate matrix and stores the left- and right-
@@ -75,9 +78,8 @@ pub struct GTR {
 
 impl GTR {
   pub fn new(GTRParams { alphabet, mu, W, pi }: GTRParams) -> Result<Self, Report> {
-    let n = alphabet.len();
+    let n = alphabet.n_canonical();
 
-    assert!(!alphabet.is_empty(), "Alphabet should not be empty");
     assert_eq!(
       pi.shape().to_vec(),
       [n],
@@ -116,8 +118,8 @@ impl GTR {
       pi / pi_sum
     };
 
-    let average_rate = avg_transition(&W, &pi, alphabet.gap_index())?;
-
+    // FIXME: alphabet.gap_index() does not exist anymore
+    let average_rate = avg_transition(&W, &pi /*, alphabet.gap_index() */)?;
     let mu = mu * average_rate;
     let W = W / average_rate;
 
@@ -266,14 +268,14 @@ impl GTR {
     } else {
       writeln!(w, "Substitution rate (mu): {:.6}", self.mu)?;
       writeln!(w, "\nEquilibrium frequencies (pi_i):")?;
-      for (a, p) in zip(&self.alphabet.alphabet, &self.pi) {
+      for (a, p) in zip(self.alphabet.canonical(), &self.pi) {
         writeln!(w, "{a}:\t{p:.4}")?;
       }
     }
 
     writeln!(w, "\nSymmetrized rates from j->i (W_ij):")?;
-    writeln!(w, "\t{}", self.alphabet.alphabet.iter().join("\t"))?;
-    for (a, Wi) in zip(&self.alphabet.alphabet, self.W.rows()) {
+    writeln!(w, "\t{}", self.alphabet.canonical().join("\t"))?;
+    for (a, Wi) in zip(self.alphabet.canonical(), self.W.rows()) {
       writeln!(
         w,
         "{a}\t{}",
@@ -283,8 +285,8 @@ impl GTR {
 
     if !self.is_multi_site() {
       writeln!(w, "\nActual rates from j->i (Q_ij):")?;
-      writeln!(w, "\t{}", self.alphabet.alphabet.iter().join("\t"))?;
-      for (a, Qi) in zip(&self.alphabet.alphabet, self.Q().rows()) {
+      writeln!(w, "\t{}", self.alphabet.canonical().join("\t"))?;
+      for (a, Qi) in zip(self.alphabet.canonical(), self.Q().rows()) {
         writeln!(
           w,
           "{a}\t{}",
@@ -383,17 +385,18 @@ mod tests {
       [4.0 / 3.0, 4.0 / 3.0, 0.0],
     ];
     // test without gap index
-    assert_ulps_eq!(avg_transition(&Wi, &pi, None)?, 8.0 / 9.0);
+    assert_ulps_eq!(avg_transition(&Wi, &pi /*, None */)?, 8.0 / 9.0);
 
-    // test with gap index - the index is wrong
-    assert_ulps_eq!(avg_transition(&Wi, &pi, Some(1))?, 8.0 / 9.0);
+    // FIXME: alphabet.gap_index() does not exist anymore
+    // // test with gap index - the index is wrong
+    // assert_ulps_eq!(avg_transition(&Wi, &pi /*, Some(1) */)?, 8.0 / 9.0);
 
     Ok(())
   }
 
   #[rstest]
   fn avg_transition_from_alphabet() -> Result<(), Report> {
-    let num_chars = ALPHABET.len();
+    let num_chars = ALPHABET.n_canonical();
 
     let W = array![
       [0., 1., 1., 1., 1.],
@@ -405,7 +408,7 @@ mod tests {
 
     let pi = array![0.2, 0.2, 0.2, 0.2, 0.2];
 
-    assert_ulps_eq!(avg_transition(&W, &pi, ALPHABET.gap_index())?, 0.8000000000000005);
+    assert_ulps_eq!(avg_transition(&W, &pi /*, ALPHABET.gap_index() */)?, 0.8000000000000005);
 
     Ok(())
   }
@@ -684,8 +687,6 @@ mod tests {
     //    [ 0.015701130983909538, -0.010299255324283767, -1.038417265036203574,  1.009056995203920337,  0.023958394172657615],
     //    [-0.999999999999999556, -1.000000000000000222, -0.999999999999999889, -0.999999999999999778, -0.999999999999999778],
     // ]);
-
-    assert_eq!(gtr.alphabet, Alphabet::new(AlphabetName::Nuc)?);
 
     Ok(())
   }

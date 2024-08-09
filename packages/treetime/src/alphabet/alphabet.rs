@@ -1,11 +1,16 @@
+use crate::io::json::{json_write_str, JsonPretty};
+use crate::make_error;
+use crate::utils::string::quote;
 use clap::ArgEnum;
-use eyre::Report;
-use indexmap::IndexMap;
-use itertools::Itertools;
-use lazy_static::lazy_static;
-use ndarray::iter::Iter;
-use ndarray::{array, Array, Array1, Array2, Dimension, Ix1};
+use color_eyre::{Section, SectionExt};
+use eyre::{Report, WrapErr};
+use indexmap::{IndexMap, IndexSet};
+use itertools::{chain, Itertools};
+use maplit::btreemap;
+use ndarray::{Array1, Array2};
+use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
+use std::collections::{BTreeMap, BTreeSet};
 use strum_macros::Display;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, ArgEnum, SmartDefault, Display)]
@@ -13,74 +18,90 @@ use strum_macros::Display;
 pub enum AlphabetName {
   #[default]
   Nuc,
-  NucNogap,
   Aa,
-  AaNogap,
 }
 
-pub type ProfileMap = IndexMap<char, Array1<f64>>;
+pub type ProfileMap = BTreeMap<char, Array1<f64>>;
+pub type ProfileMapInverse = IndexMap<Array1<f64>, char>;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Alphabet {
-  pub alphabet: Array1<char>,
-  pub profile_map: ProfileMap,
-  pub gap_index: Option<usize>,
-  pub ambiguous: char,
+  all: IndexSet<char>,
+  canonical: BTreeSet<char>,
+  ambiguous: BTreeMap<char, Vec<char>>,
+  unknown: char,
+  gap: char,
+  profile_map: ProfileMap,
 }
 
 impl Alphabet {
-  /// Creates one of the pre-defined alphabets
+  /// Create one of the pre-defined alphabets
   pub fn new(name: AlphabetName) -> Result<Self, Report> {
-    let (alphabet, profile_map, ambiguous) = match name {
-      AlphabetName::Nuc => (
-        ALPHABET_NUC.to_owned(),
-        PROFILE_MAP_NUC.to_owned(),
-        *LETTER_AMBIGUOUS_NUC,
-      ),
-      AlphabetName::NucNogap => (
-        ALPHABET_NUC_NOGAP.to_owned(),
-        PROFILE_MAP_NUC_NOGAP.to_owned(),
-        *LETTER_AMBIGUOUS_NUC_NOGAP,
-      ),
-      AlphabetName::Aa => (
-        ALPHABET_AA.to_owned(),
-        PROFILE_MAP_NUC_NOGAP.to_owned(),
-        *LETTER_AMBIGUOUS_AA,
-      ),
-      AlphabetName::AaNogap => (
-        ALPHABET_AA_NOGAP.to_owned(),
-        PROFILE_MAP_NUC_NOGAP.to_owned(),
-        *LETTER_AMBIGUOUS_AA_NOGAP,
-      ),
-    };
-
-    let gap_index = alphabet.iter().position(|&x| x == '-');
-
-    Ok(Self {
-      alphabet,
-      profile_map,
-      gap_index,
-      ambiguous,
-    })
+    match name {
+      AlphabetName::Nuc => Self::with_config(&AlphabetConfig {
+        canonical: vec!['A', 'C', 'G', 'T'],
+        ambiguous: btreemap! {
+          'R' => vec!['A', 'G'],
+          'Y' => vec!['C', 'T'],
+          'S' => vec!['C', 'G'],
+          'W' => vec!['A', 'T'],
+          'K' => vec!['G', 'T'],
+          'M' => vec!['A', 'C'],
+          'D' => vec!['A', 'G', 'T'],
+          'H' => vec!['A', 'C', 'T'],
+          'B' => vec!['C', 'G', 'T'],
+          'V' => vec!['A', 'C', 'G'],
+        },
+        unknown: 'N',
+        gap: '-',
+      }),
+      AlphabetName::Aa => Self::with_config(&AlphabetConfig {
+        canonical: vec![
+          'A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y',
+        ],
+        ambiguous: btreemap! {
+          'B' => vec!['N', 'D'],
+          'Z' => vec!['Q', 'E'],
+          'J' => vec!['L', 'I'],
+        },
+        unknown: 'X',
+        gap: '-',
+      }),
+    }
   }
 
-  /// Creates custom alphabet from a given set of letters and generates a trivial unambiguous profile map
-  pub fn with_letters(letters: &[char], ambiguous: char) -> Result<Self, Report> {
-    let eye = Array2::<f64>::eye(letters.len());
+  /// Create custom alphabet from a given config
+  pub fn with_config(cfg: &AlphabetConfig) -> Result<Self, Report> {
+    let AlphabetConfig {
+      canonical,
+      ambiguous,
+      unknown,
+      gap,
+    } = cfg;
 
-    let mut profile_map: ProfileMap = letters
-      .iter()
-      .zip(eye.rows())
-      .map(|(s, x)| (*s, x.to_owned()))
-      .collect();
+    let canonical: BTreeSet<char> = canonical.iter().copied().collect();
+    if canonical.is_empty() {
+      return make_error!("When creating alphabet: canonical set of characters is empty. This is not allowed.");
+    }
 
-    profile_map.insert(ambiguous, Array1::<f64>::ones(letters.len()));
+    let ambiguous: BTreeMap<char, Vec<char>> = ambiguous.to_owned();
+
+    let all: IndexSet<char> = chain!(
+      canonical.iter().copied(),
+      ambiguous.keys().copied(),
+      [*unknown, *gap].into_iter(),
+    )
+    .collect();
+
+    let profile_map = cfg.create_profile_map()?;
 
     Ok(Self {
-      alphabet: Array1::<char>::from_iter(letters.iter().copied()),
-      profile_map,
-      gap_index: None,
+      all,
+      canonical,
       ambiguous,
+      unknown: *unknown,
+      gap: *gap,
+      profile_map,
     })
   }
 
@@ -108,61 +129,243 @@ impl Alphabet {
       .unwrap()
   }
 
-  pub fn indices_to_seq<D: Dimension>(&self, indices: &Array<usize, D>) -> Array<char, D> {
-    indices.map(|&i| self.alphabet[i])
+  pub fn sequence_to_indices<'a>(&'a self, chars: impl Iterator<Item = char> + 'a) -> impl Iterator<Item = usize> + 'a {
+    chars.map(|c| self.index(c))
   }
 
-  #[must_use]
+  pub fn indices_to_sequence<'a>(
+    &'a self,
+    indices: impl Iterator<Item = usize> + 'a,
+  ) -> impl Iterator<Item = char> + 'a {
+    indices.map(|i| self.char(i))
+  }
+
+  /// All existing characters (including 'unknown' and 'gap')
+  pub fn chars(&self) -> impl Iterator<Item = char> + '_ {
+    self.all.iter().copied()
+  }
+
+  /// Get char by index (indexed in the same order as given by `.chars()`)
   pub fn char(&self, index: usize) -> char {
-    self.alphabet[index]
+    self.all[index]
   }
 
-  #[must_use]
-  pub fn chars(&self) -> &Array1<char> {
-    &self.alphabet
+  /// Get index of a character (indexed in the same order as given by `.chars()`)
+  pub fn index(&self, c: char) -> usize {
+    self.all.get_index_of(&c).unwrap()
   }
 
-  #[must_use]
-  pub fn contains(&self, letter: char) -> bool {
-    self.chars().iter().contains(&letter)
+  /// Check if character is in alphabet (including 'unknown' and 'gap')
+  pub fn is_char(&self, c: char) -> bool {
+    self.all.contains(&c)
   }
 
-  #[inline]
-  pub fn len(&self) -> usize {
-    self.alphabet.len()
+  pub fn n_chars(&self) -> usize {
+    self.all.len()
   }
 
-  #[inline]
-  pub fn is_empty(&self) -> bool {
-    self.len() == 0
+  /// Canonical (unambiguous) characters (e.g. 'A', 'C', 'G', 'T' in nuc alphabet)
+  pub fn canonical(&self) -> impl Iterator<Item = char> + '_ {
+    self.canonical.iter().copied()
   }
 
-  #[inline]
-  pub const fn gap_index(&self) -> Option<usize> {
-    self.gap_index
+  /// Check is character is canonical
+  pub fn is_canonical(&self, c: char) -> bool {
+    self.canonical().contains(&c)
   }
 
-  #[inline]
-  pub fn gap(&self) -> Option<char> {
-    self.gap_index.map(|gap_index| self.char(gap_index))
+  pub fn n_canonical(&self) -> usize {
+    self.canonical.len()
   }
 
-  #[inline]
-  pub const fn ambiguous(&self) -> char {
-    self.ambiguous
+  /// Ambiguous characters (e.g. 'R', 'S' etc. in nuc alphabet)
+  pub fn ambiguous(&self) -> impl Iterator<Item = char> + '_ {
+    self.ambiguous.keys().copied()
   }
 
+  /// Check if character is ambiguous (e.g. 'R', 'S' etc. in nuc alphabet)
   pub fn is_ambiguous(&self, c: char) -> bool {
-    self.ambiguous() == c
+    self.ambiguous().contains(&c)
   }
 
+  pub fn n_ambiguous(&self) -> usize {
+    self.ambiguous.len()
+  }
+
+  /// Get 'unknown' character
+  pub fn unknown(&self) -> char {
+    self.unknown
+  }
+
+  /// Check if character is an 'unknown' character
+  pub fn is_unknown(&self, c: char) -> bool {
+    c == self.unknown()
+  }
+
+  /// Get 'gap' character
+  pub fn gap(&self) -> char {
+    self.gap
+  }
+
+  /// Check if character is a gap
   pub fn is_gap(&self, c: char) -> bool {
-    self.gap().map_or(false, |gap| c == gap)
+    c == self.gap()
   }
 
-  #[allow(clippy::iter_without_into_iter)]
-  pub fn iter(&self) -> Iter<'_, char, Ix1> {
-    self.alphabet.iter()
+  /// Undetermined characters, i.e. an unknown and a gap
+  pub fn undetermined(&self) -> impl Iterator<Item = char> + '_ {
+    [self.unknown, self.gap].into_iter()
+  }
+
+  /// Check if character is undetermined, i.e. an unknown or gap
+  pub fn is_undetermined(&self, c: char) -> bool {
+    self.is_unknown(c) || self.is_gap(c)
+  }
+
+  pub fn n_undetermined(&self) -> usize {
+    self.undetermined().count()
+  }
+
+  /// Determined characters, i.e. all except unknown and gap
+  pub fn determined(&self) -> impl Iterator<Item = char> + '_ {
+    chain!(&self.canonical, self.ambiguous.keys()).cloned()
+  }
+
+  /// Check if character is determined, i.e. not an unknown or gap
+  pub fn is_determined(&self, c: char) -> bool {
+    !self.is_undetermined(c)
+  }
+
+  pub fn n_determined(&self) -> usize {
+    self.determined().count()
+  }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+pub struct AlphabetConfig {
+  pub canonical: Vec<char>,
+  pub ambiguous: BTreeMap<char, Vec<char>>,
+  pub unknown: char,
+  pub gap: char,
+}
+
+impl AlphabetConfig {
+  pub fn create_profile_map(&self) -> Result<ProfileMap, Report> {
+    let AlphabetConfig {
+      canonical,
+      ambiguous,
+      unknown,
+      ..
+    } = self;
+
+    self
+      .validate()
+      .wrap_err("When validating alphabet config")
+      .with_section(|| {
+        json_write_str(&self, JsonPretty(true))
+          .unwrap()
+          .header("Alphabet config")
+      })?;
+
+    let eye = Array2::<f64>::eye(canonical.len());
+
+    // Add canonical to profile map
+    let mut profile_map: ProfileMap = canonical
+      .iter()
+      .zip(eye.rows())
+      .map(|(s, x)| (*s, x.to_owned()))
+      .collect();
+
+    // Add unknown to profile map
+    profile_map.insert(*unknown, Array1::<f64>::ones(canonical.len()));
+
+    // Add ambiguous to profile map
+    ambiguous.iter().for_each(|(&key, values)| {
+      let profile = canonical
+        .iter()
+        .enumerate()
+        .map(|(i, c)| if values.contains(c) { 1.0 } else { 0.0 })
+        .collect::<Array1<f64>>();
+      profile_map.insert(key, profile);
+    });
+
+    Ok(profile_map)
+  }
+
+  pub fn validate(&self) -> Result<(), Report> {
+    let AlphabetConfig {
+      canonical,
+      ambiguous,
+      unknown,
+      gap,
+    } = self;
+
+    {
+      let canonical_dupes = canonical.iter().duplicates().collect_vec();
+      if !canonical_dupes.is_empty() {
+        let msg = canonical_dupes.into_iter().join(", ");
+        return make_error!("Canonical set contains duplicates: {msg}");
+      }
+    }
+
+    {
+      let ambiguous_dupes = ambiguous.keys().duplicates().collect_vec();
+      if !ambiguous_dupes.is_empty() {
+        let msg = ambiguous_dupes.into_iter().join(", ");
+        return make_error!("Ambiguous set contains duplicates: {msg}");
+      }
+    }
+
+    let canonical: BTreeSet<_> = canonical.iter().copied().collect();
+    let ambiguous_keys: BTreeSet<_> = ambiguous.keys().copied().collect();
+    let ambiguous_set_map: BTreeMap<char, BTreeSet<char>> = ambiguous
+      .iter()
+      .map(|(key, vals)| (*key, vals.iter().copied().collect()))
+      .collect();
+    {
+      let canonical_inter_ambig: BTreeSet<_> = canonical.intersection(&ambiguous_keys).copied().collect();
+      if !canonical_inter_ambig.is_empty() {
+        let msg = canonical_inter_ambig.into_iter().join(", ");
+        return make_error!("Canonical and ambiguous sets must be disjoint, but these characters are shared: {msg}");
+      }
+    }
+
+    if canonical.contains(gap) {
+      let msg = canonical.iter().map(quote).join(", ");
+      return make_error!("Canonical set contains 'gap' character: {msg}");
+    }
+
+    if canonical.contains(unknown) {
+      let msg = canonical.iter().map(quote).join(", ");
+      return make_error!("Canonical set contains 'unknown' character: {msg}");
+    }
+
+    if ambiguous.keys().contains(&gap) {
+      let msg = ambiguous.keys().map(quote).join(", ");
+      return make_error!("Ambiguous set contains 'gap' character: {msg}");
+    }
+
+    if ambiguous.keys().contains(&gap) {
+      let msg = ambiguous.keys().map(quote).join(", ");
+      return make_error!("Ambiguous set contains 'unknown' character: {msg}");
+    }
+
+    {
+      let ambig_gaps = ambiguous_set_map
+        .iter()
+        .map(|(key, vals)| (key, vals.difference(&canonical).collect::<BTreeSet<_>>()))
+        .filter(|(key, extra)| !extra.is_empty())
+        .collect_vec();
+      if !ambig_gaps.is_empty() {
+        let msg = ambig_gaps
+          .iter()
+          .map(|(key, vals)| format!("\"{key}\" => {}", vals.iter().map(quote).join(", ")))
+          .join("; ");
+        return make_error!("Ambiguous set can only contain mapping(s) to canonical characters, but found: {msg}");
+      }
+    }
+
+    Ok(())
   }
 }
 
@@ -170,136 +373,1042 @@ impl Alphabet {
 mod tests {
   use super::*;
   use eyre::Report;
+  use indoc::indoc;
+  use ndarray::array;
   use pretty_assertions::assert_eq;
-  use rstest::rstest;
 
-  #[rstest]
-  fn converts_indices_to_sequence() -> Result<(), Report> {
-    let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-    assert_eq!(
-      alphabet.indices_to_seq(&array![2, 3, 2, 4, 2, 2, 1]),
-      array!['G', 'T', 'G', '-', 'G', 'G', 'C'],
-    );
+  #[test]
+  fn test_alphabet_sequence_to_indices() -> Result<(), Report> {
+    let actual = Alphabet::new(AlphabetName::Nuc)?
+      .sequence_to_indices(array!['A', 'G', 'T', 'G', '-', 'G', 'N', 'G', 'C'].into_iter())
+      .collect_vec();
+    let expected = vec![0, 2, 3, 2, 15, 2, 14, 2, 1];
+    assert_eq!(expected, actual);
     Ok(())
   }
 
-  #[rstest]
-  fn converts_indices_to_sequence_2d() -> Result<(), Report> {
-    let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-    assert_eq!(
-      alphabet.indices_to_seq(&array![[2, 3, 2, 4, 2, 2, 1], [2, 3, 2, 4, 2, 2, 1]]),
-      array![['G', 'T', 'G', '-', 'G', 'G', 'C'], ['G', 'T', 'G', '-', 'G', 'G', 'C']],
-    );
+  #[test]
+  fn test_alphabet_indices_to_sequence() -> Result<(), Report> {
+    let actual = Alphabet::new(AlphabetName::Nuc)?
+      .indices_to_sequence(array![0, 2, 3, 2, 15, 2, 14, 2, 1].into_iter())
+      .collect_vec();
+    let expected = vec!['A', 'G', 'T', 'G', '-', 'G', 'N', 'G', 'C'];
+    assert_eq!(expected, actual);
     Ok(())
   }
-}
 
-lazy_static! {
-  static ref ALPHABET_NUC: Array1<char> = array!['A', 'C', 'G', 'T', '-'];
-  static ref LETTER_AMBIGUOUS_NUC: char = 'N';
-  static ref PROFILE_MAP_NUC: ProfileMap = ProfileMap::from([
-    ('A', array![1.0, 0.0, 0.0, 0.0, 0.0]),
-    ('C', array![0.0, 1.0, 0.0, 0.0, 0.0]),
-    ('G', array![0.0, 0.0, 1.0, 0.0, 0.0]),
-    ('T', array![0.0, 0.0, 0.0, 1.0, 0.0]),
-    ('-', array![0.0, 0.0, 0.0, 0.0, 1.0]),
-    ('N', array![1.0, 1.0, 1.0, 1.0, 1.0]),
-    ('X', array![1.0, 1.0, 1.0, 1.0, 1.0]),
-    ('R', array![1.0, 0.0, 1.0, 0.0, 0.0]),
-    ('Y', array![0.0, 1.0, 0.0, 1.0, 0.0]),
-    ('S', array![0.0, 1.0, 1.0, 0.0, 0.0]),
-    ('W', array![1.0, 0.0, 0.0, 1.0, 0.0]),
-    ('K', array![0.0, 0.0, 1.0, 1.0, 0.0]),
-    ('M', array![1.0, 1.0, 0.0, 0.0, 0.0]),
-    ('D', array![1.0, 0.0, 1.0, 1.0, 0.0]),
-    ('H', array![1.0, 1.0, 0.0, 1.0, 0.0]),
-    ('B', array![0.0, 1.0, 1.0, 1.0, 0.0]),
-    ('V', array![1.0, 1.0, 1.0, 0.0, 0.0]),
-  ]);
+  #[test]
+  fn test_alphabet_nuc() -> Result<(), Report> {
+    let alphabet = Alphabet::new(AlphabetName::Nuc)?;
+    let actual = json_write_str(&alphabet, JsonPretty(true))?;
+    let expected = indoc! {r#"
+    {
+      "all": [
+        "A",
+        "C",
+        "G",
+        "T",
+        "B",
+        "D",
+        "H",
+        "K",
+        "M",
+        "R",
+        "S",
+        "V",
+        "W",
+        "Y",
+        "N",
+        "-"
+      ],
+      "canonical": [
+        "A",
+        "C",
+        "G",
+        "T"
+      ],
+      "ambiguous": {
+        "B": [
+          "C",
+          "G",
+          "T"
+        ],
+        "D": [
+          "A",
+          "G",
+          "T"
+        ],
+        "H": [
+          "A",
+          "C",
+          "T"
+        ],
+        "K": [
+          "G",
+          "T"
+        ],
+        "M": [
+          "A",
+          "C"
+        ],
+        "R": [
+          "A",
+          "G"
+        ],
+        "S": [
+          "C",
+          "G"
+        ],
+        "V": [
+          "A",
+          "C",
+          "G"
+        ],
+        "W": [
+          "A",
+          "T"
+        ],
+        "Y": [
+          "C",
+          "T"
+        ]
+      },
+      "unknown": "N",
+      "gap": "-",
+      "profile_map": {
+        "A": {
+          "v": 1,
+          "dim": [
+            4
+          ],
+          "data": [
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "B": {
+          "v": 1,
+          "dim": [
+            4
+          ],
+          "data": [
+            0.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "C": {
+          "v": 1,
+          "dim": [
+            4
+          ],
+          "data": [
+            0.0,
+            1.0,
+            0.0,
+            0.0
+          ]
+        },
+        "D": {
+          "v": 1,
+          "dim": [
+            4
+          ],
+          "data": [
+            1.0,
+            0.0,
+            1.0,
+            1.0
+          ]
+        },
+        "G": {
+          "v": 1,
+          "dim": [
+            4
+          ],
+          "data": [
+            0.0,
+            0.0,
+            1.0,
+            0.0
+          ]
+        },
+        "H": {
+          "v": 1,
+          "dim": [
+            4
+          ],
+          "data": [
+            1.0,
+            1.0,
+            0.0,
+            1.0
+          ]
+        },
+        "K": {
+          "v": 1,
+          "dim": [
+            4
+          ],
+          "data": [
+            0.0,
+            0.0,
+            1.0,
+            1.0
+          ]
+        },
+        "M": {
+          "v": 1,
+          "dim": [
+            4
+          ],
+          "data": [
+            1.0,
+            1.0,
+            0.0,
+            0.0
+          ]
+        },
+        "N": {
+          "v": 1,
+          "dim": [
+            4
+          ],
+          "data": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "R": {
+          "v": 1,
+          "dim": [
+            4
+          ],
+          "data": [
+            1.0,
+            0.0,
+            1.0,
+            0.0
+          ]
+        },
+        "S": {
+          "v": 1,
+          "dim": [
+            4
+          ],
+          "data": [
+            0.0,
+            1.0,
+            1.0,
+            0.0
+          ]
+        },
+        "T": {
+          "v": 1,
+          "dim": [
+            4
+          ],
+          "data": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "V": {
+          "v": 1,
+          "dim": [
+            4
+          ],
+          "data": [
+            1.0,
+            1.0,
+            1.0,
+            0.0
+          ]
+        },
+        "W": {
+          "v": 1,
+          "dim": [
+            4
+          ],
+          "data": [
+            1.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "Y": {
+          "v": 1,
+          "dim": [
+            4
+          ],
+          "data": [
+            0.0,
+            1.0,
+            0.0,
+            1.0
+          ]
+        }
+      }
+    }"#};
+    assert_eq!(expected, actual);
+    Ok(())
+  }
 
-
-  static ref ALPHABET_NUC_NOGAP: Array1<char> = array!['A', 'C', 'G', 'T'];
-  static ref LETTER_AMBIGUOUS_NUC_NOGAP: char = 'N';
-  static ref PROFILE_MAP_NUC_NOGAP: ProfileMap = ProfileMap::from([
-    ('A', array![1.0, 0.0, 0.0, 0.0]),
-    ('C', array![0.0, 1.0, 0.0, 0.0]),
-    ('G', array![0.0, 0.0, 1.0, 0.0]),
-    ('T', array![0.0, 0.0, 0.0, 1.0]),
-    ('-', array![1.0, 1.0, 1.0, 1.0]), // gaps are completely ignored in distance computations
-    ('N', array![1.0, 1.0, 1.0, 1.0]),
-    ('X', array![1.0, 1.0, 1.0, 1.0]),
-    ('R', array![1.0, 0.0, 1.0, 0.0]),
-    ('Y', array![0.0, 1.0, 0.0, 1.0]),
-    ('S', array![0.0, 1.0, 1.0, 0.0]),
-    ('W', array![1.0, 0.0, 0.0, 1.0]),
-    ('K', array![0.0, 0.0, 1.0, 1.0]),
-    ('M', array![1.0, 1.0, 0.0, 0.0]),
-    ('D', array![1.0, 0.0, 1.0, 1.0]),
-    ('H', array![1.0, 1.0, 0.0, 1.0]),
-    ('B', array![0.0, 1.0, 1.0, 1.0]),
-    ('V', array![1.0, 1.0, 1.0, 0.0]),
-  ]);
-
-
-  static ref ALPHABET_AA: Array1<char> = array![
-    'A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y', '*', '-'
-  ];
-  static ref LETTER_AMBIGUOUS_AA: char = 'X';
-  static ref PROFILE_MAP_AA: ProfileMap = ProfileMap::from([
-    ('A', array![1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Alanine         Ala
-    ('C', array![0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Cysteine        Cys
-    ('D', array![0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Aspartic AciD   Asp
-    ('E', array![0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Glutamic Acid   Glu
-    ('F', array![0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Phenylalanine   Phe
-    ('G', array![0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Glycine         Gly
-    ('H', array![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Histidine       His
-    ('I', array![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Isoleucine      Ile
-    ('K', array![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Lysine          Lys
-    ('L', array![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Leucine         Leu
-    ('M', array![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Methionine      Met
-    ('N', array![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // AsparagiNe      Asn
-    ('P', array![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Proline         Pro
-    ('Q', array![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Glutamine       Gln
-    ('R', array![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // ARginine        Arg
-    ('S', array![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Serine          Ser
-    ('T', array![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Threonine       Thr
-    ('V', array![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0]), // Valine          Val
-    ('W', array![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0]), // Tryptophan      Trp
-    ('Y', array![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0]), // Tyrosine        Tyr
-    ('*', array![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0]), // stop
-    ('-', array![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]), // gap
-    ('X', array![1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]), // not specified/any
-    ('B', array![0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Asparagine/Aspartic Acid    Asx
-    ('Z', array![0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Glutamine/Glutamic Acid     Glx
-  ]);
-
-
-  static ref ALPHABET_AA_NOGAP: Array1<char> =
-    array!['A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y'];
-  static ref LETTER_AMBIGUOUS_AA_NOGAP: char = 'X';
-  static ref PROFILE_MAP_AA_NOGAP: ProfileMap = ProfileMap::from([
-     ('A', array![1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Alanine         Ala
-     ('C', array![0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Cysteine        Cys
-     ('D', array![0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Aspartic AciD   Asp
-     ('E', array![0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Glutamic Acid   Glu
-     ('F', array![0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Phenylalanine   Phe
-     ('G', array![0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Glycine         Gly
-     ('H', array![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Histidine       His
-     ('I', array![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Isoleucine      Ile
-     ('K', array![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Lysine          Lys
-     ('L', array![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Leucine         Leu
-     ('M', array![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Methionine      Met
-     ('N', array![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // AsparagiNe      Asn
-     ('P', array![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Proline         Pro
-     ('Q', array![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Glutamine       Gln
-     ('R', array![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // ARginine        Arg
-     ('S', array![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0]), // Serine          Ser
-     ('T', array![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0]), // Threonine       Thr
-     ('V', array![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0]), // Valine          Val
-     ('W', array![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0]), // Tryptophan      Trp
-     ('Y', array![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]), // Tyrosine        Tyr
-     ('X', array![1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]), // not specified/any
-     ('B', array![0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Asparagine/Aspartic Acid    Asx
-     ('Z', array![0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), // Glutamine/Glutamic Acid     Glx
-  ]);
+  #[test]
+  fn test_alphabet_aa() -> Result<(), Report> {
+    let alphabet = Alphabet::new(AlphabetName::Aa)?;
+    let actual = json_write_str(&alphabet, JsonPretty(true))?;
+    let expected = indoc! {r#"
+    {
+      "all": [
+        "A",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "H",
+        "I",
+        "K",
+        "L",
+        "M",
+        "N",
+        "P",
+        "Q",
+        "R",
+        "S",
+        "T",
+        "V",
+        "W",
+        "Y",
+        "B",
+        "J",
+        "Z",
+        "X",
+        "-"
+      ],
+      "canonical": [
+        "A",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "H",
+        "I",
+        "K",
+        "L",
+        "M",
+        "N",
+        "P",
+        "Q",
+        "R",
+        "S",
+        "T",
+        "V",
+        "W",
+        "Y"
+      ],
+      "ambiguous": {
+        "B": [
+          "N",
+          "D"
+        ],
+        "J": [
+          "L",
+          "I"
+        ],
+        "Z": [
+          "Q",
+          "E"
+        ]
+      },
+      "unknown": "X",
+      "gap": "-",
+      "profile_map": {
+        "A": {
+          "v": 1,
+          "dim": [
+            20
+          ],
+          "data": [
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "B": {
+          "v": 1,
+          "dim": [
+            20
+          ],
+          "data": [
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "C": {
+          "v": 1,
+          "dim": [
+            20
+          ],
+          "data": [
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "D": {
+          "v": 1,
+          "dim": [
+            20
+          ],
+          "data": [
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "E": {
+          "v": 1,
+          "dim": [
+            20
+          ],
+          "data": [
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "F": {
+          "v": 1,
+          "dim": [
+            20
+          ],
+          "data": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "G": {
+          "v": 1,
+          "dim": [
+            20
+          ],
+          "data": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "H": {
+          "v": 1,
+          "dim": [
+            20
+          ],
+          "data": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "I": {
+          "v": 1,
+          "dim": [
+            20
+          ],
+          "data": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "J": {
+          "v": 1,
+          "dim": [
+            20
+          ],
+          "data": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "K": {
+          "v": 1,
+          "dim": [
+            20
+          ],
+          "data": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "L": {
+          "v": 1,
+          "dim": [
+            20
+          ],
+          "data": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "M": {
+          "v": 1,
+          "dim": [
+            20
+          ],
+          "data": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "N": {
+          "v": 1,
+          "dim": [
+            20
+          ],
+          "data": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "P": {
+          "v": 1,
+          "dim": [
+            20
+          ],
+          "data": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "Q": {
+          "v": 1,
+          "dim": [
+            20
+          ],
+          "data": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "R": {
+          "v": 1,
+          "dim": [
+            20
+          ],
+          "data": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "S": {
+          "v": 1,
+          "dim": [
+            20
+          ],
+          "data": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "T": {
+          "v": 1,
+          "dim": [
+            20
+          ],
+          "data": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "V": {
+          "v": 1,
+          "dim": [
+            20
+          ],
+          "data": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0
+          ]
+        },
+        "W": {
+          "v": 1,
+          "dim": [
+            20
+          ],
+          "data": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0
+          ]
+        },
+        "X": {
+          "v": 1,
+          "dim": [
+            20
+          ],
+          "data": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "Y": {
+          "v": 1,
+          "dim": [
+            20
+          ],
+          "data": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "Z": {
+          "v": 1,
+          "dim": [
+            20
+          ],
+          "data": [
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      }
+    }"#};
+    assert_eq!(expected, actual);
+    Ok(())
+  }
 }

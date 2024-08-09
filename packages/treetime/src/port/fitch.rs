@@ -175,7 +175,7 @@ fn fitch_backwards(graph: &mut SparseGraph) {
 
         let determined_states = child_states
           .into_iter()
-          .filter(|&x| gtr.alphabet().contains(x))
+          .filter(|&c| gtr.alphabet().is_determined(c))
           .unique()
           .collect_vec();
 
@@ -299,7 +299,7 @@ fn fitch_forward(graph: &mut SparseGraph) {
         for r in gaps.iter() {
           sequence[r.0..r.1].fill(GAP_CHAR);
         }
-        *composition = Composition::with_sequence(sequence.iter().copied(), gtr.alphabet().iter().copied());
+        *composition = Composition::with_sequence(sequence.iter().copied(), gtr.alphabet().chars());
       } else {
         let (parent, edge) = node
           .parents
@@ -437,44 +437,49 @@ pub fn ancestral_reconstruction_fitch(
   let n_partitions = sparse_partitions.len();
 
   graph.iter_depth_first_preorder_forward(|node| {
-    if node.is_root {
-      return;
-    }
     if !include_leaves && node.is_leaf {
       return;
     }
 
     let seq = (0..n_partitions)
       .flat_map(|si| {
-        let (parent, edge) = node.get_exactly_one_parent().unwrap();
-        let parent = &parent.read_arc().sparse_partitions[si];
-        let edge = &edge.read_arc().sparse_partitions[si];
+        let mut seq = if node.is_root {
+          node.payload.sparse_partitions[si].seq.sequence.clone()
+        } else {
+          let (parent, edge) = node.get_exactly_one_parent().unwrap();
+          let parent = &parent.read_arc().sparse_partitions[si];
+          let edge = &edge.read_arc().sparse_partitions[si];
+
+          let mut seq = parent.seq.sequence.clone();
+
+          // Implant mutations
+          for m in &edge.muts {
+            seq[m.pos] = m.qry;
+          }
+
+          // Implant indels
+          for indel in &edge.indels {
+            if indel.deletion {
+              seq[indel.range.0..indel.range.1].fill(GAP_CHAR);
+            } else {
+              seq[indel.range.0..indel.range.1].copy_from_slice(&indel.seq);
+            }
+          }
+
+          seq
+        };
 
         let node = &node.payload.sparse_partitions[si].seq;
 
-        let mut seq = parent.seq.sequence.clone();
-
-        // Implant mutations
-        for m in &edge.muts {
-          seq[m.pos] = m.qry;
-        }
-
-        // Implant indels
-        for indel in &edge.indels {
-          if indel.deletion {
-            seq[indel.range.0..indel.range.1].fill(GAP_CHAR);
-          } else {
-            seq[indel.range.0..indel.range.1].copy_from_slice(&indel.seq);
-          }
-        }
-
         // At the node itself, mask whatever is unknown in the node.
         for r in &node.unknown {
-          let ambig_char = sparse_partitions[si].gtr.alphabet.ambiguous();
+          let ambig_char = sparse_partitions[si].gtr.alphabet.unknown();
           seq[r.0..r.1].fill(ambig_char);
         }
 
         for (pos, p) in &node.fitch.variable {
+          dbg!(&node.fitch.variable);
+
           seq[*pos] = sparse_partitions[si].code(&p.dis);
         }
 
@@ -517,6 +522,7 @@ pub fn get_common_length(aln: &[FastaRecord]) -> Result<usize, Report> {
 #[cfg(test)]
 mod tests {
   use super::*;
+  use crate::alphabet::alphabet::AlphabetName;
   use crate::gtr::get_gtr::{jc69, JC69Params};
   use crate::io::fasta::read_many_fasta_str;
   use crate::io::json::{json_write_str, JsonPretty};
@@ -527,29 +533,87 @@ mod tests {
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
 
+  // #[test]
+  // fn test_seq_ancestral_reconstruction() -> Result<(), Report> {
+  //   rayon::ThreadPoolBuilder::new().num_threads(1).build_global()?;
+  //
+  //   let inputs = read_many_fasta_str(indoc! {r#"
+  //     >A
+  //     ACATCGCCNNA--G
+  //     >B
+  //     GCATCCCTGTA-NG
+  //     >C
+  //     CCGGCGATGTATTG
+  //     >D
+  //     TCGGCCGTGTRTTG
+  //   "#})?;
+  //
+  //   let expected = read_many_fasta_str(indoc! {r#"
+  //     >AB
+  //     GCATCGCTGTATTG
+  //     >CD
+  //     TCGGCGGTGTATTG
+  //     >root
+  //     TCGGCGGTGTATTG
+  //   "#})?
+  //   .into_iter()
+  //   .map(|fasta| (fasta.seq_name, fasta.seq))
+  //   .collect::<BTreeMap<_, _>>();
+  //
+  //   let mut graph: SparseGraph = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+  //
+  //   let gtr = &jc69(JC69Params {
+  //     alphabet: AlphabetName::NucNogap,
+  //     ..JC69Params::default()
+  //   })?;
+  //   let partitions = vec![PartitionModel { gtr, aln: inputs }];
+  //   compress_sequences(&mut graph, &partitions).unwrap();
+  //
+  //   let mut actual = BTreeMap::new();
+  //   ancestral_reconstruction_fitch(&graph, false, |node, seq| {
+  //     actual.insert(node.name.clone(), vec_to_string(seq));
+  //   })?;
+  //
+  //   assert_eq!(
+  //     json_write_str(&expected, JsonPretty(false))?,
+  //     json_write_str(&actual, JsonPretty(false))?
+  //   );
+  //
+  //   Ok(())
+  // }
+
   #[test]
-  fn test_seq_ancestral_reconstruction() -> Result<(), Report> {
+  fn test_seq_ancestral_reconstruction2() -> Result<(), Report> {
     rayon::ThreadPoolBuilder::new().num_threads(1).build_global()?;
 
     let inputs = read_many_fasta_str(indoc! {r#"
+      >root
+      ACAGCCATGTATTG--
+      >AB
+      ACATCCCTGTA-TG--
       >A
-      ACATCGCCNNA--G
+      ACATCGCCNNA--GAC
       >B
-      GCATCCCTGTA-NG
+      GCATCCCTGTA-NG--
+      >CD
+      CCGGCCATGTATTG--
       >C
-      CCGGCGATGTATTG
+      CCGGCGATGTRTTG--
       >D
-      TCGGCCGTGTRTTG
+      TCGGCCGTGTRTTG--
     "#})?;
 
     let expected = read_many_fasta_str(indoc! {r#"
-      >AB
-      GCATCGCTGTATTG
-      >CD
-      TCGGCGGTGTATTG
       >root
-      TCGGCGGTGTATTG
-    "#})?;
+      ACAGCCATGTATTG--
+      >AB
+      ACATCCCTGTA-TG--
+      >CD
+      CCGGCCATGTATTG--
+    "#})?
+    .into_iter()
+    .map(|fasta| (fasta.seq_name, fasta.seq))
+    .collect::<BTreeMap<_, _>>();
 
     let mut graph: SparseGraph = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
@@ -569,55 +633,6 @@ mod tests {
 
     Ok(())
   }
-
-  // #[test]
-  // fn test_seq_ancestral_reconstruction2() -> Result<(), Report> {
-  //   rayon::ThreadPoolBuilder::new().num_threads(1).build_global()?;
-  //
-  //   let inputs = read_many_fasta_str(indoc! {r#"
-  //     >root
-  //     ACAGCCATGTATTG--
-  //     >AB
-  //     ACATCCCTGTA-TG--
-  //     >A
-  //     ACATCGCCNNA--GAC
-  //     >B
-  //     GCATCCCTGTA-NG--
-  //     >CD
-  //     CCGGCCATGTATTG--
-  //     >C
-  //     CCGGCGATGTRTTG--
-  //     >D
-  //     TCGGCCGTGTRTTG--
-  //   "#})?;
-  //
-  //   let expected = read_many_fasta_str(indoc! {r#"
-  //     >root
-  //     ACAGCCATGTATTG--
-  //     >AB
-  //     ACATCCCTGTA-TG--
-  //     >CD
-  //     CCGGCCATGTATTG--
-  //   "#})?;
-  //
-  //   let mut graph: SparseGraph = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
-  //
-  //   let gtr = &jc69(JC69Params::default())?;
-  //   let partitions = vec![PartitionModel { gtr, aln: inputs }];
-  //   compress_sequences(&mut graph, &partitions).unwrap();
-  //
-  //   let mut actual = BTreeMap::new();
-  //   ancestral_reconstruction_fitch(&graph, false, |node, seq| {
-  //     actual.insert(node.name.clone(), vec_to_string(seq));
-  //   })?;
-  //
-  //   assert_eq!(
-  //     json_write_str(&expected, JsonPretty(false))?,
-  //     json_write_str(&actual, JsonPretty(false))?
-  //   );
-  //
-  //   Ok(())
-  // }
 
   // #[test]
   // fn test_seq_ancestral_reconstruction_with_leaves() -> Result<(), Report> {

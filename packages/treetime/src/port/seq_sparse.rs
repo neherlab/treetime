@@ -4,6 +4,7 @@ use crate::graph::graph::Graph;
 use crate::graph::node::{GraphNode, Named};
 use crate::io::nwk::{EdgeFromNwk, NodeFromNwk};
 use crate::port::composition::Composition;
+use crate::port::constants::GAP_CHAR;
 use crate::port::mutation::{InDel, Mut};
 use crate::port::seq_partitions::SeqPartition;
 use crate::seq::find_char_ranges::find_letter_ranges;
@@ -71,13 +72,13 @@ impl SparseSeqNode {
 
     let variable = seq
       .iter()
-      .filter(|&c| alphabet.contains(*c) && !(alphabet.is_gap(*c) || alphabet.is_ambiguous(*c)))
       .enumerate()
-      .map(|(pos, c)| {
+      .filter(|(_, &c)| alphabet.is_ambiguous(c))
+      .map(|(pos, &c)| {
         (
           pos,
           VarPos {
-            dis: alphabet.get_profile(*c).clone(),
+            dis: alphabet.get_profile(c).clone(),
             state: None,
           },
         )
@@ -89,12 +90,8 @@ impl SparseSeqNode {
       ..SparseSeqDis::default()
     };
 
-    let unknown = find_letter_ranges(seq, alphabet.ambiguous());
-
-    let gaps = alphabet
-      .gap()
-      .map(|gap| find_letter_ranges(seq, gap))
-      .unwrap_or_default();
+    let unknown = find_letter_ranges(seq, alphabet.unknown());
+    let gaps = find_letter_ranges(seq, alphabet.gap());
 
     Ok(Self {
       seq: SparseSeqInfo {

@@ -23,8 +23,6 @@ pub fn subtree_profiles(
   gtr: &GTR,
   logLH: &mut f64,
 ) {
-  let prof_nuc = &gtr.alphabet.profile_map;
-
   // GTR matrix associated with this branch length. Using 0 length for the root saves an extra calculation below
   let t = edge.and_then(|edge| edge.weight).unwrap_or_default();
   node.expQt = gtr.expQt(t).t().to_owned(); // TODO: might make sense to save this on the edge
@@ -41,28 +39,32 @@ pub fn subtree_profiles(
   if is_leaf {
     // For terminal nodes, we deem mixed sites and sites that have mutations in the branch to the parent as variable
     for MixedSite { pos, nuc } in &node.mixed {
-      node.subtree_profile_variable.insert(*pos, prof_nuc[nuc].clone());
+      node
+        .subtree_profile_variable
+        .insert(*pos, gtr.alphabet().get_profile(*nuc).clone());
       let count = fixed_nuc_count.entry(seq[*pos]).or_insert(0);
       *count = count.saturating_sub(1);
     }
     for (pos, (_, der)) in &node.mutations {
-      node.subtree_profile_variable.insert(*pos, prof_nuc[der].clone());
+      node
+        .subtree_profile_variable
+        .insert(*pos, gtr.alphabet().get_profile(*der).clone());
       let count = fixed_nuc_count.entry(seq[*pos]).or_insert(0);
       *count = count.saturating_sub(1);
     }
 
-    // This could be done more efficiently. We just need to look up these positions, no need to save the flat vector.
-    for rg in &node.undetermined {
-      for pos in rg.0..rg.1 {
-        node
-          .subtree_profile_variable
-          .insert(pos, prof_nuc[&gtr.alphabet.ambiguous].clone());
-      }
-    }
-
-    for &n in gtr.alphabet.chars() {
-      node.subtree_profile_fixed.insert(n, prof_nuc[&n].clone());
-    }
+    // // This could be done more efficiently. We just need to look up these positions, no need to save the flat vector.
+    // for rg in &node.undetermined {
+    //   for pos in rg.0..rg.1 {
+    //     node
+    //       .subtree_profile_variable
+    //       .insert(pos, gtr.alphabet().get_profile(&gtr.alphabet.ambiguous).clone());
+    //   }
+    // }
+    //
+    // for &n in gtr.alphabet.chars() {
+    //   node.subtree_profile_fixed.insert(n, gtr.alphabet().get_profile(&n).clone());
+    // }
   } else {
     // For internal nodes, we consider all positions that are variable in any of the children
     let variable_positions: BTreeSet<usize> = children
@@ -77,7 +79,7 @@ pub fn subtree_profiles(
       let nuc = seq[pos];
       // if the parsimony sequence is ambiguous there is no information anywhere, can skip
       // TODO: if there is no gap in the alphabet, we can skip as well with gap.
-      if nuc == gtr.alphabet.ambiguous {
+      if gtr.alphabet.is_ambiguous(nuc) {
         continue;
       }
 
@@ -110,25 +112,25 @@ pub fn subtree_profiles(
       *count = count.saturating_sub(1);
     }
 
-    // Collect contribution from the inert sites
-    for &nuc in gtr.alphabet.chars() {
-      if !fixed_nuc_count.contains_key(&nuc) {
-        continue;
-      }
-      let child_messages = children
-        .iter()
-        .map(|child| {
-          let child = child.read_arc().payload().read_arc();
-          let prof = &child.subtree_profile_fixed[&nuc];
-          child.expQt.dot(prof)
-        })
-        .collect_vec();
-      let child_messages: Array2<f64> = stack_owned(Axis(0), &child_messages).unwrap();
-      let vec = product_axis(&child_messages, Axis(0));
-      let vec_norm = vec.sum();
-      *logLH += (fixed_nuc_count[&nuc] as f64) * vec_norm.ln();
-      node.subtree_profile_fixed.insert(nuc, vec / vec_norm);
-    }
+    // // Collect contribution from the inert sites
+    // for &nuc in gtr.alphabet.chars() {
+    //   if !fixed_nuc_count.contains_key(&nuc) {
+    //     continue;
+    //   }
+    //   let child_messages = children
+    //     .iter()
+    //     .map(|child| {
+    //       let child = child.read_arc().payload().read_arc();
+    //       let prof = &child.subtree_profile_fixed[&nuc];
+    //       child.expQt.dot(prof)
+    //     })
+    //     .collect_vec();
+    //   let child_messages: Array2<f64> = stack_owned(Axis(0), &child_messages).unwrap();
+    //   let vec = product_axis(&child_messages, Axis(0));
+    //   let vec_norm = vec.sum();
+    //   *logLH += (fixed_nuc_count[&nuc] as f64) * vec_norm.ln();
+    //   node.subtree_profile_fixed.insert(nuc, vec / vec_norm);
+    // }
 
     // Add position that mutate towards the parent
     for (pos, (_, der)) in &node.mutations {
@@ -178,7 +180,7 @@ mod tests {
     let root = graph.get_exactly_one_root()?;
     let mut root_seq = { root.read_arc().payload().read_arc().seq.clone() };
 
-    let alphabet = Alphabet::new(AlphabetName::NucNogap)?;
+    let alphabet = Alphabet::new(AlphabetName::Nuc)?;
 
     let gtr = GTR::new(GTRParams {
       alphabet,
