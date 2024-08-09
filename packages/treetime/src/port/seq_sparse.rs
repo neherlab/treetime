@@ -8,6 +8,7 @@ use crate::port::constants::GAP_CHAR;
 use crate::port::mutation::{InDel, Mut};
 use crate::port::seq_partitions::SeqPartition;
 use crate::seq::find_char_ranges::find_letter_ranges;
+use crate::seq::range_union::range_union;
 use eyre::Report;
 use maplit::btreemap;
 use ndarray::Array1;
@@ -92,12 +93,13 @@ impl SparseSeqNode {
 
     let unknown = find_letter_ranges(seq, alphabet.unknown());
     let gaps = find_letter_ranges(seq, alphabet.gap());
+    let non_char = range_union(&[unknown.clone(), gaps.clone()]); // TODO(perf): avoid cloning
 
     Ok(Self {
       seq: SparseSeqInfo {
         unknown,
         gaps,
-        non_char: vec![],
+        non_char,
         composition: Composition::default(),
         sequence: seq.to_owned(), // TODO(perf): try to avoid cloning
         fitch: seq_dis,
