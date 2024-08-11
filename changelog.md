@@ -1,3 +1,8 @@
+# 0.11.4: Bug fixed
+- fix output of mutations into the `branch_mutation.txt` file which was masked by a conditional
+- adjust CLI help
+- adjust output precision
+
 # 0.11.3: Bug fixed
 - calls to some random number generator errorred after the recent switch to treetime owned RNGs.
 - default argument for clock-filter method had a spelling mistake
