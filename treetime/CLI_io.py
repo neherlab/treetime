@@ -172,7 +172,7 @@ def export_sequences_and_tree(tt, basename, is_vcf=False, zero_based=False,
     mutations_out.close()
 
     # write tree to file
-    fmt_bl = "%1.6f" if tt.data.full_length<1e6 else "%1.8e"
+    fmt_bl = "%1.7f" if tt.data.full_length<1e6 else "%1.9e"
     if timetree:
         outtree_name = basename + f'timetree{tree_suffix}.nexus'
         print("--- saved divergence times in \n\t %s\n"%dates_fname)
