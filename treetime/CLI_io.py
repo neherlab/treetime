@@ -164,9 +164,9 @@ def export_sequences_and_tree(tt, basename, is_vcf=False, zero_based=False,
                     n.comment= '&mutations="' + ','.join([a+str(pos + offset)+d for (a,pos, d) in n.mutations
                                                         if tt.gtr.ambiguous not in [a,d] and n.mask[pos]>0])+f'",mcc="{n.mcc}"'
 
-                for (a, pos, d) in n.mutations:
-                    if tt.gtr.ambiguous not in [a,d] or report_ambiguous:
-                        mutations_out.write("%s\t%s\t%s\t%s\n" %(n.name, a, pos + 1, d))
+            for (a, pos, d) in n.mutations:
+                if tt.gtr.ambiguous not in [a,d] or report_ambiguous:
+                    mutations_out.write("%s\t%s\t%s\t%s\n" %(n.name, a, pos + 1, d))
         if timetree:
             n.comment+=(',' if n.comment else '&') + 'date=%1.2f'%n.numdate
     mutations_out.close()
