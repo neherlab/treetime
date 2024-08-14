@@ -1,4 +1,5 @@
 use crate::constants::BIG_NUMBER;
+use crate::make_internal_error;
 use eyre::Report;
 use itertools::Itertools;
 use ndarray::{
@@ -177,11 +178,18 @@ pub fn cumsum_axis<T: Copy + AddAssign, D: Dimension>(a: &Array<T, D>, axis: Axi
 
 /// Calculate product over given axis
 #[inline]
-pub fn product_axis<T: Copy + One + ScalarOperand, D: Dimension + RemoveAxis>(
-  a: &Array<T, D>,
-  axis: Axis,
-) -> Array<T, D::Smaller> {
-  let init_value = Array::<T, D::Smaller>::ones(a.raw_dim().remove_axis(axis));
+pub fn product_axis<T, D>(a: &Array<T, D>, axis: Axis) -> Array<T, D::Smaller>
+where
+  T: Copy + One + ScalarOperand,
+  D: Dimension + RemoveAxis,
+{
+  assert!(
+    axis.index() < a.ndim(),
+    "Axis index exceeds the number of dimensions in the array."
+  );
+  if a.len() == 0 || a.shape()[axis.index()] == 0 {
+    return Array::from_elem(a.raw_dim().remove_axis(axis), T::one());
+  }
   a.fold_axis(axis, T::one(), |&acc, &x| acc * x)
 }
 
@@ -213,7 +221,7 @@ mod tests {
   use crate::pretty_assert_ulps_eq;
   use eyre::Report;
   use lazy_static::lazy_static;
-  use ndarray::array;
+  use ndarray::{arr0, array, Array0};
   use ndarray_linalg::{Eigh, UPLO};
   use rand::SeedableRng;
   use rand_isaac::Isaac64Rng;
@@ -426,7 +434,63 @@ mod tests {
   }
 
   #[test]
-  fn test_product_axis_axis_0() {
+  fn test_product_axis_empty_array1() {
+    let input: Array1<f64> = array![];
+    let expected: Array0<f64> = arr0(1.0);
+    let result = product_axis(&input, Axis(0));
+    pretty_assert_ulps_eq!(result, expected, epsilon = 1e-8);
+  }
+
+  #[test]
+  fn test_product_axis_empty_array2_axis0() {
+    let input: Array2<f64> = array![[]];
+    let expected: Array1<f64> = array![];
+    let result = product_axis(&input, Axis(0));
+    pretty_assert_ulps_eq!(result, expected, epsilon = 1e-8);
+  }
+
+  #[test]
+  fn test_product_axis_empty_array2_axis1() {
+    let input: Array2<f64> = array![[]];
+    let expected: Array1<f64> = array![1.0];
+    let result = product_axis(&input, Axis(1));
+    pretty_assert_ulps_eq!(result, expected, epsilon = 1e-8);
+  }
+
+  #[test]
+  fn test_product_axis_empty_axis_0_prod_axis_0() {
+    let input: Array2<f64> = array![[2.0, 3.0, 4.0]];
+    let expected: Array1<f64> = array![2.0, 3.0, 4.0];
+    let result = product_axis(&input, Axis(0));
+    pretty_assert_ulps_eq!(result, expected, epsilon = 1e-8);
+  }
+
+  #[test]
+  fn test_product_axis_empty_axis_0_prod_axis_1() {
+    let input: Array2<f64> = array![[2.0, 3.0, 4.0]];
+    let expected: Array1<f64> = array![24.0];
+    let result = product_axis(&input, Axis(1));
+    pretty_assert_ulps_eq!(result, expected, epsilon = 1e-8);
+  }
+
+  #[test]
+  fn test_product_axis_empty_axis_1_prod_axis_0() {
+    let input: Array2<f64> = array![[2.0], [3.0], [4.0]];
+    let expected: Array1<f64> = array![24.0];
+    let result = product_axis(&input, Axis(0));
+    pretty_assert_ulps_eq!(result, expected, epsilon = 1e-8);
+  }
+
+  #[test]
+  fn test_product_axis_empty_axis_1_prod_axis_1() {
+    let input: Array2<f64> = array![[2.0], [3.0], [4.0]];
+    let expected: Array1<f64> = array![2.0, 3.0, 4.0];
+    let result = product_axis(&input, Axis(1));
+    pretty_assert_ulps_eq!(result, expected, epsilon = 1e-8);
+  }
+
+  #[test]
+  fn test_product_axis_general_case_axis_0() {
     let input = array![[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]];
     let expected = array![15.0, 48.0];
     let result = product_axis(&input, Axis(0));
@@ -434,7 +498,7 @@ mod tests {
   }
 
   #[test]
-  fn test_product_axis_axis_1() {
+  fn test_product_axis_general_case_axis_1() {
     let input = array![[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]];
     let expected = array![2.0, 12.0, 30.0];
     let result = product_axis(&input, Axis(1));
