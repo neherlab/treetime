@@ -191,6 +191,32 @@ impl Alphabet {
     self.ambiguous.len()
   }
 
+  /// Determined characters: canonical or ambiguous
+  pub fn determined(&self) -> impl Iterator<Item = char> + '_ {
+    chain!(self.canonical(), self.ambiguous())
+  }
+
+  pub fn is_determined(&self, c: char) -> bool {
+    self.determined().contains(&c)
+  }
+
+  pub fn n_determined(&self) -> usize {
+    self.determined().count()
+  }
+
+  /// Undetermined characters: gap or unknown
+  pub fn undetermined(&self) -> impl Iterator<Item = char> + '_ {
+    [self.gap(), self.unknown()].into_iter()
+  }
+
+  pub fn is_undetermined(&self, c: char) -> bool {
+    self.undetermined().contains(&c)
+  }
+
+  pub fn n_undetermined(&self) -> usize {
+    self.undetermined().count()
+  }
+
   /// Get 'unknown' character
   pub fn unknown(&self) -> char {
     self.unknown

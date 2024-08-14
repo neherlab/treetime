@@ -20,6 +20,10 @@ impl Composition {
     Self { counts }
   }
 
+  pub fn get(&self, c: char) -> Option<usize> {
+    self.counts.get(&c).copied()
+  }
+
   pub fn counts(&self) -> &BTreeMap<char, usize> {
     &self.counts
   }

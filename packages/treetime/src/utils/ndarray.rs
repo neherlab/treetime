@@ -25,10 +25,13 @@ pub fn to_row<T: Real>(b: &Array1<T>) -> Result<Array2<T>, Report> {
 // Stack owned arrays. Similar to ndarray::stack() but accepting owned arrays rather than views.
 pub fn stack_owned<A, D>(axis: Axis, arrays: &[Array<A, D>]) -> Result<Array<A, D::Larger>, ShapeError>
 where
-  A: Clone,
+  A: Clone + Default,
   D: Dimension,
   D::Larger: RemoveAxis,
 {
+  if arrays.is_empty() {
+    return Ok(Array::<A, D::Larger>::default(D::Larger::default()));
+  }
   let arrays = arrays.iter().map(ArrayView::from).collect_vec();
   stack(axis, &arrays)
 }

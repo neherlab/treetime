@@ -25,8 +25,8 @@ use ndarray_stats::QuantileExt;
 
 #[derive(Debug)]
 pub struct PartitionModel<'g> {
-  aln: Vec<FastaRecord>,
-  gtr: &'g GTR,
+  pub aln: Vec<FastaRecord>,
+  pub gtr: &'g GTR,
 }
 
 fn attach_seqs_to_graph<'g>(graph: &SparseGraph<'g>, partitions: &[PartitionModel<'g>]) -> Result<(), Report> {
@@ -125,8 +125,10 @@ fn fitch_backwards(graph: &mut SparseGraph) {
         let child_profiles = children
           .iter()
           .filter_map(|(child, edge)| {
-            if range_contains(&edge.transmission, pos) {
-              return None; // transmission field is not currently used
+            if let Some(transmission) = &edge.transmission {
+              if range_contains(transmission, pos) {
+                return None; // transmission field is not currently used
+              }
             }
             if range_contains(&child.non_char, pos) {
               return None; // this position does not have character state information
@@ -644,7 +646,7 @@ mod tests {
 
     let gtr = &jc69(JC69Params::default())?;
     let partitions = vec![PartitionModel { gtr, aln: inputs }];
-    compress_sequences(&mut graph, &partitions).unwrap();
+    compress_sequences(&mut graph, &partitions)?;
 
     let mut actual = BTreeMap::new();
     ancestral_reconstruction_fitch(&graph, false, |node, seq| {

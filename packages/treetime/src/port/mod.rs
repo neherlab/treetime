@@ -1,3 +1,4 @@
+pub mod ancestral_sparse;
 pub mod composition;
 pub mod constants;
 pub mod fitch;

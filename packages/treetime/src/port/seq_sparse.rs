@@ -1,10 +1,9 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::graph::edge::GraphEdge;
+use crate::graph::edge::{GraphEdge, Weighted};
 use crate::graph::graph::Graph;
 use crate::graph::node::{GraphNode, Named};
 use crate::io::nwk::{EdgeFromNwk, NodeFromNwk};
 use crate::port::composition::Composition;
-use crate::port::constants::GAP_CHAR;
 use crate::port::mutation::{InDel, Mut};
 use crate::port::seq_partitions::SeqPartition;
 use crate::seq::find_char_ranges::find_letter_ranges;
@@ -115,9 +114,20 @@ impl SparseSeqNode {
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct SparseEdge {
   pub sparse_partitions: Vec<SparseSeqEdge>,
+  pub branch_length: Option<f64>,
 }
 
 impl GraphEdge for SparseEdge {}
+
+impl Weighted for SparseEdge {
+  fn weight(&self) -> Option<f64> {
+    self.branch_length
+  }
+
+  fn set_weight(&mut self, weight: Option<f64>) {
+    self.branch_length = weight
+  }
+}
 
 impl EdgeFromNwk for SparseEdge {
   fn from_nwk(_: Option<f64>) -> Result<Self, Report> {
@@ -129,7 +139,7 @@ impl EdgeFromNwk for SparseEdge {
 pub struct SparseSeqEdge {
   pub muts: Vec<Mut>,
   pub indels: Vec<InDel>,
-  pub transmission: Vec<(usize, usize)>,
+  pub transmission: Option<Vec<(usize, usize)>>,
 }
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
@@ -165,7 +175,7 @@ pub struct SparseSeqDis {
   pub variable_indel: BTreeMap<(usize, usize), Deletion>,
 
   /// probability vector for the state of fixed positions based on information from children
-  pub fixed: BTreeMap<String, Array1<f64>>,
+  pub fixed: BTreeMap<char, Array1<f64>>,
 
   pub fixed_counts: Composition,
 
