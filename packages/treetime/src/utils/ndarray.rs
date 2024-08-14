@@ -1,10 +1,9 @@
 use crate::constants::BIG_NUMBER;
-use crate::make_internal_error;
 use eyre::Report;
 use itertools::Itertools;
 use ndarray::{
-  stack, Array, Array1, Array2, ArrayBase, ArrayView, Axis, Data, Dimension, Ix1, Ix2, RemoveAxis, ScalarOperand,
-  ShapeBuilder, ShapeError, Zip,
+  stack, Array, Array1, Array2, ArrayBase, ArrayView, Axis, Data, Dimension, Ix1, Ix2, RemoveAxis, ShapeBuilder,
+  ShapeError, Zip,
 };
 use ndarray_rand::RandomExt;
 use num_traits::real::Real;
@@ -13,7 +12,7 @@ use rand::distributions::uniform::SampleUniform;
 use rand::distributions::Uniform;
 use rand::Rng;
 use std::f64::consts::E;
-use std::ops::AddAssign;
+use std::ops::{AddAssign, Mul};
 
 pub fn to_col<T: Real>(a: &Array1<T>) -> Result<Array2<T>, Report> {
   Ok(a.to_shape((a.len(), 1))?.into_dimensionality::<Ix2>()?.to_owned())
@@ -176,21 +175,24 @@ pub fn cumsum_axis<T: Copy + AddAssign, D: Dimension>(a: &Array<T, D>, axis: Axi
   result
 }
 
-/// Calculate product over given axis
-#[inline]
-pub fn product_axis<T, D>(a: &Array<T, D>, axis: Axis) -> Array<T, D::Smaller>
+/// Calculate product over given axis.
+/// Backported from ndarray 0.16.1.
+/// https://github.com/rust-ndarray/ndarray/blob/6f77377d7d508550bf516e54c142cee3ab243aeb/src/numeric/impl_numeric.rs#L267-L282
+pub fn product_axis<A, D>(a: &Array<A, D>, axis: Axis) -> Array<A, D::Smaller>
 where
-  T: Copy + One + ScalarOperand,
-  D: Dimension + RemoveAxis,
+  A: Clone + One + Mul<Output = A>,
+  D: RemoveAxis,
 {
-  assert!(
-    axis.index() < a.ndim(),
-    "Axis index exceeds the number of dimensions in the array."
-  );
-  if a.len() == 0 || a.shape()[axis.index()] == 0 {
-    return Array::from_elem(a.raw_dim().remove_axis(axis), T::one());
+  let min_stride_axis = a.raw_dim().min_stride_axis(&a.raw_dim());
+  if axis == min_stride_axis {
+    Zip::from(a.lanes(axis)).map_collect(|lane| lane.product())
+  } else {
+    let mut res = Array::ones(a.raw_dim().remove_axis(axis));
+    for subview in a.axis_iter(axis) {
+      res = res * &subview;
+    }
+    res
   }
-  a.fold_axis(axis, T::one(), |&acc, &x| acc * x)
 }
 
 pub fn random<T: Copy + SampleUniform + NumCast, D: Dimension, Sh: ShapeBuilder<Dim = D>, R: Rng>(
