@@ -509,8 +509,6 @@ pub fn ancestral_reconstruction_fitch(
         }
 
         for (pos, p) in &node.fitch.variable {
-          dbg!(&node.fitch.variable);
-
           seq[*pos] = sparse_partitions[si].code(&p.dis);
         }
 
