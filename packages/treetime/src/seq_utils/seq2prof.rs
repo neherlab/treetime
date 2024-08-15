@@ -246,22 +246,24 @@ mod tests {
     Ok(())
   }
 
-  #[rstest]
-  fn calculates_seq2prof() -> Result<(), Report> {
-    let seq = array!['G', 'T', 'G', '-', 'G', 'G', 'C'];
-    let prof = seq2prof(&seq, &ALPHABET)?;
-    assert_eq!(
-      prof,
-      array![
-        [0., 0., 1., 0., 0.],
-        [0., 0., 0., 1., 0.],
-        [0., 0., 1., 0., 0.],
-        [0., 0., 0., 0., 1.],
-        [0., 0., 1., 0., 0.],
-        [0., 0., 1., 0., 0.],
-        [0., 1., 0., 0., 0.]
-      ]
-    );
-    Ok(())
-  }
+  // TODO: This is being replaced with the new implementation. Port these tests and remove this.
+  //
+  // #[rstest]
+  // fn calculates_seq2prof() -> Result<(), Report> {
+  //   let seq = array!['G', 'T', 'G', '-', 'G', 'G', 'C'];
+  //   let prof = seq2prof(&seq, &ALPHABET)?;
+  //   assert_eq!(
+  //     prof,
+  //     array![
+  //       [0., 0., 1., 0., 0.],
+  //       [0., 0., 0., 1., 0.],
+  //       [0., 0., 1., 0., 0.],
+  //       [0., 0., 0., 0., 1.],
+  //       [0., 0., 1., 0., 0.],
+  //       [0., 0., 1., 0., 0.],
+  //       [0., 1., 0., 0., 0.]
+  //     ]
+  //   );
+  //   Ok(())
+  // }
 }

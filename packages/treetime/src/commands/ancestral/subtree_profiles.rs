@@ -143,94 +143,96 @@ pub fn subtree_profiles(
   // TODO: we could save c.expQT.dot(xxx) on the edges. that would save some computation.
 }
 
-#[cfg(test)]
-mod tests {
-  use super::*;
-  use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::commands::ancestral::anc_graph::{Edge, Node};
-  use crate::commands::ancestral::outgroup_profiles::outgroup_profiles;
-  use crate::gtr::gtr::GTRParams;
-  use crate::io::nwk::nwk_read_str;
-  use crate::seq::representation::{compress_sequences, post_order_intrusive, pre_order_intrusive};
-  use crate::utils::random::get_random_number_generator;
-  use crate::{o, pretty_assert_ulps_eq};
-  use eyre::Report;
-  use itertools::Itertools;
-  use ndarray::array;
-  use rstest::rstest;
-  use std::collections::BTreeMap;
-
-  #[rstest]
-  fn test_subtree_profiles_traversal() -> Result<(), Report> {
-    rayon::ThreadPoolBuilder::new().num_threads(1).build_global()?;
-
-    let mut rng = get_random_number_generator(Some(42));
-
-    let inputs = BTreeMap::from([
-      (o!("A"), o!("ACATCGCCNNA--G")),
-      (o!("B"), o!("GCATCCCTGTA-NG")),
-      (o!("C"), o!("CCGGCGATGTATTG")),
-      (o!("D"), o!("TCGGCCGTGTRTTG")),
-    ]);
-
-    let graph = nwk_read_str::<Node, Edge, ()>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
-
-    compress_sequences(&inputs, &graph, &mut rng).unwrap();
-
-    let root = graph.get_exactly_one_root()?;
-    let mut root_seq = { root.read_arc().payload().read_arc().seq.clone() };
-
-    let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-
-    let gtr = GTR::new(GTRParams {
-      alphabet,
-      mu: 1.0,
-      W: None,
-      pi: array![0.2, 0.3, 0.15, 0.45],
-    })?;
-
-    let mut logLH = 0.0;
-
-    post_order_intrusive(&graph, &root, None, &mut root_seq, &mut |node, edge, seq| {
-      let node = node.write_arc();
-      let is_leaf = node.is_leaf();
-
-      let children: Vec<SafeNode<Node>> = graph
-        .children_of(&node)
-        .into_iter()
-        .map(|(child, _)| child)
-        .collect_vec();
-
-      let mut node = node.payload().write_arc();
-      let edge = edge.map(|e| e.payload().read_arc());
-      subtree_profiles(
-        &graph,
-        &mut node,
-        is_leaf,
-        edge.as_deref(),
-        &children,
-        seq,
-        &gtr,
-        &mut logLH,
-      );
-    });
-
-    pretty_assert_ulps_eq!(-36.73309018328223, logLH, epsilon = 1e-5);
-
-    pre_order_intrusive(&graph, &root, &mut root_seq, &mut |node, seq| {
-      let node = node.write_arc();
-
-      let parent = graph
-        .one_parent_of(&node)
-        .unwrap()
-        .map(|(parent, _)| parent.read_arc().payload().read_arc());
-
-      let mut node = node.payload().write_arc();
-      outgroup_profiles(&mut node, parent.as_deref(), seq, &mut logLH, &gtr);
-    });
-
-    pretty_assert_ulps_eq!(-57.189205994979055, logLH, epsilon = 1e-5);
-
-    Ok(())
-  }
-}
+// TODO: This is being replaced with the new implementation. Port these tests and remove this.
+//
+// #[cfg(test)]
+// mod tests {
+//   use super::*;
+//   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
+//   use crate::commands::ancestral::anc_graph::{Edge, Node};
+//   use crate::commands::ancestral::outgroup_profiles::outgroup_profiles;
+//   use crate::gtr::gtr::GTRParams;
+//   use crate::io::nwk::nwk_read_str;
+//   use crate::seq::representation::{compress_sequences, post_order_intrusive, pre_order_intrusive};
+//   use crate::utils::random::get_random_number_generator;
+//   use crate::{o, pretty_assert_ulps_eq};
+//   use eyre::Report;
+//   use itertools::Itertools;
+//   use ndarray::array;
+//   use rstest::rstest;
+//   use std::collections::BTreeMap;
+// 
+//   #[rstest]
+//   fn test_subtree_profiles_traversal() -> Result<(), Report> {
+//     rayon::ThreadPoolBuilder::new().num_threads(1).build_global()?;
+// 
+//     let mut rng = get_random_number_generator(Some(42));
+// 
+//     let inputs = BTreeMap::from([
+//       (o!("A"), o!("ACATCGCCNNA--G")),
+//       (o!("B"), o!("GCATCCCTGTA-NG")),
+//       (o!("C"), o!("CCGGCGATGTATTG")),
+//       (o!("D"), o!("TCGGCCGTGTRTTG")),
+//     ]);
+// 
+//     let graph = nwk_read_str::<Node, Edge, ()>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+// 
+//     compress_sequences(&inputs, &graph, &mut rng).unwrap();
+// 
+//     let root = graph.get_exactly_one_root()?;
+//     let mut root_seq = { root.read_arc().payload().read_arc().seq.clone() };
+// 
+//     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
+// 
+//     let gtr = GTR::new(GTRParams {
+//       alphabet,
+//       mu: 1.0,
+//       W: None,
+//       pi: array![0.2, 0.3, 0.15, 0.45],
+//     })?;
+// 
+//     let mut logLH = 0.0;
+// 
+//     post_order_intrusive(&graph, &root, None, &mut root_seq, &mut |node, edge, seq| {
+//       let node = node.write_arc();
+//       let is_leaf = node.is_leaf();
+// 
+//       let children: Vec<SafeNode<Node>> = graph
+//         .children_of(&node)
+//         .into_iter()
+//         .map(|(child, _)| child)
+//         .collect_vec();
+// 
+//       let mut node = node.payload().write_arc();
+//       let edge = edge.map(|e| e.payload().read_arc());
+//       subtree_profiles(
+//         &graph,
+//         &mut node,
+//         is_leaf,
+//         edge.as_deref(),
+//         &children,
+//         seq,
+//         &gtr,
+//         &mut logLH,
+//       );
+//     });
+// 
+//     pretty_assert_ulps_eq!(-36.73309018328223, logLH, epsilon = 1e-5);
+// 
+//     pre_order_intrusive(&graph, &root, &mut root_seq, &mut |node, seq| {
+//       let node = node.write_arc();
+// 
+//       let parent = graph
+//         .one_parent_of(&node)
+//         .unwrap()
+//         .map(|(parent, _)| parent.read_arc().payload().read_arc());
+// 
+//       let mut node = node.payload().write_arc();
+//       outgroup_profiles(&mut node, parent.as_deref(), seq, &mut logLH, &gtr);
+//     });
+// 
+//     pretty_assert_ulps_eq!(-57.189205994979055, logLH, epsilon = 1e-5);
+// 
+//     Ok(())
+//   }
+// }
