@@ -4,13 +4,11 @@ use crate::utils::string::quote;
 use clap::ArgEnum;
 use color_eyre::{Section, SectionExt};
 use eyre::{Report, WrapErr};
-use indexmap::{IndexMap, IndexSet};
+use indexmap::{indexmap, IndexMap, IndexSet};
 use itertools::{chain, Itertools};
-use maplit::btreemap;
 use ndarray::{Array1, Array2};
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
-use std::collections::{BTreeMap, BTreeSet};
 use strum_macros::Display;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, ArgEnum, SmartDefault, Display)]
@@ -26,8 +24,8 @@ pub type ProfileMap = IndexMap<char, Array1<f64>>;
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Alphabet {
   all: IndexSet<char>,
-  canonical: BTreeSet<char>,
-  ambiguous: BTreeMap<char, Vec<char>>,
+  canonical: IndexSet<char>,
+  ambiguous: IndexMap<char, Vec<char>>,
   unknown: char,
   gap: char,
   profile_map: ProfileMap,
@@ -39,7 +37,7 @@ impl Alphabet {
     match name {
       AlphabetName::Nuc => Self::with_config(&AlphabetConfig {
         canonical: vec!['A', 'C', 'G', 'T'],
-        ambiguous: btreemap! {
+        ambiguous: indexmap! {
           'R' => vec!['A', 'G'],
           'Y' => vec!['C', 'T'],
           'S' => vec!['C', 'G'],
@@ -58,7 +56,7 @@ impl Alphabet {
         canonical: vec![
           'A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y',
         ],
-        ambiguous: btreemap! {
+        ambiguous: indexmap! {
           'B' => vec!['N', 'D'],
           'Z' => vec!['Q', 'E'],
           'J' => vec!['L', 'I'],
@@ -78,12 +76,12 @@ impl Alphabet {
       gap,
     } = cfg;
 
-    let canonical: BTreeSet<char> = canonical.iter().copied().collect();
+    let canonical: IndexSet<char> = canonical.iter().copied().collect();
     if canonical.is_empty() {
       return make_error!("When creating alphabet: canonical set of characters is empty. This is not allowed.");
     }
 
-    let ambiguous: BTreeMap<char, Vec<char>> = ambiguous.to_owned();
+    let ambiguous: IndexMap<char, Vec<char>> = ambiguous.to_owned();
 
     let all: IndexSet<char> = chain!(
       canonical.iter().copied(),
@@ -238,10 +236,10 @@ impl Alphabet {
   }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AlphabetConfig {
   pub canonical: Vec<char>,
-  pub ambiguous: BTreeMap<char, Vec<char>>,
+  pub ambiguous: IndexMap<char, Vec<char>>,
   pub unknown: char,
   pub gap: char,
 }
@@ -313,14 +311,14 @@ impl AlphabetConfig {
       }
     }
 
-    let canonical: BTreeSet<_> = canonical.iter().copied().collect();
-    let ambiguous_keys: BTreeSet<_> = ambiguous.keys().copied().collect();
-    let ambiguous_set_map: BTreeMap<char, BTreeSet<char>> = ambiguous
+    let canonical: IndexSet<_> = canonical.iter().copied().collect();
+    let ambiguous_keys: IndexSet<_> = ambiguous.keys().copied().collect();
+    let ambiguous_set_map: IndexMap<char, IndexSet<char>> = ambiguous
       .iter()
       .map(|(key, vals)| (*key, vals.iter().copied().collect()))
       .collect();
     {
-      let canonical_inter_ambig: BTreeSet<_> = canonical.intersection(&ambiguous_keys).copied().collect();
+      let canonical_inter_ambig: IndexSet<_> = canonical.intersection(&ambiguous_keys).copied().collect();
       if !canonical_inter_ambig.is_empty() {
         let msg = canonical_inter_ambig.into_iter().join(", ");
         return make_error!("Canonical and ambiguous sets must be disjoint, but these characters are shared: {msg}");
@@ -350,7 +348,7 @@ impl AlphabetConfig {
     {
       let ambig_gaps = ambiguous_set_map
         .iter()
-        .map(|(key, vals)| (key, vals.difference(&canonical).collect::<BTreeSet<_>>()))
+        .map(|(key, vals)| (key, vals.difference(&canonical).collect::<IndexSet<_>>()))
         .filter(|(key, extra)| !extra.is_empty())
         .collect_vec();
       if !ambig_gaps.is_empty() {
@@ -398,23 +396,22 @@ mod tests {
   fn test_alphabet_nuc() -> Result<(), Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let actual = json_write_str(&alphabet, JsonPretty(true))?;
-    let expected = indoc! {r#"
-    {
+    let expected = indoc! {r#"{
       "all": [
         "A",
         "C",
         "G",
         "T",
-        "B",
-        "D",
-        "H",
+        "R",
+        "Y",
+        "S",
+        "W",
         "K",
         "M",
-        "R",
-        "S",
+        "D",
+        "H",
+        "B",
         "V",
-        "W",
-        "Y",
         "N",
         "-"
       ],
@@ -425,10 +422,29 @@ mod tests {
         "T"
       ],
       "ambiguous": {
-        "B": [
+        "R": [
+          "A",
+          "G"
+        ],
+        "Y": [
           "C",
+          "T"
+        ],
+        "S": [
+          "C",
+          "G"
+        ],
+        "W": [
+          "A",
+          "T"
+        ],
+        "K": [
           "G",
           "T"
+        ],
+        "M": [
+          "A",
+          "C"
         ],
         "D": [
           "A",
@@ -440,34 +456,15 @@ mod tests {
           "C",
           "T"
         ],
-        "K": [
+        "B": [
+          "C",
           "G",
           "T"
-        ],
-        "M": [
-          "A",
-          "C"
-        ],
-        "R": [
-          "A",
-          "G"
-        ],
-        "S": [
-          "C",
-          "G"
         ],
         "V": [
           "A",
           "C",
           "G"
-        ],
-        "W": [
-          "A",
-          "T"
-        ],
-        "Y": [
-          "C",
-          "T"
         ]
       },
       "unknown": "N",
@@ -485,18 +482,6 @@ mod tests {
             0.0
           ]
         },
-        "B": {
-          "v": 1,
-          "dim": [
-            4
-          ],
-          "data": [
-            0.0,
-            1.0,
-            1.0,
-            1.0
-          ]
-        },
         "C": {
           "v": 1,
           "dim": [
@@ -507,18 +492,6 @@ mod tests {
             1.0,
             0.0,
             0.0
-          ]
-        },
-        "D": {
-          "v": 1,
-          "dim": [
-            4
-          ],
-          "data": [
-            1.0,
-            0.0,
-            1.0,
-            1.0
           ]
         },
         "G": {
@@ -533,7 +506,19 @@ mod tests {
             0.0
           ]
         },
-        "H": {
+        "T": {
+          "v": 1,
+          "dim": [
+            4
+          ],
+          "data": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "N": {
           "v": 1,
           "dim": [
             4
@@ -541,6 +526,54 @@ mod tests {
           "data": [
             1.0,
             1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "R": {
+          "v": 1,
+          "dim": [
+            4
+          ],
+          "data": [
+            1.0,
+            0.0,
+            1.0,
+            0.0
+          ]
+        },
+        "Y": {
+          "v": 1,
+          "dim": [
+            4
+          ],
+          "data": [
+            0.0,
+            1.0,
+            0.0,
+            1.0
+          ]
+        },
+        "S": {
+          "v": 1,
+          "dim": [
+            4
+          ],
+          "data": [
+            0.0,
+            1.0,
+            1.0,
+            0.0
+          ]
+        },
+        "W": {
+          "v": 1,
+          "dim": [
+            4
+          ],
+          "data": [
+            1.0,
+            0.0,
             0.0,
             1.0
           ]
@@ -569,31 +602,31 @@ mod tests {
             0.0
           ]
         },
-        "N": {
+        "D": {
           "v": 1,
           "dim": [
             4
           ],
           "data": [
             1.0,
-            1.0,
+            0.0,
             1.0,
             1.0
           ]
         },
-        "R": {
+        "H": {
           "v": 1,
           "dim": [
             4
           ],
           "data": [
             1.0,
-            0.0,
             1.0,
-            0.0
+            0.0,
+            1.0
           ]
         },
-        "S": {
+        "B": {
           "v": 1,
           "dim": [
             4
@@ -602,18 +635,6 @@ mod tests {
             0.0,
             1.0,
             1.0,
-            0.0
-          ]
-        },
-        "T": {
-          "v": 1,
-          "dim": [
-            4
-          ],
-          "data": [
-            0.0,
-            0.0,
-            0.0,
             1.0
           ]
         },
@@ -628,30 +649,6 @@ mod tests {
             1.0,
             0.0
           ]
-        },
-        "W": {
-          "v": 1,
-          "dim": [
-            4
-          ],
-          "data": [
-            1.0,
-            0.0,
-            0.0,
-            1.0
-          ]
-        },
-        "Y": {
-          "v": 1,
-          "dim": [
-            4
-          ],
-          "data": [
-            0.0,
-            1.0,
-            0.0,
-            1.0
-          ]
         }
       }
     }"#};
@@ -663,8 +660,7 @@ mod tests {
   fn test_alphabet_aa() -> Result<(), Report> {
     let alphabet = Alphabet::new(AlphabetName::Aa)?;
     let actual = json_write_str(&alphabet, JsonPretty(true))?;
-    let expected = indoc! {r#"
-    {
+    let expected = indoc! {r#"{
       "all": [
         "A",
         "C",
@@ -687,8 +683,8 @@ mod tests {
         "W",
         "Y",
         "B",
-        "J",
         "Z",
+        "J",
         "X",
         "-"
       ],
@@ -719,13 +715,13 @@ mod tests {
           "N",
           "D"
         ],
-        "J": [
-          "L",
-          "I"
-        ],
         "Z": [
           "Q",
           "E"
+        ],
+        "J": [
+          "L",
+          "I"
         ]
       },
       "unknown": "X",
@@ -749,34 +745,6 @@ mod tests {
             0.0,
             0.0,
             0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        "B": {
-          "v": 1,
-          "dim": [
-            20
-          ],
-          "data": [
-            0.0,
-            0.0,
-            1.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            1.0,
             0.0,
             0.0,
             0.0,
@@ -971,34 +939,6 @@ mod tests {
             1.0,
             0.0,
             0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        "J": {
-          "v": 1,
-          "dim": [
-            20
-          ],
-          "data": [
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            1.0,
-            0.0,
-            1.0,
             0.0,
             0.0,
             0.0,
@@ -1319,34 +1259,6 @@ mod tests {
             0.0
           ]
         },
-        "X": {
-          "v": 1,
-          "dim": [
-            20
-          ],
-          "data": [
-            1.0,
-            1.0,
-            1.0,
-            1.0,
-            1.0,
-            1.0,
-            1.0,
-            1.0,
-            1.0,
-            1.0,
-            1.0,
-            1.0,
-            1.0,
-            1.0,
-            1.0,
-            1.0,
-            1.0,
-            1.0,
-            1.0,
-            1.0
-          ]
-        },
         "Y": {
           "v": 1,
           "dim": [
@@ -1375,6 +1287,62 @@ mod tests {
             1.0
           ]
         },
+        "X": {
+          "v": 1,
+          "dim": [
+            20
+          ],
+          "data": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "B": {
+          "v": 1,
+          "dim": [
+            20
+          ],
+          "data": [
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
         "Z": {
           "v": 1,
           "dim": [
@@ -1395,6 +1363,34 @@ mod tests {
             0.0,
             0.0,
             1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "J": {
+          "v": 1,
+          "dim": [
+            20
+          ],
+          "data": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
             0.0,
             0.0,
             0.0,
