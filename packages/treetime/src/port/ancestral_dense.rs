@@ -213,7 +213,7 @@ fn calculate_root_state_dense(graph: &mut DenseGraph) -> f64 {
 
       let norm = dis.sum_axis(Axis(1));
       log_lh += log(&norm).sum();
-      dis = &dis / &norm;
+      dis = (&dis.t() / &norm).t().to_owned();
       seq_info.profile = DenseSeqDis { dis, log_lh };
 
       seq_info.msgs_to_children.clear();
