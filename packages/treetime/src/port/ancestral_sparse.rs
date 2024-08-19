@@ -69,9 +69,8 @@ fn ingroup_profiles_sparse(graph: &SparseGraph) {
         };
 
         seq_info.msgs_from_children = btreemap! {};
-        for (ci, (child, e)) in node.children.iter().enumerate() {
+        for (ci, (child, _)) in node.children.iter().enumerate() {
           let name = child.read_arc().name().unwrap().as_ref().to_owned();
-          dbg!(&name, e.read_arc().weight());
           seq_dis.log_lh += child_seqs[ci].msg_to_parents.log_lh;
           let message = propagate(
             &child_expQt[ci],
@@ -509,7 +508,8 @@ mod tests {
   use crate::io::json::{json_write_str, JsonPretty};
   use crate::io::nwk::nwk_read_str;
   use crate::port::fitch::{compress_sequences, PartitionModel};
-  use crate::utils::string::vec_to_string;
+  use crate::pretty_assert_ulps_eq;
+use crate::utils::string::vec_to_string;
   use eyre::Report;
   use indoc::indoc;
   use pretty_assertions::assert_eq;
@@ -564,7 +564,8 @@ mod tests {
       json_write_str(&actual, JsonPretty(false))?
     );
 
-    assert_eq!(0.0, loglh); // dummy value for now
+    // test overall likelihood
+    pretty_assert_ulps_eq!(-55.55428499726621, loglh, epsilon=1e-6);
 
     Ok(())
   }
