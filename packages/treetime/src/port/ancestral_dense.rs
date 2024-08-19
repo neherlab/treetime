@@ -6,13 +6,35 @@ use crate::port::seq_dense::{DenseGraph, DenseNode, DenseSeqDis, DenseSeqEdge, D
 use crate::port::seq_partitions::SeqPartition;
 use crate::seq::range_intersection::range_intersection;
 use crate::utils::ndarray::{log, product_axis};
+use crate::alphabet::alphabet::Alphabet;
 use crate::{make_internal_report, make_report, o};
 use eyre::Report;
 use itertools::Itertools;
 use maplit::btreemap;
 use ndarray::prelude::*;
 use ndarray::stack;
+use ndarray_stats::QuantileExt;
 use std::collections::BTreeMap;
+
+// Turn a profile into a sequence
+fn prof2seq(profile: &DenseSeqDis, alphabet: &Alphabet) -> Vec<char> {
+  // iterate over profile.dis and take the argmax of each row, lookup in alphabet.char to extract the character
+  let mut seq = Vec::new();
+  for row in profile.dis.rows() {
+    let argmax = row.argmax().unwrap();
+    seq.push(alphabet.char(argmax));
+  }
+  seq
+}
+
+fn assign_sequence(seq_info: &DenseSeqNode, alphabet: &Alphabet) -> Vec<char> {
+  let mut seq = prof2seq(&seq_info.profile, alphabet);
+  for gap in &seq_info.seq.gaps {
+    seq[gap.0..gap.1].fill(alphabet.gap());
+  }
+  seq
+}
+
 
 fn attach_seqs_to_graph<'g>(graph: &DenseGraph<'g>, partitions: &[PartitionModel<'g>]) -> Result<(), Report> {
   graph.data().write_arc().dense_partitions = partitions
@@ -186,6 +208,7 @@ fn outgroup_profiles_dense(graph: &mut DenseGraph) {
 
       msgs_from_parents.insert(o!("children"), seq_info.msg_to_parents.clone()); // HACK
       seq_info.profile = combine_dense_messages(&msgs_from_parents).unwrap();
+      seq_info.seq.sequence = assign_sequence(&seq_info, &gtr.alphabet);
       seq_info.msgs_to_children = btreemap![];
       for cname in seq_info.msgs_from_children.keys() {
         let child_msg = &seq_info.msgs_from_children[cname];
@@ -218,7 +241,8 @@ fn calculate_root_state_dense(graph: &mut DenseGraph) -> f64 {
       log_lh += log(&norm).sum();
       dis = (&dis.t() / &norm).t().to_owned();
       seq_info.profile = DenseSeqDis { dis, log_lh };
-
+      dbg!(&seq_info.profile.dis);
+      seq_info.seq.sequence = assign_sequence(&seq_info, &gtr.alphabet);
       seq_info.msgs_to_children.clear();
       for cname in seq_info.msgs_from_children.keys() {
         // This division operation can cause 'division by 0' problems. Note that profile = prod(msgs[child], child in children) * msgs_from_parent.
@@ -288,7 +312,7 @@ mod tests {
 
     let inputs = read_many_fasta_str(indoc! {r#"
       >root
-      ACAGCCATGTATTG--
+      TCAGCCATGTATTG--
       >AB
       ACATCCCTGTA-TG--
       >A
@@ -305,11 +329,11 @@ mod tests {
 
     let expected = read_many_fasta_str(indoc! {r#"
       >root
-      ACAGCCATGTATTG--
+      TCGGCGCTGTATTGAC
       >AB
-      ACATCCCTGTA-TG--
+      ACATCGCTGTA-TGAC
       >CD
-      CCGGCCATGTATTG--
+      TCGGCGGTGTATTG--
     "#})?
     .into_iter()
     .map(|fasta| (fasta.seq_name, fasta.seq))
