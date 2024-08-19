@@ -34,6 +34,7 @@ approx = "=0.5.1"
 argmin = { version = "=0.6.0", features = [] }
 assert2 = "=0.3.11"
 atty = "=0.2.14"
+auto_ops = "=0.3.0"
 bio = { version = "=1.5.0", features = ["phylogeny"] }
 bio-types = { version = "=1.0.1", features = ["phylogeny"] }
 blas-src = { version = "=0.10.0", features = ["openblas-src"] }
@@ -54,6 +55,7 @@ env_logger = "=0.9.0"
 eyre = "=0.6.8"
 flate2 = "=1.0.28"
 gcollections = "=1.5.0"
+getset = "=0.1.2"
 indexmap = { version = "=1.9.1", features = ["serde-1"] }
 indoc = "=2.0.5"
 intervallum = "=1.4.1"

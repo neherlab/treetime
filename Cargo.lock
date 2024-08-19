@@ -130,6 +130,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "auto_ops"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7460f7dd8e100147b82a63afca1a20eb6c231ee36b90ba7272e14951cb58af59"
+
+[[package]]
 name = "autocfg"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3275,6 +3281,7 @@ dependencies = [
  "approx 0.5.1",
  "argmin",
  "atty",
+ "auto_ops",
  "bio",
  "bio-types",
  "blas-src",
@@ -3295,6 +3302,7 @@ dependencies = [
  "eyre",
  "flate2",
  "gcollections",
+ "getset",
  "indexmap 1.9.1",
  "indoc",
  "intervallum",

@@ -21,6 +21,7 @@ usher-mat-utils = { path = "../usher-mat-utils" }
 
 approx = { workspace = true }
 argmin = { workspace = true }
+auto_ops = { workspace = true }
 bio = { workspace = true }
 bio-types = { workspace = true }
 bytes = { workspace = true }
@@ -37,6 +38,7 @@ env_logger = { workspace = true }
 eyre = { workspace = true }
 flate2 = { workspace = true }
 gcollections = { workspace = true }
+getset = { workspace = true }
 indexmap = { workspace = true }
 indoc = { workspace = true }
 intervallum = { workspace = true }
