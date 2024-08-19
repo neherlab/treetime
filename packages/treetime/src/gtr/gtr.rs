@@ -322,7 +322,7 @@ mod tests {
   use rstest::rstest;
 
   lazy_static! {
-    static ref ALPHABET: Alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
+    static ref ALPHABET: Alphabet = Alphabet::new(AlphabetName::Nuc, false).unwrap();
   }
 
   #[rstest]
