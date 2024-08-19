@@ -28,12 +28,13 @@ pub struct Alphabet {
   ambiguous: IndexMap<char, Vec<char>>,
   unknown: char,
   gap: char,
+  treat_gap_as_unknown: bool,
   profile_map: ProfileMap,
 }
 
 impl Alphabet {
   /// Create one of the pre-defined alphabets
-  pub fn new(name: AlphabetName) -> Result<Self, Report> {
+  pub fn new(name: AlphabetName, treat_gap_as_unknown: bool) -> Result<Self, Report> {
     match name {
       AlphabetName::Nuc => Self::with_config(&AlphabetConfig {
         canonical: vec!['A', 'C', 'G', 'T'],
@@ -51,6 +52,7 @@ impl Alphabet {
         },
         unknown: 'N',
         gap: '-',
+        treat_gap_as_unknown,
       }),
       AlphabetName::Aa => Self::with_config(&AlphabetConfig {
         canonical: vec![
@@ -63,6 +65,7 @@ impl Alphabet {
         },
         unknown: 'X',
         gap: '-',
+        treat_gap_as_unknown,
       }),
     }
   }
@@ -74,6 +77,7 @@ impl Alphabet {
       ambiguous,
       unknown,
       gap,
+      treat_gap_as_unknown,
     } = cfg;
 
     let canonical: IndexSet<char> = canonical.iter().copied().collect();
@@ -98,6 +102,7 @@ impl Alphabet {
       ambiguous,
       unknown: *unknown,
       gap: *gap,
+      treat_gap_as_unknown: *treat_gap_as_unknown,
       profile_map,
     })
   }
@@ -251,6 +256,7 @@ pub struct AlphabetConfig {
   pub ambiguous: IndexMap<char, Vec<char>>,
   pub unknown: char,
   pub gap: char,
+  pub treat_gap_as_unknown: bool,
 }
 
 impl AlphabetConfig {
@@ -259,7 +265,8 @@ impl AlphabetConfig {
       canonical,
       ambiguous,
       unknown,
-      ..
+      gap,
+      treat_gap_as_unknown,
     } = self;
 
     self
@@ -293,6 +300,11 @@ impl AlphabetConfig {
       profile_map.insert(key, profile);
     });
 
+    if *treat_gap_as_unknown {
+      // Add gap to profile map
+      profile_map.insert(*gap, profile_map[unknown].clone());
+    }
+
     Ok(profile_map)
   }
 
@@ -302,6 +314,7 @@ impl AlphabetConfig {
       ambiguous,
       unknown,
       gap,
+      ..
     } = self;
 
     {
@@ -383,7 +396,7 @@ mod tests {
 
   #[test]
   fn test_alphabet_sequence_to_indices() -> Result<(), Report> {
-    let actual = Alphabet::new(AlphabetName::Nuc)?
+    let actual = Alphabet::new(AlphabetName::Nuc, false)?
       .sequence_to_indices(array!['A', 'G', 'T', 'G', '-', 'G', 'N', 'G', 'C'].into_iter())
       .collect_vec();
     let expected = vec![0, 2, 3, 2, 15, 2, 14, 2, 1];
@@ -393,7 +406,7 @@ mod tests {
 
   #[test]
   fn test_alphabet_indices_to_sequence() -> Result<(), Report> {
-    let actual = Alphabet::new(AlphabetName::Nuc)?
+    let actual = Alphabet::new(AlphabetName::Nuc, false)?
       .indices_to_sequence(array![0, 2, 3, 2, 15, 2, 14, 2, 1].into_iter())
       .collect_vec();
     let expected = vec!['A', 'G', 'T', 'G', '-', 'G', 'N', 'G', 'C'];
@@ -403,7 +416,7 @@ mod tests {
 
   #[test]
   fn test_alphabet_nuc() -> Result<(), Report> {
-    let alphabet = Alphabet::new(AlphabetName::Nuc)?;
+    let alphabet = Alphabet::new(AlphabetName::Nuc, false)?;
     let actual = json_write_str(&alphabet, JsonPretty(true))?;
     let expected = indoc! {r#"{
       "all": [
@@ -667,7 +680,7 @@ mod tests {
 
   #[test]
   fn test_alphabet_aa() -> Result<(), Report> {
-    let alphabet = Alphabet::new(AlphabetName::Aa)?;
+    let alphabet = Alphabet::new(AlphabetName::Aa, false)?;
     let actual = json_write_str(&alphabet, JsonPretty(true))?;
     let expected = indoc! {r#"{
       "all": [

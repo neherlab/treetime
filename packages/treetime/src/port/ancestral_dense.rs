@@ -309,7 +309,10 @@ mod tests {
 
     let mut graph: DenseGraph = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
-    let gtr = &jc69(JC69Params::default())?;
+    let gtr = &jc69(JC69Params {
+      treat_gap_as_unknown: true,
+      ..JC69Params::default()
+    })?;
     let partitions = vec![PartitionModel { gtr, aln: inputs }];
     run_marginal_dense(&mut graph, &partitions)?;
 
