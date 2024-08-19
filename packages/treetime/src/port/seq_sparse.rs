@@ -130,8 +130,11 @@ impl Weighted for SparseEdge {
 }
 
 impl EdgeFromNwk for SparseEdge {
-  fn from_nwk(_: Option<f64>) -> Result<Self, Report> {
-    Ok(Self::default())
+  fn from_nwk(branch_length: Option<f64>) -> Result<Self, Report> {
+    Ok(Self {
+      branch_length,
+      ..Self::default()
+    })
   }
 }
 

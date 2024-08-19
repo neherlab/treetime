@@ -92,8 +92,11 @@ impl Weighted for DenseEdge {
 }
 
 impl EdgeFromNwk for DenseEdge {
-  fn from_nwk(_: Option<f64>) -> Result<Self, Report> {
-    Ok(Self::default())
+  fn from_nwk(branch_length: Option<f64>) -> Result<Self, Report> {
+    Ok(Self {
+      branch_length,
+      ..Self::default()
+    })
   }
 }
 
