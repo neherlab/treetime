@@ -256,32 +256,47 @@ mod tests {
   use super::*;
   use crate::io::nwk::nwk_read_str;
   use crate::o;
+  use crate::port::div::{calculate_divs, OnlyLeaves};
   use approx::assert_ulps_eq;
   use maplit::btreemap;
+  use pretty_assertions::assert_eq;
+  use std::collections::BTreeMap;
 
-  #[test]
-  fn test_clock_naive_rate() -> Result<(), Report> {
-    let dates = btreemap! {
-        o!("A") => 2013.0,
-        o!("B") => 2022.0,
-        o!("C") => 2017.0,
-        o!("D") => 2005.0,
-    };
-
-    let div = btreemap! {
-        o!("A") => 0.2,
-        o!("B") => 0.3,
-        o!("C") => 0.25,
-        o!("D") => 0.17,
-    };
-
+  pub fn calculate_naive_rate(dates: &BTreeMap<String, f64>, div: &BTreeMap<String, f64>) -> f64 {
     let t: f64 = dates.values().sum();
     let tsq: f64 = dates.values().map(|&x| x * x).sum();
     let dt: f64 = div.iter().map(|(c, div)| div * dates[c]).sum();
     let d: f64 = div.values().sum();
-    let naive_rate = (dt * 4.0 - d * t) / (tsq * 4.0 - (t * t));
+    (dt * 4.0 - d * t) / (tsq * 4.0 - (t * t))
+  }
+
+  #[test]
+  fn test_calculate_divs_only_leaves() -> Result<(), Report> {
+    let graph: ClockGraph = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let actual = calculate_divs(&graph, OnlyLeaves(true));
+    let expected = btreemap! {
+      o!("A") => 0.20000000298023224,
+      o!("B") => 0.30000000447034836,
+      o!("C") => 0.2500000037252903,
+      o!("D") => 0.16999999806284904,
+    };
+    assert_eq!(&expected, &actual);
+    Ok(())
+  }
+
+  #[test]
+  fn test_clock_naive_rate() -> Result<(), Report> {
+    let dates = btreemap! {
+      o!("A") => 2013.0,
+      o!("B") => 2022.0,
+      o!("C") => 2017.0,
+      o!("D") => 2005.0,
+    };
 
     let graph: ClockGraph = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let divs = calculate_divs(&graph, OnlyLeaves(true));
+    let naive_rate = calculate_naive_rate(&dates, &divs);
+
     for n in graph.get_leaves() {
       let name = n.read_arc().payload().read_arc().name().unwrap().as_ref().to_owned();
       n.write_arc().payload().write_arc().date = Some(dates[&name]);
@@ -298,11 +313,11 @@ mod tests {
     let root = graph.get_exactly_one_root()?;
     let clock = root.read_arc().payload().read_arc().total.clock_model()?;
 
-    assert_ulps_eq!(naive_rate, clock.rate(), epsilon=1e-9);
+    assert_ulps_eq!(naive_rate, clock.rate(), epsilon = 1e-9);
 
     options.variance_factor = 1.0;
     let res = find_best_root(&graph, options)?;
-    assert_ulps_eq!(0.008095476518345305, res.clock.rate(), epsilon=1e-9);
+    assert_ulps_eq!(0.008095476518345305, res.clock.rate(), epsilon = 1e-9);
 
     Ok(())
   }

@@ -4,6 +4,7 @@ pub mod clock;
 pub mod clock_set;
 pub mod composition;
 pub mod constants;
+pub mod div;
 pub mod fitch;
 pub mod mutation;
 pub mod seq_dense;
