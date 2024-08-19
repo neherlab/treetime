@@ -2,7 +2,7 @@ use crate::graph::breadth_first::GraphTraversalContinuation;
 use crate::graph::edge::Weighted;
 use crate::graph::node::Named;
 use crate::port::fitch::{get_common_length, PartitionModel};
-use crate::port::seq_dense::{DenseGraph, DenseNode, DenseSeqDis, DenseSeqInfo, DenseSeqNode};
+use crate::port::seq_dense::{DenseGraph, DenseNode, DenseSeqDis, DenseSeqEdge, DenseSeqInfo, DenseSeqNode};
 use crate::port::seq_partitions::SeqPartition;
 use crate::seq::range_intersection::range_intersection;
 use crate::utils::ndarray::{log, product_axis};
@@ -23,14 +23,14 @@ fn attach_seqs_to_graph<'g>(graph: &DenseGraph<'g>, partitions: &[PartitionModel
     })
     .collect::<Result<_, Report>>()?;
 
-  for leaf in graph.get_leaves() {
-    let mut leaf = leaf.read_arc().payload().write_arc();
+  graph.get_leaves().iter().try_for_each(|leaf| -> Result<(), Report>  {
+    let mut leaf = leaf.write_arc().payload().write_arc();
 
     let leaf_name = leaf.name.as_ref().ok_or_else(|| {
       make_report!("Expected all leaf nodes to have names, such that they can be matched to their corresponding sequences. But found a leaf node that has no name.")
     })?.to_owned();
 
-    let dense_partitions = partitions
+    leaf.dense_partitions = partitions
       .iter()
       .map(|PartitionModel { aln, gtr }| {
         // TODO(perf): this might be slow if there are many sequences
@@ -48,11 +48,13 @@ fn attach_seqs_to_graph<'g>(graph: &DenseGraph<'g>, partitions: &[PartitionModel
       })
       .collect::<Result<_, Report>>()?;
 
-    *leaf = DenseNode {
-      name: Some(leaf_name),
-      dense_partitions,
-    }
-  }
+    Ok(())
+  })?;
+
+  graph.get_edges().iter().for_each(|edge| {
+    let mut edge = edge.write_arc().payload().write_arc();
+    edge.dense_partitions = partitions.iter().map(|_| DenseSeqEdge::default()).collect_vec();
+  });
 
   Ok(())
 }
@@ -68,72 +70,75 @@ fn combine_dense_messages(msgs: &BTreeMap<String, DenseSeqDis>) -> Result<DenseS
 
 fn ingroup_profiles_dense(graph: &mut DenseGraph) {
   let dense_partitions = &graph.data().read_arc().dense_partitions;
+  let n_partitions = dense_partitions.len();
 
   graph.par_iter_breadth_first_backward(|mut node| {
     if node.is_leaf {
       return GraphTraversalContinuation::Continue; // the msg to parents for leaves was put in init phase
     }
 
-    for (si, seq_info) in node.payload.dense_partitions.iter_mut().enumerate() {
-      let &SeqPartition { gtr, length } = &dense_partitions[si];
+    node.payload.dense_partitions = (0..n_partitions)
+      .map(|si| {
+        let &SeqPartition { gtr, length } = &dense_partitions[si];
 
-      let gaps = node
+        let gaps = node
         .children
         .iter()
         .map(|(c, e)| c.read_arc().dense_partitions[si].seq.gaps.clone()) // TODO: avoid cloning
         .collect_vec();
 
-      let gaps = range_intersection(&gaps);
+        let gaps = range_intersection(&gaps);
 
-      let seq = DenseSeqInfo {
-        gaps,
-        ..DenseSeqInfo::default()
-      };
+        let seq = DenseSeqInfo {
+          gaps,
+          ..DenseSeqInfo::default()
+        };
 
-      let mut msgs_from_children = btreemap! {};
+        let mut msgs_from_children = btreemap! {};
 
-      for (child, edge) in &node.children {
-        let (child, edge) = (child.read_arc(), edge.read_arc());
+        for (child, edge) in &node.children {
+          let (child, edge) = (child.read_arc(), edge.read_arc());
 
-        let name = child
-          .name()
-          .expect("Encountered child node without a name")
-          .as_ref()
-          .to_owned();
+          let name = child
+            .name()
+            .expect("Encountered child node without a name")
+            .as_ref()
+            .to_owned();
 
-        let exp_qt = gtr.expQt(edge.weight().unwrap_or_default());
-        let child = &child.dense_partitions[si];
-        let edge = &edge.dense_partitions[si];
+          let exp_qt = gtr.expQt(edge.weight().unwrap_or_default());
+          let child = &child.dense_partitions[si];
+          let edge = &edge.dense_partitions[si];
 
-        let mut dis = Array2::ones((length, gtr.alphabet().n_canonical()));
-        let log_lh = child.msg_to_parents.log_lh;
+          let mut dis = Array2::ones((length, gtr.alphabet().n_canonical()));
+          let log_lh = child.msg_to_parents.log_lh;
 
-        // Note that these dot products are really just
-        //     a_{ik} = b.dot(c) = sum(b_{ij}c{jk}, j)
-        // -- we can use whatever memory layout we want.
-        if let Some(transmission) = &edge.transmission {
-          for r in transmission {
-            dis
-              .slice_mut(s![r.0..r.1, ..])
-              .assign(&child.msg_to_parents.dis.slice(s![r.0..r.1, ..]).dot(&exp_qt));
+          // Note that these dot products are really just
+          //     a_{ik} = b.dot(c) = sum(b_{ij}c{jk}, j)
+          // -- we can use whatever memory layout we want.
+          if let Some(transmission) = &edge.transmission {
+            for r in transmission {
+              dis
+                .slice_mut(s![r.0..r.1, ..])
+                .assign(&child.msg_to_parents.dis.slice(s![r.0..r.1, ..]).dot(&exp_qt));
+            }
+          } else {
+            // could make this a copy
+            dis *= &child.msg_to_parents.dis.dot(&exp_qt);
           }
-        } else {
-          // could make this a copy
-          dis *= &child.msg_to_parents.dis.dot(&exp_qt);
+
+          msgs_from_children.insert(name, DenseSeqDis { dis, log_lh });
         }
 
-        msgs_from_children.insert(name, DenseSeqDis { dis, log_lh });
-      }
+        let msg_to_parents = combine_dense_messages(&msgs_from_children).unwrap();
 
-      let msg_to_parents = combine_dense_messages(&msgs_from_children).unwrap();
-
-      *seq_info = DenseSeqNode {
-        seq,
-        msg_to_parents,
-        msgs_from_children,
-        ..DenseSeqNode::default()
-      };
-    }
+        DenseSeqNode {
+          seq,
+          msg_to_parents,
+          msgs_from_children,
+          ..DenseSeqNode::default()
+        }
+      })
+      .collect_vec();
 
     GraphTraversalContinuation::Continue
   });
