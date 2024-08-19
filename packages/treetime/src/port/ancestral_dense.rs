@@ -1,3 +1,4 @@
+use crate::alphabet::alphabet::Alphabet;
 use crate::graph::breadth_first::GraphTraversalContinuation;
 use crate::graph::edge::Weighted;
 use crate::graph::node::Named;
@@ -6,7 +7,6 @@ use crate::port::seq_dense::{DenseGraph, DenseNode, DenseSeqDis, DenseSeqEdge, D
 use crate::port::seq_partitions::SeqPartition;
 use crate::seq::range_intersection::range_intersection;
 use crate::utils::ndarray::{log, product_axis};
-use crate::alphabet::alphabet::Alphabet;
 use crate::{make_internal_report, make_report, o};
 use eyre::Report;
 use itertools::Itertools;
@@ -34,7 +34,6 @@ fn assign_sequence(seq_info: &DenseSeqNode, alphabet: &Alphabet) -> Vec<char> {
   }
   seq
 }
-
 
 fn attach_seqs_to_graph<'g>(graph: &DenseGraph<'g>, partitions: &[PartitionModel<'g>]) -> Result<(), Report> {
   graph.data().write_arc().dense_partitions = partitions
@@ -208,7 +207,7 @@ fn outgroup_profiles_dense(graph: &mut DenseGraph) {
 
       msgs_from_parents.insert(o!("children"), seq_info.msg_to_parents.clone()); // HACK
       seq_info.profile = combine_dense_messages(&msgs_from_parents).unwrap();
-      seq_info.seq.sequence = assign_sequence(&seq_info, &gtr.alphabet);
+      seq_info.seq.sequence = assign_sequence(seq_info, &gtr.alphabet);
       seq_info.msgs_to_children = btreemap![];
       for cname in seq_info.msgs_from_children.keys() {
         let child_msg = &seq_info.msgs_from_children[cname];
@@ -241,8 +240,7 @@ fn calculate_root_state_dense(graph: &mut DenseGraph) -> f64 {
       log_lh += log(&norm).sum();
       dis = (&dis.t() / &norm).t().to_owned();
       seq_info.profile = DenseSeqDis { dis, log_lh };
-      dbg!(&seq_info.profile.dis);
-      seq_info.seq.sequence = assign_sequence(&seq_info, &gtr.alphabet);
+      seq_info.seq.sequence = assign_sequence(seq_info, &gtr.alphabet);
       seq_info.msgs_to_children.clear();
       for cname in seq_info.msgs_from_children.keys() {
         // This division operation can cause 'division by 0' problems. Note that profile = prod(msgs[child], child in children) * msgs_from_parent.
