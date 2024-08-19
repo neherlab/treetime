@@ -459,6 +459,11 @@ pub fn ancestral_reconstruction_marginal_sparse(
           let mut seq = parent.seq.sequence.clone();
 
           // Implant mutations
+          for m in &edge.muts {
+            seq[m.pos] = m.qry;
+          }
+
+          // Implant most likely state of variable sites
           for (&pos, vec) in &node.payload.sparse_partitions[si].seq.fitch.variable {
             seq[pos] = gtr.alphabet.char(vec.dis.argmax().unwrap());
           }
@@ -503,7 +508,8 @@ mod tests {
   use crate::io::json::{json_write_str, JsonPretty};
   use crate::io::nwk::nwk_read_str;
   use crate::port::fitch::{compress_sequences, PartitionModel};
-  use crate::utils::string::vec_to_string;
+  use crate::pretty_assert_ulps_eq;
+use crate::utils::string::vec_to_string;
   use eyre::Report;
   use indoc::indoc;
   use pretty_assertions::assert_eq;
@@ -546,7 +552,7 @@ mod tests {
     let gtr = &jc69(JC69Params::default())?;
     let partitions = vec![PartitionModel { gtr, aln: inputs }];
     compress_sequences(&mut graph, &partitions)?;
-    run_marginal_sparse(&graph)?;
+    let loglh = run_marginal_sparse(&graph)?;
 
     let mut actual = BTreeMap::new();
     ancestral_reconstruction_marginal_sparse(&graph, false, |node, seq| {
@@ -557,6 +563,9 @@ mod tests {
       json_write_str(&expected, JsonPretty(false))?,
       json_write_str(&actual, JsonPretty(false))?
     );
+
+    // test overall likelihood
+    pretty_assert_ulps_eq!(-55.55428499726621, loglh, epsilon=1e-6);
 
     Ok(())
   }
