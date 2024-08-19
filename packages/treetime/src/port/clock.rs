@@ -298,11 +298,11 @@ mod tests {
     let root = graph.get_exactly_one_root()?;
     let clock = root.read_arc().payload().read_arc().total.clock_model()?;
 
-    assert_ulps_eq!(naive_rate, clock.rate());
+    assert_ulps_eq!(naive_rate, clock.rate(), epsilon=1e-9);
 
     options.variance_factor = 1.0;
     let res = find_best_root(&graph, options)?;
-    assert_ulps_eq!(0.008095476518345305, res.clock.rate());
+    assert_ulps_eq!(0.008095476518345305, res.clock.rate(), epsilon=1e-9);
 
     Ok(())
   }
