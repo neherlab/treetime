@@ -1,11 +1,11 @@
 use crate::make_error;
-use auto_ops::{impl_op_ex, impl_op_ex_commutative};
+use auto_ops::impl_op_ex;
 use eyre::Report;
 use getset::{CopyGetters, Getters};
 use ndarray::Array2;
 use serde::{Deserialize, Serialize};
-use std::ops::{Add, AddAssign, Sub, SubAssign};
 
+#[must_use]
 #[derive(Debug, Default, Serialize, Deserialize, CopyGetters, Getters)]
 pub struct ClockModel {
   #[getset(get_copy = "pub")]
@@ -21,6 +21,7 @@ pub struct ClockModel {
   hessian: Array2<f64>,
 }
 
+#[must_use]
 #[derive(Debug, Default, Clone, Serialize, Deserialize, CopyGetters)]
 #[getset(get_copy = "pub")]
 pub struct ClockSet {
@@ -72,8 +73,8 @@ impl ClockSet {
       t_sum,
       tsq_sum,
       d_sum,
-      dt_sum,
       dsq_sum,
+      dt_sum,
       norm,
     }
   }
@@ -93,8 +94,8 @@ impl ClockSet {
     Ok(ClockModel {
       rate,
       intercept,
-      hessian,
       chisq,
+      hessian,
     })
   }
 

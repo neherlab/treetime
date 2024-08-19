@@ -1,13 +1,11 @@
-use crate::alphabet::alphabet::Alphabet;
 use crate::commands::mugration::mugration_args::TreetimeMugrationArgs;
-use crate::gtr::gtr::{GTRParams, GTR};
 use crate::io::discrete_states_csv::read_discrete_attrs;
 use crate::{make_error, make_internal_report};
 use eyre::Report;
 use indexmap::{IndexMap, IndexSet};
 use itertools::Itertools;
 use log::warn;
-use ndarray::{Array1, Array2};
+use ndarray::Array1;
 use num_traits::ToPrimitive;
 use statrs::statistics::Statistics;
 use std::fmt::Display;

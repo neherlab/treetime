@@ -15,16 +15,6 @@ pub struct Mut {
   pub reff: char,
 }
 
-impl Mut {
-  fn is_mut(&self) -> bool {
-    self.qry != self.reff
-  }
-
-  fn is_del(&self) -> bool {
-    self.qry == '-'
-  }
-}
-
 impl FromStr for Mut {
   type Err = Report;
 

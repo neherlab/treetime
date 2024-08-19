@@ -15,7 +15,7 @@ use std::sync::Arc;
 pub type ClockGraph = Graph<ClockNodePayload, ClockEdgePayload, ()>;
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
-struct ClockNodePayload {
+pub struct ClockNodePayload {
   name: Option<String>,
   date: Option<f64>,
   total: ClockSet,
@@ -46,7 +46,7 @@ impl Named for ClockNodePayload {
 }
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
-struct ClockEdgePayload {
+pub struct ClockEdgePayload {
   branch_length: Option<f64>,
 }
 

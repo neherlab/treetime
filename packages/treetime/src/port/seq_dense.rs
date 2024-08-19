@@ -87,7 +87,7 @@ impl Weighted for DenseEdge {
   }
 
   fn set_weight(&mut self, weight: Option<f64>) {
-    self.branch_length = weight
+    self.branch_length = weight;
   }
 }
 

@@ -6,7 +6,7 @@ use color_eyre::{Section, SectionExt};
 use eyre::{Report, WrapErr};
 use indexmap::{indexmap, IndexMap, IndexSet};
 use itertools::{chain, Itertools};
-use ndarray::{stack, Array1, Array2, Axis, Data};
+use ndarray::{stack, Array1, Array2, Axis};
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use strum_macros::Display;
@@ -137,7 +137,7 @@ impl Alphabet {
     indices.map(|i| self.char(i))
   }
 
-  // #[allow(single_use_lifetimes)] // TODO: remove when anonymous lifetimes in `impl Trait` are stabilized
+  #[allow(single_use_lifetimes)] // TODO: remove when anonymous lifetimes in `impl Trait` are stabilized
   pub fn seq2prof<'a>(&self, chars: impl IntoIterator<Item = &'a char>) -> Result<Array2<f64>, Report> {
     let prof = stack(
       Axis(0),

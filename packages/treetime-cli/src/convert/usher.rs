@@ -7,7 +7,7 @@ use treetime::io::usher_mat::{
 };
 use treetime::make_internal_report;
 
-pub struct UsherWriter {}
+pub struct UsherWriter;
 
 impl UsherWrite<ConverterNode, ConverterEdge, ConverterData> for UsherWriter {
   fn new(graph: &Graph<ConverterNode, ConverterEdge, ConverterData>) -> Result<Self, Report> {
@@ -41,7 +41,7 @@ impl UsherWrite<ConverterNode, ConverterEdge, ConverterData> for UsherWriter {
   }
 }
 
-pub struct UsherReader {}
+pub struct UsherReader;
 
 impl UsherRead<ConverterNode, ConverterEdge, ConverterData> for UsherReader {
   fn new(tree: &UsherTree) -> Result<Self, Report> {
