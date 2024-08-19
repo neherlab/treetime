@@ -148,6 +148,13 @@ fn outgroup_profiles_dense(graph: &mut DenseGraph) {
   let dense_partitions = &graph.data().read_arc().dense_partitions;
 
   graph.par_iter_breadth_first_forward(|mut node| {
+    let name = node
+      .payload
+      .name()
+      .expect("Encountered node without a name")
+      .as_ref()
+      .to_owned();
+
     if node.is_root {
       return GraphTraversalContinuation::Continue;
     }
@@ -159,11 +166,7 @@ fn outgroup_profiles_dense(graph: &mut DenseGraph) {
       for (parent, edge) in &node.parents {
         let parent = parent.read_arc();
         let edge = edge.read_arc();
-        let name = parent
-          .name()
-          .expect("Encountered parent node without a name")
-          .as_ref()
-          .to_owned();
+
         let exp_qt = gtr.expQt(edge.weight().unwrap_or(0.0)).t().to_owned();
         let parent = &parent.dense_partitions[si];
         let edge = &edge.dense_partitions[si];
@@ -178,7 +181,7 @@ fn outgroup_profiles_dense(graph: &mut DenseGraph) {
         } else {
           dis = &dis * &parent.msgs_to_children[&name].dis.dot(&exp_qt);
         }
-        msgs_from_parents.insert(name, DenseSeqDis { dis, log_lh });
+        msgs_from_parents.insert(name.clone(), DenseSeqDis { dis, log_lh });
       }
 
       msgs_from_parents.insert(o!("children"), seq_info.msg_to_parents.clone()); // HACK
