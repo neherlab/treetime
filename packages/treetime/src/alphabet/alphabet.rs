@@ -491,6 +491,7 @@ mod tests {
       },
       "unknown": "N",
       "gap": "-",
+      "treat_gap_as_unknown": false,
       "profile_map": {
         "A": {
           "v": 1,
@@ -748,6 +749,7 @@ mod tests {
       },
       "unknown": "X",
       "gap": "-",
+      "treat_gap_as_unknown": false,
       "profile_map": {
         "A": {
           "v": 1,
