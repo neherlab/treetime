@@ -115,9 +115,10 @@ fn clock_regression_forward(graph: &ClockGraph, options: &ClockOptions) {
       let p = p.read_arc();
       let e = e.read_arc();
 
-      let name = p
+      let name = n
+        .payload
         .name()
-        .expect("Encountered a parent node without a name")
+        .expect("Encountered a node without a name")
         .as_ref()
         .to_owned();
 
