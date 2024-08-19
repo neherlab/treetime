@@ -459,6 +459,11 @@ pub fn ancestral_reconstruction_marginal_sparse(
           let mut seq = parent.seq.sequence.clone();
 
           // Implant mutations
+          for m in &edge.muts {
+            seq[m.pos] = m.qry;
+          }
+
+          // Implant most likely state of variable sites
           for (&pos, vec) in &node.payload.sparse_partitions[si].seq.fitch.variable {
             seq[pos] = gtr.alphabet.char(vec.dis.argmax().unwrap());
           }
