@@ -63,8 +63,8 @@ impl Weighted for ClockEdgePayload {
 }
 
 impl EdgeFromNwk for ClockEdgePayload {
-  fn from_nwk(_: Option<f64>) -> Result<Self, Report> {
-    Ok(Self::default())
+  fn from_nwk(weight: Option<f64>) -> Result<Self, Report> {
+    Ok(Self { branch_length: weight })
   }
 }
 
