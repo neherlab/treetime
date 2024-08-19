@@ -69,8 +69,9 @@ fn ingroup_profiles_sparse(graph: &SparseGraph) {
         };
 
         seq_info.msgs_from_children = btreemap! {};
-        for (ci, (child, _)) in node.children.iter().enumerate() {
+        for (ci, (child, e)) in node.children.iter().enumerate() {
           let name = child.read_arc().name().unwrap().as_ref().to_owned();
+          dbg!(&name, e.read_arc().weight());
           seq_dis.log_lh += child_seqs[ci].msg_to_parents.log_lh;
           let message = propagate(
             &child_expQt[ci],
@@ -551,7 +552,7 @@ mod tests {
     let gtr = &jc69(JC69Params::default())?;
     let partitions = vec![PartitionModel { gtr, aln: inputs }];
     compress_sequences(&mut graph, &partitions)?;
-    run_marginal_sparse(&graph)?;
+    let loglh = run_marginal_sparse(&graph)?;
 
     let mut actual = BTreeMap::new();
     ancestral_reconstruction_marginal_sparse(&graph, false, |node, seq| {
@@ -562,6 +563,8 @@ mod tests {
       json_write_str(&expected, JsonPretty(false))?,
       json_write_str(&actual, JsonPretty(false))?
     );
+
+    assert_eq!(0.0, loglh); // dummy value for now
 
     Ok(())
   }
