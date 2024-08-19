@@ -148,7 +148,7 @@ fn clock_regression_forward(graph: &ClockGraph, options: &ClockOptions) {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-struct FindRootResult {
+pub struct FindRootResult {
   edge: Option<GraphEdgeKey>,
   split: f64,
   clock: ClockModel,
