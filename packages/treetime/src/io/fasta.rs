@@ -8,12 +8,8 @@ use serde::{Deserialize, Serialize};
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 
-const VALID_CHARS: &[char] = &[
-  'A', 'C', 'G', 'T', 'Y', 'R', 'W', 'S', 'K', 'M', 'D', 'V', 'H', 'B', 'N', '-',
-];
-
 pub fn is_char_allowed(c: char) -> bool {
-  VALID_CHARS.contains(&c)
+  c.is_ascii()
 }
 
 #[derive(Clone, Default, Debug, Deserialize, Serialize, Eq, PartialEq)]
