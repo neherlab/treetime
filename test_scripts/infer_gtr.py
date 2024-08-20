@@ -137,7 +137,12 @@ def test():
     nij = np.array([[0, 1, 2, 1], [1, 0, 3, 2], [2, 3, 0, 1], [2, 3, 3, 0]])
     Ti = np.array([12.0, 20., 14.0, 12.4])
     root_state = np.array([3, 2, 3, 4])
-    print(infer_gtr(nij, Ti, root_state, pc=0.1))
+
+    res = infer_gtr(nij, Ti, root_state, pc=0.1)
+    assert np.allclose([0.20908015, 0.24528811, 0.20925859, 0.33637315], res['pi'])
+    assert np.abs(res['mu'] - 0.4004706866848001)<1e-8
+    assert np.abs(res['pi'].dot(res['W'].dot(res['pi'])) - 1.0) < 1e-5
+
 
 if __name__=="__main__":
     fname_nwk = 'data/ebola/ebola.nwk'
