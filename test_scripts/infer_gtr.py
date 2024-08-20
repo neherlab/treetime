@@ -1,12 +1,43 @@
 import numpy as np
+from Bio import AlignIO
+import numpy as np
+from lib import Graph, graph_from_nwk_str, GraphNodeBackward, GraphNodeForward
+from lib import SparseSeqDis, VarPos
+from treetime import GTR
+from payload import NodePayload, EdgePayload
+from profile_map import profile_map
+from fitch import init_sequences_sparse
 
 
 def avg_transition(W, pi) -> np.float64:
-    return 0.0
+    return pi.dot(W.dot(pi))
 
 
 def distance(pi_old, pi) -> np.float64:
-    return sum([(x_i - y_i) ** 2 for x_i, y_i in zip(pi_old, pi)]) ** 0.5
+    #return sum([(x_i - y_i) ** 2 for x_i, y_i in zip(pi_old, pi)]) ** 0.5
+    return np.sum((pi_old-pi)**2)**0.5  # numpy version ;)
+
+
+def get_mutation_counts(graph):
+    root = graph.get_one_root().payload()
+    nij = np.zeros((4, 4))
+    Ti = np.zeros(4)
+    seq = root.sparse_sequences[0].seq
+    root_state = np.array([seq.composition[nuc] for nuc in 'ACGT'])
+    char_to_index = {nuc: i for i, nuc in enumerate('ACGT')}
+    for e in graph.get_edges():
+        target_seq = graph.get_node(e.target()).payload().sparse_sequences[0].seq
+        bl = e.payload().branch_length
+        for i, nuc in enumerate('ACGT'):
+            Ti[i] += bl * target_seq.composition[nuc]
+
+        for mut in e.payload().sparse_sequences[0].muts:
+            i, j = char_to_index[mut.qry], char_to_index[mut.ref]
+            nij[i,j] += 1
+            Ti[i] -= 0.5*bl
+            Ti[j] += 0.5*bl
+
+    return nij, Ti, root_state
 
 
 def infer_gtr(
@@ -69,10 +100,9 @@ def infer_gtr(
     pi /= pi.sum()
     W_ij = np.ones_like(nij)
     mu = (nij.sum() + pc) / (Ti.sum() + pc)  # initial guess for the rate
-
     # if pi is fixed, this will immediately converge
     iteration_counter = 0
-    while distance(pi_old, pi) > dp and interaction_counter < Nit:
+    while distance(pi_old, pi) > dp and iteration_counter < Nit:
         iteration_counter += 1
         pi_old = np.copy(pi)
         W_ij = (
@@ -94,15 +124,40 @@ def infer_gtr(
         else:
             mu = (nij.sum() + pc) / (np.sum(pi * (W_ij.dot(pi))) * Ti.sum() + pc)
 
-    if count >= Nit:
+    if iteration_counter >= Nit:
         if distance(pi_old, pi) > dp:
-            gtr.logger("the iterative scheme has not converged", 3, warn=True)
+            print("the iterative scheme has not converged")
         elif np.abs(1 - np.max(pi.sum(axis=0))) > dp:
-            gtr.logger(
-                "the iterative scheme has converged, but proper normalization was not reached",
-                3,
-                warn=True,
-            )
+            print("the iterative scheme has converged, but proper normalization was not reached")
 
-    gtr.assign_rates(mu=mu, W=W_ij, pi=pi)
-    return gtr
+    return {"W": W_ij, "pi": pi, "mu": mu}
+
+
+def test():
+    nij = np.array([[0, 1, 2, 1], [1, 0, 3, 2], [2, 3, 0, 1], [2, 3, 3, 0]])
+    Ti = np.array([12.0, 20., 14.0, 12.4])
+    root_state = np.array([3, 2, 3, 4])
+
+    res = infer_gtr(nij, Ti, root_state, pc=0.1)
+    assert np.allclose([0.20908015, 0.24528811, 0.20925859, 0.33637315], res['pi'])
+    assert np.abs(res['mu'] - 0.4004706866848001)<1e-8
+    assert np.abs(res['pi'].dot(res['W'].dot(res['pi'])) - 1.0) < 1e-5
+
+
+if __name__=="__main__":
+    fname_nwk = 'data/ebola/ebola.nwk'
+    fname_seq = 'data/ebola/ebola_dna.fasta'
+    fname_nwk = 'test_scripts/data/tree.nwk'
+    fname_seq = 'test_scripts/data/sequences.fasta'
+    with open(fname_nwk) as fh:
+        nwkstr = fh.read()
+    G = graph_from_nwk_str(nwk_string=nwkstr, node_payload_factory=NodePayload, edge_payload_factory=EdgePayload)
+
+    aln = {seq.id: str(seq.seq).upper() for seq in AlignIO.read(fname_seq, 'fasta')}
+    gtr = GTR.custom(pi=[0.2, 0.3, 0.15, 0.35], alphabet='nuc_nogap')
+    init_sequences_sparse(G, [aln], [gtr])
+
+
+    nij, Ti, root_state = get_mutation_counts(G)
+
+    print(infer_gtr(nij, Ti, root_state, pc=0.1))
