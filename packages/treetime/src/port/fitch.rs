@@ -1,6 +1,5 @@
 #![allow(dead_code)]
 use crate::graph::breadth_first::GraphTraversalContinuation;
-use crate::gtr::gtr::GTR;
 use crate::io::fasta::FastaRecord;
 use crate::port::composition::Composition;
 use crate::port::constants::{FILL_CHAR, GAP_CHAR, NON_CHAR, VARIABLE};
@@ -23,21 +22,7 @@ use maplit::btreemap;
 use ndarray::{stack, Array1, Array2, Axis};
 use ndarray_stats::QuantileExt;
 
-#[derive(Debug)]
-pub struct PartitionModel<'g> {
-  pub aln: Vec<FastaRecord>,
-  pub gtr: &'g GTR,
-}
-
-fn attach_seqs_to_graph<'g>(graph: &SparseGraph<'g>, partitions: &[PartitionModel<'g>]) -> Result<(), Report> {
-  graph.data().write_arc().sparse_partitions = partitions
-    .iter()
-    .map(|PartitionModel { aln, gtr }| {
-      let length = get_common_length(aln)?;
-      Ok(SeqPartition::new(gtr, length))
-    })
-    .collect::<Result<_, Report>>()?;
-
+fn attach_seqs_to_graph(graph: &SparseGraph, partitions: &[SeqPartition]) -> Result<(), Report> {
   for leaf in graph.get_leaves() {
     let mut leaf = leaf.read_arc().payload().write_arc();
 
@@ -47,7 +32,7 @@ fn attach_seqs_to_graph<'g>(graph: &SparseGraph<'g>, partitions: &[PartitionMode
 
     let sparse_partitions = partitions
       .iter()
-      .map(|PartitionModel { aln, gtr }| {
+      .map(|SeqPartition { gtr, aln, length }| {
         // TODO(perf): this might be slow if there are many sequences
         let leaf_fasta = aln
           .iter()
@@ -72,8 +57,7 @@ fn attach_seqs_to_graph<'g>(graph: &SparseGraph<'g>, partitions: &[PartitionMode
   Ok(())
 }
 
-fn fitch_backwards(graph: &mut SparseGraph) {
-  let sparse_partitions = &graph.data().read_arc().sparse_partitions;
+fn fitch_backwards(graph: &SparseGraph, sparse_partitions: &[SeqPartition]) {
   let n_partitions = sparse_partitions.len();
 
   graph.par_iter_breadth_first_backward(|mut node| {
@@ -87,7 +71,7 @@ fn fitch_backwards(graph: &mut SparseGraph) {
 
     #[allow(clippy::needless_range_loop)]
     for si in 0..n_partitions {
-      let &SeqPartition { gtr, length } = &sparse_partitions[si];
+      let SeqPartition { gtr, length, .. } = &sparse_partitions[si];
 
       let children = node
         .children
@@ -105,10 +89,10 @@ fn fitch_backwards(graph: &mut SparseGraph) {
       let mut gaps = range_intersection_iter(children.iter().map(|(c, _)| &c.gaps)).collect_vec();
       let unknown = range_intersection_iter(children.iter().map(|(c, _)| &c.unknown)).collect_vec();
       let non_char = range_intersection_iter(children.iter().map(|(c, _)| &c.non_char)).collect_vec();
-      let non_gap = range_complement(&[(0, length)], &[gaps.clone()]); // FIXME(perf): unnecessary clone
+      let non_gap = range_complement(&[(0, *length)], &[gaps.clone()]); // FIXME(perf): unnecessary clone
 
       let mut seq_dis = SparseSeqDis::default();
-      let mut sequence = vec![FILL_CHAR; length];
+      let mut sequence = vec![FILL_CHAR; *length];
 
       for r in &non_char {
         sequence[r.0..r.1].fill(NON_CHAR);
@@ -264,14 +248,13 @@ fn fitch_backwards(graph: &mut SparseGraph) {
   });
 }
 
-fn fitch_forward(graph: &mut SparseGraph) {
-  let sparse_partitions = &graph.data().read_arc().sparse_partitions;
+fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[SeqPartition]) {
   let n_partitions = sparse_partitions.len();
 
   graph.par_iter_breadth_first_forward(|mut node| {
     #[allow(clippy::needless_range_loop)]
     for si in 0..n_partitions {
-      let &SeqPartition { gtr, length } = &sparse_partitions[si];
+      let SeqPartition { gtr, .. } = &sparse_partitions[si];
       let SparseSeqInfo {
         gaps,
         sequence,
@@ -447,10 +430,10 @@ fn fitch_cleanup(graph: &SparseGraph) {
   });
 }
 
-pub fn compress_sequences<'g>(graph: &mut SparseGraph<'g>, partitions: &'g [PartitionModel<'g>]) -> Result<(), Report> {
+pub fn compress_sequences(graph: &SparseGraph, partitions: &[SeqPartition]) -> Result<(), Report> {
   attach_seqs_to_graph(graph, partitions)?;
-  fitch_backwards(graph);
-  fitch_forward(graph);
+  fitch_backwards(graph, partitions);
+  fitch_forward(graph, partitions);
   fitch_cleanup(graph);
   Ok(())
 }
@@ -462,9 +445,9 @@ pub fn compress_sequences<'g>(graph: &mut SparseGraph<'g>, partitions: &'g [Part
 pub fn ancestral_reconstruction_fitch(
   graph: &SparseGraph,
   include_leaves: bool,
+  sparse_partitions: &[SeqPartition],
   mut visitor: impl FnMut(&SparseNode, Vec<char>),
 ) -> Result<(), Report> {
-  let sparse_partitions = &graph.data().read_arc().sparse_partitions;
   let n_partitions = sparse_partitions.len();
 
   graph.iter_depth_first_preorder_forward(|node| {
@@ -594,14 +577,14 @@ mod tests {
     .map(|fasta| (fasta.seq_name, fasta.seq))
     .collect::<BTreeMap<_, _>>();
 
-    let mut graph: SparseGraph = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let graph: SparseGraph = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
-    let gtr = &jc69(JC69Params::default())?;
-    let partitions = vec![PartitionModel { gtr, aln: inputs }];
-    compress_sequences(&mut graph, &partitions).unwrap();
+    let gtr = jc69(JC69Params::default())?;
+    let partitions = vec![SeqPartition::new(gtr, inputs)?];
+    compress_sequences(&graph, &partitions)?;
 
     let mut actual = BTreeMap::new();
-    ancestral_reconstruction_fitch(&graph, false, |node, seq| {
+    ancestral_reconstruction_fitch(&graph, false, &partitions, |node, seq| {
       actual.insert(node.name.clone(), vec_to_string(seq));
     })?;
 

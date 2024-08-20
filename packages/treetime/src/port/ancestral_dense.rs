@@ -2,7 +2,6 @@ use crate::alphabet::alphabet::Alphabet;
 use crate::graph::breadth_first::GraphTraversalContinuation;
 use crate::graph::edge::Weighted;
 use crate::graph::node::Named;
-use crate::port::fitch::{get_common_length, PartitionModel};
 use crate::port::seq_dense::{DenseGraph, DenseNode, DenseSeqDis, DenseSeqEdge, DenseSeqInfo, DenseSeqNode};
 use crate::port::seq_partitions::SeqPartition;
 use crate::seq::range_intersection::range_intersection;
@@ -35,15 +34,7 @@ fn assign_sequence(seq_info: &DenseSeqNode, alphabet: &Alphabet) -> Vec<char> {
   seq
 }
 
-fn attach_seqs_to_graph<'g>(graph: &DenseGraph<'g>, partitions: &[PartitionModel<'g>]) -> Result<(), Report> {
-  graph.data().write_arc().dense_partitions = partitions
-    .iter()
-    .map(|PartitionModel { aln, gtr }| {
-      let length = get_common_length(aln)?;
-      Ok(SeqPartition::new(gtr, length))
-    })
-    .collect::<Result<_, Report>>()?;
-
+fn attach_seqs_to_graph(graph: &DenseGraph, partitions: &[SeqPartition]) -> Result<(), Report> {
   graph.get_leaves().iter().try_for_each(|leaf| -> Result<(), Report>  {
     let mut leaf = leaf.write_arc().payload().write_arc();
 
@@ -53,7 +44,7 @@ fn attach_seqs_to_graph<'g>(graph: &DenseGraph<'g>, partitions: &[PartitionModel
 
     leaf.dense_partitions = partitions
       .iter()
-      .map(|PartitionModel { aln, gtr }| {
+      .map(|SeqPartition { gtr, aln, length }| {
         // TODO(perf): this might be slow if there are many sequences
         let leaf_fasta = aln
           .iter()
@@ -89,9 +80,8 @@ fn combine_dense_messages(msgs: &BTreeMap<String, DenseSeqDis>) -> Result<DenseS
   Ok(DenseSeqDis { dis, log_lh })
 }
 
-fn ingroup_profiles_dense(graph: &mut DenseGraph) {
-  let dense_partitions = &graph.data().read_arc().dense_partitions;
-  let n_partitions = dense_partitions.len();
+fn ingroup_profiles_dense(graph: &DenseGraph, partitions: &[SeqPartition]) {
+  let n_partitions = partitions.len();
 
   graph.par_iter_breadth_first_backward(|mut node| {
     if node.is_leaf {
@@ -100,7 +90,7 @@ fn ingroup_profiles_dense(graph: &mut DenseGraph) {
 
     node.payload.dense_partitions = (0..n_partitions)
       .map(|si| {
-        let &SeqPartition { gtr, length } = &dense_partitions[si];
+        let SeqPartition { gtr, length, .. } = &partitions[si];
 
         let gaps = node
         .children
@@ -130,7 +120,7 @@ fn ingroup_profiles_dense(graph: &mut DenseGraph) {
           let child = &child.dense_partitions[si];
           let edge = &edge.dense_partitions[si];
 
-          let mut dis = Array2::ones((length, gtr.alphabet().n_canonical()));
+          let mut dis = Array2::ones((*length, gtr.alphabet().n_canonical()));
           let log_lh = child.msg_to_parents.log_lh;
 
           // Note that these dot products are really just
@@ -165,9 +155,7 @@ fn ingroup_profiles_dense(graph: &mut DenseGraph) {
   });
 }
 
-fn outgroup_profiles_dense(graph: &mut DenseGraph) {
-  let dense_partitions = &graph.data().read_arc().dense_partitions;
-
+fn outgroup_profiles_dense(graph: &DenseGraph, dense_partitions: &[SeqPartition]) {
   graph.par_iter_breadth_first_forward(|mut node| {
     let name = node
       .payload
@@ -181,7 +169,7 @@ fn outgroup_profiles_dense(graph: &mut DenseGraph) {
     }
 
     for (si, seq_info) in node.payload.dense_partitions.iter_mut().enumerate() {
-      let &SeqPartition { gtr, length } = &dense_partitions[si];
+      let SeqPartition { gtr, length, .. } = &dense_partitions[si];
 
       let mut msgs_from_parents = btreemap! {};
       for (parent, edge) in &node.parents {
@@ -191,7 +179,7 @@ fn outgroup_profiles_dense(graph: &mut DenseGraph) {
         let exp_qt = gtr.expQt(edge.weight().unwrap_or(0.0)).t().to_owned();
         let parent = &parent.dense_partitions[si];
         let edge = &edge.dense_partitions[si];
-        let mut dis = Array2::ones((length, gtr.alphabet().n_canonical()));
+        let mut dis = Array2::ones((*length, gtr.alphabet().n_canonical()));
         let log_lh = parent.msgs_to_children[&name].log_lh;
         if let Some(transmission) = &edge.transmission {
           for r in transmission {
@@ -224,14 +212,12 @@ fn outgroup_profiles_dense(graph: &mut DenseGraph) {
   });
 }
 
-fn calculate_root_state_dense(graph: &mut DenseGraph) -> f64 {
-  let graph_dense_partitions = &graph.data().read_arc().dense_partitions;
-
+fn calculate_root_state_dense(graph: &DenseGraph, partitions: &[SeqPartition]) -> f64 {
   let mut total_log_lh = 0.0;
   for root_node in graph.get_roots() {
     let dense_partitions = &mut root_node.write_arc().payload().write_arc().dense_partitions;
     for (si, seq_info) in dense_partitions.iter_mut().enumerate() {
-      let gtr = graph_dense_partitions[si].gtr;
+      let SeqPartition { gtr, .. } = &partitions[si];
 
       let mut log_lh = seq_info.msg_to_parents.log_lh;
       let mut dis = &seq_info.msg_to_parents.dis * &gtr.pi;
@@ -260,11 +246,11 @@ fn calculate_root_state_dense(graph: &mut DenseGraph) -> f64 {
   total_log_lh
 }
 
-pub fn run_marginal_dense<'g>(graph: &mut DenseGraph<'g>, partitions: &'g [PartitionModel<'g>]) -> Result<f64, Report> {
+pub fn run_marginal_dense(graph: &DenseGraph, partitions: &[SeqPartition]) -> Result<f64, Report> {
   attach_seqs_to_graph(graph, partitions)?;
-  ingroup_profiles_dense(graph);
-  let log_lh = calculate_root_state_dense(graph);
-  outgroup_profiles_dense(graph);
+  ingroup_profiles_dense(graph, partitions);
+  let log_lh = calculate_root_state_dense(graph, partitions);
+  outgroup_profiles_dense(graph, partitions);
   Ok(log_lh)
 }
 
@@ -298,7 +284,6 @@ mod tests {
   use crate::io::fasta::read_many_fasta_str;
   use crate::io::json::{json_write_str, JsonPretty};
   use crate::io::nwk::nwk_read_str;
-  use crate::port::fitch::PartitionModel;
   use crate::utils::string::vec_to_string;
   use eyre::Report;
   use indoc::indoc;
@@ -337,14 +322,14 @@ mod tests {
     .map(|fasta| (fasta.seq_name, fasta.seq))
     .collect::<BTreeMap<_, _>>();
 
-    let mut graph: DenseGraph = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let graph: DenseGraph = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
-    let gtr = &jc69(JC69Params {
+    let gtr = jc69(JC69Params {
       treat_gap_as_unknown: true,
       ..JC69Params::default()
     })?;
-    let partitions = vec![PartitionModel { gtr, aln: inputs }];
-    run_marginal_dense(&mut graph, &partitions)?;
+    let partitions = vec![SeqPartition::new(gtr, inputs)?];
+    run_marginal_dense(&graph, &partitions)?;
 
     let mut actual = BTreeMap::new();
     ancestral_reconstruction_marginal_dense(&graph, false, |node, seq| {

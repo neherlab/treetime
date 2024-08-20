@@ -2,7 +2,9 @@ use crate::alphabet::alphabet::Alphabet;
 use crate::graph::edge::{GraphEdge, Weighted};
 use crate::graph::graph::Graph;
 use crate::graph::node::{GraphNode, Named};
-use crate::io::nwk::{EdgeFromNwk, NodeFromNwk};
+use crate::io::graphviz::{EdgeToGraphViz, NodeToGraphviz};
+use crate::io::nwk::{format_weight, EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteOptions};
+use crate::o;
 use crate::port::composition::Composition;
 use crate::port::mutation::{InDel, Mut};
 use crate::port::seq_partitions::SeqPartition;
@@ -14,7 +16,7 @@ use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-pub type SparseGraph<'g> = Graph<SparseNode, SparseEdge, SparseMeta<'g>>;
+pub type SparseGraph = Graph<SparseNode, SparseEdge, ()>;
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct SparseNode {
@@ -31,6 +33,17 @@ impl NodeFromNwk for SparseNode {
   }
 }
 
+impl NodeToNwk for SparseNode {
+  fn nwk_name(&self) -> Option<impl AsRef<str>> {
+    self.name.as_deref()
+  }
+
+  fn nwk_comments(&self) -> BTreeMap<String, String> {
+    let mutations: String = "".to_owned(); // TODO: fill mutations
+    BTreeMap::from([(o!("mutations"), mutations)])
+  }
+}
+
 impl GraphNode for SparseNode {}
 
 impl Named for SparseNode {
@@ -40,6 +53,12 @@ impl Named for SparseNode {
 
   fn set_name(&mut self, name: Option<impl AsRef<str>>) {
     self.name = name.map(|n| n.as_ref().to_owned());
+  }
+}
+
+impl NodeToGraphviz for SparseNode {
+  fn to_graphviz_label(&self) -> Option<impl AsRef<str>> {
+    self.name.as_deref()
   }
 }
 
@@ -138,6 +157,24 @@ impl EdgeFromNwk for SparseEdge {
   }
 }
 
+impl EdgeToNwk for SparseEdge {
+  fn nwk_weight(&self) -> Option<f64> {
+    self.weight()
+  }
+}
+
+impl EdgeToGraphViz for SparseEdge {
+  fn to_graphviz_label(&self) -> Option<impl AsRef<str>> {
+    self
+      .weight()
+      .map(|weight| format_weight(weight, &NwkWriteOptions::default()))
+  }
+
+  fn to_graphviz_weight(&self) -> Option<f64> {
+    self.weight()
+  }
+}
+
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct SparseSeqEdge {
   pub muts: Vec<Mut>,
@@ -146,9 +183,9 @@ pub struct SparseSeqEdge {
 }
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
-pub struct SparseMeta<'g> {
+pub struct SparseMeta {
   #[serde(skip)]
-  pub sparse_partitions: Vec<SeqPartition<'g>>,
+  pub sparse_partitions: Vec<SeqPartition>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

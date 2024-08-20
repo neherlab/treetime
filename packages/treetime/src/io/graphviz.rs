@@ -10,10 +10,11 @@ use std::io::Write;
 use std::path::Path;
 use std::sync::Arc;
 
-pub fn graphviz_write_file<N, E>(filepath: impl AsRef<Path>, graph: &Graph<N, E>) -> Result<(), Report>
+pub fn graphviz_write_file<N, E, D>(filepath: impl AsRef<Path>, graph: &Graph<N, E, D>) -> Result<(), Report>
 where
   N: GraphNode + NodeToGraphviz,
   E: GraphEdge + EdgeToGraphViz,
+  D: Send + Sync,
 {
   let mut f = create_file_or_stdout(filepath)?;
   graphviz_write(&mut f, graph)?;
@@ -21,21 +22,23 @@ where
   Ok(())
 }
 
-pub fn graphviz_write_str<N, E>(graph: &Graph<N, E>) -> Result<String, Report>
+pub fn graphviz_write_str<N, E, D>(graph: &Graph<N, E, D>) -> Result<String, Report>
 where
   N: GraphNode + NodeToGraphviz,
   E: GraphEdge + EdgeToGraphViz,
+  D: Send + Sync,
 {
   let mut buf = Vec::new();
   graphviz_write(&mut buf, graph)?;
   Ok(String::from_utf8(buf)?)
 }
 
-pub fn graphviz_write<W, N, E>(mut writer: W, graph: &Graph<N, E>) -> Result<(), Report>
+pub fn graphviz_write<W, N, E, D>(mut writer: W, graph: &Graph<N, E, D>) -> Result<(), Report>
 where
   W: Write,
   N: GraphNode + NodeToGraphviz,
   E: GraphEdge + EdgeToGraphViz,
+  D: Send + Sync,
 {
   write!(
     writer,
@@ -70,11 +73,12 @@ where
   }
 }
 
-fn print_nodes<W, N, E>(graph: &Graph<N, E>, mut writer: W)
+fn print_nodes<W, N, E, D>(graph: &Graph<N, E, D>, mut writer: W)
 where
   W: Write,
   N: GraphNode + NodeToGraphviz,
   E: GraphEdge + EdgeToGraphViz,
+  D: Send + Sync,
 {
   writeln!(writer, "\n  subgraph roots {{").unwrap();
   let roots = graph.get_roots();
@@ -99,11 +103,12 @@ where
   writeln!(writer, "  }}").unwrap();
 }
 
-fn print_edges<W, N, E>(graph: &Graph<N, E>, mut writer: W)
+fn print_edges<W, N, E, D>(graph: &Graph<N, E, D>, mut writer: W)
 where
   W: Write,
   N: GraphNode + NodeToGraphviz,
   E: GraphEdge + EdgeToGraphViz,
+  D: Send + Sync,
 {
   graph.get_nodes().iter().for_each(&mut |node: &Arc<RwLock<Node<N>>>| {
     for edge_key in node.read().outbound() {

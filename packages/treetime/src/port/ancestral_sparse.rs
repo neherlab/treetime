@@ -17,12 +17,10 @@ use std::collections::BTreeMap;
 
 const EPS: f64 = 1e-6;
 
-fn ingroup_profiles_sparse(graph: &SparseGraph) {
-  let sparse_partitions = &graph.data().read_arc().sparse_partitions;
-
+fn ingroup_profiles_sparse(graph: &SparseGraph, partitions: &[SeqPartition]) {
   graph.par_iter_breadth_first_backward(|mut node| {
     for (si, seq_info) in node.payload.sparse_partitions.iter_mut().enumerate() {
-      let &SeqPartition { gtr, length } = &sparse_partitions[si];
+      let SeqPartition { gtr, .. } = &partitions[si];
 
       if node.is_leaf {
         // this is mostly a copy (or ref here) of the fitch state.
@@ -242,9 +240,7 @@ fn get_variable_states_children(
   (variable_pos, child_states)
 }
 
-fn outgroup_profiles_sparse(graph: &SparseGraph) {
-  let sparse_partitions = &graph.data().read_arc().sparse_partitions;
-
+fn outgroup_profiles_sparse(graph: &SparseGraph, partitions: &[SeqPartition]) {
   graph.par_iter_breadth_first_forward(|mut node| {
     if node.is_root {
       return GraphTraversalContinuation::Continue;
@@ -253,7 +249,7 @@ fn outgroup_profiles_sparse(graph: &SparseGraph) {
     let name = node.payload.name().unwrap().as_ref().to_owned();
 
     for (si, seq_info) in node.payload.sparse_partitions.iter_mut().enumerate() {
-      let &SeqPartition { gtr, length } = &sparse_partitions[si];
+      let SeqPartition { gtr, .. } = &partitions[si];
 
       let parent_nodes = node
         .parents
@@ -348,14 +344,12 @@ fn get_variable_states_parents(
   (variable_pos, parent_states)
 }
 
-fn calculate_root_state_sparse(graph: &SparseGraph) -> f64 {
-  let sparse_partitions = &graph.data().read_arc().sparse_partitions;
-
+fn calculate_root_state_sparse(graph: &SparseGraph, partitions: &[SeqPartition]) -> f64 {
   let mut log_lh = 0.0;
   for root_node in graph.get_roots() {
     let root_partitions = &mut root_node.write_arc().payload().write_arc().sparse_partitions;
     for (si, seq_info) in root_partitions.iter_mut().enumerate() {
-      let &SeqPartition { gtr, length } = &sparse_partitions[si];
+      let SeqPartition { gtr, .. } = &partitions[si];
 
       let mut seq_profile = SparseSeqDis {
         fixed_counts: seq_info.msg_to_parents.fixed_counts.clone(),
@@ -424,20 +418,20 @@ fn calculate_root_state_sparse(graph: &SparseGraph) -> f64 {
   log_lh
 }
 
-pub fn run_marginal_sparse(graph: &SparseGraph) -> Result<f64, Report> {
-  ingroup_profiles_sparse(graph);
-  let log_lh = calculate_root_state_sparse(graph);
-  outgroup_profiles_sparse(graph);
+pub fn run_marginal_sparse(graph: &SparseGraph, partitions: &[SeqPartition]) -> Result<f64, Report> {
+  ingroup_profiles_sparse(graph, partitions);
+  let log_lh = calculate_root_state_sparse(graph, partitions);
+  outgroup_profiles_sparse(graph, partitions);
   Ok(log_lh)
 }
 
 pub fn ancestral_reconstruction_marginal_sparse(
   graph: &SparseGraph,
   include_leaves: bool,
+  partitions: &[SeqPartition],
   mut visitor: impl FnMut(&SparseNode, Vec<char>),
 ) -> Result<(), Report> {
-  let sparse_partitions = &graph.data().read_arc().sparse_partitions;
-  let n_partitions = sparse_partitions.len();
+  let n_partitions = partitions.len();
 
   graph.iter_depth_first_preorder_forward(|node| {
     if !include_leaves && node.is_leaf {
@@ -446,7 +440,7 @@ pub fn ancestral_reconstruction_marginal_sparse(
 
     let seq = (0..n_partitions)
       .flat_map(|si| {
-        let &SeqPartition { gtr, length } = &sparse_partitions[si];
+        let SeqPartition { gtr, .. } = &partitions[si];
         let node_seq = &node.payload.sparse_partitions[si].seq;
 
         let mut seq = if node.is_root {
@@ -482,12 +476,12 @@ pub fn ancestral_reconstruction_marginal_sparse(
 
         // At the node itself, mask whatever is unknown in the node.
         for r in &node_seq.unknown {
-          let ambig_char = sparse_partitions[si].gtr.alphabet.unknown();
+          let ambig_char = partitions[si].gtr.alphabet.unknown();
           seq[r.0..r.1].fill(ambig_char);
         }
 
         for (pos, p) in &node_seq.fitch.variable {
-          seq[*pos] = sparse_partitions[si].code(&p.dis);
+          seq[*pos] = partitions[si].code(&p.dis);
         }
 
         seq
@@ -507,9 +501,9 @@ mod tests {
   use crate::io::fasta::read_many_fasta_str;
   use crate::io::json::{json_write_str, JsonPretty};
   use crate::io::nwk::nwk_read_str;
-  use crate::port::fitch::{compress_sequences, PartitionModel};
+  use crate::port::fitch::compress_sequences;
   use crate::pretty_assert_ulps_eq;
-use crate::utils::string::vec_to_string;
+  use crate::utils::string::vec_to_string;
   use eyre::Report;
   use indoc::indoc;
   use pretty_assertions::assert_eq;
@@ -547,15 +541,15 @@ use crate::utils::string::vec_to_string;
     .map(|fasta| (fasta.seq_name, fasta.seq))
     .collect::<BTreeMap<_, _>>();
 
-    let mut graph: SparseGraph = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let graph: SparseGraph = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
-    let gtr = &jc69(JC69Params::default())?;
-    let partitions = vec![PartitionModel { gtr, aln: inputs }];
-    compress_sequences(&mut graph, &partitions)?;
-    let loglh = run_marginal_sparse(&graph)?;
+    let gtr = jc69(JC69Params::default())?;
+    let partitions = vec![SeqPartition::new(gtr, inputs)?];
+    compress_sequences(&graph, &partitions)?;
+    let log_lh = run_marginal_sparse(&graph, &partitions)?;
 
     let mut actual = BTreeMap::new();
-    ancestral_reconstruction_marginal_sparse(&graph, false, |node, seq| {
+    ancestral_reconstruction_marginal_sparse(&graph, false, &partitions, |node, seq| {
       actual.insert(node.name.clone(), vec_to_string(seq));
     })?;
 
@@ -565,7 +559,7 @@ use crate::utils::string::vec_to_string;
     );
 
     // test overall likelihood
-    pretty_assert_ulps_eq!(-55.55428499726621, loglh, epsilon=1e-6);
+    pretty_assert_ulps_eq!(-55.55428499726621, log_lh, epsilon = 1e-6);
 
     Ok(())
   }

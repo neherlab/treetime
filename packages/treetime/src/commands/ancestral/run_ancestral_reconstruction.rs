@@ -1,15 +1,15 @@
 use crate::commands::ancestral::anc_args::{MethodAncestral, TreetimeAncestralArgs};
-use crate::commands::ancestral::anc_graph::{create_graph, infer_graph};
-use crate::commands::ancestral::anc_reconstruction_fitch::ancestral_reconstruction_fitch;
-use crate::commands::ancestral::anc_reconstruction_marginal::ancestral_reconstruction_marginal;
 use crate::gtr::get_gtr::get_gtr;
-use crate::io::fasta::{read_many_fasta, FastaRecord, FastaWriter};
+use crate::io::fasta::{read_many_fasta, FastaWriter};
 use crate::io::file::create_file_or_stdout;
 use crate::io::graphviz::graphviz_write_file;
 use crate::io::json::{json_write_file, JsonPretty};
 use crate::io::nex::{nex_write, NexWriteOptions};
-use crate::io::nwk::{nwk_write, NwkWriteOptions};
-use crate::seq::representation::compress_sequences;
+use crate::io::nwk::{nwk_read_file, nwk_write, NwkWriteOptions};
+use crate::port::ancestral_sparse::{ancestral_reconstruction_marginal_sparse, run_marginal_sparse};
+use crate::port::fitch::{ancestral_reconstruction_fitch, compress_sequences};
+use crate::port::seq_partitions::SeqPartition;
+use crate::port::seq_sparse::SparseGraph;
 use crate::utils::random::get_random_number_generator;
 use crate::utils::string::vec_to_string;
 use eyre::Report;
@@ -39,27 +39,28 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
     seed,
   } = ancestral_args;
 
-  let mut rng = get_random_number_generator(*seed);
+  let rng = get_random_number_generator(*seed);
 
-  let graph = match tree {
-    None => infer_graph()?,
-    Some(tree) => create_graph(tree)?,
+  let graph: SparseGraph = match tree {
+    None => {
+      unimplemented!("Not implemented: Graph inference is not yet implemented. Please provide the `--tree` argument.")
+    }
+    Some(tree) => nwk_read_file(tree)?,
   };
 
   graphviz_write_file(outdir.join("graph_input.dot"), &graph)?;
   json_write_file(outdir.join("graph_input.json"), &graph, JsonPretty(true))?;
 
   // TODO: avoid reading all sequences into memory somehow?
-  let fastas = read_many_fasta(input_fastas)?;
-  let seqs = fastas
-    .into_iter()
-    .map(|FastaRecord { seq_name, seq, .. }| (seq_name, seq))
-    .collect();
+  let aln = read_many_fasta(input_fastas)?;
+
+  let gtr = get_gtr(gtr, alphabet)?;
+  let partitions = vec![SeqPartition::new(gtr, aln)?];
+  compress_sequences(&graph, &partitions)?;
 
   // we might want to include a heuristic when to use the dense or sparse representation
   // generally, long branches in the tree --> dense, short branches --> sparse
   // for small datasets, it doesn't really matter, but for large ones the sparse is more memory efficient when branches are short
-  compress_sequences(&seqs, &graph, &mut rng)?;
 
   let fasta_file = create_file_or_stdout(outdir.join("ancestral_sequences.fasta"))?;
   let mut fasta_writer = FastaWriter::new(fasta_file);
@@ -87,8 +88,6 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
       unimplemented!("MethodAncestral::MaximumLikelihoodJoint")
     }
     MethodAncestral::MaximumLikelihoodMarginal => {
-      let gtr = get_gtr(gtr, alphabet)?;
-
       // Uncomment this for custom GTR
       //
       // let alphabet = Alphabet::new(AlphabetName::NucNogap)?;
@@ -100,17 +99,19 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
       //   pi: array![0.2, 0.3, 0.15, 0.45],
       // })?;
 
-      ancestral_reconstruction_marginal(&graph, &gtr, *reconstruct_tip_states, |node, seq| {
+      run_marginal_sparse(&graph, &partitions)?;
+
+      ancestral_reconstruction_marginal_sparse(&graph, *reconstruct_tip_states, &partitions, |node, seq| {
         let name = node.name.as_deref().unwrap_or("");
         // TODO: avoid converting vec to string, write vec chars directly
-        fasta_writer.write(name, &vec_to_string(seq.to_owned())).unwrap();
+        fasta_writer.write(name, &vec_to_string(seq)).unwrap();
       })?;
     }
     MethodAncestral::Parsimony => {
-      ancestral_reconstruction_fitch(&graph, *reconstruct_tip_states, |node, seq| {
+      ancestral_reconstruction_fitch(&graph, *reconstruct_tip_states, &partitions, |node, seq| {
         let name = node.name.as_deref().unwrap_or("");
         // TODO: avoid converting vec to string, write vec chars directly
-        fasta_writer.write(name, &vec_to_string(seq.to_owned())).unwrap();
+        fasta_writer.write(name, &vec_to_string(seq)).unwrap();
       })?;
     }
   }

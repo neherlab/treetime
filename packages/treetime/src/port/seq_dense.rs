@@ -12,7 +12,7 @@ use ndarray::Array2;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-pub type DenseGraph<'g> = Graph<DenseNode, DenseEdge, DenseMeta<'g>>;
+pub type DenseGraph = Graph<DenseNode, DenseEdge, ()>;
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct DenseNode {
@@ -107,9 +107,9 @@ pub struct DenseSeqEdge {
 }
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
-pub struct DenseMeta<'g> {
+pub struct DenseMeta {
   #[serde(skip)]
-  pub dense_partitions: Vec<SeqPartition<'g>>,
+  pub dense_partitions: Vec<SeqPartition>,
 }
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]

@@ -1,19 +1,24 @@
 use crate::gtr::gtr::GTR;
+use crate::io::fasta::FastaRecord;
+use crate::port::fitch::get_common_length;
 use crate::port::seq_sparse::VarPos;
 use crate::seq::range::RangeCollection;
+use eyre::Report;
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
 #[derive(Clone, Debug)]
-pub struct SeqPartition<'g> {
-  pub gtr: &'g GTR,
+pub struct SeqPartition {
+  pub gtr: GTR,
+  pub aln: Vec<FastaRecord>,
   pub length: usize,
 }
 
-impl<'g> SeqPartition<'g> {
-  pub fn new(gtr: &'g GTR, length: usize) -> Self {
-    SeqPartition { gtr, length }
+impl SeqPartition {
+  pub fn new(gtr: GTR, aln: Vec<FastaRecord>) -> Result<Self, Report> {
+    let length = get_common_length(&aln)?;
+    Ok(SeqPartition { gtr, aln, length })
   }
 
   pub fn profile(&self, c: char) -> &Array1<f64> {
