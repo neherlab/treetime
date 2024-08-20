@@ -2,11 +2,12 @@ import numpy as np
 
 
 def avg_transition(W, pi) -> np.float64:
-    return 0.0
+    return pi.dot(W.dot(pi))
 
 
 def distance(pi_old, pi) -> np.float64:
-    return sum([(x_i - y_i) ** 2 for x_i, y_i in zip(pi_old, pi)]) ** 0.5
+    #return sum([(x_i - y_i) ** 2 for x_i, y_i in zip(pi_old, pi)]) ** 0.5
+    return np.sum((pi_old-pi)**2)**0.5  # numpy version ;)
 
 
 def infer_gtr(
@@ -69,10 +70,9 @@ def infer_gtr(
     pi /= pi.sum()
     W_ij = np.ones_like(nij)
     mu = (nij.sum() + pc) / (Ti.sum() + pc)  # initial guess for the rate
-
     # if pi is fixed, this will immediately converge
     iteration_counter = 0
-    while distance(pi_old, pi) > dp and interaction_counter < Nit:
+    while distance(pi_old, pi) > dp and iteration_counter < Nit:
         iteration_counter += 1
         pi_old = np.copy(pi)
         W_ij = (
@@ -94,15 +94,17 @@ def infer_gtr(
         else:
             mu = (nij.sum() + pc) / (np.sum(pi * (W_ij.dot(pi))) * Ti.sum() + pc)
 
-    if count >= Nit:
+    if iteration_counter >= Nit:
         if distance(pi_old, pi) > dp:
-            gtr.logger("the iterative scheme has not converged", 3, warn=True)
+            print("the iterative scheme has not converged")
         elif np.abs(1 - np.max(pi.sum(axis=0))) > dp:
-            gtr.logger(
-                "the iterative scheme has converged, but proper normalization was not reached",
-                3,
-                warn=True,
-            )
+            print("the iterative scheme has converged, but proper normalization was not reached")
 
-    gtr.assign_rates(mu=mu, W=W_ij, pi=pi)
-    return gtr
+    return {"W": W_ij, "pi": pi, "mu": mu}
+
+
+if __name__ == "__main__":
+    nij = np.array([[0, 1, 2, 1], [1, 0, 3, 2], [2, 3, 0, 1], [2, 3, 3, 0]])
+    Ti = np.array([12.0, 20., 14.0, 12.4])
+    root_state = np.array([3, 2, 3, 4])
+    print(infer_gtr(nij, Ti, root_state, pc=0.1))
