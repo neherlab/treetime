@@ -251,6 +251,7 @@ pub fn write_one_fasta(
 mod tests {
   use super::*;
   use crate::o;
+  use indoc::indoc;
   use pretty_assertions::assert_eq;
   use std::io::Cursor;
 
@@ -500,5 +501,166 @@ mod tests {
         index: 2,
       }
     );
+  }
+
+  #[test]
+  fn test_fasta_reader_dedent_nuc() -> Result<(), Report> {
+    let actual = read_many_fasta_str(indoc! {r#"
+      >FluBuster-001
+      ACAGCCATGTATTG--
+      >CommonCold-AB
+      ACATCCCTGTA-TG--
+      >Ecoli/Joke/2024|XD
+      ACATCGCCNNA--GAC
+
+      >Sniffles-B
+      GCATCCCTGTA-NG--
+      >Strawberry Yogurt Culture|🍓
+      CCGGCCATGTATTG--
+      > SneezeC-19
+      CCGGCGATGTRTTG--
+        >MisindentedVirus D-skew
+        TCGGCCGTGTRTTG--
+    "#})?;
+
+    let expected = vec![
+      FastaRecord {
+        seq_name: o!("FluBuster-001"),
+        seq: o!("ACAGCCATGTATTG--"),
+        index: 0,
+      },
+      FastaRecord {
+        seq_name: o!("CommonCold-AB"),
+        seq: o!("ACATCCCTGTA-TG--"),
+        index: 1,
+      },
+      FastaRecord {
+        seq_name: o!("Ecoli/Joke/2024|XD"),
+        seq: o!("ACATCGCCNNA--GAC"),
+        index: 2,
+      },
+      FastaRecord {
+        seq_name: o!("Sniffles-B"),
+        seq: o!("GCATCCCTGTA-NG--"),
+        index: 3,
+      },
+      FastaRecord {
+        seq_name: o!("Strawberry Yogurt Culture|🍓"),
+        seq: o!("CCGGCCATGTATTG--"),
+        index: 4,
+      },
+      FastaRecord {
+        seq_name: o!("SneezeC-19"),
+        seq: o!("CCGGCGATGTRTTG--"),
+        index: 5,
+      },
+      FastaRecord {
+        seq_name: o!("MisindentedVirus D-skew"),
+        seq: o!("TCGGCCGTGTRTTG--"),
+        index: 6,
+      },
+    ];
+
+    assert_eq!(expected, actual);
+    Ok(())
+  }
+
+  #[test]
+  fn test_fasta_reader_dedent_aa() -> Result<(), Report> {
+    let actual = read_many_fasta_str(indoc! {r#"
+      >Prot/000|β-Napkinase
+      MXDXXXTQ-B--
+      >Enzyme/2024|Laughzyme Factor
+      AX*XB-TQVWR*
+
+      >😊-Gigglecatalyst
+      MKXTQWX-B**
+      >CellFunSignal
+      MQXQXXBQRW**
+      >Pathway/042|Doodlease
+      MXQ-*XTQWBQR
+    "#})?;
+
+    let expected = vec![
+      FastaRecord {
+        seq_name: o!("Prot/000|β-Napkinase"),
+        seq: o!("MXDXXXTQ-B--"),
+        index: 0,
+      },
+      FastaRecord {
+        seq_name: o!("Enzyme/2024|Laughzyme Factor"),
+        seq: o!("AX*XB-TQVWR*"),
+        index: 1,
+      },
+      FastaRecord {
+        seq_name: o!("😊-Gigglecatalyst"),
+        seq: o!("MKXTQWX-B**"),
+        index: 2,
+      },
+      FastaRecord {
+        seq_name: o!("CellFunSignal"),
+        seq: o!("MQXQXXBQRW**"),
+        index: 3,
+      },
+      FastaRecord {
+        seq_name: o!("Pathway/042|Doodlease"),
+        seq: o!("MXQ-*XTQWBQR"),
+        index: 4,
+      },
+    ];
+
+    assert_eq!(expected, actual);
+    Ok(())
+  }
+
+  #[test]
+  fn test_fasta_reader_multiline_and_skewed_indentation() -> Result<(), Report> {
+    let actual = read_many_fasta_str(indoc! {r#"
+      >MixedCaseSeq
+      aCaGcCAtGtAtTG--
+      >LowercaseSeq
+      acagccatgtattg--
+      >UppercaseSeq
+      ACAGCCATGTATTG--
+      >MultilineSeq
+      ACAGCC
+      ATGT
+      ATTG--
+      >SkewedIndentSeq
+        ACAGCC
+      ATGTATTG
+       ATTG--
+    "#})?;
+
+    let expected = vec![
+      FastaRecord {
+        seq_name: o!("MixedCaseSeq"),
+        seq: o!("ACAGCCATGTATTG--"),
+        index: 0,
+      },
+      FastaRecord {
+        seq_name: o!("LowercaseSeq"),
+        seq: o!("ACAGCCATGTATTG--"),
+        index: 1,
+      },
+      FastaRecord {
+        seq_name: o!("UppercaseSeq"),
+        seq: o!("ACAGCCATGTATTG--"),
+        index: 2,
+      },
+      FastaRecord {
+        seq_name: o!("MultilineSeq"),
+        seq: o!("ACAGCCATGTATTG--"),
+        index: 3,
+      },
+      FastaRecord {
+        seq_name: o!("SkewedIndentSeq"),
+        seq: o!("ACAGCCATGTATTGATTG--"),
+        index: 4,
+      },
+    ];
+
+    assert_eq!(expected, actual);
+    Ok(())
   }
 }
