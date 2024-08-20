@@ -12,6 +12,8 @@ use std::io::Write;
 use std::iter::zip;
 
 pub fn avg_transition(W: &Array2<f64>, pi: &Array1<f64> /*, gap_index: Option<usize> */) -> Result<f64, Report> {
+  // we don't need the special treatment of gaps anymore!
+  // instead of einsum_1d, we can do matrix multiplication
   let result = einsum_1d("i,ij,j", &[pi, W, pi])?;
 
   // FIXME: alphabet.gap_index() does not exist anymore
@@ -139,6 +141,8 @@ impl GTR {
     })
   }
 
+
+
   #[inline]
   pub const fn alphabet(&self) -> &Alphabet {
     &self.alphabet
@@ -234,7 +238,7 @@ impl GTR {
     }
   }
 
-  /// Matrix exponential of exo(Qt)
+  /// Matrix exponential of exp(Qt)
   pub fn expQt(&self, t: f64) -> Array2<f64> {
     let eLambdaT: Array2<f64> = Array2::from_diag(&self.exp_lt(t)); // vector length = a
 
