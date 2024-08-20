@@ -1,5 +1,4 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::utils::einsum::einsum_1d;
 use crate::utils::ndarray::{clamp_min, outer};
 use eyre::Report;
 use itertools::Itertools;
@@ -11,21 +10,8 @@ use std::fmt::Display;
 use std::io::Write;
 use std::iter::zip;
 
-pub fn avg_transition(W: &Array2<f64>, pi: &Array1<f64> /*, gap_index: Option<usize> */) -> Result<f64, Report> {
-  let result = einsum_1d("i,ij,j", &[pi, W, pi])?;
-
-  // FIXME: alphabet.gap_index() does not exist anymore
-  // Ok(if let Some(gap_index) = gap_index {
-  //   // np.sum(pi*W[:,gap_index]) *pi[gap_index])/(1-pi[gap_index]
-  //   let W_slice = W.slice(s!(.., gap_index));
-  //   let pi_mul_W_slice = pi * &W_slice;
-  //   let pi_mul_W_slice_sum = pi_mul_W_slice.sum();
-  //   (result - pi_mul_W_slice_sum * pi[gap_index]) / (1.0 - pi[gap_index])
-  // } else {
-  //   result
-  // })
-
-  Ok(result)
+pub fn avg_transition(W: &Array2<f64>, pi: &Array1<f64>) -> Result<f64, Report> {
+  Ok(pi.dot(W).dot(pi))
 }
 
 /// Performs eigendecomposition of the rate matrix and stores the left- and right-
@@ -119,7 +105,7 @@ impl GTR {
     };
 
     // FIXME: alphabet.gap_index() does not exist anymore
-    let average_rate = avg_transition(&W, &pi /*, alphabet.gap_index() */)?;
+    let average_rate = avg_transition(&W, &pi)?;
     let mu = mu * average_rate;
     let W = W / average_rate;
 
@@ -234,7 +220,7 @@ impl GTR {
     }
   }
 
-  /// Matrix exponential of exo(Qt)
+  /// Matrix exponential of exp(Qt)
   pub fn expQt(&self, t: f64) -> Array2<f64> {
     let eLambdaT: Array2<f64> = Array2::from_diag(&self.exp_lt(t)); // vector length = a
 
@@ -384,12 +370,8 @@ mod tests {
       [4.0 / 3.0, 0.0, 4.0 / 3.0],
       [4.0 / 3.0, 4.0 / 3.0, 0.0],
     ];
-    // test without gap index
-    assert_ulps_eq!(avg_transition(&Wi, &pi /*, None */)?, 8.0 / 9.0);
 
-    // FIXME: alphabet.gap_index() does not exist anymore
-    // // test with gap index - the index is wrong
-    // assert_ulps_eq!(avg_transition(&Wi, &pi /*, Some(1) */)?, 8.0 / 9.0);
+    assert_ulps_eq!(avg_transition(&Wi, &pi)?, 8.0 / 9.0);
 
     Ok(())
   }
@@ -408,7 +390,7 @@ mod tests {
 
     let pi = array![0.2, 0.2, 0.2, 0.2, 0.2];
 
-    assert_ulps_eq!(avg_transition(&W, &pi /*, ALPHABET.gap_index() */)?, 0.8000000000000005);
+    assert_ulps_eq!(avg_transition(&W, &pi)?, 0.8000000000000005);
 
     Ok(())
   }
@@ -451,7 +433,12 @@ mod tests {
 
     pretty_assert_ulps_eq!(
       gtr.eigvals,
-      array![-2.233008645590864, -1.855684299231632, -0.8688141373304785, 6.071532165918825e-17],
+      array![
+        -2.233008645590864,
+        -1.855684299231632,
+        -0.8688141373304785,
+        6.071532165918825e-17
+      ],
       epsilon = 1e-12
     );
 
@@ -589,7 +576,7 @@ mod tests {
     pretty_assert_ulps_eq!(gtr.mu, 0.75);
 
     let diag = Array2::from_diag(&gtr.eigvals);
-    let od: f64 = 1.0/3.0;
+    let od: f64 = 1.0 / 3.0;
     pretty_assert_ulps_eq!(
       gtr.v.dot(&diag).dot(&gtr.v_inv),
       array![
@@ -685,7 +672,8 @@ mod tests {
         [0.82444625, 0.05851792, 0.05851792, 0.05851792],
         [0.05851792, 0.82444625, 0.05851792, 0.05851792],
         [0.05851792, 0.05851792, 0.82444625, 0.05851792],
-        [0.05851792, 0.05851792, 0.05851792, 0.82444625]],
+        [0.05851792, 0.05851792, 0.05851792, 0.82444625]
+      ],
       epsilon = 1e-8
     );
 
