@@ -26,6 +26,9 @@ pub type SafeEdgeRefMut<E> = ArcRwLockWriteGuard<RawRwLock, Edge<E>>;
 pub type SafeNodePayloadRef<N> = ArcRwLockReadGuard<RawRwLock, N>;
 pub type SafeNodePayloadRefMut<N> = ArcRwLockWriteGuard<RawRwLock, N>;
 
+pub type SafeEdgePayloadRef<E> = ArcRwLockReadGuard<RawRwLock, E>;
+pub type SafeEdgePayloadRefMut<E> = ArcRwLockWriteGuard<RawRwLock, E>;
+
 pub type NodeEdgePair<N, E> = (Arc<RwLock<Node<N>>>, Arc<RwLock<Edge<E>>>);
 pub type NodeEdgePayloadPair<N, E> = (Arc<RwLock<N>>, Arc<RwLock<E>>);
 
@@ -42,6 +45,7 @@ where
   pub key: GraphNodeKey,
   pub payload: SafeNodePayloadRefMut<N>,
   pub parents: Vec<NodeEdgePayloadPair<N, E>>,
+  pub child_edges: Vec<SafeEdgePayloadRefMut<E>>,
   pub data: Arc<RwLock<D>>,
 }
 
@@ -64,6 +68,12 @@ where
       .map(|(node, edge)| (node.read().payload(), edge.read().payload()))
       .collect_vec();
 
+    let child_edges = graph
+      .children_of(node)
+      .iter()
+      .map(|(_, edge)| edge.write_arc().payload().write_arc())
+      .collect_vec();
+
     let data = Arc::clone(&graph.data);
 
     Self {
@@ -72,6 +82,7 @@ where
       key,
       payload,
       parents,
+      child_edges,
       data,
     }
   }
@@ -95,6 +106,7 @@ where
   pub key: GraphNodeKey,
   pub payload: SafeNodePayloadRefMut<N>,
   pub children: Vec<NodeEdgePayloadPair<N, E>>,
+  pub parent_edges: Vec<SafeEdgePayloadRefMut<E>>,
   pub data: Arc<RwLock<D>>,
 }
 
@@ -117,6 +129,12 @@ where
       .map(|(node, edge)| (node.read().payload(), edge.read().payload()))
       .collect_vec();
 
+    let parent_edges = graph
+      .parents_of(node)
+      .iter()
+      .map(|(_, edge)| edge.write_arc().payload().write_arc())
+      .collect_vec();
+
     let data = Arc::clone(&graph.data);
 
     Self {
@@ -125,8 +143,13 @@ where
       key,
       payload,
       children,
+      parent_edges,
       data,
     }
+  }
+
+  pub fn get_exactly_one_parent_edge(&self) -> Result<&SafeEdgePayloadRefMut<E>, Report> {
+    get_exactly_one(&self.parent_edges).wrap_err("Nodes with multiple parents are not yet supported")
   }
 }
 
