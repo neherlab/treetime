@@ -365,7 +365,7 @@ fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[SeqPartition]) {
             let indel = InDel {
               range: *r,
               seq: sequence[r.0..r.1].to_owned(),
-              deletion: true,
+              deletion: false,
             };
             composition.add_indel(&indel);
             edge.indels.push(indel);
@@ -388,7 +388,7 @@ fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[SeqPartition]) {
           let indel = InDel {
             range: r,
             seq: sequence[r.0..r.1].to_owned(),
-            deletion: true,
+            deletion: false,
           };
           composition.add_indel(&indel);
           edge.indels.push(indel);
