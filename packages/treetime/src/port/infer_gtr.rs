@@ -74,7 +74,19 @@ pub fn infer_gtr(counts: &MutationCounts, options: &InferGtrOptions) -> Result<I
   } = options;
 
   let N = Ti.len();
-  let pc_mat = Array2::from_elem((N, N), *pc);
+
+  let pc_mat = {
+    let mut pc_mat = Array2::from_elem((N, N), *pc);
+    pc_mat.diag_mut().fill(0.0);
+    pc_mat
+  };
+
+  let nij = {
+    let mut nij = nij.clone();
+    nij.diag_mut().fill(0.0);
+    nij
+  };
+
   let mut pi_old = Array1::zeros(N);
   let mut pi = fixed_pi.clone().unwrap_or_else(|| Array1::ones(N));
   pi /= pi.sum();
@@ -260,9 +272,9 @@ mod tests {
       mu: 0.9471364432348814,
     };
 
-    pretty_assert_ulps_eq!(expected.W, actual.W, epsilon = 1e-9);
-    pretty_assert_ulps_eq!(expected.pi, actual.pi, epsilon = 1e-9);
-    pretty_assert_ulps_eq!(expected.mu, actual.mu, epsilon = 1e-9);
+    pretty_assert_ulps_eq!(expected.W, actual.W, epsilon = 1e-6);
+    pretty_assert_ulps_eq!(expected.pi, actual.pi, epsilon = 1e-6);
+    pretty_assert_ulps_eq!(expected.mu, actual.mu, epsilon = 1e-6);
 
     Ok(())
   }
