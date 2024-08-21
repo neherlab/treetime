@@ -306,6 +306,50 @@ mod tests {
     Ok(())
   }
 
+  #[test]
+  fn test_outer_product_case_1() {
+    let pi = array![0.25, 0.25, 0.25, 0.25];
+    let ti = array![1.98000002, 2.94500003, 2.51500002, 2.64000002];
+    let expected_outer_pi_ti = array![
+      [0.49500001, 0.73625001, 0.62875, 0.66],
+      [0.49500001, 0.73625001, 0.62875, 0.66],
+      [0.49500001, 0.73625001, 0.62875, 0.66],
+      [0.49500001, 0.73625001, 0.62875, 0.66],
+    ];
+    let expected_outer_ti_pi = array![
+      [0.49500001, 0.49500001, 0.49500001, 0.49500001],
+      [0.73625001, 0.73625001, 0.73625001, 0.73625001],
+      [0.62875, 0.62875, 0.62875, 0.62875],
+      [0.66, 0.66, 0.66, 0.66],
+    ];
+    let result_outer_pi_ti = outer(&pi, &ti).unwrap();
+    let result_outer_ti_pi = outer(&ti, &pi).unwrap();
+    pretty_assert_ulps_eq!(expected_outer_pi_ti, result_outer_pi_ti, epsilon = 1e-6);
+    pretty_assert_ulps_eq!(expected_outer_ti_pi, result_outer_ti_pi, epsilon = 1e-6);
+  }
+
+  #[test]
+  fn test_outer_product_case_2() {
+    let pi = array![0.14873251, 0.24050277, 0.31232323, 0.29844148];
+    let ti = array![1.98000002, 2.94500003, 2.51500002, 2.64000002];
+    let expected_outer_pi_ti = array![
+      [0.29449037, 0.43801725, 0.37406227, 0.39265383],
+      [0.47619549, 0.70828067, 0.60486448, 0.63492732],
+      [0.61840001, 0.91979193, 0.78549293, 0.82453334],
+      [0.59091415, 0.87891018, 0.75058034, 0.78788553],
+    ];
+    let expected_outer_ti_pi = array![
+      [0.29449037, 0.47619549, 0.61840001, 0.59091415],
+      [0.43801725, 0.70828067, 0.91979193, 0.87891018],
+      [0.37406227, 0.60486448, 0.78549293, 0.75058034],
+      [0.39265383, 0.63492732, 0.82453334, 0.78788553],
+    ];
+    let result_outer_pi_ti = outer(&pi, &ti).unwrap();
+    let result_outer_ti_pi = outer(&ti, &pi).unwrap();
+    pretty_assert_ulps_eq!(expected_outer_pi_ti, result_outer_pi_ti, epsilon = 1e-6);
+    pretty_assert_ulps_eq!(expected_outer_ti_pi, result_outer_ti_pi, epsilon = 1e-6);
+  }
+
   #[rstest]
   fn computes_eigh() -> Result<(), Report> {
     // Comparison of Rust ndarray_linalg::eigh() and NumPy np.linalg.eigh()
