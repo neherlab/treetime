@@ -91,6 +91,7 @@ impl Composition {
 #[cfg(test)]
 mod tests {
   use super::*;
+  use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::port::mutation::Mut;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
@@ -109,6 +110,33 @@ mod tests {
     let comp = Composition::with_sequence("AAAGCTTACGGGGTCAAGTCC".chars(), "ACGT".chars());
     assert_eq!(
       &btreemap! { GAP_CHAR => 0, 'A' => 6, 'C' => 5, 'G' => 6, 'T' => 4},
+      comp.counts()
+    );
+  }
+
+  #[test]
+  fn test_composition_with_sequence_and_alphabet() {
+    let chars = Alphabet::new(AlphabetName::Nuc, false).unwrap().chars().collect_vec();
+    let comp = Composition::with_sequence("ACATCGCCNNA--GAC".chars(), chars);
+    assert_eq!(
+      &btreemap! {
+          '-' => 2,
+          'A' => 4,
+          'B' => 0,
+          'C' => 5,
+          'D' => 0,
+          'G' => 2,
+          'H' => 0,
+          'K' => 0,
+          'M' => 0,
+          'N' => 2,
+          'R' => 0,
+          'S' => 0,
+          'T' => 1,
+          'V' => 0,
+          'W' => 0,
+          'Y' => 0,
+      },
       comp.counts()
     );
   }

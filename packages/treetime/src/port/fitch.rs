@@ -534,18 +534,21 @@ pub fn get_common_length(aln: &[FastaRecord]) -> Result<usize, Report> {
 #[cfg(test)]
 mod tests {
   use super::*;
+  use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::gtr::get_gtr::{jc69, JC69Params};
+  use crate::gtr::gtr::{GTRParams, GTR};
   use crate::io::fasta::read_many_fasta_str;
   use crate::io::json::{json_write_str, JsonPretty};
   use crate::io::nwk::nwk_read_str;
   use crate::utils::string::vec_to_string;
   use eyre::Report;
   use indoc::indoc;
+  use ndarray::array;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
 
   #[test]
-  fn test_seq_ancestral_reconstruction2() -> Result<(), Report> {
+  fn test_fitch_ancestral_reconstruction() -> Result<(), Report> {
     rayon::ThreadPoolBuilder::new().num_threads(1).build_global()?;
 
     let inputs = read_many_fasta_str(indoc! {r#"
@@ -593,6 +596,317 @@ mod tests {
       json_write_str(&actual, JsonPretty(false))?
     );
 
+    Ok(())
+  }
+
+  #[test]
+  fn test_fitch_internals() -> Result<(), Report> {
+    rayon::ThreadPoolBuilder::new().num_threads(1).build_global()?;
+
+    let inputs = read_many_fasta_str(indoc! {r#"
+      >root
+      ACAGCCATGTATTG--
+      >AB
+      ACATCCCTGTA-TG--
+      >A
+      ACATCGCCNNA--GAC
+      >B
+      GCATCCCTGTA-NG--
+      >CD
+      CCGGCCATGTATTG--
+      >C
+      CCGGCGATGTRTTG--
+      >D
+      TCGGCCGTGTRTTG--
+    "#})?;
+
+    let graph: SparseGraph = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+
+    let gtr = GTR::new(GTRParams {
+      alphabet: Alphabet::new(AlphabetName::Nuc, false)?,
+      mu: 0.0,
+      W: None,
+      pi: array![0.2, 0.3, 0.15, 0.35],
+    })?;
+    let partitions = vec![SeqPartition::new(gtr, inputs.clone())?];
+
+    attach_seqs_to_graph(&graph, &partitions)?;
+    fitch_backwards(&graph, &partitions);
+
+    {
+      let seq_info = &graph
+        .get_exactly_one_root()?
+        .read_arc()
+        .payload()
+        .read_arc()
+        .sparse_partitions[0]
+        .seq;
+
+      assert_eq!(
+        vec![0, 2, 3, 5, 6],
+        seq_info.fitch.variable.keys().copied().collect_vec()
+      );
+
+      assert_eq!(&"~C~~C~~TGTATTGAC".chars().collect_vec(), &seq_info.sequence);
+    }
+
+    fitch_forward(&graph, &partitions);
+
+    {
+      let seq_info = &graph
+        .get_exactly_one_root()?
+        .read_arc()
+        .payload()
+        .read_arc()
+        .sparse_partitions[0]
+        .seq;
+
+      assert_eq!(&inputs[0].seq.chars().collect_vec(), &seq_info.sequence);
+
+      let actual_muts: BTreeMap<_, _> = graph
+        .get_edges()
+        .iter()
+        .map(|e| {
+          (
+            e.read_arc().key(),
+            e.read_arc().payload().read_arc().sparse_partitions[0]
+              .muts
+              .iter()
+              .map(ToString::to_string)
+              .collect_vec(),
+          )
+        })
+        .collect();
+
+      let expected_muts = btreemap! {
+        0 => vec!["C6G", "T8C"],
+        1 => vec!["A1G"],
+        2 => vec!["G4T", "A7C"],
+        3 => vec!["C6G"],
+        4 => vec!["C1T", "A7G"],
+        5 => vec!["A1C", "A3G"],
+      };
+
+      assert_eq!(
+        json_write_str(&expected_muts, JsonPretty(true))?,
+        json_write_str(&actual_muts, JsonPretty(true))?
+      );
+
+      let actual_indels: BTreeMap<_, _> = graph
+        .get_edges()
+        .iter()
+        .map(|e| {
+          (
+            e.read_arc().key(),
+            e.read_arc().payload().read_arc().sparse_partitions[0]
+              .indels
+              .iter()
+              .map(ToString::to_string)
+              .collect_vec(),
+          )
+        })
+        .collect();
+
+      let expected_indels = btreemap! {
+        0 => vec!["12--13: T -> -", "14--16: -- -> AC"],
+        1 => vec![],
+        2 => vec!["11--12: T -> -"],
+        3 => vec![],
+        4 => vec![],
+        5 => vec![],
+      };
+
+      assert_eq!(
+        json_write_str(&expected_indels, JsonPretty(true))?,
+        json_write_str(&actual_indels, JsonPretty(true))?
+      );
+    }
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_fitch_seq_info_1() -> Result<(), Report> {
+    let seq = "GCATCCCTGTA-NG--".chars().collect_vec();
+    let alphabet = Alphabet::new(AlphabetName::Nuc, false)?;
+    let actual = SparseSeqNode::new(&seq, &alphabet)?;
+
+    let expected = indoc! { /* language=json */ r#"{
+      "seq": {
+        "unknown": [
+          [
+            12,
+            13
+          ]
+        ],
+        "gaps": [
+          [
+            11,
+            12
+          ],
+          [
+            14,
+            16
+          ]
+        ],
+        "non_char": [
+          [
+            11,
+            13
+          ],
+          [
+            14,
+            16
+          ]
+        ],
+        "composition": {
+          "counts": {}
+        },
+        "sequence": [
+          "G",
+          "C",
+          "A",
+          "T",
+          "C",
+          "C",
+          "C",
+          "T",
+          "G",
+          "T",
+          "A",
+          "-",
+          "N",
+          "G",
+          "-",
+          "-"
+        ],
+        "fitch": {
+          "variable": {},
+          "variable_indel": {},
+          "fixed": {},
+          "fixed_counts": {
+            "counts": {}
+          },
+          "log_lh": 0.0
+        }
+      },
+      "profile": {
+        "variable": {},
+        "variable_indel": {},
+        "fixed": {},
+        "fixed_counts": {
+          "counts": {}
+        },
+        "log_lh": 0.0
+      },
+      "msg_to_parents": {
+        "variable": {},
+        "variable_indel": {},
+        "fixed": {},
+        "fixed_counts": {
+          "counts": {}
+        },
+        "log_lh": 0.0
+      },
+      "msgs_to_children": {},
+      "msgs_from_children": {}
+    }"#};
+
+    assert_eq!(expected, json_write_str(&actual, JsonPretty(true))?);
+    Ok(())
+  }
+
+  #[test]
+  fn test_fitch_seq_info_2() -> Result<(), Report> {
+    let seq = "TCGGCCGTGTRTTG--".chars().collect_vec();
+    let alphabet = Alphabet::new(AlphabetName::Nuc, false)?;
+    let actual = SparseSeqNode::new(&seq, &alphabet)?;
+
+    let expected = indoc! { /* language=json */ r#"{
+      "seq": {
+        "unknown": [],
+        "gaps": [
+          [
+            14,
+            16
+          ]
+        ],
+        "non_char": [
+          [
+            14,
+            16
+          ]
+        ],
+        "composition": {
+          "counts": {}
+        },
+        "sequence": [
+          "T",
+          "C",
+          "G",
+          "G",
+          "C",
+          "C",
+          "G",
+          "T",
+          "G",
+          "T",
+          "R",
+          "T",
+          "T",
+          "G",
+          "-",
+          "-"
+        ],
+        "fitch": {
+          "variable": {
+            "10": {
+              "dis": {
+                "v": 1,
+                "dim": [
+                  4
+                ],
+                "data": [
+                  1.0,
+                  0.0,
+                  1.0,
+                  0.0
+                ]
+              },
+              "state": null
+            }
+          },
+          "variable_indel": {},
+          "fixed": {},
+          "fixed_counts": {
+            "counts": {}
+          },
+          "log_lh": 0.0
+        }
+      },
+      "profile": {
+        "variable": {},
+        "variable_indel": {},
+        "fixed": {},
+        "fixed_counts": {
+          "counts": {}
+        },
+        "log_lh": 0.0
+      },
+      "msg_to_parents": {
+        "variable": {},
+        "variable_indel": {},
+        "fixed": {},
+        "fixed_counts": {
+          "counts": {}
+        },
+        "log_lh": 0.0
+      },
+      "msgs_to_children": {},
+      "msgs_from_children": {}
+    }"#};
+
+    assert_eq!(expected, json_write_str(&actual, JsonPretty(true))?);
     Ok(())
   }
 }

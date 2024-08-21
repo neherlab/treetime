@@ -55,7 +55,7 @@ pub fn parse_pos(s: &str) -> Result<usize, Report> {
 
 impl fmt::Display for Mut {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-    write!(f, "'{}{}{}'", self.reff, self.pos + 1, self.qry)
+    write!(f, "{}{}{}", self.reff, self.pos + 1, self.qry)
   }
 }
 
@@ -71,7 +71,7 @@ impl fmt::Display for InDel {
     let delta_str = if self.deletion {
       format!("{} -> {}", String::from_iter(&self.seq), "-".repeat(self.seq.len()))
     } else {
-      format!("{} -> {}", "-".repeat(self.seq.len()), String::from_iter(&self.seq),)
+      format!("{} -> {}", "-".repeat(self.seq.len()), String::from_iter(&self.seq))
     };
     write!(f, "{}--{}: {}", self.range.0, self.range.1, delta_str)
   }
