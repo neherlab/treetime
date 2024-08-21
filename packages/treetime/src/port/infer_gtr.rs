@@ -202,13 +202,30 @@ mod tests {
       },
     )?;
 
+    #[rustfmt::skip]
     pretty_assert_ulps_eq!(
-      array![0.20908015, 0.24528811, 0.20925859, 0.33637315],
-      &actual.pi,
-      epsilon = 1e-3
+      array![
+        [ 0.0000000000000000,  0.7358152606066288,  1.8250024541741396,  1.1480276310375928],
+        [ 0.7358152606066288,  0.0000000000000000,  1.9426167902218199,  1.2779572118106166],
+        [ 1.8250024541741396,  1.9426167902218199,  0.0000000000000000,  1.3712594037821175],
+        [ 1.1480276310375928,  1.2779572118106166,  1.3712594037821175,  0.0000000000000000],
+      ],
+      &actual.W,
+      epsilon = 1e-9
     );
 
-    pretty_assert_ulps_eq!(0.4004706866848001, actual.mu, epsilon = 1e-3);
+    pretty_assert_ulps_eq!(
+      array![
+        0.209080146491563,
+        0.245288114914305,
+        0.209258588641852,
+        0.336373149952278,
+      ],
+      &actual.pi,
+      epsilon = 1e-9
+    );
+
+    pretty_assert_ulps_eq!(0.4004706866848004, actual.mu, epsilon = 1e-9);
 
     pretty_assert_ulps_eq!(1.0, avg_transition(&actual.W, &actual.pi)?, epsilon = 1e-5);
 
@@ -272,9 +289,9 @@ mod tests {
       mu: 0.9471364432348814,
     };
 
-    pretty_assert_ulps_eq!(expected.W, actual.W, epsilon = 1e-6);
-    pretty_assert_ulps_eq!(expected.pi, actual.pi, epsilon = 1e-6);
-    pretty_assert_ulps_eq!(expected.mu, actual.mu, epsilon = 1e-6);
+    pretty_assert_ulps_eq!(expected.W, actual.W, epsilon = 1e-7);
+    pretty_assert_ulps_eq!(expected.pi, actual.pi, epsilon = 1e-7);
+    pretty_assert_ulps_eq!(expected.mu, actual.mu, epsilon = 1e-7);
 
     Ok(())
   }
