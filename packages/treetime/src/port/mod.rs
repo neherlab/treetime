@@ -6,6 +6,7 @@ pub mod composition;
 pub mod constants;
 pub mod div;
 pub mod fitch;
+pub mod infer_gtr;
 pub mod mutation;
 pub mod seq_dense;
 pub mod seq_partitions;

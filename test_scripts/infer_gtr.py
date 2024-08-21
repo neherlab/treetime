@@ -160,4 +160,8 @@ if __name__=="__main__":
 
     nij, Ti, root_state = get_mutation_counts(G)
 
+    print(f"{nij=}")
+    print(f"{Ti=}")
+    print(f"{root_state=}")
+
     print(infer_gtr(nij, Ti, root_state, pc=0.1))
