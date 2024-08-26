@@ -8,6 +8,7 @@ pub mod div;
 pub mod fitch;
 pub mod infer_gtr;
 pub mod mutation;
+pub mod rtt;
 pub mod seq_dense;
 pub mod seq_partitions;
 pub mod seq_sparse;

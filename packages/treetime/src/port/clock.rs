@@ -22,6 +22,8 @@ pub type ClockGraph = Graph<ClockNodePayload, ClockEdgePayload, ()>;
 pub struct ClockNodePayload {
   pub name: Option<String>,
   pub date: Option<f64>,
+  pub div: f64,
+  pub is_outlier: bool,
   pub total: ClockSet,
   pub to_parent: ClockSet,
   pub to_children: BTreeMap<String, ClockSet>,
@@ -149,6 +151,9 @@ fn clock_regression_forward(graph: &ClockGraph, options: &ClockOptions) {
     let q = &n.payload.to_parent;
     let mut q_tot = q.clone();
 
+    n.payload.div = 0.0;
+    n.payload.is_outlier = false; // TODO: calculate this
+
     if !n.is_root {
       let (p, e) = &n.get_exactly_one_parent().unwrap();
       let p = p.read_arc();
@@ -164,14 +169,9 @@ fn clock_regression_forward(graph: &ClockGraph, options: &ClockOptions) {
       let branch_length = e.weight().expect("Encountered an edge without a weight");
       let branch_variance = options.variance_factor * branch_length + options.variance_offset;
       q_tot += p.to_children[&name].propagate_averages(branch_length, branch_variance);
-    }
 
-    // n.payload.to_children.clear();
-    // for (c, q) in &n.payload.from_children {
-    //   let mut q_to_children = q_tot.clone();
-    //   q_to_children -= q;
-    //   n.payload.to_children.insert(c.clone(), q_to_children);
-    // }
+      n.payload.div = n.payload.div + branch_length;
+    }
 
     n.payload.to_children = n
       .payload
@@ -224,6 +224,8 @@ fn create_new_root_node(graph: &mut ClockGraph, edge_key: GraphEdgeKey, split: f
   let new_root_key = graph.add_node(ClockNodePayload {
     name: Some("new_root".to_owned()),
     date: None,
+    div: 0.0,
+    is_outlier: false,
     total: ClockSet::default(),
     to_parent: ClockSet::default(),
     to_children: btreemap! {},
@@ -258,12 +260,7 @@ fn create_new_root_node(graph: &mut ClockGraph, edge_key: GraphEdgeKey, split: f
 
 /// Modify graph topology to make the newly identified root the actual root.
 fn apply_reroot(graph: &mut ClockGraph, old_root_key: GraphNodeKey, new_root_key: GraphNodeKey) -> Result<(), Report> {
-  // let old_root = graph.get_node(old_root_key).expect("Old root node not found");
-  // let new_root = graph.get_node(new_root_key).expect("New root node not found");
-
   // Find paths from the old root to the new desired root
-  // let paths = find_paths(graph, &old_root, &new_root)?;
-  println!("graph.path_from_node_to_node(new_root_key, old_root_key)?;");
   let paths = graph.path_from_node_to_node(new_root_key, old_root_key)?;
 
   // Invert every edge on the path from old to new root.

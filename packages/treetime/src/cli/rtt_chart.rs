@@ -1,69 +1,95 @@
-use crate::commands::clock::graph_regression::BaseRegressionResult;
-use crate::commands::clock::run_clock_model::{ClockModel, RootToTipResult};
+use crate::o;
+use crate::port::clock_set::ClockModel;
+use crate::port::rtt::ClockRegressionResult;
+use comfy_table::modifiers::{UTF8_ROUND_CORNERS, UTF8_SOLID_INNER_BORDERS};
+use comfy_table::presets::UTF8_FULL;
+use comfy_table::{ContentArrangement, Table};
+use crossterm::terminal;
 use eyre::Report;
 use itertools::Itertools;
-use log::{info, warn};
 use num_traits::clamp;
-use plotters::{
-  backend::SVGBackend,
-  chart::{ChartBuilder, SeriesLabelPosition},
-  drawing::IntoDrawingArea,
-  element::{Circle, EmptyElement, PathElement},
-  series::{LineSeries, PointSeries},
-  style::{Color, IntoFont, RGBColor, ShapeStyle, BLACK, WHITE},
-};
+use plotters::coord::Shift;
+use plotters::prelude::*;
 use rgb::RGB8;
 use std::path::Path;
 use textplots::{Chart, ColorPlot, Shape};
 
-pub fn write_rtt_svg_chart(
-  filename: impl AsRef<Path>,
-  rtt: &[RootToTipResult],
+#[cfg(feature = "png")]
+use crate::io::file::create_file_or_stdout;
+#[cfg(feature = "png")]
+use image::{codecs::png::PngEncoder, ColorType, DynamicImage, ImageBuffer, ImageEncoder, Rgb};
+
+pub fn write_clock_regression_chart_svg(
+  results: &[ClockRegressionResult],
   clock_model: &ClockModel,
+  filepath: impl AsRef<Path>,
 ) -> Result<(), Report> {
-  let ClockModel {
-    regression: BaseRegressionResult {
-      slope,
-      intercept,
-      chisq,
-      hessian,
-      cov,
-    },
-    r_val,
-  } = clock_model;
+  let svg = SVGBackend::new(filepath.as_ref(), (640, 480)).into_drawing_area();
+  draw_chart(results, clock_model, &svg)?;
+  svg.present()?;
+  Ok(())
+}
 
-  let rtt_points = rtt
-    .iter()
-    .map(|result| (result.date as f32, result.clock_deviation as f32))
-    .collect_vec();
+#[cfg(feature = "png")]
+pub fn write_clock_regression_chart_png(
+  results: &[ClockRegressionResult],
+  clock_model: &ClockModel,
+  filepath: impl AsRef<Path>,
+) -> Result<(), Report> {
+  let img = write_clock_regression_chart_bitmap(results, clock_model)?;
+  let mut f = &mut create_file_or_stdout(filepath)?;
+  let encoder = PngEncoder::new(&mut f);
+  encoder.write_image(img.as_bytes(), img.width(), img.height(), ColorType::Rgb8)?;
+  Ok(())
+}
 
-  let (x_min, x_max) = match rtt_points.iter().minmax_by_key(|x| x.0).into_option() {
-    None => {
-      warn!("When drawing root-to-tip chart: unable to find minimum and maximum of x axis");
-      return Ok(());
-    }
-    Some(((x_min, _), (x_max, _))) => (x_min * 0.999, x_max * 1.001),
-  };
+#[cfg(not(feature = "png"))]
+pub fn write_clock_regression_chart_png(
+  _results: &[ClockRegressionResult],
+  _clock_model: &ClockModel,
+  _filepath: impl AsRef<Path>,
+) -> Result<(), Report> {
+  Ok(())
+}
 
-  let (y_min, y_max) = match rtt_points.iter().minmax_by_key(|x| x.1).into_option() {
-    None => {
-      warn!("When drawing root-to-tip chart: unable to find minimum and maximum of y axis");
-      return Ok(());
-    }
-    Some(((_, y_min), (_, y_max))) => (y_min * 0.999, y_max * 1.001),
-  };
+#[cfg(feature = "png")]
+pub fn write_clock_regression_chart_bitmap(
+  results: &[ClockRegressionResult],
+  clock_model: &ClockModel,
+) -> Result<DynamicImage, Report> {
+  let (width, height) = (640, 480);
+  let mut img: ImageBuffer<Rgb<u8>, Vec<u8>> = ImageBuffer::new(width, height);
+  {
+    let bitmap = BitMapBackend::with_buffer(img.as_flat_samples_mut().samples, (width, height)).into_drawing_area();
+    draw_chart(results, clock_model, &bitmap)?;
+    bitmap.present()?;
+  }
+  Ok(DynamicImage::ImageRgb8(img))
+}
 
-  let f = |t| *slope as f32 * t + *intercept as f32;
-  let rtt_line = [(x_min, f(x_min)), (x_max, f(x_max))];
+fn draw_chart<'a, DB>(
+  results: &[ClockRegressionResult],
+  clock_model: &ClockModel,
+  drawing_area: &'a DrawingArea<DB, Shift>,
+) -> Result<(), Report>
+where
+  DB: DrawingBackend + 'a,
+  <DB as DrawingBackend>::ErrorType: 'static,
+{
+  let PointsResult {
+    points,
+    line,
+    x_min,
+    x_max,
+    y_min,
+    y_max,
+  } = gather_points(results, clock_model)?;
 
-  let root = {
-    let root = SVGBackend::new(filename.as_ref(), (640, 480)).into_drawing_area();
-    root.fill(&WHITE)?;
-    root.margin(10, 10, 10, 10)
-  };
+  drawing_area.fill(&WHITE)?;
+  drawing_area.margin(10, 10, 10, 10);
 
-  let mut chart = ChartBuilder::on(&root)
-    .caption("Root-to-tip regression", ("sans-serif", 20).into_font())
+  let mut chart = ChartBuilder::on(drawing_area)
+    .caption("Clock regression", ("sans-serif", 20).into_font())
     .x_label_area_size(30)
     .y_label_area_size(60)
     .margin(5)
@@ -72,25 +98,22 @@ pub fn write_rtt_svg_chart(
   chart
     .configure_mesh()
     .x_desc("Date")
-    .y_desc("Root-to-tip distance")
+    .y_desc("Div")
     .axis_desc_style(("sans-serif", 12))
     .draw()?;
 
   let line_color = RGBColor(8, 140, 232);
   chart
-    .draw_series(LineSeries::new(rtt_line, &line_color))?
-    .label(format!(
-      "Root-to-tip regression: {}",
-      rtt_equation_str(*slope, *intercept)
-    ))
+    .draw_series(LineSeries::new(line, &line_color))?
+    .label(format!("Clock regression: {}", clock_model.equation_str()))
     .legend(move |(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], line_color));
 
   let point_color = RGBColor(255, 105, 97);
   chart
-    .draw_series(PointSeries::of_element(rtt_points, 2, &point_color, &|c, s, st| {
+    .draw_series(PointSeries::of_element(points, 2, &point_color, &|c, s, st| {
       EmptyElement::at(c) + Circle::new((0, 0), s, st.filled())
     }))?
-    .label("Actual points")
+    .label("Samples")
     .legend(move |(x, y)| {
       Circle::new(
         (x + 10, y),
@@ -110,67 +133,90 @@ pub fn write_rtt_svg_chart(
     .position(SeriesLabelPosition::UpperRight)
     .draw()?;
 
-  root.present()?;
+  Ok(())
+}
+
+pub fn print_clock_regression_chart(results: &[ClockRegressionResult], clock_model: &ClockModel) -> Result<(), Report> {
+  let mut table = Table::new();
+  table
+    .load_preset(UTF8_FULL)
+    .apply_modifier(UTF8_ROUND_CORNERS)
+    .apply_modifier(UTF8_SOLID_INNER_BORDERS)
+    .set_content_arrangement(ContentArrangement::Dynamic);
+
+  table.add_row([o!("Clock regression"), clock_model.equation_str()]);
+  table.add_row([o!("tMRCA"), format!("{:.1}", clock_model.t_mrca())]);
+  table.add_row([o!("Rate"), format!("{:.4}", clock_model.clock_rate())]);
+  table.add_row([o!("Intercept"), format!("{:.4}", clock_model.intercept())]);
+  table.add_row([o!("R"), format!("{:.4}", clock_model.r_val())]);
+  table.add_row([o!("R²"), format!("{:.4}", clock_model.r_val().powf(2.0))]);
+  table.add_row([o!("χ²"), format!("{:.4}", clock_model.chisq())]);
+  println!("{table}");
+
+  let (width, height) = terminal::size()?;
+  let width = clamp(width, 0, 1024) as u32;
+  let height = clamp(height, 0, 1024) as u32;
+
+  let PointsResult {
+    points,
+    x_min,
+    x_max,
+    y_min,
+    y_max,
+    ..
+  } = gather_points(results, clock_model)?;
+
+  let points = Shape::Points(&points);
+
+  let line = Box::new(|date: f32| clock_model.div(date as f64) as f32);
+  let line = Shape::Continuous(line);
+
+  let mut chart = Chart::new_with_y_range(width, height, x_min, x_max, y_min, y_max);
+  let chart = chart.linecolorplot(&line, RGB8 { r: 8, g: 140, b: 232 });
+  let chart = chart.linecolorplot(&points, RGB8 { r: 255, g: 105, b: 97 });
+
+  chart.nice();
 
   Ok(())
 }
 
-pub fn draw_rtt_console_chart(rtt: &[RootToTipResult], clock_model: &ClockModel) {
-  let ClockModel {
-    regression: BaseRegressionResult {
-      slope,
-      intercept,
-      chisq,
-      hessian,
-      cov,
-    },
-    r_val,
-  } = clock_model;
-
-  let rtt_points = rtt
-    .iter()
-    .map(|result| (result.date as f32, result.clock_deviation as f32))
-    .collect_vec();
-
-  let (x_min, x_max) = match rtt_points.iter().minmax_by_key(|x| x.0).into_option() {
-    None => {
-      warn!("When drawing root-to-tip chart: unable to find minimum and maximum of time axis");
-      return;
-    }
-    Some(((x_min, _), (x_max, _))) => (x_min * 0.999, x_max * 1.001),
-  };
-
-  let rtt_line = Box::new(|x| *slope as f32 * x + *intercept as f32);
-
-  info!("Root to tip regression:");
-  info!("  {}", rtt_equation_str(*slope, *intercept));
-  info!("Root date: {:.1}", -intercept / slope);
-  info!("Rate:      {:.4}", slope);
-  info!("R²:        {:.4}", r_val.powf(2.0));
-
-  let (width, height) = match crossterm::terminal::size() {
-    Ok((width, height)) => {
-      let width = clamp(width, 32, 1024) as u32;
-      let height = clamp(height, 32, 1024) as u32;
-      (width, height)
-    }
-    Err(err) => {
-      warn!("When drawing root-to-tip chart: unable to find terminal dimensions: {err}");
-      return;
-    }
-  };
-
-  Chart::new(width, height, x_min, x_max)
-    .linecolorplot(&Shape::Points(&rtt_points), RGB8 { r: 255, g: 105, b: 97 })
-    .linecolorplot(&Shape::Continuous(rtt_line), RGB8 { r: 8, g: 140, b: 232 })
-    .display();
+struct PointsResult {
+  points: Vec<(f32, f32)>,
+  line: [(f32, f32); 2],
+  x_min: f32,
+  x_max: f32,
+  y_min: f32,
+  y_max: f32,
 }
 
-fn rtt_equation_str(slope: f64, intercept: f64) -> String {
-  format!(
-    "distance(t) = {:.4}t {:} {:.4}",
-    slope,
-    if intercept < 0.0 { "-" } else { "+" },
-    intercept.abs()
-  )
+fn gather_points(results: &[ClockRegressionResult], clock_model: &ClockModel) -> Result<PointsResult, Report> {
+  assert!(!results.is_empty());
+
+  let points = results
+    .iter()
+    .filter_map(|result| result.date.map(|date| (date as f32, result.div as f32)))
+    .collect_vec();
+
+  let (x_min, x_max) = points.iter().map(|(x, _)| *x).minmax().into_option().unwrap();
+
+  let line_y1 = clock_model.div(x_min as f64) as f32;
+  let line_y2 = clock_model.div(x_max as f64) as f32;
+  let line = [(x_min, line_y1), (x_max, line_y2)];
+
+  let (y_min, y_max) = points
+    .iter()
+    .map(|(_, y)| *y)
+    .chain([line_y1, line_y2])
+    .minmax()
+    .into_option()
+    .unwrap();
+
+  Ok(PointsResult {
+    points,
+    line,
+    x_min,
+    x_max,
+    y_min,
+    y_max,
+  })
 }

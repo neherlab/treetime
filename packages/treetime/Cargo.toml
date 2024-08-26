@@ -31,6 +31,7 @@ clap-verbosity-flag = { workspace = true }
 clap_complete = { workspace = true }
 clap_complete_fig = { workspace = true }
 color-eyre = { workspace = true }
+comfy-table = { workspace = true }
 csv = { workspace = true }
 ctor = { workspace = true }
 derive_more = { workspace = true }
@@ -39,6 +40,7 @@ eyre = { workspace = true }
 flate2 = { workspace = true }
 gcollections = { workspace = true }
 getset = { workspace = true }
+image = { workspace = true, optional = true }
 indexmap = { workspace = true }
 indoc = { workspace = true }
 intervallum = { workspace = true }
@@ -73,6 +75,9 @@ strum = { workspace = true }
 strum_macros = { workspace = true }
 time = { workspace = true }
 traversal = { workspace = true }
+
+[features]
+"png" = ["image", "plotters/bitmap_backend", "plotters/ttf"]
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 atty = { workspace = true }

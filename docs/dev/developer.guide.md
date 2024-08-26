@@ -18,6 +18,9 @@ Treetime is written in Rust. The usual `rustup` & `cargo` workflow can be used:
 sudo apt-get update
 sudo apt-get install --yes bash clang curl gcc gfortran git make pkg-config libssl-dev protobuf-compiler
 
+# (optional) if you want to enable png image output ("png" cargo feature, see below), then add
+sudo apt-get install --yes libfontconfig1-dev
+
 # Install Rustup, the Rust version manager (https://www.rust-lang.org/tools/install)
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y
 
@@ -75,6 +78,8 @@ cargo run --release --bin=treetime
 cargo run --release --bin=treetime
 ./target/release/treetime
 
+# (optional) To allow png image output, then enable "png" cargo feature
+cargo run --bin=treetime --feature=png
 ```
 
 Note, on first build of a particular project, `cargo` will search for one of the possible toolchain config files and

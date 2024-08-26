@@ -17,19 +17,39 @@ pub struct ClockModel {
   #[getset(get_copy = "pub")]
   chisq: f64,
 
+  #[getset(get_copy = "pub")]
+  r_val: f64,
+
   #[getset(get = "pub")]
   hessian: Array2<f64>,
 }
 
 impl ClockModel {
-  #[inline]
-  pub fn numdate_from_dist_to_root(&self, dist_to_root: f64) -> f64 {
-    (dist_to_root - self.intercept) / self.clock_rate()
+  pub fn date(&self, div: f64) -> f64 {
+    (div - self.intercept()) / self.clock_rate()
   }
 
-  #[inline]
-  pub fn clock_deviation(&self, numdate: f64, dist2root: f64) -> f64 {
-    (self.numdate_from_dist_to_root(dist2root) - numdate) * self.clock_rate()
+  pub fn div(&self, date: f64) -> f64 {
+    date * self.clock_rate() + self.intercept()
+  }
+
+  pub fn clock_deviation(&self, date: f64, div: f64) -> f64 {
+    self.div(date) - div
+  }
+
+  /// Time of root (most recent common ancestor)
+  pub fn t_mrca(&self) -> f64 {
+    self.date(0.0)
+  }
+
+  /// String showing line equation (for display)
+  pub fn equation_str(&self) -> String {
+    format!(
+      "div = {:.4}t {:} {:.4}",
+      self.clock_rate(),
+      if self.intercept() < 0.0 { "-" } else { "+" },
+      self.intercept().abs()
+    )
   }
 }
 
@@ -101,12 +121,14 @@ impl ClockSet {
     let clock_rate = self.clock_rate(det);
     let intercept = self.intercept(clock_rate);
     let hessian = self.hessian();
+    let r_val = 0.0; // TODO
     let chisq = self.chisq(det);
 
     Ok(ClockModel {
       clock_rate,
       intercept,
       chisq,
+      r_val,
       hessian,
     })
   }
@@ -120,6 +142,7 @@ impl ClockSet {
       intercept,
       hessian,
       chisq: 0.0,
+      r_val: 0.0,
     }
   }
 

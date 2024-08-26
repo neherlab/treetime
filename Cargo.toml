@@ -46,6 +46,7 @@ clap-verbosity-flag = "=1.0.1"
 clap_complete = "=3.2.3"
 clap_complete_fig = "=3.2.4"
 color-eyre = "=0.6.2"
+comfy-table = "=7.1.1"
 criterion = { version = "=0.5.1", features = ["html_reports"] }
 crossterm = "=0.27.0"
 csv = "=1.1.6"
@@ -56,6 +57,7 @@ eyre = "=0.6.8"
 flate2 = "=1.0.28"
 gcollections = "=1.5.0"
 getset = "=0.1.2"
+image = { version = "=0.24.9", features = ["png"] }
 indexmap = { version = "=1.9.1", features = ["serde-1"] }
 indoc = "=2.0.5"
 intervallum = "=1.4.1"
@@ -77,7 +79,7 @@ openblas-src = { version = "=0.10.9", features = ["static"] }
 ordered-float = { version = "=3.1.0", default-features = false }
 parking_lot = { version = "=0.12.1", features = ["arc_lock", "serde", "deadlock_detection", "hardware-lock-elision"] }
 petgraph = { version = "=0.6.4", features = ["serde"] }
-plotters = { version = "=0.3.4", default_features = false, features = ["all_series", "all_elements", "svg_backend"] }
+plotters = { version = "=0.3.5", default-features = false, features = ["all_series", "all_elements", "svg_backend"] }
 pretty_assertions = "=1.4.0"
 pretty_dtoa = "=0.3.0"
 prost = { version = "=0.13.1", features = ["no-recursion-limit"] }
@@ -102,7 +104,7 @@ smart-default = "=0.6.0"
 statrs = "=0.16.0"
 strum = "=0.24.1"
 strum_macros = "=0.24.3"
-textplots = "=0.8.0"
+textplots = "=0.8.6"
 time = { version = "=0.3.13", features = ["serde", "macros", "parsing"] }
 traversal = "=0.1.2"
 typify = { version = "=0.1.0", features = ["macro"] }

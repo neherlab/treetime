@@ -31,6 +31,7 @@ RUN set -euxo pipefail >/dev/null \
   ca-certificates \
   cmake \
   curl \
+  fontconfig-devel \
   gcc \
   gcc-c++ \
   gdb \
@@ -75,6 +76,7 @@ RUN set -euxo pipefail >/dev/null \
   gfortran \
   git \
   gnupg \
+  libfontconfig1-dev \
   libssl-dev \
   lsb-release \
   parallel \
