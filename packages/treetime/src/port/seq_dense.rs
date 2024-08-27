@@ -2,9 +2,10 @@ use crate::alphabet::alphabet::Alphabet;
 use crate::graph::edge::{GraphEdge, Weighted};
 use crate::graph::graph::Graph;
 use crate::graph::node::{GraphNode, Named};
-use crate::io::nwk::{EdgeFromNwk, NodeFromNwk};
+use crate::io::graphviz::{EdgeToGraphViz, NodeToGraphviz};
+use crate::io::nwk::{format_weight, EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteOptions};
+use crate::o;
 use crate::port::mutation::InDel;
-use crate::port::seq_partitions::SeqPartition;
 use crate::seq::find_char_ranges::find_letter_ranges;
 use eyre::Report;
 use maplit::btreemap;
@@ -29,6 +30,17 @@ impl NodeFromNwk for DenseNode {
   }
 }
 
+impl NodeToNwk for DenseNode {
+  fn nwk_name(&self) -> Option<impl AsRef<str>> {
+    self.name.as_deref()
+  }
+
+  fn nwk_comments(&self) -> BTreeMap<String, String> {
+    let mutations: String = "".to_owned(); // TODO: fill mutations
+    BTreeMap::from([(o!("mutations"), mutations)])
+  }
+}
+
 impl GraphNode for DenseNode {}
 
 impl Named for DenseNode {
@@ -38,6 +50,12 @@ impl Named for DenseNode {
 
   fn set_name(&mut self, name: Option<impl AsRef<str>>) {
     self.name = name.map(|n| n.as_ref().to_owned());
+  }
+}
+
+impl NodeToGraphviz for DenseNode {
+  fn to_graphviz_label(&self) -> Option<impl AsRef<str>> {
+    self.name.as_deref()
   }
 }
 
@@ -100,16 +118,28 @@ impl EdgeFromNwk for DenseEdge {
   }
 }
 
+impl EdgeToNwk for DenseEdge {
+  fn nwk_weight(&self) -> Option<f64> {
+    self.weight()
+  }
+}
+
+impl EdgeToGraphViz for DenseEdge {
+  fn to_graphviz_label(&self) -> Option<impl AsRef<str>> {
+    self
+      .weight()
+      .map(|weight| format_weight(weight, &NwkWriteOptions::default()))
+  }
+
+  fn to_graphviz_weight(&self) -> Option<f64> {
+    self.weight()
+  }
+}
+
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct DenseSeqEdge {
   pub indels: Vec<InDel>,
   pub transmission: Option<Vec<(usize, usize)>>,
-}
-
-#[derive(Clone, Default, Debug, Serialize, Deserialize)]
-pub struct DenseMeta {
-  #[serde(skip)]
-  pub dense_partitions: Vec<SeqPartition>,
 }
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]

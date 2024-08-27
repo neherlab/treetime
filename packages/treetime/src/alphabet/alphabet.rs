@@ -32,6 +32,12 @@ pub struct Alphabet {
   profile_map: ProfileMap,
 }
 
+impl Default for Alphabet {
+  fn default() -> Self {
+    Self::new(AlphabetName::Nuc, false).expect("Failed to create default alphabet")
+  }
+}
+
 impl Alphabet {
   /// Create one of the pre-defined alphabets
   pub fn new(name: AlphabetName, treat_gap_as_unknown: bool) -> Result<Self, Report> {

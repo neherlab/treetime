@@ -1,5 +1,4 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::gtr::gtr::GTR;
 use crate::seq_utils::normalize_profile::normalize_profile;
 use crate::utils::ndarray::{argmax_axis, cumsum_axis, random};
 use eyre::Report;
@@ -14,35 +13,20 @@ pub struct Prof2SeqParams {
 
 #[derive(Debug, Clone)]
 pub struct Prof2SeqResult {
+  /// Resulting sequence of length L
   pub seq: Array1<char>,
+
+  /// Values of the profile for the chosen sequence characters (length L)
   pub prof_values: Array1<f64>,
+
+  /// Indices chosen from profile (length L)
   pub seq_ii: Array1<usize>,
 }
 
 /// Convert profile to sequence and normalize profile across sites.
-///
-/// Parameters
-/// ----------
-///
-///  profile : numpy 2D array
-///     Profile. Shape of the profile should be (L x a), where L - sequence
-///     length, a - alphabet size.
-///  gtr : gtr.GTR
-///     Instance of the GTR class to supply the sequence alphabet
-///  collapse_prof : bool
-///     Whether to convert the profile to the delta-function
-///
-/// Returns
-/// -------
-///  seq : numpy.array
-///     Sequence as numpy array of length L
-///  prof_values :  numpy.array
-///     Values of the profile for the chosen sequence characters (length L)
-///  idx : numpy.array
-///     Indices chosen from profile as array of length L
 pub fn prof2seq<S, R: Rng>(
   profile: &ArrayBase<S, Ix2>,
-  gtr: &GTR,
+  alphabet: &Alphabet,
   rng: &mut R,
   params: &Prof2SeqParams,
 ) -> Result<Prof2SeqResult, Report>
@@ -64,7 +48,7 @@ where
     argmax_axis(&profile, Axis(1))
   };
 
-  let seq = gtr.alphabet.indices_to_sequence(seq_ii.iter().copied()).collect(); // max LH over the alphabet
+  let seq = alphabet.indices_to_sequence(seq_ii.iter().copied()).collect(); // max LH over the alphabet
 
   let prof_values = get_prof_values(&profile, &seq_ii);
 
@@ -141,7 +125,6 @@ mod tests {
 
   use super::*;
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::gtr::get_gtr::{jc69, JC69Params};
   use approx::assert_ulps_eq;
   use eyre::Report;
   use lazy_static::lazy_static;
@@ -208,7 +191,7 @@ mod tests {
   fn calculates_prof2seq_with_sample_without_normalize() -> Result<(), Report> {
     let rng = &mut Isaac64Rng::seed_from_u64(42);
 
-    let gtr = jc69(JC69Params::default())?;
+    let alphabet = Alphabet::default();
 
     let norm_prof = array![
       [0.19356424, 0.25224431, 0.21259213, 0.19217803, 0.14942128],
@@ -226,7 +209,7 @@ mod tests {
       seq_ii,
     } = prof2seq(
       &norm_prof,
-      &gtr,
+      &alphabet,
       rng,
       &Prof2SeqParams {
         should_sample_from_profile: true,

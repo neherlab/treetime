@@ -1,5 +1,8 @@
 use crate::alphabet::alphabet::{Alphabet, AlphabetName};
 use crate::gtr::gtr::{GTRParams, GTR};
+use crate::port::infer_gtr::{get_mutation_counts, infer_gtr, InferGtrOptions, InferGtrResult};
+use crate::port::seq_dense::DenseGraph;
+use crate::port::seq_sparse::SparseGraph;
 use crate::{make_error, make_report};
 use clap::ArgEnum;
 use eyre::{Report, WrapErr};
@@ -10,18 +13,22 @@ use strum_macros::Display;
 #[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, ArgEnum, SmartDefault, Display)]
 pub enum GtrModelName {
   #[default]
+  Infer,
   JC69,
   K80,
   F81,
   HKY85,
   T92,
-  Infer,
 }
 
-pub fn get_gtr(name: &GtrModelName, alphabet: &Option<AlphabetName>) -> Result<GTR, Report> {
+pub fn get_gtr(name: &GtrModelName, alphabet: &Alphabet, graph: &SparseGraph) -> Result<GTR, Report> {
   match name {
     GtrModelName::Infer => {
-      unimplemented!("Not implemented: GTR inference is not yet implemented. Please provide the name of a concrete model with `--gtr=<model>` argument.")
+      let counts = get_mutation_counts(graph, alphabet)?;
+      let InferGtrResult { W, pi, mu } = infer_gtr(&counts, &InferGtrOptions::default())?;
+      let alphabet = alphabet.to_owned();
+      let W = Some(W);
+      GTR::new(GTRParams { alphabet, mu, W, pi })
     }
     GtrModelName::JC69 => jc69(JC69Params::default()),
     GtrModelName::F81 => f81(F81Params::default()),
@@ -29,13 +36,21 @@ pub fn get_gtr(name: &GtrModelName, alphabet: &Option<AlphabetName>) -> Result<G
     GtrModelName::K80 => k80(K80Params::default()),
     GtrModelName::T92 => t92(T92Params::default()),
   }
-  .wrap_err_with(|| {
-    let alphabet_msg = match alphabet {
-      None => "".to_owned(),
-      Some(alphabet) => format!("with alphabet '{alphabet}'"),
-    };
-    make_report!("When creating model '{name}'{alphabet_msg}")
-  })
+  .wrap_err_with(|| make_report!("When creating model '{name}'"))
+}
+
+pub fn get_gtr_dense(name: &GtrModelName, _alphabet: &Alphabet, _graph: &DenseGraph) -> Result<GTR, Report> {
+  match name {
+    GtrModelName::Infer => {
+      unimplemented!("Model inference is not yet implemented for dense representation. Please set model explicitly.")
+    }
+    GtrModelName::JC69 => jc69(JC69Params::default()),
+    GtrModelName::F81 => f81(F81Params::default()),
+    GtrModelName::HKY85 => hky85(HKY85Params::default()),
+    GtrModelName::K80 => k80(K80Params::default()),
+    GtrModelName::T92 => t92(T92Params::default()),
+  }
+  .wrap_err_with(|| make_report!("When creating model '{name}'"))
 }
 
 #[derive(Copy, Clone, Debug, SmartDefault)]

@@ -1,3 +1,4 @@
+use crate::alphabet::alphabet::Alphabet;
 use crate::gtr::gtr::GTR;
 use crate::io::fasta::FastaRecord;
 use crate::port::fitch::get_common_length;
@@ -9,29 +10,84 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
 #[derive(Clone, Debug)]
-pub struct SeqPartition {
-  pub gtr: GTR,
+pub struct PartitionParsimonyWithAln {
+  pub alphabet: Alphabet,
   pub aln: Vec<FastaRecord>,
   pub length: usize,
 }
 
-impl SeqPartition {
-  pub fn new(gtr: GTR, aln: Vec<FastaRecord>) -> Result<Self, Report> {
+impl PartitionParsimonyWithAln {
+  pub fn new(alphabet: Alphabet, aln: Vec<FastaRecord>) -> Result<Self, Report> {
     let length = get_common_length(&aln)?;
-    Ok(SeqPartition { gtr, aln, length })
+    Ok(Self { alphabet, aln, length })
+  }
+}
+
+impl From<PartitionParsimonyWithAln> for PartitionParsimony {
+  fn from(item: PartitionParsimonyWithAln) -> Self {
+    Self {
+      alphabet: item.alphabet,
+      length: item.length,
+    }
+  }
+}
+
+#[derive(Clone, Debug)]
+pub struct PartitionParsimony {
+  pub alphabet: Alphabet,
+  pub length: usize,
+}
+
+impl PartitionParsimony {
+  pub fn new(alphabet: Alphabet, length: usize) -> Result<Self, Report> {
+    Ok(Self { alphabet, length })
+  }
+}
+
+#[derive(Clone, Debug)]
+pub struct PartitionLikelihoodWithAln {
+  pub gtr: GTR,
+  pub alphabet: Alphabet,
+  pub aln: Vec<FastaRecord>,
+  pub length: usize,
+}
+
+impl PartitionLikelihoodWithAln {
+  pub fn new(gtr: GTR, alphabet: Alphabet, aln: Vec<FastaRecord>) -> Result<Self, Report> {
+    let length = get_common_length(&aln)?;
+    Ok(Self { gtr, alphabet, aln, length })
+  }
+}
+
+impl From<PartitionLikelihoodWithAln> for PartitionLikelihood {
+  fn from(item: PartitionLikelihoodWithAln) -> Self {
+    Self {
+      gtr: item.gtr,
+      alphabet: item.alphabet,
+      length: item.length,
+    }
+  }
+}
+
+#[derive(Clone, Debug)]
+pub struct PartitionLikelihood {
+  pub gtr: GTR,
+  pub alphabet: Alphabet,
+  pub length: usize,
+}
+
+impl PartitionLikelihood {
+  pub fn new(gtr: GTR, alphabet: Alphabet, length: usize) -> Self {
+    Self { gtr, alphabet, length }
   }
 
-  pub fn profile(&self, c: char) -> &Array1<f64> {
-    self.gtr.alphabet().get_profile(c)
-  }
-
-  pub fn code(&self, p: &Array1<f64>) -> char {
-    self.gtr.alphabet().get_code(p)
+  pub fn from_parsimony(gtr: GTR, partition: PartitionParsimony) -> Self {
+    Self::new(gtr, partition.alphabet, partition.length)
   }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct SeqInfoLh {
+pub struct SeqInfoLikelihood {
   pub unknown: RangeCollection,
   pub gaps: RangeCollection,
   pub non_char: RangeCollection, // any position that does not evolve according to the substitution model, i.e. gap or N

@@ -7,7 +7,6 @@ use crate::io::nwk::{format_weight, EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToN
 use crate::o;
 use crate::port::composition::Composition;
 use crate::port::mutation::{InDel, Mut};
-use crate::port::seq_partitions::SeqPartition;
 use crate::seq::find_char_ranges::find_letter_ranges;
 use crate::seq::range_union::range_union;
 use eyre::Report;
@@ -180,12 +179,6 @@ pub struct SparseSeqEdge {
   pub muts: Vec<Mut>,
   pub indels: Vec<InDel>,
   pub transmission: Option<Vec<(usize, usize)>>,
-}
-
-#[derive(Clone, Default, Debug, Serialize, Deserialize)]
-pub struct SparseMeta {
-  #[serde(skip)]
-  pub sparse_partitions: Vec<SeqPartition>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

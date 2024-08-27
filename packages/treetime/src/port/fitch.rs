@@ -4,7 +4,7 @@ use crate::io::fasta::FastaRecord;
 use crate::port::composition::Composition;
 use crate::port::constants::{FILL_CHAR, GAP_CHAR, NON_CHAR, VARIABLE};
 use crate::port::mutation::{InDel, Mut};
-use crate::port::seq_partitions::SeqPartition;
+use crate::port::seq_partitions::{PartitionParsimony, PartitionParsimonyWithAln};
 use crate::port::seq_sparse::{
   Deletion, SparseGraph, SparseNode, SparseSeqDis, SparseSeqEdge, SparseSeqInfo, SparseSeqNode, VarPos,
 };
@@ -22,7 +22,7 @@ use maplit::btreemap;
 use ndarray::{stack, Array1, Array2, Axis};
 use ndarray_stats::QuantileExt;
 
-fn attach_seqs_to_graph(graph: &SparseGraph, partitions: &[SeqPartition]) -> Result<(), Report> {
+fn attach_seqs_to_graph(graph: &SparseGraph, partitions: &[PartitionParsimonyWithAln]) -> Result<(), Report> {
   for leaf in graph.get_leaves() {
     let mut leaf = leaf.read_arc().payload().write_arc();
 
@@ -32,7 +32,7 @@ fn attach_seqs_to_graph(graph: &SparseGraph, partitions: &[SeqPartition]) -> Res
 
     let sparse_partitions = partitions
       .iter()
-      .map(|SeqPartition { gtr, aln, length }| {
+      .map(|PartitionParsimonyWithAln { alphabet, aln, length }| {
         // TODO(perf): this might be slow if there are many sequences
         let leaf_fasta = aln
           .iter()
@@ -44,7 +44,7 @@ fn attach_seqs_to_graph(graph: &SparseGraph, partitions: &[SeqPartition]) -> Res
         // never need a copy like here.
         let sequence = leaf_fasta.seq.chars().collect::<Vec<_>>();
 
-        SparseSeqNode::new(&sequence, gtr.alphabet())
+        SparseSeqNode::new(&sequence, alphabet)
       })
       .collect::<Result<_, Report>>()?;
 
@@ -57,7 +57,7 @@ fn attach_seqs_to_graph(graph: &SparseGraph, partitions: &[SeqPartition]) -> Res
   Ok(())
 }
 
-fn fitch_backwards(graph: &SparseGraph, sparse_partitions: &[SeqPartition]) {
+fn fitch_backwards(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]) {
   let n_partitions = sparse_partitions.len();
 
   graph.par_iter_breadth_first_backward(|mut node| {
@@ -71,7 +71,7 @@ fn fitch_backwards(graph: &SparseGraph, sparse_partitions: &[SeqPartition]) {
 
     #[allow(clippy::needless_range_loop)]
     for si in 0..n_partitions {
-      let SeqPartition { gtr, length, .. } = &sparse_partitions[si];
+      let PartitionParsimony { alphabet, length } = &sparse_partitions[si];
 
       let children = node
         .children
@@ -119,7 +119,7 @@ fn fitch_backwards(graph: &SparseGraph, sparse_partitions: &[SeqPartition]) {
             }
             let state = match child.fitch.variable.get(&pos) {
               Some(var_pos) => var_pos.dis.view(),
-              None => gtr.alphabet().get_profile(child.sequence[pos]).view(),
+              None => alphabet.get_profile(child.sequence[pos]).view(),
             };
             Some(state)
           })
@@ -134,7 +134,7 @@ fn fitch_backwards(graph: &SparseGraph, sparse_partitions: &[SeqPartition]) {
         let intersection = product_axis(&child_profiles, Axis(0));
         if intersection.sum().ulps_eq(&1.0, f64::EPSILON, 5) {
           let i = intersection.argmax().unwrap();
-          sequence[pos] = gtr.alphabet().char(i);
+          sequence[pos] = alphabet.char(i);
         } else if intersection.sum() > 1.0 {
           seq_dis.variable.insert(pos, VarPos::new(intersection, None));
           sequence[pos] = VARIABLE;
@@ -161,7 +161,7 @@ fn fitch_backwards(graph: &SparseGraph, sparse_partitions: &[SeqPartition]) {
 
         let determined_states = child_states
           .into_iter()
-          .filter(|&c| gtr.alphabet().is_canonical(c))
+          .filter(|&c| alphabet.is_canonical(c))
           .unique()
           .collect_vec();
 
@@ -178,10 +178,7 @@ fn fitch_backwards(graph: &SparseGraph, sparse_partitions: &[SeqPartition]) {
           states => {
             // Child states differ. This is variable state.
             // Save child states and postpone the decision until forward pass.
-            let child_profiles = states
-              .iter()
-              .map(|&c| gtr.alphabet().get_profile(c).view())
-              .collect_vec();
+            let child_profiles = states.iter().map(|&c| alphabet.get_profile(c).view()).collect_vec();
             let child_profiles: Array2<f64> = stack(Axis(0), &child_profiles).unwrap();
             let summed_profile = child_profiles.sum_axis(Axis(0));
             seq_dis.variable.insert(pos, VarPos::new(summed_profile, None));
@@ -248,13 +245,13 @@ fn fitch_backwards(graph: &SparseGraph, sparse_partitions: &[SeqPartition]) {
   });
 }
 
-fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[SeqPartition]) {
+fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]) {
   let n_partitions = sparse_partitions.len();
 
   graph.par_iter_breadth_first_forward(|mut node| {
     #[allow(clippy::needless_range_loop)]
     for si in 0..n_partitions {
-      let SeqPartition { gtr, .. } = &sparse_partitions[si];
+      let PartitionParsimony { alphabet, .. } = &sparse_partitions[si];
       let SparseSeqInfo {
         gaps,
         sequence,
@@ -271,7 +268,7 @@ fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[SeqPartition]) {
       if node.is_root {
         for (pos, p) in variable {
           let i = p.dis.argmax().unwrap();
-          let state = gtr.alphabet().char(i);
+          let state = alphabet.char(i);
           p.state = Some(state);
           sequence[*pos] = state;
         }
@@ -284,7 +281,7 @@ fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[SeqPartition]) {
         for r in gaps.iter() {
           sequence[r.0..r.1].fill(GAP_CHAR);
         }
-        *composition = Composition::with_sequence(sequence.iter().copied(), gtr.alphabet().chars());
+        *composition = Composition::with_sequence(sequence.iter().copied(), alphabet.chars());
       } else {
         let (parent, edge) = node
           .parents
@@ -306,12 +303,12 @@ fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[SeqPartition]) {
         for (pos, p) in variable.iter_mut() {
           let pnuc = parent.sequence[*pos];
           // check whether parent is in child profile (sum>0 --> parent state is in profile)
-          let parent_in_profile = (gtr.alphabet().get_profile(pnuc) * &p.dis).sum() > 0.0;
+          let parent_in_profile = (alphabet.get_profile(pnuc) * &p.dis).sum() > 0.0;
           if parent_in_profile {
             sequence[*pos] = pnuc;
           } else {
             let i = p.dis.argmax().unwrap();
-            let cnuc = gtr.alphabet().char(i);
+            let cnuc = alphabet.char(i);
             sequence[*pos] = cnuc;
             let m = Mut {
               pos: *pos,
@@ -430,12 +427,22 @@ fn fitch_cleanup(graph: &SparseGraph) {
   });
 }
 
-pub fn compress_sequences(graph: &SparseGraph, partitions: &[SeqPartition]) -> Result<(), Report> {
-  attach_seqs_to_graph(graph, partitions)?;
-  fitch_backwards(graph, partitions);
-  fitch_forward(graph, partitions);
+pub fn compress_sequences(
+  graph: &SparseGraph,
+  partitions: Vec<PartitionParsimonyWithAln>,
+) -> Result<Vec<PartitionParsimony>, Report> {
+  attach_seqs_to_graph(graph, &partitions)?;
+
+  let partitions = partitions
+    .into_iter()
+    .map(PartitionParsimony::from)
+    .collect_vec();
+
+  fitch_backwards(graph, &partitions);
+  fitch_forward(graph, &partitions);
   fitch_cleanup(graph);
-  Ok(())
+
+  Ok(partitions)
 }
 
 /// Reconstruct ancestral sequences using Fitch parsimony.
@@ -445,10 +452,10 @@ pub fn compress_sequences(graph: &SparseGraph, partitions: &[SeqPartition]) -> R
 pub fn ancestral_reconstruction_fitch(
   graph: &SparseGraph,
   include_leaves: bool,
-  sparse_partitions: &[SeqPartition],
+  partitions: &[PartitionParsimony],
   mut visitor: impl FnMut(&SparseNode, Vec<char>),
 ) -> Result<(), Report> {
-  let n_partitions = sparse_partitions.len();
+  let n_partitions = partitions.len();
 
   graph.iter_depth_first_preorder_forward(|node| {
     if !include_leaves && node.is_leaf {
@@ -457,6 +464,8 @@ pub fn ancestral_reconstruction_fitch(
 
     let seq = (0..n_partitions)
       .flat_map(|si| {
+        let PartitionParsimony { alphabet, .. } = &partitions[si];
+
         let mut seq = if node.is_root {
           node.payload.sparse_partitions[si].seq.sequence.clone()
         } else {
@@ -487,12 +496,11 @@ pub fn ancestral_reconstruction_fitch(
 
         // At the node itself, mask whatever is unknown in the node.
         for r in &node.unknown {
-          let ambig_char = sparse_partitions[si].gtr.alphabet.unknown();
-          seq[r.0..r.1].fill(ambig_char);
+          seq[r.0..r.1].fill(alphabet.unknown());
         }
 
         for (pos, p) in &node.fitch.variable {
-          seq[*pos] = sparse_partitions[si].code(&p.dis);
+          seq[*pos] = alphabet.get_code(&p.dis);
         }
 
         seq
@@ -535,15 +543,12 @@ pub fn get_common_length(aln: &[FastaRecord]) -> Result<usize, Report> {
 mod tests {
   use super::*;
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::gtr::get_gtr::{jc69, JC69Params};
-  use crate::gtr::gtr::{GTRParams, GTR};
   use crate::io::fasta::read_many_fasta_str;
   use crate::io::json::{json_write_str, JsonPretty};
   use crate::io::nwk::nwk_read_str;
   use crate::utils::string::vec_to_string;
   use eyre::Report;
   use indoc::indoc;
-  use ndarray::array;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
 
@@ -551,7 +556,7 @@ mod tests {
   fn test_fitch_ancestral_reconstruction() -> Result<(), Report> {
     rayon::ThreadPoolBuilder::new().num_threads(1).build_global()?;
 
-    let inputs = read_many_fasta_str(indoc! {r#"
+    let aln = read_many_fasta_str(indoc! {r#"
       >root
       ACAGCCATGTATTG--
       >AB
@@ -582,9 +587,9 @@ mod tests {
 
     let graph: SparseGraph = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
-    let gtr = jc69(JC69Params::default())?;
-    let partitions = vec![SeqPartition::new(gtr, inputs)?];
-    compress_sequences(&graph, &partitions)?;
+    let alphabet = Alphabet::default();
+    let partitions = vec![PartitionParsimonyWithAln::new(alphabet, aln)?];
+    let partitions = compress_sequences(&graph, partitions)?;
 
     let mut actual = BTreeMap::new();
     ancestral_reconstruction_fitch(&graph, false, &partitions, |node, seq| {
@@ -603,7 +608,7 @@ mod tests {
   fn test_fitch_internals() -> Result<(), Report> {
     rayon::ThreadPoolBuilder::new().num_threads(1).build_global()?;
 
-    let inputs = read_many_fasta_str(indoc! {r#"
+    let aln = read_many_fasta_str(indoc! {r#"
       >root
       ACAGCCATGTATTG--
       >AB
@@ -622,15 +627,16 @@ mod tests {
 
     let graph: SparseGraph = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
-    let gtr = GTR::new(GTRParams {
-      alphabet: Alphabet::new(AlphabetName::Nuc, false)?,
-      mu: 0.0,
-      W: None,
-      pi: array![0.2, 0.3, 0.15, 0.35],
-    })?;
-    let partitions = vec![SeqPartition::new(gtr, inputs.clone())?];
+    let alphabet = Alphabet::default();
+    let partitions = vec![PartitionParsimonyWithAln::new(alphabet, aln.clone())?];
 
     attach_seqs_to_graph(&graph, &partitions)?;
+
+    let partitions = partitions
+      .into_iter()
+      .map(PartitionParsimony::from)
+      .collect_vec();
+
     fitch_backwards(&graph, &partitions);
 
     {
@@ -661,7 +667,7 @@ mod tests {
         .sparse_partitions[0]
         .seq;
 
-      assert_eq!(&inputs[0].seq.chars().collect_vec(), &seq_info.sequence);
+      assert_eq!(&aln[0].seq.chars().collect_vec(), &seq_info.sequence);
 
       let actual_muts: BTreeMap<_, _> = graph
         .get_edges()

@@ -130,7 +130,6 @@ fn distance(pi_old: &Array1<f64>, pi: &Array1<f64>) -> f64 {
 
 pub fn get_mutation_counts(graph: &SparseGraph, alphabet: &Alphabet) -> Result<MutationCounts, Report> {
   let root = graph.get_exactly_one_root()?.read_arc().payload().read_arc();
-
   let seq = &root.sparse_partitions[0].seq;
   let root_state: Array1<f64> = Array1::from_iter(
     alphabet
@@ -173,12 +172,10 @@ pub fn get_mutation_counts(graph: &SparseGraph, alphabet: &Alphabet) -> Result<M
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::alphabet::alphabet::AlphabetName;
-  use crate::gtr::gtr::{GTRParams, GTR};
   use crate::io::fasta::read_many_fasta_str;
   use crate::io::nwk::nwk_read_str;
   use crate::port::fitch::compress_sequences;
-  use crate::port::seq_partitions::SeqPartition;
+  use crate::port::seq_partitions::PartitionParsimonyWithAln;
   use crate::pretty_assert_ulps_eq;
   use indoc::indoc;
   use ndarray::array;
@@ -235,7 +232,7 @@ mod tests {
   #[test]
   fn test_infer_gtr_with_mutation_counts() -> Result<(), Report> {
     rayon::ThreadPoolBuilder::new().num_threads(1).build_global()?;
-    let inputs = read_many_fasta_str(indoc! {r#"
+    let aln = read_many_fasta_str(indoc! {r#"
       >A
       ACATCGCCNNA--GAC
       >B
@@ -248,16 +245,9 @@ mod tests {
 
     let graph: SparseGraph = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
-    let alphabet = Alphabet::new(AlphabetName::Nuc, false)?;
-    let gtr = GTR::new(GTRParams {
-      alphabet: alphabet.clone(),
-      mu: 1.0,
-      W: None,
-      pi: array![0.2, 0.3, 0.15, 0.35],
-    })?;
-
-    let partitions = vec![SeqPartition::new(gtr, inputs)?];
-    compress_sequences(&graph, &partitions)?;
+    let alphabet = Alphabet::default();
+    let partitions = vec![PartitionParsimonyWithAln::new(alphabet.clone(), aln)?];
+    compress_sequences(&graph, partitions)?;
 
     let counts_actual = get_mutation_counts(&graph, &alphabet)?;
     let counts_expected = MutationCounts {

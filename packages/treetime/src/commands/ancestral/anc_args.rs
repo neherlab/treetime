@@ -51,7 +51,7 @@ pub struct TreetimeAncestralArgs {
   /// If none is provided, treetime will attempt to build a tree from the alignment using fasttree, iqtree, or raxml (assuming they are installed)
   #[clap(long, short = 't')]
   #[clap(value_hint = ValueHint::FilePath)]
-  pub tree: Option<PathBuf>,
+  pub tree: PathBuf,
 
   /// Alphabet
   ///
@@ -61,8 +61,8 @@ pub struct TreetimeAncestralArgs {
   /// GTR model to use
   ///
   /// '--gtr infer' will infer a model from the data. Alternatively, specify the model type. If the specified model requires additional options, use '--gtr-params' to specify those.
-  #[clap(long, short = 'g', arg_enum, default_value_t = GtrModelName::default())]
-  pub gtr: GtrModelName,
+  #[clap(long = "model", short = 'g', arg_enum, default_value_t = GtrModelName::Infer)]
+  pub model_name: GtrModelName,
 
   /// GTR parameters for the model specified by the --gtr argument. The parameters should be feed as 'key=value' list of parameters.
   ///

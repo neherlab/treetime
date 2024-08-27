@@ -1,14 +1,10 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::utils::ndarray::{clamp_min, outer};
 use eyre::Report;
-use itertools::Itertools;
 use ndarray::prelude::*;
 use ndarray_linalg::Eigh;
 use ndarray_linalg::UPLO::Lower;
 use num_traits::abs;
-use std::fmt::Display;
-use std::io::Write;
-use std::iter::zip;
 
 pub fn avg_transition(W: &Array2<f64>, pi: &Array1<f64>) -> Result<f64, Report> {
   Ok(pi.dot(W).dot(pi))
@@ -52,7 +48,6 @@ pub struct GTRParams {
 pub struct GTR {
   pub debug: bool,
   pub is_site_specific: bool,
-  pub alphabet: Alphabet,
   pub average_rate: f64,
   pub mu: f64,
   pub W: Array2<f64>,
@@ -114,7 +109,6 @@ impl GTR {
     Ok(Self {
       debug: false,
       is_site_specific: false,
-      alphabet,
       average_rate,
       mu,
       W,
@@ -125,12 +119,6 @@ impl GTR {
     })
   }
 
-  #[inline]
-  pub const fn alphabet(&self) -> &Alphabet {
-    &self.alphabet
-  }
-
-  #[inline]
   pub const fn average_rate(&self) -> f64 {
     self.average_rate
   }
@@ -248,50 +236,50 @@ impl GTR {
     Q
   }
 
-  pub fn print<W: Write>(&self, w: &mut W) -> Result<(), Report> {
-    if self.is_multi_site() {
-      writeln!(w, "Average substitution rate (mu): {:.6}", self.average_rate)?;
-    } else {
-      writeln!(w, "Substitution rate (mu): {:.6}", self.mu)?;
-      writeln!(w, "\nEquilibrium frequencies (pi_i):")?;
-      for (a, p) in zip(self.alphabet.canonical(), &self.pi) {
-        writeln!(w, "{a}:\t{p:.4}")?;
-      }
-    }
-
-    writeln!(w, "\nSymmetrized rates from j->i (W_ij):")?;
-    writeln!(w, "\t{}", self.alphabet.canonical().join("\t"))?;
-    for (a, Wi) in zip(self.alphabet.canonical(), self.W.rows()) {
-      writeln!(
-        w,
-        "{a}\t{}",
-        Wi.iter().map(|Wij| format!("{:.4}", Wij.max(0.0))).join("\t")
-      )?;
-    }
-
-    if !self.is_multi_site() {
-      writeln!(w, "\nActual rates from j->i (Q_ij):")?;
-      writeln!(w, "\t{}", self.alphabet.canonical().join("\t"))?;
-      for (a, Qi) in zip(self.alphabet.canonical(), self.Q().rows()) {
-        writeln!(
-          w,
-          "{a}\t{}",
-          Qi.iter().map(|Qij| format!("{:.4}", Qij.max(0.0))).join("\t")
-        )?;
-      }
-    }
-    writeln!(w)?;
-    Ok(())
-  }
+  // pub fn print<W: Write>(&self, w: &mut W) -> Result<(), Report> {
+  //   if self.is_multi_site() {
+  //     writeln!(w, "Average substitution rate (mu): {:.6}", self.average_rate)?;
+  //   } else {
+  //     writeln!(w, "Substitution rate (mu): {:.6}", self.mu)?;
+  //     writeln!(w, "\nEquilibrium frequencies (pi_i):")?;
+  //     for (a, p) in zip(self.alphabet.canonical(), &self.pi) {
+  //       writeln!(w, "{a}:\t{p:.4}")?;
+  //     }
+  //   }
+  //
+  //   writeln!(w, "\nSymmetrized rates from j->i (W_ij):")?;
+  //   writeln!(w, "\t{}", self.alphabet.canonical().join("\t"))?;
+  //   for (a, Wi) in zip(self.alphabet.canonical(), self.W.rows()) {
+  //     writeln!(
+  //       w,
+  //       "{a}\t{}",
+  //       Wi.iter().map(|Wij| format!("{:.4}", Wij.max(0.0))).join("\t")
+  //     )?;
+  //   }
+  //
+  //   if !self.is_multi_site() {
+  //     writeln!(w, "\nActual rates from j->i (Q_ij):")?;
+  //     writeln!(w, "\t{}", self.alphabet.canonical().join("\t"))?;
+  //     for (a, Qi) in zip(self.alphabet.canonical(), self.Q().rows()) {
+  //       writeln!(
+  //         w,
+  //         "{a}\t{}",
+  //         Qi.iter().map(|Qij| format!("{:.4}", Qij.max(0.0))).join("\t")
+  //       )?;
+  //     }
+  //   }
+  //   writeln!(w)?;
+  //   Ok(())
+  // }
 }
 
-impl Display for GTR {
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    let mut buf = vec![];
-    self.print(&mut buf).unwrap();
-    write!(f, "{}", String::from_utf8(buf).unwrap())
-  }
-}
+// impl Display for GTR {
+//   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+//     let mut buf = vec![];
+//     self.print(&mut buf).unwrap();
+//     write!(f, "{}", String::from_utf8(buf).unwrap())
+//   }
+// }
 
 #[cfg(test)]
 mod tests {
