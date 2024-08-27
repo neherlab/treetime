@@ -1,15 +1,10 @@
-use crate::cli::rtt_chart::{draw_rtt_console_chart, write_rtt_svg_chart};
 use crate::commands::clock::clock_args::TreetimeClockArgs;
-use crate::commands::clock::clock_graph::{create_graph, infer_graph};
-use crate::commands::clock::graph_regression::calculate_averages;
-use crate::commands::clock::graph_regression_policy::GraphNodeRegressionPolicyReroot;
-use crate::commands::clock::run_clock_model::{run_clock_model, RunClockModelParams, RunClockModelResults};
-use crate::commands::clock::run_reroot::{run_reroot, RerootParams};
-use crate::io::csv::CsvStructFileWriter;
+use crate::graph::node::Named;
 use crate::io::dates_csv::read_dates;
 use crate::io::graphviz::graphviz_write_file;
 use crate::io::json::{json_write_file, JsonPretty};
-use crate::io::nwk::{nwk_write_file, NwkWriteOptions};
+use crate::io::nwk::{nwk_read_file, nwk_write_file, NwkWriteOptions};
+use crate::port::clock::{reroot_in_place, run_clock_regression, ClockGraph, ClockOptions};
 use eyre::{Report, WrapErr};
 
 pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
@@ -37,53 +32,36 @@ pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
     seed,
   } = clock_args;
 
-  let dates = read_dates(dates, name_column, date_column).wrap_err("When reading dates")?;
+  let mut graph: ClockGraph = if let Some(tree) = tree {
+    nwk_read_file(tree)
+  } else {
+    unimplemented!("Tree inference is not implemented")
+  }?;
 
-  let mut graph = match tree {
-    None => infer_graph()?,
-    Some(tree) => create_graph(tree, &dates)?,
+  {
+    let dates = read_dates(dates, name_column, date_column).wrap_err("When reading dates")?;
+    for n in graph.get_leaves() {
+      let name = n.read_arc().payload().read_arc().name().unwrap().as_ref().to_owned();
+      n.write_arc().payload().write_arc().date = Some(dates[&name].mean());
+    }
+  }
+
+  let options = ClockOptions {
+    variance_factor: 0.0,
+    variance_offset: 0.0,
   };
 
-  graphviz_write_file(outdir.join("graph_input.dot"), &graph)?;
-  json_write_file(outdir.join("graph_input.json"), &graph, JsonPretty(true))?;
-
-  if *clock_filter > 0.0 {
-    unimplemented!("clock_filter")
-  }
-
-  calculate_averages::<GraphNodeRegressionPolicyReroot>(&graph);
-
-  let slope = None;
-
+  let clock_model = run_clock_regression(&graph, &options)?;
   if !keep_root {
-    if *covariation {
-      unimplemented!("covariation")
-    }
-
-    run_reroot(
-      &mut graph,
-      &RerootParams {
-        reroot: *reroot,
-        slope,
-        force_positive: false,
-        keep_node_order: false,
-      },
-    )?;
+    reroot_in_place(&mut graph, &options)?;
   }
-
-  let RunClockModelResults { clock_model, rtt } =
-    run_clock_model::<GraphNodeRegressionPolicyReroot>(&graph, &RunClockModelParams { slope })?;
-
-  let mut rtt_writer = CsvStructFileWriter::new(outdir.join("rtt.csv"), b',')?;
-  rtt.iter().try_for_each(|result| rtt_writer.write(result))?;
-
-  graphviz_write_file(outdir.join("graph_output.dot"), &graph)?;
-  json_write_file(outdir.join("graph_output.json"), &graph, JsonPretty(true))?;
 
   nwk_write_file(outdir.join("rerooted.nwk"), &graph, &NwkWriteOptions::default())?;
+  json_write_file(outdir.join("graph_output.json"), &graph, JsonPretty(true))?;
+  graphviz_write_file(outdir.join("graph_output.dot"), &graph)?;
 
-  draw_rtt_console_chart(&rtt, &clock_model);
-  write_rtt_svg_chart(outdir.join("rtt.svg"), &rtt, &clock_model)?;
+  // draw_rtt_console_chart(&rtt, &clock_model);
+  // write_rtt_svg_chart(outdir.join("rtt.svg"), &rtt, &clock_model)?;
 
   Ok(())
 }

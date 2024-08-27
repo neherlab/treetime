@@ -205,8 +205,8 @@ where
   E: GraphEdge,
   D: Sync + Send,
 {
-  nodes: Vec<Arc<RwLock<Node<N>>>>,
-  edges: Vec<Arc<RwLock<Edge<E>>>>,
+  nodes: Vec<Option<Arc<RwLock<Node<N>>>>>,
+  edges: Vec<Option<Arc<RwLock<Edge<E>>>>>,
   roots: Vec<GraphNodeKey>,
   leaves: Vec<GraphNodeKey>,
   data: Arc<RwLock<D>>,
@@ -335,11 +335,11 @@ where
   }
 
   pub fn get_node(&self, index: GraphNodeKey) -> Option<Arc<RwLock<Node<N>>>> {
-    self.nodes.get(index.0).map(Arc::clone)
+    self.nodes.get(index.as_usize())?.as_ref().map(Arc::clone)
   }
 
   pub fn get_edge(&self, index: GraphEdgeKey) -> Option<Arc<RwLock<Edge<E>>>> {
-    self.edges.get(index.0).map(Arc::clone)
+    self.edges.get(index.as_usize())?.as_ref().map(Arc::clone)
   }
 
   /// Iterates nodes synchronously and in unspecified order
@@ -347,6 +347,7 @@ where
     self
       .nodes
       .iter()
+      .filter_map(Option::as_ref)
       .for_each(|node| f(GraphNodeSafe::from_node(self, node)));
   }
 
@@ -358,6 +359,7 @@ where
     self
       .nodes
       .iter()
+      .filter_map(Option::as_ref)
       .map(|node| f(GraphNodeSafe::from_node(self, node)))
       .collect_vec()
   }
@@ -370,6 +372,7 @@ where
     self
       .nodes
       .iter()
+      .filter_map(Option::as_ref)
       .filter_map(|node| f(GraphNodeSafe::from_node(self, node)))
       .collect_vec()
   }
@@ -387,12 +390,15 @@ where
   }
 
   // All nodes
-  pub fn get_nodes(&self) -> &[Arc<RwLock<Node<N>>>] {
-    &self.nodes
+  pub fn get_nodes(&self) -> Vec<SafeNode<N>> {
+    self.nodes.iter().filter_map(Option::as_ref).cloned().collect()
   }
 
   pub fn get_node_payloads(&self) -> impl Iterator<Item = Arc<RwLock<N>>> + '_ {
-    self.nodes.iter().map(|node| node.read().payload())
+    self
+      .nodes
+      .iter()
+      .filter_map(|node| node.as_ref().map(|n| Arc::clone(&n.read_arc().payload())))
   }
 
   pub fn get_exactly_one_root(&self) -> Result<Arc<RwLock<Node<N>>>, Report> {
@@ -445,16 +451,38 @@ where
       .collect_vec()
   }
 
-  #[inline]
-  pub fn get_edges(&self) -> &[Arc<RwLock<Edge<E>>>] {
-    &self.edges
+  pub fn get_edges(&self) -> Vec<Arc<RwLock<Edge<E>>>> {
+    self.edges.iter().filter_map(Option::as_ref).cloned().collect()
   }
 
   pub fn add_node(&mut self, node_payload: N) -> GraphNodeKey {
     let node_key = GraphNodeKey(self.nodes.len());
     let node = Arc::new(RwLock::new(Node::new(node_key, node_payload)));
-    self.nodes.push(node);
+    self.nodes.push(Some(node));
     node_key
+  }
+
+  pub fn remove_node(&mut self, node_key: GraphNodeKey) -> Result<(), Report> {
+    // Remove edges which refer to this node, if any
+    self
+      .edges
+      .iter_mut()
+      // Find edges which refer to this node
+      .filter(|e| {
+        e.as_ref().map_or(false, |e| {
+          let e = e.read();
+          e.source() == node_key || e.target() == node_key
+        })
+      })
+      // Remove these edges
+      .for_each(|edge| *edge = None);
+
+    // Remove the node itself, if present
+    if let Some(node) = self.nodes.get_mut(node_key.as_usize()) {
+      *node = None;
+    }
+
+    Ok(())
   }
 
   /// Add a new edge to the graph.
@@ -463,7 +491,7 @@ where
     source_key: GraphNodeKey,
     target_key: GraphNodeKey,
     edge_payload: E,
-  ) -> Result<(), Report> {
+  ) -> Result<GraphEdgeKey, Report> {
     if source_key == target_key {
       return make_error!(
         "When adding a graph edge {source_key}->{target_key}: Attempted to connect node {source_key} to itself."
@@ -495,13 +523,31 @@ where
         return make_error!("When adding a graph edge {source_key}->{target_key}: Nodes {source_key} and {target_key} are already connected.");
       }
 
-      self.edges.push(Arc::clone(&new_edge));
+      self.edges.push(Some(Arc::clone(&new_edge)));
     }
 
     {
       let (mut source, mut target) = (source_lock.write(), target_lock.write());
       source.outbound_mut().push(edge_key);
       target.inbound_mut().push(edge_key);
+    }
+
+    Ok(edge_key)
+  }
+
+  pub fn remove_edge(&mut self, edge_key: GraphEdgeKey) -> Result<(), Report> {
+    // Remove the edge key from inbound/outbound lists of nodes
+    self.nodes.iter_mut().for_each(|node| {
+      if let Some(node) = node {
+        let mut node_locked = node.write_arc();
+        node_locked.outbound_mut().retain(|&e| e != edge_key);
+        node_locked.inbound_mut().retain(|&e| e != edge_key);
+      }
+    });
+
+    // Remove the edge itself
+    if let Some(edge) = self.edges.get_mut(edge_key.as_usize()) {
+      *edge = None;
     }
 
     Ok(())
@@ -511,20 +557,26 @@ where
     self.roots = self
       .nodes
       .iter()
-      .filter_map(|node| {
-        let node = node.read();
-        node.is_root().then(|| node.key())
+      .filter_map(|node_option| {
+        node_option
+          .as_ref()?
+          .read()
+          .is_root()
+          .then(|| node_option.as_ref().unwrap().read().key())
       })
-      .collect_vec();
+      .collect();
 
     self.leaves = self
       .nodes
       .iter()
-      .filter_map(|node| {
-        let node = node.read();
-        node.is_leaf().then(|| node.key())
+      .filter_map(|node_option| {
+        node_option
+          .as_ref()?
+          .read()
+          .is_leaf()
+          .then(|| node_option.as_ref().unwrap().read().key())
       })
-      .collect_vec();
+      .collect();
 
     Ok(())
   }
@@ -645,9 +697,10 @@ where
 
   fn iter_children_arc(&self, node: &Arc<RwLock<Node<N>>>) -> impl Iterator<Item = &Arc<RwLock<Node<N>>>> {
     let child_keys = self.child_keys_of(&*node.read());
-    self.nodes.iter().filter(move |node| {
-      let node = node.read();
-      child_keys.contains(&node.key())
+    self.nodes.iter().filter_map(move |node| {
+      node
+        .as_ref()
+        .and_then(|node| child_keys.contains(&node.read_arc().key()).then_some(node))
     })
   }
 
@@ -672,12 +725,50 @@ where
     Ok(path)
   }
 
+  #[allow(clippy::type_complexity)]
+  pub fn path_from_node_to_node(
+    &self,
+    start: GraphNodeKey,
+    finish: GraphNodeKey,
+  ) -> Result<Vec<(SafeNode<N>, Option<SafeEdge<E>>)>, Report> {
+    let mut node = self
+      .get_node(start)
+      .ok_or_else(|| make_internal_report!("Node not found on the graph: {start}"))?;
+
+    let mut path = vec![(Arc::clone(&node), None)];
+    loop {
+      let parent = self.one_parent_of(&node.read_arc())?;
+
+      match parent {
+        None => {
+          return make_internal_error!("When searching path from starting node {start} to destination node {finish}: reached root node without finding the destination")
+        }
+
+        Some((parent, edge)) => {
+          path.push((Arc::clone(&node), Some(Arc::clone(&edge))));
+
+          if parent.read_arc().key() == finish {
+            break;
+          }
+
+          node = parent;
+        }
+      }
+    }
+
+    Ok(path)
+  }
+
   /// Returns graph into initial state after traversal
   pub fn reset_nodes(&self) {
     // Mark all nodes as not visited. As a part of traversal all nodes, one by one, marked as visited,
     // to ensure correctness of traversal. Here we reset the "is visited" markers this,
     // to allow for traversals again.
-    self.nodes.iter().for_each(|node| node.write().mark_as_not_visited());
+    self
+      .nodes
+      .iter()
+      .filter_map(|node| node.as_ref())
+      .for_each(|node| node.write().mark_as_not_visited());
   }
 
   pub fn is_root(&self, key: GraphNodeKey) -> bool {

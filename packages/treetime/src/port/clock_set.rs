@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Default, Serialize, Deserialize, CopyGetters, Getters)]
 pub struct ClockModel {
   #[getset(get_copy = "pub")]
-  rate: f64,
+  clock_rate: f64,
 
   #[getset(get_copy = "pub")]
   intercept: f64,
@@ -19,6 +19,18 @@ pub struct ClockModel {
 
   #[getset(get = "pub")]
   hessian: Array2<f64>,
+}
+
+impl ClockModel {
+  #[inline]
+  pub fn numdate_from_dist_to_root(&self, dist_to_root: f64) -> f64 {
+    (dist_to_root - self.intercept) / self.clock_rate()
+  }
+
+  #[inline]
+  pub fn clock_deviation(&self, numdate: f64, dist2root: f64) -> f64 {
+    (self.numdate_from_dist_to_root(dist2root) - numdate) * self.clock_rate()
+  }
 }
 
 #[must_use]
@@ -86,25 +98,25 @@ impl ClockSet {
       return make_error!("No variation in sampling dates! Please specify your clock rate explicitly.");
     }
 
-    let rate = self.rate(det);
-    let intercept = self.intercept(rate);
+    let clock_rate = self.clock_rate(det);
+    let intercept = self.intercept(clock_rate);
     let hessian = self.hessian();
     let chisq = self.chisq(det);
 
     Ok(ClockModel {
-      rate,
+      clock_rate,
       intercept,
       chisq,
       hessian,
     })
   }
 
-  pub fn clock_model_fixed_rate(&self, rate: f64) -> ClockModel {
-    let intercept = self.intercept(rate);
+  pub fn clock_model_fixed_rate(&self, clock_rate: f64) -> ClockModel {
+    let intercept = self.intercept(clock_rate);
     let hessian = self.hessian();
 
     ClockModel {
-      rate,
+      clock_rate,
       intercept,
       hessian,
       chisq: 0.0,
@@ -115,7 +127,7 @@ impl ClockSet {
     self.tsq_sum() * self.norm() - self.t_sum().powi(2)
   }
 
-  fn rate(&self, det: f64) -> f64 {
+  fn clock_rate(&self, det: f64) -> f64 {
     (self.dt_sum() * self.norm() - self.t_sum() * self.d_sum()) / det
   }
 

@@ -1,6 +1,7 @@
 use crate::graph::graph::Graph;
 use crate::graph::node::{GraphNode, GraphNodeKey};
 use derive_more::Display;
+use getset::{CopyGetters, Getters, MutGetters, Setters};
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
@@ -23,16 +24,27 @@ impl GraphEdgeKey {
   pub const fn as_usize(self) -> usize {
     self.0
   }
+
+  pub fn invalid() -> Self {
+    Self(usize::MAX)
+  }
 }
 
 /// Edge representing a connection between two nodes. Relevant data can be
 /// stored in the edge atomically. Edge's target and source nodes are
 /// weak references and can't outlive the nodes they represent.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Getters, CopyGetters, MutGetters, Setters)]
 pub struct Edge<E: GraphEdge> {
+  #[getset(get_copy = "pub", get_mut = "pub", set = "pub")]
   key: GraphEdgeKey,
+
+  #[getset(get_copy = "pub", get_mut = "pub", set = "pub")]
   source: GraphNodeKey,
+
+  #[getset(get_copy = "pub", get_mut = "pub", set = "pub")]
   target: GraphNodeKey,
+
+  #[getset(skip)]
   data: Arc<RwLock<E>>,
 }
 
@@ -46,15 +58,7 @@ impl<E: GraphEdge> Edge<E> {
       data: Arc::new(RwLock::new(data)),
     }
   }
-  pub const fn key(&self) -> GraphEdgeKey {
-    self.key
-  }
-  pub const fn source(&self) -> GraphNodeKey {
-    self.source
-  }
-  pub const fn target(&self) -> GraphNodeKey {
-    self.target
-  }
+
   pub fn payload(&self) -> Arc<RwLock<E>> {
     Arc::clone(&self.data)
   }

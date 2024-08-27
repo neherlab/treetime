@@ -1,11 +1,15 @@
 use crate::graph::breadth_first::GraphTraversalContinuation;
-use crate::graph::edge::{GraphEdge, GraphEdgeKey, Weighted};
+use crate::graph::edge::{invert_edge, GraphEdge, GraphEdgeKey, Weighted};
 use crate::graph::graph::Graph;
-use crate::graph::node::{GraphNode, Named};
-use crate::io::nwk::{EdgeFromNwk, NodeFromNwk};
+use crate::graph::node::{GraphNode, GraphNodeKey, Named};
+use crate::io::graphviz::{EdgeToGraphViz, NodeToGraphviz};
+use crate::io::nwk::{format_weight, EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteOptions};
+use crate::o;
 use crate::port::clock_set::{ClockModel, ClockSet};
 use crate::utils::container::get_exactly_one;
+use approx::ulps_eq;
 use eyre::Report;
+use maplit::btreemap;
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -16,13 +20,15 @@ pub type ClockGraph = Graph<ClockNodePayload, ClockEdgePayload, ()>;
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct ClockNodePayload {
-  name: Option<String>,
-  date: Option<f64>,
-  total: ClockSet,
-  to_parent: ClockSet,
-  to_children: BTreeMap<String, ClockSet>,
-  from_children: BTreeMap<String, ClockSet>,
+  pub name: Option<String>,
+  pub date: Option<f64>,
+  pub total: ClockSet,
+  pub to_parent: ClockSet,
+  pub to_children: BTreeMap<String, ClockSet>,
+  pub from_children: BTreeMap<String, ClockSet>,
 }
+
+impl GraphNode for ClockNodePayload {}
 
 impl NodeFromNwk for ClockNodePayload {
   fn from_nwk(name: Option<impl AsRef<str>>, _: &BTreeMap<String, String>) -> Result<Self, Report> {
@@ -33,7 +39,16 @@ impl NodeFromNwk for ClockNodePayload {
   }
 }
 
-impl GraphNode for ClockNodePayload {}
+impl NodeToNwk for ClockNodePayload {
+  fn nwk_name(&self) -> Option<impl AsRef<str>> {
+    self.name.as_deref()
+  }
+
+  fn nwk_comments(&self) -> BTreeMap<String, String> {
+    let mutations: String = "".to_owned(); // TODO: fill mutations
+    BTreeMap::from([(o!("mutations"), mutations)])
+  }
+}
 
 impl Named for ClockNodePayload {
   fn name(&self) -> Option<impl AsRef<str>> {
@@ -42,6 +57,12 @@ impl Named for ClockNodePayload {
 
   fn set_name(&mut self, name: Option<impl AsRef<str>>) {
     self.name = name.map(|n| n.as_ref().to_owned());
+  }
+}
+
+impl NodeToGraphviz for ClockNodePayload {
+  fn to_graphviz_label(&self) -> Option<impl AsRef<str>> {
+    self.name.as_deref()
   }
 }
 
@@ -68,10 +89,28 @@ impl EdgeFromNwk for ClockEdgePayload {
   }
 }
 
+impl EdgeToNwk for ClockEdgePayload {
+  fn nwk_weight(&self) -> Option<f64> {
+    self.weight()
+  }
+}
+
+impl EdgeToGraphViz for ClockEdgePayload {
+  fn to_graphviz_label(&self) -> Option<impl AsRef<str>> {
+    self
+      .weight()
+      .map(|weight| format_weight(weight, &NwkWriteOptions::default()))
+  }
+
+  fn to_graphviz_weight(&self) -> Option<f64> {
+    self.weight()
+  }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClockOptions {
-  variance_factor: f64,
-  variance_offset: f64,
+  pub variance_factor: f64,
+  pub variance_offset: f64,
 }
 
 fn clock_regression_backward(graph: &ClockGraph, options: &ClockOptions) {
@@ -147,14 +186,113 @@ fn clock_regression_forward(graph: &ClockGraph, options: &ClockOptions) {
   });
 }
 
+/// Calculate tip-to-root regression
+pub fn run_clock_regression(graph: &ClockGraph, options: &ClockOptions) -> Result<ClockModel, Report> {
+  clock_regression_backward(graph, options);
+  clock_regression_forward(graph, options);
+  let root = graph.get_exactly_one_root()?;
+  let clock = root.read_arc().payload().read_arc().total.clock_model()?;
+  Ok(clock)
+}
+
+pub fn reroot_in_place(graph: &mut ClockGraph, options: &ClockOptions) -> Result<GraphNodeKey, Report> {
+  let FindRootResult { edge, split, .. } = find_best_root(graph, options)?;
+
+  let edge_key = edge.expect("Edge is empty when rerooting");
+  let edge = graph.get_edge(edge_key).expect("Edge not found");
+
+  let new_root_key = if ulps_eq!(split, 0.0, max_ulps = 5) {
+    edge.read_arc().target()
+  } else if ulps_eq!(split, 1.0, max_ulps = 5) {
+    edge.read_arc().source()
+  } else {
+    create_new_root_node(graph, edge_key, split)?
+  };
+
+  let old_root_key = { graph.get_exactly_one_root()?.read_arc().key() };
+  if new_root_key != old_root_key {
+    apply_reroot(graph, old_root_key, new_root_key)?;
+  }
+
+  // TODO: remove old root node if it's trivial (i.e. having exactly 1 child and 1 parent) and merge dangling edges
+
+  Ok(new_root_key)
+}
+
+/// Create new root node by splitting the edge into two
+fn create_new_root_node(graph: &mut ClockGraph, edge_key: GraphEdgeKey, split: f64) -> Result<GraphNodeKey, Report> {
+  let new_root_key = graph.add_node(ClockNodePayload {
+    name: Some("new_root".to_owned()),
+    date: None,
+    total: ClockSet::default(),
+    to_parent: ClockSet::default(),
+    to_children: btreemap! {},
+    from_children: btreemap! {},
+  });
+
+  let edge = graph.get_edge(edge_key).expect("Edge not found");
+  let source_key = edge.read_arc().source();
+  let target_key = edge.read_arc().target();
+  let branch_length = edge.read_arc().payload().read_arc().weight().unwrap_or_default();
+
+  graph.add_edge(
+    source_key,
+    new_root_key,
+    ClockEdgePayload {
+      branch_length: Some(split * branch_length),
+    },
+  )?;
+
+  graph.add_edge(
+    new_root_key,
+    target_key,
+    ClockEdgePayload {
+      branch_length: Some((1.0 - split) * branch_length),
+    },
+  )?;
+
+  graph.remove_edge(edge_key)?;
+
+  Ok(new_root_key)
+}
+
+/// Modify graph topology to make the newly identified root the actual root.
+fn apply_reroot(graph: &mut ClockGraph, old_root_key: GraphNodeKey, new_root_key: GraphNodeKey) -> Result<(), Report> {
+  // let old_root = graph.get_node(old_root_key).expect("Old root node not found");
+  // let new_root = graph.get_node(new_root_key).expect("New root node not found");
+
+  // Find paths from the old root to the new desired root
+  // let paths = find_paths(graph, &old_root, &new_root)?;
+  println!("graph.path_from_node_to_node(new_root_key, old_root_key)?;");
+  let paths = graph.path_from_node_to_node(new_root_key, old_root_key)?;
+
+  // Invert every edge on the path from old to new root.
+  // This will make the desired new root into an actual root. The old root might no longer be a root.
+  for (_, edge) in &paths {
+    if let Some(edge) = edge {
+      invert_edge(graph, edge);
+    }
+  }
+
+  // Some bookkeeping
+  graph.build()?;
+  Ok(())
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FindRootResult {
   edge: Option<GraphEdgeKey>,
+
+  /// The best root might be somewhere half-way on an existing edge.
+  /// The position of this best root is the split. If this is 0 or 1, then we reroot on either the parent (source) or
+  /// the child (target) of the edge. If this is 0 < x < 1, we put a new node at that point, and reroot on that new node.
   split: f64,
+
   clock: ClockModel,
 }
 
-pub fn find_best_root(graph: &ClockGraph, options: &ClockOptions) -> Result<FindRootResult, Report> {
+/// Find the best new root node
+fn find_best_root(graph: &ClockGraph, options: &ClockOptions) -> Result<FindRootResult, Report> {
   // Loop over all nodes, pick the one with the lowest chisq, then optimize position along surrounding branches.
   clock_regression_backward(graph, options);
   clock_regression_forward(graph, options);
@@ -175,7 +313,7 @@ pub fn find_best_root(graph: &ClockGraph, options: &ClockOptions) -> Result<Find
     let tmp_chisq = n.read_arc().payload().read_arc().total.clock_model()?.chisq();
     if tmp_chisq < best_chisq {
       best_chisq = tmp_chisq;
-      best_root_node = Arc::clone(n);
+      best_root_node = Arc::clone(&n);
     }
   }
 
@@ -307,17 +445,12 @@ mod tests {
       variance_offset: 0.0,
     };
 
-    clock_regression_backward(&graph, options);
-    clock_regression_forward(&graph, options);
-
-    let root = graph.get_exactly_one_root()?;
-    let clock = root.read_arc().payload().read_arc().total.clock_model()?;
-
-    assert_ulps_eq!(naive_rate, clock.rate(), epsilon = 1e-9);
+    let clock = run_clock_regression(&graph, options)?;
+    assert_ulps_eq!(naive_rate, clock.clock_rate(), epsilon = 1e-9);
 
     options.variance_factor = 1.0;
     let res = find_best_root(&graph, options)?;
-    assert_ulps_eq!(0.008095476518345305, res.clock.rate(), epsilon = 1e-9);
+    assert_ulps_eq!(0.008095476518345305, res.clock.clock_rate(), epsilon = 1e-9);
 
     Ok(())
   }
