@@ -147,6 +147,24 @@ def find_best_root(graph: Graph) -> FindRootResult:
 
   return best_root
 
+
+def reroot_on_best_edge(graph: Graph, best_root) -> None:
+  n = graph.get_node(best_root.edge.target())
+  p = graph.get_node(best_root.edge.source())
+
+  if best_root.split==0.0:
+    new_root = n
+  elif best_root.split==1.0:
+    new_root = p
+  else:
+    # create new node that will be the new root
+    # set this node as the target of the edge with branch length best_root.split*edge.branch_length
+    # set this node as the source of a new edge with branch length (1-best_root.split)*edge.branch_length and target n
+
+  # I am not sure this function exists in the python version.
+  # graph.reroot(n, new_root, old_root)
+
+
 def tests():
   dates = {"A":2013, "B": 2022, "C":2017, "D": 2005}
   div = {"A":0.2, "B": 0.3, "C":0.25, "D": 0.17}
