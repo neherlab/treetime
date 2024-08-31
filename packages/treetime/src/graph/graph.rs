@@ -559,10 +559,8 @@ where
       .iter()
       .filter_map(|node_option| {
         node_option
-          .as_ref()?
-          .read()
-          .is_root()
-          .then(|| node_option.as_ref().unwrap().read().key())
+          .as_ref()
+          .and_then(|node| node.read().is_root().then(|| node.read().key()))
       })
       .collect();
 
@@ -571,10 +569,8 @@ where
       .iter()
       .filter_map(|node_option| {
         node_option
-          .as_ref()?
-          .read()
-          .is_leaf()
-          .then(|| node_option.as_ref().unwrap().read().key())
+          .as_ref()
+          .and_then(|node| node.read().is_leaf().then(|| node.read().key()))
       })
       .collect();
 
