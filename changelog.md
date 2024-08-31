@@ -1,3 +1,13 @@
+# 0.11.4: Bug fixed
+- fix output of mutations into the `branch_mutation.txt` file which was masked by a conditional
+- adjust CLI help
+- adjust output precision
+
+# 0.11.3: Bug fixed
+- calls to some random number generator errorred after the recent switch to treetime owned RNGs.
+- default argument for clock-filter method had a spelling mistake
+- a branch length optimization function didn't handle profiles==True correctly.
+
 # 0.11.2: improvements in VCF parsing/writing + clock-filter functionality
 - rewrite of the vcf reading and writing code including many more tests, closer alignment with spec, and performance improvements by @jameshadfield [PR #263](https://github.com/neherlab/treetime/pull/263)
 - clock-filter command can now remove detected outliers with the additional flag `--prune-outliers`.

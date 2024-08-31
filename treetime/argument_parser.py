@@ -81,7 +81,8 @@ tree_description = "Name of file containing the tree in newick, nexus, or phylip
 
 aln_description = "alignment file (fasta)"
 
-dates_description = "csv file with dates for nodes with 'node_name, date' where date is float (as in 2012.15)"
+dates_description = "csv file with dates for nodes with 'node_name, date' where date is float (as in 2012.15) or in ISO-format (YYYY-MM-DD). "\
+                    "Imprecisely known dates can be specified as '2023-XX-XX' or [2013.2:2013.7]"
 
 coalescent_description = \
     "coalescent time scale -- sensible values are on the order of the average "\

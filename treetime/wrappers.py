@@ -521,7 +521,7 @@ def ancestral_reconstruction(params):
     ### OUTPUT and saving of results
     ###########################################################################
     if params.gtr=='infer':
-        fname = outdir+'/sequence_evolution_model.txt'
+        fname = outdir+'sequence_evolution_model.txt'
         with open(fname, 'w', encoding='utf-8') as ofile:
             ofile.write(str(treeanc.gtr)+'\n')
         print('\nInferred sequence evolution model (saved as %s):'%fname)
@@ -859,7 +859,8 @@ def estimate_clock_model(params):
         myTree.outliers.to_csv(basename + 'outliers.tsv', sep='\t')
 
     if hasattr(myTree, 'outliers') and myTree.outliers is not None and params.prune_outliers:
-        for outlier in myTree.outliers:
+        for outlier in myTree.outliers.index:
+            print("removing ", outlier)
             myTree.tree.prune(outlier)
 
     if not params.keep_root:
