@@ -26,8 +26,8 @@ impl DateOrRange {
   }
 }
 
-pub type DatesMap = HashMap<String, DateOrRange>;
-pub type DateRecord = (String, DateOrRange);
+pub type DatesMap = HashMap<String, Option<DateOrRange>>;
+pub type DateRecord = (String, Option<DateOrRange>);
 
 pub fn read_dates(
   filepath: impl AsRef<Path>,
@@ -88,26 +88,29 @@ pub fn convert_record(
   Ok((name, date))
 }
 
-pub fn parse_date(date_str: &str) -> Result<DateOrRange, Report> {
+pub fn parse_date(date_str: &str) -> Result<Option<DateOrRange>, Report> {
+  if date_str.is_empty() {
+    Ok(None)
+  }
   // Try to parse as year fraction: `2022.7`
-  if let Ok(date) = date_str.parse::<f64>() {
-    Ok(DateOrRange::YearFraction(date))
+  else if let Ok(date) = date_str.parse::<f64>() {
+    Ok(Some(DateOrRange::YearFraction(date)))
   }
   // Try to parse as year fraction range: `[2022.6:2022.7]`
   else if let Ok(range) = parse_date_range(date_str) {
-    Ok(DateOrRange::YearFractionRange(range))
+    Ok(Some(DateOrRange::YearFractionRange(range)))
   }
   // Try to parse as ISO 8601 (RFC 3339) date: `2022-07-22T16:40:59Z`
   else if let Ok(date) = date_from_iso(date_str) {
-    Ok(DateOrRange::YearFraction(date_to_year_fraction(&date)))
+    Ok(Some(DateOrRange::YearFraction(date_to_year_fraction(&date))))
   }
   // Try to parse as RFC 2822 date: `Wed, 22 Jul 2022 18:48:09 GMT`
   else if let Ok(date) = date_from_rfc2822(date_str) {
-    Ok(DateOrRange::YearFraction(date_to_year_fraction(&date)))
+    Ok(Some(DateOrRange::YearFraction(date_to_year_fraction(&date))))
   }
   // Try to parse as various date formats
   else if let Ok(date) = date_from_formats(date_str) {
-    Ok(DateOrRange::YearFraction(date_to_year_fraction(&date)))
+    Ok(Some(DateOrRange::YearFraction(date_to_year_fraction(&date))))
   } else {
     // Give up
     make_error!("Unknown date format: {date_str}")

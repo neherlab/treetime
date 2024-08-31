@@ -66,14 +66,14 @@ pub struct ClockSet {
 }
 
 impl ClockSet {
-  pub fn leaf_contribution(tip_value: f64) -> Self {
+  pub fn leaf_contribution(date: Option<f64>) -> Self {
     Self {
-      t_sum: tip_value,
-      tsq_sum: tip_value.powi(2),
+      t_sum: date.unwrap_or(0.0),
+      tsq_sum: date.unwrap_or(0.0).powi(2),
       d_sum: 0.0,
       dt_sum: 0.0,
       dsq_sum: 0.0,
-      norm: 1.0,
+      norm: if date.is_some() { 1.0 } else { 0.0 },
     }
   }
 

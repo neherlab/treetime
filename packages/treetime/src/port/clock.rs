@@ -119,7 +119,7 @@ fn clock_regression_backward(graph: &ClockGraph, options: &ClockOptions) {
   graph.par_iter_breadth_first_backward(|mut n| {
     n.payload.from_children.clear();
     let q_dest = if n.is_leaf {
-      ClockSet::leaf_contribution(n.payload.date.expect("Encountered a leaf node without a date"))
+      ClockSet::leaf_contribution(n.payload.date)
     } else {
       let mut q_dest = ClockSet::default();
       for (c, e) in n.children {
