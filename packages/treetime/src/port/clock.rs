@@ -22,6 +22,7 @@ pub type ClockGraph = Graph<ClockNodePayload, ClockEdgePayload, ()>;
 pub struct ClockNodePayload {
   pub name: Option<String>,
   pub date: Option<f64>,
+  pub bad_branch: bool,
   pub div: f64,
   pub is_outlier: bool,
   pub total: ClockSet,
@@ -224,6 +225,7 @@ fn create_new_root_node(graph: &mut ClockGraph, edge_key: GraphEdgeKey, split: f
   let new_root_key = graph.add_node(ClockNodePayload {
     name: Some("new_root".to_owned()),
     date: None,
+    bad_branch: false,
     div: 0.0,
     is_outlier: false,
     total: ClockSet::default(),

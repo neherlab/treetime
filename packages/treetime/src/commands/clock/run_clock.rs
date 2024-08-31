@@ -1,13 +1,12 @@
 use crate::cli::rtt_chart::{
   print_clock_regression_chart, write_clock_regression_chart_png, write_clock_regression_chart_svg,
 };
+use crate::commands::clock::assign_dates::assign_dates;
 use crate::commands::clock::clock_args::TreetimeClockArgs;
-use crate::graph::node::Named;
-use crate::io::dates_csv::{read_dates, DateOrRange};
+use crate::io::dates_csv::read_dates;
 use crate::io::graphviz::graphviz_write_file;
 use crate::io::json::{json_write_file, JsonPretty};
 use crate::io::nwk::{nwk_read_file, nwk_write_file, NwkWriteOptions};
-use crate::make_error;
 use crate::port::clock::{reroot_in_place, run_clock_regression, ClockGraph, ClockOptions};
 use crate::port::rtt::{gather_clock_regression_results, write_clock_regression_result_csv};
 use eyre::{Report, WrapErr};
@@ -45,10 +44,7 @@ pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
 
   {
     let dates = read_dates(dates, name_column, date_column).wrap_err("When reading dates")?;
-    for n in graph.get_leaves() {
-      let name = n.read_arc().payload().read_arc().name().unwrap().as_ref().to_owned();
-      n.write_arc().payload().write_arc().date = dates.get(&name).and_then(|d| d.as_ref().map(DateOrRange::mean));
-    }
+    assign_dates(&graph, &dates)?;
   }
 
   let options = ClockOptions {
