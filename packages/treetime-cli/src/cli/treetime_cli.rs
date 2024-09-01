@@ -1,3 +1,5 @@
+#![allow(unused_qualifications)]
+
 use clap::{AppSettings, ArgEnum, CommandFactory, Parser, Subcommand};
 use clap_complete::{generate, Shell};
 use clap_complete_fig::Fig;

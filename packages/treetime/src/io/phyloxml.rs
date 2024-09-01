@@ -231,7 +231,7 @@ where
       graph.add_edge(parent_key, node_key, graph_edge)?;
     }
     for child in &clade.clade {
-      queue.push_back((Some(node_key), &child));
+      queue.push_back((Some(node_key), child));
     }
   }
   graph.build()?;

@@ -88,7 +88,7 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
       ancestral_reconstruction_fitch(&graph, *reconstruct_tip_states, &partitions, |node, seq| {
         let name = node.name.as_deref().unwrap_or("");
         // TODO: avoid converting vec to string, write vec chars directly
-        output_fasta.write(name, &vec_to_string(seq)).unwrap();
+        output_fasta.write(name, vec_to_string(seq)).unwrap();
       })?;
 
       write_graph(outdir, &graph)?;
@@ -111,7 +111,7 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
         ancestral_reconstruction_marginal_sparse(&graph, *reconstruct_tip_states, &partitions, |node, seq| {
           let name = node.name.as_deref().unwrap_or("");
           // TODO: avoid converting vec to string, write vec chars directly
-          output_fasta.write(name, &vec_to_string(seq)).unwrap();
+          output_fasta.write(name, vec_to_string(seq)).unwrap();
         })?;
 
         write_graph(outdir, &graph)?;
@@ -125,7 +125,7 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
         ancestral_reconstruction_marginal_dense(&graph, *reconstruct_tip_states, |node, seq| {
           let name = node.name.as_deref().unwrap_or("");
           // TODO: avoid converting vec to string, write vec chars directly
-          output_fasta.write(name, &vec_to_string(seq)).unwrap();
+          output_fasta.write(name, vec_to_string(seq)).unwrap();
         })?;
 
         write_graph(outdir, &graph)?;

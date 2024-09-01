@@ -136,7 +136,7 @@ where
       graph.add_edge(parent_key, node_key, graph_edge)?;
     }
     for child in &node.children {
-      queue.push_back((Some(node_key), &child, Some(node)));
+      queue.push_back((Some(node_key), child, Some(node)));
     }
   }
   graph.build()?;
