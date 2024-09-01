@@ -9,6 +9,7 @@ use lazy_static::lazy_static;
 use regex::Regex;
 use std::collections::HashMap;
 use std::path::Path;
+use std::sync::LazyLock;
 
 #[derive(Clone, Copy, Debug)]
 pub enum DateOrRange {
@@ -89,12 +90,18 @@ pub fn convert_record(
 }
 
 pub fn parse_date(date_str: &str) -> Result<Option<DateOrRange>, Report> {
-  if date_str.is_empty() {
+  let date_str = &date_str.trim_matches(|c: char| !c.is_ascii() || c.is_whitespace());
+
+  if is_nil(date_str) {
     Ok(None)
   }
   // Try to parse as year fraction: `2022.7`
   else if let Ok(date) = date_str.parse::<f64>() {
-    Ok(Some(DateOrRange::YearFraction(date)))
+    if date.is_finite() {
+      Ok(Some(DateOrRange::YearFraction(date)))
+    } else {
+      Ok(None)
+    }
   }
   // Try to parse as year fraction range: `[2022.6:2022.7]`
   else if let Ok(range) = parse_date_range(date_str) {
@@ -115,6 +122,23 @@ pub fn parse_date(date_str: &str) -> Result<Option<DateOrRange>, Report> {
     // Give up
     make_error!("Unknown date format: {date_str}")
   }
+}
+
+fn is_nil(input: &str) -> bool {
+  const NON_VALUES: &[&str] = &[
+    "na",
+    "n/a",
+    "nan",
+    "null",
+    "nil",
+    "none",
+    "empty",
+    "missing",
+    "undefined",
+  ];
+  static REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^(\?+|-+)$").unwrap());
+  let input_lower = input.to_lowercase();
+  input.is_empty() || NON_VALUES.contains(&input_lower.as_str()) || REGEX.is_match(&input_lower)
 }
 
 pub fn parse_date_range(date_str: &str) -> Result<(f64, f64), Report> {
