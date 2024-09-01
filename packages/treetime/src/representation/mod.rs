@@ -1,3 +1,4 @@
 pub mod graph_dense;
 pub mod graph_sparse;
-pub mod seq_partitions;
+pub mod partitions_likelihood;
+pub mod partitions_parsimony;

@@ -5,7 +5,7 @@ use crate::graph::node::Named;
 use crate::representation::graph_dense::{
   DenseGraph, DenseNode, DenseSeqDis, DenseSeqEdge, DenseSeqInfo, DenseSeqNode,
 };
-use crate::representation::seq_partitions::{PartitionLikelihood, PartitionLikelihoodWithAln};
+use crate::representation::partitions_likelihood::{PartitionLikelihood, PartitionLikelihoodWithAln};
 use crate::seq::range_intersection::range_intersection;
 use crate::utils::ndarray::{log, product_axis};
 use crate::{make_internal_report, make_report, o};

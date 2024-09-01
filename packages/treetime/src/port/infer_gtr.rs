@@ -176,7 +176,7 @@ mod tests {
   use crate::io::nwk::nwk_read_str;
   use crate::port::fitch::compress_sequences;
   use crate::pretty_assert_ulps_eq;
-  use crate::representation::seq_partitions::PartitionParsimonyWithAln;
+  use crate::representation::partitions_parsimony::PartitionParsimonyWithAln;
   use indoc::indoc;
   use ndarray::array;
 

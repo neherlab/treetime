@@ -14,9 +14,8 @@ use crate::port::ancestral_sparse::{ancestral_reconstruction_marginal_sparse, ru
 use crate::port::fitch::{ancestral_reconstruction_fitch, compress_sequences};
 use crate::representation::graph_dense::DenseGraph;
 use crate::representation::graph_sparse::SparseGraph;
-use crate::representation::seq_partitions::{
-  PartitionLikelihood, PartitionLikelihoodWithAln, PartitionParsimonyWithAln,
-};
+use crate::representation::partitions_likelihood::{PartitionLikelihood, PartitionLikelihoodWithAln};
+use crate::representation::partitions_parsimony::PartitionParsimonyWithAln;
 use crate::utils::random::get_random_number_generator;
 use crate::utils::string::vec_to_string;
 use eyre::Report;

@@ -7,7 +7,7 @@ use crate::port::mutation::{InDel, Mut};
 use crate::representation::graph_sparse::{
   Deletion, SparseGraph, SparseNode, SparseSeqDis, SparseSeqEdge, SparseSeqInfo, SparseSeqNode, VarPos,
 };
-use crate::representation::seq_partitions::{PartitionParsimony, PartitionParsimonyWithAln};
+use crate::representation::partitions_parsimony::{PartitionParsimony, PartitionParsimonyWithAln};
 use crate::seq::range::range_contains;
 use crate::seq::range_complement::range_complement;
 use crate::seq::range_difference::range_difference;

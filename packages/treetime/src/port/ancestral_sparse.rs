@@ -6,7 +6,7 @@ use crate::port::constants::GAP_CHAR;
 use crate::representation::graph_sparse::{
   SparseGraph, SparseNode, SparseSeqDis, SparseSeqEdge, SparseSeqNode, VarPos,
 };
-use crate::representation::seq_partitions::PartitionLikelihood;
+use crate::representation::partitions_likelihood::PartitionLikelihood;
 use crate::seq::range::range_contains;
 use crate::utils::ndarray::{product_axis, stack_owned};
 use crate::{make_internal_error, make_internal_report};
@@ -504,7 +504,7 @@ mod tests {
   use crate::io::nwk::nwk_read_str;
   use crate::port::fitch::compress_sequences;
   use crate::pretty_assert_ulps_eq;
-  use crate::representation::seq_partitions::PartitionParsimonyWithAln;
+  use crate::representation::partitions_parsimony::PartitionParsimonyWithAln;
   use crate::utils::string::vec_to_string;
   use eyre::Report;
   use indoc::indoc;
