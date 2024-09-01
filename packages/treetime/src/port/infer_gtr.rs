@@ -172,9 +172,9 @@ pub fn get_mutation_counts(graph: &SparseGraph, alphabet: &Alphabet) -> Result<M
 #[cfg(test)]
 mod tests {
   use super::*;
+  use crate::commands::ancestral::fitch::compress_sequences;
   use crate::io::fasta::read_many_fasta_str;
   use crate::io::nwk::nwk_read_str;
-  use crate::port::fitch::compress_sequences;
   use crate::pretty_assert_ulps_eq;
   use crate::representation::partitions_parsimony::PartitionParsimonyWithAln;
   use indoc::indoc;

@@ -1,7 +1,7 @@
 use crate::alphabet::alphabet::Alphabet;
+use crate::commands::ancestral::fitch::get_common_length;
 use crate::gtr::gtr::GTR;
 use crate::io::fasta::FastaRecord;
-use crate::port::fitch::get_common_length;
 use crate::representation::graph_sparse::VarPos;
 use crate::representation::partitions_parsimony::PartitionParsimony;
 use crate::seq::range::RangeCollection;

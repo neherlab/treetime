@@ -1,5 +1,8 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::commands::ancestral::anc_args::{MethodAncestral, TreetimeAncestralArgs};
+use crate::commands::ancestral::fitch::{ancestral_reconstruction_fitch, compress_sequences};
+use crate::commands::ancestral::marginal_dense::{ancestral_reconstruction_marginal_dense, run_marginal_dense};
+use crate::commands::ancestral::marginal_sparse::{ancestral_reconstruction_marginal_sparse, run_marginal_sparse};
 use crate::graph::edge::GraphEdge;
 use crate::graph::graph::Graph;
 use crate::graph::node::GraphNode;
@@ -9,9 +12,6 @@ use crate::io::file::create_file_or_stdout;
 use crate::io::json::{json_write_file, JsonPretty};
 use crate::io::nex::{nex_write_file, NexWriteOptions};
 use crate::io::nwk::{nwk_read_file, nwk_write_file, EdgeToNwk, NodeToNwk, NwkWriteOptions};
-use crate::port::ancestral_dense::{ancestral_reconstruction_marginal_dense, run_marginal_dense};
-use crate::port::ancestral_sparse::{ancestral_reconstruction_marginal_sparse, run_marginal_sparse};
-use crate::port::fitch::{ancestral_reconstruction_fitch, compress_sequences};
 use crate::representation::graph_dense::DenseGraph;
 use crate::representation::graph_sparse::SparseGraph;
 use crate::representation::partitions_likelihood::{PartitionLikelihood, PartitionLikelihoodWithAln};

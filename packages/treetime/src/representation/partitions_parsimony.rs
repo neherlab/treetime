@@ -1,6 +1,6 @@
 use crate::alphabet::alphabet::Alphabet;
+use crate::commands::ancestral::fitch::get_common_length;
 use crate::io::fasta::FastaRecord;
-use crate::port::fitch::get_common_length;
 use crate::representation::graph_sparse::VarPos;
 use crate::seq::range::RangeCollection;
 use eyre::Report;

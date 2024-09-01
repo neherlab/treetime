@@ -1,7 +1,7 @@
 use ctor::ctor;
 use eyre::Report;
 use log::info;
-use treetime::commands::ancestral::run_ancestral_reconstruction::run_ancestral_reconstruction;
+use treetime::commands::ancestral::run_ancestral::run_ancestral_reconstruction;
 use treetime::commands::clock::run_clock::run_clock;
 use treetime::commands::homoplasy::run_homoplasy::run_homoplasy;
 use treetime::commands::mugration::run_mugration::run_mugration;

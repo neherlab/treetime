@@ -498,11 +498,11 @@ pub fn ancestral_reconstruction_marginal_sparse(
 #[cfg(test)]
 mod tests {
   use super::*;
+  use crate::commands::ancestral::fitch::compress_sequences;
   use crate::gtr::get_gtr::{jc69, JC69Params};
   use crate::io::fasta::read_many_fasta_str;
   use crate::io::json::{json_write_str, JsonPretty};
   use crate::io::nwk::nwk_read_str;
-  use crate::port::fitch::compress_sequences;
   use crate::pretty_assert_ulps_eq;
   use crate::representation::partitions_parsimony::PartitionParsimonyWithAln;
   use crate::utils::string::vec_to_string;
