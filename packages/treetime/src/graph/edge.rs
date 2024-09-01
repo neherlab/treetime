@@ -98,13 +98,15 @@ pub fn invert_edge<N: GraphNode, E: GraphEdge>(graph: &Graph<N, E>, edge: &Arc<R
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::graph::examples::tests::get_example_tree;
+  use crate::graph::graph::tests::{TestEdge, TestNode};
+  use crate::io::nwk::nwk_read_str;
   use eyre::Report;
-  use rstest::rstest;
+  use pretty_assertions::assert_eq;
 
-  #[rstest]
+  #[test]
   fn edge_inverts() -> Result<(), Report> {
-    let graph = get_example_tree()?;
+    let graph =
+      nwk_read_str::<TestNode, TestEdge, ()>("((((h:0.7)e:0.6)d:0.4)b:0.,((g:0.5)c:0.2,(i:0.8)f:0.3)a:0.1)r1;")?;
 
     let edge = graph.get_edge(GraphEdgeKey(3)).unwrap();
     let input_source = edge.read().source();

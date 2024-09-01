@@ -7,7 +7,6 @@ pub mod gtr;
 pub mod io;
 pub mod port;
 pub mod seq;
-pub mod seq_utils;
 pub mod utils;
 
 #[cfg(test)]
