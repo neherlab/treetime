@@ -1,6 +1,6 @@
+use crate::commands::clock::clock::ClockGraph;
+use crate::commands::clock::clock_set::ClockModel;
 use crate::io::csv::CsvStructFileWriter;
-use crate::port::clock::ClockGraph;
-use crate::port::clock_set::ClockModel;
 use eyre::Report;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};

@@ -1,7 +1,7 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::graph::edge::Weighted;
 use crate::gtr::gtr::avg_transition;
-use crate::port::seq_sparse::SparseGraph;
+use crate::representation::graph_sparse::SparseGraph;
 use crate::utils::ndarray::outer;
 use eyre::Report;
 use log::warn;
@@ -175,8 +175,8 @@ mod tests {
   use crate::io::fasta::read_many_fasta_str;
   use crate::io::nwk::nwk_read_str;
   use crate::port::fitch::compress_sequences;
-  use crate::port::seq_partitions::PartitionParsimonyWithAln;
   use crate::pretty_assert_ulps_eq;
+  use crate::representation::seq_partitions::PartitionParsimonyWithAln;
   use indoc::indoc;
   use ndarray::array;
 

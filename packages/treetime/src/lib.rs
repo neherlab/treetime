@@ -6,6 +6,7 @@ pub mod graph;
 pub mod gtr;
 pub mod io;
 pub mod port;
+pub mod representation;
 pub mod seq;
 pub mod utils;
 

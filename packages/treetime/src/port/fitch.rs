@@ -4,10 +4,10 @@ use crate::io::fasta::FastaRecord;
 use crate::port::composition::Composition;
 use crate::port::constants::{FILL_CHAR, GAP_CHAR, NON_CHAR, VARIABLE};
 use crate::port::mutation::{InDel, Mut};
-use crate::port::seq_partitions::{PartitionParsimony, PartitionParsimonyWithAln};
-use crate::port::seq_sparse::{
+use crate::representation::graph_sparse::{
   Deletion, SparseGraph, SparseNode, SparseSeqDis, SparseSeqEdge, SparseSeqInfo, SparseSeqNode, VarPos,
 };
+use crate::representation::seq_partitions::{PartitionParsimony, PartitionParsimonyWithAln};
 use crate::seq::range::range_contains;
 use crate::seq::range_complement::range_complement;
 use crate::seq::range_difference::range_difference;
@@ -433,10 +433,7 @@ pub fn compress_sequences(
 ) -> Result<Vec<PartitionParsimony>, Report> {
   attach_seqs_to_graph(graph, &partitions)?;
 
-  let partitions = partitions
-    .into_iter()
-    .map(PartitionParsimony::from)
-    .collect_vec();
+  let partitions = partitions.into_iter().map(PartitionParsimony::from).collect_vec();
 
   fitch_backwards(graph, &partitions);
   fitch_forward(graph, &partitions);
@@ -632,10 +629,7 @@ mod tests {
 
     attach_seqs_to_graph(&graph, &partitions)?;
 
-    let partitions = partitions
-      .into_iter()
-      .map(PartitionParsimony::from)
-      .collect_vec();
+    let partitions = partitions.into_iter().map(PartitionParsimony::from).collect_vec();
 
     fitch_backwards(&graph, &partitions);
 

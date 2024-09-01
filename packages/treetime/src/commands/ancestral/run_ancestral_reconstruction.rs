@@ -12,9 +12,11 @@ use crate::io::nwk::{nwk_read_file, nwk_write_file, EdgeToNwk, NodeToNwk, NwkWri
 use crate::port::ancestral_dense::{ancestral_reconstruction_marginal_dense, run_marginal_dense};
 use crate::port::ancestral_sparse::{ancestral_reconstruction_marginal_sparse, run_marginal_sparse};
 use crate::port::fitch::{ancestral_reconstruction_fitch, compress_sequences};
-use crate::port::seq_dense::DenseGraph;
-use crate::port::seq_partitions::{PartitionLikelihood, PartitionLikelihoodWithAln, PartitionParsimonyWithAln};
-use crate::port::seq_sparse::SparseGraph;
+use crate::representation::graph_dense::DenseGraph;
+use crate::representation::graph_sparse::SparseGraph;
+use crate::representation::seq_partitions::{
+  PartitionLikelihood, PartitionLikelihoodWithAln, PartitionParsimonyWithAln,
+};
 use crate::utils::random::get_random_number_generator;
 use crate::utils::string::vec_to_string;
 use eyre::Report;

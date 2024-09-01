@@ -1,6 +1,6 @@
+use crate::commands::clock::clock_set::ClockModel;
+use crate::commands::clock::rtt::ClockRegressionResult;
 use crate::o;
-use crate::port::clock_set::ClockModel;
-use crate::port::rtt::ClockRegressionResult;
 use comfy_table::modifiers::{UTF8_ROUND_CORNERS, UTF8_SOLID_INNER_BORDERS};
 use comfy_table::presets::UTF8_FULL;
 use comfy_table::{ContentArrangement, Table};

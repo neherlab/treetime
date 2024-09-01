@@ -1,8 +1,8 @@
 use crate::alphabet::alphabet::{Alphabet, AlphabetName};
 use crate::gtr::gtr::{GTRParams, GTR};
 use crate::port::infer_gtr::{get_mutation_counts, infer_gtr, InferGtrOptions, InferGtrResult};
-use crate::port::seq_dense::DenseGraph;
-use crate::port::seq_sparse::SparseGraph;
+use crate::representation::graph_dense::DenseGraph;
+use crate::representation::graph_sparse::SparseGraph;
 use crate::{make_error, make_report};
 use clap::ArgEnum;
 use eyre::{Report, WrapErr};

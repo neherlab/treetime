@@ -2,8 +2,10 @@ use crate::alphabet::alphabet::Alphabet;
 use crate::graph::breadth_first::GraphTraversalContinuation;
 use crate::graph::edge::Weighted;
 use crate::graph::node::Named;
-use crate::port::seq_dense::{DenseGraph, DenseNode, DenseSeqDis, DenseSeqEdge, DenseSeqInfo, DenseSeqNode};
-use crate::port::seq_partitions::{PartitionLikelihood, PartitionLikelihoodWithAln};
+use crate::representation::graph_dense::{
+  DenseGraph, DenseNode, DenseSeqDis, DenseSeqEdge, DenseSeqInfo, DenseSeqNode,
+};
+use crate::representation::seq_partitions::{PartitionLikelihood, PartitionLikelihoodWithAln};
 use crate::seq::range_intersection::range_intersection;
 use crate::utils::ndarray::{log, product_axis};
 use crate::{make_internal_report, make_report, o};

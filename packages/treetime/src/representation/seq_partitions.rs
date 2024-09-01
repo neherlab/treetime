@@ -2,7 +2,7 @@ use crate::alphabet::alphabet::Alphabet;
 use crate::gtr::gtr::GTR;
 use crate::io::fasta::FastaRecord;
 use crate::port::fitch::get_common_length;
-use crate::port::seq_sparse::VarPos;
+use crate::representation::graph_sparse::VarPos;
 use crate::seq::range::RangeCollection;
 use eyre::Report;
 use ndarray::Array1;
@@ -55,7 +55,12 @@ pub struct PartitionLikelihoodWithAln {
 impl PartitionLikelihoodWithAln {
   pub fn new(gtr: GTR, alphabet: Alphabet, aln: Vec<FastaRecord>) -> Result<Self, Report> {
     let length = get_common_length(&aln)?;
-    Ok(Self { gtr, alphabet, aln, length })
+    Ok(Self {
+      gtr,
+      alphabet,
+      aln,
+      length,
+    })
   }
 }
 

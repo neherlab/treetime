@@ -3,8 +3,10 @@ use crate::graph::breadth_first::GraphTraversalContinuation;
 use crate::graph::edge::Weighted;
 use crate::graph::node::Named;
 use crate::port::constants::GAP_CHAR;
-use crate::port::seq_partitions::PartitionLikelihood;
-use crate::port::seq_sparse::{SparseGraph, SparseNode, SparseSeqDis, SparseSeqEdge, SparseSeqNode, VarPos};
+use crate::representation::graph_sparse::{
+  SparseGraph, SparseNode, SparseSeqDis, SparseSeqEdge, SparseSeqNode, VarPos,
+};
+use crate::representation::seq_partitions::PartitionLikelihood;
 use crate::seq::range::range_contains;
 use crate::utils::ndarray::{product_axis, stack_owned};
 use crate::{make_internal_error, make_internal_report};
@@ -501,8 +503,8 @@ mod tests {
   use crate::io::json::{json_write_str, JsonPretty};
   use crate::io::nwk::nwk_read_str;
   use crate::port::fitch::compress_sequences;
-  use crate::port::seq_partitions::PartitionParsimonyWithAln;
   use crate::pretty_assert_ulps_eq;
+  use crate::representation::seq_partitions::PartitionParsimonyWithAln;
   use crate::utils::string::vec_to_string;
   use eyre::Report;
   use indoc::indoc;

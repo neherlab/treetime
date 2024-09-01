@@ -1,3 +1,4 @@
+use crate::commands::clock::clock_set::{ClockModel, ClockSet};
 use crate::graph::breadth_first::GraphTraversalContinuation;
 use crate::graph::edge::{invert_edge, GraphEdge, GraphEdgeKey, Weighted};
 use crate::graph::graph::Graph;
@@ -5,7 +6,6 @@ use crate::graph::node::{GraphNode, GraphNodeKey, Named};
 use crate::io::graphviz::{EdgeToGraphViz, NodeToGraphviz};
 use crate::io::nwk::{format_weight, EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteOptions};
 use crate::o;
-use crate::port::clock_set::{ClockModel, ClockSet};
 use crate::utils::container::get_exactly_one;
 use approx::ulps_eq;
 use eyre::Report;
