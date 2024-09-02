@@ -445,7 +445,7 @@ mod tests {
   fn test_alphabet_nuc() -> Result<(), Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc, false)?;
     let actual = json_write_str(&alphabet, JsonPretty(true))?;
-    let expected = indoc! {r#"{
+    let expected = indoc! { /* language=json */ r#"{
       "all": [
         "A",
         "C",
@@ -710,7 +710,8 @@ mod tests {
   fn test_alphabet_aa() -> Result<(), Report> {
     let alphabet = Alphabet::new(AlphabetName::Aa, false)?;
     let actual = json_write_str(&alphabet, JsonPretty(true))?;
-    let expected = indoc! {r#"{
+
+    let expected = indoc! { /* language=json */ r#"{
       "all": [
         "A",
         "C",
