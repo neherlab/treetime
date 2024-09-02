@@ -27,6 +27,17 @@ impl ClockSet {
     }
   }
 
+  pub fn outlier_contribution() -> Self {
+    Self {
+      t_sum: 0.0,
+      tsq_sum: 0.0,
+      d_sum: 0.0,
+      dt_sum: 0.0,
+      dsq_sum: 0.0,
+      norm: 0.0,
+    }
+  }
+
   pub fn propagate_averages(&self, branch_value: f64, branch_variance: f64) -> Self {
     let denom = 1.0 / (1.0 + branch_variance * self.norm);
 

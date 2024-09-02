@@ -16,6 +16,17 @@ use eyre::{Report, WrapErr};
 
 use super::clock_model::ClockModel;
 
+pub fn get_clock_model(graph: &mut ClockGraph, options: &ClockOptions, keep_root: bool) -> Result<ClockModel, Report> {
+  if keep_root {
+    run_clock_regression(&graph, &options)
+  } else {
+    reroot_in_place(graph, &options)?;
+    let root = graph.get_exactly_one_root()?;
+    let root = root.read_arc().payload().read_arc();
+    ClockModel::new(&root.total)
+  }
+}
+
 pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
   let TreetimeClockArgs {
     aln,
@@ -59,17 +70,20 @@ pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
 
   // if we keep the root, run clock regression and report the model of the current root
   // otherwise, reroot the tree and use clock model of the novel root
-  let clock_model = if *keep_root {
-    run_clock_regression(&graph, &options)
-  } else {
-    reroot_in_place(&mut graph, &options)?;
-    let root = graph.get_exactly_one_root()?;
-    let root = root.read_arc().payload().read_arc();
-    ClockModel::new(&root.total)
-  }?;
+  // let clock_model = if *keep_root {
+  //   run_clock_regression(&graph, &options)
+  // } else {
+  //   reroot_in_place(&mut graph, &options)?;
+  //   let root = graph.get_exactly_one_root()?;
+  //   let root = root.read_arc().payload().read_arc();
+  //   ClockModel::new(&root.total)
+  // }?;
+
+  let mut clock_model = get_clock_model(&mut graph, &options, *keep_root)?;
 
   if *clock_filter>0.0 {
     clock_filter_inplace(&graph, &clock_model, *clock_filter);
+    clock_model = get_clock_model(&mut graph, &options, true)?;
   }
 
   nwk_write_file(outdir.join("rerooted.nwk"), &graph, &NwkWriteOptions::default())?;
