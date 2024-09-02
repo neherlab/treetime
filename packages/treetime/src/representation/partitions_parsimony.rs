@@ -1,11 +1,7 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::commands::ancestral::fitch::get_common_length;
 use crate::io::fasta::FastaRecord;
-use crate::representation::graph_sparse::VarPos;
-use crate::utils::interval::range::RangeCollection;
 use eyre::Report;
-use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
 
 #[derive(Clone, Debug)]
 pub struct PartitionParsimonyWithAln {
@@ -21,15 +17,6 @@ impl PartitionParsimonyWithAln {
   }
 }
 
-impl From<PartitionParsimonyWithAln> for PartitionParsimony {
-  fn from(item: PartitionParsimonyWithAln) -> Self {
-    Self {
-      alphabet: item.alphabet,
-      length: item.length,
-    }
-  }
-}
-
 #[derive(Clone, Debug)]
 pub struct PartitionParsimony {
   pub alphabet: Alphabet,
@@ -42,11 +29,11 @@ impl PartitionParsimony {
   }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct SeqInfoParsimony {
-  pub unknown: RangeCollection,
-  pub gaps: RangeCollection,
-  pub non_char: RangeCollection, // any position that does not evolve according to the substitution model, i.e. gap or N
-  pub variable: BTreeMap<usize, VarPos>, // 0/1 vector for each variable position collecting information from children
-  pub fixed_composition: BTreeMap<String, usize>, // this is important for likelihood calculations
+impl From<PartitionParsimonyWithAln> for PartitionParsimony {
+  fn from(item: PartitionParsimonyWithAln) -> Self {
+    Self {
+      alphabet: item.alphabet,
+      length: item.length,
+    }
+  }
 }
