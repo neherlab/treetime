@@ -18,6 +18,7 @@ use textplots::{Chart, ColorPlot, Shape};
 use crate::io::file::create_file_or_stdout;
 #[cfg(feature = "png")]
 use image::{codecs::png::PngEncoder, ColorType, DynamicImage, ImageBuffer, ImageEncoder, Rgb};
+use plotters::coord::types::RangedCoordf32;
 
 pub fn write_clock_regression_chart_svg(
   results: &[ClockRegressionResult],
@@ -151,6 +152,13 @@ where
     .label(format!("Clock regression: {}", clock_model.equation_str()))
     .legend(move |(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], line_color));
 
+  add_legend(&mut chart, format!("tMRCA: {:.1}", clock_model.t_mrca()))?;
+  add_legend(&mut chart, format!("Rate: {:.6}", clock_model.clock_rate()))?;
+  add_legend(&mut chart, format!("Intercept: {:.4}", clock_model.intercept()))?;
+  add_legend(&mut chart, format!("R: {:.4}", clock_model.r_val()))?;
+  add_legend(&mut chart, format!("R²: {:.4}", clock_model.r_val().powf(2.0)))?;
+  add_legend(&mut chart, format!("χ²: {:.3e}", clock_model.chisq()))?;
+
   chart
     .configure_series_labels()
     .border_style(BLACK)
@@ -158,6 +166,18 @@ where
     .position(SeriesLabelPosition::UpperRight)
     .draw()?;
 
+  Ok(())
+}
+
+fn add_legend<'a, DB>(
+  chart: &mut ChartContext<DB, Cartesian2d<RangedCoordf32, RangedCoordf32>>,
+  label: impl Into<String>,
+) -> Result<(), Report>
+where
+  DB: DrawingBackend + 'a,
+  <DB as DrawingBackend>::ErrorType: 'static,
+{
+  chart.draw_series(empty_line())?.label(label);
   Ok(())
 }
 
@@ -175,7 +195,7 @@ pub fn print_clock_regression_chart(results: &[ClockRegressionResult], clock_mod
   table.add_row([o!("Intercept"), format!("{:.4}", clock_model.intercept())]);
   table.add_row([o!("R"), format!("{:.4}", clock_model.r_val())]);
   table.add_row([o!("R²"), format!("{:.4}", clock_model.r_val().powf(2.0))]);
-  table.add_row([o!("χ²"), format!("{:e}", clock_model.chisq())]);
+  table.add_row([o!("χ²"), format!("{:.3e}", clock_model.chisq())]);
   println!("{table}");
 
   let (width, height) = terminal::size()?;
@@ -207,6 +227,13 @@ pub fn print_clock_regression_chart(results: &[ClockRegressionResult], clock_mod
   chart.nice();
 
   Ok(())
+}
+
+fn empty_line<DB>() -> LineSeries<DB, (f32, f32)>
+where
+  DB: DrawingBackend,
+{
+  LineSeries::<DB, _>::new(Vec::<(f32, f32)>::new(), TRANSPARENT)
 }
 
 struct PointsResult {
