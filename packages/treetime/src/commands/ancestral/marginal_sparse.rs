@@ -450,7 +450,7 @@ pub fn ancestral_reconstruction_marginal_sparse(
 ) -> Result<(), Report> {
   let n_partitions = partitions.len();
 
-  graph.iter_depth_first_preorder_forward(|node| {
+  graph.iter_depth_first_preorder_forward(|mut node| {
     if !include_leaves && node.is_leaf {
       return;
     }
@@ -500,6 +500,8 @@ pub fn ancestral_reconstruction_marginal_sparse(
         for (pos, p) in &node_seq.fitch.variable {
           seq[*pos] = alphabet.get_code(&p.dis);
         }
+
+        node.payload.sparse_partitions[si].seq.sequence = seq.clone();
 
         seq
       })
