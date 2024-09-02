@@ -1,4 +1,6 @@
 pub mod find_char_ranges;
+pub mod indel;
+pub mod mutation;
 pub mod range;
 pub mod range_complement;
 pub mod range_difference;

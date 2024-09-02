@@ -2,7 +2,7 @@
 use crate::graph::breadth_first::GraphTraversalContinuation;
 use crate::io::fasta::FastaRecord;
 use crate::port::composition::Composition;
-use crate::port::mutation::{InDel, Mut};
+use crate::seq::mutation::Mut;
 use crate::representation::graph_sparse::{
   Deletion, SparseGraph, SparseNode, SparseSeqDis, SparseSeqEdge, SparseSeqInfo, SparseSeqNode, VarPos,
 };
@@ -21,6 +21,7 @@ use maplit::btreemap;
 use ndarray::{stack, Array1, Array2, Axis};
 use ndarray_stats::QuantileExt;
 use crate::alphabet::alphabet::{FILL_CHAR, NON_CHAR, VARIABLE_CHAR};
+use crate::seq::indel::InDel;
 
 fn attach_seqs_to_graph(graph: &SparseGraph, partitions: &[PartitionParsimonyWithAln]) -> Result<(), Report> {
   for leaf in graph.get_leaves() {

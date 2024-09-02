@@ -6,7 +6,7 @@ use crate::io::graphviz::{EdgeToGraphViz, NodeToGraphviz};
 use crate::io::nwk::{format_weight, EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteOptions};
 use crate::o;
 use crate::port::composition::Composition;
-use crate::port::mutation::{InDel, Mut};
+use crate::seq::mutation::Mut;
 use crate::seq::find_char_ranges::find_letter_ranges;
 use crate::seq::range_union::range_union;
 use eyre::Report;
@@ -14,6 +14,7 @@ use maplit::btreemap;
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+use crate::seq::indel::InDel;
 
 pub type SparseGraph = Graph<SparseNode, SparseEdge, ()>;
 

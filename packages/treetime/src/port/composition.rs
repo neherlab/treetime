@@ -1,7 +1,8 @@
-use crate::port::mutation::{InDel, Mut};
+use crate::seq::mutation::Mut;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+use crate::seq::indel::InDel;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Composition {
@@ -91,7 +92,7 @@ impl Composition {
 mod tests {
   use super::*;
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::port::mutation::Mut;
+  use crate::seq::mutation::Mut;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
 
