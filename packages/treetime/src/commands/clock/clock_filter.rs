@@ -21,7 +21,7 @@ pub fn clock_filter_inplace(
   graph: &ClockGraph,
   clock_model: &ClockModel,
   clock_filter_threshold: f64,
-) -> () {
+) -> i32 {
 
   // assign divergence to each node
   graph.par_iter_breadth_first_forward(|node| {
@@ -48,12 +48,19 @@ pub fn clock_filter_inplace(
   let iqd =
     leaf_clock_deviations[3 * leaf_clock_deviations.len() / 4] - leaf_clock_deviations[leaf_clock_deviations.len() / 4];
 
+  let mut new_outliers: i32 = 0;
   // loop over the leaf nodes and mark the outliers if the absolute value of the deviation is greater than the threshold
   graph.get_leaves().iter().for_each(|leaf| {
     let div = leaf.read_arc().payload().read().div;
     let date = leaf.read_arc().payload().read().date.unwrap();
+    let was_outlier = leaf.read_arc().payload().write().is_outlier;
     let clock_deviation = clock_model.clock_deviation(date, div);
-    leaf.read_arc().payload().write().is_outlier = clock_deviation.abs() > iqd * clock_filter_threshold;
+    let is_outlier = clock_deviation.abs() > iqd * clock_filter_threshold;
+    if was_outlier != is_outlier {
+      new_outliers += 1;
+    }
+    leaf.read_arc().payload().write().is_outlier = is_outlier;
   });
+  new_outliers
 }
 
