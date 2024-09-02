@@ -1,4 +1,5 @@
-use crate::commands::clock::clock_set::{ClockModel, ClockSet};
+use crate::commands::clock::clock_model::ClockModel;
+use crate::commands::clock::clock_set::ClockSet;
 use crate::graph::breadth_first::GraphTraversalContinuation;
 use crate::graph::edge::{invert_edge, GraphEdge, GraphEdgeKey, Weighted};
 use crate::graph::graph::Graph;
@@ -192,7 +193,8 @@ pub fn run_clock_regression(graph: &ClockGraph, options: &ClockOptions) -> Resul
   clock_regression_backward(graph, options);
   clock_regression_forward(graph, options);
   let root = graph.get_exactly_one_root()?;
-  let clock = root.read_arc().payload().read_arc().total.clock_model()?;
+  let root = root.read_arc().payload().read_arc();
+  let clock = ClockModel::new(&root.total)?;
   Ok(clock)
 }
 
@@ -297,10 +299,12 @@ fn find_best_root(graph: &ClockGraph, options: &ClockOptions) -> Result<FindRoot
   clock_regression_forward(graph, options);
 
   let root = graph.get_exactly_one_root()?;
-
-  let clock = root.read_arc().payload().read_arc().total.clock_model()?;
-  let mut best_chisq = clock.chisq();
   let mut best_root_node = Arc::clone(&root);
+
+  let root = root.read_arc().payload().read_arc();
+  let clock = ClockModel::new(&root.total)?;
+  let mut best_chisq = clock.chisq();
+
   let mut best_res = FindRootResult {
     edge: None,
     split: 0.0,
@@ -309,7 +313,10 @@ fn find_best_root(graph: &ClockGraph, options: &ClockOptions) -> Result<FindRoot
 
   // find best node
   for n in graph.get_nodes() {
-    let tmp_chisq = n.read_arc().payload().read_arc().total.clock_model()?.chisq();
+    let tmp_chisq = {
+      let n = n.read_arc().payload().read_arc();
+      ClockModel::new(&n.total)?.chisq() // FIXME: we might not need to calculate the whole model here, only the .chisq()
+    };
     if tmp_chisq < best_chisq {
       best_chisq = tmp_chisq;
       best_root_node = Arc::clone(&n);
@@ -373,7 +380,7 @@ fn find_best_split(graph: &ClockGraph, edge: GraphEdgeKey, options: &ClockOption
   for x in Array1::linspace(0.0, 1.0, 11) {
     let Q = p_clock.propagate_averages(branch_length * x, branch_variance * x)
       + n_clock.propagate_averages(branch_length * (1.0 - x), branch_variance * (1.0 - x));
-    let clock_model = Q.clock_model()?;
+    let clock_model = ClockModel::new(&Q)?;
     if clock_model.chisq() < best_chisq {
       best_chisq = clock_model.chisq();
       best_split = x;

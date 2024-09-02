@@ -1,4 +1,4 @@
-use crate::commands::clock::clock_set::ClockModel;
+use crate::commands::clock::clock_model::ClockModel;
 use crate::commands::clock::rtt::ClockRegressionResult;
 use crate::o;
 use comfy_table::modifiers::{UTF8_ROUND_CORNERS, UTF8_SOLID_INNER_BORDERS};

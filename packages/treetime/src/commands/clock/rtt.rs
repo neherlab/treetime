@@ -1,5 +1,5 @@
 use crate::commands::clock::clock_graph::ClockGraph;
-use crate::commands::clock::clock_set::ClockModel;
+use crate::commands::clock::clock_model::ClockModel;
 use crate::io::csv::CsvStructFileWriter;
 use eyre::Report;
 use rayon::prelude::*;
