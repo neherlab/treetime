@@ -3,18 +3,6 @@ use crate::commands::clock::clock_model::ClockModel;
 use crate::graph::breadth_first::GraphTraversalContinuation;
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
-use serde::{Deserialize, Serialize};
-
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct ClockRegressionResult {
-  pub name: Option<String>,
-  pub div: f64,
-  pub date: Option<f64>,
-  pub predicted_date: f64,
-  pub clock_deviation: Option<f64>,
-  pub is_outlier: bool,
-  pub is_leaf: bool,
-}
 
 /// Get results of the root-to-tip clock inference.
 pub fn clock_filter_inplace(
