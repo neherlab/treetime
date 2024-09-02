@@ -13,6 +13,8 @@ use crate::io::json::{json_write_file, JsonPretty};
 use crate::io::nwk::{nwk_read_file, nwk_write_file, NwkWriteOptions};
 use eyre::{Report, WrapErr};
 
+use super::clock_model::ClockModel;
+
 pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
   let TreetimeClockArgs {
     aln,
@@ -54,10 +56,16 @@ pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
     variance_offset: 0.0,
   };
 
-  let clock_model = run_clock_regression(&graph, &options)?;
-  if !keep_root {
+  // if we keep the root, run clock regression and report the model of the current root
+  // otherwise, reroot the tree and use clock model of the novel root
+  let clock_model = if *keep_root {
+    run_clock_regression(&graph, &options)
+  } else {
     reroot_in_place(&mut graph, &options)?;
-  }
+    let root = graph.get_exactly_one_root()?;
+    let root = root.read_arc().payload().read_arc();
+    ClockModel::new(&root.total)
+  }?;
 
   nwk_write_file(outdir.join("rerooted.nwk"), &graph, &NwkWriteOptions::default())?;
   json_write_file(outdir.join("graph_output.json"), &graph, JsonPretty(true))?;
