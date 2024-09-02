@@ -146,7 +146,7 @@ pub fn print_clock_regression_chart(results: &[ClockRegressionResult], clock_mod
 
   table.add_row([o!("Clock regression"), clock_model.equation_str()]);
   table.add_row([o!("tMRCA"), format!("{:.1}", clock_model.t_mrca())]);
-  table.add_row([o!("Rate"), format!("{:.4}", clock_model.clock_rate())]);
+  table.add_row([o!("Rate"), format!("{:.6}", clock_model.clock_rate())]);
   table.add_row([o!("Intercept"), format!("{:.4}", clock_model.intercept())]);
   table.add_row([o!("R"), format!("{:.4}", clock_model.r_val())]);
   table.add_row([o!("R²"), format!("{:.4}", clock_model.r_val().powf(2.0))]);

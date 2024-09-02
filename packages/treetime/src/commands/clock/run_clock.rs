@@ -73,7 +73,7 @@ pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
 
   json_write_file(outdir.join("clock_model.json"), &clock_model, JsonPretty(true))?;
 
-  let results = gather_clock_regression_results(&graph, &clock_model);
+  let results = gather_clock_regression_results(&graph, &clock_model, *clock_filter);
 
   write_clock_regression_result_csv(&results, outdir.join("clock.csv"), b',')?;
   write_clock_regression_chart_svg(&results, &clock_model, outdir.join("clock.svg"))?;
