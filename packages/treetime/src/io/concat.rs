@@ -1,6 +1,3 @@
-use std::cmp::min;
-/// concat.rs
-///
 /// Taken with modifications from
 /// https://github.com/frangio/concat.rs/blob/d416d3b3c03ba18c0541b7fa63e6e89f3c43e0fe/src/lib.rs
 ///
@@ -9,6 +6,7 @@ use std::cmp::min;
 /// Provides the Concat reader adaptor, which wraps around an iterator of readers and exposes its
 /// items' contents sequentially. Thus, the contents read from a Concat instance will be the
 /// concatenation of the items' contents.
+use std::cmp::min;
 use std::io::{Read, Result};
 
 pub struct Concat<I>
