@@ -2,7 +2,6 @@
 use crate::graph::breadth_first::GraphTraversalContinuation;
 use crate::io::fasta::FastaRecord;
 use crate::port::composition::Composition;
-use crate::port::constants::{FILL_CHAR, NON_CHAR, VARIABLE};
 use crate::port::mutation::{InDel, Mut};
 use crate::representation::graph_sparse::{
   Deletion, SparseGraph, SparseNode, SparseSeqDis, SparseSeqEdge, SparseSeqInfo, SparseSeqNode, VarPos,
@@ -21,6 +20,7 @@ use itertools::{izip, Itertools};
 use maplit::btreemap;
 use ndarray::{stack, Array1, Array2, Axis};
 use ndarray_stats::QuantileExt;
+use crate::alphabet::alphabet::{FILL_CHAR, NON_CHAR, VARIABLE_CHAR};
 
 fn attach_seqs_to_graph(graph: &SparseGraph, partitions: &[PartitionParsimonyWithAln]) -> Result<(), Report> {
   for leaf in graph.get_leaves() {
@@ -143,12 +143,12 @@ fn fitch_backwards(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]
           sequence[pos] = alphabet.char(i);
         } else if intersection.sum() > 1.0 {
           seq_dis.variable.insert(pos, VarPos::new(intersection, None));
-          sequence[pos] = VARIABLE;
+          sequence[pos] = VARIABLE_CHAR;
         } else {
           let union = child_profiles.sum_axis(Axis(0));
           let dis = Array1::from_iter(union.iter().map(|&x| if x > 0.0 { 1.0 } else { 0.0 }));
           seq_dis.variable.insert(pos, VarPos::new(dis, None));
-          sequence[pos] = VARIABLE;
+          sequence[pos] = VARIABLE_CHAR;
         }
       }
 
@@ -188,7 +188,7 @@ fn fitch_backwards(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]
             let child_profiles: Array2<f64> = stack(Axis(0), &child_profiles).unwrap();
             let summed_profile = child_profiles.sum_axis(Axis(0));
             seq_dis.variable.insert(pos, VarPos::new(summed_profile, None));
-            VARIABLE
+            VARIABLE_CHAR
           }
         };
       }

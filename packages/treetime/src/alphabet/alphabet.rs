@@ -11,6 +11,10 @@ use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use strum_macros::Display;
 
+pub const NON_CHAR: char = '.';
+pub const VARIABLE_CHAR: char = '~';
+pub const FILL_CHAR: char = ' ';
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, ArgEnum, SmartDefault, Display)]
 #[clap(rename = "kebab-case")]
 pub enum AlphabetName {
@@ -322,6 +326,23 @@ impl AlphabetConfig {
       gap,
       ..
     } = self;
+
+    {
+      let all = chain![
+        self.canonical.iter().copied(),
+        self.ambiguous.keys().copied(),
+        self.ambiguous.values().flatten().copied(),
+        std::iter::once(self.unknown),
+        std::iter::once(self.gap)
+      ]
+      .collect_vec();
+
+      for reserved in [NON_CHAR, VARIABLE_CHAR, FILL_CHAR] {
+        if all.iter().any(|&c| c == reserved) {
+          return make_error!("Alphabet contains reserved character: {reserved}");
+        }
+      }
+    }
 
     {
       let canonical_dupes = canonical.iter().duplicates().collect_vec();
