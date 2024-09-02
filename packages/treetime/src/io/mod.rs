@@ -12,5 +12,6 @@ pub mod json;
 pub mod nex;
 pub mod nwk;
 pub mod phyloxml;
+pub mod serde;
 pub mod usher_mat;
 pub mod yaml;

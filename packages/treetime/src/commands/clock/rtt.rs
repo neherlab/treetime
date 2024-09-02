@@ -2,6 +2,7 @@ use crate::commands::clock::clock_graph::ClockGraph;
 use crate::commands::clock::clock_model::ClockModel;
 use crate::graph::breadth_first::GraphTraversalContinuation;
 use crate::io::csv::CsvStructFileWriter;
+use crate::io::serde::skip_serializing_if_false;
 use crossbeam_queue::ArrayQueue;
 use crossbeam_skiplist::SkipMap;
 use eyre::Report;
@@ -16,7 +17,9 @@ pub struct ClockRegressionResult {
   pub date: Option<f64>,
   pub predicted_date: f64,
   pub clock_deviation: Option<f64>,
+  #[serde(serialize_with = "skip_serializing_if_false")]
   pub is_outlier: bool,
+  #[serde(skip)]
   pub is_leaf: bool,
 }
 
