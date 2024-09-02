@@ -1912,18 +1912,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ndarray_einsum_beta"
-version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "668b3abeae3e0637740340e0e32a9bf9308380e146ea6797950f9ff16e88d88a"
-dependencies = [
- "lazy_static",
- "ndarray 0.15.6",
- "num-traits",
- "regex",
-]
-
-[[package]]
 name = "newtype_derive"
 version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3579,7 +3567,6 @@ dependencies = [
  "ndarray-linalg",
  "ndarray-rand",
  "ndarray-stats",
- "ndarray_einsum_beta",
  "num 0.4.0",
  "num-integer",
  "num-traits",

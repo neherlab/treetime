@@ -1,7 +1,6 @@
 pub mod assert;
 pub mod container;
 pub mod datetime;
-pub mod einsum;
 pub mod error;
 pub mod float_fmt;
 pub mod global_init;

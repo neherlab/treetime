@@ -88,7 +88,6 @@ ndarray = { workspace = true }
 ndarray-linalg = { workspace = true }
 ndarray-rand = { workspace = true }
 ndarray-stats = { workspace = true }
-ndarray_einsum_beta = { workspace = true }
 openblas-src = { workspace = true }
 statrs = { workspace = true }
 textplots = { workspace = true }
