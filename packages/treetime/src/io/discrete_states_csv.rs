@@ -4,7 +4,7 @@ use crate::{make_internal_report, vec_of_owned};
 use csv::{ReaderBuilder as CsvReaderBuilder, StringRecord, Trim};
 use eyre::{eyre, Report, WrapErr};
 use itertools::Itertools;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::path::Path;
 
 pub fn read_discrete_attrs<T>(
@@ -12,7 +12,7 @@ pub fn read_discrete_attrs<T>(
   name_column: &Option<String>,
   value_column: &Option<String>,
   parser: impl Fn(&str) -> Result<T, Report>,
-) -> Result<(HashMap<String, T>, String), Report> {
+) -> Result<(BTreeMap<String, T>, String), Report> {
   let filepath = filepath.as_ref();
   let file = open_file_or_stdin(&Some(filepath)).wrap_err_with(|| format!("When reading file: {filepath:#?}"))?;
   let delimiter =
@@ -47,7 +47,7 @@ pub fn read_discrete_attrs<T>(
       let record = record?;
       convert_record::<T>(index, &record, name_column_idx, value_column_idx, &parser)
     })
-    .collect::<Result<HashMap<String, T>, Report>>()?;
+    .collect::<Result<BTreeMap<String, T>, Report>>()?;
 
   Ok((values, value_name))
 }

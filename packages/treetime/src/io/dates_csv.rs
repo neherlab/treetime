@@ -7,7 +7,7 @@ use eyre::{eyre, Report, WrapErr};
 use itertools::Itertools;
 use lazy_static::lazy_static;
 use regex::Regex;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::path::Path;
 use std::sync::LazyLock;
 
@@ -27,7 +27,7 @@ impl DateOrRange {
   }
 }
 
-pub type DatesMap = HashMap<String, Option<DateOrRange>>;
+pub type DatesMap = BTreeMap<String, Option<DateOrRange>>;
 pub type DateRecord = (String, Option<DateOrRange>);
 
 pub fn read_dates(
