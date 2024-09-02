@@ -1,4 +1,4 @@
-use crate::commands::clock::clock::ClockGraph;
+use crate::commands::clock::clock_graph::ClockGraph;
 use crate::commands::clock::clock_set::ClockModel;
 use crate::io::csv::CsvStructFileWriter;
 use eyre::Report;

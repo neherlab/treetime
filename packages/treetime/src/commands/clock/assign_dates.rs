@@ -1,4 +1,4 @@
-use crate::commands::clock::clock::ClockGraph;
+use crate::commands::clock::clock_graph::ClockGraph;
 use crate::graph::node::Named;
 use crate::io::dates_csv::{DateOrRange, DatesMap};
 use crate::make_error;
