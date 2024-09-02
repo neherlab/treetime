@@ -1,12 +1,14 @@
 #![allow(dead_code)]
+use crate::alphabet::alphabet::{FILL_CHAR, NON_CHAR, VARIABLE_CHAR};
 use crate::graph::breadth_first::GraphTraversalContinuation;
 use crate::io::fasta::FastaRecord;
 use crate::port::composition::Composition;
-use crate::seq::mutation::Mut;
 use crate::representation::graph_sparse::{
   Deletion, SparseGraph, SparseNode, SparseSeqDis, SparseSeqEdge, SparseSeqInfo, SparseSeqNode, VarPos,
 };
 use crate::representation::partitions_parsimony::{PartitionParsimony, PartitionParsimonyWithAln};
+use crate::seq::indel::InDel;
+use crate::seq::mutation::Sub;
 use crate::seq::range::range_contains;
 use crate::seq::range_complement::range_complement;
 use crate::seq::range_difference::range_difference;
@@ -20,8 +22,6 @@ use itertools::{izip, Itertools};
 use maplit::btreemap;
 use ndarray::{stack, Array1, Array2, Axis};
 use ndarray_stats::QuantileExt;
-use crate::alphabet::alphabet::{FILL_CHAR, NON_CHAR, VARIABLE_CHAR};
-use crate::seq::indel::InDel;
 
 fn attach_seqs_to_graph(graph: &SparseGraph, partitions: &[PartitionParsimonyWithAln]) -> Result<(), Report> {
   for leaf in graph.get_leaves() {
@@ -329,13 +329,13 @@ fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]) 
             let i = p.dis.argmax().unwrap();
             let cnuc = alphabet.char(i);
             sequence[*pos] = cnuc;
-            let m = Mut {
+            let m = Sub {
               pos: *pos,
               qry: cnuc,
               reff: pnuc,
             };
-            composition.add_mutation(&m);
-            edge.muts.push(m);
+            composition.add_sub(&m);
+            edge.subs.push(m);
           }
           p.state = Some(sequence[*pos]);
         }
@@ -350,13 +350,13 @@ fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]) 
           let node_nuc = sequence[pos];
           if let Some(pvar_state) = pvar.state {
             if pvar_state != node_nuc {
-              let m = Mut {
+              let m = Sub {
                 pos,
                 qry: node_nuc,
                 reff: pvar_state,
               };
-              composition.add_mutation(&m);
-              edge.muts.push(m);
+              composition.add_sub(&m);
+              edge.subs.push(m);
             }
           }
         }
@@ -492,8 +492,8 @@ pub fn ancestral_reconstruction_fitch(
           let mut seq = parent.seq.sequence.clone();
 
           // Implant mutations
-          for m in &edge.muts {
-            seq[m.pos] = m.qry;
+          for sub in &edge.subs {
+            seq[sub.pos] = sub.qry;
           }
 
           // Implant indels
@@ -689,7 +689,7 @@ mod tests {
           (
             e.read_arc().key(),
             e.read_arc().payload().read_arc().sparse_partitions[0]
-              .muts
+              .subs
               .iter()
               .map(ToString::to_string)
               .collect_vec(),

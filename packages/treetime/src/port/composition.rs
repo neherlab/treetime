@@ -1,8 +1,8 @@
-use crate::seq::mutation::Mut;
+use crate::seq::indel::InDel;
+use crate::seq::mutation::Sub;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
-use crate::seq::indel::InDel;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Composition {
@@ -48,29 +48,10 @@ impl Composition {
     self.counts.extend(counts);
   }
 
-  // /// Reflect sequence mutation in the composition counts
-  // pub fn add_mutation(&mut self, m: &Mut) {
-  //   *self.counts.entry(m.reff).or_default() -= 1;
-  //   *self.counts.entry(m.qry).or_default() += 1;
-  // }
-  //
-  // /// Reflect sequence indel in the composition counts
-  // pub fn add_indel(&mut self, indel: &InDel) {
-  //   for nuc in &indel.seq {
-  //     if indel.deletion {
-  //       *self.counts.entry(*nuc).or_default() -= 1;
-  //       *self.counts.entry('-').or_default() += 1;
-  //     } else {
-  //       *self.counts.entry(*nuc).or_default() += 1;
-  //       *self.counts.entry('-').or_default() -= 1;
-  //     }
-  //   }
-  // }
-
   /// Reflect sequence mutation in the composition counts
-  pub fn add_mutation(&mut self, m: &Mut) {
-    self.adjust_count(m.reff, -1);
-    self.adjust_count(m.qry, 1);
+  pub fn add_sub(&mut self, sub: &Sub) {
+    self.adjust_count(sub.reff, -1);
+    self.adjust_count(sub.qry, 1);
   }
 
   /// Reflect sequence indel in the composition counts
@@ -92,7 +73,7 @@ impl Composition {
 mod tests {
   use super::*;
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::seq::mutation::Mut;
+  use crate::seq::mutation::Sub;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
 
@@ -165,12 +146,12 @@ mod tests {
   #[test]
   fn test_composition_add_mutation() {
     let mut comp = Composition::with_sequence("AAAGCTTACGGGGTCAAGTCC".chars(), "ACGT-".chars(), '-');
-    let mutation = Mut {
+    let mutation = Sub {
       pos: 123,
       reff: 'A',
       qry: 'G',
     };
-    comp.add_mutation(&mutation);
+    comp.add_sub(&mutation);
     assert_eq!(
       &btreemap! { '-' => 0, 'A' => 5, 'C' => 5, 'G' => 7, 'T' => 4},
       comp.counts()

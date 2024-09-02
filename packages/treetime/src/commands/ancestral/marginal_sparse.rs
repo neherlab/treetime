@@ -231,7 +231,7 @@ fn get_variable_states_children(
   let mut child_states: Vec<BTreeMap<usize, char>> = vec![btreemap! {}; child_edges.len()];
   for (ci, edge) in child_edges.iter().enumerate() {
     // go over all mutations and get reference state
-    for m in &edge.muts {
+    for m in &edge.subs {
       variable_pos.insert(m.pos, m.reff); // this might be set multiple times, but the reference state should always be the same
       child_states[ci].insert(m.pos, m.qry);
     }
@@ -340,7 +340,7 @@ fn get_variable_states_parents(
 
   for (pi, pseq) in parents.iter().enumerate() {
     // go over all mutations and get reference state
-    for m in &parent_edges[pi].muts {
+    for m in &parent_edges[pi].subs {
       variable_pos.insert(m.pos, m.qry); // this might be set multiple times, but the reference state should always be the same
       parent_states[pi].insert(m.pos, m.reff);
     }
@@ -470,7 +470,7 @@ pub fn ancestral_reconstruction_marginal_sparse(
           let mut seq = parent.seq.sequence.clone();
 
           // Implant mutations
-          for m in &edge.muts {
+          for m in &edge.subs {
             seq[m.pos] = m.qry;
           }
 

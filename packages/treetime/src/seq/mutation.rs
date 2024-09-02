@@ -8,14 +8,14 @@ use std::fmt;
 use std::str::FromStr;
 
 #[derive(Clone, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq)]
-pub struct Mut {
+pub struct Sub {
   pub pos: usize,
   pub qry: char,
   #[serde(rename = "ref")]
   pub reff: char,
 }
 
-impl FromStr for Mut {
+impl FromStr for Sub {
   type Err = Report;
 
   /// Parses nucleotide substitution from string. Expects IUPAC notation commonly used in bioinformatics.
@@ -53,7 +53,7 @@ pub fn parse_pos(s: &str) -> Result<usize, Report> {
   Ok(pos - 1)
 }
 
-impl fmt::Display for Mut {
+impl fmt::Display for Sub {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     write!(f, "{}{}{}", self.reff, self.pos + 1, self.qry)
   }

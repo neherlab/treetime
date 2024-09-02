@@ -6,7 +6,7 @@ use crate::io::graphviz::{EdgeToGraphViz, NodeToGraphviz};
 use crate::io::nwk::{format_weight, EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteOptions};
 use crate::o;
 use crate::port::composition::Composition;
-use crate::seq::mutation::Mut;
+use crate::seq::mutation::Sub;
 use crate::seq::find_char_ranges::find_letter_ranges;
 use crate::seq::range_union::range_union;
 use eyre::Report;
@@ -192,7 +192,7 @@ impl EdgeToGraphViz for SparseEdge {
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct SparseSeqEdge {
-  pub muts: Vec<Mut>,
+  pub subs: Vec<Sub>,
   pub indels: Vec<InDel>,
   pub transmission: Option<Vec<(usize, usize)>>,
 }
