@@ -24,8 +24,8 @@ pub fn clock_filter_inplace(
 ) -> i32 {
 
   // assign divergence to each node
-  graph.par_iter_breadth_first_forward(|node| {
-    let div = node
+  graph.par_iter_breadth_first_forward(|mut node| {
+    node.payload.div = node
       .get_exactly_one_parent()
       .map(|(parent, edge)| {
         let branch_length = edge.read_arc().branch_length.unwrap_or_default();
