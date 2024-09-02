@@ -108,15 +108,19 @@ where
   chart
     .draw_series(PointSeries::of_element(
       norm_points,
-      2,
+      4,
       &norm_point_color,
-      &|c, s, st| EmptyElement::at(c) + Circle::new((0, 0), s, st.filled()),
+      &|c, s, st| {
+        EmptyElement::at(c)
+          + Circle::new((0, 0), s, st.filled())
+          + Circle::new((0, 0), s, RGBAColor(128, 128, 128, 0.25).stroke_width(1))
+      },
     ))?
     .label("Samples (norm)")
     .legend(move |(x, y)| {
       Circle::new(
         (x + 10, y),
-        2,
+        4,
         ShapeStyle {
           color: norm_point_color.to_rgba(),
           filled: true,
@@ -129,15 +133,19 @@ where
   chart
     .draw_series(PointSeries::of_element(
       outlier_points,
-      2,
+      4,
       &outlier_point_color,
-      &|c, s, st| EmptyElement::at(c) + Circle::new((0, 0), s, st.filled()),
+      &|c, s, st| {
+        EmptyElement::at(c)
+          + Circle::new((0, 0), s, st.filled())
+          + Circle::new((0, 0), s, RGBAColor(128, 128, 128, 0.25).stroke_width(1))
+      },
     ))?
     .label("Samples (outliers)")
     .legend(move |(x, y)| {
       Circle::new(
         (x + 10, y),
-        2,
+        4,
         ShapeStyle {
           color: outlier_point_color.to_rgba(),
           filled: true,
@@ -148,7 +156,14 @@ where
 
   let line_color = RGBColor(8, 140, 232);
   chart
-    .draw_series(LineSeries::new(line, &line_color))?
+    .draw_series(LineSeries::new(
+      line,
+      ShapeStyle {
+        color: line_color.to_rgba(),
+        filled: true,
+        stroke_width: 3,
+      },
+    ))?
     .label(format!("Clock regression: {}", clock_model.equation_str()))
     .legend(move |(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], line_color));
 
@@ -161,8 +176,9 @@ where
 
   chart
     .configure_series_labels()
-    .border_style(BLACK)
-    .background_style(WHITE)
+    .margin(5)
+    .border_style(RGBAColor(128, 128, 128, 0.5))
+    .background_style(RGBAColor(255, 255, 255, 0.5))
     .position(SeriesLabelPosition::UpperLeft)
     .draw()?;
 
