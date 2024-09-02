@@ -6,7 +6,6 @@ use crossbeam_queue::ArrayQueue;
 use crossbeam_skiplist::SkipMap;
 use eyre::Report;
 use itertools::Itertools;
-use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
@@ -24,9 +23,7 @@ pub struct ClockRegressionResult {
 /// Get results of the root-to-tip clock inference.
 pub fn gather_clock_regression_results(
   graph: &ClockGraph,
-  clock_model: &ClockModel,
-  clock_filter_threshold: f64,
-) -> Vec<ClockRegressionResult> {
+  clock_model: &ClockModel) -> Vec<ClockRegressionResult> {
   let result = ArrayQueue::new(graph.num_nodes());
   let divs = SkipMap::new();
 
@@ -47,7 +44,6 @@ pub fn gather_clock_regression_results(
 
     let name = node.name.clone();
     let date = node.date;
-
     let is_outlier = node.is_outlier;
     let predicted_date = clock_model.date(div);
     let clock_deviation = node.date.map(|date| clock_model.clock_deviation(date, div));
@@ -67,32 +63,6 @@ pub fn gather_clock_regression_results(
       .expect("ArrayQueue::push() failed. Queue is full.");
 
     GraphTraversalContinuation::Continue
-  });
-
-  // calculate the interquartile range of the clock_deviation of all leaf nodes
-  // first, generated a sorted list of clock_deviation of all leaf nodes from the result array
-  let leaf_clock_deviations: Vec<f64> = result
-    .into_iter()
-    .filter(|result| result.is_leaf)
-    .filter_map(|result| result.clock_deviation.map(OrderedFloat))
-    .sorted()
-    .map(|cd| cd.into_inner())
-    .collect();
-
-  // calculate the interquartile range by taking the difference between the 3/4 and 1/4 quantile
-  let iqd =
-    leaf_clock_deviations[3 * leaf_clock_deviations.len() / 4] - leaf_clock_deviations[leaf_clock_deviations.len() / 4];
-
-  // mark all leaf nodes as outliers if their absolute clock_deviation is greater than clock_filter_threshold * iqd
-  result.into_iter().for_each(|mut result| {
-    if result.is_leaf
-      && result
-        .clock_deviation
-        .map(|deviation| deviation.abs() > clock_filter_threshold * iqd)
-        .unwrap_or(false)
-    {
-      result.is_outlier = true;
-    }
   });
 
   result.into_iter().collect_vec()

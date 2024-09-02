@@ -7,6 +7,7 @@ use crate::commands::clock::clock_graph::ClockGraph;
 use crate::commands::clock::clock_regression::{run_clock_regression, ClockOptions};
 use crate::commands::clock::reroot::reroot_in_place;
 use crate::commands::clock::rtt::{gather_clock_regression_results, write_clock_regression_result_csv};
+use crate::commands::clock::clock_filter::clock_filter_inplace;
 use crate::io::dates_csv::read_dates;
 use crate::io::graphviz::graphviz_write_file;
 use crate::io::json::{json_write_file, JsonPretty};
@@ -67,13 +68,17 @@ pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
     ClockModel::new(&root.total)
   }?;
 
+  if *clock_filter>0.0 {
+    clock_filter_inplace(&graph, &clock_model, *clock_filter);
+  }
+
   nwk_write_file(outdir.join("rerooted.nwk"), &graph, &NwkWriteOptions::default())?;
   json_write_file(outdir.join("graph_output.json"), &graph, JsonPretty(true))?;
   graphviz_write_file(outdir.join("graph_output.dot"), &graph)?;
 
   json_write_file(outdir.join("clock_model.json"), &clock_model, JsonPretty(true))?;
 
-  let results = gather_clock_regression_results(&graph, &clock_model, *clock_filter);
+  let results = gather_clock_regression_results(&graph, &clock_model);
 
   write_clock_regression_result_csv(&results, outdir.join("clock.csv"), b',')?;
   write_clock_regression_chart_svg(&results, &clock_model, outdir.join("clock.svg"))?;
