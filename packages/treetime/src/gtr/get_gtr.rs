@@ -1,6 +1,6 @@
 use crate::alphabet::alphabet::{Alphabet, AlphabetName};
 use crate::gtr::gtr::{GTRParams, GTR};
-use crate::port::infer_gtr::{get_mutation_counts, infer_gtr, InferGtrOptions, InferGtrResult};
+use crate::gtr::infer_gtr::{get_mutation_counts, infer_gtr, InferGtrOptions, InferGtrResult};
 use crate::representation::graph_dense::DenseGraph;
 use crate::representation::graph_sparse::SparseGraph;
 use crate::{make_error, make_report};
