@@ -163,7 +163,7 @@ where
     .configure_series_labels()
     .border_style(BLACK)
     .background_style(WHITE)
-    .position(SeriesLabelPosition::UpperRight)
+    .position(SeriesLabelPosition::UpperLeft)
     .draw()?;
 
   Ok(())
