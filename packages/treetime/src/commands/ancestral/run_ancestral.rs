@@ -14,6 +14,7 @@ use crate::io::nex::{nex_write_file, NexWriteOptions};
 use crate::io::nwk::{nwk_read_file, nwk_write_file, EdgeToNwk, NodeToNwk, NwkWriteOptions};
 use crate::representation::graph_dense::DenseGraph;
 use crate::representation::graph_sparse::SparseGraph;
+use crate::representation::infer_dense::infer_dense;
 use crate::representation::partitions_likelihood::{PartitionLikelihood, PartitionLikelihoodWithAln};
 use crate::representation::partitions_parsimony::PartitionParsimonyWithAln;
 use crate::utils::random::get_random_number_generator;
@@ -44,6 +45,7 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
     reconstruct_tip_states,
     report_ambiguous,
     method_anc,
+    dense,
     outdir,
     seed,
   } = ancestral_args;
@@ -54,10 +56,6 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
   let aln = read_many_fasta(input_fastas)?;
 
   let alphabet = Alphabet::new(alphabet.unwrap_or_default(), false)?;
-
-  // we might want to include a heuristic when to use the dense or sparse representation
-  // generally, long branches in the tree --> dense, short branches --> sparse
-  // for small datasets, it doesn't really matter, but for large ones the sparse is more memory efficient when branches are short
 
   let output_fasta = create_file_or_stdout(outdir.join("ancestral_sequences.fasta"))?;
   let mut output_fasta = FastaWriter::new(output_fasta);
@@ -95,8 +93,9 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
       write_graph(outdir, &graph)?;
     }
     MethodAncestral::MaximumLikelihoodMarginal => {
-      let sparse = true;
-      if sparse {
+      let dense = dense.unwrap_or_else(infer_dense);
+
+      if !dense {
         let graph: SparseGraph = nwk_read_file(tree)?;
         let partitions = vec![PartitionParsimonyWithAln::new(alphabet.clone(), aln)?];
         let partitions = compress_sequences(&graph, partitions)?;

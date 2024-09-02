@@ -76,6 +76,12 @@ pub struct TreetimeAncestralArgs {
   #[clap(long, arg_enum, default_value_t = MethodAncestral::default())]
   pub method_anc: MethodAncestral,
 
+  /// Use dense representation
+  ///
+  /// TODO: explain this better
+  #[clap(long)]
+  pub dense: Option<bool>,
+
   /// Use aminoacid alphabet
   #[clap(long)]
   pub aa: bool,
