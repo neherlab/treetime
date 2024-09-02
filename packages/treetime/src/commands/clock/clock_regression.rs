@@ -54,8 +54,6 @@ pub fn clock_regression_forward(graph: &ClockGraph, options: &ClockOptions) {
     let q = &n.payload.to_parent;
     let mut q_tot = q.clone();
 
-    n.payload.is_outlier = false; // TODO: calculate this
-
     if !n.is_root {
       let (p, e) = &n.get_exactly_one_parent().unwrap();
       let p = p.read_arc();
