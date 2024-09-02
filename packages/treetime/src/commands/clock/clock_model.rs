@@ -1,5 +1,6 @@
 use crate::commands::clock::clock_set::ClockSet;
 use crate::make_error;
+use crate::utils::float_fmt::float_to_significant_digits;
 use eyre::Report;
 use getset::{CopyGetters, Getters};
 use ndarray::Array2;
@@ -73,10 +74,10 @@ impl ClockModel {
   /// String showing line equation (for display)
   pub fn equation_str(&self) -> String {
     format!(
-      "div = {:.4}t {:} {:.4}",
-      self.clock_rate(),
+      "div = {:}t {:} {:}",
+      float_to_significant_digits(self.clock_rate(), 3),
       if self.intercept() < 0.0 { "-" } else { "+" },
-      self.intercept().abs()
+      float_to_significant_digits(self.intercept().abs(), 3)
     )
   }
 }

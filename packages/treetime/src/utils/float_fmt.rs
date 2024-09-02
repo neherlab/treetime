@@ -10,8 +10,20 @@ lazy_static! {
     .round();
 }
 
+#[allow(clippy::string_slice)]
+fn trim_trailing_zeros(input: String) -> String {
+  match input.find('.') {
+    Some(pos) => format!(
+      "{}{}",
+      &input[..pos],
+      &input[pos..].trim_end_matches('0').trim_end_matches('.')
+    ),
+    None => input,
+  }
+}
+
 fn float_format<F: Into<f64>>(x: F, config: FmtFloatConfig) -> String {
-  dtoa(x.into(), config).trim_end_matches('0').to_owned()
+  trim_trailing_zeros(dtoa(x.into(), config))
 }
 
 pub fn float_to_significant_digits<F: Into<f64>>(x: F, max_significant_digits: u8) -> String {

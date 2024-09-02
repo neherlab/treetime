@@ -16,6 +16,7 @@ use textplots::{Chart, ColorPlot, Shape};
 
 #[cfg(feature = "png")]
 use crate::io::file::create_file_or_stdout;
+use crate::utils::float_fmt::float_to_significant_digits;
 #[cfg(feature = "png")]
 use image::{codecs::png::PngEncoder, ColorType, DynamicImage, ImageBuffer, ImageEncoder, Rgb};
 use plotters::coord::types::RangedCoordf32;
@@ -25,7 +26,7 @@ pub fn write_clock_regression_chart_svg(
   clock_model: &ClockModel,
   filepath: impl AsRef<Path>,
 ) -> Result<(), Report> {
-  let svg = SVGBackend::new(filepath.as_ref(), (640, 480)).into_drawing_area();
+  let svg = SVGBackend::new(filepath.as_ref(), (1200, 800)).into_drawing_area();
   draw_chart(results, clock_model, &svg)?;
   svg.present()?;
   Ok(())
@@ -58,7 +59,7 @@ pub fn write_clock_regression_chart_bitmap(
   results: &[ClockRegressionResult],
   clock_model: &ClockModel,
 ) -> Result<DynamicImage, Report> {
-  let (width, height) = (640, 480);
+  let (width, height) = (1200, 800);
   let mut img: ImageBuffer<Rgb<u8>, Vec<u8>> = ImageBuffer::new(width, height);
   {
     let bitmap = BitMapBackend::with_buffer(img.as_flat_samples_mut().samples, (width, height)).into_drawing_area();
@@ -91,17 +92,26 @@ where
   drawing_area.margin(10, 10, 10, 10);
 
   let mut chart = ChartBuilder::on(drawing_area)
-    .caption("Clock regression", ("sans-serif", 20).into_font())
-    .x_label_area_size(30)
+    .caption(
+      "Clock regression",
+      ("sans-serif", 40).into_font().style(FontStyle::Bold),
+    )
+    .x_label_area_size(60)
     .y_label_area_size(60)
-    .margin(5)
+    .margin(10)
     .build_cartesian_2d(x_min..x_max, y_min..y_max)?;
 
   chart
     .configure_mesh()
+    .light_line_style(WHITE)
+    .bold_line_style(RGBAColor(128, 128, 128, 0.5))
     .x_desc("Date")
+    .x_label_formatter(&|&date| float_to_significant_digits(date, 6))
     .y_desc("Div")
-    .axis_desc_style(("sans-serif", 12))
+    .y_label_formatter(&|&div| float_to_significant_digits(div, 3))
+    .axis_desc_style(("sans-serif", 20).into_font().style(FontStyle::Bold))
+    .x_label_style(("sans-serif", 16))
+    .y_label_style(("sans-serif", 16))
     .draw()?;
 
   let norm_point_color = RGBColor(8, 232, 140);
@@ -167,18 +177,37 @@ where
     .label(format!("Clock regression: {}", clock_model.equation_str()))
     .legend(move |(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], line_color));
 
-  add_legend(&mut chart, format!("tMRCA: {:.1}", clock_model.t_mrca()))?;
-  add_legend(&mut chart, format!("Rate: {:.6}", clock_model.clock_rate()))?;
-  add_legend(&mut chart, format!("Intercept: {:.4}", clock_model.intercept()))?;
-  add_legend(&mut chart, format!("R: {:.4}", clock_model.r_val()))?;
-  add_legend(&mut chart, format!("R²: {:.4}", clock_model.r_val().powf(2.0)))?;
+  add_legend(
+    &mut chart,
+    format!("tMRCA: {:}", float_to_significant_digits(clock_model.t_mrca(), 5)),
+  )?;
+  add_legend(
+    &mut chart,
+    format!("Rate: {:}", float_to_significant_digits(clock_model.clock_rate(), 3)),
+  )?;
+  add_legend(
+    &mut chart,
+    format!(
+      "Intercept: {:}",
+      float_to_significant_digits(clock_model.intercept(), 4)
+    ),
+  )?;
+  add_legend(
+    &mut chart,
+    format!("R: {:}", float_to_significant_digits(clock_model.r_val(), 4)),
+  )?;
+  add_legend(
+    &mut chart,
+    format!("R²: {:}", float_to_significant_digits(clock_model.r_val().powf(2.0), 4)),
+  )?;
   add_legend(&mut chart, format!("χ²: {:.3e}", clock_model.chisq()))?;
 
   chart
     .configure_series_labels()
+    .label_font(("sans-serif", 20).into_font())
     .margin(5)
     .border_style(RGBAColor(128, 128, 128, 0.5))
-    .background_style(RGBAColor(255, 255, 255, 0.5))
+    .background_style(RGBAColor(200, 200, 200, 0.5))
     .position(SeriesLabelPosition::UpperLeft)
     .draw()?;
 
