@@ -1,9 +1,9 @@
 #[cfg(test)]
 mod tests {
   #![allow(clippy::redundant_clone)]
-  use crate::seq::range_complement::range_complement;
-  use crate::seq::range_intersection::range_intersection;
-  use crate::seq::range_union::range_union;
+  use crate::utils::interval::range_complement::range_complement;
+  use crate::utils::interval::range_intersection::range_intersection;
+  use crate::utils::interval::range_union::range_union;
   use rstest::rstest;
 
   #[rstest]

@@ -8,7 +8,7 @@ use crate::o;
 use crate::seq::composition::Composition;
 use crate::seq::mutation::Sub;
 use crate::seq::find_char_ranges::find_letter_ranges;
-use crate::seq::range_union::range_union;
+use crate::utils::interval::range_union::range_union;
 use eyre::Report;
 use maplit::btreemap;
 use ndarray::Array1;

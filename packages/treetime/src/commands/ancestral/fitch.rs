@@ -9,10 +9,10 @@ use crate::representation::graph_sparse::{
 use crate::representation::partitions_parsimony::{PartitionParsimony, PartitionParsimonyWithAln};
 use crate::seq::indel::InDel;
 use crate::seq::mutation::Sub;
-use crate::seq::range::range_contains;
-use crate::seq::range_complement::range_complement;
-use crate::seq::range_difference::range_difference;
-use crate::seq::range_intersection::{range_intersection, range_intersection_iter};
+use crate::utils::interval::range::range_contains;
+use crate::utils::interval::range_complement::range_complement;
+use crate::utils::interval::range_difference::range_difference;
+use crate::utils::interval::range_intersection::{range_intersection, range_intersection_iter};
 use crate::utils::manyzip::Manyzip;
 use crate::utils::ndarray::product_axis;
 use crate::{make_error, make_internal_report, make_report};

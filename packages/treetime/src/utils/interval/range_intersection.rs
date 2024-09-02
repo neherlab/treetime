@@ -1,4 +1,4 @@
-use crate::seq::range::{from_interval_set, to_interval_sets};
+use crate::utils::interval::range::{from_interval_set, to_interval_sets};
 use gcollections::ops::{Empty, Intersection};
 use interval::interval_set::IntervalSet;
 

@@ -1,4 +1,4 @@
-use crate::seq::range::{from_interval_set, to_interval_set};
+use crate::utils::interval::range::{from_interval_set, to_interval_set};
 use gcollections::ops::Difference;
 
 pub fn range_difference(x: &[(usize, usize)], y: &[(usize, usize)]) -> Vec<(usize, usize)> {

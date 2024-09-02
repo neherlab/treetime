@@ -2,7 +2,7 @@ use crate::alphabet::alphabet::Alphabet;
 use crate::commands::ancestral::fitch::get_common_length;
 use crate::io::fasta::FastaRecord;
 use crate::representation::graph_sparse::VarPos;
-use crate::seq::range::RangeCollection;
+use crate::utils::interval::range::RangeCollection;
 use eyre::Report;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;

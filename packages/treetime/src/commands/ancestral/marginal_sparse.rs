@@ -6,7 +6,7 @@ use crate::representation::graph_sparse::{
   SparseGraph, SparseNode, SparseSeqDis, SparseSeqEdge, SparseSeqNode, VarPos,
 };
 use crate::representation::partitions_likelihood::PartitionLikelihood;
-use crate::seq::range::range_contains;
+use crate::utils::interval::range::range_contains;
 use crate::utils::ndarray::{product_axis, stack_owned};
 use crate::{make_internal_error, make_internal_report};
 use eyre::Report;

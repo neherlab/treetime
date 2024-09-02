@@ -4,7 +4,7 @@ use crate::gtr::gtr::GTR;
 use crate::io::fasta::FastaRecord;
 use crate::representation::graph_sparse::VarPos;
 use crate::representation::partitions_parsimony::PartitionParsimony;
-use crate::seq::range::RangeCollection;
+use crate::utils::interval::range::RangeCollection;
 use eyre::Report;
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
