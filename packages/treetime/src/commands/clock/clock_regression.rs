@@ -50,7 +50,6 @@ pub fn clock_regression_forward(graph: &ClockGraph, options: &ClockOptions) {
     let q = &n.payload.to_parent;
     let mut q_tot = q.clone();
 
-    n.payload.div = 0.0;
     n.payload.is_outlier = false; // TODO: calculate this
 
     if !n.is_root {
@@ -68,8 +67,6 @@ pub fn clock_regression_forward(graph: &ClockGraph, options: &ClockOptions) {
       let branch_length = e.weight().expect("Encountered an edge without a weight");
       let branch_variance = options.variance_factor * branch_length + options.variance_offset;
       q_tot += p.to_children[&name].propagate_averages(branch_length, branch_variance);
-
-      n.payload.div = n.payload.div + branch_length;
     }
 
     n.payload.to_children = n

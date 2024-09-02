@@ -9,7 +9,12 @@ use eyre::Report;
 use maplit::btreemap;
 
 pub fn reroot_in_place(graph: &mut ClockGraph, options: &ClockOptions) -> Result<GraphNodeKey, Report> {
-  let FindRootResult { edge, split, total, chisq } = find_best_root(graph, options)?;
+  let FindRootResult {
+    edge,
+    split,
+    total,
+    chisq,
+  } = find_best_root(graph, options)?;
 
   let edge_key = edge.expect("Edge is empty when rerooting");
   let edge = graph.get_edge(edge_key).expect("Edge not found");
@@ -33,7 +38,12 @@ pub fn reroot_in_place(graph: &mut ClockGraph, options: &ClockOptions) -> Result
 }
 
 /// Create new root node by splitting the edge into two
-fn create_new_root_node(graph: &mut ClockGraph, edge_key: GraphEdgeKey, split: f64, total: ClockSet) -> Result<GraphNodeKey, Report> {
+fn create_new_root_node(
+  graph: &mut ClockGraph,
+  edge_key: GraphEdgeKey,
+  split: f64,
+  total: ClockSet,
+) -> Result<GraphNodeKey, Report> {
   let new_root_key = graph.add_node(ClockNodePayload {
     name: Some("new_root".to_owned()),
     date: None,
