@@ -2,7 +2,7 @@ use crate::cli::rtt_chart::{
   print_clock_regression_chart, write_clock_regression_chart_png, write_clock_regression_chart_svg,
 };
 use crate::commands::clock::assign_dates::assign_dates;
-use crate::commands::clock::clock_graph::{reroot_in_place, run_clock_regression, ClockGraph, ClockOptions};
+use crate::commands::clock::clock_regression::{reroot_in_place, run_clock_regression, ClockOptions};
 use crate::commands::clock::clock_args::TreetimeClockArgs;
 use crate::commands::clock::rtt::{gather_clock_regression_results, write_clock_regression_result_csv};
 use crate::io::dates_csv::read_dates;
@@ -10,6 +10,7 @@ use crate::io::graphviz::graphviz_write_file;
 use crate::io::json::{json_write_file, JsonPretty};
 use crate::io::nwk::{nwk_read_file, nwk_write_file, NwkWriteOptions};
 use eyre::{Report, WrapErr};
+use crate::commands::clock::clock_graph::ClockGraph;
 
 pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
   let TreetimeClockArgs {
