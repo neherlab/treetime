@@ -71,18 +71,6 @@ pub fn find_letter_ranges(seq: &[char], letter: char) -> Vec<(usize, usize)> {
   find_letter_ranges_by(seq, |candidate| candidate == letter)
 }
 
-pub fn find_ambiguous_ranges(seq: &[char]) -> Vec<(usize, usize)> {
-  find_letter_ranges(seq, 'N')
-}
-
-pub fn find_gap_ranges(seq: &[char]) -> Vec<(usize, usize)> {
-  find_letter_ranges(seq, '-')
-}
-
-pub fn find_undetermined_ranges(seq: &[char]) -> Vec<(usize, usize)> {
-  find_letter_ranges_by(seq, |c| c == 'N' || c == '-')
-}
-
 #[cfg(test)]
 mod tests {
   use super::*;
@@ -114,7 +102,7 @@ mod tests {
   #[case("GCANNNN",         vec![(3, 7)])]
   #[case("NNNNGCA",         vec![(0, 4)])]
   fn test_find_ambiguous_ranges(#[case] seq: &str, #[case] expected: Vec<(usize, usize)>) {
-    let actual = find_ambiguous_ranges(&to_char_array(seq));
+    let actual = find_letter_ranges(&to_char_array(seq), 'N');
     assert_eq!(expected, actual);
   }
 
@@ -127,7 +115,7 @@ mod tests {
   #[case("GCA----",         vec![(3, 7)])]
   #[case("----GCA",         vec![(0, 4)])]
   fn test_find_gap_ranges(#[case] seq: &str, #[case] expected: Vec<(usize, usize)>) {
-    let actual = find_gap_ranges(&to_char_array(seq));
+    let actual = find_letter_ranges(&to_char_array(seq), '-');
     assert_eq!(expected, actual);
   }
 
@@ -145,7 +133,7 @@ mod tests {
   #[case("ATGNNNTTTT---",    vec![(3, 6), (10, 13)])]
   #[case("ATG---TTTTNNN",    vec![(3, 6), (10, 13)])]
   fn test_find_undetermined_ranges(#[case] seq: &str, #[case] expected: Vec<(usize, usize)>) {
-    let actual = find_undetermined_ranges(&to_char_array(seq));
+    let actual = find_letter_ranges_by(&to_char_array(seq), |c| c == 'N' || c == '-');
     assert_eq!(expected, actual);
   }
 }
