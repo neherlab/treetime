@@ -6,7 +6,7 @@ use comfy_table::presets::UTF8_FULL;
 use comfy_table::{ContentArrangement, Table};
 use crossterm::terminal;
 use eyre::Report;
-use itertools::Itertools;
+use itertools::{chain, Itertools};
 use num_traits::clamp;
 use plotters::coord::Shift;
 use plotters::prelude::*;
@@ -77,7 +77,8 @@ where
   <DB as DrawingBackend>::ErrorType: 'static,
 {
   let PointsResult {
-    points,
+    norm_points,
+    outlier_points,
     line,
     x_min,
     x_max,
@@ -102,29 +103,53 @@ where
     .axis_desc_style(("sans-serif", 12))
     .draw()?;
 
-  let line_color = RGBColor(8, 140, 232);
+  let norm_point_color = RGBColor(8, 232, 140);
   chart
-    .draw_series(LineSeries::new(line, &line_color))?
-    .label(format!("Clock regression: {}", clock_model.equation_str()))
-    .legend(move |(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], line_color));
-
-  let point_color = RGBColor(255, 105, 97);
-  chart
-    .draw_series(PointSeries::of_element(points, 2, &point_color, &|c, s, st| {
-      EmptyElement::at(c) + Circle::new((0, 0), s, st.filled())
-    }))?
-    .label("Samples")
+    .draw_series(PointSeries::of_element(
+      norm_points,
+      2,
+      &norm_point_color,
+      &|c, s, st| EmptyElement::at(c) + Circle::new((0, 0), s, st.filled()),
+    ))?
+    .label("Samples (norm)")
     .legend(move |(x, y)| {
       Circle::new(
         (x + 10, y),
         2,
         ShapeStyle {
-          color: point_color.to_rgba(),
+          color: norm_point_color.to_rgba(),
           filled: true,
           stroke_width: 0,
         },
       )
     });
+
+  let outlier_point_color = RGBColor(255, 105, 97);
+  chart
+    .draw_series(PointSeries::of_element(
+      outlier_points,
+      2,
+      &outlier_point_color,
+      &|c, s, st| EmptyElement::at(c) + Circle::new((0, 0), s, st.filled()),
+    ))?
+    .label("Samples (outliers)")
+    .legend(move |(x, y)| {
+      Circle::new(
+        (x + 10, y),
+        2,
+        ShapeStyle {
+          color: outlier_point_color.to_rgba(),
+          filled: true,
+          stroke_width: 0,
+        },
+      )
+    });
+
+  let line_color = RGBColor(8, 140, 232);
+  chart
+    .draw_series(LineSeries::new(line, &line_color))?
+    .label(format!("Clock regression: {}", clock_model.equation_str()))
+    .legend(move |(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], line_color));
 
   chart
     .configure_series_labels()
@@ -158,7 +183,8 @@ pub fn print_clock_regression_chart(results: &[ClockRegressionResult], clock_mod
   let height = clamp(height, 0, 1024) as u32;
 
   let PointsResult {
-    points,
+    norm_points,
+    outlier_points,
     x_min,
     x_max,
     y_min,
@@ -166,14 +192,17 @@ pub fn print_clock_regression_chart(results: &[ClockRegressionResult], clock_mod
     ..
   } = gather_points(results, clock_model)?;
 
-  let points = Shape::Points(&points);
+  let mut chart = Chart::new_with_y_range(width, height, x_min, x_max, y_min, y_max);
+
+  let norm_points = Shape::Points(&norm_points);
+  let chart = chart.linecolorplot(&norm_points, RGB8 { r: 8, g: 232, b: 140 });
+
+  let outlier_points = Shape::Points(&outlier_points);
+  let chart = chart.linecolorplot(&outlier_points, RGB8 { r: 255, g: 105, b: 97 });
 
   let line = Box::new(|date: f32| clock_model.div(date as f64) as f32);
   let line = Shape::Continuous(line);
-
-  let mut chart = Chart::new_with_y_range(width, height, x_min, x_max, y_min, y_max);
   let chart = chart.linecolorplot(&line, RGB8 { r: 8, g: 140, b: 232 });
-  let chart = chart.linecolorplot(&points, RGB8 { r: 255, g: 105, b: 97 });
 
   chart.nice();
 
@@ -181,7 +210,8 @@ pub fn print_clock_regression_chart(results: &[ClockRegressionResult], clock_mod
 }
 
 struct PointsResult {
-  points: Vec<(f32, f32)>,
+  norm_points: Vec<(f32, f32)>,
+  outlier_points: Vec<(f32, f32)>,
   line: [(f32, f32); 2],
   x_min: f32,
   x_max: f32,
@@ -192,10 +222,20 @@ struct PointsResult {
 fn gather_points(results: &[ClockRegressionResult], clock_model: &ClockModel) -> Result<PointsResult, Report> {
   assert!(!results.is_empty());
 
-  let points = results
-    .iter()
+  let (norms, outliers): (Vec<_>, Vec<_>) = results.iter().partition(|result| result.is_outlier);
+
+  let norm_points = outliers
+    .into_iter()
+    .cloned()
     .filter_map(|result| result.date.map(|date| (date as f32, result.div as f32)))
     .collect_vec();
+
+  let outlier_points = norms
+    .into_iter()
+    .filter_map(|result| result.date.map(|date| (date as f32, result.div as f32)))
+    .collect_vec();
+
+  let points = chain!(&norm_points, &outlier_points).copied().collect_vec();
 
   let (x_min, x_max) = points.iter().map(|(x, _)| *x).minmax().into_option().unwrap();
 
@@ -212,7 +252,8 @@ fn gather_points(results: &[ClockRegressionResult], clock_model: &ClockModel) ->
     .unwrap();
 
   Ok(PointsResult {
-    points,
+    norm_points,
+    outlier_points,
     line,
     x_min,
     x_max,
