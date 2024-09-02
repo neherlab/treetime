@@ -5,4 +5,3 @@ pub mod range_difference;
 pub mod range_intersection;
 pub mod range_properties;
 pub mod range_union;
-pub mod sets;
