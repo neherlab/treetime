@@ -2,7 +2,7 @@
 use crate::graph::breadth_first::GraphTraversalContinuation;
 use crate::io::fasta::FastaRecord;
 use crate::port::composition::Composition;
-use crate::port::constants::{FILL_CHAR, GAP_CHAR, NON_CHAR, VARIABLE};
+use crate::port::constants::{FILL_CHAR, NON_CHAR, VARIABLE};
 use crate::port::mutation::{InDel, Mut};
 use crate::representation::graph_sparse::{
   Deletion, SparseGraph, SparseNode, SparseSeqDis, SparseSeqEdge, SparseSeqInfo, SparseSeqNode, VarPos,
@@ -91,7 +91,13 @@ fn fitch_backwards(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]
       let non_char = range_intersection_iter(children.iter().map(|(c, _)| &c.non_char)).collect_vec();
       let non_gap = range_complement(&[(0, *length)], &[gaps.clone()]); // FIXME(perf): unnecessary clone
 
-      let mut seq_dis = SparseSeqDis::default();
+      let mut seq_dis = SparseSeqDis {
+        variable: btreemap! {},
+        variable_indel: btreemap! {},
+        fixed: btreemap! {},
+        fixed_counts: Composition::new(alphabet.chars(), alphabet.gap()),
+        log_lh: 0.0,
+      };
       let mut sequence = vec![FILL_CHAR; *length];
 
       for r in &non_char {
@@ -232,10 +238,22 @@ fn fitch_backwards(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]
           non_char,
           fitch: seq_dis,
           sequence,
-          composition: Composition::default(),
+          composition: Composition::new(alphabet.chars(), alphabet.gap()),
         },
-        profile: SparseSeqDis::default(),
-        msg_to_parents: SparseSeqDis::default(),
+        profile: SparseSeqDis {
+          variable: btreemap! {},
+          variable_indel: btreemap! {},
+          fixed: btreemap! {},
+          fixed_counts: Composition::new(alphabet.chars(), alphabet.gap()),
+          log_lh: 0.0,
+        },
+        msg_to_parents: SparseSeqDis {
+          variable: btreemap! {},
+          variable_indel: btreemap! {},
+          fixed: btreemap! {},
+          fixed_counts: Composition::new(alphabet.chars(), alphabet.gap()),
+          log_lh: 0.0,
+        },
         msgs_to_children: btreemap! {},
         msgs_from_children: btreemap! {},
       });
@@ -279,9 +297,9 @@ fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]) 
           }
         }
         for r in gaps.iter() {
-          sequence[r.0..r.1].fill(GAP_CHAR);
+          sequence[r.0..r.1].fill(alphabet.gap());
         }
-        *composition = Composition::with_sequence(sequence.iter().copied(), alphabet.chars());
+        *composition = Composition::with_sequence(sequence.iter().copied(), alphabet.chars(), alphabet.gap());
       } else {
         let (parent, edge) = node
           .parents
@@ -480,7 +498,7 @@ pub fn ancestral_reconstruction_fitch(
           // Implant indels
           for indel in &edge.indels {
             if indel.deletion {
-              seq[indel.range.0..indel.range.1].fill(GAP_CHAR);
+              seq[indel.range.0..indel.range.1].fill(alphabet.gap());
             } else {
               seq[indel.range.0..indel.range.1].copy_from_slice(&indel.seq);
             }
@@ -760,7 +778,25 @@ mod tests {
           ]
         ],
         "composition": {
-          "counts": {}
+          "counts": {
+            "-": 0,
+            "A": 0,
+            "B": 0,
+            "C": 0,
+            "D": 0,
+            "G": 0,
+            "H": 0,
+            "K": 0,
+            "M": 0,
+            "N": 0,
+            "R": 0,
+            "S": 0,
+            "T": 0,
+            "V": 0,
+            "W": 0,
+            "Y": 0
+          },
+          "gap": "-"
         },
         "sequence": [
           "G",
@@ -785,7 +821,25 @@ mod tests {
           "variable_indel": {},
           "fixed": {},
           "fixed_counts": {
-            "counts": {}
+            "counts": {
+              "-": 0,
+              "A": 0,
+              "B": 0,
+              "C": 0,
+              "D": 0,
+              "G": 0,
+              "H": 0,
+              "K": 0,
+              "M": 0,
+              "N": 0,
+              "R": 0,
+              "S": 0,
+              "T": 0,
+              "V": 0,
+              "W": 0,
+              "Y": 0
+            },
+            "gap": "-"
           },
           "log_lh": 0.0
         }
@@ -795,7 +849,25 @@ mod tests {
         "variable_indel": {},
         "fixed": {},
         "fixed_counts": {
-          "counts": {}
+          "counts": {
+            "-": 0,
+            "A": 0,
+            "B": 0,
+            "C": 0,
+            "D": 0,
+            "G": 0,
+            "H": 0,
+            "K": 0,
+            "M": 0,
+            "N": 0,
+            "R": 0,
+            "S": 0,
+            "T": 0,
+            "V": 0,
+            "W": 0,
+            "Y": 0
+          },
+          "gap": "-"
         },
         "log_lh": 0.0
       },
@@ -804,7 +876,25 @@ mod tests {
         "variable_indel": {},
         "fixed": {},
         "fixed_counts": {
-          "counts": {}
+          "counts": {
+            "-": 0,
+            "A": 0,
+            "B": 0,
+            "C": 0,
+            "D": 0,
+            "G": 0,
+            "H": 0,
+            "K": 0,
+            "M": 0,
+            "N": 0,
+            "R": 0,
+            "S": 0,
+            "T": 0,
+            "V": 0,
+            "W": 0,
+            "Y": 0
+          },
+          "gap": "-"
         },
         "log_lh": 0.0
       },
@@ -838,7 +928,25 @@ mod tests {
           ]
         ],
         "composition": {
-          "counts": {}
+          "counts": {
+            "-": 0,
+            "A": 0,
+            "B": 0,
+            "C": 0,
+            "D": 0,
+            "G": 0,
+            "H": 0,
+            "K": 0,
+            "M": 0,
+            "N": 0,
+            "R": 0,
+            "S": 0,
+            "T": 0,
+            "V": 0,
+            "W": 0,
+            "Y": 0
+          },
+          "gap": "-"
         },
         "sequence": [
           "T",
@@ -879,7 +987,25 @@ mod tests {
           "variable_indel": {},
           "fixed": {},
           "fixed_counts": {
-            "counts": {}
+            "counts": {
+              "-": 0,
+              "A": 0,
+              "B": 0,
+              "C": 0,
+              "D": 0,
+              "G": 0,
+              "H": 0,
+              "K": 0,
+              "M": 0,
+              "N": 0,
+              "R": 0,
+              "S": 0,
+              "T": 0,
+              "V": 0,
+              "W": 0,
+              "Y": 0
+            },
+            "gap": "-"
           },
           "log_lh": 0.0
         }
@@ -889,7 +1015,25 @@ mod tests {
         "variable_indel": {},
         "fixed": {},
         "fixed_counts": {
-          "counts": {}
+          "counts": {
+            "-": 0,
+            "A": 0,
+            "B": 0,
+            "C": 0,
+            "D": 0,
+            "G": 0,
+            "H": 0,
+            "K": 0,
+            "M": 0,
+            "N": 0,
+            "R": 0,
+            "S": 0,
+            "T": 0,
+            "V": 0,
+            "W": 0,
+            "Y": 0
+          },
+          "gap": "-"
         },
         "log_lh": 0.0
       },
@@ -898,7 +1042,25 @@ mod tests {
         "variable_indel": {},
         "fixed": {},
         "fixed_counts": {
-          "counts": {}
+          "counts": {
+            "-": 0,
+            "A": 0,
+            "B": 0,
+            "C": 0,
+            "D": 0,
+            "G": 0,
+            "H": 0,
+            "K": 0,
+            "M": 0,
+            "N": 0,
+            "R": 0,
+            "S": 0,
+            "T": 0,
+            "V": 0,
+            "W": 0,
+            "Y": 0
+          },
+          "gap": "-"
         },
         "log_lh": 0.0
       },

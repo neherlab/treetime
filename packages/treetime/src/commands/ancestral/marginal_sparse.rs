@@ -2,7 +2,6 @@ use crate::alphabet::alphabet::Alphabet;
 use crate::graph::breadth_first::GraphTraversalContinuation;
 use crate::graph::edge::Weighted;
 use crate::graph::node::Named;
-use crate::port::constants::GAP_CHAR;
 use crate::representation::graph_sparse::{
   SparseGraph, SparseNode, SparseSeqDis, SparseSeqEdge, SparseSeqNode, VarPos,
 };
@@ -36,8 +35,9 @@ fn ingroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihoo
         seq_info.msg_to_parents = SparseSeqDis {
           fixed_counts: seq_info.seq.composition.clone(),
           variable,
+          variable_indel: btreemap! {},
           fixed,
-          ..SparseSeqDis::default()
+          log_lh: 0.0,
         };
       } else {
         // internal nodes
@@ -63,8 +63,11 @@ fn ingroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihoo
         let (variable_pos, child_states) = get_variable_states_children(&child_seqs, &child_edges);
 
         let mut seq_dis = SparseSeqDis {
+          variable: btreemap! {},
+          variable_indel: btreemap! {},
+          fixed: btreemap! {},
           fixed_counts: seq_info.seq.composition.clone(),
-          ..SparseSeqDis::default()
+          log_lh: 0.0,
         };
 
         seq_info.msgs_from_children = btreemap! {};
@@ -108,8 +111,11 @@ fn propagate(
   transmission: &Option<Vec<(usize, usize)>>,
 ) -> SparseSeqDis {
   let mut message = SparseSeqDis {
+    variable: btreemap! {},
+    variable_indel: btreemap! {},
+    fixed: btreemap! {},
     fixed_counts: seq_dis.fixed_counts.clone(),
-    ..SparseSeqDis::default()
+    log_lh: 0.0,
   };
   for (pos, &state) in variable_pos {
     if let Some(transmission) = &transmission {
@@ -282,8 +288,11 @@ fn outgroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikeliho
       }
 
       let mut seq_dis = SparseSeqDis {
+        variable: btreemap! {},
+        variable_indel: btreemap! {},
+        fixed: btreemap! {},
         fixed_counts: seq_info.seq.composition.clone(),
-        ..SparseSeqDis::default()
+        log_lh: 0.0,
       };
 
       combine_messages(&mut seq_dis, &msgs_from_parents, &variable_pos, alphabet, None).unwrap();
@@ -300,8 +309,11 @@ fn outgroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikeliho
           .collect_vec();
 
         let mut seq_dis = SparseSeqDis {
+          variable: btreemap! {},
+          variable_indel: btreemap! {},
+          fixed: btreemap! {},
           fixed_counts: seq_info.msg_to_parents.fixed_counts.clone(),
-          ..SparseSeqDis::default()
+          log_lh: 0.0,
         };
 
         combine_messages(&mut seq_dis, &msgs, &variable_pos, alphabet, None).unwrap();
@@ -353,9 +365,11 @@ fn calculate_root_state_sparse(graph: &SparseGraph, partitions: &[PartitionLikel
       let PartitionLikelihood { gtr, alphabet, .. } = &partitions[si];
 
       let mut seq_profile = SparseSeqDis {
+        variable: btreemap! {},
+        variable_indel: btreemap! {},
+        fixed: btreemap! {},
         fixed_counts: seq_info.msg_to_parents.fixed_counts.clone(),
         log_lh: seq_info.msg_to_parents.log_lh,
-        ..SparseSeqDis::default()
       };
 
       // multiply the info from the tree with the GTR equilibrium probabilities (variable and fixed)
@@ -406,9 +420,11 @@ fn calculate_root_state_sparse(graph: &SparseGraph, partitions: &[PartitionLikel
           .collect_vec();
 
         let mut seq_dis = SparseSeqDis {
+          variable: btreemap! {},
+          variable_indel: btreemap! {},
+          fixed: btreemap! {},
           fixed_counts: seq_info.msg_to_parents.fixed_counts.clone(),
           log_lh: 0.0,
-          ..SparseSeqDis::default()
         };
 
         combine_messages(&mut seq_dis, &msgs, &variable_pos, alphabet, None).unwrap();
@@ -466,7 +482,7 @@ pub fn ancestral_reconstruction_marginal_sparse(
           // Implant indels
           for indel in &edge.indels {
             if indel.deletion {
-              seq[indel.range.0..indel.range.1].fill(GAP_CHAR);
+              seq[indel.range.0..indel.range.1].fill(alphabet.gap());
             } else {
               seq[indel.range.0..indel.range.1].copy_from_slice(&indel.seq);
             }

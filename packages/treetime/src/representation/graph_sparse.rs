@@ -61,7 +61,7 @@ impl NodeToGraphviz for SparseNode {
   }
 }
 
-#[derive(Clone, Default, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SparseSeqInfo {
   pub unknown: Vec<(usize, usize)>,
   pub gaps: Vec<(usize, usize)>,
@@ -71,7 +71,7 @@ pub struct SparseSeqInfo {
   pub fitch: SparseSeqDis,
 }
 
-#[derive(Clone, Default, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SparseSeqNode {
   pub seq: SparseSeqInfo,
   pub profile: SparseSeqDis,
@@ -105,7 +105,10 @@ impl SparseSeqNode {
 
     let seq_dis = SparseSeqDis {
       variable,
-      ..SparseSeqDis::default()
+      variable_indel: btreemap! {},
+      fixed: btreemap! {},
+      fixed_counts: Composition::new(alphabet.chars(), alphabet.gap()),
+      log_lh: 0.0,
     };
 
     let unknown = find_letter_ranges(seq, alphabet.unknown());
@@ -117,12 +120,24 @@ impl SparseSeqNode {
         unknown,
         gaps,
         non_char,
-        composition: Composition::default(),
+        composition: Composition::new(alphabet.chars(), alphabet.gap()),
         sequence: seq.to_owned(), // TODO(perf): try to avoid cloning
         fitch: seq_dis,
       },
-      profile: SparseSeqDis::default(),
-      msg_to_parents: SparseSeqDis::default(),
+      profile: SparseSeqDis {
+        variable: btreemap! {},
+        variable_indel: btreemap! {},
+        fixed: btreemap! {},
+        fixed_counts: Composition::new(alphabet.chars(), alphabet.gap()),
+        log_lh: 0.0,
+      },
+      msg_to_parents: SparseSeqDis {
+        variable: btreemap! {},
+        variable_indel: btreemap! {},
+        fixed: btreemap! {},
+        fixed_counts: Composition::new(alphabet.chars(), alphabet.gap()),
+        log_lh: 0.0,
+      },
       msgs_to_children: btreemap! {},
       msgs_from_children: btreemap! {},
     })
@@ -200,7 +215,7 @@ pub struct Deletion {
   pub alt: Vec<char>,
 }
 
-#[derive(Clone, Default, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SparseSeqDis {
   /// probability vector for each variable position collecting information from children
   pub variable: BTreeMap<usize, VarPos>,
