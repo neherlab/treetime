@@ -1,4 +1,3 @@
-use crate::constants::BIG_NUMBER;
 use eyre::Report;
 use itertools::Itertools;
 use ndarray::{
@@ -202,17 +201,6 @@ pub fn random<T: Copy + SampleUniform + NumCast, D: Dimension, Sh: ShapeBuilder<
   let from: T = NumCast::from(0_i32).unwrap();
   let to: T = NumCast::from(1_i32).unwrap();
   Array::<T, D>::random_using(shape, Uniform::<T>::new::<T, T>(from, to), rng)
-}
-
-/// Replaces non-finite with a very small number
-pub fn sanitize_in_place<T: Float, D: Dimension>(arr: &mut Array<T, D>) {
-  arr.mapv_inplace(|x| {
-    if x.is_finite() {
-      x
-    } else {
-      T::from(-BIG_NUMBER).unwrap()
-    }
-  });
 }
 
 #[cfg(test)]
