@@ -2,7 +2,7 @@
 use crate::alphabet::alphabet::{FILL_CHAR, NON_CHAR, VARIABLE_CHAR};
 use crate::graph::breadth_first::GraphTraversalContinuation;
 use crate::io::fasta::FastaRecord;
-use crate::port::composition::Composition;
+use crate::seq::composition::Composition;
 use crate::representation::graph_sparse::{
   Deletion, SparseGraph, SparseNode, SparseSeqDis, SparseSeqEdge, SparseSeqInfo, SparseSeqNode, VarPos,
 };

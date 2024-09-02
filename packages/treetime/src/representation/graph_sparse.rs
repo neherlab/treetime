@@ -5,7 +5,7 @@ use crate::graph::node::{GraphNode, Named};
 use crate::io::graphviz::{EdgeToGraphViz, NodeToGraphviz};
 use crate::io::nwk::{format_weight, EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteOptions};
 use crate::o;
-use crate::port::composition::Composition;
+use crate::seq::composition::Composition;
 use crate::seq::mutation::Sub;
 use crate::seq::find_char_ranges::find_letter_ranges;
 use crate::seq::range_union::range_union;

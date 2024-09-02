@@ -393,7 +393,7 @@ mod tests {
   use super::*;
   use crate::io::nwk::nwk_read_str;
   use crate::o;
-  use crate::port::div::{calculate_divs, OnlyLeaves};
+  use crate::seq::div::{calculate_divs, OnlyLeaves};
   use approx::assert_ulps_eq;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
