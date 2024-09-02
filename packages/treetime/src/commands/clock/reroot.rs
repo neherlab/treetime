@@ -9,7 +9,7 @@ use eyre::Report;
 use maplit::btreemap;
 
 pub fn reroot_in_place(graph: &mut ClockGraph, options: &ClockOptions) -> Result<GraphNodeKey, Report> {
-  let FindRootResult { edge, split, .. } = find_best_root(graph, options)?;
+  let FindRootResult { edge, split, total, chisq } = find_best_root(graph, options)?;
 
   let edge_key = edge.expect("Edge is empty when rerooting");
   let edge = graph.get_edge(edge_key).expect("Edge not found");
@@ -19,7 +19,7 @@ pub fn reroot_in_place(graph: &mut ClockGraph, options: &ClockOptions) -> Result
   } else if ulps_eq!(split, 1.0, max_ulps = 5) {
     edge.read_arc().source()
   } else {
-    create_new_root_node(graph, edge_key, split)?
+    create_new_root_node(graph, edge_key, split, total)?
   };
 
   let old_root_key = { graph.get_exactly_one_root()?.read_arc().key() };
@@ -33,14 +33,14 @@ pub fn reroot_in_place(graph: &mut ClockGraph, options: &ClockOptions) -> Result
 }
 
 /// Create new root node by splitting the edge into two
-fn create_new_root_node(graph: &mut ClockGraph, edge_key: GraphEdgeKey, split: f64) -> Result<GraphNodeKey, Report> {
+fn create_new_root_node(graph: &mut ClockGraph, edge_key: GraphEdgeKey, split: f64, total: ClockSet) -> Result<GraphNodeKey, Report> {
   let new_root_key = graph.add_node(ClockNodePayload {
     name: Some("new_root".to_owned()),
     date: None,
     bad_branch: false,
     div: 0.0,
     is_outlier: false,
-    total: ClockSet::default(),
+    total: total.clone(),
     to_parent: ClockSet::default(),
     to_children: btreemap! {},
     from_children: btreemap! {},

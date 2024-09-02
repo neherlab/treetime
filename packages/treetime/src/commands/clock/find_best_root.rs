@@ -9,6 +9,8 @@ use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
+use super::clock_set::ClockSet;
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FindRootResult {
   pub edge: Option<GraphEdgeKey>,
@@ -18,7 +20,9 @@ pub struct FindRootResult {
   /// the child (target) of the edge. If this is 0 < x < 1, we put a new node at that point, and reroot on that new node.
   pub split: f64,
 
-  pub clock: ClockModel,
+  pub total: ClockSet,
+
+  pub chisq: f64,
 }
 
 /// Find the best new root node
@@ -37,7 +41,8 @@ pub fn find_best_root(graph: &ClockGraph, options: &ClockOptions) -> Result<Find
   let mut best_res = FindRootResult {
     edge: None,
     split: 0.0,
-    clock,
+    chisq: clock.chisq(),
+    total: root.total.clone(),
   };
 
   // find best node
@@ -60,8 +65,8 @@ pub fn find_best_root(graph: &ClockGraph, options: &ClockOptions) -> Result<Find
     let inbound = best_root_node.inbound();
     let edge = get_exactly_one(inbound).expect("Not implemented: multiple parent nodes");
     let res = find_best_split(graph, *edge, options)?;
-    if res.clock.chisq() < best_chisq {
-      best_chisq = res.clock.chisq();
+    if res.chisq < best_chisq {
+      best_chisq = res.chisq;
       best_res = res;
     }
   }
@@ -69,8 +74,8 @@ pub fn find_best_root(graph: &ClockGraph, options: &ClockOptions) -> Result<Find
   // Check if someone on a child branch is better
   for e in best_root_node.outbound() {
     let res = find_best_split(graph, *e, options)?;
-    if res.clock.chisq() < best_chisq {
-      best_chisq = res.clock.chisq();
+    if res.chisq < best_chisq {
+      best_chisq = res.chisq;
       best_res = res;
     }
   }
@@ -103,7 +108,7 @@ fn find_best_split(graph: &ClockGraph, edge: GraphEdgeKey, options: &ClockOption
   // Interrogate different positions along the branch
   let mut best_chisq = f64::INFINITY;
   let mut best_split = f64::NAN;
-  let mut best_clock = ClockModel::default();
+  let mut best_totalQ: ClockSet = ClockSet::default();
 
   // TODO: arbitrary choice for now, should optimize
   for x in Array1::linspace(0.0, 1.0, 11) {
@@ -111,15 +116,16 @@ fn find_best_split(graph: &ClockGraph, edge: GraphEdgeKey, options: &ClockOption
       + n_clock.propagate_averages(branch_length * (1.0 - x), branch_variance * (1.0 - x));
     let clock_model = ClockModel::new(&Q)?;
     if clock_model.chisq() < best_chisq {
-      best_chisq = clock_model.chisq();
       best_split = x;
-      best_clock = clock_model;
+      best_totalQ = Q;
+      best_chisq = clock_model.chisq();
     }
   }
 
   Ok(FindRootResult {
     edge: Some(edge.read_arc().key()),
     split: best_split,
-    clock: best_clock,
+    total: best_totalQ,
+    chisq: best_chisq
   })
 }

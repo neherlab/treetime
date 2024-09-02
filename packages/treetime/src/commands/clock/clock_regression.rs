@@ -143,7 +143,8 @@ mod tests {
 
     options.variance_factor = 1.0;
     let res = find_best_root(&graph, options)?;
-    assert_ulps_eq!(0.008095476518345305, res.clock.clock_rate(), epsilon = 1e-9);
+    let clock_rate = ClockModel::new(&res.total)?.clock_rate();
+    assert_ulps_eq!(0.008095476518345305, clock_rate, epsilon = 1e-9);
 
     Ok(())
   }

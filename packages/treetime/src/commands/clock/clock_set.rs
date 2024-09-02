@@ -84,6 +84,13 @@ impl ClockSet {
         - (self.dt_sum() * self.norm() - self.d_sum() * self.t_sum()).powi(2) / det)
       / self.norm()
   }
+
+  pub fn r_val(&self) -> f64 {
+    (self.dt_sum * self.norm() - self.t_sum * self.d_sum)/
+       ((self.dsq_sum * self.norm() - self.d_sum.powi(2)) *
+        (self.tsq_sum * self.norm() - self.t_sum.powi(2))
+       ).sqrt()
+  }
 }
 
 impl_op_ex!(+ |a: &ClockSet, b: &ClockSet| -> ClockSet {

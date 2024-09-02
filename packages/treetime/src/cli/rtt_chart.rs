@@ -150,7 +150,7 @@ pub fn print_clock_regression_chart(results: &[ClockRegressionResult], clock_mod
   table.add_row([o!("Intercept"), format!("{:.4}", clock_model.intercept())]);
   table.add_row([o!("R"), format!("{:.4}", clock_model.r_val())]);
   table.add_row([o!("R²"), format!("{:.4}", clock_model.r_val().powf(2.0))]);
-  table.add_row([o!("χ²"), format!("{:.4}", clock_model.chisq())]);
+  table.add_row([o!("χ²"), format!("{:e}", clock_model.chisq())]);
   println!("{table}");
 
   let (width, height) = terminal::size()?;
