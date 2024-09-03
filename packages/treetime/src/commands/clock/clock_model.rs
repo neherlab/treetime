@@ -23,6 +23,9 @@ pub struct ClockModel {
 
   #[getset(get = "pub")]
   hessian: Array2<f64>,
+
+  #[getset(get = "pub")]
+  cov: Array2<f64>,
 }
 
 impl ClockModel {
@@ -37,8 +40,9 @@ impl ClockModel {
       clock_rate: clock_set.clock_rate(det),
       intercept: clock_set.intercept(clock_set.clock_rate(det)),
       chisq: clock_set.chisq(),
-      r_val: clock_set.r_val(), // TODO
+      r_val: clock_set.r_val(),
       hessian: clock_set.hessian(),
+      cov: clock_set.cov(),
     })
   }
 
@@ -51,6 +55,7 @@ impl ClockModel {
       hessian,
       chisq: 0.0,
       r_val: 0.0,
+      cov: clock_set.cov(),
     }
   }
 

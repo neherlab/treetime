@@ -100,6 +100,21 @@ impl ClockSet {
     Array2::from_shape_vec((2, 2), vec![self.tsq_sum(), self.t_sum(), self.t_sum(), self.norm()]).unwrap()
   }
 
+  pub fn cov(&self) -> Array2<f64> {
+    // parameter covariance matrix  = hessian^-1: calculate 2x2 matrix inverse explicitly
+    let det_inv = 1.0 / self.determinant();
+    Array2::from_shape_vec(
+      (2, 2),
+      vec![
+        self.norm() * det_inv,
+        -self.dt_sum() * det_inv,
+        -self.dt_sum() * det_inv,
+        self.tsq_sum() * det_inv,
+      ],
+    )
+    .unwrap()
+  }
+
   pub fn chisq(&self) -> f64 {
     let det = self.determinant();
     0.5
