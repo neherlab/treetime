@@ -36,8 +36,7 @@ pub fn find_best_root(graph: &ClockGraph, options: &ClockOptions) -> Result<Find
 
   let root = root.read_arc().payload().read_arc();
   let clock = ClockModel::new(&root.total)?;
-  let mut best_chisq = clock.chisq();
-
+  let mut best_chisq = root.total.chisq();
   let mut best_res = FindRootResult {
     edge: None,
     split: 0.0,
@@ -49,14 +48,15 @@ pub fn find_best_root(graph: &ClockGraph, options: &ClockOptions) -> Result<Find
   for n in graph.get_nodes() {
     let tmp_chisq = {
       let n = n.read_arc().payload().read_arc();
-      ClockModel::new(&n.total)?.chisq() // FIXME: we might not need to calculate the whole model here, only the .chisq()
+      n.total.chisq()
     };
+    // dbg!(tmp_chisq);
     if tmp_chisq < best_chisq {
       best_chisq = tmp_chisq;
       best_root_node = Arc::clone(&n);
     }
   }
-
+  dbg!(best_chisq);
   let best_root_node = best_root_node.read_arc();
 
   // Check if someone on parent branch is better
@@ -85,23 +85,10 @@ pub fn find_best_root(graph: &ClockGraph, options: &ClockOptions) -> Result<Find
 
 fn find_best_split(graph: &ClockGraph, edge: GraphEdgeKey, options: &ClockOptions) -> Result<FindRootResult, Report> {
   let edge = graph.get_edge(edge).expect("Edge not found");
-
-  // Get clock data from both ends of the edge.
-  let n = graph.get_node(edge.read_arc().target()).expect("Node not found");
-  let n_clock = &n.read_arc().payload().read_arc().to_parent;
-  let n = n.read_arc().payload().read_arc();
-  let n_name = n.name().expect("Encountered node without a name").as_ref().to_owned();
-
-  let p = graph.get_node(edge.read_arc().source()).expect("Node not found");
-  let p_clock = &p.read_arc().payload().read_arc().to_children[&n_name];
+  let edge_payload = edge.read_arc().payload().read_arc();
 
   // Precalculate branch values for the edge.
-  let branch_length = edge
-    .read_arc()
-    .payload()
-    .read_arc()
-    .weight()
-    .expect("Encountered an edge without a weight");
+  let branch_length = edge_payload.weight().expect("Encountered an edge without a weight");
 
   let branch_variance = options.variance_factor * branch_length + options.variance_offset;
 
@@ -112,13 +99,13 @@ fn find_best_split(graph: &ClockGraph, edge: GraphEdgeKey, options: &ClockOption
 
   // TODO: arbitrary choice for now, should optimize
   for x in Array1::linspace(0.0, 1.0, 11) {
-    let Q = p_clock.propagate_averages(branch_length * x, branch_variance * x)
-      + n_clock.propagate_averages(branch_length * (1.0 - x), branch_variance * (1.0 - x));
-    let clock_model = ClockModel::new(&Q)?;
-    if clock_model.chisq() < best_chisq {
+    let Q = edge_payload.to_child.propagate_averages(branch_length * x, branch_variance * x)
+      + edge_payload.to_parent.propagate_averages(branch_length * (1.0 - x), branch_variance * (1.0 - x));
+    let chisq = Q.chisq();
+    if chisq < best_chisq {
       best_split = x;
       best_totalQ = Q;
-      best_chisq = clock_model.chisq();
+      best_chisq = chisq;
     }
   }
 

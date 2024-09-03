@@ -63,9 +63,19 @@ pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
     assign_dates(&graph, &dates)?;
   }
 
-  let options = ClockOptions {
-    variance_factor: 0.0,
+  let options = if *covariation {
+    let seq_len = sequence_length.unwrap_or(0) as f64; // should error if sequence_length is None
+    ClockOptions {
+    variance_factor: 1.0/seq_len,
     variance_offset: 0.0,
+    variance_offset_leaf: 9.0/seq_len/seq_len,
+  }
+  } else {
+    ClockOptions {
+      variance_factor: 0.0,
+      variance_offset: 0.0,
+      variance_offset_leaf: 1.0,
+    }
   };
 
   // if we keep the root, run clock regression and report the model of the current root

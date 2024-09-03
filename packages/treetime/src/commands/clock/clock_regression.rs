@@ -3,7 +3,6 @@ use crate::commands::clock::clock_model::ClockModel;
 use crate::commands::clock::clock_set::ClockSet;
 use crate::graph::breadth_first::GraphTraversalContinuation;
 use crate::graph::edge::Weighted;
-use crate::graph::node::Named;
 use eyre::Report;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
@@ -12,74 +11,67 @@ use std::fmt::Debug;
 pub struct ClockOptions {
   pub variance_factor: f64,
   pub variance_offset: f64,
+  pub variance_offset_leaf: f64,
 }
 
 pub fn clock_regression_backward(graph: &ClockGraph, options: &ClockOptions) {
   graph.par_iter_breadth_first_backward(|mut n| {
-    n.payload.from_children.clear();
-    let q_dest = if n.is_leaf {
+    let date = n.payload.date;
+    let q_to_parent = if n.is_leaf {
       if n.payload.is_outlier {
         ClockSet::outlier_contribution()
       } else {
-        ClockSet::leaf_contribution(n.payload.date)
+        ClockSet::leaf_contribution(date)
       }
     } else {
       let mut q_dest = ClockSet::default();
-      for (c, e) in n.children {
-        let c = c.read_arc();
-        let e = e.read_arc();
-
-        let name = c
-          .name()
-          .expect("Encountered a child node without a name")
-          .as_ref()
-          .to_owned();
-
-        let edge_len = e.weight().expect("Encountered an edge without a weight");
-
-        let branch_variance = options.variance_factor * edge_len + options.variance_offset;
-        let q_from_child = c.to_parent.propagate_averages(edge_len, branch_variance);
-        q_dest += &q_from_child;
-        n.payload.from_children.insert(name, q_from_child);
+      for (c, e) in &n.children {
+        q_dest += &e.read_arc().from_child;
       }
       q_dest
     };
-    n.payload.to_parent = q_dest;
-    GraphTraversalContinuation::Continue
+
+    let is_leaf = n.is_leaf;
+    let is_root = n.is_root;
+    let edge_to_parent = n.get_exactly_one_parent_edge();
+
+    if is_root {
+      n.payload.total = q_to_parent;
+    } else {
+      let edge_to_parent = edge_to_parent.expect("Encountered a node without a parent edge");
+      edge_to_parent.to_parent = q_to_parent.clone();
+      let edge_len = edge_to_parent.weight().expect("Encountered an edge without a weight");
+      let mut branch_variance = options.variance_factor * edge_len + options.variance_offset;
+
+      edge_to_parent.from_child = if is_leaf {
+        branch_variance += options.variance_offset_leaf;
+        ClockSet::leaf_contribution_to_parent(date, edge_len, branch_variance)
+      } else {
+        edge_to_parent.to_parent.propagate_averages(edge_len, branch_variance)
+      };
+    }
+    return GraphTraversalContinuation::Continue;
   });
 }
 
 pub fn clock_regression_forward(graph: &ClockGraph, options: &ClockOptions) {
   graph.par_iter_breadth_first_forward(|mut n| {
-    let q = &n.payload.to_parent;
-    let mut q_tot = q.clone();
+    if !n.is_root{
+      let (parent, edge) = n.get_exactly_one_parent().unwrap();
+      let edge = edge.read_arc();
+      let edge_len = edge.weight().expect("Encountered an edge without a weight");
+      let branch_variance = options.variance_factor * edge_len + options.variance_offset;
 
-    if !n.is_root {
-      let (p, e) = &n.get_exactly_one_parent().unwrap();
-      let p = p.read_arc();
-      let e = e.read_arc();
-
-      let name = n
-        .payload
-        .name()
-        .expect("Encountered a node without a name")
-        .as_ref()
-        .to_owned();
-
-      let branch_length = e.weight().expect("Encountered an edge without a weight");
-      let branch_variance = options.variance_factor * branch_length + options.variance_offset;
-      q_tot += p.to_children[&name].propagate_averages(branch_length, branch_variance);
+      let mut q_dest = edge.to_parent.clone();
+      q_dest += edge.to_child.propagate_averages(edge_len, branch_variance);
+      n.payload.total = q_dest.clone();
     }
 
-    n.payload.to_children = n
-      .payload
-      .from_children
-      .iter()
-      .map(|(c, q)| (c.clone(), &q_tot - q))
-      .collect();
-
-    n.payload.total = q_tot;
-
+    for mut child_edge in n.child_edges {
+      let mut q = n.payload.total.clone();
+      q-= &child_edge.from_child;
+      child_edge.to_child = q;
+    }
     GraphTraversalContinuation::Continue
   });
 }
@@ -135,6 +127,7 @@ mod tests {
     let options = &mut ClockOptions {
       variance_factor: 0.0,
       variance_offset: 0.0,
+      variance_offset_leaf: 0.0,
     };
 
     let clock = run_clock_regression(&graph, options)?;

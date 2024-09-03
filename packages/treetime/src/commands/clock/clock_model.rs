@@ -36,7 +36,7 @@ impl ClockModel {
     Ok(Self {
       clock_rate: clock_set.clock_rate(det),
       intercept: clock_set.intercept(clock_set.clock_rate(det)),
-      chisq: clock_set.chisq(det),
+      chisq: clock_set.chisq(),
       r_val: clock_set.r_val(), // TODO
       hessian: clock_set.hessian(),
     })
