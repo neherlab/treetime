@@ -129,16 +129,21 @@ mod tests {
       n.write_arc().payload().write_arc().date = Some(dates[&name]);
     }
 
-    let options = &mut ClockOptions {
+    let options = &ClockOptions {
       variance_factor: 0.0,
       variance_offset: 0.0,
-      variance_offset_leaf: 0.0,
+      variance_offset_leaf: 1.0,
     };
 
     let clock = run_clock_regression(&graph, options)?;
     assert_ulps_eq!(naive_rate, clock.clock_rate(), epsilon = 1e-9);
 
-    let res = find_best_root(&graph, options)?;
+    let options_2 = &ClockOptions {
+      variance_factor: 1.0,
+      variance_offset: 0.0,
+      variance_offset_leaf: 1.0,
+    };
+    let res = find_best_root(&graph, options_2)?;
     let clock_rate = ClockModel::new(&res.total)?.clock_rate();
     assert_ulps_eq!(0.008095476518345305, clock_rate, epsilon = 1e-9);
 

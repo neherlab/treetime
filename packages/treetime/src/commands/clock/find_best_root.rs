@@ -97,6 +97,7 @@ fn find_best_split(graph: &ClockGraph, edge: GraphEdgeKey, options: &ClockOption
   let mut best_totalQ: ClockSet = ClockSet::default();
 
   // TODO: arbitrary choice for now, should optimize
+  // TODO: need to handle terminal nodes differently
   for x in Array1::linspace(0.0, 1.0, 11) {
     let Q = edge_payload
       .to_child
