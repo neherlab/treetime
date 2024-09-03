@@ -17,6 +17,7 @@ pub struct ClockOptions {
 pub fn clock_regression_backward(graph: &ClockGraph, options: &ClockOptions) {
   graph.par_iter_breadth_first_backward(|mut n| {
     let date = n.payload.date;
+    // assemble the message that will be send to the parent
     let q_to_parent = if n.is_leaf {
       if n.payload.is_outlier {
         ClockSet::outlier_contribution()
@@ -38,11 +39,13 @@ pub fn clock_regression_backward(graph: &ClockGraph, options: &ClockOptions) {
     if is_root {
       n.payload.total = q_to_parent;
     } else {
+      // if not at the root, save the message to the parent on the edge
       let edge_to_parent = edge_to_parent.expect("Encountered a node without a parent edge");
       edge_to_parent.to_parent = q_to_parent.clone();
       let edge_len = edge_to_parent.weight().expect("Encountered an edge without a weight");
       let mut branch_variance = options.variance_factor * edge_len + options.variance_offset;
 
+      // propagate the message to the parent along the edge (taking care of the speical case need for leafs)
       edge_to_parent.from_child = if is_leaf {
         branch_variance += options.variance_offset_leaf;
         ClockSet::leaf_contribution_to_parent(date, edge_len, branch_variance)
@@ -57,6 +60,7 @@ pub fn clock_regression_backward(graph: &ClockGraph, options: &ClockOptions) {
 pub fn clock_regression_forward(graph: &ClockGraph, options: &ClockOptions) {
   graph.par_iter_breadth_first_forward(|mut n| {
     if !n.is_root {
+      // if not at the root, calculate the total message from the parent message, and the message sent to the parent
       let (parent, edge) = n.get_exactly_one_parent().unwrap();
       let edge = edge.read_arc();
       let edge_len = edge.weight().expect("Encountered an edge without a weight");
@@ -67,6 +71,7 @@ pub fn clock_regression_forward(graph: &ClockGraph, options: &ClockOptions) {
       n.payload.total = q_dest.clone();
     }
 
+    // place a message to the child onto each edge. this is the total message minus the message from the child
     for mut child_edge in n.child_edges {
       let mut q = n.payload.total.clone();
       q -= &child_edge.from_child;
@@ -133,7 +138,6 @@ mod tests {
     let clock = run_clock_regression(&graph, options)?;
     assert_ulps_eq!(naive_rate, clock.clock_rate(), epsilon = 1e-9);
 
-    options.variance_factor = 1.0;
     let res = find_best_root(&graph, options)?;
     let clock_rate = ClockModel::new(&res.total)?.clock_rate();
     assert_ulps_eq!(0.008095476518345305, clock_rate, epsilon = 1e-9);

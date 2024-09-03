@@ -64,11 +64,12 @@ pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
   }
 
   let options = if *covariation {
-    let seq_len = sequence_length.unwrap_or(0) as f64; // should error if sequence_length is None
+    let seq_len = sequence_length.unwrap_or(0) as f64; // should error if sequence_length is None and covariation is true
+    let overdispersion = 3.0; // TODO: empirical value for now, need to think of a better parameter than `tip_slack`
     ClockOptions {
-      variance_factor: 1.0 / seq_len,
+      variance_factor: overdispersion / seq_len,
       variance_offset: 0.0,
-      variance_offset_leaf: 9.0 / seq_len / seq_len,
+      variance_offset_leaf: overdispersion * overdispersion / seq_len / seq_len,
     }
   } else {
     ClockOptions {
