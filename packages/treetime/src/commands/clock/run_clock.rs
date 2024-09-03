@@ -63,33 +63,37 @@ pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
     assign_dates(&graph, &dates)?;
   }
 
-  let options = if *covariation {
-    let seq_len = sequence_length.unwrap_or(0) as f64; // should error if sequence_length is None and covariation is true
-    let overdispersion = 3.0; // TODO: empirical value for now, need to think of a better parameter than `tip_slack`
-    ClockOptions {
-      variance_factor: overdispersion / seq_len,
-      variance_offset: 0.0,
-      variance_offset_leaf: overdispersion * overdispersion / seq_len / seq_len,
-    }
-  } else {
-    ClockOptions {
-      variance_factor: 0.0,
-      variance_offset: 0.0,
-      variance_offset_leaf: 1.0,
-    }
+  let baseline_options = ClockOptions {
+    variance_factor: 0.0,
+    variance_offset: 0.0,
+    variance_offset_leaf: 1.0,
   };
 
-  // if we keep the root, run clock regression and report the model of the current root
-  // otherwise, reroot the tree and use clock model of the novel root
-  let mut clock_model = get_clock_model(&mut graph, &options, *keep_root)?;
+  // Split workflow into a separate blocks depending whether covariation is used or not
+  let clock_model = if *covariation {
+    let seq_len = sequence_length.unwrap_or(0) as f64; // should error if sequence_length is None and covariation is true
+    let tip_slack = tip_slack.unwrap_or(3.0);
+    let overdispersion = 2.0; // TODO: empirical value for now, need to think of a better parameter than `tip_slack`
+    let options = ClockOptions {
+      variance_factor: overdispersion / seq_len,
+      variance_offset: 0.0,
+      variance_offset_leaf: tip_slack * tip_slack / seq_len / seq_len,
+    };
 
-  if *clock_filter > 0.0 {
-    let new_outliers = clock_filter_inplace(&graph, &clock_model, *clock_filter);
-    dbg!(new_outliers);
-    if new_outliers > 0 {
-      clock_model = get_clock_model(&mut graph, &options, true)?;
+    // prefilter
+    if *clock_filter > 0.0 {
+      let pre_clock_model = get_clock_model(&mut graph, &baseline_options, *keep_root)?;
+      let new_outliers = clock_filter_inplace(&graph, &pre_clock_model, *clock_filter);
     }
-  }
+    get_clock_model(&mut graph, &options, *keep_root)?
+  } else {
+    // clock-filter
+    if *clock_filter > 0.0 {
+      let pre_clock_model = get_clock_model(&mut graph, &baseline_options, *keep_root)?;
+      let new_outliers = clock_filter_inplace(&graph, &pre_clock_model, *clock_filter);
+    }
+    get_clock_model(&mut graph, &baseline_options, *keep_root)?
+  };
 
   nwk_write_file(outdir.join("rerooted.nwk"), &graph, &NwkWriteOptions::default())?;
   json_write_file(outdir.join("graph_output.json"), &graph, JsonPretty(true))?;

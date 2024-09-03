@@ -8,12 +8,18 @@ use approx::ulps_eq;
 use eyre::Report;
 
 pub fn reroot_in_place(graph: &mut ClockGraph, options: &ClockOptions) -> Result<GraphNodeKey, Report> {
+  let old_root_key = { graph.get_exactly_one_root()?.read_arc().key() };
+
   let FindRootResult {
     edge,
     split,
     total,
     chisq,
   } = find_best_root(graph, options)?;
+  // if edge is null, we are already at the best root, return old_root_key
+  if edge.is_none() {
+    return Ok(old_root_key);
+  }
 
   let edge_key = edge.expect("Edge is empty when rerooting");
   let edge = graph.get_edge(edge_key).expect("Edge not found");
@@ -26,7 +32,6 @@ pub fn reroot_in_place(graph: &mut ClockGraph, options: &ClockOptions) -> Result
     create_new_root_node(graph, edge_key, split, total)?
   };
 
-  let old_root_key = { graph.get_exactly_one_root()?.read_arc().key() };
   if new_root_key != old_root_key {
     apply_reroot(graph, old_root_key, new_root_key, options)?;
   }

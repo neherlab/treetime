@@ -44,7 +44,7 @@ pub fn clock_regression_backward(graph: &ClockGraph, options: &ClockOptions) {
       edge_to_parent.to_parent = q_to_parent.clone();
       let edge_len = edge_to_parent.weight().expect("Encountered an edge without a weight");
       let mut branch_variance = options.variance_factor * edge_len + options.variance_offset;
-
+      dbg!(&q_to_parent);
       // propagate the message to the parent along the edge (taking care of the speical case need for leafs)
       edge_to_parent.from_child = if is_leaf {
         branch_variance += options.variance_offset_leaf;
