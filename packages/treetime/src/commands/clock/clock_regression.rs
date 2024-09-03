@@ -147,6 +147,8 @@ mod tests {
     let clock_rate = ClockModel::new(&res.total)?.clock_rate();
     assert_ulps_eq!(0.008095476518345305, clock_rate, epsilon = 1e-9);
 
+    assert_ulps_eq!(res.total.t_sum() / res.total.norm(), 2013.9123209528589, epsilon = 1e-9);
+
     Ok(())
   }
 }
