@@ -1,5 +1,4 @@
 use crate::commands::clock::clock_graph::ClockGraph;
-use crate::commands::clock::clock_model::ClockModel;
 use crate::commands::clock::clock_regression::{clock_regression_backward, clock_regression_forward, ClockOptions};
 use crate::graph::edge::{GraphEdgeKey, Weighted};
 use crate::utils::container::get_exactly_one;
@@ -26,6 +25,7 @@ pub struct FindRootResult {
 
 /// Find the best new root node
 pub fn find_best_root(graph: &ClockGraph, options: &ClockOptions) -> Result<FindRootResult, Report> {
+  // run forward and backward pass to calculate the averages for all nodes in the tree
   clock_regression_backward(graph, options);
   clock_regression_forward(graph, options);
 
@@ -33,32 +33,27 @@ pub fn find_best_root(graph: &ClockGraph, options: &ClockOptions) -> Result<Find
   let root = graph.get_exactly_one_root()?;
   let mut best_root_node = Arc::clone(&root);
 
+  // inialize with the current root
   let root = root.read_arc().payload().read_arc();
-  let clock = ClockModel::new(&root.total)?;
   let mut best_chisq = root.total.chisq();
   let mut best_res = FindRootResult {
     edge: None,
     split: 0.0,
-    chisq: clock.chisq(),
+    chisq: best_chisq,
     total: root.total.clone(),
   };
 
   // find best node
   for n in graph.get_nodes() {
-    let tmp_chisq = {
-      let n = n.read_arc().payload().read_arc();
-      n.total.chisq()
-    };
-    // dbg!(tmp_chisq);
+    let tmp_chisq = n.read_arc().payload().read_arc().total.chisq();
     if tmp_chisq < best_chisq {
       best_chisq = tmp_chisq;
       best_root_node = Arc::clone(&n);
     }
   }
-  dbg!(best_chisq);
   let best_root_node = best_root_node.read_arc();
 
-  // Check if someone on parent branch is better
+  // Check if some intermediate place on the parent branch is better
   if !best_root_node.is_root() {
     // TODO: should we loop over parents as well? (just like over children in the loop just below)
     let inbound = best_root_node.inbound();
@@ -70,7 +65,7 @@ pub fn find_best_root(graph: &ClockGraph, options: &ClockOptions) -> Result<Find
     }
   }
 
-  // Check if someone on a child branch is better
+  // Check if some place on a child branch is better
   for e in best_root_node.outbound() {
     let res = find_best_split(graph, *e, options)?;
     if res.chisq < best_chisq {
@@ -86,6 +81,9 @@ fn find_best_split(graph: &ClockGraph, edge: GraphEdgeKey, options: &ClockOption
   let edge = graph.get_edge(edge).expect("Edge not found");
   let edge_payload = edge.read_arc().payload().read_arc();
 
+  // check whether the target node is a leaf
+  let is_terminal = graph.get_node(edge.read_arc().target()).unwrap().read_arc().is_leaf();
+
   // Precalculate branch values for the edge.
   let branch_length = edge_payload.weight().expect("Encountered an edge without a weight");
 
@@ -94,21 +92,32 @@ fn find_best_split(graph: &ClockGraph, edge: GraphEdgeKey, options: &ClockOption
   // Interrogate different positions along the branch
   let mut best_chisq = f64::INFINITY;
   let mut best_split = f64::NAN;
-  let mut best_totalQ: ClockSet = ClockSet::default();
+  let mut best_total: ClockSet = ClockSet::default();
 
   // TODO: arbitrary choice for now, should optimize
-  // TODO: need to handle terminal nodes differently
   for x in Array1::linspace(0.0, 1.0, 11) {
-    let Q = edge_payload
+    // determine contribution of child/target first -- terminal nodes need special handling
+    let child_contribution = if is_terminal {
+      // hack: we could get this off the node as well
+      let date = Some(edge_payload.to_parent.t_sum());
+      ClockSet::leaf_contribution_to_parent(
+        date,
+        branch_length * (1.0 - x),
+        branch_variance * (1.0 - x) + options.variance_offset_leaf,
+      )
+    } else {
+      edge_payload
+        .to_parent
+        .propagate_averages(branch_length * (1.0 - x), branch_variance * (1.0 - x))
+    };
+    let clock_total = edge_payload
       .to_child
       .propagate_averages(branch_length * x, branch_variance * x)
-      + edge_payload
-        .to_parent
-        .propagate_averages(branch_length * (1.0 - x), branch_variance * (1.0 - x));
-    let chisq = Q.chisq();
+      + child_contribution;
+    let chisq = clock_total.chisq();
     if chisq < best_chisq {
       best_split = x;
-      best_totalQ = Q;
+      best_total = clock_total;
       best_chisq = chisq;
     }
   }
@@ -116,7 +125,7 @@ fn find_best_split(graph: &ClockGraph, edge: GraphEdgeKey, options: &ClockOption
   Ok(FindRootResult {
     edge: Some(edge.read_arc().key()),
     split: best_split,
-    total: best_totalQ,
+    total: best_total,
     chisq: best_chisq,
   })
 }

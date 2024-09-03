@@ -83,8 +83,9 @@ pub fn clock_regression_forward(graph: &ClockGraph, options: &ClockOptions) {
 
 /// Calculate tip-to-root regression
 pub fn run_clock_regression(graph: &ClockGraph, options: &ClockOptions) -> Result<ClockModel, Report> {
+  // run the backward pass to calculate the averages at the root
   clock_regression_backward(graph, options);
-  clock_regression_forward(graph, options);
+  // calculate a clock model from the root averages and return
   let root = graph.get_exactly_one_root()?;
   let root = root.read_arc().payload().read_arc();
   let clock = ClockModel::new(&root.total)?;
