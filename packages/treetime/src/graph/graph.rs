@@ -3,7 +3,7 @@ use crate::graph::breadth_first::{
 };
 use crate::graph::edge::{Edge, GraphEdge, GraphEdgeKey};
 use crate::graph::node::{GraphNode, GraphNodeKey, Node};
-use crate::utils::container::get_exactly_one;
+use crate::utils::container::{get_exactly_one, get_exactly_one_mut};
 use crate::{make_error, make_internal_error, make_internal_report};
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
@@ -148,8 +148,8 @@ where
     }
   }
 
-  pub fn get_exactly_one_parent_edge(&self) -> Result<&SafeEdgePayloadRefMut<E>, Report> {
-    get_exactly_one(&self.parent_edges).wrap_err("Nodes with multiple parents are not yet supported")
+  pub fn get_exactly_one_parent_edge(&mut self) -> Result<&mut SafeEdgePayloadRefMut<E>, Report> {
+    get_exactly_one_mut(&mut self.parent_edges).wrap_err("Nodes with multiple parents are not yet supported")
   }
 }
 

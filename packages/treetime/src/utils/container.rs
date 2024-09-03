@@ -23,3 +23,10 @@ pub fn get_exactly_one<T>(x: &[T]) -> Result<&T, Report> {
     _ => make_error!("Expected exactly one element, but found {}", x.len()),
   }
 }
+
+pub fn get_exactly_one_mut<T>(x: &mut [T]) -> Result<&mut T, Report> {
+  match x.len() {
+    1 => Ok(&mut x[0]),
+    _ => make_error!("Expected exactly one element, but found {}", x.len()),
+  }
+}
