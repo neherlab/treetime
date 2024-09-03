@@ -2,7 +2,6 @@ use crate::commands::clock::clock_graph::ClockGraph;
 use crate::commands::clock::clock_model::ClockModel;
 use crate::commands::clock::clock_regression::{clock_regression_backward, clock_regression_forward, ClockOptions};
 use crate::graph::edge::{GraphEdgeKey, Weighted};
-use crate::graph::node::Named;
 use crate::utils::container::get_exactly_one;
 use eyre::Report;
 use ndarray::Array1;
@@ -99,8 +98,12 @@ fn find_best_split(graph: &ClockGraph, edge: GraphEdgeKey, options: &ClockOption
 
   // TODO: arbitrary choice for now, should optimize
   for x in Array1::linspace(0.0, 1.0, 11) {
-    let Q = edge_payload.to_child.propagate_averages(branch_length * x, branch_variance * x)
-      + edge_payload.to_parent.propagate_averages(branch_length * (1.0 - x), branch_variance * (1.0 - x));
+    let Q = edge_payload
+      .to_child
+      .propagate_averages(branch_length * x, branch_variance * x)
+      + edge_payload
+        .to_parent
+        .propagate_averages(branch_length * (1.0 - x), branch_variance * (1.0 - x));
     let chisq = Q.chisq();
     if chisq < best_chisq {
       best_split = x;
@@ -113,6 +116,6 @@ fn find_best_split(graph: &ClockGraph, edge: GraphEdgeKey, options: &ClockOption
     edge: Some(edge.read_arc().key()),
     split: best_split,
     total: best_totalQ,
-    chisq: best_chisq
+    chisq: best_chisq,
   })
 }

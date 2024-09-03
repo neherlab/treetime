@@ -3,11 +3,11 @@ use crate::cli::rtt_chart::{
 };
 use crate::commands::clock::assign_dates::assign_dates;
 use crate::commands::clock::clock_args::TreetimeClockArgs;
+use crate::commands::clock::clock_filter::clock_filter_inplace;
 use crate::commands::clock::clock_graph::ClockGraph;
 use crate::commands::clock::clock_regression::{run_clock_regression, ClockOptions};
 use crate::commands::clock::reroot::reroot_in_place;
 use crate::commands::clock::rtt::{gather_clock_regression_results, write_clock_regression_result_csv};
-use crate::commands::clock::clock_filter::clock_filter_inplace;
 use crate::io::dates_csv::read_dates;
 use crate::io::graphviz::graphviz_write_file;
 use crate::io::json::{json_write_file, JsonPretty};
@@ -66,10 +66,10 @@ pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
   let options = if *covariation {
     let seq_len = sequence_length.unwrap_or(0) as f64; // should error if sequence_length is None
     ClockOptions {
-    variance_factor: 1.0/seq_len,
-    variance_offset: 0.0,
-    variance_offset_leaf: 9.0/seq_len/seq_len,
-  }
+      variance_factor: 1.0 / seq_len,
+      variance_offset: 0.0,
+      variance_offset_leaf: 9.0 / seq_len / seq_len,
+    }
   } else {
     ClockOptions {
       variance_factor: 0.0,
@@ -82,7 +82,7 @@ pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
   // otherwise, reroot the tree and use clock model of the novel root
   let mut clock_model = get_clock_model(&mut graph, &options, *keep_root)?;
 
-  if *clock_filter>0.0 {
+  if *clock_filter > 0.0 {
     let new_outliers = clock_filter_inplace(&graph, &clock_model, *clock_filter);
     dbg!(new_outliers);
     if new_outliers > 0 {

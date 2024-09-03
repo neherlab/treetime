@@ -24,9 +24,7 @@ pub struct ClockRegressionResult {
 }
 
 /// Get results of the root-to-tip clock inference.
-pub fn gather_clock_regression_results(
-  graph: &ClockGraph,
-  clock_model: &ClockModel) -> Vec<ClockRegressionResult> {
+pub fn gather_clock_regression_results(graph: &ClockGraph, clock_model: &ClockModel) -> Vec<ClockRegressionResult> {
   let result = ArrayQueue::new(graph.num_nodes());
   let divs = SkipMap::new();
 

@@ -41,12 +41,12 @@ impl ClockSet {
   pub fn leaf_contribution_to_parent(date: Option<f64>, branch_length: f64, variance: f64) -> Self {
     let num_date = date.unwrap_or(0.0);
     Self {
-      t_sum: num_date/variance,
-      tsq_sum: num_date.powi(2)/variance,
-      d_sum: branch_length/variance,
-      dt_sum: branch_length*num_date/variance,
-      dsq_sum: branch_length.powi(2)/variance,
-      norm: if date.is_some() { 1.0/variance } else { 0.0 },
+      t_sum: num_date / variance,
+      tsq_sum: num_date.powi(2) / variance,
+      d_sum: branch_length / variance,
+      dt_sum: branch_length * num_date / variance,
+      dsq_sum: branch_length.powi(2) / variance,
+      norm: if date.is_some() { 1.0 / variance } else { 0.0 },
     }
   }
 
@@ -110,10 +110,8 @@ impl ClockSet {
   }
 
   pub fn r_val(&self) -> f64 {
-    (self.dt_sum * self.norm() - self.t_sum * self.d_sum)/
-       ((self.dsq_sum * self.norm() - self.d_sum.powi(2)) *
-        (self.tsq_sum * self.norm() - self.t_sum.powi(2))
-       ).sqrt()
+    (self.dt_sum * self.norm() - self.t_sum * self.d_sum)
+      / ((self.dsq_sum * self.norm() - self.d_sum.powi(2)) * (self.tsq_sum * self.norm() - self.t_sum.powi(2))).sqrt()
   }
 }
 

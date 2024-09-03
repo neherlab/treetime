@@ -81,7 +81,12 @@ fn create_new_root_node(
 }
 
 /// Modify graph topology to make the newly identified root the actual root.
-fn apply_reroot(graph: &mut ClockGraph, old_root_key: GraphNodeKey, new_root_key: GraphNodeKey, options: &ClockOptions) -> Result<(), Report> {
+fn apply_reroot(
+  graph: &mut ClockGraph,
+  old_root_key: GraphNodeKey,
+  new_root_key: GraphNodeKey,
+  options: &ClockOptions,
+) -> Result<(), Report> {
   // Find paths from the old root to the new desired root
   let paths = graph.path_from_node_to_node(new_root_key, old_root_key)?;
 

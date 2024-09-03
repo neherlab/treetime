@@ -56,7 +56,7 @@ pub fn clock_regression_backward(graph: &ClockGraph, options: &ClockOptions) {
 
 pub fn clock_regression_forward(graph: &ClockGraph, options: &ClockOptions) {
   graph.par_iter_breadth_first_forward(|mut n| {
-    if !n.is_root{
+    if !n.is_root {
       let (parent, edge) = n.get_exactly_one_parent().unwrap();
       let edge = edge.read_arc();
       let edge_len = edge.weight().expect("Encountered an edge without a weight");
@@ -69,7 +69,7 @@ pub fn clock_regression_forward(graph: &ClockGraph, options: &ClockOptions) {
 
     for mut child_edge in n.child_edges {
       let mut q = n.payload.total.clone();
-      q-= &child_edge.from_child;
+      q -= &child_edge.from_child;
       child_edge.to_child = q;
     }
     GraphTraversalContinuation::Continue
