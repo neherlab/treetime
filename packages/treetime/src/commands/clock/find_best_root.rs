@@ -1,5 +1,5 @@
 use crate::commands::clock::clock_graph::ClockGraph;
-use crate::commands::clock::clock_regression::{clock_regression_backward, clock_regression_forward, ClockOptions};
+use crate::commands::clock::clock_regression::ClockOptions;
 use crate::graph::edge::{GraphEdgeKey, Weighted};
 use crate::utils::container::get_exactly_one;
 use eyre::Report;

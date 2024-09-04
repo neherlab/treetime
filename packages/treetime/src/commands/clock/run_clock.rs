@@ -5,7 +5,7 @@ use crate::commands::clock::assign_dates::assign_dates;
 use crate::commands::clock::clock_args::TreetimeClockArgs;
 use crate::commands::clock::clock_filter::clock_filter_inplace;
 use crate::commands::clock::clock_graph::ClockGraph;
-use crate::commands::clock::clock_regression::{clock_regression_backward, clock_regression_forward, ClockOptions};
+use crate::commands::clock::clock_regression::{clock_regression_backward, clock_regression_forward, root_clock_model, ClockOptions};
 use crate::commands::clock::reroot::reroot_in_place;
 use crate::commands::clock::rtt::{gather_clock_regression_results, write_clock_regression_result_csv};
 use crate::io::dates_csv::read_dates;
@@ -25,11 +25,7 @@ pub fn get_clock_model(graph: &mut ClockGraph, options: &ClockOptions, keep_root
     clock_regression_forward(graph, options);
     reroot_in_place(graph, options)?;
   }
-
-  // calculate a clock model from the root averages
-  let root = graph.get_exactly_one_root()?;
-  let root = root.read_arc().payload().read_arc();
-  ClockModel::new(&root.total)
+  root_clock_model(graph)
 }
 
 pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
@@ -68,12 +64,6 @@ pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
     assign_dates(&graph, &dates)?;
   }
 
-  let baseline_options = ClockOptions {
-    variance_factor: 0.0,
-    variance_offset: 0.0,
-    variance_offset_leaf: 1.0,
-  };
-
   // Split workflow into a separate blocks depending whether covariation is used or not
   let clock_model = if *covariation {
     let seq_len = sequence_length.unwrap_or(0) as f64; // should error if sequence_length is None and covariation is true
@@ -87,17 +77,17 @@ pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
 
     // prefilter
     if *clock_filter > 0.0 {
-      let pre_clock_model = get_clock_model(&mut graph, &baseline_options, *keep_root)?;
+      let pre_clock_model = get_clock_model(&mut graph, &ClockOptions::default(), *keep_root)?;
       let new_outliers = clock_filter_inplace(&graph, &pre_clock_model, *clock_filter);
     }
     get_clock_model(&mut graph, &options, *keep_root)?
   } else {
     // clock-filter
     if *clock_filter > 0.0 {
-      let pre_clock_model = get_clock_model(&mut graph, &baseline_options, *keep_root)?;
+      let pre_clock_model = get_clock_model(&mut graph, &ClockOptions::default(), *keep_root)?;
       let new_outliers = clock_filter_inplace(&graph, &pre_clock_model, *clock_filter);
     }
-    get_clock_model(&mut graph, &baseline_options, *keep_root)?
+    get_clock_model(&mut graph, &ClockOptions::default(), *keep_root)?
   };
 
   nwk_write_file(outdir.join("rerooted.nwk"), &graph, &NwkWriteOptions::default())?;

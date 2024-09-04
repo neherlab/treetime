@@ -2,14 +2,34 @@ use crate::commands::clock::clock_graph::ClockGraph;
 use crate::commands::clock::clock_set::ClockSet;
 use crate::graph::breadth_first::GraphTraversalContinuation;
 use crate::graph::edge::Weighted;
+use eyre::Report;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
+use super::clock_model::ClockModel;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClockOptions {
   pub variance_factor: f64,
   pub variance_offset: f64,
   pub variance_offset_leaf: f64,
+}
+
+// default clock options that correspond to simple linear regression
+impl Default for ClockOptions {
+  fn default() -> Self {
+    Self {
+      variance_factor: 0.0,
+      variance_offset: 0.0,
+      variance_offset_leaf: 1.0,
+    }
+  }
+}
+
+pub fn root_clock_model(graph: &ClockGraph) -> Result<ClockModel, Report> {
+  // calculate a clock model from the root averages
+  let root = graph.get_exactly_one_root()?;
+  let root = root.read_arc().payload().read_arc();
+  ClockModel::new(&root.total)
 }
 
 pub fn clock_regression_backward(graph: &ClockGraph, options: &ClockOptions) {
@@ -78,64 +98,58 @@ pub fn clock_regression_forward(graph: &ClockGraph, options: &ClockOptions) {
   });
 }
 
-// #[cfg(test)]
-// mod tests {
-//   use super::*;
-//   use crate::commands::clock::find_best_root::find_best_root;
-//   use crate::graph::node::Named;
-//   use crate::io::nwk::nwk_read_str;
-//   use crate::o;
-//   use crate::seq::div::{calculate_divs, OnlyLeaves};
-//   use approx::assert_ulps_eq;
-//   use maplit::btreemap;
-//   use std::collections::BTreeMap;
-//
-//   pub fn calculate_naive_rate(dates: &BTreeMap<String, f64>, div: &BTreeMap<String, f64>) -> f64 {
-//     let t: f64 = dates.values().sum();
-//     let tsq: f64 = dates.values().map(|&x| x * x).sum();
-//     let dt: f64 = div.iter().map(|(c, div)| div * dates[c]).sum();
-//     let d: f64 = div.values().sum();
-//     (dt * 4.0 - d * t) / (tsq * 4.0 - (t * t))
-//   }
-//
-//   #[test]
-//   fn test_clock_naive_rate() -> Result<(), Report> {
-//     let dates = btreemap! {
-//       o!("A") => 2013.0,
-//       o!("B") => 2022.0,
-//       o!("C") => 2017.0,
-//       o!("D") => 2005.0,
-//     };
-//
-//     let graph: ClockGraph = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
-//     let divs = calculate_divs(&graph, OnlyLeaves(true));
-//     let naive_rate = calculate_naive_rate(&dates, &divs);
-//
-//     for n in graph.get_leaves() {
-//       let name = n.read_arc().payload().read_arc().name().unwrap().as_ref().to_owned();
-//       n.write_arc().payload().write_arc().date = Some(dates[&name]);
-//     }
-//
-//     let options = &ClockOptions {
-//       variance_factor: 0.0,
-//       variance_offset: 0.0,
-//       variance_offset_leaf: 1.0,
-//     };
-//
-//     let clock = run_clock_regression(&graph, options)?;
-//     assert_ulps_eq!(naive_rate, clock.clock_rate(), epsilon = 1e-9);
-//
-//     let options_2 = &ClockOptions {
-//       variance_factor: 1.0,
-//       variance_offset: 0.0,
-//       variance_offset_leaf: 1.0,
-//     };
-//     let res = find_best_root(&graph, options_2)?;
-//     let clock_rate = ClockModel::new(&res.total)?.clock_rate();
-//     assert_ulps_eq!(0.008095476518345305, clock_rate, epsilon = 1e-9);
-//
-//     assert_ulps_eq!(res.total.t_sum() / res.total.norm(), 2013.9123209528589, epsilon = 1e-9);
-//
-//     Ok(())
-//   }
-// }
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use crate::commands::clock::find_best_root::find_best_root;
+  use crate::graph::node::Named;
+  use crate::io::nwk::nwk_read_str;
+  use crate::o;
+  use crate::seq::div::{calculate_divs, OnlyLeaves};
+  use approx::assert_ulps_eq;
+  use maplit::btreemap;
+  use std::collections::BTreeMap;
+
+  pub fn calculate_naive_rate(dates: &BTreeMap<String, f64>, div: &BTreeMap<String, f64>) -> f64 {
+    let t: f64 = dates.values().sum();
+    let tsq: f64 = dates.values().map(|&x| x * x).sum();
+    let dt: f64 = div.iter().map(|(c, div)| div * dates[c]).sum();
+    let d: f64 = div.values().sum();
+    (dt * 4.0 - d * t) / (tsq * 4.0 - (t * t))
+  }
+
+  #[test]
+  fn test_clock_naive_rate() -> Result<(), Report> {
+    let dates = btreemap! {
+      o!("A") => 2013.0,
+      o!("B") => 2022.0,
+      o!("C") => 2017.0,
+      o!("D") => 2005.0,
+    };
+
+    let graph: ClockGraph = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let divs = calculate_divs(&graph, OnlyLeaves(true));
+    let naive_rate = calculate_naive_rate(&dates, &divs);
+
+    for n in graph.get_leaves() {
+      let name = n.read_arc().payload().read_arc().name().unwrap().as_ref().to_owned();
+      n.write_arc().payload().write_arc().date = Some(dates[&name]);
+    }
+
+    clock_regression_backward(&graph, &ClockOptions::default());
+    let clock = root_clock_model(&graph)?;
+    assert_ulps_eq!(naive_rate, clock.clock_rate(), epsilon = 1e-9);
+
+    let options = &ClockOptions {
+      variance_factor: 1.0,
+      variance_offset: 0.0,
+      variance_offset_leaf: 1.0,
+    };
+
+    clock_regression_backward(&graph, options);
+    let clock = root_clock_model(&graph)?;
+    assert_ulps_eq!(0.007710610998647367, clock.clock_rate(), epsilon = 1e-9);
+
+    Ok(())
+  }
+}
