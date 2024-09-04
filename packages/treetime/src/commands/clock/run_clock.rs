@@ -5,7 +5,7 @@ use crate::commands::clock::assign_dates::assign_dates;
 use crate::commands::clock::clock_args::TreetimeClockArgs;
 use crate::commands::clock::clock_filter::clock_filter_inplace;
 use crate::commands::clock::clock_graph::ClockGraph;
-use crate::commands::clock::clock_regression::{clock_regression_backward, ClockOptions};
+use crate::commands::clock::clock_regression::{clock_regression_backward, clock_regression_forward, ClockOptions};
 use crate::commands::clock::reroot::reroot_in_place;
 use crate::commands::clock::rtt::{gather_clock_regression_results, write_clock_regression_result_csv};
 use crate::io::dates_csv::read_dates;
@@ -27,6 +27,10 @@ pub fn get_clock_model(graph: &mut ClockGraph, options: &ClockOptions, keep_root
     let clock = ClockModel::new(&root.total)?;
     Ok(clock)
   } else {
+    // run forward and backward pass to calculate the averages for all nodes in the tree
+    clock_regression_backward(graph, options);
+    clock_regression_forward(graph, options);
+
     reroot_in_place(graph, &options)?;
     let root = graph.get_exactly_one_root()?;
     let root = root.read_arc().payload().read_arc();
