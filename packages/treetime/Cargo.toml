@@ -31,6 +31,7 @@ clap-verbosity-flag = { workspace = true }
 clap_complete = { workspace = true }
 clap_complete_fig = { workspace = true }
 color-eyre = { workspace = true }
+color-backtrace = { workspace = true }
 comfy-table = { workspace = true }
 crossbeam-queue = { workspace = true }
 crossbeam-skiplist = { workspace = true }
@@ -79,6 +80,7 @@ time = { workspace = true }
 traversal = { workspace = true }
 
 [features]
+"deadlock_detection" = ["parking_lot/deadlock_detection"]
 "png" = ["image", "plotters/bitmap_backend", "plotters/ttf"]
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

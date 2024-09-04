@@ -45,6 +45,7 @@ clap = { version = "=3.2.16", features = ["derive"] }
 clap-verbosity-flag = "=1.0.1"
 clap_complete = "=3.2.3"
 clap_complete_fig = "=3.2.4"
+color-backtrace = "=0.6.1"
 color-eyre = "=0.6.2"
 comfy-table = "=7.1.1"
 criterion = { version = "=0.5.1", features = ["html_reports"] }
@@ -112,6 +113,8 @@ typify = { version = "=0.1.0", features = ["macro"] }
 xz2 = "=0.1.7"
 zstd = { version = "=0.11.2", features = ["zstdmt"] }
 
+[workspace.features]
+"deadlock_detection" = ["packages/treetime/deadlock_detection", "packages/treetime-cli/deadlock_detection"]
 
 [workspace.lints.rust]
 # Lint groups

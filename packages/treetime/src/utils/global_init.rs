@@ -1,5 +1,6 @@
 use crate::io::fs::filename_maybe;
 use crate::utils::datetime::{date_format_precise, date_now};
+use crate::utils::deadlock::enable_deadlock_detection;
 use color_eyre::owo_colors::{OwoColorize, Style};
 use env_logger::Env;
 use log::{Level, LevelFilter, Record};
@@ -54,6 +55,8 @@ pub fn setup_logger(filter_level: LevelFilter) {
 }
 
 pub fn global_init() {
+  enable_deadlock_detection();
+
   color_eyre::config::HookBuilder::default()
     .theme(
       color_eyre::config::Theme::dark()
@@ -92,13 +95,16 @@ pub fn global_init() {
     .expect("color_eyre initialization failed");
 }
 
-const HIDDEN_CRATE_NAME_PREFIXES: &[&str] = &[
+pub const HIDDEN_CRATE_NAME_PREFIXES: &[&str] = &[
   "__rust_try",
   "alloc::",
   "color_eyre::",
   "core::",
   "crossbeam::",
   "eyre::",
+  "lock_api::",
+  "parking_lot::",
+  "parking_lot_core::",
   "rayon::",
   "rayon_core::",
   "rustc::",
@@ -106,4 +112,4 @@ const HIDDEN_CRATE_NAME_PREFIXES: &[&str] = &[
   "tokio::",
 ];
 
-const HIDDEN_CRATE_PATH_PREFIXES: &[&str] = &["/rustc/"];
+pub const HIDDEN_CRATE_PATH_PREFIXES: &[&str] = &["/rustc/"];
