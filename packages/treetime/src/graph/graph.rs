@@ -586,8 +586,6 @@ where
     directed_breadth_first_traversal_forward::<N, E, D, _>(self, roots.as_slice(), |node| {
       explorer(GraphNodeForward::new(self, node))
     });
-
-    self.reset_nodes();
   }
 
   pub fn par_iter_breadth_first_backward<F>(&self, explorer: F)
@@ -604,8 +602,6 @@ where
     directed_breadth_first_traversal_backward::<N, E, D, _>(self, leaves.as_slice(), |node| {
       explorer(GraphNodeBackward::new(self, node))
     });
-
-    self.reset_nodes();
   }
 
   /// Synchronously traverse graph in depth-first preorder fashion forward (from roots to leaves, along edge directions).
@@ -753,18 +749,6 @@ where
     }
 
     Ok(path)
-  }
-
-  /// Returns graph into initial state after traversal
-  pub fn reset_nodes(&self) {
-    // Mark all nodes as not visited. As a part of traversal all nodes, one by one, marked as visited,
-    // to ensure correctness of traversal. Here we reset the "is visited" markers this,
-    // to allow for traversals again.
-    self
-      .nodes
-      .iter()
-      .filter_map(|node| node.as_ref())
-      .for_each(|node| node.write().mark_as_not_visited());
   }
 
   pub fn is_root(&self, key: GraphNodeKey) -> bool {

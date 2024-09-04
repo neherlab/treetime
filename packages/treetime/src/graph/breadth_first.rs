@@ -1,6 +1,7 @@
 use crate::graph::edge::{Edge, GraphEdge};
 use crate::graph::graph::{Graph, SafeNode, SafeNodeRefMut};
 use crate::graph::node::GraphNode;
+use crossbeam_skiplist::SkipSet;
 use itertools::Itertools;
 use parking_lot::RwLock;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
@@ -151,6 +152,9 @@ pub fn directed_breadth_first_traversal<N, E, D, F, TraversalPolicy>(
   // has its dependencies already resolved. Frontiers allow parallelism.
   let mut frontier = sources.to_vec();
 
+  // Keep track of visited nodes
+  let visited = SkipSet::new();
+
   // We traverse the graph, gathering frontiers. The last frontier will be empty (nodes of the previous to last
   // frontier will have no unvisited successors), ending this loop.
   while !frontier.is_empty() {
@@ -160,7 +164,7 @@ pub fn directed_breadth_first_traversal<N, E, D, F, TraversalPolicy>(
       .map(|node| {
         {
           let node = node.write_arc();
-          if !node.is_visited() {
+          if !visited.contains(&node.key()) {
             // The actual visit. Here we call the user-provided function.
             if let GraphTraversalContinuation::Stop = explorer(&node) {
                 return vec![];
@@ -168,7 +172,7 @@ pub fn directed_breadth_first_traversal<N, E, D, F, TraversalPolicy>(
 
             // We mark the node as visited so that it's not visited twice and telling following loop iterations
             // that its successors can potentially be processed now
-            node.mark_as_visited();
+            visited.insert(node.key());
           }
         }
 
@@ -191,8 +195,8 @@ pub fn directed_breadth_first_traversal<N, E, D, F, TraversalPolicy>(
       .into_par_iter()
       .filter(|candidate_node| {
         TraversalPolicy::node_predecessors(graph, candidate_node)
-          .iter()
-          .all(|asc| asc.read().is_visited())
+          .into_par_iter()
+          .all(|asc| visited.contains(&asc.read_arc().key()))
       })
       .collect();
 
