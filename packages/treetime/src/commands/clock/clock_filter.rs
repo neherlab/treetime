@@ -5,12 +5,7 @@ use itertools::Itertools;
 use ordered_float::OrderedFloat;
 
 /// Get results of the root-to-tip clock inference.
-pub fn clock_filter_inplace(
-  graph: &ClockGraph,
-  clock_model: &ClockModel,
-  clock_filter_threshold: f64,
-) -> i32 {
-
+pub fn clock_filter_inplace(graph: &ClockGraph, clock_model: &ClockModel, clock_filter_threshold: f64) -> i32 {
   // assign divergence to each node
   graph.par_iter_breadth_first_forward(|mut node| {
     node.payload.div = node
@@ -25,12 +20,19 @@ pub fn clock_filter_inplace(
   });
 
   // collect clock_deviation of leaf nodes into a vector
-  let leaf_clock_deviations: Vec<f64> = graph.get_leaves().iter().map(|leaf| {
-    let div = leaf.read_arc().payload().read().div;
-    let date = leaf.read_arc().payload().read().date.unwrap();
-    clock_model.clock_deviation(date, div)
-  }).map(OrderedFloat).sorted().into_iter().map(|of| of.into_inner()).collect();
-
+  let leaf_clock_deviations: Vec<f64> = graph
+    .get_leaves()
+    .iter()
+    .map(|leaf| {
+      let div = leaf.read_arc().payload().read().div;
+      let date = leaf.read_arc().payload().read().date.unwrap();
+      clock_model.clock_deviation(date, div)
+    })
+    .map(OrderedFloat)
+    .sorted()
+    .into_iter()
+    .map(|of| of.into_inner())
+    .collect();
 
   // calculate the interquartile range by taking the difference between the 3/4 and 1/4 quantile
   let iqd =
@@ -51,4 +53,3 @@ pub fn clock_filter_inplace(
   });
   new_outliers
 }
-

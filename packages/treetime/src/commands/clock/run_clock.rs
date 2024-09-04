@@ -3,11 +3,13 @@ use crate::cli::rtt_chart::{
 };
 use crate::commands::clock::assign_dates::assign_dates;
 use crate::commands::clock::clock_args::TreetimeClockArgs;
+use crate::commands::clock::clock_filter::clock_filter_inplace;
 use crate::commands::clock::clock_graph::ClockGraph;
-use crate::commands::clock::clock_regression::{run_clock_regression, ClockOptions};
+use crate::commands::clock::clock_regression::{
+  clock_regression_backward, clock_regression_forward, root_clock_model, ClockOptions,
+};
 use crate::commands::clock::reroot::reroot_in_place;
 use crate::commands::clock::rtt::{gather_clock_regression_results, write_clock_regression_result_csv};
-use crate::commands::clock::clock_filter::clock_filter_inplace;
 use crate::io::dates_csv::read_dates;
 use crate::io::graphviz::graphviz_write_file;
 use crate::io::json::{json_write_file, JsonPretty};
@@ -17,14 +19,15 @@ use eyre::{Report, WrapErr};
 use super::clock_model::ClockModel;
 
 pub fn get_clock_model(graph: &mut ClockGraph, options: &ClockOptions, keep_root: bool) -> Result<ClockModel, Report> {
-  if keep_root {
-    run_clock_regression(&graph, &options)
-  } else {
-    reroot_in_place(graph, &options)?;
-    let root = graph.get_exactly_one_root()?;
-    let root = root.read_arc().payload().read_arc();
-    ClockModel::new(&root.total)
+  // run the backward pass to calculate the averages at the root
+  clock_regression_backward(graph, options);
+
+  if !keep_root {
+    // run forward pass to calculate the averages for all nodes in the tree
+    clock_regression_forward(graph, options);
+    reroot_in_place(graph, options)?;
   }
+  root_clock_model(graph)
 }
 
 pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
@@ -63,22 +66,31 @@ pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
     assign_dates(&graph, &dates)?;
   }
 
-  let options = ClockOptions {
-    variance_factor: 0.0,
-    variance_offset: 0.0,
-  };
+  // Split workflow into a separate blocks depending whether covariation is used or not
+  let clock_model = if *covariation {
+    let seq_len = sequence_length.unwrap_or(0) as f64; // should error if sequence_length is None and covariation is true
+    let tip_slack = tip_slack.unwrap_or(3.0);
+    let overdispersion = 2.0; // TODO: empirical value for now, need to think of a better parameter than `tip_slack`
+    let options = ClockOptions {
+      variance_factor: overdispersion / seq_len,
+      variance_offset: 0.0,
+      variance_offset_leaf: tip_slack * tip_slack / seq_len / seq_len,
+    };
 
-  // if we keep the root, run clock regression and report the model of the current root
-  // otherwise, reroot the tree and use clock model of the novel root
-  let mut clock_model = get_clock_model(&mut graph, &options, *keep_root)?;
-
-  if *clock_filter>0.0 {
-    let new_outliers = clock_filter_inplace(&graph, &clock_model, *clock_filter);
-    dbg!(new_outliers);
-    if new_outliers > 0 {
-      clock_model = get_clock_model(&mut graph, &options, true)?;
+    // prefilter
+    if *clock_filter > 0.0 {
+      let pre_clock_model = get_clock_model(&mut graph, &ClockOptions::default(), *keep_root)?;
+      let new_outliers = clock_filter_inplace(&graph, &pre_clock_model, *clock_filter);
     }
-  }
+    get_clock_model(&mut graph, &options, *keep_root)?
+  } else {
+    // clock-filter
+    if *clock_filter > 0.0 {
+      let pre_clock_model = get_clock_model(&mut graph, &ClockOptions::default(), *keep_root)?;
+      let new_outliers = clock_filter_inplace(&graph, &pre_clock_model, *clock_filter);
+    }
+    get_clock_model(&mut graph, &ClockOptions::default(), *keep_root)?
+  };
 
   nwk_write_file(outdir.join("rerooted.nwk"), &graph, &NwkWriteOptions::default())?;
   json_write_file(outdir.join("graph_output.json"), &graph, JsonPretty(true))?;

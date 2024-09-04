@@ -1,5 +1,6 @@
 pub mod assign_dates;
 pub mod clock_args;
+pub mod clock_filter;
 pub mod clock_graph;
 pub mod clock_model;
 pub mod clock_regression;
@@ -9,4 +10,3 @@ pub mod minimize_scalar;
 pub mod reroot;
 pub mod rtt;
 pub mod run_clock;
-pub mod clock_filter;

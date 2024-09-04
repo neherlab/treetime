@@ -19,9 +19,6 @@ pub struct ClockNodePayload {
   pub div: f64,
   pub is_outlier: bool,
   pub total: ClockSet,
-  pub to_parent: ClockSet,
-  pub to_children: BTreeMap<String, ClockSet>,
-  pub from_children: BTreeMap<String, ClockSet>,
 }
 
 impl GraphNode for ClockNodePayload {}
@@ -65,6 +62,9 @@ impl NodeToGraphviz for ClockNodePayload {
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct ClockEdgePayload {
   pub branch_length: Option<f64>,
+  pub to_parent: ClockSet,
+  pub to_child: ClockSet,
+  pub from_child: ClockSet, // this is the propagated 'to_parent' msg. only need to avoid recalculation of propagated message
 }
 
 impl GraphEdge for ClockEdgePayload {}
@@ -81,7 +81,10 @@ impl Weighted for ClockEdgePayload {
 
 impl EdgeFromNwk for ClockEdgePayload {
   fn from_nwk(branch_length: Option<f64>) -> Result<Self, Report> {
-    Ok(Self { branch_length })
+    Ok(Self {
+      branch_length,
+      ..ClockEdgePayload::default()
+    })
   }
 }
 

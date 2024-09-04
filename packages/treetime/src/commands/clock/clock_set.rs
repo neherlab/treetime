@@ -38,6 +38,18 @@ impl ClockSet {
     }
   }
 
+  pub fn leaf_contribution_to_parent(date: Option<f64>, branch_length: f64, variance: f64) -> Self {
+    let num_date = date.unwrap_or(0.0);
+    Self {
+      t_sum: num_date / variance,
+      tsq_sum: num_date.powi(2) / variance,
+      d_sum: branch_length / variance,
+      dt_sum: branch_length * num_date / variance,
+      dsq_sum: branch_length.powi(2) / variance,
+      norm: if date.is_some() { 1.0 / variance } else { 0.0 },
+    }
+  }
+
   pub fn propagate_averages(&self, branch_value: f64, branch_variance: f64) -> Self {
     let denom = 1.0 / (1.0 + branch_variance * self.norm);
 
@@ -88,7 +100,23 @@ impl ClockSet {
     Array2::from_shape_vec((2, 2), vec![self.tsq_sum(), self.t_sum(), self.t_sum(), self.norm()]).unwrap()
   }
 
-  pub fn chisq(&self, det: f64) -> f64 {
+  pub fn cov(&self) -> Array2<f64> {
+    // parameter covariance matrix  = hessian^-1: calculate 2x2 matrix inverse explicitly
+    let det_inv = 1.0 / self.determinant();
+    Array2::from_shape_vec(
+      (2, 2),
+      vec![
+        self.norm() * det_inv,
+        -self.dt_sum() * det_inv,
+        -self.dt_sum() * det_inv,
+        self.tsq_sum() * det_inv,
+      ],
+    )
+    .unwrap()
+  }
+
+  pub fn chisq(&self) -> f64 {
+    let det = self.determinant();
     0.5
       * (self.dsq_sum() * self.norm()
         - self.d_sum().powi(2)
@@ -97,10 +125,8 @@ impl ClockSet {
   }
 
   pub fn r_val(&self) -> f64 {
-    (self.dt_sum * self.norm() - self.t_sum * self.d_sum)/
-       ((self.dsq_sum * self.norm() - self.d_sum.powi(2)) *
-        (self.tsq_sum * self.norm() - self.t_sum.powi(2))
-       ).sqrt()
+    (self.dt_sum * self.norm() - self.t_sum * self.d_sum)
+      / ((self.dsq_sum * self.norm() - self.d_sum.powi(2)) * (self.tsq_sum * self.norm() - self.t_sum.powi(2))).sqrt()
   }
 }
 

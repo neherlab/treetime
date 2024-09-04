@@ -6,15 +6,20 @@ use crate::graph::edge::{invert_edge, GraphEdgeKey, Weighted};
 use crate::graph::node::GraphNodeKey;
 use approx::ulps_eq;
 use eyre::Report;
-use maplit::btreemap;
 
 pub fn reroot_in_place(graph: &mut ClockGraph, options: &ClockOptions) -> Result<GraphNodeKey, Report> {
+  let old_root_key = { graph.get_exactly_one_root()?.read_arc().key() };
+
   let FindRootResult {
     edge,
     split,
     total,
     chisq,
   } = find_best_root(graph, options)?;
+  // if edge is null, we are already at the best root, return old_root_key
+  if edge.is_none() {
+    return Ok(old_root_key);
+  }
 
   let edge_key = edge.expect("Edge is empty when rerooting");
   let edge = graph.get_edge(edge_key).expect("Edge not found");
@@ -27,9 +32,8 @@ pub fn reroot_in_place(graph: &mut ClockGraph, options: &ClockOptions) -> Result
     create_new_root_node(graph, edge_key, split, total)?
   };
 
-  let old_root_key = { graph.get_exactly_one_root()?.read_arc().key() };
   if new_root_key != old_root_key {
-    apply_reroot(graph, old_root_key, new_root_key)?;
+    apply_reroot(graph, old_root_key, new_root_key, options)?;
   }
 
   // TODO: remove old root node if it's trivial (i.e. having exactly 1 child and 1 parent) and merge dangling edges
@@ -51,9 +55,6 @@ fn create_new_root_node(
     div: 0.0,
     is_outlier: false,
     total: total.clone(),
-    to_parent: ClockSet::default(),
-    to_children: btreemap! {},
-    from_children: btreemap! {},
   });
 
   let edge = graph.get_edge(edge_key).expect("Edge not found");
@@ -66,6 +67,7 @@ fn create_new_root_node(
     new_root_key,
     ClockEdgePayload {
       branch_length: Some(split * branch_length),
+      ..ClockEdgePayload::default()
     },
   )?;
 
@@ -74,6 +76,7 @@ fn create_new_root_node(
     target_key,
     ClockEdgePayload {
       branch_length: Some((1.0 - split) * branch_length),
+      ..ClockEdgePayload::default()
     },
   )?;
 
@@ -83,7 +86,12 @@ fn create_new_root_node(
 }
 
 /// Modify graph topology to make the newly identified root the actual root.
-fn apply_reroot(graph: &mut ClockGraph, old_root_key: GraphNodeKey, new_root_key: GraphNodeKey) -> Result<(), Report> {
+fn apply_reroot(
+  graph: &mut ClockGraph,
+  old_root_key: GraphNodeKey,
+  new_root_key: GraphNodeKey,
+  options: &ClockOptions,
+) -> Result<(), Report> {
   // Find paths from the old root to the new desired root
   let paths = graph.path_from_node_to_node(new_root_key, old_root_key)?;
 
@@ -92,6 +100,13 @@ fn apply_reroot(graph: &mut ClockGraph, old_root_key: GraphNodeKey, new_root_key
   for (_, edge) in &paths {
     if let Some(edge) = edge {
       invert_edge(graph, edge);
+      let mut edge_payload = edge.read_arc().payload().write_arc();
+      let edge_len = edge_payload.weight().unwrap();
+      let branch_variance = options.variance_factor * edge_len + options.variance_offset;
+      let tmp_to_parent = edge_payload.to_parent.clone();
+      edge_payload.to_parent = edge_payload.to_child.clone();
+      edge_payload.to_child = tmp_to_parent;
+      edge_payload.from_child = edge_payload.to_parent.propagate_averages(edge_len, branch_variance);
     }
   }
 
