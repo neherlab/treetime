@@ -248,81 +248,81 @@ fn get_variable_states_children(
 }
 
 fn outgroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihood]) {
-  graph.par_iter_breadth_first_forward(|mut node| {
-    if node.is_root {
-      return GraphTraversalContinuation::Continue;
-    }
-
-    let name = node.payload.name().unwrap().as_ref().to_owned();
-
-    for (si, seq_info) in node.payload.sparse_partitions.iter_mut().enumerate() {
-      let PartitionLikelihood { gtr, alphabet, .. } = &partitions[si];
-
-      let parent_nodes = node
-        .parents
-        .iter()
-        .map(|(p, _)| p.read_arc().sparse_partitions[si].profile.clone()) // FIXME: avoid cloning
-        .collect_vec();
-
-      let parent_edges = node
-        .parents
-        .iter()
-        .map(|(_, e)| e.read_arc().sparse_partitions[si].clone()) // FIXME: avoid cloning
-        .collect_vec();
-
-      let (variable_pos, parent_states) =
-        get_variable_states_parents(&seq_info.msg_to_parents, &parent_nodes, &parent_edges);
-
-      let mut msgs_from_parents = vec![];
-      for (p, e) in &node.parents {
-        let pseq_info = &p.read_arc().sparse_partitions[si];
-        let msg = propagate(
-          &gtr.expQt(e.read_arc().weight().unwrap_or(0.0)),
-          &pseq_info.msgs_to_children[&name],
-          &variable_pos,
-          &parent_states[si],
-          &pseq_info.seq.non_char,
-          &None,
-        );
-        msgs_from_parents.push(msg);
-      }
-
-      let mut seq_dis = SparseSeqDis {
-        variable: btreemap! {},
-        variable_indel: btreemap! {},
-        fixed: btreemap! {},
-        fixed_counts: seq_info.seq.composition.clone(),
-        log_lh: 0.0,
-      };
-
-      combine_messages(&mut seq_dis, &msgs_from_parents, &variable_pos, alphabet, None).unwrap();
-      seq_info.profile = seq_dis;
-
-      // precalculate messages to children that summarize info from their siblings and the parent
-      seq_info.msgs_to_children = btreemap! {};
-      for child_name in seq_info.msgs_from_children.keys() {
-        let msgs = seq_info
-          .msgs_from_children
-          .iter()
-          .filter(|&(k, _)| k != child_name)
-          .map(|(_, m)| m.to_owned()) // FIXME: avoid cloning
-          .collect_vec();
-
-        let mut seq_dis = SparseSeqDis {
-          variable: btreemap! {},
-          variable_indel: btreemap! {},
-          fixed: btreemap! {},
-          fixed_counts: seq_info.msg_to_parents.fixed_counts.clone(),
-          log_lh: 0.0,
-        };
-
-        combine_messages(&mut seq_dis, &msgs, &variable_pos, alphabet, None).unwrap();
-        seq_info.msgs_to_children.insert(child_name.clone(), seq_dis);
-      }
-    }
-
-    GraphTraversalContinuation::Continue
-  });
+  // graph.par_iter_breadth_first_forward(|mut node| {
+  //   if node.is_root {
+  //     return GraphTraversalContinuation::Continue;
+  //   }
+  //
+  //   let name = node.payload.name().unwrap().as_ref().to_owned();
+  //
+  //   for (si, seq_info) in node.payload.sparse_partitions.iter_mut().enumerate() {
+  //     let PartitionLikelihood { gtr, alphabet, .. } = &partitions[si];
+  //
+  //     let parent_nodes = node
+  //       .parents
+  //       .iter()
+  //       .map(|(p, _)| p.read_arc().sparse_partitions[si].profile.clone()) // FIXME: avoid cloning
+  //       .collect_vec();
+  //
+  //     let parent_edges = node
+  //       .parents
+  //       .iter()
+  //       .map(|(_, e)| e.read_arc().sparse_partitions[si].clone()) // FIXME: avoid cloning
+  //       .collect_vec();
+  //
+  //     let (variable_pos, parent_states) =
+  //       get_variable_states_parents(&seq_info.msg_to_parents, &parent_nodes, &parent_edges);
+  //
+  //     let mut msgs_from_parents = vec![];
+  //     for (p, e) in &node.parents {
+  //       let pseq_info = &p.read_arc().sparse_partitions[si];
+  //       let msg = propagate(
+  //         &gtr.expQt(e.read_arc().weight().unwrap_or(0.0)),
+  //         &pseq_info.msgs_to_children[&name],
+  //         &variable_pos,
+  //         &parent_states[si],
+  //         &pseq_info.seq.non_char,
+  //         &None,
+  //       );
+  //       msgs_from_parents.push(msg);
+  //     }
+  //
+  //     let mut seq_dis = SparseSeqDis {
+  //       variable: btreemap! {},
+  //       variable_indel: btreemap! {},
+  //       fixed: btreemap! {},
+  //       fixed_counts: seq_info.seq.composition.clone(),
+  //       log_lh: 0.0,
+  //     };
+  //
+  //     combine_messages(&mut seq_dis, &msgs_from_parents, &variable_pos, alphabet, None).unwrap();
+  //     seq_info.profile = seq_dis;
+  //
+  //     // precalculate messages to children that summarize info from their siblings and the parent
+  //     seq_info.msgs_to_children = btreemap! {};
+  //     for child_name in seq_info.msgs_from_children.keys() {
+  //       let msgs = seq_info
+  //         .msgs_from_children
+  //         .iter()
+  //         .filter(|&(k, _)| k != child_name)
+  //         .map(|(_, m)| m.to_owned()) // FIXME: avoid cloning
+  //         .collect_vec();
+  //
+  //       let mut seq_dis = SparseSeqDis {
+  //         variable: btreemap! {},
+  //         variable_indel: btreemap! {},
+  //         fixed: btreemap! {},
+  //         fixed_counts: seq_info.msg_to_parents.fixed_counts.clone(),
+  //         log_lh: 0.0,
+  //       };
+  //
+  //       combine_messages(&mut seq_dis, &msgs, &variable_pos, alphabet, None).unwrap();
+  //       seq_info.msgs_to_children.insert(child_name.clone(), seq_dis);
+  //     }
+  //   }
+  //
+  //   GraphTraversalContinuation::Continue
+  // });
 }
 
 fn get_variable_states_parents(
@@ -450,65 +450,65 @@ pub fn ancestral_reconstruction_marginal_sparse(
 ) -> Result<(), Report> {
   let n_partitions = partitions.len();
 
-  graph.iter_depth_first_preorder_forward(|mut node| {
-    if !include_leaves && node.is_leaf {
-      return;
-    }
-
-    let seq = (0..n_partitions)
-      .flat_map(|si| {
-        let PartitionLikelihood { alphabet, .. } = &partitions[si];
-        let node_seq = &node.payload.sparse_partitions[si].seq;
-
-        let mut seq = if node.is_root {
-          node_seq.sequence.clone()
-        } else {
-          let (parent, edge) = node.get_exactly_one_parent().unwrap();
-          let parent = &parent.read_arc().sparse_partitions[si];
-          let edge = &edge.read_arc().sparse_partitions[si];
-
-          let mut seq = parent.seq.sequence.clone();
-
-          // Implant mutations
-          for m in &edge.subs {
-            seq[m.pos] = m.qry;
-          }
-
-          // Implant most likely state of variable sites
-          for (&pos, vec) in &node.payload.sparse_partitions[si].seq.fitch.variable {
-            seq[pos] = alphabet.char(vec.dis.argmax().unwrap());
-          }
-
-          // Implant indels
-          for indel in &edge.indels {
-            if indel.deletion {
-              seq[indel.range.0..indel.range.1].fill(alphabet.gap());
-            } else {
-              seq[indel.range.0..indel.range.1].copy_from_slice(&indel.seq);
-            }
-          }
-
-          seq
-        };
-
-        // At the node itself, mask whatever is unknown in the node.
-        for r in &node_seq.unknown {
-          let ambig_char = partitions[si].alphabet.unknown();
-          seq[r.0..r.1].fill(ambig_char);
-        }
-
-        for (pos, p) in &node_seq.fitch.variable {
-          seq[*pos] = alphabet.get_code(&p.dis);
-        }
-
-        node.payload.sparse_partitions[si].seq.sequence = seq.clone();
-
-        seq
-      })
-      .collect();
-
-    visitor(&node.payload, seq);
-  });
+  // graph.iter_depth_first_preorder_forward(|mut node| {
+  //   if !include_leaves && node.is_leaf {
+  //     return;
+  //   }
+  //
+  //   let seq = (0..n_partitions)
+  //     .flat_map(|si| {
+  //       let PartitionLikelihood { alphabet, .. } = &partitions[si];
+  //       let node_seq = &node.payload.sparse_partitions[si].seq;
+  //
+  //       let mut seq = if node.is_root {
+  //         node_seq.sequence.clone()
+  //       } else {
+  //         let (parent, edge) = node.get_exactly_one_parent().unwrap();
+  //         let parent = &parent.read_arc().sparse_partitions[si];
+  //         let edge = &edge.read_arc().sparse_partitions[si];
+  //
+  //         let mut seq = parent.seq.sequence.clone();
+  //
+  //         // Implant mutations
+  //         for m in &edge.subs {
+  //           seq[m.pos] = m.qry;
+  //         }
+  //
+  //         // Implant most likely state of variable sites
+  //         for (&pos, vec) in &node.payload.sparse_partitions[si].seq.fitch.variable {
+  //           seq[pos] = alphabet.char(vec.dis.argmax().unwrap());
+  //         }
+  //
+  //         // Implant indels
+  //         for indel in &edge.indels {
+  //           if indel.deletion {
+  //             seq[indel.range.0..indel.range.1].fill(alphabet.gap());
+  //           } else {
+  //             seq[indel.range.0..indel.range.1].copy_from_slice(&indel.seq);
+  //           }
+  //         }
+  //
+  //         seq
+  //       };
+  //
+  //       // At the node itself, mask whatever is unknown in the node.
+  //       for r in &node_seq.unknown {
+  //         let ambig_char = partitions[si].alphabet.unknown();
+  //         seq[r.0..r.1].fill(ambig_char);
+  //       }
+  //
+  //       for (pos, p) in &node_seq.fitch.variable {
+  //         seq[*pos] = alphabet.get_code(&p.dis);
+  //       }
+  //
+  //       node.payload.sparse_partitions[si].seq.sequence = seq.clone();
+  //
+  //       seq
+  //     })
+  //     .collect();
+  //
+  //   visitor(&node.payload, seq);
+  // });
 
   Ok(())
 }

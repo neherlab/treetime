@@ -75,27 +75,27 @@ pub fn clock_regression_backward(graph: &ClockGraph, options: &ClockOptions) {
 }
 
 pub fn clock_regression_forward(graph: &ClockGraph, options: &ClockOptions) {
-  graph.par_iter_breadth_first_forward(|mut n| {
-    if !n.is_root {
-      // if not at the root, calculate the total message from the parent message, and the message sent to the parent
-      let (parent, edge) = n.get_exactly_one_parent().unwrap();
-      let edge = edge.read_arc();
-      let edge_len = edge.weight().expect("Encountered an edge without a weight");
-      let branch_variance = options.variance_factor * edge_len + options.variance_offset;
-
-      let mut q_dest = edge.to_parent.clone();
-      q_dest += edge.to_child.propagate_averages(edge_len, branch_variance);
-      n.payload.total = q_dest.clone();
-    }
-
-    // place a message to the child onto each edge. this is the total message minus the message from the child
-    for mut child_edge in n.child_edges {
-      let mut q = n.payload.total.clone();
-      q -= &child_edge.from_child;
-      child_edge.to_child = q;
-    }
-    GraphTraversalContinuation::Continue
-  });
+  // graph.par_iter_breadth_first_forward(|mut n| {
+  //   if !n.is_root {
+  //     // if not at the root, calculate the total message from the parent message, and the message sent to the parent
+  //     let (parent, edge) = n.get_exactly_one_parent().unwrap();
+  //     let edge = edge.read_arc();
+  //     let edge_len = edge.weight().expect("Encountered an edge without a weight");
+  //     let branch_variance = options.variance_factor * edge_len + options.variance_offset;
+  // 
+  //     let mut q_dest = edge.to_parent.clone();
+  //     q_dest += edge.to_child.propagate_averages(edge_len, branch_variance);
+  //     n.payload.total = q_dest.clone();
+  //   }
+  // 
+  //   // place a message to the child onto each edge. this is the total message minus the message from the child
+  //   for mut child_edge in n.child_edges {
+  //     let mut q = n.payload.total.clone();
+  //     q -= &child_edge.from_child;
+  //     child_edge.to_child = q;
+  //   }
+  //   GraphTraversalContinuation::Continue
+  // });
 }
 
 #[cfg(test)]
