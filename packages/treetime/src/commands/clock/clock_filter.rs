@@ -8,12 +8,12 @@ use ordered_float::OrderedFloat;
 pub fn clock_filter_inplace(graph: &ClockGraph, clock_model: &ClockModel, clock_filter_threshold: f64) -> i32 {
   // assign divergence to each node
   graph.par_iter_breadth_first_forward(|mut node| {
-    node.payload.div = node
-      .get_exactly_one_parent()
+    node.payload_mut().div = node
+      .get_at_most_one_parent()
+      .unwrap()
       .map(|(parent, edge)| {
-        let branch_length = edge.read_arc().branch_length.unwrap_or_default();
-        let parent_div = parent.read_arc().div;
-        parent_div + branch_length
+        let branch_length = edge.branch_length.unwrap_or_default();
+        parent.div + branch_length
       })
       .unwrap_or(0.0);
     GraphTraversalContinuation::Continue

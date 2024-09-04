@@ -12,6 +12,7 @@ use bytes::Buf;
 use eyre::{Report, WrapErr};
 use smart_default::SmartDefault;
 use std::io::{Read, Write};
+use std::ops::Deref;
 use std::path::Path;
 
 pub use usher_mat_utils::{UsherMetadata, UsherMutation, UsherMutationList, UsherTree, UsherTreeNode};
@@ -233,7 +234,7 @@ where
     let context = UsherTreeContext {
       node: UsherNodeImpl {
         index: i,
-        name: node.payload.name().map(|name| name.as_ref().to_owned()),
+        name: node.payload().name().map(|name| name.as_ref().to_owned()),
         branch_length: 0.0,
         clade_annotations: tree.metadata[i].clade_annotations.clone(),
         mutations: tree.node_mutations[i].mutation.clone(),
@@ -242,7 +243,7 @@ where
     };
 
     let (graph_node, _) = converter.usher_node_to_graph_components(&context).unwrap();
-    *node.payload = graph_node;
+    *node.payload_mut() = graph_node;
     i += 1;
   });
 
@@ -288,9 +289,9 @@ where
 
   let mut converter = C::new(graph)?;
   graph.iter_depth_first_preorder_forward(|node| {
-    let edge = node.parents.first().map(|(_, edge)| edge.read_arc());
+    let edge = node.get_at_most_one_parent().unwrap().map(|(_, edge)| edge);
     let edge = edge.as_deref();
-    let node = &node.payload;
+    let node = &node.payload();
 
     let (node, mutations, meta) = converter
       .usher_node_from_graph_components(&UsherGraphContext { node, edge, graph })

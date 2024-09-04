@@ -282,9 +282,9 @@ fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]) 
           ..
         },
         ..
-      } = &mut node.payload.sparse_partitions[si].seq;
+      } = &mut node.payload_mut().sparse_partitions[si].seq;
 
-      if node.is_root {
+      if node.is_root() {
         for (pos, p) in variable {
           let i = p.dis.argmax().unwrap();
           let state = alphabet.char(i);
@@ -302,14 +302,14 @@ fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]) 
         }
         *composition = Composition::with_sequence(sequence.iter().copied(), alphabet.chars(), alphabet.gap());
       } else {
-        let (parent, edge) = node
-          .parents
-          .first()
+        let (parent, mut edge) = node
+          .parents()
+          .next()
           .ok_or_else(|| make_internal_report!("Graphs with multiple parents per node are not yet supported"))
           .unwrap();
 
-        let parent = &parent.read_arc().sparse_partitions[si].seq;
-        let edge = &mut edge.write_arc().sparse_partitions[si];
+        let parent = &parent.sparse_partitions[si].seq;
+        let edge = &mut edge.sparse_partitions[si];
 
         *composition = parent.composition.clone();
 
@@ -417,9 +417,9 @@ fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]) 
 
 fn fitch_cleanup(graph: &SparseGraph) {
   graph.par_iter_breadth_first_forward(|mut node| {
-    for SparseSeqNode { seq, .. } in &mut node.payload.sparse_partitions {
+    for SparseSeqNode { seq, .. } in &mut node.payload_mut().sparse_partitions {
       // delete the variable position everywhere instead of leaves
-      if !node.is_leaf {
+      if !node.is_leaf() {
         seq.fitch.variable = btreemap! {};
       }
 
@@ -437,7 +437,7 @@ fn fitch_cleanup(graph: &SparseGraph) {
         }
       }
 
-      if !node.is_root {
+      if !node.is_root() {
         seq.sequence = vec![];
       }
     }
@@ -474,7 +474,7 @@ pub fn ancestral_reconstruction_fitch(
   let n_partitions = partitions.len();
 
   graph.iter_depth_first_preorder_forward(|mut node| {
-    if !include_leaves && node.is_leaf {
+    if !include_leaves && node.is_leaf() {
       return;
     }
 
@@ -482,12 +482,12 @@ pub fn ancestral_reconstruction_fitch(
       .flat_map(|si| {
         let PartitionParsimony { alphabet, .. } = &partitions[si];
 
-        let mut seq = if node.is_root {
-          node.payload.sparse_partitions[si].seq.sequence.clone()
+        let mut seq = if node.is_root() {
+          node.payload().sparse_partitions[si].seq.sequence.clone()
         } else {
           let (parent, edge) = node.get_exactly_one_parent().unwrap();
-          let parent = &parent.read_arc().sparse_partitions[si];
-          let edge = &edge.read_arc().sparse_partitions[si];
+          let parent = &parent.sparse_partitions[si];
+          let edge = &edge.sparse_partitions[si];
 
           let mut seq = parent.seq.sequence.clone();
 
@@ -508,24 +508,29 @@ pub fn ancestral_reconstruction_fitch(
           seq
         };
 
-        let node = &mut node.payload.sparse_partitions[si].seq;
+        {
+          let node = &node.payload().sparse_partitions[si].seq;
 
-        // At the node itself, mask whatever is unknown in the node.
-        for r in &node.unknown {
-          seq[r.0..r.1].fill(alphabet.unknown());
+          // At the node itself, mask whatever is unknown in the node.
+          for r in &node.unknown {
+            seq[r.0..r.1].fill(alphabet.unknown());
+          }
+
+          for (pos, p) in &node.fitch.variable {
+            seq[*pos] = alphabet.get_code(&p.dis);
+          }
         }
 
-        for (pos, p) in &node.fitch.variable {
-          seq[*pos] = alphabet.get_code(&p.dis);
+        {
+          let node = &mut node.payload_mut().sparse_partitions[si].seq;
+          node.sequence = seq.clone();
         }
-
-        node.sequence = seq.clone();
 
         seq
       })
       .collect();
 
-    visitor(&node.payload, seq);
+    visitor(&node.payload(), seq);
   });
 
   Ok(())

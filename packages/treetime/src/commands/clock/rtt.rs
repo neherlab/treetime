@@ -28,19 +28,19 @@ pub fn gather_clock_regression_results(graph: &ClockGraph, clock_model: &ClockMo
   let result = ArrayQueue::new(graph.num_nodes());
   let divs = SkipMap::new();
 
-  graph.par_iter_breadth_first_forward(|node| {
+  graph.par_iter_breadth_first_forward(|mut node| {
     let div = node
-      .get_exactly_one_parent()
+      .get_at_most_one_parent()
+      .unwrap()
       .map(|(parent, edge)| {
-        let branch_length = edge.read_arc().branch_length.unwrap_or_default();
-        let parent_div = parent.read_arc().div;
-        parent_div + branch_length
+        let branch_length = edge.branch_length.unwrap_or_default();
+        parent.div + branch_length
       })
       .unwrap_or(0.0);
 
-    let is_leaf = node.is_leaf;
+    let is_leaf = node.is_leaf();
 
-    let mut node = node.payload;
+    let mut node = node.payload_mut();
     node.div = div;
 
     let name = node.name.clone();

@@ -31,7 +31,7 @@ pub type SafeEdgePayloadRefMut<E> = ArcRwLockWriteGuard<RawRwLock, E>;
 
 pub type NodeEdgePair<N, E> = (Arc<RwLock<Node<N>>>, Arc<RwLock<Edge<E>>>);
 pub type NodeEdgePayloadPair<N, E> = (Arc<RwLock<N>>, Arc<RwLock<E>>);
-pub type NodeEdgePayloadPairRef<N, E> = (SafeNodePayloadRef<N>, SafeEdgePayloadRef<E>);
+pub type NodeRefEdgeRefMutPayloadPair<N, E> = (SafeNodePayloadRef<N>, SafeEdgePayloadRefMut<E>);
 
 /// Represents graph node during forward traversal
 #[must_use]
@@ -71,21 +71,47 @@ where
     self.node.key()
   }
 
-  pub fn payload(&self) -> SafeNodePayloadRefMut<N> {
+  /// Mutable reference to node's payload
+  pub fn payload(&self) -> SafeNodePayloadRef<N> {
+    self.node.payload().read_arc()
+  }
+
+  /// Mutable reference to node's payload
+  pub fn payload_mut(&mut self) -> SafeNodePayloadRefMut<N> {
     self.node.payload().write_arc()
   }
 
+  /// Iterator of pairs (parent, edge), where:
+  ///  * parent - reference to parent node payload
+  ///  * edge - mutable reference to payload of the edge connecting this node and the parent node
   #[must_use]
-  pub fn parents(&self) -> impl DoubleEndedIterator<Item = NodeEdgePayloadPairRef<N, E>> + '_ {
-    self.graph.parents_of(self.node).map(|(node, edge)| {
+  pub fn parents(&self) -> impl DoubleEndedIterator<Item = NodeRefEdgeRefMutPayloadPair<N, E>> + '_ {
+    self.graph.parents_of(self.node).map(|(parent, edge)| {
       (
-        node.read_arc().payload().read_arc(),
-        edge.read_arc().payload().read_arc(),
+        parent.read_arc().payload().read_arc(),
+        edge.read_arc().payload().write_arc(),
       )
     })
   }
 
-  pub fn get_exactly_one_parent(&self) -> Result<NodeEdgePayloadPairRef<N, E>, Report> {
+  /// Same as .parents(), but:
+  ///  * if 1 parent: returns only first parent
+  ///  * if no parents: returns None
+  ///  * if more than 2 parent: returns error
+  pub fn get_at_most_one_parent(&self) -> Result<Option<NodeRefEdgeRefMutPayloadPair<N, E>>, Report> {
+    self.parents().at_most_one().map_err(|i| {
+      make_report!(
+        "Multiple parent nodes are not supported yet, but node {} has {} parents",
+        self.node.key(),
+        i.count()
+      )
+    })
+  }
+
+  /// Same as .parents(), but:
+  ///  * if 1 parent: returns only first parent
+  ///  * otherwise returns error
+  pub fn get_exactly_one_parent(&self) -> Result<NodeRefEdgeRefMutPayloadPair<N, E>, Report> {
     self.parents().exactly_one().map_err(|i| {
       make_report!(
         "Multiple parent nodes are not supported yet, but node {} has {} parents",
@@ -95,6 +121,7 @@ where
     })
   }
 
+  /// Iterator of mutable references to payloads of edges connecting this node and its children
   pub fn child_edges(&self) -> impl DoubleEndedIterator<Item = SafeEdgePayloadRefMut<E>> + 'g {
     self
       .graph

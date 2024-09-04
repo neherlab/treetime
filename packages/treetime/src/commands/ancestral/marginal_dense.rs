@@ -160,24 +160,21 @@ fn ingroup_profiles_dense(graph: &DenseGraph, partitions: &[PartitionLikelihood]
 fn outgroup_profiles_dense(graph: &DenseGraph, dense_partitions: &[PartitionLikelihood]) {
   graph.par_iter_breadth_first_forward(|mut node| {
     let name = node
-      .payload
+      .payload()
       .name()
       .expect("Encountered node without a name")
       .as_ref()
       .to_owned();
 
-    if node.is_root {
+    if node.is_root() {
       return GraphTraversalContinuation::Continue;
     }
 
-    for (si, seq_info) in node.payload.dense_partitions.iter_mut().enumerate() {
+    for (si, seq_info) in node.payload_mut().dense_partitions.iter_mut().enumerate() {
       let PartitionLikelihood { gtr, alphabet, length } = &dense_partitions[si];
 
       let mut msgs_from_parents = btreemap! {};
-      for (parent, edge) in &node.parents {
-        let parent = parent.read_arc();
-        let edge = edge.read_arc();
-
+      for (parent, edge) in node.parents() {
         let exp_qt = gtr.expQt(edge.weight().unwrap_or(0.0)).t().to_owned();
         let parent = &parent.dense_partitions[si];
         let edge = &edge.dense_partitions[si];
@@ -265,18 +262,18 @@ pub fn ancestral_reconstruction_marginal_dense(
   mut visitor: impl FnMut(&DenseNode, Vec<char>),
 ) -> Result<(), Report> {
   graph.iter_depth_first_preorder_forward(|node| {
-    if !include_leaves && node.is_leaf {
+    if !include_leaves && node.is_leaf() {
       return;
     }
 
     let seq = node
-      .payload
+      .payload()
       .dense_partitions
       .iter()
       .flat_map(|p| p.seq.sequence.iter().copied())
       .collect();
 
-    visitor(&node.payload, seq);
+    visitor(&node.payload(), seq);
   });
 
   Ok(())
