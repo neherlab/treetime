@@ -25,10 +25,6 @@ pub struct FindRootResult {
 
 /// Find the best new root node
 pub fn find_best_root(graph: &ClockGraph, options: &ClockOptions) -> Result<FindRootResult, Report> {
-  // run forward and backward pass to calculate the averages for all nodes in the tree
-  clock_regression_backward(graph, options);
-  clock_regression_forward(graph, options);
-
   // Loop over all nodes, pick the one with the lowest chisq, then optimize position along surrounding branches.
   let root = graph.get_exactly_one_root()?;
   let mut best_root_node = Arc::clone(&root);
