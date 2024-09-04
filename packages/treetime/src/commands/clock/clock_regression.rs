@@ -1,3 +1,4 @@
+use super::clock_model::ClockModel;
 use crate::commands::clock::clock_graph::ClockGraph;
 use crate::commands::clock::clock_set::ClockSet;
 use crate::graph::breadth_first::GraphTraversalContinuation;
@@ -5,7 +6,6 @@ use crate::graph::edge::Weighted;
 use eyre::Report;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
-use super::clock_model::ClockModel;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClockOptions {
