@@ -3,8 +3,8 @@ use crate::graph::breadth_first::{
 };
 use crate::graph::edge::{Edge, GraphEdge, GraphEdgeKey};
 use crate::graph::node::{GraphNode, GraphNodeKey, Node};
-use crate::utils::container::{get_exactly_one, get_exactly_one_mut};
-use crate::{make_error, make_internal_error, make_internal_report};
+use crate::utils::container::get_exactly_one_mut;
+use crate::{make_error, make_internal_error, make_internal_report, make_report};
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use parking_lot::lock_api::{ArcRwLockReadGuard, ArcRwLockWriteGuard};
@@ -31,64 +31,75 @@ pub type SafeEdgePayloadRefMut<E> = ArcRwLockWriteGuard<RawRwLock, E>;
 
 pub type NodeEdgePair<N, E> = (Arc<RwLock<Node<N>>>, Arc<RwLock<Edge<E>>>);
 pub type NodeEdgePayloadPair<N, E> = (Arc<RwLock<N>>, Arc<RwLock<E>>);
+pub type NodeEdgePayloadPairRef<N, E> = (SafeNodePayloadRef<N>, SafeEdgePayloadRef<E>);
 
 /// Represents graph node during forward traversal
 #[must_use]
 #[derive(Debug)]
-pub struct GraphNodeForward<N, E, D>
-where
-  N: GraphNode,
-  E: GraphEdge,
-{
-  pub is_root: bool,
-  pub is_leaf: bool,
-  pub key: GraphNodeKey,
-  pub payload: SafeNodePayloadRefMut<N>,
-  pub parents: Vec<NodeEdgePayloadPair<N, E>>,
-  pub child_edges: Vec<SafeEdgePayloadRefMut<E>>,
-  pub data: Arc<RwLock<D>>,
-}
-
-impl<N, E, D> GraphNodeForward<N, E, D>
+pub struct GraphNodeForward<'a, N, E, D>
 where
   N: GraphNode,
   E: GraphEdge,
   D: Sync + Send,
 {
-  pub fn new(graph: &Graph<N, E, D>, node: &Node<N>) -> Self {
-    let is_leaf = node.is_leaf();
-    let is_root = node.is_root();
-    let key = node.key();
+  graph: &'a Graph<N, E, D>,
+  node: &'a Node<N>,
+}
 
-    let payload = node.payload().write_arc();
-
-    let parents = graph
-      .parents_of(node)
-      .iter()
-      .map(|(node, edge)| (node.read().payload(), edge.read().payload()))
-      .collect_vec();
-
-    let child_edges = graph
-      .children_of(node)
-      .iter()
-      .map(|(_, edge)| edge.write_arc().payload().write_arc())
-      .collect_vec();
-
-    let data = Arc::clone(&graph.data);
-
-    Self {
-      is_root,
-      is_leaf,
-      key,
-      payload,
-      parents,
-      child_edges,
-      data,
-    }
+impl<'g, N, E, D> GraphNodeForward<'g, N, E, D>
+where
+  N: GraphNode,
+  E: GraphEdge,
+  D: Sync + Send,
+{
+  pub fn new(graph: &'g Graph<N, E, D>, node: &'g Node<N>) -> Self {
+    Self { graph, node }
   }
 
-  pub fn get_exactly_one_parent(&self) -> Result<&NodeEdgePayloadPair<N, E>, Report> {
-    get_exactly_one(&self.parents).wrap_err("Nodes with multiple parents are not yet supported")
+  #[must_use]
+  pub fn is_root(&self) -> bool {
+    self.node.is_root()
+  }
+
+  #[must_use]
+  pub fn is_leaf(&self) -> bool {
+    self.node.is_leaf()
+  }
+
+  #[must_use]
+  pub fn key(&self) -> GraphNodeKey {
+    self.node.key()
+  }
+
+  pub fn payload(&self) -> SafeNodePayloadRefMut<N> {
+    self.node.payload().write_arc()
+  }
+
+  #[must_use]
+  pub fn parents(&self) -> impl DoubleEndedIterator<Item = NodeEdgePayloadPairRef<N, E>> + '_ {
+    self.graph.parents_of(self.node).map(|(node, edge)| {
+      (
+        node.read_arc().payload().read_arc(),
+        edge.read_arc().payload().read_arc(),
+      )
+    })
+  }
+
+  pub fn get_exactly_one_parent(&self) -> Result<NodeEdgePayloadPairRef<N, E>, Report> {
+    self.parents().exactly_one().map_err(|i| {
+      make_report!(
+        "Multiple parent nodes are not supported yet, but node {} has {} parents",
+        self.node.key(),
+        i.count()
+      )
+    })
+  }
+
+  pub fn child_edges(&self) -> impl DoubleEndedIterator<Item = SafeEdgePayloadRefMut<E>> + 'g {
+    self
+      .graph
+      .children_of(self.node)
+      .map(|(_, edge)| edge.write_arc().payload().write_arc())
   }
 }
 
@@ -125,13 +136,11 @@ where
 
     let children = graph
       .children_of(node)
-      .iter()
       .map(|(node, edge)| (node.read().payload(), edge.read().payload()))
       .collect_vec();
 
     let parent_edges = graph
       .parents_of(node)
-      .iter()
       .map(|(_, edge)| edge.write_arc().payload().write_arc())
       .collect_vec();
 
@@ -182,8 +191,8 @@ where
     let is_root = node.is_root();
     let key = node.key();
     let payload = node.payload();
-    let parents = graph.parents_of(&node);
-    let children = graph.children_of(&node);
+    let parents = graph.parents_of(&node).collect_vec();
+    let children = graph.children_of(&node).collect_vec();
     let data = Arc::clone(&graph.data);
 
     Self {
@@ -253,28 +262,26 @@ where
   ///
   /// **Returns**: list of pairs `(parent, edge)`, where `parent` is the parent node,
   /// and `edge` is the inbound edge connecting the parent node with the given node.
-  pub fn parents_of(&self, node: &Node<N>) -> Vec<NodeEdgePair<N, E>> {
+  pub fn parents_of<'a>(&'a self, node: &'a Node<N>) -> impl DoubleEndedIterator<Item = NodeEdgePair<N, E>> + 'a {
     // Parents are the source nodes of inbound edges
     node
       .inbound()
       .iter()
       .filter_map(|edge_key| self.get_edge(*edge_key))
       .filter_map(|edge| {
-        let parent_key = edge.read().source();
+        let parent_key = edge.read_arc().source();
         self.get_node(parent_key).map(|parent| (parent, edge))
       })
-      .collect_vec()
   }
 
   /// Retrieve keys of parent nodes of a given node.
-  pub fn parent_keys_of(&self, node: &Node<N>) -> Vec<GraphNodeKey> {
+  pub fn parent_keys_of<'a>(&'a self, node: &'a Node<N>) -> impl DoubleEndedIterator<Item = GraphNodeKey> + 'a {
     // Parents are the source nodes of inbound edges
     node
       .inbound()
       .iter()
       .filter_map(|edge_key| self.get_edge(*edge_key))
-      .map(|edge| edge.read().source())
-      .collect_vec()
+      .map(|edge| edge.read_arc().source())
   }
 
   pub fn exactly_one_parent_of(&self, node: &Node<N>) -> Result<NodeEdgePair<N, E>, Report> {
@@ -289,7 +296,7 @@ where
   }
 
   pub fn one_parent_of(&self, node: &Node<N>) -> Result<Option<NodeEdgePair<N, E>>, Report> {
-    let parents = self.parents_of(node).into_iter().collect_vec();
+    let parents = self.parents_of(node).collect_vec();
 
     if parents.is_empty() {
       return Ok(None);
@@ -310,17 +317,37 @@ where
   ///
   /// **Returns**: list of pairs `(child, edge)`, where `child` is the child node,
   /// and `edge` is the outbound edge connecting the given node with the child node.
-  pub fn children_of(&self, node: &Node<N>) -> Vec<NodeEdgePair<N, E>> {
-    // Children are the target nodes of outbound edges
+  pub fn children_of<'a>(&'a self, node: &'a Node<N>) -> impl DoubleEndedIterator<Item = NodeEdgePair<N, E>> + 'a {
     node
       .outbound()
       .iter()
       .filter_map(|edge_key| self.get_edge(*edge_key))
+      .map(|edge| {
+        let child_key = edge.read_arc().target();
+        let child = self.get_node(child_key).expect("Edge not found");
+        (child, edge)
+      })
+  }
+
+  pub fn children_of_by_key<'a>(
+    &'a self,
+    node_key: GraphNodeKey,
+  ) -> impl DoubleEndedIterator<Item = NodeEdgePair<N, E>> + 'a {
+    // Children are the target nodes of outbound edges
+    let outbound = self
+      .get_node(node_key)
+      .expect("Node not found")
+      .read_arc()
+      .outbound()
+      .to_owned();
+
+    outbound
+      .into_iter()
+      .filter_map(|edge_key| self.get_edge(edge_key))
       .filter_map(|edge| {
         let child_key = edge.read().target();
         self.get_node(child_key).map(|child| (child, edge))
       })
-      .collect_vec()
   }
 
   /// Retrieve keys of parent nodes of a given node.
@@ -614,7 +641,7 @@ where
     while let Some((current_node, _current_edge)) = stack.pop() {
       let current_node = current_node.read_arc();
       explorer(GraphNodeForward::new(self, &current_node));
-      for (child, edge) in self.children_of(&current_node).into_iter().rev() {
+      for (child, edge) in self.children_of(&current_node).rev() {
         stack.push((child, Some(edge)));
       }
     }
@@ -641,7 +668,8 @@ where
       if !visited.contains(&node_key) {
         visited.insert(node_key);
         stack.push((Arc::clone(&current_node), None));
-        let children = self.children_of(&current_node.read_arc()).into_iter().rev();
+        let current_node = current_node.read_arc();
+        let children = self.children_of(&current_node).rev();
         for (child, edge) in children {
           let child_key = child.read_arc().key();
           if !visited.contains(&child_key) {
@@ -665,8 +693,7 @@ where
 
     while let Some(current_node) = queue.pop_front() {
       explorer(GraphNodeForward::new(self, &current_node.read_arc()));
-      let children = self.children_of(&current_node.read_arc());
-      for (child, _) in children {
+      for (child, _) in self.children_of(&current_node.read_arc()) {
         queue.push_back(child);
       }
     }
@@ -849,7 +876,7 @@ pub mod tests {
 
     let mut actual = vec![];
     graph.iter_depth_first_preorder_forward(|node| {
-      actual.push(node.payload.name().unwrap().as_ref().to_owned());
+      actual.push(node.payload().name().unwrap().as_ref().to_owned());
     });
 
     assert_eq!(vec!["root", "AB", "A", "B", "CD", "C", "D"], actual);
@@ -877,7 +904,7 @@ pub mod tests {
 
     let mut actual = vec![];
     graph.iter_breadth_first_forward(|node| {
-      actual.push(node.payload.name().unwrap().as_ref().to_owned());
+      actual.push(node.payload().name().unwrap().as_ref().to_owned());
     });
 
     assert_eq!(vec!["root", "AB", "CD", "A", "B", "C", "D"], actual);
@@ -909,7 +936,7 @@ pub mod tests {
     graph.par_iter_breadth_first_forward(|node| {
       actual
         .write_arc()
-        .push(node.payload.name().unwrap().as_ref().to_owned());
+        .push(node.payload().name().unwrap().as_ref().to_owned());
       GraphTraversalContinuation::Continue
     });
 
