@@ -101,7 +101,6 @@ pub fn clock_regression_forward(graph: &ClockGraph, options: &ClockOptions) {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::commands::clock::find_best_root::find_best_root;
   use crate::graph::node::Named;
   use crate::io::nwk::nwk_read_str;
   use crate::o;

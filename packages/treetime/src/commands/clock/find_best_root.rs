@@ -73,6 +73,8 @@ pub fn find_best_root(graph: &ClockGraph, options: &ClockOptions) -> Result<Find
   Ok(best_res)
 }
 
+// TODO: the core of this function uses just two clocksets at either end of the edge, the branch length and variance (plus terminal offset)
+// We could refactor this to a separate function that takes these as arguments and separate the core from the bureaucracy.
 fn find_best_split(graph: &ClockGraph, edge: GraphEdgeKey, options: &ClockOptions) -> Result<FindRootResult, Report> {
   let edge = graph.get_edge(edge).expect("Edge not found");
   let edge_payload = edge.read_arc().payload().read_arc();
@@ -125,3 +127,40 @@ fn find_best_split(graph: &ClockGraph, edge: GraphEdgeKey, options: &ClockOption
     chisq: best_chisq,
   })
 }
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use crate::commands::clock::clock_regression::{clock_regression_backward, clock_regression_forward};
+  use crate::graph::node::Named;
+  use crate::io::nwk::nwk_read_str;
+  use crate::o;
+  use approx::assert_ulps_eq;
+  use maplit::btreemap;
+
+  #[test]
+  fn test_find_best_root() -> Result<(), Report> {
+    let dates = btreemap! {
+      o!("A") => 2013.0,
+      o!("B") => 2022.0,
+      o!("C") => 2017.0,
+      o!("D") => 2005.0,
+    };
+
+    let graph: ClockGraph = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    for n in graph.get_leaves() {
+      let name = n.read_arc().payload().read_arc().name().unwrap().as_ref().to_owned();
+      n.write_arc().payload().write_arc().date = Some(dates[&name]);
+    }
+
+    let options = ClockOptions::default();
+    clock_regression_backward(&graph, &options);
+    clock_regression_forward(&graph, &options);
+    let best_root = find_best_root(&graph, &options)?;
+    assert_ulps_eq!(best_root.chisq, 0.0002610661988682317, epsilon = 1e-9);
+
+    Ok(())
+  }
+}
+
+// TODO: separate test for the `find_best_split` function.
