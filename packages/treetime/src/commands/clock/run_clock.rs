@@ -17,25 +17,19 @@ use eyre::{Report, WrapErr};
 use super::clock_model::ClockModel;
 
 pub fn get_clock_model(graph: &mut ClockGraph, options: &ClockOptions, keep_root: bool) -> Result<ClockModel, Report> {
-  if keep_root {
-    // run the backward pass to calculate the averages at the root
-    clock_regression_backward(graph, options);
+  // run the backward pass to calculate the averages at the root
+  clock_regression_backward(graph, options);
 
-    // calculate a clock model from the root averages and return
-    let root = graph.get_exactly_one_root()?;
-    let root = root.read_arc().payload().read_arc();
-    let clock = ClockModel::new(&root.total)?;
-    Ok(clock)
-  } else {
-    // run forward and backward pass to calculate the averages for all nodes in the tree
-    clock_regression_backward(graph, options);
+  if !keep_root {
+    // run forward pass to calculate the averages for all nodes in the tree
     clock_regression_forward(graph, options);
-
-    reroot_in_place(graph, &options)?;
-    let root = graph.get_exactly_one_root()?;
-    let root = root.read_arc().payload().read_arc();
-    ClockModel::new(&root.total)
+    reroot_in_place(graph, options)?;
   }
+
+  // calculate a clock model from the root averages
+  let root = graph.get_exactly_one_root()?;
+  let root = root.read_arc().payload().read_arc();
+  ClockModel::new(&root.total)
 }
 
 pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
