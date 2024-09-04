@@ -3,12 +3,18 @@ use crate::commands::clock::clock_set::ClockSet;
 use crate::graph::breadth_first::GraphTraversalContinuation;
 use crate::graph::edge::Weighted;
 use serde::{Deserialize, Serialize};
+use smart_default::SmartDefault;
 use std::fmt::Debug;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, SmartDefault)]
 pub struct ClockOptions {
+  #[default = 0.0]
   pub variance_factor: f64,
+
+  #[default = 0.0]
   pub variance_offset: f64,
+
+  #[default = 1.0]
   pub variance_offset_leaf: f64,
 }
 
