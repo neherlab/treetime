@@ -74,11 +74,7 @@ pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
       variance_offset_leaf: tip_slack * tip_slack / seq_len / seq_len,
     }
   } else {
-    ClockOptions {
-      variance_factor: 0.0,
-      variance_offset: 0.0,
-      variance_offset_leaf: 1.0,
-    }
+    ClockOptions::default()
   };
 
   if *clock_filter > 0.0 {
