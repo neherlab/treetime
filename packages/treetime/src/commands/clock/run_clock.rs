@@ -16,22 +16,6 @@ use crate::io::nwk::{nwk_read_file, nwk_write_file, NwkWriteOptions};
 use crate::make_report;
 use eyre::{Report, WrapErr};
 
-pub fn get_clock_model(graph: &mut ClockGraph, options: &ClockOptions, keep_root: bool) -> Result<ClockModel, Report> {
-  // run the backward pass to calculate the averages at the root
-  clock_regression_backward(graph, options);
-
-  if !keep_root {
-    // run forward pass to calculate the averages for all nodes in the tree
-    clock_regression_forward(graph, options);
-    reroot_in_place(graph, options)?;
-  }
-
-  // calculate a clock model from the root averages
-  let root = graph.get_exactly_one_root()?;
-  let root = root.read_arc().payload().read_arc();
-  ClockModel::new(&root.total)
-}
-
 pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
   let TreetimeClockArgs {
     aln,
@@ -83,11 +67,46 @@ pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
   };
 
   if *clock_filter > 0.0 {
-    let pre_clock_model = get_clock_model(&mut graph, &options, *keep_root)?;
+    let pre_clock_model = {
+      let graph = &mut graph;
+      let options = &options;
+
+      // run the backward pass to calculate the averages at the root
+      clock_regression_backward(graph, options);
+
+      if !keep_root {
+        // run forward pass to calculate the averages for all nodes in the tree
+        clock_regression_forward(graph, options);
+        reroot_in_place(graph, options)?;
+      }
+
+      // calculate a clock model from the root averages
+      let root = graph.get_exactly_one_root()?;
+      let root = root.read_arc().payload().read_arc();
+      ClockModel::new(&root.total)
+    }?;
+
     let new_outliers = clock_filter_inplace(&graph, &pre_clock_model, *clock_filter);
   }
 
-  let clock_model = get_clock_model(&mut graph, &options, *keep_root)?;
+  let clock_model = {
+    let graph = &mut graph;
+    let options = &options;
+
+    // run the backward pass to calculate the averages at the root
+    clock_regression_backward(graph, options);
+
+    if !keep_root {
+      // run forward pass to calculate the averages for all nodes in the tree
+      clock_regression_forward(graph, options);
+      reroot_in_place(graph, options)?;
+    }
+
+    // calculate a clock model from the root averages
+    let root = graph.get_exactly_one_root()?;
+    let root = root.read_arc().payload().read_arc();
+    ClockModel::new(&root.total)
+  }?;
 
   nwk_write_file(outdir.join("rerooted.nwk"), &graph, &NwkWriteOptions::default())?;
   json_write_file(outdir.join("graph_output.json"), &graph, JsonPretty(true))?;
