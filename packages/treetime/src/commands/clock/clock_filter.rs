@@ -7,17 +7,17 @@ use ordered_float::OrderedFloat;
 /// Get results of the root-to-tip clock inference.
 pub fn clock_filter_inplace(graph: &ClockGraph, clock_model: &ClockModel, clock_filter_threshold: f64) -> i32 {
   // assign divergence to each node
-  // graph.par_iter_breadth_first_forward(|mut node| {
-  //   node.payload.div = node
-  //     .get_exactly_one_parent()
-  //     .map(|(parent, edge)| {
-  //       let branch_length = edge.read_arc().branch_length.unwrap_or_default();
-  //       let parent_div = parent.read_arc().div;
-  //       parent_div + branch_length
-  //     })
-  //     .unwrap_or(0.0);
-  //   GraphTraversalContinuation::Continue
-  // });
+  graph.par_iter_breadth_first_forward(|mut node| {
+    node.payload.div = node
+      .get_exactly_one_parent()
+      .map(|(parent, edge)| {
+        let branch_length = edge.read_arc().branch_length.unwrap_or_default();
+        let parent_div = parent.read_arc().div;
+        parent_div + branch_length
+      })
+      .unwrap_or(0.0);
+    GraphTraversalContinuation::Continue
+  });
 
   // collect clock_deviation of leaf nodes into a vector
   let leaf_clock_deviations: Vec<f64> = graph

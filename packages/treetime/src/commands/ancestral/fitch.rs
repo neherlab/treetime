@@ -267,183 +267,183 @@ fn fitch_backwards(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]
 fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]) {
   let n_partitions = sparse_partitions.len();
 
-  // graph.par_iter_breadth_first_forward(|mut node| {
-  //   #[allow(clippy::needless_range_loop)]
-  //   for si in 0..n_partitions {
-  //     let PartitionParsimony { alphabet, .. } = &sparse_partitions[si];
-  //     let SparseSeqInfo {
-  //       gaps,
-  //       sequence,
-  //       composition,
-  //       non_char,
-  //       fitch: SparseSeqDis {
-  //         variable,
-  //         variable_indel,
-  //         ..
-  //       },
-  //       ..
-  //     } = &mut node.payload.sparse_partitions[si].seq;
-  // 
-  //     if node.is_root {
-  //       for (pos, p) in variable {
-  //         let i = p.dis.argmax().unwrap();
-  //         let state = alphabet.char(i);
-  //         p.state = Some(state);
-  //         sequence[*pos] = state;
-  //       }
-  //       // process indels as majority rule at the root
-  //       for (r, indel) in variable_indel.iter() {
-  //         if indel.deleted > indel.ins {
-  //           gaps.push(*r);
-  //         }
-  //       }
-  //       for r in gaps.iter() {
-  //         sequence[r.0..r.1].fill(alphabet.gap());
-  //       }
-  //       *composition = Composition::with_sequence(sequence.iter().copied(), alphabet.chars(), alphabet.gap());
-  //     } else {
-  //       let (parent, edge) = node
-  //         .parents
-  //         .first()
-  //         .ok_or_else(|| make_internal_report!("Graphs with multiple parents per node are not yet supported"))
-  //         .unwrap();
-  // 
-  //       let parent = &parent.read_arc().sparse_partitions[si].seq;
-  //       let edge = &mut edge.write_arc().sparse_partitions[si];
-  // 
-  //       *composition = parent.composition.clone();
-  // 
-  //       // fill in the indeterminate positions
-  //       for r in non_char {
-  //         sequence[r.0..r.1].clone_from_slice(&parent.sequence[r.0..r.1]);
-  //       }
-  // 
-  //       // for each variable position, pick a state or a mutation
-  //       for (pos, p) in variable.iter_mut() {
-  //         let pnuc = parent.sequence[*pos];
-  //         // check whether parent is in child profile (sum>0 --> parent state is in profile)
-  //         let parent_in_profile = (alphabet.get_profile(pnuc) * &p.dis).sum() > 0.0;
-  //         if parent_in_profile {
-  //           sequence[*pos] = pnuc;
-  //         } else {
-  //           let i = p.dis.argmax().unwrap();
-  //           let cnuc = alphabet.char(i);
-  //           sequence[*pos] = cnuc;
-  //           let m = Sub {
-  //             pos: *pos,
-  //             qry: cnuc,
-  //             reff: pnuc,
-  //           };
-  //           composition.add_sub(&m);
-  //           edge.subs.push(m);
-  //         }
-  //         p.state = Some(sequence[*pos]);
-  //       }
-  // 
-  //       for (&pos, pvar) in &parent.fitch.variable {
-  //         if variable.contains_key(&pos) {
-  //           continue;
-  //         }
-  // 
-  //         // NOTE: access to full_seq would not be necessary if we had saved the
-  //         // child state of variable positions in the backward pass
-  //         let node_nuc = sequence[pos];
-  //         if let Some(pvar_state) = pvar.state {
-  //           if pvar_state != node_nuc {
-  //             let m = Sub {
-  //               pos,
-  //               qry: node_nuc,
-  //               reff: pvar_state,
-  //             };
-  //             composition.add_sub(&m);
-  //             edge.subs.push(m);
-  //           }
-  //         }
-  //       }
-  // 
-  //       // Process indels. Gaps where the children disagree, need to be decided by also looking at parent.
-  //       for (r, indel) in variable_indel.iter() {
-  //         let gap_in_parent = if parent.gaps.contains(r) { 1 } else { 0 };
-  //         if indel.deleted + gap_in_parent > indel.ins {
-  //           gaps.push(*r);
-  //           if gap_in_parent == 0 {
-  //             // If the gap is not in parent, add deletion.
-  //             let indel = InDel {
-  //               range: *r,
-  //               seq: sequence[r.0..r.1].to_owned(),
-  //               deletion: true,
-  //             };
-  //             composition.add_indel(&indel);
-  //             edge.indels.push(indel);
-  //           }
-  //         } else if gap_in_parent > 0 {
-  //           // Add insertion if gap is present in parent.
-  //           let indel = InDel {
-  //             range: *r,
-  //             seq: sequence[r.0..r.1].to_owned(),
-  //             deletion: false,
-  //           };
-  //           composition.add_indel(&indel);
-  //           edge.indels.push(indel);
-  //         }
-  //       }
-  // 
-  //       // Process consensus gaps in the node that are not in the parent (deletions)
-  //       for r in range_difference(gaps, &parent.gaps) {
-  //         let indel = InDel {
-  //           range: r,
-  //           seq: sequence[r.0..r.1].to_owned(),
-  //           deletion: true,
-  //         };
-  //         composition.add_indel(&indel);
-  //         edge.indels.push(indel);
-  //       }
-  // 
-  //       // Process gaps in the parent that are not in the node (insertions)
-  //       for r in range_difference(&parent.gaps, gaps) {
-  //         let indel = InDel {
-  //           range: r,
-  //           seq: sequence[r.0..r.1].to_owned(),
-  //           deletion: false,
-  //         };
-  //         composition.add_indel(&indel);
-  //         edge.indels.push(indel);
-  //       }
-  //     }
-  //   }
-  //   GraphTraversalContinuation::Continue
-  // });
+  graph.par_iter_breadth_first_forward(|mut node| {
+    #[allow(clippy::needless_range_loop)]
+    for si in 0..n_partitions {
+      let PartitionParsimony { alphabet, .. } = &sparse_partitions[si];
+      let SparseSeqInfo {
+        gaps,
+        sequence,
+        composition,
+        non_char,
+        fitch: SparseSeqDis {
+          variable,
+          variable_indel,
+          ..
+        },
+        ..
+      } = &mut node.payload.sparse_partitions[si].seq;
+
+      if node.is_root {
+        for (pos, p) in variable {
+          let i = p.dis.argmax().unwrap();
+          let state = alphabet.char(i);
+          p.state = Some(state);
+          sequence[*pos] = state;
+        }
+        // process indels as majority rule at the root
+        for (r, indel) in variable_indel.iter() {
+          if indel.deleted > indel.ins {
+            gaps.push(*r);
+          }
+        }
+        for r in gaps.iter() {
+          sequence[r.0..r.1].fill(alphabet.gap());
+        }
+        *composition = Composition::with_sequence(sequence.iter().copied(), alphabet.chars(), alphabet.gap());
+      } else {
+        let (parent, edge) = node
+          .parents
+          .first()
+          .ok_or_else(|| make_internal_report!("Graphs with multiple parents per node are not yet supported"))
+          .unwrap();
+
+        let parent = &parent.read_arc().sparse_partitions[si].seq;
+        let edge = &mut edge.write_arc().sparse_partitions[si];
+
+        *composition = parent.composition.clone();
+
+        // fill in the indeterminate positions
+        for r in non_char {
+          sequence[r.0..r.1].clone_from_slice(&parent.sequence[r.0..r.1]);
+        }
+
+        // for each variable position, pick a state or a mutation
+        for (pos, p) in variable.iter_mut() {
+          let pnuc = parent.sequence[*pos];
+          // check whether parent is in child profile (sum>0 --> parent state is in profile)
+          let parent_in_profile = (alphabet.get_profile(pnuc) * &p.dis).sum() > 0.0;
+          if parent_in_profile {
+            sequence[*pos] = pnuc;
+          } else {
+            let i = p.dis.argmax().unwrap();
+            let cnuc = alphabet.char(i);
+            sequence[*pos] = cnuc;
+            let m = Sub {
+              pos: *pos,
+              qry: cnuc,
+              reff: pnuc,
+            };
+            composition.add_sub(&m);
+            edge.subs.push(m);
+          }
+          p.state = Some(sequence[*pos]);
+        }
+
+        for (&pos, pvar) in &parent.fitch.variable {
+          if variable.contains_key(&pos) {
+            continue;
+          }
+
+          // NOTE: access to full_seq would not be necessary if we had saved the
+          // child state of variable positions in the backward pass
+          let node_nuc = sequence[pos];
+          if let Some(pvar_state) = pvar.state {
+            if pvar_state != node_nuc {
+              let m = Sub {
+                pos,
+                qry: node_nuc,
+                reff: pvar_state,
+              };
+              composition.add_sub(&m);
+              edge.subs.push(m);
+            }
+          }
+        }
+
+        // Process indels. Gaps where the children disagree, need to be decided by also looking at parent.
+        for (r, indel) in variable_indel.iter() {
+          let gap_in_parent = if parent.gaps.contains(r) { 1 } else { 0 };
+          if indel.deleted + gap_in_parent > indel.ins {
+            gaps.push(*r);
+            if gap_in_parent == 0 {
+              // If the gap is not in parent, add deletion.
+              let indel = InDel {
+                range: *r,
+                seq: sequence[r.0..r.1].to_owned(),
+                deletion: true,
+              };
+              composition.add_indel(&indel);
+              edge.indels.push(indel);
+            }
+          } else if gap_in_parent > 0 {
+            // Add insertion if gap is present in parent.
+            let indel = InDel {
+              range: *r,
+              seq: sequence[r.0..r.1].to_owned(),
+              deletion: false,
+            };
+            composition.add_indel(&indel);
+            edge.indels.push(indel);
+          }
+        }
+
+        // Process consensus gaps in the node that are not in the parent (deletions)
+        for r in range_difference(gaps, &parent.gaps) {
+          let indel = InDel {
+            range: r,
+            seq: sequence[r.0..r.1].to_owned(),
+            deletion: true,
+          };
+          composition.add_indel(&indel);
+          edge.indels.push(indel);
+        }
+
+        // Process gaps in the parent that are not in the node (insertions)
+        for r in range_difference(&parent.gaps, gaps) {
+          let indel = InDel {
+            range: r,
+            seq: sequence[r.0..r.1].to_owned(),
+            deletion: false,
+          };
+          composition.add_indel(&indel);
+          edge.indels.push(indel);
+        }
+      }
+    }
+    GraphTraversalContinuation::Continue
+  });
 }
 
 fn fitch_cleanup(graph: &SparseGraph) {
-  // graph.par_iter_breadth_first_forward(|mut node| {
-  //   for SparseSeqNode { seq, .. } in &mut node.payload.sparse_partitions {
-  //     // delete the variable position everywhere instead of leaves
-  //     if !node.is_leaf {
-  //       seq.fitch.variable = btreemap! {};
-  //     }
-  // 
-  //     // remove the undetermined counts from the counts of fixed positions
-  //     for r in &seq.unknown {
-  //       for pos in r.0..r.1 {
-  //         seq.composition.adjust_count(seq.sequence[pos], -1);
-  //       }
-  //     }
-  // 
-  //     seq.fitch.fixed_counts = seq.composition.clone();
-  //     for p in seq.fitch.variable.values() {
-  //       if let Some(state) = p.state {
-  //         seq.fitch.fixed_counts.adjust_count(state, -1);
-  //       }
-  //     }
-  // 
-  //     if !node.is_root {
-  //       seq.sequence = vec![];
-  //     }
-  //   }
-  // 
-  //   GraphTraversalContinuation::Continue
-  // });
+  graph.par_iter_breadth_first_forward(|mut node| {
+    for SparseSeqNode { seq, .. } in &mut node.payload.sparse_partitions {
+      // delete the variable position everywhere instead of leaves
+      if !node.is_leaf {
+        seq.fitch.variable = btreemap! {};
+      }
+
+      // remove the undetermined counts from the counts of fixed positions
+      for r in &seq.unknown {
+        for pos in r.0..r.1 {
+          seq.composition.adjust_count(seq.sequence[pos], -1);
+        }
+      }
+
+      seq.fitch.fixed_counts = seq.composition.clone();
+      for p in seq.fitch.variable.values() {
+        if let Some(state) = p.state {
+          seq.fitch.fixed_counts.adjust_count(state, -1);
+        }
+      }
+
+      if !node.is_root {
+        seq.sequence = vec![];
+      }
+    }
+
+    GraphTraversalContinuation::Continue
+  });
 }
 
 pub fn compress_sequences(
@@ -473,60 +473,60 @@ pub fn ancestral_reconstruction_fitch(
 ) -> Result<(), Report> {
   let n_partitions = partitions.len();
 
-  // graph.iter_depth_first_preorder_forward(|mut node| {
-  //   if !include_leaves && node.is_leaf {
-  //     return;
-  //   }
-  // 
-  //   let seq = (0..n_partitions)
-  //     .flat_map(|si| {
-  //       let PartitionParsimony { alphabet, .. } = &partitions[si];
-  // 
-  //       let mut seq = if node.is_root {
-  //         node.payload.sparse_partitions[si].seq.sequence.clone()
-  //       } else {
-  //         let (parent, edge) = node.get_exactly_one_parent().unwrap();
-  //         let parent = &parent.read_arc().sparse_partitions[si];
-  //         let edge = &edge.read_arc().sparse_partitions[si];
-  // 
-  //         let mut seq = parent.seq.sequence.clone();
-  // 
-  //         // Implant mutations
-  //         for sub in &edge.subs {
-  //           seq[sub.pos] = sub.qry;
-  //         }
-  // 
-  //         // Implant indels
-  //         for indel in &edge.indels {
-  //           if indel.deletion {
-  //             seq[indel.range.0..indel.range.1].fill(alphabet.gap());
-  //           } else {
-  //             seq[indel.range.0..indel.range.1].copy_from_slice(&indel.seq);
-  //           }
-  //         }
-  // 
-  //         seq
-  //       };
-  // 
-  //       let node = &mut node.payload.sparse_partitions[si].seq;
-  // 
-  //       // At the node itself, mask whatever is unknown in the node.
-  //       for r in &node.unknown {
-  //         seq[r.0..r.1].fill(alphabet.unknown());
-  //       }
-  // 
-  //       for (pos, p) in &node.fitch.variable {
-  //         seq[*pos] = alphabet.get_code(&p.dis);
-  //       }
-  // 
-  //       node.sequence = seq.clone();
-  // 
-  //       seq
-  //     })
-  //     .collect();
-  // 
-  //   visitor(&node.payload, seq);
-  // });
+  graph.iter_depth_first_preorder_forward(|mut node| {
+    if !include_leaves && node.is_leaf {
+      return;
+    }
+
+    let seq = (0..n_partitions)
+      .flat_map(|si| {
+        let PartitionParsimony { alphabet, .. } = &partitions[si];
+
+        let mut seq = if node.is_root {
+          node.payload.sparse_partitions[si].seq.sequence.clone()
+        } else {
+          let (parent, edge) = node.get_exactly_one_parent().unwrap();
+          let parent = &parent.read_arc().sparse_partitions[si];
+          let edge = &edge.read_arc().sparse_partitions[si];
+
+          let mut seq = parent.seq.sequence.clone();
+
+          // Implant mutations
+          for sub in &edge.subs {
+            seq[sub.pos] = sub.qry;
+          }
+
+          // Implant indels
+          for indel in &edge.indels {
+            if indel.deletion {
+              seq[indel.range.0..indel.range.1].fill(alphabet.gap());
+            } else {
+              seq[indel.range.0..indel.range.1].copy_from_slice(&indel.seq);
+            }
+          }
+
+          seq
+        };
+
+        let node = &mut node.payload.sparse_partitions[si].seq;
+
+        // At the node itself, mask whatever is unknown in the node.
+        for r in &node.unknown {
+          seq[r.0..r.1].fill(alphabet.unknown());
+        }
+
+        for (pos, p) in &node.fitch.variable {
+          seq[*pos] = alphabet.get_code(&p.dis);
+        }
+
+        node.sequence = seq.clone();
+
+        seq
+      })
+      .collect();
+
+    visitor(&node.payload, seq);
+  });
 
   Ok(())
 }

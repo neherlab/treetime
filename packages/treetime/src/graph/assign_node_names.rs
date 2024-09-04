@@ -17,25 +17,25 @@ pub fn assign_node_names<N: GraphNode + Named, E: GraphEdge, D: Sync + Send>(gra
 
   let mut internal_node_counter = 0;
 
-  // graph.iter_depth_first_preorder_forward(
-  //   |GraphNodeForward {
-  //      key,
-  //      mut payload,
-  //      parents,
-  //      is_leaf,
-  //      is_root,
-  //      ..
-  //    }| {
-  //     if payload.name().map_or(true, |name| name.as_ref().is_empty()) {
-  //       let mut name = format!("NODE_{internal_node_counter:07}");
-  //       while names.contains(&name) {
-  //         internal_node_counter += 1;
-  //         name = format!("NODE_{internal_node_counter:07}");
-  //       }
-  //       payload.set_name(Some(&name));
-  //       names.insert(name);
-  //       internal_node_counter += 1;
-  //     }
-  //   },
-  // );
+  graph.iter_depth_first_preorder_forward(
+    |GraphNodeForward {
+       key,
+       mut payload,
+       parents,
+       is_leaf,
+       is_root,
+       ..
+     }| {
+      if payload.name().map_or(true, |name| name.as_ref().is_empty()) {
+        let mut name = format!("NODE_{internal_node_counter:07}");
+        while names.contains(&name) {
+          internal_node_counter += 1;
+          name = format!("NODE_{internal_node_counter:07}");
+        }
+        payload.set_name(Some(&name));
+        names.insert(name);
+        internal_node_counter += 1;
+      }
+    },
+  );
 }

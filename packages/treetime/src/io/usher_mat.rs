@@ -229,22 +229,22 @@ where
   graph.set_data(converter.usher_data_to_graph_data(tree)?);
 
   let mut i = 0;
-  // graph.iter_depth_first_preorder_forward(|mut node| {
-  //   let context = UsherTreeContext {
-  //     node: UsherNodeImpl {
-  //       index: i,
-  //       name: node.payload.name().map(|name| name.as_ref().to_owned()),
-  //       branch_length: 0.0,
-  //       clade_annotations: tree.metadata[i].clade_annotations.clone(),
-  //       mutations: tree.node_mutations[i].mutation.clone(),
-  //     },
-  //     tree,
-  //   };
-  //
-  //   let (graph_node, _) = converter.usher_node_to_graph_components(&context).unwrap();
-  //   *node.payload = graph_node;
-  //   i += 1;
-  // });
+  graph.iter_depth_first_preorder_forward(|mut node| {
+    let context = UsherTreeContext {
+      node: UsherNodeImpl {
+        index: i,
+        name: node.payload.name().map(|name| name.as_ref().to_owned()),
+        branch_length: 0.0,
+        clade_annotations: tree.metadata[i].clade_annotations.clone(),
+        mutations: tree.node_mutations[i].mutation.clone(),
+      },
+      tree,
+    };
+
+    let (graph_node, _) = converter.usher_node_to_graph_components(&context).unwrap();
+    *node.payload = graph_node;
+    i += 1;
+  });
 
   Ok(graph)
 }
@@ -287,19 +287,19 @@ where
   let mut metadata = vec![];
 
   let mut converter = C::new(graph)?;
-  // graph.iter_depth_first_preorder_forward(|node| {
-  //   let edge = node.parents.first().map(|(_, edge)| edge.read_arc());
-  //   let edge = edge.as_deref();
-  //   let node = &node.payload;
-  //
-  //   let (node, mutations, meta) = converter
-  //     .usher_node_from_graph_components(&UsherGraphContext { node, edge, graph })
-  //     .unwrap();
-  //
-  //   node_mutations.push(mutations);
-  //   condensed_nodes.push(node);
-  //   metadata.push(meta);
-  // });
+  graph.iter_depth_first_preorder_forward(|node| {
+    let edge = node.parents.first().map(|(_, edge)| edge.read_arc());
+    let edge = edge.as_deref();
+    let node = &node.payload;
+
+    let (node, mutations, meta) = converter
+      .usher_node_from_graph_components(&UsherGraphContext { node, edge, graph })
+      .unwrap();
+
+    node_mutations.push(mutations);
+    condensed_nodes.push(node);
+    metadata.push(meta);
+  });
 
   let newick = nwk_write_str(graph, &NwkWriteOptions::default())?;
   Ok(UsherTree {

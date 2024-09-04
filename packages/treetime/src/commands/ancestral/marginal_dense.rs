@@ -158,60 +158,60 @@ fn ingroup_profiles_dense(graph: &DenseGraph, partitions: &[PartitionLikelihood]
 }
 
 fn outgroup_profiles_dense(graph: &DenseGraph, dense_partitions: &[PartitionLikelihood]) {
-  // graph.par_iter_breadth_first_forward(|mut node| {
-  //   let name = node
-  //     .payload
-  //     .name()
-  //     .expect("Encountered node without a name")
-  //     .as_ref()
-  //     .to_owned();
-  //
-  //   if node.is_root {
-  //     return GraphTraversalContinuation::Continue;
-  //   }
-  //
-  //   for (si, seq_info) in node.payload.dense_partitions.iter_mut().enumerate() {
-  //     let PartitionLikelihood { gtr, alphabet, length } = &dense_partitions[si];
-  //
-  //     let mut msgs_from_parents = btreemap! {};
-  //     for (parent, edge) in &node.parents {
-  //       let parent = parent.read_arc();
-  //       let edge = edge.read_arc();
-  //
-  //       let exp_qt = gtr.expQt(edge.weight().unwrap_or(0.0)).t().to_owned();
-  //       let parent = &parent.dense_partitions[si];
-  //       let edge = &edge.dense_partitions[si];
-  //       let mut dis = Array2::ones((*length, alphabet.n_canonical()));
-  //       let log_lh = parent.msgs_to_children[&name].log_lh;
-  //       if let Some(transmission) = &edge.transmission {
-  //         for r in transmission {
-  //           dis
-  //             .slice_mut(s![r.0..r.1, ..])
-  //             .assign(&(parent.msgs_to_children[&name].dis.slice(s![r.0..r.1, ..]).dot(&exp_qt)));
-  //         }
-  //       } else {
-  //         dis = &dis * &parent.msgs_to_children[&name].dis.dot(&exp_qt);
-  //       }
-  //       msgs_from_parents.insert(name.clone(), DenseSeqDis { dis, log_lh });
-  //     }
-  //
-  //     msgs_from_parents.insert(o!("children"), seq_info.msg_to_parents.clone()); // HACK
-  //     seq_info.profile = combine_dense_messages(&msgs_from_parents).unwrap();
-  //     seq_info.seq.sequence = assign_sequence(seq_info, alphabet);
-  //     seq_info.msgs_to_children = btreemap![];
-  //     for cname in seq_info.msgs_from_children.keys() {
-  //       let child_msg = &seq_info.msgs_from_children[cname];
-  //       let mut dis = seq_info.profile.dis.clone();
-  //       dis /= &child_msg.dis;
-  //       let log_lh = seq_info.profile.log_lh - child_msg.log_lh;
-  //       seq_info
-  //         .msgs_to_children
-  //         .insert(cname.clone(), DenseSeqDis { dis, log_lh });
-  //     }
-  //   }
-  //
-  //   GraphTraversalContinuation::Continue
-  // });
+  graph.par_iter_breadth_first_forward(|mut node| {
+    let name = node
+      .payload
+      .name()
+      .expect("Encountered node without a name")
+      .as_ref()
+      .to_owned();
+
+    if node.is_root {
+      return GraphTraversalContinuation::Continue;
+    }
+
+    for (si, seq_info) in node.payload.dense_partitions.iter_mut().enumerate() {
+      let PartitionLikelihood { gtr, alphabet, length } = &dense_partitions[si];
+
+      let mut msgs_from_parents = btreemap! {};
+      for (parent, edge) in &node.parents {
+        let parent = parent.read_arc();
+        let edge = edge.read_arc();
+
+        let exp_qt = gtr.expQt(edge.weight().unwrap_or(0.0)).t().to_owned();
+        let parent = &parent.dense_partitions[si];
+        let edge = &edge.dense_partitions[si];
+        let mut dis = Array2::ones((*length, alphabet.n_canonical()));
+        let log_lh = parent.msgs_to_children[&name].log_lh;
+        if let Some(transmission) = &edge.transmission {
+          for r in transmission {
+            dis
+              .slice_mut(s![r.0..r.1, ..])
+              .assign(&(parent.msgs_to_children[&name].dis.slice(s![r.0..r.1, ..]).dot(&exp_qt)));
+          }
+        } else {
+          dis = &dis * &parent.msgs_to_children[&name].dis.dot(&exp_qt);
+        }
+        msgs_from_parents.insert(name.clone(), DenseSeqDis { dis, log_lh });
+      }
+
+      msgs_from_parents.insert(o!("children"), seq_info.msg_to_parents.clone()); // HACK
+      seq_info.profile = combine_dense_messages(&msgs_from_parents).unwrap();
+      seq_info.seq.sequence = assign_sequence(seq_info, alphabet);
+      seq_info.msgs_to_children = btreemap![];
+      for cname in seq_info.msgs_from_children.keys() {
+        let child_msg = &seq_info.msgs_from_children[cname];
+        let mut dis = seq_info.profile.dis.clone();
+        dis /= &child_msg.dis;
+        let log_lh = seq_info.profile.log_lh - child_msg.log_lh;
+        seq_info
+          .msgs_to_children
+          .insert(cname.clone(), DenseSeqDis { dis, log_lh });
+      }
+    }
+
+    GraphTraversalContinuation::Continue
+  });
 }
 
 fn calculate_root_state_dense(graph: &DenseGraph, partitions: &[PartitionLikelihood]) -> f64 {
@@ -264,20 +264,20 @@ pub fn ancestral_reconstruction_marginal_dense(
   include_leaves: bool,
   mut visitor: impl FnMut(&DenseNode, Vec<char>),
 ) -> Result<(), Report> {
-  // graph.iter_depth_first_preorder_forward(|node| {
-  //   if !include_leaves && node.is_leaf {
-  //     return;
-  //   }
-  //
-  //   let seq = node
-  //     .payload
-  //     .dense_partitions
-  //     .iter()
-  //     .flat_map(|p| p.seq.sequence.iter().copied())
-  //     .collect();
-  //
-  //   visitor(&node.payload, seq);
-  // });
+  graph.iter_depth_first_preorder_forward(|node| {
+    if !include_leaves && node.is_leaf {
+      return;
+    }
+
+    let seq = node
+      .payload
+      .dense_partitions
+      .iter()
+      .flat_map(|p| p.seq.sequence.iter().copied())
+      .collect();
+
+    visitor(&node.payload, seq);
+  });
 
   Ok(())
 }
