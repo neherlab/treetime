@@ -31,5 +31,8 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 treetime = { path = "../treetime" }
 
+[features]
+"deadlock_detection" = []
+
 [lints]
 workspace = true

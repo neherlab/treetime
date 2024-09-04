@@ -1,5 +1,3 @@
-use ndarray_linalg::Transpose::No;
-
 pub fn enable_deadlock_detection() {
   #[cfg(any(debug_assertions, test, feature = "deadlock_detection"))]
   {
