@@ -1,5 +1,5 @@
 use crate::make_error;
-use chrono::{DateTime, Datelike, FixedOffset, NaiveDate, Utc};
+use chrono::{DateTime, Datelike, FixedOffset, Utc};
 use eyre::Report;
 use std::time::{Duration, UNIX_EPOCH};
 use time::util::days_in_year;
