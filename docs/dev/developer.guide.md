@@ -87,18 +87,20 @@ will automatically install Rust version required by the project. This may cause 
 
 ### Testing
 
-Run all test with:
+It is recommended to use nextest test runner. Install it first by following the instructions in the docs: https://nexte.st/docs
+
+Run all tests with:
 
 ```bash
-cargo test
+cargo nextest run
 ```
 
 Add `--no-fail-fast` flag to keep going even if there are failures.
 
-A subset of tests can be ran by providing a regex matching full test name. For example
+A subset of tests can be run by providing a regex matching full test name. For example
 
 ```bash
-cargo test gtr
+cargo nextest run gtr
 ```
 
 See also: [cargo-test](https://doc.rust-lang.org/cargo/commands/cargo-test.html)
@@ -122,6 +124,12 @@ cargo fmt --all
 ```
 
 Rustfmt is configured in `rustfmt.toml`.
+
+### Deadlock detection
+
+In debug mode and in tests, we have [deadlock detection mechanism from `parking_lot`] crate enabled. A dedicated thread detects and prints backtraces of other threads if they deadlock. It does not quite work in tests - they just hang, but works well in CLI. In release mode it can be enabled by enabling `deadlock_detection` Cargo feature: add `--feature=deadlock_detection` somewhere in  the beginning of the `cargo run` or `cargo build` command.
+
+We have [deadlock detection mechanism from `parking_lot` crate enabled](https://docs.rs/parking_lot/latest/parking_lot/deadlock/index.html). A dedicated thread detects and prints backtraces of other threads if they deadlock. It does not quite yet work in tests - they just hang, but works well in CLI programs. In debug mode and in tests deadlock detection is enabled by default. In release mode it can be enabled by enabling `deadlock_detection` Cargo feature: add `--feature=deadlock_detection` somewhere in  the beginning of the `cargo run` or `cargo build` command.
 
 ## Maintenance
 
