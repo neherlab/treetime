@@ -84,10 +84,8 @@ pub fn timestamp_format_safe(timestamp: i64) -> String {
 }
 
 pub fn date_to_year_fraction(date: &DateTime<Utc>) -> f64 {
-  let date = date.naive_utc().date();
-  let year_start = NaiveDate::from_ymd(date.year(), 1, 1);
-  let days_from_year_start = date.signed_duration_since(year_start).num_days();
-  let days_in_year = days_in_year(date.year());
-  let frac = days_from_year_start as f64 / days_in_year as f64;
-  date.year() as f64 + frac
+  let year = date.year();
+  assert!(year >= 1); // TODO: implement BC dates?
+  let frac = (date.ordinal() as f64 - 0.5) / days_in_year(year) as f64;
+  year as f64 + frac
 }
