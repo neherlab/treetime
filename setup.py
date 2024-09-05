@@ -24,6 +24,7 @@ setup(
         keywords = "Time-stamped phylogenies, phylogeography, virus evolution",
         url = "https://github.com/neherlab/treetime",
         packages=['treetime'],
+        python_requires=">=3.7",
         install_requires = [
             'biopython>=1.67,!=1.77,!=1.78',
             'numpy>=1.10.4',
@@ -31,7 +32,7 @@ setup(
             'scipy>=0.16.1'
         ],
         extras_require = {
-            ':python_version >= "3.6"':['matplotlib>=2.0'],
+            ':python_version >= "3.7"':['matplotlib>=2.0'],
         },
         classifiers=[
             "Development Status :: 5 - Production/Stable",
