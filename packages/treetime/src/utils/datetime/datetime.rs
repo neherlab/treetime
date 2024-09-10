@@ -1,44 +1,33 @@
-use crate::make_error;
-use chrono::{DateTime, Datelike, FixedOffset, Utc};
-use eyre::Report;
+use chrono::{DateTime, FixedOffset, TimeZone, Utc};
+use eyre::{Report, WrapErr};
 use std::time::{Duration, UNIX_EPOCH};
-use time::util::days_in_year;
+use time::util::days_in_year_month;
+use time::Month;
 
 pub fn date_now() -> DateTime<Utc> {
   Utc::now()
 }
 
-pub fn date_from_iso(iso: &str) -> Result<DateTime<Utc>, Report> {
-  let parsed = DateTime::<FixedOffset>::parse_from_rfc3339(iso)?;
+// Parse RFC 3339 and ISO 8601 datetime string (1996-12-19T16:39:57-08:00)
+pub fn date_from_iso(date_str: impl AsRef<str>) -> Result<DateTime<Utc>, Report> {
+  let date_str = date_str.as_ref();
+  let parsed = DateTime::<FixedOffset>::parse_from_rfc3339(date_str)
+    .wrap_err_with(|| format!("When parsing datetime '{date_str}' using RFC 3339 (ISO 8601) format"))?;
   let utc: DateTime<Utc> = DateTime::from(parsed);
   Ok(utc)
 }
 
-pub fn date_from_rfc2822(date_str: &str) -> Result<DateTime<Utc>, Report> {
-  let parsed = DateTime::<FixedOffset>::parse_from_rfc2822(date_str)?;
-  let utc: DateTime<Utc> = DateTime::from(parsed);
-  Ok(utc)
+pub fn iso(date_str: impl AsRef<str>) -> DateTime<Utc> {
+  date_from_iso(date_str).unwrap()
 }
 
-pub fn date_from_format(format: &str, date_str: &str) -> Result<DateTime<Utc>, Report> {
-  let parsed = DateTime::<FixedOffset>::parse_from_str(format, date_str)?;
+// Parse RFC 2822 datetime string (Tue, 1 Jul 2003 10:52:37 +0200)
+pub fn date_from_rfc2822(date_str: impl AsRef<str>) -> Result<DateTime<Utc>, Report> {
+  let date_str = date_str.as_ref();
+  let parsed = DateTime::<FixedOffset>::parse_from_rfc2822(date_str)
+    .wrap_err_with(|| format!("When parsing datetime '{date_str}' using RFC 2822 format"))?;
   let utc: DateTime<Utc> = DateTime::from(parsed);
   Ok(utc)
-}
-
-pub fn date_from_formats(date_str: &str) -> Result<DateTime<Utc>, Report> {
-  const DATE_FORMATS: &[&str] = &[
-    "%Y-%m-%d", // 2022-07-23
-    "%Y/%m/%d", // 2022/07/23
-    "%Y-%m",    // 2022-07
-    "%Y/%m",    // 2022/07
-  ];
-  for format in DATE_FORMATS {
-    if let Ok(date) = date_from_format(format, date_str) {
-      return Ok(date);
-    }
-  }
-  make_error!("Unknown date format: '{date_str}'")
 }
 
 pub fn date_to_timestamp(datetime: &DateTime<Utc>) -> i64 {
@@ -83,9 +72,12 @@ pub fn timestamp_format_safe(timestamp: i64) -> String {
   date_format_safe(&timestamp_to_date(timestamp))
 }
 
-pub fn date_to_year_fraction(date: &DateTime<Utc>) -> f64 {
-  let year = date.year();
-  assert!(year >= 1); // TODO: implement BC dates?
-  let frac = (date.ordinal() as f64 - 0.5) / days_in_year(year) as f64;
-  year as f64 + frac
+pub fn ymd(year: i32, month: u32, day: u32) -> DateTime<Utc> {
+  Utc.ymd(year, month, day).and_hms(0, 0, 0)
+}
+
+pub fn days_in_month(year: u32, month: u32) -> Result<u32, Report> {
+  let month_obj = Month::try_from(month as u8)?;
+  let days = days_in_year_month(year as i32, month_obj) as u32;
+  Ok(days)
 }
