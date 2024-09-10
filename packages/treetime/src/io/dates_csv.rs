@@ -1,17 +1,17 @@
 use crate::io::csv::{get_col_name, guess_csv_delimiter};
 use crate::io::file::open_file_or_stdin;
-use crate::utils::datetime::{date_from_formats, date_from_iso, date_from_rfc2822, date_to_year_fraction};
-use crate::{make_error, make_internal_report, vec_of_owned};
+use crate::utils::datetime::options::DateParserOptions;
+use crate::utils::datetime::parse_date::{parse_date, parse_date_range};
+use crate::utils::datetime::parse_uncertain_date::parse_date_uncertain;
+use crate::utils::datetime::year_frac::{date_range_to_year_fraction_range, date_to_year_fraction};
+use crate::{make_internal_report, vec_of_owned};
 use csv::{ReaderBuilder as CsvReaderBuilder, StringRecord, Trim};
 use eyre::{eyre, Report, WrapErr};
 use itertools::Itertools;
-use lazy_static::lazy_static;
-use regex::Regex;
 use std::collections::BTreeMap;
 use std::path::Path;
-use std::sync::LazyLock;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum DateOrRange {
   YearFraction(f64),
   YearFractionRange((f64, f64)),
@@ -65,6 +65,7 @@ pub fn read_dates(
     .map(|(index, record)| {
       let record = record?;
       convert_record(index, &record, name_column_idx, date_column_idx)
+        .wrap_err_with(|| format!("When reading row {index}, column '{date_column_idx}'"))
     })
     .collect::<Result<DatesMap, Report>>()
 }
@@ -84,81 +85,69 @@ pub fn convert_record(
     .get(date_column_idx)
     .ok_or_else(|| make_internal_report!("Row '{index}': Unable to get column with index '{date_column_idx}'"))?;
 
-  let date = parse_date(date).wrap_err_with(|| format!("Row '{index}': When parsing date column"))?;
+  let date = read_date(date, &DateParserOptions::default())?;
 
   Ok((name, date))
 }
 
-pub fn parse_date(date_str: &str) -> Result<Option<DateOrRange>, Report> {
-  let date_str = &date_str.trim_matches(|c: char| !c.is_ascii() || c.is_whitespace());
-
-  if is_nil(date_str) {
+pub fn read_date(date_str: &str, options: &DateParserOptions) -> Result<Option<DateOrRange>, Report> {
+  if let Ok(date) = parse_date(date_str, options) {
+    Ok(Some(DateOrRange::YearFraction(date_to_year_fraction(&date))))
+  } else if let Ok(date_range) = parse_date_uncertain(date_str, options) {
+    let yf_range = date_range_to_year_fraction_range(&date_range);
+    Ok(Some(DateOrRange::YearFractionRange(yf_range)))
+  } else if let Ok(date_range) = parse_date_range(date_str, options) {
+    let yf_range = date_range_to_year_fraction_range(&date_range);
+    Ok(Some(DateOrRange::YearFractionRange(yf_range)))
+  } else {
     Ok(None)
   }
-  // Try to parse as year fraction: `2022.7`
-  else if let Ok(date) = date_str.parse::<f64>() {
-    if date.is_finite() {
-      Ok(Some(DateOrRange::YearFraction(date)))
-    } else {
-      Ok(None)
-    }
-  }
-  // Try to parse as year fraction range: `[2022.6:2022.7]`
-  else if let Ok(range) = parse_date_range(date_str) {
-    Ok(Some(DateOrRange::YearFractionRange(range)))
-  }
-  // Try to parse as ISO 8601 (RFC 3339) date: `2022-07-22T16:40:59Z`
-  else if let Ok(date) = date_from_iso(date_str) {
-    Ok(Some(DateOrRange::YearFraction(date_to_year_fraction(&date))))
-  }
-  // Try to parse as RFC 2822 date: `Wed, 22 Jul 2022 18:48:09 GMT`
-  else if let Ok(date) = date_from_rfc2822(date_str) {
-    Ok(Some(DateOrRange::YearFraction(date_to_year_fraction(&date))))
-  }
-  // Try to parse as various date formats
-  else if let Ok(date) = date_from_formats(date_str) {
-    Ok(Some(DateOrRange::YearFraction(date_to_year_fraction(&date))))
-  } else {
-    // Give up
-    make_error!("Unknown date format: {date_str}")
-  }
 }
 
-fn is_nil(input: &str) -> bool {
-  const NON_VALUES: &[&str] = &[
-    "na",
-    "n/a",
-    "nan",
-    "null",
-    "nil",
-    "none",
-    "empty",
-    "missing",
-    "undefined",
-  ];
-  static REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^(\?+|-+)$").unwrap());
-  let input_lower = input.to_lowercase();
-  input.is_empty() || NON_VALUES.contains(&input_lower.as_str()) || REGEX.is_match(&input_lower)
-}
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use crate::pretty_assert_ulps_eq;
+  use eyre::Report;
+  use pretty_assertions::assert_eq;
+  use rstest::rstest;
 
-pub fn parse_date_range(date_str: &str) -> Result<(f64, f64), Report> {
-  const REGEX_STR: &str = r"\[(?P<begin>\d{4}\.\d+):(?P<end>\d{4}\.\d+)]";
-  lazy_static! {
-    static ref RE: Regex = Regex::new(REGEX_STR)
-      .wrap_err_with(|| format!("When compiling regular expression '{REGEX_STR}'"))
-      .unwrap();
+  #[rustfmt::skip]
+  #[rstest]
+  #[case("")]
+  #[case("   ")]
+  #[case("NaN")]
+  #[case("null")]
+  #[case("XXXX-XX-XX")]
+  #[case("XXXX/XX/XX")]
+  #[case("XXXX.XX.XX")]
+  #[trace]
+  fn test_date_read_empty(#[case] input: &str) -> Result<(), Report>  {
+    let actual = read_date(input, &DateParserOptions::default())?;
+    assert_eq!(None, actual);
+    Ok(())
   }
 
-  if let Some(captures) = RE.captures(date_str) {
-    match (captures.name("begin"), captures.name("end")) {
-      (Some(begin), Some(end)) => {
-        let begin = begin.as_str().parse::<f64>()?;
-        let end = end.as_str().parse::<f64>()?;
-        Ok((begin, end))
-      }
-      _ => make_error!("Unable to parse date range: '{date_str}'"),
-    }
-  } else {
-    make_error!("Unable to parse date range: '{date_str}'")
+  #[rustfmt::skip]
+  #[rstest]
+  #[case("2024-07-23",   2024.5587431693)]
+  #[case("2024/07/23",   2024.5587431693)]
+  #[case("2024.07.23",   2024.5587431693)]
+  //
+  #[case("2024-07-XX",   2024.5396174863)]
+  #[case("2024/07/XX",   2024.5396174863)]
+  #[case("2024.07.XX",   2024.5396174863)]
+  //
+  #[case("2024-XX-XX",   2024.5000000000)]
+  #[case("2024/XX/XX",   2024.5000000000)]
+  #[case("2024.XX.XX",   2024.5000000000)]
+  //
+  #[case("2024.558743",  2024.5587431693)]
+  #[case("20240723",     2024.5587431693)]
+  #[trace]
+  fn test_date_read_ok(#[case] input: &str, #[case] expected: f64) -> Result<(), Report>  {
+    let actual = read_date(input, &DateParserOptions::default())?.unwrap().mean();
+    pretty_assert_ulps_eq!(expected, actual, epsilon = 1e-8);
+    Ok(())
   }
 }

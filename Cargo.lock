@@ -399,8 +399,19 @@ dependencies = [
  "js-sys",
  "num-integer",
  "num-traits",
+ "serde",
+ "time 0.1.45",
  "wasm-bindgen",
  "winapi",
+]
+
+[[package]]
+name = "chronoutil"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "43a58c924bb772aa201da3acf5308c46b60275c64e6d3bc89c23dd63d71e83fd"
+dependencies = [
+ "chrono",
 ]
 
 [[package]]
@@ -3150,7 +3161,7 @@ dependencies = [
  "serde",
  "serde_json",
  "slog",
- "time",
+ "time 0.3.13",
 ]
 
 [[package]]
@@ -3163,7 +3174,7 @@ dependencies = [
  "slog",
  "term",
  "thread_local",
- "time",
+ "time 0.3.13",
 ]
 
 [[package]]
@@ -3454,6 +3465,17 @@ dependencies = [
 
 [[package]]
 name = "time"
+version = "0.1.45"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1b797afad3f312d1c66a56d11d0316f916356d11bd158fbc6ca6389ff6bf805a"
+dependencies = [
+ "libc",
+ "wasi 0.10.0+wasi-snapshot-preview1",
+ "winapi",
+]
+
+[[package]]
+name = "time"
 version = "0.3.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "db76ff9fa4b1458b3c7f077f3ff9887394058460d21e634355b273aaf11eea45"
@@ -3557,6 +3579,7 @@ dependencies = [
  "bytes",
  "bzip2",
  "chrono",
+ "chronoutil",
  "clap 3.2.16",
  "clap-verbosity-flag",
  "clap_complete",
@@ -3619,7 +3642,7 @@ dependencies = [
  "strum 0.24.1",
  "strum_macros 0.24.3",
  "textplots",
- "time",
+ "time 0.3.13",
  "traversal",
  "usher-mat-utils",
  "xz2",
@@ -3806,6 +3829,12 @@ name = "wasi"
 version = "0.9.0+wasi-snapshot-preview1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cccddf32554fecc6acb585f82a32a72e28b48f8c4c1883ddfeeeaa96f7d8e519"
+
+[[package]]
+name = "wasi"
+version = "0.10.0+wasi-snapshot-preview1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1a143597ca7c7793eff794def352d41792a93c481eb1042423ff7ff72ba2c31f"
 
 [[package]]
 name = "wasi"

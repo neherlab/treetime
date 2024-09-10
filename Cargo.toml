@@ -40,7 +40,8 @@ bio-types = { version = "=1.0.1", features = ["phylogeny"] }
 blas-src = { version = "=0.10.0", features = ["openblas-src"] }
 bytes = { version = "1.6.1", features = ["serde"] }
 bzip2 = "=0.4.3"
-chrono = { version = "=0.4.21", default-features = false, features = ["clock", "std"] }
+chrono = { version = "=0.4.21", default-features = false, features = ["clock", "alloc", "std", "serde", "time"] }
+chronoutil = "=0.2.3"
 clap = { version = "=3.2.16", features = ["derive"] }
 clap-verbosity-flag = "=1.0.1"
 clap_complete = "=3.2.3"

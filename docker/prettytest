@@ -4,16 +4,21 @@ import re
 import sys
 
 patterns = [
-  r'\n.*PASS.*\n\n.*STDOUT.*---.*\n\nrunning \d+ test\ntest .* ... ok\n\ntest result: (ok|FAILED). \d+ passed; \d+ failed; \d+ ignored; \d+ measured; \d+ filtered out; finished in .*\n\n',
+  r'\n.*?PASS.*?\n\n.*STDOUT.*?---.*?\n\nrunning \d+ tests?(?s:.*?)test .*? ... ok\n\ntest result: (ok|FAILED). \d+ passed; \d+ failed; \d+ ignored; \d+ measured; \d+ filtered out; finished in .*?\n\n(?!--- STDERR)',
 
   r'test .* \.\.\. FAILED\n\nfailures:\n\nfailures:\n.*\n\ntest result: FAILED. \d+ passed; \d+ failed; \d+ ignored; \d+ measured; \d+ filtered out; finished in .*\n',
 
-  r'\n.*STDOUT.*\n\nrunning \d+ tests?\n',
+  r'\n-------------- TEST START --------------\n',
+
+  r'\n.*STDOUT.*?\n\nrunning \d+ test'
 ]
 
 s = sys.stdin.read()
 
 for pattern in patterns:
   s = re.sub(pattern, '', s, flags=re.MULTILINE)
+
+text = '--- PARAMS:\n'
+s = re.sub(r'\n------------ TEST ARGUMENTS ------------\n', f"\x1b[1;38;5;100m{text}\x1b[0m", s)
 
 sys.stdout.write(s)

@@ -26,6 +26,7 @@ bio = { workspace = true }
 bio-types = { workspace = true }
 bytes = { workspace = true }
 chrono = { workspace = true }
+chronoutil = { workspace = true }
 clap = { workspace = true }
 clap-verbosity-flag = { workspace = true }
 clap_complete = { workspace = true }
