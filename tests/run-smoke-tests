@@ -48,7 +48,7 @@ run_clock() {
   echo -e "\n\nRunning \e[38;5;166m$cmd\e[0m for \e[38;5;25m$name\e[0m\n"
 
   set -x
-  ${TREETIME_BIN} clock \
+  ${TREETIME_BIN} $cmd \
     --tree="$in_dir/tree.nwk" \
     --dates="$in_dir/metadata.tsv" \
     --outdir="$out_dir" \
@@ -57,3 +57,52 @@ run_clock() {
 export -f run_clock
 
 parallel --jobs=+0 --tty --group --colsep ' ' run_clock ::: "${!clock_extra_args[@]}" :::+ "${clock_extra_args[@]}"
+
+
+
+
+
+declare -A ancestral_extra_args=(
+  ["ebola"             ]=""
+  ["flu/h3n2/20"       ]=""
+  ["flu/h3n2/200"      ]=""
+  ["flu/h3n2/500"      ]=""
+  ["lassa/L/50"        ]=""
+  ["lassa/L/200"       ]=""
+  ["lassa/L/500"       ]=""
+#  ["mpox/clade-ii/500" ]=""
+#  ["mpox/clade-ii/1000"]=""
+#  ["mpox/clade-ii/2000"]=""
+  ["rsv/a/500"         ]=""
+  ["rsv/a/1000"        ]=""
+#  ["rsv/a/2000"        ]=""
+  ["dengue/500"        ]=""
+#  ["dengue/1000"       ]=""
+#  ["dengue/2000"       ]=""
+  ["zika"              ]=""
+)
+
+run_ancestral() {
+  local cmd="ancestral"
+
+  local name="$1"
+  shift
+  local extra_args="$@"
+
+  local in_dir="$DATA_DIR/$name"
+  local out_dir="$RESULTS_DIR/$cmd/$name"
+
+  echo -e "\n\nRunning \e[38;5;166m$cmd\e[0m for \e[38;5;25m$name\e[0m\n"
+
+  set -x
+  ${TREETIME_BIN} $cmd \
+    --model="jc69" \
+    --method-anc="maximum-likelihood-marginal" \
+    --tree="$in_dir/tree.nwk" \
+    --outdir="$out_dir" \
+    "$in_dir/aln.fasta.xz" \
+    $extra_args
+}
+export -f run_ancestral
+
+parallel --jobs=+0 --tty --group --colsep ' ' run_ancestral ::: "${!ancestral_extra_args[@]}" :::+ "${ancestral_extra_args[@]}"
