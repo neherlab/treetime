@@ -1,71 +1,59 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2043
+# shellcheck disable=SC2043,SC2068,SC2086,SC2124
 
 set -euo pipefail
 trap "exit 0" INT
 
+export CLICOLOR_FORCE=1
+
 THIS_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")";  pwd)
 export THIS_DIR
 
-TREETIME_BIN="${1:? "Usage: ${0} <path_to_treetime_executable>"}"
-RESULTS_DIR="${THIS_DIR}/../tmp/smoke-tests"
 
-for organism in h3n2_na_20 h3n2_na_200 h3n2_na_500; do
-
-  printf "\n\n%s\n\n" "----------------- ${organism}: timetree  -------------------"
-  ${TREETIME_BIN} timetree --verbose \
-    "data/${organism}/${organism}.fasta.zst" \
-    --tree="data/${organism}/${organism}.nwk" \
-    --dates="data/${organism}/${organism}.metadata.csv" \
-    --outdir="${RESULTS_DIR}/timetree/${organism}" \
-    --confidence \
-    --covariation \
-    --jobs=1 \
-    --seed=999999
-
-  printf "\n\n%s\n\n" "----------------- ${organism}: ancestral -------------------"
-  ${TREETIME_BIN} ancestral --verbose \
-    "data/${organism}/${organism}.fasta.zst" \
-    --tree="data/${organism}/${organism}.nwk" \
-    --outdir="${RESULTS_DIR}/ancestral/${organism}" \
-    --gtr="jc69" \
-    --jobs=1 \
-    --seed=999999
-
-  printf "\n\n%s\n\n" "----------------- ${organism}: clock     -------------------"
-  ${TREETIME_BIN} clock --verbose \
-    --tree="data/${organism}/${organism}.nwk" \
-    --dates="data/${organism}/${organism}.metadata.csv" \
-    --outdir="${RESULTS_DIR}/clock/${organism}" \
-    --sequence-length=1400 \
-    --clock-filter=0 \
-    --jobs=1 \
-    --seed=999999 \
-
-  printf "\n\n%s\n\n" "----------------- ${organism}: homoplasy -------------------"
-  ${TREETIME_BIN} homoplasy --verbose \
-    "data/${organism}/${organism}.fasta.zst" \
-    --tree="data/${organism}/${organism}.nwk" \
-    --outdir="${RESULTS_DIR}/homoplasy/${organism}" \
-    --gtr="jc69" \
-    --jobs=1 \
-    --seed=999999 \
-
-done
+export TREETIME_BIN="${1:? "Usage: ${0} <path_to_treetime_executable>"}"
+export DATA_DIR="${THIS_DIR}/../data"
+export RESULTS_DIR="${THIS_DIR}/../tmp/smoke-tests"
 
 
+declare -A clock_extra_args=(
+  ["ebola"             ]=""
+  ["flu/h3n2/20"       ]="--sequence-length=1400"
+  ["flu/h3n2/200"      ]="--sequence-length=1400"
+  ["flu/h3n2/500"      ]="--sequence-length=1400"
+  ["lassa/L/50"        ]=""
+  ["lassa/L/200"       ]=""
+  ["lassa/L/500"       ]=""
+  ["mpox/clade-ii/500" ]=""
+  ["mpox/clade-ii/1000"]=""
+  ["mpox/clade-ii/2000"]=""
+  ["rsv/a/500"         ]=""
+  ["rsv/a/1000"        ]=""
+  ["rsv/a/2000"        ]=""
+#  ["dengue/500"        ]=""
+#  ["dengue/1000"       ]=""
+#  ["dengue/2000"       ]=""
+#  ["zika"              ]=""
+)
 
-for organism in zika; do
+run_clock() {
+  local cmd="clock"
 
-printf "\n\n%s\n\n" "----------------- ${organism}: mugration -------------------"
+  local name="$1"
+  shift
+  local extra_args="$@"
 
-${TREETIME_BIN} mugration --verbose \
-  --tree="data/${organism}/${organism}.nwk" \
-  --states="data/${organism}/${organism}.metadata.csv" \
-  --weights="data/${organism}/${organism}.country_weights.csv" \
-  --outdir="${RESULTS_DIR}/mugration/${organism}" \
-  --attribute="country" \
-  --jobs=1 \
-  --seed=999999
+  local in_dir="$DATA_DIR/$name"
+  local out_dir="$RESULTS_DIR/$name"
 
-done
+  echo -e "\n\nRunning \e[38;5;166m$cmd\e[0m for \e[38;5;25m$name\e[0m\n"
+
+  set -x
+  ${TREETIME_BIN} clock \
+    --tree="$in_dir/tree.nwk" \
+    --dates="$in_dir/metadata.tsv" \
+    --outdir="$out_dir" \
+    $extra_args
+}
+export -f run_clock
+
+parallel --jobs=+0 --tty --group --colsep ' ' run_clock ::: "${!clock_extra_args[@]}" :::+ "${clock_extra_args[@]}"
