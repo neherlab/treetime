@@ -43,7 +43,7 @@ run_clock() {
   local extra_args="$@"
 
   local in_dir="$DATA_DIR/$name"
-  local out_dir="$RESULTS_DIR/$name"
+  local out_dir="$RESULTS_DIR/$cmd/$name"
 
   echo -e "\n\nRunning \e[38;5;166m$cmd\e[0m for \e[38;5;25m$name\e[0m\n"
 
