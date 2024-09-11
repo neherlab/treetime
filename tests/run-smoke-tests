@@ -61,9 +61,9 @@ ANCESTRAL_BATCH_RUNS = [
 # fmt: off @formatter:off
 CLOCK_BATCH_RUNS = [
   # data subdirectory             # output subdirectory       # additional args (appended to the batch args)
-  ("dengue/500",                  "dengue/500",               ""),
-  # ("dengue/1000",                 "dengue/1000",              ""),
-  # ("dengue/2000",                 "dengue/2000",              ""),
+  ("dengue/500",                  "dengue/500",               "--name-column=genbank_accession"),
+  # ("dengue/1000",                 "dengue/1000",              "--name-column=genbank_accession"),
+  # ("dengue/2000",                 "dengue/2000",              "--name-column=genbank_accession"),
   ("ebola",                       "ebola",                    ""),
   ("flu/h3n2/20",                 "flu/h3n2/20",              "--sequence-length=1400"),
   ("flu/h3n2/200",                "flu/h3n2/200",             "--sequence-length=1400"),
