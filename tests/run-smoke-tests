@@ -1,18 +1,25 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2043,SC2068,SC2086,SC2124
+# shellcheck disable=SC2043,SC2068,SC2086,SC2124,SC2155
 
 set -euo pipefail
 trap "exit 0" INT
 
+normpath() {
+  readlink -m "$1"
+}
+
+export THIS_DIR=$(normpath "$(cd "$(dirname "${BASH_SOURCE[0]}")";  pwd)")
+export PROJECT_ROOT=$(normpath "${THIS_DIR}/..")
+
+relpath() {
+  realpath --relative-to="$(normpath "${PROJECT_ROOT}")" "$(normpath $1)"
+}
+
 export CLICOLOR_FORCE=1
 
-THIS_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")";  pwd)
-export THIS_DIR
-
-
-export TREETIME_BIN="${1:? "Usage: ${0} <path_to_treetime_executable>"}"
-export DATA_DIR="${THIS_DIR}/../data"
-export RESULTS_DIR="${THIS_DIR}/../tmp/smoke-tests"
+export TREETIME_BIN="$(normpath ${1:? "Usage: ${0} <path_to_treetime_executable>"})"
+export DATA_DIR="$(relpath ${PROJECT_ROOT}/data)"
+export RESULTS_DIR="$(relpath ${PROJECT_ROOT}/tmp/smoke-tests)"
 
 
 declare -A clock_extra_args=(
