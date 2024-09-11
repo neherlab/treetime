@@ -184,10 +184,10 @@ def run_ancestral(method: str, seq_mode: Optional[str], name: str, out: str, ext
 
   cmd = f"""
   {TREETIME_BIN} ancestral
-  --tree={DATA_DIR}/{name}/tree.nwk
   --method-anc={method}
-  --outdir={RESULTS_DIR}/ancestral/{method}/{out}
   {dense}
+  --tree={DATA_DIR}/{name}/tree.nwk
+  --outdir={RESULTS_DIR}/ancestral/{method}/{out}
   {DATA_DIR}/{name}/aln.fasta.xz
   {extra_args}
   """
