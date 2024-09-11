@@ -145,11 +145,11 @@ where
   E: GraphEdge + EdgeToNwk + Serialize,
   D: Send + Sync + Default + Serialize,
 {
-  json_write_file(
-    outdir.as_ref().join("annotated_tree.graph.json"),
-    &graph,
-    JsonPretty(true),
-  )?;
+  // json_write_file(
+  //   outdir.as_ref().join("annotated_tree.graph.json"),
+  //   &graph,
+  //   JsonPretty(true),
+  // )?;
 
   nwk_write_file(
     outdir.as_ref().join("annotated_tree.nwk"),
