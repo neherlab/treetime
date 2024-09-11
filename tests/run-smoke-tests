@@ -101,6 +101,26 @@ def make_additional_commands(exe, data_dir, out_dir):
   # fmt: on @formatter:on
 
 
+def blue(text):
+  return f"\033[38;5;32m{text}\033[0m"
+
+
+def red(text):
+  return f"\033[38;5;203m{text}\033[0m"
+
+
+def orange(text):
+  return f"\033[38;5;166m{text}\033[0m"
+
+
+def green(text):
+  return f"\033[38;5;113m{text}\033[0m"
+
+
+def grey(text):
+  return f"\033[38;5;244m{text}\033[0m"
+
+
 def run_cmd(name: str, cmd: str):
   output = []
   code = 0
@@ -114,6 +134,7 @@ def run_cmd(name: str, cmd: str):
       env={**os.environ, 'CLICOLOR_FORCE': '1'}
     )
     output.append(result.stderr or "")
+    code = result.returncode
   except subprocess.CalledProcessError as e:
     output.append(e.output)
     code = e.returncode
@@ -127,17 +148,14 @@ def clean_cmd(cmd: str) -> str:
 def run_batch_cmd(name: str, cmd_name: str, cmd: str):
   cmd = clean_cmd(cmd)
   output, code = run_cmd(name, cmd)
-  output = [f"⏩ Running \033[38;5;166m{cmd_name}\033[0m for \033[38;5;27m{name}\033[0m\n",
-            f"\033[90m+{cmd}\033[0m"] + output
-  print("\n".join(output))
+  print("\n".join([f"⏩ Running {orange(cmd_name)} for {blue(name)}\n", grey(f"+{cmd}")] + output))
   return code
 
 
 def run_additional_cmd(name, cmd):
   cmd = clean_cmd(cmd)
   output, code = run_cmd(name, cmd)
-  output = [f"⏩ Running \033[38;5;166m{name}\033[0m\n", f"\033[90m+{cmd}\033[0m"] + output
-  print("\n".join(output))
+  print("\n".join([f"⏩ Running {orange(name)}\n", grey(f"+{cmd}")] + output))
   return code
 
 
@@ -168,6 +186,22 @@ def init_worker():
   signal(SIGINT, SIG_IGN)
 
 
+def print_summary(ret_codes):
+  n = len(ret_codes)
+  n_ok = ret_codes.count(0)
+  n_err = n - n_ok
+
+  if n > 0:
+    f_color = red if n_err > 0 else lambda x: x
+    print("\n".join([
+      "", blue(f"Total tests: {n}"), green(f"  Succeeded: {n_ok}"), f_color(f"  Failed:    {n_err}"), ""
+    ]))
+    sys.exit(0 if n_err == 0 else 1)
+  else:
+    print("No tests found")
+    sys.exit(1)
+
+
 if __name__ == "__main__":
   if len(sys.argv) < 2:
     sys.exit(f"Usage: {sys.argv[0]} <path_to_treetime_executable>")
@@ -192,12 +226,18 @@ if __name__ == "__main__":
 
   num_cores = cpu_count()
 
+  batches = [
+    (run_clock, CLOCK_BATCH_RUNS),
+    (run_ancestral, [("parsimony", *args) for args in ANCESTRAL_BATCH_RUNS]),
+    (run_ancestral, [("maximum-likelihood-marginal", *args) for args in ANCESTRAL_BATCH_RUNS]),
+    (run_additional_cmd, make_additional_commands(TREETIME_BIN, DATA_DIR, RESULTS_DIR_ADDITIONAL))
+  ]
+
   with Pool(processes=num_cores, initializer=init_worker) as pool:
     try:
-      pool.starmap_async(run_clock, CLOCK_BATCH_RUNS)
-      pool.starmap_async(run_ancestral, [("parsimony", *args) for args in ANCESTRAL_BATCH_RUNS])
-      pool.starmap_async(run_ancestral, [("maximum-likelihood-marginal", *args) for args in ANCESTRAL_BATCH_RUNS])
-      pool.starmap_async(run_additional_cmd, make_additional_commands(TREETIME_BIN, DATA_DIR, RESULTS_DIR_ADDITIONAL))
+      results = [pool.starmap_async(func, args) for func, args in batches]
+      ret_codes = [code for result in results for code in result.get()]
+      print_summary(ret_codes)
     except KeyboardInterrupt:
       pool.terminate()
       pool.close()
