@@ -346,8 +346,6 @@ fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]) 
                 qry: cnuc,
                 reff: pnuc,
               };
-              composition.add_sub(&m);
-              edge.subs.push(m);
             }
             p.state = Some(sequence[*pos]);
           } else if alphabet.is_gap(pnuc) && !range_contains(gaps, *pos) {
@@ -366,15 +364,17 @@ fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]) 
           // NOTE: access to full_seq would not be necessary if we had saved the
           // child state of variable positions in the backward pass
           let node_nuc = sequence[pos];
-          if let Some(pvar_state) = pvar.state {
-            if pvar_state != node_nuc {
-              let m = Sub {
-                pos,
-                qry: node_nuc,
-                reff: pvar_state,
-              };
-              composition.add_sub(&m);
-              edge.subs.push(m);
+          if alphabet.is_canonical(node_nuc) {
+            if let Some(pvar_state) = pvar.state {
+              if pvar_state != node_nuc {
+                let m = Sub {
+                  pos,
+                  qry: node_nuc,
+                  reff: pvar_state,
+                };
+                composition.add_sub(&m);
+                edge.subs.push(m);
+              }
             }
           }
         }
