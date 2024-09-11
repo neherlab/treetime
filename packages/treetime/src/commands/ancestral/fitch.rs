@@ -221,26 +221,26 @@ fn fitch_backwards(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]
         for r in range_intersection(&[non_gap.clone(), child.gaps.clone()]) {
           let indel = seq_dis.variable_indel.entry(r).or_insert_with(|| Deletion {
             deleted: 0,
-            ins: n_children,
-            alt: sequence[r.0..r.1].to_owned(),
+            present: n_children
           });
           indel.deleted += 1;
-          indel.ins -= 1;
+          indel.present -= 1;
         }
       }
 
-      // 2) if a gap is variable in a child and the parent, we need to pull this down to the parent
+      // 2) if a gap is variable in a child and the parent, we need to add this child to the deletion count of this range
       for (child, _) in &children {
         for r in child.fitch.variable_indel.keys() {
           if let Some(indel) = seq_dis.variable_indel.get_mut(r) {
             indel.deleted += 1;
-            indel.ins -= 1;
+            indel.present -= 1;
           }
         }
       }
 
       // 3) if all children are compatible with a gap, we add the gap back to the gap collection and remove the
       // variable site (nothing needs doing in the case where all children are compatible with non-gap)
+      // this could for example happen if a gap position is variable in a child and thus not part of child.gaps
       seq_dis.variable_indel.retain(|r, indel| {
         if indel.deleted == n_children {
           gaps.push(*r);
@@ -311,7 +311,7 @@ fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]) 
         }
         // process indels as majority rule at the root
         for (r, indel) in variable_indel.iter() {
-          if indel.deleted > indel.ins {
+          if indel.deleted > indel.present {
             gaps.push(*r);
           }
         }
@@ -353,8 +353,6 @@ fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]) 
                 qry: cnuc,
                 reff: pnuc,
               };
-              composition.add_sub(&m);
-              edge.subs.push(m);
             }
             p.state = Some(sequence[*pos]);
           } else if alphabet.is_gap(pnuc) && !range_contains(gaps, *pos) {
@@ -373,15 +371,17 @@ fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]) 
           // NOTE: access to full_seq would not be necessary if we had saved the
           // child state of variable positions in the backward pass
           let node_nuc = sequence[pos];
-          if let Some(pvar_state) = pvar.state {
-            if pvar_state != node_nuc {
-              let m = Sub {
-                pos,
-                qry: node_nuc,
-                reff: pvar_state,
-              };
-              composition.add_sub(&m);
-              edge.subs.push(m);
+          if alphabet.is_canonical(node_nuc) {
+            if let Some(pvar_state) = pvar.state {
+              if pvar_state != node_nuc {
+                let m = Sub {
+                  pos,
+                  qry: node_nuc,
+                  reff: pvar_state,
+                };
+                composition.add_sub(&m);
+                edge.subs.push(m);
+              }
             }
           }
         }
@@ -389,13 +389,14 @@ fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]) 
         // Process indels. Gaps where the children disagree, need to be decided by also looking at parent.
         for (r, indel) in variable_indel.iter() {
           let gap_in_parent = if parent.gaps.contains(r) { 1 } else { 0 };
-          if indel.deleted + gap_in_parent > indel.ins {
+          if indel.deleted + gap_in_parent > indel.present {
             gaps.push(*r);
             if gap_in_parent == 0 {
               // If the gap is not in parent, add deletion.
+              // the sequence that is deleted is the sequence of the parent
               let indel = InDel {
                 range: *r,
-                seq: sequence[r.0..r.1].to_owned(),
+                seq: parent.sequence[r.0..r.1].to_owned(),
                 deletion: true,
               };
               composition.add_indel(&indel);

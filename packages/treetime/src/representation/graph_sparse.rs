@@ -225,9 +225,7 @@ impl ParsimonyVarPos {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Deletion {
   pub deleted: usize, // number of times deletion is observed
-  pub ins: usize,     // or not
-  #[serde(serialize_with = "serde_serialize_seq", deserialize_with = "serde_deserialize_seq")]
-  pub alt: Vec<char>,
+  pub present: usize,     // or not
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
