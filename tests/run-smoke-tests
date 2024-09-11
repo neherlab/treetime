@@ -78,7 +78,7 @@ CLOCK_BATCH_RUNS = [
   # ("rsv/a/1000",                  "rsv/a/1000",               ""),
   # ("rsv/a/2000",                  "rsv/a/2000",               ""),
   ("tb",                          "tb",                       ""),
-  # ("zika",                        "zika",                     "")
+  ("zika",                        "zika",                     "")
 ]
 # fmt: on @formatter:on
 
