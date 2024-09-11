@@ -50,14 +50,14 @@ incremental = false
 lto = "fat"
 opt-level = 3
 panic = "abort"
-strip = true
+strip = "debuginfo"
 
 [profile.bench]
 codegen-units = 1
 incremental = false
 lto = "fat"
 opt-level = 3
-strip = true
+strip = "debuginfo"
 
 [profile.test]
 debug = true
