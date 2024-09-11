@@ -177,12 +177,17 @@ def run_clock(name: str, out: str, extra_args: str):
   return run_batch_cmd(name, "clock", cmd)
 
 
-def run_ancestral(method: str, name: str, out: str, extra_args: str):
+def run_ancestral(method: str, seq_mode: Optional[str], name: str, out: str, extra_args: str):
+  dense = ""
+  if method == "maximum-likelihood-marginal":
+    dense = "--dense=true --model=jc69" if seq_mode == "dense" else "--dense=false"
+
   cmd = f"""
   {TREETIME_BIN} ancestral
   --tree={DATA_DIR}/{name}/tree.nwk
   --method-anc={method}
   --outdir={RESULTS_DIR}/ancestral/{method}/{out}
+  {dense}
   {DATA_DIR}/{name}/aln.fasta.xz
   {extra_args}
   """
@@ -245,8 +250,9 @@ if __name__ == "__main__":
 
   batches = [
     (run_clock, CLOCK_BATCH_RUNS),
-    (run_ancestral, [("parsimony", *args) for args in ANCESTRAL_BATCH_RUNS]),
-    (run_ancestral, [("maximum-likelihood-marginal", *args) for args in ANCESTRAL_BATCH_RUNS]),
+    (run_ancestral, [("parsimony", None, *args) for args in ANCESTRAL_BATCH_RUNS]),
+    (run_ancestral, [("maximum-likelihood-marginal", "sparse", *args) for args in ANCESTRAL_BATCH_RUNS]),
+    (run_ancestral, [("maximum-likelihood-marginal", "dense", *args) for args in ANCESTRAL_BATCH_RUNS]),
     (run_additional_cmd, make_additional_commands(TREETIME_BIN, DATA_DIR, RESULTS_DIR_ADDITIONAL))
   ]
 
