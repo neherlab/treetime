@@ -27,6 +27,9 @@ from multiprocessing import Pool, cpu_count
 from pathlib import Path
 from signal import signal, SIGINT, SIG_IGN
 from textwrap import dedent
+from typing import List, Optional
+
+verbose = False
 
 # Add ancestral command runs here.
 # Each entry corresponds to 2 ancestral command runs - one with parsimony and one with marginal method.
@@ -145,18 +148,22 @@ def clean_cmd(cmd: str) -> str:
   return " ".join(dedent(cmd).splitlines()).strip()
 
 
-def run_batch_cmd(name: str, cmd_name: str, cmd: str):
+def run_batch_cmd(data_name: str, cmd_name: str, cmd: str):
   cmd = clean_cmd(cmd)
-  output, code = run_cmd(name, cmd)
-  print("\n".join([f"⏩ Running {orange(cmd_name)} for {blue(name)}\n", grey(f"+{cmd}")] + output))
-  return code
+  output, code = run_cmd(data_name, cmd)
+  if code != 0 or verbose:
+    status = "🚨 Failed" if code != 0 else "🏁 Finished"
+    print("\n".join([f"{status}: {orange(cmd_name)} for {blue(data_name)}\n", grey(f"+{cmd}")] + output))
+  return {"data_name": data_name, "cmd_name": cmd_name, "cmd": cmd, "code": code}
 
 
-def run_additional_cmd(name, cmd):
+def run_additional_cmd(cmd_name, cmd):
   cmd = clean_cmd(cmd)
-  output, code = run_cmd(name, cmd)
-  print("\n".join([f"⏩ Running {orange(name)}\n", grey(f"+{cmd}")] + output))
-  return code
+  output, code = run_cmd(cmd_name, cmd)
+  if code != 0 or verbose:
+    status = "🚨 Failed" if code != 0 else "🏁 Finished"
+    print("\n".join([f"{status}: {orange(cmd_name)}\n", grey(f"+{cmd}")] + output))
+  return {"data_name": None, "cmd_name": cmd_name, "cmd": cmd, "code": code}
 
 
 def run_clock(name: str, out: str, extra_args: str):
@@ -186,16 +193,26 @@ def init_worker():
   signal(SIGINT, SIG_IGN)
 
 
-def print_summary(ret_codes):
-  n = len(ret_codes)
-  n_ok = ret_codes.count(0)
-  n_err = n - n_ok
+def count_by(predicate, arr):
+  return sum(map(predicate, arr))
+
+
+def print_summary(results: List[dict]):
+  n = len(results)
+  failures = list(filter(lambda res: res["code"] != 0, results))
+  n_err = len(failures)
+  n_ok = n - n_err
 
   if n > 0:
     f_color = red if n_err > 0 else lambda x: x
     print("\n".join([
       "", blue(f"Total tests: {n}"), green(f"  Succeeded: {n_ok}"), f_color(f"  Failed:    {n_err}"), ""
     ]))
+
+    if n_err > 0:
+      failures = [""] + [failure["cmd"] for failure in failures]
+      print(red("Failed commands:" + "\n\n  ".join(failures) + "\n\n"))
+
     sys.exit(0 if n_err == 0 else 1)
   else:
     print("No tests found")
@@ -236,8 +253,8 @@ if __name__ == "__main__":
   with Pool(processes=num_cores, initializer=init_worker) as pool:
     try:
       results = [pool.starmap_async(func, args) for func, args in batches]
-      ret_codes = [code for result in results for code in result.get()]
-      print_summary(ret_codes)
+      results = [code for result in results for code in result.get()]
+      print_summary(results)
     except KeyboardInterrupt:
       pool.terminate()
       pool.close()
