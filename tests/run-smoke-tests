@@ -179,7 +179,7 @@ def run_clock(name: str, out: str, extra_args: str):
 
 def run_ancestral(method: str, seq_mode: Optional[str], name: str, out: str, extra_args: str):
   dense = ""
-  if method == "maximum-likelihood-marginal":
+  if method == "marginal":
     dense = "--dense=true --model=jc69" if seq_mode == "dense" else "--dense=false"
 
   cmd = f"""
@@ -251,8 +251,8 @@ if __name__ == "__main__":
   batches = [
     (run_clock, CLOCK_BATCH_RUNS),
     (run_ancestral, [("parsimony", None, *args) for args in ANCESTRAL_BATCH_RUNS]),
-    (run_ancestral, [("maximum-likelihood-marginal", "sparse", *args) for args in ANCESTRAL_BATCH_RUNS]),
-    (run_ancestral, [("maximum-likelihood-marginal", "dense", *args) for args in ANCESTRAL_BATCH_RUNS]),
+    (run_ancestral, [("marginal", "sparse", *args) for args in ANCESTRAL_BATCH_RUNS]),
+    (run_ancestral, [("marginal", "dense", *args) for args in ANCESTRAL_BATCH_RUNS]),
     (run_additional_cmd, make_additional_commands(TREETIME_BIN, DATA_DIR, RESULTS_DIR_ADDITIONAL))
   ]
 

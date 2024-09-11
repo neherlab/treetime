@@ -7,14 +7,14 @@ use std::path::PathBuf;
 #[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, ArgEnum)]
 #[clap(rename = "kebab-case")]
 pub enum MethodAncestral {
-  MaximumLikelihoodJoint,
-  MaximumLikelihoodMarginal,
+  Joint,
+  Marginal,
   Parsimony,
 }
 
 impl Default for MethodAncestral {
   fn default() -> Self {
-    Self::MaximumLikelihoodJoint
+    Self::Joint
   }
 }
 

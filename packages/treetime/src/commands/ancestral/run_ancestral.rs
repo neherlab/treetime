@@ -92,7 +92,7 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
 
       write_graph(outdir, &graph)?;
     }
-    MethodAncestral::MaximumLikelihoodMarginal => {
+    MethodAncestral::Marginal => {
       let dense = dense.unwrap_or_else(infer_dense);
 
       if !dense {
@@ -133,7 +133,7 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
         write_graph(outdir, &graph)?;
       }
     }
-    MethodAncestral::MaximumLikelihoodJoint => {
+    MethodAncestral::Joint => {
       unimplemented!("MethodAncestral::MaximumLikelihoodJoint")
     }
   };
