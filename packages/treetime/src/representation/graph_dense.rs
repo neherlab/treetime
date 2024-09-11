@@ -7,6 +7,7 @@ use crate::io::nwk::{format_weight, EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToN
 use crate::o;
 use crate::seq::find_char_ranges::find_letter_ranges;
 use crate::seq::indel::InDel;
+use crate::seq::serde::{serde_deserialize_seq, serde_serialize_seq};
 use eyre::Report;
 use maplit::btreemap;
 use ndarray::Array2;
@@ -62,6 +63,7 @@ impl NodeToGraphviz for DenseNode {
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct DenseSeqInfo {
   pub gaps: Vec<(usize, usize)>,
+  #[serde(serialize_with = "serde_serialize_seq", deserialize_with = "serde_deserialize_seq")]
   pub sequence: Vec<char>,
 }
 

@@ -9,6 +9,7 @@ use crate::seq::composition::Composition;
 use crate::seq::find_char_ranges::find_letter_ranges;
 use crate::seq::indel::InDel;
 use crate::seq::mutation::Sub;
+use crate::seq::serde::{serde_deserialize_seq, serde_serialize_seq};
 use crate::utils::interval::range_union::range_union;
 use eyre::Report;
 use maplit::btreemap;
@@ -68,6 +69,7 @@ pub struct SparseSeqInfo {
   pub gaps: Vec<(usize, usize)>,
   pub non_char: Vec<(usize, usize)>, // any position that does not evolve according to the substitution model, i.e. gap or N
   pub composition: Composition,      // count of all characters in the region that is not `non_char`
+  #[serde(serialize_with = "serde_serialize_seq", deserialize_with = "serde_deserialize_seq")]
   pub sequence: Vec<char>,
   pub fitch: ParsimonySeqDis,
 }
@@ -223,6 +225,7 @@ impl ParsimonyVarPos {
 pub struct Deletion {
   pub deleted: usize, // number of times deletion is observed
   pub ins: usize,     // or not
+  #[serde(serialize_with = "serde_serialize_seq", deserialize_with = "serde_deserialize_seq")]
   pub alt: Vec<char>,
 }
 
