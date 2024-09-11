@@ -1,115 +1,196 @@
-#!/usr/bin/env bash
-# shellcheck disable=SC2043,SC2068,SC2086,SC2124,SC2155
+#!/usr/bin/env python3
 
-set -euo pipefail
-trap "exit 0" INT
+"""
+Run smoke tests - basic use-case checks with default data
 
-normpath() {
-  readlink -m "$1"
-}
+https://en.wikipedia.org/wiki/Smoke_testing_(software)
 
-export THIS_DIR=$(normpath "$(cd "$(dirname "${BASH_SOURCE[0]}")";  pwd)")
-export PROJECT_ROOT=$(normpath "${THIS_DIR}/..")
+Usage:
 
-relpath() {
-  realpath --relative-to="$(normpath "${PROJECT_ROOT}")" "$(normpath $1)"
-}
+    ./tests/run-smoke-tests 'target/release/treetime'
 
-export CLICOLOR_FORCE=1
-
-export TREETIME_BIN="$(normpath ${1:? "Usage: ${0} <path_to_treetime_executable>"})"
-export DATA_DIR="$(relpath ${PROJECT_ROOT}/data)"
-export RESULTS_DIR="$(relpath ${PROJECT_ROOT}/tmp/smoke-tests)"
+NOTE: you must build and re-build the tested executable yourself, this script does not do that
 
 
-declare -A clock_extra_args=(
-  ["ebola"             ]=""
-  ["flu/h3n2/20"       ]="--sequence-length=1400"
-  ["flu/h3n2/200"      ]="--sequence-length=1400"
-  ["flu/h3n2/500"      ]="--sequence-length=1400"
-  ["lassa/L/50"        ]=""
-  ["lassa/L/200"       ]=""
-  ["lassa/L/500"       ]=""
-  ["mpox/clade-ii/500" ]=""
-  ["mpox/clade-ii/1000"]=""
-  ["mpox/clade-ii/2000"]=""
-  ["rsv/a/500"         ]=""
-  ["rsv/a/1000"        ]=""
-  ["rsv/a/2000"        ]=""
-#  ["dengue/500"        ]=""
-#  ["dengue/1000"       ]=""
-#  ["dengue/2000"       ]=""
-#  ["zika"              ]=""
-)
+How to add more tests:
 
-run_clock() {
-  local cmd="clock"
+1. Add ancestral commands by adding entries to `ANCESTRAL_BATCH_RUNS`
+2. Add clock commands by adding entries to `CLOCK_BATCH_RUNS`
+3. Add arbitrary commands to `make_additional_commands()`
 
-  local name="$1"
-  shift
-  local extra_args="$@"
+"""
 
-  local in_dir="$DATA_DIR/$name"
-  local out_dir="$RESULTS_DIR/$cmd/$name"
+import os
+import subprocess
+import sys
+from multiprocessing import Pool, cpu_count
+from pathlib import Path
+from signal import signal, SIGINT, SIG_IGN
+from textwrap import dedent
 
-  echo -e "\n\nRunning \e[38;5;166m$cmd\e[0m for \e[38;5;25m$name\e[0m\n"
+# Add ancestral command runs here.
+# Each entry corresponds to 2 ancestral command runs - one with parsimony and one with marginal method.
+# fmt: off @formatter:off
+ANCESTRAL_BATCH_RUNS = [
+  # data subdirectory             # output subdirectory       # additional args (appended to the batch args)
+  ("dengue/500",                  "dengue/500",               ""),
+  # ("dengue/1000",                 "dengue/1000",              ""),
+  # ("dengue/2000",                 "dengue/2000",              ""),
+  ("ebola",                       "ebola",                    ""),
+  ("flu/h3n2/20",                 "flu/h3n2/20",              ""),
+  ("flu/h3n2/200",                "flu/h3n2/200",             ""),
+  ("flu/h3n2/500",                "flu/h3n2/500",             ""),
+  ("lassa/L/50",                  "lassa/L/50",               ""),
+  ("lassa/L/200",                 "lassa/L/200",              ""),
+  ("lassa/L/500",                 "lassa/L/500",              ""),
+  ("mpox/clade-ii/500",           "mpox/clade-ii/500",        ""),
+  # ("mpox/clade-ii/1000",          "mpox/clade-ii/1000",       ""),
+  # ("mpox/clade-ii/2000",          "mpox/clade-ii/2000",       ""),
+  ("rsv/a/500",                   "rsv/a/500",                ""),
+  # ("rsv/a/1000",                  "rsv/a/1000",               ""),
+  # ("rsv/a/2000",                  "rsv/a/2000",               ""),
+  # ("tb",                          "tb",                       ""),
+  ("zika",                        "zika",                     "")
+]
+# fmt: on @formatter:on
 
-  set -x
-  ${TREETIME_BIN} $cmd \
-    --tree="$in_dir/tree.nwk" \
-    --dates="$in_dir/metadata.tsv" \
-    --outdir="$out_dir" \
-    $extra_args
-}
-export -f run_clock
+# Add clock command runs here. Each entry corresponds to 1 clock command run
+# fmt: off @formatter:off
+CLOCK_BATCH_RUNS = [
+  # data subdirectory             # output subdirectory       # additional args (appended to the batch args)
+  ("dengue/500",                  "dengue/500",               ""),
+  # ("dengue/1000",                 "dengue/1000",              ""),
+  # ("dengue/2000",                 "dengue/2000",              ""),
+  ("ebola",                       "ebola",                    ""),
+  ("flu/h3n2/20",                 "flu/h3n2/20",              "--sequence-length=1400"),
+  ("flu/h3n2/200",                "flu/h3n2/200",             "--sequence-length=1400"),
+  ("flu/h3n2/500",                "flu/h3n2/500",             "--sequence-length=1400"),
+  ("lassa/L/50",                  "lassa/L/50",               ""),
+  ("lassa/L/200",                 "lassa/L/200",              ""),
+  ("lassa/L/500",                 "lassa/L/500",              ""),
+  ("mpox/clade-ii/500",           "mpox/clade-ii/500",        ""),
+  # ("mpox/clade-ii/1000",          "mpox/clade-ii/1000",       ""),
+  # ("mpox/clade-ii/2000",          "mpox/clade-ii/2000",       ""),
+  ("rsv/a/500",                   "rsv/a/500",                ""),
+  # ("rsv/a/1000",                  "rsv/a/1000",               ""),
+  # ("rsv/a/2000",                  "rsv/a/2000",               ""),
+  # ("tb",                          "tb",                       ""),
+  # ("zika",                        "zika",                     "")
+]
+# fmt: on @formatter:on
 
-parallel --jobs=+0 --tty --group --colsep ' ' run_clock ::: "${!clock_extra_args[@]}" :::+ "${clock_extra_args[@]}"
+
+# Add arbitrary CLI invocations here
+def make_additional_commands(exe, data_dir, out_dir):
+  """
+  Create additional commands for testing
+
+  Substitute these variables:
+    {exe} - path to the executable
+    {data_dir} - path to input data directory
+    {out_dir} - path to output directory (common for all the additional commands, so make sure to add a distinct subdirectory)
+  """
+
+  # fmt: off @formatter:off
+  return [
+    # display name                 # full command line
+    ("help: global",               f"""{exe} --help"""                          ),
+    ("help: ancestral",            f"""{exe} ancestral --help"""                ),
+    ("help: clock",                f"""{exe} clock --help"""                    ),
+  ]
+  # fmt: on @formatter:on
 
 
+def run_cmd(name: str, cmd: str):
+  output = []
+  try:
+    result = subprocess.run(
+      cmd,
+      shell=True,
+      stdout=subprocess.PIPE,
+      stderr=subprocess.STDOUT,
+      text=True,
+      env={**os.environ, 'CLICOLOR_FORCE': '1'}
+    )
+    output.append(result.stdout or "")
+  except subprocess.CalledProcessError as e:
+    output.append(e.output)
+  return output
 
 
+def run_batch_cmd(name: str, cmd_name: str, cmd: str):
+  cmd = dedent(cmd).strip()
+  output = run_cmd(name, cmd)
+  output = [f"\n\nRunning \033[38;5;166m{cmd_name}\033[0m for \033[38;5;27m{name}\033[0m\n",
+            f"+{cmd.strip()}\n\n"] + output
+  print("".join(output))
 
-declare -A ancestral_extra_args=(
-  ["ebola"             ]=""
-  ["flu/h3n2/20"       ]=""
-  ["flu/h3n2/200"      ]=""
-  ["flu/h3n2/500"      ]=""
-  ["lassa/L/50"        ]=""
-  ["lassa/L/200"       ]=""
-  ["lassa/L/500"       ]=""
-#  ["mpox/clade-ii/500" ]=""
-#  ["mpox/clade-ii/1000"]=""
-#  ["mpox/clade-ii/2000"]=""
-  ["rsv/a/500"         ]=""
-  ["rsv/a/1000"        ]=""
-#  ["rsv/a/2000"        ]=""
-  ["dengue/500"        ]=""
-#  ["dengue/1000"       ]=""
-#  ["dengue/2000"       ]=""
-  ["zika"              ]=""
-)
 
-run_ancestral() {
-  local cmd="ancestral"
+def run_additional_cmd(name, cmd):
+  cmd = dedent(cmd).strip()
+  output = run_cmd(name, cmd)
+  output = [f"\n\nRunning \033[38;5;166m{name}\033[0m\n", f"+{cmd.strip()}\n\n"] + output
+  print("".join(output))
 
-  local name="$1"
-  shift
-  local extra_args="$@"
 
-  local in_dir="$DATA_DIR/$name"
-  local out_dir="$RESULTS_DIR/$cmd/$name"
+def run_clock(name: str, out: str, extra_args: str):
+  cmd = f""" \
+  {TREETIME_BIN} clock \
+  --tree={DATA_DIR}/{name}/tree.nwk \
+  --dates={DATA_DIR}/{name}/metadata.tsv \
+  --outdir={RESULTS_DIR}/clock/{out} {extra_args} \
+  """
+  run_batch_cmd(name, "clock", cmd)
 
-  echo -e "\n\nRunning \e[38;5;166m$cmd\e[0m for \e[38;5;25m$name\e[0m\n"
 
-  set -x
-  ${TREETIME_BIN} $cmd \
-    --model="jc69" \
-    --method-anc="maximum-likelihood-marginal" \
-    --tree="$in_dir/tree.nwk" \
-    --outdir="$out_dir" \
-    "$in_dir/aln.fasta.xz" \
-    $extra_args
-}
-export -f run_ancestral
+def run_ancestral(method: str, name: str, out: str, extra_args: str):
+  cmd = f""" \
+  {TREETIME_BIN} ancestral \
+  --tree={DATA_DIR}/{name}/tree.nwk \
+  --method-anc={method} \
+  --outdir={RESULTS_DIR}/ancestral/{method}/{out} \
+  {DATA_DIR}/{name}/aln.fasta.xz {extra_args} \
+  """
+  run_batch_cmd(name, "ancestral", cmd)
 
-parallel --jobs=+0 --tty --group --colsep ' ' run_ancestral ::: "${!ancestral_extra_args[@]}" :::+ "${ancestral_extra_args[@]}"
+
+def init_worker():
+  signal(SIGINT, SIG_IGN)
+
+
+if __name__ == "__main__":
+  if len(sys.argv) < 2:
+    sys.exit(f"Usage: {sys.argv[0]} <path_to_treetime_executable>")
+
+
+  def normpath(path: Path) -> str:
+    return str(path.resolve())
+
+
+  THIS_DIR = normpath(Path(__file__).parent)
+  PROJECT_ROOT = normpath(Path(THIS_DIR) / '..')
+
+
+  def relpath(path: Path) -> str:
+    return os.path.relpath(normpath(path), PROJECT_ROOT)
+
+
+  TREETIME_BIN = normpath(Path(sys.argv[1]))
+  DATA_DIR = relpath(Path(PROJECT_ROOT) / 'data')
+  RESULTS_DIR = relpath(Path(PROJECT_ROOT) / 'tmp/smoke-tests')
+  RESULTS_DIR_ADDITIONAL = Path(RESULTS_DIR) / 'additional'
+
+  num_cores = cpu_count()
+
+  with Pool(processes=num_cores, initializer=init_worker) as pool:
+    try:
+      pool.starmap_async(run_clock, CLOCK_BATCH_RUNS)
+      pool.starmap_async(run_ancestral, [("parsimony", *args) for args in ANCESTRAL_BATCH_RUNS])
+      pool.starmap_async(run_ancestral, [("maximum-likelihood-marginal", *args) for args in ANCESTRAL_BATCH_RUNS])
+      pool.starmap_async(run_additional_cmd, make_additional_commands(TREETIME_BIN, DATA_DIR, RESULTS_DIR_ADDITIONAL))
+    except KeyboardInterrupt:
+      pool.terminate()
+      pool.close()
+    finally:
+      pool.close()
+      pool.join()
