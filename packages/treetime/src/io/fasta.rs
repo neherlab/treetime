@@ -16,6 +16,7 @@ pub fn is_char_allowed(c: char) -> bool {
 #[serde(rename_all = "camelCase")]
 pub struct FastaRecord {
   pub seq_name: String,
+  pub desc: Option<String>,
   pub seq: String,
   pub index: usize,
 }
@@ -27,12 +28,13 @@ impl FastaRecord {
 
   pub fn clear(&mut self) {
     self.seq_name.clear();
+    self.desc = None;
     self.seq.clear();
     self.index = 0;
   }
 
   pub fn is_empty(&self) -> bool {
-    self.seq_name.is_empty() && self.seq_name.is_empty() && self.index == 0
+    self.seq_name.is_empty() && self.seq_name.is_empty() && self.desc.is_none() && self.index == 0
   }
 }
 
@@ -109,7 +111,14 @@ impl<'a> FastaReader<'a> {
       return make_error!("Expected character '>' at record start.");
     }
 
-    record.seq_name = self.line[1..].trim().to_owned();
+    let s = self.line[1..].trim();
+
+    let mut parts = s.splitn(2, ' ');
+    let name = parts.next().unwrap_or_default().to_owned();
+    let desc = parts.next().map(ToOwned::to_owned);
+
+    record.seq_name = name;
+    record.desc = desc;
 
     loop {
       self.line.clear();
@@ -180,7 +189,7 @@ pub fn read_many_fasta<P: AsRef<Path>>(filepaths: &[P]) -> Result<Vec<FastaRecor
 
   loop {
     let mut record = FastaRecord::default();
-    reader.read(&mut record).unwrap();
+    reader.read(&mut record)?;
     if record.is_empty() {
       break;
     }
@@ -203,7 +212,7 @@ pub fn read_many_fasta_str(contents: impl AsRef<str>) -> Result<Vec<FastaRecord>
 
   loop {
     let mut record = FastaRecord::default();
-    reader.read(&mut record).unwrap();
+    reader.read(&mut record)?;
     if record.is_empty() {
       break;
     }
@@ -227,8 +236,23 @@ impl FastaWriter {
     Ok(Self::new(create_file_or_stdout(filepath)?))
   }
 
-  pub fn write(&mut self, seq_name: impl AsRef<str>, seq: impl AsRef<str>) -> Result<(), Report> {
-    write!(self.writer, ">{}\n{}\n", seq_name.as_ref(), seq.as_ref())?;
+  pub fn write(
+    &mut self,
+    seq_name: impl AsRef<str>,
+    desc: &Option<String>,
+    seq: impl AsRef<str>,
+  ) -> Result<(), Report> {
+    self.writer.write_all(b">")?;
+    self.writer.write_all(seq_name.as_ref().as_bytes())?;
+
+    if let Some(desc) = desc {
+      self.writer.write_all(b" ")?;
+      self.writer.write_all(desc.as_bytes())?;
+    }
+
+    self.writer.write_all(b"\n")?;
+    self.writer.write_all(seq.as_ref().as_bytes())?;
+    self.writer.write_all(b"\n")?;
     Ok(())
   }
 
@@ -241,10 +265,11 @@ impl FastaWriter {
 pub fn write_one_fasta(
   filepath: impl AsRef<Path>,
   seq_name: impl AsRef<str>,
+  desc: &Option<String>,
   seq: impl AsRef<str>,
 ) -> Result<(), Report> {
   let mut writer = FastaWriter::from_path(&filepath)?;
-  writer.write(seq_name, seq)
+  writer.write(seq_name, desc, seq)
 }
 
 #[cfg(test)]
@@ -406,6 +431,7 @@ mod tests {
       record,
       FastaRecord {
         seq_name: o!("a"),
+        desc: None,
         seq: o!("ACGCTCGATC"),
         index: 0,
       }
@@ -417,6 +443,7 @@ mod tests {
       record,
       FastaRecord {
         seq_name: o!("b"),
+        desc: None,
         seq: o!("CCGCGC"),
         index: 1,
       }
@@ -435,6 +462,7 @@ mod tests {
       record,
       FastaRecord {
         seq_name: o!("a"),
+        desc: None,
         seq: o!("ACGCTCGATC"),
         index: 0,
       }
@@ -446,6 +474,7 @@ mod tests {
       record,
       FastaRecord {
         seq_name: o!("b"),
+        desc: None,
         seq: o!("CCGCGC"),
         index: 1,
       }
@@ -457,6 +486,7 @@ mod tests {
       record,
       FastaRecord {
         seq_name: o!("c"),
+        desc: None,
         seq: o!(""),
         index: 2,
       }
@@ -475,6 +505,7 @@ mod tests {
       record,
       FastaRecord {
         seq_name: o!("a"),
+        desc: None,
         seq: o!("ACGCTCGATC"),
         index: 0,
       }
@@ -486,6 +517,7 @@ mod tests {
       record,
       FastaRecord {
         seq_name: o!("b"),
+        desc: None,
         seq: o!(""),
         index: 1,
       }
@@ -497,6 +529,7 @@ mod tests {
       record,
       FastaRecord {
         seq_name: o!("c"),
+        desc: None,
         seq: o!("CCGCGC"),
         index: 2,
       }
@@ -526,36 +559,43 @@ mod tests {
     let expected = vec![
       FastaRecord {
         seq_name: o!("FluBuster-001"),
+        desc: None,
         seq: o!("ACAGCCATGTATTG--"),
         index: 0,
       },
       FastaRecord {
         seq_name: o!("CommonCold-AB"),
+        desc: None,
         seq: o!("ACATCCCTGTA-TG--"),
         index: 1,
       },
       FastaRecord {
         seq_name: o!("Ecoli/Joke/2024|XD"),
+        desc: None,
         seq: o!("ACATCGCCNNA--GAC"),
         index: 2,
       },
       FastaRecord {
         seq_name: o!("Sniffles-B"),
+        desc: None,
         seq: o!("GCATCCCTGTA-NG--"),
         index: 3,
       },
       FastaRecord {
         seq_name: o!("Strawberry Yogurt Culture|🍓"),
+        desc: None,
         seq: o!("CCGGCCATGTATTG--"),
         index: 4,
       },
       FastaRecord {
         seq_name: o!("SneezeC-19"),
+        desc: None,
         seq: o!("CCGGCGATGTRTTG--"),
         index: 5,
       },
       FastaRecord {
         seq_name: o!("MisindentedVirus D-skew"),
+        desc: None,
         seq: o!("TCGGCCGTGTRTTG--"),
         index: 6,
       },
@@ -584,26 +624,31 @@ mod tests {
     let expected = vec![
       FastaRecord {
         seq_name: o!("Prot/000|β-Napkinase"),
+        desc: None,
         seq: o!("MXDXXXTQ-B--"),
         index: 0,
       },
       FastaRecord {
         seq_name: o!("Enzyme/2024|Laughzyme Factor"),
+        desc: None,
         seq: o!("AX*XB-TQVWR*"),
         index: 1,
       },
       FastaRecord {
         seq_name: o!("😊-Gigglecatalyst"),
+        desc: None,
         seq: o!("MKXTQWX-B**"),
         index: 2,
       },
       FastaRecord {
         seq_name: o!("CellFunSignal"),
+        desc: None,
         seq: o!("MQXQXXBQRW**"),
         index: 3,
       },
       FastaRecord {
         seq_name: o!("Pathway/042|Doodlease"),
+        desc: None,
         seq: o!("MXQ-*XTQWBQR"),
         index: 4,
       },
@@ -635,26 +680,31 @@ mod tests {
     let expected = vec![
       FastaRecord {
         seq_name: o!("MixedCaseSeq"),
+        desc: None,
         seq: o!("ACAGCCATGTATTG--"),
         index: 0,
       },
       FastaRecord {
         seq_name: o!("LowercaseSeq"),
+        desc: None,
         seq: o!("ACAGCCATGTATTG--"),
         index: 1,
       },
       FastaRecord {
         seq_name: o!("UppercaseSeq"),
+        desc: None,
         seq: o!("ACAGCCATGTATTG--"),
         index: 2,
       },
       FastaRecord {
         seq_name: o!("MultilineSeq"),
+        desc: None,
         seq: o!("ACAGCCATGTATTG--"),
         index: 3,
       },
       FastaRecord {
         seq_name: o!("SkewedIndentSeq"),
+        desc: None,
         seq: o!("ACAGCCATGTATTGATTG--"),
         index: 4,
       },

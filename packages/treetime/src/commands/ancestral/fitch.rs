@@ -21,7 +21,7 @@ use approx::UlpsEq;
 use eyre::{Report, WrapErr};
 use itertools::{izip, Itertools};
 use maplit::btreemap;
-use ndarray::{stack, Array1, Array2, Axis};
+use ndarray::{stack, Array1, Array2, AssignElem, Axis};
 use ndarray_stats::QuantileExt;
 
 fn attach_seqs_to_graph(graph: &SparseGraph, partitions: &[PartitionParsimonyWithAln]) -> Result<(), Report> {
@@ -32,6 +32,9 @@ fn attach_seqs_to_graph(graph: &SparseGraph, partitions: &[PartitionParsimonyWit
       make_report!("Expected all leaf nodes to have names, such that they can be matched to their corresponding sequences. But found a leaf node that has no name.")
     })?.to_owned();
 
+    // FIXME: all descs are the same for fasta partitions, so the mutable assignment here is needlessly complicated
+    let mut desc = None;
+
     let sparse_partitions = partitions
       .iter()
       .map(|PartitionParsimonyWithAln { alphabet, aln, length }| {
@@ -39,7 +42,10 @@ fn attach_seqs_to_graph(graph: &SparseGraph, partitions: &[PartitionParsimonyWit
         let leaf_fasta = aln
           .iter()
           .find(|fasta| fasta.seq_name == leaf_name)
-          .ok_or_else(|| make_internal_report!("Leaf sequence not found: '{leaf_name}'"))?;
+          .ok_or_else(|| make_report!("Leaf sequence not found: '{leaf_name}'"))?;
+
+        desc.assign_elem(leaf_fasta.desc.clone());
+
         //TODO: we could optionally emit a warning here and continue with a sequence that is entire missing...
 
         // TODO(perf): unnecessary copy of sequence data. Neither String, nor &[char] works well for us, it seems.
@@ -53,6 +59,7 @@ fn attach_seqs_to_graph(graph: &SparseGraph, partitions: &[PartitionParsimonyWit
 
     *leaf = SparseNode {
       name: Some(leaf_name),
+      desc,
       sparse_partitions,
     }
   }

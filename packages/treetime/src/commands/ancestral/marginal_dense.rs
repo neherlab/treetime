@@ -13,7 +13,7 @@ use eyre::Report;
 use itertools::Itertools;
 use maplit::btreemap;
 use ndarray::prelude::*;
-use ndarray::stack;
+use ndarray::{stack, AssignElem};
 use ndarray_stats::QuantileExt;
 use std::collections::BTreeMap;
 
@@ -44,6 +44,9 @@ fn attach_seqs_to_graph(graph: &DenseGraph, partitions: &[PartitionLikelihoodWit
       make_report!("Expected all leaf nodes to have names, such that they can be matched to their corresponding sequences. But found a leaf node that has no name.")
     })?.to_owned();
 
+    // FIXME: all descs are the same for fasta partitions, so the mutable assignment here is needlessly complicated
+    let mut desc = None;
+
     leaf.dense_partitions = partitions
       .iter()
       .map(|PartitionLikelihoodWithAln { gtr, alphabet, aln, length }| {
@@ -53,6 +56,8 @@ fn attach_seqs_to_graph(graph: &DenseGraph, partitions: &[PartitionLikelihoodWit
           .find(|fasta| fasta.seq_name == leaf_name)
           .ok_or_else(|| make_internal_report!("Leaf sequence not found: '{leaf_name}'"))?;
 
+        desc.assign_elem(leaf_fasta.desc.clone());
+
         // TODO(perf): unnecessary copy of sequence data. Neither String, nor &[char] works well for us, it seems.
         // We probably want a custom class for sequences. Sequences should be instantiated in the fasta parser and
         // never need a copy like here.
@@ -61,6 +66,8 @@ fn attach_seqs_to_graph(graph: &DenseGraph, partitions: &[PartitionLikelihoodWit
         DenseSeqNode::new(&sequence, alphabet)
       })
       .collect::<Result<_, Report>>()?;
+
+    leaf.desc = desc;
 
     Ok(())
   })?;

@@ -19,6 +19,7 @@ pub type DenseGraph = Graph<DenseNode, DenseEdge, ()>;
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct DenseNode {
   pub name: Option<String>,
+  pub desc: Option<String>,
   pub dense_partitions: Vec<DenseSeqNode>,
 }
 

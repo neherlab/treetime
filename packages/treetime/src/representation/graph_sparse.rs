@@ -22,6 +22,7 @@ pub type SparseGraph = Graph<SparseNode, SparseEdge, ()>;
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct SparseNode {
   pub name: Option<String>,
+  pub desc: Option<String>,
   pub sparse_partitions: Vec<SparseSeqNode>,
 }
 
