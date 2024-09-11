@@ -107,12 +107,12 @@ def run_cmd(name: str, cmd: str):
     result = subprocess.run(
       cmd,
       shell=True,
-      stdout=subprocess.PIPE,
-      stderr=subprocess.STDOUT,
+      stdout=subprocess.DEVNULL,
+      stderr=subprocess.PIPE,
       text=True,
       env={**os.environ, 'CLICOLOR_FORCE': '1'}
     )
-    output.append(result.stdout or "")
+    output.append(result.stderr or "")
   except subprocess.CalledProcessError as e:
     output.append(e.output)
   return output
