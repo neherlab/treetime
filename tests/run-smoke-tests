@@ -151,7 +151,7 @@ def run_ancestral(method: str, name: str, out: str, extra_args: str):
   --outdir={RESULTS_DIR}/ancestral/{method}/{out} \
   {DATA_DIR}/{name}/aln.fasta.xz {extra_args} \
   """
-  run_batch_cmd(name, "ancestral", cmd)
+  run_batch_cmd(name, f"ancestral-{method}", cmd)
 
 
 def init_worker():
