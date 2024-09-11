@@ -24,10 +24,10 @@ pub fn clock_filter_inplace(graph: &ClockGraph, clock_model: &ClockModel, clock_
   let leaf_clock_deviations: Vec<f64> = graph
     .get_leaves()
     .iter()
-    .map(|leaf| {
+    .filter_map(|leaf| {
       let div = leaf.read_arc().payload().read().div;
-      let date = leaf.read_arc().payload().read().date.unwrap();
-      clock_model.clock_deviation(date, div)
+      let date = leaf.read_arc().payload().read().date;
+      date.map(|date| clock_model.clock_deviation(date, div))
     })
     .map(OrderedFloat)
     .sorted()
@@ -44,14 +44,16 @@ pub fn clock_filter_inplace(graph: &ClockGraph, clock_model: &ClockModel, clock_
   // loop over the leaf nodes and mark the outliers if the absolute value of the deviation is greater than the threshold
   graph.get_leaves().iter().for_each(|leaf| {
     let div = leaf.read_arc().payload().read().div;
-    let date = leaf.read_arc().payload().read().date.unwrap();
+    let date = leaf.read_arc().payload().read().date;
     let was_outlier = leaf.read_arc().payload().write().is_outlier;
-    let clock_deviation = clock_model.clock_deviation(date, div);
-    let is_outlier = clock_deviation.abs() > iqd * clock_filter_threshold;
-    if was_outlier != is_outlier {
-      new_outliers += 1;
+    if let Some(date) = date {
+      let clock_deviation = clock_model.clock_deviation(date, div);
+      let is_outlier = clock_deviation.abs() > iqd * clock_filter_threshold;
+      if was_outlier != is_outlier {
+        new_outliers += 1;
+      }
+      leaf.read_arc().payload().write().is_outlier = is_outlier;
     }
-    leaf.read_arc().payload().write().is_outlier = is_outlier;
   });
   new_outliers
 }
