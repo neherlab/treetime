@@ -64,7 +64,10 @@ where
 
     // Discard node names which are parseable to a number. These are not names, but weights.
     // And we don't need them here. Weights are collected onto the edges later.
-    let name: Option<&str> = nwk_node.parse::<f64>().is_err().then_some(nwk_node.as_str());
+    let name: Option<&str> = nwk_node
+      .parse::<f64>()
+      .is_err()
+      .then_some(nwk_node.as_str().trim_matches(|c| c == '\'' || c == '"'));
 
     let comments = btreemap! {}; // TODO: parse nwk comments
     let node = N::from_nwk(name, &comments)
