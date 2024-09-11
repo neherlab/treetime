@@ -498,7 +498,7 @@ elif [ "${EXAMPLE}" == "1" ]; then
   if [ "$(is_ci)" == "1" ]; then
     PARAMS=" --locked ${PARAMS}"
   fi
-  COMMAND="cargo run -q --package=treetime --target-dir='${BUILD_DIR_REL}' ${RUST_TARGET} ${RELEASE} ${PARAMS}"
+  COMMAND="cargo run -q --target-dir='${BUILD_DIR_REL}' ${RUST_TARGET} ${RELEASE} ${PARAMS}"
 elif [ "${BUILD}" == "1" ]; then
   PARAMS="$(echo "${@:-}" | xargs)"
   if [ -n "${PARAMS}" ]; then
@@ -507,7 +507,7 @@ elif [ "${BUILD}" == "1" ]; then
   if [ "$(is_ci)" == "1" ]; then
     PARAMS=" --locked ${PARAMS}"
   fi
-  COMMAND="cargo build -q --package=treetime --target-dir='${BUILD_DIR_REL}' ${RUST_TARGET} ${RELEASE} ${PARAMS}"
+  COMMAND="cargo build -q --target-dir='${BUILD_DIR_REL}' ${RUST_TARGET} ${RELEASE} ${PARAMS}"
 elif [ "${SMOKE_TEST}" == "1" ]; then
   COMMAND="./tests/run-smoke-tests 'cargo run -q --target-dir='${BUILD_DIR_REL}' ${RUST_TARGET} ${RELEASE} --bin=treetime'"
 elif [ "${WASM}" == "1" ]; then
