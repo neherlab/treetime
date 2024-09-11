@@ -41,7 +41,7 @@ fn ingroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihoo
               *pos,
               VarPos {
                 dis: p.dis.clone(),
-                state: p.state.clone(),
+                state: p.state,
               },
             )
           })

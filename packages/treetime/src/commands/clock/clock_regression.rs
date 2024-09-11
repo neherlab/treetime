@@ -59,7 +59,7 @@ pub fn clock_regression_backward(graph: &ClockGraph, options: &ClockOptions) {
     } else {
       // if not at the root, save the message to the parent on the edge
       let edge_to_parent = edge_to_parent.expect("Encountered a node without a parent edge");
-      edge_to_parent.to_parent = q_to_parent.clone();
+      edge_to_parent.to_parent = q_to_parent;
       let edge_len = edge_to_parent.weight().expect("Encountered an edge without a weight");
       let mut branch_variance = options.variance_factor * edge_len + options.variance_offset;
       // propagate the message to the parent along the edge (taking care of the speical case need for leafs)
@@ -70,7 +70,7 @@ pub fn clock_regression_backward(graph: &ClockGraph, options: &ClockOptions) {
         edge_to_parent.to_parent.propagate_averages(edge_len, branch_variance)
       };
     }
-    return GraphTraversalContinuation::Continue;
+    GraphTraversalContinuation::Continue
   });
 }
 

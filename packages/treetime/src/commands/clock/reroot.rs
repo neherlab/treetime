@@ -54,7 +54,7 @@ fn create_new_root_node(
     bad_branch: false,
     div: 0.0,
     is_outlier: false,
-    total: total.clone(),
+    total,
   });
 
   let edge = graph.get_edge(edge_key).expect("Edge not found");

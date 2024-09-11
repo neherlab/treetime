@@ -9,7 +9,6 @@ use crate::graph::node::GraphNode;
 use crate::gtr::get_gtr::{get_gtr, get_gtr_dense};
 use crate::io::fasta::{read_many_fasta, FastaWriter};
 use crate::io::file::create_file_or_stdout;
-use crate::io::json::{json_write_file, JsonPretty};
 use crate::io::nex::{nex_write_file, NexWriteOptions};
 use crate::io::nwk::{nwk_read_file, nwk_write_file, EdgeToNwk, NodeToNwk, NwkWriteOptions};
 use crate::representation::graph_dense::DenseGraph;

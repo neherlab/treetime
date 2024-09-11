@@ -5,6 +5,7 @@ use itertools::Itertools;
 use ordered_float::OrderedFloat;
 
 /// Get results of the root-to-tip clock inference.
+#[allow(clippy::integer_division_remainder_used)]
 pub fn clock_filter_inplace(graph: &ClockGraph, clock_model: &ClockModel, clock_filter_threshold: f64) -> i32 {
   // assign divergence to each node
   graph.par_iter_breadth_first_forward(|mut node| {
@@ -30,13 +31,14 @@ pub fn clock_filter_inplace(graph: &ClockGraph, clock_model: &ClockModel, clock_
     })
     .map(OrderedFloat)
     .sorted()
-    .into_iter()
-    .map(|of| of.into_inner())
+    .map(OrderedFloat::into_inner)
     .collect();
 
   // calculate the interquartile range by taking the difference between the 3/4 and 1/4 quantile
-  let iqd =
-    leaf_clock_deviations[3 * leaf_clock_deviations.len() / 4] - leaf_clock_deviations[leaf_clock_deviations.len() / 4];
+  let n = leaf_clock_deviations.len();
+  let iq75 = (3 * n) / 4;
+  let iq25 = n / 4;
+  let iqd = leaf_clock_deviations[iq75] - leaf_clock_deviations[iq25];
 
   let mut new_outliers: i32 = 0;
   // loop over the leaf nodes and mark the outliers if the absolute value of the deviation is greater than the threshold
