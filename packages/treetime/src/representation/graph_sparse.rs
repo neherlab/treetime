@@ -69,7 +69,7 @@ pub struct SparseSeqInfo {
   pub non_char: Vec<(usize, usize)>, // any position that does not evolve according to the substitution model, i.e. gap or N
   pub composition: Composition,      // count of all characters in the region that is not `non_char`
   pub sequence: Vec<char>,
-  pub fitch: SparseSeqDis,
+  pub fitch: ParsimonySeqDis,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -96,7 +96,7 @@ impl SparseSeqNode {
       .map(|(pos, &c)| {
         (
           pos,
-          VarPos {
+          ParsimonyVarPos {
             dis: alphabet.get_profile(c).clone(),
             state: None,
           },
@@ -104,12 +104,10 @@ impl SparseSeqNode {
       })
       .collect();
 
-    let seq_dis = SparseSeqDis {
+    let seq_dis = ParsimonySeqDis {
       variable,
       variable_indel: btreemap! {},
-      fixed: btreemap! {},
-      fixed_counts: Composition::new(alphabet.chars(), alphabet.gap()),
-      log_lh: 0.0,
+      composition: Composition::new(alphabet.chars(), alphabet.gap()),
     };
 
     let unknown = find_letter_ranges(seq, alphabet.unknown());
@@ -210,6 +208,18 @@ impl VarPos {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ParsimonyVarPos {
+  pub dis: Array1<f64>, // TODO: this could be an array of booleans of size 'alphabet'
+  pub state: Option<char>,
+}
+
+impl ParsimonyVarPos {
+  pub fn new(dis: Array1<f64>, state: Option<char>) -> Self {
+    Self { dis, state }
+  }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Deletion {
   pub deleted: usize, // number of times deletion is observed
   pub ins: usize,     // or not
@@ -230,4 +240,14 @@ pub struct SparseSeqDis {
 
   /// Total log likelihood
   pub log_lh: f64,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ParsimonySeqDis {
+  /// probability vector for each variable position collecting information from children
+  pub variable: BTreeMap<usize, ParsimonyVarPos>,
+
+  pub variable_indel: BTreeMap<(usize, usize), Deletion>,
+
+  pub composition: Composition,
 }

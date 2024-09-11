@@ -30,7 +30,22 @@ fn ingroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihoo
           .map(|state| (state, alphabet.get_profile(state).clone()))
           .collect();
 
-        let variable = seq_info.seq.fitch.variable.clone();
+        // convert the parsimony variable states to sparseSeqDis format
+        let variable = seq_info
+          .seq
+          .fitch
+          .variable
+          .iter()
+          .map(|(pos, p)| {
+            (
+              *pos,
+              VarPos {
+                dis: p.dis.clone(),
+                state: p.state.clone(),
+              },
+            )
+          })
+          .collect();
 
         seq_info.msg_to_parents = SparseSeqDis {
           fixed_counts: seq_info.seq.composition.clone(),
