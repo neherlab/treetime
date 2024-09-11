@@ -103,6 +103,7 @@ def make_additional_commands(exe, data_dir, out_dir):
 
 def run_cmd(name: str, cmd: str):
   output = []
+  code = 0
   try:
     result = subprocess.run(
       cmd,
@@ -115,42 +116,52 @@ def run_cmd(name: str, cmd: str):
     output.append(result.stderr or "")
   except subprocess.CalledProcessError as e:
     output.append(e.output)
-  return output
+    code = e.returncode
+  return output, code
+
+
+def clean_cmd(cmd: str) -> str:
+  return " ".join(dedent(cmd).splitlines()).strip()
 
 
 def run_batch_cmd(name: str, cmd_name: str, cmd: str):
-  cmd = dedent(cmd).strip()
-  output = run_cmd(name, cmd)
-  output = [f"⏩ Running \033[38;5;166m{cmd_name}\033[0m for \033[38;5;27m{name}\033[0m\n", f"+{cmd}"] + output
+  cmd = clean_cmd(cmd)
+  output, code = run_cmd(name, cmd)
+  output = [f"⏩ Running \033[38;5;166m{cmd_name}\033[0m for \033[38;5;27m{name}\033[0m\n",
+            f"\033[90m+{cmd}\033[0m"] + output
   print("\n".join(output))
+  return code
 
 
 def run_additional_cmd(name, cmd):
-  cmd = dedent(cmd).strip()
-  output = run_cmd(name, cmd)
-  output = [f"⏩ Running \033[38;5;166m{name}\033[0m\n", f"+{cmd}"] + output
+  cmd = clean_cmd(cmd)
+  output, code = run_cmd(name, cmd)
+  output = [f"⏩ Running \033[38;5;166m{name}\033[0m\n", f"\033[90m+{cmd}\033[0m"] + output
   print("\n".join(output))
+  return code
 
 
 def run_clock(name: str, out: str, extra_args: str):
-  cmd = f""" \
-  {TREETIME_BIN} clock \
-  --tree={DATA_DIR}/{name}/tree.nwk \
-  --dates={DATA_DIR}/{name}/metadata.tsv \
-  --outdir={RESULTS_DIR}/clock/{out} {extra_args} \
+  cmd = f"""
+  {TREETIME_BIN} clock
+  --tree={DATA_DIR}/{name}/tree.nwk
+  --dates={DATA_DIR}/{name}/metadata.tsv
+  --outdir={RESULTS_DIR}/clock/{out}
+  {extra_args}
   """
-  run_batch_cmd(name, "clock", cmd)
+  return run_batch_cmd(name, "clock", cmd)
 
 
 def run_ancestral(method: str, name: str, out: str, extra_args: str):
-  cmd = f""" \
-  {TREETIME_BIN} ancestral \
-  --tree={DATA_DIR}/{name}/tree.nwk \
-  --method-anc={method} \
-  --outdir={RESULTS_DIR}/ancestral/{method}/{out} \
-  {DATA_DIR}/{name}/aln.fasta.xz {extra_args} \
+  cmd = f"""
+  {TREETIME_BIN} ancestral
+  --tree={DATA_DIR}/{name}/tree.nwk
+  --method-anc={method}
+  --outdir={RESULTS_DIR}/ancestral/{method}/{out}
+  {DATA_DIR}/{name}/aln.fasta.xz
+  {extra_args}
   """
-  run_batch_cmd(name, f"ancestral-{method}", cmd)
+  return run_batch_cmd(name, f"ancestral-{method}", cmd)
 
 
 def init_worker():
