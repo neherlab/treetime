@@ -221,7 +221,7 @@ fn fitch_backwards(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]
         for r in range_intersection(&[non_gap.clone(), child.gaps.clone()]) {
           let indel = seq_dis.variable_indel.entry(r).or_insert_with(|| Deletion {
             deleted: 0,
-            present: n_children
+            present: n_children,
           });
           indel.deleted += 1;
           indel.present -= 1;

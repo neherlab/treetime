@@ -225,7 +225,7 @@ impl ParsimonyVarPos {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Deletion {
   pub deleted: usize, // number of times deletion is observed
-  pub present: usize,     // or not
+  pub present: usize, // or not
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
