@@ -191,7 +191,12 @@ def run_ancestral(method: str, seq_mode: Optional[str], name: str, out: str, ext
   {DATA_DIR}/{name}/aln.fasta.xz
   {extra_args}
   """
-  return run_batch_cmd(name, f"ancestral-{method}", cmd)
+
+  method_str = f"ancestral-{method}"
+  if method == "marginal" and seq_mode is not None:
+    method_str = f"{method_str}-{seq_mode}"
+
+  return run_batch_cmd(name, method_str, cmd)
 
 
 def init_worker():
