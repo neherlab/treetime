@@ -874,24 +874,7 @@ mod tests {
           },
           "gap": "-"
         },
-        "sequence": [
-          "G",
-          "C",
-          "A",
-          "T",
-          "C",
-          "C",
-          "C",
-          "T",
-          "G",
-          "T",
-          "A",
-          "-",
-          "N",
-          "G",
-          "-",
-          "-"
-        ],
+        "sequence": "GCATCCCTGTA-NG--",
         "fitch": {
           "variable": {},
           "variable_indel": {},
@@ -1022,24 +1005,7 @@ mod tests {
           },
           "gap": "-"
         },
-        "sequence": [
-          "T",
-          "C",
-          "G",
-          "G",
-          "C",
-          "C",
-          "G",
-          "T",
-          "G",
-          "T",
-          "R",
-          "T",
-          "T",
-          "G",
-          "-",
-          "-"
-        ],
+        "sequence": "TCGGCCGTGTRTTG--",
         "fitch": {
           "variable": {
             "10": {

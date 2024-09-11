@@ -537,6 +537,34 @@ mod tests {
   }
 
   #[test]
+  fn test_fasta_reader_name_desc() -> Result<(), Report> {
+    let actual = read_many_fasta_str(indoc! {r#"
+      >Identifier Description
+      ACGT
+      >Identifier Description with spaces
+      ACGT
+    "#})?;
+
+    let expected = vec![
+      FastaRecord {
+        seq_name: o!("Identifier"),
+        desc: Some(o!("Description")),
+        seq: o!("ACGT"),
+        index: 0,
+      },
+      FastaRecord {
+        seq_name: o!("Identifier"),
+        desc: Some(o!("Description with spaces")),
+        seq: o!("ACGT"),
+        index: 1,
+      },
+    ];
+
+    assert_eq!(expected, actual);
+    Ok(())
+  }
+
+  #[test]
   fn test_fasta_reader_dedent_nuc() -> Result<(), Report> {
     let actual = read_many_fasta_str(indoc! {r#"
       >FluBuster-001
@@ -548,11 +576,11 @@ mod tests {
 
       >Sniffles-B
       GCATCCCTGTA-NG--
-      >Strawberry Yogurt Culture|🍓
+      >StrawberryYogurtCulture|🍓
       CCGGCCATGTATTG--
       > SneezeC-19
       CCGGCGATGTRTTG--
-        >MisindentedVirus D-skew
+        >MisindentedVirus|D-skew
         TCGGCCGTGTRTTG--
     "#})?;
 
@@ -582,7 +610,7 @@ mod tests {
         index: 3,
       },
       FastaRecord {
-        seq_name: o!("Strawberry Yogurt Culture|🍓"),
+        seq_name: o!("StrawberryYogurtCulture|🍓"),
         desc: None,
         seq: o!("CCGGCCATGTATTG--"),
         index: 4,
@@ -594,7 +622,7 @@ mod tests {
         index: 5,
       },
       FastaRecord {
-        seq_name: o!("MisindentedVirus D-skew"),
+        seq_name: o!("MisindentedVirus|D-skew"),
         desc: None,
         seq: o!("TCGGCCGTGTRTTG--"),
         index: 6,
@@ -610,7 +638,7 @@ mod tests {
     let actual = read_many_fasta_str(indoc! {r#"
       >Prot/000|β-Napkinase
       MXDXXXTQ-B--
-      >Enzyme/2024|Laughzyme Factor
+      >Enzyme/2024|LaughzymeFactor
       AX*XB-TQVWR*
 
       >😊-Gigglecatalyst
@@ -629,7 +657,7 @@ mod tests {
         index: 0,
       },
       FastaRecord {
-        seq_name: o!("Enzyme/2024|Laughzyme Factor"),
+        seq_name: o!("Enzyme/2024|LaughzymeFactor"),
         desc: None,
         seq: o!("AX*XB-TQVWR*"),
         index: 1,
