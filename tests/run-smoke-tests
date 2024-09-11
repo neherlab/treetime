@@ -121,16 +121,15 @@ def run_cmd(name: str, cmd: str):
 def run_batch_cmd(name: str, cmd_name: str, cmd: str):
   cmd = dedent(cmd).strip()
   output = run_cmd(name, cmd)
-  output = [f"\n\nRunning \033[38;5;166m{cmd_name}\033[0m for \033[38;5;27m{name}\033[0m\n",
-            f"+{cmd.strip()}\n\n"] + output
-  print("".join(output))
+  output = [f"⏩ Running \033[38;5;166m{cmd_name}\033[0m for \033[38;5;27m{name}\033[0m\n", f"+{cmd}"] + output
+  print("\n".join(output))
 
 
 def run_additional_cmd(name, cmd):
   cmd = dedent(cmd).strip()
   output = run_cmd(name, cmd)
-  output = [f"\n\nRunning \033[38;5;166m{name}\033[0m\n", f"+{cmd.strip()}\n\n"] + output
-  print("".join(output))
+  output = [f"⏩ Running \033[38;5;166m{name}\033[0m\n", f"+{cmd}"] + output
+  print("\n".join(output))
 
 
 def run_clock(name: str, out: str, extra_args: str):
