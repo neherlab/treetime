@@ -3,7 +3,8 @@ use crate::alphabet::alphabet::{FILL_CHAR, NON_CHAR, VARIABLE_CHAR};
 use crate::graph::breadth_first::GraphTraversalContinuation;
 use crate::io::fasta::FastaRecord;
 use crate::representation::graph_sparse::{
-  Deletion, SparseGraph, SparseNode, SparseSeqDis, SparseSeqEdge, SparseSeqInfo, SparseSeqNode, VarPos,
+  Deletion, ParsimonySeqDis, ParsimonyVarPos, SparseGraph, SparseNode, SparseSeqDis, SparseSeqEdge, SparseSeqInfo,
+  SparseSeqNode,
 };
 use crate::representation::partitions_parsimony::{PartitionParsimony, PartitionParsimonyWithAln};
 use crate::seq::composition::Composition;
@@ -39,6 +40,7 @@ fn attach_seqs_to_graph(graph: &SparseGraph, partitions: &[PartitionParsimonyWit
           .iter()
           .find(|fasta| fasta.seq_name == leaf_name)
           .ok_or_else(|| make_internal_report!("Leaf sequence not found: '{leaf_name}'"))?;
+        //TODO: we could optionally emit a warning here and continue with a sequence that is entire missing...
 
         // TODO(perf): unnecessary copy of sequence data. Neither String, nor &[char] works well for us, it seems.
         // We probably want a custom class for sequences. Sequences should be instantiated in the fasta parser and
@@ -66,6 +68,7 @@ fn fitch_backwards(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]
       return GraphTraversalContinuation::Continue;
     }
 
+    // initialize sparse partition data structure on incoming edges (could be moved to children, writing to outgoing edges)
     for (_, edge) in &node.children {
       edge.write_arc().sparse_partitions = vec![SparseSeqEdge::default(); n_partitions];
     }
@@ -87,17 +90,19 @@ fn fitch_backwards(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]
 
       let n_children = children.len();
 
+      // determine parts of the sequence that are unknown, gaps in all children
       let mut gaps = range_intersection_iter(children.iter().map(|(c, _)| &c.gaps)).collect_vec();
       let unknown = range_intersection_iter(children.iter().map(|(c, _)| &c.unknown)).collect_vec();
+      // non_char are ranges that are either unknown or gaps in all children (note that can be different from the union of gaps and unknown)
       let non_char = range_intersection_iter(children.iter().map(|(c, _)| &c.non_char)).collect_vec();
+      // calculate the complement of gaps for later look-up
       let non_gap = range_complement(&[(0, *length)], &[gaps.clone()]); // FIXME(perf): unnecessary clone
 
-      let mut seq_dis = SparseSeqDis {
+      //
+      let mut seq_dis = ParsimonySeqDis {
         variable: btreemap! {},
         variable_indel: btreemap! {},
-        fixed: btreemap! {},
-        fixed_counts: Composition::new(alphabet.chars(), alphabet.gap()),
-        log_lh: 0.0,
+        composition: Composition::new(alphabet.chars(), alphabet.gap()),
       };
       let mut sequence = vec![FILL_CHAR; *length];
 
@@ -110,7 +115,9 @@ fn fitch_backwards(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]
       let variable_positions = children
         .iter()
         .flat_map(|(c, e)| c.fitch.variable.keys().copied())
+        .unique()
         .collect_vec();
+
       for pos in variable_positions {
         // Collect child profiles (1D vectors)
         let child_profiles = children
@@ -138,17 +145,21 @@ fn fitch_backwards(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]
         // Calculate Fitch parsimony.
         // If we save the states of the children for each position that is variable in the node,
         // then we would not need the full sequences in the forward pass.
+        // TODO: we should change the type from vec>f64> to vec<bool> and use element wise AND instead of product
         let intersection = product_axis(&child_profiles, Axis(0));
+
         if intersection.sum().ulps_eq(&1.0, f64::EPSILON, 5) {
+          // intersection has a single state
           let i = intersection.argmax().unwrap();
           sequence[pos] = alphabet.char(i);
         } else if intersection.sum() > 1.0 {
-          seq_dis.variable.insert(pos, VarPos::new(intersection, None));
+          // more than one possible states
+          seq_dis.variable.insert(pos, ParsimonyVarPos::new(intersection, None));
           sequence[pos] = VARIABLE_CHAR;
         } else {
           let union = child_profiles.sum_axis(Axis(0));
           let dis = Array1::from_iter(union.iter().map(|&x| if x > 0.0 { 1.0 } else { 0.0 }));
-          seq_dis.variable.insert(pos, VarPos::new(dis, None));
+          seq_dis.variable.insert(pos, ParsimonyVarPos::new(dis, None));
           sequence[pos] = VARIABLE_CHAR;
         }
       }
@@ -188,7 +199,7 @@ fn fitch_backwards(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]
             let child_profiles = states.iter().map(|&c| alphabet.get_profile(c).view()).collect_vec();
             let child_profiles: Array2<f64> = stack(Axis(0), &child_profiles).unwrap();
             let summed_profile = child_profiles.sum_axis(Axis(0));
-            seq_dis.variable.insert(pos, VarPos::new(summed_profile, None));
+            seq_dis.variable.insert(pos, ParsimonyVarPos::new(summed_profile, None));
             VARIABLE_CHAR
           }
         };
@@ -276,7 +287,7 @@ fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]) 
         sequence,
         composition,
         non_char,
-        fitch: SparseSeqDis {
+        fitch: ParsimonySeqDis {
           variable,
           variable_indel,
           ..
@@ -321,23 +332,30 @@ fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]) 
         // for each variable position, pick a state or a mutation
         for (pos, p) in variable.iter_mut() {
           let pnuc = parent.sequence[*pos];
-          // check whether parent is in child profile (sum>0 --> parent state is in profile)
-          let parent_in_profile = (alphabet.get_profile(pnuc) * &p.dis).sum() > 0.0;
-          if parent_in_profile {
-            sequence[*pos] = pnuc;
-          } else {
+          if alphabet.is_canonical(pnuc) {
+            // check whether parent is in child profile (sum>0 --> parent state is in profile)
+            let parent_in_profile = (alphabet.get_profile(pnuc) * &p.dis).sum() > 0.0;
+            if parent_in_profile {
+              sequence[*pos] = pnuc;
+            } else {
+              let i = p.dis.argmax().unwrap();
+              let cnuc = alphabet.char(i);
+              sequence[*pos] = cnuc;
+              let m = Sub {
+                pos: *pos,
+                qry: cnuc,
+                reff: pnuc,
+              };
+              composition.add_sub(&m);
+              edge.subs.push(m);
+            }
+            p.state = Some(sequence[*pos]);
+          } else if alphabet.is_gap(pnuc) && !range_contains(gaps, *pos) {
+            // if parent is gap, but child isn't, we need to resolve variable states
             let i = p.dis.argmax().unwrap();
             let cnuc = alphabet.char(i);
             sequence[*pos] = cnuc;
-            let m = Sub {
-              pos: *pos,
-              qry: cnuc,
-              reff: pnuc,
-            };
-            composition.add_sub(&m);
-            edge.subs.push(m);
           }
-          p.state = Some(sequence[*pos]);
         }
 
         for (&pos, pvar) in &parent.fitch.variable {
@@ -430,10 +448,10 @@ fn fitch_cleanup(graph: &SparseGraph) {
         }
       }
 
-      seq.fitch.fixed_counts = seq.composition.clone();
+      seq.fitch.composition = seq.composition.clone();
       for p in seq.fitch.variable.values() {
         if let Some(state) = p.state {
-          seq.fitch.fixed_counts.adjust_count(state, -1);
+          seq.fitch.composition.adjust_count(state, -1);
         }
       }
 
@@ -870,8 +888,7 @@ mod tests {
         "fitch": {
           "variable": {},
           "variable_indel": {},
-          "fixed": {},
-          "fixed_counts": {
+          "composition": {
             "counts": {
               "-": 0,
               "A": 0,
@@ -891,8 +908,7 @@ mod tests {
               "Y": 0
             },
             "gap": "-"
-          },
-          "log_lh": 0.0
+          }
         }
       },
       "profile": {
@@ -1036,8 +1052,7 @@ mod tests {
             }
           },
           "variable_indel": {},
-          "fixed": {},
-          "fixed_counts": {
+          "composition": {
             "counts": {
               "-": 0,
               "A": 0,
@@ -1057,8 +1072,7 @@ mod tests {
               "Y": 0
             },
             "gap": "-"
-          },
-          "log_lh": 0.0
+          }
         }
       },
       "profile": {
