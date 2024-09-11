@@ -93,15 +93,19 @@ pub fn global_init() {
 }
 
 const HIDDEN_CRATE_NAME_PREFIXES: &[&str] = &[
-  "__rust_try",
+  "__",
+  "_start",
   "alloc::",
+  "clone",
   "color_eyre::",
   "core::",
   "crossbeam::",
   "eyre::",
+  "main",
   "rayon::",
   "rayon_core::",
   "rustc::",
+  "start_thread",
   "std::",
   "tokio::",
 ];
