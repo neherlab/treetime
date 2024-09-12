@@ -178,16 +178,22 @@ def run_clock(name: str, out: str, extra_args: str):
 
 
 def run_ancestral(method: str, seq_mode: Optional[str], name: str, out: str, extra_args: str):
+  outdir_base = f"{RESULTS_DIR}/ancestral/{method}"
   dense = ""
   if method == "marginal":
-    dense = "--dense=true --model=jc69" if seq_mode == "dense" else "--dense=false"
+    if seq_mode == "dense":
+      dense = "--dense=true --model=jc69"
+      outdir_base = f"{outdir_base}-dense"
+    else:
+      dense = "--dense=false"
+      outdir_base = f"{outdir_base}-sparse"
 
   cmd = f"""
   {TREETIME_BIN} ancestral
   --method-anc={method}
   {dense}
   --tree={DATA_DIR}/{name}/tree.nwk
-  --outdir={RESULTS_DIR}/ancestral/{method}/{out}
+  --outdir={outdir_base}/{out}
   {DATA_DIR}/{name}/aln.fasta.xz
   {extra_args}
   """
