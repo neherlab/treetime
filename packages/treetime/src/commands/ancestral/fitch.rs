@@ -353,6 +353,8 @@ fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]) 
                 qry: cnuc,
                 reff: pnuc,
               };
+              composition.add_sub(&m);
+              edge.subs.push(m);
             }
             p.state = Some(sequence[*pos]);
           } else if alphabet.is_gap(pnuc) && !range_contains(gaps, *pos) {
