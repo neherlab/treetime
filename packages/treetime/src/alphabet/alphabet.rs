@@ -9,6 +9,8 @@ use itertools::{chain, Itertools};
 use ndarray::{stack, Array1, Array2, Axis};
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
+use std::collections::BTreeSet;
+use std::iter::once;
 use strum_macros::Display;
 
 pub const NON_CHAR: char = '.';
@@ -115,6 +117,22 @@ impl Alphabet {
       treat_gap_as_unknown: *treat_gap_as_unknown,
       profile_map,
     })
+  }
+
+  /// Resolve possible ambiguity of the given character to the set of canonical chars
+  pub fn disambiguate(&self, c: char) -> BTreeSet<char> {
+    // If unknown then could be any canonical (e.g. N => { A, C, G, T })
+    if self.is_unknown(c) {
+      self.canonical().collect()
+    }
+    // If ambiguous (e.g. R => { A, G })
+    else if let Some(resolutions) = self.ambiguous.get(&c) {
+      resolutions.iter().copied().collect()
+    }
+    // Otherwise it's not ambiguous and it's the char itself (incl. gap)
+    else {
+      once(c).collect()
+    }
   }
 
   #[inline]
@@ -418,6 +436,7 @@ mod tests {
   use super::*;
   use eyre::Report;
   use indoc::indoc;
+  use maplit::btreeset;
   use ndarray::array;
   use pretty_assertions::assert_eq;
 
@@ -438,6 +457,16 @@ mod tests {
       .collect_vec();
     let expected = vec!['A', 'G', 'T', 'G', '-', 'G', 'N', 'G', 'C'];
     assert_eq!(expected, actual);
+    Ok(())
+  }
+
+  #[test]
+  fn test_disambiguate() -> Result<(), Report> {
+    let alphabet = Alphabet::new(AlphabetName::Nuc, false)?;
+    assert_eq!(btreeset! {'A', 'G'}, alphabet.disambiguate('R'));
+    assert_eq!(btreeset! {'A', 'C', 'G', 'T'}, alphabet.disambiguate('N'));
+    assert_eq!(btreeset! {'C'}, alphabet.disambiguate('C'));
+    assert_eq!(btreeset! {alphabet.gap()}, alphabet.disambiguate(alphabet.gap()));
     Ok(())
   }
 
