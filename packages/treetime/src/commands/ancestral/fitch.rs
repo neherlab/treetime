@@ -595,14 +595,20 @@ mod tests {
   use crate::utils::string::vec_to_string;
   use eyre::Report;
   use indoc::indoc;
+  use lazy_static::lazy_static;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
+
+  lazy_static! {
+    static ref NUC_ALPHABET: Alphabet = Alphabet::default();
+  }
 
   #[test]
   fn test_ancestral_reconstruction_fitch() -> Result<(), Report> {
     rayon::ThreadPoolBuilder::new().num_threads(1).build_global()?;
 
-    let aln = read_many_fasta_str(indoc! {r#"
+    let aln = read_many_fasta_str(
+      indoc! {r#"
       >A
       ACATCGCCNNA--GAC
       >B
@@ -611,16 +617,21 @@ mod tests {
       CCGGCGATGTRTTG--
       >D
       TCGGCCGTGTRTTG--
-    "#})?;
+    "#},
+      &NUC_ALPHABET,
+    )?;
 
-    let expected = read_many_fasta_str(indoc! {r#"
+    let expected = read_many_fasta_str(
+      indoc! {r#"
       >root
       ACAGCCATGTATTG--
       >AB
       ACATCCCTGTA-TG--
       >CD
       CCGGCCATGTATTG--
-    "#})?
+    "#},
+      &NUC_ALPHABET,
+    )?
     .into_iter()
     .map(|fasta| (fasta.seq_name, fasta.seq))
     .collect::<BTreeMap<_, _>>();
@@ -648,7 +659,8 @@ mod tests {
   fn test_ancestral_reconstruction_fitch_with_leaves() -> Result<(), Report> {
     rayon::ThreadPoolBuilder::new().num_threads(1).build_global()?;
 
-    let aln = read_many_fasta_str(indoc! {r#"
+    let aln = read_many_fasta_str(
+      indoc! {r#"
       >A
       ACATCGCCNNA--GAC
       >B
@@ -657,9 +669,12 @@ mod tests {
       CCGGCGATGTRTTG--
       >D
       TCGGCCGTGTRTTG--
-    "#})?;
+    "#},
+      &NUC_ALPHABET,
+    )?;
 
-    let expected = read_many_fasta_str(indoc! {r#"
+    let expected = read_many_fasta_str(
+      indoc! {r#"
       >root
       ACAGCCATGTATTG--
       >AB
@@ -674,7 +689,9 @@ mod tests {
       CCGGCGATGTRTTG--
       >D
       TCGGCCGTGTRTTG--
-    "#})?
+    "#},
+      &NUC_ALPHABET,
+    )?
     .into_iter()
     .map(|fasta| (fasta.seq_name, fasta.seq))
     .collect::<BTreeMap<_, _>>();
@@ -702,7 +719,8 @@ mod tests {
   fn test_fitch_internals() -> Result<(), Report> {
     rayon::ThreadPoolBuilder::new().num_threads(1).build_global()?;
 
-    let aln = read_many_fasta_str(indoc! {r#"
+    let aln = read_many_fasta_str(
+      indoc! {r#"
       >root
       ACAGCCATGTATTG--
       >AB
@@ -717,7 +735,9 @@ mod tests {
       CCGGCGATGTRTTG--
       >D
       TCGGCCGTGTRTTG--
-    "#})?;
+    "#},
+      &NUC_ALPHABET,
+    )?;
 
     let graph: SparseGraph = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 

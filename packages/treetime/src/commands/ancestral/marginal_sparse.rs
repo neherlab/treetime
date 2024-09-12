@@ -541,13 +541,19 @@ mod tests {
   use crate::utils::string::vec_to_string;
   use eyre::Report;
   use indoc::indoc;
+  use lazy_static::lazy_static;
   use pretty_assertions::assert_eq;
+
+  lazy_static! {
+    static ref NUC_ALPHABET: Alphabet = Alphabet::default();
+  }
 
   #[test]
   fn test_ancestral_reconstruction_marginal_sparse() -> Result<(), Report> {
     rayon::ThreadPoolBuilder::new().num_threads(1).build_global()?;
 
-    let aln = read_many_fasta_str(indoc! {r#"
+    let aln = read_many_fasta_str(
+      indoc! {r#"
       >root
       ACAGCCATGTATTG--
       >AB
@@ -562,16 +568,21 @@ mod tests {
       CCGGCGATGTRTTG--
       >D
       TCGGCCGTGTRTTG--
-    "#})?;
+    "#},
+      &NUC_ALPHABET,
+    )?;
 
-    let expected = read_many_fasta_str(indoc! {r#"
+    let expected = read_many_fasta_str(
+      indoc! {r#"
       >root
       ACAGCCATGTATTG--
       >AB
       ACATCCCTGTA-TG--
       >CD
       CCGGCCATGTATTG--
-    "#})?
+    "#},
+      &NUC_ALPHABET,
+    )?
     .into_iter()
     .map(|fasta| (fasta.seq_name, fasta.seq))
     .collect::<BTreeMap<_, _>>();

@@ -178,7 +178,12 @@ mod tests {
   use crate::pretty_assert_ulps_eq;
   use crate::representation::partitions_parsimony::PartitionParsimonyWithAln;
   use indoc::indoc;
+  use lazy_static::lazy_static;
   use ndarray::array;
+
+  lazy_static! {
+    static ref NUC_ALPHABET: Alphabet = Alphabet::default();
+  }
 
   #[test]
   fn test_infer_gtr_only() -> Result<(), Report> {
@@ -232,7 +237,8 @@ mod tests {
   #[test]
   fn test_infer_gtr_with_mutation_counts() -> Result<(), Report> {
     rayon::ThreadPoolBuilder::new().num_threads(1).build_global()?;
-    let aln = read_many_fasta_str(indoc! {r#"
+    let aln = read_many_fasta_str(
+      indoc! {r#"
       >A
       ACATCGCCNNA--GAC
       >B
@@ -241,7 +247,9 @@ mod tests {
       CCGGCGATGTRTTG--
       >D
       TCGGCCGTGTRTTG--
-      "#})?;
+      "#},
+      &NUC_ALPHABET,
+    )?;
 
     let graph: SparseGraph = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 

@@ -292,6 +292,7 @@ pub fn write_one_fasta(
 #[cfg(test)]
 mod tests {
   use super::*;
+  use crate::alphabet::alphabet::AlphabetName;
   use crate::o;
   use indoc::indoc;
   use lazy_static::lazy_static;
@@ -300,6 +301,7 @@ mod tests {
 
   lazy_static! {
     static ref NUC_ALPHABET: Alphabet = Alphabet::default();
+    static ref AA_ALPHABET: Alphabet = Alphabet::new(AlphabetName::Aa, false).unwrap();
   }
 
   #[test]
@@ -677,7 +679,7 @@ mod tests {
       >Pathway/042|Doodlease
       MXQ-*XTQWBQR
     "#},
-      &NUC_ALPHABET,
+      &AA_ALPHABET,
     )?;
 
     let expected = vec![
