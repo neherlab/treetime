@@ -68,7 +68,7 @@ impl Alphabet {
       }),
       AlphabetName::Aa => Self::with_config(&AlphabetConfig {
         canonical: vec![
-          'A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y',
+          'A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y', '*',
         ],
         ambiguous: indexmap! {
           'B' => vec!['N', 'D'],
