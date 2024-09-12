@@ -350,8 +350,8 @@ impl AlphabetConfig {
         self.canonical.iter().copied(),
         self.ambiguous.keys().copied(),
         self.ambiguous.values().flatten().copied(),
-        std::iter::once(self.unknown),
-        std::iter::once(self.gap)
+        once(self.unknown),
+        once(self.gap)
       ]
       .collect_vec();
 
