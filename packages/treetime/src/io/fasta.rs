@@ -149,10 +149,17 @@ impl<'a, 'b> FastaReader<'a, 'b> {
     let fragment = self
       .line
       .chars()
-      .filter(|c| self.alphabet.contains(*c))
-      .map(|c| c.to_ascii_uppercase());
+      .map(|c| {
+        let c = c.to_ascii_uppercase();
+        if !self.alphabet.contains(c) {
+          make_error!("Character is not in the alphabet: '{c}'")
+        } else {
+          Ok(c)
+        }
+      })
+      .collect::<Result<Vec<char>, Report>>()?;
 
-    record.seq.extend(fragment);
+    record.seq.extend(&fragment);
 
     loop {
       self.line.clear();
@@ -165,10 +172,17 @@ impl<'a, 'b> FastaReader<'a, 'b> {
       let fragment = self
         .line
         .chars()
-        .filter(|c| self.alphabet.contains(*c))
-        .map(|c| c.to_ascii_uppercase());
+        .map(|c| {
+          let c = c.to_ascii_uppercase();
+          if !self.alphabet.contains(c) {
+            make_error!("Character is not in the alphabet: '{c}'")
+          } else {
+            Ok(c)
+          }
+        })
+        .collect::<Result<Vec<char>, Report>>()?;
 
-      record.seq.extend(fragment);
+      record.seq.extend(&fragment);
     }
 
     record.index = self.index;
