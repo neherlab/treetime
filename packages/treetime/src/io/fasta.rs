@@ -1,3 +1,4 @@
+use crate::alphabet::alphabet::Alphabet;
 use crate::io::compression::Decompressor;
 use crate::io::concat::Concat;
 use crate::io::file::{create_file_or_stdout, open_file_or_stdin, open_stdin};
@@ -7,10 +8,6 @@ use log::info;
 use serde::{Deserialize, Serialize};
 use std::io::{BufRead, BufReader};
 use std::path::Path;
-
-pub fn is_char_allowed(c: char) -> bool {
-  c.is_ascii()
-}
 
 #[derive(Clone, Default, Debug, Deserialize, Serialize, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -38,41 +35,47 @@ impl FastaRecord {
   }
 }
 
-pub struct FastaReader<'a> {
+pub struct FastaReader<'a, 'b> {
   reader: Box<dyn BufRead + 'a>,
+  alphabet: &'b Alphabet,
   line: String,
   index: usize,
 }
 
-impl<'a> FastaReader<'a> {
-  pub fn new(reader: Box<dyn BufRead + 'a>) -> Self {
+impl<'a, 'b> FastaReader<'a, 'b> {
+  pub fn new(reader: Box<dyn BufRead + 'a>, alphabet: &'b Alphabet) -> Self {
     Self {
       reader,
+      alphabet,
       line: String::new(),
       index: 0,
     }
   }
 
-  pub fn from_str(contents: &'a impl AsRef<str>) -> Result<Self, Report> {
+  pub fn from_str(contents: &'a impl AsRef<str>, alphabet: &'b Alphabet) -> Result<Self, Report> {
     let reader = contents.as_ref().as_bytes();
-    Ok(Self::new(Box::new(reader)))
+    Ok(Self::new(Box::new(reader), alphabet))
   }
 
-  pub fn from_str_and_path(contents: &'static str, filepath: impl AsRef<Path>) -> Result<Self, Report> {
+  pub fn from_str_and_path(
+    contents: &'static str,
+    filepath: impl AsRef<Path>,
+    alphabet: &'b Alphabet,
+  ) -> Result<Self, Report> {
     let decompressor = Decompressor::from_str_and_path(contents, filepath)?;
     let reader = BufReader::new(decompressor);
-    Ok(Self::new(Box::new(reader)))
+    Ok(Self::new(Box::new(reader), alphabet))
   }
 
-  pub fn from_path(filepath: impl AsRef<Path>) -> Result<Self, Report> {
-    Self::from_paths(&[filepath])
+  pub fn from_path(filepath: impl AsRef<Path>, alphabet: &'b Alphabet) -> Result<Self, Report> {
+    Self::from_paths(&[filepath], alphabet)
   }
 
   /// Reads multiple files sequentially given a set of paths
-  pub fn from_paths<P: AsRef<Path>>(filepaths: &[P]) -> Result<Self, Report> {
+  pub fn from_paths<P: AsRef<Path>>(filepaths: &[P], alphabet: &'b Alphabet) -> Result<Self, Report> {
     if filepaths.is_empty() {
       info!("Reading input fasta from standard input");
-      return Ok(Self::new(open_stdin()?));
+      return Ok(Self::new(open_stdin()?, alphabet));
     }
 
     let readers: Vec<Box<dyn BufRead + 'a>> = filepaths
@@ -83,7 +86,7 @@ impl<'a> FastaReader<'a> {
     let concat = Concat::with_delimiter(readers.into_iter(), Some(b"\n".to_vec()));
     let concat_buf = BufReader::new(concat);
 
-    Ok(Self::new(Box::new(concat_buf)))
+    Ok(Self::new(Box::new(concat_buf), alphabet))
   }
 
   #[allow(clippy::string_slice)]
@@ -146,7 +149,7 @@ impl<'a> FastaReader<'a> {
     let fragment = self
       .line
       .chars()
-      .filter(|c| is_char_allowed(*c))
+      .filter(|c| self.alphabet.contains(*c))
       .map(|c| c.to_ascii_uppercase());
 
     record.seq.extend(fragment);
@@ -162,7 +165,7 @@ impl<'a> FastaReader<'a> {
       let fragment = self
         .line
         .chars()
-        .filter(|c| is_char_allowed(*c))
+        .filter(|c| self.alphabet.contains(*c))
         .map(|c| c.to_ascii_uppercase());
 
       record.seq.extend(fragment);
@@ -175,16 +178,16 @@ impl<'a> FastaReader<'a> {
   }
 }
 
-pub fn read_one_fasta(filepath: impl AsRef<Path>) -> Result<FastaRecord, Report> {
+pub fn read_one_fasta(filepath: impl AsRef<Path>, alphabet: &Alphabet) -> Result<FastaRecord, Report> {
   let filepath = filepath.as_ref();
-  let mut reader = FastaReader::from_path(filepath)?;
+  let mut reader = FastaReader::from_path(filepath, alphabet)?;
   let mut record = FastaRecord::default();
   reader.read(&mut record)?;
   Ok(record)
 }
 
-pub fn read_many_fasta<P: AsRef<Path>>(filepaths: &[P]) -> Result<Vec<FastaRecord>, Report> {
-  let mut reader = FastaReader::from_paths(filepaths)?;
+pub fn read_many_fasta<P: AsRef<Path>>(filepaths: &[P], alphabet: &Alphabet) -> Result<Vec<FastaRecord>, Report> {
+  let mut reader = FastaReader::from_paths(filepaths, alphabet)?;
   let mut fasta_records = Vec::<FastaRecord>::new();
 
   loop {
@@ -199,15 +202,15 @@ pub fn read_many_fasta<P: AsRef<Path>>(filepaths: &[P]) -> Result<Vec<FastaRecor
   Ok(fasta_records)
 }
 
-pub fn read_one_fasta_str(contents: impl AsRef<str>) -> Result<FastaRecord, Report> {
-  let mut reader = FastaReader::from_str(&contents)?;
+pub fn read_one_fasta_str(contents: impl AsRef<str>, alphabet: &Alphabet) -> Result<FastaRecord, Report> {
+  let mut reader = FastaReader::from_str(&contents, alphabet)?;
   let mut record = FastaRecord::default();
   reader.read(&mut record)?;
   Ok(record)
 }
 
-pub fn read_many_fasta_str(contents: impl AsRef<str>) -> Result<Vec<FastaRecord>, Report> {
-  let mut reader = FastaReader::from_str(&contents)?;
+pub fn read_many_fasta_str(contents: impl AsRef<str>, alphabet: &Alphabet) -> Result<Vec<FastaRecord>, Report> {
+  let mut reader = FastaReader::from_str(&contents, alphabet)?;
   let mut fasta_records = Vec::<FastaRecord>::new();
 
   loop {
@@ -277,14 +280,19 @@ mod tests {
   use super::*;
   use crate::o;
   use indoc::indoc;
+  use lazy_static::lazy_static;
   use pretty_assertions::assert_eq;
   use std::io::Cursor;
+
+  lazy_static! {
+    static ref NUC_ALPHABET: Alphabet = Alphabet::default();
+  }
 
   #[test]
   fn test_fasta_reader_fail_on_non_fasta() {
     let data =
       b"This is not a valid FASTA string.\nIt is not empty, and not entirely whitespace\nbut does not contain 'greater than' character.\n";
-    let mut reader = FastaReader::new(Box::new(Cursor::new(data)));
+    let mut reader = FastaReader::new(Box::new(Cursor::new(data)), &NUC_ALPHABET);
     let mut record = FastaRecord::new();
     assert_eq!(
       reader.read(&mut record).unwrap_err().to_string(),
@@ -295,7 +303,7 @@ mod tests {
   #[test]
   fn test_fasta_reader_read_empty() {
     let data = b"";
-    let mut reader = FastaReader::new(Box::new(Cursor::new(data)));
+    let mut reader = FastaReader::new(Box::new(Cursor::new(data)), &NUC_ALPHABET);
 
     let mut record = FastaRecord::new();
     reader.read(&mut record).unwrap();
@@ -306,7 +314,7 @@ mod tests {
   #[test]
   fn test_fasta_reader_read_whitespace_only() {
     let data = b"\n \n \n\n";
-    let mut reader = FastaReader::new(Box::new(Cursor::new(data)));
+    let mut reader = FastaReader::new(Box::new(Cursor::new(data)), &NUC_ALPHABET);
 
     let mut record = FastaRecord::new();
     reader.read(&mut record).unwrap();
@@ -317,7 +325,7 @@ mod tests {
   #[test]
   fn test_fasta_reader_read_single_record() {
     let data = b">seq1\nATCG\n";
-    let mut reader = FastaReader::new(Box::new(Cursor::new(data)));
+    let mut reader = FastaReader::new(Box::new(Cursor::new(data)), &NUC_ALPHABET);
 
     let mut record = FastaRecord::new();
     reader.read(&mut record).unwrap();
@@ -330,7 +338,7 @@ mod tests {
   #[test]
   fn test_fasta_reader_read_single_record_with_leading_newline() {
     let data = b"\n>seq1\nATCG\n";
-    let mut reader = FastaReader::new(Box::new(Cursor::new(data)));
+    let mut reader = FastaReader::new(Box::new(Cursor::new(data)), &NUC_ALPHABET);
 
     let mut record = FastaRecord::new();
     reader.read(&mut record).unwrap();
@@ -343,7 +351,7 @@ mod tests {
   #[test]
   fn test_fasta_reader_read_single_record_with_multiple_leading_newlines() {
     let data = b"\n\n\n>seq1\nATCG\n";
-    let mut reader = FastaReader::new(Box::new(Cursor::new(data)));
+    let mut reader = FastaReader::new(Box::new(Cursor::new(data)), &NUC_ALPHABET);
 
     let mut record = FastaRecord::new();
     reader.read(&mut record).unwrap();
@@ -356,7 +364,7 @@ mod tests {
   #[test]
   fn test_fasta_reader_read_single_record_without_trailing_newline() {
     let data = b">seq1\nATCG";
-    let mut reader = FastaReader::new(Box::new(Cursor::new(data)));
+    let mut reader = FastaReader::new(Box::new(Cursor::new(data)), &NUC_ALPHABET);
 
     let mut record = FastaRecord::new();
     reader.read(&mut record).unwrap();
@@ -369,7 +377,7 @@ mod tests {
   #[test]
   fn test_fasta_reader_read_multiple_records() {
     let data = b">seq1\nATCG\n>seq2\nGCTA\n";
-    let mut reader = FastaReader::new(Box::new(Cursor::new(data)));
+    let mut reader = FastaReader::new(Box::new(Cursor::new(data)), &NUC_ALPHABET);
 
     let mut record1 = FastaRecord::new();
     reader.read(&mut record1).unwrap();
@@ -389,7 +397,7 @@ mod tests {
   #[test]
   fn test_fasta_reader_read_empty_lines_between_records() {
     let data = b"\n>seq1\n\nATCG\n\n\n>seq2\nGCTA\n\n";
-    let mut reader = FastaReader::new(Box::new(Cursor::new(data)));
+    let mut reader = FastaReader::new(Box::new(Cursor::new(data)), &NUC_ALPHABET);
 
     let mut record1 = FastaRecord::new();
     reader.read(&mut record1).unwrap();
@@ -409,7 +417,7 @@ mod tests {
   #[test]
   fn test_fasta_reader_read_with_trailing_newline() {
     let data = b">seq1\nATCG\n\n";
-    let mut reader = FastaReader::new(Box::new(Cursor::new(data)));
+    let mut reader = FastaReader::new(Box::new(Cursor::new(data)), &NUC_ALPHABET);
 
     let mut record = FastaRecord::new();
     reader.read(&mut record).unwrap();
@@ -422,7 +430,7 @@ mod tests {
   #[test]
   fn test_fasta_reader_example_1() {
     let data = b"\n\n>a\nACGCTCGATC\n\n>b\nCCGCGC";
-    let mut reader = FastaReader::new(Box::new(Cursor::new(data)));
+    let mut reader = FastaReader::new(Box::new(Cursor::new(data)), &NUC_ALPHABET);
 
     let mut record = FastaRecord::new();
     reader.read(&mut record).unwrap();
@@ -453,7 +461,7 @@ mod tests {
   #[test]
   fn test_fasta_reader_example_2() {
     let data = b">a\nACGCTCGATC\n>b\nCCGCGC\n>c";
-    let mut reader = FastaReader::new(Box::new(Cursor::new(data)));
+    let mut reader = FastaReader::new(Box::new(Cursor::new(data)), &NUC_ALPHABET);
 
     let mut record = FastaRecord::new();
     reader.read(&mut record).unwrap();
@@ -496,7 +504,7 @@ mod tests {
   #[test]
   fn test_fasta_reader_example_3() {
     let data = b">a\nACGCTCGATC\n>b\n>c\nCCGCGC";
-    let mut reader = FastaReader::new(Box::new(Cursor::new(data)));
+    let mut reader = FastaReader::new(Box::new(Cursor::new(data)), &NUC_ALPHABET);
 
     let mut record = FastaRecord::new();
     reader.read(&mut record).unwrap();
@@ -538,12 +546,15 @@ mod tests {
 
   #[test]
   fn test_fasta_reader_name_desc() -> Result<(), Report> {
-    let actual = read_many_fasta_str(indoc! {r#"
+    let actual = read_many_fasta_str(
+      indoc! {r#"
       >Identifier Description
       ACGT
       >Identifier Description with spaces
       ACGT
-    "#})?;
+    "#},
+      &NUC_ALPHABET,
+    )?;
 
     let expected = vec![
       FastaRecord {
@@ -566,7 +577,8 @@ mod tests {
 
   #[test]
   fn test_fasta_reader_dedent_nuc() -> Result<(), Report> {
-    let actual = read_many_fasta_str(indoc! {r#"
+    let actual = read_many_fasta_str(
+      indoc! {r#"
       >FluBuster-001
       ACAGCCATGTATTG--
       >CommonCold-AB
@@ -582,7 +594,9 @@ mod tests {
       CCGGCGATGTRTTG--
         >MisindentedVirus|D-skew
         TCGGCCGTGTRTTG--
-    "#})?;
+    "#},
+      &NUC_ALPHABET,
+    )?;
 
     let expected = vec![
       FastaRecord {
@@ -635,7 +649,8 @@ mod tests {
 
   #[test]
   fn test_fasta_reader_dedent_aa() -> Result<(), Report> {
-    let actual = read_many_fasta_str(indoc! {r#"
+    let actual = read_many_fasta_str(
+      indoc! {r#"
       >Prot/000|β-Napkinase
       MXDXXXTQ-B--
       >Enzyme/2024|LaughzymeFactor
@@ -647,7 +662,9 @@ mod tests {
       MQXQXXBQRW**
       >Pathway/042|Doodlease
       MXQ-*XTQWBQR
-    "#})?;
+    "#},
+      &NUC_ALPHABET,
+    )?;
 
     let expected = vec![
       FastaRecord {
@@ -688,7 +705,8 @@ mod tests {
 
   #[test]
   fn test_fasta_reader_multiline_and_skewed_indentation() -> Result<(), Report> {
-    let actual = read_many_fasta_str(indoc! {r#"
+    let actual = read_many_fasta_str(
+      indoc! {r#"
       >MixedCaseSeq
       aCaGcCAtGtAtTG--
       >LowercaseSeq
@@ -703,7 +721,9 @@ mod tests {
         ACAGCC
       ATGTATTG
        ATTG--
-    "#})?;
+    "#},
+      &NUC_ALPHABET,
+    )?;
 
     let expected = vec![
       FastaRecord {
