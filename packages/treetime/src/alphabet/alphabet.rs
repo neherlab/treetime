@@ -195,7 +195,7 @@ impl Alphabet {
   }
 
   /// Check if character is in alphabet (including 'unknown' and 'gap')
-  pub fn is_char(&self, c: char) -> bool {
+  pub fn contains(&self, c: char) -> bool {
     self.all.contains(&c)
   }
 
