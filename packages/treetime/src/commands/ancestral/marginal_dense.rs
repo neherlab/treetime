@@ -16,6 +16,7 @@ use ndarray::prelude::*;
 use ndarray::{stack, AssignElem};
 use ndarray_stats::QuantileExt;
 use std::collections::BTreeMap;
+use std::process::exit;
 
 // Turn a profile into a sequence
 fn prof2seq(profile: &DenseSeqDis, alphabet: &Alphabet) -> Vec<char> {
@@ -209,7 +210,12 @@ fn outgroup_profiles_dense(graph: &DenseGraph, dense_partitions: &[PartitionLike
       for cname in seq_info.msgs_from_children.keys() {
         let child_msg = &seq_info.msgs_from_children[cname];
         let mut dis = seq_info.profile.dis.clone();
+        let dis_old = dis.clone();
         dis /= &child_msg.dis;
+        if dis.iter().any(|r| !r.is_finite()) {
+          dbg!(&dis_old, &child_msg.dis, &dis);
+          exit(0);
+        }
         let log_lh = seq_info.profile.log_lh - child_msg.log_lh;
         seq_info
           .msgs_to_children
