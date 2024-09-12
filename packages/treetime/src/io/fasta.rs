@@ -149,8 +149,8 @@ impl<'a, 'b> FastaReader<'a, 'b> {
     let fragment = self
       .line
       .chars()
-      .filter(|c| self.alphabet.contains(*c))
-      .map(|c| c.to_ascii_uppercase());
+      .map(|c| c.to_ascii_uppercase())
+      .filter(|c| self.alphabet.contains(*c));
 
     record.seq.extend(fragment);
 
@@ -165,8 +165,8 @@ impl<'a, 'b> FastaReader<'a, 'b> {
       let fragment = self
         .line
         .chars()
-        .filter(|c| self.alphabet.contains(*c))
-        .map(|c| c.to_ascii_uppercase());
+        .map(|c| c.to_ascii_uppercase())
+        .filter(|c| self.alphabet.contains(*c));
 
       record.seq.extend(fragment);
     }
