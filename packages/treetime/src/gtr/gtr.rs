@@ -1,6 +1,5 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::constants::TINY_NUMBER;
-use crate::utils::ndarray::{clamp_max, clamp_min, outer};
+use crate::utils::ndarray::{clamp_min, outer};
 use eyre::Report;
 use ndarray::prelude::*;
 use ndarray_linalg::Eigh;
