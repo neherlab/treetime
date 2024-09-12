@@ -51,7 +51,10 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
 
   let rng = get_random_number_generator(*seed);
 
-  let alphabet = Alphabet::new(alphabet.unwrap_or_default(), false)?;
+  let dense = dense.unwrap_or_else(infer_dense);
+
+  let treat_gap_as_unknown = dense;
+  let alphabet = Alphabet::new(alphabet.unwrap_or_default(), treat_gap_as_unknown)?;
 
   // TODO: avoid reading all sequences into memory somehow?
   let aln = read_many_fasta(input_fastas, &alphabet)?;
@@ -93,8 +96,6 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
       write_graph(outdir, &graph)?;
     }
     MethodAncestral::Marginal => {
-      let dense = dense.unwrap_or_else(infer_dense);
-
       if !dense {
         let graph: SparseGraph = nwk_read_file(tree)?;
         let partitions = vec![PartitionParsimonyWithAln::new(alphabet.clone(), aln)?];
