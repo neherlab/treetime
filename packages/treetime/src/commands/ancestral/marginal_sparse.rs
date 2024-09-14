@@ -1,18 +1,17 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::graph::breadth_first::GraphTraversalContinuation;
 use crate::graph::edge::Weighted;
-use crate::graph::node::Named;
 use crate::representation::graph_sparse::{
-  SparseGraph, SparseNode, SparseSeqDis, SparseSeqEdge, SparseSeqNode, VarPos,
+  SparseGraph, SparseNode, SparseSeqDis,VarPos,
 };
 use crate::representation::partitions_likelihood::PartitionLikelihood;
+use crate::seq::composition;
 use crate::utils::interval::range::range_contains;
-use crate::utils::ndarray::{product_axis, stack_owned};
 use crate::{make_internal_error, make_internal_report};
 use eyre::Report;
-use itertools::Itertools;
+use itertools::{zip, Itertools};
 use maplit::btreemap;
-use ndarray::{array, Array1, Array2, Axis};
+use ndarray::{array, Array1, Array2};
 use ndarray_stats::QuantileExt;
 use std::collections::BTreeMap;
 
@@ -22,8 +21,7 @@ fn ingroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihoo
   graph.par_iter_breadth_first_backward(|mut node| {
     for (si, seq_info) in node.payload.sparse_partitions.iter_mut().enumerate() {
       let PartitionLikelihood { gtr, alphabet, .. } = &partitions[si];
-
-      if node.is_leaf {
+      let msg_to_parent = if node.is_leaf {
         // this is mostly a copy (or ref here) of the fitch state.
         let fixed = alphabet
           .determined()
@@ -47,69 +45,60 @@ fn ingroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihoo
           })
           .collect();
 
-        seq_info.msg_to_parents = SparseSeqDis {
+        SparseSeqDis {
           fixed_counts: seq_info.seq.composition.clone(),
           variable,
           variable_indel: btreemap! {},
           fixed,
           log_lh: 0.0,
-        };
+        }
       } else {
-        // internal nodes
-        let child_expQt = node
-          .children
-          .iter()
-          .map(|(c, e)| gtr.expQt(e.read_arc().weight().unwrap_or(0.0)).t().to_owned())
-          .collect_vec();
-
         let child_seqs = node
           .children
           .iter()
           .map(|(c, _)| c.read_arc().sparse_partitions[si].clone()) // FIXME: avoid cloning
           .collect_vec();
 
-        let child_edges = node
-          .children
-          .iter()
-          .map(|(_, e)| e.read_arc().sparse_partitions[si].clone()) // FIXME: avoid cloning
-          .collect_vec();
-
-        // get all variable positions, the reference state, and the child states at these positions
-        let (variable_pos, child_states) = get_variable_states_children(&child_seqs, &child_edges);
-
-        let mut seq_dis = SparseSeqDis {
-          variable: btreemap! {},
-          variable_indel: btreemap! {},
-          fixed: btreemap! {},
-          fixed_counts: seq_info.seq.composition.clone(),
-          log_lh: 0.0,
-        };
-
-        seq_info.msgs_from_children = btreemap! {};
-        for (ci, (child, _)) in node.children.iter().enumerate() {
-          let name = child.read_arc().name().unwrap().as_ref().to_owned();
-          seq_dis.log_lh += child_seqs[ci].msg_to_parents.log_lh;
-          let message = propagate(
-            &child_expQt[ci],
-            &child_seqs[ci].msg_to_parents,
-            &variable_pos,
-            &child_states[ci],
-            &child_seqs[ci].seq.non_char,
-            &None,
-          );
-          seq_info.msgs_from_children.insert(name, message);
+        let mut variable_pos = btreemap! {};
+        let mut child_states: Vec<BTreeMap<usize, char>> = vec![];
+        let mut child_messages: Vec<SparseSeqDis> = vec![];
+        for (ci, (c, edge)) in node.children.iter().enumerate() {
+          // go over all mutations and get reference state
+          child_states.push(btreemap! {});
+          for m in &edge.read_arc().sparse_partitions[si].subs {
+            variable_pos.insert(m.pos, m.reff); // this might be set multiple times, but the reference state should always be the same
+            child_states[ci].insert(m.pos, m.qry);
+          }
+          // go over child variable position and get reference state
+          for (pos, p) in &edge.read_arc().sparse_partitions[si].msg_from_child.variable {
+            if let Some(p_state) = p.state {
+              variable_pos.entry(*pos).or_insert(p_state);
+            }
+          }
+          // FIXME: avoid cloning. could move this loop over child_edges into combine_messages
+          child_messages.push(edge.read_arc().sparse_partitions[si].msg_from_child.clone());
         }
 
         combine_messages(
-          &mut seq_dis,
-          &seq_info.msgs_from_children.values().cloned().collect_vec(), // FIXME: avoid cloning
+          &seq_info.seq.composition,
+          &child_messages,
           &variable_pos,
+          &child_states,
           alphabet,
-          None,
+          if node.is_root { Some(&gtr.pi) } else { None },
         )
-        .unwrap();
+      };
 
-        seq_info.msg_to_parents = seq_dis;
+      if node.is_root {
+        seq_info.profile = msg_to_parent;
+      } else {
+        let edge_to_parent = node
+          .get_exactly_one_parent_edge()
+          .expect("Encountered non-root node without a parent edge");
+        let branch_length = edge_to_parent.weight().unwrap_or(0.0);
+        let edge_data = &mut edge_to_parent.sparse_partitions[si];
+        edge_data.msg_from_child = propagate_raw(&gtr.expQt(branch_length), &msg_to_parent, &edge_data.transmission);
+        edge_data.msg_to_parent = msg_to_parent;
       }
     }
 
@@ -117,12 +106,9 @@ fn ingroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihoo
   });
 }
 
-fn propagate(
+fn propagate_raw(
   expQt: &Array2<f64>,
   seq_dis: &SparseSeqDis,
-  variable_pos: &BTreeMap<usize, char>,
-  child_states: &BTreeMap<usize, char>,
-  non_char: &[(usize, usize)],
   transmission: &Option<Vec<(usize, usize)>>,
 ) -> SparseSeqDis {
   let mut message = SparseSeqDis {
@@ -132,30 +118,22 @@ fn propagate(
     fixed_counts: seq_dis.fixed_counts.clone(),
     log_lh: 0.0,
   };
-  for (pos, &state) in variable_pos {
+  for (pos, state) in seq_dis.variable.iter() {
     if let Some(transmission) = &transmission {
       if !range_contains(transmission, *pos) {
         continue; // transmission field is not currently used
       }
     }
 
-    if range_contains(non_char, *pos) {
-      continue;
-    }
-
-    let v = if let Some(variable) = seq_dis.variable.get(pos) {
-      variable.dis.clone()
-    } else if let Some(&state) = child_states.get(pos) {
-      message.fixed_counts.adjust_count(state, -1);
-      seq_dis.fixed[&state].clone()
-    } else {
-      message.fixed_counts.adjust_count(state, -1);
-      seq_dis.fixed[&state].clone()
-    };
-
-    let dis = expQt.dot(&v);
-    let state = Some(state);
-    message.variable.insert(*pos, VarPos { dis, state });
+    let dis = expQt.dot(&state.dis);
+    let child_state = state.state;
+    message.variable.insert(
+      *pos,
+      VarPos {
+        dis,
+        state: child_state,
+      },
+    );
   }
 
   for (&s, p) in &seq_dis.fixed {
@@ -166,32 +144,47 @@ fn propagate(
 }
 
 fn combine_messages(
-  seq_dis: &mut SparseSeqDis,
+  composition: &composition::Composition,
   messages: &[SparseSeqDis],
   variable_pos: &BTreeMap<usize, char>,
+  child_states: &[BTreeMap<usize, char>],
   alphabet: &Alphabet,
   gtr_weight: Option<&Array1<f64>>,
-) -> Result<(), Report> {
+) -> SparseSeqDis {
+  let mut seq_dis = SparseSeqDis {
+    variable: btreemap! {},
+    variable_indel: btreemap! {},
+    fixed: btreemap! {},
+    fixed_counts: composition.clone(),
+    log_lh: 0.0,
+  };
+
   // go over all putatively variable positions
   for (&pos, &state) in variable_pos {
     // collect the profiles of children to multiply
-    let mut msg_dis: Vec<Array1<f64>> = gtr_weight
-      .map(|gtr_weight| vec![gtr_weight.clone()])
-      .unwrap_or_default();
 
-    for msg in messages {
-      if let Some(var) = msg.variable.get(&pos) {
-        msg_dis.push(var.dis.clone());
-      }
-    }
-
-    // calculate new profile and likelihood contribution
-    let vec = if !msg_dis.is_empty() {
-      let msg_dis = stack_owned(Axis(0), &msg_dis)?;
-      product_axis(&msg_dis, Axis(0))
+    // start with a vector given by the gtr_weight if it is provided otherwise use a vector of ones
+    let mut vec = if let Some(gtr_weight) = gtr_weight {
+      gtr_weight.clone()
     } else {
       array![1.0]
     };
+
+    // element wise multiplication of the profiles of the children with the vec
+    // zip children messages and child states to iterate over them simultaneously
+    for (msg, states) in zip(messages, child_states) {
+      if let Some(var) = msg.variable.get(&pos) {
+        // position variable in child
+        vec *= &var.dis;
+      } else if let Some(child_state) = states.get(&pos) {
+        // position fixed in child, but different from parent
+        vec *= &msg.fixed[&child_state];
+      } else {
+        // position fixed in child and same as parent
+        vec *= &msg.fixed[&state];
+      }
+    }
+
     let vec_norm = vec.sum();
 
     // add position to variable states if the subleading states have a probability exceeding eps
@@ -214,16 +207,16 @@ fn combine_messages(
     // indeterminate parts in some children are not handled correctly here.
     // they should not contribute to the product. This will require some additional
     // handling or could be handled by treating these positions as variable
-    let mut msg_dis: Vec<Array1<f64>> = gtr_weight
-      .map(|gtr_weight| vec![gtr_weight.clone()])
-      .unwrap_or_default();
+    // start with a vector given by the gtr_weight if it is provided otherwise use a vector of ones
+    let mut vec = if let Some(gtr_weight) = gtr_weight {
+      gtr_weight.clone()
+    } else {
+      array![1.0]
+    };
 
     for msg in messages {
-      msg_dis.push(msg.fixed[&state].clone());
+      vec *= &msg.fixed[&state];
     }
-
-    let msg_dis = stack_owned(Axis(0), &msg_dis)?;
-    let vec: Array1<f64> = product_axis(&msg_dis, Axis(0));
     let vec_norm = vec.sum();
 
     let fixed_count = seq_dis
@@ -235,104 +228,70 @@ fn combine_messages(
     seq_dis.fixed.insert(state, vec / vec_norm);
   }
 
-  Ok(())
-}
-
-fn get_variable_states_children(
-  child_seqs: &[SparseSeqNode],
-  child_edges: &[SparseSeqEdge],
-) -> (BTreeMap<usize, char>, Vec<BTreeMap<usize, char>>) {
-  let mut variable_pos = btreemap! {};
-  let mut child_states: Vec<BTreeMap<usize, char>> = vec![btreemap! {}; child_edges.len()];
-  for (ci, edge) in child_edges.iter().enumerate() {
-    // go over all mutations and get reference state
-    for m in &edge.subs {
-      variable_pos.insert(m.pos, m.reff); // this might be set multiple times, but the reference state should always be the same
-      child_states[ci].insert(m.pos, m.qry);
-    }
-  }
-  for seq_info in child_seqs {
-    // go over child variable position and get reference state
-    for (pos, p) in &seq_info.msg_to_parents.variable {
-      if let Some(p_state) = p.state {
-        variable_pos.entry(*pos).or_insert(p_state);
-      }
-    }
-  }
-  (variable_pos, child_states)
+  seq_dis
 }
 
 fn outgroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihood]) {
   graph.par_iter_breadth_first_forward(|mut node| {
-    if node.is_root {
-      return GraphTraversalContinuation::Continue;
-    }
-
-    let name = node.payload.name().unwrap().as_ref().to_owned();
-
     for (si, seq_info) in node.payload.sparse_partitions.iter_mut().enumerate() {
       let PartitionLikelihood { gtr, alphabet, .. } = &partitions[si];
+      if !node.is_root {
+        // the root has no input from parents, profile is already calculated
+        let mut variable_pos = btreemap! {};
+        let mut parent_states: Vec<BTreeMap<usize, char>> = vec![];
+        let mut msgs_to_combine: Vec<SparseSeqDis> = vec![];
+        for (pi, (p, edge)) in node.parents.iter().enumerate() {
+          // go over all mutations and get reference state
+          parent_states.push(btreemap! {});
+          for m in &edge.read_arc().sparse_partitions[si].subs {
+            variable_pos.insert(m.pos, m.qry); // this might be set multiple times, but the reference state should always be the same
+            parent_states[pi].insert(m.pos, m.reff);
+          }
+          // go over parent variable position and get reference state
+          for (pos, p) in &edge.read_arc().sparse_partitions[si].msg_to_child.variable {
+            if let Some(p_state) = p.state {
+              variable_pos.entry(*pos).or_insert(p_state);
+            }
+          }
+          msgs_to_combine.push(propagate_raw(
+            &gtr.expQt(edge.read_arc().branch_length.unwrap_or(0.0)),
+            &edge.read_arc().sparse_partitions[si].msg_to_child,
+            &edge.read_arc().sparse_partitions[si].transmission,
+          ));
+          // go over variable position in children (info pushed to parent) and get reference state
+          for (pos, p) in &edge.read_arc().sparse_partitions[si].msg_to_parent.variable {
+            if let Some(p_state) = p.state {
+              variable_pos.entry(*pos).or_insert(p_state);
+            }
+          }
+          // add combined message from children (which is sent to the parent).
+          msgs_to_combine.push(edge.read_arc().sparse_partitions[si].msg_to_parent.clone());
+        }
 
-      let parent_nodes = node
-        .parents
-        .iter()
-        .map(|(p, _)| p.read_arc().sparse_partitions[si].profile.clone()) // FIXME: avoid cloning
-        .collect_vec();
-
-      let parent_edges = node
-        .parents
-        .iter()
-        .map(|(_, e)| e.read_arc().sparse_partitions[si].clone()) // FIXME: avoid cloning
-        .collect_vec();
-
-      let (variable_pos, parent_states) =
-        get_variable_states_parents(&seq_info.msg_to_parents, &parent_nodes, &parent_edges);
-
-      let mut msgs_from_parents = vec![];
-      for (p, e) in &node.parents {
-        let pseq_info = &p.read_arc().sparse_partitions[si];
-        let msg = propagate(
-          &gtr.expQt(e.read_arc().weight().unwrap_or(0.0)),
-          &pseq_info.msgs_to_children[&name],
+        seq_info.profile = combine_messages(
+          &seq_info.seq.composition,
+          &msgs_to_combine,
           &variable_pos,
-          &parent_states[si],
-          &pseq_info.seq.non_char,
-          &None,
+          &parent_states,
+          alphabet,
+          None,
         );
-        msgs_from_parents.push(msg);
       }
 
-      let mut seq_dis = SparseSeqDis {
-        variable: btreemap! {},
-        variable_indel: btreemap! {},
-        fixed: btreemap! {},
-        fixed_counts: seq_info.seq.composition.clone(),
-        log_lh: 0.0,
-      };
-
-      combine_messages(&mut seq_dis, &msgs_from_parents, &variable_pos, alphabet, None).unwrap();
-      seq_info.profile = seq_dis;
-
       // precalculate messages to children that summarize info from their siblings and the parent
-      seq_info.msgs_to_children = btreemap! {};
-      for child_name in seq_info.msgs_from_children.keys() {
-        let msgs = seq_info
-          .msgs_from_children
-          .iter()
-          .filter(|&(k, _)| k != child_name)
-          .map(|(_, m)| m.to_owned()) // FIXME: avoid cloning
-          .collect_vec();
-
-        let mut seq_dis = SparseSeqDis {
-          variable: btreemap! {},
-          variable_indel: btreemap! {},
-          fixed: btreemap! {},
-          fixed_counts: seq_info.msg_to_parents.fixed_counts.clone(),
-          log_lh: 0.0,
-        };
-
-        combine_messages(&mut seq_dis, &msgs, &variable_pos, alphabet, None).unwrap();
-        seq_info.msgs_to_children.insert(child_name.clone(), seq_dis);
+      for mut child_edge in node.child_edges {
+        let mut seq_dis = seq_info.profile.clone();
+        // subtract the message from the current child from the profile
+        for (pos, p) in seq_dis.variable.iter_mut() {
+          if let Some(child_var) = child_edge.sparse_partitions[si].msg_from_child.variable.get(pos) {
+            p.dis /= &child_var.dis;
+          } else if let Some(sub) = child_edge.sparse_partitions[si].subs.iter().find(|m| m.pos == *pos) {
+            p.dis /= &child_edge.sparse_partitions[si].msg_from_child.fixed[&sub.qry];
+          } else {
+            p.dis /= &child_edge.sparse_partitions[si].msg_from_child.fixed[&p.state.unwrap()];
+          }
+        }
+        child_edge.sparse_partitions[si].msg_to_child = seq_dis;
       }
     }
 
@@ -340,119 +299,17 @@ fn outgroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikeliho
   });
 }
 
-fn get_variable_states_parents(
-  node_seq_info: &SparseSeqDis,
-  parents: &[SparseSeqDis],
-  parent_edges: &[SparseSeqEdge],
-) -> (BTreeMap<usize, char>, Vec<BTreeMap<usize, char>>) {
-  let mut variable_pos: BTreeMap<usize, char> = node_seq_info
-    .variable
-    .iter()
-    .filter_map(|(pos, p)| p.state.map(|p_state| (*pos, p_state)))
-    .collect();
-
-  let mut parent_states: Vec<BTreeMap<usize, char>> = vec![btreemap! {}; parents.len()];
-
-  for (pi, pseq) in parents.iter().enumerate() {
-    // go over all mutations and get reference state
-    for m in &parent_edges[pi].subs {
-      variable_pos.insert(m.pos, m.qry); // this might be set multiple times, but the reference state should always be the same
-      parent_states[pi].insert(m.pos, m.reff);
-    }
-    // go over child variable position and get reference state
-    for (pos, p) in &pseq.variable {
-      if !variable_pos.contains_key(pos) {
-        if let Some(p_state) = p.state {
-          variable_pos.entry(*pos).or_insert(p_state);
-        }
-      }
-    }
-  }
-
-  (variable_pos, parent_states)
-}
-
-fn calculate_root_state_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihood]) -> f64 {
-  let mut log_lh = 0.0;
-  for root_node in graph.get_roots() {
-    let root_partitions = &mut root_node.write_arc().payload().write_arc().sparse_partitions;
-    for (si, seq_info) in root_partitions.iter_mut().enumerate() {
-      let PartitionLikelihood { gtr, alphabet, .. } = &partitions[si];
-
-      let mut seq_profile = SparseSeqDis {
-        variable: btreemap! {},
-        variable_indel: btreemap! {},
-        fixed: btreemap! {},
-        fixed_counts: seq_info.msg_to_parents.fixed_counts.clone(),
-        log_lh: seq_info.msg_to_parents.log_lh,
-      };
-
-      // multiply the info from the tree with the GTR equilibrium probabilities (variable and fixed)
-      for (pos, p) in &seq_info.msg_to_parents.variable {
-        let vec = &p.dis * &gtr.pi;
-        let vec_norm = vec.sum();
-        seq_profile.log_lh += vec_norm.ln();
-        let dis = vec / vec_norm;
-        let state = p.state;
-        seq_profile.variable.insert(*pos, VarPos { dis, state });
-      }
-      for (state, p) in &seq_info.msg_to_parents.fixed {
-        let vec = p * &gtr.pi;
-        let vec_norm = vec.sum();
-        let count = seq_info.msg_to_parents.fixed_counts.get(*state).unwrap_or_default();
-        seq_profile.log_lh += vec_norm.ln() * count as f64;
-        seq_profile.fixed.insert(*state, vec / vec_norm);
-      }
-
-      log_lh += seq_profile.log_lh;
-      seq_info.profile = seq_profile;
-
-      // calculate messages to children
-      let variable_pos: BTreeMap<usize, char> = seq_info
-        .msg_to_parents
-        .variable
-        .iter()
-        .filter_map(|(pos, p)| p.state.map(|p_state| (*pos, p_state)))
-        .collect();
-
-      seq_info.msgs_to_children = btreemap! {};
-      for (child, _) in graph.children_of(&*root_node.read_arc()) {
-        let name = child
-          .read_arc()
-          .payload()
-          .read_arc()
-          .name()
-          .unwrap()
-          .as_ref()
-          .to_owned();
-
-        let msgs = seq_info
-          .msgs_from_children
-          .iter()
-          .filter(|&(k, _)| k != &name)
-          .map(|(_, m)| m)
-          .cloned() // FIXME: avoid cloning
-          .collect_vec();
-
-        let mut seq_dis = SparseSeqDis {
-          variable: btreemap! {},
-          variable_indel: btreemap! {},
-          fixed: btreemap! {},
-          fixed_counts: seq_info.msg_to_parents.fixed_counts.clone(),
-          log_lh: 0.0,
-        };
-
-        combine_messages(&mut seq_dis, &msgs, &variable_pos, alphabet, None).unwrap();
-        seq_info.msgs_to_children.insert(name, seq_dis);
-      }
-    }
-  }
-  log_lh
-}
-
 pub fn run_marginal_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihood]) -> Result<f64, Report> {
   ingroup_profiles_sparse(graph, partitions);
-  let log_lh = calculate_root_state_sparse(graph, partitions);
+  let log_lh = graph
+    .get_exactly_one_root()?
+    .read_arc()
+    .payload()
+    .read_arc()
+    .sparse_partitions
+    .iter()
+    .map(|p| p.profile.log_lh)
+    .sum();
   outgroup_profiles_sparse(graph, partitions);
   Ok(log_lh)
 }

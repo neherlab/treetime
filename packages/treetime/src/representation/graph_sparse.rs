@@ -79,9 +79,6 @@ pub struct SparseSeqInfo {
 pub struct SparseSeqNode {
   pub seq: SparseSeqInfo,
   pub profile: SparseSeqDis,
-  pub msg_to_parents: SparseSeqDis, // there might be multiple parents, but all parents only see info from children
-  pub msgs_to_children: BTreeMap<String, SparseSeqDis>,
-  pub msgs_from_children: BTreeMap<String, SparseSeqDis>,
 }
 
 impl SparseSeqNode {
@@ -133,15 +130,6 @@ impl SparseSeqNode {
         fixed_counts: Composition::new(alphabet.chars(), alphabet.gap()),
         log_lh: 0.0,
       },
-      msg_to_parents: SparseSeqDis {
-        variable: btreemap! {},
-        variable_indel: btreemap! {},
-        fixed: btreemap! {},
-        fixed_counts: Composition::new(alphabet.chars(), alphabet.gap()),
-        log_lh: 0.0,
-      },
-      msgs_to_children: btreemap! {},
-      msgs_from_children: btreemap! {},
     })
   }
 }
@@ -195,6 +183,9 @@ impl EdgeToGraphViz for SparseEdge {
 pub struct SparseSeqEdge {
   pub subs: Vec<Sub>,
   pub indels: Vec<InDel>,
+  pub msg_to_parent: SparseSeqDis,
+  pub msg_to_child: SparseSeqDis,
+  pub msg_from_child: SparseSeqDis,
   pub transmission: Option<Vec<(usize, usize)>>,
 }
 
@@ -242,6 +233,18 @@ pub struct SparseSeqDis {
 
   /// Total log likelihood
   pub log_lh: f64,
+}
+
+impl Default for SparseSeqDis {
+  fn default() -> Self {
+    Self {
+      variable: btreemap! {},
+      variable_indel: btreemap! {},
+      fixed: btreemap! {},
+      fixed_counts: Composition::new([], '-'),
+      log_lh: 0.0,
+    }
+  }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

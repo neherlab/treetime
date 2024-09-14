@@ -266,15 +266,6 @@ fn fitch_backwards(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]
           fixed_counts: Composition::new(alphabet.chars(), alphabet.gap()),
           log_lh: 0.0,
         },
-        msg_to_parents: SparseSeqDis {
-          variable: btreemap! {},
-          variable_indel: btreemap! {},
-          fixed: btreemap! {},
-          fixed_counts: Composition::new(alphabet.chars(), alphabet.gap()),
-          log_lh: 0.0,
-        },
-        msgs_to_children: btreemap! {},
-        msgs_from_children: btreemap! {},
       });
     }
 
