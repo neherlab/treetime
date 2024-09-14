@@ -1,15 +1,13 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::graph::breadth_first::GraphTraversalContinuation;
 use crate::graph::edge::Weighted;
-use crate::representation::graph_sparse::{
-  SparseGraph, SparseNode, SparseSeqDis,VarPos,
-};
+use crate::representation::graph_sparse::{SparseGraph, SparseNode, SparseSeqDis, VarPos};
 use crate::representation::partitions_likelihood::PartitionLikelihood;
 use crate::seq::composition;
 use crate::utils::interval::range::range_contains;
 use crate::{make_internal_error, make_internal_report};
 use eyre::Report;
-use itertools::{zip, Itertools};
+use itertools::zip;
 use maplit::btreemap;
 use ndarray::{array, Array1, Array2};
 use ndarray_stats::QuantileExt;
@@ -53,17 +51,13 @@ fn ingroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihoo
           log_lh: 0.0,
         }
       } else {
-        let child_seqs = node
-          .children
-          .iter()
-          .map(|(c, _)| c.read_arc().sparse_partitions[si].clone()) // FIXME: avoid cloning
-          .collect_vec();
-
+        // for internal nodes, combine the messages from the children
+        // to do so, we need to loop over incoming edges, collect variable positions and the child states at them
         let mut variable_pos = btreemap! {};
         let mut child_states: Vec<BTreeMap<usize, char>> = vec![];
         let mut child_messages: Vec<SparseSeqDis> = vec![];
         for (ci, (c, edge)) in node.children.iter().enumerate() {
-          // go over all mutations and get reference state
+          // go over all mutations and get reference and child state
           child_states.push(btreemap! {});
           for m in &edge.read_arc().sparse_partitions[si].subs {
             variable_pos.insert(m.pos, m.reff); // this might be set multiple times, but the reference state should always be the same
@@ -79,6 +73,7 @@ fn ingroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihoo
           child_messages.push(edge.read_arc().sparse_partitions[si].msg_from_child.clone());
         }
 
+        // messages are combined, if this is the root node the gtr.pi is used to multiply the data from children
         combine_messages(
           &seq_info.seq.composition,
           &child_messages,
@@ -90,8 +85,10 @@ fn ingroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihoo
       };
 
       if node.is_root {
+        // data from children * gtr.pi as calculated above is the root profile.
         seq_info.profile = msg_to_parent;
       } else {
+        // what was calculate above is what is sent to the parent. we also calculate the propagated message to the parent (we need it in the forward pass).
         let edge_to_parent = node
           .get_exactly_one_parent_edge()
           .expect("Encountered non-root node without a parent edge");
@@ -155,8 +152,8 @@ fn combine_messages(
     variable: btreemap! {},
     variable_indel: btreemap! {},
     fixed: btreemap! {},
-    fixed_counts: composition.clone(),
-    log_lh: 0.0,
+    fixed_counts: composition.clone(), //this comes from fitch without any variable positions
+    log_lh: messages.iter().map(|m| m.log_lh).sum(),
   };
 
   // go over all putatively variable positions
@@ -167,12 +164,13 @@ fn combine_messages(
     let mut vec = if let Some(gtr_weight) = gtr_weight {
       gtr_weight.clone()
     } else {
-      array![1.0]
+      array![1.0] //FIXME: array of 1.0 of length alphabet
     };
 
     // element wise multiplication of the profiles of the children with the vec
     // zip children messages and child states to iterate over them simultaneously
     for (msg, states) in zip(messages, child_states) {
+      //FIXME: handle transmission and non-char
       if let Some(var) = msg.variable.get(&pos) {
         // position variable in child
         vec *= &var.dis;
@@ -188,7 +186,7 @@ fn combine_messages(
     let vec_norm = vec.sum();
 
     // add position to variable states if the subleading states have a probability exceeding eps
-    if *vec.max()? < (1.0 - EPS) * vec_norm {
+    if *vec.max().unwrap() < (1.0 - EPS) * vec_norm {
       if vec.ndim() > 1 {
         return make_internal_error!("Unexpected dimensionality in probability vector: {}", vec.ndim());
       }
@@ -207,7 +205,7 @@ fn combine_messages(
     // indeterminate parts in some children are not handled correctly here.
     // they should not contribute to the product. This will require some additional
     // handling or could be handled by treating these positions as variable
-    // start with a vector given by the gtr_weight if it is provided otherwise use a vector of ones
+
     let mut vec = if let Some(gtr_weight) = gtr_weight {
       gtr_weight.clone()
     } else {
@@ -235,6 +233,7 @@ fn outgroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikeliho
   graph.par_iter_breadth_first_forward(|mut node| {
     for (si, seq_info) in node.payload.sparse_partitions.iter_mut().enumerate() {
       let PartitionLikelihood { gtr, alphabet, .. } = &partitions[si];
+
       if !node.is_root {
         // the root has no input from parents, profile is already calculated
         let mut variable_pos = btreemap! {};
@@ -244,7 +243,7 @@ fn outgroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikeliho
           // go over all mutations and get reference state
           parent_states.push(btreemap! {});
           for m in &edge.read_arc().sparse_partitions[si].subs {
-            variable_pos.insert(m.pos, m.qry); // this might be set multiple times, but the reference state should always be the same
+            variable_pos.insert(m.pos, m.qry);
             parent_states[pi].insert(m.pos, m.reff);
           }
           // go over parent variable position and get reference state
@@ -398,6 +397,7 @@ mod tests {
   use crate::utils::string::vec_to_string;
   use eyre::Report;
   use indoc::indoc;
+  use itertools::Itertools;
   use lazy_static::lazy_static;
   use pretty_assertions::assert_eq;
 
