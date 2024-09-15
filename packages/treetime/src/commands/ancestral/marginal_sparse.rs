@@ -37,7 +37,7 @@ fn ingroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihoo
               *pos,
               VarPos {
                 dis: p.dis.clone(),
-                state: p.state,
+                state: p.state.unwrap(),
               },
             )
           })
@@ -65,9 +65,7 @@ fn ingroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihoo
           }
           // go over child variable position and get reference state
           for (pos, p) in &edge.read_arc().sparse_partitions[si].msg_from_child.variable {
-            if let Some(p_state) = p.state {
-              variable_pos.entry(*pos).or_insert(p_state);
-            }
+            variable_pos.entry(*pos).or_insert(p.state);
           }
           // FIXME: avoid cloning. could move this loop over child_edges into combine_messages
           child_messages.push(edge.read_arc().sparse_partitions[si].msg_from_child.clone());
@@ -195,7 +193,6 @@ fn combine_messages(
       seq_dis.fixed_counts.adjust_count(state, -1);
 
       let dis = vec / vec_norm;
-      let state = Some(state);
       seq_dis.variable.insert(pos, VarPos { dis, state });
     }
   }
@@ -248,9 +245,7 @@ fn outgroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikeliho
           }
           // go over parent variable position and get reference state
           for (pos, p) in &edge.read_arc().sparse_partitions[si].msg_to_child.variable {
-            if let Some(p_state) = p.state {
-              variable_pos.entry(*pos).or_insert(p_state);
-            }
+            variable_pos.entry(*pos).or_insert(p.state);
           }
           msgs_to_combine.push(propagate_raw(
             &gtr.expQt(edge.read_arc().branch_length.unwrap_or(0.0)),
@@ -259,9 +254,7 @@ fn outgroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikeliho
           ));
           // go over variable position in children (info pushed to parent) and get reference state
           for (pos, p) in &edge.read_arc().sparse_partitions[si].msg_to_parent.variable {
-            if let Some(p_state) = p.state {
-              variable_pos.entry(*pos).or_insert(p_state);
-            }
+            variable_pos.entry(*pos).or_insert(p.state);
           }
           // add combined message from children (which is sent to the parent).
           msgs_to_combine.push(edge.read_arc().sparse_partitions[si].msg_to_parent.clone());
@@ -287,7 +280,7 @@ fn outgroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikeliho
           } else if let Some(sub) = child_edge.sparse_partitions[si].subs.iter().find(|m| m.pos == *pos) {
             p.dis /= &child_edge.sparse_partitions[si].msg_from_child.fixed[&sub.qry];
           } else {
-            p.dis /= &child_edge.sparse_partitions[si].msg_from_child.fixed[&p.state.unwrap()];
+            p.dis /= &child_edge.sparse_partitions[si].msg_from_child.fixed[&p.state];
           }
         }
         child_edge.sparse_partitions[si].msg_to_child = seq_dis;

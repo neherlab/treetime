@@ -192,11 +192,11 @@ pub struct SparseSeqEdge {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct VarPos {
   pub dis: Array1<f64>, // array of floats of size 'alphabet'
-  pub state: Option<char>,
+  pub state: char,
 }
 
 impl VarPos {
-  pub fn new(dis: Array1<f64>, state: Option<char>) -> Self {
+  pub fn new(dis: Array1<f64>, state: char) -> Self {
     Self { dis, state }
   }
 }
