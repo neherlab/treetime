@@ -86,7 +86,7 @@ fn ingroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihoo
         // data from children * gtr.pi as calculated above is the root profile.
         seq_info.profile = msg_to_parent;
       } else {
-        // what was calculate above is what is sent to the parent. we also calculate the propagated message to the parent (we need it in the forward pass).
+        // what was calculated above is what is sent to the parent. we also calculate the propagated message to the parent (we need it in the forward pass).
         let edge_to_parent = node
           .get_exactly_one_parent_edge()
           .expect("Encountered non-root node without a parent edge");
@@ -271,7 +271,7 @@ fn outgroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikeliho
       }
 
       // precalculate messages to children that summarize info from their siblings and the parent
-      for mut child_edge in node.child_edges {
+      for child_edge in &mut node.child_edges {
         let mut seq_dis = seq_info.profile.clone();
         // subtract the message from the current child from the profile
         for (pos, p) in seq_dis.variable.iter_mut() {
