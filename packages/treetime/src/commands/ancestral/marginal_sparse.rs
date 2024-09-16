@@ -4,7 +4,7 @@ use crate::graph::edge::Weighted;
 use crate::representation::graph_sparse::{SparseGraph, SparseNode, SparseSeqDis, VarPos};
 use crate::representation::partitions_likelihood::PartitionLikelihood;
 use crate::seq::composition;
-use crate::utils::container::{get_exactly_one, get_exactly_one_mut};
+use crate::utils::container::get_exactly_one_mut;
 use crate::utils::interval::range::range_contains;
 use crate::{make_internal_error, make_internal_report};
 use eyre::Report;
@@ -114,7 +114,7 @@ fn propagate_raw(
     fixed_counts: seq_dis.fixed_counts.clone(),
     log_lh: 0.0,
   };
-  for (pos, state) in seq_dis.variable.iter() {
+  for (pos, state) in &seq_dis.variable {
     if let Some(transmission) = &transmission {
       if !range_contains(transmission, *pos) {
         continue; // transmission field is not currently used
@@ -175,7 +175,7 @@ fn combine_messages(
         vec *= &var.dis;
       } else if let Some(child_state) = states.get(&pos) {
         // position fixed in child, but different from parent
-        vec *= &msg.fixed[&child_state];
+        vec *= &msg.fixed[child_state];
       } else {
         // position fixed in child and same as parent
         vec *= &msg.fixed[&state];
@@ -276,7 +276,7 @@ fn outgroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikeliho
       for child_edge in &mut node.child_edges {
         let mut seq_dis = seq_info.profile.clone();
         // subtract the message from the current child from the profile
-        for (pos, p) in seq_dis.variable.iter_mut() {
+        for (pos, p) in &mut seq_dis.variable {
           if let Some(child_var) = child_edge.sparse_partitions[si].msg_from_child.variable.get(pos) {
             p.dis /= &child_var.dis;
           } else if let Some(sub) = child_edge.sparse_partitions[si].subs.iter().find(|m| m.pos == *pos) {
