@@ -112,7 +112,7 @@ fn propagate_raw(
     variable_indel: btreemap! {},
     fixed: btreemap! {},
     fixed_counts: seq_dis.fixed_counts.clone(),
-    log_lh: 0.0,
+    log_lh: seq_dis.log_lh,
   };
   for (pos, state) in &seq_dis.variable {
     if let Some(transmission) = &transmission {
@@ -154,7 +154,6 @@ fn combine_messages(
     fixed_counts: composition.clone(), //this comes from fitch without any variable positions
     log_lh: messages.iter().map(|m| m.log_lh).sum(),
   };
-
   // go over all putatively variable positions
   for (&pos, &state) in variable_pos {
     // collect the profiles of children to multiply
