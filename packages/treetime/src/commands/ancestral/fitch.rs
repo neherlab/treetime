@@ -941,36 +941,7 @@ mod tests {
           "gap": "-"
         },
         "log_lh": 0.0
-      },
-      "msg_to_parents": {
-        "variable": {},
-        "variable_indel": {},
-        "fixed": {},
-        "fixed_counts": {
-          "counts": {
-            "-": 0,
-            "A": 0,
-            "B": 0,
-            "C": 0,
-            "D": 0,
-            "G": 0,
-            "H": 0,
-            "K": 0,
-            "M": 0,
-            "N": 0,
-            "R": 0,
-            "S": 0,
-            "T": 0,
-            "V": 0,
-            "W": 0,
-            "Y": 0
-          },
-          "gap": "-"
-        },
-        "log_lh": 0.0
-      },
-      "msgs_to_children": {},
-      "msgs_from_children": {}
+      }
     }"#};
 
     assert_eq!(expected, json_write_str(&actual, JsonPretty(true))?);
@@ -1088,36 +1059,7 @@ mod tests {
           "gap": "-"
         },
         "log_lh": 0.0
-      },
-      "msg_to_parents": {
-        "variable": {},
-        "variable_indel": {},
-        "fixed": {},
-        "fixed_counts": {
-          "counts": {
-            "-": 0,
-            "A": 0,
-            "B": 0,
-            "C": 0,
-            "D": 0,
-            "G": 0,
-            "H": 0,
-            "K": 0,
-            "M": 0,
-            "N": 0,
-            "R": 0,
-            "S": 0,
-            "T": 0,
-            "V": 0,
-            "W": 0,
-            "Y": 0
-          },
-          "gap": "-"
-        },
-        "log_lh": 0.0
-      },
-      "msgs_to_children": {},
-      "msgs_from_children": {}
+      }
     }"#};
 
     assert_eq!(expected, json_write_str(&actual, JsonPretty(true))?);
