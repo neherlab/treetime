@@ -1,6 +1,7 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::graph::breadth_first::GraphTraversalContinuation;
 use crate::graph::edge::Weighted;
+use crate::hacks::fix_branch_length::fix_branch_length;
 use crate::representation::graph_sparse::{SparseGraph, SparseNode, SparseSeqDis, VarPos};
 use crate::representation::partitions_likelihood::PartitionLikelihood;
 use crate::seq::composition;
@@ -19,7 +20,7 @@ const EPS: f64 = 1e-6;
 fn ingroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihood]) {
   graph.par_iter_breadth_first_backward(|mut node| {
     for (si, seq_info) in node.payload.sparse_partitions.iter_mut().enumerate() {
-      let PartitionLikelihood { gtr, alphabet, .. } = &partitions[si];
+      let PartitionLikelihood { gtr, alphabet, length } = &partitions[si];
       let msg_to_parent = if node.is_leaf {
         // this is mostly a copy (or ref here) of the fitch state.
         let fixed = alphabet
@@ -92,6 +93,7 @@ fn ingroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihoo
         let edge_to_parent =
           get_exactly_one_mut(&mut node.parent_edges).expect("Only nodes with exactly one parent are supported"); // HACK
         let branch_length = edge_to_parent.weight().unwrap_or(0.0);
+        let branch_length = fix_branch_length(*length, branch_length);
         let edge_data = &mut edge_to_parent.sparse_partitions[si];
         edge_data.msg_from_child = propagate_raw(&gtr.expQt(branch_length), &msg_to_parent, &edge_data.transmission);
         edge_data.msg_to_parent = msg_to_parent;
@@ -183,10 +185,6 @@ fn combine_messages(
 
     let vec_norm = vec.sum();
 
-    if vec.iter().any(|x| !x.is_finite()) {
-      dbg!(&vec);
-    }
-
     // add position to variable states if the subleading states have a probability exceeding eps
     if *vec.max()? < (1.0 - EPS) * vec_norm {
       if vec.ndim() > 1 {
@@ -233,7 +231,7 @@ fn combine_messages(
 fn outgroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihood]) {
   graph.par_iter_breadth_first_forward(|mut node| {
     for (si, seq_info) in node.payload.sparse_partitions.iter_mut().enumerate() {
-      let PartitionLikelihood { gtr, alphabet, .. } = &partitions[si];
+      let PartitionLikelihood { gtr, alphabet, length } = &partitions[si];
 
       if !node.is_root {
         // the root has no input from parents, profile is already calculated
@@ -251,8 +249,12 @@ fn outgroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikeliho
           for (pos, p) in &edge.read_arc().sparse_partitions[si].msg_to_child.variable {
             variable_pos.entry(*pos).or_insert(p.state);
           }
+
+          let branch_length = edge.read_arc().branch_length.unwrap_or(0.0);
+          let branch_length = fix_branch_length(*length, branch_length);
+
           msgs_to_combine.push(propagate_raw(
-            &gtr.expQt(edge.read_arc().branch_length.unwrap_or(0.0)),
+            &gtr.expQt(branch_length),
             &edge.read_arc().sparse_partitions[si].msg_to_child,
             &edge.read_arc().sparse_partitions[si].transmission,
           ));

@@ -4,6 +4,7 @@ pub mod commands;
 pub mod constants;
 pub mod graph;
 pub mod gtr;
+pub mod hacks;
 pub mod io;
 pub mod representation;
 pub mod seq;

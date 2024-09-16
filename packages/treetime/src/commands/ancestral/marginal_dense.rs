@@ -1,8 +1,8 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::constants::MIN_BRANCH_LENGTH_FRACTION;
 use crate::graph::breadth_first::GraphTraversalContinuation;
 use crate::graph::edge::Weighted;
 use crate::graph::node::Named;
+use crate::hacks::fix_branch_length::fix_branch_length;
 use crate::representation::graph_dense::{
   DenseGraph, DenseNode, DenseSeqDis, DenseSeqEdge, DenseSeqInfo, DenseSeqNode,
 };
@@ -16,7 +16,6 @@ use maplit::btreemap;
 use ndarray::prelude::*;
 use ndarray::{stack, AssignElem};
 use ndarray_stats::QuantileExt;
-use num_traits::clamp_min;
 use std::collections::BTreeMap;
 
 // Turn a profile into a sequence
@@ -292,18 +291,6 @@ pub fn ancestral_reconstruction_marginal_dense(
   });
 
   Ok(())
-}
-
-/// Clamp minimum branch length to a fraction of "1 mutation" which depends on sequence length
-///
-/// HACK: this is required to avoid NaNs when branch length is zero. Decide whether it is worth to fix
-/// the incorrect input trees with branch lengths of 0, or to simply report them as errors instead. Perhaps users would
-/// prefer to know that their inputs are broken and to act on that, rather than hide it. (And if not, the errors can
-/// potentially be turned off with a CLI flag, then the "fixup" will be enabled)
-fn fix_branch_length(seq_length: usize, branch_length: f64) -> f64 {
-  let one_mutation = 1.0 / seq_length as f64;
-  let min_branch_len = MIN_BRANCH_LENGTH_FRACTION * one_mutation;
-  clamp_min(branch_length, min_branch_len)
 }
 
 #[cfg(test)]
