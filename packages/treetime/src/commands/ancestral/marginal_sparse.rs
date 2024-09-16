@@ -79,7 +79,7 @@ fn ingroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihoo
           &variable_pos,
           &child_states,
           alphabet,
-          if node.is_root { Some(&gtr.pi) } else { None },
+          node.is_root.then_some(&gtr.pi),
         )
         .unwrap()
       };
