@@ -183,6 +183,10 @@ fn combine_messages(
 
     let vec_norm = vec.sum();
 
+    if vec.iter().any(|x| !x.is_finite()) {
+      dbg!(&vec);
+    }
+
     // add position to variable states if the subleading states have a probability exceeding eps
     if *vec.max()? < (1.0 - EPS) * vec_norm {
       if vec.ndim() > 1 {
