@@ -10,7 +10,7 @@ use crate::{make_internal_error, make_internal_report};
 use eyre::Report;
 use itertools::zip;
 use maplit::btreemap;
-use ndarray::{array, Array1, Array2};
+use ndarray::{Array1, Array2};
 use ndarray_stats::QuantileExt;
 use std::collections::BTreeMap;
 
@@ -163,7 +163,7 @@ fn combine_messages(
     let mut vec = if let Some(gtr_weight) = gtr_weight {
       gtr_weight.clone()
     } else {
-      array![1.0] //FIXME: array of 1.0 of length alphabet
+      Array1::from_elem(alphabet.n_canonical(), 1.0)
     };
 
     // element wise multiplication of the profiles of the children with the vec
@@ -207,7 +207,7 @@ fn combine_messages(
     let mut vec = if let Some(gtr_weight) = gtr_weight {
       gtr_weight.clone()
     } else {
-      array![1.0]
+      Array1::from_elem(alphabet.n_canonical(), 1.0)
     };
 
     for msg in messages {
