@@ -4,6 +4,7 @@ use crate::graph::edge::Weighted;
 use crate::representation::graph_sparse::{SparseGraph, SparseNode, SparseSeqDis, VarPos};
 use crate::representation::partitions_likelihood::PartitionLikelihood;
 use crate::seq::composition;
+use crate::utils::container::{get_exactly_one, get_exactly_one_mut};
 use crate::utils::interval::range::range_contains;
 use crate::{make_internal_error, make_internal_report};
 use eyre::Report;
@@ -80,6 +81,7 @@ fn ingroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihoo
           alphabet,
           if node.is_root { Some(&gtr.pi) } else { None },
         )
+        .unwrap()
       };
 
       if node.is_root {
@@ -87,9 +89,8 @@ fn ingroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihoo
         seq_info.profile = msg_to_parent;
       } else {
         // what was calculated above is what is sent to the parent. we also calculate the propagated message to the parent (we need it in the forward pass).
-        let edge_to_parent = node
-          .get_exactly_one_parent_edge()
-          .expect("Encountered non-root node without a parent edge");
+        let edge_to_parent =
+          get_exactly_one_mut(&mut node.parent_edges).expect("Only nodes with exactly one parent are supported"); // HACK
         let branch_length = edge_to_parent.weight().unwrap_or(0.0);
         let edge_data = &mut edge_to_parent.sparse_partitions[si];
         edge_data.msg_from_child = propagate_raw(&gtr.expQt(branch_length), &msg_to_parent, &edge_data.transmission);
@@ -145,7 +146,7 @@ fn combine_messages(
   child_states: &[BTreeMap<usize, char>],
   alphabet: &Alphabet,
   gtr_weight: Option<&Array1<f64>>,
-) -> SparseSeqDis {
+) -> Result<SparseSeqDis, Report> {
   let mut seq_dis = SparseSeqDis {
     variable: btreemap! {},
     variable_indel: btreemap! {},
@@ -184,7 +185,7 @@ fn combine_messages(
     let vec_norm = vec.sum();
 
     // add position to variable states if the subleading states have a probability exceeding eps
-    if *vec.max().unwrap() < (1.0 - EPS) * vec_norm {
+    if *vec.max()? < (1.0 - EPS) * vec_norm {
       if vec.ndim() > 1 {
         return make_internal_error!("Unexpected dimensionality in probability vector: {}", vec.ndim());
       }
@@ -223,7 +224,7 @@ fn combine_messages(
     seq_dis.fixed.insert(state, vec / vec_norm);
   }
 
-  seq_dis
+  Ok(seq_dis)
 }
 
 fn outgroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihood]) {
@@ -267,7 +268,8 @@ fn outgroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikeliho
           &parent_states,
           alphabet,
           None,
-        );
+        )
+        .unwrap();
       }
 
       // precalculate messages to children that summarize info from their siblings and the parent
