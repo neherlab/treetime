@@ -642,8 +642,7 @@ where
     stack.push((Arc::clone(&root), None));
     while let Some((current_node, _)) = stack.pop() {
       let node_key = current_node.read_arc().key();
-      if !visited.contains(&node_key) {
-        visited.insert(node_key);
+      if visited.insert(node_key) {
         stack.push((Arc::clone(&current_node), None));
         let children = self.children_of(&current_node.read_arc()).into_iter().rev();
         for (child, edge) in children {
