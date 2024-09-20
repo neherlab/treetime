@@ -5,6 +5,7 @@ use treetime::commands::ancestral::run_ancestral::run_ancestral_reconstruction;
 use treetime::commands::clock::run_clock::run_clock;
 use treetime::commands::homoplasy::run_homoplasy::run_homoplasy;
 use treetime::commands::mugration::run_mugration::run_mugration;
+use treetime::commands::optimize::run::run_optimize;
 use treetime::commands::timetree::run_timetree_estimation::run_timetree_estimation;
 use treetime::utils::global_init::global_init;
 use treetime_cli::cli::treetime_cli::{generate_shell_completions, treetime_parse_cli_args, TreetimeCommands};
@@ -24,6 +25,9 @@ fn main() -> Result<(), Report> {
   match args.command {
     TreetimeCommands::Timetree(timetree_args) => {
       run_timetree_estimation(&timetree_args)?;
+    }
+    TreetimeCommands::Optimize(optimize_args) => {
+      run_optimize(&optimize_args)?;
     }
     TreetimeCommands::Ancestral(ancestral_args) => {
       run_ancestral_reconstruction(&ancestral_args)?;

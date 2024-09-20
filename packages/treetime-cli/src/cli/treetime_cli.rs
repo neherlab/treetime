@@ -14,6 +14,7 @@ use treetime::commands::ancestral::anc_args::TreetimeAncestralArgs;
 use treetime::commands::clock::clock_args::TreetimeClockArgs;
 use treetime::commands::homoplasy::homoplasy_args::TreetimeHomoplasyArgs;
 use treetime::commands::mugration::mugration_args::TreetimeMugrationArgs;
+use treetime::commands::optimize::args::TreetimeOptimizeArgs;
 use treetime::commands::timetree::timetree_args::TreetimeTimetreeArgs;
 use treetime::utils::global_init::setup_logger;
 
@@ -71,6 +72,9 @@ pub enum TreetimeCommands {
 
   /// Estimates time trees from an initial tree topology, a set of date constraints (e.g. tip dates), and an alignment (optional).
   Timetree(TreetimeTimetreeArgs),
+
+  // TODO: explain what this command does
+  Optimize(TreetimeOptimizeArgs),
 
   /// Reconstructs ancestral sequences and maps mutations to the tree. The output consists of a file 'ancestral.fasta' with ancestral sequences and a tree 'annotated_tree.nexus' with mutations added as comments like A45G,G136T,..., number in SNPs used 1-based index by default. The inferred GTR model is written to stdout.
   Ancestral(TreetimeAncestralArgs),
