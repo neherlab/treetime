@@ -149,7 +149,7 @@ fn combine_messages(
   composition: &composition::Composition,
   messages: &[SparseSeqDis],
   variable_pos: &BTreeMap<usize, char>,
-  child_states: &[BTreeMap<usize, char>],
+  reference_states: &[BTreeMap<usize, char>],
   alphabet: &Alphabet,
   gtr_weight: Option<&Array1<f64>>,
 ) -> Result<SparseSeqDis, Report> {
@@ -173,7 +173,7 @@ fn combine_messages(
 
     // element wise multiplication of the profiles of the children with the vec
     // zip children messages and child states to iterate over them simultaneously
-    for (msg, states) in zip(messages, child_states) {
+    for (msg, states) in zip(messages, reference_states) {
       //FIXME: handle transmission and non-char
       if let Some(var) = msg.variable.get(&pos) {
         // position variable in child
