@@ -268,8 +268,11 @@ fn outgroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikeliho
           parent_states.push(btreemap! {});
           // go over parent variable position and get reference state
           for (pos, p) in &edge.read_arc().sparse_partitions[si].msg_to_child.variable {
-            variable_pos.entry(*pos).or_insert(p.state);
-            parent_states[pi].insert(*pos, p.state);
+            if !range_contains(&seq_info.seq.gaps, *pos){
+              // no need to track this position if the position is non-char
+              variable_pos.entry(*pos).or_insert(p.state);
+              parent_states[pi].insert(*pos, p.state);
+            }
           }
           // record all states that involve a mutation
           for m in &edge.read_arc().sparse_partitions[si].subs {
