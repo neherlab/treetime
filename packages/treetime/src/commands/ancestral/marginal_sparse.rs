@@ -73,6 +73,24 @@ fn ingroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihoo
           child_messages.push(edge.read_arc().sparse_partitions[si].msg_from_child.clone());
         }
 
+        // now that all variable positions are determined, check whether they are characters in each child
+        for (ci, (c, edge)) in node.children.iter().enumerate() {
+          let states = &mut child_states[ci];
+          for (pos, state) in variable_pos.iter() {
+            // test whether pos in states, otherwise check whether it is in non-char
+            if !states.contains_key(pos) {
+              if range_contains(&c.read_arc().sparse_partitions[si].seq.non_char, *pos){
+                dbg!("non-char");
+                if range_contains(&c.read_arc().sparse_partitions[si].seq.gaps, *pos){
+                  states.insert(*pos, alphabet.gap());
+                } else {
+                  states.insert(*pos, alphabet.unknown());
+                }
+              }
+            }
+          }
+        }
+
         // messages are combined, if this is the root node the gtr.pi is used to multiply the data from children
         combine_messages(
           &seq_info.seq.composition,
@@ -171,16 +189,19 @@ fn combine_messages(
       Array1::from_elem(alphabet.n_canonical(), 1.0)
     };
 
-    // element wise multiplication of the profiles of the children with the vec
-    // zip children messages and child states to iterate over them simultaneously
+    // element wise multiplication of the profiles of the messages with the vec
+    // zip messages and the dict of corresponding states to iterate over them simultaneously
     for (msg, states) in zip(messages, reference_states) {
       //FIXME: handle transmission and non-char
       if let Some(var) = msg.variable.get(&pos) {
         // position variable in child
         vec *= &var.dis;
-      } else if let Some(child_state) = states.get(&pos) {
-        // position fixed in child, but different from parent
-        vec *= &msg.fixed[child_state];
+      } else if let Some(ref_state) = states.get(&pos) {
+        // position fixed in origin of the message, but different from focal node
+        // If the state of the message is a non-character, skip multiplication
+        if alphabet.is_canonical(*ref_state){
+          vec *= &msg.fixed[ref_state];
+        }
       } else {
         // position fixed in child and same as parent
         vec *= &msg.fixed[&state];
@@ -206,7 +227,7 @@ fn combine_messages(
 
   // collect contribution from the fixed sites
   for state in alphabet.canonical() {
-    // indeterminate parts in some children are not handled correctly here.
+    // indeterminate parts in some messages are not handled correctly here.
     // they should not contribute to the product. This will require some additional
     // handling or could be handled by treating these positions as variable
 
@@ -245,12 +266,18 @@ fn outgroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikeliho
         for (pi, (p, edge)) in node.parents.iter().enumerate() {
           // go over all mutations and get reference state
           parent_states.push(btreemap! {});
-          for m in &edge.read_arc().sparse_partitions[si].subs {
-            variable_pos.insert(m.pos, m.qry);
-            parent_states[pi].insert(m.pos, m.reff);
-          }
           // go over parent variable position and get reference state
           for (pos, p) in &edge.read_arc().sparse_partitions[si].msg_to_child.variable {
+            variable_pos.entry(*pos).or_insert(p.state);
+            parent_states[pi].insert(*pos, p.state);
+          }
+          // record all states that involve a mutation
+          for m in &edge.read_arc().sparse_partitions[si].subs {
+            variable_pos.insert(m.pos, m.qry);
+            parent_states[pi].entry(m.pos).or_insert(m.reff);
+          }
+          // go over variable position in children (info pushed to parent) and get reference state
+          for (pos, p) in &edge.read_arc().sparse_partitions[si].msg_to_parent.variable {
             variable_pos.entry(*pos).or_insert(p.state);
           }
 
@@ -262,10 +289,6 @@ fn outgroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikeliho
             &edge.read_arc().sparse_partitions[si].msg_to_child,
             &edge.read_arc().sparse_partitions[si].transmission,
           ));
-          // go over variable position in children (info pushed to parent) and get reference state
-          for (pos, p) in &edge.read_arc().sparse_partitions[si].msg_to_parent.variable {
-            variable_pos.entry(*pos).or_insert(p.state);
-          }
           // add combined message from children (which is sent to the parent).
           msgs_to_combine.push(edge.read_arc().sparse_partitions[si].msg_to_parent.clone());
           // NOTE: this empty parent_state is necessary since msgs and states are iterated over in a zip
@@ -481,7 +504,6 @@ mod tests {
 
     // test overall likelihood
     pretty_assert_ulps_eq!(-55.55428499726621, log_lh, epsilon = 1e-6);
-
     Ok(())
   }
 
