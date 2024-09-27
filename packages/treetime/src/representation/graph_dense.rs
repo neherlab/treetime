@@ -9,7 +9,6 @@ use crate::seq::find_char_ranges::find_letter_ranges;
 use crate::seq::indel::InDel;
 use crate::seq::serde::{serde_deserialize_seq, serde_serialize_seq};
 use eyre::Report;
-use maplit::btreemap;
 use ndarray::Array2;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -72,9 +71,6 @@ pub struct DenseSeqInfo {
 pub struct DenseSeqNode {
   pub seq: DenseSeqInfo,
   pub profile: DenseSeqDis,
-  pub msg_to_parents: DenseSeqDis, // there might be multiple parents, but all parents only see info from children
-  pub msgs_to_children: BTreeMap<String, DenseSeqDis>,
-  pub msgs_from_children: BTreeMap<String, DenseSeqDis>,
 }
 
 impl DenseSeqNode {
@@ -87,9 +83,6 @@ impl DenseSeqNode {
         sequence: seq.to_owned(), // TODO(perf): try to avoid cloning
       },
       profile: DenseSeqDis::default(),
-      msg_to_parents: DenseSeqDis::new(alphabet.seq2prof(seq)?),
-      msgs_to_children: btreemap! {},
-      msgs_from_children: btreemap! {},
     })
   }
 }
@@ -143,6 +136,9 @@ impl EdgeToGraphViz for DenseEdge {
 pub struct DenseSeqEdge {
   pub indels: Vec<InDel>,
   pub transmission: Option<Vec<(usize, usize)>>,
+  pub msg_to_child: DenseSeqDis,
+  pub msg_to_parent: DenseSeqDis,
+  pub msg_from_child: DenseSeqDis,
 }
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]

@@ -1,22 +1,20 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::graph::breadth_first::GraphTraversalContinuation;
 use crate::graph::edge::Weighted;
-use crate::graph::node::Named;
 use crate::hacks::fix_branch_length::fix_branch_length;
 use crate::representation::graph_dense::{
   DenseGraph, DenseNode, DenseSeqDis, DenseSeqEdge, DenseSeqInfo, DenseSeqNode,
 };
 use crate::representation::partitions_likelihood::{PartitionLikelihood, PartitionLikelihoodWithAln};
+use crate::utils::container::get_exactly_one_mut;
 use crate::utils::interval::range_intersection::range_intersection;
-use crate::utils::ndarray::{log, product_axis};
-use crate::{make_internal_report, make_report, o};
+use crate::utils::ndarray::log;
+use crate::{make_internal_report, make_report, seq};
 use eyre::Report;
 use itertools::Itertools;
-use maplit::btreemap;
 use ndarray::prelude::*;
-use ndarray::{stack, AssignElem};
+use ndarray::AssignElem;
 use ndarray_stats::QuantileExt;
-use std::collections::BTreeMap;
 
 // Turn a profile into a sequence
 fn prof2seq(profile: &DenseSeqDis, alphabet: &Alphabet) -> Vec<char> {
@@ -73,35 +71,21 @@ fn attach_seqs_to_graph(graph: &DenseGraph, partitions: &[PartitionLikelihoodWit
     Ok(())
   })?;
 
-  graph.get_edges().iter().for_each(|edge| {
-    let mut edge = edge.write_arc().payload().write_arc();
-    edge.dense_partitions = partitions.iter().map(|_| DenseSeqEdge::default()).collect_vec();
-  });
-
   Ok(())
-}
-
-fn combine_dense_messages(msgs: &BTreeMap<String, DenseSeqDis>) -> Result<DenseSeqDis, Report> {
-  let stacked = stack(Axis(0), &msgs.values().map(|d| d.dis.view()).collect_vec())?;
-  let prod_dis = product_axis(&stacked, Axis(0));
-  let norm = prod_dis.sum_axis(Axis(1));
-  let dis = (&prod_dis.t() / &norm).t().to_owned();
-  let log_lh = msgs.values().map(|m| m.log_lh).sum::<f64>() + log(&norm).sum();
-  Ok(DenseSeqDis { dis, log_lh })
 }
 
 fn ingroup_profiles_dense(graph: &DenseGraph, partitions: &[PartitionLikelihood]) {
   let n_partitions = partitions.len();
-
   graph.par_iter_breadth_first_backward(|mut node| {
-    if node.is_leaf {
-      return GraphTraversalContinuation::Continue; // the msg to parents for leaves was put in init phase
-    }
-
-    node.payload.dense_partitions = (0..n_partitions)
-      .map(|si| {
-        let PartitionLikelihood { gtr, alphabet, length } = &partitions[si];
-
+    for si in 0..n_partitions {
+      let PartitionLikelihood { gtr, alphabet, length } = &partitions[si];
+      let msg_to_parent = if node.is_leaf {
+        let seq_info = &node.payload.dense_partitions[si];
+        DenseSeqDis {
+          dis: alphabet.seq2prof(&seq_info.seq.sequence).unwrap(),
+          log_lh: 0.0,
+        }
+      } else {
         let gaps = node
         .children
         .iter()
@@ -114,149 +98,117 @@ fn ingroup_profiles_dense(graph: &DenseGraph, partitions: &[PartitionLikelihood]
           gaps,
           ..DenseSeqInfo::default()
         };
-
-        let mut msgs_from_children = btreemap! {};
-
-        for (child, edge) in &node.children {
-          let (child, edge) = (child.read_arc(), edge.read_arc());
-
-          let name = child
-            .name()
-            .expect("Encountered child node without a name")
-            .as_ref()
-            .to_owned();
-
-          let branch_length = edge.weight().unwrap_or_default();
-          let branch_length = fix_branch_length(*length, branch_length);
-
-          let exp_qt = gtr.expQt(branch_length);
-          let child = &child.dense_partitions[si];
-          let edge = &edge.dense_partitions[si];
-
-          let mut dis = Array2::ones((*length, alphabet.n_canonical()));
-          let log_lh = child.msg_to_parents.log_lh;
-
-          // Note that these dot products are really just
-          //     a_{ik} = b.dot(c) = sum(b_{ij}c{jk}, j)
-          // -- we can use whatever memory layout we want.
-          if let Some(transmission) = &edge.transmission {
-            for r in transmission {
-              dis
-                .slice_mut(s![r.0..r.1, ..])
-                .assign(&child.msg_to_parents.dis.slice(s![r.0..r.1, ..]).dot(&exp_qt));
-            }
-          } else {
-            // could make this a copy
-            dis *= &child.msg_to_parents.dis.dot(&exp_qt);
-          }
-
-          msgs_from_children.insert(name, DenseSeqDis { dis, log_lh });
-        }
-
-        let msg_to_parents = combine_dense_messages(&msgs_from_children).unwrap();
-
-        DenseSeqNode {
+        node.payload.dense_partitions.push(DenseSeqNode {
           seq,
-          msg_to_parents,
-          msgs_from_children,
-          ..DenseSeqNode::default()
+          profile: DenseSeqDis::default(),
+        });
+
+        let msgs = node
+          .children
+          .iter()
+          .map(|(c, e)| {
+            let edge = e.read_arc();
+            edge.dense_partitions[si].msg_from_child.dis.view().to_owned() //FIXME: avoid copy
+          })
+          .collect_vec();
+
+        let mut dis = msgs[0].clone().to_owned();
+        for msg in msgs[1..].iter() {
+          dis *= msg;
         }
-      })
-      .collect_vec();
+        let norm = dis.sum_axis(Axis(1));
+        let log_lh = node
+          .children
+          .iter()
+          .map(|(c, e)| {
+            let edge = e.read_arc();
+            edge.dense_partitions[si].msg_from_child.log_lh
+          })
+          .sum::<f64>();
+        DenseSeqDis {
+          dis: (&dis.t() / &norm).t().to_owned(),
+          log_lh: log_lh + log(&norm).sum(),
+        }
+      };
 
-    GraphTraversalContinuation::Continue
-  });
-}
+      if node.is_root {
+        let seq_info = &mut node.payload.dense_partitions[si];
+        seq_info.profile.dis = &msg_to_parent.dis * &gtr.pi;
+        seq_info.profile.log_lh = msg_to_parent.log_lh;
+      } else {
+        // what was calculated above is what is sent to the parent. we also calculate the propagated message to the parent (we need it in the forward pass).
+        let edge_to_parent =
+          get_exactly_one_mut(&mut node.parent_edges).expect("Only nodes with exactly one parent are supported"); // HACK
+        let branch_length = edge_to_parent.weight().unwrap_or(0.0);
+        let branch_length = fix_branch_length(*length, branch_length);
+        let mut edge_data = DenseSeqEdge::default();
 
-fn outgroup_profiles_dense(graph: &DenseGraph, dense_partitions: &[PartitionLikelihood]) {
-  graph.par_iter_breadth_first_forward(|mut node| {
-    let name = node
-      .payload
-      .name()
-      .expect("Encountered node without a name")
-      .as_ref()
-      .to_owned();
-
-    if node.is_root {
-      return GraphTraversalContinuation::Continue;
-    }
-
-    for (si, seq_info) in node.payload.dense_partitions.iter_mut().enumerate() {
-      let PartitionLikelihood { gtr, alphabet, length } = &dense_partitions[si];
-
-      let mut msgs_from_parents = btreemap! {};
-      for (parent, edge) in &node.parents {
-        let parent = parent.read_arc();
-        let edge = edge.read_arc();
-
-        let exp_qt = gtr.expQt(edge.weight().unwrap_or(0.0)).t().to_owned();
-        let parent = &parent.dense_partitions[si];
-        let edge = &edge.dense_partitions[si];
         let mut dis = Array2::ones((*length, alphabet.n_canonical()));
-        let log_lh = parent.msgs_to_children[&name].log_lh;
-        if let Some(transmission) = &edge.transmission {
-          for r in transmission {
-            dis
-              .slice_mut(s![r.0..r.1, ..])
-              .assign(&(parent.msgs_to_children[&name].dis.slice(s![r.0..r.1, ..]).dot(&exp_qt)));
-          }
-        } else {
-          dis = &dis * &parent.msgs_to_children[&name].dis.dot(&exp_qt);
-        }
-        msgs_from_parents.insert(name.clone(), DenseSeqDis { dis, log_lh });
-      }
+        let log_lh = msg_to_parent.log_lh;
+        let exp_qt = gtr.expQt(branch_length);
 
-      msgs_from_parents.insert(o!("children"), seq_info.msg_to_parents.clone()); // HACK
-      seq_info.profile = combine_dense_messages(&msgs_from_parents).unwrap();
-      seq_info.seq.sequence = assign_sequence(seq_info, alphabet);
-      seq_info.msgs_to_children = btreemap![];
-      for cname in seq_info.msgs_from_children.keys() {
-        let child_msg = &seq_info.msgs_from_children[cname];
-        let mut dis = seq_info.profile.dis.clone();
-        dis /= &child_msg.dis;
-        let log_lh = seq_info.profile.log_lh - child_msg.log_lh;
-        seq_info
-          .msgs_to_children
-          .insert(cname.clone(), DenseSeqDis { dis, log_lh });
-      }
+        // Note that these dot products are really just
+        //     a_{ik} = b.dot(c) = sum(b_{ij}c{jk}, j)
+        // -- we can use whatever memory layout we want.
+        dis *= &msg_to_parent.dis.dot(&exp_qt);
+        // if let Some(transmission) = &edge_to_parent.dense_partitions[si].transmission {
+        //   for r in transmission {
+        //     dis
+        //       .slice_mut(s![r.0..r.1, ..])
+        //       .assign(&msg_to_parent.dis.slice(s![r.0..r.1, ..]).dot(&exp_qt));
+        //   }
+        // } else {
+        //   // could make this a copy
+        //   dis *= &msg_to_parent.dis.dot(&exp_qt);
+        // }
+        edge_data.msg_from_child = DenseSeqDis { dis, log_lh };
+        edge_data.msg_to_parent = msg_to_parent;
+        edge_to_parent.dense_partitions.push(edge_data);
+      };
     }
-
     GraphTraversalContinuation::Continue
   });
 }
 
-fn calculate_root_state_dense(graph: &DenseGraph, partitions: &[PartitionLikelihood]) -> f64 {
-  let mut total_log_lh = 0.0;
-  for root_node in graph.get_roots() {
-    let dense_partitions = &mut root_node.write_arc().payload().write_arc().dense_partitions;
-    for (si, seq_info) in dense_partitions.iter_mut().enumerate() {
-      let PartitionLikelihood { gtr, alphabet, .. } = &partitions[si];
+fn outgroup_profiles_dense(graph: &DenseGraph, partitions: &[PartitionLikelihood]) {
+  let n_partitions = partitions.len();
+  graph.par_iter_breadth_first_forward(|mut node| {
+    for si in 0..n_partitions {
+      let PartitionLikelihood { gtr, alphabet, length } = &partitions[si];
+      if !node.is_root {
+        let seq_info = &mut node.payload.dense_partitions[si];
+        let mut msgs_to_combine: Vec<Array2<f64>> = vec![];
+        let mut log_lh = 0.0;
+        for (pi, (p, edge)) in node.parents.iter().enumerate() {
+          let edge = edge.read_arc();
+          let expQt = gtr.expQt(edge.branch_length.unwrap_or(0.0));
+          msgs_to_combine.push(edge.dense_partitions[si].msg_to_parent.dis.view().to_owned()); //FIXME: avoid copy
+          log_lh += edge.dense_partitions[si].msg_to_parent.log_lh;
+          msgs_to_combine.push(edge.dense_partitions[si].msg_to_child.dis.dot(&expQt));
+          log_lh += edge.dense_partitions[si].msg_to_child.log_lh;
+        }
+        let mut dis = msgs_to_combine[0].clone();
+        for msg in msgs_to_combine[1..].iter() {
+          dis *= msg;
+        }
+        let norm = dis.sum_axis(Axis(1));
+        log_lh += log(&norm).sum();
+        seq_info.profile = DenseSeqDis {
+          dis: (&dis.t() / &norm).t().to_owned(),
+          log_lh,
+        };
+      };
 
-      let mut log_lh = seq_info.msg_to_parents.log_lh;
-      let mut dis = &seq_info.msg_to_parents.dis * &gtr.pi;
-
-      let norm = dis.sum_axis(Axis(1));
-      log_lh += log(&norm).sum();
-      dis = (&dis.t() / &norm).t().to_owned();
-      seq_info.profile = DenseSeqDis { dis, log_lh };
-      seq_info.seq.sequence = assign_sequence(seq_info, alphabet);
-      seq_info.msgs_to_children.clear();
-      for cname in seq_info.msgs_from_children.keys() {
-        // This division operation can cause 'division by 0' problems. Note that profile = prod(msgs[child], child in children) * msgs_from_parent.
-        // Alternatively, msgs_to_children could be calculated as prod(msgs[sibling], sibling in children/child) * msgs_from_parent.
-        // This latter redundant calculation is done in the sparse case, but division is more efficient in particular in case of polytomies.
-        let child_msg = &seq_info.msgs_from_children[cname];
-        let dis = &seq_info.profile.dis / &child_msg.dis;
-        let log_lh = seq_info.profile.log_lh - child_msg.log_lh;
-        seq_info
-          .msgs_to_children
-          .insert(cname.clone(), DenseSeqDis { dis, log_lh });
+      for child_edge in &mut node.child_edges {
+        child_edge.dense_partitions[si].msg_to_child = DenseSeqDis {
+          dis: &node.payload.dense_partitions[si].profile.dis / &child_edge.dense_partitions[si].msg_from_child.dis,
+          log_lh: node.payload.dense_partitions[si].profile.log_lh
+            - child_edge.dense_partitions[si].msg_from_child.log_lh,
+        };
       }
-
-      total_log_lh += seq_info.profile.log_lh;
     }
-  }
-  total_log_lh
+    GraphTraversalContinuation::Continue
+  });
 }
 
 pub fn run_marginal_dense(graph: &DenseGraph, partitions: Vec<PartitionLikelihoodWithAln>) -> Result<f64, Report> {
@@ -265,8 +217,34 @@ pub fn run_marginal_dense(graph: &DenseGraph, partitions: Vec<PartitionLikelihoo
   let partitions = partitions.into_iter().map(PartitionLikelihood::from).collect_vec();
 
   ingroup_profiles_dense(graph, &partitions);
-  let log_lh = calculate_root_state_dense(graph, &partitions);
+  let log_lh = graph
+    .get_exactly_one_root()
+    .unwrap()
+    .read_arc()
+    .payload()
+    .read_arc()
+    .dense_partitions
+    .iter()
+    .map(|p| p.profile.log_lh)
+    .sum();
   outgroup_profiles_dense(graph, &partitions);
+
+  for mut node in graph.get_nodes() {
+    if node.read_arc().is_leaf() {
+      continue;
+    }
+    for (si, seq_info) in node
+      .write_arc()
+      .payload()
+      .write_arc()
+      .dense_partitions
+      .iter_mut()
+      .enumerate()
+    {
+      let alphabet = &partitions[si].alphabet;
+      seq_info.seq.sequence = assign_sequence(seq_info, alphabet);
+    }
+  }
   Ok(log_lh)
 }
 
@@ -295,8 +273,11 @@ pub fn ancestral_reconstruction_marginal_dense(
 
 #[cfg(test)]
 mod tests {
+  use std::collections::BTreeMap;
+
   use super::*;
   use crate::alphabet::alphabet::AlphabetName;
+  use crate::graph::node;
   use crate::gtr::get_gtr::{jc69, JC69Params};
   use crate::io::fasta::read_many_fasta_str;
   use crate::io::json::{json_write_str, JsonPretty};

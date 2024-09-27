@@ -79,9 +79,9 @@ fn ingroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihoo
           for (pos, state) in variable_pos.iter() {
             // test whether pos in states, otherwise check whether it is in non-char
             if !states.contains_key(pos) {
-              if range_contains(&c.read_arc().sparse_partitions[si].seq.non_char, *pos){
+              if range_contains(&c.read_arc().sparse_partitions[si].seq.non_char, *pos) {
                 dbg!("non-char");
-                if range_contains(&c.read_arc().sparse_partitions[si].seq.gaps, *pos){
+                if range_contains(&c.read_arc().sparse_partitions[si].seq.gaps, *pos) {
                   states.insert(*pos, alphabet.gap());
                 } else {
                   states.insert(*pos, alphabet.unknown());
@@ -199,7 +199,7 @@ fn combine_messages(
       } else if let Some(ref_state) = states.get(&pos) {
         // position fixed in origin of the message, but different from focal node
         // If the state of the message is a non-character, skip multiplication
-        if alphabet.is_canonical(*ref_state){
+        if alphabet.is_canonical(*ref_state) {
           vec *= &msg.fixed[ref_state];
         }
       } else {
@@ -268,7 +268,7 @@ fn outgroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikeliho
           parent_states.push(btreemap! {});
           // go over parent variable position and get reference state
           for (pos, p) in &edge.read_arc().sparse_partitions[si].msg_to_child.variable {
-            if !range_contains(&seq_info.seq.gaps, *pos){
+            if !range_contains(&seq_info.seq.gaps, *pos) {
               // no need to track this position if the position is non-char
               variable_pos.entry(*pos).or_insert(p.state);
               parent_states[pi].insert(*pos, p.state);
