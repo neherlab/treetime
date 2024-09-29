@@ -10,6 +10,7 @@ use crate::utils::container::get_exactly_one_mut;
 use crate::utils::interval::range_intersection::range_intersection;
 use crate::utils::ndarray::log;
 use crate::{make_internal_report, make_report};
+use chronoutil::delta;
 use eyre::Report;
 use itertools::Itertools;
 use ndarray::prelude::*;
@@ -33,6 +34,14 @@ fn assign_sequence(seq_info: &DenseSeqNode, alphabet: &Alphabet) -> Vec<char> {
     seq[gap.0..gap.1].fill(alphabet.gap());
   }
   seq
+}
+
+fn normalize_inplace(dis: &mut Array2<f64>) -> f64 {
+  let norm = dis.sum_axis(Axis(1));
+  for (ri, mut row) in dis.outer_iter_mut().enumerate() {
+    row /= norm[ri];
+  };
+  norm.mapv(|x| x.ln()).sum()
 }
 
 fn attach_seqs_to_graph(graph: &DenseGraph, partitions: &[PartitionLikelihoodWithAln]) -> Result<(), Report> {
@@ -126,7 +135,7 @@ fn ingroup_profiles_dense(graph: &DenseGraph, partitions: &[PartitionLikelihood]
         for msg in msgs[1..].iter() {
           dis *= msg;
         }
-        let norm = dis.sum_axis(Axis(1));
+        let delta_ll = normalize_inplace(&mut dis);
         let log_lh = node
           .children
           .iter()
@@ -136,18 +145,18 @@ fn ingroup_profiles_dense(graph: &DenseGraph, partitions: &[PartitionLikelihood]
           })
           .sum::<f64>();
         DenseSeqDis {
-          dis: (&dis.t() / &norm).t().to_owned(),
-          log_lh: log_lh + log(&norm).sum(),
+          dis: dis,
+          log_lh: log_lh + delta_ll,
         }
       };
 
       if node.is_root {
         let seq_info = &mut node.payload.dense_partitions[si];
-        let dis = &msg_to_parent.dis * &gtr.pi;
-        let norm = dis.sum_axis(Axis(1));
+        let mut dis = &msg_to_parent.dis * &gtr.pi;
+        let delta_ll = normalize_inplace(&mut dis);
 
-        seq_info.profile.dis = (&dis.t() / &norm).t().to_owned();
-        seq_info.profile.log_lh = msg_to_parent.log_lh + log(&norm).sum();
+        seq_info.profile.dis = dis;
+        seq_info.profile.log_lh = msg_to_parent.log_lh + delta_ll;
       } else {
         // what was calculated above is what is sent to the parent. we also calculate the propagated message to the parent (we need it in the forward pass).
         let edge_to_parent =
@@ -205,19 +214,22 @@ fn outgroup_profiles_dense(graph: &DenseGraph, partitions: &[PartitionLikelihood
         for msg in msgs_to_combine[1..].iter() {
           dis *= msg;
         }
-        let norm = dis.sum_axis(Axis(1));
-        log_lh += log(&norm).sum();
+        let delta_ll = normalize_inplace(&mut dis);
+        log_lh += delta_ll;
         seq_info.profile = DenseSeqDis {
-          dis: (&dis.t() / &norm).t().to_owned(),
+          dis: dis,
           log_lh,
         };
       };
 
       for child_edge in &mut node.child_edges {
+        // this normalization isn't strictly necessary
+        let mut dis = &node.payload.dense_partitions[si].profile.dis / &child_edge.dense_partitions[si].msg_from_child.dis;
+        let delta_ll = normalize_inplace(&mut dis);
         child_edge.dense_partitions[si].msg_to_child = DenseSeqDis {
-          dis: &node.payload.dense_partitions[si].profile.dis / &child_edge.dense_partitions[si].msg_from_child.dis,
+          dis: dis,
           log_lh: node.payload.dense_partitions[si].profile.log_lh
-            - child_edge.dense_partitions[si].msg_from_child.log_lh,
+            - child_edge.dense_partitions[si].msg_from_child.log_lh + delta_ll,
         };
       }
     }
@@ -461,9 +473,8 @@ mod tests {
     let pos: usize = 3;
     pretty_assert_ulps_eq!(node_ab.profile.dis.slice(s![pos, 0..4]), &dis_ab, epsilon = 1e-6);
 
-    //FIXME: this currently doesn't work
-    // let log_lh_ab = node_ab.profile.log_lh;
-    // pretty_assert_ulps_eq!(log_lh_ab, log_lh, epsilon=1e-8);
+    let log_lh_ab = node_ab.profile.log_lh;
+    pretty_assert_ulps_eq!(log_lh_ab, log_lh, epsilon=1e-8);
 
     Ok(())
   }
