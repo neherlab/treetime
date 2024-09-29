@@ -5,6 +5,7 @@ use crate::{
     partitions_likelihood::PartitionLikelihood,
   },
 };
+use crossterm::event::DisableBracketedPaste;
 use eyre::Report;
 use itertools::zip;
 use ndarray::{Array2, Axis};
@@ -60,18 +61,15 @@ pub fn initial_guess(graph: &DenseGraph, partitions: &[PartitionLikelihood]) -> 
   let one_mutation = 1.0 / total_length as f64;
   for edge in graph.get_edges() {
     let mut edge = edge.write_arc().payload().write_arc();
-    let mut new_branch_length = 0.0;
     let mut differences: usize = 0;
     for (pi, partition) in edge.dense_partitions.iter().enumerate() {
       for (row1, row2) in zip(partition.msg_to_parent.dis.rows(), partition.msg_to_child.dis.rows()) {
-        if row1.argmax().unwrap() != row2.argmax().unwrap() {
+        if row1[row2.argmax().unwrap()] < 0.5 {
           differences += 1;
         };
       }
-      new_branch_length += differences as f64 * one_mutation;
     }
-    dbg!(edge.branch_length.unwrap());
-    dbg!(new_branch_length);
+    let new_branch_length = differences as f64 * one_mutation;
     edge.branch_length = Some(new_branch_length);
   }
 }
@@ -82,7 +80,7 @@ pub fn run_optimize_dense(graph: &DenseGraph, partitions: &[PartitionLikelihood]
   let n_partitions = partitions.len();
   graph.get_edges().iter_mut().for_each(|edge| {
     let mut edge = edge.write_arc().payload().write_arc();
-    let branch_length = edge.branch_length.unwrap_or(0.0);
+    let mut branch_length = edge.branch_length.unwrap_or(0.0);
     let mut new_branch_length;
 
     let coefficients = (0..n_partitions)
@@ -105,17 +103,20 @@ pub fn run_optimize_dense(graph: &DenseGraph, partitions: &[PartitionLikelihood]
       new_branch_length = 0.0;
     } else if likelihood > 0.0 && second_derivative < 0.0 {
       // newton's method to find the optimal branch length
-      new_branch_length = branch_length - clamp(derivative / second_derivative, -branch_length, branch_length);
-      let max_iter = 3;
-      for _ in 0..max_iter {
+      new_branch_length = branch_length - clamp(derivative / second_derivative, -1.0, branch_length);
+      let max_iter = 10;
+      let mut n_iter = 0;
+      while (new_branch_length - branch_length).abs() > 0.001 * branch_length && n_iter < max_iter {
         let (likelihood, log_likelihood, derivative, second_derivative) =
           evaluate(&coefficients, partitions, new_branch_length);
         if second_derivative < 0.0 {
-          new_branch_length = new_branch_length - clamp(derivative / second_derivative, -1.0, new_branch_length);
+          branch_length = new_branch_length;
+          new_branch_length = branch_length - clamp(derivative / second_derivative, -1.0, branch_length);
         } else {
           break;
         }
-      }
+        n_iter += 1;
+      };
     } else {
       // evaluate on a vector of branch lengths to find the maximum
       let branch_lengths = ndarray::Array1::linspace(0.1 * one_mutation, 1.5 * branch_length + one_mutation, 10);
@@ -129,11 +130,8 @@ pub fn run_optimize_dense(graph: &DenseGraph, partitions: &[PartitionLikelihood]
         })
         .max_by(|&(_, ll1), &(_, ll2)| ll1.partial_cmp(&ll2).unwrap())
         .unwrap();
-      // dbg!(best_branch_length);
       new_branch_length = best_branch_length;
     };
-    // dbg!(edge.branch_length.unwrap());
-    // dbg!(new_branch_length);
     edge.branch_length = Some(new_branch_length);
   });
   Ok(())

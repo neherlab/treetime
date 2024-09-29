@@ -89,9 +89,9 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
     for i in 0..*max_iter {
       //FIXME avoid assigning sequences to the graph in every iteration
       let lh = run_marginal_dense(&graph, partitions_waln.clone(), false)?; // FIXME: avoid cloning
-                                                                            // if i == 0 {
-                                                                            //   initial_guess(&graph, &partitions);
-                                                                            // }
+      // if i == 0 {
+      //   initial_guess(&graph, &partitions);
+      // }
       debug!("Iteration {}: likelihood {}", i + 1, float_to_significant_digits(lh, 7));
       if (lh_prev - lh).abs() < dp.abs() {
         break;
