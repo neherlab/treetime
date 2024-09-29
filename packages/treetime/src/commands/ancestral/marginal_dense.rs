@@ -71,6 +71,16 @@ fn attach_seqs_to_graph(graph: &DenseGraph, partitions: &[PartitionLikelihoodWit
     Ok(())
   })?;
 
+  graph.get_edges().iter().for_each(|edge| {
+    let mut edge = edge.write_arc().payload().write_arc();
+    edge.dense_partitions = vec![];
+  });
+
+  graph.get_internal_nodes().iter().for_each(|node| {
+    let mut node = node.write_arc().payload().write_arc();
+    node.dense_partitions = vec![];
+  });
+
   Ok(())
 }
 
@@ -215,7 +225,11 @@ fn outgroup_profiles_dense(graph: &DenseGraph, partitions: &[PartitionLikelihood
   });
 }
 
-pub fn run_marginal_dense(graph: &DenseGraph, partitions: Vec<PartitionLikelihoodWithAln>) -> Result<f64, Report> {
+pub fn run_marginal_dense(
+  graph: &DenseGraph,
+  partitions: Vec<PartitionLikelihoodWithAln>,
+  reconstruct: bool,
+) -> Result<f64, Report> {
   attach_seqs_to_graph(graph, &partitions)?;
 
   let partitions = partitions.into_iter().map(PartitionLikelihood::from).collect_vec();
@@ -233,20 +247,22 @@ pub fn run_marginal_dense(graph: &DenseGraph, partitions: Vec<PartitionLikelihoo
     .sum();
   outgroup_profiles_dense(graph, &partitions);
 
-  for mut node in graph.get_nodes() {
-    if node.read_arc().is_leaf() {
-      continue;
-    }
-    for (si, seq_info) in node
-      .write_arc()
-      .payload()
-      .write_arc()
-      .dense_partitions
-      .iter_mut()
-      .enumerate()
-    {
-      let alphabet = &partitions[si].alphabet;
-      seq_info.seq.sequence = assign_sequence(seq_info, alphabet);
+  if reconstruct {
+    for node in graph.get_nodes() {
+      if node.read_arc().is_leaf() {
+        continue;
+      }
+      for (si, seq_info) in node
+        .write_arc()
+        .payload()
+        .write_arc()
+        .dense_partitions
+        .iter_mut()
+        .enumerate()
+      {
+        let alphabet = &partitions[si].alphabet;
+        seq_info.seq.sequence = assign_sequence(seq_info, alphabet);
+      }
     }
   }
   Ok(log_lh)
@@ -347,7 +363,7 @@ mod tests {
       ..JC69Params::default()
     })?;
     let partitions = vec![PartitionLikelihoodWithAln::new(gtr, alphabet, aln)?];
-    run_marginal_dense(&graph, partitions)?;
+    run_marginal_dense(&graph, partitions, true)?;
 
     let mut actual = BTreeMap::new();
     ancestral_reconstruction_marginal_dense(&graph, false, |node, seq| {
@@ -405,7 +421,7 @@ mod tests {
 
     let partitions = vec![PartitionLikelihoodWithAln::new(gtr, alphabet, aln)?];
 
-    let log_lh = run_marginal_dense(&graph, partitions)?;
+    let log_lh = run_marginal_dense(&graph, partitions, true)?;
 
     // test variable position distribution at the root
     let pos_zero_root = array![0.28212327, 0.21643546, 0.13800802, 0.36343326];

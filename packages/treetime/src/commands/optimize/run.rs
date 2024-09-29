@@ -24,6 +24,8 @@ use log::debug;
 use serde::Serialize;
 use std::path::Path;
 
+use super::optimize_dense::initial_guess;
+
 #[derive(Clone, Debug, Default)]
 pub struct TreetimeOptimizeParams {
   pub sample_from_profile: bool,
@@ -65,11 +67,11 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
     let mut lh_prev = f64::MAX;
     for i in 0..*max_iter {
       let lh = run_marginal_sparse(&graph, &partitions)?;
-      debug!("Iteration {}: likelihood {}", i + 1, float_to_significant_digits(lh, 5));
+      debug!("Iteration {}: likelihood {}", i + 1, float_to_significant_digits(lh, 7));
       if (lh_prev - lh).abs() < dp.abs() {
         break;
       }
-      run_optimize_sparse(&graph)?;
+      // run_optimize_sparse(&graph)?;
       lh_prev = lh;
     }
 
@@ -78,16 +80,23 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
     let graph: DenseGraph = nwk_read_file(tree)?;
     let gtr = get_gtr_dense(model_name, &alphabet, &graph)?;
 
-    let partitions = vec![PartitionLikelihoodWithAln::new(gtr, alphabet, aln)?];
-
+    let partitions_waln = vec![PartitionLikelihoodWithAln::new(gtr, alphabet, aln)?];
+    let partitions = partitions_waln
+      .iter()
+      .map(|part| PartitionLikelihood::from(part.clone()))
+      .collect_vec();
     let mut lh_prev = f64::MAX;
     for i in 0..*max_iter {
-      let lh = run_marginal_dense(&graph, partitions.clone())?; // FIXME: avoid cloning
-      debug!("Iteration {}: likelihood {}", i + 1, float_to_significant_digits(lh, 5));
+      //FIXME avoid assigning sequences to the graph in every iteration
+      let lh = run_marginal_dense(&graph, partitions_waln.clone(), false)?; // FIXME: avoid cloning
+                                                                            // if i == 0 {
+                                                                            //   initial_guess(&graph, &partitions);
+                                                                            // }
+      debug!("Iteration {}: likelihood {}", i + 1, float_to_significant_digits(lh, 7));
       if (lh_prev - lh).abs() < dp.abs() {
         break;
       }
-      run_optimize_dense(&graph)?;
+      run_optimize_dense(&graph, &partitions)?;
       lh_prev = lh;
     }
 
