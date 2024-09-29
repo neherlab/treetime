@@ -40,7 +40,7 @@ fn normalize_inplace(dis: &mut Array2<f64>) -> f64 {
   let norm = dis.sum_axis(Axis(1));
   for (ri, mut row) in dis.outer_iter_mut().enumerate() {
     row /= norm[ri];
-  };
+  }
   norm.mapv(|x| x.ln()).sum()
 }
 
@@ -145,7 +145,7 @@ fn ingroup_profiles_dense(graph: &DenseGraph, partitions: &[PartitionLikelihood]
           })
           .sum::<f64>();
         DenseSeqDis {
-          dis: dis,
+          dis,
           log_lh: log_lh + delta_ll,
         }
       };
@@ -216,20 +216,19 @@ fn outgroup_profiles_dense(graph: &DenseGraph, partitions: &[PartitionLikelihood
         }
         let delta_ll = normalize_inplace(&mut dis);
         log_lh += delta_ll;
-        seq_info.profile = DenseSeqDis {
-          dis: dis,
-          log_lh,
-        };
+        seq_info.profile = DenseSeqDis { dis, log_lh };
       };
 
       for child_edge in &mut node.child_edges {
         // this normalization isn't strictly necessary
-        let mut dis = &node.payload.dense_partitions[si].profile.dis / &child_edge.dense_partitions[si].msg_from_child.dis;
+        let mut dis =
+          &node.payload.dense_partitions[si].profile.dis / &child_edge.dense_partitions[si].msg_from_child.dis;
         let delta_ll = normalize_inplace(&mut dis);
         child_edge.dense_partitions[si].msg_to_child = DenseSeqDis {
-          dis: dis,
+          dis,
           log_lh: node.payload.dense_partitions[si].profile.log_lh
-            - child_edge.dense_partitions[si].msg_from_child.log_lh + delta_ll,
+            - child_edge.dense_partitions[si].msg_from_child.log_lh
+            + delta_ll,
         };
       }
     }
@@ -474,7 +473,7 @@ mod tests {
     pretty_assert_ulps_eq!(node_ab.profile.dis.slice(s![pos, 0..4]), &dis_ab, epsilon = 1e-6);
 
     let log_lh_ab = node_ab.profile.log_lh;
-    pretty_assert_ulps_eq!(log_lh_ab, log_lh, epsilon=1e-8);
+    pretty_assert_ulps_eq!(log_lh_ab, log_lh, epsilon = 1e-8);
 
     Ok(())
   }
