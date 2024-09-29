@@ -37,8 +37,8 @@ pub fn evaluate(
     let PartitionLikelihood { gtr, length, alphabet } = &partition;
     // let coefficents = &partition.msg_to_parent.dis * &partition.msg_to_child.dis;
     let exp_ev = gtr.eigvals.mapv(|ev| (ev * branch_length).exp());
-    let ev_exp_ev = gtr.eigvals.mapv(|ev| ev * (ev * branch_length).exp());
-    let ev2_exp_ev = gtr.eigvals.mapv(|ev| ev * ev * (ev * branch_length).exp());
+    let ev_exp_ev = &gtr.eigvals * &exp_ev;
+    let ev2_exp_ev = &gtr.eigvals * &ev_exp_ev;
     // this loop could be coded more efficiently
     for coeff in coefficients[pi].outer_iter() {
       let val = (&coeff * &exp_ev).sum();
