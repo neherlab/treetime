@@ -73,7 +73,7 @@ pub fn timestamp_format_safe(timestamp: i64) -> String {
 }
 
 pub fn ymd(year: i32, month: u32, day: u32) -> DateTime<Utc> {
-  Utc.ymd(year, month, day).and_hms(0, 0, 0)
+  Utc.with_ymd_and_hms(year, month, day, 0, 0, 0).unwrap()
 }
 
 pub fn days_in_month(year: u32, month: u32) -> Result<u32, Report> {

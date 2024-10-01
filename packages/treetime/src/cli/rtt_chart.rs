@@ -41,7 +41,7 @@ pub fn write_clock_regression_chart_png(
   let img = write_clock_regression_chart_bitmap(results, clock_model)?;
   let mut f = &mut create_file_or_stdout(filepath)?;
   let encoder = PngEncoder::new(&mut f);
-  encoder.write_image(img.as_bytes(), img.width(), img.height(), ColorType::Rgb8)?;
+  encoder.write_image(img.as_bytes(), img.width(), img.height(), ColorType::Rgb8.into())?;
   Ok(())
 }
 

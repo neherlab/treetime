@@ -2,7 +2,7 @@ use crate::make_error;
 use crate::utils::datetime::date_range::DateRange;
 use crate::utils::datetime::options::{DateParserOptions, TimeOfDay};
 use crate::utils::datetime::year_frac::year_fraction_to_date;
-use chrono::{DateTime, NaiveDate, Utc};
+use chrono::{DateTime, NaiveDate, TimeZone, Utc};
 use eyre::{Report, WrapErr};
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -47,13 +47,13 @@ pub fn parse_date_with_format(
   let format = format.as_ref();
   NaiveDate::parse_from_str(date_str, format)
     .map(|naive_date| match options.default_time_of_day {
-      TimeOfDay::Dawn => naive_date.and_hms(0, 0, 0),
-      TimeOfDay::Noon => naive_date.and_hms(12, 0, 0),
-      TimeOfDay::Dusk => naive_date.and_hms_nano(23, 59, 59, 999_999_999),
+      TimeOfDay::Dawn => naive_date.and_hms_opt(0, 0, 0).unwrap(),
+      TimeOfDay::Noon => naive_date.and_hms_opt(12, 0, 0).unwrap(),
+      TimeOfDay::Dusk => naive_date.and_hms_nano_opt(23, 59, 59, 999_999_999).unwrap(),
       TimeOfDay::Custom(time) => naive_date.and_time(time),
       TimeOfDay::CustomFn(func) => naive_date.and_time(func(&naive_date)),
     })
-    .map(|naive_datetime| DateTime::<Utc>::from_utc(naive_datetime, Utc))
+    .map(|naive_datetime| Utc.from_utc_datetime(&naive_datetime))
     .wrap_err_with(|| format!("When parsing date '{date_str}' using format '{format}'"))
 }
 

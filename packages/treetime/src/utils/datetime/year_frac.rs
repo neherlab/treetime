@@ -31,7 +31,7 @@ pub fn year_fraction_to_date(year_fraction: f64) -> DateTime<Utc> {
   let seconds_in_year = (days_in_year(year) as u64) * 24 * 60 * 60;
   let seconds_since_year_start = seconds_in_year as f64 * fraction;
   let dt = RelativeDuration::from(StdDuration::from_secs_f64(seconds_since_year_start));
-  Utc.ymd(year, 1, 1).and_hms(0, 0, 0) + dt
+  Utc.with_ymd_and_hms(year, 1, 1, 0, 0, 0).unwrap() + dt
 }
 
 #[cfg(test)]

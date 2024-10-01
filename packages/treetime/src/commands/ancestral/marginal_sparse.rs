@@ -9,11 +9,11 @@ use crate::utils::container::get_exactly_one_mut;
 use crate::utils::interval::range::range_contains;
 use crate::{make_internal_error, make_internal_report};
 use eyre::Report;
-use itertools::zip;
 use maplit::btreemap;
 use ndarray::{Array1, Array2};
 use ndarray_stats::QuantileExt;
 use std::collections::BTreeMap;
+use std::iter::zip;
 
 const EPS: f64 = 1e-6;
 

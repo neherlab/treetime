@@ -23,11 +23,20 @@ impl DateRange {
     Self::new(iso(begin.as_ref()), iso(end.as_ref()))
   }
 
+  #[allow(deprecated)]
   pub fn from_ymd(begin: (u32, u32, u32), end: (u32, u32, u32)) -> Self {
-    let begin = Utc.ymd(begin.0 as i32, begin.1, begin.2).and_hms(0, 0, 0);
+    let begin = Utc
+      .ymd_opt(begin.0 as i32, begin.1, begin.2)
+      .unwrap()
+      .and_hms_opt(0, 0, 0)
+      .unwrap();
+
     let end = Utc
-      .ymd(end.0 as i32, end.1, end.2)
-      .and_hms_nano(23, 59, 59, 999_999_999);
+      .ymd_opt(end.0 as i32, end.1, end.2)
+      .unwrap()
+      .and_hms_nano_opt(23, 59, 59, 999_999_999)
+      .unwrap();
+
     Self::new(begin, end)
   }
 

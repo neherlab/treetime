@@ -1,7 +1,7 @@
 use crate::make_error;
 use crate::utils::datetime::datetime::{date_from_iso, date_from_rfc2822};
 use crate::utils::datetime::options::DateParserOptions;
-use chrono::{DateTime, NaiveDateTime, Utc};
+use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
 use eyre::{Context, Report};
 
 pub fn parse_datetime(datetime_str: impl AsRef<str>, options: &DateParserOptions) -> Result<DateTime<Utc>, Report> {
@@ -39,7 +39,7 @@ pub fn parse_datetime_with_format(
   let datetime_str = datetime_str.as_ref();
   let format = format.as_ref();
   NaiveDateTime::parse_from_str(datetime_str, format)
-    .map(|naive_datetime| DateTime::<Utc>::from_utc(naive_datetime, Utc))
+    .map(|naive_datetime| Utc.from_utc_datetime(&naive_datetime))
     .wrap_err_with(|| format!("When parsing datetime '{datetime_str}' using format '{format}'"))
 }
 
