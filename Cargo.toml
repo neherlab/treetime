@@ -32,6 +32,9 @@ authors = [
 [workspace.dependencies]
 approx = "=0.5.1"
 argmin = { version = "=0.10.0", features = [] }
+argmin-math = { version = "=0.4.0", features = ["ndarray_v0_15"] }
+argmin-observer-slog = { version = "=0.1.0", features = ["serde"] }
+argmin_testfunctions = { version = "=0.2.0" }
 assert2 = "=0.3.15"
 atty = "=0.2.14"
 auto_ops = "=0.3.0"
@@ -70,7 +73,7 @@ log = "=0.4.22"
 maplit = { version = "=1.0.2", features = [] }
 multimap = { version = "=0.10.0", features = ["serde_impl"] }
 ndarray = { version = "=0.15.6", features = ["rayon", "serde", "approx-0_5", "blas"] }
-ndarray-linalg = { version = "=0.14.1", features = ["openblas-static"] }
+ndarray-linalg = { version = "=0.16.0", features = ["openblas-static"] }
 ndarray-rand = "=0.14.0"
 ndarray-stats = "=0.5.1"
 num = "=0.4.3"

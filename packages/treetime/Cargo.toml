@@ -21,6 +21,9 @@ usher-mat-utils = { path = "../usher-mat-utils" }
 
 approx = { workspace = true }
 argmin = { workspace = true }
+argmin-math = { workspace = true }
+argmin-observer-slog = { workspace = true }
+argmin_testfunctions = { workspace = true }
 auto_ops = { workspace = true }
 bio = { workspace = true }
 bio-types = { workspace = true }
