@@ -9,12 +9,12 @@ use crate::utils::container::get_exactly_one_mut;
 use crate::utils::interval::range::range_contains;
 use crate::{make_internal_error, make_internal_report};
 use eyre::Report;
-use std::iter::zip;
 use log::debug;
 use maplit::btreemap;
 use ndarray::{Array1, Array2};
 use ndarray_stats::QuantileExt;
 use std::collections::BTreeMap;
+use std::iter::zip;
 
 const EPS: f64 = 1e-3;
 
@@ -183,7 +183,11 @@ fn combine_messages(
   // create a copy of the composition to keep track of the fixed states. this needs to be separate from the fixed_counts field in seq_dis
   // pulling out the counts as BTmap with f64 is sufficient
   // copy composition.counts and cast the values of f64
-  let mut fixed_counts = composition.counts().into_iter().map(|(k, v)| (*k, *v as f64)).collect::<BTreeMap<_, _>>();
+  let mut fixed_counts = composition
+    .counts()
+    .into_iter()
+    .map(|(k, v)| (*k, *v as f64))
+    .collect::<BTreeMap<_, _>>();
   // go over all putatively variable positions
   for (&pos, &state) in variable_pos {
     // collect the profiles of children to multiply
@@ -217,7 +221,7 @@ fn combine_messages(
     let vec_norm = vec.sum();
     seq_dis.log_lh += vec_norm.ln();
     if let Some(count) = fixed_counts.get_mut(&state) {
-        *count -= 1.0;
+      *count -= 1.0;
     }
     // add position to variable states if the subleading states have a probability exceeding eps
     if *vec.max()? < (1.0 - EPS) * vec_norm {
@@ -272,8 +276,8 @@ fn outgroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikeliho
         let mut msgs_to_combine: Vec<SparseSeqDis> = vec![];
         for (pi, (p, edge)) in node.parents.iter().enumerate() {
           // go over all mutations and get reference state
-          let mut parent_state: BTreeMap<usize, char>  = btreemap! {};
-          let mut child_state: BTreeMap<usize, char>  = btreemap! {};
+          let mut parent_state: BTreeMap<usize, char> = btreemap! {};
+          let mut child_state: BTreeMap<usize, char> = btreemap! {};
           // go over parent variable position and get reference state
           for (pos, p) in &edge.read_arc().sparse_partitions[si].msg_to_child.variable {
             if !range_contains(&seq_info.seq.gaps, *pos) {
@@ -322,7 +326,7 @@ fn outgroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikeliho
 
       // precalculate messages to children that summarize info from their siblings and the parent
       for child_edge in &mut node.child_edges {
-        let mut seq_dis = SparseSeqDis{
+        let mut seq_dis = SparseSeqDis {
           variable: btreemap! {},
           variable_indel: btreemap! {},
           fixed: btreemap! {},
@@ -349,25 +353,39 @@ fn outgroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikeliho
         let mut delta_ll = 0.0;
         // subtract the message from the current child from the profile
         for (pos, pstate) in parent_states {
-          let divisor = if let Some(dis) = child_dis.variable.get(&pos) {&dis.dis} else {child_dis.fixed.get(child_states.get(&pos).unwrap()).unwrap()};
-          let numerator = if let Some(dis) = seq_info.profile.variable.get(&pos) {&dis.dis} else {seq_info.profile.fixed.get(&pstate).unwrap()};
+          let divisor = if let Some(dis) = child_dis.variable.get(&pos) {
+            &dis.dis
+          } else {
+            child_dis.fixed.get(child_states.get(&pos).unwrap()).unwrap()
+          };
+          let numerator = if let Some(dis) = seq_info.profile.variable.get(&pos) {
+            &dis.dis
+          } else {
+            seq_info.profile.fixed.get(&pstate).unwrap()
+          };
           let dis = numerator / divisor;
           let norm = dis.sum();
           delta_ll += norm.ln();
-          seq_dis.variable.insert(pos, VarPos {dis: dis/norm, state: pstate});
+          seq_dis.variable.insert(
+            pos,
+            VarPos {
+              dis: dis / norm,
+              state: pstate,
+            },
+          );
           seq_dis.fixed_counts.adjust_count(pstate, -1);
         }
         for (s, p) in &seq_info.profile.fixed {
           let dis = &*p / &child_dis.fixed[&s];
           let norm = dis.sum();
-          delta_ll += norm.ln()*(seq_dis.fixed_counts.get(*s).unwrap() as f64);
+          delta_ll += norm.ln() * (seq_dis.fixed_counts.get(*s).unwrap() as f64);
           seq_dis.fixed.insert(*s, dis / norm);
         }
         seq_dis.log_lh += delta_ll;
         child_edge.sparse_partitions[si].msg_to_child = seq_dis;
       }
-  }
-  GraphTraversalContinuation::Continue
+    }
+    GraphTraversalContinuation::Continue
   });
 }
 

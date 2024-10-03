@@ -25,6 +25,7 @@ use serde::Serialize;
 use std::path::Path;
 
 use super::optimize_dense::initial_guess;
+use super::optimize_sparse::initial_guess_sparse;
 
 #[derive(Clone, Debug, Default)]
 pub struct TreetimeOptimizeParams {
@@ -64,6 +65,7 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
           .map(|part| PartitionLikelihood::from_parsimony(gtr.clone(), part)) // FIXME: avoid cloning
           .collect_vec();
 
+    initial_guess_sparse(&graph, &partitions);
     let mut lh_prev = f64::MAX;
     for i in 0..*max_iter {
       let lh = run_marginal_sparse(&graph, &partitions)?;
@@ -71,7 +73,7 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
       if (lh_prev - lh).abs() < dp.abs() {
         break;
       }
-      // run_optimize_sparse(&graph)?;
+      run_optimize_sparse(&graph, &partitions)?;
       lh_prev = lh;
     }
 
@@ -89,6 +91,7 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
     for i in 0..*max_iter {
       //FIXME avoid assigning sequences to the graph in every iteration
       let lh = run_marginal_dense(&graph, partitions_waln.clone(), false)?; // FIXME: avoid cloning
+                                                                            // somehow, the initial guess makes it worse...
                                                                             // if i == 0 {
                                                                             //   initial_guess(&graph, &partitions);
                                                                             // }

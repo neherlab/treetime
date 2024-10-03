@@ -6,10 +6,10 @@ use crate::{
   },
 };
 use eyre::Report;
-use itertools::zip;
 use ndarray::{Array2, Axis};
 use ndarray_stats::QuantileExt;
 use num::clamp;
+use std::iter::zip;
 
 // The likelihood of an edge length is the product of the likelihoods of all positions of all partitions
 // Lh = prod_i prod_j \sum_{ab} s^{ij}_a exp(Q_i t)_{ab} r^{ij}_b
@@ -53,8 +53,8 @@ pub fn evaluate(
 
 pub fn get_coefficients(msg_to_parent: &DenseSeqDis, msg_to_child: &DenseSeqDis, gtr: &GTR) -> Array2<f64> {
   // multiple the messages by the eigenvectors of the GTR matrix, multiply elementwise, and sum over the rows
-  // TODO: check whether the use of v and v_inv is correct
-  msg_to_parent.dis.dot(&gtr.v) * msg_to_child.dis.dot(&gtr.v_inv.t())
+  // s_a eQt_{ab} r_b =  \sum_{abc} s_a v_{ac} e^{\lambda_c t} vinv_{cb} r_b
+  msg_to_child.dis.dot(&gtr.v) * msg_to_parent.dis.dot(&gtr.v_inv.t())
 }
 
 pub fn initial_guess(graph: &DenseGraph, partitions: &[PartitionLikelihood]) -> () {
@@ -81,6 +81,14 @@ pub fn run_optimize_dense(graph: &DenseGraph, partitions: &[PartitionLikelihood]
   let one_mutation = 1.0 / total_length as f64;
   let n_partitions = partitions.len();
   graph.get_edges().iter_mut().for_each(|edge| {
+    let name = &graph
+      .get_node(edge.read_arc().target())
+      .unwrap()
+      .read_arc()
+      .payload()
+      .read_arc()
+      .name
+      .clone();
     let mut edge = edge.write_arc().payload().write_arc();
     let mut branch_length = edge.branch_length.unwrap_or(0.0);
     let mut new_branch_length;
@@ -100,10 +108,16 @@ pub fn run_optimize_dense(graph: &DenseGraph, partitions: &[PartitionLikelihood]
       .map(|coeff| coeff.sum_axis(Axis(1)).product())
       .product();
 
-    if zero_branch_length_lh > 0.1 {
-      // TODO: could check that derivative is negative
-      edge.branch_length = Some(0.0);
-      return;
+    if zero_branch_length_lh > 0.01 {
+      let zero_branch_length_derivative: f64 = coefficients
+        .iter()
+        .enumerate()
+        .map(|(pi, coeff)| ((coeff * &partitions[pi].gtr.eigvals).sum_axis(Axis(1)) / coeff.sum_axis(Axis(1))).sum())
+        .sum();
+      if zero_branch_length_derivative < 0.0 {
+        edge.branch_length = Some(0.0);
+        return;
+      }
     }
 
     // otherwise, we need to optimize the branch length
@@ -112,6 +126,7 @@ pub fn run_optimize_dense(graph: &DenseGraph, partitions: &[PartitionLikelihood]
     if likelihood > 0.0 && second_derivative < 0.0 {
       // newton's method to find the optimal branch length
       new_branch_length = branch_length - clamp(derivative / second_derivative, -1.0, branch_length);
+      // dbg!("newton");
       let max_iter = 10;
       let mut n_iter = 0;
       while (new_branch_length - branch_length).abs() > 0.001 * branch_length && n_iter < max_iter {
@@ -128,7 +143,6 @@ pub fn run_optimize_dense(graph: &DenseGraph, partitions: &[PartitionLikelihood]
     } else {
       // evaluate on a vector of branch lengths to find the maximum
       let branch_lengths = ndarray::Array1::linspace(0.1 * one_mutation, 1.5 * branch_length + one_mutation, 10);
-
       // this seems like a bit of a mess.
       let (best_branch_length, _) = branch_lengths
         .iter()
