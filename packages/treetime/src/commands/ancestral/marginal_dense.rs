@@ -8,11 +8,10 @@ use crate::representation::graph_dense::{
 use crate::representation::partitions_likelihood::{PartitionLikelihood, PartitionLikelihoodWithAln};
 use crate::utils::container::get_exactly_one_mut;
 use crate::utils::interval::range_intersection::range_intersection;
-use crate::utils::ndarray::log;
 use crate::{make_internal_report, make_report};
-use chronoutil::delta;
 use eyre::Report;
 use itertools::Itertools;
+use log::debug;
 use ndarray::prelude::*;
 use ndarray::AssignElem;
 use ndarray_stats::QuantileExt;
@@ -256,6 +255,7 @@ pub fn run_marginal_dense(
     .iter()
     .map(|p| p.profile.log_lh)
     .sum();
+  debug!("Log likelihood: {}", log_lh);
   outgroup_profiles_dense(graph, &partitions);
 
   if reconstruct {
