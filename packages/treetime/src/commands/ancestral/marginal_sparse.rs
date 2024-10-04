@@ -20,6 +20,7 @@ const EPS: f64 = 1e-3;
 
 fn ingroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihood]) {
   graph.par_iter_breadth_first_backward(|mut node| {
+    let name = node.payload.name.clone();
     for (si, seq_info) in node.payload.sparse_partitions.iter_mut().enumerate() {
       let PartitionLikelihood { gtr, alphabet, length } = &partitions[si];
       let msg_to_parent = if node.is_leaf {
@@ -191,7 +192,7 @@ fn combine_messages(
   // go over all putatively variable positions
   for (&pos, &state) in variable_pos {
     // collect the profiles of children to multiply
-
+    let mut all_states_equal = true;
     // start with a vector given by the gtr_weight if it is provided otherwise use a vector of ones
     let mut vec = if let Some(gtr_weight) = gtr_weight {
       gtr_weight.clone()
@@ -206,11 +207,17 @@ fn combine_messages(
       if let Some(var) = msg.variable.get(&pos) {
         // position variable in child
         vec *= &var.dis;
+        if var.state != state {
+          all_states_equal = false;
+        }
       } else if let Some(ref_state) = states.get(&pos) {
         // position fixed in origin of the message, but different from focal node
         // If the state of the message is a non-character, skip multiplication
         if alphabet.is_canonical(*ref_state) {
           vec *= &msg.fixed[ref_state];
+        }
+        if ref_state != &state {
+          all_states_equal = false;
         }
       } else {
         // position fixed in child and same as parent
@@ -224,7 +231,7 @@ fn combine_messages(
       *count -= 1.0;
     }
     // add position to variable states if the subleading states have a probability exceeding eps
-    if *vec.max()? < (1.0 - EPS) * vec_norm {
+    if (*vec.max()? < (1.0 - EPS) * vec_norm) || !all_states_equal {
       if vec.ndim() > 1 {
         return make_internal_error!("Unexpected dimensionality in probability vector: {}", vec.ndim());
       }
@@ -267,6 +274,7 @@ fn combine_messages(
 
 fn outgroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihood]) {
   graph.par_iter_breadth_first_forward(|mut node| {
+    let name = node.payload.name.clone();
     for (si, seq_info) in node.payload.sparse_partitions.iter_mut().enumerate() {
       let PartitionLikelihood { gtr, alphabet, length } = &partitions[si];
       if !node.is_root {
