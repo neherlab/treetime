@@ -417,11 +417,9 @@ mod tests {
     let treat_gap_as_unknown = true;
     let alphabet = Alphabet::new(AlphabetName::Nuc, treat_gap_as_unknown)?;
 
-    let pi = array![0.2, 0.3, 0.15, 0.35];
-
-    // symmetric rate matrix
+    // use non-trivial GTR with non-uniform stationary distribution (tests correct use of transposed matrices)
     let mu = 1.0;
-
+    let pi = array![0.2, 0.3, 0.15, 0.35];
     let gtr = GTR::new(GTRParams {
       alphabet: Alphabet::default(),
       W: None,
@@ -433,8 +431,10 @@ mod tests {
     let partitions = vec![PartitionLikelihoodWithAln::new(gtr, alphabet, aln)?];
 
     let log_lh = run_marginal_dense(&graph, partitions, true)?;
+    // from test_scripts/ancestral_dense.py
+    pretty_assert_ulps_eq!(-59.20297892181229, log_lh, epsilon = 1e-6);
 
-    // test variable position distribution at the root
+    // test variable position distribution at the root for position 0 (from test_scripts/ancestral_dense.py)
     let pos_zero_root = array![0.28212327, 0.21643546, 0.13800802, 0.36343326];
     let root = &graph
       .get_exactly_one_root()
@@ -444,14 +444,9 @@ mod tests {
       .read_arc()
       .dense_partitions[0];
     let pos: usize = 0;
-    dbg!(&root.profile.dis.slice(s![pos, 0..4]));
-
-    dbg!(log_lh);
-    // pretty_assert_ulps_eq!(-56.946298878390444, log_lh, epsilon = 1e-6);
     pretty_assert_ulps_eq!(root.profile.dis.slice(s![pos, 0..4]), &pos_zero_root, epsilon = 1e-6);
 
-    // test variable position distribution at internal node
-    let pos_zero_ab = array![0.51275208, 0.09128506, 0.24647255, 0.14949031];
+    // pull out internal node AB for testing
     let node_ab = &graph
       .get_node(GraphNodeKey(1))
       .unwrap()
@@ -459,10 +454,13 @@ mod tests {
       .payload()
       .read_arc()
       .dense_partitions[0];
+
+      // test variable position distribution at internal node (from test_scripts/ancestral_dense.py)
     let pos: usize = 0;
+    let pos_zero_ab = array![0.51275208, 0.09128506, 0.24647255, 0.14949031];
     pretty_assert_ulps_eq!(node_ab.profile.dis.slice(s![pos, 0..4]), &pos_zero_ab, epsilon = 1e-6);
 
-    // test variable position distribution at internal node
+    // test variable position distribution at internal node (obtained from python treetime)
     let dis_ab = array![
       0.0013914677323952813,
       0.002087201598592933,
@@ -472,6 +470,7 @@ mod tests {
     let pos: usize = 3;
     pretty_assert_ulps_eq!(node_ab.profile.dis.slice(s![pos, 0..4]), &dis_ab, epsilon = 1e-6);
 
+    // test whether the log likelihood is the same regardless of the root (here for node AB)
     let log_lh_ab = node_ab.profile.log_lh;
     pretty_assert_ulps_eq!(log_lh_ab, log_lh, epsilon = 1e-8);
 
