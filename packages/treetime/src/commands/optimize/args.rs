@@ -52,6 +52,6 @@ pub struct TreetimeOptimizeArgs {
   pub max_iter: usize,
 
   /// Small allowable difference in the likelihood between iterations to determine if the loop should terminate
-  #[clap(long, default_value_t = 1e-3)]
+  #[clap(long, default_value_t = 1e-2)]
   pub dp: f64,
 }

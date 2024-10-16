@@ -66,11 +66,11 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
           .collect_vec();
 
     initial_guess_sparse(&graph, &partitions);
-    let mut lh_prev = f64::MAX;
+    let mut lh_prev = f64::MIN;
     for i in 0..*max_iter {
       let lh = run_marginal_sparse(&graph, &partitions)?;
       debug!("Iteration {}: likelihood {}", i + 1, float_to_significant_digits(lh, 7));
-      if (lh_prev - lh).abs() < dp.abs() {
+      if (lh - lh_prev).abs() < dp.abs() {
         break;
       }
       run_optimize_sparse(&graph, &partitions)?;
@@ -87,7 +87,7 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
       .iter()
       .map(|part| PartitionLikelihood::from(part.clone()))
       .collect_vec();
-    let mut lh_prev = f64::MAX;
+    let mut lh_prev = f64::MIN;
     for i in 0..*max_iter {
       //FIXME avoid assigning sequences to the graph in every iteration
       let lh = run_marginal_dense(&graph, partitions_waln.clone(), false)?; // FIXME: avoid cloning
@@ -96,7 +96,7 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
                                                                             //   initial_guess(&graph, &partitions);
                                                                             // }
       debug!("Iteration {}: likelihood {}", i + 1, float_to_significant_digits(lh, 7));
-      if (lh_prev - lh).abs() < dp.abs() {
+      if (lh - lh_prev).abs() < dp.abs() {
         break;
       }
       run_optimize_dense(&graph, &partitions)?;
