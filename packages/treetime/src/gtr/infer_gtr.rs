@@ -120,7 +120,6 @@ pub fn infer_gtr(counts: &MutationCounts, options: &InferGtrOptions) -> Result<I
   } else if (pi.sum() - 1.0).abs() > *dp {
     warn!("When inferring GTR parameters: Proper normalization was not reached.");
   }
-
   Ok(InferGtrResult { W, pi, mu })
 }
 

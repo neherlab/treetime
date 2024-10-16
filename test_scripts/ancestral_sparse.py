@@ -276,6 +276,9 @@ def tests():
   node_AB = G2.get_node(G2.nodes[1].key()).payload().sparse_sequences[1]
   assert np.abs(node_AB.profile.variable[0].dis-np.array([0.52331521, 0.08336271, 0.24488808, 0.148434])).sum()<1e-6
 
+  for node in G.get_nodes():
+    print(node.payload().sparse_sequences[0].profile.logLH)
+
 
 
 if __name__=="__main__":
@@ -294,3 +297,9 @@ if __name__=="__main__":
   print("LogLH", ancestral_sparse(G))
 
   seq_info = G.get_roots()[0].payload().sparse_sequences[0]
+
+  from treetime import TreeAnc
+  gtr = GTR.custom(pi=[0.2, 0.3, 0.15, 0.35], alphabet='nuc_nogap')
+  tt = TreeAnc(tree=fname_nwk, aln=fname_seq, gtr=gtr)
+  tt.infer_ancestral_sequences(marginal=True)
+  print(tt.sequence_LH())

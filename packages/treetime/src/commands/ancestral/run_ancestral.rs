@@ -122,7 +122,7 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
         let gtr = get_gtr_dense(model_name, &alphabet, &graph)?;
 
         let partitions = vec![PartitionLikelihoodWithAln::new(gtr, alphabet, aln)?];
-        run_marginal_dense(&graph, partitions)?;
+        run_marginal_dense(&graph, partitions, true)?;
 
         ancestral_reconstruction_marginal_dense(&graph, *reconstruct_tip_states, |node, seq| {
           let name = node.name.as_deref().unwrap_or("");
