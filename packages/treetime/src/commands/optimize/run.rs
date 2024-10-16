@@ -24,7 +24,9 @@ use log::debug;
 use serde::Serialize;
 use std::path::Path;
 
-use super::optimize_dense::initial_guess;
+// the initial guess for dense is not working well, but optimization works without
+// revisit after settling on optimization algorithm
+//use super::optimize_dense::initial_guess;
 use super::optimize_sparse::initial_guess_sparse;
 
 #[derive(Clone, Debug, Default)]

@@ -455,7 +455,7 @@ mod tests {
       .read_arc()
       .dense_partitions[0];
 
-      // test variable position distribution at internal node (from test_scripts/ancestral_dense.py)
+    // test variable position distribution at internal node (from test_scripts/ancestral_dense.py)
     let pos: usize = 0;
     let pos_zero_ab = array![0.51275208, 0.09128506, 0.24647255, 0.14949031];
     pretty_assert_ulps_eq!(node_ab.profile.dis.slice(s![pos, 0..4]), &pos_zero_ab, epsilon = 1e-6);
