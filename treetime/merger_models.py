@@ -184,7 +184,7 @@ class Coalescent(object):
                                   np.concatenate(([cost[0]], cost,[cost[-1]])), kind='linear')
 
     def branch_merger_rate(self, t):
-        '''
+        r'''
         rate at which one particular branch merges with any other branch at time t,
         in the Kingman model this is: :math:`\kappa(t) = (k(t)-1)/(2Tc(t))`
         '''
@@ -194,7 +194,7 @@ class Coalescent(object):
         return 0.5*np.maximum(0.5,self.nbranches(t)-1.0)/self.Tc(t)
 
     def total_merger_rate(self, t):
-        '''
+        r'''
         rate at which any branch merges with any other branch at time t,
         in the Kingman model this is: :math:`\lambda(t) = k(t)(k(t)-1)/(2Tc(t))`
         '''
@@ -206,12 +206,12 @@ class Coalescent(object):
 
 
     def cost(self, t_node, branch_length, multiplicity=2.0):
-        '''
+        r'''
         returns the cost associated with a branch starting with divergence time t_node (:math:`t_n`)
-        having a branch length :math:`\\tau`.
+        having a branch length :math:`\tau`.
         This is equivalent to the probability of there being no merger on that branch and a merger at the end of the branch,
         calculated in the negative log
-        :math:`-log(\lambda(t_n+ \\tau)^{(m-1)/m}) + \int_{t_n}^{t_n+ \\tau} \kappa(t) dt`, where m is the multiplicity
+        :math:`-log(\lambda(t_n+ \tau)^{(m-1)/m}) + \int_{t_n}^{t_n+ \tau} \kappa(t) dt`, where m is the multiplicity
 
         Parameters
         ----------
