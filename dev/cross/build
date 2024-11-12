@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+set -euo pipefail
+trap "exit" INT
+# shellcheck source=./../lib/utils.sh
+source "${BASH_SOURCE%/*}/../lib/utils.sh"
+
+function build() {
+  trap "exit" INT
+
+  local bin="${1:?}"
+  local target="${2:-"${CROSS_COMPILE:-}"}"
+
+  local rust_crt_static="-C target-feature=+crt-static"
+  local rust_static="-C link-arg=-static"
+  local rust_self_contained="-C link-self-contained=yes"
+
+  # https://github.com/NixOS/nixpkgs/issues/177129
+  # https://github.com/llvm/llvm-project/issues/32805
+  local rust_apple="-C link-arg=-lgcc_eh"
+
+  # HACK: musl toolchains cannot figure out what libraries to link. Let's help them.
+  # To investigate. Might be related to '-C link-self-contained=yes'
+  local rust_musl="-C link-args=-lpthread -C link-args=-lm -C link-args=-lc"
+
+  local c_arch rust_arch
+  case "${target}" in
+  aarch64-apple* | aarch64-darwin*)
+    c_arch="-mcpu=apple-m1"
+    rust_arch="-C target-cpu=apple-m1"
+    ;;
+  aarch64*)
+    c_arch="-march=armv8.2-a"
+    # Target features are listed explicitly from `-C target-feature=+v8.2a` which is currently unstable:
+    # $ rustc --target aarch64-unknown-linux-gnu -C target-cpu=generic -C target-feature=+v8.2a --print cfg
+    rust_arch="-C target-cpu=generic -C target-feature=+crc,+dpb,+lor,+lse,+neon,+pan,+ras,+rdm,+vh"
+    ;;
+  x86_64*)
+    c_arch="-march=haswell"
+    rust_arch="-C target-cpu=haswell"
+    ;;
+  esac
+
+  declare -x CARGO_TARGET_AARCH64_APPLE_DARWIN_RUSTFLAGS="${rust_arch} ${rust_crt_static} ${rust_apple}"
+  declare -x CARGO_TARGET_X86_64_APPLE_DARWIN_RUSTFLAGS="${rust_arch} ${rust_crt_static} ${rust_apple}"
+  declare -x CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUSTFLAGS="${rust_arch}"
+  declare -x CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUSTFLAGS="${rust_arch}"
+  declare -x CARGO_TARGET_X86_64_PC_WINDOWS_GNU_RUSTFLAGS="${rust_arch} ${rust_crt_static} ${rust_static} ${rust_self_contained}"
+  declare -x CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_RUSTFLAGS="${rust_arch} ${rust_musl} ${rust_crt_static} ${rust_static} ${rust_self_contained}"
+  declare -x CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_RUSTFLAGS="${rust_arch} ${rust_musl} ${rust_crt_static} ${rust_static} ${rust_self_contained}"
+
+
+  local c_common="-O3 -ftree-vectorize -funroll-loops ${c_arch}"
+  declare -x CFLAGS="${CFLAGS:-} ${c_common}"
+  declare -x CXXFLAGS="${CXXFLAGS:-} ${c_common}"
+  declare -x FCFLAGS="${FCFLAGS:-} ${c_common}"
+
+  local target_dir="$(get_build_dir "${target}")"
+  nicely cargo -q build --release --target="${target}" --target-dir="${target_dir}" --bin="${bin}"
+
+  if [ -n "${target}" ] && [ "${target}" != 'native' ]; then
+    local full_bin="$(get_full_bin_path "${bin}" "${target}")"
+    local final_bin="$(get_final_bin_path "${bin}" "${target}")"
+    mkdir -p "$(dirname "${final_bin}")"
+    (
+      set -x
+      cp "${full_bin}" "${final_bin}"
+    )
+  fi
+}
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  build "$@"
+fi

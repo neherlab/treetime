@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -euxo pipefail
+
+dest=${1:-"/opt/osxcross"}
+mkdir -p "${dest}"
+
+curl -fsSL "https://github.com/binarylandia/build_osxcross/releases/download/2024-11-02_07-09-30/osxcross-202411020701-b49804a-20241102070930-2024-11-02_07-09-30.tar.xz" \
+  | pixz -dp "$(nproc)" \
+  | tar -C "${dest}" -x

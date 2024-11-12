@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+trap "exit" INT
+
+if [ -z "${1:-}" ] || [ -z "${2:-}" ]; then
+  echo "Usage: $0 <path_to_binary> <platform_triplet>" >&2
+  exit 1
+fi
+
+READELF=$(printenv "READELF_${CROSS_COMPILE}" || printenv "READELF" || echo "readelf")
+
+expected_arch=$(echo "${2}" | cut -d '-' -f1)
+machine=$($READELF -h "${1}" | grep 'Machine:' | cut -d ':' -f2 | xargs)
+
+case "$expected_arch" in
+  "x86_64")
+    expected_machine="Advanced Micro Devices X86-64"
+    ;;
+  "aarch64")
+    expected_machine="AArch64"
+    ;;
+  *)
+    echo "Unsupported expected_arch."
+    exit 1
+    ;;
+esac
+
+if [[ "$machine" != "$expected_machine" ]]; then
+  echo "Binary platform does not match the requested architecture: expected ${expected_arch}, found ${machine} ${1}"
+  exit 1
+fi

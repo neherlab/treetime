@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+set -euo pipefail
+trap "exit" INT
+# shellcheck source=./../lib/utils.sh
+source "${BASH_SOURCE%/*}/../lib/utils.sh"
+
+# Run cross-compiled binary using cross-runner, e.g. qemu or wine
+function run() {
+  trap "exit" INT
+
+  local bin="${1:?}"
+  local target="${2:-"${CROSS_COMPILE:-}"}"
+  local final_bin="$(get_final_bin_path "${bin}" "${target}")"
+  if [ -n "${CROSS_RUNNER:-}" ]; then
+    (
+      set -x
+      ${CROSS_RUNNER} "${final_bin}" "${@:3}"
+    )
+  fi
+}
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  run "$@"
+fi

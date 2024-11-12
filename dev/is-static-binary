@@ -1,0 +1,102 @@
+#!/usr/bin/env bash
+set -euo pipefail
+trap "exit" INT
+# shellcheck source=./lib/utils.sh
+source "${BASH_SOURCE%/*}/lib/utils.sh"
+
+bin="${1:?}"
+target="${2:-"${CROSS_COMPILE:-}"}"
+
+has_error=0
+
+function run_for_linux() {
+  : "${CROSS_SYSROOT:?}"
+
+  local LDD=$(printenv "LDD_${target}" || printenv "LDD" || echo "ldd")
+  local OBJDUMP=$(printenv "OBJDUMP_${target}" || printenv "OBJDUMP" || echo "objdump")
+  local STRINGS=$(printenv "STRINGS_${target}" || printenv "STRINGS" || echo "strings")
+
+  local output=$("${LDD}" ${CROSS_SYSROOT:+--root="${CROSS_SYSROOT}"} "$1" 2>&1 || true)
+  if ! echo "$output" | grep -qE 'statically linked|not a dynamic executable'; then
+    echo "Not a static executable: '$1'" >&2
+    has_error=1
+  fi
+
+  local dump=$("${OBJDUMP}" -p "$1" 2>&1 || true)
+  local glibc_version=$(echo "${dump}" | grep 'GLIBC_' | awk '{print $NF}' | sed 's/GLIBC_//' | sort -V | tail -n 1)
+  if [ -n "$glibc_version" ]; then
+    echo "Depends on glibc $glibc_version" >&2
+    has_error=1
+  fi
+
+  local libgcc_version=$(echo "${dump}" | grep 'GCC_' | awk '{print $NF}' | sed 's/GCC_//' | sort -V | tail -n 1)
+  if [ -n "${libgcc_version}" ]; then
+    echo "Depends on libgcc ${libgcc_version}" >&2
+    has_error=1
+  fi
+
+  local needs=$(objdump -p "${1}" | grep NEEDED | awk '{print $2}' | tr -s ' ' | sort)
+  if [ -n "$needs" ]; then
+    echo "Needs:"
+    echo "$needs" | while read -r lib_name; do
+      if [[ ! "$lib_name" =~ ^(libc.so|libgcc) ]]; then
+        echo "  * $lib_name"
+      fi
+    done
+  fi
+
+  local output=$("${LDD}" ${CROSS_SYSROOT:+--root="${CROSS_SYSROOT}"} "$1" 2>&1 | awk '/=>/ {print $(NF-1)}' | while read -r lib_path; do
+    version="$("${STRINGS}" "${CROSS_SYSROOT}$lib_path" | grep -Eo '([0-9]+\.[0-9]+\.[0-9]+)' | sort -u | head -n 1)"
+    if [ -n "$version" ]; then
+      lib_name="$(basename "$lib_path")"
+      if [[ ! "$lib_name" =~ ^(libc.so|libgcc) ]]; then
+        echo "$lib_name $version"
+      fi
+    fi
+  done | sort)
+
+  if [ -n "$output" ]; then
+    echo "Depends on:"
+    echo "$output" | while read -r line; do
+      echo "  * $line"
+    done
+  fi
+}
+
+function run_for_windows() {
+  local OBJDUMP=$(printenv "OBJDUMP_${target}" || printenv "OBJDUMP" || echo "objdump")
+  local dump=$($OBJDUMP -p "${1}" | grep "DLL Name" | sed 's/^[ \t]*DLL Name: //;s/^/ * /' | sort)
+  if [ -n "$dump" ]; then
+    echo "The executable '$1' depends on:"
+    echo "$dump"
+  fi
+}
+
+function run_for_mac() {
+  local OTOOL=$(printenv "OTOOL_${target}" || printenv "OTOOL" || echo "objdump")
+  dump=$($OTOOL -L "${bin}" | awk 'NR>1 {print " * " $1}' | sort)
+  if [ -n "$dump" ]; then
+    echo "The executable '$1' depends on:"
+    echo "$dump"
+  fi
+}
+
+function main() {
+  if [[ "${target}" =~ (mingw|windows) ]]; then
+    run_for_windows "${bin}"
+  elif [[ "${target}" =~ (apple|darwin) ]]; then
+    run_for_mac "${bin}"
+  elif [[ "${target}" =~ (linux) ]]; then
+    run_for_linux "${bin}"
+  else
+    warn "Unknown target platform: ${target}"
+  fi
+
+  if [ "$has_error" != "0" ]; then
+    echo "$0: Error: static binary checks failed (see above): '$1'" >&2
+  fi
+}
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  main "$@"
+fi

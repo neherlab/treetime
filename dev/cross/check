@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+set -euo pipefail
+trap "exit" INT
+# shellcheck source=./../lib/utils.sh
+source "${BASH_SOURCE%/*}/../lib/utils.sh"
+
+# Check cross-compiled binary (whether it is static, its format, arch etc.)
+function check() {
+  trap "exit" INT
+
+  local bin="${1:?}"
+  local target="${2:-"${CROSS_COMPILE:-}"}"
+  local final_bin="$(get_final_bin_path "${bin}" "${target}")"
+
+  (
+    set -x
+    ./dev/is-static-binary "${final_bin}" "${target}"
+  ) || true
+
+  (
+    set -x
+    file -h "${final_bin}" || true >/dev/null
+  ) || true
+}
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  check "$@"
+fi

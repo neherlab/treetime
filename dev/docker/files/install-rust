@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+set -euxo pipefail
+
+triplet=${1}
+dest=${2:-"/opt/rust-${1}"}
+mkdir -p "${dest}"
+
+export PATH="${dest}/bin:${PATH:+":${PATH}"}"
+
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path --default-toolchain=none
+
+if [ ! -f "${dest}/rust-toolchain.toml" ]; then
+  echo "$0: file not found: '${dest}/rust-toolchain.toml'" >&2
+  exit 1
+fi
+
+# `rustup show` installs toolchain version specified in `rust-toolchain.toml` in the current directory
+cd "${dest}"
+rustup show
+
+if [ -n "${triplet:-}" ]; then
+  rustup target add "${triplet}"
+fi
+
+rustc --version --verbose
+cargo --version --verbose
+
+
+CARGO_NEXTEST_VERSION="0.9.67"
+curl -sSL "https://github.com/nextest-rs/nextest/releases/download/cargo-nextest-${CARGO_NEXTEST_VERSION}/cargo-nextest-${CARGO_NEXTEST_VERSION}-x86_64-unknown-linux-gnu.tar.gz" | tar -C "${dest}/bin" -xz "cargo-nextest"
+chmod +x "${dest}/bin/cargo-nextest"
+cargo nextest --version --verbose

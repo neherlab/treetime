@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euxo pipefail
+
+dest=${1:-"/usr/local"}
+mkdir -p "${dest}"
+
+curl -fsSL "https://github.com/binarylandia/build_openssl/releases/download/openssl-3.2.2-static-2024-10-31_12-20-48/openssl-3.2.2-static-2024-10-31_12-20-48.tar.xz" \
+  | pixz -dp "$(nproc)" \
+  | tar -C "${dest}" -x
+
+ls "${dest}/include/openssl/evp.h"
+ls "${dest}/lib/libssl.a"
+ls "${dest}/lib/libcrypto.a"

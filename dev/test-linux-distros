@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+set -euo pipefail
+trap "exit" INT
+# shellcheck source=./lib/utils.sh
+source "${BASH_SOURCE%/*}/lib/utils.sh"
+
+# Run a command on different Linux distros, to ensure compatibility.
+# We are mostly concerned about old distros with old glibc, libgcc and kernel.
+#
+# Current directory will be mounted into the container as `/workdir` and this will be the working dir where
+# the container starts. This way the executables and data are accessible starting from `./`
+#
+# Dependencies:
+#   sudo apt-get install -y bash parallel
+
+info "Docker version:"
+docker version
+
+export args="${*:?}"
+
+distros=(
+  "debian/eol:jessie"  # 8
+  "debian/eol:stretch" # 9
+  "debian:10.0"
+  "debian:11.0"
+  "debian:12.0"
+  "debian:stable"
+  "debian:testing"
+  "debian:sid"
+  "debian:latest"
+  "ubuntu:14.04"
+  "ubuntu:16.04"
+  "ubuntu:18.04"
+  "ubuntu:20.04"
+  "ubuntu:22.04"
+  "ubuntu:24.04"
+  "ubuntu:latest"
+  "amazonlinux:2016.09.0.20161028"
+  "amazonlinux:2017.12.0.20171212.2"
+  "amazonlinux:2.0.20180622.1"
+  "amazonlinux:2.0.20190115"
+  "amazonlinux:2.0.20191217.0"
+  "amazonlinux:2.0.20200207.1"
+  "amazonlinux:2.0.20210126.0"
+  "amazonlinux:2.0.20220121.0"
+  "amazonlinux:2.0.20230119.1"
+  "amazonlinux:2.0.20240131.0"
+  "amazonlinux:latest"
+  "centos:7.2.1511"
+  "centos:7.5.1804"
+  "centos:8.1.1911"
+  "centos:8.4.2105"
+  "centos:latest"
+  "fedora:27"
+  "fedora:30"
+  "fedora:33"
+  "fedora:36"
+  "fedora:39"
+  "fedora:41"
+  "fedora:latest"
+  "oraclelinux:7.2"
+  "oraclelinux:8.0"
+  "oraclelinux:8.6"
+  "oraclelinux:8.9"
+  "registry.access.redhat.com/ubi8/ubi"
+  "registry.access.redhat.com/ubi9/ubi"
+  "opensuse/archive:13.2"
+  "opensuse/leap:15.2"
+  "opensuse/tumbleweed:latest"
+  "archlinux:latest"
+)
+
+function run_one_distro() {
+  local distro="${1}"
+  info "Running on ${distro}: '${args}'"
+  docker pull -q "$distro" >/dev/null
+  if ! docker run -i --rm -v "$(pwd):/workdir" -w /workdir "$distro" bash -c "${args}"; then
+    err "Failed running '${RUN_COMMAND}' on '$distro'"
+    exit 1
+  fi
+}
+export -f run_one_distro
+
+parallel --jobs="${#distros[@]}" run_one_distro ::: "${distros[@]}"

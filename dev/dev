@@ -1,0 +1,141 @@
+#!/usr/bin/env bash
+set -euo pipefail
+trap "exit" INT
+# shellcheck source=./lib/utils.sh
+source "${BASH_SOURCE%/*}/lib/utils.sh"
+
+function main() {
+  local cargo_cmd cargo_test_cmd docs_cmd npm_cmd wasm_cmd
+
+  local docker_args=()
+
+  case "${1:-}" in
+  "docker-image-build" | "Db")
+    docker_args+=("--build")
+    ;;
+  "docker-image-build-push" | "Dp")
+    docker_args+=("--build --push")
+    ;;
+  "build" | "b")
+    cargo_cmd=("build")
+    ;;
+  "build-release" | "br")
+    cargo_cmd=("build --release")
+    ;;
+  "run" | "r")
+    cargo_cmd=("run")
+    ;;
+  "run-release" | "rr")
+    cargo_cmd=("run --release")
+    ;;
+  "wasm" | "W")
+    wasm_cmd="dev"
+    ;;
+  "wasm-release" | "Wr")
+    wasm_cmd="prod"
+    ;;
+  "web" | "app" | "a")
+    npm_cmd="dev"
+    ;;
+  "web-release" | "app-release" | "ar")
+    npm_cmd="prod:build"
+    ;;
+  "web-release-serve" | "app-release-serve" | "ars")
+    npm_cmd="prod:serve"
+    ;;
+  "watch-web-release" | "watch-app-release" | "war")
+    npm_cmd="prod:watch"
+    ;;
+  "docs" | "d")
+    docs_cmd="dev"
+    ;;
+  "docs-release" | "dr")
+    docs_cmd="prod:build"
+    ;;
+  "docs-release-serve" | "drs")
+    docs_cmd="prod"
+    ;;
+  "test" | "t")
+    cargo_test_cmd=" "
+    ;;
+  "test-unit" | "tu")
+    cargo_test_cmd="--lib"
+    ;;
+  "test-integration" | "ti")
+    cargo_test_cmd=("--test='*'")
+    ;;
+  "lint" | "l")
+    cargo_cmd=("clippy -q")
+    ;;
+  "lint-fix" | "lf")
+    cargo_cmd=("clippy -q --fix --allow-staged")
+    ;;
+  "lint-ci" | "lc")
+    cargo_cmd=("clippy -q --fix -- -Dwarnings")
+    ;;
+  "format" | "f")
+    cargo_cmd=("format")
+    ;;
+  "format-check" | "fc")
+    cargo_cmd=("format --check")
+    ;;
+  "bench" | "B")
+    cargo_cmd=("bench --workspace --benches")
+    ;;
+  "p" | "py")
+    bash
+    ;;
+  "jupyter" | "j")
+    /files/start-jupyter
+    ;;
+  esac
+
+  shift
+
+  local args=$(echo "${@:-}" | xargs)
+
+  # Run a cargo command (except tests)
+  if [ -n "${cargo_cmd:-}" ]; then
+    if [ "$("$(project_root)/dev/is-ci")" == "1" ]; then
+      cargo_cmd+=("--locked")
+    fi
+    local target_dir="$(get_build_dir)"
+    nicely cargo -q ${cargo_cmd[@]} --target-dir="${target_dir}" ${args:+--bin="$args"}
+
+  # Run rust tests
+  elif [ -n "${cargo_test_cmd:-}" ]; then
+    # shellcheck disable=SC2119
+    local target_dir="$(get_test_dir)"
+    # HACK: `cargo nextest` seems to be having problems discovering linked libraries, let's specify them explicitly
+    declare -x RUSTFLAGS="-C linker=${HOSTCC} -C link-arg=-pthread -C link-arg=-lopenblas -C link-arg=-lgfortran -C link-arg=-static-libgfortran -C link-arg=-static-libgcc -C link-arg=-static-libstdc++ ${RUSTFLAGS:-}"
+
+    # shellcheck disable=SC2086
+    nicely cargo -q nextest run --success-output=immediate --workspace --cargo-quiet --no-fail-fast --hide-progress-bar --color=always --target-dir="${target_dir}" ${args} 2>&1 |
+      "$(project_root)/dev/prettytest"
+
+  # TODO: run an npm/yarn/bun/deno command
+  elif [ -n "${npm_cmd:-}" ]; then
+    (
+      set -x
+      echo "${npm_cmd}"
+    )
+
+  # TODO: run WASM build
+  elif [ -n "${wasm_cmd:-}" ]; then
+    (
+      set -x
+      echo "${wasm_cmd}"
+    )
+
+  # TODO: build docs
+  elif [ -n "${docs_cmd:-}" ]; then
+    (
+      set -x
+      echo "${docs_cmd}"
+    )
+  fi
+}
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  main "$@"
+fi

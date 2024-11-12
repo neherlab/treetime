@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euxo pipefail
+
+dest=${1:-"/usr/local"}
+mkdir -p "${dest}/bin"
+
+curl -fsSL "https://github.com/ccache/ccache/releases/download/v4.10.2/ccache-4.10.2-linux-x86_64.tar.xz" \
+  | tar --strip-components=1 -C "${dest}/bin" -xJ "ccache-4.10.2-linux-x86_64/ccache"
+
+ls "${dest}/bin/ccache"
+ccache --version

@@ -1,0 +1,163 @@
+#!/usr/bin/env bash
+set -euo pipefail
+trap "exit" INT
+# shellcheck source=./../lib/utils.sh
+source "${BASH_SOURCE%/*}/../lib/utils.sh"
+
+load_env "$(project_root)/.env.example"
+load_env_maybe "$(project_root)/.env"
+
+CROSS_COMPILE="${CROSS_COMPILE:-"native"}"
+PROJECT_DOCKER_REPO="${PROJECT_DOCKER_BUILDER_REPO:?}"
+
+USER="user"
+GROUP="user"
+
+cache_dir="$(get_cache_dir "${CROSS_COMPILE}")"
+
+CROSS_GCC_TRIPLET="${CROSS_COMPILE}"
+case "${CROSS_COMPILE}" in
+x86_64-unknown-linux-gnu)
+  dockerfile="$(project_root)/dev/docker/cross-linux.dockerfile"
+  CROSS_ARCH_DEBIAN="amd64"
+  CROSS_ARCH="x86_64"
+  CROSS_COMPILE_UPPER="X86_64_UNKNOWN_LINUX_GNU"
+  CROSS_RUNNER="qemu-${CROSS_ARCH}"
+  ;;
+x86_64-unknown-linux-musl)
+  dockerfile="$(project_root)/dev/docker/cross-linux.dockerfile"
+  CROSS_ARCH_DEBIAN="amd64"
+  CROSS_ARCH="x86_64"
+  CROSS_COMPILE_UPPER="X86_64_UNKNOWN_LINUX_MUSL"
+  CROSS_RUNNER="qemu-${CROSS_ARCH}"
+  ;;
+aarch64-unknown-linux-gnu)
+  dockerfile="$(project_root)/dev/docker/cross-linux.dockerfile"
+  CROSS_ARCH_DEBIAN="arm64"
+  CROSS_ARCH="aarch64"
+  CROSS_COMPILE_UPPER="AARCH64_UNKNOWN_LINUX_GNU"
+  CROSS_RUNNER="qemu-${CROSS_ARCH}"
+  ;;
+aarch64-unknown-linux-musl)
+  dockerfile="$(project_root)/dev/docker/cross-linux.dockerfile"
+  CROSS_ARCH_DEBIAN="arm64"
+  CROSS_ARCH="aarch64"
+  CROSS_COMPILE_UPPER="AARCH64_UNKNOWN_LINUX_MUSL"
+  CROSS_RUNNER="qemu-${CROSS_ARCH}"
+  ;;
+x86_64-apple-darwin)
+  dockerfile="$(project_root)/dev/docker/cross-darwin.dockerfile"
+  CROSS_COMPILE_UPPER="X86_64_APPLE_DARWIN"
+  CROSS_APPLE_TRIPLET="x86_64-apple-darwin20.2"
+  CROSS_GCC_TRIPLET="x86_64-apple-darwin20.2"
+  ;;
+aarch64-apple-darwin)
+  dockerfile="$(project_root)/dev/docker/cross-darwin.dockerfile"
+  CROSS_COMPILE_UPPER="AARCH64_APPLE_DARWIN"
+  CROSS_APPLE_TRIPLET="arm64-apple-darwin20.2"
+  CROSS_GCC_TRIPLET="aarch64-apple-darwin20.2"
+  ;;
+x86_64-pc-windows-gnu)
+  dockerfile="$(project_root)/dev/docker/cross-linux.dockerfile"
+  CROSS_ARCH_DEBIAN="amd64"
+  CROSS_ARCH="x86_64"
+  CROSS_COMPILE_UPPER="X86_64_PC_WINDOWS_GNU"
+  CROSS_GCC_TRIPLET="x86_64-w64-mingw32"
+  CROSS_RUNNER="/usr/lib/wine/wine64"
+  ;;
+native)
+  dockerfile="$(project_root)/dev/docker/native.dockerfile"
+  ;;
+*)
+  printf "Unsupported CROSS_COMPILE value: %s", "${CROSS_COMPILE}"
+  exit 1
+  ;;
+esac
+
+# shellcheck disable=SC2046
+docker_file_hash="$(
+  file_hash \
+    .dockerignore \
+    .gitignore \
+    rust-toolchain.toml \
+    $(find dev/docker -type f)
+)"
+
+docker_repo_name_safe="${PROJECT_DOCKER_REPO//\//-}"
+docker_image_tag="${CROSS_COMPILE}-${docker_file_hash}"
+docker_container_name="${docker_repo_name_safe}-${docker_image_tag}-$(datetime_ms_safe)"
+docker_builder_name="${docker_repo_name_safe}-${CROSS_COMPILE}_buildx_builder"
+
+if ! docker inspect --format '{{.Id}}' "${PROJECT_DOCKER_REPO}:${docker_image_tag}" &>/dev/null || [ -n "${DOCKER_FORCE_REBUILD:-}" ]; then
+  build_params=()
+
+  # Use custom buildx builder with `docker-container` driver in CI to enable caching.
+  if [ "$("$(project_root)/dev/is-ci")" == "1" ]; then
+    if ! docker buildx inspect "${docker_builder_name}" &>/dev/null; then
+      docker buildx create --name="${docker_builder_name}" --driver="docker-container" --driver-opt="network=host" >/dev/null
+    fi
+    build_params+=("--builder=${docker_builder_name}")
+    build_params+=("--push")
+    build_params+=("--cache-to=type=registry,mode=max,ref=${PROJECT_DOCKER_REPO}:${docker_image_tag}")
+    build_params+=("--cache-from=${PROJECT_DOCKER_REPO}")
+    build_params+=("--cache-from=${PROJECT_DOCKER_REPO}:${docker_image_tag}")
+  fi
+
+  export BUILDKIT_PROGRESS=plain
+  export PROGRESS_NO_TRUNC=1
+  docker buildx build \
+    --file="${dockerfile}" \
+    --tag="${PROJECT_DOCKER_REPO}:${docker_image_tag}" \
+    --network=host \
+    \
+    --build-arg="UID=$(id -u)" \
+    --build-arg="GID=$(id -g)" \
+    --build-arg="USER=${USER}" \
+    --build-arg="GROUP=${GROUP}" \
+    --build-arg="CROSS_ARCH_DEBIAN=${CROSS_ARCH_DEBIAN:-}" \
+    --build-arg="CROSS_ARCH=${CROSS_ARCH:-}" \
+    --build-arg="CROSS_COMPILE=${CROSS_COMPILE:-}" \
+    --build-arg="CROSS_COMPILE_UPPER=${CROSS_COMPILE_UPPER:-}" \
+    --build-arg="CROSS_APPLE_TRIPLET=${CROSS_APPLE_TRIPLET:-}" \
+    --build-arg="CROSS_GCC_TRIPLET=${CROSS_GCC_TRIPLET:-}" \
+    --build-arg="CROSS_RUNNER=${CROSS_RUNNER:-}" \
+    --load \
+    \
+    "${build_params[@]}" \
+    \
+    . >/dev/null
+
+fi
+
+declare -A volumes=(
+  ["${cache_dir}/cargo/git"]="/home/${USER}/.cargo/git"
+  ["${cache_dir}/cargo/install"]="/home/${USER}/.cargo/install"
+  ["${cache_dir}/cargo/registry/cache"]="/home/${USER}/.cargo/registry/cache"
+  ["${cache_dir}/cargo/registry/index"]="/home/${USER}/.cargo/registry/index"
+  ["${cache_dir}/cargo/registry/src"]="/home/${USER}/.cargo/registry/src"
+  ["${cache_dir}/jupyter"]="/home/${USER}/.jupyter"
+)
+
+mkdir -p "${!volumes[@]}"
+
+# shellcheck disable=SC2046
+docker run --rm $(tty -s && echo "-it") \
+  --init \
+  --name="${docker_container_name}" \
+  --hostname="${docker_repo_name_safe}" \
+  --add-host="${docker_repo_name_safe}:127.0.1.1" \
+  --user="$(id -u):$(id -g)" \
+  --workdir="/workdir" \
+  --volume="$(pwd):/workdir" \
+  $(for path in "${!volumes[@]}"; do echo "--volume=${path}:${volumes[$path]}"; done) \
+  --env="UID=$(id -u)" \
+  --env="GID=$(id -g)" \
+  --env="USER=${USER}" \
+  --env="GROUP=${GROUP}" \
+  --env="PS1=\${USER}@\${HOST}" \
+  --env="TERM=xterm-256color" \
+  --env="TZ=Etc/UTC" \
+  --env="LANG=C.UTF-8" \
+  --ulimit="core=0" \
+  "${PROJECT_DOCKER_REPO}:${docker_image_tag}" \
+  bash -c "${*:-bash}"

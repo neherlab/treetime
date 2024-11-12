@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+set -euo pipefail
+trap "exit" INT
+# shellcheck source=./../lib/utils.sh
+source "${BASH_SOURCE%/*}/../lib/utils.sh"
+
+# Dump symbols of a cross-compiled binary in a platform-dependent way
+
+bin="${1:?}"
+target="${2:-"${CROSS_COMPILE:-}"}"
+final_bin="$(get_final_bin_path "${bin}" "${target}")"
+
+function dump_symbols() {
+  if [[ "${target}" =~ (apple|darwin) ]]; then
+    local NM=$(printenv "NM_${target}" || printenv "NM" || echo "nm")
+    ${NM} -gU "${1}"
+  else
+    local OBJDUMP=$(printenv "OBJDUMP_${target}" || printenv "OBJDUMP" || echo "objdump")
+    ${OBJDUMP} --syms "${1}"
+  fi
+}
+
+function main() {
+  trap "exit" INT
+  dump_symbols "${final_bin}" | grep -oP '_\K[A-Z]+[A-Z0-9]*' | sort -u
+}
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  main "$@"
+fi

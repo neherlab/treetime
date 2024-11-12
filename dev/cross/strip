@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+set -euo pipefail
+trap "exit" INT
+# shellcheck source=./../lib/utils.sh
+source "${BASH_SOURCE%/*}/../lib/utils.sh"
+
+# Strip cross-compiled binary in a platform-dependent way
+
+bin="${1:?}"
+target="${2:-"${CROSS_COMPILE:-}"}"
+final_bin="$(get_final_bin_path "${bin}" "${target}")"
+
+function strip() {
+  local STRIP=$(printenv "STRIP_${target}" || printenv "STRIP" || echo "strip")
+  if [[ "${target}" =~ (mingw|windows) ]]; then
+    ${STRIP} "${1}"
+  elif [[ "${target}" =~ (apple|darwin) ]]; then
+    ${STRIP} "${1}"
+  else
+    ${STRIP} --strip-debug --strip-unneeded "${1}"
+  fi
+}
+
+function main() {
+  trap "exit" INT
+
+  printf "Original: %16s\n" "$(du -k "${final_bin}" | cut -f1) kbytes"
+  strip "${final_bin}"
+  printf "Stripped: %16s\n" "$(du -k "${final_bin}" | cut -f1) kbytes"
+}
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  main "$@"
+fi

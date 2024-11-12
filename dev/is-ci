@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+set -euo pipefail
+trap "exit" INT
+
+ci_vars=(
+  APPCENTER_BUILD_ID
+  BAMBOO_BUILDNUMBER
+  BITBUCKET_BUILD_NUMBER
+  BUDDY
+  BUILDKITE
+  BUILD_ID
+  CI
+  CIRCLECI
+  CIRRUS_CI
+  CODEBUILD_BUILD_ID
+  CONTINUOUS_INTEGRATION
+  DRONE
+  GITHUB_ACTIONS
+  GITLAB_CI
+  HEROKU_TEST_RUN_ID
+  HUDSON_URL
+  NETLIFY
+  NEVERCODE
+  SEMAPHORE
+  SHIPPABLE
+  TEAMCITY_VERSION
+  TF_BUILD
+  TRAVIS
+  VERCEL
+  WERCKER
+)
+
+for var in "${ci_vars[@]}"; do
+  if [ -n "${!var:-}" ]; then
+    echo 1
+    exit 0
+  fi
+done
+
+echo 0

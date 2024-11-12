@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -euxo pipefail
+
+dest=${1:-"/usr/local/"}
+
+version="${2:-"28.3"}"
+
+tmp_dir="$(mktemp -d)"
+curl -fsSL -o "${tmp_dir}/protoc.zip" "https://github.com/protocolbuffers/protobuf/releases/download/v${version}/protoc-${version}-linux-x86_64.zip"
+mkdir -p "${dest}"
+unzip "${tmp_dir}/protoc.zip" -d "${dest}" >/dev/null
+rm -rf "${tmp_dir}"
+
+ls "${dest}/bin/protoc"
+"${dest}/bin/protoc" --version

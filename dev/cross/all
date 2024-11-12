@@ -1,0 +1,143 @@
+#!/usr/bin/env bash
+set -euo pipefail
+trap "exit" INT
+# shellcheck source=./../lib/utils.sh
+source "${BASH_SOURCE%/*}/../lib/utils.sh"
+load_env "$(project_root)/.env.example"
+load_env_maybe "$(project_root)/.env"
+
+# Runs bulk cross-compilation of CLI binaries for all supported platforms
+
+export targets=(
+  "x86_64-unknown-linux-gnu"
+  "x86_64-unknown-linux-musl"
+  "aarch64-unknown-linux-gnu"
+  "aarch64-unknown-linux-musl"
+  "x86_64-pc-windows-gnu"
+  "aarch64-apple-darwin"
+  "x86_64-apple-darwin"
+)
+
+export build_time="${BUILD_TIME:-$(datetime_safe)}"
+
+function run_one() {
+  set -euo pipefail
+  trap "exit" INT
+
+  local target="${1:?}"
+
+  local arg bin
+  for arg in $(eval "echo ${*:2}"); do
+    case ${arg} in
+    --run)
+      local run=1
+      ;;
+    *)
+      bin+=("${arg}")
+      ;;
+    esac
+  done
+
+  info "Building for ${target}"
+  (
+    trap "exit" INT
+    export CROSS_COMPILE=${target}
+    export BUILD_TIME=${build_time}
+    ./dev/docker/run ./dev/cross/build "${bin[@]}" "${target}" || { echo "Build failed for ${target}"; return 1; }
+    ./dev/docker/run ./dev/cross/check "${bin[@]}" "${target}"
+    if [ -n "${run:-}" ]; then
+      ./dev/docker/run ./dev/cross/run "${bin[@]}" "${target}" || { echo "Run failed for ${target}"; return 1; }
+    fi
+  )
+}
+export -f run_one
+
+function run_serial() {
+  set -euo pipefail
+  trap "exit" INT
+
+  local target
+  for target in "${targets[@]}"; do
+    run_one "${target}" "${*}"
+  done
+}
+export -f run_serial
+
+function run_parallel() {
+  set -euo pipefail
+  trap "exit" INT
+
+  # shellcheck disable=SC2016
+  parallel \
+    --line-buffer \
+    --tag --tagstring '|{#}| \033[34m{= sprintf("%-s", $_) =}\033[0m' \
+    --jobs="${#targets[@]}" \
+    run_one \
+    ::: "${targets[@]}" ::: "${*}"
+}
+export -f run_parallel
+
+function run_in_tmux_split() {
+  set -euo pipefail
+  trap "exit" INT
+
+  local session=$(datetime_ms_safe)
+
+  # Run builds in parallel, in a separate tmux windows.
+  # Kill tmux server with `Ctrl`+`b` followed by `k` (change `b` to your "prefix" shortcut if it's not default)
+  tmux new-session -d -s "${session}"
+  tmux send-keys -t "${session}" 'exit' C-m # Close the initial shell to start with a clean layout
+
+  # begin: eye candy options
+  tmux set -g mouse on
+  tmux set -g default-terminal "screen-256color"
+  tmux unbind k
+  tmux bind k kill-session
+  tmux set -g pane-border-status top
+  tmux set -g pane-border-format "#{pane_title}"
+  tmux set -g pane-border-style "bg=colour235,fg=colour8"
+  tmux set -g pane-active-border-style "bg=colour242,fg=colour237"
+  # end: eye candy options
+
+  local target
+  for target in "${targets[@]}"; do
+    tmux split-window -v -t "${session}" bash -c "source ${BASH_SOURCE[0]}; run_one ${target} ${*} || true; exec $SHELL"
+    tmux select-layout -t "${session}" even-vertical
+    tmux select-pane -t "" -T "${target}"
+  done
+
+  tmux kill-pane -t 0 # Remove the initial empty pane
+  tmux attach -t "${session}"
+}
+
+function main() {
+  local arg bin
+  for arg in "$@"; do
+    case ${arg} in
+    --split)
+      local split=1
+      ;;
+    --serial)
+      local serial=1
+      ;;
+    --parallel)
+      # This is the default
+      ;;
+    *)
+      bin+=("$arg")
+      ;;
+    esac
+  done
+
+  if [ -n "${split:-}" ]; then
+    run_in_tmux_split "${bin[@]}"
+  elif [ -n "${serial:-}" ]; then
+    run_serial "${bin[@]}"
+  else
+    run_parallel "${bin[@]}"
+  fi
+}
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  main "$@"
+fi

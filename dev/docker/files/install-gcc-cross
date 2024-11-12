@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+set -euxo pipefail
+
+triplet=${1}
+dest=${2:-"/opt/${triplet}"}
+mkdir -p "${dest}"
+
+URL="https://github.com/binarylandia/build_crosstool-ng/releases/download/2024-11-08_06-06-34/gcc-14.2.0-${triplet}-2024-11-08_06-06-34.tar.xz"
+
+curl -fsSL "${URL}" \
+  | pixz -dp "$(nproc)" \
+  | tar -C "${dest}" -x
+
+ls "${dest}/bin/${triplet}-gcc"
+"${dest}/bin/${triplet}-gcc" -v
+
+ls "${dest}/bin/${triplet}-gcc-ar"
+"${dest}/bin/${triplet}-gcc-ar" --version
+
+if [[ "${triplet}" =~ (mingw|windows) ]]; then
+  # HACK: symlink missing libgcc_eh.a, because cargo insists it's needed. However, mingw toolchain does not have it.
+  # https://github.com/r-windows/rtools-packages/issues/185
+  # https://github.com/skeeto/w64devkit/issues/52
+  pushd "${dest}/lib/gcc/x86_64-w64-mingw32/14.2.0" >/dev/null
+    ln -s "libgcc.a" "libgcc_eh.a"
+  popd >/dev/null
+
+  # HACK: sysroot in MinGW GCC is nested under additional `mingw/` path segment, copy it upstairs to avoid having to
+  # set different sysroot variables for Linux and Windows
+  cp -r "${dest}/x86_64-w64-mingw32/sysroot/mingw/"* "${dest}/x86_64-w64-mingw32/sysroot"/
+fi
+
+gcc_triplet="$("${dest}/bin/${triplet}-gcc" -dumpmachine)"
+if [ "${gcc_triplet}" != "${triplet}" ]; then
+  echo "$0: GCC target triplet '${gcc_triplet}' does not match requested '${triplet}'" >&2
+  exit 1
+fi

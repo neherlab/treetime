@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euxo pipefail
+
+# Install bcryptprimitives.dll mock for Wine. Only relevant when running Windows executables on Wine.
+
+dest=${1}
+mkdir -p "${dest}"
+
+curl -fsSL "https://github.com/binarylandia/wine_bcryptprimitives_dll_mock/releases/download/2024-11-04_16-27-34/bcryptprimitives.dll-2024-11-04_16-27-34.gz" \
+  | gzip -cd > "${dest}/bcryptprimitives.dll"
