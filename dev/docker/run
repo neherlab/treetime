@@ -80,6 +80,15 @@ docker_image_tag="${CROSS_COMPILE}-${docker_file_hash}"
 docker_container_name="${docker_repo_name_safe}-${docker_image_tag}-$(datetime_ms_safe)"
 docker_builder_name="${docker_repo_name_safe}-${CROSS_COMPILE}_buildx_builder"
 
+images=(
+  "${PROJECT_DOCKER_REPO}:${CROSS_COMPILE}"
+  "${PROJECT_DOCKER_REPO}:${docker_image_tag}"
+)
+
+if [ "$("$(project_root)/dev/is-ci")" == "1" ]; then
+  parallel -j ${#images[@]} docker pull --quiet ::: "${images[@]}" || true
+fi
+
 if ! docker inspect --format '{{.Id}}' "${PROJECT_DOCKER_REPO}:${docker_image_tag}" &>/dev/null || [ -n "${DOCKER_FORCE_REBUILD:-}" ]; then
   build_params=()
 
@@ -91,15 +100,14 @@ if ! docker inspect --format '{{.Id}}' "${PROJECT_DOCKER_REPO}:${docker_image_ta
     build_params+=("--builder=${docker_builder_name}")
     build_params+=("--push")
     build_params+=("--cache-to=type=registry,mode=max,ref=${PROJECT_DOCKER_REPO}:${docker_image_tag}")
-    build_params+=("--cache-from=${PROJECT_DOCKER_REPO}")
-    build_params+=("--cache-from=${PROJECT_DOCKER_REPO}:${docker_image_tag}")
+    build_params+=("${images[@]/#/--cache-from=}")
   fi
 
   export BUILDKIT_PROGRESS=plain
   export PROGRESS_NO_TRUNC=1
   docker buildx build \
     --file="${dockerfile}" \
-    --tag="${PROJECT_DOCKER_REPO}:${docker_image_tag}" \
+    "${images[@]/#/--tag=}" \
     --network=host \
     \
     --build-arg="UID=$(id -u)" \
@@ -119,6 +127,7 @@ if ! docker inspect --format '{{.Id}}' "${PROJECT_DOCKER_REPO}:${docker_image_ta
     \
     . >/dev/null
 
+  parallel -j ${#images[@]} docker push --quiet ::: "${images[@]}"
 fi
 
 declare -A volumes=(
