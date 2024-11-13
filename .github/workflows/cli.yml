@@ -240,7 +240,7 @@ jobs:
       - name: "Test Linux distros compatibility"
         run: |
           chmod +x ./.out/treetime-x86_64-unknown-linux-gnu
-          ./tests/test-linux-distros ./.out/treetime-x86_64-unknown-linux-gnu --help
+          ./dev/test-linux-distros ./.out/treetime-x86_64-unknown-linux-gnu --help
 
 
 #  publish-to-github-releases:
