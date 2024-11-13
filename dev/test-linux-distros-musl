@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+set -euo pipefail
+trap "exit" INT
+# shellcheck source=./lib/utils.sh
+source "${BASH_SOURCE%/*}/lib/utils.sh"
+
+# Run a command on different Linux distros, to ensure compatibility.
+# Here we check distros which have either very old glibc or none at all.
+#
+# Current directory will be mounted into the container as `/workdir` and this will be the working dir where
+# the container starts. This way the executables and data are accessible starting from `./`
+#
+# Dependencies:
+#   sudo apt-get install -y bash parallel
+
+info "Docker version:"
+docker version
+
+export args="${*:?}"
+
+distros=(
+  "docker/pipeline_scratch@sha256:b2374472e2d18c89ceac4fdc9b93ef598824fedbf7002c2ed28a8d1cdab7059e" # empty image
+
+  "alpine:edge"
+  "alpine:latest"
+  "alpine:3"
+  "alpine:3.1"
+
+  "busybox:1-glibc"
+  "busybox:1-musl"
+  "busybox:1-uclibc"
+  "busybox:stable-glibc"
+  "busybox:stable-musl"
+  "busybox:stable-uclibc"
+
+  "centos:6.6"
+  "centos:5"
+
+  "debian/eol:wheezy"  # 7
+  "debian/eol:squeeze" # 6
+  "debian/eol:lenny"   # 5
+  "debian/eol:etch"    # 4
+
+  "oraclelinux:5.11"
+  "oraclelinux:6.6"
+
+  "registry.access.redhat.com/rhel6:6.5-11"
+
+  "ubuntu:12.04"
+)
+
+function run_one_distro() {
+  local distro="${1}"
+  info "Running '${args}' on '${distro}'"
+  docker pull -q "$distro" >/dev/null
+  if ! docker run -i --rm -v "$(pwd):/workdir" -w /workdir "$distro" ${args} >/dev/null; then
+    err "Failed running '${RUN_COMMAND}' on '$distro'"
+    exit 1
+  fi
+}
+export -f run_one_distro
+
+parallel --jobs="${#distros[@]}" run_one_distro ::: "${distros[@]}"

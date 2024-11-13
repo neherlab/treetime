@@ -16,7 +16,7 @@ source "${BASH_SOURCE%/*}/lib/utils.sh"
 info "Docker version:"
 docker version
 
-export args="${*:?}"
+export args=${*:?}
 
 distros=(
   "debian/eol:jessie"  # 8
@@ -51,6 +51,7 @@ distros=(
   "centos:8.1.1911"
   "centos:8.4.2105"
   "centos:latest"
+  "fedora:23"
   "fedora:27"
   "fedora:30"
   "fedora:33"
@@ -64,17 +65,19 @@ distros=(
   "oraclelinux:8.9"
   "registry.access.redhat.com/ubi8/ubi"
   "registry.access.redhat.com/ubi9/ubi"
+  "registry.access.redhat.com/rhel7:7.0-21"
   "opensuse/archive:13.2"
   "opensuse/leap:15.2"
   "opensuse/tumbleweed:latest"
   "archlinux:latest"
+  "archlinux:20191006"
 )
 
 function run_one_distro() {
   local distro="${1}"
   info "Running '${args}' on '${distro}'"
   docker pull -q "$distro" >/dev/null
-  if ! docker run -i --rm -v "$(pwd):/workdir" -w /workdir "$distro" bash -c "${args}" >/dev/null; then
+  if ! docker run -i --rm -v "$(pwd):/workdir" -w /workdir "$distro" ${args} >/dev/null; then
     err "Failed running '${RUN_COMMAND}' on '$distro'"
     exit 1
   fi

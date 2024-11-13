@@ -125,7 +125,6 @@ jobs:
             neherlab-treetime-cli-cache-v1-cargo-${{ runner.os }}-native-
             neherlab-treetime-cli-cache-v1-cargo-${{ runner.os }}-
 
-
       - name: "Login to Docker Hub"
         uses: docker/login-action@v3
         with:
@@ -137,8 +136,6 @@ jobs:
         run: |
           cp .env.example .env
           sed -i -e "s|OSXCROSS_URL=http://example.com/osxcross/osxcross.tar.xz|OSXCROSS_URL=${{ secrets.OSXCROSS_URL }}|g" .env
-
-
 
       - name: "Run unit tests"
         run: |
@@ -193,32 +190,6 @@ jobs:
 
 
 
-  run-smoke-tests-x86_64-unknown-linux-gnu:
-    name: "Run smoke tests (x86_64-unknown-linux-gnu)"
-    needs: [ build-cli ]
-    runs-on: ubuntu-24.04
-
-    steps:
-      - name: "Checkout code"
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
-          submodules: true
-          lfs: true
-      - name: "Download build artifacts"
-        uses: actions/download-artifact@v4
-        with:
-          pattern: treetime-*.zip
-          merge-multiple: true
-          path: ".out"
-
-      - name: "Run smoke tests (linux)"
-        run: |
-          chmod +x ./.out/*
-          JOBS=2 ./tests/run-smoke-tests ./.out/treetime-x86_64-unknown-linux-gnu --fast
-
-
-
   run-compat-tests-x86_64-unknown-linux-gnu:
     name: "Compat test (x86_64-unknown-linux-gnu)"
     needs: [ build-cli ]
@@ -241,7 +212,31 @@ jobs:
       - name: "Test Linux distros compatibility"
         run: |
           chmod +x ./.out/treetime-x86_64-unknown-linux-gnu
-          ./dev/test-linux-distros ./.out/treetime-x86_64-unknown-linux-gnu --help
+          ./dev/test-linux-distros-gnu ./.out/treetime-x86_64-unknown-linux-gnu --help
+
+  run-compat-tests-x86_64-unknown-linux-musl:
+    name: "Compat test (x86_64-unknown-linux-musl)"
+    needs: [ build-cli ]
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: "Checkout code"
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          submodules: true
+
+      - name: "Download build artifacts"
+        uses: actions/download-artifact@v4
+        with:
+          pattern: treetime-*.zip
+          merge-multiple: true
+          path: ".out"
+
+      - name: "Test Linux distros compatibility"
+        run: |
+          chmod +x ./.out/treetime-x86_64-unknown-linux-musl
+          ./dev/test-linux-distros-musl ./.out/treetime-x86_64-unknown-linux-musl --help
 
   run-compat-tests-x86_64-apple-darwin:
     name: "Compat test (x86_64-apple-darwin)"
@@ -256,6 +251,14 @@ jobs:
           sw_vers || true
           system_profiler SPSoftwareDataType SPHardwareDataType || true
 
+      - name: "Check CPU Architecture"
+        run: |
+          arch="$(uname -m)"
+          if [[ "$arch" != "x86_64" ]]; then
+            echo "We hope to get x86_64 macOS instance for this job, to test whether our code still runs on Intel Macs. But we got '${arch}'. There isn't much point in testing this on non-x86_64 machine. From here you could either find a way to get an x86_64 macOS runner, or delete the test."
+            exit 1
+          fi
+
       - name: "Download build artifacts"
         uses: actions/download-artifact@v4
         with:
@@ -263,15 +266,15 @@ jobs:
           merge-multiple: true
           path: ".out"
 
-      - name: "Run compat test"
+      - name: "Run compat test (x86_64-apple-darwin, native)"
         run: |
           chmod +x ./.out/*
-          ./.out/x86_64-apple-darwin --help
+          ./.out/treetime-x86_64-apple-darwin --help
 
   run-compat-tests-aarch64-apple-darwin:
     name: "Compat test (aarch64-apple-darwin)"
     needs: [ build-cli ]
-    runs-on: macos-12-arm64
+    runs-on: macos-13-arm64
 
     steps:
       - name: "Show system info"
@@ -281,6 +284,14 @@ jobs:
           sw_vers || true
           system_profiler SPSoftwareDataType SPHardwareDataType || true
 
+      - name: "Check CPU Architecture"
+        run: |
+          arch="$(uname -m)"
+          if [[ "$arch" != "arm64" ]]; then
+            echo "This test requires arm64 machine, but got ${arch}"
+            exit 1
+          fi
+
       - name: "Download build artifacts"
         uses: actions/download-artifact@v4
         with:
@@ -288,15 +299,20 @@ jobs:
           merge-multiple: true
           path: ".out"
 
-      - name: "Run compat test"
+      - name: "Run compat test (aarch64-apple-darwin, native)"
         run: |
           chmod +x ./.out/*
-          ./.out/aarch64-apple-darwin --help
+          ./.out/treetime-aarch64-apple-darwin --help
+
+      - name: "Run compat test (x86_64-apple-darwin, emulation)"
+        run: |
+          chmod +x ./.out/*
+          ./.out/treetime-x86_64-apple-darwin --help
 
   run-compat-tests-x86_64-pc-windows-gnu:
     name: "Compat test (x86_64-pc-windows-gnu)"
     needs: [ build-cli ]
-    runs-on: windows
+    runs-on: windows-2019
 
     steps:
       - name: "Show system info"
@@ -316,9 +332,9 @@ jobs:
           merge-multiple: true
           path: ".out"
 
-      - name: "Run compat test"
+      - name: "Run compat test (x86_64-pc-windows-gnu)"
         run: |
-          .\.out\x86_64-pc-windows-gnu --help
+          .\.out\treetime-x86_64-pc-windows-gnu --help
 
 
 
