@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euxo pipefail
+
+triplet="${1}"
+dest=${2:-"/usr/local/${triplet}"}
+mkdir -p "${dest}"
+
+curl -fsSL "https://github.com/binarylandia/staticbourg/releases/download/2024-11-13_07-48-58/bzip2-1.0.8-static-${triplet}-2024-11-13_07-48-58.tar.zst" \
+  | pzstd -dc -p "$(nproc)" \
+  | tar -C "${dest}" -x

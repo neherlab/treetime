@@ -22,7 +22,8 @@ function build() {
   # To investigate. Might be related to '-C link-self-contained=yes'
   local rust_musl="-C link-args=-lpthread -C link-args=-lm -C link-args=-lc"
 
-  local c_arch rust_arch
+  local c_arch="-march=native"
+  local rust_arch="-C target-cpu=native"
   case "${target}" in
   aarch64-apple* | aarch64-darwin*)
     c_arch="-mcpu=apple-m1"
@@ -55,7 +56,7 @@ function build() {
   declare -x FCFLAGS="${FCFLAGS:-} ${c_common}"
 
   local target_dir="$(get_build_dir "${target}")"
-  nicely cargo -q build --release --target="${target}" --target-dir="${target_dir}" --bin="${bin}"
+  nicely cargo -q build --release ${target:+--target="${target}"} --target-dir="${target_dir}" --bin="${bin}"
 
   if [ -n "${target}" ] && [ "${target}" != 'native' ]; then
     local full_bin="$(get_full_bin_path "${bin}" "${target}")"

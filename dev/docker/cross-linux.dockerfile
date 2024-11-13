@@ -36,12 +36,14 @@ RUN set -euxo pipefail >/dev/null \
   make \
   pigz \
   pixz \
+  pkg-config \
   sudo \
   tar \
   time \
   unzip \
   util-linux \
   xz-utils \
+  zstd \
 >/dev/null \
 && if [[ "${CROSS_COMPILE}" =~ (linux) ]]; then apt-get install -qq --no-install-recommends --yes  \
   libc6:${CROSS_ARCH_DEBIAN} \
@@ -107,10 +109,27 @@ RUN /install-gcc-cross "${CROSS_GCC_TRIPLET}" "${CROSS_GCC_DIR}"
 
 
 ENV PREFIX_CROSS="/usr/local/${CROSS_COMPILE}"
+ENV PKG_CONFIG_ALLOW_CROSS="1"
+ENV PKG_CONFIG_SYSROOT_DIR="${PREFIX_CROSS}"
+ENV PKG_CONFIG_PATH="${PREFIX_CROSS}/lib/pkgconfig:/usr/local/lib/pkgconfig"
+
 
 ENV OPENBLAS_LIB_DIR="${PREFIX_CROSS}/lib"
 COPY --link "dev/docker/files/install-openblas" "/"
 RUN /install-openblas "${CROSS_COMPILE}" "${PREFIX_CROSS}"
+
+COPY --link "dev/docker/files/install-libbzip2" "/"
+RUN /install-libbzip2 "${CROSS_COMPILE}" "${PREFIX_CROSS}"
+
+COPY --link "dev/docker/files/install-liblzma" "/"
+RUN /install-liblzma "${CROSS_COMPILE}" "${PREFIX_CROSS}"
+
+COPY --link "dev/docker/files/install-libz" "/"
+RUN /install-libz "${CROSS_COMPILE}" "${PREFIX_CROSS}"
+
+COPY --link "dev/docker/files/install-libzstd" "/"
+RUN /install-libzstd "${CROSS_COMPILE}" "${PREFIX_CROSS}"
+ENV ZSTD_SYS_USE_PKG_CONFIG="1"
 
 
 ARG USER=user

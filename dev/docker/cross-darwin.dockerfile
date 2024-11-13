@@ -31,12 +31,14 @@ RUN set -euxo pipefail >/dev/null \
   make \
   pigz \
   pixz \
+  pkg-config \
   sudo \
   tar \
   time \
   unzip \
   util-linux \
   xz-utils \
+  zstd \
 >/dev/null \
 && rm -rf /var/lib/apt/lists/* \
 && apt-get clean autoclean >/dev/null \
@@ -78,7 +80,6 @@ ENV LIPO_${CROSS_COMPILE}="${OSX_CROSS_PATH}/bin/${CROSS_APPLE_TRIPLET}-lipo"
 ENV NM_${CROSS_COMPILE}="${OSX_CROSS_PATH}/bin/${CROSS_APPLE_TRIPLET}-nm"
 ENV OBJDUMP_${CROSS_COMPILE}="${OSX_CROSS_PATH}/bin/${CROSS_APPLE_TRIPLET}-ObjectDump"
 ENV OTOOL_${CROSS_COMPILE}="${OSX_CROSS_PATH}/bin/${CROSS_APPLE_TRIPLET}-otool"
-ENV PKG_CONFIG_${CROSS_COMPILE}="${OSX_CROSS_PATH}/bin/${CROSS_APPLE_TRIPLET}-pkg-config"
 ENV RANLIB_${CROSS_COMPILE}="${OSX_CROSS_PATH}/bin/${CROSS_APPLE_TRIPLET}-ranlib"
 ENV STRIP_${CROSS_COMPILE}="${OSX_CROSS_PATH}/bin/${CROSS_APPLE_TRIPLET}-strip"
 ENV BINDGEN_EXTRA_CLANG_ARGS_${CROSS_COMPILE}="--sysroot=${CROSS_SYSROOT}"
@@ -95,10 +96,27 @@ RUN /install-osxcross "${OSX_CROSS_PATH}"
 
 
 ENV PREFIX_CROSS="/usr/local/${CROSS_COMPILE}"
+ENV PKG_CONFIG_ALLOW_CROSS="1"
+ENV PKG_CONFIG_SYSROOT_DIR="${PREFIX_CROSS}"
+ENV PKG_CONFIG_PATH="${PREFIX_CROSS}/lib/pkgconfig:/usr/local/lib/pkgconfig"
+
 
 ENV OPENBLAS_LIB_DIR="${PREFIX_CROSS}/lib"
 COPY --link "dev/docker/files/install-openblas" "/"
 RUN /install-openblas "${CROSS_COMPILE}" "${PREFIX_CROSS}"
+
+COPY --link "dev/docker/files/install-libbzip2" "/"
+RUN /install-libbzip2 "${CROSS_COMPILE}" "${PREFIX_CROSS}"
+
+COPY --link "dev/docker/files/install-liblzma" "/"
+RUN /install-liblzma "${CROSS_COMPILE}" "${PREFIX_CROSS}"
+
+COPY --link "dev/docker/files/install-libz" "/"
+RUN /install-libz "${CROSS_COMPILE}" "${PREFIX_CROSS}"
+
+COPY --link "dev/docker/files/install-libzstd" "/"
+RUN /install-libzstd "${CROSS_COMPILE}" "${PREFIX_CROSS}"
+ENV ZSTD_SYS_USE_PKG_CONFIG="1"
 
 
 ARG USER=user

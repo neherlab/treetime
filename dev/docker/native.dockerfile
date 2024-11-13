@@ -22,6 +22,7 @@ RUN set -euxo pipefail >/dev/null \
   parallel \
   pigz \
   pixz \
+  pkg-config \
   python3 \
   python3-pip \
   sudo \
@@ -30,6 +31,7 @@ RUN set -euxo pipefail >/dev/null \
   unzip \
   util-linux \
   xz-utils \
+  zstd \
 >/dev/null \
 && rm -rf /var/lib/apt/lists/* \
 && apt-get clean autoclean >/dev/null \
@@ -57,9 +59,25 @@ RUN /install-protobuf
 
 
 ENV HOST_PREFIX="/usr"
+ENV PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:${HOST_PREFIX}/lib/pkgconfig"
 ENV OPENBLAS_LIB_DIR="${HOST_PREFIX}/lib"
 COPY --link "dev/docker/files/install-openblas" "/"
 RUN /install-openblas "${HOST_TUPLE}" "${HOST_PREFIX}"
+
+COPY --link "dev/docker/files/install-libbzip2" "/"
+RUN /install-libbzip2 "${HOST_TUPLE}" "${HOST_PREFIX}"
+
+COPY --link "dev/docker/files/install-liblzma" "/"
+RUN /install-liblzma "${HOST_TUPLE}" "${HOST_PREFIX}"
+
+COPY --link "dev/docker/files/install-libz" "/"
+RUN /install-libz "${HOST_TUPLE}" "${HOST_PREFIX}"
+
+COPY --link "dev/docker/files/install-libzstd" "/"
+RUN /install-libzstd "${HOST_TUPLE}" "${HOST_PREFIX}"
+ENV ZSTD_SYS_USE_PKG_CONFIG="1"
+
+
 
 
 ARG USER=user
