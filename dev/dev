@@ -8,6 +8,7 @@ function main() {
   local cargo_cmd cargo_test_cmd docs_cmd npm_cmd wasm_cmd
 
   local docker_args=()
+  local cargo_append_args=()
 
   case "${1:-}" in
   "docker-image-build" | "Db")
@@ -71,7 +72,8 @@ function main() {
     cargo_cmd=("clippy -q --fix --allow-staged")
     ;;
   "lint-ci" | "lc")
-    cargo_cmd=("clippy -q --fix -- -Dwarnings")
+    cargo_cmd=("clippy -q")
+    cargo_append_args=("-- -Dwarnings")
     ;;
   "format" | "f")
     cargo_cmd=("format")
@@ -100,7 +102,7 @@ function main() {
       cargo_cmd+=("--locked")
     fi
     local target_dir="$(get_build_dir)"
-    nicely cargo -q ${cargo_cmd[@]} --target-dir="${target_dir}" ${args:+--bin="$args"}
+    nicely cargo -q ${cargo_cmd[@]} --target-dir="${target_dir}" ${cargo_append_args[@]} ${args:+--bin="$args"}
 
   # Run rust tests
   elif [ -n "${cargo_test_cmd:-}" ]; then
