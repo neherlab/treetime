@@ -339,6 +339,7 @@ jobs:
           path: ".out"
 
       - name: "Run compat test (x86_64-pc-windows-gnu)"
+        shell: powershell
         run: |
           .\.out\treetime-x86_64-pc-windows-gnu --help
 
