@@ -74,7 +74,7 @@ native)
   ;;
 esac
 
-docker_file_hash="$("$(project_root)/dev/is-ci")"
+docker_file_hash="$("$(project_root)/dev/docker/checksum")"
 docker_repo_name_safe="${PROJECT_DOCKER_REPO//\//-}"
 docker_image_tag="${CROSS_COMPILE}-${docker_file_hash}"
 docker_container_name="${docker_repo_name_safe}-${docker_image_tag}-$(datetime_ms_safe)"
