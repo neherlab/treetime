@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -euo pipefail
+trap "exit" INT
+# shellcheck source=./../lib/utils.sh
+source "${BASH_SOURCE%/*}/../lib/utils.sh"
+
+# shellcheck disable=SC2046
+file_hash \
+  .dockerignore \
+  .gitignore \
+  rust-toolchain.toml \
+  $(find dev/docker -type f)
