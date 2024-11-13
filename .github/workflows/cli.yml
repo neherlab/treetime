@@ -280,7 +280,7 @@ jobs:
   run-compat-tests-aarch64-apple-darwin:
     name: "Compat test (aarch64-apple-darwin)"
     needs: [ build-cli ]
-    runs-on: macos-13-arm64
+    runs-on: macos-latest-arm64
 
     steps:
       - name: "Show system info"
