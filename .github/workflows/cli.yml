@@ -26,6 +26,8 @@ env:
   GITHUB_REPOSITORY_URL: ${{ github.server_url }}/${{ github.repository }}
   VERBOSE: 1
 
+
+
 jobs:
 
   build-cli:
@@ -95,6 +97,7 @@ jobs:
           include-hidden-files: true
 
 
+
   run-unit-tests:
     name: "Run unit tests"
     runs-on: ubuntu-24.04
@@ -122,6 +125,7 @@ jobs:
             neherlab-treetime-cli-cache-v1-cargo-${{ runner.os }}-native-
             neherlab-treetime-cli-cache-v1-cargo-${{ runner.os }}-
 
+
       - name: "Login to Docker Hub"
         uses: docker/login-action@v3
         with:
@@ -134,9 +138,12 @@ jobs:
           cp .env.example .env
           sed -i -e "s|OSXCROSS_URL=http://example.com/osxcross/osxcross.tar.xz|OSXCROSS_URL=${{ secrets.OSXCROSS_URL }}|g" .env
 
+
+
       - name: "Run unit tests"
         run: |
           ./dev/docker/run ./dev/dev test
+
 
 
   run-lints:
@@ -166,6 +173,7 @@ jobs:
             neherlab-treetime-cli-cache-v1-cargo-${{ runner.os }}-native-
             neherlab-treetime-cli-cache-v1-cargo-${{ runner.os }}-
 
+
       - name: "Login to Docker Hub"
         uses: docker/login-action@v3
         with:
@@ -178,48 +186,41 @@ jobs:
           cp .env.example .env
           sed -i -e "s|OSXCROSS_URL=http://example.com/osxcross/osxcross.tar.xz|OSXCROSS_URL=${{ secrets.OSXCROSS_URL }}|g" .env
 
+
       - name: "Run lints"
         run: |
           ./dev/docker/run ./dev/dev lint
 
 
-#  run-smoke-tests:
-#    name: "Run smoke tests (linux)"
-#    needs: [ build-cli ]
-#    runs-on: ubuntu-24.04
-#
-#    steps:
-#      - name: "Set up Docker Buildx"
-#        uses: docker/setup-buildx-action@v3
-#
-#      - name: "Checkout code"
-#        uses: actions/checkout@v4
-#        with:
-#          fetch-depth: 1
-#          submodules: true
-#          lfs: true
-#
-#      - name: "Install dependencies"
-#        run: |
-#          mkdir -p "${HOME}/bin"
-#          export PATH="${HOME}/bin:${PATH}"
-#          curl -fsSL "https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64" -o ${HOME}/bin/jq && chmod +x ${HOME}/bin/jq
-#
-#      - name: "Download build artifacts"
-#        uses: actions/download-artifact@v4
-#        with:
-#          pattern: treetime-*
-#          merge-multiple: true
-#          path: ".out"
-#
-#      - name: "Run smoke tests (linux)"
-#        run: |
-#          chmod +x ./.out/*
-#          JOBS=2 ./tests/run-smoke-tests ./.out/treetime-x86_64-unknown-linux-gnu --fast
+
+  run-smoke-tests-x86_64-unknown-linux-gnu:
+    name: "Run smoke tests (x86_64-unknown-linux-gnu)"
+    needs: [ build-cli ]
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: "Checkout code"
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          submodules: true
+          lfs: true
+      - name: "Download build artifacts"
+        uses: actions/download-artifact@v4
+        with:
+          pattern: treetime-*.zip
+          merge-multiple: true
+          path: ".out"
+
+      - name: "Run smoke tests (linux)"
+        run: |
+          chmod +x ./.out/*
+          JOBS=2 ./tests/run-smoke-tests ./.out/treetime-x86_64-unknown-linux-gnu --fast
 
 
-  run-linux-distros-test:
-    name: "Run Linux distros compatibility test"
+
+  run-compat-tests-x86_64-unknown-linux-gnu:
+    name: "Compat test (x86_64-unknown-linux-gnu)"
     needs: [ build-cli ]
     runs-on: ubuntu-24.04
 
@@ -241,6 +242,84 @@ jobs:
         run: |
           chmod +x ./.out/treetime-x86_64-unknown-linux-gnu
           ./dev/test-linux-distros ./.out/treetime-x86_64-unknown-linux-gnu --help
+
+  run-compat-tests-x86_64-apple-darwin:
+    name: "Compat test (x86_64-apple-darwin)"
+    needs: [ build-cli ]
+    runs-on: macos-12
+
+    steps:
+      - name: "Show system info"
+        run: |
+          set -x
+          uname -a || true
+          sw_vers || true
+          system_profiler SPSoftwareDataType SPHardwareDataType || true
+
+      - name: "Download build artifacts"
+        uses: actions/download-artifact@v4
+        with:
+          pattern: treetime-*.zip
+          merge-multiple: true
+          path: ".out"
+
+      - name: "Run compat test"
+        run: |
+          chmod +x ./.out/*
+          ./.out/x86_64-apple-darwin --help
+
+  run-compat-tests-aarch64-apple-darwin:
+    name: "Compat test (aarch64-apple-darwin)"
+    needs: [ build-cli ]
+    runs-on: macos-12-arm64
+
+    steps:
+      - name: "Show system info"
+        run: |
+          set -x
+          uname -a || true
+          sw_vers || true
+          system_profiler SPSoftwareDataType SPHardwareDataType || true
+
+      - name: "Download build artifacts"
+        uses: actions/download-artifact@v4
+        with:
+          pattern: treetime-*.zip
+          merge-multiple: true
+          path: ".out"
+
+      - name: "Run compat test"
+        run: |
+          chmod +x ./.out/*
+          ./.out/aarch64-apple-darwin --help
+
+  run-compat-tests-x86_64-pc-windows-gnu:
+    name: "Compat test (x86_64-pc-windows-gnu)"
+    needs: [ build-cli ]
+    runs-on: windows
+
+    steps:
+      - name: "Show system info"
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Set-PSDebug -Trace 1
+          Write-Output "Architecture: $env:PROCESSOR_ARCHITECTURE"
+          Write-Output "Windows Version:"
+          systeminfo | Select-String "OS Name", "OS Version"
+          Get-WmiObject Win32_Processor | Select-Object Name, NumberOfCores, NumberOfLogicalProcessors | Format-Table -AutoSize
+
+      - name: "Download build artifacts"
+        uses: actions/download-artifact@v4
+        with:
+          pattern: treetime-*.zip
+          merge-multiple: true
+          path: ".out"
+
+      - name: "Run compat test"
+        run: |
+          .\.out\x86_64-pc-windows-gnu --help
+
 
 
 #  publish-to-github-releases:
