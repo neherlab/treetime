@@ -58,9 +58,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            .cache/docker-${{ matrix.arch }}/.cargo/registry/index/
-            .cache/docker-${{ matrix.arch }}/.cargo/registry/cache/
-            .cache/docker-${{ matrix.arch }}/.cargo/git/db/
+            .cache/docker-${{ matrix.arch }}/cargo/registry/index/
+            .cache/docker-${{ matrix.arch }}/cargo/registry/cache/
+            .cache/docker-${{ matrix.arch }}/cargo/git/db/
           key: neherlab-treetime-cli-cache-v1-cargo-${{ runner.os }}-${{ matrix.arch }}-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             neherlab-treetime-cli-cache-v1-cargo-${{ runner.os }}-${{ matrix.arch }}-${{ hashFiles('**/Cargo.lock') }}
@@ -113,9 +113,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            .cache/docker-native/.cargo/registry/index/
-            .cache/docker-native/.cargo/registry/cache/
-            .cache/docker-native/.cargo/git/db/
+            .cache/docker-native/cargo/registry/index/
+            .cache/docker-native/cargo/registry/cache/
+            .cache/docker-native/cargo/git/db/
           key: neherlab-treetime-cli-cache-v1-cargo-${{ runner.os }}-native-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             neherlab-treetime-cli-cache-v1-cargo-${{ runner.os }}-native-${{ hashFiles('**/Cargo.lock') }}
@@ -157,9 +157,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            .cache/docker-native/.cargo/registry/index/
-            .cache/docker-native/.cargo/registry/cache/
-            .cache/docker-native/.cargo/git/db/
+            .cache/docker-native/cargo/registry/index/
+            .cache/docker-native/cargo/registry/cache/
+            .cache/docker-native/cargo/git/db/
           key: neherlab-treetime-cli-cache-v1-cargo-${{ runner.os }}-native-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             neherlab-treetime-cli-cache-v1-cargo-${{ runner.os }}-native-${{ hashFiles('**/Cargo.lock') }}
