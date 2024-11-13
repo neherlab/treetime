@@ -1,0 +1,322 @@
+# Build CLI binaries and publish them to GitHub Releases.
+name: cli
+
+on:
+  push:
+    branches: [ 'rust-ci' ]
+
+  pull_request:
+
+  repository_dispatch:
+    types: build
+
+  workflow_dispatch:
+
+  workflow_call:
+
+concurrency:
+  group: cli-${{ github.workflow }}-${{ github.ref_type }}-${{ github.event.pull_request.number || github.ref || github.run_id }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash -euo pipefail {0}
+
+env:
+  GITHUB_REPOSITORY_URL: ${{ github.server_url }}/${{ github.repository }}
+  VERBOSE: 1
+
+jobs:
+
+  build-cli:
+    name: "Build CLI (${{ matrix.arch }})"
+    runs-on: ubuntu-24.04
+
+    strategy:
+      fail-fast: false
+      matrix:
+        arch:
+          - aarch64-apple-darwin
+          - aarch64-unknown-linux-gnu
+          - aarch64-unknown-linux-musl
+          - x86_64-apple-darwin
+          - x86_64-pc-windows-gnu
+          - x86_64-unknown-linux-gnu
+          - x86_64-unknown-linux-musl
+
+    steps:
+      - name: "Set up Docker Buildx"
+        uses: docker/setup-buildx-action@v3
+
+      - name: "Checkout code"
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          submodules: true
+
+      - name: "Setup cache for Rust and Cargo"
+        uses: actions/cache@v4
+        with:
+          path: |
+            .cache/docker-${{ matrix.arch }}/.cargo/registry/index/
+            .cache/docker-${{ matrix.arch }}/.cargo/registry/cache/
+            .cache/docker-${{ matrix.arch }}/.cargo/git/db/
+          key: neherlab-treetime-cli-cache-v1-cargo-${{ runner.os }}-${{ matrix.arch }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            neherlab-treetime-cli-cache-v1-cargo-${{ runner.os }}-${{ matrix.arch }}-${{ hashFiles('**/Cargo.lock') }}
+            neherlab-treetime-cli-cache-v1-cargo-${{ runner.os }}-${{ matrix.arch }}-
+            neherlab-treetime-cli-cache-v1-cargo-${{ runner.os }}-
+
+      - name: "Login to Docker Hub"
+        uses: docker/login-action@v3
+        with:
+          registry: docker.io
+          username: ${{ secrets.NEHERLAB_BOT_DOCKERHUB_USERNAME }}
+          password: ${{ secrets.NEHERLAB_BOT_DOCKERHUB_TOKEN }}
+
+      - name: "Prepare .env file"
+        run: |
+          cp .env.example .env
+          sed -i -e "s|OSXCROSS_URL=http://example.com/osxcross/osxcross.tar.xz|OSXCROSS_URL=${{ secrets.OSXCROSS_URL }}|g" .env
+
+      - name: "Build docker image (${{ matrix.arch }})"
+        run: |
+          CROSS_COMPILE="${{ matrix.arch }}" ./dev/docker/run echo "Success"
+
+      - name: "Build CLI (${{ matrix.arch }})"
+        run: |
+          CROSS_COMPILE="${{ matrix.arch }}" ./dev/docker/run ./dev/cross/build treetime
+
+      - name: "Upload build artifacts (${{ matrix.arch }})"
+        uses: actions/upload-artifact@v4
+        with:
+          name: treetime-${{ matrix.arch }}.zip
+          path: ./.out/*
+          include-hidden-files: true
+
+
+  run-unit-tests:
+    name: "Run unit tests"
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: "Set up Docker Buildx"
+        uses: docker/setup-buildx-action@v3
+
+      - name: "Checkout code"
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          submodules: true
+
+      - name: "Setup cache for Rust and Cargo"
+        uses: actions/cache@v4
+        with:
+          path: |
+            .cache/docker-native/.cargo/registry/index/
+            .cache/docker-native/.cargo/registry/cache/
+            .cache/docker-native/.cargo/git/db/
+          key: neherlab-treetime-cli-cache-v1-cargo-${{ runner.os }}-native-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            neherlab-treetime-cli-cache-v1-cargo-${{ runner.os }}-native-${{ hashFiles('**/Cargo.lock') }}
+            neherlab-treetime-cli-cache-v1-cargo-${{ runner.os }}-native-
+            neherlab-treetime-cli-cache-v1-cargo-${{ runner.os }}-
+
+      - name: "Login to Docker Hub"
+        uses: docker/login-action@v3
+        with:
+          registry: docker.io
+          username: ${{ secrets.NEHERLAB_BOT_DOCKERHUB_USERNAME }}
+          password: ${{ secrets.NEHERLAB_BOT_DOCKERHUB_TOKEN }}
+
+      - name: "Prepare .env file"
+        run: |
+          cp .env.example .env
+          sed -i -e "s|OSXCROSS_URL=http://example.com/osxcross/osxcross.tar.xz|OSXCROSS_URL=${{ secrets.OSXCROSS_URL }}|g" .env
+
+      - name: "Run unit tests"
+        run: |
+          ./dev/docker/run ./dev/dev test
+
+
+  run-lints:
+    name: "Run lints"
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: "Set up Docker Buildx"
+        uses: docker/setup-buildx-action@v3
+
+      - name: "Checkout code"
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          submodules: true
+
+      - name: "Setup cache for Rust and Cargo"
+        uses: actions/cache@v4
+        with:
+          path: |
+            .cache/docker-native/.cargo/registry/index/
+            .cache/docker-native/.cargo/registry/cache/
+            .cache/docker-native/.cargo/git/db/
+          key: neherlab-treetime-cli-cache-v1-cargo-${{ runner.os }}-native-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            neherlab-treetime-cli-cache-v1-cargo-${{ runner.os }}-native-${{ hashFiles('**/Cargo.lock') }}
+            neherlab-treetime-cli-cache-v1-cargo-${{ runner.os }}-native-
+            neherlab-treetime-cli-cache-v1-cargo-${{ runner.os }}-
+
+      - name: "Login to Docker Hub"
+        uses: docker/login-action@v3
+        with:
+          registry: docker.io
+          username: ${{ secrets.NEHERLAB_BOT_DOCKERHUB_USERNAME }}
+          password: ${{ secrets.NEHERLAB_BOT_DOCKERHUB_TOKEN }}
+
+      - name: "Prepare .env file"
+        run: |
+          cp .env.example .env
+          sed -i -e "s|OSXCROSS_URL=http://example.com/osxcross/osxcross.tar.xz|OSXCROSS_URL=${{ secrets.OSXCROSS_URL }}|g" .env
+
+      - name: "Run lints"
+        run: |
+          ./dev/docker/run ./dev/dev lint
+
+
+#  run-smoke-tests:
+#    name: "Run smoke tests (linux)"
+#    needs: [ build-cli ]
+#    runs-on: ubuntu-24.04
+#
+#    steps:
+#      - name: "Set up Docker Buildx"
+#        uses: docker/setup-buildx-action@v3
+#
+#      - name: "Checkout code"
+#        uses: actions/checkout@v4
+#        with:
+#          fetch-depth: 1
+#          submodules: true
+#          lfs: true
+#
+#      - name: "Install dependencies"
+#        run: |
+#          mkdir -p "${HOME}/bin"
+#          export PATH="${HOME}/bin:${PATH}"
+#          curl -fsSL "https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64" -o ${HOME}/bin/jq && chmod +x ${HOME}/bin/jq
+#
+#      - name: "Download build artifacts"
+#        uses: actions/download-artifact@v4
+#        with:
+#          pattern: treetime-*
+#          merge-multiple: true
+#          path: ".out"
+#
+#      - name: "Run smoke tests (linux)"
+#        run: |
+#          chmod +x ./.out/*
+#          JOBS=2 ./tests/run-smoke-tests ./.out/treetime-x86_64-unknown-linux-gnu --fast
+
+
+  run-linux-distros-test:
+    name: "Run Linux distros compatibility test"
+    needs: [ build-cli ]
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: "Set up Docker Buildx"
+        uses: docker/setup-buildx-action@v3
+
+      - name: "Checkout code"
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          submodules: true
+
+      - name: "Download build artifacts"
+        uses: actions/download-artifact@v4
+        with:
+          pattern: out-*
+          merge-multiple: true
+          path: ".out"
+
+      - name: "Test Linux distros compatibility"
+        run: |
+          chmod +x ./.out/treetime-x86_64-unknown-linux-gnu
+          ./tests/test-linux-distros ./.out/treetime-x86_64-unknown-linux-gnu --help
+
+
+#  publish-to-github-releases:
+#    name: "Publish to GitHub Releases"
+#    needs: [ build-cli, run-unit-tests, run-lints, run-smoke-tests, run-linux-distros-test ]
+#    if: endsWith(github.ref, '/release-cli')
+#    runs-on: ubuntu-24.04
+#
+#    steps:
+#      - name: "Checkout code"
+#        uses: actions/checkout@v4
+#        with:
+#          fetch-depth: 1
+#          submodules: true
+#
+#      - name: "Download build artifacts"
+#        uses: actions/download-artifact@v4
+#        with:
+#          pattern: out-*
+#          merge-multiple: true
+#          path: ".out"
+#
+#      - name: "Install deploy dependencies"
+#        run: |
+#          mkdir -p "${HOME}/bin"
+#          curl -fsSL "https://github.com/cli/cli/releases/download/v2.10.1/gh_2.10.1_linux_amd64.tar.gz" | tar xz -C "${HOME}/bin" --strip-components=2 gh_2.10.1_linux_amd64/bin/gh
+#          curl -fsSL "https://github.com/TomWright/dasel/releases/download/v1.24.3/dasel_linux_amd64" -o "${HOME}/bin/dasel" && chmod +x "${HOME}/bin/dasel"
+#          curl -fsSL "https://github.com/orhun/git-cliff/releases/download/v0.7.0/git-cliff-0.7.0-x86_64-unknown-linux-gnu.tar.gz" | tar -C "${HOME}/bin" --strip-components=1 -xz "git-cliff-0.7.0/git-cliff"
+#          curl -fsSL "https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64" -o ${HOME}/bin/jq && chmod +x ${HOME}/bin/jq
+#
+#      - name: "Publish build artifacts to GitHub releases"
+#        run: |
+#          export PATH="${PATH}:${HOME}/bin"
+#          export GITHUB_TOKEN="${{ secrets.NEHERLAB_BOT_GITHUB_TOKEN }}"
+#          ./scripts/publish_github \
+#            --artifacts_dir ".out" \
+#            --repo "${{ github.repository }}" \
+#            --git_sha "${{ github.sha }}"
+
+#  publish-to-docker-hub:
+#    name: "Publish to Docker Hub"
+#    needs: [ build-cli, run-unit-tests, run-lints, run-smoke-tests, run-linux-distros-test ]
+#    if: endsWith(github.ref, '/release-cli')
+#    runs-on: ubuntu-24.04
+#
+#    steps:
+#      - name: "Checkout code"
+#        uses: actions/checkout@v4
+#        with:
+#          fetch-depth: 1
+#          submodules: true
+#
+#      - name: "Download build artifacts"
+#        uses: actions/download-artifact@v4
+#        with:
+#          pattern: out-*
+#          merge-multiple: true
+#          path: ".out"
+#
+#      - name: "Install deploy dependencies"
+#        run: |
+#          mkdir -p "${HOME}/bin"
+#          curl -fsSL "https://github.com/TomWright/dasel/releases/download/v1.24.3/dasel_linux_amd64" -o "${HOME}/bin/dasel" && chmod +x "${HOME}/bin/dasel"
+#
+#      - name: "Login to Docker Hub"
+#        uses: docker/login-action@v3
+#        with:
+#          registry: docker.io
+#          username: ${{ secrets.NEHERLAB_BOT_DOCKERHUB_USERNAME }}
+#          password: ${{ secrets.NEHERLAB_BOT_DOCKERHUB_TOKEN }}
+#
+#      - name: "Build and publish Docker container images to Docker Hub"
+#        run: |
+#          export PATH="${PATH}:${HOME}/bin"
+#          chmod +x ./.out/*
+#          ./scripts/publish_docker --push
