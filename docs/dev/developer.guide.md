@@ -6,7 +6,7 @@ the project.
 
 ## Setup developer environment
 
-This guide assumes Ubuntu 22.04 operating system, but will likely work similarly to any other Linux and Unix-like
+This guide assumes Ubuntu 24.04 operating system, but will likely work similarly to any other Linux and Unix-like
 machine.
 
 Treetime is written in Rust. The usual `rustup` & `cargo` workflow can be used:
@@ -16,10 +16,10 @@ Treetime is written in Rust. The usual `rustup` & `cargo` workflow can be used:
 # These particular commands are specific for Ubuntu Linux and will work on some other Debian-based Linux distros.
 # Refer to documentation of your operating system to find how to install these dependencies.
 sudo apt-get update
-sudo apt-get install --yes bash clang curl gcc gfortran git make pkg-config libssl-dev protobuf-compiler
+sudo apt-get install bash clang curl gcc gfortran git make pkg-config protobuf-compiler libopenblas-dev
 
 # (optional) if you want to enable png image output ("png" cargo feature, see below), then add
-sudo apt-get install --yes libfontconfig1-dev
+sudo apt-get install libfontconfig1-dev
 
 # Install Rustup, the Rust version manager (https://www.rust-lang.org/tools/install)
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y
