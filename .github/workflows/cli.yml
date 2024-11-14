@@ -310,6 +310,10 @@ jobs:
           chmod +x ./.out/*
           ./.out/treetime-aarch64-apple-darwin --help
 
+      - name: "Install Rosetta 2"
+        run: |
+          /usr/sbin/softwareupdate --install-rosetta --agree-to-license
+
       - name: "Run compat test (x86_64-apple-darwin, emulation)"
         run: |
           chmod +x ./.out/*
