@@ -127,7 +127,9 @@ if ! docker inspect --format '{{.Id}}' "${PROJECT_DOCKER_REPO}:${docker_image_ta
     \
     . >/dev/null
 
-  parallel -j ${#images[@]} docker push --quiet ::: "${images[@]}"
+  if [ "$("$(project_root)/dev/is-ci")" == "1" ]; then
+    parallel -j ${#images[@]} docker push --quiet ::: "${images[@]}"
+  fi
 fi
 
 declare -A volumes=(
