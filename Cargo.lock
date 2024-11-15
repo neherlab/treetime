@@ -281,7 +281,7 @@ dependencies = [
  "bitflags 2.6.0",
  "cexpr",
  "clang-sys",
- "itertools 0.10.5",
+ "itertools 0.13.0",
  "log",
  "prettyplease",
  "proc-macro2",
@@ -2183,6 +2183,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "ndarray-interp"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8158249c71147ce8818363aa76fb7590f4239988265150960132a16cbe0c6fda"
+dependencies = [
+ "ndarray 0.15.6",
+ "num-traits",
+ "thiserror",
+]
+
+[[package]]
 name = "ndarray-linalg"
 version = "0.16.0"
 source = "git+https://github.com/numrs/ndarray-linalg?rev=1c551ac#1c551ac4a8254d06b47318da81a9848bb78d29b5"
@@ -3929,6 +3940,7 @@ dependencies = [
  "maplit",
  "multimap",
  "ndarray 0.15.6",
+ "ndarray-interp",
  "ndarray-linalg",
  "ndarray-rand",
  "ndarray-stats",

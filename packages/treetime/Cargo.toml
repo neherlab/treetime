@@ -49,6 +49,7 @@ getset = { workspace = true }
 image = { workspace = true, optional = true }
 indexmap = { workspace = true }
 indoc = { workspace = true }
+ndarray-interp = { workspace = true }
 intervallum = { workspace = true }
 itertools = { workspace = true }
 lazy_static = { workspace = true }

@@ -30,3 +30,9 @@ pub fn get_exactly_one_mut<T>(x: &mut [T]) -> Result<&mut T, Report> {
     _ => make_error!("Expected exactly one element, but found {}", x.len()),
   }
 }
+
+/// Find min and max of a non-empty iterator
+pub fn minmax<'a, T: PartialOrd + Clone + 'a, I: Iterator<Item = &'a T> + 'a>(iter: I) -> (T, T) {
+  let (x_min, x_max) = iter.minmax().into_option().unwrap();
+  (x_min.clone(), x_max.clone())
+}
