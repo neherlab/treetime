@@ -10,10 +10,19 @@ pub trait InterpElem: Num + NumCast + Debug + Send + PartialOrd + Copy {}
 impl InterpElem for f64 {}
 
 /// Represents an arbitrary smooth function
+#[derive(Debug)]
 pub struct DistributionFunction<T: InterpElem> {
   interp: Interp1D<OwnedRepr<T>, OwnedRepr<T>, Ix1, Linear>,
   domain_x: (T, T),
 }
+
+impl<T: InterpElem> PartialEq for DistributionFunction<T> {
+  fn eq(&self, other: &Self) -> bool {
+    format!("{self:?}") == format!("{other:?}")
+  }
+}
+
+impl<T: InterpElem> Eq for DistributionFunction<T> {}
 
 impl<T: InterpElem> DistributionFunction<T> {
   pub fn new(x: Array1<T>, y: Array1<T>) -> Result<Self, Report> {
