@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+set -euo pipefail
+trap "exit" INT
+# shellcheck source=./../lib/utils.sh
+source "${BASH_SOURCE%/*}/../lib/utils.sh"
+
+load_env "$(project_root)/.env.example"
+load_env_maybe "$(project_root)/.env"
+
+PROJECT_DOCKER_REPO="${PROJECT_DOCKER_BUILDER_REPO:?}"
+
+USER="user"
+GROUP="user"
+
+cache_dir="$(get_cache_dir "jupyter")"
+
+dockerfile="$(project_root)/dev/docker/jupyter.dockerfile"
+
+docker_file_hash="$("$(project_root)/dev/docker/checksum")"
+docker_repo_name_safe="${PROJECT_DOCKER_REPO//\//-}"
+docker_image_tag="jupyter-${docker_file_hash}"
+docker_container_name="${docker_repo_name_safe}-${docker_image_tag}-$(datetime_ms_safe)"
+
+images=(
+  "${PROJECT_DOCKER_REPO}:${docker_image_tag}"
+)
+
+if ! docker inspect --format '{{.Id}}' "${PROJECT_DOCKER_REPO}:${docker_image_tag}" &>/dev/null || [ -n "${DOCKER_FORCE_REBUILD:-}" ]; then
+  build_params=()
+
+  export BUILDKIT_PROGRESS=plain
+  export PROGRESS_NO_TRUNC=1
+  docker buildx build \
+    --file="${dockerfile}" \
+    "${images[@]/#/--tag=}" \
+    --network=host \
+    \
+    --build-arg="UID=$(id -u)" \
+    --build-arg="GID=$(id -g)" \
+    --build-arg="USER=${USER}" \
+    --build-arg="GROUP=${GROUP}" \
+    --load \
+    \
+    "${build_params[@]}" \
+    \
+    . >/dev/null
+fi
+
+declare -A volumes=(
+  ["${cache_dir}/jupyter"]="/home/${USER}/.jupyter"
+)
+
+mkdir -p "${!volumes[@]}"
+
+# shellcheck disable=SC2046
+docker run --rm $(tty -s && echo "-it") \
+  --init \
+  --network="host" \
+  --name="${docker_container_name}" \
+  --hostname="${docker_repo_name_safe}" \
+  --add-host="${docker_repo_name_safe}:127.0.1.1" \
+  --user="$(id -u):$(id -g)" \
+  --workdir="/workdir" \
+  --volume="$(pwd):/workdir" \
+  $(for path in "${!volumes[@]}"; do echo "--volume=${path}:${volumes[$path]}"; done) \
+  --env="UID=$(id -u)" \
+  --env="GID=$(id -g)" \
+  --env="USER=${USER}" \
+  --env="GROUP=${GROUP}" \
+  --env="PS1=\${USER}@\${HOST}" \
+  --env="TERM=xterm-256color" \
+  --env="TZ=Etc/UTC" \
+  --env="LANG=C.UTF-8" \
+  --env="JUPYTER_PORT=${JUPYTER_PORT:-10000}" \
+  --ulimit="core=0" \
+  "${PROJECT_DOCKER_REPO}:${docker_image_tag}" \
+  bash -c "/start-jupyter"
