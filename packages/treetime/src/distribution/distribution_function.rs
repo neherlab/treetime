@@ -1,4 +1,3 @@
-use crate::utils::container::minmax;
 use eyre::Report;
 use ndarray::{Array1, Ix1, OwnedRepr};
 use ndarray_interp::interp1d::{Interp1D, Interp1DBuilder, Linear};
@@ -13,7 +12,6 @@ impl InterpElem for f64 {}
 #[derive(Debug)]
 pub struct DistributionFunction<T: InterpElem> {
   interp: Interp1D<OwnedRepr<T>, OwnedRepr<T>, Ix1, Linear>,
-  domain_x: (T, T),
 }
 
 impl<T: InterpElem> PartialEq for DistributionFunction<T> {
@@ -27,9 +25,24 @@ impl<T: InterpElem> Eq for DistributionFunction<T> {}
 impl<T: InterpElem> DistributionFunction<T> {
   pub fn new(x: Array1<T>, y: Array1<T>) -> Result<Self, Report> {
     assert_eq!(x.shape(), y.shape());
-    let domain_x = minmax(x.iter());
     let interp: Interp1D<OwnedRepr<T>, OwnedRepr<T>, Ix1, Linear> = Interp1DBuilder::new(y).x(x).build()?;
-    Ok(Self { interp, domain_x })
+    Ok(Self { interp })
+  }
+
+  pub fn t(&self) -> &Array1<T> {
+    self.interp.x()
+  }
+
+  pub fn t_mut(&mut self) -> &mut Array1<T> {
+    self.interp.x_mut()
+  }
+
+  pub fn y(&self) -> &Array1<T> {
+    self.interp.data()
+  }
+
+  pub fn y_mut(&mut self) -> &mut Array1<T> {
+    self.interp.data_mut()
   }
 
   pub fn interp(&self, x: T) -> Result<T, Report> {

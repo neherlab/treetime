@@ -2184,9 +2184,8 @@ dependencies = [
 
 [[package]]
 name = "ndarray-interp"
-version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8158249c71147ce8818363aa76fb7590f4239988265150960132a16cbe0c6fda"
+version = "0.5.0"
+source = "git+https://github.com/numrs/ndarray-interp?rev=12ad05c#12ad05ca1ff6994b0e5167f76c8013c43855fe0a"
 dependencies = [
  "ndarray 0.15.6",
  "num-traits",

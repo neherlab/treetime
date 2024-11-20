@@ -10,8 +10,8 @@ pub struct DistributionPoint<T: Clone + Copy + Debug> {
 }
 
 impl<T: Clone + Copy + Debug> DistributionPoint<T> {
-  pub fn new(x: T, y: T) -> Self {
-    DistributionPoint { t: x, ampl: y }
+  pub fn new(t: T, ampl: T) -> Self {
+    DistributionPoint { t, ampl }
   }
 
   pub fn t(&self) -> T {

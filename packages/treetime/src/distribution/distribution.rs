@@ -32,7 +32,7 @@ impl Distribution {
     Self::Range(DistributionRange::new((x1, x2), y))
   }
 
-  pub fn general(x: Array1<f64>, y: Array1<f64>) -> Result<Self, Report> {
+  pub fn function(x: Array1<f64>, y: Array1<f64>) -> Result<Self, Report> {
     assert_eq!(x.shape(), y.shape());
 
     if x.is_empty() {
