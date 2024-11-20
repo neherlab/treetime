@@ -122,23 +122,24 @@ USER ${USER}
 RUN set -euxo pipefail >/dev/null \
 && export CONDA_DIR="${CONDA_DIR}" \
 && export PYTHON_VERSION="${PYTHON_VERSION}" \
-&& mkdir -p "${CONDA_DIR}/bin" "${HOME}/.config/conda" \
-&& curl -fsSL "https://micro.mamba.pm/api/micromamba/linux-64/latest" | tar -C "${CONDA_DIR}/bin" --strip-components=1 -xvj "bin/micromamba" \
+&& mkdir -p "${CONDA_DIR}/bin" "${HOME}/.config/conda" ${CONDA_DIR}/conda-meta \
+&& echo "python=${PYTHON_VERSION}" >> "${CONDA_DIR}/conda-meta/pinned" \
+&& echo 'blas=*=*openblas' >> "${CONDA_DIR}/conda-meta/pinned" \
+&& echo 'conda-forge::blas=*=*openblas' >> "${CONDA_DIR}/conda-meta/pinned" \
+&& echo 'conda-forge::libblas=*=*openblas' >> "${CONDA_DIR}/conda-meta/pinned" \
+&& curl -fsSLo "${CONDA_DIR}/bin/micromamba" "https://github.com/mamba-org/micromamba-releases/releases/download/2.0.2-2/micromamba-linux-64" \
+&& chmod +x "${CONDA_DIR}/bin/micromamba" \
 && micromamba install --yes \
   --root-prefix="${CONDA_DIR}" \
   --prefix="${CONDA_DIR}" \
   "python=${PYTHON_VERSION}" \
-  'mamba' \
-&& mamba list python | grep '^python ' | tr -s ' ' | cut -d ' ' -f 1,2 >> "${CONDA_DIR}/conda-meta/pinned" \
-&& echo 'blas=*.*=*openblas*' >> "${CONDA_DIR}/conda-meta/pinned" \
-&& echo 'conda-forge::blas=*.*=*openblas*' >> "${CONDA_DIR}/conda-meta/pinned" \
-&& echo 'conda-forge::libblas=*.*=*openblas*' >> "${CONDA_DIR}/conda-meta/pinned"
+  'mamba'
 
 RUN set -euxo pipefail >/dev/null \
 && mamba install --quiet --yes \
-  'blas=*.*=*openblas*' \
-  'conda-forge::blas=*.*=*openblas*' \
-  'conda-forge::libblas=*.*=*openblas*' \
+  'blas=*=*openblas*' \
+  'conda-forge::blas=*=*openblas*' \
+  'conda-forge::libblas=*=*openblas*' \
   'bokeh' \
   'cython' \
   'dill' \
@@ -159,7 +160,7 @@ RUN set -euxo pipefail >/dev/null \
   'tqdm' \
   'widgetsnbextension' \
 && mamba clean --all -f -y \
-&& mamba init bash
+&& micromamba shell init --shell=bash
 
 COPY requirements.txt /requirements.txt
 
