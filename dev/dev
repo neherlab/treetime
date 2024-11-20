@@ -96,6 +96,8 @@ function main() {
 
   local args=$(echo "${@:-}" | xargs)
 
+  declare -x RUST_BACKTRACE="full"
+
   # Run a cargo command (except tests)
   if [ -n "${cargo_cmd:-}" ]; then
     if [ "$("$(project_root)/dev/is-ci")" == "1" ]; then
