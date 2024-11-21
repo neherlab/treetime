@@ -25,7 +25,7 @@ use std::iter::zip;
 // d^2logLh/dt^2 = sum_i sum_j \sum_c k_c \lambda_c*\lambda^i_c exp(\lambda^i_c t) / \sum_c k_c exp(\lambda^i_c t) - k_c \lambda_c*\exp(\lambda^i_c t) / \sum_c k_c exp(\lambda^i_c t)
 
 pub fn evaluate(
-  coefficients: &Vec<Array2<f64>>,
+  coefficients: &[Array2<f64>],
   partitions: &[PartitionLikelihood],
   branch_length: f64,
 ) -> (f64, f64, f64, f64) {
@@ -35,7 +35,7 @@ pub fn evaluate(
   let mut second_derivative = 0.0;
   for (pi, partition) in partitions.iter().enumerate() {
     let PartitionLikelihood { gtr, length, alphabet } = &partition;
-    // let coefficents = &partition.msg_to_parent.dis * &partition.msg_to_child.dis;
+    // let coefficients = &partition.msg_to_parent.dis * &partition.msg_to_child.dis;
     let exp_ev = gtr.eigvals.mapv(|ev| (ev * branch_length).exp());
     let ev_exp_ev = &gtr.eigvals * &exp_ev;
     let ev2_exp_ev = &gtr.eigvals * &ev_exp_ev;
@@ -52,7 +52,7 @@ pub fn evaluate(
 }
 
 pub fn get_coefficients(msg_to_parent: &DenseSeqDis, msg_to_child: &DenseSeqDis, gtr: &GTR) -> Array2<f64> {
-  // multiple the messages by the eigenvectors of the GTR matrix, multiply elementwise, and sum over the rows
+  // multiply the messages by the eigenvectors of the GTR matrix, multiply elementwise, and sum over the rows
   // s_a eQt_{ab} r_b =  \sum_{abc} s_a v_{ac} e^{\lambda_c t} vinv_{cb} r_b
   msg_to_child.dis.dot(&gtr.v) * msg_to_parent.dis.dot(&gtr.v_inv.t())
 }
@@ -126,7 +126,6 @@ pub fn run_optimize_dense(graph: &DenseGraph, partitions: &[PartitionLikelihood]
     if likelihood > 0.0 && second_derivative < 0.0 {
       // newton's method to find the optimal branch length
       new_branch_length = branch_length - clamp(derivative / second_derivative, -1.0, branch_length);
-      // dbg!("newton");
       let max_iter = 10;
       let mut n_iter = 0;
       while (new_branch_length - branch_length).abs() > 0.001 * branch_length && n_iter < max_iter {

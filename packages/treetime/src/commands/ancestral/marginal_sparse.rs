@@ -78,16 +78,13 @@ fn ingroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihoo
         // now that all variable positions are determined, check whether they are characters in each child
         for (ci, (c, edge)) in node.children.iter().enumerate() {
           let states = &mut child_states[ci];
-          for (pos, state) in variable_pos.iter() {
+          for (pos, state) in &variable_pos {
             // test whether pos in states, otherwise check whether it is in non-char
-            if !states.contains_key(pos) {
-              if range_contains(&c.read_arc().sparse_partitions[si].seq.non_char, *pos) {
-                dbg!("non-char");
-                if range_contains(&c.read_arc().sparse_partitions[si].seq.gaps, *pos) {
-                  states.insert(*pos, alphabet.gap());
-                } else {
-                  states.insert(*pos, alphabet.unknown());
-                }
+            if !states.contains_key(pos) && range_contains(&c.read_arc().sparse_partitions[si].seq.non_char, *pos) {
+              if range_contains(&c.read_arc().sparse_partitions[si].seq.gaps, *pos) {
+                states.insert(*pos, alphabet.gap());
+              } else {
+                states.insert(*pos, alphabet.unknown());
               }
             }
           }
@@ -186,7 +183,7 @@ fn combine_messages(
   // copy composition.counts and cast the values of f64
   let mut fixed_counts = composition
     .counts()
-    .into_iter()
+    .iter()
     .map(|(k, v)| (*k, *v as f64))
     .collect::<BTreeMap<_, _>>();
   // go over all putatively variable positions
@@ -364,12 +361,12 @@ fn outgroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikeliho
           let divisor = if let Some(dis) = child_dis.variable.get(&pos) {
             &dis.dis
           } else {
-            child_dis.fixed.get(child_states.get(&pos).unwrap()).unwrap()
+            &child_dis.fixed[&child_states[&pos]]
           };
           let numerator = if let Some(dis) = seq_info.profile.variable.get(&pos) {
             &dis.dis
           } else {
-            seq_info.profile.fixed.get(&pstate).unwrap()
+            &seq_info.profile.fixed[&pstate]
           };
           let dis = numerator / divisor;
           let norm = dis.sum();
@@ -384,7 +381,7 @@ fn outgroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikeliho
           seq_dis.fixed_counts.adjust_count(pstate, -1);
         }
         for (s, p) in &seq_info.profile.fixed {
-          let dis = &*p / &child_dis.fixed[&s];
+          let dis = p / &child_dis.fixed[s];
           let norm = dis.sum();
           delta_ll += norm.ln() * (seq_dis.fixed_counts.get(*s).unwrap() as f64);
           seq_dis.fixed.insert(*s, dis / norm);
@@ -614,7 +611,7 @@ mod tests {
     let gtr = GTR::new(GTRParams {
       alphabet: Alphabet::default(),
       W: None,
-      pi: pi.clone(),
+      pi,
       mu,
     })
     .unwrap();

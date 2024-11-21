@@ -40,7 +40,7 @@ fn normalize_inplace(dis: &mut Array2<f64>) -> f64 {
   for (ri, mut row) in dis.outer_iter_mut().enumerate() {
     row /= norm[ri];
   }
-  norm.mapv(|x| x.ln()).sum()
+  norm.mapv(f64::ln).sum()
 }
 
 fn attach_seqs_to_graph(graph: &DenseGraph, partitions: &[PartitionLikelihoodWithAln]) -> Result<(), Report> {
@@ -131,7 +131,7 @@ fn ingroup_profiles_dense(graph: &DenseGraph, partitions: &[PartitionLikelihood]
           .collect_vec();
 
         let mut dis = msgs[0].clone().to_owned();
-        for msg in msgs[1..].iter() {
+        for msg in &msgs[1..] {
           dis *= msg;
         }
         let delta_ll = normalize_inplace(&mut dis);
@@ -210,7 +210,7 @@ fn outgroup_profiles_dense(graph: &DenseGraph, partitions: &[PartitionLikelihood
           log_lh += edge.dense_partitions[si].msg_to_child.log_lh;
         }
         let mut dis = msgs_to_combine[0].clone();
-        for msg in msgs_to_combine[1..].iter() {
+        for msg in &msgs_to_combine[1..] {
           dis *= msg;
         }
         let delta_ll = normalize_inplace(&mut dis);
@@ -246,8 +246,7 @@ pub fn run_marginal_dense(
 
   ingroup_profiles_dense(graph, &partitions);
   let log_lh = graph
-    .get_exactly_one_root()
-    .unwrap()
+    .get_exactly_one_root()?
     .read_arc()
     .payload()
     .read_arc()
@@ -423,10 +422,9 @@ mod tests {
     let gtr = GTR::new(GTRParams {
       alphabet: Alphabet::default(),
       W: None,
-      pi: pi.clone(),
+      pi,
       mu,
-    })
-    .unwrap();
+    })?;
 
     let partitions = vec![PartitionLikelihoodWithAln::new(gtr, alphabet, aln)?];
 
@@ -437,8 +435,7 @@ mod tests {
     // test variable position distribution at the root for position 0 (from test_scripts/ancestral_dense.py)
     let pos_zero_root = array![0.28212327, 0.21643546, 0.13800802, 0.36343326];
     let root = &graph
-      .get_exactly_one_root()
-      .unwrap()
+      .get_exactly_one_root()?
       .read_arc()
       .payload()
       .read_arc()

@@ -53,15 +53,15 @@ fn get_coefficients(edge: &SparseSeqEdge, gtr: &GTR) -> PartitionContribution {
       let parent = edge
         .msg_to_child
         .variable
-        .get(&pos)
-        .or(edge.msg_to_parent.variable.get(&pos))
+        .get(pos)
+        .or_else(|| edge.msg_to_parent.variable.get(pos))
         .unwrap()
         .state;
       let child = edge
         .msg_to_parent
         .variable
-        .get(&pos)
-        .or(edge.msg_to_child.variable.get(&pos))
+        .get(pos)
+        .or_else(|| edge.msg_to_child.variable.get(pos))
         .unwrap()
         .state;
       (parent, child)
@@ -73,13 +73,13 @@ fn get_coefficients(edge: &SparseSeqEdge, gtr: &GTR) -> PartitionContribution {
     let parent = if let Some(parent) = edge.msg_to_child.variable.get(&pos) {
       &parent.dis
     } else {
-      edge.msg_to_child.fixed.get(&parent_state).unwrap()
+      &edge.msg_to_child.fixed[&parent_state]
     };
 
     let child = if let Some(child) = edge.msg_to_parent.variable.get(&pos) {
       &child.dis
     } else {
-      edge.msg_to_parent.fixed.get(&child_state).unwrap()
+      &edge.msg_to_parent.fixed[&child_state]
     };
     site_contributions.push(SiteContribution {
       multiplicity: 1.0,
@@ -87,8 +87,8 @@ fn get_coefficients(edge: &SparseSeqEdge, gtr: &GTR) -> PartitionContribution {
     });
   }
   for state in edge.msg_to_child.fixed.keys() {
-    let parent = edge.msg_to_child.fixed.get(state).unwrap();
-    let child = edge.msg_to_parent.fixed.get(state).unwrap();
+    let parent = &edge.msg_to_child.fixed[state];
+    let child = &edge.msg_to_parent.fixed[state];
     site_contributions.push(SiteContribution {
       multiplicity: edge.msg_to_child.fixed_counts.get(*state).unwrap() as f64,
       coefficients: (parent.dot(&gtr.v) * child.dot(&gtr.v_inv.t())),
@@ -128,7 +128,7 @@ pub fn initial_guess_sparse(graph: &SparseGraph, partitions: &[PartitionLikeliho
   for edge in graph.get_edges() {
     let mut edge = edge.write_arc().payload().write_arc();
     let mut differences: usize = 0;
-    for partition in edge.sparse_partitions.iter() {
+    for partition in &edge.sparse_partitions {
       differences += partition.subs.len();
     }
     let new_branch_length = differences as f64 * one_mutation;
