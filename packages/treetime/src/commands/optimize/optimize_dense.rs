@@ -73,7 +73,7 @@ pub fn initial_guess(graph: &DenseGraph, partitions: &[PartitionLikelihood]) -> 
   for edge in graph.get_edges() {
     let mut edge = edge.write_arc().payload().write_arc();
     let mut differences: usize = 0;
-    for (_, partition) in edge.dense_partitions.iter().enumerate() {
+    for partition in &edge.dense_partitions {
       for (row1, row2) in zip(partition.msg_to_parent.dis.rows(), partition.msg_to_child.dis.rows()) {
         if row1[row2.argmax().unwrap()] < 0.5 {
           differences += 1;
