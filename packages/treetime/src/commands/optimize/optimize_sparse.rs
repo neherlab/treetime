@@ -43,7 +43,7 @@ struct PartitionContribution {
 }
 
 fn get_coefficients(edge: &SparseSeqEdge, gtr: &GTR) -> Result<PartitionContribution, Report> {
-  // collect variable positions from msg_to_child, msg_to_parent, and the substitutions along the edge
+  // Collect variable positions from msg_to_child, msg_to_parent, and the substitutions along the edge
   let variable_positions: Vec<usize> = edge
     .msg_to_child
     .variable
@@ -57,7 +57,7 @@ fn get_coefficients(edge: &SparseSeqEdge, gtr: &GTR) -> Result<PartitionContribu
   let variable_states = variable_positions
     .iter()
     .map(|pos| {
-      // check whether the position is in substitutions
+      // Check whether the position is in substitutions
       let state_pair = if let Some(sub) = edge.subs.iter().find(|m| m.pos == *pos) {
         (sub.reff, sub.qry)
       } else {
@@ -113,10 +113,10 @@ fn get_coefficients(edge: &SparseSeqEdge, gtr: &GTR) -> Result<PartitionContribu
   })
 }
 
-// function that takes two message projections, and gtr model, and the length of branch and returns the
+// Function that takes two message projections, and gtr model, and the length of branch and returns the
 // likelihood as well as its derivative with respect to the branch length
 fn evaluate_sparse(coefficients: &Vec<PartitionContribution>, branch_length: f64) -> (f64, f64, f64, f64) {
-  let likelihood = 0.0; //currently not calculate
+  let likelihood = 0.0; // Currently not calculate
   let mut log_likelihood = 0.0;
   let mut derivative = 0.0;
   let mut second_derivative = 0.0;
@@ -178,7 +178,7 @@ pub fn run_optimize_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihoo
       return Ok(());
     }
 
-    // otherwise, we need to optimize the branch length
+    // Otherwise, we need to optimize the branch length
     let (_, _, derivative, second_derivative) = evaluate_sparse(&coefficients, branch_length);
     if second_derivative < 0.0 {
       // newton's method to find the optimal branch length

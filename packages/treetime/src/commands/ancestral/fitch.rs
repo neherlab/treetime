@@ -80,7 +80,6 @@ fn fitch_backwards(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]
       edge.write_arc().sparse_partitions = vec![SparseSeqEdge::default(); n_partitions];
     }
 
-    #[allow(clippy::needless_range_loop)]
     for si in 0..n_partitions {
       let PartitionParsimony { alphabet, length } = &sparse_partitions[si];
 
@@ -277,7 +276,6 @@ fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]) 
   let n_partitions = sparse_partitions.len();
 
   graph.par_iter_breadth_first_forward(|mut node| {
-    #[allow(clippy::needless_range_loop)]
     for si in 0..n_partitions {
       let PartitionParsimony { alphabet, .. } = &sparse_partitions[si];
       let SparseSeqInfo {

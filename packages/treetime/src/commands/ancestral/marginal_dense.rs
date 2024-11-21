@@ -195,16 +195,16 @@ fn outgroup_profiles_dense(graph: &DenseGraph, partitions: &[PartitionLikelihood
   let n_partitions = partitions.len();
   graph.par_iter_breadth_first_forward(|mut node| {
     for si in 0..n_partitions {
-      let PartitionLikelihood { gtr, alphabet, length } = &partitions[si];
+      let PartitionLikelihood { gtr, .. } = &partitions[si];
       if !node.is_root {
         let seq_info = &mut node.payload.dense_partitions[si];
         let mut msgs_to_combine: Vec<Array2<f64>> = vec![];
         let mut log_lh = 0.0;
-        for (pi, (p, edge)) in node.parents.iter().enumerate() {
+        for (_, edge) in &node.parents {
           let edge = edge.read_arc();
           let expQt_matrix = gtr.expQt(edge.branch_length.unwrap_or(0.0));
           let expQt = expQt_matrix.t();
-          msgs_to_combine.push(edge.dense_partitions[si].msg_to_parent.dis.view().to_owned()); //FIXME: avoid copy
+          msgs_to_combine.push(edge.dense_partitions[si].msg_to_parent.dis.view().to_owned()); // FIXME: avoid copy
           log_lh += edge.dense_partitions[si].msg_to_parent.log_lh;
           msgs_to_combine.push(edge.dense_partitions[si].msg_to_child.dis.dot(&expQt));
           log_lh += edge.dense_partitions[si].msg_to_child.log_lh;

@@ -12,7 +12,7 @@ pub fn avg_transition(W: &Array2<f64>, pi: &Array1<f64>) -> Result<f64, Report> 
 
 /// Performs eigendecomposition of the rate matrix and stores the left- and right-
 /// matrices to convert the sequence profiles to the GTR matrix eigenspace
-/// and hence to speed-up the computations.
+/// and hence to speed up the computations.
 /// NOTE: this assumes the diagonal of W is all zeros
 #[allow(clippy::type_complexity)]
 fn eig_single_site(W: &Array2<f64>, pi: &Array1<f64>) -> Result<(Array1<f64>, Array2<f64>, Array2<f64>), Report> {
@@ -595,7 +595,7 @@ mod tests {
 
     // NOTE: These are failing likely due to the different conventions in linear algebra packages used in Python version
     // (the source of expected test values) and in Rust version. And these differences are hard to test. But this
-    // also tests internals of the model implementation, which is a kind of anti-pattern. The most important thing is
+    // also tests internals of the model implementation, which is a kind of antipattern. The most important thing is
     // to ensure that the model usage produces correct results. While the differences in the internals might be
     // tolerable.
 

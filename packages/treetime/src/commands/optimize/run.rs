@@ -24,9 +24,8 @@ use log::debug;
 use serde::Serialize;
 use std::path::Path;
 
-// the initial guess for dense is not working well, but optimization works without
-// revisit after settling on optimization algorithm
-//use super::optimize_dense::initial_guess;
+// The initial guess for dense is not working well, but optimization works without revisit after settling on optimization algorithm
+// use super::optimize_dense::initial_guess;
 use super::optimize_sparse::initial_guess_sparse;
 
 #[derive(Clone, Debug, Default)]
@@ -91,7 +90,7 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
       .collect_vec();
     let mut lh_prev = f64::MIN;
     for i in 0..*max_iter {
-      // FIXME avoid assigning sequences to the graph in every iteration
+      // FIXME: avoid assigning sequences to the graph in every iteration
       let lh = run_marginal_dense(&graph, partitions_waln.clone(), false)?; // FIXME: avoid cloning
 
       // somehow, the initial guess makes it worse...
