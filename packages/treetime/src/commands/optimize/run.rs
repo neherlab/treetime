@@ -91,12 +91,14 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
       .collect_vec();
     let mut lh_prev = f64::MIN;
     for i in 0..*max_iter {
-      //FIXME avoid assigning sequences to the graph in every iteration
+      // FIXME avoid assigning sequences to the graph in every iteration
       let lh = run_marginal_dense(&graph, partitions_waln.clone(), false)?; // FIXME: avoid cloning
-                                                                            // somehow, the initial guess makes it worse...
-                                                                            // if i == 0 {
-                                                                            //   initial_guess(&graph, &partitions);
-                                                                            // }
+
+      // somehow, the initial guess makes it worse...
+      // if i == 0 {
+      //   initial_guess(&graph, &partitions);
+      // }
+
       debug!("Iteration {}: likelihood {}", i + 1, float_to_significant_digits(lh, 7));
       if (lh - lh_prev).abs() < dp.abs() {
         break;
