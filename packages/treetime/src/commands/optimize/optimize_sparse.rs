@@ -141,14 +141,6 @@ pub fn run_optimize_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihoo
   let one_mutation = 1.0 / total_length as f64;
   let n_partitions = partitions.len();
   graph.get_edges().iter_mut().try_for_each(|edge| {
-    let name = &graph
-      .get_node(edge.read_arc().target())
-      .unwrap()
-      .read_arc()
-      .payload()
-      .read_arc()
-      .name
-      .clone();
     let mut edge = edge.write_arc().payload().write_arc();
     let coefficients = (0..n_partitions)
       .map(|pi| get_coefficients(&edge.sparse_partitions[pi], &partitions[pi].gtr))
@@ -174,15 +166,14 @@ pub fn run_optimize_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihoo
     }
 
     // otherwise, we need to optimize the branch length
-    let (likelihood, log_likelihood, derivative, second_derivative) = evaluate_sparse(&coefficients, branch_length);
+    let (_, _, derivative, second_derivative) = evaluate_sparse(&coefficients, branch_length);
     if second_derivative < 0.0 {
       // newton's method to find the optimal branch length
       new_branch_length = branch_length - clamp(derivative / second_derivative, -1.0, branch_length);
       let max_iter = 10;
       let mut n_iter = 0;
       while (new_branch_length - branch_length).abs() > 0.001 * branch_length && n_iter < max_iter {
-        let (likelihood, log_likelihood, derivative, second_derivative) =
-          evaluate_sparse(&coefficients, new_branch_length);
+        let (_, _, derivative, second_derivative) = evaluate_sparse(&coefficients, new_branch_length);
         if second_derivative < 0.0 {
           branch_length = new_branch_length;
           new_branch_length = branch_length - clamp(derivative / second_derivative, -1.0, branch_length);

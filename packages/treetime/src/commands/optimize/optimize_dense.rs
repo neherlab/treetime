@@ -34,7 +34,7 @@ pub fn evaluate(
   let mut derivative = 0.0;
   let mut second_derivative = 0.0;
   for (pi, partition) in partitions.iter().enumerate() {
-    let PartitionLikelihood { gtr, length, alphabet } = &partition;
+    let PartitionLikelihood { gtr, .. } = &partition;
     // let coefficients = &partition.msg_to_parent.dis * &partition.msg_to_child.dis;
     let exp_ev = gtr.eigvals.mapv(|ev| (ev * branch_length).exp());
     let ev_exp_ev = &gtr.eigvals * &exp_ev;
@@ -64,7 +64,7 @@ pub fn initial_guess(graph: &DenseGraph, partitions: &[PartitionLikelihood]) -> 
   for edge in graph.get_edges() {
     let mut edge = edge.write_arc().payload().write_arc();
     let mut differences: usize = 0;
-    for (pi, partition) in edge.dense_partitions.iter().enumerate() {
+    for (_, partition) in edge.dense_partitions.iter().enumerate() {
       for (row1, row2) in zip(partition.msg_to_parent.dis.rows(), partition.msg_to_child.dis.rows()) {
         if row1[row2.argmax().unwrap()] < 0.5 {
           differences += 1;
@@ -81,14 +81,6 @@ pub fn run_optimize_dense(graph: &DenseGraph, partitions: &[PartitionLikelihood]
   let one_mutation = 1.0 / total_length as f64;
   let n_partitions = partitions.len();
   graph.get_edges().iter_mut().for_each(|edge| {
-    let name = &graph
-      .get_node(edge.read_arc().target())
-      .unwrap()
-      .read_arc()
-      .payload()
-      .read_arc()
-      .name
-      .clone();
     let mut edge = edge.write_arc().payload().write_arc();
     let mut branch_length = edge.branch_length.unwrap_or(0.0);
     let mut new_branch_length;
@@ -121,16 +113,14 @@ pub fn run_optimize_dense(graph: &DenseGraph, partitions: &[PartitionLikelihood]
     }
 
     // otherwise, we need to optimize the branch length
-    let (likelihood, log_likelihood, derivative, second_derivative) =
-      evaluate(&coefficients, partitions, branch_length);
+    let (likelihood, _, derivative, second_derivative) = evaluate(&coefficients, partitions, branch_length);
     if likelihood > 0.0 && second_derivative < 0.0 {
       // newton's method to find the optimal branch length
       new_branch_length = branch_length - clamp(derivative / second_derivative, -1.0, branch_length);
       let max_iter = 10;
       let mut n_iter = 0;
       while (new_branch_length - branch_length).abs() > 0.001 * branch_length && n_iter < max_iter {
-        let (likelihood, log_likelihood, derivative, second_derivative) =
-          evaluate(&coefficients, partitions, new_branch_length);
+        let (_, _, derivative, second_derivative) = evaluate(&coefficients, partitions, new_branch_length);
         if second_derivative < 0.0 {
           branch_length = new_branch_length;
           new_branch_length = branch_length - clamp(derivative / second_derivative, -1.0, branch_length);
