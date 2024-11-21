@@ -5,7 +5,7 @@ use crate::{
     partitions_likelihood::PartitionLikelihood,
   },
 };
-use eyre::Report;
+use eyre::{OptionExt, Report};
 use itertools::Itertools;
 use num::clamp;
 use std::iter::zip;
@@ -32,8 +32,7 @@ struct PartitionContribution {
   eigenvalues: ndarray::Array1<f64>,
 }
 
-fn get_coefficients(edge: &SparseSeqEdge, gtr: &GTR) -> PartitionContribution {
-  let mut site_contributions: Vec<SiteContribution> = Vec::new();
+fn get_coefficients(edge: &SparseSeqEdge, gtr: &GTR) -> Result<PartitionContribution, Report> {
   // collect variable positions from msg_to_child, msg_to_parent, and the substitutions along the edge
   let variable_positions: Vec<usize> = edge
     .msg_to_child
@@ -55,20 +54,21 @@ fn get_coefficients(edge: &SparseSeqEdge, gtr: &GTR) -> PartitionContribution {
         .variable
         .get(pos)
         .or_else(|| edge.msg_to_parent.variable.get(pos))
-        .unwrap()
+        .ok_or_eyre("Unable to find msg_to_parent")?
         .state;
       let child = edge
         .msg_to_parent
         .variable
         .get(pos)
         .or_else(|| edge.msg_to_child.variable.get(pos))
-        .unwrap()
+        .ok_or_eyre("Unable to find msg_to_child")?
         .state;
       (parent, child)
     };
-    state_pair
-  });
+    Ok(state_pair)
+  }).collect::<Result<Vec<_>, Report>>()?;
 
+  let mut site_contributions: Vec<SiteContribution> = Vec::new();
   for (&pos, (parent_state, child_state)) in zip(&variable_positions, variable_states) {
     let parent = if let Some(parent) = edge.msg_to_child.variable.get(&pos) {
       &parent.dis
@@ -83,7 +83,7 @@ fn get_coefficients(edge: &SparseSeqEdge, gtr: &GTR) -> PartitionContribution {
     };
     site_contributions.push(SiteContribution {
       multiplicity: 1.0,
-      coefficients: (parent.dot(&gtr.v) * child.dot(&gtr.v_inv.t())),
+      coefficients: parent.dot(&gtr.v) * child.dot(&gtr.v_inv.t()),
     });
   }
   for state in edge.msg_to_child.fixed.keys() {
@@ -91,13 +91,13 @@ fn get_coefficients(edge: &SparseSeqEdge, gtr: &GTR) -> PartitionContribution {
     let child = &edge.msg_to_parent.fixed[state];
     site_contributions.push(SiteContribution {
       multiplicity: edge.msg_to_child.fixed_counts.get(*state).unwrap() as f64,
-      coefficients: (parent.dot(&gtr.v) * child.dot(&gtr.v_inv.t())),
+      coefficients: parent.dot(&gtr.v) * child.dot(&gtr.v_inv.t()),
     });
   }
-  PartitionContribution {
+  Ok(PartitionContribution {
     site_contributions,
     eigenvalues: gtr.eigvals.to_owned(),
-  }
+  })
 }
 
 // function that takes two message projections, and gtr model, and the length of branch and returns the
@@ -140,7 +140,7 @@ pub fn run_optimize_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihoo
   let total_length: usize = partitions.iter().map(|part| part.length).sum();
   let one_mutation = 1.0 / total_length as f64;
   let n_partitions = partitions.len();
-  graph.get_edges().iter_mut().for_each(|edge| {
+  graph.get_edges().iter_mut().try_for_each(|edge| {
     let name = &graph
       .get_node(edge.read_arc().target())
       .unwrap()
@@ -152,7 +152,7 @@ pub fn run_optimize_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihoo
     let mut edge = edge.write_arc().payload().write_arc();
     let coefficients = (0..n_partitions)
       .map(|pi| get_coefficients(&edge.sparse_partitions[pi], &partitions[pi].gtr))
-      .collect_vec();
+      .collect::<Result<Vec<_>, Report>>()?;
     let mut branch_length = edge.branch_length.unwrap_or(0.0);
     let mut new_branch_length;
 
@@ -170,7 +170,7 @@ pub fn run_optimize_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihoo
     if zero_branch_length_lh > 0.0001 {
       // TODO: could check that derivative is negative
       edge.branch_length = Some(0.0);
-      return;
+      return Ok(());
     }
 
     // otherwise, we need to optimize the branch length
@@ -207,6 +207,7 @@ pub fn run_optimize_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihoo
       new_branch_length = best_branch_length;
     };
     edge.branch_length = Some(new_branch_length);
-  });
-  Ok(())
+
+    Ok(())
+  })
 }
