@@ -1,3 +1,25 @@
+//! The likelihood of an edge length is the product of the likelihoods of all positions of all partitions:
+//!
+//!   Lh = prod_i prod_j \sum_{ab} s^{ij}_a exp(Q_i t)_{ab} r^{ij}_b
+//!
+//! The log likelihood is the sum of many terms:
+//!
+//!   logLh = sum_i sum_j \log(\sum_{ab} s^{ij}_a exp(Q_i t)_{ab} r^{ij}_b)
+//!
+//! To effectively calculate this, we need to reformulate the likelihood in terms of the eigenvectors of the GTR matrix. Dropping the {ij} superscripts for brevity, we can write the likelihood as:
+//!
+//!   s_a exp(Qt)_{ab} r_b = s_a \sum_c v_{ac} exp(\lambda_c t) vinv_{cb} r_b = g_c exp(\lambda_c t) h_c = k_c exp(\lambda_c t)
+//!
+//! The `k_c` can be reused for different iterations of the branch length optimization:
+//!
+//!   logLh = sum_i sum_j \log(\sum_c k_c exp(\lambda^i_c t))
+//!
+//! The derivative is simply:
+//!
+//!   dlogLh/dt = sum_i sum_j \sum_c k_c \lambda_c exp(\lambda^i_c t) / \sum_c k_c exp(\lambda^i_c t)
+//!
+//!   d^2logLh/dt^2 = sum_i sum_j \sum_c k_c \lambda_c*\lambda^i_c exp(\lambda^i_c t) / \sum_c k_c exp(\lambda^i_c t) - k_c \lambda_c*\exp(\lambda^i_c t) / \sum_c k_c exp(\lambda^i_c t)
+//!
 use crate::{
   gtr::gtr::GTR,
   representation::{
@@ -9,18 +31,6 @@ use eyre::{OptionExt, Report};
 use itertools::Itertools;
 use num::clamp;
 use std::iter::zip;
-
-// The likelihood of an edge length is the product of the likelihoods of all positions of all partitions
-// Lh = prod_i prod_j \sum_{ab} s^{ij}_a exp(Q_i t)_{ab} r^{ij}_b
-// The log likelihood is the sum of many terms
-// logLh = sum_i sum_j \log(\sum_{ab} s^{ij}_a exp(Q_i t)_{ab} r^{ij}_b)
-// to effectively calculate this, we need to reformulate the likelihood in terms of the eigenvectors of the GTR matrix
-// Dropping the {ij} superscripts for brevity, we can write the likelihood as
-// s_a exp(Qt)_{ab} r_b = s_a \sum_c v_{ac} exp(\lambda_c t) vinv_{cb} r_b = g_c exp(\lambda_c t) h_c = k_c exp(\lambda_c t)
-// the k_c can be reused for different iterations of the branch length optimization
-// logLh = sum_i sum_j \log(\sum_c k_c exp(\lambda^i_c t))
-// the derivative is simply
-// dlogLh/dt = sum_i sum_j \sum_c k_c \lambda_c exp(\lambda^i_c t) / \sum_c k_c exp(\lambda^i_c t)
 
 struct SiteContribution {
   multiplicity: f64,
@@ -44,29 +54,32 @@ fn get_coefficients(edge: &SparseSeqEdge, gtr: &GTR) -> Result<PartitionContribu
     .unique()
     .collect();
 
-  let variable_states = variable_positions.iter().map(|pos| {
-    // check whether the position is in substitutions
-    let state_pair = if let Some(sub) = edge.subs.iter().find(|m| m.pos == *pos) {
-      (sub.reff, sub.qry)
-    } else {
-      let parent = edge
-        .msg_to_child
-        .variable
-        .get(pos)
-        .or_else(|| edge.msg_to_parent.variable.get(pos))
-        .ok_or_eyre("Unable to find msg_to_parent")?
-        .state;
-      let child = edge
-        .msg_to_parent
-        .variable
-        .get(pos)
-        .or_else(|| edge.msg_to_child.variable.get(pos))
-        .ok_or_eyre("Unable to find msg_to_child")?
-        .state;
-      (parent, child)
-    };
-    Ok(state_pair)
-  }).collect::<Result<Vec<_>, Report>>()?;
+  let variable_states = variable_positions
+    .iter()
+    .map(|pos| {
+      // check whether the position is in substitutions
+      let state_pair = if let Some(sub) = edge.subs.iter().find(|m| m.pos == *pos) {
+        (sub.reff, sub.qry)
+      } else {
+        let parent = edge
+          .msg_to_child
+          .variable
+          .get(pos)
+          .or_else(|| edge.msg_to_parent.variable.get(pos))
+          .ok_or_eyre("Unable to find msg_to_parent")?
+          .state;
+        let child = edge
+          .msg_to_parent
+          .variable
+          .get(pos)
+          .or_else(|| edge.msg_to_child.variable.get(pos))
+          .ok_or_eyre("Unable to find msg_to_child")?
+          .state;
+        (parent, child)
+      };
+      Ok(state_pair)
+    })
+    .collect::<Result<Vec<_>, Report>>()?;
 
   let mut site_contributions: Vec<SiteContribution> = Vec::new();
   for (&pos, (parent_state, child_state)) in zip(&variable_positions, variable_states) {

@@ -76,10 +76,10 @@ function main() {
     cargo_append_args=("-- -Dwarnings")
     ;;
   "format" | "f")
-    cargo_cmd=("format")
+    cargo_cmd=("fmt")
     ;;
   "format-check" | "fc")
-    cargo_cmd=("format --check")
+    cargo_cmd=("fmt --check")
     ;;
   "bench" | "B")
     cargo_cmd=("bench --workspace --benches")
@@ -103,8 +103,14 @@ function main() {
     if [ "$("$(project_root)/dev/is-ci")" == "1" ]; then
       cargo_cmd+=("--locked")
     fi
-    local target_dir="$(get_build_dir)"
-    nicely cargo -q ${cargo_cmd[@]} --target-dir="${target_dir}" ${cargo_append_args[@]} ${args:+--bin="$args"}
+
+    local target_dir=
+    # shellcheck disable=SC2199
+    if [[ "${cargo_cmd[@]}" != fmt* ]]; then
+      target_dir="$(get_build_dir)"
+    fi
+
+    nicely cargo -q ${cargo_cmd[@]} ${target_dir:+--target-dir="${target_dir}"} ${cargo_append_args[@]} ${args:+--bin="$args"}
 
   # Run rust tests
   elif [ -n "${cargo_test_cmd:-}" ]; then
