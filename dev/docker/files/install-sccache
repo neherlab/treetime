@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euxo pipefail
+
+dest=${1:-"/usr/local"}
+mkdir -p "${dest}/bin"
+
+version="0.8.2"
+
+curl -fsSL "https://github.com/mozilla/sccache/releases/download/v${version}/sccache-v${version}-x86_64-unknown-linux-musl.tar.gz" |
+  tar --strip-components=1 -C "${dest}/bin" -xz "sccache-v${version}-x86_64-unknown-linux-musl/sccache"
+
+ls "${dest}/bin/sccache"
+sccache --version
