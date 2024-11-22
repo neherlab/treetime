@@ -7,6 +7,7 @@ use crate::representation::graph_sparse::{
   SparseSeqNode,
 };
 use crate::representation::partitions_parsimony::{PartitionParsimony, PartitionParsimonyWithAln};
+use crate::representation::state_set::{StateSet, StateSetStatus};
 use crate::seq::composition::Composition;
 use crate::seq::indel::InDel;
 use crate::seq::mutation::Sub;
@@ -15,14 +16,11 @@ use crate::utils::interval::range_complement::range_complement;
 use crate::utils::interval::range_difference::range_difference;
 use crate::utils::interval::range_intersection::{range_intersection, range_intersection_iter};
 use crate::utils::manyzip::Manyzip;
-use crate::utils::ndarray::product_axis;
 use crate::{make_error, make_internal_report, make_report};
-use approx::UlpsEq;
 use eyre::{Report, WrapErr};
 use itertools::{izip, Itertools};
 use maplit::btreemap;
-use ndarray::{stack, Array1, Array2, AssignElem, Axis};
-use ndarray_stats::QuantileExt;
+use ndarray::AssignElem;
 
 fn attach_seqs_to_graph(graph: &SparseGraph, partitions: &[PartitionParsimonyWithAln]) -> Result<(), Report> {
   for leaf in graph.get_leaves() {
@@ -138,35 +136,33 @@ fn fitch_backwards(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]
               return None; // this position does not have character state information
             }
             let state = match child.fitch.variable.get(&pos) {
-              Some(var_pos) => var_pos.dis.view(),
-              None => alphabet.get_profile(child.sequence[pos]).view(),
+              Some(var_pos) => var_pos.dis.clone(),
+              None => StateSet::from_char(child.sequence[pos]),
             };
             Some(state)
           })
           .collect_vec();
 
-        // Stack child profiles on top of each other into a 2D matrix
-        let child_profiles: Array2<f64> = stack(Axis(0), &child_profiles).unwrap();
-
         // Calculate Fitch parsimony.
         // If we save the states of the children for each position that is variable in the node,
         // then we would not need the full sequences in the forward pass.
-        // TODO: we should change the type from vec>f64> to vec<bool> and use element wise AND instead of product
-        let intersection = product_axis(&child_profiles, Axis(0));
+        let intersection = StateSet::from_intersection(&child_profiles);
 
-        if intersection.sum().ulps_eq(&1.0, f64::EPSILON, 5) {
-          // intersection has a single state
-          let i = intersection.argmax().unwrap();
-          sequence[pos] = alphabet.char(i);
-        } else if intersection.sum() > 1.0 {
-          // more than one possible states
-          seq_dis.variable.insert(pos, ParsimonyVarPos::new(intersection, None));
-          sequence[pos] = VARIABLE_CHAR;
-        } else {
-          let union = child_profiles.sum_axis(Axis(0));
-          let dis = Array1::from_iter(union.iter().map(|&x| if x > 0.0 { 1.0 } else { 0.0 }));
-          seq_dis.variable.insert(pos, ParsimonyVarPos::new(dis, None));
-          sequence[pos] = VARIABLE_CHAR;
+        match intersection.get() {
+          StateSetStatus::Unambiguous(state) => {
+            // intersection has a single state, write it
+            sequence[pos] = state;
+          }
+          StateSetStatus::Ambiguous(_) => {
+            // more than one possible states
+            seq_dis.variable.insert(pos, ParsimonyVarPos::new(intersection, None));
+            sequence[pos] = VARIABLE_CHAR;
+          }
+          StateSetStatus::Empty => {
+            let union = StateSet::from_union(&child_profiles);
+            seq_dis.variable.insert(pos, ParsimonyVarPos::new(union, None));
+            sequence[pos] = VARIABLE_CHAR;
+          }
         }
       }
 
@@ -202,10 +198,8 @@ fn fitch_backwards(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]
           states => {
             // Child states differ. This is variable state.
             // Save child states and postpone the decision until forward pass.
-            let child_profiles = states.iter().map(|&c| alphabet.get_profile(c).view()).collect_vec();
-            let child_profiles: Array2<f64> = stack(Axis(0), &child_profiles).unwrap();
-            let summed_profile = child_profiles.sum_axis(Axis(0));
-            seq_dis.variable.insert(pos, ParsimonyVarPos::new(summed_profile, None));
+            let dis = StateSet::from_chars(states);
+            seq_dis.variable.insert(pos, ParsimonyVarPos::new(dis, None));
             VARIABLE_CHAR
           }
         };
@@ -293,8 +287,7 @@ fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]) 
 
       if node.is_root {
         for (pos, p) in variable {
-          let i = p.dis.argmax().unwrap();
-          let state = alphabet.char(i);
+          let state = p.dis.get_one();
           p.state = Some(state);
           sequence[*pos] = state;
         }
@@ -330,12 +323,10 @@ fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]) 
           let pnuc = parent.sequence[*pos];
           if alphabet.is_canonical(pnuc) {
             // check whether parent is in child profile (sum>0 --> parent state is in profile)
-            let parent_in_profile = (alphabet.get_profile(pnuc) * &p.dis).sum() > 0.0;
-            if parent_in_profile {
+            if p.dis.contains(pnuc) {
               sequence[*pos] = pnuc;
             } else {
-              let i = p.dis.argmax().unwrap();
-              let cnuc = alphabet.char(i);
+              let cnuc = p.dis.get_one();
               sequence[*pos] = cnuc;
               let m = Sub {
                 pos: *pos,
@@ -348,8 +339,7 @@ fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]) 
             p.state = Some(sequence[*pos]);
           } else if alphabet.is_gap(pnuc) && !range_contains(gaps, *pos) {
             // if parent is gap, but child isn't, we need to resolve variable states
-            let i = p.dis.argmax().unwrap();
-            let cnuc = alphabet.char(i);
+            let cnuc = p.dis.get_one();
             sequence[*pos] = cnuc;
           }
         }
@@ -533,7 +523,7 @@ pub fn ancestral_reconstruction_fitch(
         }
 
         for (pos, p) in &node.fitch.variable {
-          seq[*pos] = alphabet.get_code(&p.dis);
+          seq[*pos] = p.dis.get_one();
         }
 
         node.sequence = seq.clone();
@@ -993,15 +983,8 @@ mod tests {
           "variable": {
             "10": {
               "dis": {
-                "v": 1,
-                "dim": [
-                  4
-                ],
                 "data": [
-                  1.0,
-                  0.0,
-                  1.0,
-                  0.0
+                  "R"
                 ]
               },
               "state": null

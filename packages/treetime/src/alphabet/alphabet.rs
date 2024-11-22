@@ -1,6 +1,6 @@
 use crate::io::json::{json_write_str, JsonPretty};
-use crate::make_error;
 use crate::utils::string::quote;
+use crate::{make_error, make_internal_report};
 use clap::ArgEnum;
 use color_eyre::{Section, SectionExt};
 use eyre::{Report, WrapErr};
@@ -9,7 +9,9 @@ use itertools::{chain, Itertools};
 use ndarray::{stack, Array1, Array2, Axis};
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
+use std::borrow::Borrow;
 use std::collections::BTreeSet;
+use std::fmt::Display;
 use std::iter::once;
 use strum_macros::Display;
 
@@ -147,6 +149,23 @@ impl Alphabet {
         )
       })
       .unwrap()
+  }
+
+  /// Create a profile vector given a set of characters
+  pub fn construct_profile<I, T>(&self, chars: I) -> Result<Array1<f64>, Report>
+  where
+    I: IntoIterator<Item = T>,
+    T: Borrow<char> + Display,
+  {
+    let mut profile = Array1::<f64>::zeros(self.n_canonical());
+    for c in chars {
+      let chars = self.disambiguate(*c.borrow());
+      for c in chars {
+        let index = self.index(c);
+        profile[index] = 1.0;
+      }
+    }
+    Ok(profile)
   }
 
   pub fn get_code(&self, profile: &Array1<f64>) -> char {

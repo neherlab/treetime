@@ -5,6 +5,7 @@ use crate::graph::node::{GraphNode, Named};
 use crate::io::graphviz::{EdgeToGraphViz, NodeToGraphviz};
 use crate::io::nwk::{format_weight, EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteOptions};
 use crate::o;
+use crate::representation::state_set::StateSet;
 use crate::seq::composition::Composition;
 use crate::seq::find_char_ranges::find_letter_ranges;
 use crate::seq::indel::InDel;
@@ -97,7 +98,7 @@ impl SparseSeqNode {
         (
           pos,
           ParsimonyVarPos {
-            dis: alphabet.get_profile(c).clone(),
+            dis: StateSet::from_char(c),
             state: None,
           },
         )
@@ -203,12 +204,12 @@ impl VarPos {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ParsimonyVarPos {
-  pub dis: Array1<f64>, // TODO: this could be an array of booleans of size 'alphabet'
+  pub dis: StateSet,
   pub state: Option<char>,
 }
 
 impl ParsimonyVarPos {
-  pub fn new(dis: Array1<f64>, state: Option<char>) -> Self {
+  pub fn new(dis: StateSet, state: Option<char>) -> Self {
     Self { dis, state }
   }
 }
