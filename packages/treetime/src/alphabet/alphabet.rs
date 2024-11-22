@@ -1,6 +1,6 @@
 use crate::io::json::{json_write_str, JsonPretty};
+use crate::make_error;
 use crate::utils::string::quote;
-use crate::{make_error, make_internal_report};
 use clap::ArgEnum;
 use color_eyre::{Section, SectionExt};
 use eyre::{Report, WrapErr};
