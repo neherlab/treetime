@@ -336,12 +336,12 @@ fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]) 
               composition.add_sub(&m);
               edge.subs.push(m);
             }
-            p.state = Some(sequence[*pos]);
           } else if alphabet.is_gap(pnuc) && !range_contains(gaps, *pos) {
             // if parent is gap, but child isn't, we need to resolve variable states
             let cnuc = p.dis.get_one();
             sequence[*pos] = cnuc;
           }
+          p.state = Some(sequence[*pos]);
         }
 
         for (&pos, pvar) in &parent.fitch.variable {
@@ -522,8 +522,10 @@ pub fn ancestral_reconstruction_fitch(
           seq[r.0..r.1].fill(alphabet.unknown());
         }
 
-        for (pos, p) in &node.fitch.variable {
-          seq[*pos] = p.dis.get_one();
+        for (pos, p) in &mut node.fitch.variable {
+          let state = p.dis.get_one();
+          p.state = Some(state);
+          seq[*pos] = state;
         }
 
         node.sequence = seq.clone();

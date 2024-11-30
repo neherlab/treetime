@@ -98,7 +98,7 @@ impl SparseSeqNode {
         (
           pos,
           ParsimonyVarPos {
-            dis: StateSet::from_char(c),
+            dis: StateSet::from_chars(alphabet.disambiguate(c)),
             state: None,
           },
         )
