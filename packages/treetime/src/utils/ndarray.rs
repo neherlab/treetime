@@ -212,7 +212,6 @@ mod tests {
   use eyre::Report;
   use lazy_static::lazy_static;
   use ndarray::{arr0, array, Array0};
-  use ndarray_linalg::{Eigh, UPLO};
   use rand::SeedableRng;
   use rand_isaac::Isaac64Rng;
   use rstest::rstest;
@@ -336,66 +335,6 @@ mod tests {
     let result_outer_ti_pi = outer(&ti, &pi).unwrap();
     pretty_assert_ulps_eq!(expected_outer_pi_ti, result_outer_pi_ti, epsilon = 1e-6);
     pretty_assert_ulps_eq!(expected_outer_ti_pi, result_outer_ti_pi, epsilon = 1e-6);
-  }
-
-  #[rstest]
-  fn computes_eigh() -> Result<(), Report> {
-    // Comparison of Rust ndarray_linalg::eigh() and NumPy np.linalg.eigh()
-    // https://docs.rs/ndarray-linalg/latest/ndarray_linalg/eigh/index.html
-    // https://numpy.org/doc/stable/reference/generated/numpy.linalg.eigh.html
-
-    let a: Array2<f64> = array![
-      [-1.0, 0.25, 0.25, 0.25, 0.25],
-      [0.25, -1.0, 0.25, 0.25, 0.25],
-      [0.25, 0.25, -1.0, 0.25, 0.25],
-      [0.25, 0.25, 0.25, -1.0, 0.25],
-      [0.25, 0.25, 0.25, 0.25, -1.0],
-    ];
-
-    // Rust version:
-    let (eigvals, eigvecs) = a.eigh(UPLO::Lower)?;
-
-    // NumPy version:
-    // import numpy as np
-    // np.set_printoptions(precision=60, suppress=True, linewidth=999, sign=' ', floatmode='maxprec_equal')
-    // pprint(np.linalg.eigh([
-    //   [-1.0, 0.25, 0.25, 0.25, 0.25],
-    //   [0.25, -1.0, 0.25, 0.25, 0.25],
-    //   [0.25, 0.25, -1.0, 0.25, 0.25],
-    //   [0.25, 0.25, 0.25, -1.0, 0.25],
-    //   [0.25, 0.25, 0.25, 0.25, -1.0],
-    // ]))
-
-    // WolframAlpha version:
-    // https://www.wolframalpha.com/input?i2d=true&i=%7B%7B-1.0%2C0.25%2C0.25%2C0.25%2C0.25%7D%2C%7B0.25%2C-1.0%2C0.25%2C0.25%2C0.25%7D%2C%7B0.25%2C0.25%2C-1.0%2C0.25%2C0.25%7D%2C%7B0.25%2C0.25%2C0.25%2C-1.0%2C0.25%7D%2C%7B0.25%2C0.25%2C0.25%2C0.25%2C-1.0%7D%7D
-
-    #[rustfmt::skip]
-    pretty_assert_ulps_eq!(
-      eigvals,
-
-      // NumPy np.linalg.eigh() result (with openblas backend):
-      array![-1.25000000000000022204460492503131, -1.25000000000000000000000000000000, -1.24999999999999977795539507496869, -1.24999999999999888977697537484346,  0.00000000000000005551115123125783],
-
-      max_ulps = 1
-    );
-
-    #[rustfmt::skip]
-    pretty_assert_ulps_eq!(
-      eigvecs,
-
-      // NumPy np.linalg.eigh() result (with openblas backend):
-      array![
-        [ 0.00000000000000000000000000000000,  0.67791921943923838522749747426133,  0.58345996599157845530214672180591, -0.00000000000000000000000000000000,  0.44721359549995798321475604097941],
-        [-0.00000000000000004163336342344337,  0.39545287800622275220518986316165, -0.80225745323841990419566627679160,  0.00000000000000004163336342344337,  0.44721359549995809423705850349506],
-        [-0.28307239576681808568281439875136, -0.35779069914848726785550070417230,  0.07293249574894733466834395585465, -0.76585683089040890170196007602499,  0.44721359549995787219245357846376],
-        [-0.52171527332952805089405501348665, -0.35779069914848704581089577914099,  0.07293249574894722364604149333900,  0.62807630128939140323751644245931,  0.44721359549995787219245357846376],
-        [ 0.80478766909634613657686941223801, -0.35779069914848704581089577914099,  0.07293249574894722364604149333900,  0.13778052960101749846444363356568,  0.44721359549995787219245357846376],
-      ],
-
-      max_ulps = 1
-    );
-
-    Ok(())
   }
 
   #[rstest]
