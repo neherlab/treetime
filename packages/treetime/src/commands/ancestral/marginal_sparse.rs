@@ -36,8 +36,8 @@ fn ingroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihoo
           .variable
           .iter()
           .map(|(pos, p)| {
-            let dis = alphabet.construct_profile(p.dis.chars()).unwrap();
-            let state = p.state.unwrap();
+            let dis = alphabet.construct_profile(p.chars()).unwrap();
+            let state = p.get_one();
             (*pos, VarPos { dis, state })
           })
           .collect();
@@ -432,8 +432,8 @@ pub fn ancestral_reconstruction_marginal_sparse(
           }
 
           // Implant most likely state of variable sites
-          for (&pos, vec) in &node.payload.sparse_partitions[si].seq.fitch.variable {
-            seq[pos] = vec.dis.get_one();
+          for (&pos, states) in &node.payload.sparse_partitions[si].seq.fitch.variable {
+            seq[pos] = states.get_one();
           }
 
           // Implant indels
@@ -454,8 +454,8 @@ pub fn ancestral_reconstruction_marginal_sparse(
           seq[r.0..r.1].fill(ambig_char);
         }
 
-        for (pos, p) in &node_seq.fitch.variable {
-          seq[*pos] = p.dis.get_one();
+        for (pos, states) in &node_seq.fitch.variable {
+          seq[*pos] = states.get_one();
         }
 
         node.payload.sparse_partitions[si].seq.sequence = seq.clone();

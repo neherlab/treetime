@@ -73,18 +73,24 @@ impl StateSet {
     }
   }
 
+  /// Get one of the characters from the set, or return None.
+  /// Note: which of the multiple character gets retrieved is not specified and is not to be relied on.
+  pub fn get_one_maybe(&self) -> Option<char> {
+    self.data.iter().next().copied()
+  }
+
   /// Get one of the characters from the set, or panic if the set is empty.
   /// Note: which of the multiple character gets retrieved is not specified and is not to be relied on.
   pub fn get_one(&self) -> char {
     assert!(self.data.len() > 0);
-    self.data.iter().next().copied().unwrap()
+    self.get_one_maybe().unwrap()
   }
 
   /// Get exactly one element from the set, or panic if there's not exactly one element.
   /// Note: which of the multiple character gets retrieved is not specified and is not to be relied on.
   pub fn get_one_exactly(&self) -> char {
     assert_eq!(self.data.len(), 1);
-    self.data.iter().next().copied().unwrap()
+    self.get_one_maybe().unwrap()
   }
 
   /// Check if set contains a character

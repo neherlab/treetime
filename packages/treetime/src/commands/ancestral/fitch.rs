@@ -3,8 +3,7 @@ use crate::alphabet::alphabet::{FILL_CHAR, NON_CHAR, VARIABLE_CHAR};
 use crate::graph::breadth_first::GraphTraversalContinuation;
 use crate::io::fasta::FastaRecord;
 use crate::representation::graph_sparse::{
-  Deletion, ParsimonySeqDis, ParsimonyVarPos, SparseGraph, SparseNode, SparseSeqDis, SparseSeqEdge, SparseSeqInfo,
-  SparseSeqNode,
+  Deletion, ParsimonySeqDis, SparseGraph, SparseNode, SparseSeqDis, SparseSeqEdge, SparseSeqInfo, SparseSeqNode,
 };
 use crate::representation::partitions_parsimony::{PartitionParsimony, PartitionParsimonyWithAln};
 use crate::representation::state_set::{StateSet, StateSetStatus};
@@ -136,7 +135,7 @@ fn fitch_backwards(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]
               return None; // this position does not have character state information
             }
             let state = match child.fitch.variable.get(&pos) {
-              Some(var_pos) => var_pos.dis.clone(),
+              Some(var_pos) => var_pos.clone(),
               None => StateSet::from_char(child.sequence[pos]),
             };
             Some(state)
@@ -155,12 +154,12 @@ fn fitch_backwards(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]
           }
           StateSetStatus::Ambiguous(_) => {
             // more than one possible states
-            seq_dis.variable.insert(pos, ParsimonyVarPos::new(intersection, None));
+            seq_dis.variable.insert(pos, intersection);
             sequence[pos] = VARIABLE_CHAR;
           }
           StateSetStatus::Empty => {
             let union = StateSet::from_union(&child_profiles);
-            seq_dis.variable.insert(pos, ParsimonyVarPos::new(union, None));
+            seq_dis.variable.insert(pos, union);
             sequence[pos] = VARIABLE_CHAR;
           }
         }
@@ -199,7 +198,7 @@ fn fitch_backwards(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]
             // Child states differ. This is variable state.
             // Save child states and postpone the decision until forward pass.
             let dis = StateSet::from_chars(states);
-            seq_dis.variable.insert(pos, ParsimonyVarPos::new(dis, None));
+            seq_dis.variable.insert(pos, dis);
             VARIABLE_CHAR
           }
         };
@@ -286,10 +285,8 @@ fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]) 
       } = &mut node.payload.sparse_partitions[si].seq;
 
       if node.is_root {
-        for (pos, p) in variable {
-          let state = p.dis.get_one();
-          p.state = Some(state);
-          sequence[*pos] = state;
+        for (pos, states) in variable {
+          sequence[*pos] = states.get_one();
         }
         // process indels as majority rule at the root
         for (r, indel) in variable_indel.iter() {
@@ -319,14 +316,14 @@ fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]) 
         }
 
         // for each variable position, pick a state or a mutation
-        for (pos, p) in variable.iter_mut() {
+        for (pos, states) in variable.iter_mut() {
           let pnuc = parent.sequence[*pos];
           if alphabet.is_canonical(pnuc) {
             // check whether parent is in child profile (sum>0 --> parent state is in profile)
-            if p.dis.contains(pnuc) {
+            if states.contains(pnuc) {
               sequence[*pos] = pnuc;
             } else {
-              let cnuc = p.dis.get_one();
+              let cnuc = states.get_one();
               sequence[*pos] = cnuc;
               let m = Sub {
                 pos: *pos,
@@ -338,10 +335,8 @@ fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]) 
             }
           } else if alphabet.is_gap(pnuc) && !range_contains(gaps, *pos) {
             // if parent is gap, but child isn't, we need to resolve variable states
-            let cnuc = p.dis.get_one();
-            sequence[*pos] = cnuc;
+            sequence[*pos] = states.get_one();
           }
-          p.state = Some(sequence[*pos]);
         }
 
         for (&pos, pvar) in &parent.fitch.variable {
@@ -353,7 +348,7 @@ fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]) 
           // child state of variable positions in the backward pass
           let node_nuc = sequence[pos];
           if alphabet.is_canonical(node_nuc) {
-            if let Some(pvar_state) = pvar.state {
+            if let Some(pvar_state) = pvar.get_one_maybe() {
               if pvar_state != node_nuc {
                 let m = Sub {
                   pos,
@@ -439,7 +434,7 @@ fn fitch_cleanup(graph: &SparseGraph) {
 
       seq.fitch.composition = seq.composition.clone();
       for p in seq.fitch.variable.values() {
-        if let Some(state) = p.state {
+        if let Some(state) = p.get_one_maybe() {
           seq.fitch.composition.adjust_count(state, -1);
         }
       }
@@ -522,10 +517,8 @@ pub fn ancestral_reconstruction_fitch(
           seq[r.0..r.1].fill(alphabet.unknown());
         }
 
-        for (pos, p) in &mut node.fitch.variable {
-          let state = p.dis.get_one();
-          p.state = Some(state);
-          seq[*pos] = state;
+        for (pos, states) in &mut node.fitch.variable {
+          seq[*pos] = states.get_one();
         }
 
         node.sequence = seq.clone();
@@ -992,12 +985,10 @@ mod tests {
         "fitch": {
           "variable": {
             "10": {
-              "dis": {
-                "data": [
-                  "R"
-                ]
-              },
-              "state": null
+              "data": [
+                "A",
+                "G"
+              ]
             }
           },
           "variable_indel": {},

@@ -94,15 +94,7 @@ impl SparseSeqNode {
       .iter()
       .enumerate()
       .filter(|(_, &c)| alphabet.is_ambiguous(c))
-      .map(|(pos, &c)| {
-        (
-          pos,
-          ParsimonyVarPos {
-            dis: StateSet::from_chars(alphabet.disambiguate(c)),
-            state: None,
-          },
-        )
-      })
+      .map(|(pos, &c)| (pos, StateSet::from_chars(alphabet.disambiguate(c))))
       .collect();
 
     let seq_dis = ParsimonySeqDis {
@@ -203,18 +195,6 @@ impl VarPos {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct ParsimonyVarPos {
-  pub dis: StateSet,
-  pub state: Option<char>,
-}
-
-impl ParsimonyVarPos {
-  pub fn new(dis: StateSet, state: Option<char>) -> Self {
-    Self { dis, state }
-  }
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Deletion {
   pub deleted: usize, // number of times deletion is observed
   pub present: usize, // or not
@@ -251,7 +231,7 @@ impl Default for SparseSeqDis {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ParsimonySeqDis {
   /// probability vector for each variable position collecting information from children
-  pub variable: BTreeMap<usize, ParsimonyVarPos>,
+  pub variable: BTreeMap<usize, StateSet>,
 
   pub variable_indel: BTreeMap<(usize, usize), Deletion>,
 
