@@ -1,4 +1,5 @@
 pub mod assert;
+pub mod openblas;
 pub mod container;
 pub mod datetime;
 pub mod error;
