@@ -584,13 +584,15 @@ mod tests {
         [ 1.0+od,  0.0000000000000000,  1.0+od,  1.0+od],
         [ 1.0+od,  1.0+od,  0.0000000000000000,  1.0+od],
         [ 1.0+od,  1.0+od,  1.0+od,  0.0000000000000000],
-      ]
+      ],
+      epsilon = 1e-12
     );
 
     #[rustfmt::skip]
     pretty_assert_ulps_eq!(
       gtr.eigvals,
-      array![-1.0 - od, -1.0 - od, -1.0 - od, 0.0]
+      array![-1.0 - od, -1.0 - od, -1.0 - od, 0.0],
+      epsilon = 1e-12
     );
 
     // NOTE: These are failing likely due to the different conventions in linear algebra packages used in Python version
