@@ -518,7 +518,7 @@ pub fn ancestral_reconstruction_fitch(
         }
 
         for (pos, states) in &mut node.fitch.variable {
-          seq[*pos] = states.get_one();
+          seq[*pos] = alphabet.ambiguate(&states.inner()).first().copied().unwrap();
         }
 
         node.sequence = seq.clone();
