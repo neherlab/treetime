@@ -8,6 +8,7 @@ use treetime::commands::mugration::run_mugration::run_mugration;
 use treetime::commands::optimize::run::run_optimize;
 use treetime::commands::timetree::run_timetree_estimation::run_timetree_estimation;
 use treetime::utils::global_init::global_init;
+use treetime::utils::openblas::get_openblas_info_str;
 use treetime_cli::cli::treetime_cli::{generate_shell_completions, treetime_parse_cli_args, TreetimeCommands};
 
 #[ctor]
@@ -45,6 +46,9 @@ fn main() -> Result<(), Report> {
       generate_shell_completions(&shell)?;
     }
     TreetimeCommands::Arg(arg_args) => {}
+    TreetimeCommands::Debug => {
+      println!("{}", get_openblas_info_str());
+    }
   }
 
   Ok(())
