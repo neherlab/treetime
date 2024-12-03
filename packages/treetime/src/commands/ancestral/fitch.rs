@@ -348,16 +348,14 @@ fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]) 
           // child state of variable positions in the backward pass
           let node_nuc = sequence[pos];
           if alphabet.is_canonical(node_nuc) {
-            if let Some(pvar_state) = pvar.get_one_maybe() {
-              if pvar_state != node_nuc {
-                let m = Sub {
-                  pos,
-                  qry: node_nuc,
-                  reff: pvar_state,
-                };
-                composition.add_sub(&m);
-                edge.subs.push(m);
-              }
+            if parent.sequence[pos]  != node_nuc {
+              let m = Sub {
+                pos,
+                qry: node_nuc,
+                reff: parent.sequence[pos],
+              };
+              composition.add_sub(&m);
+              edge.subs.push(m);
             }
           }
         }
