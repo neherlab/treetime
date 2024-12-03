@@ -90,6 +90,10 @@ pub enum TreetimeCommands {
 
   /// Estimates ancestral reassortment graph (ARG).
   Arg(TreetimeAncestralReassortmentGraphArgs),
+
+  /// Print system information for debugging
+  #[clap(hide = true)]
+  Debug,
 }
 
 #[derive(Parser, Debug)]

@@ -10,13 +10,8 @@ use eyre::Report;
 pub fn reroot_in_place(graph: &mut ClockGraph, options: &ClockOptions) -> Result<GraphNodeKey, Report> {
   let old_root_key = { graph.get_exactly_one_root()?.read_arc().key() };
 
-  let FindRootResult {
-    edge,
-    split,
-    total,
-    chisq,
-  } = find_best_root(graph, options)?;
-  // if edge is null, we are already at the best root, return old_root_key
+  let FindRootResult { edge, split, total, .. } = find_best_root(graph, options)?;
+  // If edge is null, we are already at the best root, return old_root_key
   if edge.is_none() {
     return Ok(old_root_key);
   }

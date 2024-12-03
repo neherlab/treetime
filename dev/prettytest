@@ -14,9 +14,7 @@ patterns_multiline = [
 ]
 
 patterns = [
-  r'.*Starting.*test.*across.*binaries.*\n',
   r'.*------------.*\n',
-  r'.*Summary.* run.*passed.*skipped.*\n',
 ]
 
 s = sys.stdin.read()

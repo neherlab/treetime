@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2178
 set -euo pipefail
 trap "exit" INT
 # shellcheck source=./lib/utils.sh
 source "${BASH_SOURCE%/*}/lib/utils.sh"
 
 function main() {
-  local cargo_cmd cargo_test_cmd docs_cmd npm_cmd wasm_cmd
+  local cargo_cmd cargo_test_cmd cmd docs_cmd npm_cmd wasm_cmd
 
   local docker_args=()
   local cargo_append_args=()
@@ -76,13 +77,17 @@ function main() {
     cargo_append_args=("-- -Dwarnings")
     ;;
   "format" | "f")
-    cargo_cmd=("format")
+    cargo_cmd=("fmt")
     ;;
   "format-check" | "fc")
-    cargo_cmd=("format --check")
+    cargo_cmd=("fmt --check")
     ;;
   "bench" | "B")
     cargo_cmd=("bench --workspace --benches")
+    ;;
+  "bench-hyperfine" | "H")
+    cargo_cmd=("build --release")
+    cmd=("hyperfine")
     ;;
   "p" | "py")
     bash
@@ -94,8 +99,6 @@ function main() {
 
   shift
 
-  local args=$(echo "${@:-}" | xargs)
-
   declare -x RUST_BACKTRACE="full"
 
   # Run a cargo command (except tests)
@@ -103,8 +106,26 @@ function main() {
     if [ "$("$(project_root)/dev/is-ci")" == "1" ]; then
       cargo_cmd+=("--locked")
     fi
-    local target_dir="$(get_build_dir)"
-    nicely cargo -q ${cargo_cmd[@]} --target-dir="${target_dir}" ${cargo_append_args[@]} ${args:+--bin="$args"}
+
+    local target_dir=
+    # shellcheck disable=SC2199
+    if [[ "${cargo_cmd[@]}" != fmt* ]]; then
+      target_dir="$(get_build_dir)"
+    fi
+
+    local args=("${@:-}")
+    local bin="${args[0]}"
+    local args=("${args[@]:2}")
+    local cargo_run_args=()
+    if [[ "${cargo_cmd:-}" != build* ]]; then
+      cargo_run_args=("${args[@]}")
+    fi
+
+    nicely cargo -q ${cargo_cmd[@]} ${target_dir:+--target-dir="${target_dir}"} ${cargo_append_args[@]} ${bin:+--bin="${bin}"} "${cargo_run_args[@]}"
+
+    if [ "${cmd[*]:-}" == "hyperfine" ]; then
+      nicely hyperfine --warmup 1 --show-output "'${target_dir}/release/${bin} ${args[*]}'"
+    fi
 
   # Run rust tests
   elif [ -n "${cargo_test_cmd:-}" ]; then
@@ -113,8 +134,10 @@ function main() {
     # HACK: `cargo nextest` seems to be having problems discovering linked libraries, let's specify them explicitly
     declare -x RUSTFLAGS="-C linker=${HOSTCC} -C link-arg=-pthread -C link-arg=-lopenblas -C link-arg=-lgfortran -C link-arg=-static-libgfortran -C link-arg=-static-libgcc -C link-arg=-static-libstdc++ ${RUSTFLAGS:-}"
 
+    local args=$(echo "${@:-}" | xargs)
+
     # shellcheck disable=SC2086
-    nicely cargo -q nextest run --success-output=immediate --workspace --cargo-quiet --no-fail-fast --hide-progress-bar --color=always --target-dir="${target_dir}" ${args} 2>&1 |
+    nicely cargo -q nextest run --success-output=immediate --workspace --cargo-quiet --no-fail-fast --hide-progress-bar --color=always --target-dir="${target_dir}" ${args[@]} 2>&1 |
       "$(project_root)/dev/prettytest"
 
   # TODO: run an npm/yarn/bun/deno command

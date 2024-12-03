@@ -80,7 +80,6 @@ fn fitch_backwards(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]
       edge.write_arc().sparse_partitions = vec![SparseSeqEdge::default(); n_partitions];
     }
 
-    #[allow(clippy::needless_range_loop)]
     for si in 0..n_partitions {
       let PartitionParsimony { alphabet, length } = &sparse_partitions[si];
 
@@ -277,7 +276,6 @@ fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]) 
   let n_partitions = sparse_partitions.len();
 
   graph.par_iter_breadth_first_forward(|mut node| {
-    #[allow(clippy::needless_range_loop)]
     for si in 0..n_partitions {
       let PartitionParsimony { alphabet, .. } = &sparse_partitions[si];
       let SparseSeqInfo {
@@ -580,6 +578,7 @@ pub fn get_common_length(aln: &[FastaRecord]) -> Result<usize, Report> {
 mod tests {
   use super::*;
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
+  use crate::graph::node::Named;
   use crate::io::fasta::read_many_fasta_str;
   use crate::io::json::{json_write_str, JsonPretty};
   use crate::io::nwk::nwk_read_str;
@@ -774,9 +773,18 @@ mod tests {
       let actual_muts: BTreeMap<_, _> = graph
         .get_edges()
         .iter()
-        .map(|e| {
+        .enumerate()
+        .map(|(i, e)| {
+          let get_name = |node_id| {
+            let node = graph.get_node(node_id).unwrap().read_arc();
+            node.payload().read_arc().name().unwrap().as_ref().to_owned()
+          };
+
+          let src = get_name(e.read_arc().source());
+          let tar = get_name(e.read_arc().target());
+
           (
-            e.read_arc().key(),
+            format!("{src}->{tar}"),
             e.read_arc().payload().read_arc().sparse_partitions[0]
               .subs
               .iter()
@@ -787,15 +795,13 @@ mod tests {
         .collect();
 
       let expected_muts = btreemap! {
-        0 => vec!["C6G", "T8C"],
-        1 => vec!["A1G"],
-        2 => vec!["G4T", "A7C"],
-        3 => vec!["C6G"],
-        4 => vec!["C1T", "A7G"],
-        5 => vec!["A1C", "A3G"],
-      };
-
-      assert_eq!(
+        "AB->A"    => vec!["C6G", "T8C"],
+        "AB->B"    => vec!["A1G"],
+        "root->AB" => vec!["G4T", "A7C"],
+        "CD->C"    => vec!["C6G"],
+        "CD->D"    => vec!["C1T", "A7G"],
+        "root->CD" => vec!["A1C", "A3G"],
+      };      assert_eq!(
         json_write_str(&expected_muts, JsonPretty(true))?,
         json_write_str(&actual_muts, JsonPretty(true))?
       );

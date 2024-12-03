@@ -29,7 +29,7 @@ pub fn find_best_root(graph: &ClockGraph, options: &ClockOptions) -> Result<Find
   let root = graph.get_exactly_one_root()?;
   let mut best_root_node = Arc::clone(&root);
 
-  // inialize with the current root
+  // Initialize with the current root
   let root = root.read_arc().payload().read_arc();
   let mut best_chisq = root.total.chisq();
   let mut best_res = FindRootResult {
@@ -39,7 +39,7 @@ pub fn find_best_root(graph: &ClockGraph, options: &ClockOptions) -> Result<Find
     total: root.total.clone(),
   };
 
-  // find best node
+  // Find best node
   for n in graph.get_nodes() {
     let tmp_chisq = n.read_arc().payload().read_arc().total.chisq();
     if tmp_chisq < best_chisq {
@@ -73,7 +73,7 @@ pub fn find_best_root(graph: &ClockGraph, options: &ClockOptions) -> Result<Find
   Ok(best_res)
 }
 
-// TODO: the core of this function uses just two clocksets at either end of the edge, the branch length and variance (plus terminal offset)
+// TODO: the core of this function uses just two clock sets at either end of the edge, the branch length and variance (plus terminal offset).
 // We could refactor this to a separate function that takes these as arguments and separate the core from the bureaucracy.
 fn find_best_split(graph: &ClockGraph, edge: GraphEdgeKey, options: &ClockOptions) -> Result<FindRootResult, Report> {
   let edge = graph.get_edge(edge).expect("Edge not found");

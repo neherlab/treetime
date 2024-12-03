@@ -35,7 +35,7 @@ pub fn root_clock_model(graph: &ClockGraph) -> Result<ClockModel, Report> {
 pub fn clock_regression_backward(graph: &ClockGraph, options: &ClockOptions) {
   graph.par_iter_breadth_first_backward(|mut n| {
     let date = n.payload.date;
-    // assemble the message that will be send to the parent
+    // assemble the message that will be sent to the parent
     let q_to_parent = if n.is_leaf {
       if n.payload.is_outlier {
         ClockSet::outlier_contribution()
@@ -44,7 +44,7 @@ pub fn clock_regression_backward(graph: &ClockGraph, options: &ClockOptions) {
       }
     } else {
       let mut q_dest = ClockSet::default();
-      for (c, e) in &n.children {
+      for (_, e) in &n.children {
         q_dest += &e.read_arc().from_child;
       }
       q_dest
@@ -78,7 +78,7 @@ pub fn clock_regression_forward(graph: &ClockGraph, options: &ClockOptions) {
   graph.par_iter_breadth_first_forward(|mut n| {
     if !n.is_root {
       // if not at the root, calculate the total message from the parent message, and the message sent to the parent
-      let (parent, edge) = n.get_exactly_one_parent().unwrap();
+      let (_, edge) = n.get_exactly_one_parent().unwrap();
       let edge = edge.read_arc();
       let edge_len = edge.weight().expect("Encountered an edge without a weight");
       let branch_variance = options.variance_factor * edge_len + options.variance_offset;

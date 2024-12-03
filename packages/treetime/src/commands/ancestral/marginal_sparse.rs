@@ -2,12 +2,12 @@ use crate::alphabet::alphabet::Alphabet;
 use crate::graph::breadth_first::GraphTraversalContinuation;
 use crate::graph::edge::Weighted;
 use crate::hacks::fix_branch_length::fix_branch_length;
+use crate::make_internal_error;
 use crate::representation::graph_sparse::{SparseGraph, SparseNode, SparseSeqDis, VarPos};
 use crate::representation::partitions_likelihood::PartitionLikelihood;
 use crate::seq::composition;
 use crate::utils::container::get_exactly_one_mut;
 use crate::utils::interval::range::range_contains;
-use crate::{make_internal_error, make_internal_report};
 use eyre::Report;
 use log::debug;
 use maplit::btreemap;
@@ -20,7 +20,6 @@ const EPS: f64 = 1e-4;
 
 fn ingroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihood]) {
   graph.par_iter_breadth_first_backward(|mut node| {
-    let name = node.payload.name.clone();
     for (si, seq_info) in node.payload.sparse_partitions.iter_mut().enumerate() {
       let PartitionLikelihood { gtr, alphabet, length } = &partitions[si];
       let msg_to_parent = if node.is_leaf {
@@ -60,7 +59,7 @@ fn ingroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihoo
         let mut variable_pos = btreemap! {};
         let mut child_states: Vec<BTreeMap<usize, char>> = vec![];
         let mut child_messages: Vec<SparseSeqDis> = vec![];
-        for (ci, (c, edge)) in node.children.iter().enumerate() {
+        for (ci, (_, edge)) in node.children.iter().enumerate() {
           // go over all mutations and get reference and child state
           child_states.push(btreemap! {});
           for m in &edge.read_arc().sparse_partitions[si].subs {
@@ -76,18 +75,15 @@ fn ingroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihoo
         }
 
         // now that all variable positions are determined, check whether they are characters in each child
-        for (ci, (c, edge)) in node.children.iter().enumerate() {
+        for (ci, (c, _)) in node.children.iter().enumerate() {
           let states = &mut child_states[ci];
-          for (pos, state) in variable_pos.iter() {
+          for pos in variable_pos.keys() {
             // test whether pos in states, otherwise check whether it is in non-char
-            if !states.contains_key(pos) {
-              if range_contains(&c.read_arc().sparse_partitions[si].seq.non_char, *pos) {
-                dbg!("non-char");
-                if range_contains(&c.read_arc().sparse_partitions[si].seq.gaps, *pos) {
-                  states.insert(*pos, alphabet.gap());
-                } else {
-                  states.insert(*pos, alphabet.unknown());
-                }
+            if !states.contains_key(pos) && range_contains(&c.read_arc().sparse_partitions[si].seq.non_char, *pos) {
+              if range_contains(&c.read_arc().sparse_partitions[si].seq.gaps, *pos) {
+                states.insert(*pos, alphabet.gap());
+              } else {
+                states.insert(*pos, alphabet.unknown());
               }
             }
           }
@@ -186,7 +182,7 @@ fn combine_messages(
   // copy composition.counts and cast the values of f64
   let mut fixed_counts = composition
     .counts()
-    .into_iter()
+    .iter()
     .map(|(k, v)| (*k, *v as f64))
     .collect::<BTreeMap<_, _>>();
   // go over all putatively variable positions
@@ -261,11 +257,6 @@ fn combine_messages(
     }
     let vec_norm = vec.sum();
 
-    let fixed_count = seq_dis
-      .fixed_counts
-      .get(state)
-      .ok_or_else(|| make_internal_report!("Unable to find character count for {state}"))?;
-
     seq_dis.log_lh += fixed_counts[&state] * vec_norm.ln();
     seq_dis.fixed.insert(state, vec / vec_norm);
   }
@@ -274,7 +265,6 @@ fn combine_messages(
 
 fn outgroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihood]) {
   graph.par_iter_breadth_first_forward(|mut node| {
-    let name = node.payload.name.clone();
     for (si, seq_info) in node.payload.sparse_partitions.iter_mut().enumerate() {
       let PartitionLikelihood { gtr, alphabet, length } = &partitions[si];
       if !node.is_root {
@@ -282,7 +272,7 @@ fn outgroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikeliho
         let mut variable_pos = btreemap! {};
         let mut ref_states: Vec<BTreeMap<usize, char>> = vec![];
         let mut msgs_to_combine: Vec<SparseSeqDis> = vec![];
-        for (pi, (p, edge)) in node.parents.iter().enumerate() {
+        for (_, edge) in &node.parents {
           // go over all mutations and get reference state
           let mut parent_state: BTreeMap<usize, char> = btreemap! {};
           let mut child_state: BTreeMap<usize, char> = btreemap! {};
@@ -364,12 +354,12 @@ fn outgroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikeliho
           let divisor = if let Some(dis) = child_dis.variable.get(&pos) {
             &dis.dis
           } else {
-            child_dis.fixed.get(child_states.get(&pos).unwrap()).unwrap()
+            &child_dis.fixed[&child_states[&pos]]
           };
           let numerator = if let Some(dis) = seq_info.profile.variable.get(&pos) {
             &dis.dis
           } else {
-            seq_info.profile.fixed.get(&pstate).unwrap()
+            &seq_info.profile.fixed[&pstate]
           };
           let dis = numerator / divisor;
           let norm = dis.sum();
@@ -384,7 +374,7 @@ fn outgroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikeliho
           seq_dis.fixed_counts.adjust_count(pstate, -1);
         }
         for (s, p) in &seq_info.profile.fixed {
-          let dis = &*p / &child_dis.fixed[&s];
+          let dis = p / &child_dis.fixed[s];
           let norm = dis.sum();
           delta_ll += norm.ln() * (seq_dis.fixed_counts.get(*s).unwrap() as f64);
           seq_dis.fixed.insert(*s, dis / norm);
@@ -486,7 +476,6 @@ pub fn ancestral_reconstruction_marginal_sparse(
 
 #[cfg(test)]
 mod tests {
-
   use super::*;
   use crate::commands::ancestral::fitch::compress_sequences;
   use crate::graph::node::GraphNodeKey;
@@ -614,10 +603,9 @@ mod tests {
     let gtr = GTR::new(GTRParams {
       alphabet: Alphabet::default(),
       W: None,
-      pi: pi.clone(),
+      pi,
       mu,
-    })
-    .unwrap();
+    })?;
 
     let partitions = partitions
       .into_iter()
@@ -625,14 +613,13 @@ mod tests {
       .collect_vec();
 
     let log_lh = run_marginal_sparse(&graph, &partitions)?;
-    // note that this LH is slighly different from dense or python treetime due to
+    // note that this LH is slightly different from dense or python treetime due to
     // different handling of ambiguous characters (value from test_scripts/ancestral_sparse.py)
     pretty_assert_ulps_eq!(-56.946298878390444, log_lh, epsilon = 1e-6);
 
     // test variable position distribution at the root (pos 0)
     let root = &graph
-      .get_exactly_one_root()
-      .unwrap()
+      .get_exactly_one_root()?
       .read_arc()
       .payload()
       .read_arc()

@@ -303,7 +303,9 @@ use_self = "allow"
 useless_transmute = "allow"
 wildcard_enum_match_arm = "allow"
 
+# We might need to reconsider these
 iter_over_hash_type = "allow"
+needless_range_loop = "allow"
 
 [workspace.lints.rustdoc]
 broken_intra_doc_links = "warn"

@@ -57,6 +57,9 @@ RUN /install-llvm
 COPY --link "dev/docker/files/install-protobuf" "/"
 RUN /install-protobuf
 
+COPY --link "dev/docker/files/install-hyperfine" "/"
+RUN /install-hyperfine
+
 
 ENV HOST_PREFIX="/usr"
 ENV PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:${HOST_PREFIX}/lib/pkgconfig"

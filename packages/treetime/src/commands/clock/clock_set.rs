@@ -53,7 +53,7 @@ impl ClockSet {
   pub fn propagate_averages(&self, branch_value: f64, branch_variance: f64) -> Self {
     let denom = 1.0 / (1.0 + branch_variance * self.norm);
 
-    // Eq 11 in Neher 2018 -- contribution of children doesn't change
+    // Eq. 11 in Neher 2018 -- contribution of children doesn't change
     let t_sum = self.t_sum * denom;
 
     // Eq. 13

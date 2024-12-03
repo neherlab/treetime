@@ -40,7 +40,7 @@ fn normalize_inplace(dis: &mut Array2<f64>) -> f64 {
   for (ri, mut row) in dis.outer_iter_mut().enumerate() {
     row /= norm[ri];
   }
-  norm.mapv(|x| x.ln()).sum()
+  norm.mapv(f64::ln).sum()
 }
 
 fn attach_seqs_to_graph(graph: &DenseGraph, partitions: &[PartitionLikelihoodWithAln]) -> Result<(), Report> {
@@ -131,7 +131,7 @@ fn ingroup_profiles_dense(graph: &DenseGraph, partitions: &[PartitionLikelihood]
           .collect_vec();
 
         let mut dis = msgs[0].clone().to_owned();
-        for msg in msgs[1..].iter() {
+        for msg in &msgs[1..] {
           dis *= msg;
         }
         let delta_ll = normalize_inplace(&mut dis);
@@ -195,22 +195,22 @@ fn outgroup_profiles_dense(graph: &DenseGraph, partitions: &[PartitionLikelihood
   let n_partitions = partitions.len();
   graph.par_iter_breadth_first_forward(|mut node| {
     for si in 0..n_partitions {
-      let PartitionLikelihood { gtr, alphabet, length } = &partitions[si];
+      let PartitionLikelihood { gtr, .. } = &partitions[si];
       if !node.is_root {
         let seq_info = &mut node.payload.dense_partitions[si];
         let mut msgs_to_combine: Vec<Array2<f64>> = vec![];
         let mut log_lh = 0.0;
-        for (pi, (p, edge)) in node.parents.iter().enumerate() {
+        for (_, edge) in &node.parents {
           let edge = edge.read_arc();
           let expQt_matrix = gtr.expQt(edge.branch_length.unwrap_or(0.0));
           let expQt = expQt_matrix.t();
-          msgs_to_combine.push(edge.dense_partitions[si].msg_to_parent.dis.view().to_owned()); //FIXME: avoid copy
+          msgs_to_combine.push(edge.dense_partitions[si].msg_to_parent.dis.view().to_owned()); // FIXME: avoid copy
           log_lh += edge.dense_partitions[si].msg_to_parent.log_lh;
           msgs_to_combine.push(edge.dense_partitions[si].msg_to_child.dis.dot(&expQt));
           log_lh += edge.dense_partitions[si].msg_to_child.log_lh;
         }
         let mut dis = msgs_to_combine[0].clone();
-        for msg in msgs_to_combine[1..].iter() {
+        for msg in &msgs_to_combine[1..] {
           dis *= msg;
         }
         let delta_ll = normalize_inplace(&mut dis);
@@ -246,8 +246,7 @@ pub fn run_marginal_dense(
 
   ingroup_profiles_dense(graph, &partitions);
   let log_lh = graph
-    .get_exactly_one_root()
-    .unwrap()
+    .get_exactly_one_root()?
     .read_arc()
     .payload()
     .read_arc()
@@ -423,10 +422,9 @@ mod tests {
     let gtr = GTR::new(GTRParams {
       alphabet: Alphabet::default(),
       W: None,
-      pi: pi.clone(),
+      pi,
       mu,
-    })
-    .unwrap();
+    })?;
 
     let partitions = vec![PartitionLikelihoodWithAln::new(gtr, alphabet, aln)?];
 
@@ -437,8 +435,7 @@ mod tests {
     // test variable position distribution at the root for position 0 (from test_scripts/ancestral_dense.py)
     let pos_zero_root = array![0.28212327, 0.21643546, 0.13800802, 0.36343326];
     let root = &graph
-      .get_exactly_one_root()
-      .unwrap()
+      .get_exactly_one_root()?
       .read_arc()
       .payload()
       .read_arc()
