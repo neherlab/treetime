@@ -21,7 +21,14 @@ fn main() -> Result<(), Report> {
 
   info!("{:#?}", &args);
 
-  rayon::ThreadPoolBuilder::new().num_threads(args.jobs).build_global()?;
+  if args.jobs == 1 {
+    rayon::ThreadPoolBuilder::new()
+      .num_threads(1)
+      .use_current_thread()
+      .build_global()?;
+  } else {
+    rayon::ThreadPoolBuilder::new().num_threads(args.jobs).build_global()?;
+  }
 
   match args.command {
     TreetimeCommands::Timetree(timetree_args) => {
