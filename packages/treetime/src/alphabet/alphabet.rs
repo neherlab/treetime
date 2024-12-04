@@ -6,10 +6,13 @@ use color_eyre::{Section, SectionExt};
 use eyre::{Report, WrapErr};
 use indexmap::{indexmap, IndexMap, IndexSet};
 use itertools::{chain, Itertools};
+use maplit::btreeset;
 use ndarray::{stack, Array1, Array2, Axis};
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
+use std::borrow::Borrow;
 use std::collections::BTreeSet;
+use std::fmt::Display;
 use std::iter::once;
 use strum_macros::Display;
 
@@ -135,6 +138,43 @@ impl Alphabet {
     }
   }
 
+  /// Map a set of canonical characters back to the smallest set of ambiguous characters
+  ///
+  /// NOTE: Reverse of `disambiguate()`
+  pub fn ambiguate(&self, chars: &BTreeSet<char>) -> BTreeSet<char> {
+    let mut chars: IndexSet<char> = chars.iter().flat_map(|c| self.disambiguate(*c).into_iter()).collect();
+    assert!(chars.iter().all(|c| self.canonical.contains(c)));
+
+    if self.canonical.is_subset(&chars) {
+      return once(self.unknown).collect();
+    }
+
+    // Attempt to cover the set using the least number of ambiguous characters
+    let ambiguous = self
+      .ambiguous
+      .iter()
+      .map(|(amb_char, amb_set)| {
+        let set: IndexSet<_> = amb_set.iter().copied().collect();
+        (amb_char, set)
+      })
+      .sorted_by_key(|(_, set)| -(set.len() as isize));
+
+    let mut result = btreeset! {};
+    for (amb_char, amb_set) in ambiguous {
+      if chars.is_superset(&amb_set) {
+        result.insert(*amb_char);
+        chars = &chars - &amb_set;
+        if chars.is_empty() {
+          break;
+        }
+      }
+    }
+
+    result.extend(&chars);
+
+    result
+  }
+
   #[inline]
   pub fn get_profile(&self, c: char) -> &Array1<f64> {
     self
@@ -147,6 +187,23 @@ impl Alphabet {
         )
       })
       .unwrap()
+  }
+
+  /// Create a profile vector given a set of characters
+  pub fn construct_profile<I, T>(&self, chars: I) -> Result<Array1<f64>, Report>
+  where
+    I: IntoIterator<Item = T>,
+    T: Borrow<char> + Display,
+  {
+    let mut profile = Array1::<f64>::zeros(self.n_canonical());
+    for c in chars {
+      let chars = self.disambiguate(*c.borrow());
+      for c in chars {
+        let index = self.index(c);
+        profile[index] = 1.0;
+      }
+    }
+    Ok(profile)
   }
 
   pub fn get_code(&self, profile: &Array1<f64>) -> char {
@@ -468,6 +525,55 @@ mod tests {
     assert_eq!(btreeset! {'C'}, alphabet.disambiguate('C'));
     assert_eq!(btreeset! {alphabet.gap()}, alphabet.disambiguate(alphabet.gap()));
     Ok(())
+  }
+
+  #[test]
+  fn test_ambiguate_empty_set() {
+    let alphabet = Alphabet::new(AlphabetName::Nuc, false).unwrap();
+    let empty_set = btreeset! {};
+    let result = alphabet.ambiguate(&empty_set);
+    assert!(result.is_empty());
+  }
+
+  #[test]
+  fn test_ambiguate_single_canonical_char() {
+    let alphabet = Alphabet::new(AlphabetName::Nuc, false).unwrap();
+    let single_char_set = btreeset! {'A'};
+    let result = alphabet.ambiguate(&single_char_set);
+    assert_eq!(result, btreeset! {'A'});
+  }
+
+  #[test]
+  fn test_ambiguate_all_canonical_chars() {
+    let alphabet = Alphabet::new(AlphabetName::Nuc, false).unwrap();
+    let all_canonical = btreeset! {'A', 'C', 'G', 'T'};
+    let result = alphabet.ambiguate(&all_canonical);
+    assert_eq!(result, btreeset! {alphabet.unknown()});
+  }
+
+  #[test]
+  fn test_ambiguate_single_ambiguous_char() {
+    let alphabet = Alphabet::new(AlphabetName::Nuc, false).unwrap();
+    let ambiguous_set = btreeset! {'A', 'G'};
+    let result = alphabet.ambiguate(&ambiguous_set);
+    assert_eq!(result, btreeset! {'R'});
+  }
+
+  #[test]
+  fn test_ambiguate_complex_case() {
+    let alphabet = Alphabet::new(AlphabetName::Nuc, false).unwrap();
+    let complex_set = btreeset! {'A', 'C', 'T', 'R', 'Y'};
+    let result = alphabet.ambiguate(&complex_set);
+    assert_eq!(result, btreeset! {alphabet.unknown()});
+  }
+
+  #[test]
+  fn test_ambiguate_mixture_of_ambiguous_and_unambiguous_chars_aa() {
+    let alphabet = Alphabet::new(AlphabetName::Aa, false).unwrap();
+    // B is N or D, partial overlap with canonicals N, D, E, Q, and explicit canonicals K, R
+    let mixed_set = btreeset! {'N', 'B', 'E', 'Q', 'K', 'R'}; 
+    let result = alphabet.ambiguate(&mixed_set);
+    assert_eq!(result, btreeset! {'B', 'Z', 'K', 'R'});
   }
 
   #[test]

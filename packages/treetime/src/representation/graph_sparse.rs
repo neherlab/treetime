@@ -5,6 +5,7 @@ use crate::graph::node::{GraphNode, Named};
 use crate::io::graphviz::{EdgeToGraphViz, NodeToGraphviz};
 use crate::io::nwk::{format_weight, EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteOptions};
 use crate::o;
+use crate::representation::state_set::StateSet;
 use crate::seq::composition::Composition;
 use crate::seq::find_char_ranges::find_letter_ranges;
 use crate::seq::indel::InDel;
@@ -93,15 +94,7 @@ impl SparseSeqNode {
       .iter()
       .enumerate()
       .filter(|(_, &c)| alphabet.is_ambiguous(c))
-      .map(|(pos, &c)| {
-        (
-          pos,
-          ParsimonyVarPos {
-            dis: alphabet.get_profile(c).clone(),
-            state: None,
-          },
-        )
-      })
+      .map(|(pos, &c)| (pos, StateSet::from_chars(alphabet.disambiguate(c))))
       .collect();
 
     let seq_dis = ParsimonySeqDis {
@@ -202,18 +195,6 @@ impl VarPos {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct ParsimonyVarPos {
-  pub dis: Array1<f64>, // TODO: this could be an array of booleans of size 'alphabet'
-  pub state: Option<char>,
-}
-
-impl ParsimonyVarPos {
-  pub fn new(dis: Array1<f64>, state: Option<char>) -> Self {
-    Self { dis, state }
-  }
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Deletion {
   pub deleted: usize, // number of times deletion is observed
   pub present: usize, // or not
@@ -250,7 +231,7 @@ impl Default for SparseSeqDis {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ParsimonySeqDis {
   /// probability vector for each variable position collecting information from children
-  pub variable: BTreeMap<usize, ParsimonyVarPos>,
+  pub variable: BTreeMap<usize, StateSet>,
 
   pub variable_indel: BTreeMap<(usize, usize), Deletion>,
 
