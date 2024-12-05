@@ -171,12 +171,13 @@ fn fitch_backwards(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]
           continue;
         }
 
-        let child_states = children.iter().map(|(c, _)| c.sequence[pos]).collect_vec();
-        let determined_states = child_states
-          .into_iter()
-          .filter(|&c| alphabet.is_canonical(c))
-          .unique()
-          .collect_vec();
+        let mut determined_states = Vec::with_capacity(alphabet.n_chars());
+        for &(child, _) in &children {
+          let state = child.sequence[pos];
+          if !determined_states.contains(&state) && alphabet.is_canonical(state) {
+            determined_states.push(state);
+          }
+        }
 
         // Find the state of the current node at this position
         *parent_state = match determined_states.as_slice() {
