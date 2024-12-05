@@ -14,10 +14,9 @@ use crate::utils::interval::range::range_contains;
 use crate::utils::interval::range_complement::range_complement;
 use crate::utils::interval::range_difference::range_difference;
 use crate::utils::interval::range_intersection::{range_intersection, range_intersection_iter};
-use crate::utils::manyzip::Manyzip;
 use crate::{make_error, make_internal_report, make_report};
 use eyre::{Report, WrapErr};
-use itertools::{izip, Itertools};
+use itertools::Itertools;
 use maplit::btreemap;
 use ndarray::AssignElem;
 
