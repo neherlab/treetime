@@ -1,4 +1,5 @@
 #![allow(dead_code)]
+
 use crate::alphabet::alphabet::{FILL_CHAR, NON_CHAR, VARIABLE_CHAR};
 use crate::graph::breadth_first::GraphTraversalContinuation;
 use crate::io::fasta::FastaRecord;
@@ -19,6 +20,7 @@ use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use maplit::btreemap;
 use ndarray::AssignElem;
+use std::collections::BTreeSet;
 
 fn attach_seqs_to_graph(graph: &SparseGraph, partitions: &[PartitionParsimonyWithAln]) -> Result<(), Report> {
   for leaf in graph.get_leaves() {
@@ -134,7 +136,7 @@ fn fitch_backwards(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]
               return None; // this position does not have character state information
             }
             let state = match child.fitch.variable.get(&pos) {
-              Some(var_pos) => var_pos.clone(),
+              Some(var_pos) => *var_pos,
               None => StateSet::from_char(child.sequence[pos]),
             };
             Some(state)
@@ -191,7 +193,7 @@ fn fitch_backwards(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]
           states => {
             // Child states differ. This is variable state.
             // Save child states and postpone the decision until forward pass.
-            let dis = StateSet::from_chars(states);
+            let dis = states.iter().collect();
             seq_dis.variable.insert(pos, dis);
             VARIABLE_CHAR
           }
@@ -508,7 +510,8 @@ pub fn ancestral_reconstruction_fitch(
         }
 
         for (pos, states) in &mut node.fitch.variable {
-          seq[*pos] = alphabet.ambiguate(&states.inner()).first().copied().unwrap();
+          let state_set: BTreeSet<char> = states.iter().collect(); // TODO(perf): this is inefficient
+          seq[*pos] = alphabet.ambiguate(&state_set).first().copied().unwrap();
         }
 
         node.sequence = seq.clone();
@@ -975,12 +978,10 @@ mod tests {
         "sequence": "TCGGCCGTGTRTTG--",
         "fitch": {
           "variable": {
-            "10": {
-              "data": [
-                "A",
-                "G"
-              ]
-            }
+            "10": [
+              "A",
+              "G"
+            ]
           },
           "variable_indel": {},
           "composition": {
