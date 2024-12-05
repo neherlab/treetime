@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+set -euo pipefail
+trap "exit" INT
+
+# Perform sampling performance profiling and display the results in a web UI.
+#
+# This will do the following:
+#  * build the project using special "profiling" cargo profile (see .cargo/config.toml). This profile configures cargo
+#  for optimized (release) build, but with debug symbols emitted and kept (not stripped).
+#  * run the given program under sampling profiler called samply (https://github.com/mstange/samply),
+#  * upon finishing the recording, samply will open Firefox Profiler (https://profiler.firefox.com) in default browser
+#  with the results. If not, navigate to url printed to the console, then click "Open the profile in the profiler UI".
+#
+# NOTE: Sampling is performed at frequency about 1000 times per second, so for meaningful results you probably want
+# to run your program with a workload which runs for at least a few seconds.
+#
+# NOTE: At first, you might want to run your program in single-threaded mode.
+#
+#
+# Usage:
+#
+#   ./dev/profile <program_name> [arguments]
+#
+# Note: <program> is executable name without path
+#
+#
+# Requirements:
+#  * perf (https://perf.wiki.kernel.org)
+#
+#    On Ubuntu:
+#
+#      /!\ WARNING: If linux-tools-<kernel-version-string> package is not already installed make sure that you are
+#      installing it specifically for your current version of kernel, and make sure to not install some broken kernel
+#      which bricks your system on next reboot!
+#
+#      sudo apt-get install linux-tools-common linux-tools-$(uname -r)
+#
+#  * samply (https://github.com/mstange/samply)
+#
+#      cargo install samply
+#
+#  * [optional] Access to performance events system for unprivileged users. The samply tool might work without these,
+#    but the results might be incomplete.
+#
+#      /!\ WARNING: Learn about security implications of these settings:
+#      https://www.kernel.org/doc/html/latest/admin-guide/perf-security.html
+#
+#    until next reboot:
+#      echo -1 | sudo tee /proc/sys/kernel/perf_event_paranoid >/dev/null
+#      echo 0 | sudo tee /proc/sys/kernel/kptr_restrict >/dev/null
+#
+#    you can reset this back by rebooting, or with these commands:
+#
+#      echo 2 | sudo tee /proc/sys/kernel/perf_event_paranoid >/dev/null
+#      echo 1 | sudo tee /proc/sys/kernel/kptr_restrict >/dev/null
+
+set -x
+
+cargo -q build --profile=profiling --bin="$(basename "$1")"
+
+# shellcheck disable=SC2068
+samply record --rate=1234 -o tmp/samply.json -- ./target/profiling/"$(basename "$1")" ${@:2}
