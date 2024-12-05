@@ -1,6 +1,7 @@
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::borrow::Borrow;
+use std::ops::{Add, AddAssign, BitAndAssign, BitOrAssign, BitXorAssign, Sub, SubAssign};
 
 #[allow(variant_size_differences)]
 #[derive(Clone, Debug)]
@@ -130,8 +131,16 @@ impl BitSet128 {
     }
   }
 
-  pub fn get_one_maybe(&self) -> Option<char> {
+  pub fn first(&self) -> Option<char> {
     (!self.is_empty()).then_some(char::from_u32(self.bits.trailing_zeros()).unwrap())
+  }
+
+  pub fn last(&self) -> Option<char> {
+    (!self.is_empty()).then_some(char::from_u32(127 - self.bits.leading_zeros()).unwrap())
+  }
+
+  pub fn get_one_maybe(&self) -> Option<char> {
+    self.first()
   }
 
   pub fn get_one(&self) -> char {
@@ -149,6 +158,64 @@ impl BitSet128 {
 
   pub fn from_vec(chars: Vec<char>) -> Self {
     Self::from_iter(chars)
+  }
+}
+
+impl Add for BitSet128 {
+  type Output = Self;
+
+  fn add(self, other: Self) -> Self::Output {
+    self.union(&other)
+  }
+}
+
+impl Sub for BitSet128 {
+  type Output = Self;
+
+  fn sub(self, other: Self) -> Self::Output {
+    self.difference(&other)
+  }
+}
+
+impl AddAssign for BitSet128 {
+  #[allow(clippy::suspicious_op_assign_impl)]
+  fn add_assign(&mut self, other: Self) {
+    self.bits |= other.bits;
+  }
+}
+
+impl SubAssign for BitSet128 {
+  fn sub_assign(&mut self, other: Self) {
+    self.bits &= !other.bits;
+  }
+}
+
+impl BitAndAssign for BitSet128 {
+  fn bitand_assign(&mut self, other: Self) {
+    self.bits &= other.bits;
+  }
+}
+
+impl BitOrAssign for BitSet128 {
+  fn bitor_assign(&mut self, other: Self) {
+    self.bits |= other.bits;
+  }
+}
+
+impl BitXorAssign for BitSet128 {
+  fn bitxor_assign(&mut self, other: Self) {
+    self.bits ^= other.bits;
+  }
+}
+
+impl<T: Borrow<char>> Extend<T> for BitSet128 {
+  fn extend<I>(&mut self, iter: I)
+  where
+    I: IntoIterator<Item = T>,
+  {
+    for c in iter {
+      self.insert(*c.borrow());
+    }
   }
 }
 

@@ -20,7 +20,6 @@ use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use maplit::btreemap;
 use ndarray::AssignElem;
-use std::collections::BTreeSet;
 
 fn attach_seqs_to_graph(graph: &SparseGraph, partitions: &[PartitionParsimonyWithAln]) -> Result<(), Report> {
   for leaf in graph.get_leaves() {
@@ -509,9 +508,9 @@ pub fn ancestral_reconstruction_fitch(
           seq[r.0..r.1].fill(alphabet.unknown());
         }
 
-        for (pos, states) in &mut node.fitch.variable {
-          let state_set: BTreeSet<char> = states.iter().collect(); // TODO(perf): this is inefficient
-          seq[*pos] = alphabet.ambiguate(&state_set).first().copied().unwrap();
+        for (&pos, &states) in &node.fitch.variable {
+          seq[pos] = states.first().unwrap();
+          // seq[pos] = alphabet.ambiguate(states).first().unwrap();
         }
 
         node.sequence = seq.clone();

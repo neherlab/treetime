@@ -94,7 +94,7 @@ impl SparseSeqNode {
       .iter()
       .enumerate()
       .filter(|(_, &c)| alphabet.is_ambiguous(c))
-      .map(|(pos, &c)| (pos, StateSet::from_iter(alphabet.disambiguate(c))))
+      .map(|(pos, &c)| (pos, alphabet.disambiguate(c)))
       .collect();
 
     let seq_dis = ParsimonySeqDis {
