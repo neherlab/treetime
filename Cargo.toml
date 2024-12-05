@@ -123,6 +123,7 @@ statrs = "=0.17.1"
 strum = "=0.26.3"
 strum_macros = "=0.26.4"
 textplots = "=0.8.6"
+tikv-jemallocator = "=0.6.0"
 time = { version = "=0.3.36", features = ["serde", "macros", "parsing"] }
 traversal = "=0.1.2"
 typify = { version = "=0.2.0", features = ["macro"] }

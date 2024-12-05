@@ -10,6 +10,11 @@ pub mod representation;
 pub mod seq;
 pub mod utils;
 
+use tikv_jemallocator::Jemalloc;
+
+#[global_allocator]
+static GLOBAL: Jemalloc = Jemalloc;
+
 #[cfg(test)]
 mod tests {
   use crate::utils::global_init::global_init;
