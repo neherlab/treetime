@@ -166,18 +166,12 @@ fn fitch_backwards(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]
       }
 
       // Process all positions where the children are fixed or completely unknown in some children.
-
-      // Gather state sets for each position across child sequences
-      // TODO(perf): avoid copying and allocations
-      let child_state_sets = Manyzip(children.iter().map(|(c, e)| c.sequence.iter().copied()).collect_vec());
-
-      // Zip these states with node sequence
-      let state_zip = izip!(sequence.iter_mut(), child_state_sets.into_iter());
-      for (pos, (nuc, child_states)) in state_zip.enumerate() {
-        if *nuc != FILL_CHAR {
+      for (pos, parent_state) in sequence.iter_mut().enumerate() {
+        if *parent_state != FILL_CHAR {
           continue;
         }
 
+        let child_states = children.iter().map(|(c, _)| c.sequence[pos]).collect_vec();
         let determined_states = child_states
           .into_iter()
           .filter(|&c| alphabet.is_canonical(c))
@@ -185,7 +179,7 @@ fn fitch_backwards(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]
           .collect_vec();
 
         // Find the state of the current node at this position
-        *nuc = match determined_states.as_slice() {
+        *parent_state = match determined_states.as_slice() {
           [state] => {
             // All children have the same state, that will be the state of the current node
             *state
