@@ -339,7 +339,7 @@ fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]) 
           }
         }
 
-        for (&pos, pvar) in &parent.fitch.variable {
+        for &pos in parent.fitch.variable.keys() {
           if variable.contains_key(&pos) {
             continue;
           }
@@ -347,16 +347,14 @@ fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]) 
           // NOTE: access to full_seq would not be necessary if we had saved the
           // child state of variable positions in the backward pass
           let node_nuc = sequence[pos];
-          if alphabet.is_canonical(node_nuc) {
-            if parent.sequence[pos]  != node_nuc {
-              let m = Sub {
-                pos,
-                qry: node_nuc,
-                reff: parent.sequence[pos],
-              };
-              composition.add_sub(&m);
-              edge.subs.push(m);
-            }
+          if alphabet.is_canonical(node_nuc) && parent.sequence[pos] != node_nuc {
+            let m = Sub {
+              pos,
+              qry: node_nuc,
+              reff: parent.sequence[pos],
+            };
+            composition.add_sub(&m);
+            edge.subs.push(m);
           }
         }
 
@@ -784,7 +782,8 @@ mod tests {
         "CD->C"    => vec!["C6G"],
         "CD->D"    => vec!["C1T", "A7G"],
         "root->CD" => vec!["A1C", "A3G"],
-      };      assert_eq!(
+      };
+      assert_eq!(
         json_write_str(&expected_muts, JsonPretty(true))?,
         json_write_str(&actual_muts, JsonPretty(true))?
       );
