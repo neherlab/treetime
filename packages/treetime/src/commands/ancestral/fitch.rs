@@ -1,4 +1,5 @@
 #![allow(dead_code)]
+
 use crate::alphabet::alphabet::{FILL_CHAR, NON_CHAR, VARIABLE_CHAR};
 use crate::graph::breadth_first::GraphTraversalContinuation;
 use crate::io::fasta::FastaRecord;
@@ -14,10 +15,9 @@ use crate::utils::interval::range::range_contains;
 use crate::utils::interval::range_complement::range_complement;
 use crate::utils::interval::range_difference::range_difference;
 use crate::utils::interval::range_intersection::{range_intersection, range_intersection_iter};
-use crate::utils::manyzip::Manyzip;
 use crate::{make_error, make_internal_report, make_report};
 use eyre::{Report, WrapErr};
-use itertools::{izip, Itertools};
+use itertools::Itertools;
 use maplit::btreemap;
 use ndarray::AssignElem;
 
@@ -135,7 +135,7 @@ fn fitch_backwards(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]
               return None; // this position does not have character state information
             }
             let state = match child.fitch.variable.get(&pos) {
-              Some(var_pos) => var_pos.clone(),
+              Some(var_pos) => *var_pos,
               None => StateSet::from_char(child.sequence[pos]),
             };
             Some(state)
@@ -166,26 +166,21 @@ fn fitch_backwards(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]
       }
 
       // Process all positions where the children are fixed or completely unknown in some children.
-
-      // Gather state sets for each position across child sequences
-      // TODO(perf): avoid copying and allocations
-      let child_state_sets = Manyzip(children.iter().map(|(c, e)| c.sequence.iter().copied()).collect_vec());
-
-      // Zip these states with node sequence
-      let state_zip = izip!(sequence.iter_mut(), child_state_sets.into_iter());
-      for (pos, (nuc, child_states)) in state_zip.enumerate() {
-        if *nuc != FILL_CHAR {
+      for (pos, parent_state) in sequence.iter_mut().enumerate() {
+        if *parent_state != FILL_CHAR {
           continue;
         }
 
-        let determined_states = child_states
-          .into_iter()
-          .filter(|&c| alphabet.is_canonical(c))
-          .unique()
-          .collect_vec();
+        let mut determined_states = Vec::with_capacity(alphabet.n_chars());
+        for &(child, _) in &children {
+          let state = child.sequence[pos];
+          if !determined_states.contains(&state) && alphabet.is_canonical(state) {
+            determined_states.push(state);
+          }
+        }
 
         // Find the state of the current node at this position
-        *nuc = match determined_states.as_slice() {
+        *parent_state = match determined_states.as_slice() {
           [state] => {
             // All children have the same state, that will be the state of the current node
             *state
@@ -197,7 +192,7 @@ fn fitch_backwards(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]
           states => {
             // Child states differ. This is variable state.
             // Save child states and postpone the decision until forward pass.
-            let dis = StateSet::from_chars(states);
+            let dis = states.iter().collect();
             seq_dis.variable.insert(pos, dis);
             VARIABLE_CHAR
           }
@@ -513,8 +508,9 @@ pub fn ancestral_reconstruction_fitch(
           seq[r.0..r.1].fill(alphabet.unknown());
         }
 
-        for (pos, states) in &mut node.fitch.variable {
-          seq[*pos] = alphabet.ambiguate(&states.inner()).first().copied().unwrap();
+        for (&pos, &states) in &node.fitch.variable {
+          seq[pos] = states.first().unwrap();
+          // seq[pos] = alphabet.ambiguate(states).first().unwrap();
         }
 
         node.sequence = seq.clone();
@@ -981,12 +977,10 @@ mod tests {
         "sequence": "TCGGCCGTGTRTTG--",
         "fitch": {
           "variable": {
-            "10": {
-              "data": [
-                "A",
-                "G"
-              ]
-            }
+            "10": [
+              "A",
+              "G"
+            ]
           },
           "variable_indel": {},
           "composition": {

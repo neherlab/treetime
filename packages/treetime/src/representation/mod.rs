@@ -4,3 +4,4 @@ pub mod infer_dense;
 pub mod partitions_likelihood;
 pub mod partitions_parsimony;
 pub mod state_set;
+pub mod bitset128;
