@@ -79,8 +79,22 @@ serde_yaml = { workspace = true }
 smart-default = { workspace = true }
 strum = { workspace = true }
 strum_macros = { workspace = true }
+tikv-jemallocator = { workspace = true, optional = true }
 time = { workspace = true }
 traversal = { workspace = true }
+
+[target.'cfg(all(target_arch = "x86_64", target_os = "linux", target_env = "gnu"))'.dependencies]
+tikv-jemallocator = { workspace = true }
+
+[target.'cfg(all(target_arch = "aarch64", target_os = "linux", target_env = "gnu"))'.dependencies]
+tikv-jemallocator = { workspace = true }
+
+[target.'cfg(all(target_arch = "x86_64", target_os = "linux", target_env = "musl"))'.dependencies]
+tikv-jemallocator = { workspace = true }
+
+[target.'cfg(all(target_arch = "aarch64", target_os = "linux", target_env = "musl"))'.dependencies]
+tikv-jemallocator = { workspace = true }
+
 
 [features]
 "png" = ["image", "plotters/bitmap_backend", "plotters/ttf"]
