@@ -156,44 +156,6 @@ impl Alphabet {
     }
   }
 
-  // /// Map a set of canonical characters back to the smallest set of ambiguous characters
-  // ///
-  // /// NOTE: Reverse of `disambiguate()`
-  // pub fn ambiguate(&self, mut chars: StateSet) -> StateSet {
-  //   // assert!(
-  //   //   chars.iter().all(|c| self.canonical.contains(c)),
-  //   //   "Expected only canonical characters ({}), but found: {chars}",
-  //   //   self.canonical
-  //   // );
-  //
-  //   if self.canonical.is_subset(&chars) {
-  //     return once(self.unknown).collect();
-  //   }
-  //
-  //   // Attempt to cover the set using the least number of ambiguous characters
-  //   let ambiguous = self
-  //     .ambiguous
-  //     .iter()
-  //     .map(|(amb_char, amb_set)| {
-  //       let set: StateSet = amb_set.iter().copied().collect();
-  //       (amb_char, set)
-  //     })
-  //     .sorted_by_key(|(_, set)| -(set.len() as isize));
-  //
-  //   let mut result = stateset! {};
-  //   for (amb_char, amb_set) in ambiguous {
-  //     if chars.is_superset(&amb_set) {
-  //       result.insert(*amb_char);
-  //       chars -= amb_set;
-  //       if chars.is_empty() {
-  //         break;
-  //       }
-  //     }
-  //   }
-  //
-  //   result + chars
-  // }
-
   #[inline]
   pub fn get_profile(&self, c: char) -> &Array1<f64> {
     self
@@ -234,17 +196,6 @@ impl Alphabet {
       .ok_or_else(|| format!("When accessing profile map: Unknown profile: '{profile}'"))
       .unwrap()
   }
-
-  // pub fn sequence_to_indices<'a>(&'a self, chars: impl Iterator<Item=char> + 'a) -> impl Iterator<Item=usize> + 'a {
-  //   chars.map(|c| self.index(c))
-  // }
-  //
-  // pub fn indices_to_sequence<'a>(
-  //   &'a self,
-  //   indices: impl Iterator<Item=usize> + 'a,
-  // ) -> impl Iterator<Item=char> + 'a {
-  //   indices.map(|i| self.char(i))
-  // }
 
   #[allow(single_use_lifetimes)] // TODO: remove when anonymous lifetimes in `impl Trait` are stabilized
   pub fn seq2prof<'a>(&self, chars: impl IntoIterator<Item = &'a char>) -> Result<Array2<f64>, Report> {
@@ -515,26 +466,6 @@ mod tests {
   use indoc::indoc;
   use pretty_assertions::assert_eq;
 
-  // #[test]
-  // fn test_alphabet_sequence_to_indices() -> Result<(), Report> {
-  //   let actual = Alphabet::new(AlphabetName::Nuc, false)?
-  //     .sequence_to_indices(array!['A', 'G', 'T', 'G', '-', 'G', 'N', 'G', 'C'].into_iter())
-  //     .collect_vec();
-  //   let expected = vec![0, 2, 3, 2, 15, 2, 14, 2, 1];
-  //   assert_eq!(expected, actual);
-  //   Ok(())
-  // }
-
-  // #[test]
-  // fn test_alphabet_indices_to_sequence() -> Result<(), Report> {
-  //   let actual = Alphabet::new(AlphabetName::Nuc, false)?
-  //     .indices_to_sequence(array![0, 2, 3, 2, 15, 2, 14, 2, 1].into_iter())
-  //     .collect_vec();
-  //   let expected = vec!['A', 'G', 'T', 'G', '-', 'G', 'N', 'G', 'C'];
-  //   assert_eq!(expected, actual);
-  //   Ok(())
-  // }
-
   #[test]
   fn test_disambiguate() -> Result<(), Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc, false)?;
@@ -544,55 +475,6 @@ mod tests {
     assert_eq!(stateset! {alphabet.gap()}, alphabet.disambiguate(alphabet.gap()));
     Ok(())
   }
-
-  // #[test]
-  // fn test_ambiguate_empty_set() {
-  //   let alphabet = Alphabet::new(AlphabetName::Nuc, false).unwrap();
-  //   let empty_set = stateset! {};
-  //   let result = alphabet.ambiguate(empty_set);
-  //   assert!(result.is_empty());
-  // }
-  //
-  // #[test]
-  // fn test_ambiguate_single_canonical_char() {
-  //   let alphabet = Alphabet::new(AlphabetName::Nuc, false).unwrap();
-  //   let single_char_set = stateset! {'A'};
-  //   let result = alphabet.ambiguate(single_char_set);
-  //   assert_eq!(result, stateset! {'A'});
-  // }
-  //
-  // #[test]
-  // fn test_ambiguate_all_canonical_chars() {
-  //   let alphabet = Alphabet::new(AlphabetName::Nuc, false).unwrap();
-  //   let all_canonical = stateset! {'A', 'C', 'G', 'T'};
-  //   let result = alphabet.ambiguate(all_canonical);
-  //   assert_eq!(result, stateset! {alphabet.unknown()});
-  // }
-  //
-  // #[test]
-  // fn test_ambiguate_single_ambiguous_char() {
-  //   let alphabet = Alphabet::new(AlphabetName::Nuc, false).unwrap();
-  //   let ambiguous_set = stateset! {'A', 'G'};
-  //   let result = alphabet.ambiguate(ambiguous_set);
-  //   assert_eq!(result, stateset! {'R'});
-  // }
-  //
-  // #[test]
-  // fn test_ambiguate_complex_case() {
-  //   let alphabet = Alphabet::new(AlphabetName::Nuc, false).unwrap();
-  //   let complex_set = stateset! {'A', 'C', 'T', 'R', 'Y'};
-  //   let result = alphabet.ambiguate(complex_set);
-  //   assert_eq!(result, stateset! {alphabet.unknown()});
-  // }
-  //
-  // #[test]
-  // fn test_ambiguate_mixture_of_ambiguous_and_unambiguous_chars_aa() {
-  //   let alphabet = Alphabet::new(AlphabetName::Aa, false).unwrap();
-  //   // B is N or D, partial overlap with canonicals N, D, E, Q, and explicit canonicals K, R
-  //   let mixed_set = stateset! {'N', 'B', 'E', 'Q', 'K', 'R'};
-  //   let result = alphabet.ambiguate(mixed_set);
-  //   assert_eq!(result, stateset! {'B', 'Z', 'K', 'R'});
-  // }
 
   #[test]
   fn test_alphabet_nuc() -> Result<(), Report> {
