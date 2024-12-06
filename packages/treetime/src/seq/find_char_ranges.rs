@@ -5,21 +5,20 @@
 //
 // For example if predicate returns `true` for characters A and C, this function will find ranges `AAAA`, `CCCCC`, `ACCCACAAA`
 // but not `ZZZZZ`.
-pub fn find_letter_ranges_by(seq: &[char], pred: impl Fn(char) -> bool) -> Vec<(usize, usize)> {
-  let mut result = vec![];
-  let mut iter = seq.iter().enumerate().peekable();
-  while let Some((start, &letter)) = iter.next() {
-    if pred(letter) {
-      let mut end = start;
-      while let Some(&(j, &next_letter)) = iter.peek() {
-        if pred(next_letter) {
-          end = j;
-          iter.next();
-        } else {
-          break;
-        }
+#[inline]
+pub fn find_letter_ranges_by(seq: &[char], pred: impl Fn(char) -> bool + Copy) -> Vec<(usize, usize)> {
+  let mut result = Vec::with_capacity(31);
+  let mut i = 0;
+  while i < seq.len() {
+    if pred(seq[i]) {
+      let start = i;
+      i += 1;
+      while i < seq.len() && pred(seq[i]) {
+        i += 1;
       }
-      result.push((start, end + 1));
+      result.push((start, i));
+    } else {
+      i += 1;
     }
   }
   result
@@ -67,6 +66,7 @@ pub mod old {
 }
 
 /// Finds contiguous ranges (segments) consisting of a given letter in the sequence.
+#[inline]
 pub fn find_letter_ranges(seq: &[char], letter: char) -> Vec<(usize, usize)> {
   find_letter_ranges_by(seq, |candidate| candidate == letter)
 }
