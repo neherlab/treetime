@@ -509,8 +509,7 @@ pub fn ancestral_reconstruction_fitch(
         }
 
         for (&pos, &states) in &node.fitch.variable {
-          seq[pos] = states.first().unwrap();
-          // seq[pos] = alphabet.ambiguate(states).first().unwrap();
+          seq[pos] = alphabet.set_to_char(states);
         }
 
         node.sequence = seq.clone();

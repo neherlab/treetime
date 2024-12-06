@@ -29,6 +29,9 @@ pub enum AlphabetName {
 }
 
 pub type ProfileMap = IndexMap<char, Array1<f64>>;
+pub type StateSetMap = IndexMap<char, StateSet>;
+pub type CharToSet = IndexMap<char, StateSet>;
+pub type SetToChar = IndexMap<StateSet, char>;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Alphabet {
@@ -42,6 +45,11 @@ pub struct Alphabet {
   gap: char,
   treat_gap_as_unknown: bool,
   profile_map: ProfileMap,
+
+  #[serde(skip)]
+  char_to_set: IndexMap<char, StateSet>,
+  #[serde(skip)]
+  set_to_char: IndexMap<StateSet, char>,
 
   #[serde(skip)]
   char_to_index: Vec<Option<usize>>,
@@ -124,6 +132,18 @@ impl Alphabet {
       index_to_char.push(c);
     }
 
+    let char_to_set = {
+      let mut char_to_set: CharToSet = canonical.iter().map(|c| (c, StateSet::from_char(c))).collect();
+      ambiguous.iter().for_each(|(key, chars)| {
+        char_to_set.insert(*key, StateSet::from_iter(chars));
+      });
+      char_to_set.insert(*gap, StateSet::from_char(*gap));
+      char_to_set.insert(*unknown, StateSet::from_char(*unknown));
+      char_to_set
+    };
+
+    let set_to_char: SetToChar = char_to_set.iter().map(|(&c, &s)| (s, c)).collect();
+
     Ok(Self {
       all,
       char_to_index,
@@ -137,23 +157,9 @@ impl Alphabet {
       gap: *gap,
       treat_gap_as_unknown: *treat_gap_as_unknown,
       profile_map,
+      char_to_set,
+      set_to_char,
     })
-  }
-
-  /// Resolve possible ambiguity of the given character to the set of canonical chars
-  pub fn disambiguate(&self, c: char) -> StateSet {
-    // If unknown then could be any canonical (e.g. N => { A, C, G, T })
-    if self.is_unknown(c) {
-      self.canonical().collect()
-    }
-    // If ambiguous (e.g. R => { A, G })
-    else if let Some(resolutions) = self.ambiguous.get(&c) {
-      resolutions.iter().copied().collect()
-    }
-    // Otherwise it's not ambiguous and it's the char itself (incl. gap)
-    else {
-      once(c).collect()
-    }
   }
 
   #[inline]
@@ -178,7 +184,7 @@ impl Alphabet {
   {
     let mut profile = Array1::<f64>::zeros(self.n_canonical());
     for c in chars {
-      let chars = self.disambiguate(*c.borrow());
+      let chars = self.char_to_set(*c.borrow());
       for c in chars.iter() {
         let index = self.index(c);
         profile[index] = 1.0;
@@ -204,6 +210,14 @@ impl Alphabet {
       &chars.into_iter().map(|&c| self.get_profile(c).view()).collect_vec(),
     )?;
     Ok(prof)
+  }
+
+  pub fn set_to_char(&self, c: StateSet) -> char {
+    self.set_to_char[&c]
+  }
+
+  pub fn char_to_set(&self, c: char) -> StateSet {
+    self.char_to_set[&c]
   }
 
   /// All existing characters (including 'unknown' and 'gap')
@@ -465,16 +479,6 @@ mod tests {
   use eyre::Report;
   use indoc::indoc;
   use pretty_assertions::assert_eq;
-
-  #[test]
-  fn test_disambiguate() -> Result<(), Report> {
-    let alphabet = Alphabet::new(AlphabetName::Nuc, false)?;
-    assert_eq!(stateset! {'A', 'G'}, alphabet.disambiguate('R'));
-    assert_eq!(stateset! {'A', 'C', 'G', 'T'}, alphabet.disambiguate('N'));
-    assert_eq!(stateset! {'C'}, alphabet.disambiguate('C'));
-    assert_eq!(stateset! {alphabet.gap()}, alphabet.disambiguate(alphabet.gap()));
-    Ok(())
-  }
 
   #[test]
   fn test_alphabet_nuc() -> Result<(), Report> {
