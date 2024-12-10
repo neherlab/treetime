@@ -16,3 +16,7 @@ pub fn vec_to_string(v: Vec<char>) -> String {
 pub fn quote(x: impl Display) -> String {
   format!("\"{x}\"")
 }
+
+pub fn quote_single(x: impl Display) -> String {
+  format!("'{x}'")
+}
