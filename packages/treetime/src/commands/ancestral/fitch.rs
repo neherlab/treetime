@@ -1,5 +1,4 @@
 #![allow(dead_code)]
-
 use crate::alphabet::alphabet::{FILL_CHAR, NON_CHAR, VARIABLE_CHAR};
 use crate::graph::breadth_first::GraphTraversalContinuation;
 use crate::io::fasta::FastaRecord;
@@ -165,38 +164,32 @@ fn fitch_backwards(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]
         }
       }
 
-      // Process all positions where the children are fixed or completely unknown in some children.
-      for (pos, parent_state) in sequence.iter_mut().enumerate() {
-        if *parent_state != FILL_CHAR {
-          continue;
-        }
-
-        let mut determined_states = Vec::with_capacity(alphabet.n_chars());
-        for &(child, _) in &children {
-          let state = child.sequence[pos];
-          if !determined_states.contains(&state) && alphabet.is_canonical(state) {
-            determined_states.push(state);
+      // // Process all positions where the children are fixed or completely unknown in some children.
+      // loop over all children
+      for &(child, _) in &children {
+        for (pos, parent_state) in sequence.iter_mut().enumerate() {
+          let cstate = child.sequence[pos];
+          if *parent_state == cstate || *parent_state == NON_CHAR {
+            continue; // if parent is equal to child state or we know its a non-char, skip
+          }
+          if alphabet.is_canonical(cstate) {
+            if *parent_state == FILL_CHAR { // if cstate is canonical and parent is still FILL_STATE, set parent_state
+              *parent_state = cstate;
+            } else { // otherwise set or update the variable state
+              if seq_dis.variable.contains_key(&pos) {
+                seq_dis.variable.insert(
+                  pos,
+                  StateSet::from_union(&[seq_dis.variable[&pos], StateSet::from_char(cstate)]),
+                );
+              } else {
+                seq_dis
+                  .variable
+                  .insert(pos, StateSet::from_slice(&[*parent_state, cstate]));
+              }
+              *parent_state = VARIABLE_CHAR;
+            }
           }
         }
-
-        // Find the state of the current node at this position
-        *parent_state = match determined_states.as_slice() {
-          [state] => {
-            // All children have the same state, that will be the state of the current node
-            *state
-          }
-          [] => {
-            // No child states. Impossible
-            unreachable!("No child states. This is impossible");
-          }
-          states => {
-            // Child states differ. This is variable state.
-            // Save child states and postpone the decision until forward pass.
-            let dis = states.iter().collect();
-            seq_dis.variable.insert(pos, dis);
-            VARIABLE_CHAR
-          }
-        };
       }
 
       // Process insertions and deletions.
