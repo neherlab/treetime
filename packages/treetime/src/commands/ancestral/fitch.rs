@@ -178,13 +178,7 @@ fn fitch_backwards(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]
               *parent_state = child_state;
             } else {
               // otherwise set or update the variable state
-              if seq_dis.variable.contains_key(&pos) {
-                let new_state = seq_dis.variable[&pos] + child_state;
-                seq_dis.variable.insert(pos, new_state);
-              } else {
-                let new_state = stateset! {*parent_state, child_state};
-                seq_dis.variable.insert(pos, new_state);
-              }
+              *seq_dis.variable.entry(pos).or_insert(stateset! {*parent_state}) += child_state;
               *parent_state = VARIABLE_CHAR;
             }
           }
