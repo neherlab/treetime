@@ -462,7 +462,7 @@ pub fn ancestral_reconstruction_fitch(
   graph: &SparseGraph,
   include_leaves: bool,
   partitions: &[PartitionParsimony],
-  mut visitor: impl FnMut(&SparseNode, Vec<char>),
+  mut visitor: impl FnMut(&SparseNode, &[char]),
 ) -> Result<(), Report> {
   let n_partitions = partitions.len();
 
@@ -471,54 +471,41 @@ pub fn ancestral_reconstruction_fitch(
       return;
     }
 
-    let seq = (0..n_partitions)
-      .flat_map(|si| {
-        let PartitionParsimony { alphabet, .. } = &partitions[si];
+    for si in 0..n_partitions {
+      let PartitionParsimony { alphabet, .. } = &partitions[si];
 
-        let mut seq = if node.is_root {
-          node.payload.sparse_partitions[si].seq.sequence.clone()
-        } else {
-          let (parent, edge) = node.get_exactly_one_parent().unwrap();
-          let parent = &parent.read_arc().sparse_partitions[si];
-          let edge = &edge.read_arc().sparse_partitions[si];
+      if !node.is_root {
+        let (parent, edge) = node.get_exactly_one_parent().unwrap();
+        let parent_seq = &parent.read_arc().sparse_partitions[si].seq.sequence;
+        let edge_part = &edge.read_arc().sparse_partitions[si];
 
-          let mut seq = parent.seq.sequence.clone();
+        node.payload.sparse_partitions[si].seq.sequence = parent_seq.clone();
 
-          // Implant mutations
-          for sub in &edge.subs {
-            seq[sub.pos] = sub.qry;
-          }
-
-          // Implant indels
-          for indel in &edge.indels {
-            if indel.deletion {
-              seq[indel.range.0..indel.range.1].fill(alphabet.gap());
-            } else {
-              seq[indel.range.0..indel.range.1].copy_from_slice(&indel.seq);
-            }
-          }
-
-          seq
-        };
-
-        let node = &mut node.payload.sparse_partitions[si].seq;
-
-        // At the node itself, mask whatever is unknown in the node.
-        for r in &node.unknown {
-          seq[r.0..r.1].fill(alphabet.unknown());
+        for sub in &edge_part.subs {
+          node.payload.sparse_partitions[si].seq.sequence[sub.pos] = sub.qry;
         }
 
-        for (&pos, &states) in &node.fitch.variable {
-          seq[pos] = alphabet.set_to_char(states);
+        for indel in &edge_part.indels {
+          if indel.deletion {
+            node.payload.sparse_partitions[si].seq.sequence[indel.range.0..indel.range.1].fill(alphabet.gap());
+          } else {
+            node.payload.sparse_partitions[si].seq.sequence[indel.range.0..indel.range.1].copy_from_slice(&indel.seq);
+          }
         }
+      }
 
-        node.sequence = seq.clone();
+      let seq = &mut node.payload.sparse_partitions[si].seq;
 
-        seq
-      })
-      .collect();
+      for r in &mut seq.unknown {
+        seq.sequence[r.0..r.1].fill(alphabet.unknown());
+      }
 
-    visitor(&node.payload, seq);
+      for (pos, states) in &mut seq.fitch.variable {
+        seq.sequence[*pos] = alphabet.set_to_char(*states);
+      }
+
+      visitor(&node.payload, &node.payload.sparse_partitions[si].seq.sequence);
+    }
   });
 
   Ok(())
@@ -610,7 +597,7 @@ mod tests {
 
     let mut actual = BTreeMap::new();
     ancestral_reconstruction_fitch(&graph, false, &partitions, |node, seq| {
-      actual.insert(node.name.clone(), vec_to_string(seq));
+      actual.insert(node.name.clone(), vec_to_string(seq.to_owned()));
     })?;
 
     assert_eq!(
@@ -670,7 +657,7 @@ mod tests {
 
     let mut actual = BTreeMap::new();
     ancestral_reconstruction_fitch(&graph, true, &partitions, |node, seq| {
-      actual.insert(node.name.clone(), vec_to_string(seq));
+      actual.insert(node.name.clone(), vec_to_string(seq.to_owned()));
     })?;
 
     assert_eq!(

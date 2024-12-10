@@ -87,8 +87,10 @@ where
     }
   }
 
-  pub fn get_exactly_one_parent(&self) -> Result<&NodeEdgePayloadPair<N, E>, Report> {
-    get_exactly_one(&self.parents).wrap_err("Nodes with multiple parents are not yet supported")
+  pub fn get_exactly_one_parent(&self) -> Result<NodeEdgePayloadPair<N, E>, Report> {
+    get_exactly_one(&self.parents)
+      .cloned()
+      .wrap_err("Nodes with multiple parents are not yet supported")
   }
 }
 
