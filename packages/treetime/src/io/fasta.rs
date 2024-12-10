@@ -253,12 +253,7 @@ impl FastaWriter {
     Ok(Self::new(create_file_or_stdout(filepath)?))
   }
 
-  pub fn write(
-    &mut self,
-    seq_name: impl AsRef<str>,
-    desc: &Option<String>,
-    seq: impl AsRef<str>,
-  ) -> Result<(), Report> {
+  pub fn write(&mut self, seq_name: impl AsRef<str>, desc: &Option<String>, seq: &[char]) -> Result<(), Report> {
     self.writer.write_all(b">")?;
     self.writer.write_all(seq_name.as_ref().as_bytes())?;
 
@@ -268,7 +263,7 @@ impl FastaWriter {
     }
 
     self.writer.write_all(b"\n")?;
-    self.writer.write_all(seq.as_ref().as_bytes())?;
+    write_chars_chunked(&mut self.writer, seq)?;
     self.writer.write_all(b"\n")?;
     Ok(())
   }
@@ -279,11 +274,32 @@ impl FastaWriter {
   }
 }
 
+fn write_chars_chunked<W>(writer: &mut W, chars: &[char]) -> Result<(), Report>
+where
+  W: std::io::Write,
+{
+  const CHUNK_SIZE: usize = 1024;
+  let mut buffer = [0_u8; CHUNK_SIZE];
+  let mut buffer_index = 0;
+  for c in chars {
+    if buffer_index >= CHUNK_SIZE {
+      writer.write_all(&buffer)?;
+      buffer_index = 0;
+    }
+    buffer[buffer_index] = *c as u8;
+    buffer_index += 1;
+  }
+  if buffer_index > 0 {
+    writer.write_all(&buffer[..buffer_index])?;
+  }
+  Ok(())
+}
+
 pub fn write_one_fasta(
   filepath: impl AsRef<Path>,
   seq_name: impl AsRef<str>,
   desc: &Option<String>,
-  seq: impl AsRef<str>,
+  seq: &[char],
 ) -> Result<(), Report> {
   let mut writer = FastaWriter::from_path(&filepath)?;
   writer.write(seq_name, desc, seq)

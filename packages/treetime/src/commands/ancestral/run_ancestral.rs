@@ -17,7 +17,6 @@ use crate::representation::infer_dense::infer_dense;
 use crate::representation::partitions_likelihood::{PartitionLikelihood, PartitionLikelihoodWithAln};
 use crate::representation::partitions_parsimony::PartitionParsimonyWithAln;
 use crate::utils::random::get_random_number_generator;
-use crate::utils::string::vec_to_string;
 use eyre::Report;
 use itertools::Itertools;
 use serde::Serialize;
@@ -89,8 +88,7 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
       ancestral_reconstruction_fitch(&graph, *reconstruct_tip_states, &partitions, |node, seq| {
         let name = node.name.as_deref().unwrap_or("");
         let desc = &node.desc;
-        // TODO: avoid converting vec to string, write vec chars directly
-        output_fasta.write(name, desc, vec_to_string(seq)).unwrap();
+        output_fasta.write(name, desc, seq).unwrap();
       })?;
 
       write_graph(outdir, &graph)?;
@@ -112,8 +110,7 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
         ancestral_reconstruction_marginal_sparse(&graph, *reconstruct_tip_states, &partitions, |node, seq| {
           let name = node.name.as_deref().unwrap_or("");
           let desc = &node.desc;
-          // TODO: avoid converting vec to string, write vec chars directly
-          output_fasta.write(name, desc, vec_to_string(seq)).unwrap();
+          output_fasta.write(name, desc, &seq).unwrap();
         })?;
 
         write_graph(outdir, &graph)?;
@@ -127,8 +124,7 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
         ancestral_reconstruction_marginal_dense(&graph, *reconstruct_tip_states, |node, seq| {
           let name = node.name.as_deref().unwrap_or("");
           let desc = &node.desc;
-          // TODO: avoid converting vec to string, write vec chars directly
-          output_fasta.write(name, desc, vec_to_string(seq)).unwrap();
+          output_fasta.write(name, desc, &seq).unwrap();
         })?;
 
         write_graph(outdir, &graph)?;
