@@ -1,7 +1,7 @@
+use auto_ops::{impl_op_ex, impl_op_ex_commutative};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::borrow::Borrow;
-use std::ops::{Add, AddAssign, BitAndAssign, BitOrAssign, BitXorAssign, Sub, SubAssign};
 
 #[allow(variant_size_differences)]
 #[derive(Clone, Debug)]
@@ -74,9 +74,9 @@ impl BitSet128 {
     }
   }
 
-  pub fn symmetric_difference(set1: &Self, set2: &Self) -> Self {
+  pub fn symmetric_difference(&self, other: &Self) -> Self {
     Self {
-      bits: set1.bits ^ set2.bits,
+      bits: self.bits ^ other.bits,
     }
   }
 
@@ -161,53 +161,6 @@ impl BitSet128 {
   }
 }
 
-impl Add for BitSet128 {
-  type Output = Self;
-
-  fn add(self, other: Self) -> Self::Output {
-    self.union(&other)
-  }
-}
-
-impl Sub for BitSet128 {
-  type Output = Self;
-
-  fn sub(self, other: Self) -> Self::Output {
-    self.difference(&other)
-  }
-}
-
-impl AddAssign for BitSet128 {
-  #[allow(clippy::suspicious_op_assign_impl)]
-  fn add_assign(&mut self, other: Self) {
-    self.bits |= other.bits;
-  }
-}
-
-impl SubAssign for BitSet128 {
-  fn sub_assign(&mut self, other: Self) {
-    self.bits &= !other.bits;
-  }
-}
-
-impl BitAndAssign for BitSet128 {
-  fn bitand_assign(&mut self, other: Self) {
-    self.bits &= other.bits;
-  }
-}
-
-impl BitOrAssign for BitSet128 {
-  fn bitor_assign(&mut self, other: Self) {
-    self.bits |= other.bits;
-  }
-}
-
-impl BitXorAssign for BitSet128 {
-  fn bitxor_assign(&mut self, other: Self) {
-    self.bits ^= other.bits;
-  }
-}
-
 impl<T: Borrow<char>> Extend<T> for BitSet128 {
   fn extend<I>(&mut self, iter: I)
   where
@@ -275,10 +228,42 @@ macro_rules! bitset128 {
   };
 }
 
+impl_op_ex!(+|a: &BitSet128, b: &BitSet128| -> BitSet128 { a.union(b) });
+impl_op_ex!(+=|a: &mut BitSet128, b: &BitSet128| { *a = a.union(b); });
+
+impl_op_ex!(| |a: &BitSet128, b: &BitSet128| -> BitSet128 { a.union(b) });
+impl_op_ex!(|= |a: &mut BitSet128, b: &BitSet128| { *a = a.union(b); });
+
+impl_op_ex!(&|a: &BitSet128, b: &BitSet128| -> BitSet128 { a.intersection(b) });
+impl_op_ex!(&= |a: &mut BitSet128, b: &BitSet128| { *a = a.intersection(b); });
+
+impl_op_ex!(-|a: &BitSet128, b: &BitSet128| -> BitSet128 { a.difference(b) });
+impl_op_ex!(-=|a: &mut BitSet128, b: &BitSet128| { *a = a.difference(b); });
+
+impl_op_ex!(^|a: &BitSet128, b: &BitSet128| -> BitSet128 { a.symmetric_difference(b) });
+impl_op_ex!(^=|a: &mut BitSet128, b: &BitSet128| { *a = a.symmetric_difference(b); });
+
+impl_op_ex_commutative!(+|a: &BitSet128, b: char| -> BitSet128 { a.union(&BitSet128::from_char(b)) });
+impl_op_ex!(+=|a: &mut BitSet128, b: char| { *a = a.union(&BitSet128::from_char(b)); });
+
+impl_op_ex_commutative!(| |a: &BitSet128, b: char| -> BitSet128 { a.union(&BitSet128::from_char(b)) });
+impl_op_ex!(|=|a: &mut BitSet128, b: char| { *a = a.union(&BitSet128::from_char(b)); });
+
+impl_op_ex!(-|a: &BitSet128, b: char| -> BitSet128 { a.difference(&BitSet128::from_char(b)) });
+impl_op_ex!(-=|a: &mut BitSet128, b: char| { *a = a.difference(&BitSet128::from_char(b)); });
+
+impl_op_ex_commutative!(&|a: &BitSet128, b: char| -> BitSet128 { a.intersection(&BitSet128::from_char(b)) });
+impl_op_ex!(&=|a: &mut BitSet128, b: char| { *a = a.intersection(&BitSet128::from_char(b)); });
+
+impl_op_ex_commutative!(^|a: &BitSet128, b: char| -> BitSet128 { a.symmetric_difference(&BitSet128::from_char(b)) });
+impl_op_ex!(^=|a: &mut BitSet128, b: char| { *a = a.symmetric_difference(&BitSet128::from_char(b)); });
+
 #[cfg(test)]
 mod tests {
+  #![allow(clippy::op_ref)]
   use super::*;
   use pretty_assertions::{assert_eq, assert_ne};
+  use rstest::rstest;
   use std::hash::{DefaultHasher, Hash, Hasher};
 
   #[test]
@@ -549,6 +534,588 @@ mod tests {
     let set = BitSet128::from_iter(['T']);
     let actual = set.get_one();
     let expected = 'T';
+    assert_eq!(actual, expected);
+  }
+
+  #[rstest]
+  #[case(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
+  #[case(bitset128!{},               bitset128!{'b'},            bitset128!{'b'})]
+  #[case(bitset128!{'a'},            bitset128!{'b'},            bitset128!{'a', 'b'})]
+  #[case(bitset128!{'a'},            bitset128!{'b', 'c'},       bitset128!{'a', 'b', 'c'})]
+  #[case(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'a', 'b', 'p', 'q', 'x'})]
+  #[case(bitset128!{'z'},            bitset128!{'z'},            bitset128!{'z'})]
+  #[case(bitset128!{'m', 'n'},       bitset128!{'a', 'b', 'm'},  bitset128!{'a', 'b', 'm', 'n'})]
+  #[case(bitset128!{},               bitset128!{},               bitset128!{})]
+  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'d', 'e', 'f'},  bitset128!{'a', 'b', 'c', 'd', 'e', 'f'})]
+  #[trace]
+  fn test_bitset128_add(#[case] a: BitSet128, #[case] b: BitSet128, #[case] expected: BitSet128) {
+    let actual = a + b;
+    assert_eq!(actual, expected);
+  }
+
+  #[rstest]
+  #[case(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
+  #[case(bitset128!{},               bitset128!{'b'},            bitset128!{'b'})]
+  #[case(bitset128!{'a'},            bitset128!{'b'},            bitset128!{'a', 'b'})]
+  #[case(bitset128!{'a'},            bitset128!{'b', 'c'},       bitset128!{'a', 'b', 'c'})]
+  #[case(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'a', 'b', 'p', 'q', 'x'})]
+  #[case(bitset128!{'z'},            bitset128!{'z'},            bitset128!{'z'})]
+  #[case(bitset128!{'m', 'n'},       bitset128!{'a', 'b', 'm'},  bitset128!{'a', 'b', 'm', 'n'})]
+  #[case(bitset128!{},               bitset128!{},               bitset128!{})]
+  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'d', 'e', 'f'},  bitset128!{'a', 'b', 'c', 'd', 'e', 'f'})]
+  #[trace]
+  fn test_bitset128_add_ref_right(#[case] a: BitSet128, #[case] b: BitSet128, #[case] expected: BitSet128) {
+    let actual = a + &b;
+    assert_eq!(actual, expected);
+  }
+
+  #[rstest]
+  #[case(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
+  #[case(bitset128!{},               bitset128!{'b'},            bitset128!{'b'})]
+  #[case(bitset128!{'a'},            bitset128!{'b'},            bitset128!{'a', 'b'})]
+  #[case(bitset128!{'a'},            bitset128!{'b', 'c'},       bitset128!{'a', 'b', 'c'})]
+  #[case(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'a', 'b', 'p', 'q', 'x'})]
+  #[case(bitset128!{'z'},            bitset128!{'z'},            bitset128!{'z'})]
+  #[case(bitset128!{'m', 'n'},       bitset128!{'a', 'b', 'm'},  bitset128!{'a', 'b', 'm', 'n'})]
+  #[case(bitset128!{},               bitset128!{},               bitset128!{})]
+  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'d', 'e', 'f'},  bitset128!{'a', 'b', 'c', 'd', 'e', 'f'})]
+  #[trace]
+  fn test_bitset128_add_ref_left(#[case] a: BitSet128, #[case] b: BitSet128, #[case] expected: BitSet128) {
+    let actual = &a + b;
+    assert_eq!(actual, expected);
+  }
+
+  #[rstest]
+  #[case(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
+  #[case(bitset128!{},               bitset128!{'b'},            bitset128!{'b'})]
+  #[case(bitset128!{'a'},            bitset128!{'b'},            bitset128!{'a', 'b'})]
+  #[case(bitset128!{'a'},            bitset128!{'b', 'c'},       bitset128!{'a', 'b', 'c'})]
+  #[case(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'a', 'b', 'p', 'q', 'x'})]
+  #[case(bitset128!{'z'},            bitset128!{'z'},            bitset128!{'z'})]
+  #[case(bitset128!{'m', 'n'},       bitset128!{'a', 'b', 'm'},  bitset128!{'a', 'b', 'm', 'n'})]
+  #[case(bitset128!{},               bitset128!{},               bitset128!{})]
+  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'d', 'e', 'f'},  bitset128!{'a', 'b', 'c', 'd', 'e', 'f'})]
+  #[trace]
+  fn test_bitset128_add_ref_both(#[case] a: BitSet128, #[case] b: BitSet128, #[case] expected: BitSet128) {
+    let actual = &a + &b;
+    assert_eq!(actual, expected);
+  }
+
+  #[rstest]
+  #[case(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
+  #[case(bitset128!{},               bitset128!{'b'},            bitset128!{'b'})]
+  #[case(bitset128!{'a'},            bitset128!{'b'},            bitset128!{'a', 'b'})]
+  #[case(bitset128!{'a'},            bitset128!{'b', 'c'},       bitset128!{'a', 'b', 'c'})]
+  #[case(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'a', 'b', 'p', 'q', 'x'})]
+  #[case(bitset128!{'z'},            bitset128!{'z'},            bitset128!{'z'})]
+  #[case(bitset128!{'m', 'n'},       bitset128!{'a', 'b', 'm'},  bitset128!{'a', 'b', 'm', 'n'})]
+  #[case(bitset128!{},               bitset128!{},               bitset128!{})]
+  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'d', 'e', 'f'},  bitset128!{'a', 'b', 'c', 'd', 'e', 'f'})]
+  #[trace]
+  fn test_bitset128_add_assign(#[case] a: BitSet128, #[case] b: BitSet128, #[case] expected: BitSet128) {
+    let mut a = a;
+    a += b;
+    assert_eq!(a, expected);
+  }
+
+  #[rstest]
+  #[case(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
+  #[case(bitset128!{},               bitset128!{'b'},            bitset128!{'b'})]
+  #[case(bitset128!{'a'},            bitset128!{'b'},            bitset128!{'a', 'b'})]
+  #[case(bitset128!{'a'},            bitset128!{'b', 'c'},       bitset128!{'a', 'b', 'c'})]
+  #[case(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'a', 'b', 'p', 'q', 'x'})]
+  #[case(bitset128!{'z'},            bitset128!{'z'},            bitset128!{'z'})]
+  #[case(bitset128!{'m', 'n'},       bitset128!{'a', 'b', 'm'},  bitset128!{'a', 'b', 'm', 'n'})]
+  #[case(bitset128!{},               bitset128!{},               bitset128!{})]
+  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'d', 'e', 'f'},  bitset128!{'a', 'b', 'c', 'd', 'e', 'f'})]
+  #[trace]
+  fn test_bitset128_add_assign_ref(#[case] a: BitSet128, #[case] b: BitSet128, #[case] expected: BitSet128) {
+    let mut a = a;
+    a += &b;
+    assert_eq!(a, expected);
+  }
+
+  #[rstest]
+  #[case(bitset128!{'a'},            'b',                        bitset128!{'a', 'b'})]
+  #[case(bitset128!{'x', 'y'},       'z',                        bitset128!{'x', 'y', 'z'})]
+  #[case(bitset128!{'m', 'n'},       'm',                        bitset128!{'m', 'n'})]
+  #[case(bitset128!{},               'a',                        bitset128!{'a'})]
+  #[trace]
+  fn test_bitset128_add_char_to_set(#[case] a: BitSet128, #[case] b: char, #[case] expected: BitSet128) {
+    let actual = a + b;
+    assert_eq!(actual, expected);
+  }
+
+  #[rstest]
+  #[case('a',                        bitset128!{'b'},            bitset128!{'a', 'b'})]
+  #[case('x',                        bitset128!{'y', 'z'},       bitset128!{'x', 'y', 'z'})]
+  #[case('m',                        bitset128!{'m', 'n'},       bitset128!{'m', 'n'})]
+  #[case('a',                        bitset128!{},               bitset128!{'a'})]
+  #[trace]
+  fn test_bitset128_add_set_to_char(#[case] a: char, #[case] b: BitSet128, #[case] expected: BitSet128) {
+    let actual = b + a;
+    assert_eq!(actual, expected);
+  }
+
+  #[rstest]
+  #[case(bitset128!{},               bitset128!{},               bitset128!{})]
+  #[case(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
+  #[case(bitset128!{'a'},            bitset128!{'a'},            bitset128!{'a'})]
+  #[case(bitset128!{},               bitset128!{'b'},            bitset128!{'b'})]
+  #[case(bitset128!{'a'},            bitset128!{'b'},            bitset128!{'a', 'b'})]
+  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c'},       bitset128!{'a', 'b', 'c'})]
+  #[case(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'a', 'b', 'p', 'x', 'q'})]
+  #[case(bitset128!{'m', 'n'},       bitset128!{'a', 'b', 'm'},  bitset128!{'a', 'b', 'm', 'n'})]
+  #[case(bitset128!{'x', 'y'},       bitset128!{'z'},            bitset128!{'x', 'y', 'z'})]
+  #[trace]
+  fn test_bitset128_or(#[case] a: BitSet128, #[case] b: BitSet128, #[case] expected: BitSet128) {
+    let actual = a | b;
+    assert_eq!(actual, expected);
+  }
+
+  #[rstest]
+  #[case(bitset128!{},               bitset128!{},               bitset128!{})]
+  #[case(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
+  #[case(bitset128!{'a'},            bitset128!{'a'},            bitset128!{'a'})]
+  #[case(bitset128!{},               bitset128!{'b'},            bitset128!{'b'})]
+  #[case(bitset128!{'a'},            bitset128!{'b'},            bitset128!{'a', 'b'})]
+  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c'},       bitset128!{'a', 'b', 'c'})]
+  #[case(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'a', 'b', 'p', 'x', 'q'})]
+  #[case(bitset128!{'m', 'n'},       bitset128!{'a', 'b', 'm'},  bitset128!{'a', 'b', 'm', 'n'})]
+  #[case(bitset128!{'x', 'y'},       bitset128!{'z'},            bitset128!{'x', 'y', 'z'})]
+  #[trace]
+  fn test_bitset128_or_ref_right(#[case] a: BitSet128, #[case] b: BitSet128, #[case] expected: BitSet128) {
+    let actual = a | &b;
+    assert_eq!(actual, expected);
+  }
+
+  #[rstest]
+  #[case(bitset128!{},               bitset128!{},               bitset128!{})]
+  #[case(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
+  #[case(bitset128!{'a'},            bitset128!{'a'},            bitset128!{'a'})]
+  #[case(bitset128!{},               bitset128!{'b'},            bitset128!{'b'})]
+  #[case(bitset128!{'a'},            bitset128!{'b'},            bitset128!{'a', 'b'})]
+  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c'},       bitset128!{'a', 'b', 'c'})]
+  #[case(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'a', 'b', 'p', 'x', 'q'})]
+  #[case(bitset128!{'m', 'n'},       bitset128!{'a', 'b', 'm'},  bitset128!{'a', 'b', 'm', 'n'})]
+  #[case(bitset128!{'x', 'y'},       bitset128!{'z'},            bitset128!{'x', 'y', 'z'})]
+  #[trace]
+  fn test_bitset128_or_ref_left(#[case] a: BitSet128, #[case] b: BitSet128, #[case] expected: BitSet128) {
+    let actual = &a | b;
+    assert_eq!(actual, expected);
+  }
+
+  #[rstest]
+  #[case(bitset128!{},               bitset128!{},               bitset128!{})]
+  #[case(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
+  #[case(bitset128!{'a'},            bitset128!{'a'},            bitset128!{'a'})]
+  #[case(bitset128!{},               bitset128!{'b'},            bitset128!{'b'})]
+  #[case(bitset128!{'a'},            bitset128!{'b'},            bitset128!{'a', 'b'})]
+  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c'},       bitset128!{'a', 'b', 'c'})]
+  #[case(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'a', 'b', 'p', 'x', 'q'})]
+  #[case(bitset128!{'m', 'n'},       bitset128!{'a', 'b', 'm'},  bitset128!{'a', 'b', 'm', 'n'})]
+  #[case(bitset128!{'x', 'y'},       bitset128!{'z'},            bitset128!{'x', 'y', 'z'})]
+  #[trace]
+  fn test_bitset128_or_ref_both(#[case] a: BitSet128, #[case] b: BitSet128, #[case] expected: BitSet128) {
+    let actual = &a | &b;
+    assert_eq!(actual, expected);
+  }
+
+  #[rstest]
+  #[case(bitset128!{},               bitset128!{},               bitset128!{})]
+  #[case(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
+  #[case(bitset128!{'a'},            bitset128!{'a'},            bitset128!{'a'})]
+  #[case(bitset128!{},               bitset128!{'b'},            bitset128!{'b'})]
+  #[case(bitset128!{'a'},            bitset128!{'b'},            bitset128!{'a', 'b'})]
+  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c'},       bitset128!{'a', 'b', 'c'})]
+  #[case(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'a', 'b', 'p', 'x', 'q'})]
+  #[case(bitset128!{'m', 'n'},       bitset128!{'a', 'b', 'm'},  bitset128!{'a', 'b', 'm', 'n'})]
+  #[case(bitset128!{'x', 'y'},       bitset128!{'z'},            bitset128!{'x', 'y', 'z'})]
+  #[trace]
+  fn test_bitset128_or_assign(#[case] a: BitSet128, #[case] b: BitSet128, #[case] expected: BitSet128) {
+    let mut a = a;
+    a |= b;
+    assert_eq!(a, expected);
+  }
+
+  #[rstest]
+  #[case(bitset128!{},               bitset128!{},               bitset128!{})]
+  #[case(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
+  #[case(bitset128!{'a'},            bitset128!{'a'},            bitset128!{'a'})]
+  #[case(bitset128!{},               bitset128!{'b'},            bitset128!{'b'})]
+  #[case(bitset128!{'a'},            bitset128!{'b'},            bitset128!{'a', 'b'})]
+  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c'},       bitset128!{'a', 'b', 'c'})]
+  #[case(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'a', 'b', 'p', 'x', 'q'})]
+  #[case(bitset128!{'m', 'n'},       bitset128!{'a', 'b', 'm'},  bitset128!{'a', 'b', 'm', 'n'})]
+  #[case(bitset128!{'x', 'y'},       bitset128!{'z'},            bitset128!{'x', 'y', 'z'})]
+  #[trace]
+  fn test_bitset128_or_assign_ref(#[case] a: BitSet128, #[case] b: BitSet128, #[case] expected: BitSet128) {
+    let mut a = a;
+    a |= &b;
+    assert_eq!(a, expected);
+  }
+
+  #[rstest]
+  #[case(bitset128!{'a'},            'b',                        bitset128!{'a', 'b'})]
+  #[case(bitset128!{'x', 'y'},       'z',                        bitset128!{'x', 'y', 'z'})]
+  #[case(bitset128!{'m', 'n'},       'm',                        bitset128!{'m', 'n'})]
+  #[case(bitset128!{},               'a',                        bitset128!{'a'})]
+  #[trace]
+  fn test_bitset128_or_char_to_set(#[case] a: BitSet128, #[case] b: char, #[case] expected: BitSet128) {
+    let actual = a | b;
+    assert_eq!(actual, expected);
+  }
+
+  #[rstest]
+  #[case('a',                        bitset128!{'b'},            bitset128!{'a', 'b'})]
+  #[case('x',                        bitset128!{'y', 'z'},       bitset128!{'x', 'y', 'z'})]
+  #[case('m',                        bitset128!{'m', 'n'},       bitset128!{'m', 'n'})]
+  #[case('a',                        bitset128!{},               bitset128!{'a'})]
+  #[trace]
+  fn test_bitset128_or_set_to_char(#[case] a: char, #[case] b: BitSet128, #[case] expected: BitSet128) {
+    let actual = b | a;
+    assert_eq!(actual, expected);
+  }
+
+  #[rstest]
+  #[case(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
+  #[case(bitset128!{},               bitset128!{'b'},            bitset128!{})]
+  #[case(bitset128!{'a'},            bitset128!{'a'},            bitset128!{})]
+  #[case(bitset128!{'a', 'b'},       bitset128!{'b'},            bitset128!{'a'})]
+  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'d', 'e'},       bitset128!{'a', 'b', 'c'})]
+  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c', 'd'},  bitset128!{'a'})]
+  #[case(bitset128!{'x', 'y'},       bitset128!{'y', 'z'},       bitset128!{'x'})]
+  #[trace]
+  fn test_bitset128_sub(#[case] a: BitSet128, #[case] b: BitSet128, #[case] expected: BitSet128) {
+    let actual = a - b;
+    assert_eq!(actual, expected);
+  }
+
+  #[rstest]
+  #[case(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
+  #[case(bitset128!{},               bitset128!{'b'},            bitset128!{})]
+  #[case(bitset128!{'a'},            bitset128!{'a'},            bitset128!{})]
+  #[case(bitset128!{'a', 'b'},       bitset128!{'b'},            bitset128!{'a'})]
+  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'d', 'e'},       bitset128!{'a', 'b', 'c'})]
+  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c', 'd'},  bitset128!{'a'})]
+  #[case(bitset128!{'x', 'y'},       bitset128!{'y', 'z'},       bitset128!{'x'})]
+  #[trace]
+  fn test_bitset128_sub_ref_right(#[case] a: BitSet128, #[case] b: BitSet128, #[case] expected: BitSet128) {
+    let actual = a - &b;
+    assert_eq!(actual, expected);
+  }
+
+  #[rstest]
+  #[case(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
+  #[case(bitset128!{},               bitset128!{'b'},            bitset128!{})]
+  #[case(bitset128!{'a'},            bitset128!{'a'},            bitset128!{})]
+  #[case(bitset128!{'a', 'b'},       bitset128!{'b'},            bitset128!{'a'})]
+  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'d', 'e'},       bitset128!{'a', 'b', 'c'})]
+  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c', 'd'},  bitset128!{'a'})]
+  #[case(bitset128!{'x', 'y'},       bitset128!{'y', 'z'},       bitset128!{'x'})]
+  #[trace]
+  fn test_bitset128_sub_ref_left(#[case] a: BitSet128, #[case] b: BitSet128, #[case] expected: BitSet128) {
+    let actual = &a - b;
+    assert_eq!(actual, expected);
+  }
+
+  #[rstest]
+  #[case(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
+  #[case(bitset128!{},               bitset128!{'b'},            bitset128!{})]
+  #[case(bitset128!{'a'},            bitset128!{'a'},            bitset128!{})]
+  #[case(bitset128!{'a', 'b'},       bitset128!{'b'},            bitset128!{'a'})]
+  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'d', 'e'},       bitset128!{'a', 'b', 'c'})]
+  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c', 'd'},  bitset128!{'a'})]
+  #[case(bitset128!{'x', 'y'},       bitset128!{'y', 'z'},       bitset128!{'x'})]
+  #[trace]
+  fn test_bitset128_sub_ref_both(#[case] a: BitSet128, #[case] b: BitSet128, #[case] expected: BitSet128) {
+    let actual = &a - &b;
+    assert_eq!(actual, expected);
+  }
+
+  #[rstest]
+  #[case(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
+  #[case(bitset128!{},               bitset128!{'b'},            bitset128!{})]
+  #[case(bitset128!{'a'},            bitset128!{'a'},            bitset128!{})]
+  #[case(bitset128!{'a', 'b'},       bitset128!{'b'},            bitset128!{'a'})]
+  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'d', 'e'},       bitset128!{'a', 'b', 'c'})]
+  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c', 'd'},  bitset128!{'a'})]
+  #[case(bitset128!{'x', 'y'},       bitset128!{'y', 'z'},       bitset128!{'x'})]
+  #[trace]
+  fn test_bitset128_sub_assign(#[case] a: BitSet128, #[case] b: BitSet128, #[case] expected: BitSet128) {
+    let mut a = a;
+    a -= b;
+    assert_eq!(a, expected);
+  }
+
+  #[rstest]
+  #[case(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
+  #[case(bitset128!{},               bitset128!{'b'},            bitset128!{})]
+  #[case(bitset128!{'a'},            bitset128!{'a'},            bitset128!{})]
+  #[case(bitset128!{'a', 'b'},       bitset128!{'b'},            bitset128!{'a'})]
+  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'d', 'e'},       bitset128!{'a', 'b', 'c'})]
+  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c', 'd'},  bitset128!{'a'})]
+  #[case(bitset128!{'x', 'y'},       bitset128!{'y', 'z'},       bitset128!{'x'})]
+  #[trace]
+  fn test_bitset128_sub_assign_ref(#[case] a: BitSet128, #[case] b: BitSet128, #[case] expected: BitSet128) {
+    let mut a = a;
+    a -= &b;
+    assert_eq!(a, expected);
+  }
+
+  #[rstest]
+  #[case(bitset128!{},               'b',                        bitset128!{})]
+  #[case(bitset128!{'a'},            'b',                        bitset128!{'a'})]
+  #[case(bitset128!{'x', 'y'},       'y',                        bitset128!{'x'})]
+  #[case(bitset128!{'m', 'n'},       'm',                        bitset128!{'n'})]
+  #[case(bitset128!{'a'},            'a',                        bitset128!{})]
+  #[trace]
+  fn test_bitset128_sub_char_from_set(#[case] a: BitSet128, #[case] b: char, #[case] expected: BitSet128) {
+    let actual = a - b;
+    assert_eq!(actual, expected);
+  }
+
+  #[rstest]
+  #[case(bitset128!{'a'},            bitset128!{},               bitset128!{})]
+  #[case(bitset128!{},               bitset128!{'b'},            bitset128!{})]
+  #[case(bitset128!{'a'},            bitset128!{'b'},            bitset128!{})]
+  #[case(bitset128!{'a'},            bitset128!{'a'},            bitset128!{'a'})]
+  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c'},       bitset128!{'b', 'c'})]
+  #[case(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'x'})]
+  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'a', 'd', 'e'},  bitset128!{'a'})]
+  #[case(bitset128!{'m', 'n', 'o'},  bitset128!{'n', 'o', 'p'},  bitset128!{'n', 'o'})]
+  #[case(bitset128!{'x', 'y'},       bitset128!{'y', 'z'},       bitset128!{'y'})]
+  #[case(bitset128!{'g', 'h', 'i'},  bitset128!{'a', 'b', 'c'},  bitset128!{})]
+  #[trace]
+  fn test_bitset128_and(#[case] a: BitSet128, #[case] b: BitSet128, #[case] expected: BitSet128) {
+    let actual = a & b;
+    assert_eq!(actual, expected);
+  }
+
+  #[rstest]
+  #[case(bitset128!{'a'},            bitset128!{},               bitset128!{})]
+  #[case(bitset128!{},               bitset128!{'b'},            bitset128!{})]
+  #[case(bitset128!{'a'},            bitset128!{'b'},            bitset128!{})]
+  #[case(bitset128!{'a'},            bitset128!{'a'},            bitset128!{'a'})]
+  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c'},       bitset128!{'b', 'c'})]
+  #[case(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'x'})]
+  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'a', 'd', 'e'},  bitset128!{'a'})]
+  #[case(bitset128!{'m', 'n', 'o'},  bitset128!{'n', 'o', 'p'},  bitset128!{'n', 'o'})]
+  #[case(bitset128!{'x', 'y'},       bitset128!{'y', 'z'},       bitset128!{'y'})]
+  #[case(bitset128!{'g', 'h', 'i'},  bitset128!{'a', 'b', 'c'},  bitset128!{})]
+  #[trace]
+  fn test_bitset128_and_ref_right(#[case] a: BitSet128, #[case] b: BitSet128, #[case] expected: BitSet128) {
+    let actual = a & &b;
+    assert_eq!(actual, expected);
+  }
+
+  #[rstest]
+  #[case(bitset128!{'a'},            bitset128!{},               bitset128!{})]
+  #[case(bitset128!{},               bitset128!{'b'},            bitset128!{})]
+  #[case(bitset128!{'a'},            bitset128!{'b'},            bitset128!{})]
+  #[case(bitset128!{'a'},            bitset128!{'a'},            bitset128!{'a'})]
+  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c'},       bitset128!{'b', 'c'})]
+  #[case(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'x'})]
+  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'a', 'd', 'e'},  bitset128!{'a'})]
+  #[case(bitset128!{'m', 'n', 'o'},  bitset128!{'n', 'o', 'p'},  bitset128!{'n', 'o'})]
+  #[case(bitset128!{'x', 'y'},       bitset128!{'y', 'z'},       bitset128!{'y'})]
+  #[case(bitset128!{'g', 'h', 'i'},  bitset128!{'a', 'b', 'c'},  bitset128!{})]
+  #[trace]
+  fn test_bitset128_and_ref_left(#[case] a: BitSet128, #[case] b: BitSet128, #[case] expected: BitSet128) {
+    let actual = &a & b;
+    assert_eq!(actual, expected);
+  }
+
+  #[rstest]
+  #[case(bitset128!{'a'},            bitset128!{},               bitset128!{})]
+  #[case(bitset128!{},               bitset128!{'b'},            bitset128!{})]
+  #[case(bitset128!{'a'},            bitset128!{'b'},            bitset128!{})]
+  #[case(bitset128!{'a'},            bitset128!{'a'},            bitset128!{'a'})]
+  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c'},       bitset128!{'b', 'c'})]
+  #[case(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'x'})]
+  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'a', 'd', 'e'},  bitset128!{'a'})]
+  #[case(bitset128!{'m', 'n', 'o'},  bitset128!{'n', 'o', 'p'},  bitset128!{'n', 'o'})]
+  #[case(bitset128!{'x', 'y'},       bitset128!{'y', 'z'},       bitset128!{'y'})]
+  #[case(bitset128!{'g', 'h', 'i'},  bitset128!{'a', 'b', 'c'},  bitset128!{})]
+  #[trace]
+  fn test_bitset128_and_ref_both(#[case] a: BitSet128, #[case] b: BitSet128, #[case] expected: BitSet128) {
+    let actual = &a & &b;
+    assert_eq!(actual, expected);
+  }
+
+  #[rstest]
+  #[case(bitset128!{'a'},            bitset128!{},               bitset128!{})]
+  #[case(bitset128!{},               bitset128!{'b'},            bitset128!{})]
+  #[case(bitset128!{'a'},            bitset128!{'b'},            bitset128!{})]
+  #[case(bitset128!{'a'},            bitset128!{'a'},            bitset128!{'a'})]
+  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c'},       bitset128!{'b', 'c'})]
+  #[case(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'x'})]
+  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'a', 'd', 'e'},  bitset128!{'a'})]
+  #[case(bitset128!{'m', 'n', 'o'},  bitset128!{'n', 'o', 'p'},  bitset128!{'n', 'o'})]
+  #[case(bitset128!{'x', 'y'},       bitset128!{'y', 'z'},       bitset128!{'y'})]
+  #[case(bitset128!{'g', 'h', 'i'},  bitset128!{'a', 'b', 'c'},  bitset128!{})]
+  #[trace]
+  fn test_bitset128_and_assign(#[case] a: BitSet128, #[case] b: BitSet128, #[case] expected: BitSet128) {
+    let mut a = a;
+    a &= b;
+    assert_eq!(a, expected);
+  }
+
+  #[rstest]
+  #[case(bitset128!{'a'},            bitset128!{},               bitset128!{})]
+  #[case(bitset128!{},               bitset128!{'b'},            bitset128!{})]
+  #[case(bitset128!{'a'},            bitset128!{'b'},            bitset128!{})]
+  #[case(bitset128!{'a'},            bitset128!{'a'},            bitset128!{'a'})]
+  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c'},       bitset128!{'b', 'c'})]
+  #[case(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'x'})]
+  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'a', 'd', 'e'},  bitset128!{'a'})]
+  #[case(bitset128!{'m', 'n', 'o'},  bitset128!{'n', 'o', 'p'},  bitset128!{'n', 'o'})]
+  #[case(bitset128!{'x', 'y'},       bitset128!{'y', 'z'},       bitset128!{'y'})]
+  #[case(bitset128!{'g', 'h', 'i'},  bitset128!{'a', 'b', 'c'},  bitset128!{})]
+  #[trace]
+  fn test_bitset128_and_assign_ref(#[case] a: BitSet128, #[case] b: BitSet128, #[case] expected: BitSet128) {
+    let mut a = a;
+    a &= &b;
+    assert_eq!(a, expected);
+  }
+
+  #[rstest]
+  #[case(bitset128!{'a', 'b'},       'a',                        bitset128!{'a'})]
+  #[case(bitset128!{'x', 'y'},       'z',                        bitset128!{})]
+  #[case(bitset128!{'m', 'n', 'o'},  'o',                        bitset128!{'o'})]
+  #[trace]
+  fn test_bitset128_and_char_to_set(#[case] a: BitSet128, #[case] b: char, #[case] expected: BitSet128) {
+    let actual = a & b;
+    assert_eq!(actual, expected);
+  }
+
+  #[rstest]
+  #[case('a',                        bitset128!{'b', 'a'},       bitset128!{'a'})]
+  #[case('z',                        bitset128!{'x', 'y'},       bitset128!{})]
+  #[case('o',                        bitset128!{'m', 'n', 'o'},  bitset128!{'o'})]
+  #[trace]
+  fn test_bitset128_and_set_to_char(#[case] a: char, #[case] b: BitSet128, #[case] expected: BitSet128) {
+    let actual = b & a;
+    assert_eq!(actual, expected);
+  }
+
+  #[rstest]
+  #[case(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
+  #[case(bitset128!{},               bitset128!{'b'},            bitset128!{'b'})]
+  #[case(bitset128!{'a'},            bitset128!{'b'},            bitset128!{'a', 'b'})]
+  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c'},       bitset128!{'a'})]
+  #[case(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'a', 'b', 'p', 'q'})]
+  #[case(bitset128!{'a', 'b'},       bitset128!{'a', 'b'},       bitset128!{})]
+  #[case(bitset128!{'m', 'n'},       bitset128!{'n', 'o'},       bitset128!{'m', 'o'})]
+  #[case(bitset128!{'x', 'y', 'z'},  bitset128!{'y', 'z', 'a'},  bitset128!{'x', 'a'})]
+  #[case(bitset128!{'a', 'c', 'e'},  bitset128!{'b', 'c', 'd'},  bitset128!{'a', 'b', 'd', 'e'})]
+  #[trace]
+  fn test_bitset128_xor(#[case] a: BitSet128, #[case] b: BitSet128, #[case] expected: BitSet128) {
+    let actual = a ^ b;
+    assert_eq!(actual, expected);
+  }
+
+  #[rstest]
+  #[case(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
+  #[case(bitset128!{},               bitset128!{'b'},            bitset128!{'b'})]
+  #[case(bitset128!{'a'},            bitset128!{'b'},            bitset128!{'a', 'b'})]
+  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c'},       bitset128!{'a'})]
+  #[case(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'a', 'b', 'p', 'q'})]
+  #[case(bitset128!{'a', 'b'},       bitset128!{'a', 'b'},       bitset128!{})]
+  #[case(bitset128!{'m', 'n'},       bitset128!{'n', 'o'},       bitset128!{'m', 'o'})]
+  #[case(bitset128!{'x', 'y', 'z'},  bitset128!{'y', 'z', 'a'},  bitset128!{'x', 'a'})]
+  #[case(bitset128!{'a', 'c', 'e'},  bitset128!{'b', 'c', 'd'},  bitset128!{'a', 'b', 'd', 'e'})]
+  #[trace]
+  fn test_bitset128_xor_ref_right(#[case] a: BitSet128, #[case] b: BitSet128, #[case] expected: BitSet128) {
+    let actual = a ^ &b;
+    assert_eq!(actual, expected);
+  }
+
+  #[rstest]
+  #[case(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
+  #[case(bitset128!{},               bitset128!{'b'},            bitset128!{'b'})]
+  #[case(bitset128!{'a'},            bitset128!{'b'},            bitset128!{'a', 'b'})]
+  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c'},       bitset128!{'a'})]
+  #[case(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'a', 'b', 'p', 'q'})]
+  #[case(bitset128!{'a', 'b'},       bitset128!{'a', 'b'},       bitset128!{})]
+  #[case(bitset128!{'m', 'n'},       bitset128!{'n', 'o'},       bitset128!{'m', 'o'})]
+  #[case(bitset128!{'x', 'y', 'z'},  bitset128!{'y', 'z', 'a'},  bitset128!{'x', 'a'})]
+  #[case(bitset128!{'a', 'c', 'e'},  bitset128!{'b', 'c', 'd'},  bitset128!{'a', 'b', 'd', 'e'})]
+  #[trace]
+  fn test_bitset128_xor_ref_left(#[case] a: BitSet128, #[case] b: BitSet128, #[case] expected: BitSet128) {
+    let actual = &a ^ b;
+    assert_eq!(actual, expected);
+  }
+
+  #[rstest]
+  #[case(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
+  #[case(bitset128!{},               bitset128!{'b'},            bitset128!{'b'})]
+  #[case(bitset128!{'a'},            bitset128!{'b'},            bitset128!{'a', 'b'})]
+  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c'},       bitset128!{'a'})]
+  #[case(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'a', 'b', 'p', 'q'})]
+  #[case(bitset128!{'a', 'b'},       bitset128!{'a', 'b'},       bitset128!{})]
+  #[case(bitset128!{'m', 'n'},       bitset128!{'n', 'o'},       bitset128!{'m', 'o'})]
+  #[case(bitset128!{'x', 'y', 'z'},  bitset128!{'y', 'z', 'a'},  bitset128!{'x', 'a'})]
+  #[case(bitset128!{'a', 'c', 'e'},  bitset128!{'b', 'c', 'd'},  bitset128!{'a', 'b', 'd', 'e'})]
+  #[trace]
+  fn test_bitset128_xor_ref_both(#[case] a: BitSet128, #[case] b: BitSet128, #[case] expected: BitSet128) {
+    let actual = &a ^ &b;
+    assert_eq!(actual, expected);
+  }
+
+  #[rstest]
+  #[case(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
+  #[case(bitset128!{},               bitset128!{'b'},            bitset128!{'b'})]
+  #[case(bitset128!{'a'},            bitset128!{'b'},            bitset128!{'a', 'b'})]
+  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c'},       bitset128!{'a'})]
+  #[case(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'a', 'b', 'p', 'q'})]
+  #[case(bitset128!{'a', 'b'},       bitset128!{'a', 'b'},       bitset128!{})]
+  #[case(bitset128!{'m', 'n'},       bitset128!{'n', 'o'},       bitset128!{'m', 'o'})]
+  #[case(bitset128!{'x', 'y', 'z'},  bitset128!{'y', 'z', 'a'},  bitset128!{'x', 'a'})]
+  #[case(bitset128!{'a', 'c', 'e'},  bitset128!{'b', 'c', 'd'},  bitset128!{'a', 'b', 'd', 'e'})]
+  #[trace]
+  fn test_bitset128_xor_assign(#[case] a: BitSet128, #[case] b: BitSet128, #[case] expected: BitSet128) {
+    let mut a = a;
+    a ^= b;
+    assert_eq!(a, expected);
+  }
+
+  #[rstest]
+  #[case(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
+  #[case(bitset128!{},               bitset128!{'b'},            bitset128!{'b'})]
+  #[case(bitset128!{'a'},            bitset128!{'b'},            bitset128!{'a', 'b'})]
+  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c'},       bitset128!{'a'})]
+  #[case(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'a', 'b', 'p', 'q'})]
+  #[case(bitset128!{'a', 'b'},       bitset128!{'a', 'b'},       bitset128!{})]
+  #[case(bitset128!{'m', 'n'},       bitset128!{'n', 'o'},       bitset128!{'m', 'o'})]
+  #[case(bitset128!{'x', 'y', 'z'},  bitset128!{'y', 'z', 'a'},  bitset128!{'x', 'a'})]
+  #[case(bitset128!{'a', 'c', 'e'},  bitset128!{'b', 'c', 'd'},  bitset128!{'a', 'b', 'd', 'e'})]
+  #[trace]
+  fn test_bitset128_xor_assign_ref(#[case] a: BitSet128, #[case] b: BitSet128, #[case] expected: BitSet128) {
+    let mut a = a;
+    a ^= &b;
+    assert_eq!(a, expected);
+  }
+
+  #[rstest]
+  #[case(bitset128!{'a'},            'b',                        bitset128!{'a', 'b'})]
+  #[case(bitset128!{'x', 'y'},       'x',                        bitset128!{'y'})]
+  #[case(bitset128!{'m', 'n'},       'm',                        bitset128!{'n'})]
+  #[case(bitset128!{'c', 'd'},       'd',                        bitset128!{'c'})]
+  #[trace]
+  fn test_bitset128_xor_char_to_set(#[case] a: BitSet128, #[case] b: char, #[case] expected: BitSet128) {
+    let actual = a ^ b;
+    assert_eq!(actual, expected);
+  }
+
+  #[rstest]
+  #[case('a',                        bitset128!{'b'},            bitset128!{'a', 'b'})]
+  #[case('x',                        bitset128!{'x', 'y'},       bitset128!{'y'})]
+  #[case('m',                        bitset128!{'m', 'n'},       bitset128!{'n'})]
+  #[case('d',                        bitset128!{'c', 'd'},       bitset128!{'c'})]
+  #[trace]
+  fn test_bitset128_xor_set_to_char(#[case] a: char, #[case] b: BitSet128, #[case] expected: BitSet128) {
+    let actual = b ^ a;
     assert_eq!(actual, expected);
   }
 }
