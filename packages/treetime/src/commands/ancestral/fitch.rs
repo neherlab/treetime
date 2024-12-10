@@ -6,6 +6,7 @@ use crate::representation::graph_sparse::{
   Deletion, ParsimonySeqDis, SparseGraph, SparseNode, SparseSeqDis, SparseSeqEdge, SparseSeqInfo, SparseSeqNode,
 };
 use crate::representation::partitions_parsimony::{PartitionParsimony, PartitionParsimonyWithAln};
+use crate::representation::state_set::BitSet128;
 use crate::representation::state_set::{StateSet, StateSetStatus};
 use crate::seq::composition::Composition;
 use crate::seq::indel::InDel;
@@ -14,7 +15,7 @@ use crate::utils::interval::range::range_contains;
 use crate::utils::interval::range_complement::range_complement;
 use crate::utils::interval::range_difference::range_difference;
 use crate::utils::interval::range_intersection::{range_intersection, range_intersection_iter};
-use crate::{make_error, make_internal_report, make_report};
+use crate::{make_error, make_internal_report, make_report, stateset};
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use maplit::btreemap;
@@ -164,27 +165,25 @@ fn fitch_backwards(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]
         }
       }
 
-      // // Process all positions where the children are fixed or completely unknown in some children.
-      // loop over all children
+      // Process all positions where the children are fixed or completely unknown in some children.
       for &(child, _) in &children {
         for (pos, parent_state) in sequence.iter_mut().enumerate() {
-          let cstate = child.sequence[pos];
-          if *parent_state == cstate || *parent_state == NON_CHAR {
-            continue; // if parent is equal to child state or we know its a non-char, skip
+          let child_state = child.sequence[pos];
+          if *parent_state == child_state || *parent_state == NON_CHAR {
+            continue; // if parent is equal to child state or we know it's a non-char, skip
           }
-          if alphabet.is_canonical(cstate) {
-            if *parent_state == FILL_CHAR { // if cstate is canonical and parent is still FILL_STATE, set parent_state
-              *parent_state = cstate;
-            } else { // otherwise set or update the variable state
+          if alphabet.is_canonical(child_state) {
+            if *parent_state == FILL_CHAR {
+              // if child state is canonical and parent is still FILL_CHAR, set parent_state
+              *parent_state = child_state;
+            } else {
+              // otherwise set or update the variable state
               if seq_dis.variable.contains_key(&pos) {
-                seq_dis.variable.insert(
-                  pos,
-                  StateSet::from_union(&[seq_dis.variable[&pos], StateSet::from_char(cstate)]),
-                );
+                let new_state = seq_dis.variable[&pos] + child_state;
+                seq_dis.variable.insert(pos, new_state);
               } else {
-                seq_dis
-                  .variable
-                  .insert(pos, StateSet::from_slice(&[*parent_state, cstate]));
+                let new_state = stateset! {*parent_state, child_state};
+                seq_dis.variable.insert(pos, new_state);
               }
               *parent_state = VARIABLE_CHAR;
             }
