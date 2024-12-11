@@ -5,9 +5,9 @@ use crate::graph::node::{GraphNode, Named};
 use crate::io::graphviz::{EdgeToGraphViz, NodeToGraphviz};
 use crate::io::nwk::{format_weight, EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteOptions};
 use crate::o;
+use crate::representation::seq::Seq;
 use crate::seq::find_char_ranges::find_letter_ranges;
 use crate::seq::indel::InDel;
-use crate::seq::serde::{serde_deserialize_seq, serde_serialize_seq};
 use eyre::Report;
 use ndarray::Array2;
 use serde::{Deserialize, Serialize};
@@ -63,8 +63,7 @@ impl NodeToGraphviz for DenseNode {
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct DenseSeqInfo {
   pub gaps: Vec<(usize, usize)>,
-  #[serde(serialize_with = "serde_serialize_seq", deserialize_with = "serde_deserialize_seq")]
-  pub sequence: Vec<char>,
+  pub sequence: Seq,
 }
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
@@ -74,7 +73,7 @@ pub struct DenseSeqNode {
 }
 
 impl DenseSeqNode {
-  pub fn new(seq: &[char], alphabet: &Alphabet) -> Result<Self, Report> {
+  pub fn new(seq: &Seq, alphabet: &Alphabet) -> Result<Self, Report> {
     let gaps = find_letter_ranges(seq, alphabet.gap());
 
     Ok(Self {

@@ -7,7 +7,7 @@ use std::borrow::Borrow;
 #[derive(Clone, Debug)]
 pub enum Bitset128Status {
   Empty,
-  Unambiguous(char),
+  Unambiguous(u8),
   Ambiguous(BitSet128),
 }
 
@@ -22,12 +22,8 @@ impl BitSet128 {
     Self { bits: 0 }
   }
 
-  pub fn from_char(c: char) -> Self {
-    Self { bits: 1 << (c as u32) }
-  }
-
-  pub fn from_slice(chars: &[char]) -> Self {
-    chars.iter().copied().collect()
+  pub fn from_char<T: Into<u32>>(c: T) -> Self {
+    Self { bits: 1 << c.into() }
   }
 
   pub fn is_empty(&self) -> bool {
@@ -42,18 +38,16 @@ impl BitSet128 {
     self.bits = 0;
   }
 
-  pub fn contains(&self, c: char) -> bool {
-    (self.bits & (1 << (c as u32))) != 0
+  pub fn contains<T: Into<u32>>(&self, c: T) -> bool {
+    (self.bits & (1 << c.into())) != 0
   }
 
-  pub fn insert(&mut self, c: char) {
-    let mask = 1 << (c as u32);
-    self.bits |= mask;
+  pub fn insert<T: Into<u32>>(&mut self, c: T) {
+    self.bits |= 1 << c.into();
   }
 
-  pub fn remove(&mut self, c: char) {
-    let mask = 1 << (c as u32);
-    self.bits &= !mask;
+  pub fn remove<T: Into<u32>>(&mut self, c: T) {
+    self.bits &= !(1 << c.into());
   }
 
   pub fn union(&self, other: &Self) -> Self {
@@ -113,13 +107,11 @@ impl BitSet128 {
     other.is_subset(self)
   }
 
-  pub fn iter(&self) -> impl Iterator<Item = char> + '_ {
-    (0..128)
-      .filter(|&i| (self.bits & (1 << i)) != 0)
-      .map(|i| char::from_u32(i).unwrap())
+  pub fn iter(&self) -> impl Iterator<Item = u8> + '_ {
+    (0..128).filter(|&i| (self.bits & (1 << i)) != 0)
   }
 
-  pub fn chars(&self) -> impl Iterator<Item = char> + '_ {
+  pub fn chars(&self) -> impl Iterator<Item = u8> + '_ {
     self.iter()
   }
 
@@ -131,37 +123,33 @@ impl BitSet128 {
     }
   }
 
-  pub fn first(&self) -> Option<char> {
-    (!self.is_empty()).then_some(char::from_u32(self.bits.trailing_zeros()).unwrap())
+  pub fn first(&self) -> Option<u8> {
+    (!self.is_empty()).then_some(self.bits.trailing_zeros() as u8)
   }
 
-  pub fn last(&self) -> Option<char> {
-    (!self.is_empty()).then_some(char::from_u32(127 - self.bits.leading_zeros()).unwrap())
+  pub fn last(&self) -> Option<u8> {
+    (!self.is_empty()).then_some((127 - self.bits.leading_zeros()) as u8)
   }
 
-  pub fn get_one_maybe(&self) -> Option<char> {
+  pub fn get_one_maybe(&self) -> Option<u8> {
     self.first()
   }
 
-  pub fn get_one(&self) -> char {
+  pub fn get_one(&self) -> u8 {
     self.get_one_maybe().expect("BitSet128 is empty")
   }
 
-  pub fn get_one_exactly(&self) -> char {
+  pub fn get_one_exactly(&self) -> u8 {
     assert_eq!(self.len(), 1, "expected exactly one element");
     self.get_one()
   }
 
-  pub fn to_vec(&self) -> Vec<char> {
+  pub fn to_vec(&self) -> Vec<u8> {
     self.iter().collect()
-  }
-
-  pub fn from_vec(chars: Vec<char>) -> Self {
-    Self::from_iter(chars)
   }
 }
 
-impl<T: Borrow<char>> Extend<T> for BitSet128 {
+impl<T: Borrow<u8>> Extend<T> for BitSet128 {
   fn extend<I>(&mut self, iter: I)
   where
     I: IntoIterator<Item = T>,
@@ -172,21 +160,124 @@ impl<T: Borrow<char>> Extend<T> for BitSet128 {
   }
 }
 
-impl<T: Borrow<char>> FromIterator<T> for BitSet128 {
-  fn from_iter<I>(iter: I) -> Self
-  where
-    I: IntoIterator<Item = T>,
-  {
-    let bits = iter.into_iter().fold(0, |acc, c| acc | (1 << (*c.borrow() as u32)));
+impl FromIterator<u8> for BitSet128 {
+  fn from_iter<I: IntoIterator<Item = u8>>(iter: I) -> Self {
+    let bits = iter.into_iter().fold(0_u128, |acc, c| acc | (1 << c));
     Self { bits }
   }
 }
+
+impl<'a> FromIterator<&'a u8> for BitSet128 {
+  fn from_iter<I: IntoIterator<Item = &'a u8>>(iter: I) -> Self {
+    iter.into_iter().copied().collect()
+  }
+}
+
+impl FromIterator<char> for BitSet128 {
+  fn from_iter<I: IntoIterator<Item = char>>(iter: I) -> Self {
+    iter.into_iter().map(|c| c as u8).collect()
+  }
+}
+
+impl<'a> FromIterator<&'a char> for BitSet128 {
+  fn from_iter<I: IntoIterator<Item = &'a char>>(iter: I) -> Self {
+    iter.into_iter().map(|&c| c as u8).collect()
+  }
+}
+
+impl From<&[u8]> for BitSet128 {
+  fn from(slice: &[u8]) -> Self {
+    slice.iter().copied().collect()
+  }
+}
+
+impl From<Vec<u8>> for BitSet128 {
+  fn from(vec: Vec<u8>) -> Self {
+    vec.into_iter().collect()
+  }
+}
+
+impl From<&[char]> for BitSet128 {
+  fn from(slice: &[char]) -> Self {
+    slice.iter().copied().collect()
+  }
+}
+
+impl From<Vec<char>> for BitSet128 {
+  fn from(vec: Vec<char>) -> Self {
+    vec.into_iter().collect()
+  }
+}
+
+impl From<u8> for BitSet128 {
+  fn from(c: u8) -> Self {
+    BitSet128 { bits: 1 << c }
+  }
+}
+
+impl From<char> for BitSet128 {
+  fn from(c: char) -> Self {
+    BitSet128 { bits: 1 << (c as u8) }
+  }
+}
+
+// impl From<u8> for BitSet128 {
+//   fn from(c: u8) -> Self {
+//     Self::from_char(c)
+//   }
+// }
+//
+// impl From<char> for BitSet128 {
+//   fn from(c: char) -> Self {
+//     Self::from_char(c)
+//   }
+// }
+
+// impl<T> FromIterator<T> for BitSet128
+// where
+//   T: AsPrimitive<u8>,
+// {
+//   fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
+//     let bits = iter.into_iter().fold(0_u128, |acc, item| acc | (1 << (item.as_())));
+//     Self { bits }
+//
+//     // BitSet128 {
+//     //   bits: iter.into_iter().map(|item| item.as_()).collect(),
+//     // }
+//   }
+// }
+
+// impl<T> FromIterator<T> for BitSet128
+// where
+//   T: Into<u32>,
+// {
+//   fn from_iter<I>(iter: I) -> Self
+//   where
+//     I: IntoIterator<Item = T>,
+//   {
+//     let bits = iter.into_iter().fold(0_u128, |acc, item| acc | (1 << (item.into())));
+//     Self { bits }
+//   }
+// }
+//
+// impl<T> FromIterator<T> for BitSet128
+// where
+//   T: Into<&u32>,
+// {
+//   fn from_iter<I>(iter: I) -> Self
+//   where
+//     I: IntoIterator<Item = T>,
+//   {
+//     let bits = iter.into_iter().fold(0_u128, |acc, item| acc | (1 << (*item.into())));
+//     Self { bits }
+//   }
+// }
 
 impl std::fmt::Display for BitSet128 {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     let chars: String = (0..128)
       .filter(|&i| (self.bits & (1 << i)) != 0)
-      .map(|i| char::from_u32(i).unwrap())
+      .map(|c| c as u8 as char)
       .join(", ");
     write!(f, "{{{chars}}}")
   }
@@ -197,7 +288,7 @@ impl Serialize for BitSet128 {
   where
     S: serde::Serializer,
   {
-    let chars: Vec<char> = self.to_vec();
+    let chars: Vec<char> = self.iter().map(|c| c as char).collect();
     chars.serialize(serializer)
   }
 }
@@ -208,7 +299,7 @@ impl<'de> Deserialize<'de> for BitSet128 {
     D: serde::Deserializer<'de>,
   {
     let chars: Vec<char> = Vec::deserialize(deserializer)?;
-    Ok(Self::from_vec(chars))
+    Ok(Self::from_iter(chars))
   }
 }
 
@@ -220,10 +311,14 @@ impl std::fmt::Debug for BitSet128 {
 
 #[macro_export]
 macro_rules! bitset128 {
+  () => {
+    {
+      BitSet128::new()
+    }
+  };
   ($($char:expr),* $(,)?) => {
     {
-      let chars = [$($char),*];
-      BitSet128::from_slice(&chars)
+      BitSet128::from_iter(&[$($char),*])
     }
   };
 }
@@ -243,20 +338,20 @@ impl_op_ex!(-=|a: &mut BitSet128, b: &BitSet128| { *a = a.difference(b); });
 impl_op_ex!(^|a: &BitSet128, b: &BitSet128| -> BitSet128 { a.symmetric_difference(b) });
 impl_op_ex!(^=|a: &mut BitSet128, b: &BitSet128| { *a = a.symmetric_difference(b); });
 
-impl_op_ex_commutative!(+|a: &BitSet128, b: char| -> BitSet128 { a.union(&BitSet128::from_char(b)) });
-impl_op_ex!(+=|a: &mut BitSet128, b: char| { *a = a.union(&BitSet128::from_char(b)); });
+impl_op_ex_commutative!(+|a: &BitSet128, b: u8| -> BitSet128 { a.union(&BitSet128::from_char(b)) });
+impl_op_ex!(+=|a: &mut BitSet128, b: u8| { *a = a.union(&BitSet128::from_char(b)); });
 
-impl_op_ex_commutative!(| |a: &BitSet128, b: char| -> BitSet128 { a.union(&BitSet128::from_char(b)) });
-impl_op_ex!(|=|a: &mut BitSet128, b: char| { *a = a.union(&BitSet128::from_char(b)); });
+impl_op_ex_commutative!(| |a: &BitSet128, b: u8| -> BitSet128 { a.union(&BitSet128::from_char(b)) });
+impl_op_ex!(|=|a: &mut BitSet128, b: u8| { *a = a.union(&BitSet128::from_char(b)); });
 
-impl_op_ex!(-|a: &BitSet128, b: char| -> BitSet128 { a.difference(&BitSet128::from_char(b)) });
-impl_op_ex!(-=|a: &mut BitSet128, b: char| { *a = a.difference(&BitSet128::from_char(b)); });
+impl_op_ex!(-|a: &BitSet128, b: u8| -> BitSet128 { a.difference(&BitSet128::from_char(b)) });
+impl_op_ex!(-=|a: &mut BitSet128, b: u8| { *a = a.difference(&BitSet128::from_char(b)); });
 
-impl_op_ex_commutative!(&|a: &BitSet128, b: char| -> BitSet128 { a.intersection(&BitSet128::from_char(b)) });
-impl_op_ex!(&=|a: &mut BitSet128, b: char| { *a = a.intersection(&BitSet128::from_char(b)); });
+impl_op_ex_commutative!(&|a: &BitSet128, b: u8| -> BitSet128 { a.intersection(&BitSet128::from_char(b)) });
+impl_op_ex!(&=|a: &mut BitSet128, b: u8| { *a = a.intersection(&BitSet128::from_char(b)); });
 
-impl_op_ex_commutative!(^|a: &BitSet128, b: char| -> BitSet128 { a.symmetric_difference(&BitSet128::from_char(b)) });
-impl_op_ex!(^=|a: &mut BitSet128, b: char| { *a = a.symmetric_difference(&BitSet128::from_char(b)); });
+impl_op_ex_commutative!(^|a: &BitSet128, b: u8| -> BitSet128 { a.symmetric_difference(&BitSet128::from_char(b)) });
+impl_op_ex!(^=|a: &mut BitSet128, b: u8| { *a = a.symmetric_difference(&BitSet128::from_char(b)); });
 
 #[cfg(test)]
 mod tests {
@@ -282,7 +377,7 @@ mod tests {
 
   #[test]
   fn test_bitset128_from_slice() {
-    let actual = BitSet128::from_slice(&['x', 'y', 'z']);
+    let actual = BitSet128::from_iter(&['x', 'y', 'z']);
     let expected = bitset128! {'x', 'y', 'z'};
     assert_eq!(actual, expected);
   }
@@ -508,7 +603,7 @@ mod tests {
   #[test]
   fn test_bitset128_get_unambiguous() {
     let set = BitSet128::from_char('A');
-    assert!(matches!(set.get(), Bitset128Status::Unambiguous('A')));
+    assert!(matches!(set.get(), Bitset128Status::Unambiguous(b'A')));
   }
 
   #[test]
@@ -525,7 +620,7 @@ mod tests {
   fn test_bitset128_get_one() {
     let set = BitSet128::from_iter(['T', 'A']);
     let actual = set.get_one();
-    let expected = 'A';
+    let expected = b'A';
     assert_eq!(actual, expected);
   }
 
@@ -533,7 +628,7 @@ mod tests {
   fn test_bitset128_get_one_exactly() {
     let set = BitSet128::from_iter(['T']);
     let actual = set.get_one();
-    let expected = 'T';
+    let expected = b'T';
     assert_eq!(actual, expected);
   }
 
@@ -636,23 +731,23 @@ mod tests {
   }
 
   #[rstest]
-  #[case(bitset128!{'a'},            'b',                        bitset128!{'a', 'b'})]
-  #[case(bitset128!{'x', 'y'},       'z',                        bitset128!{'x', 'y', 'z'})]
-  #[case(bitset128!{'m', 'n'},       'm',                        bitset128!{'m', 'n'})]
-  #[case(bitset128!{},               'a',                        bitset128!{'a'})]
+  #[case(bitset128!{'a'},            b'b',                        bitset128!{'a', 'b'})]
+  #[case(bitset128!{'x', 'y'},       b'z',                        bitset128!{'x', 'y', 'z'})]
+  #[case(bitset128!{'m', 'n'},       b'm',                        bitset128!{'m', 'n'})]
+  #[case(bitset128!{},               b'a',                        bitset128!{'a'})]
   #[trace]
-  fn test_bitset128_add_char_to_set(#[case] a: BitSet128, #[case] b: char, #[case] expected: BitSet128) {
+  fn test_bitset128_add_char_to_set(#[case] a: BitSet128, #[case] b: u8, #[case] expected: BitSet128) {
     let actual = a + b;
     assert_eq!(actual, expected);
   }
 
   #[rstest]
-  #[case('a',                        bitset128!{'b'},            bitset128!{'a', 'b'})]
-  #[case('x',                        bitset128!{'y', 'z'},       bitset128!{'x', 'y', 'z'})]
-  #[case('m',                        bitset128!{'m', 'n'},       bitset128!{'m', 'n'})]
-  #[case('a',                        bitset128!{},               bitset128!{'a'})]
+  #[case(b'a',                        bitset128!{'b'},            bitset128!{'a', 'b'})]
+  #[case(b'x',                        bitset128!{'y', 'z'},       bitset128!{'x', 'y', 'z'})]
+  #[case(b'm',                        bitset128!{'m', 'n'},       bitset128!{'m', 'n'})]
+  #[case(b'a',                        bitset128!{},               bitset128!{'a'})]
   #[trace]
-  fn test_bitset128_add_set_to_char(#[case] a: char, #[case] b: BitSet128, #[case] expected: BitSet128) {
+  fn test_bitset128_add_set_to_char(#[case] a: u8, #[case] b: BitSet128, #[case] expected: BitSet128) {
     let actual = b + a;
     assert_eq!(actual, expected);
   }
@@ -756,23 +851,23 @@ mod tests {
   }
 
   #[rstest]
-  #[case(bitset128!{'a'},            'b',                        bitset128!{'a', 'b'})]
-  #[case(bitset128!{'x', 'y'},       'z',                        bitset128!{'x', 'y', 'z'})]
-  #[case(bitset128!{'m', 'n'},       'm',                        bitset128!{'m', 'n'})]
-  #[case(bitset128!{},               'a',                        bitset128!{'a'})]
+  #[case(bitset128!{'a'},            b'b',                        bitset128!{'a', 'b'})]
+  #[case(bitset128!{'x', 'y'},       b'z',                        bitset128!{'x', 'y', 'z'})]
+  #[case(bitset128!{'m', 'n'},       b'm',                        bitset128!{'m', 'n'})]
+  #[case(bitset128!{},               b'a',                        bitset128!{'a'})]
   #[trace]
-  fn test_bitset128_or_char_to_set(#[case] a: BitSet128, #[case] b: char, #[case] expected: BitSet128) {
+  fn test_bitset128_or_char_to_set(#[case] a: BitSet128, #[case] b: u8, #[case] expected: BitSet128) {
     let actual = a | b;
     assert_eq!(actual, expected);
   }
 
   #[rstest]
-  #[case('a',                        bitset128!{'b'},            bitset128!{'a', 'b'})]
-  #[case('x',                        bitset128!{'y', 'z'},       bitset128!{'x', 'y', 'z'})]
-  #[case('m',                        bitset128!{'m', 'n'},       bitset128!{'m', 'n'})]
-  #[case('a',                        bitset128!{},               bitset128!{'a'})]
+  #[case(b'a',                        bitset128!{'b'},            bitset128!{'a', 'b'})]
+  #[case(b'x',                        bitset128!{'y', 'z'},       bitset128!{'x', 'y', 'z'})]
+  #[case(b'm',                        bitset128!{'m', 'n'},       bitset128!{'m', 'n'})]
+  #[case(b'a',                        bitset128!{},               bitset128!{'a'})]
   #[trace]
-  fn test_bitset128_or_set_to_char(#[case] a: char, #[case] b: BitSet128, #[case] expected: BitSet128) {
+  fn test_bitset128_or_set_to_char(#[case] a: u8, #[case] b: BitSet128, #[case] expected: BitSet128) {
     let actual = b | a;
     assert_eq!(actual, expected);
   }
@@ -864,13 +959,13 @@ mod tests {
   }
 
   #[rstest]
-  #[case(bitset128!{},               'b',                        bitset128!{})]
-  #[case(bitset128!{'a'},            'b',                        bitset128!{'a'})]
-  #[case(bitset128!{'x', 'y'},       'y',                        bitset128!{'x'})]
-  #[case(bitset128!{'m', 'n'},       'm',                        bitset128!{'n'})]
-  #[case(bitset128!{'a'},            'a',                        bitset128!{})]
+  #[case(bitset128!{},               b'b',                        bitset128!{})]
+  #[case(bitset128!{'a'},            b'b',                        bitset128!{'a'})]
+  #[case(bitset128!{'x', 'y'},       b'y',                        bitset128!{'x'})]
+  #[case(bitset128!{'m', 'n'},       b'm',                        bitset128!{'n'})]
+  #[case(bitset128!{'a'},            b'a',                        bitset128!{})]
   #[trace]
-  fn test_bitset128_sub_char_from_set(#[case] a: BitSet128, #[case] b: char, #[case] expected: BitSet128) {
+  fn test_bitset128_sub_char_from_set(#[case] a: BitSet128, #[case] b: u8, #[case] expected: BitSet128) {
     let actual = a - b;
     assert_eq!(actual, expected);
   }
@@ -980,21 +1075,21 @@ mod tests {
   }
 
   #[rstest]
-  #[case(bitset128!{'a', 'b'},       'a',                        bitset128!{'a'})]
-  #[case(bitset128!{'x', 'y'},       'z',                        bitset128!{})]
-  #[case(bitset128!{'m', 'n', 'o'},  'o',                        bitset128!{'o'})]
+  #[case(bitset128!{'a', 'b'},       b'a',                        bitset128!{'a'})]
+  #[case(bitset128!{'x', 'y'},       b'z',                        bitset128!{})]
+  #[case(bitset128!{'m', 'n', 'o'},  b'o',                        bitset128!{'o'})]
   #[trace]
-  fn test_bitset128_and_char_to_set(#[case] a: BitSet128, #[case] b: char, #[case] expected: BitSet128) {
+  fn test_bitset128_and_char_to_set(#[case] a: BitSet128, #[case] b: u8, #[case] expected: BitSet128) {
     let actual = a & b;
     assert_eq!(actual, expected);
   }
 
   #[rstest]
-  #[case('a',                        bitset128!{'b', 'a'},       bitset128!{'a'})]
-  #[case('z',                        bitset128!{'x', 'y'},       bitset128!{})]
-  #[case('o',                        bitset128!{'m', 'n', 'o'},  bitset128!{'o'})]
+  #[case(b'a',                        bitset128!{'b', 'a'},       bitset128!{'a'})]
+  #[case(b'z',                        bitset128!{'x', 'y'},       bitset128!{})]
+  #[case(b'o',                        bitset128!{'m', 'n', 'o'},  bitset128!{'o'})]
   #[trace]
-  fn test_bitset128_and_set_to_char(#[case] a: char, #[case] b: BitSet128, #[case] expected: BitSet128) {
+  fn test_bitset128_and_set_to_char(#[case] a: u8, #[case] b: BitSet128, #[case] expected: BitSet128) {
     let actual = b & a;
     assert_eq!(actual, expected);
   }
@@ -1098,23 +1193,23 @@ mod tests {
   }
 
   #[rstest]
-  #[case(bitset128!{'a'},            'b',                        bitset128!{'a', 'b'})]
-  #[case(bitset128!{'x', 'y'},       'x',                        bitset128!{'y'})]
-  #[case(bitset128!{'m', 'n'},       'm',                        bitset128!{'n'})]
-  #[case(bitset128!{'c', 'd'},       'd',                        bitset128!{'c'})]
+  #[case(bitset128!{'a'},            b'b',                        bitset128!{'a', 'b'})]
+  #[case(bitset128!{'x', 'y'},       b'x',                        bitset128!{'y'})]
+  #[case(bitset128!{'m', 'n'},       b'm',                        bitset128!{'n'})]
+  #[case(bitset128!{'c', 'd'},       b'd',                        bitset128!{'c'})]
   #[trace]
-  fn test_bitset128_xor_char_to_set(#[case] a: BitSet128, #[case] b: char, #[case] expected: BitSet128) {
+  fn test_bitset128_xor_char_to_set(#[case] a: BitSet128, #[case] b: u8, #[case] expected: BitSet128) {
     let actual = a ^ b;
     assert_eq!(actual, expected);
   }
 
   #[rstest]
-  #[case('a',                        bitset128!{'b'},            bitset128!{'a', 'b'})]
-  #[case('x',                        bitset128!{'x', 'y'},       bitset128!{'y'})]
-  #[case('m',                        bitset128!{'m', 'n'},       bitset128!{'n'})]
-  #[case('d',                        bitset128!{'c', 'd'},       bitset128!{'c'})]
+  #[case(b'a',                        bitset128!{'b'},            bitset128!{'a', 'b'})]
+  #[case(b'x',                        bitset128!{'x', 'y'},       bitset128!{'y'})]
+  #[case(b'm',                        bitset128!{'m', 'n'},       bitset128!{'n'})]
+  #[case(b'd',                        bitset128!{'c', 'd'},       bitset128!{'c'})]
   #[trace]
-  fn test_bitset128_xor_set_to_char(#[case] a: char, #[case] b: BitSet128, #[case] expected: BitSet128) {
+  fn test_bitset128_xor_set_to_char(#[case] a: u8, #[case] b: BitSet128, #[case] expected: BitSet128) {
     let actual = b ^ a;
     assert_eq!(actual, expected);
   }

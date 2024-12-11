@@ -10,9 +10,9 @@ use std::str::FromStr;
 #[derive(Clone, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq)]
 pub struct Sub {
   pub pos: usize,
-  pub qry: char,
+  pub qry: u8,
   #[serde(rename = "ref")]
-  pub reff: char,
+  pub reff: u8,
 }
 
 impl FromStr for Sub {
@@ -29,9 +29,9 @@ impl FromStr for Sub {
     if let Some(captures) = RE.captures(s) {
       return match (captures.name("ref"), captures.name("pos"), captures.name("qry")) {
         (Some(reff), Some(pos), Some(qry)) => {
-          let reff = reff.as_str().chars().next().unwrap();
+          let reff = reff.as_str().bytes().next().unwrap();
           let pos = parse_pos(pos.as_str()).wrap_err_with(|| format!("When parsing mutation position in '{s}'"))?;
-          let qry = qry.as_str().chars().next().unwrap();
+          let qry = qry.as_str().bytes().next().unwrap();
           Ok(Self { pos, qry, reff })
         }
         _ => make_error!("Unable to parse nucleotide mutation: '{s}'"),
@@ -55,6 +55,6 @@ pub fn parse_pos(s: &str) -> Result<usize, Report> {
 
 impl fmt::Display for Sub {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-    write!(f, "{}{}{}", self.reff, self.pos + 1, self.qry)
+    write!(f, "{}{}{}", self.reff as char, self.pos + 1, self.qry as char)
   }
 }
