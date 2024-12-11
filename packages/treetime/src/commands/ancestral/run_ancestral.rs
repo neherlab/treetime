@@ -124,7 +124,7 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
         ancestral_reconstruction_marginal_dense(&graph, *reconstruct_tip_states, |node, seq| {
           let name = node.name.as_deref().unwrap_or("");
           let desc = &node.desc;
-          output_fasta.write(name, desc, &seq).unwrap();
+          output_fasta.write(name, desc, seq).unwrap();
         })?;
 
         write_graph(outdir, &graph)?;

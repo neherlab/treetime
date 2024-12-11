@@ -1,3 +1,5 @@
+use crate::representation::seq::Seq;
+
 // Finds contiguous ranges (segments) in the sequence, such that for every character inside every range,
 // the predicate function returns true and every range contains only the same letter.
 //
@@ -6,7 +8,7 @@
 // For example if predicate returns `true` for characters A and C, this function will find ranges `AAAA`, `CCCCC`, `ACCCACAAA`
 // but not `ZZZZZ`.
 #[inline]
-pub fn find_letter_ranges_by(seq: &[char], pred: impl Fn(char) -> bool + Copy) -> Vec<(usize, usize)> {
+pub fn find_letter_ranges_by(seq: &Seq, pred: impl Fn(u8) -> bool + Copy) -> Vec<(usize, usize)> {
   let mut result = Vec::with_capacity(31);
   let mut i = 0;
   while i < seq.len() {
@@ -67,7 +69,7 @@ pub mod old {
 
 /// Finds contiguous ranges (segments) consisting of a given letter in the sequence.
 #[inline]
-pub fn find_letter_ranges(seq: &[char], letter: char) -> Vec<(usize, usize)> {
+pub fn find_letter_ranges(seq: &Seq, letter: u8) -> Vec<(usize, usize)> {
   find_letter_ranges_by(seq, |candidate| candidate == letter)
 }
 
@@ -76,20 +78,16 @@ mod tests {
   use super::*;
   use rstest::rstest;
 
-  fn to_char_array(seq: &str) -> Vec<char> {
-    seq.chars().collect()
-  }
-
   #[rstest]
-  #[case("",                'X', vec![])]
-  #[case("GGATNNACA-ANTYGG",'X', vec![])]
-  #[case("XXX",             'X', vec![(0, 3)])]
-  #[case("ATGXXXTTTT",      'X', vec![(3, 6)])]
-  #[case("ATGXXXCATGXXXXA", 'X', vec![(3, 6), (10, 14)])]
-  #[case("GCAXXXX",         'X', vec![(3, 7)])]
-  #[case("XXXXGCA",         'X', vec![(0, 4)])]
-  fn test_find_letter_ranges(#[case] seq: &str, #[case] letter: char, #[case] expected: Vec<(usize, usize)>) {
-    let actual = find_letter_ranges(&to_char_array(seq), letter);
+  #[case("",                 b'X', vec![])]
+  #[case("GGATNNACA-ANTYGG", b'X', vec![])]
+  #[case("XXX",              b'X', vec![(0, 3)])]
+  #[case("ATGXXXTTTT",       b'X', vec![(3, 6)])]
+  #[case("ATGXXXCATGXXXXA",  b'X', vec![(3, 6), (10, 14)])]
+  #[case("GCAXXXX",          b'X', vec![(3, 7)])]
+  #[case("XXXXGCA",          b'X', vec![(0, 4)])]
+  fn test_find_letter_ranges(#[case] seq: &str, #[case] letter: u8, #[case] expected: Vec<(usize, usize)>) {
+    let actual = find_letter_ranges(&seq.into(), letter);
     assert_eq!(expected, actual);
   }
 
@@ -102,7 +100,7 @@ mod tests {
   #[case("GCANNNN",         vec![(3, 7)])]
   #[case("NNNNGCA",         vec![(0, 4)])]
   fn test_find_ambiguous_ranges(#[case] seq: &str, #[case] expected: Vec<(usize, usize)>) {
-    let actual = find_letter_ranges(&to_char_array(seq), 'N');
+    let actual = find_letter_ranges(&seq.into(), b'N');
     assert_eq!(expected, actual);
   }
 
@@ -115,7 +113,7 @@ mod tests {
   #[case("GCA----",         vec![(3, 7)])]
   #[case("----GCA",         vec![(0, 4)])]
   fn test_find_gap_ranges(#[case] seq: &str, #[case] expected: Vec<(usize, usize)>) {
-    let actual = find_letter_ranges(&to_char_array(seq), '-');
+    let actual = find_letter_ranges(&seq.into(), b'-');
     assert_eq!(expected, actual);
   }
 
@@ -133,7 +131,7 @@ mod tests {
   #[case("ATGNNNTTTT---",    vec![(3, 6), (10, 13)])]
   #[case("ATG---TTTTNNN",    vec![(3, 6), (10, 13)])]
   fn test_find_undetermined_ranges(#[case] seq: &str, #[case] expected: Vec<(usize, usize)>) {
-    let actual = find_letter_ranges_by(&to_char_array(seq), |c| c == 'N' || c == '-');
+    let actual = find_letter_ranges_by(&seq.into(), |c| c == b'N' || c == b'-');
     assert_eq!(expected, actual);
   }
 }

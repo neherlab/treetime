@@ -1,6 +1,6 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use treetime::representation::seq::Seq;
 use treetime::seq::find_char_ranges::find_letter_ranges_by;
-use treetime::seq::find_char_ranges::old::find_letter_ranges_by as find_letter_ranges_by_old;
 
 const SEQ: &str = "\
   TATCATTATTGGTGGAGCTAAACTTAAAGCCTTGAATTTAGGTGAAACATTTGTCACGCA\
@@ -27,23 +27,23 @@ const SEQ: &str = "\
   ACACTGTCTTCATGTTGTCGGCCCAAATGTTAACAAAGGTGAAGACATTCAACTTCTTAA\
 ";
 
-fn pred(c: char) -> bool {
-  c == 'N' || c == '-'
+fn pred(c: u8) -> bool {
+  c == b'N' || c == b'-'
 }
 
 pub fn bench_1(c: &mut Criterion) {
-  let seq: Vec<char> = SEQ.chars().collect();
+  let seq: Seq = SEQ.into();
   c.bench_function("find_letter_ranges_by", |b| {
     b.iter(|| find_letter_ranges_by(black_box(&seq), pred));
   });
 }
 
-pub fn bench_2(c: &mut Criterion) {
-  let seq: Vec<char> = SEQ.chars().collect();
-  c.bench_function("find_letter_ranges_by_old", |b| {
-    b.iter(|| find_letter_ranges_by_old(black_box(&seq), pred));
-  });
-}
+// pub fn bench_2(c: &mut Criterion) {
+//   let seq: Seq = SEQ.into();
+//   c.bench_function("find_letter_ranges_by_old", |b| {
+//     b.iter(|| find_letter_ranges_by_old(black_box(&seq), pred));
+//   });
+// }
 
-criterion_group!(find_letter_ranges, bench_1, bench_2);
+criterion_group!(find_letter_ranges, bench_1);
 criterion_main!(find_letter_ranges);

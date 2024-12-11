@@ -3,12 +3,13 @@ use crate::io::compression::Decompressor;
 use crate::io::concat::Concat;
 use crate::io::file::{create_file_or_stdout, open_file_or_stdin, open_stdin};
 use crate::make_error;
+use crate::representation::seq::Seq;
 use crate::utils::string::quote_single;
 use eyre::{Context, Report};
 use itertools::Itertools;
 use log::{info, warn};
 use serde::{Deserialize, Serialize};
-use std::io::{BufRead, BufReader};
+use std::io::{BufRead, BufReader, Write};
 use std::path::Path;
 
 #[derive(Clone, Default, Debug, Deserialize, Serialize, Eq, PartialEq)]
@@ -16,7 +17,7 @@ use std::path::Path;
 pub struct FastaRecord {
   pub seq_name: String,
   pub desc: Option<String>,
-  pub seq: String,
+  pub seq: Seq,
   pub index: usize,
 }
 
@@ -157,13 +158,13 @@ impl<'a, 'b> FastaReader<'a, 'b> {
 
       record.seq.reserve(trimmed.len());
       for c in trimmed.chars() {
-        let uc = c.to_ascii_uppercase();
+        let uc = c.to_ascii_uppercase() as u8;
         if self.alphabet.contains(uc) {
           record.seq.push(uc);
         } else {
           return make_error!(
             "FASTA input is incorrect: character \"{c}\" is not in the alphabet. Expected characters: {}",
-            self.alphabet.chars().map(quote_single).join(", ")
+            self.alphabet.chars().map(|c| c as char).map(quote_single).join(", ")
           )
           .wrap_err_with(|| format!("When processing sequence #{}: \"{}\"", self.index, record.header()));
         }
@@ -225,11 +226,11 @@ pub fn read_many_fasta_str(contents: impl AsRef<str>, alphabet: &Alphabet) -> Re
 
 // Writes sequences into given fasta file
 pub struct FastaWriter {
-  writer: Box<dyn std::io::Write>,
+  writer: Box<dyn Write>,
 }
 
 impl FastaWriter {
-  pub fn new(writer: Box<dyn std::io::Write>) -> Self {
+  pub fn new(writer: Box<dyn Write>) -> Self {
     Self { writer }
   }
 
@@ -237,7 +238,7 @@ impl FastaWriter {
     Ok(Self::new(create_file_or_stdout(filepath)?))
   }
 
-  pub fn write(&mut self, seq_name: impl AsRef<str>, desc: &Option<String>, seq: &[char]) -> Result<(), Report> {
+  pub fn write(&mut self, seq_name: impl AsRef<str>, desc: &Option<String>, seq: &Seq) -> Result<(), Report> {
     self.writer.write_all(b">")?;
     self.writer.write_all(seq_name.as_ref().as_bytes())?;
 
@@ -247,7 +248,7 @@ impl FastaWriter {
     }
 
     self.writer.write_all(b"\n")?;
-    write_chars_chunked(&mut self.writer, seq)?;
+    self.writer.write_all(seq)?;
     self.writer.write_all(b"\n")?;
     Ok(())
   }
@@ -258,32 +259,11 @@ impl FastaWriter {
   }
 }
 
-fn write_chars_chunked<W>(writer: &mut W, chars: &[char]) -> Result<(), Report>
-where
-  W: std::io::Write,
-{
-  const CHUNK_SIZE: usize = 1024;
-  let mut buffer = [0_u8; CHUNK_SIZE];
-  let mut buffer_index = 0;
-  for c in chars {
-    if buffer_index >= CHUNK_SIZE {
-      writer.write_all(&buffer)?;
-      buffer_index = 0;
-    }
-    buffer[buffer_index] = *c as u8;
-    buffer_index += 1;
-  }
-  if buffer_index > 0 {
-    writer.write_all(&buffer[..buffer_index])?;
-  }
-  Ok(())
-}
-
 pub fn write_one_fasta(
   filepath: impl AsRef<Path>,
   seq_name: impl AsRef<str>,
   desc: &Option<String>,
-  seq: &[char],
+  seq: &Seq,
 ) -> Result<(), Report> {
   let mut writer = FastaWriter::from_path(&filepath)?;
   writer.write(seq_name, desc, seq)
@@ -467,7 +447,7 @@ mod tests {
       FastaRecord {
         seq_name: o!("a"),
         desc: None,
-        seq: o!("ACGCTCGATC"),
+        seq: "ACGCTCGATC".into(),
         index: 0,
       }
     );
@@ -479,7 +459,7 @@ mod tests {
       FastaRecord {
         seq_name: o!("b"),
         desc: None,
-        seq: o!("CCGCGC"),
+        seq: "CCGCGC".into(),
         index: 1,
       }
     );
@@ -498,7 +478,7 @@ mod tests {
       FastaRecord {
         seq_name: o!("a"),
         desc: None,
-        seq: o!("ACGCTCGATC"),
+        seq: "ACGCTCGATC".into(),
         index: 0,
       }
     );
@@ -510,7 +490,7 @@ mod tests {
       FastaRecord {
         seq_name: o!("b"),
         desc: None,
-        seq: o!("CCGCGC"),
+        seq: "CCGCGC".into(),
         index: 1,
       }
     );
@@ -522,7 +502,7 @@ mod tests {
       FastaRecord {
         seq_name: o!("c"),
         desc: None,
-        seq: o!(""),
+        seq: "".into(),
         index: 2,
       }
     );
@@ -541,7 +521,7 @@ mod tests {
       FastaRecord {
         seq_name: o!("a"),
         desc: None,
-        seq: o!("ACGCTCGATC"),
+        seq: "ACGCTCGATC".into(),
         index: 0,
       }
     );
@@ -553,7 +533,7 @@ mod tests {
       FastaRecord {
         seq_name: o!("b"),
         desc: None,
-        seq: o!(""),
+        seq: "".into(),
         index: 1,
       }
     );
@@ -565,7 +545,7 @@ mod tests {
       FastaRecord {
         seq_name: o!("c"),
         desc: None,
-        seq: o!("CCGCGC"),
+        seq: "CCGCGC".into(),
         index: 2,
       }
     );
@@ -589,13 +569,13 @@ mod tests {
       FastaRecord {
         seq_name: o!("Identifier"),
         desc: Some(o!("Description")),
-        seq: o!("ACGT"),
+        seq: "ACGT".into(),
         index: 0,
       },
       FastaRecord {
         seq_name: o!("Identifier"),
         desc: Some(o!("Description with spaces")),
-        seq: o!("ACGT"),
+        seq: "ACGT".into(),
         index: 1,
       },
     ];
@@ -631,43 +611,43 @@ mod tests {
       FastaRecord {
         seq_name: o!("FluBuster-001"),
         desc: None,
-        seq: o!("ACAGCCATGTATTG--"),
+        seq: "ACAGCCATGTATTG--".into(),
         index: 0,
       },
       FastaRecord {
         seq_name: o!("CommonCold-AB"),
         desc: None,
-        seq: o!("ACATCCCTGTA-TG--"),
+        seq: "ACATCCCTGTA-TG--".into(),
         index: 1,
       },
       FastaRecord {
         seq_name: o!("Ecoli/Joke/2024|XD"),
         desc: None,
-        seq: o!("ACATCGCCNNA--GAC"),
+        seq: "ACATCGCCNNA--GAC".into(),
         index: 2,
       },
       FastaRecord {
         seq_name: o!("Sniffles-B"),
         desc: None,
-        seq: o!("GCATCCCTGTA-NG--"),
+        seq: "GCATCCCTGTA-NG--".into(),
         index: 3,
       },
       FastaRecord {
         seq_name: o!("StrawberryYogurtCulture|🍓"),
         desc: None,
-        seq: o!("CCGGCCATGTATTG--"),
+        seq: "CCGGCCATGTATTG--".into(),
         index: 4,
       },
       FastaRecord {
         seq_name: o!(""),
         desc: Some(o!("SneezeC-19")),
-        seq: o!("CCGGCGATGTRTTG--"),
+        seq: "CCGGCGATGTRTTG--".into(),
         index: 5,
       },
       FastaRecord {
         seq_name: o!("MisindentedVirus|D-skew"),
         desc: None,
-        seq: o!("TCGGCCGTGTRTTG--"),
+        seq: "TCGGCCGTGTRTTG--".into(),
         index: 6,
       },
     ];
@@ -699,31 +679,31 @@ mod tests {
       FastaRecord {
         seq_name: o!("Prot/000|β-Napkinase"),
         desc: None,
-        seq: o!("MXDXXXTQ-B--"),
+        seq: "MXDXXXTQ-B--".into(),
         index: 0,
       },
       FastaRecord {
         seq_name: o!("Enzyme/2024|LaughzymeFactor"),
         desc: None,
-        seq: o!("AX*XB-TQVWR*"),
+        seq: "AX*XB-TQVWR*".into(),
         index: 1,
       },
       FastaRecord {
         seq_name: o!("😊-Gigglecatalyst"),
         desc: None,
-        seq: o!("MKXTQWX-B**"),
+        seq: "MKXTQWX-B**".into(),
         index: 2,
       },
       FastaRecord {
         seq_name: o!("CellFunSignal"),
         desc: None,
-        seq: o!("MQXQXXBQRW**"),
+        seq: "MQXQXXBQRW**".into(),
         index: 3,
       },
       FastaRecord {
         seq_name: o!("Pathway/042|Doodlease"),
         desc: None,
-        seq: o!("MXQ-*XTQWBQR"),
+        seq: "MXQ-*XTQWBQR".into(),
         index: 4,
       },
     ];
@@ -758,31 +738,31 @@ mod tests {
       FastaRecord {
         seq_name: o!("MixedCaseSeq"),
         desc: None,
-        seq: o!("ACAGCCATGTATTG--"),
+        seq: "ACAGCCATGTATTG--".into(),
         index: 0,
       },
       FastaRecord {
         seq_name: o!("LowercaseSeq"),
         desc: None,
-        seq: o!("ACAGCCATGTATTG--"),
+        seq: "ACAGCCATGTATTG--".into(),
         index: 1,
       },
       FastaRecord {
         seq_name: o!("UppercaseSeq"),
         desc: None,
-        seq: o!("ACAGCCATGTATTG--"),
+        seq: "ACAGCCATGTATTG--".into(),
         index: 2,
       },
       FastaRecord {
         seq_name: o!("MultilineSeq"),
         desc: None,
-        seq: o!("ACAGCCATGTATTG--"),
+        seq: "ACAGCCATGTATTG--".into(),
         index: 3,
       },
       FastaRecord {
         seq_name: o!("SkewedIndentSeq"),
         desc: None,
-        seq: o!("ACAGCCATGTATTGATTG--"),
+        seq: "ACAGCCATGTATTGATTG--".into(),
         index: 4,
       },
     ];
