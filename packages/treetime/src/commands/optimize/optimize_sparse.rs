@@ -20,6 +20,7 @@
 //!
 //!   d^2logLh/dt^2 = sum_i sum_j \sum_c k_c \lambda_c*\lambda^i_c exp(\lambda^i_c t) / \sum_c k_c exp(\lambda^i_c t) - k_c \lambda_c*\exp(\lambda^i_c t) / \sum_c k_c exp(\lambda^i_c t)
 //!
+use crate::seq::mutation::Sub;
 use crate::{
   gtr::gtr::GTR,
   representation::{
@@ -50,7 +51,7 @@ fn get_coefficients(edge: &SparseSeqEdge, gtr: &GTR) -> Result<PartitionContribu
     .keys()
     .copied()
     .chain(edge.msg_to_parent.variable.keys().copied())
-    .chain(edge.subs.iter().map(|sub| sub.pos))
+    .chain(edge.subs.iter().map(Sub::pos))
     .unique()
     .collect();
 
@@ -58,8 +59,8 @@ fn get_coefficients(edge: &SparseSeqEdge, gtr: &GTR) -> Result<PartitionContribu
     .iter()
     .map(|pos| {
       // Check whether the position is in substitutions
-      let state_pair = if let Some(sub) = edge.subs.iter().find(|m| m.pos == *pos) {
-        (sub.reff, sub.qry)
+      let state_pair = if let Some(sub) = edge.subs.iter().find(|m| m.pos() == *pos) {
+        (sub.reff(), sub.qry())
       } else {
         let parent = edge
           .msg_to_child

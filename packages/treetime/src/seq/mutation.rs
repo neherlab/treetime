@@ -1,19 +1,44 @@
-use crate::make_error;
 use crate::representation::seq_char::AsciiChar;
 use crate::utils::error::to_eyre_error;
+use crate::{make_error, make_internal_error};
 use eyre::{Report, WrapErr};
+use getset::CopyGetters;
 use lazy_static::lazy_static;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::str::FromStr;
 
-#[derive(Clone, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, CopyGetters)]
+#[getset(get_copy = "pub")]
 pub struct Sub {
-  pub pos: usize,
-  pub qry: AsciiChar,
+  pos: usize,
+  qry: AsciiChar,
   #[serde(rename = "ref")]
-  pub reff: AsciiChar,
+  reff: AsciiChar,
+}
+
+impl Sub {
+  pub fn new<CR: Into<AsciiChar>, CQ: Into<AsciiChar>, P: Into<usize>>(
+    reff: CR,
+    pos: P,
+    qry: CQ,
+  ) -> Result<Self, Report> {
+    let pos = pos.into();
+    let qry = qry.into();
+    let reff = reff.into();
+
+    if qry == AsciiChar(b'-') || reff == AsciiChar(b'-') {
+      return make_internal_error!(
+        "Substitution cannot be from or to gap, but found: '{}{}{}'",
+        reff,
+        pos,
+        qry
+      );
+    }
+
+    Ok(Self { pos, qry, reff })
+  }
 }
 
 impl FromStr for Sub {

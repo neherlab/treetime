@@ -302,11 +302,7 @@ fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]) 
             } else {
               let cnuc = states.get_one();
               sequence[*pos] = cnuc;
-              let m = Sub {
-                pos: *pos,
-                qry: cnuc,
-                reff: pnuc,
-              };
+              let m = Sub::new(pnuc, *pos, cnuc).unwrap();
               composition.add_sub(&m);
               edge.subs.push(m);
             }
@@ -325,11 +321,7 @@ fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]) 
           // child state of variable positions in the backward pass
           let node_nuc = sequence[pos];
           if alphabet.is_canonical(node_nuc) && parent.sequence[pos] != node_nuc {
-            let m = Sub {
-              pos,
-              qry: node_nuc,
-              reff: parent.sequence[pos],
-            };
+            let m = Sub::new(parent.sequence[pos], pos, node_nuc).unwrap();
             composition.add_sub(&m);
             edge.subs.push(m);
           }
@@ -464,7 +456,7 @@ pub fn ancestral_reconstruction_fitch(
         node.payload.sparse_partitions[si].seq.sequence = parent_seq.clone();
 
         for sub in &edge_part.subs {
-          node.payload.sparse_partitions[si].seq.sequence[sub.pos] = sub.qry;
+          node.payload.sparse_partitions[si].seq.sequence[sub.pos()] = sub.qry();
         }
 
         for indel in &edge_part.indels {
