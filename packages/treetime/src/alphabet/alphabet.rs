@@ -1,5 +1,6 @@
 use crate::io::json::{json_write_str, JsonPretty};
 use crate::representation::bitset128::BitSet128;
+use crate::representation::seq_char::AsciiChar;
 use crate::representation::state_set::StateSet;
 use crate::utils::string::quote;
 use crate::{make_error, stateset, vec_u8};
@@ -16,9 +17,9 @@ use std::fmt::Display;
 use std::iter::once;
 use strum_macros::Display;
 
-pub const NON_CHAR: u8 = b'.';
-pub const VARIABLE_CHAR: u8 = b'~';
-pub const FILL_CHAR: u8 = b' ';
+pub const NON_CHAR: AsciiChar = AsciiChar(b'.');
+pub const VARIABLE_CHAR: AsciiChar = AsciiChar(b'~');
+pub const FILL_CHAR: AsciiChar = AsciiChar(b' ');
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, ArgEnum, SmartDefault, Display)]
 #[clap(rename = "kebab-case")]
@@ -28,33 +29,33 @@ pub enum AlphabetName {
   Aa,
 }
 
-pub type ProfileMap = IndexMap<u8, Array1<f64>>;
-pub type StateSetMap = IndexMap<u8, StateSet>;
-pub type CharToSet = IndexMap<u8, StateSet>;
-pub type SetToChar = IndexMap<StateSet, u8>;
+pub type ProfileMap = IndexMap<AsciiChar, Array1<f64>>;
+pub type StateSetMap = IndexMap<AsciiChar, StateSet>;
+pub type CharToSet = IndexMap<AsciiChar, StateSet>;
+pub type SetToChar = IndexMap<StateSet, AsciiChar>;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Alphabet {
   all: StateSet,
   canonical: StateSet,
-  ambiguous: IndexMap<u8, Vec<u8>>,
+  ambiguous: IndexMap<AsciiChar, Vec<AsciiChar>>,
   ambiguous_keys: StateSet,
   determined: StateSet,
   undetermined: StateSet,
-  unknown: u8,
-  gap: u8,
+  unknown: AsciiChar,
+  gap: AsciiChar,
   treat_gap_as_unknown: bool,
   profile_map: ProfileMap,
 
   #[serde(skip)]
-  char_to_set: IndexMap<u8, StateSet>,
+  char_to_set: IndexMap<AsciiChar, StateSet>,
   #[serde(skip)]
-  set_to_char: IndexMap<StateSet, u8>,
+  set_to_char: IndexMap<StateSet, AsciiChar>,
 
   #[serde(skip)]
   char_to_index: Vec<Option<usize>>,
   #[serde(skip)]
-  index_to_char: Vec<u8>,
+  index_to_char: Vec<AsciiChar>,
 }
 
 impl Default for Alphabet {
@@ -111,15 +112,21 @@ impl Alphabet {
       treat_gap_as_unknown,
     } = cfg;
 
+    let gap = AsciiChar::from(*gap);
+    let unknown = AsciiChar::from(*unknown);
+
     let canonical = StateSet::from_iter(canonical);
     if canonical.is_empty() {
       return make_error!("When creating alphabet: canonical set of characters is empty. This is not allowed.");
     }
 
-    let ambiguous: IndexMap<u8, Vec<u8>> = ambiguous.to_owned();
+    let ambiguous: IndexMap<AsciiChar, Vec<AsciiChar>> = ambiguous
+      .iter()
+      .map(|(k, v)| (AsciiChar(*k), v.iter().copied().map(AsciiChar).collect()))
+      .collect();
     let ambiguous_keys = ambiguous.keys().collect();
 
-    let undetermined = stateset! {*unknown, *gap};
+    let undetermined = stateset! {unknown, gap};
     let determined = StateSet::from_union([canonical, ambiguous_keys]);
     let all = StateSet::from_union([canonical, ambiguous_keys, undetermined]);
 
@@ -128,7 +135,7 @@ impl Alphabet {
     let mut char_to_index = vec![None; 128];
     let mut index_to_char = Vec::with_capacity(canonical.len());
     for (i, c) in canonical.iter().enumerate() {
-      char_to_index[c as usize] = Some(i);
+      char_to_index[usize::from(c)] = Some(i);
       index_to_char.push(c);
     }
 
@@ -137,8 +144,8 @@ impl Alphabet {
       ambiguous.iter().for_each(|(key, chars)| {
         char_to_set.insert(*key, StateSet::from_iter(chars));
       });
-      char_to_set.insert(*gap, StateSet::from_char(*gap));
-      char_to_set.insert(*unknown, StateSet::from_char(*unknown));
+      char_to_set.insert(gap, StateSet::from_char(gap));
+      char_to_set.insert(unknown, StateSet::from_char(unknown));
       char_to_set
     };
 
@@ -153,8 +160,8 @@ impl Alphabet {
       ambiguous_keys,
       determined,
       undetermined,
-      unknown: *unknown,
-      gap: *gap,
+      unknown,
+      gap,
       treat_gap_as_unknown: *treat_gap_as_unknown,
       profile_map,
       char_to_set,
@@ -163,7 +170,7 @@ impl Alphabet {
   }
 
   #[inline]
-  pub fn get_profile(&self, c: u8) -> &Array1<f64> {
+  pub fn get_profile(&self, c: AsciiChar) -> &Array1<f64> {
     self
       .profile_map
       .get(&c)
@@ -180,7 +187,7 @@ impl Alphabet {
   pub fn construct_profile<I, T>(&self, chars: I) -> Result<Array1<f64>, Report>
   where
     I: IntoIterator<Item = T>,
-    T: Borrow<u8> + Display,
+    T: Borrow<AsciiChar> + Display,
   {
     let mut profile = Array1::<f64>::zeros(self.n_canonical());
     for c in chars {
@@ -193,7 +200,7 @@ impl Alphabet {
     Ok(profile)
   }
 
-  pub fn get_code(&self, profile: &Array1<f64>) -> u8 {
+  pub fn get_code(&self, profile: &Array1<f64>) -> AsciiChar {
     // TODO(perf): this mapping needs to be precomputed
     self
       .profile_map
@@ -204,7 +211,7 @@ impl Alphabet {
   }
 
   #[allow(single_use_lifetimes)] // TODO: remove when anonymous lifetimes in `impl Trait` are stabilized
-  pub fn seq2prof<'a>(&self, chars: impl IntoIterator<Item = &'a u8>) -> Result<Array2<f64>, Report> {
+  pub fn seq2prof<'a>(&self, chars: impl IntoIterator<Item = &'a AsciiChar>) -> Result<Array2<f64>, Report> {
     let prof = stack(
       Axis(0),
       &chars.into_iter().map(|&c| self.get_profile(c).view()).collect_vec(),
@@ -212,31 +219,31 @@ impl Alphabet {
     Ok(prof)
   }
 
-  pub fn set_to_char(&self, c: StateSet) -> u8 {
+  pub fn set_to_char(&self, c: StateSet) -> AsciiChar {
     self.set_to_char[&c]
   }
 
-  pub fn char_to_set(&self, c: u8) -> StateSet {
-    self.char_to_set[&c]
+  pub fn char_to_set(&self, c: impl Into<AsciiChar>) -> StateSet {
+    self.char_to_set[&c.into()]
   }
 
   /// All existing characters (including 'unknown' and 'gap')
-  pub fn chars(&self) -> impl Iterator<Item = u8> + '_ {
+  pub fn chars(&self) -> impl Iterator<Item = AsciiChar> + '_ {
     self.all.iter()
   }
 
   /// Get u8 by index (indexed in the same order as given by `.chars()`)
-  pub fn char(&self, index: usize) -> u8 {
+  pub fn char(&self, index: usize) -> AsciiChar {
     self.index_to_char[index]
   }
 
   /// Get index of a character (indexed in the same order as given by `.chars()`)
-  pub fn index(&self, c: u8) -> usize {
-    self.char_to_index[c as usize].unwrap()
+  pub fn index(&self, c: impl Into<usize>) -> usize {
+    self.char_to_index[c.into()].unwrap()
   }
 
   /// Check if character is in alphabet (including 'unknown' and 'gap')
-  pub fn contains(&self, c: u8) -> bool {
+  pub fn contains(&self, c: AsciiChar) -> bool {
     self.all.contains(c)
   }
 
@@ -245,12 +252,12 @@ impl Alphabet {
   }
 
   /// Canonical (unambiguous) characters (e.g. 'A', 'C', 'G', 'T' in nuc alphabet)
-  pub fn canonical(&self) -> impl Iterator<Item = u8> + '_ {
+  pub fn canonical(&self) -> impl Iterator<Item = AsciiChar> + '_ {
     self.canonical.iter()
   }
 
   /// Check is character is canonical
-  pub fn is_canonical(&self, c: u8) -> bool {
+  pub fn is_canonical(&self, c: AsciiChar) -> bool {
     self.canonical.contains(c)
   }
 
@@ -259,12 +266,12 @@ impl Alphabet {
   }
 
   /// Ambiguous characters (e.g. 'R', 'S' etc. in nuc alphabet)
-  pub fn ambiguous(&self) -> impl Iterator<Item = u8> + '_ {
+  pub fn ambiguous(&self) -> impl Iterator<Item = AsciiChar> + '_ {
     self.ambiguous_keys.iter()
   }
 
   /// Check if character is ambiguous (e.g. 'R', 'S' etc. in nuc alphabet)
-  pub fn is_ambiguous(&self, c: u8) -> bool {
+  pub fn is_ambiguous(&self, c: AsciiChar) -> bool {
     self.ambiguous_keys.contains(c)
   }
 
@@ -273,11 +280,11 @@ impl Alphabet {
   }
 
   /// Determined characters: canonical or ambiguous
-  pub fn determined(&self) -> impl Iterator<Item = u8> + '_ {
+  pub fn determined(&self) -> impl Iterator<Item = AsciiChar> + '_ {
     self.determined.iter()
   }
 
-  pub fn is_determined(&self, c: u8) -> bool {
+  pub fn is_determined(&self, c: AsciiChar) -> bool {
     self.determined.contains(c)
   }
 
@@ -286,11 +293,11 @@ impl Alphabet {
   }
 
   /// Undetermined characters: gap or unknown
-  pub fn undetermined(&self) -> impl Iterator<Item = u8> + '_ {
+  pub fn undetermined(&self) -> impl Iterator<Item = AsciiChar> + '_ {
     self.undetermined.iter()
   }
 
-  pub fn is_undetermined(&self, c: u8) -> bool {
+  pub fn is_undetermined(&self, c: AsciiChar) -> bool {
     self.undetermined.contains(c)
   }
 
@@ -299,23 +306,23 @@ impl Alphabet {
   }
 
   /// Get 'unknown' character
-  pub fn unknown(&self) -> u8 {
+  pub fn unknown(&self) -> AsciiChar {
     self.unknown
   }
 
   /// Check if character is an 'unknown' character
-  pub fn is_unknown(&self, c: u8) -> bool {
-    c == self.unknown()
+  pub fn is_unknown(&self, c: impl Into<AsciiChar>) -> bool {
+    c.into() == self.unknown()
   }
 
   /// Get 'gap' character
-  pub fn gap(&self) -> u8 {
+  pub fn gap(&self) -> AsciiChar {
     self.gap
   }
 
   /// Check if character is a gap
-  pub fn is_gap(&self, c: u8) -> bool {
-    c == self.gap()
+  pub fn is_gap(&self, c: impl Into<AsciiChar>) -> bool {
+    c.into() == self.gap()
   }
 }
 
@@ -338,6 +345,9 @@ impl AlphabetConfig {
       treat_gap_as_unknown,
     } = self;
 
+    let gap = AsciiChar::from(*gap);
+    let unknown = AsciiChar::from(*unknown);
+
     self
       .validate()
       .wrap_err("When validating alphabet config")
@@ -353,11 +363,11 @@ impl AlphabetConfig {
     let mut profile_map: ProfileMap = canonical
       .iter()
       .zip(eye.rows())
-      .map(|(s, x)| (*s, x.to_owned()))
+      .map(|(s, x)| (AsciiChar(*s), x.to_owned()))
       .collect();
 
     // Add unknown to profile map
-    profile_map.insert(*unknown, Array1::<f64>::ones(canonical.len()));
+    profile_map.insert(unknown, Array1::<f64>::ones(canonical.len()));
 
     // Add ambiguous to profile map
     ambiguous.iter().for_each(|(&key, values)| {
@@ -366,12 +376,12 @@ impl AlphabetConfig {
         .enumerate()
         .map(|(i, c)| if values.contains(c) { 1.0 } else { 0.0 })
         .collect::<Array1<f64>>();
-      profile_map.insert(key, profile);
+      profile_map.insert(AsciiChar(key), profile);
     });
 
     if *treat_gap_as_unknown {
       // Add gap to profile map
-      profile_map.insert(*gap, profile_map[unknown].clone());
+      profile_map.insert(gap, profile_map[&unknown].clone());
     }
 
     Ok(profile_map)
@@ -397,7 +407,7 @@ impl AlphabetConfig {
       .collect_vec();
 
       for reserved in [NON_CHAR, VARIABLE_CHAR, FILL_CHAR] {
-        if all.iter().any(|&c| c == reserved) {
+        if all.iter().any(|&c| c == u8::from(reserved)) {
           return make_error!("Alphabet contains reserved character: {reserved}");
         }
       }

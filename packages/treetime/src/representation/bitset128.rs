@@ -1,3 +1,4 @@
+use crate::representation::seq_char::AsciiChar;
 use auto_ops::{impl_op_ex, impl_op_ex_commutative};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
@@ -7,7 +8,7 @@ use std::borrow::Borrow;
 #[derive(Clone, Debug)]
 pub enum Bitset128Status {
   Empty,
-  Unambiguous(u8),
+  Unambiguous(AsciiChar),
   Ambiguous(BitSet128),
 }
 
@@ -107,11 +108,11 @@ impl BitSet128 {
     other.is_subset(self)
   }
 
-  pub fn iter(&self) -> impl Iterator<Item = u8> + '_ {
-    (0..128).filter(|&i| (self.bits & (1 << i)) != 0)
+  pub fn iter(&self) -> impl Iterator<Item = AsciiChar> + '_ {
+    (0..128).filter(|&i| (self.bits & (1 << i)) != 0).map(AsciiChar)
   }
 
-  pub fn chars(&self) -> impl Iterator<Item = u8> + '_ {
+  pub fn chars(&self) -> impl Iterator<Item = AsciiChar> + '_ {
     self.iter()
   }
 
@@ -123,33 +124,33 @@ impl BitSet128 {
     }
   }
 
-  pub fn first(&self) -> Option<u8> {
-    (!self.is_empty()).then_some(self.bits.trailing_zeros() as u8)
+  pub fn first(&self) -> Option<AsciiChar> {
+    (!self.is_empty()).then_some((self.bits.trailing_zeros() as u8).into())
   }
 
-  pub fn last(&self) -> Option<u8> {
-    (!self.is_empty()).then_some((127 - self.bits.leading_zeros()) as u8)
+  pub fn last(&self) -> Option<AsciiChar> {
+    (!self.is_empty()).then_some(((127 - self.bits.leading_zeros()) as u8).into())
   }
 
-  pub fn get_one_maybe(&self) -> Option<u8> {
+  pub fn get_one_maybe(&self) -> Option<AsciiChar> {
     self.first()
   }
 
-  pub fn get_one(&self) -> u8 {
+  pub fn get_one(&self) -> AsciiChar {
     self.get_one_maybe().expect("BitSet128 is empty")
   }
 
-  pub fn get_one_exactly(&self) -> u8 {
+  pub fn get_one_exactly(&self) -> AsciiChar {
     assert_eq!(self.len(), 1, "expected exactly one element");
     self.get_one()
   }
 
-  pub fn to_vec(&self) -> Vec<u8> {
+  pub fn to_vec(&self) -> Vec<AsciiChar> {
     self.iter().collect()
   }
 }
 
-impl<T: Borrow<u8>> Extend<T> for BitSet128 {
+impl<T: Borrow<u32>> Extend<T> for BitSet128 {
   fn extend<I>(&mut self, iter: I)
   where
     I: IntoIterator<Item = T>,
@@ -157,6 +158,19 @@ impl<T: Borrow<u8>> Extend<T> for BitSet128 {
     for c in iter {
       self.insert(*c.borrow());
     }
+  }
+}
+
+impl FromIterator<AsciiChar> for BitSet128 {
+  fn from_iter<I: IntoIterator<Item = AsciiChar>>(iter: I) -> Self {
+    let bits = iter.into_iter().fold(0_u128, |acc, c| acc | (1 << c.inner()));
+    Self { bits }
+  }
+}
+
+impl<'a> FromIterator<&'a AsciiChar> for BitSet128 {
+  fn from_iter<I: IntoIterator<Item = &'a AsciiChar>>(iter: I) -> Self {
+    iter.into_iter().copied().collect()
   }
 }
 
@@ -288,7 +302,7 @@ impl Serialize for BitSet128 {
   where
     S: serde::Serializer,
   {
-    let chars: Vec<char> = self.iter().map(|c| c as char).collect();
+    let chars: Vec<char> = self.iter().map(char::from).collect();
     chars.serialize(serializer)
   }
 }
@@ -352,6 +366,21 @@ impl_op_ex!(&=|a: &mut BitSet128, b: u8| { *a = a.intersection(&BitSet128::from_
 
 impl_op_ex_commutative!(^|a: &BitSet128, b: u8| -> BitSet128 { a.symmetric_difference(&BitSet128::from_char(b)) });
 impl_op_ex!(^=|a: &mut BitSet128, b: u8| { *a = a.symmetric_difference(&BitSet128::from_char(b)); });
+
+impl_op_ex_commutative!(+|a: &BitSet128, b: AsciiChar| -> BitSet128 { a.union(&BitSet128::from_char(b)) });
+impl_op_ex!(+=|a: &mut BitSet128, b: AsciiChar| { *a = a.union(&BitSet128::from_char(b)); });
+
+impl_op_ex_commutative!(| |a: &BitSet128, b: AsciiChar| -> BitSet128 { a.union(&BitSet128::from_char(b)) });
+impl_op_ex!(|=|a: &mut BitSet128, b: AsciiChar| { *a = a.union(&BitSet128::from_char(b)); });
+
+impl_op_ex!(-|a: &BitSet128, b: AsciiChar| -> BitSet128 { a.difference(&BitSet128::from_char(b)) });
+impl_op_ex!(-=|a: &mut BitSet128, b: AsciiChar| { *a = a.difference(&BitSet128::from_char(b)); });
+
+impl_op_ex_commutative!(&|a: &BitSet128, b: AsciiChar| -> BitSet128 { a.intersection(&BitSet128::from_char(b)) });
+impl_op_ex!(&=|a: &mut BitSet128, b: AsciiChar| { *a = a.intersection(&BitSet128::from_char(b)); });
+
+impl_op_ex_commutative!(^|a: &BitSet128, b: AsciiChar| -> BitSet128 { a.symmetric_difference(&BitSet128::from_char(b)) });
+impl_op_ex!(^=|a: &mut BitSet128, b: AsciiChar| { *a = a.symmetric_difference(&BitSet128::from_char(b)); });
 
 #[cfg(test)]
 mod tests {
@@ -603,7 +632,7 @@ mod tests {
   #[test]
   fn test_bitset128_get_unambiguous() {
     let set = BitSet128::from_char('A');
-    assert!(matches!(set.get(), Bitset128Status::Unambiguous(b'A')));
+    assert!(matches!(set.get(), Bitset128Status::Unambiguous(AsciiChar(b'A'))));
   }
 
   #[test]
@@ -620,7 +649,7 @@ mod tests {
   fn test_bitset128_get_one() {
     let set = BitSet128::from_iter(['T', 'A']);
     let actual = set.get_one();
-    let expected = b'A';
+    let expected = AsciiChar(b'A');
     assert_eq!(actual, expected);
   }
 
@@ -628,7 +657,7 @@ mod tests {
   fn test_bitset128_get_one_exactly() {
     let set = BitSet128::from_iter(['T']);
     let actual = set.get_one();
-    let expected = b'T';
+    let expected = AsciiChar(b'T');
     assert_eq!(actual, expected);
   }
 
