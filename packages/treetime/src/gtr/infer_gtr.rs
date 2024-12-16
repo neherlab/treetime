@@ -157,8 +157,8 @@ pub fn get_mutation_counts(graph: &SparseGraph, alphabet: &Alphabet) -> Result<M
     }
 
     for m in &edge.sparse_partitions[0].subs {
-      let i = alphabet.index(m.qry);
-      let j = alphabet.index(m.reff);
+      let i = alphabet.index(m.qry());
+      let j = alphabet.index(m.reff());
       nij[[i, j]] += 1.0;
       Ti[i] -= 0.5 * branch_length;
       Ti[j] += 0.5 * branch_length;

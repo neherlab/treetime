@@ -66,8 +66,8 @@ impl Composition {
 
   /// Reflect sequence mutation in the composition counts
   pub fn add_sub(&mut self, sub: &Sub) {
-    self.adjust_count(sub.reff, -1);
-    self.adjust_count(sub.qry, 1);
+    self.adjust_count(sub.reff(), -1);
+    self.adjust_count(sub.qry(), 1);
   }
 
   /// Reflect sequence indel in the composition counts
@@ -87,6 +87,7 @@ impl Composition {
 
 #[cfg(test)]
 mod tests {
+  use std::str::FromStr;
   use super::*;
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::representation::seq::Seq;
@@ -157,11 +158,7 @@ mod tests {
   #[test]
   fn test_composition_add_mutation() {
     let mut actual = Composition::with_sequence("AAAGCTTACGGGGTCAAGTCC".bytes(), "ACGT-".bytes(), b'-');
-    let mutation = Sub {
-      pos: 123,
-      reff: b'A'.into(),
-      qry: b'G'.into(),
-    };
+    let mutation = Sub::from_str("A123G").unwrap();
     actual.add_sub(&mutation);
     let expected = Composition::from(btreemap! { b'-' => 0, b'A' => 5, b'C' => 5, b'G' => 7, b'T' => 4}, b'-');
     assert_eq!(expected, actual);

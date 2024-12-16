@@ -61,8 +61,8 @@ fn ingroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihoo
           // go over all mutations and get reference and child state
           child_states.push(btreemap! {});
           for m in &edge.read_arc().sparse_partitions[si].subs {
-            variable_pos.insert(m.pos, m.reff); // this might be set multiple times, but the reference state should always be the same
-            child_states[ci].insert(m.pos, m.qry);
+            variable_pos.insert(m.pos(), m.reff()); // this might be set multiple times, but the reference state should always be the same
+            child_states[ci].insert(m.pos(), m.qry());
           }
           // go over child variable position and get reference state
           for (pos, p) in &edge.read_arc().sparse_partitions[si].msg_from_child.variable {
@@ -284,9 +284,9 @@ fn outgroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikeliho
           }
           // record all states that involve a mutation
           for m in &edge.read_arc().sparse_partitions[si].subs {
-            variable_pos.insert(m.pos, m.qry);
-            parent_state.entry(m.pos).or_insert(m.reff);
-            child_state.entry(m.pos).or_insert(m.qry);
+            variable_pos.insert(m.pos(), m.qry());
+            parent_state.entry(m.pos()).or_insert_with(|| m.reff());
+            child_state.entry(m.pos()).or_insert_with(|| m.qry());
           }
           // go over variable position in children (info pushed to parent) and get reference state
           for (pos, p) in &edge.read_arc().sparse_partitions[si].msg_to_parent.variable {
@@ -342,8 +342,8 @@ fn outgroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikeliho
           parent_states.entry(*pos).or_insert(p.state);
         }
         for sub in &child_edge.sparse_partitions[si].subs {
-          child_states.insert(sub.pos, sub.qry);
-          parent_states.insert(sub.pos, sub.reff);
+          child_states.insert(sub.pos(), sub.qry());
+          parent_states.insert(sub.pos(), sub.reff());
         }
 
         let mut delta_ll = 0.0;
@@ -430,7 +430,7 @@ pub fn ancestral_reconstruction_marginal_sparse(
 
           // Implant mutations
           for m in &edge.subs {
-            seq[m.pos] = m.qry;
+            seq[m.pos()] = m.qry();
           }
 
           // Implant most likely state of variable sites
