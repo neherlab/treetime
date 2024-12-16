@@ -157,6 +157,7 @@ pub fn get_mutation_counts(graph: &SparseGraph, alphabet: &Alphabet) -> Result<M
     }
 
     for m in &edge.sparse_partitions[0].subs {
+      m.check_canonical(alphabet)?;
       let i = alphabet.index(m.qry());
       let j = alphabet.index(m.reff());
       nij[[i, j]] += 1.0;

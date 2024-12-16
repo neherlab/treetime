@@ -1,3 +1,4 @@
+use crate::alphabet::alphabet::Alphabet;
 use crate::representation::seq_char::AsciiChar;
 use crate::utils::error::to_eyre_error;
 use crate::{make_error, make_internal_error};
@@ -29,15 +30,26 @@ impl Sub {
     let reff = reff.into();
 
     if qry == AsciiChar(b'-') || reff == AsciiChar(b'-') {
-      return make_internal_error!(
-        "Substitution cannot be from or to gap, but found: '{}{}{}'",
-        reff,
-        pos,
-        qry
-      );
+      return make_internal_error!("Substitution cannot be from or to gap, but found: '{reff}{pos}{qry}'");
     }
 
     Ok(Self { pos, qry, reff })
+  }
+
+  pub fn check_determined(&self, alphabet: &Alphabet) -> Result<(), Report> {
+    if !alphabet.is_determined(self.qry()) || !alphabet.is_determined(self.reff()) {
+      make_internal_error!("Substitution is not determined: '{self}'")
+    } else {
+      Ok(())
+    }
+  }
+
+  pub fn check_canonical(&self, alphabet: &Alphabet) -> Result<(), Report> {
+    if !alphabet.is_canonical(self.qry()) || !alphabet.is_canonical(self.reff()) {
+      make_internal_error!("Substitution is not canonical: '{self}'")
+    } else {
+      Ok(())
+    }
   }
 }
 

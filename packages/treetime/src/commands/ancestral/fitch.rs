@@ -303,6 +303,7 @@ fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]) 
               let cnuc = states.get_one();
               sequence[*pos] = cnuc;
               let m = Sub::new(pnuc, *pos, cnuc).unwrap();
+              m.check_determined(alphabet).unwrap();
               composition.add_sub(&m);
               edge.subs.push(m);
             }
@@ -322,6 +323,7 @@ fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]) 
           let node_nuc = sequence[pos];
           if alphabet.is_canonical(node_nuc) && parent.sequence[pos] != node_nuc {
             let m = Sub::new(parent.sequence[pos], pos, node_nuc).unwrap();
+            m.check_determined(alphabet).unwrap();
             composition.add_sub(&m);
             edge.subs.push(m);
           }
