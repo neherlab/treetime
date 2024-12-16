@@ -134,7 +134,7 @@ def run_cmd(name: str, cmd: str):
       stdout=subprocess.DEVNULL,
       stderr=subprocess.PIPE,
       text=True,
-      env={**os.environ, 'CLICOLOR_FORCE': '1'}
+      env={**os.environ, 'CLICOLOR_FORCE': '1', 'RUST_BACKTRACE': 'full'}
     )
     output.append(result.stderr or "")
     code = result.returncode
