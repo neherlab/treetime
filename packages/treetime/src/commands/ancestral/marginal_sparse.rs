@@ -6,6 +6,7 @@ use crate::make_internal_error;
 use crate::representation::graph_sparse::{SparseGraph, SparseNode, SparseSeqDis, VarPos};
 use crate::representation::partitions_likelihood::PartitionLikelihood;
 use crate::representation::seq::Seq;
+use crate::representation::seq_char::AsciiChar;
 use crate::seq::composition;
 use crate::utils::container::get_exactly_one_mut;
 use crate::utils::interval::range::range_contains;
@@ -54,7 +55,7 @@ fn ingroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihoo
         // for internal nodes, combine the messages from the children
         // to do so, we need to loop over incoming edges, collect variable positions and the child states at them
         let mut variable_pos = btreemap! {};
-        let mut child_states: Vec<BTreeMap<usize, u8>> = vec![];
+        let mut child_states = vec![];
         let mut child_messages: Vec<SparseSeqDis> = vec![];
         for (ci, (_, edge)) in node.children.iter().enumerate() {
           // go over all mutations and get reference and child state
@@ -161,8 +162,8 @@ fn propagate_raw(
 fn combine_messages(
   composition: &composition::Composition,
   messages: &[SparseSeqDis],
-  variable_pos: &BTreeMap<usize, u8>,
-  reference_states: &[BTreeMap<usize, u8>],
+  variable_pos: &BTreeMap<usize, AsciiChar>,
+  reference_states: &[BTreeMap<usize, AsciiChar>],
   alphabet: &Alphabet,
   gtr_weight: Option<&Array1<f64>>,
 ) -> Result<SparseSeqDis, Report> {
@@ -267,12 +268,12 @@ fn outgroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikeliho
       if !node.is_root {
         // the root has no input from parents, profile is already calculated
         let mut variable_pos = btreemap! {};
-        let mut ref_states: Vec<BTreeMap<usize, u8>> = vec![];
+        let mut ref_states: Vec<BTreeMap<usize, AsciiChar>> = vec![];
         let mut msgs_to_combine: Vec<SparseSeqDis> = vec![];
         for (_, edge) in &node.parents {
           // go over all mutations and get reference state
-          let mut parent_state: BTreeMap<usize, u8> = btreemap! {};
-          let mut child_state: BTreeMap<usize, u8> = btreemap! {};
+          let mut parent_state: BTreeMap<usize, AsciiChar> = btreemap! {};
+          let mut child_state: BTreeMap<usize, AsciiChar> = btreemap! {};
           // go over parent variable position and get reference state
           for (pos, p) in &edge.read_arc().sparse_partitions[si].msg_to_child.variable {
             if !range_contains(&seq_info.seq.gaps, *pos) {
@@ -330,8 +331,8 @@ fn outgroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikeliho
         };
 
         let child_dis = &child_edge.sparse_partitions[si].msg_from_child;
-        let mut parent_states: BTreeMap<usize, u8> = btreemap! {};
-        let mut child_states: BTreeMap<usize, u8> = btreemap! {};
+        let mut parent_states: BTreeMap<usize, AsciiChar> = btreemap! {};
+        let mut child_states: BTreeMap<usize, AsciiChar> = btreemap! {};
         for (pos, p) in &seq_info.profile.variable {
           child_states.insert(*pos, p.state);
           parent_states.insert(*pos, p.state);

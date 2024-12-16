@@ -1,4 +1,5 @@
 use crate::representation::seq::Seq;
+use crate::representation::seq_char::AsciiChar;
 
 // Finds contiguous ranges (segments) in the sequence, such that for every character inside every range,
 // the predicate function returns true and every range contains only the same letter.
@@ -8,7 +9,10 @@ use crate::representation::seq::Seq;
 // For example if predicate returns `true` for characters A and C, this function will find ranges `AAAA`, `CCCCC`, `ACCCACAAA`
 // but not `ZZZZZ`.
 #[inline]
-pub fn find_letter_ranges_by(seq: &Seq, pred: impl Fn(u8) -> bool + Copy) -> Vec<(usize, usize)> {
+pub fn find_letter_ranges_by<F>(seq: &Seq, pred: F) -> Vec<(usize, usize)>
+where
+  F: Fn(AsciiChar) -> bool + Copy,
+{
   let mut result = Vec::with_capacity(31);
   let mut i = 0;
   while i < seq.len() {
@@ -69,8 +73,8 @@ pub mod old {
 
 /// Finds contiguous ranges (segments) consisting of a given letter in the sequence.
 #[inline]
-pub fn find_letter_ranges(seq: &Seq, letter: u8) -> Vec<(usize, usize)> {
-  find_letter_ranges_by(seq, |candidate| candidate == letter)
+pub fn find_letter_ranges(seq: &Seq, letter: impl Into<AsciiChar> + Copy) -> Vec<(usize, usize)> {
+  find_letter_ranges_by(seq, |candidate: AsciiChar| candidate == letter.into())
 }
 
 #[cfg(test)]
@@ -131,7 +135,7 @@ mod tests {
   #[case("ATGNNNTTTT---",    vec![(3, 6), (10, 13)])]
   #[case("ATG---TTTTNNN",    vec![(3, 6), (10, 13)])]
   fn test_find_undetermined_ranges(#[case] seq: &str, #[case] expected: Vec<(usize, usize)>) {
-    let actual = find_letter_ranges_by(&seq.into(), |c| c == b'N' || c == b'-');
+    let actual = find_letter_ranges_by(&seq.into(), |c| c == AsciiChar(b'N') || c == AsciiChar(b'-'));
     assert_eq!(expected, actual);
   }
 }

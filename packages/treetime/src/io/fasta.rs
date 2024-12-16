@@ -4,6 +4,7 @@ use crate::io::concat::Concat;
 use crate::io::file::{create_file_or_stdout, open_file_or_stdin, open_stdin};
 use crate::make_error;
 use crate::representation::seq::Seq;
+use crate::representation::seq_char::AsciiChar;
 use crate::utils::string::quote_single;
 use eyre::{Context, Report};
 use itertools::Itertools;
@@ -158,13 +159,13 @@ impl<'a, 'b> FastaReader<'a, 'b> {
 
       record.seq.reserve(trimmed.len());
       for c in trimmed.chars() {
-        let uc = c.to_ascii_uppercase() as u8;
+        let uc = AsciiChar::from(c.to_ascii_uppercase());
         if self.alphabet.contains(uc) {
           record.seq.push(uc);
         } else {
           return make_error!(
             "FASTA input is incorrect: character \"{c}\" is not in the alphabet. Expected characters: {}",
-            self.alphabet.chars().map(|c| c as char).map(quote_single).join(", ")
+            self.alphabet.chars().map(char::from).map(quote_single).join(", ")
           )
           .wrap_err_with(|| format!("When processing sequence #{}: \"{}\"", self.index, record.header()));
         }
@@ -248,7 +249,7 @@ impl FastaWriter {
     }
 
     self.writer.write_all(b"\n")?;
-    self.writer.write_all(seq)?;
+    self.writer.write_all(seq.as_ref())?;
     self.writer.write_all(b"\n")?;
     Ok(())
   }

@@ -5,4 +5,5 @@ pub mod infer_dense;
 pub mod partitions_likelihood;
 pub mod partitions_parsimony;
 pub mod seq;
+pub mod seq_char;
 pub mod state_set;

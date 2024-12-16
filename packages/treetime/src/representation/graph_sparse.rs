@@ -6,6 +6,7 @@ use crate::io::graphviz::{EdgeToGraphViz, NodeToGraphviz};
 use crate::io::nwk::{format_weight, EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteOptions};
 use crate::o;
 use crate::representation::seq::Seq;
+use crate::representation::seq_char::AsciiChar;
 use crate::representation::state_set::StateSet;
 use crate::seq::composition::Composition;
 use crate::seq::find_char_ranges::find_letter_ranges;
@@ -184,11 +185,11 @@ pub struct SparseSeqEdge {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct VarPos {
   pub dis: Array1<f64>, // array of floats of size 'alphabet'
-  pub state: u8,
+  pub state: AsciiChar,
 }
 
 impl VarPos {
-  pub fn new(dis: Array1<f64>, state: u8) -> Self {
+  pub fn new(dis: Array1<f64>, state: AsciiChar) -> Self {
     Self { dis, state }
   }
 }
@@ -207,7 +208,7 @@ pub struct SparseSeqDis {
   pub variable_indel: BTreeMap<(usize, usize), Deletion>,
 
   /// probability vector for the state of fixed positions based on information from children
-  pub fixed: BTreeMap<u8, Array1<f64>>,
+  pub fixed: BTreeMap<AsciiChar, Array1<f64>>,
 
   pub fixed_counts: Composition,
 

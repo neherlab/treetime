@@ -1,4 +1,5 @@
 use crate::make_error;
+use crate::representation::seq_char::AsciiChar;
 use crate::utils::error::to_eyre_error;
 use eyre::{Report, WrapErr};
 use lazy_static::lazy_static;
@@ -10,9 +11,9 @@ use std::str::FromStr;
 #[derive(Clone, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq)]
 pub struct Sub {
   pub pos: usize,
-  pub qry: u8,
+  pub qry: AsciiChar,
   #[serde(rename = "ref")]
-  pub reff: u8,
+  pub reff: AsciiChar,
 }
 
 impl FromStr for Sub {
@@ -29,9 +30,9 @@ impl FromStr for Sub {
     if let Some(captures) = RE.captures(s) {
       return match (captures.name("ref"), captures.name("pos"), captures.name("qry")) {
         (Some(reff), Some(pos), Some(qry)) => {
-          let reff = reff.as_str().bytes().next().unwrap();
+          let reff = AsciiChar(reff.as_str().bytes().next().unwrap());
           let pos = parse_pos(pos.as_str()).wrap_err_with(|| format!("When parsing mutation position in '{s}'"))?;
-          let qry = qry.as_str().bytes().next().unwrap();
+          let qry = AsciiChar(qry.as_str().bytes().next().unwrap());
           Ok(Self { pos, qry, reff })
         }
         _ => make_error!("Unable to parse nucleotide mutation: '{s}'"),
@@ -55,6 +56,6 @@ pub fn parse_pos(s: &str) -> Result<usize, Report> {
 
 impl fmt::Display for Sub {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-    write!(f, "{}{}{}", self.reff as char, self.pos + 1, self.qry as char)
+    write!(f, "{}{}{}", self.reff, self.pos + 1, self.qry)
   }
 }

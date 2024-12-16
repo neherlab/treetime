@@ -1,5 +1,6 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use treetime::representation::seq::Seq;
+use treetime::representation::seq_char::AsciiChar;
 use treetime::seq::find_char_ranges::find_letter_ranges_by;
 
 const SEQ: &str = "\
@@ -27,8 +28,8 @@ const SEQ: &str = "\
   ACACTGTCTTCATGTTGTCGGCCCAAATGTTAACAAAGGTGAAGACATTCAACTTCTTAA\
 ";
 
-fn pred(c: u8) -> bool {
-  c == b'N' || c == b'-'
+fn pred(c: AsciiChar) -> bool {
+  c == AsciiChar(b'N') || c == AsciiChar(b'-')
 }
 
 pub fn bench_1(c: &mut Criterion) {
