@@ -107,10 +107,14 @@ cargo -q run --bin=treetime -- clock --tree="data/$v/tree.nwk" --dates="data/$v/
 
 ### Unit tests
 
-Run all unit tests with:
-
+Tests are run using [nextest](https://nexte.st/). This can be installed with:
 ```bash
-cargo test
+cargo install nextest
+```
+
+Then run the tests with:
+```bash
+cargo nextest run
 ```
 
 Add the `--no-fail-fast` flag to continue running tests even if there are failures.
@@ -118,10 +122,10 @@ Add the `--no-fail-fast` flag to continue running tests even if there are failur
 You can run a subset of tests by providing a regex matching the full test name. For example:
 
 ```bash
-cargo test gtr
+cargo nextest gtr
 ```
 
-See also: [cargo-test](https://doc.rust-lang.org/cargo/commands/cargo-test.html)
+See also: [nextest running tests](https://nexte.st/docs/running/)
 
 
 ### Smoke tests
