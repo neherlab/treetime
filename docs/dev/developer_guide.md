@@ -122,7 +122,7 @@ Add the `--no-fail-fast` flag to continue running tests even if there are failur
 You can run a subset of tests by providing a regex matching the full test name. For example:
 
 ```bash
-cargo nextest gtr
+cargo nextest run gtr
 ```
 
 See also: [nextest running tests](https://nexte.st/docs/running/)
