@@ -74,6 +74,7 @@ fn fitch_backwards(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]
     }
 
     for si in 0..n_partitions {
+      // the following are convenience datastructures
       let PartitionParsimony { alphabet, length } = &sparse_partitions[si];
 
       let children = node
@@ -89,6 +90,15 @@ fn fitch_backwards(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]
 
       let n_children = children.len();
 
+
+      // Initialization of target data structure (could be done later)
+      let mut seq_dis = ParsimonySeqDis {
+        variable: btreemap! {},
+        variable_indel: btreemap! {},
+        composition: Composition::new(alphabet.chars(), alphabet.gap()),
+      };
+
+
       // determine parts of the sequence that are unknown, gaps in all children
       let mut gaps = range_intersection_iter(children.iter().map(|(c, _)| &c.gaps)).collect_vec();
       let unknown = range_intersection_iter(children.iter().map(|(c, _)| &c.unknown)).collect_vec();
@@ -97,14 +107,8 @@ fn fitch_backwards(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]
       // calculate the complement of gaps for later look-up
       let non_gap = range_complement(&[(0, *length)], &[gaps.clone()]); // FIXME(perf): unnecessary clone
 
-      //
-      let mut seq_dis = ParsimonySeqDis {
-        variable: btreemap! {},
-        variable_indel: btreemap! {},
-        composition: Composition::new(alphabet.chars(), alphabet.gap()),
-      };
+      // what follows could be a function that returns `sequence` and `variable`, takes as arguments children, non_char, alphabet
       let mut sequence = seq![FILL_CHAR; *length];
-
       for r in &non_char {
         sequence[r.0..r.1].fill(NON_CHAR);
       }
@@ -181,7 +185,7 @@ fn fitch_backwards(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]
         }
       }
 
-      // Process insertions and deletions.
+      // Process insertions and deletions. This also could be a function that returns variable_indel
 
       // 1) seq_info.gaps is the intersection of child gaps, i.e. this is gap if and only if all children have a gap
       //    --> hence we find positions where children differ in terms of gap presence absence by intersecting
