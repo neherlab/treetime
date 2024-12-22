@@ -214,7 +214,7 @@ fn fitch_backwards(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]
         if indel.deleted == n_children {
           gaps.push(*r);
           // TODO: since the sequence is considered gapped here, variable positions in this range need to be ignored
-          //seq_dis.variable.retain(|p, state| {*p < r.0 || *p >= r.1});
+          // seq_dis.variable.retain(|p, state| {*p < r.0 || *p >= r.1});
           false
         } else {
           true
@@ -789,6 +789,8 @@ mod tests {
   fn test_fitch_complex_gaps() -> Result<(), Report> {
     rayon::ThreadPoolBuilder::new().num_threads(1).build_global()?;
 
+    // test the cases where: a) deletions overlap, b) the root has a deletion, c) an inserted sequence is variable
+    // in DE, position 3 is inserted, but it varies in D and E
     let aln = read_many_fasta_str(
       indoc! {r#"
       >root
@@ -803,6 +805,8 @@ mod tests {
       TG-TG
       >C
       TR-TG
+      >DE
+      TGTTG
       >D
       TGTTG
       >E
@@ -811,7 +815,7 @@ mod tests {
       &NUC_ALPHABET,
     )?;
 
-    let graph: SparseGraph = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12,E:0.10)CDE:0.05)root:0.01;")?;
+    let graph: SparseGraph = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,(D:0.05,E:0.03)DE:0.01)CDE:0.05)root:0.01;")?;
 
     let alphabet = Alphabet::default();
     let partitions = vec![PartitionParsimonyWithAln::new(alphabet, aln.clone())?];
@@ -833,8 +837,9 @@ mod tests {
         .sparse_partitions[0]
         .seq;
 
-      assert_eq!(&aln[0].seq, &seq_info.sequence);
+      assert_eq!(&aln[0].seq, &seq_info.sequence); // check root
 
+      // TODO: factor these function, they are used in multiple tests
       let actual_muts: BTreeMap<_, _> = graph
         .get_edges()
         .iter()
@@ -864,8 +869,9 @@ mod tests {
         "AB->B"    => vec![],
         "root->AB" => vec![],
         "CDE->C"    => vec![],
-        "CDE->D"    => vec![],
-        "CDE->E"    => vec!["T4C"],
+        "CDE->DE"    => vec![],
+        "DE->D"    => vec!["C3T"],
+        "DE->E"    => vec!["T4C"],
         "root->CDE" => vec!["C2G", "A4T"],
       };
       assert_eq!(
@@ -877,8 +883,16 @@ mod tests {
         .get_edges()
         .iter()
         .map(|e| {
+          let get_name = |node_id| {
+            let node = graph.get_node(node_id).unwrap().read_arc();
+            node.payload().read_arc().name().unwrap().as_ref().to_owned()
+          };
+
+          let src = get_name(e.read_arc().source());
+          let tar = get_name(e.read_arc().target());
+
           (
-            e.read_arc().key(),
+            format!("{src}->{tar}"),
             e.read_arc().payload().read_arc().sparse_partitions[0]
               .indels
               .iter()
@@ -889,12 +903,14 @@ mod tests {
         .collect();
 
       let expected_indels = btreemap! {
-        0 => vec!["3--4: A -> -"],
-        1 => vec!["1--2: C -> -"],
-        2 => vec![],
-        3 => vec![],
-        4 => vec!["2--3: - -> T"],
-        5 => vec![],
+        "AB->A"     => vec!["3--4: A -> -"],
+        "AB->B"     => vec!["1--2: C -> -"],
+        "root->AB"  => vec![],
+        "CDE->C"    => vec![],
+        "CDE->DE"   => vec!["2--3: - -> C"],
+        "DE->D"     => vec![],
+        "DE->E"     => vec![],
+        "root->CDE" => vec![],
       };
 
       assert_eq!(
