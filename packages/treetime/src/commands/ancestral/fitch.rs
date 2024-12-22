@@ -287,11 +287,12 @@ fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]) 
 
         *composition = parent.composition.clone();
 
-        // fill in the indeterminate positions by copying the parent
+        // fill in the indeterminate positions by copying the parent (note that new gaps in the node will be introduced later)
         for r in non_char {
           sequence[r.0..r.1].clone_from_slice(&parent.sequence[r.0..r.1]);
         }
 
+        // the following two loops modify the sequence, composition, and edge in place and process variable position.
         // for each variable position, pick a state or a mutation
         for (pos, states) in variable.iter_mut() {
           let pnuc = parent.sequence[*pos];
@@ -329,6 +330,7 @@ fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]) 
           }
         }
 
+        // The following deals with indels.
         // Process indels. Gaps where the children disagree, need to be decided by also looking at parent.
         for (r, indel) in variable_indel.iter() {
           let gap_in_parent = if parent.gaps.contains(r) { 1 } else { 0 };
