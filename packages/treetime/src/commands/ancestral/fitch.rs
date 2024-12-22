@@ -835,7 +835,6 @@ mod tests {
         .seq;
 
       assert_eq!(&aln[0].seq, &seq_info.sequence); // check root
-
       // TODO: factor these function, they are used in multiple tests
       let actual_muts: BTreeMap<_, _> = graph
         .get_edges()
@@ -909,6 +908,13 @@ mod tests {
         "DE->E"     => vec![],
         "root->CDE" => vec![],
       };
+
+      let alphabet = Alphabet::default();
+      for node in graph.get_nodes(){
+        let seq_info = &node.read_arc().payload().read_arc().sparse_partitions[0].seq;
+        let composition = Composition::with_sequence(seq_info.sequence.iter().copied(), alphabet.chars(), alphabet.gap());
+        assert_eq!(&seq_info.composition, &composition);
+      }
 
       assert_eq!(
         json_write_str(&expected_indels, JsonPretty(true))?,
