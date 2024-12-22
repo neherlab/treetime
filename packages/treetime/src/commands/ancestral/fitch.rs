@@ -213,8 +213,6 @@ fn fitch_backwards(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]
       seq_dis.variable_indel.retain(|r, indel| {
         if indel.deleted == n_children {
           gaps.push(*r);
-          // TODO: since the sequence is considered gapped here, variable positions in this range need to be ignored
-          // seq_dis.variable.retain(|p, state| {*p < r.0 || *p >= r.1});
           false
         } else {
           true
@@ -273,10 +271,6 @@ fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]) 
             gaps.push(*r);
           }
         }
-        for r in gaps.iter() {
-          sequence[r.0..r.1].fill(alphabet.gap());
-        }
-        *composition = Composition::with_sequence(sequence.iter().copied(), alphabet.chars(), alphabet.gap());
       } else {
         let (parent, edge) = node
           .parents
@@ -289,7 +283,7 @@ fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]) 
 
         *composition = parent.composition.clone();
 
-        // fill in the indeterminate positions
+        // fill in the indeterminate positions by copying the parent
         for r in non_char {
           sequence[r.0..r.1].clone_from_slice(&parent.sequence[r.0..r.1]);
         }
@@ -380,10 +374,13 @@ fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]) 
           composition.add_indel(&indel);
           edge.indels.push(indel);
         }
-        // fill in the indeterminate positions
-        for r in gaps.iter() {
-          sequence[r.0..r.1].fill(alphabet.gap());
-        }
+      }
+      // fill in the gapped positions. this is done for all nodes, including the root
+      for r in gaps.iter() {
+        sequence[r.0..r.1].fill(alphabet.gap());
+      }
+      if node.is_root { // if the node is the root, the composition is calculated from the full sequence
+        *composition = Composition::with_sequence(sequence.iter().copied(), alphabet.chars(), alphabet.gap());
       }
     }
     GraphTraversalContinuation::Continue
