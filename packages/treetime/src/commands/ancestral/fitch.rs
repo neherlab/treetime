@@ -361,6 +361,9 @@ fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]) 
 
         // Process consensus gaps in the node that are not in the parent (deletions)
         for r in range_difference(gaps, &parent.gaps) {
+          if variable_indel.contains_key(&r) { // all gaps in variable_indel are already processed
+            continue;
+          }
           let indel = InDel {
             range: r,
             seq: sequence[r.0..r.1].into(),
@@ -372,6 +375,9 @@ fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]) 
 
         // Process gaps in the parent that are not in the node (insertions)
         for r in range_difference(&parent.gaps, gaps) {
+          if variable_indel.contains_key(&r) { // all gaps in variable_indel are already processed
+            continue;
+          }
           let indel = InDel {
             range: r,
             seq: sequence[r.0..r.1].into(),
@@ -931,6 +937,147 @@ mod tests {
     Ok(())
   }
 
+
+  #[test]
+  fn test_fitch_polytomy() -> Result<(), Report> {
+    rayon::ThreadPoolBuilder::new().num_threads(1).build_global()?;
+
+    // test the cases where: a) deletions overlap, b) the root has a deletion, c) an inserted sequence is variable
+    // in DE, position 3 is inserted, but it varies in D and E
+    let aln = read_many_fasta_str(
+      indoc! {r#"
+      >root
+      TC-AG
+      >AB
+      TC-AG
+      >A
+      NC--G
+      >B
+      T--AG
+      >CDE
+      TG-CG
+      >C
+      TR-TG
+      >D
+      TGTTG
+      >E
+      TGCCG
+    "#},
+      &NUC_ALPHABET,
+    )?;
+
+    let graph: SparseGraph = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.05,E:0.03)CDE:0.05)root:0.01;")?;
+
+    let alphabet = Alphabet::default();
+    let partitions = vec![PartitionParsimonyWithAln::new(alphabet, aln.clone())?];
+
+    attach_seqs_to_graph(&graph, &partitions)?;
+
+    let partitions = partitions.into_iter().map(PartitionParsimony::from).collect_vec();
+
+    fitch_backwards(&graph, &partitions);
+
+    fitch_forward(&graph, &partitions);
+
+    {
+      let seq_info = &graph
+        .get_exactly_one_root()?
+        .read_arc()
+        .payload()
+        .read_arc()
+        .sparse_partitions[0]
+        .seq;
+
+      assert_eq!(&aln[0].seq, &seq_info.sequence); // check root
+      // TODO: factor these function, they are used in multiple tests
+      let actual_muts: BTreeMap<_, _> = graph
+        .get_edges()
+        .iter()
+        .enumerate()
+        .map(|(i, e)| {
+          let get_name = |node_id| {
+            let node = graph.get_node(node_id).unwrap().read_arc();
+            node.payload().read_arc().name().unwrap().as_ref().to_owned()
+          };
+
+          let src = get_name(e.read_arc().source());
+          let tar = get_name(e.read_arc().target());
+
+          (
+            format!("{src}->{tar}"),
+            e.read_arc().payload().read_arc().sparse_partitions[0]
+              .subs
+              .iter()
+              .map(ToString::to_string)
+              .collect_vec(),
+          )
+        })
+        .collect();
+
+      let expected_muts = btreemap! {
+        "AB->A"    => vec![],
+        "AB->B"    => vec![],
+        "root->AB" => vec![],
+        "CDE->C"    => vec!["C4T"],
+        "CDE->D"    => vec!["C3T", "C4T"],
+        "CDE->E"    => vec![],
+        "root->CDE" => vec!["A4C","C2G"],
+      };
+      assert_eq!(
+        json_write_str(&expected_muts, JsonPretty(true))?,
+        json_write_str(&actual_muts, JsonPretty(true))?
+      );
+
+      let actual_indels: BTreeMap<_, _> = graph
+        .get_edges()
+        .iter()
+        .map(|e| {
+          let get_name = |node_id| {
+            let node = graph.get_node(node_id).unwrap().read_arc();
+            node.payload().read_arc().name().unwrap().as_ref().to_owned()
+          };
+
+          let src = get_name(e.read_arc().source());
+          let tar = get_name(e.read_arc().target());
+
+          (
+            format!("{src}->{tar}"),
+            e.read_arc().payload().read_arc().sparse_partitions[0]
+              .indels
+              .iter()
+              .map(ToString::to_string)
+              .collect_vec(),
+          )
+        })
+        .collect();
+
+      let expected_indels = btreemap! {
+        "AB->A"     => vec!["3--4: A -> -"],
+        "AB->B"     => vec!["1--2: C -> -"],
+        "root->AB"  => vec![],
+        "CDE->C"    => vec!["2--3: C -> -"],
+        "CDE->D"     => vec![],
+        "CDE->E"     => vec![],
+        "root->CDE" => vec!["2--3: - -> C"],
+      };
+
+      assert_eq!(
+        json_write_str(&expected_indels, JsonPretty(true))?,
+        json_write_str(&actual_indels, JsonPretty(true))?
+      );
+
+      let alphabet = Alphabet::default();
+      for node in graph.get_nodes(){
+        let seq_info = &node.read_arc().payload().read_arc().sparse_partitions[0].seq;
+        dbg!(&seq_info.sequence);
+        dbg!(&node.read_arc().payload().read_arc().name);
+        let composition = Composition::with_sequence(seq_info.sequence.iter().copied(), alphabet.chars(), alphabet.gap());
+        assert_eq!(&seq_info.composition, &composition);
+      }
+    }
+
+    Ok(())
+  }
 
   // #[test]
   // fn test_fitch_seq_info_1() -> Result<(), Report> {
