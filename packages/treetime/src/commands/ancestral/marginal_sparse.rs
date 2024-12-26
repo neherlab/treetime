@@ -414,10 +414,12 @@ pub fn ancestral_reconstruction_marginal_sparse(
       return;
     }
 
+    dbg!(&node.payload.name);
     let seq: Seq = (0..n_partitions)
       .flat_map(|si| {
         let PartitionLikelihood { alphabet, .. } = &partitions[si];
         let node_seq = &node.payload.sparse_partitions[si].seq;
+        let node_profile = &node.payload.sparse_partitions[si].profile;
 
         let mut seq = if node.is_root {
           node_seq.sequence.clone()
@@ -431,11 +433,6 @@ pub fn ancestral_reconstruction_marginal_sparse(
           // Implant mutations
           for m in &edge.subs {
             seq[m.pos()] = m.qry();
-          }
-
-          // Implant most likely state of variable sites
-          for (&pos, states) in &node.payload.sparse_partitions[si].seq.fitch.variable {
-            seq[pos] = states.get_one();
           }
 
           // Implant indels
@@ -456,8 +453,10 @@ pub fn ancestral_reconstruction_marginal_sparse(
           seq[r.0..r.1].fill(ambig_char);
         }
 
-        for (pos, states) in &node_seq.fitch.variable {
-          seq[*pos] = states.get_one();
+        // change variable sites to their most likely state
+        for (pos, states) in &node_profile.variable {
+          dbg!(pos, &states);
+          seq[*pos] = alphabet.char(states.dis.argmax().unwrap());
         }
 
         node.payload.sparse_partitions[si].seq.sequence = seq.clone();
@@ -501,16 +500,10 @@ mod tests {
 
     let aln = read_many_fasta_str(
       indoc! {r#"
-      >root
-      ACAGCCATGTATTG--
-      >AB
-      ACATCCCTGTA-TG--
       >A
       ACATCGCCNNA--GAC
       >B
       GCATCCCTGTA-NG--
-      >CD
-      CCGGCCATGTATTG--
       >C
       CCGGCGATGTRTTG--
       >D
@@ -522,11 +515,11 @@ mod tests {
     let expected = read_many_fasta_str(
       indoc! {r#"
       >root
-      ACAGCCATGTATTG--
+      TCGGCGCTGTATTG--
       >AB
-      ACATCCCTGTA-TG--
+      ACATCGCTGTA-TG--
       >CD
-      CCGGCCATGTATTG--
+      TCGGCGGTGTATTG--
     "#},
       &NUC_ALPHABET,
     )?
@@ -570,16 +563,10 @@ mod tests {
 
     let aln = read_many_fasta_str(
       indoc! {r#"
-      >root
-      ACAGCCATGTATTG--
-      >AB
-      ACATCCCTGTA-TG--
       >A
       ACATCGCCNNA--GAC
       >B
       GCATCCCTGTA-NG--
-      >CD
-      CCGGCCATGTATTG--
       >C
       CCGGCGATGTRTTG--
       >D
