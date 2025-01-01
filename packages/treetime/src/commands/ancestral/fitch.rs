@@ -337,21 +337,13 @@ fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]) 
             if gap_in_parent == 0 {
               // If the gap is not in parent, add deletion.
               // the sequence that is deleted is the sequence of the parent
-              let indel = InDel {
-                range: *r,
-                seq: parent.sequence[r.0..r.1].into(),
-                deletion: true,
-              };
+              let indel = InDel::del(*r, &parent.sequence[r.0..r.1]);
               composition.add_indel(&indel);
               edge.indels.push(indel);
             }
           } else if gap_in_parent > 0 {
             // Add insertion if gap is present in parent.
-            let indel = InDel {
-              range: *r,
-              seq: sequence[r.0..r.1].into(),
-              deletion: false,
-            };
+            let indel = InDel::ins(*r, &sequence[r.0..r.1]);
             composition.add_indel(&indel);
             edge.indels.push(indel);
           }
@@ -363,11 +355,7 @@ fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]) 
             // all gaps in variable_indel are already processed
             continue;
           }
-          let indel = InDel {
-            range: r,
-            seq: sequence[r.0..r.1].into(),
-            deletion: true,
-          };
+          let indel = InDel::del(r, &sequence[r.0..r.1]);
           composition.add_indel(&indel);
           edge.indels.push(indel);
         }
@@ -378,11 +366,7 @@ fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]) 
             // all gaps in variable_indel are already processed
             continue;
           }
-          let indel = InDel {
-            range: r,
-            seq: sequence[r.0..r.1].into(),
-            deletion: false,
-          };
+          let indel = InDel::ins(r, &sequence[r.0..r.1]);
           composition.add_indel(&indel);
           edge.indels.push(indel);
         }
