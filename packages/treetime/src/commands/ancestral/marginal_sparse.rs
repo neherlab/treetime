@@ -414,7 +414,6 @@ pub fn ancestral_reconstruction_marginal_sparse(
       return;
     }
 
-    dbg!(&node.payload.name);
     let seq: Seq = (0..n_partitions)
       .flat_map(|si| {
         let PartitionLikelihood { alphabet, .. } = &partitions[si];
@@ -455,7 +454,6 @@ pub fn ancestral_reconstruction_marginal_sparse(
 
         // change variable sites to their most likely state
         for (pos, states) in &node_profile.variable {
-          dbg!(pos, &states);
           seq[*pos] = alphabet.char(states.dis.argmax().unwrap());
         }
 

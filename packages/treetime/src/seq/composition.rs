@@ -87,7 +87,6 @@ impl Composition {
 
 #[cfg(test)]
 mod tests {
-  use std::str::FromStr;
   use super::*;
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::representation::seq::Seq;
@@ -95,6 +94,7 @@ mod tests {
   use crate::seq::mutation::Sub;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
+  use std::str::FromStr;
 
   #[test]
   fn test_composition_empty() {

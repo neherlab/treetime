@@ -261,7 +261,6 @@ fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]) 
           variable_indel,
           ..
         },
-        ..
       } = &mut node.payload.sparse_partitions[si].seq;
 
       if node.is_root {
@@ -1104,11 +1103,7 @@ mod tests {
     for node in graph.get_inner_nodes() {
       let seq_info = &node.read_arc().payload().read_arc().sparse_partitions[0].seq;
       let node_name = node.read_arc().payload().read_arc().name.clone().unwrap();
-      let composition = Composition::with_sequence(
-        rec_seq.get(&node_name).unwrap().chars(),
-        alphabet.chars(),
-        alphabet.gap(),
-      );
+      let composition = Composition::with_sequence(rec_seq[&node_name].chars(), alphabet.chars(), alphabet.gap());
       assert_eq!(&seq_info.composition, &composition);
     }
 
@@ -1118,13 +1113,13 @@ mod tests {
       let node_name = node.read_arc().payload().read_arc().name.clone().unwrap();
       let input_seq = aln
         .iter()
-        .find(|record| &record.seq_name == &node_name)
+        .find(|record| record.seq_name == node_name)
         .unwrap()
         .seq
         .iter()
         .copied();
       let input_seq_str: String = input_seq.clone().map(|c| c.to_string()).collect();
-      assert_eq!(&input_seq_str, rec_seq.get(&node_name).unwrap());
+      assert_eq!(&input_seq_str, &rec_seq[&node_name]);
     }
     Ok(())
   }
