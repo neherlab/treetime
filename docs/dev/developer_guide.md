@@ -17,7 +17,24 @@ Treetime is written in Rust, and the standard `rustup` & `cargo` workflow is use
 # These commands are specific for Ubuntu Linux and may work on other Debian-based Linux distros.
 # Refer to your operating system's documentation to find out how to install these dependencies.
 sudo apt-get update
-sudo apt-get install bash clang curl gcc gfortran git make pkg-config protobuf-compiler libopenblas-dev
+sudo apt-get install \
+  bash \
+  build-essential \
+  clang \
+  curl \
+  gcc \
+  gfortran \
+  git \
+  libbz2-dev \
+  libclang-dev \
+  liblzma-dev \
+  libopenblas-dev \
+  libssl-dev \
+  libzstd-dev \
+  make \
+  pkg-config \
+  protobuf-compiler \
+  zlib1g-dev \
 
 # (optional) To enable PNG image output ("png" cargo feature, see below), install:
 sudo apt-get install libfontconfig1-dev
