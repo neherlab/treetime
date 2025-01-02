@@ -74,6 +74,7 @@ fn fitch_backwards(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]
     }
 
     for si in 0..n_partitions {
+      // the following are convenience datastructures
       let PartitionParsimony { alphabet, length } = &sparse_partitions[si];
 
       let children = node
@@ -89,6 +90,13 @@ fn fitch_backwards(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]
 
       let n_children = children.len();
 
+      // Initialization of target data structure (could be done later)
+      let mut seq_dis = ParsimonySeqDis {
+        variable: btreemap! {},
+        variable_indel: btreemap! {},
+        composition: Composition::new(alphabet.chars(), alphabet.gap()),
+      };
+
       // determine parts of the sequence that are unknown, gaps in all children
       let mut gaps = range_intersection_iter(children.iter().map(|(c, _)| &c.gaps)).collect_vec();
       let unknown = range_intersection_iter(children.iter().map(|(c, _)| &c.unknown)).collect_vec();
@@ -97,14 +105,8 @@ fn fitch_backwards(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]
       // calculate the complement of gaps for later look-up
       let non_gap = range_complement(&[(0, *length)], &[gaps.clone()]); // FIXME(perf): unnecessary clone
 
-      //
-      let mut seq_dis = ParsimonySeqDis {
-        variable: btreemap! {},
-        variable_indel: btreemap! {},
-        composition: Composition::new(alphabet.chars(), alphabet.gap()),
-      };
+      // what follows could be a function that returns `sequence` and `variable`, takes as arguments children, non_char, alphabet
       let mut sequence = seq![FILL_CHAR; *length];
-
       for r in &non_char {
         sequence[r.0..r.1].fill(NON_CHAR);
       }
@@ -181,7 +183,7 @@ fn fitch_backwards(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]
         }
       }
 
-      // Process insertions and deletions.
+      // Process insertions and deletions. This also could be a function that returns variable_indel
 
       // 1) seq_info.gaps is the intersection of child gaps, i.e. this is gap if and only if all children have a gap
       //    --> hence we find positions where children differ in terms of gap presence absence by intersecting
@@ -250,6 +252,7 @@ fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]) 
       let PartitionParsimony { alphabet, .. } = &sparse_partitions[si];
       let SparseSeqInfo {
         gaps,
+        unknown,
         sequence,
         composition,
         non_char,
@@ -271,10 +274,6 @@ fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]) 
             gaps.push(*r);
           }
         }
-        for r in gaps.iter() {
-          sequence[r.0..r.1].fill(alphabet.gap());
-        }
-        *composition = Composition::with_sequence(sequence.iter().copied(), alphabet.chars(), alphabet.gap());
       } else {
         let (parent, edge) = node
           .parents
@@ -287,11 +286,12 @@ fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]) 
 
         *composition = parent.composition.clone();
 
-        // fill in the indeterminate positions
+        // fill in the indeterminate positions by copying the parent (note that new gaps in the node will be introduced later)
         for r in non_char {
           sequence[r.0..r.1].clone_from_slice(&parent.sequence[r.0..r.1]);
         }
 
+        // the following two loops modify the sequence, composition, and edge in place and process variable position.
         // for each variable position, pick a state or a mutation
         for (pos, states) in variable.iter_mut() {
           let pnuc = parent.sequence[*pos];
@@ -314,7 +314,7 @@ fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]) 
         }
 
         for &pos in parent.fitch.variable.keys() {
-          if variable.contains_key(&pos) {
+          if variable.contains_key(&pos) || range_contains(&parent.gaps, pos) {
             continue;
           }
 
@@ -329,6 +329,7 @@ fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]) 
           }
         }
 
+        // The following deals with indels.
         // Process indels. Gaps where the children disagree, need to be decided by also looking at parent.
         for (r, indel) in variable_indel.iter() {
           let gap_in_parent = if parent.gaps.contains(r) { 1 } else { 0 };
@@ -359,6 +360,10 @@ fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]) 
 
         // Process consensus gaps in the node that are not in the parent (deletions)
         for r in range_difference(gaps, &parent.gaps) {
+          if variable_indel.contains_key(&r) {
+            // all gaps in variable_indel are already processed
+            continue;
+          }
           let indel = InDel {
             range: r,
             seq: sequence[r.0..r.1].into(),
@@ -370,6 +375,10 @@ fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]) 
 
         // Process gaps in the parent that are not in the node (insertions)
         for r in range_difference(&parent.gaps, gaps) {
+          if variable_indel.contains_key(&r) {
+            // all gaps in variable_indel are already processed
+            continue;
+          }
           let indel = InDel {
             range: r,
             seq: sequence[r.0..r.1].into(),
@@ -378,6 +387,25 @@ fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]) 
           composition.add_indel(&indel);
           edge.indels.push(indel);
         }
+        for r in unknown.iter() {
+          // this might result in compensating addition/deletions of Ns already present in the parent
+          for pos in r.0..r.1 {
+            composition.adjust_count(sequence[pos], -1);
+          }
+          composition.adjust_count(alphabet.unknown(), r.1 as isize - r.0 as isize);
+        }
+      }
+      // fill in the gapped positions. this is done for all nodes, including the root, the composition of non-root nodes is already correct
+      for r in gaps.iter() {
+        sequence[r.0..r.1].fill(alphabet.gap());
+      }
+      for r in unknown.iter() {
+        // composition is already adjusted
+        sequence[r.0..r.1].fill(alphabet.unknown());
+      }
+      if node.is_root {
+        // if the node is the root, the composition is calculated from the full sequence
+        *composition = Composition::with_sequence(sequence.iter().copied(), alphabet.chars(), alphabet.gap());
       }
     }
     GraphTraversalContinuation::Continue
@@ -390,13 +418,6 @@ fn fitch_cleanup(graph: &SparseGraph) {
       // delete the variable position everywhere instead of leaves
       if !node.is_leaf {
         seq.fitch.variable = btreemap! {};
-      }
-
-      // remove the undetermined counts from the counts of fixed positions
-      for r in &seq.unknown {
-        for pos in r.0..r.1 {
-          seq.composition.adjust_count(seq.sequence[pos], -1);
-        }
       }
 
       seq.fitch.composition = seq.composition.clone();
@@ -518,9 +539,9 @@ mod tests {
   use super::*;
   use crate::alphabet::alphabet::Alphabet;
   use crate::graph::node::Named;
-  use crate::io::fasta::read_many_fasta_str;
+  use crate::io::fasta::{read_many_fasta, read_many_fasta_str};
   use crate::io::json::{json_write_str, JsonPretty};
-  use crate::io::nwk::nwk_read_str;
+  use crate::io::nwk::{nwk_read_file, nwk_read_str};
   use eyre::Report;
   use indoc::indoc;
   use lazy_static::lazy_static;
@@ -775,6 +796,336 @@ mod tests {
       );
     }
 
+    Ok(())
+  }
+
+  #[test]
+  fn test_fitch_complex_gaps() -> Result<(), Report> {
+    rayon::ThreadPoolBuilder::new().num_threads(1).build_global()?;
+
+    // test the cases where: a) deletions overlap, b) the root has a deletion, c) an inserted sequence is variable
+    // in DE, position 3 is inserted, but it varies in D and E
+    let aln = read_many_fasta_str(
+      indoc! {r#"
+      >root
+      TC-AG
+      >AB
+      TC-AG
+      >A
+      NC--G
+      >B
+      T--AG
+      >CDE
+      TG-TG
+      >C
+      TR-TG
+      >DE
+      TGTTG
+      >D
+      TGTTG
+      >E
+      TGCCG
+    "#},
+      &NUC_ALPHABET,
+    )?;
+
+    let graph: SparseGraph = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,(D:0.05,E:0.03)DE:0.01)CDE:0.05)root:0.01;")?;
+
+    let alphabet = Alphabet::default();
+    let partitions = vec![PartitionParsimonyWithAln::new(alphabet, aln.clone())?];
+
+    attach_seqs_to_graph(&graph, &partitions)?;
+
+    let partitions = partitions.into_iter().map(PartitionParsimony::from).collect_vec();
+
+    fitch_backwards(&graph, &partitions);
+
+    fitch_forward(&graph, &partitions);
+
+    {
+      let seq_info = &graph
+        .get_exactly_one_root()?
+        .read_arc()
+        .payload()
+        .read_arc()
+        .sparse_partitions[0]
+        .seq;
+
+      assert_eq!(&aln[0].seq, &seq_info.sequence); // check root
+                                                   // TODO: factor these function, they are used in multiple tests
+      let actual_muts: BTreeMap<_, _> = graph
+        .get_edges()
+        .iter()
+        .enumerate()
+        .map(|(i, e)| {
+          let get_name = |node_id| {
+            let node = graph.get_node(node_id).unwrap().read_arc();
+            node.payload().read_arc().name().unwrap().as_ref().to_owned()
+          };
+
+          let src = get_name(e.read_arc().source());
+          let tar = get_name(e.read_arc().target());
+
+          (
+            format!("{src}->{tar}"),
+            e.read_arc().payload().read_arc().sparse_partitions[0]
+              .subs
+              .iter()
+              .map(ToString::to_string)
+              .collect_vec(),
+          )
+        })
+        .collect();
+
+      let expected_muts = btreemap! {
+        "AB->A"    => vec![],
+        "AB->B"    => vec![],
+        "root->AB" => vec![],
+        "CDE->C"    => vec![],
+        "CDE->DE"    => vec![],
+        "DE->D"    => vec!["C3T"],
+        "DE->E"    => vec!["T4C"],
+        "root->CDE" => vec!["C2G", "A4T"],
+      };
+      assert_eq!(
+        json_write_str(&expected_muts, JsonPretty(true))?,
+        json_write_str(&actual_muts, JsonPretty(true))?
+      );
+
+      let actual_indels: BTreeMap<_, _> = graph
+        .get_edges()
+        .iter()
+        .map(|e| {
+          let get_name = |node_id| {
+            let node = graph.get_node(node_id).unwrap().read_arc();
+            node.payload().read_arc().name().unwrap().as_ref().to_owned()
+          };
+
+          let src = get_name(e.read_arc().source());
+          let tar = get_name(e.read_arc().target());
+
+          (
+            format!("{src}->{tar}"),
+            e.read_arc().payload().read_arc().sparse_partitions[0]
+              .indels
+              .iter()
+              .map(ToString::to_string)
+              .collect_vec(),
+          )
+        })
+        .collect();
+
+      let expected_indels = btreemap! {
+        "AB->A"     => vec!["3--4: A -> -"],
+        "AB->B"     => vec!["1--2: C -> -"],
+        "root->AB"  => vec![],
+        "CDE->C"    => vec![],
+        "CDE->DE"   => vec!["2--3: - -> C"],
+        "DE->D"     => vec![],
+        "DE->E"     => vec![],
+        "root->CDE" => vec![],
+      };
+
+      let alphabet = Alphabet::default();
+      for node in graph.get_nodes() {
+        let seq_info = &node.read_arc().payload().read_arc().sparse_partitions[0].seq;
+        let composition =
+          Composition::with_sequence(seq_info.sequence.iter().copied(), alphabet.chars(), alphabet.gap());
+        assert_eq!(&seq_info.composition, &composition);
+      }
+
+      assert_eq!(
+        json_write_str(&expected_indels, JsonPretty(true))?,
+        json_write_str(&actual_indels, JsonPretty(true))?
+      );
+    }
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_fitch_polytomy() -> Result<(), Report> {
+    rayon::ThreadPoolBuilder::new().num_threads(1).build_global()?;
+
+    // test the cases where: a) deletions overlap, b) the root has a deletion, c) an inserted sequence is variable
+    // in DE, position 3 is inserted, but it varies in D and E
+    let aln = read_many_fasta_str(
+      indoc! {r#"
+      >root
+      TC-AG
+      >AB
+      TC-AG
+      >A
+      NC--G
+      >B
+      T--AG
+      >CDE
+      TG-CG
+      >C
+      TR-TG
+      >D
+      TGTTG
+      >E
+      TGCCG
+    "#},
+      &NUC_ALPHABET,
+    )?;
+
+    let graph: SparseGraph = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.05,E:0.03)CDE:0.05)root:0.01;")?;
+
+    let alphabet = Alphabet::default();
+    let partitions = vec![PartitionParsimonyWithAln::new(alphabet, aln.clone())?];
+
+    attach_seqs_to_graph(&graph, &partitions)?;
+
+    let partitions = partitions.into_iter().map(PartitionParsimony::from).collect_vec();
+
+    fitch_backwards(&graph, &partitions);
+
+    fitch_forward(&graph, &partitions);
+
+    {
+      let seq_info = &graph
+        .get_exactly_one_root()?
+        .read_arc()
+        .payload()
+        .read_arc()
+        .sparse_partitions[0]
+        .seq;
+
+      assert_eq!(&aln[0].seq, &seq_info.sequence); // check root
+                                                   // TODO: factor these function, they are used in multiple tests
+      let actual_muts: BTreeMap<_, _> = graph
+        .get_edges()
+        .iter()
+        .enumerate()
+        .map(|(i, e)| {
+          let get_name = |node_id| {
+            let node = graph.get_node(node_id).unwrap().read_arc();
+            node.payload().read_arc().name().unwrap().as_ref().to_owned()
+          };
+
+          let src = get_name(e.read_arc().source());
+          let tar = get_name(e.read_arc().target());
+
+          (
+            format!("{src}->{tar}"),
+            e.read_arc().payload().read_arc().sparse_partitions[0]
+              .subs
+              .iter()
+              .map(ToString::to_string)
+              .collect_vec(),
+          )
+        })
+        .collect();
+
+      let expected_muts = btreemap! {
+        "AB->A"    => vec![],
+        "AB->B"    => vec![],
+        "root->AB" => vec![],
+        "CDE->C"    => vec!["C4T"],
+        "CDE->D"    => vec!["C3T", "C4T"],
+        "CDE->E"    => vec![],
+        "root->CDE" => vec!["A4C","C2G"],
+      };
+      assert_eq!(
+        json_write_str(&expected_muts, JsonPretty(true))?,
+        json_write_str(&actual_muts, JsonPretty(true))?
+      );
+
+      let actual_indels: BTreeMap<_, _> = graph
+        .get_edges()
+        .iter()
+        .map(|e| {
+          let get_name = |node_id| {
+            let node = graph.get_node(node_id).unwrap().read_arc();
+            node.payload().read_arc().name().unwrap().as_ref().to_owned()
+          };
+
+          let src = get_name(e.read_arc().source());
+          let tar = get_name(e.read_arc().target());
+
+          (
+            format!("{src}->{tar}"),
+            e.read_arc().payload().read_arc().sparse_partitions[0]
+              .indels
+              .iter()
+              .map(ToString::to_string)
+              .collect_vec(),
+          )
+        })
+        .collect();
+
+      let expected_indels = btreemap! {
+        "AB->A"     => vec!["3--4: A -> -"],
+        "AB->B"     => vec!["1--2: C -> -"],
+        "root->AB"  => vec![],
+        "CDE->C"    => vec!["2--3: C -> -"],
+        "CDE->D"     => vec![],
+        "CDE->E"     => vec![],
+        "root->CDE" => vec!["2--3: - -> C"],
+      };
+
+      assert_eq!(
+        json_write_str(&expected_indels, JsonPretty(true))?,
+        json_write_str(&actual_indels, JsonPretty(true))?
+      );
+
+      let alphabet = Alphabet::default();
+      for node in graph.get_nodes() {
+        let seq_info = &node.read_arc().payload().read_arc().sparse_partitions[0].seq;
+        let composition =
+          Composition::with_sequence(seq_info.sequence.iter().copied(), alphabet.chars(), alphabet.gap());
+        assert_eq!(&seq_info.composition, &composition);
+      }
+    }
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_fitch_diverse_data() -> Result<(), Report> {
+    rayon::ThreadPoolBuilder::new().num_threads(1).build_global()?;
+
+    let alphabet = Alphabet::default();
+    let aln = read_many_fasta(&["../../data/lassa/L/50/aln.fasta.xz"], &alphabet)?;
+
+    let graph: SparseGraph = nwk_read_file("../../data/lassa/L/50/tree.nwk")?;
+    let partitions = vec![PartitionParsimonyWithAln::new(alphabet, aln.clone())?];
+    let partitions = compress_sequences(&graph, partitions)?;
+
+    // perform the ancestral reconstruction and save the sequences in a map
+    let mut rec_seq = BTreeMap::new();
+    ancestral_reconstruction_fitch(&graph, true, &partitions, |node, seq| {
+      rec_seq.insert(node.name.clone().unwrap(), seq.to_string());
+    })?;
+
+    let alphabet = Alphabet::default();
+    for node in graph.get_inner_nodes() {
+      let seq_info = &node.read_arc().payload().read_arc().sparse_partitions[0].seq;
+      let node_name = node.read_arc().payload().read_arc().name.clone().unwrap();
+      let composition = Composition::with_sequence(
+        rec_seq.get(&node_name).unwrap().chars(),
+        alphabet.chars(),
+        alphabet.gap(),
+      );
+      assert_eq!(&seq_info.composition, &composition);
+    }
+
+    let alphabet = Alphabet::default();
+    for node in graph.get_leaves() {
+      let seq_info = &node.read_arc().payload().read_arc().sparse_partitions[0].seq;
+      let node_name = node.read_arc().payload().read_arc().name.clone().unwrap();
+      let input_seq = aln
+        .iter()
+        .find(|record| &record.seq_name == &node_name)
+        .unwrap()
+        .seq
+        .iter()
+        .copied();
+      let input_seq_str: String = input_seq.clone().map(|c| c.to_string()).collect();
+      assert_eq!(&input_seq_str, rec_seq.get(&node_name).unwrap());
+    }
     Ok(())
   }
 
