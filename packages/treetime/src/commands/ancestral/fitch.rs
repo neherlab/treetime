@@ -699,59 +699,23 @@ mod tests {
     fitch_backwards(&graph, &partitions);
 
     {
-      let seq_info = &graph
-        .get_exactly_one_root()?
-        .read_arc()
-        .payload()
-        .read_arc()
-        .sparse_partitions[0]
-        .seq;
-
+      let seq_info = util::get_root_seq_info(&graph);
       assert_eq!(
         vec![0, 2, 3, 5, 6],
         seq_info.fitch.variable.keys().copied().collect_vec()
       );
-
       assert_eq!(&"~C~~C~~TGTATTGAC", &seq_info.sequence.as_str());
     }
 
     fitch_forward(&graph, &partitions);
 
     {
-      let seq_info = &graph
-        .get_exactly_one_root()?
-        .read_arc()
-        .payload()
-        .read_arc()
-        .sparse_partitions[0]
-        .seq;
-
+      let seq_info = util::get_root_seq_info(&graph);
       assert_eq!(&aln[0].seq, &seq_info.sequence);
+    }
 
-      let actual_muts: BTreeMap<_, _> = graph
-        .get_edges()
-        .iter()
-        .enumerate()
-        .map(|(i, e)| {
-          let get_name = |node_id| {
-            let node = graph.get_node(node_id).unwrap().read_arc();
-            node.payload().read_arc().name().unwrap().as_ref().to_owned()
-          };
-
-          let src = get_name(e.read_arc().source());
-          let tar = get_name(e.read_arc().target());
-
-          (
-            format!("{src}->{tar}"),
-            e.read_arc().payload().read_arc().sparse_partitions[0]
-              .subs
-              .iter()
-              .map(ToString::to_string)
-              .collect_vec(),
-          )
-        })
-        .collect();
-
+    {
+      let actual_muts = util::collect_muts(&graph);
       let expected_muts = btreemap! {
         "AB->A"    => vec!["C6G", "T8C"],
         "AB->B"    => vec!["A1G"],
@@ -764,31 +728,18 @@ mod tests {
         json_write_str(&expected_muts, JsonPretty(true))?,
         json_write_str(&actual_muts, JsonPretty(true))?
       );
+    }
 
-      let actual_indels: BTreeMap<_, _> = graph
-        .get_edges()
-        .iter()
-        .map(|e| {
-          (
-            e.read_arc().key(),
-            e.read_arc().payload().read_arc().sparse_partitions[0]
-              .indels
-              .iter()
-              .map(ToString::to_string)
-              .collect_vec(),
-          )
-        })
-        .collect();
-
+    {
+      let actual_indels = util::collect_indels(&graph);
       let expected_indels = btreemap! {
-        0 => vec!["12--13: T -> -", "14--16: -- -> AC"],
-        1 => vec![],
-        2 => vec!["11--12: T -> -"],
-        3 => vec![],
-        4 => vec![],
-        5 => vec![],
+        "AB->A"     => vec!["12--13: T -> -", "14--16: -- -> AC"],
+        "AB->B"     => vec![],
+        "CD->C"     => vec![],
+        "root->AB"  => vec!["11--12: T -> -"],
+        "CD->D"     => vec![],
+        "root->CD"  => vec![],
       };
-
       assert_eq!(
         json_write_str(&expected_indels, JsonPretty(true))?,
         json_write_str(&actual_indels, JsonPretty(true))?
@@ -831,7 +782,7 @@ mod tests {
     let graph: SparseGraph = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,(D:0.05,E:0.03)DE:0.01)CDE:0.05)root:0.01;")?;
 
     let alphabet = Alphabet::default();
-    let partitions = vec![PartitionParsimonyWithAln::new(alphabet, aln.clone())?];
+    let partitions = vec![PartitionParsimonyWithAln::new(alphabet.clone(), aln.clone())?];
 
     attach_seqs_to_graph(&graph, &partitions)?;
 
@@ -842,78 +793,30 @@ mod tests {
     fitch_forward(&graph, &partitions);
 
     {
-      let seq_info = &graph
-        .get_exactly_one_root()?
-        .read_arc()
-        .payload()
-        .read_arc()
-        .sparse_partitions[0]
-        .seq;
+      let seq_info = util::get_root_seq_info(&graph);
+      assert_eq!(&aln[0].seq, &seq_info.sequence);
+    }
 
-      assert_eq!(&aln[0].seq, &seq_info.sequence); // check root
-                                                   // TODO: factor these function, they are used in multiple tests
-      let actual_muts: BTreeMap<_, _> = graph
-        .get_edges()
-        .iter()
-        .enumerate()
-        .map(|(i, e)| {
-          let get_name = |node_id| {
-            let node = graph.get_node(node_id).unwrap().read_arc();
-            node.payload().read_arc().name().unwrap().as_ref().to_owned()
-          };
-
-          let src = get_name(e.read_arc().source());
-          let tar = get_name(e.read_arc().target());
-
-          (
-            format!("{src}->{tar}"),
-            e.read_arc().payload().read_arc().sparse_partitions[0]
-              .subs
-              .iter()
-              .map(ToString::to_string)
-              .collect_vec(),
-          )
-        })
-        .collect();
-
+    {
+      let actual_muts = util::collect_muts(&graph);
       let expected_muts = btreemap! {
-        "AB->A"    => vec![],
-        "AB->B"    => vec![],
-        "root->AB" => vec![],
+        "AB->A"     => vec![],
+        "AB->B"     => vec![],
+        "root->AB"  => vec![],
         "CDE->C"    => vec![],
-        "CDE->DE"    => vec![],
-        "DE->D"    => vec!["C3T"],
-        "DE->E"    => vec!["T4C"],
+        "CDE->DE"   => vec![],
+        "DE->D"     => vec!["C3T"],
+        "DE->E"     => vec!["T4C"],
         "root->CDE" => vec!["C2G", "A4T"],
       };
       assert_eq!(
         json_write_str(&expected_muts, JsonPretty(true))?,
         json_write_str(&actual_muts, JsonPretty(true))?
       );
+    }
 
-      let actual_indels: BTreeMap<_, _> = graph
-        .get_edges()
-        .iter()
-        .map(|e| {
-          let get_name = |node_id| {
-            let node = graph.get_node(node_id).unwrap().read_arc();
-            node.payload().read_arc().name().unwrap().as_ref().to_owned()
-          };
-
-          let src = get_name(e.read_arc().source());
-          let tar = get_name(e.read_arc().target());
-
-          (
-            format!("{src}->{tar}"),
-            e.read_arc().payload().read_arc().sparse_partitions[0]
-              .indels
-              .iter()
-              .map(ToString::to_string)
-              .collect_vec(),
-          )
-        })
-        .collect();
-
+    {
+      let actual_indels = util::collect_indels(&graph);
       let expected_indels = btreemap! {
         "AB->A"     => vec!["3--4: A -> -"],
         "AB->B"     => vec!["1--2: C -> -"],
@@ -924,19 +827,16 @@ mod tests {
         "DE->E"     => vec![],
         "root->CDE" => vec![],
       };
-
-      let alphabet = Alphabet::default();
-      for node in graph.get_nodes() {
-        let seq_info = &node.read_arc().payload().read_arc().sparse_partitions[0].seq;
-        let composition =
-          Composition::with_sequence(seq_info.sequence.iter().copied(), alphabet.chars(), alphabet.gap());
-        assert_eq!(&seq_info.composition, &composition);
-      }
-
       assert_eq!(
         json_write_str(&expected_indels, JsonPretty(true))?,
         json_write_str(&actual_indels, JsonPretty(true))?
       );
+    }
+
+    for node in graph.get_nodes() {
+      let seq_info = util::get_root_seq_info(&graph);
+      let composition = Composition::with_sequence(seq_info.sequence.iter().copied(), alphabet.chars(), alphabet.gap());
+      assert_eq!(&seq_info.composition, &composition);
     }
 
     Ok(())
@@ -973,7 +873,7 @@ mod tests {
     let graph: SparseGraph = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.05,E:0.03)CDE:0.05)root:0.01;")?;
 
     let alphabet = Alphabet::default();
-    let partitions = vec![PartitionParsimonyWithAln::new(alphabet, aln.clone())?];
+    let partitions = vec![PartitionParsimonyWithAln::new(alphabet.clone(), aln.clone())?];
 
     attach_seqs_to_graph(&graph, &partitions)?;
 
@@ -984,44 +884,16 @@ mod tests {
     fitch_forward(&graph, &partitions);
 
     {
-      let seq_info = &graph
-        .get_exactly_one_root()?
-        .read_arc()
-        .payload()
-        .read_arc()
-        .sparse_partitions[0]
-        .seq;
+      let seq_info = util::get_root_seq_info(&graph);
+      assert_eq!(&aln[0].seq, &seq_info.sequence);
+    }
 
-      assert_eq!(&aln[0].seq, &seq_info.sequence); // check root
-                                                   // TODO: factor these function, they are used in multiple tests
-      let actual_muts: BTreeMap<_, _> = graph
-        .get_edges()
-        .iter()
-        .enumerate()
-        .map(|(i, e)| {
-          let get_name = |node_id| {
-            let node = graph.get_node(node_id).unwrap().read_arc();
-            node.payload().read_arc().name().unwrap().as_ref().to_owned()
-          };
-
-          let src = get_name(e.read_arc().source());
-          let tar = get_name(e.read_arc().target());
-
-          (
-            format!("{src}->{tar}"),
-            e.read_arc().payload().read_arc().sparse_partitions[0]
-              .subs
-              .iter()
-              .map(ToString::to_string)
-              .collect_vec(),
-          )
-        })
-        .collect();
-
+    {
+      let actual_muts = util::collect_muts(&graph);
       let expected_muts = btreemap! {
-        "AB->A"    => vec![],
-        "AB->B"    => vec![],
-        "root->AB" => vec![],
+        "AB->A"     => vec![],
+        "AB->B"     => vec![],
+        "root->AB"  => vec![],
         "CDE->C"    => vec!["C4T"],
         "CDE->D"    => vec!["C3T", "C4T"],
         "CDE->E"    => vec![],
@@ -1031,52 +903,29 @@ mod tests {
         json_write_str(&expected_muts, JsonPretty(true))?,
         json_write_str(&actual_muts, JsonPretty(true))?
       );
+    }
 
-      let actual_indels: BTreeMap<_, _> = graph
-        .get_edges()
-        .iter()
-        .map(|e| {
-          let get_name = |node_id| {
-            let node = graph.get_node(node_id).unwrap().read_arc();
-            node.payload().read_arc().name().unwrap().as_ref().to_owned()
-          };
-
-          let src = get_name(e.read_arc().source());
-          let tar = get_name(e.read_arc().target());
-
-          (
-            format!("{src}->{tar}"),
-            e.read_arc().payload().read_arc().sparse_partitions[0]
-              .indels
-              .iter()
-              .map(ToString::to_string)
-              .collect_vec(),
-          )
-        })
-        .collect();
-
+    {
+      let actual_indels = util::collect_indels(&graph);
       let expected_indels = btreemap! {
         "AB->A"     => vec!["3--4: A -> -"],
         "AB->B"     => vec!["1--2: C -> -"],
         "root->AB"  => vec![],
         "CDE->C"    => vec!["2--3: C -> -"],
-        "CDE->D"     => vec![],
-        "CDE->E"     => vec![],
+        "CDE->D"    => vec![],
+        "CDE->E"    => vec![],
         "root->CDE" => vec!["2--3: - -> C"],
       };
-
       assert_eq!(
         json_write_str(&expected_indels, JsonPretty(true))?,
         json_write_str(&actual_indels, JsonPretty(true))?
       );
+    }
 
-      let alphabet = Alphabet::default();
-      for node in graph.get_nodes() {
-        let seq_info = &node.read_arc().payload().read_arc().sparse_partitions[0].seq;
-        let composition =
-          Composition::with_sequence(seq_info.sequence.iter().copied(), alphabet.chars(), alphabet.gap());
-        assert_eq!(&seq_info.composition, &composition);
-      }
+    for node in graph.get_nodes() {
+      let seq_info = &node.read_arc().payload().read_arc().sparse_partitions[0].seq;
+      let composition = Composition::with_sequence(seq_info.sequence.iter().copied(), alphabet.chars(), alphabet.gap());
+      assert_eq!(&seq_info.composition, &composition);
     }
 
     Ok(())
@@ -1122,5 +971,74 @@ mod tests {
       assert_eq!(&input_seq_str, &rec_seq[&node_name]);
     }
     Ok(())
+  }
+
+  mod util {
+    use super::*;
+
+    pub fn get_root_seq_info(graph: &SparseGraph) -> SparseSeqInfo {
+      graph
+        .get_exactly_one_root()
+        .unwrap()
+        .read_arc()
+        .payload()
+        .read_arc()
+        .sparse_partitions[0]
+        .seq
+        .clone()
+    }
+
+    pub fn collect_muts(graph: &SparseGraph) -> BTreeMap<String, Vec<String>> {
+      let actual_muts: BTreeMap<_, _> = graph
+        .get_edges()
+        .iter()
+        .enumerate()
+        .map(|(i, e)| {
+          let get_name = |node_id| {
+            let node = graph.get_node(node_id).unwrap().read_arc();
+            node.payload().read_arc().name().unwrap().as_ref().to_owned()
+          };
+
+          let src = get_name(e.read_arc().source());
+          let tar = get_name(e.read_arc().target());
+
+          (
+            format!("{src}->{tar}"),
+            e.read_arc().payload().read_arc().sparse_partitions[0]
+              .subs
+              .iter()
+              .map(ToString::to_string)
+              .collect_vec(),
+          )
+        })
+        .collect();
+      actual_muts
+    }
+
+    pub fn collect_indels(graph: &SparseGraph) -> BTreeMap<String, Vec<String>> {
+      let actual_indels: BTreeMap<_, _> = graph
+        .get_edges()
+        .iter()
+        .map(|e| {
+          let get_name = |node_id| {
+            let node = graph.get_node(node_id).unwrap().read_arc();
+            node.payload().read_arc().name().unwrap().as_ref().to_owned()
+          };
+
+          let src = get_name(e.read_arc().source());
+          let tar = get_name(e.read_arc().target());
+
+          (
+            format!("{src}->{tar}"),
+            e.read_arc().payload().read_arc().sparse_partitions[0]
+              .indels
+              .iter()
+              .map(ToString::to_string)
+              .collect_vec(),
+          )
+        })
+        .collect();
+      actual_indels
+    }
   }
 }
