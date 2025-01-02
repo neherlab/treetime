@@ -224,11 +224,8 @@ def ancestral_sparse(graph: Graph) -> float:
   return logLH
 
 def tests():
-  aln = {"root":"ACAGCCATGTATTG--",
-         "AB":"ACATCCCTGTA-TG--",
-         "A":"ACATCGCCNNA--GAC",
+  aln = {"A":"ACATCGCCNNA--GAC",
          "B":"GCATCCCTGTA-NG--",
-         "CD":"CCGGCCATGTATTG--",
          "C":"CCGGCGATGTRTTG--",
          "D":"TCGGCCGTGTRTTG--"}
 
