@@ -9,6 +9,23 @@ pub struct InDel {
   pub deletion: bool, // deletion if True, insertion if False
 }
 
+impl InDel {
+  pub fn del(range: (usize, usize), seq: impl Into<Seq>) -> Self {
+    Self::new(range, seq, true)
+  }
+
+  pub fn ins(range: (usize, usize), seq: impl Into<Seq>) -> Self {
+    Self::new(range, seq, false)
+  }
+
+  pub fn new(range: (usize, usize), seq: impl Into<Seq>, deletion: bool) -> Self {
+    let seq = seq.into();
+    assert!(range.0 <= range.1);
+    assert_eq!(seq.len(), range.1 - range.0);
+    Self { range, seq, deletion }
+  }
+}
+
 impl fmt::Display for InDel {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     let delta_str = if self.deletion {

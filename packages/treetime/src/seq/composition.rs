@@ -90,7 +90,6 @@ mod tests {
   use super::*;
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::representation::seq::Seq;
-  use crate::seq;
   use crate::seq::mutation::Sub;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
@@ -167,11 +166,7 @@ mod tests {
   #[test]
   fn test_composition_add_deletion() {
     let mut actual = Composition::with_sequence("AAAGCTTACGGGGTCAAGTCC".bytes(), "ACGT-".bytes(), b'-');
-    let indel = InDel {
-      range: (1, 5),
-      seq: seq!['A', 'A', 'G', 'C'],
-      deletion: true,
-    };
+    let indel = InDel::del((1, 5), "AAGC");
     actual.add_indel(&indel);
     let expected = Composition::from(btreemap! { b'-' => 4, b'A' => 4, b'C' => 4, b'G' => 5, b'T' => 4}, b'-');
     assert_eq!(expected, actual);
@@ -180,11 +175,7 @@ mod tests {
   #[test]
   fn test_composition_add_insertion() {
     let mut actual = Composition::with_sequence("AAAGCTTACGGGGTCAAGTCC".bytes(), "ACGT-".bytes(), b'-');
-    let indel = InDel {
-      range: (3, 6),
-      seq: seq!['A', 'T', 'C'],
-      deletion: false,
-    };
+    let indel = InDel::ins((3, 6), "ATC");
     actual.add_indel(&indel);
     let expected = Composition::from(btreemap! { b'-' => 0, b'A' => 7, b'C' => 6, b'G' => 6, b'T' => 5}, b'-');
     assert_eq!(expected, actual);
