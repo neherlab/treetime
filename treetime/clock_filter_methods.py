@@ -105,7 +105,7 @@ def iterate_gauss_model(tt, params):
     sigma_sq = params['sigma']**2
     eps = params['eps']
     Tc = params['Tc']
-    with_coal = Tc is not None
+    with_coal = (Tc is not None) and ("lineages" in params)
 
     # backward pass
     for n in tt.tree.find_clades(order='postorder'):
@@ -158,9 +158,13 @@ def iterate_gauss_model(tt, params):
                     logL += 0.5*np.sum((gm_c['observations'] - gm_c['tau'])**2)/sigma_sq
                     dev.extend(gm_c['observations'] - gm_c['tau'])
                 logL += 0.5*((gm_c["tau"] - gm["tau"])*mu - gm_c["n_muts"])**2/(gm_c["n_muts"]+eps)
+        if with_coal:
+            n_lineages = params['lineages'](gm['tau'])
+            logL -= np.log(n_lineages/Tc)*(len(n.clades)-1)
 
-
-    return {'lineages': interp1d([x[0] for x in n_lineage_list], np.cumsum([x[1] for x in n_lineage_list]), kind='next', bounds_error=False, fill_value=1),
+    n_lineage_list.sort()
+    n_lineage_list[-1] = (n_lineage_list[-1][0], 0)
+    return {'lineages': interp1d([x[0] for x in n_lineage_list], np.maximum(1, np.cumsum([x[1] for x in n_lineage_list])), kind='previous', bounds_error=False, fill_value=1),
             'mu':dt/tsq, 'dmu':1/tsq**0.5, 'logL':logL, "sigma": params['sigma'], 'Tc':Tc, 'eps':eps, 'z_scale':np.std(dev)}
 
 
