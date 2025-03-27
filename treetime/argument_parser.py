@@ -64,13 +64,13 @@ gtr_params_description =  "GTR parameters for the model specified by "\
     "or treetime/aa_models.py"
 
 reroot_description = "Reroot the tree using root-to-tip regression. Valid choices are "\
-    "'min_dev', 'least-squares', and 'oldest'. 'least-squares' adjusts the root to "\
-    "minimize residuals of the root-to-tip vs sampling time regression, " \
+    "'min_dev', 'least-squares', 'oldest', and 'best' (alias for 'least-squares'). "\
+    "'least-squares' adjusts the root to minimize residuals of the root-to-tip vs sampling time regression, " \
     "'min_dev' minimizes variance of root-to-tip distances. "\
     "'least-squares' can be combined with --covariation to account for shared ancestry. "\
     "Alternatively, you can specify a node name or a list of node names "\
     "to be used as outgroup or use 'oldest' to reroot to the oldest node. "\
-    "By default, TreeTime will reroot using 'least-squares'. "\
+    "By default, TreeTime will reroot using 'best'. "\
     "Use --keep-root to keep the current root."
 
 tree_description = "Name of file containing the tree in newick, nexus, or phylip format, "\
