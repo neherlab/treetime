@@ -565,7 +565,7 @@ pub struct AuspiceTree {
 
 pub type AuspiceTreeNodeIter<'a> = Iter<'a, AuspiceTreeNode>;
 
-pub type AuspiceTreeNodeIterFn<'a> = fn(&'a AuspiceTreeNode) -> AuspiceTreeNodeIter<'_>;
+pub type AuspiceTreeNodeIterFn<'a> = fn(&'a AuspiceTreeNode) -> AuspiceTreeNodeIter<'a>;
 
 impl AuspiceTree {
   /// Returns iterator for breadth-first tree traversal

@@ -33,7 +33,7 @@ pub fn calculate_divs<N: GraphNode + Named, E: GraphEdge + Weighted, D: Send + S
       if node.is_leaf || !only_leaves.0 {
         result.insert(name, div);
       }
-    };
+    }
   });
   result
 }

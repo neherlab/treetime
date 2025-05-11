@@ -64,7 +64,7 @@ impl Seq {
   }
 
   pub fn pop(&mut self) -> Option<AsciiChar> {
-    self.data.pop().map(Into::into)
+    self.data.pop()
   }
 
   pub fn capacity(&self) -> usize {

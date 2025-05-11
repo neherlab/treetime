@@ -133,7 +133,7 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
     MethodAncestral::Joint => {
       unimplemented!("MethodAncestral::MaximumLikelihoodJoint")
     }
-  };
+  }
 
   Ok(())
 }

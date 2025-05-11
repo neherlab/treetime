@@ -210,7 +210,7 @@ pub fn run_optimize_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihoo
         .max_by(|&(_, ll1), &(_, ll2)| ll1.partial_cmp(&ll2).unwrap())
         .unwrap();
       new_branch_length = best_branch_length;
-    };
+    }
     edge.branch_length = Some(new_branch_length);
 
     Ok(())

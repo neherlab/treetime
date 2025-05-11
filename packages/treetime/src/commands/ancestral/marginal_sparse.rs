@@ -112,7 +112,7 @@ fn ingroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihoo
         edge_data.msg_from_child = propagate_raw(
           &gtr.expQt(branch_length).t().to_owned(),
           &msg_to_parent,
-          &edge_data.transmission,
+          edge_data.transmission.as_ref(),
         );
         edge_data.msg_to_parent = msg_to_parent;
       }
@@ -125,7 +125,7 @@ fn ingroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihoo
 fn propagate_raw(
   expQt: &Array2<f64>,
   seq_dis: &SparseSeqDis,
-  transmission: &Option<Vec<(usize, usize)>>,
+  transmission: Option<&Vec<(usize, usize)>>,
 ) -> SparseSeqDis {
   let mut message = SparseSeqDis {
     variable: btreemap! {},
@@ -300,7 +300,7 @@ fn outgroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikeliho
           msgs_to_combine.push(propagate_raw(
             &gtr.expQt(branch_length),
             &edge.read_arc().sparse_partitions[si].msg_to_child,
-            &edge.read_arc().sparse_partitions[si].transmission,
+            edge.read_arc().sparse_partitions[si].transmission.as_ref(),
           ));
           // add combined message from children (which is sent to the parent).
           msgs_to_combine.push(edge.read_arc().sparse_partitions[si].msg_to_parent.clone());
@@ -396,7 +396,7 @@ pub fn run_marginal_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihoo
     .iter()
     .map(|p| p.profile.log_lh)
     .sum();
-  debug!("Log likelihood: {}", log_lh);
+  debug!("Log likelihood: {log_lh}");
   outgroup_profiles_sparse(graph, partitions);
   Ok(log_lh)
 }

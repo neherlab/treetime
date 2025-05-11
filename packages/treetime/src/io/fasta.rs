@@ -140,7 +140,7 @@ impl<'a, 'b> FastaReader<'a, 'b> {
     }
 
     let header_line = self.line.trim();
-    let (name, desc) = header_line[1..].split_once(' ').unwrap_or((&header_line[1..], ""));
+    let (name, desc) = header_line[1..].split_once(' ').unwrap_or_else(|| (&header_line[1..], ""));
     record.seq_name = name.to_owned();
     record.desc = if desc.is_empty() { None } else { Some(desc.to_owned()) };
     record.index = self.index;

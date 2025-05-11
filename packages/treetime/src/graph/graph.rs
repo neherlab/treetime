@@ -471,7 +471,7 @@ where
       .iter_mut()
       // Find edges which refer to this node
       .filter(|e| {
-        e.as_ref().map_or(false, |e| {
+        e.as_ref().is_some_and(|e| {
           let e = e.read();
           e.source() == node_key || e.target() == node_key
         })

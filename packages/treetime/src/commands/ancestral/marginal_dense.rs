@@ -182,7 +182,7 @@ fn ingroup_profiles_dense(graph: &DenseGraph, partitions: &[PartitionLikelihood]
         edge_data.msg_from_child = DenseSeqDis { dis, log_lh };
         edge_data.msg_to_parent = msg_to_parent;
         edge_to_parent.dense_partitions.push(edge_data);
-      };
+      }
     }
     GraphTraversalContinuation::Continue
   });
@@ -213,7 +213,7 @@ fn outgroup_profiles_dense(graph: &DenseGraph, partitions: &[PartitionLikelihood
         let delta_ll = normalize_inplace(&mut dis);
         log_lh += delta_ll;
         seq_info.profile = DenseSeqDis { dis, log_lh };
-      };
+      }
 
       for child_edge in &mut node.child_edges {
         // this normalization isn't strictly necessary
@@ -251,7 +251,7 @@ pub fn run_marginal_dense(
     .iter()
     .map(|p| p.profile.log_lh)
     .sum();
-  debug!("Log likelihood: {}", log_lh);
+  debug!("Log likelihood: {log_lh}");
   outgroup_profiles_dense(graph, &partitions);
 
   if reconstruct {
