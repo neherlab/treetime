@@ -9,7 +9,7 @@ use crate::io::json::{json_write_str, JsonPretty};
 use serde::{Deserialize, Serialize};
 use std::ffi::{c_char, c_int, CStr};
 
-extern "C" {
+unsafe extern "C" {
   fn openblas_get_config() -> *const c_char;
   fn openblas_get_corename() -> *const c_char;
   fn openblas_get_parallel() -> c_int;

@@ -1,5 +1,5 @@
 [workspace]
-resolver = '2'
+resolver = '3'
 
 members = [
   "packages/phyloxml",
@@ -17,7 +17,7 @@ version = "1.0.0"
 documentation = "https://treetime.readthedocs.io/en/stable/"
 repository = "https://github.com/neherlab/treetime"
 homepage = "https://github.com/neherlab/treetime"
-edition = "2021"
+edition = "2024"
 license = "MIT"
 publish = false
 keywords = ["biology", "evolution", "phylogenetics", "phylogeography", "virus"]
@@ -135,6 +135,7 @@ typify = { version = "=0.2.0", features = ["macro"] }
 warnings = { level = "warn", priority = -100 }
 future_incompatible = { level = "warn", priority = -90 }
 deprecated_in_future = { level = "warn", priority = -80 }
+deprecated_safe = { level = "warn", priority = -81 }
 
 rust_2018_compatibility = { level = "warn", priority = -70 }
 rust_2018_idioms = { level = "warn", priority = -70 }
@@ -156,7 +157,6 @@ unused_variables = "allow"
 # Enable lints not enabled by default
 # https://doc.rust-lang.org/rustc/lints/listing/allowed-by-default.html
 absolute_paths_not_starting_with_crate = "warn"
-deprecated_safe = "warn"
 explicit_outlives_requirements = "warn"
 ffi_unwind_calls = "warn"
 keyword_idents_2018 = "warn"
@@ -192,16 +192,17 @@ variant_size_differences = "warn"
 # missing_copy_implementations = "warn"
 # missing_debug_implementations = "warn"
 
+
 [workspace.lints.clippy]
 # https://rust-lang.github.io/rust-clippy/stable/
 # This is a strict (sometimes too much) Clippy setup.
 # We go bold and enable all Clippy lints, then disable the ones that we don't need.
 # This has an advantage that when upgrading Rust and Clippy, we receive new lints automatically.
 all = { level = "warn", priority = -2 }
-pedantic = { level = "warn", priority = -1 }
 blanket_clippy_restriction_lints = "allow"
-restriction = { level = "warn", priority = -1 }
 nursery = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+restriction = { level = "warn", priority = -1 }
 # Disable some of the Clippy lints
 absolute_paths = "allow"
 allow_attributes = "allow"
@@ -307,6 +308,7 @@ wildcard_enum_match_arm = "allow"
 # We might need to reconsider these
 iter_over_hash_type = "allow"
 needless_range_loop = "allow"
+unused_variables = "allow"
 
 [workspace.lints.rustdoc]
 broken_intra_doc_links = "warn"

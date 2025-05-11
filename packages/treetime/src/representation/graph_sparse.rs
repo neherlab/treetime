@@ -93,7 +93,7 @@ impl SparseSeqNode {
     let variable = seq
       .iter()
       .enumerate()
-      .filter(|(_, &c)| alphabet.is_ambiguous(c))
+      .filter(|&(_, c)| alphabet.is_ambiguous(*c))
       .map(|(pos, &c)| (pos, alphabet.char_to_set(c)))
       .collect();
 
