@@ -1,7 +1,6 @@
+use crate::cli::verbosity::Verbosity;
 use clap::{AppSettings, ArgEnum, Parser, ValueHint};
-use clap_verbosity_flag::{Verbosity, WarnLevel};
 use lazy_static::lazy_static;
-use log::LevelFilter;
 use std::path::{Path, PathBuf};
 use treetime::io::fs::extension;
 
@@ -66,18 +65,8 @@ pub struct Args {
   pub output_format: Option<TreeFormat>,
 
   /// Make output more quiet or more verbose
-  #[clap(flatten)]
-  pub verbose: Verbosity<WarnLevel>,
-
-  /// Set verbosity level
-  #[clap(long, global = true, conflicts_with = "verbose", conflicts_with = "silent", possible_values(VERBOSITIES.iter()))]
-  #[clap(display_order = 999)]
-  pub verbosity: Option<LevelFilter>,
-
-  /// Disable all console output. Same as --verbosity=off
-  #[clap(long, global = true, conflicts_with = "verbose", conflicts_with = "verbosity")]
-  #[clap(display_order = 999)]
-  pub silent: bool,
+  #[clap(flatten, next_help_heading = "Verbosity")]
+  pub verbosity: Verbosity,
 }
 
 lazy_static! {

@@ -3,7 +3,7 @@ use crate::graph::graph::Graph;
 use crate::graph::node::{GraphNode, GraphNodeKey, Node};
 use crate::io::file::create_file_or_stdout;
 use crate::io::file::open_file_or_stdin;
-use crate::io::json::{json_read, json_write, JsonPretty};
+use crate::io::json::{JsonPretty, json_read, json_write};
 use eyre::{Report, WrapErr};
 use maplit::{btreemap, btreeset};
 use parking_lot::RwLock;
@@ -458,7 +458,7 @@ pub struct AuspiceGenomeAnnotationCds {
   #[serde(default, skip_serializing_if = "Option::is_none")]
   pub description: Option<String>,
 
-  #[serde(rename = "type", default, skip_serializing_if = "Option::is_none")]
+  #[serde(default, skip_serializing_if = "Option::is_none")]
   pub strand: Option<String>,
 
   #[serde(flatten)]

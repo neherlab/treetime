@@ -1,12 +1,11 @@
 #![allow(unused_qualifications)]
 
+use crate::cli::verbosity::Verbosity;
 use clap::{AppSettings, ArgEnum, CommandFactory, Parser, Subcommand};
-use clap_complete::{generate, Shell};
+use clap_complete::{Shell, generate};
 use clap_complete_fig::Fig;
-use clap_verbosity_flag::{Verbosity, WarnLevel};
-use eyre::{eyre, Report};
+use eyre::{Report, eyre};
 use lazy_static::lazy_static;
-use log::LevelFilter;
 use num_cpus;
 use std::fmt::Debug;
 use std::io;
@@ -37,16 +36,8 @@ pub struct TreetimeArgs {
   pub command: TreetimeCommands,
 
   /// Make output more quiet or more verbose
-  #[clap(flatten)]
-  pub verbose: Verbosity<WarnLevel>,
-
-  /// Set verbosity level
-  #[clap(long, global = true, conflicts_with = "verbose", conflicts_with = "silent", possible_values(VERBOSITIES.iter()))]
-  pub verbosity: Option<LevelFilter>,
-
-  /// Disable all console output. Same as --verbosity=off
-  #[clap(long, global = true, conflicts_with = "verbose", conflicts_with = "verbosity")]
-  pub silent: bool,
+  #[clap(flatten, next_help_heading = "Verbosity")]
+  pub verbosity: Verbosity,
 
   /// Number of processing jobs. If not specified, all available CPU threads will be used.
   #[clap(global = true, long, short = 'j', default_value_t = num_cpus::get())]
@@ -119,18 +110,6 @@ pub fn generate_shell_completions(shell: &str) -> Result<(), Report> {
 
 pub fn treetime_parse_cli_args() -> Result<TreetimeArgs, Report> {
   let args = TreetimeArgs::parse();
-
-  // --verbosity=<level> and --silent take priority over -v and -q
-  let filter_level = if args.silent {
-    LevelFilter::Off
-  } else {
-    match args.verbosity {
-      None => args.verbose.log_level_filter(),
-      Some(verbosity) => verbosity,
-    }
-  };
-
-  setup_logger(filter_level);
-
+  setup_logger(args.verbosity.get_filter_level());
   Ok(args)
 }

@@ -31,9 +31,6 @@ bytes = { workspace = true }
 chrono = { workspace = true }
 chronoutil = { workspace = true }
 clap = { workspace = true }
-clap-verbosity-flag = { workspace = true }
-clap_complete = { workspace = true }
-clap_complete_fig = { workspace = true }
 color-eyre = { workspace = true }
 comfy-table = { workspace = true }
 crossbeam-queue = { workspace = true }
