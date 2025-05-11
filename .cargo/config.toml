@@ -1,3 +1,23 @@
+[alias]
+lint = "-q clippy -q --all-targets --all"
+lint-fix = "lint --fix --allow-staged"
+test-all = "-q nextest run --success-output=immediate --workspace --cargo-quiet --no-fail-fast --hide-progress-bar --color=always"
+test-integration = "test-all --test='*'"
+test-unit = "test-all --lib"
+upgrade-deps = "-q upgrade --pinned --incompatible --verbose --recursive" # cargo install cargo-edit
+
+b = "build"
+br = "build --release"
+l = "lint"
+lf = "lint-fix"
+r = "run --bin"
+rr = "run --release --bin"
+t = "test-all"
+ti = "test-integration"
+tu = "test-unit"
+u = "upgrade-deps"
+
+
 [env]
 DYNAMIC_ARCH = "1" # https://github.com/xianyi/OpenBLAS#support-for-multiple-targets-in-a-single-library=
 

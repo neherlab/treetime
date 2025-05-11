@@ -67,13 +67,13 @@ function main() {
     cargo_test_cmd=("--test='*'")
     ;;
   "lint" | "l")
-    cargo_cmd=("clippy -q")
+    cargo_cmd=("clippy -q --all-targets --all")
     ;;
   "lint-fix" | "lf")
-    cargo_cmd=("clippy -q --fix --allow-staged")
+    cargo_cmd=("clippy -q  --all-targets --all --fix --allow-staged")
     ;;
   "lint-ci" | "lc")
-    cargo_cmd=("clippy -q")
+    cargo_cmd=("clippy -q --all-targets --all")
     cargo_append_args=("-- -Dwarnings")
     ;;
   "format" | "f")
@@ -137,7 +137,7 @@ function main() {
     local args=$(echo "${@:-}" | xargs)
 
     # shellcheck disable=SC2086
-    nicely cargo -q nextest run --success-output=immediate --workspace --cargo-quiet --no-fail-fast --hide-progress-bar --color=always --target-dir="${target_dir}" ${args[@]} 2>&1 |
+    nicely cargo -q nextest run ${cargo_test_cmd} --success-output=immediate --workspace --cargo-quiet --no-fail-fast --hide-progress-bar --color=always --target-dir="${target_dir}" ${args[@]} 2>&1 |
       "$(project_root)/dev/prettytest"
 
   # TODO: run an npm/yarn/bun/deno command
