@@ -63,9 +63,9 @@ bio-types = { version = "=1.0.4", features = ["phylogeny"] }
 bytes = { version = "1.10.1", features = ["serde"] }
 chrono = { version = "=0.4.41", default-features = false, features = ["clock", "alloc", "std", "serde"] }
 chronoutil = "=0.2.7"
-clap = { version = "=3.2.25", features = ["derive"] }
-clap_complete = "=3.2.5"
-clap_complete_fig = "=3.2.4"
+clap = { version = "=4.5.38", features = ["derive"] }
+clap_complete = "=4.5.50"
+clap_complete_fig = "=4.5.2"
 color-eyre = "=0.6.4"
 comfy-table = "=7.1.4"
 criterion = { version = "=0.5.1", features = ["html_reports"] }

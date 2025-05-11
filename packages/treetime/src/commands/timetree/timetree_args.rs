@@ -1,11 +1,11 @@
 use crate::commands::ancestral::anc_args::MethodAncestral;
 use crate::gtr::get_gtr::GtrModelName;
-use clap::{ArgEnum, Parser, ValueHint};
+use clap::{ValueEnum, Parser, ValueHint};
 use std::fmt::Debug;
 use std::path::PathBuf;
 
-#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, ArgEnum)]
-#[clap(rename = "kebab-case")]
+#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+#[value(rename_all = "kebab-case")]
 pub enum BranchLengthMode {
   Auto,
   Input,
@@ -19,8 +19,8 @@ impl Default for BranchLengthMode {
   }
 }
 
-#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, ArgEnum)]
-#[clap(rename = "kebab-case")]
+#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+#[value(rename_all = "kebab-case")]
 pub enum TimeMarginalMode {
   Never,
   Always,
@@ -33,8 +33,8 @@ impl Default for TimeMarginalMode {
   }
 }
 
-#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, ArgEnum)]
-#[clap(rename = "kebab-case")]
+#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+#[value(rename_all = "kebab-case")]
 pub enum RerootMode {
   LeastSquares,
   MinDev,
@@ -110,14 +110,14 @@ pub struct TreetimeTimetreeArgs {
   pub clock_std_dev: Option<f64>,
 
   /// If set to 'input', the provided branch length will be used without modification. Note that branch lengths optimized by treetime are only accurate at short evolutionary distances.
-  #[clap(long, arg_enum, default_value_t = BranchLengthMode::default())]
+  #[clap(long, value_enum, default_value_t = BranchLengthMode::default())]
   pub branch_length_mode: BranchLengthMode,
 
   /// For 'false' or 'never', TreeTime uses the jointly most likely values for the divergence times.
   ///  For 'true' and 'always', it uses the marginal inference mode at every round of optimization,
   ///  for 'only-final' (or 'assign' for compatibility with previous versions) only uses the marginal
   ///  distribution in the final round.
-  #[clap(long, arg_enum, default_value_t = TimeMarginalMode::default())]
+  #[clap(long, value_enum, default_value_t = TimeMarginalMode::default())]
   pub time_marginal: TimeMarginalMode,
 
   /// estimate confidence intervals of divergence times using the marginal posterior distribution,
@@ -190,7 +190,7 @@ pub struct TreetimeTimetreeArgs {
   /// can specify a node name or a list of node names to be used as outgroup or use 'oldest' to
   /// reroot to the oldest node. By default, TreeTime will reroot using 'least-squares'. Use --keep-
   /// root to keep the current root.
-  #[clap(long, arg_enum, default_value_t = RerootMode::default())]
+  #[clap(long, value_enum, default_value_t = RerootMode::default())]
   pub reroot: RerootMode,
 
   /// don't reroot the tree. Otherwise, reroot to minimize the the residual of the regression of
@@ -210,7 +210,7 @@ pub struct TreetimeTimetreeArgs {
   /// GTR model to use
   ///
   /// '--gtr infer' will infer a model from the data. Alternatively, specify the model type. If the specified model requires additional options, use '--gtr-params' to specify those.
-  #[clap(long, short = 'g', arg_enum, default_value_t = GtrModelName::default())]
+  #[clap(long, short = 'g', value_enum, default_value_t = GtrModelName::default())]
   pub gtr: GtrModelName,
 
   /// GTR parameters for the model specified by the --gtr argument. The parameters should be feed as 'key=value' list of parameters.
@@ -222,7 +222,7 @@ pub struct TreetimeTimetreeArgs {
   pub gtr_params: Vec<String>,
 
   /// Method used for reconstructing ancestral sequences
-  #[clap(long, arg_enum, default_value_t = MethodAncestral::default())]
+  #[clap(long, value_enum, default_value_t = MethodAncestral::default())]
   pub method_anc: MethodAncestral,
 
   /// Use aminoacid alphabet

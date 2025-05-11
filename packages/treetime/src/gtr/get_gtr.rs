@@ -4,13 +4,13 @@ use crate::gtr::infer_gtr::{get_mutation_counts, infer_gtr, InferGtrOptions, Inf
 use crate::representation::graph_dense::DenseGraph;
 use crate::representation::graph_sparse::SparseGraph;
 use crate::{make_error, make_report};
-use clap::ArgEnum;
+use clap::ValueEnum;
 use eyre::{Report, WrapErr};
 use ndarray::{array, Array1, Array2};
 use smart_default::SmartDefault;
 use strum_macros::Display;
 
-#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, ArgEnum, SmartDefault, Display)]
+#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, SmartDefault, Display)]
 pub enum GtrModelName {
   #[default]
   Infer,

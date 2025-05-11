@@ -9,7 +9,7 @@ use treetime::commands::optimize::run::run_optimize;
 use treetime::commands::timetree::run_timetree_estimation::run_timetree_estimation;
 use treetime::utils::global_init::global_init;
 use treetime::utils::openblas::get_openblas_info_str;
-use treetime_cli::cli::treetime_cli::{generate_shell_completions, treetime_parse_cli_args, TreetimeCommands};
+use treetime_cli::cli::treetime_cli::{TreetimeCommands, generate_shell_completions, treetime_parse_cli_args};
 
 #[ctor]
 fn init() {
@@ -21,13 +21,15 @@ fn main() -> Result<(), Report> {
 
   info!("{:#?}", &args);
 
-  if args.jobs == 1 {
+  if args.jobs.jobs == 1 {
     rayon::ThreadPoolBuilder::new()
       .num_threads(1)
       .use_current_thread()
       .build_global()?;
   } else {
-    rayon::ThreadPoolBuilder::new().num_threads(args.jobs).build_global()?;
+    rayon::ThreadPoolBuilder::new()
+      .num_threads(args.jobs.jobs)
+      .build_global()?;
   }
 
   match args.command {

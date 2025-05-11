@@ -11,30 +11,30 @@ pub struct Verbosity {
       .map(|s| s.parse::<LevelFilter>().unwrap()))]
   #[clap(conflicts_with = "quiet", conflicts_with = "verbose", conflicts_with = "silent")]
   #[clap(default_value = "warn")]
-  #[clap(display_order = 900)]
+  #[clap(display_order = 95)]
   pub verbosity: LevelFilter,
 
   /// Disable all console output. Same as `--verbosity=off`
   #[clap(long, global = true)]
   #[clap(conflicts_with = "quiet", conflicts_with = "verbose", conflicts_with = "verbosity")]
-  #[clap(display_order = 901)]
+  #[clap(display_order = 96)]
   pub silent: bool,
 
   /// Make console output more verbose. Add multiple occurrences to increase verbosity further.
   #[clap(long, short = 'v', action = ArgAction::Count, global = true)]
   #[clap(conflicts_with = "quiet", conflicts_with = "verbosity", conflicts_with = "silent")]
-  #[clap(display_order = 902)]
+  #[clap(display_order = 97)]
   pub verbose: u8,
 
   /// Make console output more quiet. Add multiple occurrences to make output even more quiet.
   #[clap(long, short = 'q', action = ArgAction::Count, global = true)]
   #[clap(conflicts_with = "verbose", conflicts_with = "verbosity")]
-  #[clap(display_order = 903)]
+  #[clap(display_order = 98)]
   pub quiet: u8,
 }
 
 impl Verbosity {
-  pub fn get_filter_level(&self) -> LevelFilter {
+  pub const fn get_filter_level(&self) -> LevelFilter {
     if self.silent {
       // --verbosity=<level> and --silent take priority over -v and -q
       LevelFilter::Off
@@ -47,7 +47,7 @@ impl Verbosity {
   }
 }
 
-fn level_to_int(level: LevelFilter) -> u8 {
+const fn level_to_int(level: LevelFilter) -> u8 {
   match level {
     LevelFilter::Off => 0,
     LevelFilter::Error => 1,
@@ -58,7 +58,7 @@ fn level_to_int(level: LevelFilter) -> u8 {
   }
 }
 
-fn level_from_int(verbosity: u8) -> LevelFilter {
+const fn level_from_int(verbosity: u8) -> LevelFilter {
   match verbosity {
     0 => LevelFilter::Off,
     1 => LevelFilter::Error,

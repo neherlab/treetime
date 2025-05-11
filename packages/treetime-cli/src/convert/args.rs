@@ -1,11 +1,12 @@
 use crate::cli::verbosity::Verbosity;
-use clap::{AppSettings, ArgEnum, Parser, ValueHint};
+use clap::{Parser, ValueEnum, ValueHint};
 use lazy_static::lazy_static;
 use std::path::{Path, PathBuf};
 use treetime::io::fs::extension;
+use treetime::utils::clap_styles::styles;
 
-#[derive(Copy, Clone, Debug, ArgEnum)]
-#[clap(rename = "kebab-case")]
+#[derive(Copy, Clone, Debug, ValueEnum)]
+#[value(rename_all = "kebab-case")]
 pub enum TreeFormat {
   Auspice,
   MatJson,
@@ -18,10 +19,10 @@ pub enum TreeFormat {
 }
 
 #[derive(Parser, Debug)]
-#[clap(name = "treetime", trailing_var_arg = true)]
+#[clap(name = "convert")]
 #[clap(author, version)]
-#[clap(global_setting(AppSettings::DeriveDisplayOrder))]
 #[clap(verbatim_doc_comment)]
+#[clap(styles = styles())]
 /// Read and write Usher MAT files
 ///
 /// * https://github.com/yatisht/usher
@@ -53,14 +54,14 @@ pub struct Args {
   /// Input format to read
   ///
   /// Provide this argument if automatic format detection fails or if you want to override it.
-  #[clap(long, short = 'r', arg_enum)]
+  #[clap(long, short = 'r', value_enum)]
   #[clap(display_order = 2)]
   pub input_format: Option<TreeFormat>,
 
   /// Output format to write
   ///
   /// Provide this argument if automatic format detection fails or if you want to override it.
-  #[clap(long, short = 'w', arg_enum)]
+  #[clap(long, short = 'w', value_enum)]
   #[clap(display_order = 2)]
   pub output_format: Option<TreeFormat>,
 
