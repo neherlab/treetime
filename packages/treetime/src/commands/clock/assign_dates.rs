@@ -33,7 +33,9 @@ pub fn assign_dates(graph: &ClockGraph, dates: &DatesMap) -> Result<(), Report> 
   // FIXME: this fails if n_leaves < MIN_GOOD_LEAVES
   let n_leaves = graph.num_leaves();
   if n_leaves - n_bad_leaves < MIN_GOOD_LEAVES {
-    return make_error!("Not enough valid date constraints: there are {n_leaves} leaf nodes and {n_bad_leaves} of them have no date information");
+    return make_error!(
+      "Not enough valid date constraints: there are {n_leaves} leaf nodes and {n_bad_leaves} of them have no date information"
+    );
   }
 
   Ok(())

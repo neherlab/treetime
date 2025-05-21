@@ -71,7 +71,7 @@ impl FromStr for Sub {
           let pos = parse_pos(pos.as_str()).wrap_err_with(|| format!("When parsing mutation position in '{s}'"))?;
           let qry = AsciiChar(qry.as_str().bytes().next().unwrap());
           Ok(Self { pos, qry, reff })
-        }
+        },
         _ => make_error!("Unable to parse nucleotide mutation: '{s}'"),
       };
     }

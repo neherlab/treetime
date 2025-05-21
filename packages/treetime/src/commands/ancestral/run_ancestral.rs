@@ -7,10 +7,10 @@ use crate::graph::edge::GraphEdge;
 use crate::graph::graph::Graph;
 use crate::graph::node::GraphNode;
 use crate::gtr::get_gtr::{get_gtr, get_gtr_dense};
-use crate::io::fasta::{read_many_fasta, FastaWriter};
+use crate::io::fasta::{FastaWriter, read_many_fasta};
 use crate::io::file::create_file_or_stdout;
-use crate::io::nex::{nex_write_file, NexWriteOptions};
-use crate::io::nwk::{nwk_read_file, nwk_write_file, EdgeToNwk, NodeToNwk, NwkWriteOptions};
+use crate::io::nex::{NexWriteOptions, nex_write_file};
+use crate::io::nwk::{EdgeToNwk, NodeToNwk, NwkWriteOptions, nwk_read_file, nwk_write_file};
 use crate::representation::graph_dense::DenseGraph;
 use crate::representation::graph_sparse::SparseGraph;
 use crate::representation::infer_dense::infer_dense;
@@ -92,7 +92,7 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
       })?;
 
       write_graph(outdir, &graph)?;
-    }
+    },
     MethodAncestral::Marginal => {
       if !dense {
         let graph: SparseGraph = nwk_read_file(tree)?;
@@ -129,10 +129,10 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
 
         write_graph(outdir, &graph)?;
       }
-    }
+    },
     MethodAncestral::Joint => {
       unimplemented!("MethodAncestral::MaximumLikelihoodJoint")
-    }
+    },
   }
 
   Ok(())

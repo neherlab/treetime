@@ -13,8 +13,8 @@ use crate::{make_internal_report, make_report, seq};
 use eyre::Report;
 use itertools::Itertools;
 use log::debug;
-use ndarray::prelude::*;
 use ndarray::AssignElem;
+use ndarray::prelude::*;
 use ndarray_stats::QuantileExt;
 
 // TODO: move this into Alphabet
@@ -306,10 +306,10 @@ mod tests {
   use super::*;
   use crate::alphabet::alphabet::AlphabetName;
   use crate::graph::node::GraphNodeKey;
-  use crate::gtr::get_gtr::{jc69, JC69Params};
-  use crate::gtr::gtr::{GTRParams, GTR};
+  use crate::gtr::get_gtr::{JC69Params, jc69};
+  use crate::gtr::gtr::{GTR, GTRParams};
   use crate::io::fasta::read_many_fasta_str;
-  use crate::io::json::{json_write_str, JsonPretty};
+  use crate::io::json::{JsonPretty, json_write_str};
   use crate::io::nwk::nwk_read_str;
   use crate::pretty_assert_ulps_eq;
   use eyre::Report;

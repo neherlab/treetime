@@ -1,8 +1,8 @@
 use crate::commands::clock::clock_graph::{ClockEdgePayload, ClockGraph, ClockNodePayload};
 use crate::commands::clock::clock_regression::ClockOptions;
 use crate::commands::clock::clock_set::ClockSet;
-use crate::commands::clock::find_best_root::{find_best_root, FindRootResult};
-use crate::graph::edge::{invert_edge, GraphEdgeKey, Weighted};
+use crate::commands::clock::find_best_root::{FindRootResult, find_best_root};
+use crate::graph::edge::{GraphEdgeKey, Weighted, invert_edge};
 use crate::graph::node::GraphNodeKey;
 use approx::ulps_eq;
 use eyre::Report;

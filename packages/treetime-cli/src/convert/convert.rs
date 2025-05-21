@@ -8,16 +8,16 @@ use std::collections::BTreeMap;
 use treetime::graph::edge::{GraphEdge, Weighted};
 use treetime::graph::graph::Graph;
 use treetime::graph::node::{GraphNode, Named};
-use treetime::io::auspice::{auspice_read_file, auspice_write_file, AuspiceTreeMeta};
-use treetime::io::json::{json_read_file, json_write_file, JsonPretty};
-use treetime::io::nex::{nex_write_file, NexWriteOptions};
-use treetime::io::nwk::{nwk_read_file, nwk_write_file, NwkWriteOptions};
+use treetime::io::auspice::{AuspiceTreeMeta, auspice_read_file, auspice_write_file};
+use treetime::io::json::{JsonPretty, json_read_file, json_write_file};
+use treetime::io::nex::{NexWriteOptions, nex_write_file};
+use treetime::io::nwk::{NwkWriteOptions, nwk_read_file, nwk_write_file};
 use treetime::io::phyloxml::{
-  phyloxml_json_read_file, phyloxml_json_write_file, phyloxml_read_file, phyloxml_write_file, PhyloxmlJsonOptions,
+  PhyloxmlJsonOptions, phyloxml_json_read_file, phyloxml_json_write_file, phyloxml_read_file, phyloxml_write_file,
 };
 use treetime::io::usher_mat::{
-  usher_mat_json_read_file, usher_mat_json_write_file, usher_mat_pb_read_file, usher_mat_pb_write_file,
-  UsherMatJsonOptions,
+  UsherMatJsonOptions, usher_mat_json_read_file, usher_mat_json_write_file, usher_mat_pb_read_file,
+  usher_mat_pb_write_file,
 };
 
 pub type ConverterGraph = Graph<ConverterNode, ConverterEdge, ConverterData>;
@@ -71,7 +71,7 @@ pub fn converter_write_file(args: &Args, output_format: TreeFormat, graph: &Conv
     TreeFormat::PhyloGraph => json_write_file(&args.output, graph, JsonPretty(true)),
     TreeFormat::MatJson => {
       usher_mat_json_write_file::<UsherWriter, _, _, _>(&args.output, graph, &UsherMatJsonOptions::default())
-    }
+    },
     TreeFormat::MatPb => usher_mat_pb_write_file::<UsherWriter, _, _, _>(&args.output, graph),
     TreeFormat::Phyloxml => phyloxml_write_file(&args.output, graph),
     TreeFormat::PhyloxmlJson => phyloxml_json_write_file(&args.output, graph, &PhyloxmlJsonOptions::default()),

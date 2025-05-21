@@ -1,5 +1,5 @@
 use crate::graph::breadth_first::{
-  directed_breadth_first_traversal_backward, directed_breadth_first_traversal_forward, GraphTraversalContinuation,
+  GraphTraversalContinuation, directed_breadth_first_traversal_backward, directed_breadth_first_traversal_forward,
 };
 use crate::graph::edge::{Edge, GraphEdge, GraphEdgeKey};
 use crate::graph::node::{GraphNode, GraphNodeKey, Node};
@@ -522,7 +522,9 @@ where
         .any(|edge| self.get_edge(*edge).unwrap().read().target() == target.key());
 
       if already_connected {
-        return make_error!("When adding a graph edge {source_key}->{target_key}: Nodes {source_key} and {target_key} are already connected.");
+        return make_error!(
+          "When adding a graph edge {source_key}->{target_key}: Nodes {source_key} and {target_key} are already connected."
+        );
       }
 
       self.edges.push(Some(Arc::clone(&new_edge)));
@@ -714,7 +716,7 @@ where
         Some((parent, _)) => {
           path.push(Arc::clone(&parent));
           node = parent;
-        }
+        },
       }
     }
 
@@ -738,8 +740,10 @@ where
 
       match parent {
         None => {
-          return make_internal_error!("When searching path from starting node {start} to destination node {finish}: reached root node without finding the destination")
-        }
+          return make_internal_error!(
+            "When searching path from starting node {start} to destination node {finish}: reached root node without finding the destination"
+          );
+        },
 
         Some((parent, edge)) => {
           path.push((Arc::clone(&node), Some(Arc::clone(&edge))));
@@ -749,7 +753,7 @@ where
           }
 
           node = parent;
-        }
+        },
       }
     }
 
@@ -786,7 +790,7 @@ pub mod tests {
   use crate::graph::edge::Weighted;
   use crate::graph::node::Named;
   use crate::io::graphviz::{EdgeToGraphViz, NodeToGraphviz};
-  use crate::io::nwk::{format_weight, nwk_read_str, EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteOptions};
+  use crate::io::nwk::{EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteOptions, format_weight, nwk_read_str};
 
   use super::*;
 

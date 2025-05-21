@@ -1,5 +1,5 @@
-use quick_xml::de::from_reader;
 use quick_xml::DeError;
+use quick_xml::de::from_reader;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 

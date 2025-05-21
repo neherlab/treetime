@@ -474,10 +474,10 @@ mod tests {
   use super::*;
   use crate::commands::ancestral::fitch::compress_sequences;
   use crate::graph::node::GraphNodeKey;
-  use crate::gtr::get_gtr::{jc69, JC69Params};
-  use crate::gtr::gtr::{GTRParams, GTR};
+  use crate::gtr::get_gtr::{JC69Params, jc69};
+  use crate::gtr::gtr::{GTR, GTRParams};
   use crate::io::fasta::read_many_fasta_str;
-  use crate::io::json::{json_write_str, JsonPretty};
+  use crate::io::json::{JsonPretty, json_write_str};
   use crate::io::nwk::nwk_read_str;
   use crate::pretty_assert_ulps_eq;
   use crate::representation::partitions_parsimony::PartitionParsimonyWithAln;

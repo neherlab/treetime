@@ -32,7 +32,7 @@ pub fn open_file_or_stdin<P: AsRef<Path>>(filepath: &Option<P>) -> Result<Box<dy
         let buf_decompressor = BufReader::with_capacity(DEFAULT_FILE_BUF_SIZE, decompressor);
         Ok(Box::new(buf_decompressor))
       }
-    }
+    },
     None => open_stdin(),
   }
 }

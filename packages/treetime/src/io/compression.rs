@@ -72,7 +72,7 @@ pub fn guess_compression_from_filepath(filepath: impl AsRef<Path>) -> (Compressi
       );
 
       (compression_type, ext)
-    }
+    },
   }
 }
 

@@ -1,6 +1,6 @@
 use crate::commands::ancestral::anc_args::MethodAncestral;
 use crate::gtr::get_gtr::GtrModelName;
-use clap::{ValueEnum, Parser, ValueHint};
+use clap::{Parser, ValueEnum, ValueHint};
 use std::fmt::Debug;
 use std::path::PathBuf;
 

@@ -35,29 +35,29 @@ fn main() -> Result<(), Report> {
   match args.command {
     TreetimeCommands::Timetree(timetree_args) => {
       run_timetree_estimation(&timetree_args)?;
-    }
+    },
     TreetimeCommands::Optimize(optimize_args) => {
       run_optimize(&optimize_args)?;
-    }
+    },
     TreetimeCommands::Ancestral(ancestral_args) => {
       run_ancestral_reconstruction(&ancestral_args)?;
-    }
+    },
     TreetimeCommands::Clock(clock_args) => {
       run_clock(&clock_args)?;
-    }
+    },
     TreetimeCommands::Homoplasy(homoplasy_args) => {
       run_homoplasy(homoplasy_args)?;
-    }
+    },
     TreetimeCommands::Mugration(mugration_args) => {
       run_mugration(&mugration_args)?;
-    }
+    },
     TreetimeCommands::Completions { shell } => {
       generate_shell_completions(&shell)?;
-    }
-    TreetimeCommands::Arg(arg_args) => {}
+    },
+    TreetimeCommands::Arg(arg_args) => {},
     TreetimeCommands::Debug => {
       println!("{}", get_openblas_info_str());
-    }
+    },
   }
 
   Ok(())

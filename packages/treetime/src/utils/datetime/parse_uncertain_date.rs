@@ -17,11 +17,7 @@ pub fn parse_date_uncertain(date_uncertain_str: &str, _options: &DateParserOptio
         .map(|name| {
           caps.name(name).and_then(|s| {
             let s = s.as_str();
-            if s.chars().all(|c| c == 'X') {
-              None
-            } else {
-              Some(s)
-            }
+            if s.chars().all(|c| c == 'X') { None } else { Some(s) }
           })
         })
         .collect_tuple()
@@ -66,7 +62,7 @@ fn determine_date_range(
       } else {
         Ok(None)
       }
-    }
+    },
     (Some((year_min, year_max)), None, None) => Ok(Some(DateRange::from_ymd((year_min, 1, 1), (year_max, 12, 31)))),
     _ => Ok(None),
   }
