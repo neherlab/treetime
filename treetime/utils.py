@@ -248,103 +248,98 @@ def parse_dates(date_file, name_col=None, date_col=None):
     # separator for the csv/tsv file. If csv, we'll strip extra whitespace around ','
     full_sep = '\t' if date_file.endswith('.tsv') else r'\s*,\s*'
 
-    try:
-        # read the metadata file into pandas dataframe.
-        df = pd.read_csv(date_file, sep=full_sep, engine='python', dtype='str', index_col=False)
-        # check the metadata has strain names in the first column
-        # look for the column containing sampling dates
-        # We assume that the dates might be given either in human-readable format
-        # (e.g. ISO dates), or be already converted to the numeric format.
-        potential_date_columns = []
-        potential_numdate_columns = []
-        potential_index_columns = []
-        # Scan the dataframe columns and find ones which likely to store the
-        # dates
-        for ci, col in enumerate(df.columns):
-            d = df.iloc[0, ci]
-            # strip quotation marks
-            if type(d) == str and d[0] in ['"', "'"] and d[-1] in ['"', "'"]:
-                for i, tmp_d in enumerate(df.iloc[:, ci]):
-                    df.iloc[i, ci] = tmp_d.strip(d[0])
-            if 'date' in col.lower():
-                potential_date_columns.append((ci, col))
-            if any([x == col.lower() for x in ['name', 'strain', 'accession']]):
-                potential_index_columns.append((ci, col))
+    # read the metadata file into pandas dataframe.
+    df = pd.read_csv(date_file, sep=full_sep, engine='python', dtype='str', index_col=False)
+    # check the metadata has strain names in the first column
+    # look for the column containing sampling dates
+    # We assume that the dates might be given either in human-readable format
+    # (e.g. ISO dates), or be already converted to the numeric format.
+    potential_date_columns = []
+    potential_numdate_columns = []
+    potential_index_columns = []
+    # Scan the dataframe columns and find ones which likely to store the
+    # dates
+    for ci, col in enumerate(df.columns):
+        d = df.iloc[0, ci]
+        # strip quotation marks
+        if type(d) == str and d[0] in ['"', "'"] and d[-1] in ['"', "'"]:
+            for i, tmp_d in enumerate(df.iloc[:, ci]):
+                df.iloc[i, ci] = tmp_d.strip(d[0])
+        if 'date' in col.lower():
+            potential_date_columns.append((ci, col))
+        if any([x == col.lower() for x in ['name', 'strain', 'accession']]):
+            potential_index_columns.append((ci, col))
 
-        if date_col and date_col not in df.columns:
-            raise MissingDataError(
-                'ERROR: specified column for dates does not exist. \n\tAvailable columns are: '
-                + ', '.join(df.columns)
-                + "\n\tYou specified '%s'" % date_col
-            )
+    if date_col and date_col not in df.columns:
+        raise MissingDataError(
+            'ERROR: specified column for dates does not exist. \n\tAvailable columns are: '
+            + ', '.join(df.columns)
+            + "\n\tYou specified '%s'" % date_col
+        )
 
-        if name_col and name_col not in df.columns:
-            raise MissingDataError(
-                'ERROR: specified column for the taxon name does not exist. \n\tAvailable columns are: '
-                + ', '.join(df.columns)
-                + "\n\tYou specified '%s'" % name_col
-            )
+    if name_col and name_col not in df.columns:
+        raise MissingDataError(
+            'ERROR: specified column for the taxon name does not exist. \n\tAvailable columns are: '
+            + ', '.join(df.columns)
+            + "\n\tYou specified '%s'" % name_col
+        )
 
-        dates = {}
-        # if a potential numeric date column was found, use it
-        # (use the first, if there are more than one)
-        if not (len(potential_index_columns) or name_col):
-            raise MissingDataError(
-                'ERROR: Cannot read metadata: need at least one column that contains the taxon labels.'
-                " Looking for the first column that contains 'name', 'strain', or 'accession' in the header."
-            )
+    dates = {}
+    # if a potential numeric date column was found, use it
+    # (use the first, if there are more than one)
+    if not (len(potential_index_columns) or name_col):
+        raise MissingDataError(
+            'ERROR: Cannot read metadata: need at least one column that contains the taxon labels.'
+            " Looking for the first column that contains 'name', 'strain', or 'accession' in the header."
+        )
+    else:
+        # use the first column that is either 'name', 'strain', 'accession'
+        if name_col is None:
+            index_col = sorted(potential_index_columns)[0][1]
         else:
-            # use the first column that is either 'name', 'strain', 'accession'
-            if name_col is None:
-                index_col = sorted(potential_index_columns)[0][1]
-            else:
-                index_col = name_col
-            print("\tUsing column '%s' as name. This needs match the taxon names in the tree!!" % index_col)
+            index_col = name_col
+        print("\tUsing column '%s' as name. This needs match the taxon names in the tree!!" % index_col)
 
-        if len(potential_date_columns) >= 1 or date_col:
-            # try to parse the csv file with dates in the idx column:
-            if date_col is None:
-                date_col = potential_date_columns[0][1]
+    if len(potential_date_columns) >= 1 or date_col:
+        # try to parse the csv file with dates in the idx column:
+        if date_col is None:
+            date_col = potential_date_columns[0][1]
 
-            print("\tUsing column '%s' as date." % date_col)
-            for ri, row in df.iterrows():
-                date_str = row.loc[date_col]
-                k = row.loc[index_col]
-                # try parsing as a float first
-                try:
-                    if date_str:
-                        dates[k] = float(date_str)
-                    else:
-                        dates[k] = None
-                    continue
-                except ValueError:
-                    # try whether the date string can be parsed as [2002.2:2004.3]
-                    # to indicate general ambiguous ranges
-                    if date_str[0] == '[' and date_str[-1] == ']' and len(date_str[1:-1].split(':')) == 2:
-                        try:
-                            dates[k] = [float(x) for x in date_str[1:-1].split(':')]
-                            continue
-                        except ValueError:
-                            pass
-                    # try date format parsing 2017-08-12
+        print("\tUsing column '%s' as date." % date_col)
+        for ri, row in df.iterrows():
+            date_str = row.loc[date_col]
+            k = row.loc[index_col]
+            # try parsing as a float first
+            try:
+                if date_str:
+                    dates[k] = float(date_str)
+                else:
+                    dates[k] = None
+                continue
+            except ValueError:
+                # try whether the date string can be parsed as [2002.2:2004.3]
+                # to indicate general ambiguous ranges
+                if date_str[0] == '[' and date_str[-1] == ']' and len(date_str[1:-1].split(':')) == 2:
                     try:
-                        tmp_date = pd.to_datetime(date_str)
-                        dates[k] = numeric_date(tmp_date)
-                    except ValueError:  # try ambiguous date format parsing 2017-XX-XX
-                        lower, upper = ambiguous_date_to_date_range(date_str, '%Y-%m-%d')
-                        if lower is not None:
-                            dates[k] = [numeric_date(x) for x in [lower, upper]]
+                        dates[k] = [float(x) for x in date_str[1:-1].split(':')]
+                        continue
+                    except ValueError:
+                        pass
+                # try date format parsing 2017-08-12
+                try:
+                    tmp_date = pd.to_datetime(date_str)
+                    dates[k] = numeric_date(tmp_date)
+                except ValueError:  # try ambiguous date format parsing 2017-XX-XX
+                    lower, upper = ambiguous_date_to_date_range(date_str, '%Y-%m-%d')
+                    if lower is not None:
+                        dates[k] = [numeric_date(x) for x in [lower, upper]]
 
-        else:
-            raise MissingDataError('ERROR: Metadata file has no column which looks like a sampling date!')
+    else:
+        raise MissingDataError('ERROR: Metadata file has no column which looks like a sampling date!')
 
-        if all(v is None for v in dates.values()):
-            raise MissingDataError('ERROR: Cannot parse dates correctly! Check date format.')
-        return dates
-    except TreeTimeError as err:
-        raise err
-    except:
-        raise
+    if all(v is None for v in dates.values()):
+        raise MissingDataError('ERROR: Cannot parse dates correctly! Check date format.')
+    return dates
 
 
 def ambiguous_date_to_date_range(mydate, fmt='%Y-%m-%d', min_max_year=None):
