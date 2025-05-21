@@ -42,7 +42,6 @@ def mutations(node):
         return node.tt.data.differences(node.up.cseq, node.cseq, mask=node.mask)
 
 
-string_types = [str] if sys.version_info[0] == 3 else [str, unicode]
 Clade.sequence = property(lambda x: x.tt.sequence(x, as_string=False))
 Clade.cseq = property(compressed_sequence)
 Clade.mutations = property(mutations)
@@ -324,7 +323,7 @@ class TreeAnc(object):
         self._tree = None
         if isinstance(in_tree, Phylo.BaseTree.Tree):
             self._tree = in_tree
-        elif type(in_tree) in string_types and isfile(in_tree):
+        elif isinstance(in_tree, str) and isfile(in_tree):
             try:
                 self._tree = Phylo.read(in_tree, 'newick')
             except:

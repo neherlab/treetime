@@ -7,8 +7,6 @@ from . import config as ttconf
 from . import MissingDataError
 from .seq_utils import seq2array, guess_alphabet, alphabets
 
-string_types = [str] if sys.version_info[0] == 3 else [str, unicode]
-
 
 def simple_logger(*args, **kwargs):
     print(args)
@@ -164,7 +162,7 @@ class SequenceData(object):
         elif type(in_aln) in [defaultdict, dict]:  # if input is sparse (i.e. from VCF)
             self._aln = in_aln
             self.is_sparse = True
-        elif type(in_aln) in string_types and isfile(in_aln):
+        elif isinstance(in_aln, str) and isfile(in_aln):
             if any([in_aln.lower().endswith(x) for x in ['.vcf', '.vcf.gz']]) and (self.ref is not None):
                 from .vcf_utils import read_vcf
 
