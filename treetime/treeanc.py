@@ -789,11 +789,11 @@ class TreeAnc(object):
             root_sample_from_profile = sample_from_profile
             other_sample_from_profile = sample_from_profile
 
-        self.total_LH_and_root_sequence(sample_from_profile=root_sample_from_profile, assign_sequence=True)
+        self.total_LH_and_root_sequence(sample_from_profile=root_sample_from_profile, assign_sequence=True)  # pylint: disable=possibly-used-before-assignment
 
         N_diff = self.preorder_traversal_marginal(
             reconstruct_tip_states=reconstruct_tip_states,
-            sample_from_profile=other_sample_from_profile,
+            sample_from_profile=other_sample_from_profile,  # pylint: disable=possibly-used-before-assignment
             assign_sequence=True,
         )
         self.logger('TreeAnc._ml_anc_marginal: ...done', 3)
@@ -1026,7 +1026,7 @@ class TreeAnc(object):
             root_sample_from_profile = sample_from_profile
 
         seq, anc_lh_vals, idxs = prof2seq(
-            np.exp(normalized_profile), self.gtr, sample_from_prof=root_sample_from_profile, rng=self.rng
+            np.exp(normalized_profile), self.gtr, sample_from_prof=root_sample_from_profile, rng=self.rng # pylint: disable=possibly-used-before-assignment
         )
 
         # compute the likelihood of the most probable root sequence
