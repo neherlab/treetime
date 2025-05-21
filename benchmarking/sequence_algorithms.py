@@ -5,10 +5,10 @@ from Bio import Phylo
 
 if __name__ == '__main__':
     from treetime.seq_utils import normalize_profile, prof2seq, seq2prof
-    from treetime.gtr import GTR    
+    from treetime.gtr import GTR
 
     gtr = GTR.standard('JC69')
-    dummy_prof = np.random.random(size=(10000,5))
+    dummy_prof = np.random.random(size=(10000, 5))
 
     # used a lot (300us)
     norm_prof = normalize_profile(dummy_prof)[0]

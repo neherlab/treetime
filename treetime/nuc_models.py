@@ -4,8 +4,9 @@ import numpy as np
 from .seq_utils import alphabets
 from .gtr import GTR
 
+
 def get_alphabet(a):
-    if type(a)==str and a in alphabets:
+    if type(a) == str and a in alphabets:
         return alphabets[a]
     else:
         try:
@@ -14,7 +15,7 @@ def get_alphabet(a):
             raise TypeError
 
 
-def JC69 (mu=1.0, alphabet="nuc", **kwargs):
+def JC69(mu=1.0, alphabet='nuc', **kwargs):
     """
     Jukes-Cantor 1969 model. This model assumes equal concentrations
     of the nucleotides and equal transition rates between nucleotide states.
@@ -37,12 +38,13 @@ def JC69 (mu=1.0, alphabet="nuc", **kwargs):
 
     """
     num_chars = len(get_alphabet(alphabet))
-    W, pi = np.ones((num_chars,num_chars)), np.ones(num_chars)
+    W, pi = np.ones((num_chars, num_chars)), np.ones(num_chars)
     gtr = GTR(alphabet=alphabet)
     gtr.assign_rates(mu=mu, pi=pi, W=W)
     return gtr
 
-def K80(mu=1., kappa=0.1, **kwargs):
+
+def K80(mu=1.0, kappa=0.1, **kwargs):
     """
     Kimura 1980 model. Assumes equal concentrations across nucleotides, but
     allows different rates between transitions and transversions. The ratio
@@ -63,13 +65,14 @@ def K80(mu=1., kappa=0.1, **kwargs):
     """
 
     num_chars = len(alphabets['nuc_nogap'])
-    pi = np.ones(len(alphabets['nuc_nogap']), dtype=float)/len(alphabets['nuc_nogap'])
+    pi = np.ones(len(alphabets['nuc_nogap']), dtype=float) / len(alphabets['nuc_nogap'])
     W = _create_transversion_transition_W(kappa)
     gtr = GTR(alphabet=alphabets['nuc_nogap'])
     gtr.assign_rates(mu=mu, pi=pi, W=W)
     return gtr
 
-def F81(mu=1.0, pi=None, alphabet="nuc", **kwargs):
+
+def F81(mu=1.0, pi=None, alphabet='nuc', **kwargs):
     """
     Felsenstein 1981 model. Assumes non-equal concentrations across nucleotides,
     but the transition rate between all states is assumed to be equal. See
@@ -95,21 +98,24 @@ def F81(mu=1.0, pi=None, alphabet="nuc", **kwargs):
     """
 
     if pi is None:
-        pi=0.25*np.ones(4, dtype=float)
+        pi = 0.25 * np.ones(4, dtype=float)
     num_chars = len(get_alphabet(alphabet))
 
     pi = np.array(pi, dtype=float)
 
-    if num_chars != len(pi) :
-        pi = np.ones((num_chars, ), dtype=float)
-        print ("GTR: Warning!The number of the characters in the alphabet does not match the "
-            "shape of the vector of equilibrium frequencies Pi -- assuming equal frequencies for all states.")
+    if num_chars != len(pi):
+        pi = np.ones((num_chars,), dtype=float)
+        print(
+            'GTR: Warning!The number of the characters in the alphabet does not match the '
+            'shape of the vector of equilibrium frequencies Pi -- assuming equal frequencies for all states.'
+        )
 
-    W = np.ones((num_chars,num_chars))
-    pi /= (1.0 * np.sum(pi))
+    W = np.ones((num_chars, num_chars))
+    pi /= 1.0 * np.sum(pi)
     gtr = GTR(alphabet=get_alphabet(alphabet))
     gtr.assign_rates(mu=mu, pi=pi, W=W)
     return gtr
+
 
 def HKY85(mu=1.0, pi=None, kappa=0.1, **kwargs):
     """
@@ -136,18 +142,21 @@ def HKY85(mu=1.0, pi=None, kappa=0.1, **kwargs):
     """
 
     if pi is None:
-        pi=0.25*np.ones(4, dtype=float)
+        pi = 0.25 * np.ones(4, dtype=float)
     num_chars = len(alphabets['nuc_nogap'])
-    if num_chars != pi.shape[0] :
-        pi = np.ones((num_chars, ), dtype=float)
-        print ("GTR: Warning!The number of the characters in the alphabet does not match the "
-            "shape of the vector of equilibrium frequencies Pi -- assuming equal frequencies for all states.")
+    if num_chars != pi.shape[0]:
+        pi = np.ones((num_chars,), dtype=float)
+        print(
+            'GTR: Warning!The number of the characters in the alphabet does not match the '
+            'shape of the vector of equilibrium frequencies Pi -- assuming equal frequencies for all states.'
+        )
 
     W = _create_transversion_transition_W(kappa)
     pi /= pi.sum()
     gtr = GTR(alphabet=alphabets['nuc_nogap'])
     gtr.assign_rates(mu=mu, pi=pi, W=W)
     return gtr
+
 
 def T92(mu=1.0, pi_GC=0.5, kappa=0.1, **kwargs):
     """
@@ -173,14 +182,15 @@ def T92(mu=1.0, pi_GC=0.5, kappa=0.1, **kwargs):
 
     W = _create_transversion_transition_W(kappa)
     # A C G T
-    if pi_GC >=1.:
-        raise ValueError("The relative GC content specified is larger than 1.0!")
-    pi = np.array([(1.-pi_GC)*0.5, pi_GC*0.5, pi_GC*0.5, (1-pi_GC)*0.5])
+    if pi_GC >= 1.0:
+        raise ValueError('The relative GC content specified is larger than 1.0!')
+    pi = np.array([(1.0 - pi_GC) * 0.5, pi_GC * 0.5, pi_GC * 0.5, (1 - pi_GC) * 0.5])
     gtr = GTR(alphabet=alphabets['nuc_nogap'])
     gtr.assign_rates(mu=mu, pi=pi, W=W)
     return gtr
 
-def TN93(mu=1.0, kappa1=1., kappa2=1., pi=None, **kwargs):
+
+def TN93(mu=1.0, kappa1=1.0, kappa2=1.0, pi=None, **kwargs):
     """
     Tamura and Nei 1993. The model distinguishes between the two different types of
     transition: (A <-> G) is allowed to have a different rate to (C<->T).
@@ -209,33 +219,35 @@ def TN93(mu=1.0, kappa1=1., kappa2=1., pi=None, **kwargs):
     """
 
     if pi is None:
-        pi=0.25*np.ones(4, dtype=float)
-    W = np.ones((4,4))
-    W = np.array([
-        [1,      kappa1, 1,      kappa1],
-        [kappa1, 1,      kappa1, kappa2],
-        [1,      kappa1, 1,      kappa1],
-        [kappa1, kappa2, kappa1,  1]], dtype=float)
+        pi = 0.25 * np.ones(4, dtype=float)
+    W = np.ones((4, 4))
+    W = np.array(
+        [[1, kappa1, 1, kappa1], [kappa1, 1, kappa1, kappa2], [1, kappa1, 1, kappa1], [kappa1, kappa2, kappa1, 1]],
+        dtype=float,
+    )
 
-    pi /=pi.sum()
+    pi /= pi.sum()
     num_chars = len(alphabets['nuc_nogap'])
-    if num_chars != pi.shape[0] :
-        pi = np.ones((num_chars, ), dtype=float)
-        print ("GTR: Warning!The number of the characters in the alphabet does not match the "
-            "shape of the vector of equilibrium frequencies Pi -- assuming equal frequencies for all states.")
+    if num_chars != pi.shape[0]:
+        pi = np.ones((num_chars,), dtype=float)
+        print(
+            'GTR: Warning!The number of the characters in the alphabet does not match the '
+            'shape of the vector of equilibrium frequencies Pi -- assuming equal frequencies for all states.'
+        )
 
     gtr = GTR(alphabet=alphabets['nuc'])
     gtr.assign_rates(mu=mu, pi=pi, W=W)
     return gtr
 
+
 def _create_transversion_transition_W(kappa):
     """
     Alphabet = [A, C, G, T]
     """
-    W = np.ones((4,4))
-    W[0, 2]=W[1, 3]=W[2, 0]=W[3,1]=kappa
+    W = np.ones((4, 4))
+    W[0, 2] = W[1, 3] = W[2, 0] = W[3, 1] = kappa
     return W
+
 
 if __name__ == '__main__':
     pass
-
