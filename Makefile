@@ -15,6 +15,9 @@ lint:
 	PYTHONPATH=. pylint treetime --output-format=pylint_source_reporter.SourceCodeReporter
 	ruff check treetime
 
+format:
+	ruff format -q *.py {benchmarking,docs,test,treetime}/*.py
+
 docs:
 	@$(MAKE) --no-print-directory -C docs/ html
 
