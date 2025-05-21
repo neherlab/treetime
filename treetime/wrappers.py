@@ -468,9 +468,9 @@ def run_timetree(myTree, params, outdir, tree_suffix='', prune_short=True, metho
     else:
         vary_rate = False
 
-    if params.relax is None:
-        relaxed_clock_params = None
-    elif params.relax == []:
+
+    relaxed_clock_params = None
+    if params.relax == []:
         relaxed_clock_params = True
     elif len(params.relax) == 2:
         relaxed_clock_params = {'slack': params.relax[0], 'coupling': params.relax[1]}
