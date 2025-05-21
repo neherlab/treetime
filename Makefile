@@ -16,7 +16,7 @@ lint:
 	ruff check treetime
 
 format:
-	ruff format -q *.py {benchmarking,docs,test,treetime}/*.py
+	ruff format .
 
 docs:
 	@$(MAKE) --no-print-directory -C docs/ html
