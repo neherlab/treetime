@@ -41,3 +41,25 @@ jobs:
         run: python -m pip install .
       - name: Run tests
         run: bash test.sh
+
+  lint:
+    name: 'lint with python ${{ matrix.python-version }}'
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version:
+          - '3.13'
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip 
+          pip install pylint ruff colorama pygments
+      - name: Run lints
+        run: make lint
