@@ -9,7 +9,7 @@ TreeTime: time-tree and ancestral sequence inference
 .. image:: https://github.com/neherlab/treetime/actions/workflows/ci.yml/badge.svg?branch=master
    :target: https://github.com/neherlab/treetime/actions/workflows/ci.yml
 
-.. image:: https://anaconda.org/bioconda/treetime/badges/installer/conda.svg
+.. image:: https://img.shields.io/badge/install%20with-bioconda-brightgreen.svg
    :target: https://anaconda.org/bioconda/treetime
 
 TreeTime provides routines for ancestral sequence reconstruction and inference of molecular-clock phylogenies, i.e., a tree where all branches are scaled such that the positions of terminal nodes correspond to their sampling times and internal nodes are placed at the most likely time of divergence.
