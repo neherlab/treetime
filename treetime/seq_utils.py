@@ -2,10 +2,18 @@ import numpy as np
 from Bio import Seq, SeqRecord
 
 
-alphabet_synonyms = {'nuc':'nuc', 'nucleotide':'nuc', 'aa':'aa', 'aminoacid':'aa',
-                     'nuc_nogap':'nuc_nogap', 'nucleotide_nogap':'nuc_nogap',
-                     'aa_nogap':'aa_nogap', 'aminoacid_nogap':'aa_nogap',
-                     'DNA':'nuc', 'DNA_nogap':'nuc_nogap'}
+alphabet_synonyms = {
+    'nuc': 'nuc',
+    'nucleotide': 'nuc',
+    'aa': 'aa',
+    'aminoacid': 'aa',
+    'nuc_nogap': 'nuc_nogap',
+    'nucleotide_nogap': 'nuc_nogap',
+    'aa_nogap': 'aa_nogap',
+    'aminoacid_nogap': 'aa_nogap',
+    'DNA': 'nuc',
+    'DNA_nogap': 'nuc_nogap',
+}
 
 # fmt: off
 alphabets = {
@@ -125,17 +133,17 @@ def extend_profile(gtr, aln, logger=None):
         if c not in gtr.profile_map:
             gtr.profile_map[c] = np.ones(gtr.n_states)
             if logger:
-                logger("WARNING: character %s is unknown. Treating it as missing information"%c,1,warn=True)
+                logger('WARNING: character %s is unknown. Treating it as missing information' % c, 1, warn=True)
 
 
 def guess_alphabet(aln):
-    total=0
+    total = 0
     nuc_count = 0
     for seq in aln:
         total += len(seq)
         for n in np.array(list('acgtACGT-N')):
-            nuc_count += np.sum(seq==n)
-    if nuc_count>0.9*total:
+            nuc_count += np.sum(seq == n)
+    if nuc_count > 0.9 * total:
         return 'nuc'
     else:
         return 'aa'
@@ -170,25 +178,26 @@ def seq2array(seq, word_length=1, convert_upper=False, fill_overhangs=False, amb
     elif isinstance(seq, SeqRecord.SeqRecord):
         seq_str = str(seq.seq)
     else:
-        raise TypeError("seq2array: sequence must be Bio.Seq, Bio.SeqRecord, or string. Got "+str(seq))
+        raise TypeError('seq2array: sequence must be Bio.Seq, Bio.SeqRecord, or string. Got ' + str(seq))
 
     if convert_upper:
         seq_str = seq_str.upper()
 
-    if word_length==1:
+    if word_length == 1:
         seq_array = np.array(list(seq_str))
     else:
-        if len(seq_str)%word_length:
-            raise ValueError("sequence length has to be multiple of word length")
-        seq_array = np.array([seq_str[i*word_length:(i+1)*word_length]
-                              for i in range(len(seq_str)/word_length)])
+        if len(seq_str) % word_length:
+            raise ValueError('sequence length has to be multiple of word length')
+        seq_array = np.array(
+            [seq_str[i * word_length : (i + 1) * word_length] for i in range(len(seq_str) / word_length)]
+        )
 
     # substitute overhanging unsequenced tails
     if fill_overhangs:
         gaps = np.where(seq_array != '-')[0]
         if len(gaps):
-            seq_array[:gaps[0]] = ambiguous
-            seq_array[gaps[-1]+1:] = ambiguous
+            seq_array[: gaps[0]] = ambiguous
+            seq_array[gaps[-1] + 1 :] = ambiguous
         else:
             seq_array[:] = ambiguous
 
@@ -248,7 +257,7 @@ def prof2seq(profile, gtr, sample_from_prof=False, normalize=True, rng=None):
         rng = np.random.default_rng()
     # normalize profile such that probabilities at each site sum to one
     if normalize:
-        tmp_profile, pre=normalize_profile(profile, return_offset=False)
+        tmp_profile, pre = normalize_profile(profile, return_offset=False)
     else:
         tmp_profile = profile
 
@@ -257,7 +266,7 @@ def prof2seq(profile, gtr, sample_from_prof=False, normalize=True, rng=None):
     if sample_from_prof:
         cumdis = tmp_profile.cumsum(axis=1).T
         randnum = rng.random(size=cumdis.shape[1])
-        idx = np.argmax(cumdis>=randnum, axis=0)
+        idx = np.argmax(cumdis >= randnum, axis=0)
     else:
         idx = tmp_profile.argmax(axis=1)
     seq = gtr.alphabet[idx]  # max LH over the alphabet
@@ -267,7 +276,7 @@ def prof2seq(profile, gtr, sample_from_prof=False, normalize=True, rng=None):
     return seq, prof_values, idx
 
 
-def normalize_profile(in_profile, log=False, return_offset = True):
+def normalize_profile(in_profile, log=False, return_offset=True):
     """return a normalized version of a profile matrix
 
     Parameters
@@ -292,6 +301,7 @@ def normalize_profile(in_profile, log=False, return_offset = True):
         tmp_prof = in_profile
 
     norm_vector = tmp_prof.sum(axis=1)
-    return (np.einsum('ai,a->ai',tmp_prof,1.0/norm_vector),
-            (np.log(norm_vector) + tmp_prefactor) if return_offset else None)
-
+    return (
+        np.einsum('ai,a->ai', tmp_prof, 1.0 / norm_vector),
+        (np.log(norm_vector) + tmp_prefactor) if return_offset else None,
+    )

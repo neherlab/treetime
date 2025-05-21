@@ -3,6 +3,7 @@
 Stub function and module used as a setuptools entry point.
 Based on augur's __main__.py and setup.py
 """
+
 import sys
 from treetime import make_parser
 
@@ -16,7 +17,8 @@ def main():
     # Import matplotlib after parsing cli args
     # to speed up time till error if there's an arg error
     import matplotlib
-    matplotlib.use("AGG")
+
+    matplotlib.use('AGG')
 
     return_code = params.func(params)
 
@@ -24,5 +26,5 @@ def main():
 
 
 # Run when called as `python -m treetime`, here for good measure.
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

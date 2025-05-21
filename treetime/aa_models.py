@@ -58,10 +58,9 @@ def JTT92(mu=1.0):
     ])
     # fmt: on
 
-    Spis = np.sqrt(pis[None, :] / pis[:,None])
+    Spis = np.sqrt(pis[None, :] / pis[:, None])
     W = Q * Spis
 
     gtr = GTR(alphabet=alphabets['aa_nogap'])
     gtr.assign_rates(mu=mu, pi=pis, W=W)
     return gtr
-
