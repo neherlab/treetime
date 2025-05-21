@@ -9,7 +9,11 @@ export DOCS_CONTAINER_NAME=treetime-docs
 SHELL := bash
 .ONESHELL:
 
-.PHONY: docs docker-docs
+.PHONY: docs docker-docs lint
+
+lint:
+	PYTHONPATH=. pylint treetime --output-format=pylint_source_reporter.SourceCodeReporter
+	ruff check treetime
 
 docs:
 	@$(MAKE) --no-print-directory -C docs/ html
