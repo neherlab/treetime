@@ -1,57 +1,73 @@
 [MASTER]
-ignore=.git .idea .input .output .temp .venv .vscode
+py-version=3.7
+ignore=.git,.idea,.input,.output,.temp,.venv,.vscode
+load-plugins=pylint.extensions.no_self_use
 
 [MESSAGES CONTROL]
 disable=
-  bad-continuation,
-  bad-whitespace,
+  arguments-renamed,
+  attribute-defined-outside-init,
   bare-except,
+  broad-exception-caught,
+  broad-exception-raised,
   chained-comparison,
+  consider-using-enumerate,
+  consider-using-f-string,
+  consider-using-generator,
+  consider-using-get,
   consider-using-in,
+  consider-using-set-comprehension,
+  consider-using-with,
+  cyclic-import,
+  deprecated-class,
+  duplicate-code,
+  f-string-without-interpolation,
   fixme,
+  import-error,
+  import-outside-toplevel,
   invalid-name,
   len-as-condition,
   line-too-long,
   missing-docstring,
   multiple-imports,
+  multiple-statements,
   no-else-continue,
   no-else-raise,
   no-else-return,
   no-self-use,
   protected-access,
+  raise-missing-from,
+  redefined-outer-name,
+  reimported,
+  simplifiable-if-expression,
+  simplifiable-if-statement,
+  singleton-comparison,
+  super-with-arguments,
+  superfluous-parens,
   too-many-arguments,
-  too-many-branches,
   too-many-branches,
   too-many-instance-attributes,
   too-many-lines,
   too-many-locals,
   too-many-nested-blocks,
+  too-many-positional-arguments,
   too-many-public-methods,
   too-many-statements,
   trailing-newlines,
+  trailing-whitespace,
   unidiomatic-typecheck,
   unnecessary-comprehension,
+  unnecessary-dunder-call,
+  unnecessary-lambda-assignment,
   unnecessary-pass,
-  useless-object-inheritance,
-
-  duplicate-code,
-
+  unspecified-encoding,
   unused-argument,
   unused-import,
   unused-variable,
-
-  simplifiable-if-expression,
-  simplifiable-if-statement,
-  singleton-comparison,
-
-  attribute-defined-outside-init,
-  multiple-statements,
-  redefined-outer-name,
-
-  cyclic-import,
-  import-error,
-  import-outside-toplevel,
-  reimported,
+  unused-wildcard-import,
+  use-a-generator,
+  useless-object-inheritance,
+  wildcard-import,
   wrong-import-order,
   wrong-import-position,
 
@@ -59,4 +75,12 @@ disable=
 bad-names=foo,baz,toto,tutu,tata,let,const,nil,null,define
 good-names=a,b,c,e,f,g,i,j,k,x,y,z,ex,Run,_,__,___
 
-extension-pkg-whitelist=numpy
+extension-pkg-allow-list=numpy
+
+[REPORTS]
+output-format=colorized
+reports=no
+score=no
+
+[FORMAT]
+max-line-length=120

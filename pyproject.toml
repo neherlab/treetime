@@ -1,0 +1,98 @@
+[tool.ruff]
+line-length = 120
+target-version = "py37"
+exclude = [
+    ".git",
+    ".idea",
+    ".input",
+    ".output",
+    ".temp",
+    ".venv",
+    ".vscode",
+]
+
+[tool.ruff.lint]
+select = [
+    "E", # pycodestyle: basic style issues (indentation, whitespace, etc.)
+    "F", # pyflakes: logical errors (unused variables, undefined names)
+    "B", # flake8-bugbear: likely bugs and design issues
+    #    "I", # isort: import order and grouping
+    "UP", # pyupgrade: use modern Python idioms (e.g., f-strings)
+    #    "SIM", # flake8-simplify: code simplifications (e.g., redundant conditions)
+    "C4", # flake8-comprehensions: efficient and readable comprehensions
+    "PIE", # flake8-pie: misc cleanups and best practices
+    "RUF", # Ruff-specific rules: idiomatic Python and internal consistency
+    "PL" # pylint
+]
+
+
+extend-ignore = [
+    "ARG002", # unused-argument
+    "B006", # mutable default argument
+    "B007", # loop variable override
+    "B008", # function call in argument defaults
+    "B904", # raise from inside `except` to preserve exception context
+    "B905", # zip() without an explicit `strict=` parameter
+    "C403", # unnecessary list comprehension (use set comprehension)
+    "C405", # unnecessary list literal (use set literal)
+    "C416", # unnecessary dict comprehension (use dict constructor instead)
+    "C419", # unnecessary list comprehension
+    "E401", # multiple imports on one line
+    "E402", # module level import not at top
+    "E501", # line too long
+    "E701", # multiple statements on one line (colon)
+    "E711", # comparison to `None` should use `is` or `is not`
+    "E712", # avoid comparing directly to `True` or `False`
+    "E721", # use `isinstance()` or `is`/`is not` for type comparisons
+    "E722", # do not use bare `except`
+    "E731", # do not assign a lambda expression, use `def`
+    "E741", # ambiguous variable name
+    "F401", # unused import
+    "F403", # wildcard import
+    "F405", # wildcard import undefined name
+    "F541", # f-string without any placeholders
+    "F841", # unused variable
+    "PERF401", # unnecessary comprehension
+    "PIE790", # unnecessary `pass` statement
+    "PIE804", # unnecessary lambda assignment
+    "PLC1802", # len(x) used as condition without explicit comparison
+    "PLR0911", # too many return statements
+    "PLR0912", # too many branches
+    "PLR0913", # too many arguments
+    "PLR0914", # too many local variables
+    "PLR0915", # too many statements
+    "PLR1714", # consider merging multiple comparisons
+    "PLR1722", # use-a-generator
+    "PLR2004", # magic value used in comparison, consider replacing with a named constant
+    "PLR2044", # line contains an empty comment
+    "PLR5501", # consider-using-with
+    "PLW0120", # redefined-outer-name
+    "PLW0603", # global-statement
+    "RUF001", # ambiguous-unicode
+    "RUF002", # ambiguous character in docstring (e.g., EN DASH vs HYPHEN)
+    "RUF005", # prefer iterable unpacking over concatenation
+    "RUF012", # mutable default for dataclass field
+    "RUF015", # prefer `next(...)` over single-element slice
+    "RUF019", # unnecessary key check before dictionary access
+    "RUF034", # useless `if`-`else` condition
+    "SIM101", # simplifiable-if-statement
+    "SIM102", # nested-if can be simplified
+    "SIM103", # if-else can be simplified
+    "SIM115", # use a context manager for opening files
+    "TRY003", # avoid specifying long exception messages
+    "UP004", # class inherits from `object` unnecessarily
+    "UP008", # use `super()` instead of `super(__class__, self)`
+    "UP009", # UTF-8 encoding declaration is unnecessary
+    "UP010", # unnecessary `__future__` import for target Python version
+    "UP015", # unnecessary open(mode='r')
+    "UP031", # use format specifiers instead of percent formatting
+    "UP032", # use f-string instead of `.format()` call
+    "UP035", # import from `collections.abc` instead of `collections`
+]
+
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "space"
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]  # ignore unused imports in package inits
