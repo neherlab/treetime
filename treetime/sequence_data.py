@@ -427,10 +427,9 @@ class SequenceData(object):
             columns_left = self.additional_constant_sites
             pi = np.max(variable_positions) + 1
             for c, n in additional_columns_per_character:
-                if (
-                    c == additional_columns_per_character[-1][0]
-                ):  # make sure all additions add up to the correct number to avoid rounding
-                    n = columns_left
+                if c == additional_columns_per_character[-1][0]:
+                    # make sure all additions add up to the correct number to avoid rounding
+                    n = columns_left # noqa: PLW2901
                 str_pattern = c * len(self.sequence_names)
                 pos_list = list(range(pi, pi + n))
                 if n:
