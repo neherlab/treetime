@@ -1,6 +1,6 @@
 use crate::graph::breadth_first::{
-  directed_breadth_first_traversal, BfsTraversalPolicy, BfsTraversalPolicyBackward, BfsTraversalPolicyForward,
-  GraphTraversalContinuation,
+  BfsTraversalPolicy, BfsTraversalPolicyBackward, BfsTraversalPolicyForward, GraphTraversalContinuation,
+  directed_breadth_first_traversal,
 };
 use crate::graph::edge::{Edge, GraphEdge, GraphEdgeKey};
 use crate::graph::graph::Graph;
@@ -9,9 +9,9 @@ use crate::make_internal_report;
 use eyre::Report;
 use parking_lot::RwLock;
 use std::collections::HashSet;
+use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::Relaxed;
-use std::sync::Arc;
 
 /// Finds edges on all paths between two nodes
 pub fn find_paths<N, E, D>(

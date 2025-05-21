@@ -2,7 +2,7 @@ use crate::graph::edge::GraphEdge;
 use crate::graph::graph::Graph;
 use crate::graph::node::GraphNode;
 use crate::io::file::create_file_or_stdout;
-use crate::io::nwk::{nwk_write_str, EdgeToNwk, NodeToNwk, NwkWriteOptions};
+use crate::io::nwk::{EdgeToNwk, NodeToNwk, NwkWriteOptions, nwk_write_str};
 use eyre::Report;
 use itertools::Itertools;
 use smart_default::SmartDefault;

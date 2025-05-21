@@ -3,7 +3,7 @@ use crate::graph::edge::{GraphEdge, Weighted};
 use crate::graph::graph::Graph;
 use crate::graph::node::{GraphNode, Named};
 use crate::io::graphviz::{EdgeToGraphViz, NodeToGraphviz};
-use crate::io::nwk::{format_weight, EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteOptions};
+use crate::io::nwk::{EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteOptions, format_weight};
 use crate::o;
 use crate::representation::seq::Seq;
 use crate::representation::seq_char::AsciiChar;
@@ -93,7 +93,7 @@ impl SparseSeqNode {
     let variable = seq
       .iter()
       .enumerate()
-      .filter(|(_, &c)| alphabet.is_ambiguous(c))
+      .filter(|&(_, c)| alphabet.is_ambiguous(*c))
       .map(|(pos, &c)| (pos, alphabet.char_to_set(c)))
       .collect();
 

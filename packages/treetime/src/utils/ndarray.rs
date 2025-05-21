@@ -1,15 +1,15 @@
 use eyre::Report;
 use itertools::Itertools;
 use ndarray::{
-  stack, Array, Array1, Array2, ArrayBase, ArrayView, Axis, Data, Dimension, Ix1, Ix2, RemoveAxis, ShapeBuilder,
-  ShapeError, Zip,
+  Array, Array1, Array2, ArrayBase, ArrayView, Axis, Data, Dimension, Ix1, Ix2, RemoveAxis, ShapeBuilder, ShapeError,
+  Zip, stack,
 };
 use ndarray_rand::RandomExt;
 use num_traits::real::Real;
 use num_traits::{Bounded, Float, NumCast, One, Zero};
-use rand::distributions::uniform::SampleUniform;
-use rand::distributions::Uniform;
 use rand::Rng;
+use rand::distributions::Uniform;
+use rand::distributions::uniform::SampleUniform;
 use std::f64::consts::E;
 use std::ops::{AddAssign, Mul};
 
@@ -211,7 +211,7 @@ mod tests {
   use crate::pretty_assert_ulps_eq;
   use eyre::Report;
   use lazy_static::lazy_static;
-  use ndarray::{arr0, array, Array0};
+  use ndarray::{Array0, arr0, array};
   use rand::SeedableRng;
   use rand_isaac::Isaac64Rng;
   use rstest::rstest;

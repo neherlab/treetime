@@ -1,13 +1,12 @@
 #![allow(unused_qualifications)]
 
-use clap::{AppSettings, ArgEnum, CommandFactory, Parser, Subcommand};
-use clap_complete::{generate, Shell};
+use crate::cli::jobs::Jobs;
+use crate::cli::verbosity::Verbosity;
+use clap::{CommandFactory, Parser, Subcommand, ValueEnum};
+use clap_complete::{Shell, generate};
 use clap_complete_fig::Fig;
-use clap_verbosity_flag::{Verbosity, WarnLevel};
-use eyre::{eyre, Report};
+use eyre::{Report, eyre};
 use lazy_static::lazy_static;
-use log::LevelFilter;
-use num_cpus;
 use std::fmt::Debug;
 use std::io;
 use treetime::commands::ancestral::anc_args::TreetimeAncestralArgs;
@@ -16,41 +15,31 @@ use treetime::commands::homoplasy::homoplasy_args::TreetimeHomoplasyArgs;
 use treetime::commands::mugration::mugration_args::TreetimeMugrationArgs;
 use treetime::commands::optimize::args::TreetimeOptimizeArgs;
 use treetime::commands::timetree::timetree_args::TreetimeTimetreeArgs;
+use treetime::utils::clap_styles::styles;
 use treetime::utils::global_init::setup_logger;
 
 lazy_static! {
-  static ref SHELLS: &'static [&'static str] = &["bash", "elvish", "fish", "fig", "powershell", "zsh"];
-  static ref VERBOSITIES: &'static [&'static str] = &["off", "error", "warn", "info", "debug", "trace"];
+  pub static ref SHELLS: Vec<&'static str> = ["bash", "elvish", "fish", "fig", "powershell", "zsh"].to_vec();
 }
 
 #[derive(Parser, Debug)]
-#[clap(name = "treetime", trailing_var_arg = true)]
+#[clap(name = "treetime")]
 #[clap(author, version)]
-#[clap(global_setting(AppSettings::DeriveDisplayOrder))]
 #[clap(verbatim_doc_comment)]
+#[clap(styles = styles())]
 /// Maximum-likelihood phylodynamic inference
 ///
 /// Documentation: https://treetime.readthedocs.io/en/stable/
 /// Publication:   https://academic.oup.com/ve/article/4/1/vex042/4794731
 pub struct TreetimeArgs {
+  #[clap(flatten, next_help_heading = "Parallelism")]
+  pub jobs: Jobs,
+
+  #[clap(flatten, next_help_heading = "Verbosity")]
+  pub verbosity: Verbosity,
+
   #[clap(subcommand)]
   pub command: TreetimeCommands,
-
-  /// Make output more quiet or more verbose
-  #[clap(flatten)]
-  pub verbose: Verbosity<WarnLevel>,
-
-  /// Set verbosity level
-  #[clap(long, global = true, conflicts_with = "verbose", conflicts_with = "silent", possible_values(VERBOSITIES.iter()))]
-  pub verbosity: Option<LevelFilter>,
-
-  /// Disable all console output. Same as --verbosity=off
-  #[clap(long, global = true, conflicts_with = "verbose", conflicts_with = "verbosity")]
-  pub silent: bool,
-
-  /// Number of processing jobs. If not specified, all available CPU threads will be used.
-  #[clap(global = true, long, short = 'j', default_value_t = num_cpus::get())]
-  pub jobs: usize,
 }
 
 #[derive(Subcommand, Debug)]
@@ -66,7 +55,7 @@ pub enum TreetimeCommands {
   ///
   Completions {
     /// Name of the shell to generate appropriate completions
-    #[clap(value_name = "SHELL", default_value_t = String::from("bash"), possible_values(SHELLS.iter()))]
+    #[clap(value_name = "SHELL", default_value_t = String::from("bash"), value_parser = SHELLS.clone())]
     shell: String,
   },
 
@@ -107,7 +96,7 @@ pub fn generate_shell_completions(shell: &str) -> Result<(), Report> {
     return Ok(());
   }
 
-  let generator = <Shell as ArgEnum>::from_str(&shell.to_lowercase(), true)
+  let generator = <Shell as ValueEnum>::from_str(&shell.to_lowercase(), true)
     .map_err(|err| eyre!("{}: Possible values: {}", err, SHELLS.join(", ")))?;
 
   let bin_name = command.get_name().to_owned();
@@ -119,18 +108,6 @@ pub fn generate_shell_completions(shell: &str) -> Result<(), Report> {
 
 pub fn treetime_parse_cli_args() -> Result<TreetimeArgs, Report> {
   let args = TreetimeArgs::parse();
-
-  // --verbosity=<level> and --silent take priority over -v and -q
-  let filter_level = if args.silent {
-    LevelFilter::Off
-  } else {
-    match args.verbosity {
-      None => args.verbose.log_level_filter(),
-      Some(verbosity) => verbosity,
-    }
-  };
-
-  setup_logger(filter_level);
-
+  setup_logger(args.verbosity.get_filter_level());
   Ok(args)
 }

@@ -21,7 +21,8 @@ pub fn yaml_read<T: for<'de> Deserialize<'de>>(reader: impl std::io::Read) -> Re
 
 pub fn yaml_write_file<T: Serialize>(filepath: impl AsRef<Path>, obj: &T) -> Result<(), Report> {
   let filepath = filepath.as_ref();
-  yaml_write(create_file_or_stdout(filepath)?, &obj).wrap_err_with(|| format!("When writing YAML file: {filepath:#?}"))
+  yaml_write(create_file_or_stdout(filepath)?, &obj)
+    .wrap_err_with(|| format!("When writing YAML file: '{}'", filepath.display()))
 }
 
 pub fn yaml_write_str<T: Serialize>(obj: &T) -> Result<String, Report> {

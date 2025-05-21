@@ -25,10 +25,7 @@ pub fn report_to_string_debug_only(report: &Report) -> String {
 
 /// Preserves only the Result::Ok values in a given collection
 pub fn keep_ok<T, E>(results: &[Result<T, E>]) -> impl Iterator<Item = &T> {
-  results.iter().filter_map(|res| match res {
-    Ok(val) => Some(val),
-    Err(_) => None,
-  })
+  results.iter().filter_map(|r| r.as_ref().ok())
 }
 
 #[macro_export(local_inner_macros)]

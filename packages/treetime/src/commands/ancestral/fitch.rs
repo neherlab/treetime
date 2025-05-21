@@ -149,17 +149,17 @@ fn fitch_backwards(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]
           StateSetStatus::Unambiguous(state) => {
             // intersection has a single state, write it
             sequence[pos] = state;
-          }
+          },
           StateSetStatus::Ambiguous(_) => {
             // more than one possible states
             seq_dis.variable.insert(pos, intersection);
             sequence[pos] = VARIABLE_CHAR;
-          }
+          },
           StateSetStatus::Empty => {
             let union = StateSet::from_union(&child_profiles);
             seq_dis.variable.insert(pos, union);
             sequence[pos] = VARIABLE_CHAR;
-          }
+          },
         }
       }
 
@@ -512,7 +512,7 @@ pub fn get_common_length(aln: &[FastaRecord]) -> Result<usize, Report> {
         .join("\n\n");
 
       make_error!("Sequences are expected to all have the same length, but found the following lengths:\n\n{message}")
-    }
+    },
   }
   .wrap_err("When calculating length of sequences")
 }
@@ -523,7 +523,7 @@ mod tests {
   use crate::alphabet::alphabet::Alphabet;
   use crate::graph::node::Named;
   use crate::io::fasta::{read_many_fasta, read_many_fasta_str};
-  use crate::io::json::{json_write_str, JsonPretty};
+  use crate::io::json::{JsonPretty, json_write_str};
   use crate::io::nwk::{nwk_read_file, nwk_read_str};
   use eyre::Report;
   use indoc::indoc;

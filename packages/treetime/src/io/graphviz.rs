@@ -3,7 +3,7 @@ use crate::graph::graph::{Graph, SafeNode};
 use crate::graph::node::{GraphNode, Node};
 use crate::io::file::create_file_or_stdout;
 use eyre::Report;
-use itertools::{iproduct, Itertools};
+use itertools::{Itertools, iproduct};
 use parking_lot::RwLock;
 use std::collections::BTreeMap;
 use std::io::Write;

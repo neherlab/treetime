@@ -1,16 +1,16 @@
 use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-use crate::gtr::gtr::{GTRParams, GTR};
-use crate::gtr::infer_gtr::{get_mutation_counts, infer_gtr, InferGtrOptions, InferGtrResult};
+use crate::gtr::gtr::{GTR, GTRParams};
+use crate::gtr::infer_gtr::{InferGtrOptions, InferGtrResult, get_mutation_counts, infer_gtr};
 use crate::representation::graph_dense::DenseGraph;
 use crate::representation::graph_sparse::SparseGraph;
 use crate::{make_error, make_report};
-use clap::ArgEnum;
+use clap::ValueEnum;
 use eyre::{Report, WrapErr};
-use ndarray::{array, Array1, Array2};
+use ndarray::{Array1, Array2, array};
 use smart_default::SmartDefault;
 use strum_macros::Display;
 
-#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, ArgEnum, SmartDefault, Display)]
+#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, SmartDefault, Display)]
 pub enum GtrModelName {
   #[default]
   Infer,
@@ -29,7 +29,7 @@ pub fn get_gtr(name: &GtrModelName, alphabet: &Alphabet, graph: &SparseGraph) ->
       let alphabet = alphabet.to_owned();
       let W = Some(W);
       GTR::new(GTRParams { alphabet, mu, W, pi })
-    }
+    },
     GtrModelName::JC69 => jc69(JC69Params::default()),
     GtrModelName::F81 => f81(F81Params::default()),
     GtrModelName::HKY85 => hky85(HKY85Params::default()),
@@ -43,7 +43,7 @@ pub fn get_gtr_dense(name: &GtrModelName, _alphabet: &Alphabet, _graph: &DenseGr
   match name {
     GtrModelName::Infer => {
       unimplemented!("Model inference is not yet implemented for dense representation. Please set model explicitly.")
-    }
+    },
     GtrModelName::JC69 => jc69(JC69Params::default()),
     GtrModelName::F81 => f81(F81Params::default()),
     GtrModelName::HKY85 => hky85(HKY85Params::default()),

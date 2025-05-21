@@ -6,7 +6,7 @@ use comfy_table::presets::UTF8_FULL;
 use comfy_table::{ContentArrangement, Table};
 use crossterm::terminal;
 use eyre::Report;
-use itertools::{chain, Itertools};
+use itertools::{Itertools, chain};
 use num_traits::clamp;
 use plotters::coord::Shift;
 use plotters::prelude::*;
@@ -18,7 +18,7 @@ use textplots::{Chart, ColorPlot, Shape};
 use crate::io::file::create_file_or_stdout;
 use crate::utils::float_fmt::float_to_significant_digits;
 #[cfg(feature = "png")]
-use image::{codecs::png::PngEncoder, ColorType, DynamicImage, ImageBuffer, ImageEncoder, Rgb};
+use image::{ColorType, DynamicImage, ImageBuffer, ImageEncoder, Rgb, codecs::png::PngEncoder};
 use plotters::coord::types::RangedCoordf32;
 
 pub fn write_clock_regression_chart_svg(

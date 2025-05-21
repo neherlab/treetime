@@ -1,15 +1,15 @@
-use crate::io::json::{json_write_str, JsonPretty};
+use crate::io::json::{JsonPretty, json_write_str};
 use crate::representation::bitset128::BitSet128;
 use crate::representation::seq_char::AsciiChar;
 use crate::representation::state_set::StateSet;
 use crate::utils::string::quote;
 use crate::{make_error, stateset, vec_u8};
-use clap::ArgEnum;
+use clap::ValueEnum;
 use color_eyre::{Section, SectionExt};
 use eyre::{Report, WrapErr};
-use indexmap::{indexmap, IndexMap};
-use itertools::{chain, Itertools};
-use ndarray::{stack, Array1, Array2, Axis};
+use indexmap::{IndexMap, indexmap};
+use itertools::{Itertools, chain};
+use ndarray::{Array1, Array2, Axis, stack};
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::borrow::Borrow;
@@ -21,8 +21,8 @@ pub const NON_CHAR: AsciiChar = AsciiChar(b'.');
 pub const VARIABLE_CHAR: AsciiChar = AsciiChar(b'~');
 pub const FILL_CHAR: AsciiChar = AsciiChar(b' ');
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, ArgEnum, SmartDefault, Display)]
-#[clap(rename = "kebab-case")]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Display, ValueEnum)]
+#[value(rename_all = "kebab-case")]
 pub enum AlphabetName {
   #[default]
   Nuc,

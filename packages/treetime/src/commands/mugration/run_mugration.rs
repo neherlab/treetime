@@ -57,7 +57,9 @@ pub fn run_mugration(mugration_args: &TreetimeMugrationArgs) -> Result<(), Repor
     }
 
     if missing_weights_ratio > *missing_weights_threshold {
-      return make_error!("Mugration: too many discrete attributes missing from the weights file. The ratio of missing values {missing_weights_ratio} is greater than the threshold {missing_weights_threshold}. Weights were read from file {weights_filepath:?}");
+      return make_error!(
+        "Mugration: too many discrete attributes missing from the weights file. The ratio of missing values {missing_weights_ratio} is greater than the threshold {missing_weights_threshold}. Weights were read from file {weights_filepath:?}"
+      );
     }
 
     let alphabet = calculate_alphabet(&unique_values, missing_data)?;

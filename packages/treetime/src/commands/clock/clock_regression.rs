@@ -104,7 +104,7 @@ mod tests {
   use crate::graph::node::Named;
   use crate::io::nwk::nwk_read_str;
   use crate::o;
-  use crate::seq::div::{calculate_divs, OnlyLeaves};
+  use crate::seq::div::{OnlyLeaves, calculate_divs};
   use approx::assert_ulps_eq;
   use maplit::btreemap;
   use std::collections::BTreeMap;

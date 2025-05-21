@@ -13,8 +13,8 @@ use crate::{make_internal_report, make_report, seq};
 use eyre::Report;
 use itertools::Itertools;
 use log::debug;
-use ndarray::prelude::*;
 use ndarray::AssignElem;
+use ndarray::prelude::*;
 use ndarray_stats::QuantileExt;
 
 // TODO: move this into Alphabet
@@ -182,7 +182,7 @@ fn ingroup_profiles_dense(graph: &DenseGraph, partitions: &[PartitionLikelihood]
         edge_data.msg_from_child = DenseSeqDis { dis, log_lh };
         edge_data.msg_to_parent = msg_to_parent;
         edge_to_parent.dense_partitions.push(edge_data);
-      };
+      }
     }
     GraphTraversalContinuation::Continue
   });
@@ -213,7 +213,7 @@ fn outgroup_profiles_dense(graph: &DenseGraph, partitions: &[PartitionLikelihood
         let delta_ll = normalize_inplace(&mut dis);
         log_lh += delta_ll;
         seq_info.profile = DenseSeqDis { dis, log_lh };
-      };
+      }
 
       for child_edge in &mut node.child_edges {
         // this normalization isn't strictly necessary
@@ -251,7 +251,7 @@ pub fn run_marginal_dense(
     .iter()
     .map(|p| p.profile.log_lh)
     .sum();
-  debug!("Log likelihood: {}", log_lh);
+  debug!("Log likelihood: {log_lh}");
   outgroup_profiles_dense(graph, &partitions);
 
   if reconstruct {
@@ -306,10 +306,10 @@ mod tests {
   use super::*;
   use crate::alphabet::alphabet::AlphabetName;
   use crate::graph::node::GraphNodeKey;
-  use crate::gtr::get_gtr::{jc69, JC69Params};
-  use crate::gtr::gtr::{GTRParams, GTR};
+  use crate::gtr::get_gtr::{JC69Params, jc69};
+  use crate::gtr::gtr::{GTR, GTRParams};
   use crate::io::fasta::read_many_fasta_str;
-  use crate::io::json::{json_write_str, JsonPretty};
+  use crate::io::json::{JsonPretty, json_write_str};
   use crate::io::nwk::nwk_read_str;
   use crate::pretty_assert_ulps_eq;
   use eyre::Report;

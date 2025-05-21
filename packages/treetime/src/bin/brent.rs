@@ -4,10 +4,10 @@
 ///
 /// The Brent solver in `argmin` requires `CostFunction` trait to be implemented for the problem.
 use argmin::core::observers::{Observe, ObserverMode};
-use argmin::core::{CostFunction, Error, Executor, State, KV};
+use argmin::core::{CostFunction, Error, Executor, KV, State};
 use argmin::solver::brent::BrentOpt;
 use ctor::ctor;
-use log::{info, LevelFilter};
+use log::{LevelFilter, info};
 use std::fmt::{Debug, Display};
 use treetime::utils::global_init::{global_init, setup_logger};
 

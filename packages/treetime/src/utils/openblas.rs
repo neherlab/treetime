@@ -5,11 +5,11 @@
   clippy::undocumented_unsafe_blocks
 )]
 
-use crate::io::json::{json_write_str, JsonPretty};
+use crate::io::json::{JsonPretty, json_write_str};
 use serde::{Deserialize, Serialize};
-use std::ffi::{c_char, c_int, CStr};
+use std::ffi::{CStr, c_char, c_int};
 
-extern "C" {
+unsafe extern "C" {
   fn openblas_get_config() -> *const c_char;
   fn openblas_get_corename() -> *const c_char;
   fn openblas_get_parallel() -> c_int;
