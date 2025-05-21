@@ -7,25 +7,21 @@ alphabet_synonyms = {'nuc':'nuc', 'nucleotide':'nuc', 'aa':'aa', 'aminoacid':'aa
                      'aa_nogap':'aa_nogap', 'aminoacid_nogap':'aa_nogap',
                      'DNA':'nuc', 'DNA_nogap':'nuc_nogap'}
 
+# fmt: off
 alphabets = {
-            "nuc":           np.array(['A', 'C', 'G', 'T', '-']),
+    'nuc':       np.array(['A', 'C', 'G', 'T', '-']),
+    'nuc_nogap': np.array(['A', 'C', 'G', 'T']),
+    'aa':        np.array(['A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y', '*', '-']),
+    'aa_nogap':  np.array(['A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y']),
+}
+# fmt: on
 
-            "nuc_nogap":np.array(['A', 'C', 'G', 'T']),
-
-            "aa":            np.array(['A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K',
-                                       'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V',
-                                       'W', 'Y', '*', '-']),
-
-            "aa_nogap": np.array(['A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K',
-                                       'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V',
-                                       'W', 'Y'])
-            }
-
+# fmt: off
 profile_maps = {
-'nuc':{
-    'A': np.array([1, 0, 0, 0, 0], dtype='float'),
-    'C': np.array([0, 1, 0, 0, 0], dtype='float'),
-    'G': np.array([0, 0, 1, 0, 0], dtype='float'),
+    'nuc': {
+        'A': np.array([1, 0, 0, 0, 0], dtype='float'),
+        'C': np.array([0, 1, 0, 0, 0], dtype='float'),
+        'G': np.array([0, 0, 1, 0, 0], dtype='float'),
     'T': np.array([0, 0, 0, 1, 0], dtype='float'),
     '-': np.array([0, 0, 0, 0, 1], dtype='float'),
     'N': np.array([1, 1, 1, 1, 1], dtype='float'),
@@ -39,13 +35,13 @@ profile_maps = {
     'D': np.array([1, 0, 1, 1, 0], dtype='float'),
     'H': np.array([1, 1, 0, 1, 0], dtype='float'),
     'B': np.array([0, 1, 1, 1, 0], dtype='float'),
-    'V': np.array([1, 1, 1, 0, 0], dtype='float')
+        'V': np.array([1, 1, 1, 0, 0], dtype='float')
     },
 
-'nuc_nogap':{
-    'A': np.array([1, 0, 0, 0], dtype='float'),
-    'C': np.array([0, 1, 0, 0], dtype='float'),
-    'G': np.array([0, 0, 1, 0], dtype='float'),
+    'nuc_nogap': {
+        'A': np.array([1, 0, 0, 0], dtype='float'),
+        'C': np.array([0, 1, 0, 0], dtype='float'),
+        'G': np.array([0, 0, 1, 0], dtype='float'),
     'T': np.array([0, 0, 0, 1], dtype='float'),
     '-': np.array([1, 1, 1, 1], dtype='float'), # gaps are completely ignored in distance computations
     'N': np.array([1, 1, 1, 1], dtype='float'),
@@ -59,13 +55,13 @@ profile_maps = {
     'D': np.array([1, 0, 1, 1], dtype='float'),
     'H': np.array([1, 1, 0, 1], dtype='float'),
     'B': np.array([0, 1, 1, 1], dtype='float'),
-    'V': np.array([1, 1, 1, 0], dtype='float')
+        'V': np.array([1, 1, 1, 0], dtype='float')
     },
 
-'aa':{
-    'A': np.array([1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], dtype='float'), #Alanine         Ala
-    'C': np.array([0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], dtype='float'), #Cysteine        Cys
-    'D': np.array([0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], dtype='float'), #Aspartic AciD   Asp
+    'aa': {
+        'A': np.array([1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], dtype='float'), #Alanine         Ala
+        'C': np.array([0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], dtype='float'), #Cysteine        Cys
+        'D': np.array([0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], dtype='float'), #Aspartic AciD   Asp
     'E': np.array([0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], dtype='float'), #Glutamic Acid   Glu
     'F': np.array([0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], dtype='float'), #Phenylalanine   Phe
     'G': np.array([0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], dtype='float'), #Glycine         Gly
@@ -87,13 +83,13 @@ profile_maps = {
     '-': np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1], dtype='float'), #gap
     'X': np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], dtype='float'), #not specified/any
     'B': np.array([0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], dtype='float'), #Asparagine/Aspartic Acid    Asx
-    'Z': np.array([0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0], dtype='float'), #Glutamine/Glutamic Acid     Glx
+        'Z': np.array([0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0], dtype='float'), #Glutamine/Glutamic Acid     Glx
     },
 
-'aa_nogap':{
-    'A': np.array([1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], dtype='float'), #Alanine         Ala
-    'C': np.array([0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], dtype='float'), #Cysteine        Cys
-    'D': np.array([0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], dtype='float'), #Aspartic AciD   Asp
+    'aa_nogap': {
+        'A': np.array([1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], dtype='float'), #Alanine         Ala
+        'C': np.array([0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], dtype='float'), #Cysteine        Cys
+        'D': np.array([0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], dtype='float'), #Aspartic AciD   Asp
     'E': np.array([0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], dtype='float'), #Glutamic Acid   Glu
     'F': np.array([0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], dtype='float'), #Phenylalanine   Phe
     'G': np.array([0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], dtype='float'), #Glycine         Gly
@@ -113,9 +109,10 @@ profile_maps = {
     'Y': np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1], dtype='float'), #Tyrosine        Tyr
     'X': np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], dtype='float'), #not specified/any
     'B': np.array([0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0], dtype='float'), #Asparagine/Aspartic Acid    Asx
-    'Z': np.array([0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0], dtype='float'), #Glutamine/Glutamic Acid     Glx
+        'Z': np.array([0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0], dtype='float'), #Glutamine/Glutamic Acid     Glx
     }
 }
+# fmt: on
 
 
 def extend_profile(gtr, aln, logger=None):
