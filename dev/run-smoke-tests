@@ -29,7 +29,7 @@ from signal import signal, SIGINT, SIG_IGN
 from textwrap import dedent
 from typing import List, Optional
 
-verbose = False
+verbose = True
 
 # Add ancestral command runs here.
 # Each entry corresponds to 2 ancestral command runs - one with parsimony and one with marginal method.
@@ -134,7 +134,7 @@ def run_cmd(name: str, cmd: str):
       stdout=subprocess.DEVNULL,
       stderr=subprocess.PIPE,
       text=True,
-      env={**os.environ, 'CLICOLOR_FORCE': '1'}
+      env={**os.environ, 'CLICOLOR_FORCE': '1', 'RUST_BACKTRACE': 'full'}
     )
     output.append(result.stderr or "")
     code = result.returncode

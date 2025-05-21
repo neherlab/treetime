@@ -167,11 +167,7 @@ impl GTR {
   pub fn evolve(&self, profile: &Array2<f64>, t: f64, return_log: bool) -> Array2<f64> {
     let Qt = self.expQt(t);
     let res = profile.dot(&Qt.t());
-    if return_log {
-      res.mapv(f64::ln)
-    } else {
-      res
-    }
+    if return_log { res.mapv(f64::ln) } else { res }
   }
 
   /// Compute the probability of the sequence state of the parent
@@ -201,11 +197,7 @@ impl GTR {
     let Qt = self.expQt(t);
     let res = profile.dot(&Qt);
 
-    if return_log {
-      res.mapv(f64::ln)
-    } else {
-      res
-    }
+    if return_log { res.mapv(f64::ln) } else { res }
   }
 
   /// Matrix exponential of exp(Qt)
@@ -287,12 +279,12 @@ mod tests {
 
   use super::*;
   use crate::alphabet::alphabet::AlphabetName;
-  use crate::gtr::get_gtr::{jc69, JC69Params};
+  use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::pretty_assert_ulps_eq;
   use approx::{assert_abs_diff_eq, assert_ulps_eq};
   use eyre::Report;
   use lazy_static::lazy_static;
-  use ndarray::{array, Array1, Array2};
+  use ndarray::{Array1, Array2, array};
   use rstest::rstest;
 
   lazy_static! {

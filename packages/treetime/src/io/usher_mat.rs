@@ -4,9 +4,9 @@ use crate::graph::node::{GraphNode, Named};
 use crate::io::file::create_file_or_stdout;
 use crate::io::file::open_file_or_stdin;
 use crate::io::json::{
-  json_read, json_read_file, json_read_str, json_write, json_write_file, json_write_str, JsonPretty,
+  JsonPretty, json_read, json_read_file, json_read_str, json_write, json_write_file, json_write_str,
 };
-use crate::io::nwk::{nwk_read_str, nwk_write_str, EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteOptions};
+use crate::io::nwk::{EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteOptions, nwk_read_str, nwk_write_str};
 use crate::make_error;
 use bytes::Buf;
 use eyre::{Report, WrapErr};
@@ -25,7 +25,7 @@ where
 {
   let filepath = filepath.as_ref();
   usher_mat_pb_read::<C, _, _, _>(open_file_or_stdin(&Some(filepath))?)
-    .wrap_err_with(|| format!("When reading Usher MAT protobuf file '{filepath:#?}'"))
+    .wrap_err_with(|| format!("When reading Usher MAT protobuf file '{}'", filepath.display()))
 }
 
 pub fn usher_mat_pb_read_bytes<C, N, E, D>(buf: impl Buf) -> Result<Graph<N, E, D>, Report>
@@ -58,7 +58,8 @@ where
   C: UsherRead<N, E, D>,
 {
   let filepath = filepath.as_ref();
-  let tree = json_read_file(filepath).wrap_err_with(|| format!("When reading Usher MAT JSON file '{filepath:#?}'"))?;
+  let tree =
+    json_read_file(filepath).wrap_err_with(|| format!("When reading Usher MAT JSON file '{}'", filepath.display()))?;
   usher_to_graph::<C, _, _, _>(&tree)
 }
 
@@ -94,7 +95,7 @@ where
   let filepath = filepath.as_ref();
   let mut f = create_file_or_stdout(filepath)?;
   usher_mat_pb_write::<C, _, _, _>(&mut f, graph)
-    .wrap_err_with(|| format!("When reading Usher MAT protobuf file '{filepath:#?}'"))?;
+    .wrap_err_with(|| format!("When reading Usher MAT protobuf file '{}'", filepath.display()))?;
   writeln!(f)?;
   Ok(())
 }
@@ -137,7 +138,7 @@ where
   let filepath = filepath.as_ref();
   let tree = usher_from_graph::<C, _, _, _>(graph)?;
   json_write_file(filepath, &tree, JsonPretty(options.pretty))
-    .wrap_err_with(|| format!("When writing Usher MAT JSON file: '{filepath:#?}'"))?;
+    .wrap_err_with(|| format!("When writing Usher MAT JSON file: '{}'", filepath.display()))?;
   Ok(())
 }
 

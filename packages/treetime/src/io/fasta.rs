@@ -3,10 +3,14 @@ use crate::io::compression::Decompressor;
 use crate::io::concat::Concat;
 use crate::io::file::{create_file_or_stdout, open_file_or_stdin, open_stdin};
 use crate::make_error;
-use eyre::Report;
-use log::info;
+use crate::representation::seq::Seq;
+use crate::representation::seq_char::AsciiChar;
+use crate::utils::string::quote_single;
+use eyre::{Context, Report};
+use itertools::Itertools;
+use log::{info, warn};
 use serde::{Deserialize, Serialize};
-use std::io::{BufRead, BufReader};
+use std::io::{BufRead, BufReader, Write};
 use std::path::Path;
 
 #[derive(Clone, Default, Debug, Deserialize, Serialize, Eq, PartialEq)]
@@ -14,7 +18,7 @@ use std::path::Path;
 pub struct FastaRecord {
   pub seq_name: String,
   pub desc: Option<String>,
-  pub seq: String,
+  pub seq: Seq,
   pub index: usize,
 }
 
@@ -33,12 +37,21 @@ impl FastaRecord {
   pub fn is_empty(&self) -> bool {
     self.seq_name.is_empty() && self.seq_name.is_empty() && self.desc.is_none() && self.index == 0
   }
+
+  pub fn header(&self) -> String {
+    match &self.desc {
+      Some(desc) => format!(">{} {}", self.seq_name, desc),
+      None => format!(">{}", self.seq_name),
+    }
+  }
 }
 
 pub struct FastaReader<'a, 'b> {
   reader: Box<dyn BufRead + 'a>,
   alphabet: &'b Alphabet,
   line: String,
+  n_lines: usize,
+  n_chars: usize,
   index: usize,
 }
 
@@ -48,6 +61,8 @@ impl<'a, 'b> FastaReader<'a, 'b> {
       reader,
       alphabet,
       line: String::new(),
+      n_lines: 0,
+      n_chars: 0,
       index: 0,
     }
   }
@@ -94,99 +109,74 @@ impl<'a, 'b> FastaReader<'a, 'b> {
     record.clear();
 
     if self.line.is_empty() {
+      // Read lines until we find the next record or EOF
       loop {
         self.line.clear();
+        if self.reader.read_line(&mut self.line)? == 0 {
+          if self.index > 0 {
+            // We have read at least one record  by the end of input - this is normal operation mode
+            return Ok(());
+          }
 
-        let n_bytes = self.reader.read_line(&mut self.line)?;
-        if n_bytes == 0 {
-          return Ok(());
+          if self.index == 0 && self.n_chars == 0 {
+            // We have read no records and no non-whitespace characters by the end of input
+            warn!(
+              "FASTA input is empty or consists entirely from whitespace: this is allowed but might not be what's intended"
+            );
+            return Ok(());
+          }
+
+          // We have read some characters, but no records detected by the end of input
+          return make_error!(
+            "FASTA input is incorrectly formatted: expected at least one FASTA record starting with character '>', but none found"
+          );
         }
 
         let trimmed = self.line.trim();
-        if !trimmed.is_empty() {
-          self.line = trimmed.to_owned();
-          break;
+        self.n_lines += 1;
+        self.n_chars += trimmed.len();
+        if trimmed.starts_with('>') {
+          break; // Found the header of the next record
         }
       }
     }
 
-    if !self.line.starts_with('>') {
-      return make_error!("Expected character '>' at record start.");
-    }
-
-    let s = self.line[1..].trim();
-
-    let mut parts = s.splitn(2, ' ');
-    let name = parts.next().unwrap_or_default().to_owned();
-    let desc = parts.next().map(ToOwned::to_owned);
-
-    record.seq_name = name;
-    record.desc = desc;
-
-    loop {
-      self.line.clear();
-
-      let n_bytes = self.reader.read_line(&mut self.line)?;
-      if n_bytes == 0 {
-        record.index = self.index;
-        self.index += 1;
-        return Ok(());
-      }
-
-      let trimmed = self.line.trim();
-      if !trimmed.is_empty() {
-        self.line = trimmed.to_owned();
-        break;
-      }
-    }
-
-    if self.line.is_empty() || self.line.starts_with('>') {
-      record.index = self.index;
-      self.index += 1;
-      return Ok(());
-    }
-
-    let fragment = self
-      .line
-      .chars()
-      .map(|c| {
-        let c = c.to_ascii_uppercase();
-        if !self.alphabet.contains(c) {
-          make_error!("Character is not in the alphabet: '{c}'")
-        } else {
-          Ok(c)
-        }
-      })
-      .collect::<Result<Vec<char>, Report>>()?;
-
-    record.seq.extend(&fragment);
-
-    loop {
-      self.line.clear();
-      self.reader.read_line(&mut self.line)?;
-      self.line = self.line.trim().to_owned();
-      if self.line.is_empty() || self.line.starts_with('>') {
-        break;
-      }
-
-      let fragment = self
-        .line
-        .chars()
-        .map(|c| {
-          let c = c.to_ascii_uppercase();
-          if !self.alphabet.contains(c) {
-            make_error!("Character is not in the alphabet: '{c}'")
-          } else {
-            Ok(c)
-          }
-        })
-        .collect::<Result<Vec<char>, Report>>()?;
-
-      record.seq.extend(&fragment);
-    }
-
+    let header_line = self.line.trim();
+    let (name, desc) = header_line[1..]
+      .split_once(' ')
+      .unwrap_or_else(|| (&header_line[1..], ""));
+    record.seq_name = name.to_owned();
+    record.desc = if desc.is_empty() { None } else { Some(desc.to_owned()) };
     record.index = self.index;
     self.index += 1;
+
+    // Read sequence lines until the next header or EOF
+    self.line.clear();
+    while self.reader.read_line(&mut self.line)? > 0 {
+      let trimmed = self.line.trim();
+      self.n_lines += 1;
+      self.n_chars += trimmed.len();
+      if trimmed.starts_with('>') {
+        // We have reached the next record
+        break;
+      }
+
+      record.seq.reserve(trimmed.len());
+      for c in trimmed.chars() {
+        let uc = AsciiChar::from(c.to_ascii_uppercase());
+        if self.alphabet.contains(uc) {
+          record.seq.push(uc);
+        } else {
+          return make_error!(
+            "FASTA input is incorrect: character \"{c}\" is not in the alphabet. Expected characters: {}",
+            self.alphabet.chars().map(char::from).map(quote_single).join(", ")
+          )
+          .wrap_err_with(|| format!("When processing sequence #{}: \"{}\"", self.index, record.header()));
+        }
+      }
+
+      self.line.clear();
+    }
 
     Ok(())
   }
@@ -241,11 +231,11 @@ pub fn read_many_fasta_str(contents: impl AsRef<str>, alphabet: &Alphabet) -> Re
 
 // Writes sequences into given fasta file
 pub struct FastaWriter {
-  writer: Box<dyn std::io::Write>,
+  writer: Box<dyn Write>,
 }
 
 impl FastaWriter {
-  pub fn new(writer: Box<dyn std::io::Write>) -> Self {
+  pub fn new(writer: Box<dyn Write>) -> Self {
     Self { writer }
   }
 
@@ -253,12 +243,7 @@ impl FastaWriter {
     Ok(Self::new(create_file_or_stdout(filepath)?))
   }
 
-  pub fn write(
-    &mut self,
-    seq_name: impl AsRef<str>,
-    desc: &Option<String>,
-    seq: impl AsRef<str>,
-  ) -> Result<(), Report> {
+  pub fn write(&mut self, seq_name: impl AsRef<str>, desc: &Option<String>, seq: &Seq) -> Result<(), Report> {
     self.writer.write_all(b">")?;
     self.writer.write_all(seq_name.as_ref().as_bytes())?;
 
@@ -268,7 +253,7 @@ impl FastaWriter {
     }
 
     self.writer.write_all(b"\n")?;
-    self.writer.write_all(seq.as_ref().as_bytes())?;
+    self.writer.write_all(seq.as_ref())?;
     self.writer.write_all(b"\n")?;
     Ok(())
   }
@@ -283,7 +268,7 @@ pub fn write_one_fasta(
   filepath: impl AsRef<Path>,
   seq_name: impl AsRef<str>,
   desc: &Option<String>,
-  seq: impl AsRef<str>,
+  seq: &Seq,
 ) -> Result<(), Report> {
   let mut writer = FastaWriter::from_path(&filepath)?;
   writer.write(seq_name, desc, seq)
@@ -294,6 +279,7 @@ mod tests {
   use super::*;
   use crate::alphabet::alphabet::AlphabetName;
   use crate::o;
+  use crate::utils::error::report_to_string;
   use indoc::indoc;
   use lazy_static::lazy_static;
   use pretty_assertions::assert_eq;
@@ -312,8 +298,18 @@ mod tests {
     let mut record = FastaRecord::new();
     assert_eq!(
       reader.read(&mut record).unwrap_err().to_string(),
-      "Expected character '>' at record start."
+      "FASTA input is incorrectly formatted: expected at least one FASTA record starting with character '>', but none found"
     );
+  }
+
+  #[test]
+  fn test_fasta_reader_fail_on_unknown_char() {
+    let data = b">seq%1\nACGT%ACGT\n";
+    let mut reader = FastaReader::new(Box::new(Cursor::new(data)), &NUC_ALPHABET);
+    let mut record = FastaRecord::new();
+    let actual = report_to_string(&reader.read(&mut record).unwrap_err());
+    let expected = r#"When processing sequence #1: ">seq%1": FASTA input is incorrect: character "%" is not in the alphabet. Expected characters: '-', 'A', 'B', 'C', 'D', 'G', 'H', 'K', 'M', 'N', 'R', 'S', 'T', 'V', 'W', 'Y'"#;
+    assert_eq!(expected, actual);
   }
 
   #[test]
@@ -456,7 +452,7 @@ mod tests {
       FastaRecord {
         seq_name: o!("a"),
         desc: None,
-        seq: o!("ACGCTCGATC"),
+        seq: "ACGCTCGATC".into(),
         index: 0,
       }
     );
@@ -468,7 +464,7 @@ mod tests {
       FastaRecord {
         seq_name: o!("b"),
         desc: None,
-        seq: o!("CCGCGC"),
+        seq: "CCGCGC".into(),
         index: 1,
       }
     );
@@ -487,7 +483,7 @@ mod tests {
       FastaRecord {
         seq_name: o!("a"),
         desc: None,
-        seq: o!("ACGCTCGATC"),
+        seq: "ACGCTCGATC".into(),
         index: 0,
       }
     );
@@ -499,7 +495,7 @@ mod tests {
       FastaRecord {
         seq_name: o!("b"),
         desc: None,
-        seq: o!("CCGCGC"),
+        seq: "CCGCGC".into(),
         index: 1,
       }
     );
@@ -511,7 +507,7 @@ mod tests {
       FastaRecord {
         seq_name: o!("c"),
         desc: None,
-        seq: o!(""),
+        seq: "".into(),
         index: 2,
       }
     );
@@ -530,7 +526,7 @@ mod tests {
       FastaRecord {
         seq_name: o!("a"),
         desc: None,
-        seq: o!("ACGCTCGATC"),
+        seq: "ACGCTCGATC".into(),
         index: 0,
       }
     );
@@ -542,7 +538,7 @@ mod tests {
       FastaRecord {
         seq_name: o!("b"),
         desc: None,
-        seq: o!(""),
+        seq: "".into(),
         index: 1,
       }
     );
@@ -554,7 +550,7 @@ mod tests {
       FastaRecord {
         seq_name: o!("c"),
         desc: None,
-        seq: o!("CCGCGC"),
+        seq: "CCGCGC".into(),
         index: 2,
       }
     );
@@ -568,6 +564,8 @@ mod tests {
       ACGT
       >Identifier Description with spaces
       ACGT
+
+
     "#},
       &NUC_ALPHABET,
     )?;
@@ -576,13 +574,13 @@ mod tests {
       FastaRecord {
         seq_name: o!("Identifier"),
         desc: Some(o!("Description")),
-        seq: o!("ACGT"),
+        seq: "ACGT".into(),
         index: 0,
       },
       FastaRecord {
         seq_name: o!("Identifier"),
         desc: Some(o!("Description with spaces")),
-        seq: o!("ACGT"),
+        seq: "ACGT".into(),
         index: 1,
       },
     ];
@@ -618,43 +616,43 @@ mod tests {
       FastaRecord {
         seq_name: o!("FluBuster-001"),
         desc: None,
-        seq: o!("ACAGCCATGTATTG--"),
+        seq: "ACAGCCATGTATTG--".into(),
         index: 0,
       },
       FastaRecord {
         seq_name: o!("CommonCold-AB"),
         desc: None,
-        seq: o!("ACATCCCTGTA-TG--"),
+        seq: "ACATCCCTGTA-TG--".into(),
         index: 1,
       },
       FastaRecord {
         seq_name: o!("Ecoli/Joke/2024|XD"),
         desc: None,
-        seq: o!("ACATCGCCNNA--GAC"),
+        seq: "ACATCGCCNNA--GAC".into(),
         index: 2,
       },
       FastaRecord {
         seq_name: o!("Sniffles-B"),
         desc: None,
-        seq: o!("GCATCCCTGTA-NG--"),
+        seq: "GCATCCCTGTA-NG--".into(),
         index: 3,
       },
       FastaRecord {
         seq_name: o!("StrawberryYogurtCulture|🍓"),
         desc: None,
-        seq: o!("CCGGCCATGTATTG--"),
+        seq: "CCGGCCATGTATTG--".into(),
         index: 4,
       },
       FastaRecord {
-        seq_name: o!("SneezeC-19"),
-        desc: None,
-        seq: o!("CCGGCGATGTRTTG--"),
+        seq_name: o!(""),
+        desc: Some(o!("SneezeC-19")),
+        seq: "CCGGCGATGTRTTG--".into(),
         index: 5,
       },
       FastaRecord {
         seq_name: o!("MisindentedVirus|D-skew"),
         desc: None,
-        seq: o!("TCGGCCGTGTRTTG--"),
+        seq: "TCGGCCGTGTRTTG--".into(),
         index: 6,
       },
     ];
@@ -686,31 +684,31 @@ mod tests {
       FastaRecord {
         seq_name: o!("Prot/000|β-Napkinase"),
         desc: None,
-        seq: o!("MXDXXXTQ-B--"),
+        seq: "MXDXXXTQ-B--".into(),
         index: 0,
       },
       FastaRecord {
         seq_name: o!("Enzyme/2024|LaughzymeFactor"),
         desc: None,
-        seq: o!("AX*XB-TQVWR*"),
+        seq: "AX*XB-TQVWR*".into(),
         index: 1,
       },
       FastaRecord {
         seq_name: o!("😊-Gigglecatalyst"),
         desc: None,
-        seq: o!("MKXTQWX-B**"),
+        seq: "MKXTQWX-B**".into(),
         index: 2,
       },
       FastaRecord {
         seq_name: o!("CellFunSignal"),
         desc: None,
-        seq: o!("MQXQXXBQRW**"),
+        seq: "MQXQXXBQRW**".into(),
         index: 3,
       },
       FastaRecord {
         seq_name: o!("Pathway/042|Doodlease"),
         desc: None,
-        seq: o!("MXQ-*XTQWBQR"),
+        seq: "MXQ-*XTQWBQR".into(),
         index: 4,
       },
     ];
@@ -745,31 +743,31 @@ mod tests {
       FastaRecord {
         seq_name: o!("MixedCaseSeq"),
         desc: None,
-        seq: o!("ACAGCCATGTATTG--"),
+        seq: "ACAGCCATGTATTG--".into(),
         index: 0,
       },
       FastaRecord {
         seq_name: o!("LowercaseSeq"),
         desc: None,
-        seq: o!("ACAGCCATGTATTG--"),
+        seq: "ACAGCCATGTATTG--".into(),
         index: 1,
       },
       FastaRecord {
         seq_name: o!("UppercaseSeq"),
         desc: None,
-        seq: o!("ACAGCCATGTATTG--"),
+        seq: "ACAGCCATGTATTG--".into(),
         index: 2,
       },
       FastaRecord {
         seq_name: o!("MultilineSeq"),
         desc: None,
-        seq: o!("ACAGCCATGTATTG--"),
+        seq: "ACAGCCATGTATTG--".into(),
         index: 3,
       },
       FastaRecord {
         seq_name: o!("SkewedIndentSeq"),
         desc: None,
-        seq: o!("ACAGCCATGTATTGATTG--"),
+        seq: "ACAGCCATGTATTGATTG--".into(),
         index: 4,
       },
     ];

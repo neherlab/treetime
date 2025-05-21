@@ -31,9 +31,6 @@ bytes = { workspace = true }
 chrono = { workspace = true }
 chronoutil = { workspace = true }
 clap = { workspace = true }
-clap-verbosity-flag = { workspace = true }
-clap_complete = { workspace = true }
-clap_complete_fig = { workspace = true }
 color-eyre = { workspace = true }
 comfy-table = { workspace = true }
 crossbeam-queue = { workspace = true }
@@ -80,8 +77,22 @@ serde_yaml = { workspace = true }
 smart-default = { workspace = true }
 strum = { workspace = true }
 strum_macros = { workspace = true }
+tikv-jemallocator = { workspace = true, optional = true }
 time = { workspace = true }
 traversal = { workspace = true }
+
+[target.'cfg(all(target_arch = "x86_64", target_os = "linux", target_env = "gnu"))'.dependencies]
+tikv-jemallocator = { workspace = true }
+
+[target.'cfg(all(target_arch = "aarch64", target_os = "linux", target_env = "gnu"))'.dependencies]
+tikv-jemallocator = { workspace = true }
+
+[target.'cfg(all(target_arch = "x86_64", target_os = "linux", target_env = "musl"))'.dependencies]
+tikv-jemallocator = { workspace = true }
+
+[target.'cfg(all(target_arch = "aarch64", target_os = "linux", target_env = "musl"))'.dependencies]
+tikv-jemallocator = { workspace = true }
+
 
 [features]
 "png" = ["image", "plotters/bitmap_backend", "plotters/ttf"]

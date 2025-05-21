@@ -73,13 +73,13 @@ pub fn global_init() {
     ))
     .add_frame_filter(Box::new(|frames| {
       frames.retain(|frame| {
-        let should_show_name = frame.name.as_ref().map_or(false, |name| {
+        let should_show_name = frame.name.as_ref().is_some_and(|name| {
           !HIDDEN_CRATE_NAME_PREFIXES
             .iter()
             .any(|&prefix| name.starts_with(prefix) || name.starts_with(&format!("<{prefix}")))
         });
 
-        let should_show_file = !frame.filename.as_ref().map_or(false, |filename| {
+        let should_show_file = !frame.filename.as_ref().is_some_and(|filename| {
           HIDDEN_CRATE_PATH_PREFIXES
             .iter()
             .any(|&prefix| filename.starts_with(prefix))

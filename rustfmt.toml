@@ -1,10 +1,10 @@
-edition = "2021"
+edition = "2024"
+style_edition = "2024"
 
 tab_spaces = 2
 max_width = 120
-
 newline_style = "Unix"
-reorder_imports = true
-reorder_modules = true
+
+match_block_trailing_comma = true
 use_field_init_shorthand = true
 use_try_shorthand = true

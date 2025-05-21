@@ -3,7 +3,7 @@ use crate::graph::graph::Graph;
 use crate::graph::node::{GraphNode, GraphNodeKey, Node};
 use crate::io::file::create_file_or_stdout;
 use crate::io::file::open_file_or_stdin;
-use crate::io::json::{json_read, json_write, JsonPretty};
+use crate::io::json::{JsonPretty, json_read, json_write};
 use eyre::{Report, WrapErr};
 use maplit::{btreemap, btreeset};
 use parking_lot::RwLock;
@@ -22,7 +22,7 @@ where
 {
   let filepath = filepath.as_ref();
   auspice_read::<C, _, _, _>(open_file_or_stdin(&Some(filepath))?)
-    .wrap_err_with(|| format!("When reading Auspice v2 JSON file '{filepath:#?}'"))
+    .wrap_err_with(|| format!("When reading Auspice v2 JSON file '{}'", filepath.display()))
 }
 
 pub fn auspice_read_str<C, N, E, D>(auspice_string: impl AsRef<str>) -> Result<Graph<N, E, D>, Report>
@@ -57,7 +57,7 @@ where
   let filepath = filepath.as_ref();
   let mut f = create_file_or_stdout(filepath)?;
   auspice_write::<C, _, _, _>(&mut f, graph)
-    .wrap_err_with(|| format!("When reading Auspice v2 JSON file '{filepath:#?}'"))?;
+    .wrap_err_with(|| format!("When reading Auspice v2 JSON file '{}'", filepath.display()))?;
   writeln!(f)?;
   Ok(())
 }
@@ -458,7 +458,7 @@ pub struct AuspiceGenomeAnnotationCds {
   #[serde(default, skip_serializing_if = "Option::is_none")]
   pub description: Option<String>,
 
-  #[serde(rename = "type", default, skip_serializing_if = "Option::is_none")]
+  #[serde(default, skip_serializing_if = "Option::is_none")]
   pub strand: Option<String>,
 
   #[serde(flatten)]
@@ -565,7 +565,7 @@ pub struct AuspiceTree {
 
 pub type AuspiceTreeNodeIter<'a> = Iter<'a, AuspiceTreeNode>;
 
-pub type AuspiceTreeNodeIterFn<'a> = fn(&'a AuspiceTreeNode) -> AuspiceTreeNodeIter<'_>;
+pub type AuspiceTreeNodeIterFn<'a> = fn(&'a AuspiceTreeNode) -> AuspiceTreeNodeIter<'a>;
 
 impl AuspiceTree {
   /// Returns iterator for breadth-first tree traversal

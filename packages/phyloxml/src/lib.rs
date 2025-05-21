@@ -1,5 +1,5 @@
-use quick_xml::de::from_reader;
 use quick_xml::DeError;
+use quick_xml::de::from_reader;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
@@ -33,7 +33,7 @@ mod details {
     W: std::io::Write,
     T: Serialize,
   {
-    let s = to_string_with_root(root_tag, data).map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+    let s = to_string_with_root(root_tag, data).map_err(std::io::Error::other)?;
 
     let reader = xml::ParserConfig::new()
       .trim_whitespace(true)
@@ -58,7 +58,7 @@ mod details {
   where
     E: Into<Box<dyn std::error::Error + Send + Sync>>,
   {
-    std::io::Error::new(std::io::ErrorKind::Other, e)
+    std::io::Error::other(e)
   }
 }
 

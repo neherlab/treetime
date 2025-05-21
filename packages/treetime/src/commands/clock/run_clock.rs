@@ -6,14 +6,14 @@ use crate::commands::clock::clock_args::TreetimeClockArgs;
 use crate::commands::clock::clock_filter::clock_filter_inplace;
 use crate::commands::clock::clock_graph::ClockGraph;
 use crate::commands::clock::clock_regression::{
-  clock_regression_backward, clock_regression_forward, root_clock_model, ClockOptions,
+  ClockOptions, clock_regression_backward, clock_regression_forward, root_clock_model,
 };
 use crate::commands::clock::reroot::reroot_in_place;
 use crate::commands::clock::rtt::{gather_clock_regression_results, write_clock_regression_result_csv};
 use crate::io::dates_csv::read_dates;
 use crate::io::graphviz::graphviz_write_file;
-use crate::io::json::{json_write_file, JsonPretty};
-use crate::io::nwk::{nwk_read_file, nwk_write_file, NwkWriteOptions};
+use crate::io::json::{JsonPretty, json_write_file};
+use crate::io::nwk::{NwkWriteOptions, nwk_read_file, nwk_write_file};
 use eyre::{Report, WrapErr};
 
 use super::clock_model::ClockModel;

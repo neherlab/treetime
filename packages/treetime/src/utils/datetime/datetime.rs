@@ -1,7 +1,6 @@
 use chrono::{DateTime, FixedOffset, TimeZone, Utc};
 use eyre::{Report, WrapErr};
 use std::time::{Duration, UNIX_EPOCH};
-use time::util::days_in_year_month;
 use time::Month;
 
 pub fn date_now() -> DateTime<Utc> {
@@ -77,7 +76,6 @@ pub fn ymd(year: i32, month: u32, day: u32) -> DateTime<Utc> {
 }
 
 pub fn days_in_month(year: u32, month: u32) -> Result<u32, Report> {
-  let month_obj = Month::try_from(month as u8)?;
-  let days = days_in_year_month(year as i32, month_obj) as u32;
-  Ok(days)
+  let month = Month::try_from(month as u8).wrap_err_with(|| format!("Invalid month: {month}"))?;
+  Ok(month.length(year as i32) as u32)
 }

@@ -1,11 +1,11 @@
 use crate::alphabet::alphabet::AlphabetName;
 use crate::gtr::get_gtr::GtrModelName;
-use clap::{ArgEnum, Parser, ValueHint};
+use clap::{Parser, ValueEnum, ValueHint};
 use std::fmt::Debug;
 use std::path::PathBuf;
 
-#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, ArgEnum)]
-#[clap(rename = "kebab-case")]
+#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+#[value(rename_all = "kebab-case")]
 pub enum MethodAncestral {
   Joint,
   Marginal,
@@ -55,13 +55,13 @@ pub struct TreetimeAncestralArgs {
 
   /// Alphabet
   ///
-  #[clap(long, short = 'a', arg_enum)]
+  #[arg(long, short = 'a', value_enum)]
   pub alphabet: Option<AlphabetName>,
 
   /// GTR model to use
   ///
   /// '--gtr infer' will infer a model from the data. Alternatively, specify the model type. If the specified model requires additional options, use '--gtr-params' to specify those.
-  #[clap(long = "model", short = 'g', arg_enum, default_value_t = GtrModelName::Infer)]
+  #[clap(long = "model", short = 'g', value_enum, default_value_t = GtrModelName::Infer)]
   pub model_name: GtrModelName,
 
   /// GTR parameters for the model specified by the --gtr argument. The parameters should be feed as 'key=value' list of parameters.
@@ -73,7 +73,7 @@ pub struct TreetimeAncestralArgs {
   pub gtr_params: Vec<String>,
 
   /// Method used for reconstructing ancestral sequences
-  #[clap(long, arg_enum, default_value_t = MethodAncestral::default())]
+  #[clap(long, value_enum, default_value_t = MethodAncestral::default())]
   pub method_anc: MethodAncestral,
 
   /// Use dense representation

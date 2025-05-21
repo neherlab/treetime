@@ -2,10 +2,10 @@
 ///
 /// The Newton solver in `argmin` requires `Gradient` and `Hessian` traits to be implemented for the problem.
 use argmin::core::observers::{Observe, ObserverMode};
-use argmin::core::{Error, Executor, Gradient, Hessian, State, KV};
+use argmin::core::{Error, Executor, Gradient, Hessian, KV, State};
 use argmin::solver::newton::Newton;
 use ctor::ctor;
-use log::{info, LevelFilter};
+use log::{LevelFilter, info};
 use std::fmt::{Debug, Display};
 use treetime::utils::global_init::{global_init, setup_logger};
 

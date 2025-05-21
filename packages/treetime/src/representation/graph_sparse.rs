@@ -3,13 +3,15 @@ use crate::graph::edge::{GraphEdge, Weighted};
 use crate::graph::graph::Graph;
 use crate::graph::node::{GraphNode, Named};
 use crate::io::graphviz::{EdgeToGraphViz, NodeToGraphviz};
-use crate::io::nwk::{format_weight, EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteOptions};
+use crate::io::nwk::{EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteOptions, format_weight};
 use crate::o;
+use crate::representation::seq::Seq;
+use crate::representation::seq_char::AsciiChar;
+use crate::representation::state_set::StateSet;
 use crate::seq::composition::Composition;
 use crate::seq::find_char_ranges::find_letter_ranges;
 use crate::seq::indel::InDel;
 use crate::seq::mutation::Sub;
-use crate::seq::serde::{serde_deserialize_seq, serde_serialize_seq};
 use crate::utils::interval::range_union::range_union;
 use eyre::Report;
 use maplit::btreemap;
@@ -70,8 +72,7 @@ pub struct SparseSeqInfo {
   pub gaps: Vec<(usize, usize)>,
   pub non_char: Vec<(usize, usize)>, // any position that does not evolve according to the substitution model, i.e. gap or N
   pub composition: Composition,      // count of all characters in the region that is not `non_char`
-  #[serde(serialize_with = "serde_serialize_seq", deserialize_with = "serde_deserialize_seq")]
-  pub sequence: Vec<char>,
+  pub sequence: Seq,
   pub fitch: ParsimonySeqDis,
 }
 
@@ -82,7 +83,7 @@ pub struct SparseSeqNode {
 }
 
 impl SparseSeqNode {
-  pub fn new(seq: &[char], alphabet: &Alphabet) -> Result<Self, Report> {
+  pub fn new(seq: &Seq, alphabet: &Alphabet) -> Result<Self, Report> {
     // FIXME: the original code used `alphabet_gapN`:
     //
     // alphabet_gapN = ''.join(gtr.alphabet)+'-N'
@@ -92,16 +93,8 @@ impl SparseSeqNode {
     let variable = seq
       .iter()
       .enumerate()
-      .filter(|(_, &c)| alphabet.is_ambiguous(c))
-      .map(|(pos, &c)| {
-        (
-          pos,
-          ParsimonyVarPos {
-            dis: alphabet.get_profile(c).clone(),
-            state: None,
-          },
-        )
-      })
+      .filter(|&(_, c)| alphabet.is_ambiguous(*c))
+      .map(|(pos, &c)| (pos, alphabet.char_to_set(c)))
       .collect();
 
     let seq_dis = ParsimonySeqDis {
@@ -192,23 +185,11 @@ pub struct SparseSeqEdge {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct VarPos {
   pub dis: Array1<f64>, // array of floats of size 'alphabet'
-  pub state: char,
+  pub state: AsciiChar,
 }
 
 impl VarPos {
-  pub fn new(dis: Array1<f64>, state: char) -> Self {
-    Self { dis, state }
-  }
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct ParsimonyVarPos {
-  pub dis: Array1<f64>, // TODO: this could be an array of booleans of size 'alphabet'
-  pub state: Option<char>,
-}
-
-impl ParsimonyVarPos {
-  pub fn new(dis: Array1<f64>, state: Option<char>) -> Self {
+  pub fn new(dis: Array1<f64>, state: AsciiChar) -> Self {
     Self { dis, state }
   }
 }
@@ -227,7 +208,7 @@ pub struct SparseSeqDis {
   pub variable_indel: BTreeMap<(usize, usize), Deletion>,
 
   /// probability vector for the state of fixed positions based on information from children
-  pub fixed: BTreeMap<char, Array1<f64>>,
+  pub fixed: BTreeMap<AsciiChar, Array1<f64>>,
 
   pub fixed_counts: Composition,
 
@@ -241,7 +222,7 @@ impl Default for SparseSeqDis {
       variable: btreemap! {},
       variable_indel: btreemap! {},
       fixed: btreemap! {},
-      fixed_counts: Composition::new([], '-'),
+      fixed_counts: Composition::new(std::iter::empty::<u8>(), b'-'),
       log_lh: 0.0,
     }
   }
@@ -250,7 +231,7 @@ impl Default for SparseSeqDis {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ParsimonySeqDis {
   /// probability vector for each variable position collecting information from children
-  pub variable: BTreeMap<usize, ParsimonyVarPos>,
+  pub variable: BTreeMap<usize, StateSet>,
 
   pub variable_indel: BTreeMap<(usize, usize), Deletion>,
 

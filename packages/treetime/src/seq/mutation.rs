@@ -1,18 +1,56 @@
-use crate::make_error;
+use crate::alphabet::alphabet::Alphabet;
+use crate::representation::seq_char::AsciiChar;
 use crate::utils::error::to_eyre_error;
+use crate::{make_error, make_internal_error};
 use eyre::{Report, WrapErr};
+use getset::CopyGetters;
 use lazy_static::lazy_static;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::str::FromStr;
 
-#[derive(Clone, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, CopyGetters)]
+#[getset(get_copy = "pub")]
 pub struct Sub {
-  pub pos: usize,
-  pub qry: char,
+  pos: usize,
+  qry: AsciiChar,
   #[serde(rename = "ref")]
-  pub reff: char,
+  reff: AsciiChar,
+}
+
+impl Sub {
+  pub fn new<CR: Into<AsciiChar>, CQ: Into<AsciiChar>, P: Into<usize>>(
+    reff: CR,
+    pos: P,
+    qry: CQ,
+  ) -> Result<Self, Report> {
+    let pos = pos.into();
+    let qry = qry.into();
+    let reff = reff.into();
+
+    if qry == AsciiChar(b'-') || reff == AsciiChar(b'-') {
+      return make_internal_error!("Substitution cannot be from or to gap, but found: '{reff}{pos}{qry}'");
+    }
+
+    Ok(Self { pos, qry, reff })
+  }
+
+  pub fn check_determined(&self, alphabet: &Alphabet) -> Result<(), Report> {
+    if !alphabet.is_determined(self.qry()) || !alphabet.is_determined(self.reff()) {
+      make_internal_error!("Substitution is not determined: '{self}'")
+    } else {
+      Ok(())
+    }
+  }
+
+  pub fn check_canonical(&self, alphabet: &Alphabet) -> Result<(), Report> {
+    if !alphabet.is_canonical(self.qry()) || !alphabet.is_canonical(self.reff()) {
+      make_internal_error!("Substitution is not canonical: '{self}'")
+    } else {
+      Ok(())
+    }
+  }
 }
 
 impl FromStr for Sub {
@@ -29,11 +67,11 @@ impl FromStr for Sub {
     if let Some(captures) = RE.captures(s) {
       return match (captures.name("ref"), captures.name("pos"), captures.name("qry")) {
         (Some(reff), Some(pos), Some(qry)) => {
-          let reff = reff.as_str().chars().next().unwrap();
+          let reff = AsciiChar(reff.as_str().bytes().next().unwrap());
           let pos = parse_pos(pos.as_str()).wrap_err_with(|| format!("When parsing mutation position in '{s}'"))?;
-          let qry = qry.as_str().chars().next().unwrap();
+          let qry = AsciiChar(qry.as_str().bytes().next().unwrap());
           Ok(Self { pos, qry, reff })
-        }
+        },
         _ => make_error!("Unable to parse nucleotide mutation: '{s}'"),
       };
     }

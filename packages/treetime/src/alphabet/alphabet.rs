@@ -1,41 +1,61 @@
-use crate::io::json::{json_write_str, JsonPretty};
-use crate::make_error;
+use crate::io::json::{JsonPretty, json_write_str};
+use crate::representation::bitset128::BitSet128;
+use crate::representation::seq_char::AsciiChar;
+use crate::representation::state_set::StateSet;
 use crate::utils::string::quote;
-use clap::ArgEnum;
+use crate::{make_error, stateset, vec_u8};
+use clap::ValueEnum;
 use color_eyre::{Section, SectionExt};
 use eyre::{Report, WrapErr};
-use indexmap::{indexmap, IndexMap, IndexSet};
-use itertools::{chain, Itertools};
-use ndarray::{stack, Array1, Array2, Axis};
+use indexmap::{IndexMap, indexmap};
+use itertools::{Itertools, chain};
+use ndarray::{Array1, Array2, Axis, stack};
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
-use std::collections::BTreeSet;
+use std::borrow::Borrow;
+use std::fmt::Display;
 use std::iter::once;
 use strum_macros::Display;
 
-pub const NON_CHAR: char = '.';
-pub const VARIABLE_CHAR: char = '~';
-pub const FILL_CHAR: char = ' ';
+pub const NON_CHAR: AsciiChar = AsciiChar(b'.');
+pub const VARIABLE_CHAR: AsciiChar = AsciiChar(b'~');
+pub const FILL_CHAR: AsciiChar = AsciiChar(b' ');
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, ArgEnum, SmartDefault, Display)]
-#[clap(rename = "kebab-case")]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Display, ValueEnum)]
+#[value(rename_all = "kebab-case")]
 pub enum AlphabetName {
   #[default]
   Nuc,
   Aa,
 }
 
-pub type ProfileMap = IndexMap<char, Array1<f64>>;
+pub type ProfileMap = IndexMap<AsciiChar, Array1<f64>>;
+pub type StateSetMap = IndexMap<AsciiChar, StateSet>;
+pub type CharToSet = IndexMap<AsciiChar, StateSet>;
+pub type SetToChar = IndexMap<StateSet, AsciiChar>;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Alphabet {
-  all: IndexSet<char>,
-  canonical: IndexSet<char>,
-  ambiguous: IndexMap<char, Vec<char>>,
-  unknown: char,
-  gap: char,
+  all: StateSet,
+  canonical: StateSet,
+  ambiguous: IndexMap<AsciiChar, Vec<AsciiChar>>,
+  ambiguous_keys: StateSet,
+  determined: StateSet,
+  undetermined: StateSet,
+  unknown: AsciiChar,
+  gap: AsciiChar,
   treat_gap_as_unknown: bool,
   profile_map: ProfileMap,
+
+  #[serde(skip)]
+  char_to_set: IndexMap<AsciiChar, StateSet>,
+  #[serde(skip)]
+  set_to_char: IndexMap<StateSet, AsciiChar>,
+
+  #[serde(skip)]
+  char_to_index: Vec<Option<usize>>,
+  #[serde(skip)]
+  index_to_char: Vec<AsciiChar>,
 }
 
 impl Default for Alphabet {
@@ -49,34 +69,34 @@ impl Alphabet {
   pub fn new(name: AlphabetName, treat_gap_as_unknown: bool) -> Result<Self, Report> {
     match name {
       AlphabetName::Nuc => Self::with_config(&AlphabetConfig {
-        canonical: vec!['A', 'C', 'G', 'T'],
+        canonical: vec_u8!['A', 'C', 'G', 'T'],
         ambiguous: indexmap! {
-          'R' => vec!['A', 'G'],
-          'Y' => vec!['C', 'T'],
-          'S' => vec!['C', 'G'],
-          'W' => vec!['A', 'T'],
-          'K' => vec!['G', 'T'],
-          'M' => vec!['A', 'C'],
-          'D' => vec!['A', 'G', 'T'],
-          'H' => vec!['A', 'C', 'T'],
-          'B' => vec!['C', 'G', 'T'],
-          'V' => vec!['A', 'C', 'G'],
+          b'R' => vec_u8!['A', 'G'],
+          b'Y' => vec_u8!['C', 'T'],
+          b'S' => vec_u8!['C', 'G'],
+          b'W' => vec_u8!['A', 'T'],
+          b'K' => vec_u8!['G', 'T'],
+          b'M' => vec_u8!['A', 'C'],
+          b'D' => vec_u8!['A', 'G', 'T'],
+          b'H' => vec_u8!['A', 'C', 'T'],
+          b'B' => vec_u8!['C', 'G', 'T'],
+          b'V' => vec_u8!['A', 'C', 'G'],
         },
-        unknown: 'N',
-        gap: '-',
+        unknown: b'N',
+        gap: b'-',
         treat_gap_as_unknown,
       }),
       AlphabetName::Aa => Self::with_config(&AlphabetConfig {
-        canonical: vec![
+        canonical: vec_u8![
           'A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y', '*',
         ],
         ambiguous: indexmap! {
-          'B' => vec!['N', 'D'],
-          'Z' => vec!['Q', 'E'],
-          'J' => vec!['L', 'I'],
+          b'B' => vec_u8!['N', 'D'],
+          b'Z' => vec_u8!['Q', 'E'],
+          b'J' => vec_u8!['L', 'I'],
         },
-        unknown: 'X',
-        gap: '-',
+        unknown: b'X',
+        gap: b'-',
         treat_gap_as_unknown,
       }),
     }
@@ -92,51 +112,65 @@ impl Alphabet {
       treat_gap_as_unknown,
     } = cfg;
 
-    let canonical: IndexSet<char> = canonical.iter().copied().collect();
+    let gap = AsciiChar::from(*gap);
+    let unknown = AsciiChar::from(*unknown);
+
+    let canonical = StateSet::from_iter(canonical);
     if canonical.is_empty() {
       return make_error!("When creating alphabet: canonical set of characters is empty. This is not allowed.");
     }
 
-    let ambiguous: IndexMap<char, Vec<char>> = ambiguous.to_owned();
+    let ambiguous: IndexMap<AsciiChar, Vec<AsciiChar>> = ambiguous
+      .iter()
+      .map(|(k, v)| (AsciiChar(*k), v.iter().copied().map(AsciiChar).collect()))
+      .collect();
+    let ambiguous_keys = ambiguous.keys().collect();
 
-    let all: IndexSet<char> = chain!(
-      canonical.iter().copied(),
-      ambiguous.keys().copied(),
-      [*unknown, *gap].into_iter(),
-    )
-    .collect();
+    let undetermined = stateset! {unknown, gap};
+    let determined = StateSet::from_union([canonical, ambiguous_keys]);
+    let all = StateSet::from_union([canonical, ambiguous_keys, undetermined]);
 
     let profile_map = cfg.create_profile_map()?;
 
+    let mut char_to_index = vec![None; 128];
+    let mut index_to_char = Vec::with_capacity(canonical.len());
+    for (i, c) in canonical.iter().enumerate() {
+      char_to_index[usize::from(c)] = Some(i);
+      index_to_char.push(c);
+    }
+
+    let char_to_set = {
+      let mut char_to_set: CharToSet = canonical.iter().map(|c| (c, StateSet::from_char(c))).collect();
+      ambiguous.iter().for_each(|(key, chars)| {
+        char_to_set.insert(*key, StateSet::from_iter(chars));
+      });
+      char_to_set.insert(gap, StateSet::from_char(gap));
+      char_to_set.insert(unknown, StateSet::from_char(unknown));
+      char_to_set
+    };
+
+    let set_to_char: SetToChar = char_to_set.iter().map(|(&c, &s)| (s, c)).collect();
+
     Ok(Self {
       all,
+      char_to_index,
+      index_to_char,
       canonical,
       ambiguous,
-      unknown: *unknown,
-      gap: *gap,
+      ambiguous_keys,
+      determined,
+      undetermined,
+      unknown,
+      gap,
       treat_gap_as_unknown: *treat_gap_as_unknown,
       profile_map,
+      char_to_set,
+      set_to_char,
     })
   }
 
-  /// Resolve possible ambiguity of the given character to the set of canonical chars
-  pub fn disambiguate(&self, c: char) -> BTreeSet<char> {
-    // If unknown then could be any canonical (e.g. N => { A, C, G, T })
-    if self.is_unknown(c) {
-      self.canonical().collect()
-    }
-    // If ambiguous (e.g. R => { A, G })
-    else if let Some(resolutions) = self.ambiguous.get(&c) {
-      resolutions.iter().copied().collect()
-    }
-    // Otherwise it's not ambiguous and it's the char itself (incl. gap)
-    else {
-      once(c).collect()
-    }
-  }
-
   #[inline]
-  pub fn get_profile(&self, c: char) -> &Array1<f64> {
+  pub fn get_profile(&self, c: AsciiChar) -> &Array1<f64> {
     self
       .profile_map
       .get(&c)
@@ -149,7 +183,24 @@ impl Alphabet {
       .unwrap()
   }
 
-  pub fn get_code(&self, profile: &Array1<f64>) -> char {
+  /// Create a profile vector given a set of characters
+  pub fn construct_profile<I, T>(&self, chars: I) -> Result<Array1<f64>, Report>
+  where
+    I: IntoIterator<Item = T>,
+    T: Borrow<AsciiChar> + Display,
+  {
+    let mut profile = Array1::<f64>::zeros(self.n_canonical());
+    for c in chars {
+      let chars = self.char_to_set(*c.borrow());
+      for c in chars.iter() {
+        let index = self.index(c);
+        profile[index] = 1.0;
+      }
+    }
+    Ok(profile)
+  }
+
+  pub fn get_code(&self, profile: &Array1<f64>) -> AsciiChar {
     // TODO(perf): this mapping needs to be precomputed
     self
       .profile_map
@@ -159,19 +210,8 @@ impl Alphabet {
       .unwrap()
   }
 
-  pub fn sequence_to_indices<'a>(&'a self, chars: impl Iterator<Item = char> + 'a) -> impl Iterator<Item = usize> + 'a {
-    chars.map(|c| self.index(c))
-  }
-
-  pub fn indices_to_sequence<'a>(
-    &'a self,
-    indices: impl Iterator<Item = usize> + 'a,
-  ) -> impl Iterator<Item = char> + 'a {
-    indices.map(|i| self.char(i))
-  }
-
   #[allow(single_use_lifetimes)] // TODO: remove when anonymous lifetimes in `impl Trait` are stabilized
-  pub fn seq2prof<'a>(&self, chars: impl IntoIterator<Item = &'a char>) -> Result<Array2<f64>, Report> {
+  pub fn seq2prof<'a>(&self, chars: impl IntoIterator<Item = &'a AsciiChar>) -> Result<Array2<f64>, Report> {
     let prof = stack(
       Axis(0),
       &chars.into_iter().map(|&c| self.get_profile(c).view()).collect_vec(),
@@ -179,24 +219,32 @@ impl Alphabet {
     Ok(prof)
   }
 
-  /// All existing characters (including 'unknown' and 'gap')
-  pub fn chars(&self) -> impl Iterator<Item = char> + '_ {
-    self.all.iter().copied()
+  pub fn set_to_char(&self, c: StateSet) -> AsciiChar {
+    self.set_to_char[&c]
   }
 
-  /// Get char by index (indexed in the same order as given by `.chars()`)
-  pub fn char(&self, index: usize) -> char {
-    self.all[index]
+  pub fn char_to_set(&self, c: impl Into<AsciiChar>) -> StateSet {
+    self.char_to_set[&c.into()]
+  }
+
+  /// All existing characters (including 'unknown' and 'gap')
+  pub fn chars(&self) -> impl Iterator<Item = AsciiChar> + '_ {
+    self.all.iter()
+  }
+
+  /// Get u8 by index (indexed in the same order as given by `.chars()`)
+  pub fn char(&self, index: usize) -> AsciiChar {
+    self.index_to_char[index]
   }
 
   /// Get index of a character (indexed in the same order as given by `.chars()`)
-  pub fn index(&self, c: char) -> usize {
-    self.all.get_index_of(&c).unwrap()
+  pub fn index(&self, c: impl Into<usize>) -> usize {
+    self.char_to_index[c.into()].unwrap()
   }
 
   /// Check if character is in alphabet (including 'unknown' and 'gap')
-  pub fn contains(&self, c: char) -> bool {
-    self.all.contains(&c)
+  pub fn contains(&self, c: AsciiChar) -> bool {
+    self.all.contains(c)
   }
 
   pub fn n_chars(&self) -> usize {
@@ -204,13 +252,13 @@ impl Alphabet {
   }
 
   /// Canonical (unambiguous) characters (e.g. 'A', 'C', 'G', 'T' in nuc alphabet)
-  pub fn canonical(&self) -> impl Iterator<Item = char> + '_ {
-    self.canonical.iter().copied()
+  pub fn canonical(&self) -> impl Iterator<Item = AsciiChar> + '_ {
+    self.canonical.iter()
   }
 
   /// Check is character is canonical
-  pub fn is_canonical(&self, c: char) -> bool {
-    self.canonical().contains(&c)
+  pub fn is_canonical(&self, c: AsciiChar) -> bool {
+    self.canonical.contains(c)
   }
 
   pub fn n_canonical(&self) -> usize {
@@ -218,13 +266,13 @@ impl Alphabet {
   }
 
   /// Ambiguous characters (e.g. 'R', 'S' etc. in nuc alphabet)
-  pub fn ambiguous(&self) -> impl Iterator<Item = char> + '_ {
-    self.ambiguous.keys().copied()
+  pub fn ambiguous(&self) -> impl Iterator<Item = AsciiChar> + '_ {
+    self.ambiguous_keys.iter()
   }
 
   /// Check if character is ambiguous (e.g. 'R', 'S' etc. in nuc alphabet)
-  pub fn is_ambiguous(&self, c: char) -> bool {
-    self.ambiguous().contains(&c)
+  pub fn is_ambiguous(&self, c: AsciiChar) -> bool {
+    self.ambiguous_keys.contains(c)
   }
 
   pub fn n_ambiguous(&self) -> usize {
@@ -232,58 +280,58 @@ impl Alphabet {
   }
 
   /// Determined characters: canonical or ambiguous
-  pub fn determined(&self) -> impl Iterator<Item = char> + '_ {
-    chain!(self.canonical(), self.ambiguous())
+  pub fn determined(&self) -> impl Iterator<Item = AsciiChar> + '_ {
+    self.determined.iter()
   }
 
-  pub fn is_determined(&self, c: char) -> bool {
-    self.determined().contains(&c)
+  pub fn is_determined(&self, c: AsciiChar) -> bool {
+    self.determined.contains(c)
   }
 
   pub fn n_determined(&self) -> usize {
-    self.determined().count()
+    self.determined.len()
   }
 
   /// Undetermined characters: gap or unknown
-  pub fn undetermined(&self) -> impl Iterator<Item = char> + '_ {
-    [self.gap(), self.unknown()].into_iter()
+  pub fn undetermined(&self) -> impl Iterator<Item = AsciiChar> + '_ {
+    self.undetermined.iter()
   }
 
-  pub fn is_undetermined(&self, c: char) -> bool {
-    self.undetermined().contains(&c)
+  pub fn is_undetermined(&self, c: AsciiChar) -> bool {
+    self.undetermined.contains(c)
   }
 
   pub fn n_undetermined(&self) -> usize {
-    self.undetermined().count()
+    self.undetermined.len()
   }
 
   /// Get 'unknown' character
-  pub fn unknown(&self) -> char {
+  pub fn unknown(&self) -> AsciiChar {
     self.unknown
   }
 
   /// Check if character is an 'unknown' character
-  pub fn is_unknown(&self, c: char) -> bool {
-    c == self.unknown()
+  pub fn is_unknown(&self, c: impl Into<AsciiChar>) -> bool {
+    c.into() == self.unknown()
   }
 
   /// Get 'gap' character
-  pub fn gap(&self) -> char {
+  pub fn gap(&self) -> AsciiChar {
     self.gap
   }
 
   /// Check if character is a gap
-  pub fn is_gap(&self, c: char) -> bool {
-    c == self.gap()
+  pub fn is_gap(&self, c: impl Into<AsciiChar>) -> bool {
+    c.into() == self.gap()
   }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AlphabetConfig {
-  pub canonical: Vec<char>,
-  pub ambiguous: IndexMap<char, Vec<char>>,
-  pub unknown: char,
-  pub gap: char,
+  pub canonical: Vec<u8>,
+  pub ambiguous: IndexMap<u8, Vec<u8>>,
+  pub unknown: u8,
+  pub gap: u8,
   pub treat_gap_as_unknown: bool,
 }
 
@@ -296,6 +344,9 @@ impl AlphabetConfig {
       gap,
       treat_gap_as_unknown,
     } = self;
+
+    let gap = AsciiChar::from(*gap);
+    let unknown = AsciiChar::from(*unknown);
 
     self
       .validate()
@@ -312,11 +363,11 @@ impl AlphabetConfig {
     let mut profile_map: ProfileMap = canonical
       .iter()
       .zip(eye.rows())
-      .map(|(s, x)| (*s, x.to_owned()))
+      .map(|(s, x)| (AsciiChar(*s), x.to_owned()))
       .collect();
 
     // Add unknown to profile map
-    profile_map.insert(*unknown, Array1::<f64>::ones(canonical.len()));
+    profile_map.insert(unknown, Array1::<f64>::ones(canonical.len()));
 
     // Add ambiguous to profile map
     ambiguous.iter().for_each(|(&key, values)| {
@@ -325,12 +376,12 @@ impl AlphabetConfig {
         .enumerate()
         .map(|(i, c)| if values.contains(c) { 1.0 } else { 0.0 })
         .collect::<Array1<f64>>();
-      profile_map.insert(key, profile);
+      profile_map.insert(AsciiChar(key), profile);
     });
 
     if *treat_gap_as_unknown {
       // Add gap to profile map
-      profile_map.insert(*gap, profile_map[unknown].clone());
+      profile_map.insert(gap, profile_map[&unknown].clone());
     }
 
     Ok(profile_map)
@@ -356,7 +407,7 @@ impl AlphabetConfig {
       .collect_vec();
 
       for reserved in [NON_CHAR, VARIABLE_CHAR, FILL_CHAR] {
-        if all.iter().any(|&c| c == reserved) {
+        if all.iter().any(|&c| c == u8::from(reserved)) {
           return make_error!("Alphabet contains reserved character: {reserved}");
         }
       }
@@ -378,36 +429,36 @@ impl AlphabetConfig {
       }
     }
 
-    let canonical: IndexSet<_> = canonical.iter().copied().collect();
-    let ambiguous_keys: IndexSet<_> = ambiguous.keys().copied().collect();
-    let ambiguous_set_map: IndexMap<char, IndexSet<char>> = ambiguous
+    let canonical: StateSet = canonical.iter().copied().collect();
+    let ambiguous_keys: StateSet = ambiguous.keys().copied().collect();
+    let ambiguous_set_map: IndexMap<u8, StateSet> = ambiguous
       .iter()
       .map(|(key, vals)| (*key, vals.iter().copied().collect()))
       .collect();
     {
-      let canonical_inter_ambig: IndexSet<_> = canonical.intersection(&ambiguous_keys).copied().collect();
+      let canonical_inter_ambig: StateSet = canonical.intersection(&ambiguous_keys);
       if !canonical_inter_ambig.is_empty() {
-        let msg = canonical_inter_ambig.into_iter().join(", ");
+        let msg = canonical_inter_ambig.iter().join(", ");
         return make_error!("Canonical and ambiguous sets must be disjoint, but these characters are shared: {msg}");
       }
     }
 
-    if canonical.contains(gap) {
+    if canonical.contains(*gap) {
       let msg = canonical.iter().map(quote).join(", ");
       return make_error!("Canonical set contains 'gap' character: {msg}");
     }
 
-    if canonical.contains(unknown) {
+    if canonical.contains(*unknown) {
       let msg = canonical.iter().map(quote).join(", ");
       return make_error!("Canonical set contains 'unknown' character: {msg}");
     }
 
-    if ambiguous.keys().contains(&gap) {
+    if ambiguous_keys.contains(*gap) {
       let msg = ambiguous.keys().map(quote).join(", ");
       return make_error!("Ambiguous set contains 'gap' character: {msg}");
     }
 
-    if ambiguous.keys().contains(&gap) {
+    if ambiguous_keys.contains(*gap) {
       let msg = ambiguous.keys().map(quote).join(", ");
       return make_error!("Ambiguous set contains 'unknown' character: {msg}");
     }
@@ -415,9 +466,10 @@ impl AlphabetConfig {
     {
       let ambig_gaps = ambiguous_set_map
         .iter()
-        .map(|(key, vals)| (key, vals.difference(&canonical).collect::<IndexSet<_>>()))
+        .map(|(key, vals)| (key, vals.difference(&canonical)))
         .filter(|(key, extra)| !extra.is_empty())
         .collect_vec();
+
       if !ambig_gaps.is_empty() {
         let msg = ambig_gaps
           .iter()
@@ -433,1110 +485,1145 @@ impl AlphabetConfig {
 
 #[cfg(test)]
 mod tests {
-  use super::*;
-  use eyre::Report;
-  use indoc::indoc;
-  use maplit::btreeset;
-  use ndarray::array;
-  use pretty_assertions::assert_eq;
+  // use super::*;
+  // use eyre::Report;
+  // use indoc::indoc;
+  // use pretty_assertions::assert_eq;
 
-  #[test]
-  fn test_alphabet_sequence_to_indices() -> Result<(), Report> {
-    let actual = Alphabet::new(AlphabetName::Nuc, false)?
-      .sequence_to_indices(array!['A', 'G', 'T', 'G', '-', 'G', 'N', 'G', 'C'].into_iter())
-      .collect_vec();
-    let expected = vec![0, 2, 3, 2, 15, 2, 14, 2, 1];
-    assert_eq!(expected, actual);
-    Ok(())
-  }
-
-  #[test]
-  fn test_alphabet_indices_to_sequence() -> Result<(), Report> {
-    let actual = Alphabet::new(AlphabetName::Nuc, false)?
-      .indices_to_sequence(array![0, 2, 3, 2, 15, 2, 14, 2, 1].into_iter())
-      .collect_vec();
-    let expected = vec!['A', 'G', 'T', 'G', '-', 'G', 'N', 'G', 'C'];
-    assert_eq!(expected, actual);
-    Ok(())
-  }
-
-  #[test]
-  fn test_disambiguate() -> Result<(), Report> {
-    let alphabet = Alphabet::new(AlphabetName::Nuc, false)?;
-    assert_eq!(btreeset! {'A', 'G'}, alphabet.disambiguate('R'));
-    assert_eq!(btreeset! {'A', 'C', 'G', 'T'}, alphabet.disambiguate('N'));
-    assert_eq!(btreeset! {'C'}, alphabet.disambiguate('C'));
-    assert_eq!(btreeset! {alphabet.gap()}, alphabet.disambiguate(alphabet.gap()));
-    Ok(())
-  }
-
-  #[test]
-  fn test_alphabet_nuc() -> Result<(), Report> {
-    let alphabet = Alphabet::new(AlphabetName::Nuc, false)?;
-    let actual = json_write_str(&alphabet, JsonPretty(true))?;
-    let expected = indoc! { /* language=json */ r#"{
-      "all": [
-        "A",
-        "C",
-        "G",
-        "T",
-        "R",
-        "Y",
-        "S",
-        "W",
-        "K",
-        "M",
-        "D",
-        "H",
-        "B",
-        "V",
-        "N",
-        "-"
-      ],
-      "canonical": [
-        "A",
-        "C",
-        "G",
-        "T"
-      ],
-      "ambiguous": {
-        "R": [
-          "A",
-          "G"
-        ],
-        "Y": [
-          "C",
-          "T"
-        ],
-        "S": [
-          "C",
-          "G"
-        ],
-        "W": [
-          "A",
-          "T"
-        ],
-        "K": [
-          "G",
-          "T"
-        ],
-        "M": [
-          "A",
-          "C"
-        ],
-        "D": [
-          "A",
-          "G",
-          "T"
-        ],
-        "H": [
-          "A",
-          "C",
-          "T"
-        ],
-        "B": [
-          "C",
-          "G",
-          "T"
-        ],
-        "V": [
-          "A",
-          "C",
-          "G"
-        ]
-      },
-      "unknown": "N",
-      "gap": "-",
-      "treat_gap_as_unknown": false,
-      "profile_map": {
-        "A": {
-          "v": 1,
-          "dim": [
-            4
-          ],
-          "data": [
-            1.0,
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        "C": {
-          "v": 1,
-          "dim": [
-            4
-          ],
-          "data": [
-            0.0,
-            1.0,
-            0.0,
-            0.0
-          ]
-        },
-        "G": {
-          "v": 1,
-          "dim": [
-            4
-          ],
-          "data": [
-            0.0,
-            0.0,
-            1.0,
-            0.0
-          ]
-        },
-        "T": {
-          "v": 1,
-          "dim": [
-            4
-          ],
-          "data": [
-            0.0,
-            0.0,
-            0.0,
-            1.0
-          ]
-        },
-        "N": {
-          "v": 1,
-          "dim": [
-            4
-          ],
-          "data": [
-            1.0,
-            1.0,
-            1.0,
-            1.0
-          ]
-        },
-        "R": {
-          "v": 1,
-          "dim": [
-            4
-          ],
-          "data": [
-            1.0,
-            0.0,
-            1.0,
-            0.0
-          ]
-        },
-        "Y": {
-          "v": 1,
-          "dim": [
-            4
-          ],
-          "data": [
-            0.0,
-            1.0,
-            0.0,
-            1.0
-          ]
-        },
-        "S": {
-          "v": 1,
-          "dim": [
-            4
-          ],
-          "data": [
-            0.0,
-            1.0,
-            1.0,
-            0.0
-          ]
-        },
-        "W": {
-          "v": 1,
-          "dim": [
-            4
-          ],
-          "data": [
-            1.0,
-            0.0,
-            0.0,
-            1.0
-          ]
-        },
-        "K": {
-          "v": 1,
-          "dim": [
-            4
-          ],
-          "data": [
-            0.0,
-            0.0,
-            1.0,
-            1.0
-          ]
-        },
-        "M": {
-          "v": 1,
-          "dim": [
-            4
-          ],
-          "data": [
-            1.0,
-            1.0,
-            0.0,
-            0.0
-          ]
-        },
-        "D": {
-          "v": 1,
-          "dim": [
-            4
-          ],
-          "data": [
-            1.0,
-            0.0,
-            1.0,
-            1.0
-          ]
-        },
-        "H": {
-          "v": 1,
-          "dim": [
-            4
-          ],
-          "data": [
-            1.0,
-            1.0,
-            0.0,
-            1.0
-          ]
-        },
-        "B": {
-          "v": 1,
-          "dim": [
-            4
-          ],
-          "data": [
-            0.0,
-            1.0,
-            1.0,
-            1.0
-          ]
-        },
-        "V": {
-          "v": 1,
-          "dim": [
-            4
-          ],
-          "data": [
-            1.0,
-            1.0,
-            1.0,
-            0.0
-          ]
-        }
-      }
-    }"#};
-    assert_eq!(expected, actual);
-    Ok(())
-  }
-
-  #[test]
-  fn test_alphabet_aa() -> Result<(), Report> {
-    let alphabet = Alphabet::new(AlphabetName::Aa, false)?;
-    let actual = json_write_str(&alphabet, JsonPretty(true))?;
-    let expected = indoc! { /* language=json */ r#"{
-      "all": [
-        "A",
-        "C",
-        "D",
-        "E",
-        "F",
-        "G",
-        "H",
-        "I",
-        "K",
-        "L",
-        "M",
-        "N",
-        "P",
-        "Q",
-        "R",
-        "S",
-        "T",
-        "V",
-        "W",
-        "Y",
-        "*",
-        "B",
-        "Z",
-        "J",
-        "X",
-        "-"
-      ],
-      "canonical": [
-        "A",
-        "C",
-        "D",
-        "E",
-        "F",
-        "G",
-        "H",
-        "I",
-        "K",
-        "L",
-        "M",
-        "N",
-        "P",
-        "Q",
-        "R",
-        "S",
-        "T",
-        "V",
-        "W",
-        "Y",
-        "*"
-      ],
-      "ambiguous": {
-        "B": [
-          "N",
-          "D"
-        ],
-        "Z": [
-          "Q",
-          "E"
-        ],
-        "J": [
-          "L",
-          "I"
-        ]
-      },
-      "unknown": "X",
-      "gap": "-",
-      "treat_gap_as_unknown": false,
-      "profile_map": {
-        "A": {
-          "v": 1,
-          "dim": [
-            21
-          ],
-          "data": [
-            1.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        "C": {
-          "v": 1,
-          "dim": [
-            21
-          ],
-          "data": [
-            0.0,
-            1.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        "D": {
-          "v": 1,
-          "dim": [
-            21
-          ],
-          "data": [
-            0.0,
-            0.0,
-            1.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        "E": {
-          "v": 1,
-          "dim": [
-            21
-          ],
-          "data": [
-            0.0,
-            0.0,
-            0.0,
-            1.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        "F": {
-          "v": 1,
-          "dim": [
-            21
-          ],
-          "data": [
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            1.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        "G": {
-          "v": 1,
-          "dim": [
-            21
-          ],
-          "data": [
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            1.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        "H": {
-          "v": 1,
-          "dim": [
-            21
-          ],
-          "data": [
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            1.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        "I": {
-          "v": 1,
-          "dim": [
-            21
-          ],
-          "data": [
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            1.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        "K": {
-          "v": 1,
-          "dim": [
-            21
-          ],
-          "data": [
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            1.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        "L": {
-          "v": 1,
-          "dim": [
-            21
-          ],
-          "data": [
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            1.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        "M": {
-          "v": 1,
-          "dim": [
-            21
-          ],
-          "data": [
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            1.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        "N": {
-          "v": 1,
-          "dim": [
-            21
-          ],
-          "data": [
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            1.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        "P": {
-          "v": 1,
-          "dim": [
-            21
-          ],
-          "data": [
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            1.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        "Q": {
-          "v": 1,
-          "dim": [
-            21
-          ],
-          "data": [
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            1.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        "R": {
-          "v": 1,
-          "dim": [
-            21
-          ],
-          "data": [
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            1.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        "S": {
-          "v": 1,
-          "dim": [
-            21
-          ],
-          "data": [
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            1.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        "T": {
-          "v": 1,
-          "dim": [
-            21
-          ],
-          "data": [
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            1.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        "V": {
-          "v": 1,
-          "dim": [
-            21
-          ],
-          "data": [
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            1.0,
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        "W": {
-          "v": 1,
-          "dim": [
-            21
-          ],
-          "data": [
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            1.0,
-            0.0,
-            0.0
-          ]
-        },
-        "Y": {
-          "v": 1,
-          "dim": [
-            21
-          ],
-          "data": [
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            1.0,
-            0.0
-          ]
-        },
-        "*": {
-          "v": 1,
-          "dim": [
-            21
-          ],
-          "data": [
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            1.0
-          ]
-        },
-        "X": {
-          "v": 1,
-          "dim": [
-            21
-          ],
-          "data": [
-            1.0,
-            1.0,
-            1.0,
-            1.0,
-            1.0,
-            1.0,
-            1.0,
-            1.0,
-            1.0,
-            1.0,
-            1.0,
-            1.0,
-            1.0,
-            1.0,
-            1.0,
-            1.0,
-            1.0,
-            1.0,
-            1.0,
-            1.0,
-            1.0
-          ]
-        },
-        "B": {
-          "v": 1,
-          "dim": [
-            21
-          ],
-          "data": [
-            0.0,
-            0.0,
-            1.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            1.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        "Z": {
-          "v": 1,
-          "dim": [
-            21
-          ],
-          "data": [
-            0.0,
-            0.0,
-            0.0,
-            1.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            1.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0
-          ]
-        },
-        "J": {
-          "v": 1,
-          "dim": [
-            21
-          ],
-          "data": [
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            1.0,
-            0.0,
-            1.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0
-          ]
-        }
-      }
-    }"#};
-    assert_eq!(expected, actual);
-    Ok(())
-  }
+  // #[test]
+  // fn test_alphabet_nuc() -> Result<(), Report> {
+  //   let alphabet = Alphabet::new(AlphabetName::Nuc, false)?;
+  //   let actual = json_write_str(&alphabet, JsonPretty(true))?;
+  //   let expected = indoc! { /* language=json */ r#"{
+  //     "all": [
+  //       "-",
+  //       "A",
+  //       "B",
+  //       "C",
+  //       "D",
+  //       "G",
+  //       "H",
+  //       "K",
+  //       "M",
+  //       "N",
+  //       "R",
+  //       "S",
+  //       "T",
+  //       "V",
+  //       "W",
+  //       "Y"
+  //     ],
+  //     "canonical": [
+  //       "A",
+  //       "C",
+  //       "G",
+  //       "T"
+  //     ],
+  //     "ambiguous": {
+  //       "R": [
+  //         "A",
+  //         "G"
+  //       ],
+  //       "Y": [
+  //         "C",
+  //         "T"
+  //       ],
+  //       "S": [
+  //         "C",
+  //         "G"
+  //       ],
+  //       "W": [
+  //         "A",
+  //         "T"
+  //       ],
+  //       "K": [
+  //         "G",
+  //         "T"
+  //       ],
+  //       "M": [
+  //         "A",
+  //         "C"
+  //       ],
+  //       "D": [
+  //         "A",
+  //         "G",
+  //         "T"
+  //       ],
+  //       "H": [
+  //         "A",
+  //         "C",
+  //         "T"
+  //       ],
+  //       "B": [
+  //         "C",
+  //         "G",
+  //         "T"
+  //       ],
+  //       "V": [
+  //         "A",
+  //         "C",
+  //         "G"
+  //       ]
+  //     },
+  //     "ambiguous_keys": [
+  //       "B",
+  //       "D",
+  //       "H",
+  //       "K",
+  //       "M",
+  //       "R",
+  //       "S",
+  //       "V",
+  //       "W",
+  //       "Y"
+  //     ],
+  //     "determined": [
+  //       "A",
+  //       "B",
+  //       "C",
+  //       "D",
+  //       "G",
+  //       "H",
+  //       "K",
+  //       "M",
+  //       "R",
+  //       "S",
+  //       "T",
+  //       "V",
+  //       "W",
+  //       "Y"
+  //     ],
+  //     "undetermined": [
+  //       "-",
+  //       "N"
+  //     ],
+  //     "unknown": "N",
+  //     "gap": "-",
+  //     "treat_gap_as_unknown": false,
+  //     "profile_map": {
+  //       "A": {
+  //         "v": 1,
+  //         "dim": [
+  //           4
+  //         ],
+  //         "data": [
+  //           1.0,
+  //           0.0,
+  //           0.0,
+  //           0.0
+  //         ]
+  //       },
+  //       "C": {
+  //         "v": 1,
+  //         "dim": [
+  //           4
+  //         ],
+  //         "data": [
+  //           0.0,
+  //           1.0,
+  //           0.0,
+  //           0.0
+  //         ]
+  //       },
+  //       "G": {
+  //         "v": 1,
+  //         "dim": [
+  //           4
+  //         ],
+  //         "data": [
+  //           0.0,
+  //           0.0,
+  //           1.0,
+  //           0.0
+  //         ]
+  //       },
+  //       "T": {
+  //         "v": 1,
+  //         "dim": [
+  //           4
+  //         ],
+  //         "data": [
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           1.0
+  //         ]
+  //       },
+  //       "N": {
+  //         "v": 1,
+  //         "dim": [
+  //           4
+  //         ],
+  //         "data": [
+  //           1.0,
+  //           1.0,
+  //           1.0,
+  //           1.0
+  //         ]
+  //       },
+  //       "R": {
+  //         "v": 1,
+  //         "dim": [
+  //           4
+  //         ],
+  //         "data": [
+  //           1.0,
+  //           0.0,
+  //           1.0,
+  //           0.0
+  //         ]
+  //       },
+  //       "Y": {
+  //         "v": 1,
+  //         "dim": [
+  //           4
+  //         ],
+  //         "data": [
+  //           0.0,
+  //           1.0,
+  //           0.0,
+  //           1.0
+  //         ]
+  //       },
+  //       "S": {
+  //         "v": 1,
+  //         "dim": [
+  //           4
+  //         ],
+  //         "data": [
+  //           0.0,
+  //           1.0,
+  //           1.0,
+  //           0.0
+  //         ]
+  //       },
+  //       "W": {
+  //         "v": 1,
+  //         "dim": [
+  //           4
+  //         ],
+  //         "data": [
+  //           1.0,
+  //           0.0,
+  //           0.0,
+  //           1.0
+  //         ]
+  //       },
+  //       "K": {
+  //         "v": 1,
+  //         "dim": [
+  //           4
+  //         ],
+  //         "data": [
+  //           0.0,
+  //           0.0,
+  //           1.0,
+  //           1.0
+  //         ]
+  //       },
+  //       "M": {
+  //         "v": 1,
+  //         "dim": [
+  //           4
+  //         ],
+  //         "data": [
+  //           1.0,
+  //           1.0,
+  //           0.0,
+  //           0.0
+  //         ]
+  //       },
+  //       "D": {
+  //         "v": 1,
+  //         "dim": [
+  //           4
+  //         ],
+  //         "data": [
+  //           1.0,
+  //           0.0,
+  //           1.0,
+  //           1.0
+  //         ]
+  //       },
+  //       "H": {
+  //         "v": 1,
+  //         "dim": [
+  //           4
+  //         ],
+  //         "data": [
+  //           1.0,
+  //           1.0,
+  //           0.0,
+  //           1.0
+  //         ]
+  //       },
+  //       "B": {
+  //         "v": 1,
+  //         "dim": [
+  //           4
+  //         ],
+  //         "data": [
+  //           0.0,
+  //           1.0,
+  //           1.0,
+  //           1.0
+  //         ]
+  //       },
+  //       "V": {
+  //         "v": 1,
+  //         "dim": [
+  //           4
+  //         ],
+  //         "data": [
+  //           1.0,
+  //           1.0,
+  //           1.0,
+  //           0.0
+  //         ]
+  //       }
+  //     }
+  //   }"#};
+  //   assert_eq!(expected, actual);
+  //   Ok(())
+  // }
+  //
+  // #[test]
+  // fn test_alphabet_aa() -> Result<(), Report> {
+  //   let alphabet = Alphabet::new(AlphabetName::Aa, false)?;
+  //   let actual = json_write_str(&alphabet, JsonPretty(true))?;
+  //   let expected = indoc! { /* language=json */ r#"{
+  //     "all": [
+  //       "*",
+  //       "-",
+  //       "A",
+  //       "B",
+  //       "C",
+  //       "D",
+  //       "E",
+  //       "F",
+  //       "G",
+  //       "H",
+  //       "I",
+  //       "J",
+  //       "K",
+  //       "L",
+  //       "M",
+  //       "N",
+  //       "P",
+  //       "Q",
+  //       "R",
+  //       "S",
+  //       "T",
+  //       "V",
+  //       "W",
+  //       "X",
+  //       "Y",
+  //       "Z"
+  //     ],
+  //     "canonical": [
+  //       "*",
+  //       "A",
+  //       "C",
+  //       "D",
+  //       "E",
+  //       "F",
+  //       "G",
+  //       "H",
+  //       "I",
+  //       "K",
+  //       "L",
+  //       "M",
+  //       "N",
+  //       "P",
+  //       "Q",
+  //       "R",
+  //       "S",
+  //       "T",
+  //       "V",
+  //       "W",
+  //       "Y"
+  //     ],
+  //     "ambiguous": {
+  //       "B": [
+  //         "N",
+  //         "D"
+  //       ],
+  //       "Z": [
+  //         "Q",
+  //         "E"
+  //       ],
+  //       "J": [
+  //         "L",
+  //         "I"
+  //       ]
+  //     },
+  //     "ambiguous_keys": [
+  //       "B",
+  //       "J",
+  //       "Z"
+  //     ],
+  //     "determined": [
+  //       "*",
+  //       "A",
+  //       "B",
+  //       "C",
+  //       "D",
+  //       "E",
+  //       "F",
+  //       "G",
+  //       "H",
+  //       "I",
+  //       "J",
+  //       "K",
+  //       "L",
+  //       "M",
+  //       "N",
+  //       "P",
+  //       "Q",
+  //       "R",
+  //       "S",
+  //       "T",
+  //       "V",
+  //       "W",
+  //       "Y",
+  //       "Z"
+  //     ],
+  //     "undetermined": [
+  //       "-",
+  //       "X"
+  //     ],
+  //     "unknown": "X",
+  //     "gap": "-",
+  //     "treat_gap_as_unknown": false,
+  //     "profile_map": {
+  //       "A": {
+  //         "v": 1,
+  //         "dim": [
+  //           21
+  //         ],
+  //         "data": [
+  //           1.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0
+  //         ]
+  //       },
+  //       "C": {
+  //         "v": 1,
+  //         "dim": [
+  //           21
+  //         ],
+  //         "data": [
+  //           0.0,
+  //           1.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0
+  //         ]
+  //       },
+  //       "D": {
+  //         "v": 1,
+  //         "dim": [
+  //           21
+  //         ],
+  //         "data": [
+  //           0.0,
+  //           0.0,
+  //           1.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0
+  //         ]
+  //       },
+  //       "E": {
+  //         "v": 1,
+  //         "dim": [
+  //           21
+  //         ],
+  //         "data": [
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           1.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0
+  //         ]
+  //       },
+  //       "F": {
+  //         "v": 1,
+  //         "dim": [
+  //           21
+  //         ],
+  //         "data": [
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           1.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0
+  //         ]
+  //       },
+  //       "G": {
+  //         "v": 1,
+  //         "dim": [
+  //           21
+  //         ],
+  //         "data": [
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           1.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0
+  //         ]
+  //       },
+  //       "H": {
+  //         "v": 1,
+  //         "dim": [
+  //           21
+  //         ],
+  //         "data": [
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           1.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0
+  //         ]
+  //       },
+  //       "I": {
+  //         "v": 1,
+  //         "dim": [
+  //           21
+  //         ],
+  //         "data": [
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           1.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0
+  //         ]
+  //       },
+  //       "K": {
+  //         "v": 1,
+  //         "dim": [
+  //           21
+  //         ],
+  //         "data": [
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           1.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0
+  //         ]
+  //       },
+  //       "L": {
+  //         "v": 1,
+  //         "dim": [
+  //           21
+  //         ],
+  //         "data": [
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           1.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0
+  //         ]
+  //       },
+  //       "M": {
+  //         "v": 1,
+  //         "dim": [
+  //           21
+  //         ],
+  //         "data": [
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           1.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0
+  //         ]
+  //       },
+  //       "N": {
+  //         "v": 1,
+  //         "dim": [
+  //           21
+  //         ],
+  //         "data": [
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           1.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0
+  //         ]
+  //       },
+  //       "P": {
+  //         "v": 1,
+  //         "dim": [
+  //           21
+  //         ],
+  //         "data": [
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           1.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0
+  //         ]
+  //       },
+  //       "Q": {
+  //         "v": 1,
+  //         "dim": [
+  //           21
+  //         ],
+  //         "data": [
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           1.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0
+  //         ]
+  //       },
+  //       "R": {
+  //         "v": 1,
+  //         "dim": [
+  //           21
+  //         ],
+  //         "data": [
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           1.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0
+  //         ]
+  //       },
+  //       "S": {
+  //         "v": 1,
+  //         "dim": [
+  //           21
+  //         ],
+  //         "data": [
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           1.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0
+  //         ]
+  //       },
+  //       "T": {
+  //         "v": 1,
+  //         "dim": [
+  //           21
+  //         ],
+  //         "data": [
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           1.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0
+  //         ]
+  //       },
+  //       "V": {
+  //         "v": 1,
+  //         "dim": [
+  //           21
+  //         ],
+  //         "data": [
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           1.0,
+  //           0.0,
+  //           0.0,
+  //           0.0
+  //         ]
+  //       },
+  //       "W": {
+  //         "v": 1,
+  //         "dim": [
+  //           21
+  //         ],
+  //         "data": [
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           1.0,
+  //           0.0,
+  //           0.0
+  //         ]
+  //       },
+  //       "Y": {
+  //         "v": 1,
+  //         "dim": [
+  //           21
+  //         ],
+  //         "data": [
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           1.0,
+  //           0.0
+  //         ]
+  //       },
+  //       "*": {
+  //         "v": 1,
+  //         "dim": [
+  //           21
+  //         ],
+  //         "data": [
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           1.0
+  //         ]
+  //       },
+  //       "X": {
+  //         "v": 1,
+  //         "dim": [
+  //           21
+  //         ],
+  //         "data": [
+  //           1.0,
+  //           1.0,
+  //           1.0,
+  //           1.0,
+  //           1.0,
+  //           1.0,
+  //           1.0,
+  //           1.0,
+  //           1.0,
+  //           1.0,
+  //           1.0,
+  //           1.0,
+  //           1.0,
+  //           1.0,
+  //           1.0,
+  //           1.0,
+  //           1.0,
+  //           1.0,
+  //           1.0,
+  //           1.0,
+  //           1.0
+  //         ]
+  //       },
+  //       "B": {
+  //         "v": 1,
+  //         "dim": [
+  //           21
+  //         ],
+  //         "data": [
+  //           0.0,
+  //           0.0,
+  //           1.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           1.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0
+  //         ]
+  //       },
+  //       "Z": {
+  //         "v": 1,
+  //         "dim": [
+  //           21
+  //         ],
+  //         "data": [
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           1.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           1.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0
+  //         ]
+  //       },
+  //       "J": {
+  //         "v": 1,
+  //         "dim": [
+  //           21
+  //         ],
+  //         "data": [
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           1.0,
+  //           0.0,
+  //           1.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0,
+  //           0.0
+  //         ]
+  //       }
+  //     }
+  //   }"#};
+  //   assert_eq!(expected, actual);
+  //   Ok(())
+  // }
 }

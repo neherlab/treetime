@@ -124,7 +124,7 @@ mod tests {
   use indoc::indoc;
   use pretty_assertions::assert_eq;
   use treetime::io::auspice::{auspice_read_str, auspice_write_str};
-  use treetime::io::nwk::{nwk_read_str, nwk_write_str, NwkWriteOptions};
+  use treetime::io::nwk::{NwkWriteOptions, nwk_read_str, nwk_write_str};
 
   #[test]
   fn test_auspice_from_nwk() -> Result<(), Report> {

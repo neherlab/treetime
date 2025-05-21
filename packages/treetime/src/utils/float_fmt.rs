@@ -1,5 +1,5 @@
 use lazy_static::lazy_static;
-use pretty_dtoa::{dtoa, FmtFloatConfig};
+use pretty_dtoa::{FmtFloatConfig, dtoa};
 
 lazy_static! {
   static ref FLOAT_CONFIG: FmtFloatConfig = FmtFloatConfig::default()

@@ -6,20 +6,22 @@ use crate::representation::graph_dense::{
   DenseGraph, DenseNode, DenseSeqDis, DenseSeqEdge, DenseSeqInfo, DenseSeqNode,
 };
 use crate::representation::partitions_likelihood::{PartitionLikelihood, PartitionLikelihoodWithAln};
+use crate::representation::seq::Seq;
 use crate::utils::container::get_exactly_one_mut;
 use crate::utils::interval::range_intersection::range_intersection;
-use crate::{make_internal_report, make_report};
+use crate::{make_internal_report, make_report, seq};
 use eyre::Report;
 use itertools::Itertools;
 use log::debug;
-use ndarray::prelude::*;
 use ndarray::AssignElem;
+use ndarray::prelude::*;
 use ndarray_stats::QuantileExt;
 
+// TODO: move this into Alphabet
 // Turn a profile into a sequence
-fn prof2seq(profile: &DenseSeqDis, alphabet: &Alphabet) -> Vec<char> {
+fn prof2seq(profile: &DenseSeqDis, alphabet: &Alphabet) -> Seq {
   // iterate over profile.dis and take the argmax of each row, lookup in alphabet.char to extract the character
-  let mut seq = Vec::new();
+  let mut seq = seq! {};
   for row in profile.dis.rows() {
     let argmax = row.argmax().unwrap();
     seq.push(alphabet.char(argmax));
@@ -27,7 +29,7 @@ fn prof2seq(profile: &DenseSeqDis, alphabet: &Alphabet) -> Vec<char> {
   seq
 }
 
-fn assign_sequence(seq_info: &DenseSeqNode, alphabet: &Alphabet) -> Vec<char> {
+fn assign_sequence(seq_info: &DenseSeqNode, alphabet: &Alphabet) -> Seq {
   let mut seq = prof2seq(&seq_info.profile, alphabet);
   for gap in &seq_info.seq.gaps {
     seq[gap.0..gap.1].fill(alphabet.gap());
@@ -65,12 +67,7 @@ fn attach_seqs_to_graph(graph: &DenseGraph, partitions: &[PartitionLikelihoodWit
 
         desc.assign_elem(leaf_fasta.desc.clone());
 
-        // TODO(perf): unnecessary copy of sequence data. Neither String, nor &[char] works well for us, it seems.
-        // We probably want a custom class for sequences. Sequences should be instantiated in the fasta parser and
-        // never need a copy like here.
-        let sequence = leaf_fasta.seq.chars().collect::<Vec<_>>();
-
-        DenseSeqNode::new(&sequence, alphabet)
+        DenseSeqNode::new(&leaf_fasta.seq, alphabet)
       })
       .collect::<Result<_, Report>>()?;
 
@@ -185,7 +182,7 @@ fn ingroup_profiles_dense(graph: &DenseGraph, partitions: &[PartitionLikelihood]
         edge_data.msg_from_child = DenseSeqDis { dis, log_lh };
         edge_data.msg_to_parent = msg_to_parent;
         edge_to_parent.dense_partitions.push(edge_data);
-      };
+      }
     }
     GraphTraversalContinuation::Continue
   });
@@ -216,7 +213,7 @@ fn outgroup_profiles_dense(graph: &DenseGraph, partitions: &[PartitionLikelihood
         let delta_ll = normalize_inplace(&mut dis);
         log_lh += delta_ll;
         seq_info.profile = DenseSeqDis { dis, log_lh };
-      };
+      }
 
       for child_edge in &mut node.child_edges {
         // this normalization isn't strictly necessary
@@ -254,7 +251,7 @@ pub fn run_marginal_dense(
     .iter()
     .map(|p| p.profile.log_lh)
     .sum();
-  debug!("Log likelihood: {}", log_lh);
+  debug!("Log likelihood: {log_lh}");
   outgroup_profiles_dense(graph, &partitions);
 
   if reconstruct {
@@ -281,7 +278,7 @@ pub fn run_marginal_dense(
 pub fn ancestral_reconstruction_marginal_dense(
   graph: &DenseGraph,
   include_leaves: bool,
-  mut visitor: impl FnMut(&DenseNode, Vec<char>),
+  mut visitor: impl FnMut(&DenseNode, &Seq),
 ) -> Result<(), Report> {
   graph.iter_depth_first_preorder_forward(|node| {
     if !include_leaves && node.is_leaf {
@@ -292,10 +289,11 @@ pub fn ancestral_reconstruction_marginal_dense(
       .payload
       .dense_partitions
       .iter()
-      .flat_map(|p| p.seq.sequence.iter().copied())
+      .flat_map(|p| &p.seq.sequence)
+      .copied()
       .collect();
 
-    visitor(&node.payload, seq);
+    visitor(&node.payload, &seq);
   });
 
   Ok(())
@@ -308,13 +306,12 @@ mod tests {
   use super::*;
   use crate::alphabet::alphabet::AlphabetName;
   use crate::graph::node::GraphNodeKey;
-  use crate::gtr::get_gtr::{jc69, JC69Params};
-  use crate::gtr::gtr::{GTRParams, GTR};
+  use crate::gtr::get_gtr::{JC69Params, jc69};
+  use crate::gtr::gtr::{GTR, GTRParams};
   use crate::io::fasta::read_many_fasta_str;
-  use crate::io::json::{json_write_str, JsonPretty};
+  use crate::io::json::{JsonPretty, json_write_str};
   use crate::io::nwk::nwk_read_str;
   use crate::pretty_assert_ulps_eq;
-  use crate::utils::string::vec_to_string;
   use eyre::Report;
   use indoc::indoc;
   use lazy_static::lazy_static;
@@ -377,7 +374,7 @@ mod tests {
 
     let mut actual = BTreeMap::new();
     ancestral_reconstruction_marginal_dense(&graph, false, |node, seq| {
-      actual.insert(node.name.clone(), vec_to_string(seq));
+      actual.insert(node.name.clone(), seq.to_string());
     })?;
 
     assert_eq!(

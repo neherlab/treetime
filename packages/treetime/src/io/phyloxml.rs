@@ -4,7 +4,7 @@ use crate::graph::node::GraphNode;
 use crate::io::file::create_file_or_stdout;
 use crate::io::file::open_file_or_stdin;
 use crate::io::json::{
-  json_read, json_read_file, json_read_str, json_write, json_write_file, json_write_str, JsonPretty,
+  JsonPretty, json_read, json_read_file, json_read_str, json_write, json_write_file, json_write_str,
 };
 use crate::make_internal_error;
 use eyre::{Report, WrapErr};
@@ -32,7 +32,7 @@ where
 {
   let filepath = filepath.as_ref();
   phyloxml_read(open_file_or_stdin(&Some(filepath))?)
-    .wrap_err_with(|| format!("When reading PhyloXML file '{filepath:#?}'"))
+    .wrap_err_with(|| format!("When reading PhyloXML file '{}'", filepath.display()))
 }
 
 pub fn phyloxml_read_str<N, E, D>(s: impl AsRef<str>) -> Result<Graph<N, E, D>, Report>
@@ -64,7 +64,8 @@ where
   (): PhyloxmlToGraph<N, E, D>,
 {
   let filepath = filepath.as_ref();
-  let tree = json_read_file(filepath).wrap_err_with(|| format!("When reading PhyloXML JSON file '{filepath:#?}'"))?;
+  let tree =
+    json_read_file(filepath).wrap_err_with(|| format!("When reading PhyloXML JSON file '{}'", filepath.display()))?;
   phyloxml_to_graph(&tree)
 }
 
@@ -99,7 +100,7 @@ where
 {
   let filepath = filepath.as_ref();
   let mut f = create_file_or_stdout(filepath)?;
-  phyloxml_write(&mut f, graph).wrap_err_with(|| format!("When reading PhyloXML file '{filepath:#?}'"))?;
+  phyloxml_write(&mut f, graph).wrap_err_with(|| format!("When reading PhyloXML file '{}'", filepath.display()))?;
   writeln!(f)?;
   Ok(())
 }
@@ -140,7 +141,7 @@ where
   let filepath = filepath.as_ref();
   let pxml = phyloxml_from_graph(graph)?;
   json_write_file(filepath, &pxml, JsonPretty(options.pretty))
-    .wrap_err_with(|| format!("When writing PhyloXML JSON file: '{filepath:#?}'"))?;
+    .wrap_err_with(|| format!("When writing PhyloXML JSON file: '{}'", filepath.display()))?;
   Ok(())
 }
 

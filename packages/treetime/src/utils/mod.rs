@@ -1,5 +1,5 @@
 pub mod assert;
-pub mod openblas;
+pub mod clap_styles;
 pub mod container;
 pub mod datetime;
 pub mod error;
@@ -8,6 +8,7 @@ pub mod global_init;
 pub mod interval;
 pub mod manyzip;
 pub mod ndarray;
+pub mod openblas;
 pub mod random;
 pub mod string;
 pub mod vec;

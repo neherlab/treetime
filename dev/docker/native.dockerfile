@@ -19,6 +19,7 @@ RUN set -euxo pipefail >/dev/null \
   git \
   libc6-dev \
   lsb-release \
+  make \
   parallel \
   pigz \
   pixz \

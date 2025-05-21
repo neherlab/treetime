@@ -28,13 +28,13 @@ pub struct TreetimeOptimizeArgs {
 
   /// Alphabet
   ///
-  #[clap(long, short = 'a', arg_enum)]
+  #[clap(long, short = 'a', value_enum)]
   pub alphabet: Option<AlphabetName>,
 
   /// GTR model to use
   ///
   /// '--gtr infer' will infer a model from the data. Alternatively, specify the model type. If the specified model requires additional options, use '--gtr-params' to specify those.
-  #[clap(long = "model", short = 'g', arg_enum, default_value_t = GtrModelName::Infer)]
+  #[clap(long = "model", short = 'g', value_enum, default_value_t = GtrModelName::Infer)]
   pub model_name: GtrModelName,
 
   /// Use dense representation

@@ -52,7 +52,7 @@ pub struct TreetimeClockArgs {
   /// GTR model to use
   ///
   /// '--gtr infer' will infer a model from the data. Alternatively, specify the model type. If the specified model requires additional options, use '--gtr-params' to specify those.
-  #[clap(long, short = 'g', arg_enum, default_value_t = GtrModelName::default())]
+  #[clap(long, short = 'g', value_enum, default_value_t = GtrModelName::default())]
   pub gtr: GtrModelName,
 
   /// GTR parameters for the model specified by the --gtr argument. The parameters should be feed as 'key=value' list of parameters.
@@ -64,11 +64,11 @@ pub struct TreetimeClockArgs {
   pub gtr_params: Vec<String>,
 
   /// If set to 'input', the provided branch length will be used without modification. Note that branch lengths optimized by treetime are only accurate at short evolutionary distances.
-  #[clap(long, arg_enum, default_value_t = BranchLengthMode::default())]
+  #[clap(long, value_enum, default_value_t = BranchLengthMode::default())]
   pub branch_length_mode: BranchLengthMode,
 
   /// Method used for reconstructing ancestral sequences
-  #[clap(long, arg_enum, default_value_t = MethodAncestral::default())]
+  #[clap(long, value_enum, default_value_t = MethodAncestral::default())]
   pub method_anc: MethodAncestral,
 
   /// ignore tips that don't follow a loose clock, 'clock-filter=number of interquartile ranges from regression'. Default=3.0, set to 0 to switch off.
@@ -82,7 +82,7 @@ pub struct TreetimeClockArgs {
   /// can specify a node name or a list of node names to be used as outgroup or use 'oldest' to
   /// reroot to the oldest node. By default, TreeTime will reroot using 'least-squares'. Use --keep-
   /// root to keep the current root.
-  #[clap(long, arg_enum, default_value_t = RerootMode::default())]
+  #[clap(long, value_enum, default_value_t = RerootMode::default())]
   pub reroot: RerootMode,
 
   /// don't reroot the tree. Otherwise, reroot to minimize the the residual of the regression of

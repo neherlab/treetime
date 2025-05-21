@@ -2,7 +2,7 @@ use crate::make_internal_report;
 use eyre::Report;
 use itertools::Itertools;
 use ndarray_rand::rand::SeedableRng;
-use rand::{seq::IteratorRandom, seq::SliceRandom, Rng};
+use rand::{Rng, seq::IteratorRandom, seq::SliceRandom};
 use rand_isaac::Isaac64Rng;
 use std::collections::BTreeSet;
 

@@ -3,7 +3,7 @@ use crate::io::fs::{extension, read_file_to_string};
 use crate::make_error;
 use crate::utils::error::to_eyre_error;
 use csv::{ReaderBuilder as CsvReaderBuilder, Writer as CsvWriterImpl, WriterBuilder as CsvWriterBuilder};
-use eyre::{eyre, Report};
+use eyre::{Report, eyre};
 use serde::{Deserialize, Serialize};
 use std::io::Write;
 use std::path::{Path, PathBuf};

@@ -5,6 +5,8 @@ use crate::hacks::fix_branch_length::fix_branch_length;
 use crate::make_internal_error;
 use crate::representation::graph_sparse::{SparseGraph, SparseNode, SparseSeqDis, VarPos};
 use crate::representation::partitions_likelihood::PartitionLikelihood;
+use crate::representation::seq::Seq;
+use crate::representation::seq_char::AsciiChar;
 use crate::seq::composition;
 use crate::utils::container::get_exactly_one_mut;
 use crate::utils::interval::range::range_contains;
@@ -36,13 +38,9 @@ fn ingroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihoo
           .variable
           .iter()
           .map(|(pos, p)| {
-            (
-              *pos,
-              VarPos {
-                dis: p.dis.clone(),
-                state: p.state.unwrap(),
-              },
-            )
+            let dis = alphabet.construct_profile(p.chars()).unwrap();
+            let state = p.get_one();
+            (*pos, VarPos { dis, state })
           })
           .collect();
 
@@ -57,14 +55,14 @@ fn ingroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihoo
         // for internal nodes, combine the messages from the children
         // to do so, we need to loop over incoming edges, collect variable positions and the child states at them
         let mut variable_pos = btreemap! {};
-        let mut child_states: Vec<BTreeMap<usize, char>> = vec![];
+        let mut child_states = vec![];
         let mut child_messages: Vec<SparseSeqDis> = vec![];
         for (ci, (_, edge)) in node.children.iter().enumerate() {
           // go over all mutations and get reference and child state
           child_states.push(btreemap! {});
           for m in &edge.read_arc().sparse_partitions[si].subs {
-            variable_pos.insert(m.pos, m.reff); // this might be set multiple times, but the reference state should always be the same
-            child_states[ci].insert(m.pos, m.qry);
+            variable_pos.insert(m.pos(), m.reff()); // this might be set multiple times, but the reference state should always be the same
+            child_states[ci].insert(m.pos(), m.qry());
           }
           // go over child variable position and get reference state
           for (pos, p) in &edge.read_arc().sparse_partitions[si].msg_from_child.variable {
@@ -114,7 +112,7 @@ fn ingroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihoo
         edge_data.msg_from_child = propagate_raw(
           &gtr.expQt(branch_length).t().to_owned(),
           &msg_to_parent,
-          &edge_data.transmission,
+          edge_data.transmission.as_ref(),
         );
         edge_data.msg_to_parent = msg_to_parent;
       }
@@ -127,7 +125,7 @@ fn ingroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihoo
 fn propagate_raw(
   expQt: &Array2<f64>,
   seq_dis: &SparseSeqDis,
-  transmission: &Option<Vec<(usize, usize)>>,
+  transmission: Option<&Vec<(usize, usize)>>,
 ) -> SparseSeqDis {
   let mut message = SparseSeqDis {
     variable: btreemap! {},
@@ -164,8 +162,8 @@ fn propagate_raw(
 fn combine_messages(
   composition: &composition::Composition,
   messages: &[SparseSeqDis],
-  variable_pos: &BTreeMap<usize, char>,
-  reference_states: &[BTreeMap<usize, char>],
+  variable_pos: &BTreeMap<usize, AsciiChar>,
+  reference_states: &[BTreeMap<usize, AsciiChar>],
   alphabet: &Alphabet,
   gtr_weight: Option<&Array1<f64>>,
 ) -> Result<SparseSeqDis, Report> {
@@ -270,12 +268,12 @@ fn outgroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikeliho
       if !node.is_root {
         // the root has no input from parents, profile is already calculated
         let mut variable_pos = btreemap! {};
-        let mut ref_states: Vec<BTreeMap<usize, char>> = vec![];
+        let mut ref_states: Vec<BTreeMap<usize, AsciiChar>> = vec![];
         let mut msgs_to_combine: Vec<SparseSeqDis> = vec![];
         for (_, edge) in &node.parents {
           // go over all mutations and get reference state
-          let mut parent_state: BTreeMap<usize, char> = btreemap! {};
-          let mut child_state: BTreeMap<usize, char> = btreemap! {};
+          let mut parent_state: BTreeMap<usize, AsciiChar> = btreemap! {};
+          let mut child_state: BTreeMap<usize, AsciiChar> = btreemap! {};
           // go over parent variable position and get reference state
           for (pos, p) in &edge.read_arc().sparse_partitions[si].msg_to_child.variable {
             if !range_contains(&seq_info.seq.gaps, *pos) {
@@ -286,9 +284,9 @@ fn outgroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikeliho
           }
           // record all states that involve a mutation
           for m in &edge.read_arc().sparse_partitions[si].subs {
-            variable_pos.insert(m.pos, m.qry);
-            parent_state.entry(m.pos).or_insert(m.reff);
-            child_state.entry(m.pos).or_insert(m.qry);
+            variable_pos.insert(m.pos(), m.qry());
+            parent_state.entry(m.pos()).or_insert_with(|| m.reff());
+            child_state.entry(m.pos()).or_insert_with(|| m.qry());
           }
           // go over variable position in children (info pushed to parent) and get reference state
           for (pos, p) in &edge.read_arc().sparse_partitions[si].msg_to_parent.variable {
@@ -302,7 +300,7 @@ fn outgroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikeliho
           msgs_to_combine.push(propagate_raw(
             &gtr.expQt(branch_length),
             &edge.read_arc().sparse_partitions[si].msg_to_child,
-            &edge.read_arc().sparse_partitions[si].transmission,
+            edge.read_arc().sparse_partitions[si].transmission.as_ref(),
           ));
           // add combined message from children (which is sent to the parent).
           msgs_to_combine.push(edge.read_arc().sparse_partitions[si].msg_to_parent.clone());
@@ -333,8 +331,8 @@ fn outgroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikeliho
         };
 
         let child_dis = &child_edge.sparse_partitions[si].msg_from_child;
-        let mut parent_states: BTreeMap<usize, char> = btreemap! {};
-        let mut child_states: BTreeMap<usize, char> = btreemap! {};
+        let mut parent_states: BTreeMap<usize, AsciiChar> = btreemap! {};
+        let mut child_states: BTreeMap<usize, AsciiChar> = btreemap! {};
         for (pos, p) in &seq_info.profile.variable {
           child_states.insert(*pos, p.state);
           parent_states.insert(*pos, p.state);
@@ -344,8 +342,8 @@ fn outgroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikeliho
           parent_states.entry(*pos).or_insert(p.state);
         }
         for sub in &child_edge.sparse_partitions[si].subs {
-          child_states.insert(sub.pos, sub.qry);
-          parent_states.insert(sub.pos, sub.reff);
+          child_states.insert(sub.pos(), sub.qry());
+          parent_states.insert(sub.pos(), sub.reff());
         }
 
         let mut delta_ll = 0.0;
@@ -398,7 +396,7 @@ pub fn run_marginal_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihoo
     .iter()
     .map(|p| p.profile.log_lh)
     .sum();
-  debug!("Log likelihood: {}", log_lh);
+  debug!("Log likelihood: {log_lh}");
   outgroup_profiles_sparse(graph, partitions);
   Ok(log_lh)
 }
@@ -407,7 +405,7 @@ pub fn ancestral_reconstruction_marginal_sparse(
   graph: &SparseGraph,
   include_leaves: bool,
   partitions: &[PartitionLikelihood],
-  mut visitor: impl FnMut(&SparseNode, Vec<char>),
+  mut visitor: impl FnMut(&SparseNode, Seq),
 ) -> Result<(), Report> {
   let n_partitions = partitions.len();
 
@@ -416,10 +414,11 @@ pub fn ancestral_reconstruction_marginal_sparse(
       return;
     }
 
-    let seq = (0..n_partitions)
+    let seq: Seq = (0..n_partitions)
       .flat_map(|si| {
         let PartitionLikelihood { alphabet, .. } = &partitions[si];
         let node_seq = &node.payload.sparse_partitions[si].seq;
+        let node_profile = &node.payload.sparse_partitions[si].profile;
 
         let mut seq = if node.is_root {
           node_seq.sequence.clone()
@@ -432,12 +431,7 @@ pub fn ancestral_reconstruction_marginal_sparse(
 
           // Implant mutations
           for m in &edge.subs {
-            seq[m.pos] = m.qry;
-          }
-
-          // Implant most likely state of variable sites
-          for (&pos, vec) in &node.payload.sparse_partitions[si].seq.fitch.variable {
-            seq[pos] = alphabet.char(vec.dis.argmax().unwrap());
+            seq[m.pos()] = m.qry();
           }
 
           // Implant indels
@@ -458,8 +452,9 @@ pub fn ancestral_reconstruction_marginal_sparse(
           seq[r.0..r.1].fill(ambig_char);
         }
 
-        for (pos, p) in &node_seq.fitch.variable {
-          seq[*pos] = alphabet.get_code(&p.dis);
+        // change variable sites to their most likely state
+        for (pos, states) in &node_profile.variable {
+          seq[*pos] = alphabet.char(states.dis.argmax().unwrap());
         }
 
         node.payload.sparse_partitions[si].seq.sequence = seq.clone();
@@ -479,14 +474,13 @@ mod tests {
   use super::*;
   use crate::commands::ancestral::fitch::compress_sequences;
   use crate::graph::node::GraphNodeKey;
-  use crate::gtr::get_gtr::{jc69, JC69Params};
-  use crate::gtr::gtr::{GTRParams, GTR};
+  use crate::gtr::get_gtr::{JC69Params, jc69};
+  use crate::gtr::gtr::{GTR, GTRParams};
   use crate::io::fasta::read_many_fasta_str;
-  use crate::io::json::{json_write_str, JsonPretty};
+  use crate::io::json::{JsonPretty, json_write_str};
   use crate::io::nwk::nwk_read_str;
   use crate::pretty_assert_ulps_eq;
   use crate::representation::partitions_parsimony::PartitionParsimonyWithAln;
-  use crate::utils::string::vec_to_string;
   use eyre::Report;
   use indoc::indoc;
   use itertools::Itertools;
@@ -504,16 +498,10 @@ mod tests {
 
     let aln = read_many_fasta_str(
       indoc! {r#"
-      >root
-      ACAGCCATGTATTG--
-      >AB
-      ACATCCCTGTA-TG--
       >A
       ACATCGCCNNA--GAC
       >B
       GCATCCCTGTA-NG--
-      >CD
-      CCGGCCATGTATTG--
       >C
       CCGGCGATGTRTTG--
       >D
@@ -525,11 +513,11 @@ mod tests {
     let expected = read_many_fasta_str(
       indoc! {r#"
       >root
-      ACAGCCATGTATTG--
+      TCGGCGCTGTATTG--
       >AB
-      ACATCCCTGTA-TG--
+      ACATCGCTGTA-TG--
       >CD
-      CCGGCCATGTATTG--
+      TCGGCGGTGTATTG--
     "#},
       &NUC_ALPHABET,
     )?
@@ -554,7 +542,7 @@ mod tests {
     // generate ancestral reconstruction and test against expectation
     let mut actual = BTreeMap::new();
     ancestral_reconstruction_marginal_sparse(&graph, false, &partitions, |node, seq| {
-      actual.insert(node.name.clone(), vec_to_string(seq));
+      actual.insert(node.name.clone(), seq.to_string());
     })?;
 
     assert_eq!(
@@ -573,16 +561,10 @@ mod tests {
 
     let aln = read_many_fasta_str(
       indoc! {r#"
-      >root
-      ACAGCCATGTATTG--
-      >AB
-      ACATCCCTGTA-TG--
       >A
       ACATCGCCNNA--GAC
       >B
       GCATCCCTGTA-NG--
-      >CD
-      CCGGCCATGTATTG--
       >C
       CCGGCGATGTRTTG--
       >D

@@ -3,10 +3,12 @@ use crate::alphabet::alphabet::{FILL_CHAR, NON_CHAR, VARIABLE_CHAR};
 use crate::graph::breadth_first::GraphTraversalContinuation;
 use crate::io::fasta::FastaRecord;
 use crate::representation::graph_sparse::{
-  Deletion, ParsimonySeqDis, ParsimonyVarPos, SparseGraph, SparseNode, SparseSeqDis, SparseSeqEdge, SparseSeqInfo,
-  SparseSeqNode,
+  Deletion, ParsimonySeqDis, SparseGraph, SparseNode, SparseSeqDis, SparseSeqEdge, SparseSeqInfo, SparseSeqNode,
 };
 use crate::representation::partitions_parsimony::{PartitionParsimony, PartitionParsimonyWithAln};
+use crate::representation::seq::Seq;
+use crate::representation::state_set::BitSet128;
+use crate::representation::state_set::{StateSet, StateSetStatus};
 use crate::seq::composition::Composition;
 use crate::seq::indel::InDel;
 use crate::seq::mutation::Sub;
@@ -14,15 +16,11 @@ use crate::utils::interval::range::range_contains;
 use crate::utils::interval::range_complement::range_complement;
 use crate::utils::interval::range_difference::range_difference;
 use crate::utils::interval::range_intersection::{range_intersection, range_intersection_iter};
-use crate::utils::manyzip::Manyzip;
-use crate::utils::ndarray::product_axis;
-use crate::{make_error, make_internal_report, make_report};
-use approx::UlpsEq;
+use crate::{make_error, make_internal_report, make_report, seq, stateset};
 use eyre::{Report, WrapErr};
-use itertools::{izip, Itertools};
+use itertools::Itertools;
 use maplit::btreemap;
-use ndarray::{stack, Array1, Array2, AssignElem, Axis};
-use ndarray_stats::QuantileExt;
+use ndarray::AssignElem;
 
 fn attach_seqs_to_graph(graph: &SparseGraph, partitions: &[PartitionParsimonyWithAln]) -> Result<(), Report> {
   for leaf in graph.get_leaves() {
@@ -48,12 +46,7 @@ fn attach_seqs_to_graph(graph: &SparseGraph, partitions: &[PartitionParsimonyWit
 
         //TODO: we could optionally emit a warning here and continue with a sequence that is entire missing...
 
-        // TODO(perf): unnecessary copy of sequence data. Neither String, nor &[char] works well for us, it seems.
-        // We probably want a custom class for sequences. Sequences should be instantiated in the fasta parser and
-        // never need a copy like here.
-        let sequence = leaf_fasta.seq.chars().collect::<Vec<_>>();
-
-        SparseSeqNode::new(&sequence, alphabet)
+        SparseSeqNode::new(&leaf_fasta.seq, alphabet)
       })
       .collect::<Result<_, Report>>()?;
 
@@ -81,6 +74,7 @@ fn fitch_backwards(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]
     }
 
     for si in 0..n_partitions {
+      // the following are convenience datastructures
       let PartitionParsimony { alphabet, length } = &sparse_partitions[si];
 
       let children = node
@@ -96,6 +90,13 @@ fn fitch_backwards(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]
 
       let n_children = children.len();
 
+      // Initialization of target data structure (could be done later)
+      let mut seq_dis = ParsimonySeqDis {
+        variable: btreemap! {},
+        variable_indel: btreemap! {},
+        composition: Composition::new(alphabet.chars(), alphabet.gap()),
+      };
+
       // determine parts of the sequence that are unknown, gaps in all children
       let mut gaps = range_intersection_iter(children.iter().map(|(c, _)| &c.gaps)).collect_vec();
       let unknown = range_intersection_iter(children.iter().map(|(c, _)| &c.unknown)).collect_vec();
@@ -104,14 +105,8 @@ fn fitch_backwards(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]
       // calculate the complement of gaps for later look-up
       let non_gap = range_complement(&[(0, *length)], &[gaps.clone()]); // FIXME(perf): unnecessary clone
 
-      //
-      let mut seq_dis = ParsimonySeqDis {
-        variable: btreemap! {},
-        variable_indel: btreemap! {},
-        composition: Composition::new(alphabet.chars(), alphabet.gap()),
-      };
-      let mut sequence = vec![FILL_CHAR; *length];
-
+      // what follows could be a function that returns `sequence` and `variable`, takes as arguments children, non_char, alphabet
+      let mut sequence = seq![FILL_CHAR; *length];
       for r in &non_char {
         sequence[r.0..r.1].fill(NON_CHAR);
       }
@@ -138,80 +133,57 @@ fn fitch_backwards(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]
               return None; // this position does not have character state information
             }
             let state = match child.fitch.variable.get(&pos) {
-              Some(var_pos) => var_pos.dis.view(),
-              None => alphabet.get_profile(child.sequence[pos]).view(),
+              Some(var_pos) => *var_pos,
+              None => StateSet::from_char(child.sequence[pos]),
             };
             Some(state)
           })
           .collect_vec();
 
-        // Stack child profiles on top of each other into a 2D matrix
-        let child_profiles: Array2<f64> = stack(Axis(0), &child_profiles).unwrap();
-
         // Calculate Fitch parsimony.
         // If we save the states of the children for each position that is variable in the node,
         // then we would not need the full sequences in the forward pass.
-        // TODO: we should change the type from vec>f64> to vec<bool> and use element wise AND instead of product
-        let intersection = product_axis(&child_profiles, Axis(0));
+        let intersection = StateSet::from_intersection(&child_profiles);
 
-        if intersection.sum().ulps_eq(&1.0, f64::EPSILON, 5) {
-          // intersection has a single state
-          let i = intersection.argmax().unwrap();
-          sequence[pos] = alphabet.char(i);
-        } else if intersection.sum() > 1.0 {
-          // more than one possible states
-          seq_dis.variable.insert(pos, ParsimonyVarPos::new(intersection, None));
-          sequence[pos] = VARIABLE_CHAR;
-        } else {
-          let union = child_profiles.sum_axis(Axis(0));
-          let dis = Array1::from_iter(union.iter().map(|&x| if x > 0.0 { 1.0 } else { 0.0 }));
-          seq_dis.variable.insert(pos, ParsimonyVarPos::new(dis, None));
-          sequence[pos] = VARIABLE_CHAR;
+        match intersection.get() {
+          StateSetStatus::Unambiguous(state) => {
+            // intersection has a single state, write it
+            sequence[pos] = state;
+          },
+          StateSetStatus::Ambiguous(_) => {
+            // more than one possible states
+            seq_dis.variable.insert(pos, intersection);
+            sequence[pos] = VARIABLE_CHAR;
+          },
+          StateSetStatus::Empty => {
+            let union = StateSet::from_union(&child_profiles);
+            seq_dis.variable.insert(pos, union);
+            sequence[pos] = VARIABLE_CHAR;
+          },
         }
       }
 
       // Process all positions where the children are fixed or completely unknown in some children.
-
-      // Gather state sets for each position across child sequences
-      // TODO(perf): avoid copying and allocations
-      let child_state_sets = Manyzip(children.iter().map(|(c, e)| c.sequence.iter().copied()).collect_vec());
-
-      // Zip these states with node sequence
-      let state_zip = izip!(sequence.iter_mut(), child_state_sets.into_iter());
-      for (pos, (nuc, child_states)) in state_zip.enumerate() {
-        if *nuc != FILL_CHAR {
-          continue;
+      for &(child, _) in &children {
+        for (pos, parent_state) in sequence.iter_mut().enumerate() {
+          let child_state = child.sequence[pos];
+          if *parent_state == child_state || *parent_state == NON_CHAR {
+            continue; // if parent is equal to child state or we know it's a non-char, skip
+          }
+          if alphabet.is_canonical(child_state) {
+            if *parent_state == FILL_CHAR {
+              // if child state is canonical and parent is still FILL_CHAR, set parent_state
+              *parent_state = child_state;
+            } else {
+              // otherwise set or update the variable state
+              *seq_dis.variable.entry(pos).or_insert_with(|| stateset! {*parent_state}) += child_state;
+              *parent_state = VARIABLE_CHAR;
+            }
+          }
         }
-
-        let determined_states = child_states
-          .into_iter()
-          .filter(|&c| alphabet.is_canonical(c))
-          .unique()
-          .collect_vec();
-
-        // Find the state of the current node at this position
-        *nuc = match determined_states.as_slice() {
-          [state] => {
-            // All children have the same state, that will be the state of the current node
-            *state
-          }
-          [] => {
-            // No child states. Impossible
-            unreachable!("No child states. This is impossible");
-          }
-          states => {
-            // Child states differ. This is variable state.
-            // Save child states and postpone the decision until forward pass.
-            let child_profiles = states.iter().map(|&c| alphabet.get_profile(c).view()).collect_vec();
-            let child_profiles: Array2<f64> = stack(Axis(0), &child_profiles).unwrap();
-            let summed_profile = child_profiles.sum_axis(Axis(0));
-            seq_dis.variable.insert(pos, ParsimonyVarPos::new(summed_profile, None));
-            VARIABLE_CHAR
-          }
-        };
       }
 
-      // Process insertions and deletions.
+      // Process insertions and deletions. This also could be a function that returns variable_indel
 
       // 1) seq_info.gaps is the intersection of child gaps, i.e. this is gap if and only if all children have a gap
       //    --> hence we find positions where children differ in terms of gap presence absence by intersecting
@@ -280,6 +252,7 @@ fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]) 
       let PartitionParsimony { alphabet, .. } = &sparse_partitions[si];
       let SparseSeqInfo {
         gaps,
+        unknown,
         sequence,
         composition,
         non_char,
@@ -288,15 +261,11 @@ fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]) 
           variable_indel,
           ..
         },
-        ..
       } = &mut node.payload.sparse_partitions[si].seq;
 
       if node.is_root {
-        for (pos, p) in variable {
-          let i = p.dis.argmax().unwrap();
-          let state = alphabet.char(i);
-          p.state = Some(state);
-          sequence[*pos] = state;
+        for (pos, states) in variable {
+          sequence[*pos] = states.get_one();
         }
         // process indels as majority rule at the root
         for (r, indel) in variable_indel.iter() {
@@ -304,10 +273,6 @@ fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]) 
             gaps.push(*r);
           }
         }
-        for r in gaps.iter() {
-          sequence[r.0..r.1].fill(alphabet.gap());
-        }
-        *composition = Composition::with_sequence(sequence.iter().copied(), alphabet.chars(), alphabet.gap());
       } else {
         let (parent, edge) = node
           .parents
@@ -320,63 +285,50 @@ fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]) 
 
         *composition = parent.composition.clone();
 
-        // fill in the indeterminate positions
+        // fill in the indeterminate positions by copying the parent (note that new gaps in the node will be introduced later)
         for r in non_char {
           sequence[r.0..r.1].clone_from_slice(&parent.sequence[r.0..r.1]);
         }
 
+        // the following two loops modify the sequence, composition, and edge in place and process variable position.
         // for each variable position, pick a state or a mutation
-        for (pos, p) in variable.iter_mut() {
+        for (pos, states) in variable.iter_mut() {
           let pnuc = parent.sequence[*pos];
           if alphabet.is_canonical(pnuc) {
             // check whether parent is in child profile (sum>0 --> parent state is in profile)
-            let parent_in_profile = (alphabet.get_profile(pnuc) * &p.dis).sum() > 0.0;
-            if parent_in_profile {
+            if states.contains(pnuc) {
               sequence[*pos] = pnuc;
             } else {
-              let i = p.dis.argmax().unwrap();
-              let cnuc = alphabet.char(i);
+              let cnuc = states.get_one();
               sequence[*pos] = cnuc;
-              let m = Sub {
-                pos: *pos,
-                qry: cnuc,
-                reff: pnuc,
-              };
+              let m = Sub::new(pnuc, *pos, cnuc).unwrap();
+              m.check_determined(alphabet).unwrap();
               composition.add_sub(&m);
               edge.subs.push(m);
             }
-            p.state = Some(sequence[*pos]);
           } else if alphabet.is_gap(pnuc) && !range_contains(gaps, *pos) {
             // if parent is gap, but child isn't, we need to resolve variable states
-            let i = p.dis.argmax().unwrap();
-            let cnuc = alphabet.char(i);
-            sequence[*pos] = cnuc;
+            sequence[*pos] = states.get_one();
           }
         }
 
-        for (&pos, pvar) in &parent.fitch.variable {
-          if variable.contains_key(&pos) {
+        for &pos in parent.fitch.variable.keys() {
+          if variable.contains_key(&pos) || range_contains(&parent.gaps, pos) {
             continue;
           }
 
           // NOTE: access to full_seq would not be necessary if we had saved the
           // child state of variable positions in the backward pass
           let node_nuc = sequence[pos];
-          if alphabet.is_canonical(node_nuc) {
-            if let Some(pvar_state) = pvar.state {
-              if pvar_state != node_nuc {
-                let m = Sub {
-                  pos,
-                  qry: node_nuc,
-                  reff: pvar_state,
-                };
-                composition.add_sub(&m);
-                edge.subs.push(m);
-              }
-            }
+          if alphabet.is_canonical(node_nuc) && parent.sequence[pos] != node_nuc {
+            let m = Sub::new(parent.sequence[pos], pos, node_nuc).unwrap();
+            m.check_determined(alphabet).unwrap();
+            composition.add_sub(&m);
+            edge.subs.push(m);
           }
         }
 
+        // The following deals with indels.
         // Process indels. Gaps where the children disagree, need to be decided by also looking at parent.
         for (r, indel) in variable_indel.iter() {
           let gap_in_parent = if parent.gaps.contains(r) { 1 } else { 0 };
@@ -385,21 +337,13 @@ fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]) 
             if gap_in_parent == 0 {
               // If the gap is not in parent, add deletion.
               // the sequence that is deleted is the sequence of the parent
-              let indel = InDel {
-                range: *r,
-                seq: parent.sequence[r.0..r.1].to_owned(),
-                deletion: true,
-              };
+              let indel = InDel::del(*r, &parent.sequence[r.0..r.1]);
               composition.add_indel(&indel);
               edge.indels.push(indel);
             }
           } else if gap_in_parent > 0 {
             // Add insertion if gap is present in parent.
-            let indel = InDel {
-              range: *r,
-              seq: sequence[r.0..r.1].to_owned(),
-              deletion: false,
-            };
+            let indel = InDel::ins(*r, &sequence[r.0..r.1]);
             composition.add_indel(&indel);
             edge.indels.push(indel);
           }
@@ -407,25 +351,44 @@ fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]) 
 
         // Process consensus gaps in the node that are not in the parent (deletions)
         for r in range_difference(gaps, &parent.gaps) {
-          let indel = InDel {
-            range: r,
-            seq: sequence[r.0..r.1].to_owned(),
-            deletion: true,
-          };
+          if variable_indel.contains_key(&r) {
+            // all gaps in variable_indel are already processed
+            continue;
+          }
+          let indel = InDel::del(r, &sequence[r.0..r.1]);
           composition.add_indel(&indel);
           edge.indels.push(indel);
         }
 
         // Process gaps in the parent that are not in the node (insertions)
         for r in range_difference(&parent.gaps, gaps) {
-          let indel = InDel {
-            range: r,
-            seq: sequence[r.0..r.1].to_owned(),
-            deletion: false,
-          };
+          if variable_indel.contains_key(&r) {
+            // all gaps in variable_indel are already processed
+            continue;
+          }
+          let indel = InDel::ins(r, &sequence[r.0..r.1]);
           composition.add_indel(&indel);
           edge.indels.push(indel);
         }
+        for r in unknown.iter() {
+          // this might result in compensating addition/deletions of Ns already present in the parent
+          for pos in r.0..r.1 {
+            composition.adjust_count(sequence[pos], -1);
+          }
+          composition.adjust_count(alphabet.unknown(), r.1 as isize - r.0 as isize);
+        }
+      }
+      // fill in the gapped positions. this is done for all nodes, including the root, the composition of non-root nodes is already correct
+      for r in gaps.iter() {
+        sequence[r.0..r.1].fill(alphabet.gap());
+      }
+      for r in unknown.iter() {
+        // composition is already adjusted
+        sequence[r.0..r.1].fill(alphabet.unknown());
+      }
+      if node.is_root {
+        // if the node is the root, the composition is calculated from the full sequence
+        *composition = Composition::with_sequence(sequence.iter().copied(), alphabet.chars(), alphabet.gap());
       }
     }
     GraphTraversalContinuation::Continue
@@ -440,22 +403,15 @@ fn fitch_cleanup(graph: &SparseGraph) {
         seq.fitch.variable = btreemap! {};
       }
 
-      // remove the undetermined counts from the counts of fixed positions
-      for r in &seq.unknown {
-        for pos in r.0..r.1 {
-          seq.composition.adjust_count(seq.sequence[pos], -1);
-        }
-      }
-
       seq.fitch.composition = seq.composition.clone();
       for p in seq.fitch.variable.values() {
-        if let Some(state) = p.state {
+        if let Some(state) = p.get_one_maybe() {
           seq.fitch.composition.adjust_count(state, -1);
         }
       }
 
       if !node.is_root {
-        seq.sequence = vec![];
+        seq.sequence = seq![];
       }
     }
 
@@ -486,7 +442,7 @@ pub fn ancestral_reconstruction_fitch(
   graph: &SparseGraph,
   include_leaves: bool,
   partitions: &[PartitionParsimony],
-  mut visitor: impl FnMut(&SparseNode, Vec<char>),
+  mut visitor: impl FnMut(&SparseNode, &Seq),
 ) -> Result<(), Report> {
   let n_partitions = partitions.len();
 
@@ -495,54 +451,41 @@ pub fn ancestral_reconstruction_fitch(
       return;
     }
 
-    let seq = (0..n_partitions)
-      .flat_map(|si| {
-        let PartitionParsimony { alphabet, .. } = &partitions[si];
+    for si in 0..n_partitions {
+      let PartitionParsimony { alphabet, .. } = &partitions[si];
 
-        let mut seq = if node.is_root {
-          node.payload.sparse_partitions[si].seq.sequence.clone()
-        } else {
-          let (parent, edge) = node.get_exactly_one_parent().unwrap();
-          let parent = &parent.read_arc().sparse_partitions[si];
-          let edge = &edge.read_arc().sparse_partitions[si];
+      if !node.is_root {
+        let (parent, edge) = node.get_exactly_one_parent().unwrap();
+        let parent_seq = &parent.read_arc().sparse_partitions[si].seq.sequence;
+        let edge_part = &edge.read_arc().sparse_partitions[si];
 
-          let mut seq = parent.seq.sequence.clone();
+        node.payload.sparse_partitions[si].seq.sequence = parent_seq.clone();
 
-          // Implant mutations
-          for sub in &edge.subs {
-            seq[sub.pos] = sub.qry;
-          }
-
-          // Implant indels
-          for indel in &edge.indels {
-            if indel.deletion {
-              seq[indel.range.0..indel.range.1].fill(alphabet.gap());
-            } else {
-              seq[indel.range.0..indel.range.1].copy_from_slice(&indel.seq);
-            }
-          }
-
-          seq
-        };
-
-        let node = &mut node.payload.sparse_partitions[si].seq;
-
-        // At the node itself, mask whatever is unknown in the node.
-        for r in &node.unknown {
-          seq[r.0..r.1].fill(alphabet.unknown());
+        for sub in &edge_part.subs {
+          node.payload.sparse_partitions[si].seq.sequence[sub.pos()] = sub.qry();
         }
 
-        for (pos, p) in &node.fitch.variable {
-          seq[*pos] = alphabet.get_code(&p.dis);
+        for indel in &edge_part.indels {
+          if indel.deletion {
+            node.payload.sparse_partitions[si].seq.sequence[indel.range.0..indel.range.1].fill(alphabet.gap());
+          } else {
+            node.payload.sparse_partitions[si].seq.sequence[indel.range.0..indel.range.1].copy_from_slice(&indel.seq);
+          }
         }
+      }
 
-        node.sequence = seq.clone();
+      let seq = &mut node.payload.sparse_partitions[si].seq;
 
-        seq
-      })
-      .collect();
+      for r in &mut seq.unknown {
+        seq.sequence[r.0..r.1].fill(alphabet.unknown());
+      }
 
-    visitor(&node.payload, seq);
+      for (pos, states) in &mut seq.fitch.variable {
+        seq.sequence[*pos] = alphabet.set_to_char(*states);
+      }
+
+      visitor(&node.payload, &node.payload.sparse_partitions[si].seq.sequence);
+    }
   });
 
   Ok(())
@@ -569,7 +512,7 @@ pub fn get_common_length(aln: &[FastaRecord]) -> Result<usize, Report> {
         .join("\n\n");
 
       make_error!("Sequences are expected to all have the same length, but found the following lengths:\n\n{message}")
-    }
+    },
   }
   .wrap_err("When calculating length of sequences")
 }
@@ -577,12 +520,11 @@ pub fn get_common_length(aln: &[FastaRecord]) -> Result<usize, Report> {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::alphabet::alphabet::{Alphabet, AlphabetName};
+  use crate::alphabet::alphabet::Alphabet;
   use crate::graph::node::Named;
-  use crate::io::fasta::read_many_fasta_str;
-  use crate::io::json::{json_write_str, JsonPretty};
-  use crate::io::nwk::nwk_read_str;
-  use crate::utils::string::vec_to_string;
+  use crate::io::fasta::{read_many_fasta, read_many_fasta_str};
+  use crate::io::json::{JsonPretty, json_write_str};
+  use crate::io::nwk::{nwk_read_file, nwk_read_str};
   use eyre::Report;
   use indoc::indoc;
   use lazy_static::lazy_static;
@@ -634,7 +576,7 @@ mod tests {
 
     let mut actual = BTreeMap::new();
     ancestral_reconstruction_fitch(&graph, false, &partitions, |node, seq| {
-      actual.insert(node.name.clone(), vec_to_string(seq));
+      actual.insert(node.name.clone(), seq.to_string());
     })?;
 
     assert_eq!(
@@ -694,7 +636,7 @@ mod tests {
 
     let mut actual = BTreeMap::new();
     ancestral_reconstruction_fitch(&graph, true, &partitions, |node, seq| {
-      actual.insert(node.name.clone(), vec_to_string(seq));
+      actual.insert(node.name.clone(), seq.to_string());
     })?;
 
     assert_eq!(
@@ -741,35 +683,296 @@ mod tests {
     fitch_backwards(&graph, &partitions);
 
     {
-      let seq_info = &graph
-        .get_exactly_one_root()?
-        .read_arc()
-        .payload()
-        .read_arc()
-        .sparse_partitions[0]
-        .seq;
-
+      let seq_info = util::get_root_seq_info(&graph);
       assert_eq!(
         vec![0, 2, 3, 5, 6],
         seq_info.fitch.variable.keys().copied().collect_vec()
       );
-
-      assert_eq!(&"~C~~C~~TGTATTGAC".chars().collect_vec(), &seq_info.sequence);
+      assert_eq!(&"~C~~C~~TGTATTGAC", &seq_info.sequence.as_str());
     }
 
     fitch_forward(&graph, &partitions);
 
     {
-      let seq_info = &graph
-        .get_exactly_one_root()?
+      let seq_info = util::get_root_seq_info(&graph);
+      assert_eq!(&aln[0].seq, &seq_info.sequence);
+    }
+
+    {
+      let actual_muts = util::collect_muts(&graph);
+      let expected_muts = btreemap! {
+        "AB->A"    => vec!["C6G", "T8C"],
+        "AB->B"    => vec!["A1G"],
+        "root->AB" => vec!["G4T", "A7C"],
+        "CD->C"    => vec!["C6G"],
+        "CD->D"    => vec!["C1T", "A7G"],
+        "root->CD" => vec!["A1C", "A3G"],
+      };
+      assert_eq!(
+        json_write_str(&expected_muts, JsonPretty(true))?,
+        json_write_str(&actual_muts, JsonPretty(true))?
+      );
+    }
+
+    {
+      let actual_indels = util::collect_indels(&graph);
+      let expected_indels = btreemap! {
+        "AB->A"     => vec!["12--13: T -> -", "14--16: -- -> AC"],
+        "AB->B"     => vec![],
+        "CD->C"     => vec![],
+        "root->AB"  => vec!["11--12: T -> -"],
+        "CD->D"     => vec![],
+        "root->CD"  => vec![],
+      };
+      assert_eq!(
+        json_write_str(&expected_indels, JsonPretty(true))?,
+        json_write_str(&actual_indels, JsonPretty(true))?
+      );
+    }
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_fitch_complex_gaps() -> Result<(), Report> {
+    rayon::ThreadPoolBuilder::new().num_threads(1).build_global()?;
+
+    // test the cases where: a) deletions overlap, b) the root has a deletion, c) an inserted sequence is variable
+    // in DE, position 3 is inserted, but it varies in D and E
+    let aln = read_many_fasta_str(
+      indoc! {r#"
+      >root
+      TC-AG
+      >AB
+      TC-AG
+      >A
+      NC--G
+      >B
+      T--AG
+      >CDE
+      TG-TG
+      >C
+      TR-TG
+      >DE
+      TGTTG
+      >D
+      TGTTG
+      >E
+      TGCCG
+    "#},
+      &NUC_ALPHABET,
+    )?;
+
+    let graph: SparseGraph = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,(D:0.05,E:0.03)DE:0.01)CDE:0.05)root:0.01;")?;
+
+    let alphabet = Alphabet::default();
+    let partitions = vec![PartitionParsimonyWithAln::new(alphabet.clone(), aln.clone())?];
+
+    attach_seqs_to_graph(&graph, &partitions)?;
+
+    let partitions = partitions.into_iter().map(PartitionParsimony::from).collect_vec();
+
+    fitch_backwards(&graph, &partitions);
+
+    fitch_forward(&graph, &partitions);
+
+    {
+      let seq_info = util::get_root_seq_info(&graph);
+      assert_eq!(&aln[0].seq, &seq_info.sequence);
+    }
+
+    {
+      let actual_muts = util::collect_muts(&graph);
+      let expected_muts = btreemap! {
+        "AB->A"     => vec![],
+        "AB->B"     => vec![],
+        "root->AB"  => vec![],
+        "CDE->C"    => vec![],
+        "CDE->DE"   => vec![],
+        "DE->D"     => vec!["C3T"],
+        "DE->E"     => vec!["T4C"],
+        "root->CDE" => vec!["C2G", "A4T"],
+      };
+      assert_eq!(
+        json_write_str(&expected_muts, JsonPretty(true))?,
+        json_write_str(&actual_muts, JsonPretty(true))?
+      );
+    }
+
+    {
+      let actual_indels = util::collect_indels(&graph);
+      let expected_indels = btreemap! {
+        "AB->A"     => vec!["3--4: A -> -"],
+        "AB->B"     => vec!["1--2: C -> -"],
+        "root->AB"  => vec![],
+        "CDE->C"    => vec![],
+        "CDE->DE"   => vec!["2--3: - -> C"],
+        "DE->D"     => vec![],
+        "DE->E"     => vec![],
+        "root->CDE" => vec![],
+      };
+      assert_eq!(
+        json_write_str(&expected_indels, JsonPretty(true))?,
+        json_write_str(&actual_indels, JsonPretty(true))?
+      );
+    }
+
+    for node in graph.get_nodes() {
+      let seq_info = util::get_root_seq_info(&graph);
+      let composition = Composition::with_sequence(seq_info.sequence.iter().copied(), alphabet.chars(), alphabet.gap());
+      assert_eq!(&seq_info.composition, &composition);
+    }
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_fitch_polytomy() -> Result<(), Report> {
+    rayon::ThreadPoolBuilder::new().num_threads(1).build_global()?;
+
+    // test the cases where: a) deletions overlap, b) the root has a deletion, c) an inserted sequence is variable
+    // in DE, position 3 is inserted, but it varies in D and E
+    let aln = read_many_fasta_str(
+      indoc! {r#"
+      >root
+      TC-AG
+      >AB
+      TC-AG
+      >A
+      NC--G
+      >B
+      T--AG
+      >CDE
+      TG-CG
+      >C
+      TR-TG
+      >D
+      TGTTG
+      >E
+      TGCCG
+    "#},
+      &NUC_ALPHABET,
+    )?;
+
+    let graph: SparseGraph = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.05,E:0.03)CDE:0.05)root:0.01;")?;
+
+    let alphabet = Alphabet::default();
+    let partitions = vec![PartitionParsimonyWithAln::new(alphabet.clone(), aln.clone())?];
+
+    attach_seqs_to_graph(&graph, &partitions)?;
+
+    let partitions = partitions.into_iter().map(PartitionParsimony::from).collect_vec();
+
+    fitch_backwards(&graph, &partitions);
+
+    fitch_forward(&graph, &partitions);
+
+    {
+      let seq_info = util::get_root_seq_info(&graph);
+      assert_eq!(&aln[0].seq, &seq_info.sequence);
+    }
+
+    {
+      let actual_muts = util::collect_muts(&graph);
+      let expected_muts = btreemap! {
+        "AB->A"     => vec![],
+        "AB->B"     => vec![],
+        "root->AB"  => vec![],
+        "CDE->C"    => vec!["C4T"],
+        "CDE->D"    => vec!["C3T", "C4T"],
+        "CDE->E"    => vec![],
+        "root->CDE" => vec!["A4C","C2G"],
+      };
+      assert_eq!(
+        json_write_str(&expected_muts, JsonPretty(true))?,
+        json_write_str(&actual_muts, JsonPretty(true))?
+      );
+    }
+
+    {
+      let actual_indels = util::collect_indels(&graph);
+      let expected_indels = btreemap! {
+        "AB->A"     => vec!["3--4: A -> -"],
+        "AB->B"     => vec!["1--2: C -> -"],
+        "root->AB"  => vec![],
+        "CDE->C"    => vec!["2--3: C -> -"],
+        "CDE->D"    => vec![],
+        "CDE->E"    => vec![],
+        "root->CDE" => vec!["2--3: - -> C"],
+      };
+      assert_eq!(
+        json_write_str(&expected_indels, JsonPretty(true))?,
+        json_write_str(&actual_indels, JsonPretty(true))?
+      );
+    }
+
+    for node in graph.get_nodes() {
+      let seq_info = &node.read_arc().payload().read_arc().sparse_partitions[0].seq;
+      let composition = Composition::with_sequence(seq_info.sequence.iter().copied(), alphabet.chars(), alphabet.gap());
+      assert_eq!(&seq_info.composition, &composition);
+    }
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_fitch_diverse_data() -> Result<(), Report> {
+    rayon::ThreadPoolBuilder::new().num_threads(1).build_global()?;
+
+    let alphabet = Alphabet::default();
+    let aln = read_many_fasta(&["../../data/lassa/L/50/aln.fasta.xz"], &alphabet)?;
+
+    let graph: SparseGraph = nwk_read_file("../../data/lassa/L/50/tree.nwk")?;
+    let partitions = vec![PartitionParsimonyWithAln::new(alphabet, aln.clone())?];
+    let partitions = compress_sequences(&graph, partitions)?;
+
+    // perform the ancestral reconstruction and save the sequences in a map
+    let mut rec_seq = BTreeMap::new();
+    ancestral_reconstruction_fitch(&graph, true, &partitions, |node, seq| {
+      rec_seq.insert(node.name.clone().unwrap(), seq.to_string());
+    })?;
+
+    let alphabet = Alphabet::default();
+    for node in graph.get_inner_nodes() {
+      let seq_info = &node.read_arc().payload().read_arc().sparse_partitions[0].seq;
+      let node_name = node.read_arc().payload().read_arc().name.clone().unwrap();
+      let composition = Composition::with_sequence(rec_seq[&node_name].chars(), alphabet.chars(), alphabet.gap());
+      assert_eq!(&seq_info.composition, &composition);
+    }
+
+    let alphabet = Alphabet::default();
+    for node in graph.get_leaves() {
+      let seq_info = &node.read_arc().payload().read_arc().sparse_partitions[0].seq;
+      let node_name = node.read_arc().payload().read_arc().name.clone().unwrap();
+      let input_seq = aln
+        .iter()
+        .find(|record| record.seq_name == node_name)
+        .unwrap()
+        .seq
+        .iter()
+        .copied();
+      let input_seq_str: String = input_seq.clone().map(|c| c.to_string()).collect();
+      assert_eq!(&input_seq_str, &rec_seq[&node_name]);
+    }
+    Ok(())
+  }
+
+  mod util {
+    use super::*;
+
+    pub fn get_root_seq_info(graph: &SparseGraph) -> SparseSeqInfo {
+      graph
+        .get_exactly_one_root()
+        .unwrap()
         .read_arc()
         .payload()
         .read_arc()
         .sparse_partitions[0]
-        .seq;
+        .seq
+        .clone()
+    }
 
-      assert_eq!(&aln[0].seq.chars().collect_vec(), &seq_info.sequence);
-
+    pub fn collect_muts(graph: &SparseGraph) -> BTreeMap<String, Vec<String>> {
       let actual_muts: BTreeMap<_, _> = graph
         .get_edges()
         .iter()
@@ -793,25 +996,24 @@ mod tests {
           )
         })
         .collect();
+      actual_muts
+    }
 
-      let expected_muts = btreemap! {
-        "AB->A"    => vec!["C6G", "T8C"],
-        "AB->B"    => vec!["A1G"],
-        "root->AB" => vec!["G4T", "A7C"],
-        "CD->C"    => vec!["C6G"],
-        "CD->D"    => vec!["C1T", "A7G"],
-        "root->CD" => vec!["A1C", "A3G"],
-      };      assert_eq!(
-        json_write_str(&expected_muts, JsonPretty(true))?,
-        json_write_str(&actual_muts, JsonPretty(true))?
-      );
-
+    pub fn collect_indels(graph: &SparseGraph) -> BTreeMap<String, Vec<String>> {
       let actual_indels: BTreeMap<_, _> = graph
         .get_edges()
         .iter()
         .map(|e| {
+          let get_name = |node_id| {
+            let node = graph.get_node(node_id).unwrap().read_arc();
+            node.payload().read_arc().name().unwrap().as_ref().to_owned()
+          };
+
+          let src = get_name(e.read_arc().source());
+          let tar = get_name(e.read_arc().target());
+
           (
-            e.read_arc().key(),
+            format!("{src}->{tar}"),
             e.read_arc().payload().read_arc().sparse_partitions[0]
               .indels
               .iter()
@@ -820,255 +1022,7 @@ mod tests {
           )
         })
         .collect();
-
-      let expected_indels = btreemap! {
-        0 => vec!["12--13: T -> -", "14--16: -- -> AC"],
-        1 => vec![],
-        2 => vec!["11--12: T -> -"],
-        3 => vec![],
-        4 => vec![],
-        5 => vec![],
-      };
-
-      assert_eq!(
-        json_write_str(&expected_indels, JsonPretty(true))?,
-        json_write_str(&actual_indels, JsonPretty(true))?
-      );
+      actual_indels
     }
-
-    Ok(())
-  }
-
-  #[test]
-  fn test_fitch_seq_info_1() -> Result<(), Report> {
-    let seq = "GCATCCCTGTA-NG--".chars().collect_vec();
-    let alphabet = Alphabet::new(AlphabetName::Nuc, false)?;
-    let actual = SparseSeqNode::new(&seq, &alphabet)?;
-
-    let expected = indoc! { /* language=json */ r#"{
-      "seq": {
-        "unknown": [
-          [
-            12,
-            13
-          ]
-        ],
-        "gaps": [
-          [
-            11,
-            12
-          ],
-          [
-            14,
-            16
-          ]
-        ],
-        "non_char": [
-          [
-            11,
-            13
-          ],
-          [
-            14,
-            16
-          ]
-        ],
-        "composition": {
-          "counts": {
-            "-": 0,
-            "A": 0,
-            "B": 0,
-            "C": 0,
-            "D": 0,
-            "G": 0,
-            "H": 0,
-            "K": 0,
-            "M": 0,
-            "N": 0,
-            "R": 0,
-            "S": 0,
-            "T": 0,
-            "V": 0,
-            "W": 0,
-            "Y": 0
-          },
-          "gap": "-"
-        },
-        "sequence": "GCATCCCTGTA-NG--",
-        "fitch": {
-          "variable": {},
-          "variable_indel": {},
-          "composition": {
-            "counts": {
-              "-": 0,
-              "A": 0,
-              "B": 0,
-              "C": 0,
-              "D": 0,
-              "G": 0,
-              "H": 0,
-              "K": 0,
-              "M": 0,
-              "N": 0,
-              "R": 0,
-              "S": 0,
-              "T": 0,
-              "V": 0,
-              "W": 0,
-              "Y": 0
-            },
-            "gap": "-"
-          }
-        }
-      },
-      "profile": {
-        "variable": {},
-        "variable_indel": {},
-        "fixed": {},
-        "fixed_counts": {
-          "counts": {
-            "-": 0,
-            "A": 0,
-            "B": 0,
-            "C": 0,
-            "D": 0,
-            "G": 0,
-            "H": 0,
-            "K": 0,
-            "M": 0,
-            "N": 0,
-            "R": 0,
-            "S": 0,
-            "T": 0,
-            "V": 0,
-            "W": 0,
-            "Y": 0
-          },
-          "gap": "-"
-        },
-        "log_lh": 0.0
-      }
-    }"#};
-
-    assert_eq!(expected, json_write_str(&actual, JsonPretty(true))?);
-    Ok(())
-  }
-
-  #[test]
-  fn test_fitch_seq_info_2() -> Result<(), Report> {
-    let seq = "TCGGCCGTGTRTTG--".chars().collect_vec();
-    let alphabet = Alphabet::new(AlphabetName::Nuc, false)?;
-    let actual = SparseSeqNode::new(&seq, &alphabet)?;
-
-    let expected = indoc! { /* language=json */ r#"{
-      "seq": {
-        "unknown": [],
-        "gaps": [
-          [
-            14,
-            16
-          ]
-        ],
-        "non_char": [
-          [
-            14,
-            16
-          ]
-        ],
-        "composition": {
-          "counts": {
-            "-": 0,
-            "A": 0,
-            "B": 0,
-            "C": 0,
-            "D": 0,
-            "G": 0,
-            "H": 0,
-            "K": 0,
-            "M": 0,
-            "N": 0,
-            "R": 0,
-            "S": 0,
-            "T": 0,
-            "V": 0,
-            "W": 0,
-            "Y": 0
-          },
-          "gap": "-"
-        },
-        "sequence": "TCGGCCGTGTRTTG--",
-        "fitch": {
-          "variable": {
-            "10": {
-              "dis": {
-                "v": 1,
-                "dim": [
-                  4
-                ],
-                "data": [
-                  1.0,
-                  0.0,
-                  1.0,
-                  0.0
-                ]
-              },
-              "state": null
-            }
-          },
-          "variable_indel": {},
-          "composition": {
-            "counts": {
-              "-": 0,
-              "A": 0,
-              "B": 0,
-              "C": 0,
-              "D": 0,
-              "G": 0,
-              "H": 0,
-              "K": 0,
-              "M": 0,
-              "N": 0,
-              "R": 0,
-              "S": 0,
-              "T": 0,
-              "V": 0,
-              "W": 0,
-              "Y": 0
-            },
-            "gap": "-"
-          }
-        }
-      },
-      "profile": {
-        "variable": {},
-        "variable_indel": {},
-        "fixed": {},
-        "fixed_counts": {
-          "counts": {
-            "-": 0,
-            "A": 0,
-            "B": 0,
-            "C": 0,
-            "D": 0,
-            "G": 0,
-            "H": 0,
-            "K": 0,
-            "M": 0,
-            "N": 0,
-            "R": 0,
-            "S": 0,
-            "T": 0,
-            "V": 0,
-            "W": 0,
-            "Y": 0
-          },
-          "gap": "-"
-        },
-        "log_lh": 0.0
-      }
-    }"#};
-
-    assert_eq!(expected, json_write_str(&actual, JsonPretty(true))?);
-    Ok(())
   }
 }

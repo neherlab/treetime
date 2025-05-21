@@ -77,7 +77,7 @@ pub fn initial_guess(graph: &DenseGraph, partitions: &[PartitionLikelihood]) -> 
       for (row1, row2) in zip(partition.msg_to_parent.dis.rows(), partition.msg_to_child.dis.rows()) {
         if row1[row2.argmax().unwrap()] < 0.5 {
           differences += 1;
-        };
+        }
       }
     }
     let new_branch_length = differences as f64 * one_mutation;
@@ -151,7 +151,7 @@ pub fn run_optimize_dense(graph: &DenseGraph, partitions: &[PartitionLikelihood]
         .max_by(|&(_, ll1), &(_, ll2)| ll1.partial_cmp(&ll2).unwrap())
         .unwrap();
       new_branch_length = best_branch_length;
-    };
+    }
     edge.branch_length = Some(new_branch_length);
   });
   Ok(())

@@ -2,13 +2,14 @@ use crate::io::file::{create_file_or_stdout, open_file_or_stdin};
 use crate::io::yaml::yaml_write_file;
 use eyre::{Report, WrapErr};
 use serde::{Deserialize, Serialize};
-use serde_json::{de::Read, Deserializer};
+use serde_json::{Deserializer, de::Read};
 use std::io::{Cursor, Write};
 use std::path::Path;
 
 pub fn json_read_file<T: for<'de> Deserialize<'de>, P: AsRef<Path>>(filepath: P) -> Result<T, Report> {
   let filepath = filepath.as_ref();
-  json_read(open_file_or_stdin(&Some(filepath))?).wrap_err_with(|| format!("When reading JSON file: {filepath:#?}"))
+  json_read(open_file_or_stdin(&Some(filepath))?)
+    .wrap_err_with(|| format!("When reading JSON file: '{}'", filepath.display()))
 }
 
 pub fn json_read_str<T: for<'de> Deserialize<'de>>(s: impl AsRef<str>) -> Result<T, Report> {
@@ -37,7 +38,7 @@ pub struct JsonPretty(pub bool);
 pub fn json_write_file<T: Serialize>(filepath: impl AsRef<Path>, obj: &T, pretty: JsonPretty) -> Result<(), Report> {
   let filepath = filepath.as_ref();
   json_write(create_file_or_stdout(filepath)?, &obj, pretty)
-    .wrap_err_with(|| format!("When writing JSON file: {filepath:#?}"))
+    .wrap_err_with(|| format!("When writing JSON file: '{}'", filepath.display()))
 }
 
 pub fn json_write_str<T: Serialize>(obj: &T, pretty: JsonPretty) -> Result<String, Report> {
