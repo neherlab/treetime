@@ -2,14 +2,14 @@ use crate::io::fs::extension;
 use crate::utils::error::report_to_string;
 use color_eyre::{Help, SectionExt};
 use eyre::{Report, WrapErr};
+use flate2::Compression as GzCompressionLevel;
 use flate2::read::MultiGzDecoder;
 use flate2::write::GzEncoder;
-use flate2::Compression as GzCompressionLevel;
 use log::debug;
 use num::Integer;
 use num_traits::NumCast;
 use std::env;
-use std::io::{ErrorKind, Read, Write};
+use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
@@ -19,11 +19,11 @@ use std::str::FromStr;
 // TODO: keep an eye on efforts of bringing (pieces of) libc to `wasm32-unknown-unknown`, and enable `bzip2`, `xz2`
 // and `zstd` crates for wasm builds when it's compatible enough: https://github.com/rustwasm/team/issues/291
 #[cfg(not(target_arch = "wasm32"))]
+use bzip2::Compression as BzCompressionLevel;
+#[cfg(not(target_arch = "wasm32"))]
 use bzip2::read::MultiBzDecoder;
 #[cfg(not(target_arch = "wasm32"))]
 use bzip2::write::BzEncoder;
-#[cfg(not(target_arch = "wasm32"))]
-use bzip2::Compression as BzCompressionLevel;
 
 #[cfg(not(target_arch = "wasm32"))]
 use xz2::read::XzDecoder;
@@ -66,8 +66,9 @@ pub fn guess_compression_from_filepath(filepath: impl AsRef<Path>) -> (Compressi
       };
 
       debug!(
-        "When processing '{filepath:#?}': detected file extension '{ext}'. \
-        It will be using algorithm: '{compression_type}'"
+        "When processing '{}': detected file extension '{ext}'. \
+        It will be using algorithm: '{compression_type}'",
+        filepath.display()
       );
 
       (compression_type, ext)
@@ -141,7 +142,7 @@ impl Read for Decompressor<'_> {
           .header("Filename")
       })
       .with_section(|| self.compression_type.clone().header("Decompressor"))
-      .map_err(|report| std::io::Error::new(ErrorKind::Other, report_to_string(&report)))
+      .map_err(|report| std::io::Error::other(report_to_string(&report)))
   }
 }
 
@@ -200,7 +201,7 @@ impl Write for Compressor<'_> {
           .header("Filename")
       })
       .with_section(|| self.compression_type.clone().header("Compressor"))
-      .map_err(|report| std::io::Error::new(ErrorKind::Other, report_to_string(&report)))
+      .map_err(|report| std::io::Error::other(report_to_string(&report)))
   }
 
   fn flush(&mut self) -> std::io::Result<()> {
@@ -216,7 +217,7 @@ impl Write for Compressor<'_> {
           .header("Filename")
       })
       .with_section(|| self.compression_type.clone().header("Compressor"))
-      .map_err(|report| std::io::Error::new(ErrorKind::Other, report_to_string(&report)))
+      .map_err(|report| std::io::Error::other(report_to_string(&report)))
   }
 }
 

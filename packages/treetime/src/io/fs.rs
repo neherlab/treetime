@@ -1,5 +1,5 @@
 use crate::io::file::open_file_or_stdin;
-use eyre::{eyre, Report, WrapErr};
+use eyre::{Report, WrapErr, eyre};
 use std::ffi::{OsStr, OsString};
 use std::io::{BufReader, Read};
 use std::path::{Path, PathBuf};
@@ -22,13 +22,13 @@ pub fn ensure_dir(filepath: impl AsRef<Path>) -> Result<(), Report> {
   {
     let parent_dir = filepath
       .parent()
-      .ok_or_else(|| eyre!("Unable to get parent path for {:#?}", filepath))?;
+      .ok_or_else(|| eyre!("Unable to get parent path for '{}'", filepath.display()))?;
 
     let parent_path = absolute_path(parent_dir)?;
 
-    fs::create_dir_all(&parent_path).wrap_err_with(|| format!("When creating directory '{parent_path:#?}'"))
+    fs::create_dir_all(&parent_path).wrap_err_with(|| format!("When creating directory '{}'", parent_path.display()))
   }
-  .wrap_err_with(|| format!("When ensuring parent directory for '{filepath:#?}'"))
+  .wrap_err_with(|| format!("When ensuring parent directory for '{}'", filepath.display()))
 }
 
 pub fn filename_maybe(filepath: impl AsRef<Path>) -> Option<String> {
@@ -77,7 +77,7 @@ pub fn read_file_to_string(filepath: impl AsRef<Path>) -> Result<String, Report>
   let mut data = String::new();
   file
     .read_to_string(&mut data)
-    .wrap_err_with(|| format!("When reading file: {filepath:#?}"))?;
+    .wrap_err_with(|| format!("When reading file: '{}'", filepath.display()))?;
   Ok(data)
 }
 

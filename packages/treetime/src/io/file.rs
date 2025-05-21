@@ -3,7 +3,7 @@ use crate::io::fs::ensure_dir;
 use eyre::{Report, WrapErr};
 use log::info;
 use std::fs::File;
-use std::io::{stdin, stdout, BufRead, BufReader, BufWriter, Write};
+use std::io::{BufRead, BufReader, BufWriter, Write, stdin, stdout};
 use std::path::{Path, PathBuf};
 
 pub const DEFAULT_FILE_BUF_SIZE: usize = 256 * 1024;
@@ -26,7 +26,7 @@ pub fn open_file_or_stdin<P: AsRef<Path>>(filepath: &Option<P>) -> Result<Box<dy
       if is_path_stdin(filepath) {
         open_stdin()
       } else {
-        let file = File::open(filepath).wrap_err_with(|| format!("When opening file '{filepath:?}'"))?;
+        let file = File::open(filepath).wrap_err_with(|| format!("When opening file '{}'", filepath.display()))?;
         let buf_file = BufReader::with_capacity(DEFAULT_FILE_BUF_SIZE, file);
         let decompressor = Decompressor::from_path(buf_file, filepath)?;
         let buf_decompressor = BufReader::with_capacity(DEFAULT_FILE_BUF_SIZE, decompressor);
@@ -42,11 +42,11 @@ pub fn create_file_or_stdout(filepath: impl AsRef<Path>) -> Result<Box<dyn Write
   let filepath = filepath.as_ref();
 
   let file: Box<dyn Write + Sync + Send> = if is_path_stdout(filepath) {
-    info!("File path is {filepath:?}. Writing to standard output.");
+    info!("File path is '{}'. Writing to standard output.", filepath.display());
     Box::new(BufWriter::with_capacity(DEFAULT_FILE_BUF_SIZE, stdout()))
   } else {
     ensure_dir(filepath)?;
-    Box::new(File::create(filepath).wrap_err_with(|| format!("When creating file: '{filepath:?}'"))?)
+    Box::new(File::create(filepath).wrap_err_with(|| format!("When creating file: '{}'", filepath.display()))?)
   };
 
   let buf_file = BufWriter::with_capacity(DEFAULT_FILE_BUF_SIZE, file);
@@ -67,7 +67,7 @@ pub fn is_path_stdout(filepath: impl AsRef<Path>) -> bool {
 
 #[cfg(not(target_arch = "wasm32"))]
 mod non_wasm {
-  use atty::{is as is_tty, Stream};
+  use atty::{Stream, is as is_tty};
   use log::warn;
 
   #[cfg(not(target_arch = "wasm32"))]

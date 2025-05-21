@@ -8,7 +8,7 @@ use crate::io::file::open_file_or_stdin;
 use crate::make_error;
 use crate::utils::float_fmt::float_to_digits;
 use bio::io::newick;
-use eyre::{eyre, Report, WrapErr};
+use eyre::{Report, WrapErr, eyre};
 use indexmap::IndexMap;
 use itertools::Itertools;
 use log::warn;
@@ -28,7 +28,7 @@ where
   D: Sync + Send + Default,
 {
   let filepath = filepath.as_ref();
-  nwk_read(open_file_or_stdin(&Some(filepath))?).wrap_err_with(|| format!("When reading file '{filepath:#?}'"))
+  nwk_read(open_file_or_stdin(&Some(filepath))?).wrap_err_with(|| format!("When reading file '{}'", filepath.display()))
 }
 
 pub fn nwk_read_str<N, E, D>(nwk_string: impl AsRef<str>) -> Result<Graph<N, E, D>, Report>

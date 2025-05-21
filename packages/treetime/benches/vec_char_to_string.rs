@@ -1,4 +1,5 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, criterion_group, criterion_main};
+use std::hint::black_box;
 use treetime::utils::random::random_sequence;
 
 fn vec_to_string_collect(v: Vec<char>) -> String {

@@ -22,7 +22,7 @@ where
 {
   let filepath = filepath.as_ref();
   auspice_read::<C, _, _, _>(open_file_or_stdin(&Some(filepath))?)
-    .wrap_err_with(|| format!("When reading Auspice v2 JSON file '{filepath:#?}'"))
+    .wrap_err_with(|| format!("When reading Auspice v2 JSON file '{}'", filepath.display()))
 }
 
 pub fn auspice_read_str<C, N, E, D>(auspice_string: impl AsRef<str>) -> Result<Graph<N, E, D>, Report>
@@ -57,7 +57,7 @@ where
   let filepath = filepath.as_ref();
   let mut f = create_file_or_stdout(filepath)?;
   auspice_write::<C, _, _, _>(&mut f, graph)
-    .wrap_err_with(|| format!("When reading Auspice v2 JSON file '{filepath:#?}'"))?;
+    .wrap_err_with(|| format!("When reading Auspice v2 JSON file '{}'", filepath.display()))?;
   writeln!(f)?;
   Ok(())
 }

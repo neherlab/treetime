@@ -6,7 +6,7 @@ use crate::utils::datetime::parse_uncertain_date::parse_date_uncertain;
 use crate::utils::datetime::year_frac::{date_range_to_year_fraction_range, date_to_year_fraction};
 use crate::{make_internal_report, vec_of_owned};
 use csv::{ReaderBuilder as CsvReaderBuilder, StringRecord, Trim};
-use eyre::{eyre, Report, WrapErr};
+use eyre::{Report, WrapErr, eyre};
 use itertools::Itertools;
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -36,9 +36,10 @@ pub fn read_dates(
   date_column: &Option<String>,
 ) -> Result<DatesMap, Report> {
   let filepath = filepath.as_ref();
-  let file = open_file_or_stdin(&Some(filepath)).wrap_err_with(|| format!("When reading file: {filepath:#?}"))?;
-  let delimiter =
-    guess_csv_delimiter(filepath).wrap_err_with(|| format!("When guessing CSV delimiter for {filepath:#?}"))?;
+  let file =
+    open_file_or_stdin(&Some(filepath)).wrap_err_with(|| format!("When reading file: '{}'", filepath.display()))?;
+  let delimiter = guess_csv_delimiter(filepath)
+    .wrap_err_with(|| format!("When guessing CSV delimiter for '{}'", filepath.display()))?;
 
   let mut reader = CsvReaderBuilder::new()
     .trim(Trim::All)
@@ -54,10 +55,10 @@ pub fn read_dates(
     .collect_vec();
 
   let name_column_idx = get_col_name(&headers, &vec_of_owned!["name", "strain", "accession"], name_column)
-    .wrap_err_with(|| format!("When detecting name column in {filepath:#?}"))?;
+    .wrap_err_with(|| format!("When detecting name column in '{}'", filepath.display()))?;
 
   let date_column_idx = get_col_name(&headers, &vec_of_owned!["date"], date_column)
-    .wrap_err_with(|| format!("When detecting date column in {filepath:#?}"))?;
+    .wrap_err_with(|| format!("When detecting date column in '{}'", filepath.display()))?;
 
   reader
     .records()
