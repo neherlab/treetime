@@ -181,7 +181,7 @@ def scan_homoplasies(params):
     terminal_mutation_count = np.sum([len(x) for x in terminal_mutations.values()])
 
     multiplicities_positions = np.bincount([len(x) for x in positions.values()])
-    multiplicities_positions[0] = L - np.sum(multiplicities_positions)
+    multiplicities_positions[0] = L - np.sum(multiplicities_positions) # pylint: disable=unsupported-assignment-operation
 
     ###########################################################################
     ### Output the distribution of times particular mutations are observed
