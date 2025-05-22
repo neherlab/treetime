@@ -49,8 +49,8 @@ def parse_arg(tree1, tree2, aln1, aln2, MCC_file, fill_overhangs=True):
         aln_combined.append(seq)
 
     # construct masks for the concatenation and the two segments
-    l1 = len(a1[leaf]) # pylint: disable=undefined-loop-variable
-    l2 = len(a2[leaf]) # pylint: disable=undefined-loop-variable
+    l1 = len(a1[leaf])  # pylint: disable=undefined-loop-variable
+    l2 = len(a2[leaf])  # pylint: disable=undefined-loop-variable
     combined_mask = np.ones(l1 + l2)
     mask1 = np.zeros(l1 + l2)
     mask2 = np.zeros(l1 + l2)

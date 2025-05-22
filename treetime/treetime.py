@@ -953,7 +953,10 @@ class TreeTime(ClockTree):
                     if branch_to_mutate is None:
                         # this should never happen (but recreate previous behavior for now)
                         # TODO: raise
-                        self.logger('TreeTime.generate_subtree: did not find a mutation to remove -- error in total_mutation count calculation', 2)
+                        self.logger(
+                            'TreeTime.generate_subtree: did not find a mutation to remove -- error in total_mutation count calculation',
+                            2,
+                        )
                         branch_to_mutate = branches_alive[-1]
 
                     # remove a mutation from the branch
