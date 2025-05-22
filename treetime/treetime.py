@@ -939,15 +939,28 @@ class TreeTime(ClockTree):
                 p = self.rng.random()
                 mut_or_coal = p < total_mut_rate * total_rate_inv
                 if mut_or_coal:
+                    # pick a branch to remove a mutation from
                     # transform p to be on a scale of 0 to total mutation
                     p /= total_mut_rate * total_rate_inv
                     p *= total_mutations
                     # discount one mutation at a time until p<0, break and remove that mutation
+                    branch_to_mutate = None
                     for b in branches_alive:
                         p -= mutations_per_branch.get(b.name, 0)
                         if p < 0:
+                            branch_to_mutate = b
                             break
-                    mutations_per_branch[b.name] -= 1
+                    if branch_to_mutate is None:
+                        # this should never happen (but recreate previous behavior for now)
+                        # TODO: raise
+                        self.logger(
+                            'TreeTime.generate_subtree: did not find a mutation to remove -- error in total_mutation count calculation',
+                            2,
+                        )
+                        branch_to_mutate = branches_alive[-1]
+
+                    # remove a mutation from the branch
+                    mutations_per_branch[branch_to_mutate.name] -= 1
                 else:
                     # pick a pair to coalesce, make a new node.
                     picks = self.rng.choice(len(ready_to_coalesce), size=2, replace=False)

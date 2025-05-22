@@ -42,7 +42,6 @@ def mutations(node):
         return node.tt.data.differences(node.up.cseq, node.cseq, mask=node.mask)
 
 
-string_types = [str] if sys.version_info[0] == 3 else [str, unicode]
 Clade.sequence = property(lambda x: x.tt.sequence(x, as_string=False))
 Clade.cseq = property(compressed_sequence)
 Clade.mutations = property(mutations)
@@ -324,7 +323,7 @@ class TreeAnc(object):
         self._tree = None
         if isinstance(in_tree, Phylo.BaseTree.Tree):
             self._tree = in_tree
-        elif type(in_tree) in string_types and isfile(in_tree):
+        elif isinstance(in_tree, str) and isfile(in_tree):
             try:
                 self._tree = Phylo.read(in_tree, 'newick')
             except:
@@ -790,11 +789,11 @@ class TreeAnc(object):
             root_sample_from_profile = sample_from_profile
             other_sample_from_profile = sample_from_profile
 
-        self.total_LH_and_root_sequence(sample_from_profile=root_sample_from_profile, assign_sequence=True)
+        self.total_LH_and_root_sequence(sample_from_profile=root_sample_from_profile, assign_sequence=True)  # pylint: disable=possibly-used-before-assignment
 
         N_diff = self.preorder_traversal_marginal(
             reconstruct_tip_states=reconstruct_tip_states,
-            sample_from_profile=other_sample_from_profile,
+            sample_from_profile=other_sample_from_profile,  # pylint: disable=possibly-used-before-assignment
             assign_sequence=True,
         )
         self.logger('TreeAnc._ml_anc_marginal: ...done', 3)
@@ -1027,7 +1026,10 @@ class TreeAnc(object):
             root_sample_from_profile = sample_from_profile
 
         seq, anc_lh_vals, idxs = prof2seq(
-            np.exp(normalized_profile), self.gtr, sample_from_prof=root_sample_from_profile, rng=self.rng
+            np.exp(normalized_profile),
+            self.gtr,
+            sample_from_prof=root_sample_from_profile,  # pylint: disable=possibly-used-before-assignment
+            rng=self.rng,
         )
 
         # compute the likelihood of the most probable root sequence

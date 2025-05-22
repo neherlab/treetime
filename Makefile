@@ -1,22 +1,39 @@
 -include .env.example
 -include .env
 
-export UID=$(shell id -u)
-export GID=$(shell id -g)
-
-export DOCS_CONTAINER_NAME=treetime-docs
+MAKE_NOPRINT := $(MAKE) --no-print-directory
 
 SHELL := bash
 .ONESHELL:
+.SHELLFLAGS := -euo pipefail -c
+.SILENT:
 
-.PHONY: docs docker-docs lint
+.PHONY: docs docker-docs lint format
 
-lint:
-	PYTHONPATH=. pylint treetime --output-format=pylint_source_reporter.SourceCodeReporter
-	ruff check treetime
+define RUN_COLOR
+  script -qfec '$(1); ec=$$?; exit $$ec' /dev/null
+endef
 
-format:
-	ruff format .
+lint l:
+	@parallel --jobs=0 --line-buffer --tag "$(MAKE_NOPRINT) {}" ::: \
+		lint-pylint \
+		lint-ruff-check \
+		lint-ruff-format \
+
+lint-pylint:
+	$(call RUN_COLOR, PYTHONPATH=. pylint --fail-under=10.0 --output-format=pylint_source_reporter.SourceCodeReporter treetime)
+
+lint-ruff-check:
+	$(call RUN_COLOR, ruff check -q treetime)
+
+lint-ruff-format:
+	$(call RUN_COLOR, ruff format -q --check treetime)
+
+lint-pyright:
+	$(call RUN_COLOR, pyright)
+
+format fmt f:
+	@ruff format .
 
 docs:
 	@$(MAKE) --no-print-directory -C docs/ html
@@ -25,7 +42,9 @@ docs-clean:
 	rm -rf docs/build
 
 docker-docs:
-	set -euox
+	export DOCS_CONTAINER_NAME=treetime-docs
+	export UID=$(shell id -u)
+	export GID=$(shell id -g)
 
 	docker build -t $${DOCS_CONTAINER_NAME} \
 	--network=host \

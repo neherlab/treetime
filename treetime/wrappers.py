@@ -181,21 +181,20 @@ def scan_homoplasies(params):
     terminal_mutation_count = np.sum([len(x) for x in terminal_mutations.values()])
 
     multiplicities_positions = np.bincount([len(x) for x in positions.values()])
-    multiplicities_positions[0] = L - np.sum(multiplicities_positions)
+    multiplicities_positions[0] = L - np.sum(multiplicities_positions)  # pylint: disable=unsupported-assignment-operation
 
     ###########################################################################
     ### Output the distribution of times particular mutations are observed
     ###########################################################################
-    print('\nThe TOTAL tree length is %1.3e and %d mutations were observed.' % (total_branch_length, total_mutations))
+    print(f'\nThe TOTAL tree length is {total_branch_length:1.3e} and {total_mutations:d} mutations were observed.')
     print(
         'Of these %d mutations,' % total_mutations
-        + ''.join(['\n\t - %d occur %d times' % (n, mi) for mi, n in enumerate(multiplicities) if n])
+        + ''.join([f'\n\t - {n:d} occur {mi:d} times' for mi, n in enumerate(multiplicities) if n])
     )
     # additional optional output this for terminal mutations only
     if params.detailed:
         print(
-            '\nThe TERMINAL branch length is %1.3e and %d mutations were observed.'
-            % (corrected_terminal_branch_length, terminal_mutation_count)
+            f'\nThe TERMINAL branch length is {corrected_terminal_branch_length:1.3e} and {terminal_mutation_count:d} mutations were observed.'
         )
         print(
             'Of these %d mutations,' % terminal_mutation_count
@@ -482,7 +481,7 @@ def run_timetree(myTree, params, outdir, tree_suffix='', prune_short=True, metho
     try:
         success = myTree.run(
             root=root,
-            relaxed_clock=relaxed_clock_params,
+            relaxed_clock=relaxed_clock_params,  # pylint: disable=possibly-used-before-assignment
             resolve_polytomies=(not params.keep_polytomies),
             stochastic_resolve=stochastic_resolve,
             Tc=coalescent,
@@ -780,7 +779,7 @@ def reconstruct_discrete_traits(
         for n in treeanc.tree.get_terminals()
     }
     valid_seq = np.array([s[0] != missing_char for s in pseudo_seqs.values()])
-    print('Assigned discrete traits to %d out of %d taxa.\n' % (np.sum(valid_seq), len(valid_seq)))
+    print(f'Assigned discrete traits to {np.sum(valid_seq):d} out of {len(valid_seq):d} taxa.\n')
     treeanc.aln = pseudo_seqs
     try:
         ndiff = treeanc.infer_ancestral_sequences(

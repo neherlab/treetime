@@ -83,7 +83,6 @@ extend-ignore = [
     "UP004", # class inherits from `object` unnecessarily
     "UP008", # use `super()` instead of `super(__class__, self)`
     "UP009", # UTF-8 encoding declaration is unnecessary
-    "UP010", # unnecessary `__future__` import for target Python version
     "UP015", # unnecessary open(mode='r')
     "UP031", # use format specifiers instead of percent formatting
     "UP032", # use f-string instead of `.format()` call

@@ -1126,6 +1126,7 @@ class ClockTree(TreeAnc):
 
         """
         rate_contribution = self.date_uncertainty_due_to_rate(node, interval)
+        mutation_contribution = None
 
         if hasattr(node, 'marginal_inverse_cdf'):
             min_date, max_date = [

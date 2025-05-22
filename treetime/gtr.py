@@ -188,6 +188,7 @@ class GTR(object):
             with open(gtr_fname) as f:
                 alphabet = []
                 pi = []
+                mu = None
                 while True:
                     line = f.readline()
                     if not line:
