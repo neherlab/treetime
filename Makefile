@@ -16,7 +16,7 @@ lint l:
 	@parallel --jobs=0 --halt now,fail=1 --line-buffer ::: \
 		"$(MAKE_NOPRINT) lint-pylint" \
 		"$(MAKE_NOPRINT) lint-ruff-check" \
-		"$(MAKE_NOPRINT) lint-ruff-format"
+		"$(MAKE_NOPRINT) lint-ruff-format" \
 
 lint-pylint:
 	@script -qfc 'PYTHONPATH=. bash -x -c "pylint --output-format=pylint_source_reporter.SourceCodeReporter treetime"' /dev/null | sed 's|^|[pylint] |'
@@ -26,6 +26,9 @@ lint-ruff-check:
 
 lint-ruff-format:
 	@script -qfc 'bash -x -c "ruff format -q --check treetime"' /dev/null | sed 's|^|[ruff format] |'
+
+lint-pyright:
+	@script -qfc 'bash -x -c "pyright"' /dev/null | sed 's|^|[pyright]     |'
 
 format fmt f:
 	@ruff format .
