@@ -35,7 +35,7 @@ function run_for_linux() {
     has_error=1
   fi
 
-  local needs=$(objdump -p "${1}" | grep NEEDED | awk '{print $2}' | tr -s ' ' | sort)
+  local needs=$("${OBJDUMP}" -p "${1}" | grep NEEDED | awk '{print $2}' | tr -s ' ' | sort)
   if [ -n "$needs" ]; then
     echo "Needs:"
     echo "$needs" | while read -r lib_name; do

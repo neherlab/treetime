@@ -1,11 +1,18 @@
 # syntax=docker/dockerfile:1
 # check=experimental=all
-FROM debian:12.7
+FROM debian:12.8
 
 SHELL ["bash", "-euxo", "pipefail", "-c"]
 
-ENV HOST_TUPLE_DEBIAN="x86_64-linux-gnu"
-ENV HOST_TUPLE="x86_64-unknown-linux-gnu"
+ARG HOST_TUPLE_DEBIAN
+ARG HOST_TUPLE
+ARG HOST_TUPLE_UPPER
+ARG HOST_GCC_TRIPLET
+
+ENV HOST_TUPLE_DEBIAN="${HOST_TUPLE_DEBIAN}"
+ENV HOST_TUPLE="${HOST_TUPLE}"
+ENV HOST_TUPLE_UPPER="${HOST_TUPLE_UPPER}"
+ENV HOST_GCC_TRIPLET="${HOST_GCC_TRIPLET}"
 
 ARG CROSS_COMPILE
 ARG CROSS_COMPILE_UPPER
@@ -26,8 +33,6 @@ RUN set -euxo pipefail >/dev/null \
   curl \
   file \
   git \
-  libc6-dev \
-  libstdc++6 \
   make \
   pigz \
   pixz \
@@ -44,17 +49,10 @@ RUN set -euxo pipefail >/dev/null \
 && apt-get clean autoclean >/dev/null \
 && apt-get autoremove --yes >/dev/null
 
-
-
-ENV HOST_GCC_DIR="/usr/local"
-ENV HOSTCC="${HOST_GCC_DIR}/bin/gcc"
-ENV HOSTCXX="${HOST_GCC_DIR}/bin/g++"
-ENV HOSTFC="${HOST_GCC_DIR}/bin/gfortran"
-ENV LIBRARY_PATH="/usr/lib:/usr/lib64:/usr/local/lib:/usr/local/lib64:/usr/lib/${HOST_TUPLE_DEBIAN}"
-ENV LD_LIBRARY_PATH="/usr/lib:/usr/lib64:/usr/local/lib:/usr/local/lib64:/usr/lib/${HOST_TUPLE_DEBIAN}"
-
-COPY --link "dev/docker/files/install-gcc" "/"
-RUN /install-gcc "${HOST_GCC_DIR}"
+ENV PREFIX_HOST="/opt/host"
+ENV HOST_GCC_DIR="${PREFIX_HOST}"
+COPY --link "dev/docker/files/install-gcc-cross" "/"
+RUN /install-gcc-cross "${HOST_TUPLE}" "${HOST_GCC_DIR}"
 
 COPY --link "dev/docker/files/install-llvm" "/"
 RUN /install-llvm
@@ -62,7 +60,45 @@ RUN /install-llvm
 COPY --link "dev/docker/files/install-protobuf" "/"
 RUN /install-protobuf
 
+COPY --link "dev/docker/files/install-libbzip2" "/"
+RUN /install-libbzip2 "${HOST_TUPLE}" "${PREFIX_HOST}"
+
+COPY --link "dev/docker/files/install-liblzma" "/"
+RUN /install-liblzma "${HOST_TUPLE}" "${PREFIX_HOST}"
+
+COPY --link "dev/docker/files/install-libz" "/"
+RUN /install-libz "${HOST_TUPLE}" "${PREFIX_HOST}"
+
+COPY --link "dev/docker/files/install-libzstd" "/"
+RUN /install-libzstd "${HOST_TUPLE}" "${PREFIX_HOST}"
+ENV ZSTD_SYS_USE_PKG_CONFIG="1"
+
+
+
+ENV PREFIX_CROSS="/opt/cross-${CROSS_COMPILE}"
 ENV OSX_CROSS_PATH="/opt/osxcross"
+COPY --link "dev/docker/files/install-osxcross" "/"
+RUN /install-osxcross "${OSX_CROSS_PATH}"
+
+ENV OPENBLAS_LIB_DIR="${PREFIX_CROSS}/lib"
+COPY --link "dev/docker/files/install-openblas" "/"
+RUN /install-openblas "${CROSS_COMPILE}" "${PREFIX_CROSS}"
+
+COPY --link "dev/docker/files/install-libbzip2" "/"
+RUN /install-libbzip2 "${CROSS_COMPILE}" "${PREFIX_CROSS}"
+
+COPY --link "dev/docker/files/install-liblzma" "/"
+RUN /install-liblzma "${CROSS_COMPILE}" "${PREFIX_CROSS}"
+
+COPY --link "dev/docker/files/install-libz" "/"
+RUN /install-libz "${CROSS_COMPILE}" "${PREFIX_CROSS}"
+
+COPY --link "dev/docker/files/install-libzstd" "/"
+RUN /install-libzstd "${CROSS_COMPILE}" "${PREFIX_CROSS}"
+ENV ZSTD_SYS_USE_PKG_CONFIG="1"
+ENV LIBZ_SYS_STATIC="1"
+
+
 ENV OSXCROSS_MP_INC="1"
 ENV MACOSX_DEPLOYMENT_TARGET="10.12"
 ENV PATH="${OSX_CROSS_PATH}/bin:${PATH}"
@@ -82,41 +118,112 @@ ENV OBJDUMP_${CROSS_COMPILE}="${OSX_CROSS_PATH}/bin/${CROSS_APPLE_TRIPLET}-Objec
 ENV OTOOL_${CROSS_COMPILE}="${OSX_CROSS_PATH}/bin/${CROSS_APPLE_TRIPLET}-otool"
 ENV RANLIB_${CROSS_COMPILE}="${OSX_CROSS_PATH}/bin/${CROSS_APPLE_TRIPLET}-ranlib"
 ENV STRIP_${CROSS_COMPILE}="${OSX_CROSS_PATH}/bin/${CROSS_APPLE_TRIPLET}-strip"
+
+
 ENV BINDGEN_EXTRA_CLANG_ARGS_${CROSS_COMPILE}="--sysroot=${CROSS_SYSROOT}"
 ENV CARGO_TARGET_${CROSS_COMPILE_UPPER}_AR="${OSX_CROSS_PATH}/bin/${CROSS_APPLE_TRIPLET}-ar"
 ENV CARGO_TARGET_${CROSS_COMPILE_UPPER}_LINKER="${OSX_CROSS_PATH}/bin/${CROSS_APPLE_TRIPLET}-clang"
 ENV CARGO_TARGET_${CROSS_COMPILE_UPPER}_STRIP="${OSX_CROSS_PATH}/bin/${CROSS_APPLE_TRIPLET}-strip"
 
-# HACK: resolve confusion between aarch64 and arm64 by adding both
-ENV LIBRARY_PATH="${OSX_CROSS_PATH}/lib/gcc/${CROSS_APPLE_TRIPLET}/14.2.0:${OSX_CROSS_PATH}/lib/gcc/${CROSS_GCC_TRIPLET}/14.2.0:${LIBRARY_PATH}"
-ENV LD_LIBRARY_PATH="${OSX_CROSS_PATH}/lib/gcc/${CROSS_APPLE_TRIPLET}/14.2.0:${OSX_CROSS_PATH}/lib/gcc/${CROSS_GCC_TRIPLET}/14.2.0:${LD_LIBRARY_PATH}"
 
-COPY --link "dev/docker/files/install-osxcross" "/"
-RUN /install-osxcross "${OSX_CROSS_PATH}"
+ENV HOST_SYSROOT="${HOST_GCC_DIR}/${HOST_GCC_TRIPLET}/sysroot"
+
+ENV HOST_GCC="${HOST_GCC_DIR}/bin/${HOST_GCC_TRIPLET}-gcc"
+ENV HOST_GXX="${HOST_GCC_DIR}/bin/${HOST_GCC_TRIPLET}-g++"
+ENV HOST_GFORTRAN="${HOST_GCC_DIR}/bin/${HOST_GCC_TRIPLET}-gfortran"
+ENV HOST_CLANG="/usr/bin/clang"
+ENV HOST_CLANGPP="/usr/bin/clang++"
+ENV HOST_ADDR2LINE="${HOST_GCC_DIR}/bin/${HOST_GCC_TRIPLET}-addr2line"
+ENV HOST_AR="${HOST_GCC_DIR}/bin/${HOST_GCC_TRIPLET}-gcc-ar"
+ENV HOST_AS="${HOST_GCC_DIR}/bin/${HOST_GCC_TRIPLET}-as"
+ENV HOST_CPP="${HOST_GCC_DIR}/bin/${HOST_GCC_TRIPLET}-cpp"
+ENV HOST_ELFEDIT="${HOST_GCC_DIR}/bin/${HOST_GCC_TRIPLET}-elfedit"
+ENV HOST_LD="${HOST_GCC_DIR}/bin/${HOST_GCC_TRIPLET}-ld"
+ENV HOST_LDD="${HOST_GCC_DIR}/bin/${HOST_GCC_TRIPLET}-ldd"
+ENV HOST_NM="${HOST_GCC_DIR}/bin/${HOST_GCC_TRIPLET}-gcc-nm"
+ENV HOST_OBJCOPY="${HOST_GCC_DIR}/bin/${HOST_GCC_TRIPLET}-objcopy"
+ENV HOST_OBJDUMP="${HOST_GCC_DIR}/bin/${HOST_GCC_TRIPLET}-objdump"
+ENV HOST_RANLIB="${HOST_GCC_DIR}/bin/${HOST_GCC_TRIPLET}-gcc-ranlib"
+ENV HOST_READELF="${HOST_GCC_DIR}/bin/${HOST_GCC_TRIPLET}-readelf"
+ENV HOST_SIZE="${HOST_GCC_DIR}/bin/${HOST_GCC_TRIPLET}-size"
+ENV HOST_STRINGS="${HOST_GCC_DIR}/bin/${HOST_GCC_TRIPLET}-strings"
+ENV HOST_STRIP="${HOST_GCC_DIR}/bin/${HOST_GCC_TRIPLET}-strip"
+
+ENV HOST_CC="${HOST_GCC}"
+ENV HOST_CXX="${HOST_GXX}"
+ENV HOST_FC="${HOST_GFORTRAN}"
+
+ENV HOSTCC="${HOST_CC}"
+ENV HOSTCXX="${HOST_CXX}"
+ENV HOSTFC="${HOST_FC}"
+ENV HOSTLD="${HOST_LD}"
+
+ENV CC_${HOST_TUPLE}="$HOST_GCC"
+ENV CXX_${HOST_TUPLE}="$HOST_GXX"
+ENV GCC_${HOST_TUPLE}="$HOST_GCC"
+ENV GXX_${HOST_TUPLE}="$HOST_GXX"
+ENV CLANG_${HOST_TUPLE}="$HOST_CLANG"
+ENV CLANGPP_${HOST_TUPLE}="$HOST_CLANGPP"
+ENV FC_${HOST_TUPLE}="$HOST_FC"
+ENV ADDR2LINE_${HOST_TUPLE}="$HOST_ADDR2LINE"
+ENV AR_${HOST_TUPLE}="$HOST_AR"
+ENV AS_${HOST_TUPLE}="$HOST_AS"
+ENV CPP_${HOST_TUPLE}="$HOST_CPP"
+ENV ELFEDIT_${HOST_TUPLE}="$HOST_ELFEDIT"
+ENV LD_${HOST_TUPLE}="$HOST_LD"
+ENV LDD_${HOST_TUPLE}="$HOST_LDD"
+ENV NM_${HOST_TUPLE}="$HOST_NM"
+ENV OBJCOPY_${HOST_TUPLE}="$HOST_OBJCOPY"
+ENV OBJDUMP_${HOST_TUPLE}="$HOST_OBJDUMP"
+ENV RANLIB_${HOST_TUPLE}="$HOST_RANLIB"
+ENV READELF_${HOST_TUPLE}="$HOST_READELF"
+ENV SIZE_${HOST_TUPLE}="$HOST_SIZE"
+ENV STRINGS_${HOST_TUPLE}="$HOST_STRINGS"
+ENV STRIP_${HOST_TUPLE}="$HOST_STRIP"
+
+ENV BINDGEN_EXTRA_CLANG_ARGS_${HOST_TUPLE}="--sysroot=${HOST_SYSROOT}"
+ENV CARGO_TARGET_${HOST_TUPLE_UPPER}_AR="${HOST_AR}"
+ENV CARGO_TARGET_${HOST_TUPLE_UPPER}_LINKER="${HOST_GCC}"
+ENV CARGO_TARGET_${HOST_TUPLE_UPPER}_STRIP="${HOST_STRIP}"
 
 
-ENV PREFIX_CROSS="/usr/local/${CROSS_COMPILE}"
+ENV CROSS_C_INCLUDE_PATH="${PREFIX_CROSS}/include:${CROSS_GCC_DIR}/include"
+ENV HOST_C_INCLUDE_PATH="${PREFIX_HOST}/include:${HOST_GCC_DIR}/include"
+
+ENV CROSS_CPLUS_INCLUDE_PATH="${CROSS_C_INCLUDE_PATH}"
+ENV HOST_CPLUS_INCLUDE_PATH="${HOST_C_INCLUDE_PATH}"
+
+ENV CROSS_LIBRARY_PATH="${PREFIX_CROSS}/lib:${PREFIX_CROSS}/lib64:${CROSS_GCC_DIR}/lib:${CROSS_GCC_DIR}/lib64:${OSX_CROSS_PATH}/lib/gcc/${CROSS_APPLE_TRIPLET}/14.2.0:${OSX_CROSS_PATH}/lib/gcc/${CROSS_GCC_TRIPLET}/14.2.0:${LIBRARY_PATH}"
+ENV HOST_LIBRARY_PATH="${HOST_GCC_DIR}/lib:${HOST_GCC_DIR}/lib64"
+
+ENV C_INCLUDE_PATH="${CROSS_C_INCLUDE_PATH}:${HOST_C_INCLUDE_PATH}"
+ENV CPLUS_INCLUDE_PATH="${CROSS_CPLUS_INCLUDE_PATH}:${HOST_CPLUS_INCLUDE_PATH}"
+ENV LIBRARY_PATH="${CROSS_LIBRARY_PATH}:${HOST_LIBRARY_PATH}"
+
+ENV C_INCLUDE_PATH_${HOST_TUPLE}="${HOST_C_INCLUDE_PATH}"
+ENV CPLUS_INCLUDE_PATH_${HOST_TUPLE}="${HOST_CPLUS_INCLUDE_PATH}"
+ENV LIBRARY_PATH_${HOST_TUPLE}="${HOST_LIBRARY_PATH}"
+
+ENV C_INCLUDE_PATH_${CROSS_COMPILE}="${CROSS_C_INCLUDE_PATH}"
+ENV CPLUS_INCLUDE_PATH_${CROSS_COMPILE}="${CROSS_CPLUS_INCLUDE_PATH}"
+ENV LIBRARY_PATH_${CROSS_COMPILE}="${CROSS_LIBRARY_PATH}"
+
+ENV CROSS_PKG_CONFIG_PATH="${PREFIX_CROSS}/lib/pkgconfig:${PREFIX_CROSS}/lib64/pkgconfig"
+ENV HOST_PKG_CONFIG_PATH="${HOST_GCC_DIR}/lib/pkgconfig:${HOST_GCC_DIR}/lib64/pkgconfig"
+ENV PKG_CONFIG_PATH="${CROSS_PKG_CONFIG_PATH}:${HOST_PKG_CONFIG_PATH}"
 ENV PKG_CONFIG_ALLOW_CROSS="1"
+
+ENV PKG_CONFIG_PATH_${HOST_TUPLE}="${HOST_PKG_CONFIG_PATH}"
+ENV PKG_CONFIG_SYSROOT_DIR_${HOST_TUPLE}="${PREFIX_HOST}"
+
+ENV PKG_CONFIG_PATH_${CROSS_COMPILE}="${CROSS_PKG_CONFIG_PATH}"
+ENV PKG_CONFIG_SYSROOT_DIR_${CROSS_COMPILE}="${PREFIX_CROSS}"
+
 ENV PKG_CONFIG_SYSROOT_DIR="${PREFIX_CROSS}"
-ENV PKG_CONFIG_PATH="${PREFIX_CROSS}/lib/pkgconfig:/usr/local/lib/pkgconfig"
 
+ENV CMAKE_PREFIX_PATH="${PREFIX_CROSS}"
 
-ENV OPENBLAS_LIB_DIR="${PREFIX_CROSS}/lib"
-COPY --link "dev/docker/files/install-openblas" "/"
-RUN /install-openblas "${CROSS_COMPILE}" "${PREFIX_CROSS}"
-
-COPY --link "dev/docker/files/install-libbzip2" "/"
-RUN /install-libbzip2 "${CROSS_COMPILE}" "${PREFIX_CROSS}"
-
-COPY --link "dev/docker/files/install-liblzma" "/"
-RUN /install-liblzma "${CROSS_COMPILE}" "${PREFIX_CROSS}"
-
-COPY --link "dev/docker/files/install-libz" "/"
-RUN /install-libz "${CROSS_COMPILE}" "${PREFIX_CROSS}"
-
-COPY --link "dev/docker/files/install-libzstd" "/"
-RUN /install-libzstd "${CROSS_COMPILE}" "${PREFIX_CROSS}"
-ENV ZSTD_SYS_USE_PKG_CONFIG="1"
+ENV LD_LIBRARY_PATH="${OSX_CROSS_PATH}/lib"
 
 
 ARG USER=user

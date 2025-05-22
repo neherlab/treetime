@@ -15,6 +15,11 @@ GROUP="user"
 
 cache_dir="$(get_cache_dir "${CROSS_COMPILE}")"
 
+HOST_TUPLE_DEBIAN="x86_64-linux-gnu"
+HOST_TUPLE="x86_64-unknown-linux-gnu"
+HOST_TUPLE_UPPER="X86_64_UNKNOWN_LINUX_GNU"
+HOST_GCC_TRIPLET="x86_64-unknown-linux-gnu"
+
 CROSS_GCC_TRIPLET="${CROSS_COMPILE}"
 case "${CROSS_COMPILE}" in
 x86_64-unknown-linux-gnu)
@@ -121,6 +126,10 @@ if ! docker inspect --format '{{.Id}}' "${PROJECT_DOCKER_REPO}:${docker_image_ta
     --build-arg="CROSS_APPLE_TRIPLET=${CROSS_APPLE_TRIPLET:-}" \
     --build-arg="CROSS_GCC_TRIPLET=${CROSS_GCC_TRIPLET:-}" \
     --build-arg="CROSS_RUNNER=${CROSS_RUNNER:-}" \
+    --build-arg="HOST_TUPLE_DEBIAN=${HOST_TUPLE_DEBIAN}" \
+    --build-arg="HOST_TUPLE=${HOST_TUPLE}" \
+    --build-arg="HOST_TUPLE_UPPER=${HOST_TUPLE_UPPER}" \
+    --build-arg="HOST_GCC_TRIPLET=${HOST_GCC_TRIPLET}" \
     --load \
     \
     "${build_params[@]}" \
