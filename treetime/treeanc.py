@@ -1028,8 +1028,8 @@ class TreeAnc(object):
         seq, anc_lh_vals, idxs = prof2seq(
             np.exp(normalized_profile),
             self.gtr,
-            sample_from_prof=root_sample_from_profile,
-            rng=self.rng,  # pylint: disable=possibly-used-before-assignment
+            sample_from_prof=root_sample_from_profile,  # pylint: disable=possibly-used-before-assignment
+            rng=self.rng,
         )
 
         # compute the likelihood of the most probable root sequence

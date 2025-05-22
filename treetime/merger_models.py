@@ -147,7 +147,7 @@ class Coalescent(object):
                 nbranches_discrete.append([next_t, new_n])
 
             new_n += unique_mergers[-1, 1]
-            nbranches_discrete.append([unique_mergers[ti + 1, 0], new_n])
+            nbranches_discrete.append([unique_mergers[ti + 1, 0], new_n])  # pylint: disable=undefined-loop-variable
             nbranches_discrete.append([-ttconf.BIG_NUMBER, new_n])
             nbranches_discrete = np.array(nbranches_discrete)
             nbranches_discrete = interp1d(nbranches_discrete[:, 0], nbranches_discrete[:, 1], kind='linear')

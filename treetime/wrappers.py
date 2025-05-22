@@ -481,7 +481,7 @@ def run_timetree(myTree, params, outdir, tree_suffix='', prune_short=True, metho
     try:
         success = myTree.run(
             root=root,
-            relaxed_clock=relaxed_clock_params,
+            relaxed_clock=relaxed_clock_params,  # pylint: disable=possibly-used-before-assignment
             resolve_polytomies=(not params.keep_polytomies),
             stochastic_resolve=stochastic_resolve,
             Tc=coalescent,
