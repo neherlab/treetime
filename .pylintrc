@@ -81,7 +81,7 @@ extension-pkg-allow-list=numpy
 [REPORTS]
 output-format=colorized
 reports=no
-score=yes
+score=no
 
 [FORMAT]
 max-line-length=120

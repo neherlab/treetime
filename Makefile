@@ -10,25 +10,27 @@ SHELL := bash
 
 .PHONY: docs docker-docs lint format
 
-MAKE_NOPRINT := $(MAKE) --no-print-directory
+define RUN_COLOR
+  script -qfec '$(1); ec=$$?; exit $$ec' /dev/null
+endef
 
 lint l:
-	@parallel --jobs=0 --halt now,fail=1 --line-buffer ::: \
-		"$(MAKE_NOPRINT) lint-pylint" \
-		"$(MAKE_NOPRINT) lint-ruff-check" \
-		"$(MAKE_NOPRINT) lint-ruff-format" \
+	@parallel --jobs=0 --line-buffer --tag "$(MAKE_NOPRINT) {}" ::: \
+		lint-pylint \
+		lint-ruff-check \
+		lint-ruff-format \
 
 lint-pylint:
-	@script -qfc 'PYTHONPATH=. bash -x -c "pylint --output-format=pylint_source_reporter.SourceCodeReporter treetime"' /dev/null | sed 's|^|[pylint] |'
+	$(call RUN_COLOR, PYTHONPATH=. pylint --fail-under=10.0 --output-format=pylint_source_reporter.SourceCodeReporter treetime)
 
 lint-ruff-check:
-	@script -qfc 'bash -x -c "ruff check -q treetime"' /dev/null | sed 's|^|[ruff check]  |'
+	$(call RUN_COLOR, ruff check -q treetime)
 
 lint-ruff-format:
-	@script -qfc 'bash -x -c "ruff format -q --check treetime"' /dev/null | sed 's|^|[ruff format] |'
+	$(call RUN_COLOR, ruff format -q --check treetime)
 
 lint-pyright:
-	@script -qfc 'bash -x -c "pyright"' /dev/null | sed 's|^|[pyright]     |'
+	$(call RUN_COLOR, pyright)
 
 format fmt f:
 	@ruff format .
