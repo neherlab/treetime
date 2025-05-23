@@ -6,15 +6,16 @@ source "${BASH_SOURCE%/*}/lib/utils.sh"
 
 bin="${1:?}"
 target="${2:-"${CROSS_COMPILE:-}"}"
+target_safe="${target//-/_}"
 
 has_error=0
 
 function run_for_linux() {
   : "${CROSS_SYSROOT:?}"
 
-  local LDD=$(printenv "LDD_${target}" || printenv "LDD" || echo "ldd")
-  local OBJDUMP=$(printenv "OBJDUMP_${target}" || printenv "OBJDUMP" || echo "objdump")
-  local STRINGS=$(printenv "STRINGS_${target}" || printenv "STRINGS" || echo "strings")
+  local LDD=$(printenv "LDD_${target_safe}" || printenv "LDD" || echo "ldd")
+  local OBJDUMP=$(printenv "OBJDUMP_${target_safe}" || printenv "OBJDUMP" || echo "objdump")
+  local STRINGS=$(printenv "STRINGS_${target_safe}" || printenv "STRINGS" || echo "strings")
 
   local output=$("${LDD}" ${CROSS_SYSROOT:+--root="${CROSS_SYSROOT}"} "$1" 2>&1 || true)
   if ! echo "$output" | grep -qE 'statically linked|not a dynamic executable'; then
@@ -64,7 +65,7 @@ function run_for_linux() {
 }
 
 function run_for_windows() {
-  local OBJDUMP=$(printenv "OBJDUMP_${target}" || printenv "OBJDUMP" || echo "objdump")
+  local OBJDUMP=$(printenv "OBJDUMP_${target_safe}" || printenv "OBJDUMP" || echo "objdump")
   local dump=$($OBJDUMP -p "${1}" | grep "DLL Name" | sed 's/^[ \t]*DLL Name: //;s/^/ * /' | sort)
   if [ -n "$dump" ]; then
     echo "The executable '$1' depends on:"
@@ -73,7 +74,7 @@ function run_for_windows() {
 }
 
 function run_for_mac() {
-  local OTOOL=$(printenv "OTOOL_${target}" || printenv "OTOOL" || echo "objdump")
+  local OTOOL=$(printenv "OTOOL_${target_safe}" || printenv "OTOOL" || echo "objdump")
   dump=$($OTOOL -L "${bin}" | awk 'NR>1 {print " * " $1}' | sort)
   if [ -n "$dump" ]; then
     echo "The executable '$1' depends on:"
