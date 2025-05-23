@@ -9,6 +9,7 @@ function build() {
 
   local bin="${1:?}"
   local target="${2:-"${CROSS_COMPILE:-}"}"
+  local target_safe="${target//-/_}"
 
   local rust_crt_static="-C target-feature=+crt-static"
   local rust_static="-C link-arg=-static"
@@ -49,11 +50,10 @@ function build() {
   declare -x CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_RUSTFLAGS="${rust_arch} ${rust_musl} ${rust_crt_static} ${rust_static} ${rust_self_contained}"
   declare -x CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_RUSTFLAGS="${rust_arch} ${rust_musl} ${rust_crt_static} ${rust_static} ${rust_self_contained}"
 
-
   local c_common="-O3 -ftree-vectorize -funroll-loops ${c_arch}"
-  declare -x CFLAGS="${CFLAGS:-} ${c_common}"
-  declare -x CXXFLAGS="${CXXFLAGS:-} ${c_common}"
-  declare -x FCFLAGS="${FCFLAGS:-} ${c_common}"
+  declare -x "CFLAGS_${target_safe}=${CFLAGS:-} ${c_common}"
+  declare -x "CXXFLAGS_${target_safe}=${CXXFLAGS:-} ${c_common}"
+  declare -x "FCFLAGS_${target_safe}=${FCFLAGS:-} ${c_common}"
 
   local target_dir="$(get_build_dir "${target}")"
   nicely cargo -q build --release ${target:+--target="${target}"} --target-dir="${target_dir}" --bin="${bin}"

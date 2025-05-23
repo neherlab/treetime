@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # check=experimental=all
-FROM debian:12.7
+FROM debian:12.8
 
 SHELL ["bash", "-euxo", "pipefail", "-c"]
 
@@ -80,7 +80,7 @@ RUN /install-libz "${HOST_TUPLE}" "${HOST_PREFIX}"
 COPY --link "dev/docker/files/install-libzstd" "/"
 RUN /install-libzstd "${HOST_TUPLE}" "${HOST_PREFIX}"
 ENV ZSTD_SYS_USE_PKG_CONFIG="1"
-
+ENV LIBZ_SYS_STATIC="1"
 
 
 

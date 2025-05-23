@@ -1,5 +1,6 @@
 pub mod assert;
 pub mod clap_styles;
+pub mod console;
 pub mod container;
 pub mod datetime;
 pub mod error;

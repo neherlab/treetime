@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euxo pipefail
 
-curl -fsSL "https://github.com/TomWright/dasel/releases/download/v1.22.1/dasel_linux_amd64" -o "/usr/bin/dasel"
+curl -fsSL "https://github.com/TomWright/dasel/releases/download/v2.8.1/dasel_linux_amd64" -o "/usr/bin/dasel"
 chmod +x "/usr/bin/dasel"
 which dasel
 dasel --version

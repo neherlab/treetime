@@ -4,7 +4,7 @@ set -euxo pipefail
 dest=${1:-"/usr/local"}
 mkdir -p "${dest}"
 
-curl -fsSL "https://github.com/binarylandia/build_llvm/releases/download/llvm-19.1.5-2024-12-03_22-45-06/llvm-19.1.5-2024-12-03_22-45-06.tar.gz" \
+curl -fsSL "https://github.com/binarylandia/build_llvm/releases/download/llvm-19.1.5-2024-12-21_14-43-03/llvm-19.1.5-2024-12-21_14-43-03.tar.gz" \
   | pigz -d -p "$(nproc)" \
   | tar -C "${dest}" -x
 

@@ -1,9 +1,7 @@
-# Build CLI binaries and publish them to GitHub Releases.
-name: cli
-
 on:
   push:
-    branches: [ 'rust-ci' ]
+    branches:
+      - rust
 
   pull_request:
 
@@ -31,7 +29,7 @@ env:
 jobs:
 
   build-cli:
-    name: "Build CLI (${{ matrix.arch }})"
+    name: "build-cli (${{ matrix.arch }})"
     runs-on: ubuntu-24.04
 
     strategy:
@@ -47,17 +45,15 @@ jobs:
           - x86_64-unknown-linux-musl
 
     steps:
-      - name: "Set up Docker Buildx"
-        uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v3
 
-      - name: "Checkout code"
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 1
           submodules: true
+          lfs: true
 
-      - name: "Setup cache for Rust and Cargo"
-        uses: actions/cache@v4
+      - uses: actions/cache@v4
         with:
           path: |
             .cache/docker-${{ matrix.arch }}/cargo/registry/index/
@@ -69,17 +65,13 @@ jobs:
             neherlab-treetime-cli-cache-v1-cargo-${{ runner.os }}-${{ matrix.arch }}-
             neherlab-treetime-cli-cache-v1-cargo-${{ runner.os }}-
 
-      - name: "Login to Docker Hub"
-        uses: docker/login-action@v3
+      - uses: docker/login-action@v3
         with:
           registry: docker.io
           username: ${{ secrets.NEHERLAB_BOT_DOCKERHUB_USERNAME }}
           password: ${{ secrets.NEHERLAB_BOT_DOCKERHUB_TOKEN }}
 
-      - name: "Prepare .env file"
-        run: |
-          cp .env.example .env
-          sed -i -e "s|OSXCROSS_URL=http://example.com/osxcross/osxcross.tar.xz|OSXCROSS_URL=${{ secrets.OSXCROSS_URL }}|g" .env
+      - run: cp .env.example .env
 
       - name: "Build docker image (${{ matrix.arch }})"
         run: |
@@ -89,8 +81,7 @@ jobs:
         run: |
           CROSS_COMPILE="${{ matrix.arch }}" ./dev/docker/run ./dev/cross/build treetime
 
-      - name: "Upload build artifacts (${{ matrix.arch }})"
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: treetime-${{ matrix.arch }}
           path: ./.out/*
@@ -99,21 +90,18 @@ jobs:
 
 
   run-unit-tests:
-    name: "Run unit tests"
     runs-on: ubuntu-24.04
 
     steps:
-      - name: "Set up Docker Buildx"
-        uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v3
 
-      - name: "Checkout code"
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 1
           submodules: true
+          lfs: true
 
-      - name: "Setup cache for Rust and Cargo"
-        uses: actions/cache@v4
+      - uses: actions/cache@v4
         with:
           path: |
             .cache/docker-native/cargo/registry/index/
@@ -125,17 +113,13 @@ jobs:
             neherlab-treetime-cli-cache-v1-cargo-${{ runner.os }}-native-
             neherlab-treetime-cli-cache-v1-cargo-${{ runner.os }}-
 
-      - name: "Login to Docker Hub"
-        uses: docker/login-action@v3
+      - uses: docker/login-action@v3
         with:
           registry: docker.io
           username: ${{ secrets.NEHERLAB_BOT_DOCKERHUB_USERNAME }}
           password: ${{ secrets.NEHERLAB_BOT_DOCKERHUB_TOKEN }}
 
-      - name: "Prepare .env file"
-        run: |
-          cp .env.example .env
-          sed -i -e "s|OSXCROSS_URL=http://example.com/osxcross/osxcross.tar.xz|OSXCROSS_URL=${{ secrets.OSXCROSS_URL }}|g" .env
+      - run: cp .env.example .env
 
       - name: "Build docker image"
         run: |
@@ -148,21 +132,18 @@ jobs:
 
 
   run-lints:
-    name: "Run lints"
     runs-on: ubuntu-24.04
 
     steps:
-      - name: "Set up Docker Buildx"
-        uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v3
 
-      - name: "Checkout code"
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 1
           submodules: true
+          lfs: true
 
-      - name: "Setup cache for Rust and Cargo"
-        uses: actions/cache@v4
+      - uses: actions/cache@v4
         with:
           path: |
             .cache/docker-native/cargo/registry/index/
@@ -174,17 +155,13 @@ jobs:
             neherlab-treetime-cli-cache-v1-cargo-${{ runner.os }}-native-
             neherlab-treetime-cli-cache-v1-cargo-${{ runner.os }}-
 
-      - name: "Login to Docker Hub"
-        uses: docker/login-action@v3
+      - uses: docker/login-action@v3
         with:
           registry: docker.io
           username: ${{ secrets.NEHERLAB_BOT_DOCKERHUB_USERNAME }}
           password: ${{ secrets.NEHERLAB_BOT_DOCKERHUB_TOKEN }}
 
-      - name: "Prepare .env file"
-        run: |
-          cp .env.example .env
-          sed -i -e "s|OSXCROSS_URL=http://example.com/osxcross/osxcross.tar.xz|OSXCROSS_URL=${{ secrets.OSXCROSS_URL }}|g" .env
+      - run: cp .env.example .env
 
       - name: "Build docker image"
         run: |
@@ -192,8 +169,32 @@ jobs:
 
       - name: "Run lints"
         run: |
-          ./dev/docker/run ./dev/dev lint
+          ./dev/docker/run ./dev/dev lint-ci
 
+#  run-smoke-tests:
+#    name: "Smoke tests"
+#    needs: [ build-cli ]
+#    runs-on: ubuntu-24.04
+#
+#    steps:
+#      - name: "Checkout code"
+#        uses: actions/checkout@v4
+#        with:
+#          fetch-depth: 1
+#          submodules: true
+#          lfs: true
+#
+#      - name: "Download build artifacts"
+#        uses: actions/download-artifact@v4
+#        with:
+#          pattern: treetime-*
+#          merge-multiple: true
+#          path: ".out"
+#
+#      - name: "Run smoke tests"
+#        run: |
+#          chmod +x ./.out/treetime-x86_64-unknown-linux-gnu
+#          ./dev/run-smoke-tests ./.out/treetime-x86_64-unknown-linux-gnu --fast
 
 
   run-compat-tests-x86_64-unknown-linux-gnu:
@@ -207,6 +208,7 @@ jobs:
         with:
           fetch-depth: 1
           submodules: true
+          lfs: true
 
       - name: "Download build artifacts"
         uses: actions/download-artifact@v4
@@ -231,6 +233,7 @@ jobs:
         with:
           fetch-depth: 1
           submodules: true
+          lfs: true
 
       - name: "Download build artifacts"
         uses: actions/download-artifact@v4
@@ -340,11 +343,9 @@ jobs:
           .\.out\treetime-x86_64-pc-windows-gnu --help
 
 
-
-#  publish-to-github-releases:
-#    name: "Publish to GitHub Releases"
-#    needs: [ build-cli, run-unit-tests, run-lints, run-smoke-tests, run-linux-distros-test ]
-#    if: endsWith(github.ref, '/release-cli')
+#  check-cli-docs:
+#    name: "Check that autogenerated CLI documentation is up-to-date"
+#    needs: [ build-cli ]
 #    runs-on: ubuntu-24.04
 #
 #    steps:
@@ -353,6 +354,39 @@ jobs:
 #        with:
 #          fetch-depth: 1
 #          submodules: true
+#          lfs: true
+#
+#      - name: "Download build artifacts"
+#        uses: actions/download-artifact@v4
+#        with:
+#          pattern: treetime-*
+#          merge-multiple: true
+#          path: ".out"
+#
+#      - name: "Re-generate CLI docs"
+#        run: |
+#          chmod +x ./.out/treetime-x86_64-unknown-linux-gnu
+#          cd docs/
+#          ./generate-reference-docs ../.out/treetime-x86_64-unknown-linux-gnu docs/reference.md
+#
+#      - name: "Check that the git diff is clean"
+#        run: |
+#          git -c color.ui=always diff --exit-code 'docs/docs/reference.md' || (echo "Looks like command-line interface has changed, but the autogenerated CLI reference documentation at 'docs/docs/reference.md' is not up-to-date. Please build the fresh version of treetime, then run 'cd docs && ./generate-reference-docs <path_to_treetime> docs/docs/reference.md', then verify and commit changes to the file docs/docs/reference.md." >&2; exit 1)
+
+
+#  publish-to-github-releases:
+#    name: "Publish to GitHub Releases"
+#    needs: [ build-cli, run-unit-tests, run-lints, run-smoke-tests, run-compat-tests-x86_64-unknown-linux-gnu, run-compat-tests-x86_64-unknown-linux-musl, run-compat-tests-x86_64-apple-darwin, run-compat-tests-aarch64-apple-darwin, run-compat-tests-x86_64-pc-windows-gnu, check-cli-docs ]
+#    if: github.ref == 'refs/heads/release-cli'
+#    runs-on: ubuntu-24.04
+#
+#    steps:
+#      - name: "Checkout code"
+#        uses: actions/checkout@v4
+#        with:
+#          fetch-depth: 1
+#          submodules: true
+#          lfs: true
 #
 #      - name: "Download build artifacts"
 #        uses: actions/download-artifact@v4
@@ -365,23 +399,24 @@ jobs:
 #        run: |
 #          mkdir -p "${HOME}/bin"
 #          curl -fsSL "https://github.com/cli/cli/releases/download/v2.10.1/gh_2.10.1_linux_amd64.tar.gz" | tar xz -C "${HOME}/bin" --strip-components=2 gh_2.10.1_linux_amd64/bin/gh
-#          curl -fsSL "https://github.com/TomWright/dasel/releases/download/v1.24.3/dasel_linux_amd64" -o "${HOME}/bin/dasel" && chmod +x "${HOME}/bin/dasel"
-#          curl -fsSL "https://github.com/orhun/git-cliff/releases/download/v0.7.0/git-cliff-0.7.0-x86_64-unknown-linux-gnu.tar.gz" | tar -C "${HOME}/bin" --strip-components=1 -xz "git-cliff-0.7.0/git-cliff"
-#          curl -fsSL "https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64" -o ${HOME}/bin/jq && chmod +x ${HOME}/bin/jq
+#          curl -fsSL "https://github.com/TomWright/dasel/releases/download/v2.8.1/dasel_linux_amd64" -o "${HOME}/bin/dasel" && chmod +x "${HOME}/bin/dasel"
+#          curl -fsSL "https://github.com/stedolan/jq/releases/download/jq-1.7.1/jq-linux64" -o ${HOME}/bin/jq && chmod +x ${HOME}/bin/jq
 #
 #      - name: "Publish build artifacts to GitHub releases"
 #        run: |
+#          set -euxo pipefail
 #          export PATH="${PATH}:${HOME}/bin"
 #          export GITHUB_TOKEN="${{ secrets.NEHERLAB_BOT_GITHUB_TOKEN }}"
-#          ./scripts/publish_github \
+#          ./dev/publish-github \
 #            --artifacts_dir ".out" \
 #            --repo "${{ github.repository }}" \
 #            --git_sha "${{ github.sha }}"
 
+
 #  publish-to-docker-hub:
 #    name: "Publish to Docker Hub"
-#    needs: [ build-cli, run-unit-tests, run-lints, run-smoke-tests, run-linux-distros-test ]
-#    if: endsWith(github.ref, '/release-cli')
+#    needs: [ build-cli, run-unit-tests, run-lints, run-smoke-tests, run-compat-tests-x86_64-unknown-linux-gnu, run-compat-tests-x86_64-unknown-linux-musl, run-compat-tests-x86_64-apple-darwin, run-compat-tests-aarch64-apple-darwin, run-compat-tests-x86_64-pc-windows-gnu, check-cli-docs ]
+#    if: github.ref == 'refs/heads/release-cli'
 #    runs-on: ubuntu-24.04
 #
 #    steps:
@@ -390,6 +425,7 @@ jobs:
 #        with:
 #          fetch-depth: 1
 #          submodules: true
+#          lfs: true
 #
 #      - name: "Download build artifacts"
 #        uses: actions/download-artifact@v4
@@ -401,7 +437,7 @@ jobs:
 #      - name: "Install deploy dependencies"
 #        run: |
 #          mkdir -p "${HOME}/bin"
-#          curl -fsSL "https://github.com/TomWright/dasel/releases/download/v1.24.3/dasel_linux_amd64" -o "${HOME}/bin/dasel" && chmod +x "${HOME}/bin/dasel"
+#          curl -fsSL "https://github.com/TomWright/dasel/releases/download/v2.8.1/dasel_linux_amd64" -o "${HOME}/bin/dasel" && chmod +x "${HOME}/bin/dasel"
 #
 #      - name: "Login to Docker Hub"
 #        uses: docker/login-action@v3
@@ -414,4 +450,4 @@ jobs:
 #        run: |
 #          export PATH="${PATH}:${HOME}/bin"
 #          chmod +x ./.out/*
-#          ./scripts/publish_docker --push
+#          ./dev/publish-docker --push

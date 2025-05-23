@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+set -euo pipefail
+trap "exit" INT
+
+if [ "$#" != 2 ]; then
+  echo "Re-generates CLI reference documentation in Markdown format"
+  echo "Usage: $0 <executable> <output.md>"
+  exit 1
+fi
+
+exe="$1"
+out="$2"
+
+# Add header
+cat << EOF > "${out}"
+---
+sidebar_position: 9999
+---
+
+# Command-line reference
+
+<!-- WARNING: GENERATED CONTENT -->
+<!-- Do not edit the generated file manually! All manual changes will be overwritten by automation. -->
+<!-- See developer guide for how to properly work with this. -->
+
+:::warning
+Generated content. Report issues at https://github.com/neherlab/treetime/issues
+:::
+
+EOF
+
+# Append body
+./"${exe}" help-markdown >> "${out}"

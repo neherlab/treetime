@@ -1,3 +1,4 @@
+use super::clock_model::ClockModel;
 use crate::cli::rtt_chart::{
   print_clock_regression_chart, write_clock_regression_chart_png, write_clock_regression_chart_svg,
 };
@@ -14,9 +15,8 @@ use crate::io::dates_csv::read_dates;
 use crate::io::graphviz::graphviz_write_file;
 use crate::io::json::{JsonPretty, json_write_file};
 use crate::io::nwk::{NwkWriteOptions, nwk_read_file, nwk_write_file};
+use crate::utils::console::is_tty;
 use eyre::{Report, WrapErr};
-
-use super::clock_model::ClockModel;
 
 pub fn get_clock_model(graph: &mut ClockGraph, options: &ClockOptions, keep_root: bool) -> Result<ClockModel, Report> {
   // run the backward pass to calculate the averages at the root
@@ -104,7 +104,9 @@ pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
   write_clock_regression_chart_svg(&results, &clock_model, outdir.join("clock.svg"))?;
   write_clock_regression_chart_png(&results, &clock_model, outdir.join("clock.png"))?;
 
-  print_clock_regression_chart(&results, &clock_model)?;
+  if is_tty() {
+    print_clock_regression_chart(&results, &clock_model)?;
+  }
 
   Ok(())
 }

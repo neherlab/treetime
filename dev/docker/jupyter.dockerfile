@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # check=experimental=all
-FROM debian:12.7
+FROM debian:12.8
 
 SHELL ["bash", "-euxo", "pipefail", "-c"]
 

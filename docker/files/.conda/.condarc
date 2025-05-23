@@ -1,8 +1,0 @@
-show_channel_urls: true
-auto_update_conda: false
-channel_priority: strict
-channels:
-  - conda-forge
-  - defaults
-track_features:
-  - mkl
