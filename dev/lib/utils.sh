@@ -166,6 +166,13 @@ function load_env() {
 }
 export -f load_env
 
+function getenv_cross() {
+  local varname="${1:?}"
+  local target="${2:-${CROSS_COMPILE:?}}"
+  printenv "${varname^^}_${target}"
+}
+export -f getenv_cross
+
 SUCCESS="({ set +x; } 2> /dev/null && echo '🟩 Success' && exit 0)"
 FAILURE="({ set +x; } 2> /dev/null && echo '🟥 Failure' && exit 1)"
 CANCELLED="({ set +x; } 2> /dev/null && echo '🟦 Cancelled' && exit 0)"

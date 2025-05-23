@@ -15,6 +15,12 @@ GROUP="user"
 
 cache_dir="$(get_cache_dir "${CROSS_COMPILE}")"
 
+HOST_TUPLE_DEBIAN="x86_64-linux-gnu"
+HOST_TUPLE="x86_64-unknown-linux-gnu"
+HOST_TUPLE_UPPER="X86_64_UNKNOWN_LINUX_GNU"
+HOST_TUPLE_SAFE="x86_64_unknown_linux_gnu"
+HOST_GCC_TRIPLET="${HOST_TUPLE}"
+
 CROSS_GCC_TRIPLET="${CROSS_COMPILE}"
 case "${CROSS_COMPILE}" in
 x86_64-unknown-linux-gnu)
@@ -22,6 +28,7 @@ x86_64-unknown-linux-gnu)
   CROSS_ARCH_DEBIAN="amd64"
   CROSS_ARCH="x86_64"
   CROSS_COMPILE_UPPER="X86_64_UNKNOWN_LINUX_GNU"
+  CROSS_COMPILE_SAFE="x86_64_unknown_linux_gnu"
   CROSS_RUNNER="qemu-${CROSS_ARCH}"
   ;;
 x86_64-unknown-linux-musl)
@@ -29,6 +36,7 @@ x86_64-unknown-linux-musl)
   CROSS_ARCH_DEBIAN="amd64"
   CROSS_ARCH="x86_64"
   CROSS_COMPILE_UPPER="X86_64_UNKNOWN_LINUX_MUSL"
+  CROSS_COMPILE_SAFE="x86_64_unknown_linux_musl"
   CROSS_RUNNER="qemu-${CROSS_ARCH}"
   ;;
 aarch64-unknown-linux-gnu)
@@ -36,6 +44,7 @@ aarch64-unknown-linux-gnu)
   CROSS_ARCH_DEBIAN="arm64"
   CROSS_ARCH="aarch64"
   CROSS_COMPILE_UPPER="AARCH64_UNKNOWN_LINUX_GNU"
+  CROSS_COMPILE_SAFE="aarch64_unknown_linux_gnu"
   CROSS_RUNNER="qemu-${CROSS_ARCH}"
   ;;
 aarch64-unknown-linux-musl)
@@ -43,17 +52,20 @@ aarch64-unknown-linux-musl)
   CROSS_ARCH_DEBIAN="arm64"
   CROSS_ARCH="aarch64"
   CROSS_COMPILE_UPPER="AARCH64_UNKNOWN_LINUX_MUSL"
+  CROSS_COMPILE_SAFE="aarch64_unknown_linux_musl"
   CROSS_RUNNER="qemu-${CROSS_ARCH}"
   ;;
 x86_64-apple-darwin)
   dockerfile="$(project_root)/dev/docker/cross-darwin.dockerfile"
   CROSS_COMPILE_UPPER="X86_64_APPLE_DARWIN"
+  CROSS_COMPILE_SAFE="x86_64_apple_darwin"
   CROSS_APPLE_TRIPLET="x86_64-apple-darwin20.2"
   CROSS_GCC_TRIPLET="x86_64-apple-darwin20.2"
   ;;
 aarch64-apple-darwin)
   dockerfile="$(project_root)/dev/docker/cross-darwin.dockerfile"
   CROSS_COMPILE_UPPER="AARCH64_APPLE_DARWIN"
+  CROSS_COMPILE_SAFE="aarch64_apple_darwin"
   CROSS_APPLE_TRIPLET="arm64-apple-darwin20.2"
   CROSS_GCC_TRIPLET="aarch64-apple-darwin20.2"
   ;;
@@ -62,6 +74,7 @@ x86_64-pc-windows-gnu)
   CROSS_ARCH_DEBIAN="amd64"
   CROSS_ARCH="x86_64"
   CROSS_COMPILE_UPPER="X86_64_PC_WINDOWS_GNU"
+  CROSS_COMPILE_SAFE="x86_64_pc_windows_gnu"
   CROSS_GCC_TRIPLET="x86_64-w64-mingw32"
   CROSS_RUNNER="/usr/lib/wine/wine64"
   ;;
@@ -69,10 +82,11 @@ native)
   dockerfile="$(project_root)/dev/docker/native.dockerfile"
   ;;
 *)
-  printf "Unsupported CROSS_COMPILE value: %s", "${CROSS_COMPILE}"
+  printf "Unsupported CROSS_COMPILE value: %s\n" "${CROSS_COMPILE}"
   exit 1
   ;;
 esac
+
 
 docker_file_hash="$("$(project_root)/dev/docker/checksum")"
 docker_repo_name_safe="${PROJECT_DOCKER_REPO//\//-}"
@@ -118,9 +132,15 @@ if ! docker inspect --format '{{.Id}}' "${PROJECT_DOCKER_REPO}:${docker_image_ta
     --build-arg="CROSS_ARCH=${CROSS_ARCH:-}" \
     --build-arg="CROSS_COMPILE=${CROSS_COMPILE:-}" \
     --build-arg="CROSS_COMPILE_UPPER=${CROSS_COMPILE_UPPER:-}" \
+    --build-arg="CROSS_COMPILE_SAFE=${CROSS_COMPILE_SAFE:-}" \
     --build-arg="CROSS_APPLE_TRIPLET=${CROSS_APPLE_TRIPLET:-}" \
     --build-arg="CROSS_GCC_TRIPLET=${CROSS_GCC_TRIPLET:-}" \
     --build-arg="CROSS_RUNNER=${CROSS_RUNNER:-}" \
+    --build-arg="HOST_TUPLE_DEBIAN=${HOST_TUPLE_DEBIAN}" \
+    --build-arg="HOST_TUPLE=${HOST_TUPLE}" \
+    --build-arg="HOST_TUPLE_UPPER=${HOST_TUPLE_UPPER}" \
+    --build-arg="HOST_TUPLE_SAFE=${HOST_TUPLE_SAFE}" \
+    --build-arg="HOST_GCC_TRIPLET=${HOST_GCC_TRIPLET}" \
     --load \
     \
     "${build_params[@]}" \
