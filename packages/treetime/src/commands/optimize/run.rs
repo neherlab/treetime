@@ -5,7 +5,7 @@ use crate::commands::ancestral::marginal_sparse::run_marginal_sparse;
 use crate::commands::optimize::args::TreetimeOptimizeArgs;
 use crate::commands::optimize::optimize_dense::run_optimize_dense;
 use crate::commands::optimize::optimize_sparse::run_optimize_sparse;
-use crate::graph::edge::GraphEdge;
+use crate::graph::edge::{GraphEdge, Weighted};
 use crate::graph::graph::Graph;
 use crate::graph::node::GraphNode;
 use crate::gtr::get_gtr::{get_gtr, get_gtr_dense};
@@ -56,7 +56,7 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
 
   // TODO: refactor to reduce duplication with `ancestral` as well as within the branches of this conditional
   if !dense {
-    let graph: SparseGraph = nwk_read_file(tree)?;
+    let mut graph: SparseGraph = nwk_read_file(tree)?;
     let partitions = vec![PartitionParsimonyWithAln::new(alphabet.clone(), aln)?];
     let partitions = compress_sequences(&graph, partitions)?;
 
@@ -78,9 +78,11 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
       lh_prev = lh;
     }
 
+    collapse_short_edges(&mut graph, f64::EPSILON)?;
+
     write_graph(outdir, &graph)?;
   } else {
-    let graph: DenseGraph = nwk_read_file(tree)?;
+    let mut graph: DenseGraph = nwk_read_file(tree)?;
     let gtr = get_gtr_dense(model_name, &alphabet, &graph)?;
 
     let partitions_waln = vec![PartitionLikelihoodWithAln::new(gtr, alphabet, aln)?];
@@ -106,10 +108,33 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
       lh_prev = lh;
     }
 
+    collapse_short_edges(&mut graph, f64::EPSILON)?;
+
     write_graph(outdir, &graph)?;
   }
 
   Ok(())
+}
+
+/// Collapse edges with weights below the given threshold.
+pub fn collapse_short_edges<N, E, D>(graph: &mut Graph<N, E, D>, threshold: f64) -> Result<(), Report>
+where
+  N: GraphNode,
+  E: GraphEdge + Weighted,
+  D: Sync + Send,
+{
+  graph
+    .get_edges()
+    .iter()
+    .filter_map(|edge| {
+      let edge_lock = edge.read_arc();
+      let weight = edge_lock.payload().read_arc().weight();
+      weight.filter(|w| *w <= threshold).map(|_| edge_lock.key())
+    })
+    .try_for_each(|edge_key| {
+      debug!("Collapsing edge: {edge_key}");
+      graph.collapse_edge(edge_key)
+    })
 }
 
 fn write_graph<N, E, D>(outdir: impl AsRef<Path>, graph: &Graph<N, E, D>) -> Result<(), Report>
@@ -137,4 +162,67 @@ where
   )?;
 
   Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use crate::{
+    graph::graph::tests::{TestEdge, TestNode},
+    io::nwk::{nwk_read_str, nwk_write_str},
+  };
+
+  #[test]
+  fn test_collapse_short_edges_basic() -> Result<(), Report> {
+    let mut graph: Graph<TestNode, TestEdge, ()> = nwk_read_str("(A:0.0,B:0.1)root;")?;
+    collapse_short_edges(&mut graph, 0.0)?;
+    let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
+    assert_eq!(output_nwk, "(B:0.1)root;");
+    Ok(())
+  }
+
+  #[test]
+  fn test_collapse_short_edges_with_threshold() -> Result<(), Report> {
+    let mut graph: Graph<TestNode, TestEdge, ()> = nwk_read_str("(A:0.01,B:0.02,C:0.1)root;")?;
+    collapse_short_edges(&mut graph, 0.05)?;
+    let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
+    assert_eq!(output_nwk, "(C:0.1)root;");
+    Ok(())
+  }
+
+  #[test]
+  fn test_collapse_short_edges_preserves_large_edges() -> Result<(), Report> {
+    let mut graph: Graph<TestNode, TestEdge, ()> = nwk_read_str("(A:0.1,B:0.2)root;")?;
+    collapse_short_edges(&mut graph, 0.01)?;
+    let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
+    assert_eq!(output_nwk, "(A:0.1,B:0.2)root;");
+    Ok(())
+  }
+
+  #[test]
+  fn test_collapse_short_edges_empty_graph() -> Result<(), Report> {
+    let mut graph: Graph<TestNode, TestEdge, ()> = Graph::new();
+    collapse_short_edges(&mut graph, 0.0)?;
+    assert!(graph.get_nodes().is_empty());
+    Ok(())
+  }
+
+  #[test]
+  fn test_collapse_short_edges_handles_none_weights() -> Result<(), Report> {
+    let mut graph: Graph<TestNode, TestEdge, ()> = nwk_read_str("(A:0.0,B:0.1)root;")?;
+    collapse_short_edges(&mut graph, 0.0)?;
+    let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
+    assert_eq!(output_nwk, "(B:0.1)root;");
+    Ok(())
+  }
+
+  #[test]
+  fn test_collapse_short_edges_complex_tree() -> Result<(), Report> {
+    let mut graph: Graph<TestNode, TestEdge, ()> =
+      nwk_read_str("((A:0.1,(B:0.2)internal2:0.0)internal1:0.01,C:0.05)root;")?;
+    collapse_short_edges(&mut graph, 0.01)?;
+    let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
+    assert_eq!(output_nwk, "(C:0.05,A:0.1,B:0.2)root;");
+    Ok(())
+  }
 }

@@ -779,6 +779,62 @@ where
   pub fn is_leaf(&self, key: GraphNodeKey) -> bool {
     self.leaves.contains(&key)
   }
+
+  pub fn collapse_edge(&mut self, edge_key: GraphEdgeKey) -> Result<(), Report>
+  where
+    N: Clone,
+    E: Clone,
+  {
+    let edge = self
+      .get_edge(edge_key)
+      .ok_or_else(|| make_internal_report!("Edge {} not found", edge_key))?;
+
+    let (source_key, target_key) = {
+      let edge_lock = edge.read_arc();
+      (edge_lock.source(), edge_lock.target())
+    };
+
+    let (target_inbound, target_outbound) = {
+      let target_node = self
+        .get_node(target_key)
+        .ok_or_else(|| make_internal_report!("Target node {} not found", target_key))?;
+      let target_lock = target_node.read_arc();
+      (target_lock.inbound().to_vec(), target_lock.outbound().to_vec())
+    };
+
+    for &inbound_edge_key in &target_inbound {
+      if inbound_edge_key != edge_key {
+        if let Some(inbound_edge) = self.get_edge(inbound_edge_key) {
+          let mut edge_lock = inbound_edge.write_arc();
+          edge_lock.set_target(source_key);
+        }
+      }
+    }
+
+    for &outbound_edge_key in &target_outbound {
+      if outbound_edge_key != edge_key {
+        if let Some(outbound_edge) = self.get_edge(outbound_edge_key) {
+          let mut edge_lock = outbound_edge.write_arc();
+          edge_lock.set_source(source_key);
+        }
+      }
+    }
+
+    if let Some(source_node) = self.get_node(source_key) {
+      let mut source_lock = source_node.write_arc();
+      source_lock
+        .inbound_mut()
+        .extend(target_inbound.iter().filter(|&&e| e != edge_key));
+      source_lock
+        .outbound_mut()
+        .extend(target_outbound.iter().filter(|&&e| e != edge_key));
+    }
+
+    self.remove_edge(edge_key)?;
+    self.remove_node(target_key)?;
+
+    Ok(())
+  }
 }
 
 #[cfg(test)]
@@ -790,7 +846,9 @@ pub mod tests {
   use crate::graph::edge::Weighted;
   use crate::graph::node::Named;
   use crate::io::graphviz::{EdgeToGraphViz, NodeToGraphviz};
-  use crate::io::nwk::{EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteOptions, format_weight, nwk_read_str};
+  use crate::io::nwk::{
+    EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteOptions, format_weight, nwk_read_str, nwk_write_str,
+  };
 
   use super::*;
 
@@ -954,6 +1012,117 @@ pub mod tests {
     });
 
     assert_eq!(&vec!["D", "C", "B", "A", "CD", "AB", "root"], &*actual.read());
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_collapse_edge_simple_chain() -> Result<(), Report> {
+    let mut graph = Graph::<TestNode, TestEdge, ()>::new();
+
+    let root_node = graph.add_node(TestNode(Some("root".to_owned())));
+    let internal_node = graph.add_node(TestNode(Some("internal".to_owned())));
+    let leaf_node = graph.add_node(TestNode(Some("A".to_owned())));
+
+    let root_to_internal_edge = graph.add_edge(root_node, internal_node, TestEdge(Some(0.1)))?;
+    let internal_to_leaf_edge = graph.add_edge(internal_node, leaf_node, TestEdge(Some(0.2)))?;
+
+    graph.build()?;
+
+    graph.collapse_edge(root_to_internal_edge)?;
+
+    let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
+    assert_eq!(output_nwk, "(A:0.2)root;");
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_collapse_edge_binary_tree() -> Result<(), Report> {
+    let mut graph = Graph::<TestNode, TestEdge, ()>::new();
+
+    let root_node = graph.add_node(TestNode(Some("root".to_owned())));
+    let internal_node = graph.add_node(TestNode(Some("internal".to_owned())));
+    let a_node = graph.add_node(TestNode(Some("A".to_owned())));
+    let b_node = graph.add_node(TestNode(Some("B".to_owned())));
+
+    let root_to_internal_edge = graph.add_edge(root_node, internal_node, TestEdge(Some(0.1)))?;
+    let internal_to_a_edge = graph.add_edge(internal_node, a_node, TestEdge(Some(0.2)))?;
+    let root_to_b_edge = graph.add_edge(root_node, b_node, TestEdge(Some(0.3)))?;
+
+    graph.build()?;
+
+    graph.collapse_edge(root_to_internal_edge)?;
+
+    let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
+    assert_eq!(output_nwk, "(B:0.3,A:0.2)root;");
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_collapse_edge_complex_tree() -> Result<(), Report> {
+    let mut graph = Graph::<TestNode, TestEdge, ()>::new();
+
+    let root_node = graph.add_node(TestNode(Some("root".to_owned())));
+    let left_internal = graph.add_node(TestNode(Some("left".to_owned())));
+    let right_internal = graph.add_node(TestNode(Some("right".to_owned())));
+    let a_node = graph.add_node(TestNode(Some("A".to_owned())));
+    let b_node = graph.add_node(TestNode(Some("B".to_owned())));
+    let c_node = graph.add_node(TestNode(Some("C".to_owned())));
+    let d_node = graph.add_node(TestNode(Some("D".to_owned())));
+
+    let root_to_left_edge = graph.add_edge(root_node, left_internal, TestEdge(Some(0.1)))?;
+    let root_to_right_edge = graph.add_edge(root_node, right_internal, TestEdge(Some(0.2)))?;
+    let left_to_a_edge = graph.add_edge(left_internal, a_node, TestEdge(Some(0.3)))?;
+    let left_to_b_edge = graph.add_edge(left_internal, b_node, TestEdge(Some(0.4)))?;
+    let right_to_c_edge = graph.add_edge(right_internal, c_node, TestEdge(Some(0.5)))?;
+    let right_to_d_edge = graph.add_edge(right_internal, d_node, TestEdge(Some(0.6)))?;
+
+    graph.build()?;
+
+    graph.collapse_edge(root_to_left_edge)?;
+
+    let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
+    assert_eq!(output_nwk, "((C:0.5,D:0.6)right:0.2,A:0.3,B:0.4)root;");
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_collapse_edge_invalid_edge() -> Result<(), Report> {
+    let mut graph = Graph::<TestNode, TestEdge, ()>::new();
+
+    let root_node = graph.add_node(TestNode(Some("root".to_owned())));
+    let leaf_node = graph.add_node(TestNode(Some("A".to_owned())));
+    graph.add_edge(root_node, leaf_node, TestEdge(Some(0.1)))?;
+    graph.build()?;
+
+    let invalid_key = GraphEdgeKey(9999);
+    let result = graph.collapse_edge(invalid_key);
+
+    assert!(result.is_err());
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_collapse_edge_leaf_edge() -> Result<(), Report> {
+    let mut graph = Graph::<TestNode, TestEdge, ()>::new();
+
+    let root_node = graph.add_node(TestNode(Some("root".to_owned())));
+    let a_node = graph.add_node(TestNode(Some("A".to_owned())));
+    let b_node = graph.add_node(TestNode(Some("B".to_owned())));
+
+    let root_to_a_edge = graph.add_edge(root_node, a_node, TestEdge(Some(0.1)))?;
+    let root_to_b_edge = graph.add_edge(root_node, b_node, TestEdge(Some(0.2)))?;
+
+    graph.build()?;
+
+    graph.collapse_edge(root_to_a_edge)?;
+
+    let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
+    assert_eq!(output_nwk, "(B:0.2)root;");
 
     Ok(())
   }
