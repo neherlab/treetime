@@ -119,24 +119,30 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
 }
 
 /// Collapse edges with weights below the given threshold.
+/// NOTE: Leaf nodes are excluded from collapsing.
 pub fn collapse_short_edges<N, E, D>(graph: &mut Graph<N, E, D>, threshold: f64) -> Result<(), Report>
 where
   N: GraphNode,
   E: GraphEdge + Weighted,
   D: Sync + Send,
 {
-  graph
+  #[allow(clippy::needless_collect)]
+  let edges_to_collapse: Vec<_> = graph
     .get_edges()
     .iter()
     .filter_map(|edge| {
-      let edge_lock = edge.read_arc();
-      let weight = edge_lock.payload().read_arc().weight();
-      weight.filter(|w| *w <= threshold).map(|_| edge_lock.key())
+      let edge = edge.read_arc();
+      let weight = edge.payload().read_arc().weight();
+      let should_collapse_by_weight = weight.filter(|w| *w <= threshold).is_some();
+      let target_is_leaf = graph.is_leaf(edge.target());
+      (should_collapse_by_weight && !target_is_leaf).then(|| edge.key())
     })
-    .try_for_each(|edge_key| {
-      debug!("Collapsing edge: {edge_key}");
-      graph.collapse_edge(edge_key)
-    })
+    .collect();
+
+  edges_to_collapse.into_iter().try_for_each(|edge_key| {
+    debug!("Collapsing edge: {edge_key}");
+    graph.collapse_edge(edge_key)
+  })
 }
 
 fn write_graph<N, E, D>(outdir: impl AsRef<Path>, graph: &Graph<N, E, D>) -> Result<(), Report>
@@ -173,13 +179,14 @@ mod tests {
     graph::graph::tests::{TestEdge, TestNode},
     io::nwk::{nwk_read_str, nwk_write_str},
   };
+  use pretty_assertions::assert_eq;
 
   #[test]
   fn test_collapse_short_edges_basic() -> Result<(), Report> {
     let mut graph: Graph<TestNode, TestEdge, ()> = nwk_read_str("(A:0.0,B:0.1)root;")?;
     collapse_short_edges(&mut graph, 0.0)?;
     let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
-    assert_eq!(output_nwk, "(B:0.1)root;");
+    assert_eq!(output_nwk, "(A:0,B:0.1)root;");
     Ok(())
   }
 
@@ -188,7 +195,7 @@ mod tests {
     let mut graph: Graph<TestNode, TestEdge, ()> = nwk_read_str("(A:0.01,B:0.02,C:0.1)root;")?;
     collapse_short_edges(&mut graph, 0.05)?;
     let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
-    assert_eq!(output_nwk, "(C:0.1)root;");
+    assert_eq!(output_nwk, "(A:0.01,B:0.02,C:0.1)root;");
     Ok(())
   }
 
@@ -214,17 +221,26 @@ mod tests {
     let mut graph: Graph<TestNode, TestEdge, ()> = nwk_read_str("(A:0.0,B:0.1)root;")?;
     collapse_short_edges(&mut graph, 0.0)?;
     let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
-    assert_eq!(output_nwk, "(B:0.1)root;");
+    assert_eq!(output_nwk, "(A:0,B:0.1)root;");
+    Ok(())
+  }
+
+  #[test]
+  fn test_collapse_short_edges_preserves_terminal_nodes() -> Result<(), Report> {
+    let mut graph: Graph<TestNode, TestEdge, ()> = nwk_read_str("(A:0.00001,B:0.1)root;")?;
+    collapse_short_edges(&mut graph, 0.001)?;
+    let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
+    assert_eq!(output_nwk, "(A:0.00001,B:0.1)root;");
     Ok(())
   }
 
   #[test]
   fn test_collapse_short_edges_complex_tree() -> Result<(), Report> {
     let mut graph: Graph<TestNode, TestEdge, ()> =
-      nwk_read_str("((A:0.1,(B:0.2)internal2:0.0)internal1:0.01,C:0.05)root;")?;
+      nwk_read_str("(((A:0,B:0.1)internal1:0.00002,(C:0.00003,D:0.1)internal2:0.1)internal3:0.00004,E:0.00005)root;")?;
     collapse_short_edges(&mut graph, 0.01)?;
     let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
-    assert_eq!(output_nwk, "(C:0.05,A:0.1,B:0.2)root;");
+    assert_eq!(output_nwk, "(E:0.00005,(C:0.00003,D:0.1)internal2:0.1,A:0,B:0.1)root;");
     Ok(())
   }
 }
