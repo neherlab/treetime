@@ -44,6 +44,8 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
     outdir,
     max_iter,
     dp,
+    minimal_branch_length,
+    prune_no_mutations,
   } = args;
 
   let dense = dense.unwrap_or_else(infer_dense);
