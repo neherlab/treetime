@@ -1,14 +1,14 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::io::compression::Decompressor;
 use crate::io::concat::Concat;
-use crate::io::file::{create_file_or_stdout, open_file_or_stdin, open_stdin};
+use crate::io::file::{create_file_or_stdout, open_file_or_stdin};
 use crate::make_error;
 use crate::representation::seq::Seq;
 use crate::representation::seq_char::AsciiChar;
 use crate::utils::string::quote_single;
 use eyre::{Context, Report};
 use itertools::Itertools;
-use log::{info, warn};
+use log::warn;
 use serde::{Deserialize, Serialize};
 use std::io::{BufRead, BufReader, Write};
 use std::path::Path;
@@ -88,11 +88,6 @@ impl<'a, 'b> FastaReader<'a, 'b> {
 
   /// Reads multiple files sequentially given a set of paths
   pub fn from_paths<P: AsRef<Path>>(filepaths: &[P], alphabet: &'b Alphabet) -> Result<Self, Report> {
-    if filepaths.is_empty() {
-      info!("Reading input fasta from standard input");
-      return Ok(Self::new(open_stdin()?, alphabet));
-    }
-
     let readers: Vec<Box<dyn BufRead + 'a>> = filepaths
       .iter()
       .map(|filepath| -> Result<Box<dyn BufRead + 'a>, Report> { open_file_or_stdin(&Some(filepath)) })
