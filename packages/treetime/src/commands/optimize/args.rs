@@ -1,6 +1,7 @@
 use crate::alphabet::alphabet::AlphabetName;
 use crate::gtr::get_gtr::GtrModelName;
 use clap::{Parser, ValueHint};
+// use f64::INFINITY directly, no need to import
 use std::fmt::Debug;
 use std::path::PathBuf;
 
@@ -33,11 +34,11 @@ pub struct TreetimeOptimizeArgs {
 
   /// GTR model to use
   ///
-  /// '--gtr infer' will infer a model from the data. Alternatively, specify the model type. If the specified model requires additional options, use '--gtr-params' to specify those.
+  /// '--model infer' will infer a model from the data. TODO: Alternatively, specify the model type. If the specified model requires additional options, use '--gtr-params' to specify those.
   #[clap(long = "model", short = 'g', value_enum, default_value_t = GtrModelName::Infer)]
   pub model_name: GtrModelName,
 
-  /// Use dense representation
+  /// Use dense representation of sequences on the tree, useful if branches are long.
   ///
   /// TODO: explain this better
   #[clap(long)]
@@ -54,4 +55,16 @@ pub struct TreetimeOptimizeArgs {
   /// Small allowable difference in the likelihood between iterations to determine if the loop should terminate
   #[clap(long, default_value_t = 1e-2)]
   pub dp: f64,
+
+  /// Threshold value for pruning of branches
+  ///
+  /// If set, prune branches with a length below this value (off by default, default value INFINITY).
+  #[clap(long, default_value_t = f64::INFINITY)]
+  pub minimal_branch_length: f64,
+
+  /// Prune branches without mutations
+  ///
+  /// Prune any branch that does not have a mutation or other state transition mapped to it. Only available if alignments are provided.
+  #[clap(long, default_value_t = false)]
+  pub prune_no_mutations: bool,
 }
