@@ -12,6 +12,7 @@ use crate::gtr::get_gtr::{get_gtr, get_gtr_dense};
 use crate::io::fasta::read_many_fasta;
 use crate::io::nex::{NexWriteOptions, nex_write_file};
 use crate::io::nwk::{EdgeToNwk, NodeToNwk, NwkWriteOptions, nwk_read_file, nwk_write_file};
+use crate::make_error;
 use crate::representation::graph_dense::DenseGraph;
 use crate::representation::graph_sparse::SparseGraph;
 use crate::representation::infer_dense::infer_dense;
@@ -34,7 +35,19 @@ pub struct TreetimeOptimizeParams {
   pub fixed_pi: bool,
 }
 
+fn validate_args(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
+  if args.prune_empty && args.input_fastas.is_empty() {
+    return make_error!(
+      "The --prune-empty requires --aln. Without sequence data, it's not possible to determine which branches lack mutations."
+    );
+  }
+
+  Ok(())
+}
+
 pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
+  validate_args(args)?;
+
   let TreetimeOptimizeArgs {
     input_fastas,
     tree,
@@ -44,8 +57,8 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
     outdir,
     max_iter,
     dp,
-    minimal_branch_length,
-    prune_no_mutations,
+    prune_short,
+    prune_empty,
   } = args;
 
   let dense = dense.unwrap_or_else(infer_dense);

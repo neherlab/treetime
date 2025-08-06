@@ -15,8 +15,7 @@ pub struct TreetimeOptimizeArgs {
   /// If no input files provided, the plain fasta input is read from standard input (stdin).
   ///
   /// See: https://en.wikipedia.org/wiki/FASTA_format
-  #[clap(value_hint = ValueHint::FilePath)]
-  #[clap(display_order = 1)]
+  #[clap(long = "aln", value_hint = ValueHint::FilePath, value_name = "FILEPATH")]
   pub input_fastas: Vec<PathBuf>,
 
   /// Name of file containing the tree in newick, nexus, or phylip format.
@@ -57,13 +56,15 @@ pub struct TreetimeOptimizeArgs {
 
   /// Threshold value for pruning of branches
   ///
-  /// If set, prune branches with a length below this value (off by default, default value INFINITY).
-  #[clap(long, default_value_t = f64::INFINITY)]
-  pub minimal_branch_length: f64,
+  /// If set, prune branches with a length below this value
+  #[clap(long, short = 's', value_name = "THRESHOLD")]
+  pub prune_short: Option<f64>,
 
-  /// Prune branches without mutations
+  /// Prune empty branches
   ///
-  /// Prune any branch that does not have a mutation or other state transition mapped to it. Only available if alignments are provided.
-  #[clap(long, default_value_t = false)]
-  pub prune_no_mutations: bool,
+  /// If set, prune any branch that does not have a mutation or other state transition mapped to it.
+  ///
+  /// Requires --aln
+  #[clap(long, short = 'e')]
+  pub prune_empty: bool,
 }
