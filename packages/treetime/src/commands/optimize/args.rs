@@ -1,7 +1,6 @@
 use crate::alphabet::alphabet::AlphabetName;
 use crate::gtr::get_gtr::GtrModelName;
 use clap::{Parser, ValueHint};
-// use f64::INFINITY directly, no need to import
 use std::fmt::Debug;
 use std::path::PathBuf;
 
