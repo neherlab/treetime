@@ -57,9 +57,13 @@ pub fn run_prune(args: &TreetimePruneArgs) -> Result<(), Report> {
   Ok(())
 }
 
-/// Collapse edges with weights below the given threshold.
-/// NOTE: Leaf nodes are excluded from collapsing.
-pub fn collapse_short_edges<N, E, D>(
+/// Collapse internal edges that are short or empty.
+///
+/// An edge is collapsed if its weight is less than the `prune_short` threshold,
+/// or if it has no mutations and `prune_empty` is true.
+///
+/// NOTE: Edges leading to leaf nodes are never collapsed.
+fn collapse_short_edges<N, E, D>(
   graph: &mut Graph<N, E, D>,
   prune_short: Option<f64>,
   prune_empty: bool,
