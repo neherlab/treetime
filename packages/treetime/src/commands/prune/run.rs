@@ -1,7 +1,7 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::commands::ancestral::fitch::compress_sequences;
 use crate::commands::prune::args::TreetimePruneArgs;
-use crate::graph::edge::{GraphEdge, NumMuts, Weighted};
+use crate::graph::edge::{GraphEdge, GraphEdgeKey, NumMuts, Weighted};
 use crate::graph::graph::Graph;
 use crate::graph::node::GraphNode;
 use crate::io::fasta::read_many_fasta;
@@ -10,7 +10,9 @@ use crate::io::nwk::{EdgeToNwk, NodeToNwk, NwkWriteOptions, nwk_read_file, nwk_w
 use crate::make_error;
 use crate::representation::graph_sparse::SparseGraph;
 use crate::representation::partitions_parsimony::PartitionParsimonyWithAln;
+use crate::utils::iter::iter_union;
 use eyre::Report;
+use itertools::{Itertools, izip};
 use log::debug;
 use serde::Serialize;
 use std::path::Path;
@@ -57,22 +59,7 @@ pub fn run_prune(args: &TreetimePruneArgs) -> Result<(), Report> {
   Ok(())
 }
 
-/// Collapse internal edges that are short or empty.
-///
-/// An edge is collapsed if its weight is less than the `prune_short` threshold,
-/// or if it has no mutations and `prune_empty` is true.
-///
-/// NOTE: Edges leading to leaf nodes are never collapsed.
-fn collapse_short_edges<N, E, D>(
-  graph: &mut Graph<N, E, D>,
-  prune_short: Option<f64>,
-  prune_empty: bool,
-) -> Result<(), Report>
-where
-  N: GraphNode,
-  E: GraphEdge + Weighted + NumMuts,
-  D: Sync + Send,
-{
+fn collapse_short_edges(graph: &mut SparseGraph, prune_short: Option<f64>, prune_empty: bool) -> Result<(), Report> {
   #[allow(clippy::needless_collect)]
   let edges_to_collapse: Vec<_> = graph
     .get_edges()
@@ -89,8 +76,31 @@ where
 
   edges_to_collapse.into_iter().try_for_each(|edge_key| {
     debug!("Collapsing edge: {edge_key}");
-    graph.collapse_edge(edge_key)
+    collapse_sparse_edge(graph, edge_key)
   })
+}
+
+fn collapse_sparse_edge(graph: &mut SparseGraph, edge_key: GraphEdgeKey) -> Result<(), Report> {
+  let (_, removed_edge, new_edges) = graph.collapse_edge(edge_key)?;
+  let removed_edge = removed_edge.payload().read_arc();
+
+  for new_edge in new_edges {
+    let mut new_edge = new_edge.write_arc().payload().write_arc();
+
+    // Sum branch lengths
+    if let (Some(bl1), Some(bl2)) = (removed_edge.branch_length, new_edge.branch_length) {
+      new_edge.branch_length = Some(bl1 + bl2);
+    }
+
+    // Union of substitutions per partition
+    for (removed_partition, new_partition) in izip!(&removed_edge.sparse_partitions, &mut new_edge.sparse_partitions) {
+      new_partition.subs = iter_union(&removed_partition.subs, &new_partition.subs)
+        .cloned()
+        .collect_vec();
+    }
+  }
+
+  Ok(())
 }
 
 fn write_graph<N, E, D>(outdir: impl AsRef<Path>, graph: &Graph<N, E, D>) -> Result<(), Report>
@@ -117,85 +127,72 @@ where
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::graph::edge::NumMuts;
   use crate::graph::graph::Graph;
-  use crate::graph::graph::tests::TestNode;
   use crate::io::nwk::{nwk_read_str, nwk_write_str};
+  use crate::representation::graph_sparse::{SparseEdge, SparseNode, SparseSeqEdge};
+  use crate::seq::mutation::Sub;
   use pretty_assertions::assert_eq;
-  use serde::{Deserialize, Serialize};
 
-  #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-  struct TestEdgeWithMuts {
-    weight: Option<f64>,
-    num_muts: Option<usize>,
-  }
+  fn create_test_edge(branch_length: Option<f64>, num_muts: Option<usize>) -> SparseEdge {
+    let sparse_partitions = if let Some(num_muts) = num_muts {
+      if num_muts > 0 {
+        vec![SparseSeqEdge {
+          subs: (0..num_muts).map(|i| Sub::new('A', i, 'T').unwrap()).collect_vec(),
+          ..Default::default()
+        }]
+      } else {
+        vec![SparseSeqEdge::default()]
+      }
+    } else {
+      // When num_muts is None, create an edge with no partitions to represent unknown mutations
+      vec![]
+    };
 
-  impl TestEdgeWithMuts {
-    fn new(weight: Option<f64>, num_muts: Option<usize>) -> Self {
-      Self { weight, num_muts }
-    }
-  }
-
-  impl GraphEdge for TestEdgeWithMuts {}
-
-  impl Weighted for TestEdgeWithMuts {
-    fn weight(&self) -> Option<f64> {
-      self.weight
-    }
-
-    fn set_weight(&mut self, weight: Option<f64>) {
-      self.weight = weight;
-    }
-  }
-
-  impl NumMuts for TestEdgeWithMuts {
-    fn num_muts(&self) -> Option<usize> {
-      self.num_muts
-    }
-  }
-
-  impl crate::io::nwk::EdgeFromNwk for TestEdgeWithMuts {
-    fn from_nwk(weight: Option<f64>) -> Result<Self, Report> {
-      Ok(Self::new(weight, None))
-    }
-  }
-
-  impl EdgeToNwk for TestEdgeWithMuts {
-    fn nwk_weight(&self) -> Option<f64> {
-      self.weight
+    SparseEdge {
+      sparse_partitions,
+      branch_length,
     }
   }
 
   #[test]
   fn test_collapse_short_edges_basic() -> Result<(), Report> {
-    let mut graph: Graph<TestNode, TestEdgeWithMuts, ()> = nwk_read_str("(A:0.0,B:0.1)root;")?;
+    let mut graph: SparseGraph = nwk_read_str("(A:0.0,B:0.1)root;")?;
     collapse_short_edges(&mut graph, Some(0.0), false)?;
     let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
-    assert_eq!(output_nwk, "(A:0,B:0.1)root;");
+    assert_eq!(
+      output_nwk,
+      "(A:0[&mutations=\"\"],B:0.1[&mutations=\"\"])root[&mutations=\"\"];"
+    );
     Ok(())
   }
 
   #[test]
   fn test_collapse_short_edges_with_threshold() -> Result<(), Report> {
-    let mut graph: Graph<TestNode, TestEdgeWithMuts, ()> = nwk_read_str("(A:0.01,B:0.02,C:0.1)root;")?;
+    let mut graph: SparseGraph = nwk_read_str("(A:0.01,B:0.02,C:0.1)root;")?;
     collapse_short_edges(&mut graph, Some(0.05), false)?;
     let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
-    assert_eq!(output_nwk, "(A:0.01,B:0.02,C:0.1)root;");
+    assert_eq!(
+      output_nwk,
+      "(A:0.01[&mutations=\"\"],B:0.02[&mutations=\"\"],C:0.1[&mutations=\"\"])root[&mutations=\"\"];"
+    );
     Ok(())
   }
 
   #[test]
   fn test_collapse_short_edges_preserves_large_edges() -> Result<(), Report> {
-    let mut graph: Graph<TestNode, TestEdgeWithMuts, ()> = nwk_read_str("(A:0.1,B:0.2)root;")?;
+    let mut graph: SparseGraph = nwk_read_str("(A:0.1,B:0.2)root;")?;
     collapse_short_edges(&mut graph, Some(0.01), false)?;
     let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
-    assert_eq!(output_nwk, "(A:0.1,B:0.2)root;");
+    assert_eq!(
+      output_nwk,
+      "(A:0.1[&mutations=\"\"],B:0.2[&mutations=\"\"])root[&mutations=\"\"];"
+    );
     Ok(())
   }
 
   #[test]
   fn test_collapse_short_edges_empty_graph() -> Result<(), Report> {
-    let mut graph: Graph<TestNode, TestEdgeWithMuts, ()> = Graph::new();
+    let mut graph: SparseGraph = Graph::new();
     collapse_short_edges(&mut graph, Some(0.0), false)?;
     assert!(graph.get_nodes().is_empty());
     Ok(())
@@ -203,44 +200,62 @@ mod tests {
 
   #[test]
   fn test_collapse_short_edges_handles_none_weights() -> Result<(), Report> {
-    let mut graph: Graph<TestNode, TestEdgeWithMuts, ()> = nwk_read_str("(A:0.0,B:0.1)root;")?;
+    let mut graph: SparseGraph = nwk_read_str("(A:0.0,B:0.1)root;")?;
     collapse_short_edges(&mut graph, Some(0.0), false)?;
     let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
-    assert_eq!(output_nwk, "(A:0,B:0.1)root;");
+    assert_eq!(
+      output_nwk,
+      "(A:0[&mutations=\"\"],B:0.1[&mutations=\"\"])root[&mutations=\"\"];"
+    );
     Ok(())
   }
 
   #[test]
   fn test_collapse_short_edges_preserves_terminal_nodes() -> Result<(), Report> {
-    let mut graph: Graph<TestNode, TestEdgeWithMuts, ()> = nwk_read_str("(A:0.00001,B:0.1)root;")?;
+    let mut graph: SparseGraph = nwk_read_str("(A:0.00001,B:0.1)root;")?;
     collapse_short_edges(&mut graph, Some(0.001), false)?;
     let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
-    assert_eq!(output_nwk, "(A:0.00001,B:0.1)root;");
+    assert_eq!(
+      output_nwk,
+      "(A:0.00001[&mutations=\"\"],B:0.1[&mutations=\"\"])root[&mutations=\"\"];"
+    );
     Ok(())
   }
 
   #[test]
   fn test_collapse_short_edges_complex_tree() -> Result<(), Report> {
-    let mut graph: Graph<TestNode, TestEdgeWithMuts, ()> =
+    let mut graph: SparseGraph =
       nwk_read_str("(((A:0,B:0.1)internal1:0.00002,(C:0.00003,D:0.1)internal2:0.1)internal3:0.00004,E:0.00005)root;")?;
     collapse_short_edges(&mut graph, Some(0.01), false)?;
     let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
-    assert_eq!(output_nwk, "(E:0.00005,(C:0.00003,D:0.1)internal2:0.1,A:0,B:0.1)root;");
+    assert_eq!(
+      output_nwk,
+      "(E:0.00005[&mutations=\"\"],(C:0.00003[&mutations=\"\"],D:0.1[&mutations=\"\"])internal2:0.1[&mutations=\"\"],A:0.00006[&mutations=\"\"],B:0.1[&mutations=\"\"])root[&mutations=\"\"];"
+    );
     Ok(())
   }
 
   #[test]
   fn test_collapse_short_edges_prune_empty_preserves_leaves() -> Result<(), Report> {
-    let mut graph = Graph::<TestNode, TestEdgeWithMuts, ()>::new();
+    let mut graph = SparseGraph::new();
 
-    let root = graph.add_node(TestNode(Some("root".to_owned())));
-    let a = graph.add_node(TestNode(Some("A".to_owned())));
-    let b = graph.add_node(TestNode(Some("B".to_owned())));
+    let root = graph.add_node(SparseNode {
+      name: Some("root".to_owned()),
+      ..Default::default()
+    });
+    let a = graph.add_node(SparseNode {
+      name: Some("A".to_owned()),
+      ..Default::default()
+    });
+    let b = graph.add_node(SparseNode {
+      name: Some("B".to_owned()),
+      ..Default::default()
+    });
 
     // Edge with no mutations to leaf A (should be preserved)
-    let root_to_a = graph.add_edge(root, a, TestEdgeWithMuts::new(Some(0.1), Some(0)))?;
+    graph.add_edge(root, a, create_test_edge(Some(0.1), Some(0)))?;
     // Edge with mutations to leaf B
-    let root_to_b = graph.add_edge(root, b, TestEdgeWithMuts::new(Some(0.1), Some(2)))?;
+    graph.add_edge(root, b, create_test_edge(Some(0.1), Some(2)))?;
 
     graph.build()?;
 
@@ -255,18 +270,30 @@ mod tests {
 
   #[test]
   fn test_collapse_short_edges_prune_empty_internal_nodes() -> Result<(), Report> {
-    let mut graph = Graph::<TestNode, TestEdgeWithMuts, ()>::new();
+    let mut graph = SparseGraph::new();
 
-    let root = graph.add_node(TestNode(Some("root".to_owned())));
-    let internal = graph.add_node(TestNode(Some("internal".to_owned())));
-    let a = graph.add_node(TestNode(Some("A".to_owned())));
-    let b = graph.add_node(TestNode(Some("B".to_owned())));
+    let root = graph.add_node(SparseNode {
+      name: Some("root".to_owned()),
+      ..Default::default()
+    });
+    let internal = graph.add_node(SparseNode {
+      name: Some("internal".to_owned()),
+      ..Default::default()
+    });
+    let a = graph.add_node(SparseNode {
+      name: Some("A".to_owned()),
+      ..Default::default()
+    });
+    let b = graph.add_node(SparseNode {
+      name: Some("B".to_owned()),
+      ..Default::default()
+    });
 
     // Internal edge with no mutations
-    let root_to_internal = graph.add_edge(root, internal, TestEdgeWithMuts::new(Some(0.1), Some(0)))?;
+    graph.add_edge(root, internal, create_test_edge(Some(0.1), Some(0)))?;
     // Leaf edges with mutations
-    let internal_to_a = graph.add_edge(internal, a, TestEdgeWithMuts::new(Some(0.1), Some(1)))?;
-    let internal_to_b = graph.add_edge(internal, b, TestEdgeWithMuts::new(Some(0.1), Some(2)))?;
+    graph.add_edge(internal, a, create_test_edge(Some(0.1), Some(1)))?;
+    graph.add_edge(internal, b, create_test_edge(Some(0.1), Some(2)))?;
 
     graph.build()?;
 
@@ -281,15 +308,24 @@ mod tests {
 
   #[test]
   fn test_collapse_short_edges_prune_empty_none_mutations() -> Result<(), Report> {
-    let mut graph = Graph::<TestNode, TestEdgeWithMuts, ()>::new();
+    let mut graph = SparseGraph::new();
 
-    let root = graph.add_node(TestNode(Some("root".to_owned())));
-    let internal = graph.add_node(TestNode(Some("internal".to_owned())));
-    let a = graph.add_node(TestNode(Some("A".to_owned())));
+    let root = graph.add_node(SparseNode {
+      name: Some("root".to_owned()),
+      ..Default::default()
+    });
+    let internal = graph.add_node(SparseNode {
+      name: Some("internal".to_owned()),
+      ..Default::default()
+    });
+    let a = graph.add_node(SparseNode {
+      name: Some("A".to_owned()),
+      ..Default::default()
+    });
 
-    // Edge with None mutations (should not be pruned - None means unknown, not zero)
-    let root_to_internal = graph.add_edge(root, internal, TestEdgeWithMuts::new(Some(0.1), None))?;
-    let internal_to_a = graph.add_edge(internal, a, TestEdgeWithMuts::new(Some(0.1), Some(1)))?;
+    // Edge with None mutations (unknown number of mutations - should not be pruned)
+    graph.add_edge(root, internal, create_test_edge(Some(0.1), None))?;
+    graph.add_edge(internal, a, create_test_edge(Some(0.1), Some(1)))?;
 
     graph.build()?;
 
@@ -304,13 +340,19 @@ mod tests {
 
   #[test]
   fn test_collapse_short_edges_prune_empty_simple_leaf_case() -> Result<(), Report> {
-    let mut graph = Graph::<TestNode, TestEdgeWithMuts, ()>::new();
+    let mut graph = SparseGraph::new();
 
-    let root = graph.add_node(TestNode(Some("root".to_owned())));
-    let a = graph.add_node(TestNode(Some("A".to_owned())));
+    let root = graph.add_node(SparseNode {
+      name: Some("root".to_owned()),
+      ..Default::default()
+    });
+    let a = graph.add_node(SparseNode {
+      name: Some("A".to_owned()),
+      ..Default::default()
+    });
 
     // Single leaf edge with no mutations should be preserved
-    let root_to_a = graph.add_edge(root, a, TestEdgeWithMuts::new(Some(0.1), Some(0)))?;
+    graph.add_edge(root, a, create_test_edge(Some(0.1), Some(0)))?;
 
     graph.build()?;
 
@@ -325,21 +367,36 @@ mod tests {
 
   #[test]
   fn test_collapse_short_edges_combined_prune_short_and_empty() -> Result<(), Report> {
-    let mut graph = Graph::<TestNode, TestEdgeWithMuts, ()>::new();
+    let mut graph = SparseGraph::new();
 
-    let root = graph.add_node(TestNode(Some("root".to_owned())));
-    let internal1 = graph.add_node(TestNode(Some("internal1".to_owned())));
-    let internal2 = graph.add_node(TestNode(Some("internal2".to_owned())));
-    let a = graph.add_node(TestNode(Some("A".to_owned())));
-    let b = graph.add_node(TestNode(Some("B".to_owned())));
+    let root = graph.add_node(SparseNode {
+      name: Some("root".to_owned()),
+      ..Default::default()
+    });
+    let internal1 = graph.add_node(SparseNode {
+      name: Some("internal1".to_owned()),
+      ..Default::default()
+    });
+    let internal2 = graph.add_node(SparseNode {
+      name: Some("internal2".to_owned()),
+      ..Default::default()
+    });
+    let a = graph.add_node(SparseNode {
+      name: Some("A".to_owned()),
+      ..Default::default()
+    });
+    let b = graph.add_node(SparseNode {
+      name: Some("B".to_owned()),
+      ..Default::default()
+    });
 
     // Short edge (should be pruned by threshold)
-    let root_to_internal1 = graph.add_edge(root, internal1, TestEdgeWithMuts::new(Some(0.001), Some(1)))?;
+    graph.add_edge(root, internal1, create_test_edge(Some(0.001), Some(1)))?;
     // Empty edge (should be pruned by empty check)
-    let root_to_internal2 = graph.add_edge(root, internal2, TestEdgeWithMuts::new(Some(0.1), Some(0)))?;
+    graph.add_edge(root, internal2, create_test_edge(Some(0.1), Some(0)))?;
     // Leaf edges (should be preserved)
-    let internal1_to_a = graph.add_edge(internal1, a, TestEdgeWithMuts::new(Some(0.1), Some(1)))?;
-    let internal2_to_b = graph.add_edge(internal2, b, TestEdgeWithMuts::new(Some(0.1), Some(2)))?;
+    graph.add_edge(internal1, a, create_test_edge(Some(0.1), Some(1)))?;
+    graph.add_edge(internal2, b, create_test_edge(Some(0.1), Some(2)))?;
 
     graph.build()?;
 
@@ -354,46 +411,76 @@ mod tests {
 
   #[test]
   fn test_collapse_short_edges_prune_short_threshold_exact() -> Result<(), Report> {
-    let mut graph: Graph<TestNode, TestEdgeWithMuts, ()> = nwk_read_str("(A:0.05,B:0.05,C:0.051)root;")?;
+    let mut graph: SparseGraph = nwk_read_str("(A:0.05,B:0.05,C:0.051)root;")?;
     collapse_short_edges(&mut graph, Some(0.05), false)?;
     let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
-    assert_eq!(output_nwk, "(A:0.05,B:0.05,C:0.051)root;");
+    assert_eq!(
+      output_nwk,
+      "(A:0.05[&mutations=\"\"],B:0.05[&mutations=\"\"],C:0.051[&mutations=\"\"])root[&mutations=\"\"];"
+    );
     Ok(())
   }
 
   #[test]
   fn test_collapse_short_edges_prune_short_threshold_below() -> Result<(), Report> {
-    let mut graph: Graph<TestNode, TestEdgeWithMuts, ()> = nwk_read_str("(A:0.049,B:0.05,C:0.051)root;")?;
+    let mut graph: SparseGraph = nwk_read_str("(A:0.049,B:0.05,C:0.051)root;")?;
     collapse_short_edges(&mut graph, Some(0.05), false)?;
     let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
     // All edges remain because A, B, C are leaves and leaves are never collapsed
-    assert_eq!(output_nwk, "(A:0.049,B:0.05,C:0.051)root;");
+    assert_eq!(
+      output_nwk,
+      "(A:0.049[&mutations=\"\"],B:0.05[&mutations=\"\"],C:0.051[&mutations=\"\"])root[&mutations=\"\"];"
+    );
     Ok(())
   }
 
   #[test]
   fn test_collapse_short_edges_prune_empty_complex_tree() -> Result<(), Report> {
-    let mut graph = Graph::<TestNode, TestEdgeWithMuts, ()>::new();
+    let mut graph = SparseGraph::new();
 
-    let root = graph.add_node(TestNode(Some("root".to_owned())));
-    let internal1 = graph.add_node(TestNode(Some("internal1".to_owned())));
-    let internal2 = graph.add_node(TestNode(Some("internal2".to_owned())));
-    let internal3 = graph.add_node(TestNode(Some("internal3".to_owned())));
-    let a = graph.add_node(TestNode(Some("A".to_owned())));
-    let b = graph.add_node(TestNode(Some("B".to_owned())));
-    let c = graph.add_node(TestNode(Some("C".to_owned())));
-    let d = graph.add_node(TestNode(Some("D".to_owned())));
+    let root = graph.add_node(SparseNode {
+      name: Some("root".to_owned()),
+      ..Default::default()
+    });
+    let internal1 = graph.add_node(SparseNode {
+      name: Some("internal1".to_owned()),
+      ..Default::default()
+    });
+    let internal2 = graph.add_node(SparseNode {
+      name: Some("internal2".to_owned()),
+      ..Default::default()
+    });
+    let internal3 = graph.add_node(SparseNode {
+      name: Some("internal3".to_owned()),
+      ..Default::default()
+    });
+    let a = graph.add_node(SparseNode {
+      name: Some("A".to_owned()),
+      ..Default::default()
+    });
+    let b = graph.add_node(SparseNode {
+      name: Some("B".to_owned()),
+      ..Default::default()
+    });
+    let c = graph.add_node(SparseNode {
+      name: Some("C".to_owned()),
+      ..Default::default()
+    });
+    let d = graph.add_node(SparseNode {
+      name: Some("D".to_owned()),
+      ..Default::default()
+    });
 
     // Complex tree structure: root -> internal1 (with muts) -> A (leaf)
     //                              -> internal1 -> internal3 (no muts) -> C,D (leaves)
     //                         root -> internal2 (no muts) -> B (leaf)
-    let root_to_internal1 = graph.add_edge(root, internal1, TestEdgeWithMuts::new(Some(0.1), Some(2)))?; // has muts
-    let root_to_internal2 = graph.add_edge(root, internal2, TestEdgeWithMuts::new(Some(0.1), Some(0)))?; // no muts, to internal
-    let internal1_to_a = graph.add_edge(internal1, a, TestEdgeWithMuts::new(Some(0.1), Some(1)))?; // leaf, has muts
-    let internal1_to_internal3 = graph.add_edge(internal1, internal3, TestEdgeWithMuts::new(Some(0.1), Some(0)))?; // no muts, to internal
-    let internal2_to_b = graph.add_edge(internal2, b, TestEdgeWithMuts::new(Some(0.1), Some(0)))?; // leaf, no muts (preserved)
-    let internal3_to_c = graph.add_edge(internal3, c, TestEdgeWithMuts::new(Some(0.1), Some(1)))?; // leaf, has muts
-    let internal3_to_d = graph.add_edge(internal3, d, TestEdgeWithMuts::new(Some(0.1), Some(2)))?; // leaf, has muts
+    graph.add_edge(root, internal1, create_test_edge(Some(0.1), Some(2)))?; // has muts
+    graph.add_edge(root, internal2, create_test_edge(Some(0.1), Some(0)))?; // no muts, to internal
+    graph.add_edge(internal1, a, create_test_edge(Some(0.1), Some(1)))?; // leaf, has muts
+    graph.add_edge(internal1, internal3, create_test_edge(Some(0.1), Some(0)))?; // no muts, to internal
+    graph.add_edge(internal2, b, create_test_edge(Some(0.1), Some(0)))?; // leaf, no muts (preserved)
+    graph.add_edge(internal3, c, create_test_edge(Some(0.1), Some(1)))?; // leaf, has muts
+    graph.add_edge(internal3, d, create_test_edge(Some(0.1), Some(2)))?; // leaf, has muts
 
     graph.build()?;
 
@@ -409,15 +496,24 @@ mod tests {
 
   #[test]
   fn test_collapse_short_edges_prune_both_disabled() -> Result<(), Report> {
-    let mut graph = Graph::<TestNode, TestEdgeWithMuts, ()>::new();
+    let mut graph = SparseGraph::new();
 
-    let root = graph.add_node(TestNode(Some("root".to_owned())));
-    let internal = graph.add_node(TestNode(Some("internal".to_owned())));
-    let a = graph.add_node(TestNode(Some("A".to_owned())));
+    let root = graph.add_node(SparseNode {
+      name: Some("root".to_owned()),
+      ..Default::default()
+    });
+    let internal = graph.add_node(SparseNode {
+      name: Some("internal".to_owned()),
+      ..Default::default()
+    });
+    let a = graph.add_node(SparseNode {
+      name: Some("A".to_owned()),
+      ..Default::default()
+    });
 
     // Very short edge with no mutations - should be preserved when both pruning options disabled
-    let root_to_internal = graph.add_edge(root, internal, TestEdgeWithMuts::new(Some(0.0001), Some(0)))?;
-    let internal_to_a = graph.add_edge(internal, a, TestEdgeWithMuts::new(Some(0.1), Some(1)))?;
+    graph.add_edge(root, internal, create_test_edge(Some(0.0001), Some(0)))?;
+    graph.add_edge(internal, a, create_test_edge(Some(0.1), Some(1)))?;
 
     graph.build()?;
 
@@ -426,6 +522,18 @@ mod tests {
     // Nothing should be collapsed
     assert_eq!(graph.get_nodes().len(), 3); // root, internal, A
     assert_eq!(graph.get_edges().len(), 2); // root->internal, internal->A
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_num_muts_none_vs_some_zero() -> Result<(), Report> {
+    // Test that we can distinguish between unknown mutations (None) and zero mutations (Some(0))
+    let edge_unknown = create_test_edge(Some(0.1), None);
+    let edge_zero = create_test_edge(Some(0.1), Some(0));
+
+    assert_eq!(edge_unknown.num_muts(), None);
+    assert_eq!(edge_zero.num_muts(), Some(0));
 
     Ok(())
   }

@@ -147,7 +147,11 @@ impl Weighted for SparseEdge {
 
 impl NumMuts for SparseEdge {
   fn num_muts(&self) -> Option<usize> {
-    Some(self.sparse_partitions.iter().map(|p| p.subs.len()).sum())
+    if self.sparse_partitions.is_empty() {
+      None // Unknown number of mutations when no partitions are present
+    } else {
+      Some(self.sparse_partitions.iter().map(|p| p.subs.len()).sum())
+    }
   }
 }
 
