@@ -12,6 +12,7 @@ pub mod manyzip;
 pub mod mutex;
 pub mod ndarray;
 pub mod openblas;
+pub mod parse_delimited;
 pub mod random;
 pub mod string;
 pub mod vec;

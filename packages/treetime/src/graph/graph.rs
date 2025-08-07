@@ -785,6 +785,7 @@ where
     self.leaves.contains(&key)
   }
 
+  #[allow(clippy::type_complexity)]
   pub fn collapse_edge(&mut self, edge_key: GraphEdgeKey) -> Result<(Node<N>, Edge<E>, Vec<SafeEdge<E>>), Report>
   where
     N: Clone,

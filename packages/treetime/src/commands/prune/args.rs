@@ -46,4 +46,34 @@ pub struct TreetimePruneArgs {
   /// Requires --aln
   #[clap(long, short = 'e')]
   pub prune_empty: bool,
+
+  /// List of node names to prune
+  ///
+  /// List of node names to remove from the tree, comma-separated (,)
+  ///
+  /// Use --prune-nodes-list-delimiter to specify a different delimiter.
+  #[clap(long, short = 'n', value_name = "NODE_NAMES")]
+  pub prune_nodes_list: Option<String>,
+
+  /// Name separator for `--prune-nodes-list`
+  ///
+  /// String used to separate node names in the list given to (--prune-nodes-list). Make sure to correctly quote and escape the delimiter according to your shell.
+  #[clap(long, default_value = ",", value_name = "DELIMITER")]
+  pub prune_nodes_list_delimiter: char,
+
+  /// File containing list of node names to prune
+  ///
+  /// Path to a file containing node names to remove from the tree, newline-delimited (\n).
+  ///
+  /// Use '-' to read from standard input (stdin).
+  ///
+  /// Use --prune-nodes-list-file-delimiter to specify a different delimiter.
+  #[clap(long, short = 'N', value_hint = ValueHint::FilePath, value_name = "FILEPATH")]
+  pub prune_nodes_list_file: Option<PathBuf>,
+
+  /// Separator for node names in the list file
+  ///
+  /// Character or string used to separate node names in the list file.
+  #[clap(long, default_value = "\n", value_name = "DELIMITER")]
+  pub prune_nodes_list_file_delimiter: char,
 }
