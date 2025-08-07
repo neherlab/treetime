@@ -66,7 +66,7 @@ pub fn run_prune(args: &TreetimePruneArgs) -> Result<(), Report> {
     *prune_nodes_list_file_delimiter,
   )?;
 
-  collapse_short_edges(&mut graph, *prune_short, *prune_empty, &node_names)?;
+  collapse_edges(&mut graph, *prune_short, *prune_empty, &node_names)?;
 
   write_graph(outdir, &graph)?;
 
@@ -95,7 +95,7 @@ fn parse_node_names(
   Ok(node_names)
 }
 
-fn collapse_short_edges(
+fn collapse_edges(
   graph: &mut SparseGraph,
   prune_short: Option<f64>,
   prune_empty: bool,
@@ -209,9 +209,9 @@ mod tests {
   }
 
   #[test]
-  fn test_collapse_short_edges_basic() -> Result<(), Report> {
+  fn test_collapse_edges_basic() -> Result<(), Report> {
     let mut graph: SparseGraph = nwk_read_str("(A:0.0,B:0.1)root;")?;
-    collapse_short_edges(&mut graph, Some(0.0), false, &btreeset! {})?;
+    collapse_edges(&mut graph, Some(0.0), false, &btreeset! {})?;
     let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
     assert_eq!(
       output_nwk,
@@ -221,9 +221,9 @@ mod tests {
   }
 
   #[test]
-  fn test_collapse_short_edges_with_threshold() -> Result<(), Report> {
+  fn test_collapse_edges_with_threshold() -> Result<(), Report> {
     let mut graph: SparseGraph = nwk_read_str("(A:0.01,B:0.02,C:0.1)root;")?;
-    collapse_short_edges(&mut graph, Some(0.05), false, &btreeset! {})?;
+    collapse_edges(&mut graph, Some(0.05), false, &btreeset! {})?;
     let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
     assert_eq!(
       output_nwk,
@@ -233,9 +233,9 @@ mod tests {
   }
 
   #[test]
-  fn test_collapse_short_edges_preserves_large_edges() -> Result<(), Report> {
+  fn test_collapse_edges_preserves_large_edges() -> Result<(), Report> {
     let mut graph: SparseGraph = nwk_read_str("(A:0.1,B:0.2)root;")?;
-    collapse_short_edges(&mut graph, Some(0.01), false, &btreeset! {})?;
+    collapse_edges(&mut graph, Some(0.01), false, &btreeset! {})?;
     let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
     assert_eq!(
       output_nwk,
@@ -245,17 +245,17 @@ mod tests {
   }
 
   #[test]
-  fn test_collapse_short_edges_empty_graph() -> Result<(), Report> {
+  fn test_collapse_edges_empty_graph() -> Result<(), Report> {
     let mut graph: SparseGraph = Graph::new();
-    collapse_short_edges(&mut graph, Some(0.0), false, &btreeset! {})?;
+    collapse_edges(&mut graph, Some(0.0), false, &btreeset! {})?;
     assert!(graph.get_nodes().is_empty());
     Ok(())
   }
 
   #[test]
-  fn test_collapse_short_edges_handles_none_weights() -> Result<(), Report> {
+  fn test_collapse_edges_handles_none_weights() -> Result<(), Report> {
     let mut graph: SparseGraph = nwk_read_str("(A:0.0,B:0.1)root;")?;
-    collapse_short_edges(&mut graph, Some(0.0), false, &btreeset! {})?;
+    collapse_edges(&mut graph, Some(0.0), false, &btreeset! {})?;
     let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
     assert_eq!(
       output_nwk,
@@ -265,9 +265,9 @@ mod tests {
   }
 
   #[test]
-  fn test_collapse_short_edges_preserves_terminal_nodes() -> Result<(), Report> {
+  fn test_collapse_edges_preserves_terminal_nodes() -> Result<(), Report> {
     let mut graph: SparseGraph = nwk_read_str("(A:0.00001,B:0.1)root;")?;
-    collapse_short_edges(&mut graph, Some(0.001), false, &btreeset! {})?;
+    collapse_edges(&mut graph, Some(0.001), false, &btreeset! {})?;
     let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
     assert_eq!(
       output_nwk,
@@ -277,10 +277,10 @@ mod tests {
   }
 
   #[test]
-  fn test_collapse_short_edges_complex_tree() -> Result<(), Report> {
+  fn test_collapse_edges_complex_tree() -> Result<(), Report> {
     let mut graph: SparseGraph =
       nwk_read_str("(((A:0,B:0.1)internal1:0.00002,(C:0.00003,D:0.1)internal2:0.1)internal3:0.00004,E:0.00005)root;")?;
-    collapse_short_edges(&mut graph, Some(0.01), false, &btreeset! {})?;
+    collapse_edges(&mut graph, Some(0.01), false, &btreeset! {})?;
     let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
     assert_eq!(
       output_nwk,
@@ -290,7 +290,7 @@ mod tests {
   }
 
   #[test]
-  fn test_collapse_short_edges_prune_empty_preserves_leaves() -> Result<(), Report> {
+  fn test_collapse_edges_prune_empty_preserves_leaves() -> Result<(), Report> {
     let mut graph = SparseGraph::new();
 
     let root = graph.add_node(SparseNode {
@@ -313,7 +313,7 @@ mod tests {
 
     graph.build()?;
 
-    collapse_short_edges(&mut graph, None, true, &btreeset! {})?;
+    collapse_edges(&mut graph, None, true, &btreeset! {})?;
 
     // Both leaves should be preserved even if edge to A has no mutations
     assert_eq!(graph.get_nodes().len(), 3); // root, A, B
@@ -323,7 +323,7 @@ mod tests {
   }
 
   #[test]
-  fn test_collapse_short_edges_prune_empty_internal_nodes() -> Result<(), Report> {
+  fn test_collapse_edges_prune_empty_internal_nodes() -> Result<(), Report> {
     let mut graph = SparseGraph::new();
 
     let root = graph.add_node(SparseNode {
@@ -351,7 +351,7 @@ mod tests {
 
     graph.build()?;
 
-    collapse_short_edges(&mut graph, None, true, &btreeset! {})?;
+    collapse_edges(&mut graph, None, true, &btreeset! {})?;
 
     // Internal node should be collapsed, but leaves preserved
     assert_eq!(graph.get_nodes().len(), 3); // root, A, B
@@ -361,7 +361,7 @@ mod tests {
   }
 
   #[test]
-  fn test_collapse_short_edges_prune_empty_none_mutations() -> Result<(), Report> {
+  fn test_collapse_edges_prune_empty_none_mutations() -> Result<(), Report> {
     let mut graph = SparseGraph::new();
 
     let root = graph.add_node(SparseNode {
@@ -383,7 +383,7 @@ mod tests {
 
     graph.build()?;
 
-    collapse_short_edges(&mut graph, None, true, &btreeset! {})?;
+    collapse_edges(&mut graph, None, true, &btreeset! {})?;
 
     // Internal node should be preserved when mutations is None (unknown)
     assert_eq!(graph.get_nodes().len(), 3); // root, internal, A
@@ -393,7 +393,7 @@ mod tests {
   }
 
   #[test]
-  fn test_collapse_short_edges_prune_empty_simple_leaf_case() -> Result<(), Report> {
+  fn test_collapse_edges_prune_empty_simple_leaf_case() -> Result<(), Report> {
     let mut graph = SparseGraph::new();
 
     let root = graph.add_node(SparseNode {
@@ -410,7 +410,7 @@ mod tests {
 
     graph.build()?;
 
-    collapse_short_edges(&mut graph, None, true, &btreeset! {})?;
+    collapse_edges(&mut graph, None, true, &btreeset! {})?;
 
     // Leaf should be preserved even with no mutations
     assert_eq!(graph.get_nodes().len(), 2); // root and A
@@ -420,7 +420,7 @@ mod tests {
   }
 
   #[test]
-  fn test_collapse_short_edges_combined_prune_short_and_empty() -> Result<(), Report> {
+  fn test_collapse_edges_combined_prune_short_and_empty() -> Result<(), Report> {
     let mut graph = SparseGraph::new();
 
     let root = graph.add_node(SparseNode {
@@ -454,7 +454,7 @@ mod tests {
 
     graph.build()?;
 
-    collapse_short_edges(&mut graph, Some(0.01), true, &btreeset! {})?;
+    collapse_edges(&mut graph, Some(0.01), true, &btreeset! {})?;
 
     // Both internal nodes should be collapsed, leaves preserved
     assert_eq!(graph.get_nodes().len(), 3); // root, A, B
@@ -464,9 +464,9 @@ mod tests {
   }
 
   #[test]
-  fn test_collapse_short_edges_prune_short_threshold_exact() -> Result<(), Report> {
+  fn test_collapse_edges_prune_short_threshold_exact() -> Result<(), Report> {
     let mut graph: SparseGraph = nwk_read_str("(A:0.05,B:0.05,C:0.051)root;")?;
-    collapse_short_edges(&mut graph, Some(0.05), false, &btreeset! {})?;
+    collapse_edges(&mut graph, Some(0.05), false, &btreeset! {})?;
     let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
     assert_eq!(
       output_nwk,
@@ -476,9 +476,9 @@ mod tests {
   }
 
   #[test]
-  fn test_collapse_short_edges_prune_short_threshold_below() -> Result<(), Report> {
+  fn test_collapse_edges_prune_short_threshold_below() -> Result<(), Report> {
     let mut graph: SparseGraph = nwk_read_str("(A:0.049,B:0.05,C:0.051)root;")?;
-    collapse_short_edges(&mut graph, Some(0.05), false, &btreeset! {})?;
+    collapse_edges(&mut graph, Some(0.05), false, &btreeset! {})?;
     let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
     // All edges remain because A, B, C are leaves and leaves are never collapsed
     assert_eq!(
@@ -489,7 +489,7 @@ mod tests {
   }
 
   #[test]
-  fn test_collapse_short_edges_prune_empty_complex_tree() -> Result<(), Report> {
+  fn test_collapse_edges_prune_empty_complex_tree() -> Result<(), Report> {
     let mut graph = SparseGraph::new();
 
     let root = graph.add_node(SparseNode {
@@ -538,7 +538,7 @@ mod tests {
 
     graph.build()?;
 
-    collapse_short_edges(&mut graph, None, true, &btreeset! {})?;
+    collapse_edges(&mut graph, None, true, &btreeset! {})?;
 
     // internal2 and internal3 should be collapsed (empty internal edges), leaves preserved
     // Result: root -> internal1 -> A, C, D and root -> B
@@ -549,7 +549,7 @@ mod tests {
   }
 
   #[test]
-  fn test_collapse_short_edges_prune_both_disabled() -> Result<(), Report> {
+  fn test_collapse_edges_prune_both_disabled() -> Result<(), Report> {
     let mut graph = SparseGraph::new();
 
     let root = graph.add_node(SparseNode {
@@ -571,7 +571,7 @@ mod tests {
 
     graph.build()?;
 
-    collapse_short_edges(&mut graph, None, false, &btreeset! {})?;
+    collapse_edges(&mut graph, None, false, &btreeset! {})?;
 
     // Nothing should be collapsed
     assert_eq!(graph.get_nodes().len(), 3); // root, internal, A
