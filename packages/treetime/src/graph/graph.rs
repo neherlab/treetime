@@ -790,23 +790,22 @@ where
       .ok_or_else(|| make_internal_report!("Edge {} not found", edge_key))?;
 
     let (source_key, target_key) = {
-      let edge_lock = edge.read_arc();
-      (edge_lock.source(), edge_lock.target())
+      let edge = edge.read_arc();
+      (edge.source(), edge.target())
     };
 
     let (target_inbound, target_outbound) = {
       let target_node = self
         .get_node(target_key)
         .ok_or_else(|| make_internal_report!("Target node {} not found", target_key))?;
-      let target_lock = target_node.read_arc();
-      (target_lock.inbound().to_vec(), target_lock.outbound().to_vec())
+      let target_node = target_node.read_arc();
+      (target_node.inbound().to_vec(), target_node.outbound().to_vec())
     };
 
     for &inbound_edge_key in &target_inbound {
       if inbound_edge_key != edge_key {
         if let Some(inbound_edge) = self.get_edge(inbound_edge_key) {
-          let mut edge_lock = inbound_edge.write_arc();
-          edge_lock.set_target(source_key);
+          inbound_edge.write_arc().set_target(source_key);
         }
       }
     }
@@ -814,18 +813,17 @@ where
     for &outbound_edge_key in &target_outbound {
       if outbound_edge_key != edge_key {
         if let Some(outbound_edge) = self.get_edge(outbound_edge_key) {
-          let mut edge_lock = outbound_edge.write_arc();
-          edge_lock.set_source(source_key);
+          outbound_edge.write_arc().set_source(source_key);
         }
       }
     }
 
     if let Some(source_node) = self.get_node(source_key) {
-      let mut source_lock = source_node.write_arc();
-      source_lock
+      let mut source_node = source_node.write_arc();
+      source_node
         .inbound_mut()
         .extend(target_inbound.iter().filter(|&&e| e != edge_key));
-      source_lock
+      source_node
         .outbound_mut()
         .extend(target_outbound.iter().filter(|&&e| e != edge_key));
     }
