@@ -855,16 +855,12 @@ where
       .is_some_and(|node| node.read_arc().has_at_most_one_child())
   }
 
-  /// Returns the inbound edge from this node's parent, if any (None for roots or missing nodes).
-  pub fn parent_inbound_edge(&self, key: GraphNodeKey) -> Option<GraphEdgeKey> {
-    self.get_node(key).and_then(|node| {
-      let node = node.read_arc();
-      if node.is_root() {
-        None
-      } else {
-        node.inbound().first().copied()
-      }
-    })
+  /// Returns the inbound edge from this node's parent, if any (None for roots).
+  pub fn parent_inbound_edge(&self, key: GraphNodeKey) -> Result<Option<GraphEdgeKey>, Report> {
+    let node = self
+      .get_node(key)
+      .ok_or_else(|| make_internal_report!("Node not found: {key}"))?;
+    Ok(node.read_arc().inbound().first().copied())
   }
 
   #[allow(clippy::type_complexity)]

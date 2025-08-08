@@ -7,11 +7,11 @@ use crate::graph::node::{GraphNode, GraphNodeKey, Named};
 use crate::io::fasta::read_many_fasta;
 use crate::io::nex::{NexWriteOptions, nex_write_file};
 use crate::io::nwk::{EdgeToNwk, NodeToNwk, NwkWriteOptions, nwk_read_file, nwk_write_file};
+use crate::make_error;
 use crate::representation::graph_sparse::SparseGraph;
 use crate::representation::partitions_parsimony::PartitionParsimonyWithAln;
 use crate::utils::iter::iter_union;
 use crate::utils::parse_delimited::{parse_delimited_file, parse_delimited_str};
-use crate::make_error;
 use eyre::Report;
 use itertools::{Itertools, izip};
 use log::debug;
@@ -182,7 +182,7 @@ fn collapse_sparse_edges_from_leaf_recursive(graph: &mut SparseGraph, edge_key: 
     collapse_sparse_edge(graph, current_edge_key)?;
 
     let next_edge_key = if should_collapse_parent(graph, parent_node_key) {
-      graph.parent_inbound_edge(parent_node_key)
+      graph.parent_inbound_edge(parent_node_key)?
     } else {
       None
     };
