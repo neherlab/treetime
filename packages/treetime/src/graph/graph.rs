@@ -345,6 +345,20 @@ where
     self.edges.get(index.as_usize())?.as_ref().map(Arc::clone)
   }
 
+  pub fn get_source_node_key(&self, edge_key: GraphEdgeKey) -> Result<GraphNodeKey, Report> {
+    let edge = self
+      .get_edge(edge_key)
+      .ok_or_else(|| make_internal_report!("Edge {edge_key} not found"))?;
+    Ok(edge.read_arc().source())
+  }
+
+  pub fn get_target_node_key(&self, edge_key: GraphEdgeKey) -> Result<GraphNodeKey, Report> {
+    let edge = self
+      .get_edge(edge_key)
+      .ok_or_else(|| make_internal_report!("Edge {edge_key} not found"))?;
+    Ok(edge.read_arc().target())
+  }
+
   /// Iterates nodes synchronously and in unspecified order
   pub fn for_each<T, F>(&self, f: &mut dyn FnMut(GraphNodeSafe<N, E, D>)) {
     self

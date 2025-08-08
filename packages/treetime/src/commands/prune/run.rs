@@ -11,7 +11,7 @@ use crate::representation::graph_sparse::SparseGraph;
 use crate::representation::partitions_parsimony::PartitionParsimonyWithAln;
 use crate::utils::iter::iter_union;
 use crate::utils::parse_delimited::{parse_delimited_file, parse_delimited_str};
-use crate::{make_error, make_internal_report};
+use crate::make_error;
 use eyre::Report;
 use itertools::{Itertools, izip};
 use log::debug;
@@ -177,12 +177,7 @@ fn collapse_sparse_edges_from_leaf_recursive(graph: &mut SparseGraph, edge_key: 
   let mut current_edge_key = edge_key;
 
   loop {
-    let parent_node_key = {
-      let edge = graph
-        .get_edge(current_edge_key)
-        .ok_or_else(|| make_internal_report!("Edge {current_edge_key} not found"))?;
-      edge.read_arc().source()
-    };
+    let parent_node_key = graph.get_source_node_key(current_edge_key)?;
 
     collapse_sparse_edge(graph, current_edge_key)?;
 
