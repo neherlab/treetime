@@ -3,7 +3,7 @@ use crate::commands::ancestral::fitch::compress_sequences;
 use crate::commands::prune::args::TreetimePruneArgs;
 use crate::graph::edge::{GraphEdge, GraphEdgeKey, NumMuts, Weighted};
 use crate::graph::graph::Graph;
-use crate::graph::node::{GraphNode, Named};
+use crate::graph::node::{GraphNode, GraphNodeKey, Named};
 use crate::io::fasta::read_many_fasta;
 use crate::io::nex::{NexWriteOptions, nex_write_file};
 use crate::io::nwk::{EdgeToNwk, NodeToNwk, NwkWriteOptions, nwk_read_file, nwk_write_file};
@@ -186,22 +186,23 @@ fn collapse_sparse_edges_from_leaf_recursive(graph: &mut SparseGraph, edge_key: 
 
     collapse_sparse_edge(graph, current_edge_key)?;
 
-    let parent_edge_key = graph.get_node(parent_node_key).and_then(|node| {
-      let node = node.read_arc();
-      if !node.is_root() && node.is_leaf() {
-        node.inbound().first().copied()
-      } else {
-        None
-      }
-    });
+    let next_edge_key = if should_collapse_parent(graph, parent_node_key) {
+      graph.parent_inbound_edge(parent_node_key)
+    } else {
+      None
+    };
 
-    match parent_edge_key {
+    match next_edge_key {
       Some(key) => current_edge_key = key,
       None => break,
     }
   }
 
   Ok(())
+}
+
+fn should_collapse_parent(graph: &SparseGraph, node_key: GraphNodeKey) -> bool {
+  graph.has_at_most_one_child(node_key) && !graph.is_root(node_key)
 }
 
 fn collapse_sparse_edge(graph: &mut SparseGraph, edge_key: GraphEdgeKey) -> Result<(), Report> {
@@ -751,20 +752,20 @@ mod tests {
       a_node.read_arc().inbound()[0]
     };
 
-    // Recursively prune leaf A, but internal1 should remain because it still has child B
+    // Recursively prune leaf A; internal1 becomes unary and should be collapsed upward
     collapse_sparse_edges_from_leaf_recursive(&mut graph, a_inbound_edge)?;
 
-    // The result should be: root -> internal1 -> B
-    assert_eq!(graph.get_nodes().len(), 3); // root, internal1, B
-    assert_eq!(graph.get_edges().len(), 2); // root->internal1, internal1->B
+    // The result should be: root -> B (internal1 collapsed)
+    assert_eq!(graph.get_nodes().len(), 2); // root, B
+    assert_eq!(graph.get_edges().len(), 1); // root->B
 
     // Verify the remaining nodes
     assert!(graph.get_node(root).is_some());
-    assert!(graph.get_node(internal1).is_some());
     assert!(graph.get_node(b).is_some());
 
     // Verify removed node
     assert!(graph.get_node(a).is_none());
+    assert!(graph.get_node(internal1).is_none());
 
     Ok(())
   }

@@ -781,8 +781,76 @@ where
     self.roots.contains(&key)
   }
 
-  pub fn is_leaf(&self, key: GraphNodeKey) -> bool {
-    self.leaves.contains(&key)
+  pub fn is_leaf(&self, node_key: GraphNodeKey) -> bool {
+    self.leaves.contains(&node_key)
+  }
+
+  pub fn is_internal(&self, node_key: GraphNodeKey) -> bool {
+    !self.is_leaf(node_key) && !self.is_root(node_key)
+  }
+
+  /// Number of outbound edges (children) of a node
+  pub fn degree_out(&self, key: GraphNodeKey) -> Result<usize, Report> {
+    self
+      .get_node(key)
+      .map(|node| node.read_arc().degree_out())
+      .ok_or_else(|| make_internal_report!("Node not found: {key}"))
+  }
+
+  /// Number of inbound edges (parents) of a node
+  pub fn degree_in(&self, key: GraphNodeKey) -> Result<usize, Report> {
+    self
+      .get_node(key)
+      .map(|node| node.read_arc().degree_in())
+      .ok_or_else(|| make_internal_report!("Node not found: {key}"))
+  }
+
+  pub fn has_parents(&self, node_key: GraphNodeKey) -> bool {
+    self
+      .get_node(node_key)
+      .is_some_and(|node| node.read_arc().has_parents())
+  }
+
+  pub fn has_one_parent(&self, node_key: GraphNodeKey) -> bool {
+    self
+      .get_node(node_key)
+      .is_some_and(|node| node.read_arc().has_one_parent())
+  }
+
+  pub fn has_at_most_one_parent(&self, node_key: GraphNodeKey) -> bool {
+    self
+      .get_node(node_key)
+      .is_some_and(|node| node.read_arc().has_at_most_one_parent())
+  }
+
+  pub fn has_children(&self, node_key: GraphNodeKey) -> bool {
+    self
+      .get_node(node_key)
+      .is_some_and(|node| node.read_arc().has_children())
+  }
+
+  pub fn has_one_child(&self, node_key: GraphNodeKey) -> bool {
+    self
+      .get_node(node_key)
+      .is_some_and(|node| node.read_arc().has_one_child())
+  }
+
+  pub fn has_at_most_one_child(&self, node_key: GraphNodeKey) -> bool {
+    self
+      .get_node(node_key)
+      .is_some_and(|node| node.read_arc().has_at_most_one_child())
+  }
+
+  /// Returns the inbound edge from this node's parent, if any (None for roots or missing nodes).
+  pub fn parent_inbound_edge(&self, key: GraphNodeKey) -> Option<GraphEdgeKey> {
+    self.get_node(key).and_then(|node| {
+      let node = node.read_arc();
+      if node.is_root() {
+        None
+      } else {
+        node.inbound().first().copied()
+      }
+    })
   }
 
   #[allow(clippy::type_complexity)]

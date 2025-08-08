@@ -71,10 +71,16 @@ where
     self.key
   }
 
-  /// Get node degree i.e. number of outbound edges.
+  /// Get node out-degree i.e. number of outbound edges.
   #[inline]
-  pub fn degree(&self) -> usize {
+  pub fn degree_out(&self) -> usize {
     self.outbound().len()
+  }
+
+  /// Get node in-degree i.e. number of inbound edges.
+  #[inline]
+  pub fn degree_in(&self) -> usize {
+    self.inbound().len()
   }
 
   /// Check if node is a leaf node, i.e. has no outbound edges.
@@ -87,6 +93,42 @@ where
   #[inline]
   pub fn is_root(&self) -> bool {
     self.inbound().is_empty()
+  }
+
+  /// Check if node is an internal node, i.e. has both inbound and outbound edges.
+  #[inline]
+  pub fn is_internal(&self) -> bool {
+    !self.is_leaf() && !self.is_root()
+  }
+
+  #[inline]
+  pub fn has_parents(&self) -> bool {
+    self.degree_in() > 0
+  }
+
+  #[inline]
+  pub fn has_one_parent(&self) -> bool {
+    self.degree_in() == 1
+  }
+
+  #[inline]
+  pub fn has_at_most_one_parent(&self) -> bool {
+    self.degree_in() <= 1
+  }
+
+  #[inline]
+  pub fn has_children(&self) -> bool {
+    self.degree_out() > 0
+  }
+
+  #[inline]
+  pub fn has_one_child(&self) -> bool {
+    self.degree_out() == 1
+  }
+
+  #[inline]
+  pub fn has_at_most_one_child(&self) -> bool {
+    self.degree_out() <= 1
   }
 
   /// Get read access to outbound edges of the node.
