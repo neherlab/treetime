@@ -4,6 +4,7 @@ use crate::graph::breadth_first::{
 use crate::graph::edge::{Edge, GraphEdge, GraphEdgeKey};
 use crate::graph::node::{GraphNode, GraphNodeKey, Node};
 use crate::utils::container::{get_exactly_one, get_exactly_one_mut};
+use crate::utils::mutex::unwrap_arc_rwlock;
 use crate::{make_error, make_internal_error, make_internal_report};
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
@@ -344,6 +345,20 @@ where
     self.edges.get(index.as_usize())?.as_ref().map(Arc::clone)
   }
 
+  pub fn get_source_node_key(&self, edge_key: GraphEdgeKey) -> Result<GraphNodeKey, Report> {
+    let edge = self
+      .get_edge(edge_key)
+      .ok_or_else(|| make_internal_report!("Edge {edge_key} not found"))?;
+    Ok(edge.read_arc().source())
+  }
+
+  pub fn get_target_node_key(&self, edge_key: GraphEdgeKey) -> Result<GraphNodeKey, Report> {
+    let edge = self
+      .get_edge(edge_key)
+      .ok_or_else(|| make_internal_report!("Edge {edge_key} not found"))?;
+    Ok(edge.read_arc().target())
+  }
+
   /// Iterates nodes synchronously and in unspecified order
   pub fn for_each<T, F>(&self, f: &mut dyn FnMut(GraphNodeSafe<N, E, D>)) {
     self
@@ -464,7 +479,7 @@ where
     node_key
   }
 
-  pub fn remove_node(&mut self, node_key: GraphNodeKey) -> Result<(), Report> {
+  pub fn remove_node(&mut self, node_key: GraphNodeKey) -> Result<Node<N>, Report> {
     // Remove edges which refer to this node, if any
     self
       .edges
@@ -480,11 +495,13 @@ where
       .for_each(|edge| *edge = None);
 
     // Remove the node itself, if present
-    if let Some(node) = self.nodes.get_mut(node_key.as_usize()) {
-      *node = None;
-    }
-
-    Ok(())
+    self
+      .nodes
+      .get_mut(node_key.as_usize())
+      .and_then(|node_slot| node_slot.take().map(unwrap_arc_rwlock))
+      .transpose()
+      .wrap_err_with(|| format!("When removing node: {node_key}"))?
+      .ok_or_else(|| make_internal_report!("Attempted to remove non-existent node: {node_key}"))
   }
 
   /// Add a new edge to the graph.
@@ -539,7 +556,7 @@ where
     Ok(edge_key)
   }
 
-  pub fn remove_edge(&mut self, edge_key: GraphEdgeKey) -> Result<(), Report> {
+  pub fn remove_edge(&mut self, edge_key: GraphEdgeKey) -> Result<Edge<E>, Report> {
     // Remove the edge key from inbound/outbound lists of nodes
     self.nodes.iter_mut().for_each(|node| {
       if let Some(node) = node {
@@ -550,11 +567,13 @@ where
     });
 
     // Remove the edge itself
-    if let Some(edge) = self.edges.get_mut(edge_key.as_usize()) {
-      *edge = None;
-    }
-
-    Ok(())
+    self
+      .edges
+      .get_mut(edge_key.as_usize())
+      .and_then(|edge_slot| edge_slot.take().map(unwrap_arc_rwlock))
+      .transpose()
+      .wrap_err_with(|| format!("When removing edge: {edge_key}"))?
+      .ok_or_else(|| make_internal_report!("Attempted to remove non-existent edge: {edge_key}"))
   }
 
   pub fn build(&mut self) -> Result<(), Report> {
@@ -776,8 +795,135 @@ where
     self.roots.contains(&key)
   }
 
-  pub fn is_leaf(&self, key: GraphNodeKey) -> bool {
-    self.leaves.contains(&key)
+  pub fn is_leaf(&self, node_key: GraphNodeKey) -> bool {
+    self.leaves.contains(&node_key)
+  }
+
+  pub fn is_internal(&self, node_key: GraphNodeKey) -> bool {
+    !self.is_leaf(node_key) && !self.is_root(node_key)
+  }
+
+  /// Number of outbound edges (children) of a node
+  pub fn degree_out(&self, key: GraphNodeKey) -> Result<usize, Report> {
+    self
+      .get_node(key)
+      .map(|node| node.read_arc().degree_out())
+      .ok_or_else(|| make_internal_report!("Node not found: {key}"))
+  }
+
+  /// Number of inbound edges (parents) of a node
+  pub fn degree_in(&self, key: GraphNodeKey) -> Result<usize, Report> {
+    self
+      .get_node(key)
+      .map(|node| node.read_arc().degree_in())
+      .ok_or_else(|| make_internal_report!("Node not found: {key}"))
+  }
+
+  pub fn has_parents(&self, node_key: GraphNodeKey) -> bool {
+    self
+      .get_node(node_key)
+      .is_some_and(|node| node.read_arc().has_parents())
+  }
+
+  pub fn has_one_parent(&self, node_key: GraphNodeKey) -> bool {
+    self
+      .get_node(node_key)
+      .is_some_and(|node| node.read_arc().has_one_parent())
+  }
+
+  pub fn has_at_most_one_parent(&self, node_key: GraphNodeKey) -> bool {
+    self
+      .get_node(node_key)
+      .is_some_and(|node| node.read_arc().has_at_most_one_parent())
+  }
+
+  pub fn has_children(&self, node_key: GraphNodeKey) -> bool {
+    self
+      .get_node(node_key)
+      .is_some_and(|node| node.read_arc().has_children())
+  }
+
+  pub fn has_one_child(&self, node_key: GraphNodeKey) -> bool {
+    self
+      .get_node(node_key)
+      .is_some_and(|node| node.read_arc().has_one_child())
+  }
+
+  pub fn has_at_most_one_child(&self, node_key: GraphNodeKey) -> bool {
+    self
+      .get_node(node_key)
+      .is_some_and(|node| node.read_arc().has_at_most_one_child())
+  }
+
+  /// Returns the inbound edge from this node's parent, if any (None for roots).
+  pub fn parent_inbound_edge(&self, key: GraphNodeKey) -> Result<Option<GraphEdgeKey>, Report> {
+    let node = self
+      .get_node(key)
+      .ok_or_else(|| make_internal_report!("Node not found: {key}"))?;
+    Ok(node.read_arc().inbound().first().copied())
+  }
+
+  #[allow(clippy::type_complexity)]
+  pub fn collapse_edge(&mut self, edge_key: GraphEdgeKey) -> Result<(Node<N>, Edge<E>, Vec<SafeEdge<E>>), Report>
+  where
+    N: Clone,
+    E: Clone,
+  {
+    let (source_key, target_key) = {
+      let edge = self
+        .get_edge(edge_key)
+        .ok_or_else(|| make_internal_report!("Edge {} not found", edge_key))?;
+      let edge = edge.read_arc();
+      (edge.source(), edge.target())
+    };
+
+    let (target_inbound, target_outbound) = {
+      let target_node = self
+        .get_node(target_key)
+        .ok_or_else(|| make_internal_report!("Target node {} not found", target_key))?;
+      let target_node = target_node.read_arc();
+      (target_node.inbound().to_vec(), target_node.outbound().to_vec())
+    };
+
+    for &inbound_edge_key in &target_inbound {
+      if inbound_edge_key != edge_key {
+        if let Some(inbound_edge) = self.get_edge(inbound_edge_key) {
+          inbound_edge.write_arc().set_target(source_key);
+          if let Some(source_node) = self.get_node(source_key) {
+            let mut source_node = source_node.write_arc();
+            if !source_node.inbound().contains(&inbound_edge_key) {
+              source_node.inbound_mut().push(inbound_edge_key);
+            }
+          }
+        }
+      }
+    }
+
+    let mut new_edges = Vec::with_capacity(target_outbound.len());
+    for &outbound_edge_key in &target_outbound {
+      if outbound_edge_key != edge_key {
+        if let Some(outbound_edge) = self.get_edge(outbound_edge_key) {
+          new_edges.push(Arc::clone(&outbound_edge));
+          outbound_edge.write_arc().set_source(source_key);
+          if let Some(source_node) = self.get_node(source_key) {
+            let mut source_node = source_node.write_arc();
+            if !source_node.outbound().contains(&outbound_edge_key) {
+              source_node.outbound_mut().push(outbound_edge_key);
+            }
+          }
+        }
+      }
+    }
+
+    if let Some(source_node) = self.get_node(source_key) {
+      let mut source_node = source_node.write_arc();
+      source_node.outbound_mut().retain(|&e| e != edge_key);
+    }
+
+    let removed_edge = self.remove_edge(edge_key)?;
+    let removed_node = self.remove_node(target_key)?;
+
+    Ok((removed_node, removed_edge, new_edges))
   }
 }
 
@@ -790,7 +936,9 @@ pub mod tests {
   use crate::graph::edge::Weighted;
   use crate::graph::node::Named;
   use crate::io::graphviz::{EdgeToGraphViz, NodeToGraphviz};
-  use crate::io::nwk::{EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteOptions, format_weight, nwk_read_str};
+  use crate::io::nwk::{
+    EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteOptions, format_weight, nwk_read_str, nwk_write_str,
+  };
 
   use super::*;
 
@@ -954,6 +1102,313 @@ pub mod tests {
     });
 
     assert_eq!(&vec!["D", "C", "B", "A", "CD", "AB", "root"], &*actual.read());
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_collapse_edge_simple_chain() -> Result<(), Report> {
+    let mut graph = Graph::<TestNode, TestEdge, ()>::new();
+
+    let root_node = graph.add_node(TestNode(Some("root".to_owned())));
+    let internal_node = graph.add_node(TestNode(Some("internal".to_owned())));
+    let leaf_node = graph.add_node(TestNode(Some("A".to_owned())));
+
+    let root_to_internal_edge = graph.add_edge(root_node, internal_node, TestEdge(Some(0.1)))?;
+    let internal_to_leaf_edge = graph.add_edge(internal_node, leaf_node, TestEdge(Some(0.2)))?;
+
+    graph.build()?;
+
+    graph.collapse_edge(root_to_internal_edge)?;
+
+    let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
+    assert_eq!(output_nwk, "(A:0.2)root;");
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_collapse_edge_binary_tree() -> Result<(), Report> {
+    let mut graph = Graph::<TestNode, TestEdge, ()>::new();
+
+    let root_node = graph.add_node(TestNode(Some("root".to_owned())));
+    let internal_node = graph.add_node(TestNode(Some("internal".to_owned())));
+    let a_node = graph.add_node(TestNode(Some("A".to_owned())));
+    let b_node = graph.add_node(TestNode(Some("B".to_owned())));
+
+    let root_to_internal_edge = graph.add_edge(root_node, internal_node, TestEdge(Some(0.1)))?;
+    let internal_to_a_edge = graph.add_edge(internal_node, a_node, TestEdge(Some(0.2)))?;
+    let root_to_b_edge = graph.add_edge(root_node, b_node, TestEdge(Some(0.3)))?;
+
+    graph.build()?;
+
+    graph.collapse_edge(root_to_internal_edge)?;
+
+    let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
+    assert_eq!(output_nwk, "(B:0.3,A:0.2)root;");
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_collapse_edge_complex_tree() -> Result<(), Report> {
+    let mut graph = Graph::<TestNode, TestEdge, ()>::new();
+
+    let root_node = graph.add_node(TestNode(Some("root".to_owned())));
+    let left_internal = graph.add_node(TestNode(Some("left".to_owned())));
+    let right_internal = graph.add_node(TestNode(Some("right".to_owned())));
+    let a_node = graph.add_node(TestNode(Some("A".to_owned())));
+    let b_node = graph.add_node(TestNode(Some("B".to_owned())));
+    let c_node = graph.add_node(TestNode(Some("C".to_owned())));
+    let d_node = graph.add_node(TestNode(Some("D".to_owned())));
+
+    let root_to_left_edge = graph.add_edge(root_node, left_internal, TestEdge(Some(0.1)))?;
+    let root_to_right_edge = graph.add_edge(root_node, right_internal, TestEdge(Some(0.2)))?;
+    let left_to_a_edge = graph.add_edge(left_internal, a_node, TestEdge(Some(0.3)))?;
+    let left_to_b_edge = graph.add_edge(left_internal, b_node, TestEdge(Some(0.4)))?;
+    let right_to_c_edge = graph.add_edge(right_internal, c_node, TestEdge(Some(0.5)))?;
+    let right_to_d_edge = graph.add_edge(right_internal, d_node, TestEdge(Some(0.6)))?;
+
+    graph.build()?;
+
+    graph.collapse_edge(root_to_left_edge)?;
+
+    let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
+    assert_eq!(output_nwk, "((C:0.5,D:0.6)right:0.2,A:0.3,B:0.4)root;");
+
+    Ok(())
+  }
+
+  #[allow(clippy::assertions_on_result_states)]
+  #[test]
+  fn test_collapse_edge_invalid_edge() -> Result<(), Report> {
+    let mut graph = Graph::<TestNode, TestEdge, ()>::new();
+
+    let root_node = graph.add_node(TestNode(Some("root".to_owned())));
+    let leaf_node = graph.add_node(TestNode(Some("A".to_owned())));
+    graph.add_edge(root_node, leaf_node, TestEdge(Some(0.1)))?;
+    graph.build()?;
+
+    let invalid_key = GraphEdgeKey(9999);
+    let result = graph.collapse_edge(invalid_key);
+
+    assert!(result.is_err());
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_collapse_edge_leaf_edge() -> Result<(), Report> {
+    let mut graph = Graph::<TestNode, TestEdge, ()>::new();
+
+    let root_node = graph.add_node(TestNode(Some("root".to_owned())));
+    let a_node = graph.add_node(TestNode(Some("A".to_owned())));
+    let b_node = graph.add_node(TestNode(Some("B".to_owned())));
+
+    let root_to_a_edge = graph.add_edge(root_node, a_node, TestEdge(Some(0.1)))?;
+    let root_to_b_edge = graph.add_edge(root_node, b_node, TestEdge(Some(0.2)))?;
+
+    graph.build()?;
+
+    graph.collapse_edge(root_to_a_edge)?;
+
+    let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
+    assert_eq!(output_nwk, "(B:0.2)root;");
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_collapse_edge_no_duplicate_edges() -> Result<(), Report> {
+    let mut graph = Graph::<TestNode, TestEdge, ()>::new();
+
+    let root_node = graph.add_node(TestNode(Some("root".to_owned())));
+    let internal_node = graph.add_node(TestNode(Some("internal".to_owned())));
+    let leaf_node = graph.add_node(TestNode(Some("A".to_owned())));
+
+    // Create a scenario where source already has some connections that could duplicate
+    let root_to_internal_edge = graph.add_edge(root_node, internal_node, TestEdge(Some(0.1)))?;
+    let internal_to_leaf_edge = graph.add_edge(internal_node, leaf_node, TestEdge(Some(0.2)))?;
+
+    graph.build()?;
+
+    // Before collapse: root -> internal -> leaf
+    let source_node_before = graph.get_node(root_node).unwrap();
+    let initial_outbound_count = source_node_before.read_arc().outbound().len();
+
+    graph.collapse_edge(root_to_internal_edge)?;
+
+    // After collapse: root -> leaf (internal node removed)
+    let source_node_after = graph.get_node(root_node).unwrap();
+    let source_node_after = source_node_after.read_arc();
+
+    // Verify no duplicate edges in adjacency lists
+    let outbound_edges = source_node_after.outbound();
+    let unique_outbound: HashSet<_> = outbound_edges.iter().collect();
+    assert_eq!(
+      outbound_edges.len(),
+      unique_outbound.len(),
+      "Duplicate outbound edges detected"
+    );
+
+    let inbound_edges = source_node_after.inbound();
+    let unique_inbound: HashSet<_> = inbound_edges.iter().collect();
+    assert_eq!(
+      inbound_edges.len(),
+      unique_inbound.len(),
+      "Duplicate inbound edges detected"
+    );
+
+    // Should have one outbound edge (to leaf)
+    assert_eq!(outbound_edges.len(), 1);
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_collapse_edge_adjacency_lists_maintained() -> Result<(), Report> {
+    let mut graph = Graph::<TestNode, TestEdge, ()>::new();
+
+    let root_node = graph.add_node(TestNode(Some("root".to_owned())));
+    let left_internal = graph.add_node(TestNode(Some("left".to_owned())));
+    let right_internal = graph.add_node(TestNode(Some("right".to_owned())));
+    let a_node = graph.add_node(TestNode(Some("A".to_owned())));
+    let b_node = graph.add_node(TestNode(Some("B".to_owned())));
+
+    let root_to_left_edge = graph.add_edge(root_node, left_internal, TestEdge(Some(0.1)))?;
+    let root_to_right_edge = graph.add_edge(root_node, right_internal, TestEdge(Some(0.2)))?;
+    let left_to_a_edge = graph.add_edge(left_internal, a_node, TestEdge(Some(0.3)))?;
+    let left_to_b_edge = graph.add_edge(left_internal, b_node, TestEdge(Some(0.4)))?;
+
+    graph.build()?;
+
+    // Collapse root -> left_internal edge
+    graph.collapse_edge(root_to_left_edge)?;
+
+    // Verify root node's adjacency lists are correct
+    let root_node_ref = graph.get_node(root_node).unwrap();
+    let root_node_ref = root_node_ref.read_arc();
+
+    // Root should have outbound edges to: right_internal, A, B
+    assert_eq!(root_node_ref.outbound().len(), 3);
+
+    // Verify all outbound edges from root point to correct targets
+    let mut target_nodes = Vec::new();
+    for &edge_key in root_node_ref.outbound() {
+      if let Some(edge) = graph.get_edge(edge_key) {
+        let target_key = edge.read_arc().target();
+        if let Some(target_node) = graph.get_node(target_key) {
+          if let Some(name) = target_node.read_arc().payload().read_arc().name() {
+            target_nodes.push(name.as_ref().to_owned());
+          }
+        }
+      }
+    }
+    target_nodes.sort();
+    assert_eq!(target_nodes, vec!["A", "B", "right"]);
+
+    // Verify leaf nodes have correct inbound edges
+    let a_node_ref = graph.get_node(a_node).unwrap();
+    let a_node_binding = a_node_ref.read_arc();
+    let a_inbound = a_node_binding.inbound();
+    assert_eq!(a_inbound.len(), 1);
+
+    // Verify the edge from root to A has correct source
+    if let Some(edge) = graph.get_edge(a_inbound[0]) {
+      assert_eq!(edge.read_arc().source(), root_node);
+    }
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_collapse_edge_multiple_inbound_edges() -> Result<(), Report> {
+    // This test verifies handling when target node has multiple inbound edges
+    // (though in a tree this shouldn't happen, we test the general case)
+    let mut graph = Graph::<TestNode, TestEdge, ()>::new();
+
+    let source1_node = graph.add_node(TestNode(Some("source1".to_owned())));
+    let source2_node = graph.add_node(TestNode(Some("source2".to_owned())));
+    let target_node = graph.add_node(TestNode(Some("target".to_owned())));
+    let leaf_node = graph.add_node(TestNode(Some("leaf".to_owned())));
+
+    // Create edges: source1 -> target, source2 -> target, target -> leaf
+    let edge_to_collapse = graph.add_edge(source1_node, target_node, TestEdge(Some(0.1)))?;
+    let other_inbound = graph.add_edge(source2_node, target_node, TestEdge(Some(0.2)))?;
+    let outbound_edge = graph.add_edge(target_node, leaf_node, TestEdge(Some(0.3)))?;
+
+    graph.build()?;
+
+    // Collapse source1 -> target edge
+    graph.collapse_edge(edge_to_collapse)?;
+
+    // Verify source1 now has the outbound edge to leaf
+    let source1_ref = graph.get_node(source1_node).unwrap();
+    let source1_binding = source1_ref.read_arc();
+    let source1_outbound = source1_binding.outbound();
+    assert_eq!(source1_outbound.len(), 1);
+
+    // Verify the edge now goes from source1 to leaf
+    if let Some(edge) = graph.get_edge(source1_outbound[0]) {
+      let edge_ref = edge.read_arc();
+      assert_eq!(edge_ref.source(), source1_node);
+      assert_eq!(edge_ref.target(), leaf_node);
+    }
+
+    // Verify source1 also inherited the other inbound edge (source2 -> source1)
+    let source1_inbound = source1_binding.inbound();
+    assert_eq!(source1_inbound.len(), 1);
+
+    // Verify that source2 -> target edge now points to source1
+    if let Some(edge) = graph.get_edge(source1_inbound[0]) {
+      let edge_ref = edge.read_arc();
+      assert_eq!(edge_ref.source(), source2_node);
+      assert_eq!(edge_ref.target(), source1_node);
+    }
+
+    // Verify target node was removed
+    assert!(graph.get_node(target_node).is_none());
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_collapse_edge_adjacency_consistency() -> Result<(), Report> {
+    // Test that after edge collapse, all edge references in adjacency lists
+    // correspond to actual edges that exist and point correctly
+    let mut graph = Graph::<TestNode, TestEdge, ()>::new();
+
+    let root_node = graph.add_node(TestNode(Some("root".to_owned())));
+    let internal_node = graph.add_node(TestNode(Some("internal".to_owned())));
+    let leaf1_node = graph.add_node(TestNode(Some("leaf1".to_owned())));
+    let leaf2_node = graph.add_node(TestNode(Some("leaf2".to_owned())));
+
+    let root_to_internal = graph.add_edge(root_node, internal_node, TestEdge(Some(0.1)))?;
+    let internal_to_leaf1 = graph.add_edge(internal_node, leaf1_node, TestEdge(Some(0.2)))?;
+    let internal_to_leaf2 = graph.add_edge(internal_node, leaf2_node, TestEdge(Some(0.3)))?;
+
+    graph.build()?;
+
+    graph.collapse_edge(root_to_internal)?;
+
+    // Verify consistency: every edge key in node adjacency lists corresponds to a real edge
+    for node in graph.nodes.iter().flatten() {
+      let node_ref = node.read_arc();
+
+      // Check outbound edges
+      for &edge_key in node_ref.outbound() {
+        let edge = graph.get_edge(edge_key).expect("Outbound edge should exist");
+        let edge_ref = edge.read_arc();
+        assert_eq!(edge_ref.source(), node_ref.key(), "Edge source should match node");
+      }
+
+      // Check inbound edges
+      for &edge_key in node_ref.inbound() {
+        let edge = graph.get_edge(edge_key).expect("Inbound edge should exist");
+        let edge_ref = edge.read_arc();
+        assert_eq!(edge_ref.target(), node_ref.key(), "Edge target should match node");
+      }
+    }
 
     Ok(())
   }

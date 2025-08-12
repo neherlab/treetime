@@ -317,7 +317,7 @@ jobs:
   run-compat-tests-x86_64-pc-windows-gnu:
     name: "Compat test (x86_64-pc-windows-gnu)"
     needs: [ build-cli ]
-    runs-on: windows-2019
+    runs-on: windows-2022
 
     steps:
       - name: "Show system info"

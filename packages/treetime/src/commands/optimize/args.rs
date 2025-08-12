@@ -12,11 +12,10 @@ pub struct TreetimeOptimizeArgs {
   /// decompressed. Supported compression formats: `gz`, `bz2`, `xz`, `zstd`. Decompressor is chosen based on file
   /// extension. If there's multiple input files, then different files can have different compression formats.
   ///
-  /// If no input files provided, the plain fasta input is read from standard input (stdin).
+  /// Use '-' to read uncompressed FASTA from standard input (stdin).
   ///
   /// See: https://en.wikipedia.org/wiki/FASTA_format
-  #[clap(value_hint = ValueHint::FilePath)]
-  #[clap(display_order = 1)]
+  #[clap(long = "aln", value_hint = ValueHint::FilePath, value_name = "FILEPATH")]
   pub input_fastas: Vec<PathBuf>,
 
   /// Name of file containing the tree in newick, nexus, or phylip format.
@@ -33,11 +32,13 @@ pub struct TreetimeOptimizeArgs {
 
   /// GTR model to use
   ///
-  /// '--gtr infer' will infer a model from the data. Alternatively, specify the model type. If the specified model requires additional options, use '--gtr-params' to specify those.
+  /// '--model infer' will infer a model from the data.
+  ///
+  /// TODO: Alternatively, specify the model type. If the specified model requires additional options, use '--gtr-params' to specify those.
   #[clap(long = "model", short = 'g', value_enum, default_value_t = GtrModelName::Infer)]
   pub model_name: GtrModelName,
 
-  /// Use dense representation
+  /// Use dense representation of sequences on the tree, useful if branches are long.
   ///
   /// TODO: explain this better
   #[clap(long)]

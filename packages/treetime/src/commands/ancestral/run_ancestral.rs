@@ -7,8 +7,8 @@ use crate::graph::edge::GraphEdge;
 use crate::graph::graph::Graph;
 use crate::graph::node::GraphNode;
 use crate::gtr::get_gtr::{get_gtr, get_gtr_dense};
-use crate::io::fasta::{FastaWriter, read_many_fasta};
-use crate::io::file::create_file_or_stdout;
+use crate::io::fasta::{FastaReader, FastaRecord, FastaWriter, read_many_fasta};
+use crate::io::file::{create_file_or_stdout, open_stdin};
 use crate::io::nex::{NexWriteOptions, nex_write_file};
 use crate::io::nwk::{EdgeToNwk, NodeToNwk, NwkWriteOptions, nwk_read_file, nwk_write_file};
 use crate::representation::graph_dense::DenseGraph;
@@ -19,6 +19,7 @@ use crate::representation::partitions_parsimony::PartitionParsimonyWithAln;
 use crate::utils::random::get_random_number_generator;
 use eyre::Report;
 use itertools::Itertools;
+use log::info;
 use serde::Serialize;
 use std::path::Path;
 
@@ -56,7 +57,15 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
   let alphabet = Alphabet::new(alphabet.unwrap_or_default(), treat_gap_as_unknown)?;
 
   // TODO: avoid reading all sequences into memory somehow?
-  let aln = read_many_fasta(input_fastas, &alphabet)?;
+  let aln = if input_fastas.is_empty() {
+    info!("Reading input fasta from standard input");
+    let mut reader = FastaReader::new(open_stdin()?, &alphabet);
+    let mut record = FastaRecord::default();
+    reader.read(&mut record)?;
+    vec![record]
+  } else {
+    read_many_fasta(input_fastas, &alphabet)?
+  };
 
   let output_fasta = create_file_or_stdout(outdir.join("ancestral_sequences.fasta"))?;
   let mut output_fasta = FastaWriter::new(output_fasta);

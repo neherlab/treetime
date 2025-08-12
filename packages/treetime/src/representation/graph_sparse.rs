@@ -1,5 +1,5 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::graph::edge::{GraphEdge, Weighted};
+use crate::graph::edge::{GraphEdge, NumMuts, Weighted};
 use crate::graph::graph::Graph;
 use crate::graph::node::{GraphNode, Named};
 use crate::io::graphviz::{EdgeToGraphViz, NodeToGraphviz};
@@ -142,6 +142,16 @@ impl Weighted for SparseEdge {
 
   fn set_weight(&mut self, weight: Option<f64>) {
     self.branch_length = weight;
+  }
+}
+
+impl NumMuts for SparseEdge {
+  fn num_muts(&self) -> Option<usize> {
+    if self.sparse_partitions.is_empty() {
+      None // Unknown number of mutations when no partitions are present
+    } else {
+      Some(self.sparse_partitions.iter().map(|p| p.subs.len()).sum())
+    }
   }
 }
 

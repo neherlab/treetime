@@ -6,7 +6,6 @@ use crate::commands::optimize::args::TreetimeOptimizeArgs;
 use crate::commands::optimize::optimize_dense::run_optimize_dense;
 use crate::commands::optimize::optimize_sparse::run_optimize_sparse;
 use crate::graph::edge::GraphEdge;
-use crate::graph::graph::Graph;
 use crate::graph::node::GraphNode;
 use crate::gtr::get_gtr::{get_gtr, get_gtr_dense};
 use crate::io::fasta::read_many_fasta;
@@ -112,7 +111,7 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
   Ok(())
 }
 
-fn write_graph<N, E, D>(outdir: impl AsRef<Path>, graph: &Graph<N, E, D>) -> Result<(), Report>
+fn write_graph<N, E, D>(outdir: impl AsRef<Path>, graph: &crate::graph::graph::Graph<N, E, D>) -> Result<(), Report>
 where
   N: GraphNode + NodeToNwk + Serialize,
   E: GraphEdge + EdgeToNwk + Serialize,

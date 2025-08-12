@@ -6,6 +6,7 @@ use treetime::commands::clock::run_clock::run_clock;
 use treetime::commands::homoplasy::run_homoplasy::run_homoplasy;
 use treetime::commands::mugration::run_mugration::run_mugration;
 use treetime::commands::optimize::run::run_optimize;
+use treetime::commands::prune::run::run_prune;
 use treetime::commands::timetree::run_timetree_estimation::run_timetree_estimation;
 use treetime::utils::global_init::global_init;
 use treetime::utils::openblas::get_openblas_info_str;
@@ -38,6 +39,9 @@ fn main() -> Result<(), Report> {
     },
     TreetimeCommands::Optimize(optimize_args) => {
       run_optimize(&optimize_args)?;
+    },
+    TreetimeCommands::Prune(prune_args) => {
+      run_prune(&prune_args)?;
     },
     TreetimeCommands::Ancestral(ancestral_args) => {
       run_ancestral_reconstruction(&ancestral_args)?;
