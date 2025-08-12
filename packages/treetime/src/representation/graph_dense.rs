@@ -1,5 +1,5 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::graph::edge::{GraphEdge, Weighted};
+use crate::graph::edge::{GraphEdge, NumMuts, Weighted};
 use crate::graph::graph::Graph;
 use crate::graph::node::{GraphNode, Named};
 use crate::io::graphviz::{EdgeToGraphViz, NodeToGraphviz};
@@ -101,6 +101,22 @@ impl Weighted for DenseEdge {
 
   fn set_weight(&mut self, weight: Option<f64>) {
     self.branch_length = weight;
+  }
+}
+
+impl NumMuts for DenseEdge {
+  #[allow(clippy::todo, unreachable_code)]
+  fn num_muts(&self) -> Option<usize> {
+    Some(
+      self
+        .dense_partitions
+        .iter()
+        .map(|_partition| {
+          todo!("Calculate number of substitutions here");
+          0_usize
+        })
+        .sum(),
+    )
   }
 }
 

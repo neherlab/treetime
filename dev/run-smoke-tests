@@ -46,7 +46,7 @@ ANCESTRAL_BATCH_RUNS = [
   ("lassa/L/50",                  "lassa/L/50",               ""),
   ("lassa/L/200",                 "lassa/L/200",              ""),
   ("lassa/L/500",                 "lassa/L/500",              ""),
-  ("mpox/clade-ii/500",           "mpox/clade-ii/500",        ""),
+  # ("mpox/clade-ii/500",           "mpox/clade-ii/500",        ""),
   # ("mpox/clade-ii/1000",          "mpox/clade-ii/1000",       ""),
   # ("mpox/clade-ii/2000",          "mpox/clade-ii/2000",       ""),
   ("rsv/a/500",                   "rsv/a/500",                ""),
@@ -71,12 +71,48 @@ CLOCK_BATCH_RUNS = [
   ("lassa/L/50",                  "lassa/L/50",               ""),
   ("lassa/L/200",                 "lassa/L/200",              ""),
   ("lassa/L/500",                 "lassa/L/500",              ""),
-  ("mpox/clade-ii/500",           "mpox/clade-ii/500",        ""),
+  # ("mpox/clade-ii/500",           "mpox/clade-ii/500",        ""),
   # ("mpox/clade-ii/1000",          "mpox/clade-ii/1000",       ""),
   # ("mpox/clade-ii/2000",          "mpox/clade-ii/2000",       ""),
   ("rsv/a/500",                   "rsv/a/500",                ""),
   # ("rsv/a/1000",                  "rsv/a/1000",               ""),
   # ("rsv/a/2000",                  "rsv/a/2000",               ""),
+  ("tb",                          "tb",                       ""),
+  ("zika",                        "zika",                     "")
+]
+# fmt: on @formatter:on
+
+# Add optimize command runs here. Each entry corresponds to 2 optimize command runs - one with dense=false and one with dense=true
+# fmt: off @formatter:off
+OPTIMIZE_BATCH_RUNS = [
+  # data subdirectory             # output subdirectory       # additional args (appended to the batch args)
+  ("dengue/500",                  "dengue/500",               ""),
+  ("ebola",                       "ebola",                    ""),
+  ("flu/h3n2/20",                 "flu/h3n2/20",              ""),
+  ("flu/h3n2/200",                "flu/h3n2/200",             ""),
+  ("flu/h3n2/500",                "flu/h3n2/500",             ""),
+  ("lassa/L/50",                  "lassa/L/50",               ""),
+  ("lassa/L/200",                 "lassa/L/200",              ""),
+  ("lassa/L/500",                 "lassa/L/500",              ""),
+  ("rsv/a/500",                   "rsv/a/500",                ""),
+  ("tb",                          "tb",                       ""),
+  ("zika",                        "zika",                     "")
+]
+# fmt: on @formatter:on
+
+# Add prune command runs here. Each entry corresponds to 1 prune command run
+# fmt: off @formatter:off
+PRUNE_BATCH_RUNS = [
+  # data subdirectory             # output subdirectory       # additional args (appended to the batch args)
+  ("dengue/500",                  "dengue/500",               ""),
+  ("ebola",                       "ebola",                    ""),
+  ("flu/h3n2/20",                 "flu/h3n2/20",              ""),
+  ("flu/h3n2/200",                "flu/h3n2/200",             ""),
+  ("flu/h3n2/500",                "flu/h3n2/500",             ""),
+  ("lassa/L/50",                  "lassa/L/50",               ""),
+  ("lassa/L/200",                 "lassa/L/200",              ""),
+  ("lassa/L/500",                 "lassa/L/500",              ""),
+  ("rsv/a/500",                   "rsv/a/500",                ""),
   ("tb",                          "tb",                       ""),
   ("zika",                        "zika",                     "")
 ]
@@ -100,6 +136,8 @@ def make_additional_commands(exe, data_dir, out_dir):
     ("help: global",               f"""{exe} --help"""                          ),
     ("help: ancestral",            f"""{exe} ancestral --help"""                ),
     ("help: clock",                f"""{exe} clock --help"""                    ),
+    ("help: optimize",             f"""{exe} optimize --help"""                 ),
+    ("help: prune",                f"""{exe} prune --help"""                    ),
   ]
   # fmt: on @formatter:on
 
@@ -205,6 +243,32 @@ def run_ancestral(method: str, seq_mode: Optional[str], name: str, out: str, ext
   return run_batch_cmd(name, method_str, cmd)
 
 
+def run_optimize(dense: str, name: str, out: str, extra_args: str):
+  seq_mode = "dense" if dense == "true" else "sparse"
+  cmd = f"""
+  {TREETIME_BIN} optimize
+  --dense={dense}
+  --tree={DATA_DIR}/{name}/tree.nwk
+  --aln={DATA_DIR}/{name}/aln.fasta.xz
+  --outdir={RESULTS_DIR}/optimize/{seq_mode}/{out}
+  {extra_args}
+  """
+  return run_batch_cmd(name, f"optimize-{seq_mode}", cmd)
+
+
+def run_prune(name: str, out: str, extra_args: str):
+  cmd = f"""
+  {TREETIME_BIN} prune
+  --tree={DATA_DIR}/{name}/tree.nwk
+  --aln={DATA_DIR}/{name}/aln.fasta.xz
+  --outdir={RESULTS_DIR}/prune/{out}
+  --prune-short=1e-6
+  --prune-empty
+  {extra_args}
+  """
+  return run_batch_cmd(name, "prune", cmd)
+
+
 def init_worker():
   signal(SIGINT, SIG_IGN)
 
@@ -264,6 +328,9 @@ if __name__ == "__main__":
     (run_ancestral, [("parsimony", None, *args) for args in ANCESTRAL_BATCH_RUNS]),
     (run_ancestral, [("marginal", "sparse", *args) for args in ANCESTRAL_BATCH_RUNS]),
     (run_ancestral, [("marginal", "dense", *args) for args in ANCESTRAL_BATCH_RUNS]),
+    (run_optimize, [("false", *args) for args in OPTIMIZE_BATCH_RUNS]),
+    # (run_optimize, [("true", *args) for args in OPTIMIZE_BATCH_RUNS]), # TODO: enable optimize dense tests
+    (run_prune, PRUNE_BATCH_RUNS),
     (run_additional_cmd, make_additional_commands(TREETIME_BIN, DATA_DIR, RESULTS_DIR_ADDITIONAL))
   ]
 
