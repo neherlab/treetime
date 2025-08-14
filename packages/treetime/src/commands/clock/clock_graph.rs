@@ -44,12 +44,12 @@ impl NodeToNwk for ClockNodePayload {
 }
 
 impl Named for ClockNodePayload {
-  fn name(&self) -> Option<impl AsRef<str>> {
+  fn get_name_maybe(&self) -> Option<&str> {
     self.name.as_deref()
   }
 
-  fn set_name(&mut self, name: Option<impl AsRef<str>>) {
-    self.name = name.map(|n| n.as_ref().to_owned());
+  fn set_name(&mut self, name: Option<String>) {
+    self.name = name;
   }
 }
 

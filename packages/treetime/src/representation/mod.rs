@@ -1,9 +1,12 @@
 pub mod bitset128;
+pub mod edge_partition;
 pub mod graph_dense;
 pub mod graph_sparse;
 pub mod infer_dense;
+pub mod node_partition;
 pub mod partitions_likelihood;
 pub mod partitions_parsimony;
+pub mod repr_graph;
 pub mod seq;
 pub mod seq_char;
 pub mod state_set;

@@ -19,7 +19,7 @@ pub trait NumMuts {
   fn num_muts(&self) -> Option<usize>;
 }
 
-pub trait GraphEdge: Clone + Debug + Sync + Send {}
+pub trait GraphEdge: Debug + Sync + Send {}
 
 #[derive(Copy, Clone, Debug, Display, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct GraphEdgeKey(pub usize);

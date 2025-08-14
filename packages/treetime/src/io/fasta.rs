@@ -238,13 +238,13 @@ impl FastaWriter {
     Ok(Self::new(create_file_or_stdout(filepath)?))
   }
 
-  pub fn write(&mut self, seq_name: impl AsRef<str>, desc: &Option<String>, seq: &Seq) -> Result<(), Report> {
+  pub fn write(&mut self, seq_name: impl AsRef<str>, desc: &Option<impl AsRef<str>>, seq: &Seq) -> Result<(), Report> {
     self.writer.write_all(b">")?;
     self.writer.write_all(seq_name.as_ref().as_bytes())?;
 
     if let Some(desc) = desc {
       self.writer.write_all(b" ")?;
-      self.writer.write_all(desc.as_bytes())?;
+      self.writer.write_all(desc.as_ref().as_bytes())?;
     }
 
     self.writer.write_all(b"\n")?;

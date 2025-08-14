@@ -15,7 +15,7 @@ pub fn calculate_divs<N: GraphNode + Named, E: GraphEdge + Weighted, D: Send + S
   let mut divs: BTreeMap<String, f64> = btreemap! {};
   let mut result: BTreeMap<String, f64> = btreemap! {};
   graph.iter_depth_first_preorder_forward(|node| {
-    let name = node.payload.name().unwrap().as_ref().to_owned();
+    let name = node.payload.get_name_maybe().unwrap().as_ref().to_owned();
     if node.is_root {
       divs.insert(name.clone(), 0.0);
       if !only_leaves.0 {
@@ -24,7 +24,7 @@ pub fn calculate_divs<N: GraphNode + Named, E: GraphEdge + Weighted, D: Send + S
     } else {
       let (parent, edge) = node.get_exactly_one_parent().unwrap();
       let parent_div: f64 = {
-        let parent_name = parent.read_arc().name().unwrap().as_ref().to_owned();
+        let parent_name = parent.read_arc().get_name_maybe().unwrap().as_ref().to_owned();
         divs.get(&parent_name).copied().unwrap_or_default()
       };
       let branch_length = edge.read_arc().weight().unwrap_or_default();

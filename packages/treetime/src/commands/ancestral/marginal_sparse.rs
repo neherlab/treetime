@@ -3,8 +3,9 @@ use crate::graph::breadth_first::GraphTraversalContinuation;
 use crate::graph::edge::Weighted;
 use crate::hacks::fix_branch_length::fix_branch_length;
 use crate::make_internal_error;
-use crate::representation::graph_sparse::{SparseGraph, SparseNode, SparseSeqDis, VarPos};
+use crate::representation::graph_sparse::{SparseSeqDis, VarPos};
 use crate::representation::partitions_likelihood::PartitionLikelihood;
+use crate::representation::repr_graph::{ReprGraph, ReprNode};
 use crate::representation::seq::Seq;
 use crate::representation::seq_char::AsciiChar;
 use crate::seq::composition;
@@ -20,9 +21,9 @@ use std::iter::zip;
 
 const EPS: f64 = 1e-4;
 
-fn ingroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihood]) {
+fn ingroup_profiles_sparse(graph: &ReprGraph, partitions: &[PartitionLikelihood]) {
   graph.par_iter_breadth_first_backward(|mut node| {
-    for (si, seq_info) in node.payload.sparse_partitions.iter_mut().enumerate() {
+    for (si, seq_info) in node.payload.partitions.iter_mut().enumerate() {
       let PartitionLikelihood { gtr, alphabet, length } = &partitions[si];
       let msg_to_parent = if node.is_leaf {
         // this is mostly a copy (or ref here) of the fitch state.
@@ -60,16 +61,16 @@ fn ingroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihoo
         for (ci, (_, edge)) in node.children.iter().enumerate() {
           // go over all mutations and get reference and child state
           child_states.push(btreemap! {});
-          for m in &edge.read_arc().sparse_partitions[si].subs {
+          for m in &edge.read_arc().partition_at(si).subs {
             variable_pos.insert(m.pos(), m.reff()); // this might be set multiple times, but the reference state should always be the same
             child_states[ci].insert(m.pos(), m.qry());
           }
           // go over child variable position and get reference state
-          for (pos, p) in &edge.read_arc().sparse_partitions[si].msg_from_child.variable {
+          for (pos, p) in &edge.read_arc().partition_at(si).msg_from_child.variable {
             variable_pos.entry(*pos).or_insert(p.state);
           }
           // FIXME: avoid cloning. could move this loop over child_edges into combine_messages
-          child_messages.push(edge.read_arc().sparse_partitions[si].msg_from_child.clone());
+          child_messages.push(edge.read_arc().partition_at(si).msg_from_child.clone());
         }
 
         // now that all variable positions are determined, check whether they are characters in each child
@@ -77,8 +78,8 @@ fn ingroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihoo
           let states = &mut child_states[ci];
           for pos in variable_pos.keys() {
             // test whether pos in states, otherwise check whether it is in non-char
-            if !states.contains_key(pos) && range_contains(&c.read_arc().sparse_partitions[si].seq.non_char, *pos) {
-              if range_contains(&c.read_arc().sparse_partitions[si].seq.gaps, *pos) {
+            if !states.contains_key(pos) && range_contains(&c.read_arc().partition_at(si).seq.non_char, *pos) {
+              if range_contains(&c.read_arc().partition_at(si).seq.gaps, *pos) {
                 states.insert(*pos, alphabet.gap());
               } else {
                 states.insert(*pos, alphabet.unknown());
@@ -108,7 +109,7 @@ fn ingroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihoo
           get_exactly_one_mut(&mut node.parent_edges).expect("Only nodes with exactly one parent are supported"); // HACK
         let branch_length = edge_to_parent.weight().unwrap_or(0.0);
         let branch_length = fix_branch_length(*length, branch_length);
-        let edge_data = &mut edge_to_parent.sparse_partitions[si];
+        let edge_data = &mut edge_to_parent.partition_at(si);
         edge_data.msg_from_child = propagate_raw(
           &gtr.expQt(branch_length).t().to_owned(),
           &msg_to_parent,
@@ -261,9 +262,9 @@ fn combine_messages(
   Ok(seq_dis)
 }
 
-fn outgroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihood]) {
+fn outgroup_profiles_sparse(graph: &ReprGraph, partitions: &[PartitionLikelihood]) {
   graph.par_iter_breadth_first_forward(|mut node| {
-    for (si, seq_info) in node.payload.sparse_partitions.iter_mut().enumerate() {
+    for (si, seq_info) in node.payload.partitions().iter_mut().enumerate() {
       let PartitionLikelihood { gtr, alphabet, length } = &partitions[si];
       if !node.is_root {
         // the root has no input from parents, profile is already calculated
@@ -275,7 +276,7 @@ fn outgroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikeliho
           let mut parent_state: BTreeMap<usize, AsciiChar> = btreemap! {};
           let mut child_state: BTreeMap<usize, AsciiChar> = btreemap! {};
           // go over parent variable position and get reference state
-          for (pos, p) in &edge.read_arc().sparse_partitions[si].msg_to_child.variable {
+          for (pos, p) in &edge.read_arc().partition_at(si).msg_to_child.variable {
             if !range_contains(&seq_info.seq.gaps, *pos) {
               // no need to track this position if the position is non-char
               variable_pos.entry(*pos).or_insert(p.state);
@@ -283,13 +284,13 @@ fn outgroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikeliho
             }
           }
           // record all states that involve a mutation
-          for m in &edge.read_arc().sparse_partitions[si].subs {
+          for m in &edge.read_arc().partition_at(si).subs {
             variable_pos.insert(m.pos(), m.qry());
             parent_state.entry(m.pos()).or_insert_with(|| m.reff());
             child_state.entry(m.pos()).or_insert_with(|| m.qry());
           }
           // go over variable position in children (info pushed to parent) and get reference state
-          for (pos, p) in &edge.read_arc().sparse_partitions[si].msg_to_parent.variable {
+          for (pos, p) in &edge.read_arc().partition_at(si).msg_to_parent.variable {
             variable_pos.entry(*pos).or_insert(p.state);
             child_state.entry(*pos).or_insert(p.state);
           }
@@ -299,11 +300,11 @@ fn outgroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikeliho
 
           msgs_to_combine.push(propagate_raw(
             &gtr.expQt(branch_length),
-            &edge.read_arc().sparse_partitions[si].msg_to_child,
-            edge.read_arc().sparse_partitions[si].transmission.as_ref(),
+            &edge.read_arc().partition_at(si).msg_to_child,
+            edge.read_arc().partition_at(si).transmission.as_ref(),
           ));
           // add combined message from children (which is sent to the parent).
-          msgs_to_combine.push(edge.read_arc().sparse_partitions[si].msg_to_parent.clone());
+          msgs_to_combine.push(edge.read_arc().partition_at(si).msg_to_parent.clone());
           // NOTE: this empty parent_state is necessary since msgs and states are iterated over in a zip
           ref_states.push(parent_state);
           ref_states.push(child_state);
@@ -327,10 +328,10 @@ fn outgroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikeliho
           variable_indel: btreemap! {},
           fixed: btreemap! {},
           fixed_counts: seq_info.seq.composition.clone(),
-          log_lh: seq_info.profile.log_lh - child_edge.sparse_partitions[si].msg_from_child.log_lh,
+          log_lh: seq_info.profile.log_lh - child_edge.partition_at(si).msg_from_child.log_lh,
         };
 
-        let child_dis = &child_edge.sparse_partitions[si].msg_from_child;
+        let child_dis = &child_edge.partition_at(si).msg_from_child;
         let mut parent_states: BTreeMap<usize, AsciiChar> = btreemap! {};
         let mut child_states: BTreeMap<usize, AsciiChar> = btreemap! {};
         for (pos, p) in &seq_info.profile.variable {
@@ -341,7 +342,7 @@ fn outgroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikeliho
           child_states.insert(*pos, p.state);
           parent_states.entry(*pos).or_insert(p.state);
         }
-        for sub in &child_edge.sparse_partitions[si].subs {
+        for sub in &child_edge.partition_at(si).subs {
           child_states.insert(sub.pos(), sub.qry());
           parent_states.insert(sub.pos(), sub.reff());
         }
@@ -378,21 +379,21 @@ fn outgroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikeliho
           seq_dis.fixed.insert(*s, dis / norm);
         }
         seq_dis.log_lh += delta_ll;
-        child_edge.sparse_partitions[si].msg_to_child = seq_dis;
+        child_edge.partition_at(si).msg_to_child = seq_dis;
       }
     }
     GraphTraversalContinuation::Continue
   });
 }
 
-pub fn run_marginal_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihood]) -> Result<f64, Report> {
+pub fn run_marginal_sparse(graph: &ReprGraph, partitions: &[PartitionLikelihood]) -> Result<f64, Report> {
   ingroup_profiles_sparse(graph, partitions);
   let log_lh = graph
     .get_exactly_one_root()?
     .read_arc()
     .payload()
     .read_arc()
-    .sparse_partitions
+    .partitions()
     .iter()
     .map(|p| p.profile.log_lh)
     .sum();
@@ -402,10 +403,10 @@ pub fn run_marginal_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihoo
 }
 
 pub fn ancestral_reconstruction_marginal_sparse(
-  graph: &SparseGraph,
+  graph: &ReprGraph,
   include_leaves: bool,
   partitions: &[PartitionLikelihood],
-  mut visitor: impl FnMut(&SparseNode, Seq),
+  mut visitor: impl FnMut(&ReprNode, Seq),
 ) -> Result<(), Report> {
   let n_partitions = partitions.len();
 
@@ -417,15 +418,15 @@ pub fn ancestral_reconstruction_marginal_sparse(
     let seq: Seq = (0..n_partitions)
       .flat_map(|si| {
         let PartitionLikelihood { alphabet, .. } = &partitions[si];
-        let node_seq = &node.payload.sparse_partitions[si].seq;
-        let node_profile = &node.payload.sparse_partitions[si].profile;
+        let node_seq = &node.payload.partition_at(si).seq;
+        let node_profile = &node.payload.partition_at(si).profile;
 
         let mut seq = if node.is_root {
           node_seq.sequence.clone()
         } else {
           let (parent, edge) = node.get_exactly_one_parent().unwrap();
-          let parent = &parent.read_arc().sparse_partitions[si];
-          let edge = &edge.read_arc().sparse_partitions[si];
+          let parent = &parent.read_arc().partition_at(si);
+          let edge = &edge.read_arc().partition_at(si);
 
           let mut seq = parent.seq.sequence.clone();
 
@@ -457,7 +458,7 @@ pub fn ancestral_reconstruction_marginal_sparse(
           seq[*pos] = alphabet.char(states.dis.argmax().unwrap());
         }
 
-        node.payload.sparse_partitions[si].seq.sequence = seq.clone();
+        node.payload.partition_at(si).seq.sequence = seq.clone();
 
         seq
       })
@@ -525,7 +526,7 @@ mod tests {
     .map(|fasta| (fasta.seq_name, fasta.seq))
     .collect::<BTreeMap<_, _>>();
 
-    let graph: SparseGraph = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let graph: ReprGraph = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
     let alphabet = Alphabet::default();
 
@@ -572,7 +573,7 @@ mod tests {
     "#},
       &NUC_ALPHABET,
     )?;
-    let graph: SparseGraph = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let graph: ReprGraph = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
     let alphabet = Alphabet::default();
 
@@ -600,12 +601,7 @@ mod tests {
     pretty_assert_ulps_eq!(-56.946298878390444, log_lh, epsilon = 1e-6);
 
     // test variable position distribution at the root (pos 0)
-    let root = &graph
-      .get_exactly_one_root()?
-      .read_arc()
-      .payload()
-      .read_arc()
-      .sparse_partitions[0];
+    let root = &graph.get_exactly_one_root()?.read_arc().payload().read_arc().partition_at(0);
     let pos: usize = 0;
     let pos_zero_root = array![0.28212327, 0.21643546, 0.13800802, 0.36343326];
     pretty_assert_ulps_eq!(&root.profile.variable[&pos].dis, &pos_zero_root, epsilon = 1e-6);
@@ -617,7 +613,7 @@ mod tests {
       .read_arc()
       .payload()
       .read_arc()
-      .sparse_partitions[0];
+      .partition_at(0);
 
     // test variable position distribution at internal node (pos 0)
     let pos: usize = 0;

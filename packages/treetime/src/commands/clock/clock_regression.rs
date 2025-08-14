@@ -131,7 +131,7 @@ mod tests {
     let naive_rate = calculate_naive_rate(&dates, &divs);
 
     for n in graph.get_leaves() {
-      let name = n.read_arc().payload().read_arc().name().unwrap().as_ref().to_owned();
+      let name = n.read_arc().payload().read_arc().get_name_maybe().unwrap().as_ref().to_owned();
       n.write_arc().payload().write_arc().date = Some(dates[&name]);
     }
 

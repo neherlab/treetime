@@ -44,7 +44,7 @@ pub struct ConverterData {
 impl GraphNode for ConverterNode {}
 
 impl Named for ConverterNode {
-  fn name(&self) -> Option<impl AsRef<str>> {
+  fn get_name_maybe(&self) -> Option<impl AsRef<str>> {
     self.name.as_deref()
   }
   fn set_name(&mut self, name: Option<impl AsRef<str>>) {

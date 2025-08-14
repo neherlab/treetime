@@ -10,7 +10,7 @@ pub fn assign_node_names<N: GraphNode + Named, E: GraphEdge, D: Sync + Send>(gra
     .map(|node| {
       node
         .read_arc()
-        .name()
+        .get_name_maybe()
         .map_or_else(|| o!("Unknown"), |name| name.as_ref().to_owned())
     })
     .collect::<HashSet<String>>();
@@ -26,7 +26,7 @@ pub fn assign_node_names<N: GraphNode + Named, E: GraphEdge, D: Sync + Send>(gra
        is_root,
        ..
      }| {
-      if payload.name().is_none_or(|name| name.as_ref().is_empty()) {
+      if payload.get_name_maybe().is_none_or(|name| name.as_ref().is_empty()) {
         let mut name = format!("NODE_{internal_node_counter:07}");
         while names.contains(&name) {
           internal_node_counter += 1;

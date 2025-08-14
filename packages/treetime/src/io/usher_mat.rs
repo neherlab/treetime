@@ -234,7 +234,7 @@ where
     let context = UsherTreeContext {
       node: UsherNodeImpl {
         index: i,
-        name: node.payload.name().map(|name| name.as_ref().to_owned()),
+        name: node.payload.get_name_maybe().map(|name| name.as_ref().to_owned()),
         branch_length: 0.0,
         clade_annotations: tree.metadata[i].clade_annotations.clone(),
         mutations: tree.node_mutations[i].mutation.clone(),

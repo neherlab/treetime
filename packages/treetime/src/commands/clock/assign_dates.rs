@@ -14,7 +14,7 @@ pub fn assign_dates(graph: &ClockGraph, dates: &DatesMap) -> Result<(), Report> 
 
   let mut n_bad_leaves = 0;
   graph.iter_depth_first_postorder_forward(|mut node| {
-    let name = node.payload.name().map(|s| s.as_ref().to_owned());
+    let name = node.payload.get_name_maybe().map(|s| s.as_ref().to_owned());
     let date: Option<f64> = name
       .and_then(|name| dates.get(&name))
       .and_then(|d| d.as_ref().map(DateOrRange::mean))

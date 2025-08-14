@@ -20,12 +20,10 @@
 //!
 //!   d^2logLh/dt^2 = sum_i sum_j \sum_c k_c \lambda_c*\lambda^i_c exp(\lambda^i_c t) / \sum_c k_c exp(\lambda^i_c t) - k_c \lambda_c*\exp(\lambda^i_c t) / \sum_c k_c exp(\lambda^i_c t)
 //!
+use crate::representation::repr_graph::ReprGraph;
 use crate::{
   gtr::gtr::GTR,
-  representation::{
-    graph_dense::{DenseGraph, DenseSeqDis},
-    partitions_likelihood::PartitionLikelihood,
-  },
+  representation::{graph_dense::DenseSeqDis, partitions_likelihood::PartitionLikelihood},
 };
 use eyre::Report;
 use ndarray::{Array2, Axis};
@@ -66,14 +64,14 @@ pub fn get_coefficients(msg_to_parent: &DenseSeqDis, msg_to_child: &DenseSeqDis,
   msg_to_child.dis.dot(&gtr.v) * msg_to_parent.dis.dot(&gtr.v_inv.t())
 }
 
-pub fn initial_guess(graph: &DenseGraph, partitions: &[PartitionLikelihood]) -> () {
+pub fn initial_guess(graph: &ReprGraph, partitions: &[PartitionLikelihood]) -> () {
   // FIXME: this initial guess needs to be improved
   let total_length: usize = partitions.iter().map(|part| part.length).sum();
   let one_mutation = 1.0 / total_length as f64;
   for edge in graph.get_edges() {
     let mut edge = edge.write_arc().payload().write_arc();
     let mut differences: usize = 0;
-    for partition in &edge.dense_partitions {
+    for partition in &edge.partitions().iter() {
       for (row1, row2) in zip(partition.msg_to_parent.dis.rows(), partition.msg_to_child.dis.rows()) {
         if row1[row2.argmax().unwrap()] < 0.5 {
           differences += 1;
@@ -85,7 +83,7 @@ pub fn initial_guess(graph: &DenseGraph, partitions: &[PartitionLikelihood]) -> 
   }
 }
 
-pub fn run_optimize_dense(graph: &DenseGraph, partitions: &[PartitionLikelihood]) -> Result<(), Report> {
+pub fn run_optimize_dense(graph: &ReprGraph, partitions: &[PartitionLikelihood]) -> Result<(), Report> {
   let total_length: usize = partitions.iter().map(|part| part.length).sum();
   let one_mutation = 1.0 / total_length as f64;
   let n_partitions = partitions.len();
@@ -96,8 +94,8 @@ pub fn run_optimize_dense(graph: &DenseGraph, partitions: &[PartitionLikelihood]
     let coefficients = (0..n_partitions)
       .map(|pi| {
         get_coefficients(
-          &edge.dense_partitions[pi].msg_to_parent,
-          &edge.dense_partitions[pi].msg_to_child,
+          &edge.partitions[pi].msg_to_parent,
+          &edge.partitions[pi].msg_to_child,
           &partitions[pi].gtr,
         )
       })
