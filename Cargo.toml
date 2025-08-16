@@ -76,6 +76,7 @@ csv = "=1.3.1"
 ctor = "=0.4.2"
 derive_more = { version = "=2.0.1", features = ["full"] }
 env_logger = "=0.11.8"
+enum-extract-macro = "=0.1.1"
 eyre = "=0.6.12"
 gcollections = "=1.5.0"
 getset = "=0.1.5"

@@ -1,5 +1,7 @@
 use crate::graph::edge::GraphEdgeKey;
+use crate::make_internal_report;
 use derive_more::Display;
+use eyre::Report;
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
@@ -9,11 +11,21 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 /// Defines how to read and write node name
 pub trait Named {
-  fn name(&self) -> Option<impl AsRef<str>>;
-  fn set_name(&mut self, name: Option<impl AsRef<str>>);
+  fn get_name(&self) -> Result<&str, Report> {
+    self
+      .get_name_maybe()
+      .ok_or_else(|| make_internal_report!("Node name is not set"))
+  }
+  fn get_name_maybe(&self) -> Option<&str>;
+  fn set_name(&mut self, name: Option<String>);
 }
 
-pub trait GraphNode: Clone + Debug + Sync + Send {}
+pub trait Described {
+  fn get_desc(&self) -> Option<&str>;
+  fn set_desc(&mut self, desc: Option<String>);
+}
+
+pub trait GraphNode: Debug + Sync + Send {}
 
 #[derive(Copy, Clone, Debug, Display, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct GraphNodeKey(pub usize);

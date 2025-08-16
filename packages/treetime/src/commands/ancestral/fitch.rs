@@ -1,11 +1,15 @@
 #![allow(dead_code)]
 use crate::alphabet::alphabet::{FILL_CHAR, NON_CHAR, VARIABLE_CHAR};
 use crate::graph::breadth_first::GraphTraversalContinuation;
+use crate::graph::node::Named;
 use crate::io::fasta::FastaRecord;
+use crate::representation::edge_partition::EdgePartition;
 use crate::representation::graph_sparse::{
-  Deletion, ParsimonySeqDis, SparseGraph, SparseNode, SparseSeqDis, SparseSeqEdge, SparseSeqInfo, SparseSeqNode,
+  Deletion, ParsimonySeqDis, SparseEdgePartition, SparseNodePartition, SparseSeqDis, SparseSeqInfo,
 };
+use crate::representation::node_partition::NodePartition;
 use crate::representation::partitions_parsimony::{PartitionParsimony, PartitionParsimonyWithAln};
+use crate::representation::repr_graph::{ReprGraph, ReprNode};
 use crate::representation::seq::Seq;
 use crate::representation::state_set::BitSet128;
 use crate::representation::state_set::{StateSet, StateSetStatus};
@@ -22,45 +26,43 @@ use itertools::Itertools;
 use maplit::btreemap;
 use ndarray::AssignElem;
 
-fn attach_seqs_to_graph(graph: &SparseGraph, partitions: &[PartitionParsimonyWithAln]) -> Result<(), Report> {
+fn attach_seqs_to_graph(graph: &ReprGraph, partitions: &[PartitionParsimonyWithAln]) -> Result<(), Report> {
   for leaf in graph.get_leaves() {
     let mut leaf = leaf.read_arc().payload().write_arc();
 
-    let leaf_name = leaf.name.as_ref().ok_or_else(|| {
-      make_report!("Expected all leaf nodes to have names, such that they can be matched to their corresponding sequences. But found a leaf node that has no name.")
-    })?.to_owned();
+    let leaf_name = leaf.get_name().wrap_err(
+      "Expected all leaf nodes to have names, such that they can be matched to their corresponding sequences. But found a leaf node that has no name."
+    )?.to_owned();
 
     // FIXME: all descs are the same for fasta partitions, so the mutable assignment here is needlessly complicated
     let mut desc = None;
 
-    let sparse_partitions = partitions
+    let partitions = partitions
       .iter()
-      .map(|PartitionParsimonyWithAln { alphabet, aln, length }| {
-        // TODO(perf): this might be slow if there are many sequences
-        let leaf_fasta = aln
-          .iter()
-          .find(|fasta| fasta.seq_name == leaf_name)
-          .ok_or_else(|| make_report!("Leaf sequence not found: '{leaf_name}'"))?;
+      .map(
+        |PartitionParsimonyWithAln { alphabet, aln, length }| -> Result<NodePartition, Report> {
+          // TODO(perf): this might be slow if there are many sequences
+          let leaf_fasta = aln
+            .iter()
+            .find(|fasta| fasta.seq_name == leaf_name)
+            .ok_or_else(|| make_report!("Leaf sequence not found: '{leaf_name}'"))?;
 
-        desc.assign_elem(leaf_fasta.desc.clone());
+          desc.assign_elem(leaf_fasta.desc.clone());
 
-        //TODO: we could optionally emit a warning here and continue with a sequence that is entire missing...
+          //TODO: we could optionally emit a warning here and continue with a sequence that is entire missing...
 
-        SparseSeqNode::new(&leaf_fasta.seq, alphabet)
-      })
-      .collect::<Result<_, Report>>()?;
+          NodePartition::sparse(&leaf_fasta.seq, alphabet)
+        },
+      )
+      .try_collect()?;
 
-    *leaf = SparseNode {
-      name: Some(leaf_name),
-      desc,
-      sparse_partitions,
-    }
+    *leaf = ReprNode::new(Some(leaf_name), desc, partitions);
   }
 
   Ok(())
 }
 
-fn fitch_backwards(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]) {
+fn fitch_backwards(graph: &ReprGraph, sparse_partitions: &[PartitionParsimony]) {
   let n_partitions = sparse_partitions.len();
 
   graph.par_iter_breadth_first_backward(|mut node| {
@@ -70,7 +72,11 @@ fn fitch_backwards(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]
 
     // initialize sparse partition data structure on incoming edges (could be moved to children, writing to outgoing edges)
     for (_, edge) in &node.children {
-      edge.write_arc().sparse_partitions = vec![SparseSeqEdge::default(); n_partitions];
+      edge.write_arc().set_partitions(
+        (0..n_partitions)
+          .map(|_| Box::new(SparseEdgePartition::default()) as EdgePartition)
+          .collect_vec(),
+      );
     }
 
     for si in 0..n_partitions {
@@ -85,7 +91,7 @@ fn fitch_backwards(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]
 
       let children = children
         .iter()
-        .map(|(c, e)| (&c.sparse_partitions[si].seq, &e.sparse_partitions[si]))
+        .map(|(c, e)| (c.partition_at(si), e.partition_at(si)))
         .collect_vec();
 
       let n_children = children.len();
@@ -221,30 +227,33 @@ fn fitch_backwards(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]
         }
       });
 
-      node.payload.sparse_partitions.push(SparseSeqNode {
-        seq: SparseSeqInfo {
-          gaps,
-          unknown,
-          non_char,
-          fitch: seq_dis,
-          sequence,
-          composition: Composition::new(alphabet.chars(), alphabet.gap()),
-        },
-        profile: SparseSeqDis {
-          variable: btreemap! {},
-          variable_indel: btreemap! {},
-          fixed: btreemap! {},
-          fixed_counts: Composition::new(alphabet.chars(), alphabet.gap()),
-          log_lh: 0.0,
-        },
-      });
+      node.payload.set_partition_at(
+        si,
+        Box::new(SparseNodePartition {
+          seq: SparseSeqInfo {
+            gaps,
+            unknown,
+            non_char,
+            fitch: seq_dis,
+            sequence,
+            composition: Composition::new(alphabet.chars(), alphabet.gap()),
+          },
+          profile: SparseSeqDis {
+            variable: btreemap! {},
+            variable_indel: btreemap! {},
+            fixed: btreemap! {},
+            fixed_counts: Composition::new(alphabet.chars(), alphabet.gap()),
+            log_lh: 0.0,
+          },
+        }),
+      );
     }
 
     GraphTraversalContinuation::Continue
   });
 }
 
-fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]) {
+fn fitch_forward(graph: &ReprGraph, sparse_partitions: &[PartitionParsimony]) {
   let n_partitions = sparse_partitions.len();
 
   graph.par_iter_breadth_first_forward(|mut node| {
@@ -261,11 +270,11 @@ fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]) 
           variable_indel,
           ..
         },
-      } = &mut node.payload.sparse_partitions[si].seq;
+      } = &mut node.payload.partition_at(si).seq;
 
       if node.is_root {
         for (pos, states) in variable {
-          sequence[*pos] = states.get_one();
+          sequence[pos] = states.get_one();
         }
         // process indels as majority rule at the root
         for (r, indel) in variable_indel.iter() {
@@ -280,8 +289,8 @@ fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]) 
           .ok_or_else(|| make_internal_report!("Graphs with multiple parents per node are not yet supported"))
           .unwrap();
 
-        let parent = &parent.read_arc().sparse_partitions[si].seq;
-        let edge = &mut edge.write_arc().sparse_partitions[si];
+        let parent = &parent.read_arc().partition_at(si).seq;
+        let edge = &mut edge.write_arc().partition_at(si);
 
         *composition = parent.composition.clone();
 
@@ -395,9 +404,9 @@ fn fitch_forward(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]) 
   });
 }
 
-fn fitch_cleanup(graph: &SparseGraph) {
+fn fitch_cleanup(graph: &ReprGraph) {
   graph.par_iter_breadth_first_forward(|mut node| {
-    for SparseSeqNode { seq, .. } in &mut node.payload.sparse_partitions {
+    for SparseNodePartition { seq, .. } in &mut node.payload.partitions {
       // delete the variable position everywhere instead of leaves
       if !node.is_leaf {
         seq.fitch.variable = btreemap! {};
@@ -420,7 +429,7 @@ fn fitch_cleanup(graph: &SparseGraph) {
 }
 
 pub fn compress_sequences(
-  graph: &SparseGraph,
+  graph: &ReprGraph,
   partitions: Vec<PartitionParsimonyWithAln>,
 ) -> Result<Vec<PartitionParsimony>, Report> {
   attach_seqs_to_graph(graph, &partitions)?;
@@ -439,10 +448,10 @@ pub fn compress_sequences(
 /// Calls visitor function for every ancestral node, providing the node itself and its reconstructed sequence.
 /// Optionally reconstructs leaf sequences.
 pub fn ancestral_reconstruction_fitch(
-  graph: &SparseGraph,
+  graph: &ReprGraph,
   include_leaves: bool,
   partitions: &[PartitionParsimony],
-  mut visitor: impl FnMut(&SparseNode, &Seq),
+  mut visitor: impl FnMut(&ReprNode, &Seq),
 ) -> Result<(), Report> {
   let n_partitions = partitions.len();
 
@@ -456,25 +465,25 @@ pub fn ancestral_reconstruction_fitch(
 
       if !node.is_root {
         let (parent, edge) = node.get_exactly_one_parent().unwrap();
-        let parent_seq = &parent.read_arc().sparse_partitions[si].seq.sequence;
-        let edge_part = &edge.read_arc().sparse_partitions[si];
+        let parent_seq = &parent.read_arc().partition_at(si).seq.sequence;
+        let edge_part = &edge.read_arc().partition_at(si);
 
-        node.payload.sparse_partitions[si].seq.sequence = parent_seq.clone();
+        node.payload.partition_at(si).seq.sequence = parent_seq.clone();
 
         for sub in &edge_part.subs {
-          node.payload.sparse_partitions[si].seq.sequence[sub.pos()] = sub.qry();
+          node.payload.partition_at(si).seq.sequence[sub.pos()] = sub.qry();
         }
 
         for indel in &edge_part.indels {
           if indel.deletion {
-            node.payload.sparse_partitions[si].seq.sequence[indel.range.0..indel.range.1].fill(alphabet.gap());
+            node.payload.partition_at(si).seq.sequence[indel.range.0..indel.range.1].fill(alphabet.gap());
           } else {
-            node.payload.sparse_partitions[si].seq.sequence[indel.range.0..indel.range.1].copy_from_slice(&indel.seq);
+            node.payload.partition_at(si).seq.sequence[indel.range.0..indel.range.1].copy_from_slice(&indel.seq);
           }
         }
       }
 
-      let seq = &mut node.payload.sparse_partitions[si].seq;
+      let seq = &mut node.payload.partition_at(si).seq;
 
       for r in &mut seq.unknown {
         seq.sequence[r.0..r.1].fill(alphabet.unknown());
@@ -484,7 +493,7 @@ pub fn ancestral_reconstruction_fitch(
         seq.sequence[*pos] = alphabet.set_to_char(*states);
       }
 
-      visitor(&node.payload, &node.payload.sparse_partitions[si].seq.sequence);
+      visitor(&node.payload, &node.payload.partition_at(si).seq.sequence);
     }
   });
 
@@ -568,7 +577,7 @@ mod tests {
     .map(|fasta| (fasta.seq_name, fasta.seq))
     .collect::<BTreeMap<_, _>>();
 
-    let graph: SparseGraph = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let graph: ReprGraph = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
     let alphabet = Alphabet::default();
     let partitions = vec![PartitionParsimonyWithAln::new(alphabet, aln)?];
@@ -576,7 +585,7 @@ mod tests {
 
     let mut actual = BTreeMap::new();
     ancestral_reconstruction_fitch(&graph, false, &partitions, |node, seq| {
-      actual.insert(node.name.clone(), seq.to_string());
+      actual.insert(node.get_name().unwrap(), seq.to_string());
     })?;
 
     assert_eq!(
@@ -628,7 +637,7 @@ mod tests {
     .map(|fasta| (fasta.seq_name, fasta.seq))
     .collect::<BTreeMap<_, _>>();
 
-    let graph: SparseGraph = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let graph: ReprGraph = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
     let alphabet = Alphabet::default();
     let partitions = vec![PartitionParsimonyWithAln::new(alphabet, aln)?];
@@ -636,7 +645,7 @@ mod tests {
 
     let mut actual = BTreeMap::new();
     ancestral_reconstruction_fitch(&graph, true, &partitions, |node, seq| {
-      actual.insert(node.name.clone(), seq.to_string());
+      actual.insert(node.get_name().unwrap(), seq.to_string());
     })?;
 
     assert_eq!(
@@ -671,7 +680,7 @@ mod tests {
       &NUC_ALPHABET,
     )?;
 
-    let graph: SparseGraph = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let graph: ReprGraph = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
     let alphabet = Alphabet::default();
     let partitions = vec![PartitionParsimonyWithAln::new(alphabet, aln.clone())?];
@@ -763,7 +772,7 @@ mod tests {
       &NUC_ALPHABET,
     )?;
 
-    let graph: SparseGraph = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,(D:0.05,E:0.03)DE:0.01)CDE:0.05)root:0.01;")?;
+    let graph: ReprGraph = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,(D:0.05,E:0.03)DE:0.01)CDE:0.05)root:0.01;")?;
 
     let alphabet = Alphabet::default();
     let partitions = vec![PartitionParsimonyWithAln::new(alphabet.clone(), aln.clone())?];
@@ -854,7 +863,7 @@ mod tests {
       &NUC_ALPHABET,
     )?;
 
-    let graph: SparseGraph = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.05,E:0.03)CDE:0.05)root:0.01;")?;
+    let graph: ReprGraph = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.05,E:0.03)CDE:0.05)root:0.01;")?;
 
     let alphabet = Alphabet::default();
     let partitions = vec![PartitionParsimonyWithAln::new(alphabet.clone(), aln.clone())?];
@@ -907,7 +916,7 @@ mod tests {
     }
 
     for node in graph.get_nodes() {
-      let seq_info = &node.read_arc().payload().read_arc().sparse_partitions[0].seq;
+      let seq_info = &node.read_arc().payload().read_arc().partition_at(0).seq;
       let composition = Composition::with_sequence(seq_info.sequence.iter().copied(), alphabet.chars(), alphabet.gap());
       assert_eq!(&seq_info.composition, &composition);
     }
@@ -922,28 +931,28 @@ mod tests {
     let alphabet = Alphabet::default();
     let aln = read_many_fasta(&["../../data/lassa/L/50/aln.fasta.xz"], &alphabet)?;
 
-    let graph: SparseGraph = nwk_read_file("../../data/lassa/L/50/tree.nwk")?;
+    let graph: ReprGraph = nwk_read_file("../../data/lassa/L/50/tree.nwk")?;
     let partitions = vec![PartitionParsimonyWithAln::new(alphabet, aln.clone())?];
     let partitions = compress_sequences(&graph, partitions)?;
 
     // perform the ancestral reconstruction and save the sequences in a map
     let mut rec_seq = BTreeMap::new();
     ancestral_reconstruction_fitch(&graph, true, &partitions, |node, seq| {
-      rec_seq.insert(node.name.clone().unwrap(), seq.to_string());
+      rec_seq.insert(node.get_name().unwrap(), seq.to_string());
     })?;
 
     let alphabet = Alphabet::default();
     for node in graph.get_inner_nodes() {
-      let seq_info = &node.read_arc().payload().read_arc().sparse_partitions[0].seq;
-      let node_name = node.read_arc().payload().read_arc().name.clone().unwrap();
+      let seq_info = &node.read_arc().payload().read_arc().partition_at(0).seq;
+      let node_name = node.read_arc().payload().read_arc().get_name().unwrap();
       let composition = Composition::with_sequence(rec_seq[&node_name].chars(), alphabet.chars(), alphabet.gap());
       assert_eq!(&seq_info.composition, &composition);
     }
 
     let alphabet = Alphabet::default();
     for node in graph.get_leaves() {
-      let seq_info = &node.read_arc().payload().read_arc().sparse_partitions[0].seq;
-      let node_name = node.read_arc().payload().read_arc().name.clone().unwrap();
+      let seq_info = &node.read_arc().payload().read_arc().partition_at(0).seq;
+      let node_name = node.read_arc().payload().read_arc().get_name()?.to_owned();
       let input_seq = aln
         .iter()
         .find(|record| record.seq_name == node_name)
@@ -952,7 +961,7 @@ mod tests {
         .iter()
         .copied();
       let input_seq_str: String = input_seq.clone().map(|c| c.to_string()).collect();
-      assert_eq!(&input_seq_str, &rec_seq[&node_name]);
+      assert_eq!(&input_seq_str, &rec_seq[node_name]);
     }
     Ok(())
   }
@@ -960,19 +969,19 @@ mod tests {
   mod util {
     use super::*;
 
-    pub fn get_root_seq_info(graph: &SparseGraph) -> SparseSeqInfo {
+    pub fn get_root_seq_info(graph: &ReprGraph) -> SparseSeqInfo {
       graph
         .get_exactly_one_root()
         .unwrap()
         .read_arc()
         .payload()
         .read_arc()
-        .sparse_partitions[0]
+        .partition_at(0)
         .seq
         .clone()
     }
 
-    pub fn collect_muts(graph: &SparseGraph) -> BTreeMap<String, Vec<String>> {
+    pub fn collect_muts(graph: &ReprGraph) -> BTreeMap<String, Vec<String>> {
       let actual_muts: BTreeMap<_, _> = graph
         .get_edges()
         .iter()
@@ -980,7 +989,7 @@ mod tests {
         .map(|(i, e)| {
           let get_name = |node_id| {
             let node = graph.get_node(node_id).unwrap().read_arc();
-            node.payload().read_arc().name().unwrap().as_ref().to_owned()
+            node.payload().read_arc().get_name_maybe().unwrap().as_ref().to_owned()
           };
 
           let src = get_name(e.read_arc().source());
@@ -988,7 +997,10 @@ mod tests {
 
           (
             format!("{src}->{tar}"),
-            e.read_arc().payload().read_arc().sparse_partitions[0]
+            e.read_arc()
+              .payload()
+              .read_arc()
+              .partition_at(0)
               .subs
               .iter()
               .map(ToString::to_string)
@@ -999,14 +1011,14 @@ mod tests {
       actual_muts
     }
 
-    pub fn collect_indels(graph: &SparseGraph) -> BTreeMap<String, Vec<String>> {
+    pub fn collect_indels(graph: &ReprGraph) -> BTreeMap<String, Vec<String>> {
       let actual_indels: BTreeMap<_, _> = graph
         .get_edges()
         .iter()
         .map(|e| {
           let get_name = |node_id| {
             let node = graph.get_node(node_id).unwrap().read_arc();
-            node.payload().read_arc().name().unwrap().as_ref().to_owned()
+            node.payload().read_arc().get_name_maybe().unwrap().as_ref().to_owned()
           };
 
           let src = get_name(e.read_arc().source());
@@ -1014,7 +1026,10 @@ mod tests {
 
           (
             format!("{src}->{tar}"),
-            e.read_arc().payload().read_arc().sparse_partitions[0]
+            e.read_arc()
+              .payload()
+              .read_arc()
+              .partition_at(0)
               .indels
               .iter()
               .map(ToString::to_string)

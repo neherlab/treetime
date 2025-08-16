@@ -149,7 +149,14 @@ mod tests {
 
     let graph: ClockGraph = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
     for n in graph.get_leaves() {
-      let name = n.read_arc().payload().read_arc().name().unwrap().as_ref().to_owned();
+      let name = n
+        .read_arc()
+        .payload()
+        .read_arc()
+        .get_name_maybe()
+        .unwrap()
+        .as_ref()
+        .to_owned();
       n.write_arc().payload().write_arc().date = Some(dates[&name]);
     }
 

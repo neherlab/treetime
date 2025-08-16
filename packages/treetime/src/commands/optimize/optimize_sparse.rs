@@ -20,13 +20,11 @@
 //!
 //!   d^2logLh/dt^2 = sum_i sum_j \sum_c k_c \lambda_c*\lambda^i_c exp(\lambda^i_c t) / \sum_c k_c exp(\lambda^i_c t) - k_c \lambda_c*\exp(\lambda^i_c t) / \sum_c k_c exp(\lambda^i_c t)
 //!
+use crate::representation::repr_graph::ReprGraph;
 use crate::seq::mutation::Sub;
 use crate::{
   gtr::gtr::GTR,
-  representation::{
-    graph_sparse::{SparseGraph, SparseSeqEdge},
-    partitions_likelihood::PartitionLikelihood,
-  },
+  representation::{graph_sparse::SparseEdgePartition, partitions_likelihood::PartitionLikelihood},
 };
 use eyre::{OptionExt, Report};
 use itertools::Itertools;
@@ -43,7 +41,7 @@ struct PartitionContribution {
   eigenvalues: ndarray::Array1<f64>,
 }
 
-fn get_coefficients(edge: &SparseSeqEdge, gtr: &GTR) -> Result<PartitionContribution, Report> {
+fn get_coefficients(edge: &SparseEdgePartition, gtr: &GTR) -> Result<PartitionContribution, Report> {
   // Collect variable positions from msg_to_child, msg_to_parent, and the substitutions along the edge
   let variable_positions: Vec<usize> = edge
     .msg_to_child
@@ -136,13 +134,13 @@ fn evaluate_sparse(coefficients: &Vec<PartitionContribution>, branch_length: f64
   (likelihood, log_likelihood, derivative, second_derivative)
 }
 
-pub fn initial_guess_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihood]) -> () {
+pub fn initial_guess_sparse(graph: &ReprGraph, partitions: &[PartitionLikelihood]) -> () {
   let total_length: usize = partitions.iter().map(|part| part.length).sum();
   let one_mutation = 1.0 / total_length as f64;
   for edge in graph.get_edges() {
     let mut edge = edge.write_arc().payload().write_arc();
     let mut differences: usize = 0;
-    for partition in &edge.sparse_partitions {
+    for partition in &edge.partitions {
       differences += partition.subs.len();
     }
     let new_branch_length = differences as f64 * one_mutation;
@@ -150,14 +148,14 @@ pub fn initial_guess_sparse(graph: &SparseGraph, partitions: &[PartitionLikeliho
   }
 }
 
-pub fn run_optimize_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihood]) -> Result<(), Report> {
+pub fn run_optimize_sparse(graph: &ReprGraph, partitions: &[PartitionLikelihood]) -> Result<(), Report> {
   let total_length: usize = partitions.iter().map(|part| part.length).sum();
   let one_mutation = 1.0 / total_length as f64;
   let n_partitions = partitions.len();
   graph.get_edges().iter_mut().try_for_each(|edge| {
     let mut edge = edge.write_arc().payload().write_arc();
     let coefficients = (0..n_partitions)
-      .map(|pi| get_coefficients(&edge.sparse_partitions[pi], &partitions[pi].gtr))
+      .map(|pi| get_coefficients(&edge.partitions[pi], &partitions[pi].gtr))
       .collect::<Result<Vec<_>, Report>>()?;
     let mut branch_length = edge.branch_length.unwrap_or(0.0);
     let mut new_branch_length;

@@ -11,16 +11,14 @@ use crate::gtr::get_gtr::{get_gtr, get_gtr_dense};
 use crate::io::fasta::read_many_fasta;
 use crate::io::nex::{NexWriteOptions, nex_write_file};
 use crate::io::nwk::{EdgeToNwk, NodeToNwk, NwkWriteOptions, nwk_read_file, nwk_write_file};
-use crate::representation::graph_dense::DenseGraph;
-use crate::representation::graph_sparse::SparseGraph;
 use crate::representation::infer_dense::infer_dense;
 use crate::representation::partitions_likelihood::{PartitionLikelihood, PartitionLikelihoodWithAln};
 use crate::representation::partitions_parsimony::PartitionParsimonyWithAln;
+use crate::representation::repr_graph::ReprGraph;
 use crate::utils::float_fmt::float_to_significant_digits;
 use eyre::Report;
 use itertools::Itertools;
 use log::debug;
-use serde::Serialize;
 use std::path::Path;
 
 // The initial guess for dense is not working well, but optimization works without revisit after settling on optimization algorithm
@@ -55,7 +53,7 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
 
   // TODO: refactor to reduce duplication with `ancestral` as well as within the branches of this conditional
   if !dense {
-    let graph: SparseGraph = nwk_read_file(tree)?;
+    let graph: ReprGraph = nwk_read_file(tree)?;
     let partitions = vec![PartitionParsimonyWithAln::new(alphabet.clone(), aln)?];
     let partitions = compress_sequences(&graph, partitions)?;
 
@@ -79,7 +77,7 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
 
     write_graph(outdir, &graph)?;
   } else {
-    let graph: DenseGraph = nwk_read_file(tree)?;
+    let graph: ReprGraph = nwk_read_file(tree)?;
     let gtr = get_gtr_dense(model_name, &alphabet, &graph)?;
 
     let partitions_waln = vec![PartitionLikelihoodWithAln::new(gtr, alphabet, aln)?];
@@ -113,9 +111,9 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
 
 fn write_graph<N, E, D>(outdir: impl AsRef<Path>, graph: &crate::graph::graph::Graph<N, E, D>) -> Result<(), Report>
 where
-  N: GraphNode + NodeToNwk + Serialize,
-  E: GraphEdge + EdgeToNwk + Serialize,
-  D: Send + Sync + Default + Serialize,
+  N: GraphNode + NodeToNwk,
+  E: GraphEdge + EdgeToNwk,
+  D: Send + Sync + Default,
 {
   // json_write_file(
   //   outdir.as_ref().join("annotated_tree.graph.json"),

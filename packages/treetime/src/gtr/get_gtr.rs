@@ -1,8 +1,7 @@
 use crate::alphabet::alphabet::{Alphabet, AlphabetName};
 use crate::gtr::gtr::{GTR, GTRParams};
 use crate::gtr::infer_gtr::{InferGtrOptions, InferGtrResult, get_mutation_counts, infer_gtr};
-use crate::representation::graph_dense::DenseGraph;
-use crate::representation::graph_sparse::SparseGraph;
+use crate::representation::repr_graph::ReprGraph;
 use crate::{make_error, make_report};
 use clap::ValueEnum;
 use eyre::{Report, WrapErr};
@@ -21,7 +20,7 @@ pub enum GtrModelName {
   T92,
 }
 
-pub fn get_gtr(name: &GtrModelName, alphabet: &Alphabet, graph: &SparseGraph) -> Result<GTR, Report> {
+pub fn get_gtr(name: &GtrModelName, alphabet: &Alphabet, graph: &ReprGraph) -> Result<GTR, Report> {
   match name {
     GtrModelName::Infer => {
       let counts = get_mutation_counts(graph, alphabet)?;
@@ -39,7 +38,7 @@ pub fn get_gtr(name: &GtrModelName, alphabet: &Alphabet, graph: &SparseGraph) ->
   .wrap_err_with(|| make_report!("When creating model '{name}'"))
 }
 
-pub fn get_gtr_dense(name: &GtrModelName, _alphabet: &Alphabet, _graph: &DenseGraph) -> Result<GTR, Report> {
+pub fn get_gtr_dense(name: &GtrModelName, _alphabet: &Alphabet, _graph: &ReprGraph) -> Result<GTR, Report> {
   match name {
     GtrModelName::Infer => {
       unimplemented!("Model inference is not yet implemented for dense representation. Please set model explicitly.")

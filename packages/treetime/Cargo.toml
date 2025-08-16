@@ -38,6 +38,7 @@ crossbeam-skiplist = { workspace = true }
 csv = { workspace = true }
 ctor = { workspace = true }
 derive_more = { workspace = true }
+enum-extract-macro = { workspace = true }
 env_logger = { workspace = true }
 eyre = { workspace = true }
 flate2 = { workspace = true }
@@ -53,9 +54,9 @@ log = { workspace = true }
 maplit = { workspace = true }
 multimap = { workspace = true }
 num = { workspace = true }
+num_cpus = { workspace = true }
 num-integer = { workspace = true }
 num-traits = { workspace = true }
-num_cpus = { workspace = true }
 ordered-float = { workspace = true }
 parking_lot = { workspace = true }
 petgraph = { workspace = true }

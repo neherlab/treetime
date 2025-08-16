@@ -8,8 +8,8 @@ use crate::io::fasta::read_many_fasta;
 use crate::io::nex::{NexWriteOptions, nex_write_file};
 use crate::io::nwk::{EdgeToNwk, NodeToNwk, NwkWriteOptions, nwk_read_file, nwk_write_file};
 use crate::make_error;
-use crate::representation::graph_sparse::SparseGraph;
 use crate::representation::partitions_parsimony::PartitionParsimonyWithAln;
+use crate::representation::repr_graph::ReprGraph;
 use crate::utils::iter::iter_union;
 use crate::utils::parse_delimited::{parse_delimited_file, parse_delimited_str};
 use eyre::Report;
@@ -46,7 +46,7 @@ pub fn run_prune(args: &TreetimePruneArgs) -> Result<(), Report> {
     prune_nodes_list_file_delimiter,
   } = args;
 
-  let mut graph: SparseGraph = nwk_read_file(tree)?;
+  let mut graph: ReprGraph = nwk_read_file(tree)?;
 
   if *prune_empty {
     assert!(
@@ -96,7 +96,7 @@ fn parse_node_names(
 }
 
 fn prune_nodes(
-  graph: &mut SparseGraph,
+  graph: &mut ReprGraph,
   prune_short: Option<f64>,
   prune_empty: bool,
   node_names: &BTreeSet<String>,
@@ -109,7 +109,7 @@ fn prune_nodes(
 }
 
 fn prune_internal_nodes(
-  graph: &mut SparseGraph,
+  graph: &mut ReprGraph,
   prune_short: Option<f64>,
   prune_empty: bool,
   node_names: &BTreeSet<String>,
@@ -132,7 +132,7 @@ fn prune_internal_nodes(
       let should_prune_empty = prune_empty && edge.payload().read_arc().num_muts() == Some(0);
 
       let target_node = graph.get_node(edge.target())?.read_arc().payload().read_arc();
-      let name = target_node.name();
+      let name = target_node.get_name_maybe();
       let should_prune_by_name = name.is_some_and(|name| node_names.contains(name.as_ref()));
 
       let should_prune = should_prune_short || should_prune_empty || should_prune_by_name;
@@ -146,7 +146,7 @@ fn prune_internal_nodes(
   })
 }
 
-fn prune_leaves(graph: &mut SparseGraph, node_names: &BTreeSet<String>) -> Result<(), Report> {
+fn prune_leaves(graph: &mut ReprGraph, node_names: &BTreeSet<String>) -> Result<(), Report> {
   #[allow(clippy::needless_collect)]
   let edges_to_collapse = graph
     .get_edges()
@@ -160,7 +160,7 @@ fn prune_leaves(graph: &mut SparseGraph, node_names: &BTreeSet<String>) -> Resul
       }
 
       let target_node = graph.get_node(edge.target())?.read_arc().payload().read_arc();
-      let name = target_node.name();
+      let name = target_node.get_name_maybe();
       let should_prune_by_name = name.is_some_and(|name| node_names.contains(name.as_ref()));
 
       should_prune_by_name.then(|| edge.key())
@@ -173,7 +173,7 @@ fn prune_leaves(graph: &mut SparseGraph, node_names: &BTreeSet<String>) -> Resul
   })
 }
 
-fn collapse_sparse_edges_from_leaf_recursive(graph: &mut SparseGraph, edge_key: GraphEdgeKey) -> Result<(), Report> {
+fn collapse_sparse_edges_from_leaf_recursive(graph: &mut ReprGraph, edge_key: GraphEdgeKey) -> Result<(), Report> {
   let mut current_edge_key = edge_key;
 
   loop {
@@ -196,11 +196,11 @@ fn collapse_sparse_edges_from_leaf_recursive(graph: &mut SparseGraph, edge_key: 
   Ok(())
 }
 
-fn should_collapse_parent(graph: &SparseGraph, node_key: GraphNodeKey) -> bool {
+fn should_collapse_parent(graph: &ReprGraph, node_key: GraphNodeKey) -> bool {
   graph.has_at_most_one_child(node_key) && !graph.is_root(node_key)
 }
 
-fn collapse_sparse_edge(graph: &mut SparseGraph, edge_key: GraphEdgeKey) -> Result<(), Report> {
+fn collapse_sparse_edge(graph: &mut ReprGraph, edge_key: GraphEdgeKey) -> Result<(), Report> {
   let (_, removed_edge, new_edges) = graph.collapse_edge(edge_key)?;
   let removed_edge = removed_edge.payload().read_arc();
 
@@ -213,7 +213,7 @@ fn collapse_sparse_edge(graph: &mut SparseGraph, edge_key: GraphEdgeKey) -> Resu
     }
 
     // Union of substitutions per partition
-    for (removed_partition, new_partition) in izip!(&removed_edge.sparse_partitions, &mut new_edge.sparse_partitions) {
+    for (removed_partition, new_partition) in izip!(&removed_edge.partitions, &mut new_edge.partitions) {
       new_partition.subs = iter_union(&removed_partition.subs, &new_partition.subs)
         .cloned()
         .collect_vec();
@@ -249,34 +249,35 @@ mod tests {
   use super::*;
   use crate::graph::graph::Graph;
   use crate::io::nwk::{nwk_read_str, nwk_write_str};
-  use crate::representation::graph_sparse::{SparseEdge, SparseNode, SparseSeqEdge};
+  use crate::representation::graph_sparse::SparseEdgePartition;
+  use crate::representation::repr_graph::{ReprEdge, ReprNode};
   use crate::seq::mutation::Sub;
   use pretty_assertions::assert_eq;
 
-  fn create_test_edge(branch_length: Option<f64>, num_muts: Option<usize>) -> SparseEdge {
+  fn create_test_edge(branch_length: Option<f64>, num_muts: Option<usize>) -> ReprEdge {
     let sparse_partitions = if let Some(num_muts) = num_muts {
       if num_muts > 0 {
-        vec![SparseSeqEdge {
+        vec![SparseEdgePartition {
           subs: (0..num_muts).map(|i| Sub::new('A', i, 'T').unwrap()).collect_vec(),
           ..Default::default()
         }]
       } else {
-        vec![SparseSeqEdge::default()]
+        vec![SparseEdgePartition::default()]
       }
     } else {
       // When num_muts is None, create an edge with no partitions to represent unknown mutations
       vec![]
     };
 
-    SparseEdge {
-      sparse_partitions,
+    ReprEdge {
+      partitions: sparse_partitions,
       branch_length,
     }
   }
 
   #[test]
   fn test_prune_nodes_basic() -> Result<(), Report> {
-    let mut graph: SparseGraph = nwk_read_str("(A:0.0,B:0.1)root;")?;
+    let mut graph: ReprGraph = nwk_read_str("(A:0.0,B:0.1)root;")?;
     prune_nodes(&mut graph, Some(0.0), false, &btreeset! {})?;
     let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
     assert_eq!(
@@ -288,7 +289,7 @@ mod tests {
 
   #[test]
   fn test_prune_nodes_with_threshold() -> Result<(), Report> {
-    let mut graph: SparseGraph = nwk_read_str("(A:0.01,B:0.02,C:0.1)root;")?;
+    let mut graph: ReprGraph = nwk_read_str("(A:0.01,B:0.02,C:0.1)root;")?;
     prune_nodes(&mut graph, Some(0.05), false, &btreeset! {})?;
     let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
     assert_eq!(
@@ -300,7 +301,7 @@ mod tests {
 
   #[test]
   fn test_prune_nodes_preserves_large_edges() -> Result<(), Report> {
-    let mut graph: SparseGraph = nwk_read_str("(A:0.1,B:0.2)root;")?;
+    let mut graph: ReprGraph = nwk_read_str("(A:0.1,B:0.2)root;")?;
     prune_nodes(&mut graph, Some(0.01), false, &btreeset! {})?;
     let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
     assert_eq!(
@@ -312,7 +313,7 @@ mod tests {
 
   #[test]
   fn test_prune_nodes_empty_graph() -> Result<(), Report> {
-    let mut graph: SparseGraph = Graph::new();
+    let mut graph: ReprGraph = Graph::new();
     prune_nodes(&mut graph, Some(0.0), false, &btreeset! {})?;
     assert!(graph.get_nodes().is_empty());
     Ok(())
@@ -320,7 +321,7 @@ mod tests {
 
   #[test]
   fn test_prune_nodes_handles_none_weights() -> Result<(), Report> {
-    let mut graph: SparseGraph = nwk_read_str("(A:0.0,B:0.1)root;")?;
+    let mut graph: ReprGraph = nwk_read_str("(A:0.0,B:0.1)root;")?;
     prune_nodes(&mut graph, Some(0.0), false, &btreeset! {})?;
     let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
     assert_eq!(
@@ -332,7 +333,7 @@ mod tests {
 
   #[test]
   fn test_prune_nodes_preserves_terminal_nodes() -> Result<(), Report> {
-    let mut graph: SparseGraph = nwk_read_str("(A:0.00001,B:0.1)root;")?;
+    let mut graph: ReprGraph = nwk_read_str("(A:0.00001,B:0.1)root;")?;
     prune_nodes(&mut graph, Some(0.001), false, &btreeset! {})?;
     let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
     assert_eq!(
@@ -344,7 +345,7 @@ mod tests {
 
   #[test]
   fn test_prune_nodes_complex_tree() -> Result<(), Report> {
-    let mut graph: SparseGraph =
+    let mut graph: ReprGraph =
       nwk_read_str("(((A:0,B:0.1)internal1:0.00002,(C:0.00003,D:0.1)internal2:0.1)internal3:0.00004,E:0.00005)root;")?;
     prune_nodes(&mut graph, Some(0.01), false, &btreeset! {})?;
     let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
@@ -357,17 +358,17 @@ mod tests {
 
   #[test]
   fn test_prune_nodes_prune_empty_preserves_leaves() -> Result<(), Report> {
-    let mut graph = SparseGraph::new();
+    let mut graph = ReprGraph::new();
 
-    let root = graph.add_node(SparseNode {
+    let root = graph.add_node(ReprNode {
       name: Some("root".to_owned()),
       ..Default::default()
     });
-    let a = graph.add_node(SparseNode {
+    let a = graph.add_node(ReprNode {
       name: Some("A".to_owned()),
       ..Default::default()
     });
-    let b = graph.add_node(SparseNode {
+    let b = graph.add_node(ReprNode {
       name: Some("B".to_owned()),
       ..Default::default()
     });
@@ -390,21 +391,21 @@ mod tests {
 
   #[test]
   fn test_prune_nodes_prune_empty_internal_nodes() -> Result<(), Report> {
-    let mut graph = SparseGraph::new();
+    let mut graph = ReprGraph::new();
 
-    let root = graph.add_node(SparseNode {
+    let root = graph.add_node(ReprNode {
       name: Some("root".to_owned()),
       ..Default::default()
     });
-    let internal = graph.add_node(SparseNode {
+    let internal = graph.add_node(ReprNode {
       name: Some("internal".to_owned()),
       ..Default::default()
     });
-    let a = graph.add_node(SparseNode {
+    let a = graph.add_node(ReprNode {
       name: Some("A".to_owned()),
       ..Default::default()
     });
-    let b = graph.add_node(SparseNode {
+    let b = graph.add_node(ReprNode {
       name: Some("B".to_owned()),
       ..Default::default()
     });
@@ -428,17 +429,17 @@ mod tests {
 
   #[test]
   fn test_prune_nodes_prune_empty_none_mutations() -> Result<(), Report> {
-    let mut graph = SparseGraph::new();
+    let mut graph = ReprGraph::new();
 
-    let root = graph.add_node(SparseNode {
+    let root = graph.add_node(ReprNode {
       name: Some("root".to_owned()),
       ..Default::default()
     });
-    let internal = graph.add_node(SparseNode {
+    let internal = graph.add_node(ReprNode {
       name: Some("internal".to_owned()),
       ..Default::default()
     });
-    let a = graph.add_node(SparseNode {
+    let a = graph.add_node(ReprNode {
       name: Some("A".to_owned()),
       ..Default::default()
     });
@@ -460,13 +461,13 @@ mod tests {
 
   #[test]
   fn test_prune_nodes_prune_empty_simple_leaf_case() -> Result<(), Report> {
-    let mut graph = SparseGraph::new();
+    let mut graph = ReprGraph::new();
 
-    let root = graph.add_node(SparseNode {
+    let root = graph.add_node(ReprNode {
       name: Some("root".to_owned()),
       ..Default::default()
     });
-    let a = graph.add_node(SparseNode {
+    let a = graph.add_node(ReprNode {
       name: Some("A".to_owned()),
       ..Default::default()
     });
@@ -487,25 +488,25 @@ mod tests {
 
   #[test]
   fn test_prune_nodes_combined_prune_short_and_empty() -> Result<(), Report> {
-    let mut graph = SparseGraph::new();
+    let mut graph = ReprGraph::new();
 
-    let root = graph.add_node(SparseNode {
+    let root = graph.add_node(ReprNode {
       name: Some("root".to_owned()),
       ..Default::default()
     });
-    let internal1 = graph.add_node(SparseNode {
+    let internal1 = graph.add_node(ReprNode {
       name: Some("internal1".to_owned()),
       ..Default::default()
     });
-    let internal2 = graph.add_node(SparseNode {
+    let internal2 = graph.add_node(ReprNode {
       name: Some("internal2".to_owned()),
       ..Default::default()
     });
-    let a = graph.add_node(SparseNode {
+    let a = graph.add_node(ReprNode {
       name: Some("A".to_owned()),
       ..Default::default()
     });
-    let b = graph.add_node(SparseNode {
+    let b = graph.add_node(ReprNode {
       name: Some("B".to_owned()),
       ..Default::default()
     });
@@ -531,7 +532,7 @@ mod tests {
 
   #[test]
   fn test_prune_nodes_prune_short_threshold_exact() -> Result<(), Report> {
-    let mut graph: SparseGraph = nwk_read_str("(A:0.05,B:0.05,C:0.051)root;")?;
+    let mut graph: ReprGraph = nwk_read_str("(A:0.05,B:0.05,C:0.051)root;")?;
     prune_nodes(&mut graph, Some(0.05), false, &btreeset! {})?;
     let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
     assert_eq!(
@@ -543,7 +544,7 @@ mod tests {
 
   #[test]
   fn test_prune_nodes_prune_short_threshold_below() -> Result<(), Report> {
-    let mut graph: SparseGraph = nwk_read_str("(A:0.049,B:0.05,C:0.051)root;")?;
+    let mut graph: ReprGraph = nwk_read_str("(A:0.049,B:0.05,C:0.051)root;")?;
     prune_nodes(&mut graph, Some(0.05), false, &btreeset! {})?;
     let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
     // All edges remain because A, B, C are leaves and leaves are never collapsed
@@ -556,37 +557,37 @@ mod tests {
 
   #[test]
   fn test_prune_nodes_prune_empty_complex_tree() -> Result<(), Report> {
-    let mut graph = SparseGraph::new();
+    let mut graph = ReprGraph::new();
 
-    let root = graph.add_node(SparseNode {
+    let root = graph.add_node(ReprNode {
       name: Some("root".to_owned()),
       ..Default::default()
     });
-    let internal1 = graph.add_node(SparseNode {
+    let internal1 = graph.add_node(ReprNode {
       name: Some("internal1".to_owned()),
       ..Default::default()
     });
-    let internal2 = graph.add_node(SparseNode {
+    let internal2 = graph.add_node(ReprNode {
       name: Some("internal2".to_owned()),
       ..Default::default()
     });
-    let internal3 = graph.add_node(SparseNode {
+    let internal3 = graph.add_node(ReprNode {
       name: Some("internal3".to_owned()),
       ..Default::default()
     });
-    let a = graph.add_node(SparseNode {
+    let a = graph.add_node(ReprNode {
       name: Some("A".to_owned()),
       ..Default::default()
     });
-    let b = graph.add_node(SparseNode {
+    let b = graph.add_node(ReprNode {
       name: Some("B".to_owned()),
       ..Default::default()
     });
-    let c = graph.add_node(SparseNode {
+    let c = graph.add_node(ReprNode {
       name: Some("C".to_owned()),
       ..Default::default()
     });
-    let d = graph.add_node(SparseNode {
+    let d = graph.add_node(ReprNode {
       name: Some("D".to_owned()),
       ..Default::default()
     });
@@ -616,17 +617,17 @@ mod tests {
 
   #[test]
   fn test_prune_nodes_prune_both_disabled() -> Result<(), Report> {
-    let mut graph = SparseGraph::new();
+    let mut graph = ReprGraph::new();
 
-    let root = graph.add_node(SparseNode {
+    let root = graph.add_node(ReprNode {
       name: Some("root".to_owned()),
       ..Default::default()
     });
-    let internal = graph.add_node(SparseNode {
+    let internal = graph.add_node(ReprNode {
       name: Some("internal".to_owned()),
       ..Default::default()
     });
-    let a = graph.add_node(SparseNode {
+    let a = graph.add_node(ReprNode {
       name: Some("A".to_owned()),
       ..Default::default()
     });
@@ -648,29 +649,29 @@ mod tests {
 
   #[test]
   fn test_collapse_sparse_edges_from_leaf_recursive_basic() -> Result<(), Report> {
-    let mut graph = SparseGraph::new();
+    let mut graph = ReprGraph::new();
 
-    let root = graph.add_node(SparseNode {
+    let root = graph.add_node(ReprNode {
       name: Some("root".to_owned()),
       ..Default::default()
     });
-    let internal1 = graph.add_node(SparseNode {
+    let internal1 = graph.add_node(ReprNode {
       name: Some("internal1".to_owned()),
       ..Default::default()
     });
-    let internal2 = graph.add_node(SparseNode {
+    let internal2 = graph.add_node(ReprNode {
       name: Some("internal2".to_owned()),
       ..Default::default()
     });
-    let a = graph.add_node(SparseNode {
+    let a = graph.add_node(ReprNode {
       name: Some("A".to_owned()),
       ..Default::default()
     });
-    let b = graph.add_node(SparseNode {
+    let b = graph.add_node(ReprNode {
       name: Some("B".to_owned()),
       ..Default::default()
     });
-    let c = graph.add_node(SparseNode {
+    let c = graph.add_node(ReprNode {
       name: Some("C".to_owned()),
       ..Default::default()
     });
@@ -714,21 +715,21 @@ mod tests {
 
   #[test]
   fn test_collapse_sparse_edges_from_leaf_recursive_stops_at_node_with_children() -> Result<(), Report> {
-    let mut graph = SparseGraph::new();
+    let mut graph = ReprGraph::new();
 
-    let root = graph.add_node(SparseNode {
+    let root = graph.add_node(ReprNode {
       name: Some("root".to_owned()),
       ..Default::default()
     });
-    let internal1 = graph.add_node(SparseNode {
+    let internal1 = graph.add_node(ReprNode {
       name: Some("internal1".to_owned()),
       ..Default::default()
     });
-    let a = graph.add_node(SparseNode {
+    let a = graph.add_node(ReprNode {
       name: Some("A".to_owned()),
       ..Default::default()
     });
-    let b = graph.add_node(SparseNode {
+    let b = graph.add_node(ReprNode {
       name: Some("B".to_owned()),
       ..Default::default()
     });
@@ -767,13 +768,13 @@ mod tests {
 
   #[test]
   fn test_collapse_sparse_edges_from_leaf_recursive_stops_at_root() -> Result<(), Report> {
-    let mut graph = SparseGraph::new();
+    let mut graph = ReprGraph::new();
 
-    let root = graph.add_node(SparseNode {
+    let root = graph.add_node(ReprNode {
       name: Some("root".to_owned()),
       ..Default::default()
     });
-    let a = graph.add_node(SparseNode {
+    let a = graph.add_node(ReprNode {
       name: Some("A".to_owned()),
       ..Default::default()
     });
@@ -800,13 +801,13 @@ mod tests {
 
   #[test]
   fn test_collapse_sparse_edges_from_leaf_recursive_invalid_edge_key_errors() -> Result<(), Report> {
-    let mut graph = SparseGraph::new();
+    let mut graph = ReprGraph::new();
 
-    let root = graph.add_node(SparseNode {
+    let root = graph.add_node(ReprNode {
       name: Some("root".to_owned()),
       ..Default::default()
     });
-    let a = graph.add_node(SparseNode {
+    let a = graph.add_node(ReprNode {
       name: Some("A".to_owned()),
       ..Default::default()
     });

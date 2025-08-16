@@ -950,7 +950,7 @@ pub mod tests {
   impl GraphNode for TestNode {}
 
   impl Named for TestNode {
-    fn name(&self) -> Option<impl AsRef<str>> {
+    fn get_name_maybe(&self) -> Option<impl AsRef<str>> {
       self.0.as_deref()
     }
     fn set_name(&mut self, name: Option<impl AsRef<str>>) {
@@ -1018,7 +1018,7 @@ pub mod tests {
 
     let mut actual = vec![];
     graph.iter_depth_first_preorder_forward(|node| {
-      actual.push(node.payload.name().unwrap().as_ref().to_owned());
+      actual.push(node.payload.get_name_maybe().unwrap().as_ref().to_owned());
     });
 
     assert_eq!(vec!["root", "AB", "A", "B", "CD", "C", "D"], actual);
@@ -1032,7 +1032,7 @@ pub mod tests {
 
     let mut actual = vec![];
     graph.iter_depth_first_postorder_forward(|node| {
-      actual.push(node.payload.name().unwrap().as_ref().to_owned());
+      actual.push(node.payload.get_name_maybe().unwrap().as_ref().to_owned());
     });
 
     assert_eq!(vec!["A", "B", "AB", "C", "D", "CD", "root"], actual);
@@ -1046,7 +1046,7 @@ pub mod tests {
 
     let mut actual = vec![];
     graph.iter_breadth_first_forward(|node| {
-      actual.push(node.payload.name().unwrap().as_ref().to_owned());
+      actual.push(node.payload.get_name_maybe().unwrap().as_ref().to_owned());
     });
 
     assert_eq!(vec!["root", "AB", "CD", "A", "B", "C", "D"], actual);
@@ -1060,7 +1060,7 @@ pub mod tests {
 
     let mut actual = vec![];
     graph.iter_breadth_first_reverse(|node| {
-      actual.push(node.payload.name().unwrap().as_ref().to_owned());
+      actual.push(node.payload.get_name_maybe().unwrap().as_ref().to_owned());
     });
 
     assert_eq!(vec!["D", "C", "B", "A", "CD", "AB", "root"], actual);
@@ -1078,7 +1078,7 @@ pub mod tests {
     graph.par_iter_breadth_first_forward(|node| {
       actual
         .write_arc()
-        .push(node.payload.name().unwrap().as_ref().to_owned());
+        .push(node.payload.get_name_maybe().unwrap().as_ref().to_owned());
       GraphTraversalContinuation::Continue
     });
 
@@ -1097,7 +1097,7 @@ pub mod tests {
     graph.par_iter_breadth_first_backward(|node| {
       actual
         .write_arc()
-        .push(node.payload.name().unwrap().as_ref().to_owned());
+        .push(node.payload.get_name_maybe().unwrap().as_ref().to_owned());
       GraphTraversalContinuation::Continue
     });
 
@@ -1298,7 +1298,7 @@ pub mod tests {
       if let Some(edge) = graph.get_edge(edge_key) {
         let target_key = edge.read_arc().target();
         if let Some(target_node) = graph.get_node(target_key) {
-          if let Some(name) = target_node.read_arc().payload().read_arc().name() {
+          if let Some(name) = target_node.read_arc().payload().read_arc().get_name_maybe() {
             target_nodes.push(name.as_ref().to_owned());
           }
         }

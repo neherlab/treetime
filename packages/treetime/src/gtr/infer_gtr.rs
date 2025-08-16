@@ -1,7 +1,7 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::graph::edge::Weighted;
 use crate::gtr::gtr::avg_transition;
-use crate::representation::graph_sparse::SparseGraph;
+use crate::representation::repr_graph::ReprGraph;
 use crate::utils::ndarray::outer;
 use eyre::Report;
 use log::warn;
@@ -127,9 +127,9 @@ fn distance(pi_old: &Array1<f64>, pi: &Array1<f64>) -> f64 {
   (pi_old - pi).mapv(|x| x * x).sum().sqrt()
 }
 
-pub fn get_mutation_counts(graph: &SparseGraph, alphabet: &Alphabet) -> Result<MutationCounts, Report> {
+pub fn get_mutation_counts(graph: &ReprGraph, alphabet: &Alphabet) -> Result<MutationCounts, Report> {
   let root = graph.get_exactly_one_root()?.read_arc().payload().read_arc();
-  let seq = &root.sparse_partitions[0].seq;
+  let seq = &root.partition_at(0).seq;
   let root_state: Array1<f64> = Array1::from_iter(
     alphabet
       .canonical()
@@ -146,7 +146,7 @@ pub fn get_mutation_counts(graph: &SparseGraph, alphabet: &Alphabet) -> Result<M
       .read_arc()
       .payload()
       .read_arc()
-      .sparse_partitions[0]
+      .partition_at(0)
       .seq;
 
     let edge = edge.read_arc().payload().read_arc();
@@ -156,7 +156,7 @@ pub fn get_mutation_counts(graph: &SparseGraph, alphabet: &Alphabet) -> Result<M
       Ti[i] += branch_length * target_seq.composition.get(nuc).unwrap_or(0) as f64;
     }
 
-    for m in &edge.sparse_partitions[0].subs {
+    for m in &edge.partition_at(0).subs {
       m.check_canonical(alphabet)?;
       let i = alphabet.index(m.qry());
       let j = alphabet.index(m.reff());
@@ -251,7 +251,7 @@ mod tests {
       &NUC_ALPHABET,
     )?;
 
-    let graph: SparseGraph = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let graph: ReprGraph = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
     let alphabet = Alphabet::default();
     let partitions = vec![PartitionParsimonyWithAln::new(alphabet.clone(), aln)?];
