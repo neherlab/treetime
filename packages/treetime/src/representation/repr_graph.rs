@@ -27,6 +27,10 @@ impl ReprNode {
     &self.partitions
   }
 
+  pub fn partitions_mut(&mut self) -> &mut Vec<NodePartition> {
+    &mut self.partitions
+  }
+
   pub fn set_partitions(&mut self, partitions: Vec<NodePartition>) {
     self.partitions = partitions;
   }
@@ -108,6 +112,10 @@ impl ReprEdge {
 
   pub fn partitions(&self) -> &[EdgePartition] {
     &self.partitions
+  }
+
+  pub fn partitions_mut(&mut self) -> &mut Vec<EdgePartition> {
+    &mut self.partitions
   }
 
   pub fn set_partitions(&mut self, partitions: Vec<EdgePartition>) {
