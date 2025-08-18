@@ -14,6 +14,7 @@ use crate::io::nwk::{EdgeToNwk, NodeToNwk, NwkWriteOptions, nwk_read_file, nwk_w
 use crate::representation::infer_dense::infer_dense;
 use crate::representation::partitions_likelihood::{PartitionLikelihood, PartitionLikelihoodWithAln};
 use crate::representation::partitions_parsimony::{PartitionParsimony, PartitionParsimonyWithAln};
+use crate::representation::raw_partition::RawPartition;
 use crate::representation::repr_graph::{ReprGraph, ReprNode};
 use crate::representation::seq::Seq;
 use crate::utils::random::get_random_number_generator;
@@ -71,23 +72,23 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
 
   let graph: ReprGraph = nwk_read_file(tree)?;
 
-  match method_anc {
+  let partitions = match method_anc {
     MethodAncestral::Parsimony => {
-      let partitions = vec![PartitionParsimonyWithAln::new(alphabet, aln)?];
+      vec![RawPartition::parsimony(alphabet.clone(), aln)?]
     },
     MethodAncestral::Marginal => {
       if !dense {
         let gtr = get_gtr(model_name, &alphabet, &graph)?;
-        let partitions = vec![PartitionLikelihoodWithAln::new(gtr, alphabet, aln)?];
+        vec![RawPartition::likelihood(gtr, alphabet.clone(), aln)?]
       } else {
         let gtr = get_gtr_dense(model_name, &alphabet, &graph)?;
-        let partitions = vec![PartitionLikelihoodWithAln::new(gtr, alphabet, aln)?];
+        vec![RawPartition::likelihood(gtr, alphabet.clone(), aln)?]
       }
     },
     MethodAncestral::Joint => {
       unimplemented!("MethodAncestral::MaximumLikelihoodJoint")
     },
-  }
+  };
 
   run_inference(&graph, &partitions);
 
@@ -167,16 +168,16 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
   Ok(())
 }
 
+pub fn run_inference(graph: &ReprGraph, partitions: &[RawPartition]) {}
+
 pub fn run_reconstruction(
   graph: &ReprGraph,
   include_leaves: bool,
-  partitions: &[PartitionParsimony],
+  partitions: &[RawPartition],
   mut visitor: impl FnMut(&ReprNode, &Seq),
 ) -> Result<(), Report> {
   Ok(())
 }
-
-pub fn run_inference(graph: &ReprGraph, partitions: &[PartitionParsimony]) {}
 
 fn write_graph<N, E, D>(outdir: impl AsRef<Path>, graph: &Graph<N, E, D>) -> Result<(), Report>
 where
