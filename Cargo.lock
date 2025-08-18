@@ -3911,6 +3911,7 @@ dependencies = [
  "csv",
  "ctor",
  "derive_more",
+ "enum-extract-error",
  "enum-extract-macro",
  "env_logger",
  "eyre",

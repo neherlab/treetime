@@ -6,9 +6,8 @@ use crate::representation::seq::Seq;
 use enum_extract_macro::EnumExtract;
 use eyre::Report;
 use serde::{Deserialize, Serialize};
-use strum_macros::IntoStaticStr;
 
-#[derive(Clone, Debug, Serialize, Deserialize, IntoStaticStr, EnumExtract)]
+#[derive(Clone, Debug, Serialize, Deserialize, EnumExtract)]
 pub enum NodePartition {
   Dense(DenseNodePartition),
   Sparse(SparseNodePartition),
@@ -82,7 +81,7 @@ impl NodePartition {
   //   }
   // }
 
-  fn variant_name(&self) -> &'static str {
-    self.into()
-  }
+  // fn variant_name(&self) -> &'static str {
+  //   self.into()
+  // }
 }

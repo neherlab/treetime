@@ -35,6 +35,10 @@ impl ReprNode {
     &self.partitions[index]
   }
 
+  pub fn partition_at_mut(&mut self, index: usize) -> &mut NodePartition {
+    &mut self.partitions[index]
+  }
+
   pub fn set_partition_at(&mut self, index: usize, partition: NodePartition) {
     self.partitions[index] = partition;
   }
@@ -112,6 +116,10 @@ impl ReprEdge {
 
   pub fn partition_at(&self, index: usize) -> &EdgePartition {
     &self.partitions[index]
+  }
+
+  pub fn partition_at_mut(&mut self, index: usize) -> &mut EdgePartition {
+    &mut self.partitions[index]
   }
 
   pub fn set_partition_at(&mut self, index: usize, partition: EdgePartition) {
