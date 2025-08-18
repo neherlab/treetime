@@ -20,7 +20,7 @@ pub enum GtrModelName {
   T92,
 }
 
-pub fn get_gtr(name: &GtrModelName, alphabet: &Alphabet, graph: &ReprGraph) -> Result<GTR, Report> {
+pub fn get_gtr_sparse(name: &GtrModelName, alphabet: &Alphabet, graph: &ReprGraph) -> Result<GTR, Report> {
   match name {
     GtrModelName::Infer => {
       let counts = get_mutation_counts(graph, alphabet)?;

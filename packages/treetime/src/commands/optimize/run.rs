@@ -7,7 +7,7 @@ use crate::commands::optimize::optimize_dense::run_optimize_dense;
 use crate::commands::optimize::optimize_sparse::run_optimize_sparse;
 use crate::graph::edge::GraphEdge;
 use crate::graph::node::GraphNode;
-use crate::gtr::get_gtr::{get_gtr, get_gtr_dense};
+use crate::gtr::get_gtr::{get_gtr_sparse, get_gtr_dense};
 use crate::io::fasta::read_many_fasta;
 use crate::io::nex::{NexWriteOptions, nex_write_file};
 use crate::io::nwk::{EdgeToNwk, NodeToNwk, NwkWriteOptions, nwk_read_file, nwk_write_file};
@@ -57,7 +57,7 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
     let partitions = vec![PartitionParsimonyWithAln::new(alphabet.clone(), aln)?];
     let partitions = compress_sequences(&graph, partitions)?;
 
-    let gtr = get_gtr(model_name, &alphabet, &graph)?;
+    let gtr = get_gtr_sparse(model_name, &alphabet, &graph)?;
     let partitions = partitions
           .into_iter()
           .map(|part| PartitionLikelihood::from_parsimony(gtr.clone(), part)) // FIXME: avoid cloning

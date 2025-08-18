@@ -6,14 +6,14 @@ use crate::commands::ancestral::marginal_sparse::{ancestral_reconstruction_margi
 use crate::graph::edge::GraphEdge;
 use crate::graph::graph::Graph;
 use crate::graph::node::{Described, GraphNode, Named};
-use crate::gtr::get_gtr::{get_gtr, get_gtr_dense};
+use crate::gtr::get_gtr::{get_gtr_dense, get_gtr_sparse};
 use crate::io::fasta::{FastaReader, FastaRecord, FastaWriter, read_many_fasta};
 use crate::io::file::{create_file_or_stdout, open_stdin};
 use crate::io::nex::{NexWriteOptions, nex_write_file};
 use crate::io::nwk::{EdgeToNwk, NodeToNwk, NwkWriteOptions, nwk_read_file, nwk_write_file};
 use crate::representation::infer_dense::infer_dense;
 use crate::representation::partitions_likelihood::{PartitionLikelihood, PartitionLikelihoodWithAln};
-use crate::representation::partitions_parsimony::{PartitionParsimony, PartitionParsimonyWithAln};
+use crate::representation::partitions_parsimony::PartitionParsimonyWithAln;
 use crate::representation::raw_partition::RawPartition;
 use crate::representation::repr_graph::{ReprGraph, ReprNode};
 use crate::representation::seq::Seq;
@@ -78,7 +78,7 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
     },
     MethodAncestral::Marginal => {
       if !dense {
-        let gtr = get_gtr(model_name, &alphabet, &graph)?;
+        let gtr = get_gtr_sparse(model_name, &alphabet, &graph)?;
         vec![RawPartition::likelihood(gtr, alphabet.clone(), aln)?]
       } else {
         let gtr = get_gtr_dense(model_name, &alphabet, &graph)?;
@@ -134,7 +134,7 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
         let partitions = vec![PartitionParsimonyWithAln::new(alphabet.clone(), aln)?];
         let partitions = compress_sequences(&graph, partitions)?;
 
-        let gtr = get_gtr(model_name, &alphabet, &graph)?;
+        let gtr = get_gtr_sparse(model_name, &alphabet, &graph)?;
         let partitions = partitions
           .into_iter()
           .map(|part| PartitionLikelihood::from_parsimony(gtr.clone(), part)) // FIXME: avoid cloning

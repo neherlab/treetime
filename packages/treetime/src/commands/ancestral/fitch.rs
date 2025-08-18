@@ -126,7 +126,7 @@ fn fitch_backwards(graph: &ReprGraph, sparse_partitions: &[PartitionParsimony]) 
       // Need to account for parts of the sequence transmitted along edges.
       let variable_positions = children
         .iter()
-        .flat_map(|(c, e)| c.fitch.variable.keys().copied())
+        .flat_map(|(c, _)| c.fitch.variable.keys().copied())
         .unique()
         .collect_vec();
 
