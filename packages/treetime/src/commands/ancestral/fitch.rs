@@ -465,35 +465,46 @@ pub fn ancestral_reconstruction_fitch(
 
       if !node.is_root {
         let (parent, edge) = node.get_exactly_one_parent().unwrap();
-        let parent_seq = &parent.read_arc().partition_at(si).seq.sequence;
-        let edge_part = &edge.read_arc().partition_at(si);
 
-        node.payload.partition_at(si).seq.sequence = parent_seq.clone();
+        let parent = parent.read_arc();
+        let parent_sequence = &parent.partition_at(si).as_sparse().unwrap().seq.sequence;
 
-        for sub in &edge_part.subs {
-          node.payload.partition_at(si).seq.sequence[sub.pos()] = sub.qry();
+        let edge = edge.read_arc();
+        let edge_partition = &edge.partition_at(si).as_sparse().unwrap();
+        let subs = &edge_partition.subs;
+        let indels = &edge_partition.indels;
+
+        let seq = &mut node.payload.partition_at_mut(si).as_sparse_mut().unwrap().seq;
+        let sequence = &mut seq.sequence;
+        *sequence = parent_sequence.clone();
+
+        for sub in subs {
+          sequence[sub.pos()] = sub.qry();
         }
-
-        for indel in &edge_part.indels {
+        for indel in indels {
           if indel.deletion {
-            node.payload.partition_at(si).seq.sequence[indel.range.0..indel.range.1].fill(alphabet.gap());
+            sequence[indel.range.0..indel.range.1].fill(alphabet.gap());
           } else {
-            node.payload.partition_at(si).seq.sequence[indel.range.0..indel.range.1].copy_from_slice(&indel.seq);
+            sequence[indel.range.0..indel.range.1].copy_from_slice(&indel.seq);
           }
         }
       }
 
-      let seq = &mut node.payload.partition_at(si).seq;
+      {
+        let seq = &mut node.payload.partition_at_mut(si).as_sparse_mut().unwrap().seq;
+        let sequence = &mut seq.sequence;
 
-      for r in &mut seq.unknown {
-        seq.sequence[r.0..r.1].fill(alphabet.unknown());
+        for r in &seq.unknown {
+          sequence[r.0..r.1].fill(alphabet.unknown());
+        }
+
+        for (pos, states) in &seq.fitch.variable {
+          sequence[*pos] = alphabet.set_to_char(*states);
+        }
       }
 
-      for (pos, states) in &mut seq.fitch.variable {
-        seq.sequence[*pos] = alphabet.set_to_char(*states);
-      }
-
-      visitor(&node.payload, &node.payload.partition_at(si).seq.sequence);
+      let sequence = &node.payload.partition_at(si).as_sparse().unwrap().seq.sequence;
+      visitor(&node.payload, &sequence);
     }
   });
 
