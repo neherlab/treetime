@@ -1,4 +1,6 @@
 use crate::representation::seq_char::AsciiChar;
+use crate::seq::indel::InDel;
+use crate::seq::mutation::Sub;
 
 /// Represents genetic sequence (ASCII characters only)
 #[must_use]
@@ -158,6 +160,45 @@ impl Seq {
   // {
   //   self.data.splice(range, replace_with.into_iter().map(AsciiChar::from))
   // }
+
+  /// Set character at a specific position
+  pub fn set_char<C: Into<AsciiChar>>(&mut self, pos: usize, c: C) {
+    self.data[pos] = c.into();
+  }
+
+  /// Fill a range with a specific character
+  pub fn set_char_range(&mut self, range: (usize, usize), c: AsciiChar) {
+    self.data[range.0..range.1].fill(c);
+  }
+
+  /// Apply a substitution mutation to the sequence
+  pub fn apply_sub(&mut self, sub: &Sub) {
+    self.set_char(sub.pos(), sub.qry());
+  }
+
+  /// Apply a deletion to the sequence (fills range with gap character)
+  pub fn apply_del(&mut self, range: (usize, usize), gap_char: AsciiChar) {
+    self.set_char_range(range, gap_char);
+  }
+
+  /// Apply an insertion to the sequence (copies sequence to range)
+  pub fn apply_ins(&mut self, range: (usize, usize), seq: &Seq) {
+    self.data[range.0..range.1].copy_from_slice(&seq.data);
+  }
+
+  /// Apply an indel to the sequence
+  pub fn apply_indel(&mut self, indel: &InDel, gap_char: AsciiChar) {
+    if indel.deletion {
+      self.apply_del(indel.range, gap_char);
+    } else {
+      self.apply_ins(indel.range, &indel.seq);
+    }
+  }
+
+  /// Fill a range with unknown characters
+  pub fn apply_unknowns(&mut self, range: (usize, usize), unknown_char: AsciiChar) {
+    self.set_char_range(range, unknown_char);
+  }
 }
 
 impl PartialEq for Seq {

@@ -114,7 +114,7 @@ fn fitch_backwards(graph: &ReprGraph, sparse_partitions: &[PartitionParsimony]) 
       // what follows could be a function that returns `sequence` and `variable`, takes as arguments children, non_char, alphabet
       let mut sequence = seq![FILL_CHAR; *length];
       for r in &non_char {
-        sequence[r.0..r.1].fill(NON_CHAR);
+        sequence.apply_unknowns(*r, NON_CHAR);
       }
 
       // Process all positions where the children are variable.
@@ -154,17 +154,17 @@ fn fitch_backwards(graph: &ReprGraph, sparse_partitions: &[PartitionParsimony]) 
         match intersection.get() {
           StateSetStatus::Unambiguous(state) => {
             // intersection has a single state, write it
-            sequence[pos] = state;
+            sequence.set_char(pos, state);
           },
           StateSetStatus::Ambiguous(_) => {
             // more than one possible states
             seq_dis.variable.insert(pos, intersection);
-            sequence[pos] = VARIABLE_CHAR;
+            sequence.set_char(pos, VARIABLE_CHAR);
           },
           StateSetStatus::Empty => {
             let union = StateSet::from_union(&child_profiles);
             seq_dis.variable.insert(pos, union);
-            sequence[pos] = VARIABLE_CHAR;
+            sequence.set_char(pos, VARIABLE_CHAR);
           },
         }
       }
@@ -274,7 +274,7 @@ fn fitch_forward(graph: &ReprGraph, sparse_partitions: &[PartitionParsimony]) {
 
       if node.is_root {
         for (pos, states) in variable {
-          sequence[pos] = states.get_one();
+          sequence.set_char(*pos, states.get_one());
         }
         // process indels as majority rule at the root
         for (r, indel) in variable_indel.iter() {
@@ -306,10 +306,10 @@ fn fitch_forward(graph: &ReprGraph, sparse_partitions: &[PartitionParsimony]) {
           if alphabet.is_canonical(pnuc) {
             // check whether parent is in child profile (sum>0 --> parent state is in profile)
             if states.contains(pnuc) {
-              sequence[*pos] = pnuc;
+              sequence.set_char(*pos, pnuc);
             } else {
               let cnuc = states.get_one();
-              sequence[*pos] = cnuc;
+              sequence.set_char(*pos, cnuc);
               let m = Sub::new(pnuc, *pos, cnuc).unwrap();
               m.check_determined(alphabet).unwrap();
               composition.add_sub(&m);
@@ -317,7 +317,7 @@ fn fitch_forward(graph: &ReprGraph, sparse_partitions: &[PartitionParsimony]) {
             }
           } else if alphabet.is_gap(pnuc) && !range_contains(gaps, *pos) {
             // if parent is gap, but child isn't, we need to resolve variable states
-            sequence[*pos] = states.get_one();
+            sequence.set_char(*pos, states.get_one());
           }
         }
 
@@ -389,11 +389,11 @@ fn fitch_forward(graph: &ReprGraph, sparse_partitions: &[PartitionParsimony]) {
       }
       // fill in the gapped positions. this is done for all nodes, including the root, the composition of non-root nodes is already correct
       for r in gaps.iter() {
-        sequence[r.0..r.1].fill(alphabet.gap());
+        sequence.apply_del(*r, alphabet.gap());
       }
       for r in unknown.iter() {
         // composition is already adjusted
-        sequence[r.0..r.1].fill(alphabet.unknown());
+        sequence.apply_unknowns(*r, alphabet.unknown());
       }
       if node.is_root {
         // if the node is the root, the composition is calculated from the full sequence
@@ -479,14 +479,10 @@ pub fn ancestral_reconstruction_fitch(
         *sequence = parent_sequence.clone();
 
         for sub in subs {
-          sequence[sub.pos()] = sub.qry();
+          sequence.apply_sub(sub);
         }
         for indel in indels {
-          if indel.deletion {
-            sequence[indel.range.0..indel.range.1].fill(alphabet.gap());
-          } else {
-            sequence[indel.range.0..indel.range.1].copy_from_slice(&indel.seq);
-          }
+          sequence.apply_indel(indel, alphabet.gap());
         }
       }
 
@@ -495,11 +491,11 @@ pub fn ancestral_reconstruction_fitch(
         let sequence = &mut seq.sequence;
 
         for r in &seq.unknown {
-          sequence[r.0..r.1].fill(alphabet.unknown());
+          sequence.apply_unknowns(*r, alphabet.unknown());
         }
 
         for (pos, states) in &seq.fitch.variable {
-          sequence[*pos] = alphabet.set_to_char(*states);
+          sequence.set_char(*pos, alphabet.set_to_char(*states));
         }
       }
 
