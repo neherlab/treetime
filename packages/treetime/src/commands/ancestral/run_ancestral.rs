@@ -1,27 +1,28 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::commands::ancestral::anc_args::{MethodAncestral, TreetimeAncestralArgs};
-use crate::commands::ancestral::fitch::{ancestral_reconstruction_fitch, compress_sequences};
+use crate::commands::ancestral::fitch::{ancestral_reconstruction_fitch, compress_sequences, get_common_length};
 use crate::commands::ancestral::marginal_dense::{ancestral_reconstruction_marginal_dense, run_marginal_dense};
-use crate::commands::ancestral::marginal_sparse::{ancestral_reconstruction_marginal_sparse, run_marginal_sparse};
 use crate::graph::edge::GraphEdge;
 use crate::graph::graph::Graph;
 use crate::graph::node::GraphNode;
-use crate::gtr::get_gtr::{get_gtr, get_gtr_dense};
+use crate::gtr::get_gtr::get_gtr_dense;
 use crate::io::fasta::{FastaReader, FastaRecord, FastaWriter, read_many_fasta};
 use crate::io::file::{create_file_or_stdout, open_stdin};
 use crate::io::nex::{NexWriteOptions, nex_write_file};
 use crate::io::nwk::{EdgeToNwk, NodeToNwk, NwkWriteOptions, nwk_read_file, nwk_write_file};
+use crate::representation::graph_ancestral::GraphAncestral;
 use crate::representation::graph_dense::DenseGraph;
-use crate::representation::graph_sparse::SparseGraph;
 use crate::representation::infer_dense::infer_dense;
-use crate::representation::partitions_likelihood::{PartitionLikelihood, PartitionLikelihoodWithAln};
-use crate::representation::partitions_parsimony::PartitionParsimonyWithAln;
-use crate::utils::random::get_random_number_generator;
+use crate::representation::partition_parsimony::PartitionParsimonyNew;
+use crate::representation::partitions_likelihood::PartitionLikelihoodWithAln;
 use eyre::Report;
 use itertools::Itertools;
 use log::info;
+use maplit::btreemap;
+use parking_lot::RwLock;
 use serde::Serialize;
 use std::path::Path;
+use std::sync::Arc;
 
 #[derive(Clone, Debug, Default)]
 pub struct TreetimeAncestralParams {
@@ -32,24 +33,15 @@ pub struct TreetimeAncestralParams {
 pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> Result<(), Report> {
   let TreetimeAncestralArgs {
     input_fastas,
-    aln,
-    vcf_reference,
     tree,
     alphabet,
     model_name,
-    gtr_params,
-    aa,
-    keep_overhangs,
-    zero_based,
     reconstruct_tip_states,
-    report_ambiguous,
     method_anc,
     dense,
     outdir,
-    seed,
+    ..
   } = ancestral_args;
-
-  let rng = get_random_number_generator(*seed);
 
   let dense = dense.unwrap_or_else(infer_dense);
 
@@ -69,6 +61,43 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
 
   let output_fasta = create_file_or_stdout(outdir.join("ancestral_sequences.fasta"))?;
   let mut output_fasta = FastaWriter::new(output_fasta);
+
+  let graph: GraphAncestral = nwk_read_file(tree)?;
+
+  let partitions_parsimony = [PartitionParsimonyNew {
+    index: 0,
+    alphabet: alphabet.clone(),
+    length: get_common_length(&aln)?,
+    nodes: btreemap! {},
+    edges: btreemap! {},
+  }]
+  .into_iter()
+  .map(|p| Arc::new(RwLock::new(p)))
+  .collect_vec();
+
+  if !partitions_parsimony.is_empty() {
+    compress_sequences(&graph, &partitions_parsimony, &aln)?;
+
+    ancestral_reconstruction_fitch(&graph, *reconstruct_tip_states, &partitions_parsimony, |node, seq| {
+      let name = node.payload.name.as_deref().unwrap_or("");
+      let desc = &node.payload.desc;
+      output_fasta.write(name, desc, seq).unwrap();
+    })?;
+  }
+
+  // let partitions_marginal_sparse = [PartitionMarginalSparse {
+  //   index: 2,
+  //   gtr: jc69(JC69Params::default())?,
+  //   alphabet: alphabet.clone(),
+  //   length: get_common_length(&aln)?,
+  // }];
+  //
+  // let partitions_marginal_dense = [PartitionMarginalDense {
+  //   index: 2,
+  //   gtr: jc69(JC69Params::default())?,
+  //   alphabet: alphabet.clone(),
+  //   length: get_common_length(&aln)?,
+  // }];
 
   match method_anc {
     // both MaximumLikelihoodJoint and MaximumLikelihoodMarginal need an GTR, parsimony does not
@@ -90,37 +119,37 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
     // VCF input is basically another way to instantiate the sparse representation. MAT format would be another one.
     // Again, we can deal with this later, but the entrypoint is not always going to be a fasta file.
     MethodAncestral::Parsimony => {
-      let partitions = vec![PartitionParsimonyWithAln::new(alphabet, aln)?];
-      let graph: SparseGraph = nwk_read_file(tree)?;
-      let partitions = compress_sequences(&graph, partitions)?;
+      // let partitions = vec![PartitionParsimonyWithAln::new(alphabet, aln)?];
+      // let graph: SparseGraph = nwk_read_file(tree)?;
+      // let partitions = compress_sequences(&graph, partitions)?;
 
-      ancestral_reconstruction_fitch(&graph, *reconstruct_tip_states, &partitions, |node, seq| {
-        let name = node.name.as_deref().unwrap_or("");
-        let desc = &node.desc;
-        output_fasta.write(name, desc, seq).unwrap();
-      })?;
+      // ancestral_reconstruction_fitch(&graph, *reconstruct_tip_states, &partitions, |node, seq| {
+      //   let name = node.name.as_deref().unwrap_or("");
+      //   let desc = &node.desc;
+      //   output_fasta.write(name, desc, seq).unwrap();
+      // })?;
 
       write_graph(outdir, &graph)?;
     },
     MethodAncestral::Marginal => {
       if !dense {
-        let graph: SparseGraph = nwk_read_file(tree)?;
-        let partitions = vec![PartitionParsimonyWithAln::new(alphabet.clone(), aln)?];
-        let partitions = compress_sequences(&graph, partitions)?;
+        // let graph: SparseGraph = nwk_read_file(tree)?;
+        // let partitions = vec![PartitionParsimonyWithAln::new(alphabet.clone(), aln)?];
+        // let partitions = compress_sequences(&graph, partitions)?;
 
-        let gtr = get_gtr(model_name, &alphabet, &graph)?;
-        let partitions = partitions
-          .into_iter()
-          .map(|part| PartitionLikelihood::from_parsimony(gtr.clone(), part)) // FIXME: avoid cloning
-          .collect_vec();
+        // let gtr = get_gtr(model_name, &alphabet, &graph)?;
+        // let partitions = partitions
+        //   .into_iter()
+        //   .map(|part| PartitionLikelihood::from_parsimony(gtr.clone(), part)) // FIXME: avoid cloning
+        //   .collect_vec();
 
-        run_marginal_sparse(&graph, &partitions)?;
+        // run_marginal_sparse(&graph, &partitions)?;
 
-        ancestral_reconstruction_marginal_sparse(&graph, *reconstruct_tip_states, &partitions, |node, seq| {
-          let name = node.name.as_deref().unwrap_or("");
-          let desc = &node.desc;
-          output_fasta.write(name, desc, &seq).unwrap();
-        })?;
+        // ancestral_reconstruction_marginal_sparse(&graph, *reconstruct_tip_states, &partitions, |node, seq| {
+        //   let name = node.name.as_deref().unwrap_or("");
+        //   let desc = &node.desc;
+        //   output_fasta.write(name, desc, &seq).unwrap();
+        // })?;
 
         write_graph(outdir, &graph)?;
       } else {

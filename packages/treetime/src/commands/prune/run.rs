@@ -1,5 +1,4 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::commands::ancestral::fitch::compress_sequences;
 use crate::commands::prune::args::TreetimePruneArgs;
 use crate::graph::edge::{GraphEdge, GraphEdgeKey, NumMuts, Weighted};
 use crate::graph::graph::Graph;
@@ -56,7 +55,7 @@ pub fn run_prune(args: &TreetimePruneArgs) -> Result<(), Report> {
     let alphabet = Alphabet::new(alphabet.unwrap_or_default(), false)?;
     let sequences = read_many_fasta(input_fastas, &alphabet)?;
     let partitions = vec![PartitionParsimonyWithAln::new(alphabet, sequences)?];
-    compress_sequences(&graph, partitions)?;
+    // compress_sequences(&graph, partitions)?;
   }
 
   let node_names = parse_node_names(

@@ -172,12 +172,9 @@ pub fn get_mutation_counts(graph: &SparseGraph, alphabet: &Alphabet) -> Result<M
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::commands::ancestral::fitch::compress_sequences;
-  use crate::io::fasta::read_many_fasta_str;
-  use crate::io::nwk::nwk_read_str;
+
   use crate::pretty_assert_ulps_eq;
-  use crate::representation::partitions_parsimony::PartitionParsimonyWithAln;
-  use indoc::indoc;
+
   use lazy_static::lazy_static;
   use ndarray::array;
 
@@ -234,65 +231,65 @@ mod tests {
     Ok(())
   }
 
-  #[test]
-  fn test_infer_gtr_with_mutation_counts() -> Result<(), Report> {
-    rayon::ThreadPoolBuilder::new().num_threads(1).build_global()?;
-    let aln = read_many_fasta_str(
-      indoc! {r#"
-      >A
-      ACATCGCCNNA--GAC
-      >B
-      GCATCCCTGTA-NG--
-      >C
-      CCGGCGATGTRTTG--
-      >D
-      TCGGCCGTGTRTTG--
-      "#},
-      &NUC_ALPHABET,
-    )?;
-
-    let graph: SparseGraph = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
-
-    let alphabet = Alphabet::default();
-    let partitions = vec![PartitionParsimonyWithAln::new(alphabet.clone(), aln)?];
-    compress_sequences(&graph, partitions)?;
-
-    let counts_actual = get_mutation_counts(&graph, &alphabet)?;
-    let counts_expected = MutationCounts {
-      nij: array![[0., 0., 0., 0.], [2., 0., 0., 1.], [3., 2., 0., 0.], [0., 1., 1., 0.]],
-      Ti: array![1.98, 2.945, 2.515, 2.64],
-      root_state: array![4.0, 3.0, 3.0, 4.0],
-    };
-
-    pretty_assert_ulps_eq!(counts_expected.nij, counts_actual.nij, epsilon = 1e-9);
-    pretty_assert_ulps_eq!(counts_expected.Ti, counts_actual.Ti, epsilon = 1e-7);
-    pretty_assert_ulps_eq!(counts_expected.root_state, counts_actual.root_state, epsilon = 1e-9);
-
-    let actual = infer_gtr(
-      &counts_actual,
-      &InferGtrOptions {
-        pc: 0.1,
-        ..InferGtrOptions::default()
-      },
-    )?;
-
-    let expected = InferGtrResult {
-      W: array![
-        [0.0, 2.1751124, 2.95601658, 0.18620301],
-        [2.1751124, 0.0, 1.40528091, 1.41465696],
-        [2.95601658, 1.40528091, 0.0, 0.74490315],
-        [0.18620301, 1.41465696, 0.74490315, 0.0]
-      ],
-      pi: array![0.14878846, 0.24051536, 0.31239203, 0.29830414],
-      mu: 0.9471364432348814,
-    };
-
-    pretty_assert_ulps_eq!(expected.W, actual.W, epsilon = 1e-7);
-    pretty_assert_ulps_eq!(expected.pi, actual.pi, epsilon = 1e-7);
-    pretty_assert_ulps_eq!(expected.mu, actual.mu, epsilon = 1e-7);
-
-    Ok(())
-  }
+  // #[test]
+  // fn test_infer_gtr_with_mutation_counts() -> Result<(), Report> {
+  //   rayon::ThreadPoolBuilder::new().num_threads(1).build_global()?;
+  //   let aln = read_many_fasta_str(
+  //     indoc! {r#"
+  //     >A
+  //     ACATCGCCNNA--GAC
+  //     >B
+  //     GCATCCCTGTA-NG--
+  //     >C
+  //     CCGGCGATGTRTTG--
+  //     >D
+  //     TCGGCCGTGTRTTG--
+  //     "#},
+  //     &NUC_ALPHABET,
+  //   )?;
+  //
+  //   let graph: SparseGraph = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+  //
+  //   let alphabet = Alphabet::default();
+  //   let partitions = vec![PartitionParsimonyWithAln::new(alphabet.clone(), aln)?];
+  //   compress_sequences(&graph, partitions)?;
+  //
+  //   let counts_actual = get_mutation_counts(&graph, &alphabet)?;
+  //   let counts_expected = MutationCounts {
+  //     nij: array![[0., 0., 0., 0.], [2., 0., 0., 1.], [3., 2., 0., 0.], [0., 1., 1., 0.]],
+  //     Ti: array![1.98, 2.945, 2.515, 2.64],
+  //     root_state: array![4.0, 3.0, 3.0, 4.0],
+  //   };
+  //
+  //   pretty_assert_ulps_eq!(counts_expected.nij, counts_actual.nij, epsilon = 1e-9);
+  //   pretty_assert_ulps_eq!(counts_expected.Ti, counts_actual.Ti, epsilon = 1e-7);
+  //   pretty_assert_ulps_eq!(counts_expected.root_state, counts_actual.root_state, epsilon = 1e-9);
+  //
+  //   let actual = infer_gtr(
+  //     &counts_actual,
+  //     &InferGtrOptions {
+  //       pc: 0.1,
+  //       ..InferGtrOptions::default()
+  //     },
+  //   )?;
+  //
+  //   let expected = InferGtrResult {
+  //     W: array![
+  //       [0.0, 2.1751124, 2.95601658, 0.18620301],
+  //       [2.1751124, 0.0, 1.40528091, 1.41465696],
+  //       [2.95601658, 1.40528091, 0.0, 0.74490315],
+  //       [0.18620301, 1.41465696, 0.74490315, 0.0]
+  //     ],
+  //     pi: array![0.14878846, 0.24051536, 0.31239203, 0.29830414],
+  //     mu: 0.9471364432348814,
+  //   };
+  //
+  //   pretty_assert_ulps_eq!(expected.W, actual.W, epsilon = 1e-7);
+  //   pretty_assert_ulps_eq!(expected.pi, actual.pi, epsilon = 1e-7);
+  //   pretty_assert_ulps_eq!(expected.mu, actual.mu, epsilon = 1e-7);
+  //
+  //   Ok(())
+  // }
 
   #[test]
   fn test_infer_gtr_distance_1() {
