@@ -1,9 +1,10 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::graph::breadth_first::GraphTraversalContinuation;
 use crate::graph::edge::Weighted;
+use crate::graph::graph::{GraphNodeBackward, GraphNodeForward};
 use crate::hacks::fix_branch_length::fix_branch_length;
 use crate::make_internal_error;
-use crate::representation::graph_sparse::{SparseGraph, SparseNode, SparseSeqDis, VarPos};
+use crate::representation::graph_sparse::{SparseEdge, SparseGraph, SparseNode, SparseSeqDis, VarPos};
 use crate::representation::partitions_likelihood::PartitionLikelihood;
 use crate::representation::seq::Seq;
 use crate::representation::seq_char::AsciiChar;
@@ -20,106 +21,113 @@ use std::iter::zip;
 
 const EPS: f64 = 1e-4;
 
-fn ingroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihood]) {
+fn marginal_sparse_backward(graph: &SparseGraph, partitions: &[PartitionLikelihood]) {
   graph.par_iter_breadth_first_backward(|mut node| {
-    for (si, seq_info) in node.payload.sparse_partitions.iter_mut().enumerate() {
-      let PartitionLikelihood { gtr, alphabet, length } = &partitions[si];
-      let msg_to_parent = if node.is_leaf {
-        // this is mostly a copy (or ref here) of the fitch state.
-        let fixed = alphabet
-          .determined()
-          .map(|state| (state, alphabet.get_profile(state).clone()))
-          .collect();
+    run_marginal_sparse_backward(&partitions, &mut node).unwrap();
+    GraphTraversalContinuation::Continue
+  });
+}
 
-        // convert the parsimony variable states to sparseSeqDis format
-        let variable = seq_info
-          .seq
-          .fitch
-          .variable
-          .iter()
-          .map(|(pos, p)| {
-            let dis = alphabet.construct_profile(p.chars()).unwrap();
-            let state = p.get_one();
-            (*pos, VarPos { dis, state })
-          })
-          .collect();
+/// Backward pass calculates ingroup profiles
+fn run_marginal_sparse_backward(
+  partitions: &&[PartitionLikelihood],
+  node: &mut GraphNodeBackward<SparseNode, SparseEdge, ()>,
+) -> Result<(), Report> {
+  for (si, seq_info) in node.payload.sparse_partitions.iter_mut().enumerate() {
+    let PartitionLikelihood { gtr, alphabet, length } = &partitions[si];
+    let msg_to_parent = if node.is_leaf {
+      // this is mostly a copy (or ref here) of the fitch state.
+      let fixed = alphabet
+        .determined()
+        .map(|state| (state, alphabet.get_profile(state).clone()))
+        .collect();
 
-        SparseSeqDis {
-          fixed_counts: seq_info.seq.composition.clone(),
-          variable,
-          variable_indel: btreemap! {},
-          fixed,
-          log_lh: 0.0,
+      // convert the parsimony variable states to sparseSeqDis format
+      let variable = seq_info
+        .seq
+        .fitch
+        .variable
+        .iter()
+        .map(|(pos, p)| {
+          let dis = alphabet.construct_profile(p.chars()).unwrap();
+          let state = p.get_one();
+          (*pos, VarPos { dis, state })
+        })
+        .collect();
+
+      SparseSeqDis {
+        fixed_counts: seq_info.seq.composition.clone(),
+        variable,
+        variable_indel: btreemap! {},
+        fixed,
+        log_lh: 0.0,
+      }
+    } else {
+      // for internal nodes, combine the messages from the children
+      // to do so, we need to loop over incoming edges, collect variable positions and the child states at them
+      let mut variable_pos = btreemap! {};
+      let mut child_states = vec![];
+      let mut child_messages: Vec<SparseSeqDis> = vec![];
+      for (ci, (_, edge)) in node.children.iter().enumerate() {
+        // go over all mutations and get reference and child state
+        child_states.push(btreemap! {});
+        for m in &edge.read_arc().sparse_partitions[si].subs {
+          variable_pos.insert(m.pos(), m.reff()); // this might be set multiple times, but the reference state should always be the same
+          child_states[ci].insert(m.pos(), m.qry());
         }
-      } else {
-        // for internal nodes, combine the messages from the children
-        // to do so, we need to loop over incoming edges, collect variable positions and the child states at them
-        let mut variable_pos = btreemap! {};
-        let mut child_states = vec![];
-        let mut child_messages: Vec<SparseSeqDis> = vec![];
-        for (ci, (_, edge)) in node.children.iter().enumerate() {
-          // go over all mutations and get reference and child state
-          child_states.push(btreemap! {});
-          for m in &edge.read_arc().sparse_partitions[si].subs {
-            variable_pos.insert(m.pos(), m.reff()); // this might be set multiple times, but the reference state should always be the same
-            child_states[ci].insert(m.pos(), m.qry());
-          }
-          // go over child variable position and get reference state
-          for (pos, p) in &edge.read_arc().sparse_partitions[si].msg_from_child.variable {
-            variable_pos.entry(*pos).or_insert(p.state);
-          }
-          // FIXME: avoid cloning. could move this loop over child_edges into combine_messages
-          child_messages.push(edge.read_arc().sparse_partitions[si].msg_from_child.clone());
+        // go over child variable position and get reference state
+        for (pos, p) in &edge.read_arc().sparse_partitions[si].msg_from_child.variable {
+          variable_pos.entry(*pos).or_insert(p.state);
         }
+        // FIXME: avoid cloning. could move this loop over child_edges into combine_messages
+        child_messages.push(edge.read_arc().sparse_partitions[si].msg_from_child.clone());
+      }
 
-        // now that all variable positions are determined, check whether they are characters in each child
-        for (ci, (c, _)) in node.children.iter().enumerate() {
-          let states = &mut child_states[ci];
-          for pos in variable_pos.keys() {
-            // test whether pos in states, otherwise check whether it is in non-char
-            if !states.contains_key(pos) && range_contains(&c.read_arc().sparse_partitions[si].seq.non_char, *pos) {
-              if range_contains(&c.read_arc().sparse_partitions[si].seq.gaps, *pos) {
-                states.insert(*pos, alphabet.gap());
-              } else {
-                states.insert(*pos, alphabet.unknown());
-              }
+      // now that all variable positions are determined, check whether they are characters in each child
+      for (ci, (c, _)) in node.children.iter().enumerate() {
+        let states = &mut child_states[ci];
+        for pos in variable_pos.keys() {
+          // test whether pos in states, otherwise check whether it is in non-char
+          if !states.contains_key(pos) && range_contains(&c.read_arc().sparse_partitions[si].seq.non_char, *pos) {
+            if range_contains(&c.read_arc().sparse_partitions[si].seq.gaps, *pos) {
+              states.insert(*pos, alphabet.gap());
+            } else {
+              states.insert(*pos, alphabet.unknown());
             }
           }
         }
-
-        // messages are combined, if this is the root node the gtr.pi is used to multiply the data from children
-        combine_messages(
-          &seq_info.seq.composition,
-          &child_messages,
-          &variable_pos,
-          &child_states,
-          alphabet,
-          node.is_root.then_some(&gtr.pi),
-        )
-        .unwrap()
-      };
-
-      if node.is_root {
-        // data from children * gtr.pi as calculated above is the root profile.
-        seq_info.profile = msg_to_parent;
-      } else {
-        // what was calculated above is what is sent to the parent. we also calculate the propagated message to the parent (we need it in the forward pass).
-        let edge_to_parent =
-          get_exactly_one_mut(&mut node.parent_edges).expect("Only nodes with exactly one parent are supported"); // HACK
-        let branch_length = edge_to_parent.weight().unwrap_or(0.0);
-        let branch_length = fix_branch_length(*length, branch_length);
-        let edge_data = &mut edge_to_parent.sparse_partitions[si];
-        edge_data.msg_from_child = propagate_raw(
-          &gtr.expQt(branch_length).t().to_owned(),
-          &msg_to_parent,
-          edge_data.transmission.as_ref(),
-        );
-        edge_data.msg_to_parent = msg_to_parent;
       }
-    }
 
-    GraphTraversalContinuation::Continue
-  });
+      // messages are combined, if this is the root node the gtr.pi is used to multiply the data from children
+      combine_messages(
+        &seq_info.seq.composition,
+        &child_messages,
+        &variable_pos,
+        &child_states,
+        alphabet,
+        node.is_root.then_some(&gtr.pi),
+      )?
+    };
+
+    if node.is_root {
+      // data from children * gtr.pi as calculated above is the root profile.
+      seq_info.profile = msg_to_parent;
+    } else {
+      // what was calculated above is what is sent to the parent. we also calculate the propagated message to the parent (we need it in the forward pass).
+      let edge_to_parent =
+        get_exactly_one_mut(&mut node.parent_edges).expect("Only nodes with exactly one parent are supported"); // HACK
+      let branch_length = edge_to_parent.weight().unwrap_or(0.0);
+      let branch_length = fix_branch_length(*length, branch_length);
+      let edge_data = &mut edge_to_parent.sparse_partitions[si];
+      edge_data.msg_from_child = propagate_raw(
+        &gtr.expQt(branch_length).t().to_owned(),
+        &msg_to_parent,
+        edge_data.transmission.as_ref(),
+      );
+      edge_data.msg_to_parent = msg_to_parent;
+    }
+  }
+  Ok(())
 }
 
 fn propagate_raw(
@@ -261,132 +269,140 @@ fn combine_messages(
   Ok(seq_dis)
 }
 
-fn outgroup_profiles_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihood]) {
+/// Forward pass calculates outgroup profiles
+fn marginal_sparse_forward(graph: &SparseGraph, partitions: &[PartitionLikelihood]) {
   graph.par_iter_breadth_first_forward(|mut node| {
-    for (si, seq_info) in node.payload.sparse_partitions.iter_mut().enumerate() {
-      let PartitionLikelihood { gtr, alphabet, length } = &partitions[si];
-      if !node.is_root {
-        // the root has no input from parents, profile is already calculated
-        let mut variable_pos = btreemap! {};
-        let mut ref_states: Vec<BTreeMap<usize, AsciiChar>> = vec![];
-        let mut msgs_to_combine: Vec<SparseSeqDis> = vec![];
-        for (_, edge) in &node.parents {
-          // go over all mutations and get reference state
-          let mut parent_state: BTreeMap<usize, AsciiChar> = btreemap! {};
-          let mut child_state: BTreeMap<usize, AsciiChar> = btreemap! {};
-          // go over parent variable position and get reference state
-          for (pos, p) in &edge.read_arc().sparse_partitions[si].msg_to_child.variable {
-            if !range_contains(&seq_info.seq.gaps, *pos) {
-              // no need to track this position if the position is non-char
-              variable_pos.entry(*pos).or_insert(p.state);
-              parent_state.insert(*pos, p.state);
-            }
-          }
-          // record all states that involve a mutation
-          for m in &edge.read_arc().sparse_partitions[si].subs {
-            variable_pos.insert(m.pos(), m.qry());
-            parent_state.entry(m.pos()).or_insert_with(|| m.reff());
-            child_state.entry(m.pos()).or_insert_with(|| m.qry());
-          }
-          // go over variable position in children (info pushed to parent) and get reference state
-          for (pos, p) in &edge.read_arc().sparse_partitions[si].msg_to_parent.variable {
-            variable_pos.entry(*pos).or_insert(p.state);
-            child_state.entry(*pos).or_insert(p.state);
-          }
-
-          let branch_length = edge.read_arc().branch_length.unwrap_or(0.0);
-          let branch_length = fix_branch_length(*length, branch_length);
-
-          msgs_to_combine.push(propagate_raw(
-            &gtr.expQt(branch_length),
-            &edge.read_arc().sparse_partitions[si].msg_to_child,
-            edge.read_arc().sparse_partitions[si].transmission.as_ref(),
-          ));
-          // add combined message from children (which is sent to the parent).
-          msgs_to_combine.push(edge.read_arc().sparse_partitions[si].msg_to_parent.clone());
-          // NOTE: this empty parent_state is necessary since msgs and states are iterated over in a zip
-          ref_states.push(parent_state);
-          ref_states.push(child_state);
-        }
-
-        seq_info.profile = combine_messages(
-          &seq_info.seq.composition,
-          &msgs_to_combine,
-          &variable_pos,
-          &ref_states,
-          alphabet,
-          None,
-        )
-        .unwrap();
-      }
-
-      // precalculate messages to children that summarize info from their siblings and the parent
-      for child_edge in &mut node.child_edges {
-        let mut seq_dis = SparseSeqDis {
-          variable: btreemap! {},
-          variable_indel: btreemap! {},
-          fixed: btreemap! {},
-          fixed_counts: seq_info.seq.composition.clone(),
-          log_lh: seq_info.profile.log_lh - child_edge.sparse_partitions[si].msg_from_child.log_lh,
-        };
-
-        let child_dis = &child_edge.sparse_partitions[si].msg_from_child;
-        let mut parent_states: BTreeMap<usize, AsciiChar> = btreemap! {};
-        let mut child_states: BTreeMap<usize, AsciiChar> = btreemap! {};
-        for (pos, p) in &seq_info.profile.variable {
-          child_states.insert(*pos, p.state);
-          parent_states.insert(*pos, p.state);
-        }
-        for (pos, p) in &child_dis.variable {
-          child_states.insert(*pos, p.state);
-          parent_states.entry(*pos).or_insert(p.state);
-        }
-        for sub in &child_edge.sparse_partitions[si].subs {
-          child_states.insert(sub.pos(), sub.qry());
-          parent_states.insert(sub.pos(), sub.reff());
-        }
-
-        let mut delta_ll = 0.0;
-        // subtract the message from the current child from the profile
-        for (pos, pstate) in parent_states {
-          let divisor = if let Some(dis) = child_dis.variable.get(&pos) {
-            &dis.dis
-          } else {
-            &child_dis.fixed[&child_states[&pos]]
-          };
-          let numerator = if let Some(dis) = seq_info.profile.variable.get(&pos) {
-            &dis.dis
-          } else {
-            &seq_info.profile.fixed[&pstate]
-          };
-          let dis = numerator / divisor;
-          let norm = dis.sum();
-          delta_ll += norm.ln();
-          seq_dis.variable.insert(
-            pos,
-            VarPos {
-              dis: dis / norm,
-              state: pstate,
-            },
-          );
-          seq_dis.fixed_counts.adjust_count(pstate, -1);
-        }
-        for (s, p) in &seq_info.profile.fixed {
-          let dis = p / &child_dis.fixed[s];
-          let norm = dis.sum();
-          delta_ll += norm.ln() * (seq_dis.fixed_counts.get(*s).unwrap() as f64);
-          seq_dis.fixed.insert(*s, dis / norm);
-        }
-        seq_dis.log_lh += delta_ll;
-        child_edge.sparse_partitions[si].msg_to_child = seq_dis;
-      }
-    }
+    run_marginal_sparse_forward(&partitions, &mut node).unwrap();
     GraphTraversalContinuation::Continue
   });
 }
 
+fn run_marginal_sparse_forward(
+  partitions: &&[PartitionLikelihood],
+  node: &mut GraphNodeForward<SparseNode, SparseEdge, ()>,
+) -> Result<(), Report> {
+  for (si, seq_info) in node.payload.sparse_partitions.iter_mut().enumerate() {
+    let PartitionLikelihood { gtr, alphabet, length } = &partitions[si];
+    if !node.is_root {
+      // the root has no input from parents, profile is already calculated
+      let mut variable_pos = btreemap! {};
+      let mut ref_states: Vec<BTreeMap<usize, AsciiChar>> = vec![];
+      let mut msgs_to_combine: Vec<SparseSeqDis> = vec![];
+      for (_, edge) in &node.parents {
+        // go over all mutations and get reference state
+        let mut parent_state: BTreeMap<usize, AsciiChar> = btreemap! {};
+        let mut child_state: BTreeMap<usize, AsciiChar> = btreemap! {};
+        // go over parent variable position and get reference state
+        for (pos, p) in &edge.read_arc().sparse_partitions[si].msg_to_child.variable {
+          if !range_contains(&seq_info.seq.gaps, *pos) {
+            // no need to track this position if the position is non-char
+            variable_pos.entry(*pos).or_insert(p.state);
+            parent_state.insert(*pos, p.state);
+          }
+        }
+        // record all states that involve a mutation
+        for m in &edge.read_arc().sparse_partitions[si].subs {
+          variable_pos.insert(m.pos(), m.qry());
+          parent_state.entry(m.pos()).or_insert_with(|| m.reff());
+          child_state.entry(m.pos()).or_insert_with(|| m.qry());
+        }
+        // go over variable position in children (info pushed to parent) and get reference state
+        for (pos, p) in &edge.read_arc().sparse_partitions[si].msg_to_parent.variable {
+          variable_pos.entry(*pos).or_insert(p.state);
+          child_state.entry(*pos).or_insert(p.state);
+        }
+
+        let branch_length = edge.read_arc().branch_length.unwrap_or(0.0);
+        let branch_length = fix_branch_length(*length, branch_length);
+
+        msgs_to_combine.push(propagate_raw(
+          &gtr.expQt(branch_length),
+          &edge.read_arc().sparse_partitions[si].msg_to_child,
+          edge.read_arc().sparse_partitions[si].transmission.as_ref(),
+        ));
+        // add combined message from children (which is sent to the parent).
+        msgs_to_combine.push(edge.read_arc().sparse_partitions[si].msg_to_parent.clone());
+        // NOTE: this empty parent_state is necessary since msgs and states are iterated over in a zip
+        ref_states.push(parent_state);
+        ref_states.push(child_state);
+      }
+
+      seq_info.profile = combine_messages(
+        &seq_info.seq.composition,
+        &msgs_to_combine,
+        &variable_pos,
+        &ref_states,
+        alphabet,
+        None,
+      )?;
+    }
+
+    // precalculate messages to children that summarize info from their siblings and the parent
+    for child_edge in &mut node.child_edges {
+      let mut seq_dis = SparseSeqDis {
+        variable: btreemap! {},
+        variable_indel: btreemap! {},
+        fixed: btreemap! {},
+        fixed_counts: seq_info.seq.composition.clone(),
+        log_lh: seq_info.profile.log_lh - child_edge.sparse_partitions[si].msg_from_child.log_lh,
+      };
+
+      let child_dis = &child_edge.sparse_partitions[si].msg_from_child;
+      let mut parent_states: BTreeMap<usize, AsciiChar> = btreemap! {};
+      let mut child_states: BTreeMap<usize, AsciiChar> = btreemap! {};
+      for (pos, p) in &seq_info.profile.variable {
+        child_states.insert(*pos, p.state);
+        parent_states.insert(*pos, p.state);
+      }
+      for (pos, p) in &child_dis.variable {
+        child_states.insert(*pos, p.state);
+        parent_states.entry(*pos).or_insert(p.state);
+      }
+      for sub in &child_edge.sparse_partitions[si].subs {
+        child_states.insert(sub.pos(), sub.qry());
+        parent_states.insert(sub.pos(), sub.reff());
+      }
+
+      let mut delta_ll = 0.0;
+      // subtract the message from the current child from the profile
+      for (pos, pstate) in parent_states {
+        let divisor = if let Some(dis) = child_dis.variable.get(&pos) {
+          &dis.dis
+        } else {
+          &child_dis.fixed[&child_states[&pos]]
+        };
+        let numerator = if let Some(dis) = seq_info.profile.variable.get(&pos) {
+          &dis.dis
+        } else {
+          &seq_info.profile.fixed[&pstate]
+        };
+        let dis = numerator / divisor;
+        let norm = dis.sum();
+        delta_ll += norm.ln();
+        seq_dis.variable.insert(
+          pos,
+          VarPos {
+            dis: dis / norm,
+            state: pstate,
+          },
+        );
+        seq_dis.fixed_counts.adjust_count(pstate, -1);
+      }
+      for (s, p) in &seq_info.profile.fixed {
+        let dis = p / &child_dis.fixed[s];
+        let norm = dis.sum();
+        delta_ll += norm.ln() * (seq_dis.fixed_counts.get(*s).unwrap() as f64);
+        seq_dis.fixed.insert(*s, dis / norm);
+      }
+      seq_dis.log_lh += delta_ll;
+      child_edge.sparse_partitions[si].msg_to_child = seq_dis;
+    }
+  }
+  Ok(())
+}
+
 pub fn run_marginal_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihood]) -> Result<f64, Report> {
-  ingroup_profiles_sparse(graph, partitions);
+  marginal_sparse_backward(graph, partitions);
   let log_lh = graph
     .get_exactly_one_root()?
     .read_arc()
@@ -397,7 +413,7 @@ pub fn run_marginal_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihoo
     .map(|p| p.profile.log_lh)
     .sum();
   debug!("Log likelihood: {log_lh}");
-  outgroup_profiles_sparse(graph, partitions);
+  marginal_sparse_forward(graph, partitions);
   Ok(log_lh)
 }
 
