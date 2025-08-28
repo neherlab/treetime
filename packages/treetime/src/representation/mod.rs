@@ -3,6 +3,7 @@ pub mod graph_ancestral;
 pub mod graph_dense;
 pub mod graph_sparse;
 pub mod infer_dense;
+pub mod partition_compressed;
 pub mod partition_marginal_dense;
 pub mod partition_marginal_sparse;
 pub mod partition_parsimony;

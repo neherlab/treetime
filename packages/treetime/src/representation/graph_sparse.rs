@@ -25,7 +25,7 @@ pub type SparseGraph = Graph<SparseNode, SparseEdge, ()>;
 pub struct SparseNode {
   pub name: Option<String>,
   pub desc: Option<String>,
-  pub sparse_partitions: Vec<SparseSeqNode>,
+  pub sparse_partitions: Vec<SparseNodePartition>,
 }
 
 impl NodeFromNwk for SparseNode {
@@ -67,22 +67,12 @@ impl NodeToGraphviz for SparseNode {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct SparseSeqInfo {
-  pub unknown: Vec<(usize, usize)>,
-  pub gaps: Vec<(usize, usize)>,
-  pub non_char: Vec<(usize, usize)>, // any position that does not evolve according to the substitution model, i.e. gap or N
-  pub composition: Composition,      // count of all characters in the region that is not `non_char`
-  pub sequence: Seq,
-  pub fitch: ParsimonySeqDis,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct SparseSeqNode {
+pub struct SparseNodePartition {
   pub seq: SparseSeqInfo,
-  pub profile: SparseSeqDis,
+  pub profile: MarginalSparseSeqDistribution,
 }
 
-impl SparseSeqNode {
+impl SparseNodePartition {
   pub fn new(seq: &Seq, alphabet: &Alphabet) -> Result<Self, Report> {
     // FIXME: the original code used `alphabet_gapN`:
     //
@@ -97,7 +87,7 @@ impl SparseSeqNode {
       .map(|(pos, &c)| (pos, alphabet.char_to_set(c)))
       .collect();
 
-    let seq_dis = ParsimonySeqDis {
+    let seq_dis = ParsimonySeqDistribution {
       variable,
       variable_indel: btreemap! {},
       composition: Composition::new(alphabet.chars(), alphabet.gap()),
@@ -116,7 +106,7 @@ impl SparseSeqNode {
         sequence: seq.to_owned(), // TODO(perf): try to avoid cloning
         fitch: seq_dis,
       },
-      profile: SparseSeqDis {
+      profile: MarginalSparseSeqDistribution {
         variable: btreemap! {},
         variable_indel: btreemap! {},
         fixed: btreemap! {},
@@ -127,10 +117,20 @@ impl SparseSeqNode {
   }
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct SparseSeqInfo {
+  pub unknown: Vec<(usize, usize)>,
+  pub gaps: Vec<(usize, usize)>,
+  pub non_char: Vec<(usize, usize)>, // any position that does not evolve according to the substitution model, i.e. gap or N
+  pub composition: Composition,      // count of all characters in the region that is not `non_char`
+  pub sequence: Seq,
+  pub fitch: ParsimonySeqDistribution,
+}
+
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct SparseEdge {
-  pub sparse_partitions: Vec<SparseSeqEdge>,
   pub branch_length: Option<f64>,
+  pub sparse_partitions: Vec<SparseEdgePartition>,
 }
 
 impl GraphEdge for SparseEdge {}
@@ -183,13 +183,51 @@ impl EdgeToGraphViz for SparseEdge {
 }
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
-pub struct SparseSeqEdge {
+pub struct SparseEdgePartition {
   pub subs: Vec<Sub>,
   pub indels: Vec<InDel>,
-  pub msg_to_parent: SparseSeqDis,
-  pub msg_to_child: SparseSeqDis,
-  pub msg_from_child: SparseSeqDis,
+  pub msg_to_parent: MarginalSparseSeqDistribution,
+  pub msg_to_child: MarginalSparseSeqDistribution,
+  pub msg_from_child: MarginalSparseSeqDistribution,
   pub transmission: Option<Vec<(usize, usize)>>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct MarginalSparseSeqDistribution {
+  /// probability vector for each variable position collecting information from children
+  pub variable: BTreeMap<usize, VarPos>,
+
+  pub variable_indel: BTreeMap<(usize, usize), Deletion>,
+
+  /// probability vector for the state of fixed positions based on information from children
+  pub fixed: BTreeMap<AsciiChar, Array1<f64>>,
+
+  pub fixed_counts: Composition,
+
+  /// Total log likelihood
+  pub log_lh: f64,
+}
+
+impl Default for MarginalSparseSeqDistribution {
+  fn default() -> Self {
+    Self {
+      variable: btreemap! {},
+      variable_indel: btreemap! {},
+      fixed: btreemap! {},
+      fixed_counts: Composition::new(std::iter::empty::<u8>(), b'-'),
+      log_lh: 0.0,
+    }
+  }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ParsimonySeqDistribution {
+  /// probability vector for each variable position collecting information from children
+  pub variable: BTreeMap<usize, StateSet>,
+
+  pub variable_indel: BTreeMap<(usize, usize), Deletion>,
+
+  pub composition: Composition,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -208,42 +246,4 @@ impl VarPos {
 pub struct Deletion {
   pub deleted: usize, // number of times deletion is observed
   pub present: usize, // or not
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct SparseSeqDis {
-  /// probability vector for each variable position collecting information from children
-  pub variable: BTreeMap<usize, VarPos>,
-
-  pub variable_indel: BTreeMap<(usize, usize), Deletion>,
-
-  /// probability vector for the state of fixed positions based on information from children
-  pub fixed: BTreeMap<AsciiChar, Array1<f64>>,
-
-  pub fixed_counts: Composition,
-
-  /// Total log likelihood
-  pub log_lh: f64,
-}
-
-impl Default for SparseSeqDis {
-  fn default() -> Self {
-    Self {
-      variable: btreemap! {},
-      variable_indel: btreemap! {},
-      fixed: btreemap! {},
-      fixed_counts: Composition::new(std::iter::empty::<u8>(), b'-'),
-      log_lh: 0.0,
-    }
-  }
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct ParsimonySeqDis {
-  /// probability vector for each variable position collecting information from children
-  pub variable: BTreeMap<usize, StateSet>,
-
-  pub variable_indel: BTreeMap<(usize, usize), Deletion>,
-
-  pub composition: Composition,
 }

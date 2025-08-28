@@ -4,7 +4,7 @@ use crate::graph::edge::Weighted;
 use crate::graph::graph::{GraphNodeBackward, GraphNodeForward};
 use crate::hacks::fix_branch_length::fix_branch_length;
 use crate::make_internal_error;
-use crate::representation::graph_sparse::{SparseEdge, SparseGraph, SparseNode, SparseSeqDis, VarPos};
+use crate::representation::graph_sparse::{MarginalSparseSeqDistribution, SparseEdge, SparseGraph, SparseNode, VarPos};
 use crate::representation::partitions_likelihood::PartitionLikelihood;
 use crate::representation::seq::Seq;
 use crate::representation::seq_char::AsciiChar;
@@ -55,7 +55,7 @@ fn run_marginal_sparse_backward(
         })
         .collect();
 
-      SparseSeqDis {
+      MarginalSparseSeqDistribution {
         fixed_counts: seq_info.seq.composition.clone(),
         variable,
         variable_indel: btreemap! {},
@@ -67,7 +67,7 @@ fn run_marginal_sparse_backward(
       // to do so, we need to loop over incoming edges, collect variable positions and the child states at them
       let mut variable_pos = btreemap! {};
       let mut child_states = vec![];
-      let mut child_messages: Vec<SparseSeqDis> = vec![];
+      let mut child_messages: Vec<MarginalSparseSeqDistribution> = vec![];
       for (ci, (_, edge)) in node.children.iter().enumerate() {
         // go over all mutations and get reference and child state
         child_states.push(btreemap! {});
@@ -132,10 +132,10 @@ fn run_marginal_sparse_backward(
 
 fn propagate_raw(
   expQt: &Array2<f64>,
-  seq_dis: &SparseSeqDis,
+  seq_dis: &MarginalSparseSeqDistribution,
   transmission: Option<&Vec<(usize, usize)>>,
-) -> SparseSeqDis {
-  let mut message = SparseSeqDis {
+) -> MarginalSparseSeqDistribution {
+  let mut message = MarginalSparseSeqDistribution {
     variable: btreemap! {},
     variable_indel: btreemap! {},
     fixed: btreemap! {},
@@ -169,13 +169,13 @@ fn propagate_raw(
 
 fn combine_messages(
   composition: &composition::Composition,
-  messages: &[SparseSeqDis],
+  messages: &[MarginalSparseSeqDistribution],
   variable_pos: &BTreeMap<usize, AsciiChar>,
   reference_states: &[BTreeMap<usize, AsciiChar>],
   alphabet: &Alphabet,
   gtr_weight: Option<&Array1<f64>>,
-) -> Result<SparseSeqDis, Report> {
-  let mut seq_dis = SparseSeqDis {
+) -> Result<MarginalSparseSeqDistribution, Report> {
+  let mut seq_dis = MarginalSparseSeqDistribution {
     variable: btreemap! {},
     variable_indel: btreemap! {},
     fixed: btreemap! {},
@@ -287,7 +287,7 @@ fn run_marginal_sparse_forward(
       // the root has no input from parents, profile is already calculated
       let mut variable_pos = btreemap! {};
       let mut ref_states: Vec<BTreeMap<usize, AsciiChar>> = vec![];
-      let mut msgs_to_combine: Vec<SparseSeqDis> = vec![];
+      let mut msgs_to_combine: Vec<MarginalSparseSeqDistribution> = vec![];
       for (_, edge) in &node.parents {
         // go over all mutations and get reference state
         let mut parent_state: BTreeMap<usize, AsciiChar> = btreemap! {};
@@ -339,7 +339,7 @@ fn run_marginal_sparse_forward(
 
     // precalculate messages to children that summarize info from their siblings and the parent
     for child_edge in &mut node.child_edges {
-      let mut seq_dis = SparseSeqDis {
+      let mut seq_dis = MarginalSparseSeqDistribution {
         variable: btreemap! {},
         variable_indel: btreemap! {},
         fixed: btreemap! {},

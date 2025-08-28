@@ -6,8 +6,10 @@ use crate::graph::graph::{GraphNodeBackward, GraphNodeForward};
 use crate::io::fasta::FastaRecord;
 use crate::representation::graph_ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
 use crate::representation::graph_sparse::{
-  Deletion, ParsimonySeqDis, SparseSeqDis, SparseSeqEdge, SparseSeqInfo, SparseSeqNode,
+  Deletion, MarginalSparseSeqDistribution, ParsimonySeqDistribution, SparseEdgePartition, SparseNodePartition,
+  SparseSeqInfo,
 };
+use crate::representation::partition_compressed::PartitionCompressed;
 use crate::representation::partition_parsimony::PartitionParsimonyNew;
 use crate::representation::seq::Seq;
 use crate::representation::state_set::BitSet128;
@@ -27,9 +29,9 @@ use maplit::btreemap;
 use parking_lot::RwLock;
 use std::sync::Arc;
 
-fn attach_seqs_to_graph(
+fn attach_seqs_to_graph<P: PartitionCompressed>(
   graph: &GraphAncestral,
-  partitions: &[Arc<RwLock<PartitionParsimonyNew>>],
+  partitions: &[Arc<RwLock<P>>],
   aln: &[FastaRecord],
 ) -> Result<(), Report> {
   for leaf in graph.get_leaves() {
@@ -53,11 +55,11 @@ fn attach_seqs_to_graph(
 
     partitions.iter().try_for_each(|partition| -> Result<(), Report> {
       let mut partition = partition.write_arc();
-      let alphabet = &partition.alphabet.clone(); // TODO: avoid clone
+      let alphabet = &partition.alphabet().clone(); // TODO: avoid clone
 
       partition
-        .nodes
-        .insert(leaf_key, SparseSeqNode::new(&leaf_fasta.seq, alphabet)?);
+        .nodes_mut()
+        .insert(leaf_key, SparseNodePartition::new(&leaf_fasta.seq, alphabet)?);
 
       Ok(())
     })?;
@@ -67,7 +69,7 @@ fn attach_seqs_to_graph(
     let edge_key = edge.read_arc().key();
     partitions.iter().try_for_each(|partition| -> Result<(), Report> {
       let mut partition = partition.write_arc();
-      partition.edges.insert(edge_key, SparseSeqEdge::default());
+      partition.edges_mut().insert(edge_key, SparseEdgePartition::default());
       Ok(())
     })?;
   }
@@ -75,15 +77,15 @@ fn attach_seqs_to_graph(
   Ok(())
 }
 
-fn fitch_backward(graph: &GraphAncestral, partitions: &[Arc<RwLock<PartitionParsimonyNew>>]) {
+fn fitch_backward<P: PartitionCompressed>(graph: &GraphAncestral, partitions: &[Arc<RwLock<P>>]) {
   graph.par_iter_breadth_first_backward(|node| {
     run_fitch_backward(partitions, &node).unwrap();
     GraphTraversalContinuation::Continue
   });
 }
 
-fn run_fitch_backward(
-  partitions: &[Arc<RwLock<PartitionParsimonyNew>>],
+fn run_fitch_backward<P: PartitionCompressed>(
+  partitions: &[Arc<RwLock<P>>],
   node: &GraphNodeBackward<NodeAncestral, EdgeAncestral, ()>,
 ) -> Result<(), Report> {
   if node.is_leaf {
@@ -98,15 +100,8 @@ fn run_fitch_backward(
     let children = node
       .child_keys
       .iter()
-      .map(|(child, edge)| (&partition.nodes[child].seq, &partition.edges[edge]))
+      .map(|(child, edge)| (&partition.node(child).seq, partition.edge(edge)))
       .collect_vec();
-
-    // Initialization of target data structure (could be done later)
-    let mut seq_dis = ParsimonySeqDis {
-      variable: btreemap! {},
-      variable_indel: btreemap! {},
-      composition: Composition::new(partition.alphabet.chars(), partition.alphabet.gap()),
-    };
 
     // determine parts of the sequence that are unknown, gaps in all children
     let mut gaps = range_intersection_iter(children.iter().map(|(c, _)| &c.gaps)).collect_vec();
@@ -114,10 +109,10 @@ fn run_fitch_backward(
     // non_char are ranges that are either unknown or gaps in all children (note that can be different from the union of gaps and unknown)
     let non_char = range_intersection_iter(children.iter().map(|(c, _)| &c.non_char)).collect_vec();
     // calculate the complement of gaps for later look-up
-    let non_gap = range_complement(&[(0, partition.length)], &[gaps.clone()]); // FIXME(perf): unnecessary clone
+    let non_gap = range_complement(&[(0, partition.length())], &[gaps.clone()]); // FIXME(perf): unnecessary clone
 
     // what follows could be a function that returns `sequence` and `variable`, takes as arguments children, non_char, alphabet
-    let mut sequence = seq![FILL_CHAR; partition.length];
+    let mut sequence = seq![FILL_CHAR; partition.length()];
     for r in &non_char {
       sequence[r.0..r.1].fill(NON_CHAR);
     }
@@ -129,6 +124,13 @@ fn run_fitch_backward(
       .flat_map(|(c, _)| c.fitch.variable.keys().copied())
       .unique()
       .collect_vec();
+
+    // Initialization of target data structure (could be done later)
+    let mut seq_dis = ParsimonySeqDistribution {
+      variable: btreemap! {},
+      variable_indel: btreemap! {},
+      composition: Composition::new(partition.alphabet().chars(), partition.alphabet().gap()),
+    };
 
     for pos in variable_positions {
       // Collect child profiles (1D vectors)
@@ -181,7 +183,7 @@ fn run_fitch_backward(
         if *parent_state == child_state || *parent_state == NON_CHAR {
           continue; // if parent is equal to child state or we know it's a non-char, skip
         }
-        if partition.alphabet.is_canonical(child_state) {
+        if partition.alphabet().is_canonical(child_state) {
           if *parent_state == FILL_CHAR {
             // if child state is canonical and parent is still FILL_CHAR, set parent_state
             *parent_state = child_state;
@@ -232,52 +234,52 @@ fn run_fitch_backward(
       }
     });
 
-    let new_node_data = SparseSeqNode {
+    let new_node_data = SparseNodePartition {
       seq: SparseSeqInfo {
         gaps,
         unknown,
         non_char,
         fitch: seq_dis,
         sequence,
-        composition: Composition::new(partition.alphabet.chars(), partition.alphabet.gap()),
+        composition: Composition::new(partition.alphabet().chars(), partition.alphabet().gap()),
       },
-      profile: SparseSeqDis {
+      profile: MarginalSparseSeqDistribution {
         variable: btreemap! {},
         variable_indel: btreemap! {},
         fixed: btreemap! {},
-        fixed_counts: Composition::new(partition.alphabet.chars(), partition.alphabet.gap()),
+        fixed_counts: Composition::new(partition.alphabet().chars(), partition.alphabet().gap()),
         log_lh: 0.0,
       },
     };
 
-    partition.nodes.insert(node.key, new_node_data);
+    partition.nodes_mut().insert(node.key, new_node_data);
   }
 
   Ok(())
 }
 
-fn fitch_forward(graph: &GraphAncestral, partitions: &[Arc<RwLock<PartitionParsimonyNew>>]) {
+fn fitch_forward<P: PartitionCompressed>(graph: &GraphAncestral, partitions: &[Arc<RwLock<P>>]) {
   graph.par_iter_breadth_first_forward(|node| {
     run_fitch_forward(partitions, &node).unwrap();
     GraphTraversalContinuation::Continue
   });
 }
 
-fn run_fitch_forward(
-  partitions: &[Arc<RwLock<PartitionParsimonyNew>>],
+fn run_fitch_forward<P: PartitionCompressed>(
+  partitions: &[Arc<RwLock<P>>],
   node: &GraphNodeForward<NodeAncestral, EdgeAncestral, ()>,
 ) -> Result<(), Report> {
   for partition in partitions {
     let mut partition = partition.write_arc();
-    let alphabet = &partition.alphabet.clone(); // TODO: avoid clone
+    let alphabet = &partition.alphabet().clone(); // TODO: avoid clone
 
-    let mut node_data = partition.nodes.remove(&node.key).unwrap();
+    let mut node_data = partition.nodes_mut().remove(&node.key).unwrap();
 
     if node.is_root {
       let SparseSeqInfo {
         gaps,
         sequence,
-        fitch: ParsimonySeqDis {
+        fitch: ParsimonySeqDistribution {
           variable,
           variable_indel,
           ..
@@ -301,7 +303,7 @@ fn run_fitch_forward(
         sequence,
         composition,
         non_char,
-        fitch: ParsimonySeqDis {
+        fitch: ParsimonySeqDistribution {
           variable,
           variable_indel,
           ..
@@ -314,7 +316,7 @@ fn run_fitch_forward(
       let mut subs = vec![];
       let mut indels = vec![];
 
-      let parent = &partition.nodes[parent_key].seq;
+      let parent = &partition.node(parent_key).seq;
       *composition = parent.composition.clone();
 
       // fill in the indeterminate positions by copying the parent (note that new gaps in the node will be introduced later)
@@ -411,7 +413,7 @@ fn run_fitch_forward(
       }
 
       {
-        let edge = partition.edges.get_mut(edge_key).unwrap();
+        let edge = partition.edge_mut(edge_key);
         edge.subs.extend(subs);
         edge.indels.extend(indels);
       }
@@ -438,22 +440,22 @@ fn run_fitch_forward(
       *composition = Composition::with_sequence(sequence.iter().copied(), alphabet.chars(), alphabet.gap());
     }
 
-    partition.nodes.insert(node.key, node_data);
+    partition.nodes_mut().insert(node.key, node_data);
   }
   Ok(())
 }
 
-fn fitch_cleanup(graph: &GraphAncestral, partitions: &[Arc<RwLock<PartitionParsimonyNew>>]) {
+fn fitch_cleanup<P: PartitionCompressed>(graph: &GraphAncestral, partitions: &[Arc<RwLock<P>>]) {
   graph.par_iter_breadth_first_forward(|node| run_fitch_forward_cleanup(&node, partitions));
 }
 
-fn run_fitch_forward_cleanup(
+fn run_fitch_forward_cleanup<P: PartitionCompressed>(
   node: &GraphNodeForward<NodeAncestral, EdgeAncestral, ()>,
-  partitions: &[Arc<RwLock<PartitionParsimonyNew>>],
+  partitions: &[Arc<RwLock<P>>],
 ) -> GraphTraversalContinuation {
   for partition in partitions {
     let mut partition = partition.write_arc();
-    let seq = &mut partition.nodes.get_mut(&node.key).unwrap().seq;
+    let seq = &mut partition.node_mut(&node.key).seq;
 
     // delete the variable position everywhere except of leaves
     if !node.is_leaf {
@@ -475,9 +477,9 @@ fn run_fitch_forward_cleanup(
   GraphTraversalContinuation::Continue
 }
 
-pub fn compress_sequences(
+pub fn compress_sequences<P: PartitionCompressed>(
   graph: &GraphAncestral,
-  partitions: &[Arc<RwLock<PartitionParsimonyNew>>],
+  partitions: &[Arc<RwLock<P>>],
   aln: &[FastaRecord],
 ) -> Result<(), Report> {
   attach_seqs_to_graph(graph, partitions, aln)?;

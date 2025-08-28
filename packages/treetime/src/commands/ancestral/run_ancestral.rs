@@ -2,9 +2,6 @@ use crate::alphabet::alphabet::Alphabet;
 use crate::commands::ancestral::anc_args::{MethodAncestral, TreetimeAncestralArgs};
 use crate::commands::ancestral::fitch::{ancestral_reconstruction_fitch, compress_sequences, get_common_length};
 use crate::commands::ancestral::marginal_dense::{ancestral_reconstruction_marginal_dense, run_marginal_dense};
-use crate::commands::ancestral::marginal_sparse::{
-  ancestral_reconstruction_marginal_sparse, compress_sequences_marginal_sparse, run_marginal_sparse,
-};
 use crate::graph::edge::GraphEdge;
 use crate::graph::graph::Graph;
 use crate::graph::node::GraphNode;
@@ -105,20 +102,20 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
   .collect_vec();
 
   if !partitions_marginal_sparse.is_empty() {
-    compress_sequences_marginal_sparse(&graph, &partitions_marginal_sparse, &aln)?;
+    compress_sequences(&graph, &partitions_marginal_sparse, &aln)?;
 
-    run_marginal_sparse(&graph, &partitions_marginal_sparse)?;
+    // run_marginal_sparse(&graph, &partitions_marginal_sparse)?;
 
-    ancestral_reconstruction_marginal_sparse(
-      &graph,
-      *reconstruct_tip_states,
-      &partitions_marginal_sparse,
-      |node, seq| {
-        let name = node.name.as_deref().unwrap_or("");
-        let desc = &node.desc;
-        output_fasta.write(name, desc, seq).unwrap();
-      },
-    )?;
+    // ancestral_reconstruction_marginal_sparse(
+    //   &graph,
+    //   *reconstruct_tip_states,
+    //   &partitions_marginal_sparse,
+    //   |node, seq| {
+    //     let name = node.name.as_deref().unwrap_or("");
+    //     let desc = &node.desc;
+    //     output_fasta.write(name, desc, seq).unwrap();
+    //   },
+    // )?;
   }
 
   // #[allow(clippy::iter_on_single_items)]

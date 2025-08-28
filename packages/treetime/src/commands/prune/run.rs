@@ -248,19 +248,19 @@ mod tests {
   use super::*;
   use crate::graph::graph::Graph;
   use crate::io::nwk::{nwk_read_str, nwk_write_str};
-  use crate::representation::graph_sparse::{SparseEdge, SparseNode, SparseSeqEdge};
+  use crate::representation::graph_sparse::{SparseEdge, SparseEdgePartition, SparseNode};
   use crate::seq::mutation::Sub;
   use pretty_assertions::assert_eq;
 
   fn create_test_edge(branch_length: Option<f64>, num_muts: Option<usize>) -> SparseEdge {
     let sparse_partitions = if let Some(num_muts) = num_muts {
       if num_muts > 0 {
-        vec![SparseSeqEdge {
+        vec![SparseEdgePartition {
           subs: (0..num_muts).map(|i| Sub::new('A', i, 'T').unwrap()).collect_vec(),
           ..Default::default()
         }]
       } else {
-        vec![SparseSeqEdge::default()]
+        vec![SparseEdgePartition::default()]
       }
     } else {
       // When num_muts is None, create an edge with no partitions to represent unknown mutations
@@ -268,8 +268,8 @@ mod tests {
     };
 
     SparseEdge {
-      sparse_partitions,
       branch_length,
+      sparse_partitions,
     }
   }
 

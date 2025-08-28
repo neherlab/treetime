@@ -24,7 +24,7 @@ use crate::seq::mutation::Sub;
 use crate::{
   gtr::gtr::GTR,
   representation::{
-    graph_sparse::{SparseGraph, SparseSeqEdge},
+    graph_sparse::{SparseEdgePartition, SparseGraph},
     partitions_likelihood::PartitionLikelihood,
   },
 };
@@ -43,7 +43,7 @@ struct PartitionContribution {
   eigenvalues: ndarray::Array1<f64>,
 }
 
-fn get_coefficients(edge: &SparseSeqEdge, gtr: &GTR) -> Result<PartitionContribution, Report> {
+fn get_coefficients(edge: &SparseEdgePartition, gtr: &GTR) -> Result<PartitionContribution, Report> {
   // Collect variable positions from msg_to_child, msg_to_parent, and the substitutions along the edge
   let variable_positions: Vec<usize> = edge
     .msg_to_child
