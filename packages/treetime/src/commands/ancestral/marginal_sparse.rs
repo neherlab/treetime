@@ -4,8 +4,9 @@ use crate::graph::edge::Weighted;
 use crate::graph::graph::{GraphNodeBackward, GraphNodeForward};
 use crate::hacks::fix_branch_length::fix_branch_length;
 use crate::make_internal_error;
-use crate::representation::graph_sparse::{MarginalSparseSeqDistribution, SparseEdge, SparseGraph, SparseNode, VarPos};
-use crate::representation::partitions_likelihood::PartitionLikelihood;
+use crate::representation::graph_ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
+use crate::representation::graph_sparse::{MarginalSparseSeqDistribution, VarPos};
+use crate::representation::partition_marginal_sparse::PartitionMarginalSparse;
 use crate::representation::seq::Seq;
 use crate::representation::seq_char::AsciiChar;
 use crate::seq::composition;
@@ -16,12 +17,14 @@ use log::debug;
 use maplit::btreemap;
 use ndarray::{Array1, Array2};
 use ndarray_stats::QuantileExt;
+use parking_lot::RwLock;
 use std::collections::BTreeMap;
 use std::iter::zip;
+use std::sync::Arc;
 
 const EPS: f64 = 1e-4;
 
-fn marginal_sparse_backward(graph: &SparseGraph, partitions: &[PartitionLikelihood]) {
+fn marginal_sparse_backward(graph: &GraphAncestral, partitions: &[Arc<RwLock<PartitionMarginalSparse>>]) {
   graph.par_iter_breadth_first_backward(|mut node| {
     run_marginal_sparse_backward(&partitions, &mut node).unwrap();
     GraphTraversalContinuation::Continue
@@ -30,8 +33,8 @@ fn marginal_sparse_backward(graph: &SparseGraph, partitions: &[PartitionLikeliho
 
 /// Backward pass calculates ingroup profiles
 fn run_marginal_sparse_backward(
-  partitions: &&[PartitionLikelihood],
-  node: &mut GraphNodeBackward<SparseNode, SparseEdge, ()>,
+  partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
+  node: &mut GraphNodeBackward<NodeAncestral, EdgeAncestral, ()>,
 ) -> Result<(), Report> {
   for (si, seq_info) in node.payload.sparse_partitions.iter_mut().enumerate() {
     let PartitionLikelihood { gtr, alphabet, length } = &partitions[si];
@@ -270,7 +273,7 @@ fn combine_messages(
 }
 
 /// Forward pass calculates outgroup profiles
-fn marginal_sparse_forward(graph: &SparseGraph, partitions: &[PartitionLikelihood]) {
+fn marginal_sparse_forward(graph: &GraphAncestral, partitions: &[Arc<RwLock<PartitionMarginalSparse>>]) {
   graph.par_iter_breadth_first_forward(|mut node| {
     run_marginal_sparse_forward(&partitions, &mut node).unwrap();
     GraphTraversalContinuation::Continue
@@ -278,8 +281,8 @@ fn marginal_sparse_forward(graph: &SparseGraph, partitions: &[PartitionLikelihoo
 }
 
 fn run_marginal_sparse_forward(
-  partitions: &&[PartitionLikelihood],
-  node: &mut GraphNodeForward<SparseNode, SparseEdge, ()>,
+  partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
+  node: &mut GraphNodeForward<NodeAncestral, EdgeAncestral, ()>,
 ) -> Result<(), Report> {
   for (si, seq_info) in node.payload.sparse_partitions.iter_mut().enumerate() {
     let PartitionLikelihood { gtr, alphabet, length } = &partitions[si];
@@ -401,7 +404,10 @@ fn run_marginal_sparse_forward(
   Ok(())
 }
 
-pub fn run_marginal_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihood]) -> Result<f64, Report> {
+pub fn run_marginal_sparse(
+  graph: &GraphAncestral,
+  partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
+) -> Result<f64, Report> {
   marginal_sparse_backward(graph, partitions);
   let log_lh = graph
     .get_exactly_one_root()?
@@ -418,10 +424,10 @@ pub fn run_marginal_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihoo
 }
 
 pub fn ancestral_reconstruction_marginal_sparse(
-  graph: &SparseGraph,
+  graph: &GraphAncestral,
   include_leaves: bool,
-  partitions: &[PartitionLikelihood],
-  mut visitor: impl FnMut(&SparseNode, Seq),
+  partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
+  mut visitor: impl FnMut(&NodeAncestral, Seq),
 ) -> Result<(), Report> {
   let n_partitions = partitions.len();
 
