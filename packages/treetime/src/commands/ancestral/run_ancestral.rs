@@ -6,18 +6,16 @@ use crate::commands::ancestral::marginal_sparse::{ancestral_reconstruction_margi
 use crate::graph::edge::GraphEdge;
 use crate::graph::graph::Graph;
 use crate::graph::node::GraphNode;
-use crate::gtr::get_gtr::{JC69Params, get_gtr_dense, jc69};
+use crate::gtr::get_gtr::{JC69Params, jc69};
 use crate::io::fasta::{FastaReader, FastaRecord, FastaWriter, read_many_fasta};
 use crate::io::file::{create_file_or_stdout, open_stdin};
 use crate::io::nex::{NexWriteOptions, nex_write_file};
 use crate::io::nwk::{EdgeToNwk, NodeToNwk, NwkWriteOptions, nwk_read_file, nwk_write_file};
 use crate::representation::graph_ancestral::GraphAncestral;
-use crate::representation::graph_dense::DenseGraph;
-
 use crate::representation::infer_dense::infer_dense;
+use crate::representation::partition_marginal_dense::PartitionMarginalDense;
 use crate::representation::partition_marginal_sparse::PartitionMarginalSparse;
 use crate::representation::partition_parsimony::PartitionParsimonyNew;
-use crate::representation::partitions_likelihood::PartitionLikelihoodWithAln;
 use eyre::Report;
 use itertools::Itertools;
 use log::info;
@@ -92,7 +90,7 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
   #[allow(clippy::iter_on_single_items)]
   let partitions_marginal_sparse = [PartitionMarginalSparse {
     index: 1,
-    gtr: jc69(JC69Params::default())?,
+    gtr: jc69(JC69Params::default())?, // TODO: allow other models
     alphabet: alphabet.clone(),
     length: get_common_length(&aln)?,
     nodes: btreemap! {},
@@ -103,6 +101,8 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
   .collect_vec();
 
   if !partitions_marginal_sparse.is_empty() {
+    // let gtr = get_gtr(model_name, &alphabet, &graph)?;
+
     compress_sequences(&graph, &partitions_marginal_sparse, &aln)?;
 
     run_marginal_sparse(&graph, &partitions_marginal_sparse)?;
@@ -119,13 +119,35 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
     )?;
   }
 
-  // #[allow(clippy::iter_on_single_items)]
-  // let partitions_marginal_dense = [PartitionMarginalDense {
-  //   index: 2,
-  //   gtr: jc69(JC69Params::default())?,
-  //   alphabet: alphabet.clone(),
-  //   length: get_common_length(&aln)?,
-  // }];
+  #[allow(clippy::iter_on_single_items)]
+  let partitions_marginal_dense = [PartitionMarginalDense {
+    index: 2,
+    gtr: jc69(JC69Params::default())?, // TODO: allow other models
+    alphabet: alphabet.clone(),
+    length: get_common_length(&aln)?,
+    nodes: btreemap! {},
+    edges: btreemap! {},
+  }]
+  .into_iter()
+  .map(|p| Arc::new(RwLock::new(p)))
+  .collect_vec();
+
+  if !partitions_marginal_dense.is_empty() {
+    // let gtr = get_gtr_dense(model_name, &alphabet, &graph)?;
+
+    run_marginal_dense(&graph, &partitions_marginal_dense)?;
+
+    ancestral_reconstruction_marginal_dense(
+      &graph,
+      *reconstruct_tip_states,
+      &partitions_marginal_dense,
+      |node, seq| {
+        let name = node.name.as_deref().unwrap_or("");
+        let desc = &node.desc;
+        output_fasta.write(name, desc, seq).unwrap();
+      },
+    )?;
+  }
 
   match method_anc {
     // both MaximumLikelihoodJoint and MaximumLikelihoodMarginal need an GTR, parsimony does not
@@ -179,27 +201,29 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
         //   output_fasta.write(name, desc, &seq).unwrap();
         // })?;
 
-        write_graph(outdir, &graph)?;
+        // write_graph(outdir, &graph)?;
       } else {
-        let graph: DenseGraph = nwk_read_file(tree)?;
-        let gtr = get_gtr_dense(model_name, &alphabet, &graph)?;
+        // let graph: DenseGraph = nwk_read_file(tree)?;
+        // let gtr = get_gtr_dense(model_name, &alphabet, &graph)?;
 
-        let partitions = vec![PartitionLikelihoodWithAln::new(gtr, alphabet, aln)?];
-        run_marginal_dense(&graph, partitions, true)?;
+        // let partitions = vec![PartitionLikelihoodWithAln::new(gtr, alphabet, aln)?];
+        // run_marginal_dense(&graph, partitions, true)?;
 
-        ancestral_reconstruction_marginal_dense(&graph, *reconstruct_tip_states, |node, seq| {
-          let name = node.name.as_deref().unwrap_or("");
-          let desc = &node.desc;
-          output_fasta.write(name, desc, seq).unwrap();
-        })?;
+        // ancestral_reconstruction_marginal_dense(&graph, *reconstruct_tip_states, |node, seq| {
+        //   let name = node.name.as_deref().unwrap_or("");
+        //   let desc = &node.desc;
+        //   output_fasta.write(name, desc, seq).unwrap();
+        // })?;
 
-        write_graph(outdir, &graph)?;
+        // write_graph(outdir, &graph)?;
       }
     },
     MethodAncestral::Joint => {
       unimplemented!("MethodAncestral::MaximumLikelihoodJoint")
     },
   }
+
+  write_graph(outdir, &graph)?;
 
   Ok(())
 }
