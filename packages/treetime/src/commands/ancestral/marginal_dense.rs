@@ -7,15 +7,14 @@ use crate::io::fasta::FastaRecord;
 use crate::representation::graph_ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
 use crate::representation::graph_dense::{DenseSeqDis, DenseSeqEdge, DenseSeqInfo, DenseSeqNode};
 use crate::representation::partition_marginal_dense::PartitionMarginalDense;
-use crate::representation::partitions_likelihood::{PartitionLikelihood, PartitionLikelihoodWithAln};
+use crate::representation::partitions_likelihood::PartitionLikelihood;
 use crate::representation::seq::Seq;
-use crate::utils::container::get_exactly_one_mut;
+use crate::utils::container::{get_exactly_one, get_exactly_one_mut};
 use crate::utils::interval::range_intersection::range_intersection;
-use crate::{make_internal_report, make_report, seq};
+use crate::{make_report, seq};
 use eyre::Report;
 use itertools::Itertools;
 use log::debug;
-use ndarray::AssignElem;
 use ndarray::prelude::*;
 use ndarray_stats::QuantileExt;
 use parking_lot::RwLock;
@@ -108,19 +107,23 @@ fn run_marginal_dense_backward(
   partitions: &[Arc<RwLock<PartitionMarginalDense>>],
   node: &mut GraphNodeBackward<NodeAncestral, EdgeAncestral, ()>,
 ) -> Result<(), Report> {
-  for si in 0..partitions.len() {
-    let PartitionLikelihood { gtr, alphabet, length } = &partitions[si];
+  for partition in partitions {
+    let mut partition = partition.write_arc();
+    let gtr = &partition.gtr;
+    let alphabet = &partition.alphabet;
+    let length = partition.length;
+
     let msg_to_parent = if node.is_leaf {
-      let seq_info = &node.payload.dense_partitions[si];
+      let seq_info = &partition.nodes[&node.key];
       DenseSeqDis {
         dis: alphabet.seq2prof(&seq_info.seq.sequence)?,
         log_lh: 0.0,
       }
     } else {
       let gaps = node
-        .children
+        .child_keys
         .iter()
-        .map(|(c, e)| c.read_arc().dense_partitions[si].seq.gaps.clone()) // TODO: avoid cloning
+        .map(|(child_key, _)| partition.nodes[child_key].seq.gaps.clone()) // TODO: avoid cloning
         .collect_vec();
 
       let gaps = range_intersection(&gaps);
@@ -129,17 +132,18 @@ fn run_marginal_dense_backward(
         gaps,
         ..DenseSeqInfo::default()
       };
-      node.payload.dense_partitions.push(DenseSeqNode {
+
+      let node_data = DenseSeqNode {
         seq,
         profile: DenseSeqDis::default(),
-      });
+      };
+      partition.nodes.insert(node.key, node_data);
 
       let msgs = node
-        .children
+        .child_keys
         .iter()
-        .map(|(c, e)| {
-          let edge = e.read_arc();
-          edge.dense_partitions[si].msg_from_child.dis.view().to_owned() //FIXME: avoid copy
+        .map(|(_, edge_key)| {
+          partition.edges[edge_key].msg_from_child.dis.view().to_owned() //FIXME: avoid copy
         })
         .collect_vec();
 
@@ -149,12 +153,9 @@ fn run_marginal_dense_backward(
       }
       let delta_ll = normalize_inplace(&mut dis);
       let log_lh = node
-        .children
+        .child_keys
         .iter()
-        .map(|(c, e)| {
-          let edge = e.read_arc();
-          edge.dense_partitions[si].msg_from_child.log_lh
-        })
+        .map(|(_, edge_key)| partition.edges[edge_key].msg_from_child.log_lh)
         .sum::<f64>();
       DenseSeqDis {
         dis,
@@ -163,7 +164,7 @@ fn run_marginal_dense_backward(
     };
 
     if node.is_root {
-      let seq_info = &mut node.payload.dense_partitions[si];
+      let seq_info = partition.nodes.get_mut(&node.key).unwrap();
       let mut dis = &msg_to_parent.dis * &gtr.pi;
       let delta_ll = normalize_inplace(&mut dis);
 
@@ -171,13 +172,12 @@ fn run_marginal_dense_backward(
       seq_info.profile.log_lh = msg_to_parent.log_lh + delta_ll;
     } else {
       // what was calculated above is what is sent to the parent. we also calculate the propagated message to the parent (we need it in the forward pass).
-      let edge_to_parent =
-        get_exactly_one_mut(&mut node.parent_edges).expect("Only nodes with exactly one parent are supported"); // HACK
-      let branch_length = edge_to_parent.weight().unwrap_or(0.0);
-      let branch_length = fix_branch_length(*length, branch_length);
+      let edge_key = get_exactly_one(&node.parent_edge_keys).expect("Only nodes with exactly one parent are supported");
+      let branch_length = node.parent_edges[0].weight().unwrap_or(0.0);
+      let branch_length = fix_branch_length(length, branch_length);
       let mut edge_data = DenseSeqEdge::default();
 
-      let mut dis = Array2::ones((*length, alphabet.n_canonical()));
+      let mut dis = Array2::ones((length, alphabet.n_canonical()));
       let log_lh = msg_to_parent.log_lh;
       let exp_qt = gtr.expQt(branch_length);
 
@@ -185,7 +185,7 @@ fn run_marginal_dense_backward(
       //     a_{ik} = b.dot(c) = sum(b_{ij}c{jk}, j)
       // -- we can use whatever memory layout we want.
       dis *= &msg_to_parent.dis.dot(&exp_qt);
-      // if let Some(transmission) = &edge_to_parent.dense_partitions[si].transmission {
+      // if let Some(transmission) = &edge_data.transmission {
       //   for r in transmission {
       //     dis
       //       .slice_mut(s![r.0..r.1, ..])
@@ -197,7 +197,7 @@ fn run_marginal_dense_backward(
       // }
       edge_data.msg_from_child = DenseSeqDis { dis, log_lh };
       edge_data.msg_to_parent = msg_to_parent;
-      edge_to_parent.dense_partitions.push(edge_data);
+      partition.edges.insert(*edge_key, edge_data);
     }
   }
   Ok(())
