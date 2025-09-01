@@ -135,7 +135,7 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
   if !partitions_marginal_dense.is_empty() {
     // let gtr = get_gtr_dense(model_name, &alphabet, &graph)?;
 
-    run_marginal_dense(&graph, &partitions_marginal_dense)?;
+    run_marginal_dense(&graph, &partitions_marginal_dense, &aln)?;
 
     ancestral_reconstruction_marginal_dense(
       &graph,

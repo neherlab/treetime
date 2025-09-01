@@ -3,6 +3,7 @@ use crate::graph::breadth_first::GraphTraversalContinuation;
 use crate::graph::edge::Weighted;
 use crate::graph::graph::{GraphNodeBackward, GraphNodeForward};
 use crate::hacks::fix_branch_length::fix_branch_length;
+use crate::io::fasta::FastaRecord;
 use crate::representation::graph_ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
 use crate::representation::graph_dense::{DenseSeqDis, DenseSeqEdge, DenseSeqInfo, DenseSeqNode};
 use crate::representation::partition_marginal_dense::PartitionMarginalDense;
@@ -51,46 +52,46 @@ fn normalize_inplace(dis: &mut Array2<f64>) -> f64 {
 fn attach_seqs_to_graph(
   graph: &GraphAncestral,
   partitions: &[Arc<RwLock<PartitionMarginalDense>>],
+  aln: &[FastaRecord],
 ) -> Result<(), Report> {
-  graph.get_leaves().iter().try_for_each(|leaf| -> Result<(), Report>  {
-    let mut leaf = leaf.write_arc().payload().write_arc();
+  for leaf in graph.get_leaves() {
+    let leaf_key = leaf.read_arc().key();
+    let mut leaf = leaf.read_arc().payload().write_arc();
 
     let leaf_name = leaf.name.as_ref().ok_or_else(|| {
       make_report!("Expected all leaf nodes to have names, such that they can be matched to their corresponding sequences. But found a leaf node that has no name.")
     })?.to_owned();
 
-    // FIXME: all descs are the same for fasta partitions, so the mutable assignment here is needlessly complicated
-    let mut desc = None;
-
-    leaf.dense_partitions = partitions
+    let leaf_fasta = aln
       .iter()
-      .map(|PartitionLikelihoodWithAln { gtr, alphabet, aln, length }| {
-        // TODO(perf): this might be slow if there are many sequences
-        let leaf_fasta = aln
-          .iter()
-          .find(|fasta| fasta.seq_name == leaf_name)
-          .ok_or_else(|| make_internal_report!("Leaf sequence not found: '{leaf_name}'"))?;
+      .find(|fasta| fasta.seq_name == leaf_name)
+      .ok_or_else(|| make_report!("Leaf sequence not found: '{leaf_name}'"))?;
 
-        desc.assign_elem(leaf_fasta.desc.clone());
+    *leaf = NodeAncestral {
+      name: Some(leaf_name),
+      desc: leaf_fasta.desc.clone(),
+    };
 
-        DenseSeqNode::new(&leaf_fasta.seq, alphabet)
-      })
-      .collect::<Result<_, Report>>()?;
+    partitions.iter().try_for_each(|partition| -> Result<(), Report> {
+      let mut partition = partition.write_arc();
+      let alphabet = &partition.alphabet.clone(); // TODO: avoid clone
 
-    leaf.desc = desc;
+      partition
+        .nodes
+        .insert(leaf_key, DenseSeqNode::new(&leaf_fasta.seq, alphabet)?);
 
-    Ok(())
-  })?;
+      Ok(())
+    })?;
+  }
 
-  graph.get_edges().iter().for_each(|edge| {
-    let mut edge = edge.write_arc().payload().write_arc();
-    edge.dense_partitions = vec![];
-  });
-
-  graph.get_internal_nodes().iter().for_each(|node| {
-    let mut node = node.write_arc().payload().write_arc();
-    node.dense_partitions = vec![];
-  });
+  for edge in graph.get_edges() {
+    let edge_key = edge.read_arc().key();
+    partitions.iter().try_for_each(|partition| -> Result<(), Report> {
+      let mut partition = partition.write_arc();
+      partition.edges.insert(edge_key, DenseSeqEdge::default());
+      Ok(())
+    })?;
+  }
 
   Ok(())
 }
@@ -255,8 +256,9 @@ fn run_marginal_dense_forward(
 pub fn run_marginal_dense(
   graph: &GraphAncestral,
   partitions: &[Arc<RwLock<PartitionMarginalDense>>],
+  aln: &[FastaRecord],
 ) -> Result<f64, Report> {
-  attach_seqs_to_graph(graph, &partitions)?;
+  attach_seqs_to_graph(graph, partitions, aln)?;
 
   let partitions = partitions.into_iter().map(PartitionLikelihood::from).collect_vec();
 
