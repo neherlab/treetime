@@ -1,20 +1,12 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::commands::ancestral::marginal_dense::run_marginal_dense;
 use crate::commands::optimize::args::TreetimeOptimizeArgs;
-use crate::commands::optimize::optimize_dense::run_optimize_dense;
 use crate::graph::edge::GraphEdge;
 use crate::graph::node::GraphNode;
-use crate::gtr::get_gtr::get_gtr_dense;
 use crate::io::fasta::read_many_fasta;
 use crate::io::nex::{NexWriteOptions, nex_write_file};
-use crate::io::nwk::{EdgeToNwk, NodeToNwk, NwkWriteOptions, nwk_read_file, nwk_write_file};
-use crate::representation::graph_dense::DenseGraph;
+use crate::io::nwk::{EdgeToNwk, NodeToNwk, NwkWriteOptions, nwk_write_file};
 use crate::representation::infer_dense::infer_dense;
-use crate::representation::partitions_likelihood::{PartitionLikelihood, PartitionLikelihoodWithAln};
-use crate::utils::float_fmt::float_to_significant_digits;
 use eyre::Report;
-use itertools::Itertools;
-use log::debug;
 use serde::Serialize;
 use std::path::Path;
 
@@ -73,33 +65,33 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
     //
     // write_graph(outdir, &graph)?;
   } else {
-    let graph: DenseGraph = nwk_read_file(tree)?;
-    let gtr = get_gtr_dense(model_name, &alphabet, &graph)?;
-
-    let partitions_waln = vec![PartitionLikelihoodWithAln::new(gtr, alphabet, aln)?];
-    let partitions = partitions_waln
-      .iter()
-      .map(|part| PartitionLikelihood::from(part.clone()))
-      .collect_vec();
-    let mut lh_prev = f64::MIN;
-    for i in 0..*max_iter {
-      // FIXME: avoid assigning sequences to the graph in every iteration
-      let lh = run_marginal_dense(&graph, partitions_waln.clone(), false)?; // FIXME: avoid cloning
-
-      // somehow, the initial guess makes it worse...
-      // if i == 0 {
-      //   initial_guess(&graph, &partitions);
-      // }
-
-      debug!("Iteration {}: likelihood {}", i + 1, float_to_significant_digits(lh, 7));
-      if (lh - lh_prev).abs() < dp.abs() {
-        break;
-      }
-      run_optimize_dense(&graph, &partitions)?;
-      lh_prev = lh;
-    }
-
-    write_graph(outdir, &graph)?;
+    // let graph: DenseGraph = nwk_read_file(tree)?;
+    // let gtr = get_gtr_dense(model_name, &alphabet, &graph)?;
+    //
+    // let partitions_waln = vec![PartitionLikelihoodWithAln::new(gtr, alphabet, aln)?];
+    // let partitions = partitions_waln
+    //   .iter()
+    //   .map(|part| PartitionLikelihood::from(part.clone()))
+    //   .collect_vec();
+    // let mut lh_prev = f64::MIN;
+    // for i in 0..*max_iter {
+    //   // FIXME: avoid assigning sequences to the graph in every iteration
+    //   let lh = run_marginal_dense(&graph, partitions_waln.clone(), false)?; // FIXME: avoid cloning
+    //
+    //   // somehow, the initial guess makes it worse...
+    //   // if i == 0 {
+    //   //   initial_guess(&graph, &partitions);
+    //   // }
+    //
+    //   debug!("Iteration {}: likelihood {}", i + 1, float_to_significant_digits(lh, 7));
+    //   if (lh - lh_prev).abs() < dp.abs() {
+    //     break;
+    //   }
+    //   run_optimize_dense(&graph, &partitions)?;
+    //   lh_prev = lh;
+    // }
+    //
+    // write_graph(outdir, &graph)?;
   }
 
   Ok(())

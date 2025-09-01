@@ -123,7 +123,7 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
   let partitions_marginal_dense = [PartitionMarginalDense {
     index: 2,
     gtr: jc69(JC69Params::default())?, // TODO: allow other models
-    alphabet: alphabet.clone(),
+    alphabet,
     length: get_common_length(&aln)?,
     nodes: btreemap! {},
     edges: btreemap! {},
