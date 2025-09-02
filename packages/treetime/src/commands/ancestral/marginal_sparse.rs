@@ -6,6 +6,7 @@ use crate::hacks::fix_branch_length::fix_branch_length;
 use crate::make_internal_error;
 use crate::representation::graph_ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
 use crate::representation::graph_sparse::{MarginalSparseSeqDistribution, VarPos};
+use crate::representation::log_lh::graph_log_lh;
 use crate::representation::partition_marginal_sparse::PartitionMarginalSparse;
 use crate::representation::seq::Seq;
 use crate::representation::seq_char::AsciiChar;
@@ -433,7 +434,7 @@ pub fn run_marginal_sparse(
   partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
 ) -> Result<f64, Report> {
   marginal_sparse_backward(graph, partitions);
-  let log_lh = marginal_sparse_log_lh(graph, partitions)?;
+  let log_lh = graph_log_lh(graph, partitions)?;
   debug!("Log likelihood: {log_lh}");
   marginal_sparse_forward(graph, partitions);
   Ok(log_lh)
@@ -505,22 +506,6 @@ pub fn ancestral_reconstruction_marginal_sparse(
   });
 
   Ok(())
-}
-
-fn marginal_sparse_log_lh(
-  graph: &GraphAncestral,
-  partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
-) -> Result<f64, Report> {
-  let root = graph.get_exactly_one_root()?;
-  let root_key = root.read_arc().key();
-  let log_lh = partitions
-    .iter()
-    .map(|partition| {
-      let partition = partition.read_arc();
-      partition.nodes[&root_key].profile.log_lh
-    })
-    .sum();
-  Ok(log_lh)
 }
 
 #[cfg(test)]

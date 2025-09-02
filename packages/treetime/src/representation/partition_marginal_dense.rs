@@ -1,9 +1,9 @@
-use std::collections::BTreeMap;
-
 use super::graph_dense::{DenseSeqEdge, DenseSeqNode};
 use crate::graph::edge::GraphEdgeKey;
 use crate::gtr::gtr::GTR;
+use crate::representation::log_lh::HasLogLh;
 use crate::{alphabet::alphabet::Alphabet, graph::node::GraphNodeKey};
+use std::collections::BTreeMap;
 
 #[derive(Clone, Debug)]
 pub struct PartitionMarginalDense {
@@ -13,4 +13,10 @@ pub struct PartitionMarginalDense {
   pub length: usize,
   pub nodes: BTreeMap<GraphNodeKey, DenseSeqNode>,
   pub edges: BTreeMap<GraphEdgeKey, DenseSeqEdge>,
+}
+
+impl HasLogLh for PartitionMarginalDense {
+  fn get_log_lh(&self, node_key: GraphNodeKey) -> f64 {
+    self.nodes.get(&node_key).map_or(0.0, |node| node.profile.log_lh)
+  }
 }

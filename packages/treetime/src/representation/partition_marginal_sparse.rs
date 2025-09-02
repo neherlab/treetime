@@ -3,6 +3,7 @@ use crate::graph::edge::GraphEdgeKey;
 use crate::graph::node::GraphNodeKey;
 use crate::gtr::gtr::GTR;
 use crate::representation::graph_sparse::{SparseEdgePartition, SparseNodePartition};
+use crate::representation::log_lh::HasLogLh;
 use crate::representation::partition_compressed::PartitionCompressed;
 use std::collections::BTreeMap;
 
@@ -43,5 +44,11 @@ impl PartitionCompressed for PartitionMarginalSparse {
 
   fn edges_mut(&mut self) -> &mut BTreeMap<GraphEdgeKey, SparseEdgePartition> {
     &mut self.edges
+  }
+}
+
+impl HasLogLh for PartitionMarginalSparse {
+  fn get_log_lh(&self, node_key: GraphNodeKey) -> f64 {
+    self.nodes.get(&node_key).map_or(0.0, |node| node.profile.log_lh)
   }
 }

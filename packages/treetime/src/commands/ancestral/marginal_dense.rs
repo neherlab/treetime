@@ -6,6 +6,7 @@ use crate::hacks::fix_branch_length::fix_branch_length;
 use crate::io::fasta::FastaRecord;
 use crate::representation::graph_ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
 use crate::representation::graph_dense::{DenseSeqDis, DenseSeqEdge, DenseSeqInfo, DenseSeqNode};
+use crate::representation::log_lh::graph_log_lh;
 use crate::representation::partition_marginal_dense::PartitionMarginalDense;
 use crate::representation::seq::Seq;
 use crate::utils::container::get_exactly_one;
@@ -263,7 +264,7 @@ pub fn run_marginal_dense(
 ) -> Result<f64, Report> {
   attach_seqs_to_graph(graph, partitions, aln)?;
   marginal_dense_backward(graph, partitions);
-  let log_lh = marginal_dense_log_likelihood(graph, partitions)?;
+  let log_lh = graph_log_lh(graph, partitions)?;
   debug!("Log likelihood: {log_lh}");
   marginal_dense_forward(graph, partitions);
   Ok(log_lh)
@@ -297,22 +298,6 @@ pub fn ancestral_reconstruction_marginal_dense(
   });
 
   Ok(())
-}
-
-pub fn marginal_dense_log_likelihood(
-  graph: &GraphAncestral,
-  partitions: &[Arc<RwLock<PartitionMarginalDense>>],
-) -> Result<f64, Report> {
-  let root = graph.get_exactly_one_root()?;
-  let root_key = root.read_arc().key();
-  let log_lh = partitions
-    .iter()
-    .map(|partition| {
-      let partition = partition.read_arc();
-      partition.nodes[&root_key].profile.log_lh
-    })
-    .sum();
-  Ok(log_lh)
 }
 
 #[cfg(test)]
