@@ -20,18 +20,15 @@
 //!
 //!   d^2logLh/dt^2 = sum_i sum_j \sum_c k_c \lambda_c*\lambda^i_c exp(\lambda^i_c t) / \sum_c k_c exp(\lambda^i_c t) - k_c \lambda_c*\exp(\lambda^i_c t) / \sum_c k_c exp(\lambda^i_c t)
 //!
+use crate::graph::edge::GraphEdgeKey;
+use crate::representation::{graph_ancestral::GraphAncestral, partition_marginal_sparse::PartitionMarginalSparse};
 use crate::seq::mutation::Sub;
-use crate::{
-  gtr::gtr::GTR,
-  representation::{
-    graph_sparse::{SparseEdgePartition, SparseGraph},
-    partitions_likelihood::PartitionLikelihood,
-  },
-};
 use eyre::{OptionExt, Report};
 use itertools::Itertools;
 use num::clamp;
+use parking_lot::RwLock;
 use std::iter::zip;
+use std::sync::Arc;
 
 struct SiteContribution {
   multiplicity: f64,
@@ -43,7 +40,12 @@ struct PartitionContribution {
   eigenvalues: ndarray::Array1<f64>,
 }
 
-fn get_coefficients(edge: &SparseEdgePartition, gtr: &GTR) -> Result<PartitionContribution, Report> {
+fn get_coefficients(
+  edge_key: GraphEdgeKey,
+  partition: &PartitionMarginalSparse,
+) -> Result<PartitionContribution, Report> {
+  let edge = &partition.edges[&edge_key];
+
   // Collect variable positions from msg_to_child, msg_to_parent, and the substitutions along the edge
   let variable_positions: Vec<usize> = edge
     .msg_to_child
@@ -57,10 +59,10 @@ fn get_coefficients(edge: &SparseEdgePartition, gtr: &GTR) -> Result<PartitionCo
 
   let variable_states = variable_positions
     .iter()
-    .map(|pos| {
+    .map(|pos| -> Result<_, Report> {
       // Check whether the position is in substitutions
-      let state_pair = if let Some(sub) = edge.subs.iter().find(|m| m.pos() == *pos) {
-        (sub.reff(), sub.qry())
+      if let Some(sub) = edge.subs.iter().find(|m| m.pos() == *pos) {
+        Ok((sub.reff(), sub.qry()))
       } else {
         let parent = edge
           .msg_to_child
@@ -76,9 +78,8 @@ fn get_coefficients(edge: &SparseEdgePartition, gtr: &GTR) -> Result<PartitionCo
           .or_else(|| edge.msg_to_child.variable.get(pos))
           .ok_or_eyre("Unable to find msg_to_child")?
           .state;
-        (parent, child)
-      };
-      Ok(state_pair)
+        Ok((parent, child))
+      }
     })
     .collect::<Result<Vec<_>, Report>>()?;
 
@@ -97,7 +98,7 @@ fn get_coefficients(edge: &SparseEdgePartition, gtr: &GTR) -> Result<PartitionCo
     };
     site_contributions.push(SiteContribution {
       multiplicity: 1.0,
-      coefficients: parent.dot(&gtr.v) * child.dot(&gtr.v_inv.t()),
+      coefficients: parent.dot(&partition.gtr.v) * child.dot(&partition.gtr.v_inv.t()),
     });
   }
   for state in edge.msg_to_child.fixed.keys() {
@@ -105,12 +106,12 @@ fn get_coefficients(edge: &SparseEdgePartition, gtr: &GTR) -> Result<PartitionCo
     let child = &edge.msg_to_parent.fixed[state];
     site_contributions.push(SiteContribution {
       multiplicity: edge.msg_to_child.fixed_counts.get(*state).unwrap() as f64,
-      coefficients: parent.dot(&gtr.v) * child.dot(&gtr.v_inv.t()),
+      coefficients: parent.dot(&partition.gtr.v) * child.dot(&partition.gtr.v_inv.t()),
     });
   }
   Ok(PartitionContribution {
     site_contributions,
-    eigenvalues: gtr.eigvals.to_owned(),
+    eigenvalues: partition.gtr.eigvals.to_owned(),
   })
 }
 
@@ -136,30 +137,36 @@ fn evaluate_sparse(coefficients: &Vec<PartitionContribution>, branch_length: f64
   (likelihood, log_likelihood, derivative, second_derivative)
 }
 
-pub fn initial_guess_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihood]) -> () {
-  let total_length: usize = partitions.iter().map(|part| part.length).sum();
+pub fn initial_guess_sparse(graph: &GraphAncestral, partitions: &[Arc<RwLock<PartitionMarginalSparse>>]) {
+  let total_length: usize = partitions.iter().map(|part| part.read_arc().length).sum();
   let one_mutation = 1.0 / total_length as f64;
   for edge in graph.get_edges() {
-    let mut edge = edge.write_arc().payload().write_arc();
+    let edge_key = edge.read_arc().key();
+    let mut edge_payload = edge.read_arc().payload().write_arc();
     let mut differences: usize = 0;
-    for partition in &edge.sparse_partitions {
-      differences += partition.subs.len();
+    for partition in partitions {
+      let partition = partition.read_arc();
+      let edge = &partition.edges[&edge_key];
+      differences += edge.subs.len();
     }
     let new_branch_length = differences as f64 * one_mutation;
-    edge.branch_length = Some(new_branch_length);
+    edge_payload.branch_length = Some(new_branch_length);
   }
 }
 
-pub fn run_optimize_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihood]) -> Result<(), Report> {
-  let total_length: usize = partitions.iter().map(|part| part.length).sum();
+pub fn run_optimize_sparse(
+  graph: &GraphAncestral,
+  partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
+) -> Result<(), Report> {
+  let total_length: usize = partitions.iter().map(|part| part.read_arc().length).sum();
   let one_mutation = 1.0 / total_length as f64;
   let n_partitions = partitions.len();
-  graph.get_edges().iter_mut().try_for_each(|edge| {
-    let mut edge = edge.write_arc().payload().write_arc();
+  graph.get_edges().iter().try_for_each(|edge_ref| {
+    let edge_key = edge_ref.read_arc().key();
     let coefficients = (0..n_partitions)
-      .map(|pi| get_coefficients(&edge.sparse_partitions[pi], &partitions[pi].gtr))
+      .map(|pi| get_coefficients(edge_key, &partitions[pi].read_arc()))
       .collect::<Result<Vec<_>, Report>>()?;
-    let mut branch_length = edge.branch_length.unwrap_or(0.0);
+    let mut branch_length = edge_ref.read_arc().payload().read_arc().branch_length.unwrap_or(0.0);
     let mut new_branch_length;
 
     let zero_branch_length_lh: f64 = coefficients
@@ -175,7 +182,7 @@ pub fn run_optimize_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihoo
 
     if zero_branch_length_lh > 0.0001 {
       // TODO: could check that derivative is negative
-      edge.branch_length = Some(0.0);
+      edge_ref.read_arc().payload().write_arc().branch_length = Some(0.0);
       return Ok(());
     }
 
@@ -211,7 +218,7 @@ pub fn run_optimize_sparse(graph: &SparseGraph, partitions: &[PartitionLikelihoo
         .unwrap();
       new_branch_length = best_branch_length;
     }
-    edge.branch_length = Some(new_branch_length);
+    edge_ref.read_arc().payload().write_arc().branch_length = Some(new_branch_length);
 
     Ok(())
   })

@@ -1,14 +1,26 @@
 use crate::alphabet::alphabet::Alphabet;
+use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
+use crate::commands::ancestral::marginal_sparse::run_marginal_sparse;
 use crate::commands::optimize::args::TreetimeOptimizeArgs;
+use crate::commands::optimize::optimize_sparse::{initial_guess_sparse, run_optimize_sparse};
 use crate::graph::edge::GraphEdge;
 use crate::graph::node::GraphNode;
+use crate::gtr::get_gtr::{JC69Params, jc69};
 use crate::io::fasta::read_many_fasta;
 use crate::io::nex::{NexWriteOptions, nex_write_file};
-use crate::io::nwk::{EdgeToNwk, NodeToNwk, NwkWriteOptions, nwk_write_file};
+use crate::io::nwk::{EdgeToNwk, NodeToNwk, NwkWriteOptions, nwk_read_file, nwk_write_file};
+use crate::representation::graph_ancestral::GraphAncestral;
 use crate::representation::infer_dense::infer_dense;
+use crate::representation::partition_marginal_sparse::PartitionMarginalSparse;
+use crate::utils::float_fmt::float_to_significant_digits;
 use eyre::Report;
+use itertools::Itertools;
+use log::debug;
+use maplit::btreemap;
+use parking_lot::RwLock;
 use serde::Serialize;
 use std::path::Path;
+use std::sync::Arc;
 
 // The initial guess for dense is not working well, but optimization works without revisit after settling on optimization algorithm
 // use super::optimize_dense::initial_guess;
@@ -41,29 +53,36 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
 
   // TODO: refactor to reduce duplication with `ancestral` as well as within the branches of this conditional
   if !dense {
-    // let graph: SparseGraph = nwk_read_file(tree)?;
-    // let partitions = vec![PartitionParsimonyWithAln::new(alphabet.clone(), aln)?];
-    // let partitions = compress_sequences(&graph, partitions)?;
-    //
-    // let gtr = get_gtr(model_name, &alphabet, &graph)?;
-    // let partitions = partitions
-    //       .into_iter()
-    //       .map(|part| PartitionLikelihood::from_parsimony(gtr.clone(), part)) // FIXME: avoid cloning
-    //       .collect_vec();
-    //
-    // initial_guess_sparse(&graph, &partitions);
-    // let mut lh_prev = f64::MIN;
-    // for i in 0..*max_iter {
-    //   let lh = run_marginal_sparse(&graph, &partitions)?;
-    //   debug!("Iteration {}: likelihood {}", i + 1, float_to_significant_digits(lh, 7));
-    //   if (lh - lh_prev).abs() < dp.abs() {
-    //     break;
-    //   }
-    //   run_optimize_sparse(&graph, &partitions)?;
-    //   lh_prev = lh;
-    // }
-    //
-    // write_graph(outdir, &graph)?;
+    let graph: GraphAncestral = nwk_read_file(tree)?;
+
+    #[allow(clippy::iter_on_single_items)]
+    let partitions = [PartitionMarginalSparse {
+      index: 0,
+      gtr: jc69(JC69Params::default())?, // TODO: allow other models
+      alphabet,
+      length: get_common_length(&aln)?,
+      nodes: btreemap! {},
+      edges: btreemap! {},
+    }]
+    .into_iter()
+    .map(|p| Arc::new(RwLock::new(p)))
+    .collect_vec();
+
+    compress_sequences(&graph, &partitions, &aln)?;
+
+    initial_guess_sparse(&graph, &partitions);
+    let mut lh_prev = f64::MIN;
+    for i in 0..*max_iter {
+      let lh = run_marginal_sparse(&graph, &partitions)?;
+      debug!("Iteration {}: likelihood {}", i + 1, float_to_significant_digits(lh, 7));
+      if (lh - lh_prev).abs() < dp.abs() {
+        break;
+      }
+      run_optimize_sparse(&graph, &partitions)?;
+      lh_prev = lh;
+    }
+
+    write_graph(outdir, &graph)?;
   } else {
     // let graph: DenseGraph = nwk_read_file(tree)?;
     // let gtr = get_gtr_dense(model_name, &alphabet, &graph)?;
