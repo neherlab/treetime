@@ -1,4 +1,4 @@
-use super::graph_dense::{DenseSeqEdge, DenseSeqNode};
+use super::graph_dense::{DenseEdgePartition, DenseNodePartition};
 use crate::graph::edge::GraphEdgeKey;
 use crate::gtr::gtr::GTR;
 use crate::representation::log_lh::HasLogLh;
@@ -11,8 +11,8 @@ pub struct PartitionMarginalDense {
   pub gtr: GTR,
   pub alphabet: Alphabet,
   pub length: usize,
-  pub nodes: BTreeMap<GraphNodeKey, DenseSeqNode>,
-  pub edges: BTreeMap<GraphEdgeKey, DenseSeqEdge>,
+  pub nodes: BTreeMap<GraphNodeKey, DenseNodePartition>,
+  pub edges: BTreeMap<GraphEdgeKey, DenseEdgePartition>,
 }
 
 impl HasLogLh for PartitionMarginalDense {

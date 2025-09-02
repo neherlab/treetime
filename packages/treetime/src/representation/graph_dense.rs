@@ -19,7 +19,7 @@ pub type DenseGraph = Graph<DenseNode, DenseEdge, ()>;
 pub struct DenseNode {
   pub name: Option<String>,
   pub desc: Option<String>,
-  pub dense_partitions: Vec<DenseSeqNode>,
+  pub dense_partitions: Vec<DenseNodePartition>,
 }
 
 impl NodeFromNwk for DenseNode {
@@ -67,12 +67,12 @@ pub struct DenseSeqInfo {
 }
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
-pub struct DenseSeqNode {
+pub struct DenseNodePartition {
   pub seq: DenseSeqInfo,
   pub profile: DenseSeqDis,
 }
 
-impl DenseSeqNode {
+impl DenseNodePartition {
   pub fn new(seq: &Seq, alphabet: &Alphabet) -> Result<Self, Report> {
     let gaps = find_letter_ranges(seq, alphabet.gap());
 
@@ -88,7 +88,7 @@ impl DenseSeqNode {
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct DenseEdge {
-  pub dense_partitions: Vec<DenseSeqEdge>,
+  pub dense_partitions: Vec<DenseEdgePartition>,
   pub branch_length: Option<f64>,
 }
 
@@ -148,7 +148,7 @@ impl EdgeToGraphViz for DenseEdge {
 }
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
-pub struct DenseSeqEdge {
+pub struct DenseEdgePartition {
   pub indels: Vec<InDel>,
   pub transmission: Option<Vec<(usize, usize)>>,
   pub msg_to_child: DenseSeqDis,

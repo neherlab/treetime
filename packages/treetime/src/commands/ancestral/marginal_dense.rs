@@ -5,7 +5,7 @@ use crate::graph::graph::{GraphNodeBackward, GraphNodeForward};
 use crate::hacks::fix_branch_length::fix_branch_length;
 use crate::io::fasta::FastaRecord;
 use crate::representation::graph_ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
-use crate::representation::graph_dense::{DenseSeqDis, DenseSeqEdge, DenseSeqInfo, DenseSeqNode};
+use crate::representation::graph_dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDis, DenseSeqInfo};
 use crate::representation::log_lh::graph_log_lh;
 use crate::representation::partition_marginal_dense::PartitionMarginalDense;
 use crate::representation::seq::Seq;
@@ -32,7 +32,7 @@ fn prof2seq(profile: &DenseSeqDis, alphabet: &Alphabet) -> Seq {
   seq
 }
 
-fn assign_sequence(seq_info: &DenseSeqNode, alphabet: &Alphabet) -> Seq {
+fn assign_sequence(seq_info: &DenseNodePartition, alphabet: &Alphabet) -> Seq {
   let mut seq = prof2seq(&seq_info.profile, alphabet);
   for gap in &seq_info.seq.gaps {
     seq[gap.0..gap.1].fill(alphabet.gap());
@@ -77,7 +77,7 @@ fn attach_seqs_to_graph(
 
       partition
         .nodes
-        .insert(leaf_key, DenseSeqNode::new(&leaf_fasta.seq, alphabet)?);
+        .insert(leaf_key, DenseNodePartition::new(&leaf_fasta.seq, alphabet)?);
 
       Ok(())
     })?;
@@ -87,7 +87,7 @@ fn attach_seqs_to_graph(
     let edge_key = edge.read_arc().key();
     partitions.iter().try_for_each(|partition| -> Result<(), Report> {
       let mut partition = partition.write_arc();
-      partition.edges.insert(edge_key, DenseSeqEdge::default());
+      partition.edges.insert(edge_key, DenseEdgePartition::default());
       Ok(())
     })?;
   }
@@ -132,7 +132,7 @@ fn run_marginal_dense_backward(
         ..DenseSeqInfo::default()
       };
 
-      let node_data = DenseSeqNode {
+      let node_data = DenseNodePartition {
         seq,
         profile: DenseSeqDis::default(),
       };
@@ -174,7 +174,7 @@ fn run_marginal_dense_backward(
       let edge_key = get_exactly_one(&node.parent_edge_keys).expect("Only nodes with exactly one parent are supported");
       let branch_length = node.parent_edges[0].weight().unwrap_or(0.0);
       let branch_length = fix_branch_length(length, branch_length);
-      let mut edge_data = DenseSeqEdge::default();
+      let mut edge_data = DenseEdgePartition::default();
 
       let mut dis = Array2::ones((length, alphabet.n_canonical()));
       let log_lh = msg_to_parent.log_lh;
