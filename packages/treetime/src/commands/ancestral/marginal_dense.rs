@@ -97,15 +97,15 @@ fn attach_seqs_to_graph(
 
 /// Backward pass calculates ingroup profiles
 fn marginal_dense_backward(graph: &GraphAncestral, partitions: &[Arc<RwLock<PartitionMarginalDense>>]) {
-  graph.par_iter_breadth_first_backward(|mut node| {
-    run_marginal_dense_backward(partitions, &mut node).unwrap();
+  graph.par_iter_breadth_first_backward(|node| {
+    run_marginal_dense_backward(partitions, &node).unwrap();
     GraphTraversalContinuation::Continue
   });
 }
 
 fn run_marginal_dense_backward(
   partitions: &[Arc<RwLock<PartitionMarginalDense>>],
-  node: &mut GraphNodeBackward<NodeAncestral, EdgeAncestral, ()>,
+  node: &GraphNodeBackward<NodeAncestral, EdgeAncestral, ()>,
 ) -> Result<(), Report> {
   for partition in partitions {
     let mut partition = partition.write_arc();
@@ -203,8 +203,8 @@ fn run_marginal_dense_backward(
 }
 
 fn marginal_dense_forward(graph: &GraphAncestral, partitions: &[Arc<RwLock<PartitionMarginalDense>>]) {
-  graph.par_iter_breadth_first_forward(|mut node| {
-    run_marginal_dense_forward(graph, partitions, &mut node);
+  graph.par_iter_breadth_first_forward(|node| {
+    run_marginal_dense_forward(graph, partitions, &node);
     GraphTraversalContinuation::Continue
   });
 }
@@ -212,7 +212,7 @@ fn marginal_dense_forward(graph: &GraphAncestral, partitions: &[Arc<RwLock<Parti
 fn run_marginal_dense_forward(
   graph: &GraphAncestral,
   partitions: &[Arc<RwLock<PartitionMarginalDense>>],
-  node: &mut GraphNodeForward<NodeAncestral, EdgeAncestral, ()>,
+  node: &GraphNodeForward<NodeAncestral, EdgeAncestral, ()>,
 ) {
   for partition in partitions {
     let mut partition = partition.write_arc();
