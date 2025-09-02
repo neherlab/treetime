@@ -13,6 +13,7 @@ use crate::utils::interval::range_intersection::range_intersection;
 use crate::{make_report, seq};
 use eyre::Report;
 use itertools::Itertools;
+use log::debug;
 use ndarray::prelude::*;
 use ndarray_stats::QuantileExt;
 use parking_lot::RwLock;
@@ -259,11 +260,13 @@ pub fn run_marginal_dense(
   graph: &GraphAncestral,
   partitions: &[Arc<RwLock<PartitionMarginalDense>>],
   aln: &[FastaRecord],
-) -> Result<(), Report> {
+) -> Result<f64, Report> {
   attach_seqs_to_graph(graph, partitions, aln)?;
   marginal_dense_backward(graph, partitions);
+  let log_lh = marginal_dense_log_likelihood(graph, partitions)?;
+  debug!("Log likelihood: {log_lh}");
   marginal_dense_forward(graph, partitions);
-  Ok(())
+  Ok(log_lh)
 }
 
 pub fn ancestral_reconstruction_marginal_dense(
@@ -294,6 +297,22 @@ pub fn ancestral_reconstruction_marginal_dense(
   });
 
   Ok(())
+}
+
+pub fn marginal_dense_log_likelihood(
+  graph: &GraphAncestral,
+  partitions: &[Arc<RwLock<PartitionMarginalDense>>],
+) -> Result<f64, Report> {
+  let root = graph.get_exactly_one_root()?;
+  let root_key = root.read_arc().key();
+  let log_lh = partitions
+    .iter()
+    .map(|partition| {
+      let partition = partition.read_arc();
+      partition.nodes[&root_key].profile.log_lh
+    })
+    .sum();
+  Ok(log_lh)
 }
 
 #[cfg(test)]
