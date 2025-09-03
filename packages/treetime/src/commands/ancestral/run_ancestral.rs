@@ -172,53 +172,13 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
     // VCF input is basically another way to instantiate the sparse representation. MAT format would be another one.
     // Again, we can deal with this later, but the entrypoint is not always going to be a fasta file.
     MethodAncestral::Parsimony => {
-      // let partitions = vec![PartitionParsimonyWithAln::new(alphabet, aln)?];
-      // let graph: SparseGraph = nwk_read_file(tree)?;
-      // let partitions = compress_sequences(&graph, partitions)?;
 
-      // ancestral_reconstruction_fitch(&graph, *reconstruct_tip_states, &partitions, |node, seq| {
-      //   let name = node.name.as_deref().unwrap_or("");
-      //   let desc = &node.desc;
-      //   output_fasta.write(name, desc, seq).unwrap();
-      // })?;
-
-      write_graph(outdir, &graph)?;
     },
     MethodAncestral::Marginal => {
       if !dense {
-        // let graph: SparseGraph = nwk_read_file(tree)?;
-        // let partitions = vec![PartitionParsimonyWithAln::new(alphabet.clone(), aln)?];
-        // let partitions = compress_sequences(&graph, partitions)?;
 
-        // let gtr = get_gtr(model_name, &alphabet, &graph)?;
-        // let partitions = partitions
-        //   .into_iter()
-        //   .map(|part| PartitionLikelihood::from_parsimony(gtr.clone(), part)) // FIXME: avoid cloning
-        //   .collect_vec();
-
-        // run_marginal_sparse(&graph, &partitions)?;
-
-        // ancestral_reconstruction_marginal_sparse(&graph, *reconstruct_tip_states, &partitions, |node, seq| {
-        //   let name = node.name.as_deref().unwrap_or("");
-        //   let desc = &node.desc;
-        //   output_fasta.write(name, desc, &seq).unwrap();
-        // })?;
-
-        // write_graph(outdir, &graph)?;
       } else {
-        // let graph: DenseGraph = nwk_read_file(tree)?;
-        // let gtr = get_gtr_dense(model_name, &alphabet, &graph)?;
 
-        // let partitions = vec![PartitionLikelihoodWithAln::new(gtr, alphabet, aln)?];
-        // run_marginal_dense(&graph, partitions, true)?;
-
-        // ancestral_reconstruction_marginal_dense(&graph, *reconstruct_tip_states, |node, seq| {
-        //   let name = node.name.as_deref().unwrap_or("");
-        //   let desc = &node.desc;
-        //   output_fasta.write(name, desc, seq).unwrap();
-        // })?;
-
-        // write_graph(outdir, &graph)?;
       }
     },
     MethodAncestral::Joint => {
