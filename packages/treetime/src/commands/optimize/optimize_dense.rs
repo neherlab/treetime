@@ -23,19 +23,19 @@
 use crate::{
   gtr::gtr::GTR,
   representation::{
-    graph_dense::{DenseGraph, DenseSeqDis},
-    partitions_likelihood::PartitionLikelihood,
+    graph_ancestral::GraphAncestral, graph_dense::DenseSeqDis, partition_marginal_dense::PartitionMarginalDense,
   },
 };
 use eyre::Report;
 use ndarray::{Array2, Axis};
 use ndarray_stats::QuantileExt;
 use num::clamp;
-use std::iter::zip;
+use parking_lot::RwLock;
+use std::sync::Arc;
 
 pub fn evaluate(
   coefficients: &[Array2<f64>],
-  partitions: &[PartitionLikelihood],
+  partitions: &[Arc<RwLock<PartitionMarginalDense>>],
   branch_length: f64,
 ) -> (f64, f64, f64, f64) {
   let mut likelihood = 1.0;
@@ -43,7 +43,8 @@ pub fn evaluate(
   let mut derivative = 0.0;
   let mut second_derivative = 0.0;
   for (pi, partition) in partitions.iter().enumerate() {
-    let PartitionLikelihood { gtr, .. } = &partition;
+    let partition = partition.read_arc();
+    let gtr = &partition.gtr;
     // let coefficients = &partition.msg_to_parent.dis * &partition.msg_to_child.dis;
     let exp_ev = gtr.eigvals.mapv(|ev| (ev * branch_length).exp());
     let ev_exp_ev = &gtr.eigvals * &exp_ev;
@@ -66,15 +67,24 @@ pub fn get_coefficients(msg_to_parent: &DenseSeqDis, msg_to_child: &DenseSeqDis,
   msg_to_child.dis.dot(&gtr.v) * msg_to_parent.dis.dot(&gtr.v_inv.t())
 }
 
-pub fn initial_guess(graph: &DenseGraph, partitions: &[PartitionLikelihood]) -> () {
+pub fn initial_guess_dense(graph: &GraphAncestral, partitions: &[Arc<RwLock<PartitionMarginalDense>>]) -> () {
   // FIXME: this initial guess needs to be improved
-  let total_length: usize = partitions.iter().map(|part| part.length).sum();
+  let total_length: usize = partitions.iter().map(|part| part.read_arc().length).sum();
   let one_mutation = 1.0 / total_length as f64;
-  for edge in graph.get_edges() {
-    let mut edge = edge.write_arc().payload().write_arc();
+  for edge_ref in graph.get_edges() {
+    let edge_key = edge_ref.read_arc().key();
+    let mut edge = edge_ref.write_arc().payload().write_arc();
     let mut differences: usize = 0;
-    for partition in &edge.dense_partitions {
-      for (row1, row2) in zip(partition.msg_to_parent.dis.rows(), partition.msg_to_child.dis.rows()) {
+    for partition in partitions {
+      let partition = partition.read_arc();
+      let edge_partition = &partition.edges[&edge_key];
+      for (row1, row2) in edge_partition
+        .msg_to_parent
+        .dis
+        .rows()
+        .into_iter()
+        .zip(edge_partition.msg_to_child.dis.rows())
+      {
         if row1[row2.argmax().unwrap()] < 0.5 {
           differences += 1;
         }
@@ -85,20 +95,26 @@ pub fn initial_guess(graph: &DenseGraph, partitions: &[PartitionLikelihood]) -> 
   }
 }
 
-pub fn run_optimize_dense(graph: &DenseGraph, partitions: &[PartitionLikelihood]) -> Result<(), Report> {
-  let total_length: usize = partitions.iter().map(|part| part.length).sum();
+pub fn run_optimize_dense(
+  graph: &GraphAncestral,
+  partitions: &[Arc<RwLock<PartitionMarginalDense>>],
+) -> Result<(), Report> {
+  let total_length: usize = partitions.iter().map(|part| part.read_arc().length).sum();
   let one_mutation = 1.0 / total_length as f64;
   let n_partitions = partitions.len();
-  graph.get_edges().iter_mut().for_each(|edge| {
-    let mut edge = edge.write_arc().payload().write_arc();
+  graph.get_edges().iter().for_each(|edge_ref| {
+    let edge_key = edge_ref.read_arc().key();
+    let mut edge = edge_ref.write_arc().payload().write_arc();
     let mut branch_length = edge.branch_length.unwrap_or(0.0);
     let mut new_branch_length;
     let coefficients = (0..n_partitions)
       .map(|pi| {
+        let partition = partitions[pi].read_arc();
+        let edge_partition = &partition.edges[&edge_key];
         get_coefficients(
-          &edge.dense_partitions[pi].msg_to_parent,
-          &edge.dense_partitions[pi].msg_to_child,
-          &partitions[pi].gtr,
+          &edge_partition.msg_to_parent,
+          &edge_partition.msg_to_child,
+          &partition.gtr,
         )
       })
       .collect::<Vec<_>>();
@@ -113,7 +129,10 @@ pub fn run_optimize_dense(graph: &DenseGraph, partitions: &[PartitionLikelihood]
       let zero_branch_length_derivative: f64 = coefficients
         .iter()
         .enumerate()
-        .map(|(pi, coeff)| ((coeff * &partitions[pi].gtr.eigvals).sum_axis(Axis(1)) / coeff.sum_axis(Axis(1))).sum())
+        .map(|(pi, coeff)| {
+          let partition = partitions[pi].read_arc();
+          ((coeff * &partition.gtr.eigvals).sum_axis(Axis(1)) / coeff.sum_axis(Axis(1))).sum()
+        })
         .sum();
       if zero_branch_length_derivative < 0.0 {
         edge.branch_length = Some(0.0);

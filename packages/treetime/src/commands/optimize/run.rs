@@ -1,7 +1,9 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
+use crate::commands::ancestral::marginal_dense::run_marginal_dense;
 use crate::commands::ancestral::marginal_sparse::run_marginal_sparse;
 use crate::commands::optimize::args::TreetimeOptimizeArgs;
+use crate::commands::optimize::optimize_dense::run_optimize_dense;
 use crate::commands::optimize::optimize_sparse::{initial_guess_sparse, run_optimize_sparse};
 use crate::graph::edge::GraphEdge;
 use crate::graph::node::GraphNode;
@@ -11,6 +13,7 @@ use crate::io::nex::{NexWriteOptions, nex_write_file};
 use crate::io::nwk::{EdgeToNwk, NodeToNwk, NwkWriteOptions, nwk_read_file, nwk_write_file};
 use crate::representation::graph_ancestral::GraphAncestral;
 use crate::representation::infer_dense::infer_dense;
+use crate::representation::partition_marginal_dense::PartitionMarginalDense;
 use crate::representation::partition_marginal_sparse::PartitionMarginalSparse;
 use crate::utils::float_fmt::float_to_significant_digits;
 use eyre::Report;
@@ -84,33 +87,39 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
 
     write_graph(outdir, &graph)?;
   } else {
-    // let graph: DenseGraph = nwk_read_file(tree)?;
-    // let gtr = get_gtr_dense(model_name, &alphabet, &graph)?;
-    //
-    // let partitions_waln = vec![PartitionLikelihoodWithAln::new(gtr, alphabet, aln)?];
-    // let partitions = partitions_waln
-    //   .iter()
-    //   .map(|part| PartitionLikelihood::from(part.clone()))
-    //   .collect_vec();
-    // let mut lh_prev = f64::MIN;
-    // for i in 0..*max_iter {
-    //   // FIXME: avoid assigning sequences to the graph in every iteration
-    //   let lh = run_marginal_dense(&graph, partitions_waln.clone(), false)?; // FIXME: avoid cloning
-    //
-    //   // somehow, the initial guess makes it worse...
-    //   // if i == 0 {
-    //   //   initial_guess(&graph, &partitions);
-    //   // }
-    //
-    //   debug!("Iteration {}: likelihood {}", i + 1, float_to_significant_digits(lh, 7));
-    //   if (lh - lh_prev).abs() < dp.abs() {
-    //     break;
-    //   }
-    //   run_optimize_dense(&graph, &partitions)?;
-    //   lh_prev = lh;
-    // }
-    //
-    // write_graph(outdir, &graph)?;
+    let graph: GraphAncestral = nwk_read_file(tree)?;
+
+    #[allow(clippy::iter_on_single_items)]
+    let partitions = [PartitionMarginalDense {
+      index: 0,
+      gtr: jc69(JC69Params::default())?, // TODO: allow other models
+      alphabet,
+      length: get_common_length(&aln)?,
+      nodes: btreemap! {},
+      edges: btreemap! {},
+    }]
+    .into_iter()
+    .map(|p| Arc::new(RwLock::new(p)))
+    .collect_vec();
+
+    let mut lh_prev = f64::MIN;
+    for i in 0..*max_iter {
+      let lh = run_marginal_dense(&graph, &partitions, &aln)?;
+
+      // somehow, the initial guess makes it worse...
+      // if i == 0 {
+      //   initial_guess_dense(&graph, &partitions);
+      // }
+
+      debug!("Iteration {}: likelihood {}", i + 1, float_to_significant_digits(lh, 7));
+      if (lh - lh_prev).abs() < dp.abs() {
+        break;
+      }
+      run_optimize_dense(&graph, &partitions)?;
+      lh_prev = lh;
+    }
+
+    write_graph(outdir, &graph)?;
   }
 
   Ok(())
