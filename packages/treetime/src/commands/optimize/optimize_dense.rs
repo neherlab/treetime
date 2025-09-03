@@ -20,12 +20,10 @@
 //!
 //!   d^2logLh/dt^2 = sum_i sum_j \sum_c k_c \lambda_c*\lambda^i_c exp(\lambda^i_c t) / \sum_c k_c exp(\lambda^i_c t) - k_c \lambda_c*\exp(\lambda^i_c t) / \sum_c k_c exp(\lambda^i_c t)
 //!
-use crate::{
-  gtr::gtr::GTR,
-  representation::{
-    graph_ancestral::GraphAncestral, graph_dense::DenseSeqDis, partition_marginal_dense::PartitionMarginalDense,
-  },
-};
+use crate::gtr::gtr::GTR;
+use crate::representation::graph_ancestral::GraphAncestral;
+use crate::representation::graph_dense::DenseSeqDis;
+use crate::representation::partition_marginal_dense::PartitionMarginalDense;
 use eyre::Report;
 use ndarray::{Array2, Axis};
 use ndarray_stats::QuantileExt;

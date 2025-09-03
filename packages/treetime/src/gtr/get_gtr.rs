@@ -1,12 +1,15 @@
+use std::sync::Arc;
+
 use crate::alphabet::alphabet::{Alphabet, AlphabetName};
 use crate::gtr::gtr::{GTR, GTRParams};
 use crate::gtr::infer_gtr::{InferGtrOptions, InferGtrResult, get_mutation_counts, infer_gtr};
-use crate::representation::graph_dense::DenseGraph;
-use crate::representation::graph_sparse::SparseGraph;
+use crate::representation::graph_ancestral::GraphAncestral;
+use crate::representation::partition_compressed::PartitionCompressed;
 use crate::{make_error, make_report};
 use clap::ValueEnum;
 use eyre::{Report, WrapErr};
 use ndarray::{Array1, Array2, array};
+use parking_lot::RwLock;
 use smart_default::SmartDefault;
 use strum_macros::Display;
 
@@ -21,12 +24,16 @@ pub enum GtrModelName {
   T92,
 }
 
-pub fn get_gtr(name: &GtrModelName, alphabet: &Alphabet, graph: &SparseGraph) -> Result<GTR, Report> {
+pub fn get_gtr_sparse<P: PartitionCompressed>(
+  name: &GtrModelName,
+  partition: &Arc<RwLock<P>>,
+  graph: &GraphAncestral,
+) -> Result<GTR, Report> {
   match name {
     GtrModelName::Infer => {
-      let counts = get_mutation_counts(graph, alphabet)?;
+      let counts = get_mutation_counts(graph, partition)?;
       let InferGtrResult { W, pi, mu } = infer_gtr(&counts, &InferGtrOptions::default())?;
-      let alphabet = alphabet.to_owned();
+      let alphabet = partition.read_arc().alphabet().to_owned();
       let W = Some(W);
       GTR::new(GTRParams { alphabet, mu, W, pi })
     },
@@ -39,7 +46,7 @@ pub fn get_gtr(name: &GtrModelName, alphabet: &Alphabet, graph: &SparseGraph) ->
   .wrap_err_with(|| make_report!("When creating model '{name}'"))
 }
 
-pub fn get_gtr_dense(name: &GtrModelName, _alphabet: &Alphabet, _graph: &DenseGraph) -> Result<GTR, Report> {
+pub fn get_gtr_dense(name: &GtrModelName) -> Result<GTR, Report> {
   match name {
     GtrModelName::Infer => {
       unimplemented!("Model inference is not yet implemented for dense representation. Please set model explicitly.")

@@ -1,12 +1,13 @@
-use crate::alphabet::alphabet::Alphabet;
-use crate::graph::edge::Weighted;
 use crate::gtr::gtr::avg_transition;
-use crate::representation::graph_sparse::SparseGraph;
+use crate::representation::graph_ancestral::GraphAncestral;
+use crate::representation::partition_compressed::PartitionCompressed;
 use crate::utils::ndarray::outer;
 use eyre::Report;
 use log::warn;
 use ndarray::{Array1, Array2, Axis};
+use parking_lot::RwLock;
 use smart_default::SmartDefault;
+use std::sync::Arc;
 
 #[derive(Clone, Debug)]
 pub struct MutationCounts {
@@ -127,36 +128,38 @@ fn distance(pi_old: &Array1<f64>, pi: &Array1<f64>) -> f64 {
   (pi_old - pi).mapv(|x| x * x).sum().sqrt()
 }
 
-pub fn get_mutation_counts(graph: &SparseGraph, alphabet: &Alphabet) -> Result<MutationCounts, Report> {
-  let root = graph.get_exactly_one_root()?.read_arc().payload().read_arc();
-  let seq = &root.sparse_partitions[0].seq;
-  let root_state: Array1<f64> = Array1::from_iter(
-    alphabet
-      .canonical()
-      .map(|nuc| seq.composition.get(nuc).unwrap_or(0) as f64),
-  );
+pub fn get_mutation_counts<P: PartitionCompressed>(
+  graph: &GraphAncestral,
+  partition: &Arc<RwLock<P>>,
+) -> Result<MutationCounts, Report> {
+  let partition = &partition.read_arc();
+  let alphabet = &partition.alphabet();
+
+  let root_state = {
+    let root = graph.get_exactly_one_root()?;
+    let root = &partition.nodes()[&root.read_arc().key()];
+    Array1::<f64>::from_iter(
+      alphabet
+        .canonical()
+        .map(|nuc| root.seq.composition.get(nuc).unwrap_or(0) as f64),
+    )
+  };
 
   let N = alphabet.n_canonical();
   let mut nij = Array2::zeros((N, N));
   let mut Ti = Array1::zeros(N);
-  for edge in graph.get_edges() {
-    let target_seq = &graph
-      .get_node(edge.read_arc().target())
-      .unwrap()
-      .read_arc()
-      .payload()
-      .read_arc()
-      .sparse_partitions[0]
-      .seq;
 
-    let edge = edge.read_arc().payload().read_arc();
-    let branch_length = edge.weight().unwrap_or(0.0);
+  for edge in graph.get_edges() {
+    let edge = edge.read_arc();
+    let branch_length = edge.payload().read_arc().branch_length.unwrap_or(0.0);
+    let node = &partition.nodes()[&edge.target()];
+    let edge = &partition.edges()[&edge.key()];
 
     for (i, nuc) in alphabet.canonical().enumerate() {
-      Ti[i] += branch_length * target_seq.composition.get(nuc).unwrap_or(0) as f64;
+      Ti[i] += branch_length * node.seq.composition.get(nuc).unwrap_or(0) as f64;
     }
 
-    for m in &edge.sparse_partitions[0].subs {
+    for m in &edge.subs {
       m.check_canonical(alphabet)?;
       let i = alphabet.index(m.qry());
       let j = alphabet.index(m.reff());
@@ -172,9 +175,7 @@ pub fn get_mutation_counts(graph: &SparseGraph, alphabet: &Alphabet) -> Result<M
 #[cfg(test)]
 mod tests {
   use super::*;
-
-  use crate::pretty_assert_ulps_eq;
-
+  use crate::{alphabet::alphabet::Alphabet, pretty_assert_ulps_eq};
   use lazy_static::lazy_static;
   use ndarray::array;
 

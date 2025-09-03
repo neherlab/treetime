@@ -7,7 +7,7 @@ use crate::commands::optimize::optimize_dense::run_optimize_dense;
 use crate::commands::optimize::optimize_sparse::{initial_guess_sparse, run_optimize_sparse};
 use crate::graph::edge::GraphEdge;
 use crate::graph::node::GraphNode;
-use crate::gtr::get_gtr::{JC69Params, jc69};
+use crate::gtr::get_gtr::{JC69Params, get_gtr_dense, get_gtr_sparse, jc69};
 use crate::io::fasta::read_many_fasta;
 use crate::io::nex::{NexWriteOptions, nex_write_file};
 use crate::io::nwk::{EdgeToNwk, NodeToNwk, NwkWriteOptions, nwk_read_file, nwk_write_file};
@@ -61,7 +61,7 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
     #[allow(clippy::iter_on_single_items)]
     let partitions = [PartitionMarginalSparse {
       index: 0,
-      gtr: jc69(JC69Params::default())?, // TODO: allow other models
+      gtr: jc69(JC69Params::default())?, // FIXME: dummy temporary gtr should not be needed here
       alphabet,
       length: get_common_length(&aln)?,
       nodes: btreemap! {},
@@ -72,6 +72,13 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
     .collect_vec();
 
     compress_sequences(&graph, &partitions, &aln)?;
+
+    // FIXME: chicken & egg problem: to get a gtr we need partitions, to get partitions we need a gtr
+    // FIXME: spaghetti code: dummy gtr is replaced by real gtr here
+    for partition in &partitions {
+      let gtr = get_gtr_sparse(model_name, partition, &graph)?;
+      partition.write_arc().gtr = gtr;
+    }
 
     initial_guess_sparse(&graph, &partitions);
     let mut lh_prev = f64::MIN;
@@ -92,7 +99,7 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
     #[allow(clippy::iter_on_single_items)]
     let partitions = [PartitionMarginalDense {
       index: 0,
-      gtr: jc69(JC69Params::default())?, // TODO: allow other models
+      gtr: get_gtr_dense(model_name)?, // TODO: implement model inference for dense representation
       alphabet,
       length: get_common_length(&aln)?,
       nodes: btreemap! {},

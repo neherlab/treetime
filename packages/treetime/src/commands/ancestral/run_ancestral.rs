@@ -6,7 +6,7 @@ use crate::commands::ancestral::marginal_sparse::{ancestral_reconstruction_margi
 use crate::graph::edge::GraphEdge;
 use crate::graph::graph::Graph;
 use crate::graph::node::GraphNode;
-use crate::gtr::get_gtr::{JC69Params, jc69};
+use crate::gtr::get_gtr::{JC69Params, get_gtr_dense, get_gtr_sparse, jc69};
 use crate::io::fasta::{FastaReader, FastaRecord, FastaWriter, read_many_fasta};
 use crate::io::file::{create_file_or_stdout, open_stdin};
 use crate::io::nex::{NexWriteOptions, nex_write_file};
@@ -90,7 +90,7 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
   #[allow(clippy::iter_on_single_items)]
   let partitions_marginal_sparse = [PartitionMarginalSparse {
     index: 1,
-    gtr: jc69(JC69Params::default())?, // TODO: allow other models
+    gtr: jc69(JC69Params::default())?, // FIXME: dummy temporary gtr should not be needed here
     alphabet: alphabet.clone(),
     length: get_common_length(&aln)?,
     nodes: btreemap! {},
@@ -101,9 +101,14 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
   .collect_vec();
 
   if !partitions_marginal_sparse.is_empty() {
-    // let gtr = get_gtr(model_name, &alphabet, &graph)?;
-
     compress_sequences(&graph, &partitions_marginal_sparse, &aln)?;
+
+    // FIXME: chicken & egg problem: to get a gtr we need partitions, to get partitions we need a gtr
+    // FIXME: spaghetti code: dummy gtr is replaced by real gtr here
+    for partition in &partitions_marginal_sparse {
+      let gtr = get_gtr_sparse(model_name, partition, &graph)?;
+      partition.write_arc().gtr = gtr;
+    }
 
     run_marginal_sparse(&graph, &partitions_marginal_sparse)?;
 
@@ -122,7 +127,7 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
   #[allow(clippy::iter_on_single_items)]
   let partitions_marginal_dense = [PartitionMarginalDense {
     index: 2,
-    gtr: jc69(JC69Params::default())?, // TODO: allow other models
+    gtr: get_gtr_dense(model_name)?, // TODO: implement model inference for dense representation
     alphabet,
     length: get_common_length(&aln)?,
     nodes: btreemap! {},
@@ -133,8 +138,6 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
   .collect_vec();
 
   if !partitions_marginal_dense.is_empty() {
-    // let gtr = get_gtr_dense(model_name, &alphabet, &graph)?;
-
     run_marginal_dense(&graph, &partitions_marginal_dense, &aln)?;
 
     ancestral_reconstruction_marginal_dense(
