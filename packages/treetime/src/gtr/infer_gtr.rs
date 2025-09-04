@@ -1,6 +1,10 @@
-use crate::gtr::gtr::avg_transition;
+use crate::alphabet::alphabet::Alphabet;
+use crate::graph::edge::GraphEdgeKey;
+use crate::graph::node::GraphNodeKey;
+use crate::gtr::gtr::{GTR, GTRParams, avg_transition};
 use crate::representation::graph_ancestral::GraphAncestral;
-use crate::representation::partition_compressed::PartitionCompressed;
+use crate::seq::composition::Composition;
+use crate::seq::mutation::Sub;
 use crate::utils::ndarray::outer;
 use eyre::Report;
 use log::warn;
@@ -9,8 +13,25 @@ use parking_lot::RwLock;
 use smart_default::SmartDefault;
 use std::sync::Arc;
 
+pub trait PartitionWithGtrInference {
+  fn alphabet(&self) -> &Alphabet;
+  fn get_seq_composition(&self, node_key: GraphNodeKey) -> &Composition;
+  fn get_edge_substitutions(&self, edge_key: GraphEdgeKey, graph: &GraphAncestral) -> Vec<Sub>;
+}
+
+pub fn infer_gtr<P: PartitionWithGtrInference>(
+  partition: &Arc<RwLock<P>>,
+  graph: &GraphAncestral,
+) -> Result<Result<GTR, Report>, Report> {
+  let counts = get_mutation_counts(graph, partition)?;
+  let InferGtrResult { W, pi, mu } = infer_gtr_impl(&counts, &InferGtrOptions::default())?;
+  let alphabet = partition.read_arc().alphabet().clone();
+  let W = Some(W);
+  Ok(GTR::new(GTRParams { alphabet, mu, W, pi }))
+}
+
 #[derive(Clone, Debug)]
-pub struct MutationCounts {
+struct MutationCounts {
   /// NxN matrix where each entry represents the observed number of transitions from state i to state j.
   pub nij: Array2<f64>,
 
@@ -22,7 +43,7 @@ pub struct MutationCounts {
 }
 
 #[derive(Clone, Debug, SmartDefault)]
-pub struct InferGtrOptions {
+struct InferGtrOptions {
   /// Optional fixed equilibrium state frequencies. If `None`, then frequencies are estimated.
   pub fixed_pi: Option<Array1<f64>>,
 
@@ -40,7 +61,7 @@ pub struct InferGtrOptions {
 }
 
 #[derive(Clone, Debug)]
-pub struct InferGtrResult {
+struct InferGtrResult {
   /// Substitution attempt matrix calculated during the GTR inference.
   pub W: Array2<f64>,
   /// Estimated equilibrium state frequencies.
@@ -65,7 +86,7 @@ pub struct InferGtrResult {
 /// in a particular state. the modified equation is
 ///
 /// $$ n_{ij} + pc = pi_i W_{ij} (T_j+pc+root\_state) $$
-pub fn infer_gtr(counts: &MutationCounts, options: &InferGtrOptions) -> Result<InferGtrResult, Report> {
+fn infer_gtr_impl(counts: &MutationCounts, options: &InferGtrOptions) -> Result<InferGtrResult, Report> {
   let MutationCounts { nij, Ti, root_state } = counts;
   let InferGtrOptions {
     fixed_pi,
@@ -128,20 +149,21 @@ fn distance(pi_old: &Array1<f64>, pi: &Array1<f64>) -> f64 {
   (pi_old - pi).mapv(|x| x * x).sum().sqrt()
 }
 
-pub fn get_mutation_counts<P: PartitionCompressed>(
+fn get_mutation_counts<P: PartitionWithGtrInference>(
   graph: &GraphAncestral,
   partition: &Arc<RwLock<P>>,
 ) -> Result<MutationCounts, Report> {
-  let partition = &partition.read_arc();
-  let alphabet = &partition.alphabet();
+  let partition_guard = partition.read_arc();
+  let alphabet = partition_guard.alphabet();
 
   let root_state = {
     let root = graph.get_exactly_one_root()?;
-    let root = &partition.nodes()[&root.read_arc().key()];
+    let root_key = root.read_arc().key();
+    let root_composition = partition_guard.get_seq_composition(root_key);
     Array1::<f64>::from_iter(
       alphabet
         .canonical()
-        .map(|nuc| root.seq.composition.get(nuc).unwrap_or(0) as f64),
+        .map(|nuc| root_composition.get(nuc).unwrap_or(0) as f64),
     )
   };
 
@@ -150,16 +172,19 @@ pub fn get_mutation_counts<P: PartitionCompressed>(
   let mut Ti = Array1::zeros(N);
 
   for edge in graph.get_edges() {
-    let edge = edge.read_arc();
-    let branch_length = edge.payload().read_arc().branch_length.unwrap_or(0.0);
-    let node = &partition.nodes()[&edge.target()];
-    let edge = &partition.edges()[&edge.key()];
+    let edge_arc = edge.read_arc();
+    let branch_length = edge_arc.payload().read_arc().branch_length.unwrap_or(0.0);
+    let target_key = edge_arc.target();
+    let edge_key = edge_arc.key();
+
+    let node_composition = partition_guard.get_seq_composition(target_key);
 
     for (i, nuc) in alphabet.canonical().enumerate() {
-      Ti[i] += branch_length * node.seq.composition.get(nuc).unwrap_or(0) as f64;
+      Ti[i] += branch_length * node_composition.get(nuc).unwrap_or(0) as f64;
     }
 
-    for m in &edge.subs {
+    let subs = partition_guard.get_edge_substitutions(edge_key, graph);
+    for m in &subs {
       m.check_canonical(alphabet)?;
       let i = alphabet.index(m.qry());
       let j = alphabet.index(m.reff());
@@ -194,7 +219,7 @@ mod tests {
     let Ti = array![12.0, 20.0, 14.0, 12.4];
     let root_state = array![3.0, 2.0, 3.0, 4.0];
 
-    let actual = infer_gtr(
+    let actual = infer_gtr_impl(
       &MutationCounts { nij, Ti, root_state },
       &InferGtrOptions {
         pc: 0.1,

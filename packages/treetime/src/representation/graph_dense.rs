@@ -66,7 +66,7 @@ pub struct DenseSeqInfo {
   pub sequence: Seq,
 }
 
-#[derive(Clone, Default, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct DenseNodePartition {
   pub seq: DenseSeqInfo,
   pub profile: DenseSeqDis,
