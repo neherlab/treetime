@@ -65,93 +65,6 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
 
   let graph: GraphAncestral = nwk_read_file(tree)?;
 
-  #[allow(clippy::iter_on_single_items)]
-  let partitions_parsimony = [PartitionParsimonyNew {
-    index: 0,
-    alphabet: alphabet.clone(),
-    length: get_common_length(&aln)?,
-    nodes: btreemap! {},
-    edges: btreemap! {},
-  }]
-  .into_iter()
-  .map(|p| Arc::new(RwLock::new(p)))
-  .collect_vec();
-
-  if !partitions_parsimony.is_empty() {
-    compress_sequences(&graph, &partitions_parsimony, &aln)?;
-
-    ancestral_reconstruction_fitch(&graph, *reconstruct_tip_states, &partitions_parsimony, |node, seq| {
-      let name = node.payload.name.as_deref().unwrap_or("");
-      let desc = &node.payload.desc;
-      output_fasta.write(name, desc, seq).unwrap();
-    })?;
-  }
-
-  #[allow(clippy::iter_on_single_items)]
-  let partitions_marginal_sparse = [PartitionMarginalSparse {
-    index: 1,
-    gtr: jc69(JC69Params::default())?, // FIXME: dummy temporary gtr should not be needed here
-    alphabet: alphabet.clone(),
-    length: get_common_length(&aln)?,
-    nodes: btreemap! {},
-    edges: btreemap! {},
-  }]
-  .into_iter()
-  .map(|p| Arc::new(RwLock::new(p)))
-  .collect_vec();
-
-  if !partitions_marginal_sparse.is_empty() {
-    compress_sequences(&graph, &partitions_marginal_sparse, &aln)?;
-
-    // FIXME: chicken & egg problem: to get a gtr we need partitions, to get partitions we need a gtr
-    // FIXME: spaghetti code: dummy gtr is replaced by real gtr here
-    for partition in &partitions_marginal_sparse {
-      let gtr = get_gtr_sparse(model_name, partition, &graph)?;
-      partition.write_arc().gtr = gtr;
-    }
-
-    run_marginal_sparse(&graph, &partitions_marginal_sparse)?;
-
-    ancestral_reconstruction_marginal_sparse(
-      &graph,
-      *reconstruct_tip_states,
-      &partitions_marginal_sparse,
-      |node, seq| {
-        let name = node.name.as_deref().unwrap_or("");
-        let desc = &node.desc;
-        output_fasta.write(name, desc, &seq).unwrap();
-      },
-    )?;
-  }
-
-  #[allow(clippy::iter_on_single_items)]
-  let partitions_marginal_dense = [PartitionMarginalDense {
-    index: 2,
-    gtr: get_gtr_dense(model_name)?, // TODO: implement model inference for dense representation
-    alphabet,
-    length: get_common_length(&aln)?,
-    nodes: btreemap! {},
-    edges: btreemap! {},
-  }]
-  .into_iter()
-  .map(|p| Arc::new(RwLock::new(p)))
-  .collect_vec();
-
-  if !partitions_marginal_dense.is_empty() {
-    run_marginal_dense(&graph, &partitions_marginal_dense, &aln)?;
-
-    ancestral_reconstruction_marginal_dense(
-      &graph,
-      *reconstruct_tip_states,
-      &partitions_marginal_dense,
-      |node, seq| {
-        let name = node.name.as_deref().unwrap_or("");
-        let desc = &node.desc;
-        output_fasta.write(name, desc, seq).unwrap();
-      },
-    )?;
-  }
-
   match method_anc {
     // both MaximumLikelihoodJoint and MaximumLikelihoodMarginal need an GTR, parsimony does not
     // it thus might make sense to split parsimony from the othe two methods. For parsimony, we
@@ -172,13 +85,94 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
     // VCF input is basically another way to instantiate the sparse representation. MAT format would be another one.
     // Again, we can deal with this later, but the entrypoint is not always going to be a fasta file.
     MethodAncestral::Parsimony => {
+      #[allow(clippy::iter_on_single_items)]
+      let partitions_parsimony = [PartitionParsimonyNew {
+        index: 0,
+        alphabet,
+        length: get_common_length(&aln)?,
+        nodes: btreemap! {},
+        edges: btreemap! {},
+      }]
+      .into_iter()
+      .map(|p| Arc::new(RwLock::new(p)))
+      .collect_vec();
 
+      if !partitions_parsimony.is_empty() {
+        compress_sequences(&graph, &partitions_parsimony, &aln)?;
+
+        ancestral_reconstruction_fitch(&graph, *reconstruct_tip_states, &partitions_parsimony, |node, seq| {
+          let name = node.payload.name.as_deref().unwrap_or("");
+          let desc = &node.payload.desc;
+          output_fasta.write(name, desc, seq).unwrap();
+        })?;
+      }
     },
     MethodAncestral::Marginal => {
       if !dense {
+        #[allow(clippy::iter_on_single_items)]
+        let partitions_marginal_sparse = [PartitionMarginalSparse {
+          index: 0,
+          gtr: jc69(JC69Params::default())?, // FIXME: dummy temporary gtr should not be needed here
+          alphabet,
+          length: get_common_length(&aln)?,
+          nodes: btreemap! {},
+          edges: btreemap! {},
+        }]
+        .into_iter()
+        .map(|p| Arc::new(RwLock::new(p)))
+        .collect_vec();
 
+        if !partitions_marginal_sparse.is_empty() {
+          compress_sequences(&graph, &partitions_marginal_sparse, &aln)?;
+
+          // FIXME: chicken & egg problem: to get a gtr we need partitions, to get partitions we need a gtr
+          // FIXME: spaghetti code: dummy gtr is replaced by real gtr here
+          for partition in &partitions_marginal_sparse {
+            let gtr = get_gtr_sparse(model_name, partition, &graph)?;
+            partition.write_arc().gtr = gtr;
+          }
+
+          run_marginal_sparse(&graph, &partitions_marginal_sparse)?;
+
+          ancestral_reconstruction_marginal_sparse(
+            &graph,
+            *reconstruct_tip_states,
+            &partitions_marginal_sparse,
+            |node, seq| {
+              let name = node.name.as_deref().unwrap_or("");
+              let desc = &node.desc;
+              output_fasta.write(name, desc, &seq).unwrap();
+            },
+          )?;
+        }
       } else {
+        #[allow(clippy::iter_on_single_items)]
+        let partitions_marginal_dense = [PartitionMarginalDense {
+          index: 0,
+          gtr: get_gtr_dense(model_name)?, // TODO: implement model inference for dense representation
+          alphabet,
+          length: get_common_length(&aln)?,
+          nodes: btreemap! {},
+          edges: btreemap! {},
+        }]
+        .into_iter()
+        .map(|p| Arc::new(RwLock::new(p)))
+        .collect_vec();
 
+        if !partitions_marginal_dense.is_empty() {
+          run_marginal_dense(&graph, &partitions_marginal_dense, &aln)?;
+
+          ancestral_reconstruction_marginal_dense(
+            &graph,
+            *reconstruct_tip_states,
+            &partitions_marginal_dense,
+            |node, seq| {
+              let name = node.name.as_deref().unwrap_or("");
+              let desc = &node.desc;
+              output_fasta.write(name, desc, seq).unwrap();
+            },
+          )?;
+        }
       }
     },
     MethodAncestral::Joint => {
