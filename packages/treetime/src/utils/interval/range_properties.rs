@@ -62,7 +62,7 @@ mod tests {
     let universe = vec![(0, 20)]; // Universal set
 
     // A ∪ ¬A
-    let actual = range_union(&[set_a.clone(), range_complement(&universe, &[set_a.clone()])]);
+    let actual = range_union(&[set_a.clone(), range_complement(&universe, std::slice::from_ref(&set_a))]);
 
     assert_eq!(actual, universe);
   }

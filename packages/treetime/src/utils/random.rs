@@ -6,14 +6,14 @@ use ndarray_rand::rand::{Rng, seq::IteratorRandom, seq::SliceRandom};
 use rand_isaac::Isaac64Rng;
 use std::collections::BTreeSet;
 
-pub fn get_random_number_generator(seed: Option<u64>) -> (impl Rng + Send + Sync + Clone) {
+pub fn get_random_number_generator(seed: Option<u64>) -> impl Rng + Send + Sync + Clone {
   match seed {
     None => Isaac64Rng::from_entropy(),
     Some(seed) => Isaac64Rng::seed_from_u64(seed),
   }
 }
 
-pub fn clone_random_number_generator(rng: &mut impl Rng) -> (impl Rng + Send + Sync + Clone) {
+pub fn clone_random_number_generator(rng: &mut impl Rng) -> impl Rng + Send + Sync + Clone {
   Isaac64Rng::from_rng(rng).expect("Unable to clone random number generator")
 }
 
