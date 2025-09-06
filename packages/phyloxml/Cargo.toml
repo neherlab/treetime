@@ -14,10 +14,10 @@ version.workspace = true
 crate-type = ["lib"]
 
 [dependencies]
-quick-xml = { version = "=0.37.5", features = ["serde", "serialize"] }
+quick-xml = { version = "=0.38.3", features = ["serde", "serialize"] }
 serde = { version = "=1.0.219", features = ["derive"] }
-serde_json = "=1.0.140"
-xml = "=0.8.20"
+serde_json = "=1.0.143"
+xml = "=1.0.0"
 
 [lints]
 workspace = true
