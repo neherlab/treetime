@@ -37,6 +37,9 @@ lax = { git = "https://github.com/numrs/ndarray-linalg", rev = "ac7052e" }
 ndarray-linalg = { git = "https://github.com/numrs/ndarray-linalg", rev = "ac7052e" }
 openblas-src = { git = "https://github.com/numrs/openblas-src", rev = "0964a10" }
 
+argmin = { git = "https://github.com/argmin-rs/argmin", rev = "f5c3fd3" }
+argmin-math = { git = "https://github.com/argmin-rs/argmin", rev = "f5c3fd3" }
+
 
 [workspace.dependencies]
 blas-src = { version = "=0.12.1", features = ["openblas-src"] }
@@ -53,7 +56,7 @@ zstd = { version = "=0.13.3", features = ["zstdmt"] }
 
 approx = "=0.5.1"
 argmin = { version = "=0.10.0", features = [] }
-argmin-math = { version = "=0.4.0", features = ["ndarray_v0_15"] }
+argmin-math = { version = "=0.4.0", features = ["ndarray_v0_16", "ndarray-linalg_0_17"] }
 argmin-observer-slog = { version = "=0.1.0", features = ["serde"] }
 argmin_testfunctions = { version = "=0.2.0" }
 atty = "=0.2.14"

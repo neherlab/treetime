@@ -114,15 +114,6 @@ checksum = "b0674a1ddeecb70197781e945de4b3b8ffb61fa939a5597bcf48503737663100"
 
 [[package]]
 name = "approx"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3f2a05fd1bd10b2527e20a2cd32d8873d115b8b39fe219ee25f42a8aca6ba278"
-dependencies = [
- "num-traits",
-]
-
-[[package]]
-name = "approx"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cab112f0a86d568ea0e627cc1d6be74a1e9cd55214684db5561995f6dad897c6"
@@ -150,29 +141,27 @@ dependencies = [
 [[package]]
 name = "argmin"
 version = "0.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "760a49d596b18b881d2fe6e9e6da4608fa64d4a7653ef5cd43bfaa4da018d596"
+source = "git+https://github.com/argmin-rs/argmin?rev=f5c3fd3#f5c3fd3953771ee41d1e6425b3421de2b8ed7b24"
 dependencies = [
  "anyhow",
  "argmin-math",
- "instant",
  "num-traits",
  "paste",
  "rand",
  "rand_xoshiro",
  "thiserror 1.0.69",
+ "web-time",
 ]
 
 [[package]]
 name = "argmin-math"
 version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d93a0d0269b60bd1cd674de70314e3f0da97406cf8c1936ce760d2a46e0f13fe"
+source = "git+https://github.com/argmin-rs/argmin?rev=f5c3fd3#f5c3fd3953771ee41d1e6425b3421de2b8ed7b24"
 dependencies = [
  "anyhow",
  "cfg-if",
- "ndarray 0.15.6",
- "ndarray-linalg 0.16.0",
+ "ndarray",
+ "ndarray-linalg",
  "num-complex",
  "num-integer",
  "num-traits",
@@ -297,7 +286,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "add46f280e82963d4abb6f2c78f491a1f45be23ba27516856a1efbf194107bb7"
 dependencies = [
  "anyhow",
- "approx 0.5.1",
+ "approx",
  "bio-types",
  "bit-set 0.8.0",
  "bv",
@@ -311,7 +300,7 @@ dependencies = [
  "itertools-num",
  "lazy_static",
  "multimap",
- "ndarray 0.16.1",
+ "ndarray",
  "newtype_derive",
  "num-integer",
  "num-traits",
@@ -1659,15 +1648,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f4c7245a08504955605670dbf141fceab975f15ca21570696aebe9d2e71576bd"
 
 [[package]]
-name = "instant"
-version = "0.1.13"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e0242819d153cba4b4b05a5a8f2a7e9bbf97b6055b2a002b395c96b5ff3c0222"
-dependencies = [
- "cfg-if",
-]
-
-[[package]]
 name = "interpolate_name"
 version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1808,15 +1788,6 @@ dependencies = [
 
 [[package]]
 name = "lapack-sys"
-version = "0.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "447f56c85fb410a7a3d36701b2153c1018b1d2b908c5fbaf01c1b04fac33bcbe"
-dependencies = [
- "libc",
-]
-
-[[package]]
-name = "lapack-sys"
 version = "0.15.0"
 source = "git+https://github.com/numrs/lapack-sys?rev=d3b1ca9#d3b1ca941c8a934c16e4d082d418b85d9e355a4d"
 dependencies = [
@@ -1826,25 +1797,12 @@ dependencies = [
 
 [[package]]
 name = "lax"
-version = "0.16.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1f96a229d9557112e574164f8024ce703625ad9f88a90964c1780809358e53da"
-dependencies = [
- "cauchy",
- "katexit",
- "lapack-sys 0.14.0",
- "num-traits",
- "thiserror 1.0.69",
-]
-
-[[package]]
-name = "lax"
 version = "0.17.0"
 source = "git+https://github.com/numrs/ndarray-linalg?rev=ac7052e#ac7052e20c1c6d1915603de575cce02123c5f414"
 dependencies = [
  "cauchy",
  "katexit",
- "lapack-sys 0.15.0",
+ "lapack-sys",
  "num-traits",
  "openblas-src",
  "thiserror 2.0.16",
@@ -2044,7 +2002,7 @@ version = "0.33.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "26aecdf64b707efd1310e3544d709c5c0ac61c13756046aaaba41be5c4f66a3b"
 dependencies = [
- "approx 0.5.1",
+ "approx",
  "matrixmultiply",
  "num-complex",
  "num-rational",
@@ -2057,27 +2015,11 @@ dependencies = [
 
 [[package]]
 name = "ndarray"
-version = "0.15.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "adb12d4e967ec485a5f71c6311fe28158e9d6f4bc4a447b474184d0f91a8fa32"
-dependencies = [
- "approx 0.4.0",
- "cblas-sys",
- "libc",
- "matrixmultiply",
- "num-complex",
- "num-integer",
- "num-traits",
- "rawpointer",
-]
-
-[[package]]
-name = "ndarray"
 version = "0.16.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "882ed72dce9365842bf196bdeedf5055305f11fc8c03dee7bb0194a6cad34841"
 dependencies = [
- "approx 0.5.1",
+ "approx",
  "cblas-sys",
  "libc",
  "matrixmultiply",
@@ -2093,29 +2035,13 @@ dependencies = [
 
 [[package]]
 name = "ndarray-linalg"
-version = "0.16.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0b0e8dda0c941b64a85c5deb2b3e0144aca87aced64678adfc23eacea6d2cc42"
-dependencies = [
- "cauchy",
- "katexit",
- "lax 0.16.0",
- "ndarray 0.15.6",
- "num-complex",
- "num-traits",
- "rand",
- "thiserror 1.0.69",
-]
-
-[[package]]
-name = "ndarray-linalg"
 version = "0.17.0"
 source = "git+https://github.com/numrs/ndarray-linalg?rev=ac7052e#ac7052e20c1c6d1915603de575cce02123c5f414"
 dependencies = [
  "cauchy",
  "katexit",
- "lax 0.17.0",
- "ndarray 0.16.1",
+ "lax",
+ "ndarray",
  "num-complex",
  "num-traits",
  "rand",
@@ -2128,7 +2054,7 @@ version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f093b3db6fd194718dcdeea6bd8c829417deae904e3fcc7732dabcd4416d25d8"
 dependencies = [
- "ndarray 0.16.1",
+ "ndarray",
  "rand",
  "rand_distr",
 ]
@@ -2141,7 +2067,7 @@ checksum = "17ebbe97acce52d06aebed4cd4a87c0941f4b2519b59b82b4feb5bd0ce003dfd"
 dependencies = [
  "indexmap",
  "itertools 0.13.0",
- "ndarray 0.16.1",
+ "ndarray",
  "noisy_float",
  "num-integer",
  "num-traits",
@@ -3263,7 +3189,7 @@ version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c99284beb21666094ba2b75bbceda012e610f5479dfcc2d6e2426f53197ffd95"
 dependencies = [
- "approx 0.5.1",
+ "approx",
  "num-complex",
  "num-traits",
  "paste",
@@ -3359,7 +3285,7 @@ version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2a3fe7c28c6512e766b0874335db33c94ad7b8f9054228ae1c2abd47ce7d335e"
 dependencies = [
- "approx 0.5.1",
+ "approx",
  "nalgebra",
  "num-traits",
  "rand",
@@ -3694,7 +3620,7 @@ checksum = "f0ec9745d7517c8b8e8c0a65cba2d84e42f95fd348a01693c5e4da1bc6d00c99"
 name = "treetime"
 version = "1.0.0"
 dependencies = [
- "approx 0.5.1",
+ "approx",
  "argmin",
  "argmin-math",
  "argmin-observer-slog",
@@ -3732,8 +3658,8 @@ dependencies = [
  "log",
  "maplit",
  "multimap",
- "ndarray 0.16.1",
- "ndarray-linalg 0.17.0",
+ "ndarray",
+ "ndarray-linalg",
  "ndarray-rand",
  "ndarray-stats",
  "num",
@@ -4015,6 +3941,16 @@ name = "web-sys"
 version = "0.3.78"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "77e4b637749ff0d92b8fad63aa1f7cff3cbe125fd49c175cd6345e7272638b12"
+dependencies = [
+ "js-sys",
+ "wasm-bindgen",
+]
+
+[[package]]
+name = "web-time"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5a6580f308b1fad9207618087a65c04e7a10bc77e02c8e84e9b00dd4b12fa0bb"
 dependencies = [
  "js-sys",
  "wasm-bindgen",
