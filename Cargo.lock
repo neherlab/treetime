@@ -169,7 +169,7 @@ dependencies = [
  "anyhow",
  "cfg-if",
  "ndarray 0.15.6",
- "ndarray-linalg",
+ "ndarray-linalg 0.16.0",
  "num-complex 0.4.6",
  "num-integer",
  "num-traits",
@@ -1869,16 +1869,38 @@ dependencies = [
 ]
 
 [[package]]
+name = "lapack-sys"
+version = "0.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "314b879030845b68571809a6978e52d3b67ac5fba07e77b1b317b484092e2fb5"
+dependencies = [
+ "libc",
+]
+
+[[package]]
 name = "lax"
 version = "0.16.0"
-source = "git+https://github.com/numrs/ndarray-linalg?rev=1c551ac#1c551ac4a8254d06b47318da81a9848bb78d29b5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1f96a229d9557112e574164f8024ce703625ad9f88a90964c1780809358e53da"
 dependencies = [
  "cauchy",
  "katexit",
- "lapack-sys",
+ "lapack-sys 0.14.0",
+ "num-traits",
+ "thiserror 1.0.69",
+]
+
+[[package]]
+name = "lax"
+version = "0.17.0"
+source = "git+https://github.com/numrs/ndarray-linalg?rev=ac7052e#ac7052e20c1c6d1915603de575cce02123c5f414"
+dependencies = [
+ "cauchy",
+ "katexit",
+ "lapack-sys 0.15.0",
  "num-traits",
  "openblas-src",
- "thiserror 1.0.69",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
@@ -2124,6 +2146,9 @@ version = "0.16.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "882ed72dce9365842bf196bdeedf5055305f11fc8c03dee7bb0194a6cad34841"
 dependencies = [
+ "approx 0.5.1",
+ "cblas-sys",
+ "libc",
  "matrixmultiply 0.3.9",
  "num-complex 0.4.6",
  "num-integer",
@@ -2136,11 +2161,12 @@ dependencies = [
 [[package]]
 name = "ndarray-linalg"
 version = "0.16.0"
-source = "git+https://github.com/numrs/ndarray-linalg?rev=1c551ac#1c551ac4a8254d06b47318da81a9848bb78d29b5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0b0e8dda0c941b64a85c5deb2b3e0144aca87aced64678adfc23eacea6d2cc42"
 dependencies = [
  "cauchy",
  "katexit",
- "lax",
+ "lax 0.16.0",
  "ndarray 0.15.6",
  "num-complex 0.4.6",
  "num-traits",
@@ -2149,12 +2175,27 @@ dependencies = [
 ]
 
 [[package]]
-name = "ndarray-rand"
-version = "0.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "65608f937acc725f5b164dcf40f4f0bc5d67dc268ab8a649d3002606718c4588"
+name = "ndarray-linalg"
+version = "0.17.0"
+source = "git+https://github.com/numrs/ndarray-linalg?rev=ac7052e#ac7052e20c1c6d1915603de575cce02123c5f414"
 dependencies = [
- "ndarray 0.15.6",
+ "cauchy",
+ "katexit",
+ "lax 0.17.0",
+ "ndarray 0.16.1",
+ "num-complex 0.4.6",
+ "num-traits",
+ "rand 0.8.5",
+ "thiserror 2.0.12",
+]
+
+[[package]]
+name = "ndarray-rand"
+version = "0.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f093b3db6fd194718dcdeea6bd8c829417deae904e3fcc7732dabcd4416d25d8"
+dependencies = [
+ "ndarray 0.16.1",
  "rand 0.8.5",
  "rand_distr 0.4.3",
 ]
@@ -3898,7 +3939,7 @@ dependencies = [
  "maplit",
  "multimap",
  "ndarray 0.15.6",
- "ndarray-linalg",
+ "ndarray-linalg 0.17.0",
  "ndarray-rand",
  "ndarray-stats",
  "num 0.4.3",

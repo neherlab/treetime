@@ -32,19 +32,19 @@ authors = [
 
 
 [patch.crates-io]
-lapack-sys = { git = "https://github.com/numrs/lapack-sys", rev = "d6684af" }
-lax = { git = "https://github.com/numrs/ndarray-linalg", rev = "1c551ac" }
-ndarray-linalg = { git = "https://github.com/numrs/ndarray-linalg", rev = "1c551ac" }
-openblas-src = { git = "https://github.com/numrs/openblas-src", rev = "30b9cef" }
+lapack-sys = { git = "https://github.com/numrs/lapack-sys", rev = "d3b1ca9" }
+lax = { git = "https://github.com/numrs/ndarray-linalg", rev = "ac7052e" }
+ndarray-linalg = { git = "https://github.com/numrs/ndarray-linalg", rev = "ac7052e" }
+openblas-src = { git = "https://github.com/numrs/openblas-src", rev = "0964a10" }
 
 
 [workspace.dependencies]
-blas-src = { version = "=0.10.0", features = ["openblas-src"] }
-ndarray = { version = "=0.15.6", features = ["rayon", "serde", "approx-0_5", "blas"] }
-ndarray-linalg = { version = "=0.16.0", features = ["openblas-system"] }
-ndarray-rand = "=0.14.0"
-ndarray-stats = "=0.5.1"
-openblas-src = { version = "=0.10.9", features = ["system"] }
+blas-src = { version = "=0.12.1", features = ["openblas-src"] }
+ndarray = { version = "=0.16.1", features = ["rayon", "serde", "approx-0_5", "blas"] }
+ndarray-linalg = { version = "=0.17.0", features = ["openblas-system"] }
+ndarray-rand = "=0.15.0"
+ndarray-stats = "=0.6.0"
+openblas-src = { version = "=0.10.12", features = ["system"] }
 
 bzip2 = { version = "=0.5.2", features = ["static"] }
 flate2 = "=1.1.1"
