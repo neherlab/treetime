@@ -1,6 +1,6 @@
 use criterion::{Criterion, criterion_group, criterion_main};
 use std::hint::black_box;
-use treetime::utils::random::random_sequence;
+use treetime::utils::random::{get_random_number_generator, random_sequence};
 
 fn vec_to_string_collect(v: Vec<char>) -> String {
   v.into_iter().collect()
@@ -30,7 +30,8 @@ fn vec_to_string_push(v: Vec<char>) -> String {
 }
 
 fn benchmark_main(c: &mut Criterion) {
-  let seq = random_sequence(1_000_000, Some(42));
+  let mut rng = get_random_number_generator(Some(42));
+  let seq = random_sequence(1_000_000, &mut rng);
 
   let mut g = c.benchmark_group("vec_to_string");
 
