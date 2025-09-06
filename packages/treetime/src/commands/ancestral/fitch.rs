@@ -124,10 +124,10 @@ fn fitch_backwards(graph: &SparseGraph, sparse_partitions: &[PartitionParsimony]
         let child_profiles = children
           .iter()
           .filter_map(|(child, edge)| {
-            if let Some(transmission) = &edge.transmission
-              && range_contains(transmission, pos)
-            {
-              return None; // transmission field is not currently used
+            if let Some(transmission) = &edge.transmission {
+              if range_contains(transmission, pos) {
+                return None; // transmission field is not currently used
+              }
             }
             if range_contains(&child.non_char, pos) {
               return None; // this position does not have character state information

@@ -135,10 +135,10 @@ fn propagate_raw(
     log_lh: seq_dis.log_lh,
   };
   for (pos, state) in &seq_dis.variable {
-    if let Some(transmission) = &transmission
-      && !range_contains(transmission, *pos)
-    {
-      continue; // transmission field is not currently used
+    if let Some(transmission) = &transmission {
+      if !range_contains(transmission, *pos) {
+        continue; // transmission field is not currently used
+      }
     }
 
     let dis = expQt.dot(&state.dis);

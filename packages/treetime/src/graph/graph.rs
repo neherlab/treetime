@@ -886,14 +886,14 @@ where
     };
 
     for &inbound_edge_key in &target_inbound {
-      if inbound_edge_key != edge_key
-        && let Some(inbound_edge) = self.get_edge(inbound_edge_key)
-      {
-        inbound_edge.write_arc().set_target(source_key);
-        if let Some(source_node) = self.get_node(source_key) {
-          let mut source_node = source_node.write_arc();
-          if !source_node.inbound().contains(&inbound_edge_key) {
-            source_node.inbound_mut().push(inbound_edge_key);
+      if inbound_edge_key != edge_key {
+        if let Some(inbound_edge) = self.get_edge(inbound_edge_key) {
+          inbound_edge.write_arc().set_target(source_key);
+          if let Some(source_node) = self.get_node(source_key) {
+            let mut source_node = source_node.write_arc();
+            if !source_node.inbound().contains(&inbound_edge_key) {
+              source_node.inbound_mut().push(inbound_edge_key);
+            }
           }
         }
       }
@@ -901,15 +901,15 @@ where
 
     let mut new_edges = Vec::with_capacity(target_outbound.len());
     for &outbound_edge_key in &target_outbound {
-      if outbound_edge_key != edge_key
-        && let Some(outbound_edge) = self.get_edge(outbound_edge_key)
-      {
-        new_edges.push(Arc::clone(&outbound_edge));
-        outbound_edge.write_arc().set_source(source_key);
-        if let Some(source_node) = self.get_node(source_key) {
-          let mut source_node = source_node.write_arc();
-          if !source_node.outbound().contains(&outbound_edge_key) {
-            source_node.outbound_mut().push(outbound_edge_key);
+      if outbound_edge_key != edge_key {
+        if let Some(outbound_edge) = self.get_edge(outbound_edge_key) {
+          new_edges.push(Arc::clone(&outbound_edge));
+          outbound_edge.write_arc().set_source(source_key);
+          if let Some(source_node) = self.get_node(source_key) {
+            let mut source_node = source_node.write_arc();
+            if !source_node.outbound().contains(&outbound_edge_key) {
+              source_node.outbound_mut().push(outbound_edge_key);
+            }
           }
         }
       }
@@ -1297,10 +1297,10 @@ pub mod tests {
     for &edge_key in root_node_ref.outbound() {
       if let Some(edge) = graph.get_edge(edge_key) {
         let target_key = edge.read_arc().target();
-        if let Some(target_node) = graph.get_node(target_key)
-          && let Some(name) = target_node.read_arc().payload().read_arc().name()
-        {
-          target_nodes.push(name.as_ref().to_owned());
+        if let Some(target_node) = graph.get_node(target_key) {
+          if let Some(name) = target_node.read_arc().payload().read_arc().name() {
+            target_nodes.push(name.as_ref().to_owned());
+          }
         }
       }
     }

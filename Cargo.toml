@@ -312,6 +312,7 @@ useless_transmute = "allow"
 wildcard_enum_match_arm = "allow"
 
 # We might need to reconsider these
+collapsible_if = "allow"
 iter_over_hash_type = "allow"
 needless_range_loop = "allow"
 non_std_lazy_statics = "allow" # bugs clap annotations
