@@ -11,24 +11,27 @@ pub fn reroot_in_place(graph: &mut ClockGraph, options: &ClockOptions) -> Result
   let old_root_key = { graph.get_exactly_one_root()?.read_arc().key() };
 
   let FindRootResult { edge, split, total, .. } = find_best_root(graph, options)?;
-  // If edge is null, we are already at the best root, return old_root_key
-  if edge.is_none() {
-    return Ok(old_root_key);
-  }
 
-  let edge_key = edge.expect("Edge is empty when rerooting");
+  let Some(edge_key) = edge else {
+    return Ok(old_root_key); // Already at the best root
+  };
 
-  let new_root_key = {
+  // Extract edge endpoints before potentially removing the edge
+  let (source_key, target_key) = {
     let edge = graph.get_edge(edge_key).expect("Edge not found");
-    if ulps_eq!(split, 0.0, max_ulps = 5) {
-      edge.read_arc().target()
-    } else if ulps_eq!(split, 1.0, max_ulps = 5) {
-      edge.read_arc().source()
-    } else {
-      // Drop edge reference before calling create_new_root_node
-      drop(edge);
-      create_new_root_node(graph, edge_key, split, total)?
-    }
+    (edge.read_arc().source(), edge.read_arc().target())
+  };
+
+  // Determine where to place the new root based on the split position along the edge
+  // - split=0.0 means root at target
+  // - split=1.0 means root at source
+  // - 0.0 < split < 1.0 means somewhere in the middle - i.e. create a new node
+  let new_root_key = if ulps_eq!(split, 0.0, max_ulps = 5) {
+    target_key
+  } else if ulps_eq!(split, 1.0, max_ulps = 5) {
+    source_key
+  } else {
+    create_new_root_node(graph, edge_key, split, total)?
   };
 
   if new_root_key != old_root_key {
