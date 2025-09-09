@@ -2,18 +2,18 @@ use crate::make_internal_report;
 use eyre::Report;
 use itertools::Itertools;
 use ndarray_rand::rand::SeedableRng;
-use rand::{Rng, seq::IteratorRandom, seq::SliceRandom};
+use ndarray_rand::rand::{Rng, seq::IteratorRandom, seq::SliceRandom};
 use rand_isaac::Isaac64Rng;
 use std::collections::BTreeSet;
 
-pub fn get_random_number_generator(seed: Option<u64>) -> (impl Rng + Send + Sync + Clone) {
+pub fn get_random_number_generator(seed: Option<u64>) -> impl Rng + Send + Sync + Clone {
   match seed {
     None => Isaac64Rng::from_entropy(),
     Some(seed) => Isaac64Rng::seed_from_u64(seed),
   }
 }
 
-pub fn clone_random_number_generator(rng: &mut impl Rng) -> (impl Rng + Send + Sync + Clone) {
+pub fn clone_random_number_generator(rng: &mut impl Rng) -> impl Rng + Send + Sync + Clone {
   Isaac64Rng::from_rng(rng).expect("Unable to clone random number generator")
 }
 
@@ -41,8 +41,7 @@ pub fn random_pop<T: Clone + Ord>(s: &mut BTreeSet<T>, rng: &mut impl Rng) -> T 
   item
 }
 
-pub fn random_sequence(length: usize, seed: Option<u64>) -> Vec<char> {
-  let mut rng = get_random_number_generator(seed);
+pub fn random_sequence(length: usize, rng: &mut impl Rng) -> Vec<char> {
   let letters = ['A', 'C', 'G', 'T', 'N', '-'];
-  letters.choose_multiple(&mut rng, length).copied().collect()
+  letters.as_slice().choose_multiple(rng, length).copied().collect()
 }

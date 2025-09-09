@@ -14,10 +14,10 @@ pub fn parse_date(date_str: impl AsRef<str>, options: &DateParserOptions) -> Res
     return Ok(date);
   }
 
-  if let Ok(year_fraction) = date_str.parse::<f64>() {
-    if year_fraction.is_finite() {
-      return Ok(year_fraction_to_date(year_fraction));
-    }
+  if let Ok(year_fraction) = date_str.parse::<f64>()
+    && year_fraction.is_finite()
+  {
+    return Ok(year_fraction_to_date(year_fraction));
   }
 
   make_error!("Unrecognized date format: {date_str}")
@@ -82,13 +82,13 @@ pub const DATE_FORMATS: &[&str] = &[
 
 pub fn parse_date_range(date_range_str: &str, options: &DateParserOptions) -> Result<DateRange, Report> {
   for (regex, fmt) in DATE_RANGE_REGEX.iter() {
-    if let Some(captures) = regex.captures(date_range_str) {
-      if let (Some(begin), Some(end)) = (captures.name("begin"), captures.name("end")) {
-        let begin = parse_date_with_format(begin.as_str(), fmt, options);
-        let end = parse_date_with_format(end.as_str(), fmt, options);
-        if let (Ok(begin), Ok(end)) = (begin, end) {
-          return Ok(DateRange::new(begin, end));
-        }
+    if let Some(captures) = regex.captures(date_range_str)
+      && let (Some(begin), Some(end)) = (captures.name("begin"), captures.name("end"))
+    {
+      let begin = parse_date_with_format(begin.as_str(), fmt, options);
+      let end = parse_date_with_format(end.as_str(), fmt, options);
+      if let (Ok(begin), Ok(end)) = (begin, end) {
+        return Ok(DateRange::new(begin, end));
       }
     }
   }

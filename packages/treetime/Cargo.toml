@@ -68,7 +68,6 @@ rand_isaac = { workspace = true }
 rayon = { workspace = true }
 regex = { workspace = true }
 rgb = { workspace = true }
-rstat = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 serde_repr = { workspace = true }
