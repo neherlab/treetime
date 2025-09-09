@@ -17,14 +17,18 @@ pub fn reroot_in_place(graph: &mut ClockGraph, options: &ClockOptions) -> Result
   }
 
   let edge_key = edge.expect("Edge is empty when rerooting");
-  let edge = graph.get_edge(edge_key).expect("Edge not found");
 
-  let new_root_key = if ulps_eq!(split, 0.0, max_ulps = 5) {
-    edge.read_arc().target()
-  } else if ulps_eq!(split, 1.0, max_ulps = 5) {
-    edge.read_arc().source()
-  } else {
-    create_new_root_node(graph, edge_key, split, total)?
+  let new_root_key = {
+    let edge = graph.get_edge(edge_key).expect("Edge not found");
+    if ulps_eq!(split, 0.0, max_ulps = 5) {
+      edge.read_arc().target()
+    } else if ulps_eq!(split, 1.0, max_ulps = 5) {
+      edge.read_arc().source()
+    } else {
+      // Drop edge reference before calling create_new_root_node
+      drop(edge);
+      create_new_root_node(graph, edge_key, split, total)?
+    }
   };
 
   if new_root_key != old_root_key {
@@ -52,10 +56,14 @@ fn create_new_root_node(
     total,
   });
 
-  let edge = graph.get_edge(edge_key).expect("Edge not found");
-  let source_key = edge.read_arc().source();
-  let target_key = edge.read_arc().target();
-  let branch_length = edge.read_arc().payload().read_arc().weight().unwrap_or_default();
+  // Extract edge data before removing the edge to avoid Arc reference issues
+  let (source_key, target_key, branch_length) = {
+    let edge = graph.get_edge(edge_key).expect("Edge not found");
+    let source_key = edge.read_arc().source();
+    let target_key = edge.read_arc().target();
+    let branch_length = edge.read_arc().payload().read_arc().weight().unwrap_or_default();
+    (source_key, target_key, branch_length)
+  };
 
   graph.add_edge(
     source_key,
