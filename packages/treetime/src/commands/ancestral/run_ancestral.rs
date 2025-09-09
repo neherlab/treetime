@@ -1,8 +1,7 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::commands::ancestral::anc_args::{MethodAncestral, TreetimeAncestralArgs};
 use crate::commands::ancestral::fitch::{ancestral_reconstruction_fitch, compress_sequences, get_common_length};
-use crate::commands::ancestral::marginal_dense::{ancestral_reconstruction_marginal_dense, run_marginal_dense};
-use crate::commands::ancestral::marginal_sparse::{ancestral_reconstruction_marginal_sparse, run_marginal_sparse};
+use crate::commands::ancestral::marginal_unified::{ancestral_reconstruction_marginal, run_marginal};
 use crate::graph::edge::GraphEdge;
 use crate::graph::graph::Graph;
 use crate::graph::node::GraphNode;
@@ -132,16 +131,15 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
             partition.write_arc().gtr = gtr;
           }
 
-          run_marginal_sparse(&graph, &partitions_marginal_sparse)?;
-
-          ancestral_reconstruction_marginal_sparse(
+          run_marginal(&graph, &partitions_marginal_sparse, None)?;
+          ancestral_reconstruction_marginal(
             &graph,
             *reconstruct_tip_states,
             &partitions_marginal_sparse,
             |node, seq| {
               let name = node.name.as_deref().unwrap_or("");
               let desc = &node.desc;
-              output_fasta.write(name, desc, &seq).unwrap();
+              output_fasta.write(name, desc, seq).unwrap();
             },
           )?;
         }
@@ -160,7 +158,7 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
         .collect_vec();
 
         if !partitions_marginal_dense.is_empty() {
-          run_marginal_dense(&graph, &partitions_marginal_dense, &aln)?;
+          run_marginal(&graph, &partitions_marginal_dense, Some(&aln))?;
 
           // FIXME: chicken & egg problem: to get a gtr we need partitions, to get partitions we need a gtr
           // FIXME: spaghetti code: dummy gtr is replaced by real gtr here
@@ -169,7 +167,7 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
             partition.write_arc().gtr = gtr;
           }
 
-          ancestral_reconstruction_marginal_dense(
+          ancestral_reconstruction_marginal(
             &graph,
             *reconstruct_tip_states,
             &partitions_marginal_dense,

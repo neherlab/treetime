@@ -1,7 +1,6 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
-use crate::commands::ancestral::marginal_dense::run_marginal_dense;
-use crate::commands::ancestral::marginal_sparse::run_marginal_sparse;
+use crate::commands::ancestral::marginal_unified::run_marginal;
 use crate::commands::optimize::args::TreetimeOptimizeArgs;
 use crate::commands::optimize::optimize_unified::{initial_guess_mixed, run_optimize_mixed};
 use crate::graph::edge::GraphEdge;
@@ -107,15 +106,15 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
   };
 
   // Run marginal reconstruction once to initialize edge data before optimization
-  run_marginal_sparse(&graph, &sparse_partitions)?;
-  run_marginal_dense(&graph, &dense_partitions, &aln)?;
+  run_marginal(&graph, &sparse_partitions, None)?;
+  run_marginal(&graph, &dense_partitions, Some(&aln))?;
 
   initial_guess_mixed(&graph, &dense_partitions, &sparse_partitions);
 
   let mut lh_prev = f64::MIN;
   for i in 0..*max_iter {
-    let sparse_lh = run_marginal_sparse(&graph, &sparse_partitions)?;
-    let dense_lh = run_marginal_dense(&graph, &dense_partitions, &aln)?;
+    let sparse_lh = run_marginal(&graph, &sparse_partitions, None)?;
+    let dense_lh = run_marginal(&graph, &dense_partitions, Some(&aln))?;
     let total_lh = sparse_lh + dense_lh;
 
     debug!(
