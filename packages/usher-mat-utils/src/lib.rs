@@ -6,17 +6,17 @@ use prost::Message;
 use std::io::{Read, Write};
 
 mod mutation_detailed {
-  #![allow(unnameable_types)]
+  #![allow(dead_code, unnameable_types)]
   #![allow(clippy::all)]
   include!(concat!(env!("OUT_DIR"), "/mutation_detailed.rs"));
 }
 mod parsimony {
-  #![allow(unnameable_types)]
+  #![allow(dead_code, unnameable_types)]
   #![allow(clippy::all)]
   include!(concat!(env!("OUT_DIR"), "/parsimony.rs"));
 }
 mod taxodium {
-  #![allow(unnameable_types)]
+  #![allow(dead_code, unnameable_types)]
   #![allow(clippy::all)]
   include!(concat!(env!("OUT_DIR"), "/taxodium.rs"));
 }
