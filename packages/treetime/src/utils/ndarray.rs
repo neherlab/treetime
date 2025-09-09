@@ -5,11 +5,11 @@ use ndarray::{
   Zip, stack,
 };
 use ndarray_rand::RandomExt;
+use ndarray_rand::rand::Rng;
+use ndarray_rand::rand::distributions::Uniform;
+use ndarray_rand::rand::distributions::uniform::SampleUniform;
 use num_traits::real::Real;
 use num_traits::{Bounded, Float, NumCast, One, Zero};
-use rand::Rng;
-use rand::distributions::Uniform;
-use rand::distributions::uniform::SampleUniform;
 use std::f64::consts::E;
 use std::ops::{AddAssign, Mul};
 

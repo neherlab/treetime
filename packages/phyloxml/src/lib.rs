@@ -17,17 +17,6 @@ mod details {
   use serde::Serialize;
   use std::io::Cursor;
 
-  /// Adapt `std::fmt::Write` to `std::io::Write`
-  pub struct WriteAdapter<W: std::io::Write>(pub W);
-
-  impl<W: std::io::Write> std::fmt::Write for WriteAdapter<W> {
-    fn write_str(&mut self, s: &str) -> std::fmt::Result {
-      #[allow(clippy::map_err_ignore)]
-      self.0.write_all(s.as_bytes()).map_err(|_| std::fmt::Error)?;
-      Ok(())
-    }
-  }
-
   pub fn to_writer_pretty<W, T>(writer: W, root_tag: &str, data: &T) -> std::io::Result<()>
   where
     W: std::io::Write,
