@@ -2,34 +2,33 @@ use crate::distribution::distribution::Distribution;
 use crate::distribution::distribution_function::DistributionFunction;
 use crate::distribution::distribution_point::DistributionPoint;
 use crate::distribution::distribution_range::DistributionRange;
-use crate::utils::ndarray::zeros;
 use approx::ulps_eq;
 use eyre::Report;
-use ndarray::{array, Array1};
+use ndarray::{Array1, array};
 
 pub fn distribution_convolution(a: &Distribution, b: &Distribution) -> Result<Distribution, Report> {
   match (a, b) {
     (Distribution::Empty, _) | (_, Distribution::Empty) => {
       Ok(Distribution::Empty) //
-    }
+    },
     (Distribution::Point(a), Distribution::Point(b)) => {
       Ok(convolution_point_point(a, b)) //
-    }
+    },
     (Distribution::Point(a), Distribution::Range(b)) | (Distribution::Range(b), Distribution::Point(a)) => {
       Ok(convolution_point_range(a, b)) //
-    }
+    },
     (Distribution::Range(a), Distribution::Range(b)) => {
       convolution_range_range(a, b) //
-    }
+    },
     (Distribution::Point(a), Distribution::Function(b)) | (Distribution::Function(b), Distribution::Point(a)) => {
       Ok(convolution_point_function(a, b)?) //
-    }
+    },
     (Distribution::Range(a), Distribution::Function(b)) | (Distribution::Function(b), Distribution::Range(a)) => {
       Ok(convolution_range_function(a, b)) //
-    }
+    },
     (Distribution::Function(a), Distribution::Function(b)) => {
       Ok(convolution_function_function(a, b)) //
-    }
+    },
   }
 }
 
