@@ -1,17 +1,19 @@
 use crate::commands::clock::clock_graph::{ClockEdgePayload, ClockGraph, ClockNodePayload};
 use crate::commands::clock::clock_regression::ClockOptions;
 use crate::commands::clock::clock_set::ClockSet;
-use crate::commands::clock::find_best_root::{FindRootResult, find_best_root};
+use crate::commands::clock::find_best_root::find_best_root::find_best_root;
+use crate::commands::clock::find_best_root::find_best_split::FindRootResult;
+use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
 use crate::graph::edge::{GraphEdgeKey, Weighted, invert_edge};
 use crate::graph::node::GraphNodeKey;
 use approx::ulps_eq;
 use eyre::Report;
 
 pub fn reroot_in_place(graph: &mut ClockGraph, options: &ClockOptions) -> Result<GraphNodeKey, Report> {
+  let params = BranchPointOptimizationParams::grid(); // TODO: make this configurable
+  let FindRootResult { edge, split, total, .. } = find_best_root(graph, options, &params)?;
+
   let old_root_key = { graph.get_exactly_one_root()?.read_arc().key() };
-
-  let FindRootResult { edge, split, total, .. } = find_best_root(graph, options)?;
-
   let Some(edge_key) = edge else {
     return Ok(old_root_key); // Already at the best root
   };
@@ -23,8 +25,8 @@ pub fn reroot_in_place(graph: &mut ClockGraph, options: &ClockOptions) -> Result
   };
 
   // Determine where to place the new root based on the split position along the edge
-  // - split=0.0 means root at target
-  // - split=1.0 means root at source
+  // - split = 0.0 means root at target
+  // - split = 1.0 means root at source
   // - 0.0 < split < 1.0 means somewhere in the middle - i.e. create a new node
   let new_root_key = if ulps_eq!(split, 0.0, max_ulps = 5) {
     target_key
