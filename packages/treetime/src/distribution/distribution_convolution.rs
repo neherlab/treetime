@@ -59,8 +59,8 @@ fn convolution_range_range(a: &DistributionRange<f64>, b: &DistributionRange<f64
 }
 
 fn convolution_point_range(p: &DistributionPoint<f64>, r: &DistributionRange<f64>) -> Distribution {
-  let begin = r.start() - p.t();
-  let end = r.end() - p.t();
+  let begin = r.start() + p.t();
+  let end = r.end() + p.t();
   let amplitude = p.amplitude() * r.amplitude();
   Distribution::range((begin, end), amplitude)
 }
@@ -169,6 +169,24 @@ mod tests {
     let y = array![0.0, 0.0, 2.0, 2.0, 6.0, 6.0];
     let expected = Distribution::function(x, y).unwrap();
 
+    assert_eq!(expected, actual);
+  }
+
+  #[test]
+  fn test_convolution_point_range() {
+    let p = Distribution::point(3.0, 2.0);
+    let r = Distribution::range((1.0, 4.0), 1.5);
+    let actual = distribution_convolution(&p, &r).unwrap();
+    let expected = Distribution::range((4.0, 7.0), 3.0);
+    assert_eq!(expected, actual);
+  }
+
+  #[test]
+  fn test_convolution_range_point() {
+    let r = Distribution::range((1.0, 4.0), 1.5);
+    let p = Distribution::point(3.0, 2.0);
+    let actual = distribution_convolution(&r, &p).unwrap();
+    let expected = Distribution::range((4.0, 7.0), 3.0);
     assert_eq!(expected, actual);
   }
 }
