@@ -5,6 +5,7 @@ use crate::graph::edge::{GraphEdgeKey, Weighted};
 use argmin::core::{CostFunction, Error};
 use eyre::Report;
 
+
 /// Cost function for branch point optimization using various optimization methods
 pub struct BranchPointCostFunction<'a> {
   pub to_parent: ClockSet,
@@ -83,10 +84,10 @@ impl CostFunction for &BranchPointCostFunction<'_> {
     }
 
     // Evaluate the clock set and return chi-squared
-    Ok(
-      self
-        .evaluate_clock_set(*x)
-        .map_or(f64::INFINITY, |clock_total| clock_total.chisq()),
-    )
+    let result = self
+      .evaluate_clock_set(*x)
+      .map_or(f64::INFINITY, |clock_total| clock_total.chisq());
+    
+    Ok(result)
   }
 }

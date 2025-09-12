@@ -4,6 +4,7 @@ use crate::commands::clock::find_best_root::find_best_split::{FindRootResult, fi
 use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
 use crate::utils::container::get_exactly_one;
 use eyre::Report;
+use log::{debug, info};
 use std::sync::Arc;
 
 /// Find the best new root node
@@ -14,12 +15,16 @@ pub fn find_best_root(
   options: &ClockOptions,
   params: &BranchPointOptimizationParams,
 ) -> Result<FindRootResult, Report> {
+  info!("Starting root optimization with method: {:?}", params);
+  
   let root = graph.get_exactly_one_root()?;
   let mut best_root_node = Arc::clone(&root);
 
   // Initialize with the current root
   let root = root.read_arc().payload().read_arc();
   let mut best_chisq = root.total.chisq();
+  debug!("Initial root chi-squared: {:.6e}", best_chisq);
+  
   let mut best_res = FindRootResult {
     edge: None,
     split: 0.0,
@@ -28,35 +33,56 @@ pub fn find_best_root(
   };
 
   // Find best node
+  let mut node_count = 0;
+  let mut improvements = 0;
   for n in graph.get_nodes() {
     let tmp_chisq = n.read_arc().payload().read_arc().total.chisq();
     if tmp_chisq < best_chisq {
+      improvements += 1;
+      debug!("Found better node {}: chi-squared improved from {:.6e} to {:.6e}", 
+             improvements, best_chisq, tmp_chisq);
       best_chisq = tmp_chisq;
       best_root_node = Arc::clone(&n);
     }
+    node_count += 1;
   }
+  debug!("Evaluated {} nodes, found {} improvements, best chi-squared: {:.6e}", 
+         node_count, improvements, best_chisq);
   let best_root_node = best_root_node.read_arc();
 
   // Check if some intermediate place on the parent branch is better
   if !best_root_node.is_root() {
+    debug!("Optimizing position on parent branch");
     let inbound = best_root_node.inbound();
     let edge = get_exactly_one(inbound).expect("Not implemented: multiple parent nodes");
     let res = find_best_split(graph, *edge, options, params)?;
+    debug!("Parent branch optimization result: chi-squared = {:.6e}, split = {:.6}", res.chisq, res.split);
     if res.chisq < best_chisq {
+      debug!("Parent branch optimization improved chi-squared from {:.6e} to {:.6e}", best_chisq, res.chisq);
       best_chisq = res.chisq;
       best_res = res;
     }
   }
 
   // Check if some place on a child branch is better
+  let mut child_branch_count = 0;
   for e in best_root_node.outbound() {
+    debug!("Optimizing position on child branch {}", child_branch_count);
     let res = find_best_split(graph, *e, options, params)?;
+    debug!("Child branch {} optimization result: chi-squared = {:.6e}, split = {:.6}", 
+           child_branch_count, res.chisq, res.split);
     if res.chisq < best_chisq {
+      debug!("Child branch {} optimization improved chi-squared from {:.6e} to {:.6e}", 
+             child_branch_count, best_chisq, res.chisq);
       best_chisq = res.chisq;
       best_res = res;
     }
+    child_branch_count += 1;
   }
 
+  info!("Root optimization completed. Final chi-squared: {:.6e}, split: {:.6}", 
+        best_res.chisq, best_res.split);
+  
   Ok(best_res)
 }
 
