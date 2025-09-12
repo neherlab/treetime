@@ -9,9 +9,7 @@ use crate::commands::clock::clock_graph::ClockGraph;
 use crate::commands::clock::clock_regression::{
   ClockOptions, clock_regression_backward, clock_regression_forward, root_clock_model,
 };
-use crate::commands::clock::find_best_root::params::{
-  BranchPointOptimizationParams, BrentParams, GoldenSectionParams, GridSearchParams, OptimizationMethod,
-};
+use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
 use crate::commands::clock::reroot::reroot_in_place;
 use crate::commands::clock::rtt::{gather_clock_regression_results, write_clock_regression_result_csv};
 use crate::io::dates_csv::read_dates;
@@ -89,40 +87,20 @@ pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
 
     // prefilter
     if *clock_filter > 0.0 {
-      let params = build_optimization_params(
-        &branch_split.method,
-        &branch_split.grid_params,
-        &branch_split.brent_params,
-        &branch_split.golden_params,
-      );
+      let params = BranchPointOptimizationParams::from(branch_split);
       let pre_clock_model = get_clock_model(&mut graph, &ClockOptions::default(), *keep_root, &params)?;
       let new_outliers = clock_filter_inplace(&graph, &pre_clock_model, *clock_filter);
     }
-    let params = build_optimization_params(
-      &branch_split.method,
-      &branch_split.grid_params,
-      &branch_split.brent_params,
-      &branch_split.golden_params,
-    );
+    let params = BranchPointOptimizationParams::from(branch_split);
     get_clock_model(&mut graph, &options, *keep_root, &params)?
   } else {
     // clock-filter
     if *clock_filter > 0.0 {
-      let params = build_optimization_params(
-        &branch_split.method,
-        &branch_split.grid_params,
-        &branch_split.brent_params,
-        &branch_split.golden_params,
-      );
+      let params = BranchPointOptimizationParams::from(branch_split);
       let pre_clock_model = get_clock_model(&mut graph, &ClockOptions::default(), *keep_root, &params)?;
       let new_outliers = clock_filter_inplace(&graph, &pre_clock_model, *clock_filter);
     }
-    let params = build_optimization_params(
-      &branch_split.method,
-      &branch_split.grid_params,
-      &branch_split.brent_params,
-      &branch_split.golden_params,
-    );
+    let params = BranchPointOptimizationParams::from(branch_split);
     get_clock_model(&mut graph, &clock_regression.clock_options, *keep_root, &params)?
   };
 
@@ -145,15 +123,4 @@ pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
   Ok(())
 }
 
-fn build_optimization_params(
-  method: &OptimizationMethod,
-  grid_params: &GridSearchParams,
-  brent_params: &BrentParams,
-  golden_params: &GoldenSectionParams,
-) -> BranchPointOptimizationParams {
-  match method {
-    OptimizationMethod::Grid => BranchPointOptimizationParams::Grid(grid_params.clone()),
-    OptimizationMethod::Brent => BranchPointOptimizationParams::Brent(brent_params.clone()),
-    OptimizationMethod::GoldenSection => BranchPointOptimizationParams::GoldenSection(golden_params.clone()),
-  }
-}
+
