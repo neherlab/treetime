@@ -6,7 +6,7 @@ use eyre::Report;
 
 /// Cost function for branch point optimization using various optimization methods
 pub struct BranchPointCostFunction<'a> {
-  pub edge_payload: ClockEdgePayload,
+  pub edge_payload: &'a ClockEdgePayload,
   pub branch_length: f64,
   pub branch_variance: f64,
   pub is_leaf: bool,
@@ -41,7 +41,9 @@ impl BranchPointCostFunction<'_> {
   }
 }
 
-impl CostFunction for BranchPointCostFunction<'_> {
+
+
+impl CostFunction for &BranchPointCostFunction<'_> {
   type Param = f64;
   type Output = f64;
 
@@ -52,9 +54,10 @@ impl CostFunction for BranchPointCostFunction<'_> {
     }
 
     // Evaluate the clock set and return chi-squared
-    match self.evaluate_clock_set(*x) {
-      Ok(clock_total) => Ok(clock_total.chisq()),
-      Err(_) => Ok(f64::INFINITY), // Return infinity for evaluation errors
-    }
+    Ok(
+      self
+        .evaluate_clock_set(*x)
+        .map_or(f64::INFINITY, |clock_total| clock_total.chisq()),
+    )
   }
 }
