@@ -1,7 +1,12 @@
 use crate::commands::ancestral::anc_args::MethodAncestral;
+use crate::commands::clock::clock_regression::ClockOptions;
+use crate::commands::clock::find_best_root::params::{
+  BrentParams, GoldenSectionParams, GridSearchParams, OptimizationMethod,
+};
 use crate::commands::timetree::timetree_args::{BranchLengthMode, RerootMode};
 use crate::gtr::get_gtr::GtrModelName;
-use clap::{Parser, ValueHint};
+use clap::{Args, Parser, ValueHint};
+use smart_default::SmartDefault;
 use std::fmt::Debug;
 use std::path::PathBuf;
 
@@ -119,4 +124,41 @@ pub struct TreetimeClockArgs {
   /// Random seed
   #[clap(long)]
   pub seed: Option<u64>,
+
+  /// Branch split optimization parameters
+  #[clap(flatten, next_help_heading = "Branch split optimization")]
+  pub branch_split: BranchSplitArgs,
+
+  /// Clock regression model parameters
+  #[clap(flatten, next_help_heading = "Clock regression")]
+  pub clock_regression: ClockRegressionArgs,
+}
+
+/// Branch split optimization parameters
+#[derive(Debug, Clone, Args, SmartDefault)]
+pub struct BranchSplitArgs {
+  /// Optimization method to use for finding the best root position
+  #[clap(long = "branch-split-method", value_enum, default_value_t = OptimizationMethod::default())]
+  #[default(OptimizationMethod::default())]
+  pub method: OptimizationMethod,
+
+  /// Grid search parameters
+  #[clap(flatten)]
+  pub grid_params: GridSearchParams,
+
+  /// Brent's method parameters
+  #[clap(flatten)]
+  pub brent_params: BrentParams,
+
+  /// Golden section search parameters
+  #[clap(flatten)]
+  pub golden_params: GoldenSectionParams,
+}
+
+/// Clock regression model parameters
+#[derive(Debug, Clone, Args, SmartDefault)]
+pub struct ClockRegressionArgs {
+  /// Clock regression model parameters
+  #[clap(flatten)]
+  pub clock_options: ClockOptions,
 }

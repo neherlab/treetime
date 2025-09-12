@@ -17,15 +17,15 @@ pub fn optimize_golden_section(
   // 0.0 means placing the root at the target node, 1.0 means placing it at the source node.
   let solver = GoldenSectionSearch::new(0.0, 1.0)
     .map_err(|e| make_report!("Failed to create GoldenSectionSearch: {}", e))?
-    .with_tolerance(params.tolerance)
+    .with_tolerance(params.golden_tolerance)
     .map_err(|e| make_report!("Golden Section optimization failed: {}", e))?;
 
   // Run optimization with initial guess at midpoint
   let result = Executor::new(cost_fn, solver)
     .configure(|cfg| {
       cfg
-        .max_iters(params.max_iters as u64)
-        .target_cost(params.tolerance)
+        .max_iters(params.golden_max_iters as u64)
+        .target_cost(params.golden_tolerance)
         .param(0.5)
     })
     .run()

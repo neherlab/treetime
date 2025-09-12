@@ -136,8 +136,8 @@ mod tests {
       &graph,
       &options,
       &BranchPointOptimizationParams::brent_with(BrentParams {
-        max_iters: 25,
-        tolerance: 1e-8,
+        brent_max_iters: 25,
+        brent_tolerance: 1e-8,
       }),
     )?;
 
@@ -164,8 +164,8 @@ mod tests {
       &graph,
       &options,
       &BranchPointOptimizationParams::golden_section_with(GoldenSectionParams {
-        max_iters: 25,
-        tolerance: 1e-8,
+        golden_max_iters: 25,
+        golden_tolerance: 1e-8,
       }),
     )?;
 

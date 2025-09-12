@@ -1,3 +1,4 @@
+use clap::{Args, ValueEnum};
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 
@@ -13,6 +14,19 @@ pub enum BranchPointOptimizationParams {
 
   /// Golden section search
   GoldenSection(GoldenSectionParams),
+}
+
+/// Optimization method selection
+#[derive(Debug, Clone, ValueEnum, SmartDefault)]
+pub enum OptimizationMethod {
+  /// Grid search with equally-spaced evaluation points
+  #[default]
+  Grid,
+  /// Brent's method for robust 1D optimization
+  Brent,
+  /// Golden section search optimization
+  #[clap(name = "golden-section")]
+  GoldenSection,
 }
 
 impl BranchPointOptimizationParams {
@@ -48,31 +62,36 @@ impl BranchPointOptimizationParams {
 }
 
 /// Configuration for grid search optimization
-#[derive(Debug, Clone, Serialize, Deserialize, SmartDefault)]
+#[derive(Debug, Clone, Serialize, Deserialize, Args, SmartDefault)]
 pub struct GridSearchParams {
-  /// Number of equally-spaced points to evaluate
+  /// Number of equally-spaced points to evaluate (grid method only)
+  #[clap(long = "branch-split-grid-n-points", default_value_t = GridSearchParams::default().n_points)]
   #[default = 11]
   pub n_points: usize,
 }
 
 /// Configuration for Brent's method optimization
-#[derive(Debug, Clone, Serialize, Deserialize, SmartDefault)]
+#[derive(Debug, Clone, Serialize, Deserialize, Args, SmartDefault)]
 pub struct BrentParams {
-  /// Maximum number of iterations
+  /// Maximum number of iterations for Brent's method
+  #[clap(long = "branch-split-brent-max-iters", default_value_t = BrentParams::default().brent_max_iters)]
   #[default = 50]
-  pub max_iters: usize,
-  /// Convergence tolerance
+  pub brent_max_iters: usize,
+  /// Convergence tolerance for Brent's method
+  #[clap(long = "branch-split-brent-tolerance", default_value_t = BrentParams::default().brent_tolerance)]
   #[default = 1e-12]
-  pub tolerance: f64,
+  pub brent_tolerance: f64,
 }
 
 /// Configuration for golden section search optimization
-#[derive(Debug, Clone, Serialize, Deserialize, SmartDefault)]
+#[derive(Debug, Clone, Serialize, Deserialize, Args, SmartDefault)]
 pub struct GoldenSectionParams {
-  /// Maximum number of iterations
+  /// Maximum number of iterations for golden section search
+  #[clap(long = "branch-split-golden-max-iters", default_value_t = GoldenSectionParams::default().golden_max_iters)]
   #[default = 50]
-  pub max_iters: usize,
-  /// Convergence tolerance
+  pub golden_max_iters: usize,
+  /// Convergence tolerance for golden section search
+  #[clap(long = "branch-split-golden-tolerance", default_value_t = GoldenSectionParams::default().golden_tolerance)]
   #[default = 1e-12]
-  pub tolerance: f64,
+  pub golden_tolerance: f64,
 }

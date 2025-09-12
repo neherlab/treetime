@@ -3,26 +3,28 @@ use crate::commands::clock::clock_graph::ClockGraph;
 use crate::commands::clock::clock_set::ClockSet;
 use crate::graph::breadth_first::GraphTraversalContinuation;
 use crate::graph::edge::Weighted;
+use clap::Args;
 use eyre::Report;
 use serde::{Deserialize, Serialize};
+use smart_default::SmartDefault;
 use std::fmt::Debug;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Args, SmartDefault)]
 pub struct ClockOptions {
+  /// Variance scaling factor proportional to branch length
+  #[clap(long, default_value_t = ClockOptions::default().variance_factor)]
+  #[default = 0.0]
   pub variance_factor: f64,
-  pub variance_offset: f64,
-  pub variance_offset_leaf: f64,
-}
 
-// default clock options that correspond to simple linear regression
-impl Default for ClockOptions {
-  fn default() -> Self {
-    Self {
-      variance_factor: 0.0,
-      variance_offset: 0.0,
-      variance_offset_leaf: 1.0,
-    }
-  }
+  /// Constant variance offset for all branches
+  #[clap(long, default_value_t = ClockOptions::default().variance_offset)]
+  #[default = 0.0]
+  pub variance_offset: f64,
+
+  /// Additional variance offset for leaf (terminal) nodes
+  #[clap(long, default_value_t = ClockOptions::default().variance_offset_leaf)]
+  #[default = 1.0]
+  pub variance_offset_leaf: f64,
 }
 
 pub fn root_clock_model(graph: &ClockGraph) -> Result<ClockModel, Report> {

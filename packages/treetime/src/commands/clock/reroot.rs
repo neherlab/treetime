@@ -9,9 +9,12 @@ use crate::graph::node::GraphNodeKey;
 use approx::ulps_eq;
 use eyre::Report;
 
-pub fn reroot_in_place(graph: &mut ClockGraph, options: &ClockOptions) -> Result<GraphNodeKey, Report> {
-  let params = BranchPointOptimizationParams::grid(); // TODO: make this configurable
-  let FindRootResult { edge, split, total, .. } = find_best_root(graph, options, &params)?;
+pub fn reroot_in_place(
+  graph: &mut ClockGraph,
+  options: &ClockOptions,
+  params: &BranchPointOptimizationParams,
+) -> Result<GraphNodeKey, Report> {
+  let FindRootResult { edge, split, total, .. } = find_best_root(graph, options, params)?;
 
   let old_root_key = { graph.get_exactly_one_root()?.read_arc().key() };
   let Some(edge_key) = edge else {

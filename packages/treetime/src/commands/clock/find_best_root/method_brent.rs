@@ -19,7 +19,11 @@ pub fn optimize_brent(
 
   // Run optimization
   let result = Executor::new(cost_fn, solver)
-    .configure(|cfg| cfg.max_iters(params.max_iters as u64).target_cost(params.tolerance))
+    .configure(|cfg| {
+      cfg
+        .max_iters(params.brent_max_iters as u64)
+        .target_cost(params.brent_tolerance)
+    })
     .run()
     .map_err(|e| make_report!("Brent optimization failed: {}", e))?;
 
