@@ -3,8 +3,8 @@ use crate::commands::clock::find_best_root::find_best_split::FindRootResult;
 use crate::commands::clock::find_best_root::params::GoldenSectionParams;
 use crate::graph::edge::GraphEdgeKey;
 use crate::make_report;
-use argmin::core::{Executor, State};
 use argmin::core::observers::{Observe, ObserverMode};
+use argmin::core::{Executor, State};
 use argmin::solver::goldensectionsearch::GoldenSectionSearch;
 use eyre::Report;
 use log::{debug, info};
@@ -21,8 +21,12 @@ where
   fn observe_iter(&mut self, state: &I, _kv: &argmin::core::KV) -> Result<(), argmin::core::Error> {
     // Only log every 10th iteration to reduce noise
     if state.get_iter() % 10 == 0 || state.get_iter() <= 5 {
-      debug!("Golden Section iteration {}: best_param = {:?}, best_cost = {:.6e}", 
-             state.get_iter(), state.get_best_param(), state.get_best_cost());
+      debug!(
+        "Golden Section iteration {}: best_param = {:?}, best_cost = {:.6e}",
+        state.get_iter(),
+        state.get_best_param(),
+        state.get_best_cost()
+      );
     }
     Ok(())
   }
@@ -34,8 +38,10 @@ pub fn optimize_golden_section(
   cost_fn: &BranchPointCostFunction,
   params: &GoldenSectionParams,
 ) -> Result<FindRootResult, Report> {
-  info!("Starting Golden Section optimization on edge {:?} with max_iters={}, tolerance={:.2e}", 
-        edge, params.golden_max_iters, params.golden_tolerance);
+  info!(
+    "Starting Golden Section optimization on edge {:?} with max_iters={}, tolerance={:.2e}",
+    edge, params.golden_max_iters, params.golden_tolerance
+  );
   // Set up Golden Section Search solver with bounds [0.0, 1.0]
   // 0.0 means placing the root at the target node, 1.0 means placing it at the source node.
   let solver = GoldenSectionSearch::new(0.0, 1.0)
@@ -58,8 +64,10 @@ pub fn optimize_golden_section(
   let best_split = result.state.best_param.unwrap();
   let best_chisq = result.state.best_cost;
 
-  info!("Golden Section optimization completed after {} iterations: best_split = {:.6}, best_cost = {:.6e}", 
-        result.state.iter, best_split, best_chisq);
+  info!(
+    "Golden Section optimization completed after {} iterations: best_split = {:.6}, best_cost = {:.6e}",
+    result.state.iter, best_split, best_chisq
+  );
 
   // Evaluate the cost function one more time to get the ClockSet data
   let best_total = cost_fn.evaluate_clock_set(best_split)?;

@@ -89,20 +89,40 @@ pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
 
     // prefilter
     if *clock_filter > 0.0 {
-      let params = build_optimization_params(&branch_split.method, &branch_split.grid_params, &branch_split.brent_params, &branch_split.golden_params);
+      let params = build_optimization_params(
+        &branch_split.method,
+        &branch_split.grid_params,
+        &branch_split.brent_params,
+        &branch_split.golden_params,
+      );
       let pre_clock_model = get_clock_model(&mut graph, &ClockOptions::default(), *keep_root, &params)?;
       let new_outliers = clock_filter_inplace(&graph, &pre_clock_model, *clock_filter);
     }
-    let params = build_optimization_params(&branch_split.method, &branch_split.grid_params, &branch_split.brent_params, &branch_split.golden_params);
+    let params = build_optimization_params(
+      &branch_split.method,
+      &branch_split.grid_params,
+      &branch_split.brent_params,
+      &branch_split.golden_params,
+    );
     get_clock_model(&mut graph, &options, *keep_root, &params)?
   } else {
     // clock-filter
     if *clock_filter > 0.0 {
-      let params = build_optimization_params(&branch_split.method, &branch_split.grid_params, &branch_split.brent_params, &branch_split.golden_params);
+      let params = build_optimization_params(
+        &branch_split.method,
+        &branch_split.grid_params,
+        &branch_split.brent_params,
+        &branch_split.golden_params,
+      );
       let pre_clock_model = get_clock_model(&mut graph, &ClockOptions::default(), *keep_root, &params)?;
       let new_outliers = clock_filter_inplace(&graph, &pre_clock_model, *clock_filter);
     }
-    let params = build_optimization_params(&branch_split.method, &branch_split.grid_params, &branch_split.brent_params, &branch_split.golden_params);
+    let params = build_optimization_params(
+      &branch_split.method,
+      &branch_split.grid_params,
+      &branch_split.brent_params,
+      &branch_split.golden_params,
+    );
     get_clock_model(&mut graph, &clock_regression.clock_options, *keep_root, &params)?
   };
 
