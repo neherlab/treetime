@@ -4,7 +4,7 @@ use crate::commands::clock::clock_set::ClockSet;
 use crate::commands::clock::find_best_root::cost_function::BranchPointCostFunction;
 use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
 use crate::commands::clock::find_best_root::{method_brent, method_golden_section, method_grid_search};
-use crate::graph::edge::{GraphEdgeKey, Weighted};
+use crate::graph::edge::GraphEdgeKey;
 use eyre::Report;
 use serde::{Deserialize, Serialize};
 
@@ -29,23 +29,8 @@ pub fn find_best_split(
   options: &ClockOptions,
   params: &BranchPointOptimizationParams,
 ) -> Result<FindRootResult, Report> {
-  let edge_obj = graph.get_edge(edge).expect("Edge not found");
-  let edge_payload = edge_obj.read_arc().payload().read_arc();
-  let target_node = graph.get_node(edge_obj.read_arc().target()).unwrap();
-  let target_node_payload = target_node.read_arc().payload().read_arc();
-  let is_leaf = target_node.read_arc().is_leaf();
-  let node_date = target_node_payload.date;
-  let branch_length = edge_payload.weight().expect("Encountered an edge without a weight");
-  let branch_variance = options.variance_factor * branch_length + options.variance_offset;
-
-  let cost_fn = BranchPointCostFunction {
-    edge_payload: &edge_payload,
-    branch_length,
-    branch_variance,
-    is_leaf,
-    node_date,
-    options,
-  };
+  // Create cost function once
+  let cost_fn = BranchPointCostFunction::new(graph, edge, options)?;
 
   match params {
     BranchPointOptimizationParams::Grid(params) => method_grid_search::optimize_grid_search(edge, &cost_fn, params),
