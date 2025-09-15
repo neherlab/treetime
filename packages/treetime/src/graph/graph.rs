@@ -46,7 +46,9 @@ where
   pub key: GraphNodeKey,
   pub payload: SafeNodePayloadRefMut<N>,
   pub parents: Vec<NodeEdgePayloadPair<N, E>>,
+  pub parent_keys: Vec<(GraphNodeKey, GraphEdgeKey)>,
   pub child_edges: Vec<SafeEdgePayloadRefMut<E>>,
+  pub child_edge_keys: Vec<GraphEdgeKey>,
   pub data: Arc<RwLock<D>>,
 }
 
@@ -60,6 +62,18 @@ where
     let is_leaf = node.is_leaf();
     let is_root = node.is_root();
     let key = node.key();
+
+    let parent_keys = graph
+      .parents_of(node)
+      .iter()
+      .map(|(node, edge)| (node.read_arc().key(), edge.read_arc().key()))
+      .collect_vec();
+
+    let child_edge_keys = graph
+      .children_of(node)
+      .iter()
+      .map(|(_, edge)| edge.read_arc().key())
+      .collect_vec();
 
     let payload = node.payload().write_arc();
 
@@ -83,7 +97,9 @@ where
       key,
       payload,
       parents,
+      parent_keys,
       child_edges,
+      child_edge_keys,
       data,
     }
   }
@@ -109,7 +125,9 @@ where
   pub key: GraphNodeKey,
   pub payload: SafeNodePayloadRefMut<N>,
   pub children: Vec<NodeEdgePayloadPair<N, E>>,
+  pub child_keys: Vec<(GraphNodeKey, GraphEdgeKey)>,
   pub parent_edges: Vec<SafeEdgePayloadRefMut<E>>,
+  pub parent_edge_keys: Vec<GraphEdgeKey>,
   pub data: Arc<RwLock<D>>,
 }
 
@@ -123,6 +141,18 @@ where
     let is_leaf = node.is_leaf();
     let is_root = node.is_root();
     let key = node.key();
+
+    let child_keys = graph
+      .children_of(node)
+      .iter()
+      .map(|(node, edge)| (node.read_arc().key(), edge.read_arc().key()))
+      .collect_vec();
+
+    let parent_edge_keys = graph
+      .parents_of(node)
+      .iter()
+      .map(|(_, edge)| edge.read_arc().key())
+      .collect_vec();
 
     let payload = node.payload().write_arc();
 
@@ -146,7 +176,9 @@ where
       key,
       payload,
       children,
+      child_keys,
       parent_edges,
+      parent_edge_keys,
       data,
     }
   }

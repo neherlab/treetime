@@ -1,13 +1,14 @@
 use crate::alphabet::alphabet::{Alphabet, AlphabetName};
 use crate::gtr::gtr::{GTR, GTRParams};
-use crate::gtr::infer_gtr::{InferGtrOptions, InferGtrResult, get_mutation_counts, infer_gtr};
-use crate::representation::graph_dense::DenseGraph;
-use crate::representation::graph_sparse::SparseGraph;
+use crate::gtr::infer_gtr::{PartitionWithGtrInference, infer_gtr};
+use crate::representation::graph_ancestral::GraphAncestral;
 use crate::{make_error, make_report};
 use clap::ValueEnum;
 use eyre::{Report, WrapErr};
 use ndarray::{Array1, Array2, array};
+use parking_lot::RwLock;
 use smart_default::SmartDefault;
+use std::sync::Arc;
 use strum_macros::Display;
 
 #[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, SmartDefault, Display)]
@@ -21,29 +22,13 @@ pub enum GtrModelName {
   T92,
 }
 
-pub fn get_gtr(name: &GtrModelName, alphabet: &Alphabet, graph: &SparseGraph) -> Result<GTR, Report> {
+pub fn get_gtr<P: PartitionWithGtrInference>(
+  name: &GtrModelName,
+  partition: &Arc<RwLock<P>>,
+  graph: &GraphAncestral,
+) -> Result<GTR, Report> {
   match name {
-    GtrModelName::Infer => {
-      let counts = get_mutation_counts(graph, alphabet)?;
-      let InferGtrResult { W, pi, mu } = infer_gtr(&counts, &InferGtrOptions::default())?;
-      let alphabet = alphabet.to_owned();
-      let W = Some(W);
-      GTR::new(GTRParams { alphabet, mu, W, pi })
-    },
-    GtrModelName::JC69 => jc69(JC69Params::default()),
-    GtrModelName::F81 => f81(F81Params::default()),
-    GtrModelName::HKY85 => hky85(HKY85Params::default()),
-    GtrModelName::K80 => k80(K80Params::default()),
-    GtrModelName::T92 => t92(T92Params::default()),
-  }
-  .wrap_err_with(|| make_report!("When creating model '{name}'"))
-}
-
-pub fn get_gtr_dense(name: &GtrModelName, _alphabet: &Alphabet, _graph: &DenseGraph) -> Result<GTR, Report> {
-  match name {
-    GtrModelName::Infer => {
-      unimplemented!("Model inference is not yet implemented for dense representation. Please set model explicitly.")
-    },
+    GtrModelName::Infer => infer_gtr(partition, graph)?,
     GtrModelName::JC69 => jc69(JC69Params::default()),
     GtrModelName::F81 => f81(F81Params::default()),
     GtrModelName::HKY85 => hky85(HKY85Params::default()),

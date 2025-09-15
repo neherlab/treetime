@@ -1,64 +1,10 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::graph::edge::{GraphEdge, NumMuts, Weighted};
-use crate::graph::graph::Graph;
-use crate::graph::node::{GraphNode, Named};
-use crate::io::graphviz::{EdgeToGraphViz, NodeToGraphviz};
-use crate::io::nwk::{EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteOptions, format_weight};
-use crate::o;
 use crate::representation::seq::Seq;
 use crate::seq::find_char_ranges::find_letter_ranges;
 use crate::seq::indel::InDel;
 use eyre::Report;
 use ndarray::Array2;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
-
-pub type DenseGraph = Graph<DenseNode, DenseEdge, ()>;
-
-#[derive(Clone, Default, Debug, Serialize, Deserialize)]
-pub struct DenseNode {
-  pub name: Option<String>,
-  pub desc: Option<String>,
-  pub dense_partitions: Vec<DenseSeqNode>,
-}
-
-impl NodeFromNwk for DenseNode {
-  fn from_nwk(name: Option<impl AsRef<str>>, _: &BTreeMap<String, String>) -> Result<Self, Report> {
-    Ok(Self {
-      name: name.map(|s| s.as_ref().to_owned()),
-      ..DenseNode::default()
-    })
-  }
-}
-
-impl NodeToNwk for DenseNode {
-  fn nwk_name(&self) -> Option<impl AsRef<str>> {
-    self.name.as_deref()
-  }
-
-  fn nwk_comments(&self) -> BTreeMap<String, String> {
-    let mutations: String = "".to_owned(); // TODO: fill mutations
-    BTreeMap::from([(o!("mutations"), mutations)])
-  }
-}
-
-impl GraphNode for DenseNode {}
-
-impl Named for DenseNode {
-  fn name(&self) -> Option<impl AsRef<str>> {
-    self.name.as_deref()
-  }
-
-  fn set_name(&mut self, name: Option<impl AsRef<str>>) {
-    self.name = name.map(|n| n.as_ref().to_owned());
-  }
-}
-
-impl NodeToGraphviz for DenseNode {
-  fn to_graphviz_label(&self) -> Option<impl AsRef<str>> {
-    self.name.as_deref()
-  }
-}
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct DenseSeqInfo {
@@ -66,13 +12,13 @@ pub struct DenseSeqInfo {
   pub sequence: Seq,
 }
 
-#[derive(Clone, Default, Debug, Serialize, Deserialize)]
-pub struct DenseSeqNode {
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct DenseNodePartition {
   pub seq: DenseSeqInfo,
   pub profile: DenseSeqDis,
 }
 
-impl DenseSeqNode {
+impl DenseNodePartition {
   pub fn new(seq: &Seq, alphabet: &Alphabet) -> Result<Self, Report> {
     let gaps = find_letter_ranges(seq, alphabet.gap());
 
@@ -86,69 +32,10 @@ impl DenseSeqNode {
   }
 }
 
-#[derive(Clone, Default, Debug, Serialize, Deserialize)]
-pub struct DenseEdge {
-  pub dense_partitions: Vec<DenseSeqEdge>,
-  pub branch_length: Option<f64>,
-}
-
-impl GraphEdge for DenseEdge {}
-
-impl Weighted for DenseEdge {
-  fn weight(&self) -> Option<f64> {
-    self.branch_length
-  }
-
-  fn set_weight(&mut self, weight: Option<f64>) {
-    self.branch_length = weight;
-  }
-}
-
-impl NumMuts for DenseEdge {
-  #[allow(clippy::todo, unreachable_code)]
-  fn num_muts(&self) -> Option<usize> {
-    Some(
-      self
-        .dense_partitions
-        .iter()
-        .map(|_partition| {
-          todo!("Calculate number of substitutions here");
-          0_usize
-        })
-        .sum(),
-    )
-  }
-}
-
-impl EdgeFromNwk for DenseEdge {
-  fn from_nwk(branch_length: Option<f64>) -> Result<Self, Report> {
-    Ok(Self {
-      branch_length,
-      ..Self::default()
-    })
-  }
-}
-
-impl EdgeToNwk for DenseEdge {
-  fn nwk_weight(&self) -> Option<f64> {
-    self.weight()
-  }
-}
-
-impl EdgeToGraphViz for DenseEdge {
-  fn to_graphviz_label(&self) -> Option<impl AsRef<str>> {
-    self
-      .weight()
-      .map(|weight| format_weight(weight, &NwkWriteOptions::default()))
-  }
-
-  fn to_graphviz_weight(&self) -> Option<f64> {
-    self.weight()
-  }
-}
+///////////////////////////////////
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
-pub struct DenseSeqEdge {
+pub struct DenseEdgePartition {
   pub indels: Vec<InDel>,
   pub transmission: Option<Vec<(usize, usize)>>,
   pub msg_to_child: DenseSeqDis,

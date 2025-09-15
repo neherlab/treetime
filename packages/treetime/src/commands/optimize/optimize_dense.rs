@@ -20,100 +20,96 @@
 //!
 //!   d^2logLh/dt^2 = sum_i sum_j \sum_c k_c \lambda_c*\lambda^i_c exp(\lambda^i_c t) / \sum_c k_c exp(\lambda^i_c t) - k_c \lambda_c*\exp(\lambda^i_c t) / \sum_c k_c exp(\lambda^i_c t)
 //!
-use crate::{
-  gtr::gtr::GTR,
-  representation::{
-    graph_dense::{DenseGraph, DenseSeqDis},
-    partitions_likelihood::PartitionLikelihood,
-  },
-};
+use crate::commands::optimize::optimize_unified::OptimizationMetrics;
+use crate::gtr::gtr::GTR;
+use crate::representation::graph_ancestral::GraphAncestral;
+use crate::representation::graph_dense::DenseSeqDis;
+use crate::representation::partition_marginal_dense::PartitionMarginalDense;
 use eyre::Report;
 use ndarray::{Array2, Axis};
-use ndarray_stats::QuantileExt;
 use num::clamp;
-use std::iter::zip;
+use parking_lot::RwLock;
+use std::sync::Arc;
 
-pub fn evaluate(
-  coefficients: &[Array2<f64>],
-  partitions: &[PartitionLikelihood],
-  branch_length: f64,
-) -> (f64, f64, f64, f64) {
-  let mut likelihood = 1.0;
+pub struct PartitionContribution {
+  pub coefficients: Array2<f64>,
+  pub gtr: GTR,
+}
+
+impl PartitionContribution {
+  pub fn new(coefficients: Array2<f64>, gtr: GTR) -> Self {
+    Self { coefficients, gtr }
+  }
+}
+
+pub fn evaluate(contributions: &[PartitionContribution], branch_length: f64) -> OptimizationMetrics {
   let mut log_likelihood = 0.0;
   let mut derivative = 0.0;
   let mut second_derivative = 0.0;
-  for (pi, partition) in partitions.iter().enumerate() {
-    let PartitionLikelihood { gtr, .. } = &partition;
-    // let coefficients = &partition.msg_to_parent.dis * &partition.msg_to_child.dis;
+  for contribution in contributions {
+    let gtr = &contribution.gtr;
     let exp_ev = gtr.eigvals.mapv(|ev| (ev * branch_length).exp());
     let ev_exp_ev = &gtr.eigvals * &exp_ev;
     let ev2_exp_ev = &gtr.eigvals * &ev_exp_ev;
     // This loop could be coded more efficiently
-    for coeff in coefficients[pi].outer_iter() {
+    for coeff in contribution.coefficients.outer_iter() {
       let val = (&coeff * &exp_ev).sum();
-      likelihood *= val;
       log_likelihood += val.ln();
       derivative += (&coeff * &ev_exp_ev).sum() / val;
       second_derivative += (&coeff * &ev2_exp_ev).sum() / val - ((&coeff * &ev_exp_ev).sum() / val).powi(2);
     }
   }
-  (likelihood, log_likelihood, derivative, second_derivative)
+  OptimizationMetrics::new(log_likelihood, derivative, second_derivative)
 }
 
-pub fn get_coefficients(msg_to_parent: &DenseSeqDis, msg_to_child: &DenseSeqDis, gtr: &GTR) -> Array2<f64> {
+pub fn get_coefficients(msg_to_parent: &DenseSeqDis, msg_to_child: &DenseSeqDis, gtr: &GTR) -> PartitionContribution {
   // Multiply the messages by the eigenvectors of the GTR matrix, multiply elementwise, and sum over the rows:
   //    s_a eQt_{ab} r_b =  \sum_{abc} s_a v_{ac} e^{\lambda_c t} vinv_{cb} r_b
-  msg_to_child.dis.dot(&gtr.v) * msg_to_parent.dis.dot(&gtr.v_inv.t())
+  let coefficients = msg_to_child.dis.dot(&gtr.v) * msg_to_parent.dis.dot(&gtr.v_inv.t());
+  PartitionContribution::new(
+    coefficients,
+    gtr.clone(), // TODO: avoid clone
+  )
 }
 
-pub fn initial_guess(graph: &DenseGraph, partitions: &[PartitionLikelihood]) -> () {
-  // FIXME: this initial guess needs to be improved
-  let total_length: usize = partitions.iter().map(|part| part.length).sum();
-  let one_mutation = 1.0 / total_length as f64;
-  for edge in graph.get_edges() {
-    let mut edge = edge.write_arc().payload().write_arc();
-    let mut differences: usize = 0;
-    for partition in &edge.dense_partitions {
-      for (row1, row2) in zip(partition.msg_to_parent.dis.rows(), partition.msg_to_child.dis.rows()) {
-        if row1[row2.argmax().unwrap()] < 0.5 {
-          differences += 1;
-        }
-      }
-    }
-    let new_branch_length = differences as f64 * one_mutation;
-    edge.branch_length = Some(new_branch_length);
-  }
-}
-
-pub fn run_optimize_dense(graph: &DenseGraph, partitions: &[PartitionLikelihood]) -> Result<(), Report> {
-  let total_length: usize = partitions.iter().map(|part| part.length).sum();
+pub fn run_optimize_dense(
+  graph: &GraphAncestral,
+  partitions: &[Arc<RwLock<PartitionMarginalDense>>],
+) -> Result<(), Report> {
+  let total_length: usize = partitions.iter().map(|part| part.read_arc().length).sum();
   let one_mutation = 1.0 / total_length as f64;
   let n_partitions = partitions.len();
-  graph.get_edges().iter_mut().for_each(|edge| {
-    let mut edge = edge.write_arc().payload().write_arc();
+  graph.get_edges().iter().for_each(|edge_ref| {
+    let edge_key = edge_ref.read_arc().key();
+    let mut edge = edge_ref.write_arc().payload().write_arc();
     let mut branch_length = edge.branch_length.unwrap_or(0.0);
     let mut new_branch_length;
-    let coefficients = (0..n_partitions)
+    let contributions = (0..n_partitions)
       .map(|pi| {
+        let partition = partitions[pi].read_arc();
+        let edge_partition = &partition.edges[&edge_key];
         get_coefficients(
-          &edge.dense_partitions[pi].msg_to_parent,
-          &edge.dense_partitions[pi].msg_to_child,
-          &partitions[pi].gtr,
+          &edge_partition.msg_to_parent,
+          &edge_partition.msg_to_child,
+          &partition.gtr,
         )
       })
       .collect::<Vec<_>>();
 
     // Cheap check whether the branch length is zero
-    let zero_branch_length_lh: f64 = coefficients
+    let zero_branch_length_lh: f64 = contributions
       .iter()
-      .map(|coeff| coeff.sum_axis(Axis(1)).product())
+      .map(|contribution| contribution.coefficients.sum_axis(Axis(1)).product())
       .product();
 
     if zero_branch_length_lh > 0.01 {
-      let zero_branch_length_derivative: f64 = coefficients
+      let zero_branch_length_derivative: f64 = contributions
         .iter()
-        .enumerate()
-        .map(|(pi, coeff)| ((coeff * &partitions[pi].gtr.eigvals).sum_axis(Axis(1)) / coeff.sum_axis(Axis(1))).sum())
+        .map(|contribution| {
+          let gtr = &contribution.gtr;
+          ((&contribution.coefficients * &gtr.eigvals).sum_axis(Axis(1)) / &contribution.coefficients.sum_axis(Axis(1)))
+            .sum()
+        })
         .sum();
       if zero_branch_length_derivative < 0.0 {
         edge.branch_length = Some(0.0);
@@ -122,17 +118,22 @@ pub fn run_optimize_dense(graph: &DenseGraph, partitions: &[PartitionLikelihood]
     }
 
     // Otherwise, we need to optimize the branch length
-    let (likelihood, _, derivative, second_derivative) = evaluate(&coefficients, partitions, branch_length);
-    if likelihood > 0.0 && second_derivative < 0.0 {
+    let metrics = evaluate(&contributions, branch_length);
+    if metrics.log_lh.is_finite() && metrics.second_derivative < 0.0 {
       // Newton's method to find the optimal branch length
-      new_branch_length = branch_length - clamp(derivative / second_derivative, -1.0, branch_length);
+      new_branch_length = branch_length - clamp(metrics.derivative / metrics.second_derivative, -1.0, branch_length);
       let max_iter = 10;
       let mut n_iter = 0;
       while (new_branch_length - branch_length).abs() > 0.001 * branch_length && n_iter < max_iter {
-        let (_, _, derivative, second_derivative) = evaluate(&coefficients, partitions, new_branch_length);
-        if second_derivative < 0.0 {
+        let new_metrics = evaluate(&contributions, new_branch_length);
+        if new_metrics.second_derivative < 0.0 {
           branch_length = new_branch_length;
-          new_branch_length = branch_length - clamp(derivative / second_derivative, -1.0, branch_length);
+          new_branch_length = branch_length
+            - clamp(
+              new_metrics.derivative / new_metrics.second_derivative,
+              -1.0,
+              branch_length,
+            );
         } else {
           break;
         }
@@ -145,8 +146,8 @@ pub fn run_optimize_dense(graph: &DenseGraph, partitions: &[PartitionLikelihood]
       let (best_branch_length, _) = branch_lengths
         .iter()
         .map(|&bl| {
-          let (_, ll, _, _) = evaluate(&coefficients, partitions, bl);
-          (bl, ll)
+          let metrics = evaluate(&contributions, bl);
+          (bl, metrics.log_lh)
         })
         .max_by(|&(_, ll1), &(_, ll2)| ll1.partial_cmp(&ll2).unwrap())
         .unwrap();

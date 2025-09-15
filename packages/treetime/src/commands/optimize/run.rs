@@ -1,31 +1,27 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::commands::ancestral::fitch::compress_sequences;
-use crate::commands::ancestral::marginal_dense::run_marginal_dense;
-use crate::commands::ancestral::marginal_sparse::run_marginal_sparse;
+use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
+use crate::commands::ancestral::marginal_unified::run_marginal;
 use crate::commands::optimize::args::TreetimeOptimizeArgs;
-use crate::commands::optimize::optimize_dense::run_optimize_dense;
-use crate::commands::optimize::optimize_sparse::run_optimize_sparse;
+use crate::commands::optimize::optimize_unified::{initial_guess_mixed, run_optimize_mixed};
 use crate::graph::edge::GraphEdge;
 use crate::graph::node::GraphNode;
-use crate::gtr::get_gtr::{get_gtr, get_gtr_dense};
+use crate::gtr::get_gtr::{JC69Params, jc69};
 use crate::io::fasta::read_many_fasta;
 use crate::io::nex::{NexWriteOptions, nex_write_file};
 use crate::io::nwk::{EdgeToNwk, NodeToNwk, NwkWriteOptions, nwk_read_file, nwk_write_file};
-use crate::representation::graph_dense::DenseGraph;
-use crate::representation::graph_sparse::SparseGraph;
+use crate::representation::graph_ancestral::GraphAncestral;
 use crate::representation::infer_dense::infer_dense;
-use crate::representation::partitions_likelihood::{PartitionLikelihood, PartitionLikelihoodWithAln};
-use crate::representation::partitions_parsimony::PartitionParsimonyWithAln;
+use crate::representation::partition_marginal_dense::PartitionMarginalDense;
+use crate::representation::partition_marginal_sparse::PartitionMarginalSparse;
 use crate::utils::float_fmt::float_to_significant_digits;
 use eyre::Report;
 use itertools::Itertools;
 use log::debug;
+use maplit::btreemap;
+use parking_lot::RwLock;
 use serde::Serialize;
 use std::path::Path;
-
-// The initial guess for dense is not working well, but optimization works without revisit after settling on optimization algorithm
-// use super::optimize_dense::initial_guess;
-use super::optimize_sparse::initial_guess_sparse;
+use std::sync::Arc;
 
 #[derive(Clone, Debug, Default)]
 pub struct TreetimeOptimizeParams {
@@ -45,69 +41,99 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
     dp,
   } = args;
 
-  let dense = dense.unwrap_or_else(infer_dense);
+  // FIXME: For demonstration of mixed partitions, we create a sparse and a dense partition,
+  // both containing full sequence. Make it configurable.
 
-  let treat_gap_as_unknown = dense;
-  let alphabet = Alphabet::new(alphabet.unwrap_or_default(), treat_gap_as_unknown)?;
+  // TODO: currently unused, but we could implement automatic suggestion of dense/sparse mode for individual partitions
+  let _dense = dense.unwrap_or_else(infer_dense);
 
-  // TODO: avoid reading all sequences into memory somehow?
-  let aln = read_many_fasta(input_fastas, &alphabet)?;
+  let treat_gap_as_unknown_sparse = false;
+  let treat_gap_as_unknown_dense = true;
+  let alphabet_sparse = Alphabet::new(alphabet.unwrap_or_default(), treat_gap_as_unknown_sparse)?;
+  let alphabet_dense = Alphabet::new(alphabet.unwrap_or_default(), treat_gap_as_unknown_dense)?;
 
-  // TODO: refactor to reduce duplication with `ancestral` as well as within the branches of this conditional
-  if !dense {
-    let graph: SparseGraph = nwk_read_file(tree)?;
-    let partitions = vec![PartitionParsimonyWithAln::new(alphabet.clone(), aln)?];
-    let partitions = compress_sequences(&graph, partitions)?;
+  let aln = read_many_fasta(input_fastas, &alphabet_sparse)?;
 
-    let gtr = get_gtr(model_name, &alphabet, &graph)?;
-    let partitions = partitions
-          .into_iter()
-          .map(|part| PartitionLikelihood::from_parsimony(gtr.clone(), part)) // FIXME: avoid cloning
-          .collect_vec();
+  let graph: GraphAncestral = nwk_read_file(tree)?;
 
-    initial_guess_sparse(&graph, &partitions);
-    let mut lh_prev = f64::MIN;
-    for i in 0..*max_iter {
-      let lh = run_marginal_sparse(&graph, &partitions)?;
-      debug!("Iteration {}: likelihood {}", i + 1, float_to_significant_digits(lh, 7));
-      if (lh - lh_prev).abs() < dp.abs() {
-        break;
-      }
-      run_optimize_sparse(&graph, &partitions)?;
-      lh_prev = lh;
+  let sparse_partitions = {
+    #[allow(clippy::iter_on_single_items)]
+    let sparse_partitions = [PartitionMarginalSparse {
+      index: 0,
+      gtr: jc69(JC69Params::default())?, // FIXME: dummy temporary gtr should not be needed here
+      alphabet: alphabet_sparse,
+      length: get_common_length(&aln)?,
+      nodes: btreemap! {},
+      edges: btreemap! {},
+    }]
+    .into_iter()
+    .map(|p| Arc::new(RwLock::new(p)))
+    .collect_vec();
+
+    compress_sequences(&graph, &sparse_partitions, &aln)?;
+
+    // FIXME: chicken & egg problem: to get a gtr we need partitions, to get partitions we need a gtr
+    // FIXME: spaghetti code: dummy gtr is replaced by real gtr here
+    // For now, use JC69 for both partitions to avoid GTR inference issues with dense partitions
+    for partition in &sparse_partitions {
+      let gtr = jc69(JC69Params::default())?; // FIXME: allow other models and model inference
+      partition.write_arc().gtr = gtr;
     }
 
-    write_graph(outdir, &graph)?;
-  } else {
-    let graph: DenseGraph = nwk_read_file(tree)?;
-    let gtr = get_gtr_dense(model_name, &alphabet, &graph)?;
+    sparse_partitions
+  };
 
-    let partitions_waln = vec![PartitionLikelihoodWithAln::new(gtr, alphabet, aln)?];
-    let partitions = partitions_waln
-      .iter()
-      .map(|part| PartitionLikelihood::from(part.clone()))
-      .collect_vec();
-    let mut lh_prev = f64::MIN;
-    for i in 0..*max_iter {
-      // FIXME: avoid assigning sequences to the graph in every iteration
-      let lh = run_marginal_dense(&graph, partitions_waln.clone(), false)?; // FIXME: avoid cloning
+  let dense_partitions = {
+    #[allow(clippy::iter_on_single_items)]
+    let dense_partitions = [PartitionMarginalDense {
+      index: 1,
+      gtr: jc69(JC69Params::default())?, // FIXME: dummy temporary gtr should not be needed here
+      alphabet: alphabet_dense,
+      length: get_common_length(&aln)?,
+      nodes: btreemap! {},
+      edges: btreemap! {},
+    }]
+    .into_iter()
+    .map(|p| Arc::new(RwLock::new(p)))
+    .collect_vec();
 
-      // somehow, the initial guess makes it worse...
-      // if i == 0 {
-      //   initial_guess(&graph, &partitions);
-      // }
-
-      debug!("Iteration {}: likelihood {}", i + 1, float_to_significant_digits(lh, 7));
-      if (lh - lh_prev).abs() < dp.abs() {
-        break;
-      }
-      run_optimize_dense(&graph, &partitions)?;
-      lh_prev = lh;
+    for partition in &dense_partitions {
+      let gtr = jc69(JC69Params::default())?; // FIXME: allow other models and model inference
+      partition.write_arc().gtr = gtr;
     }
 
-    write_graph(outdir, &graph)?;
+    dense_partitions
+  };
+
+  // Run marginal reconstruction once to initialize edge data before optimization
+  run_marginal(&graph, &sparse_partitions, None)?;
+  run_marginal(&graph, &dense_partitions, Some(&aln))?;
+
+  initial_guess_mixed(&graph, &dense_partitions, &sparse_partitions);
+
+  let mut lh_prev = f64::MIN;
+  for i in 0..*max_iter {
+    let sparse_lh = run_marginal(&graph, &sparse_partitions, None)?;
+    let dense_lh = run_marginal(&graph, &dense_partitions, Some(&aln))?;
+    let total_lh = sparse_lh + dense_lh;
+
+    debug!(
+      "Iteration {}: likelihood {} (sparse: {}, dense: {})",
+      i + 1,
+      float_to_significant_digits(total_lh, 7),
+      float_to_significant_digits(sparse_lh, 7),
+      float_to_significant_digits(dense_lh, 7)
+    );
+
+    if (total_lh - lh_prev).abs() < dp.abs() {
+      break;
+    }
+
+    run_optimize_mixed(&graph, &dense_partitions, &sparse_partitions)?;
+    lh_prev = total_lh;
   }
 
+  write_graph(outdir, &graph)?;
   Ok(())
 }
 

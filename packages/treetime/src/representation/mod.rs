@@ -1,7 +1,14 @@
 pub mod bitset128;
+pub mod graph_ancestral;
 pub mod graph_dense;
 pub mod graph_sparse;
 pub mod infer_dense;
+pub mod log_lh;
+pub mod partition_compressed;
+pub mod partition_marginal;
+pub mod partition_marginal_dense;
+pub mod partition_marginal_sparse;
+pub mod partition_parsimony;
 pub mod partitions_likelihood;
 pub mod partitions_parsimony;
 pub mod seq;
