@@ -9,6 +9,7 @@ use crate::commands::clock::clock_graph::ClockGraph;
 use crate::commands::clock::clock_regression::{
   ClockOptions, clock_regression_backward, clock_regression_forward, root_clock_model,
 };
+use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
 use crate::commands::clock::reroot::reroot_in_place;
 use crate::commands::clock::rtt::{gather_clock_regression_results, write_clock_regression_result_csv};
 use crate::io::dates_csv::read_dates;
@@ -18,14 +19,19 @@ use crate::io::nwk::{NwkWriteOptions, nwk_read_file, nwk_write_file};
 use crate::utils::console::is_tty;
 use eyre::{Report, WrapErr};
 
-pub fn get_clock_model(graph: &mut ClockGraph, options: &ClockOptions, keep_root: bool) -> Result<ClockModel, Report> {
+pub fn get_clock_model(
+  graph: &mut ClockGraph,
+  options: &ClockOptions,
+  keep_root: bool,
+  optimization_params: &BranchPointOptimizationParams,
+) -> Result<ClockModel, Report> {
   // run the backward pass to calculate the averages at the root
   clock_regression_backward(graph, options);
 
   if !keep_root {
     // run forward pass to calculate the averages for all nodes in the tree
     clock_regression_forward(graph, options);
-    reroot_in_place(graph, options)?;
+    reroot_in_place(graph, options, optimization_params)?;
   }
   root_clock_model(graph)
 }
@@ -53,6 +59,8 @@ pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
     plot_rtt,
     outdir,
     seed,
+    branch_split,
+    clock_regression,
   } = clock_args;
 
   let mut graph: ClockGraph = if let Some(tree) = tree {
@@ -79,17 +87,21 @@ pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
 
     // prefilter
     if *clock_filter > 0.0 {
-      let pre_clock_model = get_clock_model(&mut graph, &ClockOptions::default(), *keep_root)?;
+      let params = BranchPointOptimizationParams::from(branch_split);
+      let pre_clock_model = get_clock_model(&mut graph, &ClockOptions::default(), *keep_root, &params)?;
       let new_outliers = clock_filter_inplace(&graph, &pre_clock_model, *clock_filter);
     }
-    get_clock_model(&mut graph, &options, *keep_root)?
+    let params = BranchPointOptimizationParams::from(branch_split);
+    get_clock_model(&mut graph, &options, *keep_root, &params)?
   } else {
     // clock-filter
     if *clock_filter > 0.0 {
-      let pre_clock_model = get_clock_model(&mut graph, &ClockOptions::default(), *keep_root)?;
+      let params = BranchPointOptimizationParams::from(branch_split);
+      let pre_clock_model = get_clock_model(&mut graph, &ClockOptions::default(), *keep_root, &params)?;
       let new_outliers = clock_filter_inplace(&graph, &pre_clock_model, *clock_filter);
     }
-    get_clock_model(&mut graph, &ClockOptions::default(), *keep_root)?
+    let params = BranchPointOptimizationParams::from(branch_split);
+    get_clock_model(&mut graph, &clock_regression.clock_options, *keep_root, &params)?
   };
 
   nwk_write_file(outdir.join("rerooted.nwk"), &graph, &NwkWriteOptions::default())?;
@@ -110,3 +122,5 @@ pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
 
   Ok(())
 }
+
+
