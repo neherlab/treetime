@@ -122,5 +122,3 @@ pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
 
   Ok(())
 }
-
-

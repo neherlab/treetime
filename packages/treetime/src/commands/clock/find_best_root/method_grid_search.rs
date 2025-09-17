@@ -25,7 +25,7 @@ pub fn optimize_grid_search(
     .expect("Failed to evaluate initial position");
 
   let grid_points = Array1::linspace(0.0, 1.0, params.n_points);
-  
+
   for (point_count, x) in grid_points.into_iter().enumerate() {
     let clock_total = cost_fn.evaluate_clock_set(x).expect("Failed to evaluate clock set");
     let chisq = clock_total.chisq();
