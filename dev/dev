@@ -1,166 +1,151 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2178
 set -euo pipefail
 trap "exit" INT
 # shellcheck source=./lib/utils.sh
 source "${BASH_SOURCE%/*}/lib/utils.sh"
 
+declare -A ALIASES=(
+  ["b"]="build"
+  ["br"]="build-release"
+  ["r"]="run"
+  ["rr"]="run-release"
+  ["t"]="test-all"
+  ["tu"]="test-unit"
+  ["ti"]="test-integration"
+  ["l"]="lint"
+  ["lf"]="lint-fix"
+  ["lc"]="lint-ci"
+  ["f"]="format"
+  ["fc"]="format-check"
+  ["q"]="quality"
+  ["B"]="bench-all"
+  ["Bd"]="bench-debug"
+  ["E"]="example"
+  ["Er"]="example-release"
+  ["U"]="upgrade-deps"
+)
+
 function main() {
-  local cargo_cmd cargo_test_cmd cmd docs_cmd npm_cmd wasm_cmd
+  declare -x RUST_BACKTRACE="${RUST_BACKTRACE:-full}"
 
-  local docker_args=()
-  local cargo_append_args=()
+  local cmd="${1:-bash}"
+  shift || true
 
-  case "${1:-}" in
-  "docker-image-build" | "Db")
-    docker_args+=("--build")
+  # Resolve alias
+  if [[ -n "${ALIASES[$cmd]:-}" ]]; then
+    cmd="${ALIASES[$cmd]}"
+  fi
+
+  # Common setup
+  local target_dir
+  local test_target_dir
+  target_dir="$(get_build_dir)"
+  test_target_dir="$(get_test_dir)"
+  local ci_flag=""
+  if [ "$("$(project_root)/dev/is-ci")" == "1" ]; then
+    ci_flag="--locked"
+  fi
+
+  local test_rustflags="${HOSTCC:+-C linker=${HOSTCC}} -C link-arg=-pthread -C link-arg=-lopenblas -C link-arg=-lgfortran -C link-arg=-static-libgfortran -C link-arg=-static-libgcc -C link-arg=-static-libstdc++ ${RUSTFLAGS:-}"
+
+  case "${cmd}" in
+  "build")
+    nicely cargo -q build ${ci_flag} --target-dir="${target_dir}" "$@"
     ;;
-  "docker-image-build-push" | "Dp")
-    docker_args+=("--build --push")
+  "build --release")
+    nicely cargo -q build --release ${ci_flag} --target-dir="${target_dir}" "$@"
     ;;
-  "build" | "b")
-    cargo_cmd=("build")
+  "run")
+    local bin="${1:-}"
+    if [[ -z "$bin" ]]; then
+      echo "Error: Binary name required for run command"
+      exit 1
+    fi
+    shift
+    nicely cargo -q run ${ci_flag} --target-dir="${target_dir}" --bin "${bin}" "$@"
     ;;
-  "build-release" | "br")
-    cargo_cmd=("build --release")
+  "run-release")
+    local bin="${1:-}"
+    if [[ -z "$bin" ]]; then
+      echo "Error: Binary name required for run-release command"
+      exit 1
+    fi
+    shift
+    nicely cargo -q run --release ${ci_flag} --target-dir="${target_dir}" --bin "${bin}" "$@"
     ;;
-  "run" | "r")
-    cargo_cmd=("run")
+  "example")
+    local example="${1:-}"
+    if [[ -z "$example" ]]; then
+      echo "Error: Example name required"
+      exit 1
+    fi
+    shift
+    nicely cargo -q run ${ci_flag} --target-dir="${target_dir}" --example "${example}" "$@"
     ;;
-  "run-release" | "rr")
-    cargo_cmd=("run --release")
+  "example-release")
+    local example="${1:-}"
+    if [[ -z "$example" ]]; then
+      echo "Error: Example name required"
+      exit 1
+    fi
+    shift
+    nicely cargo -q run --release ${ci_flag} --target-dir="${target_dir}" --example "${example}" "$@"
     ;;
-  "wasm" | "W")
-    wasm_cmd="dev"
+  "test-all")
+    declare -x RUSTFLAGS="${test_rustflags}"
+    nicely cargo -q nextest run ${ci_flag} --success-output=immediate --workspace --cargo-quiet --no-fail-fast --hide-progress-bar --color=always --target-dir="${test_target_dir}" "$@" 2>&1 |
+      "$(project_root)/dev/prettytest"
     ;;
-  "wasm-release" | "Wr")
-    wasm_cmd="prod"
+  "test-unit")
+    declare -x RUSTFLAGS="${test_rustflags}"
+    nicely cargo -q nextest run --lib ${ci_flag} --success-output=immediate --workspace --cargo-quiet --no-fail-fast --hide-progress-bar --color=always --target-dir="${test_target_dir}" "$@" 2>&1 |
+      "$(project_root)/dev/prettytest"
     ;;
-  "web" | "app" | "a")
-    npm_cmd="dev"
+  "test-integration")
+    declare -x RUSTFLAGS="${test_rustflags}"
+    nicely cargo -q nextest run --test='*' ${ci_flag} --success-output=immediate --workspace --cargo-quiet --no-fail-fast --hide-progress-bar --color=always --target-dir="${test_target_dir}" "$@" 2>&1 |
+      "$(project_root)/dev/prettytest"
     ;;
-  "web-release" | "app-release" | "ar")
-    npm_cmd="prod:build"
+  "lint")
+    nicely cargo -q clippy -q --all-targets --all ${ci_flag} --target-dir="${target_dir}" "$@"
     ;;
-  "web-release-serve" | "app-release-serve" | "ars")
-    npm_cmd="prod:serve"
+  "lint-fix")
+    nicely cargo -q clippy -q --all-targets --all --fix --allow-staged ${ci_flag} --target-dir="${target_dir}" "$@"
     ;;
-  "watch-web-release" | "watch-app-release" | "war")
-    npm_cmd="prod:watch"
+  "lint-ci")
+    nicely cargo -q clippy --all-targets --all ${ci_flag} --target-dir="${target_dir}" -- -Dwarnings "$@"
     ;;
-  "docs" | "d")
-    docs_cmd="dev"
+  "format")
+    nicely cargo -q fmt "$@"
     ;;
-  "docs-release" | "dr")
-    docs_cmd="prod:build"
+  "format-check")
+    nicely cargo -q fmt --check "$@"
     ;;
-  "docs-release-serve" | "drs")
-    docs_cmd="prod"
+  "bench-all")
+    nicely cargo -q bench --workspace --benches ${ci_flag} --target-dir="${target_dir}" "$@"
     ;;
-  "test" | "t")
-    cargo_test_cmd=" "
+  "bench-debug")
+    nicely cargo -q bench --workspace --benches --profile=profiling ${ci_flag} --target-dir="${target_dir}" "$@"
     ;;
-  "test-unit" | "tu")
-    cargo_test_cmd="--lib"
+  "upgrade-deps")
+    nicely cargo -q upgrade --pinned --incompatible --verbose --recursive ${ci_flag} "$@"
     ;;
-  "test-integration" | "ti")
-    cargo_test_cmd=("--test='*'")
+  "quality")
+    "${BASH_SOURCE[0]}" lint-fix "$@" && "${BASH_SOURCE[0]}" format "$@" && "${BASH_SOURCE[0]}" test-all "$@"
     ;;
-  "lint" | "l")
-    cargo_cmd=("clippy -q --all-targets --all")
-    ;;
-  "lint-fix" | "lf")
-    cargo_cmd=("clippy -q  --all-targets --all --fix --allow-staged")
-    ;;
-  "lint-ci" | "lc")
-    cargo_cmd=("clippy -q --all-targets --all")
-    cargo_append_args=("-- -Dwarnings")
-    ;;
-  "format" | "f")
-    cargo_cmd=("fmt")
-    ;;
-  "format-check" | "fc")
-    cargo_cmd=("fmt --check")
-    ;;
-  "bench" | "B")
-    cargo_cmd=("bench --workspace --benches")
-    ;;
-  "bench-hyperfine" | "H")
-    cargo_cmd=("build --release")
-    cmd=("hyperfine")
+  "why")
+    nicely cargo -q tree -i -p ${ci_flag} "$@"
     ;;
   "p" | "py")
-    bash
+    exec bash
     ;;
-  "jupyter" | "j")
-    /files/start-jupyter
+  "j" | "jupyter")
+    exec /files/start-jupyter
+    ;;
+  *)
+    nicely cargo -q ${ci_flag} --target-dir="${target_dir}" "${cmd}" "$@"
     ;;
   esac
-
-  shift
-
-  declare -x RUST_BACKTRACE="full"
-
-  # Run a cargo command (except tests)
-  if [ -n "${cargo_cmd:-}" ]; then
-    if [ "$("$(project_root)/dev/is-ci")" == "1" ]; then
-      cargo_cmd+=("--locked")
-    fi
-
-    local target_dir=
-    # shellcheck disable=SC2199
-    if [[ "${cargo_cmd[@]}" != fmt* ]]; then
-      target_dir="$(get_build_dir)"
-    fi
-
-    local args=("${@:-}")
-    local bin="${args[0]}"
-    local args=("${args[@]:2}")
-    local cargo_run_args=()
-    if [[ "${cargo_cmd:-}" != build* ]]; then
-      cargo_run_args=("${args[@]}")
-    fi
-
-    nicely cargo -q ${cargo_cmd[@]} ${target_dir:+--target-dir="${target_dir}"} ${cargo_append_args[@]} ${bin:+--bin="${bin}"} "${cargo_run_args[@]}"
-
-    if [ "${cmd[*]:-}" == "hyperfine" ]; then
-      nicely hyperfine --warmup 1 --show-output "'${target_dir}/release/${bin} ${args[*]}'"
-    fi
-
-  # Run rust tests
-  elif [ -n "${cargo_test_cmd:-}" ]; then
-    # shellcheck disable=SC2119
-    local target_dir="$(get_test_dir)"
-    # HACK: `cargo nextest` seems to be having problems discovering linked libraries, let's specify them explicitly
-    declare -x RUSTFLAGS="-C linker=${HOSTCC} -C link-arg=-pthread -C link-arg=-lopenblas -C link-arg=-lgfortran -C link-arg=-static-libgfortran -C link-arg=-static-libgcc -C link-arg=-static-libstdc++ ${RUSTFLAGS:-}"
-
-    local args=$(echo "${@:-}" | xargs)
-
-    # shellcheck disable=SC2086
-    nicely cargo -q nextest run ${cargo_test_cmd} --success-output=immediate --workspace --cargo-quiet --no-fail-fast --hide-progress-bar --color=always --target-dir="${target_dir}" ${args[@]} 2>&1 |
-      "$(project_root)/dev/prettytest"
-
-  # TODO: run an npm/yarn/bun/deno command
-  elif [ -n "${npm_cmd:-}" ]; then
-    (
-      set -x
-      echo "${npm_cmd}"
-    )
-
-  # TODO: run WASM build
-  elif [ -n "${wasm_cmd:-}" ]; then
-    (
-      set -x
-      echo "${wasm_cmd}"
-    )
-
-  # TODO: build docs
-  elif [ -n "${docs_cmd:-}" ]; then
-    (
-      set -x
-      echo "${docs_cmd}"
-    )
-  fi
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
