@@ -92,6 +92,7 @@ lazy_static = "=1.5.0"
 log = "=0.4.28"
 maplit = { version = "=1.0.2", features = [] }
 multimap = { version = "=0.10.1", features = ["serde_impl"] }
+ndarray-conv = { version = "=0.5.0", features = [] }
 num = "=0.4.3"
 num-integer = "=0.1.46"
 num-traits = "=0.2.19"
