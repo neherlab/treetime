@@ -62,6 +62,11 @@ impl DomainAgreementMetrics {
     let correlation = compute_correlation(actual, expected)?;
     let mass_error = compute_mass_error(x, actual, expected);
     let rel_l2_error = compute_relative_l2_norm_error(actual, expected)?;
+    let rel_l1_error = compute_relative_l1_norm_error(actual, expected)?;
+    let rel_linf_error = compute_relative_linf_norm_error(actual, expected)?;
+    let max_log_error = compute_max_log_error(actual, expected, 1e-300)?;
+    let symmetry_error = compute_symmetry_error(x, actual);
+    let quantile_95_error = compute_quantile_error(actual, expected, 0.95);
     let peak_metrics = compute_peak_metrics(x, actual, expected)?;
     let tolerance_counts = compute_tolerance_counts(actual, expected, &thresholds);
     let max_error_location = find_max_error_location(x, actual, expected);
@@ -72,6 +77,11 @@ impl DomainAgreementMetrics {
       correlation,
       mass_error,
       rel_l2_error,
+      rel_l1_error,
+      rel_linf_error,
+      max_log_error,
+      symmetry_error,
+      quantile_95_error,
     };
 
     Ok(Self {
@@ -210,6 +220,21 @@ pub struct QualityMetrics {
   /// Relative L2 norm error: $\frac{\left\|y_{\text{num}} - y_{\text{ref}}\right\|_2}{\left\|y_{\text{ref}}\right\|_2}$
   /// Scale-invariant measure of total deviation
   pub rel_l2_error: f64,
+  /// Relative L1 norm error: $\frac{\sum_i \left|y_{\text{num}}(x_i) - y_{\text{ref}}(x_i)\right|}{\sum_i \left|y_{\text{ref}}(x_i)\right|}$
+  /// Robust to outliers, global deviation measure
+  pub rel_l1_error: f64,
+  /// Relative L∞ norm error: $\frac{\max_i \left|y_{\text{num}}(x_i) - y_{\text{ref}}(x_i)\right|}{\max_i \left|y_{\text{ref}}(x_i)\right|}$
+  /// Supremum error normalized by global peak
+  pub rel_linf_error: f64,
+  /// Maximum log error: $\max_{i: y_{\text{ref}}(x_i) > \tau} \left|\log y_{\text{num}}(x_i) - \log y_{\text{ref}}(x_i)\right|$
+  /// Sensitive to tail accuracy for small values, uses threshold τ to avoid log(0)
+  pub max_log_error: f64,
+  /// Symmetry error: $\max_i \left|y_{\text{num}}(x_i) - y_{\text{num}}(-x_i)\right|$
+  /// For symmetric kernels (e.g., Gaussians), measures deviation from symmetry
+  pub symmetry_error: f64,
+  /// 95th percentile error threshold: value below which 95% of absolute errors fall
+  /// Quantile-based robustness measure for error distribution analysis
+  pub quantile_95_error: f64,
 }
 
 /// Peak-related accuracy metrics for distribution analysis
@@ -314,6 +339,11 @@ impl DomainAgreementDisplay for DomainAgreementMetrics {
     let rmse = quality_metrics.rmse;
     let mass_error = quality_metrics.mass_error;
     let rel_l2_error = quality_metrics.rel_l2_error;
+    let rel_l1_error = quality_metrics.rel_l1_error;
+    let rel_linf_error = quality_metrics.rel_linf_error;
+    let max_log_error = quality_metrics.max_log_error;
+    let symmetry_error = quality_metrics.symmetry_error;
+    let quantile_95_error = quality_metrics.quantile_95_error;
     let max_error_x_value = max_error_location.x_value;
     let mean_rel_error = rel_error_stats.mean;
     let mean_rel_error_pct = rel_error_stats.mean * 100.0;
@@ -349,6 +379,11 @@ Relative Error Statistics:
 Conservation & Global Quality:
   Mass (integral) error:             {mass_error:.6e}
   Relative L2 norm error:            {rel_l2_error:.6e}
+  Relative L1 norm error:            {rel_l1_error:.6e}
+  Relative L∞ norm error:            {rel_linf_error:.6e}
+  Maximum log error:                 {max_log_error:.6e}
+  Symmetry error:                    {symmetry_error:.6e}
+  95th percentile error:             {quantile_95_error:.6e}
   R² (coefficient of determination): {r_squared:.12}
   Correlation coefficient:           {correlation:.12}
 
@@ -583,6 +618,109 @@ fn compute_relative_l2_norm_error(actual: &Array1<f64>, expected: &Array1<f64>) 
   Ok(diff_norm / expected_norm)
 }
 
+/// Compute relative L1 norm error for robust global assessment
+/// Formula: $\frac{\sum_i \left|y_{\text{num}}(x_i) - y_{\text{ref}}(x_i)\right|}{\sum_i \left|y_{\text{ref}}(x_i)\right|}$
+/// Robust to outliers compared to L2 norm, measures total absolute deviation
+fn compute_relative_l1_norm_error(actual: &Array1<f64>, expected: &Array1<f64>) -> eyre::Result<f64> {
+  let diff_l1_norm = (actual - expected).mapv(|x| x.abs()).sum();
+  let expected_l1_norm = expected.mapv(|x| x.abs()).sum();
+
+  if expected_l1_norm.abs() < f64::EPSILON {
+    return make_error!("Expected values have zero L1 norm - cannot compute relative L1 error");
+  }
+
+  Ok(diff_l1_norm / expected_l1_norm)
+}
+
+/// Compute relative L∞ norm error (supremum error normalized by global peak)
+/// Formula: $\frac{\max_i \left|y_{\text{num}}(x_i) - y_{\text{ref}}(x_i)\right|}{\max_i \left|y_{\text{ref}}(x_i)\right|}$
+/// Worst-case error normalized by maximum reference value
+fn compute_relative_linf_norm_error(actual: &Array1<f64>, expected: &Array1<f64>) -> eyre::Result<f64> {
+  let max_abs_error = (actual - expected)
+    .mapv(|x| x.abs())
+    .fold(0.0_f64, |acc, &x| acc.max(x));
+  let max_expected = expected.mapv(|x| x.abs()).fold(0.0_f64, |acc, &x| acc.max(x));
+
+  if max_expected.abs() < f64::EPSILON {
+    return make_error!("Expected values have zero maximum - cannot compute relative L∞ error");
+  }
+
+  Ok(max_abs_error / max_expected)
+}
+
+/// Compute maximum log error for tail accuracy assessment
+/// Formula: $\max_{i: y_{\text{ref}}(x_i) > \tau} \left|\log y_{\text{num}}(x_i) - \log y_{\text{ref}}(x_i)\right|$
+/// Sensitive to accuracy for small values, uses threshold τ to avoid log(0)
+fn compute_max_log_error(actual: &Array1<f64>, expected: &Array1<f64>, threshold: f64) -> eyre::Result<f64> {
+  let mut max_log_error = 0.0_f64;
+  let mut valid_points = 0;
+
+  for (&a, &e) in izip!(actual, expected) {
+    if e > threshold && a > 0.0 {
+      let log_error = (a.ln() - e.ln()).abs();
+      max_log_error = max_log_error.max(log_error);
+      valid_points += 1;
+    }
+  }
+
+  if valid_points == 0 {
+    return make_error!(
+      "No valid points above threshold {:.2e} for log error computation",
+      threshold
+    );
+  }
+
+  Ok(max_log_error)
+}
+
+/// Compute symmetry error for symmetric distributions
+/// Formula: $\max_i \left|y_{\text{num}}(x_i) - y_{\text{num}}(-x_i)\right|$
+/// Measures deviation from symmetry about x=0, useful for Gaussian-like kernels
+/// Returns 0.0 if no symmetric pairs exist in the grid
+fn compute_symmetry_error(x: &Array1<f64>, actual: &Array1<f64>) -> f64 {
+  let mut max_symmetry_error = 0.0_f64;
+  let mut found_symmetric_pairs = false;
+
+  for (i, &xi) in x.iter().enumerate() {
+    // Find corresponding point at -xi
+    let neg_xi = -xi;
+
+    // Find closest point to -xi in the grid
+    if let Some((j, _)) = x.iter().enumerate().min_by(|(_, a), (_, b)| {
+      (**a - neg_xi)
+        .abs()
+        .partial_cmp(&(**b - neg_xi).abs())
+        .unwrap_or(std::cmp::Ordering::Equal)
+    }) {
+      // Only consider as symmetric if the points are reasonably close to being symmetric
+      let closest_x = x[j];
+      if (closest_x - neg_xi).abs() < 1e-10 {
+        let symmetry_error = (actual[i] - actual[j]).abs();
+        max_symmetry_error = max_symmetry_error.max(symmetry_error);
+        found_symmetric_pairs = true;
+      }
+    }
+  }
+
+  // Return 0.0 if no symmetric pairs found (not a symmetric grid)
+  if !found_symmetric_pairs {
+    0.0
+  } else {
+    max_symmetry_error
+  }
+}
+
+/// Compute quantile error (e.g., 95th percentile)
+/// Returns error threshold below which the specified quantile of points fall
+/// Provides robust measure of error distribution characteristics
+fn compute_quantile_error(actual: &Array1<f64>, expected: &Array1<f64>, quantile: f64) -> f64 {
+  let mut abs_errors: Vec<f64> = (actual - expected).mapv(|x| x.abs()).to_vec();
+  abs_errors.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+
+  let index = ((quantile * abs_errors.len() as f64).ceil() as usize).saturating_sub(1);
+  abs_errors.get(index).copied().unwrap_or(0.0)
+}
+
 /// Compute peak-related accuracy metrics for distribution analysis
 /// Analyzes both peak amplitude and location accuracy, critical for probability distributions
 /// - Peak value error: $\frac{\left|\max_i y_{\text{num}}(x_i) - \max_i y_{\text{ref}}(x_i)\right|}{\left|\max_i y_{\text{ref}}(x_i)\right|}$
@@ -647,6 +785,11 @@ mod tests {
     assert_eq!(metrics.quality_metrics.correlation, 1.0);
     assert_eq!(metrics.quality_metrics.mass_error, 0.0);
     assert_eq!(metrics.quality_metrics.rel_l2_error, 0.0);
+    assert_eq!(metrics.quality_metrics.rel_l1_error, 0.0);
+    assert_eq!(metrics.quality_metrics.rel_linf_error, 0.0);
+    assert_eq!(metrics.quality_metrics.max_log_error, 0.0);
+    assert_eq!(metrics.quality_metrics.symmetry_error, 0.0);
+    assert_eq!(metrics.quality_metrics.quantile_95_error, 0.0);
     assert_eq!(metrics.peak_metrics.value_error, 0.0);
     assert_eq!(metrics.peak_metrics.location_error, 0.0);
 
@@ -853,6 +996,11 @@ mod tests {
     assert!(metrics.quality_metrics.correlation > 0.0);
     assert!(metrics.quality_metrics.mass_error >= 0.0);
     assert!(metrics.quality_metrics.rel_l2_error > 0.0);
+    assert!(metrics.quality_metrics.rel_l1_error > 0.0);
+    assert!(metrics.quality_metrics.rel_linf_error > 0.0);
+    assert!(metrics.quality_metrics.max_log_error >= 0.0);
+    assert!(metrics.quality_metrics.symmetry_error >= 0.0);
+    assert!(metrics.quality_metrics.quantile_95_error >= 0.0);
 
     // Test peak metrics
     assert!(metrics.peak_metrics.value_error >= 0.0);
@@ -865,5 +1013,50 @@ mod tests {
     // Test max error location
     assert!(metrics.max_error_location.idx < metrics.total_points);
     assert!(metrics.max_error_location.x_value >= x[0] && metrics.max_error_location.x_value <= x[x.len() - 1]);
+  }
+
+  #[test]
+  fn test_new_advanced_metrics() {
+    // Test data with known characteristics for specific metric validation
+    let x = array![-2.0, -1.0, 0.0, 1.0, 2.0];
+    let expected = array![0.1, 0.5, 1.0, 0.5, 0.1]; // Symmetric about x=0
+    let actual = array![0.12, 0.48, 0.95, 0.52, 0.11]; // Slight asymmetry and errors
+
+    let metrics = DomainAgreementMetrics::new(&x, &actual, &expected).unwrap();
+
+    // Test L1 norm error
+    assert!(metrics.quality_metrics.rel_l1_error > 0.0);
+    assert!(metrics.quality_metrics.rel_l1_error < 1.0);
+
+    // Test L∞ norm error
+    assert!(metrics.quality_metrics.rel_linf_error > 0.0);
+    assert!(metrics.quality_metrics.rel_linf_error < 1.0);
+
+    // Test log error (should be computed for positive values)
+    assert!(metrics.quality_metrics.max_log_error >= 0.0);
+
+    // Test symmetry error (should detect asymmetry in actual vs expected data)
+    assert!(metrics.quality_metrics.symmetry_error >= 0.0);
+    assert!(metrics.quality_metrics.symmetry_error < 1.0);
+
+    // Test quantile error
+    assert!(metrics.quality_metrics.quantile_95_error >= 0.0);
+    assert!(metrics.quality_metrics.quantile_95_error >= metrics.abs_error_stats.mean);
+  }
+
+  #[test]
+  fn test_symmetry_specific() {
+    // Test symmetric grid with perfect symmetry
+    let x = array![-1.0, 0.0, 1.0];
+    let actual = array![0.5, 1.0, 0.5]; // Perfectly symmetric
+    let expected = array![0.5, 1.0, 0.5];
+
+    let metrics = DomainAgreementMetrics::new(&x, &actual, &expected).unwrap();
+    assert_eq!(metrics.quality_metrics.symmetry_error, 0.0);
+
+    // Test asymmetric data
+    let actual_asym = array![0.4, 1.0, 0.6]; // Asymmetric
+    let metrics_asym = DomainAgreementMetrics::new(&x, &actual_asym, &expected).unwrap();
+    assert!(metrics_asym.quality_metrics.symmetry_error > 0.0);
   }
 }
