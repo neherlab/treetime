@@ -2,6 +2,8 @@ use ndarray::Array1;
 use ndarray_conv::{ConvExt, ConvMode, PaddingMode};
 use plotters::prelude::*;
 use std::f64::consts::PI;
+use treetime::distribution::reference::domain_agreement_metrics::{DomainAgreementDisplay, DomainAgreementMetrics};
+use treetime::utils::float_fmt::float_to_digits;
 
 fn main() -> eyre::Result<()> {
   println!("=== Gaussian Convolution Demo with ndarray-conv ===\n");
@@ -64,12 +66,12 @@ fn main() -> eyre::Result<()> {
     }
   }
 
-  let numerical = conv_scaled
+  let actual = conv_scaled
     .slice(ndarray::s![start_idx..start_idx + n_points])
     .to_owned();
 
-  // Compute analytical result on the same grid
-  let analytical: Array1<f64> = x_grid.mapv(|x| {
+  // Compute expected result on the same grid
+  let expected: Array1<f64> = x_grid.mapv(|x| {
     let var_sum = sigma_g.powi(2) + sigma_f.powi(2);
     (-0.5_f64 * (x - mu).powi(2) / var_sum).exp() / (var_sum * 2.0_f64 * PI).sqrt()
   });
@@ -77,19 +79,20 @@ fn main() -> eyre::Result<()> {
   println!("\nndarray-conv convolution completed");
   println!("Input functions length: {}", x_grid.len());
   println!("Raw convolution length: {}", raw_conv.len());
-  println!("Final result length: {}", numerical.len());
+  println!("Final result length: {}", actual.len());
 
   // Comprehensive domain-wide agreement metrics
-  compute_domain_agreement_metrics(&x_grid, &numerical, &analytical)?;
+  compute_domain_agreement_metrics(&x_grid, &actual, &expected)?;
 
   // Generate plots
   plot_input_functions(&x_grid, &f_vals, &g_vals, sigma_f, sigma_g, mu)?;
-  plot_convolution_results(&x_grid, &numerical, &analytical)?;
-  plot_error_analysis(&x_grid, &numerical, &analytical)?;
+  plot_convolution_results(&x_grid, &actual, &expected)?;
+  plot_error_analysis(&x_grid, &actual, &expected)?;
 
   // Compare values around peak
   println!("\nComparison around peak (μ = {mu}):");
-  println!("x\t\tNumerical\tAnalytical\tDifference\tRel Error");
+  println!("{:>8} {:>12} {:>12} {:>12} {:>10}", "x", "Actual", "Expected", "Difference", "Rel Error");
+  println!("{}", "-".repeat(66));
 
   // Find peak region on x_grid
   let peak_x = mu;
@@ -102,11 +105,38 @@ fn main() -> eyre::Result<()> {
 
   for i in (peak_idx.saturating_sub(peak_comparison_range))..(peak_idx + peak_comparison_range + 1).min(x_grid.len()) {
     let x_val = x_grid[i];
-    let num_val = numerical[i];
-    let ana_val = analytical[i];
-    let diff = (num_val - ana_val).abs();
-    let rel_err = if ana_val != 0.0 { diff / ana_val * 100.0 } else { 0.0 };
-    println!("{x_val:.2}\t\t{num_val:.6}\t\t{ana_val:.6}\t\t{diff:.2e}\t\t{rel_err:.2}%");
+    let actual_val = actual[i];
+    let expected_val = expected[i];
+    let diff = (actual_val - expected_val).abs();
+    let rel_err = if expected_val != 0.0 { diff / expected_val * 100.0 } else { 0.0 };
+    let diff_str = if diff < 1e-12 {
+      if diff == 0.0 {
+        "0".to_string()
+      } else {
+        format!("{:.2e}", diff)
+      }
+    } else {
+      float_to_digits(diff, Some(3), None)
+    };
+    
+    let rel_err_str = if rel_err < 1e-6 {
+      if rel_err == 0.0 {
+        "0".to_string()
+      } else {
+        format!("{:.2e}", rel_err)
+      }
+    } else {
+      float_to_digits(rel_err, Some(3), Some(2))
+    };
+    
+    println!(
+      "{:>8} {:>12} {:>12} {:>12} {:>9}%",
+      float_to_digits(x_val, Some(3), Some(2)),
+      float_to_digits(actual_val, Some(6), None),
+      float_to_digits(expected_val, Some(6), None),
+      diff_str,
+      rel_err_str
+    );
   }
 
   Ok(())
@@ -114,201 +144,11 @@ fn main() -> eyre::Result<()> {
 
 fn compute_domain_agreement_metrics(
   x_grid: &Array1<f64>,
-  numerical: &Array1<f64>,
-  analytical: &Array1<f64>,
+  actual: &Array1<f64>,
+  expected: &Array1<f64>,
 ) -> eyre::Result<()> {
-  // Tolerance thresholds
-  let abs_tolerance_1 = 1e-6;
-  let abs_tolerance_2 = 1e-9;
-  let abs_tolerance_3 = 1e-12;
-
-  let rel_tolerance_1 = 0.01; // 1%
-  let rel_tolerance_2 = 0.001; // 0.1%
-  let rel_tolerance_3 = 0.0001; // 0.01%
-
-  // R² quality thresholds
-  let r2_excellent = 0.999999;
-  let r2_very_good = 0.9999;
-  let r2_good = 0.99;
-
-  println!("\n=== Domain-Wide Agreement Metrics ===");
-
-  // Basic error statistics
-  let abs_errors: Vec<f64> = numerical
-    .iter()
-    .zip(analytical.iter())
-    .map(|(&num, &ana)| (num - ana).abs())
-    .collect();
-
-  let rel_errors: Vec<f64> = numerical
-    .iter()
-    .zip(analytical.iter())
-    .map(|(&num, &ana)| {
-      if ana.abs() > 1e-15 {
-        (num - ana).abs() / ana.abs()
-      } else {
-        0.0
-      }
-    })
-    .collect();
-
-  let mean_abs_error = abs_errors.iter().sum::<f64>() / abs_errors.len() as f64;
-  let max_abs_error = abs_errors.iter().fold(0.0_f64, |a, &b| a.max(b));
-  let std_abs_error = {
-    let variance = abs_errors.iter().map(|&x| (x - mean_abs_error).powi(2)).sum::<f64>() / abs_errors.len() as f64;
-    variance.sqrt()
-  };
-
-  let mean_rel_error = rel_errors.iter().sum::<f64>() / rel_errors.len() as f64;
-  let max_rel_error = rel_errors.iter().fold(0.0_f64, |a, &b| a.max(b));
-
-  // R-squared (coefficient of determination)
-  let mean_analytical = analytical.iter().sum::<f64>() / analytical.len() as f64;
-  let ss_tot: f64 = analytical.iter().map(|&ana| (ana - mean_analytical).powi(2)).sum();
-  let ss_res: f64 = numerical
-    .iter()
-    .zip(analytical.iter())
-    .map(|(&num, &ana)| (ana - num).powi(2))
-    .sum();
-  let r_squared = 1.0 - (ss_res / ss_tot);
-
-  // Correlation coefficient
-  let mean_numerical = numerical.iter().sum::<f64>() / numerical.len() as f64;
-
-  let numerator: f64 = numerical
-    .iter()
-    .zip(analytical.iter())
-    .map(|(&num, &ana)| (num - mean_numerical) * (ana - mean_analytical))
-    .sum();
-
-  let denom_num = numerical
-    .iter()
-    .map(|&num| (num - mean_numerical).powi(2))
-    .sum::<f64>()
-    .sqrt();
-
-  let denom_ana = analytical
-    .iter()
-    .map(|&ana| (ana - mean_analytical).powi(2))
-    .sum::<f64>()
-    .sqrt();
-
-  let correlation = numerator / (denom_num * denom_ana);
-
-  // Root Mean Square Error (RMSE)
-  let rmse = (abs_errors.iter().map(|&x| x.powi(2)).sum::<f64>() / abs_errors.len() as f64).sqrt();
-
-  // Mean Absolute Percentage Error (MAPE)
-  let mape = rel_errors.iter().sum::<f64>() / rel_errors.len() as f64 * 100.0;
-
-  // Points within tolerance thresholds
-  let within_1e_6 = abs_errors.iter().filter(|&&x| x < abs_tolerance_1).count();
-  let within_1e_9 = abs_errors.iter().filter(|&&x| x < abs_tolerance_2).count();
-  let within_1e_12 = abs_errors.iter().filter(|&&x| x < abs_tolerance_3).count();
-
-  let within_1_percent = rel_errors.iter().filter(|&&x| x < rel_tolerance_1).count();
-  let within_0_1_percent = rel_errors.iter().filter(|&&x| x < rel_tolerance_2).count();
-  let within_0_01_percent = rel_errors.iter().filter(|&&x| x < rel_tolerance_3).count();
-
-  let total_points = abs_errors.len();
-
-  // Peak error location
-  let max_error_idx = abs_errors
-    .iter()
-    .enumerate()
-    .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
-    .map_or(0, |(i, _)| i);
-
-  // Print comprehensive metrics
-  println!("Total evaluation points: {total_points}");
-  println!();
-
-  println!("Absolute Error Statistics:");
-  println!("  Mean absolute error:    {mean_abs_error:.6e}");
-  println!("  Max absolute error:     {max_abs_error:.6e}");
-  println!("  Std absolute error:     {std_abs_error:.6e}");
-  println!("  RMSE:                   {rmse:.6e}");
-  println!("  Max error at x = {:.3}", x_grid[max_error_idx]);
-  println!();
-
-  println!("Relative Error Statistics:");
-  println!(
-    "  Mean relative error:    {:.6e} ({:.4}%)",
-    mean_rel_error,
-    mean_rel_error * 100.0
-  );
-  println!(
-    "  Max relative error:     {:.6e} ({:.4}%)",
-    max_rel_error,
-    max_rel_error * 100.0
-  );
-  println!("  MAPE:                   {mape:.6}%");
-  println!();
-
-  println!("Agreement Quality:");
-  println!("  R² (coefficient of determination): {r_squared:.12}");
-  println!("  Correlation coefficient:            {correlation:.12}");
-  println!();
-
-  println!("Points within absolute tolerance:");
-  println!(
-    "  < {:.0e}:  {:3}/{} ({:5.1}%)",
-    abs_tolerance_1,
-    within_1e_6,
-    total_points,
-    within_1e_6 as f64 / total_points as f64 * 100.0
-  );
-  println!(
-    "  < {:.0e}:  {:3}/{} ({:5.1}%)",
-    abs_tolerance_2,
-    within_1e_9,
-    total_points,
-    within_1e_9 as f64 / total_points as f64 * 100.0
-  );
-  println!(
-    "  < {:.0e}: {:3}/{} ({:5.1}%)",
-    abs_tolerance_3,
-    within_1e_12,
-    total_points,
-    within_1e_12 as f64 / total_points as f64 * 100.0
-  );
-  println!();
-
-  println!("Points within relative tolerance:");
-  println!(
-    "  < {:.0}%:    {:3}/{} ({:5.1}%)",
-    rel_tolerance_1 * 100.0,
-    within_1_percent,
-    total_points,
-    within_1_percent as f64 / total_points as f64 * 100.0
-  );
-  println!(
-    "  < {:.1}%:  {:3}/{} ({:5.1}%)",
-    rel_tolerance_2 * 100.0,
-    within_0_1_percent,
-    total_points,
-    within_0_1_percent as f64 / total_points as f64 * 100.0
-  );
-  println!(
-    "  < {:.2}%: {:3}/{} ({:5.1}%)",
-    rel_tolerance_3 * 100.0,
-    within_0_01_percent,
-    total_points,
-    within_0_01_percent as f64 / total_points as f64 * 100.0
-  );
-
-  // Overall assessment
-  println!();
-  if r_squared > r2_excellent {
-    println!("🟢 EXCELLENT: Near-perfect agreement (R² > {r2_excellent:.6})");
-  } else if r_squared > r2_very_good {
-    println!("🟡 VERY GOOD: High agreement (R² > {r2_very_good:.4})");
-  } else if r_squared > r2_good {
-    println!("🟠 GOOD: Reasonable agreement (R² > {r2_good:.2})");
-  } else {
-    println!("🔴 POOR: Low agreement (R² < {r2_good:.2})");
-  }
-
+  let metrics = DomainAgreementMetrics::new(x_grid, actual, expected)?;
+  println!("\n{}", metrics.display_metrics());
   Ok(())
 }
 
@@ -368,8 +208,8 @@ fn plot_input_functions(
 
 fn plot_convolution_results(
   x_grid: &Array1<f64>,
-  numerical: &Array1<f64>,
-  analytical: &Array1<f64>,
+  actual: &Array1<f64>,
+  expected: &Array1<f64>,
 ) -> eyre::Result<()> {
   // Plot configuration
   let plot_width = 800;
@@ -377,8 +217,8 @@ fn plot_convolution_results(
   let plot_margin = 20;
   let x_label_area = 40;
   let y_label_area = 50;
-  let numerical_line_width = 2;
-  let analytical_line_width = 3;
+  let actual_line_width = 2;
+  let expected_line_width = 3;
   let legend_offset = 10;
   let max_val_margin = 1.1;
   let font_size = 24;
@@ -386,9 +226,9 @@ fn plot_convolution_results(
   let root = SVGBackend::new("tmp/conv_plots/convolution_results.svg", (plot_width, plot_height)).into_drawing_area();
   root.fill(&WHITE)?;
 
-  let max_val = numerical
+  let max_val = actual
     .iter()
-    .chain(analytical.iter())
+    .chain(expected.iter())
     .fold(0.0_f64, |a, &b| a.max(b));
 
   let mut chart = ChartBuilder::on(&root)
@@ -400,18 +240,18 @@ fn plot_convolution_results(
 
   chart.configure_mesh().draw()?;
 
-  // Plot numerical result
-  let num_data: Vec<(f64, f64)> = x_grid.iter().zip(numerical.iter()).map(|(&x, &y)| (x, y)).collect();
+  // Plot actual result
+  let actual_data: Vec<(f64, f64)> = x_grid.iter().zip(actual.iter()).map(|(&x, &y)| (x, y)).collect();
   chart
-    .draw_series(LineSeries::new(num_data, BLUE.stroke_width(numerical_line_width)))?
-    .label("Numerical (ndarray-conv)")
+    .draw_series(LineSeries::new(actual_data, BLUE.stroke_width(actual_line_width)))?
+    .label("Actual (ndarray-conv)")
     .legend(|(x, y)| PathElement::new(vec![(x, y), (x + legend_offset, y)], BLUE));
 
-  // Plot analytical result
-  let ana_data: Vec<(f64, f64)> = x_grid.iter().zip(analytical.iter()).map(|(&x, &y)| (x, y)).collect();
+  // Plot expected result
+  let expected_data: Vec<(f64, f64)> = x_grid.iter().zip(expected.iter()).map(|(&x, &y)| (x, y)).collect();
   chart
-    .draw_series(LineSeries::new(ana_data, RED.stroke_width(analytical_line_width)))?
-    .label("Analytical Solution")
+    .draw_series(LineSeries::new(expected_data, RED.stroke_width(expected_line_width)))?
+    .label("Expected")
     .legend(|(x, y)| PathElement::new(vec![(x, y), (x + legend_offset, y)], RED));
 
   chart.configure_series_labels().draw()?;
@@ -421,7 +261,7 @@ fn plot_convolution_results(
   Ok(())
 }
 
-fn plot_error_analysis(x_grid: &Array1<f64>, numerical: &Array1<f64>, analytical: &Array1<f64>) -> eyre::Result<()> {
+fn plot_error_analysis(x_grid: &Array1<f64>, actual: &Array1<f64>, expected: &Array1<f64>) -> eyre::Result<()> {
   // Plot configuration
   let plot_width = 800;
   let plot_height = 600;
@@ -437,16 +277,16 @@ fn plot_error_analysis(x_grid: &Array1<f64>, numerical: &Array1<f64>, analytical
   root.fill(&WHITE)?;
 
   // Calculate absolute error
-  let abs_error: Vec<f64> = numerical
+  let absolute_errors: Vec<f64> = actual
     .iter()
-    .zip(analytical.iter())
-    .map(|(&num, &ana)| (num - ana).abs())
+    .zip(expected.iter())
+    .map(|(&act, &exp)| (act - exp).abs())
     .collect();
 
-  let max_error = abs_error.iter().fold(0.0_f64, |a, &b| a.max(b));
+  let max_error = absolute_errors.iter().fold(0.0_f64, |a, &b| a.max(b));
 
   let mut chart = ChartBuilder::on(&root)
-    .caption("Absolute Error: |Numerical - Analytical|", ("Arial", font_size))
+    .caption("Absolute Error: |Actual - Expected|", ("Arial", font_size))
     .margin(plot_margin)
     .x_label_area_size(x_label_area)
     .y_label_area_size(y_label_area)
@@ -455,7 +295,7 @@ fn plot_error_analysis(x_grid: &Array1<f64>, numerical: &Array1<f64>, analytical
   chart.configure_mesh().draw()?;
 
   // Plot error
-  let error_data: Vec<(f64, f64)> = x_grid.iter().zip(abs_error.iter()).map(|(&x, y)| (x, *y)).collect();
+  let error_data: Vec<(f64, f64)> = x_grid.iter().zip(absolute_errors.iter()).map(|(&x, y)| (x, *y)).collect();
   chart
     .draw_series(LineSeries::new(error_data, GREEN.stroke_width(line_width)))?
     .label("Absolute Error")
