@@ -1,47 +1,129 @@
+use clap::Parser;
 use ndarray::Array1;
 use ndarray_conv::{ConvExt, ConvMode, PaddingMode};
 use plotters::prelude::*;
+use serde::{Deserialize, Serialize};
 use std::f64::consts::PI;
 use treetime::distribution::reference::domain_agreement_metrics::DomainAgreementMetrics;
+use treetime::io::json::{JsonPretty, json_write_file, json_write_str};
 use treetime::utils::float_fmt::float_to_digits;
 
+#[derive(Parser, Clone, Serialize, Deserialize)]
+#[command(
+  name = "ndarray-conv-1d-demo",
+  about = "1D Gaussian convolution demo using ndarray-conv",
+  version
+)]
+struct Args {
+  /// Standard deviation of first Gaussian f(x)
+  #[arg(long, default_value = "1.0")]
+  sigma_f: f64,
+
+  /// Standard deviation of second Gaussian g(x)
+  #[arg(long, default_value = "1.0")]
+  sigma_g: f64,
+
+  /// Mean offset of second Gaussian g(x)
+  #[arg(long, default_value = "1.0")]
+  mu: f64,
+
+  /// Minimum x value for grid
+  #[arg(long, default_value = "-7.0")]
+  x_min: f64,
+
+  /// Maximum x value for grid
+  #[arg(long, default_value = "9.0")]
+  x_max: f64,
+
+  /// Number of grid points
+  #[arg(long, default_value = "321")]
+  n_points: usize,
+
+  /// Output directory for plots
+  #[arg(long, default_value = "tmp/conv_plots")]
+  output_dir: String,
+
+  /// Range around peak for detailed comparison (±n points)
+  #[arg(long, default_value = "5")]
+  peak_comparison_range: usize,
+}
+
+#[derive(Serialize, Deserialize)]
+struct ConvolutionResults {
+  parameters: Args,
+  function_properties: FunctionProperties,
+  grid_info: GridInfo,
+  domain_agreement_metrics: DomainAgreementMetrics,
+  peak_comparison: Vec<PeakComparisonPoint>,
+}
+
+#[derive(Serialize, Deserialize)]
+struct FunctionProperties {
+  f_variance: f64,
+  g_mean: f64,
+  g_variance: f64,
+  expected_peak_x: f64,
+  expected_variance: f64,
+  expected_peak_value: f64,
+}
+
+#[derive(Serialize, Deserialize)]
+struct GridInfo {
+  x_min: f64,
+  x_max: f64,
+  n_points: usize,
+  dx: f64,
+  conv_len: usize,
+  start_idx: usize,
+}
+
+#[derive(Serialize, Deserialize)]
+struct PeakComparisonPoint {
+  x: f64,
+  actual: f64,
+  expected: f64,
+  absolute_error: f64,
+  relative_error_percent: f64,
+}
+
 fn main() -> eyre::Result<()> {
+  let args = Args::parse();
+
   println!("=== Gaussian Convolution Demo with ndarray-conv ===\n");
 
-  // Configuration constants
-  let output_dir = "tmp/conv_plots";
-
-  // Parameters from Python example
-  let sigma_f = 1.0_f64;
-  let sigma_g = 1.0_f64;
-  let mu = 1.0_f64;
-
-  // Grid configuration
-  let x_min = -7.0;
-  let x_max = 9.0;
-  let n_points = 321;
-
-  // Comparison configuration
-  let peak_comparison_range = 5; // ±5 points around peak
-
-  // Create output directory
-  std::fs::create_dir_all(output_dir)?;
-
-  println!("Parameters: σ_f={sigma_f}, σ_g={sigma_g}, μ={mu}");
+  println!("Args:\n{}", json_write_str(&args, JsonPretty(true))?);
 
   // Use a narrower grid centered around the effective convolution domain
   // This allows ndarray-conv to work directly without complex interpolation
-  let x_grid = Array1::linspace(x_min, x_max, n_points);
-  let dx = (x_max - x_min) / (n_points - 1) as f64;
+  let x_grid = Array1::linspace(args.x_min, args.x_max, args.n_points);
+  let dx = (args.x_max - args.x_min) / (args.n_points - 1) as f64;
 
-  println!("Grid: [{x_min}, {x_max}] with {n_points} points, dx={dx:.6}");
+  // Calculate expected properties
+  let expected_peak_x = args.mu;
+  let expected_sigma_combined = (args.sigma_f.powi(2) + args.sigma_g.powi(2)).sqrt();
+  let expected_peak_value = 1.0 / (expected_sigma_combined * (2.0 * PI).sqrt());
+
+  // Create function properties structure
+  let function_properties = FunctionProperties {
+    f_variance: args.sigma_f.powi(2),
+    g_mean: args.mu,
+    g_variance: args.sigma_g.powi(2),
+    expected_peak_x,
+    expected_variance: expected_sigma_combined.powi(2),
+    expected_peak_value,
+  };
+
+  println!(
+    "Function properties:\n{}",
+    json_write_str(&function_properties, JsonPretty(true))?
+  );
 
   // Define Gaussian functions on this grid
   let f_vals: Array1<f64> =
-    x_grid.mapv(|x| (-0.5_f64 * (x / sigma_f).powi(2)).exp() / (sigma_f * (2.0_f64 * PI).sqrt()));
+    x_grid.mapv(|x| (-0.5_f64 * (x / args.sigma_f).powi(2)).exp() / (args.sigma_f * (2.0_f64 * PI).sqrt()));
 
   let g_vals: Array1<f64> =
-    x_grid.mapv(|x| (-0.5_f64 * ((x - mu) / sigma_g).powi(2)).exp() / (sigma_g * (2.0_f64 * PI).sqrt()));
+    x_grid.mapv(|x| (-0.5_f64 * ((x - args.mu) / args.sigma_g).powi(2)).exp() / (args.sigma_g * (2.0_f64 * PI).sqrt()));
 
   // Perform convolution using ndarray-conv with Full mode
   let raw_conv = f_vals.conv(&g_vals, ConvMode::Full, PaddingMode::Zeros)?;
@@ -52,53 +134,67 @@ fn main() -> eyre::Result<()> {
   // The Full convolution result spans a wider domain
   // Create the extended domain for the full convolution result
   let conv_len = raw_conv.len();
-  let conv_x_min = 2.0 * x_min;
-  let conv_x_max = 2.0 * x_max;
+  let conv_x_min = 2.0 * args.x_min;
+  let conv_x_max = 2.0 * args.x_max;
   let conv_x_grid = Array1::linspace(conv_x_min, conv_x_max, conv_len);
 
   // Extract the portion that corresponds to our original evaluation domain
   // Find indices in conv_x_grid that correspond to our desired x_grid range
   let mut start_idx = 0;
   for (i, &conv_x) in conv_x_grid.iter().enumerate() {
-    if conv_x >= x_min {
+    if conv_x >= args.x_min {
       start_idx = i;
       break;
     }
   }
 
+  // Create grid info
+  let grid_info = GridInfo {
+    x_min: args.x_min,
+    x_max: args.x_max,
+    n_points: args.n_points,
+    dx,
+    conv_len,
+    start_idx,
+  };
+
+  println!("Grid info:\n{}", json_write_str(&grid_info, JsonPretty(true))?);
+
   let actual = conv_scaled
-    .slice(ndarray::s![start_idx..start_idx + n_points])
+    .slice(ndarray::s![start_idx..start_idx + args.n_points])
     .to_owned();
 
   // Compute expected result on the same grid
   let expected: Array1<f64> = x_grid.mapv(|x| {
-    let var_sum = sigma_g.powi(2) + sigma_f.powi(2);
-    (-0.5_f64 * (x - mu).powi(2) / var_sum).exp() / (var_sum * 2.0_f64 * PI).sqrt()
+    let var_sum = args.sigma_g.powi(2) + args.sigma_f.powi(2);
+    (-0.5_f64 * (x - args.mu).powi(2) / var_sum).exp() / (var_sum * 2.0_f64 * PI).sqrt()
   });
 
-  println!("\nndarray-conv convolution completed");
-  println!("Input functions length: {}", x_grid.len());
-  println!("Raw convolution length: {}", raw_conv.len());
-  println!("Final result length: {}", actual.len());
-
   // Comprehensive domain-wide agreement metrics
-  compute_domain_agreement_metrics(&x_grid, &actual, &expected)?;
+  let domain_metrics = compute_domain_agreement_metrics(&x_grid, &actual, &expected)?;
 
   // Generate plots
-  plot_input_functions(&x_grid, &f_vals, &g_vals, sigma_f, sigma_g, mu)?;
-  plot_convolution_results(&x_grid, &actual, &expected)?;
-  plot_error_analysis(&x_grid, &actual, &expected)?;
+  plot_input_functions(
+    &x_grid,
+    &f_vals,
+    &g_vals,
+    args.sigma_f,
+    args.sigma_g,
+    args.mu,
+    &args.output_dir,
+  )?;
+  plot_convolution_results(&x_grid, &actual, &expected, &args.output_dir)?;
+  plot_error_analysis(&x_grid, &actual, &expected, &args.output_dir)?;
 
   // Compare values around peak
-  println!("\nComparison around peak (μ = {mu}):");
+  println!("\nComparison around peak (μ = {}):", args.mu);
   println!(
     "{:>8} {:>12} {:>12} {:>12} {:>10}",
     "x", "Actual", "Expected", "Difference", "Rel Error"
   );
-  println!("{}", "-".repeat(66));
 
   // Find peak region on x_grid
-  let peak_x = mu;
+  let peak_x = args.mu;
   let mut peak_idx = 0;
   for (i, &x) in x_grid.iter().enumerate() {
     if (x - peak_x).abs() < (x_grid[peak_idx] - peak_x).abs() {
@@ -106,7 +202,13 @@ fn main() -> eyre::Result<()> {
     }
   }
 
-  for i in (peak_idx.saturating_sub(peak_comparison_range))..(peak_idx + peak_comparison_range + 1).min(x_grid.len()) {
+  println!("{}", "-".repeat(66));
+
+  let mut peak_comparison_points = Vec::new();
+
+  for i in
+    (peak_idx.saturating_sub(args.peak_comparison_range))..(peak_idx + args.peak_comparison_range + 1).min(x_grid.len())
+  {
     let x_val = x_grid[i];
     let actual_val = actual[i];
     let expected_val = expected[i];
@@ -116,6 +218,15 @@ fn main() -> eyre::Result<()> {
     } else {
       0.0
     };
+
+    peak_comparison_points.push(PeakComparisonPoint {
+      x: x_val,
+      actual: actual_val,
+      expected: expected_val,
+      absolute_error: diff,
+      relative_error_percent: rel_err,
+    });
+
     let diff_str = if diff < 1e-12 {
       if diff == 0.0 {
         "0".to_owned()
@@ -146,6 +257,19 @@ fn main() -> eyre::Result<()> {
     );
   }
 
+  // Create and save results structure
+  let results = ConvolutionResults {
+    parameters: args.clone(),
+    function_properties,
+    grid_info,
+    domain_agreement_metrics: domain_metrics,
+    peak_comparison: peak_comparison_points,
+  };
+
+  let results_path = format!("{}/results.json", args.output_dir);
+  json_write_file(&results_path, &results, JsonPretty(true))?;
+  println!("\nSaved results to {results_path}");
+
   Ok(())
 }
 
@@ -153,10 +277,10 @@ fn compute_domain_agreement_metrics(
   x_grid: &Array1<f64>,
   actual: &Array1<f64>,
   expected: &Array1<f64>,
-) -> eyre::Result<()> {
+) -> eyre::Result<DomainAgreementMetrics> {
   let metrics = DomainAgreementMetrics::new(x_grid, actual, expected)?;
   println!("\n{metrics}");
-  Ok(())
+  Ok(metrics)
 }
 
 fn plot_input_functions(
@@ -166,6 +290,7 @@ fn plot_input_functions(
   sigma_f: f64,
   sigma_g: f64,
   mu: f64,
+  output_dir: &str,
 ) -> eyre::Result<()> {
   // Plot configuration
   let plot_width = 800;
@@ -178,7 +303,8 @@ fn plot_input_functions(
   let max_val_margin = 1.1;
   let font_size = 24;
 
-  let root = SVGBackend::new("tmp/conv_plots/input_functions.svg", (plot_width, plot_height)).into_drawing_area();
+  let output_path = format!("{output_dir}/input_functions.svg");
+  let root = SVGBackend::new(&output_path, (plot_width, plot_height)).into_drawing_area();
   root.fill(&WHITE)?;
 
   let max_val = f_vals.iter().chain(g_vals.iter()).fold(0.0_f64, |a, &b| a.max(b));
@@ -208,12 +334,17 @@ fn plot_input_functions(
 
   chart.configure_series_labels().draw()?;
   root.present()?;
-  println!("Saved input functions plot to tmp/conv_plots/input_functions.svg");
+  println!("Saved input functions plot to {output_path}");
 
   Ok(())
 }
 
-fn plot_convolution_results(x_grid: &Array1<f64>, actual: &Array1<f64>, expected: &Array1<f64>) -> eyre::Result<()> {
+fn plot_convolution_results(
+  x_grid: &Array1<f64>,
+  actual: &Array1<f64>,
+  expected: &Array1<f64>,
+  output_dir: &str,
+) -> eyre::Result<()> {
   // Plot configuration
   let plot_width = 800;
   let plot_height = 600;
@@ -226,7 +357,8 @@ fn plot_convolution_results(x_grid: &Array1<f64>, actual: &Array1<f64>, expected
   let max_val_margin = 1.1;
   let font_size = 24;
 
-  let root = SVGBackend::new("tmp/conv_plots/convolution_results.svg", (plot_width, plot_height)).into_drawing_area();
+  let output_path = format!("{output_dir}/convolution_results.svg");
+  let root = SVGBackend::new(&output_path, (plot_width, plot_height)).into_drawing_area();
   root.fill(&WHITE)?;
 
   let max_val = actual.iter().chain(expected.iter()).fold(0.0_f64, |a, &b| a.max(b));
@@ -256,12 +388,17 @@ fn plot_convolution_results(x_grid: &Array1<f64>, actual: &Array1<f64>, expected
 
   chart.configure_series_labels().draw()?;
   root.present()?;
-  println!("Saved convolution results plot to tmp/conv_plots/convolution_results.svg");
+  println!("Saved convolution results plot to {output_path}");
 
   Ok(())
 }
 
-fn plot_error_analysis(x_grid: &Array1<f64>, actual: &Array1<f64>, expected: &Array1<f64>) -> eyre::Result<()> {
+fn plot_error_analysis(
+  x_grid: &Array1<f64>,
+  actual: &Array1<f64>,
+  expected: &Array1<f64>,
+  output_dir: &str,
+) -> eyre::Result<()> {
   // Plot configuration
   let plot_width = 800;
   let plot_height = 600;
@@ -273,7 +410,8 @@ fn plot_error_analysis(x_grid: &Array1<f64>, actual: &Array1<f64>, expected: &Ar
   let max_val_margin = 1.1;
   let font_size = 24;
 
-  let root = SVGBackend::new("tmp/conv_plots/error_analysis.svg", (plot_width, plot_height)).into_drawing_area();
+  let output_path = format!("{output_dir}/error_analysis.svg");
+  let root = SVGBackend::new(&output_path, (plot_width, plot_height)).into_drawing_area();
   root.fill(&WHITE)?;
 
   // Calculate absolute error
@@ -307,7 +445,7 @@ fn plot_error_analysis(x_grid: &Array1<f64>, actual: &Array1<f64>, expected: &Ar
 
   chart.configure_series_labels().draw()?;
   root.present()?;
-  println!("Saved error analysis plot to tmp/conv_plots/error_analysis.svg");
+  println!("Saved error analysis plot to {output_path}");
 
   Ok(())
 }
