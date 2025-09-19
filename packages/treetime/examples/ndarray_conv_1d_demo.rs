@@ -100,7 +100,7 @@ fn main() -> eyre::Result<()> {
 
   // Calculate expected properties
   let expected_peak_x = args.mu;
-  let expected_sigma_combined = (args.sigma_f.powi(2) + args.sigma_g.powi(2)).sqrt();
+  let expected_sigma_combined = args.sigma_f.hypot(args.sigma_g);
   let expected_peak_value = 1.0 / (expected_sigma_combined * (2.0 * PI).sqrt());
 
   // Create function properties structure
