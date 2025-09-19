@@ -2,6 +2,7 @@ use crate::make_error;
 use crate::utils::float_fmt::float_to_digits;
 use itertools::{Itertools, izip};
 use ndarray::Array1;
+use ndarray_stats::QuantileExt;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::fmt;
@@ -429,7 +430,7 @@ fn compute_absolute_error_statistics(actual: &Array1<f64>, expected: &Array1<f64
   let abs_errors = errors.mapv(|x| x.abs());
 
   let mean = abs_errors.mean().unwrap_or(0.0);
-  let max = abs_errors.fold(0.0_f64, |acc, &x| acc.max(x));
+  let max = *abs_errors.max().unwrap_or(&0.0);
   let bias = errors.mean().unwrap_or(0.0);
 
   let variance = abs_errors.mapv(|x| (x - mean).powi(2)).mean().unwrap_or(0.0);
@@ -464,7 +465,7 @@ fn compute_relative_error_statistics(actual: &Array1<f64>, expected: &Array1<f64
   }
 
   let mean = rel_errors.iter().sum::<f64>() / rel_errors.len() as f64;
-  let max = rel_errors.iter().fold(0.0_f64, |acc, &x| acc.max(x.abs()));
+  let max = rel_errors.iter().map(|x| x.abs()).fold(0.0_f64, |acc, x| acc.max(x));
   let mape = abs_percentage_errors.iter().sum::<f64>() / abs_percentage_errors.len() as f64;
 
   // Compute median relative error
@@ -576,10 +577,7 @@ fn compute_tolerance_counts(
 fn find_max_error_location(x: &Array1<f64>, actual: &Array1<f64>, expected: &Array1<f64>) -> MaxErrorLocation {
   let abs_errors = (actual - expected).mapv(|x| x.abs());
 
-  let (max_idx, _) = abs_errors
-    .indexed_iter()
-    .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
-    .unwrap_or((0, &0.0));
+  let max_idx = abs_errors.argmax().unwrap_or(0);
 
   MaxErrorLocation {
     idx: max_idx,
@@ -636,10 +634,8 @@ fn compute_relative_l1_norm_error(actual: &Array1<f64>, expected: &Array1<f64>) 
 /// Formula: $\frac{\max_i \left|y_{\text{num}}(x_i) - y_{\text{ref}}(x_i)\right|}{\max_i \left|y_{\text{ref}}(x_i)\right|}$
 /// Worst-case error normalized by maximum reference value
 fn compute_relative_linf_norm_error(actual: &Array1<f64>, expected: &Array1<f64>) -> eyre::Result<f64> {
-  let max_abs_error = (actual - expected)
-    .mapv(|x| x.abs())
-    .fold(0.0_f64, |acc, &x| acc.max(x));
-  let max_expected = expected.mapv(|x| x.abs()).fold(0.0_f64, |acc, &x| acc.max(x));
+  let max_abs_error = *(actual - expected).mapv(|x| x.abs()).max().unwrap_or(&0.0);
+  let max_expected = *expected.mapv(|x| x.abs()).max().unwrap_or(&0.0);
 
   if max_expected.abs() < f64::EPSILON {
     return make_error!("Expected values have zero maximum - cannot compute relative L∞ error");
@@ -727,21 +723,12 @@ fn compute_quantile_error(actual: &Array1<f64>, expected: &Array1<f64>, quantile
 /// - Peak location error: $\left|x_{\operatorname{argmax}(y_{\text{num}})} - x_{\operatorname{argmax}(y_{\text{ref}})}\right|$
 fn compute_peak_metrics(x: &Array1<f64>, actual: &Array1<f64>, expected: &Array1<f64>) -> eyre::Result<PeakMetrics> {
   // Find peak values
-  let actual_peak = actual.fold(actual[0], |acc, &val| acc.max(val));
-  let expected_peak = expected.fold(expected[0], |acc, &val| acc.max(val));
+  let actual_peak = *actual.max().unwrap_or(&0.0);
+  let expected_peak = *expected.max().unwrap_or(&0.0);
 
   // Find peak locations
-  let actual_peak_idx = actual
-    .indexed_iter()
-    .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
-    .map(|(idx, _)| idx)
-    .unwrap_or(0);
-
-  let expected_peak_idx = expected
-    .indexed_iter()
-    .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
-    .map(|(idx, _)| idx)
-    .unwrap_or(0);
+  let actual_peak_idx = actual.argmax().unwrap_or(0);
+  let expected_peak_idx = expected.argmax().unwrap_or(0);
 
   // Compute peak value error
   if expected_peak.abs() < f64::EPSILON {
