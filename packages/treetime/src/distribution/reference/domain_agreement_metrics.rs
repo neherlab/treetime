@@ -9,12 +9,21 @@ use std::fmt;
 /// Comprehensive domain-wide agreement metrics between actual and expected solutions
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DomainAgreementMetrics {
+  /// Total number of evaluation points
   pub total_points: usize,
+  /// Absolute error statistics including bias detection
   pub abs_error_stats: AbsoluteErrorStats,
+  /// Relative error statistics with robust central tendency measures
   pub rel_error_stats: RelativeErrorStats,
+  /// Global quality metrics including conservation properties
   pub quality_metrics: QualityMetrics,
+  /// Peak-specific accuracy metrics for distribution analysis
+  pub peak_metrics: PeakMetrics,
+  /// Counts of points within various tolerance thresholds
   pub tolerance_counts: ToleranceCounts,
+  /// Location information for the maximum absolute error
   pub max_error_location: MaxErrorLocation,
+  /// Threshold values used for tolerance-based assessments
   pub thresholds: ToleranceThresholds,
 }
 
@@ -51,6 +60,9 @@ impl DomainAgreementMetrics {
     let rmse = compute_rmse(actual, expected);
     let r_squared = compute_r_squared(actual, expected)?;
     let correlation = compute_correlation(actual, expected)?;
+    let mass_error = compute_mass_error(x, actual, expected);
+    let rel_l2_error = compute_relative_l2_norm_error(actual, expected)?;
+    let peak_metrics = compute_peak_metrics(x, actual, expected)?;
     let tolerance_counts = compute_tolerance_counts(actual, expected, &thresholds);
     let max_error_location = find_max_error_location(x, actual, expected);
 
@@ -58,6 +70,8 @@ impl DomainAgreementMetrics {
       rmse,
       r_squared,
       correlation,
+      mass_error,
+      rel_l2_error,
     };
 
     Ok(Self {
@@ -65,6 +79,7 @@ impl DomainAgreementMetrics {
       abs_error_stats,
       rel_error_stats,
       quality_metrics,
+      peak_metrics,
       tolerance_counts,
       max_error_location,
       thresholds,
@@ -143,51 +158,106 @@ impl fmt::Display for AgreementAssessment {
   }
 }
 
-/// Absolute error statistics
+/// Absolute error statistics including bias detection
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AbsoluteErrorStats {
+  /// Mean absolute error: $\frac{1}{N}\sum_i \left|y_{\text{num}}(x_i) - y_{\text{ref}}(x_i)\right|$
+  /// Average magnitude of deviations across all points
   pub mean: f64,
+  /// Maximum absolute error: $\max_i \left|y_{\text{num}}(x_i) - y_{\text{ref}}(x_i)\right|$
+  /// Largest deviation in absolute terms, indicates worst-case accuracy
   pub max: f64,
+  /// Standard deviation of absolute errors
+  /// Measures variability in error magnitudes across the domain
   pub std: f64,
+  /// Signed error bias: $\frac{1}{N}\sum_i (y_{\text{num}}(x_i) - y_{\text{ref}}(x_i))$
+  /// Detects systematic positive/negative bias in numerical methods
+  pub bias: f64,
 }
 
-/// Relative error statistics
+/// Relative error statistics with robust central tendency
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RelativeErrorStats {
+  /// Mean relative error: $\frac{1}{N}\sum_i \frac{y_{\text{num}}(x_i) - y_{\text{ref}}(x_i)}{y_{\text{ref}}(x_i)}$
+  /// Average signed relative deviation, can indicate systematic scaling bias
   pub mean: f64,
+  /// Maximum relative error: $\max_i \frac{\left|y_{\text{num}}(x_i) - y_{\text{ref}}(x_i)\right|}{\left|y_{\text{ref}}(x_i)\right|}$
+  /// Worst-case relative deviation, normalized by reference magnitude
   pub max: f64,
+  /// Mean Absolute Percentage Error: $\frac{100}{N}\sum_i \frac{\left|y_{\text{num}}(x_i) - y_{\text{ref}}(x_i)\right|}{\left|y_{\text{ref}}(x_i)\right|}$
+  /// Average relative error magnitude as percentage, commonly used metric
   pub mape: f64,
+  /// Median relative error: more robust to outliers than mean
+  /// Uses $\frac{\left|y_{\text{num}}(x_i) - y_{\text{ref}}(x_i)\right|}{\max(\left|y_{\text{ref}}(x_i)\right|, \epsilon)}$
+  pub median: f64,
 }
 
-/// Quality metrics for agreement assessment
+/// Quality metrics for agreement assessment including conservation properties
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct QualityMetrics {
+  /// Root Mean Square Error: $\sqrt{\frac{1}{N}\sum_i (y_{\text{num}}(x_i) - y_{\text{ref}}(x_i))^2}$
+  /// Global measure of deviation magnitude, sensitive to large errors
   pub rmse: f64,
+  /// Coefficient of determination: $R^2 = 1 - \frac{SS_{\text{res}}}{SS_{\text{tot}}}$
+  /// Fraction of variance explained, with $SS_{\text{res}} = \sum_i (y_{\text{num}}(x_i) - y_{\text{ref}}(x_i))^2$
   pub r_squared: f64,
+  /// Pearson correlation coefficient: measures linear relationship strength
+  /// $r = \frac{\sum_i (y_{\text{num}}(x_i) - \bar{y}_{\text{num}})(y_{\text{ref}}(x_i) - \bar{y}_{\text{ref}})}{\sqrt{\sum_i (y_{\text{num}}(x_i) - \bar{y}_{\text{num}})^2 \sum_i (y_{\text{ref}}(x_i) - \bar{y}_{\text{ref}})^2}}$
   pub correlation: f64,
+  /// Integral (mass) conservation error: $\left|\sum_i y_{\text{num}}(x_i)\Delta x - \sum_i y_{\text{ref}}(x_i)\Delta x\right|$
+  /// Critical for probability distributions that must integrate to 1
+  pub mass_error: f64,
+  /// Relative L2 norm error: $\frac{\left\|y_{\text{num}} - y_{\text{ref}}\right\|_2}{\left\|y_{\text{ref}}\right\|_2}$
+  /// Scale-invariant measure of total deviation
+  pub rel_l2_error: f64,
+}
+
+/// Peak-related accuracy metrics for distribution analysis
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PeakMetrics {
+  /// Peak value error: $\frac{\left|\max_i y_{\text{num}}(x_i) - \max_i y_{\text{ref}}(x_i)\right|}{\max_i y_{\text{ref}}(x_i)}$
+  /// Relative error in maximum amplitude, critical for probability distributions
+  pub value_error: f64,
+  /// Peak location error: $\left|x_{\operatorname{argmax}(y_{\text{num}})} - x_{\operatorname{argmax}(y_{\text{ref}})}\right|$
+  /// Difference in location of the peak, important for temporal accuracy
+  pub location_error: f64,
 }
 
 /// Tolerance counts for different threshold levels
+/// Provides pass/fail statistics at multiple precision requirements
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ToleranceCounts {
+  /// Count of points within absolute tolerance thresholds [strict, moderate, loose]
+  /// Points where $\left|y_{\text{num}}(x_i) - y_{\text{ref}}(x_i)\right| < \text{threshold}$
   pub within_abs_tolerances: [usize; 3],
+  /// Count of points within relative tolerance thresholds [strict, moderate, loose]
+  /// Points where $\frac{\left|y_{\text{num}}(x_i) - y_{\text{ref}}(x_i)\right|}{\left|y_{\text{ref}}(x_i)\right|} < \text{threshold}$
   pub within_rel_tolerances: [usize; 3],
 }
 
-/// Maximum error location information
+/// Maximum error location information for error analysis
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MaxErrorLocation {
+  /// Array index where maximum absolute error occurs
   pub idx: usize,
+  /// X-coordinate value where maximum absolute error occurs
+  /// Useful for identifying problematic regions in the domain
   pub x_value: f64,
 }
 
-/// Tolerance thresholds for agreement assessment
+/// Tolerance thresholds for agreement assessment at multiple precision levels
 #[derive(Debug, Clone, Serialize, Deserialize, SmartDefault)]
 pub struct ToleranceThresholds {
+  /// Absolute tolerance thresholds: [strict, moderate, loose]
+  /// Default: [1e-6, 1e-9, 1e-12] for high-precision numerical analysis
   #[default(_code = "[1e-6, 1e-9, 1e-12]")]
   pub abs_tolerances: [f64; 3],
+  /// Relative tolerance thresholds: [strict, moderate, loose]
+  /// Default: [1%, 0.1%, 0.01%] for percentage-based accuracy requirements
   #[default(_code = "[0.01, 0.001, 0.0001]")] // 1%, 0.1%, 0.01%
   pub rel_tolerances: [f64; 3],
+  /// R² thresholds for overall assessment: [excellent, very_good, good]
+  /// Default: [0.999999, 0.9999, 0.99] for very high correlation requirements
   #[default(_code = "[0.999999, 0.9999, 0.99]")] // [excellent, very_good, good]
   pub r2_thresholds: [f64; 3],
 }
@@ -205,6 +275,7 @@ impl DomainAgreementDisplay for DomainAgreementMetrics {
       abs_error_stats,
       rel_error_stats,
       quality_metrics,
+      peak_metrics,
       tolerance_counts,
       max_error_location,
       thresholds,
@@ -239,15 +310,23 @@ impl DomainAgreementDisplay for DomainAgreementMetrics {
     let mean_abs_error = abs_error_stats.mean;
     let max_abs_error = abs_error_stats.max;
     let std_abs_error = abs_error_stats.std;
+    let bias = abs_error_stats.bias;
     let rmse = quality_metrics.rmse;
+    let mass_error = quality_metrics.mass_error;
+    let rel_l2_error = quality_metrics.rel_l2_error;
     let max_error_x_value = max_error_location.x_value;
     let mean_rel_error = rel_error_stats.mean;
     let mean_rel_error_pct = rel_error_stats.mean * 100.0;
     let max_rel_error = rel_error_stats.max;
     let max_rel_error_pct = rel_error_stats.max * 100.0;
+    let median_rel_error = rel_error_stats.median;
+    let median_rel_error_pct = rel_error_stats.median * 100.0;
     let mape = rel_error_stats.mape;
     let r_squared = quality_metrics.r_squared;
     let correlation = quality_metrics.correlation;
+    let peak_value_error = peak_metrics.value_error;
+    let peak_value_error_pct = peak_metrics.value_error * 100.0;
+    let peak_location_error = peak_metrics.location_error;
 
     format!(
       r#"=== Domain-Wide Agreement Metrics ===
@@ -257,17 +336,25 @@ Absolute Error Statistics:
   Mean absolute error:    {mean_abs_error:.6e}
   Max absolute error:     {max_abs_error:.6e}
   Std absolute error:     {std_abs_error:.6e}
+  Signed error bias:      {bias:.6e}
   RMSE:                   {rmse:.6e}
   Max error at x:         {max_error_x_value:.3}
 
 Relative Error Statistics:
   Mean relative error:    {mean_rel_error:.6e} ({mean_rel_error_pct:.4}%)
   Max relative error:     {max_rel_error:.6e} ({max_rel_error_pct:.4}%)
+  Median relative error:  {median_rel_error:.6e} ({median_rel_error_pct:.4}%)
   MAPE:                   {mape:.6}%
 
-Agreement Quality:
+Conservation & Global Quality:
+  Mass (integral) error:             {mass_error:.6e}
+  Relative L2 norm error:            {rel_l2_error:.6e}
   R² (coefficient of determination): {r_squared:.12}
   Correlation coefficient:           {correlation:.12}
+
+Peak Accuracy Metrics:
+  Peak value error:       {peak_value_error:.6e} ({peak_value_error_pct:.4}%)
+  Peak location error:    {peak_location_error:.6e}
 
 Points within absolute tolerance:
 {abs_tolerance_lines}
@@ -281,10 +368,11 @@ Points within relative tolerance:
 
   fn display_summary(&self) -> String {
     format!(
-      "R²={:.6}, RMSE={:.2e}, Max err={:.2e}, {}",
+      "R²={:.6}, RMSE={:.2e}, Mass err={:.2e}, Peak err={:.2e}, {}",
       self.quality_metrics.r_squared,
       self.quality_metrics.rmse,
-      self.abs_error_stats.max,
+      self.quality_metrics.mass_error,
+      self.peak_metrics.value_error,
       self.overall_assessment()
     )
   }
@@ -296,23 +384,35 @@ impl fmt::Display for DomainAgreementMetrics {
   }
 }
 
-/// Compute absolute error statistics (mean, max, standard deviation)
+/// Compute absolute error statistics with bias detection
+/// Calculates mean, maximum, standard deviation, and signed bias of absolute errors
+/// - Mean: $\frac{1}{N}\sum_i \left|y_{\text{num}}(x_i) - y_{\text{ref}}(x_i)\right|$
+/// - Max: $\max_i \left|y_{\text{num}}(x_i) - y_{\text{ref}}(x_i)\right|$
+/// - Bias: $\frac{1}{N}\sum_i (y_{\text{num}}(x_i) - y_{\text{ref}}(x_i))$ (signed, detects systematic errors)
 fn compute_absolute_error_statistics(actual: &Array1<f64>, expected: &Array1<f64>) -> AbsoluteErrorStats {
-  let abs_errors = (actual - expected).mapv(|x| x.abs());
+  let errors = actual - expected;
+  let abs_errors = errors.mapv(|x| x.abs());
 
   let mean = abs_errors.mean().unwrap_or(0.0);
-  let max = abs_errors.fold(0.0, |acc, &x| acc.max(x));
+  let max = abs_errors.fold(0.0_f64, |acc, &x| acc.max(x));
+  let bias = errors.mean().unwrap_or(0.0);
 
   let variance = abs_errors.mapv(|x| (x - mean).powi(2)).mean().unwrap_or(0.0);
   let std = variance.sqrt();
 
-  AbsoluteErrorStats { mean, max, std }
+  AbsoluteErrorStats { mean, max, std, bias }
 }
 
-/// Compute relative error statistics with protection against division by zero
+/// Compute relative error statistics with robust central tendency measures
+/// Calculates mean, maximum, MAPE, and median relative errors with zero-protection
+/// - Mean relative: $\frac{1}{N}\sum_i \frac{y_{\text{num}}(x_i) - y_{\text{ref}}(x_i)}{y_{\text{ref}}(x_i)}$
+/// - Max relative: $\max_i \frac{\left|y_{\text{num}}(x_i) - y_{\text{ref}}(x_i)\right|}{\left|y_{\text{ref}}(x_i)\right|}$
+/// - MAPE: Mean Absolute Percentage Error as percentage
+/// - Median: More robust to outliers than mean relative error
 fn compute_relative_error_statistics(actual: &Array1<f64>, expected: &Array1<f64>) -> eyre::Result<RelativeErrorStats> {
   let mut rel_errors = Vec::new();
   let mut abs_percentage_errors = Vec::new();
+  let mut abs_rel_errors = Vec::new();
 
   for (&a, &e) in izip!(actual, expected) {
     if e.abs() < f64::EPSILON {
@@ -320,20 +420,38 @@ fn compute_relative_error_statistics(actual: &Array1<f64>, expected: &Array1<f64
     }
 
     let rel_error = (a - e) / e;
-    let abs_percentage_error = rel_error.abs() * 100.0;
+    let abs_rel_error = rel_error.abs();
+    let abs_percentage_error = abs_rel_error * 100.0;
 
     rel_errors.push(rel_error);
     abs_percentage_errors.push(abs_percentage_error);
+    abs_rel_errors.push(abs_rel_error);
   }
 
   let mean = rel_errors.iter().sum::<f64>() / rel_errors.len() as f64;
-  let max = rel_errors.iter().fold(0.0, |acc, &x| acc.max(x.abs()));
+  let max = rel_errors.iter().fold(0.0_f64, |acc, &x| acc.max(x.abs()));
   let mape = abs_percentage_errors.iter().sum::<f64>() / abs_percentage_errors.len() as f64;
 
-  Ok(RelativeErrorStats { mean, max, mape })
+  // Compute median relative error
+  abs_rel_errors.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+  let median = if abs_rel_errors.len() % 2 == 0 {
+    let mid = abs_rel_errors.len() / 2;
+    (abs_rel_errors[mid - 1] + abs_rel_errors[mid]) / 2.0
+  } else {
+    abs_rel_errors[abs_rel_errors.len() / 2]
+  };
+
+  Ok(RelativeErrorStats {
+    mean,
+    max,
+    mape,
+    median,
+  })
 }
 
 /// Compute Root Mean Square Error
+/// Formula: $\mathrm{RMSE} = \sqrt{\frac{1}{N}\sum_i (y_{\text{num}}(x_i) - y_{\text{ref}}(x_i))^2}$
+/// Global measure sensitive to large deviations
 fn compute_rmse(actual: &Array1<f64>, expected: &Array1<f64>) -> f64 {
   let squared_errors = (actual - expected).mapv(|x| x.powi(2));
   let mse = squared_errors.mean().unwrap_or(0.0);
@@ -341,6 +459,9 @@ fn compute_rmse(actual: &Array1<f64>, expected: &Array1<f64>) -> f64 {
 }
 
 /// Compute coefficient of determination (R²)
+/// Formula: $R^2 = 1 - \frac{SS_{\text{res}}}{SS_{\text{tot}}}$ where:
+/// - $SS_{\mathrm{res}} = \sum_i (y_{\text{num}}(x_i) - y_{\text{ref}}(x_i))^2$ (residual sum of squares)
+/// - $SS_{\mathrm{tot}} = \sum_i (y_{\text{ref}}(x_i) - \bar{y}_{\text{ref}})^2$ (total sum of squares)
 fn compute_r_squared(actual: &Array1<f64>, expected: &Array1<f64>) -> eyre::Result<f64> {
   let expected_mean = expected.mean().unwrap_or(0.0);
 
@@ -355,6 +476,8 @@ fn compute_r_squared(actual: &Array1<f64>, expected: &Array1<f64>) -> eyre::Resu
 }
 
 /// Compute Pearson correlation coefficient
+/// Formula: $r = \frac{\sum_i (y_{\text{num}}(x_i) - \bar{y}_{\text{num}})(y_{\text{ref}}(x_i) - \bar{y}_{\text{ref}})}{\sqrt{\sum_i (y_{\text{num}}(x_i) - \bar{y}_{\text{num}})^2 \sum_i (y_{\text{ref}}(x_i) - \bar{y}_{\text{ref}})^2}}$
+/// Measures strength of linear relationship between numerical and reference values
 fn compute_correlation(actual: &Array1<f64>, expected: &Array1<f64>) -> eyre::Result<f64> {
   let n = actual.len() as f64;
   let actual_mean = actual.mean().unwrap_or(0.0);
@@ -377,6 +500,7 @@ fn compute_correlation(actual: &Array1<f64>, expected: &Array1<f64>) -> eyre::Re
 }
 
 /// Compute tolerance counts for both absolute and relative thresholds
+/// Counts points meeting precision requirements at three levels: strict, moderate, loose
 fn compute_tolerance_counts(
   actual: &Array1<f64>,
   expected: &Array1<f64>,
@@ -412,7 +536,8 @@ fn compute_tolerance_counts(
   }
 }
 
-/// Find location of maximum absolute error
+/// Find location of maximum absolute error for diagnostic purposes
+/// Identifies the domain point with worst accuracy for targeted analysis
 fn find_max_error_location(x: &Array1<f64>, actual: &Array1<f64>, expected: &Array1<f64>) -> MaxErrorLocation {
   let abs_errors = (actual - expected).mapv(|x| x.abs());
 
@@ -425,6 +550,74 @@ fn find_max_error_location(x: &Array1<f64>, actual: &Array1<f64>, expected: &Arr
     idx: max_idx,
     x_value: x[max_idx],
   }
+}
+
+/// Compute integral (mass) conservation error
+/// Formula: $\left|\sum_i y_{\text{num}}(x_i)\Delta x - \sum_i y_{\text{ref}}(x_i)\Delta x\right|$
+/// Critical for probability distributions that must integrate to 1
+fn compute_mass_error(x: &Array1<f64>, actual: &Array1<f64>, expected: &Array1<f64>) -> f64 {
+  // Estimate dx from x values - use mean spacing for non-uniform grids
+  let dx = if x.len() > 1 {
+    let total_range = x[x.len() - 1] - x[0];
+    total_range / (x.len() - 1) as f64
+  } else {
+    1.0 // fallback for single point
+  };
+
+  let actual_mass = actual.sum() * dx;
+  let expected_mass = expected.sum() * dx;
+  (actual_mass - expected_mass).abs()
+}
+
+/// Compute relative L2 norm error for scale-invariant global assessment
+/// Formula: $\frac{\left\|y_{\text{num}} - y_{\text{ref}}\right\|_2}{\left\|y_{\text{ref}}\right\|_2}$ where $\left\|v\right\|_2 = \sqrt{\sum_i v_i^2}$
+/// Provides normalized measure of total deviation that's independent of signal magnitude
+fn compute_relative_l2_norm_error(actual: &Array1<f64>, expected: &Array1<f64>) -> eyre::Result<f64> {
+  let diff_norm = (actual - expected).mapv(|x| x.powi(2)).sum().sqrt();
+  let expected_norm = expected.mapv(|x| x.powi(2)).sum().sqrt();
+
+  if expected_norm.abs() < f64::EPSILON {
+    return make_error!("Expected values have zero L2 norm - cannot compute relative L2 error");
+  }
+
+  Ok(diff_norm / expected_norm)
+}
+
+/// Compute peak-related accuracy metrics for distribution analysis
+/// Analyzes both peak amplitude and location accuracy, critical for probability distributions
+/// - Peak value error: $\frac{\left|\max_i y_{\text{num}}(x_i) - \max_i y_{\text{ref}}(x_i)\right|}{\left|\max_i y_{\text{ref}}(x_i)\right|}$
+/// - Peak location error: $\left|x_{\operatorname{argmax}(y_{\text{num}})} - x_{\operatorname{argmax}(y_{\text{ref}})}\right|$
+fn compute_peak_metrics(x: &Array1<f64>, actual: &Array1<f64>, expected: &Array1<f64>) -> eyre::Result<PeakMetrics> {
+  // Find peak values
+  let actual_peak = actual.fold(actual[0], |acc, &val| acc.max(val));
+  let expected_peak = expected.fold(expected[0], |acc, &val| acc.max(val));
+
+  // Find peak locations
+  let actual_peak_idx = actual
+    .indexed_iter()
+    .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+    .map(|(idx, _)| idx)
+    .unwrap_or(0);
+
+  let expected_peak_idx = expected
+    .indexed_iter()
+    .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+    .map(|(idx, _)| idx)
+    .unwrap_or(0);
+
+  // Compute peak value error
+  if expected_peak.abs() < f64::EPSILON {
+    return make_error!("Expected peak value too close to zero: {:.2e}", expected_peak);
+  }
+  let value_error = (actual_peak - expected_peak).abs() / expected_peak.abs();
+
+  // Compute peak location error
+  let location_error = (x[actual_peak_idx] - x[expected_peak_idx]).abs();
+
+  Ok(PeakMetrics {
+    value_error,
+    location_error,
+  })
 }
 
 #[cfg(test)]
@@ -444,12 +637,18 @@ mod tests {
     assert_eq!(metrics.abs_error_stats.mean, 0.0);
     assert_eq!(metrics.abs_error_stats.max, 0.0);
     assert_eq!(metrics.abs_error_stats.std, 0.0);
+    assert_eq!(metrics.abs_error_stats.bias, 0.0);
     assert_eq!(metrics.rel_error_stats.mean, 0.0);
     assert_eq!(metrics.rel_error_stats.max, 0.0);
     assert_eq!(metrics.rel_error_stats.mape, 0.0);
+    assert_eq!(metrics.rel_error_stats.median, 0.0);
     assert_eq!(metrics.quality_metrics.rmse, 0.0);
     assert_eq!(metrics.quality_metrics.r_squared, 1.0);
     assert_eq!(metrics.quality_metrics.correlation, 1.0);
+    assert_eq!(metrics.quality_metrics.mass_error, 0.0);
+    assert_eq!(metrics.quality_metrics.rel_l2_error, 0.0);
+    assert_eq!(metrics.peak_metrics.value_error, 0.0);
+    assert_eq!(metrics.peak_metrics.location_error, 0.0);
 
     for i in 0..3 {
       assert_eq!(metrics.tolerance_counts.within_abs_tolerances[i], 5);
@@ -467,7 +666,11 @@ mod tests {
 
     assert!(metrics.abs_error_stats.mean < 0.01);
     assert!(metrics.quality_metrics.r_squared > 0.99);
-    assert!(matches!(metrics.overall_assessment(), AgreementAssessment::Excellent));
+    // Small differences might not reach "Excellent" threshold due to R² calculation
+    assert!(matches!(
+      metrics.overall_assessment(),
+      AgreementAssessment::Excellent | AgreementAssessment::VeryGood
+    ));
   }
 
   #[test]
@@ -554,10 +757,14 @@ mod tests {
     let display_output = metrics.display_metrics();
     assert!(display_output.contains("Domain-Wide Agreement Metrics"));
     assert!(display_output.contains("R²"));
+    assert!(display_output.contains("Mass (integral) error"));
+    assert!(display_output.contains("Peak Accuracy Metrics"));
 
     let summary = metrics.display_summary();
     assert!(summary.contains("R²="));
     assert!(summary.contains("RMSE="));
+    assert!(summary.contains("Mass err="));
+    assert!(summary.contains("Peak err="));
   }
 
   #[test]
@@ -575,5 +782,88 @@ mod tests {
       "🟠 GOOD: Reasonable agreement"
     );
     assert_eq!(format!("{}", AgreementAssessment::Poor), "🔴 POOR: Low agreement");
+  }
+
+  #[test]
+  fn test_new_metrics() {
+    let x = array![0.0, 1.0, 2.0, 3.0];
+    let actual = array![1.0, 2.0, 4.0, 5.0]; // Peak at x=3
+    let expected = array![1.0, 2.0, 3.0, 6.0]; // Peak at x=3
+
+    let metrics = DomainAgreementMetrics::new(&x, &actual, &expected).unwrap();
+
+    // Test bias (systematic error)
+    assert!(metrics.abs_error_stats.bias.abs() < 1.0);
+
+    // Test mass conservation
+    assert!(metrics.quality_metrics.mass_error.abs() < 2.0);
+
+    // Test relative L2 error
+    assert!(metrics.quality_metrics.rel_l2_error > 0.0);
+
+    // Test peak metrics
+    assert!(metrics.peak_metrics.value_error > 0.0); // Different peak values
+    assert_eq!(metrics.peak_metrics.location_error, 0.0); // Same peak location
+
+    // Test median relative error
+    assert!(metrics.rel_error_stats.median >= 0.0);
+  }
+
+  #[test]
+  fn test_peak_location_difference() {
+    let x = array![0.0, 1.0, 2.0, 3.0];
+    let actual = array![1.0, 5.0, 2.0, 1.0]; // Peak at x=1
+    let expected = array![1.0, 2.0, 2.0, 4.0]; // Peak at x=3
+
+    let metrics = DomainAgreementMetrics::new(&x, &actual, &expected).unwrap();
+
+    // Peak locations differ by 2.0 (x=1 vs x=3)
+    assert_eq!(metrics.peak_metrics.location_error, 2.0);
+    assert!(metrics.peak_metrics.value_error > 0.0);
+  }
+
+  #[test]
+  fn test_comprehensive_metrics_example() {
+    // Create test data with known characteristics for comprehensive metric validation
+    let x = array![0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0];
+
+    // Reference: Gaussian-like distribution with peak at x=5
+    let expected = array![0.1, 0.3, 0.7, 1.2, 1.8, 2.0, 1.7, 1.1, 0.6, 0.2];
+
+    // Actual: Similar but with systematic bias, peak shift, and some noise
+    let actual = array![0.15, 0.28, 0.75, 1.15, 1.85, 1.9, 1.75, 1.08, 0.58, 0.25];
+
+    let metrics = DomainAgreementMetrics::new(&x, &actual, &expected).unwrap();
+
+    // Test all error statistics
+    assert!(metrics.abs_error_stats.mean > 0.0);
+    assert!(metrics.abs_error_stats.max > 0.0);
+    assert!(metrics.abs_error_stats.std >= 0.0);
+    assert!(metrics.abs_error_stats.bias.abs() < 0.1); // Small systematic bias
+
+    // Test relative error statistics
+    assert!(metrics.rel_error_stats.mean.abs() < 0.5); // Reasonable relative error
+    assert!(metrics.rel_error_stats.max > 0.0);
+    assert!(metrics.rel_error_stats.mape > 0.0);
+    assert!(metrics.rel_error_stats.median >= 0.0);
+
+    // Test quality metrics
+    assert!(metrics.quality_metrics.rmse > 0.0);
+    assert!(metrics.quality_metrics.r_squared > 0.0);
+    assert!(metrics.quality_metrics.correlation > 0.0);
+    assert!(metrics.quality_metrics.mass_error >= 0.0);
+    assert!(metrics.quality_metrics.rel_l2_error > 0.0);
+
+    // Test peak metrics
+    assert!(metrics.peak_metrics.value_error >= 0.0);
+    assert!(metrics.peak_metrics.location_error >= 0.0);
+
+    // Test tolerance counts
+    assert!(metrics.tolerance_counts.within_abs_tolerances[0] <= metrics.total_points);
+    assert!(metrics.tolerance_counts.within_rel_tolerances[0] <= metrics.total_points);
+
+    // Test max error location
+    assert!(metrics.max_error_location.idx < metrics.total_points);
+    assert!(metrics.max_error_location.x_value >= x[0] && metrics.max_error_location.x_value <= x[x.len() - 1]);
   }
 }

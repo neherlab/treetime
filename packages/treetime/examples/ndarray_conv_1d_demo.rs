@@ -91,7 +91,10 @@ fn main() -> eyre::Result<()> {
 
   // Compare values around peak
   println!("\nComparison around peak (μ = {mu}):");
-  println!("{:>8} {:>12} {:>12} {:>12} {:>10}", "x", "Actual", "Expected", "Difference", "Rel Error");
+  println!(
+    "{:>8} {:>12} {:>12} {:>12} {:>10}",
+    "x", "Actual", "Expected", "Difference", "Rel Error"
+  );
   println!("{}", "-".repeat(66));
 
   // Find peak region on x_grid
@@ -108,7 +111,11 @@ fn main() -> eyre::Result<()> {
     let actual_val = actual[i];
     let expected_val = expected[i];
     let diff = (actual_val - expected_val).abs();
-    let rel_err = if expected_val != 0.0 { diff / expected_val * 100.0 } else { 0.0 };
+    let rel_err = if expected_val != 0.0 {
+      diff / expected_val * 100.0
+    } else {
+      0.0
+    };
     let diff_str = if diff < 1e-12 {
       if diff == 0.0 {
         "0".to_string()
@@ -118,7 +125,7 @@ fn main() -> eyre::Result<()> {
     } else {
       float_to_digits(diff, Some(3), None)
     };
-    
+
     let rel_err_str = if rel_err < 1e-6 {
       if rel_err == 0.0 {
         "0".to_string()
@@ -128,7 +135,7 @@ fn main() -> eyre::Result<()> {
     } else {
       float_to_digits(rel_err, Some(3), Some(2))
     };
-    
+
     println!(
       "{:>8} {:>12} {:>12} {:>12} {:>9}%",
       float_to_digits(x_val, Some(3), Some(2)),
@@ -206,11 +213,7 @@ fn plot_input_functions(
   Ok(())
 }
 
-fn plot_convolution_results(
-  x_grid: &Array1<f64>,
-  actual: &Array1<f64>,
-  expected: &Array1<f64>,
-) -> eyre::Result<()> {
+fn plot_convolution_results(x_grid: &Array1<f64>, actual: &Array1<f64>, expected: &Array1<f64>) -> eyre::Result<()> {
   // Plot configuration
   let plot_width = 800;
   let plot_height = 600;
@@ -226,10 +229,7 @@ fn plot_convolution_results(
   let root = SVGBackend::new("tmp/conv_plots/convolution_results.svg", (plot_width, plot_height)).into_drawing_area();
   root.fill(&WHITE)?;
 
-  let max_val = actual
-    .iter()
-    .chain(expected.iter())
-    .fold(0.0_f64, |a, &b| a.max(b));
+  let max_val = actual.iter().chain(expected.iter()).fold(0.0_f64, |a, &b| a.max(b));
 
   let mut chart = ChartBuilder::on(&root)
     .caption("Convolution Results: (f * g)(x)", ("Arial", font_size))
@@ -295,7 +295,11 @@ fn plot_error_analysis(x_grid: &Array1<f64>, actual: &Array1<f64>, expected: &Ar
   chart.configure_mesh().draw()?;
 
   // Plot error
-  let error_data: Vec<(f64, f64)> = x_grid.iter().zip(absolute_errors.iter()).map(|(&x, y)| (x, *y)).collect();
+  let error_data: Vec<(f64, f64)> = x_grid
+    .iter()
+    .zip(absolute_errors.iter())
+    .map(|(&x, y)| (x, *y))
+    .collect();
   chart
     .draw_series(LineSeries::new(error_data, GREEN.stroke_width(line_width)))?
     .label("Absolute Error")
