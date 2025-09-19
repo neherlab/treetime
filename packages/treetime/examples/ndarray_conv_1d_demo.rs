@@ -2,7 +2,7 @@ use ndarray::Array1;
 use ndarray_conv::{ConvExt, ConvMode, PaddingMode};
 use plotters::prelude::*;
 use std::f64::consts::PI;
-use treetime::distribution::reference::domain_agreement_metrics::{DomainAgreementDisplay, DomainAgreementMetrics};
+use treetime::distribution::reference::domain_agreement_metrics::DomainAgreementMetrics;
 use treetime::utils::float_fmt::float_to_digits;
 
 fn main() -> eyre::Result<()> {
@@ -155,7 +155,7 @@ fn compute_domain_agreement_metrics(
   expected: &Array1<f64>,
 ) -> eyre::Result<()> {
   let metrics = DomainAgreementMetrics::new(x_grid, actual, expected)?;
-  println!("\n{}", metrics.display_metrics());
+  println!("\n{}", metrics);
   Ok(())
 }
 

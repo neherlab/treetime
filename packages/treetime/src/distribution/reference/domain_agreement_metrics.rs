@@ -20,12 +20,14 @@ pub struct DomainAgreementMetrics {
   pub quality_metrics: QualityMetrics,
   /// Peak-specific accuracy metrics for distribution analysis
   pub peak_metrics: PeakMetrics,
-  /// Counts of points within various tolerance thresholds
-  pub tolerance_counts: ToleranceCounts,
   /// Location information for the maximum absolute error
   pub max_error_location: MaxErrorLocation,
-  /// Threshold values used for tolerance-based assessments
-  pub thresholds: ToleranceThresholds,
+  /// Fractions of points within absolute tolerance thresholds [0.0, 1.0]
+  pub abs_tolerance_fractions: [f64; 3],
+  /// Fractions of points within relative tolerance thresholds [0.0, 1.0]
+  pub rel_tolerance_fractions: [f64; 3],
+  /// Overall assessment based on R² value
+  pub overall_assessment: AgreementAssessment,
 }
 
 impl DomainAgreementMetrics {
@@ -85,72 +87,60 @@ impl DomainAgreementMetrics {
       quantile_95_error,
     };
 
+    let tolerance_counts = compute_tolerance_counts(actual, expected, &thresholds);
+    let max_error_location = find_max_error_location(x, actual, expected);
+
+    let overall_assessment = compute_overall_assessment(quality_metrics.r_squared, &thresholds.r2_thresholds);
+
+    let abs_tolerance_fractions = [
+      tolerance_counts.within_abs_tolerances[0] as f64 / total_points as f64,
+      tolerance_counts.within_abs_tolerances[1] as f64 / total_points as f64,
+      tolerance_counts.within_abs_tolerances[2] as f64 / total_points as f64,
+    ];
+
+    let rel_tolerance_fractions = [
+      tolerance_counts.within_rel_tolerances[0] as f64 / total_points as f64,
+      tolerance_counts.within_rel_tolerances[1] as f64 / total_points as f64,
+      tolerance_counts.within_rel_tolerances[2] as f64 / total_points as f64,
+    ];
+
     Ok(Self {
       total_points,
       abs_error_stats,
       rel_error_stats,
       quality_metrics,
       peak_metrics,
-      tolerance_counts,
       max_error_location,
-      thresholds,
+      abs_tolerance_fractions,
+      rel_tolerance_fractions,
+      overall_assessment,
     })
   }
 
-  /// Provides overall assessment based on R² value
+  /// Returns the precomputed overall assessment based on R² value
   pub fn overall_assessment(&self) -> AgreementAssessment {
-    let r2 = self.quality_metrics.r_squared;
-    let thresholds = &self.thresholds.r2_thresholds;
-
-    if r2 >= thresholds[0] {
-      AgreementAssessment::Excellent
-    } else if r2 >= thresholds[1] {
-      AgreementAssessment::VeryGood
-    } else if r2 >= thresholds[2] {
-      AgreementAssessment::Good
-    } else {
-      AgreementAssessment::Poor
-    }
+    self.overall_assessment
   }
 
-  /// Returns percentage of points within absolute tolerance at given level (0-2)
-  pub fn abs_tolerance_percentage(&self, level: usize) -> f64 {
+  /// Returns fraction of points within absolute tolerance at given level (0-2)
+  pub fn abs_tolerance_fraction(&self, level: usize) -> f64 {
     if level >= 3 {
       return 0.0;
     }
-    100.0 * self.tolerance_counts.within_abs_tolerances[level] as f64 / self.total_points as f64
+    self.abs_tolerance_fractions[level]
   }
 
-  /// Returns percentage of points within relative tolerance at given level (0-2)
-  pub fn rel_tolerance_percentage(&self, level: usize) -> f64 {
+  /// Returns fraction of points within relative tolerance at given level (0-2)
+  pub fn rel_tolerance_fraction(&self, level: usize) -> f64 {
     if level >= 3 {
       return 0.0;
     }
-    100.0 * self.tolerance_counts.within_rel_tolerances[level] as f64 / self.total_points as f64
-  }
-
-  /// Returns absolute tolerance value at given level (0-2)
-  pub fn abs_tolerance(&self, level: usize) -> f64 {
-    self.thresholds.abs_tolerances[level]
-  }
-
-  /// Returns relative tolerance value at given level (0-2)
-  pub fn rel_tolerance(&self, level: usize) -> f64 {
-    self.thresholds.rel_tolerances[level]
-  }
-
-  /// Returns count of points within absolute tolerance at given level (0-2)
-  pub fn abs_tolerance_count(&self, level: usize) -> usize {
-    self.tolerance_counts.within_abs_tolerances[level]
-  }
-
-  /// Returns count of points within relative tolerance at given level (0-2)
-  pub fn rel_tolerance_count(&self, level: usize) -> usize {
-    self.tolerance_counts.within_rel_tolerances[level]
+    self.rel_tolerance_fractions[level]
   }
 }
 
 /// Assessment levels for domain agreement quality
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AgreementAssessment {
   Excellent,
   VeryGood,
@@ -288,78 +278,99 @@ pub struct ToleranceThresholds {
   pub r2_thresholds: [f64; 3],
 }
 
-/// Trait for displaying domain agreement metrics
-pub trait DomainAgreementDisplay {
-  fn display_metrics(&self) -> String;
-  fn display_summary(&self) -> String;
+/// Compute overall assessment based on R² value and thresholds
+fn compute_overall_assessment(r2: f64, thresholds: &[f64; 3]) -> AgreementAssessment {
+  if r2 >= thresholds[0] {
+    AgreementAssessment::Excellent
+  } else if r2 >= thresholds[1] {
+    AgreementAssessment::VeryGood
+  } else if r2 >= thresholds[2] {
+    AgreementAssessment::Good
+  } else {
+    AgreementAssessment::Poor
+  }
 }
 
-impl DomainAgreementDisplay for DomainAgreementMetrics {
-  fn display_metrics(&self) -> String {
+impl fmt::Display for DomainAgreementMetrics {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     let Self {
       total_points,
-      abs_error_stats,
-      rel_error_stats,
-      quality_metrics,
-      peak_metrics,
-      tolerance_counts,
-      max_error_location,
-      thresholds,
+      abs_error_stats:
+        AbsoluteErrorStats {
+          mean: mean_abs_error,
+          max: max_abs_error,
+          std: std_abs_error,
+          bias,
+        },
+      rel_error_stats:
+        RelativeErrorStats {
+          mean: mean_rel_error,
+          max: max_rel_error,
+          median: median_rel_error,
+          mape,
+        },
+      quality_metrics:
+        QualityMetrics {
+          rmse,
+          mass_error,
+          rel_l2_error,
+          rel_l1_error,
+          rel_linf_error,
+          max_log_error,
+          symmetry_error,
+          quantile_95_error,
+          r_squared,
+          correlation,
+        },
+      peak_metrics:
+        PeakMetrics {
+          value_error: peak_value_error,
+          location_error: peak_location_error,
+        },
+      max_error_location: MaxErrorLocation {
+        x_value: max_error_x_value,
+        idx: max_error_idx,
+      },
+      abs_tolerance_fractions,
+      rel_tolerance_fractions,
+      overall_assessment,
     } = self;
+
+    let mean_rel_error_pct = mean_rel_error * 100.0;
+    let max_rel_error_pct = max_rel_error * 100.0;
+    let median_rel_error_pct = median_rel_error * 100.0;
+    let peak_value_error_pct = peak_value_error * 100.0;
+
+    // Recreate tolerance thresholds for display
+    let abs_tolerances = [1e-6, 1e-9, 1e-12];
+    let rel_tolerances = [0.01, 0.001, 0.0001];
 
     let abs_tolerance_lines = (0..3)
       .map(|i| {
+        let count = (abs_tolerance_fractions[i] * *total_points as f64).round() as usize;
+        let percentage = abs_tolerance_fractions[i] * 100.0;
         format!(
           "  < {:.0e}: {:3}/{total_points} ({:5.1}%)",
-          thresholds.abs_tolerances[i],
-          tolerance_counts.within_abs_tolerances[i],
-          self.abs_tolerance_percentage(i)
+          abs_tolerances[i], count, percentage
         )
       })
       .join("\n");
 
     let rel_tolerance_lines = (0..3)
       .map(|i| {
-        let percentage = thresholds.rel_tolerances[i] * 100.0;
-        let formatted_percentage = float_to_digits(percentage, Some(3), None);
+        let count = (rel_tolerance_fractions[i] * *total_points as f64).round() as usize;
+        let percentage_threshold = rel_tolerances[i] * 100.0;
+        let formatted_percentage = float_to_digits(percentage_threshold, Some(3), None);
+        let fraction_percentage = rel_tolerance_fractions[i] * 100.0;
         format!(
           "  < {:>6}%: {:3}/{total_points} ({:5.1}%)",
-          formatted_percentage,
-          tolerance_counts.within_rel_tolerances[i],
-          self.rel_tolerance_percentage(i)
+          formatted_percentage, count, fraction_percentage
         )
       })
       .join("\n");
 
-    let overall_assessment = self.overall_assessment();
-
-    let mean_abs_error = abs_error_stats.mean;
-    let max_abs_error = abs_error_stats.max;
-    let std_abs_error = abs_error_stats.std;
-    let bias = abs_error_stats.bias;
-    let rmse = quality_metrics.rmse;
-    let mass_error = quality_metrics.mass_error;
-    let rel_l2_error = quality_metrics.rel_l2_error;
-    let rel_l1_error = quality_metrics.rel_l1_error;
-    let rel_linf_error = quality_metrics.rel_linf_error;
-    let max_log_error = quality_metrics.max_log_error;
-    let symmetry_error = quality_metrics.symmetry_error;
-    let quantile_95_error = quality_metrics.quantile_95_error;
-    let max_error_x_value = max_error_location.x_value;
-    let mean_rel_error = rel_error_stats.mean;
-    let mean_rel_error_pct = rel_error_stats.mean * 100.0;
-    let max_rel_error = rel_error_stats.max;
-    let max_rel_error_pct = rel_error_stats.max * 100.0;
-    let median_rel_error = rel_error_stats.median;
-    let median_rel_error_pct = rel_error_stats.median * 100.0;
-    let mape = rel_error_stats.mape;
-    let r_squared = quality_metrics.r_squared;
-    let correlation = quality_metrics.correlation;
-    let peak_value_error = peak_metrics.value_error;
-    let peak_value_error_pct = peak_metrics.value_error * 100.0;
-    let peak_location_error = peak_metrics.location_error;
-
-    format!(
+    write!(
+      f,
       r#"=== Domain-Wide Agreement Metrics ===
 Total evaluation points: {total_points}
 
@@ -369,7 +380,7 @@ Absolute Error Statistics:
   Std absolute error:     {std_abs_error:.6e}
   Signed error bias:      {bias:.6e}
   RMSE:                   {rmse:.6e}
-  Max error at x:         {max_error_x_value:.3}
+  Max error at x:         {max_error_x_value:.3} (index: {max_error_idx})
 
 Relative Error Statistics:
   Mean relative error:    {mean_rel_error:.6e} ({mean_rel_error_pct:.4}%)
@@ -400,23 +411,6 @@ Points within relative tolerance:
 
 {overall_assessment}"#
     )
-  }
-
-  fn display_summary(&self) -> String {
-    format!(
-      "R²={:.6}, RMSE={:.2e}, Mass err={:.2e}, Peak err={:.2e}, {}",
-      self.quality_metrics.r_squared,
-      self.quality_metrics.rmse,
-      self.quality_metrics.mass_error,
-      self.peak_metrics.value_error,
-      self.overall_assessment()
-    )
-  }
-}
-
-impl fmt::Display for DomainAgreementMetrics {
-  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    write!(f, "{}", self.display_metrics())
   }
 }
 
@@ -781,8 +775,8 @@ mod tests {
     assert_eq!(metrics.peak_metrics.location_error, 0.0);
 
     for i in 0..3 {
-      assert_eq!(metrics.tolerance_counts.within_abs_tolerances[i], 5);
-      assert_eq!(metrics.tolerance_counts.within_rel_tolerances[i], 5);
+      assert_eq!(metrics.abs_tolerance_fraction(i), 1.0);
+      assert_eq!(metrics.rel_tolerance_fraction(i), 1.0);
     }
   }
 
@@ -830,8 +824,8 @@ mod tests {
 
     let metrics = DomainAgreementMetrics::new_with_thresholds(&x, &actual, &expected, custom_thresholds).unwrap();
 
-    assert_eq!(metrics.tolerance_counts.within_abs_tolerances[0], 3);
-    assert_eq!(metrics.tolerance_counts.within_abs_tolerances[1], 0);
+    assert_eq!(metrics.abs_tolerance_fraction(0), 1.0);
+    assert!(metrics.abs_tolerance_fraction(1) < 1.0);
   }
 
   #[test]
@@ -850,16 +844,16 @@ mod tests {
   }
 
   #[test]
-  fn test_tolerance_percentages() {
+  fn test_tolerance_fractions() {
     let x = array![0.0, 1.0, 2.0, 3.0];
     let actual = array![1.0, 2.0, 3.0, 4.0];
     let expected = array![1.0, 2.0, 3.0, 4.0];
 
     let metrics = DomainAgreementMetrics::new(&x, &actual, &expected).unwrap();
 
-    assert_eq!(metrics.abs_tolerance_percentage(0), 100.0);
-    assert_eq!(metrics.rel_tolerance_percentage(0), 100.0);
-    assert_eq!(metrics.abs_tolerance_percentage(3), 0.0); // Invalid level
+    assert_eq!(metrics.abs_tolerance_fraction(0), 1.0);
+    assert_eq!(metrics.rel_tolerance_fraction(0), 1.0);
+    assert_eq!(metrics.abs_tolerance_fraction(3), 0.0); // Invalid level
   }
 
   #[test]
@@ -870,31 +864,8 @@ mod tests {
 
     let metrics = DomainAgreementMetrics::new(&x, &actual, &expected).unwrap();
 
-    assert_eq!(metrics.abs_tolerance(0), 1e-6);
-    assert_eq!(metrics.rel_tolerance(0), 0.01);
-    assert_eq!(metrics.abs_tolerance_count(0), 3);
-    assert_eq!(metrics.rel_tolerance_count(0), 3);
-  }
-
-  #[test]
-  fn test_display_trait() {
-    let x = array![0.0, 1.0, 2.0];
-    let actual = array![1.0, 2.0, 3.0];
-    let expected = array![1.0, 2.0, 3.0];
-
-    let metrics = DomainAgreementMetrics::new(&x, &actual, &expected).unwrap();
-
-    let display_output = metrics.display_metrics();
-    assert!(display_output.contains("Domain-Wide Agreement Metrics"));
-    assert!(display_output.contains("R²"));
-    assert!(display_output.contains("Mass (integral) error"));
-    assert!(display_output.contains("Peak Accuracy Metrics"));
-
-    let summary = metrics.display_summary();
-    assert!(summary.contains("R²="));
-    assert!(summary.contains("RMSE="));
-    assert!(summary.contains("Mass err="));
-    assert!(summary.contains("Peak err="));
+    assert_eq!(metrics.abs_tolerance_fraction(0), 1.0);
+    assert_eq!(metrics.rel_tolerance_fraction(0), 1.0);
   }
 
   #[test]
@@ -993,9 +964,9 @@ mod tests {
     assert!(metrics.peak_metrics.value_error >= 0.0);
     assert!(metrics.peak_metrics.location_error >= 0.0);
 
-    // Test tolerance counts
-    assert!(metrics.tolerance_counts.within_abs_tolerances[0] <= metrics.total_points);
-    assert!(metrics.tolerance_counts.within_rel_tolerances[0] <= metrics.total_points);
+    // Test tolerance fractions
+    assert!(metrics.abs_tolerance_fraction(0) <= 1.0);
+    assert!(metrics.rel_tolerance_fraction(0) <= 1.0);
 
     // Test max error location
     assert!(metrics.max_error_location.idx < metrics.total_points);
