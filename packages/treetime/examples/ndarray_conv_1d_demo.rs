@@ -118,9 +118,9 @@ fn main() -> eyre::Result<()> {
     };
     let diff_str = if diff < 1e-12 {
       if diff == 0.0 {
-        "0".to_string()
+        "0".to_owned()
       } else {
-        format!("{:.2e}", diff)
+        format!("{diff:.2e}")
       }
     } else {
       float_to_digits(diff, Some(3), None)
@@ -128,9 +128,9 @@ fn main() -> eyre::Result<()> {
 
     let rel_err_str = if rel_err < 1e-6 {
       if rel_err == 0.0 {
-        "0".to_string()
+        "0".to_owned()
       } else {
-        format!("{:.2e}", rel_err)
+        format!("{rel_err:.2e}")
       }
     } else {
       float_to_digits(rel_err, Some(3), Some(2))
@@ -155,7 +155,7 @@ fn compute_domain_agreement_metrics(
   expected: &Array1<f64>,
 ) -> eyre::Result<()> {
   let metrics = DomainAgreementMetrics::new(x_grid, actual, expected)?;
-  println!("\n{}", metrics);
+  println!("\n{metrics}");
   Ok(())
 }
 

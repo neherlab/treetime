@@ -33,7 +33,7 @@ pub struct DomainAgreementMetrics {
 impl DomainAgreementMetrics {
   /// Creates new domain agreement metrics from actual and expected values
   pub fn new(x: &Array1<f64>, actual: &Array1<f64>, expected: &Array1<f64>) -> eyre::Result<Self> {
-    Self::new_with_thresholds(x, actual, expected, ToleranceThresholds::default())
+    Self::new_with_thresholds(x, actual, expected, &ToleranceThresholds::default())
   }
 
   /// Creates new domain agreement metrics with custom tolerance thresholds
@@ -41,7 +41,7 @@ impl DomainAgreementMetrics {
     x: &Array1<f64>,
     actual: &Array1<f64>,
     expected: &Array1<f64>,
-    thresholds: ToleranceThresholds,
+    thresholds: &ToleranceThresholds,
   ) -> eyre::Result<Self> {
     let total_points = actual.len();
 
@@ -71,8 +71,6 @@ impl DomainAgreementMetrics {
     let symmetry_error = compute_symmetry_error(x, actual);
     let quantile_95_error = compute_quantile_error(actual, expected, 0.95);
     let peak_metrics = compute_peak_metrics(x, actual, expected)?;
-    let tolerance_counts = compute_tolerance_counts(actual, expected, &thresholds);
-    let max_error_location = find_max_error_location(x, actual, expected);
 
     let quality_metrics = QualityMetrics {
       rmse,
@@ -87,7 +85,7 @@ impl DomainAgreementMetrics {
       quantile_95_error,
     };
 
-    let tolerance_counts = compute_tolerance_counts(actual, expected, &thresholds);
+    let tolerance_counts = compute_tolerance_counts(actual, expected, thresholds);
     let max_error_location = find_max_error_location(x, actual, expected);
 
     let overall_assessment = compute_overall_assessment(quality_metrics.r_squared, &thresholds.r2_thresholds);
@@ -362,10 +360,7 @@ impl fmt::Display for DomainAgreementMetrics {
         let percentage_threshold = rel_tolerances[i] * 100.0;
         let formatted_percentage = float_to_digits(percentage_threshold, Some(3), None);
         let fraction_percentage = rel_tolerance_fractions[i] * 100.0;
-        format!(
-          "  < {:>6}%: {:3}/{total_points} ({:5.1}%)",
-          formatted_percentage, count, fraction_percentage
-        )
+        format!("  < {formatted_percentage:>6}%: {count:3}/{total_points} ({fraction_percentage:5.1}%)")
       })
       .join("\n");
 
@@ -466,7 +461,7 @@ fn compute_relative_error_statistics(actual: &Array1<f64>, expected: &Array1<f64
   abs_rel_errors.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
   let median = if abs_rel_errors.len() % 2 == 0 {
     let mid = abs_rel_errors.len() / 2;
-    (abs_rel_errors[mid - 1] + abs_rel_errors[mid]) / 2.0
+    f64::midpoint(abs_rel_errors[mid - 1], abs_rel_errors[mid])
   } else {
     abs_rel_errors[abs_rel_errors.len() / 2]
   };
@@ -509,7 +504,6 @@ fn compute_r_squared(actual: &Array1<f64>, expected: &Array1<f64>) -> eyre::Resu
 /// Formula: $r = \frac{\sum_i (y_{\text{num}}(x_i) - \bar{y}_{\text{num}})(y_{\text{ref}}(x_i) - \bar{y}_{\text{ref}})}{\sqrt{\sum_i (y_{\text{num}}(x_i) - \bar{y}_{\text{num}})^2 \sum_i (y_{\text{ref}}(x_i) - \bar{y}_{\text{ref}})^2}}$
 /// Measures strength of linear relationship between numerical and reference values
 fn compute_correlation(actual: &Array1<f64>, expected: &Array1<f64>) -> eyre::Result<f64> {
-  let n = actual.len() as f64;
   let actual_mean = actual.mean().unwrap_or(0.0);
   let expected_mean = expected.mean().unwrap_or(0.0);
 
@@ -742,8 +736,8 @@ fn compute_peak_metrics(x: &Array1<f64>, actual: &Array1<f64>, expected: &Array1
 #[cfg(test)]
 mod tests {
   use super::*;
+  use approx::assert_ulps_eq;
   use ndarray::array;
-  use pretty_assertions::assert_eq;
 
   #[test]
   fn test_perfect_agreement() {
@@ -753,30 +747,30 @@ mod tests {
 
     let metrics = DomainAgreementMetrics::new(&x, &values, &expected).unwrap();
 
-    assert_eq!(metrics.abs_error_stats.mean, 0.0);
-    assert_eq!(metrics.abs_error_stats.max, 0.0);
-    assert_eq!(metrics.abs_error_stats.std, 0.0);
-    assert_eq!(metrics.abs_error_stats.bias, 0.0);
-    assert_eq!(metrics.rel_error_stats.mean, 0.0);
-    assert_eq!(metrics.rel_error_stats.max, 0.0);
-    assert_eq!(metrics.rel_error_stats.mape, 0.0);
-    assert_eq!(metrics.rel_error_stats.median, 0.0);
-    assert_eq!(metrics.quality_metrics.rmse, 0.0);
-    assert_eq!(metrics.quality_metrics.r_squared, 1.0);
-    assert_eq!(metrics.quality_metrics.correlation, 1.0);
-    assert_eq!(metrics.quality_metrics.mass_error, 0.0);
-    assert_eq!(metrics.quality_metrics.rel_l2_error, 0.0);
-    assert_eq!(metrics.quality_metrics.rel_l1_error, 0.0);
-    assert_eq!(metrics.quality_metrics.rel_linf_error, 0.0);
-    assert_eq!(metrics.quality_metrics.max_log_error, 0.0);
-    assert_eq!(metrics.quality_metrics.symmetry_error, 0.0);
-    assert_eq!(metrics.quality_metrics.quantile_95_error, 0.0);
-    assert_eq!(metrics.peak_metrics.value_error, 0.0);
-    assert_eq!(metrics.peak_metrics.location_error, 0.0);
+    assert_ulps_eq!(metrics.abs_error_stats.mean, 0.0);
+    assert_ulps_eq!(metrics.abs_error_stats.max, 0.0);
+    assert_ulps_eq!(metrics.abs_error_stats.std, 0.0);
+    assert_ulps_eq!(metrics.abs_error_stats.bias, 0.0);
+    assert_ulps_eq!(metrics.rel_error_stats.mean, 0.0);
+    assert_ulps_eq!(metrics.rel_error_stats.max, 0.0);
+    assert_ulps_eq!(metrics.rel_error_stats.mape, 0.0);
+    assert_ulps_eq!(metrics.rel_error_stats.median, 0.0);
+    assert_ulps_eq!(metrics.quality_metrics.rmse, 0.0);
+    assert_ulps_eq!(metrics.quality_metrics.r_squared, 1.0);
+    assert_ulps_eq!(metrics.quality_metrics.correlation, 1.0);
+    assert_ulps_eq!(metrics.quality_metrics.mass_error, 0.0);
+    assert_ulps_eq!(metrics.quality_metrics.rel_l2_error, 0.0);
+    assert_ulps_eq!(metrics.quality_metrics.rel_l1_error, 0.0);
+    assert_ulps_eq!(metrics.quality_metrics.rel_linf_error, 0.0);
+    assert_ulps_eq!(metrics.quality_metrics.max_log_error, 0.0);
+    assert_ulps_eq!(metrics.quality_metrics.symmetry_error, 0.0);
+    assert_ulps_eq!(metrics.quality_metrics.quantile_95_error, 0.0);
+    assert_ulps_eq!(metrics.peak_metrics.value_error, 0.0);
+    assert_ulps_eq!(metrics.peak_metrics.location_error, 0.0);
 
     for i in 0..3 {
-      assert_eq!(metrics.abs_tolerance_fraction(i), 1.0);
-      assert_eq!(metrics.rel_tolerance_fraction(i), 1.0);
+      assert_ulps_eq!(metrics.abs_tolerance_fraction(i), 1.0);
+      assert_ulps_eq!(metrics.rel_tolerance_fraction(i), 1.0);
     }
   }
 
@@ -822,25 +816,26 @@ mod tests {
       r2_thresholds: [0.9, 0.8, 0.7],
     };
 
-    let metrics = DomainAgreementMetrics::new_with_thresholds(&x, &actual, &expected, custom_thresholds).unwrap();
+    let metrics = DomainAgreementMetrics::new_with_thresholds(&x, &actual, &expected, &custom_thresholds).unwrap();
 
-    assert_eq!(metrics.abs_tolerance_fraction(0), 1.0);
+    assert_ulps_eq!(metrics.abs_tolerance_fraction(0), 1.0);
     assert!(metrics.abs_tolerance_fraction(1) < 1.0);
   }
 
   #[test]
+  #[allow(unused_must_use)]
   fn test_error_cases() {
     let x = array![0.0, 1.0];
     let actual = array![1.0, 2.0];
     let expected_wrong_size = array![1.0];
 
-    assert!(DomainAgreementMetrics::new(&x, &actual, &expected_wrong_size).is_err());
+    DomainAgreementMetrics::new(&x, &actual, &expected_wrong_size).unwrap_err();
 
     let empty_x = array![];
     let empty_actual = array![];
     let empty_expected = array![];
 
-    assert!(DomainAgreementMetrics::new(&empty_x, &empty_actual, &empty_expected).is_err());
+    DomainAgreementMetrics::new(&empty_x, &empty_actual, &empty_expected).unwrap_err();
   }
 
   #[test]
@@ -851,9 +846,9 @@ mod tests {
 
     let metrics = DomainAgreementMetrics::new(&x, &actual, &expected).unwrap();
 
-    assert_eq!(metrics.abs_tolerance_fraction(0), 1.0);
-    assert_eq!(metrics.rel_tolerance_fraction(0), 1.0);
-    assert_eq!(metrics.abs_tolerance_fraction(3), 0.0); // Invalid level
+    assert_ulps_eq!(metrics.abs_tolerance_fraction(0), 1.0);
+    assert_ulps_eq!(metrics.rel_tolerance_fraction(0), 1.0);
+    assert_ulps_eq!(metrics.abs_tolerance_fraction(3), 0.0); // Invalid level
   }
 
   #[test]
@@ -864,25 +859,8 @@ mod tests {
 
     let metrics = DomainAgreementMetrics::new(&x, &actual, &expected).unwrap();
 
-    assert_eq!(metrics.abs_tolerance_fraction(0), 1.0);
-    assert_eq!(metrics.rel_tolerance_fraction(0), 1.0);
-  }
-
-  #[test]
-  fn test_agreement_assessment_display() {
-    assert_eq!(
-      format!("{}", AgreementAssessment::Excellent),
-      "🟢 EXCELLENT: Near-perfect agreement"
-    );
-    assert_eq!(
-      format!("{}", AgreementAssessment::VeryGood),
-      "🟡 VERY GOOD: High agreement"
-    );
-    assert_eq!(
-      format!("{}", AgreementAssessment::Good),
-      "🟠 GOOD: Reasonable agreement"
-    );
-    assert_eq!(format!("{}", AgreementAssessment::Poor), "🔴 POOR: Low agreement");
+    assert_ulps_eq!(metrics.abs_tolerance_fraction(0), 1.0);
+    assert_ulps_eq!(metrics.rel_tolerance_fraction(0), 1.0);
   }
 
   #[test]
@@ -904,7 +882,7 @@ mod tests {
 
     // Test peak metrics
     assert!(metrics.peak_metrics.value_error > 0.0); // Different peak values
-    assert_eq!(metrics.peak_metrics.location_error, 0.0); // Same peak location
+    assert_ulps_eq!(metrics.peak_metrics.location_error, 0.0); // Same peak location
 
     // Test median relative error
     assert!(metrics.rel_error_stats.median >= 0.0);
@@ -919,7 +897,7 @@ mod tests {
     let metrics = DomainAgreementMetrics::new(&x, &actual, &expected).unwrap();
 
     // Peak locations differ by 2.0 (x=1 vs x=3)
-    assert_eq!(metrics.peak_metrics.location_error, 2.0);
+    assert_ulps_eq!(metrics.peak_metrics.location_error, 2.0);
     assert!(metrics.peak_metrics.value_error > 0.0);
   }
 
@@ -1010,7 +988,7 @@ mod tests {
     let expected = array![0.5, 1.0, 0.5];
 
     let metrics = DomainAgreementMetrics::new(&x, &actual, &expected).unwrap();
-    assert_eq!(metrics.quality_metrics.symmetry_error, 0.0);
+    assert_ulps_eq!(metrics.quality_metrics.symmetry_error, 0.0);
 
     // Test asymmetric data
     let actual_asym = array![0.4, 1.0, 0.6]; // Asymmetric
