@@ -48,6 +48,7 @@ function main() {
   fi
 
   local test_rustflags="${HOSTCC:+-C linker=${HOSTCC}} -C link-arg=-pthread -C link-arg=-lopenblas -C link-arg=-lgfortran -C link-arg=-static-libgfortran -C link-arg=-static-libgcc -C link-arg=-static-libstdc++ ${RUSTFLAGS:-}"
+  local build_rustflags="-C linker-features=-lld ${RUSTFLAGS:-}"
 
   case "${cmd}" in
   "")
@@ -57,9 +58,11 @@ function main() {
     exit 1
     ;;
   "build")
+    declare -x RUSTFLAGS="${build_rustflags}"
     nicely cargo -q build ${ci_flag} --target-dir="${target_dir}" "$@"
     ;;
   "build-release")
+    declare -x RUSTFLAGS="${build_rustflags}"
     nicely cargo -q build --release ${ci_flag} --target-dir="${target_dir}" "$@"
     ;;
   "run")
@@ -69,6 +72,7 @@ function main() {
       exit 1
     fi
     shift
+    declare -x RUSTFLAGS="${build_rustflags}"
     nicely cargo -q run ${ci_flag} --target-dir="${target_dir}" --bin "${bin}" "$@"
     ;;
   "run-release")
@@ -78,6 +82,7 @@ function main() {
       exit 1
     fi
     shift
+    declare -x RUSTFLAGS="${build_rustflags}"
     nicely cargo -q run --release ${ci_flag} --target-dir="${target_dir}" --bin "${bin}" "$@"
     ;;
   "example")
@@ -87,6 +92,7 @@ function main() {
       exit 1
     fi
     shift
+    declare -x RUSTFLAGS="${build_rustflags}"
     nicely cargo -q run ${ci_flag} --target-dir="${target_dir}" --example "${example}" "$@"
     ;;
   "example-release")
@@ -96,6 +102,7 @@ function main() {
       exit 1
     fi
     shift
+    declare -x RUSTFLAGS="${build_rustflags}"
     nicely cargo -q run --release ${ci_flag} --target-dir="${target_dir}" --example "${example}" "$@"
     ;;
   "test-all")
