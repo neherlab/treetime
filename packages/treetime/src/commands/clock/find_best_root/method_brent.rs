@@ -20,7 +20,7 @@ where
 {
   fn observe_iter(&mut self, state: &I, _kv: &argmin::core::KV) -> Result<(), argmin::core::Error> {
     // Only log every 10th iteration to reduce noise
-    if state.get_iter() % 10 == 0 || state.get_iter() <= 5 {
+    if state.get_iter().is_multiple_of(10) || state.get_iter() <= 5 {
       debug!(
         "Brent iteration {}: best_param = {:?}, best_cost = {:.6e}",
         state.get_iter(),
