@@ -23,16 +23,17 @@ declare -A ALIASES=(
   ["E"]="example"
   ["Er"]="example-release"
   ["U"]="upgrade-deps"
+  ["w"]="why"
 )
 
 function main() {
   declare -x RUST_BACKTRACE="${RUST_BACKTRACE:-full}"
 
-  local cmd="${1:-bash}"
+  local cmd="${1:-}"
   shift || true
 
   # Resolve alias
-  if [[ -n "${ALIASES[$cmd]:-}" ]]; then
+  if [[ -n "${cmd}" && -n "${ALIASES[$cmd]:-}" ]]; then
     cmd="${ALIASES[$cmd]}"
   fi
 
@@ -49,6 +50,12 @@ function main() {
   local test_rustflags="${HOSTCC:+-C linker=${HOSTCC}} -C link-arg=-pthread -C link-arg=-lopenblas -C link-arg=-lgfortran -C link-arg=-static-libgfortran -C link-arg=-static-libgcc -C link-arg=-static-libstdc++ ${RUSTFLAGS:-}"
 
   case "${cmd}" in
+  "")
+    local commands_list
+    commands_list="$(for alias in "${!ALIASES[@]}"; do printf ' - %s (%s)\n' "${ALIASES[$alias]}" "${alias}"; done | sort)"
+    printf "Usage: %s <command> [args...]\n\nAvailable commands:\n%s\n" "${0##*/}" "${commands_list}" >&2
+    exit 1
+    ;;
   "build")
     nicely cargo -q build ${ci_flag} --target-dir="${target_dir}" "$@"
     ;;
@@ -136,14 +143,11 @@ function main() {
   "why")
     nicely cargo -q tree -i -p ${ci_flag} "$@"
     ;;
-  "p" | "py")
-    exec bash
-    ;;
-  "j" | "jupyter")
-    exec /files/start-jupyter
-    ;;
   *)
-    nicely cargo -q ${ci_flag} --target-dir="${target_dir}" "${cmd}" "$@"
+    local commands_list
+    commands_list="$(for alias in "${!ALIASES[@]}"; do printf ' - %s (%s)\n' "${ALIASES[$alias]}" "${alias}"; done | sort)"
+    printf "Error: Unknown command '%s'\n\nAvailable commands:\n%s\n" "${cmd}" "${commands_list}" >&2
+    exit 1
     ;;
   esac
 }
