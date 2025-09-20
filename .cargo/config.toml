@@ -4,7 +4,7 @@ run-release = "run --release --bin"
 lint = "-q clippy -q --all-targets --all"
 lint-fix = "lint --fix --allow-staged"
 lint-ci = "clippy --all-targets --all -- -Dwarnings"
-test-all = "-q nextest run --success-output=immediate --workspace --cargo-quiet --no-fail-fast --hide-progress-bar --color=always"
+test-all = "-q nextest run --success-output=immediate --workspace --cargo-quiet --no-fail-fast --hide-progress-bar --color=always" # cargo install cargo-nextest
 test-unit = "test-all --lib"
 test-integration = "test-all --test='*'"
 format-check = "fmt --check"

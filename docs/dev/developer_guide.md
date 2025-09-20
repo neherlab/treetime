@@ -44,6 +44,10 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y
 
 # Add Rust tools to the $PATH. This line can be added to your .bashrc or .zshrc to adjust the $PATH automatically when a new terminal session is opened.
 export PATH="$PATH:$HOME/.cargo/bin"
+
+# Additional tools for testing and maintenance
+cargo -q install --locked cargo-nextest cargo-edit cargo-audit
+
 ```
 
 ## Obtain Source Code
