@@ -59,7 +59,7 @@ function main() {
   "build")
     nicely cargo -q build ${ci_flag} --target-dir="${target_dir}" "$@"
     ;;
-  "build --release")
+  "build-release")
     nicely cargo -q build --release ${ci_flag} --target-dir="${target_dir}" "$@"
     ;;
   "run")
@@ -135,6 +135,10 @@ function main() {
     nicely cargo -q bench --workspace --benches --profile=profiling ${ci_flag} --target-dir="${target_dir}" "$@"
     ;;
   "upgrade-deps")
+    declare -x CARGO_NET_GIT_FETCH_WITH_CLI=true
+    declare -x CARGO_REGISTRIES_CRATES_IO_PROTOCOL='git'
+    declare -x CARGO_REGISTRIES_CRATES_IO_PROTOCOL='git cargo fetch'
+    declare -x CARGO_REGISTRIES_CRATES_IO_PROTOCOL='git cargo upgrade'
     nicely cargo -q upgrade --pinned --incompatible --verbose --recursive ${ci_flag} "$@"
     ;;
   "quality")
