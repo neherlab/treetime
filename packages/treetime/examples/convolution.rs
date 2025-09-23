@@ -1,20 +1,24 @@
 use clap::Parser;
 use ndarray::Array1;
-use ndarray_conv::{ConvExt, ConvMode, PaddingMode};
 use plotters::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::f64::consts::PI;
+use treetime::distribution::reference::convolution::{ndarray_convolve, riemann_convolve};
 use treetime::distribution::reference::domain_agreement_metrics::DomainAgreementMetrics;
+use treetime::distribution::reference::gaussian::{gaussian_f, gaussian_g};
 use treetime::io::json::{JsonPretty, json_write_file, json_write_str};
-use treetime::utils::float_fmt::float_to_digits;
 
 #[derive(Parser, Clone, Serialize, Deserialize)]
 #[command(
-  name = "ndarray-conv-1d-demo",
-  about = "1D Gaussian convolution demo using ndarray-conv",
+  name = "convolution-functions-test",
+  about = "Enhanced convolution functions test with metrics and plots",
   version
 )]
 struct Args {
+  /// Algorithm to test
+  #[arg(long, default_value = "riemann")]
+  algorithm: String,
+
   /// Standard deviation of first Gaussian f(x)
   #[arg(long, default_value = "1.0")]
   sigma_f: f64,
@@ -24,23 +28,23 @@ struct Args {
   sigma_g: f64,
 
   /// Mean offset of second Gaussian g(x)
-  #[arg(long, default_value = "1.0")]
+  #[arg(long, default_value = "0.0")]
   mu: f64,
 
   /// Minimum x value for grid
-  #[arg(long, default_value = "-7.0")]
+  #[arg(long, default_value = "-3.0")]
   x_min: f64,
 
   /// Maximum x value for grid
-  #[arg(long, default_value = "9.0")]
+  #[arg(long, default_value = "3.0")]
   x_max: f64,
 
-  /// Number of grid points
-  #[arg(long, default_value = "321")]
-  n_points: usize,
+  /// Grid spacing
+  #[arg(long, default_value = "0.2")]
+  dx: f64,
 
-  /// Output directory for plots
-  #[arg(long, default_value = "tmp/conv_plots")]
+  /// Output directory for plots and results
+  #[arg(long, default_value = "tmp/conv_test")]
   output_dir: String,
 
   /// Range around peak for detailed comparison (±n points)
@@ -73,8 +77,7 @@ struct GridInfo {
   x_max: f64,
   n_points: usize,
   dx: f64,
-  conv_len: usize,
-  start_idx: usize,
+  algorithm: String,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -89,21 +92,19 @@ struct PeakComparisonPoint {
 fn main() -> eyre::Result<()> {
   let args = Args::parse();
 
-  println!("=== Gaussian Convolution Demo with ndarray-conv ===\n");
+  println!("=== Enhanced Convolution Functions Test ===\n");
 
   println!("Args:\n{}", json_write_str(&args, JsonPretty(true))?);
 
-  // Use a narrower grid centered around the effective convolution domain
-  // This allows ndarray-conv to work directly without complex interpolation
-  let x_grid = Array1::linspace(args.x_min, args.x_max, args.n_points);
-  let dx = (args.x_max - args.x_min) / (args.n_points - 1) as f64;
+  // Create evaluation grid
+  let n_points = ((args.x_max - args.x_min) / args.dx + 1.0).round() as usize;
+  let x_grid = Array1::from_iter((0..n_points).map(|i| args.x_min + i as f64 * args.dx));
 
   // Calculate expected properties
   let expected_peak_x = args.mu;
   let expected_sigma_combined = args.sigma_f.hypot(args.sigma_g);
   let expected_peak_value = 1.0 / (expected_sigma_combined * (2.0 * PI).sqrt());
 
-  // Create function properties structure
   let function_properties = FunctionProperties {
     f_variance: args.sigma_f.powi(2),
     g_mean: args.mu,
@@ -118,73 +119,45 @@ fn main() -> eyre::Result<()> {
     json_write_str(&function_properties, JsonPretty(true))?
   );
 
-  // Define Gaussian functions on this grid
-  let f_vals: Array1<f64> =
-    x_grid.mapv(|x| (-0.5_f64 * (x / args.sigma_f).powi(2)).exp() / (args.sigma_f * (2.0_f64 * PI).sqrt()));
-
-  let g_vals: Array1<f64> =
-    x_grid.mapv(|x| (-0.5_f64 * ((x - args.mu) / args.sigma_g).powi(2)).exp() / (args.sigma_g * (2.0_f64 * PI).sqrt()));
-
-  // Perform convolution using ndarray-conv with Full mode
-  let raw_conv = f_vals.conv(&g_vals, ConvMode::Full, PaddingMode::Zeros)?;
-
-  // Scale by grid spacing to approximate continuous convolution integral
-  let conv_scaled = &raw_conv * dx;
-
-  // The Full convolution result spans a wider domain
-  // Create the extended domain for the full convolution result
-  let conv_len = raw_conv.len();
-  let conv_x_min = 2.0 * args.x_min;
-  let conv_x_max = 2.0 * args.x_max;
-  let conv_x_grid = Array1::linspace(conv_x_min, conv_x_max, conv_len);
-
-  // Extract the portion that corresponds to our original evaluation domain
-  // Find indices in conv_x_grid that correspond to our desired x_grid range
-  let mut start_idx = 0;
-  for (i, &conv_x) in conv_x_grid.iter().enumerate() {
-    if conv_x >= args.x_min {
-      start_idx = i;
-      break;
-    }
-  }
-
-  // Create grid info
   let grid_info = GridInfo {
     x_min: args.x_min,
     x_max: args.x_max,
-    n_points: args.n_points,
-    dx,
-    conv_len,
-    start_idx,
+    n_points,
+    dx: args.dx,
+    algorithm: args.algorithm.clone(),
   };
 
   println!("Grid info:\n{}", json_write_str(&grid_info, JsonPretty(true))?);
 
-  let actual = conv_scaled
-    .slice(ndarray::s![start_idx..start_idx + args.n_points])
-    .to_owned();
+  // Create test functions using grid
+  let f = gaussian_f(args.sigma_f, (args.x_min, args.x_max), args.dx)?;
+  let g = gaussian_g(args.sigma_g, args.mu, (args.x_min, args.x_max), args.dx)?;
 
-  // Compute expected result on the same grid
+  println!("Testing {} algorithm", args.algorithm);
+
+  let result = match args.algorithm.as_str() {
+    "riemann" => riemann_convolve(&f, &g, &x_grid)?,
+    "ndarray" => ndarray_convolve(&f, &g, &x_grid)?,
+    _ => {
+      eprintln!("Unknown algorithm: {}", args.algorithm);
+      return Ok(());
+    }
+  };
+
+  // Compute analytical expected result
   let expected: Array1<f64> = x_grid.mapv(|x| {
     let var_sum = args.sigma_g.powi(2) + args.sigma_f.powi(2);
     (-0.5_f64 * (x - args.mu).powi(2) / var_sum).exp() / (var_sum * 2.0_f64 * PI).sqrt()
   });
 
   // Comprehensive domain-wide agreement metrics
-  let domain_metrics = compute_domain_agreement_metrics(&x_grid, &actual, &expected)?;
+  let domain_metrics = compute_domain_agreement_metrics(&x_grid, result.y(), &expected)?;
 
   // Generate plots
-  plot_input_functions(
-    &x_grid,
-    &f_vals,
-    &g_vals,
-    args.sigma_f,
-    args.sigma_g,
-    args.mu,
-    &args.output_dir,
-  )?;
-  plot_convolution_results(&x_grid, &actual, &expected, &args.output_dir)?;
-  plot_error_analysis(&x_grid, &actual, &expected, &args.output_dir)?;
+  std::fs::create_dir_all(&args.output_dir)?;
+  plot_input_functions(&f, &g, &args)?;
+  plot_convolution_results(&x_grid, result.y(), &expected, &args)?;
+  plot_error_analysis(&x_grid, result.y(), &expected, &args)?;
 
   // Compare values around peak
   println!("\nComparison around peak (μ = {}):", args.mu);
@@ -210,7 +183,7 @@ fn main() -> eyre::Result<()> {
     (peak_idx.saturating_sub(args.peak_comparison_range))..(peak_idx + args.peak_comparison_range + 1).min(x_grid.len())
   {
     let x_val = x_grid[i];
-    let actual_val = actual[i];
+    let actual_val = result.y()[i];
     let expected_val = expected[i];
     let diff = (actual_val - expected_val).abs();
     let rel_err = if expected_val != 0.0 {
@@ -234,7 +207,7 @@ fn main() -> eyre::Result<()> {
         format!("{diff:.2e}")
       }
     } else {
-      float_to_digits(diff, Some(3), None)
+      format!("{diff:.3e}")
     };
 
     let rel_err_str = if rel_err < 1e-6 {
@@ -244,14 +217,14 @@ fn main() -> eyre::Result<()> {
         format!("{rel_err:.2e}")
       }
     } else {
-      float_to_digits(rel_err, Some(3), Some(2))
+      format!("{rel_err:.2}")
     };
 
     println!(
-      "{:>8} {:>12} {:>12} {:>12} {:>9}%",
-      float_to_digits(x_val, Some(3), Some(2)),
-      float_to_digits(actual_val, Some(6), None),
-      float_to_digits(expected_val, Some(6), None),
+      "{:>8.2} {:>12.6} {:>12.6} {:>12} {:>9}%",
+      x_val,
+      actual_val,
+      expected_val,
       diff_str,
       rel_err_str
     );
@@ -270,6 +243,9 @@ fn main() -> eyre::Result<()> {
   json_write_file(&results_path, &results, JsonPretty(true))?;
   println!("\nSaved results to {results_path}");
 
+  println!("\nMax value: {:.6}", result.max_value());
+  println!("Test completed successfully!");
+
   Ok(())
 }
 
@@ -283,54 +259,33 @@ fn compute_domain_agreement_metrics(
   Ok(metrics)
 }
 
-fn plot_input_functions(
-  x_grid: &Array1<f64>,
-  f_vals: &Array1<f64>,
-  g_vals: &Array1<f64>,
-  sigma_f: f64,
-  sigma_g: f64,
-  mu: f64,
-  output_dir: &str,
-) -> eyre::Result<()> {
-  // Plot configuration
-  let plot_width = 800;
-  let plot_height = 600;
-  let plot_margin = 20;
-  let x_label_area = 40;
-  let y_label_area = 50;
-  let line_width = 2;
-  let legend_offset = 10;
-  let max_val_margin = 1.1;
-  let font_size = 24;
-
-  let output_path = format!("{output_dir}/input_functions.svg");
-  let root = SVGBackend::new(&output_path, (plot_width, plot_height)).into_drawing_area();
+fn plot_input_functions(f: &treetime::distribution::reference::grid_fn::GridFn, g: &treetime::distribution::reference::grid_fn::GridFn, args: &Args) -> eyre::Result<()> {
+  let output_path = format!("{}/input_functions.svg", args.output_dir);
+  let root = SVGBackend::new(&output_path, (800, 600)).into_drawing_area();
   root.fill(&WHITE)?;
 
-  let max_val = f_vals.iter().chain(g_vals.iter()).fold(0.0_f64, |a, &b| a.max(b));
+  let max_val = f.y().iter().chain(g.y().iter()).fold(0.0_f64, |a, &b| a.max(b));
 
   let mut chart = ChartBuilder::on(&root)
-    .caption("Input Gaussian Functions", ("Arial", font_size))
-    .margin(plot_margin)
-    .x_label_area_size(x_label_area)
-    .y_label_area_size(y_label_area)
-    .build_cartesian_2d(-7.0..9.0, 0.0..max_val * max_val_margin)?;
+    .caption("Input Gaussian Functions", ("Arial", 24))
+    .margin(20)
+    .x_label_area_size(40)
+    .y_label_area_size(50)
+    .build_cartesian_2d(args.x_min..args.x_max, 0.0..max_val * 1.1)?;
 
   chart.configure_mesh().draw()?;
 
-  // Plot f(x)
-  let f_data: Vec<(f64, f64)> = x_grid.iter().zip(f_vals.iter()).map(|(&x, &y)| (x, y)).collect();
+  let f_data: Vec<(f64, f64)> = f.x().iter().zip(f.y().iter()).map(|(&x, &y)| (x, y)).collect();
   chart
-    .draw_series(LineSeries::new(f_data, BLUE.stroke_width(line_width)))?
-    .label(format!("f(x): N(0, {sigma_f}²)"))
-    .legend(|(x, y)| PathElement::new(vec![(x, y), (x + legend_offset, y)], BLUE));
+    .draw_series(LineSeries::new(f_data, BLUE.stroke_width(2)))?
+    .label(format!("f(x): N(0, {}²)", args.sigma_f))
+    .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 10, y)], BLUE));
 
-  // Plot g(x)
-  let g_data: Vec<(f64, f64)> = x_grid.iter().zip(g_vals.iter()).map(|(&x, &y)| (x, y)).collect();
+  let g_data: Vec<(f64, f64)> = g.x().iter().zip(g.y().iter()).map(|(&x, &y)| (x, y)).collect();
   chart
-    .draw_series(LineSeries::new(g_data, RED.stroke_width(line_width)))?
-    .label(format!("g(x): N({mu}, {sigma_g}²)"))
-    .legend(|(x, y)| PathElement::new(vec![(x, y), (x + legend_offset, y)], RED));
+    .draw_series(LineSeries::new(g_data, RED.stroke_width(2)))?
+    .label(format!("g(x): N({}, {}²)", args.mu, args.sigma_g))
+    .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 10, y)], RED));
 
   chart.configure_series_labels().draw()?;
   root.present()?;
@@ -343,48 +298,34 @@ fn plot_convolution_results(
   x_grid: &Array1<f64>,
   actual: &Array1<f64>,
   expected: &Array1<f64>,
-  output_dir: &str,
+  args: &Args,
 ) -> eyre::Result<()> {
-  // Plot configuration
-  let plot_width = 800;
-  let plot_height = 600;
-  let plot_margin = 20;
-  let x_label_area = 40;
-  let y_label_area = 50;
-  let actual_line_width = 2;
-  let expected_line_width = 3;
-  let legend_offset = 10;
-  let max_val_margin = 1.1;
-  let font_size = 24;
-
-  let output_path = format!("{output_dir}/convolution_results.svg");
-  let root = SVGBackend::new(&output_path, (plot_width, plot_height)).into_drawing_area();
+  let output_path = format!("{}/convolution_results.svg", args.output_dir);
+  let root = SVGBackend::new(&output_path, (800, 600)).into_drawing_area();
   root.fill(&WHITE)?;
 
   let max_val = actual.iter().chain(expected.iter()).fold(0.0_f64, |a, &b| a.max(b));
 
   let mut chart = ChartBuilder::on(&root)
-    .caption("Convolution Results: (f * g)(x)", ("Arial", font_size))
-    .margin(plot_margin)
-    .x_label_area_size(x_label_area)
-    .y_label_area_size(y_label_area)
-    .build_cartesian_2d(-7.0..9.0, 0.0..max_val * max_val_margin)?;
+    .caption(&format!("Convolution Results: (f * g)(x) [{}]", args.algorithm), ("Arial", 24))
+    .margin(20)
+    .x_label_area_size(40)
+    .y_label_area_size(50)
+    .build_cartesian_2d(args.x_min..args.x_max, 0.0..max_val * 1.1)?;
 
   chart.configure_mesh().draw()?;
 
-  // Plot actual result
   let actual_data: Vec<(f64, f64)> = x_grid.iter().zip(actual.iter()).map(|(&x, &y)| (x, y)).collect();
   chart
-    .draw_series(LineSeries::new(actual_data, BLUE.stroke_width(actual_line_width)))?
-    .label("Actual (ndarray-conv)")
-    .legend(|(x, y)| PathElement::new(vec![(x, y), (x + legend_offset, y)], BLUE));
+    .draw_series(LineSeries::new(actual_data, BLUE.stroke_width(2)))?
+    .label(&format!("Actual ({})", args.algorithm))
+    .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 10, y)], BLUE));
 
-  // Plot expected result
   let expected_data: Vec<(f64, f64)> = x_grid.iter().zip(expected.iter()).map(|(&x, &y)| (x, y)).collect();
   chart
-    .draw_series(LineSeries::new(expected_data, RED.stroke_width(expected_line_width)))?
+    .draw_series(LineSeries::new(expected_data, RED.stroke_width(3)))?
     .label("Expected")
-    .legend(|(x, y)| PathElement::new(vec![(x, y), (x + legend_offset, y)], RED));
+    .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 10, y)], RED));
 
   chart.configure_series_labels().draw()?;
   root.present()?;
@@ -397,24 +338,12 @@ fn plot_error_analysis(
   x_grid: &Array1<f64>,
   actual: &Array1<f64>,
   expected: &Array1<f64>,
-  output_dir: &str,
+  args: &Args,
 ) -> eyre::Result<()> {
-  // Plot configuration
-  let plot_width = 800;
-  let plot_height = 600;
-  let plot_margin = 20;
-  let x_label_area = 40;
-  let y_label_area = 50;
-  let line_width = 2;
-  let legend_offset = 10;
-  let max_val_margin = 1.1;
-  let font_size = 24;
-
-  let output_path = format!("{output_dir}/error_analysis.svg");
-  let root = SVGBackend::new(&output_path, (plot_width, plot_height)).into_drawing_area();
+  let output_path = format!("{}/error_analysis.svg", args.output_dir);
+  let root = SVGBackend::new(&output_path, (800, 600)).into_drawing_area();
   root.fill(&WHITE)?;
 
-  // Calculate absolute error
   let absolute_errors: Vec<f64> = actual
     .iter()
     .zip(expected.iter())
@@ -424,24 +353,23 @@ fn plot_error_analysis(
   let max_error = absolute_errors.iter().fold(0.0_f64, |a, &b| a.max(b));
 
   let mut chart = ChartBuilder::on(&root)
-    .caption("Absolute Error: |Actual - Expected|", ("Arial", font_size))
-    .margin(plot_margin)
-    .x_label_area_size(x_label_area)
-    .y_label_area_size(y_label_area)
-    .build_cartesian_2d(-7.0..9.0, 0.0..max_error * max_val_margin)?;
+    .caption(&format!("Absolute Error: |Actual - Expected| [{}]", args.algorithm), ("Arial", 24))
+    .margin(20)
+    .x_label_area_size(40)
+    .y_label_area_size(50)
+    .build_cartesian_2d(args.x_min..args.x_max, 0.0..max_error * 1.1)?;
 
   chart.configure_mesh().draw()?;
 
-  // Plot error
   let error_data: Vec<(f64, f64)> = x_grid
     .iter()
     .zip(absolute_errors.iter())
     .map(|(&x, y)| (x, *y))
     .collect();
   chart
-    .draw_series(LineSeries::new(error_data, GREEN.stroke_width(line_width)))?
+    .draw_series(LineSeries::new(error_data, GREEN.stroke_width(2)))?
     .label("Absolute Error")
-    .legend(|(x, y)| PathElement::new(vec![(x, y), (x + legend_offset, y)], GREEN));
+    .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 10, y)], GREEN));
 
   chart.configure_series_labels().draw()?;
   root.present()?;

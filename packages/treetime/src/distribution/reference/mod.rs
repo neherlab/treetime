@@ -1,4 +1,4 @@
-pub mod convolution_riemann;
+pub mod convolution;
 pub mod domain_agreement_metrics;
 pub mod exponential;
 pub mod gaussian;
