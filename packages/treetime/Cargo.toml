@@ -10,10 +10,8 @@ publish.workspace = true
 repository.workspace = true
 version.workspace = true
 
-
 [lib]
 crate-type = ["lib"]
-
 
 [dependencies]
 phyloxml = { path = "../phyloxml" }
@@ -53,6 +51,7 @@ lazy_static = { workspace = true }
 log = { workspace = true }
 maplit = { workspace = true }
 multimap = { workspace = true }
+ndarray-conv = { workspace = true }
 num = { workspace = true }
 num-integer = { workspace = true }
 num-traits = { workspace = true }
@@ -91,7 +90,6 @@ tikv-jemallocator = { workspace = true }
 
 [target.'cfg(all(target_arch = "aarch64", target_os = "linux", target_env = "musl"))'.dependencies]
 tikv-jemallocator = { workspace = true }
-
 
 [features]
 "png" = ["image", "plotters/bitmap_backend", "plotters/ttf"]
