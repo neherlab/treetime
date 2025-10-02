@@ -6,8 +6,14 @@ use ndarray_conv::{ConvExt, ConvMode, PaddingMode};
 
 /// Convolution using ndarray-conv library (FFT-based) for uniform grids
 pub fn ndarray_convolve(f: &GridFn, g: &GridFn, x_grid: &Array1<f64>) -> Result<GridFn, Report> {
-  assert!(is_uniform_grid(f.x()), "ndarray-conv requires uniform grid for function f");
-  assert!(is_uniform_grid(g.x()), "ndarray-conv requires uniform grid for function g");
+  assert!(
+    is_uniform_grid(f.x()),
+    "ndarray-conv requires uniform grid for function f"
+  );
+  assert!(
+    is_uniform_grid(g.x()),
+    "ndarray-conv requires uniform grid for function g"
+  );
   assert!(is_uniform_grid(x_grid), "ndarray-conv requires uniform evaluation grid");
 
   let raw_conv = f.y().conv(g.y(), ConvMode::Full, PaddingMode::Zeros)?;
@@ -41,7 +47,7 @@ pub fn riemann_convolve(f: &GridFn, g: &GridFn, x_grid: &Array1<f64>) -> Result<
   let mut result = Array1::zeros(x_grid.len());
   for (i, &x) in x_grid.iter().enumerate() {
     let mut sum = 0.0;
-    for &s in s_grid.iter() {
+    for &s in &s_grid {
       let f_val = f.interp(s).unwrap_or(0.0);
       let g_val = g.interp(x - s).unwrap_or(0.0);
       sum += f_val * g_val;
@@ -60,7 +66,7 @@ fn is_uniform_grid(grid: &Array1<f64>) -> bool {
 
   let dx = grid[1] - grid[0];
   for i in 1..grid.len() {
-    if (grid[i] - grid[i-1] - dx).abs() > 1e-12 {
+    if (grid[i] - grid[i - 1] - dx).abs() > 1e-12 {
       return false;
     }
   }

@@ -225,6 +225,14 @@ pub struct TreetimeTimetreeArgs {
   #[clap(long, value_enum, default_value_t = MethodAncestral::default())]
   pub method_anc: MethodAncestral,
 
+  /// Alphabet to use for sequences
+  #[clap(long, value_enum)]
+  pub alphabet: Option<crate::alphabet::alphabet::AlphabetName>,
+
+  /// Use dense representation for sequences (store full probability distributions)
+  #[clap(long)]
+  pub dense: Option<bool>,
+
   /// Use aminoacid alphabet
   #[clap(long)]
   pub aa: bool,
