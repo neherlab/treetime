@@ -1,4 +1,3 @@
-#![allow(clippy::todo)]
 use crate::alphabet::alphabet::Alphabet;
 use crate::commands::ancestral::fitch::get_common_length;
 use crate::commands::ancestral::marginal_unified::run_marginal;
