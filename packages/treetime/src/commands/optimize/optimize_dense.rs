@@ -24,6 +24,7 @@ use crate::commands::optimize::optimize_unified::OptimizationMetrics;
 use crate::gtr::gtr::GTR;
 use crate::representation::graph_ancestral::GraphAncestral;
 use crate::representation::graph_dense::DenseSeqDis;
+use crate::representation::partition_marginal::PartitionMarginalOps;
 use crate::representation::partition_marginal_dense::PartitionMarginalDense;
 use eyre::Report;
 use ndarray::{Array2, Axis};
@@ -76,7 +77,10 @@ pub fn run_optimize_dense(
   graph: &GraphAncestral,
   partitions: &[Arc<RwLock<PartitionMarginalDense>>],
 ) -> Result<(), Report> {
-  let total_length: usize = partitions.iter().map(|part| part.read_arc().length).sum();
+  let total_length: usize = partitions
+    .iter()
+    .map(|part| part.read_arc().get_sequence_length().unwrap_or(0))
+    .sum();
   let one_mutation = 1.0 / total_length as f64;
   let n_partitions = partitions.len();
   graph.get_edges().iter().for_each(|edge_ref| {

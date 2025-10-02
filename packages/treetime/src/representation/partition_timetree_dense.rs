@@ -37,7 +37,6 @@ pub struct PartitionTimetreeDense {
   pub index: usize,
   pub gtr: GTR,
   pub alphabet: Alphabet,
-  pub length: usize,
   pub sequence_length: Option<usize>,
   pub nodes: BTreeMap<GraphNodeKey, NodeTimetreeDense>,
   pub edges: BTreeMap<GraphEdgeKey, EdgeTimetreeDense>,
@@ -134,7 +133,7 @@ impl PartitionMarginalOps for PartitionTimetreeDense {
     None
   }
 
-  fn get_length(&self) -> usize {
-    self.length
+  fn get_sequence_length(&self) -> Option<usize> {
+    self.sequence_length
   }
 }

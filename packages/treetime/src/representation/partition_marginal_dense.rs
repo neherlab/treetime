@@ -229,8 +229,8 @@ impl PartitionMarginalOps for PartitionMarginalDense {
     Some(seq)
   }
 
-  fn get_length(&self) -> usize {
-    self.length
+  fn get_sequence_length(&self) -> Option<usize> {
+    Some(self.length)
   }
 }
 

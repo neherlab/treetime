@@ -76,16 +76,21 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
       args.sequence_length
     };
 
+    // Determine alphabet: reuse from alignment if available, otherwise create from args.
+    // treat_gap_as_unknown=false ensures gaps are treated as distinct characters for timetree inference
+    // even when no alignment is provided (branch lengths only mode).
+    let alphabet = if let Some((_, alphabet)) = &aln {
+      alphabet.clone()
+    } else {
+      Alphabet::new(args.alphabet.unwrap_or_default(), false)?
+    };
+
     #[allow(clippy::iter_on_single_items, trivial_casts)]
     if !dense {
       [Arc::new(RwLock::new(PartitionTimetreeSparse {
         index: 0,
         gtr: jc69(JC69Params::default())?,
-        alphabet: aln.as_ref().map_or_else(
-          || Alphabet::new(args.alphabet.unwrap_or_default(), false).unwrap(),
-          |(_, a)| a.clone(),
-        ),
-        length: sequence_length.unwrap_or(0),
+        alphabet,
         sequence_length,
         nodes: btreemap! {},
         edges: btreemap! {},
@@ -94,11 +99,7 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
       [Arc::new(RwLock::new(PartitionTimetreeDense {
         index: 0,
         gtr: jc69(JC69Params::default())?,
-        alphabet: aln.as_ref().map_or_else(
-          || Alphabet::new(args.alphabet.unwrap_or_default(), false).unwrap(),
-          |(_, a)| a.clone(),
-        ),
-        length: sequence_length.unwrap_or(0),
+        alphabet,
         sequence_length,
         nodes: btreemap! {},
         edges: btreemap! {},

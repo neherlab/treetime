@@ -22,7 +22,9 @@
 //!
 use crate::commands::optimize::optimize_unified::OptimizationMetrics;
 use crate::graph::edge::GraphEdgeKey;
-use crate::representation::{graph_ancestral::GraphAncestral, partition_marginal_sparse::PartitionMarginalSparse};
+use crate::representation::graph_ancestral::GraphAncestral;
+use crate::representation::partition_marginal::PartitionMarginalOps;
+use crate::representation::partition_marginal_sparse::PartitionMarginalSparse;
 use crate::seq::mutation::Sub;
 use eyre::{OptionExt, Report};
 use itertools::Itertools;
@@ -141,7 +143,10 @@ pub fn run_optimize_sparse(
   graph: &GraphAncestral,
   partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
 ) -> Result<(), Report> {
-  let total_length: usize = partitions.iter().map(|part| part.read_arc().length).sum();
+  let total_length: usize = partitions
+    .iter()
+    .map(|part| part.read_arc().get_sequence_length().unwrap_or(0))
+    .sum();
   let one_mutation = 1.0 / total_length as f64;
   let n_partitions = partitions.len();
   graph.get_edges().iter().try_for_each(|edge_ref| {
