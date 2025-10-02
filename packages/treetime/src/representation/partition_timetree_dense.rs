@@ -28,7 +28,7 @@ pub struct EdgeTimetreeDense {
   pub msg_from_child: Option<Arc<Distribution>>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug)]
 pub struct PartitionTimetreeDense {
   pub index: usize,
   pub gtr: GTR,
