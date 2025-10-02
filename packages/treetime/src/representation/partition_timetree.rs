@@ -3,9 +3,16 @@ use crate::distribution::distribution::Distribution;
 use crate::graph::graph::{GraphNodeBackward, GraphNodeForward};
 use crate::graph::node::GraphNodeKey;
 use crate::representation::graph_ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
+use crate::representation::log_lh::HasLogLh;
+use crate::representation::partition_marginal::PartitionMarginalOps;
 use eyre::Report;
 use std::collections::BTreeMap;
 use std::sync::Arc;
+
+pub trait PartitionTreetimeMarginalOps: PartitionTimetreeOps + PartitionMarginalOps + HasLogLh {}
+
+/// Blanket implementation: any type implementing all three traits automatically implements PartitionUnified
+impl<T> PartitionTreetimeMarginalOps for T where T: PartitionTimetreeOps + PartitionMarginalOps + HasLogLh {}
 
 pub trait PartitionTimetree {}
 

@@ -5,8 +5,12 @@ use crate::graph::edge::GraphEdgeKey;
 use crate::graph::graph::{GraphNodeBackward, GraphNodeForward};
 use crate::graph::node::GraphNodeKey;
 use crate::gtr::gtr::GTR;
+use crate::io::fasta::FastaRecord;
 use crate::representation::graph_ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
+use crate::representation::log_lh::HasLogLh;
+use crate::representation::partition_marginal::{PartitionMarginal, PartitionMarginalOps};
 use crate::representation::partition_timetree::{PartitionTimetree, PartitionTimetreeOps};
+use crate::representation::seq::Seq;
 use eyre::Report;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -87,5 +91,50 @@ impl PartitionTimetreeOps for PartitionTimetreeSparse {
 
   fn get_sequence_length(&self) -> Option<usize> {
     self.sequence_length
+  }
+}
+
+impl HasLogLh for PartitionTimetreeSparse {
+  fn get_log_lh(&self, _node_key: GraphNodeKey) -> f64 {
+    0.0
+  }
+}
+
+impl PartitionMarginal for PartitionTimetreeSparse {}
+
+impl PartitionMarginalOps for PartitionTimetreeSparse {
+  fn attach_sequences(&mut self, _graph: &GraphAncestral, _aln: &[FastaRecord]) -> Result<(), Report> {
+    Ok(())
+  }
+
+  fn process_node_backward(
+    &mut self,
+    node: &GraphNodeBackward<NodeAncestral, EdgeAncestral, ()>,
+  ) -> Result<(), Report> {
+    PartitionTimetreeOps::process_node_backward(self, node)
+  }
+
+  fn process_node_forward(
+    &mut self,
+    graph: &GraphAncestral,
+    node: &GraphNodeForward<NodeAncestral, EdgeAncestral, ()>,
+  ) -> Result<(), Report> {
+    PartitionTimetreeOps::process_node_forward(self, graph, node)
+  }
+
+  fn extract_ancestral_sequence(&mut self, _node_key: GraphNodeKey) -> Seq {
+    crate::seq![]
+  }
+
+  fn reconstruct_node_sequence(
+    &mut self,
+    _node: &GraphNodeForward<NodeAncestral, EdgeAncestral, ()>,
+    _include_leaves: bool,
+  ) -> Option<Seq> {
+    None
+  }
+
+  fn get_length(&self) -> usize {
+    self.length
   }
 }

@@ -12,7 +12,7 @@ use parking_lot::RwLock;
 use std::sync::Arc;
 
 /// Main entry point for marginal reconstruction
-pub fn run_marginal<P: PartitionMarginalOps + HasLogLh>(
+pub fn run_marginal<P: PartitionMarginalOps + HasLogLh + ?Sized>(
   graph: &GraphAncestral,
   partitions: &[Arc<RwLock<P>>],
   aln: Option<&[FastaRecord]>,
@@ -32,7 +32,7 @@ pub fn run_marginal<P: PartitionMarginalOps + HasLogLh>(
 }
 
 /// Ancestral sequence reconstruction
-pub fn ancestral_reconstruction_marginal<P: PartitionMarginalOps + HasLogLh>(
+pub fn ancestral_reconstruction_marginal<P: PartitionMarginalOps + HasLogLh + ?Sized>(
   graph: &GraphAncestral,
   include_leaves: bool,
   partitions: &[Arc<RwLock<P>>],
@@ -59,7 +59,7 @@ pub fn ancestral_reconstruction_marginal<P: PartitionMarginalOps + HasLogLh>(
 }
 
 /// Backward pass: calculates ingroup profiles
-fn marginal_backward<P: PartitionMarginalOps + HasLogLh>(
+fn marginal_backward<P: PartitionMarginalOps + HasLogLh + ?Sized>(
   graph: &GraphAncestral,
   partitions: &[Arc<RwLock<P>>],
 ) -> Result<(), Report> {
@@ -70,7 +70,7 @@ fn marginal_backward<P: PartitionMarginalOps + HasLogLh>(
   Ok(())
 }
 
-fn run_marginal_backward<P: PartitionMarginalOps + HasLogLh>(
+fn run_marginal_backward<P: PartitionMarginalOps + HasLogLh + ?Sized>(
   partitions: &[Arc<RwLock<P>>],
   node: &GraphNodeBackward<NodeAncestral, EdgeAncestral, ()>,
 ) -> Result<(), Report> {
@@ -82,7 +82,7 @@ fn run_marginal_backward<P: PartitionMarginalOps + HasLogLh>(
 }
 
 /// Forward pass: calculates outgroup profiles
-fn marginal_forward<P: PartitionMarginalOps + HasLogLh>(
+fn marginal_forward<P: PartitionMarginalOps + HasLogLh + ?Sized>(
   graph: &GraphAncestral,
   partitions: &[Arc<RwLock<P>>],
 ) -> Result<(), Report> {
@@ -93,7 +93,7 @@ fn marginal_forward<P: PartitionMarginalOps + HasLogLh>(
   Ok(())
 }
 
-fn run_marginal_forward<P: PartitionMarginalOps + HasLogLh>(
+fn run_marginal_forward<P: PartitionMarginalOps + HasLogLh + ?Sized>(
   graph: &GraphAncestral,
   partitions: &[Arc<RwLock<P>>],
   node: &GraphNodeForward<NodeAncestral, EdgeAncestral, ()>,

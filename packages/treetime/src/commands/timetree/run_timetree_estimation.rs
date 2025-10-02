@@ -1,21 +1,20 @@
 #![allow(clippy::todo)]
 use crate::alphabet::alphabet::Alphabet;
-use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
+use crate::commands::ancestral::fitch::get_common_length;
 use crate::commands::ancestral::marginal_unified::run_marginal;
 use crate::commands::timetree::clock_model::{infer_clock_model, update_clock_model};
 use crate::commands::timetree::date_constraints::load_date_constraints;
 use crate::commands::timetree::timetree_args::{BranchLengthMode, TimeMarginalMode, TreetimeTimetreeArgs};
 use crate::commands::timetree::timetree_unified::run_timetree;
-use crate::gtr::get_gtr::{JC69Params, get_gtr, jc69};
+use crate::gtr::get_gtr::{JC69Params, jc69};
 use crate::io::fasta::read_many_fasta;
 use crate::io::fs::ensure_dir;
 use crate::io::nex::{NexWriteOptions, nex_write_file};
 use crate::io::nwk::{NwkWriteOptions, nwk_read_file, nwk_write_file};
 use crate::representation::graph_ancestral::GraphAncestral;
 use crate::representation::infer_dense::infer_dense;
-use crate::representation::partition_marginal_dense::PartitionMarginalDense;
-use crate::representation::partition_marginal_sparse::PartitionMarginalSparse;
 use crate::representation::partition_timetree::PartitionTimetreeOps;
+use crate::representation::partition_timetree::PartitionTreetimeMarginalOps;
 use crate::representation::partition_timetree_dense::PartitionTimetreeDense;
 use crate::representation::partition_timetree_sparse::PartitionTimetreeSparse;
 use eyre::{Report, WrapErr};
@@ -24,11 +23,6 @@ use log::info;
 use maplit::btreemap;
 use parking_lot::RwLock;
 use std::sync::Arc;
-
-enum PartitionVariant {
-  Sparse(Vec<Arc<RwLock<PartitionMarginalSparse>>>),
-  Dense(Vec<Arc<RwLock<PartitionMarginalDense>>>),
-}
 
 pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report> {
   // Validate and prepare output directory
@@ -72,95 +66,9 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
   // Estimate initial molecular clock rate via root-to-tip regression
   let mut clock_model = infer_clock_model(args, &graph, &constraints).wrap_err("Failed to infer clock model")?;
 
-  // Create marginal partitions for sequence data if alignment is provided
-  // These are used for ancestral reconstruction to get branch length distributions
-
-  let partitions_marginal = if let Some((aln_data, alphabet)) = &aln {
-    let dense = args.dense.unwrap_or_else(infer_dense);
-    let length = get_common_length(aln_data)?;
-
-    if !dense {
-      // Sparse representation: store only mutations relative to reference
-      #[allow(clippy::iter_on_single_items)]
-      let partitions_sparse = [PartitionMarginalSparse {
-        index: 0,
-        gtr: jc69(JC69Params::default())?,
-        alphabet: alphabet.clone(),
-        length,
-        nodes: btreemap! {},
-        edges: btreemap! {},
-      }]
-      .into_iter()
-      .map(|p| Arc::new(RwLock::new(p)))
-      .collect_vec();
-
-      if !partitions_sparse.is_empty() {
-        compress_sequences(&graph, &partitions_sparse, aln_data)?;
-
-        for partition in &partitions_sparse {
-          let gtr = get_gtr(&args.gtr, partition, &graph)?;
-          partition.write_arc().gtr = gtr;
-        }
-      }
-
-      Some(PartitionVariant::Sparse(partitions_sparse))
-    } else {
-      // Dense representation: store full probability distributions
-      #[allow(clippy::iter_on_single_items)]
-      let partitions_dense = [PartitionMarginalDense {
-        index: 0,
-        gtr: jc69(JC69Params::default())?,
-        alphabet: alphabet.clone(),
-        length,
-        nodes: btreemap! {},
-        edges: btreemap! {},
-      }]
-      .into_iter()
-      .map(|p| Arc::new(RwLock::new(p)))
-      .collect_vec();
-
-      if !partitions_dense.is_empty() {
-        for partition in &partitions_dense {
-          let gtr = get_gtr(&args.gtr, partition, &graph)?;
-          partition.write_arc().gtr = gtr;
-        }
-      }
-
-      Some(PartitionVariant::Dense(partitions_dense))
-    }
-  } else {
-    None
-  };
-
-  // Initial ancestral sequence reconstruction if needed
-  // This establishes branch length distributions for timetree inference
-  if let Some(partitions) = &partitions_marginal {
-    match args.branch_length_mode {
-      BranchLengthMode::Input => {
-        info!("Using input branch lengths for timetree inference");
-      },
-      BranchLengthMode::Marginal | BranchLengthMode::Auto => {
-        info!("Running marginal ancestral reconstruction for branch length distributions");
-        match partitions {
-          PartitionVariant::Sparse(parts) => {
-            run_marginal(&graph, parts, None)?;
-          },
-          PartitionVariant::Dense(parts) => {
-            run_marginal(&graph, parts, aln.as_ref().map(|(a, _)| a.as_slice()))?;
-          },
-        }
-      },
-      BranchLengthMode::Joint => {
-        info!("Running joint ancestral reconstruction for branch length distributions");
-        todo!("Joint ancestral reconstruction not yet implemented")
-      },
-    }
-  }
-
-  // Create timetree partitions for temporal inference
-  // These hold date constraints, time distributions, and clock lengths
-  // Using trait objects to allow mixing sparse and dense partitions
-  let partitions_timetree: Vec<Arc<RwLock<dyn PartitionTimetreeOps>>> = {
+  // Create unified partitions that implement PartitionUnified (PartitionTimetreeOps + PartitionMarginalOps + HasLogLh)
+  // This allows using the same partition objects for both ancestral reconstruction and timetree inference
+  let partitions: Vec<Arc<RwLock<dyn PartitionTreetimeMarginalOps>>> = {
     let dense = args.dense.unwrap_or_else(infer_dense);
     let sequence_length = if let Some((aln_data, _)) = &aln {
       Some(get_common_length(aln_data)?)
@@ -181,7 +89,7 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
         sequence_length,
         nodes: btreemap! {},
         edges: btreemap! {},
-      })) as Arc<RwLock<dyn PartitionTimetreeOps>>]
+      })) as Arc<RwLock<dyn PartitionTreetimeMarginalOps>>]
     } else {
       [Arc::new(RwLock::new(PartitionTimetreeDense {
         index: 0,
@@ -194,13 +102,11 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
         sequence_length,
         nodes: btreemap! {},
         edges: btreemap! {},
-      })) as Arc<RwLock<dyn PartitionTimetreeOps>>]
+      })) as Arc<RwLock<dyn PartitionTreetimeMarginalOps>>]
     }
     .into_iter()
     .map(|partition| -> Result<_, Report> {
-      partition
-        .write_arc()
-        .attach_date_constraints(&graph, &constraints.per_node)?;
+      PartitionTimetreeOps::attach_date_constraints(&mut *partition.write_arc(), &graph, &constraints.per_node)?;
       Ok(partition)
     })
     .try_collect()?
@@ -218,6 +124,24 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
   // Second ancestral reconstruction pass after rerooting (if rerooted)
   // TODO: Re-run ancestral reconstruction if tree topology changed
 
+  // Initial ancestral sequence reconstruction if alignment provided
+  // This establishes branch length distributions for timetree inference
+  if aln.is_some() {
+    match args.branch_length_mode {
+      BranchLengthMode::Input => {
+        info!("Using input branch lengths for timetree inference");
+      },
+      BranchLengthMode::Marginal | BranchLengthMode::Auto => {
+        info!("Running marginal ancestral reconstruction for branch length distributions");
+        run_marginal(&graph, &partitions, aln.as_ref().map(|(a, _)| a.as_slice()))?;
+      },
+      BranchLengthMode::Joint => {
+        info!("Running joint ancestral reconstruction for branch length distributions");
+        todo!("Joint ancestral reconstruction not yet implemented")
+      },
+    }
+  }
+
   // ============================================================================
   // INITIAL TIMETREE ESTIMATION (before iteration loop)
   // ============================================================================
@@ -225,7 +149,7 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
 
   // Run timetree inference using trait-based unified runner (analogous to run_marginal)
   // This replaces the old manual backward/forward pass calls
-  run_timetree(&graph, &partitions_timetree)?;
+  run_timetree(&graph, &partitions)?;
 
   // TODO: Build initial branch length distributions from input tree or ancestral reconstruction
   // let branch_mode = match args.branch_length_mode {
@@ -290,40 +214,26 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
 
     let ndiff = if need_new_time_tree {
       // Tree structure or rates changed - update times first
-      run_timetree(&graph, &partitions_timetree)
+      run_timetree(&graph, &partitions)
         .wrap_err_with(|| format!("Timetree inference failed (iteration {iteration})"))?;
 
-      // TODO: Re-infer ancestral sequences and return number of changes
-      if let Some(partitions) = &partitions_marginal {
-        match partitions {
-          PartitionVariant::Sparse(parts) => {
-            run_marginal(&graph, parts, None)?;
-          },
-          PartitionVariant::Dense(parts) => {
-            run_marginal(&graph, parts, aln.as_ref().map(|(a, _)| a.as_slice()))?;
-          },
-        }
+      // Re-infer ancestral sequences if alignment provided
+      if aln.is_some() {
+        run_marginal(&graph, &partitions, aln.as_ref().map(|(a, _)| a.as_slice()))?;
       }
 
       0 // Placeholder
     } else {
       // No tree changes - update sequences first
-      let sequence_changes = if let Some(partitions) = &partitions_marginal {
-        match partitions {
-          PartitionVariant::Sparse(parts) => {
-            run_marginal(&graph, parts, None)?;
-          },
-          PartitionVariant::Dense(parts) => {
-            run_marginal(&graph, parts, aln.as_ref().map(|(a, _)| a.as_slice()))?;
-          },
-        }
+      let sequence_changes = if aln.is_some() {
+        run_marginal(&graph, &partitions, aln.as_ref().map(|(a, _)| a.as_slice()))?;
         0 // TODO: track actual sequence changes
       } else {
         0
       };
 
       // Then update time tree
-      run_timetree(&graph, &partitions_timetree)
+      run_timetree(&graph, &partitions)
         .wrap_err_with(|| format!("Timetree inference failed (iteration {iteration})"))?;
 
       sequence_changes
@@ -362,7 +272,7 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
   // FINAL CONFIDENCE ESTIMATION: Run timetree with marginal mode for confidence intervals
   if args.time_marginal == TimeMarginalMode::OnlyFinal {
     info!("### Final round: timetree with marginal reconstruction for confidence intervals");
-    run_timetree(&graph, &partitions_timetree).wrap_err("Final timetree inference failed")?;
+    run_timetree(&graph, &partitions).wrap_err("Final timetree inference failed")?;
 
     // TODO: Extract confidence intervals (HPD or quantiles) from marginal posteriors in partitions
     // TODO: Update tracelog with final marginal reconstruction stats

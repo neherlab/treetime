@@ -6,18 +6,18 @@ use eyre::Report;
 use parking_lot::RwLock;
 use std::sync::Arc;
 
-pub fn run_timetree(
+pub fn run_timetree<P: PartitionTimetreeOps + ?Sized>(
   graph: &GraphAncestral,
-  partitions: &[Arc<RwLock<dyn PartitionTimetreeOps>>],
+  partitions: &[Arc<RwLock<P>>],
 ) -> Result<(), Report> {
   timetree_backward(graph, partitions)?;
   timetree_forward(graph, partitions)?;
   Ok(())
 }
 
-fn timetree_backward(
+fn timetree_backward<P: PartitionTimetreeOps + ?Sized>(
   graph: &GraphAncestral,
-  partitions: &[Arc<RwLock<dyn PartitionTimetreeOps>>],
+  partitions: &[Arc<RwLock<P>>],
 ) -> Result<(), Report> {
   graph.par_iter_breadth_first_backward(|node| {
     run_timetree_backward(partitions, &node).unwrap();
@@ -26,8 +26,8 @@ fn timetree_backward(
   Ok(())
 }
 
-fn run_timetree_backward(
-  partitions: &[Arc<RwLock<dyn PartitionTimetreeOps>>],
+fn run_timetree_backward<P: PartitionTimetreeOps + ?Sized>(
+  partitions: &[Arc<RwLock<P>>],
   node: &GraphNodeBackward<NodeAncestral, EdgeAncestral, ()>,
 ) -> Result<(), Report> {
   for partition in partitions {
@@ -37,9 +37,9 @@ fn run_timetree_backward(
   Ok(())
 }
 
-fn timetree_forward(
+fn timetree_forward<P: PartitionTimetreeOps + ?Sized>(
   graph: &GraphAncestral,
-  partitions: &[Arc<RwLock<dyn PartitionTimetreeOps>>],
+  partitions: &[Arc<RwLock<P>>],
 ) -> Result<(), Report> {
   graph.par_iter_breadth_first_forward(|node| {
     run_timetree_forward(graph, partitions, &node).unwrap();
@@ -48,9 +48,9 @@ fn timetree_forward(
   Ok(())
 }
 
-fn run_timetree_forward(
+fn run_timetree_forward<P: PartitionTimetreeOps + ?Sized>(
   graph: &GraphAncestral,
-  partitions: &[Arc<RwLock<dyn PartitionTimetreeOps>>],
+  partitions: &[Arc<RwLock<P>>],
   node: &GraphNodeForward<NodeAncestral, EdgeAncestral, ()>,
 ) -> Result<(), Report> {
   for partition in partitions {
