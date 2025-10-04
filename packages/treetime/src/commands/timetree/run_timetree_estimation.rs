@@ -10,7 +10,7 @@ use crate::commands::timetree::timetree_args::{BranchLengthMode, TimeMarginalMod
 use crate::commands::timetree::timetree_unified::run_timetree;
 use crate::gtr::get_gtr::{JC69Params, jc69};
 use crate::io::csv::CsvStructFileWriter;
-use crate::io::fasta::read_many_fasta;
+use crate::io::fasta::{FastaRecord, read_many_fasta};
 use crate::io::nex::{NexWriteOptions, nex_write_file};
 use crate::io::nwk::{NwkWriteOptions, nwk_read_file, nwk_write_file};
 use crate::representation::graph_ancestral::GraphAncestral;
@@ -172,12 +172,14 @@ pub struct IterationContext {
 /// Maps node keys to their reconstructed sequences to enable ndiff calculation.
 type AncestralStateSnapshot = BTreeMap<String, Vec<u8>>;
 
-pub fn run_timetree_estimation(args: TreetimeTimetreeArgs) -> Result<(), Report> {
-  // ============================================================================
-  // PHASE 1: Load input data
-  // ============================================================================
+struct InputData {
+  graph: GraphAncestral,
+  alphabet: Alphabet,
+  aln: Option<Vec<FastaRecord>>,
+  constraints: DateConstraintSet,
+}
 
-  // Load tree topology from Newick file
+fn load_input_data(args: &TreetimeTimetreeArgs) -> Result<InputData, Report> {
   let graph: GraphAncestral = if let Some(tree_path) = &args.tree {
     nwk_read_file(tree_path).wrap_err("Failed to load tree from file")?
   } else {
@@ -205,71 +207,78 @@ pub fn run_timetree_estimation(args: TreetimeTimetreeArgs) -> Result<(), Report>
     None
   };
 
-  // Load temporal constraints (sampling dates) from metadata
-  let constraints = load_date_constraints(&args, &graph).wrap_err("Failed to load date constraints")?;
+  let constraints = load_date_constraints(args, &graph).wrap_err("Failed to load date constraints")?;
 
-  // ============================================================================
-  // PHASE 2: Initialize clock model and partitions
-  // ============================================================================
+  Ok(InputData {
+    graph,
+    alphabet,
+    aln,
+    constraints,
+  })
+}
 
-  // Infer initial clock rate via root-to-tip regression
-  let mut clock_model = infer_clock_model(&args, &graph, &constraints).wrap_err("Failed to infer clock model")?;
-
-  // Create partition objects that handle both ancestral reconstruction and timetree inference
-  // Partitions store node/edge data: sequences, probability distributions, branch length likelihoods
-  let partitions: Vec<Arc<RwLock<dyn PartitionTreetimeMarginalOps>>> = {
-    let dense = args.dense.unwrap_or_else(infer_dense);
-    let sequence_length = if let Some(aln_data) = &aln {
-      Some(get_common_length(aln_data)?)
-    } else {
-      args.sequence_length
-    };
-
-    #[allow(clippy::iter_on_single_items, trivial_casts)]
-    if !dense {
-      [Arc::new(RwLock::new(PartitionTimetreeSparse {
-        index: 0,
-        gtr: jc69(JC69Params::default())?,
-        alphabet,
-        sequence_length,
-        nodes: btreemap! {},
-        edges: btreemap! {},
-      })) as Arc<RwLock<dyn PartitionTreetimeMarginalOps>>]
-    } else {
-      [Arc::new(RwLock::new(PartitionTimetreeDense {
-        index: 0,
-        gtr: jc69(JC69Params::default())?,
-        alphabet,
-        sequence_length,
-        nodes: btreemap! {},
-        edges: btreemap! {},
-      })) as Arc<RwLock<dyn PartitionTreetimeMarginalOps>>]
-    }
-    .into_iter()
-    .map(|partition| -> Result<_, Report> {
-      PartitionTimetreeOps::attach_date_constraints(&mut *partition.write_arc(), &graph, &constraints.per_node)?;
-      Ok(partition)
-    })
-    .try_collect()?
+fn initialize_partitions(
+  args: &TreetimeTimetreeArgs,
+  graph: &GraphAncestral,
+  alphabet: Alphabet,
+  aln: Option<&[FastaRecord]>,
+  constraints: &DateConstraintSet,
+) -> Result<Vec<Arc<RwLock<dyn PartitionTreetimeMarginalOps>>>, Report> {
+  let dense = args.dense.unwrap_or_else(infer_dense);
+  let sequence_length = if let Some(aln_data) = aln {
+    Some(get_common_length(aln_data)?)
+  } else {
+    args.sequence_length
   };
 
-  // ============================================================================
-  // PHASE 3: Optional pre-optimization steps
-  // ============================================================================
+  #[allow(clippy::iter_on_single_items, trivial_casts)]
+  let partitions = if !dense {
+    [Arc::new(RwLock::new(PartitionTimetreeSparse {
+      index: 0,
+      gtr: jc69(JC69Params::default())?,
+      alphabet,
+      sequence_length,
+      nodes: btreemap! {},
+      edges: btreemap! {},
+    })) as Arc<RwLock<dyn PartitionTreetimeMarginalOps>>]
+  } else {
+    [Arc::new(RwLock::new(PartitionTimetreeDense {
+      index: 0,
+      gtr: jc69(JC69Params::default())?,
+      alphabet,
+      sequence_length,
+      nodes: btreemap! {},
+      edges: btreemap! {},
+    })) as Arc<RwLock<dyn PartitionTreetimeMarginalOps>>]
+  }
+  .into_iter()
+  .map(|partition| -> Result<_, Report> {
+    PartitionTimetreeOps::attach_date_constraints(&mut *partition.write_arc(), graph, &constraints.per_node)?;
+    Ok(partition)
+  })
+  .try_collect()?;
 
-  // Reroot tree to optimize temporal signal (optional)
+  Ok(partitions)
+}
+
+fn run_pre_optimization(
+  args: &TreetimeTimetreeArgs,
+  graph: &GraphAncestral,
+  partitions: &[Arc<RwLock<dyn PartitionTreetimeMarginalOps>>],
+  aln: Option<&[FastaRecord]>,
+  constraints: &DateConstraintSet,
+) -> Result<(), Report> {
   if !args.keep_root {
     info!("Rerooting tree to optimize temporal signal");
-    reroot_tree(&graph, &constraints, "least-squares")?;
+    reroot_tree(graph, constraints, "least-squares")?;
   }
 
-  // Clock filter to detect and exclude outliers (optional)
   // TODO: Implement clock filter functionality
   // What: Detect and exclude branches that violate molecular clock assumptions using IQD threshold
   // Why: Optional - improves robustness by removing outliers from clock model inference
   // How: Analyze root-to-tip regression residuals; mark branches exceeding n_iqd * IQD as bad_branch=true
   if args.clock_filter_enabled() {
-    clock_filter(&graph, &constraints, args.n_iqd.unwrap_or(3.0))?;
+    clock_filter(graph, constraints, args.n_iqd.unwrap_or(3.0))?;
   }
 
   // Initial ancestral sequence reconstruction (establishes branch length distributions)
@@ -280,7 +289,7 @@ pub fn run_timetree_estimation(args: TreetimeTimetreeArgs) -> Result<(), Report>
       },
       BranchLengthMode::Marginal | BranchLengthMode::Auto => {
         info!("Running initial ancestral reconstruction");
-        run_marginal(&graph, &partitions, aln.as_deref())?;
+        run_marginal(graph, partitions, aln)?;
       },
       BranchLengthMode::Joint => {
         todo!("Joint ancestral reconstruction not yet implemented")
@@ -288,116 +297,225 @@ pub fn run_timetree_estimation(args: TreetimeTimetreeArgs) -> Result<(), Report>
     }
   }
 
-  // ============================================================================
-  // PHASE 4: Initial timetree inference
-  // ============================================================================
+  Ok(())
+}
 
+fn run_initial_timetree_inference(
+  args: &TreetimeTimetreeArgs,
+  graph: &GraphAncestral,
+  partitions: &[Arc<RwLock<dyn PartitionTreetimeMarginalOps>>],
+  aln: Option<&[FastaRecord]>,
+  constraints: &DateConstraintSet,
+) -> Result<(), Report> {
   info!("### TreeTime: INITIAL ROUND");
-  run_timetree(&graph, &partitions)?;
+  run_timetree(graph, partitions)?;
 
-  // Optional: Second rerooting after initial timetree uses inferred node times for better root position
   // TODO: Implement second rerooting with inferred node times
   // What: Reroot tree again using node times inferred from initial timetree run
   // Why: Optional - initial rerooting used sampling dates only; second pass uses better time estimates
   // How: Run reroot with inferred node times, then re-run ancestral reconstruction and timetree inference
   if !args.keep_root {
-    reroot_tree(&graph, &constraints, "least-squares")?;
+    reroot_tree(graph, constraints, "least-squares")?;
     if args.branch_length_mode != BranchLengthMode::Input {
-      run_marginal(&graph, &partitions, aln.as_deref())?;
+      run_marginal(graph, partitions, aln)?;
     }
-    run_timetree(&graph, &partitions)?;
+    run_timetree(graph, partitions)?;
   }
 
-  // ============================================================================
-  // PHASE 5: Iterative refinement loop
-  // ============================================================================
-  // The loop refines the tree by iterating between:
-  // - Ancestral sequence reconstruction (updates branch lengths)
-  // - Node time inference (updates divergence times)
-  // - Optional: polytomy resolution, coalescent model, relaxed clock
-  //
-  // Convergence criteria:
-  // - ndiff == 0: no ancestral sequence changes
-  // - n_resolved == 0: no polytomies resolved
-  // - max_iter reached: iteration limit
+  Ok(())
+}
 
-  let mut optimizer = TimetreeOptimizer::new(args.max_iter, args.tracelog)?;
-  while let Some(IterationContext { i }) = optimizer.next_iter() {
-    // Track whether tree structure/model changed (requires different reconstruction order)
-    let mut is_tree_dirty = false;
+#[allow(clippy::useless_let_if_seq)]
+fn run_refinement_iteration(
+  args: &TreetimeTimetreeArgs,
+  graph: &GraphAncestral,
+  partitions: &[Arc<RwLock<dyn PartitionTreetimeMarginalOps>>],
+  aln: Option<&[FastaRecord]>,
+  i: usize,
+) -> Result<(usize, usize), Report> {
+  let mut is_tree_dirty = false;
 
-    // Add coalescent model (population genetic prior on node times)
-    // TODO: Implement coalescent model integration
-    // What: Add Kingman coalescent prior to node time distributions using population genetic theory
-    // Why: Optional - incorporates realistic population dynamics to improve time estimates
-    // How: Calculate merger rates between lineages, add to node time likelihood as prior term
-    if let Some(coalescent_params) = &args.coalescent {
-      add_coalescent_model(&graph, &partitions, coalescent_params)?;
-      is_tree_dirty = true;
+  // Add coalescent model (population genetic prior on node times)
+  // TODO: Implement coalescent model integration
+  // What: Add Kingman coalescent prior to node time distributions using population genetic theory
+  // Why: Optional - incorporates realistic population dynamics to improve time estimates
+  // How: Calculate merger rates between lineages, add to node time likelihood as prior term
+  if let Some(coalescent_params) = &args.coalescent {
+    add_coalescent_model(graph, partitions, coalescent_params)?;
+    is_tree_dirty = true;
+  }
+
+  // Apply relaxed clock (allow branch-specific rate variation)
+  // TODO: Implement relaxed clock model
+  // What: Allow each branch to have its own rate multiplier (gamma) with autocorrelation constraints
+  // Why: Optional - accounts for rate heterogeneity when strict clock assumption is violated
+  // How: Optimize branch-specific gamma values with slack/coupling penalties to prevent overfitting
+  if !args.relax.is_empty() {
+    apply_relaxed_clock(graph, partitions, &args.relax)?;
+    is_tree_dirty = true;
+  }
+
+  // Resolve polytomies using temporal constraints
+  // TODO: Implement polytomy resolution algorithm
+  // What: Convert multifurcations into binary trees using likelihood-based greedy optimization
+  // Why: Optional - improves tree topology and is required for some downstream analyses
+  // How: For each polytomy, test all pairwise mergers and choose the one with highest likelihood gain
+  let n_resolved = if args.resolve_polytomies {
+    resolve_polytomies(graph, partitions)?
+  } else {
+    0
+  };
+
+  if n_resolved > 0 {
+    prepare_tree_after_topology_change(graph)?;
+    if aln.is_some() {
+      run_marginal(graph, partitions, aln)?;
+    }
+    is_tree_dirty = true;
+  }
+
+  // Conditional reconstruction order based on whether tree structure changed:
+  // - If changed: update times first (tree -> sequences)
+  // - If not changed: update sequences first (sequences -> times)
+  let ndiff = if is_tree_dirty {
+    run_timetree(graph, partitions).wrap_err_with(|| format!("Timetree inference failed (iteration {i})"))?;
+
+    if aln.is_some() {
+      run_marginal(graph, partitions, aln)?;
     }
 
-    // Apply relaxed clock (allow branch-specific rate variation)
-    // TODO: Implement relaxed clock model
-    // What: Allow each branch to have its own rate multiplier (gamma) with autocorrelation constraints
-    // Why: Optional - accounts for rate heterogeneity when strict clock assumption is violated
-    // How: Optimize branch-specific gamma values with slack/coupling penalties to prevent overfitting
-    if !args.relax.is_empty() {
-      apply_relaxed_clock(&graph, &partitions, &args.relax)?;
-      is_tree_dirty = true;
-    }
-
-    // Resolve polytomies using temporal constraints
-    // TODO: Implement polytomy resolution algorithm
-    // What: Convert multifurcations into binary trees using likelihood-based greedy optimization
-    // Why: Optional - improves tree topology and is required for some downstream analyses
-    // How: For each polytomy, test all pairwise mergers and choose the one with highest likelihood gain
-    let n_resolved = if args.resolve_polytomies {
-      resolve_polytomies(&graph, &partitions)?
-    } else {
-      0
-    };
-
-    if n_resolved > 0 {
-      prepare_tree_after_topology_change(&graph)?;
-      if aln.is_some() {
-        run_marginal(&graph, &partitions, aln.as_deref())?;
-      }
-      is_tree_dirty = true;
-    }
-
-    // Conditional reconstruction order based on whether tree structure changed:
-    // - If changed: update times first (tree -> sequences)
-    // - If not changed: update sequences first (sequences -> times)
-    let ndiff = if is_tree_dirty {
-      run_timetree(&graph, &partitions).wrap_err_with(|| format!("Timetree inference failed (iteration {i})"))?;
-
-      if aln.is_some() {
-        run_marginal(&graph, &partitions, aln.as_deref())?;
-      }
-
-      // TODO: Implement sequence change tracking
+    // TODO: Implement sequence change tracking
+    // What: Count number of ancestral state changes between consecutive iterations
+    // Why: Core - needed to detect convergence (ndiff == 0 means no more sequence changes)
+    // How: Compare ancestral sequences before/after reconstruction, count differing positions
+    0
+  } else {
+    let sequence_changes = if aln.is_some() {
+      run_marginal(graph, partitions, aln)?;
+      // TODO: Implement sequence change counting
       // What: Count number of ancestral state changes between consecutive iterations
-      // Why: Core - needed to detect convergence (ndiff == 0 means no more sequence changes)
-      // How: Compare ancestral sequences before/after reconstruction, count differing positions
+      // Why: Core - convergence criterion (stop when ndiff == 0)
+      // How: Compare ancestral sequences before/after reconstruction, sum differing positions across tree
       0
     } else {
-      let sequence_changes = if aln.is_some() {
-        run_marginal(&graph, &partitions, aln.as_deref())?;
-        // TODO: Implement sequence change counting
-        // What: Count number of ancestral state changes between consecutive iterations
-        // Why: Core - convergence criterion (stop when ndiff == 0)
-        // How: Compare ancestral sequences before/after reconstruction, sum differing positions across tree
-        0
-      } else {
-        0
-      };
-
-      run_timetree(&graph, &partitions).wrap_err_with(|| format!("Timetree inference failed (iteration {i})"))?;
-
-      sequence_changes
+      0
     };
 
-    // Update clock model with newly inferred node times
+    run_timetree(graph, partitions).wrap_err_with(|| format!("Timetree inference failed (iteration {i})"))?;
+
+    sequence_changes
+  };
+
+  Ok((ndiff, n_resolved))
+}
+
+fn run_post_processing(
+  args: &TreetimeTimetreeArgs,
+  graph: &GraphAncestral,
+  partitions: &[Arc<RwLock<dyn PartitionTreetimeMarginalOps>>],
+  constraints: &DateConstraintSet,
+  clock_model: &ClockModel,
+) -> Result<(), Report> {
+  // TODO: Implement rate variation sensitivity analysis
+  // What: Re-run timetree inference with rate ± standard deviation to quantify uncertainty propagation
+  // Why: Optional - assesses robustness of time estimates to clock rate uncertainty
+  // How: Run timetree with perturbed rates, store alternative node time estimates for comparison
+  if args.vary_rate {
+    calc_rate_susceptibility(graph, partitions, constraints, clock_model)?;
+  }
+
+  // Final marginal reconstruction for confidence intervals
+  if args.time_marginal == TimeMarginalMode::OnlyFinal {
+    info!("### Final round: marginal reconstruction for confidence intervals");
+    run_timetree(graph, partitions).wrap_err("Final timetree inference failed")?;
+    // TODO: Implement confidence interval extraction
+    // What: Extract 95% HPD intervals from marginal posterior distributions for each node
+    // Why: Core - quantifies uncertainty in inferred divergence times
+    // How: Compute highest posterior density regions or quantiles from marginal_pos_LH distributions
+    extract_confidence_intervals(graph, partitions)?;
+  }
+
+  // Identify and report outlier branches
+  // TODO: Implement bad branch reporting
+  // What: Identify branches where inferred dates deviate significantly from input constraints
+  // Why: Core - users need to know which samples were excluded or flagged as problematic
+  // How: Compare inferred dates to input constraints, log warnings for large deviations
+  report_bad_branches(graph, constraints)?;
+
+  Ok(())
+}
+
+fn write_outputs(
+  args: &TreetimeTimetreeArgs,
+  graph: &GraphAncestral,
+  partitions: &[Arc<RwLock<dyn PartitionTreetimeMarginalOps>>],
+  constraints: &DateConstraintSet,
+  clock_model: &ClockModel,
+) -> Result<(), Report> {
+  let out_base = args.outdir.join("timetree");
+  nwk_write_file(out_base.with_extension("nwk"), graph, &NwkWriteOptions::default())
+    .wrap_err("Failed to write Newick output")?;
+  nex_write_file(out_base.with_extension("nexus"), graph, &NexWriteOptions::default())
+    .wrap_err("Failed to write Nexus output")?;
+
+  // TODO: Implement node dates output
+  // What: Write TSV file with inferred calendar dates for each tree node
+  // Why: Core - primary output showing numdate and time_before_present for each node
+  // How: Extract node time from partition data, convert to calendar dates, write TSV
+  write_node_dates(graph, partitions, &out_base)?;
+
+  // TODO: Implement confidence intervals output
+  // What: Write TSV file with lower_bound, median, upper_bound for each node's inferred date
+  // Why: Core - quantifies uncertainty in molecular dating results
+  // How: Extract HPD intervals from marginal distributions, write TSV with node_name and bounds
+  write_confidence_intervals(graph, partitions, &out_base)?;
+
+  // TODO: Implement clock model output
+  // What: Write JSON file with clock rate, intercept, R², and confidence intervals
+  // Why: Core - documents molecular clock parameters used in analysis
+  // How: Serialize clock_model struct to JSON with rate, std_dev, intercept, R² fields
+  write_clock_model(clock_model, &out_base)?;
+
+  // TODO: Implement root-to-tip regression plot
+  // What: Generate scatter plot of root-to-tip distance vs sampling date with regression line
+  // Why: Optional - diagnostic visualization for temporal signal quality and outlier detection
+  // How: Extract leaf dates and distances, plot with matplotlib/plotters, annotate with R² and outliers
+  if args.plot_rtt.is_some() {
+    plot_root_to_tip(graph, constraints, &out_base)?;
+  }
+
+  // TODO: Implement time-scaled tree plot
+  // What: Generate visualization of phylogenetic tree with x-axis as calendar time
+  // Why: Optional - helps interpret divergence times and tree topology in temporal context
+  // How: Layout tree horizontally with branch lengths scaled by inferred divergence times
+  if args.plot_tree.is_some() {
+    plot_time_tree(graph, &out_base)?;
+  }
+
+  Ok(())
+}
+
+pub fn run_timetree_estimation(args: TreetimeTimetreeArgs) -> Result<(), Report> {
+  let InputData {
+    graph,
+    alphabet,
+    aln,
+    constraints,
+  } = load_input_data(&args)?;
+
+  let mut clock_model = infer_clock_model(&args, &graph, &constraints).wrap_err("Failed to infer clock model")?;
+
+  let partitions: Vec<Arc<RwLock<dyn PartitionTreetimeMarginalOps>>> =
+    initialize_partitions(&args, &graph, alphabet, aln.as_deref(), &constraints)?;
+
+  run_pre_optimization(&args, &graph, &partitions, aln.as_deref(), &constraints)?;
+
+  run_initial_timetree_inference(&args, &graph, &partitions, aln.as_deref(), &constraints)?;
+
+  let mut optimizer = TimetreeOptimizer::new(args.max_iter, args.tracelog.clone())?;
+  while let Some(IterationContext { i }) = optimizer.next_iter() {
+    let (ndiff, n_resolved) = run_refinement_iteration(&args, &graph, &partitions, aln.as_deref(), i)?;
+
     clock_model = update_clock_model(&graph, &constraints, &clock_model)
       .wrap_err_with(|| format!("Failed to update clock model (iteration {i})"))?;
 
@@ -406,80 +524,9 @@ pub fn run_timetree_estimation(args: TreetimeTimetreeArgs) -> Result<(), Report>
       .wrap_err_with(|| format!("Failed to record convergence metrics (iteration {i})"))?;
   }
 
-  // ============================================================================
-  // PHASE 6: Post-processing
-  // ============================================================================
+  run_post_processing(&args, &graph, &partitions, &constraints, &clock_model)?;
 
-  // Rate variation analysis (assess sensitivity to clock rate uncertainty)
-  // TODO: Implement rate variation sensitivity analysis
-  // What: Re-run timetree inference with rate ± standard deviation to quantify uncertainty propagation
-  // Why: Optional - assesses robustness of time estimates to clock rate uncertainty
-  // How: Run timetree with perturbed rates, store alternative node time estimates for comparison
-  if args.vary_rate {
-    calc_rate_susceptibility(&graph, &partitions, &constraints, &clock_model)?;
-  }
-
-  // Final marginal reconstruction for confidence intervals
-  if args.time_marginal == TimeMarginalMode::OnlyFinal {
-    info!("### Final round: marginal reconstruction for confidence intervals");
-    run_timetree(&graph, &partitions).wrap_err("Final timetree inference failed")?;
-    // TODO: Implement confidence interval extraction
-    // What: Extract 95% HPD intervals from marginal posterior distributions for each node
-    // Why: Core - quantifies uncertainty in inferred divergence times
-    // How: Compute highest posterior density regions or quantiles from marginal_pos_LH distributions
-    extract_confidence_intervals(&graph, &partitions)?;
-  }
-
-  // Identify and report outlier branches
-  // TODO: Implement bad branch reporting
-  // What: Identify branches where inferred dates deviate significantly from input constraints
-  // Why: Core - users need to know which samples were excluded or flagged as problematic
-  // How: Compare inferred dates to input constraints, log warnings for large deviations
-  report_bad_branches(&graph, &constraints)?;
-
-  // ============================================================================
-  // PHASE 7: Write outputs
-  // ============================================================================
-
-  let out_base = args.outdir.join("timetree");
-  nwk_write_file(out_base.with_extension("nwk"), &graph, &NwkWriteOptions::default())
-    .wrap_err("Failed to write Newick output")?;
-  nex_write_file(out_base.with_extension("nexus"), &graph, &NexWriteOptions::default())
-    .wrap_err("Failed to write Nexus output")?;
-
-  // TODO: Implement node dates output
-  // What: Write TSV file with inferred calendar dates for each tree node
-  // Why: Core - primary output showing numdate and time_before_present for each node
-  // How: Extract node time from partition data, convert to calendar dates, write TSV
-  write_node_dates(&graph, &partitions, &out_base)?;
-
-  // TODO: Implement confidence intervals output
-  // What: Write TSV file with lower_bound, median, upper_bound for each node's inferred date
-  // Why: Core - quantifies uncertainty in molecular dating results
-  // How: Extract HPD intervals from marginal distributions, write TSV with node_name and bounds
-  write_confidence_intervals(&graph, &partitions, &out_base)?;
-
-  // TODO: Implement clock model output
-  // What: Write JSON file with clock rate, intercept, R², and confidence intervals
-  // Why: Core - documents molecular clock parameters used in analysis
-  // How: Serialize clock_model struct to JSON with rate, std_dev, intercept, R² fields
-  write_clock_model(&clock_model, &out_base)?;
-
-  // TODO: Implement root-to-tip regression plot
-  // What: Generate scatter plot of root-to-tip distance vs sampling date with regression line
-  // Why: Optional - diagnostic visualization for temporal signal quality and outlier detection
-  // How: Extract leaf dates and distances, plot with matplotlib/plotters, annotate with R² and outliers
-  if args.plot_rtt.is_some() {
-    plot_root_to_tip(&graph, &constraints, &out_base)?;
-  }
-
-  // TODO: Implement time-scaled tree plot
-  // What: Generate visualization of phylogenetic tree with x-axis as calendar time
-  // Why: Optional - helps interpret divergence times and tree topology in temporal context
-  // How: Layout tree horizontally with branch lengths scaled by inferred divergence times
-  if args.plot_tree.is_some() {
-    plot_time_tree(&graph, &out_base)?;
-  }
+  write_outputs(&args, &graph, &partitions, &constraints, &clock_model)?;
 
   Ok(())
 }
