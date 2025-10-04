@@ -1,6 +1,8 @@
+use crate::alphabet::alphabet::AlphabetName;
 use crate::commands::ancestral::anc_args::MethodAncestral;
 use crate::gtr::get_gtr::GtrModelName;
 use clap::{Parser, ValueEnum, ValueHint};
+use smart_default::SmartDefault;
 use std::fmt::Debug;
 use std::path::PathBuf;
 
@@ -49,7 +51,7 @@ impl Default for RerootMode {
   }
 }
 
-#[derive(Parser, Debug)]
+#[derive(Parser, Debug, SmartDefault)]
 pub struct TreetimeTimetreeArgs {
   /// Path to one or multiple FASTA files with aligned input sequences
   ///
@@ -130,6 +132,10 @@ pub struct TreetimeTimetreeArgs {
   #[clap(long)]
   pub keep_polytomies: bool,
 
+  /// Resolve polytomies using temporal information
+  #[clap(long)]
+  pub resolve_polytomies: bool,
+
   /// use an autocorrelated molecular clock. Strength of the gaussian priors on branch specific rate
   /// deviation and the coupling of parent and offspring rates can be specified e.g. as --relax 1.0
   /// 0.5. Values around 1.0 correspond to weak priors, larger values constrain rate deviations more
@@ -139,8 +145,9 @@ pub struct TreetimeTimetreeArgs {
 
   /// maximal number of iterations the inference cycle is run. Note that for polytomy resolution and
   /// coalescence models max_iter should be at least 2
-  #[clap(long)]
-  pub max_iter: Option<usize>,
+  #[default = 2]
+  #[clap(long, default_value_t = TreetimeTimetreeArgs::default().max_iter)]
+  pub max_iter: usize,
 
   /// coalescent time scale -- sensible values are on the order of the average hamming distance of
   /// contemporaneous sequences. In addition, 'opt' 'skyline' are valid options and estimate a
@@ -183,6 +190,10 @@ pub struct TreetimeTimetreeArgs {
   #[clap(long, default_value = "3.0")]
   pub clock_filter: f64,
 
+  /// Number of IQD (interquartile distance) for clock filter outlier detection
+  #[clap(long)]
+  pub n_iqd: Option<f64>,
+
   /// Reroot the tree using root-to-tip regression. Valid choices are 'min_dev', 'least-squares',
   /// and 'oldest'. 'least-squares' adjusts the root to minimize residuals of the root-to-tip vs
   /// sampling time regression, 'min_dev' minimizes variance of root-to-tip distances. 'least-
@@ -207,6 +218,10 @@ pub struct TreetimeTimetreeArgs {
   #[clap(long)]
   pub covariation: bool,
 
+  /// Estimate timetree with rate variation to assess sensitivity to clock rate uncertainty
+  #[clap(long)]
+  pub vary_rate: bool,
+
   /// GTR model to use
   ///
   /// '--gtr infer' will infer a model from the data. Alternatively, specify the model type. If the specified model requires additional options, use '--gtr-params' to specify those.
@@ -226,8 +241,8 @@ pub struct TreetimeTimetreeArgs {
   pub method_anc: MethodAncestral,
 
   /// Alphabet to use for sequences
-  #[clap(long, value_enum)]
-  pub alphabet: Option<crate::alphabet::alphabet::AlphabetName>,
+  #[clap(long, value_enum, default_value_t = AlphabetName::default())]
+  pub alphabet: AlphabetName,
 
   /// Use dense representation for sequences (store full probability distributions)
   #[clap(long)]
@@ -257,7 +272,18 @@ pub struct TreetimeTimetreeArgs {
   #[clap(long, short = 'O')]
   pub outdir: PathBuf,
 
+  /// Write iteration statistics to tracelog CSV file for monitoring convergence
+  #[clap(long)]
+  #[clap(value_hint = ValueHint::FilePath)]
+  pub tracelog: Option<PathBuf>,
+
   /// Random seed
   #[clap(long)]
   pub seed: Option<u64>,
+}
+
+impl TreetimeTimetreeArgs {
+  pub fn clock_filter_enabled(&self) -> bool {
+    self.clock_filter > 0.0
+  }
 }

@@ -35,7 +35,7 @@ fn main() -> Result<(), Report> {
 
   match args.command {
     TreetimeCommands::Timetree(timetree_args) => {
-      run_timetree_estimation(&timetree_args)?;
+      run_timetree_estimation(timetree_args)?;
     },
     TreetimeCommands::Optimize(optimize_args) => {
       run_optimize(&optimize_args)?;
