@@ -3,7 +3,7 @@ use crate::commands::clock::clock_regression::ClockOptions;
 use crate::commands::clock::find_best_root::params::{
   BrentParams, GoldenSectionParams, GridSearchParams, OptimizationMethod,
 };
-use crate::commands::timetree::timetree_args::{BranchLengthMode, RerootMode};
+use crate::commands::timetree::args::{BranchLengthMode, RerootMode};
 use crate::gtr::get_gtr::GtrModelName;
 use clap::{Args, Parser, ValueHint};
 use smart_default::SmartDefault;

@@ -1,0 +1,145 @@
+use crate::commands::timetree::convergence::likelihood::calculate_coalescent_likelihood;
+use crate::commands::timetree::convergence::likelihood::calculate_positional_likelihood;
+use crate::commands::timetree::convergence::likelihood::calculate_sequence_likelihood;
+use crate::commands::timetree::convergence::likelihood::calculate_total_likelihood;
+use crate::io::csv::CsvStructFileWriter;
+use crate::representation::partition_timetree::PartitionTreetimeMarginalOps;
+use eyre::Report;
+use parking_lot::RwLock;
+use serde::{Deserialize, Serialize};
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
+
+pub struct TimetreeOptimizer {
+  trace: Vec<ConvergenceMetrics>,
+  tracelog_writer: Option<TreetimeOptimizerTraceCsvWriter>,
+  max_iterations: usize,
+  i: usize,
+}
+
+impl TimetreeOptimizer {
+  pub fn new(max_iter: usize, tracelog_path: Option<impl Into<PathBuf>>) -> Result<Self, Report> {
+    let tracelog_writer = tracelog_path
+      .map(Into::into)
+      .map(TreetimeOptimizerTraceCsvWriter::new)
+      .transpose()?;
+
+    Ok(Self {
+      trace: vec![],
+      tracelog_writer,
+      max_iterations: max_iter,
+      i: 0,
+    })
+  }
+
+  pub fn next_iter(&mut self) -> Option<IterationContext> {
+    if self.has_converged() || self.has_reached_max_iterations() {
+      return None;
+    }
+
+    self.i += 1;
+    log::info!("### Timetree iteration {}/{}", self.i, self.max_iterations);
+
+    Some(IterationContext { i: self.i })
+  }
+
+  pub fn record(
+    &mut self,
+    n_diff: usize,
+    n_resolved: usize,
+    partitions: &[Arc<RwLock<dyn PartitionTreetimeMarginalOps>>],
+  ) -> Result<(), Report> {
+    let metric = ConvergenceMetrics::from_iteration(n_diff, n_resolved, partitions);
+
+    if let Some(writer) = &mut self.tracelog_writer {
+      writer.write(&metric)?;
+    }
+
+    if metric.has_converged() {
+      log::info!(
+        "Converged at iteration {} (ndiff={n_diff}, n_resolved={n_resolved})",
+        self.i
+      );
+    } else {
+      log::info!(
+        "  Iteration {}: n_diff={n_diff}, n_resolved={n_resolved}, total_LH={:.2}",
+        self.i,
+        metric.lh_total.unwrap_or(f64::NAN)
+      );
+    }
+
+    self.trace.push(metric);
+    Ok(())
+  }
+
+  fn has_converged(&self) -> bool {
+    self.trace.last().is_some_and(|m| m.has_converged())
+  }
+
+  fn has_reached_max_iterations(&self) -> bool {
+    self.i >= self.max_iterations
+  }
+}
+
+pub struct IterationContext {
+  pub i: usize,
+}
+
+/// Tracks convergence metrics across timetree optimization iterations.
+///
+/// Records likelihood components and change counts to monitor convergence:
+/// - Sequence changes (ndiff) should approach zero
+/// - Polytomies resolved (n_resolved) should stabilize
+/// - Likelihoods should increase or stabilize
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ConvergenceMetrics {
+  /// Number of ancestral sequence changes in this iteration
+  pub ndiff: usize,
+  /// Number of polytomies resolved in this iteration
+  pub n_resolved: usize,
+  /// Sequence likelihood (probability of observing sequences given tree and substitution model)
+  pub lh_seq: Option<f64>,
+  /// Positional likelihood (probability of node positions on time axis)
+  pub lh_pos: Option<f64>,
+  /// Coalescent likelihood (population genetic prior on node times)
+  pub lh_coal: Option<f64>,
+  /// Total likelihood (combined probability of all components)
+  pub lh_total: Option<f64>,
+}
+
+impl ConvergenceMetrics {
+  fn from_iteration(
+    ndiff: usize,
+    n_resolved: usize,
+    partitions: &[Arc<RwLock<dyn PartitionTreetimeMarginalOps>>],
+  ) -> Self {
+    Self {
+      ndiff,
+      n_resolved,
+      lh_seq: calculate_sequence_likelihood(partitions),
+      lh_pos: calculate_positional_likelihood(partitions),
+      lh_coal: calculate_coalescent_likelihood(partitions),
+      lh_total: calculate_total_likelihood(partitions),
+    }
+  }
+
+  fn has_converged(&self) -> bool {
+    self.ndiff == 0 && self.n_resolved == 0
+  }
+}
+
+struct TreetimeOptimizerTraceCsvWriter {
+  writer: CsvStructFileWriter,
+}
+
+impl TreetimeOptimizerTraceCsvWriter {
+  fn new(path: impl AsRef<Path>) -> Result<Self, Report> {
+    let writer = CsvStructFileWriter::new(path, b',')?;
+    Ok(Self { writer })
+  }
+
+  fn write(&mut self, metrics: &ConvergenceMetrics) -> Result<(), Report> {
+    self.writer.write(metrics)?;
+    Ok(())
+  }
+}

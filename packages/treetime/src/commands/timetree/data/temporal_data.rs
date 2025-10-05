@@ -1,5 +1,5 @@
-use crate::commands::timetree::branch_distributions::BranchDistribution;
-use crate::commands::timetree::date_constraints::DateConstraint;
+use crate::commands::timetree::data::date_constraints::DateConstraint;
+use crate::commands::timetree::inference::branch_distributions::BranchDistribution;
 use crate::distribution::distribution::Distribution;
 use crate::graph::edge::GraphEdgeKey;
 use crate::graph::node::GraphNodeKey;

@@ -15,7 +15,7 @@ use treetime::commands::homoplasy::homoplasy_args::TreetimeHomoplasyArgs;
 use treetime::commands::mugration::mugration_args::TreetimeMugrationArgs;
 use treetime::commands::optimize::args::TreetimeOptimizeArgs;
 use treetime::commands::prune::args::TreetimePruneArgs;
-use treetime::commands::timetree::timetree_args::TreetimeTimetreeArgs;
+use treetime::commands::timetree::args::TreetimeTimetreeArgs;
 use treetime::utils::clap_styles::styles;
 use treetime::utils::global_init::setup_logger;
 

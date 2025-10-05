@@ -1,5 +1,5 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::commands::timetree::date_constraints::DateConstraint;
+use crate::commands::timetree::data::date_constraints::DateConstraint;
 use crate::distribution::distribution::Distribution;
 use crate::graph::edge::GraphEdgeKey;
 use crate::graph::graph::{GraphNodeBackward, GraphNodeForward};

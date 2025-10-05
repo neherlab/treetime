@@ -1,4 +1,4 @@
-use crate::commands::timetree::timetree_args::TreetimeTimetreeArgs;
+use crate::commands::timetree::args::TreetimeTimetreeArgs;
 use crate::distribution::distribution::Distribution;
 use crate::graph::edge::GraphEdge;
 use crate::graph::graph::Graph;
