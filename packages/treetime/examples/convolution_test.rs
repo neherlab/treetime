@@ -1,7 +1,7 @@
 use clap::{Parser, ValueEnum};
 use eyre::Report;
 use serde::{Deserialize, Serialize};
-use strum_macros::EnumIter;
+use strum_macros::{Display, EnumIter};
 use treetime::distribution::reference::convolution_test::framework::ConvolutionTestRunner;
 use treetime::distribution::reference::convolution_test::{
   ConvolutionAlgorithm, ExponentialFlatResult, ExponentialTestRunner, GaussianFlatResult, GaussianTestRunner,
@@ -17,7 +17,7 @@ use treetime::distribution::reference::convolution_test::{
 )]
 struct Args {
   /// Function type to test
-  #[arg(long, default_value = "gaussian")]
+  #[arg(long, default_value_t = FunctionType::default())]
   function: FunctionType,
 
   /// Output directory for results files
@@ -25,7 +25,7 @@ struct Args {
   output_dir: String,
 
   /// Algorithms to test
-  #[arg(long, default_values = ["riemann", "ndarray"])]
+  #[arg(long, default_values_t = ConvolutionAlgorithm::all())]
   algorithms: Vec<ConvolutionAlgorithm>,
 
   /// Run only specific test cases (comma-separated names, or "all" for all)
@@ -41,10 +41,12 @@ struct Args {
   list_cases: bool,
 }
 
-#[derive(Clone, Debug, ValueEnum, Serialize, Deserialize, EnumIter)]
+#[derive(Clone, Debug, Default, Display, ValueEnum, Serialize, Deserialize, EnumIter)]
 #[serde(rename_all = "kebab-case")]
 #[clap(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
 enum FunctionType {
+  #[default]
   Gaussian,
   Exponential,
 }
