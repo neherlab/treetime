@@ -2,9 +2,9 @@ use clap::{Parser, ValueEnum};
 use eyre::Report;
 use serde::{Deserialize, Serialize};
 use strum_macros::{Display, EnumIter};
-use treetime::distribution::reference::convolution_test::framework::ConvolutionTestRunner;
+use treetime::distribution::reference::convolution_test::framework::{ConvolutionTestRunner, TestCase, TestResult};
 use treetime::distribution::reference::convolution_test::{
-  ConvolutionAlgorithm, ExponentialFlatResult, ExponentialTestRunner, GaussianFlatResult, GaussianTestRunner,
+  ConvolutionAlgorithm, ExponentialTestRunner, GaussianTestRunner,
   GenericConvolutionTestFramework, TestOutputWriter, ToFlatResult,
 };
 
@@ -72,19 +72,62 @@ fn main() -> Result<(), Report> {
   }
 }
 
-fn run_gaussian_tests(args: &Args) -> Result<(), Report> {
-  // Create Gaussian test runner
-  let runner = GaussianTestRunner::new();
-
+fn run_convolution_tests<R, T>(
+  args: &Args,
+  runner: R,
+  function_type_name: &str,
+) -> Result<(), Report>
+where
+  R: ConvolutionTestRunner<T>,
+  T: TestCase,
+  TestResult<T>: ToFlatResult,
+  <TestResult<T> as ToFlatResult>::FlatResult: Serialize,
+{
   // Create framework
   let mut framework = GenericConvolutionTestFramework::new(runner, args.output_dir.clone());
-  framework.set_algorithms(args.algorithms.clone()); // Filter test cases if requested
-  if args.test_cases != "all" {
+  framework.set_algorithms(args.algorithms.clone());
+
+  if args.verbose {
+    println!("Test Configuration:");
+    println!("  Function type: {function_type_name}");
+    println!("  Algorithms: {:?}", framework.algorithms);
+    println!("  Test cases: {} selected", framework.runner.test_cases().len());
+    println!("  Output directory: {}\n", args.output_dir);
+  }
+
+  // Run all tests
+  let results = framework.run_all_tests()?;
+
+  // Generate summary
+  let summary = framework.generate_summary(&results);
+
+  // Print summary to console
+  framework.print_summary(&summary);
+
+  // Save results
+  framework.save_results_json(&results, &summary)?;
+
+  // Save TSV with function-specific columns
+  let flat_results: Vec<_> = results.iter().map(|r| r.to_flat_result()).collect();
+  let output_writer = TestOutputWriter::new(args.output_dir.clone());
+  output_writer.save_results_tsv(&results, &flat_results)?;
+
+  println!("{function_type_name} convolution test framework completed successfully!");
+  println!("Check {} for detailed results.", args.output_dir);
+
+  Ok(())
+}
+
+fn run_gaussian_tests(args: &Args) -> Result<(), Report> {
+  let runner = if args.test_cases == "all" {
+    GaussianTestRunner::new()
+  } else {
     let requested_cases: Vec<&str> = args.test_cases.split(',').map(|s| s.trim()).collect();
-    let all_cases = framework.runner.test_cases();
+    let all_runner = GaussianTestRunner::new();
+    let all_cases = all_runner.test_cases();
     let filtered_cases = all_cases
       .iter()
-      .filter(|case| requested_cases.contains(&case.name.as_str()))
+      .filter(|case| requested_cases.contains(&case.name()))
       .cloned()
       .collect::<Vec<_>>();
 
@@ -92,60 +135,27 @@ fn run_gaussian_tests(args: &Args) -> Result<(), Report> {
       eprintln!("No matching test cases found for: {}", args.test_cases);
       eprintln!("Available Gaussian test cases:");
       for case in all_cases {
-        eprintln!("  - {}", case.name);
+        eprintln!("  - {}", case.name());
       }
       return Ok(());
     }
 
-    let filtered_runner = GaussianTestRunner::with_test_cases(filtered_cases);
-    framework = GenericConvolutionTestFramework::new(filtered_runner, args.output_dir.clone());
-    framework.set_algorithms(args.algorithms.clone());
-  }
+    GaussianTestRunner::with_test_cases(filtered_cases)
+  };
 
-  if args.verbose {
-    println!("Test Configuration:");
-    println!("  Function type: Gaussian");
-    println!("  Algorithms: {:?}", framework.algorithms);
-    println!("  Test cases: {} selected", framework.runner.test_cases().len());
-    println!("  Output directory: {}\n", args.output_dir);
-  }
-
-  // Run all tests
-  let results = framework.run_all_tests()?;
-
-  // Generate summary
-  let summary = framework.generate_summary(&results);
-
-  // Print summary to console
-  framework.print_summary(&summary);
-
-  // Save results
-  framework.save_results_json(&results, &summary)?;
-
-  // Save TSV with Gaussian-specific columns
-  let flat_results: Vec<GaussianFlatResult> = results.iter().map(|r| r.to_flat_result()).collect();
-  let output_writer = TestOutputWriter::new(args.output_dir.clone());
-  output_writer.save_results_tsv(&results, &flat_results)?;
-
-  println!("Gaussian convolution test framework completed successfully!");
-  println!("Check {} for detailed results.", args.output_dir);
-
-  Ok(())
+  run_convolution_tests(args, runner, "Gaussian")
 }
 
 fn run_exponential_tests(args: &Args) -> Result<(), Report> {
-  // Create Exponential test runner
-  let runner = ExponentialTestRunner::new();
-
-  // Create framework
-  let mut framework = GenericConvolutionTestFramework::new(runner, args.output_dir.clone());
-  framework.set_algorithms(args.algorithms.clone()); // Filter test cases if requested
-  if args.test_cases != "all" {
+  let runner = if args.test_cases == "all" {
+    ExponentialTestRunner::new()
+  } else {
     let requested_cases: Vec<&str> = args.test_cases.split(',').map(|s| s.trim()).collect();
-    let all_cases = framework.runner.test_cases();
+    let all_runner = ExponentialTestRunner::new();
+    let all_cases = all_runner.test_cases();
     let filtered_cases = all_cases
       .iter()
-      .filter(|case| requested_cases.contains(&case.name.as_str()))
+      .filter(|case| requested_cases.contains(&case.name()))
       .cloned()
       .collect::<Vec<_>>();
 
@@ -153,45 +163,15 @@ fn run_exponential_tests(args: &Args) -> Result<(), Report> {
       eprintln!("No matching test cases found for: {}", args.test_cases);
       eprintln!("Available Exponential test cases:");
       for case in all_cases {
-        eprintln!("  - {}", case.name);
+        eprintln!("  - {}", case.name());
       }
       return Ok(());
     }
 
-    let filtered_runner = ExponentialTestRunner::with_test_cases(filtered_cases);
-    framework = GenericConvolutionTestFramework::new(filtered_runner, args.output_dir.clone());
-    framework.set_algorithms(args.algorithms.clone());
-  }
+    ExponentialTestRunner::with_test_cases(filtered_cases)
+  };
 
-  if args.verbose {
-    println!("Test Configuration:");
-    println!("  Function type: Exponential");
-    println!("  Algorithms: {:?}", framework.algorithms);
-    println!("  Test cases: {} selected", framework.runner.test_cases().len());
-    println!("  Output directory: {}\n", args.output_dir);
-  }
-
-  // Run all tests
-  let results = framework.run_all_tests()?;
-
-  // Generate summary
-  let summary = framework.generate_summary(&results);
-
-  // Print summary to console
-  framework.print_summary(&summary);
-
-  // Save results
-  framework.save_results_json(&results, &summary)?;
-
-  // Save TSV with Exponential-specific columns
-  let flat_results: Vec<ExponentialFlatResult> = results.iter().map(|r| r.to_flat_result()).collect();
-  let output_writer = TestOutputWriter::new(args.output_dir.clone());
-  output_writer.save_results_tsv(&results, &flat_results)?;
-
-  println!("Exponential convolution test framework completed successfully!");
-  println!("Check {} for detailed results.", args.output_dir);
-
-  Ok(())
+  run_convolution_tests(args, runner, "Exponential")
 }
 
 fn list_gaussian_test_cases() {
