@@ -8,7 +8,7 @@ use eyre::Report;
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 
-use super::test_cases::{create_gaussian_test_cases, GaussianTestCase};
+use super::test_cases::{GaussianTestCase, create_gaussian_test_cases};
 
 /// Gaussian-specific test framework implementation
 pub struct GaussianTestRunner {
@@ -49,7 +49,7 @@ impl ConvolutionTestRunner<GaussianTestCase> for GaussianTestRunner {
     // Run convolution
     let actual_result = match algorithm {
       ConvolutionAlgorithm::Riemann => riemann_convolve(&f, &g, &eval_grid)?,
-      ConvolutionAlgorithm::NdArray => ndarray_convolve(&f, &g, &eval_grid)?,
+      ConvolutionAlgorithm::Ndarray => ndarray_convolve(&f, &g, &eval_grid)?,
     };
 
     // Compute analytical expected result
@@ -62,11 +62,7 @@ impl ConvolutionTestRunner<GaussianTestCase> for GaussianTestRunner {
     )?;
 
     // Compute metrics
-    let metrics = DomainAgreementMetrics::new(
-      actual_result.x(),
-      actual_result.y(),
-      expected_result.y(),
-    )?;
+    let metrics = DomainAgreementMetrics::new(actual_result.x(), actual_result.y(), expected_result.y())?;
 
     let execution_time = start_time.elapsed().as_secs_f64() * 1000.0;
 

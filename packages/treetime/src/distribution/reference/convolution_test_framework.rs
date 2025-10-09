@@ -19,18 +19,17 @@ pub struct ConvolutionTestFramework {
 
 /// Available convolution algorithms for testing
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub enum ConvolutionAlgorithm {
-  #[serde(rename = "riemann")]
   Riemann,
-  #[serde(rename = "ndarray")]
-  NdArray,
+  Ndarray,
 }
 
 impl fmt::Display for ConvolutionAlgorithm {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     match self {
       ConvolutionAlgorithm::Riemann => write!(f, "riemann"),
-      ConvolutionAlgorithm::NdArray => write!(f, "ndarray"),
+      ConvolutionAlgorithm::Ndarray => write!(f, "ndarray"),
     }
   }
 }
@@ -127,7 +126,7 @@ impl ConvolutionTestFramework {
   pub fn new(output_dir: String) -> Self {
     Self {
       test_cases: create_comprehensive_test_cases(),
-      algorithms: vec![ConvolutionAlgorithm::Riemann, ConvolutionAlgorithm::NdArray],
+      algorithms: vec![ConvolutionAlgorithm::Riemann, ConvolutionAlgorithm::Ndarray],
       output_dir,
     }
   }
@@ -136,7 +135,7 @@ impl ConvolutionTestFramework {
   pub fn with_test_cases(test_cases: Vec<GaussianTestCase>, output_dir: String) -> Self {
     Self {
       test_cases,
-      algorithms: vec![ConvolutionAlgorithm::Riemann, ConvolutionAlgorithm::NdArray],
+      algorithms: vec![ConvolutionAlgorithm::Riemann, ConvolutionAlgorithm::Ndarray],
       output_dir,
     }
   }
@@ -210,7 +209,7 @@ impl ConvolutionTestFramework {
     // Run convolution
     let actual_result = match algorithm {
       ConvolutionAlgorithm::Riemann => riemann_convolve(&f, &g, &eval_grid)?,
-      ConvolutionAlgorithm::NdArray => ndarray_convolve(&f, &g, &eval_grid)?,
+      ConvolutionAlgorithm::Ndarray => ndarray_convolve(&f, &g, &eval_grid)?,
     };
 
     // Compute analytical expected result

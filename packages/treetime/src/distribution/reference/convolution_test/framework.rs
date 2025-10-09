@@ -1,5 +1,5 @@
 use crate::distribution::reference::domain_agreement_metrics::DomainAgreementMetrics;
-use crate::io::json::{json_write_file, JsonPretty};
+use crate::io::json::{JsonPretty, json_write_file};
 use crate::utils::float_fmt::float_to_significant_digits;
 use eyre::Report;
 use serde::{Deserialize, Serialize};
@@ -105,7 +105,10 @@ impl<T: TestCase, R: ConvolutionTestRunner<T>> GenericConvolutionTestFramework<T
   pub fn run_all_tests(&self) -> Result<Vec<TestResult<T>>, Report> {
     let mut results = Vec::new();
 
-    println!("=== {} Convolution Test Framework ===", self.runner.function_type().to_uppercase());
+    println!(
+      "=== {} Convolution Test Framework ===",
+      self.runner.function_type().to_uppercase()
+    );
     println!(
       "Running {} test cases with {} algorithms ({} total tests)\n",
       self.runner.test_cases().len(),
@@ -124,12 +127,15 @@ impl<T: TestCase, R: ConvolutionTestRunner<T>> GenericConvolutionTestFramework<T
         match self.runner.run_test(test_case, algorithm) {
           Ok(result) => {
             let elapsed = start_time.elapsed().as_secs_f64() * 1000.0;
-            println!("✓ ({:.1}ms, R²={:.6})", elapsed, result.metrics.quality_metrics.r_squared);
+            println!(
+              "✓ ({:.1}ms, R²={:.6})",
+              elapsed, result.metrics.quality_metrics.r_squared
+            );
             results.push(result);
-          }
+          },
           Err(e) => {
             println!("✗ Error: {}", e);
-          }
+          },
         }
       }
       println!();
@@ -151,7 +157,10 @@ impl<T: TestCase, R: ConvolutionTestRunner<T>> GenericConvolutionTestFramework<T
         continue;
       }
 
-      let r2_values: Vec<f64> = algo_results.iter().map(|r| r.metrics.quality_metrics.r_squared).collect();
+      let r2_values: Vec<f64> = algo_results
+        .iter()
+        .map(|r| r.metrics.quality_metrics.r_squared)
+        .collect();
       let execution_times: Vec<f64> = algo_results.iter().map(|r| r.execution_time_ms).collect();
 
       let r2_min = r2_values.iter().fold(f64::INFINITY, |a, &b| a.min(b));
@@ -172,7 +181,10 @@ impl<T: TestCase, R: ConvolutionTestRunner<T>> GenericConvolutionTestFramework<T
         .fold(0.0f64, |a, b| a.max(b));
 
       // Simple pass/fail based on R² > 0.95
-      let passed_tests = algo_results.iter().filter(|r| r.metrics.quality_metrics.r_squared > 0.95).count();
+      let passed_tests = algo_results
+        .iter()
+        .filter(|r| r.metrics.quality_metrics.r_squared > 0.95)
+        .count();
       let failed_tests = algo_results.len() - passed_tests;
       let success_rate = passed_tests as f64 / algo_results.len() as f64;
 
@@ -212,7 +224,10 @@ impl<T: TestCase, R: ConvolutionTestRunner<T>> GenericConvolutionTestFramework<T
 
   /// Print comprehensive summary to console
   pub fn print_summary(&self, summary: &TestSummary) {
-    println!("=== {} CONVOLUTION TEST SUMMARY ===\n", summary.function_type.to_uppercase());
+    println!(
+      "=== {} CONVOLUTION TEST SUMMARY ===\n",
+      summary.function_type.to_uppercase()
+    );
 
     println!("Overall Statistics:");
     println!("  Function type: {}", summary.function_type);
@@ -222,12 +237,15 @@ impl<T: TestCase, R: ConvolutionTestRunner<T>> GenericConvolutionTestFramework<T
     println!("  Assessment: {}\n", summary.overall_assessment);
 
     println!("Algorithm Performance:");
-    println!("{:>10} {:>8} {:>10} {:>8} {:>8} {:>8} {:>12} {:>12} {:>8}",
-      "Algorithm", "Tests", "Time(ms)", "R²Min", "R²Max", "R²Mean", "MaxAbsErr", "MaxRelErr%", "Success%");
+    println!(
+      "{:>10} {:>8} {:>10} {:>8} {:>8} {:>8} {:>12} {:>12} {:>8}",
+      "Algorithm", "Tests", "Time(ms)", "R²Min", "R²Max", "R²Mean", "MaxAbsErr", "MaxRelErr%", "Success%"
+    );
     println!("{}", "-".repeat(100));
 
     for algo_summary in &summary.algorithm_summaries {
-      println!("{:>10} {:>8} {:>10.1} {:>8.4} {:>8.4} {:>8.4} {:>12} {:>12.1} {:>8.1}",
+      println!(
+        "{:>10} {:>8} {:>10.1} {:>8.4} {:>8.4} {:>8.4} {:>12} {:>12.1} {:>8.1}",
         algo_summary.algorithm,
         algo_summary.test_cases_count,
         algo_summary.execution_time_total_ms,

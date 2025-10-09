@@ -56,7 +56,6 @@ pub fn create_gaussian_test_cases() -> Vec<GaussianTestCase> {
       stress_type: "none".to_owned(),
       analytical_caution: "none".to_owned(),
     },
-
     // Case 2 — Centered, unequal widths
     GaussianTestCase {
       name: "centered_unequal_widths".to_owned(),
@@ -71,7 +70,6 @@ pub fn create_gaussian_test_cases() -> Vec<GaussianTestCase> {
       stress_type: "resolution vs narrow kernel".to_owned(),
       analytical_caution: "none".to_owned(),
     },
-
     // Case 3 — Sharp g, small shift (delta-like)
     GaussianTestCase {
       name: "delta_like_small_shift".to_owned(),
@@ -86,7 +84,6 @@ pub fn create_gaussian_test_cases() -> Vec<GaussianTestCase> {
       stress_type: "discretization error, normalization".to_owned(),
       analytical_caution: "potential overflow for large |x|/σ_g".to_owned(),
     },
-
     // Case 4 — Very wide g, negative shift
     GaussianTestCase {
       name: "wide_kernel_negative_shift".to_owned(),
@@ -101,7 +98,6 @@ pub fn create_gaussian_test_cases() -> Vec<GaussianTestCase> {
       stress_type: "tail truncation, numeric underflow, FFT padding".to_owned(),
       analytical_caution: "underflow in far tails expected".to_owned(),
     },
-
     // Case 5 — Large positive shift
     GaussianTestCase {
       name: "large_positive_shift".to_owned(),
@@ -116,7 +112,6 @@ pub fn create_gaussian_test_cases() -> Vec<GaussianTestCase> {
       stress_type: "circular convolution artifacts, insufficient padding".to_owned(),
       analytical_caution: "none".to_owned(),
     },
-
     // Case 6 — Large negative shift
     GaussianTestCase {
       name: "large_negative_shift".to_owned(),
@@ -131,7 +126,6 @@ pub fn create_gaussian_test_cases() -> Vec<GaussianTestCase> {
       stress_type: "padding and index handling".to_owned(),
       analytical_caution: "none".to_owned(),
     },
-
     // Case 7 — Extreme ratio σ_g >> σ_f
     GaussianTestCase {
       name: "extreme_ratio_wide_g".to_owned(),
@@ -146,7 +140,6 @@ pub fn create_gaussian_test_cases() -> Vec<GaussianTestCase> {
       stress_type: "tail coverage, numerical cancellation".to_owned(),
       analytical_caution: "underflow in extreme tails".to_owned(),
     },
-
     // Case 8 — Extreme ratio σ_f >> σ_g
     GaussianTestCase {
       name: "extreme_ratio_wide_f".to_owned(),
@@ -161,7 +154,6 @@ pub fn create_gaussian_test_cases() -> Vec<GaussianTestCase> {
       stress_type: "grid resolution near narrow kernel peak".to_owned(),
       analytical_caution: "potential overflow if domain widened".to_owned(),
     },
-
     // Case 9 — Tail precision stress
     GaussianTestCase {
       name: "tail_precision_stress".to_owned(),
@@ -176,7 +168,6 @@ pub fn create_gaussian_test_cases() -> Vec<GaussianTestCase> {
       stress_type: "truncation strategy, FFT padding".to_owned(),
       analytical_caution: "underflow to zero at extreme |x|".to_owned(),
     },
-
     // Case 10 — Tight truncation (intentional error exposure)
     GaussianTestCase {
       name: "tight_truncation".to_owned(),
@@ -191,7 +182,6 @@ pub fn create_gaussian_test_cases() -> Vec<GaussianTestCase> {
       stress_type: "boundary effects, wrap-around".to_owned(),
       analytical_caution: "none".to_owned(),
     },
-
     // Case 11 — Coarse grid
     GaussianTestCase {
       name: "coarse_grid".to_owned(),
@@ -206,7 +196,6 @@ pub fn create_gaussian_test_cases() -> Vec<GaussianTestCase> {
       stress_type: "aliasing, grid spacing scaling".to_owned(),
       analytical_caution: "none".to_owned(),
     },
-
     // Case 12 — Very fine grid (reference-quality)
     GaussianTestCase {
       name: "fine_grid_reference".to_owned(),
@@ -221,7 +210,6 @@ pub fn create_gaussian_test_cases() -> Vec<GaussianTestCase> {
       stress_type: "performance/memory, summation order".to_owned(),
       analytical_caution: "none".to_owned(),
     },
-
     // Case 13 — Wide dynamic range
     GaussianTestCase {
       name: "wide_dynamic_range".to_owned(),
@@ -236,7 +224,6 @@ pub fn create_gaussian_test_cases() -> Vec<GaussianTestCase> {
       stress_type: "catastrophic cancellation, summation stability".to_owned(),
       analytical_caution: "under/overflow risks".to_owned(),
     },
-
     // Case 14 — Near-overflow guard (large |x| range)
     GaussianTestCase {
       name: "overflow_guard".to_owned(),
@@ -251,7 +238,6 @@ pub fn create_gaussian_test_cases() -> Vec<GaussianTestCase> {
       stress_type: "padding, exponent range, accumulation depth".to_owned(),
       analytical_caution: "underflow in far tails expected".to_owned(),
     },
-
     // Case 15 — Tiny shift, equal widths
     GaussianTestCase {
       name: "tiny_shift_equal_widths".to_owned(),

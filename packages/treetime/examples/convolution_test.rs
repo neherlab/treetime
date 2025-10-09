@@ -1,14 +1,15 @@
 use clap::{Parser, ValueEnum};
 use eyre::Report;
 use serde::{Deserialize, Serialize};
-use treetime::distribution::reference::convolution_test::{
-  ConvolutionAlgorithm, GenericConvolutionTestFramework,
-  GaussianTestRunner, ExponentialTestRunner,
-  GaussianFlatResult, ExponentialFlatResult, ToFlatResult, TestOutputWriter
-};
+use strum_macros::EnumIter;
 use treetime::distribution::reference::convolution_test::framework::ConvolutionTestRunner;
+use treetime::distribution::reference::convolution_test::{
+  ConvolutionAlgorithm, ExponentialFlatResult, ExponentialTestRunner, GaussianFlatResult, GaussianTestRunner,
+  GenericConvolutionTestFramework, TestOutputWriter, ToFlatResult,
+};
 
 #[derive(Parser, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 #[command(
   name = "convolution-test",
   about = "Comprehensive convolution accuracy and performance test framework for all function types",
@@ -23,9 +24,9 @@ struct Args {
   #[arg(long, default_value = "tmp/convolution_test")]
   output_dir: String,
 
-  /// Algorithms to test (comma-separated: riemann,ndarray)
-  #[arg(long, default_value = "riemann,ndarray")]
-  algorithms: String,
+  /// Algorithms to test
+  #[arg(long, default_values = ["riemann", "ndarray"])]
+  algorithms: Vec<ConvolutionAlgorithm>,
 
   /// Run only specific test cases (comma-separated names, or "all" for all)
   #[arg(long, default_value = "all")]
@@ -40,7 +41,9 @@ struct Args {
   list_cases: bool,
 }
 
-#[derive(Clone, Debug, ValueEnum, Serialize, Deserialize)]
+#[derive(Clone, Debug, ValueEnum, Serialize, Deserialize, EnumIter)]
+#[serde(rename_all = "kebab-case")]
+#[clap(rename_all = "kebab-case")]
 enum FunctionType {
   Gaussian,
   Exponential,
@@ -68,17 +71,12 @@ fn main() -> Result<(), Report> {
 }
 
 fn run_gaussian_tests(args: &Args) -> Result<(), Report> {
-  // Parse algorithms
-  let algorithms = ConvolutionAlgorithm::parse_list(&args.algorithms)?;
-
   // Create Gaussian test runner
   let runner = GaussianTestRunner::new();
 
   // Create framework
   let mut framework = GenericConvolutionTestFramework::new(runner, args.output_dir.clone());
-  framework.set_algorithms(algorithms.clone());
-
-  // Filter test cases if requested
+  framework.set_algorithms(args.algorithms.clone()); // Filter test cases if requested
   if args.test_cases != "all" {
     let requested_cases: Vec<&str> = args.test_cases.split(',').map(|s| s.trim()).collect();
     let all_cases = framework.runner.test_cases();
@@ -99,7 +97,7 @@ fn run_gaussian_tests(args: &Args) -> Result<(), Report> {
 
     let filtered_runner = GaussianTestRunner::with_test_cases(filtered_cases);
     framework = GenericConvolutionTestFramework::new(filtered_runner, args.output_dir.clone());
-    framework.set_algorithms(algorithms);
+    framework.set_algorithms(args.algorithms.clone());
   }
 
   if args.verbose {
@@ -134,17 +132,12 @@ fn run_gaussian_tests(args: &Args) -> Result<(), Report> {
 }
 
 fn run_exponential_tests(args: &Args) -> Result<(), Report> {
-  // Parse algorithms
-  let algorithms = ConvolutionAlgorithm::parse_list(&args.algorithms)?;
-
   // Create Exponential test runner
   let runner = ExponentialTestRunner::new();
 
   // Create framework
   let mut framework = GenericConvolutionTestFramework::new(runner, args.output_dir.clone());
-  framework.set_algorithms(algorithms.clone());
-
-  // Filter test cases if requested
+  framework.set_algorithms(args.algorithms.clone()); // Filter test cases if requested
   if args.test_cases != "all" {
     let requested_cases: Vec<&str> = args.test_cases.split(',').map(|s| s.trim()).collect();
     let all_cases = framework.runner.test_cases();
@@ -165,7 +158,7 @@ fn run_exponential_tests(args: &Args) -> Result<(), Report> {
 
     let filtered_runner = ExponentialTestRunner::with_test_cases(filtered_cases);
     framework = GenericConvolutionTestFramework::new(filtered_runner, args.output_dir.clone());
-    framework.set_algorithms(algorithms);
+    framework.set_algorithms(args.algorithms.clone());
   }
 
   if args.verbose {

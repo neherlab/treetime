@@ -6,10 +6,10 @@ use serde::{Deserialize, Serialize};
 pub struct ExponentialTestCase {
   pub name: String,
   pub description: String,
-  pub a: f64,  // Decay rate for f(x) = exp(-ax) for x >= 0
-  pub b: f64,  // Decay rate for g(x) = exp(-bx) for x >= 0
-  pub f_domain: (f64, f64),  // Should start at 0 for causal support
-  pub g_domain: (f64, f64),  // Should start at 0 for causal support
+  pub a: f64,                  // Decay rate for f(x) = exp(-ax) for x >= 0
+  pub b: f64,                  // Decay rate for g(x) = exp(-bx) for x >= 0
+  pub f_domain: (f64, f64),    // Should start at 0 for causal support
+  pub g_domain: (f64, f64),    // Should start at 0 for causal support
   pub eval_domain: (f64, f64), // Should start at 0 for causal support
   pub dx: f64,
   pub stress_type: String,
@@ -54,7 +54,6 @@ pub fn create_exponential_test_cases() -> Vec<ExponentialTestCase> {
       stress_type: "none".to_owned(),
       analytical_caution: "none".to_owned(),
     },
-
     // Case E2 — Equal rates (limit case)
     ExponentialTestCase {
       name: "equal_rates_limit".to_owned(),
@@ -68,7 +67,6 @@ pub fn create_exponential_test_cases() -> Vec<ExponentialTestCase> {
       stress_type: "kernel path selection, avoids division by zero".to_owned(),
       analytical_caution: "pdf formula undefined at a=b; use limit form".to_owned(),
     },
-
     // Case E3 — Near-equal rates (cancellation-sensitive)
     ExponentialTestCase {
       name: "near_equal_rates".to_owned(),
@@ -82,7 +80,6 @@ pub fn create_exponential_test_cases() -> Vec<ExponentialTestCase> {
       stress_type: "discretization over long horizons, accumulation error".to_owned(),
       analytical_caution: "use stable expm1 form for (1-exp(-(a-b)x))/(a-b)".to_owned(),
     },
-
     // Case E4 — Fast + slow decay (wide dynamic range)
     ExponentialTestCase {
       name: "fast_slow_decay".to_owned(),
@@ -96,7 +93,6 @@ pub fn create_exponential_test_cases() -> Vec<ExponentialTestCase> {
       stress_type: "truncation strategy for long g tail, FFT zero-padding".to_owned(),
       analytical_caution: "underflow in far tail contributions acceptable".to_owned(),
     },
-
     // Case E5 — Slow + fast decay (swap roles)
     ExponentialTestCase {
       name: "slow_fast_decay".to_owned(),
@@ -110,7 +106,6 @@ pub fn create_exponential_test_cases() -> Vec<ExponentialTestCase> {
       stress_type: "padding and index handling at short g support".to_owned(),
       analytical_caution: "none".to_owned(),
     },
-
     // Case E6 — Moderate rates, coarse grid
     ExponentialTestCase {
       name: "moderate_coarse_grid".to_owned(),
@@ -124,7 +119,6 @@ pub fn create_exponential_test_cases() -> Vec<ExponentialTestCase> {
       stress_type: "aliasing/accuracy vs Δx, Δx scaling factor".to_owned(),
       analytical_caution: "none".to_owned(),
     },
-
     // Case E7 — Fine grid reference
     ExponentialTestCase {
       name: "fine_grid_reference".to_owned(),
@@ -138,7 +132,6 @@ pub fn create_exponential_test_cases() -> Vec<ExponentialTestCase> {
       stress_type: "performance/memory, summation order".to_owned(),
       analytical_caution: "none".to_owned(),
     },
-
     // Case E8 — Long horizon tail-precision
     ExponentialTestCase {
       name: "long_horizon_tail_precision".to_owned(),
@@ -152,7 +145,6 @@ pub fn create_exponential_test_cases() -> Vec<ExponentialTestCase> {
       stress_type: "FFT padding to avoid circular wrap, cumulative round-off".to_owned(),
       analytical_caution: "underflow in far tails expected".to_owned(),
     },
-
     // Case E9 — Tight truncation (intentional error exposure)
     ExponentialTestCase {
       name: "tight_truncation".to_owned(),
@@ -166,7 +158,6 @@ pub fn create_exponential_test_cases() -> Vec<ExponentialTestCase> {
       stress_type: "wrap-around artifacts if padding insufficient".to_owned(),
       analytical_caution: "none".to_owned(),
     },
-
     // Case E10 — Large x range, near-underflow guard
     ExponentialTestCase {
       name: "large_range_underflow_guard".to_owned(),
@@ -180,7 +171,6 @@ pub fn create_exponential_test_cases() -> Vec<ExponentialTestCase> {
       stress_type: "exponent range, padding, accumulation depth".to_owned(),
       analytical_caution: "far tails may underflow to zero; acceptable".to_owned(),
     },
-
     // Case E11 — Extreme near-equality (machine epsilon scale)
     ExponentialTestCase {
       name: "extreme_near_equality".to_owned(),
@@ -194,7 +184,6 @@ pub fn create_exponential_test_cases() -> Vec<ExponentialTestCase> {
       stress_type: "long support convolution accuracy, summation stability".to_owned(),
       analytical_caution: "direct formula ill-conditioned; use stable evaluation".to_owned(),
     },
-
     // Case E12 — Very fast decays, small domains
     ExponentialTestCase {
       name: "very_fast_decays".to_owned(),

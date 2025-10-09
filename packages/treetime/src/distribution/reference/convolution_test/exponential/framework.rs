@@ -8,7 +8,7 @@ use eyre::Report;
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 
-use super::test_cases::{create_exponential_test_cases, ExponentialTestCase};
+use super::test_cases::{ExponentialTestCase, create_exponential_test_cases};
 
 /// Exponential-specific test framework implementation
 pub struct ExponentialTestRunner {
@@ -49,23 +49,14 @@ impl ConvolutionTestRunner<ExponentialTestCase> for ExponentialTestRunner {
     // Run convolution
     let actual_result = match algorithm {
       ConvolutionAlgorithm::Riemann => riemann_convolve(&f, &g, &eval_grid)?,
-      ConvolutionAlgorithm::NdArray => ndarray_convolve(&f, &g, &eval_grid)?,
+      ConvolutionAlgorithm::Ndarray => ndarray_convolve(&f, &g, &eval_grid)?,
     };
 
     // Compute analytical expected result
-    let expected_result = exponential_convolution(
-      test_case.a,
-      test_case.b,
-      test_case.eval_domain,
-      test_case.dx,
-    )?;
+    let expected_result = exponential_convolution(test_case.a, test_case.b, test_case.eval_domain, test_case.dx)?;
 
     // Compute metrics
-    let metrics = DomainAgreementMetrics::new(
-      actual_result.x(),
-      actual_result.y(),
-      expected_result.y(),
-    )?;
+    let metrics = DomainAgreementMetrics::new(actual_result.x(), actual_result.y(), expected_result.y())?;
 
     let execution_time = start_time.elapsed().as_secs_f64() * 1000.0;
 
