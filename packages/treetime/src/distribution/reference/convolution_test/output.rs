@@ -2,6 +2,7 @@ use crate::distribution::reference::convolution_test::framework::{TestCase, Test
 use crate::io::csv::CsvStructFileWriter;
 use eyre::Report;
 use serde::{Deserialize, Serialize};
+use std::fs;
 
 /// Trait for flattening test results to TSV-compatible format
 pub trait ToFlatResult {
@@ -12,6 +13,7 @@ pub trait ToFlatResult {
 }
 
 /// Generic output utilities for test frameworks
+#[derive(Clone, Debug)]
 pub struct TestOutputWriter {
   output_dir: String,
 }
@@ -24,19 +26,20 @@ impl TestOutputWriter {
   /// Save results to TSV file for analysis in Python/R
   pub fn save_results_tsv<T: TestCase, F: Serialize>(
     &self,
-    results: &[TestResult<T>],
+    _results: &[TestResult<T>],
     flat_results: &[F],
   ) -> Result<(), Report> {
-    std::fs::create_dir_all(&self.output_dir)?;
+    fs::create_dir_all(&self.output_dir)?;
 
-    let tsv_path = format!("{}/convolution_test_results.tsv", self.output_dir);
+    let output_dir = &self.output_dir;
+    let tsv_path = format!("{output_dir}/convolution_test_results.tsv");
     let mut writer = CsvStructFileWriter::new(&tsv_path, b'\t')?;
 
     for flat_result in flat_results {
       writer.write(flat_result)?;
     }
 
-    println!("Saved TSV results to: {}", tsv_path);
+    println!("Saved TSV results to: {tsv_path}");
     Ok(())
   }
 }
@@ -95,7 +98,7 @@ impl BaseFlatResult {
       tolerance_moderate_rel: result.metrics.rel_tolerance_fraction(1),
       tolerance_loose_rel: result.metrics.rel_tolerance_fraction(2),
       stress_type: result.test_case.stress_type().to_owned(),
-      overall_assessment: format!("{}", result.metrics.overall_assessment()),
+      overall_assessment: result.metrics.overall_assessment().to_string(),
     }
   }
 }

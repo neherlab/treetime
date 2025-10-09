@@ -79,7 +79,8 @@ where
   R: TestRunner<T>,
   T: TestCase,
 {
-  let all_cases = R::new().test_cases();
+  let runner = R::new();
+  let all_cases = runner.test_cases();
 
   if args.test_cases == "all" {
     return Ok(Some(all_cases.to_vec()));
@@ -191,9 +192,10 @@ where
   TestResult<T>: ToFlatResult,
   <TestResult<T> as ToFlatResult>::FlatResult: Serialize,
 {
-  let filtered_cases = match filter_test_cases::<R, T>(args)? {
-    Some(cases) => cases,
-    None => return Ok(()),
+  let filtered_cases = if let Some(cases) = filter_test_cases::<R, T>(args)? {
+    cases
+  } else {
+    return Ok(());
   };
 
   let runner = if args.test_cases == "all" {

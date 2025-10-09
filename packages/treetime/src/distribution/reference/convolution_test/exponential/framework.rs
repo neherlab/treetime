@@ -7,10 +7,12 @@ use crate::distribution::reference::exponential::{exponential_convolution, expon
 use eyre::Report;
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
+use std::time::Instant;
 
 use super::test_cases::{ExponentialTestCase, create_exponential_test_cases};
 
 /// Exponential-specific test framework implementation
+#[derive(Clone, Debug)]
 pub struct ExponentialTestRunner {
   test_cases: Vec<ExponentialTestCase>,
 }
@@ -35,7 +37,7 @@ impl ConvolutionTestRunner<ExponentialTestCase> for ExponentialTestRunner {
     test_case: &ExponentialTestCase,
     algorithm: ConvolutionAlgorithm,
   ) -> Result<TestResult<ExponentialTestCase>, Report> {
-    let start_time = std::time::Instant::now();
+    let start_time = Instant::now();
 
     // Create input functions
     let f = exponential_f(test_case.a, test_case.f_domain, test_case.dx)?;
@@ -94,7 +96,7 @@ impl ConvolutionTestRunner<ExponentialTestCase> for ExponentialTestRunner {
     &self.test_cases
   }
 
-  fn function_type(&self) -> &str {
+  fn function_type(&self) -> &'static str {
     "exponential"
   }
 }
@@ -158,7 +160,7 @@ impl ToFlatResult for TestResult<ExponentialTestCase> {
       tolerance_moderate_rel: self.metrics.rel_tolerance_fraction(1),
       tolerance_loose_rel: self.metrics.rel_tolerance_fraction(2),
       stress_type: self.test_case.stress_type.clone(),
-      overall_assessment: format!("{}", self.metrics.overall_assessment()),
+      overall_assessment: self.metrics.overall_assessment().to_string(),
     }
   }
 }

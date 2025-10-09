@@ -5,6 +5,7 @@ use ndarray::Array1;
 use ndarray_stats::QuantileExt;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
+use std::cmp::Ordering;
 use std::fmt;
 
 /// Comprehensive domain-wide agreement metrics between actual and expected solutions
@@ -458,7 +459,7 @@ fn compute_relative_error_statistics(actual: &Array1<f64>, expected: &Array1<f64
   let mape = abs_percentage_errors.iter().sum::<f64>() / abs_percentage_errors.len() as f64;
 
   // Compute median relative error
-  abs_rel_errors.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+  abs_rel_errors.sort_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal));
   let median = if abs_rel_errors.len() % 2 == 0 {
     let mid = abs_rel_errors.len() / 2;
     f64::midpoint(abs_rel_errors[mid - 1], abs_rel_errors[mid])
@@ -674,7 +675,7 @@ fn compute_symmetry_error(x: &Array1<f64>, actual: &Array1<f64>) -> f64 {
       (**a - neg_xi)
         .abs()
         .partial_cmp(&(**b - neg_xi).abs())
-        .unwrap_or(std::cmp::Ordering::Equal)
+        .unwrap_or(Ordering::Equal)
     }) {
       // Only consider as symmetric if the points are reasonably close to being symmetric
       let closest_x = x[j];
@@ -699,7 +700,7 @@ fn compute_symmetry_error(x: &Array1<f64>, actual: &Array1<f64>) -> f64 {
 /// Provides robust measure of error distribution characteristics
 fn compute_quantile_error(actual: &Array1<f64>, expected: &Array1<f64>, quantile: f64) -> f64 {
   let mut abs_errors: Vec<f64> = (actual - expected).mapv(|x| x.abs()).to_vec();
-  abs_errors.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+  abs_errors.sort_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal));
 
   let index = ((quantile * abs_errors.len() as f64).ceil() as usize).saturating_sub(1);
   abs_errors.get(index).copied().unwrap_or(0.0)

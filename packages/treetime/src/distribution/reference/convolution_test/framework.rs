@@ -3,6 +3,9 @@ use crate::io::json::{JsonPretty, json_write_file};
 use crate::utils::float_fmt::float_to_significant_digits;
 use eyre::Report;
 use serde::{Deserialize, Serialize};
+use std::fs;
+use std::marker::PhantomData;
+use std::time::Instant;
 
 use super::algorithms::ConvolutionAlgorithm;
 
@@ -82,7 +85,7 @@ pub struct GenericConvolutionTestFramework<T: TestCase, R: ConvolutionTestRunner
   pub runner: R,
   pub algorithms: Vec<ConvolutionAlgorithm>,
   pub output_dir: String,
-  _phantom: std::marker::PhantomData<T>,
+  pub _phantom: PhantomData<T>,
 }
 
 impl<T: TestCase, R: ConvolutionTestRunner<T>> GenericConvolutionTestFramework<T, R> {
@@ -92,7 +95,7 @@ impl<T: TestCase, R: ConvolutionTestRunner<T>> GenericConvolutionTestFramework<T
       runner,
       algorithms: ConvolutionAlgorithm::all(),
       output_dir,
-      _phantom: std::marker::PhantomData,
+      _phantom: PhantomData,
     }
   }
 
@@ -117,12 +120,14 @@ impl<T: TestCase, R: ConvolutionTestRunner<T>> GenericConvolutionTestFramework<T
     );
 
     for test_case in self.runner.test_cases() {
-      println!("Test Case: {}", test_case.name());
-      println!("  Description: {}", test_case.description());
+      let name = test_case.name();
+      let description = test_case.description();
+      println!("Test Case: {name}");
+      println!("  Description: {description}");
 
       for &algorithm in &self.algorithms {
-        print!("  Running {} algorithm... ", algorithm);
-        let start_time = std::time::Instant::now();
+        print!("  Running {algorithm} algorithm... ");
+        let start_time = Instant::now();
 
         match self.runner.run_test(test_case, algorithm) {
           Ok(result) => {
@@ -134,7 +139,7 @@ impl<T: TestCase, R: ConvolutionTestRunner<T>> GenericConvolutionTestFramework<T
             results.push(result);
           },
           Err(e) => {
-            println!("✗ Error: {}", e);
+            println!("✗ Error: {e}");
           },
         }
       }
@@ -173,12 +178,12 @@ impl<T: TestCase, R: ConvolutionTestRunner<T>> GenericConvolutionTestFramework<T
       let max_abs_error_overall = algo_results
         .iter()
         .map(|r| r.metrics.abs_error_stats.max)
-        .fold(0.0f64, |a, b| a.max(b));
+        .fold(0.0_f64, |a, b| a.max(b));
 
       let max_rel_error_overall = algo_results
         .iter()
         .map(|r| r.metrics.rel_error_stats.max)
-        .fold(0.0f64, |a, b| a.max(b));
+        .fold(0.0_f64, |a, b| a.max(b));
 
       // Simple pass/fail based on R² > 0.95
       let passed_tests = algo_results
@@ -230,11 +235,16 @@ impl<T: TestCase, R: ConvolutionTestRunner<T>> GenericConvolutionTestFramework<T
     );
 
     println!("Overall Statistics:");
-    println!("  Function type: {}", summary.function_type);
-    println!("  Total tests run: {}", summary.total_tests);
-    println!("  Total algorithms: {}", summary.total_algorithms);
-    println!("  Total execution time: {:.1}ms", summary.execution_time_total_ms);
-    println!("  Assessment: {}\n", summary.overall_assessment);
+    let function_type = &summary.function_type;
+    let total_tests = summary.total_tests;
+    let total_algorithms = summary.total_algorithms;
+    let execution_time_total_ms = summary.execution_time_total_ms;
+    let overall_assessment = &summary.overall_assessment;
+    println!("  Function type: {function_type}");
+    println!("  Total tests run: {total_tests}");
+    println!("  Total algorithms: {total_algorithms}");
+    println!("  Total execution time: {execution_time_total_ms:.1}ms");
+    println!("  Assessment: {overall_assessment}\n");
 
     println!("Algorithm Performance:");
     println!(
@@ -259,21 +269,24 @@ impl<T: TestCase, R: ConvolutionTestRunner<T>> GenericConvolutionTestFramework<T
     }
     println!();
   }
+}
 
+#[derive(Serialize)]
+struct FullResults<'a, T: TestCase> {
+  summary: &'a TestSummary,
+  results: &'a [TestResult<T>],
+}
+
+impl<T: TestCase, R: ConvolutionTestRunner<T>> GenericConvolutionTestFramework<T, R> {
   /// Save results to JSON file
   pub fn save_results_json(&self, results: &[TestResult<T>], summary: &TestSummary) -> Result<(), Report> {
-    std::fs::create_dir_all(&self.output_dir)?;
-
-    #[derive(Serialize)]
-    struct FullResults<'a, T: TestCase> {
-      summary: &'a TestSummary,
-      results: &'a [TestResult<T>],
-    }
+    fs::create_dir_all(&self.output_dir)?;
 
     let full_results = FullResults { summary, results };
-    let json_path = format!("{}/convolution_test_results.json", self.output_dir);
+    let output_dir = &self.output_dir;
+    let json_path = format!("{output_dir}/convolution_test_results.json");
     json_write_file(&json_path, &full_results, JsonPretty(true))?;
-    println!("Saved detailed JSON results to: {}", json_path);
+    println!("Saved detailed JSON results to: {json_path}");
     Ok(())
   }
 }

@@ -7,10 +7,12 @@ use crate::distribution::reference::gaussian::{gaussian_convolution, gaussian_f,
 use eyre::Report;
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
+use std::time::Instant;
 
 use super::test_cases::{GaussianTestCase, create_gaussian_test_cases};
 
 /// Gaussian-specific test framework implementation
+#[derive(Clone, Debug)]
 pub struct GaussianTestRunner {
   test_cases: Vec<GaussianTestCase>,
 }
@@ -35,7 +37,7 @@ impl ConvolutionTestRunner<GaussianTestCase> for GaussianTestRunner {
     test_case: &GaussianTestCase,
     algorithm: ConvolutionAlgorithm,
   ) -> Result<TestResult<GaussianTestCase>, Report> {
-    let start_time = std::time::Instant::now();
+    let start_time = Instant::now();
 
     // Create input functions
     let f = gaussian_f(test_case.sigma_f, test_case.f_domain, test_case.dx)?;
@@ -100,7 +102,7 @@ impl ConvolutionTestRunner<GaussianTestCase> for GaussianTestRunner {
     &self.test_cases
   }
 
-  fn function_type(&self) -> &str {
+  fn function_type(&self) -> &'static str {
     "gaussian"
   }
 }
@@ -166,7 +168,7 @@ impl ToFlatResult for TestResult<GaussianTestCase> {
       tolerance_moderate_rel: self.metrics.rel_tolerance_fraction(1),
       tolerance_loose_rel: self.metrics.rel_tolerance_fraction(2),
       stress_type: self.test_case.stress_type.clone(),
-      overall_assessment: format!("{}", self.metrics.overall_assessment()),
+      overall_assessment: self.metrics.overall_assessment().to_string(),
     }
   }
 }
