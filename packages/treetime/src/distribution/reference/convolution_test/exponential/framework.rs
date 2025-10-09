@@ -6,6 +6,7 @@ use crate::distribution::reference::domain_agreement_metrics::DomainAgreementMet
 use crate::distribution::reference::exponential::{exponential_convolution, exponential_f, exponential_g};
 use eyre::Report;
 use ndarray::Array1;
+use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
 use std::time::Instant;
 
@@ -73,7 +74,7 @@ impl ConvolutionTestRunner<ExponentialTestCase> for ExponentialTestRunner {
     let max_error_idx = abs_errors
       .iter()
       .enumerate()
-      .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
+      .max_by_key(|&(_, &a)| OrderedFloat(a))
       .unwrap()
       .0;
 

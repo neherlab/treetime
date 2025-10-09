@@ -2,6 +2,8 @@ use crate::distribution::reference::domain_agreement_metrics::DomainAgreementMet
 use crate::io::json::{JsonPretty, json_write_file};
 use crate::utils::float_fmt::float_to_significant_digits;
 use eyre::Report;
+use itertools::Itertools;
+use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::marker::PhantomData;
@@ -165,11 +167,19 @@ impl<T: TestCase, R: ConvolutionTestRunner<T>> GenericConvolutionTestFramework<T
       let r2_values: Vec<f64> = algo_results
         .iter()
         .map(|r| r.metrics.quality_metrics.r_squared)
-        .collect();
-      let execution_times: Vec<f64> = algo_results.iter().map(|r| r.execution_time_ms).collect();
+        .collect_vec();
+      let execution_times: Vec<f64> = algo_results.iter().map(|r| r.execution_time_ms).collect_vec();
 
-      let r2_min = r2_values.iter().fold(f64::INFINITY, |a, &b| a.min(b));
-      let r2_max = r2_values.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
+      let r2_min = r2_values
+        .iter()
+        .map(|&x| OrderedFloat(x))
+        .min()
+        .map_or(f64::NAN, |x| x.0);
+      let r2_max = r2_values
+        .iter()
+        .map(|&x| OrderedFloat(x))
+        .max()
+        .map_or(f64::NAN, |x| x.0);
       let r2_mean = r2_values.iter().sum::<f64>() / r2_values.len() as f64;
 
       let execution_time_total = execution_times.iter().sum::<f64>();
@@ -177,13 +187,15 @@ impl<T: TestCase, R: ConvolutionTestRunner<T>> GenericConvolutionTestFramework<T
 
       let max_abs_error_overall = algo_results
         .iter()
-        .map(|r| r.metrics.abs_error_stats.max)
-        .fold(0.0_f64, |a, b| a.max(b));
+        .map(|r| OrderedFloat(r.metrics.abs_error_stats.max))
+        .max()
+        .map_or(0.0, |x| x.0);
 
       let max_rel_error_overall = algo_results
         .iter()
-        .map(|r| r.metrics.rel_error_stats.max)
-        .fold(0.0_f64, |a, b| a.max(b));
+        .map(|r| OrderedFloat(r.metrics.rel_error_stats.max))
+        .max()
+        .map_or(0.0, |x| x.0);
 
       // Simple pass/fail based on R² > 0.95
       let passed_tests = algo_results

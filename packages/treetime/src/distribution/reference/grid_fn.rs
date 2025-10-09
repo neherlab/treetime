@@ -1,6 +1,7 @@
 use eyre::Report;
 use ndarray::Array1;
 use ndarray_interp::interp1d::{Interp1D, Interp1DBuilder, Linear};
+use ordered_float::OrderedFloat;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 /// Function represented on a regular grid
@@ -188,7 +189,12 @@ impl GridFn {
 
   /// Get maximum value
   pub fn max_value(&self) -> f64 {
-    self.y().iter().copied().fold(f64::NEG_INFINITY, f64::max)
+    self
+      .y()
+      .iter()
+      .map(|&x| OrderedFloat(x))
+      .max()
+      .map_or(f64::NEG_INFINITY, |x| x.0)
   }
 
   /// Get x position of maximum value
@@ -197,7 +203,7 @@ impl GridFn {
       .y()
       .iter()
       .enumerate()
-      .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
+      .max_by_key(|&(_, &a)| OrderedFloat(a))
       .unwrap()
       .0;
     self.x()[max_idx]

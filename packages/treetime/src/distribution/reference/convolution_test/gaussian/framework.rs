@@ -6,6 +6,7 @@ use crate::distribution::reference::domain_agreement_metrics::DomainAgreementMet
 use crate::distribution::reference::gaussian::{gaussian_convolution, gaussian_f, gaussian_g};
 use eyre::Report;
 use ndarray::Array1;
+use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
 use std::time::Instant;
 
@@ -79,7 +80,7 @@ impl ConvolutionTestRunner<GaussianTestCase> for GaussianTestRunner {
     let max_error_idx = abs_errors
       .iter()
       .enumerate()
-      .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
+      .max_by_key(|&(_, &a)| OrderedFloat(a))
       .unwrap()
       .0;
 

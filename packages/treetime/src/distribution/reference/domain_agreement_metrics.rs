@@ -3,6 +3,7 @@ use crate::utils::float_fmt::float_to_digits;
 use itertools::{Itertools, izip};
 use ndarray::Array1;
 use ndarray_stats::QuantileExt;
+use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::cmp::Ordering;
@@ -455,11 +456,15 @@ fn compute_relative_error_statistics(actual: &Array1<f64>, expected: &Array1<f64
   }
 
   let mean = rel_errors.iter().sum::<f64>() / rel_errors.len() as f64;
-  let max = rel_errors.iter().map(|x| x.abs()).fold(0.0_f64, |acc, x| acc.max(x));
+  let max = rel_errors
+    .iter()
+    .map(|x| OrderedFloat(x.abs()))
+    .max()
+    .map_or(0.0, |x| x.0);
   let mape = abs_percentage_errors.iter().sum::<f64>() / abs_percentage_errors.len() as f64;
 
   // Compute median relative error
-  abs_rel_errors.sort_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal));
+  abs_rel_errors.sort_by_key(|&x| OrderedFloat(x));
   let median = if abs_rel_errors.len() % 2 == 0 {
     let mid = abs_rel_errors.len() / 2;
     f64::midpoint(abs_rel_errors[mid - 1], abs_rel_errors[mid])
@@ -700,7 +705,7 @@ fn compute_symmetry_error(x: &Array1<f64>, actual: &Array1<f64>) -> f64 {
 /// Provides robust measure of error distribution characteristics
 fn compute_quantile_error(actual: &Array1<f64>, expected: &Array1<f64>, quantile: f64) -> f64 {
   let mut abs_errors: Vec<f64> = (actual - expected).mapv(|x| x.abs()).to_vec();
-  abs_errors.sort_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal));
+  abs_errors.sort_by_key(|&x| OrderedFloat(x));
 
   let index = ((quantile * abs_errors.len() as f64).ceil() as usize).saturating_sub(1);
   abs_errors.get(index).copied().unwrap_or(0.0)
