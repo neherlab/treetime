@@ -24,11 +24,7 @@ impl TestOutputWriter {
   }
 
   /// Save results to TSV file for analysis in Python/R
-  pub fn save_results_tsv<T: TestCase, F: Serialize>(
-    &self,
-    _results: &[TestResult<T>],
-    flat_results: &[F],
-  ) -> Result<(), Report> {
+  pub fn save_results_tsv<F: Serialize>(&self, flat_results: &[F]) -> Result<(), Report> {
     fs::create_dir_all(&self.output_dir)?;
 
     let output_dir = &self.output_dir;

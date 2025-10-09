@@ -54,11 +54,28 @@ pub struct TestResult<T: TestCase> {
   pub peak_error_value: f64,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TestFailure<T: TestCase> {
+  pub test_case_name: String,
+  pub algorithm: ConvolutionAlgorithm,
+  pub test_case: T,
+  pub error: String,
+  pub execution_time_ms: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum TestRunOutcome<T: TestCase> {
+  Success(TestResult<T>),
+  Failure(TestFailure<T>),
+}
+
 /// Aggregate summary across all tests
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TestSummary {
   pub function_type: String,
   pub total_tests: usize,
+  pub total_successes: usize,
+  pub total_failures: usize,
   pub total_algorithms: usize,
   pub execution_time_total_ms: f64,
   pub algorithm_summaries: Vec<AlgorithmSummary>,
@@ -79,6 +96,7 @@ pub struct AlgorithmSummary {
   pub max_rel_error_overall: f64,
   pub passed_tests: usize,
   pub failed_tests: usize,
+  pub error_failures: usize,
   pub success_rate: f64,
 }
 
@@ -107,8 +125,8 @@ impl<T: TestCase, R: ConvolutionTestRunner<T>> GenericConvolutionTestFramework<T
   }
 
   /// Run all test cases for all algorithms
-  pub fn run_all_tests(&self) -> Result<Vec<TestResult<T>>, Report> {
-    let mut results = Vec::new();
+  pub fn run_all_tests(&self) -> Result<Vec<TestRunOutcome<T>>, Report> {
+    let mut outcomes = Vec::new();
 
     println!(
       "=== {} Convolution Test Framework ===",
@@ -133,81 +151,119 @@ impl<T: TestCase, R: ConvolutionTestRunner<T>> GenericConvolutionTestFramework<T
 
         match self.runner.run_test(test_case, algorithm) {
           Ok(result) => {
-            let elapsed = start_time.elapsed().as_secs_f64() * 1000.0;
-            println!(
-              "✓ ({:.1}ms, R²={:.6})",
-              elapsed, result.metrics.quality_metrics.r_squared
-            );
-            results.push(result);
+            let elapsed_ms = result.execution_time_ms;
+            let r_squared = result.metrics.quality_metrics.r_squared;
+            println!("✓ ({elapsed_ms:.1}ms, R²={r_squared:.6})");
+            outcomes.push(TestRunOutcome::Success(result));
           },
-          Err(e) => {
-            println!("✗ Error: {e}");
+          Err(error) => {
+            let elapsed_ms = start_time.elapsed().as_secs_f64() * 1000.0;
+            println!("✗ Error: {error}");
+            outcomes.push(TestRunOutcome::Failure(TestFailure {
+              test_case_name: test_case.name().to_owned(),
+              algorithm,
+              test_case: test_case.clone(),
+              error: format!("{error}"),
+              execution_time_ms: elapsed_ms,
+            }));
           },
         }
       }
       println!();
     }
 
-    Ok(results)
+    Ok(outcomes)
   }
 
-  /// Generate comprehensive summary from test results
-  pub fn generate_summary(&self, results: &[TestResult<T>]) -> TestSummary {
-    let total_execution_time: f64 = results.iter().map(|r| r.execution_time_ms).sum();
+  /// Generate comprehensive summary from test outcomes
+  pub fn generate_summary(&self, outcomes: &[TestRunOutcome<T>]) -> TestSummary {
+    let successes = outcomes
+      .iter()
+      .filter_map(|outcome| match outcome {
+        TestRunOutcome::Success(result) => Some(result),
+        TestRunOutcome::Failure(_) => None,
+      })
+      .collect_vec();
+    let failures = outcomes
+      .iter()
+      .filter_map(|outcome| match outcome {
+        TestRunOutcome::Success(_) => None,
+        TestRunOutcome::Failure(failure) => Some(failure),
+      })
+      .collect_vec();
+    let total_execution_time = successes.iter().map(|result| result.execution_time_ms).sum::<f64>()
+      + failures.iter().map(|failure| failure.execution_time_ms).sum::<f64>();
 
     let mut algorithm_summaries = Vec::new();
 
     for &algorithm in &self.algorithms {
-      let algo_results: Vec<_> = results.iter().filter(|r| r.algorithm == algorithm).collect();
+      let algo_successes = successes
+        .iter()
+        .filter(|result| result.algorithm == algorithm)
+        .collect_vec();
+      let algo_failures = failures
+        .iter()
+        .filter(|failure| failure.algorithm == algorithm)
+        .collect_vec();
+      let total_runs = algo_successes.len() + algo_failures.len();
 
-      if algo_results.is_empty() {
+      if total_runs == 0 {
         continue;
       }
 
-      let r2_values: Vec<f64> = algo_results
+      let r2_values: Vec<f64> = algo_successes
         .iter()
-        .map(|r| r.metrics.quality_metrics.r_squared)
+        .map(|result| result.metrics.quality_metrics.r_squared)
         .collect_vec();
-      let execution_times: Vec<f64> = algo_results.iter().map(|r| r.execution_time_ms).collect_vec();
+      let execution_time_total = algo_successes
+        .iter()
+        .map(|result| result.execution_time_ms)
+        .sum::<f64>()
+        + algo_failures
+          .iter()
+          .map(|failure| failure.execution_time_ms)
+          .sum::<f64>();
+      let execution_time_avg = execution_time_total / total_runs as f64;
 
       let r2_min = r2_values
         .iter()
-        .map(|&x| OrderedFloat(x))
+        .map(|&value| OrderedFloat(value))
         .min()
-        .map_or(f64::NAN, |x| x.0);
+        .map_or(f64::NAN, |value| value.0);
       let r2_max = r2_values
         .iter()
-        .map(|&x| OrderedFloat(x))
+        .map(|&value| OrderedFloat(value))
         .max()
-        .map_or(f64::NAN, |x| x.0);
-      let r2_mean = r2_values.iter().sum::<f64>() / r2_values.len() as f64;
+        .map_or(f64::NAN, |value| value.0);
+      let r2_mean = if r2_values.is_empty() {
+        f64::NAN
+      } else {
+        r2_values.iter().sum::<f64>() / r2_values.len() as f64
+      };
 
-      let execution_time_total = execution_times.iter().sum::<f64>();
-      let execution_time_avg = execution_time_total / execution_times.len() as f64;
-
-      let max_abs_error_overall = algo_results
+      let max_abs_error_overall = algo_successes
         .iter()
-        .map(|r| OrderedFloat(r.metrics.abs_error_stats.max))
+        .map(|result| OrderedFloat(result.metrics.abs_error_stats.max))
         .max()
-        .map_or(0.0, |x| x.0);
+        .map_or(f64::NAN, |value| value.0);
 
-      let max_rel_error_overall = algo_results
+      let max_rel_error_overall = algo_successes
         .iter()
-        .map(|r| OrderedFloat(r.metrics.rel_error_stats.max))
+        .map(|result| OrderedFloat(result.metrics.rel_error_stats.max))
         .max()
-        .map_or(0.0, |x| x.0);
+        .map_or(f64::NAN, |value| value.0);
 
-      // Simple pass/fail based on R² > 0.95
-      let passed_tests = algo_results
+      let metric_failures = algo_successes
         .iter()
-        .filter(|r| r.metrics.quality_metrics.r_squared > 0.95)
+        .filter(|result| result.metrics.quality_metrics.r_squared <= 0.95)
         .count();
-      let failed_tests = algo_results.len() - passed_tests;
-      let success_rate = passed_tests as f64 / algo_results.len() as f64;
+      let passed_tests = algo_successes.len() - metric_failures;
+      let failed_tests = metric_failures + algo_failures.len();
+      let success_rate = passed_tests as f64 / total_runs as f64;
 
       algorithm_summaries.push(AlgorithmSummary {
         algorithm,
-        test_cases_count: algo_results.len(),
+        test_cases_count: total_runs,
         execution_time_total_ms: execution_time_total,
         execution_time_avg_ms: execution_time_avg,
         r2_min,
@@ -217,13 +273,14 @@ impl<T: TestCase, R: ConvolutionTestRunner<T>> GenericConvolutionTestFramework<T
         max_rel_error_overall,
         passed_tests,
         failed_tests,
+        error_failures: algo_failures.len(),
         success_rate,
       });
     }
 
-    let overall_assessment = if algorithm_summaries.iter().all(|s| s.success_rate > 0.9) {
+    let overall_assessment = if algorithm_summaries.iter().all(|summary| summary.success_rate > 0.9) {
       "Excellent - All algorithms perform well".to_owned()
-    } else if algorithm_summaries.iter().any(|s| s.success_rate > 0.8) {
+    } else if algorithm_summaries.iter().any(|summary| summary.success_rate > 0.8) {
       "Good - Some algorithms perform well".to_owned()
     } else {
       "Poor - Significant issues detected".to_owned()
@@ -231,7 +288,9 @@ impl<T: TestCase, R: ConvolutionTestRunner<T>> GenericConvolutionTestFramework<T
 
     TestSummary {
       function_type: self.runner.function_type().to_owned(),
-      total_tests: results.len(),
+      total_tests: outcomes.len(),
+      total_successes: successes.len(),
+      total_failures: failures.len(),
       total_algorithms: self.algorithms.len(),
       execution_time_total_ms: total_execution_time,
       algorithm_summaries,
@@ -249,25 +308,29 @@ impl<T: TestCase, R: ConvolutionTestRunner<T>> GenericConvolutionTestFramework<T
     println!("Overall Statistics:");
     let function_type = &summary.function_type;
     let total_tests = summary.total_tests;
+    let total_successes = summary.total_successes;
+    let total_failures = summary.total_failures;
     let total_algorithms = summary.total_algorithms;
     let execution_time_total_ms = summary.execution_time_total_ms;
     let overall_assessment = &summary.overall_assessment;
     println!("  Function type: {function_type}");
     println!("  Total tests run: {total_tests}");
+    println!("  Successful runs: {total_successes}");
+    println!("  Failed runs: {total_failures}");
     println!("  Total algorithms: {total_algorithms}");
     println!("  Total execution time: {execution_time_total_ms:.1}ms");
     println!("  Assessment: {overall_assessment}\n");
 
     println!("Algorithm Performance:");
     println!(
-      "{:>10} {:>8} {:>10} {:>8} {:>8} {:>8} {:>12} {:>12} {:>8}",
-      "Algorithm", "Tests", "Time(ms)", "R²Min", "R²Max", "R²Mean", "MaxAbsErr", "MaxRelErr%", "Success%"
+      "{:>10} {:>8} {:>10} {:>8} {:>8} {:>8} {:>12} {:>12} {:>8} {:>8}",
+      "Algorithm", "Tests", "Time(ms)", "R²Min", "R²Max", "R²Mean", "MaxAbsErr", "MaxRelErr%", "Errors", "Success%"
     );
-    println!("{}", "-".repeat(100));
+    println!("{}", "-".repeat(110));
 
     for algo_summary in &summary.algorithm_summaries {
       println!(
-        "{:>10} {:>8} {:>10.1} {:>8.4} {:>8.4} {:>8.4} {:>12} {:>12.1} {:>8.1}",
+        "{:>10} {:>8} {:>10.1} {:>8.4} {:>8.4} {:>8.4} {:>12} {:>12.1} {:>8} {:>8.1}",
         algo_summary.algorithm,
         algo_summary.test_cases_count,
         algo_summary.execution_time_total_ms,
@@ -276,6 +339,7 @@ impl<T: TestCase, R: ConvolutionTestRunner<T>> GenericConvolutionTestFramework<T
         algo_summary.r2_mean,
         float_to_significant_digits(algo_summary.max_abs_error_overall, 3),
         algo_summary.max_rel_error_overall * 100.0,
+        algo_summary.error_failures,
         algo_summary.success_rate * 100.0,
       );
     }
@@ -286,15 +350,15 @@ impl<T: TestCase, R: ConvolutionTestRunner<T>> GenericConvolutionTestFramework<T
 #[derive(Serialize)]
 struct FullResults<'a, T: TestCase> {
   summary: &'a TestSummary,
-  results: &'a [TestResult<T>],
+  outcomes: &'a [TestRunOutcome<T>],
 }
 
 impl<T: TestCase, R: ConvolutionTestRunner<T>> GenericConvolutionTestFramework<T, R> {
   /// Save results to JSON file
-  pub fn save_results_json(&self, results: &[TestResult<T>], summary: &TestSummary) -> Result<(), Report> {
+  pub fn save_results_json(&self, outcomes: &[TestRunOutcome<T>], summary: &TestSummary) -> Result<(), Report> {
     fs::create_dir_all(&self.output_dir)?;
 
-    let full_results = FullResults { summary, results };
+    let full_results = FullResults { summary, outcomes };
     let output_dir = &self.output_dir;
     let json_path = format!("{output_dir}/convolution_test_results.json");
     json_write_file(&json_path, &full_results, JsonPretty(true))?;

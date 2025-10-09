@@ -3,7 +3,9 @@ use eyre::Report;
 use serde::{Deserialize, Serialize};
 use strum_macros::{Display, EnumIter};
 use treetime::distribution::reference::convolution_test::exponential::ExponentialTestCase;
-use treetime::distribution::reference::convolution_test::framework::{ConvolutionTestRunner, TestCase, TestResult};
+use treetime::distribution::reference::convolution_test::framework::{
+  ConvolutionTestRunner, TestCase, TestResult, TestRunOutcome,
+};
 use treetime::distribution::reference::convolution_test::gaussian::GaussianTestCase;
 use treetime::distribution::reference::convolution_test::{
   ConvolutionAlgorithm, ExponentialTestRunner, GaussianTestRunner, GenericConvolutionTestFramework, TestOutputWriter,
@@ -125,21 +127,27 @@ where
   }
 
   // Run all tests
-  let results = framework.run_all_tests()?;
+  let outcomes = framework.run_all_tests()?;
 
   // Generate summary
-  let summary = framework.generate_summary(&results);
+  let summary = framework.generate_summary(&outcomes);
 
   // Print summary to console
   framework.print_summary(&summary);
 
   // Save results
-  framework.save_results_json(&results, &summary)?;
+  framework.save_results_json(&outcomes, &summary)?;
 
   // Save TSV with function-specific columns
-  let flat_results: Vec<_> = results.iter().map(|r| r.to_flat_result()).collect();
+  let flat_results: Vec<_> = outcomes
+    .iter()
+    .filter_map(|outcome| match outcome {
+      TestRunOutcome::Success(result) => Some(result.to_flat_result()),
+      TestRunOutcome::Failure(_) => None,
+    })
+    .collect();
   let output_writer = TestOutputWriter::new(args.output_dir.clone());
-  output_writer.save_results_tsv(&results, &flat_results)?;
+  output_writer.save_results_tsv(&flat_results)?;
 
   println!("{function_type_name} convolution test framework completed successfully!");
   println!("Check {} for detailed results.", args.output_dir);
