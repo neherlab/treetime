@@ -34,6 +34,6 @@ pub trait PartitionMarginalOps: PartitionMarginal + Send + Sync {
     include_leaves: bool,
   ) -> Option<Seq>;
 
-  /// Get sequence length for branch length normalization
-  fn get_length(&self) -> usize;
+  /// Get sequence length (None when no alignment provided)
+  fn get_sequence_length(&self) -> Option<usize>;
 }

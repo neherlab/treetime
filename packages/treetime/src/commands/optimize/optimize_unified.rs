@@ -2,6 +2,7 @@ use crate::commands::optimize::optimize_dense;
 use crate::commands::optimize::optimize_sparse;
 use crate::graph::edge::GraphEdgeKey;
 use crate::representation::graph_ancestral::GraphAncestral;
+use crate::representation::partition_marginal::PartitionMarginalOps;
 use crate::representation::partition_marginal_dense::PartitionMarginalDense;
 use crate::representation::partition_marginal_sparse::PartitionMarginalSparse;
 use eyre::Report;
@@ -220,8 +221,12 @@ pub fn run_optimize_mixed(
 ) -> Result<(), Report> {
   let total_length: usize = dense_partitions
     .iter()
-    .map(|part| part.read_arc().length)
-    .chain(sparse_partitions.iter().map(|part| part.read_arc().length))
+    .map(|part| part.read_arc().get_sequence_length().unwrap_or(0))
+    .chain(
+      sparse_partitions
+        .iter()
+        .map(|part| part.read_arc().get_sequence_length().unwrap_or(0)),
+    )
     .sum();
 
   let one_mutation = 1.0 / total_length as f64;
@@ -342,8 +347,12 @@ pub fn initial_guess_mixed(
 
     let total_length: usize = dense_partitions
       .iter()
-      .map(|part| part.read_arc().length)
-      .chain(sparse_partitions.iter().map(|part| part.read_arc().length))
+      .map(|part| part.read_arc().get_sequence_length().unwrap_or(0))
+      .chain(
+        sparse_partitions
+          .iter()
+          .map(|part| part.read_arc().get_sequence_length().unwrap_or(0)),
+      )
       .sum();
 
     let branch_length = (differences as f64) / (total_length as f64);

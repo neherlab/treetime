@@ -30,7 +30,6 @@ authors = [
 ]
 
 
-
 [patch.crates-io]
 lapack-sys = { git = "https://github.com/numrs/lapack-sys", rev = "d3b1ca9" }
 lax = { git = "https://github.com/numrs/ndarray-linalg", rev = "ac7052e" }
@@ -318,6 +317,10 @@ collapsible_if = "allow"
 iter_over_hash_type = "allow"
 needless_range_loop = "allow"
 non_std_lazy_statics = "allow" # bugs clap annotations
+
+# Remove once amount of unimplemented code is reduced
+todo = "allow"
+let_underscore_untyped = "allow"
 
 [workspace.lints.rustdoc]
 broken_intra_doc_links = "warn"

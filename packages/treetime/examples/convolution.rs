@@ -141,7 +141,7 @@ fn main() -> eyre::Result<()> {
     _ => {
       eprintln!("Unknown algorithm: {}", args.algorithm);
       return Ok(());
-    }
+    },
   };
 
   // Compute analytical expected result
@@ -220,14 +220,7 @@ fn main() -> eyre::Result<()> {
       format!("{rel_err:.2}")
     };
 
-    println!(
-      "{:>8.2} {:>12.6} {:>12.6} {:>12} {:>9}%",
-      x_val,
-      actual_val,
-      expected_val,
-      diff_str,
-      rel_err_str
-    );
+    println!("{x_val:>8.2} {actual_val:>12.6} {expected_val:>12.6} {diff_str:>12} {rel_err_str:>9}%");
   }
 
   // Create and save results structure
@@ -259,7 +252,11 @@ fn compute_domain_agreement_metrics(
   Ok(metrics)
 }
 
-fn plot_input_functions(f: &treetime::distribution::reference::grid_fn::GridFn, g: &treetime::distribution::reference::grid_fn::GridFn, args: &Args) -> eyre::Result<()> {
+fn plot_input_functions(
+  f: &treetime::distribution::reference::grid_fn::GridFn,
+  g: &treetime::distribution::reference::grid_fn::GridFn,
+  args: &Args,
+) -> eyre::Result<()> {
   let output_path = format!("{}/input_functions.svg", args.output_dir);
   let root = SVGBackend::new(&output_path, (800, 600)).into_drawing_area();
   root.fill(&WHITE)?;
@@ -307,7 +304,10 @@ fn plot_convolution_results(
   let max_val = actual.iter().chain(expected.iter()).fold(0.0_f64, |a, &b| a.max(b));
 
   let mut chart = ChartBuilder::on(&root)
-    .caption(&format!("Convolution Results: (f * g)(x) [{}]", args.algorithm), ("Arial", 24))
+    .caption(
+      format!("Convolution Results: (f * g)(x) [{}]", args.algorithm),
+      ("Arial", 24),
+    )
     .margin(20)
     .x_label_area_size(40)
     .y_label_area_size(50)
@@ -318,7 +318,7 @@ fn plot_convolution_results(
   let actual_data: Vec<(f64, f64)> = x_grid.iter().zip(actual.iter()).map(|(&x, &y)| (x, y)).collect();
   chart
     .draw_series(LineSeries::new(actual_data, BLUE.stroke_width(2)))?
-    .label(&format!("Actual ({})", args.algorithm))
+    .label(format!("Actual ({})", args.algorithm))
     .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 10, y)], BLUE));
 
   let expected_data: Vec<(f64, f64)> = x_grid.iter().zip(expected.iter()).map(|(&x, &y)| (x, y)).collect();
@@ -353,7 +353,10 @@ fn plot_error_analysis(
   let max_error = absolute_errors.iter().fold(0.0_f64, |a, &b| a.max(b));
 
   let mut chart = ChartBuilder::on(&root)
-    .caption(&format!("Absolute Error: |Actual - Expected| [{}]", args.algorithm), ("Arial", 24))
+    .caption(
+      format!("Absolute Error: |Actual - Expected| [{}]", args.algorithm),
+      ("Arial", 24),
+    )
     .margin(20)
     .x_label_area_size(40)
     .y_label_area_size(50)
