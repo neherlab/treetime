@@ -2,10 +2,12 @@ use clap::{Parser, ValueEnum};
 use eyre::Report;
 use serde::{Deserialize, Serialize};
 use strum_macros::{Display, EnumIter};
+use treetime::distribution::reference::convolution_test::exponential::ExponentialTestCase;
 use treetime::distribution::reference::convolution_test::framework::{ConvolutionTestRunner, TestCase, TestResult};
+use treetime::distribution::reference::convolution_test::gaussian::GaussianTestCase;
 use treetime::distribution::reference::convolution_test::{
-  ConvolutionAlgorithm, ExponentialTestRunner, GaussianTestRunner,
-  GenericConvolutionTestFramework, TestOutputWriter, ToFlatResult,
+  ConvolutionAlgorithm, ExponentialTestRunner, GaussianTestRunner, GenericConvolutionTestFramework, TestOutputWriter,
+  ToFlatResult,
 };
 
 #[derive(Parser, Clone, Serialize, Deserialize)]
@@ -57,26 +59,52 @@ fn main() -> Result<(), Report> {
   match args.function {
     FunctionType::Gaussian => {
       if args.list_cases {
-        list_gaussian_test_cases();
+        list_test_cases::<GaussianTestRunner, GaussianTestCase>();
         return Ok(());
       }
-      run_gaussian_tests(&args)
+      run_tests_for_runner::<GaussianTestRunner, GaussianTestCase>(&args)
     },
     FunctionType::Exponential => {
       if args.list_cases {
-        list_exponential_test_cases();
+        list_test_cases::<ExponentialTestRunner, ExponentialTestCase>();
         return Ok(());
       }
-      run_exponential_tests(&args)
+      run_tests_for_runner::<ExponentialTestRunner, ExponentialTestCase>(&args)
     },
   }
 }
 
-fn run_convolution_tests<R, T>(
-  args: &Args,
-  runner: R,
-  function_type_name: &str,
-) -> Result<(), Report>
+fn filter_test_cases<R, T>(args: &Args) -> Result<Option<Vec<T>>, Report>
+where
+  R: TestRunner<T>,
+  T: TestCase,
+{
+  let all_cases = R::new().test_cases();
+
+  if args.test_cases == "all" {
+    return Ok(Some(all_cases.to_vec()));
+  }
+
+  let requested_cases: Vec<&str> = args.test_cases.split(',').map(|s| s.trim()).collect();
+  let filtered_cases = all_cases
+    .iter()
+    .filter(|case| requested_cases.contains(&case.name()))
+    .cloned()
+    .collect::<Vec<_>>();
+
+  if filtered_cases.is_empty() {
+    eprintln!("No matching test cases found for: {}", args.test_cases);
+    eprintln!("Available {} test cases:", R::function_type_name());
+    for case in all_cases {
+      eprintln!("  - {}", case.name());
+    }
+    return Ok(None);
+  }
+
+  Ok(Some(filtered_cases))
+}
+
+fn run_convolution_tests<R, T>(args: &Args, runner: R, function_type_name: &str) -> Result<(), Report>
 where
   R: ConvolutionTestRunner<T>,
   T: TestCase,
@@ -118,74 +146,72 @@ where
   Ok(())
 }
 
-fn run_gaussian_tests(args: &Args) -> Result<(), Report> {
-  let runner = if args.test_cases == "all" {
+trait TestRunner<T: TestCase>: ConvolutionTestRunner<T> {
+  /// Create new test runner with default test cases
+  fn new() -> Self;
+
+  /// Create test runner with custom test cases
+  fn with_test_cases(test_cases: Vec<T>) -> Self;
+
+  /// Get the function type name
+  fn function_type_name() -> &'static str;
+}
+
+impl TestRunner<GaussianTestCase> for GaussianTestRunner {
+  fn new() -> Self {
     GaussianTestRunner::new()
-  } else {
-    let requested_cases: Vec<&str> = args.test_cases.split(',').map(|s| s.trim()).collect();
-    let all_runner = GaussianTestRunner::new();
-    let all_cases = all_runner.test_cases();
-    let filtered_cases = all_cases
-      .iter()
-      .filter(|case| requested_cases.contains(&case.name()))
-      .cloned()
-      .collect::<Vec<_>>();
+  }
 
-    if filtered_cases.is_empty() {
-      eprintln!("No matching test cases found for: {}", args.test_cases);
-      eprintln!("Available Gaussian test cases:");
-      for case in all_cases {
-        eprintln!("  - {}", case.name());
-      }
-      return Ok(());
-    }
+  fn with_test_cases(test_cases: Vec<GaussianTestCase>) -> Self {
+    GaussianTestRunner::with_test_cases(test_cases)
+  }
 
-    GaussianTestRunner::with_test_cases(filtered_cases)
-  };
-
-  run_convolution_tests(args, runner, "Gaussian")
-}
-
-fn run_exponential_tests(args: &Args) -> Result<(), Report> {
-  let runner = if args.test_cases == "all" {
-    ExponentialTestRunner::new()
-  } else {
-    let requested_cases: Vec<&str> = args.test_cases.split(',').map(|s| s.trim()).collect();
-    let all_runner = ExponentialTestRunner::new();
-    let all_cases = all_runner.test_cases();
-    let filtered_cases = all_cases
-      .iter()
-      .filter(|case| requested_cases.contains(&case.name()))
-      .cloned()
-      .collect::<Vec<_>>();
-
-    if filtered_cases.is_empty() {
-      eprintln!("No matching test cases found for: {}", args.test_cases);
-      eprintln!("Available Exponential test cases:");
-      for case in all_cases {
-        eprintln!("  - {}", case.name());
-      }
-      return Ok(());
-    }
-
-    ExponentialTestRunner::with_test_cases(filtered_cases)
-  };
-
-  run_convolution_tests(args, runner, "Exponential")
-}
-
-fn list_gaussian_test_cases() {
-  let runner = GaussianTestRunner::new();
-  println!("Available Gaussian test cases:");
-  for case in runner.test_cases() {
-    println!("  - {} : {}", case.name, case.description);
+  fn function_type_name() -> &'static str {
+    "Gaussian"
   }
 }
 
-fn list_exponential_test_cases() {
-  let runner = ExponentialTestRunner::new();
-  println!("Available Exponential test cases:");
-  for case in runner.test_cases() {
-    println!("  - {} : {}", case.name, case.description);
+impl TestRunner<ExponentialTestCase> for ExponentialTestRunner {
+  fn new() -> Self {
+    ExponentialTestRunner::new()
+  }
+
+  fn with_test_cases(test_cases: Vec<ExponentialTestCase>) -> Self {
+    ExponentialTestRunner::with_test_cases(test_cases)
+  }
+
+  fn function_type_name() -> &'static str {
+    "Exponential"
+  }
+}
+fn run_tests_for_runner<R, T>(args: &Args) -> Result<(), Report>
+where
+  R: TestRunner<T>,
+  T: TestCase,
+  TestResult<T>: ToFlatResult,
+  <TestResult<T> as ToFlatResult>::FlatResult: Serialize,
+{
+  let filtered_cases = match filter_test_cases::<R, T>(args)? {
+    Some(cases) => cases,
+    None => return Ok(()),
+  };
+
+  let runner = if args.test_cases == "all" {
+    R::new()
+  } else {
+    R::with_test_cases(filtered_cases)
+  };
+
+  run_convolution_tests(args, runner, R::function_type_name())
+}
+
+fn list_test_cases<R, T>()
+where
+  R: TestRunner<T>,
+  T: TestCase,
+{
+  println!("Available {} test cases:", R::function_type_name());
+  for case in R::new().test_cases() {
+    println!("  - {} : {}", case.name(), case.description());
   }
 }
