@@ -1,5 +1,5 @@
 use crate::distribution::reference::domain_agreement_metrics::DomainAgreementMetrics;
-use crate::io::json::{JsonPretty, json_write_file};
+use crate::io::json::{JsonPretty, json_write_file, json_write_str};
 use crate::utils::float_fmt::float_to_significant_digits;
 use eyre::Report;
 use itertools::Itertools;
@@ -65,6 +65,7 @@ pub struct TestFailure<T: TestCase> {
   pub execution_time_ms: f64,
 }
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum TestRunOutcome<T: TestCase> {
   Success(TestResult<T>),
@@ -166,7 +167,8 @@ impl<T: TestCase, R: ConvolutionTestRunner<T>> GenericConvolutionTestFramework<T
       .into_par_iter()
       .map(|(test_case, &algorithm)| {
         let start_time = Instant::now();
-        let result = match self.runner.run_test(test_case, algorithm) {
+
+        match self.runner.run_test(test_case, algorithm) {
           Ok(result) => {
             let completed_count = completed.fetch_add(1, Ordering::Relaxed) + 1;
             let elapsed_ms = result.execution_time_ms;
@@ -204,8 +206,7 @@ impl<T: TestCase, R: ConvolutionTestRunner<T>> GenericConvolutionTestFramework<T
               execution_time_ms: elapsed_ms,
             })
           },
-        };
-        result
+        }
       })
       .collect();
 
@@ -219,9 +220,13 @@ impl<T: TestCase, R: ConvolutionTestRunner<T>> GenericConvolutionTestFramework<T
       .collect();
 
     if !failures.is_empty() {
-      println!("\n=== ERRORS ENCOUNTERED ===");
+      println!("\n\n=== ERRORS ENCOUNTERED ===");
       for failure in failures {
-        println!("{} + {}: {}", failure.test_case_name, failure.algorithm, failure.error);
+        let test_case_json = json_write_str(&failure.test_case, JsonPretty(true))?;
+        println!(
+          "\n❌ ERROR: {} + {}: {}\n{test_case_json}",
+          failure.test_case_name, failure.algorithm, failure.error
+        );
       }
       println!();
     }
