@@ -143,6 +143,16 @@ impl<T: TestCase, R: ConvolutionTestRunner<T>> GenericConvolutionTestFramework<T
       total_tests
     );
 
+    // Print table header
+    println!(
+      "| {:^12} | {:^2} | {:^12} | {:^30} | {:^8} | {:^8} |",
+      "Progress", "S", "Algorithm", "Test Case", "Time, ms", "R²"
+    );
+    println!(
+      "|{:-<14}|{:-^4}|{:-<14}|{:-<32}|{:->10}|{:->10}|",
+      "", "", "", "", "", ""
+    );
+
     // Generate all test-algorithm combinations
     let test_combinations: Vec<_> = self
       .runner
@@ -161,29 +171,30 @@ impl<T: TestCase, R: ConvolutionTestRunner<T>> GenericConvolutionTestFramework<T
             let completed_count = completed.fetch_add(1, Ordering::Relaxed) + 1;
             let elapsed_ms = result.execution_time_ms;
             let r_squared = result.metrics.quality_metrics.r_squared;
+            let progress = format!("[{completed_count}/{total_tests}]");
             println!(
-              "[{:width$}/{}] {} + {} ✓ ({:.1}ms, R²={:.6})",
-              completed_count,
-              total_tests,
+              "| {:<12} | {:^1} | {:<12} | {:<30} | {:>8.1} | {:>8.6} |",
+              progress,
+              "✅",
+              format!("{algorithm}"),
               test_case.name(),
-              algorithm,
               elapsed_ms,
-              r_squared,
-              width = counter_width
+              r_squared
             );
             TestRunOutcome::Success(result)
           },
           Err(error) => {
             let completed_count = completed.fetch_add(1, Ordering::Relaxed) + 1;
             let elapsed_ms = start_time.elapsed().as_secs_f64() * 1000.0;
+            let progress = format!("[{completed_count}/{total_tests}]");
             println!(
-              "[{:width$}/{}] {} + {} ✗ Error: {}",
-              completed_count,
-              total_tests,
+              "| {:<12} | {:^1} | {:<12} | {:<30} | {:>8.1} | {:>8} |",
+              progress,
+              "❌",
+              format!("{algorithm}"),
               test_case.name(),
-              algorithm,
-              error,
-              width = counter_width
+              elapsed_ms,
+              "FAILED"
             );
             TestRunOutcome::Failure(TestFailure {
               test_case_name: test_case.name().to_owned(),
@@ -197,6 +208,23 @@ impl<T: TestCase, R: ConvolutionTestRunner<T>> GenericConvolutionTestFramework<T
         result
       })
       .collect();
+
+    // Report any errors that occurred
+    let failures: Vec<_> = outcomes
+      .iter()
+      .filter_map(|outcome| match outcome {
+        TestRunOutcome::Failure(failure) => Some(failure),
+        TestRunOutcome::Success(_) => None,
+      })
+      .collect();
+
+    if !failures.is_empty() {
+      println!("\n=== ERRORS ENCOUNTERED ===");
+      for failure in failures {
+        println!("{} + {}: {}", failure.test_case_name, failure.algorithm, failure.error);
+      }
+      println!();
+    }
 
     Ok(outcomes)
   }
