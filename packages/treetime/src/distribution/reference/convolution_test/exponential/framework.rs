@@ -81,11 +81,26 @@ impl ConvolutionTestRunner<ExponentialTestCase> for ExponentialTestRunner {
     let peak_error_location = actual_result.x()[max_error_idx];
     let peak_error_value = abs_errors[max_error_idx];
 
+    let evaluation_grid = actual_result.x().to_owned();
+    let actual_values = actual_result.y().to_owned();
+    let expected_values = expected_result.y().to_owned();
+    let f_x_values = f.x().to_owned();
+    let f_y_values = f.y().to_owned();
+    let g_x_values = g.x().to_owned();
+    let g_y_values = g.y().to_owned();
+
     Ok(TestResult {
       test_case_name: test_case.name.clone(),
       algorithm,
       test_case: test_case.clone(),
       metrics,
+      evaluation_grid,
+      actual_values,
+      expected_values,
+      f_x_values,
+      f_y_values,
+      g_x_values,
+      g_y_values,
       execution_time_ms: execution_time,
       grid_points: eval_grid.len(),
       peak_error_location,

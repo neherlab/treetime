@@ -3,6 +3,7 @@ use crate::io::json::{JsonPretty, json_write_file, json_write_str};
 use crate::utils::float_fmt::float_to_significant_digits;
 use eyre::Report;
 use itertools::Itertools;
+use ndarray::Array1;
 use ordered_float::OrderedFloat;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -43,16 +44,43 @@ pub trait ConvolutionTestRunner<T: TestCase>: Send + Sync {
   fn function_type(&self) -> &str;
 }
 
-/// Results for a single test case and algorithm combination
+/// Results for a single test case and algorithm combination.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TestResult<T: TestCase> {
+  /// Name of the test case that was executed (copied from `test_case.name()`).
   pub test_case_name: String,
+  /// Convolution algorithm that was tested (specified in the test run).
   pub algorithm: ConvolutionAlgorithm,
+  /// Full test case configuration and parameters (contains all input parameters for the test).
   pub test_case: T,
+  /// Accuracy metrics comparing `actual_values` vs `expected_values` (R², errors, etc.).
   pub metrics: DomainAgreementMetrics,
+  /// Domain coordinates where the convolution result is sampled; the shared grid used to compare
+  /// `actual_values` with `expected_values`.
+  pub evaluation_grid: Array1<f64>,
+  /// Convolution values produced by the tested algorithm, evaluated at points in `evaluation_grid`;
+  /// the numerical result under evaluation.
+  pub actual_values: Array1<f64>,
+  /// Analytical or construction-ground-truth convolution values, evaluated at points in `evaluation_grid`;
+  /// the reference curve used to compute `metrics`.
+  pub expected_values: Array1<f64>,
+  /// Domain coordinates of the first input function f(x); sample points where `f_y_values` are defined.
+  pub f_x_values: Array1<f64>,
+  /// Function values of f(x) at coordinates in `f_x_values`; the first input waveform to the convolution.
+  pub f_y_values: Array1<f64>,
+  /// Domain coordinates of the second input function g(x); sample points where `g_y_values` are defined.
+  pub g_x_values: Array1<f64>,
+  /// Function values of g(x) at coordinates in `g_x_values`; the second input waveform to the convolution.
+  pub g_y_values: Array1<f64>,
+  /// Wall-clock time taken to execute the test, measured in milliseconds.
   pub execution_time_ms: f64,
+  /// Number of points in `evaluation_grid` (equal to `evaluation_grid.len()`).
   pub grid_points: usize,
+  /// Domain coordinate in `evaluation_grid` where the maximum absolute error occurs (where
+  /// `|actual_values[i] - expected_values[i]|` is maximized).
   pub peak_error_location: f64,
+  /// Maximum absolute error value `max(|actual_values[i] - expected_values[i]|)` across all points in
+  /// `evaluation_grid`.
   pub peak_error_value: f64,
 }
 

@@ -1,6 +1,10 @@
 use clap::{Parser, ValueEnum};
 use eyre::Report;
+use itertools::izip;
+use ndarray::Array1;
+use plotters::prelude::*;
 use serde::{Deserialize, Serialize};
+use std::fs;
 use strum::IntoEnumIterator;
 use strum_macros::{Display, EnumIter};
 use treetime::distribution::reference::convolution_test::exponential::ExponentialTestCase;
@@ -158,6 +162,8 @@ where
   // Run all tests
   let outcomes = framework.run_all_tests()?;
 
+  generate_plot_outputs(args, &outcomes)?;
+
   // Generate summary
   let summary = framework.generate_summary(&outcomes);
 
@@ -182,6 +188,256 @@ where
   println!("Check {} for detailed results.", args.output_dir);
 
   Ok(())
+}
+
+fn generate_plot_outputs<T>(args: &Args, outcomes: &[TestRunOutcome<T>]) -> Result<(), Report>
+where
+  T: TestCase,
+{
+  for outcome in outcomes {
+    if let TestRunOutcome::Success(result) = outcome {
+      let algorithm_dir = format!(
+        "{}/{}/{}",
+        args.output_dir,
+        result.test_case_name,
+        result.algorithm.to_string().to_lowercase()
+      );
+      fs::create_dir_all(&algorithm_dir)?;
+      plot_functions_and_convolution(result, &algorithm_dir)?;
+      plot_absolute_error(result, &algorithm_dir)?;
+      plot_tolerance_metrics(result, &algorithm_dir)?;
+    }
+  }
+  Ok(())
+}
+
+fn plot_functions_and_convolution<T>(result: &TestResult<T>, output_dir: &str) -> Result<(), Report>
+where
+  T: TestCase,
+{
+  let output_path = format!("{output_dir}/functions_convolution.svg");
+  let root = SVGBackend::new(&output_path, (960, 640)).into_drawing_area();
+  root.fill(&WHITE)?;
+  let (x_raw_min, x_raw_max) = combined_range(&[&result.f_x_values, &result.g_x_values, &result.evaluation_grid]);
+  let (x_min, x_max) = expand_range(x_raw_min, x_raw_max);
+  let (y_raw_min, y_raw_max) = combined_range(&[
+    &result.f_y_values,
+    &result.g_y_values,
+    &result.actual_values,
+    &result.expected_values,
+  ]);
+  let (y_min, y_max) = expand_range(y_raw_min, y_raw_max);
+  let mut chart = ChartBuilder::on(&root)
+    .caption(
+      format!(
+        "{} | {} | Input and Convolution",
+        result.test_case_name, result.algorithm
+      ),
+      ("Arial", 24),
+    )
+    .margin(20)
+    .x_label_area_size(40)
+    .y_label_area_size(60)
+    .build_cartesian_2d(x_min..x_max, y_min..y_max)?;
+  chart.configure_mesh().draw()?;
+  chart
+    .draw_series(LineSeries::new(
+      result
+        .f_x_values
+        .iter()
+        .zip(result.f_y_values.iter())
+        .map(|(&x, &y)| (x, y)),
+      BLUE.stroke_width(2),
+    ))?
+    .label("f(x)")
+    .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 12, y)], BLUE.stroke_width(2)));
+  chart
+    .draw_series(LineSeries::new(
+      result
+        .g_x_values
+        .iter()
+        .zip(result.g_y_values.iter())
+        .map(|(&x, &y)| (x, y)),
+      GREEN.stroke_width(2),
+    ))?
+    .label("g(x)")
+    .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 12, y)], GREEN.stroke_width(2)));
+  chart
+    .draw_series(LineSeries::new(
+      result
+        .evaluation_grid
+        .iter()
+        .zip(result.actual_values.iter())
+        .map(|(&x, &y)| (x, y)),
+      MAGENTA.stroke_width(3),
+    ))?
+    .label(format!("Actual ({})", result.algorithm))
+    .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 12, y)], MAGENTA.stroke_width(3)));
+  chart
+    .draw_series(LineSeries::new(
+      result
+        .evaluation_grid
+        .iter()
+        .zip(result.expected_values.iter())
+        .map(|(&x, &y)| (x, y)),
+      RED.stroke_width(3),
+    ))?
+    .label("Expected")
+    .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 12, y)], RED.stroke_width(3)));
+  chart
+    .configure_series_labels()
+    .border_style(BLACK)
+    .background_style(WHITE.mix(0.8))
+    .draw()?;
+  root.present()?;
+  Ok(())
+}
+
+fn plot_absolute_error<T>(result: &TestResult<T>, output_dir: &str) -> Result<(), Report>
+where
+  T: TestCase,
+{
+  let mut error_points = Vec::with_capacity(result.evaluation_grid.len());
+  let mut max_error = 0.0_f64;
+  for (&x, &actual, &expected) in izip!(
+    result.evaluation_grid.iter(),
+    result.actual_values.iter(),
+    result.expected_values.iter()
+  ) {
+    let value = (actual - expected).abs();
+    if value > max_error {
+      max_error = value;
+    }
+    error_points.push((x, value));
+  }
+  let (x_raw_min, x_raw_max) = combined_range(&[&result.evaluation_grid]);
+  let (x_min, x_max) = expand_range(x_raw_min, x_raw_max);
+  let (mut y_min, mut y_max) = expand_range(0.0, max_error);
+  if y_min < 0.0 {
+    y_min = 0.0;
+  }
+  if y_max <= y_min {
+    y_max = y_min + 1.0;
+  }
+  let output_path = format!("{output_dir}/absolute_error.svg");
+  let root = SVGBackend::new(&output_path, (960, 480)).into_drawing_area();
+  root.fill(&WHITE)?;
+  let mut chart = ChartBuilder::on(&root)
+    .caption(
+      format!("{} | {} | Absolute Error", result.test_case_name, result.algorithm),
+      ("Arial", 24),
+    )
+    .margin(20)
+    .x_label_area_size(40)
+    .y_label_area_size(60)
+    .build_cartesian_2d(x_min..x_max, y_min..y_max)?;
+  chart.configure_mesh().y_desc("|actual - expected|").draw()?;
+  chart
+    .draw_series(LineSeries::new(error_points.iter().copied(), RED.stroke_width(2)))?
+    .label("Absolute error")
+    .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 12, y)], RED.stroke_width(2)));
+  chart
+    .configure_series_labels()
+    .border_style(BLACK)
+    .background_style(WHITE.mix(0.8))
+    .draw()?;
+  root.present()?;
+  Ok(())
+}
+
+fn plot_tolerance_metrics<T>(result: &TestResult<T>, output_dir: &str) -> Result<(), Report>
+where
+  T: TestCase,
+{
+  let abs = result.metrics.abs_tolerance_fractions;
+  let rel = result.metrics.rel_tolerance_fractions;
+  let output_path = format!("{output_dir}/tolerance_metrics.svg");
+  let root = SVGBackend::new(&output_path, (800, 600)).into_drawing_area();
+  root.fill(&WHITE)?;
+  let mut chart = ChartBuilder::on(&root)
+    .caption(
+      format!("{} | {} | Tolerance Fractions", result.test_case_name, result.algorithm),
+      ("Arial", 24),
+    )
+    .margin(20)
+    .x_label_area_size(50)
+    .y_label_area_size(60)
+    .build_cartesian_2d(-0.2..3.0, 0.0..1.05)?;
+  chart
+    .configure_mesh()
+    .x_labels(3)
+    .y_labels(6)
+    .x_desc("Tolerance level")
+    .y_desc("Fraction within threshold")
+    .x_label_formatter(&|value| tolerance_label(*value))
+    .y_label_formatter(&|value| format!("{value:.2}"))
+    .draw()?;
+  chart
+    .draw_series((0..3).map(|i| {
+      let x0 = i as f64 + 0.05;
+      let x1 = x0 + 0.35;
+      Rectangle::new([(x0, 0.0), (x1, abs[i])], BLUE.mix(0.6).filled())
+    }))?
+    .label("Absolute")
+    .legend(|(x, y)| Rectangle::new([(x - 6, y - 6), (x + 6, y + 6)], BLUE.mix(0.6).filled()));
+  chart
+    .draw_series((0..3).map(|i| {
+      let x0 = i as f64 + 0.5;
+      let x1 = x0 + 0.35;
+      Rectangle::new([(x0, 0.0), (x1, rel[i])], RED.mix(0.6).filled())
+    }))?
+    .label("Relative")
+    .legend(|(x, y)| Rectangle::new([(x - 6, y - 6), (x + 6, y + 6)], RED.mix(0.6).filled()));
+  chart
+    .configure_series_labels()
+    .border_style(BLACK)
+    .background_style(WHITE.mix(0.8))
+    .draw()?;
+  root.present()?;
+  Ok(())
+}
+
+fn combined_range(arrays: &[&Array1<f64>]) -> (f64, f64) {
+  let mut min_value = f64::INFINITY;
+  let mut max_value = f64::NEG_INFINITY;
+  for array in arrays {
+    for &value in *array {
+      if value < min_value {
+        min_value = value;
+      }
+      if value > max_value {
+        max_value = value;
+      }
+    }
+  }
+  if min_value.is_finite() && max_value.is_finite() {
+    (min_value, max_value)
+  } else {
+    (0.0, 1.0)
+  }
+}
+
+fn expand_range(min_value: f64, max_value: f64) -> (f64, f64) {
+  if !min_value.is_finite() || !max_value.is_finite() {
+    return (-1.0, 1.0);
+  }
+  if max_value <= min_value {
+    let base = if min_value.abs() > 1.0 { min_value.abs() } else { 1.0 };
+    return (min_value - base, max_value + base);
+  }
+  let span = max_value - min_value;
+  let padding = if span * 0.05 < 1e-9 { 1e-9 } else { span * 0.05 };
+  (min_value - padding, max_value + padding)
+}
+
+fn tolerance_label(value: f64) -> String {
+  let idx = (value + 0.5).floor() as i32;
+  match idx {
+    0 => "Strict".to_owned(),
+    1 => "Moderate".to_owned(),
+    2 => "Loose".to_owned(),
+    _ => format!("{value:.1}"),
+  }
 }
 
 trait TestRunner<T: TestCase>: ConvolutionTestRunner<T> {
