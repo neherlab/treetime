@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::f64::consts::PI;
 use treetime::distribution::reference::convolution::{ndarray_convolve, riemann_convolve};
 use treetime::distribution::reference::domain_agreement_metrics::DomainAgreementMetrics;
-use treetime::distribution::reference::gaussian::{gaussian_f, gaussian_g};
+use treetime::distribution::reference::convolution_test::gaussian::analytical::{gaussian_f, gaussian_g};
 use treetime::io::json::{JsonPretty, json_write_file, json_write_str};
 
 #[derive(Parser, Clone, Serialize, Deserialize)]

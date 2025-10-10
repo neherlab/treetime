@@ -3,7 +3,7 @@ use crate::distribution::reference::convolution_test::algorithms::ConvolutionAlg
 use crate::distribution::reference::convolution_test::framework::{ConvolutionTestRunner, TestResult};
 use crate::distribution::reference::convolution_test::output::ToFlatResult;
 use crate::distribution::reference::domain_agreement_metrics::DomainAgreementMetrics;
-use crate::distribution::reference::gaussian::{gaussian_convolution, gaussian_f, gaussian_g};
+use crate::distribution::reference::convolution_test::gaussian::analytical::{gaussian_convolution, gaussian_f, gaussian_g};
 use eyre::Report;
 use ndarray::Array1;
 use ordered_float::OrderedFloat;
