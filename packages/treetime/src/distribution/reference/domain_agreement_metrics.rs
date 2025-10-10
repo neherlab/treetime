@@ -1,5 +1,6 @@
 use crate::make_error;
 use crate::utils::float_fmt::float_to_digits;
+use approx::ulps_eq;
 use itertools::{Itertools, izip};
 use ndarray::Array1;
 use ndarray_stats::QuantileExt;
@@ -442,8 +443,8 @@ fn compute_relative_error_statistics(actual: &Array1<f64>, expected: &Array1<f64
   let mut abs_rel_errors = Vec::new();
 
   for (&a, &e) in izip!(actual, expected) {
-    if e.abs() < f64::EPSILON {
-      return make_error!("Expected value too close to zero: {:.2e}", e);
+    if ulps_eq!(e, 0.0, max_ulps = 3) {
+      continue;
     }
 
     let rel_error = (a - e) / e;
@@ -453,6 +454,10 @@ fn compute_relative_error_statistics(actual: &Array1<f64>, expected: &Array1<f64
     rel_errors.push(rel_error);
     abs_percentage_errors.push(abs_percentage_error);
     abs_rel_errors.push(abs_rel_error);
+  }
+
+  if rel_errors.is_empty() {
+    return make_error!("No valid points for relative error statistics");
   }
 
   let mean = rel_errors.iter().sum::<f64>() / rel_errors.len() as f64;
@@ -499,7 +504,7 @@ fn compute_r_squared(actual: &Array1<f64>, expected: &Array1<f64>) -> eyre::Resu
   let ss_res = (actual - expected).mapv(|x| x.powi(2)).sum();
   let ss_tot = expected.mapv(|x| (x - expected_mean).powi(2)).sum();
 
-  if ss_tot.abs() < f64::EPSILON {
+  if ulps_eq!(ss_tot, 0.0, max_ulps = 3) {
     return make_error!("Total sum of squares is zero - cannot compute R²");
   }
 
@@ -522,7 +527,7 @@ fn compute_correlation(actual: &Array1<f64>, expected: &Array1<f64>) -> eyre::Re
 
   let denominator = (actual_var * expected_var).sqrt();
 
-  if denominator.abs() < f64::EPSILON {
+  if ulps_eq!(denominator, 0.0, max_ulps = 3) {
     return make_error!("Cannot compute correlation - zero variance detected");
   }
 
@@ -550,7 +555,7 @@ fn compute_tolerance_counts(
     }
 
     // Count relative tolerance compliance (skip if expected is near zero)
-    if e.abs() > f64::EPSILON {
+    if !ulps_eq!(e, 0.0, max_ulps = 3) {
       let rel_error = abs_error / e.abs();
       for (i, &threshold) in thresholds.rel_tolerances.iter().enumerate() {
         if rel_error < threshold {
@@ -603,7 +608,7 @@ fn compute_relative_l2_norm_error(actual: &Array1<f64>, expected: &Array1<f64>) 
   let diff_norm = (actual - expected).mapv(|x| x.powi(2)).sum().sqrt();
   let expected_norm = expected.mapv(|x| x.powi(2)).sum().sqrt();
 
-  if expected_norm.abs() < f64::EPSILON {
+  if ulps_eq!(expected_norm, 0.0, max_ulps = 3) {
     return make_error!("Expected values have zero L2 norm - cannot compute relative L2 error");
   }
 
@@ -617,7 +622,7 @@ fn compute_relative_l1_norm_error(actual: &Array1<f64>, expected: &Array1<f64>) 
   let diff_l1_norm = (actual - expected).mapv(|x| x.abs()).sum();
   let expected_l1_norm = expected.mapv(|x| x.abs()).sum();
 
-  if expected_l1_norm.abs() < f64::EPSILON {
+  if ulps_eq!(expected_l1_norm, 0.0, max_ulps = 3) {
     return make_error!("Expected values have zero L1 norm - cannot compute relative L1 error");
   }
 
@@ -631,7 +636,7 @@ fn compute_relative_linf_norm_error(actual: &Array1<f64>, expected: &Array1<f64>
   let max_abs_error = *(actual - expected).mapv(|x| x.abs()).max().unwrap_or(&0.0);
   let max_expected = *expected.mapv(|x| x.abs()).max().unwrap_or(&0.0);
 
-  if max_expected.abs() < f64::EPSILON {
+  if ulps_eq!(max_expected, 0.0, max_ulps = 3) {
     return make_error!("Expected values have zero maximum - cannot compute relative L∞ error");
   }
 
@@ -725,7 +730,7 @@ fn compute_peak_metrics(x: &Array1<f64>, actual: &Array1<f64>, expected: &Array1
   let expected_peak_idx = expected.argmax().unwrap_or(0);
 
   // Compute peak value error
-  if expected_peak.abs() < f64::EPSILON {
+  if ulps_eq!(expected_peak, 0.0, max_ulps = 3) {
     return make_error!("Expected peak value too close to zero: {:.2e}", expected_peak);
   }
   let value_error = (actual_peak - expected_peak).abs() / expected_peak.abs();
@@ -753,26 +758,26 @@ mod tests {
 
     let metrics = DomainAgreementMetrics::new(&x, &values, &expected).unwrap();
 
-    assert_ulps_eq!(metrics.abs_error_stats.mean, 0.0);
-    assert_ulps_eq!(metrics.abs_error_stats.max, 0.0);
-    assert_ulps_eq!(metrics.abs_error_stats.std, 0.0);
-    assert_ulps_eq!(metrics.abs_error_stats.bias, 0.0);
-    assert_ulps_eq!(metrics.rel_error_stats.mean, 0.0);
-    assert_ulps_eq!(metrics.rel_error_stats.max, 0.0);
-    assert_ulps_eq!(metrics.rel_error_stats.mape, 0.0);
-    assert_ulps_eq!(metrics.rel_error_stats.median, 0.0);
-    assert_ulps_eq!(metrics.quality_metrics.rmse, 0.0);
+    assert_ulps_eq!(metrics.abs_error_stats.mean, 0.0, max_ulps = 3);
+    assert_ulps_eq!(metrics.abs_error_stats.max, 0.0, max_ulps = 3);
+    assert_ulps_eq!(metrics.abs_error_stats.std, 0.0, max_ulps = 3);
+    assert_ulps_eq!(metrics.abs_error_stats.bias, 0.0, max_ulps = 3);
+    assert_ulps_eq!(metrics.rel_error_stats.mean, 0.0, max_ulps = 3);
+    assert_ulps_eq!(metrics.rel_error_stats.max, 0.0, max_ulps = 3);
+    assert_ulps_eq!(metrics.rel_error_stats.mape, 0.0, max_ulps = 3);
+    assert_ulps_eq!(metrics.rel_error_stats.median, 0.0, max_ulps = 3);
+    assert_ulps_eq!(metrics.quality_metrics.rmse, 0.0, max_ulps = 3);
     assert_ulps_eq!(metrics.quality_metrics.r_squared, 1.0);
     assert_ulps_eq!(metrics.quality_metrics.correlation, 1.0);
-    assert_ulps_eq!(metrics.quality_metrics.mass_error, 0.0);
-    assert_ulps_eq!(metrics.quality_metrics.rel_l2_error, 0.0);
-    assert_ulps_eq!(metrics.quality_metrics.rel_l1_error, 0.0);
-    assert_ulps_eq!(metrics.quality_metrics.rel_linf_error, 0.0);
-    assert_ulps_eq!(metrics.quality_metrics.max_log_error, 0.0);
-    assert_ulps_eq!(metrics.quality_metrics.symmetry_error, 0.0);
-    assert_ulps_eq!(metrics.quality_metrics.quantile_95_error, 0.0);
-    assert_ulps_eq!(metrics.peak_metrics.value_error, 0.0);
-    assert_ulps_eq!(metrics.peak_metrics.location_error, 0.0);
+    assert_ulps_eq!(metrics.quality_metrics.mass_error, 0.0, max_ulps = 3);
+    assert_ulps_eq!(metrics.quality_metrics.rel_l2_error, 0.0, max_ulps = 3);
+    assert_ulps_eq!(metrics.quality_metrics.rel_l1_error, 0.0, max_ulps = 3);
+    assert_ulps_eq!(metrics.quality_metrics.rel_linf_error, 0.0, max_ulps = 3);
+    assert_ulps_eq!(metrics.quality_metrics.max_log_error, 0.0, max_ulps = 3);
+    assert_ulps_eq!(metrics.quality_metrics.symmetry_error, 0.0, max_ulps = 3);
+    assert_ulps_eq!(metrics.quality_metrics.quantile_95_error, 0.0, max_ulps = 3);
+    assert_ulps_eq!(metrics.peak_metrics.value_error, 0.0, max_ulps = 3);
+    assert_ulps_eq!(metrics.peak_metrics.location_error, 0.0, max_ulps = 3);
 
     for i in 0..3 {
       assert_ulps_eq!(metrics.abs_tolerance_fraction(i), 1.0);
@@ -854,7 +859,7 @@ mod tests {
 
     assert_ulps_eq!(metrics.abs_tolerance_fraction(0), 1.0);
     assert_ulps_eq!(metrics.rel_tolerance_fraction(0), 1.0);
-    assert_ulps_eq!(metrics.abs_tolerance_fraction(3), 0.0); // Invalid level
+    assert_ulps_eq!(metrics.abs_tolerance_fraction(3), 0.0, max_ulps = 3); // Invalid level
   }
 
   #[test]
@@ -888,7 +893,7 @@ mod tests {
 
     // Test peak metrics
     assert!(metrics.peak_metrics.value_error > 0.0); // Different peak values
-    assert_ulps_eq!(metrics.peak_metrics.location_error, 0.0); // Same peak location
+    assert_ulps_eq!(metrics.peak_metrics.location_error, 0.0, max_ulps = 3); // Same peak location
 
     // Test median relative error
     assert!(metrics.rel_error_stats.median >= 0.0);
@@ -994,7 +999,7 @@ mod tests {
     let expected = array![0.5, 1.0, 0.5];
 
     let metrics = DomainAgreementMetrics::new(&x, &actual, &expected).unwrap();
-    assert_ulps_eq!(metrics.quality_metrics.symmetry_error, 0.0);
+    assert_ulps_eq!(metrics.quality_metrics.symmetry_error, 0.0, max_ulps = 3);
 
     // Test asymmetric data
     let actual_asym = array![0.4, 1.0, 0.6]; // Asymmetric
