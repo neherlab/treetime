@@ -1,6 +1,7 @@
 use clap::{Parser, ValueEnum};
 use eyre::Report;
 use serde::{Deserialize, Serialize};
+use strum::IntoEnumIterator;
 use strum_macros::{Display, EnumIter};
 use treetime::distribution::reference::convolution_test::exponential::ExponentialTestCase;
 use treetime::distribution::reference::convolution_test::framework::{
@@ -20,9 +21,9 @@ use treetime::distribution::reference::convolution_test::{
   version
 )]
 struct Args {
-  /// Function type to test
-  #[arg(long, default_value_t = FunctionType::default())]
-  function: FunctionType,
+  /// Function types to test
+  #[arg(long, default_values_t = FunctionType::all())]
+  functions: Vec<FunctionType>,
 
   /// Output directory for results files
   #[arg(long, default_value = "tmp/convolution_test")]
@@ -40,12 +41,12 @@ struct Args {
   #[arg(long)]
   verbose: bool,
 
-  /// List available test cases for the specified function type
+  /// List available test cases for the specified function types
   #[arg(long)]
   list_cases: bool,
 }
 
-#[derive(Clone, Debug, Default, Display, ValueEnum, Serialize, Deserialize, EnumIter)]
+#[derive(Copy, Clone, Debug, Default, Display, ValueEnum, Serialize, Deserialize, EnumIter)]
 #[serde(rename_all = "kebab-case")]
 #[clap(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
@@ -55,25 +56,53 @@ enum FunctionType {
   Exponential,
 }
 
+impl FunctionType {
+  /// Get all available function types
+  pub fn all() -> Vec<Self> {
+    Self::iter().collect()
+  }
+}
+
 fn main() -> Result<(), Report> {
   let args = Args::parse();
 
-  match args.function {
-    FunctionType::Gaussian => {
-      if args.list_cases {
-        list_test_cases::<GaussianTestRunner, GaussianTestCase>();
-        return Ok(());
+  if args.list_cases {
+    for function_type in &args.functions {
+      match function_type {
+        FunctionType::Gaussian => {
+          list_test_cases::<GaussianTestRunner, GaussianTestCase>();
+        },
+        FunctionType::Exponential => {
+          list_test_cases::<ExponentialTestRunner, ExponentialTestCase>();
+        },
       }
-      run_tests_for_runner::<GaussianTestRunner, GaussianTestCase>(&args)
-    },
-    FunctionType::Exponential => {
-      if args.list_cases {
-        list_test_cases::<ExponentialTestRunner, ExponentialTestCase>();
-        return Ok(());
-      }
-      run_tests_for_runner::<ExponentialTestRunner, ExponentialTestCase>(&args)
-    },
+    }
+    return Ok(());
   }
+
+  for function_type in &args.functions {
+    // Create function-specific output directory
+    let function_output_dir = format!("{}/{}", args.output_dir, function_type.to_string().to_lowercase());
+    let function_args = Args {
+      functions: vec![*function_type],
+      output_dir: function_output_dir,
+      algorithms: args.algorithms.clone(),
+      test_cases: args.test_cases.clone(),
+      verbose: args.verbose,
+      list_cases: false,
+    };
+
+    match function_type {
+      FunctionType::Gaussian => {
+        run_tests_for_runner::<GaussianTestRunner, GaussianTestCase>(&function_args)?;
+      },
+      FunctionType::Exponential => {
+        run_tests_for_runner::<ExponentialTestRunner, ExponentialTestCase>(&function_args)?;
+      },
+    }
+  }
+
+  Ok(())
 }
 
 fn filter_test_cases<R, T>(args: &Args) -> Result<Option<Vec<T>>, Report>
