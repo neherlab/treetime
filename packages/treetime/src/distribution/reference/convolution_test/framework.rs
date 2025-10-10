@@ -4,9 +4,11 @@ use crate::utils::float_fmt::float_to_significant_digits;
 use eyre::Report;
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
+use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::marker::PhantomData;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Instant;
 
 use super::algorithms::ConvolutionAlgorithm;
@@ -30,7 +32,7 @@ pub trait TestCase: Clone + Send + Sync + Serialize {
 }
 
 /// Generic trait for function-specific test frameworks
-pub trait ConvolutionTestRunner<T: TestCase> {
+pub trait ConvolutionTestRunner<T: TestCase>: Send + Sync {
   /// Run a single test case with the specified algorithm
   fn run_test(&self, test_case: &T, algorithm: ConvolutionAlgorithm) -> Result<TestResult<T>, Report>;
 
@@ -126,51 +128,75 @@ impl<T: TestCase, R: ConvolutionTestRunner<T>> GenericConvolutionTestFramework<T
 
   /// Run all test cases for all algorithms
   pub fn run_all_tests(&self) -> Result<Vec<TestRunOutcome<T>>, Report> {
-    let mut outcomes = Vec::new();
+    let total_tests = self.runner.test_cases().len() * self.algorithms.len();
+    let completed = AtomicUsize::new(0);
+    let counter_width = total_tests.to_string().len();
 
     println!(
       "=== {} Convolution Test Framework ===",
       self.runner.function_type().to_uppercase()
     );
     println!(
-      "Running {} test cases with {} algorithms ({} total tests)\n",
+      "Running {} test cases with {} algorithms ({} total)\n",
       self.runner.test_cases().len(),
       self.algorithms.len(),
-      self.runner.test_cases().len() * self.algorithms.len()
+      total_tests
     );
 
-    for test_case in self.runner.test_cases() {
-      let name = test_case.name();
-      let description = test_case.description();
-      println!("Test Case: {name}");
-      println!("  Description: {description}");
+    // Generate all test-algorithm combinations
+    let test_combinations: Vec<_> = self
+      .runner
+      .test_cases()
+      .iter()
+      .cartesian_product(&self.algorithms)
+      .collect();
 
-      for &algorithm in &self.algorithms {
-        print!("  Running {algorithm} algorithm... ");
+    // Run tests in parallel
+    let outcomes: Vec<TestRunOutcome<T>> = test_combinations
+      .into_par_iter()
+      .map(|(test_case, &algorithm)| {
         let start_time = Instant::now();
-
-        match self.runner.run_test(test_case, algorithm) {
+        let result = match self.runner.run_test(test_case, algorithm) {
           Ok(result) => {
+            let completed_count = completed.fetch_add(1, Ordering::Relaxed) + 1;
             let elapsed_ms = result.execution_time_ms;
             let r_squared = result.metrics.quality_metrics.r_squared;
-            println!("✓ ({elapsed_ms:.1}ms, R²={r_squared:.6})");
-            outcomes.push(TestRunOutcome::Success(result));
+            println!(
+              "[{:width$}/{}] {} + {} ✓ ({:.1}ms, R²={:.6})",
+              completed_count,
+              total_tests,
+              test_case.name(),
+              algorithm,
+              elapsed_ms,
+              r_squared,
+              width = counter_width
+            );
+            TestRunOutcome::Success(result)
           },
           Err(error) => {
+            let completed_count = completed.fetch_add(1, Ordering::Relaxed) + 1;
             let elapsed_ms = start_time.elapsed().as_secs_f64() * 1000.0;
-            println!("✗ Error: {error}");
-            outcomes.push(TestRunOutcome::Failure(TestFailure {
+            println!(
+              "[{:width$}/{}] {} + {} ✗ Error: {}",
+              completed_count,
+              total_tests,
+              test_case.name(),
+              algorithm,
+              error,
+              width = counter_width
+            );
+            TestRunOutcome::Failure(TestFailure {
               test_case_name: test_case.name().to_owned(),
               algorithm,
               test_case: test_case.clone(),
               error: format!("{error}"),
               execution_time_ms: elapsed_ms,
-            }));
+            })
           },
-        }
-      }
-      println!();
-    }
+        };
+        result
+      })
+      .collect();
 
     Ok(outcomes)
   }
