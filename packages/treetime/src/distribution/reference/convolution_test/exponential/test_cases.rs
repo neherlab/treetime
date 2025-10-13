@@ -105,7 +105,8 @@ pub fn create_exponential_test_cases() -> Vec<ExponentialTestCase> {
     // },
     ExponentialTestCase {
       name: "moderate_coarse_grid".to_owned(),
-      description: "Moderate rates on a coarse grid. Discretization error on coarse grids; step size sensitivity.".to_owned(),
+      description: "Moderate rates on a coarse grid. Discretization error on coarse grids; step size sensitivity."
+        .to_owned(),
       stress_type: "aliasing/accuracy vs Δx, Δx scaling factor".to_owned(),
       analytical_caution: "none".to_owned(),
       a: 1.0,
@@ -141,7 +142,9 @@ pub fn create_exponential_test_cases() -> Vec<ExponentialTestCase> {
     // },
     ExponentialTestCase {
       name: "tight_truncation".to_owned(),
-      description: "Tight truncation to expose intentional errors. Sensitivity to insufficient support; boundary effects.".to_owned(),
+      description:
+        "Tight truncation to expose intentional errors. Sensitivity to insufficient support; boundary effects."
+          .to_owned(),
       stress_type: "wrap-around artifacts if padding insufficient".to_owned(),
       analytical_caution: "none".to_owned(),
       a: 1.0,

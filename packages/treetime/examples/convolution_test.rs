@@ -231,7 +231,8 @@ where
     .caption(
       format!(
         "{} | {} | Input and Convolution",
-        result.test_case.name(), result.algorithm
+        result.test_case.name(),
+        result.algorithm
       ),
       ("Arial", 24),
     )
@@ -356,7 +357,11 @@ where
   root.fill(&WHITE)?;
   let mut chart = ChartBuilder::on(&root)
     .caption(
-      format!("{} | {} | Tolerance Fractions", result.test_case.name(), result.algorithm),
+      format!(
+        "{} | {} | Tolerance Fractions",
+        result.test_case.name(),
+        result.algorithm
+      ),
       ("Arial", 24),
     )
     .margin(20)
