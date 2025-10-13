@@ -1,5 +1,6 @@
 use crate::distribution::reference::domain_agreement_metrics::DomainAgreementMetrics;
 use crate::io::json::{JsonPretty, json_write_file, json_write_str};
+use crate::io::serde::{array1_as_vec, array1_from_vec};
 use crate::utils::float_fmt::float_to_significant_digits;
 use eyre::Report;
 use itertools::Itertools;
@@ -53,28 +54,35 @@ pub struct TestResult<T: TestCase> {
   pub test_case: T,
   /// Wall-clock time taken to execute the test, measured in milliseconds.
   pub execution_time_ms: f64,
-  
+
   // Input functions
   /// Domain coordinates of the first input function f(x); sample points where `f_y_values` are defined.
+  #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
   pub f_x_values: Array1<f64>,
   /// Function values of f(x) at coordinates in `f_x_values`; the first input waveform to the convolution.
+  #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
   pub f_y_values: Array1<f64>,
   /// Domain coordinates of the second input function g(x); sample points where `g_y_values` are defined.
+  #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
   pub g_x_values: Array1<f64>,
   /// Function values of g(x) at coordinates in `g_x_values`; the second input waveform to the convolution.
+  #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
   pub g_y_values: Array1<f64>,
-  
+
   // Convolution results
   /// Domain coordinates where the convolution result is sampled; the shared grid used to compare
   /// `actual_values` with `expected_values`.
+  #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
   pub evaluation_grid: Array1<f64>,
   /// Convolution values produced by the tested algorithm, evaluated at points in `evaluation_grid`;
   /// the numerical result under evaluation.
+  #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
   pub actual_values: Array1<f64>,
   /// Analytical or construction-ground-truth convolution values, evaluated at points in `evaluation_grid`;
   /// the reference curve used to compute `metrics`.
+  #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
   pub expected_values: Array1<f64>,
-  
+
   /// Accuracy metrics comparing `actual_values` vs `expected_values`.
   pub metrics: DomainAgreementMetrics,
 }
