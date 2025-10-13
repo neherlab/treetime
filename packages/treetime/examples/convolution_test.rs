@@ -199,7 +199,7 @@ where
       let algorithm_dir = format!(
         "{}/{}/{}",
         args.output_dir,
-        result.test_case_name,
+        result.test_case.name(),
         result.algorithm.to_string().to_lowercase()
       );
       fs::create_dir_all(&algorithm_dir)?;
@@ -231,7 +231,7 @@ where
     .caption(
       format!(
         "{} | {} | Input and Convolution",
-        result.test_case_name, result.algorithm
+        result.test_case.name(), result.algorithm
       ),
       ("Arial", 24),
     )
@@ -324,7 +324,7 @@ where
   root.fill(&WHITE)?;
   let mut chart = ChartBuilder::on(&root)
     .caption(
-      format!("{} | {} | Absolute Error", result.test_case_name, result.algorithm),
+      format!("{} | {} | Absolute Error", result.test_case.name(), result.algorithm),
       ("Arial", 24),
     )
     .margin(20)
@@ -356,7 +356,7 @@ where
   root.fill(&WHITE)?;
   let mut chart = ChartBuilder::on(&root)
     .caption(
-      format!("{} | {} | Tolerance Fractions", result.test_case_name, result.algorithm),
+      format!("{} | {} | Tolerance Fractions", result.test_case.name(), result.algorithm),
       ("Arial", 24),
     )
     .margin(20)

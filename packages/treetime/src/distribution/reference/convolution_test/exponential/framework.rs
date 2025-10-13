@@ -6,7 +6,6 @@ use crate::distribution::reference::domain_agreement_metrics::DomainAgreementMet
 use crate::distribution::reference::convolution_test::exponential::analytical::{exponential_convolution, exponential_f, exponential_g};
 use eyre::Report;
 use ndarray::Array1;
-use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
 use std::time::Instant;
 
@@ -64,23 +63,6 @@ impl ConvolutionTestRunner<ExponentialTestCase> for ExponentialTestRunner {
     let execution_time = start_time.elapsed().as_secs_f64() * 1000.0;
 
     // Find peak error location
-    let abs_errors: Array1<f64> = actual_result
-      .y()
-      .iter()
-      .zip(expected_result.y().iter())
-      .map(|(&a, &e)| (a - e).abs())
-      .collect();
-
-    let max_error_idx = abs_errors
-      .iter()
-      .enumerate()
-      .max_by_key(|&(_, &a)| OrderedFloat(a))
-      .unwrap()
-      .0;
-
-    let peak_error_location = actual_result.x()[max_error_idx];
-    let peak_error_value = abs_errors[max_error_idx];
-
     let evaluation_grid = actual_result.x().to_owned();
     let actual_values = actual_result.y().to_owned();
     let expected_values = expected_result.y().to_owned();
@@ -90,21 +72,17 @@ impl ConvolutionTestRunner<ExponentialTestCase> for ExponentialTestRunner {
     let g_y_values = g.y().to_owned();
 
     Ok(TestResult {
-      test_case_name: test_case.name.clone(),
       algorithm,
       test_case: test_case.clone(),
-      metrics,
-      evaluation_grid,
-      actual_values,
-      expected_values,
+      execution_time_ms: execution_time,
       f_x_values,
       f_y_values,
       g_x_values,
       g_y_values,
-      execution_time_ms: execution_time,
-      grid_points: eval_grid.len(),
-      peak_error_location,
-      peak_error_value,
+      evaluation_grid,
+      actual_values,
+      expected_values,
+      metrics,
     })
   }
 
@@ -135,8 +113,8 @@ pub struct ExponentialFlatResult {
   pub rmse: f64,
   pub correlation: f64,
   pub mass_conservation_error: f64,
-  pub peak_error_location: f64,
-  pub peak_error_value: f64,
+  pub peak_error_x: f64,
+  pub peak_error_abs: f64,
   pub tolerance_strict_abs: f64,
   pub tolerance_moderate_abs: f64,
   pub tolerance_loose_abs: f64,
@@ -152,12 +130,12 @@ impl ToFlatResult for TestResult<ExponentialTestCase> {
 
   fn to_flat_result(&self) -> Self::FlatResult {
     ExponentialFlatResult {
-      test_case_name: self.test_case_name.clone(),
+      test_case_name: self.test_case.name.clone(),
       algorithm: self.algorithm.to_string(),
       a: self.test_case.a,
       b: self.test_case.b,
       dx: self.test_case.dx,
-      grid_points: self.grid_points,
+      grid_points: self.evaluation_grid.len(),
       execution_time_ms: self.execution_time_ms,
       r_squared: self.metrics.quality_metrics.r_squared,
       max_abs_error: self.metrics.abs_error_stats.max,
@@ -167,8 +145,8 @@ impl ToFlatResult for TestResult<ExponentialTestCase> {
       rmse: self.metrics.quality_metrics.rmse,
       correlation: self.metrics.quality_metrics.correlation,
       mass_conservation_error: self.metrics.quality_metrics.mass_error,
-      peak_error_location: self.peak_error_location,
-      peak_error_value: self.peak_error_value,
+      peak_error_x: self.metrics.max_error_location.x_value,
+      peak_error_abs: self.metrics.abs_error_stats.max,
       tolerance_strict_abs: self.metrics.abs_tolerance_fraction(0),
       tolerance_moderate_abs: self.metrics.abs_tolerance_fraction(1),
       tolerance_loose_abs: self.metrics.abs_tolerance_fraction(2),
