@@ -1,4 +1,4 @@
-use crate::distribution::reference::convolution_test::metrics::ConvolutionMetrics;
+use crate::distribution::reference::convolution_test::metrics::metrics::ConvolutionMetrics;
 use crate::io::json::{JsonPretty, json_write_file, json_write_str};
 use crate::io::serde::{array1_as_vec, array1_from_vec};
 use crate::utils::float_fmt::float_to_significant_digits;

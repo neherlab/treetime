@@ -1,4 +1,4 @@
-use crate::distribution::reference::domain_agreement_metrics::DomainAgreementMetrics;
+use crate::distribution::reference::convolution_test::metrics::domain_agreement_metrics::DomainAgreementMetrics;
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 

@@ -4,7 +4,7 @@ use crate::distribution::reference::convolution_test::framework::{ConvolutionTes
 use crate::distribution::reference::convolution_test::gaussian::analytical::{
   gaussian_convolution, gaussian_f, gaussian_g,
 };
-use crate::distribution::reference::convolution_test::metrics::ConvolutionMetrics;
+use crate::distribution::reference::convolution_test::metrics::metrics::ConvolutionMetrics;
 use crate::distribution::reference::convolution_test::output::ToFlatResult;
 use eyre::Report;
 use ndarray::Array1;

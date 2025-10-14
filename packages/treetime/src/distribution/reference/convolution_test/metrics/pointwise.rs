@@ -2,6 +2,7 @@ use crate::make_error;
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
+use std::collections::BTreeMap;
 
 /// Pure pointwise metrics - one value per evaluation grid point
 ///
@@ -397,7 +398,6 @@ fn compute_symmetry_residual(x: &Array1<f64>, y: &Array1<f64>) -> Array1<f64> {
   let n = x.len();
   let mut residual = Array1::zeros(n);
 
-  use std::collections::BTreeMap;
   let x_map: BTreeMap<String, (usize, f64)> = x
     .iter()
     .enumerate()
