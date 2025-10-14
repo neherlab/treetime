@@ -90,28 +90,29 @@ impl TestOutputWriter {
 
   /// Save arrays aligned with evaluation grid
   fn save_evaluation_grid_arrays<T: TestCase>(&self, result: &TestResult<T>, output_dir: &str) -> Result<(), Report> {
-    let pw = &result.pointwise_metrics;
+    let pw = &result.metrics.pointwise;
+    let sp = &result.metrics.spatial;
     let tsv_path = format!("{output_dir}/pointwise_errors.tsv");
     let mut writer = CsvStructFileWriter::new(&tsv_path, b'\t')?;
 
     for i in 0..pw.total_points {
       writer.write(&PointwiseErrorRow {
         x: result.evaluation_grid[i],
-        abs_error: pw.pointwise_errors.absolute[i],
-        rel_error: pw.pointwise_errors.relative[i],
-        signed_error: pw.pointwise_errors.signed[i],
-        log_error: pw.pointwise_errors.logarithmic[i],
-        d1_error: pw.structural_errors.first_derivative[i],
-        d2_error: pw.structural_errors.second_derivative[i],
-        symmetry_residual: pw.structural_errors.symmetry_residual[i],
-        monotonicity_violation: pw.structural_errors.monotonicity_violations[i],
-        peak_region_error: pw.spatial_metrics.peak_region_errors[i],
-        tail_region_error: pw.spatial_metrics.tail_region_errors[i],
-        cumulative_error: pw.spatial_metrics.cumulative_error[i],
-        support_coverage_mismatch: pw.error_distributions.support_coverage_mask[i],
-        tolerance_pass_strict: pw.error_distributions.tolerance_pass_masks[0][i],
-        tolerance_pass_moderate: pw.error_distributions.tolerance_pass_masks[1][i],
-        tolerance_pass_loose: pw.error_distributions.tolerance_pass_masks[2][i],
+        abs_error: pw.errors.absolute[i],
+        rel_error: pw.errors.relative[i],
+        signed_error: pw.errors.signed[i],
+        log_error: pw.errors.logarithmic[i],
+        d1_error: pw.structural.first_derivative[i],
+        d2_error: pw.structural.second_derivative[i],
+        symmetry_residual: pw.structural.symmetry_residual[i],
+        monotonicity_violation: pw.structural.monotonicity_violations[i],
+        peak_region_error: sp.regional.peak_region_errors[i],
+        tail_region_error: sp.regional.tail_region_errors[i],
+        cumulative_error: sp.cumulative.cumulative_error[i],
+        support_coverage_mismatch: pw.tolerance.support_coverage_mask[i],
+        tolerance_pass_strict: pw.tolerance.pass_masks[0][i],
+        tolerance_pass_moderate: pw.tolerance.pass_masks[1][i],
+        tolerance_pass_loose: pw.tolerance.pass_masks[2][i],
       })?;
     }
 
@@ -120,15 +121,15 @@ impl TestOutputWriter {
 
   /// Save spatial (sliding window) arrays
   fn save_spatial_arrays<T: TestCase>(&self, result: &TestResult<T>, output_dir: &str) -> Result<(), Report> {
-    let pw = &result.pointwise_metrics;
+    let sp = &result.metrics.spatial;
     let tsv_path = format!("{output_dir}/pointwise_spatial.tsv");
     let mut writer = CsvStructFileWriter::new(&tsv_path, b'\t')?;
 
-    for i in 0..pw.total_points {
+    for i in 0..sp.total_points {
       writer.write(&SpatialMetricsRow {
         x: result.evaluation_grid[i],
-        sliding_rms: pw.spatial_metrics.sliding_rms[i],
-        sliding_max: pw.spatial_metrics.sliding_max[i],
+        sliding_rms: sp.windowed.sliding_rms[i],
+        sliding_max: sp.windowed.sliding_max[i],
       })?;
     }
 
@@ -137,16 +138,16 @@ impl TestOutputWriter {
 
   /// Save error histogram data
   pub fn save_error_histogram<T: TestCase>(&self, result: &TestResult<T>, output_dir: &str) -> Result<(), Report> {
-    let pw = &result.pointwise_metrics;
+    let dist = &result.metrics.distribution;
     let tsv_path = format!("{output_dir}/pointwise_histogram.tsv");
     let mut writer = CsvStructFileWriter::new(&tsv_path, b'\t')?;
 
-    for (center, count) in pw
-      .error_distributions
+    for (center, count) in dist
+      .histograms
       .abs_error_histogram
       .bin_centers
       .iter()
-      .zip(pw.error_distributions.abs_error_histogram.bin_counts.iter())
+      .zip(dist.histograms.abs_error_histogram.bin_counts.iter())
     {
       writer.write(&HistogramRow {
         bin_center: *center,
@@ -225,67 +226,70 @@ pub struct BaseFlatResult {
 impl BaseFlatResult {
   /// Create base flat result from any test result
   pub fn from_test_result<T: TestCase>(result: &TestResult<T>) -> Self {
-    let pw = &result.pointwise_metrics;
+    let aggregate = &result.metrics.aggregate;
+    let pointwise = &result.metrics.pointwise;
+    let spatial = &result.metrics.spatial;
+    let distribution = &result.metrics.distribution;
     Self {
       test_case_name: result.test_case.name().to_owned(),
       algorithm: result.algorithm.to_string(),
       dx: result.test_case.dx(),
       grid_points: result.evaluation_grid.len(),
       execution_time_ms: result.execution_time_ms,
-      r_squared: result.metrics.quality_metrics.r_squared,
-      max_abs_error: result.metrics.abs_error_stats.max,
-      mean_abs_error: result.metrics.abs_error_stats.mean,
-      max_rel_error_percent: result.metrics.rel_error_stats.max * 100.0,
-      mean_rel_error_percent: result.metrics.rel_error_stats.mean * 100.0,
-      rmse: result.metrics.quality_metrics.rmse,
-      correlation: result.metrics.quality_metrics.correlation,
-      mass_conservation_error: result.metrics.quality_metrics.mass_error,
-      peak_error_x: result.metrics.max_error_location.x_value,
-      peak_error_abs: result.metrics.abs_error_stats.max,
-      tolerance_strict_abs: result.metrics.abs_tolerance_fraction(0),
-      tolerance_moderate_abs: result.metrics.abs_tolerance_fraction(1),
-      tolerance_loose_abs: result.metrics.abs_tolerance_fraction(2),
-      tolerance_strict_rel: result.metrics.rel_tolerance_fraction(0),
-      tolerance_moderate_rel: result.metrics.rel_tolerance_fraction(1),
-      tolerance_loose_rel: result.metrics.rel_tolerance_fraction(2),
+      r_squared: aggregate.domain_agreement.quality_metrics.r_squared,
+      max_abs_error: aggregate.domain_agreement.abs_error_stats.max,
+      mean_abs_error: aggregate.domain_agreement.abs_error_stats.mean,
+      max_rel_error_percent: aggregate.domain_agreement.rel_error_stats.max * 100.0,
+      mean_rel_error_percent: aggregate.domain_agreement.rel_error_stats.mean * 100.0,
+      rmse: aggregate.domain_agreement.quality_metrics.rmse,
+      correlation: aggregate.domain_agreement.quality_metrics.correlation,
+      mass_conservation_error: aggregate.domain_agreement.quality_metrics.mass_error,
+      peak_error_x: aggregate.domain_agreement.max_error_location.x_value,
+      peak_error_abs: aggregate.domain_agreement.abs_error_stats.max,
+      tolerance_strict_abs: aggregate.domain_agreement.abs_tolerance_fraction(0),
+      tolerance_moderate_abs: aggregate.domain_agreement.abs_tolerance_fraction(1),
+      tolerance_loose_abs: aggregate.domain_agreement.abs_tolerance_fraction(2),
+      tolerance_strict_rel: aggregate.domain_agreement.rel_tolerance_fraction(0),
+      tolerance_moderate_rel: aggregate.domain_agreement.rel_tolerance_fraction(1),
+      tolerance_loose_rel: aggregate.domain_agreement.rel_tolerance_fraction(2),
       stress_type: result.test_case.stress_type().to_owned(),
-      overall_assessment: result.metrics.overall_assessment().to_string(),
+      overall_assessment: aggregate.domain_agreement.overall_assessment().to_string(),
       // Pointwise error summaries
-      pw_abs_mean: pw.pointwise_errors.summary.abs_mean,
-      pw_abs_max: pw.pointwise_errors.summary.abs_max,
-      pw_abs_std: pw.pointwise_errors.summary.abs_std,
-      pw_rel_mean: pw.pointwise_errors.summary.rel_mean,
-      pw_rel_max: pw.pointwise_errors.summary.rel_max,
-      pw_rel_median: pw.pointwise_errors.summary.rel_median,
-      pw_signed_bias: pw.pointwise_errors.summary.signed_bias,
-      pw_log_valid_count: pw.pointwise_errors.summary.log_valid_count,
-      pw_log_max: pw.pointwise_errors.summary.log_max,
+      pw_abs_mean: pointwise.errors.summary.abs_mean,
+      pw_abs_max: pointwise.errors.summary.abs_max,
+      pw_abs_std: pointwise.errors.summary.abs_std,
+      pw_rel_mean: pointwise.errors.summary.rel_mean,
+      pw_rel_max: pointwise.errors.summary.rel_max,
+      pw_rel_median: pointwise.errors.summary.rel_median,
+      pw_signed_bias: pointwise.errors.summary.signed_bias,
+      pw_log_valid_count: pointwise.errors.summary.log_valid_count,
+      pw_log_max: pointwise.errors.summary.log_max,
       // Structural error summaries
-      pw_d1_max: pw.structural_errors.summary.d1_max,
-      pw_d1_mean: pw.structural_errors.summary.d1_mean,
-      pw_d2_max: pw.structural_errors.summary.d2_max,
-      pw_d2_mean: pw.structural_errors.summary.d2_mean,
-      pw_symmetry_max: pw.structural_errors.summary.symmetry_max,
-      pw_monotonicity_violations: pw.structural_errors.summary.monotonicity_violation_count,
+      pw_d1_max: pointwise.structural.summary.d1_max,
+      pw_d1_mean: pointwise.structural.summary.d1_mean,
+      pw_d2_max: pointwise.structural.summary.d2_max,
+      pw_d2_mean: pointwise.structural.summary.d2_mean,
+      pw_symmetry_max: pointwise.structural.summary.symmetry_max,
+      pw_monotonicity_violations: pointwise.structural.summary.monotonicity_violation_count,
       // Spatial summaries
-      pw_peak_region_count: pw.spatial_metrics.summary.peak_region.point_count,
-      pw_peak_region_mean: pw.spatial_metrics.summary.peak_region.mean_error,
-      pw_peak_region_max: pw.spatial_metrics.summary.peak_region.max_error,
-      pw_tail_region_count: pw.spatial_metrics.summary.tail_region.point_count,
-      pw_tail_region_mean: pw.spatial_metrics.summary.tail_region.mean_error,
-      pw_tail_region_max: pw.spatial_metrics.summary.tail_region.max_error,
-      pw_sliding_rms_max: pw.spatial_metrics.summary.sliding_rms_max,
-      pw_sliding_max_max: pw.spatial_metrics.summary.sliding_max_max,
-      pw_cumulative_final: pw.spatial_metrics.summary.cumulative_final,
-      pw_cumulative_max_abs: pw.spatial_metrics.summary.cumulative_max_abs,
+      pw_peak_region_count: spatial.regional.summary.peak_region.point_count,
+      pw_peak_region_mean: spatial.regional.summary.peak_region.mean_error,
+      pw_peak_region_max: spatial.regional.summary.peak_region.max_error,
+      pw_tail_region_count: spatial.regional.summary.tail_region.point_count,
+      pw_tail_region_mean: spatial.regional.summary.tail_region.mean_error,
+      pw_tail_region_max: spatial.regional.summary.tail_region.max_error,
+      pw_sliding_rms_max: spatial.windowed.summary.sliding_rms_max,
+      pw_sliding_max_max: spatial.windowed.summary.sliding_max_max,
+      pw_cumulative_final: spatial.cumulative.summary.final_value,
+      pw_cumulative_max_abs: spatial.cumulative.summary.max_abs,
       // Distribution summaries
-      pw_support_mismatch_count: pw.error_distributions.summary.support_mismatch_count,
-      pw_tolerance_pass_strict: pw.error_distributions.summary.tolerance_pass_fractions[0],
-      pw_tolerance_pass_moderate: pw.error_distributions.summary.tolerance_pass_fractions[1],
-      pw_tolerance_pass_loose: pw.error_distributions.summary.tolerance_pass_fractions[2],
-      pw_error_median: pw.error_distributions.summary.stats.median,
-      pw_error_q95: pw.error_distributions.summary.stats.q95,
-      pw_error_q99: pw.error_distributions.summary.stats.q99,
+      pw_support_mismatch_count: pointwise.tolerance.summary.support_mismatch_count,
+      pw_tolerance_pass_strict: pointwise.tolerance.summary.pass_fractions[0],
+      pw_tolerance_pass_moderate: pointwise.tolerance.summary.pass_fractions[1],
+      pw_tolerance_pass_loose: pointwise.tolerance.summary.pass_fractions[2],
+      pw_error_median: distribution.statistics.abs_error_stats.median,
+      pw_error_q95: distribution.statistics.abs_error_stats.q95,
+      pw_error_q99: distribution.statistics.abs_error_stats.q99,
     }
   }
 }

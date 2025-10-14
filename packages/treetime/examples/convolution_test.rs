@@ -363,8 +363,8 @@ fn plot_tolerance_metrics<T>(result: &TestResult<T>, output_dir: &str) -> Result
 where
   T: TestCase,
 {
-  let abs = result.metrics.abs_tolerance_fractions;
-  let rel = result.metrics.rel_tolerance_fractions;
+  let abs = result.metrics.aggregate.domain_agreement.abs_tolerance_fractions;
+  let rel = result.metrics.aggregate.domain_agreement.rel_tolerance_fractions;
   let output_path = format!("{output_dir}/tolerance_metrics.svg");
   let root = SVGBackend::new(&output_path, (800, 600)).into_drawing_area();
   root.fill(&WHITE)?;
@@ -467,7 +467,7 @@ where
   root.fill(&WHITE)?;
 
   let areas = root.split_evenly((2, 2));
-  let pw = &result.pointwise_metrics;
+  let pw = &result.metrics.pointwise;
   let x = &result.evaluation_grid;
 
   // Plot 1: Absolute Error
@@ -476,7 +476,7 @@ where
       x.iter().fold(f64::INFINITY, |a, &b| a.min(b)),
       x.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b)),
     );
-    let (y_min, y_max) = expand_range(0.0, pw.pointwise_errors.absolute.iter().fold(0.0_f64, |a, &b| a.max(b)));
+    let (y_min, y_max) = expand_range(0.0, pw.errors.absolute.iter().fold(0.0_f64, |a, &b| a.max(b)));
     let mut chart = ChartBuilder::on(&areas[0])
       .caption("Absolute Error", ("Arial", 20))
       .margin(10)
@@ -485,7 +485,7 @@ where
       .build_cartesian_2d(x_min..x_max, y_min..y_max)?;
     chart.configure_mesh().draw()?;
     chart.draw_series(LineSeries::new(
-      x.iter().zip(pw.pointwise_errors.absolute.iter()).map(|(&x, &y)| (x, y)),
+      x.iter().zip(pw.errors.absolute.iter()).map(|(&x, &y)| (x, y)),
       RED.stroke_width(2),
     ))?;
   }
@@ -497,7 +497,7 @@ where
       x.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b)),
     );
     let max_rel = pw
-      .pointwise_errors
+      .errors
       .relative
       .iter()
       .copied()
@@ -513,7 +513,7 @@ where
     chart.configure_mesh().draw()?;
     chart.draw_series(LineSeries::new(
       x.iter()
-        .zip(pw.pointwise_errors.relative.iter())
+        .zip(pw.errors.relative.iter())
         .filter_map(|(&x, &y)| y.is_finite().then_some((x, y))),
       BLUE.stroke_width(2),
     ))?;
@@ -525,9 +525,9 @@ where
       x.iter().fold(f64::INFINITY, |a, &b| a.min(b)),
       x.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b)),
     );
-    let min_signed = pw.pointwise_errors.signed.iter().copied().fold(f64::INFINITY, f64::min);
+    let min_signed = pw.errors.signed.iter().copied().fold(f64::INFINITY, f64::min);
     let max_signed = pw
-      .pointwise_errors
+      .errors
       .signed
       .iter()
       .copied()
@@ -541,7 +541,7 @@ where
       .build_cartesian_2d(x_min..x_max, y_min..y_max)?;
     chart.configure_mesh().draw()?;
     chart.draw_series(LineSeries::new(
-      x.iter().zip(pw.pointwise_errors.signed.iter()).map(|(&x, &y)| (x, y)),
+      x.iter().zip(pw.errors.signed.iter()).map(|(&x, &y)| (x, y)),
       GREEN.stroke_width(2),
     ))?;
     chart.draw_series(std::iter::once(PathElement::new(
@@ -557,7 +557,7 @@ where
       x.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b)),
     );
     let max_log = pw
-      .pointwise_errors
+      .errors
       .logarithmic
       .iter()
       .copied()
@@ -573,7 +573,7 @@ where
     chart.configure_mesh().draw()?;
     chart.draw_series(LineSeries::new(
       x.iter()
-        .zip(pw.pointwise_errors.logarithmic.iter())
+        .zip(pw.errors.logarithmic.iter())
         .filter_map(|(&x, &y)| y.is_finite().then_some((x, y))),
       MAGENTA.stroke_width(2),
     ))?;
@@ -592,7 +592,7 @@ where
   root.fill(&WHITE)?;
 
   let areas = root.split_evenly((1, 2));
-  let pw = &result.pointwise_metrics;
+  let pw = &result.metrics.pointwise;
   let x = &result.evaluation_grid;
   let (x_min, x_max) = expand_range(
     x.iter().fold(f64::INFINITY, |a, &b| a.min(b)),
@@ -602,7 +602,7 @@ where
   // Plot 1: First Derivative Error
   {
     let max_d1 = pw
-      .structural_errors
+      .structural
       .first_derivative
       .iter()
       .copied()
@@ -617,7 +617,7 @@ where
     chart.configure_mesh().draw()?;
     chart.draw_series(LineSeries::new(
       x.iter()
-        .zip(pw.structural_errors.first_derivative.iter())
+        .zip(pw.structural.first_derivative.iter())
         .map(|(&x, &y)| (x, y)),
       RED.stroke_width(2),
     ))?;
@@ -626,7 +626,7 @@ where
   // Plot 2: Second Derivative Error
   {
     let max_d2 = pw
-      .structural_errors
+      .structural
       .second_derivative
       .iter()
       .copied()
@@ -641,7 +641,7 @@ where
     chart.configure_mesh().draw()?;
     chart.draw_series(LineSeries::new(
       x.iter()
-        .zip(pw.structural_errors.second_derivative.iter())
+        .zip(pw.structural.second_derivative.iter())
         .map(|(&x, &y)| (x, y)),
       BLUE.stroke_width(2),
     ))?;
@@ -660,7 +660,7 @@ where
   root.fill(&WHITE)?;
 
   let areas = root.split_evenly((2, 2));
-  let pw = &result.pointwise_metrics;
+  let sp = &result.metrics.spatial;
   let x = &result.evaluation_grid;
   let (x_min, x_max) = expand_range(
     x.iter().fold(f64::INFINITY, |a, &b| a.min(b)),
@@ -669,7 +669,7 @@ where
 
   // Plot 1: Sliding RMS Error
   {
-    let max_rms = pw.spatial_metrics.sliding_rms.iter().copied().fold(0.0_f64, f64::max);
+    let max_rms = sp.windowed.sliding_rms.iter().copied().fold(0.0_f64, f64::max);
     let (y_min, y_max) = expand_range(0.0, max_rms);
     let mut chart = ChartBuilder::on(&areas[0])
       .caption("Sliding Window RMS Error", ("Arial", 20))
@@ -680,7 +680,7 @@ where
     chart.configure_mesh().draw()?;
     chart.draw_series(LineSeries::new(
       x.iter()
-        .zip(pw.spatial_metrics.sliding_rms.iter())
+        .zip(sp.windowed.sliding_rms.iter())
         .map(|(&x, &y)| (x, y)),
       RED.stroke_width(2),
     ))?;
@@ -688,7 +688,7 @@ where
 
   // Plot 2: Sliding Max Error
   {
-    let max_max = pw.spatial_metrics.sliding_max.iter().copied().fold(0.0_f64, f64::max);
+    let max_max = sp.windowed.sliding_max.iter().copied().fold(0.0_f64, f64::max);
     let (y_min, y_max) = expand_range(0.0, max_max);
     let mut chart = ChartBuilder::on(&areas[1])
       .caption("Sliding Window Max Error", ("Arial", 20))
@@ -699,7 +699,7 @@ where
     chart.configure_mesh().draw()?;
     chart.draw_series(LineSeries::new(
       x.iter()
-        .zip(pw.spatial_metrics.sliding_max.iter())
+        .zip(sp.windowed.sliding_max.iter())
         .map(|(&x, &y)| (x, y)),
       BLUE.stroke_width(2),
     ))?;
@@ -707,14 +707,14 @@ where
 
   // Plot 3: Cumulative Error
   {
-    let min_cum = pw
-      .spatial_metrics
+    let min_cum = sp
+      .cumulative
       .cumulative_error
       .iter()
       .copied()
       .fold(f64::INFINITY, f64::min);
-    let max_cum = pw
-      .spatial_metrics
+    let max_cum = sp
+      .cumulative
       .cumulative_error
       .iter()
       .copied()
@@ -729,7 +729,7 @@ where
     chart.configure_mesh().draw()?;
     chart.draw_series(LineSeries::new(
       x.iter()
-        .zip(pw.spatial_metrics.cumulative_error.iter())
+        .zip(sp.cumulative.cumulative_error.iter())
         .map(|(&x, &y)| (x, y)),
       GREEN.stroke_width(2),
     ))?;
@@ -741,15 +741,15 @@ where
 
   // Plot 4: Peak and Tail Regions
   {
-    let max_peak = pw
-      .spatial_metrics
+    let max_peak = sp
+      .regional
       .peak_region_errors
       .iter()
       .copied()
       .filter(|v| v.is_finite())
       .fold(0.0_f64, f64::max);
-    let max_tail = pw
-      .spatial_metrics
+    let max_tail = sp
+      .regional
       .tail_region_errors
       .iter()
       .copied()
@@ -767,7 +767,7 @@ where
     chart
       .draw_series(LineSeries::new(
         x.iter()
-          .zip(pw.spatial_metrics.peak_region_errors.iter())
+          .zip(sp.regional.peak_region_errors.iter())
           .filter_map(|(&x, &y)| y.is_finite().then_some((x, y))),
         MAGENTA.stroke_width(2),
       ))?
@@ -776,7 +776,7 @@ where
     chart
       .draw_series(LineSeries::new(
         x.iter()
-          .zip(pw.spatial_metrics.tail_region_errors.iter())
+          .zip(sp.regional.tail_region_errors.iter())
           .filter_map(|(&x, &y)| y.is_finite().then_some((x, y))),
         CYAN.stroke_width(2),
       ))?
@@ -801,8 +801,8 @@ where
   let root = SVGBackend::new(&output_path, (960, 640)).into_drawing_area();
   root.fill(&WHITE)?;
 
-  let pw = &result.pointwise_metrics;
-  let hist = &pw.error_distributions.abs_error_histogram;
+  let dist = &result.metrics.distribution;
+  let hist = &dist.histograms.abs_error_histogram;
 
   if hist.bin_centers.is_empty() {
     return Ok(());

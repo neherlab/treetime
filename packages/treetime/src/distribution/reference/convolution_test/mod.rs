@@ -2,6 +2,7 @@ pub mod algorithms;
 pub mod exponential;
 pub mod framework;
 pub mod gaussian;
+pub mod metrics;
 pub mod output;
 
 // Re-export commonly used items

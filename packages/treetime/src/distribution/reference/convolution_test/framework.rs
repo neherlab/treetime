@@ -1,5 +1,4 @@
-use crate::distribution::reference::domain_agreement_metrics::DomainAgreementMetrics;
-use crate::distribution::reference::pointwise_metrics::PointwiseMetrics;
+use crate::distribution::reference::convolution_test::metrics::ConvolutionMetrics;
 use crate::io::json::{JsonPretty, json_write_file, json_write_str};
 use crate::io::serde::{array1_as_vec, array1_from_vec};
 use crate::utils::float_fmt::float_to_significant_digits;
@@ -84,11 +83,8 @@ pub struct TestResult<T: TestCase> {
   #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
   pub expected_values: Array1<f64>,
 
-  /// Accuracy metrics comparing `actual_values` vs `expected_values`.
-  pub metrics: DomainAgreementMetrics,
-
-  /// Detailed pointwise and spatial accuracy metrics.
-  pub pointwise_metrics: PointwiseMetrics,
+  /// Comprehensive convolution algorithm metrics
+  pub metrics: ConvolutionMetrics,
 }
 
 /// Results for a test that failed to execute.
@@ -211,7 +207,7 @@ impl<T: TestCase, R: ConvolutionTestRunner<T>> GenericConvolutionTestFramework<T
           Ok(result) => {
             let completed_count = completed.fetch_add(1, Ordering::Relaxed) + 1;
             let elapsed_ms = result.execution_time_ms;
-            let r_squared = result.metrics.quality_metrics.r_squared;
+            let r_squared = result.metrics.aggregate.domain_agreement.quality_metrics.r_squared;
             let progress = format!("[{completed_count}/{total_tests}]");
             println!(
               "| {:<12} | {:^1} | {:<12} | {:<30} | {:>8.1} | {:>8.6} |",
@@ -312,7 +308,7 @@ impl<T: TestCase, R: ConvolutionTestRunner<T>> GenericConvolutionTestFramework<T
 
       let r2_values: Vec<f64> = algo_successes
         .iter()
-        .map(|result| result.metrics.quality_metrics.r_squared)
+        .map(|result| result.metrics.aggregate.domain_agreement.quality_metrics.r_squared)
         .collect_vec();
       let execution_time_total = algo_successes
         .iter()
@@ -342,19 +338,19 @@ impl<T: TestCase, R: ConvolutionTestRunner<T>> GenericConvolutionTestFramework<T
 
       let max_abs_error_overall = algo_successes
         .iter()
-        .map(|result| OrderedFloat(result.metrics.abs_error_stats.max))
+        .map(|result| OrderedFloat(result.metrics.aggregate.domain_agreement.abs_error_stats.max))
         .max()
         .map_or(f64::NAN, |value| value.0);
 
       let max_rel_error_overall = algo_successes
         .iter()
-        .map(|result| OrderedFloat(result.metrics.rel_error_stats.max))
+        .map(|result| OrderedFloat(result.metrics.aggregate.domain_agreement.rel_error_stats.max))
         .max()
         .map_or(f64::NAN, |value| value.0);
 
       let metric_failures = algo_successes
         .iter()
-        .filter(|result| result.metrics.quality_metrics.r_squared <= 0.95)
+        .filter(|result| result.metrics.aggregate.domain_agreement.quality_metrics.r_squared <= 0.95)
         .count();
       let passed_tests = algo_successes.len() - metric_failures;
       let failed_tests = metric_failures + algo_failures.len();
@@ -464,37 +460,37 @@ impl<T: TestCase, R: ConvolutionTestRunner<T>> GenericConvolutionTestFramework<T
 
     let pw_abs_max_overall = successes
       .iter()
-      .map(|result| OrderedFloat(result.pointwise_metrics.pointwise_errors.summary.abs_max))
+      .map(|result| OrderedFloat(result.metrics.pointwise.errors.summary.abs_max))
       .max()
       .map_or(0.0, |value| value.0);
 
     let pw_rel_max_overall = successes
       .iter()
-      .map(|result| OrderedFloat(result.pointwise_metrics.pointwise_errors.summary.rel_max))
+      .map(|result| OrderedFloat(result.metrics.pointwise.errors.summary.rel_max))
       .max()
       .map_or(0.0, |value| value.0);
 
     let pw_d1_max_overall = successes
       .iter()
-      .map(|result| OrderedFloat(result.pointwise_metrics.structural_errors.summary.d1_max))
+      .map(|result| OrderedFloat(result.metrics.pointwise.structural.summary.d1_max))
       .max()
       .map_or(0.0, |value| value.0);
 
     let pw_d2_max_overall = successes
       .iter()
-      .map(|result| OrderedFloat(result.pointwise_metrics.structural_errors.summary.d2_max))
+      .map(|result| OrderedFloat(result.metrics.pointwise.structural.summary.d2_max))
       .max()
       .map_or(0.0, |value| value.0);
 
     let pw_cumulative_max_overall = successes
       .iter()
-      .map(|result| OrderedFloat(result.pointwise_metrics.spatial_metrics.summary.cumulative_max_abs))
+      .map(|result| OrderedFloat(result.metrics.spatial.cumulative.summary.max_abs))
       .max()
       .map_or(0.0, |value| value.0);
 
     let pw_sliding_rms_max_overall = successes
       .iter()
-      .map(|result| OrderedFloat(result.pointwise_metrics.spatial_metrics.summary.sliding_rms_max))
+      .map(|result| OrderedFloat(result.metrics.spatial.windowed.summary.sliding_rms_max))
       .max()
       .map_or(0.0, |value| value.0);
 
@@ -503,10 +499,11 @@ impl<T: TestCase, R: ConvolutionTestRunner<T>> GenericConvolutionTestFramework<T
       .map(|result| {
         OrderedFloat(
           result
-            .pointwise_metrics
-            .error_distributions
+            .metrics
+            .pointwise
+            .tolerance
             .summary
-            .tolerance_pass_fractions[0]
+            .pass_fractions[0]
             * 100.0,
         )
       })
