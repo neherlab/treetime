@@ -168,7 +168,7 @@ where
   let summary = framework.generate_summary(&outcomes);
 
   // Print summary to console
-  framework.print_summary(&summary);
+  framework.print_summary(&summary, &outcomes);
 
   // Save results
   framework.save_results_json(&outcomes, &summary)?;
@@ -203,9 +203,22 @@ where
         result.algorithm.to_string().to_lowercase()
       );
       fs::create_dir_all(&algorithm_dir)?;
+
+      // Existing plots
       plot_functions_and_convolution(result, &algorithm_dir)?;
       plot_absolute_error(result, &algorithm_dir)?;
       plot_tolerance_metrics(result, &algorithm_dir)?;
+
+      // New pointwise metric plots
+      plot_pointwise_error_profiles(result, &algorithm_dir)?;
+      plot_derivative_errors(result, &algorithm_dir)?;
+      plot_spatial_profiles(result, &algorithm_dir)?;
+      plot_error_histogram(result, &algorithm_dir)?;
+
+      // Export pointwise arrays to TSV
+      let output_writer = TestOutputWriter::new(args.output_dir.clone());
+      output_writer.save_pointwise_arrays(result, &algorithm_dir)?;
+      output_writer.save_error_histogram(result, &algorithm_dir)?;
     }
   }
   Ok(())
@@ -445,6 +458,406 @@ fn tolerance_label(value: f64) -> String {
   }
 }
 
+fn plot_pointwise_error_profiles<T>(result: &TestResult<T>, output_dir: &str) -> Result<(), Report>
+where
+  T: TestCase,
+{
+  let output_path = format!("{output_dir}/pointwise_error_profiles.svg");
+  let root = SVGBackend::new(&output_path, (1200, 900)).into_drawing_area();
+  root.fill(&WHITE)?;
+
+  let areas = root.split_evenly((2, 2));
+  let pw = &result.pointwise_metrics;
+  let x = &result.evaluation_grid;
+
+  // Plot 1: Absolute Error
+  {
+    let (x_min, x_max) = expand_range(
+      x.iter().fold(f64::INFINITY, |a, &b| a.min(b)),
+      x.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b)),
+    );
+    let (y_min, y_max) = expand_range(0.0, pw.pointwise_errors.absolute.iter().fold(0.0_f64, |a, &b| a.max(b)));
+    let mut chart = ChartBuilder::on(&areas[0])
+      .caption("Absolute Error", ("Arial", 20))
+      .margin(10)
+      .x_label_area_size(30)
+      .y_label_area_size(50)
+      .build_cartesian_2d(x_min..x_max, y_min..y_max)?;
+    chart.configure_mesh().draw()?;
+    chart.draw_series(LineSeries::new(
+      x.iter().zip(pw.pointwise_errors.absolute.iter()).map(|(&x, &y)| (x, y)),
+      RED.stroke_width(2),
+    ))?;
+  }
+
+  // Plot 2: Relative Error
+  {
+    let (x_min, x_max) = expand_range(
+      x.iter().fold(f64::INFINITY, |a, &b| a.min(b)),
+      x.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b)),
+    );
+    let max_rel = pw
+      .pointwise_errors
+      .relative
+      .iter()
+      .copied()
+      .filter(|v| v.is_finite())
+      .fold(0.0_f64, f64::max);
+    let (y_min, y_max) = expand_range(0.0, max_rel);
+    let mut chart = ChartBuilder::on(&areas[1])
+      .caption("Relative Error", ("Arial", 20))
+      .margin(10)
+      .x_label_area_size(30)
+      .y_label_area_size(50)
+      .build_cartesian_2d(x_min..x_max, y_min..y_max)?;
+    chart.configure_mesh().draw()?;
+    chart.draw_series(LineSeries::new(
+      x.iter()
+        .zip(pw.pointwise_errors.relative.iter())
+        .filter_map(|(&x, &y)| y.is_finite().then_some((x, y))),
+      BLUE.stroke_width(2),
+    ))?;
+  }
+
+  // Plot 3: Signed Error
+  {
+    let (x_min, x_max) = expand_range(
+      x.iter().fold(f64::INFINITY, |a, &b| a.min(b)),
+      x.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b)),
+    );
+    let min_signed = pw.pointwise_errors.signed.iter().copied().fold(f64::INFINITY, f64::min);
+    let max_signed = pw
+      .pointwise_errors
+      .signed
+      .iter()
+      .copied()
+      .fold(f64::NEG_INFINITY, f64::max);
+    let (y_min, y_max) = expand_range(min_signed, max_signed);
+    let mut chart = ChartBuilder::on(&areas[2])
+      .caption("Signed Error (bias)", ("Arial", 20))
+      .margin(10)
+      .x_label_area_size(30)
+      .y_label_area_size(50)
+      .build_cartesian_2d(x_min..x_max, y_min..y_max)?;
+    chart.configure_mesh().draw()?;
+    chart.draw_series(LineSeries::new(
+      x.iter().zip(pw.pointwise_errors.signed.iter()).map(|(&x, &y)| (x, y)),
+      GREEN.stroke_width(2),
+    ))?;
+    chart.draw_series(std::iter::once(PathElement::new(
+      vec![(x_min, 0.0), (x_max, 0.0)],
+      BLACK.stroke_width(1),
+    )))?;
+  }
+
+  // Plot 4: Logarithmic Error
+  {
+    let (x_min, x_max) = expand_range(
+      x.iter().fold(f64::INFINITY, |a, &b| a.min(b)),
+      x.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b)),
+    );
+    let max_log = pw
+      .pointwise_errors
+      .logarithmic
+      .iter()
+      .copied()
+      .filter(|v| v.is_finite())
+      .fold(0.0_f64, f64::max);
+    let (y_min, y_max) = expand_range(0.0, max_log);
+    let mut chart = ChartBuilder::on(&areas[3])
+      .caption("Logarithmic Error (tails)", ("Arial", 20))
+      .margin(10)
+      .x_label_area_size(30)
+      .y_label_area_size(50)
+      .build_cartesian_2d(x_min..x_max, y_min..y_max)?;
+    chart.configure_mesh().draw()?;
+    chart.draw_series(LineSeries::new(
+      x.iter()
+        .zip(pw.pointwise_errors.logarithmic.iter())
+        .filter_map(|(&x, &y)| y.is_finite().then_some((x, y))),
+      MAGENTA.stroke_width(2),
+    ))?;
+  }
+
+  root.present()?;
+  Ok(())
+}
+
+fn plot_derivative_errors<T>(result: &TestResult<T>, output_dir: &str) -> Result<(), Report>
+where
+  T: TestCase,
+{
+  let output_path = format!("{output_dir}/derivative_errors.svg");
+  let root = SVGBackend::new(&output_path, (1200, 450)).into_drawing_area();
+  root.fill(&WHITE)?;
+
+  let areas = root.split_evenly((1, 2));
+  let pw = &result.pointwise_metrics;
+  let x = &result.evaluation_grid;
+  let (x_min, x_max) = expand_range(
+    x.iter().fold(f64::INFINITY, |a, &b| a.min(b)),
+    x.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b)),
+  );
+
+  // Plot 1: First Derivative Error
+  {
+    let max_d1 = pw
+      .structural_errors
+      .first_derivative
+      .iter()
+      .copied()
+      .fold(0.0_f64, f64::max);
+    let (y_min, y_max) = expand_range(0.0, max_d1);
+    let mut chart = ChartBuilder::on(&areas[0])
+      .caption("First Derivative Error", ("Arial", 20))
+      .margin(10)
+      .x_label_area_size(30)
+      .y_label_area_size(50)
+      .build_cartesian_2d(x_min..x_max, y_min..y_max)?;
+    chart.configure_mesh().draw()?;
+    chart.draw_series(LineSeries::new(
+      x.iter()
+        .zip(pw.structural_errors.first_derivative.iter())
+        .map(|(&x, &y)| (x, y)),
+      RED.stroke_width(2),
+    ))?;
+  }
+
+  // Plot 2: Second Derivative Error
+  {
+    let max_d2 = pw
+      .structural_errors
+      .second_derivative
+      .iter()
+      .copied()
+      .fold(0.0_f64, f64::max);
+    let (y_min, y_max) = expand_range(0.0, max_d2);
+    let mut chart = ChartBuilder::on(&areas[1])
+      .caption("Second Derivative Error", ("Arial", 20))
+      .margin(10)
+      .x_label_area_size(30)
+      .y_label_area_size(50)
+      .build_cartesian_2d(x_min..x_max, y_min..y_max)?;
+    chart.configure_mesh().draw()?;
+    chart.draw_series(LineSeries::new(
+      x.iter()
+        .zip(pw.structural_errors.second_derivative.iter())
+        .map(|(&x, &y)| (x, y)),
+      BLUE.stroke_width(2),
+    ))?;
+  }
+
+  root.present()?;
+  Ok(())
+}
+
+fn plot_spatial_profiles<T>(result: &TestResult<T>, output_dir: &str) -> Result<(), Report>
+where
+  T: TestCase,
+{
+  let output_path = format!("{output_dir}/spatial_profiles.svg");
+  let root = SVGBackend::new(&output_path, (1200, 900)).into_drawing_area();
+  root.fill(&WHITE)?;
+
+  let areas = root.split_evenly((2, 2));
+  let pw = &result.pointwise_metrics;
+  let x = &result.evaluation_grid;
+  let (x_min, x_max) = expand_range(
+    x.iter().fold(f64::INFINITY, |a, &b| a.min(b)),
+    x.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b)),
+  );
+
+  // Plot 1: Sliding RMS Error
+  {
+    let max_rms = pw.spatial_metrics.sliding_rms.iter().copied().fold(0.0_f64, f64::max);
+    let (y_min, y_max) = expand_range(0.0, max_rms);
+    let mut chart = ChartBuilder::on(&areas[0])
+      .caption("Sliding Window RMS Error", ("Arial", 20))
+      .margin(10)
+      .x_label_area_size(30)
+      .y_label_area_size(50)
+      .build_cartesian_2d(x_min..x_max, y_min..y_max)?;
+    chart.configure_mesh().draw()?;
+    chart.draw_series(LineSeries::new(
+      x.iter()
+        .zip(pw.spatial_metrics.sliding_rms.iter())
+        .map(|(&x, &y)| (x, y)),
+      RED.stroke_width(2),
+    ))?;
+  }
+
+  // Plot 2: Sliding Max Error
+  {
+    let max_max = pw.spatial_metrics.sliding_max.iter().copied().fold(0.0_f64, f64::max);
+    let (y_min, y_max) = expand_range(0.0, max_max);
+    let mut chart = ChartBuilder::on(&areas[1])
+      .caption("Sliding Window Max Error", ("Arial", 20))
+      .margin(10)
+      .x_label_area_size(30)
+      .y_label_area_size(50)
+      .build_cartesian_2d(x_min..x_max, y_min..y_max)?;
+    chart.configure_mesh().draw()?;
+    chart.draw_series(LineSeries::new(
+      x.iter()
+        .zip(pw.spatial_metrics.sliding_max.iter())
+        .map(|(&x, &y)| (x, y)),
+      BLUE.stroke_width(2),
+    ))?;
+  }
+
+  // Plot 3: Cumulative Error
+  {
+    let min_cum = pw
+      .spatial_metrics
+      .cumulative_error
+      .iter()
+      .copied()
+      .fold(f64::INFINITY, f64::min);
+    let max_cum = pw
+      .spatial_metrics
+      .cumulative_error
+      .iter()
+      .copied()
+      .fold(f64::NEG_INFINITY, f64::max);
+    let (y_min, y_max) = expand_range(min_cum, max_cum);
+    let mut chart = ChartBuilder::on(&areas[2])
+      .caption("Cumulative Error", ("Arial", 20))
+      .margin(10)
+      .x_label_area_size(30)
+      .y_label_area_size(50)
+      .build_cartesian_2d(x_min..x_max, y_min..y_max)?;
+    chart.configure_mesh().draw()?;
+    chart.draw_series(LineSeries::new(
+      x.iter()
+        .zip(pw.spatial_metrics.cumulative_error.iter())
+        .map(|(&x, &y)| (x, y)),
+      GREEN.stroke_width(2),
+    ))?;
+    chart.draw_series(std::iter::once(PathElement::new(
+      vec![(x_min, 0.0), (x_max, 0.0)],
+      BLACK.stroke_width(1),
+    )))?;
+  }
+
+  // Plot 4: Peak and Tail Regions
+  {
+    let max_peak = pw
+      .spatial_metrics
+      .peak_region_errors
+      .iter()
+      .copied()
+      .filter(|v| v.is_finite())
+      .fold(0.0_f64, f64::max);
+    let max_tail = pw
+      .spatial_metrics
+      .tail_region_errors
+      .iter()
+      .copied()
+      .filter(|v| v.is_finite())
+      .fold(0.0_f64, f64::max);
+    let max_y = max_peak.max(max_tail);
+    let (y_min, y_max) = expand_range(0.0, max_y);
+    let mut chart = ChartBuilder::on(&areas[3])
+      .caption("Peak & Tail Region Errors", ("Arial", 20))
+      .margin(10)
+      .x_label_area_size(30)
+      .y_label_area_size(50)
+      .build_cartesian_2d(x_min..x_max, y_min..y_max)?;
+    chart.configure_mesh().draw()?;
+    chart
+      .draw_series(LineSeries::new(
+        x.iter()
+          .zip(pw.spatial_metrics.peak_region_errors.iter())
+          .filter_map(|(&x, &y)| y.is_finite().then_some((x, y))),
+        MAGENTA.stroke_width(2),
+      ))?
+      .label("Peak region")
+      .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 10, y)], MAGENTA.stroke_width(2)));
+    chart
+      .draw_series(LineSeries::new(
+        x.iter()
+          .zip(pw.spatial_metrics.tail_region_errors.iter())
+          .filter_map(|(&x, &y)| y.is_finite().then_some((x, y))),
+        CYAN.stroke_width(2),
+      ))?
+      .label("Tail region")
+      .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 10, y)], CYAN.stroke_width(2)));
+    chart
+      .configure_series_labels()
+      .border_style(BLACK)
+      .background_style(WHITE.mix(0.8))
+      .draw()?;
+  }
+
+  root.present()?;
+  Ok(())
+}
+
+fn plot_error_histogram<T>(result: &TestResult<T>, output_dir: &str) -> Result<(), Report>
+where
+  T: TestCase,
+{
+  let output_path = format!("{output_dir}/error_histogram.svg");
+  let root = SVGBackend::new(&output_path, (960, 640)).into_drawing_area();
+  root.fill(&WHITE)?;
+
+  let pw = &result.pointwise_metrics;
+  let hist = &pw.error_distributions.abs_error_histogram;
+
+  if hist.bin_centers.is_empty() {
+    return Ok(());
+  }
+
+  let x_min = hist.bin_centers.iter().fold(f64::INFINITY, |a, &b| a.min(b));
+  let x_max = hist.bin_centers.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
+  let y_max = *hist.bin_counts.iter().max().unwrap_or(&0) as f64;
+
+  let mut chart = ChartBuilder::on(&root)
+    .caption(
+      format!(
+        "{} | {} | Error Distribution",
+        result.test_case.name(),
+        result.algorithm
+      ),
+      ("Arial", 24),
+    )
+    .margin(20)
+    .x_label_area_size(40)
+    .y_label_area_size(60)
+    .build_cartesian_2d(x_min..x_max, 0.0..y_max * 1.1)?;
+
+  chart
+    .configure_mesh()
+    .x_desc("log10(Absolute Error)")
+    .y_desc("Count")
+    .draw()?;
+
+  let bar_width = if hist.bin_centers.len() > 1 {
+    (hist.bin_centers[1] - hist.bin_centers[0]) * 0.8
+  } else {
+    0.5
+  };
+
+  chart.draw_series(
+    hist
+      .bin_centers
+      .iter()
+      .zip(hist.bin_counts.iter())
+      .map(|(&center, &count)| {
+        Rectangle::new(
+          [
+            (center - bar_width / 2.0, 0.0),
+            (center + bar_width / 2.0, count as f64),
+          ],
+          BLUE.mix(0.6).filled(),
+        )
+      }),
+  )?;
+
+  root.present()?;
+  Ok(())
+}
+
 trait TestRunner<T: TestCase>: ConvolutionTestRunner<T> {
   /// Create new test runner with default test cases
   fn new() -> Self;
@@ -490,9 +903,7 @@ where
   TestResult<T>: ToFlatResult,
   <TestResult<T> as ToFlatResult>::FlatResult: Serialize,
 {
-  let filtered_cases = if let Some(cases) = filter_test_cases::<R, T>(args)? {
-    cases
-  } else {
+  let Some(filtered_cases) = filter_test_cases::<R, T>(args)? else {
     return Ok(());
   };
 

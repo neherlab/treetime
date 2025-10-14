@@ -6,6 +6,7 @@ use crate::distribution::reference::convolution_test::gaussian::analytical::{
 };
 use crate::distribution::reference::convolution_test::output::ToFlatResult;
 use crate::distribution::reference::domain_agreement_metrics::DomainAgreementMetrics;
+use crate::distribution::reference::pointwise_metrics::PointwiseMetrics;
 use eyre::Report;
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
@@ -67,6 +68,7 @@ impl ConvolutionTestRunner<GaussianTestCase> for GaussianTestRunner {
 
     // Compute metrics
     let metrics = DomainAgreementMetrics::new(actual_result.x(), actual_result.y(), expected_result.y())?;
+    let pointwise_metrics = PointwiseMetrics::new(actual_result.x(), actual_result.y(), expected_result.y())?;
 
     let execution_time = start_time.elapsed().as_secs_f64() * 1000.0;
 
@@ -98,6 +100,7 @@ impl ConvolutionTestRunner<GaussianTestCase> for GaussianTestRunner {
       actual_values,
       expected_values,
       metrics,
+      pointwise_metrics,
     })
   }
 

@@ -1,4 +1,5 @@
 use crate::distribution::reference::domain_agreement_metrics::DomainAgreementMetrics;
+use crate::distribution::reference::pointwise_metrics::PointwiseMetrics;
 use crate::io::json::{JsonPretty, json_write_file, json_write_str};
 use crate::io::serde::{array1_as_vec, array1_from_vec};
 use crate::utils::float_fmt::float_to_significant_digits;
@@ -85,6 +86,9 @@ pub struct TestResult<T: TestCase> {
 
   /// Accuracy metrics comparing `actual_values` vs `expected_values`.
   pub metrics: DomainAgreementMetrics,
+
+  /// Detailed pointwise and spatial accuracy metrics.
+  pub pointwise_metrics: PointwiseMetrics,
 }
 
 /// Results for a test that failed to execute.
@@ -394,7 +398,7 @@ impl<T: TestCase, R: ConvolutionTestRunner<T>> GenericConvolutionTestFramework<T
   }
 
   /// Print comprehensive summary to console
-  pub fn print_summary(&self, summary: &TestSummary) {
+  pub fn print_summary(&self, summary: &TestSummary, outcomes: &[TestRunOutcome<T>]) {
     println!(
       "=== {} CONVOLUTION TEST SUMMARY ===\n",
       summary.function_type.to_uppercase()
@@ -438,6 +442,107 @@ impl<T: TestCase, R: ConvolutionTestRunner<T>> GenericConvolutionTestFramework<T
         algo_summary.success_rate * 100.0,
       );
     }
+    println!();
+
+    self.print_pointwise_summary(outcomes);
+  }
+
+  fn print_pointwise_summary(&self, outcomes: &[TestRunOutcome<T>]) {
+    let successes: Vec<_> = outcomes
+      .iter()
+      .filter_map(|outcome| match outcome {
+        TestRunOutcome::Success(result) => Some(result),
+        TestRunOutcome::Failure(_) => None,
+      })
+      .collect();
+
+    if successes.is_empty() {
+      return;
+    }
+
+    println!("Pointwise Metrics Across All Tests:");
+
+    let pw_abs_max_overall = successes
+      .iter()
+      .map(|result| OrderedFloat(result.pointwise_metrics.pointwise_errors.summary.abs_max))
+      .max()
+      .map_or(0.0, |value| value.0);
+
+    let pw_rel_max_overall = successes
+      .iter()
+      .map(|result| OrderedFloat(result.pointwise_metrics.pointwise_errors.summary.rel_max))
+      .max()
+      .map_or(0.0, |value| value.0);
+
+    let pw_d1_max_overall = successes
+      .iter()
+      .map(|result| OrderedFloat(result.pointwise_metrics.structural_errors.summary.d1_max))
+      .max()
+      .map_or(0.0, |value| value.0);
+
+    let pw_d2_max_overall = successes
+      .iter()
+      .map(|result| OrderedFloat(result.pointwise_metrics.structural_errors.summary.d2_max))
+      .max()
+      .map_or(0.0, |value| value.0);
+
+    let pw_cumulative_max_overall = successes
+      .iter()
+      .map(|result| OrderedFloat(result.pointwise_metrics.spatial_metrics.summary.cumulative_max_abs))
+      .max()
+      .map_or(0.0, |value| value.0);
+
+    let pw_sliding_rms_max_overall = successes
+      .iter()
+      .map(|result| OrderedFloat(result.pointwise_metrics.spatial_metrics.summary.sliding_rms_max))
+      .max()
+      .map_or(0.0, |value| value.0);
+
+    let pw_tolerance_strict_min_pct = successes
+      .iter()
+      .map(|result| {
+        OrderedFloat(
+          result
+            .pointwise_metrics
+            .error_distributions
+            .summary
+            .tolerance_pass_fractions[0]
+            * 100.0,
+        )
+      })
+      .min()
+      .map_or(0.0, |value| value.0);
+
+    println!("  Pointwise Errors:");
+    println!(
+      "    Max absolute error across all tests: {}",
+      float_to_significant_digits(pw_abs_max_overall, 3)
+    );
+    println!("    Max relative error across all tests: {pw_rel_max_overall:.3e}");
+
+    println!("  Structural Errors:");
+    println!(
+      "    Max 1st derivative error: {}",
+      float_to_significant_digits(pw_d1_max_overall, 3)
+    );
+    println!(
+      "    Max 2nd derivative error: {}",
+      float_to_significant_digits(pw_d2_max_overall, 3)
+    );
+
+    println!("  Spatial Metrics:");
+    println!(
+      "    Max cumulative error: {}",
+      float_to_significant_digits(pw_cumulative_max_overall, 3)
+    );
+    println!(
+      "    Max sliding RMS error: {}",
+      float_to_significant_digits(pw_sliding_rms_max_overall, 3)
+    );
+
+    println!("  Error Distributions:");
+    println!("    Min strict tolerance pass rate: {pw_tolerance_strict_min_pct:.1}%");
+
     println!();
   }
 }
