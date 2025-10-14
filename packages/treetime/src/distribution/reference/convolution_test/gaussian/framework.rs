@@ -68,7 +68,12 @@ impl ConvolutionTestRunner<GaussianTestCase> for GaussianTestRunner {
     let execution_time = start_time.elapsed().as_secs_f64() * 1000.0;
 
     // Compute metrics
-    let metrics = ConvolutionMetrics::new(actual_result.x(), actual_result.y(), expected_result.y(), execution_time)?;
+    let metrics = ConvolutionMetrics::new(
+      actual_result.x(),
+      actual_result.y(),
+      expected_result.y(),
+      execution_time,
+    )?;
 
     // Find peak error location
     let abs_errors: Array1<f64> = actual_result

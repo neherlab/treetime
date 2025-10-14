@@ -9,14 +9,16 @@
 //! - **Distribution**: Statistical distribution analysis and histograms
 
 pub mod aggregate;
+pub mod distribution;
 pub mod pointwise;
 pub mod spatial;
-pub mod distribution;
 
-pub use aggregate::{AggregateMetrics, PerformanceMetrics, QualityAssessment, EfficiencyMetrics};
-pub use pointwise::{PointwiseMetrics, PointwiseErrors, StructuralErrors, ToleranceMetrics, PointwiseConfig};
-pub use spatial::{SpatialMetrics, RegionalMetrics, WindowedMetrics, CumulativeMetrics, SpatialConfig};
-pub use distribution::{DistributionMetrics, HistogramMetrics, StatisticalMetrics, DistributionProperties, DistributionConfig};
+pub use aggregate::{AggregateMetrics, EfficiencyMetrics, PerformanceMetrics, QualityAssessment};
+pub use distribution::{
+  DistributionConfig, DistributionMetrics, DistributionProperties, HistogramMetrics, StatisticalMetrics,
+};
+pub use pointwise::{PointwiseConfig, PointwiseErrors, PointwiseMetrics, StructuralErrors, ToleranceMetrics};
+pub use spatial::{CumulativeMetrics, RegionalMetrics, SpatialConfig, SpatialMetrics, WindowedMetrics};
 
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
@@ -32,13 +34,13 @@ use serde::{Deserialize, Serialize};
 pub struct ConvolutionMetrics {
   /// Domain-wide aggregate accuracy and quality metrics
   pub aggregate: AggregateMetrics,
-  
+
   /// Point-by-point error analysis (1:1 with evaluation grid)
   pub pointwise: PointwiseMetrics,
-  
+
   /// Spatial and regional analysis metrics
   pub spatial: SpatialMetrics,
-  
+
   /// Statistical distribution analysis
   pub distribution: DistributionMetrics,
 }
@@ -80,7 +82,7 @@ impl ConvolutionMetrics {
 }
 
 /// Configuration for all metric types
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct MetricsConfig {
   /// Pointwise metrics configuration
   pub pointwise: PointwiseConfig,
@@ -88,16 +90,6 @@ pub struct MetricsConfig {
   pub spatial: SpatialConfig,
   /// Distribution metrics configuration
   pub distribution: DistributionConfig,
-}
-
-impl Default for MetricsConfig {
-  fn default() -> Self {
-    Self {
-      pointwise: PointwiseConfig::default(),
-      spatial: SpatialConfig::default(),
-      distribution: DistributionConfig::default(),
-    }
-  }
 }
 
 /// Helper function to compute grid spacing
@@ -145,9 +137,6 @@ mod tests {
 
     assert_eq!(metrics.distribution.histograms.abs_error_histogram.bin_counts.len(), 20);
     // Perfect agreement should result in excellent quality
-    assert!(matches!(
-      metrics.aggregate.quality.grade,
-      aggregate::QualityGrade::A
-    ));
+    assert!(matches!(metrics.aggregate.quality.grade, aggregate::QualityGrade::A));
   }
 }

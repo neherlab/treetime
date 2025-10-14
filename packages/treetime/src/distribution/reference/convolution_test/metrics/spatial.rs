@@ -23,12 +23,7 @@ pub struct SpatialMetrics {
 
 impl SpatialMetrics {
   /// Creates new spatial metrics from evaluation grid and function values
-  pub fn new(
-    x: &Array1<f64>,
-    actual: &Array1<f64>,
-    expected: &Array1<f64>,
-    dx: f64,
-  ) -> eyre::Result<Self> {
+  pub fn new(x: &Array1<f64>, actual: &Array1<f64>, expected: &Array1<f64>, dx: f64) -> eyre::Result<Self> {
     Self::new_with_config(x, actual, expected, dx, &SpatialConfig::default())
   }
 

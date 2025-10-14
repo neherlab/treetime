@@ -496,17 +496,7 @@ impl<T: TestCase, R: ConvolutionTestRunner<T>> GenericConvolutionTestFramework<T
 
     let pw_tolerance_strict_min_pct = successes
       .iter()
-      .map(|result| {
-        OrderedFloat(
-          result
-            .metrics
-            .pointwise
-            .tolerance
-            .summary
-            .pass_fractions[0]
-            * 100.0,
-        )
-      })
+      .map(|result| OrderedFloat(result.metrics.pointwise.tolerance.summary.pass_fractions[0] * 100.0))
       .min()
       .map_or(0.0, |value| value.0);
 

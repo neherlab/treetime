@@ -526,12 +526,7 @@ where
       x.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b)),
     );
     let min_signed = pw.errors.signed.iter().copied().fold(f64::INFINITY, f64::min);
-    let max_signed = pw
-      .errors
-      .signed
-      .iter()
-      .copied()
-      .fold(f64::NEG_INFINITY, f64::max);
+    let max_signed = pw.errors.signed.iter().copied().fold(f64::NEG_INFINITY, f64::max);
     let (y_min, y_max) = expand_range(min_signed, max_signed);
     let mut chart = ChartBuilder::on(&areas[2])
       .caption("Signed Error (bias)", ("Arial", 20))
@@ -601,12 +596,7 @@ where
 
   // Plot 1: First Derivative Error
   {
-    let max_d1 = pw
-      .structural
-      .first_derivative
-      .iter()
-      .copied()
-      .fold(0.0_f64, f64::max);
+    let max_d1 = pw.structural.first_derivative.iter().copied().fold(0.0_f64, f64::max);
     let (y_min, y_max) = expand_range(0.0, max_d1);
     let mut chart = ChartBuilder::on(&areas[0])
       .caption("First Derivative Error", ("Arial", 20))
@@ -625,12 +615,7 @@ where
 
   // Plot 2: Second Derivative Error
   {
-    let max_d2 = pw
-      .structural
-      .second_derivative
-      .iter()
-      .copied()
-      .fold(0.0_f64, f64::max);
+    let max_d2 = pw.structural.second_derivative.iter().copied().fold(0.0_f64, f64::max);
     let (y_min, y_max) = expand_range(0.0, max_d2);
     let mut chart = ChartBuilder::on(&areas[1])
       .caption("Second Derivative Error", ("Arial", 20))
@@ -679,9 +664,7 @@ where
       .build_cartesian_2d(x_min..x_max, y_min..y_max)?;
     chart.configure_mesh().draw()?;
     chart.draw_series(LineSeries::new(
-      x.iter()
-        .zip(sp.windowed.sliding_rms.iter())
-        .map(|(&x, &y)| (x, y)),
+      x.iter().zip(sp.windowed.sliding_rms.iter()).map(|(&x, &y)| (x, y)),
       RED.stroke_width(2),
     ))?;
   }
@@ -698,9 +681,7 @@ where
       .build_cartesian_2d(x_min..x_max, y_min..y_max)?;
     chart.configure_mesh().draw()?;
     chart.draw_series(LineSeries::new(
-      x.iter()
-        .zip(sp.windowed.sliding_max.iter())
-        .map(|(&x, &y)| (x, y)),
+      x.iter().zip(sp.windowed.sliding_max.iter()).map(|(&x, &y)| (x, y)),
       BLUE.stroke_width(2),
     ))?;
   }

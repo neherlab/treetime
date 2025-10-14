@@ -25,10 +25,7 @@ impl DistributionMetrics {
   }
 
   /// Creates new distribution metrics with custom configuration
-  pub fn new_with_config(
-    pointwise_errors: &PointwiseErrors,
-    config: &DistributionConfig,
-  ) -> eyre::Result<Self> {
+  pub fn new_with_config(pointwise_errors: &PointwiseErrors, config: &DistributionConfig) -> eyre::Result<Self> {
     let histograms = compute_histogram_metrics(pointwise_errors, config)?;
     let statistics = compute_statistical_metrics(pointwise_errors)?;
     let properties = compute_distribution_properties(pointwise_errors)?;
@@ -177,8 +174,7 @@ fn compute_histogram_metrics(
     .iter()
     .enumerate()
     .max_by_key(|&(_, count)| count)
-    .map(|(idx, _)| idx)
-    .unwrap_or(0);
+    .map_or(0, |(idx, _)| idx);
 
   let modal_range = if max_bin_idx < abs_error_histogram.bin_edges.len() - 1 {
     (
@@ -191,9 +187,7 @@ fn compute_histogram_metrics(
 
   // Compute spread measure (interquartile range in log space)
   let spread_measure = if abs_error_histogram.bin_edges.len() >= 2 {
-    let log_range = abs_error_histogram.bin_edges.last().unwrap()
-      - abs_error_histogram.bin_edges.first().unwrap();
-    log_range
+    abs_error_histogram.bin_edges.last().unwrap() - abs_error_histogram.bin_edges.first().unwrap()
   } else {
     0.0
   };
