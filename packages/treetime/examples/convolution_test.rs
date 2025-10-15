@@ -8,16 +8,15 @@ use std::fs;
 use strum::IntoEnumIterator;
 use strum_macros::{Display, EnumIter};
 use treetime::distribution::reference::convolution_test::framework::{
-  ConvolutionTestRunner, TestCase, TestResult, TestRunOutcome,
+  ConvolutionTestRunner, TestCase, TestResult, TestRunOutcome, TraitBasedTestRunner,
 };
-use treetime::distribution::reference::convolution_test::functions::exponential::test_cases::ExponentialTestCase;
-use treetime::distribution::reference::convolution_test::functions::gaussian::test_cases::GaussianTestCase;
+use treetime::distribution::reference::convolution_test::functions::exponential::conv_input::ExponentialConvInput;
+use treetime::distribution::reference::convolution_test::functions::exponential::flat_result::ExponentialFlatResult;
+use treetime::distribution::reference::convolution_test::functions::gaussian::conv_input::GaussianConvInput;
+use treetime::distribution::reference::convolution_test::functions::gaussian::flat_result::GaussianFlatResult;
+use treetime::distribution::reference::convolution_test::traits::ConvInput;
 use treetime::distribution::reference::convolution_test::{
-  algorithms::ConvolutionAlgorithm,
-  framework::GenericConvolutionTestFramework,
-  functions::exponential::framework::ExponentialTestRunner,
-  functions::gaussian::framework::GaussianTestRunner,
-  output::{TestOutputWriter, ToFlatResult},
+  algorithms::ConvolutionAlgorithm, framework::GenericConvolutionTestFramework, output::{TestOutputWriter, ToFlatResult},
 };
 
 #[derive(Parser, Clone, Serialize, Deserialize)]
@@ -76,35 +75,30 @@ fn main() -> Result<(), Report> {
   if args.list_cases {
     for function_type in &args.functions {
       match function_type {
-        FunctionType::Gaussian => {
-          list_test_cases::<GaussianTestRunner, GaussianTestCase>();
-        },
-        FunctionType::Exponential => {
-          list_test_cases::<ExponentialTestRunner, ExponentialTestCase>();
-        },
+        FunctionType::Gaussian => GaussianConvInput::new().list_test_cases(),
+        FunctionType::Exponential => ExponentialConvInput::new().list_test_cases(),
       }
     }
     return Ok(());
   }
 
   for function_type in &args.functions {
-    // Create function-specific output directory
-    let function_output_dir = format!("{}/{}", args.output_dir, function_type.to_string().to_lowercase());
-    let function_args = Args {
-      functions: vec![*function_type],
-      output_dir: function_output_dir,
-      algorithms: args.algorithms.clone(),
-      test_cases: args.test_cases.clone(),
-      verbose: args.verbose,
-      list_cases: false,
-    };
-
     match function_type {
       FunctionType::Gaussian => {
-        run_tests_for_runner::<GaussianTestRunner, GaussianTestCase>(&function_args)?;
+        dispatch_function_test::<_, GaussianFlatResult>(
+          &args,
+          *function_type,
+          GaussianConvInput::new,
+          GaussianConvInput::with_test_cases,
+        )?;
       },
       FunctionType::Exponential => {
-        run_tests_for_runner::<ExponentialTestRunner, ExponentialTestCase>(&function_args)?;
+        dispatch_function_test::<_, ExponentialFlatResult>(
+          &args,
+          *function_type,
+          ExponentialConvInput::new,
+          ExponentialConvInput::with_test_cases,
+        )?;
       },
     }
   }
@@ -112,43 +106,46 @@ fn main() -> Result<(), Report> {
   Ok(())
 }
 
-fn filter_test_cases<R, T>(args: &Args) -> Result<Option<Vec<T>>, Report>
+fn dispatch_function_test<I, F>(
+  args: &Args,
+  function_type: FunctionType,
+  create_input: impl FnOnce() -> I,
+  create_filtered_input: impl FnOnce(Vec<I::TestCase>) -> I,
+) -> Result<(), Report>
 where
-  R: TestRunner<T>,
-  T: TestCase,
+  I: ConvInput,
+  TestResult<I::TestCase>: ToFlatResult<FlatResult = F>,
+  F: Serialize,
 {
-  let runner = R::new();
-  let all_cases = runner.test_cases();
+  let function_output_dir = format!("{}/{}", args.output_dir, function_type.to_string().to_lowercase());
+  let function_args = Args {
+    functions: vec![function_type],
+    output_dir: function_output_dir,
+    algorithms: args.algorithms.clone(),
+    test_cases: args.test_cases.clone(),
+    verbose: args.verbose,
+    list_cases: false,
+  };
 
-  if args.test_cases == "all" {
-    return Ok(Some(all_cases.to_vec()));
-  }
+  let input = if args.test_cases == "all" {
+    create_input()
+  } else {
+    let temp_input = create_input();
+    let filtered = temp_input.filter_test_cases(&args.test_cases)?;
+    create_filtered_input(filtered)
+  };
 
-  let requested_cases: Vec<&str> = args.test_cases.split(',').map(|s| s.trim()).collect();
-  let filtered_cases = all_cases
-    .iter()
-    .filter(|case| requested_cases.contains(&case.name()))
-    .cloned()
-    .collect::<Vec<_>>();
-
-  if filtered_cases.is_empty() {
-    eprintln!("No matching test cases found for: {}", args.test_cases);
-    eprintln!("Available {} test cases:", R::function_type_name());
-    for case in all_cases {
-      eprintln!("  - {}", case.name());
-    }
-    return Ok(None);
-  }
-
-  Ok(Some(filtered_cases))
+  let function_type_name = input.function_type();
+  let runner = TraitBasedTestRunner::new(input);
+  run_convolution_tests(&function_args, runner, function_type_name)
 }
 
-fn run_convolution_tests<R, T>(args: &Args, runner: R, function_type_name: &str) -> Result<(), Report>
+fn run_convolution_tests<R, T, F>(args: &Args, runner: R, function_type_name: &str) -> Result<(), Report>
 where
   R: ConvolutionTestRunner<T>,
   T: TestCase,
-  TestResult<T>: ToFlatResult,
-  <TestResult<T> as ToFlatResult>::FlatResult: Serialize,
+  TestResult<T>: ToFlatResult<FlatResult = F>,
+  F: Serialize,
 {
   // Create framework
   let mut framework = GenericConvolutionTestFramework::new(runner, args.output_dir.clone());
@@ -840,73 +837,4 @@ where
 
   root.present()?;
   Ok(())
-}
-
-trait TestRunner<T: TestCase>: ConvolutionTestRunner<T> {
-  /// Create new test runner with default test cases
-  fn new() -> Self;
-
-  /// Create test runner with custom test cases
-  fn with_test_cases(test_cases: Vec<T>) -> Self;
-
-  /// Get the function type name
-  fn function_type_name() -> &'static str;
-}
-
-impl TestRunner<GaussianTestCase> for GaussianTestRunner {
-  fn new() -> Self {
-    GaussianTestRunner::new()
-  }
-
-  fn with_test_cases(test_cases: Vec<GaussianTestCase>) -> Self {
-    GaussianTestRunner::with_test_cases(test_cases)
-  }
-
-  fn function_type_name() -> &'static str {
-    "Gaussian"
-  }
-}
-
-impl TestRunner<ExponentialTestCase> for ExponentialTestRunner {
-  fn new() -> Self {
-    ExponentialTestRunner::new()
-  }
-
-  fn with_test_cases(test_cases: Vec<ExponentialTestCase>) -> Self {
-    ExponentialTestRunner::with_test_cases(test_cases)
-  }
-
-  fn function_type_name() -> &'static str {
-    "Exponential"
-  }
-}
-fn run_tests_for_runner<R, T>(args: &Args) -> Result<(), Report>
-where
-  R: TestRunner<T>,
-  T: TestCase,
-  TestResult<T>: ToFlatResult,
-  <TestResult<T> as ToFlatResult>::FlatResult: Serialize,
-{
-  let Some(filtered_cases) = filter_test_cases::<R, T>(args)? else {
-    return Ok(());
-  };
-
-  let runner = if args.test_cases == "all" {
-    R::new()
-  } else {
-    R::with_test_cases(filtered_cases)
-  };
-
-  run_convolution_tests(args, runner, R::function_type_name())
-}
-
-fn list_test_cases<R, T>()
-where
-  R: TestRunner<T>,
-  T: TestCase,
-{
-  println!("Available {} test cases:", R::function_type_name());
-  for case in R::new().test_cases() {
-    println!("  - {} : {}", case.name(), case.description());
-  }
 }

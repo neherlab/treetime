@@ -1,3 +1,4 @@
+pub mod algo_impls;
 pub mod algorithm_summary;
 pub mod algorithms;
 pub mod console;
@@ -5,3 +6,4 @@ pub mod framework;
 pub mod functions;
 pub mod metrics;
 pub mod output;
+pub mod traits;
