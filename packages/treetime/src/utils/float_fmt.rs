@@ -1,12 +1,9 @@
 use lazy_static::lazy_static;
+use num_traits::Float;
 use pretty_dtoa::{FmtFloatConfig, dtoa};
 
 lazy_static! {
-  static ref FLOAT_CONFIG: FmtFloatConfig = FmtFloatConfig::default()
-    .add_point_zero(true)
-    .max_significant_digits(3)
-    .radix_point('.')
-    .round();
+  static ref FLOAT_CONFIG: FmtFloatConfig = FmtFloatConfig::default().add_point_zero(true).radix_point('.').round();
 }
 
 #[allow(clippy::string_slice)]
@@ -25,12 +22,38 @@ fn float_format<F: Into<f64>>(x: F, config: FmtFloatConfig) -> String {
   trim_trailing_zeros(dtoa(x.into(), config))
 }
 
+/// Trait providing convenient float formatting methods
+pub trait FloatFormatExt {
+  /// Format float to a specific number of significant digits
+  fn to_significant_digits(self, max_significant_digits: u8) -> String;
+
+  /// Format float to a specific number of decimal digits
+  fn to_decimal_digits(self, max_decimal_digits: i8) -> String;
+
+  /// Format float with optional significant and decimal digit limits
+  fn to_digits(self, max_significant_digits: Option<u8>, max_decimal_digits: Option<i8>) -> String;
+}
+
+impl<F: Float + Into<f64>> FloatFormatExt for F {
+  fn to_significant_digits(self, max_significant_digits: u8) -> String {
+    float_to_digits(self, Some(max_significant_digits), None)
+  }
+
+  fn to_decimal_digits(self, max_decimal_digits: i8) -> String {
+    float_to_digits(self, None, Some(max_decimal_digits))
+  }
+
+  fn to_digits(self, max_significant_digits: Option<u8>, max_decimal_digits: Option<i8>) -> String {
+    float_to_digits(self, max_significant_digits, max_decimal_digits)
+  }
+}
+
 pub fn float_to_significant_digits<F: Into<f64>>(x: F, max_significant_digits: u8) -> String {
-  float_format(x, FLOAT_CONFIG.max_significant_digits(max_significant_digits))
+  float_to_digits(x, Some(max_significant_digits), None)
 }
 
 pub fn float_to_decimal_digits<F: Into<f64>>(x: F, max_decimal_digits: i8) -> String {
-  float_format(x, FLOAT_CONFIG.max_decimal_digits(max_decimal_digits))
+  float_to_digits(x, None, Some(max_decimal_digits))
 }
 
 pub fn float_to_digits<F: Into<f64>>(
@@ -39,11 +62,111 @@ pub fn float_to_digits<F: Into<f64>>(
   max_decimal_digits: Option<i8>,
 ) -> String {
   let mut config = *FLOAT_CONFIG;
+
+  // If neither constraint is specified, use the default significant digits from FLOAT_CONFIG
+  if max_significant_digits.is_none() && max_decimal_digits.is_none() {
+    config = config.max_significant_digits(3);
+  }
+
   if let Some(max_significant_digits) = max_significant_digits {
     config = config.max_significant_digits(max_significant_digits);
   }
+
   if let Some(max_decimal_digits) = max_decimal_digits {
     config = config.max_decimal_digits(max_decimal_digits);
   }
+
   float_format(x, config)
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use pretty_assertions::assert_eq;
+  use rstest::rstest;
+
+  #[rstest]
+  #[case((1.23456, 3), "1.23")]
+  #[case((123.456, 3), "123")]
+  #[case((0.00123, 3), "0.00123")]
+  #[case((1000.0,  3), "1000")]
+  #[trace]
+  fn test_float_to_significant_digits(#[case] (input, digits): (f64, u8), #[case] expected: &str) {
+    assert_eq!(float_to_significant_digits(input, digits), expected);
+  }
+
+  #[rstest]
+  #[case((1.23456, 2), "1.23")]
+  #[case((123.456, 2), "123.46")]
+  #[case((1.0,     2), "1")]
+  #[case((1.0,     0), "1")]
+  #[trace]
+  fn test_float_to_decimal_digits(#[case] (input, digits): (f64, i8), #[case] expected: &str) {
+    assert_eq!(float_to_decimal_digits(input, digits), expected);
+  }
+
+  #[rstest]
+  #[case((1.23456, Some(3), None   ), "1.23")]
+  #[case((1.23456, None,    Some(2)), "1.23")]
+  #[case((1.23456, Some(3), Some(2)), "1.23")]
+  #[case((1.23456, None,    None   ), "1.23")]
+  #[trace]
+  fn test_float_to_digits(
+    #[case] (input, sig_digits, dec_digits): (f64, Option<u8>, Option<i8>),
+    #[case] expected: &str,
+  ) {
+    assert_eq!(float_to_digits(input, sig_digits, dec_digits), expected);
+  }
+
+  #[rstest]
+  #[case((1.23456_f64, 3), "1.23")]
+  #[case((123.456_f32, 3), "123")]
+  #[case((0.00123_f64, 3), "0.00123")]
+  #[trace]
+  fn test_trait_to_significant_digits(#[case] (input, digits): (impl FloatFormatExt, u8), #[case] expected: &str) {
+    assert_eq!(input.to_significant_digits(digits), expected);
+  }
+
+  #[rstest]
+  #[case((1.23456_f64, 2), "1.23")]
+  #[case((123.456_f32, 2), "123.46")]
+  #[case((1.0_f64,     2), "1")]
+  #[trace]
+  fn test_trait_to_decimal_digits(#[case] (input, digits): (impl FloatFormatExt, i8), #[case] expected: &str) {
+    assert_eq!(input.to_decimal_digits(digits), expected);
+  }
+
+  #[rstest]
+  #[case((1.23456_f64, Some(3), None   ), "1.23")]
+  #[case((1.23456_f32, None,    Some(2)), "1.23")]
+  #[case((1.23456_f64, Some(3), Some(2)), "1.23")]
+  #[case((1.23456_f32, None,    None   ), "1.23")]
+  #[trace]
+  fn test_trait_to_digits(
+    #[case] (input, sig_digits, dec_digits): (impl FloatFormatExt, Option<u8>, Option<i8>),
+    #[case] expected: &str,
+  ) {
+    assert_eq!(input.to_digits(sig_digits, dec_digits), expected);
+  }
+
+  #[rstest]
+  #[case(("1.230", "1.23"))]
+  #[case(("1.000", "1"))]
+  #[case(("1.0",   "1"))]
+  #[case(("123",   "123"))]
+  #[case(("0.100", "0.1"))]
+  #[trace]
+  fn test_trim_trailing_zeros(#[case] (input, expected): (&str, &str)) {
+    assert_eq!(trim_trailing_zeros(input.to_owned()), expected);
+  }
+
+  #[rstest]
+  #[case((0.0_f64,           3), "0")]
+  #[case((-1.23456_f64,      3), "-1.23")]
+  #[case((f64::INFINITY,     3), "inf")]
+  #[case((f64::NEG_INFINITY, 3), "-inf")]
+  #[trace]
+  fn test_edge_cases(#[case] (input, digits): (f64, u8), #[case] expected: &str) {
+    assert_eq!(input.to_significant_digits(digits), expected);
+  }
 }
