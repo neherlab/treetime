@@ -76,7 +76,7 @@ fn is_uniform_grid(grid: &Array1<f64>) -> bool {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::distribution::reference::convolution_test::gaussian::analytical::{gaussian_f, gaussian_g};
+  use crate::distribution::reference::convolution_test::functions::gaussian::analytical::{gaussian_f, gaussian_g};
 
   #[test]
   fn test_riemann_simple() -> Result<(), Report> {

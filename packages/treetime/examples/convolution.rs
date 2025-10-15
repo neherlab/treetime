@@ -4,7 +4,7 @@ use plotters::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::f64::consts::PI;
 use treetime::distribution::reference::convolution::{ndarray_convolve, riemann_convolve};
-use treetime::distribution::reference::convolution_test::gaussian::analytical::{gaussian_f, gaussian_g};
+use treetime::distribution::reference::convolution_test::functions::gaussian::analytical::{gaussian_f, gaussian_g};
 use treetime::distribution::reference::convolution_test::metrics::domain_agreement_metrics::DomainAgreementMetrics;
 use treetime::io::json::{JsonPretty, json_write_file, json_write_str};
 

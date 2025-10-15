@@ -1,9 +1,9 @@
 use crate::distribution::reference::convolution::{ndarray_convolve, riemann_convolve};
 use crate::distribution::reference::convolution_test::algorithms::ConvolutionAlgorithm;
-use crate::distribution::reference::convolution_test::exponential::analytical::{
-  exponential_convolution, exponential_f, exponential_g,
-};
 use crate::distribution::reference::convolution_test::framework::{ConvolutionTestRunner, TestResult};
+use crate::distribution::reference::convolution_test::functions::gaussian::analytical::{
+  gaussian_convolution, gaussian_f, gaussian_g,
+};
 use crate::distribution::reference::convolution_test::metrics::metrics::ConvolutionMetrics;
 use crate::distribution::reference::convolution_test::output::ToFlatResult;
 use eyre::Report;
@@ -11,39 +11,39 @@ use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 use std::time::Instant;
 
-use super::test_cases::{ExponentialTestCase, create_exponential_test_cases};
+use super::test_cases::{GaussianTestCase, create_gaussian_test_cases};
 
-/// Exponential-specific test framework implementation
+/// Gaussian-specific test framework implementation
 #[derive(Clone, Debug)]
-pub struct ExponentialTestRunner {
-  test_cases: Vec<ExponentialTestCase>,
+pub struct GaussianTestRunner {
+  test_cases: Vec<GaussianTestCase>,
 }
 
-impl ExponentialTestRunner {
-  /// Create new Exponential test runner with default test cases
+impl GaussianTestRunner {
+  /// Create new Gaussian test runner with default test cases
   pub fn new() -> Self {
     Self {
-      test_cases: create_exponential_test_cases(),
+      test_cases: create_gaussian_test_cases(),
     }
   }
 
   /// Create with custom test cases
-  pub fn with_test_cases(test_cases: Vec<ExponentialTestCase>) -> Self {
+  pub fn with_test_cases(test_cases: Vec<GaussianTestCase>) -> Self {
     Self { test_cases }
   }
 }
 
-impl ConvolutionTestRunner<ExponentialTestCase> for ExponentialTestRunner {
+impl ConvolutionTestRunner<GaussianTestCase> for GaussianTestRunner {
   fn run_test(
     &self,
-    test_case: &ExponentialTestCase,
+    test_case: &GaussianTestCase,
     algorithm: ConvolutionAlgorithm,
-  ) -> Result<TestResult<ExponentialTestCase>, Report> {
+  ) -> Result<TestResult<GaussianTestCase>, Report> {
     let start_time = Instant::now();
 
     // Create input functions
-    let f = exponential_f(test_case.a, test_case.f_domain, test_case.dx)?;
-    let g = exponential_g(test_case.b, test_case.g_domain, test_case.dx)?;
+    let f = gaussian_f(test_case.sigma_f, test_case.f_domain, test_case.dx)?;
+    let g = gaussian_g(test_case.sigma_g, test_case.mu, test_case.g_domain, test_case.dx)?;
 
     // Create evaluation grid
     let (eval_min, eval_max) = test_case.eval_domain;
@@ -57,7 +57,13 @@ impl ConvolutionTestRunner<ExponentialTestCase> for ExponentialTestRunner {
     };
 
     // Compute analytical expected result
-    let expected_result = exponential_convolution(test_case.a, test_case.b, test_case.eval_domain, test_case.dx)?;
+    let expected_result = gaussian_convolution(
+      test_case.sigma_f,
+      test_case.sigma_g,
+      test_case.mu,
+      test_case.eval_domain,
+      test_case.dx,
+    )?;
 
     let execution_time = start_time.elapsed().as_secs_f64() * 1000.0;
 
@@ -70,6 +76,13 @@ impl ConvolutionTestRunner<ExponentialTestCase> for ExponentialTestRunner {
     )?;
 
     // Find peak error location
+    let abs_errors: Array1<f64> = actual_result
+      .y()
+      .iter()
+      .zip(expected_result.y().iter())
+      .map(|(&a, &e)| (a - e).abs())
+      .collect();
+
     let evaluation_grid = actual_result.x().to_owned();
     let actual_values = actual_result.y().to_owned();
     let expected_values = expected_result.y().to_owned();
@@ -93,22 +106,23 @@ impl ConvolutionTestRunner<ExponentialTestCase> for ExponentialTestRunner {
     })
   }
 
-  fn test_cases(&self) -> &[ExponentialTestCase] {
+  fn test_cases(&self) -> &[GaussianTestCase] {
     &self.test_cases
   }
 
   fn function_type(&self) -> &'static str {
-    "exponential"
+    "gaussian"
   }
 }
 
-/// Exponential-specific flat result for TSV output
+/// Gaussian-specific flat result for TSV output
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ExponentialFlatResult {
+pub struct GaussianFlatResult {
   pub test_case_name: String,
   pub algorithm: String,
-  pub a: f64,
-  pub b: f64,
+  pub sigma_f: f64,
+  pub sigma_g: f64,
+  pub mu: f64,
   pub dx: f64,
   pub grid_points: usize,
   pub execution_time_ms: f64,
@@ -132,15 +146,16 @@ pub struct ExponentialFlatResult {
   pub overall_assessment: String,
 }
 
-impl ToFlatResult for TestResult<ExponentialTestCase> {
-  type FlatResult = ExponentialFlatResult;
+impl ToFlatResult for TestResult<GaussianTestCase> {
+  type FlatResult = GaussianFlatResult;
 
   fn to_flat_result(&self) -> Self::FlatResult {
-    ExponentialFlatResult {
+    GaussianFlatResult {
       test_case_name: self.test_case.name.clone(),
       algorithm: self.algorithm.to_string(),
-      a: self.test_case.a,
-      b: self.test_case.b,
+      sigma_f: self.test_case.sigma_f,
+      sigma_g: self.test_case.sigma_g,
+      mu: self.test_case.mu,
       dx: self.test_case.dx,
       grid_points: self.evaluation_grid.len(),
       execution_time_ms: self.execution_time_ms,
