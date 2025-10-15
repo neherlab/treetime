@@ -182,12 +182,12 @@ impl<T: TestCase, R: ConvolutionTestRunner<T>> GenericConvolutionTestFramework<T
 
     // Print table header
     println!(
-      "| {:^12} | {:^2} | {:^12} | {:^30} | {:^8} | {:^8} |",
-      "Progress", "S", "Algorithm", "Test Case", "Time, ms", "R²"
+      "| {:^12} | {:^2} | {:^12} | {:^30} | {:^8} | {:^10} | {:^8} | {:^8} |",
+      "Progress", "S", "Algorithm", "Test Case", "Time, ms", "R² err ppm", "RMSE", "Corr err"
     );
     println!(
-      "|{:-<14}|{:-^4}|{:-<14}|{:-<32}|{:->10}|{:->10}|",
-      "", "", "", "", "", ""
+      "|{:-<14}|{:-^4}|{:-<14}|{:-<32}|{:->10}|{:->12}|{:->10}|{:->10}|",
+      "", "", "", "", "", "", "", ""
     );
 
     // Generate all test-algorithm combinations
@@ -209,15 +209,21 @@ impl<T: TestCase, R: ConvolutionTestRunner<T>> GenericConvolutionTestFramework<T
             let completed_count = completed.fetch_add(1, Ordering::Relaxed) + 1;
             let elapsed_ms = result.execution_time_ms;
             let r_squared = result.metrics.aggregate.domain_agreement.quality_metrics.r_squared;
+            let r2_error_ppm = (1.0 - r_squared) * 1_000_000.0;
+            let rmse = result.metrics.aggregate.domain_agreement.quality_metrics.rmse;
+            let correlation = result.metrics.aggregate.domain_agreement.quality_metrics.correlation;
+            let correlation_error_ppm = (1.0 - correlation) * 1_000_000.0;
             let progress = format!("[{completed_count}/{total_tests}]");
             println!(
-              "| {:<12} | {:^1} | {:<12} | {:<30} | {:>8.1} | {:>8.6} |",
+              "| {:<12} | {:^1} | {:<12} | {:<30} | {:>8.1} | {:>10} | {:>8} | {:>8} |",
               progress,
               "✅",
               format!("{algorithm}"),
               test_case.name(),
               elapsed_ms,
-              r_squared
+              float_to_significant_digits(r2_error_ppm, 3),
+              float_to_significant_digits(rmse, 3),
+              float_to_significant_digits(correlation_error_ppm, 3)
             );
             TestRunOutcome::Success(result)
           },
@@ -226,12 +232,14 @@ impl<T: TestCase, R: ConvolutionTestRunner<T>> GenericConvolutionTestFramework<T
             let elapsed_ms = start_time.elapsed().as_secs_f64() * 1000.0;
             let progress = format!("[{completed_count}/{total_tests}]");
             println!(
-              "| {:<12} | {:^1} | {:<12} | {:<30} | {:>8.1} | {:>8} |",
+              "| {:<12} | {:^1} | {:<12} | {:<30} | {:>8.1} | {:>10} | {:>8} | {:>8} |",
               progress,
               "❌",
               format!("{algorithm}"),
               test_case.name(),
               elapsed_ms,
+              "FAILED",
+              "FAILED",
               "FAILED"
             );
             TestRunOutcome::Failure(TestFailure {

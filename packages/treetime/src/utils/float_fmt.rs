@@ -3,7 +3,6 @@ use pretty_dtoa::{FmtFloatConfig, dtoa};
 
 lazy_static! {
   static ref FLOAT_CONFIG: FmtFloatConfig = FmtFloatConfig::default()
-    .force_no_e_notation()
     .add_point_zero(true)
     .max_significant_digits(3)
     .radix_point('.')
