@@ -416,34 +416,10 @@ impl<T: TestCase, R: ConvolutionTestRunner<T>> GenericConvolutionTestFramework<T
     println!("  Total execution time: {execution_time_total_ms:.1}ms");
     println!("  Assessment: {overall_assessment}\n");
 
-    println!("Algorithm Performance:");
-    println!(
-      "{:>10} {:>8} {:>10} {:>8} {:>8} {:>8} {:>12} {:>12} {:>8} {:>8}",
-      "Algorithm", "Tests", "Time(ms)", "R²Min", "R²Max", "R²Mean", "MaxAbsErr", "MaxRelErr%", "Errors", "Success%"
-    );
-    println!("{}", "-".repeat(110));
-
-    for algo_summary in &summary.algorithm_summaries {
-      println!(
-        "{:>10} {:>8} {:>10.1} {:>8.4} {:>8.4} {:>8.4} {:>12} {:>12.1} {:>8} {:>8.1}",
-        algo_summary.algorithm,
-        algo_summary.test_cases_count,
-        algo_summary.execution_time_total_ms,
-        algo_summary.r2_min,
-        algo_summary.r2_max,
-        algo_summary.r2_mean,
-        float_to_significant_digits(algo_summary.max_abs_error_overall, 3),
-        algo_summary.max_rel_error_overall * 100.0,
-        algo_summary.error_failures,
-        algo_summary.success_rate * 100.0,
-      );
-    }
-    println!();
-
-    self.print_pointwise_summary(outcomes);
+    self.print_unified_metrics_table(summary, outcomes);
   }
 
-  fn print_pointwise_summary(&self, outcomes: &[TestRunOutcome<T>]) {
+  fn print_unified_metrics_table(&self, summary: &TestSummary, outcomes: &[TestRunOutcome<T>]) {
     let successes: Vec<_> = outcomes
       .iter()
       .filter_map(|outcome| match outcome {
@@ -456,240 +432,368 @@ impl<T: TestCase, R: ConvolutionTestRunner<T>> GenericConvolutionTestFramework<T
       return;
     }
 
-    println!("Pointwise Metrics by Algorithm:");
+    println!("Comprehensive Metrics by Algorithm:");
 
-    // Group results by algorithm
     let grouped_by_algorithm = successes
       .into_iter()
       .into_group_map_by(|result| result.algorithm);
 
     let algorithms: Vec<_> = grouped_by_algorithm.keys().sorted().copied().collect();
 
-    // Collect metrics for each algorithm
-    let mut algorithm_metrics = std::collections::HashMap::new();
+    let mut all_metrics = std::collections::HashMap::new();
+
     for (algorithm, algorithm_results) in &grouped_by_algorithm {
+      let algo_summary = summary
+        .algorithm_summaries
+        .iter()
+        .find(|s| s.algorithm == *algorithm)
+        .unwrap();
+
+      let correlation_mean = algorithm_results
+        .iter()
+        .map(|r| r.metrics.aggregate.domain_agreement.quality_metrics.correlation)
+        .sum::<f64>()
+        / algorithm_results.len() as f64;
+
+      let rmse_max = algorithm_results
+        .iter()
+        .map(|r| OrderedFloat(r.metrics.aggregate.domain_agreement.quality_metrics.rmse))
+        .max()
+        .map_or(0.0, |v| v.0);
+
+      let mass_error_max = algorithm_results
+        .iter()
+        .map(|r| r.metrics.aggregate.domain_agreement.quality_metrics.mass_error.abs())
+        .map(OrderedFloat)
+        .max()
+        .map_or(0.0, |v| v.0);
+
+      let rel_l2_error_max = algorithm_results
+        .iter()
+        .map(|r| OrderedFloat(r.metrics.aggregate.domain_agreement.quality_metrics.rel_l2_error))
+        .max()
+        .map_or(0.0, |v| v.0);
+
+      let agg_abs_mean = algorithm_results
+        .iter()
+        .map(|r| r.metrics.aggregate.domain_agreement.abs_error_stats.mean)
+        .sum::<f64>()
+        / algorithm_results.len() as f64;
+
+      let agg_rel_mean = algorithm_results
+        .iter()
+        .map(|r| r.metrics.aggregate.domain_agreement.rel_error_stats.mean)
+        .sum::<f64>()
+        / algorithm_results.len() as f64;
+
       let pw_abs_max = algorithm_results
         .iter()
-        .map(|result| OrderedFloat(result.metrics.pointwise.errors.summary.abs_max))
+        .map(|r| OrderedFloat(r.metrics.pointwise.errors.summary.abs_max))
         .max()
-        .map_or(0.0, |value| value.0);
+        .map_or(0.0, |v| v.0);
+
+      let pw_abs_mean = algorithm_results
+        .iter()
+        .map(|r| r.metrics.pointwise.errors.summary.abs_mean)
+        .sum::<f64>()
+        / algorithm_results.len() as f64;
+
+      let pw_abs_std = algorithm_results
+        .iter()
+        .map(|r| OrderedFloat(r.metrics.pointwise.errors.summary.abs_std))
+        .max()
+        .map_or(0.0, |v| v.0);
 
       let pw_rel_max = algorithm_results
         .iter()
-        .map(|result| OrderedFloat(result.metrics.pointwise.errors.summary.rel_max))
+        .map(|r| OrderedFloat(r.metrics.pointwise.errors.summary.rel_max))
         .max()
-        .map_or(0.0, |value| value.0);
+        .map_or(0.0, |v| v.0);
 
-      let pw_d1_max = algorithm_results
+      let pw_rel_mean = algorithm_results
         .iter()
-        .map(|result| OrderedFloat(result.metrics.pointwise.structural.summary.d1_max))
+        .map(|r| r.metrics.pointwise.errors.summary.rel_mean)
+        .sum::<f64>()
+        / algorithm_results.len() as f64;
+
+      let pw_rel_median = algorithm_results
+        .iter()
+        .map(|r| r.metrics.pointwise.errors.summary.rel_median)
+        .sum::<f64>()
+        / algorithm_results.len() as f64;
+
+      let pw_signed_bias_max = algorithm_results
+        .iter()
+        .map(|r| r.metrics.pointwise.errors.summary.signed_bias.abs())
+        .map(OrderedFloat)
         .max()
-        .map_or(0.0, |value| value.0);
+        .map_or(0.0, |v| v.0);
 
-      let pw_d2_max = algorithm_results
+      let pw_log_max = algorithm_results
         .iter()
-        .map(|result| OrderedFloat(result.metrics.pointwise.structural.summary.d2_max))
+        .map(|r| OrderedFloat(r.metrics.pointwise.errors.summary.log_max))
         .max()
-        .map_or(0.0, |value| value.0);
+        .map_or(0.0, |v| v.0);
 
-      let pw_cumulative_max = algorithm_results
+      let d1_max = algorithm_results
         .iter()
-        .map(|result| OrderedFloat(result.metrics.spatial.cumulative.summary.max_abs))
+        .map(|r| OrderedFloat(r.metrics.pointwise.structural.summary.d1_max))
         .max()
-        .map_or(0.0, |value| value.0);
+        .map_or(0.0, |v| v.0);
 
-      let pw_sliding_rms_max = algorithm_results
+      let d1_mean = algorithm_results
         .iter()
-        .map(|result| OrderedFloat(result.metrics.spatial.windowed.summary.sliding_rms_max))
+        .map(|r| r.metrics.pointwise.structural.summary.d1_mean)
+        .sum::<f64>()
+        / algorithm_results.len() as f64;
+
+      let d2_max = algorithm_results
+        .iter()
+        .map(|r| OrderedFloat(r.metrics.pointwise.structural.summary.d2_max))
         .max()
-        .map_or(0.0, |value| value.0);
+        .map_or(0.0, |v| v.0);
 
-      let pw_tolerance_strict_min_pct = algorithm_results
+      let d2_mean = algorithm_results
         .iter()
-        .map(|result| OrderedFloat(result.metrics.pointwise.tolerance.summary.pass_fractions[0] * 100.0))
+        .map(|r| r.metrics.pointwise.structural.summary.d2_mean)
+        .sum::<f64>()
+        / algorithm_results.len() as f64;
+
+      let symmetry_max = algorithm_results
+        .iter()
+        .map(|r| OrderedFloat(r.metrics.pointwise.structural.summary.symmetry_max))
+        .max()
+        .map_or(0.0, |v| v.0);
+
+      let monotonicity_violations_max = algorithm_results
+        .iter()
+        .map(|r| r.metrics.pointwise.structural.summary.monotonicity_violation_count)
+        .max()
+        .unwrap_or(0);
+
+      let peak_mean = algorithm_results
+        .iter()
+        .map(|r| r.metrics.spatial.regional.summary.peak_region.mean_error)
+        .sum::<f64>()
+        / algorithm_results.len() as f64;
+
+      let peak_max = algorithm_results
+        .iter()
+        .map(|r| OrderedFloat(r.metrics.spatial.regional.summary.peak_region.max_error))
+        .max()
+        .map_or(0.0, |v| v.0);
+
+      let tail_mean = algorithm_results
+        .iter()
+        .map(|r| r.metrics.spatial.regional.summary.tail_region.mean_error)
+        .sum::<f64>()
+        / algorithm_results.len() as f64;
+
+      let tail_max = algorithm_results
+        .iter()
+        .map(|r| OrderedFloat(r.metrics.spatial.regional.summary.tail_region.max_error))
+        .max()
+        .map_or(0.0, |v| v.0);
+
+      let cumulative_final = algorithm_results
+        .iter()
+        .map(|r| r.metrics.spatial.cumulative.summary.final_value.abs())
+        .map(OrderedFloat)
+        .max()
+        .map_or(0.0, |v| v.0);
+
+      let cumulative_max = algorithm_results
+        .iter()
+        .map(|r| OrderedFloat(r.metrics.spatial.cumulative.summary.max_abs))
+        .max()
+        .map_or(0.0, |v| v.0);
+
+      let sliding_rms_max = algorithm_results
+        .iter()
+        .map(|r| OrderedFloat(r.metrics.spatial.windowed.summary.sliding_rms_max))
+        .max()
+        .map_or(0.0, |v| v.0);
+
+      let sliding_max_max = algorithm_results
+        .iter()
+        .map(|r| OrderedFloat(r.metrics.spatial.windowed.summary.sliding_max_max))
+        .max()
+        .map_or(0.0, |v| v.0);
+
+      let tolerance_strict = algorithm_results
+        .iter()
+        .map(|r| OrderedFloat(r.metrics.pointwise.tolerance.summary.pass_fractions[0] * 100.0))
         .min()
-        .map_or(0.0, |value| value.0);
+        .map_or(0.0, |v| v.0);
 
-      algorithm_metrics.insert(*algorithm, (
-        pw_abs_max,
-        pw_rel_max,
-        pw_d1_max,
-        pw_d2_max,
-        pw_cumulative_max,
-        pw_sliding_rms_max,
-        pw_tolerance_strict_min_pct,
-      ));
+      let tolerance_moderate = algorithm_results
+        .iter()
+        .map(|r| OrderedFloat(r.metrics.pointwise.tolerance.summary.pass_fractions[1] * 100.0))
+        .min()
+        .map_or(0.0, |v| v.0);
+
+      let tolerance_loose = algorithm_results
+        .iter()
+        .map(|r| OrderedFloat(r.metrics.pointwise.tolerance.summary.pass_fractions[2] * 100.0))
+        .min()
+        .map_or(0.0, |v| v.0);
+
+      let support_mismatch_max = algorithm_results
+        .iter()
+        .map(|r| r.metrics.pointwise.tolerance.summary.support_mismatch_count)
+        .max()
+        .unwrap_or(0);
+
+      let metrics = vec![
+        ("test_count", format!("{}", algo_summary.test_cases_count)),
+        ("exec_time", format!("{:.1}", algo_summary.execution_time_total_ms)),
+        ("success_rate", format!("{:.1}%", algo_summary.success_rate * 100.0)),
+        ("error_count", format!("{}", algo_summary.error_failures)),
+        ("r2_min", format!("{:.4}", algo_summary.r2_min)),
+        ("r2_max", format!("{:.4}", algo_summary.r2_max)),
+        ("r2_mean", format!("{:.4}", algo_summary.r2_mean)),
+        ("correlation_mean", format!("{:.4}", correlation_mean)),
+        ("rmse_max", float_to_significant_digits(rmse_max, 3)),
+        ("mass_error_max", format!("{:.3e}", mass_error_max)),
+        ("rel_l2_error_max", format!("{:.3e}", rel_l2_error_max)),
+        ("agg_abs_max", float_to_significant_digits(algo_summary.max_abs_error_overall, 3)),
+        ("agg_abs_mean", float_to_significant_digits(agg_abs_mean, 3)),
+        ("agg_rel_max", format!("{:.3e}", algo_summary.max_rel_error_overall)),
+        ("agg_rel_mean", format!("{:.3e}", agg_rel_mean)),
+        ("pw_abs_max", float_to_significant_digits(pw_abs_max, 3)),
+        ("pw_abs_mean", float_to_significant_digits(pw_abs_mean, 3)),
+        ("pw_abs_std", float_to_significant_digits(pw_abs_std, 3)),
+        ("pw_rel_max", format!("{:.3e}", pw_rel_max)),
+        ("pw_rel_mean", format!("{:.3e}", pw_rel_mean)),
+        ("pw_rel_median", format!("{:.3e}", pw_rel_median)),
+        ("pw_signed_bias_max", float_to_significant_digits(pw_signed_bias_max, 3)),
+        ("pw_log_max", float_to_significant_digits(pw_log_max, 3)),
+        ("d1_max", float_to_significant_digits(d1_max, 3)),
+        ("d1_mean", float_to_significant_digits(d1_mean, 3)),
+        ("d2_max", float_to_significant_digits(d2_max, 3)),
+        ("d2_mean", float_to_significant_digits(d2_mean, 3)),
+        ("symmetry_max", float_to_significant_digits(symmetry_max, 3)),
+        ("monotonicity_violations", format!("{}", monotonicity_violations_max)),
+        ("peak_mean", format!("{:.3e}", peak_mean)),
+        ("peak_max", format!("{:.3e}", peak_max)),
+        ("tail_mean", format!("{:.3e}", tail_mean)),
+        ("tail_max", format!("{:.3e}", tail_max)),
+        ("cumulative_final", float_to_significant_digits(cumulative_final, 3)),
+        ("cumulative_max", float_to_significant_digits(cumulative_max, 3)),
+        ("sliding_rms_max", float_to_significant_digits(sliding_rms_max, 3)),
+        ("sliding_max_max", float_to_significant_digits(sliding_max_max, 3)),
+        ("tolerance_strict", format!("{:.1}%", tolerance_strict)),
+        ("tolerance_moderate", format!("{:.1}%", tolerance_moderate)),
+        ("tolerance_loose", format!("{:.1}%", tolerance_loose)),
+        ("support_mismatch", format!("{}", support_mismatch_max)),
+      ];
+
+      all_metrics.insert(*algorithm, metrics.into_iter().collect::<std::collections::HashMap<_, _>>());
     }
 
-    // Format values for display and calculate column widths
-    let mut formatted_values = std::collections::HashMap::new();
-    for (algorithm, (abs_max, rel_max, d1_max, d2_max, cum_max, rms_max, tolerance_pct)) in &algorithm_metrics {
-      formatted_values.insert(*algorithm, (
-        float_to_significant_digits(*abs_max, 3),
-        format!("{:.3e}", rel_max),
-        float_to_significant_digits(*d1_max, 3),
-        float_to_significant_digits(*d2_max, 3),
-        float_to_significant_digits(*cum_max, 3),
-        float_to_significant_digits(*rms_max, 3),
-        format!("{:.1}%", tolerance_pct),
-      ));
-    }
-
-    // Calculate column widths
-    let metric_col_width = "Min strict tolerance pass rate".len().max("ERROR DISTRIBUTIONS".len());
+    let metric_col_width = "Moderate tolerance pass (min%)".len();
     let mut algo_col_widths = std::collections::HashMap::new();
 
-    for algorithm in &algorithms {
-      let algo_name_width = algorithm.to_string().len();
-      let (abs_str, rel_str, d1_str, d2_str, cum_str, rms_str, tol_str) = &formatted_values[algorithm];
-      let value_widths = [abs_str.len(), rel_str.len(), d1_str.len(), d2_str.len(),
-                         cum_str.len(), rms_str.len(), tol_str.len()];
-      let max_value_width = value_widths.iter().max().unwrap();
-      algo_col_widths.insert(*algorithm, algo_name_width.max(*max_value_width));
+    for algo in &algorithms {
+      let name_w = algo.to_string().len();
+      let max_value_w = all_metrics[algo].values().map(|s| s.len()).max().unwrap_or(0);
+      algo_col_widths.insert(*algo, name_w.max(max_value_w));
     }
 
-    // Print table header
     print!("| {:^width$} |", "Metric", width = metric_col_width);
-    for algorithm in &algorithms {
-      let col_width = algo_col_widths[algorithm];
-      print!(" {:^width$} |", algorithm.to_string(), width = col_width);
+    for algo in &algorithms {
+      print!(" {:^width$} |", algo.to_string(), width = algo_col_widths[algo]);
     }
     println!();
 
-    // Print separator
     print!("|{:-^width$}|", "", width = metric_col_width + 2);
-    for algorithm in &algorithms {
-      let col_width = algo_col_widths[algorithm];
-      print!("{:-^width$}|", "", width = col_width + 2);
+    for algo in &algorithms {
+      print!("{:-^width$}|", "", width = algo_col_widths[algo] + 2);
     }
     println!();
 
-    // Empty row before category
-    print!("| {:width$} |", "", width = metric_col_width);
-    for algorithm in &algorithms {
-      let col_width = algo_col_widths[algorithm];
-      print!(" {:width$} |", "", width = col_width);
-    }
-    println!();
+    let categories = vec![
+      ("PERFORMANCE", vec![
+        ("Test count", "test_count"),
+        ("Execution time (ms)", "exec_time"),
+        ("Success rate", "success_rate"),
+        ("Error count", "error_count"),
+      ]),
+      ("QUALITY METRICS", vec![
+        ("R² min", "r2_min"),
+        ("R² max", "r2_max"),
+        ("R² mean", "r2_mean"),
+        ("Correlation (mean)", "correlation_mean"),
+        ("RMSE (max)", "rmse_max"),
+        ("Mass conservation error (max)", "mass_error_max"),
+        ("Relative L2 error (max)", "rel_l2_error_max"),
+      ]),
+      ("AGGREGATE ERRORS", vec![
+        ("Absolute max", "agg_abs_max"),
+        ("Absolute mean", "agg_abs_mean"),
+        ("Relative max", "agg_rel_max"),
+        ("Relative mean", "agg_rel_mean"),
+      ]),
+      ("POINTWISE ERRORS", vec![
+        ("Absolute max", "pw_abs_max"),
+        ("Absolute mean", "pw_abs_mean"),
+        ("Absolute std dev", "pw_abs_std"),
+        ("Relative max", "pw_rel_max"),
+        ("Relative mean", "pw_rel_mean"),
+        ("Relative median", "pw_rel_median"),
+        ("Signed bias (max)", "pw_signed_bias_max"),
+        ("Logarithmic max", "pw_log_max"),
+      ]),
+      ("STRUCTURAL", vec![
+        ("1st derivative error (max)", "d1_max"),
+        ("1st derivative error (mean)", "d1_mean"),
+        ("2nd derivative error (max)", "d2_max"),
+        ("2nd derivative error (mean)", "d2_mean"),
+        ("Symmetry residual (max)", "symmetry_max"),
+        ("Monotonicity violations (max)", "monotonicity_violations"),
+      ]),
+      ("REGIONAL", vec![
+        ("Peak region error (mean)", "peak_mean"),
+        ("Peak region error (max)", "peak_max"),
+        ("Tail region error (mean)", "tail_mean"),
+        ("Tail region error (max)", "tail_max"),
+      ]),
+      ("CUMULATIVE & WINDOWED", vec![
+        ("Cumulative error (final)", "cumulative_final"),
+        ("Cumulative error (max abs)", "cumulative_max"),
+        ("Sliding RMS error (max)", "sliding_rms_max"),
+        ("Sliding max error (max)", "sliding_max_max"),
+      ]),
+      ("TOLERANCE COMPLIANCE", vec![
+        ("Strict tolerance pass (min%)", "tolerance_strict"),
+        ("Moderate tolerance pass (min%)", "tolerance_moderate"),
+        ("Loose tolerance pass (min%)", "tolerance_loose"),
+        ("Support mismatches (max)", "support_mismatch"),
+      ]),
+    ];
 
-    // Print category separator: Pointwise Errors
-    print!("| {:<width$} |", "POINTWISE ERRORS", width = metric_col_width);
-    for algorithm in &algorithms {
-      let col_width = algo_col_widths[algorithm];
-      print!(" {:width$} |", "", width = col_width);
-    }
-    println!();
+    for (category, metrics) in categories {
+      print!("| {:width$} |", "", width = metric_col_width);
+      for algo in &algorithms {
+        print!(" {:width$} |", "", width = algo_col_widths[algo]);
+      }
+      println!();
 
-    // Max absolute error
-    print!("| {:<width$} |", "Max absolute error", width = metric_col_width);
-    for algorithm in &algorithms {
-      let col_width = algo_col_widths[algorithm];
-      let (abs_str, _, _, _, _, _, _) = &formatted_values[algorithm];
-      print!(" {:>width$} |", abs_str, width = col_width);
-    }
-    println!();
+      print!("| {category:<metric_col_width$} |");
+      for algo in &algorithms {
+        print!(" {:width$} |", "", width = algo_col_widths[algo]);
+      }
+      println!();
 
-    // Max relative error
-    print!("| {:<width$} |", "Max relative error", width = metric_col_width);
-    for algorithm in &algorithms {
-      let col_width = algo_col_widths[algorithm];
-      let (_, rel_str, _, _, _, _, _) = &formatted_values[algorithm];
-      print!(" {:>width$} |", rel_str, width = col_width);
+      for (metric_name, metric_key) in metrics {
+        print!("| {metric_name:<metric_col_width$} |");
+        for algo in &algorithms {
+          let value = &all_metrics[algo][metric_key];
+          print!(" {:>width$} |", value, width = algo_col_widths[algo]);
+        }
+        println!();
+      }
     }
-    println!();
-
-    // Empty row before category
-    print!("| {:width$} |", "", width = metric_col_width);
-    for algorithm in &algorithms {
-      let col_width = algo_col_widths[algorithm];
-      print!(" {:width$} |", "", width = col_width);
-    }
-    println!();
-
-    // Print category separator: Structural Errors
-    print!("| {:<width$} |", "STRUCTURAL ERRORS", width = metric_col_width);
-    for algorithm in &algorithms {
-      let col_width = algo_col_widths[algorithm];
-      print!(" {:width$} |", "", width = col_width);
-    }
-    println!();
-
-    // Max 1st derivative error
-    print!("| {:<width$} |", "Max 1st derivative error", width = metric_col_width);
-    for algorithm in &algorithms {
-      let col_width = algo_col_widths[algorithm];
-      let (_, _, d1_str, _, _, _, _) = &formatted_values[algorithm];
-      print!(" {:>width$} |", d1_str, width = col_width);
-    }
-    println!();
-
-    // Max 2nd derivative error
-    print!("| {:<width$} |", "Max 2nd derivative error", width = metric_col_width);
-    for algorithm in &algorithms {
-      let col_width = algo_col_widths[algorithm];
-      let (_, _, _, d2_str, _, _, _) = &formatted_values[algorithm];
-      print!(" {:>width$} |", d2_str, width = col_width);
-    }
-    println!();
-
-    // Empty row before category
-    print!("| {:width$} |", "", width = metric_col_width);
-    for algorithm in &algorithms {
-      let col_width = algo_col_widths[algorithm];
-      print!(" {:width$} |", "", width = col_width);
-    }
-    println!();
-
-    // Print category separator: Spatial Metrics
-    print!("| {:<width$} |", "SPATIAL METRICS", width = metric_col_width);
-    for algorithm in &algorithms {
-      let col_width = algo_col_widths[algorithm];
-      print!(" {:width$} |", "", width = col_width);
-    }
-    println!();
-
-    // Max cumulative error
-    print!("| {:<width$} |", "Max cumulative error", width = metric_col_width);
-    for algorithm in &algorithms {
-      let col_width = algo_col_widths[algorithm];
-      let (_, _, _, _, cum_str, _, _) = &formatted_values[algorithm];
-      print!(" {:>width$} |", cum_str, width = col_width);
-    }
-    println!();
-
-    // Max sliding RMS error
-    print!("| {:<width$} |", "Max sliding RMS error", width = metric_col_width);
-    for algorithm in &algorithms {
-      let col_width = algo_col_widths[algorithm];
-      let (_, _, _, _, _, rms_str, _) = &formatted_values[algorithm];
-      print!(" {:>width$} |", rms_str, width = col_width);
-    }
-    println!();
-
-    // Empty row before category
-    print!("| {:width$} |", "", width = metric_col_width);
-    for algorithm in &algorithms {
-      let col_width = algo_col_widths[algorithm];
-      print!(" {:width$} |", "", width = col_width);
-    }
-    println!();
-
-    // Print category separator: Error Distributions
-    print!("| {:<width$} |", "ERROR DISTRIBUTIONS", width = metric_col_width);
-    for algorithm in &algorithms {
-      let col_width = algo_col_widths[algorithm];
-      print!(" {:width$} |", "", width = col_width);
-    }
-    println!();
-
-    // Min strict tolerance pass rate
-    print!("| {:<width$} |", "Min strict tolerance pass rate", width = metric_col_width);
-    for algorithm in &algorithms {
-      let col_width = algo_col_widths[algorithm];
-      let (_, _, _, _, _, _, tol_str) = &formatted_values[algorithm];
-      print!(" {:>width$} |", tol_str, width = col_width);
-    }
-    println!();
 
     println!();
   }
