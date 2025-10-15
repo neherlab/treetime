@@ -412,7 +412,7 @@ mod tests {
     let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
     assert_eq!(
       output_nwk,
-      "(A:0.00001[&mutations=\"\"],B:0.1[&mutations=\"\"])root[&mutations=\"\"];"
+      "(A:1.0e-5[&mutations=\"\"],B:0.1[&mutations=\"\"])root[&mutations=\"\"];"
     );
     Ok(())
   }
@@ -427,7 +427,7 @@ mod tests {
     let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
     assert_eq!(
       output_nwk,
-      "(E:0.00005[&mutations=\"\"],(C:0.00003[&mutations=\"\"],D:0.1[&mutations=\"\"])internal2:0.1[&mutations=\"\"],A:0.00006[&mutations=\"\"],B:0.1[&mutations=\"\"])root[&mutations=\"\"];"
+      "(E:5.0e-5[&mutations=\"\"],(C:3.0e-5[&mutations=\"\"],D:0.1[&mutations=\"\"])internal2:0.1[&mutations=\"\"],A:6.0e-5[&mutations=\"\"],B:0.1[&mutations=\"\"])root[&mutations=\"\"];"
     );
     Ok(())
   }
