@@ -1,9 +1,9 @@
 use crate::distribution::reference::convolution::{ndarray_convolve, riemann_convolve};
 use crate::distribution::reference::convolution_test::algorithms::ConvolutionAlgorithm;
+use crate::distribution::reference::convolution_test::framework::{ConvolutionTestRunner, TestResult};
 use crate::distribution::reference::convolution_test::functions::exponential::analytical::{
   exponential_convolution, exponential_f, exponential_g,
 };
-use crate::distribution::reference::convolution_test::framework::{ConvolutionTestRunner, TestResult};
 use crate::distribution::reference::convolution_test::metrics::metrics::ConvolutionMetrics;
 use crate::distribution::reference::convolution_test::output::ToFlatResult;
 use eyre::Report;

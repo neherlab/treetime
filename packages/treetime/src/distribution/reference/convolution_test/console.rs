@@ -16,13 +16,8 @@ impl ConvolutionTestConsole {
   /// Print test framework header
   pub fn print_header(function_type: &str, test_cases_count: usize, algorithms_count: usize) {
     let total_tests = test_cases_count * algorithms_count;
-    println!(
-      "=== {} Convolution Test Framework ===",
-      function_type.to_uppercase()
-    );
-    println!(
-      "Running {test_cases_count} test cases with {algorithms_count} algorithms ({total_tests} total)\n",
-    );
+    println!("=== {} Convolution Test Framework ===", function_type.to_uppercase());
+    println!("Running {test_cases_count} test cases with {algorithms_count} algorithms ({total_tests} total)\n",);
   }
 
   /// Print progress table header
@@ -38,11 +33,7 @@ impl ConvolutionTestConsole {
   }
 
   /// Print success row in progress table
-  pub fn print_success_row<T: TestCase>(
-    result: &TestResult<T>,
-    completed_count: usize,
-    total_tests: usize,
-  ) {
+  pub fn print_success_row<T: TestCase>(result: &TestResult<T>, completed_count: usize, total_tests: usize) {
     let elapsed_ms = result.execution_time_ms;
     let r_squared = result.metrics.aggregate.domain_agreement.quality_metrics.r_squared;
     let r2_error_ppm = (1.0 - r_squared) * 1_000_000.0;
@@ -345,13 +336,28 @@ impl ConvolutionTestConsole {
 
       let metrics = vec![
         ("test_count", format!("{}", algo_summary.test_cases_count)),
-        ("exec_time", float_to_significant_digits(algo_summary.execution_time_total_ms, 3)),
+        (
+          "exec_time",
+          float_to_significant_digits(algo_summary.execution_time_total_ms, 3),
+        ),
         ("success_rate", format!("{:.1}%", algo_summary.success_rate * 100.0)),
         ("error_count", format!("{}", algo_summary.error_failures)),
-        ("r2_error_ppm_max", float_to_significant_digits((1.0 - algo_summary.r2_min) * 1_000_000.0, 3)),
-        ("r2_error_ppm_mean", float_to_significant_digits((1.0 - algo_summary.r2_mean) * 1_000_000.0, 3)),
-        ("r2_error_ppm_min", float_to_significant_digits((1.0 - algo_summary.r2_max) * 1_000_000.0, 3)),
-        ("correlation_error_ppm", float_to_significant_digits((1.0 - correlation_mean) * 1_000_000.0, 3)),
+        (
+          "r2_error_ppm_max",
+          float_to_significant_digits((1.0 - algo_summary.r2_min) * 1_000_000.0, 3),
+        ),
+        (
+          "r2_error_ppm_mean",
+          float_to_significant_digits((1.0 - algo_summary.r2_mean) * 1_000_000.0, 3),
+        ),
+        (
+          "r2_error_ppm_min",
+          float_to_significant_digits((1.0 - algo_summary.r2_max) * 1_000_000.0, 3),
+        ),
+        (
+          "correlation_error_ppm",
+          float_to_significant_digits((1.0 - correlation_mean) * 1_000_000.0, 3),
+        ),
         ("rmse_max", float_to_significant_digits(rmse_max, 3)),
         ("mass_error_max", float_to_significant_digits(mass_error_max, 3)),
         ("rel_l2_error_max", float_to_significant_digits(rel_l2_error_max, 3)),
@@ -360,7 +366,10 @@ impl ConvolutionTestConsole {
           float_to_significant_digits(algo_summary.max_abs_error_overall, 3),
         ),
         ("agg_abs_mean", float_to_significant_digits(agg_abs_mean, 3)),
-        ("agg_rel_max", float_to_significant_digits(algo_summary.max_rel_error_overall, 3)),
+        (
+          "agg_rel_max",
+          float_to_significant_digits(algo_summary.max_rel_error_overall, 3),
+        ),
         ("agg_rel_mean", float_to_significant_digits(agg_rel_mean, 3)),
         ("pw_abs_max", float_to_significant_digits(pw_abs_max, 3)),
         ("pw_abs_mean", float_to_significant_digits(pw_abs_mean, 3)),

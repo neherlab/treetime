@@ -4,7 +4,22 @@ use strum::IntoEnumIterator;
 use strum_macros::{Display, EnumIter, EnumString};
 
 /// Available convolution algorithms for testing
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, Display, EnumString, EnumIter, ValueEnum)]
+#[derive(
+  Debug,
+  Clone,
+  Copy,
+  PartialEq,
+  Eq,
+  PartialOrd,
+  Ord,
+  Hash,
+  Serialize,
+  Deserialize,
+  Display,
+  EnumString,
+  EnumIter,
+  ValueEnum,
+)]
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 #[clap(rename_all = "kebab-case")]

@@ -381,17 +381,15 @@ fn compute_efficiency_metrics(execution_time_ms: f64, num_points: usize) -> Effi
 
 fn compute_accuracy_score(domain_agreement: &DomainAgreementMetrics, _performance: &PerformanceMetrics) -> f64 {
   let r2 = domain_agreement.quality_metrics.r_squared;
-  (r2 * 100.0).max(0.0).min(100.0)
+  (r2 * 100.0).clamp(0.0, 100.0)
 }
 
 fn compute_precision_score(_domain_agreement: &DomainAgreementMetrics, performance: &PerformanceMetrics) -> f64 {
   let snr = performance.signal_to_noise_ratio;
-  if snr.is_infinite() {
-    100.0
-  } else if snr > 60.0 {
+  if snr.is_infinite() || snr > 60.0 {
     100.0
   } else if snr > 0.0 {
-    (snr / 60.0 * 100.0).max(0.0).min(100.0)
+    (snr / 60.0 * 100.0).clamp(0.0, 100.0)
   } else {
     0.0
   }

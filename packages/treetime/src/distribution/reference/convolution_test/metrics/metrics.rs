@@ -1,5 +1,7 @@
 use crate::distribution::reference::convolution_test::metrics::aggregate::AggregateMetrics;
-use crate::distribution::reference::convolution_test::metrics::distribution::{DistributionConfig, DistributionMetrics};
+use crate::distribution::reference::convolution_test::metrics::distribution::{
+  DistributionConfig, DistributionMetrics,
+};
 use crate::distribution::reference::convolution_test::metrics::pointwise::{PointwiseConfig, PointwiseMetrics};
 use crate::distribution::reference::convolution_test::metrics::spatial::{SpatialConfig, SpatialMetrics};
 use crate::make_error;

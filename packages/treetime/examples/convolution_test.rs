@@ -7,10 +7,10 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use strum::IntoEnumIterator;
 use strum_macros::{Display, EnumIter};
-use treetime::distribution::reference::convolution_test::functions::exponential::test_cases::ExponentialTestCase;
 use treetime::distribution::reference::convolution_test::framework::{
   ConvolutionTestRunner, TestCase, TestResult, TestRunOutcome,
 };
+use treetime::distribution::reference::convolution_test::functions::exponential::test_cases::ExponentialTestCase;
 use treetime::distribution::reference::convolution_test::functions::gaussian::test_cases::GaussianTestCase;
 use treetime::distribution::reference::convolution_test::{
   algorithms::ConvolutionAlgorithm,
