@@ -456,79 +456,240 @@ impl<T: TestCase, R: ConvolutionTestRunner<T>> GenericConvolutionTestFramework<T
       return;
     }
 
-    println!("Pointwise Metrics Across All Tests:");
+    println!("Pointwise Metrics by Algorithm:");
 
-    let pw_abs_max_overall = successes
-      .iter()
-      .map(|result| OrderedFloat(result.metrics.pointwise.errors.summary.abs_max))
-      .max()
-      .map_or(0.0, |value| value.0);
+    // Group results by algorithm
+    let grouped_by_algorithm = successes
+      .into_iter()
+      .into_group_map_by(|result| result.algorithm);
 
-    let pw_rel_max_overall = successes
-      .iter()
-      .map(|result| OrderedFloat(result.metrics.pointwise.errors.summary.rel_max))
-      .max()
-      .map_or(0.0, |value| value.0);
+    let algorithms: Vec<_> = grouped_by_algorithm.keys().sorted().copied().collect();
 
-    let pw_d1_max_overall = successes
-      .iter()
-      .map(|result| OrderedFloat(result.metrics.pointwise.structural.summary.d1_max))
-      .max()
-      .map_or(0.0, |value| value.0);
+    // Collect metrics for each algorithm
+    let mut algorithm_metrics = std::collections::HashMap::new();
+    for (algorithm, algorithm_results) in &grouped_by_algorithm {
+      let pw_abs_max = algorithm_results
+        .iter()
+        .map(|result| OrderedFloat(result.metrics.pointwise.errors.summary.abs_max))
+        .max()
+        .map_or(0.0, |value| value.0);
 
-    let pw_d2_max_overall = successes
-      .iter()
-      .map(|result| OrderedFloat(result.metrics.pointwise.structural.summary.d2_max))
-      .max()
-      .map_or(0.0, |value| value.0);
+      let pw_rel_max = algorithm_results
+        .iter()
+        .map(|result| OrderedFloat(result.metrics.pointwise.errors.summary.rel_max))
+        .max()
+        .map_or(0.0, |value| value.0);
 
-    let pw_cumulative_max_overall = successes
-      .iter()
-      .map(|result| OrderedFloat(result.metrics.spatial.cumulative.summary.max_abs))
-      .max()
-      .map_or(0.0, |value| value.0);
+      let pw_d1_max = algorithm_results
+        .iter()
+        .map(|result| OrderedFloat(result.metrics.pointwise.structural.summary.d1_max))
+        .max()
+        .map_or(0.0, |value| value.0);
 
-    let pw_sliding_rms_max_overall = successes
-      .iter()
-      .map(|result| OrderedFloat(result.metrics.spatial.windowed.summary.sliding_rms_max))
-      .max()
-      .map_or(0.0, |value| value.0);
+      let pw_d2_max = algorithm_results
+        .iter()
+        .map(|result| OrderedFloat(result.metrics.pointwise.structural.summary.d2_max))
+        .max()
+        .map_or(0.0, |value| value.0);
 
-    let pw_tolerance_strict_min_pct = successes
-      .iter()
-      .map(|result| OrderedFloat(result.metrics.pointwise.tolerance.summary.pass_fractions[0] * 100.0))
-      .min()
-      .map_or(0.0, |value| value.0);
+      let pw_cumulative_max = algorithm_results
+        .iter()
+        .map(|result| OrderedFloat(result.metrics.spatial.cumulative.summary.max_abs))
+        .max()
+        .map_or(0.0, |value| value.0);
 
-    println!("  Pointwise Errors:");
-    println!(
-      "    Max absolute error across all tests: {}",
-      float_to_significant_digits(pw_abs_max_overall, 3)
-    );
-    println!("    Max relative error across all tests: {pw_rel_max_overall:.3e}");
+      let pw_sliding_rms_max = algorithm_results
+        .iter()
+        .map(|result| OrderedFloat(result.metrics.spatial.windowed.summary.sliding_rms_max))
+        .max()
+        .map_or(0.0, |value| value.0);
 
-    println!("  Structural Errors:");
-    println!(
-      "    Max 1st derivative error: {}",
-      float_to_significant_digits(pw_d1_max_overall, 3)
-    );
-    println!(
-      "    Max 2nd derivative error: {}",
-      float_to_significant_digits(pw_d2_max_overall, 3)
-    );
+      let pw_tolerance_strict_min_pct = algorithm_results
+        .iter()
+        .map(|result| OrderedFloat(result.metrics.pointwise.tolerance.summary.pass_fractions[0] * 100.0))
+        .min()
+        .map_or(0.0, |value| value.0);
 
-    println!("  Spatial Metrics:");
-    println!(
-      "    Max cumulative error: {}",
-      float_to_significant_digits(pw_cumulative_max_overall, 3)
-    );
-    println!(
-      "    Max sliding RMS error: {}",
-      float_to_significant_digits(pw_sliding_rms_max_overall, 3)
-    );
+      algorithm_metrics.insert(*algorithm, (
+        pw_abs_max,
+        pw_rel_max,
+        pw_d1_max,
+        pw_d2_max,
+        pw_cumulative_max,
+        pw_sliding_rms_max,
+        pw_tolerance_strict_min_pct,
+      ));
+    }
 
-    println!("  Error Distributions:");
-    println!("    Min strict tolerance pass rate: {pw_tolerance_strict_min_pct:.1}%");
+    // Format values for display and calculate column widths
+    let mut formatted_values = std::collections::HashMap::new();
+    for (algorithm, (abs_max, rel_max, d1_max, d2_max, cum_max, rms_max, tolerance_pct)) in &algorithm_metrics {
+      formatted_values.insert(*algorithm, (
+        float_to_significant_digits(*abs_max, 3),
+        format!("{:.3e}", rel_max),
+        float_to_significant_digits(*d1_max, 3),
+        float_to_significant_digits(*d2_max, 3),
+        float_to_significant_digits(*cum_max, 3),
+        float_to_significant_digits(*rms_max, 3),
+        format!("{:.1}%", tolerance_pct),
+      ));
+    }
+
+    // Calculate column widths
+    let metric_col_width = "Min strict tolerance pass rate".len().max("ERROR DISTRIBUTIONS".len());
+    let mut algo_col_widths = std::collections::HashMap::new();
+
+    for algorithm in &algorithms {
+      let algo_name_width = algorithm.to_string().len();
+      let (abs_str, rel_str, d1_str, d2_str, cum_str, rms_str, tol_str) = &formatted_values[algorithm];
+      let value_widths = [abs_str.len(), rel_str.len(), d1_str.len(), d2_str.len(),
+                         cum_str.len(), rms_str.len(), tol_str.len()];
+      let max_value_width = value_widths.iter().max().unwrap();
+      algo_col_widths.insert(*algorithm, algo_name_width.max(*max_value_width));
+    }
+
+    // Print table header
+    print!("| {:^width$} |", "Metric", width = metric_col_width);
+    for algorithm in &algorithms {
+      let col_width = algo_col_widths[algorithm];
+      print!(" {:^width$} |", algorithm.to_string(), width = col_width);
+    }
+    println!();
+
+    // Print separator
+    print!("|{:-^width$}|", "", width = metric_col_width + 2);
+    for algorithm in &algorithms {
+      let col_width = algo_col_widths[algorithm];
+      print!("{:-^width$}|", "", width = col_width + 2);
+    }
+    println!();
+
+    // Empty row before category
+    print!("| {:width$} |", "", width = metric_col_width);
+    for algorithm in &algorithms {
+      let col_width = algo_col_widths[algorithm];
+      print!(" {:width$} |", "", width = col_width);
+    }
+    println!();
+
+    // Print category separator: Pointwise Errors
+    print!("| {:<width$} |", "POINTWISE ERRORS", width = metric_col_width);
+    for algorithm in &algorithms {
+      let col_width = algo_col_widths[algorithm];
+      print!(" {:width$} |", "", width = col_width);
+    }
+    println!();
+
+    // Max absolute error
+    print!("| {:<width$} |", "Max absolute error", width = metric_col_width);
+    for algorithm in &algorithms {
+      let col_width = algo_col_widths[algorithm];
+      let (abs_str, _, _, _, _, _, _) = &formatted_values[algorithm];
+      print!(" {:>width$} |", abs_str, width = col_width);
+    }
+    println!();
+
+    // Max relative error
+    print!("| {:<width$} |", "Max relative error", width = metric_col_width);
+    for algorithm in &algorithms {
+      let col_width = algo_col_widths[algorithm];
+      let (_, rel_str, _, _, _, _, _) = &formatted_values[algorithm];
+      print!(" {:>width$} |", rel_str, width = col_width);
+    }
+    println!();
+
+    // Empty row before category
+    print!("| {:width$} |", "", width = metric_col_width);
+    for algorithm in &algorithms {
+      let col_width = algo_col_widths[algorithm];
+      print!(" {:width$} |", "", width = col_width);
+    }
+    println!();
+
+    // Print category separator: Structural Errors
+    print!("| {:<width$} |", "STRUCTURAL ERRORS", width = metric_col_width);
+    for algorithm in &algorithms {
+      let col_width = algo_col_widths[algorithm];
+      print!(" {:width$} |", "", width = col_width);
+    }
+    println!();
+
+    // Max 1st derivative error
+    print!("| {:<width$} |", "Max 1st derivative error", width = metric_col_width);
+    for algorithm in &algorithms {
+      let col_width = algo_col_widths[algorithm];
+      let (_, _, d1_str, _, _, _, _) = &formatted_values[algorithm];
+      print!(" {:>width$} |", d1_str, width = col_width);
+    }
+    println!();
+
+    // Max 2nd derivative error
+    print!("| {:<width$} |", "Max 2nd derivative error", width = metric_col_width);
+    for algorithm in &algorithms {
+      let col_width = algo_col_widths[algorithm];
+      let (_, _, _, d2_str, _, _, _) = &formatted_values[algorithm];
+      print!(" {:>width$} |", d2_str, width = col_width);
+    }
+    println!();
+
+    // Empty row before category
+    print!("| {:width$} |", "", width = metric_col_width);
+    for algorithm in &algorithms {
+      let col_width = algo_col_widths[algorithm];
+      print!(" {:width$} |", "", width = col_width);
+    }
+    println!();
+
+    // Print category separator: Spatial Metrics
+    print!("| {:<width$} |", "SPATIAL METRICS", width = metric_col_width);
+    for algorithm in &algorithms {
+      let col_width = algo_col_widths[algorithm];
+      print!(" {:width$} |", "", width = col_width);
+    }
+    println!();
+
+    // Max cumulative error
+    print!("| {:<width$} |", "Max cumulative error", width = metric_col_width);
+    for algorithm in &algorithms {
+      let col_width = algo_col_widths[algorithm];
+      let (_, _, _, _, cum_str, _, _) = &formatted_values[algorithm];
+      print!(" {:>width$} |", cum_str, width = col_width);
+    }
+    println!();
+
+    // Max sliding RMS error
+    print!("| {:<width$} |", "Max sliding RMS error", width = metric_col_width);
+    for algorithm in &algorithms {
+      let col_width = algo_col_widths[algorithm];
+      let (_, _, _, _, _, rms_str, _) = &formatted_values[algorithm];
+      print!(" {:>width$} |", rms_str, width = col_width);
+    }
+    println!();
+
+    // Empty row before category
+    print!("| {:width$} |", "", width = metric_col_width);
+    for algorithm in &algorithms {
+      let col_width = algo_col_widths[algorithm];
+      print!(" {:width$} |", "", width = col_width);
+    }
+    println!();
+
+    // Print category separator: Error Distributions
+    print!("| {:<width$} |", "ERROR DISTRIBUTIONS", width = metric_col_width);
+    for algorithm in &algorithms {
+      let col_width = algo_col_widths[algorithm];
+      print!(" {:width$} |", "", width = col_width);
+    }
+    println!();
+
+    // Min strict tolerance pass rate
+    print!("| {:<width$} |", "Min strict tolerance pass rate", width = metric_col_width);
+    for algorithm in &algorithms {
+      let col_width = algo_col_widths[algorithm];
+      let (_, _, _, _, _, _, tol_str) = &formatted_values[algorithm];
+      print!(" {:>width$} |", tol_str, width = col_width);
+    }
+    println!();
 
     println!();
   }
