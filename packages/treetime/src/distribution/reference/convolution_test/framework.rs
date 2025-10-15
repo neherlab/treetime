@@ -2,6 +2,7 @@ use crate::distribution::reference::convolution_test::metrics::metrics::Convolut
 use crate::io::json::{JsonPretty, json_write_file, json_write_str};
 use crate::io::serde::{array1_as_vec, array1_from_vec};
 use crate::utils::float_fmt::float_to_significant_digits;
+use crate::utils::iterator::mean_by_key::MeanByKey;
 use eyre::Report;
 use itertools::Itertools;
 use ndarray::Array1;
@@ -434,9 +435,7 @@ impl<T: TestCase, R: ConvolutionTestRunner<T>> GenericConvolutionTestFramework<T
 
     println!("Comprehensive Metrics by Algorithm:");
 
-    let grouped_by_algorithm = successes
-      .into_iter()
-      .into_group_map_by(|result| result.algorithm);
+    let grouped_by_algorithm = successes.into_iter().into_group_map_by(|result| result.algorithm);
 
     let algorithms: Vec<_> = grouped_by_algorithm.keys().sorted().copied().collect();
 
@@ -449,48 +448,41 @@ impl<T: TestCase, R: ConvolutionTestRunner<T>> GenericConvolutionTestFramework<T
         .find(|s| s.algorithm == *algorithm)
         .unwrap();
 
-      let correlation_mean = algorithm_results
+      let correlation_mean: f64 = algorithm_results
         .iter()
-        .map(|r| r.metrics.aggregate.domain_agreement.quality_metrics.correlation)
-        .sum::<f64>()
-        / algorithm_results.len() as f64;
+        .mean_by_key(|r| r.metrics.aggregate.domain_agreement.quality_metrics.correlation);
 
       let rmse_max = algorithm_results
         .iter()
-        .map(|r| OrderedFloat(r.metrics.aggregate.domain_agreement.quality_metrics.rmse))
-        .max()
-        .map_or(0.0, |v| v.0);
+        .max_by_key(|r| OrderedFloat(r.metrics.aggregate.domain_agreement.quality_metrics.rmse))
+        .map_or(0.0, |r| r.metrics.aggregate.domain_agreement.quality_metrics.rmse);
 
       let mass_error_max = algorithm_results
         .iter()
-        .map(|r| r.metrics.aggregate.domain_agreement.quality_metrics.mass_error.abs())
-        .map(OrderedFloat)
-        .max()
-        .map_or(0.0, |v| v.0);
+        .max_by_key(|r| OrderedFloat(r.metrics.aggregate.domain_agreement.quality_metrics.mass_error.abs()))
+        .map_or(0.0, |r| {
+          r.metrics.aggregate.domain_agreement.quality_metrics.mass_error.abs()
+        });
 
       let rel_l2_error_max = algorithm_results
         .iter()
-        .map(|r| OrderedFloat(r.metrics.aggregate.domain_agreement.quality_metrics.rel_l2_error))
-        .max()
-        .map_or(0.0, |v| v.0);
+        .max_by_key(|r| OrderedFloat(r.metrics.aggregate.domain_agreement.quality_metrics.rel_l2_error))
+        .map_or(0.0, |r| {
+          r.metrics.aggregate.domain_agreement.quality_metrics.rel_l2_error
+        });
 
-      let agg_abs_mean = algorithm_results
+      let agg_abs_mean: f64 = algorithm_results
         .iter()
-        .map(|r| r.metrics.aggregate.domain_agreement.abs_error_stats.mean)
-        .sum::<f64>()
-        / algorithm_results.len() as f64;
+        .mean_by_key(|r| r.metrics.aggregate.domain_agreement.abs_error_stats.mean);
 
-      let agg_rel_mean = algorithm_results
+      let agg_rel_mean: f64 = algorithm_results
         .iter()
-        .map(|r| r.metrics.aggregate.domain_agreement.rel_error_stats.mean)
-        .sum::<f64>()
-        / algorithm_results.len() as f64;
+        .mean_by_key(|r| r.metrics.aggregate.domain_agreement.rel_error_stats.mean);
 
       let pw_abs_max = algorithm_results
         .iter()
-        .map(|r| OrderedFloat(r.metrics.pointwise.errors.summary.abs_max))
-        .max()
-        .map_or(0.0, |v| v.0);
+        .max_by_key(|r| OrderedFloat(r.metrics.pointwise.errors.summary.abs_max))
+        .map_or(0.0, |r| r.metrics.pointwise.errors.summary.abs_max);
 
       let pw_abs_mean = algorithm_results
         .iter()
@@ -500,15 +492,13 @@ impl<T: TestCase, R: ConvolutionTestRunner<T>> GenericConvolutionTestFramework<T
 
       let pw_abs_std = algorithm_results
         .iter()
-        .map(|r| OrderedFloat(r.metrics.pointwise.errors.summary.abs_std))
-        .max()
-        .map_or(0.0, |v| v.0);
+        .max_by_key(|r| OrderedFloat(r.metrics.pointwise.errors.summary.abs_std))
+        .map_or(0.0, |r| r.metrics.pointwise.errors.summary.abs_std);
 
       let pw_rel_max = algorithm_results
         .iter()
-        .map(|r| OrderedFloat(r.metrics.pointwise.errors.summary.rel_max))
-        .max()
-        .map_or(0.0, |v| v.0);
+        .max_by_key(|r| OrderedFloat(r.metrics.pointwise.errors.summary.rel_max))
+        .map_or(0.0, |r| r.metrics.pointwise.errors.summary.rel_max);
 
       let pw_rel_mean = algorithm_results
         .iter()
@@ -524,22 +514,18 @@ impl<T: TestCase, R: ConvolutionTestRunner<T>> GenericConvolutionTestFramework<T
 
       let pw_signed_bias_max = algorithm_results
         .iter()
-        .map(|r| r.metrics.pointwise.errors.summary.signed_bias.abs())
-        .map(OrderedFloat)
-        .max()
-        .map_or(0.0, |v| v.0);
+        .max_by_key(|r| OrderedFloat(r.metrics.pointwise.errors.summary.signed_bias.abs()))
+        .map_or(0.0, |r| r.metrics.pointwise.errors.summary.signed_bias.abs());
 
       let pw_log_max = algorithm_results
         .iter()
-        .map(|r| OrderedFloat(r.metrics.pointwise.errors.summary.log_max))
-        .max()
-        .map_or(0.0, |v| v.0);
+        .max_by_key(|r| OrderedFloat(r.metrics.pointwise.errors.summary.log_max))
+        .map_or(0.0, |r| r.metrics.pointwise.errors.summary.log_max);
 
       let d1_max = algorithm_results
         .iter()
-        .map(|r| OrderedFloat(r.metrics.pointwise.structural.summary.d1_max))
-        .max()
-        .map_or(0.0, |v| v.0);
+        .max_by_key(|r| OrderedFloat(r.metrics.pointwise.structural.summary.d1_max))
+        .map_or(0.0, |r| r.metrics.pointwise.structural.summary.d1_max);
 
       let d1_mean = algorithm_results
         .iter()
@@ -549,9 +535,8 @@ impl<T: TestCase, R: ConvolutionTestRunner<T>> GenericConvolutionTestFramework<T
 
       let d2_max = algorithm_results
         .iter()
-        .map(|r| OrderedFloat(r.metrics.pointwise.structural.summary.d2_max))
-        .max()
-        .map_or(0.0, |v| v.0);
+        .max_by_key(|r| OrderedFloat(r.metrics.pointwise.structural.summary.d2_max))
+        .map_or(0.0, |r| r.metrics.pointwise.structural.summary.d2_max);
 
       let d2_mean = algorithm_results
         .iter()
@@ -561,9 +546,8 @@ impl<T: TestCase, R: ConvolutionTestRunner<T>> GenericConvolutionTestFramework<T
 
       let symmetry_max = algorithm_results
         .iter()
-        .map(|r| OrderedFloat(r.metrics.pointwise.structural.summary.symmetry_max))
-        .max()
-        .map_or(0.0, |v| v.0);
+        .max_by_key(|r| OrderedFloat(r.metrics.pointwise.structural.summary.symmetry_max))
+        .map_or(0.0, |r| r.metrics.pointwise.structural.summary.symmetry_max);
 
       let monotonicity_violations_max = algorithm_results
         .iter()
@@ -579,9 +563,8 @@ impl<T: TestCase, R: ConvolutionTestRunner<T>> GenericConvolutionTestFramework<T
 
       let peak_max = algorithm_results
         .iter()
-        .map(|r| OrderedFloat(r.metrics.spatial.regional.summary.peak_region.max_error))
-        .max()
-        .map_or(0.0, |v| v.0);
+        .max_by_key(|r| OrderedFloat(r.metrics.spatial.regional.summary.peak_region.max_error))
+        .map_or(0.0, |r| r.metrics.spatial.regional.summary.peak_region.max_error);
 
       let tail_mean = algorithm_results
         .iter()
@@ -591,52 +574,43 @@ impl<T: TestCase, R: ConvolutionTestRunner<T>> GenericConvolutionTestFramework<T
 
       let tail_max = algorithm_results
         .iter()
-        .map(|r| OrderedFloat(r.metrics.spatial.regional.summary.tail_region.max_error))
-        .max()
-        .map_or(0.0, |v| v.0);
+        .max_by_key(|r| OrderedFloat(r.metrics.spatial.regional.summary.tail_region.max_error))
+        .map_or(0.0, |r| r.metrics.spatial.regional.summary.tail_region.max_error);
 
       let cumulative_final = algorithm_results
         .iter()
-        .map(|r| r.metrics.spatial.cumulative.summary.final_value.abs())
-        .map(OrderedFloat)
-        .max()
-        .map_or(0.0, |v| v.0);
+        .max_by_key(|r| OrderedFloat(r.metrics.spatial.cumulative.summary.final_value.abs()))
+        .map_or(0.0, |r| r.metrics.spatial.cumulative.summary.final_value.abs());
 
       let cumulative_max = algorithm_results
         .iter()
-        .map(|r| OrderedFloat(r.metrics.spatial.cumulative.summary.max_abs))
-        .max()
-        .map_or(0.0, |v| v.0);
+        .max_by_key(|r| OrderedFloat(r.metrics.spatial.cumulative.summary.max_abs))
+        .map_or(0.0, |r| r.metrics.spatial.cumulative.summary.max_abs);
 
       let sliding_rms_max = algorithm_results
         .iter()
-        .map(|r| OrderedFloat(r.metrics.spatial.windowed.summary.sliding_rms_max))
-        .max()
-        .map_or(0.0, |v| v.0);
+        .max_by_key(|r| OrderedFloat(r.metrics.spatial.windowed.summary.sliding_rms_max))
+        .map_or(0.0, |r| r.metrics.spatial.windowed.summary.sliding_rms_max);
 
       let sliding_max_max = algorithm_results
         .iter()
-        .map(|r| OrderedFloat(r.metrics.spatial.windowed.summary.sliding_max_max))
-        .max()
-        .map_or(0.0, |v| v.0);
+        .max_by_key(|r| OrderedFloat(r.metrics.spatial.windowed.summary.sliding_max_max))
+        .map_or(0.0, |r| r.metrics.spatial.windowed.summary.sliding_max_max);
 
       let tolerance_strict = algorithm_results
         .iter()
-        .map(|r| OrderedFloat(r.metrics.pointwise.tolerance.summary.pass_fractions[0] * 100.0))
-        .min()
-        .map_or(0.0, |v| v.0);
+        .min_by_key(|r| OrderedFloat(r.metrics.pointwise.tolerance.summary.pass_fractions[0] * 100.0))
+        .map_or(0.0, |r| r.metrics.pointwise.tolerance.summary.pass_fractions[0] * 100.0);
 
       let tolerance_moderate = algorithm_results
         .iter()
-        .map(|r| OrderedFloat(r.metrics.pointwise.tolerance.summary.pass_fractions[1] * 100.0))
-        .min()
-        .map_or(0.0, |v| v.0);
+        .min_by_key(|r| OrderedFloat(r.metrics.pointwise.tolerance.summary.pass_fractions[1] * 100.0))
+        .map_or(0.0, |r| r.metrics.pointwise.tolerance.summary.pass_fractions[1] * 100.0);
 
       let tolerance_loose = algorithm_results
         .iter()
-        .map(|r| OrderedFloat(r.metrics.pointwise.tolerance.summary.pass_fractions[2] * 100.0))
-        .min()
-        .map_or(0.0, |v| v.0);
+        .min_by_key(|r| OrderedFloat(r.metrics.pointwise.tolerance.summary.pass_fractions[2] * 100.0))
+        .map_or(0.0, |r| r.metrics.pointwise.tolerance.summary.pass_fractions[2] * 100.0);
 
       let support_mismatch_max = algorithm_results
         .iter()
@@ -652,20 +626,23 @@ impl<T: TestCase, R: ConvolutionTestRunner<T>> GenericConvolutionTestFramework<T
         ("r2_min", format!("{:.4}", algo_summary.r2_min)),
         ("r2_max", format!("{:.4}", algo_summary.r2_max)),
         ("r2_mean", format!("{:.4}", algo_summary.r2_mean)),
-        ("correlation_mean", format!("{:.4}", correlation_mean)),
+        ("correlation_mean", format!("{correlation_mean:.4}")),
         ("rmse_max", float_to_significant_digits(rmse_max, 3)),
-        ("mass_error_max", format!("{:.3e}", mass_error_max)),
-        ("rel_l2_error_max", format!("{:.3e}", rel_l2_error_max)),
-        ("agg_abs_max", float_to_significant_digits(algo_summary.max_abs_error_overall, 3)),
+        ("mass_error_max", format!("{mass_error_max:.3e}")),
+        ("rel_l2_error_max", format!("{rel_l2_error_max:.3e}")),
+        (
+          "agg_abs_max",
+          float_to_significant_digits(algo_summary.max_abs_error_overall, 3),
+        ),
         ("agg_abs_mean", float_to_significant_digits(agg_abs_mean, 3)),
         ("agg_rel_max", format!("{:.3e}", algo_summary.max_rel_error_overall)),
-        ("agg_rel_mean", format!("{:.3e}", agg_rel_mean)),
+        ("agg_rel_mean", format!("{agg_rel_mean:.3e}")),
         ("pw_abs_max", float_to_significant_digits(pw_abs_max, 3)),
         ("pw_abs_mean", float_to_significant_digits(pw_abs_mean, 3)),
         ("pw_abs_std", float_to_significant_digits(pw_abs_std, 3)),
-        ("pw_rel_max", format!("{:.3e}", pw_rel_max)),
-        ("pw_rel_mean", format!("{:.3e}", pw_rel_mean)),
-        ("pw_rel_median", format!("{:.3e}", pw_rel_median)),
+        ("pw_rel_max", format!("{pw_rel_max:.3e}")),
+        ("pw_rel_mean", format!("{pw_rel_mean:.3e}")),
+        ("pw_rel_median", format!("{pw_rel_median:.3e}")),
         ("pw_signed_bias_max", float_to_significant_digits(pw_signed_bias_max, 3)),
         ("pw_log_max", float_to_significant_digits(pw_log_max, 3)),
         ("d1_max", float_to_significant_digits(d1_max, 3)),
@@ -673,22 +650,25 @@ impl<T: TestCase, R: ConvolutionTestRunner<T>> GenericConvolutionTestFramework<T
         ("d2_max", float_to_significant_digits(d2_max, 3)),
         ("d2_mean", float_to_significant_digits(d2_mean, 3)),
         ("symmetry_max", float_to_significant_digits(symmetry_max, 3)),
-        ("monotonicity_violations", format!("{}", monotonicity_violations_max)),
-        ("peak_mean", format!("{:.3e}", peak_mean)),
-        ("peak_max", format!("{:.3e}", peak_max)),
-        ("tail_mean", format!("{:.3e}", tail_mean)),
-        ("tail_max", format!("{:.3e}", tail_max)),
+        ("monotonicity_violations", format!("{monotonicity_violations_max}")),
+        ("peak_mean", format!("{peak_mean:.3e}")),
+        ("peak_max", format!("{peak_max:.3e}")),
+        ("tail_mean", format!("{tail_mean:.3e}")),
+        ("tail_max", format!("{tail_max:.3e}")),
         ("cumulative_final", float_to_significant_digits(cumulative_final, 3)),
         ("cumulative_max", float_to_significant_digits(cumulative_max, 3)),
         ("sliding_rms_max", float_to_significant_digits(sliding_rms_max, 3)),
         ("sliding_max_max", float_to_significant_digits(sliding_max_max, 3)),
-        ("tolerance_strict", format!("{:.1}%", tolerance_strict)),
-        ("tolerance_moderate", format!("{:.1}%", tolerance_moderate)),
-        ("tolerance_loose", format!("{:.1}%", tolerance_loose)),
-        ("support_mismatch", format!("{}", support_mismatch_max)),
+        ("tolerance_strict", format!("{tolerance_strict:.1}%")),
+        ("tolerance_moderate", format!("{tolerance_moderate:.1}%")),
+        ("tolerance_loose", format!("{tolerance_loose:.1}%")),
+        ("support_mismatch", format!("{support_mismatch_max}")),
       ];
 
-      all_metrics.insert(*algorithm, metrics.into_iter().collect::<std::collections::HashMap<_, _>>());
+      all_metrics.insert(
+        *algorithm,
+        metrics.into_iter().collect::<std::collections::HashMap<_, _>>(),
+      );
     }
 
     let metric_col_width = "Moderate tolerance pass (min%)".len();
@@ -713,63 +693,87 @@ impl<T: TestCase, R: ConvolutionTestRunner<T>> GenericConvolutionTestFramework<T
     println!();
 
     let categories = vec![
-      ("PERFORMANCE", vec![
-        ("Test count", "test_count"),
-        ("Execution time (ms)", "exec_time"),
-        ("Success rate", "success_rate"),
-        ("Error count", "error_count"),
-      ]),
-      ("QUALITY METRICS", vec![
-        ("R² min", "r2_min"),
-        ("R² max", "r2_max"),
-        ("R² mean", "r2_mean"),
-        ("Correlation (mean)", "correlation_mean"),
-        ("RMSE (max)", "rmse_max"),
-        ("Mass conservation error (max)", "mass_error_max"),
-        ("Relative L2 error (max)", "rel_l2_error_max"),
-      ]),
-      ("AGGREGATE ERRORS", vec![
-        ("Absolute max", "agg_abs_max"),
-        ("Absolute mean", "agg_abs_mean"),
-        ("Relative max", "agg_rel_max"),
-        ("Relative mean", "agg_rel_mean"),
-      ]),
-      ("POINTWISE ERRORS", vec![
-        ("Absolute max", "pw_abs_max"),
-        ("Absolute mean", "pw_abs_mean"),
-        ("Absolute std dev", "pw_abs_std"),
-        ("Relative max", "pw_rel_max"),
-        ("Relative mean", "pw_rel_mean"),
-        ("Relative median", "pw_rel_median"),
-        ("Signed bias (max)", "pw_signed_bias_max"),
-        ("Logarithmic max", "pw_log_max"),
-      ]),
-      ("STRUCTURAL", vec![
-        ("1st derivative error (max)", "d1_max"),
-        ("1st derivative error (mean)", "d1_mean"),
-        ("2nd derivative error (max)", "d2_max"),
-        ("2nd derivative error (mean)", "d2_mean"),
-        ("Symmetry residual (max)", "symmetry_max"),
-        ("Monotonicity violations (max)", "monotonicity_violations"),
-      ]),
-      ("REGIONAL", vec![
-        ("Peak region error (mean)", "peak_mean"),
-        ("Peak region error (max)", "peak_max"),
-        ("Tail region error (mean)", "tail_mean"),
-        ("Tail region error (max)", "tail_max"),
-      ]),
-      ("CUMULATIVE & WINDOWED", vec![
-        ("Cumulative error (final)", "cumulative_final"),
-        ("Cumulative error (max abs)", "cumulative_max"),
-        ("Sliding RMS error (max)", "sliding_rms_max"),
-        ("Sliding max error (max)", "sliding_max_max"),
-      ]),
-      ("TOLERANCE COMPLIANCE", vec![
-        ("Strict tolerance pass (min%)", "tolerance_strict"),
-        ("Moderate tolerance pass (min%)", "tolerance_moderate"),
-        ("Loose tolerance pass (min%)", "tolerance_loose"),
-        ("Support mismatches (max)", "support_mismatch"),
-      ]),
+      (
+        "PERFORMANCE",
+        vec![
+          ("Test count", "test_count"),
+          ("Execution time (ms)", "exec_time"),
+          ("Success rate", "success_rate"),
+          ("Error count", "error_count"),
+        ],
+      ),
+      (
+        "QUALITY METRICS",
+        vec![
+          ("R² min", "r2_min"),
+          ("R² max", "r2_max"),
+          ("R² mean", "r2_mean"),
+          ("Correlation (mean)", "correlation_mean"),
+          ("RMSE (max)", "rmse_max"),
+          ("Mass conservation error (max)", "mass_error_max"),
+          ("Relative L2 error (max)", "rel_l2_error_max"),
+        ],
+      ),
+      (
+        "AGGREGATE ERRORS",
+        vec![
+          ("Absolute max", "agg_abs_max"),
+          ("Absolute mean", "agg_abs_mean"),
+          ("Relative max", "agg_rel_max"),
+          ("Relative mean", "agg_rel_mean"),
+        ],
+      ),
+      (
+        "POINTWISE ERRORS",
+        vec![
+          ("Absolute max", "pw_abs_max"),
+          ("Absolute mean", "pw_abs_mean"),
+          ("Absolute std dev", "pw_abs_std"),
+          ("Relative max", "pw_rel_max"),
+          ("Relative mean", "pw_rel_mean"),
+          ("Relative median", "pw_rel_median"),
+          ("Signed bias (max)", "pw_signed_bias_max"),
+          ("Logarithmic max", "pw_log_max"),
+        ],
+      ),
+      (
+        "STRUCTURAL",
+        vec![
+          ("1st derivative error (max)", "d1_max"),
+          ("1st derivative error (mean)", "d1_mean"),
+          ("2nd derivative error (max)", "d2_max"),
+          ("2nd derivative error (mean)", "d2_mean"),
+          ("Symmetry residual (max)", "symmetry_max"),
+          ("Monotonicity violations (max)", "monotonicity_violations"),
+        ],
+      ),
+      (
+        "REGIONAL",
+        vec![
+          ("Peak region error (mean)", "peak_mean"),
+          ("Peak region error (max)", "peak_max"),
+          ("Tail region error (mean)", "tail_mean"),
+          ("Tail region error (max)", "tail_max"),
+        ],
+      ),
+      (
+        "CUMULATIVE & WINDOWED",
+        vec![
+          ("Cumulative error (final)", "cumulative_final"),
+          ("Cumulative error (max abs)", "cumulative_max"),
+          ("Sliding RMS error (max)", "sliding_rms_max"),
+          ("Sliding max error (max)", "sliding_max_max"),
+        ],
+      ),
+      (
+        "TOLERANCE COMPLIANCE",
+        vec![
+          ("Strict tolerance pass (min%)", "tolerance_strict"),
+          ("Moderate tolerance pass (min%)", "tolerance_moderate"),
+          ("Loose tolerance pass (min%)", "tolerance_loose"),
+          ("Support mismatches (max)", "support_mismatch"),
+        ],
+      ),
     ];
 
     for (category, metrics) in categories {
