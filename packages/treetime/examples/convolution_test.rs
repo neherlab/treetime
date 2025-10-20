@@ -79,8 +79,8 @@ fn main() -> Result<(), Report> {
   if args.list_cases {
     for function_type in &args.functions {
       match function_type {
-        FunctionType::Gaussian => GaussianConvInput::new().list_test_cases(),
-        FunctionType::Exponential => ExponentialConvInput::new().list_test_cases(),
+        FunctionType::Gaussian => GaussianConvInput::new_all().list_test_cases(),
+        FunctionType::Exponential => ExponentialConvInput::new_all().list_test_cases(),
       }
     }
     return Ok(());
@@ -104,14 +104,12 @@ fn dispatch_function_test<I>(args: &Args) -> Result<(), Report>
 where
   I: ConvInput,
 {
-  let input = match args.test_cases.as_str() {
-    "all" => I::new(),
-    test_cases_str => {
-      let filtered = I::new().filter_test_cases(test_cases_str)?;
-      I::with_test_cases(filtered)
-    },
+  let filter = if args.test_cases == "all" {
+    None
+  } else {
+    Some(args.test_cases.as_str())
   };
-
+  let input = I::new(filter)?;
   let function_type_name = input.function_type();
   let function_output_dir = format!("{}/{}", args.output_dir, function_type_name);
   let runner = TraitBasedTestRunner::new(input);
