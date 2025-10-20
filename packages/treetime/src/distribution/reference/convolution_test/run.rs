@@ -20,7 +20,7 @@ use std::fs;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Instant;
 
-use crate::distribution::reference::convolution_test::algo_impls::{RiemannAlgo, NdarrayAlgo};
+use crate::distribution::reference::convolution_test::algo_impls::{NdarrayAlgo, RiemannAlgo};
 
 #[derive(Parser, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
@@ -159,12 +159,8 @@ where
   let start_time = Instant::now();
 
   let algo: Box<dyn ConvAlgo> = match algorithm {
-    ConvolutionAlgorithm::Riemann => {
-      Box::new(RiemannAlgo)
-    },
-    ConvolutionAlgorithm::Ndarray => {
-      Box::new(NdarrayAlgo)
-    },
+    ConvolutionAlgorithm::Riemann => Box::new(RiemannAlgo),
+    ConvolutionAlgorithm::Ndarray => Box::new(NdarrayAlgo),
   };
 
   match input.run_test(test_case, algorithm, algo) {

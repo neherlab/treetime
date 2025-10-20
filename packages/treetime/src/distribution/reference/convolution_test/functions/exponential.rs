@@ -9,8 +9,6 @@ use serde::{Deserialize, Serialize};
 #[derive(Default)]
 pub struct ExponentialConvInput;
 
-
-
 impl ConvInput for ExponentialConvInput {
   type TestCase = ExponentialTestCase;
 

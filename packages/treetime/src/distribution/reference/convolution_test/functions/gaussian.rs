@@ -10,8 +10,6 @@ use std::f64::consts::PI;
 #[derive(Default)]
 pub struct GaussianConvInput;
 
-
-
 impl ConvInput for GaussianConvInput {
   type TestCase = GaussianTestCase;
 
