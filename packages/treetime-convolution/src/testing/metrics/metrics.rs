@@ -7,6 +7,9 @@ use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 use treetime_utils::make_error;
 
+#[cfg(test)]
+use approx::assert_abs_diff_eq;
+
 /// Comprehensive convolution algorithm metrics
 ///
 /// This structure cleanly separates different types of analysis:
@@ -109,6 +112,6 @@ mod tests {
     let metrics = ConvolutionMetrics::new_with_config(&x, &y, &y, 50.0, &config).unwrap();
 
     assert_eq!(metrics.distribution.histograms.abs_error_histogram.bin_counts.len(), 20);
-    // TODO: Test quality grade when PerformanceMetrics, QualityAssessment, EfficiencyMetrics are added
+    assert_abs_diff_eq!(metrics.aggregate.execution_time_ms, 50.0, epsilon = 1e-12);
   }
 }
