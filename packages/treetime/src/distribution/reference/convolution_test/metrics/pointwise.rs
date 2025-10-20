@@ -150,7 +150,7 @@ pub struct ToleranceSummary {
   pub support_mismatch_count: usize,
 }
 
-// Implementation functions (extracted from pointwise_metrics.rs)
+// Implementation functions
 fn validate_inputs(x: &Array1<f64>, actual: &Array1<f64>, expected: &Array1<f64>) -> eyre::Result<()> {
   let n = x.len();
   if n < 2 {
