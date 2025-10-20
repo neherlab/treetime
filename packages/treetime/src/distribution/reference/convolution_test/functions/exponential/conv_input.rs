@@ -10,20 +10,18 @@ pub struct ExponentialConvInput {
   test_cases: Vec<ExponentialTestCase>,
 }
 
-impl ExponentialConvInput {
-  pub fn new() -> Self {
+impl ConvInput for ExponentialConvInput {
+  type TestCase = ExponentialTestCase;
+
+  fn new() -> Self {
     Self {
       test_cases: create_exponential_test_cases(),
     }
   }
 
-  pub fn with_test_cases(test_cases: Vec<ExponentialTestCase>) -> Self {
+  fn with_test_cases(test_cases: Vec<ExponentialTestCase>) -> Self {
     Self { test_cases }
   }
-}
-
-impl ConvInput for ExponentialConvInput {
-  type TestCase = ExponentialTestCase;
 
   fn create_f(&self, test_case: &Self::TestCase) -> Result<GridFn, Report> {
     exponential_f(test_case.a, test_case.f_domain, test_case.dx)

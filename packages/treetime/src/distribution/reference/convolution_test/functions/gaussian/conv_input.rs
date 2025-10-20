@@ -10,20 +10,18 @@ pub struct GaussianConvInput {
   test_cases: Vec<GaussianTestCase>,
 }
 
-impl GaussianConvInput {
-  pub fn new() -> Self {
+impl ConvInput for GaussianConvInput {
+  type TestCase = GaussianTestCase;
+
+  fn new() -> Self {
     Self {
       test_cases: create_gaussian_test_cases(),
     }
   }
 
-  pub fn with_test_cases(test_cases: Vec<GaussianTestCase>) -> Self {
+  fn with_test_cases(test_cases: Vec<GaussianTestCase>) -> Self {
     Self { test_cases }
   }
-}
-
-impl ConvInput for GaussianConvInput {
-  type TestCase = GaussianTestCase;
 
   fn create_f(&self, test_case: &Self::TestCase) -> Result<GridFn, Report> {
     gaussian_f(test_case.sigma_f, test_case.f_domain, test_case.dx)

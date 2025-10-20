@@ -16,7 +16,9 @@ use treetime::distribution::reference::convolution_test::functions::gaussian::co
 use treetime::distribution::reference::convolution_test::functions::gaussian::flat_result::GaussianFlatResult;
 use treetime::distribution::reference::convolution_test::traits::ConvInput;
 use treetime::distribution::reference::convolution_test::{
-  algorithms::ConvolutionAlgorithm, framework::GenericConvolutionTestFramework, output::{TestOutputWriter, ToFlatResult},
+  algorithms::ConvolutionAlgorithm,
+  framework::GenericConvolutionTestFramework,
+  output::{TestOutputWriter, ToFlatResult},
 };
 
 #[derive(Parser, Clone, Serialize, Deserialize)]
@@ -85,20 +87,10 @@ fn main() -> Result<(), Report> {
   for function_type in &args.functions {
     match function_type {
       FunctionType::Gaussian => {
-        dispatch_function_test::<_, GaussianFlatResult>(
-          &args,
-          *function_type,
-          GaussianConvInput::new,
-          GaussianConvInput::with_test_cases,
-        )?;
+        dispatch_function_test::<GaussianConvInput, GaussianFlatResult>(&args)?;
       },
       FunctionType::Exponential => {
-        dispatch_function_test::<_, ExponentialFlatResult>(
-          &args,
-          *function_type,
-          ExponentialConvInput::new,
-          ExponentialConvInput::with_test_cases,
-        )?;
+        dispatch_function_test::<ExponentialConvInput, ExponentialFlatResult>(&args)?;
       },
     }
   }
@@ -106,49 +98,39 @@ fn main() -> Result<(), Report> {
   Ok(())
 }
 
-fn dispatch_function_test<I, F>(
-  args: &Args,
-  function_type: FunctionType,
-  create_input: impl FnOnce() -> I,
-  create_filtered_input: impl FnOnce(Vec<I::TestCase>) -> I,
-) -> Result<(), Report>
+fn dispatch_function_test<I, F>(args: &Args) -> Result<(), Report>
 where
   I: ConvInput,
   TestResult<I::TestCase>: ToFlatResult<FlatResult = F>,
   F: Serialize,
 {
-  let function_output_dir = format!("{}/{}", args.output_dir, function_type.to_string().to_lowercase());
-  let function_args = Args {
-    functions: vec![function_type],
-    output_dir: function_output_dir,
-    algorithms: args.algorithms.clone(),
-    test_cases: args.test_cases.clone(),
-    verbose: args.verbose,
-    list_cases: false,
-  };
-
-  let input = if args.test_cases == "all" {
-    create_input()
-  } else {
-    let temp_input = create_input();
-    let filtered = temp_input.filter_test_cases(&args.test_cases)?;
-    create_filtered_input(filtered)
+  let input = match args.test_cases.as_str() {
+    "all" => I::new(),
+    test_cases_str => {
+      let filtered = I::new().filter_test_cases(test_cases_str)?;
+      I::with_test_cases(filtered)
+    },
   };
 
   let function_type_name = input.function_type();
+  let function_output_dir = format!("{}/{}", args.output_dir, function_type_name);
   let runner = TraitBasedTestRunner::new(input);
-  run_convolution_tests(&function_args, runner, function_type_name)
+  run_convolution_tests(args, runner, function_type_name, &function_output_dir)
 }
 
-fn run_convolution_tests<R, T, F>(args: &Args, runner: R, function_type_name: &str) -> Result<(), Report>
+fn run_convolution_tests<R, T, F>(
+  args: &Args,
+  runner: R,
+  function_type_name: &str,
+  output_dir: &str,
+) -> Result<(), Report>
 where
   R: ConvolutionTestRunner<T>,
   T: TestCase,
   TestResult<T>: ToFlatResult<FlatResult = F>,
   F: Serialize,
 {
-  // Create framework
-  let mut framework = GenericConvolutionTestFramework::new(runner, args.output_dir.clone());
+  let mut framework = GenericConvolutionTestFramework::new(runner, output_dir.to_owned());
   framework.set_algorithms(args.algorithms.clone());
 
   if args.verbose {
@@ -156,13 +138,12 @@ where
     println!("  Function type: {function_type_name}");
     println!("  Algorithms: {:?}", framework.algorithms);
     println!("  Test cases: {} selected", framework.runner.test_cases().len());
-    println!("  Output directory: {}\n", args.output_dir);
+    println!("  Output directory: {output_dir}\n");
   }
 
-  // Run all tests
   let outcomes = framework.run_all_tests()?;
 
-  generate_plot_outputs(args, &outcomes)?;
+  generate_plot_outputs(output_dir, &outcomes)?;
 
   // Generate summary
   let summary = framework.generate_summary(&outcomes);
@@ -181,16 +162,16 @@ where
       TestRunOutcome::Failure(_) => None,
     })
     .collect();
-  let output_writer = TestOutputWriter::new(args.output_dir.clone());
+  let output_writer = TestOutputWriter::new(output_dir.to_owned());
   output_writer.save_results_tsv(&flat_results)?;
 
   println!("{function_type_name} convolution test framework completed successfully!");
-  println!("Check {} for detailed results.", args.output_dir);
+  println!("Check {output_dir} for detailed results.");
 
   Ok(())
 }
 
-fn generate_plot_outputs<T>(args: &Args, outcomes: &[TestRunOutcome<T>]) -> Result<(), Report>
+fn generate_plot_outputs<T>(output_dir: &str, outcomes: &[TestRunOutcome<T>]) -> Result<(), Report>
 where
   T: TestCase,
 {
@@ -198,25 +179,21 @@ where
     if let TestRunOutcome::Success(result) = outcome {
       let algorithm_dir = format!(
         "{}/{}/{}",
-        args.output_dir,
+        output_dir,
         result.test_case.name(),
         result.algorithm.to_string().to_lowercase()
       );
       fs::create_dir_all(&algorithm_dir)?;
 
-      // Existing plots
       plot_functions_and_convolution(result, &algorithm_dir)?;
       plot_absolute_error(result, &algorithm_dir)?;
       plot_tolerance_metrics(result, &algorithm_dir)?;
-
-      // New pointwise metric plots
       plot_pointwise_error_profiles(result, &algorithm_dir)?;
       plot_derivative_errors(result, &algorithm_dir)?;
       plot_spatial_profiles(result, &algorithm_dir)?;
       plot_error_histogram(result, &algorithm_dir)?;
 
-      // Export pointwise arrays to TSV
-      let output_writer = TestOutputWriter::new(args.output_dir.clone());
+      let output_writer = TestOutputWriter::new(output_dir.to_owned());
       output_writer.save_pointwise_arrays(result, &algorithm_dir)?;
       output_writer.save_error_histogram(result, &algorithm_dir)?;
     }

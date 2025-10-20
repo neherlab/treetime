@@ -4,9 +4,15 @@ use eyre::Report;
 use ndarray::Array1;
 
 /// Trait for function-specific convolution input generators
-pub trait ConvInput: Send + Sync {
+pub trait ConvInput: Send + Sync + Sized {
   /// Test case type for this function
   type TestCase: TestCase;
+
+  /// Create new input with all test cases
+  fn new() -> Self;
+
+  /// Create new input with specific test cases
+  fn with_test_cases(test_cases: Vec<Self::TestCase>) -> Self;
 
   /// Create input function f with test case parameters
   fn create_f(&self, test_case: &Self::TestCase) -> Result<GridFn, Report>;
