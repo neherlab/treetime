@@ -1,6 +1,8 @@
 use crate::distribution::reference::convolution_test::algorithms::ConvolutionAlgorithm;
 use crate::distribution::reference::convolution_test::framework::framework::ConvolutionTestFramework;
-use crate::distribution::reference::convolution_test::functions::functions::{FunctionType, get_function};
+use crate::distribution::reference::convolution_test::functions::exponential::ExponentialConvInput;
+use crate::distribution::reference::convolution_test::functions::functions::FunctionType;
+use crate::distribution::reference::convolution_test::functions::gaussian::GaussianConvInput;
 use crate::distribution::reference::convolution_test::plots::plots::generate_plot_outputs;
 use crate::distribution::reference::convolution_test::traits::ConvInput;
 use clap::Parser;
@@ -43,16 +45,24 @@ pub struct Args {
 pub fn run_convolution_tests() -> Result<(), Report> {
   let args = Args::parse();
   for function_type in &args.functions {
-    let input = get_function(function_type, &args.test_cases)?;
-    run_convolution_tests_impl(input, &args)?;
+    match function_type {
+      FunctionType::Gaussian => {
+        run_convolution_tests_impl::<GaussianConvInput>(&args)?;
+      },
+      FunctionType::Exponential => {
+        run_convolution_tests_impl::<ExponentialConvInput>(&args)?;
+      },
+    }
   }
   Ok(())
 }
 
-fn run_convolution_tests_impl<I>(input: I, args: &Args) -> Result<(), Report>
+fn run_convolution_tests_impl<I>(args: &Args) -> Result<(), Report>
 where
   I: ConvInput,
 {
+  let input = I::new(&args.test_cases)?;
+
   if args.list_cases {
     input.list_test_cases();
     return Ok(());

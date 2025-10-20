@@ -24,9 +24,8 @@ impl FunctionType {
   }
 }
 
-pub fn get_function(function_type: &FunctionType, test_cases: &str) -> Result<impl ConvInput, Report> {
-  match function_type {
-    FunctionType::Gaussian => GaussianConvInput::new(test_cases),
-    FunctionType::Exponential => ExponentialConvInput::new(test_cases),
-  }
-}
+// Callers should match on FunctionType directly:
+// match function_type {
+//   FunctionType::Gaussian => GaussianConvInput::new(test_cases)?,
+//   FunctionType::Exponential => ExponentialConvInput::new(test_cases)?,
+// }

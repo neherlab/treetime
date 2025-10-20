@@ -14,6 +14,11 @@ pub trait ConvInput: Send + Sync {
   /// Test case type for this function
   type TestCase: TestCase;
 
+  /// Create new instance with test case filter
+  fn new(test_cases: &str) -> Result<Self, Report>
+  where
+    Self: Sized;
+
   /// Get function type name
   fn function_type(&self) -> &'static str;
 
