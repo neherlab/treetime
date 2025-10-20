@@ -19,9 +19,3 @@ impl FunctionType {
     Self::iter().collect()
   }
 }
-
-// Callers should match on FunctionType directly:
-// match function_type {
-//   FunctionType::Gaussian => GaussianConvInput::default(),
-//   FunctionType::Exponential => ExponentialConvInput::default(),
-// }

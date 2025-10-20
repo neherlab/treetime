@@ -1,4 +1,4 @@
-pub mod convolution;
+pub mod algos;
 pub mod grid_fn;
 pub mod testing;
 

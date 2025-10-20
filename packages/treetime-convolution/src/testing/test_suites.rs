@@ -18,9 +18,3 @@ pub trait TestSuite: Send + Sync {
 
   fn create_test_cases(&self) -> Vec<Self::TestCase>;
 }
-
-pub trait Algo: Send + Sync {
-  fn convolve(&self, f: &GridFn, g: &GridFn, x_grid: &Array1<f64>) -> Result<GridFn, Report>;
-
-  fn name(&self) -> &'static str;
-}

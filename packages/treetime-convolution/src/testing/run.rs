@@ -1,4 +1,7 @@
-use crate::testing::algorithms::ConvolutionAlgorithm;
+use crate::algos::algo_trait::Algo;
+use crate::algos::algos::ConvolutionAlgorithm;
+use crate::algos::ndarray_conv::ndarray_conv::NdarrayAlgo;
+use crate::algos::riemann::riemann::RiemannAlgo;
 use crate::testing::console::console::ConvolutionTestConsole;
 use crate::testing::framework::results::{TestFailure, TestResult, TestRunOutcome};
 use crate::testing::framework::summary::AlgorithmSummary;
@@ -9,7 +12,7 @@ use crate::testing::functions::functions::FunctionType;
 use crate::testing::functions::gaussian::GaussianConvInput;
 use crate::testing::metrics::metrics::ConvolutionMetrics;
 use crate::testing::plots::plots::generate_plot_outputs;
-use crate::testing::traits::{Algo, TestSuite};
+use crate::testing::test_suites::TestSuite;
 use clap::Parser;
 use eyre::Report;
 use itertools::Itertools;
@@ -22,8 +25,6 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Instant;
 use treetime_io::json::{JsonPretty, json_write_file};
 use treetime_utils::make_error;
-
-use crate::testing::algo_impls::{NdarrayAlgo, RiemannAlgo};
 
 #[derive(Parser, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]

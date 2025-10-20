@@ -1,4 +1,4 @@
-use crate::testing::algorithms::ConvolutionAlgorithm;
+use crate::algos::algos::ConvolutionAlgorithm;
 use crate::testing::framework::results::{TestFailure, TestResult, TestRunOutcome};
 use crate::testing::framework::summary::TestSummary;
 use crate::testing::framework::test_case::TestCase;
