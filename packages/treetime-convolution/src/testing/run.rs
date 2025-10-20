@@ -270,16 +270,6 @@ fn run_test<S: TestSuite>(
   })
 }
 
-fn collect_failures<T: TestCase>(outcomes: &[TestRunOutcome<T>]) -> Vec<&TestFailure<T>> {
-  outcomes
-    .iter()
-    .filter_map(|outcome| match outcome {
-      TestRunOutcome::Failure(failure) => Some(failure),
-      TestRunOutcome::Success(_) => None,
-    })
-    .collect()
-}
-
 fn generate_summary<S>(
   suite: &S,
   outcomes: &[TestRunOutcome<S::TestCase>],
@@ -312,6 +302,16 @@ fn collect_successes<T: TestCase>(outcomes: &[TestRunOutcome<T>]) -> Vec<&TestRe
     .filter_map(|outcome| match outcome {
       TestRunOutcome::Success(result) => Some(result),
       TestRunOutcome::Failure(_) => None,
+    })
+    .collect()
+}
+
+fn collect_failures<T: TestCase>(outcomes: &[TestRunOutcome<T>]) -> Vec<&TestFailure<T>> {
+  outcomes
+    .iter()
+    .filter_map(|outcome| match outcome {
+      TestRunOutcome::Failure(failure) => Some(failure),
+      TestRunOutcome::Success(_) => None,
     })
     .collect()
 }
