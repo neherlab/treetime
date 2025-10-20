@@ -79,19 +79,21 @@ where
   }
 
   let output_dir = format!("{}/{}", args.output_dir, suite.test_suite_name());
-  let test_cases = filter_test_cases(&suite, Some(args.test_cases.as_str()))?;
-  let test_cases = filter_by_slowness(&test_cases, args.slowness);
+  let all_test_cases = suite.create_test_cases();
+  let test_cases_after_name_filter = filter_test_cases(&suite, Some(args.test_cases.as_str()))?;
+  let selected_test_cases = filter_by_slowness(&test_cases_after_name_filter, args.slowness);
 
-  if args.verbose {
-    println!("Test Configuration:");
-    println!("  Test suite: {}", suite.test_suite_name());
-    println!("  Algorithms: {:?}", args.algorithms);
-    println!("  Test cases: {} selected", test_cases.len());
-    println!("  Slowness threshold: {}", args.slowness);
-    println!("  Output directory: {output_dir}\n");
-  }
+  ConvolutionTestConsole::print_test_configuration(
+    suite.test_suite_name(),
+    &args.algorithms,
+    all_test_cases.len(),
+    selected_test_cases.len(),
+    args.test_cases != "all",
+    args.slowness,
+    &output_dir,
+  );
 
-  let outcomes = run_all_tests(&suite, &test_cases, &args.algorithms)?;
+  let outcomes = run_all_tests(&suite, &all_test_cases, &selected_test_cases, &args.algorithms)?;
 
   generate_plot_outputs(&output_dir, &outcomes)?;
 
@@ -159,24 +161,40 @@ fn filter_by_slowness<T: TestCase>(test_cases: &[T], threshold: f64) -> Vec<T> {
 
 fn run_all_tests<S>(
   suite: &S,
-  test_cases: &[S::TestCase],
+  all_test_cases: &[S::TestCase],
+  selected_test_cases: &[S::TestCase],
   algorithms: &[ConvolutionAlgorithm],
 ) -> Result<Vec<TestRunOutcome<S::TestCase>>, Report>
 where
   S: TestSuite,
 {
-  let total_tests = test_cases.len() * algorithms.len();
+  let total_tests = selected_test_cases.len() * algorithms.len();
   let completed = AtomicUsize::new(0);
 
-  ConvolutionTestConsole::print_header(suite.test_suite_name(), test_cases.len(), algorithms.len());
+  ConvolutionTestConsole::print_header(suite.test_suite_name(), selected_test_cases.len(), algorithms.len());
 
   ConvolutionTestConsole::print_progress_table_header();
 
-  let test_combinations: Vec<_> = test_cases.iter().cartesian_product(algorithms).collect();
+  let selected_names: BTreeSet<_> = selected_test_cases.iter().map(|tc| tc.name()).collect();
+
+  let test_combinations: Vec<_> = all_test_cases
+    .iter()
+    .flat_map(|test_case| {
+      let is_selected = selected_names.contains(test_case.name());
+      algorithms.iter().map(move |algorithm| (test_case, *algorithm, is_selected))
+    })
+    .collect();
 
   let outcomes = test_combinations
     .into_par_iter()
-    .map(|(test_case, &algorithm)| execute_single_test(suite, test_case, algorithm, &completed, total_tests))
+    .filter_map(|(test_case, algorithm, is_selected)| {
+      if is_selected {
+        Some(execute_single_test(suite, test_case, algorithm, &completed, total_tests))
+      } else {
+        ConvolutionTestConsole::print_skipped_row(test_case, algorithm);
+        None
+      }
+    })
     .collect::<Vec<_>>();
 
   let failures = collect_failures(&outcomes);

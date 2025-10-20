@@ -13,6 +13,34 @@ use treetime_utils::iterator::mean_by_key::MeanByKey;
 pub struct ConvolutionTestConsole;
 
 impl ConvolutionTestConsole {
+  /// Print test configuration
+  pub fn print_test_configuration(
+    test_suite_name: &str,
+    algorithms: &[ConvolutionAlgorithm],
+    total_available: usize,
+    selected_count: usize,
+    name_filter_applied: bool,
+    slowness_threshold: f64,
+    output_dir: &str,
+  ) {
+    println!("=== {} TEST CONFIGURATION ===", test_suite_name.to_uppercase());
+    println!("Test suite: {test_suite_name}");
+    println!("Algorithms: {}", algorithms.iter().map(|a| a.to_string()).collect::<Vec<_>>().join(", "));
+    println!("Test cases: running {selected_count}/{total_available} test cases");
+    if name_filter_applied {
+      println!("  (--test-cases name filter applied)");
+    }
+    if slowness_threshold < 1.0 {
+      println!("  (--slowness threshold: {slowness_threshold})");
+    }
+    let skipped = total_available - selected_count;
+    if skipped > 0 {
+      println!("⚠️ {skipped} test cases will be skipped");
+    }
+    println!("Output directory: {output_dir}");
+    println!();
+  }
+
   /// Print test framework header
   pub fn print_header(test_suite_name: &str, test_cases_count: usize, algorithms_count: usize) {
     let total_tests = test_cases_count * algorithms_count;
@@ -42,7 +70,7 @@ impl ConvolutionTestConsole {
     let correlation_error_ppm = (1.0 - correlation) * 1_000_000.0;
     let progress = format!("[{completed_count}/{total_tests}]");
     println!(
-      "| {:<10} | {:^1} | {:<16} | {:<30} | {:>8.1} | {:>10} | {:>8} | {:>8} |",
+      "| {:>10} | {:^1} | {:<16} | {:<30} | {:>8.1} | {:>10} | {:>8} | {:>8} |",
       progress,
       "✅",
       format!("{}", result.algorithm),
@@ -64,7 +92,7 @@ impl ConvolutionTestConsole {
   ) {
     let progress = format!("[{completed_count}/{total_tests}]");
     println!(
-      "| {:<10} | {:^1} | {:<16} | {:<30} | {:>8.1} | {:>10} | {:>8} | {:>8} |",
+      "| {:>10} | {:^1} | {:<16} | {:<30} | {:>8.1} | {:>10} | {:>8} | {:>8} |",
       progress,
       "❌",
       format!("{algorithm}"),
@@ -73,6 +101,21 @@ impl ConvolutionTestConsole {
       "FAILED",
       "FAILED",
       "FAILED"
+    );
+  }
+
+  /// Print skipped test row in progress table
+  pub fn print_skipped_row<T: TestCase>(test_case: &T, algorithm: ConvolutionAlgorithm) {
+    println!(
+      "| {:>10} | {:^1} | {:<16} | {:<30} | {:>8} | {:>10} | {:>8} | {:>8} |",
+      "skipped",
+      "💤",
+      format!("{algorithm}"),
+      test_case.name(),
+      "-",
+      "-",
+      "-",
+      "-"
     );
   }
 
