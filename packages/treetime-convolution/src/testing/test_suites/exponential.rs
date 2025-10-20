@@ -158,7 +158,7 @@ impl TestSuite for ExponentialTestSuite {
           .to_owned(),
         stress_type: "performance/memory, summation order".to_owned(),
         analytical_caution: "none".to_owned(),
-        slowness: 0.5,
+        slowness: 0.9,
         a: 1.0,
         b: 0.8,
         input_grid_domain: (0.0, 20.0),
