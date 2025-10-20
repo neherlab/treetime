@@ -1,5 +1,6 @@
 use crate::algos::algos::Algo;
 use eyre::Report;
+use itertools::izip;
 use ndarray::Array1;
 use ndarray_interp::interp1d::Interp1DBuilder;
 
@@ -10,20 +11,18 @@ pub fn convolve_riemann(
   g_values: &Array1<f64>,
   output_grid: &Array1<f64>,
 ) -> Result<Array1<f64>, Report> {
-  let f_interp = Interp1DBuilder::new(f_values.clone()).x(input_grid.clone()).build()?;
-  let g_interp = Interp1DBuilder::new(g_values.clone()).x(input_grid.clone()).build()?;
+  let g_interp = Interp1DBuilder::new(g_values.view()).x(input_grid.view()).build()?;
 
   let ds = input_grid[1] - input_grid[0];
 
   let mut result = Array1::zeros(output_grid.len());
-  for (i, &x_eval) in output_grid.iter().enumerate() {
+  for (output_idx, &x_eval) in output_grid.iter().enumerate() {
     let mut sum = 0.0;
-    for &s in input_grid {
-      let f_at_s = f_interp.interp_scalar(s).unwrap_or(0.0);
-      let g_at_x_minus_s = g_interp.interp_scalar(x_eval - s).unwrap_or(0.0);
-      sum += f_at_s * g_at_x_minus_s;
+    for (&x_input, &f_at_x_input) in izip!(input_grid, f_values) {
+      let g_at_shifted = g_interp.interp_scalar(x_eval - x_input).unwrap_or(0.0);
+      sum += f_at_x_input * g_at_shifted;
     }
-    result[i] = sum * ds;
+    result[output_idx] = sum * ds;
   }
 
   Ok(result)
