@@ -1,6 +1,36 @@
 use crate::testing::framework::test_case::TestCase;
+use crate::testing::functions::exponential::ExponentialConvInput;
+use crate::testing::functions::gaussian::GaussianConvInput;
+use crate::testing::run::{Args, run_convolution_tests_impl};
+use clap::ValueEnum;
 use eyre::Report;
 use ndarray::Array1;
+use serde::{Deserialize, Serialize};
+use strum::IntoEnumIterator;
+use strum_macros::{Display, EnumIter};
+
+#[derive(Copy, Clone, Debug, Default, Display, ValueEnum, Serialize, Deserialize, EnumIter)]
+#[serde(rename_all = "kebab-case")]
+#[clap(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
+pub enum FunctionType {
+  #[default]
+  Gaussian,
+  Exponential,
+}
+
+impl FunctionType {
+  pub fn all() -> Vec<Self> {
+    Self::iter().collect()
+  }
+
+  pub fn run_tests(&self, args: &Args) -> Result<(), Report> {
+    match self {
+      Self::Gaussian => run_convolution_tests_impl::<GaussianConvInput>(args),
+      Self::Exponential => run_convolution_tests_impl::<ExponentialConvInput>(args),
+    }
+  }
+}
 
 pub trait TestSuite: Send + Sync {
   type TestCase: TestCase;

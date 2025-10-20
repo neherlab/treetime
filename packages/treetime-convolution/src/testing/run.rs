@@ -5,11 +5,9 @@ use crate::testing::framework::results::{TestFailure, TestResult, TestRunOutcome
 use crate::testing::framework::summary::AlgorithmSummary;
 use crate::testing::framework::summary::TestSummary;
 use crate::testing::framework::test_case::TestCase;
-use crate::testing::functions::exponential::ExponentialConvInput;
-use crate::testing::functions::functions::FunctionType;
-use crate::testing::functions::gaussian::GaussianConvInput;
 use crate::testing::metrics::metrics::ConvolutionMetrics;
 use crate::testing::plots::plots::generate_plot_outputs;
+use crate::testing::test_suites::FunctionType;
 use crate::testing::test_suites::TestSuite;
 use clap::Parser;
 use eyre::Report;
@@ -57,28 +55,15 @@ pub struct Args {
   list_cases: bool,
 }
 
-#[derive(Serialize)]
-struct FullResults<'a, T: TestCase> {
-  summary: &'a TestSummary,
-  outcomes: &'a [TestRunOutcome<T>],
-}
-
 pub fn run_convolution_tests() -> Result<(), Report> {
   let args = Args::parse();
   for function_type in &args.functions {
-    match function_type {
-      FunctionType::Gaussian => {
-        run_convolution_tests_impl::<GaussianConvInput>(&args)?;
-      },
-      FunctionType::Exponential => {
-        run_convolution_tests_impl::<ExponentialConvInput>(&args)?;
-      },
-    }
+    function_type.run_tests(&args)?;
   }
   Ok(())
 }
 
-fn run_convolution_tests_impl<S>(args: &Args) -> Result<(), Report>
+pub fn run_convolution_tests_impl<S>(args: &Args) -> Result<(), Report>
 where
   S: TestSuite + Default,
 {
@@ -350,15 +335,21 @@ fn assess_overall_performance(algorithm_summaries: &[AlgorithmSummary]) -> Strin
   }
 }
 
+#[derive(Serialize)]
+struct ResultsJson<'a, T: TestCase> {
+  summary: &'a TestSummary,
+  outcomes: &'a [TestRunOutcome<T>],
+}
+
 fn save_results_json<T>(output_dir: &str, outcomes: &[TestRunOutcome<T>], summary: &TestSummary) -> Result<(), Report>
 where
   T: Serialize + TestCase,
 {
   fs::create_dir_all(output_dir)?;
 
-  let full_results = FullResults { summary, outcomes };
+  let results = ResultsJson { summary, outcomes };
   let json_path = format!("{output_dir}/convolution_test_results.json");
-  json_write_file(&json_path, &full_results, JsonPretty(true))?;
+  json_write_file(&json_path, &results, JsonPretty(true))?;
   println!("Saved detailed JSON results to: {json_path}");
   Ok(())
 }
