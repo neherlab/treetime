@@ -1,4 +1,4 @@
-use crate::io::file::open_file_or_stdin;
+use crate::file::open_file_or_stdin;
 use eyre::{Report, WrapErr, eyre};
 use std::ffi::{OsStr, OsString};
 use std::io::{BufReader, Read};

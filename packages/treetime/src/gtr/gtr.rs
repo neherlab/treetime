@@ -1,10 +1,10 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::utils::ndarray::{clamp_min, outer};
 use eyre::Report;
 use ndarray::prelude::*;
 use ndarray_linalg::Eigh;
 use ndarray_linalg::UPLO::Lower;
 use num_traits::abs;
+use treetime_utils::ndarray::{clamp_min, outer};
 
 pub fn avg_transition(W: &Array2<f64>, pi: &Array1<f64>) -> Result<f64, Report> {
   Ok(pi.dot(W).dot(pi))

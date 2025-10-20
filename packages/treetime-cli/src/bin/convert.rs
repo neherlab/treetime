@@ -2,11 +2,11 @@ use clap::Parser;
 use color_eyre::{Section, SectionExt};
 use ctor::ctor;
 use eyre::Report;
-use treetime::io::compression::remove_compression_ext;
 use treetime::make_report;
-use treetime::utils::global_init::{global_init, setup_logger};
 use treetime_cli::convert::args::{Args, guess_tree_format_from_filename};
 use treetime_cli::convert::convert::{ConverterGraph, converter_read_file, converter_write_file};
+use treetime_utils::compression::remove_compression_ext;
+use treetime_utils::global_init::{global_init, setup_logger};
 
 #[ctor]
 fn init() {

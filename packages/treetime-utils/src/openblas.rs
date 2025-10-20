@@ -5,8 +5,8 @@
   clippy::undocumented_unsafe_blocks
 )]
 
-use crate::io::json::{JsonPretty, json_write_str};
 use serde::{Deserialize, Serialize};
+use serde_json::to_string_pretty;
 use std::ffi::{CStr, c_char, c_int};
 
 unsafe extern "C" {
@@ -39,7 +39,7 @@ pub fn print_openblas_info() {
 }
 
 pub fn get_openblas_info_str() -> String {
-  json_write_str(&get_openblas_info(), JsonPretty(true)).unwrap()
+  to_string_pretty(&get_openblas_info()).unwrap()
 }
 
 pub fn get_openblas_info() -> OpenBlasInfo {

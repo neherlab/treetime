@@ -1,5 +1,5 @@
 [package]
-name = "treetime"
+name = "treetime-utils"
 authors.workspace = true
 description.workspace = true
 documentation.workspace = true
@@ -14,10 +14,6 @@ version.workspace = true
 crate-type = ["lib"]
 
 [dependencies]
-phyloxml = { path = "../phyloxml" }
-treetime-utils = { path = "../treetime-utils" }
-usher-mat-utils = { path = "../usher-mat-utils" }
-
 approx = { workspace = true }
 argmin = { workspace = true }
 argmin-math = { workspace = true }
@@ -118,11 +114,3 @@ rstest_reuse = { workspace = true }
 
 [lints]
 workspace = true
-
-[[bench]]
-name = "find_letter_ranges_benchmark"
-harness = false
-
-[[bench]]
-name = "vec_char_to_string"
-harness = false

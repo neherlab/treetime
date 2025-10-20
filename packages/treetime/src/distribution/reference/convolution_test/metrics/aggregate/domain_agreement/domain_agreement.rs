@@ -14,11 +14,11 @@ use crate::distribution::reference::convolution_test::metrics::aggregate::domain
 };
 use crate::distribution::reference::convolution_test::metrics::config::ToleranceThresholds;
 use crate::make_error;
-use crate::utils::float_fmt::float_to_digits;
 use itertools::Itertools;
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use treetime_utils::float_fmt::float_to_digits;
 
 /// Comprehensive domain-wide agreement metrics between actual and expected solutions
 #[derive(Debug, Clone, Serialize, Deserialize)]

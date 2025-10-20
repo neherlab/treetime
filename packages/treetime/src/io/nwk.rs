@@ -3,10 +3,7 @@ use crate::graph::edge::GraphEdge;
 use crate::graph::graph::{Graph, SafeEdge, SafeNode};
 use crate::graph::node::GraphNodeKey;
 use crate::graph::node::{GraphNode, Named};
-use crate::io::file::create_file_or_stdout;
-use crate::io::file::open_file_or_stdin;
 use crate::make_error;
-use crate::utils::float_fmt::float_to_digits;
 use bio::io::newick;
 use eyre::{Report, WrapErr, eyre};
 use indexmap::IndexMap;
@@ -20,6 +17,9 @@ use std::io::Cursor;
 use std::io::{Read, Write};
 use std::path::Path;
 use std::sync::Arc;
+use treetime_utils::file::create_file_or_stdout;
+use treetime_utils::file::open_file_or_stdin;
+use treetime_utils::float_fmt::float_to_digits;
 
 pub fn nwk_read_file<N, E, D>(filepath: impl AsRef<Path>) -> Result<Graph<N, E, D>, Report>
 where

@@ -1,4 +1,4 @@
-use crate::utils::interval::range::{from_interval_set, to_interval_sets};
+use crate::interval::range::{from_interval_set, to_interval_sets};
 use gcollections::ops::{Empty, Union};
 use interval::interval_set::IntervalSet;
 

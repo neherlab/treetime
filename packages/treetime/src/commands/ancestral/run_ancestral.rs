@@ -7,7 +7,6 @@ use crate::graph::graph::Graph;
 use crate::graph::node::GraphNode;
 use crate::gtr::get_gtr::{JC69Params, get_gtr, jc69};
 use crate::io::fasta::{FastaReader, FastaRecord, FastaWriter, read_many_fasta};
-use crate::io::file::{create_file_or_stdout, open_stdin};
 use crate::io::nex::{NexWriteOptions, nex_write_file};
 use crate::io::nwk::{EdgeToNwk, NodeToNwk, NwkWriteOptions, nwk_read_file, nwk_write_file};
 use crate::representation::graph_ancestral::GraphAncestral;
@@ -23,6 +22,7 @@ use parking_lot::RwLock;
 use serde::Serialize;
 use std::path::Path;
 use std::sync::Arc;
+use treetime_utils::file::{create_file_or_stdout, open_stdin};
 
 #[derive(Clone, Debug, Default)]
 pub struct TreetimeAncestralParams {

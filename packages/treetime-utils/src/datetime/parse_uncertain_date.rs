@@ -1,8 +1,8 @@
+use crate::datetime::date_range::DateRange;
+use crate::datetime::datetime::days_in_month;
+use crate::datetime::format_to_regex::date_format_to_regex;
+use crate::datetime::options::DateParserOptions;
 use crate::make_error;
-use crate::utils::datetime::date_range::DateRange;
-use crate::utils::datetime::datetime::days_in_month;
-use crate::utils::datetime::format_to_regex::date_format_to_regex;
-use crate::utils::datetime::options::DateParserOptions;
 use eyre::Report;
 use itertools::Itertools;
 use lazy_static::lazy_static;
@@ -111,7 +111,7 @@ fn create_date_uncertain_regexes() -> Vec<Regex> {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::utils::datetime::date_range::DateRange;
+  use crate::datetime::date_range::DateRange;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
 

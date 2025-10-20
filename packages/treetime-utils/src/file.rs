@@ -1,5 +1,5 @@
-use crate::io::compression::{Compressor, Decompressor};
-use crate::io::fs::ensure_dir;
+use crate::compression::{Compressor, Decompressor};
+use crate::fs::ensure_dir;
 use eyre::{Report, WrapErr};
 use log::info;
 use std::fs::File;
@@ -82,7 +82,7 @@ mod non_wasm {
     nextclade /path/to/file
 "#;
 
-  pub(super) fn warn_if_tty() {
+  pub fn warn_if_tty() {
     if is_tty(Stream::Stdin) {
       warn!("{TTY_WARNING}");
     }

@@ -13,7 +13,6 @@ use crate::representation::graph_ancestral::GraphAncestral;
 use crate::representation::infer_dense::infer_dense;
 use crate::representation::partition_marginal_dense::PartitionMarginalDense;
 use crate::representation::partition_marginal_sparse::PartitionMarginalSparse;
-use crate::utils::float_fmt::float_to_significant_digits;
 use eyre::Report;
 use itertools::Itertools;
 use log::debug;
@@ -22,6 +21,7 @@ use parking_lot::RwLock;
 use serde::Serialize;
 use std::path::Path;
 use std::sync::Arc;
+use treetime_utils::float_fmt::float_to_significant_digits;
 
 #[derive(Clone, Debug, Default)]
 pub struct TreetimeOptimizeParams {

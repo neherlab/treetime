@@ -16,8 +16,8 @@ use treetime::commands::mugration::mugration_args::TreetimeMugrationArgs;
 use treetime::commands::optimize::args::TreetimeOptimizeArgs;
 use treetime::commands::prune::args::TreetimePruneArgs;
 use treetime::commands::timetree::args::TreetimeTimetreeArgs;
-use treetime::utils::clap_styles::styles;
-use treetime::utils::global_init::setup_logger;
+use treetime_utils::clap_styles::styles;
+use treetime_utils::global_init::setup_logger;
 
 lazy_static! {
   pub static ref SHELLS: Vec<&'static str> = ["bash", "elvish", "fish", "fig", "powershell", "zsh"].to_vec();

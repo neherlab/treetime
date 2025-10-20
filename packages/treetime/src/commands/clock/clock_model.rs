@@ -1,10 +1,10 @@
 use crate::commands::clock::clock_set::ClockSet;
 use crate::make_error;
-use crate::utils::float_fmt::float_to_significant_digits;
 use eyre::Report;
 use getset::{CopyGetters, Getters};
 use ndarray::Array2;
 use serde::{Deserialize, Serialize};
+use treetime_utils::float_fmt::float_to_significant_digits;
 
 #[must_use]
 #[derive(Debug, Default, Serialize, Deserialize, CopyGetters, Getters)]

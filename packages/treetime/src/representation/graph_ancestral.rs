@@ -12,12 +12,12 @@ use crate::seq::composition::Composition;
 use crate::seq::find_char_ranges::find_letter_ranges;
 use crate::seq::indel::InDel;
 use crate::seq::mutation::Sub;
-use crate::utils::interval::range_union::range_union;
 use eyre::Report;
 use maplit::btreemap;
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+use treetime_utils::interval::range_union::range_union;
 
 pub type GraphAncestral = Graph<NodeAncestral, EdgeAncestral, ()>;
 

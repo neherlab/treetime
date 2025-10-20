@@ -1,8 +1,6 @@
 use crate::graph::edge::{Edge, GraphEdge};
 use crate::graph::graph::Graph;
 use crate::graph::node::{GraphNode, GraphNodeKey, Node};
-use crate::io::file::create_file_or_stdout;
-use crate::io::file::open_file_or_stdin;
 use crate::io::json::{JsonPretty, json_read, json_write};
 use eyre::{Report, WrapErr};
 use maplit::{btreemap, btreeset};
@@ -12,6 +10,8 @@ use std::io::Cursor;
 use std::io::{Read, Write};
 use std::path::Path;
 use std::sync::Arc;
+use treetime_utils::file::create_file_or_stdout;
+use treetime_utils::file::open_file_or_stdin;
 
 pub fn auspice_read_file<C, N, E, D>(filepath: impl AsRef<Path>) -> Result<Graph<N, E, D>, Report>
 where

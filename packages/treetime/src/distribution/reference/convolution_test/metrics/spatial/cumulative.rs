@@ -1,6 +1,6 @@
-use crate::utils::ndarray::cumsum_axis;
 use ndarray::{Array1, Axis};
 use serde::{Deserialize, Serialize};
+use treetime_utils::ndarray::cumsum_axis;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CumulativeMetrics {

@@ -2,7 +2,6 @@ use crate::io::json::{JsonPretty, json_write_str};
 use crate::representation::bitset128::BitSet128;
 use crate::representation::seq_char::AsciiChar;
 use crate::representation::state_set::StateSet;
-use crate::utils::string::quote;
 use crate::{make_error, stateset, vec_u8};
 use clap::ValueEnum;
 use color_eyre::{Section, SectionExt};
@@ -16,6 +15,7 @@ use std::borrow::Borrow;
 use std::fmt::Display;
 use std::iter::once;
 use strum_macros::Display;
+use treetime_utils::string::quote;
 
 pub const NON_CHAR: AsciiChar = AsciiChar(b'.');
 pub const VARIABLE_CHAR: AsciiChar = AsciiChar(b'~');

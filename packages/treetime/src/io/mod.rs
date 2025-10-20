@@ -1,16 +1,14 @@
 pub mod auspice;
-pub mod compression;
 pub mod concat;
 pub mod csv;
 pub mod dates_csv;
 pub mod discrete_states_csv;
 pub mod fasta;
-pub mod file;
-pub mod fs;
 pub mod graphviz;
 pub mod json;
 pub mod nex;
 pub mod nwk;
+pub mod parse_delimited;
 pub mod phyloxml;
 pub mod serde;
 pub mod usher_mat;

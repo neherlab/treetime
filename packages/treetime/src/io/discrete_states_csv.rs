@@ -1,11 +1,11 @@
 use crate::io::csv::{get_col_name, guess_csv_delimiter};
-use crate::io::file::open_file_or_stdin;
 use crate::{make_internal_report, vec_of_owned};
 use csv::{ReaderBuilder as CsvReaderBuilder, StringRecord, Trim};
 use eyre::{Report, WrapErr, eyre};
 use itertools::Itertools;
 use std::collections::BTreeMap;
 use std::path::Path;
+use treetime_utils::file::open_file_or_stdin;
 
 pub fn read_discrete_attrs<T>(
   filepath: impl AsRef<Path>,

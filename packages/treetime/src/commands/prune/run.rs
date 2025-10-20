@@ -8,11 +8,10 @@ use crate::gtr::get_gtr::{GtrModelName, JC69Params, get_gtr, jc69};
 use crate::io::fasta::read_many_fasta;
 use crate::io::nex::{NexWriteOptions, nex_write_file};
 use crate::io::nwk::{EdgeToNwk, NodeToNwk, NwkWriteOptions, nwk_read_file, nwk_write_file};
+use crate::io::parse_delimited::{parse_delimited_file, parse_delimited_str};
 use crate::make_error;
 use crate::representation::graph_ancestral::GraphAncestral;
 use crate::representation::partition_marginal_sparse::PartitionMarginalSparse;
-use crate::utils::iter::iter_union;
-use crate::utils::parse_delimited::{parse_delimited_file, parse_delimited_str};
 use eyre::Report;
 use itertools::Itertools;
 use log::debug;
@@ -22,6 +21,7 @@ use serde::Serialize;
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use treetime_utils::iter::iter_union;
 
 fn validate_args(args: &TreetimePruneArgs) -> Result<(), Report> {
   if args.prune_empty && args.input_fastas.is_empty() {

@@ -19,16 +19,16 @@ macro_rules! pretty_assert_ulps_eq {
   ($lhs:expr, $rhs:expr $(, $opt:ident = $val:expr)*) => {{
     if ! approx::ulps_eq!($lhs, $rhs, $($opt = $val,)*) {
       pretty_assertions::assert_eq!(
-        $crate::utils::assert::format_array(format!("{:#?}", $lhs)),
-        $crate::utils::assert::format_array(format!("{:#?}", $rhs)),
+        $crate::assert::format_array(format!("{:#?}", $lhs)),
+        $crate::assert::format_array(format!("{:#?}", $rhs)),
       );
     }
   }};
   ($lhs:expr, $rhs:expr $(, $opt:ident = $val:expr)*,) => {{
     if ! approx::ulps_eq!($lhs, $rhs, $($opt = $val,)*) {
       pretty_assertions::assert_eq!(
-        $crate::utils::assert::format_array(format!("{:#?}", $lhs)),
-        $crate::utils::assert::format_array(format!("{:#?}", $rhs)),
+        $crate::assert::format_array(format!("{:#?}", $lhs)),
+        $crate::assert::format_array(format!("{:#?}", $rhs)),
       );
     }
   }};

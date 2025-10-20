@@ -16,8 +16,8 @@ use crate::io::dates_csv::read_dates;
 use crate::io::graphviz::graphviz_write_file;
 use crate::io::json::{JsonPretty, json_write_file};
 use crate::io::nwk::{NwkWriteOptions, nwk_read_file, nwk_write_file};
-use crate::utils::console::is_tty;
 use eyre::{Report, WrapErr};
+use treetime_utils::console::is_tty;
 
 pub fn get_clock_model(
   graph: &mut ClockGraph,

@@ -7,7 +7,7 @@ use argmin::solver::newton::Newton;
 use ctor::ctor;
 use log::{LevelFilter, info};
 use std::fmt::{Debug, Display};
-use treetime::utils::global_init::{global_init, setup_logger};
+use treetime_utils::global_init::{global_init, setup_logger};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
   let n = 2.0;

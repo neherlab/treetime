@@ -17,17 +17,17 @@ use crate::representation::state_set::{StateSet, StateSetStatus};
 use crate::seq::composition::Composition;
 use crate::seq::indel::InDel;
 use crate::seq::mutation::Sub;
-use crate::utils::container::get_exactly_one;
-use crate::utils::interval::range::range_contains;
-use crate::utils::interval::range_complement::range_complement;
-use crate::utils::interval::range_difference::range_difference;
-use crate::utils::interval::range_intersection::{range_intersection, range_intersection_iter};
 use crate::{make_error, make_report, seq, stateset};
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use maplit::btreemap;
 use parking_lot::RwLock;
 use std::sync::Arc;
+use treetime_utils::container::get_exactly_one;
+use treetime_utils::interval::range::range_contains;
+use treetime_utils::interval::range_complement::range_complement;
+use treetime_utils::interval::range_difference::range_difference;
+use treetime_utils::interval::range_intersection::{range_intersection, range_intersection_iter};
 
 fn attach_seqs_to_graph<P: PartitionCompressed>(
   graph: &GraphAncestral,

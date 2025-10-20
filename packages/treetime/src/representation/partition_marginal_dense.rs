@@ -12,13 +12,13 @@ use crate::representation::partition_marginal::{PartitionMarginal, PartitionMarg
 use crate::representation::seq::Seq;
 use crate::seq::composition::Composition;
 use crate::seq::mutation::Sub;
-use crate::utils::container::get_exactly_one;
-use crate::utils::interval::range_intersection::range_intersection;
 use crate::{alphabet::alphabet::Alphabet, make_report, seq};
 use eyre::Report;
 use itertools::Itertools;
 use ndarray::prelude::*;
 use ndarray_stats::QuantileExt;
+use treetime_utils::container::get_exactly_one;
+use treetime_utils::interval::range_intersection::range_intersection;
 
 use std::collections::BTreeMap;
 

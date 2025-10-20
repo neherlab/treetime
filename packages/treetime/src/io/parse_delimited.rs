@@ -1,9 +1,9 @@
-use crate::io::file::open_file_or_stdin;
 use eyre::Report;
 use std::{
   io::{BufRead, Cursor},
   path::Path,
 };
+use treetime_utils::file::open_file_or_stdin;
 
 pub fn parse_delimited<R: BufRead>(reader: R, delimiter: u8) -> impl Iterator<Item = String> {
   reader

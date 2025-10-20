@@ -1,9 +1,9 @@
 use crate::distribution::reference::grid_fn::GridFn;
-use crate::utils::container::minmax;
 use eyre::Report;
 use itertools::Itertools;
 use ndarray::Array1;
 use ndarray_conv::{ConvExt, ConvMode, PaddingMode};
+use treetime_utils::container::minmax;
 
 /// Convolution using ndarray-conv library (FFT-based) for uniform grids
 pub fn ndarray_convolve(f: &GridFn, g: &GridFn, x_grid: &Array1<f64>) -> Result<GridFn, Report> {

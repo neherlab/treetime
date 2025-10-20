@@ -1,5 +1,5 @@
-use crate::utils::interval::range::{from_interval_set, to_interval_set, to_interval_sets};
-use crate::utils::interval::range_union::interval_sets_union;
+use crate::interval::range::{from_interval_set, to_interval_set, to_interval_sets};
+use crate::interval::range_union::interval_sets_union;
 use gcollections::ops::Difference;
 use itertools::Itertools;
 

@@ -3,11 +3,11 @@ use crate::distribution::reference::convolution_test::framework::results::{TestF
 use crate::distribution::reference::convolution_test::framework::summary::TestSummary;
 use crate::distribution::reference::convolution_test::framework::test_case::TestCase;
 use crate::io::json::{JsonPretty, json_write_str};
-use crate::utils::float_fmt::float_to_significant_digits;
-use crate::utils::iterator::mean_by_key::MeanByKey;
 use eyre::Report;
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
+use treetime_utils::float_fmt::float_to_significant_digits;
+use treetime_utils::iterator::mean_by_key::MeanByKey;
 
 /// Console display functionality for convolution test framework
 pub struct ConvolutionTestConsole;

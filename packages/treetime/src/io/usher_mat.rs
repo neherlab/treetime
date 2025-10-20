@@ -1,8 +1,6 @@
 use crate::graph::edge::GraphEdge;
 use crate::graph::graph::Graph;
 use crate::graph::node::{GraphNode, Named};
-use crate::io::file::create_file_or_stdout;
-use crate::io::file::open_file_or_stdin;
 use crate::io::json::{
   JsonPretty, json_read, json_read_file, json_read_str, json_write, json_write_file, json_write_str,
 };
@@ -13,6 +11,8 @@ use eyre::{Report, WrapErr};
 use smart_default::SmartDefault;
 use std::io::{Read, Write};
 use std::path::Path;
+use treetime_utils::file::create_file_or_stdout;
+use treetime_utils::file::open_file_or_stdin;
 
 pub use usher_mat_utils::{UsherMetadata, UsherMutation, UsherMutationList, UsherTree, UsherTreeNode};
 

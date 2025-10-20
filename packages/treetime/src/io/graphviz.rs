@@ -1,7 +1,6 @@
 use crate::graph::edge::GraphEdge;
 use crate::graph::graph::{Graph, SafeNode};
 use crate::graph::node::{GraphNode, Node};
-use crate::io::file::create_file_or_stdout;
 use eyre::Report;
 use itertools::{Itertools, iproduct};
 use parking_lot::RwLock;
@@ -9,6 +8,7 @@ use std::collections::BTreeMap;
 use std::io::Write;
 use std::path::Path;
 use std::sync::Arc;
+use treetime_utils::file::create_file_or_stdout;
 
 pub fn graphviz_write_file<N, E, D>(filepath: impl AsRef<Path>, graph: &Graph<N, E, D>) -> Result<(), Report>
 where

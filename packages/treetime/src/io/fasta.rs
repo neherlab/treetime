@@ -1,17 +1,17 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::io::compression::Decompressor;
 use crate::io::concat::Concat;
-use crate::io::file::{create_file_or_stdout, open_file_or_stdin};
 use crate::make_error;
 use crate::representation::seq::Seq;
 use crate::representation::seq_char::AsciiChar;
-use crate::utils::string::quote_single;
 use eyre::{Context, Report};
 use itertools::Itertools;
 use log::warn;
 use serde::{Deserialize, Serialize};
 use std::io::{BufRead, BufReader, Write};
 use std::path::Path;
+use treetime_utils::compression::Decompressor;
+use treetime_utils::file::{create_file_or_stdout, open_file_or_stdin};
+use treetime_utils::string::quote_single;
 
 #[derive(Clone, Default, Debug, Deserialize, Serialize, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -274,11 +274,11 @@ mod tests {
   use super::*;
   use crate::alphabet::alphabet::AlphabetName;
   use crate::o;
-  use crate::utils::error::report_to_string;
   use indoc::indoc;
   use lazy_static::lazy_static;
   use pretty_assertions::assert_eq;
   use std::io::Cursor;
+  use treetime_utils::error::report_to_string;
 
   lazy_static! {
     static ref NUC_ALPHABET: Alphabet = Alphabet::default();

@@ -1,4 +1,4 @@
-use crate::utils::datetime::date_range::DateRange;
+use crate::datetime::date_range::DateRange;
 use chrono::{DateTime, Datelike, TimeZone, Utc};
 use chronoutil::RelativeDuration;
 use std::time::Duration as StdDuration;
@@ -38,8 +38,8 @@ pub fn year_fraction_to_date(year_fraction: f64) -> DateTime<Utc> {
 mod tests {
   #![allow(clippy::excessive_precision)]
   use super::*;
+  use crate::datetime::datetime::iso;
   use crate::pretty_assert_ulps_eq;
-  use crate::utils::datetime::datetime::iso;
   use chrono::{SubsecRound, Utc};
   use pretty_assertions::assert_eq;
   use rstest::*;

@@ -15,11 +15,11 @@ use std::path::Path;
 use textplots::{Chart, ColorPlot, Shape};
 
 #[cfg(feature = "png")]
-use crate::io::file::create_file_or_stdout;
-use crate::utils::float_fmt::float_to_significant_digits;
-#[cfg(feature = "png")]
 use image::{ColorType, DynamicImage, ImageBuffer, ImageEncoder, Rgb, codecs::png::PngEncoder};
 use plotters::coord::types::RangedCoordf32;
+#[cfg(feature = "png")]
+use treetime_utils::file::create_file_or_stdout;
+use treetime_utils::float_fmt::float_to_significant_digits;
 
 pub fn write_clock_regression_chart_svg(
   results: &[ClockRegressionResult],

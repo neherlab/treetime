@@ -17,14 +17,14 @@ use crate::representation::partition_marginal::{PartitionMarginal, PartitionMarg
 use crate::representation::seq::Seq;
 use crate::seq::composition::Composition;
 use crate::seq::mutation::Sub;
-use crate::utils::container::get_exactly_one;
-use crate::utils::interval::range::range_contains;
 use eyre::Report;
 use maplit::btreemap;
 use ndarray::{Array1, Array2};
 use ndarray_stats::QuantileExt;
 use std::collections::BTreeMap;
 use std::iter::zip;
+use treetime_utils::container::get_exactly_one;
+use treetime_utils::interval::range::range_contains;
 
 #[derive(Clone, Debug)]
 pub struct PartitionMarginalSparse {

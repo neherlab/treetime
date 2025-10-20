@@ -1,6 +1,5 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::representation::seq_char::AsciiChar;
-use crate::utils::error::to_eyre_error;
 use crate::{make_error, make_internal_error};
 use eyre::{Report, WrapErr};
 use getset::CopyGetters;
@@ -9,6 +8,7 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::str::FromStr;
+use treetime_utils::error::to_eyre_error;
 
 #[derive(Clone, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, CopyGetters)]
 #[getset(get_copy = "pub")]

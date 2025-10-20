@@ -2,8 +2,8 @@ use crate::cli::verbosity::Verbosity;
 use clap::{Parser, ValueEnum, ValueHint};
 use lazy_static::lazy_static;
 use std::path::{Path, PathBuf};
-use treetime::io::fs::extension;
-use treetime::utils::clap_styles::styles;
+use treetime_utils::clap_styles::styles;
+use treetime_utils::fs::extension;
 
 #[derive(Copy, Clone, Debug, ValueEnum)]
 #[value(rename_all = "kebab-case")]

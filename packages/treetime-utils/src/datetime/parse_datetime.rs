@@ -1,6 +1,6 @@
+use crate::datetime::datetime::{date_from_iso, date_from_rfc2822};
+use crate::datetime::options::DateParserOptions;
 use crate::make_error;
-use crate::utils::datetime::datetime::{date_from_iso, date_from_rfc2822};
-use crate::utils::datetime::options::DateParserOptions;
 use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
 use eyre::{Context, Report};
 

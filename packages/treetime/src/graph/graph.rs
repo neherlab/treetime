@@ -3,8 +3,6 @@ use crate::graph::breadth_first::{
 };
 use crate::graph::edge::{Edge, GraphEdge, GraphEdgeKey};
 use crate::graph::node::{GraphNode, GraphNodeKey, Node};
-use crate::utils::container::{get_exactly_one, get_exactly_one_mut};
-use crate::utils::mutex::unwrap_arc_rwlock;
 use crate::{make_error, make_internal_error, make_internal_report};
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
@@ -15,6 +13,8 @@ use std::collections::{HashSet, VecDeque};
 use std::fmt::Debug;
 use std::sync::Arc;
 use traversal::{Bft, DftPre};
+use treetime_utils::container::{get_exactly_one, get_exactly_one_mut};
+use treetime_utils::mutex::unwrap_arc_rwlock;
 
 pub type SafeNode<N> = Arc<RwLock<Node<N>>>;
 pub type SafeNodeRef<N> = ArcRwLockReadGuard<RawRwLock, Node<N>>;
