@@ -1,12 +1,11 @@
-use eyre::Result;
-use serde::{Deserialize, Serialize};
-
 use crate::distribution::reference::convolution_test::metrics::aggregate::efficiency::memory::{
   MemoryEfficiency, MemoryRating,
 };
 use crate::distribution::reference::convolution_test::metrics::aggregate::efficiency::rating::EfficiencyRating;
 use crate::distribution::reference::convolution_test::metrics::aggregate::efficiency::scalability::ScalabilityAssessment;
 use crate::o;
+use eyre::Result;
+use serde::{Deserialize, Serialize};
 
 /// Algorithm efficiency and performance characteristics
 #[derive(Debug, Clone, Serialize, Deserialize)]

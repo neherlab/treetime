@@ -1,8 +1,8 @@
-use crate::distribution::reference::convolution_test::metrics::aggregate::AggregateMetrics;
+use crate::distribution::reference::convolution_test::metrics::aggregate::aggregate::AggregateMetrics;
 use crate::distribution::reference::convolution_test::metrics::config::MetricsConfig;
-use crate::distribution::reference::convolution_test::metrics::distribution::DistributionMetrics;
-use crate::distribution::reference::convolution_test::metrics::pointwise::PointwiseMetrics;
-use crate::distribution::reference::convolution_test::metrics::spatial::SpatialMetrics;
+use crate::distribution::reference::convolution_test::metrics::distribution::distribution::DistributionMetrics;
+use crate::distribution::reference::convolution_test::metrics::pointwise::pointwise::PointwiseMetrics;
+use crate::distribution::reference::convolution_test::metrics::spatial::spatial::SpatialMetrics;
 use crate::make_error;
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};

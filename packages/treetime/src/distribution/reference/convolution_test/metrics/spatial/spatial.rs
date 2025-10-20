@@ -1,10 +1,15 @@
 use crate::distribution::reference::convolution_test::metrics::config::SpatialConfig;
+use crate::distribution::reference::convolution_test::metrics::spatial::cumulative::{
+  CumulativeMetrics, compute_cumulative_metrics,
+};
+use crate::distribution::reference::convolution_test::metrics::spatial::regional::{
+  RegionalMetrics, compute_regional_metrics,
+};
+use crate::distribution::reference::convolution_test::metrics::spatial::windowed::{
+  WindowedMetrics, compute_windowed_metrics,
+};
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
-
-use super::cumulative::{CumulativeMetrics, compute_cumulative_metrics};
-use super::regional::{RegionalMetrics, compute_regional_metrics};
-use super::windowed::{WindowedMetrics, compute_windowed_metrics};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SpatialMetrics {

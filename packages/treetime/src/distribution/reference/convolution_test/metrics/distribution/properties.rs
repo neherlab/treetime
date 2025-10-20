@@ -1,8 +1,9 @@
-use crate::distribution::reference::convolution_test::metrics::pointwise::PointwiseErrors;
+use crate::distribution::reference::convolution_test::metrics::distribution::statistics::{
+  compute_quantile, compute_std,
+};
+use crate::distribution::reference::convolution_test::metrics::pointwise::errors::PointwiseErrors;
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
-
-use super::statistics::{compute_quantile, compute_std};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DistributionProperties {

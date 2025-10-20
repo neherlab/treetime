@@ -1,9 +1,8 @@
-use serde::{Deserialize, Serialize};
-
-use crate::distribution::reference::convolution_test::metrics::aggregate::domain_agreement::DomainAgreementMetrics;
-use crate::distribution::reference::convolution_test::metrics::aggregate::performance::PerformanceMetrics;
+use crate::distribution::reference::convolution_test::metrics::aggregate::domain_agreement::domain_agreement::DomainAgreementMetrics;
+use crate::distribution::reference::convolution_test::metrics::aggregate::performance::performance::PerformanceMetrics;
 use crate::distribution::reference::convolution_test::metrics::aggregate::quality::components::QualityComponents;
 use crate::o;
+use serde::{Deserialize, Serialize};
 
 /// Quality verdict with strengths, weaknesses, and recommendations
 #[derive(Debug, Clone, Serialize, Deserialize)]

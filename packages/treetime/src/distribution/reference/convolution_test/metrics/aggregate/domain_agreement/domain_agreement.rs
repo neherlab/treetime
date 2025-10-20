@@ -1,3 +1,17 @@
+use crate::distribution::reference::convolution_test::metrics::aggregate::domain_agreement::error_stats::{
+  AbsoluteErrorStats, RelativeErrorStats, compute_absolute_error_statistics, compute_relative_error_statistics,
+};
+use crate::distribution::reference::convolution_test::metrics::aggregate::domain_agreement::peak_metrics::{
+  PeakMetrics, compute_peak_metrics,
+};
+use crate::distribution::reference::convolution_test::metrics::aggregate::domain_agreement::quality_metrics::{
+  QualityMetrics, compute_correlation, compute_mass_error, compute_max_log_error, compute_quantile_error,
+  compute_r_squared, compute_relative_l1_norm_error, compute_relative_l2_norm_error, compute_relative_linf_norm_error,
+  compute_rmse, compute_symmetry_error,
+};
+use crate::distribution::reference::convolution_test::metrics::aggregate::domain_agreement::tolerance::{
+  MaxErrorLocation, compute_tolerance_counts, find_max_error_location,
+};
 use crate::distribution::reference::convolution_test::metrics::config::ToleranceThresholds;
 use crate::make_error;
 use crate::utils::float_fmt::float_to_digits;
@@ -5,17 +19,6 @@ use itertools::Itertools;
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 use std::fmt;
-
-use super::error_stats::{
-  AbsoluteErrorStats, RelativeErrorStats, compute_absolute_error_statistics, compute_relative_error_statistics,
-};
-use super::peak_metrics::{PeakMetrics, compute_peak_metrics};
-use super::quality_metrics::{
-  QualityMetrics, compute_correlation, compute_mass_error, compute_max_log_error, compute_quantile_error,
-  compute_r_squared, compute_relative_l1_norm_error, compute_relative_l2_norm_error, compute_relative_linf_norm_error,
-  compute_rmse, compute_symmetry_error,
-};
-use super::tolerance::{MaxErrorLocation, compute_tolerance_counts, find_max_error_location};
 
 /// Comprehensive domain-wide agreement metrics between actual and expected solutions
 #[derive(Debug, Clone, Serialize, Deserialize)]

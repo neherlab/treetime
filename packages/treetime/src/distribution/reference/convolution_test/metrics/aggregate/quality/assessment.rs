@@ -1,8 +1,5 @@
-use eyre::Result;
-use serde::{Deserialize, Serialize};
-
-use crate::distribution::reference::convolution_test::metrics::aggregate::domain_agreement::DomainAgreementMetrics;
-use crate::distribution::reference::convolution_test::metrics::aggregate::performance::PerformanceMetrics;
+use crate::distribution::reference::convolution_test::metrics::aggregate::domain_agreement::domain_agreement::DomainAgreementMetrics;
+use crate::distribution::reference::convolution_test::metrics::aggregate::performance::performance::PerformanceMetrics;
 use crate::distribution::reference::convolution_test::metrics::aggregate::quality::components::{
   QualityComponents, compute_accuracy_score, compute_precision_score, compute_robustness_score, compute_stability_score,
 };
@@ -10,6 +7,8 @@ use crate::distribution::reference::convolution_test::metrics::aggregate::qualit
 use crate::distribution::reference::convolution_test::metrics::aggregate::quality::verdict::{
   QualityVerdict, generate_quality_verdict,
 };
+use eyre::Result;
+use serde::{Deserialize, Serialize};
 
 /// Quality assessment with overall score, grade, and detailed analysis
 #[derive(Debug, Clone, Serialize, Deserialize)]

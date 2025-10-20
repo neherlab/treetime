@@ -1,5 +1,5 @@
 use crate::distribution::reference::convolution_test::metrics::config::DistributionConfig;
-use crate::distribution::reference::convolution_test::metrics::pointwise::PointwiseErrors;
+use crate::distribution::reference::convolution_test::metrics::pointwise::errors::PointwiseErrors;
 use crate::make_error;
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};

@@ -1,7 +1,6 @@
+use crate::distribution::reference::convolution_test::metrics::aggregate::domain_agreement::domain_agreement::DomainAgreementMetrics;
+use crate::distribution::reference::convolution_test::metrics::aggregate::performance::performance::PerformanceMetrics;
 use serde::{Deserialize, Serialize};
-
-use crate::distribution::reference::convolution_test::metrics::aggregate::domain_agreement::DomainAgreementMetrics;
-use crate::distribution::reference::convolution_test::metrics::aggregate::performance::PerformanceMetrics;
 
 /// Quality score components
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -1,10 +1,15 @@
 use crate::distribution::reference::convolution_test::metrics::config::DistributionConfig;
-use crate::distribution::reference::convolution_test::metrics::pointwise::PointwiseErrors;
+use crate::distribution::reference::convolution_test::metrics::distribution::histograms::{
+  HistogramMetrics, compute_histogram_metrics,
+};
+use crate::distribution::reference::convolution_test::metrics::distribution::properties::{
+  DistributionProperties, compute_distribution_properties,
+};
+use crate::distribution::reference::convolution_test::metrics::distribution::statistics::{
+  StatisticalMetrics, compute_statistical_metrics,
+};
+use crate::distribution::reference::convolution_test::metrics::pointwise::errors::PointwiseErrors;
 use serde::{Deserialize, Serialize};
-
-use super::histograms::{HistogramMetrics, compute_histogram_metrics};
-use super::properties::{DistributionProperties, compute_distribution_properties};
-use super::statistics::{StatisticalMetrics, compute_statistical_metrics};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DistributionMetrics {

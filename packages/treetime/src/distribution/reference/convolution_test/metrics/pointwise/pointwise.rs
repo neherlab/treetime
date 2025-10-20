@@ -1,11 +1,16 @@
 use crate::distribution::reference::convolution_test::metrics::config::PointwiseConfig;
+use crate::distribution::reference::convolution_test::metrics::pointwise::errors::{
+  PointwiseErrors, compute_pointwise_errors,
+};
+use crate::distribution::reference::convolution_test::metrics::pointwise::structural::{
+  StructuralErrors, compute_structural_errors,
+};
+use crate::distribution::reference::convolution_test::metrics::pointwise::tolerance::{
+  ToleranceMetrics, compute_tolerance_metrics,
+};
 use crate::make_error;
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
-
-use super::errors::{PointwiseErrors, compute_pointwise_errors};
-use super::structural::{StructuralErrors, compute_structural_errors};
-use super::tolerance::{ToleranceMetrics, compute_tolerance_metrics};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PointwiseMetrics {

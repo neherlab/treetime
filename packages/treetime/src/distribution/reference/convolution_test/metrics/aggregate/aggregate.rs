@@ -1,18 +1,17 @@
-use eyre::Result;
-use ndarray::Array1;
-use serde::{Deserialize, Serialize};
-
-use crate::distribution::reference::convolution_test::metrics::aggregate::domain_agreement::DomainAgreementMetrics;
-use crate::distribution::reference::convolution_test::metrics::aggregate::efficiency::{
+use crate::distribution::reference::convolution_test::metrics::aggregate::domain_agreement::domain_agreement::DomainAgreementMetrics;
+use crate::distribution::reference::convolution_test::metrics::aggregate::efficiency::metrics::{
   EfficiencyMetrics, compute_efficiency_metrics,
 };
-use crate::distribution::reference::convolution_test::metrics::aggregate::performance::{
+use crate::distribution::reference::convolution_test::metrics::aggregate::performance::performance::{
   PerformanceMetrics, compute_performance_metrics,
 };
-use crate::distribution::reference::convolution_test::metrics::aggregate::quality::{
+use crate::distribution::reference::convolution_test::metrics::aggregate::quality::assessment::{
   QualityAssessment, compute_quality_assessment,
 };
 use crate::distribution::reference::convolution_test::metrics::config::ToleranceThresholds;
+use eyre::Result;
+use ndarray::Array1;
+use serde::{Deserialize, Serialize};
 
 /// Enhanced aggregate metrics combining domain agreement with comprehensive summaries
 ///
