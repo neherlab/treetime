@@ -57,6 +57,18 @@ impl TestSuite for ExponentialConvInput {
   fn create_test_cases(&self) -> Vec<Self::TestCase> {
     vec![
       ExponentialTestCase {
+        name: "python_notebook_case".to_owned(),
+        description: "Parameters from conv_exp_py.ipynb: a=1, b=2".to_owned(),
+        stress_type: "reference implementation validation".to_owned(),
+        analytical_caution: "none".to_owned(),
+        a: 1.0,
+        b: 2.0,
+        f_domain: (-1.0, 10.0),
+        g_domain: (-1.0, 10.0),
+        eval_domain: (-1.0, 10.0),
+        dx: 0.01,
+      },
+      ExponentialTestCase {
         name: "moderate_coarse_grid".to_owned(),
         description: "Moderate rates on a coarse grid. Discretization error on coarse grids; step size sensitivity."
           .to_owned(),

@@ -69,6 +69,32 @@ impl TestSuite for GaussianConvInput {
   fn create_test_cases(&self) -> Vec<Self::TestCase> {
     vec![
       GaussianTestCase {
+        name: "python_notebook_case_1".to_owned(),
+        description: "Parameters from conv_gauss_py.ipynb: σ_f=1, σ_g=1, μ=1".to_owned(),
+        stress_type: "reference implementation validation".to_owned(),
+        analytical_caution: "none".to_owned(),
+        sigma_f: 1.0,
+        sigma_g: 1.0,
+        mu: 1.0,
+        f_domain: (-4.0, 6.0),
+        g_domain: (-3.0, 7.0),
+        eval_domain: (-9.0, 11.0),
+        dx: 0.2,
+      },
+      GaussianTestCase {
+        name: "python_notebook_case_2".to_owned(),
+        description: "Parameters from conv_gauss_py.ipynb: σ_f=2, σ_g=1, μ=1".to_owned(),
+        stress_type: "reference implementation validation".to_owned(),
+        analytical_caution: "none".to_owned(),
+        sigma_f: 2.0,
+        sigma_g: 1.0,
+        mu: 1.0,
+        f_domain: (-4.0, 6.0),
+        g_domain: (-3.0, 7.0),
+        eval_domain: (-9.0, 11.0),
+        dx: 0.2,
+      },
+      GaussianTestCase {
         name: "tight_truncation".to_owned(),
         description: "Tight truncation highlighting sensitivity to insufficient domain coverage.".to_owned(),
         stress_type: "boundary effects, wrap-around".to_owned(),
