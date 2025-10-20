@@ -582,7 +582,7 @@ impl ConvolutionTestConsole {
       print!(
         "| **{category}** {:<width$} |",
         "",
-        width = metric_col_width - category.len() - 4
+        width = metric_col_width - category.len() - 5
       );
       for algo in algorithms {
         print!(" {:width$} |", "", width = algo_col_widths[algo]);
