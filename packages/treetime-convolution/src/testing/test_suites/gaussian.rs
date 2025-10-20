@@ -1,6 +1,6 @@
 #![allow(clippy::many_single_char_names)]
 use crate::testing::framework::test_case::TestCase;
-use crate::testing::test_suites::TestSuite;
+use crate::testing::test_suites::test_suites::TestSuite;
 use eyre::Report;
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};

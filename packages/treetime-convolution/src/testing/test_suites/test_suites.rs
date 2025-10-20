@@ -1,7 +1,7 @@
 use crate::testing::framework::test_case::TestCase;
-use crate::testing::functions::exponential::ExponentialConvInput;
-use crate::testing::functions::gaussian::GaussianConvInput;
 use crate::testing::run::{Args, run_convolution_tests_impl};
+use crate::testing::test_suites::exponential::ExponentialConvInput;
+use crate::testing::test_suites::gaussian::GaussianConvInput;
 use clap::ValueEnum;
 use eyre::Report;
 use ndarray::Array1;
