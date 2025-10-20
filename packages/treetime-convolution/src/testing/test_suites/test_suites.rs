@@ -2,6 +2,7 @@ use crate::testing::framework::test_case::TestCase;
 use crate::testing::run::{Args, run_convolution_tests_impl};
 use crate::testing::test_suites::exponential::ExponentialTestSuite;
 use crate::testing::test_suites::gaussian::GaussianTestSuite;
+use crate::testing::test_suites::gaussian_exponential::GaussianExponentialTestSuite;
 use clap::ValueEnum;
 use eyre::Report;
 use ndarray::Array1;
@@ -17,6 +18,7 @@ pub enum TestSuiteName {
   #[default]
   Gaussian,
   Exponential,
+  GaussianExponential,
 }
 
 impl TestSuiteName {
@@ -28,6 +30,7 @@ impl TestSuiteName {
     match self {
       Self::Gaussian => run_convolution_tests_impl::<GaussianTestSuite>(args),
       Self::Exponential => run_convolution_tests_impl::<ExponentialTestSuite>(args),
+      Self::GaussianExponential => run_convolution_tests_impl::<GaussianExponentialTestSuite>(args),
     }
   }
 }
