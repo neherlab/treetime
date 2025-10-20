@@ -1,6 +1,6 @@
 #![allow(clippy::many_single_char_names)]
 use crate::distribution::reference::convolution_test::framework::test_case::TestCase;
-use crate::distribution::reference::convolution_test::traits::ConvInput;
+use crate::distribution::reference::convolution_test::traits::TestSuite;
 use crate::distribution::reference::grid_fn::GridFn;
 use eyre::Report;
 use ndarray::Array1;
@@ -10,7 +10,7 @@ use std::f64::consts::PI;
 #[derive(Default)]
 pub struct GaussianConvInput;
 
-impl ConvInput for GaussianConvInput {
+impl TestSuite for GaussianConvInput {
   type TestCase = GaussianTestCase;
 
   fn function_type(&self) -> &'static str {

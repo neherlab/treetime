@@ -3,7 +3,7 @@ use crate::distribution::reference::grid_fn::GridFn;
 use eyre::Report;
 use ndarray::Array1;
 
-pub trait ConvInput: Send + Sync {
+pub trait TestSuite: Send + Sync {
   type TestCase: TestCase;
 
   fn function_type(&self) -> &'static str;
@@ -19,7 +19,7 @@ pub trait ConvInput: Send + Sync {
   fn create_test_cases(&self) -> Vec<Self::TestCase>;
 }
 
-pub trait ConvAlgo: Send + Sync {
+pub trait Algo: Send + Sync {
   fn convolve(&self, f: &GridFn, g: &GridFn, x_grid: &Array1<f64>) -> Result<GridFn, Report>;
 
   fn name(&self) -> &'static str;

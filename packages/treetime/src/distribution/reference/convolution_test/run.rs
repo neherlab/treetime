@@ -9,7 +9,7 @@ use crate::distribution::reference::convolution_test::functions::functions::Func
 use crate::distribution::reference::convolution_test::functions::gaussian::GaussianConvInput;
 use crate::distribution::reference::convolution_test::metrics::metrics::ConvolutionMetrics;
 use crate::distribution::reference::convolution_test::plots::plots::generate_plot_outputs;
-use crate::distribution::reference::convolution_test::traits::{ConvAlgo, ConvInput};
+use crate::distribution::reference::convolution_test::traits::{Algo, TestSuite};
 use crate::io::json::{JsonPretty, json_write_file};
 use crate::make_error;
 use clap::Parser;
@@ -64,26 +64,25 @@ struct FullResults<'a, T: TestCase> {
   outcomes: &'a [TestRunOutcome<T>],
 }
 
-fn list_test_cases<I: ConvInput>(input: &I) {
-  println!("Available {} test cases:", input.function_type());
-  for case in input.create_test_cases() {
+fn list_test_cases<S: TestSuite>(suite: &S) {
+  println!("Available {} test cases:", suite.function_type());
+  for case in suite.create_test_cases() {
     println!("  - {} : {}", case.name(), case.description());
   }
 }
 
-fn filter_test_cases<I: ConvInput>(input: &I, filter: Option<&str>) -> Result<Vec<I::TestCase>, Report> {
-  let all_cases = input.create_test_cases();
-
+fn filter_test_cases<S: TestSuite>(suite: &S, filter: Option<&str>) -> Result<Vec<S::TestCase>, Report> {
   let filter = filter.and_then(|value| {
     let trimmed = value.trim();
     if trimmed.is_empty() { None } else { Some(trimmed) }
   });
 
+  let all_cases = suite.create_test_cases();
   match filter {
     None | Some("all") => Ok(all_cases),
     Some(filter_str) => {
       let requested_names: BTreeSet<&str> = filter_str.split(',').map(|name| name.trim()).collect();
-      let filtered_cases: Vec<I::TestCase> = all_cases
+      let filtered_cases: Vec<S::TestCase> = all_cases
         .iter()
         .filter(|case| requested_names.contains(case.name()))
         .cloned()
@@ -99,22 +98,22 @@ fn filter_test_cases<I: ConvInput>(input: &I, filter: Option<&str>) -> Result<Ve
   }
 }
 
-fn run_test<I: ConvInput>(
-  input: &I,
-  test_case: &I::TestCase,
-  algo: &dyn ConvAlgo,
-) -> Result<TestResult<I::TestCase>, Report> {
+fn run_test<S: TestSuite>(
+  suite: &S,
+  test_case: &S::TestCase,
+  algo: &dyn Algo,
+) -> Result<TestResult<S::TestCase>, Report> {
   let start_time = Instant::now();
 
-  let f = input.create_f(test_case)?;
-  let g = input.create_g(test_case)?;
+  let f = suite.create_f(test_case)?;
+  let g = suite.create_g(test_case)?;
 
-  let (eval_min, eval_max) = input.eval_domain(test_case);
+  let (eval_min, eval_max) = suite.eval_domain(test_case);
   let n_eval_points = ((eval_max - eval_min) / test_case.dx() + 1.0).round() as usize;
   let eval_grid = Array1::from_iter((0..n_eval_points).map(|i| eval_min + i as f64 * test_case.dx()));
 
   let actual_result = algo.convolve(&f, &g, &eval_grid)?;
-  let expected_result = input.analytical_convolution(test_case, &eval_grid)?;
+  let expected_result = suite.analytical_convolution(test_case, &eval_grid)?;
 
   let execution_time = start_time.elapsed().as_secs_f64() * 1000.0;
 
@@ -163,33 +162,33 @@ pub fn run_convolution_tests() -> Result<(), Report> {
   Ok(())
 }
 
-fn run_convolution_tests_impl<I>(args: &Args) -> Result<(), Report>
+fn run_convolution_tests_impl<S>(args: &Args) -> Result<(), Report>
 where
-  I: ConvInput + Default,
+  S: TestSuite + Default,
 {
-  let input = I::default();
+  let suite = S::default();
 
   if args.list_cases {
-    list_test_cases(&input);
+    list_test_cases(&suite);
     return Ok(());
   }
 
-  let output_dir = format!("{}/{}", args.output_dir, input.function_type());
-  let test_cases = filter_test_cases(&input, Some(args.test_cases.as_str()))?;
+  let output_dir = format!("{}/{}", args.output_dir, suite.function_type());
+  let test_cases = filter_test_cases(&suite, Some(args.test_cases.as_str()))?;
 
   if args.verbose {
     println!("Test Configuration:");
-    println!("  Function type: {}", input.function_type());
+    println!("  Function type: {}", suite.function_type());
     println!("  Algorithms: {:?}", args.algorithms);
     println!("  Test cases: {} selected", test_cases.len());
     println!("  Output directory: {output_dir}\n");
   }
 
-  let outcomes = run_all_tests(&input, &test_cases, &args.algorithms)?;
+  let outcomes = run_all_tests(&suite, &test_cases, &args.algorithms)?;
 
   generate_plot_outputs(&output_dir, &outcomes)?;
 
-  let summary = generate_summary(&input, &outcomes, &args.algorithms);
+  let summary = generate_summary(&suite, &outcomes, &args.algorithms);
 
   ConvolutionTestConsole::print_summary(&summary, &outcomes);
 
@@ -197,34 +196,34 @@ where
 
   println!(
     "{} convolution test framework completed successfully!",
-    input.function_type()
+    suite.function_type()
   );
   println!("Check {output_dir} for detailed results.");
 
   Ok(())
 }
 
-fn run_all_tests<I>(
-  input: &I,
-  test_cases: &[I::TestCase],
+fn run_all_tests<S>(
+  suite: &S,
+  test_cases: &[S::TestCase],
   algorithms: &[ConvolutionAlgorithm],
-) -> Result<Vec<TestRunOutcome<I::TestCase>>, Report>
+) -> Result<Vec<TestRunOutcome<S::TestCase>>, Report>
 where
-  I: ConvInput,
+  S: TestSuite,
 {
   let total_tests = test_cases.len() * algorithms.len();
   let completed = AtomicUsize::new(0);
 
-  ConvolutionTestConsole::print_header(input.function_type(), test_cases.len(), algorithms.len());
+  ConvolutionTestConsole::print_header(suite.function_type(), test_cases.len(), algorithms.len());
 
   ConvolutionTestConsole::print_progress_table_header();
 
   let test_combinations: Vec<_> = test_cases.iter().cartesian_product(algorithms).collect();
 
-  let outcomes: Vec<TestRunOutcome<I::TestCase>> = test_combinations
+  let outcomes = test_combinations
     .into_par_iter()
-    .map(|(test_case, &algorithm)| execute_single_test(input, test_case, algorithm, &completed, total_tests))
-    .collect();
+    .map(|(test_case, &algorithm)| execute_single_test(suite, test_case, algorithm, &completed, total_tests))
+    .collect::<Vec<_>>();
 
   let failures = collect_failures(&outcomes);
 
@@ -233,24 +232,24 @@ where
   Ok(outcomes)
 }
 
-fn execute_single_test<I>(
-  input: &I,
-  test_case: &I::TestCase,
+fn execute_single_test<S>(
+  suite: &S,
+  test_case: &S::TestCase,
   algorithm: ConvolutionAlgorithm,
   completed: &AtomicUsize,
   total_tests: usize,
-) -> TestRunOutcome<I::TestCase>
+) -> TestRunOutcome<S::TestCase>
 where
-  I: ConvInput,
+  S: TestSuite,
 {
   let start_time = Instant::now();
 
-  let algo: Box<dyn ConvAlgo> = match algorithm {
+  let algo: Box<dyn Algo> = match algorithm {
     ConvolutionAlgorithm::Riemann => Box::new(RiemannAlgo),
     ConvolutionAlgorithm::Ndarray => Box::new(NdarrayAlgo),
   };
 
-  match run_test(input, test_case, &*algo) {
+  match run_test(suite, test_case, &*algo) {
     Ok(result) => {
       let completed_count = completed.fetch_add(1, Ordering::Relaxed) + 1;
       ConvolutionTestConsole::print_success_row(&result, completed_count, total_tests);
@@ -338,13 +337,13 @@ fn assess_overall_performance(algorithm_summaries: &[AlgorithmSummary]) -> Strin
   }
 }
 
-fn generate_summary<I>(
-  input: &I,
-  outcomes: &[TestRunOutcome<I::TestCase>],
+fn generate_summary<S>(
+  suite: &S,
+  outcomes: &[TestRunOutcome<S::TestCase>],
   algorithms: &[ConvolutionAlgorithm],
 ) -> TestSummary
 where
-  I: ConvInput,
+  S: TestSuite,
 {
   let successes = collect_successes(outcomes);
   let failures = collect_failures(outcomes);
@@ -353,7 +352,7 @@ where
   let overall_assessment = assess_overall_performance(&algorithm_summaries);
 
   TestSummary {
-    function_type: input.function_type().to_owned(),
+    function_type: suite.function_type().to_owned(),
     total_tests: outcomes.len(),
     total_successes: successes.len(),
     total_failures: failures.len(),

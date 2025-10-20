@@ -1,6 +1,6 @@
 #![allow(clippy::many_single_char_names)]
 use crate::distribution::reference::convolution_test::framework::test_case::TestCase;
-use crate::distribution::reference::convolution_test::traits::ConvInput;
+use crate::distribution::reference::convolution_test::traits::TestSuite;
 use crate::distribution::reference::grid_fn::GridFn;
 use eyre::Report;
 use ndarray::Array1;
@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Default)]
 pub struct ExponentialConvInput;
 
-impl ConvInput for ExponentialConvInput {
+impl TestSuite for ExponentialConvInput {
   type TestCase = ExponentialTestCase;
 
   fn function_type(&self) -> &'static str {

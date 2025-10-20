@@ -1,5 +1,5 @@
 use crate::distribution::reference::convolution::{ndarray_convolve, riemann_convolve};
-use crate::distribution::reference::convolution_test::traits::ConvAlgo;
+use crate::distribution::reference::convolution_test::traits::Algo;
 use crate::distribution::reference::grid_fn::GridFn;
 use eyre::Report;
 use ndarray::Array1;
@@ -7,7 +7,7 @@ use ndarray::Array1;
 /// Riemann sum convolution algorithm
 pub struct RiemannAlgo;
 
-impl ConvAlgo for RiemannAlgo {
+impl Algo for RiemannAlgo {
   fn convolve(&self, f: &GridFn, g: &GridFn, x_grid: &Array1<f64>) -> Result<GridFn, Report> {
     riemann_convolve(f, g, x_grid)
   }
@@ -20,7 +20,7 @@ impl ConvAlgo for RiemannAlgo {
 /// Ndarray FFT-based convolution algorithm
 pub struct NdarrayAlgo;
 
-impl ConvAlgo for NdarrayAlgo {
+impl Algo for NdarrayAlgo {
   fn convolve(&self, f: &GridFn, g: &GridFn, x_grid: &Array1<f64>) -> Result<GridFn, Report> {
     ndarray_convolve(f, g, x_grid)
   }
