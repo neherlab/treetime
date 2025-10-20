@@ -1,5 +1,6 @@
 use crate::distribution::reference::convolution_test::algorithms::ConvolutionAlgorithm;
-use crate::distribution::reference::convolution_test::framework::{TestCase, TestFailure, TestResult};
+use crate::distribution::reference::convolution_test::framework::results::{TestFailure, TestResult};
+use crate::distribution::reference::convolution_test::framework::test_case::TestCase;
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};

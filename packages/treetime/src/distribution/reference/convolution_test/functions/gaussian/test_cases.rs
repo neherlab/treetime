@@ -1,4 +1,4 @@
-use crate::distribution::reference::convolution_test::framework::TestCase;
+use crate::distribution::reference::convolution_test::framework::test_case::TestCase;
 use serde::{Deserialize, Serialize};
 
 /// Test case parameters for Gaussian convolution

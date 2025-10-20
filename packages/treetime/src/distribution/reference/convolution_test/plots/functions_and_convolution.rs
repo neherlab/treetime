@@ -1,4 +1,5 @@
-use crate::distribution::reference::convolution_test::framework::{TestCase, TestResult};
+use crate::distribution::reference::convolution_test::framework::results::TestResult;
+use crate::distribution::reference::convolution_test::framework::test_case::TestCase;
 use crate::distribution::reference::convolution_test::plots::utils::{combined_range, expand_range};
 use eyre::Report;
 use plotters::prelude::*;

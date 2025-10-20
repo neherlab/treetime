@@ -41,8 +41,12 @@ impl<I: ConvInput> ConvolutionTestRunner<I::TestCase> for TraitBasedTestRunner<I
     let eval_grid = Array1::from_iter((0..n_eval_points).map(|i| eval_min + i as f64 * test_case.dx()));
 
     let algo: Box<dyn ConvAlgo> = match algorithm {
-      ConvolutionAlgorithm::Riemann => Box::new(crate::distribution::reference::convolution_test::algo_impls::RiemannAlgo),
-      ConvolutionAlgorithm::Ndarray => Box::new(crate::distribution::reference::convolution_test::algo_impls::NdarrayAlgo),
+      ConvolutionAlgorithm::Riemann => {
+        Box::new(crate::distribution::reference::convolution_test::algo_impls::RiemannAlgo)
+      },
+      ConvolutionAlgorithm::Ndarray => {
+        Box::new(crate::distribution::reference::convolution_test::algo_impls::NdarrayAlgo)
+      },
     };
 
     let actual_result = algo.convolve(&f, &g, &eval_grid)?;

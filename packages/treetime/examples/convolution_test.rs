@@ -4,23 +4,27 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use strum::IntoEnumIterator;
 use strum_macros::{Display, EnumIter};
-use treetime::distribution::reference::convolution_test::framework::{
-  ConvolutionTestRunner, TestCase, TestResult, TestRunOutcome, TraitBasedTestRunner,
+use treetime::distribution::reference::convolution_test::algorithms::ConvolutionAlgorithm;
+use treetime::distribution::reference::convolution_test::framework::framework::ConvolutionTestFramework;
+use treetime::distribution::reference::convolution_test::framework::results::{TestResult, TestRunOutcome};
+use treetime::distribution::reference::convolution_test::framework::runner::{
+  ConvolutionTestRunner, TraitBasedTestRunner,
 };
+use treetime::distribution::reference::convolution_test::framework::test_case::TestCase;
 use treetime::distribution::reference::convolution_test::functions::exponential::conv_input::ExponentialConvInput;
 use treetime::distribution::reference::convolution_test::functions::exponential::flat_result::ExponentialFlatResult;
 use treetime::distribution::reference::convolution_test::functions::gaussian::conv_input::GaussianConvInput;
 use treetime::distribution::reference::convolution_test::functions::gaussian::flat_result::GaussianFlatResult;
-use treetime::distribution::reference::convolution_test::plots::{
-  plot_absolute_error, plot_derivative_errors, plot_error_histogram, plot_functions_and_convolution,
-  plot_pointwise_error_profiles, plot_spatial_profiles, plot_tolerance_metrics,
+use treetime::distribution::reference::convolution_test::output::{TestOutputWriter, ToFlatResult};
+use treetime::distribution::reference::convolution_test::plots::error_plots::{
+  plot_absolute_error, plot_error_histogram, plot_tolerance_metrics,
 };
+use treetime::distribution::reference::convolution_test::plots::functions_and_convolution::plot_functions_and_convolution;
+use treetime::distribution::reference::convolution_test::plots::pointwise_plots::{
+  plot_derivative_errors, plot_pointwise_error_profiles,
+};
+use treetime::distribution::reference::convolution_test::plots::spatial_plots::plot_spatial_profiles;
 use treetime::distribution::reference::convolution_test::traits::ConvInput;
-use treetime::distribution::reference::convolution_test::{
-  algorithms::ConvolutionAlgorithm,
-  framework::ConvolutionTestFramework,
-  output::{TestOutputWriter, ToFlatResult},
-};
 
 #[derive(Parser, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]

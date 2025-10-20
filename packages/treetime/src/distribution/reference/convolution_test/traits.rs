@@ -1,4 +1,4 @@
-use crate::distribution::reference::convolution_test::framework::TestCase;
+use crate::distribution::reference::convolution_test::framework::test_case::TestCase;
 use crate::distribution::reference::grid_fn::GridFn;
 use eyre::Report;
 use ndarray::Array1;

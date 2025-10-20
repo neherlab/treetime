@@ -1,7 +1,7 @@
 use crate::distribution::reference::convolution_test::algorithms::ConvolutionAlgorithm;
-use crate::distribution::reference::convolution_test::framework::{
-  TestCase, TestFailure, TestResult, TestRunOutcome, TestSummary,
-};
+use crate::distribution::reference::convolution_test::framework::results::{TestFailure, TestResult, TestRunOutcome};
+use crate::distribution::reference::convolution_test::framework::summary::TestSummary;
+use crate::distribution::reference::convolution_test::framework::test_case::TestCase;
 use crate::io::json::{JsonPretty, json_write_str};
 use crate::utils::float_fmt::float_to_significant_digits;
 use crate::utils::iterator::mean_by_key::MeanByKey;

@@ -1,4 +1,4 @@
-use crate::distribution::reference::convolution_test::framework::TestResult;
+use crate::distribution::reference::convolution_test::framework::results::TestResult;
 use crate::distribution::reference::convolution_test::output::ToFlatResult;
 use serde::{Deserialize, Serialize};
 

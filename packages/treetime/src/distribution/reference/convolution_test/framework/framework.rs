@@ -5,7 +5,7 @@ use crate::distribution::reference::convolution_test::framework::results::{TestF
 use crate::distribution::reference::convolution_test::framework::runner::ConvolutionTestRunner;
 use crate::distribution::reference::convolution_test::framework::summary::TestSummary;
 use crate::distribution::reference::convolution_test::framework::test_case::TestCase;
-use crate::io::json::{json_write_file, JsonPretty};
+use crate::io::json::{JsonPretty, json_write_file};
 use eyre::Report;
 use itertools::Itertools;
 use rayon::prelude::*;
