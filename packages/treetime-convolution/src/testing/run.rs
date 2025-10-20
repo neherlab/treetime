@@ -46,6 +46,10 @@ pub struct Args {
   #[arg(long, default_value = "all")]
   test_cases: String,
 
+  /// Slowness threshold: only run tests with slowness in [0.0, threshold]
+  #[arg(long, default_value_t = 0.5)]
+  slowness: f64,
+
   /// Enable detailed progress output
   #[arg(long)]
   verbose: bool,
@@ -76,12 +80,14 @@ where
 
   let output_dir = format!("{}/{}", args.output_dir, suite.test_suite_name());
   let test_cases = filter_test_cases(&suite, Some(args.test_cases.as_str()))?;
+  let test_cases = filter_by_slowness(&test_cases, args.slowness);
 
   if args.verbose {
     println!("Test Configuration:");
     println!("  Test suite: {}", suite.test_suite_name());
     println!("  Algorithms: {:?}", args.algorithms);
     println!("  Test cases: {} selected", test_cases.len());
+    println!("  Slowness threshold: {}", args.slowness);
     println!("  Output directory: {output_dir}\n");
   }
 
@@ -107,7 +113,12 @@ where
 fn list_test_cases<S: TestSuite>(suite: &S) {
   println!("Available {} test cases:", suite.test_suite_name());
   for case in suite.create_test_cases() {
-    println!("  - {} : {}", case.name(), case.description());
+    println!(
+      "  - {} (slowness: {}) : {}",
+      case.name(),
+      case.slowness(),
+      case.description()
+    );
   }
 }
 
@@ -136,6 +147,14 @@ fn filter_test_cases<S: TestSuite>(suite: &S, filter: Option<&str>) -> Result<Ve
       Ok(filtered_cases)
     },
   }
+}
+
+fn filter_by_slowness<T: TestCase>(test_cases: &[T], threshold: f64) -> Vec<T> {
+  test_cases
+    .iter()
+    .filter(|case| case.slowness() <= threshold)
+    .cloned()
+    .collect()
 }
 
 fn run_all_tests<S>(

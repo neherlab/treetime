@@ -46,6 +46,7 @@ impl TestSuite for ExponentialTestSuite {
         description: "Parameters from conv_exp_py.ipynb: a=1, b=2".to_owned(),
         stress_type: "reference implementation validation".to_owned(),
         analytical_caution: "none".to_owned(),
+        slowness: 0.0,
         a: 1.0,
         b: 2.0,
         input_grid_domain: (-1.0, 10.0),
@@ -59,6 +60,7 @@ impl TestSuite for ExponentialTestSuite {
           .to_owned(),
         stress_type: "aliasing/accuracy vs Δx, Δx scaling factor".to_owned(),
         analytical_caution: "none".to_owned(),
+        slowness: 0.0,
         a: 1.0,
         b: 0.8,
         input_grid_domain: (0.0, 20.0),
@@ -73,6 +75,7 @@ impl TestSuite for ExponentialTestSuite {
             .to_owned(),
         stress_type: "wrap-around artifacts if padding insufficient".to_owned(),
         analytical_caution: "none".to_owned(),
+        slowness: 0.0,
         a: 1.0,
         b: 2.0,
         input_grid_domain: (0.0, 5.0),
@@ -86,6 +89,7 @@ impl TestSuite for ExponentialTestSuite {
           .to_owned(),
         stress_type: "none".to_owned(),
         analytical_caution: "none".to_owned(),
+        slowness: 0.0,
         a: 1.0,
         b: 2.0,
         input_grid_domain: (0.0, 10.0),
@@ -98,6 +102,7 @@ impl TestSuite for ExponentialTestSuite {
         description: "Equal-rate limit scenario. Correct handling of a=b using limit form x*exp(-ax).".to_owned(),
         stress_type: "kernel path selection, avoids division by zero".to_owned(),
         analytical_caution: "pdf formula undefined at a=b; use limit form".to_owned(),
+        slowness: 0.0,
         a: 1.5,
         b: 1.5,
         input_grid_domain: (0.0, 12.0),
@@ -111,6 +116,7 @@ impl TestSuite for ExponentialTestSuite {
           .to_owned(),
         stress_type: "discretization over long horizons, accumulation error".to_owned(),
         analytical_caution: "use stable expm1 form for (1-exp(-(a-b)x))/(a-b)".to_owned(),
+        slowness: 1.0,
         a: 1.0,
         b: 1.0 + 1e-6,
         input_grid_domain: (0.0, 30.0),
@@ -124,6 +130,7 @@ impl TestSuite for ExponentialTestSuite {
           .to_owned(),
         stress_type: "truncation strategy for long g tail, FFT zero-padding".to_owned(),
         analytical_caution: "underflow in far tail contributions acceptable".to_owned(),
+        slowness: 0.0,
         a: 10.0,
         b: 0.1,
         input_grid_domain: (0.0, 200.0),
@@ -137,6 +144,7 @@ impl TestSuite for ExponentialTestSuite {
           .to_owned(),
         stress_type: "padding and index handling at short g support".to_owned(),
         analytical_caution: "none".to_owned(),
+        slowness: 1.0,
         a: 0.1,
         b: 10.0,
         input_grid_domain: (0.0, 200.0),
@@ -150,6 +158,7 @@ impl TestSuite for ExponentialTestSuite {
           .to_owned(),
         stress_type: "performance/memory, summation order".to_owned(),
         analytical_caution: "none".to_owned(),
+        slowness: 1.0,
         a: 1.0,
         b: 0.8,
         input_grid_domain: (0.0, 20.0),
@@ -162,6 +171,7 @@ impl TestSuite for ExponentialTestSuite {
         description: "Long horizon tail precision focus. Accumulation of small tail mass over long support.".to_owned(),
         stress_type: "FFT padding to avoid circular wrap, cumulative round-off".to_owned(),
         analytical_caution: "underflow in far tails expected".to_owned(),
+        slowness: 0.0,
         a: 0.05,
         b: 0.04,
         input_grid_domain: (0.0, 750.0),
@@ -175,6 +185,7 @@ impl TestSuite for ExponentialTestSuite {
           .to_owned(),
         stress_type: "exponent range, padding, accumulation depth".to_owned(),
         analytical_caution: "far tails may underflow to zero; acceptable".to_owned(),
+        slowness: 1.0,
         a: 0.5,
         b: 0.7,
         input_grid_domain: (0.0, 400.0),
@@ -188,6 +199,7 @@ impl TestSuite for ExponentialTestSuite {
           .to_owned(),
         stress_type: "long support convolution accuracy, summation stability".to_owned(),
         analytical_caution: "direct formula ill-conditioned; use stable evaluation".to_owned(),
+        slowness: 1.0,
         a: 1.0,
         b: 1.0 + 1e-12,
         input_grid_domain: (0.0, 80.0),
@@ -200,6 +212,7 @@ impl TestSuite for ExponentialTestSuite {
         description: "Very fast decays on small domains. Accuracy on sharply localized causal signals.".to_owned(),
         stress_type: "grid resolution and Δx scaling".to_owned(),
         analytical_caution: "none".to_owned(),
+        slowness: 0.0,
         a: 25.0,
         b: 30.0,
         input_grid_domain: (0.0, 0.5),
@@ -218,6 +231,7 @@ pub struct ExponentialTestCase {
   pub description: String,
   pub stress_type: String,
   pub analytical_caution: String,
+  pub slowness: f64,
   pub a: f64,
   pub b: f64,
   pub input_grid_domain: (f64, f64),
@@ -241,6 +255,10 @@ impl TestCase for ExponentialTestCase {
 
   fn analytical_caution(&self) -> &str {
     &self.analytical_caution
+  }
+
+  fn slowness(&self) -> f64 {
+    self.slowness
   }
 
   fn input_grid_domain(&self) -> (f64, f64) {
