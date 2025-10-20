@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TestSummary {
-  pub function_type: String,
+  pub test_suite_name: String,
   pub total_tests: usize,
   pub total_successes: usize,
   pub total_failures: usize,

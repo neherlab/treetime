@@ -1,7 +1,7 @@
 use crate::testing::framework::test_case::TestCase;
 use crate::testing::run::{Args, run_convolution_tests_impl};
-use crate::testing::test_suites::exponential::ExponentialConvInput;
-use crate::testing::test_suites::gaussian::GaussianConvInput;
+use crate::testing::test_suites::exponential::ExponentialTestSuite;
+use crate::testing::test_suites::gaussian::GaussianTestSuite;
 use clap::ValueEnum;
 use eyre::Report;
 use ndarray::Array1;
@@ -13,21 +13,21 @@ use strum_macros::{Display, EnumIter};
 #[serde(rename_all = "kebab-case")]
 #[clap(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
-pub enum FunctionType {
+pub enum TestSuiteName {
   #[default]
   Gaussian,
   Exponential,
 }
 
-impl FunctionType {
+impl TestSuiteName {
   pub fn all() -> Vec<Self> {
     Self::iter().collect()
   }
 
   pub fn run_tests(&self, args: &Args) -> Result<(), Report> {
     match self {
-      Self::Gaussian => run_convolution_tests_impl::<GaussianConvInput>(args),
-      Self::Exponential => run_convolution_tests_impl::<ExponentialConvInput>(args),
+      Self::Gaussian => run_convolution_tests_impl::<GaussianTestSuite>(args),
+      Self::Exponential => run_convolution_tests_impl::<ExponentialTestSuite>(args),
     }
   }
 }
@@ -35,7 +35,7 @@ impl FunctionType {
 pub trait TestSuite: Send + Sync {
   type TestCase: TestCase;
 
-  fn function_type(&self) -> &'static str;
+  fn test_suite_name(&self) -> &'static str;
 
   fn create_f(&self, test_case: &Self::TestCase, grid: &Array1<f64>) -> Result<Array1<f64>, Report>;
 

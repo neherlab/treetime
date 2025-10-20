@@ -7,8 +7,8 @@ use crate::testing::framework::summary::TestSummary;
 use crate::testing::framework::test_case::TestCase;
 use crate::testing::metrics::metrics::ConvolutionMetrics;
 use crate::testing::plots::plots::generate_plot_outputs;
-use crate::testing::test_suites::test_suites::FunctionType;
 use crate::testing::test_suites::test_suites::TestSuite;
+use crate::testing::test_suites::test_suites::TestSuiteName;
 use clap::Parser;
 use eyre::Report;
 use itertools::Itertools;
@@ -30,9 +30,9 @@ use treetime_utils::make_error;
   version
 )]
 pub struct Args {
-  /// Function types to test
-  #[arg(long, default_values_t = FunctionType::all())]
-  functions: Vec<FunctionType>,
+  /// Test suites to run
+  #[arg(long, default_values_t = TestSuiteName::all())]
+  test_suites: Vec<TestSuiteName>,
 
   /// Output directory for results files
   #[arg(long, default_value = "tmp/testing")]
@@ -57,8 +57,8 @@ pub struct Args {
 
 pub fn run_convolution_tests() -> Result<(), Report> {
   let args = Args::parse();
-  for function_type in &args.functions {
-    function_type.run_tests(&args)?;
+  for suite_name in &args.test_suites {
+    suite_name.run_tests(&args)?;
   }
   Ok(())
 }
@@ -74,12 +74,12 @@ where
     return Ok(());
   }
 
-  let output_dir = format!("{}/{}", args.output_dir, suite.function_type());
+  let output_dir = format!("{}/{}", args.output_dir, suite.test_suite_name());
   let test_cases = filter_test_cases(&suite, Some(args.test_cases.as_str()))?;
 
   if args.verbose {
     println!("Test Configuration:");
-    println!("  Function type: {}", suite.function_type());
+    println!("  Test suite: {}", suite.test_suite_name());
     println!("  Algorithms: {:?}", args.algorithms);
     println!("  Test cases: {} selected", test_cases.len());
     println!("  Output directory: {output_dir}\n");
@@ -97,7 +97,7 @@ where
 
   println!(
     "{} convolution test framework completed successfully!",
-    suite.function_type()
+    suite.test_suite_name()
   );
   println!("Check {output_dir} for detailed results.");
 
@@ -105,7 +105,7 @@ where
 }
 
 fn list_test_cases<S: TestSuite>(suite: &S) {
-  println!("Available {} test cases:", suite.function_type());
+  println!("Available {} test cases:", suite.test_suite_name());
   for case in suite.create_test_cases() {
     println!("  - {} : {}", case.name(), case.description());
   }
@@ -149,7 +149,7 @@ where
   let total_tests = test_cases.len() * algorithms.len();
   let completed = AtomicUsize::new(0);
 
-  ConvolutionTestConsole::print_header(suite.function_type(), test_cases.len(), algorithms.len());
+  ConvolutionTestConsole::print_header(suite.test_suite_name(), test_cases.len(), algorithms.len());
 
   ConvolutionTestConsole::print_progress_table_header();
 
@@ -256,7 +256,7 @@ where
   let overall_assessment = assess_overall_performance(&algorithm_summaries);
 
   TestSummary {
-    function_type: suite.function_type().to_owned(),
+    test_suite_name: suite.test_suite_name().to_owned(),
     total_tests: outcomes.len(),
     total_successes: successes.len(),
     total_failures: failures.len(),

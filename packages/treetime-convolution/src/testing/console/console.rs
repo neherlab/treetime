@@ -14,9 +14,9 @@ pub struct ConvolutionTestConsole;
 
 impl ConvolutionTestConsole {
   /// Print test framework header
-  pub fn print_header(function_type: &str, test_cases_count: usize, algorithms_count: usize) {
+  pub fn print_header(test_suite_name: &str, test_cases_count: usize, algorithms_count: usize) {
     let total_tests = test_cases_count * algorithms_count;
-    println!("=== {} Convolution Test Framework ===", function_type.to_uppercase());
+    println!("=== {} Convolution Test Framework ===", test_suite_name.to_uppercase());
     println!("Running {test_cases_count} test cases with {algorithms_count} algorithms ({total_tests} total)\n",);
   }
 
@@ -100,7 +100,7 @@ impl ConvolutionTestConsole {
   pub fn print_summary<T: TestCase>(summary: &TestSummary, outcomes: &[TestRunOutcome<T>]) {
     println!(
       "=== {} CONVOLUTION TEST SUMMARY ===\n",
-      summary.function_type.to_uppercase()
+      summary.test_suite_name.to_uppercase()
     );
 
     Self::print_overall_statistics(summary);
@@ -110,14 +110,15 @@ impl ConvolutionTestConsole {
   /// Print overall statistics section
   fn print_overall_statistics(summary: &TestSummary) {
     println!("Overall Statistics:");
-    let function_type = &summary.function_type;
     let total_tests = summary.total_tests;
     let total_successes = summary.total_successes;
     let total_failures = summary.total_failures;
     let total_algorithms = summary.total_algorithms;
     let execution_time_total_ms = summary.execution_time_total_ms;
     let overall_assessment = &summary.overall_assessment;
-    println!("  Function type: {function_type}");
+    let test_suite = &summary.test_suite_name;
+
+    println!("  Test suite: {test_suite}");
     println!("  Total tests run: {total_tests}");
     println!("  Successful runs: {total_successes}");
     println!("  Failed runs: {total_failures}");

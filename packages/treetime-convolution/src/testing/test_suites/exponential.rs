@@ -6,12 +6,12 @@ use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 
 #[derive(Default)]
-pub struct ExponentialConvInput;
+pub struct ExponentialTestSuite;
 
-impl TestSuite for ExponentialConvInput {
+impl TestSuite for ExponentialTestSuite {
   type TestCase = ExponentialTestCase;
 
-  fn function_type(&self) -> &'static str {
+  fn test_suite_name(&self) -> &'static str {
     "exponential"
   }
 

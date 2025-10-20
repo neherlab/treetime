@@ -7,12 +7,12 @@ use serde::{Deserialize, Serialize};
 use std::f64::consts::PI;
 
 #[derive(Default)]
-pub struct GaussianConvInput;
+pub struct GaussianTestSuite;
 
-impl TestSuite for GaussianConvInput {
+impl TestSuite for GaussianTestSuite {
   type TestCase = GaussianTestCase;
 
-  fn function_type(&self) -> &'static str {
+  fn test_suite_name(&self) -> &'static str {
     "gaussian"
   }
 
