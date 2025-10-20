@@ -2,33 +2,32 @@ use crate::distribution::reference::convolution_test::algorithm_summary::Algorit
 use crate::distribution::reference::convolution_test::algorithms::ConvolutionAlgorithm;
 use crate::distribution::reference::convolution_test::console::ConvolutionTestConsole;
 use crate::distribution::reference::convolution_test::framework::results::{TestFailure, TestRunOutcome};
-use crate::distribution::reference::convolution_test::framework::runner::ConvolutionTestRunner;
 use crate::distribution::reference::convolution_test::framework::summary::TestSummary;
 use crate::distribution::reference::convolution_test::framework::test_case::TestCase;
+use crate::distribution::reference::convolution_test::traits::ConvInput;
 use crate::io::json::{JsonPretty, json_write_file};
 use eyre::Report;
 use itertools::Itertools;
 use rayon::prelude::*;
 use serde::Serialize;
 use std::fs;
-use std::marker::PhantomData;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Instant;
 
-pub struct ConvolutionTestFramework<T: TestCase, R: ConvolutionTestRunner<T>> {
-  pub runner: R,
+pub struct ConvolutionTestFramework<I: ConvInput> {
+  pub input: I,
+  pub test_cases: Vec<I::TestCase>,
   pub algorithms: Vec<ConvolutionAlgorithm>,
   pub output_dir: String,
-  pub _phantom: PhantomData<T>,
 }
 
-impl<T: TestCase, R: ConvolutionTestRunner<T>> ConvolutionTestFramework<T, R> {
-  pub fn new(runner: R, output_dir: String) -> Self {
+impl<I: ConvInput> ConvolutionTestFramework<I> {
+  pub fn new(input: I, test_cases: Vec<I::TestCase>, output_dir: String) -> Self {
     Self {
-      runner,
+      input,
+      test_cases,
       algorithms: ConvolutionAlgorithm::all(),
       output_dir,
-      _phantom: PhantomData,
     }
   }
 
@@ -36,31 +35,30 @@ impl<T: TestCase, R: ConvolutionTestRunner<T>> ConvolutionTestFramework<T, R> {
     self.algorithms = algorithms;
   }
 
-  pub fn run_all_tests(&self) -> Result<Vec<TestRunOutcome<T>>, Report> {
-    let total_tests = self.runner.test_cases().len() * self.algorithms.len();
+  pub fn run_all_tests(&self) -> Result<Vec<TestRunOutcome<I::TestCase>>, Report> {
+    let total_tests = self.test_cases.len() * self.algorithms.len();
     let completed = AtomicUsize::new(0);
 
     ConvolutionTestConsole::print_header(
-      self.runner.function_type(),
-      self.runner.test_cases().len(),
+      self.input.function_type(),
+      self.test_cases.len(),
       self.algorithms.len(),
     );
 
     ConvolutionTestConsole::print_progress_table_header();
 
     let test_combinations: Vec<_> = self
-      .runner
-      .test_cases()
+      .test_cases
       .iter()
       .cartesian_product(&self.algorithms)
       .collect();
 
-    let outcomes: Vec<TestRunOutcome<T>> = test_combinations
+    let outcomes: Vec<TestRunOutcome<I::TestCase>> = test_combinations
       .into_par_iter()
       .map(|(test_case, &algorithm)| {
         let start_time = Instant::now();
 
-        match self.runner.run_test(test_case, algorithm) {
+        match self.input.run_test(test_case, algorithm) {
           Ok(result) => {
             let completed_count = completed.fetch_add(1, Ordering::Relaxed) + 1;
             ConvolutionTestConsole::print_success_row(&result, completed_count, total_tests);
@@ -94,7 +92,7 @@ impl<T: TestCase, R: ConvolutionTestRunner<T>> ConvolutionTestFramework<T, R> {
     Ok(outcomes)
   }
 
-  pub fn generate_summary(&self, outcomes: &[TestRunOutcome<T>]) -> TestSummary {
+  pub fn generate_summary(&self, outcomes: &[TestRunOutcome<I::TestCase>]) -> TestSummary {
     let successes = outcomes
       .iter()
       .filter_map(|outcome| match outcome {
@@ -141,7 +139,7 @@ impl<T: TestCase, R: ConvolutionTestRunner<T>> ConvolutionTestFramework<T, R> {
     };
 
     TestSummary {
-      function_type: self.runner.function_type().to_owned(),
+      function_type: self.input.function_type().to_owned(),
       total_tests: outcomes.len(),
       total_successes: successes.len(),
       total_failures: failures.len(),
@@ -152,19 +150,11 @@ impl<T: TestCase, R: ConvolutionTestRunner<T>> ConvolutionTestFramework<T, R> {
     }
   }
 
-  pub fn print_summary(&self, summary: &TestSummary, outcomes: &[TestRunOutcome<T>]) {
+  pub fn print_summary(&self, summary: &TestSummary, outcomes: &[TestRunOutcome<I::TestCase>]) {
     ConvolutionTestConsole::print_summary(summary, outcomes);
   }
-}
 
-#[derive(Serialize)]
-struct FullResults<'a, T: TestCase> {
-  summary: &'a TestSummary,
-  outcomes: &'a [TestRunOutcome<T>],
-}
-
-impl<T: TestCase, R: ConvolutionTestRunner<T>> ConvolutionTestFramework<T, R> {
-  pub fn save_results_json(&self, outcomes: &[TestRunOutcome<T>], summary: &TestSummary) -> Result<(), Report> {
+  pub fn save_results_json(&self, outcomes: &[TestRunOutcome<I::TestCase>], summary: &TestSummary) -> Result<(), Report> {
     fs::create_dir_all(&self.output_dir)?;
 
     let full_results = FullResults { summary, outcomes };
@@ -174,4 +164,10 @@ impl<T: TestCase, R: ConvolutionTestRunner<T>> ConvolutionTestFramework<T, R> {
     println!("Saved detailed JSON results to: {json_path}");
     Ok(())
   }
+}
+
+#[derive(Serialize)]
+struct FullResults<'a, T: TestCase> {
+  summary: &'a TestSummary,
+  outcomes: &'a [TestRunOutcome<T>],
 }

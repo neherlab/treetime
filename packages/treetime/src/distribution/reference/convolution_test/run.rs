@@ -1,8 +1,5 @@
 use crate::distribution::reference::convolution_test::algorithms::ConvolutionAlgorithm;
 use crate::distribution::reference::convolution_test::framework::framework::ConvolutionTestFramework;
-use crate::distribution::reference::convolution_test::framework::runner::{
-  ConvolutionTestRunner, TraitBasedTestRunner,
-};
 use crate::distribution::reference::convolution_test::functions::functions::{FunctionType, get_function};
 use crate::distribution::reference::convolution_test::plots::plots::generate_plot_outputs;
 use crate::distribution::reference::convolution_test::traits::ConvInput;
@@ -62,16 +59,16 @@ where
   }
 
   let output_dir = format!("{}/{}", args.output_dir, input.function_type());
-  let runner = TraitBasedTestRunner::<I>::new(Some(args.test_cases.as_str()))?;
+  let test_cases = input.filter_test_cases(Some(args.test_cases.as_str()))?;
 
-  let mut framework = ConvolutionTestFramework::new(runner, output_dir.clone());
+  let mut framework = ConvolutionTestFramework::new(input, test_cases, output_dir.clone());
   framework.set_algorithms(args.algorithms.clone());
 
   if args.verbose {
     println!("Test Configuration:");
-    println!("  Function type: {}", input.function_type());
+    println!("  Function type: {}", framework.input.function_type());
     println!("  Algorithms: {:?}", framework.algorithms);
-    println!("  Test cases: {} selected", framework.runner.test_cases().len());
+    println!("  Test cases: {} selected", framework.test_cases.len());
     println!("  Output directory: {output_dir}\n");
   }
 
@@ -90,7 +87,7 @@ where
 
   println!(
     "{} convolution test framework completed successfully!",
-    input.function_type()
+    framework.input.function_type()
   );
   println!("Check {output_dir} for detailed results.");
 
