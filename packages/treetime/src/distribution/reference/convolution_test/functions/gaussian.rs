@@ -10,38 +10,7 @@ use std::f64::consts::PI;
 #[derive(Default)]
 pub struct GaussianConvInput;
 
-impl GaussianConvInput {
-  fn create_all_test_cases() -> Vec<GaussianTestCase> {
-    vec![
-      GaussianTestCase {
-        name: "tight_truncation".to_owned(),
-        description: "Tight truncation highlighting sensitivity to insufficient domain coverage.".to_owned(),
-        stress_type: "boundary effects, wrap-around".to_owned(),
-        analytical_caution: "none".to_owned(),
-        sigma_f: 1.0,
-        sigma_g: 2.0,
-        mu: 0.0,
-        f_domain: (-3.0, 3.0),
-        g_domain: (-6.0, 6.0),
-        eval_domain: (-4.0, 4.0),
-        dx: 0.01,
-      },
-      GaussianTestCase {
-        name: "coarse_grid".to_owned(),
-        description: "Coarse grid coverage emphasizing discretization error with sub-grid shift.".to_owned(),
-        stress_type: "aliasing, grid spacing scaling".to_owned(),
-        analytical_caution: "none".to_owned(),
-        sigma_f: 1.0,
-        sigma_g: 1.0,
-        mu: 0.5,
-        f_domain: (-8.0, 8.0),
-        g_domain: (-7.5, 8.5),
-        eval_domain: (-6.0, 6.0),
-        dx: 0.1,
-      },
-    ]
-  }
-}
+
 
 impl ConvInput for GaussianConvInput {
   type TestCase = GaussianTestCase;
@@ -100,7 +69,34 @@ impl ConvInput for GaussianConvInput {
   }
 
   fn create_test_cases(&self) -> Vec<Self::TestCase> {
-    Self::create_all_test_cases()
+    vec![
+      GaussianTestCase {
+        name: "tight_truncation".to_owned(),
+        description: "Tight truncation highlighting sensitivity to insufficient domain coverage.".to_owned(),
+        stress_type: "boundary effects, wrap-around".to_owned(),
+        analytical_caution: "none".to_owned(),
+        sigma_f: 1.0,
+        sigma_g: 2.0,
+        mu: 0.0,
+        f_domain: (-3.0, 3.0),
+        g_domain: (-6.0, 6.0),
+        eval_domain: (-4.0, 4.0),
+        dx: 0.01,
+      },
+      GaussianTestCase {
+        name: "coarse_grid".to_owned(),
+        description: "Coarse grid coverage emphasizing discretization error with sub-grid shift.".to_owned(),
+        stress_type: "aliasing, grid spacing scaling".to_owned(),
+        analytical_caution: "none".to_owned(),
+        sigma_f: 1.0,
+        sigma_g: 1.0,
+        mu: 0.5,
+        f_domain: (-8.0, 8.0),
+        g_domain: (-7.5, 8.5),
+        eval_domain: (-6.0, 6.0),
+        dx: 0.1,
+      },
+    ]
   }
 }
 

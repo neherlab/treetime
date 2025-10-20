@@ -9,39 +9,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Default)]
 pub struct ExponentialConvInput;
 
-impl ExponentialConvInput {
-  fn create_all_test_cases() -> Vec<ExponentialTestCase> {
-    vec![
-      ExponentialTestCase {
-        name: "moderate_coarse_grid".to_owned(),
-        description: "Moderate rates on a coarse grid. Discretization error on coarse grids; step size sensitivity."
-          .to_owned(),
-        stress_type: "aliasing/accuracy vs Δx, Δx scaling factor".to_owned(),
-        analytical_caution: "none".to_owned(),
-        a: 1.0,
-        b: 0.8,
-        f_domain: (0.0, 20.0),
-        g_domain: (0.0, 20.0),
-        eval_domain: (0.0, 40.0),
-        dx: 0.1,
-      },
-      ExponentialTestCase {
-        name: "tight_truncation".to_owned(),
-        description:
-          "Tight truncation to expose intentional errors. Sensitivity to insufficient support; boundary effects."
-            .to_owned(),
-        stress_type: "wrap-around artifacts if padding insufficient".to_owned(),
-        analytical_caution: "none".to_owned(),
-        a: 1.0,
-        b: 2.0,
-        f_domain: (0.0, 3.0),
-        g_domain: (0.0, 2.0),
-        eval_domain: (0.0, 5.0),
-        dx: 0.01,
-      },
-    ]
-  }
-}
+
 
 impl ConvInput for ExponentialConvInput {
   type TestCase = ExponentialTestCase;
@@ -89,7 +57,35 @@ impl ConvInput for ExponentialConvInput {
   }
 
   fn create_test_cases(&self) -> Vec<Self::TestCase> {
-    Self::create_all_test_cases()
+    vec![
+      ExponentialTestCase {
+        name: "moderate_coarse_grid".to_owned(),
+        description: "Moderate rates on a coarse grid. Discretization error on coarse grids; step size sensitivity."
+          .to_owned(),
+        stress_type: "aliasing/accuracy vs Δx, Δx scaling factor".to_owned(),
+        analytical_caution: "none".to_owned(),
+        a: 1.0,
+        b: 0.8,
+        f_domain: (0.0, 20.0),
+        g_domain: (0.0, 20.0),
+        eval_domain: (0.0, 40.0),
+        dx: 0.1,
+      },
+      ExponentialTestCase {
+        name: "tight_truncation".to_owned(),
+        description:
+          "Tight truncation to expose intentional errors. Sensitivity to insufficient support; boundary effects."
+            .to_owned(),
+        stress_type: "wrap-around artifacts if padding insufficient".to_owned(),
+        analytical_caution: "none".to_owned(),
+        a: 1.0,
+        b: 2.0,
+        f_domain: (0.0, 3.0),
+        g_domain: (0.0, 2.0),
+        eval_domain: (0.0, 5.0),
+        dx: 0.01,
+      },
+    ]
   }
 }
 
