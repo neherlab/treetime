@@ -1,8 +1,4 @@
-use crate::distribution::reference::convolution_test::functions::exponential::ExponentialConvInput;
-use crate::distribution::reference::convolution_test::functions::gaussian::GaussianConvInput;
-use crate::distribution::reference::convolution_test::traits::ConvInput;
 use clap::ValueEnum;
-use eyre::Report;
 use serde::{Deserialize, Serialize};
 use strum::IntoEnumIterator;
 use strum_macros::{Display, EnumIter};
@@ -26,6 +22,6 @@ impl FunctionType {
 
 // Callers should match on FunctionType directly:
 // match function_type {
-//   FunctionType::Gaussian => GaussianConvInput::new(test_cases)?,
-//   FunctionType::Exponential => ExponentialConvInput::new(test_cases)?,
+//   FunctionType::Gaussian => GaussianConvInput::default(),
+//   FunctionType::Exponential => ExponentialConvInput::default(),
 // }

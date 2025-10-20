@@ -1,11 +1,15 @@
-use std::fs;
-use eyre::Report;
 use crate::distribution::reference::convolution_test::framework::results::TestRunOutcome;
 use crate::distribution::reference::convolution_test::framework::test_case::TestCase;
-use crate::distribution::reference::convolution_test::plots::error_plots::{plot_absolute_error, plot_error_histogram, plot_tolerance_metrics};
+use crate::distribution::reference::convolution_test::plots::error_plots::{
+  plot_absolute_error, plot_error_histogram, plot_tolerance_metrics,
+};
 use crate::distribution::reference::convolution_test::plots::functions_and_convolution::plot_functions_and_convolution;
-use crate::distribution::reference::convolution_test::plots::pointwise_plots::{plot_derivative_errors, plot_pointwise_error_profiles};
+use crate::distribution::reference::convolution_test::plots::pointwise_plots::{
+  plot_derivative_errors, plot_pointwise_error_profiles,
+};
 use crate::distribution::reference::convolution_test::plots::spatial_plots::plot_spatial_profiles;
+use eyre::Report;
+use std::fs;
 
 pub fn generate_plot_outputs<T>(output_dir: &str, outcomes: &[TestRunOutcome<T>]) -> Result<(), Report>
 where

@@ -14,11 +14,6 @@ pub trait ConvInput: Send + Sync {
   /// Test case type for this function
   type TestCase: TestCase;
 
-  /// Create new instance with test case filter
-  fn new(test_cases: &str) -> Result<Self, Report>
-  where
-    Self: Sized;
-
   /// Get function type name
   fn function_type(&self) -> &'static str;
 
@@ -36,9 +31,6 @@ pub trait ConvInput: Send + Sync {
 
   /// Create complete set of test cases for this function type
   fn create_test_cases(&self) -> Vec<Self::TestCase>;
-
-  /// Get test cases (filtered)
-  fn test_cases(&self) -> &[Self::TestCase];
 
   /// List all available test cases to stdout
   fn list_test_cases(&self) {
@@ -80,7 +72,11 @@ pub trait ConvInput: Send + Sync {
   }
 
   /// Run a test for the given test case and algorithm
-  fn run_test(&self, test_case: &Self::TestCase, algorithm: ConvolutionAlgorithm) -> Result<TestResult<Self::TestCase>, Report> {
+  fn run_test(
+    &self,
+    test_case: &Self::TestCase,
+    algorithm: ConvolutionAlgorithm,
+  ) -> Result<TestResult<Self::TestCase>, Report> {
     let start_time = Instant::now();
 
     let f = self.create_f(test_case)?;

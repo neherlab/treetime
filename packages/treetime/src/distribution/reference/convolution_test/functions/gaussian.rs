@@ -2,24 +2,15 @@
 use crate::distribution::reference::convolution_test::framework::test_case::TestCase;
 use crate::distribution::reference::convolution_test::traits::ConvInput;
 use crate::distribution::reference::grid_fn::GridFn;
-use crate::make_error;
 use eyre::Report;
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeSet;
 use std::f64::consts::PI;
 
-pub struct GaussianConvInput {
-  test_cases: Vec<GaussianTestCase>,
-}
+#[derive(Default)]
+pub struct GaussianConvInput;
 
 impl GaussianConvInput {
-  pub fn new(test_case_filter: &str) -> Result<Self, Report> {
-    let all_cases = Self::create_all_test_cases();
-    let test_cases = Self::filter_test_cases_impl(&all_cases, Some(test_case_filter))?;
-    Ok(Self { test_cases })
-  }
-
   fn create_all_test_cases() -> Vec<GaussianTestCase> {
     vec![
       GaussianTestCase {
@@ -50,34 +41,6 @@ impl GaussianConvInput {
       },
     ]
   }
-
-  fn filter_test_cases_impl(all_cases: &[GaussianTestCase], filter: Option<&str>) -> Result<Vec<GaussianTestCase>, Report> {
-    let filter = filter.and_then(|value| {
-      let trimmed = value.trim();
-      if trimmed.is_empty() { None } else { Some(trimmed) }
-    });
-
-    match filter {
-      None | Some("all") => Ok(all_cases.to_vec()),
-      Some(filter_str) => {
-        let requested_names: BTreeSet<&str> = filter_str.split(',').map(|name| name.trim()).collect();
-        let filtered_cases: Vec<GaussianTestCase> = all_cases
-          .iter()
-          .filter(|case| requested_names.contains(case.name()))
-          .cloned()
-          .collect();
-
-        if filtered_cases.is_empty() {
-          let available_names = all_cases.iter().map(|case| case.name()).collect::<Vec<_>>().join(", ");
-          return make_error!(
-            "No matching test cases found for: {filter_str}. Available test cases: {available_names}"
-          );
-        }
-
-        Ok(filtered_cases)
-      },
-    }
-  }
 }
 
 impl ConvInput for GaussianConvInput {
@@ -85,10 +48,6 @@ impl ConvInput for GaussianConvInput {
 
   fn function_type(&self) -> &'static str {
     "gaussian"
-  }
-
-  fn test_cases(&self) -> &[Self::TestCase] {
-    &self.test_cases
   }
 
   fn create_f(&self, test_case: &Self::TestCase) -> Result<GridFn, Report> {
@@ -142,11 +101,6 @@ impl ConvInput for GaussianConvInput {
 
   fn create_test_cases(&self) -> Vec<Self::TestCase> {
     Self::create_all_test_cases()
-  }
-
-  fn filter_test_cases(&self, filter: Option<&str>) -> Result<Vec<Self::TestCase>, Report> {
-    let all_cases = self.create_test_cases();
-    Self::filter_test_cases_impl(&all_cases, filter)
   }
 }
 

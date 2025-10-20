@@ -1,7 +1,6 @@
 use eyre::Report;
 use ndarray::Array1;
 use ndarray_interp::interp1d::{Interp1D, Interp1DBuilder, Linear};
-use ndarray_stats::QuantileExt;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 /// Function represented on a regular grid

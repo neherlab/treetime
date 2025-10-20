@@ -75,9 +75,9 @@ pub fn run_convolution_tests() -> Result<(), Report> {
 
 fn run_convolution_tests_impl<I>(args: &Args) -> Result<(), Report>
 where
-  I: ConvInput,
+  I: ConvInput + Default,
 {
-  let input = I::new(&args.test_cases)?;
+  let input = I::default();
 
   if args.list_cases {
     input.list_test_cases();
@@ -125,24 +125,15 @@ where
   let total_tests = test_cases.len() * algorithms.len();
   let completed = AtomicUsize::new(0);
 
-  ConvolutionTestConsole::print_header(
-    input.function_type(),
-    test_cases.len(),
-    algorithms.len(),
-  );
+  ConvolutionTestConsole::print_header(input.function_type(), test_cases.len(), algorithms.len());
 
   ConvolutionTestConsole::print_progress_table_header();
 
-  let test_combinations: Vec<_> = test_cases
-    .iter()
-    .cartesian_product(algorithms)
-    .collect();
+  let test_combinations: Vec<_> = test_cases.iter().cartesian_product(algorithms).collect();
 
   let outcomes: Vec<TestRunOutcome<I::TestCase>> = test_combinations
     .into_par_iter()
-    .map(|(test_case, &algorithm)| {
-      execute_single_test(input, test_case, algorithm, &completed, total_tests)
-    })
+    .map(|(test_case, &algorithm)| execute_single_test(input, test_case, algorithm, &completed, total_tests))
     .collect();
 
   let failures = collect_failures(&outcomes);
@@ -277,11 +268,7 @@ where
   }
 }
 
-fn save_results_json<T>(
-  output_dir: &str,
-  outcomes: &[TestRunOutcome<T>],
-  summary: &TestSummary,
-) -> Result<(), Report>
+fn save_results_json<T>(output_dir: &str, outcomes: &[TestRunOutcome<T>], summary: &TestSummary) -> Result<(), Report>
 where
   T: Serialize + TestCase,
 {
