@@ -7,15 +7,18 @@ use crate::distribution::reference::convolution_test::framework::test_case::Test
 use crate::distribution::reference::convolution_test::functions::exponential::ExponentialConvInput;
 use crate::distribution::reference::convolution_test::functions::functions::FunctionType;
 use crate::distribution::reference::convolution_test::functions::gaussian::GaussianConvInput;
+use crate::distribution::reference::convolution_test::metrics::metrics::ConvolutionMetrics;
 use crate::distribution::reference::convolution_test::plots::plots::generate_plot_outputs;
-use crate::distribution::reference::convolution_test::traits::ConvAlgo;
-use crate::distribution::reference::convolution_test::traits::ConvInput;
+use crate::distribution::reference::convolution_test::traits::{ConvAlgo, ConvInput};
 use crate::io::json::{JsonPretty, json_write_file};
+use crate::make_error;
 use clap::Parser;
 use eyre::Report;
 use itertools::Itertools;
+use ndarray::Array1;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeSet;
 use std::fs;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Instant;
@@ -61,6 +64,90 @@ struct FullResults<'a, T: TestCase> {
   outcomes: &'a [TestRunOutcome<T>],
 }
 
+fn list_test_cases<I: ConvInput>(input: &I) {
+  println!("Available {} test cases:", input.function_type());
+  for case in input.create_test_cases() {
+    println!("  - {} : {}", case.name(), case.description());
+  }
+}
+
+fn filter_test_cases<I: ConvInput>(input: &I, filter: Option<&str>) -> Result<Vec<I::TestCase>, Report> {
+  let all_cases = input.create_test_cases();
+
+  let filter = filter.and_then(|value| {
+    let trimmed = value.trim();
+    if trimmed.is_empty() { None } else { Some(trimmed) }
+  });
+
+  match filter {
+    None | Some("all") => Ok(all_cases),
+    Some(filter_str) => {
+      let requested_names: BTreeSet<&str> = filter_str.split(',').map(|name| name.trim()).collect();
+      let filtered_cases: Vec<I::TestCase> = all_cases
+        .iter()
+        .filter(|case| requested_names.contains(case.name()))
+        .cloned()
+        .collect();
+
+      if filtered_cases.is_empty() {
+        let available_names = all_cases.iter().map(|case| case.name()).collect::<Vec<_>>().join(", ");
+        return make_error!("No matching test cases found for: {filter_str}. Available test cases: {available_names}");
+      }
+
+      Ok(filtered_cases)
+    },
+  }
+}
+
+fn run_test<I: ConvInput>(
+  input: &I,
+  test_case: &I::TestCase,
+  algo: &dyn ConvAlgo,
+) -> Result<TestResult<I::TestCase>, Report> {
+  let start_time = Instant::now();
+
+  let f = input.create_f(test_case)?;
+  let g = input.create_g(test_case)?;
+
+  let (eval_min, eval_max) = input.eval_domain(test_case);
+  let n_eval_points = ((eval_max - eval_min) / test_case.dx() + 1.0).round() as usize;
+  let eval_grid = Array1::from_iter((0..n_eval_points).map(|i| eval_min + i as f64 * test_case.dx()));
+
+  let actual_result = algo.convolve(&f, &g, &eval_grid)?;
+  let expected_result = input.analytical_convolution(test_case, &eval_grid)?;
+
+  let execution_time = start_time.elapsed().as_secs_f64() * 1000.0;
+
+  let metrics = ConvolutionMetrics::new(
+    actual_result.x(),
+    actual_result.y(),
+    expected_result.y(),
+    execution_time,
+  )?;
+
+  let evaluation_grid = actual_result.x().to_owned();
+  let actual_values = actual_result.y().to_owned();
+  let expected_values = expected_result.y().to_owned();
+  let f_x_values = f.x().to_owned();
+  let f_y_values = f.y().to_owned();
+  let g_x_values = g.x().to_owned();
+  let g_y_values = g.y().to_owned();
+
+  Ok(TestResult {
+    algorithm: algo.name().to_owned(),
+    test_case: test_case.clone(),
+    execution_time_ms: execution_time,
+    f_x_values,
+    f_y_values,
+    g_x_values,
+    g_y_values,
+    evaluation_grid,
+    actual_values,
+    expected_values,
+    metrics,
+  })
+}
+
 pub fn run_convolution_tests() -> Result<(), Report> {
   let args = Args::parse();
   for function_type in &args.functions {
@@ -83,12 +170,12 @@ where
   let input = I::default();
 
   if args.list_cases {
-    input.list_test_cases();
+    list_test_cases(&input);
     return Ok(());
   }
 
   let output_dir = format!("{}/{}", args.output_dir, input.function_type());
-  let test_cases = input.filter_test_cases(Some(args.test_cases.as_str()))?;
+  let test_cases = filter_test_cases(&input, Some(args.test_cases.as_str()))?;
 
   if args.verbose {
     println!("Test Configuration:");
@@ -163,7 +250,7 @@ where
     ConvolutionAlgorithm::Ndarray => Box::new(NdarrayAlgo),
   };
 
-  match input.run_test(test_case, algorithm, algo) {
+  match run_test(input, test_case, &*algo) {
     Ok(result) => {
       let completed_count = completed.fetch_add(1, Ordering::Relaxed) + 1;
       ConvolutionTestConsole::print_success_row(&result, completed_count, total_tests);
@@ -174,7 +261,7 @@ where
       let elapsed_ms = start_time.elapsed().as_secs_f64() * 1000.0;
       ConvolutionTestConsole::print_failure_row(test_case, algorithm, elapsed_ms, completed_count, total_tests);
       TestRunOutcome::Failure(TestFailure {
-        algorithm,
+        algorithm: algorithm.to_string(),
         test_case: test_case.clone(),
         error: format!("{error}"),
         execution_time_ms: elapsed_ms,
@@ -221,13 +308,14 @@ fn build_algorithm_summaries<T: TestCase>(
   algorithms
     .iter()
     .filter_map(|&algorithm| {
+      let algorithm_name = algorithm.to_string();
       let algo_successes = successes
         .iter()
-        .filter(|result| result.algorithm == algorithm)
+        .filter(|result| result.algorithm == algorithm_name)
         .collect_vec();
       let algo_failures = failures
         .iter()
-        .filter(|failure| failure.algorithm == algorithm)
+        .filter(|failure| failure.algorithm == algorithm_name)
         .collect_vec();
       let total_runs = algo_successes.len() + algo_failures.len();
 

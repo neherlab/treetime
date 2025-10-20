@@ -21,7 +21,7 @@ where
         "{}/{}/{}",
         output_dir,
         result.test_case.name(),
-        result.algorithm.to_string().to_lowercase()
+        result.algorithm.to_lowercase()
       );
       fs::create_dir_all(&algorithm_dir)?;
 

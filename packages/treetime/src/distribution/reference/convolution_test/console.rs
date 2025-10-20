@@ -142,8 +142,10 @@ impl ConvolutionTestConsole {
 
     println!("Comprehensive Metrics by Algorithm:");
 
-    let grouped_by_algorithm = successes.into_iter().into_group_map_by(|result| result.algorithm);
-    let algorithms: Vec<_> = grouped_by_algorithm.keys().sorted().copied().collect();
+    let grouped_by_algorithm = successes
+      .into_iter()
+      .into_group_map_by(|result| result.algorithm.clone());
+    let algorithms: Vec<_> = grouped_by_algorithm.keys().sorted().cloned().collect();
     let all_metrics = Self::compute_all_metrics(summary, &grouped_by_algorithm);
 
     Self::print_metrics_table_headers(&algorithms, &all_metrics);
@@ -153,15 +155,15 @@ impl ConvolutionTestConsole {
   /// Compute all metrics for the table
   fn compute_all_metrics<T: TestCase>(
     summary: &TestSummary,
-    grouped_by_algorithm: &std::collections::HashMap<ConvolutionAlgorithm, Vec<&TestResult<T>>>,
-  ) -> std::collections::HashMap<ConvolutionAlgorithm, std::collections::HashMap<&'static str, String>> {
+    grouped_by_algorithm: &std::collections::HashMap<String, Vec<&TestResult<T>>>,
+  ) -> std::collections::HashMap<String, std::collections::HashMap<&'static str, String>> {
     let mut all_metrics = std::collections::HashMap::new();
 
     for (algorithm, algorithm_results) in grouped_by_algorithm {
       let algo_summary = summary
         .algorithm_summaries
         .iter()
-        .find(|s| s.algorithm == *algorithm)
+        .find(|s| s.algorithm.to_string() == *algorithm)
         .unwrap();
 
       let correlation_mean: f64 = algorithm_results
@@ -400,7 +402,7 @@ impl ConvolutionTestConsole {
       ];
 
       all_metrics.insert(
-        *algorithm,
+        algorithm.clone(),
         metrics.into_iter().collect::<std::collections::HashMap<_, _>>(),
       );
     }
@@ -410,21 +412,21 @@ impl ConvolutionTestConsole {
 
   /// Print metrics table headers
   fn print_metrics_table_headers(
-    algorithms: &[ConvolutionAlgorithm],
-    all_metrics: &std::collections::HashMap<ConvolutionAlgorithm, std::collections::HashMap<&'static str, String>>,
+    algorithms: &[String],
+    all_metrics: &std::collections::HashMap<String, std::collections::HashMap<&'static str, String>>,
   ) {
     let metric_col_width = "Moderate tolerance pass (min%)".len();
     let mut algo_col_widths = std::collections::HashMap::new();
 
     for algo in algorithms {
-      let name_w = algo.to_string().len();
+      let name_w = algo.len();
       let max_value_w = all_metrics[algo].values().map(|s| s.len()).max().unwrap_or(0);
-      algo_col_widths.insert(*algo, name_w.max(max_value_w));
+      algo_col_widths.insert(algo.clone(), name_w.max(max_value_w));
     }
 
     print!("| {:^width$} |", "Metric", width = metric_col_width);
     for algo in algorithms {
-      print!(" {:^width$} |", algo.to_string(), width = algo_col_widths[algo]);
+      print!(" {:^width$} |", algo, width = algo_col_widths[algo]);
     }
     println!();
 
@@ -437,16 +439,16 @@ impl ConvolutionTestConsole {
 
   /// Print metrics table rows
   fn print_metrics_table_rows(
-    algorithms: &[ConvolutionAlgorithm],
-    all_metrics: &std::collections::HashMap<ConvolutionAlgorithm, std::collections::HashMap<&'static str, String>>,
+    algorithms: &[String],
+    all_metrics: &std::collections::HashMap<String, std::collections::HashMap<&'static str, String>>,
   ) {
     let metric_col_width = "Moderate tolerance pass (min%)".len();
     let mut algo_col_widths = std::collections::HashMap::new();
 
     for algo in algorithms {
-      let name_w = algo.to_string().len();
+      let name_w = algo.len();
       let max_value_w = all_metrics[algo].values().map(|s| s.len()).max().unwrap_or(0);
-      algo_col_widths.insert(*algo, name_w.max(max_value_w));
+      algo_col_widths.insert(algo.clone(), name_w.max(max_value_w));
     }
 
     let categories = vec![

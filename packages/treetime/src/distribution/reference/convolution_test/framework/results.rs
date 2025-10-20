@@ -1,4 +1,3 @@
-use crate::distribution::reference::convolution_test::algorithms::ConvolutionAlgorithm;
 use crate::distribution::reference::convolution_test::framework::test_case::TestCase;
 use crate::distribution::reference::convolution_test::metrics::metrics::ConvolutionMetrics;
 use crate::io::serde::{array1_as_vec, array1_from_vec};
@@ -7,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TestResult<T: TestCase> {
-  pub algorithm: ConvolutionAlgorithm,
+  pub algorithm: String,
   pub test_case: T,
   pub execution_time_ms: f64,
 
@@ -32,7 +31,7 @@ pub struct TestResult<T: TestCase> {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TestFailure<T: TestCase> {
-  pub algorithm: ConvolutionAlgorithm,
+  pub algorithm: String,
   pub test_case: T,
   pub error: String,
   pub execution_time_ms: f64,
