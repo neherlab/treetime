@@ -6,4 +6,5 @@ pub mod framework;
 pub mod functions;
 pub mod metrics;
 pub mod output;
+pub mod plots;
 pub mod traits;
