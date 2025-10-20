@@ -64,89 +64,6 @@ struct FullResults<'a, T: TestCase> {
   outcomes: &'a [TestRunOutcome<T>],
 }
 
-fn list_test_cases<S: TestSuite>(suite: &S) {
-  println!("Available {} test cases:", suite.function_type());
-  for case in suite.create_test_cases() {
-    println!("  - {} : {}", case.name(), case.description());
-  }
-}
-
-fn filter_test_cases<S: TestSuite>(suite: &S, filter: Option<&str>) -> Result<Vec<S::TestCase>, Report> {
-  let filter = filter.and_then(|value| {
-    let trimmed = value.trim();
-    if trimmed.is_empty() { None } else { Some(trimmed) }
-  });
-
-  let all_cases = suite.create_test_cases();
-  match filter {
-    None | Some("all") => Ok(all_cases),
-    Some(filter_str) => {
-      let requested_names: BTreeSet<&str> = filter_str.split(',').map(|name| name.trim()).collect();
-      let filtered_cases: Vec<S::TestCase> = all_cases
-        .iter()
-        .filter(|case| requested_names.contains(case.name()))
-        .cloned()
-        .collect();
-
-      if filtered_cases.is_empty() {
-        let available_names = all_cases.iter().map(|case| case.name()).collect::<Vec<_>>().join(", ");
-        return make_error!("No matching test cases found for: {filter_str}. Available test cases: {available_names}");
-      }
-
-      Ok(filtered_cases)
-    },
-  }
-}
-
-fn run_test<S: TestSuite>(
-  suite: &S,
-  test_case: &S::TestCase,
-  algo: &dyn Algo,
-) -> Result<TestResult<S::TestCase>, Report> {
-  let start_time = Instant::now();
-
-  let f = suite.create_f(test_case)?;
-  let g = suite.create_g(test_case)?;
-
-  let (eval_min, eval_max) = suite.eval_domain(test_case);
-  let n_eval_points = ((eval_max - eval_min) / test_case.dx() + 1.0).round() as usize;
-  let eval_grid = Array1::from_iter((0..n_eval_points).map(|i| eval_min + i as f64 * test_case.dx()));
-
-  let actual_result = algo.convolve(&f, &g, &eval_grid)?;
-  let expected_result = suite.analytical_convolution(test_case, &eval_grid)?;
-
-  let execution_time = start_time.elapsed().as_secs_f64() * 1000.0;
-
-  let metrics = ConvolutionMetrics::new(
-    actual_result.x(),
-    actual_result.y(),
-    expected_result.y(),
-    execution_time,
-  )?;
-
-  let evaluation_grid = actual_result.x().to_owned();
-  let actual_values = actual_result.y().to_owned();
-  let expected_values = expected_result.y().to_owned();
-  let f_x_values = f.x().to_owned();
-  let f_y_values = f.y().to_owned();
-  let g_x_values = g.x().to_owned();
-  let g_y_values = g.y().to_owned();
-
-  Ok(TestResult {
-    algorithm: algo.name().to_owned(),
-    test_case: test_case.clone(),
-    execution_time_ms: execution_time,
-    f_x_values,
-    f_y_values,
-    g_x_values,
-    g_y_values,
-    evaluation_grid,
-    actual_values,
-    expected_values,
-    metrics,
-  })
-}
-
 pub fn run_convolution_tests() -> Result<(), Report> {
   let args = Args::parse();
   for function_type in &args.functions {
@@ -201,6 +118,40 @@ where
   println!("Check {output_dir} for detailed results.");
 
   Ok(())
+}
+
+fn list_test_cases<S: TestSuite>(suite: &S) {
+  println!("Available {} test cases:", suite.function_type());
+  for case in suite.create_test_cases() {
+    println!("  - {} : {}", case.name(), case.description());
+  }
+}
+
+fn filter_test_cases<S: TestSuite>(suite: &S, filter: Option<&str>) -> Result<Vec<S::TestCase>, Report> {
+  let filter = filter.and_then(|value| {
+    let trimmed = value.trim();
+    if trimmed.is_empty() { None } else { Some(trimmed) }
+  });
+
+  let all_cases = suite.create_test_cases();
+  match filter {
+    None | Some("all") => Ok(all_cases),
+    Some(filter_str) => {
+      let requested_names: BTreeSet<&str> = filter_str.split(',').map(|name| name.trim()).collect();
+      let filtered_cases: Vec<S::TestCase> = all_cases
+        .iter()
+        .filter(|case| requested_names.contains(case.name()))
+        .cloned()
+        .collect();
+
+      if filtered_cases.is_empty() {
+        let available_names = all_cases.iter().map(|case| case.name()).collect::<Vec<_>>().join(", ");
+        return make_error!("No matching test cases found for: {filter_str}. Available test cases: {available_names}");
+      }
+
+      Ok(filtered_cases)
+    },
+  }
 }
 
 fn run_all_tests<S>(
@@ -269,14 +220,53 @@ where
   }
 }
 
-fn collect_successes<T: TestCase>(outcomes: &[TestRunOutcome<T>]) -> Vec<&TestResult<T>> {
-  outcomes
-    .iter()
-    .filter_map(|outcome| match outcome {
-      TestRunOutcome::Success(result) => Some(result),
-      TestRunOutcome::Failure(_) => None,
-    })
-    .collect()
+fn run_test<S: TestSuite>(
+  suite: &S,
+  test_case: &S::TestCase,
+  algo: &dyn Algo,
+) -> Result<TestResult<S::TestCase>, Report> {
+  let start_time = Instant::now();
+
+  let f = suite.create_f(test_case)?;
+  let g = suite.create_g(test_case)?;
+
+  let (eval_min, eval_max) = suite.eval_domain(test_case);
+  let n_eval_points = ((eval_max - eval_min) / test_case.dx() + 1.0).round() as usize;
+  let eval_grid = Array1::from_iter((0..n_eval_points).map(|i| eval_min + i as f64 * test_case.dx()));
+
+  let actual_result = algo.convolve(&f, &g, &eval_grid)?;
+  let expected_result = suite.analytical_convolution(test_case, &eval_grid)?;
+
+  let execution_time = start_time.elapsed().as_secs_f64() * 1000.0;
+
+  let metrics = ConvolutionMetrics::new(
+    actual_result.x(),
+    actual_result.y(),
+    expected_result.y(),
+    execution_time,
+  )?;
+
+  let evaluation_grid = actual_result.x().to_owned();
+  let actual_values = actual_result.y().to_owned();
+  let expected_values = expected_result.y().to_owned();
+  let f_x_values = f.x().to_owned();
+  let f_y_values = f.y().to_owned();
+  let g_x_values = g.x().to_owned();
+  let g_y_values = g.y().to_owned();
+
+  Ok(TestResult {
+    algorithm: algo.name().to_owned(),
+    test_case: test_case.clone(),
+    execution_time_ms: execution_time,
+    f_x_values,
+    f_y_values,
+    g_x_values,
+    g_y_values,
+    evaluation_grid,
+    actual_values,
+    expected_values,
+    metrics,
+  })
 }
 
 fn collect_failures<T: TestCase>(outcomes: &[TestRunOutcome<T>]) -> Vec<&TestFailure<T>> {
@@ -285,6 +275,42 @@ fn collect_failures<T: TestCase>(outcomes: &[TestRunOutcome<T>]) -> Vec<&TestFai
     .filter_map(|outcome| match outcome {
       TestRunOutcome::Failure(failure) => Some(failure),
       TestRunOutcome::Success(_) => None,
+    })
+    .collect()
+}
+
+fn generate_summary<S>(
+  suite: &S,
+  outcomes: &[TestRunOutcome<S::TestCase>],
+  algorithms: &[ConvolutionAlgorithm],
+) -> TestSummary
+where
+  S: TestSuite,
+{
+  let successes = collect_successes(outcomes);
+  let failures = collect_failures(outcomes);
+  let total_execution_time = calculate_total_execution_time(outcomes);
+  let algorithm_summaries = build_algorithm_summaries(algorithms, &successes, &failures);
+  let overall_assessment = assess_overall_performance(&algorithm_summaries);
+
+  TestSummary {
+    function_type: suite.function_type().to_owned(),
+    total_tests: outcomes.len(),
+    total_successes: successes.len(),
+    total_failures: failures.len(),
+    total_algorithms: algorithms.len(),
+    execution_time_total_ms: total_execution_time,
+    algorithm_summaries,
+    overall_assessment,
+  }
+}
+
+fn collect_successes<T: TestCase>(outcomes: &[TestRunOutcome<T>]) -> Vec<&TestResult<T>> {
+  outcomes
+    .iter()
+    .filter_map(|outcome| match outcome {
+      TestRunOutcome::Success(result) => Some(result),
+      TestRunOutcome::Failure(_) => None,
     })
     .collect()
 }
@@ -334,32 +360,6 @@ fn assess_overall_performance(algorithm_summaries: &[AlgorithmSummary]) -> Strin
     "Good - Some algorithms perform well".to_owned()
   } else {
     "Poor - Significant issues detected".to_owned()
-  }
-}
-
-fn generate_summary<S>(
-  suite: &S,
-  outcomes: &[TestRunOutcome<S::TestCase>],
-  algorithms: &[ConvolutionAlgorithm],
-) -> TestSummary
-where
-  S: TestSuite,
-{
-  let successes = collect_successes(outcomes);
-  let failures = collect_failures(outcomes);
-  let total_execution_time = calculate_total_execution_time(outcomes);
-  let algorithm_summaries = build_algorithm_summaries(algorithms, &successes, &failures);
-  let overall_assessment = assess_overall_performance(&algorithm_summaries);
-
-  TestSummary {
-    function_type: suite.function_type().to_owned(),
-    total_tests: outcomes.len(),
-    total_successes: successes.len(),
-    total_failures: failures.len(),
-    total_algorithms: algorithms.len(),
-    execution_time_total_ms: total_execution_time,
-    algorithm_summaries,
-    overall_assessment,
   }
 }
 
