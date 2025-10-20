@@ -11,8 +11,8 @@ use treetime::distribution::reference::convolution_test::framework::runner::{
   ConvolutionTestRunner, TraitBasedTestRunner,
 };
 use treetime::distribution::reference::convolution_test::framework::test_case::TestCase;
-use treetime::distribution::reference::convolution_test::functions::exponential::conv_input::ExponentialConvInput;
-use treetime::distribution::reference::convolution_test::functions::gaussian::conv_input::GaussianConvInput;
+use treetime::distribution::reference::convolution_test::functions::exponential::ExponentialConvInput;
+use treetime::distribution::reference::convolution_test::functions::gaussian::GaussianConvInput;
 use treetime::distribution::reference::convolution_test::plots::error_plots::{
   plot_absolute_error, plot_error_histogram, plot_tolerance_metrics,
 };
