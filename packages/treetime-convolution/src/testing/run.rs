@@ -5,6 +5,7 @@ use crate::testing::framework::results::{TestFailure, TestResult, TestRunOutcome
 use crate::testing::framework::summary::AlgorithmSummary;
 use crate::testing::framework::summary::TestSummary;
 use crate::testing::framework::test_case::TestCase;
+use crate::testing::framework::tsv_output::generate_tsv_outputs;
 use crate::testing::metrics::metrics::ConvolutionMetrics;
 use crate::testing::plots::plots::generate_plot_outputs;
 use crate::testing::test_suites::test_suites::TestSuite;
@@ -98,6 +99,8 @@ where
   let outcomes = run_all_tests(&suite, &all_test_cases, &selected_test_cases, &args.algorithms)?;
 
   generate_plot_outputs(&output_dir, &outcomes)?;
+
+  generate_tsv_outputs(&output_dir, &outcomes)?;
 
   let summary = generate_summary(&suite, &outcomes, &args.algorithms);
 
