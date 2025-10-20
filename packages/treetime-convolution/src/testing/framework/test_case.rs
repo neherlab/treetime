@@ -9,5 +9,11 @@ pub trait TestCase: Clone + Send + Sync + Serialize {
 
   fn analytical_caution(&self) -> &str;
 
-  fn dx(&self) -> f64;
+  fn input_grid_domain(&self) -> (f64, f64);
+
+  fn input_grid_n_points(&self) -> usize;
+
+  fn output_grid_domain(&self) -> (f64, f64);
+
+  fn output_grid_n_points(&self) -> usize;
 }

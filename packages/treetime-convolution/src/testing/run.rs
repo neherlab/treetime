@@ -228,42 +228,33 @@ fn run_test<S: TestSuite>(
 ) -> Result<TestResult<S::TestCase>, Report> {
   let start_time = Instant::now();
 
-  let f = suite.create_f(test_case)?;
-  let g = suite.create_g(test_case)?;
+  let (input_grid_min, input_grid_max) = test_case.input_grid_domain();
+  let input_grid_n_points = test_case.input_grid_n_points();
+  let input_grid = Array1::linspace(input_grid_min, input_grid_max, input_grid_n_points);
 
-  let (eval_min, eval_max) = suite.eval_domain(test_case);
-  let n_eval_points = ((eval_max - eval_min) / test_case.dx() + 1.0).round() as usize;
-  let eval_grid = Array1::from_iter((0..n_eval_points).map(|i| eval_min + i as f64 * test_case.dx()));
+  let (output_grid_min, output_grid_max) = test_case.output_grid_domain();
+  let output_grid_n_points = test_case.output_grid_n_points();
+  let output_grid = Array1::linspace(output_grid_min, output_grid_max, output_grid_n_points);
 
-  let actual_result = algo.convolve(&f, &g, &eval_grid)?;
-  let expected_result = suite.analytical_convolution(test_case, &eval_grid)?;
+  let f_values = suite.create_f(test_case, &input_grid)?;
+  let g_values = suite.create_g(test_case, &input_grid)?;
+
+  let actual_values = algo.convolve(&input_grid, &f_values, &g_values, &output_grid)?;
+  let expected_values = suite.analytical_convolution(test_case, &output_grid)?;
 
   let execution_time = start_time.elapsed().as_secs_f64() * 1000.0;
 
-  let metrics = ConvolutionMetrics::new(
-    actual_result.x(),
-    actual_result.y(),
-    expected_result.y(),
-    execution_time,
-  )?;
-
-  let evaluation_grid = actual_result.x().to_owned();
-  let actual_values = actual_result.y().to_owned();
-  let expected_values = expected_result.y().to_owned();
-  let f_x_values = f.x().to_owned();
-  let f_y_values = f.y().to_owned();
-  let g_x_values = g.x().to_owned();
-  let g_y_values = g.y().to_owned();
+  let metrics = ConvolutionMetrics::new(&output_grid, &actual_values, &expected_values, execution_time)?;
 
   Ok(TestResult {
     algorithm: algo.name().to_owned(),
     test_case: test_case.clone(),
     execution_time_ms: execution_time,
-    f_x_values,
-    f_y_values,
-    g_x_values,
-    g_y_values,
-    evaluation_grid,
+    f_x_values: input_grid.clone(),
+    f_y_values: f_values,
+    g_x_values: input_grid,
+    g_y_values: g_values,
+    evaluation_grid: output_grid,
     actual_values,
     expected_values,
     metrics,

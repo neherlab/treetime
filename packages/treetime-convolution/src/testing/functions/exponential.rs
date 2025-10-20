@@ -1,5 +1,4 @@
 #![allow(clippy::many_single_char_names)]
-use crate::grid_fn::GridFn;
 use crate::testing::framework::test_case::TestCase;
 use crate::testing::test_suites::TestSuite;
 use eyre::Report;
@@ -16,34 +15,20 @@ impl TestSuite for ExponentialConvInput {
     "exponential"
   }
 
-  fn create_f(&self, test_case: &Self::TestCase) -> Result<GridFn, Report> {
-    let ExponentialTestCase { a, f_domain, dx, .. } = test_case;
-    // Generate exponential function f(x) = a*exp(-ax) for x ≥ 0, 0 otherwise
-    GridFn::from_grid(*f_domain, *dx, |x| if x >= 0.0 { a * (-a * x).exp() } else { 0.0 })
+  fn create_f(&self, test_case: &Self::TestCase, grid: &Array1<f64>) -> Result<Array1<f64>, Report> {
+    let a = test_case.a;
+    Ok(grid.mapv(|x| if x >= 0.0 { a * (-a * x).exp() } else { 0.0 }))
   }
 
-  fn create_g(&self, test_case: &Self::TestCase) -> Result<GridFn, Report> {
-    let ExponentialTestCase { b, g_domain, dx, .. } = test_case;
-    // Generate exponential function g(x) = b*exp(-bx) for x ≥ 0, 0 otherwise
-    GridFn::from_grid(*g_domain, *dx, |x| if x >= 0.0 { b * (-b * x).exp() } else { 0.0 })
+  fn create_g(&self, test_case: &Self::TestCase, grid: &Array1<f64>) -> Result<Array1<f64>, Report> {
+    let b = test_case.b;
+    Ok(grid.mapv(|x| if x >= 0.0 { b * (-b * x).exp() } else { 0.0 }))
   }
 
-  fn eval_domain(&self, test_case: &Self::TestCase) -> (f64, f64) {
-    test_case.eval_domain
-  }
-
-  fn analytical_convolution(&self, test_case: &Self::TestCase, _eval_grid: &Array1<f64>) -> Result<GridFn, Report> {
-    let ExponentialTestCase {
-      a, b, eval_domain, dx, ..
-    } = test_case;
-    // Analytical convolution of two exponential functions
-    //
-    // f(x) = a*exp(-ax) for x ≥ 0, 0 otherwise
-    // g(x) = b*exp(-bx) for x ≥ 0, 0 otherwise
-    //
-    // Result: (ab)/(a-b) * (1-exp(-(a-b)x)) * exp(-bx) for a ≠ b
-    // Special case: when a = b, result is ab*x*exp(-ax)
-    GridFn::from_grid(*eval_domain, *dx, |x| {
+  fn analytical_convolution(&self, test_case: &Self::TestCase, eval_grid: &Array1<f64>) -> Result<Array1<f64>, Report> {
+    let a = test_case.a;
+    let b = test_case.b;
+    Ok(eval_grid.mapv(|x| {
       if x < 0.0 {
         0.0
       } else if (a - b).abs() < 1e-15 {
@@ -51,7 +36,7 @@ impl TestSuite for ExponentialConvInput {
       } else {
         (a * b) / (a - b) * (1.0 - (-(a - b) * x).exp()) * (-b * x).exp()
       }
-    })
+    }))
   }
 
   fn create_test_cases(&self) -> Vec<Self::TestCase> {
@@ -63,10 +48,10 @@ impl TestSuite for ExponentialConvInput {
         analytical_caution: "none".to_owned(),
         a: 1.0,
         b: 2.0,
-        f_domain: (-1.0, 10.0),
-        g_domain: (-1.0, 10.0),
-        eval_domain: (-1.0, 10.0),
-        dx: 0.01,
+        input_grid_domain: (-1.0, 10.0),
+        input_grid_n_points: 1101,
+        output_grid_domain: (-1.0, 10.0),
+        output_grid_n_points: 1101,
       },
       ExponentialTestCase {
         name: "moderate_coarse_grid".to_owned(),
@@ -76,10 +61,10 @@ impl TestSuite for ExponentialConvInput {
         analytical_caution: "none".to_owned(),
         a: 1.0,
         b: 0.8,
-        f_domain: (0.0, 20.0),
-        g_domain: (0.0, 20.0),
-        eval_domain: (0.0, 40.0),
-        dx: 0.1,
+        input_grid_domain: (0.0, 20.0),
+        input_grid_n_points: 201,
+        output_grid_domain: (0.0, 30.0),
+        output_grid_n_points: 301,
       },
       ExponentialTestCase {
         name: "tight_truncation".to_owned(),
@@ -90,10 +75,10 @@ impl TestSuite for ExponentialConvInput {
         analytical_caution: "none".to_owned(),
         a: 1.0,
         b: 2.0,
-        f_domain: (0.0, 3.0),
-        g_domain: (0.0, 2.0),
-        eval_domain: (0.0, 5.0),
-        dx: 0.01,
+        input_grid_domain: (0.0, 5.0),
+        input_grid_n_points: 501,
+        output_grid_domain: (0.0, 6.0),
+        output_grid_n_points: 601,
       },
     ]
   }
@@ -106,12 +91,12 @@ pub struct ExponentialTestCase {
   pub description: String,
   pub stress_type: String,
   pub analytical_caution: String,
-  pub a: f64,                  // Decay rate for f(x) = exp(-ax) for x >= 0
-  pub b: f64,                  // Decay rate for g(x) = exp(-bx) for x >= 0
-  pub f_domain: (f64, f64),    // Should start at 0 for causal support
-  pub g_domain: (f64, f64),    // Should start at 0 for causal support
-  pub eval_domain: (f64, f64), // Should start at 0 for causal support
-  pub dx: f64,
+  pub a: f64,
+  pub b: f64,
+  pub input_grid_domain: (f64, f64),
+  pub input_grid_n_points: usize,
+  pub output_grid_domain: (f64, f64),
+  pub output_grid_n_points: usize,
 }
 
 impl TestCase for ExponentialTestCase {
@@ -131,7 +116,19 @@ impl TestCase for ExponentialTestCase {
     &self.analytical_caution
   }
 
-  fn dx(&self) -> f64 {
-    self.dx
+  fn input_grid_domain(&self) -> (f64, f64) {
+    self.input_grid_domain
+  }
+
+  fn input_grid_n_points(&self) -> usize {
+    self.input_grid_n_points
+  }
+
+  fn output_grid_domain(&self) -> (f64, f64) {
+    self.output_grid_domain
+  }
+
+  fn output_grid_n_points(&self) -> usize {
+    self.output_grid_n_points
   }
 }

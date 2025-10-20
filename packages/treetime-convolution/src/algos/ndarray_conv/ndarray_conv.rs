@@ -1,31 +1,38 @@
 use crate::algos::algo_trait::Algo;
-use crate::grid_fn::GridFn;
 use eyre::Report;
 use ndarray::Array1;
 use ndarray_conv::{ConvExt, ConvMode, PaddingMode};
+use ndarray_interp::interp1d::Interp1DBuilder;
 use treetime_utils::ndarray::is_uniform_grid;
 
 /// Convolution using ndarray_conv library for uniform grids
-pub fn convolve_ndarray_conv(f: &GridFn, g: &GridFn, x_grid: &Array1<f64>) -> Result<GridFn, Report> {
-  debug_assert!(is_uniform_grid(f.x()), "grid must be uniform");
-  debug_assert!(is_uniform_grid(g.x()), "grid must be uniform");
-  debug_assert!(is_uniform_grid(x_grid), "grid must be uniform");
+pub fn convolve_ndarray_conv(
+  input_grid: &Array1<f64>,
+  f_values: &Array1<f64>,
+  g_values: &Array1<f64>,
+  output_grid: &Array1<f64>,
+) -> Result<Array1<f64>, Report> {
+  debug_assert!(is_uniform_grid(input_grid), "input_grid must be uniform");
+  debug_assert!(is_uniform_grid(output_grid), "output_grid must be uniform");
 
-  let raw_conv = f.y().conv(g.y(), ConvMode::Full, PaddingMode::Zeros)?;
-  let dx = f.x()[1] - f.x()[0];
-  let conv_scaled = &raw_conv * dx;
+  let grid_spacing = input_grid[1] - input_grid[0];
 
-  let result_len = raw_conv.len();
-  let result_min = f.x()[0] + g.x()[0];
-  let result_x = Array1::from_iter((0..result_len).map(|i| result_min + i as f64 * dx));
+  let discrete_conv = f_values.conv(g_values, ConvMode::Full, PaddingMode::Zeros)?;
+  let continuous_conv = &discrete_conv * grid_spacing;
 
-  if result_x.len() == x_grid.len() {
-    GridFn::new(result_x, conv_scaled)
-  } else {
-    let temp_fn = GridFn::new(result_x, conv_scaled)?;
-    let result_vals = temp_fn.interp_many(x_grid)?;
-    GridFn::new(x_grid.clone(), result_vals)
+  let conv_result_len = discrete_conv.len();
+  let conv_result_min = input_grid[0] + input_grid[0];
+  let conv_result_max = input_grid[input_grid.len() - 1] + input_grid[input_grid.len() - 1];
+  let conv_result_grid = Array1::linspace(conv_result_min, conv_result_max, conv_result_len);
+
+  let temp_interp = Interp1DBuilder::new(continuous_conv).x(conv_result_grid).build()?;
+
+  let mut result = Array1::zeros(output_grid.len());
+  for (i, &x) in output_grid.iter().enumerate() {
+    result[i] = temp_interp.interp_scalar(x).unwrap_or(0.0);
   }
+
+  Ok(result)
 }
 
 pub struct NdarrayAlgo;
@@ -35,7 +42,13 @@ impl Algo for NdarrayAlgo {
     "ndarray"
   }
 
-  fn convolve(&self, f: &GridFn, g: &GridFn, x_grid: &Array1<f64>) -> Result<GridFn, Report> {
-    convolve_ndarray_conv(f, g, x_grid)
+  fn convolve(
+    &self,
+    input_grid: &Array1<f64>,
+    f_values: &Array1<f64>,
+    g_values: &Array1<f64>,
+    output_grid: &Array1<f64>,
+  ) -> Result<Array1<f64>, Report> {
+    convolve_ndarray_conv(input_grid, f_values, g_values, output_grid)
   }
 }
