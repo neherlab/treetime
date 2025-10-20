@@ -9,6 +9,18 @@ use ndarray::Array1;
 use std::collections::BTreeSet;
 use std::time::Instant;
 
+/// Create a convolution algorithm implementation for the given algorithm type
+pub fn create_conv_algo(algorithm: ConvolutionAlgorithm) -> Box<dyn ConvAlgo> {
+  match algorithm {
+    ConvolutionAlgorithm::Riemann => {
+      Box::new(crate::distribution::reference::convolution_test::algo_impls::RiemannAlgo)
+    },
+    ConvolutionAlgorithm::Ndarray => {
+      Box::new(crate::distribution::reference::convolution_test::algo_impls::NdarrayAlgo)
+    },
+  }
+}
+
 /// Trait for function-specific convolution input generators and test runners
 pub trait ConvInput: Send + Sync {
   /// Test case type for this function
@@ -76,6 +88,7 @@ pub trait ConvInput: Send + Sync {
     &self,
     test_case: &Self::TestCase,
     algorithm: ConvolutionAlgorithm,
+    algo: Box<dyn ConvAlgo>,
   ) -> Result<TestResult<Self::TestCase>, Report> {
     let start_time = Instant::now();
 
@@ -85,15 +98,6 @@ pub trait ConvInput: Send + Sync {
     let (eval_min, eval_max) = self.eval_domain(test_case);
     let n_eval_points = ((eval_max - eval_min) / test_case.dx() + 1.0).round() as usize;
     let eval_grid = Array1::from_iter((0..n_eval_points).map(|i| eval_min + i as f64 * test_case.dx()));
-
-    let algo: Box<dyn ConvAlgo> = match algorithm {
-      ConvolutionAlgorithm::Riemann => {
-        Box::new(crate::distribution::reference::convolution_test::algo_impls::RiemannAlgo)
-      },
-      ConvolutionAlgorithm::Ndarray => {
-        Box::new(crate::distribution::reference::convolution_test::algo_impls::NdarrayAlgo)
-      },
-    };
 
     let actual_result = algo.convolve(&f, &g, &eval_grid)?;
     let expected_result = self.analytical_convolution(test_case, &eval_grid)?;

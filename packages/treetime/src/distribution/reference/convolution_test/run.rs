@@ -8,6 +8,7 @@ use crate::distribution::reference::convolution_test::functions::exponential::Ex
 use crate::distribution::reference::convolution_test::functions::functions::FunctionType;
 use crate::distribution::reference::convolution_test::functions::gaussian::GaussianConvInput;
 use crate::distribution::reference::convolution_test::plots::plots::generate_plot_outputs;
+use crate::distribution::reference::convolution_test::traits::ConvAlgo;
 use crate::distribution::reference::convolution_test::traits::ConvInput;
 use crate::io::json::{JsonPretty, json_write_file};
 use clap::Parser;
@@ -18,6 +19,8 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Instant;
+
+use crate::distribution::reference::convolution_test::algo_impls::{RiemannAlgo, NdarrayAlgo};
 
 #[derive(Parser, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
@@ -155,7 +158,16 @@ where
 {
   let start_time = Instant::now();
 
-  match input.run_test(test_case, algorithm) {
+  let algo: Box<dyn ConvAlgo> = match algorithm {
+    ConvolutionAlgorithm::Riemann => {
+      Box::new(RiemannAlgo)
+    },
+    ConvolutionAlgorithm::Ndarray => {
+      Box::new(NdarrayAlgo)
+    },
+  };
+
+  match input.run_test(test_case, algorithm, algo) {
     Ok(result) => {
       let completed_count = completed.fetch_add(1, Ordering::Relaxed) + 1;
       ConvolutionTestConsole::print_success_row(&result, completed_count, total_tests);
