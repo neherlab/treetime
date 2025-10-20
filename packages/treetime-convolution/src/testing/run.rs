@@ -1,7 +1,7 @@
-use crate::testing::algorithm_summary::AlgorithmSummary;
 use crate::testing::algorithms::ConvolutionAlgorithm;
-use crate::testing::console::ConvolutionTestConsole;
+use crate::testing::console::console::ConvolutionTestConsole;
 use crate::testing::framework::results::{TestFailure, TestResult, TestRunOutcome};
+use crate::testing::framework::summary::AlgorithmSummary;
 use crate::testing::framework::summary::TestSummary;
 use crate::testing::framework::test_case::TestCase;
 use crate::testing::functions::exponential::ExponentialConvInput;

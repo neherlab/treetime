@@ -1,5 +1,4 @@
 pub mod algo_impls;
-pub mod algorithm_summary;
 pub mod algorithms;
 pub mod console;
 pub mod framework;
