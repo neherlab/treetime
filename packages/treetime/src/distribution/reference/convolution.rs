@@ -1,6 +1,7 @@
 use crate::distribution::reference::grid_fn::GridFn;
 use crate::utils::container::minmax;
 use eyre::Report;
+use itertools::Itertools;
 use ndarray::Array1;
 use ndarray_conv::{ConvExt, ConvMode, PaddingMode};
 
@@ -64,11 +65,10 @@ fn is_uniform_grid(grid: &Array1<f64>) -> bool {
     return true;
   }
 
-  let dx = grid[1] - grid[0];
-  for i in 1..grid.len() {
-    if (grid[i] - grid[i - 1] - dx).abs() > 1e-12 {
-      return false;
-    }
-  }
-  true
+  grid
+    .iter()
+    .tuple_windows()
+    .map(|(a, b)| b - a)
+    .tuple_windows()
+    .all(|(d1, d2)| (d1 - d2).abs() <= 1e-12)
 }

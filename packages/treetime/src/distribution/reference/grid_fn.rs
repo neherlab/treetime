@@ -1,7 +1,6 @@
 use eyre::Report;
 use ndarray::Array1;
 use ndarray_interp::interp1d::{Interp1D, Interp1DBuilder, Linear};
-use ordered_float::OrderedFloat;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 /// Function represented on a regular grid
@@ -110,7 +109,7 @@ impl GridFn {
     assert!(dx.is_finite(), "dx must be finite");
 
     let n_points = ((x_max - x_min) / dx + 1.0).round() as usize;
-    let x: Array1<f64> = Array1::from_iter((0..n_points).map(|i| x_min + i as f64 * dx));
+    let x = Array1::linspace(x_min, x_max, n_points);
     let y: Array1<f64> = x.mapv(y_fn);
     Self::new(x, y)
   }
@@ -189,12 +188,7 @@ impl GridFn {
 
   /// Get maximum value
   pub fn max_value(&self) -> f64 {
-    self
-      .y()
-      .iter()
-      .map(|&x| OrderedFloat(x))
-      .max()
-      .map_or(f64::NEG_INFINITY, |x| x.0)
+    self.y().fold(f64::NEG_INFINITY, |acc, &x| acc.max(x))
   }
 
   /// Get x position of maximum value
@@ -203,9 +197,8 @@ impl GridFn {
       .y()
       .iter()
       .enumerate()
-      .max_by_key(|&(_, &a)| OrderedFloat(a))
-      .unwrap()
-      .0;
+      .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+      .map_or(0, |(idx, _)| idx);
     self.x()[max_idx]
   }
 }

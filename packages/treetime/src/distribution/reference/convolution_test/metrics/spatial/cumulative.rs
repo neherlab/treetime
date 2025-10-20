@@ -1,4 +1,5 @@
-use ndarray::Array1;
+use crate::utils::ndarray::cumsum_axis;
+use ndarray::{Array1, Axis};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -18,16 +19,12 @@ pub(super) fn compute_cumulative_metrics(
   expected: &Array1<f64>,
   dx: f64,
 ) -> eyre::Result<CumulativeMetrics> {
-  let n = actual.len();
   let errors = actual - expected;
+  let scaled_errors = &errors * dx;
 
-  let mut cumulative_error = Array1::zeros(n);
-  cumulative_error[0] = errors[0] * dx;
-  for i in 1..n {
-    cumulative_error[i] = cumulative_error[i - 1] + errors[i] * dx;
-  }
+  let cumulative_error = cumsum_axis(&scaled_errors, Axis(0));
 
-  let final_value = cumulative_error[n - 1];
+  let final_value = *cumulative_error.last().unwrap_or(&0.0);
   let max_abs = cumulative_error.iter().copied().fold(0.0_f64, |a, b| a.max(b.abs()));
 
   let summary = CumulativeSummary { final_value, max_abs };

@@ -1,23 +1,13 @@
+use itertools::Itertools;
 use ndarray::Array1;
 
 pub fn combined_range(arrays: &[&Array1<f64>]) -> (f64, f64) {
-  let mut min_value = f64::INFINITY;
-  let mut max_value = f64::NEG_INFINITY;
-  for array in arrays {
-    for &value in *array {
-      if value < min_value {
-        min_value = value;
-      }
-      if value > max_value {
-        max_value = value;
-      }
-    }
-  }
-  if min_value.is_finite() && max_value.is_finite() {
-    (min_value, max_value)
-  } else {
-    (0.0, 1.0)
-  }
+  arrays
+    .iter()
+    .flat_map(|array| array.iter())
+    .minmax()
+    .into_option()
+    .map_or((0.0, 1.0), |(min, max)| (*min, *max))
 }
 
 pub fn expand_range(min_value: f64, max_value: f64) -> (f64, f64) {
