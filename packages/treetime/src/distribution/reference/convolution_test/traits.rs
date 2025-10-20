@@ -42,11 +42,7 @@ pub trait ConvInput: Send + Sync {
 
     let filter = filter.and_then(|value| {
       let trimmed = value.trim();
-      if trimmed.is_empty() {
-        None
-      } else {
-        Some(trimmed)
-      }
+      if trimmed.is_empty() { None } else { Some(trimmed) }
     });
 
     match filter {

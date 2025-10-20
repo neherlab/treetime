@@ -1,9 +1,8 @@
 use crate::distribution::reference::convolution_test::metrics::aggregate::AggregateMetrics;
-use crate::distribution::reference::convolution_test::metrics::distribution::{
-  DistributionConfig, DistributionMetrics,
-};
-use crate::distribution::reference::convolution_test::metrics::pointwise::{PointwiseConfig, PointwiseMetrics};
-use crate::distribution::reference::convolution_test::metrics::spatial::{SpatialConfig, SpatialMetrics};
+use crate::distribution::reference::convolution_test::metrics::config::MetricsConfig;
+use crate::distribution::reference::convolution_test::metrics::distribution::DistributionMetrics;
+use crate::distribution::reference::convolution_test::metrics::pointwise::PointwiseMetrics;
+use crate::distribution::reference::convolution_test::metrics::spatial::SpatialMetrics;
 use crate::make_error;
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
@@ -66,17 +65,6 @@ impl ConvolutionMetrics {
   }
 }
 
-/// Configuration for all metric types
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct MetricsConfig {
-  /// Pointwise metrics configuration
-  pub pointwise: PointwiseConfig,
-  /// Spatial metrics configuration
-  pub spatial: SpatialConfig,
-  /// Distribution metrics configuration
-  pub distribution: DistributionConfig,
-}
-
 /// Helper function to compute grid spacing
 fn compute_grid_spacing(x: &Array1<f64>) -> eyre::Result<f64> {
   if x.len() < 2 {
@@ -92,7 +80,6 @@ fn compute_grid_spacing(x: &Array1<f64>) -> eyre::Result<f64> {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::distribution::reference::convolution_test::metrics::aggregate;
   use ndarray::array;
 
   #[test]
@@ -122,7 +109,6 @@ mod tests {
     let metrics = ConvolutionMetrics::new_with_config(&x, &y, &y, 50.0, &config).unwrap();
 
     assert_eq!(metrics.distribution.histograms.abs_error_histogram.bin_counts.len(), 20);
-    // Perfect agreement should result in excellent quality
-    assert!(matches!(metrics.aggregate.quality.grade, aggregate::QualityGrade::A));
+    // TODO: Test quality grade when PerformanceMetrics, QualityAssessment, EfficiencyMetrics are added
   }
 }
