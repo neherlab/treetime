@@ -6,16 +6,13 @@ use strum::IntoEnumIterator;
 use strum_macros::{Display, EnumIter};
 use treetime::distribution::reference::convolution_test::algorithms::ConvolutionAlgorithm;
 use treetime::distribution::reference::convolution_test::framework::framework::ConvolutionTestFramework;
-use treetime::distribution::reference::convolution_test::framework::results::{TestResult, TestRunOutcome};
+use treetime::distribution::reference::convolution_test::framework::results::TestRunOutcome;
 use treetime::distribution::reference::convolution_test::framework::runner::{
   ConvolutionTestRunner, TraitBasedTestRunner,
 };
 use treetime::distribution::reference::convolution_test::framework::test_case::TestCase;
 use treetime::distribution::reference::convolution_test::functions::exponential::conv_input::ExponentialConvInput;
-use treetime::distribution::reference::convolution_test::functions::exponential::flat_result::ExponentialFlatResult;
 use treetime::distribution::reference::convolution_test::functions::gaussian::conv_input::GaussianConvInput;
-use treetime::distribution::reference::convolution_test::functions::gaussian::flat_result::GaussianFlatResult;
-use treetime::distribution::reference::convolution_test::output::{TestOutputWriter, ToFlatResult};
 use treetime::distribution::reference::convolution_test::plots::error_plots::{
   plot_absolute_error, plot_error_histogram, plot_tolerance_metrics,
 };
@@ -92,10 +89,10 @@ fn main() -> Result<(), Report> {
   for function_type in &args.functions {
     match function_type {
       FunctionType::Gaussian => {
-        dispatch_function_test::<GaussianConvInput, GaussianFlatResult>(&args)?;
+        dispatch_function_test::<GaussianConvInput>(&args)?;
       },
       FunctionType::Exponential => {
-        dispatch_function_test::<ExponentialConvInput, ExponentialFlatResult>(&args)?;
+        dispatch_function_test::<ExponentialConvInput>(&args)?;
       },
     }
   }
@@ -103,11 +100,9 @@ fn main() -> Result<(), Report> {
   Ok(())
 }
 
-fn dispatch_function_test<I, F>(args: &Args) -> Result<(), Report>
+fn dispatch_function_test<I>(args: &Args) -> Result<(), Report>
 where
   I: ConvInput,
-  TestResult<I::TestCase>: ToFlatResult<FlatResult = F>,
-  F: Serialize,
 {
   let input = match args.test_cases.as_str() {
     "all" => I::new(),
@@ -123,17 +118,10 @@ where
   run_convolution_tests(args, runner, function_type_name, &function_output_dir)
 }
 
-fn run_convolution_tests<R, T, F>(
-  args: &Args,
-  runner: R,
-  function_type_name: &str,
-  output_dir: &str,
-) -> Result<(), Report>
+fn run_convolution_tests<R, T>(args: &Args, runner: R, function_type_name: &str, output_dir: &str) -> Result<(), Report>
 where
   R: ConvolutionTestRunner<T>,
   T: TestCase,
-  TestResult<T>: ToFlatResult<FlatResult = F>,
-  F: Serialize,
 {
   let mut framework = ConvolutionTestFramework::new(runner, output_dir.to_owned());
   framework.set_algorithms(args.algorithms.clone());
@@ -158,17 +146,6 @@ where
 
   // Save results
   framework.save_results_json(&outcomes, &summary)?;
-
-  // Save TSV with function-specific columns
-  let flat_results: Vec<_> = outcomes
-    .iter()
-    .filter_map(|outcome| match outcome {
-      TestRunOutcome::Success(result) => Some(result.to_flat_result()),
-      TestRunOutcome::Failure(_) => None,
-    })
-    .collect();
-  let output_writer = TestOutputWriter::new(output_dir.to_owned());
-  output_writer.save_results_tsv(&flat_results)?;
 
   println!("{function_type_name} convolution test framework completed successfully!");
   println!("Check {output_dir} for detailed results.");
@@ -197,10 +174,6 @@ where
       plot_derivative_errors(result, &algorithm_dir)?;
       plot_spatial_profiles(result, &algorithm_dir)?;
       plot_error_histogram(result, &algorithm_dir)?;
-
-      let output_writer = TestOutputWriter::new(output_dir.to_owned());
-      output_writer.save_pointwise_arrays(result, &algorithm_dir)?;
-      output_writer.save_error_histogram(result, &algorithm_dir)?;
     }
   }
   Ok(())
