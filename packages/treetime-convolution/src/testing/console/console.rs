@@ -26,7 +26,10 @@ impl ConvolutionTestConsole {
     println!("# {} Convolution Test\n", test_suite_name.to_uppercase());
     println!("## Configuration\n");
     println!("- Test suite: {test_suite_name}");
-    println!("- Algorithms: {}", algorithms.iter().map(|a| a.to_string()).collect::<Vec<_>>().join(", "));
+    println!(
+      "- Algorithms: {}",
+      algorithms.iter().map(|a| a.to_string()).collect::<Vec<_>>().join(", ")
+    );
     println!("- Test cases: running {selected_count}/{total_available} test cases");
     if name_filter_applied {
       println!("  - --test-cases name filter applied");
@@ -576,7 +579,11 @@ impl ConvolutionTestConsole {
     ];
 
     for (category, metrics) in categories {
-      print!("| **{category}** {:<width$} |", "", width = metric_col_width - category.len() - 4);
+      print!(
+        "| **{category}** {:<width$} |",
+        "",
+        width = metric_col_width - category.len() - 4
+      );
       for algo in algorithms {
         print!(" {:width$} |", "", width = algo_col_widths[algo]);
       }

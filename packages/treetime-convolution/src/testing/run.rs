@@ -181,7 +181,9 @@ where
     .iter()
     .flat_map(|test_case| {
       let is_selected = selected_names.contains(test_case.name());
-      algorithms.iter().map(move |algorithm| (test_case, *algorithm, is_selected))
+      algorithms
+        .iter()
+        .map(move |algorithm| (test_case, *algorithm, is_selected))
     })
     .collect();
 
@@ -189,7 +191,13 @@ where
     .into_par_iter()
     .filter_map(|(test_case, algorithm, is_selected)| {
       if is_selected {
-        Some(execute_single_test(suite, test_case, algorithm, &completed, total_tests))
+        Some(execute_single_test(
+          suite,
+          test_case,
+          algorithm,
+          &completed,
+          total_tests,
+        ))
       } else {
         ConvolutionTestConsole::print_skipped_row(test_case, algorithm);
         None
