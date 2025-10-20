@@ -1,6 +1,7 @@
 use crate::algos::algo_trait::Algo;
 use crate::algos::algos::ConvolutionAlgorithm;
 use crate::algos::ndarray_conv::ndarray_conv::NdarrayAlgo;
+use crate::algos::ndarray_conv_fft::ndarray_conv_fft::NdarrayConvFftAlgo;
 use crate::algos::riemann::riemann::RiemannAlgo;
 use crate::testing::console::console::ConvolutionTestConsole;
 use crate::testing::framework::results::{TestFailure, TestResult, TestRunOutcome};
@@ -199,6 +200,7 @@ where
   let algo: Box<dyn Algo> = match algorithm {
     ConvolutionAlgorithm::Riemann => Box::new(RiemannAlgo),
     ConvolutionAlgorithm::Ndarray => Box::new(NdarrayAlgo),
+    ConvolutionAlgorithm::NdarrayFft => Box::new(NdarrayConvFftAlgo),
   };
 
   match run_test(suite, test_case, &*algo) {

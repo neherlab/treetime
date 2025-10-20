@@ -26,6 +26,7 @@ use strum_macros::{Display, EnumIter, EnumString};
 pub enum ConvolutionAlgorithm {
   Riemann,
   Ndarray,
+  NdarrayFft,
 }
 
 impl ConvolutionAlgorithm {
