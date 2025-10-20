@@ -18,7 +18,7 @@ use treetime::distribution::reference::convolution_test::plots::{
 use treetime::distribution::reference::convolution_test::traits::ConvInput;
 use treetime::distribution::reference::convolution_test::{
   algorithms::ConvolutionAlgorithm,
-  framework::GenericConvolutionTestFramework,
+  framework::ConvolutionTestFramework,
   output::{TestOutputWriter, ToFlatResult},
 };
 
@@ -131,7 +131,7 @@ where
   TestResult<T>: ToFlatResult<FlatResult = F>,
   F: Serialize,
 {
-  let mut framework = GenericConvolutionTestFramework::new(runner, output_dir.to_owned());
+  let mut framework = ConvolutionTestFramework::new(runner, output_dir.to_owned());
   framework.set_algorithms(args.algorithms.clone());
 
   if args.verbose {

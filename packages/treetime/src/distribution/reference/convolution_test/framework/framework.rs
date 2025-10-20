@@ -15,14 +15,14 @@ use std::marker::PhantomData;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Instant;
 
-pub struct GenericConvolutionTestFramework<T: TestCase, R: ConvolutionTestRunner<T>> {
+pub struct ConvolutionTestFramework<T: TestCase, R: ConvolutionTestRunner<T>> {
   pub runner: R,
   pub algorithms: Vec<ConvolutionAlgorithm>,
   pub output_dir: String,
   pub _phantom: PhantomData<T>,
 }
 
-impl<T: TestCase, R: ConvolutionTestRunner<T>> GenericConvolutionTestFramework<T, R> {
+impl<T: TestCase, R: ConvolutionTestRunner<T>> ConvolutionTestFramework<T, R> {
   pub fn new(runner: R, output_dir: String) -> Self {
     Self {
       runner,
@@ -163,7 +163,7 @@ struct FullResults<'a, T: TestCase> {
   outcomes: &'a [TestRunOutcome<T>],
 }
 
-impl<T: TestCase, R: ConvolutionTestRunner<T>> GenericConvolutionTestFramework<T, R> {
+impl<T: TestCase, R: ConvolutionTestRunner<T>> ConvolutionTestFramework<T, R> {
   pub fn save_results_json(&self, outcomes: &[TestRunOutcome<T>], summary: &TestSummary) -> Result<(), Report> {
     fs::create_dir_all(&self.output_dir)?;
 
