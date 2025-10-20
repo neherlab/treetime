@@ -1,7 +1,7 @@
 use crate::distribution::reference::convolution_test::algorithm_summary::AlgorithmSummary;
 use crate::distribution::reference::convolution_test::algorithms::ConvolutionAlgorithm;
 use crate::distribution::reference::convolution_test::console::ConvolutionTestConsole;
-use crate::distribution::reference::convolution_test::framework::results::{TestFailure, TestRunOutcome};
+use crate::distribution::reference::convolution_test::framework::results::{TestFailure, TestResult, TestRunOutcome};
 use crate::distribution::reference::convolution_test::framework::summary::TestSummary;
 use crate::distribution::reference::convolution_test::framework::test_case::TestCase;
 use crate::distribution::reference::convolution_test::functions::exponential::ExponentialConvInput;
@@ -141,40 +141,114 @@ where
   let outcomes: Vec<TestRunOutcome<I::TestCase>> = test_combinations
     .into_par_iter()
     .map(|(test_case, &algorithm)| {
-      let start_time = Instant::now();
-
-      match input.run_test(test_case, algorithm) {
-        Ok(result) => {
-          let completed_count = completed.fetch_add(1, Ordering::Relaxed) + 1;
-          ConvolutionTestConsole::print_success_row(&result, completed_count, total_tests);
-          TestRunOutcome::Success(result)
-        },
-        Err(error) => {
-          let completed_count = completed.fetch_add(1, Ordering::Relaxed) + 1;
-          let elapsed_ms = start_time.elapsed().as_secs_f64() * 1000.0;
-          ConvolutionTestConsole::print_failure_row(test_case, algorithm, elapsed_ms, completed_count, total_tests);
-          TestRunOutcome::Failure(TestFailure {
-            algorithm,
-            test_case: test_case.clone(),
-            error: format!("{error}"),
-            execution_time_ms: elapsed_ms,
-          })
-        },
-      }
+      execute_single_test(input, test_case, algorithm, &completed, total_tests)
     })
     .collect();
 
-  let failures: Vec<_> = outcomes
+  let failures = collect_failures(&outcomes);
+
+  ConvolutionTestConsole::print_error_summary(&failures)?;
+
+  Ok(outcomes)
+}
+
+fn execute_single_test<I>(
+  input: &I,
+  test_case: &I::TestCase,
+  algorithm: ConvolutionAlgorithm,
+  completed: &AtomicUsize,
+  total_tests: usize,
+) -> TestRunOutcome<I::TestCase>
+where
+  I: ConvInput,
+{
+  let start_time = Instant::now();
+
+  match input.run_test(test_case, algorithm) {
+    Ok(result) => {
+      let completed_count = completed.fetch_add(1, Ordering::Relaxed) + 1;
+      ConvolutionTestConsole::print_success_row(&result, completed_count, total_tests);
+      TestRunOutcome::Success(result)
+    },
+    Err(error) => {
+      let completed_count = completed.fetch_add(1, Ordering::Relaxed) + 1;
+      let elapsed_ms = start_time.elapsed().as_secs_f64() * 1000.0;
+      ConvolutionTestConsole::print_failure_row(test_case, algorithm, elapsed_ms, completed_count, total_tests);
+      TestRunOutcome::Failure(TestFailure {
+        algorithm,
+        test_case: test_case.clone(),
+        error: format!("{error}"),
+        execution_time_ms: elapsed_ms,
+      })
+    },
+  }
+}
+
+fn collect_successes<T: TestCase>(outcomes: &[TestRunOutcome<T>]) -> Vec<&TestResult<T>> {
+  outcomes
+    .iter()
+    .filter_map(|outcome| match outcome {
+      TestRunOutcome::Success(result) => Some(result),
+      TestRunOutcome::Failure(_) => None,
+    })
+    .collect()
+}
+
+fn collect_failures<T: TestCase>(outcomes: &[TestRunOutcome<T>]) -> Vec<&TestFailure<T>> {
+  outcomes
     .iter()
     .filter_map(|outcome| match outcome {
       TestRunOutcome::Failure(failure) => Some(failure),
       TestRunOutcome::Success(_) => None,
     })
-    .collect();
+    .collect()
+}
 
-  ConvolutionTestConsole::print_error_summary(&failures)?;
+fn calculate_total_execution_time<T: TestCase>(outcomes: &[TestRunOutcome<T>]) -> f64 {
+  outcomes
+    .iter()
+    .map(|outcome| match outcome {
+      TestRunOutcome::Success(result) => result.execution_time_ms,
+      TestRunOutcome::Failure(failure) => failure.execution_time_ms,
+    })
+    .sum()
+}
 
-  Ok(outcomes)
+fn build_algorithm_summaries<T: TestCase>(
+  algorithms: &[ConvolutionAlgorithm],
+  successes: &[&TestResult<T>],
+  failures: &[&TestFailure<T>],
+) -> Vec<AlgorithmSummary> {
+  algorithms
+    .iter()
+    .filter_map(|&algorithm| {
+      let algo_successes = successes
+        .iter()
+        .filter(|result| result.algorithm == algorithm)
+        .collect_vec();
+      let algo_failures = failures
+        .iter()
+        .filter(|failure| failure.algorithm == algorithm)
+        .collect_vec();
+      let total_runs = algo_successes.len() + algo_failures.len();
+
+      if total_runs == 0 {
+        return None;
+      }
+
+      Some(AlgorithmSummary::new(algorithm, &algo_successes, &algo_failures))
+    })
+    .collect()
+}
+
+fn assess_overall_performance(algorithm_summaries: &[AlgorithmSummary]) -> String {
+  if algorithm_summaries.iter().all(|summary| summary.success_rate > 0.9) {
+    "Excellent - All algorithms perform well".to_owned()
+  } else if algorithm_summaries.iter().any(|summary| summary.success_rate > 0.8) {
+    "Good - Some algorithms perform well".to_owned()
+  } else {
+    "Poor - Significant issues detected".to_owned()
+  }
 }
 
 fn generate_summary<I>(
@@ -185,50 +259,11 @@ fn generate_summary<I>(
 where
   I: ConvInput,
 {
-  let successes = outcomes
-    .iter()
-    .filter_map(|outcome| match outcome {
-      TestRunOutcome::Success(result) => Some(result),
-      TestRunOutcome::Failure(_) => None,
-    })
-    .collect_vec();
-  let failures = outcomes
-    .iter()
-    .filter_map(|outcome| match outcome {
-      TestRunOutcome::Success(_) => None,
-      TestRunOutcome::Failure(failure) => Some(failure),
-    })
-    .collect_vec();
-  let total_execution_time = successes.iter().map(|result| result.execution_time_ms).sum::<f64>()
-    + failures.iter().map(|failure| failure.execution_time_ms).sum::<f64>();
-
-  let mut algorithm_summaries = Vec::new();
-
-  for &algorithm in algorithms {
-    let algo_successes = successes
-      .iter()
-      .filter(|result| result.algorithm == algorithm)
-      .collect_vec();
-    let algo_failures = failures
-      .iter()
-      .filter(|failure| failure.algorithm == algorithm)
-      .collect_vec();
-    let total_runs = algo_successes.len() + algo_failures.len();
-
-    if total_runs == 0 {
-      continue;
-    }
-
-    algorithm_summaries.push(AlgorithmSummary::new(algorithm, &algo_successes, &algo_failures));
-  }
-
-  let overall_assessment = if algorithm_summaries.iter().all(|summary| summary.success_rate > 0.9) {
-    "Excellent - All algorithms perform well".to_owned()
-  } else if algorithm_summaries.iter().any(|summary| summary.success_rate > 0.8) {
-    "Good - Some algorithms perform well".to_owned()
-  } else {
-    "Poor - Significant issues detected".to_owned()
-  };
+  let successes = collect_successes(outcomes);
+  let failures = collect_failures(outcomes);
+  let total_execution_time = calculate_total_execution_time(outcomes);
+  let algorithm_summaries = build_algorithm_summaries(algorithms, &successes, &failures);
+  let overall_assessment = assess_overall_performance(&algorithm_summaries);
 
   TestSummary {
     function_type: input.function_type().to_owned(),
