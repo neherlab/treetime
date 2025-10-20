@@ -30,8 +30,8 @@ use strum_macros::{Display, EnumIter, EnumString};
 #[clap(rename_all = "kebab-case")]
 pub enum ConvolutionAlgorithm {
   Riemann,
-  Ndarray,
-  NdarrayFft,
+  NdarrayConv,
+  NdarrayConvFft,
 }
 
 impl ConvolutionAlgorithm {
@@ -44,8 +44,8 @@ impl ConvolutionAlgorithm {
   pub fn instantiate(&self) -> Box<dyn Algo> {
     match self {
       Self::Riemann => Box::new(RiemannAlgo),
-      Self::Ndarray => Box::new(NdarrayAlgo),
-      Self::NdarrayFft => Box::new(NdarrayConvFftAlgo),
+      Self::NdarrayConv => Box::new(NdarrayAlgo),
+      Self::NdarrayConvFft => Box::new(NdarrayConvFftAlgo),
     }
   }
 }

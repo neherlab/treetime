@@ -23,11 +23,11 @@ impl ConvolutionTestConsole {
   /// Print progress table header
   pub fn print_progress_table_header() {
     println!(
-      "| {:^12} | {:^2} | {:^12} | {:^30} | {:^8} | {:^10} | {:^8} | {:^8} |",
+      "| {:^10} | {:^2} | {:^16} | {:^30} | {:^8} | {:^10} | {:^8} | {:^8} |",
       "Progress", "S", "Algorithm", "Test Case", "Time, ms", "R² err ppm", "RMSE", "Corr err"
     );
     println!(
-      "|{:-<14}|{:-^4}|{:-<14}|{:-<32}|{:->10}|{:->12}|{:->10}|{:->10}|",
+      "|{:-<12}|{:-^4}|{:-<18}|{:-<32}|{:->10}|{:->12}|{:->10}|{:->10}|",
       "", "", "", "", "", "", "", ""
     );
   }
@@ -42,7 +42,7 @@ impl ConvolutionTestConsole {
     let correlation_error_ppm = (1.0 - correlation) * 1_000_000.0;
     let progress = format!("[{completed_count}/{total_tests}]");
     println!(
-      "| {:<12} | {:^1} | {:<12} | {:<30} | {:>8.1} | {:>10} | {:>8} | {:>8} |",
+      "| {:<10} | {:^1} | {:<16} | {:<30} | {:>8.1} | {:>10} | {:>8} | {:>8} |",
       progress,
       "✅",
       format!("{}", result.algorithm),
@@ -64,7 +64,7 @@ impl ConvolutionTestConsole {
   ) {
     let progress = format!("[{completed_count}/{total_tests}]");
     println!(
-      "| {:<12} | {:^1} | {:<12} | {:<30} | {:>8.1} | {:>10} | {:>8} | {:>8} |",
+      "| {:<10} | {:^1} | {:<16} | {:<30} | {:>8.1} | {:>10} | {:>8} | {:>8} |",
       progress,
       "❌",
       format!("{algorithm}"),
