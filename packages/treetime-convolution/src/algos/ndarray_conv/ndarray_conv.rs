@@ -5,7 +5,7 @@ use ndarray::Array1;
 use ndarray_conv::{ConvExt, ConvMode, PaddingMode};
 use treetime_utils::ndarray::is_uniform_grid;
 
-/// Convolution using ndarray_conv library (FFT-based) for uniform grids
+/// Convolution using ndarray_conv library for uniform grids
 pub fn convolve_ndarray_conv(f: &GridFn, g: &GridFn, x_grid: &Array1<f64>) -> Result<GridFn, Report> {
   debug_assert!(is_uniform_grid(f.x()), "grid must be uniform");
   debug_assert!(is_uniform_grid(g.x()), "grid must be uniform");
