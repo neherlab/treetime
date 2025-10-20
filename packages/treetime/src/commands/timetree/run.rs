@@ -17,8 +17,9 @@ use crate::commands::timetree::refinement::run_refinement_iteration;
 use crate::io::fasta::FastaRecord;
 use crate::io::nex::{NexWriteOptions, nex_write_file};
 use crate::io::nwk::{NwkWriteOptions, nwk_write_file};
-use crate::representation::graph_ancestral::GraphAncestral;
-use crate::representation::partition_timetree::PartitionTreetimeMarginalOps;
+use crate::representation::edge_timetree::EdgeTimetree;
+use crate::representation::node_timetree::NodeTimetree;
+use crate::representation::partition_timetree::{GraphTimetree, PartitionTreetimeMarginalOps};
 use eyre::{Report, WrapErr};
 use log::info;
 use parking_lot::RwLock;
@@ -34,7 +35,7 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
 
   let mut clock_model = infer_clock_model(args, &graph, &constraints).wrap_err("Failed to infer clock model")?;
 
-  let partitions: Vec<Arc<RwLock<dyn PartitionTreetimeMarginalOps>>> =
+  let partitions: Vec<Arc<RwLock<dyn PartitionTreetimeMarginalOps<NodeTimetree, EdgeTimetree>>>> =
     initialize_partitions(args, &graph, alphabet, aln.as_deref(), &constraints)?;
 
   run_pre_optimization(args, &graph, &partitions, aln.as_deref(), &constraints)?;
@@ -62,8 +63,8 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
 
 fn run_pre_optimization(
   args: &TreetimeTimetreeArgs,
-  graph: &GraphAncestral,
-  partitions: &[Arc<RwLock<dyn PartitionTreetimeMarginalOps>>],
+  graph: &GraphTimetree,
+  partitions: &[Arc<RwLock<dyn PartitionTreetimeMarginalOps<NodeTimetree, EdgeTimetree>>>],
   aln: Option<&[FastaRecord]>,
   constraints: &DateConstraintSet,
 ) -> Result<(), Report> {
@@ -101,8 +102,8 @@ fn run_pre_optimization(
 
 fn run_initial_timetree_inference(
   args: &TreetimeTimetreeArgs,
-  graph: &GraphAncestral,
-  partitions: &[Arc<RwLock<dyn PartitionTreetimeMarginalOps>>],
+  graph: &GraphTimetree,
+  partitions: &[Arc<RwLock<dyn PartitionTreetimeMarginalOps<NodeTimetree, EdgeTimetree>>>],
   aln: Option<&[FastaRecord]>,
   constraints: &DateConstraintSet,
 ) -> Result<(), Report> {
@@ -126,8 +127,8 @@ fn run_initial_timetree_inference(
 
 fn run_post_processing(
   args: &TreetimeTimetreeArgs,
-  graph: &GraphAncestral,
-  partitions: &[Arc<RwLock<dyn PartitionTreetimeMarginalOps>>],
+  graph: &GraphTimetree,
+  partitions: &[Arc<RwLock<dyn PartitionTreetimeMarginalOps<NodeTimetree, EdgeTimetree>>>],
   constraints: &DateConstraintSet,
   clock_model: &ClockModel,
 ) -> Result<(), Report> {
@@ -162,8 +163,8 @@ fn run_post_processing(
 
 fn write_outputs(
   args: &TreetimeTimetreeArgs,
-  graph: &GraphAncestral,
-  partitions: &[Arc<RwLock<dyn PartitionTreetimeMarginalOps>>],
+  graph: &GraphTimetree,
+  partitions: &[Arc<RwLock<dyn PartitionTreetimeMarginalOps<NodeTimetree, EdgeTimetree>>>],
   constraints: &DateConstraintSet,
   clock_model: &ClockModel,
 ) -> Result<(), Report> {

@@ -1,3 +1,5 @@
+use crate::representation::edge_timetree::EdgeTimetree;
+use crate::representation::node_timetree::NodeTimetree;
 use crate::commands::timetree::convergence::likelihood::calculate_coalescent_likelihood;
 use crate::commands::timetree::convergence::likelihood::calculate_positional_likelihood;
 use crate::commands::timetree::convergence::likelihood::calculate_sequence_likelihood;
@@ -47,7 +49,7 @@ impl TimetreeOptimizer {
     &mut self,
     n_diff: usize,
     n_resolved: usize,
-    partitions: &[Arc<RwLock<dyn PartitionTreetimeMarginalOps>>],
+    partitions: &[Arc<RwLock<dyn PartitionTreetimeMarginalOps<NodeTimetree, EdgeTimetree>>>],
   ) -> Result<(), Report> {
     let metric = ConvergenceMetrics::from_iteration(n_diff, n_resolved, partitions);
 
@@ -111,7 +113,7 @@ impl ConvergenceMetrics {
   fn from_iteration(
     ndiff: usize,
     n_resolved: usize,
-    partitions: &[Arc<RwLock<dyn PartitionTreetimeMarginalOps>>],
+    partitions: &[Arc<RwLock<dyn PartitionTreetimeMarginalOps<NodeTimetree, EdgeTimetree>>>],
   ) -> Self {
     Self {
       ndiff,

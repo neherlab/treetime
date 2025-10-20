@@ -1,5 +1,8 @@
+use crate::representation::edge_timetree::EdgeTimetree;
+use crate::representation::node_timetree::NodeTimetree;
 use crate::alphabet::alphabet::Alphabet;
 use crate::commands::ancestral::fitch::get_common_length;
+use crate::representation::infer_dense::infer_dense;
 use crate::commands::timetree::args::{BranchLengthMode, TreetimeTimetreeArgs};
 use crate::commands::timetree::data::date_constraints::DateConstraintSet;
 use crate::commands::timetree::data::date_constraints::load_date_constraints;
@@ -7,9 +10,7 @@ use crate::gtr::get_gtr::{JC69Params, jc69};
 use crate::io::fasta::{FastaRecord, read_many_fasta};
 use crate::io::nwk::nwk_read_file;
 use crate::representation::graph_ancestral::GraphAncestral;
-use crate::representation::infer_dense::infer_dense;
-use crate::representation::partition_timetree::PartitionTimetreeOps;
-use crate::representation::partition_timetree::PartitionTreetimeMarginalOps;
+use crate::representation::partition_timetree::{GraphTimetree, PartitionTreetimeMarginalOps, PartitionTreetimeMarginalVec};
 use crate::representation::partition_timetree_dense::PartitionTimetreeDense;
 use crate::representation::partition_timetree_sparse::PartitionTimetreeSparse;
 use eyre::{Report, WrapErr};
@@ -19,18 +20,21 @@ use parking_lot::RwLock;
 use std::sync::Arc;
 
 pub struct InputData {
-  pub graph: GraphAncestral,
+  pub graph: GraphTimetree,
   pub alphabet: Alphabet,
   pub aln: Option<Vec<FastaRecord>>,
   pub constraints: DateConstraintSet,
 }
 
 pub fn load_input_data(args: &TreetimeTimetreeArgs) -> Result<InputData, Report> {
-  let graph: GraphAncestral = if let Some(tree_path) = &args.tree {
+  let graph_ancestral: GraphAncestral = if let Some(tree_path) = &args.tree {
     nwk_read_file(tree_path).wrap_err("Failed to load tree from file")?
   } else {
     todo!("Tree inference from alignment not yet implemented")
   };
+
+  // Convert GraphAncestral to GraphTimetree
+  let graph: GraphTimetree = graph_ancestral.to_graph_timetree()?;
 
   // Create alphabet for both alignment loading and timetree inference.
   // treat_gap_as_unknown behavior:
@@ -65,11 +69,11 @@ pub fn load_input_data(args: &TreetimeTimetreeArgs) -> Result<InputData, Report>
 
 pub fn initialize_partitions(
   args: &TreetimeTimetreeArgs,
-  graph: &GraphAncestral,
+  _graph: &GraphTimetree,
   alphabet: Alphabet,
   aln: Option<&[FastaRecord]>,
-  constraints: &DateConstraintSet,
-) -> Result<Vec<Arc<RwLock<dyn PartitionTreetimeMarginalOps>>>, Report> {
+  _constraints: &DateConstraintSet,
+) -> Result<PartitionTreetimeMarginalVec, Report> {
   let dense = args.dense.unwrap_or_else(infer_dense);
   let sequence_length = if let Some(aln_data) = aln {
     Some(get_common_length(aln_data)?)
@@ -86,7 +90,7 @@ pub fn initialize_partitions(
       sequence_length,
       nodes: btreemap! {},
       edges: btreemap! {},
-    })) as Arc<RwLock<dyn PartitionTreetimeMarginalOps>>]
+    })) as Arc<RwLock<dyn PartitionTreetimeMarginalOps<NodeTimetree, EdgeTimetree>>>]
   } else {
     [Arc::new(RwLock::new(PartitionTimetreeDense {
       index: 0,
@@ -95,14 +99,10 @@ pub fn initialize_partitions(
       sequence_length,
       nodes: btreemap! {},
       edges: btreemap! {},
-    })) as Arc<RwLock<dyn PartitionTreetimeMarginalOps>>]
+    })) as Arc<RwLock<dyn PartitionTreetimeMarginalOps<NodeTimetree, EdgeTimetree>>>]
   }
   .into_iter()
-  .map(|partition| -> Result<_, Report> {
-    PartitionTimetreeOps::attach_date_constraints(&mut *partition.write_arc(), graph, &constraints.per_node)?;
-    Ok(partition)
-  })
-  .try_collect()?;
+  .collect_vec();
 
   Ok(partitions)
 }

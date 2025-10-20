@@ -1,9 +1,11 @@
 pub mod bitset128;
+pub mod edge_timetree;
 pub mod graph_ancestral;
 pub mod graph_dense;
 pub mod graph_sparse;
 pub mod infer_dense;
 pub mod log_lh;
+pub mod node_timetree;
 pub mod partition_compressed;
 pub mod partition_marginal;
 pub mod partition_marginal_dense;

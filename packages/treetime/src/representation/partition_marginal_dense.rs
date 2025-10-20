@@ -40,7 +40,7 @@ impl HasLogLh for PartitionMarginalDense {
 
 impl PartitionMarginal for PartitionMarginalDense {}
 
-impl PartitionMarginalOps for PartitionMarginalDense {
+impl PartitionMarginalOps<NodeAncestral, EdgeAncestral> for PartitionMarginalDense {
   fn attach_sequences(&mut self, graph: &GraphAncestral, aln: &[FastaRecord]) -> Result<(), Report> {
     for leaf in graph.get_leaves() {
       let leaf_key = leaf.read_arc().key();

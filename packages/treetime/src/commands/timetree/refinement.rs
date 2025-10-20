@@ -1,3 +1,5 @@
+use crate::representation::edge_timetree::EdgeTimetree;
+use crate::representation::node_timetree::NodeTimetree;
 use crate::commands::ancestral::marginal_unified::run_marginal;
 use crate::commands::timetree::args::TreetimeTimetreeArgs;
 use crate::commands::timetree::inference::runner::run_timetree;
@@ -5,8 +7,7 @@ use crate::commands::timetree::optimization::coalescent::add_coalescent_model;
 use crate::commands::timetree::optimization::polytomy::{prepare_tree_after_topology_change, resolve_polytomies};
 use crate::commands::timetree::optimization::relaxed_clock::apply_relaxed_clock;
 use crate::io::fasta::FastaRecord;
-use crate::representation::graph_ancestral::GraphAncestral;
-use crate::representation::partition_timetree::PartitionTreetimeMarginalOps;
+use crate::representation::partition_timetree::{GraphTimetree, PartitionTreetimeMarginalOps};
 use eyre::{Report, WrapErr};
 use parking_lot::RwLock;
 use std::sync::Arc;
@@ -14,8 +15,8 @@ use std::sync::Arc;
 #[allow(clippy::useless_let_if_seq)]
 pub fn run_refinement_iteration(
   args: &TreetimeTimetreeArgs,
-  graph: &GraphAncestral,
-  partitions: &[Arc<RwLock<dyn PartitionTreetimeMarginalOps>>],
+  graph: &GraphTimetree,
+  partitions: &[Arc<RwLock<dyn PartitionTreetimeMarginalOps<NodeTimetree, EdgeTimetree>>>],
   aln: Option<&[FastaRecord]>,
   i: usize,
 ) -> Result<(usize, usize), Report> {

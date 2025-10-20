@@ -1,7 +1,8 @@
+use crate::representation::edge_timetree::EdgeTimetree;
+use crate::representation::node_timetree::NodeTimetree;
 use crate::commands::timetree::data::clock_model::ClockModel;
 use crate::commands::timetree::data::date_constraints::DateConstraintSet;
-use crate::representation::graph_ancestral::GraphAncestral;
-use crate::representation::partition_timetree::PartitionTreetimeMarginalOps;
+use crate::representation::partition_timetree::{GraphTimetree, PartitionTreetimeMarginalOps};
 use eyre::Report;
 use parking_lot::RwLock;
 use std::path::Path;
@@ -13,8 +14,8 @@ use std::sync::Arc;
 /// Why: Clock rate has confidence intervals; propagating uncertainty improves reliability.
 /// How: Re-run timetree with rate ± std_dev, compare resulting node times.
 pub fn calc_rate_susceptibility(
-  _graph: &GraphAncestral,
-  _partitions: &[Arc<RwLock<dyn PartitionTreetimeMarginalOps>>],
+  _graph: &GraphTimetree,
+  _partitions: &[Arc<RwLock<dyn PartitionTreetimeMarginalOps<NodeTimetree, EdgeTimetree>>>],
   _constraints: &DateConstraintSet,
   _clock_model: &ClockModel,
 ) -> Result<(), Report> {
@@ -27,8 +28,8 @@ pub fn calc_rate_susceptibility(
 /// Why: Point estimates alone don't convey reliability of time inference.
 /// How: Compute HPD (highest posterior density) or quantiles from marginal distributions.
 pub fn extract_confidence_intervals(
-  _graph: &GraphAncestral,
-  _partitions: &[Arc<RwLock<dyn PartitionTreetimeMarginalOps>>],
+  _graph: &GraphTimetree,
+  _partitions: &[Arc<RwLock<dyn PartitionTreetimeMarginalOps<NodeTimetree, EdgeTimetree>>>],
 ) -> Result<(), Report> {
   todo!("For each node: compute 95% HPD interval from marginal_pos_LH distribution")
 }
@@ -39,8 +40,8 @@ pub fn extract_confidence_intervals(
 /// Why: Quantifies uncertainty in molecular dating.
 /// How: TSV file with node_name, lower_bound, median, upper_bound.
 pub fn write_confidence_intervals(
-  _graph: &GraphAncestral,
-  _partitions: &[Arc<RwLock<dyn PartitionTreetimeMarginalOps>>],
+  _graph: &GraphTimetree,
+  _partitions: &[Arc<RwLock<dyn PartitionTreetimeMarginalOps<NodeTimetree, EdgeTimetree>>>],
   _out_base: &Path,
 ) -> Result<(), Report> {
   todo!("Write confidence intervals to TSV file")

@@ -1,5 +1,6 @@
-use crate::representation::graph_ancestral::GraphAncestral;
-use crate::representation::partition_timetree::PartitionTreetimeMarginalOps;
+use crate::representation::edge_timetree::EdgeTimetree;
+use crate::representation::node_timetree::NodeTimetree;
+use crate::representation::partition_timetree::{GraphTimetree, PartitionTreetimeMarginalOps};
 use eyre::Report;
 use parking_lot::RwLock;
 use std::sync::Arc;
@@ -10,8 +11,8 @@ use std::sync::Arc;
 /// Why: Strict clock assumption may be violated in real data.
 /// How: Autocorrelated rates (neighboring branches have similar rates) with penalty terms.
 pub fn apply_relaxed_clock(
-  _graph: &GraphAncestral,
-  _partitions: &[Arc<RwLock<dyn PartitionTreetimeMarginalOps>>],
+  _graph: &GraphTimetree,
+  _partitions: &[Arc<RwLock<dyn PartitionTreetimeMarginalOps<NodeTimetree, EdgeTimetree>>>],
   _params: &[f64],
 ) -> Result<(), Report> {
   todo!("Optimize branch-specific gamma (rate multiplier) with slack/coupling penalties")

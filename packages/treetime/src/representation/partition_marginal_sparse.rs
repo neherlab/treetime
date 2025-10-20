@@ -74,7 +74,7 @@ impl HasLogLh for PartitionMarginalSparse {
 
 impl PartitionMarginal for PartitionMarginalSparse {}
 
-impl PartitionMarginalOps for PartitionMarginalSparse {
+impl PartitionMarginalOps<NodeAncestral, EdgeAncestral> for PartitionMarginalSparse {
   fn attach_sequences(&mut self, _graph: &GraphAncestral, _aln: &[FastaRecord]) -> Result<(), Report> {
     // Sparse partitions get sequences attached during compression phase
     Ok(())

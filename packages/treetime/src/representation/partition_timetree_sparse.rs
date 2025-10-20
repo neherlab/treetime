@@ -1,15 +1,15 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::commands::timetree::data::date_constraints::DateConstraint;
 use crate::distribution::distribution::Distribution;
 use crate::graph::edge::GraphEdgeKey;
 use crate::graph::graph::{GraphNodeBackward, GraphNodeForward};
 use crate::graph::node::GraphNodeKey;
 use crate::gtr::gtr::GTR;
 use crate::io::fasta::FastaRecord;
-use crate::representation::graph_ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
+use crate::representation::edge_timetree::EdgeTimetree;
 use crate::representation::log_lh::HasLogLh;
+use crate::representation::node_timetree::NodeTimetree;
 use crate::representation::partition_marginal::{PartitionMarginal, PartitionMarginalOps};
-use crate::representation::partition_timetree::{PartitionTimetree, PartitionTimetreeOps};
+use crate::representation::partition_timetree::{GraphTimetree, PartitionTimetree, PartitionTimetreeOps};
 use crate::representation::seq::Seq;
 use eyre::Report;
 use serde::{Deserialize, Serialize};
@@ -18,15 +18,12 @@ use std::sync::Arc;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct NodeTimetreeSparse {
-  pub constraint: Option<DateConstraint>,
-  pub bad_branch: bool,
-  pub time_before_present: Option<f64>,
-  pub posterior: Option<Arc<Distribution>>,
+  pub msg_from_parent: Option<Arc<Distribution>>,
+  pub msg_from_children: Option<Arc<Distribution>>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct EdgeTimetreeSparse {
-  pub clock_length: Option<f64>,
   pub msg_to_parent: Option<Arc<Distribution>>,
   pub msg_to_child: Option<Arc<Distribution>>,
   pub msg_from_child: Option<Arc<Distribution>>,
@@ -44,48 +41,39 @@ pub struct PartitionTimetreeSparse {
 
 impl PartitionTimetree for PartitionTimetreeSparse {}
 
-impl PartitionTimetreeOps for PartitionTimetreeSparse {
-  fn attach_date_constraints(
-    &mut self,
-    _graph: &GraphAncestral,
-    constraints: &BTreeMap<GraphNodeKey, DateConstraint>,
-  ) -> Result<(), Report> {
-    for (node_key, constraint) in constraints {
-      self
-        .nodes
-        .entry(*node_key)
-        .or_insert_with(|| NodeTimetreeSparse {
-          constraint: None,
-          bad_branch: false,
-          time_before_present: None,
-          posterior: None,
-        })
-        .constraint = Some(constraint.clone());
+impl PartitionTimetreeOps<NodeTimetree, EdgeTimetree> for PartitionTimetreeSparse {
+  fn initialize_nodes(&mut self, graph: &GraphTimetree) -> Result<(), Report> {
+    for node_ref in graph.get_nodes() {
+      let node_key = node_ref.read_arc().key();
+      self.nodes.entry(node_key).or_insert_with(|| NodeTimetreeSparse {
+        msg_from_parent: None,
+        msg_from_children: None,
+      });
     }
     Ok(())
   }
 
   fn process_node_backward(
     &mut self,
-    _node: &GraphNodeBackward<NodeAncestral, EdgeAncestral, ()>,
+    _node: &GraphNodeBackward<NodeTimetree, EdgeTimetree, ()>,
   ) -> Result<(), Report> {
     todo!("Implement backward pass for sparse timetree partition")
   }
 
   fn process_node_forward(
     &mut self,
-    _graph: &GraphAncestral,
-    _node: &GraphNodeForward<NodeAncestral, EdgeAncestral, ()>,
+    _graph: &GraphTimetree,
+    _node: &GraphNodeForward<NodeTimetree, EdgeTimetree, ()>,
   ) -> Result<(), Report> {
     todo!("Implement forward pass for sparse timetree partition")
   }
 
-  fn extract_node_time(&self, node_key: GraphNodeKey) -> Option<f64> {
-    self.nodes.get(&node_key)?.time_before_present
+  fn get_node_likelihood_contribution(&self, _node_key: GraphNodeKey) -> Option<Arc<Distribution>> {
+    todo!("Implement likelihood contribution calculation for sparse timetree partition")
   }
 
-  fn extract_node_posterior(&self, node_key: GraphNodeKey) -> Option<Arc<Distribution>> {
-    self.nodes.get(&node_key)?.posterior.clone()
+  fn get_edge_likelihood_contribution(&self, _edge_key: GraphEdgeKey) -> Option<Arc<Distribution>> {
+    todo!("Implement edge likelihood contribution calculation for sparse timetree partition")
   }
 
   fn get_sequence_length(&self) -> Option<usize> {
@@ -101,24 +89,24 @@ impl HasLogLh for PartitionTimetreeSparse {
 
 impl PartitionMarginal for PartitionTimetreeSparse {}
 
-impl PartitionMarginalOps for PartitionTimetreeSparse {
-  fn attach_sequences(&mut self, _graph: &GraphAncestral, _aln: &[FastaRecord]) -> Result<(), Report> {
+impl PartitionMarginalOps<NodeTimetree, EdgeTimetree> for PartitionTimetreeSparse {
+  fn attach_sequences(&mut self, _graph: &GraphTimetree, _aln: &[FastaRecord]) -> Result<(), Report> {
     Ok(())
   }
 
   fn process_node_backward(
     &mut self,
-    node: &GraphNodeBackward<NodeAncestral, EdgeAncestral, ()>,
+    _node: &GraphNodeBackward<NodeTimetree, EdgeTimetree, ()>,
   ) -> Result<(), Report> {
-    PartitionTimetreeOps::process_node_backward(self, node)
+    Ok(())
   }
 
   fn process_node_forward(
     &mut self,
-    graph: &GraphAncestral,
-    node: &GraphNodeForward<NodeAncestral, EdgeAncestral, ()>,
+    _graph: &GraphTimetree,
+    _node: &GraphNodeForward<NodeTimetree, EdgeTimetree, ()>,
   ) -> Result<(), Report> {
-    PartitionTimetreeOps::process_node_forward(self, graph, node)
+    Ok(())
   }
 
   fn extract_ancestral_sequence(&mut self, _node_key: GraphNodeKey) -> Seq {
@@ -127,7 +115,7 @@ impl PartitionMarginalOps for PartitionTimetreeSparse {
 
   fn reconstruct_node_sequence(
     &mut self,
-    _node: &GraphNodeForward<NodeAncestral, EdgeAncestral, ()>,
+    _node: &GraphNodeForward<NodeTimetree, EdgeTimetree, ()>,
     _include_leaves: bool,
   ) -> Option<Seq> {
     None
