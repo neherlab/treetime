@@ -29,20 +29,31 @@ use strum_macros::{Display, EnumIter, EnumString};
 #[strum(serialize_all = "kebab-case")]
 #[clap(rename_all = "kebab-case")]
 pub enum ConvolutionAlgorithm {
+  All,
   Riemann,
   NdarrayConv,
   NdarrayConvFft,
 }
 
 impl ConvolutionAlgorithm {
-  /// Get all available algorithms
+  /// Get all available algorithms (excluding the All meta-variant)
   pub fn all() -> Vec<Self> {
-    Self::iter().collect()
+    Self::iter().filter(|a| *a != Self::All).collect()
+  }
+
+  /// Expand algorithm list, replacing All with actual algorithms
+  pub fn expand(algorithms: &[Self]) -> Vec<Self> {
+    if algorithms.contains(&Self::All) {
+      Self::all()
+    } else {
+      algorithms.to_vec()
+    }
   }
 
   /// Instantiate the algorithm implementation
   pub fn instantiate(&self) -> Box<dyn Algo> {
     match self {
+      Self::All => panic!("Cannot instantiate All meta-variant"),
       Self::Riemann => Box::new(RiemannAlgo),
       Self::NdarrayConv => Box::new(NdarrayAlgo),
       Self::NdarrayConvFft => Box::new(NdarrayConvFftAlgo),

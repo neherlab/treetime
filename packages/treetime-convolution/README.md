@@ -55,6 +55,18 @@ cargo run --release --example convolution_test -- --output-dir=tmp/conv-test
 
 ### Restrict algorithms
 
+Run all algorithms (default):
+
+```bash
+cargo run --example convolution_test -- --algorithms=all
+```
+
+```bash
+./dev/docker/run ./dev/dev E convolution_test -- --algorithms=all
+```
+
+Run specific algorithms (comma-separated):
+
 ```bash
 cargo run --example convolution_test -- --algorithms=riemann,ndarray-conv
 ```
@@ -65,22 +77,36 @@ cargo run --example convolution_test -- --algorithms=riemann,ndarray-conv
 
 ### Restrict test suites
 
+Run all test suites (default):
+
 ```bash
-cargo run --example convolution_test -- --test-suites=gaussian
+cargo run --example convolution_test -- --test-suites=all
 ```
 
 ```bash
-./dev/docker/run ./dev/dev E convolution_test -- --test-suites=gaussian
+./dev/docker/run ./dev/dev E convolution_test -- --test-suites=all
+```
+
+Run specific test suites (comma-separated):
+
+```bash
+cargo run --example convolution_test -- --test-suites=gaussian,exponential
+```
+
+```bash
+./dev/docker/run ./dev/dev E convolution_test -- --test-suites=gaussian,exponential
 ```
 
 ### Restrict test cases
 
+Run specific test cases (comma-separated):
+
 ```bash
-cargo run --example convolution_test -- --test-cases=narrow,wide
+cargo run --example convolution_test -- --test-cases=python_notebook_case_1,coarse_grid
 ```
 
 ```bash
-./dev/docker/run ./dev/dev E convolution_test -- --test-cases=narrow,wide
+./dev/docker/run ./dev/dev E convolution_test -- --test-cases=python_notebook_case_1,coarse_grid
 ```
 
 ### List available test cases

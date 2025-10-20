@@ -10,11 +10,12 @@ use serde::{Deserialize, Serialize};
 use strum::IntoEnumIterator;
 use strum_macros::{Display, EnumIter};
 
-#[derive(Copy, Clone, Debug, Default, Display, ValueEnum, Serialize, Deserialize, EnumIter)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Display, ValueEnum, Serialize, Deserialize, EnumIter)]
 #[serde(rename_all = "kebab-case")]
 #[clap(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub enum TestSuiteName {
+  All,
   #[default]
   Gaussian,
   Exponential,
@@ -23,11 +24,20 @@ pub enum TestSuiteName {
 
 impl TestSuiteName {
   pub fn all() -> Vec<Self> {
-    Self::iter().collect()
+    Self::iter().filter(|s| *s != Self::All).collect()
+  }
+
+  pub fn expand(suites: &[Self]) -> Vec<Self> {
+    if suites.contains(&Self::All) {
+      Self::all()
+    } else {
+      suites.to_vec()
+    }
   }
 
   pub fn run_tests(&self, args: &Args) -> Result<(), Report> {
     match self {
+      Self::All => panic!("Cannot run All meta-variant"),
       Self::Gaussian => run_convolution_tests_impl::<GaussianTestSuite>(args),
       Self::Exponential => run_convolution_tests_impl::<ExponentialTestSuite>(args),
       Self::GaussianExponential => run_convolution_tests_impl::<GaussianExponentialTestSuite>(args),

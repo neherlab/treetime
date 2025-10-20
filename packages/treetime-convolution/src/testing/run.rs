@@ -31,7 +31,7 @@ use treetime_utils::make_error;
 )]
 pub struct Args {
   /// Test suites to run
-  #[arg(long, default_values_t = TestSuiteName::all())]
+  #[arg(long, value_delimiter = ',', default_values_t = TestSuiteName::all())]
   test_suites: Vec<TestSuiteName>,
 
   /// Output directory for results files
@@ -39,7 +39,7 @@ pub struct Args {
   output_dir: String,
 
   /// Algorithms to test
-  #[arg(long, default_values_t = ConvolutionAlgorithm::all())]
+  #[arg(long, value_delimiter = ',', default_values_t = ConvolutionAlgorithm::all())]
   algorithms: Vec<ConvolutionAlgorithm>,
 
   /// Run only specific test cases (comma-separated names, or "all" for all)
@@ -60,7 +60,9 @@ pub struct Args {
 }
 
 pub fn run_convolution_tests() -> Result<(), Report> {
-  let args = Args::parse();
+  let mut args = Args::parse();
+  args.test_suites = TestSuiteName::expand(&args.test_suites);
+  args.algorithms = ConvolutionAlgorithm::expand(&args.algorithms);
   for suite_name in &args.test_suites {
     suite_name.run_tests(&args)?;
   }
