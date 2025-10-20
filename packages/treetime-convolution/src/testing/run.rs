@@ -107,7 +107,7 @@ where
     "{} convolution test framework completed successfully!",
     suite.test_suite_name()
   );
-  println!("Check {output_dir} for detailed results.");
+  println!("Check {output_dir} for detailed results.\n\n\n");
 
   Ok(())
 }
@@ -231,7 +231,7 @@ where
       TestRunOutcome::Failure(TestFailure {
         algorithm: algorithm.to_string(),
         test_case: test_case.clone(),
-        error: format!("{error}"),
+        error: format!("{error:?}"),
         execution_time_ms: elapsed_ms,
       })
     },

@@ -23,28 +23,29 @@ impl ConvolutionTestConsole {
     slowness_threshold: f64,
     output_dir: &str,
   ) {
-    println!("=== {} TEST CONFIGURATION ===", test_suite_name.to_uppercase());
-    println!("Test suite: {test_suite_name}");
-    println!("Algorithms: {}", algorithms.iter().map(|a| a.to_string()).collect::<Vec<_>>().join(", "));
-    println!("Test cases: running {selected_count}/{total_available} test cases");
+    println!("# {} Convolution Test\n", test_suite_name.to_uppercase());
+    println!("## Configuration\n");
+    println!("- Test suite: {test_suite_name}");
+    println!("- Algorithms: {}", algorithms.iter().map(|a| a.to_string()).collect::<Vec<_>>().join(", "));
+    println!("- Test cases: running {selected_count}/{total_available} test cases");
     if name_filter_applied {
-      println!("  (--test-cases name filter applied)");
+      println!("  - --test-cases name filter applied");
     }
     if slowness_threshold < 1.0 {
-      println!("  (--slowness threshold: {slowness_threshold})");
+      println!("  - --slowness threshold: {slowness_threshold}");
     }
     let skipped = total_available - selected_count;
     if skipped > 0 {
-      println!("⚠️ {skipped} test cases will be skipped");
+      println!("  - ⚠️ {skipped} test cases will be skipped");
     }
-    println!("Output directory: {output_dir}");
+    println!("- Output directory: {output_dir}");
     println!();
   }
 
   /// Print test framework header
-  pub fn print_header(test_suite_name: &str, test_cases_count: usize, algorithms_count: usize) {
+  pub fn print_header(_test_suite_name: &str, test_cases_count: usize, algorithms_count: usize) {
     let total_tests = test_cases_count * algorithms_count;
-    println!("=== {} Convolution Test Framework ===", test_suite_name.to_uppercase());
+    println!("## Test Execution\n");
     println!("Running {test_cases_count} test cases with {algorithms_count} algorithms ({total_tests} total)\n",);
   }
 
@@ -125,26 +126,22 @@ impl ConvolutionTestConsole {
       return Ok(());
     }
 
-    println!("\n\n=== ERRORS ENCOUNTERED ===");
+    println!("\n\n## Errors Encountered\n");
     for failure in failures {
       let test_case_json = json_write_str(&failure.test_case, JsonPretty(true))?;
-      println!(
-        "\n❌ ERROR: {} + {}: {}\n{test_case_json}",
-        failure.test_case.name(),
-        failure.algorithm,
-        failure.error
-      );
+      println!("❌ **ERROR**: {} + {}\n", failure.test_case.name(), failure.algorithm);
+      println!("```");
+      println!("{}", failure.error);
+      println!("```\n");
+      println!("**Test case:**");
+      println!("```json\n{test_case_json}\n```\n");
     }
-    println!();
     Ok(())
   }
 
   /// Print comprehensive summary to console
   pub fn print_summary<T: TestCase>(summary: &TestSummary, outcomes: &[TestRunOutcome<T>]) {
-    println!(
-      "=== {} CONVOLUTION TEST SUMMARY ===\n",
-      summary.test_suite_name.to_uppercase()
-    );
+    println!("\n## Summary\n");
 
     Self::print_overall_statistics(summary);
     Self::print_unified_metrics_table(summary, outcomes);
@@ -152,7 +149,6 @@ impl ConvolutionTestConsole {
 
   /// Print overall statistics section
   fn print_overall_statistics(summary: &TestSummary) {
-    println!("Overall Statistics:");
     let total_tests = summary.total_tests;
     let total_successes = summary.total_successes;
     let total_failures = summary.total_failures;
@@ -161,13 +157,13 @@ impl ConvolutionTestConsole {
     let overall_assessment = &summary.overall_assessment;
     let test_suite = &summary.test_suite_name;
 
-    println!("  Test suite: {test_suite}");
-    println!("  Total tests run: {total_tests}");
-    println!("  Successful runs: {total_successes}");
-    println!("  Failed runs: {total_failures}");
-    println!("  Total algorithms: {total_algorithms}");
-    println!("  Total execution time: {execution_time_total_ms:.1}ms");
-    println!("  Assessment: {overall_assessment}\n");
+    println!("- Test suite: {test_suite}");
+    println!("- Total tests run: {total_tests}");
+    println!("- Successful runs: {total_successes}");
+    println!("- Failed runs: {total_failures}");
+    println!("- Total algorithms: {total_algorithms}");
+    println!("- Total execution time: {execution_time_total_ms:.1}ms");
+    println!("- Assessment: {overall_assessment}\n");
   }
 
   /// Print comprehensive metrics table
@@ -184,7 +180,7 @@ impl ConvolutionTestConsole {
       return;
     }
 
-    println!("Comprehensive Metrics by Algorithm:");
+    println!("### Metrics by Algorithm\n");
 
     let grouped_by_algorithm = successes
       .into_iter()
@@ -580,13 +576,7 @@ impl ConvolutionTestConsole {
     ];
 
     for (category, metrics) in categories {
-      print!("| {:width$} |", "", width = metric_col_width);
-      for algo in algorithms {
-        print!(" {:width$} |", "", width = algo_col_widths[algo]);
-      }
-      println!();
-
-      print!("| {category:<metric_col_width$} |");
+      print!("| **{category}** {:<width$} |", "", width = metric_col_width - category.len() - 4);
       for algo in algorithms {
         print!(" {:width$} |", "", width = algo_col_widths[algo]);
       }
