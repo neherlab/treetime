@@ -1,7 +1,6 @@
 use crate::graph::edge::{Edge, GraphEdge};
 use crate::graph::graph::Graph;
 use crate::graph::node::{GraphNode, GraphNodeKey, Node};
-use crate::io::json::{JsonPretty, json_read, json_write};
 use eyre::{Report, WrapErr};
 use maplit::{btreemap, btreeset};
 use parking_lot::RwLock;
@@ -10,6 +9,7 @@ use std::io::Cursor;
 use std::io::{Read, Write};
 use std::path::Path;
 use std::sync::Arc;
+use treetime_io::json::{JsonPretty, json_read, json_write};
 use treetime_utils::file::create_file_or_stdout;
 use treetime_utils::file::open_file_or_stdin;
 

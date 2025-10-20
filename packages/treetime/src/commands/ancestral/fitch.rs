@@ -591,7 +591,6 @@ mod tests {
   use super::*;
   use crate::alphabet::alphabet::Alphabet;
   use crate::io::fasta::read_many_fasta_str;
-  use crate::io::json::{JsonPretty, json_write_str};
   use crate::io::nwk::nwk_read_str;
   use crate::representation::graph_ancestral::GraphAncestral;
   use crate::representation::partition_parsimony::PartitionParsimonyNew;
@@ -602,6 +601,7 @@ mod tests {
   use parking_lot::RwLock;
   use std::collections::BTreeMap;
   use std::sync::Arc;
+  use treetime_io::json::{JsonPretty, json_write_str};
 
   lazy_static! {
     static ref NUC_ALPHABET: Alphabet = Alphabet::default();

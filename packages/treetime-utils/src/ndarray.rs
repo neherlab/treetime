@@ -203,6 +203,20 @@ pub fn random<T: Copy + SampleUniform + NumCast, D: Dimension, Sh: ShapeBuilder<
   Array::<T, D>::random_using(shape, Uniform::<T>::new::<T, T>(from, to), rng)
 }
 
+/// Check if grid is uniform
+pub fn is_uniform_grid(grid: &Array1<f64>) -> bool {
+  if grid.len() < 2 {
+    return true;
+  }
+
+  grid
+    .iter()
+    .tuple_windows()
+    .map(|(a, b)| b - a)
+    .tuple_windows()
+    .all(|(d1, d2)| (d1 - d2).abs() <= 1e-12)
+}
+
 #[cfg(test)]
 mod tests {
   #![allow(clippy::excessive_precision, clippy::lossy_float_literal)]

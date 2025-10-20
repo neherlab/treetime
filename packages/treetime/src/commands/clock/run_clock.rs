@@ -14,9 +14,9 @@ use crate::commands::clock::reroot::reroot_in_place;
 use crate::commands::clock::rtt::{gather_clock_regression_results, write_clock_regression_result_csv};
 use crate::io::dates_csv::read_dates;
 use crate::io::graphviz::graphviz_write_file;
-use crate::io::json::{JsonPretty, json_write_file};
 use crate::io::nwk::{NwkWriteOptions, nwk_read_file, nwk_write_file};
 use eyre::{Report, WrapErr};
+use treetime_io::json::{JsonPretty, json_write_file};
 use treetime_utils::console::is_tty;
 
 pub fn get_clock_model(

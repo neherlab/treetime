@@ -17,6 +17,7 @@ pub mod mutex;
 pub mod ndarray;
 pub mod openblas;
 pub mod random;
+pub mod serde;
 pub mod string;
 pub mod vec;
 

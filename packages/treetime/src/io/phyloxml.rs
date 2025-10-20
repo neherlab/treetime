@@ -1,9 +1,6 @@
 use crate::graph::edge::{Edge, GraphEdge};
 use crate::graph::graph::Graph;
 use crate::graph::node::GraphNode;
-use crate::io::json::{
-  JsonPretty, json_read, json_read_file, json_read_str, json_write, json_write_file, json_write_str,
-};
 use crate::make_internal_error;
 use eyre::{Report, WrapErr};
 use maplit::{btreemap, btreeset};
@@ -20,6 +17,9 @@ use std::collections::VecDeque;
 use std::io::{Cursor, Read, Write};
 use std::path::Path;
 use std::sync::Arc;
+use treetime_io::json::{
+  JsonPretty, json_read, json_read_file, json_read_str, json_write, json_write_file, json_write_str,
+};
 use treetime_utils::file::create_file_or_stdout;
 use treetime_utils::file::open_file_or_stdin;
 

@@ -5,7 +5,6 @@ mod tests {
   use crate::commands::ancestral::marginal_unified::{ancestral_reconstruction_marginal, run_marginal};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::io::fasta::read_many_fasta_str;
-  use crate::io::json::{JsonPretty, json_write_str};
   use crate::io::nwk::nwk_read_str;
   use crate::pretty_assert_ulps_eq;
   use crate::representation::graph_ancestral::GraphAncestral;
@@ -18,6 +17,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use std::sync::Arc;
+  use treetime_io::json::{JsonPretty, json_write_str};
 
   lazy_static! {
     static ref NUC_ALPHABET: Alphabet = Alphabet::default();

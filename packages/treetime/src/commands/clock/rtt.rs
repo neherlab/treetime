@@ -2,13 +2,13 @@ use crate::commands::clock::clock_graph::ClockGraph;
 use crate::commands::clock::clock_model::ClockModel;
 use crate::graph::breadth_first::GraphTraversalContinuation;
 use crate::io::csv::CsvStructFileWriter;
-use crate::io::serde::skip_serializing_if_false;
 use crossbeam_queue::ArrayQueue;
 use crossbeam_skiplist::SkipMap;
 use eyre::Report;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
+use treetime_utils::serde::skip_serializing_if_false;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ClockRegressionResult {
