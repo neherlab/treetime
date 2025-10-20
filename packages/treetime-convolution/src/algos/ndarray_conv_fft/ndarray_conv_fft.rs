@@ -1,4 +1,4 @@
-use crate::algos::algo_trait::Algo;
+use crate::algos::algos::Algo;
 use eyre::Report;
 use ndarray::Array1;
 use ndarray_conv::{ConvFFTExt, ConvMode, PaddingMode};

@@ -1,4 +1,4 @@
-use crate::algos::algo_trait::Algo;
+use crate::algos::algos::Algo;
 use crate::algos::algos::ConvolutionAlgorithm;
 use crate::testing::console::console::ConvolutionTestConsole;
 use crate::testing::framework::results::{TestFailure, TestResult, TestRunOutcome};

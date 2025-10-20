@@ -1,8 +1,9 @@
-use crate::algos::algo_trait::Algo;
 use crate::algos::ndarray_conv::ndarray_conv::NdarrayAlgo;
 use crate::algos::ndarray_conv_fft::ndarray_conv_fft::NdarrayConvFftAlgo;
 use crate::algos::riemann::riemann::RiemannAlgo;
 use clap::ValueEnum;
+use eyre::Report;
+use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 use strum::IntoEnumIterator;
 use strum_macros::{Display, EnumIter, EnumString};
@@ -47,4 +48,16 @@ impl ConvolutionAlgorithm {
       Self::NdarrayFft => Box::new(NdarrayConvFftAlgo),
     }
   }
+}
+
+pub trait Algo: Send + Sync {
+  fn name(&self) -> &'static str;
+
+  fn convolve(
+    &self,
+    input_grid: &Array1<f64>,
+    f_values: &Array1<f64>,
+    g_values: &Array1<f64>,
+    output_grid: &Array1<f64>,
+  ) -> Result<Array1<f64>, Report>;
 }

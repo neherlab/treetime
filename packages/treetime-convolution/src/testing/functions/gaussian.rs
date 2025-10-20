@@ -213,7 +213,8 @@ impl TestSuite for GaussianConvInput {
       },
       GaussianTestCase {
         name: "fine_grid_reference".to_owned(),
-        description: "Reference-quality very fine grid; high-accuracy baseline closest to analytical target.".to_owned(),
+        description: "Reference-quality very fine grid; high-accuracy baseline closest to analytical target."
+          .to_owned(),
         stress_type: "performance/memory, summation order".to_owned(),
         analytical_caution: "none".to_owned(),
         sigma_f: 1.0,
