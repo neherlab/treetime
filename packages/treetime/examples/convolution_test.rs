@@ -76,16 +76,6 @@ impl FunctionType {
 fn main() -> Result<(), Report> {
   let args = Args::parse();
 
-  if args.list_cases {
-    for function_type in &args.functions {
-      match function_type {
-        FunctionType::Gaussian => GaussianConvInput::list_test_cases(),
-        FunctionType::Exponential => ExponentialConvInput::list_test_cases(),
-      }
-    }
-    return Ok(());
-  }
-
   for function_type in &args.functions {
     match function_type {
       FunctionType::Gaussian => run_convolution_tests::<GaussianConvInput>(&args)?,
@@ -101,6 +91,12 @@ where
   I: ConvInput,
 {
   let function_type_name = I::function_type();
+
+  if args.list_cases {
+    I::list_test_cases();
+    return Ok(());
+  }
+
   let output_dir = format!("{}/{}", args.output_dir, function_type_name);
   let runner = TraitBasedTestRunner::<I>::new(Some(args.test_cases.as_str()))?;
 
