@@ -120,7 +120,7 @@ impl GridFn {
     self.interp.x()
   }
 
-  /// Get y values  
+  /// Get y values
   pub fn y(&self) -> &Array1<f64> {
     self.interp.data()
   }

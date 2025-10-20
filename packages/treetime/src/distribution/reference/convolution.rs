@@ -72,33 +72,3 @@ fn is_uniform_grid(grid: &Array1<f64>) -> bool {
   }
   true
 }
-
-#[cfg(test)]
-mod tests {
-  use super::*;
-  use crate::distribution::reference::convolution_test::functions::gaussian::analytical::{gaussian_f, gaussian_g};
-
-  #[test]
-  fn test_riemann_simple() -> Result<(), Report> {
-    let f = gaussian_f(1.0, (-3.0, 3.0), 0.2)?;
-    let g = gaussian_g(1.0, 0.0, (-3.0, 3.0), 0.2)?;
-    let x_grid = Array1::from_iter((0..11).map(|i| -1.0 + i as f64 * 0.2));
-
-    let result = riemann_convolve(&f, &g, &x_grid)?;
-    assert_eq!(result.grid_size(), x_grid.len());
-    assert!(result.max_value() > 0.0);
-    Ok(())
-  }
-
-  #[test]
-  fn test_ndarray_simple() -> Result<(), Report> {
-    let f = gaussian_f(1.0, (-2.0, 2.0), 0.2)?;
-    let g = gaussian_f(1.0, (-2.0, 2.0), 0.2)?;
-    let x_grid = Array1::from_iter((0..11).map(|i| -1.0 + i as f64 * 0.2));
-
-    let result = ndarray_convolve(&f, &g, &x_grid)?;
-    assert_eq!(result.grid_size(), x_grid.len());
-    assert!(result.max_value() > 0.0);
-    Ok(())
-  }
-}

@@ -1,9 +1,10 @@
+#![allow(clippy::many_single_char_names)]
 use crate::distribution::reference::convolution_test::traits::ConvInput;
 use crate::distribution::reference::grid_fn::GridFn;
 use eyre::Report;
 use ndarray::Array1;
+use std::f64::consts::PI;
 
-use super::analytical::{gaussian_convolution, gaussian_f, gaussian_g};
 use super::test_cases::{GaussianTestCase, create_gaussian_test_cases};
 
 pub struct GaussianConvInput {
@@ -23,26 +24,60 @@ impl ConvInput for GaussianConvInput {
     Self { test_cases }
   }
 
-  fn create_f(&self, test_case: &Self::TestCase) -> Result<GridFn, Report> {
-    gaussian_f(test_case.sigma_f, test_case.f_domain, test_case.dx)
+  fn create_f(
+    &self,
+    &GaussianTestCase {
+      sigma_f, f_domain, dx, ..
+    }: &Self::TestCase,
+  ) -> Result<GridFn, Report> {
+    // Generate Gaussian function f(x) = (1/√(2π σ_f²)) * exp(-x²/(2σ_f²))
+    GridFn::from_grid(f_domain, dx, |x| {
+      (-(0.5 * (x / sigma_f).powi(2))).exp() / (sigma_f * (2.0 * PI).sqrt())
+    })
   }
 
-  fn create_g(&self, test_case: &Self::TestCase) -> Result<GridFn, Report> {
-    gaussian_g(test_case.sigma_g, test_case.mu, test_case.g_domain, test_case.dx)
+  fn create_g(
+    &self,
+    &GaussianTestCase {
+      sigma_g,
+      mu,
+      g_domain,
+      dx,
+      ..
+    }: &Self::TestCase,
+  ) -> Result<GridFn, Report> {
+    // Generate Gaussian function g(x) = (1/√(2π σ_g²)) * exp(-(x-μ)²/(2σ_g²))
+    GridFn::from_grid(g_domain, dx, |x| {
+      (-(0.5 * ((x - mu) / sigma_g).powi(2))).exp() / (sigma_g * (2.0 * PI).sqrt())
+    })
   }
 
   fn eval_domain(&self, test_case: &Self::TestCase) -> (f64, f64) {
     test_case.eval_domain
   }
 
-  fn analytical_convolution(&self, test_case: &Self::TestCase, _eval_grid: &Array1<f64>) -> Result<GridFn, Report> {
-    gaussian_convolution(
-      test_case.sigma_f,
-      test_case.sigma_g,
-      test_case.mu,
-      test_case.eval_domain,
-      test_case.dx,
-    )
+  fn analytical_convolution(
+    &self,
+    &GaussianTestCase {
+      sigma_f,
+      sigma_g,
+      mu,
+      eval_domain,
+      dx,
+      ..
+    }: &Self::TestCase,
+    _eval_grid: &Array1<f64>,
+  ) -> Result<GridFn, Report> {
+    // Analytical convolution of two Gaussian functions
+    //
+    // f(x) = (1/√(2π σ_f²)) * exp(-x²/(2σ_f²))
+    // g(x) = (1/√(2π σ_g²)) * exp(-(x-μ)²/(2σ_g²))
+    //
+    // Result: (1/√(2π(σ_f² + σ_g²))) * exp(-(x-μ)²/(2(σ_f² + σ_g²)))
+    let variance_sum = sigma_f.powi(2) + sigma_g.powi(2);
+    GridFn::from_grid(eval_domain, dx, |x| {
+      (-(0.5 * (x - mu).powi(2) / variance_sum)).exp() / (2.0 * PI * variance_sum).sqrt()
+    })
   }
 
   fn test_cases(&self) -> &[Self::TestCase] {
