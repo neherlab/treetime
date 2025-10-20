@@ -1,11 +1,12 @@
 #![allow(clippy::many_single_char_names)]
+use crate::distribution::reference::convolution_test::functions::gaussian::test_cases::{
+  GaussianTestCase, create_gaussian_test_cases,
+};
 use crate::distribution::reference::convolution_test::traits::ConvInput;
 use crate::distribution::reference::grid_fn::GridFn;
 use eyre::Report;
 use ndarray::Array1;
 use std::f64::consts::PI;
-
-use super::test_cases::{GaussianTestCase, create_gaussian_test_cases};
 
 pub struct GaussianConvInput {
   test_cases: Vec<GaussianTestCase>,
