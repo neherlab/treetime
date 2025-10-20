@@ -1,12 +1,17 @@
 use crate::testing::metrics::config::PointwiseConfig;
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
+use treetime_utils::serde::{array1_as_vec, array1_from_vec};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PointwiseErrors {
+  #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
   pub absolute: Array1<f64>,
+  #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
   pub relative: Array1<f64>,
+  #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
   pub signed: Array1<f64>,
+  #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
   pub logarithmic: Array1<f64>,
   pub summary: PointwiseErrorSummary,
 }

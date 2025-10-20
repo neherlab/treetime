@@ -1,10 +1,13 @@
 use crate::testing::metrics::config::SpatialConfig;
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
+use treetime_utils::serde::{array1_as_vec, array1_from_vec};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WindowedMetrics {
+  #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
   pub sliding_rms: Array1<f64>,
+  #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
   pub sliding_max: Array1<f64>,
   pub summary: WindowedSummary,
 }

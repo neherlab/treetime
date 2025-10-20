@@ -1,9 +1,11 @@
 use ndarray::{Array1, Axis};
 use serde::{Deserialize, Serialize};
 use treetime_utils::ndarray::cumsum_axis;
+use treetime_utils::serde::{array1_as_vec, array1_from_vec};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CumulativeMetrics {
+  #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
   pub cumulative_error: Array1<f64>,
   pub summary: CumulativeSummary,
 }

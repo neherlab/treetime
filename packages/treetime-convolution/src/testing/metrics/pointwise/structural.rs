@@ -2,12 +2,17 @@ use crate::testing::metrics::config::PointwiseConfig;
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+use treetime_utils::serde::{array1_as_vec, array1_from_vec};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StructuralErrors {
+  #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
   pub first_derivative: Array1<f64>,
+  #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
   pub second_derivative: Array1<f64>,
+  #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
   pub symmetry_residual: Array1<f64>,
+  #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
   pub monotonicity_violations: Array1<f64>,
   pub summary: StructuralErrorSummary,
 }
