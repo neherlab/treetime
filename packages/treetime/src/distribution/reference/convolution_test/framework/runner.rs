@@ -5,6 +5,7 @@ use crate::distribution::reference::convolution_test::metrics::metrics::Convolut
 use crate::distribution::reference::convolution_test::traits::{ConvAlgo, ConvInput};
 use eyre::Report;
 use ndarray::Array1;
+use std::marker::PhantomData;
 use std::time::Instant;
 
 pub trait ConvolutionTestRunner<T: TestCase>: Send + Sync {
@@ -16,12 +17,18 @@ pub trait ConvolutionTestRunner<T: TestCase>: Send + Sync {
 }
 
 pub struct TraitBasedTestRunner<I: ConvInput> {
-  input: I,
+  test_cases: Vec<I::TestCase>,
+  _marker: PhantomData<I>,
 }
 
 impl<I: ConvInput> TraitBasedTestRunner<I> {
-  pub fn new(input: I) -> Self {
-    Self { input }
+  pub fn new(test_case_filter: Option<&str>) -> Result<Self, Report> {
+    let test_cases = I::filter_test_cases(test_case_filter)?;
+
+    Ok(Self {
+      test_cases,
+      _marker: PhantomData,
+    })
   }
 }
 
@@ -33,10 +40,10 @@ impl<I: ConvInput> ConvolutionTestRunner<I::TestCase> for TraitBasedTestRunner<I
   ) -> Result<TestResult<I::TestCase>, Report> {
     let start_time = Instant::now();
 
-    let f = self.input.create_f(test_case)?;
-    let g = self.input.create_g(test_case)?;
+    let f = I::create_f(test_case)?;
+    let g = I::create_g(test_case)?;
 
-    let (eval_min, eval_max) = self.input.eval_domain(test_case);
+    let (eval_min, eval_max) = I::eval_domain(test_case);
     let n_eval_points = ((eval_max - eval_min) / test_case.dx() + 1.0).round() as usize;
     let eval_grid = Array1::from_iter((0..n_eval_points).map(|i| eval_min + i as f64 * test_case.dx()));
 
@@ -50,7 +57,7 @@ impl<I: ConvInput> ConvolutionTestRunner<I::TestCase> for TraitBasedTestRunner<I
     };
 
     let actual_result = algo.convolve(&f, &g, &eval_grid)?;
-    let expected_result = self.input.analytical_convolution(test_case, &eval_grid)?;
+    let expected_result = I::analytical_convolution(test_case, &eval_grid)?;
 
     let execution_time = start_time.elapsed().as_secs_f64() * 1000.0;
 
@@ -85,10 +92,10 @@ impl<I: ConvInput> ConvolutionTestRunner<I::TestCase> for TraitBasedTestRunner<I
   }
 
   fn test_cases(&self) -> &[I::TestCase] {
-    self.input.test_cases()
+    &self.test_cases
   }
 
   fn function_type(&self) -> &'static str {
-    self.input.function_type()
+    I::function_type()
   }
 }

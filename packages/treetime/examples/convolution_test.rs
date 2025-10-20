@@ -79,8 +79,8 @@ fn main() -> Result<(), Report> {
   if args.list_cases {
     for function_type in &args.functions {
       match function_type {
-        FunctionType::Gaussian => GaussianConvInput::new_all().list_test_cases(),
-        FunctionType::Exponential => ExponentialConvInput::new_all().list_test_cases(),
+        FunctionType::Gaussian => GaussianConvInput::list_test_cases(),
+        FunctionType::Exponential => ExponentialConvInput::list_test_cases(),
       }
     }
     return Ok(());
@@ -88,40 +88,23 @@ fn main() -> Result<(), Report> {
 
   for function_type in &args.functions {
     match function_type {
-      FunctionType::Gaussian => {
-        dispatch_function_test::<GaussianConvInput>(&args)?;
-      },
-      FunctionType::Exponential => {
-        dispatch_function_test::<ExponentialConvInput>(&args)?;
-      },
+      FunctionType::Gaussian => run_convolution_tests::<GaussianConvInput>(&args)?,
+      FunctionType::Exponential => run_convolution_tests::<ExponentialConvInput>(&args)?,
     }
   }
 
   Ok(())
 }
 
-fn dispatch_function_test<I>(args: &Args) -> Result<(), Report>
+fn run_convolution_tests<I>(args: &Args) -> Result<(), Report>
 where
   I: ConvInput,
 {
-  let filter = if args.test_cases == "all" {
-    None
-  } else {
-    Some(args.test_cases.as_str())
-  };
-  let input = I::new(filter)?;
-  let function_type_name = input.function_type();
-  let function_output_dir = format!("{}/{}", args.output_dir, function_type_name);
-  let runner = TraitBasedTestRunner::new(input);
-  run_convolution_tests(args, runner, function_type_name, &function_output_dir)
-}
+  let function_type_name = I::function_type();
+  let output_dir = format!("{}/{}", args.output_dir, function_type_name);
+  let runner = TraitBasedTestRunner::<I>::new(Some(args.test_cases.as_str()))?;
 
-fn run_convolution_tests<R, T>(args: &Args, runner: R, function_type_name: &str, output_dir: &str) -> Result<(), Report>
-where
-  R: ConvolutionTestRunner<T>,
-  T: TestCase,
-{
-  let mut framework = ConvolutionTestFramework::new(runner, output_dir.to_owned());
+  let mut framework = ConvolutionTestFramework::new(runner, output_dir.clone());
   framework.set_algorithms(args.algorithms.clone());
 
   if args.verbose {
@@ -134,7 +117,7 @@ where
 
   let outcomes = framework.run_all_tests()?;
 
-  generate_plot_outputs(output_dir, &outcomes)?;
+  generate_plot_outputs(&output_dir, &outcomes)?;
 
   // Generate summary
   let summary = framework.generate_summary(&outcomes);

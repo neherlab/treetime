@@ -7,23 +7,16 @@ use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 use std::f64::consts::PI;
 
-pub struct GaussianConvInput {
-  test_cases: Vec<GaussianTestCase>,
-}
+pub struct GaussianConvInput;
 
 impl ConvInput for GaussianConvInput {
   type TestCase = GaussianTestCase;
 
-  fn function_type(&self) -> &'static str {
+  fn function_type() -> &'static str {
     "gaussian"
   }
 
-  fn new_with_cases(test_cases: Vec<GaussianTestCase>) -> Self {
-    Self { test_cases }
-  }
-
   fn create_f(
-    &self,
     &GaussianTestCase {
       sigma_f, f_domain, dx, ..
     }: &Self::TestCase,
@@ -35,7 +28,6 @@ impl ConvInput for GaussianConvInput {
   }
 
   fn create_g(
-    &self,
     &GaussianTestCase {
       sigma_g,
       mu,
@@ -50,12 +42,11 @@ impl ConvInput for GaussianConvInput {
     })
   }
 
-  fn eval_domain(&self, test_case: &Self::TestCase) -> (f64, f64) {
+  fn eval_domain(test_case: &Self::TestCase) -> (f64, f64) {
     test_case.eval_domain
   }
 
   fn analytical_convolution(
-    &self,
     &GaussianTestCase {
       sigma_f,
       sigma_g,
@@ -76,10 +67,6 @@ impl ConvInput for GaussianConvInput {
     GridFn::from_grid(eval_domain, dx, |x| {
       (-(0.5 * (x - mu).powi(2) / variance_sum)).exp() / (2.0 * PI * variance_sum).sqrt()
     })
-  }
-
-  fn test_cases(&self) -> &[Self::TestCase] {
-    &self.test_cases
   }
 
   fn create_test_cases() -> Vec<GaussianTestCase> {

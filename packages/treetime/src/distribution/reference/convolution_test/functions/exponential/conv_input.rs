@@ -6,37 +6,30 @@ use eyre::Report;
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 
-pub struct ExponentialConvInput {
-  test_cases: Vec<ExponentialTestCase>,
-}
+pub struct ExponentialConvInput;
 
 impl ConvInput for ExponentialConvInput {
   type TestCase = ExponentialTestCase;
 
-  fn function_type(&self) -> &'static str {
+  fn function_type() -> &'static str {
     "exponential"
   }
 
-  fn new_with_cases(test_cases: Vec<ExponentialTestCase>) -> Self {
-    Self { test_cases }
-  }
-
-  fn create_f(&self, &ExponentialTestCase { a, f_domain, dx, .. }: &Self::TestCase) -> Result<GridFn, Report> {
+  fn create_f(&ExponentialTestCase { a, f_domain, dx, .. }: &Self::TestCase) -> Result<GridFn, Report> {
     // Generate exponential function f(x) = a*exp(-ax) for x ≥ 0, 0 otherwise
     GridFn::from_grid(f_domain, dx, |x| if x >= 0.0 { a * (-a * x).exp() } else { 0.0 })
   }
 
-  fn create_g(&self, &ExponentialTestCase { b, g_domain, dx, .. }: &Self::TestCase) -> Result<GridFn, Report> {
+  fn create_g(&ExponentialTestCase { b, g_domain, dx, .. }: &Self::TestCase) -> Result<GridFn, Report> {
     // Generate exponential function g(x) = b*exp(-bx) for x ≥ 0, 0 otherwise
     GridFn::from_grid(g_domain, dx, |x| if x >= 0.0 { b * (-b * x).exp() } else { 0.0 })
   }
 
-  fn eval_domain(&self, test_case: &Self::TestCase) -> (f64, f64) {
+  fn eval_domain(test_case: &Self::TestCase) -> (f64, f64) {
     test_case.eval_domain
   }
 
   fn analytical_convolution(
-    &self,
     &ExponentialTestCase {
       a, b, eval_domain, dx, ..
     }: &Self::TestCase,
@@ -58,10 +51,6 @@ impl ConvInput for ExponentialConvInput {
         (a * b) / (a - b) * (1.0 - (-(a - b) * x).exp()) * (-b * x).exp()
       }
     })
-  }
-
-  fn test_cases(&self) -> &[Self::TestCase] {
-    &self.test_cases
   }
 
   fn create_test_cases() -> Vec<ExponentialTestCase> {
