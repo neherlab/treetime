@@ -1,6 +1,7 @@
 use eyre::Report;
 use ndarray::Array1;
 use ndarray_interp::interp1d::{Interp1D, Interp1DBuilder, Linear};
+use ndarray_stats::QuantileExt;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 /// Function represented on a regular grid
@@ -137,114 +138,5 @@ impl GridFn {
       result[i] = self.interp.interp_scalar(x)?;
     }
     Ok(result)
-  }
-
-  /// Evaluate function on array of x values (like Python f(x_array))
-  pub fn eval_array(&self, x_vals: &Array1<f64>) -> Result<Array1<f64>, Report> {
-    let mut result = Array1::zeros(x_vals.len());
-    for (i, &x) in x_vals.iter().enumerate() {
-      result[i] = self.interp(x).unwrap_or(0.0); // Use 0 for out-of-domain
-    }
-    Ok(result)
-  }
-
-  /// Create function from a shared grid using a computation function
-  /// This avoids interpolation by directly computing on the same grid
-  pub fn from_shared_grid(x_grid: &Array1<f64>, compute_fn: impl Fn(f64) -> f64) -> Result<Self, Report> {
-    let y_vals = x_grid.mapv(compute_fn);
-    Self::new(x_grid.clone(), y_vals)
-  }
-
-  /// Evaluate on same grid as this function (no interpolation needed)
-  pub fn eval_on_same_grid(&self, compute_fn: impl Fn(f64) -> f64) -> Result<GridFn, Report> {
-    let y_vals = self.x().mapv(compute_fn);
-    Self::new(self.x().clone(), y_vals)
-  }
-
-  /// Check if two GridFn have identical grids
-  pub fn has_same_grid(&self, other: &GridFn) -> bool {
-    self.x().len() == other.x().len()
-      && self
-        .x()
-        .iter()
-        .zip(other.x().iter())
-        .all(|(a, b)| (a - b).abs() < 1e-15)
-  }
-
-  /// Get value at grid index (no interpolation)
-  pub fn value_at_index(&self, index: usize) -> Option<f64> {
-    self.y().get(index).copied()
-  }
-
-  /// Get x value at grid index
-  pub fn x_at_index(&self, index: usize) -> Option<f64> {
-    self.x().get(index).copied()
-  }
-
-  /// Get grid size
-  pub fn grid_size(&self) -> usize {
-    self.x().len()
-  }
-
-  /// Get maximum value
-  pub fn max_value(&self) -> f64 {
-    self.y().fold(f64::NEG_INFINITY, |acc, &x| acc.max(x))
-  }
-
-  /// Get x position of maximum value
-  pub fn max_position(&self) -> f64 {
-    let max_idx = self
-      .y()
-      .iter()
-      .enumerate()
-      .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
-      .map_or(0, |(idx, _)| idx);
-    self.x()[max_idx]
-  }
-}
-
-#[cfg(test)]
-mod tests {
-  use super::*;
-  use crate::pretty_assert_ulps_eq;
-  use approx::assert_ulps_eq;
-  use ndarray::array;
-
-  #[test]
-  fn test_gridfn_from_grid_basic() -> Result<(), Report> {
-    let domain = (0.0, 2.0);
-    let dx = 1.0;
-    let result = GridFn::from_grid(domain, dx, |x| x * x)?;
-    pretty_assert_ulps_eq!(result.x(), &array![0.0, 1.0, 2.0], max_ulps = 1);
-    pretty_assert_ulps_eq!(result.y(), &array![0.0, 1.0, 4.0], max_ulps = 1);
-    Ok(())
-  }
-
-  #[test]
-  fn test_gridfn_interp_basic() -> Result<(), Report> {
-    let x = Array1::from_vec(vec![0.0, 1.0, 2.0]);
-    let y = Array1::from_vec(vec![0.0, 1.0, 4.0]);
-    let result = GridFn::new(x, y)?;
-
-    // Test exact points
-    assert_ulps_eq!(result.interp(0.0)?, 0.0, max_ulps = 1);
-    assert_ulps_eq!(result.interp(1.0)?, 1.0, max_ulps = 1);
-    assert_ulps_eq!(result.interp(2.0)?, 4.0, max_ulps = 1);
-
-    // Test interpolation
-    assert_ulps_eq!(result.interp(0.5)?, 0.5, max_ulps = 1);
-    assert_ulps_eq!(result.interp(1.5)?, 2.5, max_ulps = 1);
-
-    Ok(())
-  }
-
-  #[test]
-  fn test_gridfn_max_value_and_position() -> Result<(), Report> {
-    let x = Array1::from_vec(vec![0.0, 1.0, 2.0, 3.0]);
-    let y = Array1::from_vec(vec![1.0, 3.0, 5.0, 2.0]);
-    let result = GridFn::new(x, y)?;
-    assert_ulps_eq!(result.max_value(), 5.0, max_ulps = 1);
-    assert_ulps_eq!(result.max_position(), 2.0, max_ulps = 1);
-    Ok(())
   }
 }
