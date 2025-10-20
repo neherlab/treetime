@@ -39,7 +39,7 @@ pub struct NdarrayConvFftAlgo;
 
 impl Algo for NdarrayConvFftAlgo {
   fn name(&self) -> &'static str {
-    "ndarray_fft"
+    "ndarray-fft"
   }
 
   fn convolve(
