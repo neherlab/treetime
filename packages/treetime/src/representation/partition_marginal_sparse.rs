@@ -74,6 +74,15 @@ impl HasLogLh for PartitionMarginalSparse {
 
 impl PartitionMarginal for PartitionMarginalSparse {}
 
+impl crate::commands::timetree::partition_ops::PartitionTimetreeOps for PartitionMarginalSparse {
+  fn create_edge_contribution(
+    &self,
+    edge_key: GraphEdgeKey,
+  ) -> Result<crate::commands::optimize::optimize_unified::OptimizationContribution, Report> {
+    crate::commands::optimize::optimize_unified::OptimizationContribution::from_sparse(edge_key, self)
+  }
+}
+
 impl PartitionMarginalOps<NodeAncestral, EdgeAncestral> for PartitionMarginalSparse {
   fn attach_sequences(&mut self, _graph: &GraphAncestral, _aln: &[FastaRecord]) -> Result<(), Report> {
     // Sparse partitions get sequences attached during compression phase

@@ -40,6 +40,15 @@ impl HasLogLh for PartitionMarginalDense {
 
 impl PartitionMarginal for PartitionMarginalDense {}
 
+impl crate::commands::timetree::partition_ops::PartitionTimetreeOps for PartitionMarginalDense {
+  fn create_edge_contribution(
+    &self,
+    edge_key: GraphEdgeKey,
+  ) -> Result<crate::commands::optimize::optimize_unified::OptimizationContribution, Report> {
+    Ok(crate::commands::optimize::optimize_unified::OptimizationContribution::from_dense(edge_key, self))
+  }
+}
+
 impl PartitionMarginalOps<NodeAncestral, EdgeAncestral> for PartitionMarginalDense {
   fn attach_sequences(&mut self, graph: &GraphAncestral, aln: &[FastaRecord]) -> Result<(), Report> {
     for leaf in graph.get_leaves() {
@@ -58,6 +67,7 @@ impl PartitionMarginalOps<NodeAncestral, EdgeAncestral> for PartitionMarginalDen
       *leaf = NodeAncestral {
         name: Some(leaf_name),
         desc: leaf_fasta.desc.clone(),
+        ..NodeAncestral::default()
       };
 
       let alphabet = &self.alphabet.clone(); // TODO: avoid clone

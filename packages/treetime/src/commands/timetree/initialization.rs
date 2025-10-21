@@ -1,40 +1,34 @@
-use crate::representation::edge_timetree::EdgeTimetree;
-use crate::representation::node_timetree::NodeTimetree;
 use crate::alphabet::alphabet::Alphabet;
 use crate::commands::ancestral::fitch::get_common_length;
-use crate::representation::infer_dense::infer_dense;
 use crate::commands::timetree::args::{BranchLengthMode, TreetimeTimetreeArgs};
 use crate::commands::timetree::data::date_constraints::DateConstraintSet;
 use crate::commands::timetree::data::date_constraints::load_date_constraints;
+use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
 use crate::gtr::get_gtr::{JC69Params, jc69};
 use crate::io::fasta::{FastaRecord, read_many_fasta};
 use crate::io::nwk::nwk_read_file;
 use crate::representation::graph_ancestral::GraphAncestral;
-use crate::representation::partition_timetree::{GraphTimetree, PartitionTreetimeMarginalOps, PartitionTreetimeMarginalVec};
-use crate::representation::partition_timetree_dense::PartitionTimetreeDense;
-use crate::representation::partition_timetree_sparse::PartitionTimetreeSparse;
+use crate::representation::infer_dense::infer_dense;
+use crate::representation::partition_marginal_dense::PartitionMarginalDense;
+use crate::representation::partition_marginal_sparse::PartitionMarginalSparse;
 use eyre::{Report, WrapErr};
-use itertools::Itertools;
 use maplit::btreemap;
 use parking_lot::RwLock;
 use std::sync::Arc;
 
 pub struct InputData {
-  pub graph: GraphTimetree,
+  pub graph: GraphAncestral,
   pub alphabet: Alphabet,
   pub aln: Option<Vec<FastaRecord>>,
   pub constraints: DateConstraintSet,
 }
 
 pub fn load_input_data(args: &TreetimeTimetreeArgs) -> Result<InputData, Report> {
-  let graph_ancestral: GraphAncestral = if let Some(tree_path) = &args.tree {
+  let graph: GraphAncestral = if let Some(tree_path) = &args.tree {
     nwk_read_file(tree_path).wrap_err("Failed to load tree from file")?
   } else {
     todo!("Tree inference from alignment not yet implemented")
   };
-
-  // Convert GraphAncestral to GraphTimetree
-  let graph: GraphTimetree = graph_ancestral.to_graph_timetree()?;
 
   // Create alphabet for both alignment loading and timetree inference.
   // treat_gap_as_unknown behavior:
@@ -69,40 +63,41 @@ pub fn load_input_data(args: &TreetimeTimetreeArgs) -> Result<InputData, Report>
 
 pub fn initialize_partitions(
   args: &TreetimeTimetreeArgs,
-  _graph: &GraphTimetree,
+  _graph: &GraphAncestral,
   alphabet: Alphabet,
   aln: Option<&[FastaRecord]>,
   _constraints: &DateConstraintSet,
-) -> Result<PartitionTreetimeMarginalVec, Report> {
+) -> Result<Vec<Arc<RwLock<dyn PartitionTimetreeAll>>>, Report> {
   let dense = args.dense.unwrap_or_else(infer_dense);
-  let sequence_length = if let Some(aln_data) = aln {
-    Some(get_common_length(aln_data)?)
+  let length = if let Some(aln_data) = aln {
+    get_common_length(aln_data)?
   } else {
-    args.sequence_length
+    args
+      .sequence_length
+      .ok_or_else(|| eyre::eyre!("sequence_length required when no alignment provided"))?
   };
 
-  #[allow(clippy::iter_on_single_items, trivial_casts)]
-  let partitions = if !dense {
-    [Arc::new(RwLock::new(PartitionTimetreeSparse {
-      index: 0,
-      gtr: jc69(JC69Params::default())?,
-      alphabet,
-      sequence_length,
-      nodes: btreemap! {},
-      edges: btreemap! {},
-    })) as Arc<RwLock<dyn PartitionTreetimeMarginalOps<NodeTimetree, EdgeTimetree>>>]
+  if !dense {
+    let partition: Arc<RwLock<dyn PartitionTimetreeAll>> =
+      Arc::new(RwLock::new(PartitionMarginalSparse {
+        index: 0,
+        gtr: jc69(JC69Params::default())?,
+        alphabet,
+        length,
+        nodes: btreemap! {},
+        edges: btreemap! {},
+      }));
+    Ok(vec![partition])
   } else {
-    [Arc::new(RwLock::new(PartitionTimetreeDense {
-      index: 0,
-      gtr: jc69(JC69Params::default())?,
-      alphabet,
-      sequence_length,
-      nodes: btreemap! {},
-      edges: btreemap! {},
-    })) as Arc<RwLock<dyn PartitionTreetimeMarginalOps<NodeTimetree, EdgeTimetree>>>]
+    let partition: Arc<RwLock<dyn PartitionTimetreeAll>> =
+      Arc::new(RwLock::new(PartitionMarginalDense {
+        index: 0,
+        gtr: jc69(JC69Params::default())?,
+        alphabet,
+        length,
+        nodes: btreemap! {},
+        edges: btreemap! {},
+      }));
+    Ok(vec![partition])
   }
-  .into_iter()
-  .collect_vec();
-
-  Ok(partitions)
 }

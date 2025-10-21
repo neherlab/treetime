@@ -20,6 +20,7 @@ use maplit::btreemap;
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+use std::sync::Arc;
 use treetime_utils::interval::range_union::range_union;
 
 pub type GraphAncestral = Graph<NodeAncestral, EdgeAncestral, ()>;
@@ -28,7 +29,7 @@ impl GraphAncestral {
   pub fn to_graph_timetree(&self) -> Result<GraphTimetree, Report> {
     // Convert all nodes from NodeAncestral to NodeTimetree
     let mut graph_timetree = GraphTimetree::new();
-    
+
     // Convert nodes first (to establish node keys)
     for node_ref in self.get_nodes() {
       let node = node_ref.read();
@@ -36,7 +37,7 @@ impl GraphAncestral {
       let new_key = graph_timetree.add_node(node_timetree);
       assert_eq!(new_key, node.key(), "Node keys must match during conversion");
     }
-    
+
     // Then convert edges (requires nodes to exist)
     for edge_ref in self.get_edges() {
       let edge = edge_ref.read();
@@ -44,7 +45,7 @@ impl GraphAncestral {
       let new_key = graph_timetree.add_edge(edge.source(), edge.target(), edge_timetree)?;
       assert_eq!(new_key, edge.key(), "Edge keys must match during conversion");
     }
-    
+
     Ok(graph_timetree)
   }
 }
@@ -53,6 +54,11 @@ impl GraphAncestral {
 pub struct NodeAncestral {
   pub name: Option<String>,
   pub desc: Option<String>,
+  pub time: Option<f64>,
+  pub time_before_present: Option<f64>,
+  pub time_distribution: Option<Arc<crate::distribution::distribution::Distribution>>,
+  pub time_constraint: Option<crate::commands::timetree::data::date_constraints::DateConstraint>,
+  pub bad_branch: bool,
 }
 
 impl NodeFromNwk for NodeAncestral {
@@ -158,6 +164,7 @@ impl PartitionSparse {
 pub struct EdgeAncestral {
   pub sparse_partitions: Vec<SparseSeqEdge>,
   pub branch_length: Option<f64>,
+  pub branch_length_distribution: Option<Arc<crate::distribution::distribution::Distribution>>,
 }
 
 impl GraphEdge for EdgeAncestral {}

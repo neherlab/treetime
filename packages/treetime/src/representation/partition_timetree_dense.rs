@@ -18,15 +18,20 @@ use std::sync::Arc;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct NodeTimetreeDense {
+  pub seq: super::graph_dense::DenseSeqInfo,
+  pub profile: super::graph_dense::DenseSeqDis,
   pub msg_from_parent: Option<Arc<Distribution>>,
   pub msg_from_children: Option<Arc<Distribution>>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct EdgeTimetreeDense {
-  pub msg_to_parent: Option<Arc<Distribution>>,
-  pub msg_to_child: Option<Arc<Distribution>>,
-  pub msg_from_child: Option<Arc<Distribution>>,
+  pub msg_to_parent: super::graph_dense::DenseSeqDis,
+  pub msg_to_child: super::graph_dense::DenseSeqDis,
+  pub msg_from_child: super::graph_dense::DenseSeqDis,
+  pub time_msg_to_parent: Option<Arc<Distribution>>,
+  pub time_msg_to_child: Option<Arc<Distribution>>,
+  pub time_msg_from_child: Option<Arc<Distribution>>,
 }
 
 #[derive(Clone, Debug)]
@@ -51,29 +56,6 @@ impl PartitionTimetreeOps<NodeTimetree, EdgeTimetree> for PartitionTimetreeDense
       });
     }
     Ok(())
-  }
-
-  fn process_node_backward(
-    &mut self,
-    _node: &GraphNodeBackward<NodeTimetree, EdgeTimetree, ()>,
-  ) -> Result<(), Report> {
-    todo!("Implement backward pass for dense timetree partition")
-  }
-
-  fn process_node_forward(
-    &mut self,
-    _graph: &GraphTimetree,
-    _node: &GraphNodeForward<NodeTimetree, EdgeTimetree, ()>,
-  ) -> Result<(), Report> {
-    todo!("Implement forward pass for dense timetree partition")
-  }
-
-  fn get_node_likelihood_contribution(&self, _node_key: GraphNodeKey) -> Option<Arc<Distribution>> {
-    todo!("Implement likelihood contribution calculation for dense timetree partition")
-  }
-
-  fn get_edge_likelihood_contribution(&self, _edge_key: GraphEdgeKey) -> Option<Arc<Distribution>> {
-    todo!("Implement edge likelihood contribution calculation for dense timetree partition")
   }
 
   fn get_sequence_length(&self) -> Option<usize> {

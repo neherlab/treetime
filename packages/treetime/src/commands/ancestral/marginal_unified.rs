@@ -70,10 +70,7 @@ where
 }
 
 /// Backward pass: calculates ingroup profiles
-fn marginal_backward<N, E, P>(
-  graph: &Graph<N, E, ()>,
-  partitions: &[Arc<RwLock<P>>],
-) -> Result<(), Report>
+fn marginal_backward<N, E, P>(graph: &Graph<N, E, ()>, partitions: &[Arc<RwLock<P>>]) -> Result<(), Report>
 where
   N: GraphNode + Named,
   E: GraphEdge + Weighted,
@@ -103,10 +100,7 @@ where
 }
 
 /// Forward pass: calculates outgroup profiles
-fn marginal_forward<N, E, P>(
-  graph: &Graph<N, E, ()>,
-  partitions: &[Arc<RwLock<P>>],
-) -> Result<(), Report>
+fn marginal_forward<N, E, P>(graph: &Graph<N, E, ()>, partitions: &[Arc<RwLock<P>>]) -> Result<(), Report>
 where
   N: GraphNode + Named,
   E: GraphEdge + Weighted,

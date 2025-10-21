@@ -12,8 +12,6 @@ pub mod partition_marginal_dense;
 pub mod partition_marginal_sparse;
 pub mod partition_parsimony;
 pub mod partition_timetree;
-pub mod partition_timetree_dense;
-pub mod partition_timetree_sparse;
 pub mod partitions_likelihood;
 pub mod partitions_parsimony;
 pub mod seq;

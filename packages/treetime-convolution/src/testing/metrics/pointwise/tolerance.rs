@@ -22,7 +22,10 @@ where
 {
   let vecs: Vec<Vec<f64>> = Vec::deserialize(deserializer)?;
   if vecs.len() != 3 {
-    return Err(serde::de::Error::custom(format!("Expected 3 arrays, got {}", vecs.len())));
+    return Err(serde::de::Error::custom(format!(
+      "Expected 3 arrays, got {}",
+      vecs.len()
+    )));
   }
   Ok([
     Array1::from_vec(vecs[0].clone()),
@@ -33,7 +36,10 @@ where
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ToleranceMetrics {
-  #[serde(serialize_with = "serialize_array_of_array1", deserialize_with = "deserialize_array_of_array1")]
+  #[serde(
+    serialize_with = "serialize_array_of_array1",
+    deserialize_with = "deserialize_array_of_array1"
+  )]
   pub pass_masks: [Array1<f64>; 3],
   #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
   pub support_coverage_mask: Array1<f64>,

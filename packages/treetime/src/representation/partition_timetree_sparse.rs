@@ -53,29 +53,6 @@ impl PartitionTimetreeOps<NodeTimetree, EdgeTimetree> for PartitionTimetreeSpars
     Ok(())
   }
 
-  fn process_node_backward(
-    &mut self,
-    _node: &GraphNodeBackward<NodeTimetree, EdgeTimetree, ()>,
-  ) -> Result<(), Report> {
-    todo!("Implement backward pass for sparse timetree partition")
-  }
-
-  fn process_node_forward(
-    &mut self,
-    _graph: &GraphTimetree,
-    _node: &GraphNodeForward<NodeTimetree, EdgeTimetree, ()>,
-  ) -> Result<(), Report> {
-    todo!("Implement forward pass for sparse timetree partition")
-  }
-
-  fn get_node_likelihood_contribution(&self, _node_key: GraphNodeKey) -> Option<Arc<Distribution>> {
-    todo!("Implement likelihood contribution calculation for sparse timetree partition")
-  }
-
-  fn get_edge_likelihood_contribution(&self, _edge_key: GraphEdgeKey) -> Option<Arc<Distribution>> {
-    todo!("Implement edge likelihood contribution calculation for sparse timetree partition")
-  }
-
   fn get_sequence_length(&self) -> Option<usize> {
     self.sequence_length
   }

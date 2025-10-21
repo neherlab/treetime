@@ -1,7 +1,7 @@
-use crate::representation::edge_timetree::EdgeTimetree;
-use crate::representation::node_timetree::NodeTimetree;
 use crate::commands::timetree::data::clock_model::ClockModel;
 use crate::commands::timetree::data::date_constraints::DateConstraintSet;
+use crate::representation::edge_timetree::EdgeTimetree;
+use crate::representation::node_timetree::NodeTimetree;
 use crate::representation::partition_timetree::{GraphTimetree, PartitionTreetimeMarginalOps};
 use eyre::Report;
 use parking_lot::RwLock;

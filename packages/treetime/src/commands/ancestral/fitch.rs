@@ -51,6 +51,7 @@ fn attach_seqs_to_graph<P: PartitionCompressed>(
     *leaf = NodeAncestral {
       name: Some(leaf_name),
       desc: leaf_fasta.desc.clone(),
+      ..NodeAncestral::default()
     };
 
     partitions.iter().try_for_each(|partition| -> Result<(), Report> {

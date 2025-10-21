@@ -1,11 +1,5 @@
-use crate::representation::edge_timetree::EdgeTimetree;
-use crate::representation::node_timetree::NodeTimetree;
-use crate::commands::timetree::convergence::likelihood::calculate_coalescent_likelihood;
-use crate::commands::timetree::convergence::likelihood::calculate_positional_likelihood;
-use crate::commands::timetree::convergence::likelihood::calculate_sequence_likelihood;
-use crate::commands::timetree::convergence::likelihood::calculate_total_likelihood;
+use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
 use crate::io::csv::CsvStructFileWriter;
-use crate::representation::partition_timetree::PartitionTreetimeMarginalOps;
 use eyre::Report;
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
@@ -49,9 +43,9 @@ impl TimetreeOptimizer {
     &mut self,
     n_diff: usize,
     n_resolved: usize,
-    partitions: &[Arc<RwLock<dyn PartitionTreetimeMarginalOps<NodeTimetree, EdgeTimetree>>>],
+    _partitions: &[Arc<RwLock<dyn PartitionTimetreeAll>>],
   ) -> Result<(), Report> {
-    let metric = ConvergenceMetrics::from_iteration(n_diff, n_resolved, partitions);
+    let metric = ConvergenceMetrics::from_iteration(n_diff, n_resolved);
 
     if let Some(writer) = &mut self.tracelog_writer {
       writer.write(&metric)?;
@@ -110,18 +104,14 @@ pub struct ConvergenceMetrics {
 }
 
 impl ConvergenceMetrics {
-  fn from_iteration(
-    ndiff: usize,
-    n_resolved: usize,
-    partitions: &[Arc<RwLock<dyn PartitionTreetimeMarginalOps<NodeTimetree, EdgeTimetree>>>],
-  ) -> Self {
+  fn from_iteration(ndiff: usize, n_resolved: usize) -> Self {
     Self {
       ndiff,
       n_resolved,
-      lh_seq: calculate_sequence_likelihood(partitions),
-      lh_pos: calculate_positional_likelihood(partitions),
-      lh_coal: calculate_coalescent_likelihood(partitions),
-      lh_total: calculate_total_likelihood(partitions),
+      lh_seq: None,
+      lh_pos: None,
+      lh_coal: None,
+      lh_total: None,
     }
   }
 
