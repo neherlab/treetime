@@ -92,6 +92,24 @@ impl Named for NodeAncestral {
   }
 }
 
+impl crate::commands::timetree::data::date_constraints::DateConstraintNode for NodeAncestral {
+  fn get_time_distribution(&self) -> &Option<Arc<crate::distribution::distribution::Distribution>> {
+    &self.time_distribution
+  }
+
+  fn set_time_distribution(&mut self, dist: Option<Arc<crate::distribution::distribution::Distribution>>) {
+    self.time_distribution = dist;
+  }
+
+  fn get_bad_branch(&self) -> bool {
+    self.bad_branch
+  }
+
+  fn set_bad_branch(&mut self, bad: bool) {
+    self.bad_branch = bad;
+  }
+}
+
 impl NodeToGraphviz for NodeAncestral {
   fn to_graphviz_label(&self) -> Option<impl AsRef<str>> {
     self.name.as_deref()

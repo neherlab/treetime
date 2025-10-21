@@ -1,6 +1,7 @@
 use crate::distribution::distribution_function::DistributionFunction;
 use crate::distribution::distribution_point::DistributionPoint;
 use crate::distribution::distribution_range::DistributionRange;
+use crate::io::dates_csv::DateOrRange;
 use approx::ulps_eq;
 use eyre::Report;
 use ndarray::Array1;
@@ -48,5 +49,12 @@ impl Distribution {
     }
 
     Ok(Self::Function(DistributionFunction::new(x, y)?))
+  }
+
+  pub fn from_date_or_range(date_or_range: &DateOrRange) -> Self {
+    match date_or_range {
+      DateOrRange::YearFraction(t) => Self::point(*t, 1.0),
+      DateOrRange::YearFractionRange((start, end)) => Self::range((*start, *end), 1.0),
+    }
   }
 }

@@ -46,7 +46,7 @@ impl From<&NodeAncestral> for NodeTimetree {
       time: None,
       time_before_present: None,
       time_distribution: None,
-      bad_branch: false,
+      bad_branch: node.bad_branch,
     }
   }
 }

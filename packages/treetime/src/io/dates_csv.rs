@@ -10,8 +10,9 @@ use treetime_utils::datetime::parse_date::{parse_date, parse_date_range};
 use treetime_utils::datetime::parse_uncertain_date::parse_date_uncertain;
 use treetime_utils::datetime::year_frac::{date_range_to_year_fraction_range, date_to_year_fraction};
 use treetime_utils::file::open_file_or_stdin;
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub enum DateOrRange {
   YearFraction(f64),
   YearFractionRange((f64, f64)),

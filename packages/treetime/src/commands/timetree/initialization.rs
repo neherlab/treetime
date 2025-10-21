@@ -4,6 +4,7 @@ use crate::commands::timetree::args::{BranchLengthMode, TreetimeTimetreeArgs};
 use crate::commands::timetree::data::date_constraints::load_date_constraints;
 use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
 use crate::gtr::get_gtr::{JC69Params, jc69};
+use crate::io::dates_csv::read_dates;
 use crate::io::fasta::{FastaRecord, read_many_fasta};
 use crate::io::nwk::nwk_read_file;
 use crate::representation::graph_ancestral::GraphAncestral;
@@ -49,7 +50,10 @@ pub fn load_input_data(args: &TreetimeTimetreeArgs) -> Result<InputData, Report>
     None
   };
 
-  load_date_constraints(args, &graph).wrap_err("Failed to load date constraints")?;
+  if let Some(dates_path) = &args.dates {
+    let dates = read_dates(dates_path, &args.name_column, &args.date_column).wrap_err("When reading dates")?;
+    load_date_constraints(&dates, &graph).wrap_err("Failed to load date constraints")?;
+  }
 
   Ok(InputData { graph, alphabet, aln })
 }
