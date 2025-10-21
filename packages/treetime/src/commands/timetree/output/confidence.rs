@@ -1,5 +1,4 @@
 use crate::commands::timetree::data::clock_model::ClockModel;
-use crate::commands::timetree::data::date_constraints::DateConstraintSet;
 use crate::representation::edge_timetree::EdgeTimetree;
 use crate::representation::node_timetree::NodeTimetree;
 use crate::representation::partition_timetree::{GraphTimetree, PartitionTreetimeMarginalOps};
@@ -16,7 +15,6 @@ use std::sync::Arc;
 pub fn calc_rate_susceptibility(
   _graph: &GraphTimetree,
   _partitions: &[Arc<RwLock<dyn PartitionTreetimeMarginalOps<NodeTimetree, EdgeTimetree>>>],
-  _constraints: &DateConstraintSet,
   _clock_model: &ClockModel,
 ) -> Result<(), Report> {
   todo!("Run timetree with rate±σ, store alternative time estimates")

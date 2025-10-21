@@ -1,5 +1,4 @@
 use crate::commands::optimize::optimize_unified::OptimizationContribution;
-use crate::commands::timetree::data::date_constraints::{DateConstraint, DateConstraintSet, constraint_for};
 use crate::commands::timetree::inference::branch_length_likelihood::compute_branch_length_distribution;
 use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
 use crate::distribution::distribution::Distribution;
@@ -18,39 +17,11 @@ const BRANCH_GRID_SIZE: usize = 200;
 pub fn run_timetree(
   graph: &GraphAncestral,
   partitions: &[Arc<RwLock<dyn PartitionTimetreeAll>>],
-  constraints: &DateConstraintSet,
 ) -> Result<(), Report> {
-  initialize_leaf_distributions(graph, constraints)?;
   compute_branch_distributions(graph, partitions)?;
   propagate_distributions_backward(graph)?;
   propagate_distributions_forward(graph)?;
   Ok(())
-}
-
-fn initialize_leaf_distributions(graph: &GraphAncestral, constraints: &DateConstraintSet) -> Result<(), Report> {
-  for node_ref in graph.get_nodes() {
-    let node_key = node_ref.read_arc().key();
-
-    if !graph.is_leaf(node_key) {
-      continue;
-    }
-
-    if let Some(constraint) = constraint_for(constraints, node_key) {
-      let time_dist_arc = constraint_to_distribution(constraint);
-      let mut node = node_ref.write_arc().payload().write_arc();
-      node.time_distribution = Some(time_dist_arc);
-      node.time_constraint = Some(constraint.clone());
-    }
-  }
-  Ok(())
-}
-
-fn constraint_to_distribution(constraint: &DateConstraint) -> Arc<Distribution> {
-  match constraint {
-    DateConstraint::Point(t) => Arc::new(Distribution::point(*t, 1.0)),
-    DateConstraint::Range { start, end } => Arc::new(Distribution::range((*start, *end), 1.0)),
-    DateConstraint::Distribution(dist) => Arc::clone(dist),
-  }
 }
 
 fn compute_branch_distributions(

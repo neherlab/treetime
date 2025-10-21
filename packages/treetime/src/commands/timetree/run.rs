@@ -2,7 +2,6 @@ use crate::commands::ancestral::marginal_unified::run_marginal;
 use crate::commands::timetree::args::{BranchLengthMode, TimeMarginalMode, TreetimeTimetreeArgs};
 use crate::commands::timetree::convergence::metrics::{IterationContext, TimetreeOptimizer};
 use crate::commands::timetree::data::clock_model::{ClockModel, infer_clock_model, update_clock_model};
-use crate::commands::timetree::data::date_constraints::DateConstraintSet;
 use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
 use crate::commands::timetree::inference::runner::run_timetree;
 use crate::commands::timetree::initialization::{InputData, initialize_partitions, load_input_data};
@@ -18,26 +17,21 @@ use parking_lot::RwLock;
 use std::sync::Arc;
 
 pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report> {
-  let InputData {
-    graph,
-    alphabet,
-    aln,
-    constraints,
-  } = load_input_data(args)?;
+  let InputData { graph, alphabet, aln } = load_input_data(args)?;
 
-  let mut clock_model = infer_clock_model(args, &graph, &constraints).wrap_err("Failed to infer clock model")?;
+  let mut clock_model = infer_clock_model(args, &graph).wrap_err("Failed to infer clock model")?;
 
-  let partitions = initialize_partitions(args, &graph, alphabet, aln.as_deref(), &constraints)?;
+  let partitions = initialize_partitions(args, &graph, alphabet, aln.as_deref())?;
 
-  run_pre_optimization(args, &graph, &partitions, aln.as_deref(), &constraints)?;
+  run_pre_optimization(args, &graph, &partitions, aln.as_deref())?;
 
-  run_initial_timetree_inference(args, &graph, &partitions, aln.as_deref(), &constraints, &clock_model)?;
+  run_initial_timetree_inference(args, &graph, &partitions, aln.as_deref(), &clock_model)?;
 
   let mut optimizer = TimetreeOptimizer::new(args.max_iter, args.tracelog.clone())?;
   while let Some(IterationContext { i }) = optimizer.next_iter() {
-    let (ndiff, n_resolved) = run_refinement_iteration(args, &graph, &partitions, aln.as_deref(), &constraints, i)?;
+    let (ndiff, n_resolved) = run_refinement_iteration(args, &graph, &partitions, aln.as_deref(), i)?;
 
-    clock_model = update_clock_model(&graph, &constraints, &clock_model)
+    clock_model = update_clock_model(&graph, &clock_model)
       .wrap_err_with(|| format!("Failed to update clock model (iteration {i})"))?;
 
     optimizer
@@ -45,9 +39,9 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
       .wrap_err_with(|| format!("Failed to record convergence metrics (iteration {i})"))?;
   }
 
-  run_post_processing(args, &graph, &partitions, &constraints, &clock_model)?;
+  run_post_processing(args, &graph, &partitions, &clock_model)?;
 
-  write_outputs(args, &graph, &partitions, &constraints, &clock_model)?;
+  write_outputs(args, &graph, &partitions, &clock_model)?;
 
   Ok(())
 }
@@ -57,7 +51,6 @@ fn run_pre_optimization(
   graph: &GraphAncestral,
   partitions: &[Arc<RwLock<dyn PartitionTimetreeAll>>],
   aln: Option<&[FastaRecord]>,
-  constraints: &DateConstraintSet,
 ) -> Result<(), Report> {
   if !args.keep_root {
     info!("Rerooting tree to optimize temporal signal");
@@ -90,12 +83,11 @@ fn run_initial_timetree_inference(
   args: &TreetimeTimetreeArgs,
   graph: &GraphAncestral,
   partitions: &[Arc<RwLock<dyn PartitionTimetreeAll>>],
-  aln: Option<&[FastaRecord]>,
-  constraints: &DateConstraintSet,
-  clock_model: &ClockModel,
+  _aln: Option<&[FastaRecord]>,
+  _clock_model: &ClockModel,
 ) -> Result<(), Report> {
   info!("### TreeTime: INITIAL ROUND");
-  run_timetree(graph, partitions, constraints)?;
+  run_timetree(graph, partitions)?;
 
   if !args.keep_root {
     todo!("Second reroot not yet implemented");
@@ -108,7 +100,6 @@ fn run_post_processing(
   args: &TreetimeTimetreeArgs,
   graph: &GraphAncestral,
   partitions: &[Arc<RwLock<dyn PartitionTimetreeAll>>],
-  constraints: &DateConstraintSet,
   _clock_model: &ClockModel,
 ) -> Result<(), Report> {
   if args.vary_rate {
@@ -117,7 +108,7 @@ fn run_post_processing(
 
   if args.time_marginal == TimeMarginalMode::OnlyFinal {
     info!("### Final round: marginal reconstruction for confidence intervals");
-    run_timetree(graph, partitions, constraints).wrap_err("Final timetree inference failed")?;
+    run_timetree(graph, partitions).wrap_err("Final timetree inference failed")?;
     todo!("extract_confidence_intervals not yet implemented");
   }
 
@@ -128,7 +119,6 @@ fn write_outputs(
   args: &TreetimeTimetreeArgs,
   graph: &GraphAncestral,
   _partitions: &[Arc<RwLock<dyn PartitionTimetreeAll>>],
-  constraints: &DateConstraintSet,
   clock_model: &ClockModel,
 ) -> Result<(), Report> {
   let out_base = args.outdir.join("timetree");

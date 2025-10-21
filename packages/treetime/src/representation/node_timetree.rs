@@ -1,4 +1,3 @@
-use crate::commands::timetree::data::date_constraints::DateConstraint;
 use crate::distribution::distribution::Distribution;
 use crate::graph::node::{GraphNode, Named};
 use crate::io::nwk::NodeFromNwk;
@@ -15,7 +14,6 @@ pub struct NodeTimetree {
   pub time: Option<f64>,
   pub time_before_present: Option<f64>,
   pub time_distribution: Option<Arc<Distribution>>,
-  pub time_constraint: Option<DateConstraint>,
   pub bad_branch: bool,
 }
 
@@ -48,7 +46,6 @@ impl From<&NodeAncestral> for NodeTimetree {
       time: None,
       time_before_present: None,
       time_distribution: None,
-      time_constraint: None,
       bad_branch: false,
     }
   }

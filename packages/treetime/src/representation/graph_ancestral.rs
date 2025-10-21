@@ -57,7 +57,6 @@ pub struct NodeAncestral {
   pub time: Option<f64>,
   pub time_before_present: Option<f64>,
   pub time_distribution: Option<Arc<crate::distribution::distribution::Distribution>>,
-  pub time_constraint: Option<crate::commands::timetree::data::date_constraints::DateConstraint>,
   pub bad_branch: bool,
 }
 

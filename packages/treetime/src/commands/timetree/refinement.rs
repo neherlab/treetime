@@ -1,6 +1,5 @@
 use crate::commands::ancestral::marginal_unified::run_marginal;
 use crate::commands::timetree::args::TreetimeTimetreeArgs;
-use crate::commands::timetree::data::date_constraints::DateConstraintSet;
 use crate::commands::timetree::inference::runner::run_timetree;
 use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
 use crate::io::fasta::FastaRecord;
@@ -15,7 +14,6 @@ pub fn run_refinement_iteration(
   graph: &GraphAncestral,
   partitions: &[Arc<RwLock<dyn PartitionTimetreeAll>>],
   aln: Option<&[FastaRecord]>,
-  constraints: &DateConstraintSet,
   i: usize,
 ) -> Result<(usize, usize), Report> {
   let mut is_tree_dirty = false;
@@ -39,7 +37,7 @@ pub fn run_refinement_iteration(
   }
 
   if is_tree_dirty {
-    run_timetree(graph, partitions, constraints)
+    run_timetree(graph, partitions)
       .wrap_err_with(|| format!("Timetree inference failed (iteration {i})"))?;
 
     if aln.is_some() {
@@ -50,7 +48,7 @@ pub fn run_refinement_iteration(
       run_marginal(graph, partitions, aln)?;
     }
 
-    run_timetree(graph, partitions, constraints)
+    run_timetree(graph, partitions)
       .wrap_err_with(|| format!("Timetree inference failed (iteration {i})"))?;
   }
 

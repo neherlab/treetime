@@ -1,5 +1,4 @@
 use crate::commands::timetree::args::TreetimeTimetreeArgs;
-use crate::commands::timetree::data::date_constraints::DateConstraintSet;
 use crate::graph::edge::GraphEdge;
 use crate::graph::graph::Graph;
 use crate::graph::node::GraphNode;
@@ -16,21 +15,19 @@ pub struct ClockModel {
 pub fn infer_clock_model<N, E, D>(
   args: &TreetimeTimetreeArgs,
   graph: &Graph<N, E, D>,
-  constraints: &DateConstraintSet,
 ) -> Result<ClockModel, Report>
 where
   N: GraphNode,
   E: GraphEdge,
   D: Send + Sync,
 {
-  let _ = (args, graph, constraints);
+  let _ = (args, graph);
   // TODO: implement initial clock rate estimation (e.g., root-to-tip regression) and capture uncertainty.
   todo!()
 }
 
 pub fn update_clock_model<N, E, D>(
   graph: &Graph<N, E, D>,
-  constraints: &DateConstraintSet,
   model: &ClockModel,
 ) -> Result<ClockModel, Report>
 where
@@ -38,7 +35,7 @@ where
   E: GraphEdge,
   D: Send + Sync,
 {
-  let _ = (graph, constraints, model);
+  let _ = (graph, model);
   // TODO: iteratively refine the clock model using updated node time distributions.
   todo!()
 }

@@ -1,7 +1,6 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::commands::ancestral::fitch::get_common_length;
 use crate::commands::timetree::args::{BranchLengthMode, TreetimeTimetreeArgs};
-use crate::commands::timetree::data::date_constraints::DateConstraintSet;
 use crate::commands::timetree::data::date_constraints::load_date_constraints;
 use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
 use crate::gtr::get_gtr::{JC69Params, jc69};
@@ -20,7 +19,6 @@ pub struct InputData {
   pub graph: GraphAncestral,
   pub alphabet: Alphabet,
   pub aln: Option<Vec<FastaRecord>>,
-  pub constraints: DateConstraintSet,
 }
 
 pub fn load_input_data(args: &TreetimeTimetreeArgs) -> Result<InputData, Report> {
@@ -51,14 +49,9 @@ pub fn load_input_data(args: &TreetimeTimetreeArgs) -> Result<InputData, Report>
     None
   };
 
-  let constraints = load_date_constraints(args, &graph).wrap_err("Failed to load date constraints")?;
+  load_date_constraints(args, &graph).wrap_err("Failed to load date constraints")?;
 
-  Ok(InputData {
-    graph,
-    alphabet,
-    aln,
-    constraints,
-  })
+  Ok(InputData { graph, alphabet, aln })
 }
 
 pub fn initialize_partitions(
@@ -66,7 +59,6 @@ pub fn initialize_partitions(
   _graph: &GraphAncestral,
   alphabet: Alphabet,
   aln: Option<&[FastaRecord]>,
-  _constraints: &DateConstraintSet,
 ) -> Result<Vec<Arc<RwLock<dyn PartitionTimetreeAll>>>, Report> {
   let dense = args.dense.unwrap_or_else(infer_dense);
   let length = if let Some(aln_data) = aln {

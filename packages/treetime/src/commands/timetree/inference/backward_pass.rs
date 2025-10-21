@@ -1,4 +1,3 @@
-use crate::commands::timetree::data::date_constraints::DateConstraintSet;
 use crate::commands::timetree::inference::branch_distributions::BranchDistributions;
 use crate::graph::edge::GraphEdge;
 use crate::graph::graph::Graph;
@@ -14,7 +13,6 @@ pub struct BackwardPassState {
 
 pub fn run_backward_pass<N, E, D>(
   graph: &Graph<N, E, D>,
-  constraints: &DateConstraintSet,
   distributions: &mut BranchDistributions,
 ) -> Result<BackwardPassState, Report>
 where
@@ -22,7 +20,7 @@ where
   E: GraphEdge,
   D: Send + Sync,
 {
-  let _ = (graph, constraints, distributions);
+  let _ = (graph, distributions);
   // TODO: perform post-order traversal and accumulate child-to-parent messages.
   todo!()
 }

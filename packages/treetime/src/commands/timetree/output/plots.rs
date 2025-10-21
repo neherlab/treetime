@@ -1,4 +1,3 @@
-use crate::commands::timetree::data::date_constraints::DateConstraintSet;
 use crate::representation::partition_timetree::GraphTimetree;
 use eyre::Report;
 use std::path::Path;
@@ -10,7 +9,6 @@ use std::path::Path;
 /// How: Scatter plot with regression line, residuals, R² annotation.
 pub fn plot_root_to_tip(
   _graph: &GraphTimetree,
-  _constraints: &DateConstraintSet,
   _out_base: &Path,
 ) -> Result<(), Report> {
   todo!("Extract leaf dates and distances, plot with regression line, annotate with R² and outliers")

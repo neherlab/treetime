@@ -1,4 +1,3 @@
-use crate::commands::timetree::data::date_constraints::DateConstraint;
 use crate::commands::timetree::inference::branch_distributions::BranchDistribution;
 use crate::distribution::distribution::Distribution;
 use crate::graph::edge::GraphEdgeKey;
@@ -9,7 +8,7 @@ use std::sync::Arc;
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct NodeTemporalData {
-  pub constraint: Option<DateConstraint>,
+  pub constraint: Option<Arc<Distribution>>,
   pub bad_branch: bool,
   pub time_before_present: Option<f64>,
   pub posterior: Option<Arc<Distribution>>,
