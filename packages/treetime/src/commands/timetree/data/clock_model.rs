@@ -12,10 +12,7 @@ pub struct ClockModel {
   pub slack: Option<f64>,
 }
 
-pub fn infer_clock_model<N, E, D>(
-  args: &TreetimeTimetreeArgs,
-  graph: &Graph<N, E, D>,
-) -> Result<ClockModel, Report>
+pub fn infer_clock_model<N, E, D>(args: &TreetimeTimetreeArgs, graph: &Graph<N, E, D>) -> Result<ClockModel, Report>
 where
   N: GraphNode,
   E: GraphEdge,
@@ -26,10 +23,7 @@ where
   todo!()
 }
 
-pub fn update_clock_model<N, E, D>(
-  graph: &Graph<N, E, D>,
-  model: &ClockModel,
-) -> Result<ClockModel, Report>
+pub fn update_clock_model<N, E, D>(graph: &Graph<N, E, D>, model: &ClockModel) -> Result<ClockModel, Report>
 where
   N: GraphNode,
   E: GraphEdge,

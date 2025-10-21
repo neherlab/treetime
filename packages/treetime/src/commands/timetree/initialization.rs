@@ -7,6 +7,7 @@ use crate::gtr::get_gtr::{JC69Params, jc69};
 use crate::io::dates_csv::read_dates;
 use crate::io::fasta::{FastaRecord, read_many_fasta};
 use crate::io::nwk::nwk_read_file;
+use crate::make_error;
 use crate::representation::graph_ancestral::GraphAncestral;
 use crate::representation::infer_dense::infer_dense;
 use crate::representation::partition_marginal_dense::PartitionMarginalDense;
@@ -42,10 +43,10 @@ pub fn load_input_data(args: &TreetimeTimetreeArgs) -> Result<InputData, Report>
   let aln = if !args.input_fastas.is_empty() {
     Some(read_many_fasta(&args.input_fastas, &alphabet)?)
   } else if args.input_fastas.is_empty() && args.branch_length_mode != BranchLengthMode::Input {
-    return Err(eyre::eyre!(
+    return make_error!(
       "Alignment required when branch_length_mode is not 'input'. \
        Provide FASTA files or use --branch-length-mode=input"
-    ));
+    );
   } else {
     None
   };
@@ -74,26 +75,24 @@ pub fn initialize_partitions(
   };
 
   if !dense {
-    let partition: Arc<RwLock<dyn PartitionTimetreeAll>> =
-      Arc::new(RwLock::new(PartitionMarginalSparse {
-        index: 0,
-        gtr: jc69(JC69Params::default())?,
-        alphabet,
-        length,
-        nodes: btreemap! {},
-        edges: btreemap! {},
-      }));
+    let partition: Arc<RwLock<dyn PartitionTimetreeAll>> = Arc::new(RwLock::new(PartitionMarginalSparse {
+      index: 0,
+      gtr: jc69(JC69Params::default())?,
+      alphabet,
+      length,
+      nodes: btreemap! {},
+      edges: btreemap! {},
+    }));
     Ok(vec![partition])
   } else {
-    let partition: Arc<RwLock<dyn PartitionTimetreeAll>> =
-      Arc::new(RwLock::new(PartitionMarginalDense {
-        index: 0,
-        gtr: jc69(JC69Params::default())?,
-        alphabet,
-        length,
-        nodes: btreemap! {},
-        edges: btreemap! {},
-      }));
+    let partition: Arc<RwLock<dyn PartitionTimetreeAll>> = Arc::new(RwLock::new(PartitionMarginalDense {
+      index: 0,
+      gtr: jc69(JC69Params::default())?,
+      alphabet,
+      length,
+      nodes: btreemap! {},
+      edges: btreemap! {},
+    }));
     Ok(vec![partition])
   }
 }

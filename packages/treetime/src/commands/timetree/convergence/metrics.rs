@@ -1,6 +1,7 @@
 use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
 use crate::io::csv::CsvStructFileWriter;
 use eyre::Report;
+use log::info;
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
@@ -34,7 +35,7 @@ impl TimetreeOptimizer {
     }
 
     self.i += 1;
-    log::info!("### Timetree iteration {}/{}", self.i, self.max_iterations);
+    info!("### Timetree iteration {}/{}", self.i, self.max_iterations);
 
     Some(IterationContext { i: self.i })
   }
@@ -52,12 +53,12 @@ impl TimetreeOptimizer {
     }
 
     if metric.has_converged() {
-      log::info!(
+      info!(
         "Converged at iteration {} (ndiff={n_diff}, n_resolved={n_resolved})",
         self.i
       );
     } else {
-      log::info!(
+      info!(
         "  Iteration {}: n_diff={n_diff}, n_resolved={n_resolved}, total_LH={:.2}",
         self.i,
         metric.lh_total.unwrap_or(f64::NAN)

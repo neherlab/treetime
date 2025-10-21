@@ -10,6 +10,7 @@ use crate::graph::graph::GraphNodeForward;
 use crate::representation::graph_ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
 use eyre::Report;
 use parking_lot::RwLock;
+use std::cmp::Ordering;
 use std::sync::Arc;
 
 const BRANCH_GRID_SIZE: usize = 200;
@@ -124,7 +125,7 @@ fn find_distribution_peak(f: &DistributionFunction<f64>) -> f64 {
     .y()
     .iter()
     .enumerate()
-    .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+    .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(Ordering::Equal))
     .map_or(0, |(idx, _)| idx);
   f.t()[max_idx]
 }

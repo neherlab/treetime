@@ -4,6 +4,7 @@ use crate::graph::graph::Graph;
 use crate::graph::node::{GraphNode, Named};
 use crate::io::dates_csv::DatesMap;
 use crate::make_error;
+use crate::o;
 use eyre::Report;
 use itertools::Itertools;
 use log::{info, warn};
@@ -31,7 +32,7 @@ where
   graph.iter_depth_first_postorder_forward(|node| {
     let mut payload = node.payload;
 
-    let name = payload.name().map(|n| n.as_ref().to_owned());
+    let name = payload.name().map(|n| o!(n.as_ref()));
     let has_constraint = name
       .as_ref()
       .and_then(|n| dates.get(n.as_str()))
@@ -156,12 +157,10 @@ fn log_date_constraint_summary(
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::distribution::distribution::Distribution;
-  use crate::graph::edge::GraphEdge;
-  use crate::graph::graph::Graph;
-  use crate::graph::node::{GraphNode, Named};
   use crate::io::nwk::{EdgeFromNwk, NodeFromNwk, nwk_read_str};
+  use crate::o;
   use eyre::Report;
+  use itertools::Itertools;
   use serde::{Deserialize, Serialize};
   use std::collections::BTreeMap;
   use treetime_io::json::json_read_str;
@@ -195,14 +194,14 @@ mod tests {
       self.name.as_deref()
     }
     fn set_name(&mut self, name: Option<impl AsRef<str>>) {
-      self.name = name.map(|n| n.as_ref().to_owned());
+      self.name = name.map(|n| o!(n.as_ref()));
     }
   }
 
   impl NodeFromNwk for TestNode {
     fn from_nwk(name: Option<impl AsRef<str>>, _: &BTreeMap<String, String>) -> Result<Self, Report> {
       Ok(Self {
-        name: name.map(|n| n.as_ref().to_owned()),
+        name: name.map(|n| o!(n.as_ref())),
         ..Default::default()
       })
     }
@@ -225,7 +224,7 @@ mod tests {
     graph
       .get_node_payloads()
       .map(|node| node.read_arc().clone())
-      .sorted_by_key(|n| n.name().map(|n| n.as_ref().to_owned()).unwrap_or_default())
+      .sorted_by_key(|n| n.name().map(|n| o!(n.as_ref())).unwrap_or_default())
       .collect_vec()
   }
 

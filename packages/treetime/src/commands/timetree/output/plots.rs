@@ -7,10 +7,7 @@ use std::path::Path;
 /// Optional: Visual quality control for temporal signal.
 /// Why: Diagnostic for clock-like evolution and outlier detection.
 /// How: Scatter plot with regression line, residuals, R² annotation.
-pub fn plot_root_to_tip(
-  _graph: &GraphTimetree,
-  _out_base: &Path,
-) -> Result<(), Report> {
+pub fn plot_root_to_tip(_graph: &GraphTimetree, _out_base: &Path) -> Result<(), Report> {
   todo!("Extract leaf dates and distances, plot with regression line, annotate with R² and outliers")
 }
 

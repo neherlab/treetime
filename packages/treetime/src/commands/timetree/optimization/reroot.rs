@@ -1,4 +1,3 @@
-
 use crate::representation::partition_timetree::GraphTimetree;
 use eyre::Report;
 

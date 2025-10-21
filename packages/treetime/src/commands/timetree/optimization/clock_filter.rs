@@ -18,10 +18,7 @@ pub fn clock_filter(_graph: &GraphTimetree, _n_iqd: f64) -> Result<(), Report> {
   todo!("clock_filter")
 }
 
-pub fn reroot_on_best(
-  _graph: &GraphTimetree,
-  _resolve_polytomies: bool,
-) -> Result<(), Report> {
+pub fn reroot_on_best(_graph: &GraphTimetree, _resolve_polytomies: bool) -> Result<(), Report> {
   todo!("reroot_on_best")
 }
 
