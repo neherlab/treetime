@@ -1,6 +1,7 @@
 use super::clock_model::ClockModel;
 use crate::commands::clock::clock_set::ClockSet;
 use crate::commands::clock::clock_traits::{ClockEdge, ClockNode};
+use crate::commands::clock::find_best_root::find_best_root::find_best_root;
 use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
 use crate::commands::clock::reroot::reroot_in_place;
 use crate::graph::breadth_first::GraphTraversalContinuation;
@@ -117,20 +118,40 @@ pub fn estimate_clock_model_with_reroot<N, E, D>(
   graph: &mut Graph<N, E, D>,
   options: &ClockOptions,
   keep_root: bool,
-  params: &BranchPointOptimizationParams,
+  optimization_params: &BranchPointOptimizationParams,
 ) -> Result<ClockModel, Report>
 where
   N: GraphNode + ClockNode + Default,
   E: GraphEdge + ClockEdge + Default,
   D: Send + Sync,
 {
+  log::info!("## Estimating clock model (keep_root={})", keep_root);
+
+  log::info!("### Running backward regression");
   clock_regression_backward(graph, options);
+  log::debug!("Backward regression completed");
 
   if !keep_root {
+    log::info!("### Running forward regression to find optimal root");
     clock_regression_forward(graph, options);
-    reroot_in_place(graph, options, params)?;
+    log::debug!("Forward regression completed");
+
+    log::info!("### Finding best root and rerooting tree");
+    let new_root_key = reroot_in_place(graph, options, optimization_params)?;
+    log::info!("Rerooted to node {}", new_root_key.0);
+    log::debug!("Rerooting completed");
+  } else {
+    log::info!("### Keeping original root (--keep-root enabled)");
   }
-  root_clock_model(graph)
+
+  log::info!("### Extracting clock model from root");
+  let clock_model = root_clock_model(graph)?;
+  log::info!("**Clock rate:** {:.6e}", clock_model.clock_rate());
+  log::info!("**Intercept:** {:.4}", clock_model.intercept());
+  log::info!("**R²:** {:.4}", clock_model.r_val() * clock_model.r_val());
+  log::debug!("Clock model: {}", serde_json::to_string_pretty(&clock_model).unwrap_or_else(|_| "<serialization failed>".to_owned()));
+
+  Ok(clock_model)
 }
 
 #[cfg(test)]

@@ -22,14 +22,28 @@ pub fn run_timetree(
   partitions: &[Arc<RwLock<dyn PartitionTimetreeAll>>],
   keep_root: bool,
 ) -> Result<(), Report> {
+  log::info!("# Running timetree inference");
+
   if !partitions.is_empty() {
+    log::info!("## Computing branch distributions from partitions");
     compute_branch_distributions(graph, partitions)?;
   } else {
+    log::info!("## Estimating clock rate from root-to-tip regression (input branch mode)");
     let clock_rate = estimate_clock_rate_from_root_to_tip(graph, keep_root)?;
+    log::info!("**Estimated clock rate:** {:.6e}", clock_rate);
+    log::debug!("Clock rate: {}", clock_rate);
+
+    log::info!("## Creating branch distributions from input lengths");
     create_branch_distributions_from_input_lengths(graph, clock_rate)?;
   }
+
+  log::info!("## Propagating distributions backward");
   propagate_distributions_backward(graph)?;
+
+  log::info!("## Propagating distributions forward");
   propagate_distributions_forward(graph)?;
+
+  log::info!("# Timetree inference completed");
   Ok(())
 }
 
@@ -76,10 +90,19 @@ fn collect_contributions(
     .collect()
 }
 
-fn estimate_clock_rate_from_root_to_tip(graph: &mut GraphAncestral, keep_root: bool) -> Result<f64, Report> {
-  let options = ClockOptions::default();
-  let params = BranchPointOptimizationParams::default();
-  let clock_model = estimate_clock_model_with_reroot(graph, &options, keep_root, &params)?;
+fn estimate_clock_rate_from_root_to_tip(
+  graph: &mut GraphAncestral,
+  keep_root: bool,
+) -> Result<f64, Report> {
+  log::debug!("Estimating clock rate using root-to-tip regression");
+  let clock_model = estimate_clock_model_with_reroot(
+    graph,
+    &ClockOptions::default(),
+    keep_root,
+    &BranchPointOptimizationParams::default(),
+  )?;
+  log::debug!("Clock model estimated: rate={:.6e}, intercept={:.4}, r_val={:.4}",
+    clock_model.clock_rate(), clock_model.intercept(), clock_model.r_val());
   Ok(clock_model.clock_rate())
 }
 
