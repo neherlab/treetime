@@ -19,7 +19,9 @@ pub fn run_timetree(
   graph: &GraphAncestral,
   partitions: &[Arc<RwLock<dyn PartitionTimetreeAll>>],
 ) -> Result<(), Report> {
-  compute_branch_distributions(graph, partitions)?;
+  if !partitions.is_empty() {
+    compute_branch_distributions(graph, partitions)?;
+  }
   propagate_distributions_backward(graph)?;
   propagate_distributions_forward(graph)?;
   Ok(())
@@ -29,6 +31,12 @@ fn compute_branch_distributions(
   graph: &GraphAncestral,
   partitions: &[Arc<RwLock<dyn PartitionTimetreeAll>>],
 ) -> Result<(), Report> {
+  // In input branch mode, partitions exist but have no edge data
+  // Skip branch distribution computation and use input branch lengths directly
+  if partitions.iter().any(|p| p.read_arc().get_sequence_length().is_none()) {
+    return Ok(());
+  }
+
   let one_mutation = calculate_one_mutation(partitions);
 
   for edge_ref in graph.get_edges() {
