@@ -1,3 +1,5 @@
+use crate::commands::clock::clock_regression::{ClockOptions, estimate_clock_model_with_reroot};
+use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
 use crate::commands::optimize::optimize_unified::OptimizationContribution;
 use crate::commands::timetree::inference::branch_length_likelihood::compute_branch_length_distribution;
 use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
@@ -16,11 +18,15 @@ use std::sync::Arc;
 const BRANCH_GRID_SIZE: usize = 200;
 
 pub fn run_timetree(
-  graph: &GraphAncestral,
+  graph: &mut GraphAncestral,
   partitions: &[Arc<RwLock<dyn PartitionTimetreeAll>>],
+  keep_root: bool,
 ) -> Result<(), Report> {
   if !partitions.is_empty() {
     compute_branch_distributions(graph, partitions)?;
+  } else {
+    let clock_rate = estimate_clock_rate_from_root_to_tip(graph, keep_root)?;
+    create_branch_distributions_from_input_lengths(graph, clock_rate)?;
   }
   propagate_distributions_backward(graph)?;
   propagate_distributions_forward(graph)?;
@@ -68,6 +74,30 @@ fn collect_contributions(
     .iter()
     .map(|partition| partition.read_arc().create_edge_contribution(edge_key))
     .collect()
+}
+
+fn estimate_clock_rate_from_root_to_tip(graph: &mut GraphAncestral, keep_root: bool) -> Result<f64, Report> {
+  let options = ClockOptions::default();
+  let params = BranchPointOptimizationParams::default();
+  let clock_model = estimate_clock_model_with_reroot(graph, &options, keep_root, &params)?;
+  Ok(clock_model.clock_rate())
+}
+
+fn create_branch_distributions_from_input_lengths(graph: &GraphAncestral, clock_rate: f64) -> Result<(), Report> {
+  for edge_ref in graph.get_edges() {
+    let mut edge = edge_ref.write_arc().payload().write_arc();
+
+    if let Some(branch_length) = edge.branch_length {
+      // Convert branch length (substitutions/site) to time duration (years)
+      let time_duration = branch_length / clock_rate;
+
+      // Create a delta distribution (point mass) at the time duration
+      let distribution = Distribution::point(time_duration, 1.0);
+      edge.branch_length_distribution = Some(Arc::new(distribution));
+    }
+  }
+
+  Ok(())
 }
 
 fn propagate_distributions_backward(graph: &GraphAncestral) -> Result<(), Report> {

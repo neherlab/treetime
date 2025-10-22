@@ -1,3 +1,4 @@
+use crate::commands::clock::clock_set::ClockSet;
 use crate::distribution::distribution::Distribution;
 use crate::graph::node::{GraphNode, Named};
 use crate::io::nwk::NodeFromNwk;
@@ -11,9 +12,11 @@ use std::sync::Arc;
 pub struct NodeTimetree {
   pub name: Option<String>,
   pub desc: Option<String>,
+  pub date: Option<f64>,
   pub time: Option<f64>,
   pub time_before_present: Option<f64>,
   pub time_distribution: Option<Arc<Distribution>>,
+  pub clock_stats: ClockSet,
   pub bad_branch: bool,
 }
 
@@ -43,9 +46,11 @@ impl From<&NodeAncestral> for NodeTimetree {
     Self {
       name: node.name.clone(),
       desc: node.desc.clone(),
+      date: None,
       time: None,
       time_before_present: None,
       time_distribution: None,
+      clock_stats: ClockSet::default(),
       bad_branch: node.bad_branch,
     }
   }

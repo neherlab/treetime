@@ -1,7 +1,10 @@
-use crate::commands::clock::clock_graph::ClockGraph;
 use crate::commands::clock::clock_regression::ClockOptions;
+use crate::commands::clock::clock_traits::{ClockEdge, ClockNode};
 use crate::commands::clock::find_best_root::find_best_split::{FindRootResult, find_best_split};
 use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
+use crate::graph::edge::GraphEdge;
+use crate::graph::graph::Graph;
+use crate::graph::node::GraphNode;
 use eyre::Report;
 use log::{debug, info};
 use std::sync::Arc;
@@ -10,11 +13,16 @@ use treetime_utils::container::get_exactly_one;
 /// Find the best new root node
 ///
 // Loop over all nodes, pick the one with the lowest chisq, then optimize position along surrounding branches.
-pub fn find_best_root(
-  graph: &ClockGraph,
+pub fn find_best_root<N, E, D>(
+  graph: &Graph<N, E, D>,
   options: &ClockOptions,
   params: &BranchPointOptimizationParams,
-) -> Result<FindRootResult, Report> {
+) -> Result<FindRootResult, Report>
+where
+  N: GraphNode + ClockNode,
+  E: GraphEdge + ClockEdge,
+  D: Send + Sync,
+{
   info!("Starting root optimization with method: {params:?}");
 
   let root = graph.get_exactly_one_root()?;
@@ -22,21 +30,21 @@ pub fn find_best_root(
 
   // Initialize with the current root
   let root = root.read_arc().payload().read_arc();
-  let mut best_chisq = root.total.chisq();
+  let mut best_chisq = root.clock_set().chisq();
   debug!("Initial root chi-squared: {best_chisq:.6e}");
 
   let mut best_res = FindRootResult {
     edge: None,
     split: 0.0,
     chisq: best_chisq,
-    total: root.total.clone(),
+    total: root.clock_set().clone(),
   };
 
   // Find best node
   let mut node_count = 0;
   let mut improvements = 0;
   for n in graph.get_nodes() {
-    let tmp_chisq = n.read_arc().payload().read_arc().total.chisq();
+    let tmp_chisq = n.read_arc().payload().read_arc().clock_set().chisq();
     if tmp_chisq < best_chisq {
       improvements += 1;
       debug!("Found better node {improvements}: chi-squared improved from {best_chisq:.6e} to {tmp_chisq:.6e}");
@@ -97,6 +105,7 @@ pub fn find_best_root(
 #[cfg(test)]
 mod tests {
   use super::*;
+  use crate::commands::clock::clock_graph::ClockGraph;
   use crate::commands::clock::clock_regression::{clock_regression_backward, clock_regression_forward};
   use crate::commands::clock::find_best_root::params::{BrentParams, GoldenSectionParams, GridSearchParams};
   use crate::graph::node::Named;

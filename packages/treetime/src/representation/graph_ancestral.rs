@@ -1,4 +1,6 @@
 use crate::alphabet::alphabet::Alphabet;
+use crate::commands::clock::clock_set::ClockSet;
+use crate::commands::clock::clock_traits::{ClockEdge, ClockNode};
 use crate::graph::edge::{GraphEdge, NumMuts, Weighted};
 use crate::graph::graph::Graph;
 use crate::graph::node::{GraphNode, Named};
@@ -58,6 +60,10 @@ pub struct NodeAncestral {
   pub time_before_present: Option<f64>,
   pub time_distribution: Option<Arc<crate::distribution::distribution::Distribution>>,
   pub bad_branch: bool,
+  pub div: f64,
+  pub is_outlier: bool,
+  #[serde(skip)]
+  pub clock_total: ClockSet,
 }
 
 impl NodeFromNwk for NodeAncestral {
@@ -182,6 +188,12 @@ pub struct EdgeAncestral {
   pub sparse_partitions: Vec<SparseSeqEdge>,
   pub branch_length: Option<f64>,
   pub branch_length_distribution: Option<Arc<crate::distribution::distribution::Distribution>>,
+  #[serde(skip)]
+  pub clock_to_parent: ClockSet,
+  #[serde(skip)]
+  pub clock_to_child: ClockSet,
+  #[serde(skip)]
+  pub clock_from_child: ClockSet,
 }
 
 impl GraphEdge for EdgeAncestral {}
@@ -297,4 +309,68 @@ pub struct ParsimonySeqDis {
   pub variable_indel: BTreeMap<(usize, usize), Deletion>,
 
   pub composition: Composition,
+}
+
+impl ClockNode for NodeAncestral {
+  fn date(&self) -> Option<f64> {
+    if let Some(dist) = &self.time_distribution {
+      match dist.as_ref() {
+        crate::distribution::distribution::Distribution::Point(p) => Some(p.t()),
+        crate::distribution::distribution::Distribution::Range(r) => Some(f64::midpoint(r.start(), r.end())),
+        _ => None,
+      }
+    } else {
+      None
+    }
+  }
+
+  fn div(&self) -> f64 {
+    self.div
+  }
+
+  fn is_outlier(&self) -> bool {
+    self.is_outlier
+  }
+
+  fn clock_set(&self) -> &ClockSet {
+    &self.clock_total
+  }
+
+  fn clock_set_mut(&mut self) -> &mut ClockSet {
+    &mut self.clock_total
+  }
+}
+
+impl ClockEdge for EdgeAncestral {
+  fn branch_length(&self) -> Option<f64> {
+    self.branch_length
+  }
+
+  fn set_branch_length(&mut self, length: Option<f64>) {
+    self.branch_length = length;
+  }
+
+  fn to_parent(&self) -> &ClockSet {
+    &self.clock_to_parent
+  }
+
+  fn to_parent_mut(&mut self) -> &mut ClockSet {
+    &mut self.clock_to_parent
+  }
+
+  fn to_child(&self) -> &ClockSet {
+    &self.clock_to_child
+  }
+
+  fn to_child_mut(&mut self) -> &mut ClockSet {
+    &mut self.clock_to_child
+  }
+
+  fn from_child(&self) -> &ClockSet {
+    &self.clock_from_child
+  }
+
+  fn from_child_mut(&mut self) -> &mut ClockSet {
+    &mut self.clock_from_child
+  }
 }

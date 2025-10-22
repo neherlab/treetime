@@ -1,8 +1,12 @@
 use super::clock_model::ClockModel;
-use crate::commands::clock::clock_graph::ClockGraph;
 use crate::commands::clock::clock_set::ClockSet;
+use crate::commands::clock::clock_traits::{ClockEdge, ClockNode};
+use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
+use crate::commands::clock::reroot::reroot_in_place;
 use crate::graph::breadth_first::GraphTraversalContinuation;
-use crate::graph::edge::Weighted;
+use crate::graph::edge::GraphEdge;
+use crate::graph::graph::Graph;
+use crate::graph::node::GraphNode;
 use clap::Args;
 use eyre::Report;
 use serde::{Deserialize, Serialize};
@@ -27,19 +31,27 @@ pub struct ClockOptions {
   pub variance_offset_leaf: f64,
 }
 
-pub fn root_clock_model(graph: &ClockGraph) -> Result<ClockModel, Report> {
-  // calculate a clock model from the root averages
+pub fn root_clock_model<N, E, D>(graph: &Graph<N, E, D>) -> Result<ClockModel, Report>
+where
+  N: GraphNode + ClockNode,
+  E: GraphEdge,
+  D: Send + Sync,
+{
   let root = graph.get_exactly_one_root()?;
   let root = root.read_arc().payload().read_arc();
-  ClockModel::new(&root.total)
+  ClockModel::new(root.clock_set())
 }
 
-pub fn clock_regression_backward(graph: &ClockGraph, options: &ClockOptions) {
+pub fn clock_regression_backward<N, E, D>(graph: &Graph<N, E, D>, options: &ClockOptions)
+where
+  N: GraphNode + ClockNode,
+  E: GraphEdge + ClockEdge,
+  D: Send + Sync,
+{
   graph.par_iter_breadth_first_backward(|mut n| {
-    let date = n.payload.date;
-    // assemble the message that will be sent to the parent
+    let date = n.payload.date();
     let q_to_parent = if n.is_leaf {
-      if n.payload.is_outlier {
+      if n.payload.is_outlier() {
         ClockSet::outlier_contribution()
       } else {
         ClockSet::leaf_contribution(date)
@@ -47,7 +59,7 @@ pub fn clock_regression_backward(graph: &ClockGraph, options: &ClockOptions) {
     } else {
       let mut q_dest = ClockSet::default();
       for (_, e) in &n.children {
-        q_dest += &e.read_arc().from_child;
+        q_dest += e.read_arc().from_child();
       }
       q_dest
     };
@@ -57,52 +69,74 @@ pub fn clock_regression_backward(graph: &ClockGraph, options: &ClockOptions) {
     let edge_to_parent = n.get_exactly_one_parent_edge();
 
     if is_root {
-      n.payload.total = q_to_parent;
+      *n.payload.clock_set_mut() = q_to_parent;
     } else {
-      // if not at the root, save the message to the parent on the edge
       let edge_to_parent = edge_to_parent.expect("Encountered a node without a parent edge");
-      edge_to_parent.to_parent = q_to_parent;
-      let edge_len = edge_to_parent.weight().expect("Encountered an edge without a weight");
+      *edge_to_parent.to_parent_mut() = q_to_parent;
+      let edge_len = edge_to_parent.branch_length().expect("Encountered an edge without a weight");
       let mut branch_variance = options.variance_factor * edge_len + options.variance_offset;
-      // propagate the message to the parent along the edge (taking care of the speical case need for leafs)
-      edge_to_parent.from_child = if is_leaf {
+      *edge_to_parent.from_child_mut() = if is_leaf {
         branch_variance += options.variance_offset_leaf;
         ClockSet::leaf_contribution_to_parent(date, edge_len, branch_variance)
       } else {
-        edge_to_parent.to_parent.propagate_averages(edge_len, branch_variance)
+        edge_to_parent.to_parent().propagate_averages(edge_len, branch_variance)
       };
     }
     GraphTraversalContinuation::Continue
   });
 }
 
-pub fn clock_regression_forward(graph: &ClockGraph, options: &ClockOptions) {
+pub fn clock_regression_forward<N, E, D>(graph: &Graph<N, E, D>, options: &ClockOptions)
+where
+  N: GraphNode + ClockNode,
+  E: GraphEdge + ClockEdge,
+  D: Sync + Send,
+{
   graph.par_iter_breadth_first_forward(|mut n| {
     if !n.is_root {
-      // if not at the root, calculate the total message from the parent message, and the message sent to the parent
       let (_, edge) = n.get_exactly_one_parent().unwrap();
       let edge = edge.read_arc();
-      let edge_len = edge.weight().expect("Encountered an edge without a weight");
+      let edge_len = edge.branch_length().expect("Encountered an edge without a weight");
       let branch_variance = options.variance_factor * edge_len + options.variance_offset;
 
-      let mut q_dest = edge.to_parent.clone();
-      q_dest += edge.to_child.propagate_averages(edge_len, branch_variance);
-      n.payload.total = q_dest.clone();
+      let mut q_dest = edge.to_parent().clone();
+      q_dest += edge.to_child().propagate_averages(edge_len, branch_variance);
+      *n.payload.clock_set_mut() = q_dest;
     }
 
-    // place a message to the child onto each edge. this is the total message minus the message from the child
     for mut child_edge in n.child_edges {
-      let mut q = n.payload.total.clone();
-      q -= &child_edge.from_child;
-      child_edge.to_child = q;
+      let mut q = n.payload.clock_set().clone();
+      q -= child_edge.from_child();
+      *child_edge.to_child_mut() = q;
     }
     GraphTraversalContinuation::Continue
   });
 }
 
+pub fn estimate_clock_model_with_reroot<N, E, D>(
+  graph: &mut Graph<N, E, D>,
+  options: &ClockOptions,
+  keep_root: bool,
+  params: &BranchPointOptimizationParams,
+) -> Result<ClockModel, Report>
+where
+  N: GraphNode + ClockNode + Default,
+  E: GraphEdge + ClockEdge + Default,
+  D: Send + Sync,
+{
+  clock_regression_backward(graph, options);
+
+  if !keep_root {
+    clock_regression_forward(graph, options);
+    reroot_in_place(graph, options, params)?;
+  }
+  root_clock_model(graph)
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
+  use crate::commands::clock::clock_graph::ClockGraph;
   use crate::graph::node::Named;
   use crate::io::nwk::nwk_read_str;
   use crate::o;

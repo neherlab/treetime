@@ -69,7 +69,7 @@ impl<E: GraphEdge> Edge<E> {
 }
 
 /// Invert direction of an edge.
-pub fn invert_edge<N: GraphNode, E: GraphEdge>(graph: &Graph<N, E>, edge: &Arc<RwLock<Edge<E>>>) {
+pub fn invert_edge<N: GraphNode, E: GraphEdge, D: Send + Sync>(graph: &mut Graph<N, E, D>, edge: &Arc<RwLock<Edge<E>>>) {
   let (this_edge_key, source, target) = {
     let edge = edge.read();
 
@@ -109,14 +109,14 @@ mod tests {
 
   #[test]
   fn edge_inverts() -> Result<(), Report> {
-    let graph =
+    let mut graph =
       nwk_read_str::<TestNode, TestEdge, ()>("((((h:0.7)e:0.6)d:0.4)b:0.,((g:0.5)c:0.2,(i:0.8)f:0.3)a:0.1)r1;")?;
 
     let edge = graph.get_edge(GraphEdgeKey(3)).unwrap();
     let input_source = edge.read().source();
     let input_target = edge.read().target();
 
-    invert_edge(&graph, &edge);
+    invert_edge(&mut graph, &edge);
 
     let edge = graph.get_edge(GraphEdgeKey(3)).unwrap();
     let output_source = edge.read().source();

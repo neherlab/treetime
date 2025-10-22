@@ -1,4 +1,5 @@
 use crate::commands::clock::clock_set::ClockSet;
+use crate::commands::clock::clock_traits::{ClockEdge, ClockNode};
 use crate::graph::edge::{GraphEdge, Weighted};
 use crate::graph::graph::Graph;
 use crate::graph::node::{GraphNode, Named};
@@ -103,5 +104,61 @@ impl EdgeToGraphViz for ClockEdgePayload {
 
   fn to_graphviz_weight(&self) -> Option<f64> {
     self.weight()
+  }
+}
+
+impl ClockNode for ClockNodePayload {
+  fn date(&self) -> Option<f64> {
+    self.date
+  }
+
+  fn div(&self) -> f64 {
+    self.div
+  }
+
+  fn is_outlier(&self) -> bool {
+    self.is_outlier
+  }
+
+  fn clock_set(&self) -> &ClockSet {
+    &self.total
+  }
+
+  fn clock_set_mut(&mut self) -> &mut ClockSet {
+    &mut self.total
+  }
+}
+
+impl ClockEdge for ClockEdgePayload {
+  fn branch_length(&self) -> Option<f64> {
+    self.branch_length
+  }
+
+  fn set_branch_length(&mut self, length: Option<f64>) {
+    self.branch_length = length;
+  }
+
+  fn to_parent(&self) -> &ClockSet {
+    &self.to_parent
+  }
+
+  fn to_parent_mut(&mut self) -> &mut ClockSet {
+    &mut self.to_parent
+  }
+
+  fn to_child(&self) -> &ClockSet {
+    &self.to_child
+  }
+
+  fn to_child_mut(&mut self) -> &mut ClockSet {
+    &mut self.to_child
+  }
+
+  fn from_child(&self) -> &ClockSet {
+    &self.from_child
+  }
+
+  fn from_child_mut(&mut self) -> &mut ClockSet {
+    &mut self.from_child
   }
 }

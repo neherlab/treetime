@@ -5,6 +5,7 @@ pub mod clock_graph;
 pub mod clock_model;
 pub mod clock_regression;
 pub mod clock_set;
+pub mod clock_traits;
 pub mod find_best_root;
 pub mod reroot;
 pub mod rtt;

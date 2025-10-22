@@ -1,7 +1,9 @@
-use crate::commands::clock::clock_graph::ClockGraph;
 use crate::commands::clock::clock_regression::ClockOptions;
 use crate::commands::clock::clock_set::ClockSet;
-use crate::graph::edge::{GraphEdgeKey, Weighted};
+use crate::commands::clock::clock_traits::{ClockEdge, ClockNode};
+use crate::graph::edge::{GraphEdge, GraphEdgeKey};
+use crate::graph::graph::Graph;
+use crate::graph::node::GraphNode;
 use argmin::core::{CostFunction, Error};
 use eyre::Report;
 
@@ -17,11 +19,16 @@ pub struct BranchPointCostFunction<'a> {
 }
 
 impl<'a> BranchPointCostFunction<'a> {
-  pub fn new(
-    graph: &ClockGraph,
+  pub fn new<N, E, D>(
+    graph: &Graph<N, E, D>,
     edge: GraphEdgeKey,
     options: &'a ClockOptions,
-  ) -> Result<BranchPointCostFunction<'a>, Report> {
+  ) -> Result<BranchPointCostFunction<'a>, Report>
+  where
+    N: GraphNode + ClockNode,
+    E: GraphEdge + ClockEdge,
+    D: Send + Sync,
+  {
     let edge_obj = graph
       .get_edge(edge)
       .ok_or_else(|| eyre::eyre!("Edge not found: {}", edge))?;
@@ -31,15 +38,15 @@ impl<'a> BranchPointCostFunction<'a> {
       .ok_or_else(|| eyre::eyre!("Target node not found for edge: {}", edge))?;
     let target_node_payload = target_node.read_arc().payload().read_arc();
     let is_leaf = target_node.read_arc().is_leaf();
-    let node_date = target_node_payload.date;
+    let node_date = target_node_payload.date();
     let branch_length = edge_payload
-      .weight()
+      .branch_length()
       .ok_or_else(|| eyre::eyre!("Edge {} has no weight", edge))?;
     let branch_variance = options.variance_factor * branch_length + options.variance_offset;
 
     Ok(BranchPointCostFunction {
-      to_parent: edge_payload.to_parent.clone(),
-      to_child: edge_payload.to_child.clone(),
+      to_parent: edge_payload.to_parent().clone(),
+      to_child: edge_payload.to_child().clone(),
       branch_length,
       branch_variance,
       is_leaf,

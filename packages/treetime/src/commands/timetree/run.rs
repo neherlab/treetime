@@ -11,7 +11,7 @@ use parking_lot::RwLock;
 use std::sync::Arc;
 
 pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report> {
-  let InputData { graph, alphabet: _, aln } = load_input_data(args)?;
+  let InputData { mut graph, aln, .. } = load_input_data(args)?;
 
   // let mut clock_model = infer_clock_model(args, &graph).wrap_err("Failed to infer clock model")?;
 
@@ -20,11 +20,11 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
 
   // run_pre_optimization(args, &graph, &partitions, aln.as_deref())?;
 
-  run_initial_timetree_inference(args, &graph, &partitions)?;
+  run_initial_timetree_inference(args, &mut graph, &partitions)?;
 
   let mut optimizer = TimetreeOptimizer::new(args.max_iter, args.tracelog.clone())?;
   while let Some(IterationContext { i }) = optimizer.next_iter() {
-    let (ndiff, n_resolved) = run_refinement_iteration(args, &graph, &partitions, aln.as_deref(), i)?;
+    let (ndiff, n_resolved) = run_refinement_iteration(args, &mut graph, &partitions, aln.as_deref(), i)?;
 
     // clock_model = update_clock_model(&graph, &clock_model)
     // .wrap_err_with(|| format!("Failed to update clock model (iteration {i})"))?;
@@ -79,14 +79,14 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
 // }
 
 fn run_initial_timetree_inference(
-  _args: &TreetimeTimetreeArgs,
-  graph: &GraphAncestral,
+  args: &TreetimeTimetreeArgs,
+  graph: &mut GraphAncestral,
   partitions: &[Arc<RwLock<dyn PartitionTimetreeAll>>],
   // _aln: Option<&[FastaRecord]>,
   // _clock_model: &ClockModel,
 ) -> Result<(), Report> {
   info!("### TreeTime: INITIAL ROUND");
-  run_timetree(graph, partitions)?;
+  run_timetree(graph, partitions, args.keep_root)?;
 
   // if !_args.keep_root {
   //   todo!("Second reroot not yet implemented");

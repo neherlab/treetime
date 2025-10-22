@@ -6,11 +6,8 @@ use crate::commands::clock::assign_dates::assign_dates;
 use crate::commands::clock::clock_args::TreetimeClockArgs;
 use crate::commands::clock::clock_filter::clock_filter_inplace;
 use crate::commands::clock::clock_graph::ClockGraph;
-use crate::commands::clock::clock_regression::{
-  ClockOptions, clock_regression_backward, clock_regression_forward, root_clock_model,
-};
+use crate::commands::clock::clock_regression::{ClockOptions, estimate_clock_model_with_reroot};
 use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
-use crate::commands::clock::reroot::reroot_in_place;
 use crate::commands::clock::rtt::{gather_clock_regression_results, write_clock_regression_result_csv};
 use crate::io::dates_csv::read_dates;
 use crate::io::graphviz::graphviz_write_file;
@@ -25,15 +22,7 @@ pub fn get_clock_model(
   keep_root: bool,
   optimization_params: &BranchPointOptimizationParams,
 ) -> Result<ClockModel, Report> {
-  // run the backward pass to calculate the averages at the root
-  clock_regression_backward(graph, options);
-
-  if !keep_root {
-    // run forward pass to calculate the averages for all nodes in the tree
-    clock_regression_forward(graph, options);
-    reroot_in_place(graph, options, optimization_params)?;
-  }
-  root_clock_model(graph)
+  estimate_clock_model_with_reroot(graph, options, keep_root, optimization_params)
 }
 
 pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
