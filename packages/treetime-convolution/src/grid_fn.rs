@@ -17,6 +17,14 @@ impl<T: InterpElem> Clone for GridFn<T> {
   }
 }
 
+impl<T: InterpElem> PartialEq for GridFn<T> {
+  fn eq(&self, other: &Self) -> bool {
+    self.x() == other.x() && self.y() == other.y()
+  }
+}
+
+impl<T: InterpElem> Eq for GridFn<T> {}
+
 impl<T: InterpElem> Serialize for GridFn<T> {
   fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
   where
@@ -103,9 +111,19 @@ impl<T: InterpElem> GridFn<T> {
     self.interp.x()
   }
 
+  /// Get mutable reference to x values
+  pub fn x_mut(&mut self) -> &mut Array1<T> {
+    self.interp.x_mut()
+  }
+
   /// Get y values
   pub fn y(&self) -> &Array1<T> {
     self.interp.data()
+  }
+
+  /// Get mutable reference to y values
+  pub fn y_mut(&mut self) -> &mut Array1<T> {
+    self.interp.data_mut()
   }
 
   /// Interpolate value at given x using linear interpolation

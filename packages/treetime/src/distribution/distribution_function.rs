@@ -1,54 +1,42 @@
 use eyre::Report;
-use ndarray::{Array1, Ix1, OwnedRepr};
-use ndarray_interp::interp1d::{Interp1D, Interp1DBuilder, Linear};
+use ndarray::Array1;
 use ndarray_stats::QuantileExt;
-use treetime_convolution::InterpElem;
+use treetime_convolution::{GridFn, InterpElem};
 
-/// Represents an arbitrary smooth function
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DistributionFunction<T: InterpElem> {
-  interp: Interp1D<OwnedRepr<T>, OwnedRepr<T>, Ix1, Linear>,
+  grid_fn: GridFn<T>,
 }
-
-impl<T: InterpElem> PartialEq for DistributionFunction<T> {
-  fn eq(&self, other: &Self) -> bool {
-    format!("{self:?}") == format!("{other:?}")
-  }
-}
-
-impl<T: InterpElem> Eq for DistributionFunction<T> {}
 
 impl<T: InterpElem> DistributionFunction<T> {
   pub fn new(x: Array1<T>, y: Array1<T>) -> Result<Self, Report> {
     assert_eq!(x.shape(), y.shape());
-    let interp: Interp1D<OwnedRepr<T>, OwnedRepr<T>, Ix1, Linear> = Interp1DBuilder::new(y).x(x).build()?;
-    Ok(Self { interp })
+    let grid_fn = GridFn::new(x, y)?;
+    Ok(Self { grid_fn })
   }
 
   pub fn t(&self) -> &Array1<T> {
-    self.interp.x()
+    self.grid_fn.x()
   }
 
   pub fn t_mut(&mut self) -> &mut Array1<T> {
-    self.interp.x_mut()
+    self.grid_fn.x_mut()
   }
 
   pub fn y(&self) -> &Array1<T> {
-    self.interp.data()
+    self.grid_fn.y()
   }
 
   pub fn y_mut(&mut self) -> &mut Array1<T> {
-    self.interp.data_mut()
+    self.grid_fn.y_mut()
   }
 
   pub fn interp(&self, x: T) -> Result<T, Report> {
-    let y = self.interp.interp_scalar(x)?;
-    Ok(y)
+    self.grid_fn.interp(x)
   }
 
   pub fn interp_many(&self, xs: &Array1<T>) -> Result<Array1<T>, Report> {
-    let ys = self.interp.interp_array(xs)?;
-    Ok(ys)
+    self.grid_fn.interp_many(xs)
   }
 
   /// Find the most likely time point (x-value corresponding to minimum y-value)
