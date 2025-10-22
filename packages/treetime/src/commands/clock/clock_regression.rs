@@ -49,7 +49,7 @@ where
   D: Send + Sync,
 {
   graph.par_iter_breadth_first_backward(|mut n| {
-    let date = n.payload.date();
+    let date = n.payload.likely_time();
     let q_to_parent = if n.is_leaf {
       if n.payload.is_outlier() {
         ClockSet::outlier_contribution()

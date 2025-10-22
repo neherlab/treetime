@@ -163,33 +163,21 @@ fn multiply_distributions(existing: Option<Distribution>, new: Distribution) -> 
 
 fn propagate_distributions_forward(graph: &GraphAncestral) -> Result<(), Report> {
   graph.par_iter_breadth_first_forward(|mut node| {
-    extract_time_estimate(&mut node);
+    set_likely_time(&mut node);
     refine_distribution_from_parent(&mut node);
     GraphTraversalContinuation::Continue
   });
   Ok(())
 }
 
-fn extract_time_estimate(node: &mut GraphNodeForward<NodeAncestral, EdgeAncestral, ()>) {
-  if let Some(time_dist) = &node.payload.time_distribution {
-    let time_estimate = match time_dist.as_ref() {
-      Distribution::Point(p) => p.t(),
-      Distribution::Range(r) => f64::midpoint(r.start(), r.end()),
-      Distribution::Function(f) => find_distribution_peak(f),
-      Distribution::Empty => 0.0,
-    };
-    node.payload.time = Some(time_estimate);
-  }
-}
+fn set_likely_time(node: &mut GraphNodeForward<NodeAncestral, EdgeAncestral, ()>) {
+  let time = node
+    .payload
+    .time_distribution
+    .as_ref()
+    .and_then(|time_dist| time_dist.likely_time());
 
-fn find_distribution_peak(f: &DistributionFunction<f64>) -> f64 {
-  let max_idx = f
-    .y()
-    .iter()
-    .enumerate()
-    .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(Ordering::Equal))
-    .map_or(0, |(idx, _)| idx);
-  f.t()[max_idx]
+  node.payload.time = time;
 }
 
 fn refine_distribution_from_parent(node: &mut GraphNodeForward<NodeAncestral, EdgeAncestral, ()>) {

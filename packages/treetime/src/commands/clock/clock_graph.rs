@@ -108,7 +108,7 @@ impl EdgeToGraphViz for ClockEdgePayload {
 }
 
 impl ClockNode for ClockNodePayload {
-  fn date(&self) -> Option<f64> {
+  fn likely_time(&self) -> Option<f64> {
     self.date
   }
 

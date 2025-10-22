@@ -312,16 +312,8 @@ pub struct ParsimonySeqDis {
 }
 
 impl ClockNode for NodeAncestral {
-  fn date(&self) -> Option<f64> {
-    if let Some(dist) = &self.time_distribution {
-      match dist.as_ref() {
-        crate::distribution::distribution::Distribution::Point(p) => Some(p.t()),
-        crate::distribution::distribution::Distribution::Range(r) => Some(f64::midpoint(r.start(), r.end())),
-        _ => None,
-      }
-    } else {
-      None
-    }
+  fn likely_time(&self) -> Option<f64> {
+    self.time_distribution.as_ref().and_then(|dist| dist.likely_time())
   }
 
   fn div(&self) -> f64 {

@@ -1,6 +1,7 @@
 use eyre::Report;
 use ndarray::{Array1, Ix1, OwnedRepr};
 use ndarray_interp::interp1d::{Interp1D, Interp1DBuilder, Linear};
+use ndarray_stats::QuantileExt;
 use num_traits::{Num, NumCast};
 use std::fmt::Debug;
 
@@ -53,6 +54,17 @@ impl<T: InterpElem> DistributionFunction<T> {
   pub fn interp_many(&self, xs: &Array1<T>) -> Result<Array1<T>, Report> {
     let ys = self.interp.interp_array(xs)?;
     Ok(ys)
+  }
+
+  /// Find the most likely time point (x-value corresponding to minimum y-value)
+  /// Returns the x-coordinate where the function reaches its minimum y-value
+  pub fn likely_time(&self) -> Option<T> {
+    let y_values = self.y();
+    if let Ok(min_idx) = y_values.argmin() {
+      Some(self.t()[min_idx])
+    } else {
+      None
+    }
   }
 }
 

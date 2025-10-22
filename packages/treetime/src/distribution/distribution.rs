@@ -57,4 +57,13 @@ impl Distribution {
       DateOrRange::YearFractionRange((start, end)) => Self::range((*start, *end), 1.0),
     }
   }
+
+  pub fn likely_time(&self) -> Option<f64> {
+    match self {
+      Self::Point(p) => Some(p.t()),
+      Self::Range(r) => Some(f64::midpoint(r.start(), r.end())),
+      Self::Function(f) => f.likely_time(),
+      Self::Empty => None,
+    }
+  }
 }

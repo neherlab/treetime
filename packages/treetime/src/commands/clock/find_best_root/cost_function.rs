@@ -38,7 +38,7 @@ impl<'a> BranchPointCostFunction<'a> {
       .ok_or_else(|| eyre::eyre!("Target node not found for edge: {}", edge))?;
     let target_node_payload = target_node.read_arc().payload().read_arc();
     let is_leaf = target_node.read_arc().is_leaf();
-    let node_date = target_node_payload.date();
+    let node_date = target_node_payload.likely_time();
     let branch_length = edge_payload
       .branch_length()
       .ok_or_else(|| eyre::eyre!("Edge {} has no weight", edge))?;

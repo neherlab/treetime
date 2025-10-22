@@ -1,7 +1,7 @@
 use crate::commands::clock::clock_set::ClockSet;
 
 pub trait ClockNode: Send + Sync {
-  fn date(&self) -> Option<f64>;
+  fn likely_time(&self) -> Option<f64>;
   fn div(&self) -> f64;
   fn is_outlier(&self) -> bool;
   fn clock_set(&self) -> &ClockSet;
