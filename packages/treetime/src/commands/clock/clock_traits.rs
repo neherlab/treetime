@@ -11,6 +11,7 @@ pub trait ClockNode: Send + Sync {
   }
 }
 
+#[allow(clippy::wrong_self_convention)]
 pub trait ClockEdge: Send + Sync {
   fn branch_length(&self) -> Option<f64>;
   fn set_branch_length(&mut self, length: Option<f64>);
