@@ -1,7 +1,6 @@
 use super::clock_model::ClockModel;
 use crate::commands::clock::clock_set::ClockSet;
 use crate::commands::clock::clock_traits::{ClockEdge, ClockNode};
-use crate::commands::clock::find_best_root::find_best_root::find_best_root;
 use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
 use crate::commands::clock::reroot::reroot_in_place;
 use crate::graph::breadth_first::GraphTraversalContinuation;
@@ -74,7 +73,9 @@ where
     } else {
       let edge_to_parent = edge_to_parent.expect("Encountered a node without a parent edge");
       *edge_to_parent.to_parent_mut() = q_to_parent;
-      let edge_len = edge_to_parent.branch_length().expect("Encountered an edge without a weight");
+      let edge_len = edge_to_parent
+        .branch_length()
+        .expect("Encountered an edge without a weight");
       let mut branch_variance = options.variance_factor * edge_len + options.variance_offset;
       *edge_to_parent.from_child_mut() = if is_leaf {
         branch_variance += options.variance_offset_leaf;
@@ -125,7 +126,7 @@ where
   E: GraphEdge + ClockEdge + Default,
   D: Send + Sync,
 {
-  log::info!("## Estimating clock model (keep_root={})", keep_root);
+  log::info!("## Estimating clock model (keep_root={keep_root})");
 
   log::info!("### Running backward regression");
   clock_regression_backward(graph, options);
@@ -149,7 +150,10 @@ where
   log::info!("**Clock rate:** {:.6e}", clock_model.clock_rate());
   log::info!("**Intercept:** {:.4}", clock_model.intercept());
   log::info!("**R²:** {:.4}", clock_model.r_val() * clock_model.r_val());
-  log::debug!("Clock model: {}", serde_json::to_string_pretty(&clock_model).unwrap_or_else(|_| "<serialization failed>".to_owned()));
+  log::debug!(
+    "Clock model: {}",
+    serde_json::to_string_pretty(&clock_model).unwrap_or_else(|_| "<serialization failed>".to_owned())
+  );
 
   Ok(clock_model)
 }

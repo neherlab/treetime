@@ -37,7 +37,8 @@ pub fn run_refinement_iteration(
   }
 
   if is_tree_dirty {
-    run_timetree(graph, partitions, args.keep_root).wrap_err_with(|| format!("Timetree inference failed (iteration {i})"))?;
+    run_timetree(graph, partitions, args.keep_root)
+      .wrap_err_with(|| format!("Timetree inference failed (iteration {i})"))?;
 
     if aln.is_some() {
       run_marginal(graph, partitions, aln)?;
@@ -47,7 +48,8 @@ pub fn run_refinement_iteration(
       run_marginal(graph, partitions, aln)?;
     }
 
-    run_timetree(graph, partitions, args.keep_root).wrap_err_with(|| format!("Timetree inference failed (iteration {i})"))?;
+    run_timetree(graph, partitions, args.keep_root)
+      .wrap_err_with(|| format!("Timetree inference failed (iteration {i})"))?;
   }
 
   let ndiff = 0;

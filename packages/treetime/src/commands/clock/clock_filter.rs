@@ -7,8 +7,12 @@ use ordered_float::OrderedFloat;
 /// Get results of the root-to-tip clock inference.
 #[allow(clippy::integer_division_remainder_used)]
 pub fn clock_filter_inplace(graph: &ClockGraph, clock_model: &ClockModel, clock_filter_threshold: f64) -> i32 {
-  log::info!("### Filtering outliers (threshold={})", clock_filter_threshold);
-  log::debug!("Clock model for filtering: rate={:.6e}, intercept={:.4}", clock_model.clock_rate(), clock_model.intercept());
+  log::info!("### Filtering outliers (threshold={clock_filter_threshold})");
+  log::debug!(
+    "Clock model for filtering: rate={:.6e}, intercept={:.4}",
+    clock_model.clock_rate(),
+    clock_model.intercept()
+  );
 
   // assign divergence to each node
   graph.par_iter_breadth_first_forward(|mut node| {
@@ -59,8 +63,9 @@ pub fn clock_filter_inplace(graph: &ClockGraph, clock_model: &ClockModel, clock_
     }
   });
 
-  log::info!("Outlier filtering: {} leaves changed status, IQD={:.6e}", new_outliers, iqd);
-  log::debug!("Leaf clock deviations (n={}): min={:.6e}, Q1={:.6e}, Q3={:.6e}, max={:.6e}",
+  log::info!("Outlier filtering: {new_outliers} leaves changed status, IQD={iqd:.6e}");
+  log::debug!(
+    "Leaf clock deviations (n={}): min={:.6e}, Q1={:.6e}, Q3={:.6e}, max={:.6e}",
     n,
     leaf_clock_deviations.first().copied().unwrap_or(0.0),
     leaf_clock_deviations[iq25],

@@ -30,8 +30,8 @@ pub fn run_timetree(
   } else {
     log::info!("## Estimating clock rate from root-to-tip regression (input branch mode)");
     let clock_rate = estimate_clock_rate_from_root_to_tip(graph, keep_root)?;
-    log::info!("**Estimated clock rate:** {:.6e}", clock_rate);
-    log::debug!("Clock rate: {}", clock_rate);
+    log::info!("**Estimated clock rate:** {clock_rate:.6e}");
+    log::debug!("Clock rate: {clock_rate}");
 
     log::info!("## Creating branch distributions from input lengths");
     create_branch_distributions_from_input_lengths(graph, clock_rate)?;
@@ -90,10 +90,7 @@ fn collect_contributions(
     .collect()
 }
 
-fn estimate_clock_rate_from_root_to_tip(
-  graph: &mut GraphAncestral,
-  keep_root: bool,
-) -> Result<f64, Report> {
+fn estimate_clock_rate_from_root_to_tip(graph: &mut GraphAncestral, keep_root: bool) -> Result<f64, Report> {
   log::debug!("Estimating clock rate using root-to-tip regression");
   let clock_model = estimate_clock_model_with_reroot(
     graph,
@@ -101,8 +98,12 @@ fn estimate_clock_rate_from_root_to_tip(
     keep_root,
     &BranchPointOptimizationParams::default(),
   )?;
-  log::debug!("Clock model estimated: rate={:.6e}, intercept={:.4}, r_val={:.4}",
-    clock_model.clock_rate(), clock_model.intercept(), clock_model.r_val());
+  log::debug!(
+    "Clock model estimated: rate={:.6e}, intercept={:.4}, r_val={:.4}",
+    clock_model.clock_rate(),
+    clock_model.intercept(),
+    clock_model.r_val()
+  );
   Ok(clock_model.clock_rate())
 }
 

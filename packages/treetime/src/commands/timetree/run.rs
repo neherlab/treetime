@@ -12,11 +12,19 @@ use std::sync::Arc;
 
 pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report> {
   log::info!("# TreeTime Timetree Estimation");
-  log::debug!("Branch length mode: {:?}, Keep root: {}", args.branch_length_mode, args.keep_root);
+  log::debug!(
+    "Branch length mode: {:?}, Keep root: {}",
+    args.branch_length_mode,
+    args.keep_root
+  );
 
   log::info!("## Loading input data");
   let InputData { mut graph, aln, .. } = load_input_data(args)?;
-  log::info!("Input loaded: {} nodes, {} edges", graph.get_nodes().len(), graph.get_edges().len());
+  log::info!(
+    "Input loaded: {} nodes, {} edges",
+    graph.get_nodes().len(),
+    graph.get_edges().len()
+  );
 
   // let mut clock_model = infer_clock_model(args, &graph).wrap_err("Failed to infer clock model")?;
 
