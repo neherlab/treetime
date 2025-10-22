@@ -2,12 +2,7 @@ use eyre::Report;
 use ndarray::{Array1, Ix1, OwnedRepr};
 use ndarray_interp::interp1d::{Interp1D, Interp1DBuilder, Linear};
 use ndarray_stats::QuantileExt;
-use num_traits::{Num, NumCast};
-use std::fmt::Debug;
-
-pub trait InterpElem: Num + NumCast + Debug + Send + PartialOrd + Copy {}
-
-impl InterpElem for f64 {}
+use treetime_convolution::InterpElem;
 
 /// Represents an arbitrary smooth function
 #[derive(Debug)]

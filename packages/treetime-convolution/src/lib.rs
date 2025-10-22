@@ -2,8 +2,17 @@ pub mod algos;
 pub mod grid_fn;
 pub mod testing;
 
+use num_traits::{Num, NumCast};
+use serde::{Deserialize, Serialize};
+use std::fmt::Debug;
+
+pub trait InterpElem: Num + NumCast + Debug + Send + PartialOrd + Copy + Serialize + for<'de> Deserialize<'de> {}
+
+impl InterpElem for f64 {}
+
 pub use algos::ndarray_conv::ndarray_conv::convolve_ndarray_conv as convolve;
 pub use grid_fn::GridFn;
+pub type GridFnF64 = GridFn<f64>;
 
 #[cfg(test)]
 mod tests {

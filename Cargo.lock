@@ -3759,6 +3759,7 @@ dependencies = [
  "tikv-jemallocator",
  "time",
  "traversal",
+ "treetime-convolution",
  "treetime-io",
  "treetime-utils",
  "usher-mat-utils",
