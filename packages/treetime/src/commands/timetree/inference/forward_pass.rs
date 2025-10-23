@@ -1,4 +1,4 @@
-use crate::commands::timetree::inference::utils::convolve_safe;
+use crate::distribution::distribution_convolution::distribution_convolution;
 use crate::graph::breadth_first::GraphTraversalContinuation;
 use crate::graph::graph::GraphNodeForward;
 use crate::representation::graph_ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
@@ -7,10 +7,17 @@ use std::sync::Arc;
 
 pub fn propagate_distributions_forward(graph: &GraphAncestral) -> Result<(), Report> {
   graph.par_iter_breadth_first_forward(|mut node| {
-    set_likely_time(&mut node);
-    refine_distribution_from_parent(&mut node);
+    propagate_distributions_forward_single_node(&mut node).unwrap();
     GraphTraversalContinuation::Continue
   });
+  Ok(())
+}
+
+fn propagate_distributions_forward_single_node(
+  node: &mut GraphNodeForward<NodeAncestral, EdgeAncestral, ()>,
+) -> Result<(), Report> {
+  set_likely_time(node);
+  refine_distribution_from_parent(node)?;
   Ok(())
 }
 
@@ -24,9 +31,11 @@ fn set_likely_time(node: &mut GraphNodeForward<NodeAncestral, EdgeAncestral, ()>
   node.payload.time = time;
 }
 
-fn refine_distribution_from_parent(node: &mut GraphNodeForward<NodeAncestral, EdgeAncestral, ()>) {
+fn refine_distribution_from_parent(
+  node: &mut GraphNodeForward<NodeAncestral, EdgeAncestral, ()>,
+) -> Result<(), Report> {
   if node.is_root {
-    return;
+    return Ok(());
   }
 
   if let Ok((parent, edge)) = node.get_exactly_one_parent() {
@@ -34,15 +43,15 @@ fn refine_distribution_from_parent(node: &mut GraphNodeForward<NodeAncestral, Ed
     let edge = edge.read_arc();
 
     if let (Some(parent_time_dist), Some(branch_dist)) = (&parent.time_distribution, &edge.branch_length_distribution) {
-      let dist_from_parent = convolve_safe(parent_time_dist, branch_dist);
-
+      let dist_from_parent = distribution_convolution(parent_time_dist, branch_dist)?;
       let combined = if let Some(subtree_dist) = &node.payload.time_distribution {
-        convolve_safe(&dist_from_parent, subtree_dist)
+        distribution_convolution(&dist_from_parent, subtree_dist)?
       } else {
         dist_from_parent
       };
-
       node.payload.time_distribution = Some(Arc::new(combined));
     }
   }
+
+  Ok(())
 }
