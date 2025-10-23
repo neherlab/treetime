@@ -112,9 +112,16 @@ RUN set -euxo pipefail >/dev/null \
 && mamba clean --all -f -y \
 && micromamba shell init --shell=bash
 
+COPY --link "requirements.txt" "/"
 RUN set -euxo pipefail >/dev/null \
 && if [ -f "/requirements.txt" ]; then mamba install --yes --file "/requirements.txt"; fi
 
 # Import matplotlib the first time to build the font cache.
 RUN set -euxo pipefail >/dev/null \
 && python -c "import matplotlib.pyplot"
+
+# Copy TreeTime legacy wrapper script (as root)
+USER root
+COPY --link "dev/docker/files/usr/bin/treetime" "/usr/bin/treetime"
+RUN chmod +x /usr/bin/treetime
+USER ${USER}

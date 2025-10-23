@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# TreeTime legacy Python wrapper
+# Runs the legacy Python TreeTime from packages/legacy/treetime/
+
+# Add the legacy treetime directory to PYTHONPATH
+export PYTHONPATH="/workdir/packages/legacy/treetime${PYTHONPATH:+:$PYTHONPATH}"
+
+# Run the treetime module with all passed arguments
+exec python3 -m treetime "$@"

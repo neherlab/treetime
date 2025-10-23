@@ -1,3 +1,4 @@
 *
-!/rust-toolchain.toml
 !/dev/docker/files/
+!/requirements.txt
+!/rust-toolchain.toml
