@@ -2,14 +2,13 @@ use crate::commands::clock::clock_model::ClockModel;
 use crate::commands::clock::clock_regression::{ClockOptions, estimate_clock_model_with_reroot};
 use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
 use crate::commands::optimize::optimize_unified::OptimizationContribution;
+use crate::commands::timetree::inference::backward_pass::propagate_distributions_backward;
 use crate::commands::timetree::inference::branch_length_likelihood::compute_branch_length_distribution;
+use crate::commands::timetree::inference::forward_pass::propagate_distributions_forward;
 use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
 use crate::distribution::distribution::Distribution;
-use crate::distribution::distribution_convolution::distribution_convolution;
-use crate::graph::breadth_first::GraphTraversalContinuation;
 use crate::graph::edge::GraphEdgeKey;
-use crate::graph::graph::GraphNodeForward;
-use crate::representation::graph_ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
+use crate::representation::graph_ancestral::GraphAncestral;
 use eyre::Report;
 use parking_lot::RwLock;
 use std::sync::Arc;
@@ -119,83 +118,4 @@ fn create_branch_distributions_from_input_lengths(
   }
 
   Ok(())
-}
-
-fn propagate_distributions_backward(graph: &GraphAncestral) -> Result<(), Report> {
-  graph.par_iter_breadth_first_backward(|mut node| {
-    if !node.is_leaf {
-      let mut result: Option<Distribution> = None;
-
-      for (child, edge) in &node.children {
-        let child = child.read_arc();
-        let edge = edge.read_arc();
-
-        if let (Some(branch_dist), Some(child_time_dist)) = (&edge.branch_length_distribution, &child.time_distribution)
-        {
-          let convolved = convolve_safe(branch_dist, child_time_dist);
-          result = Some(multiply_distributions(result, convolved));
-        }
-      }
-
-      if let Some(dist) = result {
-        node.payload.time_distribution = Some(Arc::new(dist));
-      }
-    }
-    GraphTraversalContinuation::Continue
-  });
-  Ok(())
-}
-
-fn convolve_safe(a: &Distribution, b: &Distribution) -> Distribution {
-  distribution_convolution(a, b).unwrap_or_else(|_| Distribution::empty())
-}
-
-fn multiply_distributions(existing: Option<Distribution>, new: Distribution) -> Distribution {
-  if let Some(existing) = existing {
-    convolve_safe(&existing, &new)
-  } else {
-    new
-  }
-}
-
-fn propagate_distributions_forward(graph: &GraphAncestral) -> Result<(), Report> {
-  graph.par_iter_breadth_first_forward(|mut node| {
-    set_likely_time(&mut node);
-    refine_distribution_from_parent(&mut node);
-    GraphTraversalContinuation::Continue
-  });
-  Ok(())
-}
-
-fn set_likely_time(node: &mut GraphNodeForward<NodeAncestral, EdgeAncestral, ()>) {
-  let time = node
-    .payload
-    .time_distribution
-    .as_ref()
-    .and_then(|time_dist| time_dist.likely_time());
-
-  node.payload.time = time;
-}
-
-fn refine_distribution_from_parent(node: &mut GraphNodeForward<NodeAncestral, EdgeAncestral, ()>) {
-  if node.is_root {
-    return;
-  }
-
-  if let Ok((parent, edge)) = node.get_exactly_one_parent() {
-    let parent = parent.read_arc();
-    let edge = edge.read_arc();
-
-    if let (Some(parent_time_dist), Some(branch_dist)) = (&parent.time_distribution, &edge.branch_length_distribution) {
-      let dist_from_parent = convolve_safe(parent_time_dist, branch_dist);
-
-      let combined = if let Some(subtree_dist) = &node.payload.time_distribution {
-        convolve_safe(&dist_from_parent, subtree_dist)
-      } else {
-        dist_from_parent
-      };
-
-      node.payload.time_distribution = Some(Arc::new(combined));
-    }
-  }
 }
