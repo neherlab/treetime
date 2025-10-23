@@ -1,0 +1,19 @@
+{
+  "pythonVersion": "3.7",
+  "typeCheckingMode": "basic",
+  "reportMissingImports": true,
+  "reportMissingTypeStubs": false,
+  "reportUnknownMemberType": false,
+  "useLibraryCodeForTypes": true,
+  "exclude": [
+    "**/__pycache__",
+    "**/node_modules",
+    ".git",
+    ".idea",
+    ".input",
+    ".output",
+    ".temp",
+    ".venv",
+    ".vscode"
+  ]
+}
