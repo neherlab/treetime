@@ -3,9 +3,17 @@
 Stub function and module used as a setuptools entry point.
 Based on augur's __main__.py and setup.py
 """
-
 import sys
 from treetime import make_parser
+import random
+import numpy as np
+
+np.set_printoptions(precision=60, threshold=20, edgeitems=8, suppress=True, linewidth=999, sign=' ',
+                    floatmode='maxprec_equal')
+
+SEED=1010336213
+random.seed(SEED)
+np.random.seed(SEED)
 
 
 # Entry point for setuptools-installed script and bin/augur dev wrapper.
