@@ -1,4 +1,5 @@
 use crate::distribution::distribution_convolution::distribution_convolution;
+use crate::distribution::distribution_division::distribution_division;
 use crate::graph::breadth_first::GraphTraversalContinuation;
 use crate::graph::graph::GraphNodeForward;
 use crate::representation::graph_ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
@@ -42,14 +43,22 @@ fn refine_distribution_from_parent(
     let parent = parent.read_arc();
     let edge = edge.read_arc();
 
-    if let (Some(parent_time_dist), Some(branch_dist)) = (&parent.time_distribution, &edge.branch_length_distribution) {
-      let dist_from_parent = distribution_convolution(parent_time_dist, branch_dist)?;
-      let combined = if let Some(subtree_dist) = &node.payload.time_distribution {
-        distribution_convolution(&dist_from_parent, subtree_dist)?
+    if let (Some(parent_time_dist), Some(branch_dist), Some(subtree_dist)) =
+      (&parent.time_distribution, &edge.branch_length_distribution, &node.payload.time_distribution)
+    {
+      let parent_except_subtree = if let Some(msg_to_parent) = &edge.msg_to_parent {
+        distribution_division(parent_time_dist, msg_to_parent)?
       } else {
-        dist_from_parent
+        parent_time_dist.as_ref().clone()
       };
+
+      let dist_from_parent = distribution_convolution(&parent_except_subtree, branch_dist)?;
+      let combined = distribution_convolution(&dist_from_parent, subtree_dist)?;
       node.payload.time_distribution = Some(Arc::new(combined));
+    } else if let (Some(parent_time_dist), Some(branch_dist)) = (&parent.time_distribution, &edge.branch_length_distribution)
+    {
+      let dist_from_parent = distribution_convolution(parent_time_dist, branch_dist)?;
+      node.payload.time_distribution = Some(Arc::new(dist_from_parent));
     }
   }
 

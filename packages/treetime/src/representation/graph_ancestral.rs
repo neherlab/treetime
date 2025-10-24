@@ -188,6 +188,7 @@ pub struct EdgeAncestral {
   pub sparse_partitions: Vec<SparseSeqEdge>,
   pub branch_length: Option<f64>,
   pub branch_length_distribution: Option<Arc<crate::distribution::distribution::Distribution>>,
+  pub msg_to_parent: Option<Arc<crate::distribution::distribution::Distribution>>,
   #[serde(skip)]
   pub clock_to_parent: ClockSet,
   #[serde(skip)]

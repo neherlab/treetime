@@ -28,14 +28,16 @@ fn propagate_distributions_backward_single_node(
   let mut result: Option<Distribution> = None;
   for (child, edge) in &node.children {
     let child = child.read_arc();
-    let edge = edge.read_arc();
+    let mut edge = edge.write_arc();
 
     if let (Some(branch_dist), Some(child_time_dist)) = (&edge.branch_length_distribution, &child.time_distribution) {
       let new = compute_parent_message(child_time_dist.as_ref(), branch_dist.as_ref())?;
+      let new_arc = Arc::new(new);
+      edge.msg_to_parent = Some(new_arc.clone());
       result = Some(if let Some(current) = &result {
-        multiply_parent_distributions(current, &new)?
+        multiply_parent_distributions(current, &new_arc)?
       } else {
-        new
+        (*new_arc).clone()
       });
     }
   }

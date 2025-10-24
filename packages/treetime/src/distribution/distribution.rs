@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 
 #[allow(variant_size_differences)]
-#[derive(Debug, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub enum Distribution {
   #[default]
   Empty,

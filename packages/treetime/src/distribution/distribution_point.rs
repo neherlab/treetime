@@ -3,7 +3,7 @@ use std::fmt::Debug;
 
 /// Represents a single-point spike or delta-function
 /// https://en.wikipedia.org/wiki/Dirac_delta_function
-#[derive(Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct DistributionPoint<T: Clone + Copy + Debug> {
   t: T,
   ampl: T,
