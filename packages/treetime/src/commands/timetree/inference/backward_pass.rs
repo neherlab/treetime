@@ -10,6 +10,7 @@ const PARENT_GRID_SIZE: usize = 200;
 const RANGE_SAMPLE_POINTS: usize = 64;
 const EPS: f64 = 1e-9;
 
+/// Propagates time distributions backward from leaves to root.
 pub fn propagate_distributions_backward(graph: &GraphAncestral) -> Result<(), Report> {
   graph.par_iter_breadth_first_backward(|mut node| {
     propagate_distributions_backward_single_node(&mut node).unwrap();
@@ -18,6 +19,7 @@ pub fn propagate_distributions_backward(graph: &GraphAncestral) -> Result<(), Re
   Ok(())
 }
 
+/// Computes time distribution for a single internal node from its children.
 fn propagate_distributions_backward_single_node(
   node: &mut GraphNodeBackward<NodeAncestral, EdgeAncestral, ()>,
 ) -> Result<(), Report> {
@@ -31,9 +33,14 @@ fn propagate_distributions_backward_single_node(
     let mut edge = edge.write_arc();
 
     if let (Some(branch_dist), Some(child_time_dist)) = (&edge.branch_length_distribution, &child.time_distribution) {
+      // Compute parent time distribution from child time and branch length
       let new = compute_parent_message(child_time_dist.as_ref(), branch_dist.as_ref())?;
       let new_arc = Arc::new(new);
-      edge.msg_to_parent = Some(new_arc.clone());
+
+      // Store message on edge
+      edge.msg_to_parent = Some(Arc::clone(&new_arc));
+
+      // Multiply messages from all children to find intersection of constraints
       result = Some(if let Some(current) = &result {
         multiply_parent_distributions(current, &new_arc)?
       } else {
@@ -42,6 +49,7 @@ fn propagate_distributions_backward_single_node(
     }
   }
 
+  // Store final distribution on node
   if let Some(dist) = result {
     node.payload.time_distribution = Some(Arc::new(dist));
   }
@@ -49,31 +57,38 @@ fn propagate_distributions_backward_single_node(
   Ok(())
 }
 
+/// Computes parent time distribution given child time and branch length: t_parent = t_child - d.
 fn compute_parent_message(child: &Distribution, branch: &Distribution) -> Result<Distribution, Report> {
   if matches!(child, Distribution::Empty) || matches!(branch, Distribution::Empty) {
     return Ok(Distribution::empty());
   }
 
+  // Special case: child is point mass, directly shift branch distribution
   if let Distribution::Point(point) = child {
     return shift_branch_distribution(point.t(), point.amplitude(), branch);
   }
 
+  // Get support bounds for child distribution
   let (child_min, child_max) = match distribution_support_bounds(child) {
     (Some(min), Some(max)) => (min, max),
     _ => return Ok(Distribution::empty()),
   };
 
+  // Sample branch distribution into discrete points
   let branch_points = sample_distribution_points(branch, RANGE_SAMPLE_POINTS);
   if branch_points.is_empty() {
     return Ok(Distribution::empty());
   }
 
+  // Find branch duration range
   let branch_min = branch_points.iter().map(|(d, _)| *d).fold(f64::INFINITY, f64::min);
   let branch_max = branch_points.iter().map(|(d, _)| *d).fold(f64::NEG_INFINITY, f64::max);
 
+  // Compute parent time range: t_parent = t_child - duration
   let parent_min = child_min - branch_max;
   let parent_max = child_max - branch_min;
 
+  // Special case: parent range collapses to point
   if (parent_max - parent_min).abs() <= EPS {
     let amplitude = branch_points
       .iter()
@@ -83,22 +98,29 @@ fn compute_parent_message(child: &Distribution, branch: &Distribution) -> Result
     return Ok(Distribution::point(parent_min, amplitude));
   }
 
+  // Create uniform grid over parent time range
   let step = (parent_max - parent_min) / (PARENT_GRID_SIZE - 1) as f64;
   let parent_times: Vec<f64> = (0..PARENT_GRID_SIZE).map(|i| parent_min + step * i as f64).collect();
 
+  // Accumulate probabilities in log-space for numerical stability
   let mut parent_log = vec![f64::NEG_INFINITY; parent_times.len()];
 
+  // Marginalize over branch durations: P(t_parent) = sum_d P(d) * P(t_child = t_parent + d)
   for (duration, weight) in branch_points.iter() {
     if *weight <= 0.0 {
       continue;
     }
     let log_w = weight.ln();
+
     for (i, &t_parent) in parent_times.iter().enumerate() {
+      // Compute implied child time
       let child_time = t_parent + *duration;
       let value = distribution_value(child, child_time);
       if value <= 0.0 {
         continue;
       }
+
+      // Accumulate in log-space
       let total_log = log_w + value.ln();
       parent_log[i] = log_add(parent_log[i], total_log);
     }
@@ -108,6 +130,7 @@ fn compute_parent_message(child: &Distribution, branch: &Distribution) -> Result
     return Ok(Distribution::empty());
   }
 
+  // Normalize and convert back to linear space
   let max_log = parent_log
     .iter()
     .copied()
@@ -128,6 +151,7 @@ fn compute_parent_message(child: &Distribution, branch: &Distribution) -> Result
   Distribution::function(Array1::from_vec(parent_times), Array1::from_vec(values))
 }
 
+/// Shifts branch distribution backward when child is point mass: t_parent = t_child - d.
 fn shift_branch_distribution(
   child_time: f64,
   child_weight: f64,
@@ -138,10 +162,13 @@ fn shift_branch_distribution(
     return Ok(Distribution::empty());
   }
 
+  // Transform each (duration, probability) to (parent_time, probability)
   let mut transformed: Vec<(f64, f64)> = points
     .into_iter()
     .map(|(d, w)| (child_time - d, w * child_weight))
     .collect();
+
+  // Sort by time to create valid distribution
   transformed.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
 
   let times: Vec<f64> = transformed.iter().map(|(t, _)| *t).collect();
@@ -149,11 +176,13 @@ fn shift_branch_distribution(
   Distribution::function(Array1::from_vec(times), Array1::from_vec(values))
 }
 
+/// Multiplies two distributions to find intersection of time constraints.
 fn multiply_parent_distributions(a: &Distribution, b: &Distribution) -> Result<Distribution, Report> {
   if matches!(a, Distribution::Empty) || matches!(b, Distribution::Empty) {
     return Ok(Distribution::empty());
   }
 
+  // Find support bounds for both distributions
   let (min_a, max_a) = distribution_support_bounds(a);
   let (min_b, max_b) = distribution_support_bounds(b);
   let (Some(min_a), Some(max_a)) = (min_a, max_a) else {
@@ -163,12 +192,14 @@ fn multiply_parent_distributions(a: &Distribution, b: &Distribution) -> Result<D
     return Ok(Distribution::empty());
   };
 
+  // Compute overlapping region
   let overlap_min = min_a.max(min_b);
   let overlap_max = max_a.min(max_b);
   if overlap_min >= overlap_max {
     return Ok(Distribution::empty());
   }
 
+  // Special case: overlap is single point
   if (overlap_max - overlap_min).abs() <= EPS {
     let value = distribution_value(a, overlap_min) * distribution_value(b, overlap_min);
     if value <= 0.0 {
@@ -177,10 +208,12 @@ fn multiply_parent_distributions(a: &Distribution, b: &Distribution) -> Result<D
     return Ok(Distribution::point(overlap_min, value));
   }
 
+  // Create grid over overlap region
   let step = (overlap_max - overlap_min) / (PARENT_GRID_SIZE - 1) as f64;
   let times: Vec<f64> = (0..PARENT_GRID_SIZE).map(|i| overlap_min + step * i as f64).collect();
   let mut log_values = Vec::with_capacity(times.len());
 
+  // Multiply distributions pointwise in log-space
   for &t in &times {
     let va = distribution_value(a, t);
     let vb = distribution_value(b, t);
@@ -195,6 +228,7 @@ fn multiply_parent_distributions(a: &Distribution, b: &Distribution) -> Result<D
     return Ok(Distribution::empty());
   }
 
+  // Normalize and convert to linear space
   let max_log = log_values
     .iter()
     .copied()
@@ -215,6 +249,7 @@ fn multiply_parent_distributions(a: &Distribution, b: &Distribution) -> Result<D
   Distribution::function(Array1::from_vec(times), Array1::from_vec(values))
 }
 
+/// Samples distribution into discrete (time, probability) points.
 fn sample_distribution_points(dist: &Distribution, samples: usize) -> Vec<(f64, f64)> {
   match dist {
     Distribution::Empty => vec![],
@@ -241,6 +276,7 @@ fn sample_distribution_points(dist: &Distribution, samples: usize) -> Vec<(f64, 
   }
 }
 
+/// Evaluates distribution probability at given time.
 fn distribution_value(dist: &Distribution, time: f64) -> f64 {
   match dist {
     Distribution::Empty => 0.0,
@@ -262,6 +298,7 @@ fn distribution_value(dist: &Distribution, time: f64) -> f64 {
   }
 }
 
+/// Returns (min, max) time bounds where distribution has support.
 fn distribution_support_bounds(dist: &Distribution) -> (Option<f64>, Option<f64>) {
   match dist {
     Distribution::Empty => (None, None),
@@ -281,6 +318,7 @@ fn distribution_support_bounds(dist: &Distribution) -> (Option<f64>, Option<f64>
   }
 }
 
+/// Computes log(exp(a) + exp(b)) numerically stable (log-sum-exp trick).
 fn log_add(a: f64, b: f64) -> f64 {
   if !a.is_finite() {
     return b;
@@ -292,6 +330,7 @@ fn log_add(a: f64, b: f64) -> f64 {
   max + ((a - max).exp() + (b - max).exp()).ln()
 }
 
+/// Estimates average spacing between consecutive time points.
 fn estimate_step(points: &[(f64, f64)]) -> Option<f64> {
   if points.len() < 2 {
     return None;
