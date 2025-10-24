@@ -39,12 +39,12 @@ impl<T: InterpElem> DistributionFunction<T> {
     self.grid_fn.interp_many(xs)
   }
 
-  /// Find the most likely time point (x-value corresponding to minimum y-value)
-  /// Returns the x-coordinate where the function reaches its minimum y-value
+  /// Find the most likely time point (x-value corresponding to maximum y-value)
+  /// Returns the x-coordinate where the function reaches its maximum y-value
   pub fn likely_time(&self) -> Option<T> {
     let y_values = self.y();
-    if let Ok(min_idx) = y_values.argmin() {
-      Some(self.t()[min_idx])
+    if let Ok(max_idx) = y_values.argmax() {
+      Some(self.t()[max_idx])
     } else {
       None
     }
