@@ -129,6 +129,7 @@ mod tests {
   use crate::io::dates_csv::{DateOrRange, DatesMap};
   use crate::io::nwk::nwk_read_str;
   use crate::o;
+  use itertools::Itertools;
   use maplit::btreemap;
   use ndarray::Array1;
   use ordered_float::OrderedFloat;
@@ -255,10 +256,7 @@ mod tests {
     let actual = round_times(actual);
     let expected = round_times(expected);
 
-    assert_eq!(
-      json_write_str(&expected, JsonPretty(true))?,
-      json_write_str(&actual, JsonPretty(true))?,
-    );
+    assert_eq!(&expected.into_iter().collect_vec(), &actual.into_iter().collect_vec());
 
     Ok(())
   }
