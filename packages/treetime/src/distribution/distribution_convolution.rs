@@ -89,8 +89,18 @@ fn convolution_range_function(r: &DistributionRange<f64>, f: &DistributionFuncti
 }
 
 fn convolution_function_function(a: &DistributionFunction<f64>, b: &DistributionFunction<f64>) -> Distribution {
-  let c = convolve(a.t(), a.y(), b.y(), a.t()).unwrap();
-  Distribution::function(a.t().clone(), c).unwrap()
+  let a_min = a.t().first().copied().unwrap_or(0.0);
+  let a_max = a.t().last().copied().unwrap_or(0.0);
+  let b_min = b.t().first().copied().unwrap_or(0.0);
+  let b_max = b.t().last().copied().unwrap_or(0.0);
+
+  let out_min = a_min + b_min;
+  let out_max = a_max + b_max;
+  let n_points = a.t().len().max(b.t().len());
+  let output_grid = Array1::linspace(out_min, out_max, n_points);
+
+  let c = convolve(a.t(), a.y(), b.y(), &output_grid).unwrap();
+  Distribution::function(output_grid, c).unwrap()
 }
 
 #[cfg(test)]
