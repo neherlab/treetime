@@ -57,6 +57,36 @@ class SequenceData(object):
         length of state (typically 1 A,C,G,T, but could be 3 for codons)
     """
 
+    @staticmethod
+    def _format_length_mismatch_error(seq_lengths):
+        """Format error message for sequences with inconsistent lengths
+
+        Parameters
+        ----------
+        seq_lengths : dict
+            Dictionary mapping sequence names to their lengths
+
+        Returns
+        -------
+        str
+            Formatted error message
+        """
+        from collections import Counter
+        length_counts = Counter(seq_lengths.values())
+        most_common_length = length_counts.most_common(1)[0][0]
+        mismatched = [(name, length) for name, length in seq_lengths.items() if length != most_common_length]
+        error_msg = (
+            f'SequenceData: loading alignment failed.\n'
+            f'Sequences have inconsistent lengths:\n'
+            f'  - Expected: {most_common_length} positions ({length_counts[most_common_length]} sequences)\n'
+        )
+        for name, length in sorted(mismatched, key=lambda x: x[1], reverse=True)[:10]:
+            error_msg += f'  - {name}: {length} positions\n'
+        if len(mismatched) > 10:
+            error_msg += f'  ... and {len(mismatched) - 10} more sequences with mismatched lengths\n'
+        error_msg += 'All sequences in an alignment must have the same length.'
+        return error_msg
+
     def __init__(
         self,
         aln,
@@ -180,23 +210,10 @@ class SequenceData(object):
                         error_str = str(e)
                         if "same length" in error_str.lower():
                             # Try to get more details by reading with SeqIO
-                            from collections import Counter
                             try:
                                 seqs = list(SeqIO.parse(in_aln, fmt))
                                 seq_lengths = {s.id: len(s.seq) for s in seqs}
-                                length_counts = Counter(seq_lengths.values())
-                                most_common_length = length_counts.most_common(1)[0][0]
-                                mismatched = [(name, length) for name, length in seq_lengths.items() if length != most_common_length]
-                                error_msg = (
-                                    f'SequenceData: loading alignment failed.\n'
-                                    f'Sequences have inconsistent lengths:\n'
-                                    f'  - Expected: {most_common_length} positions ({length_counts[most_common_length]} sequences)\n'
-                                )
-                                for name, length in sorted(mismatched, key=lambda x: x[1], reverse=True)[:10]:
-                                    error_msg += f'  - {name}: {length} positions\n'
-                                if len(mismatched) > 10:
-                                    error_msg += f'  ... and {len(mismatched) - 10} more sequences with mismatched lengths\n'
-                                error_msg += 'All sequences in an alignment must have the same length.'
+                                error_msg = self._format_length_mismatch_error(seq_lengths)
                                 raise MissingDataError(error_msg)
                             except MissingDataError:
                                 raise
@@ -254,20 +271,7 @@ class SequenceData(object):
             # Check for inconsistent sequence lengths
             unique_lengths = set(seq_lengths.values())
             if len(unique_lengths) > 1:
-                from collections import Counter
-                length_counts = Counter(seq_lengths.values())
-                most_common_length = length_counts.most_common(1)[0][0]
-                mismatched = [(name, length) for name, length in seq_lengths.items() if length != most_common_length]
-                error_msg = (
-                    f'SequenceData: loading alignment failed.\n'
-                    f'Sequences have inconsistent lengths:\n'
-                    f'  - Expected: {most_common_length} positions ({length_counts[most_common_length]} sequences)\n'
-                )
-                for name, length in sorted(mismatched, key=lambda x: x[1], reverse=True)[:10]:  # Show max 10 examples
-                    error_msg += f'  - {name}: {length} positions\n'
-                if len(mismatched) > 10:
-                    error_msg += f'  ... and {len(mismatched) - 10} more sequences with mismatched lengths\n'
-                error_msg += 'All sequences in an alignment must have the same length.'
+                error_msg = self._format_length_mismatch_error(seq_lengths)
                 raise MissingDataError(error_msg)
 
             self.check_alphabet(list(self._aln.values()))
