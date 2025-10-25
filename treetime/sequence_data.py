@@ -169,15 +169,49 @@ class SequenceData(object):
                 compress_seq = read_vcf(in_aln)
                 in_aln = compress_seq['sequences']
             else:
+                # Try to load with BioPython, but catch specific errors for better messages
+                load_errors = {}
                 for fmt in ['fasta', 'phylip-relaxed', 'nexus']:
                     try:
                         in_aln = AlignIO.read(in_aln, fmt)
-                    except:
+                        break
+                    except ValueError as e:
+                        # Catch BioPython's length validation error
+                        error_str = str(e)
+                        if "same length" in error_str.lower():
+                            # Try to get more details by reading with SeqIO
+                            from collections import Counter
+                            try:
+                                seqs = list(SeqIO.parse(in_aln, fmt))
+                                seq_lengths = {s.id: len(s.seq) for s in seqs}
+                                length_counts = Counter(seq_lengths.values())
+                                most_common_length = length_counts.most_common(1)[0][0]
+                                mismatched = [(name, length) for name, length in seq_lengths.items() if length != most_common_length]
+                                error_msg = (
+                                    f'SequenceData: loading alignment failed.\n'
+                                    f'Sequences have inconsistent lengths:\n'
+                                    f'  - Expected: {most_common_length} positions ({length_counts[most_common_length]} sequences)\n'
+                                )
+                                for name, length in sorted(mismatched, key=lambda x: x[1], reverse=True)[:10]:
+                                    error_msg += f'  - {name}: {length} positions\n'
+                                if len(mismatched) > 10:
+                                    error_msg += f'  ... and {len(mismatched) - 10} more sequences with mismatched lengths\n'
+                                error_msg += 'All sequences in an alignment must have the same length.'
+                                raise MissingDataError(error_msg)
+                            except MissingDataError:
+                                raise
+                            except:
+                                # If we can't get details, just report the original error with context
+                                raise MissingDataError(f'SequenceData: loading alignment failed.\n{error_str}')
+                        load_errors[fmt] = error_str
+                    except Exception as e:
+                        load_errors[fmt] = str(e)
                         continue
 
         if isinstance(in_aln, MultipleSeqAlignment):
             # check whether the alignment is consistent with a nucleotide alignment.
             self._aln = {}
+            seq_lengths = {}
             for s in in_aln:
                 if s.id == s.name:
                     tmp_name = s.id
@@ -190,9 +224,51 @@ class SequenceData(object):
                 else:
                     tmp_name = s.name  # otherwise use s.name (previous behavior)
 
-                self._aln[tmp_name] = seq2array(
+                seq_array = seq2array(
                     s, convert_upper=self.convert_upper, fill_overhangs=self.fill_overhangs, ambiguous=self.ambiguous
                 )
+                self._aln[tmp_name] = seq_array
+                seq_lengths[tmp_name] = len(seq_array)
+
+            # Check for duplicate sequence IDs
+            if len(self._aln) < len(in_aln):
+                from collections import Counter
+                all_names = []
+                for s in in_aln:
+                    if s.id == s.name:
+                        all_names.append(s.id)
+                    elif '<unknown' in s.id:
+                        all_names.append(s.name)
+                    elif '<unknown' in s.name:
+                        all_names.append(s.id)
+                    else:
+                        all_names.append(s.name)
+                name_counts = Counter(all_names)
+                duplicates = [name for name, count in name_counts.items() if count > 1]
+                raise MissingDataError(
+                    f'SequenceData: loading alignment failed.\n'
+                    f'Duplicate sequence IDs found: {", ".join(duplicates)}\n'
+                    f'Each sequence ID must be unique in the alignment.'
+                )
+
+            # Check for inconsistent sequence lengths
+            unique_lengths = set(seq_lengths.values())
+            if len(unique_lengths) > 1:
+                from collections import Counter
+                length_counts = Counter(seq_lengths.values())
+                most_common_length = length_counts.most_common(1)[0][0]
+                mismatched = [(name, length) for name, length in seq_lengths.items() if length != most_common_length]
+                error_msg = (
+                    f'SequenceData: loading alignment failed.\n'
+                    f'Sequences have inconsistent lengths:\n'
+                    f'  - Expected: {most_common_length} positions ({length_counts[most_common_length]} sequences)\n'
+                )
+                for name, length in sorted(mismatched, key=lambda x: x[1], reverse=True)[:10]:  # Show max 10 examples
+                    error_msg += f'  - {name}: {length} positions\n'
+                if len(mismatched) > 10:
+                    error_msg += f'  ... and {len(mismatched) - 10} more sequences with mismatched lengths\n'
+                error_msg += 'All sequences in an alignment must have the same length.'
+                raise MissingDataError(error_msg)
 
             self.check_alphabet(list(self._aln.values()))
             self.is_sparse = False
