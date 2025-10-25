@@ -228,7 +228,6 @@ class SequenceData(object):
         if isinstance(in_aln, MultipleSeqAlignment):
             # check whether the alignment is consistent with a nucleotide alignment.
             self._aln = {}
-            seq_lengths = {}
             for s in in_aln:
                 if s.id == s.name:
                     tmp_name = s.id
@@ -241,13 +240,12 @@ class SequenceData(object):
                 else:
                     tmp_name = s.name  # otherwise use s.name (previous behavior)
 
-                seq_array = seq2array(
+                self._aln[tmp_name] = seq2array(
                     s, convert_upper=self.convert_upper, fill_overhangs=self.fill_overhangs, ambiguous=self.ambiguous
                 )
-                self._aln[tmp_name] = seq_array
-                seq_lengths[tmp_name] = len(seq_array)
 
             # Check for duplicate sequence IDs
+            # BioPython's AlignIO.read() already validates sequence lengths, so we only need to check for duplicates here
             if len(self._aln) < len(in_aln):
                 from collections import Counter
                 all_names = []
@@ -267,12 +265,6 @@ class SequenceData(object):
                     f'Duplicate sequence IDs found: {", ".join(duplicates)}\n'
                     f'Each sequence ID must be unique in the alignment.'
                 )
-
-            # Check for inconsistent sequence lengths
-            unique_lengths = set(seq_lengths.values())
-            if len(unique_lengths) > 1:
-                error_msg = self._format_length_mismatch_error(seq_lengths)
-                raise MissingDataError(error_msg)
 
             self.check_alphabet(list(self._aln.values()))
             self.is_sparse = False
