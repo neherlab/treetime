@@ -71,6 +71,65 @@ GCTAGCTA
         os.unlink(temp_file)
 
 
+def test_phylip_inconsistent_lengths():
+    """Test that phylip files with mismatched lengths produce helpful error"""
+
+    # Create a phylip file with mismatched lengths
+    phylip_content = """3 8
+seq1      ATGCATGC
+seq2      ATGCATGCATGC
+seq3      ATGCATGC
+"""
+
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.phy', delete=False) as f:
+        f.write(phylip_content)
+        temp_file = f.name
+
+    try:
+        with pytest.raises(MissingDataError) as excinfo:
+            sd = SequenceData(aln=temp_file)
+
+        error_msg = str(excinfo.value)
+        # Should either get our detailed message or the original BioPython error
+        assert "length" in error_msg.lower()
+
+    finally:
+        os.unlink(temp_file)
+
+
+def test_nexus_inconsistent_lengths():
+    """Test that nexus files with mismatched lengths produce helpful error"""
+
+    # Create a nexus file with mismatched lengths
+    nexus_content = """#NEXUS
+begin data;
+dimensions ntax=3 nchar=8;
+format datatype=dna;
+matrix
+seq1 ATGCATGC
+seq2 ATGCATGCATGC
+seq3 ATGCATGC
+;
+end;
+"""
+
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.nex', delete=False) as f:
+        f.write(nexus_content)
+        temp_file = f.name
+
+    try:
+        with pytest.raises(MissingDataError) as excinfo:
+            sd = SequenceData(aln=temp_file)
+
+        error_msg = str(excinfo.value)
+        # Should catch the nexus error about data length
+        assert "loading alignment failed" in error_msg.lower()
+        assert ("nchar" in error_msg.lower() or "length" in error_msg.lower())
+
+    finally:
+        os.unlink(temp_file)
+
+
 def test_valid_alignment_loads():
     """Test that a valid alignment loads without errors"""
 
