@@ -205,10 +205,10 @@ class SequenceData(object):
                     try:
                         in_aln = AlignIO.read(in_aln, fmt)
                         break
-                    except ValueError as e:
-                        # Catch BioPython's length validation error
+                    except Exception as e:
                         error_str = str(e)
-                        if "same length" in error_str.lower():
+                        # Check if this looks like a sequence length mismatch error
+                        if any(phrase in error_str.lower() for phrase in ['same length', 'nchar', 'data length']):
                             # Try to get more details by reading with SeqIO
                             try:
                                 seqs = list(SeqIO.parse(in_aln, fmt))
@@ -221,8 +221,6 @@ class SequenceData(object):
                                 # If we can't get details, just report the original error with context
                                 raise MissingDataError(f'SequenceData: loading alignment failed.\n{error_str}')
                         load_errors[fmt] = error_str
-                    except Exception as e:
-                        load_errors[fmt] = str(e)
                         continue
 
         if isinstance(in_aln, MultipleSeqAlignment):
