@@ -18,6 +18,8 @@ def read_alignment(aln_file, formats=['fasta', 'phylip-relaxed', 'nexus']):
     """
     Try to read an alignment file in multiple formats, providing clear error messages.
 
+    This function also validates that sequence IDs are unique, which BioPython does not check.
+
     Parameters
     ----------
     aln_file : str
@@ -33,17 +35,61 @@ def read_alignment(aln_file, formats=['fasta', 'phylip-relaxed', 'nexus']):
     Raises
     ------
     MissingDataError
-        If the alignment cannot be loaded, listing errors from each attempted format
+        If the alignment cannot be loaded, listing errors from each attempted format,
+        or if duplicate sequence IDs are found
     """
+    from collections import Counter
+    import textwrap
+
     errors = {}
     for fmt in formats:
         try:
-            return AlignIO.read(aln_file, fmt)
+            aln = AlignIO.read(aln_file, fmt)
+
+            # Check for duplicate sequence IDs (BioPython doesn't validate this)
+            seq_ids = [s.id for s in aln]
+            if len(seq_ids) != len(set(seq_ids)):
+                id_counts = Counter(seq_ids)
+                duplicates = [seq_id for seq_id, count in id_counts.items() if count > 1]
+                raise MissingDataError(
+                    f"Failed to read alignment from '{aln_file}'.\n"
+                    f"  Duplicate sequence IDs found: {', '.join(duplicates)}\n"
+                    f"  Each sequence ID must be unique in the alignment."
+                )
+
+            return aln
+        except MissingDataError:
+            raise
         except Exception as e:
-            errors[fmt] = str(e)
+            error_str = str(e)
+            errors[fmt] = error_str
+
+            # If this looks like a length mismatch, try to provide helpful details
+            if any(phrase in error_str.lower() for phrase in ['same length', 'nchar', 'data length']):
+                try:
+                    seqs = list(SeqIO.parse(aln_file, fmt))
+                    seq_lengths = {s.id: len(s.seq) for s in seqs}
+                    length_counts = Counter(seq_lengths.values())
+
+                    # Show at most 5 different lengths
+                    details = "\n      Details:\n"
+                    for i, (length, count) in enumerate(length_counts.most_common(5)):
+                        # Show at most 5 example sequence IDs for each length
+                        examples = [name for name, l in seq_lengths.items() if l == length][:5]
+                        examples_str = ", ".join(examples)
+                        if len(examples) < count:
+                            examples_str += f", ... ({count - len(examples)} more)"
+                        details += f"        {count} sequences with length {length}: {examples_str}\n"
+
+                    if len(length_counts) > 5:
+                        details += f"        ... and {len(length_counts) - 5} more lengths\n"
+
+                    errors[fmt] = error_str + details
+                except:
+                    # If we can't parse for details, just keep the original error
+                    pass
 
     # If we get here, all formats failed
-    import textwrap
     details = "Attempted formats:\n"
     for fmt, err in errors.items():
         # Indent the error message for clarity
