@@ -14,6 +14,36 @@ def simple_logger(*args, **kwargs):
     print(args)
 
 
+def validate_alignment(aln, source_description="alignment"):
+    """
+    Validate a MultipleSeqAlignment for common issues.
+
+    Currently checks for duplicate sequence IDs, which BioPython does not validate.
+
+    Parameters
+    ----------
+    aln : Bio.Align.MultipleSeqAlignment
+        The alignment to validate
+    source_description : str
+        Description of the alignment source for error messages
+
+    Raises
+    ------
+    MissingDataError
+        If duplicate sequence IDs are found
+    """
+    from collections import Counter
+
+    seq_ids = [s.id for s in aln]
+    if len(seq_ids) != len(set(seq_ids)):
+        id_counts = Counter(seq_ids)
+        duplicates = [seq_id for seq_id, count in id_counts.items() if count > 1]
+        raise MissingDataError(
+            f"Duplicate sequence IDs found in {source_description}: {', '.join(duplicates)}\n"
+            f"Each sequence ID must be unique in the alignment."
+        )
+
+
 def read_alignment(aln_file, formats=['fasta', 'phylip-relaxed', 'nexus']):
     """
     Try to read an alignment file in multiple formats, providing clear error messages.
@@ -45,18 +75,7 @@ def read_alignment(aln_file, formats=['fasta', 'phylip-relaxed', 'nexus']):
     for fmt in formats:
         try:
             aln = AlignIO.read(aln_file, fmt)
-
-            # Check for duplicate sequence IDs (BioPython doesn't validate this)
-            seq_ids = [s.id for s in aln]
-            if len(seq_ids) != len(set(seq_ids)):
-                id_counts = Counter(seq_ids)
-                duplicates = [seq_id for seq_id, count in id_counts.items() if count > 1]
-                raise MissingDataError(
-                    f"Failed to read alignment from '{aln_file}'.\n"
-                    f"  Duplicate sequence IDs found: {', '.join(duplicates)}\n"
-                    f"  Each sequence ID must be unique in the alignment."
-                )
-
+            validate_alignment(aln, source_description=f"'{aln_file}'")
             return aln
         except MissingDataError:
             raise
@@ -261,6 +280,9 @@ class SequenceData(object):
                 in_aln = read_alignment(in_aln)
 
         if isinstance(in_aln, MultipleSeqAlignment):
+            # Validate the alignment (checks for duplicates, etc.)
+            validate_alignment(in_aln, source_description="provided alignment")
+
             # check whether the alignment is consistent with a nucleotide alignment.
             self._aln = {}
             for s in in_aln:
@@ -277,28 +299,6 @@ class SequenceData(object):
 
                 self._aln[tmp_name] = seq2array(
                     s, convert_upper=self.convert_upper, fill_overhangs=self.fill_overhangs, ambiguous=self.ambiguous
-                )
-
-            # Check for duplicate sequence IDs
-            # BioPython's AlignIO.read() already validates sequence lengths, so we only need to check for duplicates here
-            if len(self._aln) < len(in_aln):
-                from collections import Counter
-                all_names = []
-                for s in in_aln:
-                    if s.id == s.name:
-                        all_names.append(s.id)
-                    elif '<unknown' in s.id:
-                        all_names.append(s.name)
-                    elif '<unknown' in s.name:
-                        all_names.append(s.id)
-                    else:
-                        all_names.append(s.name)
-                name_counts = Counter(all_names)
-                duplicates = [name for name, count in name_counts.items() if count > 1]
-                raise MissingDataError(
-                    f'SequenceData: loading alignment failed.\n'
-                    f'Duplicate sequence IDs found: {", ".join(duplicates)}\n'
-                    f'Each sequence ID must be unique in the alignment.'
                 )
 
             self.check_alphabet(list(self._aln.values()))
