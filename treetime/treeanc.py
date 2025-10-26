@@ -11,6 +11,68 @@ from .gtr_site_specific import GTR_site_specific
 from .sequence_data import SequenceData
 
 
+def read_tree(tree_file, formats=['newick', 'nexus'], min_terminals=3):
+    """
+    Try to read a tree file in multiple formats, providing clear error messages.
+
+    Parameters
+    ----------
+    tree_file : str
+        Path to the tree file
+    formats : list of str
+        List of format names to try (default: ['newick', 'nexus'])
+    min_terminals : int
+        Minimum number of terminals for a deprecation warning (default: 3)
+
+    Returns
+    -------
+    Bio.Phylo.BaseTree.Tree
+        The loaded tree
+
+    Raises
+    ------
+    MissingDataError
+        If the tree cannot be loaded, listing errors from each attempted format
+
+    Warns
+    -----
+    DeprecationWarning
+        If tree has fewer than min_terminals (will become an error in TreeTime 0.12)
+    """
+    import textwrap
+    import warnings
+
+    errors = {}
+    for fmt in formats:
+        try:
+            tree = Phylo.read(tree_file, fmt)
+
+            # Sanity check: warn if the tree has too few terminals
+            if tree.count_terminals() < min_terminals:
+                warnings.warn(
+                    f"Tree in '{tree_file}' only has {tree.count_terminals()} terminals (minimum {min_terminals} recommended).\n"
+                    f"This will become an error in TreeTime 0.12.",
+                    DeprecationWarning,
+                    stacklevel=2
+                )
+
+            return tree
+        except Exception as e:
+            error_str = str(e)
+            errors[fmt] = error_str
+
+    # If we get here, all formats failed
+    details = "Attempted formats:\n"
+    for fmt, err in errors.items():
+        # Indent the error message for clarity
+        indented_err = textwrap.indent(err, '      ')
+        details += f"  - {fmt}:\n{indented_err}\n"
+    # Indent the entire details section
+    indented_details = textwrap.indent(details, '  ')
+    error_msg = f"Failed to read tree from '{tree_file}'.\n{indented_details}"
+    raise MissingDataError(error_msg)
+
+
 def compressed_sequence(node):
     if node.name in node.tt.data.compressed_alignment and (not node.tt.reconstructed_tip_sequences):
         return node.tt.data.compressed_alignment[node.name]
@@ -324,16 +386,7 @@ class TreeAnc(object):
         if isinstance(in_tree, Phylo.BaseTree.Tree):
             self._tree = in_tree
         elif isinstance(in_tree, str) and isfile(in_tree):
-            try:
-                self._tree = Phylo.read(in_tree, 'newick')
-            except:
-                fmt = in_tree.split('.')[-1]
-                if fmt in ['nexus', 'nex']:
-                    self._tree = Phylo.read(in_tree, 'nexus')
-                else:
-                    raise MissingDataError(
-                        'TreeAnc: could not load tree, format needs to be nexus or newick! input was ' + str(in_tree)
-                    )
+            self._tree = read_tree(in_tree)
         else:
             raise MissingDataError('TreeAnc: could not load tree! input was ' + str(in_tree))
 
