@@ -27,28 +27,30 @@ def validate_alignment(aln, source_description="alignment"):
     source_description : str
         Description of the alignment source for error messages
 
-    Raises
-    ------
-    MissingDataError
-        If duplicate sequence IDs are found
+    Warns
+    -----
+    DeprecationWarning
+        If duplicate sequence IDs are found (will become an error in TreeTime 0.12)
     """
+    import warnings
     from collections import Counter
 
     seq_ids = [s.id for s in aln]
     if len(seq_ids) != len(set(seq_ids)):
         id_counts = Counter(seq_ids)
         duplicates = [seq_id for seq_id, count in id_counts.items() if count > 1]
-        raise MissingDataError(
+        warnings.warn(
             f"Duplicate sequence IDs found in {source_description}: {', '.join(duplicates)}\n"
-            f"Each sequence ID must be unique in the alignment."
+            f"Each sequence ID must be unique in the alignment.\n"
+            f"This will become an error in TreeTime 0.12.",
+            DeprecationWarning,
+            stacklevel=3
         )
 
 
 def read_alignment(aln_file, formats=['fasta', 'phylip-relaxed', 'nexus']):
     """
     Try to read an alignment file in multiple formats, providing clear error messages.
-
-    This function also validates that sequence IDs are unique, which BioPython does not check.
 
     Parameters
     ----------
@@ -65,8 +67,7 @@ def read_alignment(aln_file, formats=['fasta', 'phylip-relaxed', 'nexus']):
     Raises
     ------
     MissingDataError
-        If the alignment cannot be loaded, listing errors from each attempted format,
-        or if duplicate sequence IDs are found
+        If the alignment cannot be loaded, listing errors from each attempted format
     """
     from collections import Counter
     import textwrap
@@ -75,10 +76,7 @@ def read_alignment(aln_file, formats=['fasta', 'phylip-relaxed', 'nexus']):
     for fmt in formats:
         try:
             aln = AlignIO.read(aln_file, fmt)
-            validate_alignment(aln, source_description=f"'{aln_file}'")
             return aln
-        except MissingDataError:
-            raise
         except Exception as e:
             error_str = str(e)
             errors[fmt] = error_str
@@ -281,7 +279,7 @@ class SequenceData(object):
 
         if isinstance(in_aln, MultipleSeqAlignment):
             # Validate the alignment (checks for duplicates, etc.)
-            validate_alignment(in_aln, source_description="provided alignment")
+            validate_alignment(in_aln, source_description="alignment")
 
             # check whether the alignment is consistent with a nucleotide alignment.
             self._aln = {}

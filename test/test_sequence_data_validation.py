@@ -43,7 +43,7 @@ ATGCATGC
 
 
 def test_duplicate_sequence_ids():
-    """Test that duplicate sequence IDs produce a helpful error message"""
+    """Test that duplicate sequence IDs produce a deprecation warning"""
 
     # Create a temporary FASTA file with duplicate IDs
     fasta_content = """>seq1
@@ -59,14 +59,21 @@ GCTAGCTA
         temp_file = f.name
 
     try:
-        # This should raise a MissingDataError with a helpful message about duplicates
-        with pytest.raises(MissingDataError) as excinfo:
+        # This should emit a DeprecationWarning about duplicates but load successfully
+        with pytest.warns(DeprecationWarning) as warning_list:
             sd = SequenceData(aln=temp_file)
 
-        error_msg = str(excinfo.value)
-        # Check that the error message mentions duplicates
-        assert "duplicate" in error_msg.lower()
-        assert "seq1" in error_msg  # The duplicated sequence should be named
+        # Check that the warning message mentions duplicates and future error
+        assert len(warning_list) == 1
+        warning_msg = str(warning_list[0].message)
+        assert "duplicate" in warning_msg.lower()
+        assert "seq1" in warning_msg  # The duplicated sequence should be named
+        assert "0.12" in warning_msg  # Should mention the version
+
+        # Check that the alignment loaded successfully
+        assert sd is not None
+        # Note: BioPython will only keep the last occurrence of duplicate IDs
+        assert len(sd.aln) == 2
 
     finally:
         os.unlink(temp_file)
