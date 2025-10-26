@@ -16,10 +16,7 @@ def simple_logger(*args, **kwargs):
 
 def read_alignment(aln_file, formats=['fasta', 'phylip-relaxed', 'nexus']):
     """
-    Try to read an alignment file in multiple formats, providing enhanced error messages.
-
-    This function attempts to load an alignment and supplements BioPython errors with
-    additional details when sequence length mismatches are detected.
+    Try to read an alignment file in multiple formats, providing clear error messages.
 
     Parameters
     ----------
@@ -36,52 +33,26 @@ def read_alignment(aln_file, formats=['fasta', 'phylip-relaxed', 'nexus']):
     Raises
     ------
     MissingDataError
-        If the alignment cannot be loaded, with enhanced error messages for length mismatches
+        If the alignment cannot be loaded, listing errors from each attempted format
     """
-    last_error = None
+    errors = {}
     for fmt in formats:
         try:
             return AlignIO.read(aln_file, fmt)
         except Exception as e:
-            last_error = e
-            error_str = str(e)
-            # Check if this looks like a sequence length mismatch error
-            if any(phrase in error_str.lower() for phrase in ['same length', 'nchar', 'data length']):
-                # Try to supplement the error with details about which sequences are problematic
-                try:
-                    from collections import Counter
-                    seqs = list(SeqIO.parse(aln_file, fmt))
-                    seq_lengths = {s.id: len(s.seq) for s in seqs}
-                    length_counts = Counter(seq_lengths.values())
-                    most_common_length = length_counts.most_common(1)[0][0]
-                    mismatched = [(name, length) for name, length in seq_lengths.items()
-                                  if length != most_common_length]
-
-                    # Supplement the original error with details
-                    details = (
-                        f"\n\nAdditional details:\n"
-                        f"  Expected length: {most_common_length} positions "
-                        f"({length_counts[most_common_length]} sequences)\n"
-                        f"  Sequences with different lengths:\n"
-                    )
-                    for name, length in sorted(mismatched, key=lambda x: x[1], reverse=True)[:10]:
-                        details += f"    - {name}: {length} positions\n"
-                    if len(mismatched) > 10:
-                        details += f"    ... and {len(mismatched) - 10} more\n"
-
-                    raise MissingDataError(f"{error_str}{details}")
-                except MissingDataError:
-                    raise
-                except:
-                    # If we can't get details, just re-raise the original error
-                    pass
-            continue
+            errors[fmt] = str(e)
 
     # If we get here, all formats failed
-    if last_error:
-        raise MissingDataError(f"Failed to read alignment from '{aln_file}': {last_error}")
-    else:
-        raise MissingDataError(f"Failed to read alignment from '{aln_file}'")
+    import textwrap
+    details = "Attempted formats:\n"
+    for fmt, err in errors.items():
+        # Indent the error message for clarity
+        indented_err = textwrap.indent(err, '      ')
+        details += f"  - {fmt}:\n{indented_err}\n"
+    # Indent the entire details section
+    indented_details = textwrap.indent(details, '  ')
+    error_msg = f"Failed to read alignment from '{aln_file}'.\n{indented_details}"
+    raise MissingDataError(error_msg)
 
 
 class SequenceData(object):

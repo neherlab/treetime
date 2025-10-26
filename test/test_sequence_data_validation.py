@@ -32,13 +32,11 @@ ATGCATGC
             sd = SequenceData(aln=temp_file)
 
         error_msg = str(excinfo.value)
-        # Check that the error message contains BioPython's original error
+        # Check that the error message shows what was tried
+        assert "failed to read alignment" in error_msg.lower()
+        assert "attempted formats" in error_msg.lower()
+        # Check that BioPython's original error for fasta is included
         assert "same length" in error_msg.lower()
-        # Check that additional details are provided
-        assert "additional details" in error_msg.lower()
-        assert "expected length" in error_msg.lower()
-        assert "seq2" in error_msg  # The sequence with different length should be named
-        assert "12 positions" in error_msg  # The actual length should be shown
 
     finally:
         os.unlink(temp_file)
