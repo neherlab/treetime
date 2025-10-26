@@ -483,16 +483,8 @@ def build_newick_iqtree(aln_fname, nthreads=2, iqtree_bin='iqtree', iqmodel='HKY
     from Bio import Phylo, AlignIO
 
     print('Building tree with iqtree')
-    aln = None
-    for fmt in ['fasta', 'phylip-relaxed']:
-        try:
-            aln = AlignIO.read(aln_fname, fmt)
-            break
-        except:
-            continue
-
-    if aln is None:
-        raise ValueError('failed to read alignment for tree building')
+    from .sequence_data import read_alignment
+    aln = read_alignment(aln_fname, formats=['fasta', 'phylip-relaxed'])
 
     aln_file = 'temp.fasta'
     seq_names = set()

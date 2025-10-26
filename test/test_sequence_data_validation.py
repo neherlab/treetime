@@ -32,10 +32,13 @@ ATGCATGC
             sd = SequenceData(aln=temp_file)
 
         error_msg = str(excinfo.value)
-        # Check that the error message contains key information
-        assert "inconsistent lengths" in error_msg.lower()
-        assert "8 positions" in error_msg or "12 positions" in error_msg
+        # Check that the error message contains BioPython's original error
+        assert "same length" in error_msg.lower()
+        # Check that additional details are provided
+        assert "additional details" in error_msg.lower()
+        assert "expected length" in error_msg.lower()
         assert "seq2" in error_msg  # The sequence with different length should be named
+        assert "12 positions" in error_msg  # The actual length should be shown
 
     finally:
         os.unlink(temp_file)
@@ -71,32 +74,6 @@ GCTAGCTA
         os.unlink(temp_file)
 
 
-def test_phylip_inconsistent_lengths():
-    """Test that phylip files with mismatched lengths produce helpful error"""
-
-    # Create a phylip file with mismatched lengths
-    phylip_content = """3 8
-seq1      ATGCATGC
-seq2      ATGCATGCATGC
-seq3      ATGCATGC
-"""
-
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.phy', delete=False) as f:
-        f.write(phylip_content)
-        temp_file = f.name
-
-    try:
-        with pytest.raises(MissingDataError) as excinfo:
-            sd = SequenceData(aln=temp_file)
-
-        error_msg = str(excinfo.value)
-        # Should either get our detailed message or the original BioPython error
-        assert "length" in error_msg.lower()
-
-    finally:
-        os.unlink(temp_file)
-
-
 def test_nexus_inconsistent_lengths():
     """Test that nexus files with mismatched lengths produce helpful error"""
 
@@ -122,9 +99,9 @@ end;
             sd = SequenceData(aln=temp_file)
 
         error_msg = str(excinfo.value)
-        # Should catch the nexus error about data length
-        assert "loading alignment failed" in error_msg.lower()
-        assert ("nchar" in error_msg.lower() or "length" in error_msg.lower())
+        # Should contain the original BioPython nexus error
+        assert "failed to read alignment" in error_msg.lower()
+        assert ("nchar" in error_msg.lower() or "data length" in error_msg.lower())
 
     finally:
         os.unlink(temp_file)

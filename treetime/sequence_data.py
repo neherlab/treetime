@@ -1,15 +1,87 @@
 import sys
-from os.path import isfile
 from collections import defaultdict
+from os.path import isfile
+
 import numpy as np
 from Bio import AlignIO, SeqIO
-from . import config as ttconf
+
 from . import MissingDataError
-from .seq_utils import seq2array, guess_alphabet, alphabets
+from . import config as ttconf
+from .seq_utils import alphabets, guess_alphabet, seq2array
 
 
 def simple_logger(*args, **kwargs):
     print(args)
+
+
+def read_alignment(aln_file, formats=['fasta', 'phylip-relaxed', 'nexus']):
+    """
+    Try to read an alignment file in multiple formats, providing enhanced error messages.
+
+    This function attempts to load an alignment and supplements BioPython errors with
+    additional details when sequence length mismatches are detected.
+
+    Parameters
+    ----------
+    aln_file : str
+        Path to the alignment file
+    formats : list of str
+        List of format names to try (default: ['fasta', 'phylip-relaxed', 'nexus'])
+
+    Returns
+    -------
+    Bio.Align.MultipleSeqAlignment
+        The loaded alignment
+
+    Raises
+    ------
+    MissingDataError
+        If the alignment cannot be loaded, with enhanced error messages for length mismatches
+    """
+    last_error = None
+    for fmt in formats:
+        try:
+            return AlignIO.read(aln_file, fmt)
+        except Exception as e:
+            last_error = e
+            error_str = str(e)
+            # Check if this looks like a sequence length mismatch error
+            if any(phrase in error_str.lower() for phrase in ['same length', 'nchar', 'data length']):
+                # Try to supplement the error with details about which sequences are problematic
+                try:
+                    from collections import Counter
+                    seqs = list(SeqIO.parse(aln_file, fmt))
+                    seq_lengths = {s.id: len(s.seq) for s in seqs}
+                    length_counts = Counter(seq_lengths.values())
+                    most_common_length = length_counts.most_common(1)[0][0]
+                    mismatched = [(name, length) for name, length in seq_lengths.items()
+                                  if length != most_common_length]
+
+                    # Supplement the original error with details
+                    details = (
+                        f"\n\nAdditional details:\n"
+                        f"  Expected length: {most_common_length} positions "
+                        f"({length_counts[most_common_length]} sequences)\n"
+                        f"  Sequences with different lengths:\n"
+                    )
+                    for name, length in sorted(mismatched, key=lambda x: x[1], reverse=True)[:10]:
+                        details += f"    - {name}: {length} positions\n"
+                    if len(mismatched) > 10:
+                        details += f"    ... and {len(mismatched) - 10} more\n"
+
+                    raise MissingDataError(f"{error_str}{details}")
+                except MissingDataError:
+                    raise
+                except:
+                    # If we can't get details, just re-raise the original error
+                    pass
+            continue
+
+    # If we get here, all formats failed
+    if last_error:
+        raise MissingDataError(f"Failed to read alignment from '{aln_file}': {last_error}")
+    else:
+        raise MissingDataError(f"Failed to read alignment from '{aln_file}'")
 
 
 class SequenceData(object):
@@ -56,36 +128,6 @@ class SequenceData(object):
     word_length : int
         length of state (typically 1 A,C,G,T, but could be 3 for codons)
     """
-
-    @staticmethod
-    def _format_length_mismatch_error(seq_lengths):
-        """Format error message for sequences with inconsistent lengths
-
-        Parameters
-        ----------
-        seq_lengths : dict
-            Dictionary mapping sequence names to their lengths
-
-        Returns
-        -------
-        str
-            Formatted error message
-        """
-        from collections import Counter
-        length_counts = Counter(seq_lengths.values())
-        most_common_length = length_counts.most_common(1)[0][0]
-        mismatched = [(name, length) for name, length in seq_lengths.items() if length != most_common_length]
-        error_msg = (
-            f'SequenceData: loading alignment failed.\n'
-            f'Sequences have inconsistent lengths:\n'
-            f'  - Expected: {most_common_length} positions ({length_counts[most_common_length]} sequences)\n'
-        )
-        for name, length in sorted(mismatched, key=lambda x: x[1], reverse=True)[:10]:
-            error_msg += f'  - {name}: {length} positions\n'
-        if len(mismatched) > 10:
-            error_msg += f'  ... and {len(mismatched) - 10} more sequences with mismatched lengths\n'
-        error_msg += 'All sequences in an alignment must have the same length.'
-        return error_msg
 
     def __init__(
         self,
@@ -199,29 +241,7 @@ class SequenceData(object):
                 compress_seq = read_vcf(in_aln)
                 in_aln = compress_seq['sequences']
             else:
-                # Try to load with BioPython, but catch specific errors for better messages
-                load_errors = {}
-                for fmt in ['fasta', 'phylip-relaxed', 'nexus']:
-                    try:
-                        in_aln = AlignIO.read(in_aln, fmt)
-                        break
-                    except Exception as e:
-                        error_str = str(e)
-                        # Check if this looks like a sequence length mismatch error
-                        if any(phrase in error_str.lower() for phrase in ['same length', 'nchar', 'data length']):
-                            # Try to get more details by reading with SeqIO
-                            try:
-                                seqs = list(SeqIO.parse(in_aln, fmt))
-                                seq_lengths = {s.id: len(s.seq) for s in seqs}
-                                error_msg = self._format_length_mismatch_error(seq_lengths)
-                                raise MissingDataError(error_msg)
-                            except MissingDataError:
-                                raise
-                            except:
-                                # If we can't get details, just report the original error with context
-                                raise MissingDataError(f'SequenceData: loading alignment failed.\n{error_str}')
-                        load_errors[fmt] = error_str
-                        continue
+                in_aln = read_alignment(in_aln)
 
         if isinstance(in_aln, MultipleSeqAlignment):
             # check whether the alignment is consistent with a nucleotide alignment.
