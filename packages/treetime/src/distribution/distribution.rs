@@ -1,6 +1,7 @@
-use crate::distribution::distribution_function::DistributionFunction;
+use crate::distribution::distribution_negation::distribution_negation_inplace;
 use crate::distribution::distribution_point::DistributionPoint;
 use crate::distribution::distribution_range::DistributionRange;
+use crate::distribution::{distribution_function::DistributionFunction, distribution_negation::distribution_negation};
 use crate::io::dates_csv::DateOrRange;
 use approx::ulps_eq;
 use eyre::Report;
@@ -8,6 +9,7 @@ use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 
+#[must_use]
 #[allow(variant_size_differences)]
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub enum Distribution {
@@ -65,5 +67,13 @@ impl Distribution {
       Self::Function(f) => f.likely_time(),
       Self::Empty => None,
     }
+  }
+
+  pub fn negate(&self) -> Self {
+    distribution_negation(self)
+  }
+
+  pub fn negate_inplace(&mut self) {
+    distribution_negation_inplace(self);
   }
 }
