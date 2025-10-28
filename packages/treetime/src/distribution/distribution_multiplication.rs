@@ -2,7 +2,6 @@ use crate::distribution::distribution::Distribution;
 use crate::distribution::distribution_function::DistributionFunction;
 use crate::distribution::distribution_point::DistributionPoint;
 use eyre::Report;
-use itertools::Itertools;
 use ndarray::Array1;
 
 /// Multiplies two distributions pointwise (intersection of constraints).
@@ -24,10 +23,7 @@ pub fn distribution_multiplication(a: &Distribution, b: &Distribution) -> Result
   }
 }
 
-fn multiply_point_point(
-  a: &DistributionPoint<f64>,
-  b: &DistributionPoint<f64>,
-) -> Result<Distribution, Report> {
+fn multiply_point_point(a: &DistributionPoint<f64>, b: &DistributionPoint<f64>) -> Result<Distribution, Report> {
   const EPS: f64 = 1e-9;
   if (a.t() - b.t()).abs() > EPS {
     return Ok(Distribution::empty());
@@ -107,8 +103,6 @@ fn multiply_function_function(
   a: &DistributionFunction<f64>,
   b: &DistributionFunction<f64>,
 ) -> Result<Distribution, Report> {
-  const EPS: f64 = 1e-9;
-
   // Find overlapping support
   let a_min = a.t().first().copied().unwrap_or(0.0);
   let a_max = a.t().last().copied().unwrap_or(0.0);
@@ -122,23 +116,12 @@ fn multiply_function_function(
     return Ok(Distribution::empty());
   }
 
-  // Union of grid points in overlap region
-  let times: Vec<f64> = a
-    .t()
-    .iter()
-    .chain(b.t().iter())
-    .copied()
-    .filter(|&t| t >= overlap_min - EPS && t <= overlap_max + EPS)
-    .sorted_by(|a, b| a.partial_cmp(b).unwrap())
-    .dedup_by(|a, b| (a - b).abs() < EPS)
-    .collect();
-
-  if times.is_empty() {
-    return Ok(Distribution::empty());
-  }
+  // Create uniform grid in overlap region
+  let n_points = a.t().len().max(b.t().len());
+  let times = Array1::linspace(overlap_min, overlap_max, n_points);
 
   // Evaluate both distributions and multiply
-  let values: Vec<f64> = times
+  let values: Array1<f64> = times
     .iter()
     .map(|&t| {
       let va = a.interp(t).unwrap_or(0.0);
@@ -147,5 +130,5 @@ fn multiply_function_function(
     })
     .collect();
 
-  Distribution::function(Array1::from_vec(times), Array1::from_vec(values))
+  Distribution::function(times, values)
 }
