@@ -1,5 +1,6 @@
 use crate::distribution::distribution_convolution::distribution_convolution;
 use crate::distribution::distribution_division::distribution_division;
+use crate::distribution::distribution_multiplication::distribution_multiplication;
 use crate::graph::breadth_first::GraphTraversalContinuation;
 use crate::graph::graph::GraphNodeForward;
 use crate::representation::graph_ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
@@ -53,7 +54,7 @@ fn refine_distribution_from_parent(
       };
 
       let dist_from_parent = distribution_convolution(&parent_except_subtree, branch_dist)?;
-      let combined = distribution_convolution(&dist_from_parent, subtree_dist)?;
+      let combined = distribution_multiplication(&dist_from_parent, subtree_dist)?;
       node.payload.time_distribution = Some(Arc::new(combined));
     } else if let (Some(parent_time_dist), Some(branch_dist)) = (&parent.time_distribution, &edge.branch_length_distribution)
     {
