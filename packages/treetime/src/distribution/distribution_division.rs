@@ -42,12 +42,8 @@ fn divide_point_by_function(
   divisor: &DistributionFunction<f64>,
 ) -> Result<Distribution, Report> {
   let t = point.t();
-  let dividend_value = point.amplitude();
-  let divisor_value = divisor.interp(t).unwrap_or(0.0);
-
-  if divisor_value <= 0.0 || dividend_value <= 0.0 {
-    return Ok(Distribution::empty());
-  }
+  let dividend_value = point.amplitude().max(TINY_NUMBER);
+  let divisor_value = divisor.interp(t).unwrap_or(TINY_NUMBER).max(TINY_NUMBER);
 
   let dividend_log = -dividend_value.ln();
   let divisor_log = -divisor_value.ln();
@@ -73,15 +69,11 @@ fn divide_range_by_function(
   let mut t_values = Vec::with_capacity(n_samples);
   let mut y_values = Vec::with_capacity(n_samples);
 
-  let dividend_log = -(range.amplitude().ln());
+  let dividend_log = -(range.amplitude().max(TINY_NUMBER).ln());
 
   for i in 0..n_samples {
     let t = start + step * i as f64;
-    let divisor_value = divisor.interp(t).unwrap_or(0.0);
-
-    if divisor_value <= 0.0 {
-      continue;
-    }
+    let divisor_value = divisor.interp(t).unwrap_or(TINY_NUMBER).max(TINY_NUMBER);
 
     let divisor_log = -(divisor_value.ln());
     let result_log = dividend_log - divisor_log;
@@ -118,13 +110,8 @@ fn divide_function_by_function(
 
   for i in 0..n_points {
     let t = dividend_t[i];
-    let dividend_value = dividend_y[i];
-    let divisor_value = divisor.interp(t).unwrap_or(0.0);
-
-    if dividend_value <= 0.0 || divisor_value <= 0.0 {
-      result_y.push(0.0);
-      continue;
-    }
+    let dividend_value = dividend_y[i].max(TINY_NUMBER);
+    let divisor_value = divisor.interp(t).unwrap_or(TINY_NUMBER).max(TINY_NUMBER);
 
     let dividend_log = -dividend_value.ln();
     let divisor_log = -divisor_value.ln();
