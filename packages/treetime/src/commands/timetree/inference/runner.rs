@@ -129,13 +129,13 @@ mod tests {
   use crate::io::dates_csv::{DateOrRange, DatesMap};
   use crate::io::nwk::nwk_read_str;
   use crate::o;
+  use approx::assert_abs_diff_eq;
   use itertools::Itertools;
-  use maplit::btreemap;
+  use maplit::{btreemap, btreeset};
   use ndarray::Array1;
   use ordered_float::OrderedFloat;
   use pretty_assertions::assert_eq;
-  use std::collections::BTreeMap;
-  use treetime_io::json::{JsonPretty, json_write_str};
+  use std::collections::{BTreeMap, BTreeSet};
 
   #[test]
   fn test_timetree_flu_h3n2_poisson() -> Result<(), Report> {
@@ -256,7 +256,31 @@ mod tests {
     let actual = round_times(actual);
     let expected = round_times(expected);
 
-    assert_eq!(&expected.into_iter().collect_vec(), &actual.into_iter().collect_vec());
+    {
+      let max_diff_actual = expected
+        .iter()
+        .filter_map(|(name, &expected_time)| actual.get(name).map(|&actual_time| (expected_time - actual_time).abs()))
+        .max_by_key(|&x| OrderedFloat(x))
+        .unwrap_or(0.0);
+
+      let max_diff_expected = 0.419;
+      assert_abs_diff_eq!(max_diff_actual, max_diff_expected, epsilon = 1e-6);
+    }
+
+    {
+      let expected_keys: BTreeSet<_> = expected.keys().collect();
+      let actual_keys: BTreeSet<_> = actual.keys().collect();
+
+      let missing_nodes: BTreeSet<_> = expected_keys.difference(&actual_keys).collect();
+      let extra_nodes: BTreeSet<_> = actual_keys.difference(&expected_keys).collect();
+
+      assert_eq!(missing_nodes, btreeset! {}, "Some nodes are missing");
+      assert_eq!(extra_nodes, btreeset! {}, "Extra nodes found");
+    }
+
+    {
+      assert_eq!(&expected.into_iter().collect_vec(), &actual.into_iter().collect_vec());
+    }
 
     Ok(())
   }
