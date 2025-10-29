@@ -256,27 +256,27 @@ mod tests {
     let actual = round_times(actual);
     let expected = round_times(expected);
 
-    {
-      let max_diff_actual = expected
-        .iter()
-        .filter_map(|(name, &expected_time)| actual.get(name).map(|&actual_time| (expected_time - actual_time).abs()))
-        .max_by_key(|&x| OrderedFloat(x))
-        .unwrap_or(0.0);
+    // {
+    //   let max_diff_actual = expected
+    //     .iter()
+    //     .filter_map(|(name, &expected_time)| actual.get(name).map(|&actual_time| (expected_time - actual_time).abs()))
+    //     .max_by_key(|&x| OrderedFloat(x))
+    //     .unwrap_or(0.0);
 
-      let max_diff_expected = 0.419;
-      assert_abs_diff_eq!(max_diff_actual, max_diff_expected, epsilon = 1e-6);
-    }
+    //   let max_diff_expected = 0.419;
+    //   assert_abs_diff_eq!(max_diff_actual, max_diff_expected, epsilon = 1e-6);
+    // }
 
-    {
-      let expected_keys: BTreeSet<_> = expected.keys().collect();
-      let actual_keys: BTreeSet<_> = actual.keys().collect();
+    // {
+    //   let expected_keys: BTreeSet<_> = expected.keys().collect();
+    //   let actual_keys: BTreeSet<_> = actual.keys().collect();
 
-      let missing_nodes: BTreeSet<_> = expected_keys.difference(&actual_keys).collect();
-      let extra_nodes: BTreeSet<_> = actual_keys.difference(&expected_keys).collect();
+    //   let missing_nodes: BTreeSet<_> = expected_keys.difference(&actual_keys).collect();
+    //   let extra_nodes: BTreeSet<_> = actual_keys.difference(&expected_keys).collect();
 
-      assert_eq!(missing_nodes, btreeset! {}, "Some nodes are missing");
-      assert_eq!(extra_nodes, btreeset! {}, "Extra nodes found");
-    }
+    //   assert_eq!(missing_nodes, btreeset! {}, "Some nodes are missing");
+    //   assert_eq!(extra_nodes, btreeset! {}, "Extra nodes found");
+    // }
 
     {
       assert_eq!(&expected.into_iter().collect_vec(), &actual.into_iter().collect_vec());
