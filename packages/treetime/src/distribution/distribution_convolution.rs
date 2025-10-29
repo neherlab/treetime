@@ -6,7 +6,7 @@ use crate::make_error;
 use crate::make_report;
 use approx::ulps_eq;
 use eyre::Report;
-use ndarray::{Array1, array};
+use ndarray::{Array1, array, s};
 use treetime_convolution::convolve;
 use treetime_utils::ndarray::is_uniform_grid;
 
@@ -123,8 +123,13 @@ fn convolution_function_function(a: &DistributionFunction<f64>, b: &Distribution
     return Ok(Distribution::point(sum_pos, product_amp));
   }
 
-  // Create uniform grids for convolution
-  // Ensure both input grids are the same - use the longer one
+  // Convolution output length should be len_a + len_b - 1
+  let output_len = len_a + len_b - 1;
+  let output_grid_local = Array1::linspace(0.0, dx * ((output_len - 1) as f64), output_len);
+
+  // For convolution, we need to work with the original lengths, not unified lengths
+  // The convolution library expects the inputs to be on the same grid, so we'll
+  // use the unified grid approach but only take the meaningful portion of the result
   let max_len = len_a.max(len_b);
   let unified_grid = Array1::linspace(0.0, dx * ((max_len - 1) as f64), max_len);
 
@@ -140,12 +145,13 @@ fn convolution_function_function(a: &DistributionFunction<f64>, b: &Distribution
     b_unified[i] = b_values[i];
   }
 
-  // Convolution output length is len_a + len_b - 1
-  let output_len = len_a + len_b - 1;
-  let output_grid_local = Array1::linspace(0.0, dx * ((output_len - 1) as f64), output_len);
+  // Perform convolution with unified grids
+  let unified_output_len = 2 * max_len - 1;
+  let unified_output_grid = Array1::linspace(0.0, dx * ((unified_output_len - 1) as f64), unified_output_len);
+  let unified_conv_result = convolve(&unified_grid, &a_unified, &b_unified, &unified_output_grid)?;
 
-  // Perform convolution using the external library
-  let conv_result = convolve(&unified_grid, &a_unified, &b_unified, &output_grid_local)?;
+  // Extract only the meaningful portion of the result (first output_len elements)
+  let conv_result = unified_conv_result.slice(s![..output_len]).to_owned();
 
   // Shift the output grid to the correct position
   let shift = a_min + b_min;
@@ -320,7 +326,7 @@ mod tests {
     let a = Distribution::function(a_x, a_y).unwrap();
 
     let b_x = array![0.0, 1.0];
-    let b_y = array![1.0, 1.0];
+    let b_y = array![1.0, 2.0]; // Make values non-uniform to force Function type
     let b = Distribution::function(b_x, b_y).unwrap();
 
     let result = distribution_convolution(&a, &b).unwrap();
