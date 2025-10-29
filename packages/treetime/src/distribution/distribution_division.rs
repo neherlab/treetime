@@ -6,7 +6,6 @@ use crate::make_error;
 use eyre::Report;
 use ndarray::Array1;
 
-const BIG_NUMBER_THRESHOLD: f64 = 1e15;
 const TINY_NUMBER: f64 = 1e-10;
 
 pub fn distribution_division(dividend: &Distribution, divisor: &Distribution) -> Result<Distribution, Report> {
@@ -42,18 +41,15 @@ fn divide_point_by_function(
   divisor: &DistributionFunction<f64>,
 ) -> Result<Distribution, Report> {
   let t = point.t();
-  let dividend_value = point.amplitude().max(TINY_NUMBER);
+  let dividend_value = point.amplitude();
   let divisor_value = divisor.interp(t).unwrap_or(TINY_NUMBER).max(TINY_NUMBER);
 
-  let dividend_log = -dividend_value.ln();
-  let divisor_log = -divisor_value.ln();
-  let result_log = dividend_log - divisor_log;
+  let result_value = dividend_value / divisor_value;
 
-  if !result_log.is_finite() || result_log > BIG_NUMBER_THRESHOLD {
+  if !result_value.is_finite() {
     return Ok(Distribution::empty());
   }
 
-  let result_value = (-result_log).exp();
   Ok(Distribution::point(t, result_value))
 }
 
@@ -66,36 +62,20 @@ fn divide_range_by_function(
   let end = range.end();
   let step = (end - start) / (n_samples - 1) as f64;
 
-  let mut t_values = Vec::with_capacity(n_samples);
-  let mut y_values = Vec::with_capacity(n_samples);
+  let dividend_amplitude = range.amplitude();
 
-  let dividend_log = -(range.amplitude().max(TINY_NUMBER).ln());
+  // Use ndarray to generate uniform t values
+  let t_values = Array1::range(0.0, n_samples as f64, 1.0)
+    .mapv(|i| start + step * i);
 
-  for i in 0..n_samples {
-    let t = start + step * i as f64;
-    let divisor_value = divisor.interp(t).unwrap_or(TINY_NUMBER).max(TINY_NUMBER);
+  // Compute divisor values using interp_many for efficiency
+  let divisor_values = divisor.interp_many(&t_values)?;
 
-    let divisor_log = -(divisor_value.ln());
-    let result_log = dividend_log - divisor_log;
+  // Apply TINY_NUMBER safety and perform division
+  let safe_divisor_values = divisor_values.mapv(|v| v.max(TINY_NUMBER));
+  let result_y = Array1::from_elem(n_samples, dividend_amplitude) / &safe_divisor_values;
 
-    if !result_log.is_finite() || result_log > BIG_NUMBER_THRESHOLD {
-      continue;
-    }
-
-    let result_value = (-result_log).exp();
-    t_values.push(t);
-    y_values.push(result_value);
-  }
-
-  if t_values.is_empty() {
-    return Ok(Distribution::empty());
-  }
-
-  if t_values.len() == 1 {
-    return Ok(Distribution::point(t_values[0], y_values[0]));
-  }
-
-  Distribution::function(Array1::from_vec(t_values), Array1::from_vec(y_values))
+  Distribution::function(t_values, result_y)
 }
 
 fn divide_function_by_function(
@@ -105,28 +85,16 @@ fn divide_function_by_function(
   let dividend_t = dividend.t();
   let dividend_y = dividend.y();
 
-  let n_points = dividend_t.len();
-  let mut result_y = Vec::with_capacity(n_points);
+  // Use ndarray for vectorized operations
+  let divisor_values = divisor.interp_many(dividend_t)?;
 
-  for i in 0..n_points {
-    let t = dividend_t[i];
-    let dividend_value = dividend_y[i].max(TINY_NUMBER);
-    let divisor_value = divisor.interp(t).unwrap_or(TINY_NUMBER).max(TINY_NUMBER);
+  // Apply TINY_NUMBER safety for zero or near-zero values
+  let safe_divisor_values = divisor_values.mapv(|v| v.max(TINY_NUMBER));
 
-    let dividend_log = -dividend_value.ln();
-    let divisor_log = -divisor_value.ln();
-    let result_log = dividend_log - divisor_log;
+  // Perform vectorized division
+  let result_y = dividend_y / &safe_divisor_values;
 
-    let result_value = if result_log.is_finite() && result_log < BIG_NUMBER_THRESHOLD {
-      (-result_log).exp()
-    } else {
-      0.0
-    };
-
-    result_y.push(result_value);
-  }
-
-  Distribution::function(dividend_t.clone(), Array1::from_vec(result_y))
+  Distribution::function(dividend_t.clone(), result_y)
 }
 
 #[cfg(test)]
@@ -193,7 +161,7 @@ mod tests {
   }
 
   #[test]
-  fn test_divide_by_zero_fails() {
+  fn test_divide_by_zero_handled() {
     let t = array![0.0, 1.0, 2.0];
     let y1 = array![10.0, 20.0, 30.0];
     let y2 = array![2.0, 0.0, 5.0];
@@ -201,8 +169,17 @@ mod tests {
     let dividend = Distribution::function(t.clone(), y1).unwrap();
     let divisor = Distribution::function(t.clone(), y2).unwrap();
 
-    let result = distribution_division(&dividend, &divisor);
-    assert!(result.is_err());
+    let result = distribution_division(&dividend, &divisor).unwrap();
+    // Should succeed with TINY_NUMBER handling for zero divisor, maintaining uniform grid
+    match result {
+      Distribution::Function(f) => {
+        assert_eq!(f.t().len(), 3);
+        assert_ulps_eq!(f.y()[0], 5.0); // 10.0 / 2.0
+        assert!(f.y()[1] > 1e9); // 20.0 / TINY_NUMBER (very large)
+        assert_ulps_eq!(f.y()[2], 6.0); // 30.0 / 5.0
+      },
+      _ => panic!("Expected Function distribution"),
+    }
   }
 
   #[test]
