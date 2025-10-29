@@ -7,8 +7,9 @@ use crate::make_report;
 use approx::ulps_eq;
 use eyre::Report;
 use ndarray::{Array1, array, s};
+use std::cmp::max;
 use treetime_convolution::convolve;
-use treetime_utils::ndarray::is_uniform_grid;
+use treetime_utils::ndarray::{is_uniform_grid, ndarray_pad_zeros_right, ndarray_uniform_grid};
 
 pub fn distribution_convolution(a: &Distribution, b: &Distribution) -> Result<Distribution, Report> {
   match (a, b) {
@@ -91,7 +92,10 @@ fn convolution_range_function(r: &DistributionRange<f64>, f: &DistributionFuncti
   Distribution::function(t_out, y_out).unwrap()
 }
 
-fn convolution_function_function(a: &DistributionFunction<f64>, b: &DistributionFunction<f64>) -> Result<Distribution, Report> {
+fn convolution_function_function(
+  a: &DistributionFunction<f64>,
+  b: &DistributionFunction<f64>,
+) -> Result<Distribution, Report> {
   // Check for degenerate cases
   if a.t().is_empty() || b.t().is_empty() {
     return Ok(Distribution::empty());
@@ -109,45 +113,27 @@ fn convolution_function_function(a: &DistributionFunction<f64>, b: &Distribution
   let (a_values, a_min) = resample_distribution(a, dx)?;
   let (b_values, b_min) = resample_distribution(b, dx)?;
 
-  let len_a = a_values.len();
-  let len_b = b_values.len();
-
-  if len_a == 0 || len_b == 0 {
+  if a_values.len() == 0 || b_values.len() == 0 {
     return Ok(Distribution::empty());
   }
 
   // For single-point distributions, treat as delta functions
-  if len_a == 1 && len_b == 1 {
-    let sum_pos = a_min + b_min;
-    let product_amp = a_values[0] * b_values[0];
-    return Ok(Distribution::point(sum_pos, product_amp));
+  if a_values.len() == 1 && b_values.len() == 1 {
+    return Ok(Distribution::point(a_min + b_min, a_values[0] * b_values[0]));
   }
 
-  // Convolution output length should be len_a + len_b - 1
-  let output_len = len_a + len_b - 1;
-  let output_grid_local = Array1::linspace(0.0, dx * ((output_len - 1) as f64), output_len);
+  let output_len = a_values.len() + b_values.len() - 1;
+  let output_grid_local = ndarray_uniform_grid(0.0, dx, output_len);
 
-  // For convolution, we need to work with the original lengths, not unified lengths
-  // The convolution library expects the inputs to be on the same grid, so we'll
-  // use the unified grid approach but only take the meaningful portion of the result
-  let max_len = len_a.max(len_b);
-  let unified_grid = Array1::linspace(0.0, dx * ((max_len - 1) as f64), max_len);
+  let max_len = max(a_values.len(), b_values.len());
+  let unified_grid = ndarray_uniform_grid(0.0, dx, max_len);
 
   // Resample both distributions onto the unified grid
-  let mut a_unified = Array1::zeros(max_len);
-  let mut b_unified = Array1::zeros(max_len);
-
-  // Copy existing values and pad with zeros
-  for i in 0..len_a {
-    a_unified[i] = a_values[i];
-  }
-  for i in 0..len_b {
-    b_unified[i] = b_values[i];
-  }
+  let a_unified = ndarray_pad_zeros_right(&a_values, max_len);
+  let b_unified = ndarray_pad_zeros_right(&b_values, max_len);
 
   // Perform convolution with unified grids
-  let unified_output_len = 2 * max_len - 1;
-  let unified_output_grid = Array1::linspace(0.0, dx * ((unified_output_len - 1) as f64), unified_output_len);
+  let unified_output_grid = ndarray_uniform_grid(0.0, dx, output_len);
   let unified_conv_result = convolve(&unified_grid, &a_unified, &b_unified, &unified_output_grid)?;
 
   // Extract only the meaningful portion of the result (first output_len elements)

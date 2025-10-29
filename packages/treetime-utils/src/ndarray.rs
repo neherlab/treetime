@@ -2,7 +2,7 @@ use eyre::Report;
 use itertools::Itertools;
 use ndarray::{
   Array, Array1, Array2, ArrayBase, ArrayView, Axis, Data, Dimension, Ix1, Ix2, RemoveAxis, ShapeBuilder, ShapeError,
-  Zip, stack,
+  Zip, stack, s,
 };
 use ndarray_rand::RandomExt;
 use ndarray_rand::rand::Rng;
@@ -33,6 +33,19 @@ where
   }
   let arrays = arrays.iter().map(ArrayView::from).collect_vec();
   stack(axis, &arrays)
+}
+
+/// Pad array to target length with zeros on the right, or truncate if input is longer
+pub fn ndarray_pad_zeros_right(input: &Array1<f64>, target_length: usize) -> Array1<f64> {
+  let mut result = Array1::zeros(target_length);
+  let copy_len = input.len().min(target_length);
+  result.slice_mut(s![..copy_len]).assign(&input.slice(s![..copy_len]));
+  result
+}
+
+/// Create uniform grid with specified start, spacing, and length
+pub fn ndarray_uniform_grid(start: f64, spacing: f64, length: usize) -> Array1<f64> {
+  Array1::linspace(start, start + spacing * ((length - 1) as f64), length)
 }
 
 // Calculates outer product of 2 vectors
