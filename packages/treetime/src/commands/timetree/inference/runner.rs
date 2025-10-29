@@ -129,13 +129,13 @@ mod tests {
   use crate::io::dates_csv::{DateOrRange, DatesMap};
   use crate::io::nwk::nwk_read_str;
   use crate::o;
-  use approx::assert_abs_diff_eq;
+
   use itertools::Itertools;
-  use maplit::{btreemap, btreeset};
+  use maplit::btreemap;
   use ndarray::Array1;
   use ordered_float::OrderedFloat;
   use pretty_assertions::assert_eq;
-  use std::collections::{BTreeMap, BTreeSet};
+  use std::collections::BTreeMap;
 
   #[test]
   fn test_timetree_flu_h3n2_poisson() -> Result<(), Report> {

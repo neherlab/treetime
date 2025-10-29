@@ -2,7 +2,7 @@ use eyre::Report;
 use itertools::Itertools;
 use ndarray::{
   Array, Array1, Array2, ArrayBase, ArrayView, Axis, Data, Dimension, Ix1, Ix2, RemoveAxis, ShapeBuilder, ShapeError,
-  Zip, stack, s,
+  Zip, s, stack,
 };
 use ndarray_rand::RandomExt;
 use ndarray_rand::rand::Rng;

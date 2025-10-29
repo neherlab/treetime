@@ -413,7 +413,7 @@ mod tests {
     let uniform = Distribution::function(uniform_x, y).unwrap();
 
     let result = distribution_convolution(&non_uniform, &uniform);
-    assert!(result.is_err());
+    result.unwrap_err();
   }
 
   #[test]

@@ -63,7 +63,7 @@ impl Distribution {
   pub fn likely_time(&self) -> Option<f64> {
     match self {
       Self::Point(p) => Some(p.t()),
-      Self::Range(r) => Some((r.start() + r.end()) / 2.0),
+      Self::Range(r) => Some(f64::midpoint(r.start(), r.end())),
       Self::Function(f) => f.likely_time(),
       Self::Empty => None,
     }

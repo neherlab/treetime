@@ -65,8 +65,7 @@ fn divide_range_by_function(
   let dividend_amplitude = range.amplitude();
 
   // Use ndarray to generate uniform t values
-  let t_values = Array1::range(0.0, n_samples as f64, 1.0)
-    .mapv(|i| start + step * i);
+  let t_values = Array1::range(0.0, n_samples as f64, 1.0).mapv(|i| start + step * i);
 
   // Compute divisor values using interp_many for efficiency
   let divisor_values = divisor.interp_many(&t_values)?;
@@ -116,7 +115,7 @@ mod tests {
     let point = Distribution::point(1.0, 2.0);
     let empty = Distribution::empty();
     let result = distribution_division(&point, &empty);
-    assert!(result.is_err());
+    result.unwrap_err();
   }
 
   #[test]
@@ -144,7 +143,7 @@ mod tests {
     let y2 = array![2.0, 4.0, 5.0, 8.0, 10.0];
 
     let dividend = Distribution::function(t.clone(), y1).unwrap();
-    let divisor = Distribution::function(t.clone(), y2).unwrap();
+    let divisor = Distribution::function(t, y2).unwrap();
 
     let result = distribution_division(&dividend, &divisor).unwrap();
 
@@ -167,7 +166,7 @@ mod tests {
     let y2 = array![2.0, 0.0, 5.0];
 
     let dividend = Distribution::function(t.clone(), y1).unwrap();
-    let divisor = Distribution::function(t.clone(), y2).unwrap();
+    let divisor = Distribution::function(t, y2).unwrap();
 
     let result = distribution_division(&dividend, &divisor).unwrap();
     // Should succeed with TINY_NUMBER handling for zero divisor, maintaining uniform grid
