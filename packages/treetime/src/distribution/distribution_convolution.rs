@@ -209,6 +209,7 @@ mod tests {
   use super::*;
 
   use pretty_assertions::assert_eq;
+  use treetime_utils::assert_error;
 
   #[test]
   fn test_convolution_empty() {
@@ -315,17 +316,13 @@ mod tests {
     let b_y = array![1.0, 2.0]; // Make values non-uniform to force Function type
     let b = Distribution::function(b_x, b_y).unwrap();
 
-    let result = distribution_convolution(&a, &b).unwrap();
+    let actual = distribution_convolution(&a, &b).unwrap();
 
-    match result {
-      Distribution::Function(f) => {
-        assert_eq!(f.t().len(), 4); // 3 + 2 - 1 = 4
-        assert!(f.t()[0] >= 0.0);
-        assert!(f.t().iter().all(|&x| x.is_finite()));
-        assert!(f.y().iter().all(|&y| y.is_finite() && y >= 0.0));
-      },
-      other => panic!("Expected Function distribution, got {other:?}"),
-    }
+    let expected_x = array![0.0, 1.0, 2.0, 3.0];
+    let expected_y = array![1.0, 4.0, 5.0, 2.0];
+    let expected = Distribution::function(expected_x, expected_y).unwrap();
+
+    assert_eq!(expected, actual);
   }
 
   #[test]
@@ -338,9 +335,9 @@ mod tests {
     let b_y = array![4.0];
     let b = Distribution::function(b_x, b_y).unwrap();
 
-    let result = distribution_convolution(&a, &b).unwrap();
+    let actual = distribution_convolution(&a, &b).unwrap();
     let expected = Distribution::point(7.0, 12.0);
-    assert_eq!(expected, result);
+    assert_eq!(expected, actual);
   }
 
   #[test]
@@ -350,8 +347,9 @@ mod tests {
     let b_y = array![1.0, 1.0];
     let b = Distribution::function(b_x, b_y).unwrap();
 
-    let result = distribution_convolution(&a, &b).unwrap();
-    assert_eq!(Distribution::empty(), result);
+    let actual = distribution_convolution(&a, &b).unwrap();
+    let expected = Distribution::empty();
+    assert_eq!(expected, actual);
   }
 
   #[test]
@@ -365,20 +363,13 @@ mod tests {
     let b_y = array![1.0, 1.0, 1.0];
     let b = Distribution::function(b_x, b_y).unwrap();
 
-    let result = distribution_convolution(&a, &b).unwrap();
+    let actual = distribution_convolution(&a, &b).unwrap();
 
-    match result {
-      Distribution::Function(f) => {
-        // Should handle different spacings correctly
-        assert!(f.t().len() >= 3);
-        assert!(f.t().iter().all(|&x| x.is_finite()));
-        assert!(f.y().iter().all(|&y| y.is_finite() && y >= 0.0));
-        // Result should span from 0+0 to 1+2 = 3
-        assert!(f.t()[0] >= 0.0 - 1e-10);
-        assert!(*f.t().last().unwrap() <= 3.0 + 1e-10);
-      },
-      other => panic!("Expected Function distribution, got {other:?}"),
-    }
+    let expected_x = array![0.0, 1.0, 2.0, 3.0];
+    let expected_y = array![1.0, 2.0, 2.0, 1.0];
+    let expected = Distribution::function(expected_x, expected_y).unwrap();
+
+    assert_eq!(expected, actual);
   }
 
   #[test]
@@ -390,16 +381,13 @@ mod tests {
     let b_y = array![2.0, 3.0];
     let b = Distribution::function(b_x, b_y).unwrap();
 
-    let result = distribution_convolution(&a, &b).unwrap();
+    let actual = distribution_convolution(&a, &b).unwrap();
 
-    match result {
-      Distribution::Function(f) => {
-        // Should shift the function by the point's position
-        assert!(f.t()[0] >= 6.0 - 1e-10); // 5 + 1
-        assert!(*f.t().last().unwrap() <= 7.0 + 1e-10); // 5 + 2
-      },
-      other => panic!("Expected Function distribution, got {other:?}"),
-    }
+    let expected_x = array![6.0, 7.0];
+    let expected_y = array![2.0, 3.0];
+    let expected = Distribution::function(expected_x, expected_y).unwrap();
+
+    assert_eq!(expected, actual);
   }
 
   #[test]
@@ -426,17 +414,10 @@ mod tests {
 
     // In backward pass, we negate the branch distribution
     let negated_branch = branch_length_dist.negate();
-    let parent_dist = distribution_convolution(&child_time_dist, &negated_branch).unwrap();
+    let actual = distribution_convolution(&child_time_dist, &negated_branch).unwrap();
 
-    match parent_dist {
-      Distribution::Point(p) => {
-        let parent_time = p.t();
-        let expected_parent_time = 2013.0 - 2.5; // 2010.5
-        assert!((parent_time - expected_parent_time).abs() < 1e-10);
-        assert!(parent_time < 2013.0, "Parent should be older (earlier time) than child");
-      },
-      other => panic!("Expected point distribution, got {other:?}"),
-    }
+    let expected = Distribution::point(2010.5, 1.0);
+    assert_eq!(expected, actual);
   }
 
   #[test]
@@ -445,17 +426,10 @@ mod tests {
     let parent_time_dist = Distribution::point(2010.0, 1.0);
     let branch_length_dist = Distribution::point(1.5, 1.0);
 
-    let child_dist = distribution_convolution(&parent_time_dist, &branch_length_dist).unwrap();
+    let actual = distribution_convolution(&parent_time_dist, &branch_length_dist).unwrap();
 
-    match child_dist {
-      Distribution::Point(p) => {
-        let child_time = p.t();
-        let expected_child_time = 2010.0 + 1.5; // 2011.5
-        assert!((child_time - expected_child_time).abs() < 1e-10);
-        assert!(child_time > 2010.0, "Child should be younger (later time) than parent");
-      },
-      other => panic!("Expected point distribution, got {other:?}"),
-    }
+    let expected = Distribution::point(2011.5, 1.0);
+    assert_eq!(expected, actual);
   }
 
   #[test]
@@ -469,17 +443,12 @@ mod tests {
     let branch_y = array![0.3, 0.4, 0.3]; // Uncertainty around 1.5
     let branch_dist = Distribution::function(branch_x, branch_y).unwrap();
 
-    let child_dist = distribution_convolution(&parent_dist, &branch_dist).unwrap();
+    let actual = distribution_convolution(&parent_dist, &branch_dist).unwrap();
 
-    match child_dist {
-      Distribution::Function(f) => {
-        // Result should span from 2010+1=2011 to 2011+2=2013
-        assert!(f.t()[0] >= 2011.0 - 1e-10);
-        assert!(*f.t().last().unwrap() <= 2013.0 + 1e-10);
-        // All probabilities should be non-negative
-        assert!(f.y().iter().all(|&y| y >= 0.0));
-      },
-      other => panic!("Expected function distribution, got {other:?}"),
-    }
+    let expected_x = array![2011.0, 2011.5, 2012.0, 2012.5, 2013.0];
+    let expected_y = array![0.03, 0.13, 0.18, 0.13, 0.03];
+    let expected = Distribution::function(expected_x, expected_y).unwrap();
+
+    assert_eq!(expected, actual);
   }
 }

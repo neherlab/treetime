@@ -99,7 +99,6 @@ fn divide_function_by_function(
 #[cfg(test)]
 mod tests {
   use super::*;
-  use approx::assert_ulps_eq;
   use ndarray::array;
   use treetime_utils::assert_error;
 
@@ -107,8 +106,9 @@ mod tests {
   fn test_divide_empty_by_any() {
     let empty = Distribution::empty();
     let point = Distribution::point(1.0, 2.0);
-    let result = distribution_division(&empty, &point).unwrap();
-    assert_eq!(result, Distribution::empty());
+    let actual = distribution_division(&empty, &point).unwrap();
+    let expected = Distribution::empty();
+    assert_eq!(expected, actual);
   }
 
   #[test]
@@ -128,15 +128,9 @@ mod tests {
     let y = array![1.0, 2.0, 5.0, 4.0, 3.0];
     let func = Distribution::function(t, y).unwrap();
 
-    let result = distribution_division(&point, &func).unwrap();
-
-    match result {
-      Distribution::Point(p) => {
-        assert_ulps_eq!(p.t(), 2.0);
-        assert_ulps_eq!(p.amplitude(), 2.0);
-      },
-      _ => panic!("Expected Point distribution"),
-    }
+    let actual = distribution_division(&point, &func).unwrap();
+    let expected = Distribution::point(2.0, 2.0);
+    assert_eq!(expected, actual);
   }
 
   #[test]
@@ -146,20 +140,13 @@ mod tests {
     let y2 = array![2.0, 4.0, 5.0, 8.0, 10.0];
 
     let dividend = Distribution::function(t.clone(), y1).unwrap();
-    let divisor = Distribution::function(t, y2).unwrap();
+    let divisor = Distribution::function(t.clone(), y2).unwrap();
 
-    let result = distribution_division(&dividend, &divisor).unwrap();
+    let actual = distribution_division(&dividend, &divisor).unwrap();
 
-    match result {
-      Distribution::Function(f) => {
-        assert_ulps_eq!(f.y()[0], 5.0);
-        assert_ulps_eq!(f.y()[1], 5.0);
-        assert_ulps_eq!(f.y()[2], 6.0);
-        assert_ulps_eq!(f.y()[3], 5.0);
-        assert_ulps_eq!(f.y()[4], 5.0);
-      },
-      _ => panic!("Expected Function distribution"),
-    }
+    let expected_y = array![5.0, 5.0, 6.0, 5.0, 5.0];
+    let expected = Distribution::function(t, expected_y).unwrap();
+    assert_eq!(expected, actual);
   }
 
   #[test]
@@ -169,19 +156,13 @@ mod tests {
     let y2 = array![2.0, 0.0, 5.0];
 
     let dividend = Distribution::function(t.clone(), y1).unwrap();
-    let divisor = Distribution::function(t, y2).unwrap();
+    let divisor = Distribution::function(t.clone(), y2).unwrap();
 
-    let result = distribution_division(&dividend, &divisor).unwrap();
-    // Should succeed with TINY_NUMBER handling for zero divisor, maintaining uniform grid
-    match result {
-      Distribution::Function(f) => {
-        assert_eq!(f.t().len(), 3);
-        assert_ulps_eq!(f.y()[0], 5.0); // 10.0 / 2.0
-        assert!(f.y()[1] > 1e9); // 20.0 / TINY_NUMBER (very large)
-        assert_ulps_eq!(f.y()[2], 6.0); // 30.0 / 5.0
-      },
-      _ => panic!("Expected Function distribution"),
-    }
+    let actual = distribution_division(&dividend, &divisor).unwrap();
+
+    let expected_y = array![5.0, 20.0 / TINY_NUMBER, 6.0];
+    let expected = Distribution::function(t, expected_y).unwrap();
+    assert_eq!(expected, actual);
   }
 
   #[test]
@@ -191,13 +172,15 @@ mod tests {
     let y = array![1.0, 2.0, 5.0, 4.0, 3.0];
     let func = Distribution::function(t, y).unwrap();
 
-    let result = distribution_division(&range, &func).unwrap();
+    let actual = distribution_division(&range, &func).unwrap();
 
-    match result {
+    // Since this creates a sampled function with 100 points, we verify it's a function with correct properties
+    match actual {
       Distribution::Function(f) => {
-        assert!(f.t().len() > 0);
-        assert!(f.y().len() > 0);
-        assert_eq!(f.t().len(), f.y().len());
+        assert_eq!(f.t().len(), 100);
+        assert_eq!(f.y().len(), 100);
+        assert!(f.t()[0] >= 1.0 - 1e-10);
+        assert!(f.t()[99] <= 3.0 + 1e-10);
       },
       _ => panic!("Expected Function distribution"),
     }

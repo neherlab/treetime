@@ -74,67 +74,45 @@ fn negate_function_inplace(func: &mut DistributionFunction<f64>) {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use approx::assert_ulps_eq;
 
   #[test]
   fn test_negate_empty() {
     let dist = Distribution::empty();
-    let negated = distribution_negation(&dist);
-    assert!(matches!(negated, Distribution::Empty));
+    let actual = distribution_negation(&dist);
+    let expected = Distribution::empty();
+    assert_eq!(expected, actual);
   }
 
   #[test]
   fn test_negate_point() {
     let dist = Distribution::point(2.0, 3.0);
-    let negated = distribution_negation(&dist);
-    match negated {
-      Distribution::Point(p) => {
-        assert_ulps_eq!(p.t(), -2.0);
-        assert_ulps_eq!(p.amplitude(), 3.0);
-      },
-      _ => panic!("Expected Point variant"),
-    }
+    let actual = distribution_negation(&dist);
+    let expected = Distribution::point(-2.0, 3.0);
+    assert_eq!(expected, actual);
   }
 
   #[test]
   fn test_negate_point_zero() {
     let dist = Distribution::point(0.0, 5.0);
-    let negated = distribution_negation(&dist);
-    match negated {
-      Distribution::Point(p) => {
-        assert_ulps_eq!(p.t(), 0.0);
-        assert_ulps_eq!(p.amplitude(), 5.0);
-      },
-      _ => panic!("Expected Point variant"),
-    }
+    let actual = distribution_negation(&dist);
+    let expected = Distribution::point(0.0, 5.0);
+    assert_eq!(expected, actual);
   }
 
   #[test]
   fn test_negate_range() {
     let dist = Distribution::range((1.0, 4.0), 2.0);
-    let negated = distribution_negation(&dist);
-    match negated {
-      Distribution::Range(r) => {
-        assert_ulps_eq!(r.start(), -4.0);
-        assert_ulps_eq!(r.end(), -1.0);
-        assert_ulps_eq!(r.amplitude(), 2.0);
-      },
-      _ => panic!("Expected Range variant"),
-    }
+    let actual = distribution_negation(&dist);
+    let expected = Distribution::range((-4.0, -1.0), 2.0);
+    assert_eq!(expected, actual);
   }
 
   #[test]
   fn test_negate_range_symmetric() {
     let dist = Distribution::range((-3.0, 3.0), 1.0);
-    let negated = distribution_negation(&dist);
-    match negated {
-      Distribution::Range(r) => {
-        assert_ulps_eq!(r.start(), -3.0);
-        assert_ulps_eq!(r.end(), 3.0);
-        assert_ulps_eq!(r.amplitude(), 1.0);
-      },
-      _ => panic!("Expected Range variant"),
-    }
+    let actual = distribution_negation(&dist);
+    let expected = Distribution::range((-3.0, 3.0), 1.0);
+    assert_eq!(expected, actual);
   }
 
   #[test]
@@ -143,66 +121,41 @@ mod tests {
     let y = Array1::from_vec(vec![1.0, 2.0, 3.0]);
     let dist = Distribution::function(t, y).unwrap();
 
-    let negated = distribution_negation(&dist);
-    match negated {
-      Distribution::Function(f) => {
-        assert_eq!(f.t().len(), 3);
-        assert_ulps_eq!(f.t()[0], -2.0);
-        assert_ulps_eq!(f.t()[1], -1.0);
-        assert_ulps_eq!(f.t()[2], 0.0);
-        assert_ulps_eq!(f.y()[0], 3.0);
-        assert_ulps_eq!(f.y()[1], 2.0);
-        assert_ulps_eq!(f.y()[2], 1.0);
-      },
-      _ => panic!("Expected Function variant"),
-    }
+    let actual = distribution_negation(&dist);
+
+    let expected_t = Array1::from_vec(vec![-2.0, -1.0, 0.0]);
+    let expected_y = Array1::from_vec(vec![3.0, 2.0, 1.0]);
+    let expected = Distribution::function(expected_t, expected_y).unwrap();
+    assert_eq!(expected, actual);
   }
 
   #[test]
   fn test_negate_inplace_point() {
-    let mut dist = Distribution::point(2.0, 3.0);
-    distribution_negation_inplace(&mut dist);
-    match dist {
-      Distribution::Point(p) => {
-        assert_ulps_eq!(p.t(), -2.0);
-        assert_ulps_eq!(p.amplitude(), 3.0);
-      },
-      _ => panic!("Expected Point variant"),
-    }
+    let mut actual = Distribution::point(2.0, 3.0);
+    distribution_negation_inplace(&mut actual);
+    let expected = Distribution::point(-2.0, 3.0);
+    assert_eq!(expected, actual);
   }
 
   #[test]
   fn test_negate_inplace_range() {
-    let mut dist = Distribution::range((1.0, 4.0), 2.0);
-    distribution_negation_inplace(&mut dist);
-    match dist {
-      Distribution::Range(r) => {
-        assert_ulps_eq!(r.start(), -4.0);
-        assert_ulps_eq!(r.end(), -1.0);
-        assert_ulps_eq!(r.amplitude(), 2.0);
-      },
-      _ => panic!("Expected Range variant"),
-    }
+    let mut actual = Distribution::range((1.0, 4.0), 2.0);
+    distribution_negation_inplace(&mut actual);
+    let expected = Distribution::range((-4.0, -1.0), 2.0);
+    assert_eq!(expected, actual);
   }
 
   #[test]
   fn test_negate_inplace_function() {
     let t = Array1::from_vec(vec![0.0, 1.0, 2.0]);
     let y = Array1::from_vec(vec![1.0, 2.0, 3.0]);
-    let mut dist = Distribution::function(t, y).unwrap();
+    let mut actual = Distribution::function(t, y).unwrap();
 
-    distribution_negation_inplace(&mut dist);
-    match dist {
-      Distribution::Function(f) => {
-        assert_eq!(f.t().len(), 3);
-        assert_ulps_eq!(f.t()[0], -2.0);
-        assert_ulps_eq!(f.t()[1], -1.0);
-        assert_ulps_eq!(f.t()[2], 0.0);
-        assert_ulps_eq!(f.y()[0], 3.0);
-        assert_ulps_eq!(f.y()[1], 2.0);
-        assert_ulps_eq!(f.y()[2], 1.0);
-      },
-      _ => panic!("Expected Function variant"),
-    }
+    distribution_negation_inplace(&mut actual);
+
+    let expected_t = Array1::from_vec(vec![-2.0, -1.0, 0.0]);
+    let expected_y = Array1::from_vec(vec![3.0, 2.0, 1.0]);
+    let expected = Distribution::function(expected_t, expected_y).unwrap();
+    assert_eq!(expected, actual);
   }
 }
