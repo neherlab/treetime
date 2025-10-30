@@ -42,3 +42,12 @@ pub fn format_array(s: impl AsRef<str>) -> String {
   let re = regex::Regex::new(r", shape=.*").unwrap();
   re.replace(&format_newlines(s), "").into_owned()
 }
+
+#[macro_export]
+macro_rules! assert_error {
+  ($result:expr, $expected_message:expr) => {{
+    let error = $result.unwrap_err();
+    let actual_message = $crate::error::report_to_string(&error);
+    pretty_assertions::assert_eq!(actual_message, $expected_message);
+  }};
+}

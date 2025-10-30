@@ -412,8 +412,10 @@ mod tests {
     let uniform_x = array![0.0, 1.0, 2.0];
     let uniform = Distribution::function(uniform_x, y).unwrap();
 
-    let result = distribution_convolution(&non_uniform, &uniform);
-    result.unwrap_err();
+    assert_error!(
+      distribution_convolution(&non_uniform, &uniform),
+      "Function distributions must use uniform grids for convolution"
+    );
   }
 
   #[test]

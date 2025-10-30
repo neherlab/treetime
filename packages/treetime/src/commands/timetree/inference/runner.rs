@@ -1,5 +1,6 @@
 use crate::commands::clock::clock_model::ClockModel;
 use crate::commands::clock::clock_regression::{ClockOptions, estimate_clock_model_with_reroot};
+use crate::commands::clock::clock_set::ClockSet;
 use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
 use crate::commands::optimize::optimize_unified::OptimizationContribution;
 use crate::commands::timetree::inference::backward_pass::propagate_distributions_backward;
@@ -33,15 +34,15 @@ pub fn run_timetree(
       }
     }
     // Reset clock set to ensure clean state for each iteration
-    node.clock_total = Default::default();
+    node.clock_total = ClockSet::default();
   }
 
   // Reset edge clock sets as well
   for edge_ref in graph.get_edges() {
     let mut edge = edge_ref.write_arc().payload().write_arc();
-    edge.clock_to_parent = Default::default();
-    edge.clock_to_child = Default::default();
-    edge.clock_from_child = Default::default();
+    edge.clock_to_parent = ClockSet::default();
+    edge.clock_to_child = ClockSet::default();
+    edge.clock_from_child = ClockSet::default();
   }
 
   log::info!("## Estimating clock rate from root-to-tip regression");

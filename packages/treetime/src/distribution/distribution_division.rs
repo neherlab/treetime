@@ -101,6 +101,7 @@ mod tests {
   use super::*;
   use approx::assert_ulps_eq;
   use ndarray::array;
+  use treetime_utils::assert_error;
 
   #[test]
   fn test_divide_empty_by_any() {
@@ -114,8 +115,10 @@ mod tests {
   fn test_divide_by_empty_fails() {
     let point = Distribution::point(1.0, 2.0);
     let empty = Distribution::empty();
-    let result = distribution_division(&point, &empty);
-    result.unwrap_err();
+    assert_error!(
+      distribution_division(&point, &empty),
+      "Cannot divide by empty distribution"
+    );
   }
 
   #[test]

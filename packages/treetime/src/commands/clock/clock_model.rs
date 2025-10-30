@@ -35,7 +35,7 @@ impl ClockModel {
     let det = clock_set.determinant();
     if det <= 0.0 {
       debug!("ClockSet: {}", json_write_str(clock_set, JsonPretty(true))?);
-      debug!("ClockSet determinant: {}", det);
+      debug!("ClockSet determinant: {det}");
       return make_error!("No variation in sampling dates! Please specify your clock rate explicitly.");
     }
 
