@@ -12,6 +12,7 @@ use crate::representation::graph_ancestral::GraphAncestral;
 use crate::representation::infer_dense::infer_dense;
 use crate::representation::partition_marginal_dense::PartitionMarginalDense;
 use crate::representation::partition_marginal_sparse::PartitionMarginalSparse;
+use crate::seq::div::{OnlyLeaves, calculate_divs};
 use eyre::{Report, WrapErr};
 use maplit::btreemap;
 use parking_lot::RwLock;
@@ -54,6 +55,17 @@ pub fn load_input_data(args: &TreetimeTimetreeArgs) -> Result<InputData, Report>
   if let Some(dates_path) = &args.dates {
     let dates = read_dates(dates_path, &args.name_column, &args.date_column).wrap_err("When reading dates")?;
     load_date_constraints(&dates, &graph).wrap_err("Failed to load date constraints")?;
+  }
+
+  // Calculate divergence distances from root to all nodes
+  let divs = calculate_divs(&graph, OnlyLeaves(false));
+  for node_ref in graph.get_nodes() {
+    let mut node = node_ref.write_arc().payload().write_arc();
+    if let Some(name) = &node.name {
+      if let Some(&div) = divs.get(name) {
+        node.div = div;
+      }
+    }
   }
 
   Ok(InputData { graph, alphabet, aln })

@@ -9,6 +9,7 @@ use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
 use crate::distribution::distribution::Distribution;
 use crate::graph::edge::GraphEdgeKey;
 use crate::representation::graph_ancestral::GraphAncestral;
+use crate::seq::div::{OnlyLeaves, calculate_divs};
 use eyre::Report;
 use parking_lot::RwLock;
 use std::sync::Arc;
@@ -21,6 +22,27 @@ pub fn run_timetree(
   keep_root: bool,
 ) -> Result<(), Report> {
   log::info!("# Running timetree inference");
+
+  log::info!("## Calculating divergence distances");
+  let divs = calculate_divs(graph, OnlyLeaves(false));
+  for node_ref in graph.get_nodes() {
+    let mut node = node_ref.write_arc().payload().write_arc();
+    if let Some(name) = &node.name {
+      if let Some(&div) = divs.get(name) {
+        node.div = div;
+      }
+    }
+    // Reset clock set to ensure clean state for each iteration
+    node.clock_total = Default::default();
+  }
+
+  // Reset edge clock sets as well
+  for edge_ref in graph.get_edges() {
+    let mut edge = edge_ref.write_arc().payload().write_arc();
+    edge.clock_to_parent = Default::default();
+    edge.clock_to_child = Default::default();
+    edge.clock_from_child = Default::default();
+  }
 
   log::info!("## Estimating clock rate from root-to-tip regression");
   let clock_model = estimate_clock_model_with_reroot(
