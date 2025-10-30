@@ -21,6 +21,7 @@ fn propagate_distributions_backward_single_node(
   node: &mut GraphNodeBackward<NodeAncestral, EdgeAncestral, ()>,
 ) -> Result<(), Report> {
   if node.is_leaf {
+    // Do not overwrite leaf time_distribution (date constraint)
     return Ok(());
   }
 

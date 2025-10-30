@@ -40,6 +40,11 @@ fn refine_distribution_from_parent(
     return Ok(());
   }
 
+  // Do not overwrite leaf time_distribution (date constraint)
+  if node.is_leaf {
+    return Ok(());
+  }
+
   if let Ok((parent, edge)) = node.get_exactly_one_parent() {
     let parent = parent.read_arc();
     let edge = edge.read_arc();

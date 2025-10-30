@@ -2,8 +2,10 @@ use crate::commands::clock::clock_set::ClockSet;
 use crate::make_error;
 use eyre::Report;
 use getset::{CopyGetters, Getters};
+use log::debug;
 use ndarray::Array2;
 use serde::{Deserialize, Serialize};
+use treetime_io::json::{JsonPretty, json_write_str};
 use treetime_utils::float_fmt::float_to_significant_digits;
 
 #[must_use]
@@ -31,8 +33,9 @@ pub struct ClockModel {
 impl ClockModel {
   pub fn new(clock_set: &ClockSet) -> Result<Self, Report> {
     let det = clock_set.determinant();
-
     if det <= 0.0 {
+      debug!("ClockSet: {}", json_write_str(clock_set, JsonPretty(true))?);
+      debug!("ClockSet determinant: {}", det);
       return make_error!("No variation in sampling dates! Please specify your clock rate explicitly.");
     }
 
