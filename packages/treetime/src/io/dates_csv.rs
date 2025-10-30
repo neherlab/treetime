@@ -52,7 +52,7 @@ pub fn read_dates(
     .map(|record| record.iter().map(str::to_owned).collect_vec())
     .map_err(|err| eyre!("{err}"))?
     .iter()
-    .map(|header| header.trim_start_matches('#').trim_end_matches('#').to_owned())
+    .map(|header| header.trim_start_matches('#').trim_end_matches('#').trim().to_owned())
     .collect_vec();
 
   let name_column_idx = get_col_name(&headers, &vec_of_owned!["name", "strain", "accession"], name_column)
