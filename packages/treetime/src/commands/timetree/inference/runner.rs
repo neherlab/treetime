@@ -208,6 +208,7 @@ mod tests {
     //   --dates data/flu/h3n2/20/metadata.tsv \
     //   --branch-length-mode input \
     //   --sequence-len 1400 \
+    //   --keep-polytomies \
     //   --outdir tmp/python_treetime_baseline
     //
     // Output: tmp/python_treetime_baseline/dates.tsv
@@ -216,6 +217,7 @@ mod tests {
     // for branch length distributions (same as this test), enabling direct comparison.
     let expected = btreemap! {
       o!("NODE_0000017") => 1996.974064,
+      o!("NODE_0000018") => 1997.116240,
       o!("NODE_0000012") => 1998.499705,
       o!("A/Canterbury/58/2000|CY009150|09/05/2000|New_Zealand||H3N2/8-1416") => 2000.681725,
       o!("NODE_0000011") => 1998.763998,
