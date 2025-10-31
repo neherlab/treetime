@@ -84,7 +84,7 @@ fn convolution_range_function(r: &DistributionRange<f64>, f: &DistributionFuncti
   // - a point distribution (taking care of the shift + amplitude)
   // - an interval centered on zero and of a fixed width (taking care of the smoothing)
 
-  let shift = (r.start() + r.end()) / 2.0;
+  let shift = f64::midpoint(r.start(), r.end());
   let amplitude = r.amplitude();
   let width = r.end() - r.start();
 

@@ -6,16 +6,12 @@ use std::path::PathBuf;
 
 #[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 #[value(rename_all = "kebab-case")]
+#[derive(Default)]
 pub enum MethodAncestral {
+  #[default]
   Joint,
   Marginal,
   Parsimony,
-}
-
-impl Default for MethodAncestral {
-  fn default() -> Self {
-    Self::Joint
-  }
 }
 
 #[derive(Parser, Debug)]

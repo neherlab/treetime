@@ -8,47 +8,35 @@ use std::path::PathBuf;
 
 #[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 #[value(rename_all = "kebab-case")]
+#[derive(Default)]
 pub enum BranchLengthMode {
+  #[default]
   Auto,
   Input,
   Joint,
   Marginal,
 }
 
-impl Default for BranchLengthMode {
-  fn default() -> Self {
-    Self::Auto
-  }
-}
-
 #[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 #[value(rename_all = "kebab-case")]
+#[derive(Default)]
 pub enum TimeMarginalMode {
+  #[default]
   Never,
   Always,
   OnlyFinal,
 }
 
-impl Default for TimeMarginalMode {
-  fn default() -> Self {
-    Self::Never
-  }
-}
-
 #[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 #[value(rename_all = "kebab-case")]
+#[derive(Default)]
 pub enum RerootMode {
+  #[default]
   LeastSquares,
   MinDev,
   Oldest,
   ClockFilter,
   Mrca,
-}
-
-impl Default for RerootMode {
-  fn default() -> Self {
-    Self::LeastSquares
-  }
 }
 
 #[derive(Parser, Debug, SmartDefault)]

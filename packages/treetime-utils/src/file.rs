@@ -4,7 +4,7 @@ use eyre::{Report, WrapErr};
 use log::info;
 use std::fs::File;
 use std::io::{BufRead, BufReader, BufWriter, Write, stdin, stdout};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 pub const DEFAULT_FILE_BUF_SIZE: usize = 256 * 1024;
 
@@ -57,12 +57,12 @@ pub fn create_file_or_stdout(filepath: impl AsRef<Path>) -> Result<Box<dyn Write
 
 pub fn is_path_stdin(filepath: impl AsRef<Path>) -> bool {
   let filepath = filepath.as_ref();
-  filepath == PathBuf::from("-") || filepath == PathBuf::from("/dev/stdin")
+  filepath == "-" || filepath == "/dev/stdin"
 }
 
 pub fn is_path_stdout(filepath: impl AsRef<Path>) -> bool {
   let filepath = filepath.as_ref();
-  filepath == PathBuf::from("-") || filepath == PathBuf::from("/dev/stdout")
+  filepath == "-" || filepath == "/dev/stdout"
 }
 
 #[cfg(not(target_arch = "wasm32"))]
