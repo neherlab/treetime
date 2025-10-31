@@ -26,7 +26,7 @@ pub fn distribution_convolution(a: &Distribution, b: &Distribution) -> Result<Di
       convolution_range_range(a, b) //
     },
     (Distribution::Point(a), Distribution::Function(b)) | (Distribution::Function(b), Distribution::Point(a)) => {
-      Ok(convolution_point_function(a, b)?) //
+      Ok(Distribution::Function(convolution_point_function(a, b)?))
     },
     (Distribution::Range(a), Distribution::Function(b)) | (Distribution::Function(b), Distribution::Range(a)) => {
       Ok(convolution_range_function(a, b)) //
@@ -73,20 +73,32 @@ fn convolution_point_range(p: &DistributionPoint<f64>, r: &DistributionRange<f64
 fn convolution_point_function(
   p: &DistributionPoint<f64>,
   f: &DistributionFunction<f64>,
-) -> Result<Distribution, Report> {
+) -> Result<DistributionFunction<f64>, Report> {
   let t = f.t().map(|t| t + p.t());
   let y = f.y().map(|y| y * p.amplitude());
-  Distribution::function(t, y)
+  DistributionFunction::new(t, y)
 }
 
 fn convolution_range_function(r: &DistributionRange<f64>, f: &DistributionFunction<f64>) -> Distribution {
-  let t_out = f.t().clone();
-  let mut y_out = Array1::zeros(f.y().len());
+  // split in a convolution with
+  // - a point distribution (taking care of the shift + amplitude)
+  // - an interval centered on zero and of a fixed width (taking care of the smoothing)
 
-  for (i, &ti) in f.t().iter().enumerate() {
-    let mask = f.t().mapv(|x| (x >= ti - r.end()) && (x <= ti - r.start()));
+  let shift = (r.start() + r.end()) / 2.0;
+  let amplitude = r.amplitude();
+  let width = r.end() - r.start();
+
+  let point_distr = DistributionPoint::new(shift, amplitude);
+  let shifted_function = convolution_point_function(&point_distr, f).unwrap();
+
+  // Convolution with a range centered on zero and of given width
+  let t_out = shifted_function.t().clone();
+  let mut y_out = Array1::zeros(shifted_function.y().len());
+
+  for (i, &ti) in shifted_function.t().iter().enumerate() {
+    let mask = shifted_function.t().mapv(|x| (x - ti).abs() <= width / 2.0);
     let filtered_y = f.y() * &mask.mapv(|x| if x { 1.0 } else { 0.0 });
-    y_out[i] = r.amplitude() * filtered_y.sum();
+    y_out[i] = filtered_y.sum();
   }
 
   Distribution::function(t_out, y_out).unwrap()
@@ -280,8 +292,8 @@ mod tests {
     let f = Distribution::function(x, y).unwrap();
     let actual = distribution_convolution(&r, &f).unwrap();
 
-    let x = array![0.0, 1.0, 2.0, 3.0, 4.0, 5.0];
-    let y = array![0.0, 0.0, 2.0, 2.0, 6.0, 6.0];
+    let x = array![2.0, 3.0, 4.0, 5.0, 6.0, 7.0];
+    let y = array![1.0, 1.0, 3.0, 3.0, 3.0, 1.0];
     let expected = Distribution::function(x, y).unwrap();
 
     assert_eq!(expected, actual);
