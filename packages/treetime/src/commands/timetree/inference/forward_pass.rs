@@ -18,8 +18,8 @@ pub fn propagate_distributions_forward(graph: &GraphAncestral) -> Result<(), Rep
 fn propagate_distributions_forward_single_node(
   node: &mut GraphNodeForward<NodeAncestral, EdgeAncestral, ()>,
 ) -> Result<(), Report> {
-  set_likely_time(node);
   refine_distribution_from_parent(node)?;
+  set_likely_time(node);
   Ok(())
 }
 
