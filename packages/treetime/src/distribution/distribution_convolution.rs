@@ -97,7 +97,7 @@ fn convolution_range_function(r: &DistributionRange<f64>, f: &DistributionFuncti
 
   for (i, &ti) in shifted_function.t().iter().enumerate() {
     let mask = shifted_function.t().mapv(|x| (x - ti).abs() <= width / 2.0);
-    let filtered_y = f.y() * &mask.mapv(|x| if x { 1.0 } else { 0.0 });
+    let filtered_y = shifted_function.y() * &mask.mapv(|x| if x { 1.0 } else { 0.0 });
     y_out[i] = filtered_y.sum();
   }
 
@@ -293,7 +293,7 @@ mod tests {
     let actual = distribution_convolution(&r, &f).unwrap();
 
     let x = array![2.0, 3.0, 4.0, 5.0, 6.0, 7.0];
-    let y = array![1.0, 1.0, 3.0, 3.0, 3.0, 1.0];
+    let y = array![2.0, 2.0, 6.0, 6.0, 6.0, 2.0];
     let expected = Distribution::function(x, y).unwrap();
 
     assert_eq!(expected, actual);
