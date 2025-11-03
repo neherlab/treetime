@@ -1,9 +1,10 @@
 use eyre::Report;
 use ndarray::Array1;
 use ndarray_stats::QuantileExt;
+use serde::{Deserialize, Serialize};
 use treetime_convolution::{GridFn, InterpElem};
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DistributionFunction<T: InterpElem> {
   grid_fn: GridFn<T>,
 }

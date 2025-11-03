@@ -3,10 +3,9 @@ pub mod grid_fn;
 pub mod testing;
 
 use num_traits::{Num, NumCast};
-use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 
-pub trait InterpElem: Num + NumCast + Debug + Send + PartialOrd + Copy + Serialize + for<'de> Deserialize<'de> {}
+pub trait InterpElem: Num + NumCast + Debug + Send + PartialOrd + Copy {}
 
 impl InterpElem for f64 {}
 

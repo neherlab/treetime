@@ -159,12 +159,20 @@ mod tests {
   use ordered_float::OrderedFloat;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
+  use std::path::Path;
+  use treetime_io::json::{JsonPretty, json_write_file};
 
   #[test]
   fn test_timetree_flu_h3n2_poisson() -> Result<(), Report> {
     const CLOCK_RATE_MU: f64 = 0.0028;
     const SEQUENCE_LENGTH_L: usize = 1400;
     const GRID_SIZE: usize = 200;
+
+    fn dump_graph(graph: &GraphAncestral, filename: &str) -> Result<(), Report> {
+      let OUTPUT_DIR = Path::new("../../tmp/test_timetree_flu_h3n2_poisson");
+      json_write_file(OUTPUT_DIR.join(filename), graph, JsonPretty(true))?;
+      Ok(())
+    }
 
     // Rerooted H3N2 flu tree obtained from:
     //
@@ -261,10 +269,13 @@ mod tests {
     load_date_constraints(&input_dates, &graph)?;
 
     create_poisson_branch_distributions(&graph, CLOCK_RATE_MU, SEQUENCE_LENGTH_L, GRID_SIZE)?;
+    dump_graph(&graph, "001_after_create_poisson_branch_distributions.json")?;
 
     propagate_distributions_backward(&graph)?;
+    dump_graph(&graph, "002_after_propagate_distributions_backward.json")?;
 
     propagate_distributions_forward(&graph)?;
+    dump_graph(&graph, "003_after_propagate_distributions_forward.json")?;
 
     let actual: BTreeMap<String, f64> = graph
       .get_nodes()

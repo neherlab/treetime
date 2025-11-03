@@ -25,74 +25,40 @@ impl<T: InterpElem> PartialEq for GridFn<T> {
 
 impl<T: InterpElem> Eq for GridFn<T> {}
 
-impl<T: InterpElem> Serialize for GridFn<T> {
+impl<T> Serialize for GridFn<T>
+where
+  T: InterpElem + Serialize,
+{
   fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
   where
     S: Serializer,
   {
     use serde::ser::SerializeStruct;
     let mut state = serializer.serialize_struct("GridFn", 2)?;
-    state.serialize_field("x", self.x())?;
-    state.serialize_field("y", self.y())?;
+    state.serialize_field("x", &self.x().to_vec())?;
+    state.serialize_field("y", &self.y().to_vec())?;
     state.end()
   }
 }
 
-impl<'de> Deserialize<'de> for GridFn<f64> {
+impl<'de, T> Deserialize<'de> for GridFn<T>
+where
+  T: InterpElem + Deserialize<'de>,
+{
   fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
   where
     D: Deserializer<'de>,
   {
-    use serde::de::{self, MapAccess, Visitor};
-    use std::fmt;
-
     #[derive(Deserialize)]
-    #[serde(field_identifier, rename_all = "lowercase")]
-    enum Field {
-      X,
-      Y,
+    struct GridFnHelper<T> {
+      x: Vec<T>,
+      y: Vec<T>,
     }
 
-    struct GridFnVisitor;
-
-    impl<'de> Visitor<'de> for GridFnVisitor {
-      type Value = GridFn<f64>;
-
-      fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("struct GridFn")
-      }
-
-      fn visit_map<V>(self, mut map: V) -> Result<GridFn<f64>, V::Error>
-      where
-        V: MapAccess<'de>,
-      {
-        let mut x: Option<Array1<f64>> = None;
-        let mut y: Option<Array1<f64>> = None;
-        while let Some(key) = map.next_key()? {
-          match key {
-            Field::X => {
-              if x.is_some() {
-                return Err(de::Error::duplicate_field("x"));
-              }
-              x = Some(map.next_value()?);
-            },
-            Field::Y => {
-              if y.is_some() {
-                return Err(de::Error::duplicate_field("y"));
-              }
-              y = Some(map.next_value()?);
-            },
-          }
-        }
-        let x = x.ok_or_else(|| de::Error::missing_field("x"))?;
-        let y = y.ok_or_else(|| de::Error::missing_field("y"))?;
-
-        GridFn::new(x, y).map_err(|e| de::Error::custom(format!("Failed to create GridFn: {e}")))
-      }
-    }
-
-    const FIELDS: &[&str] = &["x", "y"];
-    deserializer.deserialize_struct("GridFn", FIELDS, GridFnVisitor)
+    let helper = GridFnHelper::<T>::deserialize(deserializer)?;
+    let x_array = Array1::from_vec(helper.x);
+    let y_array = Array1::from_vec(helper.y);
+    GridFn::new(x_array, y_array).map_err(serde::de::Error::custom)
   }
 }
 

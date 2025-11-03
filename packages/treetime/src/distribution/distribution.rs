@@ -17,8 +17,6 @@ pub enum Distribution {
   Empty,
   Point(DistributionPoint<f64>),
   Range(DistributionRange<f64>),
-
-  #[serde(skip)]
   Function(DistributionFunction<f64>),
 }
 
