@@ -64,11 +64,7 @@ impl PartitionMarginalOps<NodeAncestral, EdgeAncestral> for PartitionMarginalDen
         .find(|fasta| fasta.seq_name == leaf_name)
         .ok_or_else(|| make_report!("Leaf sequence not found: '{leaf_name}'"))?;
 
-      *leaf = NodeAncestral {
-        name: Some(leaf_name),
-        desc: leaf_fasta.desc.clone(),
-        ..NodeAncestral::default()
-      };
+      leaf.desc = leaf_fasta.desc.clone();
 
       let alphabet = &self.alphabet.clone(); // TODO: avoid clone
       self

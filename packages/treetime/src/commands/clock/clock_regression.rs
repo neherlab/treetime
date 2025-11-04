@@ -31,17 +31,6 @@ pub struct ClockOptions {
   pub variance_offset_leaf: f64,
 }
 
-pub fn root_clock_model<N, E, D>(graph: &Graph<N, E, D>) -> Result<ClockModel, Report>
-where
-  N: GraphNode + ClockNode,
-  E: GraphEdge,
-  D: Send + Sync,
-{
-  let root = graph.get_exactly_one_root()?;
-  let root = root.read_arc().payload().read_arc();
-  ClockModel::new(root.clock_set())
-}
-
 pub fn clock_regression_backward<N, E, D>(graph: &Graph<N, E, D>, options: &ClockOptions)
 where
   N: GraphNode + ClockNode,
@@ -115,9 +104,11 @@ where
   });
 }
 
+/// Estimates clock model with optional rerooting
 pub fn estimate_clock_model_with_reroot<N, E, D>(
   graph: &mut Graph<N, E, D>,
   options: &ClockOptions,
+  clock_rate: Option<f64>,
   keep_root: bool,
   optimization_params: &BranchPointOptimizationParams,
 ) -> Result<ClockModel, Report>
@@ -126,7 +117,11 @@ where
   E: GraphEdge + ClockEdge + Default,
   D: Send + Sync,
 {
-  log::info!("## Estimating clock model (keep_root={keep_root})");
+  if let Some(rate) = clock_rate {
+    log::info!("## Estimating clock model with fixed rate {rate:.6e} (keep_root={keep_root})");
+  } else {
+    log::info!("## Estimating clock model (keep_root={keep_root})");
+  }
 
   log::info!("### Running backward regression");
   clock_regression_backward(graph, options);
@@ -146,10 +141,27 @@ where
   }
 
   log::info!("### Extracting clock model from root");
-  let clock_model = root_clock_model(graph)?;
+  let root = graph.get_exactly_one_root()?;
+  let root = root.read_arc().payload().read_arc();
+  let clock_model = if let Some(rate) = clock_rate {
+    log::info!("### Using fixed clock rate: {rate:.6e}");
+    ClockModel::clock_model_fixed_rate(root.clock_set(), rate)
+  } else {
+    log::info!("### Using estimated clock rate");
+    ClockModel::new(root.clock_set())?
+  };
+
   log::info!("**Clock rate:** {:.6e}", clock_model.clock_rate());
   log::info!("**Intercept:** {:.4}", clock_model.intercept());
-  log::info!("**R²:** {:.4}", clock_model.r_val() * clock_model.r_val());
+  if let Some(r_val) = clock_model.r_val() {
+    log::info!("**R²:** {:.4}", r_val * r_val);
+  }
+  if let Some(chisq) = clock_model.chisq() {
+    log::info!("**χ²:** {chisq:.4}");
+  }
+  if let Some(hessian) = clock_model.hessian() {
+    log::info!("**Hessian:**\n{hessian}");
+  }
   log::debug!(
     "Clock model: {}",
     serde_json::to_string_pretty(&clock_model).unwrap_or_else(|_| "<serialization failed>".to_owned())
@@ -197,7 +209,11 @@ mod tests {
     }
 
     clock_regression_backward(&graph, &ClockOptions::default());
-    let clock = root_clock_model(&graph)?;
+    let clock = {
+      let root = graph.get_exactly_one_root()?;
+      let root = root.read_arc().payload().read_arc();
+      ClockModel::new(root.clock_set())
+    }?;
     assert_ulps_eq!(naive_rate, clock.clock_rate(), epsilon = 1e-9);
 
     let options = &ClockOptions {
@@ -207,7 +223,11 @@ mod tests {
     };
 
     clock_regression_backward(&graph, options);
-    let clock = root_clock_model(&graph)?;
+    let clock = {
+      let root = graph.get_exactly_one_root()?;
+      let root = root.read_arc().payload().read_arc();
+      ClockModel::new(root.clock_set())
+    }?;
     assert_ulps_eq!(0.007710610998647367, clock.clock_rate(), epsilon = 1e-9);
 
     Ok(())

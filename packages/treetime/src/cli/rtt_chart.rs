@@ -192,15 +192,16 @@ where
       float_to_significant_digits(clock_model.intercept(), 4)
     ),
   )?;
-  add_legend(
-    &mut chart,
-    format!("R: {:}", float_to_significant_digits(clock_model.r_val(), 4)),
-  )?;
-  add_legend(
-    &mut chart,
-    format!("R²: {:}", float_to_significant_digits(clock_model.r_val().powf(2.0), 4)),
-  )?;
-  add_legend(&mut chart, format!("χ²: {:.3e}", clock_model.chisq()))?;
+  if let Some(r_val) = clock_model.r_val() {
+    add_legend(&mut chart, format!("R: {:}", float_to_significant_digits(r_val, 4)))?;
+    add_legend(
+      &mut chart,
+      format!("R²: {:}", float_to_significant_digits(r_val.powf(2.0), 4)),
+    )?;
+  }
+  if let Some(chisq) = clock_model.chisq() {
+    add_legend(&mut chart, format!("χ²: {chisq:.3e}"))?;
+  }
 
   chart
     .configure_series_labels()
@@ -238,9 +239,13 @@ pub fn print_clock_regression_chart(results: &[ClockRegressionResult], clock_mod
   table.add_row([o!("tMRCA"), format!("{:.1}", clock_model.t_mrca())]);
   table.add_row([o!("Rate"), format!("{:.6}", clock_model.clock_rate())]);
   table.add_row([o!("Intercept"), format!("{:.4}", clock_model.intercept())]);
-  table.add_row([o!("R"), format!("{:.4}", clock_model.r_val())]);
-  table.add_row([o!("R²"), format!("{:.4}", clock_model.r_val().powf(2.0))]);
-  table.add_row([o!("χ²"), format!("{:.3e}", clock_model.chisq())]);
+  if let Some(r_val) = clock_model.r_val() {
+    table.add_row([o!("R"), format!("{r_val:.4}")]);
+    table.add_row([o!("R²"), format!("{:.4}", r_val.powf(2.0))]);
+  }
+  if let Some(chisq) = clock_model.chisq() {
+    table.add_row([o!("χ²"), format!("{chisq:.3e}")]);
+  }
   println!("{table}");
 
   let (width, height) = terminal::size()?;

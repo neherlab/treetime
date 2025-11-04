@@ -48,11 +48,7 @@ fn attach_seqs_to_graph<P: PartitionCompressed>(
       // TODO: we could optionally emit a warning here and continue with a sequence that is missing
       .ok_or_else(|| make_report!("Leaf sequence not found: '{leaf_name}'"))?;
 
-    *leaf = NodeAncestral {
-      name: Some(leaf_name),
-      desc: leaf_fasta.desc.clone(),
-      ..NodeAncestral::default()
-    };
+    leaf.desc = leaf_fasta.desc.clone();
 
     partitions.iter().try_for_each(|partition| -> Result<(), Report> {
       let mut partition = partition.write_arc();

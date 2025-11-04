@@ -1,10 +1,12 @@
 use crate::commands::ancestral::marginal_unified::run_marginal;
+use crate::commands::clock::clock_model::ClockModel;
 use crate::commands::timetree::args::TreetimeTimetreeArgs;
 use crate::commands::timetree::inference::runner::run_timetree;
 use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
 use crate::io::fasta::FastaRecord;
 use crate::representation::graph_ancestral::GraphAncestral;
 use eyre::{Report, WrapErr};
+use log::info;
 use parking_lot::RwLock;
 use std::sync::Arc;
 
@@ -15,7 +17,10 @@ pub fn run_refinement_iteration(
   partitions: &[Arc<RwLock<dyn PartitionTimetreeAll>>],
   aln: Option<&[FastaRecord]>,
   i: usize,
+  clock_model: &ClockModel,
 ) -> Result<(usize, usize), Report> {
+  info!("--- Iteration {i} ---");
+
   let mut is_tree_dirty = false;
 
   if let Some(_coalescent_params) = &args.coalescent {
@@ -37,7 +42,8 @@ pub fn run_refinement_iteration(
   }
 
   if is_tree_dirty {
-    run_timetree(graph, partitions, args.keep_root)
+    info!("Tree structure changed - recomputing timetree then marginal");
+    run_timetree(graph, partitions, args.keep_root, clock_model)
       .wrap_err_with(|| format!("Timetree inference failed (iteration {i})"))?;
 
     if aln.is_some() {
@@ -45,10 +51,12 @@ pub fn run_refinement_iteration(
     }
   } else {
     if aln.is_some() {
+      info!("Updating ancestral sequences via marginal reconstruction");
       run_marginal(graph, partitions, aln)?;
     }
 
-    run_timetree(graph, partitions, args.keep_root)
+    info!("Updating node times via timetree inference");
+    run_timetree(graph, partitions, args.keep_root, clock_model)
       .wrap_err_with(|| format!("Timetree inference failed (iteration {i})"))?;
   }
 

@@ -8,8 +8,26 @@ use serde::{Deserialize, Serialize};
 use treetime_io::json::{JsonPretty, json_write_str};
 use treetime_utils::float_fmt::float_to_significant_digits;
 
+/// Regression statistics from clock model estimation
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RegressionStats {
+  pub chisq: f64,
+  pub r_val: f64,
+  pub hessian: Array2<f64>,
+  pub cov: Array2<f64>,
+}
+
+/// Clock model statistics - either estimated from data or fixed by user
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum ClockModelStats {
+  /// Clock rate estimated from root-to-tip regression with full statistics
+  Estimated(RegressionStats),
+  /// Clock rate fixed by user input (no regression statistics available)
+  Fixed,
+}
+
 #[must_use]
-#[derive(Debug, Default, Serialize, Deserialize, CopyGetters, Getters)]
+#[derive(Debug, Clone, Serialize, Deserialize, CopyGetters, Getters)]
 pub struct ClockModel {
   #[getset(get_copy = "pub")]
   clock_rate: f64,
@@ -17,17 +35,8 @@ pub struct ClockModel {
   #[getset(get_copy = "pub")]
   intercept: f64,
 
-  #[getset(get_copy = "pub")]
-  chisq: f64,
-
-  #[getset(get_copy = "pub")]
-  r_val: f64,
-
   #[getset(get = "pub")]
-  hessian: Array2<f64>,
-
-  #[getset(get = "pub")]
-  cov: Array2<f64>,
+  stats: ClockModelStats,
 }
 
 impl ClockModel {
@@ -39,26 +48,53 @@ impl ClockModel {
       return make_error!("No variation in sampling dates! Please specify your clock rate explicitly.");
     }
 
+    let clock_rate = clock_set.clock_rate(det);
     Ok(Self {
-      clock_rate: clock_set.clock_rate(det),
-      intercept: clock_set.intercept(clock_set.clock_rate(det)),
-      chisq: clock_set.chisq(),
-      r_val: clock_set.r_val(),
-      hessian: clock_set.hessian(),
-      cov: clock_set.cov(),
+      clock_rate,
+      intercept: clock_set.intercept(clock_rate),
+      stats: ClockModelStats::Estimated(RegressionStats {
+        chisq: clock_set.chisq(),
+        r_val: clock_set.r_val(),
+        hessian: clock_set.hessian(),
+        cov: clock_set.cov(),
+      }),
     })
   }
 
   pub fn clock_model_fixed_rate(clock_set: &ClockSet, clock_rate: f64) -> ClockModel {
-    let intercept = clock_set.intercept(clock_rate);
-    let hessian = clock_set.hessian();
     ClockModel {
       clock_rate,
-      intercept,
-      hessian,
-      chisq: 0.0,
-      r_val: 0.0,
-      cov: clock_set.cov(),
+      intercept: clock_set.intercept(clock_rate),
+      stats: ClockModelStats::Fixed,
+    }
+  }
+
+  fn get_regression_stat<T>(&self, f: impl FnOnce(&RegressionStats) -> T) -> Option<T> {
+    match &self.stats {
+      ClockModelStats::Estimated(stats) => Some(f(stats)),
+      ClockModelStats::Fixed => None,
+    }
+  }
+
+  pub fn chisq(&self) -> Option<f64> {
+    self.get_regression_stat(|s| s.chisq)
+  }
+
+  pub fn r_val(&self) -> Option<f64> {
+    self.get_regression_stat(|s| s.r_val)
+  }
+
+  pub fn hessian(&self) -> Option<&Array2<f64>> {
+    match &self.stats {
+      ClockModelStats::Estimated(stats) => Some(&stats.hessian),
+      ClockModelStats::Fixed => None,
+    }
+  }
+
+  pub fn cov(&self) -> Option<&Array2<f64>> {
+    match &self.stats {
+      ClockModelStats::Estimated(stats) => Some(&stats.cov),
+      ClockModelStats::Fixed => None,
     }
   }
 

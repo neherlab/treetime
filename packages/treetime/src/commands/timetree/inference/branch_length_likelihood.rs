@@ -43,12 +43,21 @@ pub fn compute_branch_length_distribution(
     .collect();
 
   let max_log_lh = log_prob.iter().copied().fold(f64::NEG_INFINITY, f64::max);
-  let normalized_log_prob: Vec<f64> = log_prob.iter().map(|&lh| lh - max_log_lh).collect();
+
+  let normalized_prob: Vec<f64> = log_prob.iter().map(|&lh| (lh - max_log_lh).exp()).collect();
 
   // Convert branch length grid to time grid (years) for consistent coordinate system
   let time_grid: Vec<f64> = grid.iter().map(|&bl| bl / clock_rate).collect();
 
-  Distribution::function(Array1::from_vec(time_grid), Array1::from_vec(normalized_log_prob)).map(Arc::new)
+  if clock_rate < 0.0 {
+    let mut time_grid_rev = time_grid;
+    let mut normalized_prob_rev = normalized_prob;
+    time_grid_rev.reverse();
+    normalized_prob_rev.reverse();
+    Distribution::function(Array1::from_vec(time_grid_rev), Array1::from_vec(normalized_prob_rev)).map(Arc::new)
+  } else {
+    Distribution::function(Array1::from_vec(time_grid), Array1::from_vec(normalized_prob)).map(Arc::new)
+  }
 }
 
 fn create_simple_grid(center: f64, one_mutation: f64, n_points: usize) -> Vec<f64> {

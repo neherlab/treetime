@@ -1,4 +1,4 @@
-use crate::commands::timetree::data::clock_model::ClockModel;
+use crate::commands::clock::clock_model::ClockModel;
 use eyre::Report;
 use std::path::Path;
 

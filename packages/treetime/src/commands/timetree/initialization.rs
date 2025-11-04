@@ -3,16 +3,17 @@ use crate::commands::ancestral::fitch::get_common_length;
 use crate::commands::timetree::args::{BranchLengthMode, TreetimeTimetreeArgs};
 use crate::commands::timetree::data::date_constraints::load_date_constraints;
 use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
+use crate::commands::timetree::utils::initialize_node_divergences;
 use crate::gtr::get_gtr::{JC69Params, jc69};
 use crate::io::dates_csv::read_dates;
 use crate::io::fasta::{FastaRecord, read_many_fasta};
 use crate::io::nwk::nwk_read_file;
 use crate::make_error;
+use crate::make_report;
 use crate::representation::graph_ancestral::GraphAncestral;
 use crate::representation::infer_dense::infer_dense;
 use crate::representation::partition_marginal_dense::PartitionMarginalDense;
 use crate::representation::partition_marginal_sparse::PartitionMarginalSparse;
-use crate::seq::div::{OnlyLeaves, calculate_divs};
 use eyre::{Report, WrapErr};
 use maplit::btreemap;
 use parking_lot::RwLock;
@@ -58,22 +59,14 @@ pub fn load_input_data(args: &TreetimeTimetreeArgs) -> Result<InputData, Report>
   }
 
   // Calculate divergence distances from root to all nodes
-  let divs = calculate_divs(&graph, OnlyLeaves(false));
-  for node_ref in graph.get_nodes() {
-    let mut node = node_ref.write_arc().payload().write_arc();
-    if let Some(name) = &node.name {
-      if let Some(&div) = divs.get(name) {
-        node.div = div;
-      }
-    }
-  }
+  initialize_node_divergences(&graph);
 
   Ok(InputData { graph, alphabet, aln })
 }
 
 pub fn initialize_partitions(
   args: &TreetimeTimetreeArgs,
-  _graph: &GraphAncestral,
+  graph: &GraphAncestral,
   alphabet: Alphabet,
   aln: Option<&[FastaRecord]>,
 ) -> Result<Vec<Arc<RwLock<dyn PartitionTimetreeAll>>>, Report> {
@@ -83,11 +76,13 @@ pub fn initialize_partitions(
   } else {
     args
       .sequence_length
-      .ok_or_else(|| eyre::eyre!("sequence_length required when no alignment provided"))?
+      .ok_or_else(|| make_report!("sequence_length required when no alignment provided"))?
   };
 
   if !dense {
-    let partition: Arc<RwLock<dyn PartitionTimetreeAll>> = Arc::new(RwLock::new(PartitionMarginalSparse {
+    let aln_data = aln.ok_or_else(|| make_report!("Alignment required for sparse marginal reconstruction"))?;
+
+    let sparse_partition = Arc::new(RwLock::new(PartitionMarginalSparse {
       index: 0,
       gtr: jc69(JC69Params::default())?,
       alphabet,
@@ -95,6 +90,10 @@ pub fn initialize_partitions(
       nodes: btreemap! {},
       edges: btreemap! {},
     }));
+
+    crate::commands::ancestral::fitch::compress_sequences(graph, std::slice::from_ref(&sparse_partition), aln_data)?;
+
+    let partition: Arc<RwLock<dyn PartitionTimetreeAll>> = sparse_partition;
     Ok(vec![partition])
   } else {
     let partition: Arc<RwLock<dyn PartitionTimetreeAll>> = Arc::new(RwLock::new(PartitionMarginalDense {

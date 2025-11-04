@@ -1,4 +1,4 @@
-use crate::commands::timetree::data::clock_model::ClockModel;
+use crate::commands::clock::clock_model::ClockModel;
 use crate::representation::edge_timetree::EdgeTimetree;
 use crate::representation::node_timetree::NodeTimetree;
 use crate::representation::partition_timetree::{GraphTimetree, PartitionTreetimeMarginalOps};

@@ -120,7 +120,6 @@ fn multiply_function_function(
   let n_points = a.t().len().max(b.t().len());
   let times = Array1::linspace(overlap_min, overlap_max, n_points);
 
-  // Evaluate both distributions and multiply
   let values: Array1<f64> = times
     .iter()
     .map(|&t| {
