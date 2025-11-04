@@ -49,7 +49,8 @@ where
     apply_reroot(graph, old_root_key, new_root_key, options)?;
   }
 
-  // TODO: remove old root node if it's trivial (i.e. having exactly 1 child and 1 parent) and merge dangling edges
+  // Clean up old root if it is now a trivial node, i.e. has exactly one parent and one child
+  remove_node_if_trivial(graph, old_root_key)?;
 
   Ok(new_root_key)
 }
@@ -125,4 +126,114 @@ where
   // Some bookkeeping
   graph.build()?;
   Ok(())
+}
+
+/// Remove a node if it is trivial (i.e. has exactly one parent and one child), merging the edges
+/// Payload data is merged appropriately
+fn remove_node_if_trivial<N, E, D>(graph: &mut Graph<N, E, D>, node_key: GraphNodeKey) -> Result<(), Report>
+where
+  N: GraphNode + ClockNode,
+  E: GraphEdge + ClockEdge,
+  D: Send + Sync,
+{
+  let node_arc = match graph.get_node(node_key) {
+    Some(node) => node,
+    None => return Ok(()),
+  };
+
+  let (parent_edge_key, child_edge_key) = {
+    let node = node_arc.read_arc();
+
+    if node.inbound().len() != 1 || node.outbound().len() != 1 {
+      return Ok(());
+    }
+
+    (node.inbound()[0], node.outbound()[0])
+  };
+
+  drop(node_arc);
+
+  let (parent_key, parent_payload) = {
+    let parent_edge = graph.get_edge(parent_edge_key).ok_or_else(|| {
+      crate::make_internal_report!("Parent edge {parent_edge_key:?} not found when removing node {node_key:?}")
+    })?;
+    let parent_edge_read = parent_edge.read_arc();
+    (parent_edge_read.source(), parent_edge_read.payload().read_arc().clone())
+  };
+
+  let (child_key, child_payload) = {
+    let child_edge = graph.get_edge(child_edge_key).ok_or_else(|| {
+      crate::make_internal_report!("Child edge {child_edge_key:?} not found when removing node {node_key:?}")
+    })?;
+    let child_edge_read = child_edge.read_arc();
+    (child_edge_read.target(), child_edge_read.payload().read_arc().clone())
+  };
+
+  let parent_branch = parent_payload.branch_length();
+  let child_branch = child_payload.branch_length();
+  let merged_branch_length = match (parent_branch, child_branch) {
+    (Some(parent_len), Some(child_len)) => Some(parent_len + child_len),
+    (Some(parent_len), None) => Some(parent_len),
+    (None, Some(child_len)) => Some(child_len),
+    (None, None) => None,
+  };
+
+  let parent_to_child = parent_payload.to_child().clone();
+  let parent_from_child = parent_payload.from_child().clone();
+  let child_to_parent = child_payload.to_parent().clone();
+
+  let mut merged_payload = parent_payload;
+  merged_payload.set_branch_length(merged_branch_length);
+  *merged_payload.to_parent_mut() = child_to_parent;
+  *merged_payload.to_child_mut() = parent_to_child;
+  *merged_payload.from_child_mut() = parent_from_child;
+
+  graph.remove_edge(parent_edge_key)?;
+  graph.remove_edge(child_edge_key)?;
+  let _removed_node = graph.remove_node(node_key)?;
+
+  graph.add_edge(parent_key, child_key, merged_payload)?;
+
+  Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use crate::commands::clock::clock_graph::ClockGraph;
+  use crate::io::nwk::{NwkWriteOptions, nwk_read_str, nwk_write_str};
+
+  #[test]
+  fn remove_trivial_node_merges_edges() -> Result<(), Report> {
+    // define tree with trivial node:
+    //        root
+    //        /  \
+    //      mid  B
+    //      /
+    //     A
+    let mut graph: ClockGraph = nwk_read_str("((A:0.5)mid:0.3,B:0.2)root;")?;
+
+    let mid_key = graph
+      .get_nodes()
+      .iter()
+      .find_map(|node| {
+        let node_guard = node.read_arc();
+        let payload = node_guard.payload().read_arc();
+        (payload.name.as_deref() == Some("mid")).then_some(node_guard.key())
+      })
+      .expect("Expected node named 'mid'");
+
+    remove_node_if_trivial(&mut graph, mid_key)?;
+
+    assert!(graph.get_node(mid_key).is_none(), "Expected node to be removed");
+
+    let expected_newick = "(B:0.2[&mutations=\"\"],A:0.8[&mutations=\"\"])root[&mutations=\"\"];";
+    let resulting_newick = nwk_write_str(&graph, &NwkWriteOptions::default())?;
+    assert_eq!(
+      resulting_newick, expected_newick,
+      "Unexpected resulting tree structure after removing trivial node"
+    );
+
+    Ok(())
+  }
 }
