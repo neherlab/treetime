@@ -1,4 +1,4 @@
-use crate::commands::optimize::optimize_unified::{OptimizationContribution, evaluate_mixed};
+use crate::commands::optimize::optimize_unified::{OptimizationContribution, evaluate_mixed_log_lh_only};
 use crate::distribution::distribution::Distribution;
 use crate::graph::edge::GraphEdgeKey;
 use crate::representation::partition_marginal_dense::PartitionMarginalDense;
@@ -34,10 +34,7 @@ pub fn compute_branch_length_distribution(
 ) -> Result<Arc<Distribution>, Report> {
   let grid = create_simple_grid(current_branch_length, one_mutation, n_grid_points);
 
-  let log_prob = grid.mapv(|branch_len| {
-    let metrics = evaluate_mixed(contributions, branch_len);
-    metrics.log_lh
-  });
+  let log_prob = grid.mapv(|branch_len| evaluate_mixed_log_lh_only(contributions, branch_len));
 
   let max_log_lh = log_prob.fold(f64::NEG_INFINITY, |a, &b| a.max(b));
 
