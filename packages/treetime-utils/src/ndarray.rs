@@ -216,6 +216,18 @@ pub fn random<T: Copy + SampleUniform + NumCast, D: Dimension, Sh: ShapeBuilder<
   Array::<T, D>::random_using(shape, Uniform::<T>::new::<T, T>(from, to), rng)
 }
 
+/// Reverse 1D array in place by inverting axis 0
+pub fn reverse_inplace<T>(arr: &mut Array1<T>) {
+  arr.invert_axis(Axis(0));
+}
+
+/// Reverse 1D array by inverting axis 0
+pub fn reverse<T: Clone, S: Data<Elem = T>>(arr: &ArrayBase<S, Ix1>) -> Array1<T> {
+  let mut reversed = arr.view().to_owned();
+  reverse_inplace(&mut reversed);
+  reversed
+}
+
 /// Check if grid is uniform
 pub fn is_uniform_grid(grid: &Array1<f64>) -> bool {
   if grid.len() < 2 {

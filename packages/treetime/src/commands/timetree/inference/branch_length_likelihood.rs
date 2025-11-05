@@ -4,7 +4,8 @@ use crate::graph::edge::GraphEdgeKey;
 use crate::representation::partition_marginal_dense::PartitionMarginalDense;
 use crate::representation::partition_marginal_sparse::PartitionMarginalSparse;
 use eyre::Report;
-use ndarray::{Array1, s};
+use ndarray::Array1;
+use ndarray_stats::QuantileExt;
 use std::sync::Arc;
 
 pub fn collect_edge_contributions(
@@ -32,29 +33,20 @@ pub fn compute_branch_length_distribution(
   n_grid_points: usize,
   clock_rate: f64,
 ) -> Result<Arc<Distribution>, Report> {
+  debug_assert!(clock_rate >= 0.0);
+
   let grid = create_simple_grid(current_branch_length, one_mutation, n_grid_points);
 
-  let log_prob = grid.mapv(|branch_len| evaluate_mixed_log_lh_only(contributions, branch_len));
+  let log_lh = grid.mapv(|branch_len| evaluate_mixed_log_lh_only(contributions, branch_len));
+  let max_log_lh = log_lh.max()?;
 
-  let max_log_lh = log_prob.fold(f64::NEG_INFINITY, |a, &b| a.max(b));
-
-  let normalized_prob = log_prob.mapv(|lh| (lh - max_log_lh).exp());
-
-  let time_grid = grid.mapv(|bl| bl / clock_rate);
-
-  if clock_rate < 0.0 {
-    let time_grid_rev = time_grid.slice(s![..;-1]).to_owned();
-    let normalized_prob_rev = normalized_prob.slice(s![..;-1]).to_owned();
-    Distribution::function(time_grid_rev, normalized_prob_rev)
-  } else {
-    Distribution::function(time_grid, normalized_prob)
-  }
-  .map(Arc::new)
+  let time_grid = grid / clock_rate;
+  let normalized_prob = (&log_lh - *max_log_lh).exp();
+  Distribution::function(time_grid, normalized_prob).map(Arc::new)
 }
 
 fn create_simple_grid(center: f64, one_mutation: f64, n_points: usize) -> Array1<f64> {
   let min_bl = one_mutation * 0.1;
   let max_bl = f64::max(center * 3.0, one_mutation * 10.0);
-
   Array1::linspace(min_bl, max_bl, n_points)
 }
