@@ -4,7 +4,7 @@ use crate::graph::edge::GraphEdgeKey;
 use crate::representation::partition_marginal_dense::PartitionMarginalDense;
 use crate::representation::partition_marginal_sparse::PartitionMarginalSparse;
 use eyre::Report;
-use ndarray::Array1;
+use ndarray::{Array1, s};
 use std::sync::Arc;
 
 pub fn collect_edge_contributions(
@@ -34,35 +34,30 @@ pub fn compute_branch_length_distribution(
 ) -> Result<Arc<Distribution>, Report> {
   let grid = create_simple_grid(current_branch_length, one_mutation, n_grid_points);
 
-  let log_prob: Vec<f64> = grid
-    .iter()
-    .map(|&bl| {
-      let metrics = evaluate_mixed(contributions, bl);
-      metrics.log_lh
-    })
-    .collect();
+  let log_prob = grid.mapv(|branch_len| {
+    let metrics = evaluate_mixed(contributions, branch_len);
+    metrics.log_lh
+  });
 
-  let max_log_lh = log_prob.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+  let max_log_lh = log_prob.fold(f64::NEG_INFINITY, |a, &b| a.max(b));
 
-  let normalized_prob: Vec<f64> = log_prob.iter().map(|&lh| (lh - max_log_lh).exp()).collect();
+  let normalized_prob = log_prob.mapv(|lh| (lh - max_log_lh).exp());
 
-  // Convert branch length grid to time grid (years) for consistent coordinate system
-  let time_grid: Vec<f64> = grid.iter().map(|&bl| bl / clock_rate).collect();
+  let time_grid = grid.mapv(|bl| bl / clock_rate);
 
   if clock_rate < 0.0 {
-    let mut time_grid_rev = time_grid;
-    let mut normalized_prob_rev = normalized_prob;
-    time_grid_rev.reverse();
-    normalized_prob_rev.reverse();
-    Distribution::function(Array1::from_vec(time_grid_rev), Array1::from_vec(normalized_prob_rev)).map(Arc::new)
+    let time_grid_rev = time_grid.slice(s![..;-1]).to_owned();
+    let normalized_prob_rev = normalized_prob.slice(s![..;-1]).to_owned();
+    Distribution::function(time_grid_rev, normalized_prob_rev)
   } else {
-    Distribution::function(Array1::from_vec(time_grid), Array1::from_vec(normalized_prob)).map(Arc::new)
+    Distribution::function(time_grid, normalized_prob)
   }
+  .map(Arc::new)
 }
 
-fn create_simple_grid(center: f64, one_mutation: f64, n_points: usize) -> Vec<f64> {
+fn create_simple_grid(center: f64, one_mutation: f64, n_points: usize) -> Array1<f64> {
   let min_bl = one_mutation * 0.1;
   let max_bl = f64::max(center * 3.0, one_mutation * 10.0);
 
-  Array1::linspace(min_bl, max_bl, n_points).to_vec()
+  Array1::linspace(min_bl, max_bl, n_points)
 }
