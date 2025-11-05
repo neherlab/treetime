@@ -4,10 +4,10 @@ use crate::commands::timetree::inference::backward_pass::propagate_distributions
 use crate::commands::timetree::inference::branch_length_likelihood::compute_branch_length_distribution;
 use crate::commands::timetree::inference::forward_pass::propagate_distributions_forward;
 use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
+use crate::commands::timetree::utils::{initialize_clock_totals_from_time_distributions, initialize_node_divergences};
 use crate::distribution::distribution::Distribution;
 use crate::graph::edge::GraphEdgeKey;
 use crate::representation::graph_ancestral::GraphAncestral;
-use crate::seq::div::{OnlyLeaves, calculate_divs};
 use eyre::Report;
 use parking_lot::RwLock;
 use std::sync::Arc;
@@ -23,15 +23,7 @@ pub fn run_timetree(
   log::info!("# Running timetree inference");
 
   log::info!("## Calculating divergence distances");
-  let divs = calculate_divs(graph, OnlyLeaves(false));
-  for node_ref in graph.get_nodes() {
-    let mut node = node_ref.write_arc().payload().write_arc();
-    if let Some(name) = &node.name {
-      if let Some(&div) = divs.get(name) {
-        node.div = div;
-      }
-    }
-  }
+  initialize_node_divergences(graph);
 
   log::info!("## Using clock model");
   log::info!("**Clock rate:** {:.6e}", clock_model.clock_rate());
@@ -151,7 +143,6 @@ mod tests {
   use crate::commands::ancestral::fitch::compress_sequences;
   use crate::commands::ancestral::marginal_unified::run_marginal;
   use crate::commands::clock::clock_regression::{ClockOptions, estimate_clock_model_with_reroot};
-  use crate::commands::clock::clock_set::ClockSet;
   use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
   use crate::commands::timetree::data::date_constraints::load_date_constraints;
   use crate::commands::timetree::inference::backward_pass::propagate_distributions_backward;
@@ -163,7 +154,6 @@ mod tests {
   use crate::o;
   use crate::representation::partition_marginal_dense::PartitionMarginalDense;
   use crate::representation::partition_marginal_sparse::PartitionMarginalSparse;
-  use crate::seq::div::{OnlyLeaves, calculate_divs};
   use itertools::Itertools;
   use maplit::btreemap;
   use ndarray::Array1;
@@ -407,15 +397,7 @@ mod tests {
     run_marginal(&graph, &partitions, Some(&ALN))?;
     dump_graph(&graph, "002_after_run_marginal.json")?;
 
-    let divs = calculate_divs(&graph, OnlyLeaves(false));
-    for node_ref in graph.get_nodes() {
-      let mut node = node_ref.write_arc().payload().write_arc();
-      if let Some(name) = &node.name {
-        if let Some(&div) = divs.get(name) {
-          node.div = div;
-        }
-      }
-    }
+    initialize_node_divergences(&graph);
     dump_graph(&graph, "002_after_calculate_divs.json")?;
 
     let clock_model = estimate_clock_model_with_reroot(
@@ -427,16 +409,7 @@ mod tests {
     )?;
     dump_graph(&graph, "003_after_clock_model.json")?;
 
-    {
-      for node_ref in graph.get_nodes() {
-        let mut node = node_ref.write_arc().payload().write_arc();
-        if let Some(dist_arc) = &node.time_distribution {
-          if let Some(time) = dist_arc.likely_time() {
-            node.clock_total = ClockSet::leaf_contribution(Some(time));
-          }
-        }
-      }
-    }
+    initialize_clock_totals_from_time_distributions(&graph)?;
     dump_graph(&graph, "004_after_initialize_node_times.json")?;
 
     run_timetree(&mut graph, &partitions, true, &clock_model)?;
@@ -478,19 +451,10 @@ mod tests {
 
     let partitions: Vec<Arc<RwLock<dyn PartitionTimetreeAll>>> = vec![dense_partition];
 
-    // Run marginal reconstruction using dense representation
     run_marginal(&graph, &partitions, Some(&ALN))?;
     dump_graph(&graph, "001_after_run_marginal.json")?;
 
-    let divs = calculate_divs(&graph, OnlyLeaves(false));
-    for node_ref in graph.get_nodes() {
-      let mut node = node_ref.write_arc().payload().write_arc();
-      if let Some(name) = &node.name {
-        if let Some(&div) = divs.get(name) {
-          node.div = div;
-        }
-      }
-    }
+    initialize_node_divergences(&graph);
     dump_graph(&graph, "002_after_calculate_divs.json")?;
 
     let clock_model = estimate_clock_model_with_reroot(
@@ -502,16 +466,7 @@ mod tests {
     )?;
     dump_graph(&graph, "003_after_clock_model.json")?;
 
-    {
-      for node_ref in graph.get_nodes() {
-        let mut node = node_ref.write_arc().payload().write_arc();
-        if let Some(dist_arc) = &node.time_distribution {
-          if let Some(time) = dist_arc.likely_time() {
-            node.clock_total = ClockSet::leaf_contribution(Some(time));
-          }
-        }
-      }
-    }
+    initialize_clock_totals_from_time_distributions(&graph)?;
     dump_graph(&graph, "004_after_initialize_node_times.json")?;
 
     run_timetree(&mut graph, &partitions, true, &clock_model)?;
