@@ -43,7 +43,7 @@ pub fn run_refinement_iteration(
 
   if is_tree_dirty {
     info!("Tree structure changed - recomputing timetree then marginal");
-    run_timetree(graph, partitions, args.keep_root, clock_model)
+    run_timetree(graph, partitions, clock_model)
       .wrap_err_with(|| format!("Timetree inference failed (iteration {i})"))?;
 
     if aln.is_some() {
@@ -56,7 +56,7 @@ pub fn run_refinement_iteration(
     }
 
     info!("Updating node times via timetree inference");
-    run_timetree(graph, partitions, args.keep_root, clock_model)
+    run_timetree(graph, partitions, clock_model)
       .wrap_err_with(|| format!("Timetree inference failed (iteration {i})"))?;
   }
 

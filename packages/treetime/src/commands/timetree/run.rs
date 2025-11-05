@@ -134,7 +134,7 @@ fn run_initial_timetree_inference(
   info!("### Initializing node times from date constraints");
   initialize_clock_totals_from_time_distributions(graph)?;
 
-  run_timetree(graph, partitions, args.keep_root, clock_model)?;
+  run_timetree(graph, partitions, clock_model)?;
 
   // if !_args.keep_root {
   //   todo!("Second reroot not yet implemented");
@@ -155,7 +155,7 @@ fn run_post_processing(
 
   if args.time_marginal == TimeMarginalMode::OnlyFinal {
     info!("### Final round: marginal reconstruction for confidence intervals");
-    run_timetree(graph, partitions, args.keep_root, clock_model).wrap_err("Final timetree inference failed")?;
+    run_timetree(graph, partitions, clock_model).wrap_err("Final timetree inference failed")?;
     todo!("extract_confidence_intervals not yet implemented");
   }
 

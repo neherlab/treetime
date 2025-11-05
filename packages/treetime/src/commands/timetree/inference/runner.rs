@@ -4,7 +4,7 @@ use crate::commands::timetree::inference::backward_pass::propagate_distributions
 use crate::commands::timetree::inference::branch_length_likelihood::compute_branch_length_distribution;
 use crate::commands::timetree::inference::forward_pass::propagate_distributions_forward;
 use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
-use crate::commands::timetree::utils::{initialize_clock_totals_from_time_distributions, initialize_node_divergences};
+use crate::commands::timetree::utils::initialize_node_divergences;
 use crate::distribution::distribution::Distribution;
 use crate::graph::edge::GraphEdgeKey;
 use crate::representation::graph_ancestral::GraphAncestral;
@@ -17,7 +17,6 @@ const BRANCH_GRID_SIZE: usize = 200;
 pub fn run_timetree(
   graph: &mut GraphAncestral,
   partitions: &[Arc<RwLock<dyn PartitionTimetreeAll>>],
-  keep_root: bool,
   clock_model: &ClockModel,
 ) -> Result<(), Report> {
   log::info!("# Running timetree inference");
@@ -147,6 +146,7 @@ mod tests {
   use crate::commands::timetree::data::date_constraints::load_date_constraints;
   use crate::commands::timetree::inference::backward_pass::propagate_distributions_backward;
   use crate::commands::timetree::inference::forward_pass::propagate_distributions_forward;
+  use crate::commands::timetree::utils::initialize_clock_totals_from_time_distributions;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::io::dates_csv::{DatesMap, read_dates};
   use crate::io::fasta::{FastaRecord, read_many_fasta};
@@ -412,7 +412,7 @@ mod tests {
     initialize_clock_totals_from_time_distributions(&graph)?;
     dump_graph(&graph, "004_after_initialize_node_times.json")?;
 
-    run_timetree(&mut graph, &partitions, true, &clock_model)?;
+    run_timetree(&mut graph, &partitions, &clock_model)?;
     dump_graph(&graph, "005_after_run_timetree.json")?;
 
     let actual = round_times(&extract_node_times(&graph));
@@ -469,7 +469,7 @@ mod tests {
     initialize_clock_totals_from_time_distributions(&graph)?;
     dump_graph(&graph, "004_after_initialize_node_times.json")?;
 
-    run_timetree(&mut graph, &partitions, true, &clock_model)?;
+    run_timetree(&mut graph, &partitions, &clock_model)?;
     dump_graph(&graph, "005_after_run_timetree.json")?;
 
     let actual = round_times(&extract_node_times(&graph));
