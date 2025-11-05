@@ -112,11 +112,13 @@ pub fn convert_record(
 pub fn read_date(date_str: &str, options: &DateParserOptions) -> Result<Option<DateOrRange>, Report> {
   let trimmed = date_str.trim();
 
-  // Try parsing as fractional year first (e.g. "2020.5", "2003.84052019")
-  if let Ok(year_fraction) = trimmed.parse::<f64>() {
-    if year_fraction.is_finite() {
-      return Ok(Some(DateOrRange::YearFraction(year_fraction)));
-    }
+  // Try parsing as year fraction first (e.g. "2020.5", "2003.84052019")
+  // Only accept values in reasonable year range (1000-3000) to avoid parsing compact dates like "20240723" as floats
+  if let Ok(year_fraction) = trimmed.parse::<f64>()
+    && year_fraction.is_finite()
+    && (1000.0..=3000.0).contains(&year_fraction)
+  {
+    return Ok(Some(DateOrRange::YearFraction(year_fraction)));
   }
 
   // Try parsing as formatted date (e.g. "2020-07-15", "20200715", "2020/07/15")
