@@ -1,5 +1,7 @@
 use crate::commands::ancestral::marginal_unified::run_marginal;
 use crate::commands::clock::clock_model::ClockModel;
+use crate::commands::clock::clock_regression::{ClockOptions, estimate_clock_model_with_reroot};
+use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
 use crate::commands::timetree::args::TreetimeTimetreeArgs;
 use crate::commands::timetree::inference::runner::run_timetree;
 use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
@@ -16,11 +18,10 @@ pub fn run_refinement_iteration(
   graph: &mut GraphAncestral,
   partitions: &[Arc<RwLock<dyn PartitionTimetreeAll>>],
   aln: Option<&[FastaRecord]>,
-  i: usize,
-  clock_model: &ClockModel,
+  clock_model: &mut ClockModel,
+  clock_options: &ClockOptions,
+  branch_params: &BranchPointOptimizationParams,
 ) -> Result<(usize, usize), Report> {
-  info!("--- Iteration {i} ---");
-
   let mut is_tree_dirty = false;
 
   if let Some(_coalescent_params) = &args.coalescent {
@@ -43,8 +44,7 @@ pub fn run_refinement_iteration(
 
   if is_tree_dirty {
     info!("Tree structure changed - recomputing timetree then marginal");
-    run_timetree(graph, partitions, clock_model)
-      .wrap_err_with(|| format!("Timetree inference failed (iteration {i})"))?;
+    run_timetree(graph, partitions, clock_model).wrap_err("Timetree inference failed")?;
 
     if aln.is_some() {
       run_marginal(graph, partitions, aln)?;
@@ -56,11 +56,14 @@ pub fn run_refinement_iteration(
     }
 
     info!("Updating node times via timetree inference");
-    run_timetree(graph, partitions, clock_model)
-      .wrap_err_with(|| format!("Timetree inference failed (iteration {i})"))?;
+    run_timetree(graph, partitions, clock_model).wrap_err("Timetree inference failed")?;
   }
 
-  let ndiff = 0;
+  let n_diff = 0;
 
-  Ok((ndiff, n_resolved))
+  *clock_model =
+    estimate_clock_model_with_reroot(graph, &clock_options, args.clock_rate, args.keep_root, &branch_params)
+      .wrap_err("Failed to update clock model")?;
+
+  Ok((n_diff, n_resolved))
 }

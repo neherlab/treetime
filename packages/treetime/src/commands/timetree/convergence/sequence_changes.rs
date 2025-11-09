@@ -7,12 +7,12 @@ use std::sync::Arc;
 
 /// Stores ancestral sequence states for change tracking between iterations.
 ///
-/// Maps node keys to their reconstructed sequences to enable ndiff calculation.
+/// Maps node keys to their reconstructed sequences to enable n_diff calculation.
 pub type AncestralStateSnapshot = BTreeMap<String, Vec<u8>>;
 
 /// Count ancestral sequence changes between iterations.
 ///
-/// Core: Primary convergence criterion (stop when ndiff == 0).
+/// Core: Primary convergence criterion (stop when n_diff == 0).
 /// Why: No sequence changes indicates reconstruction has stabilized.
 /// How: Compare current and previous ancestral sequences, count differing positions.
 pub fn count_sequence_changes(
@@ -26,7 +26,7 @@ pub fn count_sequence_changes(
 
 /// Capture current ancestral sequence states for change tracking.
 ///
-/// Core: Required for ndiff calculation between iterations.
+/// Core: Required for n_diff calculation between iterations.
 /// Why: Need snapshot to compare before/after reconstruction.
 /// How: Extract reconstructed sequences from all internal nodes.
 pub fn capture_ancestral_states(

@@ -54,7 +54,7 @@ impl TimetreeOptimizer {
 
     if metric.has_converged() {
       info!(
-        "Converged at iteration {} (ndiff={n_diff}, n_resolved={n_resolved})",
+        "Converged at iteration {} (n_diff={n_diff}, n_resolved={n_resolved})",
         self.i
       );
     } else {
@@ -85,13 +85,13 @@ pub struct IterationContext {
 /// Tracks convergence metrics across timetree optimization iterations.
 ///
 /// Records likelihood components and change counts to monitor convergence:
-/// - Sequence changes (ndiff) should approach zero
+/// - Sequence changes (n_diff) should approach zero
 /// - Polytomies resolved (n_resolved) should stabilize
 /// - Likelihoods should increase or stabilize
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ConvergenceMetrics {
   /// Number of ancestral sequence changes in this iteration
-  pub ndiff: usize,
+  pub n_diff: usize,
   /// Number of polytomies resolved in this iteration
   pub n_resolved: usize,
   /// Sequence likelihood (probability of observing sequences given tree and substitution model)
@@ -105,9 +105,9 @@ pub struct ConvergenceMetrics {
 }
 
 impl ConvergenceMetrics {
-  fn from_iteration(ndiff: usize, n_resolved: usize) -> Self {
+  fn from_iteration(n_diff: usize, n_resolved: usize) -> Self {
     Self {
-      ndiff,
+      n_diff,
       n_resolved,
       lh_seq: None,
       lh_pos: None,
@@ -117,7 +117,7 @@ impl ConvergenceMetrics {
   }
 
   fn has_converged(&self) -> bool {
-    self.ndiff == 0 && self.n_resolved == 0
+    self.n_diff == 0 && self.n_resolved == 0
   }
 }
 

@@ -9,6 +9,7 @@ use crate::distribution::distribution::Distribution;
 use crate::graph::edge::GraphEdgeKey;
 use crate::representation::graph_ancestral::GraphAncestral;
 use eyre::Report;
+use log::{debug, info};
 use parking_lot::RwLock;
 use std::sync::Arc;
 
@@ -19,33 +20,33 @@ pub fn run_timetree(
   partitions: &[Arc<RwLock<dyn PartitionTimetreeAll>>],
   clock_model: &ClockModel,
 ) -> Result<(), Report> {
-  log::info!("# Running timetree inference");
+  info!("# Running timetree inference");
 
-  log::info!("## Calculating divergence distances");
+  info!("## Calculating divergence distances");
   initialize_node_divergences(graph);
 
-  log::info!("## Using clock model");
-  log::info!("**Clock rate:** {:.6e}", clock_model.clock_rate());
+  info!("## Using clock model");
+  info!("**Clock rate:** {:.6e}", clock_model.clock_rate());
 
   if !partitions.is_empty() {
-    log::info!("## Computing branch distributions from partitions");
-    compute_branch_distributions(graph, partitions, clock_model)?;
+    info!("## Computing branch distributions from partitions");
+    compute_branch_distributions_marginal_mode(graph, partitions, clock_model)?;
   } else {
-    log::info!("## Creating branch distributions from input lengths");
-    create_branch_distributions_from_input_lengths(graph, clock_model)?;
+    info!("## Creating branch distributions from input lengths");
+    create_branch_distributions_inpu_mode(graph, clock_model)?;
   }
 
-  log::info!("## Propagating distributions backward");
+  info!("## Propagating distributions backward");
   propagate_distributions_backward(graph)?;
 
-  log::info!("## Propagating distributions forward");
+  info!("## Propagating distributions forward");
   propagate_distributions_forward(graph)?;
 
-  log::info!("# Timetree inference completed");
+  info!("# Timetree inference completed");
   Ok(())
 }
 
-fn compute_branch_distributions(
+fn compute_branch_distributions_marginal_mode(
   graph: &GraphAncestral,
   partitions: &[Arc<RwLock<dyn PartitionTimetreeAll>>],
   clock_model: &ClockModel,
@@ -53,7 +54,7 @@ fn compute_branch_distributions(
   // In input branch mode, partitions exist but have no edge data
   // Skip branch distribution computation and use input branch lengths directly
   if partitions.iter().any(|p| p.read_arc().get_sequence_length().is_none()) {
-    log::debug!("Skipping branch distribution computation: partitions not initialized");
+    debug!("Skipping branch distribution computation: partitions not initialized");
     return Ok(());
   }
 
@@ -63,12 +64,12 @@ fn compute_branch_distributions(
     .map(|p| p.read_arc().get_sequence_length().unwrap_or(0))
     .sum();
 
-  log::info!(
+  info!(
     "Computing branch distributions from {} partition(s) with {} total sites",
     partitions.len(),
     total_sites
   );
-  log::debug!("One mutation = {one_mutation:.6e} substitutions/site");
+  debug!("One mutation = {one_mutation:.6e} substitutions/site");
 
   let clock_rate = clock_model.clock_rate();
 
@@ -77,7 +78,7 @@ fn compute_branch_distributions(
     let mut edge = edge_ref.write_arc().payload().write_arc();
     let branch_length = edge.branch_length.unwrap_or(one_mutation);
 
-    log::debug!("Edge {edge_key:?}: input branch_length = {branch_length:.6e}");
+    debug!("Edge {edge_key:?}: input branch_length = {branch_length:.6e}");
 
     let contributions = collect_contributions(partitions, edge_key)?;
     let distribution = compute_branch_length_distribution(
@@ -89,7 +90,7 @@ fn compute_branch_distributions(
     )?;
 
     if let Some(likely_time) = distribution.likely_time() {
-      log::debug!("Edge {edge_key:?}: distribution peak at time = {likely_time:.6e}");
+      debug!("Edge {edge_key:?}: distribution peak at time = {likely_time:.6e}");
     }
 
     edge.branch_length_distribution = Some(distribution);
@@ -115,10 +116,7 @@ fn collect_contributions(
     .collect()
 }
 
-fn create_branch_distributions_from_input_lengths(
-  graph: &GraphAncestral,
-  clock_model: &ClockModel,
-) -> Result<(), Report> {
+fn create_branch_distributions_inpu_mode(graph: &GraphAncestral, clock_model: &ClockModel) -> Result<(), Report> {
   let clock_rate = clock_model.clock_rate();
 
   for edge_ref in graph.get_edges() {

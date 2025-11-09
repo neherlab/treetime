@@ -61,7 +61,7 @@ impl ClockModel {
     })
   }
 
-  pub fn clock_model_fixed_rate(clock_set: &ClockSet, clock_rate: f64) -> ClockModel {
+  pub fn with_fixed_rate(clock_set: &ClockSet, clock_rate: f64) -> ClockModel {
     ClockModel {
       clock_rate,
       intercept: clock_set.intercept(clock_rate),

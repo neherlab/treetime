@@ -62,8 +62,7 @@ pub struct NodeAncestral {
   pub bad_branch: bool,
   pub div: f64,
   pub is_outlier: bool,
-  #[serde(skip)]
-  pub clock_total: ClockSet,
+  pub clock_set: ClockSet,
 }
 
 impl NodeFromNwk for NodeAncestral {
@@ -326,11 +325,11 @@ impl ClockNode for NodeAncestral {
   }
 
   fn clock_set(&self) -> &ClockSet {
-    &self.clock_total
+    &self.clock_set
   }
 
   fn clock_set_mut(&mut self) -> &mut ClockSet {
-    &mut self.clock_total
+    &mut self.clock_set
   }
 }
 

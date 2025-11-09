@@ -267,9 +267,3 @@ pub struct TreetimeTimetreeArgs {
   #[clap(long)]
   pub seed: Option<u64>,
 }
-
-impl TreetimeTimetreeArgs {
-  pub fn clock_filter_enabled(&self) -> bool {
-    self.clock_filter > 0.0
-  }
-}

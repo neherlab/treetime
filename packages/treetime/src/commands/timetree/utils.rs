@@ -20,7 +20,7 @@ pub fn initialize_clock_totals_from_time_distributions(graph: &GraphAncestral) -
     let mut node = node_ref.write_arc().payload().write_arc();
     if let Some(dist_arc) = &node.time_distribution {
       if let Some(time) = dist_arc.likely_time() {
-        node.clock_total = ClockSet::leaf_contribution(Some(time));
+        node.clock_set = ClockSet::leaf_contribution(Some(time));
       }
     }
   }

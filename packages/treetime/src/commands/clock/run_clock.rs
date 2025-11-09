@@ -6,6 +6,7 @@ use crate::commands::clock::assign_dates::assign_dates;
 use crate::commands::clock::clock_args::{BranchSplitArgs, TreetimeClockArgs};
 use crate::commands::clock::clock_filter::clock_filter_inplace;
 use crate::commands::clock::clock_graph::ClockGraph;
+use crate::commands::clock::clock_output::write_clock_model;
 use crate::commands::clock::clock_regression::{ClockOptions, estimate_clock_model_with_reroot};
 use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
 use crate::commands::clock::rtt::{gather_clock_regression_results, write_clock_regression_result_csv};
@@ -94,7 +95,7 @@ pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
   json_write_file(outdir.join("graph_output.json"), &graph, JsonPretty(true))?;
   graphviz_write_file(outdir.join("graph_output.dot"), &graph)?;
 
-  json_write_file(outdir.join("clock_model.json"), &clock_model, JsonPretty(true))?;
+  write_clock_model(&clock_model, &outdir.join("clock_model"))?;
 
   let results = gather_clock_regression_results(&graph, &clock_model);
 

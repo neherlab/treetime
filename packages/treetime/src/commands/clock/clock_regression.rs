@@ -9,6 +9,7 @@ use crate::graph::graph::Graph;
 use crate::graph::node::GraphNode;
 use clap::Args;
 use eyre::Report;
+use log::{debug, info};
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::fmt::Debug;
@@ -118,51 +119,51 @@ where
   D: Send + Sync,
 {
   if let Some(rate) = clock_rate {
-    log::info!("## Estimating clock model with fixed rate {rate:.6e} (keep_root={keep_root})");
+    info!("## Estimating clock model with fixed rate {rate:.6e} (keep_root={keep_root})");
   } else {
-    log::info!("## Estimating clock model (keep_root={keep_root})");
+    info!("## Estimating clock model (keep_root={keep_root})");
   }
 
-  log::info!("### Running backward regression");
+  info!("### Running backward regression");
   clock_regression_backward(graph, options);
-  log::debug!("Backward regression completed");
+  debug!("Backward regression completed");
 
   if !keep_root {
-    log::info!("### Running forward regression to find optimal root");
+    info!("### Running forward regression to find optimal root");
     clock_regression_forward(graph, options);
-    log::debug!("Forward regression completed");
+    debug!("Forward regression completed");
 
-    log::info!("### Finding best root and rerooting tree");
+    info!("### Finding best root and rerooting tree");
     let new_root_key = reroot_in_place(graph, options, optimization_params)?;
-    log::info!("Rerooted to node {}", new_root_key.0);
-    log::debug!("Rerooting completed");
+    info!("Rerooted to node {}", new_root_key.0);
+    debug!("Rerooting completed");
   } else {
-    log::info!("### Keeping original root (--keep-root enabled)");
+    info!("### Keeping original root (--keep-root enabled)");
   }
 
-  log::info!("### Extracting clock model from root");
+  info!("### Extracting clock model from root");
   let root = graph.get_exactly_one_root()?;
   let root = root.read_arc().payload().read_arc();
   let clock_model = if let Some(rate) = clock_rate {
-    log::info!("### Using fixed clock rate: {rate:.6e}");
-    ClockModel::clock_model_fixed_rate(root.clock_set(), rate)
+    info!("### Using fixed clock rate: {rate:.6e}");
+    ClockModel::with_fixed_rate(root.clock_set(), rate)
   } else {
-    log::info!("### Using estimated clock rate");
+    info!("### Using estimated clock rate");
     ClockModel::new(root.clock_set())?
   };
 
-  log::info!("**Clock rate:** {:.6e}", clock_model.clock_rate());
-  log::info!("**Intercept:** {:.4}", clock_model.intercept());
+  info!("**Clock rate:** {:.6e}", clock_model.clock_rate());
+  info!("**Intercept:** {:.4}", clock_model.intercept());
   if let Some(r_val) = clock_model.r_val() {
-    log::info!("**R²:** {:.4}", r_val * r_val);
+    info!("**R²:** {:.4}", r_val * r_val);
   }
   if let Some(chisq) = clock_model.chisq() {
-    log::info!("**χ²:** {chisq:.4}");
+    info!("**χ²:** {chisq:.4}");
   }
   if let Some(hessian) = clock_model.hessian() {
-    log::info!("**Hessian:**\n{hessian}");
+    info!("**Hessian:**\n{hessian}");
   }
-  log::debug!(
+  debug!(
     "Clock model: {}",
     serde_json::to_string_pretty(&clock_model).unwrap_or_else(|_| "<serialization failed>".to_owned())
   );
