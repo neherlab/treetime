@@ -53,12 +53,9 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
       info!("Branch length mode: Input - using tree branch lengths");
       vec![]
     },
-    BranchLengthMode::Marginal | BranchLengthMode::Auto => {
+    BranchLengthMode::Marginal => {
       info!("Branch length mode: Marginal - initializing partitions from alignment");
       initialize_partitions(args, &graph, alphabet, aln.as_deref())?
-    },
-    BranchLengthMode::Joint => {
-      todo!("Joint ancestral reconstruction not yet implemented")
     },
   };
 
@@ -111,12 +108,9 @@ fn run_pre_optimization(
       BranchLengthMode::Input => {
         info!("Using input branch lengths for timetree inference");
       },
-      BranchLengthMode::Marginal | BranchLengthMode::Auto => {
+      BranchLengthMode::Marginal => {
         info!("Running initial ancestral reconstruction");
         run_marginal(graph, partitions, aln)?;
-      },
-      BranchLengthMode::Joint => {
-        todo!("Joint ancestral reconstruction not yet implemented")
       },
     }
   }

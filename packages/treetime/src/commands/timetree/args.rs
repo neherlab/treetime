@@ -10,10 +10,8 @@ use std::path::PathBuf;
 #[value(rename_all = "kebab-case")]
 #[derive(Default)]
 pub enum BranchLengthMode {
-  #[default]
-  Auto,
   Input,
-  Joint,
+  #[default]
   Marginal,
 }
 
