@@ -48,11 +48,11 @@ where
 
   if new_root_key != old_root_key {
     apply_reroot(graph, old_root_key, new_root_key, options)?;
-  }
 
-  // Clean up old root if it is now a trivial node, i.e. has exactly one parent and one child
-  // Nb: the attributes of the old root node and branches (other than branch lengths) are discarded
-  remove_node_if_trivial(graph, old_root_key)?;
+    // Clean up old root if it is now a trivial node, i.e. has exactly one parent and one child
+    // Nb: the attributes of the old root node and branches (other than branch lengths) are discarded
+    remove_node_if_trivial(graph, old_root_key)?;
+  }
 
   Ok(new_root_key)
 }
