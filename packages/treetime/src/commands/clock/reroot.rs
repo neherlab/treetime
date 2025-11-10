@@ -50,6 +50,7 @@ where
   }
 
   // Clean up old root if it is now a trivial node, i.e. has exactly one parent and one child
+  // Nb: the attributes of the old root node and branches (other than branch lengths) are discarded
   remove_node_if_trivial(graph, old_root_key)?;
 
   Ok(new_root_key)
@@ -129,21 +130,25 @@ where
 }
 
 /// Remove a node if it is trivial (i.e. has exactly one parent and one child), merging the edges
-/// Payload data is merged appropriately
+/// lengths.
+/// Nb: when applied this function removes properties of the removed node and its connecting edges.
 fn remove_node_if_trivial<N, E, D>(graph: &mut Graph<N, E, D>, node_key: GraphNodeKey) -> Result<(), Report>
 where
   N: GraphNode + ClockNode,
-  E: GraphEdge + ClockEdge,
+  E: GraphEdge + ClockEdge + Default,
   D: Send + Sync,
 {
+  // Check if node exists
   let node_arc = match graph.get_node(node_key) {
     Some(node) => node,
     None => return Ok(()),
   };
 
+  // Check if node is trivial. If so get its parent and child edges
   let (parent_edge_key, child_edge_key) = {
     let node = node_arc.read_arc();
 
+    // if not trivial, return early
     if node.inbound().len() != 1 || node.outbound().len() != 1 {
       return Ok(());
     }
@@ -151,26 +156,33 @@ where
     (node.inbound()[0], node.outbound()[0])
   };
 
+  // Drop the node arc to avoid holding onto the node while modifying the graph
   drop(node_arc);
 
-  let (parent_key, parent_payload) = {
+  // Get parent and child node keys and branch lengths
+  let (parent_key, parent_branch) = {
     let parent_edge = graph.get_edge(parent_edge_key).ok_or_else(|| {
       crate::make_internal_report!("Parent edge {parent_edge_key:?} not found when removing node {node_key:?}")
     })?;
     let parent_edge_read = parent_edge.read_arc();
-    (parent_edge_read.source(), parent_edge_read.payload().read_arc().clone())
+    (
+      parent_edge_read.source(),
+      parent_edge_read.payload().read_arc().branch_length(),
+    )
   };
 
-  let (child_key, child_payload) = {
+  let (child_key, child_branch) = {
     let child_edge = graph.get_edge(child_edge_key).ok_or_else(|| {
       crate::make_internal_report!("Child edge {child_edge_key:?} not found when removing node {node_key:?}")
     })?;
     let child_edge_read = child_edge.read_arc();
-    (child_edge_read.target(), child_edge_read.payload().read_arc().clone())
+    (
+      child_edge_read.target(),
+      child_edge_read.payload().read_arc().branch_length(),
+    )
   };
 
-  let parent_branch = parent_payload.branch_length();
-  let child_branch = child_payload.branch_length();
+  // Merge branch lengths only, discard other payload data
   let merged_branch_length = match (parent_branch, child_branch) {
     (Some(parent_len), Some(child_len)) => Some(parent_len + child_len),
     (Some(parent_len), None) => Some(parent_len),
@@ -178,20 +190,16 @@ where
     (None, None) => None,
   };
 
-  let parent_to_child = parent_payload.to_child().clone();
-  let parent_from_child = parent_payload.from_child().clone();
-  let child_to_parent = child_payload.to_parent().clone();
-
-  let mut merged_payload = parent_payload;
+  // Create merged edge payload with default values and merged branch length
+  let mut merged_payload = E::default();
   merged_payload.set_branch_length(merged_branch_length);
-  *merged_payload.to_parent_mut() = child_to_parent;
-  *merged_payload.to_child_mut() = parent_to_child;
-  *merged_payload.from_child_mut() = parent_from_child;
 
+  // Remove old edges and node
   graph.remove_edge(parent_edge_key)?;
   graph.remove_edge(child_edge_key)?;
   let _removed_node = graph.remove_node(node_key)?;
 
+  // Add new edge from parent to child with merged payload
   graph.add_edge(parent_key, child_key, merged_payload)?;
 
   Ok(())
