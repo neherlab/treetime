@@ -7,6 +7,7 @@ use crate::commands::clock::find_best_root::params::BranchPointOptimizationParam
 use crate::graph::edge::{GraphEdge, GraphEdgeKey, invert_edge};
 use crate::graph::graph::Graph;
 use crate::graph::node::{GraphNode, GraphNodeKey};
+use crate::make_internal_report;
 use approx::ulps_eq;
 use eyre::Report;
 
@@ -139,9 +140,10 @@ where
   D: Send + Sync,
 {
   // Check if node exists
-  let node_arc = match graph.get_node(node_key) {
-    Some(node) => node,
-    None => return Ok(()),
+  let Some(node_arc) = graph.get_node(node_key) else {
+    return Err(make_internal_report!(
+      "Node {node_key:?} not found when attempting to remove trivial node"
+    ));
   };
 
   // Check if node is trivial. If so get its parent and child edges
@@ -162,7 +164,7 @@ where
   // Get parent and child node keys and branch lengths
   let (parent_key, parent_branch) = {
     let parent_edge = graph.get_edge(parent_edge_key).ok_or_else(|| {
-      crate::make_internal_report!("Parent edge {parent_edge_key:?} not found when removing node {node_key:?}")
+      make_internal_report!("Parent edge {parent_edge_key:?} not found when removing node {node_key:?}")
     })?;
     let parent_edge_read = parent_edge.read_arc();
     (
@@ -173,7 +175,7 @@ where
 
   let (child_key, child_branch) = {
     let child_edge = graph.get_edge(child_edge_key).ok_or_else(|| {
-      crate::make_internal_report!("Child edge {child_edge_key:?} not found when removing node {node_key:?}")
+      make_internal_report!("Child edge {child_edge_key:?} not found when removing node {node_key:?}")
     })?;
     let child_edge_read = child_edge.read_arc();
     (
