@@ -262,19 +262,20 @@ fn run_test<S: TestSuite>(
   let input_grid_n_points = test_case.input_grid_n_points();
   let input_grid = Array1::linspace(input_grid_min, input_grid_max, input_grid_n_points);
 
-  let (output_grid_min, output_grid_max) = test_case.output_grid_domain();
-  let output_grid_n_points = test_case.output_grid_n_points();
-  let output_grid = Array1::linspace(output_grid_min, output_grid_max, output_grid_n_points);
+  let (evaluation_grid_min, evaluation_grid_max) = (input_grid_min * 2.0, input_grid_max * 2.0);
+  let evaluation_grid_n_points = 2 * input_grid_n_points - 1;
+  let evaluation_grid = Array1::linspace(evaluation_grid_min, evaluation_grid_max, evaluation_grid_n_points);
 
   let f_values = suite.create_f(test_case, &input_grid)?;
   let g_values = suite.create_g(test_case, &input_grid)?;
 
-  let actual_values = algo.convolve(&input_grid, &f_values, &g_values, &output_grid)?;
-  let expected_values = suite.analytical_convolution(test_case, &output_grid)?;
+  let dx = input_grid[1] - input_grid[0];
+  let actual_values = algo.convolve(dx, &f_values, &g_values)?;
+  let expected_values = suite.analytical_convolution(test_case, &evaluation_grid)?;
 
   let execution_time = start_time.elapsed().as_secs_f64() * 1000.0;
 
-  let metrics = ConvolutionMetrics::new(&output_grid, &actual_values, &expected_values, execution_time)?;
+  let metrics = ConvolutionMetrics::new(&evaluation_grid, &actual_values, &expected_values, execution_time)?;
 
   Ok(TestResult {
     algorithm: algo.name().to_owned(),
@@ -284,7 +285,7 @@ fn run_test<S: TestSuite>(
     f_y_values: f_values,
     g_x_values: input_grid,
     g_y_values: g_values,
-    evaluation_grid: output_grid,
+    evaluation_grid,
     actual_values,
     expected_values,
     metrics,

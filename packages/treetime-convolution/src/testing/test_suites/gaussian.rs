@@ -48,8 +48,6 @@ impl TestSuite for GaussianTestSuite {
         mu: 1.0,
         input_grid_domain: (-5.0, 5.0),
         input_grid_n_points: 101,
-        output_grid_domain: (-9.0, 11.0),
-        output_grid_n_points: 101,
       },
       GaussianTestCase {
         name: "python_notebook_case_2".to_owned(),
@@ -62,8 +60,6 @@ impl TestSuite for GaussianTestSuite {
         mu: 1.0,
         input_grid_domain: (-5.0, 5.0),
         input_grid_n_points: 101,
-        output_grid_domain: (-9.0, 11.0),
-        output_grid_n_points: 101,
       },
       GaussianTestCase {
         name: "tight_truncation".to_owned(),
@@ -76,8 +72,6 @@ impl TestSuite for GaussianTestSuite {
         mu: 0.0,
         input_grid_domain: (-6.0, 6.0),
         input_grid_n_points: 1201,
-        output_grid_domain: (-8.0, 8.0),
-        output_grid_n_points: 1601,
       },
       GaussianTestCase {
         name: "coarse_grid".to_owned(),
@@ -90,8 +84,6 @@ impl TestSuite for GaussianTestSuite {
         mu: 0.5,
         input_grid_domain: (-8.0, 8.0),
         input_grid_n_points: 161,
-        output_grid_domain: (-10.0, 10.0),
-        output_grid_n_points: 201,
       },
       GaussianTestCase {
         name: "baseline_moderate".to_owned(),
@@ -105,8 +97,6 @@ impl TestSuite for GaussianTestSuite {
         mu: 1.0,
         input_grid_domain: (-12.0, 14.0),
         input_grid_n_points: 2601,
-        output_grid_domain: (-10.0, 12.0),
-        output_grid_n_points: 2201,
       },
       GaussianTestCase {
         name: "centered_unequal_widths".to_owned(),
@@ -119,8 +109,6 @@ impl TestSuite for GaussianTestSuite {
         mu: 0.0,
         input_grid_domain: (-12.0, 12.0),
         input_grid_n_points: 2401,
-        output_grid_domain: (-8.0, 8.0),
-        output_grid_n_points: 1601,
       },
       GaussianTestCase {
         name: "delta_like_small_shift".to_owned(),
@@ -134,8 +122,6 @@ impl TestSuite for GaussianTestSuite {
         mu: 0.2,
         input_grid_domain: (-8.0, 8.0),
         input_grid_n_points: 8001,
-        output_grid_domain: (-4.0, 4.0),
-        output_grid_n_points: 4001,
       },
       GaussianTestCase {
         name: "wide_kernel_negative_shift".to_owned(),
@@ -149,8 +135,6 @@ impl TestSuite for GaussianTestSuite {
         mu: -1.0,
         input_grid_domain: (-41.0, 39.0),
         input_grid_n_points: 4001,
-        output_grid_domain: (-20.0, 20.0),
-        output_grid_n_points: 2001,
       },
       GaussianTestCase {
         name: "large_positive_shift".to_owned(),
@@ -163,8 +147,6 @@ impl TestSuite for GaussianTestSuite {
         mu: 10.0,
         input_grid_domain: (-10.0, 22.0),
         input_grid_n_points: 3201,
-        output_grid_domain: (0.0, 20.0),
-        output_grid_n_points: 2001,
       },
       GaussianTestCase {
         name: "large_negative_shift".to_owned(),
@@ -177,8 +159,6 @@ impl TestSuite for GaussianTestSuite {
         mu: -7.0,
         input_grid_domain: (-16.0, 16.0),
         input_grid_n_points: 3201,
-        output_grid_domain: (-20.0, 0.0),
-        output_grid_n_points: 2001,
       },
       GaussianTestCase {
         name: "extreme_ratio_wide_g".to_owned(),
@@ -193,8 +173,6 @@ impl TestSuite for GaussianTestSuite {
         mu: 3.0,
         input_grid_domain: (-77.0, 83.0),
         input_grid_n_points: 16001,
-        output_grid_domain: (-5.0, 15.0),
-        output_grid_n_points: 2001,
       },
       GaussianTestCase {
         name: "extreme_ratio_wide_f".to_owned(),
@@ -207,8 +185,6 @@ impl TestSuite for GaussianTestSuite {
         mu: -2.5,
         input_grid_domain: (-64.0, 64.0),
         input_grid_n_points: 6401,
-        output_grid_domain: (-30.0, 30.0),
-        output_grid_n_points: 3001,
       },
       GaussianTestCase {
         name: "tail_precision_stress".to_owned(),
@@ -221,8 +197,6 @@ impl TestSuite for GaussianTestSuite {
         mu: 0.0,
         input_grid_domain: (-48.0, 48.0),
         input_grid_n_points: 9601,
-        output_grid_domain: (-25.0, 25.0),
-        output_grid_n_points: 5001,
       },
       GaussianTestCase {
         name: "fine_grid_reference".to_owned(),
@@ -236,8 +210,6 @@ impl TestSuite for GaussianTestSuite {
         mu: 0.0,
         input_grid_domain: (-8.0, 8.0),
         input_grid_n_points: 8001,
-        output_grid_domain: (-6.0, 6.0),
-        output_grid_n_points: 6001,
       },
       GaussianTestCase {
         name: "wide_dynamic_range".to_owned(),
@@ -250,8 +222,6 @@ impl TestSuite for GaussianTestSuite {
         mu: 6.0,
         input_grid_domain: (-54.0, 66.0),
         input_grid_n_points: 24001,
-        output_grid_domain: (-10.0, 20.0),
-        output_grid_n_points: 6001,
       },
       GaussianTestCase {
         name: "overflow_guard".to_owned(),
@@ -264,8 +234,6 @@ impl TestSuite for GaussianTestSuite {
         mu: 0.0,
         input_grid_domain: (-100.0, 100.0),
         input_grid_n_points: 10001,
-        output_grid_domain: (-50.0, 50.0),
-        output_grid_n_points: 5001,
       },
       GaussianTestCase {
         name: "tiny_shift_equal_widths".to_owned(),
@@ -279,8 +247,6 @@ impl TestSuite for GaussianTestSuite {
         mu: 0.05,
         input_grid_domain: (-10.0, 10.05),
         input_grid_n_points: 2006,
-        output_grid_domain: (-8.0, 8.0),
-        output_grid_n_points: 1601,
       },
     ]
   }
@@ -299,8 +265,6 @@ pub struct GaussianTestCase {
   pub mu: f64,
   pub input_grid_domain: (f64, f64),
   pub input_grid_n_points: usize,
-  pub output_grid_domain: (f64, f64),
-  pub output_grid_n_points: usize,
 }
 
 impl TestCase for GaussianTestCase {
@@ -330,13 +294,5 @@ impl TestCase for GaussianTestCase {
 
   fn input_grid_n_points(&self) -> usize {
     self.input_grid_n_points
-  }
-
-  fn output_grid_domain(&self) -> (f64, f64) {
-    self.output_grid_domain
-  }
-
-  fn output_grid_n_points(&self) -> usize {
-    self.output_grid_n_points
   }
 }

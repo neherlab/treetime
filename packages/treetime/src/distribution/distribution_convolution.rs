@@ -6,10 +6,9 @@ use crate::make_error;
 use crate::make_report;
 use approx::ulps_eq;
 use eyre::Report;
-use ndarray::{Array1, array, s};
-use std::cmp::max;
+use ndarray::{Array1, array};
 use treetime_convolution::convolve;
-use treetime_utils::ndarray::{is_uniform_grid, ndarray_pad_zeros_right, ndarray_uniform_grid};
+use treetime_utils::ndarray::{is_uniform_grid, ndarray_uniform_grid};
 
 pub fn distribution_convolution(a: &Distribution, b: &Distribution) -> Result<Distribution, Report> {
   match (a, b) {
@@ -86,7 +85,7 @@ fn convolution_range_function(r: &DistributionRange<f64>, f: &DistributionFuncti
 
   let shift = f64::midpoint(r.start(), r.end());
   let amplitude = r.amplitude();
-  let width = r.end() - r.start();
+  let half_width = (r.end() - r.start()) / 2.0;
 
   let point_distr = DistributionPoint::new(shift, amplitude);
   let shifted_function = convolution_point_function(&point_distr, f).unwrap();
@@ -96,7 +95,7 @@ fn convolution_range_function(r: &DistributionRange<f64>, f: &DistributionFuncti
   let mut y_out = Array1::zeros(shifted_function.y().len());
 
   for (i, &ti) in shifted_function.t().iter().enumerate() {
-    let mask = shifted_function.t().mapv(|x| (x - ti).abs() <= width / 2.0);
+    let mask = shifted_function.t().mapv(|x| (x - ti).abs() <= half_width);
     let filtered_y = shifted_function.y() * &mask.mapv(|x| if x { 1.0 } else { 0.0 });
     y_out[i] = filtered_y.sum();
   }
@@ -125,6 +124,7 @@ fn convolution_function_function(
   let (a_values, a_min) = resample_distribution(a, dx)?;
   let (b_values, b_min) = resample_distribution(b, dx)?;
 
+  // Handle empty distributions after resampling
   if a_values.len() == 0 || b_values.len() == 0 {
     return Ok(Distribution::empty());
   }
@@ -135,25 +135,11 @@ fn convolution_function_function(
   }
 
   let output_len = a_values.len() + b_values.len() - 1;
-  let output_grid_local = ndarray_uniform_grid(0.0, dx, output_len);
-
-  let max_len = max(a_values.len(), b_values.len());
-  let unified_grid = ndarray_uniform_grid(0.0, dx, max_len);
-
-  // Resample both distributions onto the unified grid
-  let a_unified = ndarray_pad_zeros_right(&a_values, max_len);
-  let b_unified = ndarray_pad_zeros_right(&b_values, max_len);
+  let output_grid_start = a_min + b_min;
+  let output_grid = ndarray_uniform_grid(output_grid_start, dx, output_len);
 
   // Perform convolution with unified grids
-  let unified_output_grid = ndarray_uniform_grid(0.0, dx, output_len);
-  let unified_conv_result = convolve(&unified_grid, &a_unified, &b_unified, &unified_output_grid)?;
-
-  // Extract only the meaningful portion of the result (first output_len elements)
-  let conv_result = unified_conv_result.slice(s![..output_len]).to_owned();
-
-  // Shift the output grid to the correct position
-  let shift = a_min + b_min;
-  let output_grid = output_grid_local.mapv(|x| x + shift);
+  let conv_result = convolve(dx, &a_values, &b_values)?;
 
   Distribution::function(output_grid, conv_result)
 }

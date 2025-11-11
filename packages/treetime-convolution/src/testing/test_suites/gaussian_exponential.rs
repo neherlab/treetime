@@ -42,8 +42,6 @@ impl TestSuite for GaussianExponentialTestSuite {
         a_f: 0.5,
         input_grid_domain: (-5.0, 40.0),
         input_grid_n_points: 101,
-        output_grid_domain: (-5.0, 25.0),
-        output_grid_n_points: 101,
       },
       GaussianExponentialTestCase {
         name: "python_notebook_case_fine".to_owned(),
@@ -54,8 +52,6 @@ impl TestSuite for GaussianExponentialTestSuite {
         a_f: 0.5,
         input_grid_domain: (-5.0, 40.0),
         input_grid_n_points: 501,
-        output_grid_domain: (-5.0, 25.0),
-        output_grid_n_points: 101,
       },
     ]
   }
@@ -71,8 +67,6 @@ pub struct GaussianExponentialTestCase {
   pub a_f: f64,
   pub input_grid_domain: (f64, f64),
   pub input_grid_n_points: usize,
-  pub output_grid_domain: (f64, f64),
-  pub output_grid_n_points: usize,
 }
 
 impl TestCase for GaussianExponentialTestCase {
@@ -102,13 +96,5 @@ impl TestCase for GaussianExponentialTestCase {
 
   fn input_grid_n_points(&self) -> usize {
     self.input_grid_n_points
-  }
-
-  fn output_grid_domain(&self) -> (f64, f64) {
-    self.output_grid_domain
-  }
-
-  fn output_grid_n_points(&self) -> usize {
-    self.output_grid_n_points
   }
 }

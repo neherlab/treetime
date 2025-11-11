@@ -51,8 +51,6 @@ impl TestSuite for ExponentialTestSuite {
         b: 2.0,
         input_grid_domain: (-1.0, 10.0),
         input_grid_n_points: 1101,
-        output_grid_domain: (-1.0, 10.0),
-        output_grid_n_points: 1101,
       },
       ExponentialTestCase {
         name: "moderate_coarse_grid".to_owned(),
@@ -65,8 +63,6 @@ impl TestSuite for ExponentialTestSuite {
         b: 0.8,
         input_grid_domain: (0.0, 20.0),
         input_grid_n_points: 201,
-        output_grid_domain: (0.0, 30.0),
-        output_grid_n_points: 301,
       },
       ExponentialTestCase {
         name: "tight_truncation".to_owned(),
@@ -80,8 +76,6 @@ impl TestSuite for ExponentialTestSuite {
         b: 2.0,
         input_grid_domain: (0.0, 5.0),
         input_grid_n_points: 501,
-        output_grid_domain: (0.0, 6.0),
-        output_grid_n_points: 601,
       },
       ExponentialTestCase {
         name: "baseline_distinct_rates".to_owned(),
@@ -94,8 +88,6 @@ impl TestSuite for ExponentialTestSuite {
         b: 2.0,
         input_grid_domain: (0.0, 10.0),
         input_grid_n_points: 1001,
-        output_grid_domain: (0.0, 17.0),
-        output_grid_n_points: 1701,
       },
       ExponentialTestCase {
         name: "equal_rates_limit".to_owned(),
@@ -107,8 +99,6 @@ impl TestSuite for ExponentialTestSuite {
         b: 1.5,
         input_grid_domain: (0.0, 12.0),
         input_grid_n_points: 1201,
-        output_grid_domain: (0.0, 24.0),
-        output_grid_n_points: 2401,
       },
       ExponentialTestCase {
         name: "near_equal_rates".to_owned(),
@@ -121,8 +111,6 @@ impl TestSuite for ExponentialTestSuite {
         b: 1.0 + 1e-6,
         input_grid_domain: (0.0, 30.0),
         input_grid_n_points: 15001,
-        output_grid_domain: (0.0, 60.0),
-        output_grid_n_points: 30001,
       },
       ExponentialTestCase {
         name: "fast_slow_decay".to_owned(),
@@ -135,8 +123,6 @@ impl TestSuite for ExponentialTestSuite {
         b: 0.1,
         input_grid_domain: (0.0, 200.0),
         input_grid_n_points: 200001,
-        output_grid_domain: (0.0, 202.0),
-        output_grid_n_points: 202001,
       },
       ExponentialTestCase {
         name: "slow_fast_decay".to_owned(),
@@ -149,8 +135,6 @@ impl TestSuite for ExponentialTestSuite {
         b: 10.0,
         input_grid_domain: (0.0, 200.0),
         input_grid_n_points: 200001,
-        output_grid_domain: (0.0, 202.0),
-        output_grid_n_points: 202001,
       },
       ExponentialTestCase {
         name: "fine_grid_reference".to_owned(),
@@ -163,8 +147,6 @@ impl TestSuite for ExponentialTestSuite {
         b: 0.8,
         input_grid_domain: (0.0, 20.0),
         input_grid_n_points: 10001,
-        output_grid_domain: (0.0, 40.0),
-        output_grid_n_points: 20001,
       },
       ExponentialTestCase {
         name: "long_horizon_tail_precision".to_owned(),
@@ -176,8 +158,6 @@ impl TestSuite for ExponentialTestSuite {
         b: 0.04,
         input_grid_domain: (0.0, 750.0),
         input_grid_n_points: 75001,
-        output_grid_domain: (0.0, 1350.0),
-        output_grid_n_points: 135001,
       },
       ExponentialTestCase {
         name: "large_range_underflow_guard".to_owned(),
@@ -190,8 +170,6 @@ impl TestSuite for ExponentialTestSuite {
         b: 0.7,
         input_grid_domain: (0.0, 400.0),
         input_grid_n_points: 20001,
-        output_grid_domain: (0.0, 800.0),
-        output_grid_n_points: 40001,
       },
       ExponentialTestCase {
         name: "extreme_near_equality".to_owned(),
@@ -204,8 +182,8 @@ impl TestSuite for ExponentialTestSuite {
         b: 1.0 + 1e-12,
         input_grid_domain: (0.0, 80.0),
         input_grid_n_points: 16001,
-        output_grid_domain: (0.0, 160.0),
-        output_grid_n_points: 32001,
+        
+        
       },
       ExponentialTestCase {
         name: "very_fast_decays".to_owned(),
@@ -217,8 +195,8 @@ impl TestSuite for ExponentialTestSuite {
         b: 30.0,
         input_grid_domain: (0.0, 0.5),
         input_grid_n_points: 1001,
-        output_grid_domain: (0.0, 1.0),
-        output_grid_n_points: 2001,
+        
+        
       },
     ]
   }
@@ -236,8 +214,8 @@ pub struct ExponentialTestCase {
   pub b: f64,
   pub input_grid_domain: (f64, f64),
   pub input_grid_n_points: usize,
-  pub output_grid_domain: (f64, f64),
-  pub output_grid_n_points: usize,
+  
+  
 }
 
 impl TestCase for ExponentialTestCase {
@@ -269,11 +247,4 @@ impl TestCase for ExponentialTestCase {
     self.input_grid_n_points
   }
 
-  fn output_grid_domain(&self) -> (f64, f64) {
-    self.output_grid_domain
-  }
-
-  fn output_grid_n_points(&self) -> usize {
-    self.output_grid_n_points
-  }
 }
