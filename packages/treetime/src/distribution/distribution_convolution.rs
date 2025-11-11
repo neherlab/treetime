@@ -115,7 +115,7 @@ fn convolution_function_function(
   let dx_a = compute_uniform_spacing(a.t())?;
   let dx_b = compute_uniform_spacing(b.t())?;
   // Use max instead of min to prevent exponentially growing grid sizes
-  let dx = dx_a.max(dx_b);
+  let dx = dx_a.min(dx_b);
 
   if !(dx.is_finite() && dx > 0.0) {
     return make_error!("Invalid grid spacing detected during convolution: {dx}");
@@ -140,8 +140,28 @@ fn convolution_function_function(
 
   // Perform convolution with unified grids
   let conv_result = convolve(dx, &a_values, &b_values)?;
+  // check that the convolution result has the expected length
+  if conv_result.len() != output_len {
+    return make_error!(
+      "Convolution result length mismatch: expected {}, got {}",
+      output_len,
+      conv_result.len()
+    );
+  }
+  let conv_distr = DistributionFunction::new(output_grid, conv_result)?;
 
-  Distribution::function(output_grid, conv_result)
+  // resample distribution to coarser grid
+  let coarse_dx = dx_a.max(dx_b);
+  let (final_values, coarse_grid_min) = resample_distribution(&conv_distr, coarse_dx)?;
+  let coarse_grid = ndarray_uniform_grid(coarse_grid_min, coarse_dx, final_values.len());
+
+  // sanity check: more than one point
+  if coarse_grid.len() < 2 {
+    return make_error!("Final distribution after convolution has less than two points");
+  }
+
+  // return final distribution
+  Distribution::function(coarse_grid, final_values)
 }
 
 fn compute_uniform_spacing(grid: &Array1<f64>) -> Result<f64, Report> {
