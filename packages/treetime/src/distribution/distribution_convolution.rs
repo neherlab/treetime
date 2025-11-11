@@ -28,7 +28,7 @@ pub fn distribution_convolution(a: &Distribution, b: &Distribution) -> Result<Di
       Ok(Distribution::Function(convolution_point_function(a, b)?))
     },
     (Distribution::Range(a), Distribution::Function(b)) | (Distribution::Function(b), Distribution::Range(a)) => {
-      Ok(convolution_range_function(a, b)) //
+      convolution_range_function(a, b) //
     },
     (Distribution::Function(a), Distribution::Function(b)) => {
       convolution_function_function(a, b) //
@@ -78,11 +78,16 @@ fn convolution_point_function(
   DistributionFunction::new(t, y)
 }
 
-fn convolution_range_function(r: &DistributionRange<f64>, f: &DistributionFunction<f64>) -> Distribution {
+fn convolution_range_function(
+  r: &DistributionRange<f64>,
+  f: &DistributionFunction<f64>,
+) -> Result<Distribution, Report> {
+  // check that the distribution function has uniform grid spacing
+  let dx = compute_uniform_spacing(f.t())?;
+
   // split in a convolution with
   // - a point distribution (taking care of the shift + amplitude)
   // - an interval centered on zero and of a fixed width (taking care of the smoothing)
-
   let shift = f64::midpoint(r.start(), r.end());
   let amplitude = r.amplitude();
   let half_width = (r.end() - r.start()) / 2.0;
@@ -94,13 +99,14 @@ fn convolution_range_function(r: &DistributionRange<f64>, f: &DistributionFuncti
   let t_out = shifted_function.t().clone();
   let mut y_out = Array1::zeros(shifted_function.y().len());
 
+  // TODO: optimize by using cumulative sums
   for (i, &ti) in shifted_function.t().iter().enumerate() {
     let mask = shifted_function.t().mapv(|x| (x - ti).abs() <= half_width);
     let filtered_y = shifted_function.y() * &mask.mapv(|x| if x { 1.0 } else { 0.0 });
-    y_out[i] = filtered_y.sum();
+    y_out[i] = filtered_y.sum() * dx;
   }
 
-  Distribution::function(t_out, y_out).unwrap()
+  Distribution::function(t_out, y_out)
 }
 
 fn convolution_function_function(
@@ -291,15 +297,15 @@ mod tests {
 
   #[test]
   fn test_convolution_range_function() {
-    let r = Distribution::range((1.0, 3.0), 2.0);
+    let r = Distribution::range((2.0, 6.0), 0.5);
 
-    let x = array![0.0, 1.0, 2.0, 3.0, 4.0, 5.0];
+    let x = array![0.0, 2.0, 4.0, 6.0, 8.0, 10.0];
     let y = array![0.0, 1.0, 0.0, 2.0, 1.0, 0.0];
     let f = Distribution::function(x, y).unwrap();
     let actual = distribution_convolution(&r, &f).unwrap();
 
-    let x = array![2.0, 3.0, 4.0, 5.0, 6.0, 7.0];
-    let y = array![2.0, 2.0, 6.0, 6.0, 6.0, 2.0];
+    let x = array![4.0, 6.0, 8.0, 10.0, 12.0, 14.0];
+    let y = array![1.0, 1.0, 3.0, 3.0, 3.0, 1.0];
     let expected = Distribution::function(x, y).unwrap();
 
     assert_eq!(expected, actual);
