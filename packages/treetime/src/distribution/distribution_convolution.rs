@@ -384,7 +384,7 @@ mod tests {
     let actual = distribution_convolution(&a, &b).unwrap();
 
     let expected_x = array![0.0, 1.0, 2.0, 3.0];
-    let expected_y = array![1.0, 2.0, 2.0, 1.0];
+    let expected_y = array![0.5, 2.0, 2.0, 0.5];
     let expected = Distribution::function(expected_x, expected_y).unwrap();
 
     assert_eq!(expected, actual);
