@@ -9,6 +9,7 @@ use treetime::commands::optimize::run::run_optimize;
 use treetime::commands::prune::run::run_prune;
 use treetime::commands::timetree::run::run_timetree_estimation;
 use treetime_cli::cli::treetime_cli::{TreetimeCommands, generate_shell_completions, treetime_parse_cli_args};
+use treetime_io::json::{JsonPretty, json_write_str};
 use treetime_utils::global_init::global_init;
 use treetime_utils::openblas::get_openblas_info_str;
 
@@ -20,7 +21,8 @@ fn init() {
 fn main() -> Result<(), Report> {
   let args = treetime_parse_cli_args()?;
 
-  info!("{:#?}", &args);
+  info!("# Command line arguments");
+  info!("{}", json_write_str(&args, JsonPretty(true))?);
 
   if args.jobs.jobs == 1 {
     rayon::ThreadPoolBuilder::new()

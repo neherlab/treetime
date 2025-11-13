@@ -2,11 +2,12 @@ use crate::alphabet::alphabet::AlphabetName;
 use crate::commands::ancestral::anc_args::MethodAncestral;
 use crate::gtr::get_gtr::GtrModelName;
 use clap::{Parser, ValueEnum, ValueHint};
+use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::fmt::Debug;
 use std::path::PathBuf;
 
-#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Serialize, Deserialize)]
 #[value(rename_all = "kebab-case")]
 #[derive(Default)]
 pub enum BranchLengthMode {
@@ -15,7 +16,7 @@ pub enum BranchLengthMode {
   Marginal,
 }
 
-#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Serialize, Deserialize)]
 #[value(rename_all = "kebab-case")]
 #[derive(Default)]
 pub enum TimeMarginalMode {
@@ -25,7 +26,7 @@ pub enum TimeMarginalMode {
   OnlyFinal,
 }
 
-#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Serialize, Deserialize)]
 #[value(rename_all = "kebab-case")]
 #[derive(Default)]
 pub enum RerootMode {
@@ -37,7 +38,7 @@ pub enum RerootMode {
   Mrca,
 }
 
-#[derive(Parser, Debug, SmartDefault)]
+#[derive(Parser, Debug, SmartDefault, Serialize, Deserialize)]
 pub struct TreetimeTimetreeArgs {
   /// Path to one or multiple FASTA files with aligned input sequences
   ///

@@ -1,9 +1,10 @@
 use crate::commands::ancestral::anc_args::TreetimeAncestralArgs;
 use clap::{Parser, ValueHint};
+use serde::Serialize;
 use std::fmt::Debug;
 use std::path::PathBuf;
 
-#[derive(Parser, Debug)]
+#[derive(Parser, Debug, Serialize)]
 pub struct TreetimeHomoplasyArgs {
   #[clap(flatten)]
   pub ancestral_args: TreetimeAncestralArgs,

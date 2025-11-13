@@ -18,12 +18,13 @@ use treetime::commands::prune::args::TreetimePruneArgs;
 use treetime::commands::timetree::args::TreetimeTimetreeArgs;
 use treetime_utils::clap_styles::styles;
 use treetime_utils::global_init::setup_logger;
+use serde::Serialize;
 
 lazy_static! {
   pub static ref SHELLS: Vec<&'static str> = ["bash", "elvish", "fish", "fig", "powershell", "zsh"].to_vec();
 }
 
-#[derive(Parser, Debug)]
+#[derive(Parser, Debug, Serialize)]
 #[clap(name = "treetime")]
 #[clap(author, version)]
 #[clap(verbatim_doc_comment)]
@@ -43,7 +44,7 @@ pub struct TreetimeArgs {
   pub command: TreetimeCommands,
 }
 
-#[derive(Subcommand, Debug)]
+#[derive(Subcommand, Debug, Serialize)]
 #[clap(verbatim_doc_comment)]
 pub enum TreetimeCommands {
   /// Generate shell completions.
@@ -89,7 +90,7 @@ pub enum TreetimeCommands {
   Debug,
 }
 
-#[derive(Parser, Debug)]
+#[derive(Parser, Debug, Serialize)]
 pub struct TreetimeAncestralReassortmentGraphArgs;
 
 pub fn generate_shell_completions(shell: &str) -> Result<(), Report> {

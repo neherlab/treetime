@@ -66,7 +66,7 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
   }
 
   if args.clock_filter > 0.0 {
-    todo!("clock_filter not yet updated for GraphAncestral");
+    // todo!("clock_filter not yet updated for GraphAncestral");
   }
 
   if aln.is_some() {

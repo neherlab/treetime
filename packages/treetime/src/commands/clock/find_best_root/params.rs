@@ -18,7 +18,7 @@ pub enum BranchPointOptimizationParams {
 }
 
 /// Optimization method selection
-#[derive(Debug, Clone, ValueEnum, SmartDefault)]
+#[derive(Debug, Clone, ValueEnum, SmartDefault, Serialize, Deserialize)]
 pub enum OptimizationMethod {
   /// Grid search with equally-spaced evaluation points
   #[default]

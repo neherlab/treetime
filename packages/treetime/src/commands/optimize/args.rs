@@ -1,10 +1,11 @@
 use crate::alphabet::alphabet::AlphabetName;
 use crate::gtr::get_gtr::GtrModelName;
 use clap::{Parser, ValueHint};
+use serde::Serialize;
 use std::fmt::Debug;
 use std::path::PathBuf;
 
-#[derive(Parser, Debug)]
+#[derive(Parser, Debug, Serialize)]
 pub struct TreetimeOptimizeArgs {
   /// Path to one or multiple FASTA files with aligned input sequences
   ///

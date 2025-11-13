@@ -7,11 +7,12 @@ use clap::ValueEnum;
 use eyre::{Report, WrapErr};
 use ndarray::{Array1, Array2, array};
 use parking_lot::RwLock;
+use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::sync::Arc;
 use strum_macros::Display;
 
-#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, SmartDefault, Display)]
+#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, SmartDefault, Display, Serialize, Deserialize)]
 pub enum GtrModelName {
   #[default]
   Infer,

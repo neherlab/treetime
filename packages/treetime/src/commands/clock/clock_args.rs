@@ -6,11 +6,12 @@ use crate::commands::clock::find_best_root::params::{
 use crate::commands::timetree::args::{BranchLengthMode, RerootMode};
 use crate::gtr::get_gtr::GtrModelName;
 use clap::{Args, Parser, ValueHint};
+use serde::Serialize;
 use smart_default::SmartDefault;
 use std::fmt::Debug;
 use std::path::PathBuf;
 
-#[derive(Parser, Debug)]
+#[derive(Parser, Debug, Serialize)]
 pub struct TreetimeClockArgs {
   /// Path to one or multiple FASTA files with aligned input sequences
   ///
@@ -135,7 +136,7 @@ pub struct TreetimeClockArgs {
 }
 
 /// Branch split optimization parameters
-#[derive(Debug, Clone, Args, SmartDefault)]
+#[derive(Debug, Clone, Args, SmartDefault, Serialize)]
 pub struct BranchSplitArgs {
   /// Optimization method to use for finding the best root position
   #[clap(long = "branch-split-method", value_enum, default_value_t = OptimizationMethod::default())]
@@ -156,7 +157,7 @@ pub struct BranchSplitArgs {
 }
 
 /// Clock regression model parameters
-#[derive(Debug, Clone, Args, SmartDefault)]
+#[derive(Debug, Clone, Args, SmartDefault, Serialize)]
 pub struct ClockRegressionArgs {
   /// Clock regression model parameters
   #[clap(flatten)]

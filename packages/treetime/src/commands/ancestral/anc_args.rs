@@ -1,10 +1,11 @@
 use crate::alphabet::alphabet::AlphabetName;
 use crate::gtr::get_gtr::GtrModelName;
 use clap::{Parser, ValueEnum, ValueHint};
+use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use std::path::PathBuf;
 
-#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Serialize, Deserialize)]
 #[value(rename_all = "kebab-case")]
 #[derive(Default)]
 pub enum MethodAncestral {
@@ -14,7 +15,7 @@ pub enum MethodAncestral {
   Parsimony,
 }
 
-#[derive(Parser, Debug)]
+#[derive(Parser, Debug, Serialize)]
 pub struct TreetimeAncestralArgs {
   /// Path to one or multiple FASTA files with aligned input sequences
   ///

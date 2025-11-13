@@ -3,6 +3,7 @@
 use clap::builder::{PossibleValuesParser, TypedValueParser};
 use clap::{ArgAction, Args};
 use log::LevelFilter;
+use serde::Serialize;
 
 #[derive(Args, Debug, Clone)]
 pub struct Verbosity {
@@ -31,6 +32,15 @@ pub struct Verbosity {
   #[clap(conflicts_with = "verbose", conflicts_with = "verbosity")]
   #[clap(display_order = 98)]
   pub quiet: u8,
+}
+
+impl Serialize for Verbosity {
+  fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+  where
+    S: serde::Serializer,
+  {
+    serializer.serialize_str(&self.get_filter_level().to_string().to_lowercase())
+  }
 }
 
 impl Verbosity {

@@ -1,9 +1,10 @@
 use crate::alphabet::alphabet::AlphabetName;
 use clap::{Parser, ValueHint};
+use serde::Serialize;
 use std::fmt::Debug;
 use std::path::PathBuf;
 
-#[derive(Parser, Debug)]
+#[derive(Parser, Debug, Serialize)]
 pub struct TreetimePruneArgs {
   /// Path to one or multiple FASTA files with aligned input sequences
   ///

@@ -1,8 +1,9 @@
 use clap::{Parser, ValueHint};
+use serde::Serialize;
 use std::fmt::Debug;
 use std::path::PathBuf;
 
-#[derive(Parser, Debug)]
+#[derive(Parser, Debug, Serialize)]
 pub struct TreetimeMugrationArgs {
   /// Name of file containing the tree in newick, nexus, or phylip format.
   ///
