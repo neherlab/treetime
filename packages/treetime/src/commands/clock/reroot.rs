@@ -150,32 +150,27 @@ where
   let (parent_key, parent_branch) = {
     let parent_edge = graph.get_edge(parent_edge_key).expect("Parent edge not found");
     let parent_edge = parent_edge.read_arc();
-    (
-      parent_edge.source(),
-      parent_edge.payload().read_arc().branch_length(),
-    )
+    (parent_edge.source(), parent_edge.payload().read_arc().branch_length())
   };
 
   let (child_key, child_branch) = {
     let child_edge = graph.get_edge(child_edge_key).expect("Child edge not found");
     let child_edge = child_edge.read_arc();
-    (
-      child_edge.target(),
-      child_edge.payload().read_arc().branch_length(),
-    )
+    (child_edge.target(), child_edge.payload().read_arc().branch_length())
   };
 
   let merged_branch_length = match (parent_branch, child_branch) {
-    (Some(parent_len), Some(child_len)) => Some(parent_len + child_len),
-    (Some(len), None) | (None, Some(len)) => Some(len),
-    (None, None) => None,
+    (Some(a), Some(b)) => Some(a + b),
+    (a, b) => a.or(b),
   };
+
+  graph.remove_node(node_key)?;
 
   let mut merged_payload = E::default();
   merged_payload.set_branch_length(merged_branch_length);
-
-  graph.remove_node(node_key)?;
   graph.add_edge(parent_key, child_key, merged_payload)?;
+
+  graph.build()?;
 
   Ok(())
 }
@@ -185,6 +180,7 @@ mod tests {
   use super::*;
   use crate::commands::clock::clock_graph::ClockGraph;
   use crate::io::nwk::{NwkWriteOptions, nwk_read_str, nwk_write_str};
+  use pretty_assertions::assert_eq;
 
   #[test]
   fn test_remove_node_if_trivial_simple() -> Result<(), Report> {
@@ -197,25 +193,16 @@ mod tests {
     let mut graph: ClockGraph = nwk_read_str("((A:0.5)mid:0.3,B:0.2)root;")?;
 
     let mid_key = graph
-      .get_nodes()
-      .iter()
-      .find_map(|node| {
-        let node_guard = node.read_arc();
-        let payload = node_guard.payload().read_arc();
-        (payload.name.as_deref() == Some("mid")).then_some(node_guard.key())
-      })
+      .find_node(|node| node.name.as_deref() == Some("mid"))
       .expect("Expected node named 'mid'");
 
     remove_node_if_trivial(&mut graph, mid_key)?;
 
     assert!(graph.get_node(mid_key).is_none(), "Expected node to be removed");
 
-    let expected_newick = "(B:0.2[&mutations=\"\"],A:0.8[&mutations=\"\"])root[&mutations=\"\"];";
-    let resulting_newick = nwk_write_str(&graph, &NwkWriteOptions::default())?;
-    assert_eq!(
-      resulting_newick, expected_newick,
-      "Unexpected resulting tree structure after removing trivial node"
-    );
+    let expected = "(B:0.2[&mutations=\"\"],A:0.8[&mutations=\"\"])root[&mutations=\"\"];";
+    let actual = nwk_write_str(&graph, &NwkWriteOptions::default())?;
+    assert_eq!(expected, actual,);
 
     Ok(())
   }

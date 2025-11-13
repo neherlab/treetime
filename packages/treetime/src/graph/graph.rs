@@ -373,6 +373,19 @@ where
     self.nodes.get(index.as_usize())?.as_ref().map(Arc::clone)
   }
 
+  pub fn find_node<F>(&self, predicate: F) -> Option<GraphNodeKey>
+  where
+    F: Fn(&N) -> bool,
+  {
+    self.nodes.iter().find_map(|node| {
+      node.as_ref().and_then(|node| {
+        let node_guard = node.read_arc();
+        let payload = node_guard.payload().read_arc();
+        predicate(&payload).then_some(node_guard.key())
+      })
+    })
+  }
+
   pub fn get_edge(&self, index: GraphEdgeKey) -> Option<Arc<RwLock<Edge<E>>>> {
     self.edges.get(index.as_usize())?.as_ref().map(Arc::clone)
   }
