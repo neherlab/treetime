@@ -174,10 +174,7 @@ where
   let mut merged_payload = E::default();
   merged_payload.set_branch_length(merged_branch_length);
 
-  graph.remove_edge(parent_edge_key)?;
-  graph.remove_edge(child_edge_key)?;
   graph.remove_node(node_key)?;
-
   graph.add_edge(parent_key, child_key, merged_payload)?;
 
   Ok(())
