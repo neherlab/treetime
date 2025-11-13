@@ -198,8 +198,14 @@ where
       }
 
       if !comments.is_empty() {
-        let comments = comments.iter().map(|(key, val)| format!("[&{key}=\"{val}\"]")).join("");
-        write!(writer, "{comments}")?;
+        let comments = comments
+          .iter()
+          .filter(|(_, val)| !val.is_empty())
+          .map(|(key, val)| format!("[&{key}=\"{val}\"]"))
+          .join("");
+        if !comments.is_empty() {
+          write!(writer, "{comments}")?;
+        }
       }
     }
   }
@@ -213,7 +219,6 @@ pub fn format_weight(weight: f64, options: &NwkWriteOptions) -> String {
   if !weight.is_finite() {
     warn!("When converting graph to Newick: Weight is invalid: '{weight}'");
   }
-  let digits = options.weight_significant_digits.unwrap_or(3);
   float_to_digits(
     weight,
     options.weight_significant_digits.or(Some(3)),

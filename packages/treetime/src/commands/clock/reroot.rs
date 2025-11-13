@@ -164,6 +164,8 @@ where
     (a, b) => a.or(b),
   };
 
+  graph.remove_edge(parent_edge_key)?;
+  graph.remove_edge(child_edge_key)?;
   graph.remove_node(node_key)?;
 
   let mut merged_payload = E::default();
@@ -200,9 +202,9 @@ mod tests {
 
     assert!(graph.get_node(mid_key).is_none(), "Expected node to be removed");
 
-    let expected = "(B:0.2[&mutations=\"\"],A:0.8[&mutations=\"\"])root[&mutations=\"\"];";
+    let expected = "(B:0.2,A:0.8)root;";
     let actual = nwk_write_str(&graph, &NwkWriteOptions::default())?;
-    assert_eq!(expected, actual,);
+    assert_eq!(expected, actual);
 
     Ok(())
   }

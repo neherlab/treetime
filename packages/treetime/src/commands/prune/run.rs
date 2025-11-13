@@ -353,10 +353,7 @@ mod tests {
     let (mut graph, partitions) = create_test_graph_with_partitions("(A:0.0,B:0.1)root;", &[])?;
     prune_nodes(&mut graph, &partitions, Some(0.0), false, &btreeset! {})?;
     let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
-    assert_eq!(
-      output_nwk,
-      "(A:0[&mutations=\"\"],B:0.1[&mutations=\"\"])root[&mutations=\"\"];"
-    );
+    assert_eq!(output_nwk, "(A:0,B:0.1)root;");
     Ok(())
   }
 
@@ -365,10 +362,7 @@ mod tests {
     let (mut graph, partitions) = create_test_graph_with_partitions("(A:0.01,B:0.02,C:0.1)root;", &[])?;
     prune_nodes(&mut graph, &partitions, Some(0.05), false, &btreeset! {})?;
     let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
-    assert_eq!(
-      output_nwk,
-      "(A:0.01[&mutations=\"\"],B:0.02[&mutations=\"\"],C:0.1[&mutations=\"\"])root[&mutations=\"\"];"
-    );
+    assert_eq!(output_nwk, "(A:0.01,B:0.02,C:0.1)root;");
     Ok(())
   }
 
@@ -377,10 +371,7 @@ mod tests {
     let (mut graph, partitions) = create_test_graph_with_partitions("(A:0.1,B:0.2)root;", &[])?;
     prune_nodes(&mut graph, &partitions, Some(0.01), false, &btreeset! {})?;
     let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
-    assert_eq!(
-      output_nwk,
-      "(A:0.1[&mutations=\"\"],B:0.2[&mutations=\"\"])root[&mutations=\"\"];"
-    );
+    assert_eq!(output_nwk, "(A:0.1,B:0.2)root;");
     Ok(())
   }
 
@@ -398,10 +389,7 @@ mod tests {
     let (mut graph, partitions) = create_test_graph_with_partitions("(A:0.0,B:0.1)root;", &[])?;
     prune_nodes(&mut graph, &partitions, Some(0.0), false, &btreeset! {})?;
     let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
-    assert_eq!(
-      output_nwk,
-      "(A:0[&mutations=\"\"],B:0.1[&mutations=\"\"])root[&mutations=\"\"];"
-    );
+    assert_eq!(output_nwk, "(A:0,B:0.1)root;");
     Ok(())
   }
 
@@ -410,10 +398,7 @@ mod tests {
     let (mut graph, partitions) = create_test_graph_with_partitions("(A:0.00001,B:0.1)root;", &[])?;
     prune_nodes(&mut graph, &partitions, Some(0.001), false, &btreeset! {})?;
     let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
-    assert_eq!(
-      output_nwk,
-      "(A:1.0e-5[&mutations=\"\"],B:0.1[&mutations=\"\"])root[&mutations=\"\"];"
-    );
+    assert_eq!(output_nwk, "(A:1.0e-5,B:0.1)root;");
     Ok(())
   }
 
@@ -427,7 +412,7 @@ mod tests {
     let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
     assert_eq!(
       output_nwk,
-      "(E:5.0e-5[&mutations=\"\"],(C:3.0e-5[&mutations=\"\"],D:0.1[&mutations=\"\"])internal2:0.1[&mutations=\"\"],A:6.0e-5[&mutations=\"\"],B:0.1[&mutations=\"\"])root[&mutations=\"\"];"
+      "(E:5.0e-5,(C:3.0e-5,D:0.1)internal2:0.1,A:6.0e-5,B:0.1)root;"
     );
     Ok(())
   }
@@ -835,10 +820,7 @@ mod tests {
     let (mut graph, partitions) = create_test_graph_with_partitions("(A:0.05,B:0.05,C:0.051)root;", &[])?;
     prune_nodes(&mut graph, &partitions, Some(0.05), false, &btreeset! {})?;
     let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
-    assert_eq!(
-      output_nwk,
-      "(A:0.05[&mutations=\"\"],B:0.05[&mutations=\"\"],C:0.051[&mutations=\"\"])root[&mutations=\"\"];"
-    );
+    assert_eq!(output_nwk, "(A:0.05,B:0.05,C:0.051)root;");
     Ok(())
   }
 
@@ -848,10 +830,7 @@ mod tests {
     prune_nodes(&mut graph, &partitions, Some(0.05), false, &btreeset! {})?;
     let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
     // All edges remain because A, B, C are leaves and leaves are never collapsed
-    assert_eq!(
-      output_nwk,
-      "(A:0.049[&mutations=\"\"],B:0.05[&mutations=\"\"],C:0.051[&mutations=\"\"])root[&mutations=\"\"];"
-    );
+    assert_eq!(output_nwk, "(A:0.049,B:0.05,C:0.051)root;");
     Ok(())
   }
 
