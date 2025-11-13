@@ -13,6 +13,14 @@ use num_traits::{Bounded, Float, NumCast, One, Zero};
 use std::f64::consts::E;
 use std::ops::{AddAssign, Mul};
 
+pub fn first<T: Copy>(a: &Array1<T>) -> T {
+  a[0]
+}
+
+pub fn last<T: Copy>(a: &Array1<T>) -> T {
+  a[a.len() - 1]
+}
+
 pub fn to_col<T: Real>(a: &Array1<T>) -> Result<Array2<T>, Report> {
   Ok(a.to_shape((a.len(), 1))?.into_dimensionality::<Ix2>()?.to_owned())
 }

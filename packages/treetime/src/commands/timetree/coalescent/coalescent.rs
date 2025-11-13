@@ -1,0 +1,291 @@
+use crate::distribution::distribution::{Distribution, TIME_EPSILON, TIME_LIMIT};
+use crate::distribution::distribution_map::distribution_map;
+use crate::distribution::distribution_multiplication::distribution_multiplication;
+use crate::distribution::distribution_resample::distribution_resample;
+use crate::graph::node::GraphNodeKey;
+use crate::representation::graph_ancestral::GraphAncestral;
+use eyre::Report;
+use indexmap::IndexMap;
+use ndarray::Array1;
+use std::collections::BTreeMap;
+use std::sync::Arc;
+use treetime_utils::make_error;
+
+/// Computes Kingman coalescent prior contributions for all nodes in the phylogenetic tree.
+///
+/// Returns distributions that encode coalescent likelihood contributions for each node,
+/// to be multiplied with node time distributions during backward pass optimization.
+///
+/// # Meaning
+///
+/// The Kingman coalescent model provides a probabilistic framework for assessing whether
+/// the timing and structure of a phylogenetic tree are consistent with a given population
+/// history. Not all tree topologies and divergence times are equally likely - trees with
+/// many lineages coalescing simultaneously are less probable than gradual coalescence,
+/// especially in large populations.
+///
+/// This function computes how likely each node's divergence time is under the coalescent
+/// model, given the population size history Tc(t) and the number of concurrent lineages k(t).
+/// These likelihood contributions act as priors that guide the time tree inference toward
+/// more biologically plausible configurations by penalizing unlikely coalescence patterns.
+///
+/// # Notation and Terms
+///
+/// - `t` - time (negative values for past, zero at present)
+/// - `k(t)` - number of concurrent lineages at time t
+/// - `Tc(t)` - coalescence time scale (effective population size) at time t, controls merger rate
+/// - `κ(t)` - branch merger rate: rate for one branch to merge with any other = (k(t)-1)/(2*Tc(t))
+/// - `λ(t)` - total merger rate: rate for any merger to occur = k(t)*(k(t)-1)/(2*Tc(t))
+/// - `I(t)` - cumulative merger rate: I(t) = ∫₀ᵗ κ(t') dt'
+///
+/// # Kingman Coalescent Probability Density
+///
+/// For a node at time t with m children (m=1 for leaves, m≥2 for internal nodes):
+///
+/// - Leaf nodes (m=1): P(t) ∝ exp(-I(t))
+///   - Probability of no merger from present to time t
+///
+/// - Internal nodes (m≥2): P(t) ∝ λ(t)^(m-1) · exp(-I(t))
+///   - λ(t)^(m-1): probability density of m-way merger at time t
+///   - exp(-I(t)): probability of no merger before time t
+///
+/// # Returns
+///
+/// Map from node keys to distributions representing coalescent prior contributions.
+/// Each distribution should be multiplied with the node's time distribution.
+pub fn compute_coalescent_contributions(
+  graph: &GraphAncestral,
+  tc: &Distribution,
+) -> Result<IndexMap<GraphNodeKey, Arc<Distribution>>, Report> {
+  let events = collect_tree_events(graph)?;
+  let lineage_counts = compute_lineage_count_distribution(&events)?;
+  let integral_merger_rate = compute_integral_merger_rate(tc, &lineage_counts)?;
+  compute_node_contributions(graph, &integral_merger_rate, tc, &lineage_counts)
+}
+
+/// Collects tree merger events as (time, delta_branches) tuples.
+///
+/// Returns events sorted by decreasing time (past to present).
+/// delta_branches: +1 for leaf nodes, -(k-1) for internal nodes with k children.
+fn collect_tree_events(graph: &GraphAncestral) -> Result<Vec<(f64, i32)>, Report> {
+  let mut events = Vec::new();
+
+  graph.iter_breadth_first_forward(|node| {
+    if let Some(time_dist) = &node.payload.time_distribution {
+      if let Some(t) = time_dist.likely_time() {
+        let num_children = node.child_edges.len();
+
+        if num_children == 0 {
+          events.push((t, 1));
+        } else {
+          events.push((t, -((num_children as i32) - 1)));
+        }
+      }
+    }
+  });
+
+  if events.is_empty() {
+    return make_error!("No tree events found");
+  }
+
+  events.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
+
+  Ok(events)
+}
+
+/// Computes k(t) distribution from tree events.
+///
+/// k(t) is the number of concurrent lineages at time t.
+/// The function is piecewise constant, stepping at each merger event.
+/// Events must be sorted by decreasing time (past to present).
+fn compute_lineage_count_distribution(events: &[(f64, i32)]) -> Result<Distribution, Report> {
+  if events.is_empty() {
+    return make_error!("Cannot build lineage count interpolator from empty events");
+  }
+
+  // Aggregate events at same time point
+  let mut aggregated_events = BTreeMap::new();
+  for &(time, delta) in events {
+    *aggregated_events.entry(ordered_float::OrderedFloat(time)).or_insert(0) += delta;
+  }
+
+  // Convert to sorted vec (DESCENDING time order, as in Python)
+  let mut events_vec: Vec<_> = aggregated_events
+    .into_iter()
+    .map(|(t, d)| (t.into_inner(), d))
+    .collect();
+  events_vec.reverse();
+
+  let mut time_points = Vec::with_capacity(2 * events_vec.len() + 2);
+  let mut branch_counts = Vec::with_capacity(2 * events_vec.len() + 2);
+
+  time_points.push(TIME_LIMIT);
+  branch_counts.push(0.0);
+
+  time_points.push(events_vec[0].0 + TIME_EPSILON);
+  branch_counts.push(0.0);
+
+  let mut current_count = 0_i32;
+
+  let n_events = events_vec.len();
+  for ti in 0..n_events - 1 {
+    let (t, dn) = events_vec[ti];
+    current_count += dn;
+
+    time_points.push(t);
+    branch_counts.push(current_count as f64);
+
+    time_points.push(events_vec[ti + 1].0 + TIME_EPSILON);
+    branch_counts.push(current_count as f64);
+  }
+
+  let (t_last, dn_last) = events_vec[n_events - 1];
+  current_count += dn_last;
+  time_points.push(t_last);
+  branch_counts.push(current_count as f64);
+
+  time_points.push(-TIME_LIMIT);
+  branch_counts.push(current_count as f64);
+
+  // Reverse to get ascending order
+  time_points.reverse();
+  branch_counts.reverse();
+
+  Distribution::function(Array1::from_vec(time_points), Array1::from_vec(branch_counts))
+}
+
+/// Computes I(t) = ∫₀ᵗ κ(t') dt' via trapezoidal integration.
+///
+/// This integral represents the expected number of merger events experienced by a branch.
+/// Uses the exact time points from lineage_counts where the function has discontinuities.
+fn compute_integral_merger_rate(tc_dist: &Distribution, lineage_counts: &Distribution) -> Result<Distribution, Report> {
+  let tvals = lineage_counts.t();
+  if tvals.len() < 2 {
+    return make_error!("lineage count distribution must have at least 2 points");
+  }
+
+  let k_vals = lineage_counts.eval_many(&tvals)?;
+  let tc_vals = tc_dist.eval_many(&tvals)?;
+  let k_clamped = k_vals.mapv(|x| f64::max(0.5, x - 1.0));
+  let branch_rates = 0.5 * &k_clamped / &tc_vals;
+
+  let n_points = tvals.len();
+  let mut integral_values = Array1::zeros(n_points);
+  for i in 1..n_points {
+    let dt = tvals[i] - tvals[i - 1];
+    let avg_rate = 0.5 * (branch_rates[i - 1] + branch_rates[i]);
+    integral_values[i] = integral_values[i - 1] + dt * avg_rate;
+  }
+
+  Distribution::function(tvals.to_owned(), integral_values)
+}
+
+/// Computes coalescent prior contributions for all nodes.
+///
+/// Returns map from node key to distribution that should be multiplied
+/// with node's time distribution during backward pass.
+///
+/// Kingman coalescent probability density:
+/// - For leaves: P(t) ∝ exp(-I(t)) where I(t) = ∫κ(t')dt' is cumulative merger rate
+/// - For internal nodes with k children: P(t) ∝ λ(t)^(k-1) · exp(-I(t))
+///   where λ(t) = k(k-1)/(2Tc) is total merger rate
+fn compute_node_contributions(
+  graph: &GraphAncestral,
+  integral_merger_rate: &Distribution,
+  tc_dist: &Distribution,
+  lineage_counts: &Distribution,
+) -> Result<IndexMap<GraphNodeKey, Arc<Distribution>>, Report> {
+  let mut contributions = IndexMap::new();
+
+  graph.iter_breadth_first_forward(|node| {
+    if let Some(time_dist) = &node.payload.time_distribution {
+      let time_points = time_dist.t();
+      if time_points.is_empty() {
+        return;
+      }
+
+      let contrib = (|| -> Result<Distribution, Report> {
+        let integral_at_node = distribution_resample(integral_merger_rate, &time_points)?;
+        let exp_neg_integral = distribution_map(&integral_at_node, |x| (-x).exp())?;
+
+        if node.is_leaf {
+          // Leaf: P(t) ∝ exp(-I(t))
+          Ok(exp_neg_integral)
+        } else {
+          let k_vals = lineage_counts.eval_many(&time_points)?;
+          let tc_vals = tc_dist.eval_many(&time_points)?;
+
+          let (_, total_rate) = compute_merger_rates(&k_vals, &tc_vals);
+          let rate_dist = Distribution::function(time_points.clone(), total_rate)?;
+
+          let n_children = node.child_edges.len();
+          let multiplicity = (n_children - 1) as f64;
+
+          // Internal: P(t) ∝ λ(t)^(k-1) · exp(-I(t))
+          let rate_power = distribution_map(&rate_dist, |r| r.powf(multiplicity))?;
+
+          distribution_multiplication(&rate_power, &exp_neg_integral)
+        }
+      })();
+
+      let Ok(contrib) = contrib else { return };
+
+      contributions.insert(node.key, Arc::new(contrib));
+    }
+  });
+
+  Ok(contributions)
+}
+
+/// Computes branch merger rate κ(t) and total merger rate λ(t).
+///
+/// κ(t) = (k(t)-1)/(2*Tc(t)) - rate for one branch to merge with any other
+/// λ(t) = k(t)*(k(t)-1)/(2*Tc(t)) - rate for any branch to merge with any other
+///
+/// k is clamped to ensure positive rates even in edge cases.
+fn compute_merger_rates(k: &Array1<f64>, tc: &Array1<f64>) -> (Array1<f64>, Array1<f64>) {
+  let k_clamped = k.mapv(|x| f64::max(0.5, x - 1.0));
+  let branch_rate = 0.5 * &k_clamped / tc;
+  let total_rate = 0.5 * &k_clamped * (&k_clamped + 1.0) / tc;
+  (branch_rate, total_rate)
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use approx::assert_abs_diff_eq;
+  use ndarray::array;
+
+  #[test]
+  fn test_lineage_count_simple_tree() -> Result<(), Report> {
+    let events = vec![(10.0, 1), (10.0, 1), (5.0, -1), (0.0, 1)];
+
+    let lineage_counts = compute_lineage_count_distribution(&events)?;
+
+    let test_points = array![11.0, 10.0, 7.0, 5.0, 2.0, 0.0, -1.0];
+    let expected = array![0.0, 2.0, 2.0, 1.0, 1.0, 2.0, 2.0];
+    let actual = lineage_counts.eval_many(&test_points)?;
+
+    assert_abs_diff_eq!(actual, expected, epsilon = 1e-10);
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_merger_rates() -> Result<(), Report> {
+    let k = array![2.0, 3.0, 4.0];
+    let tc = array![0.001, 0.002, 0.003];
+
+    let (branch_rate, total_rate) = compute_merger_rates(&k, &tc);
+
+    assert_abs_diff_eq!(branch_rate[0], 0.5 * 1.0 / 0.001, epsilon = 1e-10);
+    assert_abs_diff_eq!(branch_rate[1], 0.5 * 2.0 / 0.002, epsilon = 1e-10);
+    assert_abs_diff_eq!(branch_rate[2], 0.5 * 3.0 / 0.003, epsilon = 1e-10);
+
+    assert_abs_diff_eq!(total_rate[0], 0.5 * 1.0 * 2.0 / 0.001, epsilon = 1e-10);
+    assert_abs_diff_eq!(total_rate[1], 0.5 * 2.0 * 3.0 / 0.002, epsilon = 1e-10);
+    assert_abs_diff_eq!(total_rate[2], 0.5 * 3.0 * 4.0 / 0.003, epsilon = 1e-10);
+
+    Ok(())
+  }
+}

@@ -1,10 +1,12 @@
-use crate::commands::clock::clock_model::ClockModel;
 use crate::commands::optimize::optimize_unified::OptimizationContribution;
 use crate::commands::timetree::inference::backward_pass::propagate_distributions_backward;
 use crate::commands::timetree::inference::branch_length_likelihood::compute_branch_length_distribution;
 use crate::commands::timetree::inference::forward_pass::propagate_distributions_forward;
 use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
 use crate::commands::timetree::utils::initialize_node_divergences;
+use crate::commands::{
+  clock::clock_model::ClockModel, timetree::coalescent::coalescent::compute_coalescent_contributions,
+};
 use crate::distribution::distribution::Distribution;
 use crate::graph::edge::GraphEdgeKey;
 use crate::representation::graph_ancestral::GraphAncestral;
@@ -19,6 +21,7 @@ pub fn run_timetree(
   graph: &mut GraphAncestral,
   partitions: &[Arc<RwLock<dyn PartitionTimetreeAll>>],
   clock_model: &ClockModel,
+  coalescent_tc: Option<f64>,
 ) -> Result<(), Report> {
   info!("# Running timetree inference");
 
@@ -36,8 +39,15 @@ pub fn run_timetree(
     create_branch_distributions_inpu_mode(graph, clock_model)?;
   }
 
+  let coalescent_contributions = if let Some(tc) = coalescent_tc {
+    info!("## Computing coalescent contributions with Tc = {tc:.6e}");
+    Some(compute_coalescent_contributions(graph, &Distribution::constant(tc))?)
+  } else {
+    None
+  };
+
   info!("## Propagating distributions backward");
-  propagate_distributions_backward(graph)?;
+  propagate_distributions_backward(graph, coalescent_contributions.as_ref())?;
 
   info!("## Propagating distributions forward");
   propagate_distributions_forward(graph)?;
@@ -327,7 +337,7 @@ mod tests {
     create_poisson_branch_distributions(&graph, CLOCK_RATE_MU, SEQUENCE_LENGTH_L, BRANCH_GRID_SIZE)?;
     dump_graph(&graph, "001_after_create_poisson_branch_distributions.json")?;
 
-    propagate_distributions_backward(&graph)?;
+    propagate_distributions_backward(&graph, None)?;
     dump_graph(&graph, "002_after_propagate_distributions_backward.json")?;
 
     propagate_distributions_forward(&graph)?;
@@ -410,7 +420,7 @@ mod tests {
     initialize_clock_totals_from_time_distributions(&graph)?;
     dump_graph(&graph, "004_after_initialize_node_times.json")?;
 
-    run_timetree(&mut graph, &partitions, &clock_model)?;
+    run_timetree(&mut graph, &partitions, &clock_model, None)?;
     dump_graph(&graph, "005_after_run_timetree.json")?;
 
     let actual = round_times(&extract_node_times(&graph));
@@ -467,7 +477,7 @@ mod tests {
     initialize_clock_totals_from_time_distributions(&graph)?;
     dump_graph(&graph, "004_after_initialize_node_times.json")?;
 
-    run_timetree(&mut graph, &partitions, &clock_model)?;
+    run_timetree(&mut graph, &partitions, &clock_model, None)?;
     dump_graph(&graph, "005_after_run_timetree.json")?;
 
     let actual = round_times(&extract_node_times(&graph));

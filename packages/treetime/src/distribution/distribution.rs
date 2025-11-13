@@ -8,6 +8,10 @@ use eyre::Report;
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
+use treetime_utils::make_error;
+
+pub const TIME_LIMIT: f64 = 1e10;
+pub const TIME_EPSILON: f64 = 1e-10;
 
 #[must_use]
 #[allow(variant_size_differences)]
@@ -51,6 +55,10 @@ impl Distribution {
     Ok(Self::Function(DistributionFunction::new(x, y)?))
   }
 
+  pub fn constant(amplitude: f64) -> Self {
+    Distribution::range((-TIME_LIMIT, TIME_LIMIT), amplitude)
+  }
+
   pub fn from_date_or_range(date_or_range: &DateOrRange) -> Self {
     match date_or_range {
       DateOrRange::YearFraction(t) => Self::point(*t, 1.0),
@@ -60,10 +68,28 @@ impl Distribution {
 
   pub fn likely_time(&self) -> Option<f64> {
     match self {
+      Self::Empty => None,
       Self::Point(p) => Some(p.t()),
       Self::Range(r) => Some(f64::midpoint(r.start(), r.end())),
       Self::Function(f) => f.likely_time(),
-      Self::Empty => None,
+    }
+  }
+
+  pub fn t(&self) -> Array1<f64> {
+    match self {
+      Self::Empty => ndarray::array![],
+      Self::Point(p) => ndarray::array![p.t()],
+      Self::Range(r) => ndarray::array![r.start(), r.end()],
+      Self::Function(f) => f.t().clone(),
+    }
+  }
+
+  pub fn y(&self) -> Array1<f64> {
+    match self {
+      Self::Point(p) => ndarray::array![p.amplitude()],
+      Self::Range(r) => ndarray::array![r.amplitude(), r.amplitude()],
+      Self::Function(f) => f.y().clone(),
+      Self::Empty => ndarray::array![],
     }
   }
 
@@ -73,5 +99,40 @@ impl Distribution {
 
   pub fn negate_inplace(&mut self) {
     distribution_negation_inplace(self);
+  }
+
+  pub fn time_bounds(&self) -> (f64, f64) {
+    let t = self.t();
+    debug_assert!(!t.is_empty(), "Cannot extract time bounds from empty distribution");
+    (t[0], t[t.len() - 1])
+  }
+
+  pub fn eval(&self, t: f64) -> Result<f64, Report> {
+    match self {
+      Self::Function(f) => f.interp(t),
+      Self::Point(p) => {
+        if ulps_eq!(t, p.t(), max_ulps = 10) {
+          Ok(p.amplitude())
+        } else {
+          make_error!("Cannot evaluate point distribution outside its support")
+        }
+      },
+      Self::Range(r) => {
+        if t >= r.start() && t <= r.end() {
+          Ok(r.amplitude())
+        } else {
+          make_error!("Cannot evaluate range distribution outside its support")
+        }
+      },
+      Self::Empty => make_error!("Cannot evaluate empty distribution"),
+    }
+  }
+
+  pub fn eval_many(&self, t: &Array1<f64>) -> Result<Array1<f64>, Report> {
+    let mut result = Array1::zeros(t.len());
+    for (i, &ti) in t.iter().enumerate() {
+      result[i] = self.eval(ti)?;
+    }
+    Ok(result)
   }
 }

@@ -38,6 +38,13 @@ pub enum RerootMode {
   Mrca,
 }
 
+#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+#[value(rename_all = "kebab-case")]
+pub enum CoalescentModel {
+  Opt,
+  Skyline,
+}
+
 #[derive(Parser, Debug, SmartDefault, Serialize, Deserialize)]
 pub struct TreetimeTimetreeArgs {
   /// Path to one or multiple FASTA files with aligned input sequences
@@ -136,15 +143,28 @@ pub struct TreetimeTimetreeArgs {
   #[clap(long, default_value_t = TreetimeTimetreeArgs::default().max_iter)]
   pub max_iter: usize,
 
-  /// coalescent time scale -- sensible values are on the order of the average hamming distance of
-  /// contemporaneous sequences. In addition, 'opt' 'skyline' are valid options and estimate a
-  /// constant coalescent rate or a piecewise linear coalescent rate history
+  /// Coalescent time scale in years.
+  ///
+  /// Sensible values are on the order of the average hamming distance of contemporaneous sequences
+  /// divided by the clock rate. For example, if average pairwise distance is 0.01 substitutions/site
+  /// and clock rate is 0.001 subs/site/year, then Tc ~ 10 years.
   #[clap(long)]
-  pub coalescent: Option<String>,
+  pub coalescent: Option<f64>,
 
-  /// number of grid points in skyline coalescent model
+  /// Use skyline coalescent model instead of constant Tc.
+  ///
+  /// Estimates a piecewise constant coalescent rate history. Requires --n-skyline to specify
+  /// the number of change points.
   #[clap(long)]
-  pub n_skyline: Option<usize>,
+  pub coalescent_skyline: bool,
+
+  /// Number of grid points in skyline coalescent model.
+  ///
+  /// Only used when --coalescent-skyline is set. Defines how many piecewise constant segments
+  /// are used to model Tc(t) over time.
+  #[default = 10]
+  #[clap(long, default_value_t = TreetimeTimetreeArgs::default().n_skyline)]
+  pub n_skyline: usize,
 
   /// add posterior LH to coalescent model: use the posterior probability distributions of
   /// divergence times for estimating the number of branches when calculating the coalescent

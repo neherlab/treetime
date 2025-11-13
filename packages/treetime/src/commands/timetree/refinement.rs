@@ -24,10 +24,6 @@ pub fn run_refinement_iteration(
 ) -> Result<(usize, usize), Report> {
   let mut is_tree_dirty = false;
 
-  if let Some(_coalescent_params) = &args.coalescent {
-    todo!("add_coalescent_model not yet implemented");
-  }
-
   if !args.relax.is_empty() {
     todo!("apply_relaxed_clock not yet implemented");
   }
@@ -44,7 +40,7 @@ pub fn run_refinement_iteration(
 
   if is_tree_dirty {
     info!("Tree structure changed - recomputing timetree then marginal");
-    run_timetree(graph, partitions, clock_model).wrap_err("Timetree inference failed")?;
+    run_timetree(graph, partitions, clock_model, args.coalescent).wrap_err("Timetree inference failed")?;
 
     if aln.is_some() {
       run_marginal(graph, partitions, aln)?;
@@ -56,7 +52,7 @@ pub fn run_refinement_iteration(
     }
 
     info!("Updating node times via timetree inference");
-    run_timetree(graph, partitions, clock_model).wrap_err("Timetree inference failed")?;
+    run_timetree(graph, partitions, clock_model, args.coalescent).wrap_err("Timetree inference failed")?;
   }
 
   let n_diff = 0;
