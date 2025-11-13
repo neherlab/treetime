@@ -7,7 +7,6 @@ use crate::commands::clock::find_best_root::params::BranchPointOptimizationParam
 use crate::graph::edge::{GraphEdge, GraphEdgeKey, invert_edge};
 use crate::graph::graph::Graph;
 use crate::graph::node::{GraphNode, GraphNodeKey};
-use crate::make_internal_report;
 use approx::ulps_eq;
 use eyre::Report;
 
@@ -139,69 +138,46 @@ where
   E: GraphEdge + ClockEdge + Default,
   D: Send + Sync,
 {
-  // Check if node exists
-  let Some(node_arc) = graph.get_node(node_key) else {
-    return Err(make_internal_report!(
-      "Node {node_key:?} not found when attempting to remove trivial node"
-    ));
-  };
-
-  // Check if node is trivial. If so get its parent and child edges
   let (parent_edge_key, child_edge_key) = {
-    let node = node_arc.read_arc();
-
-    // if not trivial, return early
+    let node = graph.get_node(node_key).expect("Node not found");
+    let node = node.read_arc();
     if node.inbound().len() != 1 || node.outbound().len() != 1 {
       return Ok(());
     }
-
     (node.inbound()[0], node.outbound()[0])
   };
 
-  // Drop the node arc to avoid holding onto the node while modifying the graph
-  drop(node_arc);
-
-  // Get parent and child node keys and branch lengths
   let (parent_key, parent_branch) = {
-    let parent_edge = graph.get_edge(parent_edge_key).ok_or_else(|| {
-      make_internal_report!("Parent edge {parent_edge_key:?} not found when removing node {node_key:?}")
-    })?;
-    let parent_edge_read = parent_edge.read_arc();
+    let parent_edge = graph.get_edge(parent_edge_key).expect("Parent edge not found");
+    let parent_edge = parent_edge.read_arc();
     (
-      parent_edge_read.source(),
-      parent_edge_read.payload().read_arc().branch_length(),
+      parent_edge.source(),
+      parent_edge.payload().read_arc().branch_length(),
     )
   };
 
   let (child_key, child_branch) = {
-    let child_edge = graph.get_edge(child_edge_key).ok_or_else(|| {
-      make_internal_report!("Child edge {child_edge_key:?} not found when removing node {node_key:?}")
-    })?;
-    let child_edge_read = child_edge.read_arc();
+    let child_edge = graph.get_edge(child_edge_key).expect("Child edge not found");
+    let child_edge = child_edge.read_arc();
     (
-      child_edge_read.target(),
-      child_edge_read.payload().read_arc().branch_length(),
+      child_edge.target(),
+      child_edge.payload().read_arc().branch_length(),
     )
   };
 
-  // Merge branch lengths only, discard other payload data
   let merged_branch_length = match (parent_branch, child_branch) {
     (Some(parent_len), Some(child_len)) => Some(parent_len + child_len),
-    (Some(parent_len), None) => Some(parent_len),
-    (None, Some(child_len)) => Some(child_len),
+    (Some(len), None) | (None, Some(len)) => Some(len),
     (None, None) => None,
   };
 
-  // Create merged edge payload with default values and merged branch length
   let mut merged_payload = E::default();
   merged_payload.set_branch_length(merged_branch_length);
 
-  // Remove old edges and node
   graph.remove_edge(parent_edge_key)?;
   graph.remove_edge(child_edge_key)?;
-  let _removed_node = graph.remove_node(node_key)?;
+  graph.remove_node(node_key)?;
 
-  // Add new edge from parent to child with merged payload
   graph.add_edge(parent_key, child_key, merged_payload)?;
 
   Ok(())
@@ -214,7 +190,7 @@ mod tests {
   use crate::io::nwk::{NwkWriteOptions, nwk_read_str, nwk_write_str};
 
   #[test]
-  fn remove_trivial_node_merges_edges() -> Result<(), Report> {
+  fn test_remove_node_if_trivial_simple() -> Result<(), Report> {
     // define tree with trivial node:
     //        root
     //        /  \
