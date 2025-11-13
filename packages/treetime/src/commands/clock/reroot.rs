@@ -164,8 +164,6 @@ where
     (a, b) => a.or(b),
   };
 
-  graph.remove_edge(parent_edge_key)?;
-  graph.remove_edge(child_edge_key)?;
   graph.remove_node(node_key)?;
 
   let mut merged_payload = E::default();

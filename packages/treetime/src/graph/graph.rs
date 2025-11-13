@@ -524,29 +524,33 @@ where
     node_key
   }
 
-  pub fn remove_node(&mut self, node_key: GraphNodeKey) -> Result<Node<N>, Report> {
-    // Remove edges which refer to this node, if any
-    self
+  #[allow(clippy::needless_collect)]
+  pub fn remove_node(&mut self, node_key: GraphNodeKey) -> Result<(Node<N>, Vec<Edge<E>>), Report> {
+    let edges_to_remove: Vec<GraphEdgeKey> = self
       .edges
-      .iter_mut()
-      // Find edges which refer to this node
-      .filter(|e| {
-        e.as_ref().is_some_and(|e| {
+      .iter()
+      .filter_map(|e| {
+        e.as_ref().and_then(|e| {
           let e = e.read();
-          e.source() == node_key || e.target() == node_key
+          (e.source() == node_key || e.target() == node_key).then_some(e.key())
         })
       })
-      // Remove these edges
-      .for_each(|edge| *edge = None);
+      .collect();
 
-    // Remove the node itself, if present
-    self
+    let removed_edges = edges_to_remove
+      .into_iter()
+      .map(|edge_key| -> Result<Edge<E>, Report> { self.remove_edge(edge_key) })
+      .collect::<Result<Vec<_>, _>>()?;
+
+    let removed_node = self
       .nodes
       .get_mut(node_key.as_usize())
-      .and_then(|node_slot| node_slot.take().map(unwrap_arc_rwlock))
+      .and_then(|node| node.take().map(unwrap_arc_rwlock))
       .transpose()
       .wrap_err_with(|| format!("When removing node: {node_key}"))?
-      .ok_or_else(|| make_internal_report!("Attempted to remove non-existent node: {node_key}"))
+      .ok_or_else(|| make_internal_report!("Attempted to remove non-existent node: {node_key}"))?;
+
+    Ok((removed_node, removed_edges))
   }
 
   /// Add a new edge to the graph.
@@ -966,7 +970,7 @@ where
     }
 
     let removed_edge = self.remove_edge(edge_key)?;
-    let removed_node = self.remove_node(target_key)?;
+    let (removed_node, _removed_edges) = self.remove_node(target_key)?;
 
     Ok((removed_node, removed_edge, new_edges))
   }
