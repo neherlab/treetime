@@ -68,7 +68,7 @@ impl<T: InterpElem> GridFn<T> {
     assert_eq!(x.len(), y.len(), "x and y arrays must have same length");
     assert!(x.len() >= 2, "Arrays must have at least 2 points");
 
-    let interp = Interp1DBuilder::new(y).x(x).build()?;
+    let interp = Interp1D::new_unchecked(x, y, Linear::new().extrapolate(true));
     Ok(Self { interp })
   }
 
