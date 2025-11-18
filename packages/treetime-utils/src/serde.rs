@@ -18,27 +18,29 @@ where
   }
 }
 
-/// Serialize Array1<f64> as a simple JSON array
+/// Serialize Array1<T> as a simple JSON array
 ///
 /// Usage:
 ///     #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
-///     pub values: Array1<f64>
-pub fn array1_as_vec<S>(array: &Array1<f64>, serializer: S) -> Result<S::Ok, S::Error>
+///     pub values: Array1<T>
+pub fn array1_as_vec<T, S>(array: &Array1<T>, serializer: S) -> Result<S::Ok, S::Error>
 where
+  T: Serialize,
   S: Serializer,
 {
   array.as_slice().unwrap().serialize(serializer)
 }
 
-/// Deserialize Array1<f64> from a simple JSON array
+/// Deserialize Array1<T> from a simple JSON array
 ///
 /// Usage:
 ///     #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
-///     pub values: Array1<f64>
-pub fn array1_from_vec<'de, D>(deserializer: D) -> Result<Array1<f64>, D::Error>
+///     pub values: Array1<T>
+pub fn array1_from_vec<'de, T, D>(deserializer: D) -> Result<Array1<T>, D::Error>
 where
+  T: Deserialize<'de>,
   D: Deserializer<'de>,
 {
-  let vec = Vec::<f64>::deserialize(deserializer)?;
+  let vec = Vec::<T>::deserialize(deserializer)?;
   Ok(Array1::from_vec(vec))
 }

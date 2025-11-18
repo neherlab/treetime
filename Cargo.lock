@@ -2035,16 +2035,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ndarray-interp"
-version = "0.5.0"
-source = "git+https://github.com/numrs/ndarray-interp?rev=9d05f9e#9d05f9e0904b84654eac0261e05b2fb5c9b2ca09"
-dependencies = [
- "ndarray",
- "num-traits",
- "thiserror 2.0.16",
-]
-
-[[package]]
 name = "ndarray-linalg"
 version = "0.17.0"
 source = "git+https://github.com/numrs/ndarray-linalg?rev=ac7052e#ac7052e20c1c6d1915603de575cce02123c5f414"
@@ -3722,7 +3712,6 @@ dependencies = [
  "multimap",
  "ndarray",
  "ndarray-conv",
- "ndarray-interp",
  "ndarray-linalg",
  "ndarray-rand",
  "ndarray-stats",
@@ -3836,7 +3825,6 @@ dependencies = [
  "multimap",
  "ndarray",
  "ndarray-conv",
- "ndarray-interp",
  "ndarray-linalg",
  "ndarray-rand",
  "ndarray-stats",
@@ -3922,7 +3910,6 @@ dependencies = [
  "multimap",
  "ndarray",
  "ndarray-conv",
- "ndarray-interp",
  "ndarray-linalg",
  "ndarray-rand",
  "ndarray-stats",
@@ -4007,7 +3994,6 @@ dependencies = [
  "multimap",
  "ndarray",
  "ndarray-conv",
- "ndarray-interp",
  "ndarray-linalg",
  "ndarray-rand",
  "ndarray-stats",

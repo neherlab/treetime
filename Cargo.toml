@@ -41,12 +41,10 @@ openblas-src = { git = "https://github.com/numrs/openblas-src", rev = "0964a10" 
 
 argmin = { git = "https://github.com/argmin-rs/argmin", rev = "f5c3fd3" }
 argmin-math = { git = "https://github.com/argmin-rs/argmin", rev = "f5c3fd3" }
-ndarray-interp = { git = "https://github.com/numrs/ndarray-interp", rev = "9d05f9e" }
 
 [workspace.dependencies]
 blas-src = { version = "=0.12.1", features = ["openblas-src"] }
 ndarray = { version = "=0.16.1", features = ["rayon", "serde", "approx", "blas"] }
-ndarray-interp = { version = "=0.5.0", features = [] }
 ndarray-linalg = { version = "=0.17.0", features = ["openblas-system"] }
 ndarray-rand = "=0.15.0"
 ndarray-stats = "=0.6.0"
