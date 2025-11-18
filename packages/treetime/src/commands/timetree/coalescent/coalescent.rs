@@ -2,11 +2,13 @@ use crate::distribution::distribution::{Distribution, TIME_EPSILON, TIME_LIMIT};
 use crate::distribution::distribution_map::distribution_map;
 use crate::distribution::distribution_multiplication::distribution_multiplication;
 use crate::distribution::distribution_resample::distribution_resample;
+use crate::graph::graph::GraphNodeForward;
 use crate::graph::node::GraphNodeKey;
-use crate::representation::graph_ancestral::GraphAncestral;
-use eyre::Report;
+use crate::representation::graph_ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
+use eyre::{Context, Report};
 use indexmap::IndexMap;
 use ndarray::Array1;
+use ordered_float::OrderedFloat;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 use treetime_utils::make_error;
@@ -57,22 +59,31 @@ pub fn compute_coalescent_contributions(
   graph: &GraphAncestral,
   tc: &Distribution,
 ) -> Result<IndexMap<GraphNodeKey, Arc<Distribution>>, Report> {
-  let events = collect_tree_events(graph)?;
-  let lineage_counts = compute_lineage_count_distribution(&events)?;
+  let (present_time, events_calendar) = collect_tree_events(graph)?;
+  let events_tbp: Vec<_> = events_calendar
+    .iter()
+    .map(|(t, delta)| (present_time - *t, *delta))
+    .collect();
+
+  let lineage_counts = compute_lineage_count_distribution(&events_tbp)?;
   let integral_merger_rate = compute_integral_merger_rate(tc, &lineage_counts)?;
-  compute_node_contributions(graph, &integral_merger_rate, tc, &lineage_counts)
+  compute_node_contributions(graph, &integral_merger_rate, tc, &lineage_counts, present_time)
 }
 
 /// Collects tree merger events as (time, delta_branches) tuples.
 ///
 /// Returns events sorted by decreasing time (past to present).
 /// delta_branches: +1 for leaf nodes, -(k-1) for internal nodes with k children.
-fn collect_tree_events(graph: &GraphAncestral) -> Result<Vec<(f64, i32)>, Report> {
+fn collect_tree_events(graph: &GraphAncestral) -> Result<(f64, Vec<(f64, i32)>), Report> {
+  let mut max_time = f64::NEG_INFINITY;
   let mut events = Vec::new();
 
   graph.iter_breadth_first_forward(|node| {
     if let Some(time_dist) = &node.payload.time_distribution {
       if let Some(t) = time_dist.likely_time() {
+        if t > max_time {
+          max_time = t;
+        }
         let num_children = node.child_edges.len();
 
         if num_children == 0 {
@@ -88,9 +99,13 @@ fn collect_tree_events(graph: &GraphAncestral) -> Result<Vec<(f64, i32)>, Report
     return make_error!("No tree events found");
   }
 
-  events.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
+  if !max_time.is_finite() {
+    return make_error!("Cannot determine present time for coalescent events");
+  }
 
-  Ok(events)
+  events.sort_by_key(|x| OrderedFloat(x.0));
+
+  Ok((max_time, events))
 }
 
 /// Computes k(t) distribution from tree events.
@@ -106,7 +121,7 @@ fn compute_lineage_count_distribution(events: &[(f64, i32)]) -> Result<Distribut
   // Aggregate events at same time point
   let mut aggregated_events = BTreeMap::new();
   for &(time, delta) in events {
-    *aggregated_events.entry(ordered_float::OrderedFloat(time)).or_insert(0) += delta;
+    *aggregated_events.entry(OrderedFloat(time)).or_insert(0) += delta;
   }
 
   // Convert to sorted vec (DESCENDING time order, as in Python)
@@ -194,47 +209,64 @@ fn compute_node_contributions(
   integral_merger_rate: &Distribution,
   tc_dist: &Distribution,
   lineage_counts: &Distribution,
+  present_time: f64,
 ) -> Result<IndexMap<GraphNodeKey, Arc<Distribution>>, Report> {
   let mut contributions = IndexMap::new();
 
   graph.iter_breadth_first_forward(|node| {
-    if let Some(time_dist) = &node.payload.time_distribution {
-      let time_points = time_dist.t();
-      if time_points.is_empty() {
-        return;
-      }
+    let contrib = compute_node_contributions_single(&node, integral_merger_rate, tc_dist, lineage_counts, present_time)
+      .wrap_err_with(|| {
+        format!(
+          "When computing coalescent contributions for node (\"{}\") (#{})",
+          node.payload.name.as_deref().unwrap_or(""),
+          node.key,
+        )
+      })
+      .unwrap();
 
-      let contrib = (|| -> Result<Distribution, Report> {
-        let integral_at_node = distribution_resample(integral_merger_rate, &time_points)?;
-        let exp_neg_integral = distribution_map(&integral_at_node, |x| (-x).exp())?;
-
-        if node.is_leaf {
-          // Leaf: P(t) ∝ exp(-I(t))
-          Ok(exp_neg_integral)
-        } else {
-          let k_vals = lineage_counts.eval_many(&time_points)?;
-          let tc_vals = tc_dist.eval_many(&time_points)?;
-
-          let (_, total_rate) = compute_merger_rates(&k_vals, &tc_vals);
-          let rate_dist = Distribution::function(time_points.clone(), total_rate)?;
-
-          let n_children = node.child_edges.len();
-          let multiplicity = (n_children - 1) as f64;
-
-          // Internal: P(t) ∝ λ(t)^(k-1) · exp(-I(t))
-          let rate_power = distribution_map(&rate_dist, |r| r.powf(multiplicity))?;
-
-          distribution_multiplication(&rate_power, &exp_neg_integral)
-        }
-      })();
-
-      let Ok(contrib) = contrib else { return };
-
-      contributions.insert(node.key, Arc::new(contrib));
-    }
+    contributions.insert(node.key, Arc::new(contrib));
   });
 
   Ok(contributions)
+}
+
+fn compute_node_contributions_single(
+  node: &GraphNodeForward<NodeAncestral, EdgeAncestral, ()>,
+  integral_merger_rate: &Distribution,
+  tc_dist: &Distribution,
+  lineage_counts: &Distribution,
+  present_time: f64,
+) -> Result<Distribution, Report> {
+  let time_points = &node
+    .payload
+    .time_distribution
+    .as_ref()
+    .expect("Node missing time distribution")
+    .t();
+
+  let tbp_points = time_points.mapv(|t| present_time - t);
+  let integral_at_node = distribution_resample(integral_merger_rate, &tbp_points)?;
+  let exp_neg_integral = distribution_map(&integral_at_node, |x| (-x).exp())?;
+
+  let contrib = if node.is_leaf {
+    exp_neg_integral
+  } else {
+    let k_vals = lineage_counts.eval_many(&tbp_points)?;
+    let tc_vals = tc_dist.eval_many(&tbp_points)?;
+
+    let (_, total_rate) = compute_merger_rates(&k_vals, &tc_vals);
+    let rate_dist = Distribution::function(tbp_points, total_rate)?;
+
+    let n_children = node.child_edges.len();
+    let multiplicity = (n_children - 1) as f64;
+    let rate_power = distribution_map(&rate_dist, |r| r.powf(multiplicity))?;
+
+    distribution_multiplication(&rate_power, &exp_neg_integral)?
+  };
+
+  let contrib = distribution_resample(&contrib, time_points)?;
+
+  Ok(contrib)
 }
 
 /// Computes branch merger rate κ(t) and total merger rate λ(t).
