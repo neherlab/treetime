@@ -14,8 +14,13 @@ where
       let new_y = func.y().mapv(&f);
       Distribution::function(func.t().clone(), new_y)
     }
-    Distribution::Point(_) | Distribution::Range(_) => {
-      treetime_utils::make_error!("Map operation not supported for Point or Range distributions")
+    Distribution::Point(point) => {
+      let amplitude = f(point.amplitude());
+      Ok(Distribution::point(point.t(), amplitude))
+    }
+    Distribution::Range(range) => {
+      let amplitude = f(range.amplitude());
+      Ok(Distribution::range((range.start(), range.end()), amplitude))
     }
     Distribution::Empty => Ok(Distribution::empty()),
   }
