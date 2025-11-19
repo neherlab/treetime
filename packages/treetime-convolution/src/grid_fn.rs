@@ -1,55 +1,59 @@
 use std::cmp::min;
 
 use crate::InterpElem;
+use approx::UlpsEq;
 use eyre::Report;
 use ndarray::Array1;
 use ndarray_stats::QuantileExt;
 use num::Float;
 use serde::{Deserialize, Serialize};
+use treetime_utils::make_error;
+use treetime_utils::ndarray::has_uniform_spacing;
 use treetime_utils::serde::{array1_as_vec, array1_from_vec};
 
-/// Function represented on a regular grid for piecewise linear interpolation
+/// Function represented on a uniform grid for piecewise linear interpolation
 ///
-/// Represents a function as a set of (x, y) points on a grid, providing linear interpolation
-/// between points and linear extrapolation beyond the grid boundaries.
+/// Represents a function as a set of (x, y) points on a uniformly-spaced grid, providing
+/// linear interpolation between points and linear extrapolation beyond the grid boundaries.
 ///
 /// # Invariants
 ///
-/// - `x` array must be strictly monotonically increasing: `x[i] < x[i+1]` for all `i`
-/// - `x` and `y` arrays must have equal length
-/// - Both arrays must contain at least 2 points
-/// - These invariants are checked via `debug_assert!` in the constructor
+/// - Grid must be uniformly spaced with spacing `dx`
+/// - Grid starts at `x_min`
+/// - `y` array must contain at least 2 points
+/// - `dx` must be positive
+/// - These invariants are enforced by the type system and cannot be violated
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(bound(serialize = "T: Serialize", deserialize = "T: Deserialize<'de>"))]
 pub struct GridFn<T: InterpElem> {
-  #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
-  x: Array1<T>,
+  x_min: T,
+  dx: T,
   #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
   y: Array1<T>,
 }
 
 impl<T: InterpElem> GridFn<T> {
-  pub fn new(x: Array1<T>, y: Array1<T>) -> Result<Self, Report> {
-    debug_assert_eq!(x.len(), y.len());
-    debug_assert!(x.len() >= 2);
-    debug_assert!(
-      x.windows(2).into_iter().all(|w| w[0] < w[1]),
-      "x array must be strictly monotonic increasing"
-    );
-
-    Ok(Self { x, y })
-  }
-
-  pub fn from_grid<F>((x_min, x_max): (T, T), dx: T, y_fn: F) -> Result<Self, Report>
+  pub fn from_arrays(x: &Array1<T>, y: Array1<T>) -> Result<Self, Report>
   where
-    T: Float,
-    F: Fn(T) -> T,
+    T: Float + UlpsEq,
   {
-    debug_assert!(dx > T::zero());
-    debug_assert!(x_max > x_min);
+    if x.len() < 2 {
+      return make_error!("Grid must have at least 2 points, got {}", x.len());
+    }
+    if x.len() != y.len() {
+      return make_error!(
+        "x and y arrays must have the same length, got {} and {}",
+        x.len(),
+        y.len()
+      );
+    }
+    if !has_uniform_spacing(x) {
+      return make_error!("x array must be uniformly spaced");
+    }
 
-    let n_points = ((x_max - x_min) / dx + T::one()).round().to_usize().unwrap();
-    Self::from_n_points((x_min, x_max), n_points, y_fn)
+    let dx = x[1] - x[0];
+
+    Ok(Self { x_min: x[0], dx, y })
   }
 
   pub fn from_n_points<F>((x_min, x_max): (T, T), n_points: usize, y_fn: F) -> Result<Self, Report>
@@ -57,32 +61,78 @@ impl<T: InterpElem> GridFn<T> {
     T: Float,
     F: Fn(T) -> T,
   {
-    debug_assert!(n_points >= 2);
-    debug_assert!(x_max > x_min);
+    if n_points < 2 {
+      return make_error!("Grid must have at least 2 points, got {n_points}");
+    }
+    if x_max <= x_min {
+      return make_error!("x_max ({x_max:?}) must be greater than x_min ({x_min:?})");
+    }
 
+    let dx = (x_max - x_min) / T::from(n_points - 1).unwrap();
     let x = Array1::linspace(x_min, x_max, n_points);
     let y = x.mapv(y_fn);
-    Self::new(x, y)
+    Ok(Self { x_min, dx, y })
   }
 
-  pub fn from_fn_samples<F>(x_samples: Array1<T>, y_fn: F) -> Result<Self, Report>
+  pub fn from_grid<F>((x_min, x_max): (T, T), dx: T, y_fn: F) -> Result<Self, Report>
   where
+    T: Float,
     F: Fn(T) -> T,
   {
-    let y = x_samples.mapv(y_fn);
-    Self::new(x_samples, y)
+    if dx <= T::zero() {
+      return make_error!("Grid spacing dx ({dx:?}) must be positive");
+    }
+    if x_max <= x_min {
+      return make_error!("x_max ({x_max:?}) must be greater than x_min ({x_min:?})");
+    }
+
+    let n_points = ((x_max - x_min) / dx + T::one()).round().to_usize().unwrap();
+    Self::from_n_points((x_min, x_max), n_points, y_fn)
+  }
+
+  pub fn from_start_dx_values(x_min: T, dx: T, y: Array1<T>) -> Result<Self, Report>
+  where
+    T: Float,
+  {
+    if dx <= T::zero() {
+      return make_error!("Grid spacing dx ({dx:?}) must be positive");
+    }
+    if y.len() < 2 {
+      return make_error!("Grid must have at least 2 points, got {}", y.len());
+    }
+    Ok(Self { x_min, dx, y })
+  }
+
+  pub fn from_range_values((x_min, x_max): (T, T), y: Array1<T>) -> Result<Self, Report>
+  where
+    T: Float,
+  {
+    if y.len() < 2 {
+      return make_error!("Grid must have at least 2 y values, got {}", y.len());
+    }
+    if x_max <= x_min {
+      return make_error!("x_max ({x_max:?}) must be greater than x_min ({x_min:?})");
+    }
+
+    let n_points = y.len();
+    let dx = (x_max - x_min) / T::from(n_points - 1).unwrap();
+    Ok(Self { x_min, dx, y })
   }
 
   pub fn constant((x_min, x_max): (T, T), n_points: usize, value: T) -> Result<Self, Report>
   where
     T: Float,
   {
-    debug_assert!(n_points >= 2);
-    debug_assert!(x_max > x_min);
+    if n_points < 2 {
+      return make_error!("Grid must have at least 2 points, got {n_points}");
+    }
+    if x_max <= x_min {
+      return make_error!("x_max ({x_max:?}) must be greater than x_min ({x_min:?})");
+    }
 
-    let x = Array1::linspace(x_min, x_max, n_points);
+    let dx = (x_max - x_min) / T::from(n_points - 1).unwrap();
     let y = Array1::from_elem(n_points, value);
-    Self::new(x, y)
+    Ok(Self { x_min, dx, y })
   }
 
   pub fn zeros((x_min, x_max): (T, T), n_points: usize) -> Result<Self, Report>
@@ -99,52 +149,50 @@ impl<T: InterpElem> GridFn<T> {
     Self::constant((x_min, x_max), n_points, T::one())
   }
 
-  pub fn from_pairs(pairs: Vec<(T, T)>) -> Result<Self, Report> {
-    debug_assert!(pairs.len() >= 2);
-
-    let (x, y): (Vec<T>, Vec<T>) = pairs.into_iter().unzip();
-    let x = Array1::from_vec(x);
-    let y = Array1::from_vec(y);
-    Self::new(x, y)
-  }
-
-  pub fn x(&self) -> &Array1<T> {
-    &self.x
-  }
-
-  pub fn x_mut(&mut self) -> &mut Array1<T> {
-    &mut self.x
+  // TODO: inefficient. Try to remove this method
+  pub fn x(&self) -> Array1<T>
+  where
+    T: Float,
+  {
+    Array1::linspace(self.x_min, self.x_max(), self.n_points())
   }
 
   pub fn y(&self) -> &Array1<T> {
     &self.y
   }
 
-  pub fn y_mut(&mut self) -> &mut Array1<T> {
-    &mut self.y
-  }
-
   pub fn x_min(&self) -> T {
-    self.x[0]
+    self.x_min
   }
 
-  pub fn x_max(&self) -> T {
-    self.x[self.x.len() - 1]
+  pub fn x_max(&self) -> T
+  where
+    T: Float,
+  {
+    self.x_min + self.dx * T::from(self.n_points() - 1).unwrap()
   }
 
-  pub fn x_range(&self) -> (T, T) {
+  pub fn x_range(&self) -> (T, T)
+  where
+    T: Float,
+  {
     (self.x_min(), self.x_max())
   }
 
   pub fn n_points(&self) -> usize {
-    self.x.len()
+    self.y.len()
   }
 
-  pub fn dx(&self) -> T
-  where
-    T: Float,
-  {
-    (self.x_max() - self.x_min()) / T::from(self.n_points() - 1).unwrap()
+  pub fn len(&self) -> usize {
+    self.n_points()
+  }
+
+  pub fn is_empty(&self) -> bool {
+    self.len() == 0
+  }
+
+  pub fn dx(&self) -> T {
+    self.dx
   }
 
   pub fn y_min(&self) -> T {
@@ -159,8 +207,11 @@ impl<T: InterpElem> GridFn<T> {
     (self.y_min(), self.y_max())
   }
 
-  pub fn to_pairs(&self) -> Vec<(T, T)> {
-    self.x.iter().zip(self.y.iter()).map(|(&x, &y)| (x, y)).collect()
+  pub fn to_pairs(&self) -> Vec<(T, T)>
+  where
+    T: Float,
+  {
+    self.x().iter().zip(self.y.iter()).map(|(&x, &y)| (x, y)).collect()
   }
 
   /// Interpolate function value at a single point
@@ -175,10 +226,12 @@ impl<T: InterpElem> GridFn<T> {
   /// # Returns
   ///
   /// Interpolated or extrapolated function value at `xi`
-  pub fn interp(&self, xi: T) -> Result<T, Report> {
-    let n = self.x.len();
-    let x_min = self.x[0];
-    let x_max = self.x[n - 1];
+  pub fn interp(&self, xi: T) -> Result<T, Report>
+  where
+    T: Float,
+  {
+    let x_min = self.x_min;
+    let x_max = self.x_max();
 
     if xi < x_min {
       return Ok(self.extrapolate_left(xi));
@@ -188,7 +241,7 @@ impl<T: InterpElem> GridFn<T> {
       return Ok(self.extrapolate_right(xi));
     }
 
-    let idx = binary_search_interval(&self.x, xi);
+    let idx = self.find_interval_index(xi);
     Ok(self.interpolate_at(xi, idx))
   }
 
@@ -209,15 +262,18 @@ impl<T: InterpElem> GridFn<T> {
   /// # Preconditions
   ///
   /// * `queries` must be sorted in non-decreasing order (checked via `debug_assert!`)
-  pub fn interp_many(&self, queries: &Array1<T>) -> Result<Array1<T>, Report> {
+  pub fn interp_many(&self, queries: &Array1<T>) -> Result<Array1<T>, Report>
+  where
+    T: Float,
+  {
     debug_assert!(
       queries.windows(2).into_iter().all(|w| w[0] <= w[1]),
       "queries must be sorted in non-decreasing order"
     );
 
-    let n = self.x.len();
-    let x_min = self.x[0];
-    let x_max = self.x[n - 1];
+    let x_min = self.x_min;
+    let x_max = self.x_max();
+    let n = self.n_points();
     let mut result = Array1::zeros(queries.len());
     let mut grid_idx = 0_usize;
 
@@ -227,7 +283,7 @@ impl<T: InterpElem> GridFn<T> {
       } else if query > x_max {
         result[i] = self.extrapolate_right(query);
       } else {
-        while grid_idx < n - 1 && self.x[grid_idx + 1] < query {
+        while grid_idx < n - 1 && self.x_at(grid_idx + 1) < query {
           grid_idx += 1;
         }
         let idx = min(grid_idx, n - 2);
@@ -237,56 +293,104 @@ impl<T: InterpElem> GridFn<T> {
     Ok(result)
   }
 
-  fn extrapolate_left(&self, q: T) -> T {
-    let slope = (self.y[1] - self.y[0]) / (self.x[1] - self.x[0]);
-    self.y[0] + slope * (q - self.x[0])
+  fn extrapolate_left(&self, q: T) -> T
+  where
+    T: Float,
+  {
+    let slope = (self.y[1] - self.y[0]) / self.dx;
+    self.y[0] + slope * (q - self.x_min)
   }
 
-  fn extrapolate_right(&self, q: T) -> T {
-    let n = self.x.len();
-    let slope = (self.y[n - 1] - self.y[n - 2]) / (self.x[n - 1] - self.x[n - 2]);
-    self.y[n - 1] + slope * (q - self.x[n - 1])
+  fn extrapolate_right(&self, q: T) -> T
+  where
+    T: Float,
+  {
+    let n = self.n_points();
+    let slope = (self.y[n - 1] - self.y[n - 2]) / self.dx;
+    let x_max = self.x_max();
+    self.y[n - 1] + slope * (q - x_max)
   }
 
-  fn interpolate_at(&self, q: T, idx: usize) -> T {
-    let n = self.x.len();
+  fn interpolate_at(&self, q: T, idx: usize) -> T
+  where
+    T: Float,
+  {
+    let n = self.n_points();
     if idx >= n - 1 {
       return self.y[n - 1];
     }
-    let x0 = self.x[idx];
-    let x1 = self.x[idx + 1];
+    let x0 = self.x_at(idx);
     let y0 = self.y[idx];
     let y1 = self.y[idx + 1];
-    let t = (q - x0) / (x1 - x0);
+    let t = (q - x0) / self.dx;
     y0 + t * (y1 - y0)
   }
-}
 
-fn binary_search_interval<T: InterpElem>(x: &Array1<T>, xi: T) -> usize {
-  let n = x.len();
-  if n == 0 {
-    return 0;
-  }
-  if xi <= x[0] {
-    return 0;
-  }
-  if xi >= x[n - 1] {
-    return n - 1;
+  fn x_at(&self, idx: usize) -> T
+  where
+    T: Float,
+  {
+    self.x_min + self.dx * T::from(idx).unwrap()
   }
 
-  let mut left = 0_usize;
-  let mut right = n - 1;
+  fn find_interval_index(&self, xi: T) -> usize
+  where
+    T: Float,
+  {
+    let idx = ((xi - self.x_min) / self.dx).floor().to_usize().unwrap();
+    min(idx, self.n_points() - 2)
+  }
 
-  while right - left > 1 {
-    let mid = usize::midpoint(left, right);
-    if xi < x[mid] {
-      right = mid;
-    } else {
-      left = mid;
+  #[must_use]
+  pub fn mapv<F>(&self, f: F) -> Self
+  where
+    F: Fn(T) -> T,
+  {
+    Self {
+      x_min: self.x_min,
+      dx: self.dx,
+      y: self.y.mapv(f),
     }
   }
 
-  left
+  pub fn mapv_inplace<F>(&mut self, f: F)
+  where
+    F: Fn(T) -> T,
+  {
+    self.y.mapv_inplace(f);
+  }
+
+  /// Negates the argument of the function: f(x) -> f(-x).
+  /// This reflects the function across the y-axis.
+  /// The domain [x_min, x_max] becomes [-x_max, -x_min].
+  /// The y-values are reversed.
+  #[must_use]
+  pub fn negate_arg(&self) -> Self
+  where
+    T: Float,
+  {
+    let mut result = self.clone();
+    result.negate_arg_inplace();
+    result
+  }
+
+  /// Negates the argument of the function in-place: f(x) -> f(-x).
+  /// This reflects the function across the y-axis.
+  /// The domain [x_min, x_max] becomes [-x_max, -x_min].
+  /// The y-values are reversed.
+  pub fn negate_arg_inplace(&mut self)
+  where
+    T: Float,
+  {
+    let x_max = self.x_max();
+    self.x_min = -x_max;
+
+    // Reverse y in-place
+    let n = self.y.len();
+    for i in 0..n / 2 {
+      self.y.swap(i, n - 1 - i);
+    }
+  }
 }
 
 #[cfg(test)]
@@ -299,19 +403,19 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case(array![0.0, 1.0], array![0.0, 10.0], 0.0, 0.0)]
-  #[case(array![0.0, 1.0], array![0.0, 10.0], 1.0, 10.0)]
-  #[case(array![0.0, 1.0, 2.0], array![0.0, 5.0, 10.0], 1.0, 5.0)]
-  #[case(array![-5.0, 5.0], array![100.0, 200.0], -5.0, 100.0)]
-  #[case(array![-5.0, 5.0], array![100.0, 200.0], 5.0, 200.0)]
+  #[case((0.0, 1.0), array![0.0, 10.0], 0.0, 0.0)]
+  #[case((0.0, 1.0), array![0.0, 10.0], 1.0, 10.0)]
+  #[case((0.0, 2.0), array![0.0, 5.0, 10.0], 1.0, 5.0)]
+  #[case((-5.0, 5.0), array![100.0, 200.0], -5.0, 100.0)]
+  #[case((-5.0, 5.0), array![100.0, 200.0], 5.0, 200.0)]
   #[trace]
   fn test_gridfn_interp_exact_grid_points(
-    #[case] x: Array1<f64>,
+    #[case] x_range: (f64, f64),
     #[case] y: Array1<f64>,
     #[case] query: f64,
     #[case] expected: f64,
   ) -> Result<(), Report> {
-    let grid_fn = GridFn::new(x, y)?;
+    let grid_fn = GridFn::from_range_values(x_range, y)?;
     let actual = grid_fn.interp(query)?;
     assert_ulps_eq!(expected, actual, epsilon = 1e-14);
     Ok(())
@@ -319,21 +423,21 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case(array![0.0, 1.0], array![0.0, 10.0], 0.5, 5.0)]
-  #[case(array![0.0, 1.0], array![0.0, 10.0], 0.3, 3.0)]
-  #[case(array![0.0, 1.0], array![0.0, 10.0], 0.7, 7.0)]
-  #[case(array![0.0, 2.0], array![10.0, 20.0], 1.0, 15.0)]
-  #[case(array![-1.0, 1.0], array![0.0, 100.0], 0.0, 50.0)]
-  #[case(array![0.0, 1.0, 2.0], array![0.0, 10.0, 20.0], 0.5, 5.0)]
-  #[case(array![0.0, 1.0, 2.0], array![0.0, 10.0, 20.0], 1.5, 15.0)]
+  #[case((0.0, 1.0), array![0.0, 10.0], 0.5, 5.0)]
+  #[case((0.0, 1.0), array![0.0, 10.0], 0.3, 3.0)]
+  #[case((0.0, 1.0), array![0.0, 10.0], 0.7, 7.0)]
+  #[case((0.0, 2.0), array![10.0, 20.0], 1.0, 15.0)]
+  #[case((-1.0, 1.0), array![0.0, 100.0], 0.0, 50.0)]
+  #[case((0.0, 2.0), array![0.0, 10.0, 20.0], 0.5, 5.0)]
+  #[case((0.0, 2.0), array![0.0, 10.0, 20.0], 1.5, 15.0)]
   #[trace]
   fn test_gridfn_interp_interior_points(
-    #[case] x: Array1<f64>,
+    #[case] x_range: (f64, f64),
     #[case] y: Array1<f64>,
     #[case] query: f64,
     #[case] expected: f64,
   ) -> Result<(), Report> {
-    let grid_fn = GridFn::new(x, y)?;
+    let grid_fn = GridFn::from_range_values(x_range, y)?;
     let actual = grid_fn.interp(query)?;
     assert_ulps_eq!(expected, actual, epsilon = 1e-14);
     Ok(())
@@ -341,19 +445,19 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case(array![0.0, 1.0], array![0.0, 10.0], -1.0, -10.0)]
-  #[case(array![0.0, 1.0], array![0.0, 10.0], -0.5, -5.0)]
-  #[case(array![0.0, 1.0], array![0.0, 10.0], -2.0, -20.0)]
-  #[case(array![1.0, 2.0], array![5.0, 15.0], 0.0, -5.0)]
-  #[case(array![1.0, 2.0, 3.0], array![10.0, 20.0, 30.0], 0.0, 0.0)]
+  #[case((0.0, 1.0), array![0.0, 10.0], -1.0, -10.0)]
+  #[case((0.0, 1.0), array![0.0, 10.0], -0.5, -5.0)]
+  #[case((0.0, 1.0), array![0.0, 10.0], -2.0, -20.0)]
+  #[case((1.0, 2.0), array![5.0, 15.0], 0.0, -5.0)]
+  #[case((1.0, 3.0), array![10.0, 20.0, 30.0], 0.0, 0.0)]
   #[trace]
   fn test_gridfn_interp_left_extrapolation(
-    #[case] x: Array1<f64>,
+    #[case] x_range: (f64, f64),
     #[case] y: Array1<f64>,
     #[case] query: f64,
     #[case] expected: f64,
   ) -> Result<(), Report> {
-    let grid_fn = GridFn::new(x, y)?;
+    let grid_fn = GridFn::from_range_values(x_range, y)?;
     let actual = grid_fn.interp(query)?;
     assert_ulps_eq!(expected, actual, epsilon = 1e-14);
     Ok(())
@@ -361,19 +465,19 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case(array![0.0, 1.0], array![0.0, 10.0], 2.0, 20.0)]
-  #[case(array![0.0, 1.0], array![0.0, 10.0], 1.5, 15.0)]
-  #[case(array![0.0, 1.0], array![0.0, 10.0], 3.0, 30.0)]
-  #[case(array![1.0, 2.0], array![5.0, 15.0], 3.0, 25.0)]
-  #[case(array![0.0, 1.0, 2.0], array![10.0, 20.0, 30.0], 3.0, 40.0)]
+  #[case((0.0, 1.0), array![0.0, 10.0], 2.0, 20.0)]
+  #[case((0.0, 1.0), array![0.0, 10.0], 1.5, 15.0)]
+  #[case((0.0, 1.0), array![0.0, 10.0], 3.0, 30.0)]
+  #[case((1.0, 2.0), array![5.0, 15.0], 3.0, 25.0)]
+  #[case((0.0, 2.0), array![10.0, 20.0, 30.0], 3.0, 40.0)]
   #[trace]
   fn test_gridfn_interp_right_extrapolation(
-    #[case] x: Array1<f64>,
+    #[case] x_range: (f64, f64),
     #[case] y: Array1<f64>,
     #[case] query: f64,
     #[case] expected: f64,
   ) -> Result<(), Report> {
-    let grid_fn = GridFn::new(x, y)?;
+    let grid_fn = GridFn::from_range_values(x_range, y)?;
     let actual = grid_fn.interp(query)?;
     assert_ulps_eq!(expected, actual, epsilon = 1e-14);
     Ok(())
@@ -381,18 +485,18 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case(array![0.0, 1.0], array![5.0, 5.0], 0.5, 5.0)]
-  #[case(array![0.0, 1.0], array![5.0, 5.0], -1.0, 5.0)]
-  #[case(array![0.0, 1.0], array![5.0, 5.0], 2.0, 5.0)]
-  #[case(array![0.0, 1.0, 2.0], array![42.0, 42.0, 42.0], 1.5, 42.0)]
+  #[case((0.0, 1.0), array![5.0, 5.0], 0.5, 5.0)]
+  #[case((0.0, 1.0), array![5.0, 5.0], -1.0, 5.0)]
+  #[case((0.0, 1.0), array![5.0, 5.0], 2.0, 5.0)]
+  #[case((0.0, 2.0), array![42.0, 42.0, 42.0], 1.5, 42.0)]
   #[trace]
   fn test_gridfn_interp_constant_function(
-    #[case] x: Array1<f64>,
+    #[case] x_range: (f64, f64),
     #[case] y: Array1<f64>,
     #[case] query: f64,
     #[case] expected: f64,
   ) -> Result<(), Report> {
-    let grid_fn = GridFn::new(x, y)?;
+    let grid_fn = GridFn::from_range_values(x_range, y)?;
     let actual = grid_fn.interp(query)?;
     assert_ulps_eq!(expected, actual, epsilon = 1e-14);
     Ok(())
@@ -400,17 +504,17 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case(array![0.0, 1.0], array![0.0, 1e-15], 0.5, 5e-16)]
-  #[case(array![0.0, 1e-10], array![0.0, 1.0], 5e-11, 0.5)]
-  #[case(array![1e10, 1e10 + 1.0], array![0.0, 1.0], 1e10 + 0.5, 0.5)]
+  #[case((0.0, 1.0), array![0.0, 1e-15], 0.5, 5e-16)]
+  #[case((0.0, 1e-10), array![0.0, 1.0], 5e-11, 0.5)]
+  #[case((1e10, 1e10 + 1.0), array![0.0, 1.0], 1e10 + 0.5, 0.5)]
   #[trace]
   fn test_gridfn_interp_numeric_precision(
-    #[case] x: Array1<f64>,
+    #[case] x_range: (f64, f64),
     #[case] y: Array1<f64>,
     #[case] query: f64,
     #[case] expected: f64,
   ) -> Result<(), Report> {
-    let grid_fn = GridFn::new(x, y)?;
+    let grid_fn = GridFn::from_range_values(x_range, y)?;
     let actual = grid_fn.interp(query)?;
     assert_ulps_eq!(expected, actual, epsilon = 1e-10);
     Ok(())
@@ -418,7 +522,7 @@ mod tests {
 
   #[test]
   fn test_gridfn_interp_many() -> Result<(), Report> {
-    let grid_fn = GridFn::new(array![0.0, 1.0, 2.0], array![0.0, 10.0, 20.0])?;
+    let grid_fn = GridFn::from_range_values((0.0, 2.0), array![0.0, 10.0, 20.0])?;
     let queries = array![0.5, 1.0, 1.5];
     let expected = array![5.0, 10.0, 15.0];
     let actual = grid_fn.interp_many(&queries)?;
@@ -440,17 +544,20 @@ mod tests {
 
   #[test]
   fn test_gridfn_accessors() -> Result<(), Report> {
-    let x = array![0.0, 1.0, 2.0];
+    let x_range = (0.0, 2.0);
     let y = array![10.0, 20.0, 30.0];
-    let grid_fn = GridFn::new(x.clone(), y.clone())?;
-    assert_eq!(&x, grid_fn.x());
+    let grid_fn = GridFn::from_range_values(x_range, y.clone())?;
+    let x = grid_fn.x();
+    assert_ulps_eq!(x[0], 0.0);
+    assert_ulps_eq!(x[1], 1.0);
+    assert_ulps_eq!(x[2], 2.0);
     assert_eq!(&y, grid_fn.y());
     Ok(())
   }
 
   #[test]
   fn test_gridfn_x_min_x_max() -> Result<(), Report> {
-    let grid_fn = GridFn::new(array![0.0, 1.0, 2.0, 3.0], array![10.0, 20.0, 30.0, 40.0])?;
+    let grid_fn = GridFn::from_range_values((0.0, 3.0), array![10.0, 20.0, 30.0, 40.0])?;
     assert_ulps_eq!(grid_fn.x_min(), 0.0);
     assert_ulps_eq!(grid_fn.x_max(), 3.0);
     Ok(())
@@ -458,7 +565,7 @@ mod tests {
 
   #[test]
   fn test_gridfn_x_range() -> Result<(), Report> {
-    let grid_fn = GridFn::new(array![-5.0, 0.0, 5.0], array![100.0, 50.0, 0.0])?;
+    let grid_fn = GridFn::from_range_values((-5.0, 5.0), array![100.0, 50.0, 0.0])?;
     let expected = (-5.0, 5.0);
     let actual = grid_fn.x_range();
     assert_ulps_eq!(expected.0, actual.0);
@@ -514,7 +621,7 @@ mod tests {
 
   #[test]
   fn test_gridfn_y_min_y_max() -> Result<(), Report> {
-    let grid_fn = GridFn::new(array![0.0, 1.0, 2.0, 3.0], array![10.0, 5.0, 30.0, 15.0])?;
+    let grid_fn = GridFn::from_range_values((0.0, 3.0), array![10.0, 5.0, 30.0, 15.0])?;
     assert_ulps_eq!(grid_fn.y_min(), 5.0);
     assert_ulps_eq!(grid_fn.y_max(), 30.0);
     Ok(())
@@ -522,7 +629,7 @@ mod tests {
 
   #[test]
   fn test_gridfn_y_range() -> Result<(), Report> {
-    let grid_fn = GridFn::new(array![0.0, 1.0, 2.0, 3.0], array![-10.0, 20.0, 5.0, -5.0])?;
+    let grid_fn = GridFn::from_range_values((0.0, 3.0), array![-10.0, 20.0, 5.0, -5.0])?;
     let expected = (-10.0, 20.0);
     let actual = grid_fn.y_range();
     assert_ulps_eq!(expected.0, actual.0);
@@ -559,7 +666,7 @@ mod tests {
 
   #[test]
   fn test_gridfn_to_pairs() -> Result<(), Report> {
-    let grid_fn = GridFn::new(array![0.0, 1.0, 2.0], array![10.0, 20.0, 30.0])?;
+    let grid_fn = GridFn::from_range_values((0.0, 2.0), array![10.0, 20.0, 30.0])?;
     let expected = vec![(0.0, 10.0), (1.0, 20.0), (2.0, 30.0)];
     let actual = grid_fn.to_pairs();
     assert_eq!(expected, actual);
@@ -568,25 +675,16 @@ mod tests {
 
   #[test]
   fn test_gridfn_to_pairs_roundtrip() -> Result<(), Report> {
-    let pairs = vec![(0.0, 5.0), (1.0, 10.0), (2.0, 15.0), (3.0, 20.0)];
-    let grid_fn = GridFn::from_pairs(pairs.clone())?;
+    let grid_fn = GridFn::from_range_values((0.0, 3.0), array![5.0, 10.0, 15.0, 20.0])?;
+    let expected = vec![(0.0, 5.0), (1.0, 10.0), (2.0, 15.0), (3.0, 20.0)];
     let actual = grid_fn.to_pairs();
-    assert_eq!(pairs, actual);
-    Ok(())
-  }
-
-  #[test]
-  fn test_gridfn_to_pairs_nonuniform() -> Result<(), Report> {
-    let pairs = vec![(0.0, 5.0), (0.1, 10.0), (1.0, 15.0), (10.0, 20.0)];
-    let grid_fn = GridFn::from_pairs(pairs.clone())?;
-    let actual = grid_fn.to_pairs();
-    assert_eq!(pairs, actual);
+    assert_eq!(expected, actual);
     Ok(())
   }
 
   #[test]
   fn test_gridfn_clone() -> Result<(), Report> {
-    let grid_fn = GridFn::new(array![0.0, 1.0], array![0.0, 10.0])?;
+    let grid_fn = GridFn::from_range_values((0.0, 1.0), array![0.0, 10.0])?;
     let cloned = grid_fn.clone();
     assert_eq!(grid_fn, cloned);
     Ok(())
@@ -594,9 +692,9 @@ mod tests {
 
   #[test]
   fn test_gridfn_eq() -> Result<(), Report> {
-    let grid_fn1 = GridFn::new(array![0.0, 1.0], array![0.0, 10.0])?;
-    let grid_fn2 = GridFn::new(array![0.0, 1.0], array![0.0, 10.0])?;
-    let grid_fn3 = GridFn::new(array![0.0, 1.0], array![0.0, 11.0])?;
+    let grid_fn1 = GridFn::from_range_values((0.0, 1.0), array![0.0, 10.0])?;
+    let grid_fn2 = GridFn::from_range_values((0.0, 1.0), array![0.0, 10.0])?;
+    let grid_fn3 = GridFn::from_range_values((0.0, 1.0), array![0.0, 11.0])?;
     assert_eq!(grid_fn1, grid_fn2);
     assert_ne!(grid_fn1, grid_fn3);
     Ok(())
@@ -604,10 +702,7 @@ mod tests {
 
   #[test]
   fn test_gridfn_interp_many_large_uniform_spacing() -> Result<(), Report> {
-    let n = 1000;
-    let x = Array1::linspace(0.0, 100.0, n);
-    let y = x.mapv(|v| v * v);
-    let grid_fn = GridFn::new(x, y)?;
+    let grid_fn = GridFn::from_n_points((0.0, 100.0), 1000, |v| v * v)?;
     let queries = array![25.0, 50.0, 75.0];
     let expected = array![625.0, 2500.0, 5625.0];
     let actual = grid_fn.interp_many(&queries)?;
@@ -616,20 +711,8 @@ mod tests {
   }
 
   #[test]
-  fn test_gridfn_interp_large_nonuniform_spacing() -> Result<(), Report> {
-    let n = 500;
-    let x: Array1<f64> = (0..n).map(|i| (i as f64).powi(2) * 0.01).collect();
-    let y = x.mapv(|v| v.sqrt());
-    let grid_fn = GridFn::new(x, y)?;
-    let query = 100.0;
-    let result = grid_fn.interp(query)?;
-    assert!(result > 9.9 && result < 10.1);
-    Ok(())
-  }
-
-  #[test]
   fn test_gridfn_interp_many_with_extrapolation() -> Result<(), Report> {
-    let grid_fn = GridFn::new(Array1::linspace(0.0, 10.0, 100), Array1::linspace(0.0, 100.0, 100))?;
+    let grid_fn = GridFn::from_n_points((0.0, 10.0), 100, |v| v * 10.0)?;
     let queries = Array1::linspace(-1.0, 11.0, 50);
     let expected = Array1::linspace(-10.0, 110.0, 50);
     let actual = grid_fn.interp_many(&queries)?;
@@ -639,10 +722,7 @@ mod tests {
 
   #[test]
   fn test_gridfn_interp_negative_domain() -> Result<(), Report> {
-    let grid_fn = GridFn::new(
-      array![-10.0, -5.0, 0.0, 5.0, 10.0],
-      array![100.0, 25.0, 0.0, 25.0, 100.0],
-    )?;
+    let grid_fn = GridFn::from_range_values((-10.0, 10.0), array![100.0, 25.0, 0.0, 25.0, 100.0])?;
     assert_ulps_eq!(grid_fn.interp(-7.5)?, 62.5);
     assert_ulps_eq!(grid_fn.interp(2.5)?, 12.5);
     assert_ulps_eq!(grid_fn.interp(-15.0)?, 175.0);
@@ -652,7 +732,7 @@ mod tests {
 
   #[test]
   fn test_gridfn_interp_negative_values() -> Result<(), Report> {
-    let grid_fn = GridFn::new(array![0.0, 1.0, 2.0, 3.0], array![10.0, -5.0, -20.0, 15.0])?;
+    let grid_fn = GridFn::from_range_values((0.0, 3.0), array![10.0, -5.0, -20.0, 15.0])?;
     assert_ulps_eq!(grid_fn.interp(0.5)?, 2.5);
     assert_ulps_eq!(grid_fn.interp(1.5)?, -12.5);
     assert_ulps_eq!(grid_fn.interp(2.5)?, -2.5);
@@ -661,9 +741,7 @@ mod tests {
 
   #[test]
   fn test_gridfn_interp_oscillating_function() -> Result<(), Report> {
-    let x = Array1::linspace(0.0, 10.0, 100);
-    let y = x.mapv(|v: f64| (v * 2.0).sin());
-    let grid_fn = GridFn::new(x, y)?;
+    let grid_fn = GridFn::from_n_points((0.0, 10.0), 100, |v: f64| (v * 2.0).sin())?;
     let result = grid_fn.interp(5.0)?;
     assert_abs_diff_eq!(result, (10.0_f64).sin(), epsilon = 0.01);
     Ok(())
@@ -671,17 +749,15 @@ mod tests {
 
   #[test]
   fn test_gridfn_interp_steep_gradient() -> Result<(), Report> {
-    let grid_fn = GridFn::new(array![0.0, 0.001, 1.0], array![0.0, 1000.0, 1001.0])?;
-    assert_ulps_eq!(grid_fn.interp(0.0005)?, 500.0);
-    assert_ulps_eq!(grid_fn.interp(0.5005)?, 1000.5, max_ulps = 1000000);
+    let grid_fn = GridFn::from_range_values((0.0, 1.0), array![0.0, 1000.0, 1001.0])?;
+    assert_ulps_eq!(grid_fn.interp(0.25)?, 500.0);
+    assert_ulps_eq!(grid_fn.interp(0.75)?, 1000.5, max_ulps = 1000000);
     Ok(())
   }
 
   #[test]
   fn test_gridfn_interp_boundary_precision() -> Result<(), Report> {
-    let x = Array1::linspace(0.0, 1.0, 1000);
-    let y = Array1::zeros(1000);
-    let grid_fn = GridFn::new(x, y)?;
+    let grid_fn = GridFn::zeros((0.0, 1.0), 1000)?;
     assert_ulps_eq!(grid_fn.interp(0.0)?, 0.0);
     assert_ulps_eq!(grid_fn.interp(1.0)?, 0.0);
     assert_ulps_eq!(grid_fn.interp(0.999999)?, 0.0);
@@ -691,7 +767,7 @@ mod tests {
 
   #[test]
   fn test_gridfn_interp_many_at_boundaries() -> Result<(), Report> {
-    let grid_fn = GridFn::new(array![0.0, 1.0, 2.0, 3.0, 4.0], array![0.0, 1.0, 4.0, 9.0, 16.0])?;
+    let grid_fn = GridFn::from_range_values((0.0, 4.0), array![0.0, 1.0, 4.0, 9.0, 16.0])?;
     let queries = array![0.0, 1.0, 2.0, 3.0, 4.0];
     let expected = array![0.0, 1.0, 4.0, 9.0, 16.0];
     let actual = grid_fn.interp_many(&queries)?;
@@ -701,7 +777,7 @@ mod tests {
 
   #[test]
   fn test_gridfn_interp_wide_range() -> Result<(), Report> {
-    let grid_fn = GridFn::new(array![1e-10, 1e10], array![0.0, 1.0])?;
+    let grid_fn = GridFn::from_range_values((1e-10, 1e10), array![0.0, 1.0])?;
     assert_ulps_eq!(grid_fn.interp(5e9)?, 0.5, max_ulps = 10000);
     assert_ulps_eq!(grid_fn.interp(1e-10)?, 0.0);
     assert_ulps_eq!(grid_fn.interp(1e10)?, 1.0);
@@ -710,10 +786,7 @@ mod tests {
 
   #[test]
   fn test_gridfn_interp_piecewise_linear_segments() -> Result<(), Report> {
-    let grid_fn = GridFn::new(
-      array![0.0, 1.0, 2.0, 3.0, 4.0, 5.0],
-      array![0.0, 10.0, 10.0, 30.0, 30.0, 50.0],
-    )?;
+    let grid_fn = GridFn::from_range_values((0.0, 5.0), array![0.0, 10.0, 10.0, 30.0, 30.0, 50.0])?;
     assert_ulps_eq!(grid_fn.interp(0.5)?, 5.0);
     assert_ulps_eq!(grid_fn.interp(1.5)?, 10.0);
     assert_ulps_eq!(grid_fn.interp(2.5)?, 20.0);
@@ -724,7 +797,7 @@ mod tests {
 
   #[test]
   fn test_gridfn_interp_extrapolation_far_from_bounds() -> Result<(), Report> {
-    let grid_fn = GridFn::new(array![0.0, 1.0], array![0.0, 10.0])?;
+    let grid_fn = GridFn::from_range_values((0.0, 1.0), array![0.0, 10.0])?;
     assert_ulps_eq!(grid_fn.interp(-100.0)?, -1000.0);
     assert_ulps_eq!(grid_fn.interp(100.0)?, 1000.0);
     Ok(())
@@ -732,7 +805,7 @@ mod tests {
 
   #[test]
   fn test_gridfn_interp_zero_crossings() -> Result<(), Report> {
-    let grid_fn = GridFn::new(array![-2.0, -1.0, 0.0, 1.0, 2.0], array![4.0, 1.0, 0.0, 1.0, 4.0])?;
+    let grid_fn = GridFn::from_range_values((-2.0, 2.0), array![4.0, 1.0, 0.0, 1.0, 4.0])?;
     assert_ulps_eq!(grid_fn.interp(-0.5)?, 0.5);
     assert_ulps_eq!(grid_fn.interp(0.0)?, 0.0);
     assert_ulps_eq!(grid_fn.interp(0.5)?, 0.5);
@@ -767,27 +840,6 @@ mod tests {
     assert_eq!(grid_fn.x().len(), 100);
     assert_ulps_eq!(grid_fn.interp(0.0)?, 0.0, epsilon = 1e-10);
     assert_ulps_eq!(grid_fn.interp(std::f64::consts::PI / 2.0)?, 1.0, epsilon = 1e-2);
-    Ok(())
-  }
-
-  #[test]
-  fn test_gridfn_from_fn_samples_uniform() -> Result<(), Report> {
-    let x = Array1::linspace(0.0, 1.0, 11);
-    let grid_fn = GridFn::from_fn_samples(x, |x| x * x * x)?;
-    assert_eq!(grid_fn.x().len(), 11);
-    assert_ulps_eq!(grid_fn.y()[0], 0.0);
-    assert_ulps_eq!(grid_fn.y()[5], 0.125);
-    assert_ulps_eq!(grid_fn.y()[10], 1.0);
-    Ok(())
-  }
-
-  #[test]
-  fn test_gridfn_from_fn_samples_nonuniform() -> Result<(), Report> {
-    let x = array![0.0, 0.1, 0.5, 1.0, 2.0, 5.0];
-    let grid_fn = GridFn::from_fn_samples(x, |x| x.ln())?;
-    assert_eq!(grid_fn.x().len(), 6);
-    assert_ulps_eq!(grid_fn.y()[3], 0.0_f64);
-    assert_ulps_eq!(grid_fn.y()[5], 5.0_f64.ln());
     Ok(())
   }
 
@@ -830,26 +882,110 @@ mod tests {
   }
 
   #[test]
-  fn test_gridfn_from_pairs() -> Result<(), Report> {
-    let pairs = vec![(0.0, 0.0), (1.0, 10.0), (2.0, 20.0), (3.0, 30.0)];
-    let grid_fn = GridFn::from_pairs(pairs)?;
-    assert_eq!(grid_fn.x().len(), 4);
-    assert_eq!(grid_fn.y().len(), 4);
-    assert_ulps_eq!(grid_fn.x()[0], 0.0);
-    assert_ulps_eq!(grid_fn.x()[3], 3.0);
-    assert_ulps_eq!(grid_fn.y()[0], 0.0);
-    assert_ulps_eq!(grid_fn.y()[3], 30.0);
-    assert_ulps_eq!(grid_fn.interp(1.5)?, 15.0);
+  fn test_gridfn_mapv() -> Result<(), Report> {
+    let grid_fn = GridFn::from_range_values((0.0, 2.0), array![1.0, 2.0, 3.0])?;
+    let expected = GridFn::from_range_values((0.0, 2.0), array![2.0, 4.0, 6.0])?;
+    let actual = grid_fn.mapv(|y| y * 2.0);
+    assert_eq!(expected, actual);
     Ok(())
   }
 
   #[test]
-  fn test_gridfn_from_pairs_nonuniform() -> Result<(), Report> {
-    let pairs = vec![(0.0, 5.0), (0.1, 10.0), (1.0, 15.0), (10.0, 20.0)];
-    let grid_fn = GridFn::from_pairs(pairs)?;
-    assert_eq!(grid_fn.x().len(), 4);
-    assert_ulps_eq!(grid_fn.interp(0.05)?, 7.5);
-    assert_ulps_eq!(grid_fn.interp(5.5)?, 17.5);
+  fn test_gridfn_mapv_square() -> Result<(), Report> {
+    let grid_fn = GridFn::from_range_values((0.0, 3.0), array![1.0, 2.0, 3.0, 4.0])?;
+    let expected = GridFn::from_range_values((0.0, 3.0), array![1.0, 4.0, 9.0, 16.0])?;
+    let actual = grid_fn.mapv(|y| y * y);
+    assert_eq!(expected, actual);
+    Ok(())
+  }
+
+  #[test]
+  fn test_gridfn_mapv_negate() -> Result<(), Report> {
+    let grid_fn = GridFn::from_range_values((0.0, 2.0), array![1.0, -2.0, 3.0])?;
+    let expected = GridFn::from_range_values((0.0, 2.0), array![-1.0, 2.0, -3.0])?;
+    let actual = grid_fn.mapv(|y| -y);
+    assert_eq!(expected, actual);
+    Ok(())
+  }
+
+  #[test]
+  fn test_gridfn_mapv_preserves_grid() -> Result<(), Report> {
+    let grid_fn = GridFn::from_range_values((5.0, 10.0), array![1.0, 2.0, 3.0])?;
+    let mapped = grid_fn.mapv(|y| y + 10.0);
+    assert_ulps_eq!(mapped.x_min(), grid_fn.x_min());
+    assert_ulps_eq!(mapped.x_max(), grid_fn.x_max());
+    assert_ulps_eq!(mapped.dx(), grid_fn.dx());
+    assert_eq!(mapped.n_points(), grid_fn.n_points());
+    Ok(())
+  }
+
+  #[test]
+  fn test_gridfn_mapv_chain() -> Result<(), Report> {
+    let grid_fn = GridFn::from_range_values((0.0, 2.0), array![1.0, 2.0, 3.0])?;
+    let expected = GridFn::from_range_values((0.0, 2.0), array![4.0, 6.0, 8.0])?;
+    let actual = grid_fn.mapv(|y| y * 2.0).mapv(|y| y + 2.0);
+    assert_eq!(expected, actual);
+    Ok(())
+  }
+
+  #[test]
+  fn test_gridfn_mapv_inplace() -> Result<(), Report> {
+    let mut grid_fn = GridFn::from_range_values((0.0, 2.0), array![1.0, 2.0, 3.0])?;
+    grid_fn.mapv_inplace(|y| y * 2.0);
+    let expected = GridFn::from_range_values((0.0, 2.0), array![2.0, 4.0, 6.0])?;
+    assert_eq!(expected, grid_fn);
+    Ok(())
+  }
+
+  #[test]
+  fn test_gridfn_mapv_inplace_square() -> Result<(), Report> {
+    let mut grid_fn = GridFn::from_range_values((0.0, 3.0), array![1.0, 2.0, 3.0, 4.0])?;
+    grid_fn.mapv_inplace(|y| y * y);
+    let expected = GridFn::from_range_values((0.0, 3.0), array![1.0, 4.0, 9.0, 16.0])?;
+    assert_eq!(expected, grid_fn);
+    Ok(())
+  }
+
+  #[test]
+  fn test_gridfn_mapv_inplace_negate() -> Result<(), Report> {
+    let mut grid_fn = GridFn::from_range_values((0.0, 2.0), array![1.0, -2.0, 3.0])?;
+    grid_fn.mapv_inplace(|y| -y);
+    let expected = GridFn::from_range_values((0.0, 2.0), array![-1.0, 2.0, -3.0])?;
+    assert_eq!(expected, grid_fn);
+    Ok(())
+  }
+
+  #[test]
+  fn test_gridfn_mapv_inplace_preserves_grid() -> Result<(), Report> {
+    let mut grid_fn = GridFn::from_range_values((5.0, 10.0), array![1.0, 2.0, 3.0])?;
+    let x_min = grid_fn.x_min();
+    let x_max = grid_fn.x_max();
+    let dx = grid_fn.dx();
+    let n_points = grid_fn.n_points();
+    grid_fn.mapv_inplace(|y| y + 10.0);
+    assert_ulps_eq!(grid_fn.x_min(), x_min);
+    assert_ulps_eq!(grid_fn.x_max(), x_max);
+    assert_ulps_eq!(grid_fn.dx(), dx);
+    assert_eq!(grid_fn.n_points(), n_points);
+    Ok(())
+  }
+
+  #[test]
+  fn test_gridfn_mapv_inplace_chain() -> Result<(), Report> {
+    let mut grid_fn = GridFn::from_range_values((0.0, 2.0), array![1.0, 2.0, 3.0])?;
+    grid_fn.mapv_inplace(|y| y * 2.0);
+    grid_fn.mapv_inplace(|y| y + 2.0);
+    let expected = GridFn::from_range_values((0.0, 2.0), array![4.0, 6.0, 8.0])?;
+    assert_eq!(expected, grid_fn);
+    Ok(())
+  }
+
+  #[test]
+  fn test_gridfn_negate_arg_inplace() -> Result<(), Report> {
+    let mut grid_fn = GridFn::from_range_values((0.0, 2.0), array![1.0, 2.0, 3.0])?;
+    grid_fn.negate_arg_inplace();
+    let expected = GridFn::from_range_values((-2.0, 0.0), array![3.0, 2.0, 1.0])?;
+    assert_eq!(expected, grid_fn);
     Ok(())
   }
 }

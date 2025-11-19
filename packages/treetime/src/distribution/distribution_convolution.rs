@@ -3,12 +3,11 @@ use crate::distribution::distribution_function::DistributionFunction;
 use crate::distribution::distribution_point::DistributionPoint;
 use crate::distribution::distribution_range::DistributionRange;
 use crate::make_error;
-use crate::make_report;
 use approx::ulps_eq;
 use eyre::Report;
 use ndarray::{Array1, array};
 use treetime_convolution::convolve;
-use treetime_utils::ndarray::{is_uniform_grid, ndarray_uniform_grid};
+use treetime_utils::ndarray::ndarray_uniform_grid;
 
 pub fn distribution_convolution(a: &Distribution, b: &Distribution) -> Result<Distribution, Report> {
   match (a, b) {
@@ -73,17 +72,18 @@ fn convolution_point_function(
   p: &DistributionPoint<f64>,
   f: &DistributionFunction<f64>,
 ) -> Result<DistributionFunction<f64>, Report> {
-  let t = f.t().map(|t| t + p.t());
+  let x_min = f.x_min() + p.t();
+  let dx = f.dx();
   let y = f.y().map(|y| y * p.amplitude());
-  DistributionFunction::new(t, y)
+  DistributionFunction::from_start_dx_values(x_min, dx, y)
 }
 
 fn convolution_range_function(
   r: &DistributionRange<f64>,
   f: &DistributionFunction<f64>,
 ) -> Result<Distribution, Report> {
-  // check that the distribution function has uniform grid spacing
-  let dx = compute_uniform_spacing(f.t())?;
+  // DistributionFunction is guaranteed to be uniform
+  let dx = f.dx();
 
   // split in a convolution with
   // - a point distribution (taking care of the shift + amplitude)
@@ -96,7 +96,7 @@ fn convolution_range_function(
   let shifted_function = convolution_point_function(&point_distr, f).unwrap();
 
   // Convolution with a range centered on zero and of given width
-  let t_out = shifted_function.t().clone();
+  let t_out = shifted_function.t();
   let mut y_out = Array1::zeros(shifted_function.y().len());
 
   // TODO: optimize by using cumulative sums
@@ -114,12 +114,12 @@ fn convolution_function_function(
   b: &DistributionFunction<f64>,
 ) -> Result<Distribution, Report> {
   // Check for degenerate cases
-  if a.t().is_empty() || b.t().is_empty() {
+  if a.is_empty() || b.is_empty() {
     return Ok(Distribution::empty());
   }
 
-  let dx_a = compute_uniform_spacing(a.t())?;
-  let dx_b = compute_uniform_spacing(b.t())?;
+  let dx_a = a.dx();
+  let dx_b = b.dx();
   // Use max instead of min to prevent exponentially growing grid sizes
   let dx = dx_a.min(dx_b);
 
@@ -142,7 +142,6 @@ fn convolution_function_function(
 
   let output_len = a_values.len() + b_values.len() - 1;
   let output_grid_start = a_min + b_min;
-  let output_grid = ndarray_uniform_grid(output_grid_start, dx, output_len);
 
   // Perform convolution with unified grids
   let conv_result = convolve(dx, &a_values, &b_values)?;
@@ -154,7 +153,7 @@ fn convolution_function_function(
       conv_result.len()
     );
   }
-  let conv_distr = DistributionFunction::new(output_grid, conv_result)?;
+  let conv_distr = DistributionFunction::from_start_dx_values(output_grid_start, dx, conv_result)?;
 
   // resample distribution to coarser grid
   let coarse_dx = dx_a.max(dx_b);
@@ -170,27 +169,12 @@ fn convolution_function_function(
   Distribution::function(coarse_grid, final_values)
 }
 
-fn compute_uniform_spacing(grid: &Array1<f64>) -> Result<f64, Report> {
-  if grid.len() < 2 {
-    return make_error!("Function distributions require at least two grid points");
-  }
-
-  if !is_uniform_grid(grid) {
-    return make_error!("Function distributions must use uniform grids for convolution");
-  }
-
-  let spacing = grid[1] - grid[0];
-  if !(spacing.is_finite() && spacing > 0.0) {
-    return make_error!("Encountered non-positive grid spacing: {spacing}");
-  }
-
-  Ok(spacing)
-}
-
 fn resample_distribution(func: &DistributionFunction<f64>, dx: f64) -> Result<(Array1<f64>, f64), Report> {
-  let t = func.t();
-  let min = *t.first().ok_or_else(|| make_report!("DistributionFunction is empty"))?;
-  let max = *t.last().unwrap();
+  if func.is_empty() {
+    return make_error!("DistributionFunction is empty");
+  }
+  let min = func.x_min();
+  let max = func.x_max();
 
   if max < min {
     return make_error!("DistributionFunction grid must be sorted ascending");
@@ -233,7 +217,6 @@ mod tests {
   use super::*;
 
   use pretty_assertions::assert_eq;
-  use treetime_utils::assert_error;
 
   #[test]
   fn test_convolution_empty() {
@@ -412,22 +395,6 @@ mod tests {
     let expected = Distribution::function(expected_x, expected_y).unwrap();
 
     assert_eq!(expected, actual);
-  }
-
-  #[test]
-  fn test_convolution_error_cases() {
-    // Test non-uniform grids
-    let non_uniform_x = array![0.0, 1.0, 3.0]; // Non-uniform spacing
-    let y = array![1.0, 1.0, 1.0];
-    let non_uniform = Distribution::function(non_uniform_x, y.clone()).unwrap();
-
-    let uniform_x = array![0.0, 1.0, 2.0];
-    let uniform = Distribution::function(uniform_x, y).unwrap();
-
-    assert_error!(
-      distribution_convolution(&non_uniform, &uniform),
-      "Function distributions must use uniform grids for convolution"
-    );
   }
 
   #[test]

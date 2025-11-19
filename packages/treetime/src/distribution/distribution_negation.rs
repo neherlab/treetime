@@ -3,7 +3,6 @@ use crate::distribution::distribution_function::DistributionFunction;
 use crate::distribution::distribution_point::DistributionPoint;
 use crate::distribution::distribution_range::DistributionRange;
 use eyre::Report;
-use ndarray::Array1;
 
 /// Negates a distribution by reflecting it across the time axis: f(x) → f(-x).
 pub fn distribution_negation(dist: &Distribution) -> Distribution {
@@ -42,37 +41,19 @@ fn negate_range_inplace(range: &mut DistributionRange<f64>) {
 }
 
 fn negate_function(func: &DistributionFunction<f64>) -> Result<Distribution, Report> {
-  let t = func.t();
-  let y = func.y();
-
-  let negated_t = t.mapv(|x| -x);
-  let mut t_vec: Vec<f64> = negated_t.to_vec();
-  let mut y_vec: Vec<f64> = y.to_vec();
-
-  t_vec.reverse();
-  y_vec.reverse();
-
-  Distribution::function(Array1::from_vec(t_vec), Array1::from_vec(y_vec))
+  let mut result = func.clone();
+  result.negate_arg_inplace();
+  Ok(Distribution::Function(result))
 }
 
 fn negate_function_inplace(func: &mut DistributionFunction<f64>) {
-  let t = func.t_mut();
-  t.mapv_inplace(|x| -x);
-
-  let t_len = t.len();
-  for i in 0..t_len / 2 {
-    t.swap(i, t_len - 1 - i);
-  }
-
-  let y = func.y_mut();
-  let y_len = y.len();
-  for i in 0..y_len / 2 {
-    y.swap(i, y_len - 1 - i);
-  }
+  func.negate_arg_inplace();
 }
 
 #[cfg(test)]
 mod tests {
+  use ndarray::array;
+
   use super::*;
 
   #[test]
@@ -117,14 +98,14 @@ mod tests {
 
   #[test]
   fn test_negate_function() {
-    let t = Array1::from_vec(vec![0.0, 1.0, 2.0]);
-    let y = Array1::from_vec(vec![1.0, 2.0, 3.0]);
+    let t = array![0.0, 1.0, 2.0];
+    let y = array![1.0, 2.0, 3.0];
     let dist = Distribution::function(t, y).unwrap();
 
     let actual = distribution_negation(&dist);
 
-    let expected_t = Array1::from_vec(vec![-2.0, -1.0, 0.0]);
-    let expected_y = Array1::from_vec(vec![3.0, 2.0, 1.0]);
+    let expected_t = array![-2.0, -1.0, 0.0];
+    let expected_y = array![3.0, 2.0, 1.0];
     let expected = Distribution::function(expected_t, expected_y).unwrap();
     assert_eq!(expected, actual);
   }
@@ -147,14 +128,14 @@ mod tests {
 
   #[test]
   fn test_negate_inplace_function() {
-    let t = Array1::from_vec(vec![0.0, 1.0, 2.0]);
-    let y = Array1::from_vec(vec![1.0, 2.0, 3.0]);
+    let t = array![0.0, 1.0, 2.0];
+    let y = array![1.0, 2.0, 3.0];
     let mut actual = Distribution::function(t, y).unwrap();
 
     distribution_negation_inplace(&mut actual);
 
-    let expected_t = Array1::from_vec(vec![-2.0, -1.0, 0.0]);
-    let expected_y = Array1::from_vec(vec![3.0, 2.0, 1.0]);
+    let expected_t = array![-2.0, -1.0, 0.0];
+    let expected_y = array![3.0, 2.0, 1.0];
     let expected = Distribution::function(expected_t, expected_y).unwrap();
     assert_eq!(expected, actual);
   }

@@ -9,6 +9,7 @@ use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use treetime_utils::make_error;
+use treetime_utils::ndarray::has_uniform_spacing;
 
 pub const TIME_LIMIT: f64 = 1e10;
 pub const TIME_EPSILON: f64 = 1e-10;
@@ -52,7 +53,7 @@ impl Distribution {
       return Ok(Self::range((x[0], x[1]), y[1]));
     }
 
-    Ok(Self::Function(DistributionFunction::new(x, y)?))
+    Ok(Self::Function(DistributionFunction::from_arrays(&x, y)?))
   }
 
   pub fn constant(amplitude: f64) -> Self {
@@ -129,10 +130,35 @@ impl Distribution {
   }
 
   pub fn eval_many(&self, t: &Array1<f64>) -> Result<Array1<f64>, Report> {
-    let mut result = Array1::zeros(t.len());
-    for (i, &ti) in t.iter().enumerate() {
-      result[i] = self.eval(ti)?;
+    match self {
+      Self::Function(f) => f.interp_many(t),
+      Self::Point(p) => {
+        let results = t
+          .iter()
+          .map(|&ti| {
+            if ulps_eq!(ti, p.t(), max_ulps = 10) {
+              Ok(p.amplitude())
+            } else {
+              make_error!("Cannot evaluate point distribution outside its support")
+            }
+          })
+          .collect::<Result<Vec<f64>, Report>>()?;
+        Ok(Array1::from(results))
+      },
+      Self::Range(r) => {
+        let results = t
+          .iter()
+          .map(|&ti| {
+            if ti >= r.start() && ti <= r.end() {
+              Ok(r.amplitude())
+            } else {
+              make_error!("Cannot evaluate range distribution outside its support")
+            }
+          })
+          .collect::<Result<Vec<f64>, Report>>()?;
+        Ok(Array1::from(results))
+      },
+      Self::Empty => make_error!("Cannot evaluate empty distribution"),
     }
-    Ok(result)
   }
 }

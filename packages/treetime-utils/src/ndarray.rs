@@ -1,3 +1,4 @@
+use approx::{UlpsEq, ulps_eq};
 use eyre::Report;
 use itertools::Itertools;
 use ndarray::{
@@ -11,7 +12,7 @@ use ndarray_rand::rand::distributions::uniform::SampleUniform;
 use num_traits::real::Real;
 use num_traits::{Bounded, Float, NumCast, One, Zero};
 use std::f64::consts::E;
-use std::ops::{AddAssign, Mul};
+use std::ops::{AddAssign, Mul, Sub};
 
 pub fn first<T: Copy>(a: &Array1<T>) -> T {
   a[0]
@@ -236,18 +237,17 @@ pub fn reverse<T: Clone, S: Data<Elem = T>>(arr: &ArrayBase<S, Ix1>) -> Array1<T
   reversed
 }
 
-/// Check if grid is uniform
-pub fn is_uniform_grid(grid: &Array1<f64>) -> bool {
+/// Check if array spacing is uniform
+pub fn has_uniform_spacing<T: Float + UlpsEq>(grid: &Array1<T>) -> bool {
   if grid.len() < 2 {
     return true;
   }
 
+  let spacing = grid[1] - grid[0];
   grid
-    .iter()
-    .tuple_windows()
-    .map(|(a, b)| b - a)
-    .tuple_windows()
-    .all(|(d1, d2)| (d1 - d2).abs() <= 1e-12)
+    .windows(2)
+    .into_iter()
+    .all(|w| ulps_eq!(w[1] - w[0], spacing, max_ulps = 10))
 }
 
 #[cfg(test)]

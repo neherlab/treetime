@@ -12,7 +12,7 @@ where
   match dist {
     Distribution::Function(func) => {
       let new_y = func.y().mapv(&f);
-      Distribution::function(func.t().clone(), new_y)
+      Distribution::function(func.t(), new_y)
     }
     Distribution::Point(point) => {
       let amplitude = f(point.amplitude());

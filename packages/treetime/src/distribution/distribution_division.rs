@@ -85,7 +85,7 @@ fn divide_function_by_function(
   let dividend_y = dividend.y();
 
   // Use ndarray for vectorized operations
-  let divisor_values = divisor.interp_many(dividend_t)?;
+  let divisor_values = divisor.interp_many(&dividend_t)?;
 
   // Apply TINY_NUMBER safety for zero or near-zero values
   let safe_divisor_values = divisor_values.mapv(|v| v.max(TINY_NUMBER));
@@ -93,7 +93,7 @@ fn divide_function_by_function(
   // Perform vectorized division
   let result_y = dividend_y / &safe_divisor_values;
 
-  Distribution::function(dividend_t.clone(), result_y)
+  Distribution::function(dividend_t, result_y)
 }
 
 #[cfg(test)]

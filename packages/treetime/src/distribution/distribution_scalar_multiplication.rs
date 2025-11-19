@@ -7,7 +7,7 @@ use eyre::Report;
 /// This scales the probability density or likelihood represented by the distribution.
 pub fn distribution_scalar_multiplication(dist: &Distribution, scalar: f64) -> Result<Distribution, Report> {
   match dist {
-    Distribution::Function(f) => Distribution::function(f.t().clone(), f.y() * scalar),
+    Distribution::Function(f) => Distribution::function(f.t(), f.y() * scalar),
     Distribution::Point(p) => Ok(Distribution::point(p.t(), p.amplitude() * scalar)),
     Distribution::Range(r) => Ok(Distribution::range((r.start(), r.end()), r.amplitude() * scalar)),
     Distribution::Empty => Ok(Distribution::empty()),
