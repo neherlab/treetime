@@ -247,7 +247,7 @@ pub fn has_uniform_spacing<T: Float + UlpsEq>(grid: &Array1<T>) -> bool {
   grid
     .windows(2)
     .into_iter()
-    .all(|w| ulps_eq!(w[1] - w[0], spacing, max_ulps = 10))
+    .all(|w| ulps_eq!(w[1] - w[0], spacing, max_ulps = 100))
 }
 
 #[cfg(test)]
