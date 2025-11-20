@@ -7,7 +7,7 @@ use approx::ulps_eq;
 use eyre::Report;
 use ndarray::{Array1, array};
 use treetime_convolution::convolve;
-use treetime_utils::ndarray::ndarray_uniform_grid;
+use treetime_utils::ndarray::{has_uniform_spacing, ndarray_uniform_grid};
 
 pub fn distribution_convolution(a: &Distribution, b: &Distribution) -> Result<Distribution, Report> {
   match (a, b) {
@@ -51,13 +51,21 @@ fn convolution_range_range(a: &DistributionRange<f64>, b: &DistributionRange<f64
   let peak_amplitude = a.amplitude() * b.amplitude();
 
   if ulps_eq!(&peak_start, &peak_end, max_ulps = 10) {
+    // Triangle case: equal-width ranges always produce uniform spacing
     let x = array![start, peak_start, end];
     let y = array![0.0, peak_amplitude, 0.0];
     Distribution::function(x, y)
   } else {
+    // Trapezoid case
     let x = array![start, peak_start, peak_end, end];
     let y = array![0.0, peak_amplitude, peak_amplitude, 0.0];
-    Distribution::function(x, y)
+    if has_uniform_spacing(&x) {
+      // Trapezoid with uniform spacing
+      Distribution::function(x, y)
+    } else {
+      // Trapezoid with non-uniform spacing: resample trapezoid to uniform grid
+      DistributionFunction::from_arrays_nonuniform(&x, &y).map(Distribution::Function)
+    }
   }
 }
 
@@ -237,11 +245,17 @@ mod tests {
   }
 
   #[test]
-  fn test_convolution_range_range_same_length() {
+  fn test_convolution_range_range_triangle() {
+    // Triangle case: equal-width ranges always produce triangles with uniform spacing
     let a = Distribution::range((2.0, 4.0), 3.0);
     let b = Distribution::range((6.0, 8.0), 2.0);
     let actual = distribution_convolution(&a, &b).unwrap();
     let expected = {
+      // start = 2.0 + 6.0 = 8.0
+      // end = 4.0 + 8.0 = 12.0
+      // peak_start = max(2.0+6.0, 4.0+6.0) = 10.0
+      // peak_end = min(4.0+8.0, 2.0+8.0) = 10.0
+      // Peak amplitude = 3.0 * 2.0 = 6.0
       let x = array![8.0, 10.0, 12.0];
       let y = array![0.0, 6.0, 0.0];
       Distribution::function(x, y).unwrap()
@@ -250,13 +264,31 @@ mod tests {
   }
 
   #[test]
-  fn test_convolution_range_range_different_length() {
+  fn test_convolution_range_range_trapezoid_non_uniform() {
     let a = Distribution::range((2.0, 4.0), 3.0);
     let b = Distribution::range((6.0, 9.0), 2.0);
     let actual = distribution_convolution(&a, &b).unwrap();
     let expected = {
-      let x = array![8.0, 10.0, 11.0, 13.0];
-      let y = array![0.0, 6.0, 6.0, 0.0];
+      // Trapezoid: start=8.0, peak_start=10.0, peak_end=11.0, end=13.0
+      // Non-uniform spacing (1, 2, 1.5, 2), so resampled to uniform grid
+      // With dx=1.0 (smallest spacing), the uniform grid is:
+      let x = array![8.0, 9.0, 10.0, 11.0, 12.0, 13.0];
+      let y = array![0.0, 3.0, 6.0, 6.0, 3.0, 0.0];
+      Distribution::function(x, y).unwrap()
+    };
+    assert_eq!(expected, actual);
+  }
+
+  #[test]
+  fn test_convolution_range_range_trapezoid_uniform() {
+    let a = Distribution::range((0.0, 2.0), 1.0);
+    let b = Distribution::range((3.0, 7.0), 2.0);
+    let actual = distribution_convolution(&a, &b).unwrap();
+    let expected = {
+      // Trapezoid: start=3.0, peak_start=5.0, peak_end=7.0, end=9.0
+      // Uniform spacing (dx=2.0), so no resampling needed
+      let x = array![3.0, 5.0, 7.0, 9.0];
+      let y = array![0.0, 2.0, 2.0, 0.0];
       Distribution::function(x, y).unwrap()
     };
     assert_eq!(expected, actual);

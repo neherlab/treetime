@@ -1,9 +1,11 @@
 use std::cmp::min;
+use std::fmt::Debug;
 
 use crate::InterpElem;
+use crate::interp_nonuniform::interp_nonuniform;
 use approx::UlpsEq;
 use eyre::Report;
-use ndarray::Array1;
+use ndarray::{Array1, s};
 use ndarray_stats::QuantileExt;
 use num::Float;
 use serde::{Deserialize, Serialize};
@@ -54,6 +56,54 @@ impl<T: InterpElem> GridFn<T> {
     let dx = x[1] - x[0];
 
     Ok(Self { x_min: x[0], dx, y })
+  }
+
+  /// Constructs GridFn from non-uniformly spaced arrays by resampling to uniform grid
+  ///
+  /// Takes non-uniform (x, y) arrays and resamples them to a uniform grid using linear
+  /// interpolation. The grid spacing is determined by the smallest spacing in the input
+  /// to preserve detail.
+  ///
+  /// # Arguments
+  ///
+  /// * `x` - Non-uniform x coordinates (must be sorted ascending)
+  /// * `y` - Corresponding y values
+  ///
+  /// # Returns
+  ///
+  /// GridFn with uniformly spaced grid covering the same range as input
+  pub fn from_arrays_nonuniform(x: &Array1<T>, y: &Array1<T>) -> Result<Self, Report>
+  where
+    T: Float + UlpsEq,
+  {
+    if x.len() < 2 {
+      return make_error!("Grid must have at least 2 points, got {}", x.len());
+    }
+    if x.len() != y.len() {
+      return make_error!(
+        "x and y arrays must have the same length, got {} and {}",
+        x.len(),
+        y.len()
+      );
+    }
+
+    if has_uniform_spacing(x) {
+      let dx = x[1] - x[0];
+      return Self::from_start_dx_values(x[0], dx, y.clone());
+    }
+
+    let x_min = x[0];
+    let x_max = x[x.len() - 1];
+    let dx = find_min_spacing(x)?;
+    let n_points = ((x_max - x_min) / dx).ceil().to_usize().unwrap() + 1;
+    let dx = (x_max - x_min) / T::from(n_points - 1).unwrap();
+
+    if n_points > 1_000_000 {
+      return make_error!("Resampling would require {n_points} points, which exceeds safety limit");
+    }
+
+    let y_uniform = interp_nonuniform(x, y, n_points, |i| x_min + T::from(i).unwrap() * dx)?;
+    Self::from_start_dx_values(x_min, dx, y_uniform)
   }
 
   pub fn from_n_points<F>((x_min, x_max): (T, T), n_points: usize, y_fn: F) -> Result<Self, Report>
@@ -391,6 +441,41 @@ impl<T: InterpElem> GridFn<T> {
       self.y.swap(i, n - 1 - i);
     }
   }
+}
+
+/// Finds the smallest spacing between consecutive points in a sorted array
+///
+/// Used to determine optimal grid spacing when resampling non-uniform data.
+/// Preserves maximum detail by using the finest resolution present in the input.
+///
+/// # Arguments
+///
+/// * `x` - Sorted array of x coordinates (must be ascending)
+///
+/// # Returns
+///
+/// Minimum spacing between consecutive points
+fn find_min_spacing<T>(x: &Array1<T>) -> Result<T, Report>
+where
+  T: Float + Debug,
+{
+  if x.len() < 2 {
+    return make_error!("Array must have at least 2 points");
+  }
+
+  let diffs = &x.slice(s![1..]) - &x.slice(s![..-1]);
+
+  if diffs.iter().any(|&dx| dx <= T::zero()) {
+    return make_error!("x array must be sorted in ascending order");
+  }
+
+  let min_dx = *diffs.min().unwrap();
+
+  if !min_dx.is_finite() || min_dx <= T::zero() {
+    return make_error!("Invalid spacing in input array: {min_dx:?}");
+  }
+
+  Ok(min_dx)
 }
 
 #[cfg(test)]

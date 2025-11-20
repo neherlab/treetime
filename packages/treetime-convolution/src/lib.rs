@@ -1,5 +1,6 @@
 pub mod algos;
 pub mod grid_fn;
+pub mod interp_nonuniform;
 pub mod testing;
 
 use num_traits::{Num, NumCast};

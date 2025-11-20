@@ -20,6 +20,14 @@ impl<T: InterpElem> DistributionFunction<T> {
     Ok(Self { grid_fn })
   }
 
+  pub fn from_arrays_nonuniform(x: &Array1<T>, y: &Array1<T>) -> Result<Self, Report>
+  where
+    T: Float + UlpsEq,
+  {
+    let grid_fn = GridFn::from_arrays_nonuniform(x, y)?;
+    Ok(Self { grid_fn })
+  }
+
   pub fn from_range_values(x_range: (T, T), y: Array1<T>) -> Result<Self, Report>
   where
     T: Float,
