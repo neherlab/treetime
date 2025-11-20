@@ -21,7 +21,9 @@ pub const NON_CHAR: AsciiChar = AsciiChar(b'.');
 pub const VARIABLE_CHAR: AsciiChar = AsciiChar(b'~');
 pub const FILL_CHAR: AsciiChar = AsciiChar(b' ');
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Display, ValueEnum, Serialize, Deserialize)]
+#[derive(
+  Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Display, ValueEnum, Serialize, Deserialize,
+)]
 #[value(rename_all = "kebab-case")]
 pub enum AlphabetName {
   #[default]

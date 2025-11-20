@@ -7,6 +7,7 @@ use clap_complete::{Shell, generate};
 use clap_complete_fig::Fig;
 use eyre::{Report, eyre};
 use lazy_static::lazy_static;
+use serde::Serialize;
 use std::fmt::Debug;
 use std::io;
 use treetime::commands::ancestral::anc_args::TreetimeAncestralArgs;
@@ -18,7 +19,6 @@ use treetime::commands::prune::args::TreetimePruneArgs;
 use treetime::commands::timetree::args::TreetimeTimetreeArgs;
 use treetime_utils::clap_styles::styles;
 use treetime_utils::global_init::setup_logger;
-use serde::Serialize;
 
 lazy_static! {
   pub static ref SHELLS: Vec<&'static str> = ["bash", "elvish", "fish", "fig", "powershell", "zsh"].to_vec();

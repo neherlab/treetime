@@ -182,8 +182,6 @@ impl TestSuite for ExponentialTestSuite {
         b: 1.0 + 1e-12,
         input_grid_domain: (0.0, 80.0),
         input_grid_n_points: 16001,
-        
-        
       },
       ExponentialTestCase {
         name: "very_fast_decays".to_owned(),
@@ -195,8 +193,6 @@ impl TestSuite for ExponentialTestSuite {
         b: 30.0,
         input_grid_domain: (0.0, 0.5),
         input_grid_n_points: 1001,
-        
-        
       },
     ]
   }
@@ -214,8 +210,6 @@ pub struct ExponentialTestCase {
   pub b: f64,
   pub input_grid_domain: (f64, f64),
   pub input_grid_n_points: usize,
-  
-  
 }
 
 impl TestCase for ExponentialTestCase {
@@ -246,5 +240,4 @@ impl TestCase for ExponentialTestCase {
   fn input_grid_n_points(&self) -> usize {
     self.input_grid_n_points
   }
-
 }

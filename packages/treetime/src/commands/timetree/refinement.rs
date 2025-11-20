@@ -57,9 +57,8 @@ pub fn run_refinement_iteration(
 
   let n_diff = 0;
 
-  *clock_model =
-    estimate_clock_model_with_reroot(graph, clock_options, args.clock_rate, args.keep_root, branch_params)
-      .wrap_err("Failed to update clock model")?;
+  *clock_model = estimate_clock_model_with_reroot(graph, clock_options, args.clock_rate, args.keep_root, branch_params)
+    .wrap_err("Failed to update clock model")?;
 
   Ok((n_diff, n_resolved))
 }

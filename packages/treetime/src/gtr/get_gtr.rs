@@ -12,7 +12,9 @@ use smart_default::SmartDefault;
 use std::sync::Arc;
 use strum_macros::Display;
 
-#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, SmartDefault, Display, Serialize, Deserialize)]
+#[derive(
+  Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, SmartDefault, Display, Serialize, Deserialize,
+)]
 pub enum GtrModelName {
   #[default]
   Infer,

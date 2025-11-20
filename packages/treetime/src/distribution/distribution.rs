@@ -9,7 +9,6 @@ use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use treetime_utils::make_error;
-use treetime_utils::ndarray::has_uniform_spacing;
 
 pub const TIME_LIMIT: f64 = 1e10;
 pub const TIME_EPSILON: f64 = 1e-10;
@@ -38,6 +37,7 @@ impl Distribution {
     Self::Range(DistributionRange::new((x1, x2), y))
   }
 
+  #[allow(clippy::needless_pass_by_value)]
   pub fn function(x: Array1<f64>, y: Array1<f64>) -> Result<Self, Report> {
     assert_eq!(x.shape(), y.shape());
 
@@ -81,7 +81,7 @@ impl Distribution {
       Self::Empty => ndarray::array![],
       Self::Point(p) => ndarray::array![p.t()],
       Self::Range(r) => ndarray::array![r.start(), r.end()],
-      Self::Function(f) => f.t().clone(),
+      Self::Function(f) => f.t().to_owned(),
     }
   }
 

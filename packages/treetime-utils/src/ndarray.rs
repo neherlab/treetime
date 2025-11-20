@@ -12,7 +12,7 @@ use ndarray_rand::rand::distributions::uniform::SampleUniform;
 use num_traits::real::Real;
 use num_traits::{Bounded, Float, NumCast, One, Zero};
 use std::f64::consts::E;
-use std::ops::{AddAssign, Mul, Sub};
+use std::ops::{AddAssign, Mul};
 
 pub fn first<T: Copy>(a: &Array1<T>) -> T {
   a[0]

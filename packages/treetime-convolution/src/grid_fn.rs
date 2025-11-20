@@ -2,19 +2,19 @@ use std::cmp::min;
 use std::fmt::Debug;
 
 use crate::InterpElem;
+use crate::grid::Grid;
+use crate::grid_iter::GridIter;
 use crate::interp_nonuniform::interp_nonuniform;
 use approx::UlpsEq;
 use eyre::Report;
-use itertools::{izip, Itertools};
-use ndarray::{s, Array1};
+use itertools::{Itertools, izip};
+use ndarray::{Array1, s};
 use ndarray_stats::QuantileExt;
 use num::Float;
 use serde::{Deserialize, Serialize};
 use treetime_utils::make_error;
 use treetime_utils::ndarray::has_uniform_spacing;
 use treetime_utils::serde::{array1_as_vec, array1_from_vec};
-use crate::grid::Grid;
-use crate::grid_iter::GridIter;
 
 impl<T: InterpElem> IntoIterator for &Grid<T>
 where
