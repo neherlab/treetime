@@ -5,13 +5,28 @@ use crate::InterpElem;
 use crate::interp_nonuniform::interp_nonuniform;
 use approx::UlpsEq;
 use eyre::Report;
-use ndarray::{Array1, s};
+use itertools::{izip, Itertools};
+use ndarray::{s, Array1};
 use ndarray_stats::QuantileExt;
 use num::Float;
 use serde::{Deserialize, Serialize};
 use treetime_utils::make_error;
 use treetime_utils::ndarray::has_uniform_spacing;
 use treetime_utils::serde::{array1_as_vec, array1_from_vec};
+use crate::grid::Grid;
+use crate::grid_iter::GridIter;
+
+impl<T: InterpElem> IntoIterator for &Grid<T>
+where
+  T: Float,
+{
+  type Item = T;
+  type IntoIter = GridIter<T>;
+
+  fn into_iter(self) -> Self::IntoIter {
+    self.iter()
+  }
+}
 
 /// Function represented on a uniform grid for piecewise linear interpolation
 ///
@@ -28,20 +43,37 @@ use treetime_utils::serde::{array1_as_vec, array1_from_vec};
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(bound(serialize = "T: Serialize", deserialize = "T: Deserialize<'de>"))]
 pub struct GridFn<T: InterpElem> {
-  x_min: T,
-  dx: T,
+  grid: Grid<T>,
   #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
   y: Array1<T>,
 }
 
 impl<T: InterpElem> GridFn<T> {
+  pub fn from_grid_array(grid: Grid<T>, y: Array1<T>) -> Result<Self, Report> {
+    if grid.n_points() != y.len() {
+      return make_error!(
+        "Grid has {} points but y array has {} elements",
+        grid.n_points(),
+        y.len()
+      );
+    }
+    Ok(Self { grid, y })
+  }
+
+  pub fn from_grid_fn<F>(grid: Grid<T>, y_fn: F) -> Result<Self, Report>
+  where
+    T: Float,
+    F: Fn(T) -> T,
+  {
+    let n_points = grid.n_points();
+    let y = Array1::from_shape_fn(n_points, |i| y_fn(grid.x_at(i)));
+    Self::from_grid_array(grid, y)
+  }
+
   pub fn from_arrays(x: &Array1<T>, y: Array1<T>) -> Result<Self, Report>
   where
     T: Float + UlpsEq,
   {
-    if x.len() < 2 {
-      return make_error!("Grid must have at least 2 points, got {}", x.len());
-    }
     if x.len() != y.len() {
       return make_error!(
         "x and y arrays must have the same length, got {} and {}",
@@ -49,13 +81,8 @@ impl<T: InterpElem> GridFn<T> {
         y.len()
       );
     }
-    if !has_uniform_spacing(x) {
-      return make_error!("x array must be uniformly spaced");
-    }
-
-    let dx = x[1] - x[0];
-
-    Ok(Self { x_min: x[0], dx, y })
+    let grid = Grid::from_array(x)?;
+    Self::from_grid_array(grid, y)
   }
 
   /// Constructs GridFn from non-uniformly spaced arrays by resampling to uniform grid
@@ -88,8 +115,8 @@ impl<T: InterpElem> GridFn<T> {
     }
 
     if has_uniform_spacing(x) {
-      let dx = x[1] - x[0];
-      return Self::from_start_dx_values(x[0], dx, y.clone());
+      let grid = Grid::from_array(x)?;
+      return Self::from_grid_array(grid, y.clone());
     }
 
     let x_min = x[0];
@@ -102,8 +129,9 @@ impl<T: InterpElem> GridFn<T> {
       return make_error!("Resampling would require {n_points} points, which exceeds safety limit");
     }
 
-    let y_uniform = interp_nonuniform(x, y, n_points, |i| x_min + T::from(i).unwrap() * dx)?;
-    Self::from_start_dx_values(x_min, dx, y_uniform)
+    let grid = Grid::from_start_dx(x_min, dx, n_points)?;
+    let y_uniform = interp_nonuniform(x, y, n_points, |i| grid.x_at(i))?;
+    Self::from_grid_array(grid, y_uniform)
   }
 
   pub fn from_n_points<F>((x_min, x_max): (T, T), n_points: usize, y_fn: F) -> Result<Self, Report>
@@ -111,17 +139,8 @@ impl<T: InterpElem> GridFn<T> {
     T: Float,
     F: Fn(T) -> T,
   {
-    if n_points < 2 {
-      return make_error!("Grid must have at least 2 points, got {n_points}");
-    }
-    if x_max <= x_min {
-      return make_error!("x_max ({x_max:?}) must be greater than x_min ({x_min:?})");
-    }
-
-    let dx = (x_max - x_min) / T::from(n_points - 1).unwrap();
-    let x = Array1::linspace(x_min, x_max, n_points);
-    let y = x.mapv(y_fn);
-    Ok(Self { x_min, dx, y })
+    let grid = Grid::from_range_n_points(x_min, x_max, n_points)?;
+    Self::from_grid_fn(grid, y_fn)
   }
 
   pub fn from_grid<F>((x_min, x_max): (T, T), dx: T, y_fn: F) -> Result<Self, Report>
@@ -129,60 +148,33 @@ impl<T: InterpElem> GridFn<T> {
     T: Float,
     F: Fn(T) -> T,
   {
-    if dx <= T::zero() {
-      return make_error!("Grid spacing dx ({dx:?}) must be positive");
-    }
-    if x_max <= x_min {
-      return make_error!("x_max ({x_max:?}) must be greater than x_min ({x_min:?})");
-    }
-
-    let n_points = ((x_max - x_min) / dx + T::one()).round().to_usize().unwrap();
-    Self::from_n_points((x_min, x_max), n_points, y_fn)
+    let grid = Grid::from_range_dx(x_min, x_max, dx)?;
+    Self::from_grid_fn(grid, y_fn)
   }
 
   pub fn from_start_dx_values(x_min: T, dx: T, y: Array1<T>) -> Result<Self, Report>
   where
     T: Float,
   {
-    if dx <= T::zero() {
-      return make_error!("Grid spacing dx ({dx:?}) must be positive");
-    }
-    if y.len() < 2 {
-      return make_error!("Grid must have at least 2 points, got {}", y.len());
-    }
-    Ok(Self { x_min, dx, y })
+    let grid = Grid::from_start_dx(x_min, dx, y.len())?;
+    Self::from_grid_array(grid, y)
   }
 
   pub fn from_range_values((x_min, x_max): (T, T), y: Array1<T>) -> Result<Self, Report>
   where
     T: Float,
   {
-    if y.len() < 2 {
-      return make_error!("Grid must have at least 2 y values, got {}", y.len());
-    }
-    if x_max <= x_min {
-      return make_error!("x_max ({x_max:?}) must be greater than x_min ({x_min:?})");
-    }
-
-    let n_points = y.len();
-    let dx = (x_max - x_min) / T::from(n_points - 1).unwrap();
-    Ok(Self { x_min, dx, y })
+    let grid = Grid::from_range_n_points(x_min, x_max, y.len())?;
+    Self::from_grid_array(grid, y)
   }
 
   pub fn constant((x_min, x_max): (T, T), n_points: usize, value: T) -> Result<Self, Report>
   where
     T: Float,
   {
-    if n_points < 2 {
-      return make_error!("Grid must have at least 2 points, got {n_points}");
-    }
-    if x_max <= x_min {
-      return make_error!("x_max ({x_max:?}) must be greater than x_min ({x_min:?})");
-    }
-
-    let dx = (x_max - x_min) / T::from(n_points - 1).unwrap();
+    let grid = Grid::from_range_n_points(x_min, x_max, n_points)?;
     let y = Array1::from_elem(n_points, value);
-    Ok(Self { x_min, dx, y })
+    Self::from_grid_array(grid, y)
   }
 
   pub fn zeros((x_min, x_max): (T, T), n_points: usize) -> Result<Self, Report>
@@ -204,7 +196,7 @@ impl<T: InterpElem> GridFn<T> {
   where
     T: Float,
   {
-    Array1::linspace(self.x_min, self.x_max(), self.n_points())
+    self.grid.to_array()
   }
 
   pub fn y(&self) -> &Array1<T> {
@@ -212,37 +204,37 @@ impl<T: InterpElem> GridFn<T> {
   }
 
   pub fn x_min(&self) -> T {
-    self.x_min
+    self.grid.x_min()
   }
 
   pub fn x_max(&self) -> T
   where
     T: Float,
   {
-    self.x_min + self.dx * T::from(self.n_points() - 1).unwrap()
+    self.grid.x_max()
   }
 
   pub fn x_range(&self) -> (T, T)
   where
     T: Float,
   {
-    (self.x_min(), self.x_max())
+    self.grid.x_range()
   }
 
   pub fn n_points(&self) -> usize {
-    self.y.len()
+    self.grid.n_points()
   }
 
   pub fn len(&self) -> usize {
-    self.n_points()
+    self.grid.len()
   }
 
   pub fn is_empty(&self) -> bool {
-    self.len() == 0
+    self.grid.is_empty()
   }
 
   pub fn dx(&self) -> T {
-    self.dx
+    self.grid.dx()
   }
 
   pub fn y_min(&self) -> T {
@@ -261,7 +253,9 @@ impl<T: InterpElem> GridFn<T> {
   where
     T: Float,
   {
-    self.x().iter().zip(self.y.iter()).map(|(&x, &y)| (x, y)).collect()
+    izip!(self.grid.iter(), self.y.iter())
+      .map(|(x, &y)| (x, y))
+      .collect_vec()
   }
 
   /// Interpolate function value at a single point
@@ -280,8 +274,8 @@ impl<T: InterpElem> GridFn<T> {
   where
     T: Float,
   {
-    let x_min = self.x_min;
-    let x_max = self.x_max();
+    let x_min = self.grid.x_min();
+    let x_max = self.grid.x_max();
 
     if xi < x_min {
       return Ok(self.extrapolate_left(xi));
@@ -291,7 +285,7 @@ impl<T: InterpElem> GridFn<T> {
       return Ok(self.extrapolate_right(xi));
     }
 
-    let idx = self.find_interval_index(xi);
+    let idx = self.grid.find_interval_index(xi);
     Ok(self.interpolate_at(xi, idx))
   }
 
@@ -321,9 +315,9 @@ impl<T: InterpElem> GridFn<T> {
       "queries must be sorted in non-decreasing order"
     );
 
-    let x_min = self.x_min;
-    let x_max = self.x_max();
-    let n = self.n_points();
+    let x_min = self.grid.x_min();
+    let x_max = self.grid.x_max();
+    let n = self.grid.n_points();
     let mut result = Array1::zeros(queries.len());
     let mut grid_idx = 0_usize;
 
@@ -333,7 +327,7 @@ impl<T: InterpElem> GridFn<T> {
       } else if query > x_max {
         result[i] = self.extrapolate_right(query);
       } else {
-        while grid_idx < n - 1 && self.x_at(grid_idx + 1) < query {
+        while grid_idx < n - 1 && self.grid.x_at(grid_idx + 1) < query {
           grid_idx += 1;
         }
         let idx = min(grid_idx, n - 2);
@@ -347,17 +341,17 @@ impl<T: InterpElem> GridFn<T> {
   where
     T: Float,
   {
-    let slope = (self.y[1] - self.y[0]) / self.dx;
-    self.y[0] + slope * (q - self.x_min)
+    let slope = (self.y[1] - self.y[0]) / self.grid.dx();
+    self.y[0] + slope * (q - self.grid.x_min())
   }
 
   fn extrapolate_right(&self, q: T) -> T
   where
     T: Float,
   {
-    let n = self.n_points();
-    let slope = (self.y[n - 1] - self.y[n - 2]) / self.dx;
-    let x_max = self.x_max();
+    let n = self.grid.n_points();
+    let slope = (self.y[n - 1] - self.y[n - 2]) / self.grid.dx();
+    let x_max = self.grid.x_max();
     self.y[n - 1] + slope * (q - x_max)
   }
 
@@ -365,30 +359,15 @@ impl<T: InterpElem> GridFn<T> {
   where
     T: Float,
   {
-    let n = self.n_points();
+    let n = self.grid.n_points();
     if idx >= n - 1 {
       return self.y[n - 1];
     }
-    let x0 = self.x_at(idx);
+    let x0 = self.grid.x_at(idx);
     let y0 = self.y[idx];
     let y1 = self.y[idx + 1];
-    let t = (q - x0) / self.dx;
+    let t = (q - x0) / self.grid.dx();
     y0 + t * (y1 - y0)
-  }
-
-  fn x_at(&self, idx: usize) -> T
-  where
-    T: Float,
-  {
-    self.x_min + self.dx * T::from(idx).unwrap()
-  }
-
-  fn find_interval_index(&self, xi: T) -> usize
-  where
-    T: Float,
-  {
-    let idx = ((xi - self.x_min) / self.dx).floor().to_usize().unwrap();
-    min(idx, self.n_points() - 2)
   }
 
   #[must_use]
@@ -397,8 +376,7 @@ impl<T: InterpElem> GridFn<T> {
     F: Fn(T) -> T,
   {
     Self {
-      x_min: self.x_min,
-      dx: self.dx,
+      grid: self.grid,
       y: self.y.mapv(f),
     }
   }
@@ -432,14 +410,71 @@ impl<T: InterpElem> GridFn<T> {
   where
     T: Float,
   {
-    let x_max = self.x_max();
-    self.x_min = -x_max;
+    let x_max = self.grid.x_max();
+    let dx = self.grid.dx();
+    let n_points = self.grid.n_points();
+    self.grid = Grid::from_start_dx(-x_max, dx, n_points).unwrap();
 
     // Reverse y in-place
     let n = self.y.len();
     for i in 0..n / 2 {
       self.y.swap(i, n - 1 - i);
     }
+  }
+
+  /// Resamples function to a new uniform grid with specified spacing
+  ///
+  /// Creates a new GridFn on a uniform grid with the given spacing, using linear
+  /// interpolation (and extrapolation if needed) from the current function.
+  ///
+  /// # Arguments
+  ///
+  /// * `x_range` - New grid range (x_min, x_max)
+  /// * `dx` - Grid spacing for the new grid
+  ///
+  /// # Returns
+  ///
+  /// New GridFn with uniformly spaced grid covering the specified range
+  pub fn resample_to_grid(&self, x_range: (T, T), dx: T) -> Result<Self, Report>
+  where
+    T: Float + UlpsEq,
+  {
+    let (x_min, x_max) = x_range;
+    let grid = Grid::from_range_dx(x_min, x_max, dx)?;
+    let n_points = grid.n_points();
+    let mut y_new = Array1::zeros(n_points);
+    for i in 0..n_points {
+      let x = grid.x_at(i);
+      y_new[i] = self.interp(x)?;
+    }
+    Self::from_grid_array(grid, y_new)
+  }
+
+  /// Resamples function to a new uniform grid with specified number of points
+  ///
+  /// Creates a new GridFn on a uniform grid with the given number of points, using
+  /// linear interpolation (and extrapolation if needed) from the current function.
+  ///
+  /// # Arguments
+  ///
+  /// * `x_range` - New grid range (x_min, x_max)
+  /// * `n_points` - Number of points in the new grid
+  ///
+  /// # Returns
+  ///
+  /// New GridFn with uniformly spaced grid covering the specified range
+  pub fn resample_to_n_points(&self, x_range: (T, T), n_points: usize) -> Result<Self, Report>
+  where
+    T: Float + UlpsEq,
+  {
+    let (x_min, x_max) = x_range;
+    let grid = Grid::from_range_n_points(x_min, x_max, n_points)?;
+    let mut y_new = Array1::zeros(n_points);
+    for i in 0..n_points {
+      let x = grid.x_at(i);
+      y_new[i] = self.interp(x)?;
+    }
+    Self::from_grid_array(grid, y_new)
   }
 }
 
@@ -1071,6 +1106,128 @@ mod tests {
     grid_fn.negate_arg_inplace();
     let expected = GridFn::from_range_values((-2.0, 0.0), array![3.0, 2.0, 1.0])?;
     assert_eq!(expected, grid_fn);
+    Ok(())
+  }
+
+  #[test]
+  fn test_gridfn_resample_to_grid_same_range() -> Result<(), Report> {
+    let grid_fn = GridFn::from_range_values((0.0, 4.0), array![0.0, 1.0, 4.0, 9.0, 16.0])?;
+    let resampled = grid_fn.resample_to_grid((0.0, 4.0), 1.0)?;
+    assert_ulps_eq!(resampled.x_min(), 0.0);
+    assert_ulps_eq!(resampled.x_max(), 4.0);
+    assert_ulps_eq!(resampled.dx(), 1.0);
+    assert_eq!(resampled.n_points(), 5);
+    assert_abs_diff_eq!(resampled.y(), &array![0.0, 1.0, 4.0, 9.0, 16.0], epsilon = 1e-10);
+    Ok(())
+  }
+
+  #[test]
+  fn test_gridfn_resample_to_grid_finer() -> Result<(), Report> {
+    let grid_fn = GridFn::from_range_values((0.0, 2.0), array![0.0, 10.0, 20.0])?;
+    let resampled = grid_fn.resample_to_grid((0.0, 2.0), 0.5)?;
+    assert_ulps_eq!(resampled.x_min(), 0.0);
+    assert_ulps_eq!(resampled.x_max(), 2.0);
+    assert_ulps_eq!(resampled.dx(), 0.5);
+    assert_eq!(resampled.n_points(), 5);
+    assert_abs_diff_eq!(resampled.y(), &array![0.0, 5.0, 10.0, 15.0, 20.0], epsilon = 1e-10);
+    Ok(())
+  }
+
+  #[test]
+  fn test_gridfn_resample_to_grid_coarser() -> Result<(), Report> {
+    let grid_fn = GridFn::from_range_values((0.0, 4.0), array![0.0, 1.0, 4.0, 9.0, 16.0])?;
+    let resampled = grid_fn.resample_to_grid((0.0, 4.0), 2.0)?;
+    assert_ulps_eq!(resampled.x_min(), 0.0);
+    assert_ulps_eq!(resampled.x_max(), 4.0);
+    assert_ulps_eq!(resampled.dx(), 2.0);
+    assert_eq!(resampled.n_points(), 3);
+    assert_abs_diff_eq!(resampled.y(), &array![0.0, 4.0, 16.0], epsilon = 1e-10);
+    Ok(())
+  }
+
+  #[test]
+  fn test_gridfn_resample_to_grid_different_range() -> Result<(), Report> {
+    let grid_fn = GridFn::from_range_values((0.0, 2.0), array![0.0, 10.0, 20.0])?;
+    let resampled = grid_fn.resample_to_grid((1.0, 3.0), 0.5)?;
+    assert_ulps_eq!(resampled.x_min(), 1.0);
+    assert_ulps_eq!(resampled.x_max(), 3.0);
+    assert_ulps_eq!(resampled.dx(), 0.5);
+    assert_eq!(resampled.n_points(), 5);
+    assert_abs_diff_eq!(resampled.y(), &array![10.0, 15.0, 20.0, 25.0, 30.0], epsilon = 1e-10);
+    Ok(())
+  }
+
+  #[test]
+  fn test_gridfn_resample_to_grid_with_extrapolation() -> Result<(), Report> {
+    let grid_fn = GridFn::from_range_values((0.0, 1.0), array![0.0, 10.0])?;
+    let resampled = grid_fn.resample_to_grid((-1.0, 2.0), 0.5)?;
+    assert_ulps_eq!(resampled.x_min(), -1.0);
+    assert_ulps_eq!(resampled.x_max(), 2.0);
+    assert_eq!(resampled.n_points(), 7);
+    assert_abs_diff_eq!(
+      resampled.y(),
+      &array![-10.0, -5.0, 0.0, 5.0, 10.0, 15.0, 20.0],
+      epsilon = 1e-10
+    );
+    Ok(())
+  }
+
+  #[test]
+  fn test_gridfn_resample_to_n_points_same_range() -> Result<(), Report> {
+    let grid_fn = GridFn::from_range_values((0.0, 4.0), array![0.0, 1.0, 4.0, 9.0, 16.0])?;
+    let resampled = grid_fn.resample_to_n_points((0.0, 4.0), 5)?;
+    assert_ulps_eq!(resampled.x_min(), 0.0);
+    assert_ulps_eq!(resampled.x_max(), 4.0);
+    assert_eq!(resampled.n_points(), 5);
+    assert_abs_diff_eq!(resampled.y(), &array![0.0, 1.0, 4.0, 9.0, 16.0], epsilon = 1e-10);
+    Ok(())
+  }
+
+  #[test]
+  fn test_gridfn_resample_to_n_points_finer() -> Result<(), Report> {
+    let grid_fn = GridFn::from_range_values((0.0, 2.0), array![0.0, 10.0, 20.0])?;
+    let resampled = grid_fn.resample_to_n_points((0.0, 2.0), 5)?;
+    assert_ulps_eq!(resampled.x_min(), 0.0);
+    assert_ulps_eq!(resampled.x_max(), 2.0);
+    assert_eq!(resampled.n_points(), 5);
+    assert_abs_diff_eq!(resampled.y(), &array![0.0, 5.0, 10.0, 15.0, 20.0], epsilon = 1e-10);
+    Ok(())
+  }
+
+  #[test]
+  fn test_gridfn_resample_to_n_points_coarser() -> Result<(), Report> {
+    let grid_fn = GridFn::from_range_values((0.0, 4.0), array![0.0, 1.0, 4.0, 9.0, 16.0])?;
+    let resampled = grid_fn.resample_to_n_points((0.0, 4.0), 3)?;
+    assert_ulps_eq!(resampled.x_min(), 0.0);
+    assert_ulps_eq!(resampled.x_max(), 4.0);
+    assert_eq!(resampled.n_points(), 3);
+    assert_abs_diff_eq!(resampled.y(), &array![0.0, 4.0, 16.0], epsilon = 1e-10);
+    Ok(())
+  }
+
+  #[test]
+  fn test_gridfn_resample_to_n_points_different_range() -> Result<(), Report> {
+    let grid_fn = GridFn::from_range_values((0.0, 2.0), array![0.0, 10.0, 20.0])?;
+    let resampled = grid_fn.resample_to_n_points((1.0, 3.0), 5)?;
+    assert_ulps_eq!(resampled.x_min(), 1.0);
+    assert_ulps_eq!(resampled.x_max(), 3.0);
+    assert_eq!(resampled.n_points(), 5);
+    assert_abs_diff_eq!(resampled.y(), &array![10.0, 15.0, 20.0, 25.0, 30.0], epsilon = 1e-10);
+    Ok(())
+  }
+
+  #[test]
+  fn test_gridfn_resample_to_n_points_with_extrapolation() -> Result<(), Report> {
+    let grid_fn = GridFn::from_range_values((0.0, 1.0), array![0.0, 10.0])?;
+    let resampled = grid_fn.resample_to_n_points((-1.0, 2.0), 7)?;
+    assert_ulps_eq!(resampled.x_min(), -1.0);
+    assert_ulps_eq!(resampled.x_max(), 2.0);
+    assert_eq!(resampled.n_points(), 7);
+    assert_abs_diff_eq!(
+      resampled.y(),
+      &array![-10.0, -5.0, 0.0, 5.0, 10.0, 15.0, 20.0],
+      epsilon = 1e-10
+    );
     Ok(())
   }
 }

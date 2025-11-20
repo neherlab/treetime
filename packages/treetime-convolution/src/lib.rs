@@ -1,5 +1,7 @@
 pub mod algos;
+pub mod grid;
 pub mod grid_fn;
+pub mod grid_iter;
 pub mod interp_nonuniform;
 pub mod testing;
 
