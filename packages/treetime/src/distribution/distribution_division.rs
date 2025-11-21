@@ -4,7 +4,6 @@ use crate::distribution::distribution_point::DistributionPoint;
 use crate::distribution::distribution_range::DistributionRange;
 use crate::make_error;
 use eyre::Report;
-use ndarray::Array1;
 
 const TINY_NUMBER: f64 = 1e-10;
 
@@ -57,43 +56,47 @@ fn divide_range_by_function(
   range: &DistributionRange<f64>,
   divisor: &DistributionFunction<f64>,
 ) -> Result<Distribution, Report> {
-  let n_samples = 100;
-  let start = range.start();
-  let end = range.end();
-  let step = (end - start) / (n_samples - 1) as f64;
-
+  let range_start = range.start();
+  let range_end = range.end();
   let dividend_amplitude = range.amplitude();
 
-  // Use ndarray to generate uniform t values
-  let t_values = Array1::range(0.0, n_samples as f64, 1.0).mapv(|i| start + step * i);
+  let func_min = divisor.x_min();
+  let func_max = divisor.x_max();
 
-  // Compute divisor values using interp_many for efficiency
-  let divisor_values = divisor.interp_many(&t_values)?;
+  let overlap_start = range_start.max(func_min);
+  let overlap_end = range_end.min(func_max);
 
-  // Apply TINY_NUMBER safety and perform division
-  let safe_divisor_values = divisor_values.mapv(|v| v.max(TINY_NUMBER));
-  let result_y = Array1::from_elem(n_samples, dividend_amplitude) / &safe_divisor_values;
+  if overlap_start >= overlap_end {
+    return Ok(Distribution::empty());
+  }
 
-  Distribution::function(t_values, result_y)
+  let result_y = divisor.y().mapv(|v| dividend_amplitude / v.max(TINY_NUMBER));
+  let result_fn = DistributionFunction::from_start_dx_values(func_min, divisor.dx(), result_y)?;
+  Ok(Distribution::Function(result_fn))
 }
 
 fn divide_function_by_function(
   dividend: &DistributionFunction<f64>,
   divisor: &DistributionFunction<f64>,
 ) -> Result<Distribution, Report> {
-  let dividend_t = dividend.t();
-  let dividend_y = dividend.y();
+  let div_min = dividend.x_min();
+  let div_max = dividend.x_max();
+  let div_dx = dividend.dx();
 
-  // Use ndarray for vectorized operations
-  let divisor_values = divisor.interp_many(&dividend_t)?;
+  let divisor_on_dividend_grid = if (divisor.x_min() - div_min).abs() < 1e-10
+    && (divisor.x_max() - div_max).abs() < 1e-10
+    && (divisor.dx() - div_dx).abs() < 1e-10
+  {
+    divisor.y().clone()
+  } else {
+    let resampled = divisor.resample_to_grid((div_min, div_max), div_dx)?;
+    resampled.y().clone()
+  };
 
-  // Apply TINY_NUMBER safety for zero or near-zero values
-  let safe_divisor_values = divisor_values.mapv(|v| v.max(TINY_NUMBER));
+  let safe_divisor_y = divisor_on_dividend_grid.mapv(|v| v.max(TINY_NUMBER));
+  let result_y = dividend.y() / &safe_divisor_y;
 
-  // Perform vectorized division
-  let result_y = dividend_y / &safe_divisor_values;
-
-  Distribution::function(dividend_t, result_y)
+  DistributionFunction::from_range_values((div_min, div_max), result_y).map(Distribution::Function)
 }
 
 #[cfg(test)]
@@ -166,23 +169,71 @@ mod tests {
   }
 
   #[test]
-  fn test_divide_range_by_function() {
+  fn test_divide_range_by_function_full_overlap() {
     let range = Distribution::range((1.0, 3.0), 10.0);
     let t = array![0.0, 1.0, 2.0, 3.0, 4.0];
     let y = array![1.0, 2.0, 5.0, 4.0, 3.0];
     let func = Distribution::function(t, y).unwrap();
 
     let actual = distribution_division(&range, &func).unwrap();
+    let expected =
+      Distribution::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![10.0, 5.0, 2.0, 2.5, 10.0 / 3.0]).unwrap();
+    assert_eq!(expected, actual);
+  }
 
-    // Since this creates a sampled function with 100 points, we verify it's a function with correct properties
-    match actual {
-      Distribution::Function(f) => {
-        assert_eq!(f.t().len(), 100);
-        assert_eq!(f.y().len(), 100);
-        assert!(f.t()[0] >= 1.0 - 1e-10);
-        assert!(f.t()[99] <= 3.0 + 1e-10);
-      },
-      _ => panic!("Expected Function distribution"),
-    }
+  #[test]
+  fn test_divide_range_by_function_partial_overlap() {
+    let range = Distribution::range((1.5, 2.5), 12.0);
+    let t = array![0.0, 1.0, 2.0, 3.0];
+    let y = array![1.0, 2.0, 4.0, 8.0];
+    let func = Distribution::function(t, y).unwrap();
+
+    let actual = distribution_division(&range, &func).unwrap();
+
+    let expected = Distribution::function(array![0.0, 1.0, 2.0, 3.0], array![12.0, 6.0, 3.0, 1.5]).unwrap();
+    assert_eq!(expected, actual);
+  }
+
+  #[test]
+  fn test_divide_range_by_function_no_overlap() {
+    let range = Distribution::range((5.0, 6.0), 10.0);
+    let t = array![0.0, 1.0, 2.0, 3.0];
+    let y = array![1.0, 2.0, 4.0, 8.0];
+    let func = Distribution::function(t, y).unwrap();
+
+    let actual = distribution_division(&range, &func).unwrap();
+    let expected = Distribution::empty();
+    assert_eq!(expected, actual);
+  }
+
+  #[test]
+  fn test_divide_function_by_function_same_grid() {
+    let t = array![0.0, 1.0, 2.0, 3.0, 4.0];
+    let y1 = array![10.0, 20.0, 30.0, 40.0, 50.0];
+    let y2 = array![2.0, 4.0, 5.0, 8.0, 10.0];
+
+    let dividend = Distribution::function(t.clone(), y1).unwrap();
+    let divisor = Distribution::function(t.clone(), y2).unwrap();
+
+    let actual = distribution_division(&dividend, &divisor).unwrap();
+
+    let expected = Distribution::function(t, array![5.0, 5.0, 6.0, 5.0, 5.0]).unwrap();
+    assert_eq!(expected, actual);
+  }
+
+  #[test]
+  fn test_divide_function_by_function_different_grids() {
+    let t1 = array![0.0, 1.0, 2.0, 3.0, 4.0];
+    let y1 = array![10.0, 20.0, 30.0, 40.0, 50.0];
+    let dividend = Distribution::function(t1.clone(), y1).unwrap();
+
+    let t2 = array![0.0, 2.0, 4.0];
+    let y2 = array![2.0, 5.0, 10.0];
+    let divisor = Distribution::function(t2, y2).unwrap();
+
+    let actual = distribution_division(&dividend, &divisor).unwrap();
+
+    let expected = Distribution::function(t1, array![5.0, 20.0 / 3.5, 6.0, 40.0 / 7.5, 5.0]).unwrap();
+    assert_eq!(expected, actual);
   }
 }

@@ -126,6 +126,22 @@ impl<T: InterpElem> DistributionFunction<T> {
     self.grid_fn.interp_many(xs)
   }
 
+  pub fn resample_to_n_points(&self, x_range: (T, T), n_points: usize) -> Result<Self, Report>
+  where
+    T: Float + UlpsEq,
+  {
+    let grid_fn = self.grid_fn.resample_to_n_points(x_range, n_points)?;
+    Ok(Self { grid_fn })
+  }
+
+  pub fn resample_to_grid(&self, x_range: (T, T), dx: T) -> Result<Self, Report>
+  where
+    T: Float + UlpsEq,
+  {
+    let grid_fn = self.grid_fn.resample_to_grid(x_range, dx)?;
+    Ok(Self { grid_fn })
+  }
+
   pub fn len(&self) -> usize {
     self.grid_fn.len()
   }
