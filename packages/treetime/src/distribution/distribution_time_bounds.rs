@@ -109,7 +109,7 @@ mod tests {
   #[case(Distribution::range((1.0, 5.0), 1.0),   Distribution::range((0.5, 3.0), 1.0),   false)]
   #[case(Distribution::range((1.0, 5.0), 1.0),   Distribution::range((3.0, 5.5), 1.0),   false)]
   #[case(
-    Distribution::function(array![0.0, 1.0, 5.0], array![1.0, 2.0, 3.0]).unwrap(),
+    Distribution::function(array![0.0, 1.0, 2.0, 3.0, 4.0, 5.0], array![1.0, 2.0, 3.0, 2.0, 1.0, 0.5]).unwrap(),
     Distribution::function(array![1.0, 2.0, 3.0], array![1.0, 2.0, 3.0]).unwrap(),
     true
   )]
