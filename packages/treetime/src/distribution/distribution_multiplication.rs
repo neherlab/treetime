@@ -94,9 +94,13 @@ fn multiply_range_function(
     return Ok(Distribution::empty());
   }
 
-  let times: Vec<f64> = filtered.iter().map(|(t, _)| *t).collect();
+  let overlap_min = filtered.first().unwrap().0;
+  let overlap_max = filtered.last().unwrap().0;
   let values: Vec<f64> = filtered.iter().map(|(_, v)| *v).collect();
-  Distribution::function(Array1::from_vec(times), Array1::from_vec(values))
+  let values_array = Array1::from_vec(values);
+
+  let distribution_fn = DistributionFunction::from_range_values((overlap_min, overlap_max), values_array)?;
+  Ok(Distribution::Function(distribution_fn))
 }
 
 fn multiply_function_function(
@@ -118,16 +122,14 @@ fn multiply_function_function(
 
   // Create uniform grid in overlap region
   let n_points = a.t().len().max(b.t().len());
-  let times = Array1::linspace(overlap_min, overlap_max, n_points);
 
-  let values: Array1<f64> = times
-    .iter()
-    .map(|&t| {
-      let va = a.interp(t).unwrap_or(0.0);
-      let vb = b.interp(t).unwrap_or(0.0);
-      va * vb
-    })
-    .collect();
+  let values: Array1<f64> = Array1::from_shape_fn(n_points, |i| {
+    let t = overlap_min + (overlap_max - overlap_min) * (i as f64 / (n_points - 1) as f64);
+    let va = a.interp(t).unwrap_or(0.0);
+    let vb = b.interp(t).unwrap_or(0.0);
+    va * vb
+  });
 
-  Distribution::function(times, values)
+  let distribution_fn = DistributionFunction::from_range_values((overlap_min, overlap_max), values)?;
+  Ok(Distribution::Function(distribution_fn))
 }

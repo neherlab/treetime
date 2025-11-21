@@ -1,5 +1,6 @@
 use crate::commands::optimize::optimize_unified::{OptimizationContribution, evaluate_mixed_log_lh_only};
 use crate::distribution::distribution::Distribution;
+use crate::distribution::distribution_function::DistributionFunction;
 use crate::graph::edge::GraphEdgeKey;
 use crate::representation::partition_marginal_dense::PartitionMarginalDense;
 use crate::representation::partition_marginal_sparse::PartitionMarginalSparse;
@@ -40,9 +41,14 @@ pub fn compute_branch_length_distribution(
   let log_lh = grid.mapv(|branch_len| evaluate_mixed_log_lh_only(contributions, branch_len));
   let max_log_lh = log_lh.max()?;
 
-  let time_grid = grid / clock_rate;
   let normalized_prob = (&log_lh - *max_log_lh).exp();
-  Distribution::function(time_grid, normalized_prob).map(Arc::new)
+
+  // Convert branch length grid to time grid by dividing by clock rate
+  let time_min = grid[0] / clock_rate;
+  let time_max = grid[grid.len() - 1] / clock_rate;
+
+  let distribution_fn = DistributionFunction::from_range_values((time_min, time_max), normalized_prob)?;
+  Ok(Arc::new(Distribution::Function(distribution_fn)))
 }
 
 fn create_simple_grid(center: f64, one_mutation: f64, n_points: usize) -> Array1<f64> {

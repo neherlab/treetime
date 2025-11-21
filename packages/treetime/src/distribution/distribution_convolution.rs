@@ -7,7 +7,7 @@ use approx::ulps_eq;
 use eyre::Report;
 use ndarray::{Array1, array};
 use treetime_convolution::convolve;
-use treetime_utils::ndarray::{has_uniform_spacing, ndarray_uniform_grid};
+use treetime_utils::ndarray::has_uniform_spacing;
 
 pub fn distribution_convolution(a: &Distribution, b: &Distribution) -> Result<Distribution, Report> {
   match (a, b) {
@@ -166,15 +166,15 @@ fn convolution_function_function(
   // resample distribution to coarser grid
   let coarse_dx = dx_a.max(dx_b);
   let (final_values, coarse_grid_min) = resample_distribution(&conv_distr, coarse_dx)?;
-  let coarse_grid = ndarray_uniform_grid(coarse_grid_min, coarse_dx, final_values.len());
 
   // sanity check: more than one point
-  if coarse_grid.len() < 2 {
+  if final_values.len() < 2 {
     return make_error!("Final distribution after convolution has less than two points");
   }
 
   // return final distribution
-  Distribution::function(coarse_grid, final_values)
+  let final_distr = DistributionFunction::from_start_dx_values(coarse_grid_min, coarse_dx, final_values)?;
+  Ok(Distribution::Function(final_distr))
 }
 
 fn resample_distribution(func: &DistributionFunction<f64>, dx: f64) -> Result<(Array1<f64>, f64), Report> {

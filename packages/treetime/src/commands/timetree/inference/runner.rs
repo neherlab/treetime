@@ -155,6 +155,7 @@ mod tests {
   use crate::commands::timetree::inference::backward_pass::propagate_distributions_backward;
   use crate::commands::timetree::inference::forward_pass::propagate_distributions_forward;
   use crate::commands::timetree::utils::initialize_clock_totals_from_time_distributions;
+  use crate::distribution::distribution_function::DistributionFunction;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::io::dates_csv::{DatesMap, read_dates};
   use crate::io::fasta::{FastaRecord, read_many_fasta};
@@ -530,35 +531,23 @@ mod tests {
       if let Some(branch_length) = edge.branch_length {
         let expected_time = branch_length / mu;
         let max_time = 3.0 * expected_time.max(1.0);
-        let dt_step = max_time / (n_points - 1) as f64;
+        let dx = max_time / (n_points - 1) as f64;
 
-        let x = Array1::from_iter((0..n_points).map(|i| i as f64 * dt_step));
-
-        let log_probs = x.mapv(|dt| {
+        let y = Array1::from_shape_fn(n_points, |i| {
+          let dt = i as f64 * dx;
           if dt < 1e-10 {
-            f64::NEG_INFINITY
-          } else {
-            -dt * mu * seq_len_f64 + branch_length * seq_len_f64 * (dt * mu * seq_len_f64).ln()
-          }
-        });
-
-        let log_p_max = log_probs
-          .iter()
-          .copied()
-          .filter(|&x| x.is_finite())
-          .map(OrderedFloat)
-          .max()
-          .map_or(0.0, |x| x.0);
-
-        let y = log_probs.mapv(|log_p| {
-          if log_p.is_finite() {
-            (log_p - log_p_max).exp()
-          } else {
             0.0
+          } else {
+            let log_p = -dt * mu * seq_len_f64 + branch_length * seq_len_f64 * (dt * mu * seq_len_f64).ln();
+            log_p.exp()
           }
         });
 
-        let distribution = Distribution::function(x, y)?;
+        let y_max = y.iter().copied().map(OrderedFloat).max().map_or(1.0, |x| x.0);
+        let y_normalized = y.mapv(|v| v / y_max);
+
+        let distribution_fn = DistributionFunction::from_start_dx_values(0.0, dx, y_normalized)?;
+        let distribution = Distribution::Function(distribution_fn);
         edge.branch_length_distribution = Some(Arc::new(distribution));
       }
     }
