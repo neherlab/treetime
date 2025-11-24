@@ -59,28 +59,120 @@ pub fn compute_lineage_count_distribution(events: &[(f64, i32)]) -> Result<Distr
 #[cfg(test)]
 mod tests {
   use super::*;
-  use approx::assert_abs_diff_eq;
+  use pretty_assertions::assert_eq;
 
   #[test]
   fn test_lineage_count_simple_tree() -> Result<(), Report> {
-    let events = vec![(10.0, 1), (10.0, 1), (5.0, -1), (0.0, 1)];
+    let events = vec![(0.0, 1), (5.0, -1), (10.0, 1), (10.0, 1)];
 
     let lineage_counts = compute_lineage_count_distribution(&events)?;
 
     let t_grid = lineage_counts.t();
     let y_grid = lineage_counts.y();
 
-    assert!(t_grid.len() == 10000, "Expected 10000 grid points");
+    assert_eq!(t_grid.len(), 10000);
 
-    let idx_future = t_grid.iter().position(|&t| t > 10.5).unwrap();
-    let idx_high = t_grid.iter().position(|&t| t > 7.0 && t < 9.0).unwrap();
-    let idx_mid = t_grid.iter().position(|&t| t > 2.0 && t < 4.0).unwrap();
     let idx_past = t_grid.iter().position(|&t| t < -0.5).unwrap();
+    let idx_mid = t_grid.iter().position(|&t| t > 2.0 && t < 4.0).unwrap();
+    let idx_high = t_grid.iter().position(|&t| t > 7.0 && t < 9.0).unwrap();
+    let idx_future = t_grid.iter().position(|&t| t > 10.5).unwrap();
 
-    assert_abs_diff_eq!(y_grid[idx_future], 0.0, epsilon = 0.1);
-    assert_abs_diff_eq!(y_grid[idx_high], 2.0, epsilon = 0.1);
-    assert_abs_diff_eq!(y_grid[idx_mid], 1.0, epsilon = 0.1);
-    assert_abs_diff_eq!(y_grid[idx_past], 2.0, epsilon = 0.1);
+    assert_eq!(y_grid[idx_past], 2.0);
+    assert_eq!(y_grid[idx_mid], 1.0);
+    assert_eq!(y_grid[idx_high], 2.0);
+    assert_eq!(y_grid[idx_future], 0.0);
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_lineage_count_single_event() -> Result<(), Report> {
+    let events = vec![(5.0, 2)];
+
+    let lineage_counts = compute_lineage_count_distribution(&events)?;
+
+    let t_grid = lineage_counts.t();
+    let y_grid = lineage_counts.y();
+
+    assert_eq!(t_grid.len(), 10000);
+
+    let idx_before = t_grid.iter().position(|&t| t >= 4.0).unwrap();
+    let idx_after = t_grid.iter().position(|&t| t >= 6.0).unwrap();
+
+    assert_eq!(y_grid[idx_before], 2.0);
+    assert_eq!(y_grid[idx_after], 0.0);
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_lineage_count_empty_events() {
+    let events: Vec<(f64, i32)> = vec![];
+    drop(compute_lineage_count_distribution(&events).unwrap_err());
+  }
+
+  #[test]
+  fn test_lineage_count_aggregation() -> Result<(), Report> {
+    let events = vec![(5.0, 1), (5.0, 1), (5.0, -1)];
+
+    let lineage_counts = compute_lineage_count_distribution(&events)?;
+
+    let t_grid = lineage_counts.t();
+    let y_grid = lineage_counts.y();
+
+    let idx_before = t_grid.iter().position(|&t| t > 4.0 && t < 4.9).unwrap();
+    let idx_after = t_grid.iter().position(|&t| t > 5.1 && t < 6.0).unwrap();
+
+    assert_eq!(y_grid[idx_before], 1.0);
+    assert_eq!(y_grid[idx_after], 0.0);
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_lineage_count_decreasing_then_increasing() -> Result<(), Report> {
+    let events = vec![(0.0, 3), (5.0, -1), (10.0, 1)];
+
+    let lineage_counts = compute_lineage_count_distribution(&events)?;
+
+    let t_grid = lineage_counts.t();
+    let y_grid = lineage_counts.y();
+
+    let idx_mid = t_grid.iter().position(|&t| t > 6.0 && t < 9.0).unwrap();
+
+    assert_eq!(y_grid[idx_mid], 1.0);
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_lineage_count_margin_bounds() -> Result<(), Report> {
+    let events = vec![(10.0, 1), (20.0, -1)];
+
+    let lineage_counts = compute_lineage_count_distribution(&events)?;
+
+    let t_grid = lineage_counts.t();
+
+    let expected_margin = 1.0;
+
+    assert!(t_grid[0] <= 10.0 - expected_margin + 0.1);
+    assert!(t_grid[t_grid.len() - 1] >= 20.0 + expected_margin - 0.1);
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_lineage_count_negative_deltas() -> Result<(), Report> {
+    let events = vec![(0.0, 5), (5.0, -1), (10.0, -1)];
+
+    let lineage_counts = compute_lineage_count_distribution(&events)?;
+
+    let t_grid = lineage_counts.t();
+    let y_grid = lineage_counts.y();
+
+    let idx_mid = t_grid.iter().position(|&t| t > 6.0 && t < 9.0).unwrap();
+
+    assert_eq!(y_grid[idx_mid], -1.0);
 
     Ok(())
   }

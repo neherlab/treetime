@@ -79,7 +79,5 @@ fn compute_node_contribution_single(
     distribution_multiplication(&rate_power, &exp_neg_integral)?
   };
 
-  let contrib = distribution_resample(&contrib, time_points)?;
-
   Ok(contrib)
 }
