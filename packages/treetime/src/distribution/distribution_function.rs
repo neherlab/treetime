@@ -4,6 +4,7 @@ use ndarray::Array1;
 use ndarray_stats::QuantileExt;
 use num::Float;
 use serde::{Deserialize, Serialize};
+use treetime_convolution::grid::Grid;
 use treetime_convolution::{GridFn, InterpElem};
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -126,19 +127,35 @@ impl<T: InterpElem> DistributionFunction<T> {
     self.grid_fn.interp_many(xs)
   }
 
-  pub fn resample_to_n_points(&self, x_range: (T, T), n_points: usize) -> Result<Self, Report>
+  pub fn resample(&self, grid: &Grid<T>) -> Result<Self, Report>
   where
-    T: Float + UlpsEq,
+    T: Float,
   {
-    let grid_fn = self.grid_fn.resample_to_n_points(x_range, n_points)?;
+    let grid_fn = self.grid_fn.resample(grid)?;
     Ok(Self { grid_fn })
   }
 
-  pub fn resample_to_grid(&self, x_range: (T, T), dx: T) -> Result<Self, Report>
+  pub fn resample_start_dx(&self, x_min: T, dx: T, n_points: usize) -> Result<Self, Report>
+  where
+    T: Float,
+  {
+    let grid_fn = self.grid_fn.resample_start_dx(x_min, dx, n_points)?;
+    Ok(Self { grid_fn })
+  }
+
+  pub fn resample_range_n_points(&self, x_range: (T, T), n_points: usize) -> Result<Self, Report>
   where
     T: Float + UlpsEq,
   {
-    let grid_fn = self.grid_fn.resample_to_grid(x_range, dx)?;
+    let grid_fn = self.grid_fn.resample_range_n_points(x_range, n_points)?;
+    Ok(Self { grid_fn })
+  }
+
+  pub fn resample_range_dx(&self, x_range: (T, T), dx: T) -> Result<Self, Report>
+  where
+    T: Float + UlpsEq,
+  {
+    let grid_fn = self.grid_fn.resample_range_dx(x_range, dx)?;
     Ok(Self { grid_fn })
   }
 

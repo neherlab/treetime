@@ -89,7 +89,7 @@ fn divide_function_by_function(
   {
     divisor.y().clone()
   } else {
-    let resampled = divisor.resample_to_grid((div_min, div_max), div_dx)?;
+    let resampled = divisor.resample_range_dx((div_min, div_max), div_dx)?;
     resampled.y().clone()
   };
 

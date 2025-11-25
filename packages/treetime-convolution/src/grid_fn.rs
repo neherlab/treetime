@@ -2,7 +2,6 @@ use std::fmt::Debug;
 
 use crate::InterpElem;
 use crate::grid::Grid;
-use crate::grid_iter::GridIter;
 use crate::interp_nonuniform::interp_nonuniform;
 use approx::UlpsEq;
 use eyre::Report;
@@ -14,18 +13,6 @@ use serde::{Deserialize, Serialize};
 use treetime_utils::make_error;
 use treetime_utils::ndarray::has_uniform_spacing;
 use treetime_utils::serde::{array1_as_vec, array1_from_vec};
-
-impl<T: InterpElem> IntoIterator for &Grid<T>
-where
-  T: Float,
-{
-  type Item = T;
-  type IntoIter = GridIter<T>;
-
-  fn into_iter(self) -> Self::IntoIter {
-    self.iter()
-  }
-}
 
 /// Function represented on a uniform grid for piecewise linear interpolation
 ///
@@ -392,35 +379,51 @@ impl<T: InterpElem> GridFn<T> {
     }
   }
 
-  /// Resamples function to a new uniform grid with specified spacing
+  /// Resamples function to a new grid
   ///
-  /// Creates a new GridFn on a uniform grid with the given spacing, using linear
-  /// interpolation (and extrapolation if needed) from the current function.
+  /// Creates a new GridFn on the specified grid, using linear interpolation
+  /// (and extrapolation if needed) from the current function.
   ///
   /// # Arguments
   ///
-  /// * `x_range` - New grid range (x_min, x_max)
-  /// * `dx` - Grid spacing for the new grid
+  /// * `grid` - Target grid for resampling
   ///
   /// # Returns
   ///
-  /// New GridFn with uniformly spaced grid covering the specified range
-  pub fn resample_to_grid(&self, x_range: (T, T), dx: T) -> Result<Self, Report>
+  /// New GridFn with values interpolated onto the target grid
+  pub fn resample(&self, grid: &Grid<T>) -> Result<Self, Report>
   where
-    T: Float + UlpsEq,
+    T: Float,
   {
-    let (x_min, x_max) = x_range;
-    let grid = Grid::from_range_dx(x_min, x_max, dx)?;
     let n_points = grid.n_points();
-    let mut y_new = Array1::zeros(n_points);
-    for i in 0..n_points {
-      let x = grid.x_at(i);
-      y_new[i] = self.interp(x)?;
-    }
-    Self::from_grid_array(grid, y_new)
+    let y_new = (0..n_points).map(|i| self.interp(grid.x_at(i))).try_collect()?;
+    Self::from_grid_array(*grid, y_new)
   }
 
-  /// Resamples function to a new uniform grid with specified number of points
+  /// Resamples function to a new uniform grid with specified start, spacing, and length
+  ///
+  /// Creates a new GridFn on a uniform grid defined by starting point, spacing,
+  /// and number of points, using linear interpolation (and extrapolation if needed)
+  /// from the current function.
+  ///
+  /// # Arguments
+  ///
+  /// * `x_min` - Starting x coordinate
+  /// * `dx` - Grid spacing
+  /// * `n_points` - Number of points in the new grid
+  ///
+  /// # Returns
+  ///
+  /// New GridFn with uniformly spaced grid
+  pub fn resample_start_dx(&self, x_min: T, dx: T, n_points: usize) -> Result<Self, Report>
+  where
+    T: Float,
+  {
+    let grid = Grid::from_start_dx(x_min, dx, n_points)?;
+    self.resample(&grid)
+  }
+
+  /// Resamples function to a new uniform grid with specified range and number of points
   ///
   /// Creates a new GridFn on a uniform grid with the given number of points, using
   /// linear interpolation (and extrapolation if needed) from the current function.
@@ -433,18 +436,35 @@ impl<T: InterpElem> GridFn<T> {
   /// # Returns
   ///
   /// New GridFn with uniformly spaced grid covering the specified range
-  pub fn resample_to_n_points(&self, x_range: (T, T), n_points: usize) -> Result<Self, Report>
+  pub fn resample_range_n_points(&self, x_range: (T, T), n_points: usize) -> Result<Self, Report>
   where
     T: Float + UlpsEq,
   {
     let (x_min, x_max) = x_range;
     let grid = Grid::from_range_n_points(x_min, x_max, n_points)?;
-    let mut y_new = Array1::zeros(n_points);
-    for i in 0..n_points {
-      let x = grid.x_at(i);
-      y_new[i] = self.interp(x)?;
-    }
-    Self::from_grid_array(grid, y_new)
+    self.resample(&grid)
+  }
+
+  /// Resamples function to a new uniform grid with specified range and spacing
+  ///
+  /// Creates a new GridFn on a uniform grid with the given spacing, using linear
+  /// interpolation (and extrapolation if needed) from the current function.
+  ///
+  /// # Arguments
+  ///
+  /// * `x_range` - New grid range (x_min, x_max)
+  /// * `dx` - Grid spacing for the new grid
+  ///
+  /// # Returns
+  ///
+  /// New GridFn with uniformly spaced grid covering the specified range
+  pub fn resample_range_dx(&self, x_range: (T, T), dx: T) -> Result<Self, Report>
+  where
+    T: Float + UlpsEq,
+  {
+    let (x_min, x_max) = x_range;
+    let grid = Grid::from_range_dx(x_min, x_max, dx)?;
+    self.resample(&grid)
   }
 }
 
@@ -1082,7 +1102,7 @@ mod tests {
   #[test]
   fn test_gridfn_resample_to_grid_same_range() -> Result<(), Report> {
     let grid_fn = GridFn::from_range_values((0.0, 4.0), array![0.0, 1.0, 4.0, 9.0, 16.0])?;
-    let resampled = grid_fn.resample_to_grid((0.0, 4.0), 1.0)?;
+    let resampled = grid_fn.resample_range_dx((0.0, 4.0), 1.0)?;
     assert_ulps_eq!(resampled.x_min(), 0.0);
     assert_ulps_eq!(resampled.x_max(), 4.0);
     assert_ulps_eq!(resampled.dx(), 1.0);
@@ -1094,7 +1114,7 @@ mod tests {
   #[test]
   fn test_gridfn_resample_to_grid_finer() -> Result<(), Report> {
     let grid_fn = GridFn::from_range_values((0.0, 2.0), array![0.0, 10.0, 20.0])?;
-    let resampled = grid_fn.resample_to_grid((0.0, 2.0), 0.5)?;
+    let resampled = grid_fn.resample_range_dx((0.0, 2.0), 0.5)?;
     assert_ulps_eq!(resampled.x_min(), 0.0);
     assert_ulps_eq!(resampled.x_max(), 2.0);
     assert_ulps_eq!(resampled.dx(), 0.5);
@@ -1106,7 +1126,7 @@ mod tests {
   #[test]
   fn test_gridfn_resample_to_grid_coarser() -> Result<(), Report> {
     let grid_fn = GridFn::from_range_values((0.0, 4.0), array![0.0, 1.0, 4.0, 9.0, 16.0])?;
-    let resampled = grid_fn.resample_to_grid((0.0, 4.0), 2.0)?;
+    let resampled = grid_fn.resample_range_dx((0.0, 4.0), 2.0)?;
     assert_ulps_eq!(resampled.x_min(), 0.0);
     assert_ulps_eq!(resampled.x_max(), 4.0);
     assert_ulps_eq!(resampled.dx(), 2.0);
@@ -1118,7 +1138,7 @@ mod tests {
   #[test]
   fn test_gridfn_resample_to_grid_different_range() -> Result<(), Report> {
     let grid_fn = GridFn::from_range_values((0.0, 2.0), array![0.0, 10.0, 20.0])?;
-    let resampled = grid_fn.resample_to_grid((1.0, 3.0), 0.5)?;
+    let resampled = grid_fn.resample_range_dx((1.0, 3.0), 0.5)?;
     assert_ulps_eq!(resampled.x_min(), 1.0);
     assert_ulps_eq!(resampled.x_max(), 3.0);
     assert_ulps_eq!(resampled.dx(), 0.5);
@@ -1130,7 +1150,7 @@ mod tests {
   #[test]
   fn test_gridfn_resample_to_grid_with_extrapolation() -> Result<(), Report> {
     let grid_fn = GridFn::from_range_values((0.0, 1.0), array![0.0, 10.0])?;
-    let resampled = grid_fn.resample_to_grid((-1.0, 2.0), 0.5)?;
+    let resampled = grid_fn.resample_range_dx((-1.0, 2.0), 0.5)?;
     assert_ulps_eq!(resampled.x_min(), -1.0);
     assert_ulps_eq!(resampled.x_max(), 2.0);
     assert_eq!(resampled.n_points(), 7);
@@ -1145,7 +1165,7 @@ mod tests {
   #[test]
   fn test_gridfn_resample_to_n_points_same_range() -> Result<(), Report> {
     let grid_fn = GridFn::from_range_values((0.0, 4.0), array![0.0, 1.0, 4.0, 9.0, 16.0])?;
-    let resampled = grid_fn.resample_to_n_points((0.0, 4.0), 5)?;
+    let resampled = grid_fn.resample_range_n_points((0.0, 4.0), 5)?;
     assert_ulps_eq!(resampled.x_min(), 0.0);
     assert_ulps_eq!(resampled.x_max(), 4.0);
     assert_eq!(resampled.n_points(), 5);
@@ -1156,7 +1176,7 @@ mod tests {
   #[test]
   fn test_gridfn_resample_to_n_points_finer() -> Result<(), Report> {
     let grid_fn = GridFn::from_range_values((0.0, 2.0), array![0.0, 10.0, 20.0])?;
-    let resampled = grid_fn.resample_to_n_points((0.0, 2.0), 5)?;
+    let resampled = grid_fn.resample_range_n_points((0.0, 2.0), 5)?;
     assert_ulps_eq!(resampled.x_min(), 0.0);
     assert_ulps_eq!(resampled.x_max(), 2.0);
     assert_eq!(resampled.n_points(), 5);
@@ -1167,7 +1187,7 @@ mod tests {
   #[test]
   fn test_gridfn_resample_to_n_points_coarser() -> Result<(), Report> {
     let grid_fn = GridFn::from_range_values((0.0, 4.0), array![0.0, 1.0, 4.0, 9.0, 16.0])?;
-    let resampled = grid_fn.resample_to_n_points((0.0, 4.0), 3)?;
+    let resampled = grid_fn.resample_range_n_points((0.0, 4.0), 3)?;
     assert_ulps_eq!(resampled.x_min(), 0.0);
     assert_ulps_eq!(resampled.x_max(), 4.0);
     assert_eq!(resampled.n_points(), 3);
@@ -1178,7 +1198,7 @@ mod tests {
   #[test]
   fn test_gridfn_resample_to_n_points_different_range() -> Result<(), Report> {
     let grid_fn = GridFn::from_range_values((0.0, 2.0), array![0.0, 10.0, 20.0])?;
-    let resampled = grid_fn.resample_to_n_points((1.0, 3.0), 5)?;
+    let resampled = grid_fn.resample_range_n_points((1.0, 3.0), 5)?;
     assert_ulps_eq!(resampled.x_min(), 1.0);
     assert_ulps_eq!(resampled.x_max(), 3.0);
     assert_eq!(resampled.n_points(), 5);
@@ -1189,7 +1209,7 @@ mod tests {
   #[test]
   fn test_gridfn_resample_to_n_points_with_extrapolation() -> Result<(), Report> {
     let grid_fn = GridFn::from_range_values((0.0, 1.0), array![0.0, 10.0])?;
-    let resampled = grid_fn.resample_to_n_points((-1.0, 2.0), 7)?;
+    let resampled = grid_fn.resample_range_n_points((-1.0, 2.0), 7)?;
     assert_ulps_eq!(resampled.x_min(), -1.0);
     assert_ulps_eq!(resampled.x_max(), 2.0);
     assert_eq!(resampled.n_points(), 7);

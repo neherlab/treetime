@@ -157,3 +157,15 @@ impl<T: InterpElem> Grid<T> {
     GridIter::new(*self)
   }
 }
+
+impl<T: InterpElem> IntoIterator for &Grid<T>
+where
+  T: Float,
+{
+  type Item = T;
+  type IntoIter = GridIter<T>;
+
+  fn into_iter(self) -> Self::IntoIter {
+    self.iter()
+  }
+}
