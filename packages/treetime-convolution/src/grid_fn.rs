@@ -1,4 +1,3 @@
-use std::cmp::min;
 use std::fmt::Debug;
 
 use crate::InterpElem;
@@ -310,16 +309,9 @@ impl<T: InterpElem> GridFn<T> {
   where
     T: Float,
   {
-    debug_assert!(
-      queries.windows(2).into_iter().all(|w| w[0] <= w[1]),
-      "queries must be sorted in non-decreasing order"
-    );
-
     let x_min = self.grid.x_min();
     let x_max = self.grid.x_max();
-    let n = self.grid.n_points();
     let mut result = Array1::zeros(queries.len());
-    let mut grid_idx = 0_usize;
 
     for (i, &query) in queries.iter().enumerate() {
       if query < x_min {
@@ -327,10 +319,7 @@ impl<T: InterpElem> GridFn<T> {
       } else if query > x_max {
         result[i] = self.extrapolate_right(query);
       } else {
-        while grid_idx < n - 1 && self.grid.x_at(grid_idx + 1) < query {
-          grid_idx += 1;
-        }
-        let idx = min(grid_idx, n - 2);
+        let idx = self.grid.find_interval_index(query);
         result[i] = self.interpolate_at(query, idx);
       }
     }
