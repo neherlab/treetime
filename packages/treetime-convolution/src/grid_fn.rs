@@ -288,11 +288,10 @@ impl<T: InterpElem> GridFn<T> {
     Ok(self.interpolate_at(xi, idx))
   }
 
-  /// Interpolate function values at multiple points using optimized two-pointer algorithm
+  /// Interpolate function values at multiple points
   ///
   /// Uses piecewise linear interpolation within grid bounds and linear extrapolation
-  /// outside bounds. Optimized for sorted query points using a single linear scan
-  /// through the grid (O(n + m) complexity where n = query points, m = grid points).
+  /// outside bounds.
   ///
   /// # Arguments
   ///
@@ -301,29 +300,11 @@ impl<T: InterpElem> GridFn<T> {
   /// # Returns
   ///
   /// Array of interpolated or extrapolated function values at each query point
-  ///
-  /// # Preconditions
-  ///
-  /// * `queries` must be sorted in non-decreasing order (checked via `debug_assert!`)
   pub fn interp_many(&self, queries: &Array1<T>) -> Result<Array1<T>, Report>
   where
     T: Float,
   {
-    let x_min = self.grid.x_min();
-    let x_max = self.grid.x_max();
-    let mut result = Array1::zeros(queries.len());
-
-    for (i, &query) in queries.iter().enumerate() {
-      if query < x_min {
-        result[i] = self.extrapolate_left(query);
-      } else if query > x_max {
-        result[i] = self.extrapolate_right(query);
-      } else {
-        let idx = self.grid.find_interval_index(query);
-        result[i] = self.interpolate_at(query, idx);
-      }
-    }
-    Ok(result)
+    queries.iter().map(|&q| self.interp(q)).try_collect()
   }
 
   fn extrapolate_left(&self, q: T) -> T
