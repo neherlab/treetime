@@ -327,7 +327,7 @@ mod tests {
     for i in 0..expected_tbp.len().min(expected_k.len()) {
       let tbp = expected_tbp[i];
       let expected_lineage = expected_k[i];
-      let actual_lineage = lineage_counts.eval(tbp)?;
+      let actual_lineage = lineage_counts.eval(tbp);
       assert_relative_eq!(actual_lineage, expected_lineage, epsilon = 1.0);
     }
 

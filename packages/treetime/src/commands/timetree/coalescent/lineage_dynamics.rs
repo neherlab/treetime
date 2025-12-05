@@ -1,71 +1,122 @@
-use crate::distribution::distribution::Distribution;
-use crate::distribution::distribution_function::DistributionFunction;
 use eyre::Report;
-use ndarray::{Array1, s};
+use ndarray::Array1;
 use ordered_float::OrderedFloat;
 use std::collections::BTreeMap;
 use treetime_utils::make_error;
+
+/// Piecewise constant function represented by breakpoints and values.
+///
+/// For n breakpoints, there are n+1 value regions:
+/// - values[0] for t < breakpoints[0]
+/// - values[i] for breakpoints[i-1] <= t < breakpoints[i]  (1 <= i < n)
+/// - values[n] for t >= breakpoints[n-1]
+///
+/// Breakpoints must be sorted in ascending order.
+#[derive(Debug, Clone)]
+pub struct PiecewiseConstant {
+  breakpoints: Vec<f64>,
+  values: Vec<f64>,
+}
+
+impl PiecewiseConstant {
+  /// Create from breakpoints and values.
+  ///
+  /// # Arguments
+  /// - `breakpoints`: sorted ascending, n elements
+  /// - `values`: n+1 elements
+  pub fn new(breakpoints: Vec<f64>, values: Vec<f64>) -> Self {
+    debug_assert!(breakpoints.len() + 1 == values.len());
+    debug_assert!(breakpoints
+      .windows(2)
+      .all(|w| matches!(w, [a, b] if a < b)));
+    Self { breakpoints, values }
+  }
+
+  /// Get breakpoint times (where function changes value).
+  pub fn breakpoints(&self) -> &[f64] {
+    &self.breakpoints
+  }
+
+  /// Evaluate at a single point.
+  pub fn eval(&self, t: f64) -> f64 {
+    let idx = self.breakpoints.partition_point(|&bp| bp <= t);
+    self.values[idx]
+  }
+
+  /// Evaluate at multiple points.
+  pub fn eval_many(&self, ts: &Array1<f64>) -> Array1<f64> {
+    ts.mapv(|t| self.eval(t))
+  }
+}
 
 /// Computes k(t) distribution from tree events.
 ///
 /// k(t) is the number of concurrent lineages at time t.
 /// The function is piecewise constant, stepping at each merger event.
 /// Events must be sorted by increasing time (past to present).
-pub fn compute_lineage_count_distribution(events: &[(f64, i32)]) -> Result<Distribution, Report> {
+pub fn compute_lineage_count_distribution(events: &[(f64, i32)]) -> Result<PiecewiseConstant, Report> {
   if events.is_empty() {
-    return make_error!("Cannot build lineage count interpolator from empty events");
+    return make_error!("Cannot build lineage count from empty events");
   }
 
-  let mut aggregated_events = BTreeMap::new();
+  // Aggregate events at same time
+  let mut aggregated = BTreeMap::new();
   for &(time, delta) in events {
-    *aggregated_events.entry(OrderedFloat(time)).or_insert(0) += delta;
+    *aggregated.entry(OrderedFloat(time)).or_insert(0) += delta;
   }
 
-  let mut cumulative_events: Vec<(f64, i32)> = Vec::with_capacity(aggregated_events.len());
+  // Build breakpoints and values
+  // Value before first event is 0 (no lineages yet)
+  let mut breakpoints = Vec::with_capacity(aggregated.len());
+  let mut values = Vec::with_capacity(aggregated.len() + 1);
+  values.push(0.0); // value for t < first_breakpoint
+
   let mut current_count = 0_i32;
-  // Iterate from present (t=0) to past (t>0)
-  for (time, delta) in aggregated_events {
-    cumulative_events.push((time.into_inner(), current_count));
+  for (time, delta) in aggregated {
+    breakpoints.push(time.into_inner());
     current_count += delta;
+    values.push(current_count as f64);
   }
 
-  let data_t_min = cumulative_events.first().unwrap().0;
-  let data_t_max = cumulative_events.last().unwrap().0;
-  let data_range = data_t_max - data_t_min;
-  let margin = f64::max(data_range * 0.1, 1.0);
-
-  let t_min = data_t_min - margin;
-  let t_max = data_t_max + margin;
-  let n_points = 10000;
-  let dx = (t_max - t_min) / (n_points - 1) as f64;
-
-  let mut y_vals = Array1::zeros(n_points);
-  let mut prev_grid_idx = 0;
-
-  for (event_time, count) in cumulative_events {
-    let next_grid_idx = (((event_time - t_min) / dx).ceil() as usize).min(n_points);
-
-    if prev_grid_idx < next_grid_idx {
-      y_vals.slice_mut(s![prev_grid_idx..next_grid_idx]).fill(count as f64);
-    }
-
-    prev_grid_idx = next_grid_idx;
-  }
-
-  // Fill the remaining part (past the last event) with the final count
-  if prev_grid_idx < n_points {
-    y_vals.slice_mut(s![prev_grid_idx..n_points]).fill(current_count as f64);
-  }
-
-  let func = DistributionFunction::from_range_values((t_min, t_max), y_vals)?;
-  Ok(Distribution::Function(func))
+  Ok(PiecewiseConstant::new(breakpoints, values))
 }
 
 #[cfg(test)]
 mod tests {
   use super::*;
   use crate::pretty_assert_abs_diff_eq;
-  use pretty_assertions::assert_eq;
+
+  #[test]
+  fn test_piecewise_constant_eval() {
+    // Breakpoints: [1.0, 5.0, 10.0]
+    // Values: [0.0, 1.0, 2.0, 3.0]
+    // t < 1.0 -> 0.0
+    // 1.0 <= t < 5.0 -> 1.0
+    // 5.0 <= t < 10.0 -> 2.0
+    // t >= 10.0 -> 3.0
+    let pc = PiecewiseConstant::new(vec![1.0, 5.0, 10.0], vec![0.0, 1.0, 2.0, 3.0]);
+
+    pretty_assert_abs_diff_eq!(pc.eval(-1.0), 0.0, epsilon = 1e-9);
+    pretty_assert_abs_diff_eq!(pc.eval(0.5), 0.0, epsilon = 1e-9);
+    pretty_assert_abs_diff_eq!(pc.eval(1.0), 1.0, epsilon = 1e-9);
+    pretty_assert_abs_diff_eq!(pc.eval(3.0), 1.0, epsilon = 1e-9);
+    pretty_assert_abs_diff_eq!(pc.eval(5.0), 2.0, epsilon = 1e-9);
+    pretty_assert_abs_diff_eq!(pc.eval(7.5), 2.0, epsilon = 1e-9);
+    pretty_assert_abs_diff_eq!(pc.eval(10.0), 3.0, epsilon = 1e-9);
+    pretty_assert_abs_diff_eq!(pc.eval(100.0), 3.0, epsilon = 1e-9);
+  }
+
+  #[test]
+  fn test_piecewise_constant_eval_many() {
+    let pc = PiecewiseConstant::new(vec![1.0, 5.0], vec![0.0, 1.0, 2.0]);
+    let ts = Array1::from_vec(vec![0.0, 1.0, 3.0, 5.0, 10.0]);
+    let result = pc.eval_many(&ts);
+    pretty_assert_abs_diff_eq!(result[0], 0.0, epsilon = 1e-9);
+    pretty_assert_abs_diff_eq!(result[1], 1.0, epsilon = 1e-9);
+    pretty_assert_abs_diff_eq!(result[2], 1.0, epsilon = 1e-9);
+    pretty_assert_abs_diff_eq!(result[3], 2.0, epsilon = 1e-9);
+    pretty_assert_abs_diff_eq!(result[4], 2.0, epsilon = 1e-9);
+  }
 
   #[test]
   fn test_lineage_count_simple_tree() -> Result<(), Report> {
@@ -78,21 +129,13 @@ mod tests {
 
     let lineage_counts = compute_lineage_count_distribution(&events)?;
 
-    let t_grid = lineage_counts.t();
-    let y_grid = lineage_counts.y();
-
-    assert_eq!(t_grid.len(), 10000);
-
-    let idx_past = t_grid.iter().position(|&t| t < -0.5).unwrap();
-    let idx_mid = t_grid.iter().position(|&t| t > 2.0 && t < 4.0).unwrap();
-    let idx_high = t_grid.iter().position(|&t| t > 10.5).unwrap();
-
-    // Before tips (future): 0
-    pretty_assert_abs_diff_eq!(y_grid[idx_past], 0.0, epsilon = 1e-9);
-    // Between tips and root: 2
-    pretty_assert_abs_diff_eq!(y_grid[idx_mid], 2.0, epsilon = 1e-9);
-    // After root (past): 1
-    pretty_assert_abs_diff_eq!(y_grid[idx_high], 1.0, epsilon = 1e-9);
+    // Check values at specific points
+    // Before any events (t < 0.0): 0
+    pretty_assert_abs_diff_eq!(lineage_counts.eval(-1.0), 0.0, epsilon = 1e-9);
+    // After t=0 events (+2): 2
+    pretty_assert_abs_diff_eq!(lineage_counts.eval(5.0), 2.0, epsilon = 1e-9);
+    // After t=10 event (-1): 1
+    pretty_assert_abs_diff_eq!(lineage_counts.eval(15.0), 1.0, epsilon = 1e-9);
 
     Ok(())
   }
@@ -103,18 +146,10 @@ mod tests {
 
     let lineage_counts = compute_lineage_count_distribution(&events)?;
 
-    let t_grid = lineage_counts.t();
-    let y_grid = lineage_counts.y();
-
-    assert_eq!(t_grid.len(), 10000);
-
-    let idx_before = t_grid.iter().position(|&t| (4.0..5.0).contains(&t)).unwrap();
-    let idx_after = t_grid.iter().position(|&t| t >= 6.0).unwrap();
-
-    // Before event (present side): 0
-    pretty_assert_abs_diff_eq!(y_grid[idx_before], 0.0, epsilon = 1e-9);
-    // After event (past side): 2
-    pretty_assert_abs_diff_eq!(y_grid[idx_after], 2.0, epsilon = 1e-9);
+    // Before event (t < 5.0): 0
+    pretty_assert_abs_diff_eq!(lineage_counts.eval(4.0), 0.0, epsilon = 1e-9);
+    // After event (t >= 5.0): 2
+    pretty_assert_abs_diff_eq!(lineage_counts.eval(6.0), 2.0, epsilon = 1e-9);
 
     Ok(())
   }
@@ -131,17 +166,11 @@ mod tests {
 
     let lineage_counts = compute_lineage_count_distribution(&events)?;
 
-    let t_grid = lineage_counts.t();
-    let y_grid = lineage_counts.y();
-
-    let idx_before = t_grid.iter().position(|&t| t > 4.0 && t < 4.9).unwrap();
-    let idx_after = t_grid.iter().position(|&t| t > 5.1 && t < 6.0).unwrap();
-
     // Net delta +1 at 5.0
     // Before 5.0: 0
-    pretty_assert_abs_diff_eq!(y_grid[idx_before], 0.0, epsilon = 1e-9);
+    pretty_assert_abs_diff_eq!(lineage_counts.eval(4.5), 0.0, epsilon = 1e-9);
     // After 5.0: 1
-    pretty_assert_abs_diff_eq!(y_grid[idx_after], 1.0, epsilon = 1e-9);
+    pretty_assert_abs_diff_eq!(lineage_counts.eval(5.5), 1.0, epsilon = 1e-9);
 
     Ok(())
   }
@@ -152,32 +181,31 @@ mod tests {
 
     let lineage_counts = compute_lineage_count_distribution(&events)?;
 
-    let t_grid = lineage_counts.t();
-    let y_grid = lineage_counts.y();
-
-    let idx_mid = t_grid.iter().position(|&t| t > 6.0 && t < 9.0).unwrap();
-
     // 0.0: +3 -> 3
     // 5.0: -1 -> 2
     // 10.0: +1 -> 3
-    // Mid (6..9): 2
-    pretty_assert_abs_diff_eq!(y_grid[idx_mid], 2.0, epsilon = 1e-9);
+    // Before first event: 0
+    pretty_assert_abs_diff_eq!(lineage_counts.eval(-1.0), 0.0, epsilon = 1e-9);
+    // After 0.0, before 5.0: 3
+    pretty_assert_abs_diff_eq!(lineage_counts.eval(2.5), 3.0, epsilon = 1e-9);
+    // After 5.0, before 10.0: 2
+    pretty_assert_abs_diff_eq!(lineage_counts.eval(7.5), 2.0, epsilon = 1e-9);
+    // After 10.0: 3
+    pretty_assert_abs_diff_eq!(lineage_counts.eval(15.0), 3.0, epsilon = 1e-9);
 
     Ok(())
   }
 
   #[test]
-  fn test_lineage_count_margin_bounds() -> Result<(), Report> {
+  fn test_lineage_count_breakpoints() -> Result<(), Report> {
     let events = vec![(10.0, 1), (20.0, -1)];
 
     let lineage_counts = compute_lineage_count_distribution(&events)?;
 
-    let t_grid = lineage_counts.t();
-
-    let expected_margin = 1.0;
-
-    assert!(t_grid[0] <= 10.0 - expected_margin + 0.1);
-    assert!(t_grid[t_grid.len() - 1] >= 20.0 + expected_margin - 0.1);
+    let breakpoints = lineage_counts.breakpoints();
+    assert_eq!(breakpoints.len(), 2);
+    pretty_assert_abs_diff_eq!(breakpoints[0], 10.0, epsilon = 1e-9);
+    pretty_assert_abs_diff_eq!(breakpoints[1], 20.0, epsilon = 1e-9);
 
     Ok(())
   }
@@ -188,16 +216,17 @@ mod tests {
 
     let lineage_counts = compute_lineage_count_distribution(&events)?;
 
-    let t_grid = lineage_counts.t();
-    let y_grid = lineage_counts.y();
-
-    let idx_mid = t_grid.iter().position(|&t| t > 6.0 && t < 9.0).unwrap();
-
     // 0.0: +5 -> 5
     // 5.0: -1 -> 4
     // 10.0: -1 -> 3
-    // Mid (6..9): 4
-    pretty_assert_abs_diff_eq!(y_grid[idx_mid], 4.0, epsilon = 1e-9);
+    // Before first event: 0
+    pretty_assert_abs_diff_eq!(lineage_counts.eval(-1.0), 0.0, epsilon = 1e-9);
+    // After 0.0, before 5.0: 5
+    pretty_assert_abs_diff_eq!(lineage_counts.eval(2.5), 5.0, epsilon = 1e-9);
+    // After 5.0, before 10.0: 4
+    pretty_assert_abs_diff_eq!(lineage_counts.eval(7.5), 4.0, epsilon = 1e-9);
+    // After 10.0: 3
+    pretty_assert_abs_diff_eq!(lineage_counts.eval(15.0), 3.0, epsilon = 1e-9);
 
     Ok(())
   }

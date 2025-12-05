@@ -1,4 +1,5 @@
 use crate::commands::timetree::coalescent::integration::compute_merger_rates;
+use crate::commands::timetree::coalescent::lineage_dynamics::PiecewiseConstant;
 use crate::distribution::distribution::Distribution;
 use crate::distribution::distribution_map::distribution_map;
 use crate::distribution::distribution_resample::distribution_resample;
@@ -25,7 +26,7 @@ pub fn compute_node_contributions(
   graph: &GraphAncestral,
   integral_merger_rate: &Distribution,
   tc_dist: &Distribution,
-  lineage_counts: &Distribution,
+  lineage_counts: &PiecewiseConstant,
   present_time: f64,
 ) -> Result<IndexMap<GraphNodeKey, Arc<Distribution>>, Report> {
   let mut contributions = IndexMap::new();
@@ -56,7 +57,7 @@ fn compute_node_contribution_single(
   node: &GraphNodeForward<NodeAncestral, EdgeAncestral, ()>,
   integral_merger_rate: &Distribution,
   tc_dist: &Distribution,
-  lineage_counts: &Distribution,
+  lineage_counts: &PiecewiseConstant,
   present_time: f64,
 ) -> Result<Distribution, Report> {
   // Get node's time distribution domain (calendar time coordinates)
@@ -118,7 +119,7 @@ fn compute_node_contribution_single(
     let multiplicity = n_children - 1.0;
 
     // Compute λ(t) = k(t)·(k(t)-1)/(2·Tc(t)) at node time points
-    let k_vals = lineage_counts.eval_many(&tbp_points_sorted)?;
+    let k_vals = lineage_counts.eval_many(&tbp_points_sorted);
     let tc_vals = tc_dist.eval_many(&tbp_points_sorted)?;
     let (_, total_rate) = compute_merger_rates(&k_vals, &tc_vals);
 
