@@ -1,60 +1,17 @@
+use crate::commands::timetree::coalescent::piecewise_constant_fn::PiecewiseConstantFn;
 use eyre::Report;
+use itertools::Itertools;
 use ndarray::Array1;
 use ordered_float::OrderedFloat;
 use std::collections::BTreeMap;
 use treetime_utils::make_error;
-
-/// Piecewise constant function represented by breakpoints and values.
-///
-/// For n breakpoints, there are n+1 value regions:
-/// - values[0] for t < breakpoints[0]
-/// - values[i] for breakpoints[i-1] <= t < breakpoints[i]  (1 <= i < n)
-/// - values[n] for t >= breakpoints[n-1]
-///
-/// Breakpoints must be sorted in ascending order.
-#[derive(Debug, Clone)]
-pub struct PiecewiseConstant {
-  breakpoints: Vec<f64>,
-  values: Vec<f64>,
-}
-
-impl PiecewiseConstant {
-  /// Create from breakpoints and values.
-  ///
-  /// # Arguments
-  /// - `breakpoints`: sorted ascending, n elements
-  /// - `values`: n+1 elements
-  pub fn new(breakpoints: Vec<f64>, values: Vec<f64>) -> Self {
-    debug_assert!(breakpoints.len() + 1 == values.len());
-    debug_assert!(breakpoints
-      .windows(2)
-      .all(|w| matches!(w, [a, b] if a < b)));
-    Self { breakpoints, values }
-  }
-
-  /// Get breakpoint times (where function changes value).
-  pub fn breakpoints(&self) -> &[f64] {
-    &self.breakpoints
-  }
-
-  /// Evaluate at a single point.
-  pub fn eval(&self, t: f64) -> f64 {
-    let idx = self.breakpoints.partition_point(|&bp| bp <= t);
-    self.values[idx]
-  }
-
-  /// Evaluate at multiple points.
-  pub fn eval_many(&self, ts: &Array1<f64>) -> Array1<f64> {
-    ts.mapv(|t| self.eval(t))
-  }
-}
 
 /// Computes k(t) distribution from tree events.
 ///
 /// k(t) is the number of concurrent lineages at time t.
 /// The function is piecewise constant, stepping at each merger event.
 /// Events must be sorted by increasing time (past to present).
-pub fn compute_lineage_count_distribution(events: &[(f64, i32)]) -> Result<PiecewiseConstant, Report> {
+pub fn compute_lineage_count_distribution(events: &[(f64, i32)]) -> Result<PiecewiseConstantFn, Report> {
   if events.is_empty() {
     return make_error!("Cannot build lineage count from empty events");
   }
@@ -67,22 +24,28 @@ pub fn compute_lineage_count_distribution(events: &[(f64, i32)]) -> Result<Piece
 
   // Build breakpoints and values
   // Value before first event is 0 (no lineages yet)
-  let mut breakpoints = Vec::with_capacity(aggregated.len());
-  let mut values = Vec::with_capacity(aggregated.len() + 1);
-  values.push(0.0); // value for t < first_breakpoint
-
   let mut current_count = 0_i32;
-  for (time, delta) in aggregated {
-    breakpoints.push(time.into_inner());
-    current_count += delta;
-    values.push(current_count as f64);
-  }
+  let (breakpoints, values): (Vec<_>, Vec<_>) = aggregated
+    .into_iter()
+    .map(|(time, delta)| {
+      current_count += delta;
+      (time.into_inner(), current_count as f64)
+    })
+    .unzip();
 
-  Ok(PiecewiseConstant::new(breakpoints, values))
+  let breakpoints = Array1::from_vec(breakpoints);
+  let values = std::iter::once(0.0)
+    .chain(values)
+    .collect_vec();
+  let values = Array1::from_vec(values);
+
+  Ok(PiecewiseConstantFn::new(breakpoints, values))
 }
 
 #[cfg(test)]
 mod tests {
+  use ndarray::array;
+
   use super::*;
   use crate::pretty_assert_abs_diff_eq;
 
@@ -94,7 +57,7 @@ mod tests {
     // 1.0 <= t < 5.0 -> 1.0
     // 5.0 <= t < 10.0 -> 2.0
     // t >= 10.0 -> 3.0
-    let pc = PiecewiseConstant::new(vec![1.0, 5.0, 10.0], vec![0.0, 1.0, 2.0, 3.0]);
+    let pc = PiecewiseConstantFn::new(array![1.0, 5.0, 10.0], array![0.0, 1.0, 2.0, 3.0]);
 
     pretty_assert_abs_diff_eq!(pc.eval(-1.0), 0.0, epsilon = 1e-9);
     pretty_assert_abs_diff_eq!(pc.eval(0.5), 0.0, epsilon = 1e-9);
@@ -108,8 +71,8 @@ mod tests {
 
   #[test]
   fn test_piecewise_constant_eval_many() {
-    let pc = PiecewiseConstant::new(vec![1.0, 5.0], vec![0.0, 1.0, 2.0]);
-    let ts = Array1::from_vec(vec![0.0, 1.0, 3.0, 5.0, 10.0]);
+    let pc = PiecewiseConstantFn::new(array![1.0, 5.0], array![0.0, 1.0, 2.0]);
+    let ts = array![0.0, 1.0, 3.0, 5.0, 10.0];
     let result = pc.eval_many(&ts);
     pretty_assert_abs_diff_eq!(result[0], 0.0, epsilon = 1e-9);
     pretty_assert_abs_diff_eq!(result[1], 1.0, epsilon = 1e-9);

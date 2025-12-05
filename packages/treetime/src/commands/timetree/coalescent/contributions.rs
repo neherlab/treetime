@@ -1,5 +1,5 @@
 use crate::commands::timetree::coalescent::integration::compute_merger_rates;
-use crate::commands::timetree::coalescent::lineage_dynamics::PiecewiseConstant;
+use crate::commands::timetree::coalescent::piecewise_constant_fn::PiecewiseConstantFn;
 use crate::distribution::distribution::Distribution;
 use crate::distribution::distribution_map::distribution_map;
 use crate::distribution::distribution_resample::distribution_resample;
@@ -26,7 +26,7 @@ pub fn compute_node_contributions(
   graph: &GraphAncestral,
   integral_merger_rate: &Distribution,
   tc_dist: &Distribution,
-  lineage_counts: &PiecewiseConstant,
+  lineage_counts: &PiecewiseConstantFn,
   present_time: f64,
 ) -> Result<IndexMap<GraphNodeKey, Arc<Distribution>>, Report> {
   let mut contributions = IndexMap::new();
@@ -57,7 +57,7 @@ fn compute_node_contribution_single(
   node: &GraphNodeForward<NodeAncestral, EdgeAncestral, ()>,
   integral_merger_rate: &Distribution,
   tc_dist: &Distribution,
-  lineage_counts: &PiecewiseConstant,
+  lineage_counts: &PiecewiseConstantFn,
   present_time: f64,
 ) -> Result<Distribution, Report> {
   // Get node's time distribution domain (calendar time coordinates)

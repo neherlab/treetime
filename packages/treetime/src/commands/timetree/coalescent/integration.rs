@@ -1,4 +1,4 @@
-use crate::commands::timetree::coalescent::lineage_dynamics::PiecewiseConstant;
+use crate::commands::timetree::coalescent::piecewise_constant_fn::PiecewiseConstantFn;
 use crate::distribution::distribution::Distribution;
 use eyre::Report;
 use ndarray::Array1;
@@ -42,7 +42,7 @@ pub fn compute_merger_rates(k: &Array1<f64>, tc: &Array1<f64>) -> (Array1<f64>, 
 /// (TBP = 0) and increases going into the past.
 pub fn compute_integral_merger_rate(
   tc_dist: &Distribution,
-  lineage_counts: &PiecewiseConstant,
+  lineage_counts: &PiecewiseConstantFn,
 ) -> Result<Distribution, Report> {
   let breakpoints = lineage_counts.breakpoints();
   if breakpoints.len() < 2 {
@@ -150,9 +150,9 @@ mod tests {
 
   #[test]
   fn test_compute_integral_merger_rate_constant_tc() -> Result<(), Report> {
-    // Create PiecewiseConstant with k=2.0 from t=0 to t=10
+    // Create PiecewiseConstantFn with k=2.0 from t=0 to t=10
     // Breakpoints: [0.0, 10.0], values: [0.0, 2.0, 2.0]
-    let lineage_counts = PiecewiseConstant::new(vec![0.0, 10.0], vec![0.0, 2.0, 2.0]);
+    let lineage_counts = PiecewiseConstantFn::new(array![0.0, 10.0], array![0.0, 2.0, 2.0]);
 
     let tc_dist = Distribution::constant(0.01);
 
@@ -171,7 +171,7 @@ mod tests {
   fn test_compute_integral_merger_rate_multiple_segments() -> Result<(), Report> {
     // Three segments: k=1 from 0-5, k=5 from 5-10
     // Breakpoints: [0.0, 5.0, 10.0], values: [0.0, 1.0, 5.0, 5.0]
-    let lineage_counts = PiecewiseConstant::new(vec![0.0, 5.0, 10.0], vec![0.0, 1.0, 5.0, 5.0]);
+    let lineage_counts = PiecewiseConstantFn::new(array![0.0, 5.0, 10.0], array![0.0, 1.0, 5.0, 5.0]);
 
     let tc_dist = Distribution::constant(0.01);
 
@@ -190,7 +190,7 @@ mod tests {
 
   #[test]
   fn test_compute_integral_merger_rate_insufficient_points() {
-    let lineage_counts = PiecewiseConstant::new(vec![5.0], vec![0.0, 2.0]);
+    let lineage_counts = PiecewiseConstantFn::new(array![5.0], array![0.0, 2.0]);
 
     let tc_dist = Distribution::constant(0.01);
 
@@ -203,7 +203,7 @@ mod tests {
   #[test]
   fn test_compute_integral_merger_rate_varying_tc() -> Result<(), Report> {
     // k=3 constant from 0-10
-    let lineage_counts = PiecewiseConstant::new(vec![0.0, 10.0], vec![0.0, 3.0, 3.0]);
+    let lineage_counts = PiecewiseConstantFn::new(array![0.0, 10.0], array![0.0, 3.0, 3.0]);
 
     // Tc varies linearly from 0.01 to 0.05
     let t_vals = Array1::linspace(0.0, 10.0, 100);
