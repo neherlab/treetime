@@ -8,7 +8,23 @@ use treetime_utils::make_error;
 /// κ(t) = (k(t)-1)/(2*Tc(t)) - rate for one branch to merge with any other
 /// λ(t) = k(t)*(k(t)-1)/(2*Tc(t)) - rate for any branch to merge with any other
 ///
-/// k is clamped to ensure positive rates even in edge cases.
+/// # Clamping Logic
+///
+/// The lineage count is clamped: `k_clamped = max(0.5, k-1)` to ensure positive
+/// merger rates even in edge cases. This matches Python v0 behavior.
+///
+/// Why 0.5? At tree boundaries:
+/// - At TBP=0 (present), k=0 before first sample event → k-1=-1 → clamped to 0.5
+/// - With k=1 (single lineage), k-1=0 → clamped to 0.5 (prevents zero rate)
+///
+/// The value 0.5 is somewhat arbitrary but ensures:
+/// - Rates are always positive (required for valid probability distributions)
+/// - The formulas remain numerically stable
+/// - Boundary regions contribute minimally to the overall likelihood
+///
+/// Note: The clamped regions should ideally never be evaluated if the tree is
+/// well-formed, as per Python v0 comment: "in these regions, the function
+/// should only be called if the tree changes."
 pub fn compute_merger_rates(k: &Array1<f64>, tc: &Array1<f64>) -> (Array1<f64>, Array1<f64>) {
   let k_clamped = k.mapv(|x| f64::max(0.5, x - 1.0));
   let branch_rate = 0.5 * &k_clamped / tc;
@@ -20,6 +36,9 @@ pub fn compute_merger_rates(k: &Array1<f64>, tc: &Array1<f64>) -> (Array1<f64>, 
 ///
 /// This integral represents the expected number of merger events experienced by a branch.
 /// Uses the exact time points from lineage_counts where the function has discontinuities.
+///
+/// The integral is normalized so that I(0) = 0, meaning the integral starts at the present
+/// (TBP = 0) and increases going into the past.
 pub fn compute_integral_merger_rate(
   tc_dist: &Distribution,
   lineage_counts: &Distribution,
@@ -42,7 +61,39 @@ pub fn compute_integral_merger_rate(
     integral_values[i] = integral_values[i - 1] + dt * avg_rate;
   }
 
-  Distribution::function(tvals.to_owned(), integral_values)
+  // Normalize so I(0) = 0: find value at t=0 and subtract
+  let t_min = tvals[0];
+  let t_max = tvals[tvals.len() - 1];
+  let i_at_zero = if t_min <= 0.0 && t_max >= 0.0 {
+    // Interpolate to find value at t=0
+    // Find the index just before and after t=0
+    let idx = tvals.iter().position(|&t| t >= 0.0).unwrap_or(0);
+    if idx == 0 || tvals[idx] == 0.0 {
+      integral_values[idx]
+    } else {
+      // Linear interpolation between idx-1 and idx
+      let t0 = tvals[idx - 1];
+      let t1 = tvals[idx];
+      let v0 = integral_values[idx - 1];
+      let v1 = integral_values[idx];
+      let alpha = (0.0 - t0) / (t1 - t0);
+      v0 + alpha * (v1 - v0)
+    }
+  } else if t_min > 0.0 {
+    // All times are positive (in the past), extrapolate backwards
+    0.0
+  } else {
+    // All times are negative (in the future), this shouldn't happen
+    integral_values[0]
+  };
+
+  integral_values -= i_at_zero;
+
+  let func = crate::distribution::distribution_function::DistributionFunction::from_range_values(
+    (t_min, t_max),
+    integral_values,
+  )?;
+  Ok(Distribution::Function(func))
 }
 
 #[cfg(test)]

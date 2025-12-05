@@ -23,11 +23,11 @@ pub fn compute_lineage_count_distribution(events: &[(f64, i32)]) -> Result<Distr
 
   let mut cumulative_events: Vec<(f64, i32)> = Vec::with_capacity(aggregated_events.len());
   let mut current_count = 0_i32;
-  for (time, delta) in aggregated_events.into_iter().rev() {
-    current_count += delta;
+  // Iterate from present (t=0) to past (t>0)
+  for (time, delta) in aggregated_events {
     cumulative_events.push((time.into_inner(), current_count));
+    current_count += delta;
   }
-  cumulative_events.reverse();
 
   let data_t_min = cumulative_events.first().unwrap().0;
   let data_t_max = cumulative_events.last().unwrap().0;
@@ -52,6 +52,11 @@ pub fn compute_lineage_count_distribution(events: &[(f64, i32)]) -> Result<Distr
     prev_grid_idx = next_grid_idx;
   }
 
+  // Fill the remaining part (past the last event) with the final count
+  if prev_grid_idx < n_points {
+    y_vals.slice_mut(s![prev_grid_idx..n_points]).fill(current_count as f64);
+  }
+
   let func = DistributionFunction::from_range_values((t_min, t_max), y_vals)?;
   Ok(Distribution::Function(func))
 }
@@ -59,11 +64,17 @@ pub fn compute_lineage_count_distribution(events: &[(f64, i32)]) -> Result<Distr
 #[cfg(test)]
 mod tests {
   use super::*;
+  use crate::pretty_assert_abs_diff_eq;
   use pretty_assertions::assert_eq;
 
   #[test]
   fn test_lineage_count_simple_tree() -> Result<(), Report> {
-    let events = vec![(0.0, 1), (5.0, -1), (10.0, 1), (10.0, 1)];
+    // Simple tree: 2 tips at 0, root at 10.
+    // Events:
+    // 0.0: Tip 1 (+1)
+    // 0.0: Tip 2 (+1)
+    // 10.0: Root (-1) (merger of 2 -> 1)
+    let events = vec![(0.0, 1), (0.0, 1), (10.0, -1)];
 
     let lineage_counts = compute_lineage_count_distribution(&events)?;
 
@@ -74,13 +85,14 @@ mod tests {
 
     let idx_past = t_grid.iter().position(|&t| t < -0.5).unwrap();
     let idx_mid = t_grid.iter().position(|&t| t > 2.0 && t < 4.0).unwrap();
-    let idx_high = t_grid.iter().position(|&t| t > 7.0 && t < 9.0).unwrap();
-    let idx_future = t_grid.iter().position(|&t| t > 10.5).unwrap();
+    let idx_high = t_grid.iter().position(|&t| t > 10.5).unwrap();
 
-    assert_eq!(y_grid[idx_past], 2.0);
-    assert_eq!(y_grid[idx_mid], 1.0);
-    assert_eq!(y_grid[idx_high], 2.0);
-    assert_eq!(y_grid[idx_future], 0.0);
+    // Before tips (future): 0
+    pretty_assert_abs_diff_eq!(y_grid[idx_past], 0.0, epsilon = 1e-9);
+    // Between tips and root: 2
+    pretty_assert_abs_diff_eq!(y_grid[idx_mid], 2.0, epsilon = 1e-9);
+    // After root (past): 1
+    pretty_assert_abs_diff_eq!(y_grid[idx_high], 1.0, epsilon = 1e-9);
 
     Ok(())
   }
@@ -96,11 +108,13 @@ mod tests {
 
     assert_eq!(t_grid.len(), 10000);
 
-    let idx_before = t_grid.iter().position(|&t| t >= 4.0).unwrap();
+    let idx_before = t_grid.iter().position(|&t| (4.0..5.0).contains(&t)).unwrap();
     let idx_after = t_grid.iter().position(|&t| t >= 6.0).unwrap();
 
-    assert_eq!(y_grid[idx_before], 2.0);
-    assert_eq!(y_grid[idx_after], 0.0);
+    // Before event (present side): 0
+    pretty_assert_abs_diff_eq!(y_grid[idx_before], 0.0, epsilon = 1e-9);
+    // After event (past side): 2
+    pretty_assert_abs_diff_eq!(y_grid[idx_after], 2.0, epsilon = 1e-9);
 
     Ok(())
   }
@@ -123,8 +137,11 @@ mod tests {
     let idx_before = t_grid.iter().position(|&t| t > 4.0 && t < 4.9).unwrap();
     let idx_after = t_grid.iter().position(|&t| t > 5.1 && t < 6.0).unwrap();
 
-    assert_eq!(y_grid[idx_before], 1.0);
-    assert_eq!(y_grid[idx_after], 0.0);
+    // Net delta +1 at 5.0
+    // Before 5.0: 0
+    pretty_assert_abs_diff_eq!(y_grid[idx_before], 0.0, epsilon = 1e-9);
+    // After 5.0: 1
+    pretty_assert_abs_diff_eq!(y_grid[idx_after], 1.0, epsilon = 1e-9);
 
     Ok(())
   }
@@ -140,7 +157,11 @@ mod tests {
 
     let idx_mid = t_grid.iter().position(|&t| t > 6.0 && t < 9.0).unwrap();
 
-    assert_eq!(y_grid[idx_mid], 1.0);
+    // 0.0: +3 -> 3
+    // 5.0: -1 -> 2
+    // 10.0: +1 -> 3
+    // Mid (6..9): 2
+    pretty_assert_abs_diff_eq!(y_grid[idx_mid], 2.0, epsilon = 1e-9);
 
     Ok(())
   }
@@ -172,7 +193,11 @@ mod tests {
 
     let idx_mid = t_grid.iter().position(|&t| t > 6.0 && t < 9.0).unwrap();
 
-    assert_eq!(y_grid[idx_mid], -1.0);
+    // 0.0: +5 -> 5
+    // 5.0: -1 -> 4
+    // 10.0: -1 -> 3
+    // Mid (6..9): 4
+    pretty_assert_abs_diff_eq!(y_grid[idx_mid], 4.0, epsilon = 1e-9);
 
     Ok(())
   }

@@ -34,6 +34,26 @@ macro_rules! pretty_assert_ulps_eq {
   }};
 }
 
+#[macro_export]
+macro_rules! pretty_assert_abs_diff_eq {
+  ($lhs:expr, $rhs:expr $(, $opt:ident = $val:expr)*) => {{
+    if ! approx::abs_diff_eq!($lhs, $rhs, $($opt = $val,)*) {
+      pretty_assertions::assert_eq!(
+        $crate::assert::format_array(format!("{:#?}", $lhs)),
+        $crate::assert::format_array(format!("{:#?}", $rhs)),
+      );
+    }
+  }};
+  ($lhs:expr, $rhs:expr $(, $opt:ident = $val:expr)*,) => {{
+    if ! approx::abs_diff_eq!($lhs, $rhs, $($opt = $val,)*) {
+      pretty_assertions::assert_eq!(
+        $crate::assert::format_array(format!("{:#?}", $lhs)),
+        $crate::assert::format_array(format!("{:#?}", $rhs)),
+      );
+    }
+  }};
+}
+
 pub fn format_newlines(s: impl AsRef<str>) -> String {
   s.as_ref().replace('\n', "\u{0085}")
 }
