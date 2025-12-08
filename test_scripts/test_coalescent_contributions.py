@@ -123,11 +123,18 @@ def generate_snapshot(
     for node in tree.find_clades():
         if node.time_before_present is None or node.bad_branch:
             continue
-        if node.is_terminal():
-            continue
         name = node.name
-        contrib = coal.node_contribution(node, tbp_grid)
-        probs = np.exp(-contrib.y).tolist()
+        if node.is_terminal():
+            # Leaf nodes get survival probability contribution: exp(-I(t))
+            # Python stores -I(t) in neg-log space, so contrib is -I(t)
+            i_t = coal.integral_merger_rate(tbp_grid)
+            # Clamp I(t) to avoid overflow: exp(I(t)) overflows for I(t) > 700
+            i_t_clamped = np.minimum(i_t, 700)
+            probs = np.exp(i_t_clamped).tolist()  # = exp(I(t))
+        else:
+            # Internal nodes get merger probability contribution
+            contrib = coal.node_contribution(node, tbp_grid)
+            probs = np.exp(-contrib.y).tolist()
         node_contributions[name] = probs
 
     result = {
@@ -154,7 +161,7 @@ def generate_snapshot(
         json.dump(result, f, indent=2)
 
     print(f"Generated: {output_path}")
-    print(f"  Internal nodes: {len(node_contributions)}")
+    print(f"  Nodes with contributions: {len(node_contributions)}")
 
 
 def main():

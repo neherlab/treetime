@@ -38,14 +38,20 @@ use std::sync::Arc;
 ///
 /// # Kingman Coalescent Probability Density
 ///
-/// For internal nodes with m children (m≥2):
+/// The coalescent contributions differ between leaf and internal nodes:
 ///
-/// - Internal nodes: P(t) ∝ λ(t)^(m-1) · exp(-I(t))
+/// - Leaf nodes: exp(I(t))
+///   Represents survival probability that the lineage existed without coalescing
+///   from present to sampling time. Important for:
+///   - Uncertain/range dates: helps infer actual sampling time
+///   - Precise dates: encodes survival cost that propagates to ancestors
+///
+/// - Internal nodes with m children (m≥2): λ(t)^(m-1) · exp(-I(t))
 ///   - λ(t)^(m-1): probability density of m-way merger at time t
 ///   - exp(-I(t)): probability of no merger before time t
 ///
-/// Leaf nodes do not receive coalescent contributions as they represent observed
-/// samples at known times, not coalescence events.
+/// Note: The sign convention follows Python v0 which stores -I(t) in neg-log space,
+/// converting to exp(I(t)) for leaves in probability space.
 ///
 /// # Returns
 ///
@@ -167,10 +173,12 @@ mod tests {
     let actuals = compute_coalescent_contributions(&graph, &tc)?;
     let actuals = convert_map_keys_to_names(&graph, &actuals);
 
-    assert_eq!(
-      snapshot.node_contributions.keys().collect::<Vec<_>>(),
-      actuals.keys().collect::<Vec<_>>()
-    );
+    let mut expected_keys: Vec<_> = snapshot.node_contributions.keys().collect();
+    expected_keys.sort();
+    let mut actual_keys: Vec<_> = actuals.keys().collect();
+    actual_keys.sort();
+
+    assert_eq!(expected_keys, actual_keys);
 
     let t_grid = Grid::from_range_n_points(
       snapshot.tbp_grid.start,
@@ -188,7 +196,7 @@ mod tests {
 
     for (node_name, expected) in &snapshot.node_contributions {
       let actual = &actuals[node_name];
-      pretty_assert_ulps_eq!(expected, actual, epsilon = 1e-5, "Node: {node_name}");
+      pretty_assert_ulps_eq!(expected, actual, max_ulps = 100, "Node: {node_name}");
     }
 
     Ok(())
