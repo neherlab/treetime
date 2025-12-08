@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use ndarray::Array1;
 
 /// Piecewise constant function represented by breakpoints and values.
@@ -22,11 +23,13 @@ impl PiecewiseConstantFn {
   /// - `values`: n+1 elements
   pub fn new(breakpoints: Array1<f64>, values: Array1<f64>) -> Self {
     debug_assert!(breakpoints.len() + 1 == values.len());
-    debug_assert!(breakpoints
-      .as_slice()
-      .unwrap()
-      .windows(2)
-      .all(|w| matches!(w, [a, b] if a < b)));
+    debug_assert!(
+      breakpoints
+        .as_slice()
+        .unwrap()
+        .windows(2)
+        .all(|w| matches!(w, [a, b] if a < b))
+    );
     Self { breakpoints, values }
   }
 

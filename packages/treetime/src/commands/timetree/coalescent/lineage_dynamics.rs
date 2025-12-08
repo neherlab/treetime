@@ -34,9 +34,7 @@ pub fn compute_lineage_count_distribution(events: &[(f64, i32)]) -> Result<Piece
     .unzip();
 
   let breakpoints = Array1::from_vec(breakpoints);
-  let values = std::iter::once(0.0)
-    .chain(values)
-    .collect_vec();
+  let values = std::iter::once(0.0).chain(values).collect_vec();
   let values = Array1::from_vec(values);
 
   Ok(PiecewiseConstantFn::new(breakpoints, values))

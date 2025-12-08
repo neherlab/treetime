@@ -84,11 +84,7 @@ fn compute_leaf_contribution_single(
     Ok(i_t_clamped.exp())
   };
 
-  Ok(Distribution::Formula(DistributionFormula::new(
-    eval_fn,
-    t_min,
-    t_max,
-  )))
+  Ok(Distribution::Formula(DistributionFormula::new(eval_fn, t_min, t_max)))
 }
 
 fn compute_node_contribution_single(
@@ -144,9 +140,5 @@ fn compute_node_contribution_single(
     Ok((-neg_log_contrib).exp())
   };
 
-  Ok(Distribution::Formula(DistributionFormula::new(
-    eval_fn,
-    t_min,
-    t_max,
-  )))
+  Ok(Distribution::Formula(DistributionFormula::new(eval_fn, t_min, t_max)))
 }

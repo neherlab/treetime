@@ -831,7 +831,13 @@ mod tests {
     let queries = Array1::linspace(-1.0, 11.0, 50);
     // Constant extrapolation: values outside [0, 10] are clamped to boundary values
     let expected: Array1<f64> = queries.mapv(|x| {
-      if x < 0.0 { 0.0 } else if x > 10.0 { 100.0 } else { x * 10.0 }
+      if x < 0.0 {
+        0.0
+      } else if x > 10.0 {
+        100.0
+      } else {
+        x * 10.0
+      }
     });
     let actual = grid_fn.interp_many(&queries)?;
     assert_abs_diff_eq!(expected, actual, epsilon = 1e-12);

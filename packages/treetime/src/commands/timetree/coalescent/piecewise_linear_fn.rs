@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use ndarray::Array1;
 
 /// Piecewise linear function represented by breakpoints and values.
@@ -29,11 +30,13 @@ impl PiecewiseLinearFn {
       values.len(),
       "breakpoints and values must have equal length"
     );
-    debug_assert!(breakpoints
-      .as_slice()
-      .unwrap()
-      .windows(2)
-      .all(|w| matches!(w, [a, b] if a < b)));
+    debug_assert!(
+      breakpoints
+        .as_slice()
+        .unwrap()
+        .windows(2)
+        .all(|w| matches!(w, [a, b] if a < b))
+    );
     Self { breakpoints, values }
   }
 
