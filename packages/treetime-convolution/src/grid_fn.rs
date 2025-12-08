@@ -294,22 +294,25 @@ impl<T: InterpElem> GridFn<T> {
     queries.iter().map(|&q| self.interp(q)).try_collect()
   }
 
-  fn extrapolate_left(&self, q: T) -> T
+  fn extrapolate_left(&self, _q: T) -> T
   where
     T: Float,
   {
-    let slope = (self.y[1] - self.y[0]) / self.grid.dx();
-    self.y[0] + slope * (q - self.grid.x_min())
+    // Use constant extrapolation: return first value
+    // This matches Python scipy.interpolate.interp1d behavior when
+    // the domain is extended with boundary values
+    self.y[0]
   }
 
-  fn extrapolate_right(&self, q: T) -> T
+  fn extrapolate_right(&self, _q: T) -> T
   where
     T: Float,
   {
+    // Use constant extrapolation: return last value
+    // This matches Python scipy.interpolate.interp1d behavior when
+    // the domain is extended with boundary values
     let n = self.grid.n_points();
-    let slope = (self.y[n - 1] - self.y[n - 2]) / self.grid.dx();
-    let x_max = self.grid.x_max();
-    self.y[n - 1] + slope * (q - x_max)
+    self.y[n - 1]
   }
 
   fn interpolate_at(&self, q: T, idx: usize) -> T
@@ -555,11 +558,12 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case((0.0, 1.0), array![0.0, 10.0], -1.0, -10.0)]
-  #[case((0.0, 1.0), array![0.0, 10.0], -0.5, -5.0)]
-  #[case((0.0, 1.0), array![0.0, 10.0], -2.0, -20.0)]
-  #[case((1.0, 2.0), array![5.0, 15.0], 0.0, -5.0)]
-  #[case((1.0, 3.0), array![10.0, 20.0, 30.0], 0.0, 0.0)]
+  // Constant extrapolation: return first y value
+  #[case((0.0, 1.0), array![0.0, 10.0], -1.0, 0.0)]
+  #[case((0.0, 1.0), array![0.0, 10.0], -0.5, 0.0)]
+  #[case((0.0, 1.0), array![0.0, 10.0], -2.0, 0.0)]
+  #[case((1.0, 2.0), array![5.0, 15.0], 0.0, 5.0)]
+  #[case((1.0, 3.0), array![10.0, 20.0, 30.0], 0.0, 10.0)]
   #[trace]
   fn test_gridfn_interp_left_extrapolation(
     #[case] x_range: (f64, f64),
@@ -575,11 +579,12 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case((0.0, 1.0), array![0.0, 10.0], 2.0, 20.0)]
-  #[case((0.0, 1.0), array![0.0, 10.0], 1.5, 15.0)]
-  #[case((0.0, 1.0), array![0.0, 10.0], 3.0, 30.0)]
-  #[case((1.0, 2.0), array![5.0, 15.0], 3.0, 25.0)]
-  #[case((0.0, 2.0), array![10.0, 20.0, 30.0], 3.0, 40.0)]
+  // Constant extrapolation: return last y value
+  #[case((0.0, 1.0), array![0.0, 10.0], 2.0, 10.0)]
+  #[case((0.0, 1.0), array![0.0, 10.0], 1.5, 10.0)]
+  #[case((0.0, 1.0), array![0.0, 10.0], 3.0, 10.0)]
+  #[case((1.0, 2.0), array![5.0, 15.0], 3.0, 15.0)]
+  #[case((0.0, 2.0), array![10.0, 20.0, 30.0], 3.0, 30.0)]
   #[trace]
   fn test_gridfn_interp_right_extrapolation(
     #[case] x_range: (f64, f64),
@@ -824,7 +829,10 @@ mod tests {
   fn test_gridfn_interp_many_with_extrapolation() -> Result<(), Report> {
     let grid_fn = GridFn::from_n_points((0.0, 10.0), 100, |v| v * 10.0)?;
     let queries = Array1::linspace(-1.0, 11.0, 50);
-    let expected = Array1::linspace(-10.0, 110.0, 50);
+    // Constant extrapolation: values outside [0, 10] are clamped to boundary values
+    let expected: Array1<f64> = queries.mapv(|x| {
+      if x < 0.0 { 0.0 } else if x > 10.0 { 100.0 } else { x * 10.0 }
+    });
     let actual = grid_fn.interp_many(&queries)?;
     assert_abs_diff_eq!(expected, actual, epsilon = 1e-12);
     Ok(())
@@ -835,8 +843,9 @@ mod tests {
     let grid_fn = GridFn::from_range_values((-10.0, 10.0), array![100.0, 25.0, 0.0, 25.0, 100.0])?;
     assert_ulps_eq!(grid_fn.interp(-7.5)?, 62.5);
     assert_ulps_eq!(grid_fn.interp(2.5)?, 12.5);
-    assert_ulps_eq!(grid_fn.interp(-15.0)?, 175.0);
-    assert_ulps_eq!(grid_fn.interp(15.0)?, 175.0);
+    // Constant extrapolation: clamp to boundary values
+    assert_ulps_eq!(grid_fn.interp(-15.0)?, 100.0);
+    assert_ulps_eq!(grid_fn.interp(15.0)?, 100.0);
     Ok(())
   }
 
@@ -908,8 +917,9 @@ mod tests {
   #[test]
   fn test_gridfn_interp_extrapolation_far_from_bounds() -> Result<(), Report> {
     let grid_fn = GridFn::from_range_values((0.0, 1.0), array![0.0, 10.0])?;
-    assert_ulps_eq!(grid_fn.interp(-100.0)?, -1000.0);
-    assert_ulps_eq!(grid_fn.interp(100.0)?, 1000.0);
+    // Constant extrapolation: return boundary values
+    assert_ulps_eq!(grid_fn.interp(-100.0)?, 0.0);
+    assert_ulps_eq!(grid_fn.interp(100.0)?, 10.0);
     Ok(())
   }
 
@@ -1143,7 +1153,8 @@ mod tests {
     assert_ulps_eq!(resampled.x_max(), 3.0);
     assert_ulps_eq!(resampled.dx(), 0.5);
     assert_eq!(resampled.n_points(), 5);
-    assert_abs_diff_eq!(resampled.y(), &array![10.0, 15.0, 20.0, 25.0, 30.0], epsilon = 1e-10);
+    // Constant extrapolation: x=3.0 > 2.0, so return last value (20.0)
+    assert_abs_diff_eq!(resampled.y(), &array![10.0, 15.0, 20.0, 20.0, 20.0], epsilon = 1e-10);
     Ok(())
   }
 
@@ -1154,9 +1165,10 @@ mod tests {
     assert_ulps_eq!(resampled.x_min(), -1.0);
     assert_ulps_eq!(resampled.x_max(), 2.0);
     assert_eq!(resampled.n_points(), 7);
+    // Constant extrapolation: clamp to boundary values
     assert_abs_diff_eq!(
       resampled.y(),
-      &array![-10.0, -5.0, 0.0, 5.0, 10.0, 15.0, 20.0],
+      &array![0.0, 0.0, 0.0, 5.0, 10.0, 10.0, 10.0],
       epsilon = 1e-10
     );
     Ok(())
@@ -1202,7 +1214,8 @@ mod tests {
     assert_ulps_eq!(resampled.x_min(), 1.0);
     assert_ulps_eq!(resampled.x_max(), 3.0);
     assert_eq!(resampled.n_points(), 5);
-    assert_abs_diff_eq!(resampled.y(), &array![10.0, 15.0, 20.0, 25.0, 30.0], epsilon = 1e-10);
+    // Constant extrapolation: x=3.0 > 2.0, so clamp to last value (20.0)
+    assert_abs_diff_eq!(resampled.y(), &array![10.0, 15.0, 20.0, 20.0, 20.0], epsilon = 1e-10);
     Ok(())
   }
 
@@ -1213,9 +1226,10 @@ mod tests {
     assert_ulps_eq!(resampled.x_min(), -1.0);
     assert_ulps_eq!(resampled.x_max(), 2.0);
     assert_eq!(resampled.n_points(), 7);
+    // Constant extrapolation: clamp to boundary values
     assert_abs_diff_eq!(
       resampled.y(),
-      &array![-10.0, -5.0, 0.0, 5.0, 10.0, 15.0, 20.0],
+      &array![0.0, 0.0, 0.0, 5.0, 10.0, 10.0, 10.0],
       epsilon = 1e-10
     );
     Ok(())
