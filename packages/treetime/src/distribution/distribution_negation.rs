@@ -11,6 +11,7 @@ pub fn distribution_negation(dist: &Distribution) -> Distribution {
     Distribution::Point(p) => negate_point(p),
     Distribution::Range(r) => negate_range(r),
     Distribution::Function(f) => negate_function(f).unwrap(),
+    Distribution::Formula(_) => panic!("Negation not implemented for Formula distributions"),
   }
 }
 
@@ -21,6 +22,7 @@ pub fn distribution_negation_inplace(dist: &mut Distribution) {
     Distribution::Point(p) => negate_point_inplace(p),
     Distribution::Range(r) => negate_range_inplace(r),
     Distribution::Function(f) => negate_function_inplace(f),
+    Distribution::Formula(_) => panic!("Negation in place not implemented for Formula distributions"),
   }
 }
 

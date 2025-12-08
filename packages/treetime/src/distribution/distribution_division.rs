@@ -32,6 +32,7 @@ pub fn distribution_division(dividend: &Distribution, divisor: &Distribution) ->
     (Distribution::Point(a), Distribution::Function(b)) => divide_point_by_function(a, b),
     (Distribution::Range(a), Distribution::Function(b)) => divide_range_by_function(a, b),
     (Distribution::Function(a), Distribution::Function(b)) => divide_function_by_function(a, b),
+    _ => panic!("Division not implemented for Formula distributions"),
   }
 }
 

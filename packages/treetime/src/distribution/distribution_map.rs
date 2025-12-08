@@ -23,6 +23,7 @@ where
       Ok(Distribution::range((range.start(), range.end()), amplitude))
     },
     Distribution::Empty => Ok(Distribution::empty()),
+    Distribution::Formula(_) => panic!("Map not implemented for Formula distributions"),
   }
 }
 

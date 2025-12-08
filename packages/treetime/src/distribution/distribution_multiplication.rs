@@ -20,6 +20,7 @@ pub fn distribution_multiplication(a: &Distribution, b: &Distribution) -> Result
       multiply_range_function(a, b)
     },
     (Distribution::Function(a), Distribution::Function(b)) => multiply_function_function(a, b),
+    _ => panic!("Multiplication not implemented for Formula distributions"),
   }
 }
 

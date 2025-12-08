@@ -32,6 +32,7 @@ pub fn distribution_convolution(a: &Distribution, b: &Distribution) -> Result<Di
     (Distribution::Function(a), Distribution::Function(b)) => {
       convolution_function_function(a, b) //
     },
+    _ => panic!("Convolution not implemented for Formula distributions"),
   }
 }
 

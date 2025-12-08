@@ -1,3 +1,4 @@
+use crate::distribution::distribution_formula::DistributionFormula;
 use crate::distribution::distribution_negation::distribution_negation_inplace;
 use crate::distribution::distribution_point::DistributionPoint;
 use crate::distribution::distribution_range::DistributionRange;
@@ -22,6 +23,7 @@ pub enum Distribution {
   Point(DistributionPoint<f64>),
   Range(DistributionRange<f64>),
   Function(DistributionFunction<f64>),
+  Formula(DistributionFormula),
 }
 
 impl Distribution {
@@ -73,6 +75,7 @@ impl Distribution {
       Self::Point(p) => Some(p.t()),
       Self::Range(r) => Some(f64::midpoint(r.start(), r.end())),
       Self::Function(f) => f.likely_time(),
+      Self::Formula(f) => Some(f.likely_time()),
     }
   }
 
@@ -82,6 +85,7 @@ impl Distribution {
       Self::Point(p) => ndarray::array![p.t()],
       Self::Range(r) => ndarray::array![r.start(), r.end()],
       Self::Function(f) => f.t().to_owned(),
+      Self::Formula(f) => ndarray::array![f.t_min(), f.t_max()],
     }
   }
 
@@ -90,6 +94,11 @@ impl Distribution {
       Self::Point(p) => ndarray::array![p.amplitude()],
       Self::Range(r) => ndarray::array![r.amplitude(), r.amplitude()],
       Self::Function(f) => f.y().clone(),
+      Self::Formula(f) => {
+        // Evaluate at endpoints as reasonable default
+        let t = ndarray::array![f.t_min(), f.t_max()];
+        f.eval_many(&t).unwrap_or_else(|_| ndarray::array![0.0, 0.0])
+      },
       Self::Empty => ndarray::array![],
     }
   }
@@ -111,6 +120,7 @@ impl Distribution {
   pub fn eval(&self, t: f64) -> Result<f64, Report> {
     match self {
       Self::Function(f) => f.interp(t),
+      Self::Formula(f) => f.eval_single(t),
       Self::Point(p) => {
         if ulps_eq!(t, p.t(), max_ulps = 10) {
           Ok(p.amplitude())
@@ -132,6 +142,7 @@ impl Distribution {
   pub fn eval_many(&self, t: &Array1<f64>) -> Result<Array1<f64>, Report> {
     match self {
       Self::Function(f) => f.interp_many(t),
+      Self::Formula(f) => f.eval_many(t),
       Self::Point(p) => {
         let results = t
           .iter()

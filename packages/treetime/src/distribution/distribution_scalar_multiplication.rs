@@ -11,6 +11,7 @@ pub fn distribution_scalar_multiplication(dist: &Distribution, scalar: f64) -> R
     Distribution::Point(p) => Ok(Distribution::point(p.t(), p.amplitude() * scalar)),
     Distribution::Range(r) => Ok(Distribution::range((r.start(), r.end()), r.amplitude() * scalar)),
     Distribution::Empty => Ok(Distribution::empty()),
+    Distribution::Formula(_) => panic!("Scalar multiplication not implemented for Formula distributions"),
   }
 }
 

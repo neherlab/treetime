@@ -2,7 +2,7 @@ use crate::commands::timetree::coalescent::integration::compute_merger_rates;
 use crate::commands::timetree::coalescent::piecewise_constant_fn::PiecewiseConstantFn;
 use crate::commands::timetree::coalescent::piecewise_linear_fn::PiecewiseLinearFn;
 use crate::distribution::distribution::Distribution;
-use crate::distribution::distribution_function::DistributionFunction;
+use crate::distribution::distribution_formula::DistributionFormula;
 use crate::graph::graph::GraphNodeForward;
 use crate::graph::node::GraphNodeKey;
 use crate::representation::graph_ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
@@ -66,15 +66,7 @@ fn compute_node_contribution_single(
   lineage_counts: &PiecewiseConstantFn,
   _present_time: f64,
 ) -> Result<Distribution, Report> {
-  // Use the integral_merger_rate's time grid as the common domain
-  // This ensures all contributions are defined on the same TBP grid
-  let tbp_points_sorted = integral_merger_rate.breakpoints().clone();
-
-  // Evaluate I(t) = ∫₀ᵗ κ(t') dt' at grid points
-  // I(t) represents cumulative merger rate from present (t=0) to time t
-  let integral_at_node = integral_merger_rate.values().clone();
-
-  // Compute coalescent contribution for internal node
+  // Compute coalescent contribution for internal node using exact formula evaluation.
   // An internal node with k children represents a merger event.
   // The coalescent probability density at time t is:
   //
@@ -97,29 +89,34 @@ fn compute_node_contribution_single(
   let n_children = node.child_edges.len() as f64;
   let multiplicity = n_children - 1.0;
 
-  // Compute λ(t) = k(t)·(k(t)-1)/(2·Tc(t)) at grid points
-  let k_vals = lineage_counts.eval_many(&tbp_points_sorted);
-  let tc_vals = tc_dist.eval_many(&tbp_points_sorted)?;
-  let (_, total_rate) = compute_merger_rates(&k_vals, &tc_vals);
+  let t_min = integral_merger_rate.breakpoints()[0];
+  let t_max = integral_merger_rate.breakpoints()[integral_merger_rate.breakpoints().len() - 1];
+  let likely_time = (t_min + t_max) / 2.0;
 
-  // Compute contribution in probability space:
-  // exp(-multiplicity · (I(t) - log(λ(t))))
-  // = λ(t)^multiplicity · exp(-multiplicity · I(t))
-  let mut contrib_values = Array1::zeros(tbp_points_sorted.len());
-  for i in 0..tbp_points_sorted.len() {
-    let i_t = integral_at_node[i];
-    let lambda_t = total_rate[i];
-    let log_lambda_t = lambda_t.ln();
+  // Clone Arc-wrapped data for use in closure
+  let integral_merger_rate = Arc::new(integral_merger_rate.clone());
+  let lineage_counts = Arc::new(lineage_counts.clone());
+  let tc_dist = Arc::new(tc_dist.clone());
+
+  // Create closure that evaluates coalescent contribution at any time point
+  let eval_fn = move |t: f64| -> eyre::Result<f64> {
+    let i_t = integral_merger_rate.eval(t);
+    let k_t = lineage_counts.eval(t);
+    let tc_t = tc_dist.eval(t)?;
+
+    let (_, lambda_t) = compute_merger_rates(&Array1::from_vec(vec![k_t]), &Array1::from_vec(vec![tc_t]));
+    let log_lambda_t = lambda_t[0].ln();
+
     // neg-log contribution: multiplicity · (I(t) - log(λ(t)))
     let neg_log_contrib = multiplicity * (i_t - log_lambda_t);
     // Convert to probability
-    contrib_values[i] = (-neg_log_contrib).exp();
-  }
+    Ok((-neg_log_contrib).exp())
+  };
 
-  // Return contribution in TBP coordinates (as expected by tests and for consistency with Python v0)
-  // TBP grid is already sorted ascending, and contrib_values are computed on that grid
-  Ok(Distribution::Function(DistributionFunction::from_arrays_nonuniform(
-    &tbp_points_sorted,
-    &contrib_values,
-  )?))
+  Ok(Distribution::Formula(DistributionFormula::new(
+    eval_fn,
+    t_min,
+    t_max,
+    likely_time,
+  )))
 }

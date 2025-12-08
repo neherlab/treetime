@@ -1,6 +1,7 @@
 pub mod distribution;
 pub mod distribution_convolution;
 pub mod distribution_division;
+pub mod distribution_formula;
 pub mod distribution_function;
 pub mod distribution_map;
 pub mod distribution_multiplication;
