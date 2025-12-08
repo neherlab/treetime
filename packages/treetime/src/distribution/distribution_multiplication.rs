@@ -1,8 +1,10 @@
 use crate::distribution::distribution::Distribution;
+use crate::distribution::distribution_formula::DistributionFormula;
 use crate::distribution::distribution_function::DistributionFunction;
 use crate::distribution::distribution_point::DistributionPoint;
 use eyre::Report;
 use ndarray::Array1;
+use std::sync::Arc;
 
 /// Multiplies two distributions pointwise (intersection of constraints).
 pub fn distribution_multiplication(a: &Distribution, b: &Distribution) -> Result<Distribution, Report> {
@@ -20,7 +22,16 @@ pub fn distribution_multiplication(a: &Distribution, b: &Distribution) -> Result
       multiply_range_function(a, b)
     },
     (Distribution::Function(a), Distribution::Function(b)) => multiply_function_function(a, b),
-    _ => panic!("Multiplication not implemented for Formula distributions"),
+    (Distribution::Formula(a), Distribution::Formula(b)) => multiply_formula_formula(a, b),
+    (Distribution::Formula(a), Distribution::Function(b)) | (Distribution::Function(b), Distribution::Formula(a)) => {
+      multiply_formula_function(a, b)
+    },
+    (Distribution::Formula(a), Distribution::Point(b)) | (Distribution::Point(b), Distribution::Formula(a)) => {
+      multiply_formula_point(a, b)
+    },
+    (Distribution::Formula(a), Distribution::Range(b)) | (Distribution::Range(b), Distribution::Formula(a)) => {
+      multiply_formula_range(a, b)
+    },
   }
 }
 
@@ -133,4 +144,99 @@ fn multiply_function_function(
 
   let distribution_fn = DistributionFunction::from_range_values((overlap_min, overlap_max), values)?;
   Ok(Distribution::Function(distribution_fn))
+}
+
+fn multiply_formula_formula(a: &DistributionFormula, b: &DistributionFormula) -> Result<Distribution, Report> {
+  let overlap_min = a.t_min().max(b.t_min());
+  let overlap_max = a.t_max().min(b.t_max());
+
+  if overlap_min >= overlap_max {
+    return Ok(Distribution::empty());
+  }
+
+  let a = Arc::new(a.clone());
+  let b = Arc::new(b.clone());
+
+  let eval_fn = move |t: f64| -> eyre::Result<f64> {
+    let va = a.eval_single(t)?;
+    let vb = b.eval_single(t)?;
+    Ok(va * vb)
+  };
+
+  Ok(Distribution::Formula(DistributionFormula::new(
+    eval_fn,
+    overlap_min,
+    overlap_max,
+  )))
+}
+
+fn multiply_formula_function(a: &DistributionFormula, b: &DistributionFunction<f64>) -> Result<Distribution, Report> {
+  let b_min = b.t().first().copied().unwrap_or(0.0);
+  let b_max = b.t().last().copied().unwrap_or(0.0);
+
+  let overlap_min = a.t_min().max(b_min);
+  let overlap_max = a.t_max().min(b_max);
+
+  if overlap_min >= overlap_max {
+    return Ok(Distribution::empty());
+  }
+
+  let a = Arc::new(a.clone());
+  let b = Arc::new(b.clone());
+
+  let eval_fn = move |t: f64| -> eyre::Result<f64> {
+    let va = a.eval_single(t)?;
+    let vb = b.interp(t).unwrap_or(0.0);
+    Ok(va * vb)
+  };
+
+  Ok(Distribution::Formula(DistributionFormula::new(
+    eval_fn,
+    overlap_min,
+    overlap_max,
+  )))
+}
+
+fn multiply_formula_point(a: &DistributionFormula, b: &DistributionPoint<f64>) -> Result<Distribution, Report> {
+  const EPS: f64 = 1e-9;
+  let t = b.t();
+
+  if t < a.t_min() - EPS || t > a.t_max() + EPS {
+    return Ok(Distribution::empty());
+  }
+
+  let va = a.eval_single(t)?;
+  let amplitude = va * b.amplitude();
+
+  if amplitude <= 0.0 {
+    return Ok(Distribution::empty());
+  }
+
+  Ok(Distribution::point(t, amplitude))
+}
+
+fn multiply_formula_range(
+  a: &DistributionFormula,
+  b: &crate::distribution::distribution_range::DistributionRange<f64>,
+) -> Result<Distribution, Report> {
+  let overlap_min = a.t_min().max(b.start());
+  let overlap_max = a.t_max().min(b.end());
+
+  if overlap_min >= overlap_max {
+    return Ok(Distribution::empty());
+  }
+
+  let a = Arc::new(a.clone());
+  let b_amplitude = b.amplitude();
+
+  let eval_fn = move |t: f64| -> eyre::Result<f64> {
+    let va = a.eval_single(t)?;
+    Ok(va * b_amplitude)
+  };
+
+  Ok(Distribution::Formula(DistributionFormula::new(
+    eval_fn,
+    overlap_min,
+    overlap_max,
+  )))
 }
