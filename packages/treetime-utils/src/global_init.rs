@@ -1,25 +1,8 @@
 use crate::datetime::datetime::{date_format_precise, date_now};
-use crate::fs::filename_maybe;
 use color_eyre::owo_colors::{OwoColorize, Style};
 use env_logger::Env;
 use log::{Level, LevelFilter, Record};
-use std::env;
 use std::io::Write;
-
-fn get_current_exe_filename() -> Option<String> {
-  env::current_exe().ok().and_then(filename_maybe)
-}
-
-fn get_file_line(record: &Record) -> String {
-  let file = record.file().and_then(filename_maybe);
-  match (file, record.line()) {
-    (Some(file), None) => format!("{file}:",),
-    (Some(file), Some(line)) => format!("{file}:{line:}:"),
-    _ => "".to_owned(),
-  }
-  .dimmed()
-  .to_string()
-}
 
 fn log_level_str(record: &Record) -> String {
   let mut level_str = record.level().to_string();
@@ -42,12 +25,10 @@ pub fn setup_logger(filter_level: LevelFilter) {
   env_logger::Builder::from_env(Env::default().default_filter_or("warn"))
     .filter_level(filter_level)
     .format(|buf, record| {
-      let current_exe = get_current_exe_filename().unwrap_or_default().dimmed().to_string();
-      let file_line = get_file_line(record);
       let level = color_log_level(record);
       let date = date_format_precise(&date_now()).dimmed().to_string();
       let args = record.args();
-      writeln!(buf, "{date} {level:} {file_line:} {args}")?;
+      writeln!(buf, "{date} {level:} {args}")?;
       Ok(())
     })
     .init();
