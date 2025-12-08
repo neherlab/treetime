@@ -1,3 +1,4 @@
+use indexmap::IndexMap;
 use ndarray::Array1;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
@@ -43,4 +44,17 @@ where
 {
   let vec = Vec::<T>::deserialize(deserializer)?;
   Ok(Array1::from_vec(vec))
+}
+
+/// Deserialize IndexMap<String, Array1<f64>> from JSON object
+///
+/// Usage:
+///     #[serde(deserialize_with = "indexmap_array1_from_map")]
+///     pub values: IndexMap<String, Array1<f64>>
+pub fn indexmap_array1_from_map<'de, D>(deserializer: D) -> Result<IndexMap<String, Array1<f64>>, D::Error>
+where
+  D: Deserializer<'de>,
+{
+  let map = IndexMap::<String, Vec<f64>>::deserialize(deserializer)?;
+  Ok(map.into_iter().map(|(k, v)| (k, Array1::from_vec(v))).collect())
 }

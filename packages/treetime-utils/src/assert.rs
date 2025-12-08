@@ -2,21 +2,28 @@
 macro_rules! pretty_assert_eq {
   ($left:expr, $right:expr) => {{
     pretty_assertions::assert_eq!(
-      format_newlines(format!("{:#?}", $left))
-      format_newlines(format!("{:#?}", $right))
+      $crate::assert::format_newlines(format!("{:#?}", $left)),
+      $crate::assert::format_newlines(format!("{:#?}", $right))
     );
   }};
   ($left:expr, $right:expr,) => {{
     pretty_assertions::assert_eq!(
-      format_newlines(format!("{:#?}", $left))
-      format_newlines(format!("{:#?}", $right))
+      $crate::assert::format_newlines(format!("{:#?}", $left)),
+      $crate::assert::format_newlines(format!("{:#?}", $right))
+    );
+  }};
+  ($left:expr, $right:expr, $($arg:tt)+) => {{
+    pretty_assertions::assert_eq!(
+      $crate::assert::format_newlines(format!("{:#?}", $left)),
+      $crate::assert::format_newlines(format!("{:#?}", $right)),
+      $($arg)+
     );
   }};
 }
 
 #[macro_export]
 macro_rules! pretty_assert_ulps_eq {
-  ($lhs:expr, $rhs:expr $(, $opt:ident = $val:expr)*) => {{
+  ($lhs:expr, $rhs:expr $(, $opt:ident = $val:expr)* $(,)?) => {{
     if ! approx::ulps_eq!($lhs, $rhs, $($opt = $val,)*) {
       pretty_assertions::assert_eq!(
         $crate::assert::format_array(format!("{:#?}", $lhs)),
@@ -24,11 +31,12 @@ macro_rules! pretty_assert_ulps_eq {
       );
     }
   }};
-  ($lhs:expr, $rhs:expr $(, $opt:ident = $val:expr)*,) => {{
+  ($lhs:expr, $rhs:expr, $($opt:ident = $val:expr,)* $msg:literal $(, $arg:expr)* $(,)?) => {{
     if ! approx::ulps_eq!($lhs, $rhs, $($opt = $val,)*) {
       pretty_assertions::assert_eq!(
         $crate::assert::format_array(format!("{:#?}", $lhs)),
         $crate::assert::format_array(format!("{:#?}", $rhs)),
+        $msg $(, $arg)*
       );
     }
   }};
@@ -36,7 +44,7 @@ macro_rules! pretty_assert_ulps_eq {
 
 #[macro_export]
 macro_rules! pretty_assert_abs_diff_eq {
-  ($lhs:expr, $rhs:expr $(, $opt:ident = $val:expr)*) => {{
+  ($lhs:expr, $rhs:expr $(, $opt:ident = $val:expr)* $(,)?) => {{
     if ! approx::abs_diff_eq!($lhs, $rhs, $($opt = $val,)*) {
       pretty_assertions::assert_eq!(
         $crate::assert::format_array(format!("{:#?}", $lhs)),
@@ -44,11 +52,12 @@ macro_rules! pretty_assert_abs_diff_eq {
       );
     }
   }};
-  ($lhs:expr, $rhs:expr $(, $opt:ident = $val:expr)*,) => {{
+  ($lhs:expr, $rhs:expr, $($opt:ident = $val:expr,)* $msg:literal $(, $arg:expr)* $(,)?) => {{
     if ! approx::abs_diff_eq!($lhs, $rhs, $($opt = $val,)*) {
       pretty_assertions::assert_eq!(
         $crate::assert::format_array(format!("{:#?}", $lhs)),
         $crate::assert::format_array(format!("{:#?}", $rhs)),
+        $msg $(, $arg)*
       );
     }
   }};
