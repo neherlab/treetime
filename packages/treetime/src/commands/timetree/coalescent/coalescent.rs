@@ -78,6 +78,7 @@ mod tests {
   use eyre::{Ok, Report};
   use ndarray::Array1;
   use pretty_assertions::assert_eq;
+  use rstest::rstest;
   use serde::Deserialize;
   use std::path::Path;
   use treetime_convolution::grid::Grid;
@@ -152,9 +153,15 @@ mod tests {
       .collect()
   }
 
-  #[test]
-  fn test_compute_coalescent_contributions_tc0_01() -> Result<(), Report> {
-    let (snapshot, graph) = load_snapshot("coalescent_flu_h3n2_20_tc0.01.json")?;
+  #[rustfmt::skip]
+  #[rstest]
+  #[case("coalescent_flu_h3n2_20_tc0.01.json")]
+  #[case("coalescent_flu_h3n2_20_tc0.1.json")]
+  #[case("coalescent_flu_h3n2_20_tc1.0.json")]
+  #[case("coalescent_flu_h3n2_20_tc10.0.json")]
+  #[trace]
+  fn test_compute_coalescent_contributions(#[case] snapshot_filename: &str) -> Result<(), Report> {
+    let (snapshot, graph) = load_snapshot(snapshot_filename)?;
     let tc = Distribution::constant(snapshot.inputs.tc);
 
     let actuals = compute_coalescent_contributions(&graph, &tc)?;
