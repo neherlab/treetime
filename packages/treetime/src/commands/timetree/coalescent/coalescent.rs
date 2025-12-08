@@ -38,14 +38,14 @@ use std::sync::Arc;
 ///
 /// # Kingman Coalescent Probability Density
 ///
-/// For a node at time t with m children (m=1 for leaves, m≥2 for internal nodes):
+/// For internal nodes with m children (m≥2):
 ///
-/// - Leaf nodes (m=1): P(t) ∝ exp(-I(t))
-///   - Probability of no merger from present to time t
-///
-/// - Internal nodes (m≥2): P(t) ∝ λ(t)^(m-1) · exp(-I(t))
+/// - Internal nodes: P(t) ∝ λ(t)^(m-1) · exp(-I(t))
 ///   - λ(t)^(m-1): probability density of m-way merger at time t
 ///   - exp(-I(t)): probability of no merger before time t
+///
+/// Leaf nodes do not receive coalescent contributions as they represent observed
+/// samples at known times, not coalescence events.
 ///
 /// # Returns
 ///
@@ -181,7 +181,7 @@ mod tests {
 
     for (node_name, expected) in &snapshot.node_contributions {
       let actual = &actuals[node_name];
-      pretty_assert_ulps_eq!(expected, actual, epsilon = 1e-5);
+      pretty_assert_ulps_eq!(expected, actual, epsilon = 1e-5, "Node: {node_name}");
     }
 
     Ok(())

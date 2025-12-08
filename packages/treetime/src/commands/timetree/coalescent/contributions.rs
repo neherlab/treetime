@@ -1,8 +1,6 @@
 use crate::commands::timetree::coalescent::integration::compute_merger_rates;
 use crate::commands::timetree::coalescent::piecewise_constant_fn::PiecewiseConstantFn;
 use crate::distribution::distribution::Distribution;
-use crate::distribution::distribution_map::distribution_map;
-use crate::distribution::distribution_resample::distribution_resample;
 use crate::graph::graph::GraphNodeForward;
 use crate::graph::node::GraphNodeKey;
 use crate::representation::graph_ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
@@ -32,6 +30,12 @@ pub fn compute_node_contributions(
   let mut contributions = IndexMap::new();
 
   graph.iter_breadth_first_forward(|node| {
+    // Skip leaf nodes - they represent observed samples at known times,
+    // not coalescence events, so they should not have coalescent priors
+    if node.is_leaf {
+      return;
+    }
+
     // Skip nodes without time distributions
     if node.payload.time_distribution.is_none() {
       return;
@@ -58,90 +62,64 @@ fn compute_node_contribution_single(
   integral_merger_rate: &Distribution,
   tc_dist: &Distribution,
   lineage_counts: &PiecewiseConstantFn,
-  present_time: f64,
+  _present_time: f64,
 ) -> Result<Distribution, Report> {
-  // Get node's time distribution domain (calendar time coordinates)
-  let time_points = &node
-    .payload
-    .time_distribution
-    .as_ref()
-    .expect("Node missing time distribution")
-    .t();
+  // Use the integral_merger_rate's time grid as the common domain
+  // This ensures all contributions are defined on the same TBP grid
+  let tbp_points_sorted = integral_merger_rate.t();
 
-  // Convert calendar time to time-before-present (TBP) coordinates
-  // TBP increases going backward in time: TBP = present_time - calendar_time
-  let tbp_points = time_points.mapv(|t| present_time - t);
-
-  // Sort TBP points in ascending order for distribution operations
-  // (time_points is sorted ascending in calendar time → tbp_points is descending)
-  let mut tbp_points_sorted_vec = tbp_points.to_vec();
-  tbp_points_sorted_vec.sort_by(|a, b| a.partial_cmp(b).unwrap());
-  let tbp_points_sorted = Array1::from(tbp_points_sorted_vec);
-
-  // Evaluate I(t) = ∫₀ᵗ κ(t') dt' at node time points
+  // Evaluate I(t) = ∫₀ᵗ κ(t') dt' at grid points
   // I(t) represents cumulative merger rate from present (t=0) to time t
-  let integral_at_node = distribution_resample(integral_merger_rate, &tbp_points_sorted)?;
+  let integral_at_node = integral_merger_rate.y();
 
-  // Compute coalescent contribution based on node type
-  let contrib = if node.is_leaf {
-    // LEAF NODE CONTRIBUTION
-    // In neg-log space: y = -ln(P) = -I(t)
-    // Converting to probability: P = exp(-y) = exp(-(-I(t))) = exp(I(t))
-    //
-    // This seemingly counterintuitive positive exponent arises because:
-    // - I(t) represents cumulative hazard/merger rate from present to time t
-    // - neg-log probabilities are used throughout
-    // - The minus sign in "-I(t)" negates the usual negative log-probability convention
-    // - Result: leaves contribute exp(I(t)) > 1 in probability space
-    distribution_map(&integral_at_node, |i_t| i_t.exp())?
-  } else {
-    // INTERNAL NODE CONTRIBUTION
-    // An internal node with k children represents a merger event.
-    // The coalescent probability density at time t is:
-    //
-    //   P(merger at t | k children) ∝ λ(t)^(k-1) · exp(-I(t))
-    //
-    // where:
-    //   - λ(t) = k(t)·(k(t)-1)/(2·Tc(t)) is total merger rate
-    //   - k(t) is number of concurrent lineages at time t
-    //   - Tc(t) is effective population size
-    //   - multiplicity = k - 1 (number of mergers = children - 1)
-    //
-    // In neg-log space, the formula becomes:
-    //   neg_log: multiplicity · (I(t) - log(λ(t)))
-    //   probability: exp(-multiplicity · (I(t) - log(λ(t))))
-    //              = exp(-multiplicity · I(t)) · λ(t)^multiplicity
-    //
-    // Node contribution is MULTIPLIED with the product of child messages
-    // during message passing.
+  // Compute coalescent contribution for internal node
+  // An internal node with k children represents a merger event.
+  // The coalescent probability density at time t is:
+  //
+  //   P(merger at t | k children) ∝ λ(t)^(k-1) · exp(-I(t))
+  //
+  // where:
+  //   - λ(t) = k(t)·(k(t)-1)/(2·Tc(t)) is total merger rate
+  //   - k(t) is number of concurrent lineages at time t
+  //   - Tc(t) is effective population size
+  //   - multiplicity = k - 1 (number of mergers = children - 1)
+  //
+  // In neg-log space, the formula becomes:
+  //   neg_log: multiplicity · (I(t) - log(λ(t)))
+  //   probability: exp(-multiplicity · (I(t) - log(λ(t))))
+  //              = exp(-multiplicity · I(t)) · λ(t)^multiplicity
+  //
+  // Node contribution is MULTIPLIED with the product of child messages
+  // during message passing.
 
-    let n_children = node.child_edges.len() as f64;
-    let multiplicity = n_children - 1.0;
+  let n_children = node.child_edges.len() as f64;
+  let multiplicity = n_children - 1.0;
 
-    // Compute λ(t) = k(t)·(k(t)-1)/(2·Tc(t)) at node time points
-    let k_vals = lineage_counts.eval_many(&tbp_points_sorted);
-    let tc_vals = tc_dist.eval_many(&tbp_points_sorted)?;
-    let (_, total_rate) = compute_merger_rates(&k_vals, &tc_vals);
+  // Compute λ(t) = k(t)·(k(t)-1)/(2·Tc(t)) at grid points
+  let k_vals = lineage_counts.eval_many(&tbp_points_sorted);
+  let tc_vals = tc_dist.eval_many(&tbp_points_sorted)?;
+  let (_, total_rate) = compute_merger_rates(&k_vals, &tc_vals);
 
-    // Compute contribution in probability space:
-    // exp(-multiplicity · (I(t) - log(λ(t))))
-    // = λ(t)^multiplicity · exp(-multiplicity · I(t))
-    let mut contrib_values = Array1::zeros(tbp_points_sorted.len());
-    for i in 0..tbp_points_sorted.len() {
-      let i_t = integral_at_node.y()[i];
-      let lambda_t = total_rate[i];
-      let log_lambda_t = lambda_t.ln();
-      // neg-log contribution: multiplicity · (I(t) - log(λ(t)))
-      let neg_log_contrib = multiplicity * (i_t - log_lambda_t);
-      // Convert to probability
-      contrib_values[i] = (-neg_log_contrib).exp();
-    }
+  // Compute contribution in probability space:
+  // exp(-multiplicity · (I(t) - log(λ(t))))
+  // = λ(t)^multiplicity · exp(-multiplicity · I(t))
+  let mut contrib_values = Array1::zeros(tbp_points_sorted.len());
+  for i in 0..tbp_points_sorted.len() {
+    let i_t = integral_at_node[i];
+    let lambda_t = total_rate[i];
+    let log_lambda_t = lambda_t.ln();
+    // neg-log contribution: multiplicity · (I(t) - log(λ(t)))
+    let neg_log_contrib = multiplicity * (i_t - log_lambda_t);
+    // Convert to probability
+    contrib_values[i] = (-neg_log_contrib).exp();
+  }
 
-    Distribution::function(tbp_points_sorted, contrib_values)?
-  };
-
-  // Resample contribution back to original unsorted tbp_points
-  // (which correspond to time_points in calendar coordinates)
-  let contrib_values = contrib.eval_many(&tbp_points)?;
-  Distribution::function(time_points.clone(), contrib_values)
+  // Return contribution in TBP coordinates (as expected by tests and for consistency with Python v0)
+  // TBP grid is already sorted ascending, and contrib_values are computed on that grid
+  Ok(Distribution::Function(
+    crate::distribution::distribution_function::DistributionFunction::from_arrays_nonuniform(
+      &tbp_points_sorted,
+      &contrib_values,
+    )?,
+  ))
 }
