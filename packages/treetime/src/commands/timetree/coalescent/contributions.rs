@@ -1,6 +1,8 @@
 use crate::commands::timetree::coalescent::integration::compute_merger_rates;
 use crate::commands::timetree::coalescent::piecewise_constant_fn::PiecewiseConstantFn;
+use crate::commands::timetree::coalescent::piecewise_linear_fn::PiecewiseLinearFn;
 use crate::distribution::distribution::Distribution;
+use crate::distribution::distribution_function::DistributionFunction;
 use crate::graph::graph::GraphNodeForward;
 use crate::graph::node::GraphNodeKey;
 use crate::representation::graph_ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
@@ -22,7 +24,7 @@ use std::sync::Arc;
 ///   and m = k - 1 is multiplicity (number of mergers)
 pub fn compute_node_contributions(
   graph: &GraphAncestral,
-  integral_merger_rate: &Distribution,
+  integral_merger_rate: &PiecewiseLinearFn,
   tc_dist: &Distribution,
   lineage_counts: &PiecewiseConstantFn,
   present_time: f64,
@@ -59,18 +61,18 @@ pub fn compute_node_contributions(
 
 fn compute_node_contribution_single(
   node: &GraphNodeForward<NodeAncestral, EdgeAncestral, ()>,
-  integral_merger_rate: &Distribution,
+  integral_merger_rate: &PiecewiseLinearFn,
   tc_dist: &Distribution,
   lineage_counts: &PiecewiseConstantFn,
   _present_time: f64,
 ) -> Result<Distribution, Report> {
   // Use the integral_merger_rate's time grid as the common domain
   // This ensures all contributions are defined on the same TBP grid
-  let tbp_points_sorted = integral_merger_rate.t();
+  let tbp_points_sorted = integral_merger_rate.breakpoints().clone();
 
   // Evaluate I(t) = ∫₀ᵗ κ(t') dt' at grid points
   // I(t) represents cumulative merger rate from present (t=0) to time t
-  let integral_at_node = integral_merger_rate.y();
+  let integral_at_node = integral_merger_rate.values().clone();
 
   // Compute coalescent contribution for internal node
   // An internal node with k children represents a merger event.
@@ -116,10 +118,8 @@ fn compute_node_contribution_single(
 
   // Return contribution in TBP coordinates (as expected by tests and for consistency with Python v0)
   // TBP grid is already sorted ascending, and contrib_values are computed on that grid
-  Ok(Distribution::Function(
-    crate::distribution::distribution_function::DistributionFunction::from_arrays_nonuniform(
-      &tbp_points_sorted,
-      &contrib_values,
-    )?,
-  ))
+  Ok(Distribution::Function(DistributionFunction::from_arrays_nonuniform(
+    &tbp_points_sorted,
+    &contrib_values,
+  )?))
 }

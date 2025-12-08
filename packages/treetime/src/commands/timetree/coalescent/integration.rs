@@ -1,4 +1,5 @@
 use crate::commands::timetree::coalescent::piecewise_constant_fn::PiecewiseConstantFn;
+use crate::commands::timetree::coalescent::piecewise_linear_fn::PiecewiseLinearFn;
 use crate::distribution::distribution::Distribution;
 use eyre::Report;
 use ndarray::Array1;
@@ -43,7 +44,7 @@ pub fn compute_merger_rates(k: &Array1<f64>, tc: &Array1<f64>) -> (Array1<f64>, 
 pub fn compute_integral_merger_rate(
   tc_dist: &Distribution,
   lineage_counts: &PiecewiseConstantFn,
-) -> Result<Distribution, Report> {
+) -> Result<PiecewiseLinearFn, Report> {
   let breakpoints = lineage_counts.breakpoints();
   if breakpoints.len() < 2 {
     return make_error!("lineage count must have at least 2 breakpoints");
@@ -86,11 +87,10 @@ pub fn compute_integral_merger_rate(
 
   let integral_values: Vec<f64> = integral_values.iter().map(|v| v - i_at_zero).collect();
 
-  let func = crate::distribution::distribution_function::DistributionFunction::from_arrays_nonuniform(
-    &Array1::from(breakpoints.to_vec()),
-    &Array1::from(integral_values),
-  )?;
-  Ok(Distribution::Function(func))
+  Ok(PiecewiseLinearFn::new(
+    Array1::from(breakpoints.to_vec()),
+    Array1::from(integral_values),
+  ))
 }
 
 #[cfg(test)]
@@ -158,7 +158,7 @@ mod tests {
 
     let actual = compute_integral_merger_rate(&tc_dist, &lineage_counts)?;
 
-    let actual_y = actual.y();
+    let actual_y = actual.values();
 
     // I(0) = 0, I(10) = integral of 0.5*(2-1)/0.01 = 50*10 = 500
     pretty_assert_ulps_eq!(actual_y[0], 0.0);
@@ -177,7 +177,7 @@ mod tests {
 
     let actual = compute_integral_merger_rate(&tc_dist, &lineage_counts)?;
 
-    let actual_y = actual.y();
+    let actual_y = actual.values();
 
     // Segment 0-5: k=1, rate = 0.5*max(0.5, 1-1)/0.01 = 0.5*0.5/0.01 = 25, contribution = 25*5 = 125
     // Segment 5-10: k=5, rate = 0.5*(5-1)/0.01 = 200, contribution = 200*5 = 1000
@@ -212,7 +212,7 @@ mod tests {
 
     let actual = compute_integral_merger_rate(&tc_dist, &lineage_counts)?;
 
-    let actual_y = actual.y();
+    let actual_y = actual.values();
 
     // Just verify the integral increases monotonically
     pretty_assert_ulps_eq!(actual_y[0], 0.0);
