@@ -91,7 +91,6 @@ fn compute_node_contribution_single(
 
   let t_min = integral_merger_rate.breakpoints()[0];
   let t_max = integral_merger_rate.breakpoints()[integral_merger_rate.breakpoints().len() - 1];
-  let likely_time = (t_min + t_max) / 2.0;
 
   // Clone Arc-wrapped data for use in closure
   let integral_merger_rate = Arc::new(integral_merger_rate.clone());
@@ -117,6 +116,5 @@ fn compute_node_contribution_single(
     eval_fn,
     t_min,
     t_max,
-    likely_time,
   )))
 }

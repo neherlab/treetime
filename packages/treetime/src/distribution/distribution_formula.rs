@@ -17,8 +17,6 @@ pub struct DistributionFormula {
   /// Valid time range [t_min, t_max]
   t_min: f64,
   t_max: f64,
-  /// Likely time (e.g., peak position or midpoint)
-  likely_time: f64,
 }
 
 fn default_eval_fn() -> Arc<dyn Fn(f64) -> Result<f64> + Send + Sync> {
@@ -26,7 +24,7 @@ fn default_eval_fn() -> Arc<dyn Fn(f64) -> Result<f64> + Send + Sync> {
 }
 
 impl DistributionFormula {
-  pub fn new<F>(eval_fn: F, t_min: f64, t_max: f64, likely_time: f64) -> Self
+  pub fn new<F>(eval_fn: F, t_min: f64, t_max: f64) -> Self
   where
     F: Fn(f64) -> Result<f64> + Send + Sync + 'static,
   {
@@ -34,7 +32,6 @@ impl DistributionFormula {
       eval_fn: Arc::new(eval_fn),
       t_min,
       t_max,
-      likely_time,
     }
   }
 
@@ -59,7 +56,11 @@ impl DistributionFormula {
   }
 
   pub fn likely_time(&self) -> f64 {
-    self.likely_time
+    unimplemented!(
+      "likely_time() not available for DistributionFormula: \
+       finding the peak requires discretization. \
+       Use discretization (DistributionFunction) if you need likely_time()"
+    )
   }
 }
 
@@ -69,7 +70,6 @@ impl Clone for DistributionFormula {
       eval_fn: Arc::clone(&self.eval_fn),
       t_min: self.t_min,
       t_max: self.t_max,
-      likely_time: self.likely_time,
     }
   }
 }
@@ -82,6 +82,6 @@ impl std::fmt::Debug for DistributionFormula {
 
 impl PartialEq for DistributionFormula {
   fn eq(&self, other: &Self) -> bool {
-    self.t_min == other.t_min && self.t_max == other.t_max && self.likely_time == other.likely_time
+    self.t_min == other.t_min && self.t_max == other.t_max
   }
 }
