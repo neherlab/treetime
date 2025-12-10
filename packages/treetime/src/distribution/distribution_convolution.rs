@@ -131,24 +131,24 @@ fn convolution_function_function<Y: SupportsConvolution>(
     return make_error!("Invalid grid spacing detected during convolution: {dx}");
   }
 
-  let (a_values, a_min) = resample_distribution::<Y>(a, dx)?;
-  let (b_values, b_min) = resample_distribution::<Y>(b, dx)?;
+  let a_resampled = a.resample_dx(dx)?;
+  let b_resampled = b.resample_dx(dx)?;
 
-  if a_values.len() == 0 || b_values.len() == 0 {
+  if a_resampled.is_empty() || b_resampled.is_empty() {
     return Ok(Distribution::empty());
   }
 
-  if a_values.len() == 1 && b_values.len() == 1 {
+  if a_resampled.len() == 1 && b_resampled.len() == 1 {
     return Ok(Distribution::point(
-      a_min + b_min,
-      Y::multiply(a_values[0], b_values[0]),
+      a_resampled.x_min() + b_resampled.x_min(),
+      Y::multiply(a_resampled.y()[0], b_resampled.y()[0]),
     ));
   }
 
-  let output_len = a_values.len() + b_values.len() - 1;
-  let output_grid_start = a_min + b_min;
+  let output_len = a_resampled.len() + b_resampled.len() - 1;
+  let output_grid_start = a_resampled.x_min() + b_resampled.x_min();
 
-  let conv_result = convolve(dx, &a_values, &b_values)?;
+  let conv_result = convolve(dx, a_resampled.y(), b_resampled.y())?;
   if conv_result.len() != output_len {
     return make_error!(
       "Convolution result length mismatch: expected {}, got {}",
@@ -158,56 +158,19 @@ fn convolution_function_function<Y: SupportsConvolution>(
   }
   let conv_distr = DistributionFunction::<f64, Plain>::from_start_dx_values(output_grid_start, dx, conv_result)?;
 
-  let coarse_dx = dx_a.max(dx_b);
-  let (final_values, coarse_grid_min) = resample_distribution::<Plain>(&conv_distr, coarse_dx)?;
+  let coarse_dx = f64::max(dx_a, dx_b);
+  let final_distr = conv_distr.resample_dx(coarse_dx)?;
 
-  if final_values.len() < 2 {
+  if final_distr.len() < 2 {
     return make_error!("Final distribution after convolution has less than two points");
   }
 
-  let final_distr = DistributionFunction::from_start_dx_values(coarse_grid_min, coarse_dx, final_values)?;
+  let final_distr = DistributionFunction::<f64, Y>::from_start_dx_values(
+    final_distr.x_min(),
+    final_distr.dx(),
+    final_distr.y().clone(),
+  )?;
   Ok(Distribution::Function(final_distr))
-}
-
-fn resample_distribution<Y: SupportsConvolution>(
-  func: &DistributionFunction<f64, Y>,
-  dx: f64,
-) -> Result<(Array1<f64>, f64), Report> {
-  if func.is_empty() {
-    return make_error!("DistributionFunction is empty");
-  }
-  let min = func.x_min();
-  let max = func.x_max();
-
-  if max < min {
-    return make_error!("DistributionFunction grid must be sorted ascending");
-  }
-
-  if (max - min).abs() < f64::EPSILON {
-    let value = func.interp(min)?;
-    return Ok((array![value], min));
-  }
-
-  let original_span = max - min;
-  let steps = (original_span / dx).ceil() as usize;
-  let len = steps + 1;
-
-  if len < 2 {
-    return make_error!("Unable to resample distribution: computed length {len} is too small");
-  }
-
-  if len > 1_000_000 {
-    return make_error!("Resampling would require {len} points, which exceeds safety limit");
-  }
-
-  let mut values = Array1::zeros(len);
-  for i in 0..len {
-    let position = min + dx * (i as f64);
-    let clamped_position = position.min(max).max(min);
-    values[i] = func.interp(clamped_position)?;
-  }
-
-  Ok((values, min))
 }
 
 #[cfg(test)]

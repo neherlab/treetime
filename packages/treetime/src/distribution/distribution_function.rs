@@ -208,6 +208,13 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     })
   }
 
+  pub fn resample_dx(&self, dx: T) -> Result<Self, Report>
+  where
+    T: Float + UlpsEq,
+  {
+    self.resample_range_dx((self.x_min(), self.x_max()), dx)
+  }
+
   pub fn len(&self) -> usize {
     self.grid_fn.len()
   }
