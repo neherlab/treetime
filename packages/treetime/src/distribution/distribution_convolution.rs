@@ -15,20 +15,30 @@ pub fn distribution_convolution<Y: SupportsConvolution>(
   b: &Distribution<Y>,
 ) -> Result<Distribution<Y>, Report> {
   match (a, b) {
-    (Distribution::Empty, _) | (_, Distribution::Empty) => Ok(Distribution::Empty),
-    (Distribution::Point(a), Distribution::Point(b)) => Ok(convolution_point_point::<Y>(a, b)),
-    (Distribution::Point(a), Distribution::Range(b)) | (Distribution::Range(b), Distribution::Point(a)) => {
-      Ok(convolution_point_range::<Y>(a, b))
+    (Distribution::Empty, _) | (_, Distribution::Empty) => {
+      Ok(Distribution::Empty) //
     },
-    (Distribution::Range(a), Distribution::Range(b)) => convolution_range_range::<Y>(a, b),
+    (Distribution::Point(a), Distribution::Point(b)) => {
+      Ok(convolution_point_point::<Y>(a, b)) //
+    },
+    (Distribution::Point(a), Distribution::Range(b)) | (Distribution::Range(b), Distribution::Point(a)) => {
+      Ok(convolution_point_range::<Y>(a, b)) //
+    },
+    (Distribution::Range(a), Distribution::Range(b)) => {
+      convolution_range_range::<Y>(a, b) //
+    },
     (Distribution::Point(a), Distribution::Function(b)) | (Distribution::Function(b), Distribution::Point(a)) => {
-      Ok(Distribution::Function(convolution_point_function::<Y>(a, b)?))
+      Ok(Distribution::Function(convolution_point_function::<Y>(a, b)?)) //
     },
     (Distribution::Range(a), Distribution::Function(b)) | (Distribution::Function(b), Distribution::Range(a)) => {
-      convolution_range_function::<Y>(a, b)
+      convolution_range_function::<Y>(a, b) //
     },
-    (Distribution::Function(a), Distribution::Function(b)) => convolution_function_function::<Y>(a, b),
-    _ => panic!("Convolution not implemented for Formula distributions"),
+    (Distribution::Function(a), Distribution::Function(b)) => {
+      convolution_function_function::<Y>(a, b) //
+    },
+    (Distribution::Formula(_), _) | (_, Distribution::Formula(_)) => {
+      panic!("Convolution not implemented for Formula distributions") //
+    },
   }
 }
 

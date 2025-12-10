@@ -65,21 +65,41 @@ impl<Y: YAxisPolicy> Distribution<Y> {
 
   pub fn likely_time(&self) -> Option<f64> {
     match self {
-      Self::Empty => None,
-      Self::Point(p) => Some(p.t()),
-      Self::Range(r) => Some(f64::midpoint(r.start(), r.end())),
-      Self::Function(f) => f.likely_time(),
-      Self::Formula(f) => Some(f.likely_time()),
+      Self::Empty => {
+        None //
+      },
+      Self::Point(p) => {
+        Some(p.t()) //
+      },
+      Self::Range(r) => {
+        Some(f64::midpoint(r.start(), r.end())) //
+      },
+      Self::Function(f) => {
+        f.likely_time() //
+      },
+      Self::Formula(f) => {
+        Some(f.likely_time()) //
+      },
     }
   }
 
   pub fn t(&self) -> Array1<f64> {
     match self {
-      Self::Empty => ndarray::array![],
-      Self::Point(p) => ndarray::array![p.t()],
-      Self::Range(r) => ndarray::array![r.start(), r.end()],
-      Self::Function(f) => f.t().to_owned(),
-      Self::Formula(f) => ndarray::array![f.t_min(), f.t_max()],
+      Self::Empty => {
+        ndarray::array![] //
+      },
+      Self::Point(p) => {
+        ndarray::array![p.t()] //
+      },
+      Self::Range(r) => {
+        ndarray::array![r.start(), r.end()] //
+      },
+      Self::Function(f) => {
+        f.t().to_owned() //
+      },
+      Self::Formula(f) => {
+        ndarray::array![f.t_min(), f.t_max()] //
+      },
     }
   }
 
@@ -170,8 +190,12 @@ impl<Y: YAxisPolicy> Distribution<Y> {
 impl Distribution<Plain> {
   pub fn from_date_or_range(date_or_range: &DateOrRange) -> Self {
     match date_or_range {
-      DateOrRange::YearFraction(t) => Self::point(*t, 1.0),
-      DateOrRange::YearFractionRange((start, end)) => Self::range((*start, *end), 1.0),
+      DateOrRange::YearFraction(t) => {
+        Self::point(*t, 1.0) //
+      },
+      DateOrRange::YearFractionRange((start, end)) => {
+        Self::range((*start, *end), 1.0) //
+      },
     }
   }
 

@@ -11,30 +11,42 @@ pub fn distribution_division<Y: YAxisPolicy>(
   divisor: &Distribution<Y>,
 ) -> Result<Distribution<Y>, Report> {
   match (dividend, divisor) {
-    (Distribution::Empty, _) => Ok(Distribution::Empty),
-    (_, Distribution::Empty) => make_error!("Cannot divide by empty distribution"),
+    (Distribution::Empty, _) => {
+      Ok(Distribution::Empty) //
+    },
+    (_, Distribution::Empty) => {
+      make_error!("Cannot divide by empty distribution") //
+    },
     (Distribution::Point(_), Distribution::Point(_)) => {
-      make_error!("Cannot divide Point by Point: operation not well-defined")
+      make_error!("Cannot divide Point by Point: operation not well-defined") //
     },
     (Distribution::Range(_), Distribution::Point(_)) => {
-      make_error!("Cannot divide Range by Point: operation not well-defined")
+      make_error!("Cannot divide Range by Point: operation not well-defined") //
     },
     (Distribution::Function(_), Distribution::Point(_)) => {
-      make_error!("Cannot divide Function by Point: operation not well-defined")
+      make_error!("Cannot divide Function by Point: operation not well-defined") //
     },
     (Distribution::Point(_), Distribution::Range(_)) => {
-      make_error!("Cannot divide Point by Range: operation not well-defined")
+      make_error!("Cannot divide Point by Range: operation not well-defined") //
     },
     (Distribution::Range(_), Distribution::Range(_)) => {
-      make_error!("Cannot divide Range by Range: operation not well-defined")
+      make_error!("Cannot divide Range by Range: operation not well-defined") //
     },
     (Distribution::Function(_), Distribution::Range(_)) => {
-      make_error!("Cannot divide Function by Range: operation not well-defined")
+      make_error!("Cannot divide Function by Range: operation not well-defined") //
     },
-    (Distribution::Point(a), Distribution::Function(b)) => divide_point_by_function::<Y>(a, b),
-    (Distribution::Range(a), Distribution::Function(b)) => divide_range_by_function::<Y>(a, b),
-    (Distribution::Function(a), Distribution::Function(b)) => divide_function_by_function::<Y>(a, b),
-    _ => panic!("Division not implemented for Formula distributions"),
+    (Distribution::Point(a), Distribution::Function(b)) => {
+      divide_point_by_function::<Y>(a, b) //
+    },
+    (Distribution::Range(a), Distribution::Function(b)) => {
+      divide_range_by_function::<Y>(a, b) //
+    },
+    (Distribution::Function(a), Distribution::Function(b)) => {
+      divide_function_by_function::<Y>(a, b) //
+    },
+    (Distribution::Formula(_), _) | (_, Distribution::Formula(_)) => {
+      panic!("Division not implemented for Formula distributions")
+    }, //
   }
 }
 

@@ -14,6 +14,9 @@ pub fn distribution_subtraction<Y: SupportsSubtraction>(
       }
       Distribution::function(af.t(), af.y() - bf.y())
     },
-    _ => make_error!("Subtraction only supported for Function distributions with matching time points"),
+    (Distribution::Empty | Distribution::Point(_) | Distribution::Range(_) | Distribution::Formula(_), _)
+    | (_, Distribution::Empty | Distribution::Point(_) | Distribution::Range(_) | Distribution::Formula(_)) => {
+      make_error!("Subtraction only supported for Function distributions with matching time points")
+    },
   }
 }
