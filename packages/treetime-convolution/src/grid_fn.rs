@@ -189,6 +189,10 @@ impl<T: InterpElem> GridFn<T> {
     &self.y
   }
 
+  pub fn grid(&self) -> &Grid<T> {
+    &self.grid
+  }
+
   pub fn x_min(&self) -> T {
     self.grid.x_min()
   }
