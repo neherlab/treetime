@@ -70,15 +70,7 @@ fn multiply_point_function<Y: YAxisPolicy>(
   let t = point.t();
   let func_value = func.interp(t).unwrap_or(Y::multiplicative_identity());
   let amplitude = Y::multiply(point.amplitude(), func_value);
-  // For Plain policy, check if amplitude is positive. For NegLog, it's always valid.
-  // We use a simple heuristic: in Plain mode, Y::multiplicative_identity() is 1.0, and 0.0 or negative is "empty"
-  // In NegLog mode, Y::multiplicative_identity() is 0.0, so any finite value is valid
-  let is_empty = if Y::multiplicative_identity() == 1.0 {
-    amplitude <= 0.0
-  } else {
-    !amplitude.is_finite()
-  };
-  if is_empty {
+  if !Y::is_defined(amplitude) {
     return Ok(Distribution::empty());
   }
   Ok(Distribution::point(t, amplitude))
@@ -228,12 +220,7 @@ fn multiply_formula_point<Y: YAxisPolicy>(
   let va = a.eval_single(t)?;
   let amplitude = Y::multiply(va, b.amplitude());
 
-  let is_empty = if Y::multiplicative_identity() == 1.0 {
-    amplitude <= 0.0
-  } else {
-    !amplitude.is_finite()
-  };
-  if is_empty {
+  if !Y::is_defined(amplitude) {
     return Ok(Distribution::empty());
   }
 

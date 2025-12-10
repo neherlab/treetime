@@ -8,6 +8,7 @@ pub trait YAxisPolicy: Clone + Copy + Debug + Default + PartialEq + Send + Sync 
   fn multiplicative_identity() -> f64;
   fn multiply(a: f64, b: f64) -> f64;
   fn divide(a: f64, b: f64) -> f64;
+  fn is_defined(val: f64) -> bool;
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -48,6 +49,10 @@ impl YAxisPolicy for Plain {
   fn divide(a: f64, b: f64) -> f64 {
     a / b
   }
+
+  fn is_defined(val: f64) -> bool {
+    val > 0.0
+  }
 }
 
 impl YAxisPolicy for NegLog {
@@ -69,6 +74,10 @@ impl YAxisPolicy for NegLog {
 
   fn divide(a: f64, b: f64) -> f64 {
     a - b
+  }
+
+  fn is_defined(val: f64) -> bool {
+    val.is_finite()
   }
 }
 
