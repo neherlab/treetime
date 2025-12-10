@@ -9,6 +9,7 @@ pub trait YAxisPolicy: Clone + Copy + Debug + Default + PartialEq + Send + Sync 
   fn multiply(a: f64, b: f64) -> f64;
   fn divide(a: f64, b: f64) -> f64;
   fn is_defined(val: f64) -> bool;
+  fn safe_divisor(val: f64) -> f64;
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -53,6 +54,11 @@ impl YAxisPolicy for Plain {
   fn is_defined(val: f64) -> bool {
     val > 0.0
   }
+
+  fn safe_divisor(val: f64) -> f64 {
+    const TINY_NUMBER: f64 = 1e-10;
+    val.max(TINY_NUMBER)
+  }
 }
 
 impl YAxisPolicy for NegLog {
@@ -78,6 +84,10 @@ impl YAxisPolicy for NegLog {
 
   fn is_defined(val: f64) -> bool {
     val.is_finite()
+  }
+
+  fn safe_divisor(val: f64) -> f64 {
+    val
   }
 }
 

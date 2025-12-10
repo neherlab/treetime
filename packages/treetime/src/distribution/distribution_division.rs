@@ -6,8 +6,6 @@ use crate::distribution::y_axis_policy::YAxisPolicy;
 use crate::make_error;
 use eyre::Report;
 
-const TINY_NUMBER: f64 = 1e-10;
-
 pub fn distribution_division<Y: YAxisPolicy>(
   dividend: &Distribution<Y>,
   divisor: &Distribution<Y>,
@@ -46,18 +44,11 @@ fn divide_point_by_function<Y: YAxisPolicy>(
 ) -> Result<Distribution<Y>, Report> {
   let t = point.t();
   let dividend_value = point.amplitude();
+  let divisor_value = divisor.interp(t).unwrap_or_else(|_| Y::multiplicative_identity());
+  let safe_divisor_value = Y::safe_divisor(divisor_value);
+  let result_value = Y::divide(dividend_value, safe_divisor_value);
 
-  // For Plain: use max with TINY_NUMBER to avoid division by zero
-  // For NegLog: we use subtraction, so no special handling needed for zero
-  let divisor_value = if Y::multiplicative_identity() == 1.0 {
-    divisor.interp(t).unwrap_or(TINY_NUMBER).max(TINY_NUMBER)
-  } else {
-    divisor.interp(t).unwrap_or(Y::multiplicative_identity())
-  };
-
-  let result_value = Y::divide(dividend_value, divisor_value);
-
-  if !result_value.is_finite() {
+  if !Y::is_defined(result_value) {
     return Ok(Distribution::empty());
   }
 
@@ -82,11 +73,7 @@ fn divide_range_by_function<Y: YAxisPolicy>(
     return Ok(Distribution::empty());
   }
 
-  let result_y = if Y::multiplicative_identity() == 1.0 {
-    divisor.y().mapv(|v| Y::divide(dividend_amplitude, v.max(TINY_NUMBER)))
-  } else {
-    divisor.y().mapv(|v| Y::divide(dividend_amplitude, v))
-  };
+  let result_y = divisor.y().mapv(|v| Y::divide(dividend_amplitude, Y::safe_divisor(v)));
   let result_fn = DistributionFunction::from_start_dx_values(func_min, divisor.dx(), result_y)?;
   Ok(Distribution::Function(result_fn))
 }
@@ -109,22 +96,12 @@ fn divide_function_by_function<Y: YAxisPolicy>(
     resampled.y().clone()
   };
 
-  let result_y = if Y::multiplicative_identity() == 1.0 {
-    let safe_divisor_y = divisor_on_dividend_grid.mapv(|v| v.max(TINY_NUMBER));
-    dividend
-      .y()
-      .iter()
-      .zip(safe_divisor_y.iter())
-      .map(|(&d, &s)| Y::divide(d, s))
-      .collect()
-  } else {
-    dividend
-      .y()
-      .iter()
-      .zip(divisor_on_dividend_grid.iter())
-      .map(|(&d, &s)| Y::divide(d, s))
-      .collect()
-  };
+  let result_y = dividend
+    .y()
+    .iter()
+    .zip(divisor_on_dividend_grid.iter())
+    .map(|(&d, &s)| Y::divide(d, Y::safe_divisor(s)))
+    .collect();
 
   DistributionFunction::from_range_values((div_min, div_max), result_y).map(Distribution::Function)
 }
@@ -135,6 +112,8 @@ mod tests {
   use crate::distribution::distribution::DistributionPlain as Distribution;
   use ndarray::array;
   use treetime_utils::assert_error;
+
+  const TINY_NUMBER: f64 = 1e-10;
 
   #[test]
   fn test_divide_empty_by_any() {
