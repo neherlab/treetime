@@ -3,6 +3,7 @@ use getset::Getters;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 
+/// Rectangular signal
 #[derive(Debug, Eq, PartialEq, Clone, Serialize, Deserialize, Getters)]
 #[getset(get = "pub")]
 pub struct DistributionRange<T: Clone + Copy + Debug, Y: YAxisPolicy = Plain> {

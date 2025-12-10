@@ -242,6 +242,8 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     self.grid_fn.negate_arg_inplace();
   }
 
+  /// Find the most likely time point (x-value corresponding to maximum y-value)
+  /// Returns the x-coordinate where the function reaches its maximum y-value
   pub fn likely_time(&self) -> Option<T>
   where
     T: Float,

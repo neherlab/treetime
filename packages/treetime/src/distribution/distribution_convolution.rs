@@ -63,8 +63,10 @@ fn convolution_range_range<Y: SupportsConvolution>(
     let x = array![start, peak_start, peak_end, end];
     let y = array![0.0, peak_amplitude, peak_amplitude, 0.0];
     if has_uniform_spacing(&x) {
+      // Trapezoid with uniform spacing
       Distribution::function(x, y)
     } else {
+      // Trapezoid with non-uniform spacing: resample trapezoid to uniform grid
       DistributionFunction::from_arrays_nonuniform(&x, &y).map(Distribution::Function)
     }
   }
@@ -94,8 +96,12 @@ fn convolution_range_function<Y: SupportsConvolution>(
   r: &DistributionRange<f64, Y>,
   f: &DistributionFunction<f64, Y>,
 ) -> Result<Distribution<Y>, Report> {
+  // DistributionFunction is guaranteed to be uniform
   let dx = f.dx();
 
+  // split in a convolution with
+  // - a point distribution (taking care of the shift + amplitude)
+  // - an interval centered on zero and of a fixed width (taking care of the smoothing)
   let shift = f64::midpoint(r.start(), r.end());
   let amplitude = r.amplitude();
   let half_width = (r.end() - r.start()) / 2.0;
@@ -103,9 +109,11 @@ fn convolution_range_function<Y: SupportsConvolution>(
   let point_distr = DistributionPoint::new(shift, amplitude);
   let shifted_function = convolution_point_function::<Y>(&point_distr, f)?;
 
+  // Convolution with a range centered on zero and of given width
   let t_out = shifted_function.t();
   let mut y_out = Array1::zeros(shifted_function.y().len());
 
+  // TODO: optimize by using cumulative sums
   for (i, &ti) in shifted_function.t().iter().enumerate() {
     let mask = shifted_function.t().mapv(|x| (x - ti).abs() <= half_width);
     let filtered_y = shifted_function.y() * &mask.mapv(|x| if x { 1.0 } else { 0.0 });
@@ -119,6 +127,7 @@ fn convolution_function_function<Y: SupportsConvolution>(
   a: &DistributionFunction<f64, Y>,
   b: &DistributionFunction<f64, Y>,
 ) -> Result<Distribution<Y>, Report> {
+  // Check for degenerate cases
   if a.is_empty() || b.is_empty() {
     return Ok(Distribution::empty());
   }
@@ -201,10 +210,16 @@ mod tests {
 
   #[test]
   fn test_convolution_range_range_triangle() {
+    // Triangle case: equal-width ranges always produce triangles with uniform spacing
     let a = Distribution::range((2.0, 4.0), 3.0);
     let b = Distribution::range((6.0, 8.0), 2.0);
     let actual = distribution_convolution(&a, &b).unwrap();
     let expected = {
+      // start = 2.0 + 6.0 = 8.0
+      // end = 4.0 + 8.0 = 12.0
+      // peak_start = max(2.0+6.0, 4.0+6.0) = 10.0
+      // peak_end = min(4.0+8.0, 2.0+8.0) = 10.0
+      // Peak amplitude = 3.0 * 2.0 = 6.0
       let x = array![8.0, 10.0, 12.0];
       let y = array![0.0, 6.0, 0.0];
       Distribution::function(x, y).unwrap()
@@ -218,6 +233,9 @@ mod tests {
     let b = Distribution::range((6.0, 9.0), 2.0);
     let actual = distribution_convolution(&a, &b).unwrap();
     let expected = {
+      // Trapezoid: start=8.0, peak_start=10.0, peak_end=11.0, end=13.0
+      // Non-uniform spacing (1, 2, 1.5, 2), so resampled to uniform grid
+      // With dx=1.0 (smallest spacing), the uniform grid is:
       let x = array![8.0, 9.0, 10.0, 11.0, 12.0, 13.0];
       let y = array![0.0, 3.0, 6.0, 6.0, 3.0, 0.0];
       Distribution::function(x, y).unwrap()
@@ -231,6 +249,8 @@ mod tests {
     let b = Distribution::range((3.0, 7.0), 2.0);
     let actual = distribution_convolution(&a, &b).unwrap();
     let expected = {
+      // Trapezoid: start=3.0, peak_start=5.0, peak_end=7.0, end=9.0
+      // Uniform spacing (dx=2.0), so no resampling needed
       let x = array![3.0, 5.0, 7.0, 9.0];
       let y = array![0.0, 2.0, 2.0, 0.0];
       Distribution::function(x, y).unwrap()
@@ -290,6 +310,7 @@ mod tests {
 
   #[test]
   fn test_convolution_function_function_basic() {
+    // Simple test with aligned grids
     let a_x = array![0.0, 1.0, 2.0];
     let a_y = array![1.0, 2.0, 1.0];
     let a = Distribution::function(a_x, a_y).unwrap();
@@ -336,6 +357,7 @@ mod tests {
 
   #[test]
   fn test_convolution_function_function_different_spacing() {
+    // Test with different grid spacings to ensure proper resampling
     let a_x = array![0.0, 0.5, 1.0];
     let a_y = array![1.0, 2.0, 1.0];
     let a = Distribution::function(a_x, a_y).unwrap();
@@ -355,6 +377,7 @@ mod tests {
 
   #[test]
   fn test_convolution_function_function_zero_width() {
+    // Test point distribution convolved with function
     let a = Distribution::point(5.0, 1.0);
 
     let b_x = array![1.0, 2.0];
@@ -372,9 +395,11 @@ mod tests {
 
   #[test]
   fn test_backward_pass_temporal_direction() {
+    // Test the specific use case in backward pass: parent_time = child_time + (-branch_length)
     let child_time_dist = Distribution::point(2013.0, 1.0);
     let branch_length_dist = Distribution::point(2.5, 1.0);
 
+    // In backward pass, we negate the branch distribution
     let negated_branch = branch_length_dist.negate();
     let actual = distribution_convolution(&child_time_dist, &negated_branch).unwrap();
 
@@ -384,6 +409,7 @@ mod tests {
 
   #[test]
   fn test_forward_pass_temporal_direction() {
+    // Test the forward pass: child_time = parent_time + branch_length
     let parent_time_dist = Distribution::point(2010.0, 1.0);
     let branch_length_dist = Distribution::point(1.5, 1.0);
 
@@ -395,6 +421,7 @@ mod tests {
 
   #[test]
   fn test_convolution_with_uncertainty() {
+    // Test convolution with uncertainty distributions (functions)
     let parent_x = array![2010.0, 2010.5, 2011.0];
     let parent_y = array![0.2, 0.6, 0.2];
     let parent_dist = Distribution::function(parent_x, parent_y).unwrap();

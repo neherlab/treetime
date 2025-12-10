@@ -100,6 +100,7 @@ fn multiply_range_function<Y: YAxisPolicy>(
   let func_t = func.t();
   let func_y = func.y();
 
+  // Filter to range support
   let filtered: Vec<(f64, f64)> = func_t
     .iter()
     .zip(func_y.iter())
@@ -124,6 +125,7 @@ fn multiply_function_function<Y: YAxisPolicy>(
   a: &DistributionFunction<f64, Y>,
   b: &DistributionFunction<f64, Y>,
 ) -> Result<Distribution<Y>, Report> {
+  // Find overlapping support
   let a_min = a.t().first().copied().unwrap_or(0.0);
   let a_max = a.t().last().copied().unwrap_or(0.0);
   let b_min = b.t().first().copied().unwrap_or(0.0);

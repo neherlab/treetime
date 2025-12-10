@@ -4,10 +4,18 @@ use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
+/// Distribution that evaluates a formula on-demand.
+///
+/// Stores a closure that computes values at arbitrary points, avoiding discretization
+/// errors from pre-computing on a fixed grid.
+///
+/// The closure must be thread-safe (Fn) and cloneable via Arc.
 #[derive(Serialize, Deserialize)]
 pub struct DistributionFormula<Y: YAxisPolicy = Plain> {
+  /// Formula that evaluates the distribution at a given time point
   #[serde(skip, default = "default_eval_fn")]
   eval_fn: Arc<dyn Fn(f64) -> Result<f64> + Send + Sync>,
+  /// Valid time range [t_min, t_max]
   t_min: f64,
   t_max: f64,
   #[serde(skip)]
