@@ -68,7 +68,7 @@ fn multiply_point_function<Y: YAxisPolicy>(
   func: &DistributionFunction<f64, Y>,
 ) -> Result<Distribution<Y>, Report> {
   let t = point.t();
-  let func_value = func.interp(t).unwrap_or(Y::multiplicative_identity());
+  let func_value = func.interp(t).unwrap_or_else(|_| Y::multiplicative_identity());
   let amplitude = Y::multiply(point.amplitude(), func_value);
   if !Y::is_defined(amplitude) {
     return Ok(Distribution::empty());
@@ -140,8 +140,8 @@ fn multiply_function_function<Y: YAxisPolicy>(
 
   let values: Array1<f64> = Array1::from_shape_fn(n_points, |i| {
     let t = overlap_min + (overlap_max - overlap_min) * (i as f64 / (n_points - 1) as f64);
-    let va = a.interp(t).unwrap_or(Y::multiplicative_identity());
-    let vb = b.interp(t).unwrap_or(Y::multiplicative_identity());
+    let va = a.interp(t).unwrap_or_else(|_| Y::multiplicative_identity());
+    let vb = b.interp(t).unwrap_or_else(|_| Y::multiplicative_identity());
     Y::multiply(va, vb)
   });
 
@@ -195,7 +195,7 @@ fn multiply_formula_function<Y: YAxisPolicy>(
 
   let eval_fn = move |t: f64| -> eyre::Result<f64> {
     let va = a.eval_single(t)?;
-    let vb = b.interp(t).unwrap_or(Y::multiplicative_identity());
+    let vb = b.interp(t).unwrap_or_else(|_| Y::multiplicative_identity());
     Ok(Y::multiply(va, vb))
   };
 
