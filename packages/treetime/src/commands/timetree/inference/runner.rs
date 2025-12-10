@@ -29,14 +29,15 @@ pub fn run_timetree(
   initialize_node_divergences(graph);
 
   info!("## Using clock model");
-  info!("**Clock rate:** {:.6e}", clock_model.clock_rate());
+  let clock_rate = clock_model.clock_rate();
+  info!("**Clock rate:** {clock_rate:.6e}");
 
   if !partitions.is_empty() {
     info!("## Computing branch distributions from partitions");
-    compute_branch_distributions_marginal_mode(graph, partitions, clock_model)?;
+    compute_branch_distributions_marginal_mode(graph, partitions, clock_rate)?;
   } else {
     info!("## Creating branch distributions from input lengths");
-    create_branch_distributions_inpu_mode(graph, clock_model)?;
+    create_branch_distributions_input_mode(graph, clock_rate)?;
   }
 
   let coalescent_contributions = if let Some(tc) = coalescent_tc {
@@ -59,7 +60,7 @@ pub fn run_timetree(
 fn compute_branch_distributions_marginal_mode(
   graph: &GraphAncestral,
   partitions: &[Arc<RwLock<dyn PartitionTimetreeAll>>],
-  clock_model: &ClockModel,
+  clock_rate: f64,
 ) -> Result<(), Report> {
   // In input branch mode, partitions exist but have no edge data
   // Skip branch distribution computation and use input branch lengths directly
@@ -80,8 +81,6 @@ fn compute_branch_distributions_marginal_mode(
     total_sites
   );
   debug!("One mutation = {one_mutation:.6e} substitutions/site");
-
-  let clock_rate = clock_model.clock_rate();
 
   for edge_ref in graph.get_edges() {
     let edge_key = edge_ref.read_arc().key();
@@ -126,9 +125,7 @@ fn collect_contributions(
     .collect()
 }
 
-fn create_branch_distributions_inpu_mode(graph: &GraphAncestral, clock_model: &ClockModel) -> Result<(), Report> {
-  let clock_rate = clock_model.clock_rate();
-
+fn create_branch_distributions_input_mode(graph: &GraphAncestral, clock_rate: f64) -> Result<(), Report> {
   for edge_ref in graph.get_edges() {
     let mut edge = edge_ref.write_arc().payload().write_arc();
 
