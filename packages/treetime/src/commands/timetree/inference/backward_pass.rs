@@ -79,17 +79,18 @@ fn propagate_distributions_backward_single_node(
 #[cfg(test)]
 mod tests {
   use super::*;
+  use crate::distribution::distribution::DistributionPlain as Distribution;
   use crate::distribution::distribution_convolution::distribution_convolution;
   use approx::assert_abs_diff_eq;
 
   #[test]
   fn test_inverse_convolution_integration() -> Result<(), Report> {
     // Test that the refactored code uses the same operation as the standalone function
-    let child_dist = Distribution::point(2013.0, 1.0);
-    let branch_dist = Distribution::point(2.5, 0.8);
+    let child_dist: Distribution = Distribution::point(2013.0, 1.0);
+    let branch_dist: Distribution = Distribution::point(2.5, 0.8);
 
-    let negated_branch_dist = branch_dist.negate();
-    let result = distribution_convolution(&child_dist, &negated_branch_dist)?;
+    let negated_branch_dist: Distribution = branch_dist.negate();
+    let result: Distribution = distribution_convolution(&child_dist, &negated_branch_dist)?;
 
     if let Some(parent_time) = result.likely_time() {
       assert_abs_diff_eq!(parent_time, 2010.5, epsilon = 1e-10);
@@ -108,11 +109,11 @@ mod tests {
     let branch_length = 1.5;
     let expected_parent_time = child_time - branch_length; // 2010.5
 
-    let child_dist = Distribution::point(child_time, 1.0);
-    let branch_dist = Distribution::point(branch_length, 1.0);
+    let child_dist: Distribution = Distribution::point(child_time, 1.0);
+    let branch_dist: Distribution = Distribution::point(branch_length, 1.0);
 
-    let negated_branch_dist = branch_dist.negate();
-    let parent_dist = distribution_convolution(&child_dist, &negated_branch_dist)?;
+    let negated_branch_dist: Distribution = branch_dist.negate();
+    let parent_dist: Distribution = distribution_convolution(&child_dist, &negated_branch_dist)?;
 
     if let Some(actual_parent_time) = parent_dist.likely_time() {
       assert_abs_diff_eq!(actual_parent_time, expected_parent_time, epsilon = 1e-10);

@@ -2,78 +2,92 @@ use crate::distribution::distribution::Distribution;
 use crate::distribution::distribution_formula::DistributionFormula;
 use crate::distribution::distribution_function::DistributionFunction;
 use crate::distribution::distribution_point::DistributionPoint;
+use crate::distribution::y_axis_policy::YAxisPolicy;
 use eyre::Report;
 use ndarray::Array1;
 use std::sync::Arc;
 
-/// Multiplies two distributions pointwise (intersection of constraints).
-pub fn distribution_multiplication(a: &Distribution, b: &Distribution) -> Result<Distribution, Report> {
+pub fn distribution_multiplication<Y: YAxisPolicy>(
+  a: &Distribution<Y>,
+  b: &Distribution<Y>,
+) -> Result<Distribution<Y>, Report> {
   match (a, b) {
     (Distribution::Empty, _) | (_, Distribution::Empty) => Ok(Distribution::empty()),
-    (Distribution::Point(a), Distribution::Point(b)) => multiply_point_point(a, b),
+    (Distribution::Point(a), Distribution::Point(b)) => multiply_point_point::<Y>(a, b),
     (Distribution::Point(a), Distribution::Function(b)) | (Distribution::Function(b), Distribution::Point(a)) => {
-      multiply_point_function(a, b)
+      multiply_point_function::<Y>(a, b)
     },
     (Distribution::Point(a), Distribution::Range(b)) | (Distribution::Range(b), Distribution::Point(a)) => {
-      multiply_point_range(a, b)
+      multiply_point_range::<Y>(a, b)
     },
-    (Distribution::Range(a), Distribution::Range(b)) => multiply_range_range(a, b),
+    (Distribution::Range(a), Distribution::Range(b)) => multiply_range_range::<Y>(a, b),
     (Distribution::Range(a), Distribution::Function(b)) | (Distribution::Function(b), Distribution::Range(a)) => {
-      multiply_range_function(a, b)
+      multiply_range_function::<Y>(a, b)
     },
-    (Distribution::Function(a), Distribution::Function(b)) => multiply_function_function(a, b),
-    (Distribution::Formula(a), Distribution::Formula(b)) => multiply_formula_formula(a, b),
+    (Distribution::Function(a), Distribution::Function(b)) => multiply_function_function::<Y>(a, b),
+    (Distribution::Formula(a), Distribution::Formula(b)) => multiply_formula_formula::<Y>(a, b),
     (Distribution::Formula(a), Distribution::Function(b)) | (Distribution::Function(b), Distribution::Formula(a)) => {
-      multiply_formula_function(a, b)
+      multiply_formula_function::<Y>(a, b)
     },
     (Distribution::Formula(a), Distribution::Point(b)) | (Distribution::Point(b), Distribution::Formula(a)) => {
-      multiply_formula_point(a, b)
+      multiply_formula_point::<Y>(a, b)
     },
     (Distribution::Formula(a), Distribution::Range(b)) | (Distribution::Range(b), Distribution::Formula(a)) => {
-      multiply_formula_range(a, b)
+      multiply_formula_range::<Y>(a, b)
     },
   }
 }
 
-fn multiply_point_point(a: &DistributionPoint<f64>, b: &DistributionPoint<f64>) -> Result<Distribution, Report> {
+fn multiply_point_point<Y: YAxisPolicy>(
+  a: &DistributionPoint<f64, Y>,
+  b: &DistributionPoint<f64, Y>,
+) -> Result<Distribution<Y>, Report> {
   const EPS: f64 = 1e-9;
   if (a.t() - b.t()).abs() > EPS {
     return Ok(Distribution::empty());
   }
-  let amplitude = a.amplitude() * b.amplitude();
+  let amplitude = Y::multiply(a.amplitude(), b.amplitude());
   Ok(Distribution::point(a.t(), amplitude))
 }
 
-fn multiply_point_range(
-  point: &DistributionPoint<f64>,
-  range: &crate::distribution::distribution_range::DistributionRange<f64>,
-) -> Result<Distribution, Report> {
+fn multiply_point_range<Y: YAxisPolicy>(
+  point: &DistributionPoint<f64, Y>,
+  range: &crate::distribution::distribution_range::DistributionRange<f64, Y>,
+) -> Result<Distribution<Y>, Report> {
   const EPS: f64 = 1e-9;
   let t = point.t();
   if t < range.start() - EPS || t > range.end() + EPS {
     return Ok(Distribution::empty());
   }
-  let amplitude = point.amplitude() * range.amplitude();
+  let amplitude = Y::multiply(point.amplitude(), range.amplitude());
   Ok(Distribution::point(t, amplitude))
 }
 
-fn multiply_point_function(
-  point: &DistributionPoint<f64>,
-  func: &DistributionFunction<f64>,
-) -> Result<Distribution, Report> {
+fn multiply_point_function<Y: YAxisPolicy>(
+  point: &DistributionPoint<f64, Y>,
+  func: &DistributionFunction<f64, Y>,
+) -> Result<Distribution<Y>, Report> {
   let t = point.t();
-  let func_value = func.interp(t).unwrap_or(0.0);
-  let amplitude = point.amplitude() * func_value;
-  if amplitude <= 0.0 {
+  let func_value = func.interp(t).unwrap_or(Y::multiplicative_identity());
+  let amplitude = Y::multiply(point.amplitude(), func_value);
+  // For Plain policy, check if amplitude is positive. For NegLog, it's always valid.
+  // We use a simple heuristic: in Plain mode, Y::multiplicative_identity() is 1.0, and 0.0 or negative is "empty"
+  // In NegLog mode, Y::multiplicative_identity() is 0.0, so any finite value is valid
+  let is_empty = if Y::multiplicative_identity() == 1.0 {
+    amplitude <= 0.0
+  } else {
+    !amplitude.is_finite()
+  };
+  if is_empty {
     return Ok(Distribution::empty());
   }
   Ok(Distribution::point(t, amplitude))
 }
 
-fn multiply_range_range(
-  a: &crate::distribution::distribution_range::DistributionRange<f64>,
-  b: &crate::distribution::distribution_range::DistributionRange<f64>,
-) -> Result<Distribution, Report> {
+fn multiply_range_range<Y: YAxisPolicy>(
+  a: &crate::distribution::distribution_range::DistributionRange<f64, Y>,
+  b: &crate::distribution::distribution_range::DistributionRange<f64, Y>,
+) -> Result<Distribution<Y>, Report> {
   let overlap_start = a.start().max(b.start());
   let overlap_end = a.end().min(b.end());
 
@@ -81,25 +95,24 @@ fn multiply_range_range(
     return Ok(Distribution::empty());
   }
 
-  let amplitude = a.amplitude() * b.amplitude();
+  let amplitude = Y::multiply(a.amplitude(), b.amplitude());
   Ok(Distribution::range((overlap_start, overlap_end), amplitude))
 }
 
-fn multiply_range_function(
-  range: &crate::distribution::distribution_range::DistributionRange<f64>,
-  func: &DistributionFunction<f64>,
-) -> Result<Distribution, Report> {
+fn multiply_range_function<Y: YAxisPolicy>(
+  range: &crate::distribution::distribution_range::DistributionRange<f64, Y>,
+  func: &DistributionFunction<f64, Y>,
+) -> Result<Distribution<Y>, Report> {
   const EPS: f64 = 1e-9;
 
   let func_t = func.t();
   let func_y = func.y();
 
-  // Filter to range support
   let filtered: Vec<(f64, f64)> = func_t
     .iter()
     .zip(func_y.iter())
     .filter(|&(&t, _)| t >= range.start() - EPS && t <= range.end() + EPS)
-    .map(|(&t, &y)| (t, y * range.amplitude()))
+    .map(|(&t, &y)| (t, Y::multiply(y, range.amplitude())))
     .collect();
 
   if filtered.is_empty() {
@@ -115,11 +128,10 @@ fn multiply_range_function(
   Ok(Distribution::Function(distribution_fn))
 }
 
-fn multiply_function_function(
-  a: &DistributionFunction<f64>,
-  b: &DistributionFunction<f64>,
-) -> Result<Distribution, Report> {
-  // Find overlapping support
+fn multiply_function_function<Y: YAxisPolicy>(
+  a: &DistributionFunction<f64, Y>,
+  b: &DistributionFunction<f64, Y>,
+) -> Result<Distribution<Y>, Report> {
   let a_min = a.t().first().copied().unwrap_or(0.0);
   let a_max = a.t().last().copied().unwrap_or(0.0);
   let b_min = b.t().first().copied().unwrap_or(0.0);
@@ -132,21 +144,23 @@ fn multiply_function_function(
     return Ok(Distribution::empty());
   }
 
-  // Create uniform grid in overlap region
   let n_points = a.t().len().max(b.t().len());
 
   let values: Array1<f64> = Array1::from_shape_fn(n_points, |i| {
     let t = overlap_min + (overlap_max - overlap_min) * (i as f64 / (n_points - 1) as f64);
-    let va = a.interp(t).unwrap_or(0.0);
-    let vb = b.interp(t).unwrap_or(0.0);
-    va * vb
+    let va = a.interp(t).unwrap_or(Y::multiplicative_identity());
+    let vb = b.interp(t).unwrap_or(Y::multiplicative_identity());
+    Y::multiply(va, vb)
   });
 
   let distribution_fn = DistributionFunction::from_range_values((overlap_min, overlap_max), values)?;
   Ok(Distribution::Function(distribution_fn))
 }
 
-fn multiply_formula_formula(a: &DistributionFormula, b: &DistributionFormula) -> Result<Distribution, Report> {
+fn multiply_formula_formula<Y: YAxisPolicy>(
+  a: &DistributionFormula<Y>,
+  b: &DistributionFormula<Y>,
+) -> Result<Distribution<Y>, Report> {
   let overlap_min = a.t_min().max(b.t_min());
   let overlap_max = a.t_max().min(b.t_max());
 
@@ -160,7 +174,7 @@ fn multiply_formula_formula(a: &DistributionFormula, b: &DistributionFormula) ->
   let eval_fn = move |t: f64| -> eyre::Result<f64> {
     let va = a.eval_single(t)?;
     let vb = b.eval_single(t)?;
-    Ok(va * vb)
+    Ok(Y::multiply(va, vb))
   };
 
   Ok(Distribution::Formula(DistributionFormula::new(
@@ -170,7 +184,10 @@ fn multiply_formula_formula(a: &DistributionFormula, b: &DistributionFormula) ->
   )))
 }
 
-fn multiply_formula_function(a: &DistributionFormula, b: &DistributionFunction<f64>) -> Result<Distribution, Report> {
+fn multiply_formula_function<Y: YAxisPolicy>(
+  a: &DistributionFormula<Y>,
+  b: &DistributionFunction<f64, Y>,
+) -> Result<Distribution<Y>, Report> {
   let b_min = b.t().first().copied().unwrap_or(0.0);
   let b_max = b.t().last().copied().unwrap_or(0.0);
 
@@ -186,8 +203,8 @@ fn multiply_formula_function(a: &DistributionFormula, b: &DistributionFunction<f
 
   let eval_fn = move |t: f64| -> eyre::Result<f64> {
     let va = a.eval_single(t)?;
-    let vb = b.interp(t).unwrap_or(0.0);
-    Ok(va * vb)
+    let vb = b.interp(t).unwrap_or(Y::multiplicative_identity());
+    Ok(Y::multiply(va, vb))
   };
 
   Ok(Distribution::Formula(DistributionFormula::new(
@@ -197,7 +214,10 @@ fn multiply_formula_function(a: &DistributionFormula, b: &DistributionFunction<f
   )))
 }
 
-fn multiply_formula_point(a: &DistributionFormula, b: &DistributionPoint<f64>) -> Result<Distribution, Report> {
+fn multiply_formula_point<Y: YAxisPolicy>(
+  a: &DistributionFormula<Y>,
+  b: &DistributionPoint<f64, Y>,
+) -> Result<Distribution<Y>, Report> {
   const EPS: f64 = 1e-9;
   let t = b.t();
 
@@ -206,19 +226,24 @@ fn multiply_formula_point(a: &DistributionFormula, b: &DistributionPoint<f64>) -
   }
 
   let va = a.eval_single(t)?;
-  let amplitude = va * b.amplitude();
+  let amplitude = Y::multiply(va, b.amplitude());
 
-  if amplitude <= 0.0 {
+  let is_empty = if Y::multiplicative_identity() == 1.0 {
+    amplitude <= 0.0
+  } else {
+    !amplitude.is_finite()
+  };
+  if is_empty {
     return Ok(Distribution::empty());
   }
 
   Ok(Distribution::point(t, amplitude))
 }
 
-fn multiply_formula_range(
-  a: &DistributionFormula,
-  b: &crate::distribution::distribution_range::DistributionRange<f64>,
-) -> Result<Distribution, Report> {
+fn multiply_formula_range<Y: YAxisPolicy>(
+  a: &DistributionFormula<Y>,
+  b: &crate::distribution::distribution_range::DistributionRange<f64, Y>,
+) -> Result<Distribution<Y>, Report> {
   let overlap_min = a.t_min().max(b.start());
   let overlap_max = a.t_max().min(b.end());
 
@@ -231,7 +256,7 @@ fn multiply_formula_range(
 
   let eval_fn = move |t: f64| -> eyre::Result<f64> {
     let va = a.eval_single(t)?;
-    Ok(va * b_amplitude)
+    Ok(Y::multiply(va, b_amplitude))
   };
 
   Ok(Distribution::Formula(DistributionFormula::new(

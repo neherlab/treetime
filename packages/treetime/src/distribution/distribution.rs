@@ -2,6 +2,7 @@ use crate::distribution::distribution_formula::DistributionFormula;
 use crate::distribution::distribution_negation::distribution_negation_inplace;
 use crate::distribution::distribution_point::DistributionPoint;
 use crate::distribution::distribution_range::DistributionRange;
+use crate::distribution::y_axis_policy::{NegLog, Plain, YAxisPolicy};
 use crate::distribution::{distribution_function::DistributionFunction, distribution_negation::distribution_negation};
 use crate::io::dates_csv::DateOrRange;
 use approx::ulps_eq;
@@ -17,16 +18,16 @@ pub const TIME_EPSILON: f64 = 1e-10;
 #[must_use]
 #[allow(variant_size_differences)]
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
-pub enum Distribution {
+pub enum Distribution<Y: YAxisPolicy = Plain> {
   #[default]
   Empty,
-  Point(DistributionPoint<f64>),
-  Range(DistributionRange<f64>),
-  Function(DistributionFunction<f64>),
-  Formula(DistributionFormula),
+  Point(DistributionPoint<f64, Y>),
+  Range(DistributionRange<f64, Y>),
+  Function(DistributionFunction<f64, Y>),
+  Formula(DistributionFormula<Y>),
 }
 
-impl Distribution {
+impl<Y: YAxisPolicy> Distribution<Y> {
   pub fn empty() -> Self {
     Self::Empty
   }
@@ -62,13 +63,6 @@ impl Distribution {
     Distribution::range((-TIME_LIMIT, TIME_LIMIT), amplitude)
   }
 
-  pub fn from_date_or_range(date_or_range: &DateOrRange) -> Self {
-    match date_or_range {
-      DateOrRange::YearFraction(t) => Self::point(*t, 1.0),
-      DateOrRange::YearFractionRange((start, end)) => Self::range((*start, *end), 1.0),
-    }
-  }
-
   pub fn likely_time(&self) -> Option<f64> {
     match self {
       Self::Empty => None,
@@ -95,7 +89,6 @@ impl Distribution {
       Self::Range(r) => ndarray::array![r.amplitude(), r.amplitude()],
       Self::Function(f) => f.y().clone(),
       Self::Formula(f) => {
-        // Evaluate at endpoints as reasonable default
         let t = ndarray::array![f.t_min(), f.t_max()];
         f.eval_many(&t).unwrap_or_else(|_| ndarray::array![0.0, 0.0])
       },
@@ -173,3 +166,49 @@ impl Distribution {
     }
   }
 }
+
+impl Distribution<Plain> {
+  pub fn from_date_or_range(date_or_range: &DateOrRange) -> Self {
+    match date_or_range {
+      DateOrRange::YearFraction(t) => Self::point(*t, 1.0),
+      DateOrRange::YearFractionRange((start, end)) => Self::range((*start, *end), 1.0),
+    }
+  }
+
+  pub fn to_neglog(&self) -> Distribution<NegLog> {
+    match self {
+      Self::Empty => Distribution::Empty,
+      Self::Point(p) => Distribution::point(p.t(), NegLog::from_plain(p.amplitude())),
+      Self::Range(r) => Distribution::range((r.start(), r.end()), NegLog::from_plain(r.amplitude())),
+      Self::Function(f) => {
+        let y_neglog = f.y().mapv(NegLog::from_plain);
+        Distribution::Function(DistributionFunction::from_grid_fn(
+          treetime_convolution::GridFn::from_start_dx_values(f.x_min(), f.dx(), y_neglog)
+            .expect("Grid construction should not fail for valid input"),
+        ))
+      },
+      Self::Formula(_) => panic!("Conversion to NegLog not implemented for Formula distributions"),
+    }
+  }
+}
+
+impl Distribution<NegLog> {
+  pub fn to_plain(&self) -> Distribution<Plain> {
+    match self {
+      Self::Empty => Distribution::Empty,
+      Self::Point(p) => Distribution::point(p.t(), NegLog::to_plain(p.amplitude())),
+      Self::Range(r) => Distribution::range((r.start(), r.end()), NegLog::to_plain(r.amplitude())),
+      Self::Function(f) => {
+        let y_plain = f.y().mapv(NegLog::to_plain);
+        Distribution::Function(DistributionFunction::from_grid_fn(
+          treetime_convolution::GridFn::from_start_dx_values(f.x_min(), f.dx(), y_plain)
+            .expect("Grid construction should not fail for valid input"),
+        ))
+      },
+      Self::Formula(_) => panic!("Conversion to Plain not implemented for Formula distributions"),
+    }
+  }
+}
+
+pub type DistributionPlain = Distribution<Plain>;
+pub type DistributionNegLog = Distribution<NegLog>;

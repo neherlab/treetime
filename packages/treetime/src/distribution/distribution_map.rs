@@ -1,11 +1,9 @@
 use crate::distribution::distribution::Distribution;
+use crate::distribution::y_axis_policy::YAxisPolicy;
 use eyre::Report;
 use ndarray::Array1;
 
-/// Applies a function element-wise to the y-values of a distribution.
-///
-/// Creates a new Function distribution with the same time points but transformed y-values.
-pub fn distribution_map<F>(dist: &Distribution, f: F) -> Result<Distribution, Report>
+pub fn distribution_map<Y: YAxisPolicy, F>(dist: &Distribution<Y>, f: F) -> Result<Distribution<Y>, Report>
 where
   F: Fn(f64) -> f64,
 {
@@ -27,8 +25,7 @@ where
   }
 }
 
-/// Creates a distribution from time points and a function that generates y-values.
-pub fn distribution_from_fn<F>(time_points: Array1<f64>, f: F) -> Result<Distribution, Report>
+pub fn distribution_from_fn<Y: YAxisPolicy, F>(time_points: Array1<f64>, f: F) -> Result<Distribution<Y>, Report>
 where
   F: Fn(f64) -> f64,
 {

@@ -2,6 +2,7 @@ use crate::distribution::distribution::Distribution;
 use crate::distribution::distribution_function::DistributionFunction;
 use crate::distribution::distribution_point::DistributionPoint;
 use crate::distribution::distribution_range::DistributionRange;
+use crate::distribution::y_axis_policy::{Plain, SupportsConvolution};
 use crate::make_error;
 use approx::ulps_eq;
 use eyre::Report;
@@ -9,50 +10,51 @@ use ndarray::{Array1, array};
 use treetime_convolution::convolve;
 use treetime_utils::ndarray::has_uniform_spacing;
 
-pub fn distribution_convolution(a: &Distribution, b: &Distribution) -> Result<Distribution, Report> {
+pub fn distribution_convolution<Y: SupportsConvolution>(
+  a: &Distribution<Y>,
+  b: &Distribution<Y>,
+) -> Result<Distribution<Y>, Report> {
   match (a, b) {
-    (Distribution::Empty, _) | (_, Distribution::Empty) => {
-      Ok(Distribution::Empty) //
-    },
-    (Distribution::Point(a), Distribution::Point(b)) => {
-      Ok(convolution_point_point(a, b)) //
-    },
+    (Distribution::Empty, _) | (_, Distribution::Empty) => Ok(Distribution::Empty),
+    (Distribution::Point(a), Distribution::Point(b)) => Ok(convolution_point_point::<Y>(a, b)),
     (Distribution::Point(a), Distribution::Range(b)) | (Distribution::Range(b), Distribution::Point(a)) => {
-      Ok(convolution_point_range(a, b)) //
+      Ok(convolution_point_range::<Y>(a, b))
     },
-    (Distribution::Range(a), Distribution::Range(b)) => {
-      convolution_range_range(a, b) //
-    },
+    (Distribution::Range(a), Distribution::Range(b)) => convolution_range_range::<Y>(a, b),
     (Distribution::Point(a), Distribution::Function(b)) | (Distribution::Function(b), Distribution::Point(a)) => {
-      Ok(Distribution::Function(convolution_point_function(a, b)?))
+      Ok(Distribution::Function(convolution_point_function::<Y>(a, b)?))
     },
     (Distribution::Range(a), Distribution::Function(b)) | (Distribution::Function(b), Distribution::Range(a)) => {
-      convolution_range_function(a, b) //
+      convolution_range_function::<Y>(a, b)
     },
-    (Distribution::Function(a), Distribution::Function(b)) => {
-      convolution_function_function(a, b) //
-    },
+    (Distribution::Function(a), Distribution::Function(b)) => convolution_function_function::<Y>(a, b),
     _ => panic!("Convolution not implemented for Formula distributions"),
   }
 }
 
-fn convolution_point_point(a: &DistributionPoint<f64>, b: &DistributionPoint<f64>) -> Distribution {
+fn convolution_point_point<Y: SupportsConvolution>(
+  a: &DistributionPoint<f64, Y>,
+  b: &DistributionPoint<f64, Y>,
+) -> Distribution<Y> {
   let x = a.t() + b.t();
-  let y = a.amplitude() * b.amplitude();
+  let y = Y::multiply(a.amplitude(), b.amplitude());
   Distribution::point(x, y)
 }
 
-fn convolution_range_range(a: &DistributionRange<f64>, b: &DistributionRange<f64>) -> Result<Distribution, Report> {
+fn convolution_range_range<Y: SupportsConvolution>(
+  a: &DistributionRange<f64, Y>,
+  b: &DistributionRange<f64, Y>,
+) -> Result<Distribution<Y>, Report> {
   let start = a.start() + b.start();
   let end = a.end() + b.end();
 
   let peak_start = f64::max(a.start() + b.start(), a.end() + b.start());
   let peak_end = f64::min(a.end() + b.end(), a.start() + b.end());
 
-  let peak_amplitude = a.amplitude() * b.amplitude();
+  let peak_amplitude = Y::multiply(a.amplitude(), b.amplitude());
 
   if ulps_eq!(&peak_start, &peak_end, max_ulps = 10) {
-    // Triangle case: equal-width ranges always produce uniform spacing
+    // Triangle case: equal-width ranges produce triangular shape
     let x = array![start, peak_start, end];
     let y = array![0.0, peak_amplitude, 0.0];
     Distribution::function(x, y)
@@ -61,54 +63,49 @@ fn convolution_range_range(a: &DistributionRange<f64>, b: &DistributionRange<f64
     let x = array![start, peak_start, peak_end, end];
     let y = array![0.0, peak_amplitude, peak_amplitude, 0.0];
     if has_uniform_spacing(&x) {
-      // Trapezoid with uniform spacing
       Distribution::function(x, y)
     } else {
-      // Trapezoid with non-uniform spacing: resample trapezoid to uniform grid
       DistributionFunction::from_arrays_nonuniform(&x, &y).map(Distribution::Function)
     }
   }
 }
 
-fn convolution_point_range(p: &DistributionPoint<f64>, r: &DistributionRange<f64>) -> Distribution {
+fn convolution_point_range<Y: SupportsConvolution>(
+  p: &DistributionPoint<f64, Y>,
+  r: &DistributionRange<f64, Y>,
+) -> Distribution<Y> {
   let begin = r.start() + p.t();
   let end = r.end() + p.t();
-  let amplitude = p.amplitude() * r.amplitude();
+  let amplitude = Y::multiply(p.amplitude(), r.amplitude());
   Distribution::range((begin, end), amplitude)
 }
 
-fn convolution_point_function(
-  p: &DistributionPoint<f64>,
-  f: &DistributionFunction<f64>,
-) -> Result<DistributionFunction<f64>, Report> {
+fn convolution_point_function<Y: SupportsConvolution>(
+  p: &DistributionPoint<f64, Y>,
+  f: &DistributionFunction<f64, Y>,
+) -> Result<DistributionFunction<f64, Y>, Report> {
   let x_min = f.x_min() + p.t();
   let dx = f.dx();
-  let y = f.y().map(|y| y * p.amplitude());
+  let y = f.y().mapv(|y| Y::multiply(y, p.amplitude()));
   DistributionFunction::from_start_dx_values(x_min, dx, y)
 }
 
-fn convolution_range_function(
-  r: &DistributionRange<f64>,
-  f: &DistributionFunction<f64>,
-) -> Result<Distribution, Report> {
-  // DistributionFunction is guaranteed to be uniform
+fn convolution_range_function<Y: SupportsConvolution>(
+  r: &DistributionRange<f64, Y>,
+  f: &DistributionFunction<f64, Y>,
+) -> Result<Distribution<Y>, Report> {
   let dx = f.dx();
 
-  // split in a convolution with
-  // - a point distribution (taking care of the shift + amplitude)
-  // - an interval centered on zero and of a fixed width (taking care of the smoothing)
   let shift = f64::midpoint(r.start(), r.end());
   let amplitude = r.amplitude();
   let half_width = (r.end() - r.start()) / 2.0;
 
   let point_distr = DistributionPoint::new(shift, amplitude);
-  let shifted_function = convolution_point_function(&point_distr, f).unwrap();
+  let shifted_function = convolution_point_function::<Y>(&point_distr, f)?;
 
-  // Convolution with a range centered on zero and of given width
   let t_out = shifted_function.t();
   let mut y_out = Array1::zeros(shifted_function.y().len());
 
-  // TODO: optimize by using cumulative sums
   for (i, &ti) in shifted_function.t().iter().enumerate() {
     let mask = shifted_function.t().mapv(|x| (x - ti).abs() <= half_width);
     let filtered_y = shifted_function.y() * &mask.mapv(|x| if x { 1.0 } else { 0.0 });
@@ -118,43 +115,40 @@ fn convolution_range_function(
   Distribution::function(t_out, y_out)
 }
 
-fn convolution_function_function(
-  a: &DistributionFunction<f64>,
-  b: &DistributionFunction<f64>,
-) -> Result<Distribution, Report> {
-  // Check for degenerate cases
+fn convolution_function_function<Y: SupportsConvolution>(
+  a: &DistributionFunction<f64, Y>,
+  b: &DistributionFunction<f64, Y>,
+) -> Result<Distribution<Y>, Report> {
   if a.is_empty() || b.is_empty() {
     return Ok(Distribution::empty());
   }
 
   let dx_a = a.dx();
   let dx_b = b.dx();
-  // Use max instead of min to prevent exponentially growing grid sizes
   let dx = dx_a.min(dx_b);
 
   if !(dx.is_finite() && dx > 0.0) {
     return make_error!("Invalid grid spacing detected during convolution: {dx}");
   }
 
-  let (a_values, a_min) = resample_distribution(a, dx)?;
-  let (b_values, b_min) = resample_distribution(b, dx)?;
+  let (a_values, a_min) = resample_distribution::<Y>(a, dx)?;
+  let (b_values, b_min) = resample_distribution::<Y>(b, dx)?;
 
-  // Handle empty distributions after resampling
   if a_values.len() == 0 || b_values.len() == 0 {
     return Ok(Distribution::empty());
   }
 
-  // For single-point distributions, treat as delta functions
   if a_values.len() == 1 && b_values.len() == 1 {
-    return Ok(Distribution::point(a_min + b_min, a_values[0] * b_values[0]));
+    return Ok(Distribution::point(
+      a_min + b_min,
+      Y::multiply(a_values[0], b_values[0]),
+    ));
   }
 
   let output_len = a_values.len() + b_values.len() - 1;
   let output_grid_start = a_min + b_min;
 
-  // Perform convolution with unified grids
   let conv_result = convolve(dx, &a_values, &b_values)?;
-  // check that the convolution result has the expected length
   if conv_result.len() != output_len {
     return make_error!(
       "Convolution result length mismatch: expected {}, got {}",
@@ -162,23 +156,23 @@ fn convolution_function_function(
       conv_result.len()
     );
   }
-  let conv_distr = DistributionFunction::from_start_dx_values(output_grid_start, dx, conv_result)?;
+  let conv_distr = DistributionFunction::<f64, Plain>::from_start_dx_values(output_grid_start, dx, conv_result)?;
 
-  // resample distribution to coarser grid
   let coarse_dx = dx_a.max(dx_b);
-  let (final_values, coarse_grid_min) = resample_distribution(&conv_distr, coarse_dx)?;
+  let (final_values, coarse_grid_min) = resample_distribution::<Plain>(&conv_distr, coarse_dx)?;
 
-  // sanity check: more than one point
   if final_values.len() < 2 {
     return make_error!("Final distribution after convolution has less than two points");
   }
 
-  // return final distribution
   let final_distr = DistributionFunction::from_start_dx_values(coarse_grid_min, coarse_dx, final_values)?;
   Ok(Distribution::Function(final_distr))
 }
 
-fn resample_distribution(func: &DistributionFunction<f64>, dx: f64) -> Result<(Array1<f64>, f64), Report> {
+fn resample_distribution<Y: SupportsConvolution>(
+  func: &DistributionFunction<f64, Y>,
+  dx: f64,
+) -> Result<(Array1<f64>, f64), Report> {
   if func.is_empty() {
     return make_error!("DistributionFunction is empty");
   }
@@ -190,14 +184,11 @@ fn resample_distribution(func: &DistributionFunction<f64>, dx: f64) -> Result<(A
   }
 
   if (max - min).abs() < f64::EPSILON {
-    // Single point case
     let value = func.interp(min)?;
     return Ok((array![value], min));
   }
 
   let original_span = max - min;
-
-  // Calculate number of steps needed to cover the span with the given dx
   let steps = (original_span / dx).ceil() as usize;
   let len = steps + 1;
 
@@ -205,7 +196,6 @@ fn resample_distribution(func: &DistributionFunction<f64>, dx: f64) -> Result<(A
     return make_error!("Unable to resample distribution: computed length {len} is too small");
   }
 
-  // Prevent excessive memory allocation
   if len > 1_000_000 {
     return make_error!("Resampling would require {len} points, which exceeds safety limit");
   }
@@ -213,7 +203,6 @@ fn resample_distribution(func: &DistributionFunction<f64>, dx: f64) -> Result<(A
   let mut values = Array1::zeros(len);
   for i in 0..len {
     let position = min + dx * (i as f64);
-    // Clamp position to valid range to avoid extrapolation errors
     let clamped_position = position.min(max).max(min);
     values[i] = func.interp(clamped_position)?;
   }
@@ -223,40 +212,36 @@ fn resample_distribution(func: &DistributionFunction<f64>, dx: f64) -> Result<(A
 
 #[cfg(test)]
 mod tests {
-  use super::*;
+  use super::distribution_convolution;
+  use crate::distribution::distribution::DistributionPlain as Distribution;
+  use ndarray::array;
 
   use pretty_assertions::assert_eq;
 
   #[test]
   fn test_convolution_empty() {
-    let a = Distribution::empty();
-    let b = Distribution::function(array![], array![]).unwrap();
-    let actual = distribution_convolution(&a, &b).unwrap();
-    let expected = Distribution::empty();
+    let a: Distribution = Distribution::empty();
+    let b: Distribution = Distribution::function(array![], array![]).unwrap();
+    let actual: Distribution = distribution_convolution(&a, &b).unwrap();
+    let expected: Distribution = Distribution::empty();
     assert_eq!(expected, actual);
   }
 
   #[test]
   fn test_convolution_point_point() {
-    let a = Distribution::point(2.0, 3.0);
-    let b = Distribution::point(5.0, 4.0);
-    let actual = distribution_convolution(&a, &b).unwrap();
-    let expected = Distribution::point(7.0, 12.0);
+    let a: Distribution = Distribution::point(2.0, 3.0);
+    let b: Distribution = Distribution::point(5.0, 4.0);
+    let actual: Distribution = distribution_convolution(&a, &b).unwrap();
+    let expected: Distribution = Distribution::point(7.0, 12.0);
     assert_eq!(expected, actual);
   }
 
   #[test]
   fn test_convolution_range_range_triangle() {
-    // Triangle case: equal-width ranges always produce triangles with uniform spacing
     let a = Distribution::range((2.0, 4.0), 3.0);
     let b = Distribution::range((6.0, 8.0), 2.0);
     let actual = distribution_convolution(&a, &b).unwrap();
     let expected = {
-      // start = 2.0 + 6.0 = 8.0
-      // end = 4.0 + 8.0 = 12.0
-      // peak_start = max(2.0+6.0, 4.0+6.0) = 10.0
-      // peak_end = min(4.0+8.0, 2.0+8.0) = 10.0
-      // Peak amplitude = 3.0 * 2.0 = 6.0
       let x = array![8.0, 10.0, 12.0];
       let y = array![0.0, 6.0, 0.0];
       Distribution::function(x, y).unwrap()
@@ -270,9 +255,6 @@ mod tests {
     let b = Distribution::range((6.0, 9.0), 2.0);
     let actual = distribution_convolution(&a, &b).unwrap();
     let expected = {
-      // Trapezoid: start=8.0, peak_start=10.0, peak_end=11.0, end=13.0
-      // Non-uniform spacing (1, 2, 1.5, 2), so resampled to uniform grid
-      // With dx=1.0 (smallest spacing), the uniform grid is:
       let x = array![8.0, 9.0, 10.0, 11.0, 12.0, 13.0];
       let y = array![0.0, 3.0, 6.0, 6.0, 3.0, 0.0];
       Distribution::function(x, y).unwrap()
@@ -286,8 +268,6 @@ mod tests {
     let b = Distribution::range((3.0, 7.0), 2.0);
     let actual = distribution_convolution(&a, &b).unwrap();
     let expected = {
-      // Trapezoid: start=3.0, peak_start=5.0, peak_end=7.0, end=9.0
-      // Uniform spacing (dx=2.0), so no resampling needed
       let x = array![3.0, 5.0, 7.0, 9.0];
       let y = array![0.0, 2.0, 2.0, 0.0];
       Distribution::function(x, y).unwrap()
@@ -347,13 +327,12 @@ mod tests {
 
   #[test]
   fn test_convolution_function_function_basic() {
-    // Simple test with aligned grids
     let a_x = array![0.0, 1.0, 2.0];
     let a_y = array![1.0, 2.0, 1.0];
     let a = Distribution::function(a_x, a_y).unwrap();
 
     let b_x = array![0.0, 1.0];
-    let b_y = array![1.0, 2.0]; // Make values non-uniform to force Function type
+    let b_y = array![1.0, 2.0];
     let b = Distribution::function(b_x, b_y).unwrap();
 
     let actual = distribution_convolution(&a, &b).unwrap();
@@ -394,7 +373,6 @@ mod tests {
 
   #[test]
   fn test_convolution_function_function_different_spacing() {
-    // Test with different grid spacings to ensure proper resampling
     let a_x = array![0.0, 0.5, 1.0];
     let a_y = array![1.0, 2.0, 1.0];
     let a = Distribution::function(a_x, a_y).unwrap();
@@ -414,7 +392,6 @@ mod tests {
 
   #[test]
   fn test_convolution_function_function_zero_width() {
-    // Test point distribution convolved with function
     let a = Distribution::point(5.0, 1.0);
 
     let b_x = array![1.0, 2.0];
@@ -432,11 +409,9 @@ mod tests {
 
   #[test]
   fn test_backward_pass_temporal_direction() {
-    // Test the specific use case in backward pass: parent_time = child_time + (-branch_length)
     let child_time_dist = Distribution::point(2013.0, 1.0);
     let branch_length_dist = Distribution::point(2.5, 1.0);
 
-    // In backward pass, we negate the branch distribution
     let negated_branch = branch_length_dist.negate();
     let actual = distribution_convolution(&child_time_dist, &negated_branch).unwrap();
 
@@ -446,7 +421,6 @@ mod tests {
 
   #[test]
   fn test_forward_pass_temporal_direction() {
-    // Test the forward pass: child_time = parent_time + branch_length
     let parent_time_dist = Distribution::point(2010.0, 1.0);
     let branch_length_dist = Distribution::point(1.5, 1.0);
 
@@ -458,13 +432,12 @@ mod tests {
 
   #[test]
   fn test_convolution_with_uncertainty() {
-    // Test convolution with uncertainty distributions (functions)
     let parent_x = array![2010.0, 2010.5, 2011.0];
-    let parent_y = array![0.2, 0.6, 0.2]; // Uncertainty around 2010.5
+    let parent_y = array![0.2, 0.6, 0.2];
     let parent_dist = Distribution::function(parent_x, parent_y).unwrap();
 
     let branch_x = array![1.0, 1.5, 2.0];
-    let branch_y = array![0.3, 0.4, 0.3]; // Uncertainty around 1.5
+    let branch_y = array![0.3, 0.4, 0.3];
     let branch_dist = Distribution::function(branch_x, branch_y).unwrap();
 
     let actual = distribution_convolution(&parent_dist, &branch_dist).unwrap();

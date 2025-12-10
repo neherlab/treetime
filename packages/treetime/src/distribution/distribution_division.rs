@@ -2,12 +2,16 @@ use crate::distribution::distribution::Distribution;
 use crate::distribution::distribution_function::DistributionFunction;
 use crate::distribution::distribution_point::DistributionPoint;
 use crate::distribution::distribution_range::DistributionRange;
+use crate::distribution::y_axis_policy::YAxisPolicy;
 use crate::make_error;
 use eyre::Report;
 
 const TINY_NUMBER: f64 = 1e-10;
 
-pub fn distribution_division(dividend: &Distribution, divisor: &Distribution) -> Result<Distribution, Report> {
+pub fn distribution_division<Y: YAxisPolicy>(
+  dividend: &Distribution<Y>,
+  divisor: &Distribution<Y>,
+) -> Result<Distribution<Y>, Report> {
   match (dividend, divisor) {
     (Distribution::Empty, _) => Ok(Distribution::Empty),
     (_, Distribution::Empty) => make_error!("Cannot divide by empty distribution"),
@@ -29,22 +33,29 @@ pub fn distribution_division(dividend: &Distribution, divisor: &Distribution) ->
     (Distribution::Function(_), Distribution::Range(_)) => {
       make_error!("Cannot divide Function by Range: operation not well-defined")
     },
-    (Distribution::Point(a), Distribution::Function(b)) => divide_point_by_function(a, b),
-    (Distribution::Range(a), Distribution::Function(b)) => divide_range_by_function(a, b),
-    (Distribution::Function(a), Distribution::Function(b)) => divide_function_by_function(a, b),
+    (Distribution::Point(a), Distribution::Function(b)) => divide_point_by_function::<Y>(a, b),
+    (Distribution::Range(a), Distribution::Function(b)) => divide_range_by_function::<Y>(a, b),
+    (Distribution::Function(a), Distribution::Function(b)) => divide_function_by_function::<Y>(a, b),
     _ => panic!("Division not implemented for Formula distributions"),
   }
 }
 
-fn divide_point_by_function(
-  point: &DistributionPoint<f64>,
-  divisor: &DistributionFunction<f64>,
-) -> Result<Distribution, Report> {
+fn divide_point_by_function<Y: YAxisPolicy>(
+  point: &DistributionPoint<f64, Y>,
+  divisor: &DistributionFunction<f64, Y>,
+) -> Result<Distribution<Y>, Report> {
   let t = point.t();
   let dividend_value = point.amplitude();
-  let divisor_value = divisor.interp(t).unwrap_or(TINY_NUMBER).max(TINY_NUMBER);
 
-  let result_value = dividend_value / divisor_value;
+  // For Plain: use max with TINY_NUMBER to avoid division by zero
+  // For NegLog: we use subtraction, so no special handling needed for zero
+  let divisor_value = if Y::multiplicative_identity() == 1.0 {
+    divisor.interp(t).unwrap_or(TINY_NUMBER).max(TINY_NUMBER)
+  } else {
+    divisor.interp(t).unwrap_or(Y::multiplicative_identity())
+  };
+
+  let result_value = Y::divide(dividend_value, divisor_value);
 
   if !result_value.is_finite() {
     return Ok(Distribution::empty());
@@ -53,10 +64,10 @@ fn divide_point_by_function(
   Ok(Distribution::point(t, result_value))
 }
 
-fn divide_range_by_function(
-  range: &DistributionRange<f64>,
-  divisor: &DistributionFunction<f64>,
-) -> Result<Distribution, Report> {
+fn divide_range_by_function<Y: YAxisPolicy>(
+  range: &DistributionRange<f64, Y>,
+  divisor: &DistributionFunction<f64, Y>,
+) -> Result<Distribution<Y>, Report> {
   let range_start = range.start();
   let range_end = range.end();
   let dividend_amplitude = range.amplitude();
@@ -71,15 +82,19 @@ fn divide_range_by_function(
     return Ok(Distribution::empty());
   }
 
-  let result_y = divisor.y().mapv(|v| dividend_amplitude / v.max(TINY_NUMBER));
+  let result_y = if Y::multiplicative_identity() == 1.0 {
+    divisor.y().mapv(|v| Y::divide(dividend_amplitude, v.max(TINY_NUMBER)))
+  } else {
+    divisor.y().mapv(|v| Y::divide(dividend_amplitude, v))
+  };
   let result_fn = DistributionFunction::from_start_dx_values(func_min, divisor.dx(), result_y)?;
   Ok(Distribution::Function(result_fn))
 }
 
-fn divide_function_by_function(
-  dividend: &DistributionFunction<f64>,
-  divisor: &DistributionFunction<f64>,
-) -> Result<Distribution, Report> {
+fn divide_function_by_function<Y: YAxisPolicy>(
+  dividend: &DistributionFunction<f64, Y>,
+  divisor: &DistributionFunction<f64, Y>,
+) -> Result<Distribution<Y>, Report> {
   let div_min = dividend.x_min();
   let div_max = dividend.x_max();
   let div_dx = dividend.dx();
@@ -94,8 +109,22 @@ fn divide_function_by_function(
     resampled.y().clone()
   };
 
-  let safe_divisor_y = divisor_on_dividend_grid.mapv(|v| v.max(TINY_NUMBER));
-  let result_y = dividend.y() / &safe_divisor_y;
+  let result_y = if Y::multiplicative_identity() == 1.0 {
+    let safe_divisor_y = divisor_on_dividend_grid.mapv(|v| v.max(TINY_NUMBER));
+    dividend
+      .y()
+      .iter()
+      .zip(safe_divisor_y.iter())
+      .map(|(&d, &s)| Y::divide(d, s))
+      .collect()
+  } else {
+    dividend
+      .y()
+      .iter()
+      .zip(divisor_on_dividend_grid.iter())
+      .map(|(&d, &s)| Y::divide(d, s))
+      .collect()
+  };
 
   DistributionFunction::from_range_values((div_min, div_max), result_y).map(Distribution::Function)
 }
@@ -103,6 +132,7 @@ fn divide_function_by_function(
 #[cfg(test)]
 mod tests {
   use super::*;
+  use crate::distribution::distribution::DistributionPlain as Distribution;
   use ndarray::array;
   use treetime_utils::assert_error;
 

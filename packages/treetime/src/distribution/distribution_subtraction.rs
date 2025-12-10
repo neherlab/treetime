@@ -1,8 +1,12 @@
 use crate::distribution::distribution::Distribution;
+use crate::distribution::y_axis_policy::SupportsSubtraction;
 use eyre::Report;
 use treetime_utils::make_error;
 
-pub fn distribution_subtraction(a: &Distribution, b: &Distribution) -> Result<Distribution, Report> {
+pub fn distribution_subtraction<Y: SupportsSubtraction>(
+  a: &Distribution<Y>,
+  b: &Distribution<Y>,
+) -> Result<Distribution<Y>, Report> {
   match (a, b) {
     (Distribution::Function(af), Distribution::Function(bf)) => {
       if af.t().len() != bf.t().len() {
