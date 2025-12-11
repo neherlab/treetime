@@ -7,19 +7,33 @@ lazy_static! {
 }
 
 #[allow(clippy::string_slice)]
-fn trim_trailing_zeros(input: String) -> String {
-  match input.find('.') {
-    Some(pos) => format!(
-      "{}{}",
-      &input[..pos],
-      &input[pos..].trim_end_matches('0').trim_end_matches('.')
-    ),
-    None => input,
+fn trim_trailing_zeros(input: &str) -> String {
+  let (mantissa, exponent) = match input.find(['e', 'E']) {
+    Some(pos) => (&input[..pos], Some(&input[pos..])),
+    None => (input, None),
+  };
+
+  // Never trim trailing zeros in scientific notation.
+  if exponent.is_some() {
+    return input.to_owned();
+  }
+
+  match mantissa.find('.') {
+    Some(pos) => {
+      // For plain decimals we can remove the fractional part entirely.
+      format!(
+        "{}{}",
+        &mantissa[..pos],
+        &mantissa[pos..].trim_end_matches('0').trim_end_matches('.')
+      )
+    },
+    None => mantissa.to_owned(),
   }
 }
 
 fn float_format<F: Into<f64>>(x: F, config: FmtFloatConfig) -> String {
-  trim_trailing_zeros(dtoa(x.into(), config))
+  let raw = dtoa(x.into(), config);
+  trim_trailing_zeros(&raw)
 }
 
 /// Trait providing convenient float formatting methods
@@ -155,9 +169,12 @@ mod tests {
   #[case(("1.0",   "1"))]
   #[case(("123",   "123"))]
   #[case(("0.100", "0.1"))]
+  #[case(("8.7110e-10", "8.7110e-10"))]
+  #[case(("1.2300e+10", "1.2300e+10"))]
+  #[case(("1.000e-10", "1.000e-10"))]
   #[trace]
   fn test_trim_trailing_zeros(#[case] (input, expected): (&str, &str)) {
-    assert_eq!(trim_trailing_zeros(input.to_owned()), expected);
+    assert_eq!(trim_trailing_zeros(input), expected);
   }
 
   #[rstest]
