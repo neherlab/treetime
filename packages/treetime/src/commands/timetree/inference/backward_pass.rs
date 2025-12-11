@@ -1,4 +1,4 @@
-use crate::distribution::distribution::Distribution;
+use crate::distribution::distribution::{Distribution, DistributionNegLog};
 use crate::distribution::distribution_convolution::distribution_convolution;
 use crate::distribution::distribution_multiplication::distribution_multiplication;
 use crate::graph::breadth_first::GraphTraversalContinuation;
@@ -15,7 +15,7 @@ use std::sync::Arc;
 /// with its precalculated coalescent contribution.
 pub fn propagate_distributions_backward(
   graph: &GraphAncestral,
-  coalescent_contributions: Option<&IndexMap<GraphNodeKey, Arc<Distribution>>>,
+  coalescent_contributions: Option<&IndexMap<GraphNodeKey, Arc<DistributionNegLog>>>,
 ) -> Result<(), Report> {
   graph.par_iter_breadth_first_backward(|mut node| {
     propagate_distributions_backward_single_node(&mut node, coalescent_contributions).unwrap();
@@ -27,7 +27,7 @@ pub fn propagate_distributions_backward(
 /// Computes time distribution for a single internal node from its children.
 fn propagate_distributions_backward_single_node(
   node: &mut GraphNodeBackward<NodeAncestral, EdgeAncestral, ()>,
-  coalescent_contribs: Option<&IndexMap<GraphNodeKey, Arc<Distribution>>>,
+  coalescent_contribs: Option<&IndexMap<GraphNodeKey, Arc<DistributionNegLog>>>,
 ) -> Result<(), Report> {
   if node.is_leaf {
     // Apply precalculated coalescent contribution to leaf
@@ -35,7 +35,8 @@ fn propagate_distributions_backward_single_node(
       &node.payload.time_distribution,
       coalescent_contribs.and_then(|c| c.get(&node.key)),
     ) {
-      let combined = distribution_multiplication(time_dist.as_ref(), coalescent_contrib.as_ref())?;
+      let coalescent_contrib_plain = coalescent_contrib.to_plain();
+      let combined = distribution_multiplication(time_dist.as_ref(), &coalescent_contrib_plain)?;
       node.payload.time_distribution = Some(Arc::new(combined));
     }
     return Ok(());
@@ -44,7 +45,7 @@ fn propagate_distributions_backward_single_node(
   // For internal node, initialize distribution with coalescent contribution
   let mut result: Option<Distribution> = coalescent_contribs
     .and_then(|contributions| contributions.get(&node.key))
-    .map(|contrib| (**contrib).clone());
+    .map(|contrib| (**contrib).to_plain());
 
   for (child, edge) in &node.children {
     let child = child.read_arc();

@@ -2,7 +2,7 @@ use crate::commands::timetree::coalescent::contributions::compute_node_contribut
 use crate::commands::timetree::coalescent::events::collect_tree_events;
 use crate::commands::timetree::coalescent::integration::compute_integral_merger_rate;
 use crate::commands::timetree::coalescent::lineage_dynamics::compute_lineage_count_distribution;
-use crate::distribution::distribution::Distribution;
+use crate::distribution::distribution::{Distribution, DistributionNegLog};
 use crate::graph::node::GraphNodeKey;
 use crate::representation::graph_ancestral::GraphAncestral;
 use eyre::Report;
@@ -50,17 +50,16 @@ use std::sync::Arc;
 ///   - λ(t)^(m-1): probability density of m-way merger at time t
 ///   - exp(-I(t)): probability of no merger before time t
 ///
-/// Note: The sign convention follows Python v0 which stores -I(t) in neg-log space,
-/// converting to exp(I(t)) for leaves in probability space.
+/// Note: The sign convention follows Python v0 which stores -I(t) in neg-log space.
 ///
 /// # Returns
 ///
-/// Map from node keys to distributions representing coalescent prior contributions.
+/// Map from node keys to distributions representing coalescent prior contributions (NegLog space).
 /// Each distribution should be multiplied with the node's time distribution.
 pub fn compute_coalescent_contributions(
   graph: &GraphAncestral,
   tc: &Distribution,
-) -> Result<IndexMap<GraphNodeKey, Arc<Distribution>>, Report> {
+) -> Result<IndexMap<GraphNodeKey, Arc<DistributionNegLog>>, Report> {
   let (present_time, events_calendar) = collect_tree_events(graph)?;
   let events_tbp: Vec<_> = events_calendar
     .iter()

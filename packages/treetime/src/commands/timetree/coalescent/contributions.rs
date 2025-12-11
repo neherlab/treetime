@@ -1,7 +1,7 @@
 use crate::commands::timetree::coalescent::integration::compute_merger_rates;
 use crate::commands::timetree::coalescent::piecewise_constant_fn::PiecewiseConstantFn;
 use crate::commands::timetree::coalescent::piecewise_linear_fn::PiecewiseLinearFn;
-use crate::distribution::distribution::Distribution;
+use crate::distribution::distribution::{Distribution, DistributionNegLog};
 use crate::distribution::distribution_formula::DistributionFormula;
 use crate::graph::graph::GraphNodeForward;
 use crate::graph::node::GraphNodeKey;
@@ -16,20 +16,19 @@ use std::sync::Arc;
 /// Returns map from node key to distribution that should be multiplied
 /// with node's time distribution during backward pass.
 ///
-/// Kingman coalescent contribution formula:
-/// - For leaves: exp(I(t)) where I(t) = ∫₀ᵗ κ(t')dt' is cumulative merger rate
-///   Represents survival probability. Python v0 stores -I(t) in neg-log space,
-///   which converts to exp(I(t)) in probability space.
-/// - For internal nodes with k children: λ(t)^m · exp(-m·I(t))
+/// Kingman coalescent contribution formula (NegLog space):
+/// - For leaves: -I(t) where I(t) = ∫₀ᵗ κ(t')dt' is cumulative merger rate.
+///   Probability P = exp(I(t)), so NegLog = -ln(P) = -I(t).
+/// - For internal nodes with k children: multiplicity · (I(t) - log(λ(t)))
 ///   where λ(t) = k(t)·(k(t)-1)/(2·Tc(t)) is total merger rate
-///   and m = k - 1 is multiplicity (number of mergers)
+///   and m = k - 1 is multiplicity.
 pub fn compute_node_contributions(
   graph: &GraphAncestral,
   integral_merger_rate: &PiecewiseLinearFn,
   tc_dist: &Distribution,
   lineage_counts: &PiecewiseConstantFn,
   present_time: f64,
-) -> Result<IndexMap<GraphNodeKey, Arc<Distribution>>, Report> {
+) -> Result<IndexMap<GraphNodeKey, Arc<DistributionNegLog>>, Report> {
   let mut contributions = IndexMap::new();
 
   graph.iter_breadth_first_forward(|node| {
@@ -61,14 +60,11 @@ pub fn compute_node_contributions(
 fn compute_leaf_contribution_single(
   _node: &GraphNodeForward<NodeAncestral, EdgeAncestral, ()>,
   integral_merger_rate: &PiecewiseLinearFn,
-) -> Result<Distribution, Report> {
+) -> Result<DistributionNegLog, Report> {
   // Leaf nodes represent sampled lineages. The coalescent contribution encodes
-  // the survival probability: the probability that this lineage existed without
-  // coalescing from present (t=0) to its sampling time.
+  // the survival probability P = exp(I(t)).
   //
-  // In Python v0 with neg-log representation: -I(t) is stored, which converts to exp(I(t))
-  // In Rust probability space: we need exp(-I(t)) but Python stores it as exp(I(t))
-  // due to sign convention differences. Following Python exactly: exp(I(t))
+  // In NegLog space: -ln(P) = -I(t).
 
   let t_min = integral_merger_rate.breakpoints()[0];
   let t_max = integral_merger_rate.breakpoints()[integral_merger_rate.breakpoints().len() - 1];
@@ -77,11 +73,8 @@ fn compute_leaf_contribution_single(
 
   let eval_fn = move |t: f64| -> eyre::Result<f64> {
     let i_t = integral_merger_rate.eval(t);
-    // Python stores -I(t) in neg-log space, converts to exp(I(t)) in probability
-    // Clamp to avoid overflow: exp(x) overflows for x > 700
-    let i_t_clamped = i_t.min(700.0);
-    // Match Python exactly: exp(I(t))
-    Ok(i_t_clamped.exp())
+    // Return -I(t) for NegLog space
+    Ok(-i_t)
   };
 
   Ok(Distribution::Formula(DistributionFormula::new(eval_fn, t_min, t_max)))
@@ -93,7 +86,7 @@ fn compute_node_contribution_single(
   tc_dist: &Distribution,
   lineage_counts: &PiecewiseConstantFn,
   _present_time: f64,
-) -> Result<Distribution, Report> {
+) -> Result<DistributionNegLog, Report> {
   // Compute coalescent contribution for internal node using exact formula evaluation.
   // An internal node with k children represents a merger event.
   // The coalescent probability density at time t is:
@@ -136,8 +129,7 @@ fn compute_node_contribution_single(
 
     // neg-log contribution: multiplicity · (I(t) - log(λ(t)))
     let neg_log_contrib = multiplicity * (i_t - log_lambda_t);
-    // Convert to probability
-    Ok((-neg_log_contrib).exp())
+    Ok(neg_log_contrib)
   };
 
   Ok(Distribution::Formula(DistributionFormula::new(eval_fn, t_min, t_max)))

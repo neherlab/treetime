@@ -125,17 +125,18 @@ def generate_snapshot(
             continue
         name = node.name
         if node.is_terminal():
-            # Leaf nodes get survival probability contribution: exp(-I(t))
-            # Python stores -I(t) in neg-log space, so contrib is -I(t)
+            # Leaf nodes get survival probability contribution: exp(I(t))
+            # Python stores -I(t) in neg-log space.
             i_t = coal.integral_merger_rate(tbp_grid)
-            # Clamp I(t) to avoid overflow: exp(I(t)) overflows for I(t) > 700
-            i_t_clamped = np.minimum(i_t, 700)
-            probs = np.exp(i_t_clamped).tolist()  # = exp(I(t))
+            # Store NegLog values: -ln(P) with P=exp(I(t)) => -I(t)
+            y_neglog = (-i_t).astype(float).tolist()
         else:
-            # Internal nodes get merger probability contribution
+            # Internal nodes: Legacy 'node_contribution' returns a distribution in NegLog space.
+            # Store NegLog values directly.
             contrib = coal.node_contribution(node, tbp_grid)
-            probs = np.exp(-contrib.y).tolist()
-        node_contributions[name] = probs
+            y_neglog = contrib.y.astype(float).tolist()
+
+        node_contributions[name] = y_neglog
 
     result = {
         "description": f"Coalescent contributions for flu/h3n2/20 with Tc={tc}",

@@ -229,7 +229,16 @@ impl Distribution<NegLog> {
             .expect("Grid construction should not fail for valid input"),
         ))
       },
-      Self::Formula(_) => panic!("Conversion to Plain not implemented for Formula distributions"),
+      Self::Formula(f) => {
+        let t_min = f.t_min();
+        let t_max = f.t_max();
+        let f = f.clone();
+        let eval_fn = move |t: f64| -> Result<f64, Report> {
+          let y = f.eval_single(t)?;
+          Ok(NegLog::to_plain(y))
+        };
+        Distribution::Formula(DistributionFormula::new(eval_fn, t_min, t_max))
+      },
     }
   }
 }
