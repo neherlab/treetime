@@ -1,10 +1,12 @@
 use clap::Parser;
 use ctor::ctor;
-use eyre::Report;
+use eyre::{Context, Report};
 use indexmap::IndexMap;
 use ndarray::Array1;
 use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
+use std::fs::File;
+use std::io::Write;
 use std::path::Path;
 use treetime::commands::timetree::coalescent::coalescent::compute_coalescent_contributions;
 use treetime::commands::timetree::data::date_constraints::load_date_constraints;
@@ -41,9 +43,14 @@ pub struct Args {
   #[arg(long, default_value = "tmp")]
   output_dir: String,
 
-  /// Absolute difference threshold for filtering comparison table rows
+  /// Absolute difference threshold for showing nodes in the detailed table.
+  /// If no nodes exceed the threshold, the worst nodes are shown instead.
   #[arg(long, default_value_t = 0.001)]
   abs_diff_threshold: f64,
+
+  /// Maximum number of nodes to show in the detailed table.
+  #[arg(long, default_value_t = 25)]
+  max_rows: usize,
 
   /// Optional statistics output file path
   #[arg(long)]
@@ -94,18 +101,44 @@ struct SnapshotTbpGrid {
 #[derive(Clone, Serialize, Deserialize)]
 struct TestResult {
   name: String,
+  t_grid_tbp: Array1<f64>,
   expected: IndexMap<String, Array1<f64>>,
   actual: IndexMap<String, Array1<f64>>,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-struct DiffStats {
-  mean_abs_diff: f64,
-  median_abs_diff: f64,
+struct NodeDiffRow {
+  node: String,
+  n_points: usize,
   max_abs_diff: f64,
-  min_abs_diff: f64,
-  std_dev: f64,
+  t_at_max_tbp: f64,
+  mae: f64,
   rmse: f64,
+  p95_abs_diff: f64,
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+struct DiffStats {
+  n_expected_nodes: usize,
+  n_actual_nodes: usize,
+  n_compared_nodes: usize,
+  n_missing_nodes: usize,
+  n_extra_nodes: usize,
+
+  points_per_node: usize,
+  total_points_compared: usize,
+
+  global_mae: f64,
+  global_rmse: f64,
+
+  node_mae_median: f64,
+  node_rmse_median: f64,
+  node_max_abs_p95: f64,
+  node_max_abs_median: f64,
+
+  worst_node: String,
+  worst_t_tbp: f64,
+  worst_max_abs_diff: f64,
 }
 
 fn main() -> Result<(), Report> {
@@ -126,7 +159,7 @@ fn main() -> Result<(), Report> {
 
     match run_coalescent_test(&args, &snapshot_filename, tc_value) {
       Ok(result) => {
-        print_comparison_table(&result, args.abs_diff_threshold);
+        print_comparison_table(&args, &result);
         results.push(result);
       },
       Err(e) => {
@@ -165,18 +198,26 @@ fn load_graph(snapshot: &Snapshot) -> Result<GraphAncestral, Report> {
   Ok(graph)
 }
 
-fn convert_map_keys_to_names<V>(graph: &GraphAncestral, map: &IndexMap<GraphNodeKey, V>) -> IndexMap<String, V>
+fn convert_map_keys_to_names<V>(graph: &GraphAncestral, map: &IndexMap<GraphNodeKey, V>) -> Result<IndexMap<String, V>, Report>
 where
   V: Clone,
 {
-  map
-    .iter()
-    .map(|(key, value)| {
-      let node = graph.get_node(*key).unwrap();
-      let name = node.read_arc().payload().read_arc().name().unwrap().as_ref().to_owned();
-      (name, value.clone())
-    })
-    .collect()
+  let mut out = IndexMap::with_capacity(map.len());
+  for (key, value) in map {
+    let node = graph
+      .get_node(*key)
+      .ok_or_else(|| eyre::eyre!("Node key not found in graph: {key:?}"))?;
+    let name = node
+      .read_arc()
+      .payload()
+      .read_arc()
+      .name()
+      .ok_or_else(|| eyre::eyre!("Node has no name: {key:?}"))?
+      .as_ref()
+      .to_owned();
+    out.insert(name, value.clone());
+  }
+  Ok(out)
 }
 
 fn run_coalescent_test(args: &Args, snapshot_filename: &str, tc_value: f64) -> Result<TestResult, Report> {
@@ -187,7 +228,7 @@ fn run_coalescent_test(args: &Args, snapshot_filename: &str, tc_value: f64) -> R
   let tc = Distribution::constant(snapshot.inputs.tc);
 
   let actuals = compute_coalescent_contributions(&graph, &tc)?;
-  let actuals = convert_map_keys_to_names(&graph, &actuals);
+  let actuals = convert_map_keys_to_names(&graph, &actuals).wrap_err("When mapping node keys to node names")?;
 
   let t_grid = Grid::from_range_n_points(
     snapshot.tbp_grid.start,
@@ -195,13 +236,17 @@ fn run_coalescent_test(args: &Args, snapshot_filename: &str, tc_value: f64) -> R
     snapshot.tbp_grid.n_points,
   )?;
 
+  let t_grid_tbp = t_grid.to_array();
+
   let actuals: IndexMap<String, Array1<f64>> = actuals
     .iter()
     .map(|(name, dist)| {
-      let y_resampled = dist.eval_many(&t_grid.to_array()).unwrap();
-      (name.clone(), y_resampled)
+      let y_resampled = dist
+        .eval_many(&t_grid_tbp)
+        .wrap_err_with(|| format!("When evaluating node contribution distribution for node '{name}'"))?;
+      Ok((name.clone(), y_resampled))
     })
-    .collect();
+    .collect::<Result<IndexMap<String, Array1<f64>>, Report>>()?;
 
   if args.verbose {
     println!("  Nodes compared: {}", actuals.len());
@@ -210,238 +255,435 @@ fn run_coalescent_test(args: &Args, snapshot_filename: &str, tc_value: f64) -> R
 
   Ok(TestResult {
     name: format!("Tc={tc_value}"),
+    t_grid_tbp,
     expected: snapshot.node_contributions,
     actual: actuals,
   })
 }
 
-fn calculate_diff_stats(expected: &IndexMap<String, Array1<f64>>, actual: &IndexMap<String, Array1<f64>>) -> DiffStats {
-  let diffs: Vec<f64> = expected
-    .keys()
-    .filter_map(|key| {
-      let exp = expected.get(key)?;
-      let act = actual.get(key)?;
-      let node_diffs: Vec<f64> = exp.iter().zip(act.iter()).map(|(e, a)| (e - a).abs()).collect();
-      let node_max_diff = node_diffs.iter().copied().map(OrderedFloat).max().map(|x| x.0)?;
-      Some(node_max_diff)
-    })
+fn validate_comparable(
+  t_grid_tbp: &Array1<f64>,
+  expected: &IndexMap<String, Array1<f64>>,
+  actual: &IndexMap<String, Array1<f64>>,
+) -> Result<(Vec<String>, Vec<String>, Vec<String>), Report> {
+  let expected_keys: Vec<String> = expected.keys().cloned().collect();
+  let actual_keys: Vec<String> = actual.keys().cloned().collect();
+
+  let missing: Vec<String> = expected_keys
+    .iter()
+    .filter(|k| !actual.contains_key(*k))
+    .cloned()
+    .collect();
+  let extra: Vec<String> = actual_keys
+    .iter()
+    .filter(|k| !expected.contains_key(*k))
+    .cloned()
     .collect();
 
-  if diffs.is_empty() {
-    return DiffStats {
-      mean_abs_diff: 0.0,
-      median_abs_diff: 0.0,
-      max_abs_diff: 0.0,
-      min_abs_diff: 0.0,
-      std_dev: 0.0,
-      rmse: 0.0,
-    };
+  let common: Vec<String> = expected_keys
+    .iter()
+    .filter(|k| actual.contains_key(*k))
+    .cloned()
+    .collect();
+
+  if t_grid_tbp.is_empty() {
+    eyre::bail!("Time grid is empty");
   }
 
-  let n = diffs.len() as f64;
-  let mean_abs_diff = diffs.iter().sum::<f64>() / n;
+  for node in &common {
+    let exp = &expected[node];
+    let act = &actual[node];
+    if exp.len() != act.len() {
+      eyre::bail!(
+        "Array length mismatch for node '{node}': expected {} points, actual {} points",
+        exp.len(),
+        act.len()
+      );
+    }
+    if exp.len() != t_grid_tbp.len() {
+      eyre::bail!(
+        "Grid length mismatch for node '{node}': grid has {} points, expected has {} points",
+        t_grid_tbp.len(),
+        exp.len()
+      );
+    }
+  }
 
-  let mut sorted_diffs = diffs.clone();
-  sorted_diffs.sort_by_key(|&x| OrderedFloat(x));
-  let median_abs_diff = sorted_diffs[sorted_diffs.len() / 2];
+  Ok((common, missing, extra))
+}
 
-  let max_abs_diff = diffs.iter().copied().map(OrderedFloat).max().map_or(0.0, |x| x.0);
-  let min_abs_diff = diffs.iter().copied().map(OrderedFloat).min().map_or(0.0, |x| x.0);
-
-  let variance = diffs.iter().map(|&d| (d - mean_abs_diff).powi(2)).sum::<f64>() / n;
-  let std_dev = variance.sqrt();
-
-  let squared_diffs: f64 = expected
-    .keys()
-    .filter_map(|key| {
-      let exp = expected.get(key)?;
-      let act = actual.get(key)?;
-      let sum_sq: f64 = exp.iter().zip(act.iter()).map(|(e, a)| (e - a).powi(2)).sum();
-      Some(sum_sq)
-    })
-    .sum();
-  let total_points: usize = expected.values().map(|arr| arr.len()).sum();
-  let rmse = (squared_diffs / total_points as f64).sqrt();
-
-  DiffStats {
-    mean_abs_diff,
-    median_abs_diff,
-    max_abs_diff,
-    min_abs_diff,
-    std_dev,
-    rmse,
+fn median(sorted: &[f64]) -> f64 {
+  if sorted.is_empty() {
+    return 0.0;
+  }
+  let mid = sorted.len() / 2;
+  if sorted.len() % 2 == 1 {
+    sorted[mid]
+  } else {
+    0.5 * (sorted[mid - 1] + sorted[mid])
   }
 }
 
-fn print_comparison_table(result: &TestResult, abs_diff_threshold: f64) {
-  println!("### {}\n", result.name);
+fn percentile(sorted: &[f64], p: f64) -> f64 {
+  if sorted.is_empty() {
+    return 0.0;
+  }
+  let p = p.clamp(0.0, 1.0);
+  let idx = ((p * ((sorted.len() - 1) as f64)).ceil() as usize).min(sorted.len() - 1);
+  sorted[idx]
+}
 
-  let stats = calculate_diff_stats(&result.expected, &result.actual);
+fn compute_diff_report(result: &TestResult) -> Result<(DiffStats, Vec<NodeDiffRow>), Report> {
+  let (common, missing, extra) = validate_comparable(&result.t_grid_tbp, &result.expected, &result.actual)
+    .wrap_err("When validating node sets and array lengths")?;
 
-  let mut rows: Vec<_> = result
-    .expected
-    .keys()
-    .filter_map(|key| {
-      let expected = result.expected.get(key)?;
-      let actual = result.actual.get(key)?;
-      let max_diff = expected
-        .iter()
-        .zip(actual.iter())
-        .map(|(e, a)| (e - a).abs())
-        .map(OrderedFloat)
-        .max()
-        .map(|x| x.0)?;
-      let mean_diff = expected
-        .iter()
-        .zip(actual.iter())
-        .map(|(e, a)| (e - a).abs())
-        .sum::<f64>()
-        / expected.len() as f64;
-      Some((key.clone(), max_diff, mean_diff))
-    })
-    .collect();
-
-  rows.sort_by_key(|(_, max_diff, _)| OrderedFloat(-max_diff));
-
-  let above_threshold_count = rows
-    .iter()
-    .filter(|(_, max_diff, _)| *max_diff >= abs_diff_threshold)
-    .count();
-
-  println!("| {:<50} | {:>12} | {:>12} |", "Node", "Max Diff", "Mean Diff");
-  println!("| {:-<50} | {:-<12} | {:-<12} |", "", "", "");
-
-  // Show all rows
-  for (node, max_diff, mean_diff) in &rows {
-    let short_name = truncate_right_with_ellipsis(node, 50);
-    let max_diff_str = max_diff.to_significant_digits(4);
-    let mean_diff_str = mean_diff.to_significant_digits(4);
-    println!("| {short_name:<50} | {max_diff_str:>12} | {mean_diff_str:>12} |");
+  if common.is_empty() {
+    eyre::bail!("No comparable nodes (expected and actual node sets do not overlap)");
   }
 
-  if above_threshold_count > 0 {
+  let mut rows = Vec::with_capacity(common.len());
+
+  let mut total_abs = 0.0;
+  let mut total_sq = 0.0;
+  let mut total_points = 0_usize;
+
+  let mut worst_node = String::new();
+  let mut worst_t_tbp = 0.0;
+  let mut worst_max_abs_diff = -1.0;
+
+  for node in &common {
+    let exp = &result.expected[node];
+    let act = &result.actual[node];
+    let n = exp.len();
+
+    let mut abs_diffs = Vec::with_capacity(n);
+    let mut sum_abs = 0.0;
+    let mut sum_sq = 0.0;
+    let mut max_abs = -1.0;
+    let mut max_idx = 0_usize;
+
+    for (i, (e, a)) in exp.iter().zip(act.iter()).enumerate() {
+      let diff = e - a;
+      if !diff.is_finite() {
+        eyre::bail!("Non-finite difference for node '{node}' at index {i}: expected={e}, actual={a}");
+      }
+      let abs = diff.abs();
+      abs_diffs.push(abs);
+      sum_abs += abs;
+      sum_sq += diff * diff;
+      if abs > max_abs {
+        max_abs = abs;
+        max_idx = i;
+      }
+    }
+
+    abs_diffs.sort_by_key(|&x| OrderedFloat(x));
+    let mae = sum_abs / (n as f64);
+    let rmse = (sum_sq / (n as f64)).sqrt();
+    let p95_abs_diff = percentile(&abs_diffs, 0.95);
+    let t_at_max_tbp = result.t_grid_tbp[max_idx];
+
+    total_abs += sum_abs;
+    total_sq += sum_sq;
+    total_points += n;
+
+    if max_abs > worst_max_abs_diff {
+      worst_max_abs_diff = max_abs;
+      worst_node = node.clone();
+      worst_t_tbp = t_at_max_tbp;
+    }
+
+    rows.push(NodeDiffRow {
+      node: node.clone(),
+      n_points: n,
+      max_abs_diff: max_abs,
+      t_at_max_tbp,
+      mae,
+      rmse,
+      p95_abs_diff,
+    });
+  }
+
+  rows.sort_by_key(|r| OrderedFloat(-r.max_abs_diff));
+
+  let mut node_maes: Vec<f64> = rows.iter().map(|r| r.mae).collect();
+  node_maes.sort_by_key(|&x| OrderedFloat(x));
+  let mut node_rmses: Vec<f64> = rows.iter().map(|r| r.rmse).collect();
+  node_rmses.sort_by_key(|&x| OrderedFloat(x));
+  let mut node_maxes: Vec<f64> = rows.iter().map(|r| r.max_abs_diff).collect();
+  node_maxes.sort_by_key(|&x| OrderedFloat(x));
+
+  let points_per_node = result.t_grid_tbp.len();
+  let global_mae = total_abs / (total_points as f64);
+  let global_rmse = (total_sq / (total_points as f64)).sqrt();
+
+  let stats = DiffStats {
+    n_expected_nodes: result.expected.len(),
+    n_actual_nodes: result.actual.len(),
+    n_compared_nodes: rows.len(),
+    n_missing_nodes: missing.len(),
+    n_extra_nodes: extra.len(),
+    points_per_node,
+    total_points_compared: total_points,
+    global_mae,
+    global_rmse,
+    node_mae_median: median(&node_maes),
+    node_rmse_median: median(&node_rmses),
+    node_max_abs_p95: percentile(&node_maxes, 0.95),
+    node_max_abs_median: median(&node_maxes),
+    worst_node,
+    worst_t_tbp,
+    worst_max_abs_diff,
+  };
+
+  Ok((stats, rows))
+}
+
+fn print_comparison_table(args: &Args, result: &TestResult) {
+  println!("### {}\n", result.name);
+
+  let (stats, rows) = match compute_diff_report(result) {
+    Ok(v) => v,
+    Err(e) => {
+      eprintln!("Error: Cannot compute diff report for {}: {e}", result.name);
+      println!();
+      return;
+    },
+  };
+
+  println!(
+    "Nodes: expected={}, actual={}, compared={} (missing={}, extra={})",
+    stats.n_expected_nodes,
+    stats.n_actual_nodes,
+    stats.n_compared_nodes,
+    stats.n_missing_nodes,
+    stats.n_extra_nodes
+  );
+  println!(
+    "Grid: points_per_node={}, total_points_compared={}",
+    stats.points_per_node, stats.total_points_compared
+  );
+  println!();
+
+  let mut shown: Vec<&NodeDiffRow> = rows
+    .iter()
+    .filter(|r| r.max_abs_diff >= args.abs_diff_threshold)
+    .collect();
+
+  let n_above = shown.len();
+  if shown.is_empty() {
+    shown = rows.iter().take(args.max_rows).collect();
+  } else if shown.len() > args.max_rows {
+    shown.truncate(args.max_rows);
+  }
+
+  println!(
+    "| {:<50} | {:>12} | {:>12} | {:>12} | {:>12} | {:>12} |",
+    "Node",
+    "Max |Δ|",
+    "t@Max",
+    "MAE",
+    "RMSE",
+    "p95 |Δ|"
+  );
+  println!(
+    "| {:-<50} | {:-<12} | {:-<12} | {:-<12} | {:-<12} | {:-<12} |",
+    "", "", "", "", "", ""
+  );
+
+  for row in &shown {
+    let short_name = truncate_right_with_ellipsis(&row.node, 50);
+    let max_str = row.max_abs_diff.to_significant_digits(4);
+    let t_str = row.t_at_max_tbp.to_significant_digits(6);
+    let mae_str = row.mae.to_significant_digits(4);
+    let rmse_str = row.rmse.to_significant_digits(4);
+    let p95_str = row.p95_abs_diff.to_significant_digits(4);
+    println!("| {short_name:<50} | {max_str:>12} | {t_str:>12} | {mae_str:>12} | {rmse_str:>12} | {p95_str:>12} |");
+  }
+
+  if n_above > 0 {
     println!();
     println!(
-      "({} nodes have significant differences ≥{:.6}, {} have small differences <{:.6})",
-      above_threshold_count,
-      abs_diff_threshold,
-      rows.len() - above_threshold_count,
-      abs_diff_threshold
+      "Showing {}/{} nodes with max |Δ| ≥ {:.6} (cap={})",
+      shown.len(),
+      n_above,
+      args.abs_diff_threshold,
+      args.max_rows
+    );
+  } else {
+    println!();
+    println!(
+      "No nodes exceed max |Δ| ≥ {:.6}; showing worst {} nodes",
+      args.abs_diff_threshold,
+      shown.len()
     );
   }
 
   println!();
-  println!("#### Statistics");
+  println!("#### Snapshot Summary");
   println!();
-  println!("| {:<30} | {:>12} |", "Metric", "Value");
-  println!("| {:-<30} | {:-<12} |", "", "");
+  println!("| {:<32} | {:>14} |", "Metric", "Value");
+  println!("| {:-<32} | {:-<14} |", "", "");
   println!(
-    "| {:<30} | {:>12} |",
-    "Mean Max Abs Diff (per node)",
-    stats.mean_abs_diff.to_significant_digits(4)
+    "| {:<32} | {:>14} |",
+    "Global MAE (all points)",
+    stats.global_mae.to_significant_digits(4)
   );
   println!(
-    "| {:<30} | {:>12} |",
-    "Median Max Abs Diff (per node)",
-    stats.median_abs_diff.to_significant_digits(4)
+    "| {:<32} | {:>14} |",
+    "Global RMSE (all points)",
+    stats.global_rmse.to_significant_digits(4)
   );
   println!(
-    "| {:<30} | {:>12} |",
-    "Max Abs Diff",
-    stats.max_abs_diff.to_significant_digits(4)
+    "| {:<32} | {:>14} |",
+    "Node median MAE",
+    stats.node_mae_median.to_significant_digits(4)
   );
   println!(
-    "| {:<30} | {:>12} |",
-    "Min Max Abs Diff",
-    stats.min_abs_diff.to_significant_digits(4)
+    "| {:<32} | {:>14} |",
+    "Node median RMSE",
+    stats.node_rmse_median.to_significant_digits(4)
   );
   println!(
-    "| {:<30} | {:>12} |",
-    "Standard Deviation",
-    stats.std_dev.to_significant_digits(4)
+    "| {:<32} | {:>14} |",
+    "Node median max |Δ|",
+    stats.node_max_abs_median.to_significant_digits(4)
   );
   println!(
-    "| {:<30} | {:>12} |",
-    "RMSE (all points)",
-    stats.rmse.to_significant_digits(4)
+    "| {:<32} | {:>14} |",
+    "Node p95 max |Δ|",
+    stats.node_max_abs_p95.to_significant_digits(4)
   );
+  println!(
+    "| {:<32} | {:>14} |",
+    "Worst max |Δ|",
+    stats.worst_max_abs_diff.to_significant_digits(4)
+  );
+  println!(
+    "| {:<32} | {:>14} |",
+    "Worst t@Max (TBP)",
+    stats.worst_t_tbp.to_significant_digits(6)
+  );
+  println!("| {:<32} | {:>14} |", "Worst node", truncate_right_with_ellipsis(&stats.worst_node, 14));
   println!();
 }
 
 fn print_aggregate_statistics(results: &[TestResult]) {
   println!(
-    "| {:<15} | {:>18} | {:>20} | {:>14} | {:>15} | {:>11} |",
-    "Test", "Mean Max Diff", "Median Max Diff", "Max Diff", "RMSE", "Std Dev"
+    "| {:<15} | {:>8} | {:>12} | {:>12} | {:>12} | {:>12} |",
+    "Test", "Nodes", "Global MAE", "Global RMSE", "p95 max|Δ|", "Worst max|Δ|"
   );
   println!(
-    "| {:-<15} | {:-<18} | {:-<20} | {:-<14} | {:-<15} | {:-<11} |",
+    "| {:-<15} | {:-<8} | {:-<12} | {:-<12} | {:-<12} | {:-<12} |",
     "", "", "", "", "", ""
   );
+
+  let mut total_abs = 0.0;
+  let mut total_sq = 0.0;
+  let mut total_points = 0_usize;
+
+  let mut overall_worst_max = -1.0;
+  let mut overall_worst_test = String::new();
+  let mut overall_worst_node = String::new();
+  let mut overall_worst_t_tbp = 0.0;
 
   for result in results {
-    let stats = calculate_diff_stats(&result.expected, &result.actual);
+    let (stats, _) = match compute_diff_report(result) {
+      Ok(v) => v,
+      Err(e) => {
+        eprintln!("Warning: Skipping aggregate stats for {}: {e}", result.name);
+        continue;
+      },
+    };
+
     println!(
-      "| {:<15} | {:>18} | {:>20} | {:>14} | {:>15} | {:>11} |",
+      "| {:<15} | {:>8} | {:>12} | {:>12} | {:>12} | {:>12} |",
       result.name,
-      stats.mean_abs_diff.to_significant_digits(4),
-      stats.median_abs_diff.to_significant_digits(4),
-      stats.max_abs_diff.to_significant_digits(4),
-      stats.rmse.to_significant_digits(4),
-      stats.std_dev.to_significant_digits(4)
+      stats.n_compared_nodes,
+      stats.global_mae.to_significant_digits(4),
+      stats.global_rmse.to_significant_digits(4),
+      stats.node_max_abs_p95.to_significant_digits(4),
+      stats.worst_max_abs_diff.to_significant_digits(4)
     );
+
+    total_abs += stats.global_mae * (stats.total_points_compared as f64);
+    total_sq += (stats.global_rmse * stats.global_rmse) * (stats.total_points_compared as f64);
+    total_points += stats.total_points_compared;
+
+    if stats.worst_max_abs_diff > overall_worst_max {
+      overall_worst_max = stats.worst_max_abs_diff;
+      overall_worst_test = result.name.clone();
+      overall_worst_node = stats.worst_node.clone();
+      overall_worst_t_tbp = stats.worst_t_tbp;
+    }
   }
 
-  let overall_mean = results
-    .iter()
-    .map(|r| calculate_diff_stats(&r.expected, &r.actual).mean_abs_diff)
-    .sum::<f64>()
-    / results.len() as f64;
-
-  let overall_rmse = results
-    .iter()
-    .map(|r| calculate_diff_stats(&r.expected, &r.actual).rmse)
-    .sum::<f64>()
-    / results.len() as f64;
+  let overall_mae = if total_points == 0 {
+    0.0
+  } else {
+    total_abs / (total_points as f64)
+  };
+  let overall_rmse = if total_points == 0 {
+    0.0
+  } else {
+    (total_sq / (total_points as f64)).sqrt()
+  };
 
   println!(
-    "| {:-<15} | {:-<18} | {:-<20} | {:-<14} | {:-<15} | {:-<11} |",
+    "| {:-<15} | {:-<8} | {:-<12} | {:-<12} | {:-<12} | {:-<12} |",
     "", "", "", "", "", ""
   );
   println!(
-    "| {:<15} | {:>18} | {:>20} | {:>14} | {:>15} | {:>11} |",
+    "| {:<15} | {:>8} | {:>12} | {:>12} | {:>12} | {:>12} |",
     "Overall",
-    overall_mean.to_significant_digits(4),
     "-",
-    "-",
+    overall_mae.to_significant_digits(4),
     overall_rmse.to_significant_digits(4),
-    "-"
+    "-",
+    overall_worst_max.to_significant_digits(4)
   );
+  if overall_worst_max >= 0.0 {
+    println!(
+      "Worst point overall: test={}, node={}, t_tbp={}, max|Δ|={}",
+      overall_worst_test,
+      overall_worst_node,
+      overall_worst_t_tbp.to_significant_digits(6),
+      overall_worst_max.to_significant_digits(4)
+    );
+  }
   println!();
 }
 
 fn write_statistics_to_file(path: &str, results: &[TestResult]) -> Result<(), Report> {
-  use std::fs::File;
-  use std::io::Write;
-
   let mut file = File::create(path)?;
 
   writeln!(
     file,
-    "Test,Mean Max Abs Diff,Median Max Abs Diff,Max Abs Diff,Min Max Abs Diff,Std Dev,RMSE"
+    "Test,ComparedNodes,ExpectedNodes,ActualNodes,MissingNodes,ExtraNodes,PointsPerNode,TotalPoints,GlobalMAE,GlobalRMSE,NodeMedianMAE,NodeMedianRMSE,NodeMedianMaxAbs,NodeP95MaxAbs,WorstNode,WorstTBP,WorstMaxAbs"
   )?;
 
   for result in results {
-    let stats = calculate_diff_stats(&result.expected, &result.actual);
+    let (stats, _) = compute_diff_report(result)?;
     writeln!(
       file,
-      "{},{},{},{},{},{},{}",
+      "{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}",
       result.name,
-      stats.mean_abs_diff,
-      stats.median_abs_diff,
-      stats.max_abs_diff,
-      stats.min_abs_diff,
-      stats.std_dev,
-      stats.rmse
+      stats.n_compared_nodes,
+      stats.n_expected_nodes,
+      stats.n_actual_nodes,
+      stats.n_missing_nodes,
+      stats.n_extra_nodes,
+      stats.points_per_node,
+      stats.total_points_compared,
+      stats.global_mae,
+      stats.global_rmse,
+      stats.node_mae_median,
+      stats.node_rmse_median,
+      stats.node_max_abs_median,
+      stats.node_max_abs_p95,
+      stats.worst_node,
+      stats.worst_t_tbp,
+      stats.worst_max_abs_diff
     )?;
   }
 
