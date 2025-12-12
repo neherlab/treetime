@@ -140,6 +140,7 @@ def generate_snapshot(
 
     result = {
         "description": f"Coalescent contributions for flu/h3n2/20 with Tc={tc}",
+        "virus_path": "flu/h3n2/20",
         "inputs": {
             "tree_path": str(tree_path),
             "metadata_path": str(DATES_PATH),

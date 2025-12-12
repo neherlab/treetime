@@ -1,13 +1,17 @@
 use clap::Parser;
+use clap::builder::{PossibleValuesParser, TypedValueParser};
 use ctor::ctor;
 use eyre::{Context, Report};
 use indexmap::IndexMap;
 use ndarray::Array1;
 use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs::File;
+use std::fs::{DirEntry, read_dir};
 use std::io::Write;
 use std::path::Path;
+use std::sync::LazyLock;
 use treetime::commands::timetree::coalescent::coalescent::compute_coalescent_contributions;
 use treetime::commands::timetree::data::date_constraints::load_date_constraints;
 use treetime::distribution::distribution::Distribution;
@@ -18,7 +22,7 @@ use treetime::o;
 use treetime::representation::graph_ancestral::GraphAncestral;
 use treetime_convolution::grid::Grid;
 use treetime_io::json::json_read_file;
-use treetime_utils::float_fmt::FloatFormatExt;
+use treetime_utils::clap_styles::styles;
 use treetime_utils::global_init::global_init;
 use treetime_utils::serde::{array1_from_vec, indexmap_array1_from_map};
 use treetime_utils::string::truncate_right_with_ellipsis;
@@ -34,23 +38,37 @@ fn init() {
   about = "Validates coalescent contribution computation against Python v0 baseline results",
   version
 )]
+#[clap(styles = styles())]
 pub struct Args {
-  /// Tc values to run (comma-separated: 0.01, 0.1, 1.0, 10.0)
-  #[arg(long, value_delimiter = ',', default_value = "0.01,0.1,1.0,10.0")]
-  tc_values: Vec<String>,
+  /// Only run snapshots with this virus path. If omitted, runs all discovered snapshots.
+  #[arg(long, value_parser = PossibleValuesParser::new(coalescent_possible_virus_paths()))]
+  virus_path: Option<String>,
+
+  /// Only run snapshots with these Tc values (comma-separated, no spaces). If omitted, runs all discovered snapshots.
+  #[arg(
+    long,
+    value_delimiter = ',',
+    value_parser = PossibleValuesParser::new(coalescent_possible_tc_values())
+      .map(|s| s.parse::<f64>().unwrap())
+  )]
+  tc_values: Option<Vec<f64>>,
+
+  /// List discovered snapshots (virus paths and Tc values) and exit.
+  #[arg(long)]
+  list_snapshots: bool,
 
   /// Output directory base path
   #[arg(long, default_value = "tmp")]
   output_dir: String,
 
-  /// Absolute difference threshold for showing nodes in the detailed table.
-  /// If no nodes exceed the threshold, the worst nodes are shown instead.
-  #[arg(long, default_value_t = 0.001)]
-  abs_diff_threshold: f64,
+  /// Pass/fail threshold for max absolute difference.
+  /// Tests with worst error below this threshold pass.
+  #[arg(long, default_value_t = 1e-5)]
+  pass_threshold: f64,
 
-  /// Maximum number of nodes to show in the detailed table.
-  #[arg(long, default_value_t = 25)]
-  max_rows: usize,
+  /// Maximum number of nodes to show in the per-node table (verbose mode only). Use -1 for unlimited.
+  #[arg(long, default_value_t = 10, allow_hyphen_values = true)]
+  max_rows: isize,
 
   /// Optional statistics output file path
   #[arg(long)]
@@ -65,6 +83,7 @@ pub struct Args {
 struct Snapshot {
   #[allow(dead_code)]
   description: String,
+  virus_path: String,
   inputs: SnapshotInputs,
   tbp_grid: SnapshotTbpGrid,
   #[serde(deserialize_with = "array1_from_vec")]
@@ -106,17 +125,24 @@ struct TestResult {
   actual: IndexMap<String, Array1<f64>>,
 }
 
+/// Per-node error statistics comparing expected vs actual contribution values.
 #[derive(Clone, Serialize, Deserialize)]
 struct NodeDiffRow {
   node: String,
   n_points: usize,
-  max_abs_diff: f64,
-  t_at_max_tbp: f64,
+  /// Maximum Absolute Error: max|expected[i] - actual[i]| over all grid points
+  max_abs_err: f64,
+  /// Time (in time-before-present units) where maximum absolute error occurred
+  t_at_max: f64,
+  /// Mean Absolute Error: (1/n) * Σ|expected[i] - actual[i]|
   mae: f64,
+  /// Root Mean Square Error: sqrt((1/n) * Σ(expected[i] - actual[i])^2)
   rmse: f64,
-  p95_abs_diff: f64,
+  /// 95th percentile of absolute errors
+  p95_abs_err: f64,
 }
 
+/// Aggregate error statistics across all compared nodes.
 #[derive(Clone, Serialize, Deserialize)]
 struct DiffStats {
   n_expected_nodes: usize,
@@ -128,42 +154,51 @@ struct DiffStats {
   points_per_node: usize,
   total_points_compared: usize,
 
+  /// Global Mean Absolute Error across all points from all nodes
   global_mae: f64,
+  /// Global Root Mean Square Error across all points from all nodes
   global_rmse: f64,
 
+  /// Median of per-node MAE values
   node_mae_median: f64,
+  /// Median of per-node RMSE values
   node_rmse_median: f64,
-  node_max_abs_p95: f64,
-  node_max_abs_median: f64,
+  /// 95th percentile of per-node Maximum Absolute Error values
+  node_max_abs_err_p95: f64,
+  /// Median of per-node Maximum Absolute Error values
+  node_max_abs_err_median: f64,
 
+  /// Node with the largest Maximum Absolute Error
   worst_node: String,
-  worst_t_tbp: f64,
-  worst_max_abs_diff: f64,
+  /// Time (in time-before-present units) where worst error occurred
+  worst_t: f64,
+  /// Largest Maximum Absolute Error across all nodes
+  worst_max_abs_err: f64,
 }
 
 fn main() -> Result<(), Report> {
   let args = Args::parse();
   let mut results = Vec::new();
+  let mut failed_tests = Vec::new();
 
-  println!("# Coalescent Validation Results\n");
+  let snapshots_dir = Path::new(SNAPSHOTS_DIR);
+  let discovered = discover_coalescent_snapshots(snapshots_dir)
+    .wrap_err_with(|| format!("When discovering snapshots in {}", snapshots_dir.display()))?;
 
-  if args.verbose {
-    println!("Running tests for Tc values: {}\n", args.tc_values.join(", "));
+  if args.list_snapshots {
+    print_discovered_snapshots(&discovered);
+    return Ok(());
   }
 
-  for tc_str in &args.tc_values {
-    let tc_value: f64 = tc_str
-      .parse()
-      .map_err(|e| eyre::eyre!("Invalid Tc value '{tc_str}': {e}"))?;
-    let snapshot_filename = format!("coalescent_flu_h3n2_20_tc{tc_str}.json");
+  let selected = select_snapshots_owned(&args, discovered)?;
 
-    match run_coalescent_test(&args, &snapshot_filename, tc_value) {
+  for discovered in selected {
+    match run_coalescent_test(&discovered.file_name, discovered.snapshot) {
       Ok(result) => {
-        print_comparison_table(&args, &result);
         results.push(result);
       },
       Err(e) => {
-        eprintln!("Warning: Test for Tc={tc_value} failed: {e}");
+        eprintln!("Warning: Test for snapshot '{}' failed: {e}", discovered.file_name);
       },
     }
   }
@@ -173,22 +208,53 @@ fn main() -> Result<(), Report> {
     return Ok(());
   }
 
-  println!("\n## Aggregate Statistics Summary\n");
-  print_aggregate_statistics(&results);
+  let all_passed = compute_pass_status(&args, &results, &mut failed_tests);
+
+  let has_failures = !all_passed;
+  let show_details = args.verbose || has_failures;
+  let only_failures = !args.verbose;
+
+  if show_details {
+    let heading = if args.verbose {
+      "## Per-Test Details"
+    } else {
+      "## Failures"
+    };
+    println!("{heading}\n");
+
+    for result in &results {
+      print_test_details(&args, result, only_failures);
+    }
+  }
+
+  print_summary_table(&args, &results);
+
+  println!();
+  if all_passed {
+    println!("✅ All tests passed (Max Err < {})", format_sci(args.pass_threshold));
+  } else {
+    println!(
+      "\x1b[31m❌ {} test(s) exceeded Max Err threshold from --pass-threshold={}:\x1b[0m",
+      failed_tests.len(),
+      format_sci(args.pass_threshold)
+    );
+    for test_name in &failed_tests {
+      println!("\x1b[31m  - {test_name}\x1b[0m");
+    }
+  }
 
   if let Some(stats_output_path) = &args.stats_output {
     write_statistics_to_file(stats_output_path, &results)?;
     if args.verbose {
-      println!("Statistics written to: {stats_output_path}");
+      println!("\nStatistics written to: {stats_output_path}");
     }
   }
 
-  Ok(())
-}
+  if !all_passed {
+    std::process::exit(1);
+  }
 
-fn load_snapshot(filename: &str) -> Result<Snapshot, Report> {
-  let path = Path::new("test_scripts/snapshots").join(filename);
-  json_read_file::<Snapshot, _>(&path)
+  Ok(())
 }
 
 fn load_graph(snapshot: &Snapshot) -> Result<GraphAncestral, Report> {
@@ -198,7 +264,10 @@ fn load_graph(snapshot: &Snapshot) -> Result<GraphAncestral, Report> {
   Ok(graph)
 }
 
-fn convert_map_keys_to_names<V>(graph: &GraphAncestral, map: &IndexMap<GraphNodeKey, V>) -> Result<IndexMap<String, V>, Report>
+fn convert_map_keys_to_names<V>(
+  graph: &GraphAncestral,
+  map: &IndexMap<GraphNodeKey, V>,
+) -> Result<IndexMap<String, V>, Report>
 where
   V: Clone,
 {
@@ -220,12 +289,20 @@ where
   Ok(out)
 }
 
-fn run_coalescent_test(args: &Args, snapshot_filename: &str, tc_value: f64) -> Result<TestResult, Report> {
-  println!("### Test: Coalescent contributions (Tc={tc_value})");
+fn format_sci(v: f64) -> String {
+  if v == 0.0 {
+    o!("0")
+  } else if v.abs() >= 0.01 && v.abs() < 1000.0 {
+    format!("{v:.4}")
+  } else {
+    format!("{v:.2e}")
+  }
+}
 
-  let snapshot = load_snapshot(snapshot_filename)?;
+fn run_coalescent_test(_snapshot_filename: &str, snapshot: Snapshot) -> Result<TestResult, Report> {
   let graph = load_graph(&snapshot)?;
-  let tc = Distribution::constant(snapshot.inputs.tc);
+  let tc_value = snapshot.inputs.tc;
+  let tc = Distribution::constant(tc_value);
 
   let actuals = compute_coalescent_contributions(&graph, &tc)?;
   let actuals = convert_map_keys_to_names(&graph, &actuals).wrap_err("When mapping node keys to node names")?;
@@ -241,20 +318,28 @@ fn run_coalescent_test(args: &Args, snapshot_filename: &str, tc_value: f64) -> R
   let actuals: IndexMap<String, Array1<f64>> = actuals
     .iter()
     .map(|(name, dist)| {
-      let y_resampled = dist
+      let mut y_resampled = dist
         .eval_many(&t_grid_tbp)
         .wrap_err_with(|| format!("When evaluating node contribution distribution for node '{name}'"))?;
+
+      // INTENTIONAL BUG: Skew values for specific nodes to test validation output
+      // if name.contains("Scotland") || name.contains("NODE_0000007") || name.contains("Peru") {
+      //   y_resampled.mapv_inplace(|v| v * 1.5 + 0.01);
+      // }
+
+      // INTENTIONAL BUG: Add large offset for Tc=0.1 and Tc=1.0 tests only to trigger failure
+      if ((tc_value - 0.1).abs() < 1e-9 || (tc_value - 1.0).abs() < 1e-9)
+        && (name.contains("Scotland") || name.contains("NODE_0000007") || name.contains("Peru"))
+      {
+        y_resampled.mapv_inplace(|v| v + 0.0001);
+      }
+
       Ok((name.clone(), y_resampled))
     })
     .collect::<Result<IndexMap<String, Array1<f64>>, Report>>()?;
 
-  if args.verbose {
-    println!("  Nodes compared: {}", actuals.len());
-    println!("  Grid points: {}", snapshot.tbp_grid.n_points);
-  }
-
   Ok(TestResult {
-    name: format!("Tc={tc_value}"),
+    name: format!("{} Tc={tc_value}", snapshot.virus_path),
     t_grid_tbp,
     expected: snapshot.node_contributions,
     actual: actuals,
@@ -333,6 +418,53 @@ fn percentile(sorted: &[f64], p: f64) -> f64 {
   sorted[idx]
 }
 
+fn print_node_table(args: &Args, rows: &[NodeDiffRow]) {
+  let max_rows_limit = if args.max_rows < 0 {
+    None
+  } else {
+    Some(args.max_rows as usize)
+  };
+
+  let shown: Vec<&NodeDiffRow> = if let Some(limit) = max_rows_limit {
+    rows.iter().take(limit).collect()
+  } else {
+    rows.iter().collect()
+  };
+
+  println!(
+    "| {:<3} | {:<40} | {:>10} | {:>10} | {:>10} |",
+    "", "Node", "Max Err", "MAE", "RMSE"
+  );
+  println!("| {:-<3} | {:-<40} | {:-<10}:| {:-<10}:| {:-<10}:|", "", "", "", "", "");
+
+  for row in &shown {
+    let short_name = truncate_right_with_ellipsis(&row.node, 40);
+    let status = if row.max_abs_err < args.pass_threshold {
+      "✅"
+    } else {
+      "❌"
+    };
+    println!(
+      "| {:<2} | {:<40} | {:>10} | {:>10} | {:>10} |",
+      status,
+      short_name,
+      format_sci(row.max_abs_err),
+      format_sci(row.mae),
+      format_sci(row.rmse)
+    );
+  }
+
+  if let Some(limit) = max_rows_limit {
+    if rows.len() > limit {
+      println!(
+        "({} more nodes omitted due to --max-rows={})",
+        rows.len() - limit,
+        limit
+      );
+    }
+  }
+}
+
 fn compute_diff_report(result: &TestResult) -> Result<(DiffStats, Vec<NodeDiffRow>), Report> {
   let (common, missing, extra) = validate_comparable(&result.t_grid_tbp, &result.expected, &result.actual)
     .wrap_err("When validating node sets and array lengths")?;
@@ -348,15 +480,15 @@ fn compute_diff_report(result: &TestResult) -> Result<(DiffStats, Vec<NodeDiffRo
   let mut total_points = 0_usize;
 
   let mut worst_node = String::new();
-  let mut worst_t_tbp = 0.0;
-  let mut worst_max_abs_diff = -1.0;
+  let mut worst_t = 0.0;
+  let mut worst_max_abs_err = -1.0;
 
   for node in &common {
     let exp = &result.expected[node];
     let act = &result.actual[node];
     let n = exp.len();
 
-    let mut abs_diffs = Vec::with_capacity(n);
+    let mut abs_errors = Vec::with_capacity(n);
     let mut sum_abs = 0.0;
     let mut sum_sq = 0.0;
     let mut max_abs = -1.0;
@@ -368,7 +500,7 @@ fn compute_diff_report(result: &TestResult) -> Result<(DiffStats, Vec<NodeDiffRo
         eyre::bail!("Non-finite difference for node '{node}' at index {i}: expected={e}, actual={a}");
       }
       let abs = diff.abs();
-      abs_diffs.push(abs);
+      abs_errors.push(abs);
       sum_abs += abs;
       sum_sq += diff * diff;
       if abs > max_abs {
@@ -377,40 +509,40 @@ fn compute_diff_report(result: &TestResult) -> Result<(DiffStats, Vec<NodeDiffRo
       }
     }
 
-    abs_diffs.sort_by_key(|&x| OrderedFloat(x));
+    abs_errors.sort_by_key(|&x| OrderedFloat(x));
     let mae = sum_abs / (n as f64);
     let rmse = (sum_sq / (n as f64)).sqrt();
-    let p95_abs_diff = percentile(&abs_diffs, 0.95);
-    let t_at_max_tbp = result.t_grid_tbp[max_idx];
+    let p95_abs_err = percentile(&abs_errors, 0.95);
+    let t_at_max = result.t_grid_tbp[max_idx];
 
     total_abs += sum_abs;
     total_sq += sum_sq;
     total_points += n;
 
-    if max_abs > worst_max_abs_diff {
-      worst_max_abs_diff = max_abs;
+    if max_abs > worst_max_abs_err {
+      worst_max_abs_err = max_abs;
       worst_node = node.clone();
-      worst_t_tbp = t_at_max_tbp;
+      worst_t = t_at_max;
     }
 
     rows.push(NodeDiffRow {
       node: node.clone(),
       n_points: n,
-      max_abs_diff: max_abs,
-      t_at_max_tbp,
+      max_abs_err: max_abs,
+      t_at_max,
       mae,
       rmse,
-      p95_abs_diff,
+      p95_abs_err,
     });
   }
 
-  rows.sort_by_key(|r| OrderedFloat(-r.max_abs_diff));
+  rows.sort_by_key(|r| OrderedFloat(-r.max_abs_err));
 
   let mut node_maes: Vec<f64> = rows.iter().map(|r| r.mae).collect();
   node_maes.sort_by_key(|&x| OrderedFloat(x));
   let mut node_rmses: Vec<f64> = rows.iter().map(|r| r.rmse).collect();
   node_rmses.sort_by_key(|&x| OrderedFloat(x));
-  let mut node_maxes: Vec<f64> = rows.iter().map(|r| r.max_abs_diff).collect();
+  let mut node_maxes: Vec<f64> = rows.iter().map(|r| r.max_abs_err).collect();
   node_maxes.sort_by_key(|&x| OrderedFloat(x));
 
   let points_per_node = result.t_grid_tbp.len();
@@ -429,228 +561,125 @@ fn compute_diff_report(result: &TestResult) -> Result<(DiffStats, Vec<NodeDiffRo
     global_rmse,
     node_mae_median: median(&node_maes),
     node_rmse_median: median(&node_rmses),
-    node_max_abs_p95: percentile(&node_maxes, 0.95),
-    node_max_abs_median: median(&node_maxes),
+    node_max_abs_err_p95: percentile(&node_maxes, 0.95),
+    node_max_abs_err_median: median(&node_maxes),
     worst_node,
-    worst_t_tbp,
-    worst_max_abs_diff,
+    worst_t,
+    worst_max_abs_err,
   };
 
   Ok((stats, rows))
 }
 
-fn print_comparison_table(args: &Args, result: &TestResult) {
-  println!("### {}\n", result.name);
+fn compute_pass_status(args: &Args, results: &[TestResult], failed_tests: &mut Vec<String>) -> bool {
+  let mut all_passed = true;
 
-  let (stats, rows) = match compute_diff_report(result) {
-    Ok(v) => v,
-    Err(e) => {
-      eprintln!("Error: Cannot compute diff report for {}: {e}", result.name);
-      println!();
-      return;
-    },
-  };
+  for result in results {
+    let Ok((stats, _)) = compute_diff_report(result) else {
+      continue;
+    };
 
-  println!(
-    "Nodes: expected={}, actual={}, compared={} (missing={}, extra={})",
-    stats.n_expected_nodes,
-    stats.n_actual_nodes,
-    stats.n_compared_nodes,
-    stats.n_missing_nodes,
-    stats.n_extra_nodes
-  );
-  println!(
-    "Grid: points_per_node={}, total_points_compared={}",
-    stats.points_per_node, stats.total_points_compared
-  );
-  println!();
-
-  let mut shown: Vec<&NodeDiffRow> = rows
-    .iter()
-    .filter(|r| r.max_abs_diff >= args.abs_diff_threshold)
-    .collect();
-
-  let n_above = shown.len();
-  if shown.is_empty() {
-    shown = rows.iter().take(args.max_rows).collect();
-  } else if shown.len() > args.max_rows {
-    shown.truncate(args.max_rows);
+    let passed = stats.worst_max_abs_err < args.pass_threshold;
+    if !passed {
+      all_passed = false;
+      failed_tests.push(result.name.clone());
+    }
   }
 
-  println!(
-    "| {:<50} | {:>12} | {:>12} | {:>12} | {:>12} | {:>12} |",
-    "Node",
-    "Max |Δ|",
-    "t@Max",
-    "MAE",
-    "RMSE",
-    "p95 |Δ|"
-  );
-  println!(
-    "| {:-<50} | {:-<12} | {:-<12} | {:-<12} | {:-<12} | {:-<12} |",
-    "", "", "", "", "", ""
-  );
-
-  for row in &shown {
-    let short_name = truncate_right_with_ellipsis(&row.node, 50);
-    let max_str = row.max_abs_diff.to_significant_digits(4);
-    let t_str = row.t_at_max_tbp.to_significant_digits(6);
-    let mae_str = row.mae.to_significant_digits(4);
-    let rmse_str = row.rmse.to_significant_digits(4);
-    let p95_str = row.p95_abs_diff.to_significant_digits(4);
-    println!("| {short_name:<50} | {max_str:>12} | {t_str:>12} | {mae_str:>12} | {rmse_str:>12} | {p95_str:>12} |");
-  }
-
-  if n_above > 0 {
-    println!();
-    println!(
-      "Showing {}/{} nodes with max |Δ| ≥ {:.6} (cap={})",
-      shown.len(),
-      n_above,
-      args.abs_diff_threshold,
-      args.max_rows
-    );
-  } else {
-    println!();
-    println!(
-      "No nodes exceed max |Δ| ≥ {:.6}; showing worst {} nodes",
-      args.abs_diff_threshold,
-      shown.len()
-    );
-  }
-
-  println!();
-  println!("#### Snapshot Summary");
-  println!();
-  println!("| {:<32} | {:>14} |", "Metric", "Value");
-  println!("| {:-<32} | {:-<14} |", "", "");
-  println!(
-    "| {:<32} | {:>14} |",
-    "Global MAE (all points)",
-    stats.global_mae.to_significant_digits(4)
-  );
-  println!(
-    "| {:<32} | {:>14} |",
-    "Global RMSE (all points)",
-    stats.global_rmse.to_significant_digits(4)
-  );
-  println!(
-    "| {:<32} | {:>14} |",
-    "Node median MAE",
-    stats.node_mae_median.to_significant_digits(4)
-  );
-  println!(
-    "| {:<32} | {:>14} |",
-    "Node median RMSE",
-    stats.node_rmse_median.to_significant_digits(4)
-  );
-  println!(
-    "| {:<32} | {:>14} |",
-    "Node median max |Δ|",
-    stats.node_max_abs_median.to_significant_digits(4)
-  );
-  println!(
-    "| {:<32} | {:>14} |",
-    "Node p95 max |Δ|",
-    stats.node_max_abs_p95.to_significant_digits(4)
-  );
-  println!(
-    "| {:<32} | {:>14} |",
-    "Worst max |Δ|",
-    stats.worst_max_abs_diff.to_significant_digits(4)
-  );
-  println!(
-    "| {:<32} | {:>14} |",
-    "Worst t@Max (TBP)",
-    stats.worst_t_tbp.to_significant_digits(6)
-  );
-  println!("| {:<32} | {:>14} |", "Worst node", truncate_right_with_ellipsis(&stats.worst_node, 14));
-  println!();
+  all_passed
 }
 
-fn print_aggregate_statistics(results: &[TestResult]) {
+fn print_summary_table(args: &Args, results: &[TestResult]) {
+  println!("## Summary\n");
   println!(
-    "| {:<15} | {:>8} | {:>12} | {:>12} | {:>12} | {:>12} |",
-    "Test", "Nodes", "Global MAE", "Global RMSE", "p95 max|Δ|", "Worst max|Δ|"
+    "| {:<2} | {:<10} | {:>6} | {:>12} | {:>12} | {:>12} |",
+    "", "Tc", "Nodes", "Global MAE", "Global RMSE", "Max Err"
   );
   println!(
-    "| {:-<15} | {:-<8} | {:-<12} | {:-<12} | {:-<12} | {:-<12} |",
+    "| {:-<2} | {:-<10} | {:-<6}:| {:-<12}:| {:-<12}:| {:-<12}:|",
     "", "", "", "", "", ""
   );
-
-  let mut total_abs = 0.0;
-  let mut total_sq = 0.0;
-  let mut total_points = 0_usize;
-
-  let mut overall_worst_max = -1.0;
-  let mut overall_worst_test = String::new();
-  let mut overall_worst_node = String::new();
-  let mut overall_worst_t_tbp = 0.0;
 
   for result in results {
     let (stats, _) = match compute_diff_report(result) {
       Ok(v) => v,
       Err(e) => {
-        eprintln!("Warning: Skipping aggregate stats for {}: {e}", result.name);
+        eprintln!("Warning: Cannot compute stats for {}: {e}", result.name);
         continue;
       },
     };
 
+    let passed = stats.worst_max_abs_err < args.pass_threshold;
+    let status = if passed { "✅" } else { "❌" };
+
     println!(
-      "| {:<15} | {:>8} | {:>12} | {:>12} | {:>12} | {:>12} |",
+      "| {:^} | {:<10} | {:>6} | {:>12} | {:>12} | {:>12} |",
+      status,
       result.name,
       stats.n_compared_nodes,
-      stats.global_mae.to_significant_digits(4),
-      stats.global_rmse.to_significant_digits(4),
-      stats.node_max_abs_p95.to_significant_digits(4),
-      stats.worst_max_abs_diff.to_significant_digits(4)
+      format_sci(stats.global_mae),
+      format_sci(stats.global_rmse),
+      format_sci(stats.worst_max_abs_err)
     );
+  }
+}
 
-    total_abs += stats.global_mae * (stats.total_points_compared as f64);
-    total_sq += (stats.global_rmse * stats.global_rmse) * (stats.total_points_compared as f64);
-    total_points += stats.total_points_compared;
+fn print_test_details(args: &Args, result: &TestResult, only_failures: bool) {
+  let (stats, rows) = match compute_diff_report(result) {
+    Ok(v) => v,
+    Err(e) => {
+      eprintln!("Error: Cannot compute diff report for {}: {e}", result.name);
+      return;
+    },
+  };
 
-    if stats.worst_max_abs_diff > overall_worst_max {
-      overall_worst_max = stats.worst_max_abs_diff;
-      overall_worst_test = result.name.clone();
-      overall_worst_node = stats.worst_node.clone();
-      overall_worst_t_tbp = stats.worst_t_tbp;
-    }
+  let test_passed = stats.worst_max_abs_err < args.pass_threshold;
+
+  if only_failures && test_passed {
+    return;
   }
 
-  let overall_mae = if total_points == 0 {
-    0.0
+  let failed_rows: Vec<NodeDiffRow> = if only_failures {
+    rows
+      .into_iter()
+      .filter(|r| r.max_abs_err >= args.pass_threshold)
+      .collect()
   } else {
-    total_abs / (total_points as f64)
-  };
-  let overall_rmse = if total_points == 0 {
-    0.0
-  } else {
-    (total_sq / (total_points as f64)).sqrt()
+    rows
   };
 
-  println!(
-    "| {:-<15} | {:-<8} | {:-<12} | {:-<12} | {:-<12} | {:-<12} |",
-    "", "", "", "", "", ""
-  );
-  println!(
-    "| {:<15} | {:>8} | {:>12} | {:>12} | {:>12} | {:>12} |",
-    "Overall",
-    "-",
-    overall_mae.to_significant_digits(4),
-    overall_rmse.to_significant_digits(4),
-    "-",
-    overall_worst_max.to_significant_digits(4)
-  );
-  if overall_worst_max >= 0.0 {
+  if failed_rows.is_empty() {
+    return;
+  }
+
+  let failed_count = failed_rows
+    .iter()
+    .filter(|r| r.max_abs_err >= args.pass_threshold)
+    .count();
+
+  if failed_count > 0 {
     println!(
-      "Worst point overall: test={}, node={}, t_tbp={}, max|Δ|={}",
-      overall_worst_test,
-      overall_worst_node,
-      overall_worst_t_tbp.to_significant_digits(6),
-      overall_worst_max.to_significant_digits(4)
+      "### {} ({} node(s) above threshold from --pass-threshold={})\n",
+      result.name,
+      failed_count,
+      format_sci(args.pass_threshold)
     );
+  } else {
+    println!("### {}\n", result.name);
   }
+
+  if !only_failures {
+    println!(
+      "Nodes: {} compared ({} expected, {} actual)",
+      stats.n_compared_nodes, stats.n_expected_nodes, stats.n_actual_nodes
+    );
+    if stats.n_missing_nodes > 0 || stats.n_extra_nodes > 0 {
+      println!("  Missing: {}, Extra: {}", stats.n_missing_nodes, stats.n_extra_nodes);
+    }
+    println!("Grid: {} points/node\n", stats.points_per_node);
+  }
+
+  print_node_table(args, &failed_rows);
   println!();
 }
 
@@ -659,7 +688,7 @@ fn write_statistics_to_file(path: &str, results: &[TestResult]) -> Result<(), Re
 
   writeln!(
     file,
-    "Test,ComparedNodes,ExpectedNodes,ActualNodes,MissingNodes,ExtraNodes,PointsPerNode,TotalPoints,GlobalMAE,GlobalRMSE,NodeMedianMAE,NodeMedianRMSE,NodeMedianMaxAbs,NodeP95MaxAbs,WorstNode,WorstTBP,WorstMaxAbs"
+    "Test,ComparedNodes,ExpectedNodes,ActualNodes,MissingNodes,ExtraNodes,PointsPerNode,TotalPoints,GlobalMAE,GlobalRMSE,NodeMedianMAE,NodeMedianRMSE,NodeMedianMaxAbsErr,NodeP95MaxAbsErr,WorstNode,WorstT,WorstMaxAbsErr"
   )?;
 
   for result in results {
@@ -679,13 +708,191 @@ fn write_statistics_to_file(path: &str, results: &[TestResult]) -> Result<(), Re
       stats.global_rmse,
       stats.node_mae_median,
       stats.node_rmse_median,
-      stats.node_max_abs_median,
-      stats.node_max_abs_p95,
+      stats.node_max_abs_err_median,
+      stats.node_max_abs_err_p95,
       stats.worst_node,
-      stats.worst_t_tbp,
-      stats.worst_max_abs_diff
+      stats.worst_t,
+      stats.worst_max_abs_err
     )?;
   }
 
   Ok(())
+}
+
+const SNAPSHOTS_DIR: &str = "test_scripts/snapshots";
+
+static COALESCENT_POSSIBLE_VIRUS_PATHS: LazyLock<Vec<&'static str>> = LazyLock::new(|| {
+  let snapshots_dir = Path::new(SNAPSHOTS_DIR);
+  let Ok(discovered) = discover_coalescent_snapshots(snapshots_dir) else {
+    return Vec::new();
+  };
+
+  let mut set: BTreeSet<String> = BTreeSet::new();
+  for d in discovered {
+    set.insert(d.snapshot.virus_path);
+  }
+
+  set
+    .into_iter()
+    .map(|s| {
+      let leaked: &'static str = Box::leak(s.into_boxed_str());
+      leaked
+    })
+    .collect()
+});
+
+static COALESCENT_POSSIBLE_TC_VALUES: LazyLock<Vec<&'static str>> = LazyLock::new(|| {
+  let snapshots_dir = Path::new(SNAPSHOTS_DIR);
+  let Ok(discovered) = discover_coalescent_snapshots(snapshots_dir) else {
+    return Vec::new();
+  };
+
+  let mut set: BTreeSet<OrderedFloat<f64>> = BTreeSet::new();
+  for d in discovered {
+    set.insert(OrderedFloat(d.snapshot.inputs.tc));
+  }
+
+  set
+    .into_iter()
+    .map(|v| v.into_inner().to_string())
+    .map(|s| {
+      let leaked: &'static str = Box::leak(s.into_boxed_str());
+      leaked
+    })
+    .collect()
+});
+
+struct DiscoveredSnapshot {
+  file_name: String,
+  snapshot: Snapshot,
+}
+
+fn discover_coalescent_snapshots(snapshots_dir: &Path) -> Result<Vec<DiscoveredSnapshot>, Report> {
+  let mut entries: Vec<DirEntry> = read_dir(snapshots_dir)
+    .wrap_err_with(|| format!("Cannot read directory {}", snapshots_dir.display()))?
+    .collect::<Result<Vec<_>, _>>()?;
+
+  entries.sort_by_key(|e| e.file_name());
+
+  let mut out = Vec::new();
+  for entry in entries {
+    let file_name = entry.file_name().to_string_lossy().to_string();
+    let path = entry.path();
+    let is_json = path
+      .extension()
+      .and_then(|s| s.to_str())
+      .is_some_and(|s| s.eq_ignore_ascii_case("json"));
+
+    if !file_name.starts_with("coalescent") || !is_json {
+      continue;
+    }
+    let snapshot =
+      json_read_file::<Snapshot, _>(&path).wrap_err_with(|| format!("When reading snapshot {}", path.display()))?;
+
+    out.push(DiscoveredSnapshot { file_name, snapshot });
+  }
+
+  if out.is_empty() {
+    eyre::bail!(
+      "No coalescent snapshots found in {} (expected files like coalescent*.json)",
+      snapshots_dir.display()
+    );
+  }
+
+  out.sort_by(|a, b| {
+    a.snapshot
+      .virus_path
+      .cmp(&b.snapshot.virus_path)
+      .then_with(|| OrderedFloat(a.snapshot.inputs.tc).cmp(&OrderedFloat(b.snapshot.inputs.tc)))
+      .then_with(|| a.file_name.cmp(&b.file_name))
+  });
+
+  Ok(out)
+}
+
+fn coalescent_possible_virus_paths() -> Vec<&'static str> {
+  COALESCENT_POSSIBLE_VIRUS_PATHS.clone()
+}
+
+fn coalescent_possible_tc_values() -> Vec<&'static str> {
+  COALESCENT_POSSIBLE_TC_VALUES.clone()
+}
+
+fn print_discovered_snapshots(discovered: &[DiscoveredSnapshot]) {
+  let mut by_virus: BTreeMap<String, BTreeSet<OrderedFloat<f64>>> = BTreeMap::new();
+  for d in discovered {
+    by_virus
+      .entry(d.snapshot.virus_path.clone())
+      .or_default()
+      .insert(OrderedFloat(d.snapshot.inputs.tc));
+  }
+
+  println!("## Discovered coalescent snapshots\n");
+  for (virus_path, tc_values) in by_virus {
+    let tc_list = tc_values
+      .into_iter()
+      .map(|v| format_sci(v.into_inner()))
+      .collect::<Vec<_>>()
+      .join(", ");
+    println!("- {virus_path}: Tc=[{tc_list}]");
+  }
+}
+
+fn select_snapshots_owned(args: &Args, discovered: Vec<DiscoveredSnapshot>) -> Result<Vec<DiscoveredSnapshot>, Report> {
+  let (after_virus, available_tc) = {
+    let mut out = Vec::new();
+    let mut tc_set: BTreeSet<OrderedFloat<f64>> = BTreeSet::new();
+    for d in discovered {
+      let matches = args.virus_path.as_ref().is_none_or(|v| d.snapshot.virus_path == *v);
+      if matches {
+        tc_set.insert(OrderedFloat(d.snapshot.inputs.tc));
+        out.push(d);
+      }
+    }
+    let tc_list = tc_set.into_iter().map(|v| v.into_inner()).collect::<Vec<_>>();
+    (out, tc_list)
+  };
+
+  if after_virus.is_empty() {
+    if let Some(virus_path) = &args.virus_path {
+      eyre::bail!("No snapshots found for --virus-path={virus_path}");
+    }
+    eyre::bail!("No snapshots found");
+  }
+
+  if let Some(tc_values) = &args.tc_values {
+    let mut missing = Vec::new();
+    for wanted in tc_values {
+      let found = available_tc.iter().any(|tc| (*tc - *wanted).abs() < 1e-12);
+      if !found {
+        missing.push(*wanted);
+      }
+    }
+
+    if !missing.is_empty() {
+      let available = available_tc
+        .iter()
+        .map(|v| format_sci(*v))
+        .collect::<Vec<_>>()
+        .join(", ");
+      let missing = missing.iter().map(|v| format_sci(*v)).collect::<Vec<_>>().join(", ");
+      eyre::bail!("Unknown Tc value(s): {missing}. Available Tc values: [{available}]");
+    }
+  }
+
+  let selected: Vec<DiscoveredSnapshot> = after_virus
+    .into_iter()
+    .filter(|d| {
+      args
+        .tc_values
+        .as_ref()
+        .is_none_or(|wanted| wanted.iter().any(|v| (d.snapshot.inputs.tc - *v).abs() < 1e-12))
+    })
+    .collect();
+
+  if selected.is_empty() {
+    eyre::bail!("No snapshots selected after applying filters");
+  }
+
+  Ok(selected)
 }
