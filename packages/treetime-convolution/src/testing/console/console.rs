@@ -206,7 +206,7 @@ impl ConvolutionTestConsole {
       let algo_summary = summary
         .algorithm_summaries
         .iter()
-        .find(|s| s.algorithm.to_string() == *algorithm)
+        .find(|s| s.algorithm_name == *algorithm)
         .unwrap();
 
       let correlation_mean: f64 = algorithm_results

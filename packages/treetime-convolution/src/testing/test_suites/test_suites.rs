@@ -1,8 +1,12 @@
 use crate::testing::framework::test_case::TestCase;
-use crate::testing::run::{Args, run_convolution_tests_impl};
+use crate::testing::run::{
+  Args, run_chain_multiplication_tests_impl, run_convolution_tests_impl, run_multiplication_tests_impl,
+};
 use crate::testing::test_suites::exponential::ExponentialTestSuite;
 use crate::testing::test_suites::gaussian::GaussianTestSuite;
+use crate::testing::test_suites::gaussian_chain_multiplication::GaussianChainMultiplicationTestSuite;
 use crate::testing::test_suites::gaussian_exponential::GaussianExponentialTestSuite;
+use crate::testing::test_suites::gaussian_multiplication::GaussianMultiplicationTestSuite;
 use clap::ValueEnum;
 use eyre::Report;
 use ndarray::Array1;
@@ -20,11 +24,21 @@ pub enum TestSuiteName {
   Gaussian,
   Exponential,
   GaussianExponential,
+  GaussianMultiplication,
+  GaussianChainMultiplication,
 }
 
 impl TestSuiteName {
   pub fn all() -> Vec<Self> {
     Self::iter().filter(|s| *s != Self::All).collect()
+  }
+
+  pub fn convolution_suites() -> Vec<Self> {
+    vec![Self::Gaussian, Self::Exponential, Self::GaussianExponential]
+  }
+
+  pub fn multiplication_suites() -> Vec<Self> {
+    vec![Self::GaussianMultiplication, Self::GaussianChainMultiplication]
   }
 
   pub fn expand(suites: &[Self]) -> Vec<Self> {
@@ -35,12 +49,24 @@ impl TestSuiteName {
     }
   }
 
+  pub fn is_convolution(&self) -> bool {
+    matches!(self, Self::Gaussian | Self::Exponential | Self::GaussianExponential)
+  }
+
+  pub fn is_multiplication(&self) -> bool {
+    matches!(self, Self::GaussianMultiplication | Self::GaussianChainMultiplication)
+  }
+
   pub fn run_tests(&self, args: &Args) -> Result<(), Report> {
     match self {
       Self::All => panic!("Cannot run All meta-variant"),
       Self::Gaussian => run_convolution_tests_impl::<GaussianTestSuite>(args),
       Self::Exponential => run_convolution_tests_impl::<ExponentialTestSuite>(args),
       Self::GaussianExponential => run_convolution_tests_impl::<GaussianExponentialTestSuite>(args),
+      Self::GaussianMultiplication => run_multiplication_tests_impl::<GaussianMultiplicationTestSuite>(args),
+      Self::GaussianChainMultiplication => {
+        run_chain_multiplication_tests_impl::<GaussianChainMultiplicationTestSuite>(args)
+      },
     }
   }
 }
@@ -55,6 +81,40 @@ pub trait TestSuite: Send + Sync {
   fn create_g(&self, test_case: &Self::TestCase, grid: &Array1<f64>) -> Result<Array1<f64>, Report>;
 
   fn analytical_convolution(&self, test_case: &Self::TestCase, eval_grid: &Array1<f64>) -> Result<Array1<f64>, Report>;
+
+  fn create_test_cases(&self) -> Vec<Self::TestCase>;
+}
+
+pub trait MultiplicationTestSuite: Send + Sync {
+  type TestCase: TestCase;
+
+  fn test_suite_name(&self) -> &'static str;
+
+  fn create_f(&self, test_case: &Self::TestCase, grid: &Array1<f64>) -> Result<Array1<f64>, Report>;
+
+  fn create_g(&self, test_case: &Self::TestCase, grid: &Array1<f64>) -> Result<Array1<f64>, Report>;
+
+  fn analytical_multiplication(
+    &self,
+    test_case: &Self::TestCase,
+    grid: &Array1<f64>,
+  ) -> Result<(Array1<f64>, f64), Report>;
+
+  fn create_test_cases(&self) -> Vec<Self::TestCase>;
+}
+
+pub trait ChainMultiplicationTestSuite: Send + Sync {
+  type TestCase: TestCase;
+
+  fn test_suite_name(&self) -> &'static str;
+
+  fn create_factors(&self, test_case: &Self::TestCase, grid: &Array1<f64>) -> Result<Vec<Array1<f64>>, Report>;
+
+  fn analytical_chain_multiplication(
+    &self,
+    test_case: &Self::TestCase,
+    grid: &Array1<f64>,
+  ) -> Result<(Array1<f64>, f64), Report>;
 
   fn create_test_cases(&self) -> Vec<Self::TestCase>;
 }

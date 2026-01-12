@@ -20,7 +20,7 @@ pub struct TestSummary {
 /// Summary for a specific algorithm across all test cases
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AlgorithmSummary {
-  pub algorithm: ConvolutionAlgorithm,
+  pub algorithm_name: String,
   pub test_cases_count: usize,
   pub execution_time_total_ms: f64,
   pub execution_time_avg_ms: f64,
@@ -39,6 +39,15 @@ impl AlgorithmSummary {
   /// Create a new AlgorithmSummary from test results
   pub fn new<T: TestCase>(
     algorithm: ConvolutionAlgorithm,
+    successes: &[&&TestResult<T>],
+    failures: &[&&TestFailure<T>],
+  ) -> Self {
+    Self::new_from_name(&algorithm.to_string(), successes, failures)
+  }
+
+  /// Create a new AlgorithmSummary from test results using a string algorithm name
+  pub fn new_from_name<T: TestCase>(
+    algorithm_name: &str,
     successes: &[&&TestResult<T>],
     failures: &[&&TestFailure<T>],
   ) -> Self {
@@ -89,7 +98,7 @@ impl AlgorithmSummary {
     let success_rate = passed_tests as f64 / total_runs as f64;
 
     Self {
-      algorithm,
+      algorithm_name: algorithm_name.to_owned(),
       test_cases_count: total_runs,
       execution_time_total_ms: execution_time_total,
       execution_time_avg_ms: execution_time_avg,

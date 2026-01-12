@@ -39,7 +39,7 @@ mod tests {
   use crate::distribution::scaled_distribution_multiplication::scaled_distribution_multiplication;
   use crate::distribution::y_axis_policy::Plain;
   use approx::assert_relative_eq;
-  use ndarray::{array, Array1};
+  use ndarray::{Array1, array};
 
   fn make_point(t: f64, amplitude: f64) -> ScaledDistribution {
     let dist = Distribution::<Plain>::point(t, amplitude);

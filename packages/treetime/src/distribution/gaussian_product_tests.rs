@@ -70,8 +70,9 @@ mod tests {
     let n = 100;
     let amplitude = 0.0001;
 
-    let points: Vec<ScaledDistribution> =
-      std::iter::repeat_with(|| create_point_scaled(0.0, amplitude)).take(n).collect();
+    let points: Vec<ScaledDistribution> = std::iter::repeat_with(|| create_point_scaled(0.0, amplitude))
+      .take(n)
+      .collect();
     let refs: Vec<&ScaledDistribution> = points.iter().collect();
     let product = scaled_distribution_multiply_many(&refs)?;
 
@@ -97,13 +98,17 @@ mod tests {
 
   #[test]
   fn test_gaussian_product_ten() -> Result<(), Report> {
-    let gaussians: Vec<ScaledDistribution> =
-      std::iter::repeat_with(|| create_gaussian_scaled(0.0, 1.0, 1.0, 201)).take(10).collect();
+    let gaussians: Vec<ScaledDistribution> = std::iter::repeat_with(|| create_gaussian_scaled(0.0, 1.0, 1.0, 201))
+      .take(10)
+      .collect();
     let refs: Vec<&ScaledDistribution> = gaussians.iter().collect();
     let product = scaled_distribution_multiply_many(&refs)?;
 
     assert!(!product.is_empty());
-    assert!(product.log_scale().is_finite(), "log_scale must be finite for 10 Gaussians");
+    assert!(
+      product.log_scale().is_finite(),
+      "log_scale must be finite for 10 Gaussians"
+    );
     Ok(())
   }
 
@@ -113,12 +118,17 @@ mod tests {
     let amplitude = 0.01;
 
     let gaussians: Vec<ScaledDistribution> =
-      std::iter::repeat_with(|| create_gaussian_scaled(0.0, 1.0, amplitude, 201)).take(n).collect();
+      std::iter::repeat_with(|| create_gaussian_scaled(0.0, 1.0, amplitude, 201))
+        .take(n)
+        .collect();
     let refs: Vec<&ScaledDistribution> = gaussians.iter().collect();
     let product = scaled_distribution_multiply_many(&refs)?;
 
     assert!(!product.is_empty(), "Must not underflow to empty");
-    assert!(product.log_scale().is_finite(), "Must handle small amplitudes without underflow");
+    assert!(
+      product.log_scale().is_finite(),
+      "Must handle small amplitudes without underflow"
+    );
     Ok(())
   }
 
@@ -182,7 +192,12 @@ mod tests {
     if let Distribution::Function(f) = product.inner() {
       let t = f.t();
       let y = f.y();
-      let max_idx = y.iter().enumerate().max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap()).map(|(i, _)| i).unwrap();
+      let max_idx = y
+        .iter()
+        .enumerate()
+        .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
+        .map(|(i, _)| i)
+        .unwrap();
       let peak_t = t[max_idx];
       assert_relative_eq!(peak_t, 0.0, epsilon = 0.05);
     }

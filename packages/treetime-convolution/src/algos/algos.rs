@@ -1,6 +1,7 @@
 use crate::algos::ndarray_conv::ndarray_conv::NdarrayAlgo;
 use crate::algos::ndarray_conv_fft::ndarray_conv_fft::NdarrayConvFftAlgo;
 use crate::algos::riemann::riemann::RiemannAlgo;
+use crate::algos::scaled_distribution::{LogScaleMultiplicationAlgo, NaiveMultiplicationAlgo};
 use clap::ValueEnum;
 use eyre::Report;
 use ndarray::Array1;
@@ -65,4 +66,60 @@ pub trait Algo: Send + Sync {
   fn name(&self) -> &'static str;
 
   fn convolve(&self, dx: f64, f_values: &Array1<f64>, g_values: &Array1<f64>) -> Result<Array1<f64>, Report>;
+}
+
+/// Available multiplication algorithms for testing
+#[derive(
+  Debug,
+  Clone,
+  Copy,
+  PartialEq,
+  Eq,
+  PartialOrd,
+  Ord,
+  Hash,
+  Serialize,
+  Deserialize,
+  Display,
+  EnumString,
+  EnumIter,
+  ValueEnum,
+)]
+#[serde(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
+#[clap(rename_all = "kebab-case")]
+pub enum MultiplicationAlgorithm {
+  All,
+  NaiveMultiplication,
+  LogScaleMultiplication,
+}
+
+impl MultiplicationAlgorithm {
+  pub fn all() -> Vec<Self> {
+    Self::iter().filter(|a| *a != Self::All).collect()
+  }
+
+  pub fn expand(algorithms: &[Self]) -> Vec<Self> {
+    if algorithms.contains(&Self::All) {
+      Self::all()
+    } else {
+      algorithms.to_vec()
+    }
+  }
+
+  pub fn instantiate(&self) -> Box<dyn MultiplyAlgo> {
+    match self {
+      Self::All => panic!("Cannot instantiate All meta-variant"),
+      Self::NaiveMultiplication => Box::new(NaiveMultiplicationAlgo),
+      Self::LogScaleMultiplication => Box::new(LogScaleMultiplicationAlgo),
+    }
+  }
+}
+
+pub trait MultiplyAlgo: Send + Sync {
+  fn name(&self) -> &'static str;
+
+  fn multiply(&self, dx: f64, f_values: &Array1<f64>, g_values: &Array1<f64>) -> Result<Array1<f64>, Report>;
+
+  fn multiply_many(&self, dx: f64, distributions: &[&Array1<f64>]) -> Result<(Array1<f64>, f64), Report>;
 }

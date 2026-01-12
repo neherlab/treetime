@@ -224,9 +224,7 @@ impl Distribution<Plain> {
       Distribution::Empty => Distribution::Empty,
       Distribution::Point(p) => Distribution::point(p.t(), p.amplitude() * factor),
       Distribution::Range(r) => Distribution::range((r.start(), r.end()), r.amplitude() * factor),
-      Distribution::Function(f) => {
-        f.scale_y(factor).map_or(Distribution::Empty, Distribution::Function)
-      },
+      Distribution::Function(f) => f.scale_y(factor).map_or(Distribution::Empty, Distribution::Function),
       Distribution::Formula(_) => {
         panic!("scale_by not supported for Formula distributions")
       },
