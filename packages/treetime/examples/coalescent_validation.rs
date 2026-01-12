@@ -318,21 +318,9 @@ fn run_coalescent_test(_snapshot_filename: &str, snapshot: Snapshot) -> Result<T
   let actuals: IndexMap<String, Array1<f64>> = actuals
     .iter()
     .map(|(name, dist)| {
-      let mut y_resampled = dist
+      let y_resampled = dist
         .eval_many(&t_grid_tbp)
         .wrap_err_with(|| format!("When evaluating node contribution distribution for node '{name}'"))?;
-
-      // INTENTIONAL BUG: Skew values for specific nodes to test validation output
-      // if name.contains("Scotland") || name.contains("NODE_0000007") || name.contains("Peru") {
-      //   y_resampled.mapv_inplace(|v| v * 1.5 + 0.01);
-      // }
-
-      // INTENTIONAL BUG: Add large offset for Tc=0.1 and Tc=1.0 tests only to trigger failure
-      if ((tc_value - 0.1).abs() < 1e-9 || (tc_value - 1.0).abs() < 1e-9)
-        && (name.contains("Scotland") || name.contains("NODE_0000007") || name.contains("Peru"))
-      {
-        y_resampled.mapv_inplace(|v| v + 0.0001);
-      }
 
       Ok((name.clone(), y_resampled))
     })
