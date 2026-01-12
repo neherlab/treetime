@@ -409,7 +409,7 @@ where
   fs::create_dir_all(output_dir)?;
 
   let results = ResultsJson { summary, outcomes };
-  let json_path = format!("{output_dir}/convolution_test_results.json");
+  let json_path = format!("{output_dir}/{}_results.json", summary.test_suite_name);
   json_write_file(&json_path, &results, JsonPretty(true))?;
   println!("Saved detailed JSON results to: {json_path}");
   Ok(())
@@ -984,7 +984,11 @@ fn run_chain_multiplication_test<S: ChainMultiplicationTestSuite>(
   let factor_refs: Vec<&Array1<f64>> = factors.iter().collect();
 
   let dx = input_grid[1] - input_grid[0];
-  let (actual_values, _actual_log_scale) = algo.multiply_many(dx, &factor_refs)?;
+  let (actual_values, _actual_log_scale) = if factors.is_empty() {
+    (Array1::ones(input_grid.len()), 0.0)
+  } else {
+    algo.multiply_many(dx, &factor_refs)?
+  };
   let (expected_shape, expected_log_scale) = suite.analytical_chain_multiplication(test_case, &input_grid)?;
 
   let expected_values = expected_shape.mapv(|v| v * expected_log_scale.exp());
@@ -993,16 +997,8 @@ fn run_chain_multiplication_test<S: ChainMultiplicationTestSuite>(
 
   let metrics = ConvolutionMetrics::new(&input_grid, &actual_values, &expected_values, execution_time)?;
 
-  let f_values = if factors.is_empty() {
-    Array1::zeros(input_grid.len())
-  } else {
-    factors[0].clone()
-  };
-  let g_values = if factors.len() < 2 {
-    Array1::ones(input_grid.len())
-  } else {
-    factors[1].clone()
-  };
+  let f_values = factors.first().cloned().unwrap_or_else(|| Array1::ones(input_grid.len()));
+  let g_values = factors.get(1).cloned().unwrap_or_else(|| Array1::ones(input_grid.len()));
 
   Ok(TestResult {
     algorithm: algo.name().to_owned(),

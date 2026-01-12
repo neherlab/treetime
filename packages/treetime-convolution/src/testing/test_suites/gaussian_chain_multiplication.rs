@@ -30,17 +30,7 @@ impl ChainMultiplicationTestSuite for GaussianChainMultiplicationTestSuite {
     test_case: &Self::TestCase,
     grid: &Array1<f64>,
   ) -> Result<(Array1<f64>, f64), Report> {
-    let params: Vec<GaussianParams> = test_case
-      .factors
-      .iter()
-      .map(|p| GaussianParams {
-        mu: p.mu,
-        sigma: p.sigma,
-        amplitude: p.amplitude,
-      })
-      .collect();
-
-    analytical_gaussian_product(&params, grid)
+    analytical_gaussian_product(&test_case.factors, grid)
   }
 
   fn create_test_cases(&self) -> Vec<Self::TestCase> {
@@ -52,12 +42,12 @@ impl ChainMultiplicationTestSuite for GaussianChainMultiplicationTestSuite {
         analytical_caution: "none".to_owned(),
         slowness: 0.0,
         factors: vec![
-          GaussianFactorParams {
+          GaussianParams {
             mu: 0.0,
             sigma: 1.0,
             amplitude: 1.0,
           },
-          GaussianFactorParams {
+          GaussianParams {
             mu: 0.0,
             sigma: 1.0,
             amplitude: 1.0,
@@ -73,17 +63,17 @@ impl ChainMultiplicationTestSuite for GaussianChainMultiplicationTestSuite {
         analytical_caution: "none".to_owned(),
         slowness: 0.1,
         factors: vec![
-          GaussianFactorParams {
+          GaussianParams {
             mu: -1.0,
             sigma: 1.0,
             amplitude: 1.0,
           },
-          GaussianFactorParams {
+          GaussianParams {
             mu: 0.0,
             sigma: 1.0,
             amplitude: 1.0,
           },
-          GaussianFactorParams {
+          GaussianParams {
             mu: 1.0,
             sigma: 1.0,
             amplitude: 1.0,
@@ -99,7 +89,7 @@ impl ChainMultiplicationTestSuite for GaussianChainMultiplicationTestSuite {
         analytical_caution: "none".to_owned(),
         slowness: 0.15,
         factors: std::iter::repeat_n(
-          GaussianFactorParams {
+          GaussianParams {
             mu: 0.0,
             sigma: 1.0,
             amplitude: 1.0,
@@ -117,7 +107,7 @@ impl ChainMultiplicationTestSuite for GaussianChainMultiplicationTestSuite {
         analytical_caution: "product amplitude decreases rapidly".to_owned(),
         slowness: 0.25,
         factors: std::iter::repeat_n(
-          GaussianFactorParams {
+          GaussianParams {
             mu: 0.0,
             sigma: 1.0,
             amplitude: 1.0,
@@ -135,7 +125,7 @@ impl ChainMultiplicationTestSuite for GaussianChainMultiplicationTestSuite {
         analytical_caution: "requires log-scale handling".to_owned(),
         slowness: 0.4,
         factors: std::iter::repeat_n(
-          GaussianFactorParams {
+          GaussianParams {
             mu: 0.0,
             sigma: 1.0,
             amplitude: 1.0,
@@ -153,7 +143,7 @@ impl ChainMultiplicationTestSuite for GaussianChainMultiplicationTestSuite {
         analytical_caution: "plain multiplication would underflow to zero".to_owned(),
         slowness: 0.7,
         factors: std::iter::repeat_n(
-          GaussianFactorParams {
+          GaussianParams {
             mu: 0.0,
             sigma: 1.0,
             amplitude: 1.0,
@@ -171,27 +161,27 @@ impl ChainMultiplicationTestSuite for GaussianChainMultiplicationTestSuite {
         analytical_caution: "none".to_owned(),
         slowness: 0.2,
         factors: vec![
-          GaussianFactorParams {
+          GaussianParams {
             mu: -2.0,
             sigma: 1.5,
             amplitude: 1.0,
           },
-          GaussianFactorParams {
+          GaussianParams {
             mu: -0.5,
             sigma: 0.8,
             amplitude: 1.0,
           },
-          GaussianFactorParams {
+          GaussianParams {
             mu: 0.0,
             sigma: 1.0,
             amplitude: 1.0,
           },
-          GaussianFactorParams {
+          GaussianParams {
             mu: 0.5,
             sigma: 1.2,
             amplitude: 1.0,
           },
-          GaussianFactorParams {
+          GaussianParams {
             mu: 2.0,
             sigma: 0.9,
             amplitude: 1.0,
@@ -207,7 +197,7 @@ impl ChainMultiplicationTestSuite for GaussianChainMultiplicationTestSuite {
         analytical_caution: "requires log-scale handling".to_owned(),
         slowness: 0.3,
         factors: std::iter::repeat_n(
-          GaussianFactorParams {
+          GaussianParams {
             mu: 0.0,
             sigma: 1.0,
             amplitude: 0.1,
@@ -225,7 +215,7 @@ impl ChainMultiplicationTestSuite for GaussianChainMultiplicationTestSuite {
         analytical_caution: "extreme precision requirements".to_owned(),
         slowness: 0.9,
         factors: std::iter::repeat_n(
-          GaussianFactorParams {
+          GaussianParams {
             mu: 0.0,
             sigma: 1.0,
             amplitude: 1.0,
@@ -242,7 +232,7 @@ impl ChainMultiplicationTestSuite for GaussianChainMultiplicationTestSuite {
         stress_type: "edge case".to_owned(),
         analytical_caution: "none".to_owned(),
         slowness: 0.0,
-        factors: vec![GaussianFactorParams {
+        factors: vec![GaussianParams {
           mu: 0.0,
           sigma: 1.0,
           amplitude: 1.0,
@@ -250,15 +240,18 @@ impl ChainMultiplicationTestSuite for GaussianChainMultiplicationTestSuite {
         input_grid_domain: (-5.0, 5.0),
         input_grid_n_points: 201,
       },
+      GaussianChainTestCase {
+        name: "empty_factors".to_owned(),
+        description: "Empty factors list (edge case, returns identity).".to_owned(),
+        stress_type: "edge case".to_owned(),
+        analytical_caution: "trivial case".to_owned(),
+        slowness: 0.0,
+        factors: vec![],
+        input_grid_domain: (-5.0, 5.0),
+        input_grid_n_points: 201,
+      },
     ]
   }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct GaussianFactorParams {
-  pub mu: f64,
-  pub sigma: f64,
-  pub amplitude: f64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -268,7 +261,7 @@ pub struct GaussianChainTestCase {
   pub stress_type: String,
   pub analytical_caution: String,
   pub slowness: f64,
-  pub factors: Vec<GaussianFactorParams>,
+  pub factors: Vec<GaussianParams>,
   pub input_grid_domain: (f64, f64),
   pub input_grid_n_points: usize,
 }

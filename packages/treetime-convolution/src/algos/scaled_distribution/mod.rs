@@ -36,6 +36,10 @@ impl MultiplyAlgo for NaiveMultiplicationAlgo {
       f64::NEG_INFINITY
     };
 
+    if max_val > 0.0 && max_val.is_finite() {
+      result.mapv_inplace(|v| v / max_val);
+    }
+
     Ok((result, log_scale))
   }
 }
@@ -74,7 +78,12 @@ impl MultiplyAlgo for LogScaleMultiplicationAlgo {
       } else {
         f64::NEG_INFINITY
       };
-      return Ok((distributions[0].clone(), log_scale));
+      let normalized = if max_val > 0.0 && max_val.is_finite() {
+        distributions[0].mapv(|v| v / max_val)
+      } else {
+        distributions[0].clone()
+      };
+      return Ok((normalized, log_scale));
     }
 
     let n = distributions[0].len();
@@ -100,7 +109,6 @@ impl MultiplyAlgo for LogScaleMultiplicationAlgo {
       normalized_result.mapv_inplace(|v| v / max_val);
     }
 
-    let final_product = normalized_result.mapv(|v| v * accumulated_log_scale.exp());
-    Ok((final_product, accumulated_log_scale))
+    Ok((normalized_result, accumulated_log_scale))
   }
 }

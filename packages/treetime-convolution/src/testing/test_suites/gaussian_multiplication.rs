@@ -253,6 +253,7 @@ impl TestCase for GaussianMultiplicationTestCase {
   }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GaussianParams {
   pub mu: f64,
   pub sigma: f64,
