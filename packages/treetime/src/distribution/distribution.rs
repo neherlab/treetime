@@ -8,6 +8,7 @@ use crate::io::dates_csv::DateOrRange;
 use approx::ulps_eq;
 use eyre::Report;
 use ndarray::Array1;
+use ndarray_stats::QuantileExt;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use treetime_utils::make_error;
@@ -199,6 +200,50 @@ impl Distribution<Plain> {
     }
   }
 
+  /// Returns the maximum value of the distribution.
+  /// - Empty: returns 0.0
+  /// - Point: returns amplitude
+  /// - Range: returns amplitude
+  /// - Function: returns max of y values
+  /// - Formula: panics (not supported)
+  pub fn max_value(&self) -> f64 {
+    match self {
+      Distribution::Empty => 0.0,
+      Distribution::Point(p) => p.amplitude(),
+      Distribution::Range(r) => r.amplitude(),
+      Distribution::Function(f) => f.y().max().ok().copied().unwrap_or(0.0),
+      Distribution::Formula(_) => {
+        panic!("max_value not supported for Formula distributions")
+      },
+    }
+  }
+
+  /// Returns a new distribution with all values multiplied by factor.
+  pub fn scale_by(&self, factor: f64) -> Self {
+    match self {
+      Distribution::Empty => Distribution::Empty,
+      Distribution::Point(p) => Distribution::point(p.t(), p.amplitude() * factor),
+      Distribution::Range(r) => Distribution::range((r.start(), r.end()), r.amplitude() * factor),
+      Distribution::Function(f) => {
+        f.scale_y(factor).map_or(Distribution::Empty, Distribution::Function)
+      },
+      Distribution::Formula(_) => {
+        panic!("scale_by not supported for Formula distributions")
+      },
+    }
+  }
+
+  /// Returns a new distribution with max value = 1.0.
+  /// Divides all values by max_value().
+  /// Returns Empty if max_value() <= 0.
+  pub fn normalize(&self) -> Self {
+    let max_val = self.max_value();
+    if max_val <= 0.0 || !max_val.is_finite() {
+      return Distribution::Empty;
+    }
+    self.scale_by(1.0 / max_val)
+  }
+
   pub fn to_neglog(&self) -> Distribution<NegLog> {
     match self {
       Self::Empty => Distribution::Empty,
@@ -245,3 +290,65 @@ impl Distribution<NegLog> {
 
 pub type DistributionPlain = Distribution<Plain>;
 pub type DistributionNegLog = Distribution<NegLog>;
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use approx::assert_relative_eq;
+  use ndarray::array;
+
+  #[test]
+  fn test_distribution_max_value() {
+    let point = Distribution::<Plain>::point(1.0, 5.0);
+    assert_relative_eq!(point.max_value(), 5.0);
+
+    let range = Distribution::<Plain>::range((0.0, 2.0), 3.0);
+    assert_relative_eq!(range.max_value(), 3.0);
+
+    let func = Distribution::<Plain>::function(array![0.0, 1.0, 2.0], array![1.0, 4.0, 2.0]).unwrap();
+    assert_relative_eq!(func.max_value(), 4.0);
+
+    let empty = Distribution::<Plain>::Empty;
+    assert_relative_eq!(empty.max_value(), 0.0);
+  }
+
+  #[test]
+  fn test_distribution_scale_by() {
+    let point = Distribution::<Plain>::point(1.0, 5.0);
+    let scaled = point.scale_by(2.0);
+    if let Distribution::Point(p) = scaled {
+      assert_relative_eq!(p.amplitude(), 10.0);
+    } else {
+      panic!("Expected Point");
+    }
+
+    let range = Distribution::<Plain>::range((0.0, 2.0), 3.0);
+    let scaled = range.scale_by(0.5);
+    if let Distribution::Range(r) = scaled {
+      assert_relative_eq!(r.amplitude(), 1.5);
+    } else {
+      panic!("Expected Range");
+    }
+  }
+
+  #[test]
+  fn test_distribution_normalize() {
+    let func = Distribution::<Plain>::function(array![0.0, 1.0, 2.0], array![2.0, 8.0, 4.0]).unwrap();
+    let normalized = func.normalize();
+
+    if let Distribution::Function(f) = normalized {
+      assert_relative_eq!(f.y()[0], 0.25);
+      assert_relative_eq!(f.y()[1], 1.0);
+      assert_relative_eq!(f.y()[2], 0.5);
+    } else {
+      panic!("Expected Function");
+    }
+  }
+
+  #[test]
+  fn test_distribution_normalize_empty_on_zero() {
+    let func = Distribution::<Plain>::function(array![0.0, 1.0, 2.0], array![0.0, 0.0, 0.0]).unwrap();
+    let normalized = func.normalize();
+    assert!(matches!(normalized, Distribution::Empty));
+  }
+}

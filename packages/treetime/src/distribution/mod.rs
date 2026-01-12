@@ -11,4 +11,11 @@ pub mod distribution_range;
 pub mod distribution_scalar_multiplication;
 pub mod distribution_subtraction;
 pub mod distribution_time_bounds;
+pub mod scaled_distribution;
+pub mod scaled_distribution_convolution;
+pub mod scaled_distribution_division;
+pub mod scaled_distribution_multiplication;
 pub mod y_axis_policy;
+
+#[cfg(test)]
+mod gaussian_product_tests;

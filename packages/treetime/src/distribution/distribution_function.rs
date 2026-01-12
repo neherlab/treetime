@@ -259,6 +259,18 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
       None
     }
   }
+
+  /// Create a new distribution function with y values scaled by factor.
+  /// Preserves the grid parameters exactly, avoiding floating point issues
+  /// that can occur when regenerating the x array.
+  pub fn scale_y(&self, factor: T) -> Result<Self, Report>
+  where
+    T: Float,
+  {
+    let scaled_y = self.grid_fn.y().mapv(|v| v * factor);
+    let new_grid_fn = GridFn::from_grid_array(*self.grid_fn.grid(), scaled_y)?;
+    Ok(Self::from_grid_fn(new_grid_fn))
+  }
 }
 
 #[cfg(test)]
