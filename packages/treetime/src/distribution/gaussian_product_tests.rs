@@ -165,6 +165,32 @@ mod tests {
   }
 
   #[test]
+  fn test_gaussian_product_matches_analytical() -> Result<(), Report> {
+    // Two Gaussians at mu=-1 and mu=1, both sigma=1
+    // Analytical: mu*=0, sigma*=1/sqrt(2), log_scale=-1.0
+    let g1 = create_gaussian_scaled(-1.0, 1.0, 1.0, 401);
+    let g2 = create_gaussian_scaled(1.0, 1.0, 1.0, 401);
+    let product = scaled_distribution_multiplication(&g1, &g2)?;
+
+    assert!(!product.is_empty());
+
+    // Expected log_scale from analytical formula
+    let expected_log_scale = -1.0;
+    assert_relative_eq!(product.log_scale(), expected_log_scale, epsilon = 0.1);
+
+    // Verify peak location is near mu*=0
+    if let Distribution::Function(f) = product.inner() {
+      let t = f.t();
+      let y = f.y();
+      let max_idx = y.iter().enumerate().max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap()).map(|(i, _)| i).unwrap();
+      let peak_t = t[max_idx];
+      assert_relative_eq!(peak_t, 0.0, epsilon = 0.05);
+    }
+
+    Ok(())
+  }
+
+  #[test]
   fn test_gaussian_normalization_preserved() -> Result<(), Report> {
     let g1 = create_gaussian_scaled(0.0, 1.0, 10.0, 201);
     let g2 = create_gaussian_scaled(0.0, 1.0, 20.0, 201);

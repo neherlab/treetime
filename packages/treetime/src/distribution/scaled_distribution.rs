@@ -2,6 +2,9 @@ use crate::distribution::distribution::Distribution;
 use crate::distribution::y_axis_policy::Plain;
 use serde::{Deserialize, Serialize};
 
+/// Threshold for detecting drift from normalized state (max=1.0).
+const NORMALIZATION_DRIFT_THRESHOLD: f64 = 1e-10;
+
 /// A distribution decomposed into scale + normalized shape.
 ///
 /// Representation: P(x) = exp(log_scale) * inner(x)
@@ -71,7 +74,7 @@ impl ScaledDistribution {
       self.inner = Distribution::Empty;
       return;
     }
-    if (max_val - 1.0).abs() > 1e-10 {
+    if (max_val - 1.0).abs() > NORMALIZATION_DRIFT_THRESHOLD {
       self.log_scale += max_val.ln();
       self.inner = self.inner.normalize();
     }

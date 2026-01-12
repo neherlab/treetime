@@ -32,20 +32,20 @@ pub fn scaled_distribution_multiplication(
 /// More numerically stable than repeated pairwise multiplication
 /// because scales accumulate in log space.
 pub fn scaled_distribution_multiply_many(distributions: &[&ScaledDistribution]) -> Result<ScaledDistribution, Report> {
-  if distributions.is_empty() {
-    return Ok(ScaledDistribution::default());
+  match distributions {
+    [] => Ok(ScaledDistribution::default()),
+    [single] => Ok((*single).clone()),
+    [first, rest @ ..] => {
+      let mut result = (*first).clone();
+      for dist in rest {
+        result = scaled_distribution_multiplication(&result, dist)?;
+        if result.is_empty() {
+          return Ok(ScaledDistribution::default());
+        }
+      }
+      Ok(result)
+    },
   }
-
-  let mut result = distributions[0].clone();
-
-  for dist in distributions.iter().skip(1) {
-    result = scaled_distribution_multiplication(&result, dist)?;
-    if result.is_empty() {
-      return Ok(ScaledDistribution::default());
-    }
-  }
-
-  Ok(result)
 }
 
 #[cfg(test)]

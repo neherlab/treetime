@@ -71,22 +71,36 @@ fn divide_range_by_function<Y: YAxisPolicy>(
   range: &DistributionRange<f64, Y>,
   divisor: &DistributionFunction<f64, Y>,
 ) -> Result<Distribution<Y>, Report> {
-  let range_start = range.start();
-  let range_end = range.end();
+  const EPS: f64 = 1e-9;
+
   let dividend_amplitude = range.amplitude();
+  let func_t = divisor.t();
+  let func_y = divisor.y();
 
-  let func_min = divisor.x_min();
-  let func_max = divisor.x_max();
+  // Filter to range support (consistent with multiply_range_function)
+  let filtered: Vec<(f64, f64)> = func_t
+    .iter()
+    .zip(func_y.iter())
+    .filter(|&(&t, _)| t >= range.start() - EPS && t <= range.end() + EPS)
+    .map(|(&t, &y)| (t, Y::divide(dividend_amplitude, Y::safe_divisor(y))))
+    .collect();
 
-  let overlap_start = range_start.max(func_min);
-  let overlap_end = range_end.min(func_max);
-
-  if overlap_start >= overlap_end {
+  if filtered.is_empty() {
     return Ok(Distribution::empty());
   }
 
-  let result_y = divisor.y().mapv(|v| Y::divide(dividend_amplitude, Y::safe_divisor(v)));
-  let result_fn = DistributionFunction::from_start_dx_values(func_min, divisor.dx(), result_y)?;
+  // Single point -> return Point distribution
+  if filtered.len() == 1 {
+    let (t, v) = filtered[0];
+    return Ok(Distribution::point(t, v));
+  }
+
+  let overlap_min = filtered.first().unwrap().0;
+  let overlap_max = filtered.last().unwrap().0;
+  let values: Vec<f64> = filtered.iter().map(|(_, v)| *v).collect();
+  let values_array = ndarray::Array1::from_vec(values);
+
+  let result_fn = DistributionFunction::from_range_values((overlap_min, overlap_max), values_array)?;
   Ok(Distribution::Function(result_fn))
 }
 
@@ -192,27 +206,29 @@ mod tests {
 
   #[test]
   fn test_divide_range_by_function_full_overlap() {
+    // Range [1.0, 3.0] overlaps with function at points [1.0, 2.0, 3.0]
     let range = Distribution::range((1.0, 3.0), 10.0);
     let t = array![0.0, 1.0, 2.0, 3.0, 4.0];
     let y = array![1.0, 2.0, 5.0, 4.0, 3.0];
     let func = Distribution::function(t, y).unwrap();
 
     let actual = distribution_division(&range, &func).unwrap();
-    let expected =
-      Distribution::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![10.0, 5.0, 2.0, 2.5, 10.0 / 3.0]).unwrap();
+    // Result should only cover the overlap region [1.0, 3.0]
+    let expected = Distribution::function(array![1.0, 2.0, 3.0], array![5.0, 2.0, 2.5]).unwrap();
     assert_eq!(expected, actual);
   }
 
   #[test]
   fn test_divide_range_by_function_partial_overlap() {
+    // Range [1.5, 2.5] overlaps with function at point [2.0]
     let range = Distribution::range((1.5, 2.5), 12.0);
     let t = array![0.0, 1.0, 2.0, 3.0];
     let y = array![1.0, 2.0, 4.0, 8.0];
     let func = Distribution::function(t, y).unwrap();
 
     let actual = distribution_division(&range, &func).unwrap();
-
-    let expected = Distribution::function(array![0.0, 1.0, 2.0, 3.0], array![12.0, 6.0, 3.0, 1.5]).unwrap();
+    // Result should only cover the overlap region (point at 2.0)
+    let expected = Distribution::point(2.0, 3.0);
     assert_eq!(expected, actual);
   }
 
