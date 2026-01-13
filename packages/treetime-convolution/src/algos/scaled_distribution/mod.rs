@@ -1,5 +1,4 @@
 use crate::algos::algos::MultiplyAlgo;
-use eyre::Report;
 use ndarray::Array1;
 use treetime_utils::log_scale_ops::{log_scale_multiply_many, naive_multiply_many};
 
@@ -14,12 +13,12 @@ impl MultiplyAlgo for NaiveMultiplicationAlgo {
     "naive-multiplication"
   }
 
-  fn multiply(&self, _dx: f64, f_values: &Array1<f64>, g_values: &Array1<f64>) -> Result<Array1<f64>, Report> {
-    Ok(f_values * g_values)
+  fn multiply(&self, f_values: &Array1<f64>, g_values: &Array1<f64>) -> Array1<f64> {
+    f_values * g_values
   }
 
-  fn multiply_many(&self, _dx: f64, distributions: &[&Array1<f64>]) -> Result<(Array1<f64>, f64), Report> {
-    Ok(naive_multiply_many(distributions))
+  fn multiply_many(&self, distributions: &[&Array1<f64>]) -> (Array1<f64>, f64) {
+    naive_multiply_many(distributions)
   }
 }
 
@@ -35,11 +34,11 @@ impl MultiplyAlgo for LogScaleMultiplicationAlgo {
     "log-scale-multiplication"
   }
 
-  fn multiply(&self, _dx: f64, f_values: &Array1<f64>, g_values: &Array1<f64>) -> Result<Array1<f64>, Report> {
-    Ok(f_values * g_values)
+  fn multiply(&self, f_values: &Array1<f64>, g_values: &Array1<f64>) -> Array1<f64> {
+    f_values * g_values
   }
 
-  fn multiply_many(&self, _dx: f64, distributions: &[&Array1<f64>]) -> Result<(Array1<f64>, f64), Report> {
-    Ok(log_scale_multiply_many(distributions))
+  fn multiply_many(&self, distributions: &[&Array1<f64>]) -> (Array1<f64>, f64) {
+    log_scale_multiply_many(distributions)
   }
 }

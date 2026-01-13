@@ -1,4 +1,5 @@
 pub mod algos;
+pub mod analytical;
 pub mod grid;
 pub mod grid_fn;
 pub mod grid_iter;

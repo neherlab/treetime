@@ -119,21 +119,15 @@ impl MultiplicationAlgorithm {
 /// Trait for multiplication algorithms operating on discrete probability distributions.
 ///
 /// Unlike convolution, point-wise multiplication does not depend on grid spacing.
-/// The `dx` parameter is included for interface consistency with the test framework
-/// infrastructure (which also tests convolution algorithms) but is unused by
-/// multiplication implementations.
 pub trait MultiplyAlgo: Send + Sync {
   fn name(&self) -> &'static str;
 
   /// Multiply two distributions element-wise.
-  ///
-  /// The `dx` parameter (grid spacing) is unused - included for interface consistency.
-  fn multiply(&self, dx: f64, f_values: &Array1<f64>, g_values: &Array1<f64>) -> Result<Array1<f64>, Report>;
+  fn multiply(&self, f_values: &Array1<f64>, g_values: &Array1<f64>) -> Array1<f64>;
 
   /// Multiply N distributions, returning normalized shape and log-scale.
   ///
-  /// The `dx` parameter (grid spacing) is unused - included for interface consistency.
   /// Returns `(normalized_shape, log_scale)` where the full result is
   /// `normalized_shape * exp(log_scale)`.
-  fn multiply_many(&self, dx: f64, distributions: &[&Array1<f64>]) -> Result<(Array1<f64>, f64), Report>;
+  fn multiply_many(&self, distributions: &[&Array1<f64>]) -> (Array1<f64>, f64);
 }

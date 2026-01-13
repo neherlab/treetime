@@ -18,4 +18,7 @@ pub mod scaled_distribution_multiplication;
 pub mod y_axis_policy;
 
 #[cfg(test)]
+mod distribution_validation_tests;
+
+#[cfg(test)]
 mod gaussian_product_tests;

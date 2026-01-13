@@ -29,21 +29,34 @@ pub fn scaled_distribution_multiplication(
 
 /// Multiply many scaled distributions.
 ///
-/// More numerically stable than repeated pairwise multiplication
-/// because scales accumulate in log space.
+/// Optimized for performance: accumulates log-scales in a single pass and
+/// normalizes only once at the end, rather than normalizing after each
+/// pairwise multiplication.
 pub fn scaled_distribution_multiply_many(distributions: &[&ScaledDistribution]) -> Result<ScaledDistribution, Report> {
   match distributions {
     [] => Ok(ScaledDistribution::default()),
     [single] => Ok((*single).clone()),
-    [first, rest @ ..] => {
-      let mut result = (*first).clone();
-      for dist in rest {
-        result = scaled_distribution_multiplication(&result, dist)?;
-        if result.is_empty() {
-          return Ok(ScaledDistribution::default());
-        }
+    _ => {
+      if distributions.iter().any(|d| d.is_empty()) {
+        return Ok(ScaledDistribution::default());
       }
-      Ok(result)
+
+      let total_log_scale: f64 = distributions.iter().map(|d| d.log_scale()).sum();
+
+      let mut product = distributions[0].inner().clone();
+      for dist in distributions.iter().skip(1) {
+        product = distribution_multiplication(&product, dist.inner())?;
+      }
+
+      let max_val = product.max_value();
+      if max_val <= 0.0 || !max_val.is_finite() {
+        return Ok(ScaledDistribution::default());
+      }
+
+      Ok(ScaledDistribution::from_parts(
+        total_log_scale + max_val.ln(),
+        product.normalize(),
+      ))
     },
   }
 }

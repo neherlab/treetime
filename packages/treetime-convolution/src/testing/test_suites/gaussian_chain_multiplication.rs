@@ -1,6 +1,6 @@
 #![allow(clippy::many_single_char_names)]
+use crate::analytical::gaussian::{GaussianParams, gaussian_product};
 use crate::testing::framework::test_case::TestCase;
-use crate::testing::test_suites::gaussian_multiplication::{GaussianParams, analytical_gaussian_product};
 use crate::testing::test_suites::test_suites::ChainMultiplicationTestSuite;
 use eyre::Report;
 use ndarray::Array1;
@@ -30,7 +30,7 @@ impl ChainMultiplicationTestSuite for GaussianChainMultiplicationTestSuite {
     test_case: &Self::TestCase,
     grid: &Array1<f64>,
   ) -> Result<(Array1<f64>, f64), Report> {
-    analytical_gaussian_product(&test_case.factors, grid)
+    Ok(gaussian_product(&test_case.factors, grid))
   }
 
   fn create_test_cases(&self) -> Vec<Self::TestCase> {

@@ -7,6 +7,7 @@ pub mod initialization;
 pub mod optimization;
 pub mod output;
 pub mod partition_ops;
+pub mod pipeline;
 pub mod refinement;
 pub mod run;
 pub mod utils;

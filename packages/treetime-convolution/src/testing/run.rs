@@ -654,8 +654,7 @@ fn run_multiplication_test<S: MultiplicationTestSuite>(
   let f_values = suite.create_f(test_case, &input_grid)?;
   let g_values = suite.create_g(test_case, &input_grid)?;
 
-  let dx = input_grid[1] - input_grid[0];
-  let actual_values = algo.multiply(dx, &f_values, &g_values)?;
+  let actual_values = algo.multiply(&f_values, &g_values);
   let (expected_shape, expected_log_scale) = suite.analytical_multiplication(test_case, &input_grid)?;
 
   let expected_values = expected_shape.mapv(|v| v * expected_log_scale.exp());
@@ -957,11 +956,10 @@ fn run_chain_multiplication_test<S: ChainMultiplicationTestSuite>(
   let factors = suite.create_factors(test_case, &input_grid)?;
   let factor_refs: Vec<&Array1<f64>> = factors.iter().collect();
 
-  let dx = input_grid[1] - input_grid[0];
   let (actual_shape, actual_log_scale) = if factors.is_empty() {
     (Array1::ones(input_grid.len()), 0.0)
   } else {
-    algo.multiply_many(dx, &factor_refs)?
+    algo.multiply_many(&factor_refs)
   };
   let (expected_shape, expected_log_scale) = suite.analytical_chain_multiplication(test_case, &input_grid)?;
 

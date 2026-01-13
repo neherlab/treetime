@@ -1,4 +1,5 @@
 #![allow(clippy::many_single_char_names)]
+use crate::analytical::gaussian::{GaussianParams, gaussian_product};
 use crate::testing::framework::test_case::TestCase;
 use crate::testing::test_suites::test_suites::MultiplicationTestSuite;
 use eyre::Report;
@@ -47,7 +48,7 @@ impl MultiplicationTestSuite for GaussianMultiplicationTestSuite {
       },
     ];
 
-    analytical_gaussian_product(&params, grid)
+    Ok(gaussian_product(&params, grid))
   }
 
   fn create_test_cases(&self) -> Vec<Self::TestCase> {
@@ -253,40 +254,3 @@ impl TestCase for GaussianMultiplicationTestCase {
   }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct GaussianParams {
-  pub mu: f64,
-  pub sigma: f64,
-  pub amplitude: f64,
-}
-
-/// Analytical formula for the product of N Gaussians.
-///
-/// Product of N Gaussians: G_i(x) = A_i * exp(-0.5 * ((x - mu_i) / sigma_i)^2)
-///
-/// Result is also Gaussian with:
-/// - precision_sum = sum(1 / sigma_i^2)
-/// - sigma_star = sqrt(1 / precision_sum)
-/// - mu_star = sigma_star^2 * sum(mu_i / sigma_i^2)
-/// - quadratic_term = sum((mu_i - mu_star)^2 / sigma_i^2)
-/// - log_scale = -0.5 * quadratic_term + sum(ln(A_i))
-pub fn analytical_gaussian_product(
-  params: &[GaussianParams],
-  grid: &Array1<f64>,
-) -> Result<(Array1<f64>, f64), Report> {
-  if params.is_empty() {
-    return Ok((Array1::ones(grid.len()), 0.0));
-  }
-
-  let precision_sum: f64 = params.iter().map(|p| 1.0 / p.sigma.powi(2)).sum();
-  let sigma_star = (1.0 / precision_sum).sqrt();
-  let mu_star = sigma_star.powi(2) * params.iter().map(|p| p.mu / p.sigma.powi(2)).sum::<f64>();
-
-  let quadratic_term: f64 = params.iter().map(|p| (p.mu - mu_star).powi(2) / p.sigma.powi(2)).sum();
-  let log_amplitude_sum: f64 = params.iter().map(|p| p.amplitude.ln()).sum();
-  let log_scale = -0.5 * quadratic_term + log_amplitude_sum;
-
-  let values = grid.mapv(|x| (-(0.5 * ((x - mu_star) / sigma_star).powi(2))).exp());
-
-  Ok((values, log_scale))
-}
