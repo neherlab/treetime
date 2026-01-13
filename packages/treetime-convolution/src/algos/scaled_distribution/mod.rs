@@ -62,14 +62,7 @@ impl MultiplyAlgo for LogScaleMultiplicationAlgo {
   }
 
   fn multiply(&self, _dx: f64, f_values: &Array1<f64>, g_values: &Array1<f64>) -> Result<Array1<f64>, Report> {
-    let product = f_values * g_values;
-    let max_val = product.iter().copied().fold(f64::NEG_INFINITY, f64::max);
-
-    if max_val <= 0.0 || !max_val.is_finite() {
-      return Ok(Array1::zeros(f_values.len()));
-    }
-
-    Ok(product)
+    Ok(f_values * g_values)
   }
 
   fn multiply_many(&self, _dx: f64, distributions: &[&Array1<f64>]) -> Result<(Array1<f64>, f64), Report> {

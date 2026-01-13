@@ -27,6 +27,13 @@ pub struct TestResult<T: TestCase> {
   pub expected_values: Array1<f64>,
 
   pub metrics: ConvolutionMetrics,
+
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub log_scale_actual: Option<f64>,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub log_scale_expected: Option<f64>,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub log_scale_error: Option<f64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -305,6 +305,9 @@ fn run_test<S: TestSuite>(
     actual_values,
     expected_values,
     metrics,
+    log_scale_actual: None,
+    log_scale_expected: None,
+    log_scale_error: None,
   })
 }
 
@@ -673,6 +676,9 @@ fn run_multiplication_test<S: MultiplicationTestSuite>(
     actual_values,
     expected_values,
     metrics,
+    log_scale_actual: None,
+    log_scale_expected: None,
+    log_scale_error: None,
   })
 }
 
@@ -959,6 +965,8 @@ fn run_chain_multiplication_test<S: ChainMultiplicationTestSuite>(
   };
   let (expected_shape, expected_log_scale) = suite.analytical_chain_multiplication(test_case, &input_grid)?;
 
+  let log_scale_error = (actual_log_scale - expected_log_scale).abs();
+
   let actual_values = actual_shape.mapv(|v| v * actual_log_scale.exp());
   let expected_values = expected_shape.mapv(|v| v * expected_log_scale.exp());
 
@@ -981,6 +989,9 @@ fn run_chain_multiplication_test<S: ChainMultiplicationTestSuite>(
     actual_values,
     expected_values,
     metrics,
+    log_scale_actual: Some(actual_log_scale),
+    log_scale_expected: Some(expected_log_scale),
+    log_scale_error: Some(log_scale_error),
   })
 }
 
