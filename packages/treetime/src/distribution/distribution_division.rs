@@ -97,8 +97,7 @@ fn divide_range_by_function<Y: YAxisPolicy>(
 
   let overlap_min = filtered.first().unwrap().0;
   let overlap_max = filtered.last().unwrap().0;
-  let values: Vec<f64> = filtered.iter().map(|(_, v)| *v).collect();
-  let values_array = ndarray::Array1::from_vec(values);
+  let values_array: ndarray::Array1<f64> = filtered.iter().map(|(_, v)| *v).collect();
 
   let result_fn = DistributionFunction::from_range_values((overlap_min, overlap_max), values_array)?;
   Ok(Distribution::Function(result_fn))

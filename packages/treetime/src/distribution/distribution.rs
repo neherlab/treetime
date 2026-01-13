@@ -349,4 +349,20 @@ mod tests {
     let normalized = func.normalize();
     assert!(matches!(normalized, Distribution::Empty));
   }
+
+  #[test]
+  #[should_panic(expected = "max_value not supported for Formula distributions")]
+  fn test_max_value_formula_panics() {
+    let formula = DistributionFormula::<Plain>::new(|t| Ok(t * t), 0.0, 1.0);
+    let dist = Distribution::<Plain>::Formula(formula);
+    let _ = dist.max_value();
+  }
+
+  #[test]
+  #[should_panic(expected = "scale_by not supported for Formula distributions")]
+  fn test_scale_by_formula_panics() {
+    let formula = DistributionFormula::<Plain>::new(|t| Ok(t * t), 0.0, 1.0);
+    let dist = Distribution::<Plain>::Formula(formula);
+    drop(dist.scale_by(2.0));
+  }
 }

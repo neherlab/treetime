@@ -88,7 +88,7 @@ mod tests {
     let product = scaled_distribution_multiplication(&a, &b).unwrap();
     let recovered = scaled_distribution_division(&product, &b).unwrap();
 
-    assert_relative_eq!(recovered.log_scale(), a.log_scale(), epsilon = 0.1);
+    assert_relative_eq!(recovered.log_scale(), a.log_scale(), epsilon = 1e-10);
   }
 
   #[test]
