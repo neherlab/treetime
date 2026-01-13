@@ -12,7 +12,6 @@ pub mod global_init;
 pub mod interval;
 pub mod iter;
 pub mod iterator;
-pub mod log_scale_ops;
 pub mod manyzip;
 pub mod mutex;
 pub mod ndarray;

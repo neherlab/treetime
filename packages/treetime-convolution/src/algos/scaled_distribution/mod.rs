@@ -1,6 +1,6 @@
 use crate::algos::algos::MultiplyAlgo;
+use crate::ops::multiply::{log_scale_multiply_many, naive_multiply_many};
 use ndarray::Array1;
-use treetime_utils::log_scale_ops::{log_scale_multiply_many, naive_multiply_many};
 
 /// Naive point-wise multiplication algorithm.
 ///

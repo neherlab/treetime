@@ -4,6 +4,7 @@ pub mod grid;
 pub mod grid_fn;
 pub mod grid_iter;
 pub mod interp_nonuniform;
+pub mod ops;
 pub mod testing;
 
 use num_traits::{Num, NumCast};
