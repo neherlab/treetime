@@ -139,18 +139,20 @@ fn list_test_cases<S: TestSuite>(suite: &S) {
   }
 }
 
-fn filter_test_cases<S: TestSuite>(suite: &S, filter: Option<&str>) -> Result<Vec<S::TestCase>, Report> {
+fn filter_test_cases_by_name<T: TestCase + Clone>(
+  all_cases: Vec<T>,
+  filter: Option<&str>,
+) -> Result<Vec<T>, Report> {
   let filter = filter.and_then(|value| {
     let trimmed = value.trim();
     if trimmed.is_empty() { None } else { Some(trimmed) }
   });
 
-  let all_cases = suite.create_test_cases();
   match filter {
     None | Some("all") => Ok(all_cases),
     Some(filter_str) => {
       let requested_names: BTreeSet<&str> = filter_str.split(',').map(|name| name.trim()).collect();
-      let filtered_cases: Vec<S::TestCase> = all_cases
+      let filtered_cases: Vec<T> = all_cases
         .iter()
         .filter(|case| requested_names.contains(case.name()))
         .cloned()
@@ -164,6 +166,10 @@ fn filter_test_cases<S: TestSuite>(suite: &S, filter: Option<&str>) -> Result<Ve
       Ok(filtered_cases)
     },
   }
+}
+
+fn filter_test_cases<S: TestSuite>(suite: &S, filter: Option<&str>) -> Result<Vec<S::TestCase>, Report> {
+  filter_test_cases_by_name(suite.create_test_cases(), filter)
 }
 
 fn filter_by_slowness<T: TestCase>(test_cases: &[T], threshold: f64) -> Vec<T> {
@@ -478,30 +484,7 @@ fn filter_multiplication_test_cases<S: MultiplicationTestSuite>(
   suite: &S,
   filter: Option<&str>,
 ) -> Result<Vec<S::TestCase>, Report> {
-  let filter = filter.and_then(|value| {
-    let trimmed = value.trim();
-    if trimmed.is_empty() { None } else { Some(trimmed) }
-  });
-
-  let all_cases = suite.create_test_cases();
-  match filter {
-    None | Some("all") => Ok(all_cases),
-    Some(filter_str) => {
-      let requested_names: BTreeSet<&str> = filter_str.split(',').map(|name| name.trim()).collect();
-      let filtered_cases: Vec<S::TestCase> = all_cases
-        .iter()
-        .filter(|case| requested_names.contains(case.name()))
-        .cloned()
-        .collect();
-
-      if filtered_cases.is_empty() {
-        let available_names = all_cases.iter().map(|case| case.name()).collect::<Vec<_>>().join(", ");
-        return make_error!("No matching test cases found for: {filter_str}. Available test cases: {available_names}");
-      }
-
-      Ok(filtered_cases)
-    },
-  }
+  filter_test_cases_by_name(suite.create_test_cases(), filter)
 }
 
 fn print_multiplication_test_configuration<A: Display>(
@@ -693,14 +676,11 @@ fn run_multiplication_test<S: MultiplicationTestSuite>(
   })
 }
 
-fn generate_multiplication_summary<S>(
-  suite: &S,
-  outcomes: &[TestRunOutcome<S::TestCase>],
+fn generate_multiplication_summary_from_outcomes<T: TestCase>(
+  test_suite_name: &str,
+  outcomes: &[TestRunOutcome<T>],
   algorithms: &[MultiplicationAlgorithm],
-) -> TestSummary
-where
-  S: MultiplicationTestSuite,
-{
+) -> TestSummary {
   let successes = collect_successes(outcomes);
   let failures = collect_failures(outcomes);
   let total_execution_time = calculate_total_execution_time(outcomes);
@@ -708,7 +688,7 @@ where
   let overall_assessment = assess_overall_performance(&algorithm_summaries);
 
   TestSummary {
-    test_suite_name: suite.test_suite_name().to_owned(),
+    test_suite_name: test_suite_name.to_owned(),
     total_tests: outcomes.len(),
     total_successes: successes.len(),
     total_failures: failures.len(),
@@ -717,6 +697,17 @@ where
     algorithm_summaries,
     overall_assessment,
   }
+}
+
+fn generate_multiplication_summary<S>(
+  suite: &S,
+  outcomes: &[TestRunOutcome<S::TestCase>],
+  algorithms: &[MultiplicationAlgorithm],
+) -> TestSummary
+where
+  S: MultiplicationTestSuite,
+{
+  generate_multiplication_summary_from_outcomes(suite.test_suite_name(), outcomes, algorithms)
 }
 
 fn build_multiplication_algorithm_summaries<T: TestCase>(
@@ -815,30 +806,7 @@ fn filter_chain_multiplication_test_cases<S: ChainMultiplicationTestSuite>(
   suite: &S,
   filter: Option<&str>,
 ) -> Result<Vec<S::TestCase>, Report> {
-  let filter = filter.and_then(|value| {
-    let trimmed = value.trim();
-    if trimmed.is_empty() { None } else { Some(trimmed) }
-  });
-
-  let all_cases = suite.create_test_cases();
-  match filter {
-    None | Some("all") => Ok(all_cases),
-    Some(filter_str) => {
-      let requested_names: BTreeSet<&str> = filter_str.split(',').map(|name| name.trim()).collect();
-      let filtered_cases: Vec<S::TestCase> = all_cases
-        .iter()
-        .filter(|case| requested_names.contains(case.name()))
-        .cloned()
-        .collect();
-
-      if filtered_cases.is_empty() {
-        let available_names = all_cases.iter().map(|case| case.name()).collect::<Vec<_>>().join(", ");
-        return make_error!("No matching test cases found for: {filter_str}. Available test cases: {available_names}");
-      }
-
-      Ok(filtered_cases)
-    },
-  }
+  filter_test_cases_by_name(suite.create_test_cases(), filter)
 }
 
 fn run_all_chain_multiplication_tests<S>(
@@ -984,13 +952,14 @@ fn run_chain_multiplication_test<S: ChainMultiplicationTestSuite>(
   let factor_refs: Vec<&Array1<f64>> = factors.iter().collect();
 
   let dx = input_grid[1] - input_grid[0];
-  let (actual_values, _actual_log_scale) = if factors.is_empty() {
+  let (actual_shape, actual_log_scale) = if factors.is_empty() {
     (Array1::ones(input_grid.len()), 0.0)
   } else {
     algo.multiply_many(dx, &factor_refs)?
   };
   let (expected_shape, expected_log_scale) = suite.analytical_chain_multiplication(test_case, &input_grid)?;
 
+  let actual_values = actual_shape.mapv(|v| v * actual_log_scale.exp());
   let expected_values = expected_shape.mapv(|v| v * expected_log_scale.exp());
 
   let execution_time = start_time.elapsed().as_secs_f64() * 1000.0;
@@ -1023,20 +992,5 @@ fn generate_chain_multiplication_summary<S>(
 where
   S: ChainMultiplicationTestSuite,
 {
-  let successes = collect_successes(outcomes);
-  let failures = collect_failures(outcomes);
-  let total_execution_time = calculate_total_execution_time(outcomes);
-  let algorithm_summaries = build_multiplication_algorithm_summaries(algorithms, &successes, &failures);
-  let overall_assessment = assess_overall_performance(&algorithm_summaries);
-
-  TestSummary {
-    test_suite_name: suite.test_suite_name().to_owned(),
-    total_tests: outcomes.len(),
-    total_successes: successes.len(),
-    total_failures: failures.len(),
-    total_algorithms: algorithms.len(),
-    execution_time_total_ms: total_execution_time,
-    algorithm_summaries,
-    overall_assessment,
-  }
+  generate_multiplication_summary_from_outcomes(suite.test_suite_name(), outcomes, algorithms)
 }

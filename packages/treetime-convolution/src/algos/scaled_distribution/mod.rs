@@ -44,10 +44,16 @@ impl MultiplyAlgo for NaiveMultiplicationAlgo {
   }
 }
 
-/// Log-scale aware multiplication algorithm.
+/// Log-scale aware multiplication algorithm implementing the ScaledDistribution algorithm.
 ///
 /// Multiplies distributions while tracking scale in log-space to avoid underflow.
-/// This mimics the behavior of ScaledDistribution multiplication.
+/// This implements the same algorithm as `treetime::distribution::ScaledDistribution`
+/// multiplication: after each pairwise multiplication, the result is normalized
+/// (max = 1.0) and the scale factor is accumulated in log-space.
+///
+/// Note: Cannot use the actual ScaledDistribution type due to cyclic dependency
+/// (treetime depends on treetime-convolution). This standalone implementation
+/// provides equivalent numerical behavior for testing.
 pub struct LogScaleMultiplicationAlgo;
 
 impl MultiplyAlgo for LogScaleMultiplicationAlgo {
