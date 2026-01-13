@@ -3757,6 +3757,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "treetime-analytical"
+version = "1.0.0"
+dependencies = [
+ "approx",
+ "ctor",
+ "eyre",
+ "ndarray",
+ "pretty_assertions",
+ "rstest",
+ "serde",
+ "treetime-utils",
+]
+
+[[package]]
 name = "treetime-cli"
 version = "1.0.0"
 dependencies = [
@@ -3860,10 +3874,31 @@ dependencies = [
  "tikv-jemallocator",
  "time",
  "traversal",
+ "treetime-analytical",
+ "treetime-grid",
  "treetime-io",
+ "treetime-ops",
  "treetime-utils",
  "xz2",
  "zstd",
+]
+
+[[package]]
+name = "treetime-grid"
+version = "1.0.0"
+dependencies = [
+ "approx",
+ "ctor",
+ "eyre",
+ "itertools 0.14.0",
+ "ndarray",
+ "ndarray-stats",
+ "num",
+ "num-traits",
+ "pretty_assertions",
+ "rstest",
+ "serde",
+ "treetime-utils",
 ]
 
 [[package]]
@@ -3948,6 +3983,26 @@ dependencies = [
  "treetime-utils",
  "xz2",
  "zstd",
+]
+
+[[package]]
+name = "treetime-ops"
+version = "1.0.0"
+dependencies = [
+ "approx",
+ "ctor",
+ "eyre",
+ "itertools 0.14.0",
+ "ndarray",
+ "ndarray-conv",
+ "ndarray-stats",
+ "num",
+ "num-traits",
+ "pretty_assertions",
+ "rstest",
+ "serde",
+ "treetime-grid",
+ "treetime-utils",
 ]
 
 [[package]]

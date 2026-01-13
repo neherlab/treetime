@@ -4,9 +4,12 @@ resolver = '3'
 members = [
   "packages/phyloxml",
   "packages/treetime",
+  "packages/treetime-analytical",
   "packages/treetime-cli",
   "packages/treetime-convolution",
+  "packages/treetime-grid",
   "packages/treetime-io",
+  "packages/treetime-ops",
   "packages/treetime-utils",
   "packages/usher-mat-utils",
 ]

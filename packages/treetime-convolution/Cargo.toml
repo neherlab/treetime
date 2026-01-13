@@ -14,7 +14,10 @@ version.workspace = true
 crate-type = ["lib"]
 
 [dependencies]
+treetime-analytical = { path = "../treetime-analytical" }
+treetime-grid = { path = "../treetime-grid" }
 treetime-io = { path = "../treetime-io" }
+treetime-ops = { path = "../treetime-ops" }
 treetime-utils = { path = "../treetime-utils" }
 
 approx = { workspace = true }

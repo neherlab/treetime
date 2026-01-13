@@ -1,22 +1,16 @@
 pub mod algos;
 pub mod analytical;
-pub mod grid;
-pub mod grid_fn;
-pub mod grid_iter;
-pub mod interp_nonuniform;
 pub mod ops;
 pub mod testing;
 
-use num_traits::{Num, NumCast};
-use std::fmt::Debug;
-
-pub trait InterpElem: Num + NumCast + Debug + Send + PartialOrd + Copy {}
-
-impl InterpElem for f64 {}
+pub use treetime_grid::grid;
+pub use treetime_grid::grid_fn;
+pub use treetime_grid::grid_iter;
+pub use treetime_grid::interp_nonuniform;
+pub use treetime_grid::InterpElem;
+pub use treetime_grid::{Grid, GridFn, GridFnF64};
 
 pub use algos::ndarray_conv::ndarray_conv::convolve_ndarray_conv as convolve;
-pub use grid_fn::GridFn;
-pub type GridFnF64 = GridFn<f64>;
 
 #[cfg(test)]
 mod tests {

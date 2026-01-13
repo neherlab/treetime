@@ -1,1 +1,1 @@
-pub mod gaussian;
+pub use treetime_analytical::gaussian;

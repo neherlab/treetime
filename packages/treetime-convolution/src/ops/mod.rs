@@ -1,1 +1,1 @@
-pub mod multiply;
+pub use treetime_ops::multiplication as multiply;

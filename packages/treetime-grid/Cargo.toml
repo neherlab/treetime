@@ -1,0 +1,36 @@
+[package]
+name = "treetime-grid"
+authors.workspace = true
+description = "Grid utilities for numerical computations"
+documentation.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+publish.workspace = true
+repository.workspace = true
+version.workspace = true
+
+[lib]
+crate-type = ["lib"]
+
+[dependencies]
+treetime-utils = { path = "../treetime-utils" }
+
+approx = { workspace = true }
+eyre = { workspace = true }
+itertools = { workspace = true }
+num = { workspace = true }
+num-traits = { workspace = true }
+serde = { workspace = true }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+ndarray = { workspace = true }
+ndarray-stats = { workspace = true }
+
+[dev-dependencies]
+ctor = { workspace = true }
+pretty_assertions = { workspace = true }
+rstest = { workspace = true }
+
+[lints]
+workspace = true

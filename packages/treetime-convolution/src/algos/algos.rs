@@ -3,11 +3,11 @@ use crate::algos::ndarray_conv_fft::ndarray_conv_fft::NdarrayConvFftAlgo;
 use crate::algos::riemann::riemann::RiemannAlgo;
 use crate::algos::scaled_distribution::{LogScaleMultiplicationAlgo, NaiveMultiplicationAlgo};
 use clap::ValueEnum;
-use eyre::Report;
-use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 use strum::IntoEnumIterator;
 use strum_macros::{Display, EnumIter, EnumString};
+
+pub use treetime_ops::traits::{ConvolveAlgo as Algo, MultiplyAlgo};
 
 /// Available convolution algorithms for testing
 #[derive(
@@ -62,12 +62,6 @@ impl ConvolutionAlgorithm {
   }
 }
 
-pub trait Algo: Send + Sync {
-  fn name(&self) -> &'static str;
-
-  fn convolve(&self, dx: f64, f_values: &Array1<f64>, g_values: &Array1<f64>) -> Result<Array1<f64>, Report>;
-}
-
 /// Available multiplication algorithms for testing
 #[derive(
   Debug,
@@ -114,20 +108,4 @@ impl MultiplicationAlgorithm {
       Self::LogScaleMultiplication => Box::new(LogScaleMultiplicationAlgo),
     }
   }
-}
-
-/// Trait for multiplication algorithms operating on discrete probability distributions.
-///
-/// Unlike convolution, point-wise multiplication does not depend on grid spacing.
-pub trait MultiplyAlgo: Send + Sync {
-  fn name(&self) -> &'static str;
-
-  /// Multiply two distributions element-wise.
-  fn multiply(&self, f_values: &Array1<f64>, g_values: &Array1<f64>) -> Array1<f64>;
-
-  /// Multiply N distributions, returning normalized shape and log-scale.
-  ///
-  /// Returns `(normalized_shape, log_scale)` where the full result is
-  /// `normalized_shape * exp(log_scale)`.
-  fn multiply_many(&self, distributions: &[&Array1<f64>]) -> (Array1<f64>, f64);
 }

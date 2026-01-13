@@ -1,6 +1,6 @@
-use crate::algos::algos::MultiplyAlgo;
-use crate::ops::multiply::{log_scale_multiply_many, naive_multiply_many};
 use ndarray::Array1;
+use treetime_ops::multiplication::{multiply_many_lazy_normalize, multiply_many_naive};
+use treetime_ops::MultiplyAlgo;
 
 /// Naive point-wise multiplication algorithm.
 ///
@@ -18,15 +18,15 @@ impl MultiplyAlgo for NaiveMultiplicationAlgo {
   }
 
   fn multiply_many(&self, distributions: &[&Array1<f64>]) -> (Array1<f64>, f64) {
-    naive_multiply_many(distributions)
+    multiply_many_naive(distributions)
   }
 }
 
-/// Log-scale aware multiplication algorithm.
+/// Log-scale aware multiplication algorithm with lazy normalization.
 ///
 /// Multiplies distributions while tracking scale in log-space to avoid underflow.
-/// After each pairwise multiplication, the result is normalized (max = 1.0)
-/// and the scale factor is accumulated in log-space.
+/// Uses lazy normalization - only normalizes when approaching underflow threshold,
+/// improving both performance and accuracy compared to aggressive normalization.
 pub struct LogScaleMultiplicationAlgo;
 
 impl MultiplyAlgo for LogScaleMultiplicationAlgo {
@@ -39,6 +39,6 @@ impl MultiplyAlgo for LogScaleMultiplicationAlgo {
   }
 
   fn multiply_many(&self, distributions: &[&Array1<f64>]) -> (Array1<f64>, f64) {
-    log_scale_multiply_many(distributions)
+    multiply_many_lazy_normalize(distributions)
   }
 }

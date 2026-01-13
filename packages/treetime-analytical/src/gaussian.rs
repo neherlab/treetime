@@ -50,6 +50,26 @@ pub fn gaussian_product(params: &[GaussianParams], grid: &Array1<f64>) -> (Array
   (values, log_scale)
 }
 
+/// Evaluate a single Gaussian on grid.
+pub fn gaussian_evaluate(params: &GaussianParams, grid: &Array1<f64>) -> Array1<f64> {
+  grid.mapv(|x| params.amplitude * (-(0.5 * ((x - params.mu) / params.sigma).powi(2))).exp())
+}
+
+/// Analytical convolution of two Gaussians.
+///
+/// The convolution of two Gaussians is also a Gaussian with:
+/// - mu = mu1 + mu2
+/// - sigma = sqrt(sigma1^2 + sigma2^2)
+/// - amplitude = amplitude1 * amplitude2 * sqrt(2*pi) * sigma1 * sigma2 / sigma
+pub fn gaussian_convolution(a: &GaussianParams, b: &GaussianParams, grid: &Array1<f64>) -> Array1<f64> {
+  let sigma_conv = a.sigma.hypot(b.sigma);
+  let mu_conv = a.mu + b.mu;
+
+  let normalization = a.amplitude * b.amplitude * std::f64::consts::TAU.sqrt() * a.sigma * b.sigma / sigma_conv;
+
+  grid.mapv(|x| normalization * (-(0.5 * ((x - mu_conv) / sigma_conv).powi(2))).exp())
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
@@ -147,5 +167,39 @@ mod tests {
     assert!(shape[4] < shape[2]);
     assert_relative_eq!(shape[0], shape[4], epsilon = 1e-10);
     assert_relative_eq!(shape[1], shape[3], epsilon = 1e-10);
+  }
+
+  #[test]
+  fn test_gaussian_evaluate() {
+    let params = GaussianParams {
+      mu: 0.0,
+      sigma: 1.0,
+      amplitude: 1.0,
+    };
+    let grid = array![-1.0, 0.0, 1.0];
+    let values = gaussian_evaluate(&params, &grid);
+
+    assert_relative_eq!(values[1], 1.0, epsilon = 1e-10);
+    assert_relative_eq!(values[0], values[2], epsilon = 1e-10);
+  }
+
+  #[test]
+  fn test_gaussian_convolution_same_width() {
+    let a = GaussianParams {
+      mu: 0.0,
+      sigma: 1.0,
+      amplitude: 1.0,
+    };
+    let b = GaussianParams {
+      mu: 0.0,
+      sigma: 1.0,
+      amplitude: 1.0,
+    };
+    let grid = array![-3.0, 0.0, 3.0];
+    let conv = gaussian_convolution(&a, &b, &grid);
+
+    // Peak should be at center (mu=0)
+    assert!(conv[1] > conv[0]);
+    assert!(conv[1] > conv[2]);
   }
 }
