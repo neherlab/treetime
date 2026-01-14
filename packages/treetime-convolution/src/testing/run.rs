@@ -319,14 +319,22 @@ fn generate_summary<S>(
 where
   S: TestSuite,
 {
+  generate_summary_generic(suite.test_suite_name(), outcomes, algorithms)
+}
+
+fn generate_summary_generic<T: TestCase, A: Display>(
+  test_suite_name: &str,
+  outcomes: &[TestRunOutcome<T>],
+  algorithms: &[A],
+) -> TestSummary {
   let successes = collect_successes(outcomes);
   let failures = collect_failures(outcomes);
   let total_execution_time = calculate_total_execution_time(outcomes);
-  let algorithm_summaries = build_algorithm_summaries(algorithms, &successes, &failures);
+  let algorithm_summaries = build_algorithm_summaries_generic(algorithms, &successes, &failures);
   let overall_assessment = assess_overall_performance(&algorithm_summaries);
 
   TestSummary {
-    test_suite_name: suite.test_suite_name().to_owned(),
+    test_suite_name: test_suite_name.to_owned(),
     total_tests: outcomes.len(),
     total_successes: successes.len(),
     total_failures: failures.len(),
@@ -367,14 +375,14 @@ fn calculate_total_execution_time<T: TestCase>(outcomes: &[TestRunOutcome<T>]) -
     .sum()
 }
 
-fn build_algorithm_summaries<T: TestCase>(
-  algorithms: &[ConvolutionAlgorithm],
+fn build_algorithm_summaries_generic<T: TestCase, A: Display>(
+  algorithms: &[A],
   successes: &[&TestResult<T>],
   failures: &[&TestFailure<T>],
 ) -> Vec<AlgorithmSummary> {
   algorithms
     .iter()
-    .filter_map(|&algorithm| {
+    .filter_map(|algorithm| {
       let algorithm_name = algorithm.to_string();
       let algo_successes = successes
         .iter()
@@ -390,7 +398,11 @@ fn build_algorithm_summaries<T: TestCase>(
         return None;
       }
 
-      Some(AlgorithmSummary::new(algorithm, &algo_successes, &algo_failures))
+      Some(AlgorithmSummary::new_from_name(
+        &algorithm_name,
+        &algo_successes,
+        &algo_failures,
+      ))
     })
     .collect()
 }
@@ -681,28 +693,6 @@ fn run_multiplication_test<S: MultiplicationTestSuite>(
   })
 }
 
-fn generate_multiplication_summary_from_outcomes<T: TestCase>(
-  test_suite_name: &str,
-  outcomes: &[TestRunOutcome<T>],
-  algorithms: &[MultiplicationAlgorithm],
-) -> TestSummary {
-  let successes = collect_successes(outcomes);
-  let failures = collect_failures(outcomes);
-  let total_execution_time = calculate_total_execution_time(outcomes);
-  let algorithm_summaries = build_multiplication_algorithm_summaries(algorithms, &successes, &failures);
-  let overall_assessment = assess_overall_performance(&algorithm_summaries);
-
-  TestSummary {
-    test_suite_name: test_suite_name.to_owned(),
-    total_tests: outcomes.len(),
-    total_successes: successes.len(),
-    total_failures: failures.len(),
-    total_algorithms: algorithms.len(),
-    execution_time_total_ms: total_execution_time,
-    algorithm_summaries,
-    overall_assessment,
-  }
-}
 
 fn generate_multiplication_summary<S>(
   suite: &S,
@@ -712,40 +702,9 @@ fn generate_multiplication_summary<S>(
 where
   S: MultiplicationTestSuite,
 {
-  generate_multiplication_summary_from_outcomes(suite.test_suite_name(), outcomes, algorithms)
+  generate_summary_generic(suite.test_suite_name(), outcomes, algorithms)
 }
 
-fn build_multiplication_algorithm_summaries<T: TestCase>(
-  algorithms: &[MultiplicationAlgorithm],
-  successes: &[&TestResult<T>],
-  failures: &[&TestFailure<T>],
-) -> Vec<AlgorithmSummary> {
-  algorithms
-    .iter()
-    .filter_map(|&algorithm| {
-      let algorithm_name = algorithm.to_string();
-      let algo_successes = successes
-        .iter()
-        .filter(|result| result.algorithm == algorithm_name)
-        .collect_vec();
-      let algo_failures = failures
-        .iter()
-        .filter(|failure| failure.algorithm == algorithm_name)
-        .collect_vec();
-      let total_runs = algo_successes.len() + algo_failures.len();
-
-      if total_runs == 0 {
-        return None;
-      }
-
-      Some(AlgorithmSummary::new_from_name(
-        &algorithm_name,
-        &algo_successes,
-        &algo_failures,
-      ))
-    })
-    .collect()
-}
 
 pub fn run_chain_multiplication_tests_impl<S>(args: &Args) -> Result<(), Report>
 where
@@ -1001,5 +960,5 @@ fn generate_chain_multiplication_summary<S>(
 where
   S: ChainMultiplicationTestSuite,
 {
-  generate_multiplication_summary_from_outcomes(suite.test_suite_name(), outcomes, algorithms)
+  generate_summary_generic(suite.test_suite_name(), outcomes, algorithms)
 }
