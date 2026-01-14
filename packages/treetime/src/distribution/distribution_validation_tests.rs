@@ -9,7 +9,7 @@ use treetime_convolution::testing::test_suites::test_suites::TestSuite;
 
 #[test]
 fn test_gaussian_convolution_validation() {
-  let suite = GaussianTestSuite::default();
+  let suite = GaussianTestSuite;
   let test_cases = suite.create_test_cases();
 
   for case in test_cases {
