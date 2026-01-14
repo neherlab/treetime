@@ -10,7 +10,7 @@ pub use treetime_grid::interp_nonuniform;
 pub use treetime_grid::InterpElem;
 pub use treetime_grid::{Grid, GridFn, GridFnF64};
 
-pub use algos::ndarray_conv::ndarray_conv::convolve_ndarray_conv as convolve;
+pub use treetime_ops::convolve;
 
 #[cfg(test)]
 mod tests {

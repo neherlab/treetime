@@ -1,11 +1,8 @@
-use crate::algos::ndarray_conv::ndarray_conv::NdarrayAlgo;
-use crate::algos::ndarray_conv_fft::ndarray_conv_fft::NdarrayConvFftAlgo;
-use crate::algos::riemann::riemann::RiemannAlgo;
-use crate::algos::scaled_distribution::{LogScaleMultiplicationAlgo, NaiveMultiplicationAlgo};
 use clap::ValueEnum;
 use serde::{Deserialize, Serialize};
 use strum::IntoEnumIterator;
 use strum_macros::{Display, EnumIter, EnumString};
+use treetime_ops::{FftConvolve, LogScaleMultiply, NdarrayConvolve, PointwiseMultiply, RiemannConvolve};
 
 pub use treetime_ops::traits::{ConvolveAlgo as Algo, MultiplyAlgo};
 
@@ -55,9 +52,9 @@ impl ConvolutionAlgorithm {
   pub fn instantiate(&self) -> Box<dyn Algo> {
     match self {
       Self::All => panic!("Cannot instantiate All meta-variant"),
-      Self::Riemann => Box::new(RiemannAlgo),
-      Self::NdarrayConv => Box::new(NdarrayAlgo),
-      Self::NdarrayConvFft => Box::new(NdarrayConvFftAlgo),
+      Self::Riemann => Box::new(RiemannConvolve),
+      Self::NdarrayConv => Box::new(NdarrayConvolve),
+      Self::NdarrayConvFft => Box::new(FftConvolve),
     }
   }
 }
@@ -104,8 +101,8 @@ impl MultiplicationAlgorithm {
   pub fn instantiate(&self) -> Box<dyn MultiplyAlgo> {
     match self {
       Self::All => panic!("Cannot instantiate All meta-variant"),
-      Self::NaiveMultiplication => Box::new(NaiveMultiplicationAlgo),
-      Self::LogScaleMultiplication => Box::new(LogScaleMultiplicationAlgo),
+      Self::NaiveMultiplication => Box::new(PointwiseMultiply),
+      Self::LogScaleMultiplication => Box::new(LogScaleMultiply),
     }
   }
 }
