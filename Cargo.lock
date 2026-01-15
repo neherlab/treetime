@@ -3762,7 +3762,6 @@ version = "1.0.0"
 dependencies = [
  "approx",
  "ctor",
- "eyre",
  "ndarray",
  "pretty_assertions",
  "rstest",
@@ -3942,16 +3941,10 @@ dependencies = [
  "approx",
  "ctor",
  "eyre",
- "itertools 0.14.0",
  "ndarray",
  "ndarray-conv",
- "ndarray-stats",
- "num",
- "num-traits",
  "pretty_assertions",
  "rstest",
- "serde",
- "treetime-grid",
  "treetime-utils",
 ]
 
